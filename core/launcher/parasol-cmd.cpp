@@ -61,8 +61,8 @@ The following parameters can be used when executing script files:\n\
  --sandbox       Applies the PARC sand-boxing feature when executing scripts.\n\
  --allow         For sand-boxed execution, specifies additional access rights and limitations.\n\
 \n\
- --debug         Activates run-time debug messages.\n\
- --errors        Activates run-time error messages.\n"
+ --log-info      Activates run-time log messages at INFO level.\n\
+ --log-error     Activates run-time log messages at ERROR level.\n"
 };
 
 //****************************************************************************
