@@ -1,0 +1,236 @@
+--$FLUID:Include
+
+module({ name="Network", copyright="Paul Manias © 2005-2017", version=1.0, prefix="net", status="stable" }, function()
+  restrict(function()
+    loadFile(glPath .. 'common.fdl')
+  end)
+
+  c_insert([[
+
+#if __has_include(<openssl/ssl.h>)
+   #define ENABLE_SSL
+#else
+   #undef ENABLE_SSL
+#endif
+
+#ifdef ENABLE_SSL
+#include "openssl/ssl.h"
+#endif
+
+#ifdef __linux__
+typedef LONG SOCKET_HANDLE;
+#elif _WIN32
+typedef ULONG SOCKET_HANDLE; // NOTE: declared as ULONG instead of SOCKET for now to avoid including winsock.h
+#else
+#error "No support for this platform"
+#endif
+  ]])
+
+  enum("IPADDR", { start=0, comment="Address types for the IPAddress structure." }, "V4", "V6")
+
+  struct("IPAddress", { }, [[
+    uint(4) Data        # 128-bit array for supporting both V4 and V6 IP addresses.
+    int(IPADDR) Type
+  ]])
+
+  flags("NSF", { },
+    "SERVER: Puts the socket into server mode.  In this state the netsocket object will wait for incoming connections from clients.",
+    "SSL: Use Secure Sockets Layer for all communication.",
+    "MULTI_CONNECT: Allow multiple connections from the same IP when in server mode.",
+    "ASYNC_RESOLVE: Use asynchronous (non-parallel) DNS resolutions in ResolveAddress() and ResolveName().",
+    "DEBUG: Print extra log messages.")
+
+  enum("NTC", { start=0, comment="NetSocket states" },
+    "DISCONNECTED: There is no connection.",
+    "CONNECTING: A connection is being established.",
+    "CONNECTING_SSL: An SSL connection is being established.",
+    "CONNECTED: There is an active connection at present."
+  )
+
+  enum("NSL", { start=1, comment="Tags for SetSSL()." },
+     "CONNECT: Initiate an SSL connection on this socket.")
+
+  const("NETMSG", { restrict="c", comment="Internal identifiers for the NetMsg structure." }, {
+    SIZE_LIMIT = 1024 * 1024,
+    MAGIC      = 0x38201f73,
+    MAGIC_TAIL = 0x830d73b4
+  })
+
+  struct("NetQueue", { restrict="c", comment="Stream management for read/write queues" }, [[
+    uint Index    # The current read/write position within the buffer
+    uint Length   # The size of the buffer.
+    ptr  Buffer   # The buffer hosting the data
+  ]])
+
+  struct("NetMsg", { restrict="c" }, [[
+    uint Magic
+    uint Length
+  ]])
+
+  struct("NetMsgEnd", { restrict="c" }, [[
+    uint CRC
+    uint Magic
+  ]])
+
+  class("ClientSocket", { comment="Simple data storage class utilised by NetClient to host client socket information." }, [[
+    large ConnectTime           # System time for the creation of this socket
+    obj(ClientSocket) Prev      # Previous socket in the chain
+    obj(ClientSocket) Next      # Next socket in the chain
+    ptr(struct(rkNetClient)) Client   # Parent client structure
+    ptr  UserData               # Free for user data storage.
+    func Outgoing               # Callback for data being sent over the socket
+    func Incoming               # Callback for data being received from the socket
+    int  Handle                 # Socket FD
+    int  MsgLen                 # Length of the current incoming message
+    bit(int) ReadCalled         # TRUE if the Read action has been called
+  ]],
+  [[
+    struct NetQueue WriteQueue; // Writes to the network socket are queued here in a buffer
+    struct NetQueue ReadQueue;  // Read queue, often used for reading whole messages
+  ]])
+
+  struct("rkNetClient", { comment="Simple data storage class utilised by NetSocket to represent a client machine/IP." }, [[
+    char(8) IP                     # IP address in 4/8-byte format
+    ptr(struct(rkNetClient)) Next  # Next client in the chain
+    ptr(struct(rkNetClient)) Prev  # Previous client in the chain
+    obj(NetSocket) NetSocket  # Reference to the parent socket
+    obj(ClientSocket) Sockets # Pointer to a list of sockets opened with this client.
+    ptr UserData              # Free for user data storage.
+    int TotalSockets          # Count of all created sockets
+  ]])
+
+  methods("proxy", "Prx", {
+    { id=1, name="Delete" },
+    { id=2, name="Find" },
+    { id=3, name="FindNext" }
+  })
+
+  class("Proxy", { src="class_proxy.c" }, [[
+    str NetworkFilter
+    str GatewayFilter
+    str Username
+    str Password
+    str ProxyName
+    str Server
+    int Port
+    int ServerPort
+    int Enabled
+    int Record
+    int Host
+  ]], // If adding further fields, you must update get_record() and clear_values()
+  [[
+   char Section[40];
+   char FindPort[16];
+   BYTE  FindEnabled;
+   UBYTE Find:1;
+  ]])
+
+  methods("NetSocket", "ns", {
+    { id=1, name="Connect" },
+    { id=2, name="GetLocalIPAddress" },
+    { id=3, name="DisconnectClient" },
+    { id=4, name="DisconnectSocket" },
+    { id=5, name="ReadMsg" },
+    { id=6, name="WriteMsg" }
+  })
+
+  class("NetSocket", { src="netsocket/netsocket.c", output="netsocket/netsocket_def.c" }, [[
+    ptr(struct(rkNetClient)) Clients # ServerMode - Attached clients
+    obj(ClientSocket) CurrentSocket  # ServerMode - The current client being operated on (e.g. for Read/Write activity)
+    ptr UserData      # Pointer to user data that can be used during events
+    str Address       # Connect the socket to this remote address (if client)
+    int(NTC) State    # Connection state
+    error Error       # The last NetSocket error can be read from this field
+    int Port          # Connect socket to this remote port if client, or local port if server
+    int(NSF) Flags    # Optional flags
+    int TotalClients  # Total number of clients registered (if socket is a server)
+    int Backlog       # Server connection backlog if in server mode
+    int ClientLimit   # Limit the number of connected clients to this value
+    int MsgLimit      # Limit the size of messages to this value
+  ]],
+  [[
+   SOCKET_HANDLE SocketHandle;   // Handle of the socket
+   FUNCTION Outgoing;
+   FUNCTION Incoming;
+   FUNCTION Feedback;
+   struct rkNetClient *LastClient;
+   struct NetQueue WriteQueue;
+   struct NetQueue ReadQueue;
+   UBYTE  ReadCalled:1;          // The Read() action sets this to TRUE whenever called.
+   UBYTE  IPV6:1;
+   UBYTE  Terminating:1;         // Set to TRUE when the NetSocket is marked for deletion.
+   UBYTE  ExternalSocket:1;      // Set to TRUE if the SocketHandle field was set manually by the client.
+   UBYTE  InUse;                 // Recursion counter to signal that the object is doing something.
+   UBYTE  SSLBusy;               // Tracks the current actions of SSL handshaking.
+   UBYTE  IncomingRecursion;     // Used by netsocket_client to prevent recursive handling of incoming data.
+   UBYTE  OutgoingRecursion;
+   #ifdef _WIN32
+      #ifdef NO_NETRECURSION
+         WORD WinRecursion; // For win32_netresponse()
+      #endif
+      void (*ReadSocket)(HOSTHANDLE FD, struct rkNetSocket *);
+      void (*WriteSocket)(HOSTHANDLE FD, struct rkNetSocket *);
+   #endif
+   #ifdef ENABLE_SSL
+      SSL *SSL;
+      SSL_CTX *CTX;
+      BIO *BIO;
+   #endif
+  ]])
+
+  const("SCV", { comment="These error codes for certificate validation match the OpenSSL error codes (X509 definitions)" }, {
+    OK                                  = 0,
+    UNABLE_TO_GET_ISSUER_CERT           = 2,
+    UNABLE_TO_GET_CRL                   = 3,
+    UNABLE_TO_DECRYPT_CERT_SIGNATURE    = 4,
+    UNABLE_TO_DECRYPT_CRL_SIGNATURE     = 5,
+    UNABLE_TO_DECODE_ISSUER_PUBLIC_KEY  = 6,
+    CERT_SIGNATURE_FAILURE              = 7,
+    CRL_SIGNATURE_FAILURE               = 8,
+    CERT_NOT_YET_VALID                  = 9,
+    CERT_HAS_EXPIRED                    = 10,
+    CRL_NOT_YET_VALID                   = 11,
+    CRL_HAS_EXPIRED                     = 12,
+    ERROR_IN_CERT_NOT_BEFORE_FIELD      = 13,
+    ERROR_IN_CERT_NOT_AFTER_FIELD       = 14,
+    ERROR_IN_CRL_LAST_UPDATE_FIELD      = 15,
+    ERROR_IN_CRL_NEXT_UPDATE_FIELD      = 16,
+    OUT_OF_MEM                          = 17,
+    DEPTH_ZERO_SELF_SIGNED_CERT         = 18,
+    SELF_SIGNED_CERT_IN_CHAIN           = 19,
+    UNABLE_TO_GET_ISSUER_CERT_LOCALLY   = 20,
+    UNABLE_TO_VERIFY_LEAF_SIGNATURE     = 21,
+    CERT_CHAIN_TOO_LONG                 = 22,
+    CERT_REVOKED                        = 23,
+    INVALID_CA                          = 24,
+    PATH_LENGTH_EXCEEDED                = 25,
+    INVALID_PURPOSE                     = 26,
+    CERT_UNTRUSTED                      = 27,
+    CERT_REJECTED                       = 28,
+    SUBJECT_ISSUER_MISMATCH             = 29,
+    AKID_SKID_MISMATCH                  = 30,
+    AKID_ISSUER_SERIAL_MISMATCH         = 31,
+    KEYUSAGE_NO_CERTSIGN                = 32,
+    APPLICATION_VERIFICATION            = 50
+  })
+
+  c_insert([[
+INLINE ERROR nsCreate(objNetSocket **NewNetSocketOut, OBJECTID ListenerID, APTR UserData) {
+   return(CreateObject(ID_NETSOCKET, 0, NewNetSocketOut,
+      FID_Listener|TLONG, ListenerID,
+      FID_UserData|TPTR, UserData,
+      TAGEND));
+}
+  ]])
+
+  functionNames("net",
+    "StrToAddress",
+    "AddressToStr",
+    "HostToShort",
+    "HostToLong",
+    "ShortToHost",
+    "LongToHost",
+    "SetSSL",
+    "ResolveName",
+    "ResolveAddress")
+end)

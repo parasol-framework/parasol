@@ -1,0 +1,20 @@
+
+# Note that the display driver is compiled separately for GLES11, GLES2, GLES3
+
+include ../../core.mk
+
+.NOTPARALLEL:
+NAME=     display-gles
+CATEGORY= graphics
+DEST=     $(PARASOL_MODULE)
+
+compile: display-driver.o android/android.o
+	$(CC) $(LIBLINK) -ljnigraphics -lEGL -lGLESv3 -DGLES3 $(CFLAGS) display-driver.c
+#	$(CXX) $(CFLAGS) -lm $(LIBLINK) display-driver.o android/android.o  $(SYSLIB)
+
+clean:
+	@rm -f $(DEST) *.o android/*.o
+
+#display-driver.o: display-driver.c class_display.c class_pointer.c class_bitmap.c lib_mempixels.c display.c fast_floodfill.c android/handlers.c
+#	$(CC) -c $(CFLAGS) -o $@ display-driver.c
+

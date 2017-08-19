@@ -1,0 +1,71 @@
+﻿-- Test the vector class' rotate method.
+--
+-- The blue rectangle should move around the inner side of the circle, just touching the circle's edge.
+-- All four sides of the large black rectangle must be touching the red circle during rotation.
+-- The top-left corner of the manually rotated green rectangle must overlap the top-left corner of the black rectangle.
+
+   local mSys = mod.load("core")
+
+   glSelf = obj.find("self")
+   glFrameRate = 120
+
+//*********************************************************************************************************************
+
+function drawPage(Surface, Bitmap)
+   local err, colour = Bitmap.mtGetColour(255, 255, 255, 255)
+   Bitmap.mtDrawRectangle(0, 0, Surface.width, Surface.height, colour, BAF_FILL)
+
+   glVector.bitmap     = Bitmap
+   glVector.pagewidth  = Surface.width
+   glVector.pageheight = Surface.height
+   glVector.acDraw()
+end
+
+//*********************************************************************************************************************
+
+function rotate(X, Y, CX, CY, Degrees)
+   local rad = math.rad(Degrees)
+   local rx = CX + ((math.cos(rad) * (X - CX)) - (math.sin(rad) * (Y - CY)))
+   local ry = CY + ((math.sin(rad) * (X - CX)) + (math.cos(rad) * (Y - CY)))
+   return rx, ry
+end
+
+//*********************************************************************************************************************
+
+   glAngle = 0
+
+   glWindow = obj.new("window", {
+      insidewidth=600, insideheight=400, title="Rotate Test", flags="!nomargins", minwidth=200, minheight=200
+   })
+   glWindow.acShow()
+   glWindow.detach()
+
+   glPage = glWindow.new("surface", { x=glWindow.leftmargin, y=glWindow.topmargin, xoffset=glWindow.rightmargin, yoffset=glWindow.bottommargin } )
+   glPage.acShow()
+
+   glVector = glPage.new("VectorScene", { name="MainVectorPage" } )
+   glViewport = glVector.new("VectorViewport", { name="MainView" }) // Main view port for vector graphics.
+
+   glManual = glViewport.new("VectorRectangle", { x=50, y=50, width=10, height=10, strokewidth="1", strokecolour="0,1,0,1" })
+   glRectangle = glViewport.new("VectorRectangle", { x=50, y=50, width=100, height=100, strokewidth="2", strokecolour="0,0,0,1" })
+
+   glEdge = glViewport.new("VectorRectangle", { x=95, y=50, width=10, height=10, strokewidth="1", strokecolour="0,0,1,1" })
+   glEllipse = glViewport.new("VectorEllipse", { cx=100, cy=100, radius=50, strokewidth="2", strokecolour="1,0,0,1" })
+
+   glPage.mtAddCallback(drawPage)
+   glPage.acDraw()
+
+   local err, timerID = mSys.SubscribeTimer(1.0/glFrameRate,
+      function(ID, Elapsed, CurrentTime)
+         glAngle = glAngle + 1
+         glEdge.mtRotate(glAngle, glEllipse.cx, glEllipse.cy)
+         glRectangle.mtRotate(glAngle, glEllipse.cx, glEllipse.cy)
+
+         local x, y = rotate(50, 50, glEllipse.cx, glEllipse.cy, glAngle)
+         glManual.x = x
+         glManual.y = y
+
+         glPage.acDraw()
+      end)
+
+   processMessages(-1)

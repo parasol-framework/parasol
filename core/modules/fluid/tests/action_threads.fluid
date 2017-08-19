@@ -1,0 +1,89 @@
+﻿-- Test the use of action threading (asynchronous callbacks) by loading multiple pictures simultaneously.
+--
+-- The  testParallel() function executes the threads and then waits for them to complete by calling processInput()
+-- until picLoaded() sends a MSGID_QUIT message.
+
+-----------------------------------------------------------------------------------------------------------------------
+
+function initPictures()
+   for k, v in ipairs(glPictures) do
+      v.pic = obj.new("picture", { path=v.path, flags="QUERY" } )
+   end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+
+function freePictures()
+   for k, v in ipairs(glPictures) do
+      if (v.pic != nil) then
+         v.pic = nil
+      end
+   end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- This callback function is called every time that a thread completes its Activate() action.
+
+function picLoaded(ActionID, pic, Error, Key)
+   if nz(Error) then
+      print("Failed to load picture, error: " .. mSys.GetErrorMsg(Error))
+   end
+
+   glPicsLoaded = glPicsLoaded + 1
+
+   if (glPicsLoaded == #glPictures) then
+      //print("All pictures have been loaded, exiting now.")
+      mSys.SendMessage(0, MSGID_QUIT, 0, NULL, 0)
+   end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+
+function testParallel()
+   glPicsLoaded = 0
+
+   for k, v in ipairs(glPictures) do
+      local err = thread.action(v.pic, "Activate", picLoaded, k)
+      if (err != ERR_Okay) then
+         print("Thread failed, error: %d", err)
+      end
+   end
+
+   // Wait for threads to complete
+
+   local err = ERR_Okay
+   while (err == ERR_Okay) do
+      time, err = processMessages(-1)
+   end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- This is the control test for demonstrating how fast parallel execution can actually be versus sequential execution.
+
+function testSequential()
+   for k, v in ipairs(glPictures) do
+      if (v.pic != nil) then
+         v.pic.acActivate()
+      end
+   end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+
+   return {
+      init = function()
+         mSys = mod.load("core")
+         glPictures = { }
+
+         local folder = obj.new("file", { src="pictures:backgrounds/" } )
+         local err, file = folder.mtNext()
+         while (err == ERR_Okay) do
+            if (string.find(file.path, ".+%.jpg")) then
+               print("Found file: " .. file.path)
+               table.insert(glPictures, { path=file.path })
+            end
+            err, file = folder.mtNext()
+         end
+      end,
+      tests = { 'initPictures', 'testParallel', 'freePictures', 'initPictures', 'testSequential', 'freePictures' }
+   }

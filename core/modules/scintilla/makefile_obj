@@ -1,0 +1,57 @@
+
+include ../../core.mk
+
+CXXFLAGS:= $(CXXFLAGS) -DSCI_NAMESPACE -shared -D__PARASOL__ -DSCI_LEXER -Iscintilla/lexlib -Iscintilla/include -Iscintilla/src
+CXXFLAGS += -DMOD_NAME=scintilla
+
+OBJECTS:= scintilla/lexlib/Accessor.o \
+  scintilla/lexlib/CharacterSet.o \
+  scintilla/lexlib/LexerBase.o \
+  scintilla/lexlib/LexerModule.o \
+  scintilla/lexlib/LexerNoExceptions.o \
+  scintilla/lexlib/LexerSimple.o \
+  scintilla/lexlib/PropSetSimple.o \
+  scintilla/lexlib/StyleContext.o \
+  scintilla/lexlib/WordList.o \
+  scintilla/src/AutoComplete.o \
+  scintilla/src/CallTip.o \
+  scintilla/src/Catalogue.o \
+  scintilla/src/CellBuffer.o \
+  scintilla/src/CharClassify.o \
+  scintilla/src/ContractionState.o \
+  scintilla/src/Decoration.o \
+  scintilla/src/Document.o \
+  scintilla/src/Editor.o \
+  scintilla/src/ExternalLexer.o \
+  scintilla/src/Indicator.o \
+  scintilla/src/KeyMap.o \
+  scintilla/src/LineMarker.o \
+  scintilla/src/PerLine.o \
+  scintilla/src/PositionCache.o \
+  scintilla/src/RESearch.o \
+  scintilla/src/RunStyles.o \
+  scintilla/src/ScintillaBase.o \
+  scintilla/src/Selection.o \
+  scintilla/src/Style.o \
+  scintilla/src/UniConversion.o \
+  scintilla/src/ViewStyle.o \
+  scintilla/src/XPM.o \
+  class_scintilla.o \
+  class_scintilla_search.o \
+  scintilla/lexers/LexAsm.o scintilla/lexers/LexBash.o scintilla/lexers/LexBasic.o scintilla/lexers/LexCPP.o \
+  scintilla/lexers/LexCSS.o scintilla/lexers/LexD.o scintilla/lexers/LexHaskell.o scintilla/lexers/LexHTML.o scintilla/lexers/LexLua.o \
+  scintilla/lexers/LexMSSQL.o scintilla/lexers/LexMySQL.o scintilla/lexers/LexOthers.o scintilla/lexers/LexPascal.o scintilla/lexers/LexPerl.o scintilla/lexers/LexRebol.o \
+  scintilla/lexers/LexPython.o scintilla/lexers/LexRuby.o scintilla/lexers/LexSQL.o scintilla/lexers/LexVB.o
+
+SOURCES := $(subst .o,.cxx,$(OBJECTS))
+ifneq ($(OSTYPE),ANDROID)
+-include deps-$(OSTYPE).mak
+endif
+
+compile: $(OBJECTS) deps-$(OSTYPE).mak
+
+$(OBJECTS): %.o: %.cxx
+	$(CXX) -c $(CXXFLAGS) -w -o $@ $<
+
+deps-$(OSTYPE).mak:
+	$(CXX) -MM $(CXXFLAGS) $(SOURCES) >deps-$(OSTYPE).mak

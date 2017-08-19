@@ -1,0 +1,23 @@
+
+   require "gui/fontdialog"
+
+   mSys = mod.load("core")
+
+   gui.dialog.font({
+      okText     = "Select Font",
+      cancelText = "Exit",
+      modal      = true,
+      feedback = function(Dialog, Accepted)
+         mSys.SendMessage(0, MSGID_QUIT)
+
+         if (not Accepted) then
+            print("Dialog was cancelled.")
+            return
+         end
+
+         print("The user selected '" .. Dialog.face .. "', size " .. Dialog.size .. ", style '" .. Dialog.style .. "'")
+         print("This can be compacted to '" .. Dialog.compactFace .. "'")
+      end
+   })
+
+   processMessages(-1)

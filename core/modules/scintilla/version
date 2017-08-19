@@ -1,0 +1,8 @@
+# Export file
+
+scintilla.so {
+    global:
+        ModHeader;
+    local:
+        *;
+};

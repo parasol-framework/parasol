@@ -1,0 +1,18 @@
+
+   require 'filesearch'
+
+   local mSys = mod.load('core')
+
+   local time = mSys.preciseTime()
+
+   local glPath = obj.find('self').workingPath
+
+   file.search(glPath .. '../core/modules/', {
+      nameFilter = '*.c',
+      nameWild = true,
+      matchFeedback = function(Path, FileName, File)
+         print('FOUND: ' .. Path, FileName)
+      end
+   })
+
+   print('Seconds taken: ' .. (mSys.preciseTime() - time) / 1000000)

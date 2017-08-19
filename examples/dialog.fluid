@@ -1,0 +1,19 @@
+
+   mSys = mod.load('core')
+
+   local dialog = obj.new('dialog', {
+      title    = 'Existential Crisis!',
+      string   = 'To be or not to be?  That is the question.',
+      type     = 'warning',
+      options  = 'No:Not to be;Yes:To be',
+      flags    = '!MODAL|WAIT',
+      feedback = function(Dialog, Response)
+         print('Received response #' .. nz(Response,'NIL'))
+         mSys.SendMessage(0, MSGID_QUIT)
+      end
+   })
+
+   dialog.acShow()
+
+   processMessages(-1)
+

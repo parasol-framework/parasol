@@ -1,0 +1,70 @@
+-- $FLUID
+--
+-- Flute tests for the Parc module
+
+//=====================================================================================================================
+
+function createPARC()
+
+end
+
+//=====================================================================================================================
+
+function testList()
+   local parc = obj.new("parc", { path="sdk:core/modules/parc/test/test.parc" } )
+
+   // Simulate the "parc:" volume
+
+   mFile.SetVolume(AST_NAME, "parc",
+      AST_PATH, "archive:parc/",
+      AST_FLAGS, bit.bor(VOLUME_REPLACE, VOLUME_HIDDEN))
+
+   // Now attempt to read the root folder
+
+   local folder = obj.new("file", { path="parc:project/" } )
+
+   if nz(folder) then
+      local names
+      local err, file = folder.mtNext()
+      while (file) do
+         if not nz(names) then
+            names = "\"" .. file.path .. "\""
+         else
+            names = names .. ", \"" .. file.path .. "\""
+         end
+         err, file = folder.mtNext()
+      end
+
+      return "Found: " .. nz(names,"NIL")
+   else
+      error("Failed to open PARC folder: " .. mSys.GetErrorMsg(err))
+   end
+end
+
+//=====================================================================================================================
+
+function initialise()
+   // Create a PARC file for testing if it doeesn't exist already.
+
+   local err, type = mFile.AnalysePath("test/test.parc")
+
+   if (type != LOC_FILE) then
+      print('Generating PARC file for testing.')
+
+      local task = obj.new("task", {
+         src   = "parasol:parasol-cmd",
+         args  = "sdk:scripts/parka.fluid src=sdk:core/modules/parc/test/archive/ dest=sdk:core/modules/parc/test/test.parc",
+         flags = "!WAIT"
+      })
+
+      task.acActivate()
+   end
+end
+
+//=====================================================================================================================
+
+   return {
+      tests = { 'testList' },
+      init = initialise,
+      cleanup = nil
+   }

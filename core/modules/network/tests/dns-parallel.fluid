@@ -1,0 +1,153 @@
+--[[
+Tests for resolving server names in parallel.
+--]]
+
+   local mSys = mod.load("core")
+   local mNet = mod.load("network")
+
+function netAddressToString(IP)
+   return bit.rshift(bit.band(IP.data[1], 0xff000000), 24) .. "." ..
+      bit.rshift(bit.band(IP.data[1], 0xff0000), 16) .. "." ..
+      bit.rshift(bit.band(IP.data[1], 0xff00), 8) .. "." ..
+      bit.band(IP.data[1], 0xff)
+end
+
+function name_resolved(ClientData, Error, HostName, Aliases, Addresses)
+   if (Error == ERR_Okay) then
+      local total_aliases = 0
+      local total_ips = 0
+
+      local alias_list = nil
+      if (Aliases != nil) then
+         total_aliases = #Aliases
+         for k,alias in ipairs(Aliases) do
+            if (alias_list == nil) then
+               alias_list = alias
+            else
+               alias_list = alias_list .. ", " .. alias
+            end
+         end
+      end
+
+      local ip_list = nil
+      if (Addresses != nil) then
+         total_ips = #Addresses
+         for index, ip in pairs(Addresses) do
+            if (ip.type == IPADDR_V4) then
+               if (ip_list == nil) then
+                  ip_list = netAddressToString(ip)
+               else
+                  ip_list = ip_list .. ", " .. netAddressToString(ip)
+               end
+            elseif (ip.type == IPADDR_V6) then
+
+            end
+         end
+      end
+
+      local msg = "Resolved " .. nz(HostName,"NIL") .. " with " .. nz(total_aliases,0) .. " aliases and " .. nz(total_ips,0) .. " IP addresses."
+      if (alias_list) then msg = msg .. "  Aliases: " .. alias_list end
+      if (ip_list) then msg = msg .. "  IPs: " .. ip_list end
+      print(msg)
+   else
+      print("Failed to resolve " .. nz(HostName,"NIL") .. ", error " ..mSys.GetErrorMsg(Error))
+   end
+
+   glTotalResolved = glTotalResolved + 1
+
+   if (glTotalResolved == #glDomains) then
+      mSys.SendMessage(nil, MSGID_QUIT)
+   end
+end
+
+//=====================================================================================================================
+// In this test, a time-out is expected because it will only wait 1 millisecond (nb: unless the Network module is
+// compiled with asynchronous resolution, in which case the name is resolved before ResolveName() returns).
+
+function testTimeOut()
+   glTotalResolved = 0
+
+   for k,v in pairs(glDomains) do
+      print("Resolving " .. v)
+      mNet.ResolveName(v, 0, name_resolved, 0)
+   end
+
+   local elapsed, err = processMessages(1)
+   if (err != ERR_TimeOut) then error("Expected time-out did not occur.") end
+end
+
+//=====================================================================================================================
+// This test resolves each name more than once.  The expected response is for the callback to be called multiple times
+// for the same host.
+
+function testDuplication()
+   glTotalResolved = 0
+
+   local domains = { "google.com", "news.bbc.co.uk" }
+   function duplicate_resolved(ClientData, Error, HostName, Aliases, Addresses)
+      if (Error == ERR_Okay) then
+         print("Resolved: " .. nz(HostName,"NIL"))
+      else
+         print("Failed to resolve " .. nz(HostName,"NIL") .. ", error " ..mSys.GetErrorMsg(Error))
+      end
+
+      glTotalResolved = glTotalResolved + 1
+
+      if (glTotalResolved == #domains * 2) then
+         mSys.SendMessage(nil, MSGID_QUIT)
+      end
+   end
+
+   for k,v in pairs(domains) do
+      print("Resolving x2 " .. v)
+      mNet.ResolveName(v, 0, duplicate_resolved, 0)
+      mNet.ResolveName(v, 0, duplicate_resolved, 0)
+   end
+
+   local elapsed, err = processMessages(5000)
+   if (err == ERR_TimeOut) then error("Name resolution timed-out.") end
+end
+
+//=====================================================================================================================
+
+function testNameResolutionAsync()
+   if (NSF_ASYNC_RESOLVE == nil) then error("NSF_ASYNC_RESOLVE not defined.") end
+
+   glTotalResolved = 0
+
+   for k,v in pairs(glDomains) do
+      print("Resolving " .. v)
+      mNet.ResolveName(v, NSF_ASYNC_RESOLVE, name_resolved, 0)
+   end
+
+   local elapsed, err = processMessages(5000)
+   if (err == ERR_TimeOut) then error("Name resolution timed-out.") end
+end
+
+//=====================================================================================================================
+
+function testNameResolution()
+   glTotalResolved = 0
+
+   for k,v in pairs(glDomains) do
+      print("Resolving " .. v)
+      mNet.ResolveName(v, 0, name_resolved, 0)
+   end
+
+   local elapsed, err = processMessages(5000)
+   if (err == ERR_TimeOut) then error("Name resolution timed-out.") end
+end
+
+//=====================================================================================================================
+
+   return {
+      tests = { 'testDuplication', 'testTimeOut', 'testNameResolution', 'testNameResolutionAsync' },
+      init = function()
+         //glDomains = { "amazon.co.uk" }
+         glDomains = { "google.com", "parasol.ws", "amazon.co.uk", "stackoverflow.com", "theguardian.com", "www.bbc.co.uk" }
+      end,
+      cleanup = function()
+         glDomains = nil
+         glTotalResolved = nil
+      end
+   }

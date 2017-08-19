@@ -1,0 +1,8 @@
+# Export file
+
+fluid.so {
+    global:
+        ModHeader;
+    local:
+        *;
+};

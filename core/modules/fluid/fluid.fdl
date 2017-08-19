@@ -1,0 +1,18 @@
+--$FLUID:Include
+
+module({
+  name="Fluid",
+  copyright="Paul Manias © 2006-2017",
+  version=1.0,
+  prefix="fl",
+  status="beta",
+  comment="Fluid is a customised scripting language for the Script class."
+},
+function()
+  restrict(function()
+    loadFile(glPath .. 'common.fdl')
+  end)
+
+  functionNames("fl",
+    "SetVariable")
+end)

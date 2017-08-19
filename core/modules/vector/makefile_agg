@@ -1,0 +1,48 @@
+
+include ../../core.mk
+
+AGG=      agg/src/
+CXXFLAGS+= -L./ -std=c++0x
+CXXFLAGS += -DMOD_NAME=vector
+CFLAGS += -DMOD_NAME=vector
+
+-include deps-$(OSTYPE).mak
+
+SRC_CXX= vector.cpp \
+$(AGG)agg_arc.cpp \
+$(AGG)agg_arrowhead.cpp \
+$(AGG)agg_bezier_arc.cpp \
+$(AGG)agg_bspline.cpp \
+$(AGG)agg_curves.cpp \
+$(AGG)agg_vcgen_contour.cpp \
+$(AGG)agg_vcgen_dash.cpp \
+$(AGG)agg_vcgen_markers_term.cpp \
+$(AGG)agg_vcgen_smooth_poly1.cpp \
+$(AGG)agg_vcgen_stroke.cpp \
+$(AGG)agg_vcgen_bspline.cpp \
+$(AGG)agg_image_filters.cpp \
+$(AGG)agg_line_aa_basics.cpp \
+$(AGG)agg_line_profile_aa.cpp \
+$(AGG)agg_rounded_rect.cpp \
+$(AGG)agg_sqrt_tables.cpp \
+$(AGG)agg_trans_affine.cpp \
+$(AGG)agg_trans_single_path.cpp \
+$(AGG)agg_vpgen_clip_polygon.cpp \
+$(AGG)agg_vpgen_clip_polyline.cpp \
+$(AGG)agg_vpgen_segmentator.cpp
+#$(AGG)agg_trans_double_path.cpp \
+
+#SRC_C= agg/gpc/gpc.c
+
+OBJ=$(SRC_CXX:.cpp=.o) $(SRC_C:.c=.o)
+
+compile: $(OBJ)
+
+%.o: %.cpp
+	$(CXX) -c $(CXXFLAGS) -Wno-narrowing -Wno-uninitialized -Iagg/include -I../font/freetype-2.7/include $*.cpp -o $@
+
+%.o: %.c
+	$(CC) -c $(CFLAGS) -Iagg/include $*.c -o $@
+
+deps-$(OSTYPE).mak:
+	$(CXX) -MM -Iagg/include $(CXXFLAGS) $(SRC_CXX) >deps-$(OSTYPE).mak

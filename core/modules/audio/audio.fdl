@@ -1,0 +1,342 @@
+--$FLUID:Include
+
+module({ name="Audio", copyright="Paul Manias © 2002-2017", version=1.0 }, function()
+  flags("ADF", { comment="Optional flags for the Audio object." },
+    "OVER_SAMPLING: Enables oversampling for higher quality audio at the cost of slower mixing.",
+    "FILTER_LOW: Enable a low level of output filtering to minimise distortion.",
+    "FILTER_HIGH: Enable a high level of output filtering to minimise distortion.",
+    "STEREO: Enable stereo output (set by default if the platform supports stereo).  If not set, output is in mono.",
+    "VOL_RAMPING: Enable volume ramping for softer playback when a sample is played multiple times (enabled by default).",
+    "AUTO_SAVE: Save configuration information on exit.",
+    "SYSTEM_WIDE: Mixer changes should be applied system-wide.",
+    "SERVICE_MODE: Service mode gives the audio object complete control of the task.")
+
+  flags("VCF", { comment="Volume control flags" },
+    { PLAYBACK = "0x00000001: The mixer supports audio output." },
+    { CAPTURE  = "0x00000010: The mixer supports audio input." },
+    { JOINED   = "0x00000100: The mixer channels are joined (e.g. left and right speakers cannot be adjusted separately)." },
+    { MONO     = "0x00001000: The mixer is restricted to mono input/output." },
+    { MUTE     = "0x00010000: The mixer is muted." },
+    { SYNC     = "0x00100000: The mixer is synchronised." }
+  )
+
+  flags("CHF", { comment="Optional flags for the AudioChannel structure." },
+    "MUTE: Channel is muted.",
+    "BACKWARD: Play channel backwards.",
+    "VOL_RAMP: Volume ramping is enabled.",
+    "CHANGED: Sample change")
+
+  flags("SVF", { comment="Flags for the SetVolume() method." },
+    { MUTE    = "0x00000100: Mute the audio for this channel." },
+    { UNMUTE  = "0x00001000: Unmute the audio for this channel." },
+    { CAPTURE = "0x00010000: Set input, not output." },
+    { SYNC    = "0x00100000: Synchronise volume settings between channels." },
+    { UNSYNC  = "0x01000000: Allow un-synchronised volume settings." }
+  )
+
+  flags("SDF", { comment="Sound flags" },
+    "LOOP: Enables sample looping. The LoopStart and LoopEnd fields determine where the looping area lies within the sample data.",
+    "NEW: Create the sample from scratch (e.g. for audio recording purposes).",
+    "QUERY: Query the meta data of the sample source; do not load sample data.",
+    "STEREO: Indicates that the sound has multiple audio channels.",
+    "TERMINATE: Self-terminate when the sound sample has finished playback.",
+    "RESTRICT_PLAY: Restricts playback so that the sound can never play on more than one channel at any given time.",
+    { STREAM = "0x40000000: Read-Only. Indicates that streaming is enabled." },
+    { NOTE = "0x80000000: Internal. Used for managing playback." }
+  )
+
+  const("SFM", { comment="These audio bit formats are supported by AddSample and AddStream." }, {
+    U8_BIT_MONO    = "1: 8-bit mono unsigned sample.",
+    S16_BIT_MONO   = "2: 16-bit mono signed sample.",
+    U8_BIT_STEREO  = "3: 8-bit stereo unsigned sample.",
+    S16_BIT_STEREO = "4: 16-bit stereo signed sample.",
+    END            = "5: Private.",
+    BIG_ENDIAN     = "0x80000000: Combine this flag with any audio format to declare it as big endian."
+  })
+
+  enum("LOOP", { start=1, comment="Loop modes for the AudioLoop structure." },
+    "SINGLE: Single loop: Releasing will end the note.",
+    "SINGLE_RELEASE: Single loop: Sample data after the loop will be played when the note is released.",
+    "DOUBLE: Double loop: When the note is released, playing shifts to the second loop.",
+    "AMIGA_NONE: Amiga loop: Do nothing.",
+    "AMIGA: Single loop: Amiga style.")
+
+  enum("LTYPE", { start=1, comment="Loop types for the AudioLoop structure." },
+    "UNIDIRECTIONAL: The sample playback position returns to the byte position specified in the Loop1Start field.",
+    "BIDIRECTIONAL: The sample will play in reverse whenever it hits the end marker, then forwards when it hits the start marker.")
+
+  enum("CMD", { comment="Audio channel commands" },
+    "START_SEQUENCE: Required to start a new sequence of commands.",
+    "END_SEQUENCE: Terminates the current command sequence.",
+    "SET_SAMPLE: Sets a new sample against a channel.  You are required to supply the sample handle (as obtained from AddSample or AddStream) in the Data parameter.  The sample will not play until you use the Play command.",
+    "SET_VOLUME: Sets a new channel volume.  The Data parameter indicates the new volume and must be in the range of 0 - 500% (100% is normal volume, 0% is silence).",
+    "SET_PAN: Sets a channel's panning position.  The Data parameter indicates the new pan and must be in the range of -100 to +100.  A setting of zero plays the sound at an equal level between both speakers.  If output is in mono, panning has no effect.",
+    "SET_FREQUENCY: Sets the current playback frequency of a channel.",
+    "SET_RATE: Defines the interval between the processing of each command, measured in milliseconds.",
+    "STOP: Immediately stops a channel from playing any audio until the next Play command.",
+    "STOP_LOOPING: Tells the channel to stop performing any more audio loops related to the currently playing sample.  This command does nothing if the current sample has no associated loop information.",
+    "SET_POSITION: Sets the playback position within a channel's currently associated sample (measured in bytes).  Useful for starting playback from a preset position.",
+    "PLAY: Plays the sample associated with the channel.  You are required to set the playback frequency in the Data parameter.  This command does nothing if the channel does not have a sample loaded against it.",
+    "FADE_IN: Fades a channel in from zero to the current volume (as previously determined by the SetVolume command).",
+    "FADE_OUT: Fade out a channel.",
+    "MUTE: Mutes the channel so that no further audio will play until you unmute it.  The Data parameter needs to be set to either TRUE or FALSE to indicate the required mute status.",
+    "SET_LENGTH: Sets the byte length of the sample playing in the channel.",
+    "CONTINUE: Continue a sound sample that has been stopped.")
+
+  enum("STREAM", { start=1, comment="Streaming options" },
+    "NEVER: No streaming - load all data into memory.",
+    "SMART: Smart streaming is the default.  If the sample appears to be relatively small with respect to available system RAM, it will be loaded into memory.  Otherwise it will be streamed.",
+    "ALWAYS: Stream if the sample length exceeds 64k.")
+
+  enum("NOTE", { start=0, comment="Definitions for the Note field.  An 'S' indicates a sharp note." },
+    "C", "CS", "D", "DS", "E", "F", "FS", "G", "GS", "A", "AS", "B", "OCTAVE")
+
+  enum("CHS", { start=0, comment="Channel status types for the AudioChannel structure." },
+   "STOPPED: Playing is stopped.",
+   "FINISHED: Playing has ended (not force stopped).",
+   "PLAYING: Sample playing and not released.",
+   "RELEASED: Sample playing and note has been released.",
+   "FADE_OUT: Playback is fading out.")
+
+  c_insert([[
+typedef struct {
+   ULONG numCopyBytes;     // number of bytes to copy
+   ULONG *relocTable;      // relocation table
+   ULONG numRelocEntries;  // number of relocation table entries
+} MixLoopRelocInfo;
+
+typedef struct {
+   ULONG mainLoopAlign;
+   ULONG mainLoopRepeat;
+   void (*mixLoop)(ULONG numSamples, LONG nextSampleOffset);
+   void (*mainMixLoop)(ULONG numSamples, LONG nextSampleOffset);
+   MixLoopRelocInfo *mainLoopReloc;
+} MixRoutine;
+
+typedef struct {
+   MixRoutine routines[5];
+} MixRoutineSet;
+
+#define MAX_CHANNELSETS 8
+#define DEFAULT_BUFFER_SIZE 8096 // Measured in samples, not bytes
+  ]])
+
+  struct("AudioSample", { comment="Audio sample structure" }, [[
+    ptr(uchar) Data      # Private.  Pointer to the sample data.
+    oid   StreamID       # Reference to an object to use for streaming
+    int   SampleLength   # Length of the sample data, in bytes
+    int   Loop1Start     # Start of the first loop
+    int   Loop1End       # End of the first loop
+    int   Loop2Start     # Start of the second loop
+    int   Loop2End       # End of the second loop
+    int   SeekStart
+    int   StreamLength
+    int   BufferLength
+    int   StreamPos      # Current read position within the audio stream
+    uchar SampleType     # Type of sample (bit format)
+    char  LoopMode       # Loop mode (single, double)
+    char  Loop1Type      # First loop type (unidirectional, bidirectional)
+    char  Loop2Type      # Second loop type (unidirectional, bidirectional)
+    char  Used
+    char  Free
+  ]])
+
+  struct("AudioChannel", { comment="Audio channel structure" }, [[
+    struct(AudioSample) Sample  # Sample structure
+    oid    SoundID              # ID of the sound object set on this channel
+    int    SampleHandle         # Internal handle reference
+    int(CHF) Flags              # Special flags
+    uint   Position             # Current playing/mixing position
+    uint   Frequency            # Playback frequency
+    ushort PositionLow          # Playing position, lower bits
+    short  LVolume              # Current left speaker volume (0 - 100)
+    short  RVolume              # Current right speaker volume (0 - 100)
+    short  LVolumeTarget        # Volume target when fading or ramping
+    short  RVolumeTarget        # Volume target when fading or ramping
+    short  Volume               # Playing volume (0-100)
+    char   Priority             # Priority of the sound that has been assigned to this channel
+    char(CHS) State             # Channel state
+    char   LoopIndex            # The current active loop (either 0, 1 or 2)
+    char   Pan                  # Pan value (-100 to +100)
+  ]])
+
+  struct("AudioCommand", { comment="Audio command structure." }, [[
+    int CommandID  # Command ID
+    int Handle     # Channel handle
+    int Data       # Special data related to the command ID
+  ]])
+
+  struct("ChannelSet", { comment="Channel set management structure." }, [[
+    struct(*AudioChannel) Channel  # Array of channel objects
+    struct(*AudioCommand) Commands # Array of buffered commands
+    int    UpdateRate       # Update rate, measured in milliseconds
+    int    MixLeft          # Amount of mix elements left before the next command-update occurs
+    int    Key
+    oid    TaskID           # Reference to the task that owns this set of channels
+    mem    ChannelMID       # Private
+    mem    CommandMID       # Private
+    double TaskVolume
+    short  Total            # Total number of base channels
+    short  Actual           # Total number of channels, including oversampling channels
+    short  TotalCommands    # Size of the command buffer
+    short  Position         # Index to write the next command to
+    short  OpenCount
+  ]])
+
+  struct("VolumeCtl", { }, [[
+    short     Size      # The size of the Channels array.
+    uchar(32) Name      # Name of the mixer
+    int(VCF)  Flags     # Special flags identifying the mixer's attributes.
+    float(1)  Channels  # A variable length array of channel volumes.
+  ]])
+
+  struct("AudioLoop", { comment="Loop settings for the AddSample() method." }, [[
+    short(LOOP) LoopMode    # Loop mode (single, double)
+    char(LTYPE) Loop1Type   # First loop type (unidirectional, bidirectional)
+    char(LTYPE) Loop2Type   # Second loop type (unidirectional, bidirectional)
+    int Loop1Start          # Start of the first loop
+    int Loop1End            # End of the first loop
+    int Loop2Start          # Start of the second loop
+    int Loop2End            # End of the second loop
+  ]])
+
+  struct("WAVEFormat", { type="waveformatex", restrict="c" }, [[
+    short Format             # Type of WAVE data in the chunk
+    short Channels           # Number of channels, 1=mono, 2=stereo
+    int   Frequency          # Playback frequency
+    int   AvgBytesPerSecond  # Channels * SamplesPerSecond * (BitsPerSample / 8)
+    short BlockAlign         # Channels * (BitsPerSample / 8)
+    short BitsPerSample      # Bits per sample
+    short ExtraLength
+  ]])
+
+  methods("Audio", "Snd", {
+    { id=1, name="OpenChannels" },
+    { id=2, name="CloseChannels" },
+    { id=3, name="AddSample" },
+    { id=4, name="RemoveSample" },
+    { id=5, name="BufferCommand" },
+    { id=6, name="AddStream" },
+    { id=7, name="Beep" },
+    { id=8, name="SetVolume" },
+  })
+
+  class("Audio", { src="class_audio.c", output="audio_def.c" }, [[
+    double Bass
+    double Treble
+    int OutputRate
+    int InputRate
+    int Quality
+    int(ADF) Flags         # Special flags
+    int TotalChannels      # Total number of channels allocated to the audio object
+    int BitDepth           # Typically 8 or 16 bit, reflects the active bit depth
+    int Periods
+    int PeriodSize
+  ]],
+  [[
+   struct ChannelSet Channels[MAX_CHANNELSETS]; // Channels are grouped into sets, which are allocated on a per-task basis
+   struct AudioSample *Samples;
+   struct VolumeCtl *VolumeCtl;
+   MixRoutineSet      *MixRoutines;
+   MEMORYID BFMemoryMID;
+   MEMORYID BufferMemoryMID;
+   MEMORYID SamplesMID;
+   LONG     MixBufferSize;
+   LONG     TotalSamples;
+   TIMER    Timer;
+   APTR     BufferMemory;
+   APTR     MixBuffer;
+   FLOAT    *BFMemory;               // Byte/Float table memory
+   WORD     SampleBitSize;
+   WORD     MixBitSize;
+   LONG     MixElements;
+   UBYTE    Stereo;                  // TRUE/FALSE for active stereo mode
+   BYTE     Mute;
+   BYTE     MasterVolume;
+   BYTE     Initialising;
+   APTR     TaskRemovedHandle;
+   APTR     UserLoginHandle;
+#ifdef __linux__
+   UBYTE *AudioBuffer;
+   LONG  AudioBufferSize;
+   snd_pcm_t *Handle;
+   snd_mixer_t *MixHandle;
+#endif
+   MEMORYID VolumeCtlMID;
+   LONG VolumeCtlTotal;
+   UBYTE prvDevice[28];
+  ]])
+
+  class("Sound", { src="class_sound.c" }, [[
+    double Volume      # Volume of sample (0 - 100%)
+    double Pan         # Horizontal positioning for playback on stereo speakers (-100 to +100)
+    int Priority       # Priority over other sounds
+    int Length         # Length of sample data in bytes (also refer BufferLength)
+    int Octave         # Current octave to use for playing back notes (defaults to zero)
+    int(SDF) Flags     # Sound flags
+    int Frequency      # Frequency of sampled sound (nb: does not affect playback - use the Playback field)
+    int Playback       # Frequency to use for sample playback
+    int Compression    # Compression rating (0% none, 100% high)
+    int BytesPerSecond # Bytes per second (Formula: Frequency * BytesPerSample)
+    int BitsPerSample  # Usually set to 8 or 16 bit
+    oid Audio          # Reference to an Audio object to use for audio output and input
+    int LoopStart      # Byte position of looping start
+    int LoopEnd        # Byte position of looping end
+    int(STREAM) Stream # Streaming type (smart by default)
+    int BufferLength   # Length of audio buffer in bytes (relevant if streaming)
+    oid StreamFile     # Object allocated for streaming
+    int Position       # Byte position to start playing from
+    int Handle         # Audio handle acquired at the audio object [Private - Available to child classes]
+    int ChannelIndex   # Channel handle that the sound was last played on
+    obj File           # Private. The file holding the sample data; available to child classes only.
+  ]],
+  [[
+    struct KeyStore *Fields;
+    UBYTE    prvHeader[128];
+    LONG     prvFormat;         // The format of the sound data
+    LONG     prvDataOffset;     // Start of raw audio data within the source file
+    TIMER    Timer;
+    STRING   prvPath;
+    STRING   prvDescription;
+    STRING   prvDisclaimer;
+    LONG     prvNote;               // Note to play back (e.g. C, C#, G...)
+    UBYTE    prvNoteString[4];
+    struct WAVEFormat *prvWAVE;
+    UBYTE    prvPlatformData[128];  // Data area for holding platform/hardware specific information
+    LONG     prvAlignment;          // Byte alignment value
+  ]])
+
+  functionNames("snd",
+     "StartDrivers",
+     "WaitDrivers",
+     "SetChannels",
+     "SetTaskVolume")
+
+  c_insert([[
+INLINE ERROR sndCloseChannelsID(OBJECTID AudioID, int Handle) {
+   extern struct CoreBase *CoreBase;
+   OBJECTPTR audio;
+   if (!AccessObject(AudioID, 5000, &audio)) {
+      struct sndCloseChannels close = { Handle };
+      Action(MT_SndCloseChannels, audio, &close);
+      ReleaseObject(audio);
+      return ERR_Okay;
+   }
+   else return ERR_AccessObject;
+}
+
+INLINE ERROR sndOpenChannelsID(OBJECTID AudioID, LONG Total, LONG Key, LONG Commands, LONG *Handle) {
+   extern struct CoreBase *CoreBase;
+   OBJECTPTR audio;
+   if (!AccessObject(AudioID, 5000, &audio)) {
+      struct sndOpenChannels open = { Total, Key, Commands };
+      Action(MT_SndOpenChannels, audio, &open);
+      *Handle = open.Result;
+      ReleaseObject(audio);
+      return ERR_Okay;
+   }
+   else return ERR_AccessObject;
+}
+  ]])
+
+end)

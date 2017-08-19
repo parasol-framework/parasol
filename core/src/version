@@ -1,0 +1,10 @@
+# Export file
+
+core.so {
+    global:
+        OpenCore;
+        CloseCore;
+        Expunge;
+    local:
+        *;
+};

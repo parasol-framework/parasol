@@ -1,0 +1,26 @@
+
+   mSys = mod.load("core")
+
+   if (obj.find("SystemAudio") == nil) then
+      obj.new("@audio", { name="SystemAudio", flags="!AutoSave" })
+   end
+
+   local src = arg("src")
+   if (src == nil) then
+      print("Please supply a source audio file with the 'src' parameter.")
+      return
+   end
+
+   catch(function()
+      local snd = obj.new("sound", { path=src })
+      snd.subscribe("deactivate", function(SoundID)
+         mSys.SendMessage(0, MSGID_QUIT)
+      end)
+      snd.acActivate()
+
+      print("Press CTRL-C to exit or wait for sound sample to finish.")
+      processMessages(-1)
+   end,
+   function(Exception)
+      print("Failed to play sound, error: " .. Exception.message)
+   end)

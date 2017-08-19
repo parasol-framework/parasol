@@ -1,0 +1,22 @@
+
+   include "dialog"
+
+   local confirm = obj.new("dialog", {
+      flags   = "!Wait|Modal",
+      buttons = "no;yes",
+      title   = "Confirmation Required",
+      image   = "icons:items/warning(48)",
+      message = "Please choose an option."
+   })
+
+   confirm.acShow()
+
+   if (confirm.response == RSF_YES) then
+      print("You chose yes.")
+   elseif (confirm.response == RSF_NO) then
+      print("You chose no.")
+   elseif (confirm.response == RSF_CLOSED) then
+      print("You chose to close the window.")
+   else
+      print("Response type of " .. confirm.response .. " not recognised.")
+   end

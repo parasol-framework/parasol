@@ -1,0 +1,37 @@
+--[[
+A basic demonstration of the icon interface.
+--]]
+
+   require 'gui/icon'
+
+   local win  = obj.new("window", { title="Icon Example", insideWidth=400, insideHeight=200 })
+
+   gui.icon({
+      target = win.surface,
+      x      = 20,
+      y      = 20,
+      image  = 'programs/tool',
+      text   = 'Toolbox',
+      size   = 80,
+      fadeDelay = 0.5,
+      fadeIn = 1.0,
+      feedback = function(Icon, Event)
+         print('Icon feedback received, event: ' .. Event.name)
+      end
+   })
+
+   gui.icon({
+      target = win.surface,
+      x      = 120,
+      y      = 20,
+      image  = 'programs/filemanager',
+      text   = 'Home Sweet Home',
+      feedback = function(Icon, Event)
+         print('Icon feedback received, event: ' .. Event.name)
+      end
+   })
+
+   win.acShow()
+
+   processMessages(-1) // Will sleep until the window close widget sends MSGID_QUIT
+

@@ -1,0 +1,16 @@
+# Apt package requirements: libxrandr-dev libxxf86vm-dev libxxf86dga-dev
+
+include ../../core.mk
+
+.NOTPARALLEL:
+NAME=     display
+CATEGORY= graphics
+DEST=     $(PARASOL_MODULE)
+CFLAGS += -Wno-strict-overflow -DMOD_NAME=$(NAME)
+
+compile: *.c x11/*.c
+	$(CC) $(LIBLINK) $(CFLAGS) -L/usr/X11R6/lib -L/usr/lib -D__X11DGA__ -D__xwindows__ display-driver.c -lm -lXext -lX11
+#   x11/libXxf86dga.a
+
+clean:
+	@rm -f $(DEST) *.o x11/*.o

@@ -1,0 +1,32 @@
+--[[
+Demonstrates how to launch a sub-process and intercept the data that it prints to stderr and stdout.
+--]]
+
+   mSys = mod.load("core")
+
+   local file_out = obj.new("file", { path="temp:output-data.txt", flags="NEW|WRITE" } )
+   local file_err = obj.new("file", { path="temp:error-data.txt", flags="NEW|WRITE" } )
+
+   catch(function()
+      local task = obj.new("task", {
+         location = "parasol:parasol-cmd",
+         args   = "--help",
+         outputCallback = function(Task, Data)
+            file_out.acWrite(Data)
+         end,
+         errorCallback = function(Task, Data)
+            file_err.acWrite(Data)
+         end,
+         exitCallback = function(Task)
+            print("Detected child process exit.")
+            mSys.SendMessage(0, MSGID_QUIT)
+         end
+      })
+
+      print("Press CTRL-C to exit or wait for program to finish.  Received output is saved to '" .. file_out.path .. "' and '" .. file_err.path .. "'")
+      task.acActivate()
+      processMessages(-1)
+   end,
+   function(Exception)
+      error("Failed to launch process, " .. Exception.message)
+   end)

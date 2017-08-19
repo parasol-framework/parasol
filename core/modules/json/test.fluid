@@ -1,0 +1,25 @@
+
+glJSON = '{ "string":"foo bar",\n' ..
+         '  "number":12345,\n' ..
+         '  "float":12345.54321,\n' ..
+         '  "escaped":"Return:\\r\\n,Tab:\\t,Quote:\\"",\n' ..
+         '  "null":null,\n' ..
+         '  "array-int":[ 0, 1, 2, 3, 4 ],\n' ..
+         '  "array-str":[ "A", "B", "C" ],\n' ..
+         '  "array-obj":[ { "ABC":"XYZ" },\n' ..
+         '                { "DEF":"XYZ" } ],\n' ..
+         '  "an-object":{ "field1":"value1", "field2":2 }\n' ..
+         '}\n'
+
+   modJSON = mod.load("system:modules/data/json")
+
+   print("Interpreting JSON statement:\n" .. glJSON)
+
+   local json = obj.new("json", { statement=glJSON, flags="!READABLE" } )
+
+   if (json == nil) then
+      print("Failed to create JSON object.");
+      return
+   end
+
+   print(json.statement)

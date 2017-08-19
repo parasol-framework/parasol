@@ -1,0 +1,8 @@
+# Export file
+
+network.so {
+    global:
+        ModHeader;
+    local:
+        *;
+};

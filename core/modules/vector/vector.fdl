@@ -1,0 +1,946 @@
+--$FLUID:Include
+
+module({ name="Vector", copyright="Paul Manias © 2010-2017", version=1.0 }, function()
+  c_include("<parasol/modules/display.h>")
+
+  restrict(function()
+    loadFile(glPath .. 'common-graphics.fdl')
+  end)
+
+  flags("ARC", { comment="Options for drawing arcs." },
+    "LARGE",
+    "SWEEP")
+
+  enum("VUNIT", { start=0 },
+    "UNDEFINED",
+    "BOUNDING_BOX: Coordinates are relative to the object's bounding box.",
+    "USERSPACE: Coordinates are relative to the current viewport.",
+    "END: Private")
+
+  enum("VSPREAD", { start=0, comment="Spread method options define the method to use for tiling filled graphics." },
+    "UNDEFINED: Either the default setting will be applied or the setting will be inherited from a parent object.",
+    "PAD: Scale the graphic to the object bounds.",
+    "REFLECT: Tile the graphic, reflecting the image alternately on the X and Y axis.",
+    "REPEAT: Tile the graphic repeatedly.",
+    "REFLECT_X: Tile the graphic, reflecting the image alternately on the X axis only.",
+    "REFLECT_Y: Tile the graphic, reflecting the image alternately on the Y axis only.",
+    "CLIP: Do not scale the graphic in any way and clip it if it extends past imposed boundaries.",
+    "END: Private")
+
+  enum("PE", { start=1 }, "Move", "MoveRel", "Line", "LineRel", "HLine", "HLineRel", "VLine", "VLineRel",
+    "Curve", "CurveRel", "Smooth", "SmoothRel", "QuadCurve", "QuadCurveRel", "QuadSmooth", "QuadSmoothRel",
+    "Arc", "ArcRel", "ClosePath")
+
+  enum("VFR", { start=1, comment="Vector fill rules for the FillRule field in the Vector class." },
+    "NON_ZERO: This is the default.  This rule determines the 'insideness' of a point on the canvas by drawing a ray from that point to infinity in any direction and then examining the places where a segment of the shape crosses the ray. Starting with a count of zero, add one each time a path segment crosses the ray from left to right and subtract one each time a path segment crosses the ray from right to left. After counting the crossings, if the result is zero then the point is outside the path. Otherwise, it is inside.",
+    "EVEN_ODD: This rule determines the 'insideness' of a point on the canvas by drawing a ray from that point to infinity in any direction and counting the number of path segments from the given shape that the ray crosses. If this number is odd, the point is inside; if even, the point is outside.",
+    "INHERIT: The rule is inherited from the parent vector(s).",
+    "END: Private")
+
+  enum("VIS", { start=0, comment="Options for the Vector class' Visibility field." },
+    "HIDDEN: Hide the vector and its children.",
+    "VISIBLE: The default.  Ensures that the vector is visible.",
+    "COLLAPSE: Hide the vector and its children.  Do not use - provided for SVG compatibility only.",
+    "INHERIT: Inherit the visibility state from the parent.")
+
+  enum("VLJ", { start=0, comment="Options for the look of line joins." }, // Match to agg::line_join_e
+    "MITER: The default.  The join will form a pointed edge.",
+    "MITER_REVERT",
+    "ROUND: The join is rounded.",
+    "BEVEL: The join is blunted, eliminating overly sharp edges.",
+    "MITER_ROUND: Default to MITER, but switch to ROUND if the miter limit is exceeded.",
+    "INHERIT: Inherit the join option from the parent.")
+
+  enum("VLC", { start=1, comment="Line-cap options." }, // Match to agg::line_cap_e
+    "BUTT: The default.  The line is sharply squared off at its exact end point.",
+    "SQUARE: Similar to butt, the line is sharply squared off but will extend past the end point by 'StrokeWidth / 2'.",
+    "ROUND: The line cap is a half-circle and the line's end-point forms the center point.",
+    "INHERIT: The cap type is inherited from the parent (defaults to butt if unspecified).")
+
+  enum("VIJ", { start=1, comment="Inner join options for angled lines." },  // Match to agg::inner_join_e
+    "BEVEL: Blunts the edge of the join.",
+    "MITER: Forms a sharp point at the join.  Typically not the best looking option.",
+    "JAG: A special non-SVG option.",
+    "ROUND: Rounds the edge of the join to produce the best looking results.",
+    "INHERIT: Inherit the parent's join value.")
+
+  enum("VGT", { start=0, comment="VectorGradient options." },
+    "LINEAR: A linear gradient is drawn from (X1,Y1) to (X2,Y2).",
+    "RADIAL: A radial gradient is drawn from CenterX,CenterY to Radius.  An optional focal point can be expressed with FX and FY.",
+    "CONIC: The conic gradient is a variant on the radial type, whereby the colour values are drawn as a line that revolves around the cone's center point.",
+    "DIAMOND: A diamond gradient is drawn as a square emanating from the center point.",
+    "CONTOUR: Contoured gradients follow the contours of the vector path in which they are rendered.")
+
+  enum("VTS", { start=0, comment="Options for stretching text in VectorText." },
+    "INHERIT",
+    "NORMAL",
+    "WIDER",
+    "NARROWER",
+    "ULTRA_CONDENSED",
+    "EXTRA_CONDENSED",
+    "CONDENSED",
+    "SEMI_CONDENSED",
+    "EXPANDED",
+    "SEMI_EXPANDED",
+    "ULTRA_EXPANDED",
+    "EXTRA_EXPANDED")
+
+  flags("VTXF", { comment="VectorText flags." },
+    "UNDERLINE: Enable underlining of the text.",
+    "OVERLINE: Enable overlining of the text.",
+    "LINE_THROUGH: Enable a strike-through line in the text.",
+    "BLINK: Enable animated blinking (not enabled - exists as SVG dummy option).")
+
+  flags("VTF", { bits=16, comment="Types of vector transforms." },
+    "MATRIX: Apply a 2x3 matrix transformation to the vector.",
+    "TRANSLATE: Translate the vector by (X,Y)",
+    "SCALE: Scale the vector by (X,Y)",
+    "ROTATE: Rotate the vector around (CX,CY) by Angle.",
+    "SKEW: Skew the vector by (X,Y)")
+
+  flags("VMF", { comment="Morph flags", bits=8 },
+    "STRETCH: Applicable when used on VectorText, the stretch option converts glyph outlines into paths, and then all end points and control points will be adjusted to be along the perpendicular vectors from the path, thereby stretching and possibly warping the glyphs.  With this approach, connected glyphs, such as in cursive scripts, will maintain their connections.",
+    "AUTO_SPACING: Applicable when used on VectorText, auto-spacing allows the spacing between glyphs to be shrunk or expanded along the target path so that they can produce a better fit.  The default is for the glyphs to conform to their original spacing requirements.",
+    "X_MIN: Align the source so that it is morphed along the left of the target path.",
+    "X_MID: Align the source so that it is morphed along the middle of the target path.",
+    "X_MAX: Align the source so that it is morphed along the right of the target path.",
+    "Y_MIN: Align the source so that it is morphed along the top of the target path.",
+    "Y_MID: Align the source so that it is morphed along the middle of the target path.",
+    "Y_MAX: Align the source so that it is morphed along the bottom of the target path.")
+
+  enum("CS", { start=1, comment="Colour space options." },
+    "SRGB: The default colour-space is sRGB, recommended for its speed.",
+    "LINEAR_RGB: Linear RGB is the default colour space for SVG and produces the best results.",
+    "INHERIT: Inherit the colour space option from the parent vector.")
+
+  enum("VSF", { start=1, comment="Filter source types - these are used internally", restrict="c" },
+    "GRAPHIC",
+    "ALPHA",
+    "BKGD",
+    "BKGD_ALPHA",
+    "FILL",
+    "STROKE",
+    "REFERENCE",
+    "IGNORE")
+
+  enum("WVC", { start=1, comment="VectorWave options" },
+    "NONE: Do not close the path.",
+    "TOP: Close the path across the top of its area.",
+    "BOTTOM: Close the path across the bottom of its area.")
+
+  flags("VGF", { comment="Gradient flags" },
+    "RELATIVE_X1: X1 is relative",
+    "RELATIVE_Y1: Y1 is relative",
+    "RELATIVE_X2: X2 is relative",
+    "RELATIVE_Y2: Y2 is relative",
+    "RELATIVE_CX: CX is relative",
+    "RELATIVE_CY: CY is relative",
+    "RELATIVE_FX: FX is relative",
+    "RELATIVE_FY: FY is relative",
+    "RELATIVE_RADIUS: Radius is relative",
+    "FIXED_X1: X1 is fixed",
+    "FIXED_Y1: Y1 is fixed",
+    "FIXED_X2: X2 is fixed",
+    "FIXED_Y2: Y2 is fixed",
+    "FIXED_CX: CX is fixed",
+    "FIXED_CY: CY is fixed",
+    "FIXED_FX: FX is fixed",
+    "FIXED_FY: FY is fixed",
+    "FIXED_RADIUS: is fixed")
+
+  flags("VPF", { comment="Optional flags for the VectorScene object." },
+    "BITMAP_SIZED: Automatically adjust the PageWidth and PageHeight to match the target Bitmap width and height.",
+    "RENDER_TIME: Compute the drawing frame-rate for the RenderTime field.",
+    "RESIZE: The vector will be stretched to fit the PageWidth and PageHeight values, if defined by the client.")
+
+  enum("VSM", { start=0, comments="Options for the VectorScene SampleMethod." },
+    "AUTO: The default option is chosen by the system.  This will typically be bilinear, but slow machines may switch to nearest neighbour and high speed machines could use more advanced methods.",
+    "NEIGHBOUR: Nearest neighbour is the fastest sampler at the cost of poor quality.",
+    "BILINEAR: Bilinear is a common algorithm that produces a reasonable quality image.",
+    "BICUBIC: Produces a similar result to bilinear with a marginally sharper after-effect.",
+    "SPLINE16: About 1/2 the speed of bilinear, this method produces a considerably better result.",
+    "KAISER",
+    "QUADRIC",
+    "GAUSSIAN",
+    "BESSEL",
+    "MITCHELL",
+    "SINC3: Five times slower than bilinear, the final result is of very good quality.",
+    "LANCZOS3: This well known algorithm may serve as a point of comparison for evaluating the results of other methods.  It shares characteristics with SINC and BLACKMAN.",
+    "BLACKMAN3: Five times slower than bilinear, the final result will lack sharpness when compared to SINC3.",
+    "SINC8: 15 times slower than bilinear, the final result is of excellent quality but may be marginally over-sharpened.",
+    "LANCZOS8",
+    "BLACKMAN8: 15 times slower than bilinear, the final result is of excellent quality and sharpness is well balanced.")
+
+  flags("RC", { },
+    "FINAL_PATH: The final path will need to be recalculated, so as to take transforms and/or relative coordinates into account.",
+    "BASE_PATH: The base path (shape of the vector) must be recalculated.",
+    "TRANSFORM: The transform matrix must be recalculated.  This includes movement, e.g. changing the CX,CY of an ellipse.",
+    { ALL = 0xff })
+
+  flags("ARF", { comment="Aspect ratios" },
+    "X_MIN: Align to the left",
+    "X_MID: Align to the horizontal center",
+    "X_MAX: Align to the right",
+    "Y_MIN: Align to the top",
+    "Y_MID: Align to the vertical center",
+    "Y_MAX: Align to the bottom",
+    "MEET: Aspect ratio is preserved. The entire viewbox is visible within the viewport.  The viewbox is scaled up as much as possible.",
+    "SLICE: Aspect ratio is preserved. The entire viewport is covered by the viewbox.  The viewbox is scaled down as much as possible.",
+    "NONE: Scale the viewbox to match the size of the viewport.")
+
+  flags("VBF", { comment="For vecGetBoundary()" },
+     "INCLUSIVE: The result will be inclusive of all paths that belong to children of the queried vector.",
+     "NO_TRANSFORM: The transformation step will not be applied to the vector's path.")
+
+  struct("VectorDef", { comment="Describes a definition for the VectorScene AddDef() method.", restrict="c" }, [[
+    obj Object   # Reference to the definition object.
+  ]])
+
+  struct("GradientStop", { comment="Describes a colour stop for the VectorGradient Stops field." }, [[
+   double Offset     # An offset in the range of 0 - 1.0
+   struct(DRGB) RGB  # A floating point RGB value.
+  ]])
+
+  struct("Transition", { comment="For VectorTransition definitions" }, [[
+    double Offset
+    cstr Transform
+  ]])
+
+  struct("VectorPoint", { comment="Structure for the VectorPolygon PointsArray field." }, [[
+    double X   # The X coordinate of this point.
+    double Y   # The Y coordinate of this point.
+    bit(uchar) XRelative # TRUE if the X value is relative to its viewport (between 0 and 1.0).
+    bit(uchar) YRelative # TRUE if the Y value is relative to its viewport (between 0 and 1.0).
+  ]])
+
+  struct("PathCommand", { comment="Base structure for path commands." }, [[
+    uchar  Type
+    uchar  Curved
+    short  Pad1
+    int    Pad2
+    double X
+    double Y
+    double AbsX
+    double AbsY
+  ]],
+  [[
+   union {
+      struct { DOUBLE X1; DOUBLE Y1; DOUBLE X2; DOUBLE Y2; } Curve;
+      struct { DOUBLE X; DOUBLE Y; } Smooth;
+      struct { DOUBLE X; DOUBLE Y; } QuadCurve;
+      struct { DOUBLE X; DOUBLE Y; } QuadSmooth;
+      struct { DOUBLE RX; DOUBLE RY; DOUBLE Angle; BYTE LargeArc; BYTE Sweep; } Arc;
+   };
+  ]])
+
+  struct("VectorTransform", { }, [[
+    struct(*VectorTransform) Next  # The next transform in the list.
+    struct(*VectorTransform) Prev  # The previous transform in the list.
+    double X         # The X value, the meaning of which is defined by the Type
+    double Y         # The Y value, the meaning of which is defined by the Type
+    double Angle     # Requires VTF_ROTATE.  A rotation by Angle degrees about a given point.  If optional parameters X and Y are not specified, the rotate is about the origin of the current user coordinate system.
+    double Matrix[6] # Requires VTF_MATRIX.  A transformation expressed as a matrix of six values.
+    short(VTF) Type  # The VTF indicates the type of transformation: rotate, skew etc
+  ]])
+
+  struct("PathCurve", { }, [[
+    struct(PathCommand) Command
+    double X1
+    double Y1
+    double X2
+    double Y2
+  ]])
+
+  struct("PathSmooth", { }, [[
+    struct(PathCommand) Command
+    double X
+    double Y
+  ]])
+
+  struct("PathQuadCurve", { }, [[
+    struct(PathCommand) Command
+    double X
+    double Y
+  ]])
+
+  struct("PathQuadSmooth", { }, [[
+    struct(PathCommand) Command
+    double X
+    double Y
+  ]])
+
+  struct("PathArc", { }, [[
+    struct(PathCommand) Command
+    double RX
+    double RY
+    double Angle
+    char LargeArc
+    char Sweep
+  ]])
+
+  // VectorPath method ID's start high enough to give a cushion from inherited Vector methods.
+
+  methods("VectorPath", "VP", {
+    { id=30, name="AddCommand" },
+    { id=31, name="RemoveCommand" },
+    { id=32, name="SetCommand" },
+    { id=33, name="GetCommand" },
+    { id=34, name="SetCommandList" }
+  })
+
+  class("VectorPath", { src="vectors/path.c", output="vectors/path_def.c" })
+
+  c_insert([[
+// This constant is set to the struct-size of the biggest path command.
+#define VECTORPATH_CMD_SIZE sizeof(struct PathCommand)
+  ]])
+
+  // Use SET_VECTOR_COLOUR() to configure the RGB values in VectorColour
+
+  class("VectorColour", { src="defs/colour.cpp", comment="VectorColour is a basic stub class that is used for the DrawPath() routine when filling or stroking solid colour values" }, [[
+   double Red
+   double Green
+   double Blue
+   double Alpha
+  ]])
+
+  methods("vectorscene", "Sc", {
+    { id=1, name="AddDef" },
+    { id=2, name="SearchByID" },
+    { id=3, name="FindDef" }
+  })
+
+  class("VectorScene", { src="scene/scene.cpp", output="scene/scene_def.c" }, [[
+   obj(Vector) Viewport   # Reference to the VectorViewport that contains the VectorScene.
+   obj(Bitmap) Bitmap     # Target bitmap.
+   large RenderTime       # Microseconds elapsed during the last rendering operation.
+   double Gamma           # Not currently implemented.
+   int(VPF) Flags         # Optional flags.
+   int PageWidth          # Fixed page width - vector viewport width will be stretched to fit this if resizing is enabled.
+   int PageHeight         # Fixed page height - vector viewport height will be stretched to fit this if resizing is enabled.
+   int(VSM) SampleMethod  # VSM: Method to use for resampling images and patterns.
+  ]],
+  [[
+   class VMAdaptor *Adaptor;
+   agg::rendering_buffer *Buffer;
+   struct KeyStore *Defs; // Linked-list of gradients, images, patterns etc
+   UBYTE  AdaptorType;
+  ]])
+
+  class("VectorImage", { src="defs/image.cpp" }, [[
+    double X
+    double Y
+    obj(Picture) Picture
+    obj(Bitmap) Bitmap
+    int(VUNIT) Units  # VUNIT constant, defines the coordinate system for (X,Y)
+    int(DMF) Dimensions
+    int(VSPREAD) SpreadMethod
+  ]])
+
+  class("VectorPattern", { src="defs/pattern.cpp" }, [[
+    double X
+    double Y
+    double Opacity
+    obj(VectorScene) Scene        # Internal scene
+    obj(VectorViewport) Viewport  # Internal viewport
+    obj(VectorPattern) Inherit    # Reference to another pattern from which to inherit attributes
+    int(VSPREAD) SpreadMethod
+    int(VUNIT) Units              # VUNIT constant
+    int(VUNIT) ContentUnits       # VUNIT constant
+    int(DMF) Dimensions
+  ]],
+  [[
+   struct VectorTransform *Transforms;
+   objBitmap *Bitmap;
+  ]])
+
+  class("VectorGradient", { src="defs/gradient.cpp", output="defs/gradient_def.c" }, [[
+    double X1   # Starting X coordinate of the gradient 'line'
+    double Y1   # Starting Y coordinate of the gradient 'line'
+    double X2   # Ending X of the gradient 'line'
+    double Y2   # Ending Y of the gradient 'line'
+    double CenterX  # Center X coordinate of radial gradient shapes.
+    double CenterY  # Center Y coordinate of radial gradient shapes.
+    double FX       # Focal X coordinate for radial gradient shapes.
+    double FY       # Focal Y coordinate for radial gradient shapes.
+    double Radius   # The size of a radial gradient radius.
+    obj(VectorGradient) Inherit  # Reference to another gradient from which to inherit attributes
+    int(VSPREAD) SpreadMethod    # Defines the spread method to use for gradient fills.
+    int(VUNIT) Units             # Defines the coordinate system for (x1,y1),(x2,y2)
+    int(VGT) Type
+    int(VGF) Flags            # Optional flags
+    int TotalStops            # The total number of records in the Stops array.
+  ]],
+  [[
+   struct GradientStop *Stops;  // An array of gradient stop colours.
+   struct VectorTransform *Transforms;
+   class GradientColours *Colours;
+   WORD ChangeCounter;
+  ]])
+
+  class("VectorFilter", { src="filters/filter.cpp", output="filters/filter_def.c" }, [[
+    double X
+    double Y
+    double Width
+    double Height
+    double Opacity
+    obj(VectorScene) Scene        # Internal scene
+    obj(VectorViewport) Viewport  # Internal viewport
+    obj(VectorFilter) Inherit     # Reference to another pattern from which to inherit attributes
+    int(VUNIT) Units              # VUNIT constant
+    int(VUNIT) PrimitiveUnits     # VUNIT constant
+    int Dimensions
+    int(CS) ColourSpace
+  ]],
+  [[
+   LARGE DrawStamp; // Timestamp at which this filter was last rendered
+   struct effect *Effects;
+   struct effect *LastEffect;
+   struct effect **Merge;
+   objBitmap *SrcBitmap; // A temporary alpha enabled drawing of the vector that is targeted by the filter.
+   objBitmap *BkgdBitmap;
+   objBitmap *MergeBitmap;
+   STRING Path; // Affix this path to file references (e.g. feImage).
+   struct {
+      objBitmap *Bitmap;
+      UBYTE *Data;
+      LONG DataSize;
+   } Bank[10];
+   struct effect SrcGraphic;
+   struct effect BkgdGraphic;
+   LONG BoundX, BoundY, BoundWidth, BoundHeight;  // Calculated pixel boundary for the entire filter and its effects.
+   LONG ViewX, ViewY, ViewWidth, ViewHeight; // Boundary of the target area (for user space coordinate mode)
+   UBYTE BankIndex;
+  ]])
+
+  c_insert([[
+#define SHAPE_PUBLIC \
+   struct rkVector *Child; \
+   struct rkVectorScene *Scene; \
+   struct rkVector *Next; \
+   struct rkVector *Prev; \
+   OBJECTPTR Parent; \
+   struct VectorTransform *Transforms; \
+   DOUBLE StrokeWidth; \
+   DOUBLE StrokeOpacity; \
+   DOUBLE FillOpacity; \
+   DOUBLE Opacity; \
+   DOUBLE MiterLimit; \
+   DOUBLE InnerMiterLimit; \
+   DOUBLE DashOffset; \
+   LONG   ActiveTransforms; \
+   LONG   DashTotal; \
+   LONG   Visibility;
+  ]])
+
+  methods("vector", "Vec", {
+    { id=1,  name="Push" },
+    { id=2,  name="TracePath" },
+    { id=3,  name="GetBoundary" },
+    { id=4,  name="Rotate" },
+    { id=5,  name="Transform" },
+    { id=6,  name="ApplyMatrix" },
+    { id=7,  name="Translate" },
+    { id=8,  name="Scale" },
+    { id=9,  name="Skew" },
+    { id=10, name="PointInPath" },
+    { id=11, name="ClearTransforms" },
+    { id=12, name="GetTransform" }
+  })
+
+  class("Vector", { src="vectors/vector.cpp", output="vectors/vector_def.c", version=1 }, [[
+    obj(Vector) Child       # The first child vector, or NULL.
+    obj(VectorScene) Scene  # Short-cut to the top-level VectorScene.
+    obj(Vector) Next        # The next vector in the branch, or NULL.
+    obj(Vector) Prev        # The previous vector in the branch, or NULL.
+    obj Parent              # The parent vector, or NULL if this is the top-most vector.
+    struct(*VectorTransform) Transforms  # A list of transforms to apply to the vector.
+    double StrokeWidth      # The width to use when stroking the path.
+    double StrokeOpacity    # Defines the opacity of the path stroke.
+    double FillOpacity      # The opacity to use when filling the vector.
+    double Opacity          # An overall opacity value for the vector.
+    double MiterLimit       # Imposes a limit on the ratio of the miter length to the StrokeWidth.
+    double InnerMiterLimit  # A special limit to apply when the MITER_ROUND line-join effect is in use.
+    double DashOffset       # For the DashArray, applies an initial dash offset.
+    int ActiveTransforms    # Indicates the transforms that are currently applied to a vector.
+    int DashTotal           # The total number of values in the DashArray.
+    int(VIS) Visibility     # Controls the visibility of a vector and its children.
+  ]],
+  [[ SHAPE_PRIVATE ]])
+
+  functionNames("vec",
+    "DrawPath",
+    "FreePath",
+    "GenerateEllipse",
+    "GeneratePath",
+    "GenerateRectangle",
+    "ReadPainter",
+    "TranslatePath",
+    "MoveTo",
+    "LineTo",
+    "ArcTo",
+    "Curve3",
+    "Smooth3",
+    "Curve4",
+    "Smooth4",
+    "ClosePath",
+    "RewindPath",
+    "GetVertex",
+    "ApplyPath")
+
+  c_insert([[
+//****************************************************************************
+
+INLINE void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green, DOUBLE Blue, DOUBLE Alpha) {
+   Colour->Head.ClassID = ID_VECTORCOLOUR;
+   Colour->Red   = Red;
+   Colour->Green = Green;
+   Colour->Blue  = Blue;
+   Colour->Alpha = Alpha;
+}
+  ]])
+
+  hash("SVF", "0x%s",
+    "ANIMATETRANSFORM",
+    "ANIMATEMOTION",
+    "CIRCLE",
+    "DEFS",
+    "ELLIPSE",
+    "LINE",
+    "IMAGE",
+    "TEXT",
+    "FX",
+    "FY",
+    "IMAGE",
+    "TO",
+    "DUR",
+    "DESC",
+    "PATH",
+    "X",
+    "Y",
+    "RX",
+    "RY",
+    "CX",
+    "CY",
+    "R",
+    "X1",
+    "Y1",
+    "X2",
+    "Y2",
+    "D",
+    "DX",
+    "DY",
+    "IN",
+    "IN2",
+    "OPERATOR",
+    "K1",
+    "K2",
+    "K3",
+    "K4",
+    "N1",
+    "N2",
+    "N3",
+    "PHI",
+    "M",
+    "MOD",
+    "A",
+    "B",
+    "ALIGN",
+    "MASK",
+    "CLOSE",
+    "TOP",
+    "SPIRAL",
+    "BOTTOM",
+    "AMPLITUDE",
+    "REPEAT",
+    "TRANSITION",
+    "PARASOL:TRANSITION",
+    "PARASOL:PATHTRANSITION",
+    "FREQUENCY",
+    "THICKNESS",
+    "DECAY",
+    "VERTICES",
+    "SCALE",
+    "PARASOL:SHAPE",
+    "CLIPPATHUNITS",
+    "CLIPPATH",
+    "CLIP-PATH",
+    "CLIP-RULE",
+    "RADIUS",
+    "TEXTPATH",
+    "MODE",
+    "OVERLAY",
+    "PLUS",
+    "MINUS",
+    "BURN",
+    "SCREEN",
+    "STEP",
+    "OFFSET",
+    "BASEFREQUENCY",
+    "STITCHTILES",
+    "PRIMITIVEUNITS",
+    "IMAGE-RENDERING",
+    "SEED",
+    "MULTIPLY",
+    "NUMOCTAVES",
+    "LIGHTEN",
+    "DARKEN",
+    "INVERTRGB",
+    "INVERT",
+    "DODGE",
+    "HARDLIGHT",
+    "SOFTLIGHT",
+    "DIFFERENCE",
+    "EXCLUSION",
+    "FLOOD-COLOR",
+    "FLOOD-COLOUR",
+    "FLOOD-OPACITY",
+    "OUT",
+    "ORDER",
+    "OVER",
+    "ATOP",
+    "XOR",
+    "ARITHMETIC",
+    "COLOR-INTERPOLATION-FILTERS",
+    "COLOR-INTERPOLATION",
+    "PRESERVEALPHA",
+    "KERNELMATRIX",
+    "DIVISOR",
+    "BIAS",
+    "TARGETX",
+    "TARGETY",
+    "EDGEMODE",
+    "KERNELUNITLENGTH",
+    "CONTRAST",
+    "BRIGHTNESS",
+    "HUE",
+    "COLOURISE",
+    "DESATURATE",
+    "PROTANOPIA",
+    "PROTANOMALY",
+    "DEUTERANOPIA",
+    "DEUTERANOMALY",
+    "TRITANOPIA",
+    "TRITANOMALY",
+    "ACHROMATOPSIA",
+    "ACHROMATOMALY",
+    "MATRIX",
+    "HUEROTATE",
+    "SATURATE",
+    "LUMINANCETOALPHA",
+    "SOURCEGRAPHIC",
+    "SOURCEALPHA",
+    "BACKGROUNDIMAGE",
+    "BACKGROUNDALPHA",
+    "FILLPAINT",
+    "STROKEPAINT",
+    "RESULT",
+    "FILTERUNITS",
+    "FEBLUR",
+    "FEBLEND",
+    "FECOLORMATRIX",
+    "FECOLOURMATRIX",
+    "FECOMPONENTTRANSFER",
+    "FECOMPOSITE",
+    "FECONVOLVEMATRIX",
+    "FEDIFFUSELIGHTING",
+    "FEDISPLACEMENTMAP",
+    "FEFLOOD",
+    "FEGAUSSIANBLUR",
+    "FEIMAGE",
+    "FEMERGE",
+    "FEMORPHOLOGY",
+    "FEOFFSET",
+    "FESPECULARLIGHTING",
+    "FETILE",
+    "FETURBULENCE",
+    "FEDISTANTLIGHT",
+    "FEPOINTLIGHT",
+    "FESPOTLIGHT",
+    "STDDEVIATION",
+    "XMLNS",
+    "TITLE",
+    "SYMBOL",
+    "BEVEL",
+    "BUTT",
+    "COLOR",
+    "COLOUR",
+    "DISPLAY",
+    "OPACITY",
+    "CLIP-RULE",
+    "FILTER",
+    "PARASOL:MORPH",
+    "PARASOL:SPIRAL",
+    "PARASOL:WAVE",
+    "XLINK:HREF",
+    "BASEPROFILE",
+    "PATTERNTRANSFORM",
+    "EXTERNALRESOURCESREQUIRED",
+    "XML:SPACE",
+    "PATTERNUNITS",
+    "PATTERNCONTENTUNITS",
+    "CONTOURGRADIENT",
+    "PATTERN",
+    "FILL",
+    "FILL-OPACITY",
+    "FILL-RULE",
+    "ENABLE-BACKGROUND",
+    "VERTEX-SCALING",
+    "FONT-SIZE",
+    "FONT-FAMILY",
+    "FONT-WEIGHT",
+    "FONT-STRETCH",
+    "FONT-SIZE-ADJUST",
+    "FONT",
+    "FONT-STYLE",
+    "FONT-VARIANT",
+    "FROM",
+    "G",
+    "GRADIENTUNITS",
+    "GRADIENTTRANSFORM",
+    "HEIGHT",
+    "ID",
+    "INHERIT",
+    "INVERT-X-AXIS",
+    "INVERT-Y-AXIS",
+    "JAG",
+    "KERNING",
+    "LENGTHADJUST",
+    "LETTER-SPACING",
+    "LINEARGRADIENT",
+    "MARKER",
+    "MARKER-END",
+    "MARKER-MID",
+    "MARKER-START",
+    "METHOD",
+    "MITER",
+    "MITER-REVERT",
+    "MITER-ROUND",
+    "NONE",
+    "NUMERIC-ID",
+    "OVERFLOW",
+    "PATHLENGTH",
+    "POINTS",
+    "PATH",
+    "POLYLINE",
+    "POLYGON",
+    "RECT",
+    "RADIALGRADIENT",
+    "ROTATE",
+    "ROUND",
+    "SPACING",
+    "SPREADMETHOD",
+    "STARTOFFSET",
+    "STRING",
+    "STROKE",
+    "STROKE-OPACITY",
+    "STROKE-WIDTH",
+    "STROKE-LINECAP",
+    "STROKE-LINEJOIN",
+    "STROKE-MITERLIMIT",
+    "STROKE-MITERLIMIT-THETA",
+    "STROKE-INNER-MITERLIMIT",
+    "STROKE-INNERJOIN",
+    "STROKE-DASHARRAY",
+    "STROKE-DASHOFFSET",
+    "STYLE",
+    "SQUARE",
+    "SVG")
+
+  hash("SVF", "0x%s",
+    "TEXTLENGTH",
+    "TEXT-ANCHOR",
+    "TEXT-DECORATION",
+    "TOTAL-POINTS",
+    "TRANSFORM",
+    "USE",
+    "UNITS",
+    "VIEWBOX",
+    "VERSION",
+    "VIEW-X",
+    "VIEW-Y",
+    "VIEW-WIDTH",
+    "VIEW-HEIGHT",
+    "VISIBILITY",
+    "WIDTH",
+    "WORD-SPACING",
+    "ALICEBLUE",
+    "ANTIQUEWHITE",
+    "AQUA",
+    "AQUAMARINE",
+    "AZURE",
+    "BEIGE",
+    "BISQUE",
+    "BLACK",
+    "BLANCHEDALMOND",
+    "BLUE",
+    "BLUEVIOLET",
+    "BROWN",
+    "BURLYWOOD",
+    "CADETBLUE",
+    "CHARTREUSE",
+    "CHOCOLATE",
+    "CORAL",
+    "CORNFLOWERBLUE",
+    "CORNSILK",
+    "CRIMSON",
+    "CYAN",
+    "DARKBLUE",
+    "DARKCYAN",
+    "DARKGOLDENROD",
+    "DARKGRAY",
+    "DARKGREEN",
+    "DARKGREY",
+    "DARKKHAKI",
+    "DARKMAGENTA",
+    "DARKOLIVEGREEN",
+    "DARKORANGE",
+    "DARKORCHID",
+    "DARKRED",
+    "DARKSALMON",
+    "DARKSEAGREEN",
+    "DARKSLATEBLUE",
+    "DARKSLATEGRAY",
+    "DARKSLATEGREY",
+    "DARKTURQUOISE",
+    "DARKVIOLET",
+    "DEEPPINK",
+    "DEEPSKYBLUE",
+    "DIMGRAY",
+    "DIMGREY",
+    "DODGERBLUE",
+    "FIREBRICK",
+    "FLORALWHITE",
+    "FORESTGREEN",
+    "FUCHSIA",
+    "GAINSBORO",
+    "GHOSTWHITE",
+    "GOLD",
+    "GOLDENROD",
+    "GRAY",
+    "GREEN",
+    "GREENYELLOW",
+    "GREY",
+    "HONEYDEW",
+    "HOTPINK",
+    "INDIANRED",
+    "INDIGO",
+    "IVORY",
+    "KHAKI",
+    "LAVENDER",
+    "LAVENDERBLUSH",
+    "LAWNGREEN",
+    "LEMONCHIFFON",
+    "LIGHTBLUE",
+    "LIGHTCORAL",
+    "LIGHTCYAN",
+    "LIGHTGOLDENRODYELLOW",
+    "LIGHTGRAY",
+    "LIGHTGREEN",
+    "LIGHTGREY",
+    "LIGHTPINK",
+    "LIGHTSALMON",
+    "LIGHTSEAGREEN",
+    "LIGHTSKYBLUE",
+    "LIGHTSLATEGRAY",
+    "LIGHTSLATEGREY",
+    "LIGHTSTEELBLUE",
+    "LIGHTYELLOW",
+    "LIME",
+    "LIMEGREEN",
+    "LINEN",
+    "MAGENTA",
+    "MAROON",
+    "MEDIUMAQUAMARINE",
+    "MEDIUMBLUE",
+    "MEDIUMORCHID",
+    "MEDIUMPURPLE",
+    "MEDIUMSEAGREEN",
+    "MEDIUMSLATEBLUE",
+    "MEDIUMSPRINGGREEN",
+    "MEDIUMTURQUOISE",
+    "MEDIUMVIOLETRED",
+    "MIDNIGHTBLUE",
+    "MINTCREAM",
+    "MISTYROSE",
+    "MOCCASIN",
+    "NAVAJOWHITE",
+    "NAVY",
+    "OLDLACE",
+    "OLIVE",
+    "OLIVEDRAB",
+    "ORANGE",
+    "ORANGERED",
+    "ORCHID",
+    "PALEGOLDENROD",
+    "PALEGREEN",
+    "PALETURQUOISE",
+    "PALEVIOLETRED",
+    "PAPAYAWHIP",
+    "PEACHPUFF",
+    "PERU",
+    "PINK",
+    "PLUM",
+    "POWDERBLUE",
+    "PURPLE",
+    "RED",
+    "ROSYBROWN",
+    "ROYALBLUE",
+    "SADDLEBROWN",
+    "SALMON",
+    "SANDYBROWN",
+    "SEAGREEN",
+    "SEASHELL",
+    "SIENNA",
+    "SILVER",
+    "SKYBLUE",
+    "SLATEBLUE",
+    "SLATEGRAY",
+    "SLATEGREY",
+    "SNOW",
+    "SPRINGGREEN",
+    "STEELBLUE",
+    "TAN",
+    "TEAL",
+    "THISTLE",
+    "TOMATO",
+    "TURQUOISE",
+    "VIOLET",
+    "WHEAT",
+    "WHITE",
+    "WHITESMOKE",
+    "YELLOW",
+    "YELLOWGREEN",
+    "VALUES",
+    "START",
+    "MIDDLE",
+    "END",
+    "NORMAL",
+    "WIDER",
+    "NARROWER",
+    "ULTRA-CONDENSED",
+    "EXTRA-CONDENSED",
+    "SEMI-CONDENSED",
+    "LIGHTER",
+    "BOLD",
+    "BOLDER",
+    "BLINK",
+    "UNDERLINE",
+    "OVERLINE",
+    "LINETHROUGH",
+    "CONDENSED",
+    "DIAMONDGRADIENT",
+    "CONICGRADIENT",
+    "ATTRIBUTENAME",
+    "ATTRIBUTETYPE",
+    "BEGIN",
+    "TYPE",
+    "MIN",
+    "MAX",
+    "RESTART",
+    "REPEATDUR",
+    "REPEATCOUNT",
+    "ADDITIVE",
+    "ACCUMULATE",
+    "PRESERVEASPECTRATIO")
+end)

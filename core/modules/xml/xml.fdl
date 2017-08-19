@@ -1,0 +1,137 @@
+--$FLUID:Include
+
+module({ name="XML", copyright="Paul Manias © 2001-2017", version=1.0 }, function()
+  const("XMS", { comment="For SetAttrib()" }, {
+    NEW         = "-1: Adds a new attribute.  Note that if the attribute already exists, this will result in at least two attributes of the same name in the tag.  Use XMS_DEFINE if this is undesirable.",
+    UPDATE_ONLY = "-2: SetAttrib will find the target attribute and update it.  It is not possible to rename the attribute when using this technique.  ERR_Search is returned if the attribute cannot be found.",
+    UPDATE      = "-3: As for XMS_UPDATE_ONLY, but if the attribute does not exist, it will be created."
+  })
+
+  flags("XSF", { comment="Options for the Sort method." },
+     "DESC: Sort in descending order.",
+     "REPORT_SORTING: If set, ERR_NothingDone will be returned in the event that a rearrangement of the list was not necessary.",
+     "CHECK_SORT: Tells the algorithm to check for a 'sort' attribute in each analysed tag and if found, the algorithm will use that as the sort value instead of that indicated in the Attrib field.")
+
+  flags("XMF", { comment="Standard flags for the XML class." },
+    "WELL_FORMED: By default, the XML class will accept badly structured XML data.  By setting this flag, all processed XML statements must be well formed (tags must balance) or a BadData error will be returned during processing.",
+    "INCLUDE_COMMENTS: By default, comments are stripped from all XML input.  This flag ensures that they are retained.",
+    "STRIP_CONTENT: Strip all content from incoming XML data.",
+    "LOWER_CASE: Convert all names and attributes into lower-case characters.",
+    "UPPER_CASE: Convert all names and attributes into upper-case characters.",
+    "READABLE|INDENT: Indent the output of XML tags to improve readability.",
+    "LOCK_REMOVE: Prevents removal of tags from the XML tree.  This specifically affects the RemoveTag and RemoveXPath methods.",
+    "STRIP_HEADERS: XML headers found in the source data will not be included in the parsed results.",
+    "NEW: Creates an empty XML object on initialisation - if the Path field has been set, the source file will not be loaded.",
+    "NO_ESCAPE: Turns off escape code conversion.",
+    "ALL_CONTENT: By default the XML parser will trim whitespace (such as return codes, spaces and tabs) found in the XML content between tags.  Setting this flag turns off this feature, allowing all whitespace to be included.",
+    "PARSE_HTML: Automatically parse HTML escape codes.",
+    "STRIP_CDATA: Do not echo CDATA sections.  Note that this option is used as a parameter, not an object flag.",
+    "DEBUG: Print extra log messages.",
+    "PARSE_ENTITY: Entity references in the DTD will be parsed automatically.",
+    { INCLUDE_SIBLINGS = "0x80000000: Include siblings when building an XML string (GetXMLString only)" })
+
+  enum("XMI", { start=0, comment="Tag insertion options." },
+    "PREV|PREVIOUS: Insert as the previous tag of the target.",
+    "CHILD: Insert as the first child of the target.",
+    "NEXT: Insert as the next tag of the target.",
+    "CHILD_END: Insert as the last child of the target.",
+    "END: Private")
+
+  struct("XMLAttrib", { type="XMLATT" }, [[
+    str Name   # The name of the attribute.
+    str Value  # The value assigned to the attribute.
+  ]])
+
+  struct("XMLTag", { type="XMLTag" }, [[
+    int    Index               # Position within the XML array
+    int    ID                  # Unique ID assigned to the tag on creation
+    struct(*XMLTag) Child      # Reference to further child tags
+    struct(*XMLTag) Prev       # Reference to the previous tag at this level in the chain
+    struct(*XMLTag) Next       # Reference to the next tag at this level in the chain
+    ptr    Private             # Developer's private memory reference
+    struct(*XMLAttrib) Attrib  # Attributes of the tag, starting with the name
+    short  TotalAttrib         # Total number of listed attributes for this tag
+    ushort Branch              # The branch level for this XML node
+    int    LineNo              # Line number on which this tag was encountered
+  ]],
+    [[
+  #ifdef PRV_XML
+     LONG  AttribSize;       // The length of all attribute strings, compressed together
+     UWORD CData:1;          // CDATA content section
+     UWORD Instruction:1;    // Processing instruction, e.g. <?xml ?> or <?php ?>
+     WORD  pad01;
+  #endif
+    ]])
+
+  methods("xml", "XML", {
+    { id=1,  name="SetAttrib" },
+    { id=2,  name="GetString" },
+    { id=3,  name="InsertXML" },
+    { id=4,  name="GetContent" },
+    { id=5,  name="Sort" },
+    { id=6,  name="RemoveTag" },
+    { id=7,  name="MoveTags" },
+    { id=8,  name="GetAttrib" },
+    { id=9,  name="InsertXPath" },
+    { id=10, name="FindTag" },
+    { id=11, name="Filter" },
+    { id=12, name="SetRoot" },
+    { id=13, name="Count" },
+    { id=14, name="InsertContent" },
+    { id=15, name="RemoveXPath" },
+    { id=16, name="GetXPath" },
+    { id=17, name="FindTagFromIndex" },
+    { id=18, name="GetTag" }
+  })
+
+  class("XML", { src="xml.c", output="xml_def.c" }, [[
+    str Path              # Location of the XML data file
+    ptr(struct(*XMLTag)) Tags # Array of tag pointers, in linear order.  Useful for looking up indexes.  NULL-terminated.
+    obj Source            # Alternative data source to specifying a Path
+    int TagCount          # Total number of tags loaded into the array
+    int(XMF) Flags        # Optional user flags
+    int CurrentTag        # Current Tag - used for certain operations
+    int PrivateDataSize   # Extra data can be allocated per tag, according to the number of bytes specified here
+    int RootIndex         # Root tag index
+    int Modified          # Modification timestamp
+  ]],
+  [[
+   struct xml_cache *Cache; // Array of tag pointers, in linear order
+   STRING Statement;
+   ERROR  ParseError;
+   LONG   Balance;          // Indicates that the tag structure is correctly balanced if zero
+   UBYTE  ReadOnly:1;
+   LONG   LineNo;
+  ]])
+
+  c_insert([[
+INLINE STRING XMLATTRIB(struct XMLTag *Tag, CSTRING Attrib) {
+   LONG i;
+   for (i=0; i < Tag->TotalAttrib; i++) {
+      if (!StrMatch((CSSTRING)Attrib, (CSSTRING)Tag->Attrib[i].Name)) {
+         if (!Tag->Attrib[i].Value) return (STRING)"1";
+         else return Tag->Attrib[i].Value;
+      }
+   }
+   return NULL;
+}
+
+INLINE BYTE XMLATTRIBCHECK(struct XMLTag *Tag, CSTRING Attrib) {
+   LONG i;
+   for (i=0; i < Tag->TotalAttrib; i++) {
+      if (!StrMatch((CSSTRING)Attrib, (CSSTRING)Tag->Attrib[i].Name)) {
+         return TRUE;
+      }
+   }
+   return FALSE;
+}
+
+INLINE struct XMLTag * XMLFIND(struct XMLTag **List, CSTRING Name) {
+   while (*List) {
+      if (!StrMatch((CSSTRING)Name, (CSSTRING)List[0]->Attrib->Name)) return List[0];
+      List++;
+   }
+   return 0;
+}
+  ]])
+end)

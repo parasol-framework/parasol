@@ -1,0 +1,137 @@
+-- Flute tests for the catch() function
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Check that catch() does nothing if no error is raised.
+
+function testCatchClean()
+   catch(function()
+      local i = 1
+   end,
+   function(Exception)
+      error(Exception.line .. ": An exception was raised despite doing nothing.")
+   end)
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Check that a standard error() will result in the exception being caught.
+
+function testCatch()
+   local exception_raised = false
+
+   catch(function()
+      error("Catch this! (Exception raised on purpose)")
+   end,
+   function(Exception)
+      print(Exception.line .. ": Caught exception '" .. Exception.message .. "'")
+      exception_raised = true
+   end)
+
+   if (exception_raised != true) then
+      error("Failed to catch the raised exception.")
+   end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Check that an ERROR result other than ERR_Okay will result in the generation of an exception.
+
+function testCatchErrorCode()
+   local exception_raised = false
+
+   catch(function()
+      check(mSys.AllocMemory(-10, 0))
+   end,
+   function(Exception)
+      print(Exception.line .. ": Caught exception as expected, error code #" .. Exception.code .. " '" .. Exception.message .. "'")
+      exception_raised = true
+   end)
+
+   if (exception_raised != true) then
+      error("Failed to catch the raised exception.")
+   end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Check that obj.new() raises exceptions correctly.
+
+function testCatchObject()
+   local exception_raised = false
+
+   catch(function()
+      local fl = obj.new("file", { path="File does not exist" })
+   end,
+   function(Exception)
+      print(Exception.line .. ": Caught exception as expected, error code #" .. Exception.code .. " '" .. Exception.message .. "'")
+      exception_raised = true
+   end)
+
+   if (exception_raised != true) then
+      error("Failed to catch the raised exception.")
+   end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test that filtering for error codes works.
+
+function testCatchFilter()
+   catch(function()
+      catch(function()
+         local pic, err = obj.new("picture", { src="nowhere:nofile.png" })
+         print("Received error " .. err)
+      end,
+      { ERR_CreateObject, ERR_Init, ERR_File },
+      function(Exception)
+         print(Exception.line .. ": Caught filtered exception #" .. Exception.code)
+      end)
+   end,
+   function(Exception) // This will be triggered if the filter doesn't catch the specified error codes.
+      error("Failed to filter for the expected error code, received code " .. Exception.code)
+   end)
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test that unfiltered errors are thrown to the parent block.
+
+function testMissedFilter()
+   local status, msg = pcall(function()
+      catch(function()
+         local xml = obj.new("xml", { flags="NEW" })
+         check(xml.acDraw())
+         print("This must not be reached.")
+      end,
+      { ERR_Failed }, // Filter for the wrong error code.
+      function(Exception)
+         // Do nothing
+      end)
+   end)
+
+   if (status == false) then
+      // Exception has been thrown to the parent as expected
+   else
+      error("The exception was not thrown to the parent block.")
+   end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test simple catch() with no function defined to handle the exception.
+
+function testNoThrow()
+   local ex = catch(function()
+      error("Catch this! (Exception raised on purpose)")
+   end)
+
+   if (ex == nil) then
+      error("Exception table was not returned.")
+   else
+      print("Received line " .. ex.line .. ", code " .. nz(ex.code,"LUA") .. ", msg: " .. ex.message)
+   end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+
+   return {
+      tests = {
+         'testCatchClean', 'testCatch', 'testCatchErrorCode',
+         'testCatchFilter', 'testMissedFilter', 'testCatchObject',
+         'testNoThrow'
+      }
+   }

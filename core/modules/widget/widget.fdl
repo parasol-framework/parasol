@@ -1,0 +1,966 @@
+--$FLUID:Include
+
+  restrict(function()
+    loadFile(glPath .. 'common.fdl')
+    loadFile(glPath .. 'common-graphics.fdl')
+  end)
+
+function def_view()
+  flags("VWF", { comment="View flags." },
+    "MULTI_SELECT: Allow multiple item selections without having to hold the shift key.",
+    "NO_ICONS: Do not load or show any icons.",
+    "SENSITIVE: Sensitive mode will activate child objects when the user single-clicks with the mouse (by default, child activation only occurs with double-clicks).",
+    "NO_SORTING: No user sorting, e.g. in column mode.",
+    "NO_SELECT: Stop the user from selecting items.",
+    "WIDTH_RESET: Always reset column widths when the Columns field is set.",
+    "NO_SELECT_JMP: When a new item is selected, the view will jump to that item if it is not completely visible to the user. Setting this flag will turn off this behaviour.",
+    "NOTIFY_ON_CLEAR: If the view should activate itself when cleared, set this flag. By default, activation normally only occurs when an item is double-clicked or when sensitive mode is enabled.",
+    "AUTO_DESELECT: Deselects a highlighted item when it is activated by mouse click or enter key.",
+    "DRAG_DROP: Enables drag and drop for items in the view. In this mode, multi-select is only possible if the shift or ctrl keys are held while using the mouse.",
+    "USER_DRAG: Enable drag and drop only if the user prefers it.")
+
+  enum("VIEW", { start=0, comment="List options" },
+    "LIST: Standard list view with small icons, arranged from top to bottom.",
+    "ICON: Similar to list-view but with large icons, arranged from left to right.",
+    "TREE: Tree mode can be used if the items are arranged in a hierarchy, where items can be embedded within items.  The tree view provides small buttons that the user can click to expand the tree and view hidden items.",
+    "COLUMN: Long list with detail columns.",
+    "LONG_LIST: This type is the same as the LIST view but the items will not wrap back to the top of the view when the bottom edge of the surface is encountered.",
+    "GROUP_TREE: Similar to tree view, but root level nodes are drawn as a headline.",
+    "DOCUMENT: Document mode allows view data to be passed to a document object for display.  You are required to provide a document object that is pre-loaded with a template capable of processing input from the view object.  Refer to the Document field for more information.",
+    "COLUMN_TREE: This mode combines the column and tree modes.  The view displays the layout and style of normal column mode, but the first column is used to display and manage a tree hierarchy.  The tree can be expanded and collapsed just as in the standard tree mode."
+  )
+
+  flags("VGF", { comment="Graphics options (normally defined by the template)" },
+    "OUTLINE_TITLE: Draw black outline around title text.",
+    "STRIPES: Draw stripes in group titles.",
+    "LINE_BREAKS: Draw a line break between each view item.",
+    "GROUP_SHADOW: Draw a shadow underneath the group graphics headers.",
+    "ALT_GROUP: Alternate the group header graphics.",
+    "BRANCHES: Draw grey tree branches.",
+    "HAIRLINES: Draw a hairline between each column.",
+    "NO_BORDER: Do not draw a border around column headers when in table mode.",
+    "DRAW_TABLE: Draw the view as a table (the basic format is the same, graphics are different).")
+
+  flags("SLF", { comment="Flags for SelectCallback" },
+    "SELECTED: A tag has been selected and is now highlighted.",
+    "ACTIVE: The most recently active tag has changed.",
+    "INVERTED: Change is due to an inverted selection.",
+    "MOVED: Change is due to the item being moved.",
+    "MULTIPLE: Multiple items were selected.",
+    "CLICK: Item was clicked - see ClickX and ClickY for coordinates.",
+    "KEYPRESS: Item was selected by a keypress.",
+    "MANUAL: Item was manually selected (by the program, not the user).")
+
+  methods("view", "view", {
+    { id=3,  name="SelectAll" },
+    { id=4,  name="InvertSelection" },
+    { id=5,  name="SortColumn" },
+    { id=6,  name="SortColumnIndex" },
+    { id=7,  name="SelectItem" },
+    { id=8,  name="SetItem" },
+    { id=9,  name="RemoveItem" },
+    { id=10, name="RemoveTag" },
+    { id=11, name="SelectNone" },
+    { id=12, name="RaiseItem" },
+    { id=13, name="LowerItem" },
+    { id=14, name="CloseBranch" },
+    { id=15, name="OpenBranch" },
+    { id=16, name="InsertItem" },
+    { id=17, name="RevealItem" },
+    { id=18, name="ItemDimensions" }
+  })
+
+  class("View", { src={ "class_view/view.c", "class_view/view_fields.c" }, output="class_view/view_def.c" }, [[
+   obj(Layout) Layout        # Layout manager
+   obj(XML) XML              # The XML object contains all view information
+   obj(Font) Font            # Font object
+   str ColumnString          # String defining the column headers
+   obj ContextMenu           # Reference to a context menu when the user right-clicks on an item
+   obj VScroll               # Reference to a vertical scroll bar
+   obj HScroll               # References to a horizontal scroll bar
+   obj(Document) Document    # Reference to a document object for use in DOCUMENT mode
+   str GroupFace             # The font to use for group header text
+   str ItemNames             # Valid item names must be listed here using a wildcard list
+   str TextAttrib            # Identifies the XML attribute that will be used for drawing item text
+   oid Focus                 # The surface to monitor for the focus
+   oid DragSource            # Source object to use for drag and drop operations
+   int(VWF) Flags            # Special flags
+   int(VIEW) Style           # Style of view
+   int HSpacing              # Horizontal spacing between each item when arranged across the page
+   int VSpacing              # Vertical spacing between each item when arranged down the page
+   int SelectedTag           # The most recently selected tag [monitorable]
+   int ActiveTag             # The most recently clicked or activated tag (not necessarily selected)
+   int HighlightTag          # Current user-highlighted item
+   int MaxItemWidth          # Maximum item width, in pixels (applies to certain view styles)
+   int ButtonThickness       # Thickness of column button borders when in COLUMN mode
+   int IconSize              # Default icon size
+   int(VGF) GfxFlags         # Graphics flags (VGF)
+   int DragItemCount         # The number of items being dragged
+   int TotalItems            # Total number of items listed in the view
+   int GroupHeight           # Defines a fixed height for group headers
+   struct(RGB8) ButtonBackground  # Colour of column button background
+   struct(RGB8) ButtonHighlight   # Colour of column button highlight
+   struct(RGB8) ButtonShadow      # Colour of column button shadow
+   struct(RGB8) ColHighlight      # Highlight colour on mouse over.
+   struct(RGB8) ColSelect         # Colour to use for selected items
+   struct(RGB8) ColItem           # Default colour to apply to new items
+   struct(RGB8) ColHairline       # Colour of column hairlines
+   struct(RGB8) ColSelectHairline # Colour of hairlines when an item is selected
+   struct(RGB8) ColBackground     # Base-colour of group-tree background
+   struct(RGB8) ColTitleFont      # Colour of group title font
+   struct(RGB8) ColSelectFont     # Font colour for selected items
+   struct(RGB8) ColBkgdHighlight  # Background highlight colour on mouse over
+   struct(RGB8) ColBorder         # Colour for the surrounding border, if any
+   struct(RGB8) ColButtonFont     # Colour of column button font
+   struct(RGB8) ColAltBackground  # Alternative line colour for the background
+   struct(RGB8) ColGroupShade     # Shading to apply to the end of the item view when in GROUPTREE mode
+   struct(RGB8) ColBranch         # Colour of tree branches
+  ]],
+  [[
+   LONG *DragItems;              // Array of tag ID's for items being dragged
+   objBitmap *GroupBitmap;       // Group header bitmap
+   objBitmap *SelectBitmap;      // Group selection bitmap
+   objBitmap *ExpandBitmap;      // Bitmap to use for opening tree items
+   objBitmap *CollapseBitmap;    // Bitmap to use for closing tree items
+   objFont   *GroupFont;         // Font allocated for group headers
+   struct view_col *Columns;       // Column information
+   struct view_col *ColumnResize;  // Set if a column is being resized
+   objScrollbar *VScrollbar, *HScrollbar;
+   objVectorGradient *Shadow;
+   FUNCTION ExpandCallback;
+   FUNCTION SelectCallback;
+   FUNCTION CellClick;
+   LONG     *SelectedTags;
+   STRING   BkgdXML;
+   STRING   GroupHeaderXML;
+   STRING   GroupSelectXML;
+   STRING   Selections;
+   STRING   NodeStrings;       // String buffer for all XML->Tag->Node->String pointers
+   APTR     prvKeyEvent;
+   OBJECTID DragSurface;
+   OBJECTID GroupSurfaceID;
+   LONG   NSIndex;           // Node string index
+   LONG   NSSize;            // Size of the NodeStrings buffer
+   LONG   XPos, YPos;        // Scrolling offset
+   LONG   ClickX, ClickY;
+   LONG   ClickIndex;
+   LONG   PageWidth, PageHeight; // Width/Height of the scrollable page area
+   LONG   SelectionIndex;    // Selection index, used to assist initialisation process only
+   WORD   LineHeight;        // Pixel height of each line
+   WORD   IconWidth;         // Maximum pixel width/height of icons
+   WORD   ColumnHeight;      // Height of column buttons when in column mode
+   WORD   TreeIndex;
+   WORD   HBarHeight;
+   BYTE   DateFormat[28];    // Preferred date format
+   UBYTE  Selection[120];    // Currently selected item
+   UBYTE  IconFilter[32];    // Preferred icon filter.
+   UBYTE  IconTheme[32];     // Preferred icon theme.  If not defined, the default is used.
+   BYTE   Sort[4];           // Sort indexes to each column (4 max) from most to least important.  A negative index means that the sort is descending
+   UBYTE  VarDefault[16];
+   BYTE   PointerLocked;     // Set to a cursor value if the pointer is locked
+   UWORD  HBarVisible:1;
+   UWORD  VBarVisible:1;
+   UWORD  ClickHeld:1;
+   UWORD  SelectHairline:1;  // Set to TRUE if SelectHairline has been defined
+   UWORD  Deselect:1;
+   UWORD  ActiveDrag:1;      // Set to TRUE when a LMB has occurred and it is possible to initiate a drag and drop operation
+   UWORD  SelectingItems:1;  // Set to TRUE if the LMB has been clicked on an item to select/deselect it
+   UWORD  RedrawDue:1;       // Set to TRUE to indicate that a Draw action message has been placed on the message queue for delayed execution
+  ]])
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+function def_fileview()
+  flags("FVF", { comment="Flags for the FileView." },
+    "SHOW_PARENT: The file view will display an item in the file list that reverts to the parent folder when activated.",
+    "NO_EXTENSIONS: File extensions are not displayed when this option is active.",
+    "SYS_KEYS: System key monitoring and relevant default behaviours are active when this option is enabled.  Cut, Copy, Paste and Select-All key combinations are provided to the user in this mode.",
+    "NO_FILES: Do not display files in the file list.",
+    "TOTAL_REFRESH: Force a total refresh of the files listed in the monitored folder whenever a change is detected.")
+
+  enum("FVA", { start=1, comment="Options for the Auto field." },
+    "OPEN: Open the file with the user's preferred program for this file type.",
+    "EDIT: Edit the file in a program suitable for editing this file type.",
+    "VIEW: View the file in a program suitable for read-only viewing.")
+
+  flags("FEF", { comment="Event flags." },
+    "LOCATION: The location has been changed (user has moved to a different folder).")
+
+  methods("fileview", "Fv", {
+    { id=1,  name="ParentDir" },
+    { id=2,  name="CutFiles" },
+    { id=3,  name="CopyFiles" },
+    { id=4,  name="PasteFiles" },
+    { id=5,  name="DeleteFiles" },
+    { id=6,  name="CreateDir" },
+    { id=7,  name="RenameFile" },
+    { id=8,  name="EditFiles" },
+    { id=9,  name="ViewFiles" },
+    { id=10, name="CopyFilesTo" },
+    { id=11, name="MoveFilesTo" },
+    { id=12, name="OpenFiles" },
+    { id=13, name="CreateShortcut" }
+  })
+
+  class("FileView", { src={ "class_fileview/fileview.c", "class_fileview/fileview_fields.c" }, output="fileview_def.c" }, [[
+    double RefreshRate  # Refresh the file-list every X number of seconds
+    obj(View) View      # External data view
+    int(FVF) Flags      # Optional flags
+    oid Focus           # The surface to monitor for the focus
+    str RootPath        # RootPath limits the view to a directory and its sub-directories
+    int(FVA) Auto       # Automatically perform this action if a folder or file is activated by the user
+    oid Window          # The window that contains the view object
+    int ShowHidden      # Show hidden files if TRUE
+    int ShowSystem      # Show system files if TRUE
+    int ShowDocs        # Show document views if TRUE
+    int(FEF) EventMask  # Receive events that pass the filter specified here.
+  ]],
+  [[
+   FUNCTION EventCallback;
+   FUNCTION Feedback;
+   struct DirInfo *Dir;
+   STRING SelectionPath;       // The complete, fully qualified file-path of the current selection
+   objClipboard *DragClip;     // Private clipboard for dragging purposes
+   objClipboard *DeleteClip;
+   objDocument *Doc;
+   objFile *Watch;
+   APTR  prvKeyEvent;
+   APTR  VolumeDeletedHandle;
+   APTR  VolumeCreatedHandle;
+   LONG  FileCount;
+   LONG  DeleteIndex;
+   LONG  DragToTag;
+   TIMER Timer;
+   char  Selection[130];  // Currently selected file/directory
+   char  Path[160];
+   char  Filter[40];      // File filter
+   UBYTE Refresh:1;
+   UBYTE ResetTimer:1;
+   UBYTE Qualify:1;
+   objStorageDevice *DeviceInfo;
+  ]])
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+function def_clipboard()
+  enum("CT", { start=0 }, "DATA", "AUDIO", "IMAGE", "FILE", "OBJECT", "TEXT", "END")
+
+  -- Note: It is intentional that the CLIP types are expressed as flags and not constants.
+
+  flags("CLIPTYPE", { comment="Clipboard types" },
+    "DATA: Raw information that is uncategorised can be defined as a data clip.",
+    "AUDIO: An audio clip that is recognised by the Sound class (such as wav's and mp3's).",
+    "IMAGE: Images that are recognised by the Picture class may be stored as this type (such as jpeg's and png files).",
+    "FILE: Pure file references are stored as file clips.  This type is typically used by file managers for moving and copying files.",
+    "OBJECT: An object that has been deserialised into binary form.",
+    "TEXT: Plain text files such as ASCII and UTF-8 must be identified through this clip type.")
+
+  enum("RSP", { start=0 }, "CANCEL|NO_ALL", "YES", "YES_ALL", "NO")
+
+  flags("CLF", { comment="Clipboard flags" },
+    "WAIT: The clipboard will wait for the user to respond to user dialogs rather than return immediately from clipboard operations.",
+    "HOST")
+
+  flags("CEF", { },
+    "DELETE: Requests that the original file source is deleted if a successful paste operation takes place.",
+    "EXTEND: Instead of replacing existing clipboard data, add the new data to the group.")
+
+  methods("clipboard", "Clip", {
+    { id=1, name="AddFile" },
+    { id=2, name="AddObject" },
+    { id=3, name="AddObjects" },
+    { id=4, name="GetFiles" },
+    { id=5, name="AddText" },
+    { id=6, name="PasteFiles" },
+    { id=7, name="Delete" },
+    { id=8, name="DeleteFiles" },
+  })
+
+  class("Clipboard", { src="class_clipboard.c", output="class_clipboard_def.c" }, [[
+    int(RSP) Response   # Indicates the user's response to PasteFiles()
+    int(CLF) Flags      # Optional flags
+    mem Cluster
+  ]],
+  [[
+   struct rkDialog *ProgressDialog;
+   LARGE    ProgressTime;
+   OBJECTID ProgressTarget;
+   char    LastFile[80];
+   BYTE ClusterAllocated:1;
+  ]])
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+module({ name="Widget", copyright="Paul Manias 2003-2017", version=1.0 }, function()
+  c_include("<parasol/modules/font.h>", "<parasol/modules/picture.h>", "<parasol/modules/vector.h>",
+    "<parasol/modules/xml.h>",  "<parasol/modules/display.h>", "<parasol/modules/document.h>")
+
+  flags("SBF", { comment="Scrollbar flags." },
+    "HIDE: Hide on creation, or scrollbar is currently hidden.",
+    "CONSTANT: Ensures that the scrollbar is always on display.",
+    "RELATIVE: Enables relative scrolling (movement is reported relative to the current slider position rather than in absolute coordinates).",
+    "SLIDER: If set, the scrollbar behaves as a slider.  In this mode, the size of the draggable slider has a fixed size (by default the slider is proportional).",
+    "NO_INTERSECT: Do not attempt to intersect with adjacent scrollbars.")
+
+  flags("CMF", { comment="ComboBox flags." },
+    "HIDE: Hide on creation, or combobox is currently hidden.",
+    "DISABLED: Disable on creation; or combobox is currently disabled.",
+    "EDIT: Enable edit mode, which allows the user to write free-text in the combobox.",
+    "NO_BKGD: Do not draw background graphics (automatically set if Template graphics are used).",
+    "SUNKEN: Reverses the highlight and shadow definitions to create a sunken effect.",
+    "SHOW_ICONS: Show icons in the dropdown list.",
+    "LIMIT_TO_LIST: When in edit mode, limit-to-list prevents the user from entering text that isn't in the combobox list.",
+    "AUTO_COMPLETE: When in edit mode, this option helps the user by auto-completing text.",
+    "NO_TRANSLATION: Do not attempt to translate combobox strings or the drop-down menu to the user's native language.")
+
+  flags("CBF", { comment="CheckBox flags." },
+    "DISABLED: Disable on creation, or object is currently disabled.",
+    "HIDE: Hide on creation, or object is currently hidden.",
+    "NO_BKGD: Do not draw background graphics (automatically set if Template graphics are used).",
+    "FADE_BORDER: Fade the border edges into the checkbox colour (requires thickness greater than 1).")
+
+  flags("BTF", { comment="Button flags." },
+    "HIDE: Hide on creation, or button is currently hidden.",
+    "DISABLED: Disable on creation, or button is currently disabled.  Read-only.",
+    "NO_GFX: Turns off the button's foreground graphics (text and images).",
+    "NO_BKGD: Do not draw background graphics (automatically set if styles are used).",
+    "FADE_BORDER: Fade the border edges into the button colour (requires thickness > 1).",
+    "SUNKEN: Reverses the highlight and shadow definitions to create a sunken effect.",
+    "NO_FOCUS: Never draw lines around the button to indicate that it has the focus.",
+    "PULSE: Send repeated clicks when the mouse button is held down.",
+    "NO_FOCUS_GFX: Do not draw any graphics when the button has the focus.")
+
+  flags("INF", { comment="Flags for the Input class." },
+    "HIDE: Hide on creation, or input is currently hidden.",
+    "DISABLED: Disable on creation.",
+    "NO_GFX: Do not generate any text or image graphics using internal routines (use the Template graphics definition).",
+    "NO_BKGD: Do not draw background graphics (automatically set if Template graphics are used).",
+    "SUNKEN: Reverses the highlight and shadow definitions to create a sunken effect.  Read-only.",
+    "RAISED: Draw the input box with a raised (3D) border edge.  Read-only.",
+    "ACTIVE_DRAW: Pro-actively redraw the object when graphics alterations are made.",
+    "COMMANDLINE: Function as a command-line.  Typically used when the input box needs to remain persistent and is linked to an output system, such as a shell.",
+    "SELECT_TEXT: Select all text when the input box is shown for the first time.",
+    "SECRET: Used for secret user entry (passwords).",
+    "ENTER_TAB: Press enter results in a virtual tab-keypress being sent.")
+
+  flags("TF", { comment="Flags for the TabFocus class." },
+    "LOCAL_FOCUS: In this mode, the user's point of focus must match the monitored Surface for the tabfocus to function.",
+    "CHILD_FOCUS: In this mode, the user's point of focus must match the monitored Surface or one of its immediate children for the tabfocus to function.",
+    "LIMIT_TO_LIST: In limit-to-list mode, the tabfocus only functions if the user's point of focus is on the monitored Surface or one of objects in the tab list.")
+
+  flags("MHG", { comment="Menubar highlighting flags." },
+    "TEXT: Highlights the menu item text using the highlight colour.",
+    "BORDER: Draws a border around the menu item using the default highlight colour.",
+    "LIGHT_BKGD: Lightens the background behind the menu item.",
+    "DARK_BKGD: Darkens the background behind the menu item.",
+    "RAISED: Draws a raised border around the item using the highlight and shadow colours.",
+    "SUNKEN: Draws a sunken border around the item using the highlight and shadow colours.")
+
+  flags("MBF", { comment="Menubar flags." },
+    "HIDE: Hide on creation, or menubar is currently hidden.",
+    "DISABLED: Disable on creation.  Automatically switched by the Disable and Enable actions.",
+    "BREAK: Draw a break-line at the bottom of the menubar.")
+
+  flags("SCF", { comment="Scroll flags." },
+    "AUTO_HIDE: Automatically hide the scrollbar when possible.",
+    "HORIZONTAL: The scrollbar is oriented horizontally.",
+    "VERTICAL: The scrollbar is oriented vertically.",
+    "REVERSE: When reporting the position of the slider, the value will always be reversed - so positive values will be negative and vice versa.  Reporting for relative position changes are also affected.",
+    "RELATIVE: Forces relative scrolling through the Scroll action rather than the default ScrollToPoint.",
+    "SLIDER: Changes the mode of operation so that the slider is non-proportional.  The size of the view is also set to a fixed value and resizing of the parent surface no longer affects the scroll values.",
+    "FIXED: Fixes the scroll slider to a specific size (non-proportional mode of operation).",
+    "AUTO_ACTIVATE: The scroll object automatically activates itself whenever the position of the slider is changed.",
+    "MESSAGE: Use used delay messages for activation of children.",
+    "INVISIBLE: Keep scrollbar invisible.")
+
+  flags("TXF", { comment="Flags for the Text class." },
+    "EDIT: This flag must be enabled if the user is permitted to change the text string with the keyboard.",
+    "AUTO_CLEAR: Clears the text string when the enter key is pressed.",
+    "OVERWRITE: Turns on overwrite mode (if off, insert mode is enabled).",
+    "TAB_ENTRY: Pressing the tab key is treated the same as pressing enter.",
+    "WORDWRAP: Enables word wrapping.",
+    "HISTORY: Enables historical browsing when the up/down cursor keys are used.  The number of historical lines stored can be set in the HistorySize field.",
+    "VARIABLE: This flag forces a text object to recalculate any variable references in its string data whenever a redraw occurs.  Such references are indicated through square brackets, e.g. [desktop.width].  Refer to the StrEvaluate() function in the Strings module for more information.",
+    "FORCE_CAPS: This flag forces the capitalisation of all text that is entered into the object.",
+    "GLOBAL_EDITING: Keeps the text object in edit mode regardless of user focus.",
+    "AREA_SELECTED: This read-only flag is set automatically when the user has selected an area of text.",
+    "NO_SYS_KEYS: This flag is set by default to enable system key support.  System-keys provide support for common key combinations such as Ctrl-C, Ctrl-X etc.",
+    "MULTI_SELECT: Allow the user to select/highlight multiple lines by holding the Ctrl key.",
+    "SINGLE_SELECT: Enables text selection (with or without edit mode).  If in line mode, a single click will allow the user to highlight any line.",
+    "DISABLED: This read-only flag is set if the object has been disabled through the Disable action.",
+    "BACKGROUND: Enables a colour background behind the text.",
+    "ENTER_TAB: Convert enter-key presses to the tab-key.",
+    "PRESERVE_BKGD: Preserve-background disables fast scrolling for background preservation.",
+    "SECRET|PASSWORD: Hide the string characters for secret text entry (e.g. passwords).",
+    "TAB_KEY: If the tab key is pressed, print the tab character.",
+    "AUTO_SELECT: Automatically select all text if the text object receives the focus.",
+    "STR_TRANSLATE: Translate strings to the user's native language.",
+    "STRETCH: If the font is scalable, the text string will be resized to fit inside the surface that contains it (i.e. no characters will be clipped).  This is acheived by recalculating the font's point size.",
+    { COMMANDLINE = "AUTO_CLEAR|EDIT|HISTORY" },
+    { SELECT = "MULTI_SELECT|SINGLE_SELECT" })
+
+  flags("ACF", { comment="Activation flags" },
+    "RELEASE: Releasing a mouse button will create an Activate action.",
+    "SINGLE_CLICK: Single clicking on any line will create an Activate action.",
+    "DOUBLE_CLICK: Double clicking on any line will create an Activate action.",
+    "MOVEMENT: Moving to a new line cause activation.",
+    { SENSITIVE = "SINGLE_CLICK|MOVEMENT" })
+
+  flags("IMF", { comment="Image flags" },
+    "ENLARGE: If the dimensions of the original picture are smaller than the destination surface, the image will be stretched to fit.  Enlargement is dynamic, so if the surface changes in size then the size of the picture will be recalculated to fit.",
+    "SHRINK: If the dimensions of the original picture are larger than the destination surface, the image will be stretched to fit.  Shrinking is dynamic, so if the surface changes in size then the size of the picture will be recalculated to fit.",
+    "NO_BLEND: Turns off alpha-blending if the target surface has the COMPOSITE flag set and the source image has an alpha channel.",
+    "STICKY: All calls to Move and MoveToPoint are ignored if this flag is set.",
+    "NO_FAIL: If the source image file does not exist or an error occurs during loading, the image object will still pass the initialisation process successfully.  When the image object is drawn, it will clear the target surface to the colour specified in the Background field.",
+    "11_RATIO: When resizing the image, the calculated width and height will always be in correct proportion relative to the source image's original width and height.",
+    "FIT: This flag applies to image resizing.  When set, the calculated width and height will be limited so that the image cannot be stretched beyond the edges of the target surface.  This flag is commonly set in conjunction with the 11RATIO flag.",
+    "FIXED_SIZE: Image data will normally be stored at its original size and resized on the fly when the STRETCH flag is used.  Setting the FIXED_SIZE flag will pre-scale the image and permanently store it at that size.",
+    "NO_DRAW: Stops automatic drawing of the target surface if the image is being animated or a special effect is active.",
+    "SCALABLE: The image source is scalable (e.g. vector graphic).",
+    { FIXED = "FIXED_SIZE" },
+    { SOLID_BLEND = "NO_BLEND" },
+    { STRETCH = "ENLARGE|SHRINK: This flag conveniently combines the ENLARGE and SHRINK flags to ensure that the image always covers the dimensions of the destination surface." })
+    // IMF_CENTER is obsolete, use Layout's ALIGN_CENTER
+    // IMF_TIME is obsolete, use LAYOUT_TILE
+
+  flags("MNF", { comment="Flags for the Menu class." },
+    "SHOW_IMAGES: Allow for an image column on the left.",
+    "SHOW_KEYS: Print key controls on the right.",
+    "EXT_COLUMN: Allow for an extension indicator column on the right.",
+    "POPUP: Locks the position of the menu to the mouse pointer.",
+    "REVERSE_X: Menu's open in reverse horizontal order.",
+    "REVERSE_Y: Menu's open in reverse vertical order.",
+    "NO_HIDE: Activate() is prevented from hiding the menu.",
+    "SORT: Sort all items by name.",
+    "IGNORE_FOCUS: Do not hide the menu if it loses the focus.",
+    "PRESERVE_BKGD: Preserve background when scrolling.",
+    "NO_TRANSLATION: Do not translate menu text to the user's native language.",
+    "CACHE: Cache menu surface once created.",
+    "POINTER_PLACEMENT: Menu is placed at the position of the mouse pointer when shown.",
+    { SHOW_ICONS = "SHOW_IMAGES" },
+    { POINTER_XY = "POINTER_PLACEMENT" }
+  )
+
+  flags("MIF", { comment="Flags for MenuItems." },
+    "DISABLED: Set if the menu item is disabled (ghosted).",
+    "BREAK: Menu item is acting as a break.",
+    "EXTENSION: Menu item is an extension.",
+    "CATEGORISE: Categorise the attached config file.",
+    "NO_KEY_RESPONSE: Display the key, but do not respond to its equivalent key press.",
+    "KEY_REPEAT: Respond to repeated key presses.",
+    "SORT: Sort all content under the menuitem (applies only to extensions).",
+    "OPTION: Item is a clickable option (clicking the item's icon will turn the option on/off).",
+    "SELECTED: The menu item has been selected (checked).",
+    "TOGGLE: Enables toggled menu items (checking state of on and off).")
+
+  enum("DT", { start=0, comment="Types of dialog box" },
+    "MESSAGE: The default setting.",
+    "CRITICAL: A highly critical error is being reported to the user.",
+    "ERROR: An error is being reported to the user.",
+    "WARNING: A warning message is being reported to the user.",
+    "ATTENTION: The dialog requests the user's immediate attention.",
+    "ALARM: The dialog is presented as a response to a preset alarm.",
+    "HELP: Help text is being presented in the dialog.",
+    "INFO: The dialog is providing the user with specific information on a topic.",
+    "QUESTION: A question is being asked of the user.",
+    "REQUEST: A request is being made (e.g. dialog requires user to type in input).",
+    "TEMPORARY: The dialog box will disappear after a short time-out period has expired.")
+
+  flags("RSF", { comment="Dialog response flags" },
+    "CANCEL: Negative response.",
+    "YES: Positive response.",
+    "NO: Negative response.",
+    "OKAY|OK: Positive response.",
+    "QUIT: Negative response.",
+    "NO_ALL: Negative response.",
+    "YES_ALL: Positive response.",
+    "NONE: Do nothing dummy flag.",
+    "OPTION: Combobox option ticked.",
+    "CLOSED: Window closed without response.",
+    "CUSTOM_1: Developer customised option 1 - neutral response.",
+    "CUSTOM_2: Developer customised option 2 - neutral response.",
+    "CUSTOM_3: Developer customised option 3 - neutral response.",
+    "CUSTOM_4: Developer customised option 4 - neutral response.",
+    "RETRY",
+    { POSITIVE = "YES|YES_ALL|OKAY|CUSTOM_1|CUSTOM_2|CUSTOM_3|CUSTOM_4" },
+    { NEGATIVE = "CANCEL|NO|QUIT|NO_ALL|CLOSED" })
+
+  flags("DF", { comment="Dialog flags." },
+    "WAIT: This option halts the program flow when the dialog box is activated.  Normal service will resume once the user responds to the dialog window.  Note that it is still possible to interact with other windows during this time, so the use of the MODAL flag may also be beneficial.",
+    "INPUT: An input box can be created inside the dialog window by setting this flag.  In this mode, the dialog box will return a user input string in the UserInput field after the user has responded to the dialog window.",
+    "INPUT_REQUIRED: This flag can be used in conjunction with the INPUT option.  It forces the user to input at least one character in the input box, otherwise the dialog window will automatically cancel itself.",
+    "REVERSE: Reverse the activation process (respond to negatives, not positives).",
+    "OPTION_ON: Turn the checkbox option on by default.",
+    "SECRET: User input needs to be secret (e.g. password entry).",
+    "MODAL: Makes the dialog window modal, this prevents the user from interacting with other windows that belong to the program.  For batch scripts, the WAIT flag should be used instead.",
+    "QUIT: A quit message will be sent to the running application once the dialog window is closed.")
+
+  enum("MENUFADE", { start=1 },
+    "FADE_IN: The menu will fade in to the foreground.",
+    "FADE_OUT: The menu will fade out of the foreground.")
+
+  enum("AXIS", { comment="Axis options.  This determines the axis that is signalled when the slider is moved (note that it is feasible for a horizontal scrollbar to signal the Y axis, if this is desired by the client)" },
+    "X", "Y", "Z")
+
+  enum("SD", { start=1, comment="Scroll directions." },
+    "NEGATIVE|UP|LEFT",
+    "POSITIVE|DOWN|RIGHT")
+
+  enum("SO", { start=1, comment="Direction options" },
+     "HORIZONTAL",
+     "VERTICAL")
+
+  class("Image", { src="class_image.c", output="class_image_def.c" }, [[
+    obj(Layout) Layout
+    str Hint                 # Display this hint during user hover.
+    int Frame
+    int(IMF) Flags           # Optional flags.
+    struct(RGB8) Mask
+    struct(RGB8) Background  # Background colour to use behind the image.
+    int FrameRate            # The maximum frame-rate for displaying animated images.
+  ]],
+  [[
+   objPicture *Picture;
+   objBitmap  *Bitmap;      // Image bitmap.  May originate from the picture, may not
+   objBitmap  *RawBitmap;   // Original bitmap image, compressed
+   STRING RenderString;
+   STRING Path;
+   struct SurfaceCoords Surface;
+   TIMER  FrameTimer;
+   WORD   Opacity;
+   UBYTE  IconFilter[24];
+   UBYTE  IconTheme[24];
+  ]])
+
+  flags("TIF", { comment="MenuBar item flags." },
+    "DISABLED: Item is disabled.",
+    "STATEMENT: The script reference is a statement string.",
+    "FOCUS: Item has the user focus.")
+
+  struct("MenubarItem", { }, [[
+   char(28) Name
+   char(28) Translation
+   obj(Picture) Picture
+   obj(Menu) Menu
+   int  X
+   int  Width
+   char(TIF) Flags
+  ]])
+
+  methods("MenuBar", "Mb", {
+    { id=1, name="AddMenu" },
+    { id=2, name="RemoveMenu" },
+    { id=3, name="DisableMenu" },
+    { id=4, name="EnableMenu" },
+    { id=5, name="ReplaceMenu" },
+    { id=6, name="GetMenu" }
+  })
+
+  class("MenuBar", { src="class_menubar.c", output="class_menubar_def.c" }, [[
+    oid Region       # Surface region created by the menubar object
+    oid Surface      # The surface target for the menubar graphic
+    oid Target       # Target surface for menus
+    int(MBF) Flags   # Special options
+    obj(Font) Font   # Font control object
+    int Total        # Total number of items
+    int(MHG) HighlightFlags  # Item highlighting flags
+    int LeftMargin   # Left hand margin for text
+    int RightMargin  # Right hand margin for text
+    int Gap          # Amount of space between menu items
+    int TopMargin    # Top margin for graphics
+    int BottomMargin # Bottom margin for graphics
+    struct(RGB8) Highlight # Colour to use for highlighting
+    struct(RGB8) Shadow    # Colour to use for shadowing
+  ]],
+  [[
+   struct rkXML  *XML;
+   struct rkMenu *LastMenu;
+   struct KeyStore *Keys;
+   FUNCTION ItemFeedback;
+   STRING Path;
+   STRING MenuStyle;
+   LONG   Index;        // Index of the menubar item that is currently selected
+   struct MenubarItem Items[20];
+  ]])
+
+  class("Scrollbar", { src="class_scrollbar.c", output="class_scrollbar_def.c" }, [[
+    double Opacity      # Opacity setting
+    oid Region          # Surface representing the scrollbar
+    oid Surface         # The surface target for the scrollbar graphic
+    oid Slider          # Surface for the slider
+    int(SBF) Flags      # Special options
+    obj(Scroll) Scroll  # Reference to the Scroll object
+    int(SO) Direction   # Orientation of the scrollbar
+    int Breadth         # Width of the scrollbar
+    oid Intersect       # Intersecting scrollbar
+  ]],
+  [[
+   OBJECTID  ScrollID;
+   UBYTE     Template[120];
+   OBJECTPTR Script;
+  ]])
+
+  struct("ScrollButton", nil, [[
+    oid Button
+    char Direction
+  ]])
+
+  methods("Scroll", "Sc", {
+    { id=1, name="UpdateScroll" },
+    { id=2, name="AddScrollButton" }
+  })
+
+  class("Scroll", { src="class_scroll.c", output="class_scroll_def.c" }, [[
+    double Position   # Page offset.  For internal scroll management issues this field is in floating point, but should only be set by the user as an integer
+    oid Object        # Object to receive the scroll action
+    oid Slider        # Surface that represents the slider within the scrollbar gadget
+    oid Intersect     # Intersecting scrollbar, if relevant
+    oid Monitor       # Surface to monitor for extra scroll commands (e.g. from the mouse wheel)
+    oid View          # Surface that forms the view containing the page (optional - for surface based scrolling)
+    oid Page          # Surface that forms the page (optional - for surface based scrolling)
+    int Unit          # Amount of units to move when buttons are pressed
+    int(SCF) Flags    # Optional flags
+    int PageSize      # Size of the page (typically larger than the view)
+    int ViewSize      # Size of the view (contains the page)
+    int StartMargin   # Prevents the slider from moving beyond the bounds of its parent surface.
+    int EndMargin     # Prevents the slider from moving beyond the bounds of its parent surface.
+    int SliderSize    # The width or height of the slider, depending on orientation.
+    int(AXIS) Axis    # The axis that is signalled when the slider is moved.
+  ]],
+  [[
+   LARGE    LastUpdate;        // Timestamp of the most recent UpdateScroll() call
+   OBJECTID ScrollbarID;       // Surface that represents the whole of the scrollbar
+   OBJECTID IntersectSurface;  // Surface that represents the intersecting scrollbar, if there is one
+   LONG     BarSize;           // Indicates the amount of pixel space within the scrollbar area
+   LONG     PrevCoord;
+   LONG     SliderX, SliderY;
+   LONG     ObscuredView;
+   LONG     SurfaceWidth, SurfaceHeight;
+   LONG     Offset;
+   UBYTE    Field[32];
+   UBYTE    RecursionBlock;
+   BYTE     PostIntersect;     // Set to TRUE if the Intersect field was set post-initialisation (we are not expected to adjust our scrollbar size)
+   struct ScrollButton Buttons[8];
+   FUNCTION Feedback;
+  ]])
+
+  methods("text", "Txt", {
+    { id=1, name="AddLine" },
+    { id=2, name="DeleteLine" },
+    { id=3, name="GetLine" },
+    { id=4, name="ReplaceLine" },
+    { id=5, name="SelectArea" },
+    { id=6, name="SetFont" }
+  })
+
+  class("Text", { src={ "class_text/fields.c", "class_text/text.c" }, output="class_text/def.c" }, [[
+    obj(Layout) Layout    # Layout manager
+    obj(Font) Font        # Font to use for the text
+    oid VScroll           # Reference to a vertical scroll bar
+    oid HScroll           # References to a horizontal scroll bar
+    oid TabFocus          # If the tab key is pressed, a focus can be sent to this object
+    oid Focus             # Refers to the object that will be monitored for user focussing.
+    int CursorColumn      # Cursor column
+    int CursorRow         # Cursor row / Line selection
+    int(TXF) Flags        # Special flags
+    int AmtLines          # Amount of strings currently in the array
+    int SelectRow         # Row that the current text selection starts from
+    int SelectColumn      # Column that the current text selection starts from
+    int Frame             # The frame for which the text will be visible.
+    int HistorySize       # Size of the history buffer (measured in array elements)
+    int LineLimit         # Limit the number of lines to the value in this field
+    int CharLimit         # Limit the number of chars allowed in each line of the text object
+    struct(RGB8) Highlight    # Default colour for text highlighting
+    struct(RGB8) Background   # Colour for text background
+    struct(RGB8) CursorColour # The colour of the cursor
+  ]],
+  [[
+   struct TextLine *Array;      // Pointer to an array of lines
+   struct TextHistory *History; // History of text entries
+   struct rkXML  *XML;
+   struct rkFile *FileStream;
+   APTR   prvKeyEvent;
+   FUNCTION ValidateInput;
+   FUNCTION Activated;
+   STRING StringBuffer;
+   STRING Location;             // Optional file to load on Init()
+   DOUBLE RelSize;              // Relative point size (a percentage relative to the height of the container)
+   LONG   CurrentFrame;
+   LONG   MaxLines;          // Total number of lines available in the array
+   LONG   XPosition;         // Horizontal scrolling offset
+   LONG   YPosition;         // Vertical scrolling offset
+   LONG   CursorChar;
+   LONG   CursorSavePos;
+   TIMER  CursorTimer;
+   WORD   TotalFrames;
+   WORD   ClickHeld;
+   WORD   HistoryPos;
+   WORD   CursorWidth;
+   UWORD  CursorFlash;     // If set to 1, cursor is invisible.  This field is managed by the Timer action
+   WORD   CursorEndColumn;
+   UBYTE  PointerLocked;
+   UBYTE  State;
+   BYTE   Tag;
+   BYTE   NoUpdate;
+   BYTE   NoCursor;
+   BYTE   Active:1;
+  ]])
+
+  methods("TabFocus", "Tab", {
+    { id=1, name="AddObject" },
+    { id=2, name="InsertObject" },
+    { id=3, name="RemoveObject" },
+    { id=4, name="SetObject" }
+  })
+
+  class("TabFocus", { comment="Manages the 'user focus' via the tab key.", src="class_tabfocus.c", output="class_tabfocus_def.c" }, [[
+    oid Surface     # The surface to monitor for the primary focus when managing the tab key
+    int Total       # Total number of objects on the tab list
+    int(TF) Flags   # Optional flags
+  ]],
+  [[
+   struct {
+      OBJECTID ObjectID;
+      OBJECTID SurfaceID;
+   } TabList[50];         // List of objects to be managed by the tab key
+   APTR prvKeyEvent;
+   WORD Index;            // Current focus index
+   OBJECTID CurrentFocus;
+   BYTE Reverse:1;
+  ]])
+
+  class("CheckBox", { src="class_checkbox.c", output="class_checkbox_def.c" }, [[
+   obj(Font) Font         # Font control object
+   oid Region             # Surface region created by the checkbox object
+   oid Surface            # The surface target for the checkbox widget
+   int(CBF) Flags         # Special options
+   int EnterFrame         # Frame to display when the mouse enters the checkbox area
+   int ExitFrame          # Frame to revert to when the mouse leaves the checkbox area
+   int ClickFrame         # Frame to display when the checkbox is clicked
+   int ReleaseFrame       # Frame to display when the checkbox is released
+   int Thickness          # Border thickness
+   int LabelWidth         # The fixed pixel width allocated for drawing the label string.
+   int Value              # Either TRUE or FALSE
+   int(ALIGN) Align       # Alignment flags
+   struct(RGB8) Colour    # Colour to use as the background
+   struct(RGB8) Highlight # Colour to use for border highlighting
+   struct(RGB8) Shadow    # Colour to use for border shadowing
+  ]],
+  [[
+   FUNCTION Feedback;
+   APTR   prvKeyEvent;
+   struct rkPicture *Picture; // Bitmap image to use when the box is checked
+   UBYTE  Entered:1;
+   BYTE   Active;
+   UBYTE  Label[48];       // Label to display alongside the checkbox
+  ]])
+
+  class("Button", { src="class_button.c", output="class_button_def.c" }, [[
+    obj(Font) Font    # Font control object
+    str Hint          # Applies a hint to a button, which can be displayed as a tool-tip.
+    str IconFilter    # Apply this icon filter if displaying an icon in the button.
+    str Image         # Location of an image to display in the button.
+    oid Region        # Surface region created by the button object
+    oid Surface       # The surface target for the button graphic
+    oid ShowOnFocus   # Show this object when the button has the focus
+    int(BTF) Flags    # Special options
+    int EnterFrame    # Frame to display when the mouse enters the button area
+    int ExitFrame     # Frame to revert to when the mouse leaves the button area
+    int ClickFrame    # Frame to display when the button is clicked
+    int ReleaseFrame  # Frame to display when the button is released
+    int Thickness     # Border thickness
+    struct(RGB8) Colour    # Colour to use as the background
+    struct(RGB8) Highlight # Colour to use for border highlighting
+    struct(RGB8) Shadow    # Colour to use for border shadowing
+  ]],
+  [[
+   FUNCTION Feedback;
+   char String[40];            // String to display inside the button
+   struct rkPicture *Picture;  // Bitmap image inside the button
+   struct rkDocument *Document;
+   objBitmap *Bitmap;
+   APTR   prvKeyEvent;      // For subscribing to keyboard events
+   STRING Onclick;          // Available in Document mode only, references the function to be called when clicked
+   UBYTE  State;
+   UBYTE  Clicked;          // Set to TRUE if the button has been clicked.  Reverts back to FALSE when the user releases the button
+   UBYTE  Active;
+   LONG   ClickX, ClickY;
+  ]])
+
+  class("Resize", { src="class_resize.c", output="class_resize_def.c" }, [[
+    obj(Layout) Layout    # Layout manager
+    oid Object            # Object that is to be resized
+    int(JET) Button       # Determines what button is used for resizing
+    int(MOVE) Direction   # Direction flags (horizontal/vertical)
+    int(EDGE) Border      # Border flags can be used to monitor up to 8 separate areas at once
+    int BorderSize        # Determines the size of the border edge
+  ]],
+  [[
+   LONG  OriginalWidth, OriginalHeight;
+   LONG  OriginalX, OriginalY;
+   LONG  OriginalAbsX, OriginalAbsY;
+   LONG  prvAnchorX, prvAnchorY;
+   WORD  CursorSet;
+   WORD  State;
+   BYTE  prvAnchored;
+  ]])
+
+  class("Input", { src="class_input.c", output="class_input_def.c" }, [[
+   obj(Font) Font          # Font control object - for the label graphic
+   obj(Text) TextInput     # Text control object - for the input area
+   oid Region              # Surface region created by the input object
+   oid Surface             # The surface target for the input graphic
+   int(INF) Flags          # Special options
+   int EnterFrame          # Frame to display when the mouse enters the input area
+   int ExitFrame           # Frame to revert to when the mouse leaves the input area
+   int FocusFrame          # Frame to display when the input box has the focus
+   int ReleaseFrame        # Frame to display when the input box loses the focus
+   int Thickness           # Border thickness
+   int LabelWidth          # Width of the input box label area
+   int InputWidth          # Width of the input area
+   struct(RGB8) Colour     # Colour to use as the background
+   struct(RGB8) Highlight  # Colour to use for border highlighting
+   struct(RGB8) Shadow     # Colour to use for border shadowing
+  ]],
+  [[
+   UBYTE    prvLabel[48];       // Label
+   UBYTE    prvPostLabel[48];
+   ULONG    prvLastStringHash;
+   FUNCTION prvFeedback;
+   BYTE     prvState;
+   UBYTE    prvActive:1;
+   UBYTE    prvStringReset:1;
+  ]])
+
+  class("ComboBox", { src="class_combobox.c", output="class_combobox_def.c" }, [[
+    obj(Font) Font          # Font control object - for the label graphic
+    obj(Text) TextInput     # Text control object - for the combobox area
+    obj(Menu) Menu          # Menu control object
+    oid Region              # Surface region created by the combobox object
+    oid Surface             # The surface target for the combobox graphic
+    oid Button              # Surface ID of the combobox button
+    int(CMF) Flags          # Special options
+    int FocusFrame          # Frame to display when the combobox has the focus
+    int ReleaseFrame        # Frame to display when the combobox loses the focus
+    int Thickness           # Border thickness
+    int LabelWidth          # Width of the combobox label area
+    struct(RGB8) Colour     # Colour to use as the background
+    struct(RGB8) Highlight  # Colour to use for border highlighting
+    struct(RGB8) Shadow     # Colour to use for border shadowing
+  ]],
+  [[
+   UBYTE  Label[48];       // Label
+   FUNCTION Feedback;
+   BYTE   Active;
+   BYTE   CalcWidth:1;
+  ]])
+
+  class("Dialog", { src="class_dialog.c", output="class_dialog_def.c" }, [[
+    obj(Document) Document  # Document object created by the dialog
+    oid Window          # Reference to the window of the dialog box
+    oid Target          # The target surface for the window (usually the desktop)
+    int(DF) Flags       # Special options
+    int(RSF) Response   # The resulting response from the user
+    int Value           # Resulting checkbox value if the Option field is set
+    int StickToFront    # Dialog window will be stick-to-front
+    oid PopOver         # Surface that the dialog should open relative to
+    int(DT) Type        # Indicates the type of dialog being presented
+    int TotalOptions    # Total number of options presented in the dialog.
+    int Width           # Preferred dialog width
+    int Height          # Preferred dialog height
+  ]],
+  [[
+   UBYTE    Title[80];          // Window title
+   UBYTE    Image[100];         // Image location
+   UBYTE    Icon[100];          // Window icon location
+   UBYTE    UserInput[256];     // Input area text string
+   UBYTE    UserResponse[256];  // Input area text string (response from user)
+   UBYTE    Option[80];         // Optional question / combobox
+   FIELD    ResponseField;      // The name of the field to write the response result
+   STRING   Message;            // String to display in the dialog window
+   STRING   Inject;             // Inject RIPPLE content into the dialog
+   STRING   Template;           // Document template injection
+   LONG     ButtonOffset;       // Current horizontal offset of the options
+   FUNCTION Feedback;           // Function callback when the Response field is set
+   struct   {
+      LONG Response;            // Response to return from the button.  May be NULL for 'do nothing'
+      UBYTE Text[40];           // Text to print inside the button.  Button is ignored if there is no text
+   } Options[6];
+   UBYTE    Active:1;
+   UBYTE    AwaitingResponse:1;
+   struct KeyStore *Vars;       // Variable management provided by strings module
+  ]])
+
+  methods("Menu", "Mn", {
+    { id=1, name="Switch" },
+    { id=2, name="SelectItem" },
+    { id=3, name="GetItem" }
+  })
+
+  class("Menu", { src="class_menu/menu.c", output="class_menu/menu_def.c" }, [[
+    double HoverDelay   # Optional hover feature for the Monitor field.
+    double AutoExpand   # Auto-expand delay, measured in seconds.
+    double FadeDelay    # The length of time allocated to special effects like fading.  Value in seconds
+    obj(MenuItem) Items # Items listed in the menu
+    obj(Font) Font      # The font being used in the menu
+    str Style           # Name of a menu graphics style to apply.
+    oid Target          # Target for the surface (e.g. desktop)
+    oid Parent          # Parent menu if this is a child of a master menu
+    oid Relative        # Relative surface that should be used for coordinate origins
+    oid KeyMonitor      # Surface to monitor for key presses
+    oid MenuSurface     # Surface for this menu
+    oid Monitor         # Surface to monitor for mouse clicks
+    int(MNF) Flags      # Optional flags
+    int VSpacing        # Amount of spacing between each menu item
+    int BreakHeight     # The amount of height to give to menu-break graphics
+    int FixedWidth      # Predetermined fixed-width, often used for things like combo-boxes
+    int LeftMargin      # Left hand margin inside the menu
+    int RightMargin     # Right hand margin inside the menu
+    int TopMargin       # Top margin inside the menu
+    int BottomMargin    # Bottom margin inside the menu
+    int HighlightLM     # Highlight rectangle left margin
+    int HighlightRM     # Highlight rectangle right margin
+    int ItemHeight      # Minimum allowable height for text based menu items
+    int ImageSize       # Size of the image column.  Icons will be generated to fit this size
+    int LineLimit       # Maximum number of displayed lines before the scrollbar kicks in
+    int BorderSize      # Size of the border at the menu edges
+    int SelectionIndex  # The index of the most recent item to be executed.  If zero, no item has been executed.
+    struct(RGB8) FontColour
+    struct(RGB8) FontHighlight
+    struct(RGB8) Highlight
+    struct(RGB8) HighlightBorder
+    int ImageGap       # Gap between the image column and text
+    int KeyGap         # Gap between the text and key columns
+    int ExtensionGap   # Gap between the extension column and the text or key column
+    int TextWidth      # Width of the widest text string
+    int KeyWidth       # Width of the widest key string
+  ]],
+  [[ PRV_MENU_FIELDS ]])
+
+  class("MenuItem", { src="class_menu/menuitem.c" }, [[
+   obj(MenuItem) Prev     # Previous menu item in chain
+   obj(MenuItem) Next     # Next menu item in chain
+   obj(Bitmap) Bitmap     # Icon to display in the menu item
+   obj(Menu) SubMenu      # If the item refers to a sub-menu, it will be pointed to here
+   str Path               # Location of a menu definition file if this item is a menu extension
+   str Name               # Internal name of the menu item (user specific, helpful for searching purposes and unique identification)
+   str Text               # Text to print in the menu item
+   int(MIF) Flags         # Optional flags
+   int Key                # Key value for this item
+   int(KQ) Qualifiers     # Qualifier key(s) for this item
+   int Index              # Item index.  Follows the order of the items as they are listed in the menu
+   int Group              # Grouping, relevant for checkmarking menu items
+   int ID                 # User-defined unique identifier ('id' attribute)
+   int Height             # Height of the item
+   struct(RGB8) Colour     # Font colour
+   struct(RGB8) Background # Background colour
+  ]],
+  [[ PRV_MENUITEM_FIELDS ]])
+
+  def_view()
+  def_clipboard()
+  def_fileview()
+end)

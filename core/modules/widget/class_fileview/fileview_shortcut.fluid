@@ -1,0 +1,54 @@
+
+   mSys = mod.load("core")
+
+function dir_selected(filedialog_id)
+   txtPath.string = filedialog.path
+end
+
+function browse()
+   txtPath = obj.find('txtPath')
+   if nz(txtPath) then
+      filedialog = obj.new('filedialog', { title='Select a Directory', path=txtPath.string,
+         flags='SelectFolder|NoFiles', okaytext='Select Dir' } )
+      filedialog.acShow()
+      subscribe(filedialog, 'activate', dir_selected)
+   end
+end
+
+   local dialog = obj.new('dialog', {
+      title   = 'Create Shortcut',
+      buttons = 'Cancel; OK',
+      icon    = 'folders/folder',
+      image   = 'icons:folders/folder(48)+overlays/link',
+      popover = arg('popover'),
+      feedback = function(Dialog, Response)
+         if (Response == RSF_OKAY) then
+            local txtName = obj.find('txtName')
+            local txtPath = obj.find('txtPath')
+            if nz(txtName) and nz(txtPath) then
+               mSys.SetVolume(AST_NAME, txtName.string, AST_PATH, txtPath.string, AST_FLAGS, ASSIGN_REPLACE|ASSIGN_SAVE)
+            end
+         end
+
+         dialog.response = Response
+      end,
+      _shortcut = arg('shortcut'),
+      _path     = arg('path'),
+      _message  = arg('message')
+   })
+
+   dialog.acDataFeed(0, DATA_XML, [[
+<inject>
+  <if notnull="[@message]">
+    <p><print value="[@message]"/></p>
+  </if>
+  <else>
+    <p>You can create a personal shortcut that will connect a file path to a named shortcut of your choosing.</p>
+    <p>Please enter the name of the shortcut and the folder that you would like to connect it to.</p>
+  </else>
+
+  <table columns="50,0" width="100%" vspacing="4">
+    <row><cell>Name:</cell><cell><input name="txtName" string="[@shortcut]" flags="!enteractivate|ignorefocus" width="180"><action static method="exec" procedure="dlgResponse" object="[dlgCustom]" args="8"/></input></cell></row>
+    <row><cell>Path:</cell><cell><p nowrap><input name="txtPath" string="[@path]" flags="!enteractivate|ignorefocus" width="180"><action static method="exec" procedure="dlgResponse" object="[dlgCustom]" args="8"/></input><a onclick="dlgCustom.browse"><image src="icons:folders/folder(16)" westgap="8"/></a></p></cell></row>
+  </table>
+</inject>]])

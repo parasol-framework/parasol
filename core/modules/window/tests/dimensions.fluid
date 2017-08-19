@@ -1,0 +1,100 @@
+﻿-- $FLUID:persistent
+
+// These tests are for: x, y, width, height, insidewidth, insideheight, margins, resize(), redimension()
+// Run it in the native desktop and on host operating systems to check that window positioning behaves as expected.
+
+function update_text(SurfaceID, Args, Ref)
+   if (Ref.text != nil) then
+      Ref.text.string = "Window: " .. Ref.window.width .. "x" .. Ref.window.height .. "\n" ..
+                        "Inside: " .. Ref.window.insidewidth .. "x" .. Ref.window.insideheight
+   end
+end
+
+function set_inside_size(ButtonID, Args, Window)
+   Window.insidewidth = 300
+   Window.insideheight = 200
+end
+
+function set_window_size(ButtonID, Args, Window)
+   Window.width = 300
+   Window.height = 200
+end
+
+function resize_window(ButtonID, Args, Window)
+   Window.x = 0
+   Window.y = 0
+   Window.acResize(300, 200, 0)
+end
+
+function redimension_window(ButtonID, Args, Window)
+   Window.acRedimension(0, 0, 0, 300, 200, 0)
+end
+
+   //-------------------------------------------------------------------------
+   // This test checks that inside width and height values are used correctly.
+   // It also constrains min/max dimensions so that the window is not resizeable.
+   //-------------------------------------------------------------------------
+
+   print("Showing fixed window.  The box should match up to the window edges, with allowances for margins.")
+
+   local win = obj.new("window", { insidewidth=200, insideheight=200, title="200x200", flags="!nomargins", minwidth=200, maxwidth=200, minheight=200, maxheight=200 } )
+   win.new("box", { x=win.leftmargin, y=win.topmargin, width=200, height=200, border="255,255,255" } )
+   win.acShow()
+   win.detach()
+
+   print("Reported window size, inside: " .. win.insidewidth .. "x" .. win.insideheight .. ", outside: " .. win.width .. "x" .. win.height)
+
+   //-------------------------------------------------------------------------
+   // This test checks that resizing and min/max settings work as desired.
+   // Note that min/max directly relate to the inside width/height
+   //-------------------------------------------------------------------------
+
+   print("Creating a dynamically resizeable window with min dimensions of 200x100, max dimensions 800x600")
+
+   local win = obj.new("window", { insidewidth=600, insideheight=480, title="Resizable window with margins on", minwidth=200, minheight=100, maxwidth=800, maxheight=600 } )
+   local surface = win.new("surface", { transparent=1, x=win.leftmargin, y=win.topmargin, xoffset=win.rightmargin, yoffset=win.bottommargin } )
+   surface.acShow()
+   surface.new("box", { x=0, y=0, width=win.minwidth, height=win.minheight, border="255,0,0" } ) // This box reflects the minimum dimensions.
+   surface.new("box", { x=0, y=0, width=win.maxwidth, height=win.maxheight, border="0,255,0" } ) // This box reflects the maximum dimensions.
+   local text = surface.new("text", { x=0, y=0, xoffset=0, yoffset=0, align="!center", colour="0,0,0", string="Window: " .. win.width .. "x" .. win.height .. "\nInside: " .. win.insidewidth .. "x" .. win.insideheight } )
+   assert(text, "Failed to create a text widget.")
+
+   local button1 = surface.new("button", { x=20, y=20, string="Set Inside W/H" } )
+   button1.subscribe("Activate", set_inside_size, win)
+   button1.acShow()
+
+   local button2 = surface.new("button", { x=button1.right+10, y=button1.y, string="Set W/H" } )
+   button2.subscribe("Activate", set_window_size, win)
+   button2.acShow()
+
+   local button3 = surface.new("button", { x=button2.right+10, y=button1.y, string="Resize W/H" } )
+   button3.subscribe("Activate", resize_window, win)
+   button3.acShow()
+
+   local button4 = surface.new("button", { x=button3.right+10, y=button1.y, string="Redimension W/H" } )
+   button4.subscribe("Activate", redimension_window, win)
+   button4.acShow()
+
+   win.acShow()
+   win.detach()
+
+   surface.subscribe("Redimension", update_text, { text=text, window=win }) // Update the text every time that the surface is resized
+
+   //-------------------------------------------------------------------------
+   // Same as previous test, but with margins off
+   //-------------------------------------------------------------------------
+
+   print("Creating a dynamically resizeable window with min dimensions of 200x100, max dimensions 800x600")
+
+   local win = obj.new("window", { insidewidth=600, insideheight=480, title="Resizable window with margins off", flags="!nomargins", minwidth=200, minheight=100, maxwidth=800, maxheight=600 } )
+   local surface = win.new("surface", { transparent=1, x=win.leftmargin, y=win.topmargin, xoffset=win.rightmargin, yoffset=win.bottommargin } )
+   surface.acShow()
+   surface.new("box", { x=0, y=0, width=win.minwidth, height=win.minheight, border="255,0,0" } ) // This box reflects the minimum dimensions.
+   surface.new("box", { x=0, y=0, width=win.maxwidth, height=win.maxheight, border="0,255,0" } ) // This box reflects the maximum dimensions.
+   local text = surface.new("text", { x=0, y=0, xoffset=0, yoffset=0, align="!center", colour="0,0,0", string="Window: " .. win.width .. "x" .. win.height .. "\nInside: " .. win.insidewidth .. "x" .. win.insideheight } )
+   win.acShow()
+   win.detach()
+
+   surface.subscribe("Redimension", update_text, { text=text, window=win }) // Update the text every time that the surface is resized
+
+   processMessages(-1)

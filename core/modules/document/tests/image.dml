@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+
+<dml type="program">
+  <*window insidewidth="400" insideheight="200" minwidth="300" minheight="80" flags="!AUTOQUIT" title="Image Test">
+    <surface colour="255,255,255" x="[owner.leftmargin]" y="[owner.topmargin]" xoffset="[owner.rightmargin]" yoffset="[owner.bottommargin]">
+      <document>
+<![NDATA[
+<?xml version="1.0"?>
+<body leftmargin="10" topmargin="10" bottommargin="10" rightmargin="10" face="Open Sans" fontsize="14"
+  colour="240,240,250" fontcolour="0,0,0"/>
+<page name="Index">
+  <table columns="48,0" width="100%">
+    <row>
+      <cell><image name="imgDialog" src="icons:items/checkmark(48)" align="left" eastgap="8"/></cell>
+      <cell><p>This test will display a simple SVG image on the left if it is working correctly.</p></cell>
+    </row>
+  </table>
+</page>
+]]>
+      </document>
+    </surface>
+  </window>
+</dml>
