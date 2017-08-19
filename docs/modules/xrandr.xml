@@ -1,0 +1,54 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="module.xsl"?>
+
+<book>
+  <info>
+    <name>XRandR</name>
+    <type>module</type>
+    <version>1</version>
+    <prefix>xr</prefix>
+    <copyright>Paul Manias © 2014-2017</copyright>
+  </info>
+
+  <function>
+    <name>GetDisplayMode</name>
+    <comment>Retrieve information of a display mode.</comment>
+    <prototype>APTR xrGetDisplayMode(LONG Index)</prototype>
+    <input>
+      <param type="LONG" name="Index">Index of the display mode to retrieve.</param>
+    </input>
+    <description>
+<p>This function returns the width, height and depth of a given display mode.</p>
+    </description>
+    <result type="APTR">An xrMode structure is returned or NULL on failure.</result>
+  </function>
+
+  <function>
+    <name>GetDisplayTotal</name>
+    <comment>Returns the total number of display modes.</comment>
+    <prototype>LONG xrGetDisplayTotal()</prototype>
+    <description>
+<p>This function returns the total number of known display modes.</p>
+    </description>
+    <result type="LONG">Returns the total number of known display modes.</result>
+  </function>
+
+  <function>
+    <name>SetDisplayMode</name>
+    <comment>Change the width and height of the display.</comment>
+    <prototype>ERROR xrSetDisplayMode(LONG * Width, LONG * Height)</prototype>
+    <input>
+      <param type="LONG *" name="Width">The required width of the display.</param>
+      <param type="LONG *" name="Height">The required height of the display.</param>
+    </input>
+    <description>
+<p>This function changes the width and height of the display to that indicated by the Width and Height parameters.  If the requested size does not match a known mode, the closest matching mode will be chosen.</p>
+    </description>
+    <result type="ERROR">
+      <error code="Okay">Operation successful.</error>
+    </result>
+  </function>
+
+  <structs>
+  </structs>
+</book>

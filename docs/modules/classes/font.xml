@@ -1,0 +1,539 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="class.xsl"?>
+
+<book>
+  <info>
+    <name>Font</name>
+    <type>class</type>
+    <module>Font</module>
+    <comment>Draws text in different type faces and styles.</comment>
+    <fileExtension>*.font|*.fnt|*.tty|*.fon</fileExtension>
+    <fileDescription>Font</fileDescription>
+    <version>1</version>
+    <id>7c96e4fc</id>
+    <idstring>ID_FONT</idstring>
+    <category>Graphics</category>
+    <include>modules/font.h</include>
+    <copyright>Paul Manias © 1998-2017</copyright>
+    <description>
+<p>The Font class is provided for the purpose of rendering strings to Bitmap graphics. It supports standard effects such as bold, italic and underlined text, along with extra features such as adjustable spacing, word alignment and outlining. Fixed-point bitmap fonts are supported through the Windows .fon file format and TrueType font files are supported for scaled font rendering.</p>
+<p>Fonts must be stored in the "fonts:" directory in order to be recognised and either in the "fixed" or "truetype" sub-directories as appropriate.  The process of font installation and file management is managed by functions supplied in the Font module.</p>
+<p>The Font class includes full support for the unicode character set through its support for UTF-8.  This gives you the added benefit of being able to support international character sets with ease, but you must be careful not to use character codes above #127 without being sure that they follow UTF-8 guidelines.  Find out more about UTF-8 at this <a href="http://www.cl.cam.ac.uk/~mgk25/unicode.html">web page</a>.</p>
+<p>Initialisation of a new font object can be as simple as declaring its <field>Point</field> size and <field>Face</field> name. It is necessary to bear in mind that fonts are resistant to alteration after initialisation, so all style and graphical selections must be set early.  For example, it is not possible to change styling from regular to bold format without the request being rejected.  To support multiple styles of the same font, you therefore need to create a font object for every style that you wish to support.  Basic features such as colour, the font string and text positioning are not affected by these restrictions.</p>
+<p>To draw a font string to a Bitmap object, start by setting the <field>Bitmap</field> and <field>String</field> fields.  The <field>X</field> and <field>Y</field> fields determine string positioning and you can also use the <field>Align</field> field to align a string to the right or center of the surface area.</p>
+<p>Finally, here is some clarification on some of the terminology used in the Font class and further documentation:</p>
+<list type="unsorted">
+<li>'Point' determines the size of a font.  The value is relative only to other point sizes of the same font face, i.e. two faces at the same point size are not necessarily the same height.</li>
+<li>'Height' represents the 'vertical bearing' or point of the font, expressed as a pixel value.  The height does not cover for any leading at the top of the font, or the gutter space used for the tails on characters like 'g' and 'y'.</li>
+<li>'Gutter' is the amount of space that a character can descend below the base line.  Characters like 'g' and 'y' are examples of characters that utilise the gutter space.  The gutter is also sometimes known as the "external leading" of a character.</li>
+<li>'LineSpacing' is the recommended pixel distance between each line that is printed with the font.</li>
+</list></description>
+    <source>
+      <file>class_font.c</file>
+    </source>
+  </info>
+
+  <actions>
+    <action>
+      <name>Draw</name>
+      <comment>Draws a font to a Bitmap.</comment>
+      <description>
+<p>When you are ready to draw a font to a Bitmap, use the Draw action. Drawing will start from the coordinates given in the <field>X</field> and <field>Y</field> fields, using the characters in the font <field>String</field>.  The result of calling Draw will depend on what type of Font you are using and how you have set up the font object.</p>
+      </description>
+      <result>
+        <error code="FieldNotSet">The Bitmap and/or String field has not been set.</error>
+        <error code="Okay">Operation successful.</error>
+      </result>
+    </action>
+
+  </actions>
+
+  <fields>
+    <field>
+      <name>Align</name>
+      <comment>Sets the position of a font string to an abstract alignment.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type lookup="ALIGN">INT</type>
+      <description>
+<p>Use this field to set the alignment of a font string within its surface area.  This is an abstract means of positioning in comparison to setting the X and Y fields directly.</p>
+<types lookup="ALIGN"/>
+      </description>
+    </field>
+
+    <field>
+      <name>AlignHeight</name>
+      <comment>The height to use when aligning the font string.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>INT</type>
+      <description>
+<p>If the VERTICAL or TOP alignment options are used in the <field>Align</field> field, the AlignHeight should be set so that the alignment of the font string can be correctly calculated.  If the AlignHeight is not defined, the target <field>Bitmap</field>'s height will be used when computing alignment.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>AlignWidth</name>
+      <comment>The width to use when aligning the font string.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>INT</type>
+      <description>
+<p>If the HORIZONTAL or RIGHT alignment options are used in the <field>Align</field> field, the AlignWidth should be set so that the alignment of the font string can be correctly calculated.  If the AlignWidth is not defined, the target <field>Bitmap</field>'s width will be used when computing alignment.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Angle</name>
+      <comment>A rotation angle to use when drawing scalable fonts.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>DOUBLE</type>
+      <description>
+<p>If the Angle field is set to any value other than zero, the font string will be rotated around (0,0) when it is drawn.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Ascent</name>
+      <comment>The total number of pixels above the baseline.</comment>
+      <access read="R">Read</access>
+      <type>INT</type>
+      <description>
+<p>The Ascent value reflects the total number of pixels above the baseline, including the <field>Leading</field> value.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Bitmap</name>
+      <comment>The destination Bitmap to use when drawing a font.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type class="Bitmap">*Bitmap</type>
+    </field>
+
+    <field>
+      <name>Bold</name>
+      <comment>Set to TRUE to enable bold styling.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>INT</type>
+      <description>
+<p>Setting the Bold field to TRUE prior to initialisation will enable bold styling.  This field is provided only for convenience - we recommend that you set the Style field for determining font styling where possible.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Colour</name>
+      <comment>The font colour in RGB format.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>RGB8</type>
+    </field>
+
+    <field>
+      <name>EndX</name>
+      <comment>Indicates the final horizontal coordinate after completing a draw operation.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>INT</type>
+      <description>
+<p>The EndX and EndY fields reflect the final coordinate of the font <field>String</field>, following the most recent call to the <action>Draw</action> action.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>EndY</name>
+      <comment>Indicates the final vertical coordinate after completing a draw operation.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>INT</type>
+      <description>
+<p>The EndX and EndY fields reflect the final coordinate of the font <field>String</field>, following the most recent call to the <action>Draw</action> action.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>EscapeCallback</name>
+      <comment>The routine defined here will be called when escape characters are encountered.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>APTR</type>
+      <description>
+<p>Escape characters can be embedded into font strings and a callback routine can be customised to respond to escape characters during the drawing process.  By setting the EscapeCallback field to a valid routine, the support for escape characters will be enabled.  The EscapeChar field defines the character that will be used to detect escape sequences (the default is 0x1b, the ASCII character set standard).</p>
+<p>The routine defined in the EscapeCallback field must follow this synopsis <code>ERROR EscapeCallback(*Font, STRING String, LONG *Advance, LONG *X, LONG *Y)</code></p>
+<p>The String parameter refers to the character position just after the escape code was encountered.  The string position can optionally be advanced to a new position by setting a value in the Advance parameter before the function returns. The X and Y indicate the next character drawing position and can also be adjusted before the function returns. A result of ERR_Okay will continue the character drawing process.  ERR_Terminate will abort the drawing process early. All other error codes will abort the process and the given error code will be returned as the draw action's result.</p>
+<p>During the escape callback routine, legal activities performed on the font object are limited to the following: Adjusting the outline, underline and base colours; adjusting the translucency level.  Performing actions not on the list may have a negative impact on the font drawing process.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>EscapeChar</name>
+      <comment>The routine defined here will be called when escape characters are encountered.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>STRING</type>
+      <description>
+<p>If the EscapeCallback field has been set, EscapeChar will define the character used to detect escape sequences.  The default value is 0x1b in the ASCII character set.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Face</name>
+      <comment>The name of a font face that is to be loaded on initialisation.</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type>STRING</type>
+      <description>
+<p>The name of the face that you wish to use for a font must be specified here.  If this field is not set then the initialisation process will use the user's preferred face.  A list of available faces can be obtained from the Font module's <function module="Font">GetList</function> function.</p>
+<p>For convenience, the face string can also be extended with extra parameters so that you can define point size and style information at the same time when writing this field.  Extra parameters are delimited with the colon character and must follow a set order defined as <code>face:pointsize:style:colour</code>.</p>
+<p>Here are some examples:</p>
+<pre>Open Sans:12:Bold Italic:#ff0000
+Courier:10
+Charter:120%::255,128,255
+</pre>
+<p>To load a font file that is not installed by default, replace the face parameter with the SRC command, followed by the font location: <code>SRC:exodus:data/images/shine:14:Italic</code></p>
+<p>Multiple font faces can be specified in CSV format, e.g. "Sans Serif,Open Sans", which allows the closest matching font to be selected if the first face is unavailable or unable to match the requested point size.  This feature can be very useful for pairing bitmap fonts with a scalable equivalent.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>FixedWidth</name>
+      <comment>Forces a fixed pixel width to use for all glyphs.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>INT</type>
+      <description>
+<p>The FixedWidth value imposes a preset pixel width for all glyphs in the font.  It is important to note that if the fixed width value is less than the widest glyph, the glyphs will overlap each other.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Flags</name>
+      <comment>Optional flags.</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type lookup="FTF">INT</type>
+      <description>
+<types lookup="FTF"/>
+      </description>
+    </field>
+
+    <field>
+      <name>FreeTypeFace</name>
+      <comment>Internal field used for exposing FreeType font handles.</comment>
+      <access read="G">Get</access>
+      <type>APTR</type>
+      <description>
+<p>This internal field is intended for use by code published in the standard distribution only.  It exposes the handle for a font that has been loaded by the FreeType library (FT_Face).</p>
+      </description>
+    </field>
+
+    <field>
+      <name>GlyphSpacing</name>
+      <comment>The amount of spacing between each character.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>INT</type>
+      <description>
+<p>This field represents the horizontal spacing between each glyph, technically known as kerning between each font character.  Fonts that have a high GlyphSpacing value will typically print out like this:</p>
+<pre>H e l l o   W o r l d !</pre>
+<p>On the other hand, using negative values in this field can cause text to be printed backwards.  The GlyphSpacing value is typically set to zero or one by default, depending on the font type that has been loaded.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Gutter</name>
+      <comment>The 'external leading' value, measured in pixels.  Applies to fixed fonts only.</comment>
+      <access read="R" write="I">Read/Init</access>
+      <type>INT</type>
+      <description>
+<p>This field reflects the 'external leading' value (also known as the 'gutter'), measured in pixels.  It applies to fixed fonts only.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>HDPI</name>
+      <comment>Defines the horizontal dots-per-inch of the target device.</comment>
+      <access read="R" write="I">Read/Init</access>
+      <type>INT</type>
+      <description>
+<p>The HDPI defines the horizontal dots-per-inch of the target device.  It is commonly set to a custom value when a font needs to target the DPI of a device such as a printer.</p>
+<p>By default the HDPI and VDPI values will reflect the DPI of the primary display.</p>
+<p>In the majority of cases the HDPI and VDPI should share the same value.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Height</name>
+      <comment>The point size of the font, expressed in pixels.</comment>
+      <access read="R" write="I">Read/Init</access>
+      <type>INT</type>
+      <description>
+<p>The point size of the font is expressed in this field as a pixel measurement.  It does not not include the leading value (refer to <field>Ascent</field> if leading is required).</p>
+<p>The height is calculated on initialisation and can be read at any time.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Italic</name>
+      <comment>Set to TRUE to enable italic styling.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>INT</type>
+      <description>
+<p>Setting the Italic field to TRUE prior to initialisation will enable italic styling.  This field is provided for convenience only - we recommend that you set the Style field for determining font styling where possible.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Leading</name>
+      <comment>'Internal leading' measured in pixels.  Applies to fixed fonts only.</comment>
+      <access read="R">Read</access>
+      <type>INT</type>
+    </field>
+
+    <field>
+      <name>LineCount</name>
+      <comment>The total number of lines in a font string.</comment>
+      <access read="G">Get</access>
+      <type>INT</type>
+      <description>
+<p>This field indicates the number of lines that are present in a font's String field.  If word wrapping is enabled, this will be taken into account in the resulting figure.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>LineSpacing</name>
+      <comment>The amount of spacing between each line.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>INT</type>
+      <description>
+<p>This field defines the amount of space between each line that is printed with a font object.  It is set automatically during initialisation to reflect the recommended distance between each line.   You can increase or decrease this value to make finer adjustments to the line spacing.  If negative, the text will be printed in a reverse vertical direction with each new line.</p>
+<p>If you set this field prior to initialisation, the value that you set will be added to the font's normal line-spacing, instead of over-riding it.  For instance, setting the LineSpacing to 2 will result in an extra 2 pixels being added to the font's spacing.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>MaxHeight</name>
+      <comment>The maximum possible pixel height per character.</comment>
+      <access read="R" write="I">Read/Init</access>
+      <type>INT</type>
+      <description>
+<p>This field reflects the maximum possible pixel height per character, covering the entire character set at the current point size.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Opacity</name>
+      <comment>Determines the level of translucency applied to a font.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>This field determines the translucency level of a font graphic.  The default setting is 100%, which means that the font will not be translucent.  Any other value that you set here will alter the impact of a font's graphic over the destination Bitmap.  High values will retain the boldness of the font, while low values can render it close to invisible.</p>
+<p>Please note that the use of translucency will always have an impact on the time it normally takes to draw a font.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Outline</name>
+      <comment>Defines the outline colour around a font.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>RGB8</type>
+      <description>
+<p>An outline can be drawn around a font by setting the Outline field to an RGB colour.  The outline can be turned off by writing this field with a NULL value or setting the alpha component to zero.  Outlining is currently supported for bitmap fonts only.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Path</name>
+      <comment>The path to a font file.</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type>STRING</type>
+      <description>
+<p>This field can be defined prior to initialisation.  It can be used to refer to the exact location of a font data file, in opposition to the normal practice of loading fonts that are installed on the host system.</p>
+<p>This feature is ideal for use when distributing custom fonts with an application.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Point</name>
+      <comment>The point size of a font.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The point size of a font defines the size of a font, relative to other point sizes for a particular font face.  For example, Arial point 8 is half the size of Arial point 16.  The point size between font families cannot be compared accurately due to designer discretion when it comes to determining font size.  For accurate point size in terms of pixels, please refer to the Height field.</p>
+<p>The unit of measure for point size is dependent on the target display.  For video displays, the point size translates directly into pixels.  When printing however, point size will translate to a certain number of dots on the page (the exact number of dots will depend on the printer device and final DPI).</p>
+<p>The Point field also supports proportional sizing based on the default value set by the system or user.  For instance if a Point value of 150% is specified and the default font size is 10, the final point size for the font will be 15. This feature is very important in order to support multiple devices at varying DPI's - i.e. mobile devices.  You can change the global point size for your application by calling SetDefaultSize() in the Font module.</p>
+<p>When setting the point size of a bitmap font, the system will try and find the closest matching value for the requested point size.  For instance, if you request a fixed font at point 11 and the closest size is point 8, the system will drop the font to point 8.  This does not impact upon scalable fonts, which can be measured to any point size.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>String</name>
+      <comment>The string to use when drawing a Font.</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type>STRING</type>
+      <description>
+<p>The String field must be defined in order to draw text with a font object.  A string must consist of a valid sequence of UTF-8 characters.  Line feeds are allowed (whenever a line feed is reached, the Draw action will start printing on the next line).  Drawing will stop when the null termination character is reached.</p>
+<p>If a string contains characters that are not supported by a font, those characters will be printed using a default character from the font.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>StrokeSize</name>
+      <comment>The strength of stroked outlines is defined here.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>DOUBLE</type>
+      <description>
+<p>Set the StrokeSize field to define the strength of the border surrounding an outlined font.  The default value is 1.0, which equates to about 1 or 2 pixels at 96 DPI.  The value acts as a multiplier, so 3.0 would be triple the default strength.</p>
+<p>This field affects scalable fonts only.  Bitmap fonts will always have a stroke size of 1 regardless of the value set here.</p>
+<p>This field does not activate font stroking on its own - the <field>Outline</field> field needs to be set in order for stroking to be activated.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Style</name>
+      <comment>Determines font styling.</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type>STRING</type>
+      <description>
+<p>The style of a font can be selected by setting the Style field.  This comes into effect only if the font actually supports the specified style as part of its graphics set.  If the style is unsupported, the regular styling of the face will be used on initialisation.</p>
+<p>Bitmap fonts are a special case if a bold or italic style is selected.  In this situation the system can automatically convert the font to that style even if the correct graphics set does not exist.</p>
+<p>Typical font styles are "Bold", "Bold Italic", "Italic" and "Regular" (the default).  TrueType fonts can consist of any style that the designer chooses, such as "Narrow" or "Wide", so check the SystemFonts object if you need to analyse available styles.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>TabSize</name>
+      <comment>Defines the tab size to use when drawing and manipulating a font string.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>INT</type>
+      <description>
+<p>The TabSize value controls the interval between tabs, measured in characters.  If the font is scalable, the character width of 'o' is used for character measurement.</p>
+<p>The default tab size is 8 and the TabSize only comes into effect when tab characters are used in the font <field>String</field>.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>TotalChars</name>
+      <comment>Reflects the total number of character glyphs that are available by the font object.</comment>
+      <access read="R">Read</access>
+      <type>INT</type>
+      <description>
+<p>The total number of character glyphs that are available is reflected in this field.  The font must have been initialised before the count is known.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Underline</name>
+      <comment>Enables font underlining when set.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>RGB8</type>
+      <description>
+<p>To underline a font string, set the Underline field to the colour that should be used to draw the underline. Underlining can be turned off by writing this field with a NULL value or setting the alpha component to zero.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>UserData</name>
+      <comment>Optional storage variable for user data; ignored by the Font class.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>APTR</type>
+    </field>
+
+    <field>
+      <name>VDPI</name>
+      <comment>Defines the vertical dots-per-inch of the target device.</comment>
+      <access read="R" write="I">Read/Init</access>
+      <type>INT</type>
+      <description>
+<p>The VDPI defines the vertical dots-per-inch of the target device.  It is commonly set to a custom value when a font needs to target the DPI of a device such as a printer.</p>
+<p>By default the HDPI and VDPI values will reflect the DPI of the primary display.</p>
+<p>In the majority of cases the HDPI and VDPI should share the same value.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Width</name>
+      <comment>Returns the pixel width of a string.</comment>
+      <access read="G">Get</access>
+      <type>INT</type>
+      <description>
+<p>Read this virtual field to obtain the pixel width of a font string.  You must have already set a string in the font for this to work, or a width of zero will be returned.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>WrapCallback</name>
+      <comment>The routine defined here will be called when the wordwrap boundary is encountered.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type prototype="ERROR (*WrapCallback)(struct rkFont *, LONG *, LONG *)">FUNCTION *</type>
+      <description>
+<p>Customisation of a font's word-wrap behaviour can be achieved by defining a word-wrap callback routine.  If word-wrapping has been enabled via the WORDWRAP flag, the WrapCallback routine will be called when the word-wrap boundary is encountered.  The routine defined in the WrapCallback field must follow this synopsis: <code>ERROR WrapCallback(*Font, STRING String, LONG *X, LONG *Y)</code>.</p>
+<p>The String value reflects the current position within the font string. The X and Y indicate the coordinates at which the wordwrap has occurred.  It is assumed that the routine will update the coordinates to reflect the position at which the font should continue drawing.  If this is undesirable, returning ERR_NothingDone will cause the the font object to automatically update the coordinates for you.  Returning a value of ERR_Terminate will abort the drawing process early.  All other error codes will abort the process and the given error code will be returned as the draw action's result.</p>
+<p>During the callback routine, legal activities against the font object are limited to the following:  Adjusting the outline, underline and base colours; adjusting the translucency level; adjusting the WrapEdge field. Other types of activity may have a negative impact on the font drawing process.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>WrapEdge</name>
+      <comment>Enables word wrapping at a given boundary.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>INT</type>
+      <description>
+<p>Word wrapping is enabled by setting the WrapEdge field to a value greater than zero.  Wrapping occurs whenever the right-most edge of any word in the font string extends past the coordinate indicated by the WrapEdge.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>X</name>
+      <comment>The starting horizontal position when drawing the font string.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>INT</type>
+      <description>
+<p>When drawing font strings, the X and Y fields define the position that the string will be drawn to in the target surface.  The default coordinates are (0,0).</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Y</name>
+      <comment>The starting vertical position when drawing the font string.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>INT</type>
+      <description>
+<p>When drawing font strings, the X and Y fields define the position that the string will be drawn to in the target surface.  The default coordinates are (0,0).</p>
+      </description>
+    </field>
+
+    <field>
+      <name>YOffset</name>
+      <comment>Additional offset value that is added to vertically aligned fonts.</comment>
+      <access read="G">Get</access>
+      <type>INT</type>
+      <description>
+<p>Fonts that are aligned vertically (either in the center or bottom edge of the drawing area) will have a vertical offset value.  Reading that value from this field and adding it to the Y field will give you an accurate reading of where the string will be drawn.</p>
+      </description>
+    </field>
+
+  </fields>
+  <types>
+    <constants lookup="FTF" comment="Font flags">
+      <const name="ANTIALIAS">Smooth the edges of scalable fonts.</const>
+      <const name="SCALABLE">This is set if the font is scalable, otherwise assume fixed.</const>
+      <const name="BOLD">Font is described as having a bold weight (read only).</const>
+      <const name="KERNING">The loaded font is embedded with kerning information (read only).</const>
+      <const name="ITALIC">Font is described as using italics (read only).</const>
+      <const name="ALLOW_SCALE">Allows switching to a suitable scalable font if a fixed point size is unavailable.  Same as ending a font face with the '*' wildcard.</const>
+      <const name="HEAVY_LINE">Underline the font with a double-sized line, using the colour defined in UnderlineRGB.</const>
+      <const name="QUICK_ALIAS">Quick anti-aliasing is useful for games and can be enabled if the background is black.</const>
+      <const name="BASE_LINE">The Font's Y coordinate is the base line.</const>
+      <const name="PREFER_SCALED">A scaled font is preferred over the equivalent fixed size font.</const>
+      <const name="PREFER_FIXED">A fixed size font (monochrome, no transforms) is preferred to the equivalent scalable font.</const>
+      <const name="CHAR_CLIP">Clip words by adding dots to the end of the string.</const>
+      <const name="SMOOTH">Smooth the edges of scalable fonts.</const>
+    </constants>
+
+    <constants lookup="FSS" comment="Options for the StringSize() function.">
+      <const name="LINE">Terminate operation at the first line feed or word-wrap.</const>
+      <const name="ALL">Process all characters.</const>
+    </constants>
+
+  </types>
+  <structs>
+    <struct name="FontList" comment="For GetList(), describes a system font.">
+      <field name="Next" type="struct FontList *">Pointer to the next entry in the list.</field>
+      <field name="Name" type="STRING">The name of the font face.</field>
+      <field name="Points" type="UBYTE *" size="0">Pointer to an array of fixed point sizes supported by the font.</field>
+      <field name="Styles" type="STRING">Supported styles are listed here in CSV format.</field>
+      <field name="Scalable" type="BYTE">TRUE if the font is scalable.</field>
+      <field name="Reserved1" type="BYTE">Do not use.</field>
+      <field name="Reserved2" type="WORD">Do not use.</field>
+    </struct>
+
+  </structs>
+</book>

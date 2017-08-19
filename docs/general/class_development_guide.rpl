@@ -1,0 +1,299 @@
+<?xml version="1.0"?>
+
+<info>
+ <title>Class Development Guide</title>
+ <author>Rocklyte Systems</author>
+ <keywords>class, kernel, development</keywords>
+ <description>A detailed description on how to develop classes for the Rocklyte SDK.</description>
+</info>
+
+<include src="inc_style.rpl"/>
+
+<page>
+
+<startpage title="Class Development Guide"/>
+
+<p>Before reading this guide, please refer to the <a href="module_development_guide.rpl">Module Development Guide</a> and follow the first two steps required for module development.  The information on this document assumes that you have a reasonable understanding of module construction, so make sure that you meet this requirement before continuing.</p>
+
+<h2>The Importance of Good Design</h2>
+
+<p>At the beginning of your development cycle, the design of your class should take precedence above all else.  Poor design will result in time-consuming issues becoming prevalent at later stages of development.  Class development requires that:</p>
+
+<list type="bullet">
+  <li>A clear decision is made on what problem the class is solving and the extent of the functionality that you are going to provide.  Are you developing a base-class or a sub-class?  Base classes that handle data, particularly those that are file centric, often need to be designed to support sub-classes.  Good design is imperative in these cases, or the class will not be future proof.</li>
+  <li>You must define the fields that will be exposed to the developer, along with details on the field type, name and permission settings.  Adhering to existing field naming standards is imperative so that developers can continue to rely on consistent naming amongst all classes.</li>
+  <li>You must decide what actions will be supported, and how the class will behave when those actions are called.</li>
+  <li>If the class will support methods, you must define the method names and argument settings that will be supported.  Take care in ensuring that each method is absolutely necessary and that the functionality can't be implemented as an action or field.</li>
+  <li>Due to the complexity of classes, class design usually requires a number of iterations to refine the design structure during development, testing and usage.  Ideally you should have plans in place to keep the source code maintained until it reaches maturity.</li>
+</list>
+
+<h2>Defining the Class Structure</h2>
+
+<p>There are two sets of definitions that you need to provide in order to define a class structure - the physical structure that you will use internally, and the virtual structure that will be used to present your class to external programs.</p>
+
+<p>The physical structure is defined by a standard C struct. The following is a shortened example taken from the File class:</p>
+
+<indent><code>typedef struct File {
+   OBJECT_HEADER     /* Class header */
+   LONG Position;    /* Current position in file */
+   LONG Flags;       /* File opening flags */
+
+   #ifdef PRV_FILE
+   LONG Size;
+   #endif
+} objFile;</code></indent>
+
+<p>The structure must start with OBJECT_HEADER.  This is a  pre-defined header that all classes must define for object management purposes. If the object header is not defined, then the class will crash any program that attempts to use it.  For more information on the object header definition, refer to the <a href="moo_in_depth.rpl#StructureLayout">Object Management In Depth</a> document.</p>
+
+<p>Immediately after the object header, you can define public fields that are directly accessible through GetField() or SetField() functions, or via direct structure access. Direct access means that when a program accesses the field for read or write purposes it does so directly, and is not by-passed through any extra functionality as determined by the class.  Public fields must be defined as 32-bit data types or larger (i.e. no BYTE or WORD sized values) because the object kernel functions have been optimised to deal with larger data types.</p>
+
+<p>After the public fields, you can define the private fields that are only accessible by the class source code.  In our example we declared the Size field as being private.  There are no restrictions on the size of data types  used for private fields, because they are used for internal use only.</p>
+
+<p>After defining the physical structure you will need to declare the object definition that external programs will have access to. To do this you need to list all of the fields that are going to be available, including information on each field name, type, permissions and read/write functionality (in that order).  The following example is taken from the File class:</p>
+
+<indent><code>struct FieldArray clFields[] = {
+   { "Position",      0, FDF_LONG|FDF_R,       0,          NULL, NULL },
+   { "Flags",         0, FDF_LONGFLAGS|FDF_RI, &amp;FileFlags, NULL, NULL },
+   /*** Virtual fields ***/
+   { "Comment",       0, FDF_STRING|FDF_RW, 0, GET_Comment, SET_Comment },
+   { "Date",          0, FDF_OBJECT|FDF_RW, 0, GET_Date,    SET_Date },
+   { "DirectoryList", 0, FDF_POINTER|FDF_R, 0, GET_DirectoryList, NULL },
+   { "FileList",      0, FDF_POINTER|FDF_R, 0, GET_FileList,    NULL },
+   { "Location",      0, FDF_STRING|FDF_RI, 0, GET_Location,    SET_Location },
+   { "Permissions",   0, FDF_LONG|FDF_RW,   0, GET_Permissions, SET_Permissions },
+   { "Size",          0, FDF_LONG|FDF_R,    0, GET_Size, NULL },
+   END_FIELD
+};</code></indent>
+
+<p>The first two parameters define the field name and the field ID. The field ID is reserved for special use - the object kernel will assign field ID's automatically to each field, so you should set this parameter to 0. The FDF flags define the datatype of each field, their permissions and other extra information. The parameter following these flags is an optional field that is used in conjunction with the type definitions in some cases.</p>
+
+<p>The following tables list all FDF field types and their function:</p>
+
+<indent>
+<p><table spacing="0" padding="2" width="100%" columns="140,0">
+<row><cell><b><u>Data&nbsp;Types</u></b></cell><cell><b><u>Description</u></b></cell></row>
+<row><cell>LONG</cell><cell>Set if the field is a 32-bit integer.</cell></row>
+<row><cell>LARGE</cell><cell>Set if the field is a 64-bit integer.</cell></row>
+<row><cell>FLOAT</cell><cell>Set if the field is a 32-bit floating point number.</cell></row>
+<row><cell>DOUBLE</cell><cell>Set if the field is a 64-bit floating point number.</cell></row>
+<row><cell>POINTER</cell><cell>Set if the field points to a memory address. Note: If the field represents a string, use FDF_STRING rather than FDF_POINTER.</cell></row>
+<row><cell>STRING</cell><cell>This flag must be used if the field points to null-terminated string.</cell></row>
+<row><cell>OBJECT</cell><cell>The field points to an object address.</cell></row>
+<row><cell>OBJECTID</cell><cell>The field refers to an object via a 32-bit object ID.</cell></row>
+<row><cell>CHILD</cell><cell>The field points to an object that is a child of the class.</cell></row>
+<row><cell>VARIABLE</cell><cell>Set this flag if the field supports multiple data types. You must also elect a 'preferential' data type by specifying one of the aforementioned flags in conjunction with the FDF_VARIABLE setting.</cell></row>
+</table></p>
+
+<p><table spacing="0" padding="2" width="100%" columns="140,0">
+<row><cell><b><u>Security&nbsp;Flags</u></b></cell><cell><b><u>Description</u></b></cell></row>
+<row><cell>READ</cell><cell>Set if the field is readable. This flag can be abbreviated to FDF_R, or in conjunction with the next two flags, FDF_RI and FDF_RW.</cell></row>
+<row><cell>WRITE</cell><cell>Set if the field is writeable. This flag can be abbreviated to FDF_W.</cell></row>
+<row><cell>INIT</cell><cell>Set if the field is writeable prior to initialisation. After initialisation, the field will no longer be writeable.</cell></row>
+</table></p>
+
+<p><table  spacing="0" padding="2" width="100%" columns="140,0">
+<row><cell><b><u>Special&nbsp;Flags</u></b></cell><td><b><u>Description</u></b></cell></row>
+<row><cell>ALLOC</cell><cell>This flag is required if the field returns an allocation of memory or an object to the user.  Failure to set this flag will cause memory leaks in scripts such as Fluid, which rely on accurate resource allocation information.</cell></row>
+<row><cell>FLAGS</cell><cell>Set this flag if the field will represent a set of flags. You are required to set the option parameter to point to a flag definition list if you use this setting.</cell></row>
+<row><cell>HEX</cell><cell>Set this flag if the field only holds meaning when interpreted as a hexadecimal number.</cell></row>
+<row><cell>LOOKUP</cell><cell>Set this flag if the field will represent a value of a lookup table. You are required to set the option parameter to a lookup definition list if you use this setting.</cell></row>
+<row><cell>PERCENTAGE</cell><cell>This setting can be used in conjunction with integer and float types that represent percentages.</cell></row>
+<row><cell>SYNONYM</cell><cell>The field name is a synonym for one declared elsewhere in the class definition.</cell></row>
+</table></p>
+</indent>
+
+<p><i>Note: You must set at least one of the data types and one of the security flags for each field definition, or the object kernel will refuse to create the class.</i></p>
+
+<p>The last two parameters in the field definition list are for re-routing read and write operations through to functions that will manage the fields for your class. These are commonly known as Get and Set routines because they can only be called by GetField(), SetField() and similar functions. You may have noticed that the FieldArray structure that we defined earlier contained the comment "/*** Virtual Fields ***/", which was used to separate the first two fields from the following seven. A virtual field is defined as a field that is only accessible through Get and Set operations. Thus the word 'virtual' refers to the fact that these field types have no discernible physical location to external code, ensuring that they cannot divert past any of the functional restrictions that you need to impose. In many cases, virtual fields are used as an alternative to methods when data retrieval is involved.</p>
+
+<p>The function synopsis for Get and Set routines differ according to their related data types. The following table illustrates the correct synopsis to use in each case:</p>
+
+<indent>
+<table spacing="0" padding="2" width="100%" columns="140,0">
+  <row><cell><b><u>Data&nbsp;Type</u></b></cell><cell><b><u>Synopsis</u></b></cell></row>
+  <row><cell>LONG, OBJECTID</cell><cell><code>ERROR GET_Field(OBJECTPTR, LONG *)<br/>ERROR SET_Field(OBJECTPTR, LONG)</code></cell></row>
+  <row><cell>LARGE</cell><cell><code>ERROR GET_Field(OBJECTPTR, LARGE *)<br/>ERROR SET_Field(OBJECTPTR, LARGE)</code></cell></row>
+  <row><cell>FLOAT</cell><cell><code>ERROR GET_Field(OBJECTPTR, FLOAT*)<br/>ERROR SET_Field(OBJECTPTR, FLOAT)</code></cell></row>
+  <row><cell>DOUBLE</cell><cell><code>ERROR GET_Field(OBJECTPTR, DOUBLE *)<br/>ERROR SET_Field(OBJECTPTR, DOUBLE)</code></cell></row>
+  <row><cell>POINTER, OBJECT, CHILD</cell><cell><code>ERROR GET_Field(OBJECTPTR, APTR *)<br/>ERROR SET_Field(OBJECTPTR, APTR)</code></cell></row>
+  <row><cell>STRING</cell><cell><code>ERROR GET_Field(OBJECTPTR, STRING *)<br/>ERROR SET_Field(OBJECTPTR, STRING)</code></cell></row>
+  <row><cell>VARIABLE</cell><cell><code>ERROR GET_Field(OBJECTPTR, struct Variable *)<br/>ERROR SET_Field(OBJECTPTR, struct Variable *)</code></cell></row>
+</table>
+</indent>
+
+<p>Your Get and Set routines should always return ERR_Okay unless an error occurs during processing, in which case a relevant error code should be returned. The function declarations that we've outlined should be self-explanatory except for the variable type, which is a special case. If a program is attempting to update one of your variable fields then it can send you any one of the recognised field types.  It is your responsibility to interpret that information. In most cases you will not be able to support every type, so you can exercise discretion in choosing what types you are going to support.  You can find out what field type an external program has given you by checking the variable structure's Type field (which contains FDF flags), then read the relative data field from the variable structure and convert it to your preferred format. The variable structure is arranged as follows:</p>
+
+<indent><code>struct Variable {
+   LONG   Type;
+   LARGE  Large;
+   DOUBLE Double;
+   APTR   Pointer;
+};</code></indent>
+
+<p>If a program attempts to read a variable field then you must return the information in the requested format by reading the Type field, then set either the Large, Double or Pointer field according to the request.</p>
+
+<h3>Returning Allocations From A Field</h3>
+
+<p>When a process reads a field using the GetField* range of functions, access to the object is direct and does not result in a resource context switch to that object.  This means that if you allocate memory in a 'get' routine, the allocation will be tracked to the process that made the call, not the class object.  This design appears to be inconsistent with other areas of the system, but is necessary in order to allow you to return resources to the caller and have that resource remain in the system after the object is destroyed.  In some circumstances however, you may need to allocate resources that are private to your object and not intended for return to the caller.  In order to track allocated resources back to your object, use the <function mod="kernel">SetContext</> function and pass it your object address.  After making the necessary allocations, call SetContext() again with the result that you received from the original SetContext() call.  The resource tracker will then be back to its normal state.</p>
+
+<p>Note that when returning an allocated resource to the user via a 'get' function, you must provide adequate documentation, so that the developer will know that the resource needs to be freed manually.  Make sure that you set the ALLOC flag in the field definition, as this is required for all field types that return allocated memory or objects to the caller.</p>
+
+<h2>Action and Method Support</h2>
+
+<p>After defining the class structure you need to consider what actions you are going to support. Generally you will want to support the Free, Init and NewObject actions, which form the back-bone of object management.  There are roughly 60 pre-defined actions available, so to consider which of those are appropriate to support for your class type, please refer to the <a href="action_support_guide.rpl">Action Support Guide</a>.</p>
+
+<p>You will need to create an action list that references the supported actions. The following example illustrates a code segment taken from the File class:</p>
+
+<indent><code>struct ActionArray clActions[] = {
+   { AC_AccessObject,  FILE_AccessObject },
+   { AC_Free,          FILE_Free },
+   { AC_Init,          FILE_Init },
+   { AC_NewObject,     FILE_NewObject },
+   { AC_Read,          FILE_Read },
+   { AC_ReleaseObject, FILE_ReleaseObject },
+   { AC_Seek,          FILE_Seek },
+   { AC_Write,         FILE_Write },
+   { NULL, NULL }
+};</code></indent>
+
+<p>The synopsis used for each action support function is based on the following template:</p>
+
+<indent><code>ERROR CLASS_ActionName(struct ClassName *Self, APTR Args);</code></indent>
+
+<p>'ClassName' should refer to the structure that defines your class.  The 'Args' parameter is defined according to the action, if it supports arguments.  For instance, the Read action uses the argument structure 'acRead'. Example:</p>
+
+<indent><code>ERROR FILE_Read(struct File *Self, struct acRead *Args);</code></indent>
+
+<p>If an action does not provide arguments, set the Args definition to "APTR Void". Note that each support function is required to return an error code. If the routine's execution is   successful, return ERR_Okay. If a failure occurs, return one of the values listed in the <a href="error_codes.rpl">Error Codes</a> document.</p>
+
+<p>The approach for defining methods is a lot more complex. Each method that you create needs to be defined in the header file associated with the class. This requires that you specify the name and ID for each method, with ID's starting at a value of -1 and working their way down. You will also need to define the argument structures used for each method. The following example from the File class' include header illustrates:</p>
+
+<indent><code>#define MTF_ReadWord  -1
+#define MTF_ReadLong  -2
+#define MTF_Delete    -3
+#define MTF_MoveFile  -4
+#define MTF_CopyFile  -5
+
+struct mtReadWord { LONG Result; };
+struct mtReadLong { LONG Result; };
+struct mtMoveFile { STRING Destination; };
+struct mtCopyFile { STRING Destination; };</code></indent>
+
+<p>You also need to define each method as part of your class definition, or the object kernel will not allow external programs to call them. This involves creating a method list, as illustrated here:</p>
+
+<indent><code>struct MethodArray clMethods[] = {
+   { MTF_CopyFile, FILE_CopyFile, "CopyFile", argsCopyFile, sizeof(struct mtCopyFile) },
+   { MTF_Delete,   FILE_Delete,   "Delete",   NULL,         NULL },
+   { MTF_MoveFile, FILE_MoveFile, "MoveFile", argsMoveFile, sizeof(struct mtMoveFile) },
+   { MTF_ReadLong, FILE_ReadLong, "ReadLong", argsReadLong, sizeof(struct mtReadLong) },
+   { MTF_ReadWord, FILE_ReadWord, "ReadWord", argsReadWord, sizeof(struct mtReadWord) },
+   { NULL, NULL, NULL, NULL, NULL }
+};</code></indent>
+
+<p>The list arrangement is self-explanatory, but correctly defining the arguments for each method is extremely important. The definition format is identical to describing functions as outlined in the <a href="module_development_guide.rpl">Module Development Guide</a>, but you don't need to define the result type as methods always return a result of type ERROR. The following definitions apply to the methods that we've listed for the File class:</p>
+
+<indent><code>struct FunctionField argsCopyFile[] = {
+   {"Destination", ARG_STR },
+   { NULL, NULL }
+};
+
+struct FunctionField argsMoveFile[] = {
+   {"Destination", ARG_STR },
+   { NULL, NULL }
+};
+
+struct FunctionField argsReadLong[] = {
+   {"Data", ARG_LONGRESULT },
+   { NULL, NULL }
+};
+
+struct FunctionField argsReadWord[] = {
+   {"Data", ARG_LONGRESULT },
+   { NULL, NULL }
+};</code></indent>
+
+<p>In this example the definitions were straight-forward, but more care is needed if your methods return or accept arguments that deal with large chunks of data (as an example, the Read and Write actions are routines that are based around buffered data). Designing these particular method types correctly is extremely important as the ActionMsg() function needs to be able to determine the size of buffers being sent or returned through the messaging system. If you fail to define data-based methods correctly, the messaging system will not interpret them as you might expect.</p>
+
+<p>To create a correct definition for a method that writes data to a buffer provided by the user, you need to organise the arguments so that the buffer pointer argument is immediately followed by an integer that indicates the size of the buffer provided by the user. Take the following method structure for example:</p>
+
+<indent><code>struct ReadInformation { LONG Bytes; APTR Buffer; LONG BufferSize; LONG BytesRead; };</code></indent>
+
+<p>You will notice that the BufferSize argument immediately follows the Buffer pointer. The correct argument definition for this synopsis is:</p>
+
+<indent><code>struct FunctionField argsReadInformation[] = {
+   { "Bytes",      ARG_LONG },
+   { "Buffer",     ARG_PTRBUFFER },
+   { "BufferSize", ARG_BUFSIZE },
+   { "BytesRead",  ARG_LONGRESULT },
+   { NULL, NULL }
+};</code></indent>
+
+<p>To create a correct definition for a method that receives data from the user, the synopsis rules are identical to those already outlined, but the argument definition is slightly different. Example:</p>
+
+<indent><code>struct WriteInformation { LONG Bytes; APTR Buffer; LONG BufferSize; LONG BytesRead; };</code></indent>
+
+<p>This synopsis would be represented as:</p>
+
+<indent><code>struct FunctionField argsWriteInformation[] = {
+   { "Bytes",      ARG_LONG },
+   { "Buffer",     ARG_PTR },
+   { "BufferSize", ARG_BUFSIZE },
+   { "BytesRead",  ARG_LONGRESULT },
+   { NULL, NULL }
+};</code></indent>
+
+<p>If you didn't spot the difference, it's in the second argument of the definition list. While it may seem insignificant, if the definition is incorrect then the messaging system will give your class and the calling program odd results.  Therefore, take reasonable care in creating your definitions or you may introduce bugs that can be difficult to detect.</p>
+
+<h2>Initialising the Class</h2>
+
+<p>By this stage you've defined the class, but you still need to initialise it for the object kernel. Class initialisation is performed in the Init() routine of your module, either by using the <function mod="kernel">CreateObject</> function, or through combined use of <function mod="kernel">NewObject</> and the Init action. The following code segment illustrates how we might initialise our File class:</p>
+
+<indent><code>CreateObject(ID_CLASS, NULL, &amp;clFile, NULL,
+   FID_BaseClassID|TLONG, ID_FILE,
+   FID_Version|TFLOAT,    VER_FILE,
+   FID_Name|TSTRING,      "File",
+   FID_Actions|TPTR,      clActions,
+   FID_Methods|TPTR,      clMethods,
+   FID_Fields|TPTR,       clFields,
+   FID_Size|TLONG,        sizeof(struct File),
+   TAGEND);</code></indent>
+
+<p>You'll also need to free the class in the Expunge sequence of your module.  For instance:</p>
+
+<indent><code>ERROR CMDExpunge(void)
+{
+   if (clFile) { acFree(clFile); clFile = NULL; }
+   return(ERR_Okay);
+}</code></indent>
+
+<p>For more information on class initialisation, you may want to check the <a href="../classes/index.rpl">Class Manual</a> to see what fields you can set when creating a new class.</p>
+
+<h2>Sub-Class Development</h2>
+
+<p>A sub-class is typically created in situations where a base-class exists for a generic purpose and only offers support for a specific type of data file or hardware. For instance, the Picture base class is <i>designed to support all image file types</i>, yet it <i>only supports one file format in the base class</i>. In order to support other file formats, sub-classes have to be developed which attach themselves to the Picture class and offer support for file types like PNG, JPEG, GIF and others.</p>
+
+<p>Designing a sub-class is a fairly simple process as you won't need to define a class structure, and in the case of file support, you only need to support actions and methods that are related to data interpretation (typically Init, Query and SaveToObject actions are all that need to be supported).  Unmanaged actions are handled by the base class.</p>
+
+<p>The following code segment shows how the JPEG sub-class is initialised:</p>
+
+<indent><code>CreateObject(ID_CLASS, NULL, &amp;clJEPG, NULL,
+   FID_BaseClassID|TLONG,    ID_PICTURE,
+   FID_SubClassID|TLONG,     ID_JPEG,
+   FID_Name|TSTRING,         "JPEG",
+   FID_Category|TLONG,       CCF_GRAPHICS,
+   FID_FileExtension|TSTR,   "*.jpeg|*.jpeg|*.jfif",
+   FID_FileDescription|TSTR, "JPEG Picture",
+   FID_FileHeader|TSTR,      "[0:$ffd8ffe0]|[0:$ffd8ffe1]|[0:$ffd8fffe]",
+   FID_Actions|TPTR,         clActions,
+   FID_Path|TSTR,            "classes:graphics/jpeg",
+   TAGEND);</code></indent>
+
+<p>Note the BaseClassID and SubClassID settings - you must set these correctly or the base-class will fail to recognise you, and in some cases the object kernel may refuse to initialise your sub-class. If you don't know the ID of your base-class, use the <function mod="kernel">FindClass</> function to obtain it, and if you don't have an official ID for the sub-class, allocate a dynamic one using the <function mod="kernel">AllocateClassID</> function.</p>
+
+<p>If you'd like to see a working example, refer to the source code for the PCX sub-class.</p>
+
+<h2>System Recognition</h2>
+
+<p>Once you can compile your class without errors, you will need to test it.  This requires that you register the class with the object kernel so that it knows where the relevant binary is located.  A simple way to do this is to write a quick script or program that creates a Module object to load the class binary.  The object kernel will determine that the class is unregistered and adds it to the system database.  Another method is to delete the system:config/kernel/modules.bin and system:config/kernel/classes.bin database files.  The next time that you run an application, the databases will be rebuilt and your module will be queried as part of this process.</p>
+
+</page>

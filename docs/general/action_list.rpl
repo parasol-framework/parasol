@@ -1,0 +1,139 @@
+<?xml version="1.0"?>
+
+<info>
+ <title>Action User Guide</title>
+ <author>Rocklyte Systems</author>
+ <description>List of all officially documented actions.</description>
+ <keywords>action, kernel, list, object</keywords>
+</info>
+
+<include src="inc_style.rpl"/>
+
+<template name="navigation">
+  <table columns="100,1,4,0" width="100%" padding="15">
+    <row>
+      <cell colour="245,245,245">
+      <font face="totem">
+        <a href="action_list.rpl">Overview</a><br/><br/>
+
+        <if statement="[xml.count:/action] > 0">
+          <b><u>Action List</u></b><br/>
+          <repeat count="[xml.count:/action]">
+            <if isnull="[xml.exists:/action([%index])/@private]">
+              <a href="?xml=[@xml]&amp;action=[xml./action([%index])/name]"><print value="[xml./action([%index])/name]"/></a><br/>
+            </if>
+          </repeat>
+        </if>
+      </font>
+      </cell>
+      <cell colour="190,190,190"></cell>
+      <cell/>
+      <cell><inject/></cell>
+    </row>
+  </table>
+</template>
+
+<page>
+  <!-- If an action is specified, display the documentation for that action -->
+
+  <if notnull="[@action]">
+    <obj:xml name="xml" src="[%path]action_list.xml" flags="!wellformed"/>
+    <if not exists="[xml]">
+      <p>Failed to open XML data source.</p>
+      <break/>
+    </if>
+
+    <startpage title="Action User Guide"/>
+
+    <body face="sans serif" fontsize="10" link="60,60,130" margins="0"/>
+
+    <navigation>
+      <obj:action method="setroot" object="[xml]" @xpath="/action/name(=[@action])"/>
+
+      <namehdr><print value="[xml./name]"/> Action</>
+      <p><print value="[xml./Short]"/></p>
+
+      <p><table columns="1,8,0" width="100%" vspacing="8">
+        <repeat count="[xml.count:/synopsis]">
+          <row><cell><if isnull="[%index]"><b>Synopsis:</b></if></cell><cell/><cell><font face="courier"><print value="[xml./Synopsis([%index])]"/></font></cell></row>
+        </repeat>
+        <if notnull="[xml.exists:/args]">
+          <row><cell><b>Input:</b></cell><cell/><cell>
+            <table width="100%" columns="1,8,1,8,0">
+              <repeat count="[xml.count:/args/arg]">
+                <row>
+                  <cell><p nowrap><print value="[xml./args/arg([%index])/@type]"/></></cell>
+                  <cell/>
+                  <cell><print value="[xml./args/arg([%index])/@name]"/></cell>
+                  <cell/>
+                  <cell><print value="[xml./args/arg([%index])]"/></cell>
+                </row>
+                <row height="4"><cell/></row>
+              </repeat>
+            </table>
+          </cell></row>
+        </if>
+      </table></p>
+
+      <p><box height="1" color="220,220,220"/></p>
+
+      <if notnull="[xml.exists:/description]">
+        <p><parse value="[xml.extract:/description]"/></p>
+      </if>
+
+      <set object="[xml]" rootindex="0"/>
+    </navigation>
+
+    <break/>
+  </if>
+
+  <!-- If no action is specified, print an index -->
+
+  <obj:xml name="xml" src="[%path]action_list.xml" flags="!wellformed"/>
+  <if not exists="[xml]">
+    <p>Failed to open XML data source.</p>
+    <break/>
+  </if>
+
+  <startpage title="Action User Guide"/>
+
+  <p>This document lists and describes all of the actions that are available in the Rocklyte Core Platform.  For information on how to execute actions, refer to the <function mod="kernel">Action</>, <function mod="kernel">ActionMsg</> and <function mod="kernel">ActionTags</> functions in the Object Kernel Manual.  Please note that each class will only support the actions that are deemed to be useful to it.  To know outright whether an object supports a particular action, you will need to check its <a href="../classes/index.rpl">class manual</>.</p>
+
+  <advance y="20"/>
+
+  <action method="sort" object="[xml]" @sort="category:,name:"/>
+
+  <indent>
+    <table vspacing="4" width="100%" columns="1,30,1,30,0">
+      <row>
+        <cell><b><u>Category</u></b></cell>
+        <cell/>
+        <cell><b><u>Action</u></b></cell>
+        <cell/>
+        <cell><b><u>Description</u></b></cell>
+      </row>
+
+      <set cat="[xml./action([%index])/category]" catprint="[xml./action([%index])/category]"/>
+
+      <repeat count="[xml.count:/action]">
+        <if isnull="[xml.exists:/action([%index])/@private]">
+          <if statement="[@cat] != [xml.content:/action([%index])/category]">
+            <row height="4"><cell/></row>
+            <row height="1" colour="200,200,200"><cell/></row>
+            <row height="4"><cell/></row>
+            <set catprint="[xml.content:/action([%index])/category]"/>
+          </if>
+
+          <row>
+            <cell><p nowrap><b><print value="[@catprint]"/></b></p></cell>
+            <cell/>
+            <cell><a href="action_list.rpl?action=[xml.content:/action([%index])/name]"><print value="[xml.content:/action([%index])/name]"/></a></cell>
+            <cell/>
+            <cell><print value="[xml.content:/action([%index])/short]"/></cell>
+          </row>
+          <set cat="[xml.content:/action([%index])/category]" catprint=""/>
+        </>
+      </repeat>
+    </table>
+  </indent>
+</page>

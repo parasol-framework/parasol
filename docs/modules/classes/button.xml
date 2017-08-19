@@ -1,0 +1,710 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="class.xsl"?>
+
+<book>
+  <info>
+    <name>Button</name>
+    <type>class</type>
+    <module>Widget</module>
+    <comment>The Button class is used to create button widgets in the UI.</comment>
+    <version>1</version>
+    <id>f4ff5d81</id>
+    <idstring>ID_BUTTON</idstring>
+    <category>GUI</category>
+    <include>modules/button.h</include>
+    <copyright>Paul Manias 2003-2017</copyright>
+    <description>
+<p>The Button class simplifies the creation and management of buttons as part of the user interface.  New buttons are typically created by declaring the graphical dimensions and the text to be displayed within them.  The Button class allows for the specifics of the button to be altered, such as the colours and the font style.</p>
+<p>Default button values and the look and feel are applied using styles.</p>
+<p>You will need to configure the button so that when it is clicked, it performs an action.  The methods to achieve this are: Initialise child objects to the button for execution on activation; Listen to the Activate action by calling the <function module="Core">SubscribeAction</function> function on the button.</p></description>
+    <source>
+      <file>class_button.c</file>
+    </source>
+  </info>
+
+  <actions>
+    <action>
+      <name>Activate</name>
+      <comment>Activates the button.</comment>
+    </action>
+
+    <action>
+      <name>Disable</name>
+      <comment>Turns the button off.</comment>
+    </action>
+
+    <action>
+      <name>Enable</name>
+      <comment>Turns the button on if it has been disabled.</comment>
+    </action>
+
+    <action>
+      <name>Focus</name>
+      <comment>Sets the focus on the button and activates keyboard monitoring.</comment>
+    </action>
+
+    <action>
+      <name>Hide</name>
+      <comment>Removes the button from the display.</comment>
+    </action>
+
+    <action>
+      <name>Move</name>
+      <comment>Move the button to a new location.</comment>
+    </action>
+
+    <action>
+      <name>MoveToBack</name>
+      <comment>Moves the button to the back of the display area.</comment>
+    </action>
+
+    <action>
+      <name>MoveToFront</name>
+      <comment>Moves the button to the front of the display area.</comment>
+    </action>
+
+    <action>
+      <name>MoveToPoint</name>
+      <comment>Move the button to a new location.</comment>
+    </action>
+
+    <action>
+      <name>Redimension</name>
+      <comment>Changes the size and position of the button.</comment>
+    </action>
+
+    <action>
+      <name>Resize</name>
+      <comment>Alters the size of the button.</comment>
+    </action>
+
+    <action>
+      <name>Show</name>
+      <comment>Puts the button on display.</comment>
+    </action>
+
+  </actions>
+
+  <fields>
+    <field>
+      <name>Align</name>
+      <comment>Manages the alignment of a button surface within its container.</comment>
+      <access write="S">Set</access>
+      <type>INT</type>
+      <description>
+<p>This field is a proxy for the <class name="Surface" index="Align">Surface:Align</class> field and will align the button within its container.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Border</name>
+      <comment>Sets the border colour of a button object.</comment>
+      <access write="S">Set</access>
+      <type>STRING</type>
+      <description>
+<p>To give a button a plain-coloured border on all four sides, set this field to the text-based colour value that you want to use.  Setting the Border will overwrite the Highlight and Shadow fields.</p>
+<p>To set the thickness of the border, write a value to the <field>Thickness</field> field.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Bottom</name>
+      <comment>The bottom coordinate of the button (Y + Height).</comment>
+      <access read="G">Get</access>
+      <type>INT</type>
+    </field>
+
+    <field>
+      <name>ClickFrame</name>
+      <comment>The graphics frame to display when the button is clicked.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>INT</type>
+      <description>
+<p>This field specifies the surface frame to switch to when the user clicks on the button.  By default this field is initially set to zero, which has no effect on the surface frame.  When the user releases the button, it will revert to the frame indicated by the <field>ReleaseFrame</field> field.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Colour</name>
+      <comment>Defines the colour inside of the button.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>RGB8</type>
+    </field>
+
+    <field>
+      <name>Disabled</name>
+      <comment>TRUE if the button is disabled, otherwise FALSE.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>INT</type>
+      <description>
+<p>Read the Disabled to determine if the button is disabled (TRUE) or not (FALSE). It is possible to set this field to change the disabled state, however we recommend that you use the <action>Disable</action> and <action>Enable</action> actions to do this.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>EnterFrame</name>
+      <comment>The graphics frame to display when the user's cursor enters the button area.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>INT</type>
+    </field>
+
+    <field>
+      <name>ExitFrame</name>
+      <comment>The graphics frame to display when the user's cursor leaves the button area.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>INT</type>
+    </field>
+
+    <field>
+      <name>Feedback</name>
+      <comment>Provides instant feedback when a user interacts with the button.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>FUNCTION</type>
+      <description>
+<p>Set the Feedback field with a callback function in order to receive instant feedback when user interaction occurs.  The function prototype is <code>routine(*Button)</code></p>
+      </description>
+    </field>
+
+    <field>
+      <name>Flags</name>
+      <comment>Optional flags may be defined here.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type lookup="BTF">INT</type>
+      <description>
+<types lookup="BTF"/>
+      </description>
+    </field>
+
+    <field>
+      <name>Font</name>
+      <comment>References the font that will draw text inside the button.</comment>
+      <access read="R">Read</access>
+      <type class="Font">*Font</type>
+      <description>
+<p>All buttons have a font object that is referenced from this field.  The fields of the font object may be set prior to initialisation in order to configure the style of the button's text.  It is recommended that if you wish to configure the font style, please do so applying a style to the button.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Height</name>
+      <comment>Defines the height of a button.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>A button can be given a fixed or relative height by setting this field to the desired value.  To set a relative height, use the FD_PERCENT flag when setting the field.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Highlight</name>
+      <comment>Defines the button highlight colour.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>RGB8</type>
+    </field>
+
+    <field>
+      <name>Hint</name>
+      <comment>Applies a hint to a button.</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type>STRING</type>
+      <description>
+<p>A hint can be displayed when the mouse pointer remains motionless over a button for a short period of time.  The text that is displayed in the hint box is set in this field.  The string must be in UTF-8 format and be no longer than one line.  The string should be written in english and will be automatically translated to the user's native language when the field is set.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>IconFilter</name>
+      <comment>Sets the preferred icon filter.</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type>STRING</type>
+      <description>
+<p>Setting the IconFilter will change the default graphics filter when loading an icon (identified when using the 'icons:' volume name).</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Image</name>
+      <comment>The image field can be set in order to load a bitmap into the button.</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type>STRING</type>
+      <description>
+<p>To display an image inside the button, set the Image field.  The image will be displayed on the left side of the text inside the button.  If no text string has been set, the image will be shown in the exact center of the button.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Onclick</name>
+      <comment>Available when a button is declared in a document.  References a function to call when clicked.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>STRING</type>
+      <description>
+<p>This field can only be used if the button has been created within a <class name="Document">Document</class>.  It must reference the name of a function that will be called when the button is clicked.</p>
+<p>A function from a specific script can be referenced by using the name format 'script.function'.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Region</name>
+      <comment>The surface that represents the button graphic.</comment>
+      <access read="R">Read</access>
+      <type>OBJECTID</type>
+      <description>
+<p>The surface area that represents the button display can be accessed through this field.  For further information, refer to the <class name="Surface">Surface</class> class.  Note that interfacing with the surface directly can have adverse effects on the button control system.  Where possible, all communication should be limited to the button object itself.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>ReleaseFrame</name>
+      <comment>The graphics frame to display when a user-click is released.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>INT</type>
+      <description>
+<p>If the <field>ClickFrame</field> field has been set, you may want to match that value by indicating the frame that should be used when the click is released.  By default, the value in this field will initially be set to 1.  This field is unused if the <field>ClickFrame</field> field has not been set.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Right</name>
+      <comment>The right coordinate of the button (X + Width).</comment>
+      <access read="G">Get</access>
+      <type>INT</type>
+    </field>
+
+    <field>
+      <name>Shadow</name>
+      <comment>Defines the button shadow colour.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>RGB8</type>
+    </field>
+
+    <field>
+      <name>ShowOnFocus</name>
+      <comment>Show the referenced object when the button has the focus.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>OBJECTID</type>
+      <description>
+<p>When the button receives the focus, it will send a <action>Show</action> message to the object that is referenced in this field.  When the button loses the focus, a <action>Hide</action> message is sent to the object.</p>
+<p>This feature is typically used to graphically enhance a button so that the user can see that the button has been given the focus.  The default graphics that are normally drawn when a button has the focus are switched off when this field value is set.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>String</name>
+      <comment>The string that is to be printed inside the button is declared here.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>STRING</type>
+      <description>
+<p>The string that you would like to be displayed in the button is specified in this field.  The string must be in UTF-8 format and be no longer than one line.  The string should be written in English and will be automatically translated to the user's native language when the field is set.</p>
+<p>If the string is changed after initialisation, the button will be redrawn to show the updated text.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Surface</name>
+      <comment>The surface that will contain the button graphic.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>OBJECTID</type>
+      <description>
+<p>The surface that will contain the button graphic is set here.  If this field is not set prior to initialisation, the button will attempt to scan for the correct surface by analysing its parents until it finds a suitable candidate.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>TabFocus</name>
+      <comment>Set this field to a TabFocus object to register the button in a tab-list.</comment>
+      <access write="S">Set</access>
+      <type>OBJECTPTR</type>
+      <description>
+<p>The TabFocus field provides a convenient way of adding the button to a <class name="TabFocus">TabFocus</class> object, so that it can receive the user focus via the tab key.  Simply set this field to the ID of the TabFocus object that is managing the tab-list for the application window.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Thickness</name>
+      <comment>The thickness of the button border, in pixels.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>INT</type>
+    </field>
+
+    <field>
+      <name>Width</name>
+      <comment>Defines the width of a button.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>A button can be given a fixed or relative width by setting this field to the desired value.  To set a relative width, use the FD_PERCENT flag when setting the field.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>X</name>
+      <comment>The horizontal position of a button.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The horizontal position of a button can be set to an absolute or relative coordinate by writing a value to the X field.  To set a relative/percentage based value, you must use the FD_PERCENT flag or the value will be interpreted as fixed.  Negative values are permitted.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>XOffset</name>
+      <comment>The horizontal offset of a button.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The XOffset has a dual purpose depending on whether or not it is set in conjunction with an X coordinate or a Width based field.</p>
+<p>If set in conjunction with an X coordinate then the button will be drawn from that X coordinate up to the width of the container, minus the value given in the XOffset.  This means that the width of the Button is dynamically calculated in relation to the width of the container.</p>
+<p>If the XOffset field is set in conjunction with a fixed or relative width then the button will be drawn at an X coordinate calculated from the formula <code>X = ContainerWidth - ButtonWidth - XOffset</code>.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Y</name>
+      <comment>The vertical position of a button.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The vertical position of a Button can be set to an absolute or relative coordinate by writing a value to the Y field.  To set a relative/percentage based value, you must use the FD_PERCENT flag or the value will be interpreted as fixed.  Negative values are permitted.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>YOffset</name>
+      <comment>The vertical offset of a button.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The YOffset has a dual purpose depending on whether or not it is set in conjunction with a Y coordinate or a Height based field.</p>
+<p>If set in conjunction with a Y coordinate then the button will be drawn from that Y coordinate up to the height of the container, minus the value given in the YOffset.  This means that the height of the button is dynamically calculated in relation to the height of the container.</p>
+<p>If the YOffset field is set in conjunction with a fixed or relative height then the button will be drawn at a Y coordinate calculated from the formula <code>Y = ContainerHeight - ButtonHeight - YOffset</code>.</p>
+      </description>
+    </field>
+
+  </fields>
+  <types>
+    <constants lookup="VWF" comment="View flags.">
+      <const name="WIDTH_RESET">Always reset column widths when the Columns field is set.</const>
+      <const name="NO_SORTING">No user sorting, e.g. in column mode.</const>
+      <const name="SENSITIVE">Sensitive mode will activate child objects when the user single-clicks with the mouse (by default, child activation only occurs with double-clicks).</const>
+      <const name="NO_ICONS">Do not load or show any icons.</const>
+      <const name="NOTIFY_ON_CLEAR">If the view should activate itself when cleared, set this flag. By default, activation normally only occurs when an item is double-clicked or when sensitive mode is enabled.</const>
+      <const name="DRAG_DROP">Enables drag and drop for items in the view. In this mode, multi-select is only possible if the shift or ctrl keys are held while using the mouse.</const>
+      <const name="NO_SELECT">Stop the user from selecting items.</const>
+      <const name="NO_SELECT_JMP">When a new item is selected, the view will jump to that item if it is not completely visible to the user. Setting this flag will turn off this behaviour.</const>
+      <const name="USER_DRAG">Enable drag and drop only if the user prefers it.</const>
+      <const name="AUTO_DESELECT">Deselects a highlighted item when it is activated by mouse click or enter key.</const>
+      <const name="MULTI_SELECT">Allow multiple item selections without having to hold the shift key.</const>
+    </constants>
+
+    <constants lookup="MHG" comment="Menubar highlighting flags.">
+      <const name="LIGHT_BKGD">Lightens the background behind the menu item.</const>
+      <const name="DARK_BKGD">Darkens the background behind the menu item.</const>
+      <const name="SUNKEN">Draws a sunken border around the item using the highlight and shadow colours.</const>
+      <const name="RAISED">Draws a raised border around the item using the highlight and shadow colours.</const>
+      <const name="BORDER">Draws a border around the menu item using the default highlight colour.</const>
+      <const name="TEXT">Highlights the menu item text using the highlight colour.</const>
+    </constants>
+
+    <constants lookup="MNF" comment="Flags for the Menu class.">
+      <const name="SHOW_KEYS">Print key controls on the right.</const>
+      <const name="POINTER_XY">Synonym for POINTER_PLACEMENT</const>
+      <const name="SHOW_ICONS">Synonym for SHOW_IMAGES</const>
+      <const name="SHOW_IMAGES">Allow for an image column on the left.</const>
+      <const name="POINTER_PLACEMENT">Menu is placed at the position of the mouse pointer when shown.</const>
+      <const name="REVERSE_Y">Menu's open in reverse vertical order.</const>
+      <const name="CACHE">Cache menu surface once created.</const>
+      <const name="IGNORE_FOCUS">Do not hide the menu if it loses the focus.</const>
+      <const name="SORT">Sort all items by name.</const>
+      <const name="EXT_COLUMN">Allow for an extension indicator column on the right.</const>
+      <const name="PRESERVE_BKGD">Preserve background when scrolling.</const>
+      <const name="REVERSE_X">Menu's open in reverse horizontal order.</const>
+      <const name="NO_HIDE">Activate() is prevented from hiding the menu.</const>
+      <const name="POPUP">Locks the position of the menu to the mouse pointer.</const>
+      <const name="NO_TRANSLATION">Do not translate menu text to the user's native language.</const>
+    </constants>
+
+    <constants lookup="INF" comment="Flags for the Input class.">
+      <const name="RAISED">Draw the input box with a raised (3D) border edge.  Read-only.</const>
+      <const name="NO_GFX">Do not generate any text or image graphics using internal routines (use the Template graphics definition).</const>
+      <const name="SELECT_TEXT">Select all text when the input box is shown for the first time.</const>
+      <const name="SUNKEN">Reverses the highlight and shadow definitions to create a sunken effect.  Read-only.</const>
+      <const name="HIDE">Hide on creation, or input is currently hidden.</const>
+      <const name="ENTER_TAB">Press enter results in a virtual tab-keypress being sent.</const>
+      <const name="SECRET">Used for secret user entry (passwords).</const>
+      <const name="DISABLED">Disable on creation.</const>
+      <const name="NO_BKGD">Do not draw background graphics (automatically set if Template graphics are used).</const>
+      <const name="ACTIVE_DRAW">Pro-actively redraw the object when graphics alterations are made.</const>
+      <const name="COMMANDLINE">Function as a command-line.  Typically used when the input box needs to remain persistent and is linked to an output system, such as a shell.</const>
+    </constants>
+
+    <constants lookup="BTF" comment="Button flags.">
+      <const name="NO_GFX">Turns off the button's foreground graphics (text and images).</const>
+      <const name="PULSE">Send repeated clicks when the mouse button is held down.</const>
+      <const name="SUNKEN">Reverses the highlight and shadow definitions to create a sunken effect.</const>
+      <const name="HIDE">Hide on creation, or button is currently hidden.</const>
+      <const name="NO_FOCUS_GFX">Do not draw any graphics when the button has the focus.</const>
+      <const name="DISABLED">Disable on creation, or button is currently disabled.  Read-only.</const>
+      <const name="NO_BKGD">Do not draw background graphics (automatically set if styles are used).</const>
+      <const name="FADE_BORDER">Fade the border edges into the button colour (requires thickness &gt; 1).</const>
+      <const name="NO_FOCUS">Never draw lines around the button to indicate that it has the focus.</const>
+    </constants>
+
+    <constants lookup="MIF" comment="Flags for MenuItems.">
+      <const name="SELECTED">The menu item has been selected (checked).</const>
+      <const name="EXTENSION">Menu item is an extension.</const>
+      <const name="NO_KEY_RESPONSE">Display the key, but do not respond to its equivalent key press.</const>
+      <const name="SORT">Sort all content under the menuitem (applies only to extensions).</const>
+      <const name="TOGGLE">Enables toggled menu items (checking state of on and off).</const>
+      <const name="OPTION">Item is a clickable option (clicking the item's icon will turn the option on/off).</const>
+      <const name="DISABLED">Set if the menu item is disabled (ghosted).</const>
+      <const name="CATEGORISE">Categorise the attached config file.</const>
+      <const name="BREAK">Menu item is acting as a break.</const>
+      <const name="KEY_REPEAT">Respond to repeated key presses.</const>
+    </constants>
+
+    <constants lookup="CBF" comment="CheckBox flags.">
+      <const name="DISABLED">Disable on creation, or object is currently disabled.</const>
+      <const name="HIDE">Hide on creation, or object is currently hidden.</const>
+      <const name="FADE_BORDER">Fade the border edges into the checkbox colour (requires thickness greater than 1).</const>
+      <const name="NO_BKGD">Do not draw background graphics (automatically set if Template graphics are used).</const>
+    </constants>
+
+    <constants lookup="FVA" comment="Options for the Auto field.">
+      <const name="OPEN">Open the file with the user's preferred program for this file type.</const>
+      <const name="EDIT">Edit the file in a program suitable for editing this file type.</const>
+      <const name="VIEW">View the file in a program suitable for read-only viewing.</const>
+    </constants>
+
+    <constants lookup="FVF" comment="Flags for the FileView.">
+      <const name="SHOW_PARENT">The file view will display an item in the file list that reverts to the parent folder when activated.</const>
+      <const name="NO_FILES">Do not display files in the file list.</const>
+      <const name="SYS_KEYS">System key monitoring and relevant default behaviours are active when this option is enabled.  Cut, Copy, Paste and Select-All key combinations are provided to the user in this mode.</const>
+      <const name="NO_EXTENSIONS">File extensions are not displayed when this option is active.</const>
+      <const name="TOTAL_REFRESH">Force a total refresh of the files listed in the monitored folder whenever a change is detected.</const>
+    </constants>
+
+    <constants lookup="DF" comment="Dialog flags.">
+      <const name="SECRET">User input needs to be secret (e.g. password entry).</const>
+      <const name="QUIT">A quit message will be sent to the running application once the dialog window is closed.</const>
+      <const name="MODAL">Makes the dialog window modal, this prevents the user from interacting with other windows that belong to the program.  For batch scripts, the WAIT flag should be used instead.</const>
+      <const name="REVERSE">Reverse the activation process (respond to negatives, not positives).</const>
+      <const name="WAIT">This option halts the program flow when the dialog box is activated.  Normal service will resume once the user responds to the dialog window.  Note that it is still possible to interact with other windows during this time, so the use of the MODAL flag may also be beneficial.</const>
+      <const name="INPUT">An input box can be created inside the dialog window by setting this flag.  In this mode, the dialog box will return a user input string in the UserInput field after the user has responded to the dialog window.</const>
+      <const name="OPTION_ON">Turn the checkbox option on by default.</const>
+      <const name="INPUT_REQUIRED">This flag can be used in conjunction with the INPUT option.  It forces the user to input at least one character in the input box, otherwise the dialog window will automatically cancel itself.</const>
+    </constants>
+
+    <constants lookup="DT" comment="Types of dialog box">
+      <const name="MESSAGE">The default setting.</const>
+      <const name="CRITICAL">A highly critical error is being reported to the user.</const>
+      <const name="ERROR">An error is being reported to the user.</const>
+      <const name="WARNING">A warning message is being reported to the user.</const>
+      <const name="ATTENTION">The dialog requests the user's immediate attention.</const>
+      <const name="ALARM">The dialog is presented as a response to a preset alarm.</const>
+      <const name="HELP">Help text is being presented in the dialog.</const>
+      <const name="INFO">The dialog is providing the user with specific information on a topic.</const>
+      <const name="QUESTION">A question is being asked of the user.</const>
+      <const name="REQUEST">A request is being made (e.g. dialog requires user to type in input).</const>
+      <const name="TEMPORARY">The dialog box will disappear after a short time-out period has expired.</const>
+    </constants>
+
+    <constants lookup="IMF" comment="Image flags">
+      <const name="NO_DRAW">Stops automatic drawing of the target surface if the image is being animated or a special effect is active.</const>
+      <const name="FIXED">Synonym for FIXED_SIZE</const>
+      <const name="ENLARGE">If the dimensions of the original picture are smaller than the destination surface, the image will be stretched to fit.  Enlargement is dynamic, so if the surface changes in size then the size of the picture will be recalculated to fit.</const>
+      <const name="NO_FAIL">If the source image file does not exist or an error occurs during loading, the image object will still pass the initialisation process successfully.  When the image object is drawn, it will clear the target surface to the colour specified in the Background field.</const>
+      <const name="SHRINK">If the dimensions of the original picture are larger than the destination surface, the image will be stretched to fit.  Shrinking is dynamic, so if the surface changes in size then the size of the picture will be recalculated to fit.</const>
+      <const name="SOLID_BLEND">Synonym for NO_BLEND</const>
+      <const name="FIT">This flag applies to image resizing.  When set, the calculated width and height will be limited so that the image cannot be stretched beyond the edges of the target surface.  This flag is commonly set in conjunction with the 11RATIO flag.</const>
+      <const name="NO_BLEND">Turns off alpha-blending if the target surface has the COMPOSITE flag set and the source image has an alpha channel.</const>
+      <const name="FIXED_SIZE">Image data will normally be stored at its original size and resized on the fly when the STRETCH flag is used.  Setting the FIXED_SIZE flag will pre-scale the image and permanently store it at that size.</const>
+      <const name="STRETCH">This flag conveniently combines the ENLARGE and SHRINK flags to ensure that the image always covers the dimensions of the destination surface.</const>
+      <const name="SCALABLE">The image source is scalable (e.g. vector graphic).</const>
+      <const name="STICKY">All calls to Move and MoveToPoint are ignored if this flag is set.</const>
+      <const name="11_RATIO">When resizing the image, the calculated width and height will always be in correct proportion relative to the source image's original width and height.</const>
+    </constants>
+
+    <constants lookup="CMF" comment="ComboBox flags.">
+      <const name="AUTO_COMPLETE">When in edit mode, this option helps the user by auto-completing text.</const>
+      <const name="EDIT">Enable edit mode, which allows the user to write free-text in the combobox.</const>
+      <const name="SUNKEN">Reverses the highlight and shadow definitions to create a sunken effect.</const>
+      <const name="HIDE">Hide on creation, or combobox is currently hidden.</const>
+      <const name="SHOW_ICONS">Show icons in the dropdown list.</const>
+      <const name="LIMIT_TO_LIST">When in edit mode, limit-to-list prevents the user from entering text that isn't in the combobox list.</const>
+      <const name="NO_BKGD">Do not draw background graphics (automatically set if Template graphics are used).</const>
+      <const name="DISABLED">Disable on creation; or combobox is currently disabled.</const>
+      <const name="NO_TRANSLATION">Do not attempt to translate combobox strings or the drop-down menu to the user's native language.</const>
+    </constants>
+
+    <constants lookup="TIF" comment="MenuBar item flags.">
+      <const name="DISABLED">Item is disabled.</const>
+      <const name="STATEMENT">The script reference is a statement string.</const>
+      <const name="FOCUS">Item has the user focus.</const>
+    </constants>
+
+    <constants lookup="CLF" comment="Clipboard flags">
+      <const name="WAIT">The clipboard will wait for the user to respond to user dialogs rather than return immediately from clipboard operations.</const>
+      <const name="HOST"/>
+    </constants>
+
+    <constants lookup="SD" comment="Scroll directions.">
+      <const name="NEGATIVE"/>
+      <const name="POSITIVE"/>
+    </constants>
+
+    <constants lookup="TXF" comment="Flags for the Text class.">
+      <const name="SECRET">Hide the string characters for secret text entry (e.g. passwords).</const>
+      <const name="PRESERVE_BKGD">Preserve-background disables fast scrolling for background preservation.</const>
+      <const name="AREA_SELECTED">This read-only flag is set automatically when the user has selected an area of text.</const>
+      <const name="GLOBAL_EDITING">Keeps the text object in edit mode regardless of user focus.</const>
+      <const name="SINGLE_SELECT">Enables text selection (with or without edit mode).  If in line mode, a single click will allow the user to highlight any line.</const>
+      <const name="DISABLED">This read-only flag is set if the object has been disabled through the Disable action.</const>
+      <const name="OVERWRITE">Turns on overwrite mode (if off, insert mode is enabled).</const>
+      <const name="SELECT">Synonym for MULTI_SELECT | SINGLE_SELECT</const>
+      <const name="ENTER_TAB">Convert enter-key presses to the tab-key.</const>
+      <const name="FORCE_CAPS">This flag forces the capitalisation of all text that is entered into the object.</const>
+      <const name="AUTO_CLEAR">Clears the text string when the enter key is pressed.</const>
+      <const name="EDIT">This flag must be enabled if the user is permitted to change the text string with the keyboard.</const>
+      <const name="STRETCH">If the font is scalable, the text string will be resized to fit inside the surface that contains it (i.e. no characters will be clipped).  This is acheived by recalculating the font's point size.</const>
+      <const name="WORDWRAP">Enables word wrapping.</const>
+      <const name="AUTO_SELECT">Automatically select all text if the text object receives the focus.</const>
+      <const name="TAB_KEY">If the tab key is pressed, print the tab character.</const>
+      <const name="PASSWORD">Hide the string characters for secret text entry (e.g. passwords).</const>
+      <const name="MULTI_SELECT">Allow the user to select/highlight multiple lines by holding the Ctrl key.</const>
+      <const name="VARIABLE">This flag forces a text object to recalculate any variable references in its string data whenever a redraw occurs.  Such references are indicated through square brackets, e.g. [desktop.width].  Refer to the StrEvaluate() function in the Strings module for more information.</const>
+      <const name="STR_TRANSLATE">Translate strings to the user's native language.</const>
+      <const name="HISTORY">Enables historical browsing when the up/down cursor keys are used.  The number of historical lines stored can be set in the HistorySize field.</const>
+      <const name="NO_SYS_KEYS">This flag is set by default to enable system key support.  System-keys provide support for common key combinations such as Ctrl-C, Ctrl-X etc.</const>
+      <const name="BACKGROUND">Enables a colour background behind the text.</const>
+      <const name="TAB_ENTRY">Pressing the tab key is treated the same as pressing enter.</const>
+      <const name="COMMANDLINE">Synonym for AUTO_CLEAR | EDIT | HISTORY</const>
+    </constants>
+
+    <constants lookup="SO" comment="Direction options">
+      <const name="HORIZONTAL"/>
+      <const name="VERTICAL"/>
+    </constants>
+
+    <constants lookup="SBF" comment="Scrollbar flags.">
+      <const name="CONSTANT">Ensures that the scrollbar is always on display.</const>
+      <const name="RELATIVE">Enables relative scrolling (movement is reported relative to the current slider position rather than in absolute coordinates).</const>
+      <const name="HIDE">Hide on creation, or scrollbar is currently hidden.</const>
+      <const name="SLIDER">If set, the scrollbar behaves as a slider.  In this mode, the size of the draggable slider has a fixed size (by default the slider is proportional).</const>
+      <const name="NO_INTERSECT">Do not attempt to intersect with adjacent scrollbars.</const>
+    </constants>
+
+    <constants lookup="CLIPTYPE" comment="Clipboard types">
+      <const name="DATA">Raw information that is uncategorised can be defined as a data clip.</const>
+      <const name="FILE">Pure file references are stored as file clips.  This type is typically used by file managers for moving and copying files.</const>
+      <const name="TEXT">Plain text files such as ASCII and UTF-8 must be identified through this clip type.</const>
+      <const name="AUDIO">An audio clip that is recognised by the Sound class (such as wav's and mp3's).</const>
+      <const name="IMAGE">Images that are recognised by the Picture class may be stored as this type (such as jpeg's and png files).</const>
+      <const name="OBJECT">An object that has been deserialised into binary form.</const>
+    </constants>
+
+    <constants lookup="SLF" comment="Flags for SelectCallback">
+      <const name="ACTIVE">The most recently active tag has changed.</const>
+      <const name="MANUAL">Item was manually selected (by the program, not the user).</const>
+      <const name="SELECTED">A tag has been selected and is now highlighted.</const>
+      <const name="INVERTED">Change is due to an inverted selection.</const>
+      <const name="KEYPRESS">Item was selected by a keypress.</const>
+      <const name="CLICK">Item was clicked - see ClickX and ClickY for coordinates.</const>
+      <const name="MULTIPLE">Multiple items were selected.</const>
+      <const name="MOVED">Change is due to the item being moved.</const>
+    </constants>
+
+    <constants lookup="TF" comment="Flags for the TabFocus class.">
+      <const name="LOCAL_FOCUS">In this mode, the user's point of focus must match the monitored Surface for the tabfocus to function.</const>
+      <const name="CHILD_FOCUS">In this mode, the user's point of focus must match the monitored Surface or one of its immediate children for the tabfocus to function.</const>
+      <const name="LIMIT_TO_LIST">In limit-to-list mode, the tabfocus only functions if the user's point of focus is on the monitored Surface or one of objects in the tab list.</const>
+    </constants>
+
+    <constants lookup="VGF" comment="Graphics options (normally defined by the template)">
+      <const name="OUTLINE_TITLE">Draw black outline around title text.</const>
+      <const name="NO_BORDER">Do not draw a border around column headers when in table mode.</const>
+      <const name="DRAW_TABLE">Draw the view as a table (the basic format is the same, graphics are different).</const>
+      <const name="GROUP_SHADOW">Draw a shadow underneath the group graphics headers.</const>
+      <const name="STRIPES">Draw stripes in group titles.</const>
+      <const name="HAIRLINES">Draw a hairline between each column.</const>
+      <const name="BRANCHES">Draw grey tree branches.</const>
+      <const name="ALT_GROUP">Alternate the group header graphics.</const>
+      <const name="LINE_BREAKS">Draw a line break between each view item.</const>
+    </constants>
+
+    <constants lookup="VIEW" comment="List options">
+      <const name="LIST">Standard list view with small icons, arranged from top to bottom.</const>
+      <const name="ICON">Similar to list-view but with large icons, arranged from left to right.</const>
+      <const name="TREE">Tree mode can be used if the items are arranged in a hierarchy, where items can be embedded within items.  The tree view provides small buttons that the user can click to expand the tree and view hidden items.</const>
+      <const name="COLUMN">Long list with detail columns.</const>
+      <const name="LONG_LIST">This type is the same as the LIST view but the items will not wrap back to the top of the view when the bottom edge of the surface is encountered.</const>
+      <const name="GROUP_TREE">Similar to tree view, but root level nodes are drawn as a headline.</const>
+      <const name="DOCUMENT">Document mode allows view data to be passed to a document object for display.  You are required to provide a document object that is pre-loaded with a template capable of processing input from the view object.  Refer to the Document field for more information.</const>
+      <const name="COLUMN_TREE">This mode combines the column and tree modes.  The view displays the layout and style of normal column mode, but the first column is used to display and manage a tree hierarchy.  The tree can be expanded and collapsed just as in the standard tree mode.</const>
+    </constants>
+
+    <constants lookup="RSP">
+      <const name="CANCEL"/>
+      <const name="YES"/>
+      <const name="YES_ALL"/>
+      <const name="NO"/>
+    </constants>
+
+    <constants lookup="RSF" comment="Dialog response flags">
+      <const name="NO">Negative response.</const>
+      <const name="CUSTOM_2">Developer customised option 2 - neutral response.</const>
+      <const name="YES">Positive response.</const>
+      <const name="CUSTOM_4">Developer customised option 4 - neutral response.</const>
+      <const name="NO_ALL">Negative response.</const>
+      <const name="OKAY">Positive response.</const>
+      <const name="CANCEL">Negative response.</const>
+      <const name="YES_ALL">Positive response.</const>
+      <const name="CLOSED">Window closed without response.</const>
+      <const name="OK">Positive response.</const>
+      <const name="CUSTOM_3">Developer customised option 3 - neutral response.</const>
+      <const name="NEGATIVE">Synonym for CANCEL | NO | QUIT | NO_ALL | CLOSED</const>
+      <const name="POSITIVE">Synonym for YES | YES_ALL | OKAY | CUSTOM_1 | CUSTOM_2 | CUSTOM_3 | CUSTOM_4</const>
+      <const name="QUIT">Negative response.</const>
+      <const name="NONE">Do nothing dummy flag.</const>
+      <const name="OPTION">Combobox option ticked.</const>
+      <const name="CUSTOM_1">Developer customised option 1 - neutral response.</const>
+      <const name="RETRY"/>
+    </constants>
+
+    <constants lookup="AXIS" comment="Axis options.  This determines the axis that is signalled when the slider is moved (note that it is feasible for a horizontal scrollbar to signal the Y axis, if this is desired by the client)">
+      <const name="X"/>
+      <const name="Y"/>
+      <const name="Z"/>
+    </constants>
+
+    <constants lookup="MBF" comment="Menubar flags.">
+      <const name="DISABLED">Disable on creation.  Automatically switched by the Disable and Enable actions.</const>
+      <const name="HIDE">Hide on creation, or menubar is currently hidden.</const>
+      <const name="BREAK">Draw a break-line at the bottom of the menubar.</const>
+    </constants>
+
+    <constants lookup="CEF">
+      <const name="DELETE">Requests that the original file source is deleted if a successful paste operation takes place.</const>
+      <const name="EXTEND">Instead of replacing existing clipboard data, add the new data to the group.</const>
+    </constants>
+
+    <constants lookup="FEF" comment="Event flags.">
+      <const name="LOCATION">The location has been changed (user has moved to a different folder).</const>
+    </constants>
+
+    <constants lookup="SCF" comment="Scroll flags.">
+      <const name="FIXED">Fixes the scroll slider to a specific size (non-proportional mode of operation).</const>
+      <const name="REVERSE">When reporting the position of the slider, the value will always be reversed - so positive values will be negative and vice versa.  Reporting for relative position changes are also affected.</const>
+      <const name="VERTICAL">The scrollbar is oriented vertically.</const>
+      <const name="RELATIVE">Forces relative scrolling through the Scroll action rather than the default ScrollToPoint.</const>
+      <const name="AUTO_ACTIVATE">The scroll object automatically activates itself whenever the position of the slider is changed.</const>
+      <const name="AUTO_HIDE">Automatically hide the scrollbar when possible.</const>
+      <const name="INVISIBLE">Keep scrollbar invisible.</const>
+      <const name="HORIZONTAL">The scrollbar is oriented horizontally.</const>
+      <const name="SLIDER">Changes the mode of operation so that the slider is non-proportional.  The size of the view is also set to a fixed value and resizing of the parent surface no longer affects the scroll values.</const>
+      <const name="MESSAGE">Use used delay messages for activation of children.</const>
+    </constants>
+
+  </types>
+  <structs>
+  </structs>
+</book>

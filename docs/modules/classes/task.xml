@@ -1,0 +1,1103 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="class.xsl"?>
+
+<book>
+  <info>
+    <name>Task</name>
+    <type>class</type>
+    <module>Core</module>
+    <comment>System processes are managed by the Task class.</comment>
+    <fileExtension>*.exe|*.bat|*.com</fileExtension>
+    <fileDescription>Executable File</fileDescription>
+    <version>1</version>
+    <id>7c9e5758</id>
+    <idstring>ID_TASK</idstring>
+    <category>System</category>
+    <include>modules/task.h</include>
+    <copyright>Paul Manias 1996-2017</copyright>
+    <description>
+<p>Tasks, also known as processes, form the basis of process execution in an operating system.  By creating a task object, it is possible to execute a program from within the host system.  Programs that are compliant with Parasol may also reveal additional meta information such as <field>Author</field> and <field>Copyright</field> strings in the task object.</p>
+<p>To execute a compiled program, set the <field>Location</field> field to point to the executable file before initialising the task.  Arguments can be passed to the executable by setting the <field>Parameters</field> field.  Once the task object is successfully initialised, use the <action>Activate</action> action to run the executable.  If the file executes successfully, a new task object is spawned separately to represent the executable (which means it is safe to destroy your task object immediately afterwards).  If the <action>Activate</action> action returns with ERR_Okay then the executable program was run successfully.</p>
+<p>To find the task object that represents the active process, use the <function module="Core">CurrentTask</function> function to quickly retrieve it.</p>
+<p>To send messages to another task, you need to know its <field>MessageQueue</field> ID so that <function module="Core">SendMessage</function> can be used.  A simple way to initiate interprocess communication is to pass your MessageQueue ID to the other task as a parameter.</p></description>
+    <source>
+      <file path="src/classes/">class_task.c</file>
+    </source>
+  </info>
+
+  <actions>
+    <action>
+      <name>Activate</name>
+      <comment>Activating a task object will execute it.</comment>
+      <description>
+<p>Activating a task results in the execution of the file referenced in the <field>Location</field> field.</p>
+<p>On successful execution, the ProcessID will refer to the ID of the executed process.  This ID is compatible with the hosting platform's unique process numbers.</p>
+<p>If the WAIT flag is specified, this action will not return until the executed process has returned or the <field>TimeOut</field> (if specified) has expired.  Messages are processed as normal during this time, ensuring that your process remains responsive while waiting.</p>
+<p>The process' return code can be read from the <field>ReturnCode</field> field after the process has completed its execution.</p>
+<p>In Microsoft Windows, output can be redirected to a file if the redirection symbol is used to direct output in one of the task arguments.  For instance <code>&gt;C:\output.txt</code> will redirect both stderr and stdout to <code>c:\output.txt</code>.  The use of <code>1&gt;</code> to redirect stdout and <code>2&gt;</code> to redirect stderr independently of each other is also acceptable.</p>
+<p>When running a DOS program in Microsoft Windows, the SHELL flag can be set in the <field>Flags</field> field to prevent the DOS window from appearing.  The DOS window will also be hidden if the stdout or stderr pipes are redirected.</p>
+      </description>
+      <result>
+        <error code="TimeOut">Can be returned if the WAIT flag is used.  Indicates that the process was launched, but the timeout expired before the process returned.</error>
+        <error code="Failed">General failure.</error>
+        <error code="FieldNotSet">The Location field has not been set.</error>
+        <error code="Okay">Operation successful.</error>
+      </result>
+    </action>
+
+    <action>
+      <name>GetVar</name>
+      <comment>Retrieves variable field values.</comment>
+    </action>
+
+    <action>
+      <name>SetVar</name>
+      <comment>Variable fields are supported for the general storage of program variables.</comment>
+    </action>
+
+    <action>
+      <name>Write</name>
+      <comment>Send raw data to a launched process' stdin descriptor.</comment>
+      <description>
+<p>After a process has been launched, data can be sent to its stdin pipe by calling the Write action.  Setting the Buffer parameter to NULL will result in the pipe being closed (this will signal to the process that no more data is incoming).</p>
+      </description>
+    </action>
+
+  </actions>
+
+  <methods>
+    <method>
+      <name>AddArgument</name>
+      <comment>Adds new arguments to the Parameters field.</comment>
+      <prototype>ERROR taskAddArgument(OBJECTPTR Object, CSTRING Argument)</prototype>
+      <input>
+        <param type="CSTRING" name="Argument">The argument string that you want to add.</param>
+      </input>
+      <description>
+<p>This method provides a simple way of adding new arguments to the <field>Parameters</field> field.  Provide the value of the new argument to add it to the end of the list.  If the string is surrounded by quotes, they will be removed automatically.</p>
+      </description>
+      <result>
+        <error code="AllocMemory">Memory for the new Parameters could not be allocated.</error>
+        <error code="GetField">The Parameters field could not be retrieved.</error>
+        <error code="Okay">Operation successful.</error>
+        <error code="Args">Invalid arguments passed to function.</error>
+      </result>
+    </method>
+
+    <method>
+      <name>CloseInstance</name>
+      <comment>Sends a quit message to all tasks running in the current instance.</comment>
+      <prototype>ERROR taskCloseInstance(OBJECTPTR Object)</prototype>
+      <description>
+<p>This method will close all tasks that are running in the current instance by sending them a quit message.  This includes the process that is making the method call.</p>
+      </description>
+      <result>
+        <error code="Okay">Operation successful.</error>
+      </result>
+    </method>
+
+    <method>
+      <name>Expunge</name>
+      <comment>Forces a Task to expunge unused code.</comment>
+      <prototype>ERROR taskExpunge(OBJECTPTR Object)</prototype>
+      <description>
+<p>The Expunge method releases all loaded libraries that are no longer in use by the active process.</p>
+<p>If the Expunge method is called on the System Task, it will message all Tasks to perform the expunge sequence. The System Task object can be found by searching for the "SystemTask" object.</p>
+      </description>
+      <result>
+        <error code="Okay">Operation successful.</error>
+      </result>
+    </method>
+
+    <method>
+      <name>GetEnv</name>
+      <comment>Retrieves environment variables for the active process.</comment>
+      <prototype>ERROR taskGetEnv(OBJECTPTR Object, CSTRING Name, CSTRING * Value)</prototype>
+      <input>
+        <param type="CSTRING" name="Name">The name of the environment variable to retrieve.</param>
+        <param type="CSTRING *" name="Value">The value of the environment variable is returned in this parameter.</param>
+      </input>
+      <description>
+<p>On platforms that support environment variables, GetEnv() returns the value of the environment variable matching the Name string.  If there is no matching variable, ERR_DoesNotExist is returned.</p>
+<p>In Windows, it is possible to look up registry keys if the string starts with one of the following (in all other cases, the system's environment variables are queried):</p>
+<pre>\HKEY_LOCAL_MACHINE\
+\HKEY_CURRENT_USER\
+\HKEY_CLASSES_ROOT\
+\HKEY_USERS\
+</pre>
+<p>Here is a valid example for reading the 'Parasol' key value <code>\HKEY_CURRENT_USER\Software\Parasol</code></p>
+<p>Caution: If your programming language uses backslash as an escape character (true for Fluid developers), remember to use double-backslashes as the key value separator in your Name string.</p>
+      </description>
+      <result>
+        <error code="NoSupport">The platform does not support environment variables.</error>
+        <error code="DoesNotExist">The environment variable is undefined.</error>
+        <error code="Okay">Operation successful.</error>
+        <error code="Args">Invalid arguments passed to function.</error>
+      </result>
+    </method>
+
+    <method>
+      <name>Quit</name>
+      <comment>Sends a quit message to a task.</comment>
+      <prototype>ERROR taskQuit(OBJECTPTR Object)</prototype>
+      <description>
+<p>The Quit method can be used as a convenient way of sending a task a quit message.  This will normally result in the destruction of the task, so long as it is still functioning correctly and has been coded to respond to the MSGID_QUIT message type.  It is legal for a task to ignore a quit request if it is programmed to stay alive.  A task can be killed outright with the Free action.</p>
+      </description>
+      <result>
+        <error code="Okay">Operation successful.</error>
+      </result>
+    </method>
+
+    <method>
+      <name>SetEnv</name>
+      <comment>Sets environment variables for the active process.</comment>
+      <prototype>ERROR taskSetEnv(OBJECTPTR Object, CSTRING Name, CSTRING Value)</prototype>
+      <input>
+        <param type="CSTRING" name="Name">The name of the environment variable to set.</param>
+        <param type="CSTRING" name="Value">The value to assign to the environment variable.</param>
+      </input>
+      <description>
+<p>On platforms that support environment variables, SetEnv() is used for defining values for named variables.  A Name and accompanying Value string are required.  If the Value is NULL, the environment variable is removed if it already exists.</p>
+<p>In Windows, it is possible to set registry keys if the string starts with one of the following (in all other cases, the system's environment variables are queried):</p>
+<pre>\HKEY_LOCAL_MACHINE\
+\HKEY_CURRENT_USER\
+\HKEY_CLASSES_ROOT\
+\HKEY_USERS\
+</pre>
+<p>When setting a registry key, the function will always set the Value as a string type unless the key already exists.  If the existing key value is a number such as DWORD or QWORD, then the Value will be converted to an integer before the key is set.</p>
+      </description>
+      <result>
+        <error code="NoSupport">The platform does not support environment variables.</error>
+        <error code="Okay">Operation successful.</error>
+        <error code="Args">Invalid arguments passed to function.</error>
+      </result>
+    </method>
+
+  </methods>
+
+  <fields>
+    <field>
+      <name>Actions</name>
+      <comment>Used to gain direct access to a task's actions.</comment>
+      <access read="G">Get</access>
+      <type>APTR</type>
+      <description>
+<p>This field provides direct access to the actions of a task.  You can use it in the development of an executable program to hook into the Core action system.  This allows you to create a program that blends in seamlessly with the system's object oriented design.  In some cases this is a necessity, for example, use of some functions will require you to hook into the ActionNotify action.</p>
+<p>The Actions field itself points to a list of action routines that are arranged into a lookup table, sorted by action ID. You can hook into an action simply by writing to its index in the table with a pointer to the routine that you want to use for that action.  For example:</p>
+<pre>if (!AccessObject(CurrentTask(), 5000, &amp;task)) {
+   GetPointer(task, FID_Actions, &amp;actions);
+   actions[AC_ActionNotify] = PROGRAM_ActionNotify;
+   ReleaseObject(task);
+}
+</pre>
+<p>The synopsis of the routines that you use for hooking into the action list must match <code>ERROR PROGRAM_ActionNotify(*Task, APTR Args)</code>.</p>
+<p>It is recommended that you refer to the Action Support Guide before hooking into any action that you have not written code for before.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Args</name>
+      <comment>Command line arguments (string format).</comment>
+      <access write="S">Set</access>
+      <type>STRING</type>
+      <description>
+<p>If you would like to set the command line arguments for a new task using a single string, define the arguments through this field.  The string that you pass will be disassembled and the arguments will be added to the <field>Parameters</field> field.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Author</name>
+      <comment>Describes the person that wrote the program.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>STRING</type>
+      <description>
+<p>This field gives information about the author of the program/task. If the author is not determinable from the <field>Location</field>, this field will usually be set to NULL.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Copyright</name>
+      <comment>Copyright/licensing details.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>STRING</type>
+    </field>
+
+    <field>
+      <name>Date</name>
+      <comment>The date that the program was last updated or compiled.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>STRING</type>
+      <description>
+<p>The Date usually specifies the date on which the program was compiled for public release. It is up to the developer of the program to set this string correctly and keep it current.</p>
+<p>The correct specification for this string is <code>Day Month Year</code> or <code>Month Year</code> as in the following examples:</p>
+<pre>"14 February 1998"
+"6 May 1997"
+"January 2000"
+</pre>
+<p>Please do not use shorthand dates such as <code>14/2/98</code>.  Do not include the time or any other information besides that which is outlined here.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>ErrorCallback</name>
+      <comment>This callback returns incoming data from STDERR.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>FUNCTION</type>
+      <description>
+<p>The ErrorCallback field can be set with a function reference that will be called when an active process sends data via STDERR.  The callback must follow the synopsis <code>Function(*Task, APTR Data, LONG Size)</code></p>
+<p>The information read from STDERR will be returned in the Data pointer and the byte-length of the data will be indicated by the Size.  The data pointer is temporary and will be invalid once the callback function has returned.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>ExitCallback</name>
+      <comment>The callback is activated when the process is terminated.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>FUNCTION</type>
+      <description>
+<p>The ExitCallback field can be set with a function reference that will be called when the executed process is terminated.  The callback must follow the synopsis <code>Function(*Task)</code>.</p>
+<p>Please keep in mind that if the Task is freed when the process is still executing, the ExitCallback routine will not be called on termination because the Task object no longer exists for the control of the process.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Flags</name>
+      <comment>Optional flags.</comment>
+      <access read="R" write="I">Read/Init</access>
+      <type lookup="TSF">INT</type>
+      <description>
+<types lookup="TSF"/>
+      </description>
+    </field>
+
+    <field>
+      <name>Instance</name>
+      <comment>The instance ID that the process belongs to.</comment>
+      <access read="G">Get</access>
+      <type>INT</type>
+      <description>
+<p>All tasks that use the Parasol API belong to a run-time instance.  Multiple tasks that share the same instance ID can communicate with each other. Tasks that do not share the same instance ID will not share the same name space or the same ID space, thus preventing interprocess communication.</p>
+<p>It is not possible to change the instance ID once the process has started.  New processes can be assigned an instance ID on creation with the <code>--instance</code> commandline argument.  By default, any new process will share the same instance ID as its creator.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>LaunchPath</name>
+      <comment>Launched executables will start in the path specified here.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>STRING</type>
+      <description>
+<p>Use the LaunchPath field to specify the directory that a launched executable will start in when the task object is activated.  This will override all other path options, such as the RESET_PATH flag.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Location</name>
+      <comment>Location to load an executable file from.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>STRING</type>
+      <description>
+<p>When a task object is activated, the Location field will be checked for a valid filename.  If the path is valid, the executable code will be loaded from this source.  The source must be in an executable format recognised by the native platform.</p>
+<p>Leading spaces will be ignored by the string parser.  The Location string can be enclosed with quotes, in which case only the quoted portion of the string will be used as the source path.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>MessageQueue</name>
+      <comment>Read this field to acquire a task's message queue ID.</comment>
+      <access read="G">Get</access>
+      <type>INT</type>
+      <description>
+<p>If you need the ID of a task's message queue, read this field to obtain it.  Once you have a task's message queue ID, you can use it to send messages to the task.  For information on messaging, refer to the <function module="Core">GetMessage</function>, <function module="Core">ProcessMessages</function> and <function module="Core">SendMessage</function> functions.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Name</name>
+      <comment>Name of the task.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>STRING</type>
+      <description>
+<p>This field specifies the name of the Task or program that has been initialised. It is up to the developer of the program to set the Name which will appear in this field.  If there is no name for the task then the system may assign a randomly generated name.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>OutputCallback</name>
+      <comment>This callback returns incoming data from STDOUT.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>FUNCTION</type>
+      <description>
+<p>The OutputCallback field can be set with a function reference that will be called when an active process sends data via STDOUT.  The callback must follow the synopsis <code>Function(*Task, APTR Data, LONG Size)</code></p>
+<p>The information read from STDOUT will be returned in the Data pointer and the byte-length of the data will be indicated by the Size.  The data pointer is temporary and will be invalid once the callback function has returned.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Parameters</name>
+      <comment>Command line arguments (list format).</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>STRING []</type>
+      <description>
+<p>If a program is written to accept user arguments, then this field is the place to obtain them.  The arguments are listed in a string based array that is terminated with a NULL pointer. Thus if the user enters the following into a command-line:</p>
+<pre>1&gt; YourProgram PREFS MyPrefs -file "documents:readme.txt"</pre>
+<p>Then you will get:</p>
+<pre>CSTRING Args[] = {
+   "PREFS",
+   "MyPrefs",
+   "-file",
+   "documents:readme.txt",
+   NULL
+};
+</pre>
+<p>If the user did not supply any command line arguments, this field will be set to NULL.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Path</name>
+      <comment>The current path being used by a task object.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>STRING</type>
+      <description>
+<p>The Path specifies a "working directory" that determines where files are loaded from when an absolute path is not specified for file access.  The following example demonstrates an absolute file path: <code>parasol:documents/readme.txt</code></p>
+<p>This is a relative file path: <code>my/files/readme.txt</code></p>
+<p>In the second instance, if the task's current path was <code>user:documents/</code> then the filesystem would expand the filename to <code>user:documents/my/files/readme.txt</code>.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Priority</name>
+      <comment>The task priority in relation to other tasks is be defined here.</comment>
+      <access write="S">Set</access>
+      <type>INT</type>
+      <description>
+<p>Set the Priority field to change the priority of the process associated with the task.  The default value for all processes is zero.  High positive values will give the process more CPU time while negative values will yield CPU time to other active processes.</p>
+<p>Note that depending on the platform, there may be limits as to whether one process can change the priority level of a foreign process.  Other factors such as the scheduler used by the host system should be considered in the effect of prioritisation.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>ProcessID</name>
+      <comment>Reflects the process ID when an executable is launched.</comment>
+      <access read="R" write="I">Read/Init</access>
+      <type>INT</type>
+      <description>
+<p>If a task object launches an executable, the ProcessID will be set to the process ID that was assigned to the executable.  At all other times the ProcessID is set to zero.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>ProcessPath</name>
+      <comment>The path of the executable that is associated with the task.</comment>
+      <access read="G">Get</access>
+      <type>STRING</type>
+      <description>
+<p>The ProcessPath is set to the path of the executable that is associated with the task.  It is managed internally and cannot be altered.</p>
+<p>In Microsoft Windows it is not always possible to determine the origins of an executable, in which case the ProcessPath is set to the working directory in use at the time the process was launched.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>ReturnCode</name>
+      <comment>The task's return code can be retrieved following execution.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>INT</type>
+      <description>
+<p>If the task has executed and returned a code following its exit, you may read that code from the ReturnCode field.  If the task is still running, the error code ERR_TaskStillExists will be returned.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Short</name>
+      <comment>Short description of the program/task.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>STRING</type>
+      <description>
+<p>This field allows for the specification of a short description for the process. The description should be under 80 characters (one sentence).  The description is typically useful for occasions where the user is debugging the system or trying to get a quick overview of what tasks are currently running.  By creating a useful description, you can ease system maintenance for the user.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>TimeOut</name>
+      <comment>Limits the amount of time to wait for a launched process to return.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>DOUBLE</type>
+      <description>
+<p>This field can be set in conjunction with the WAIT flag to define the time limit when waiting for a launched process to return.  The time out is defined in seconds.</p>
+      </description>
+    </field>
+
+  </fields>
+  <types>
+    <constants lookup="FDB" comment="Feedback event indicators.">
+      <const name="DECOMPRESS_FILE"/>
+      <const name="COMPRESS_FILE"/>
+      <const name="REMOVE_FILE"/>
+      <const name="DECOMPRESS_OBJECT"/>
+    </constants>
+
+    <constants lookup="MOF" comment="Module flags">
+      <const name="LINK_LIBRARY">Module refers to a symbolic link library (e.g. libz DLL or SO)</const>
+      <const name="STATIC">This flag prevents the loaded module code from being unloaded when the module object is freed.  This may be needed in cases where a module is designed with the presumption that it will remain in memory after being loaded by the developer.</const>
+    </constants>
+
+    <constants lookup="CNF" comment="Flags for the Config class.">
+      <const name="STRIP_QUOTES">Removes quotes from key values that are quote-encapsulated.</const>
+      <const name="LOCK_RECORDS">Locks existing keys so that they can't be overwritten.  It will still be possible to add new keys to the config object.</const>
+      <const name="NEW">On initialisation, do not load any data from the referenced configuration file.</const>
+      <const name="FILE_EXISTS">Setting this flag will force the config class to fail if the source file defined in Path does not exist.</const>
+      <const name="AUTO_SAVE">When the configuration object is freed, automatically save the configuration data back to the original file source.</const>
+    </constants>
+
+    <constants lookup="EVG" comment="Event categories.">
+      <const name="FILESYSTEM">File system events.</const>
+      <const name="NETWORK">Network events.</const>
+      <const name="SYSTEM">System-wide events</const>
+      <const name="GUI">Events generated by the Graphical User Interface.</const>
+      <const name="DISPLAY">Video display events.</const>
+      <const name="IO">Input/Output events.</const>
+      <const name="HARDWARE">Hardware device events that are not covered by other types.</const>
+      <const name="AUDIO">Audio system events.</const>
+      <const name="USER">User activity events (such as user login).</const>
+      <const name="POWER">Power Management - can also include app-specific events relating to resource management.</const>
+      <const name="CLASS">Custom event dispatched from a class that doesn't fit within the rest of the event framework</const>
+      <const name="APP">Custom event dispatched from an application</const>
+      <const name="ANDROID">Android specific events that do not already fit existing categories.</const>
+    </constants>
+
+    <constants lookup="SCF" comment="Script flags">
+      <const name="DEBUG">Enables execution debugging.  More information will be printed to the console in this mode.</const>
+      <const name="EXIT_ON_ERROR">The script will automatically terminate its execution process if an error is detected.</const>
+    </constants>
+
+    <constants lookup="LTF" comment="Flags for ListTasks()">
+      <const name="CURRENT_PROCESS"/>
+    </constants>
+
+    <constants lookup="SBF" comment="Flags for StrBuildArray()">
+      <const name="NO_DUPLICATES">Sort the resulting list and remove duplicated strings.</const>
+      <const name="SORT">Sort the resulting list.</const>
+      <const name="CSV">The list is in CSV format and the Size and Total parameters should be ignored. Note that the source string will be modified in this mode.</const>
+      <const name="DESC">Sort in descending order.</const>
+      <const name="CASE">Use case-sensitivity when comparing strings in the list.</const>
+    </constants>
+
+    <constants lookup="STT" comment="Types for StrDatatype().">
+      <const name="NUMBER">The string represents a whole number.</const>
+      <const name="FLOAT">The string represents a floating point number.</const>
+      <const name="HEX">The string represents a hexadecimal number.</const>
+      <const name="STRING">The string represents plain-text.</const>
+    </constants>
+
+    <constants lookup="IDTYPE" comment="Types for AllocateID()">
+      <const name="MESSAGE">Message ID's are allocated for the purpose of sending uniquely identifiable messages between tasks.</const>
+      <const name="GLOBAL">Global ID's have no specific association with anything.</const>
+      <const name="FUNCTION">Function ID's are used to track FUNCTION types and are assigned to the function ID field.</const>
+    </constants>
+
+    <constants lookup="THF" comment="Thread flags">
+      <const name="AUTO_FREE">Automatically destroy the Thread object when the user routine has completed.</const>
+      <const name="MSG_HANDLER">Allow the thread to handle messages that target objects that it has created.</const>
+    </constants>
+
+    <constants lookup="DEVICE">
+      <const name="TEMPORARY">All storage is temporary</const>
+      <const name="MEMORY">Device is RAM, ROM, WORM, NVRAM, flashdisk or other form of memory.  Does not guarantee a fast connection as it could be over a slow USB 1.1 connection for example</const>
+      <const name="REMOVABLE">Device media is removable from the hardware</const>
+      <const name="SCANNER">Device is a two dimensional scanner.</const>
+      <const name="MODEM">Device is a modem.</const>
+      <const name="WRITE">Device is writeable</const>
+      <const name="PRINTER_3D">Device is a three dimensional printer.</const>
+      <const name="READ">Device is readable</const>
+      <const name="COMPACT_DISC">Compact disc style device</const>
+      <const name="PRINTER">Device is a paper-based printer.</const>
+      <const name="TAPE">Tape/Stream style device</const>
+      <const name="SCANNER_3D">Device is a three dimensional scanner.</const>
+      <const name="NETWORK">Device represents a network link</const>
+      <const name="HARD_DISK">Hard disk style device</const>
+      <const name="USB">Removable USB storage device.  May be further qualified by DEVICE_HARDDISK, DEVICE_FLOPPYDISK etc</const>
+      <const name="REMOVEABLE">Device media is removable from the hardware</const>
+      <const name="SOFTWARE">Device is virtual/software defined</const>
+      <const name="FLOPPY_DISK">Floppy disk style device</const>
+    </constants>
+
+    <constants lookup="SEF" comment="Optional flags for StrEvaluate()">
+      <const name="KEEP_ESCAPE">Escaped string symbols will not be altered if this flag is used.</const>
+      <const name="NO_SCRIPT">Turns off the embedded script feature.  An error code is returned if an attempt to embed a script is made.</const>
+      <const name="IGNORE_QUOTES">Areas marked with double-quotes will not be translated.  The quote characters will also not be removed.</const>
+      <const name="STRICT">Enforces strict processing.  An error code will always be returned if at least one of the translation attempts failed.  Failed translations will be unprocessed (normally they are removed from the resulting string).</const>
+    </constants>
+
+    <constants lookup="MSF" comment="Message flags.">
+      <const name="MESSAGE_ID">The Type parameter refers to a unique message ID rather than a message type for this call.</const>
+      <const name="WAIT">Wait before inserting the message if the queue is at maximum capacity.</const>
+      <const name="ADD">The default behaviour - this will add the message to the end of the queue.</const>
+      <const name="NO_DUPLICATE">If the Type parameter matches a message already inside the queue, the new message will not be added and the function will immediately return with ERR_Okay.</const>
+      <const name="UPDATE">If the Type parameter matches a message already inside the queue, the data for that message will be deleted, then the new message will be added to the end of the queue.</const>
+    </constants>
+
+    <constants lookup="STR">
+      <const name="WILDCARD">Allow the use of wildcard characters '|', '?' and '*'.</const>
+      <const name="MATCH_LEN">The strings must be of equal length to be matched.</const>
+      <const name="MATCH_CASE">Perform a case-sensitive match.</const>
+      <const name="CASE">Perform a case-sensitive match.</const>
+    </constants>
+
+    <constants lookup="NSF" comment="Flags for NotifySubscribers">
+      <const name="LOCAL">Only send messages to objects that are owned by the current process.</const>
+      <const name="DELAY">Place all notifications on the message queue.</const>
+      <const name="FORCE_DELAY">Place all notifications on the message queue.</const>
+      <const name="OTHER_TASKS">Only send messages to objects that are owned by other processes.</const>
+      <const name="EXCLUSIVE">Instead of messaging each object, the function will attempt to gain exclusive access to each of the subscribed objects and send the notification directly.</const>
+      <const name="LOCAL_TASK">Only send messages to objects that are owned by the current process.</const>
+    </constants>
+
+    <constants lookup="AC" comment="Action identifiers.">
+      <const name="ActionNotify"/>
+      <const name="Activate"/>
+      <const name="AccessObject"/>
+      <const name="Clear"/>
+      <const name="FreeWarning"/>
+      <const name="OwnerDestroyed"/>
+      <const name="CopyData"/>
+      <const name="DataFeed"/>
+      <const name="Deactivate"/>
+      <const name="Draw"/>
+      <const name="Flush"/>
+      <const name="Focus"/>
+      <const name="Free"/>
+      <const name="ReleaseObject"/>
+      <const name="GetVar"/>
+      <const name="DragDrop"/>
+      <const name="Hide"/>
+      <const name="Init"/>
+      <const name="Lock"/>
+      <const name="LostFocus"/>
+      <const name="Move"/>
+      <const name="MoveToBack"/>
+      <const name="MoveToFront"/>
+      <const name="NewChild"/>
+      <const name="NewOwner"/>
+      <const name="NewObject"/>
+      <const name="Redo"/>
+      <const name="Query"/>
+      <const name="Read"/>
+      <const name="Rename"/>
+      <const name="Reset"/>
+      <const name="Resize"/>
+      <const name="SaveImage"/>
+      <const name="SaveToObject"/>
+      <const name="Scroll"/>
+      <const name="Seek"/>
+      <const name="SetVar"/>
+      <const name="Show"/>
+      <const name="Undo"/>
+      <const name="Unlock"/>
+      <const name="Next"/>
+      <const name="Prev"/>
+      <const name="Write"/>
+      <const name="SetField"/>
+      <const name="Clipboard"/>
+      <const name="Refresh"/>
+      <const name="Disable"/>
+      <const name="Enable"/>
+      <const name="Redimension"/>
+      <const name="MoveToPoint"/>
+      <const name="ScrollToPoint"/>
+      <const name="Custom"/>
+      <const name="Sort"/>
+      <const name="SaveSettings"/>
+      <const name="SelectArea"/>
+      <const name="END"/>
+    </constants>
+
+    <constants lookup="KSF" comment="Flags for VarNew()">
+      <const name="THREAD_SAFE">Enable thread safety for a small performance penalty.</const>
+      <const name="UNTRACKED">Do not track the key-store to the object with the current context.</const>
+      <const name="CASE">Enable case-sensitive keys.</const>
+      <const name="AUTO_REMOVE">Automatically call FreeMemory() on remaining key values when VarFree() is called for the key-store.</const>
+    </constants>
+
+    <constants lookup="CLF" comment="Flags for the MetaClass.">
+      <const name="XML_CONTENT">Script processing should treat any object content as XML.</const>
+      <const name="SHARED_ONLY">Forces all objects of this class to be shared.</const>
+      <const name="PUBLIC_OBJECTS">Forces all class objects to be allocated in public memory.</const>
+      <const name="SHARED_OBJECTS">Forces all objects of this class to be shared.</const>
+      <const name="PROMOTE_INTEGRAL">Promote class support for any integral object defined in the class definition structure.</const>
+      <const name="NO_OWNERSHIP">Objects created will not be tracked to the creating process, nor any parent object (SetOwner() will not work either).</const>
+      <const name="PRIVATE_ONLY">Do not allow public-memory instances of the class (private-shared objects will still be possible).</const>
+    </constants>
+
+    <constants lookup="RFD" comment="Flags for RegisterFD()">
+      <const name="WRITE">Activate the callback if there is room to write to the FD's buffer.</const>
+      <const name="REMOVE">Stop monitoring this file descriptor.</const>
+      <const name="SOCKET">Identifies the file descriptor as a socket (Linux systems only).</const>
+      <const name="READ">Activate the callback if there is data available to read.</const>
+      <const name="EXCEPT">Activate the callback if error conditions are pending.</const>
+      <const name="RECALL">Set if the subscriber needs to manually check for incoming/outgoing data.  This is supported as a one-off check, so the flag will be disabled automatically when the subscriber is called.</const>
+    </constants>
+
+    <constants lookup="RP" comment="Path types for SetResourcePath()">
+      <const name="MODULE_PATH">An alternative path leading to the system modules (normally 'system:modules/').  Introduced for platforms such as Android, where modules are stored in asset folders.</const>
+      <const name="SYSTEM_PATH">The path of the 'system:' volume, which otherwise defaults to '[root]:system/'.</const>
+      <const name="ROOT_PATH">Overrides the root path, which defaults to the location at which Parasol is installed.</const>
+    </constants>
+
+    <constants lookup="RES">
+      <const name="MESSAGE_QUEUE">Use this resource to retrieve the message queue ID of the current task.</const>
+      <const name="GLOBAL_INSTANCE">If a global instance is active, this resource holds the instance ID.  Otherwise the value is 0.</const>
+      <const name="PRIVILEGED_USER">If this value is set to 1, the process will operate in privileged mode (typically this enables full administrator rights).  This feature will only work for Unix processes that are granted admin rights when launched.  Setting the Value to 0 reverts to the user's permission settings.  SetResource() will return an error code indicating the level of success.</const>
+      <const name="PRIVILEGED">This is set to TRUE if the process has elevated privileges (such as superuser or administrative rights).</const>
+      <const name="RANDOM_SEED">Changes the PRNG seed value for RandomNumber().</const>
+      <const name="PARENT_CONTEXT">Read-only pointer to the parent object of the current context.</const>
+      <const name="LOG_LEVEL">The current level of log detail (larger numbers indicate more detail).</const>
+      <const name="TOTAL_SHARED_MEMORY">The total amount of shared memory in use.</const>
+      <const name="MAX_PROCESSES">The maximum number of processes that can be supported at any time.</const>
+      <const name="LOG_DEPTH">The current depth of log messages.</const>
+      <const name="JNI_ENV">Return the current JNI environment string.</const>
+      <const name="THREAD_ID">Return the ID of the current thread.</const>
+      <const name="CURRENT_MSG">Returns a Message structure if the program is currently processing a message - otherwise returns NULL.  This resource type is meaningful only during a ProcessMessages call.</const>
+      <const name="OPEN_INFO">Pointer to the OpenInfo structure originally used to initialise the system.</const>
+      <const name="EXCEPTION_HANDLER"/>
+      <const name="PROCESS_STATE">Life-cycle stage of the running process</const>
+      <const name="TOTAL_MEMORY">The total amount of installed memory.</const>
+      <const name="TOTAL_SWAP">The total amount of available swap space.</const>
+      <const name="CPU_SPEED">The average top-speed of all CPU cores in Mhz.</const>
+      <const name="FREE_MEMORY">The total amount of free memory.</const>
+      <const name="FREE_SWAP">The total amount of free swap memory.</const>
+      <const name="KEY_STATE">Maintains the state of key qualifiers such as caps-lock and the shift keys.</const>
+      <const name="CORE_IDL">Refers to the Core module's compressed IDL string.</const>
+    </constants>
+
+    <constants lookup="CF" comment="Compression stream formats">
+      <const name="GZIP">The 'gzip' format</const>
+      <const name="ZLIB">The 'zlib' format</const>
+      <const name="DEFLATE">The 'deflate' format</const>
+    </constants>
+
+    <constants lookup="CMF" comment="Compression flags">
+      <const name="READ_ONLY">Forces read-only access, which is strongly recommended if an existing archive is being opened with no modifications intended.  If this flag is not set, initialisation can fail if the user does not have write access to the source file.</const>
+      <const name="NEW">Force the creation of a new file archive.  Any existing file data at the target location will be destroyed.</const>
+      <const name="APPLY_SECURITY">When decompressing, apply individual file permissions if they are available in the compression file.</const>
+      <const name="NO_LINKS">Treat symbolic links as normal files/folders.</const>
+      <const name="CREATE_FILE">Create a new archive only if the source file does not already exist.</const>
+      <const name="PASSWORD">A password has been set on the object.</const>
+    </constants>
+
+    <constants lookup="PERMIT" comment="Permission flags">
+      <const name="USER_EXEC">Synonym for EXEC</const>
+      <const name="GROUP_WRITE">Group members can write.</const>
+      <const name="GROUP">Synonym for GROUP_READ | GROUP_WRITE | GROUP_EXEC | GROUP_DELETE</const>
+      <const name="GROUP_DELETE">Group members can delete.</const>
+      <const name="ALL_EXEC">Synonym for EVERYONE_EXEC</const>
+      <const name="OTHERS_EXEC">Others can execute.</const>
+      <const name="OTHERS">Synonym for OTHERS_READ | OTHERS_WRITE | OTHERS_EXEC | OTHERS_DELETE</const>
+      <const name="ALL_WRITE">Synonym for EVERYONE_WRITE</const>
+      <const name="OTHERS_READ">Others can read.</const>
+      <const name="OTHERS_DELETE">Others can delete.</const>
+      <const name="EVERYONE_EXEC">Synonym for EXEC | GROUP_EXEC | OTHERS_EXEC</const>
+      <const name="GROUP_READ">Group members can read.</const>
+      <const name="GROUP_EXEC">Group members can execute.</const>
+      <const name="ARCHIVE">Marks the file for future backup.  The flag should be cleared after the backup has succeeded.</const>
+      <const name="OTHERS_WRITE">Others can write.</const>
+      <const name="WRITE">User/Owner can write.</const>
+      <const name="USER">Synonym for READ | WRITE | EXEC | DELETE</const>
+      <const name="READ">User/Owner has read access.  This will not allow compiled code to be executed.</const>
+      <const name="OFFLINE">File content for this networked file has not been cached on the local PC.</const>
+      <const name="INHERIT">Inherit permissions from parent folder and logical OR them with preset permission flags.</const>
+      <const name="PASSWORD">File is password protected.</const>
+      <const name="DELETE">Owner can delete.  If the file system does not support this, deletion is enabled via the WRITE flag.</const>
+      <const name="ALL_READ">Synonym for EVERYONE_READ</const>
+      <const name="EVERYONE_READ">Synonym for READ | GROUP_READ | OTHERS_READ</const>
+      <const name="NETWORK">File is hosted on another machine.</const>
+      <const name="EVERYONE_READWRITE">Synonym for EVERYONE_READ | EVERYONE_WRITE</const>
+      <const name="EVERYONE_WRITE">Synonym for WRITE | GROUP_WRITE | OTHERS_WRITE</const>
+      <const name="USER_WRITE">Synonym for WRITE</const>
+      <const name="EVERYONE_DELETE">Synonym for DELETE | GROUP_DELETE | OTHERS_DELETE</const>
+      <const name="EVERYONE_ACCESS">Synonym for EVERYONE_READ | EVERYONE_WRITE | EVERYONE_EXEC | EVERYONE_DELETE</const>
+      <const name="GROUPID">Allows executables to run with a set group id.</const>
+      <const name="HIDDEN">Recommends that the file is hidden from view by default.</const>
+      <const name="EXEC">User/Owner can execute.</const>
+      <const name="ALL_DELETE">Synonym for EVERYONE_DELETE</const>
+      <const name="USERID">Allows executables to run with a set user id.</const>
+      <const name="USER_READ">Synonym for READ</const>
+    </constants>
+
+    <constants lookup="NF" comment="Flags that can be passed to NewObject().  If a flag needs to be stored with the object, it must be specified in the lower word.">
+      <const name="PRIVATE"/>
+      <const name="NAME">Use the Name argument to name the created object.  This flag is not required if using NF_UNIQUE.</const>
+      <const name="INTEGRAL">Integral objects can only be allocated by classes that need to adopt the functionality of said object.  Integral objects do not appear in the object tree, effectively making them hidden from view.</const>
+      <const name="UNTRACKED">An object created with this flag will not be tracked back to the object that created it.  If combined with the NF_PUBLIC flag, the object can also remain in memory when the object's related task is terminated.</const>
+      <const name="NO_TRACK">An object created with this flag will not be tracked back to the object that created it.  If combined with the NF_PUBLIC flag, the object can also remain in memory when the object's related task is terminated.</const>
+      <const name="PUBLIC">By using the NF_PUBLIC flag, you can allocate public objects rather than the default private type.  A public object can be accessed and interacted with by any application directly, because the object structure and its data lies in public memory.  Public object structures can be accessed via exclusive access only (refer to the AccessObject() and ReleaseObject() functions).</const>
+      <const name="RECLASSED">The object switched from the base-class to a sub-class during initialisation.</const>
+      <const name="INITIALISED">Set if the object has been initialised.</const>
+      <const name="UNIQUE">Use this flag if you need to allocate an object which has a guaranteed unique name.  By using NF_UNIQUE, you can prevent your code from shadowing an object that exists with the same name.  This can be imperative when creating shared and public objects.  If it is discovered that an identically named object exists, NewObject() will return ERR_ObjectExists.  This flag works in conjunction with the Name argument.</const>
+      <const name="UNLOCK_FREE">Set if the object is marked for deletion</const>
+      <const name="MESSAGE">Action has been called against the object through the message system (managed by ProcessMessages()).</const>
+      <const name="FOREIGN_OWNER">Object is owned by an object in a foreign task.</const>
+      <const name="FREE">Indicates that the object is being freed.</const>
+    </constants>
+
+    <constants lookup="CCF" comment="Class categories">
+      <const name="IO">IO classes manage hardware and software based input and output.</const>
+      <const name="SYSTEM">System classes are designed to provide low-level services related to system management.</const>
+      <const name="MISC">Miscellaneous classes do not fit into any of the other available categories.</const>
+      <const name="NETWORK">Network classes interface with network drivers to simplify network communications for the developer.</const>
+      <const name="AUDIO">Audio classes interface with audio hardware and drivers for audio playback and recording purposes.</const>
+      <const name="EFFECT">Effect classes draw graphics and/or play audio for non-productive demonstration purposes.</const>
+      <const name="DRAWABLE">Drawable classes provide graphical areas that are designed to be drawn to.</const>
+      <const name="MULTIMEDIA"/>
+      <const name="DATA">Data classes parse, query and manipulate data.</const>
+      <const name="TOOL">Tool classes are focussed on providing interactive services to the user.</const>
+      <const name="FILESYSTEM">FileSystem classes are based on file management and interaction with file based data.</const>
+      <const name="COMMAND">Command classes perform specific procedures, like copying or moving a file, managing volumes or executing a program.</const>
+      <const name="GUI">GUI classes are used in the development of graphical user interfaces.</const>
+      <const name="GRAPHICS">Graphics classes provide graphical manipulation and drawing services to developers.</const>
+    </constants>
+
+    <constants lookup="IDF" comment="IdentifyFile() values">
+      <const name="SECTION">Return the name of the Config section that supports the file association, rather than an executable command.</const>
+      <const name="IGNORE_HOST">Ignore the host platform's file assocations.</const>
+      <const name="HOST">Query the host platform's file associations only.</const>
+    </constants>
+
+    <constants lookup="FDL" comment="Options for the File Delete() method.">
+      <const name="FEEDBACK">Automatically manage user feedback for deleting files by presenting dialog boxes.</const>
+    </constants>
+
+    <constants lookup="MEM" comment="Memory types used by AllocMemory().  The lower 16 bits are stored with allocated blocks, the upper 16 bits are function-relative only.">
+      <const name="NO_BLOCK">If this flag is set against a public memory block then the access blocking mechanism will be permanently turned off for all accesses to that particular memory block.  This means that multiple tasks can have full read/write access to the memory block at once regardless of the flags passed to AccessMemory().</const>
+      <const name="FIXED">This flag can be applied to public memory blocks that need to be mapped to a fixed address that is common to all tasks.  For instance, if the system locks the memory block to address 0x56084000 for your task, then all other tasks that map the memory block will also see it at that address.  This flag is typically used for supporting absolute code execution.</const>
+      <const name="READ_WRITE">Synonym for READ | WRITE</const>
+      <const name="WRITE">The memory is explicitly marked as writeable.</const>
+      <const name="NO_BLOCKING">If this flag is set against a public memory block then the access blocking mechanism will be permanently turned off for all accesses to that particular memory block.  This means that multiple tasks can have full read/write access to the memory block at once regardless of the flags passed to AccessMemory().</const>
+      <const name="CALLER">This flag is usable only in routines that are supporting a class method.  It forces the memory allocation to be tracked to the object that made the method call.  This is particularly important in methods that return memory blocks that do not form a part of the object itself.</const>
+      <const name="UNTRACKED">Allocating an untracked memory block will prevent the memory block from being tracked back to the object holding the current context.</const>
+      <const name="MANAGED">Enables custom resource management for the memory block.  The start of the block will need to be reserved with a pointer to a ResourceManager structure, which is included as part of the block's declared Size.  The Free() callback will be called when the block is removed.</const>
+      <const name="NO_LOCK">For AllocMemory() only, indicates that the (private) memory block should not be locked on return.</const>
+      <const name="TASK">Track the memory block to the current process, as opposed to the current object.</const>
+      <const name="SHARED">Public memory can be allocated by specifying this flag.  Public memory blocks are accessible by all tasks, but access can only be gained by knowing the unique memory ID and utilising the AccessMemory() function.</const>
+      <const name="RESERVED">This special flag is used to allocate shared memory blocks that require reserved ID numbers.  When using the MEM_RESERVED flag, you are required to set the longword pointed to by the ID argument to the ID that you wish to reserve.  If that memory ID is already taken, the AllocMemory() call will fail.</const>
+      <const name="DATA">The default type, MEM_DATA, is used to indicate a standard memory allocation from system RAM.</const>
+      <const name="PUBLIC">Public memory can be allocated by specifying this flag.  Public memory blocks are accessible by all tasks, but access can only be gained by knowing the unique memory ID and utilising the AccessMemory() function.</const>
+      <const name="AUDIO">Identifies the memory space as being reserved by an audio device such as a sound card.</const>
+      <const name="NO_POOL">Gives a hint to the allocator to allocate the block outside of the memory pool.</const>
+      <const name="READ">The memory is explicitly marked as readable.</const>
+      <const name="NO_CLEAR">Do not clear the memory on allocation (saves time).</const>
+      <const name="CODE">Indicates that the memory will contain executable program code.</const>
+      <const name="HIDDEN">Hidden blocks are not recorded and are excluded from resource tracking.</const>
+      <const name="TMP_LOCK">Enables temporary locking restrictions.  Prevents processes from sleeping while holding a lock on the memory block.</const>
+      <const name="STRING">Identifies the memory content as a null terminated string. Useful for debugging and run-time type identification in scripts.</const>
+      <const name="TEXTURE">The memory space is reserved by a video driver for hosting texture graphics.</const>
+      <const name="VIDEO">The memory space is reserved by a video device such as a graphics card for display purposes, e.g. framebuffer.</const>
+    </constants>
+
+    <constants lookup="ALF">
+      <const name="SHARED">The lock will be shared between foreign processes.</const>
+      <const name="RECURSIVE">Set if support for recursive locking within the same thread is required.</const>
+    </constants>
+
+    <constants lookup="RSF">
+      <const name="PATH">Use the PATH environment variable to resolve the file name in the Path parameter.</const>
+      <const name="NO_FILE_CHECK">Do not test for the existence of the targeted file or folder during the resolution process.</const>
+      <const name="APPROXIMATE">Ignores file extensions for the purpose of file name matching.</const>
+      <const name="CHECK_VIRTUAL">If the volume referenced by Path is traced to another volume that is reserved by a virtual file system driver, ERR_VirtualVolume is returned. The volume is still resolved as far as possible and the resulting path will be returned by this function.</const>
+      <const name="CASE_SENSITIVE">For use on host systems that use case-insensitive file systems such as Windows; this option checks that the discovered file is a case-sensitive match to the Path.</const>
+      <const name="NO_DEEP_SCAN">Do not perform more than one iteration when resolving the source file path.</const>
+    </constants>
+
+    <constants lookup="RDF" comment="Flags for the OpenDir() function.">
+      <const name="LINK">Feedback only - file/folder is actually a link to another location.</const>
+      <const name="ARCHIVE">Feedback only - archive bit is set.</const>
+      <const name="QUALIFIED">Return fully qualified folder names (i.e. trailing slash or colon for each name).</const>
+      <const name="QUALIFY">Return fully qualified folder names (i.e. trailing slash or colon for each name).</const>
+      <const name="VIRTUAL">Path is to a virtual device.</const>
+      <const name="READ_ALL">Synonym for SIZE | DATE | PERMISSIONS | FILES | FOLDERS</const>
+      <const name="READ_ONLY">Read-only (not permissions related and might indicate read-only media).</const>
+      <const name="SIZE">Retrieve the byte size of each file.</const>
+      <const name="PERMISSIONS">Get permission/security information.</const>
+      <const name="FILES">Read all files in the directory.</const>
+      <const name="STREAM">Path is connected via a stream, e.g. network connection.</const>
+      <const name="DATE">Retrieve the date stamp of each file.</const>
+      <const name="FOLDER">Read all folders/volumes in the folder.</const>
+      <const name="VOLUME">Feedback only - indicates a volume.</const>
+      <const name="HIDDEN">Feedback only - file/folder is hidden.</const>
+      <const name="FILE">Read all files in the directory.</const>
+      <const name="TAGS">Receive additional information for each file, such as comments, author and copyright.  The results are stored in the Tags array for each file, using the string format 'TAGNAME:Description' for each entry.</const>
+      <const name="TIME">Retrieve the date stamp of each file.</const>
+      <const name="FOLDERS">Read all folders/volumes in the folder.</const>
+    </constants>
+
+    <constants lookup="MFF" comment="Flags for File Watch() method.">
+      <const name="MOVED">Existing file moved or renamed.</const>
+      <const name="UNMOUNT">Host filesystem was unmounted.</const>
+      <const name="ATTRIB">File permissions or datestamp changed.</const>
+      <const name="DEEP">Receive notifications from sub-folders (Windows only).</const>
+      <const name="CLOSED">An opened file has been closed.</const>
+      <const name="FILE">File identifier; if passed to Watch() then indicates a preference for file events only.</const>
+      <const name="FOLDER">Folder identifier; if passed to Watch() then indicates a preference for folder events only.</const>
+      <const name="WRITE">File modified via write or truncation</const>
+      <const name="SELF">Event applies to the monitored folder and not a contained item</const>
+      <const name="OPENED">Existing file was opened.</const>
+      <const name="RENAME">Existing file moved or renamed.</const>
+      <const name="READ">File was accessed (read)</const>
+      <const name="CREATE">New file/link created or renamed in directory</const>
+      <const name="DELETE">Existing file deleted</const>
+      <const name="MODIFY">File modified via write or truncation</const>
+    </constants>
+
+    <constants lookup="LOC" comment="AnalysePath() values">
+      <const name="DIRECTORY">The path refers to a folder.</const>
+      <const name="VOLUME">The path refers to a volume name.</const>
+      <const name="FILE">The path refers to a file.</const>
+    </constants>
+
+    <constants lookup="ACF" comment="AssociateCmd() values">
+      <const name="ALL_USERS">Apply the command link to all users for that file type.  This will cause an error if sufficient privileges are not available to the logged-in user.</const>
+    </constants>
+
+    <constants lookup="TSF" comment="Task flags">
+      <const name="PIPE">Enable the output pipe to the launched process so that it can read data.</const>
+      <const name="SHELL">Enables shell mode.  On Unix systems, this means that a shell (usually BASH) will be used to launch the process.</const>
+      <const name="DEBUG">Additional debug messages will be printed during normal usage of the task class when this flag is set.</const>
+      <const name="WAIT">This flag will cause the parent process to halt when the task is activated.  Control is returned to the parent process once the child process terminates.</const>
+      <const name="QUIET">Setting this flag will divert all process output to /dev/null or the nearest equivalent for non-Unix systems.</const>
+      <const name="RESET_PATH">If set, the executed process will start in its own directory rather than the directory of the parent process.</const>
+      <const name="FOREIGN">Set this flag when using the task object to execute a foreign process - that is an executable that does not use the Parasol API.</const>
+      <const name="ATTACHED">Forces new task to be attached to the parent (child will close when parent closes).</const>
+      <const name="DETACHED">Forces new task to be detached from the parent.</const>
+      <const name="PRIVILEGED">During a normal execution process, any privileges of the parent process will be dropped so that the child process runs unprivileged.  This behaviour can be reversed if he PRIVILEGED flag is set, in which case the child process has the same privileges as the parent.</const>
+    </constants>
+
+    <constants lookup="FDT" comment="Flags for the SetDate() file method.">
+      <const name="MODIFIED">The date on which the file was last modified.</const>
+      <const name="CREATED">The date on which the file was created.  On some host platforms this datestamp may be read-only.</const>
+      <const name="ACCESSED">The date on which the file was last accessed by a user or application.</const>
+      <const name="ARCHIVED">The date on which the file was most recently archived.  Not supported by most filesystems.</const>
+    </constants>
+
+    <constants lookup="LDF" comment="Flags for LoadFile()">
+      <const name="IGNORE_STATUS">The timestamp and size of the file will not be checked, which will result in the cached version of the file being returned regardless of any recent file changes.</const>
+      <const name="CHECK_EXISTS">Limits the routine to checking the file cache for the existence of the file.  If found, the relevant cache entry is returned. The open count is not incremented by this action (it is therefore unnecessary to follow-up with a call to UnloadFile()).  If no up-to-date cache entry is available, ERR_Search is returned.</const>
+    </constants>
+
+    <constants lookup="FL" comment="File flags">
+      <const name="LINK">Read-Only.  Indicates that the file is a symbolic link or shortcut to another file.</const>
+      <const name="EXCLUDE_FOLDERS">Exclude folders when scanning this folder.</const>
+      <const name="DEVICE">File is a system device (must set if you want to open a device for read/write)</const>
+      <const name="APPROXIMATE">Setting this flag allows a file object to find approximate matching file names when opening an existing file.  In basic terms it causes file extensions to be ignored; for instance if you attempt to open a file of 'screenshot.png' when only a file name of 'screenshot.jpg' exists under the same folder, the 'screenshot.jpg' file will be opened instead.  If multiple files could potentially match to the file name, the file object will select the first potential match that it comes across.</const>
+      <const name="EXCLUDE_FILES">Exclude files when scanning this folder.</const>
+      <const name="RESET_DATE">For internal use only</const>
+      <const name="STREAM">File data is streamed (e.g. PIPE, FIFO, socket) or is network based</const>
+      <const name="WRITE">Prepares a file for writing data, starting at byte position 0.  If you want to start writing from the end of a file, use the Seek action after your file has been initialised successfully.</const>
+      <const name="DIRECTORY">The file object represents a folder.</const>
+      <const name="NEW">Set this flag when creating a new file. Note that if a file with the same name already exists, the old file (with all its data), will be destroyed. If you try to create a new file on a file that is already open by some other task, the initalisation will fail.</const>
+      <const name="FILE">Explicitly declares the file object as representing a file capable of storing data (as opposed to a device or folder for example).</const>
+      <const name="READ">Must be set on initialisation if the file needs to be opened for read access.</const>
+      <const name="BUFFER">Activates a special mode in which the file data is stored in a memory buffer rather than a disk file.  You are required to set the Size field to a value of at least 1 so that the file can determine the initial buffer size.  In this mode most of the available file operations are meaningless except for the Read, Write and Seek actions.</const>
+      <const name="FOLDER">The file object represents a folder.</const>
+      <const name="LOOP">In loop mode, the file object's position marker for read/write operations is allowed to extend past the actual file size.  Any read/write operation beyond the file size will loop back to the file at a corrected offset - for example, reading position 330 of a 100 byte file will in fact start the operation from the 30th byte.  Loop mode does not affect any other area besides the read, write and seek operations.  The loop feature is typically used to enable multimedia data streams with minimal effort.</const>
+    </constants>
+
+  </types>
+  <structs>
+    <struct name="MethodArray">
+      <field name="MethodID" type="LONG"></field>
+      <field name="Routine" type="APTR">ERROR (*Routine)(OBJECTPTR, APTR);</field>
+      <field name="Name" type="CSTRING"></field>
+      <field name="Args" type="const struct FunctionField *"></field>
+      <field name="Size" type="LONG"></field>
+    </struct>
+
+    <struct name="rkBase64Decode" comment="Private structure for the StrBase64Decode() function." typeName="BASE64DECODE">
+      <field name="Step" type="UBYTE"></field>
+      <field name="PlainChar" type="UBYTE"></field>
+      <field name="Initialised" type="UBYTE"></field>
+    </struct>
+
+    <struct name="FileInfo" comment="Returned by GetFileInfo()">
+      <field name="Size" type="LARGE">The size of the file's content.</field>
+      <field name="TimeStamp" type="LARGE">64-bit time stamp - usable only for comparison (e.g. sorting).</field>
+      <field name="Next" type="struct FileInfo *">Next structure in the list, or NULL.</field>
+      <field name="Name" type="STRING">The name of the file.  This string remains valid until the next call to GetFileInfo().</field>
+      <field name="Tags" type="STRING *">A list of special tag strings that are file-specific.  Each string is in the format "TAGNAME=Content".</field>
+      <field name="Flags" type="LONG" lookup="FL">Additional flags to describe the file.</field>
+      <field name="Permissions" type="LONG" lookup="PERMIT">Standard permission flags.</field>
+      <field name="UserID" type="LONG">User  ID (Unix systems only).</field>
+      <field name="GroupID" type="LONG">Group ID (Unix systems only).</field>
+      <field name="Created" type="struct DateTime">The date/time of the file's creation.</field>
+      <field name="Modified" type="struct DateTime">The date/time of the last file modification.</field>
+    </struct>
+
+    <struct name="ChildEntry" comment="Structure for ListChildren() function">
+      <field name="ObjectID" type="OBJECTID">Object ID</field>
+      <field name="ClassID" type="LONG">The class ID of the referenced object.</field>
+    </struct>
+
+    <struct name="Field" comment="Used to describe the public fields of a class.">
+      <field name="Arg" type="MAXINT">An option to complement the field type.  Can be a pointer or an integer value</field>
+      <field name="GetValue" type="FUNCTION *" prototype="ERROR (*GetValue)(APTR, APTR)">A virtual function that will retrieve the value for this field.</field>
+      <field name="SetValue" type="APTR">A virtual function that will set the value for this field.</field>
+      <field name="WriteValue" type="FUNCTION *" prototype="ERROR (*WriteValue)(OBJECTPTR, struct Field *, LONG, const void *, LONG)">An internal function for writing to this field.</field>
+      <field name="Name" type="CSTRING">The English name for the field, e.g. "Width"</field>
+      <field name="FieldID" type="ULONG">Provides a fast way of finding fields, e.g. FID_WIDTH</field>
+      <field name="Offset" type="UWORD">Field offset within the object</field>
+      <field name="Index" type="UWORD">Field array index</field>
+      <field name="Flags" type="LONG">Special flags that describe the field</field>
+    </struct>
+
+    <struct name="Function" comment="Function list array structure">
+      <field name="Address" type="APTR"></field>
+      <field name="Name" type="CSTRING"></field>
+      <field name="Args" type="const struct FunctionField *"></field>
+    </struct>
+
+    <struct name="MemoryLocks" comment="A supplement structure for ListTasks.">
+      <field name="MemoryID" type="MEMORYID">Reference to a memory ID.</field>
+      <field name="Locks" type="WORD">The total number of locks on the memory block.</field>
+    </struct>
+
+    <struct name="MemInfo" typeName="MEMINFO">
+      <field name="Start" type="APTR">The starting address of the memory block (does not apply to public blocks).</field>
+      <field name="ObjectID" type="OBJECTID">The object that owns the memory block.</field>
+      <field name="Size" type="LONG">The size of the memory block.</field>
+      <field name="AccessCount" type="WORD">Total number of active locks on this block.</field>
+      <field name="Flags" type="WORD">The type of memory.</field>
+      <field name="MemoryID" type="MEMORYID">The unique ID for this block.</field>
+      <field name="LockID" type="OBJECTID">Reference to the task that currently has a lock on the block.</field>
+      <field name="TaskID" type="OBJECTID">The Task that owns the memory block</field>
+      <field name="Handle" type="LONG">Native system handle (e.g. the shmid in Linux)</field>
+    </struct>
+
+    <struct name="ListTasks" comment="Structure for ListTasks()">
+      <field name="ProcessID" type="LONG">Core process ID</field>
+      <field name="TaskID" type="OBJECTID">Task ID for this array entry</field>
+      <field name="WaitingProcessID" type="LONG">If the task is waiting, this field reflects the other task's ID</field>
+      <field name="WaitingMemoryID" type="MEMORYID">If the task is waiting, this field reflects the memory ID</field>
+      <field name="WaitingTime" type="LONG">If the task is waiting, the time at which the sleep started (msec)</field>
+      <field name="MessageID" type="MEMORYID">Message queue ID</field>
+      <field name="OutputID" type="OBJECTID">The object that the task should output information to</field>
+      <field name="Semaphore" type="HOSTHANDLE"></field>
+      <field name="InstanceID" type="LONG">Instance that the task belongs to</field>
+      <field name="TotalMemoryLocks" type="LONG"></field>
+      <field name="ModalID" type="OBJECTID"></field>
+      <field name="MemoryLocks" type="struct MemoryLocks *"></field>
+    </struct>
+
+    <struct name="DirInfo" comment="Used by OpenDir() only">
+      <field name="Info" type="struct FileInfo *">Pointer to a FileInfo structure</field>
+    </struct>
+
+    <struct name="CompressedItem">
+      <field name="OriginalSize" type="LARGE">Original size of the file</field>
+      <field name="CompressedSize" type="LARGE">Compressed size of the file</field>
+      <field name="Next" type="struct CompressedItem *">Used only if this is a linked-list.</field>
+      <field name="Path" type="CSTRING">Path to the file (includes folder prefixes).  Archived folders will include the trailing slash.</field>
+      <field name="Tags" type="CSTRING">Any archive specific information is expressed here as key value pairs: 'Key:Value[ETX]...'.  Where [ETX] is ASCII character 0x03.</field>
+      <field name="Permissions" type="LONG" lookup="PERMIT">Original permissions - see PERMIT flags.</field>
+      <field name="UserID" type="LONG">Original user ID</field>
+      <field name="GroupID" type="LONG">Original group ID</field>
+      <field name="OthersID" type="LONG">Original others ID</field>
+      <field name="Flags" type="LONG" lookup="FL">FL flags</field>
+      <field name="Created" type="struct DateTime">Date and time of the file's creation.</field>
+      <field name="Modified" type="struct DateTime">Date and time last modified.</field>
+    </struct>
+
+    <struct name="CompressionFeedback">
+      <field name="FeedbackID" type="LONG" lookup="FDB">Set to one of the FDB event indicators</field>
+      <field name="Index" type="LONG">Index of the current file</field>
+      <field name="Path" type="CSTRING">Name of the current file/path in the archive</field>
+      <field name="Dest" type="CSTRING">Destination file/path during decompression</field>
+      <field name="Progress" type="LARGE">Progress indicator (byte position for the file being de/compressed).</field>
+      <field name="OriginalSize" type="LARGE">Original size of the file</field>
+      <field name="CompressedSize" type="LARGE">Compressed size of the file</field>
+      <field name="Year" type="WORD">Year of the original file's datestamp.</field>
+      <field name="Month" type="WORD">Month of the original file's datestamp.</field>
+      <field name="Day" type="WORD">Day of the original file's datestamp.</field>
+      <field name="Hour" type="WORD">Hour of the original file's datestamp.</field>
+      <field name="Minute" type="WORD">Minute of the original file's datestamp.</field>
+      <field name="Second" type="WORD">Second of the original file's datestamp.</field>
+    </struct>
+
+    <struct name="SystemState" comment="Returned by the GetSystemState() function.">
+      <field name="ErrorMessages" type="CSTRING *">A sorted array of all error codes, translated into human readable strings.</field>
+      <field name="ErrorHeaders" type="CSTRING *">A sorted array of all error header codes, translated into human readable strings.</field>
+      <field name="RootPath" type="CSTRING">The current root path, which defaults to the location of the installation folder.</field>
+      <field name="SystemPath" type="CSTRING">The current path of the 'system:' volume.</field>
+      <field name="ModulePath" type="CSTRING">The current path to the system modules, normally 'system:modules/'</field>
+      <field name="Platform" type="CSTRING">String-based field indicating the user's platform.  Currently returns 'Native', 'Windows' or 'Linux'.</field>
+      <field name="ConsoleFD" type="HOSTHANDLE">Internal</field>
+      <field name="CoreVersion" type="LONG">Reflects the Core version number.</field>
+      <field name="CoreRevision" type="LONG">Reflects the Core revision number.</field>
+      <field name="InstanceID" type="LONG">This is the ID of the instance that the calling process resides in.</field>
+      <field name="TotalErrorMessages" type="LONG">The total number of error codes listed in the ErrorMessages array.</field>
+      <field name="TotalErrorHeaders" type="LONG">The total number of error headers listed in the ErrorHeaders array.</field>
+      <field name="Stage" type="LONG">The current operating stage.  -1 = Initialising, 0 indicates normal operating status; 1 means that the program is shutting down; 2 indicates a program restart; 3 is for mode switches.</field>
+    </struct>
+
+    <struct name="FileFeedback">
+      <field name="Size" type="LARGE">Size of the file</field>
+      <field name="Position" type="LARGE">Current seek position within the file if moving or copying</field>
+      <field name="Path" type="STRING"></field>
+      <field name="Dest" type="STRING">Destination file/path if moving or copying</field>
+      <field name="User" type="APTR">User data, set by FileFeedback()</field>
+      <field name="FeedbackID" type="LONG">Set to one of the FDB integers</field>
+      <field name="Reserved" type="char" size="32">Reserved in case of future expansion</field>
+    </struct>
+
+    <struct name="FunctionField" comment="Used by ActionTable and Function structures to declare lists of parameters.">
+      <field name="Name" type="CSTRING">Name of the field</field>
+      <field name="Type" type="LONG">Type of the field</field>
+    </struct>
+
+    <struct name="KeyStore" comment="Key-pair storage created by VarNew()">
+      <field name="Mutex" type="APTR">Internal mutex for managing thread-safety.</field>
+      <field name="Data" type="struct KeyPair * *">Key-pairs are stored here.</field>
+      <field name="TableSize" type="LONG">The size of the available storage area.</field>
+      <field name="Total" type="LONG">Total number of currently stored key-pairs, including dead keys.</field>
+      <field name="Flags" type="LONG" lookup="KSF">Optional flags used for VarNew()</field>
+    </struct>
+
+    <struct name="Message" comment="Messaging structures.  Note: This structure is utilised by NextMsg">
+      <field name="Time" type="LARGE">A timestamp acquired from PreciseTime() when the message was first passed to SendMessage().</field>
+      <field name="UniqueID" type="LONG">A unique identifier automatically created by SendMessage().</field>
+      <field name="Type" type="LONG">A message type identifier as defined by the client.</field>
+      <field name="Size" type="LONG">The size of the message data, in bytes.  If there is no data associated with the message, the Size will be set to zero.&lt;/&gt;</field>
+    </struct>
+
+    <struct name="RGB8" comment="8-bit RGB colour value." typeName="RGB8">
+      <field name="Red" type="UBYTE">Red component value</field>
+      <field name="Green" type="UBYTE">Green component value</field>
+      <field name="Blue" type="UBYTE">Blue component value</field>
+      <field name="Alpha" type="UBYTE">Alpha component value</field>
+    </struct>
+
+    <struct name="DateTime" comment="Generic structure for date-time management.">
+      <field name="Year" type="LONG">Year</field>
+      <field name="Month" type="LONG">Month 1 to 12</field>
+      <field name="Day" type="LONG">Day 1 to 31</field>
+      <field name="Hour" type="LONG">Hour 0 to 23</field>
+      <field name="Minute" type="LONG">Minute 0 to 59</field>
+      <field name="Second" type="LONG">Second 0 to 59</field>
+      <field name="TimeZone" type="LONG">TimeZone -13 to +13</field>
+    </struct>
+
+    <struct name="FieldArray" comment="Used to construct class blueprints for the MetaClass.">
+      <field name="Name" type="CSTRING">The name of the field, e.g. "Width"</field>
+      <field name="Flags" type="LONG">Special flags that describe the field</field>
+      <field name="Arg" type="MAXINT">Can be a pointer or an integer value</field>
+      <field name="GetField" type="APTR">void GetField(*Object, APTR Result);</field>
+      <field name="SetField" type="APTR">ERROR SetField(*Object, APTR Value);</field>
+    </struct>
+
+    <struct name="ActionTable" comment="Structure for ActionList">
+      <field name="Hash" type="ULONG">Hash of the action name.</field>
+      <field name="Name" type="CSTRING">Name of the action.</field>
+      <field name="Args" type="const struct FunctionField *">List of fields that are passed to this action.</field>
+      <field name="Size" type="LONG">Byte-size of the structure for this action.</field>
+    </struct>
+
+  </structs>
+</book>

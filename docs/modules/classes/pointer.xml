@@ -1,0 +1,454 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="class.xsl"?>
+
+<book>
+  <info>
+    <name>Pointer</name>
+    <type>class</type>
+    <module>Display</module>
+    <comment>Used to support mouse pointers.</comment>
+    <version>1</version>
+    <id>bbd12926</id>
+    <idstring>ID_POINTER</idstring>
+    <category>Graphics</category>
+    <include>modules/pointer.h</include>
+    <copyright>Paul Manias 2003-2017</copyright>
+    <description>
+<p>The Pointer class provides the computer user with a means of interacting with the graphical interface.  Traditionally the pointer is controlled by an attached mouse device, but the use of a keyboard, joystick or touch-screen is a possibility.  The Pointer class operates in 3 dimensions (X, Y, Z) and the Z axis is typically controlled by a mouse wheel.</p>
+<p>A pointer object should usually be created at boot-up unless you don't want a pointer in your system (e.g. for keyboard-only input).  Not creating a pointer will also mean that the system will not support user-click and user-movement management, unless you have some other means of achieving this. It is recommended that when creating a pointer at boot-up you give it a name of "SystemPointer".  This is a system-wide standard that makes it easier for other objects to find the pointing device.  If you give it a different name then the pointer will effectively be hidden from other objects.</p>
+<p>The Pointer class manages action-events such as UserMovement, UserClick and UserClickRelease.  These actions are called and passed to other objects on the desktop as appropriate.</p></description>
+    <source>
+      <file>class_pointer.c</file>
+    </source>
+  </info>
+
+  <fields>
+    <field>
+      <name>Acceleration</name>
+      <comment>The rate of acceleration for relative pointer movement.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>DOUBLE</type>
+      <description>
+<p>This field affects the rate of acceleration as the pointer is moved across the display.  It is recommended that this field is never set manually, as the user will need to determine the best acceleration level through trial and error in the user preferences program.</p>
+<p>This field is not relevant in a hosted environment.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Anchor</name>
+      <comment>Can refer to a surface that the pointer has been anchored to.</comment>
+      <access read="R">Read</access>
+      <type>OBJECTID</type>
+      <description>
+<p>If the pointer is anchored to a surface through <function module="Display">SetCursor</function>, this field will refer to the surface that holds the anchor.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Bitmap</name>
+      <comment>Refers to bitmap in which custom cursor images can be drawn.</comment>
+      <access read="R">Read</access>
+      <type>OBJECTID</type>
+      <description>
+<p>The pointer graphic can be changed to a custom image if the PTR_CUSTOM <field>CursorID</field> type is defined and an image is drawn to the <class name="Bitmap">Bitmap</class> object referenced by this field.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>ButtonOrder</name>
+      <comment>Defines the order in which mouse buttons are interpreted.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>STRING</type>
+      <description>
+<p>This field defines the order of interpretation of the mouse buttons when they are pressed.  This allows a right handed device to have its buttons remapped to mimic a left-handed device for instance.</p>
+<p>The default button order is defined as "123456789AB".  The left, right and middle mouse buttons are defined as 1, 2 and 3 respectively.  The rest of the buttons are assigned by the device, preferably starting from the left of the device and moving clockwise.</p>
+<p>It is legal for buttons to be referenced more than once, for instance a setting of "111" will force the middle and right mouse buttons to translate to the left mouse button.</p>
+<p>Changes to this field will have an immediate impact on the pointing device's behaviour.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>ButtonState</name>
+      <comment>Indicates the current button-press state.</comment>
+      <access read="G">Get</access>
+      <type>INT</type>
+      <description>
+<p>You can read this field at any time to get an indication of the buttons that are currently being held by the user.  The flags returned by this field are JD_LMB, JD_RMB and JD_MMB indicating left, right and middle mouse buttons respectively.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>ClickSlop</name>
+      <comment>A leniency value that assists in determining if the user intended to click or drag.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>INT</type>
+      <description>
+<p>The ClickSlop value defines the allowable pixel distance between two clicks for them to be considered a double-click (or a drag operation if they exceed the distance).</p>
+      </description>
+    </field>
+
+    <field>
+      <name>CursorID</name>
+      <comment>Sets the user's cursor image, selected from the pre-defined graphics bank.</comment>
+      <access read="R" write="I">Read/Init</access>
+      <type lookup="PTR">INT</type>
+      <description>
+<types lookup="PTR"/>
+      </description>
+    </field>
+
+    <field>
+      <name>CursorOwner</name>
+      <comment>The current owner of the cursor, as defined by SetCursor().</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>OBJECTID</type>
+      <description>
+<p>If the pointer is currently owned by an object, this field will refer to that object ID.  Pointer ownership is managed by the <function module="Display">SetCursor</function> function.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>DoubleClick</name>
+      <comment>The maximum interval between two clicks for a double click to be recognised.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>DOUBLE</type>
+      <description>
+<p>A double-click is recognised when two separate clicks occur within a pre-determined time frame.  The length of that time frame is determined in the DoubleClick field and is measured in seconds.  The recommended interval is 0.3 seconds, although the user can store his own preference in the pointer configuration file.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>DragItem</name>
+      <comment>The currently dragged item, as defined by StartCursorDrag().</comment>
+      <access read="R">Read</access>
+      <type>INT</type>
+      <description>
+<p>When the pointer is in drag-mode, the custom item number that was defined in the initial call to StartCursorDrag() will be defined here.  At all other times this field will be set to zero.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>DragSource</name>
+      <comment>The object managing the current drag operation, as defined by StartCursorDrag().</comment>
+      <access read="R">Read</access>
+      <type>OBJECTID</type>
+      <description>
+<p>When the pointer is in drag-mode, the object that is managing the source data will be referenced in this field.  At all other times this field will be set to zero.</p>
+<p>Item dragging is managed by the StartCursorDrag() function.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Flags</name>
+      <comment>Optional flags.</comment>
+      <access read="R" write="I">Read/Init</access>
+      <type lookup="PF">INT</type>
+      <description>
+<types lookup="PF"/>
+      </description>
+    </field>
+
+    <field>
+      <name>Input</name>
+      <comment>Declares the I/O object to read movement from.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>OBJECTID</type>
+      <description>
+<p>By default a pointer will read its input directly from the mouse port.  However it may be convenient for the pointer to receive its information from elsewhere, in which case you can set this field to point to a different input object.  The object that you use <i>must</i> be able to send joyport information over data channels.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>MaxSpeed</name>
+      <comment>Restricts the maximum speed of a pointer's movement.</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type>INT</type>
+      <description>
+<p>The maximum speed at which the pointer can move per frame is specified in this field.  This field is provided to help the user for times where the pointer may be moving to fast (for example if the hardware driver is interpreting the mouse movement at larger offsets than what is normal).  You can also set the value to 1 if a digital simulation is required.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>OverObject</name>
+      <comment>Readable field that gives the ID of the object under the pointer.</comment>
+      <access read="R">Read</access>
+      <type>OBJECTID</type>
+      <description>
+<p>This field returns a reference to the object directly under the pointer's hot-spot.  NULL can be returned if there is no surface object under the pointer.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>OverX</name>
+      <comment>The horizontal position of the Pointer with respect to the object underneath the hot-spot.</comment>
+      <access read="R">Read</access>
+      <type>INT</type>
+      <description>
+<p>The OverX field provides other classes with a means of finding out exactly where the pointer is positioned over their display area.  For example, if a user click occurs on an Image and it is necessary to find out what coordinates where affected, the OverX and OverY fields can be polled to determine the exact position of the user click.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>OverY</name>
+      <comment>The vertical position of the Pointer with respect to the object underneath the hot-spot.</comment>
+      <access read="R">Read</access>
+      <type>INT</type>
+      <description>
+<p>The OverY field provides other classes with a means of finding out exactly where the pointer is positioned over their display area.  For example, if a user click occurs on an Image and it is necessary to find out what coordinates where affected, the OverX and OverY fields can be polled to determine the exact position of the user click.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>OverZ</name>
+      <comment>The position of the Pointer within an object.</comment>
+      <access read="R">Read</access>
+      <type>INT</type>
+      <description>
+<p>This special field applies to 3D interfaces only.  It reflects the position of the pointer within 3-Dimensional displays, by returning its coordinate along the Z axis.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Restrict</name>
+      <comment>Refers to a surface when the pointer is restricted.</comment>
+      <access read="R">Read</access>
+      <type>OBJECTID</type>
+      <description>
+<p>If the pointer has been restricted to a surface through SetCursor(), this field refers to the ID of that surface.  If the pointer is not restricted, this field is set to zero.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Speed</name>
+      <comment>Speed multiplier for Pointer movement.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The speed at which the pointer moves can be adjusted with this field.  To lower the speed, use a value between 0 and 100%.  To increase the speed, use a value between 100 and 1000%.  The Speed of the Pointer is complemented by the MaxSpeed field, which restricts the maximum amount of pixels that a Pointer can move each time the input device is polled.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Surface</name>
+      <comment>The top-most surface that is under the pointer's hot spot.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>OBJECTID</type>
+      <description>
+<p>The surface that is directly under the pointer's hot spot is referenced by this field.  It is automatically updated whenever the position of the pointer changes or a new surface appears under the pointer.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>WheelSpeed</name>
+      <comment>Defines a multiplier to be applied to the mouse wheel.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>DOUBLE</type>
+      <description>
+<p>This field defines a multiplier that is applied to values coming from the mouse wheel.  A setting of 1.0 leaves the wheel speed unaltered, while a setting of 2.0 would double the regular speed.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>X</name>
+      <comment>The horizontal position of the pointer within its parent display.</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type>INT</type>
+    </field>
+
+    <field>
+      <name>Y</name>
+      <comment>The vertical position of the pointer within its parent display.</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type>INT</type>
+    </field>
+
+  </fields>
+  <types>
+    <constants lookup="CSRF" comment="Flags for CopySurface().">
+      <const name="ALPHA">Enable alpha blending if the source is in 32-bit colour format with an alpha channel.</const>
+      <const name="TRANSLUCENT">Perform a translucent copy operation, using the strength value specified in the Surface Opacity field.</const>
+      <const name="OFFSET">Adjust X and Y coordinates by the offset values defined in the Surface' XOffset and YOffset fields.</const>
+      <const name="CLIP">Enable clipping of the source coordinates.</const>
+      <const name="TRANSPARENT">Enable transparent copying, whereby colours matching the source's Colour field will be ignored.</const>
+      <const name="DEFAULT_FORMAT">Ignore the colour format defined in the source surface (if any) and generate a default format based on the BitsPerPixel value.</const>
+    </constants>
+
+    <constants lookup="ACF" comment="Acceleration flags for GetDisplayInfo().">
+      <const name="VIDEO_BLIT">Video blitting is supported for this display.</const>
+      <const name="SOFTWARE_BLIT">Software blitting is used (or forced) for this display.</const>
+    </constants>
+
+    <constants lookup="BMF" comment="Bitmap flags">
+      <const name="NO_BLEND">Drawing routines that support this flag will not blend pixels.</const>
+      <const name="FIXED_DEPTH">Prevent changing of bitmap depth after initialisation (e.g. via acResize()).</const>
+      <const name="QUERIED">Automatically set after a Query on the bitmap.</const>
+      <const name="ACCELERATED_3D">3D video acceleration is available.</const>
+      <const name="ALPHA_CHANNEL">For 32-bit images, indicates that an alpha channel is present.</const>
+      <const name="TRANSPARENT">Indicates that the bitmap utilises a transparent colour.  This is automatically set if the ColourRGB field is set and support exists in functions such as CopyArea().</const>
+      <const name="NO_DATA">Do not allocate memory in the Data field on initialisation.</const>
+      <const name="ACCELERATED_2D">2D video acceleration is available.</const>
+      <const name="CLEAR">Clear graphics on initialisation and when resizing.</const>
+      <const name="COMPRESSED">The bitmap data is compressed.</const>
+      <const name="USER">User flag allows tagging of bitmaps for special meaning; not used internally.</const>
+      <const name="NEVER_SHRINK">Ignore resize requests that would shrink the size of the bitmap.</const>
+      <const name="BLANK_PALETTE">Forces a blank/black palette on initialisation.</const>
+      <const name="INVERSE_ALPHA">Indicates reverse alpha blending, higher values are transparent.</const>
+      <const name="MASK">Declare the Bitmap as a 1 or 8 bit mask.  Must be set in conjunction with the BitsPerPixel field on initialisation.</const>
+    </constants>
+
+    <constants lookup="DPMS" comment="Possible modes for the Display class' DPMS field.">
+      <const name="DEFAULT">Use the default DPMS mode as defined by the display driver.</const>
+      <const name="OFF">Stop sending power to the display in order to turn it off (it may not be possible to restart the display without the user's intervention).</const>
+      <const name="SUSPEND">Puts the display into suspend mode (blanks the display output while maintaining normal power levels).</const>
+      <const name="STANDBY">Puts the display into standby (reduced power) mode.</const>
+    </constants>
+
+    <constants lookup="FLIP" comment="Flags for the bitmap Flip method.">
+      <const name="HORIZONTAL">Flip the bitmap from top to bottom.</const>
+      <const name="VERTICAL">Flip the bitmap from left to right.</const>
+    </constants>
+
+    <constants lookup="CSTF" comment="Flags for CopyStretch().">
+      <const name="BICUBIC">Cubic scaling.</const>
+      <const name="BRESENHAM">Smooth bresenham.</const>
+      <const name="CLAMP">Pixels that are past the edge of the source material will have a default alpha value of 0 unless the CLAMP flag is used, in which case the value is approximated with a bias of 255 if not otherwise calculable.</const>
+      <const name="GOOD_QUALITY">Enables bilinear resampling of the source image.  This increases the quality of the resize at a cost of speed.</const>
+      <const name="CUBIC">Cubic scaling.</const>
+      <const name="NEIGHBOUR">Nearest neighbour scaling</const>
+      <const name="FILTER_SOURCE">If the source bitmap is temporary and will not be required after the stretch operation, you have the option of setting this flag.  By doing so, the stretch routine will pass the source image through a simple filter so that it can improve the resulting image.  This option is available at a speed cost and is best used in conjunction with bilinear resizing.</const>
+      <const name="BILINEAR">Enables bilinear resampling of the source image.  This increases the quality of the resize at a cost of speed.</const>
+    </constants>
+
+    <constants lookup="DT" comment="Flags for GetDisplayType().">
+      <const name="NATIVE">The display is native (supported by internal drivers).</const>
+      <const name="X11">The display is driven by the X Window System (X11, X.Org, XFree86)</const>
+      <const name="WINDOWS">The display is driven by Microsoft Windows drivers.</const>
+      <const name="GLES">The display is driven by OpenGLES.</const>
+    </constants>
+
+    <constants lookup="SMF" comment="Flags for the Display class SetMonitor() method.">
+      <const name="AUTO_DETECT">Monitor settings to be auto-detected on startup.</const>
+      <const name="BIT_6">The device is limited to 6-bit colour production in real terms.</const>
+    </constants>
+
+    <constants lookup="GMF" comment="Flags for gamma operations.">
+      <const name="SAVE">Save the provided settings permanently.</const>
+    </constants>
+
+    <constants lookup="HOST">
+      <const name="TRAY_ICON">All new displays are represented in the system tray when this option is active.</const>
+      <const name="TASKBAR">The hosted display is given a taskbar button.</const>
+      <const name="STICK_TO_FRONT">The hosted display sticks to the front.</const>
+      <const name="TRANSLUCENCE">Change the alpha channel level for the entire window.</const>
+      <const name="TRANSPARENT">Defines an RGB colour that is to be used as transparent.</const>
+    </constants>
+
+    <constants lookup="PF" comment="Flags for the Pointer class.">
+      <const name="UNUSED"/>
+      <const name="VISIBLE">Indicates that the pointer is currently visible.  Read-only.</const>
+      <const name="ANCHOR">Allow the pointer to be anchored.</const>
+    </constants>
+
+    <constants lookup="CRF" comment="Flags for the SetCursor() function.">
+      <const name="LMB">Release the cursor after the left mouse button is held and released.</const>
+      <const name="NO_BUTTONS">Set the cursor only on the condition that the user is not holding down any buttons.  ERR_NothingDone is returned if the user has a button held down.</const>
+      <const name="MMB">Release the cursor after the middle mouse button is held and released.</const>
+      <const name="BUFFER">Use of the BUFFER option allows the cursor request to be buffered in the event that the cursor is locked at the time of calling the SetCursor() function.  Use of this flag is highly recommended in most circumstances, but may not be used in conjunction with the ANCHOR option.</const>
+      <const name="RMB">Release the cursor after the right mouse button is held and released.</const>
+      <const name="RESTRICT">Similar to the anchor option, but allows the pointer to move within the surface referred to by ObjectID.</const>
+    </constants>
+
+    <constants lookup="BAF" comment="Instructions for basic graphics operations.">
+      <const name="COPY">Special CopyArea() option that avoids blending when the destination pixel is empty.</const>
+      <const name="BLEND">Enable alpha blending to the destination if the source supports an alpha channel.</const>
+      <const name="FILL">For primitive operations such as DrawRectangle(), this will fill the shape with a solid colour or texture.</const>
+      <const name="DITHER">Perform dithering if the colour formats differ between the source and destination.</const>
+    </constants>
+
+    <constants lookup="BMP" comment="Bitmap types">
+      <const name="PLANAR">Planar pixel mode separates pixel bits across multiple planes.  Commonly used for single bit bitmap masks.</const>
+      <const name="CHUNKY">Chunky pixel mode (default).</const>
+    </constants>
+
+    <constants lookup="SCR" comment="Display flags.">
+      <const name="CUSTOM_WINDOW">The display has been created with a custom window reference.</const>
+      <const name="BIT_6">Display is limited to 6-bit output per colour gun.</const>
+      <const name="AUTO_SAVE">Saves settings to the global display state when the object is freed.</const>
+      <const name="MAXSIZE">For GetDisplayInfo() only, indicates that the width and height values indicate the display's maximum size.</const>
+      <const name="NO_ACCELERATION">2D graphics card acceleration is not available.</const>
+      <const name="VISIBLE">Set if the screen is on display.</const>
+      <const name="COMPOSITE">Enables alpha channel blending (if display is hosted and 32-bit).</const>
+      <const name="READ_ONLY">Synonym for MAXIMISE | CUSTOM_WINDOW | FLIPPABLE | GTF_ENABLED | DPMS_ENABLED | POWERSAVE | HOSTED | MAXSIZE | REFRESH | BIT_6 | VISIBLE | NO_ACCELERATION</const>
+      <const name="REFRESH">For GetDisplayInfo() only, used to indicate that a display change has recently occurred and cache refresh is required.</const>
+      <const name="DPMS_ENABLED">Power saving through DPMS is supported.</const>
+      <const name="GTF_ENABLED">GTF frequency timings are supported.</const>
+      <const name="BORDERLESS">If display is hosted, create it as a popup / borderless window.</const>
+      <const name="HOSTED">The display is a desktop hosted window.</const>
+      <const name="BUFFER">Set if you would like a complementing buffer in video RAM.</const>
+      <const name="POWERSAVE">Power saving is active (read-only).</const>
+      <const name="ALPHA_BLEND">Enables alpha channel blending (if display is hosted and 32-bit).</const>
+      <const name="MAXIMISE">Special win32 flag.</const>
+      <const name="FLIPPABLE">If SCR_BUFFER is used, this flag may be set by the display manager if it is possible to flip the buffer.</const>
+    </constants>
+
+  </types>
+  <structs>
+    <struct name="CursorInfo">
+      <field name="Width" type="LONG">Maximum cursor width for custom cursors</field>
+      <field name="Height" type="LONG">Maximum cursor height for custom cursors</field>
+      <field name="Flags" type="LONG">Currently unused</field>
+      <field name="BitsPerPixel" type="WORD">Preferred bits-per-pixel setting for custom cursors</field>
+    </struct>
+
+    <struct name="PixelFormat" comment="Carries instructions to pack or unpack RGBA colours." typeName="PIXELFORMAT">
+      <field name="RedShift" type="UBYTE">Right shift value</field>
+      <field name="GreenShift" type="UBYTE"></field>
+      <field name="BlueShift" type="UBYTE"></field>
+      <field name="AlphaShift" type="UBYTE"></field>
+      <field name="RedMask" type="UBYTE">The unshifted mask value (ranges from 0x00 to 0xff)</field>
+      <field name="GreenMask" type="UBYTE"></field>
+      <field name="BlueMask" type="UBYTE"></field>
+      <field name="AlphaMask" type="UBYTE"></field>
+      <field name="RedPos" type="UBYTE">Left shift/positional value</field>
+      <field name="GreenPos" type="UBYTE"></field>
+      <field name="BluePos" type="UBYTE"></field>
+      <field name="AlphaPos" type="UBYTE"></field>
+    </struct>
+
+    <struct name="DisplayInfo" typeName="DISPLAYINFO">
+      <field name="Display" type="OBJECTID">Object ID related to the display</field>
+      <field name="Flags" type="LONG" lookup="SCR">Display flags</field>
+      <field name="Width" type="WORD">Pixel width of the display</field>
+      <field name="Height" type="WORD">Pixel height of the display</field>
+      <field name="BitsPerPixel" type="WORD">Bits per pixel</field>
+      <field name="BytesPerPixel" type="WORD">Bytes per pixel</field>
+      <field name="AccelFlags" type="LARGE" lookup="ACF">Flags describing supported hardware features.</field>
+      <field name="AmtColours" type="LONG">Total number of supported colours.</field>
+      <field name="PixelFormat" type="struct PixelFormat">The colour format to use for each pixel.</field>
+      <field name="MinRefresh" type="FLOAT">Minimum refresh rate</field>
+      <field name="MaxRefresh" type="FLOAT">Maximum refresh rate</field>
+      <field name="RefreshRate" type="FLOAT">Recommended refresh rate</field>
+      <field name="Index" type="LONG">Display mode ID (internal)</field>
+      <field name="HDensity" type="LONG">Horizontal pixel density per inch.</field>
+      <field name="VDensity" type="LONG">Vertical pixel density per inch.</field>
+    </struct>
+
+    <struct name="BitmapSurface" typeName="BITMAPSURFACE">
+      <field name="Data" type="APTR">Pointer to the bitmap graphics data.</field>
+      <field name="Width" type="WORD">Pixel width of the bitmap.</field>
+      <field name="Height" type="WORD">Pixel height of the bitmap.</field>
+      <field name="LineWidth" type="LONG">The distance between bitmap lines, measured in bytes.</field>
+      <field name="BitsPerPixel" type="UBYTE">The number of bits per pixel (8, 15, 16, 24, 32).</field>
+      <field name="BytesPerPixel" type="UBYTE">The number of bytes per pixel (1, 2, 3, 4).</field>
+      <field name="Opacity" type="UBYTE">Opacity level of the source if CSRF_TRANSLUCENT is used.</field>
+      <field name="Version" type="UBYTE">Version of this structure.</field>
+      <field name="Colour" type="LONG">Colour index to use if CSRF_TRANSPARENT is used.</field>
+      <field name="Clip" type="struct ClipRectangle">A clipping rectangle will restrict drawing operations to this region if CSRF_CLIP is used.</field>
+      <field name="XOffset" type="WORD">Offset all X coordinate references by the given value.</field>
+      <field name="YOffset" type="WORD">Offset all Y coordinate references by the given value.</field>
+      <field name="Format" type="struct ColourFormat">The colour format of this bitmap's pixels, or alternatively use CSRF_DEFAULT_FORMAT.</field>
+      <field name="Private" type="APTR">A private pointer reserved for internal usage</field>
+    </struct>
+
+  </structs>
+</book>

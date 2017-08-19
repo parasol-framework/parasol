@@ -1,0 +1,128 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="class.xsl"?>
+
+<book>
+  <info>
+    <name>ClientSocket</name>
+    <type>class</type>
+    <module>Network</module>
+    <version>1</version>
+    <id>a14972ed</id>
+    <idstring>ID_CLIENTSOCKET</idstring>
+    <category>Network</category>
+    <include>modules/clientsocket.h</include>
+    <copyright>Paul Manias © 2005-2017</copyright>
+  </info>
+
+  <fields>
+    <field>
+      <name>Client</name>
+      <comment>Parent client structure</comment>
+      <access read="R">Read</access>
+      <type>struct rkNetClient *</type>
+    </field>
+
+    <field>
+      <name>ConnectTime</name>
+      <comment>System time for the creation of this socket</comment>
+      <access read="R">Read</access>
+      <type>BIGINT</type>
+    </field>
+
+    <field>
+      <name>Handle</name>
+      <comment>Socket FD</comment>
+      <access read="R">Read</access>
+      <type>INT</type>
+    </field>
+
+    <field>
+      <name>Incoming</name>
+      <comment>Callback for data being received from the socket</comment>
+      <access read="R">Read</access>
+      <type>FUNCTION</type>
+    </field>
+
+    <field>
+      <name>MsgLen</name>
+      <comment>Length of the current incoming message</comment>
+      <access read="R">Read</access>
+      <type>INT</type>
+    </field>
+
+    <field>
+      <name>Next</name>
+      <comment>Next socket in the chain</comment>
+      <access read="R">Read</access>
+      <type class="ClientSocket">*ClientSocket</type>
+    </field>
+
+    <field>
+      <name>Outgoing</name>
+      <comment>Callback for data being sent over the socket</comment>
+      <access read="R">Read</access>
+      <type>FUNCTION</type>
+    </field>
+
+    <field>
+      <name>Prev</name>
+      <comment>Previous socket in the chain</comment>
+      <access read="R">Read</access>
+      <type class="ClientSocket">*ClientSocket</type>
+    </field>
+
+    <field>
+      <name>ReadCalled</name>
+      <comment>TRUE if the Read action has been called</comment>
+      <access>-/-</access>
+      <type>INT</type>
+    </field>
+
+    <field>
+      <name>UserData</name>
+      <comment>Free for user data storage.</comment>
+      <access read="R">Read</access>
+      <type>APTR</type>
+    </field>
+
+  </fields>
+  <types>
+    <constants lookup="IPADDR" comment="Address types for the IPAddress structure.">
+      <const name="V4"/>
+      <const name="V6"/>
+    </constants>
+
+    <constants lookup="NSF">
+      <const name="SERVER">Puts the socket into server mode.  In this state the netsocket object will wait for incoming connections from clients.</const>
+      <const name="SSL">Use Secure Sockets Layer for all communication.</const>
+      <const name="MULTI_CONNECT">Allow multiple connections from the same IP when in server mode.</const>
+      <const name="DEBUG">Print extra log messages.</const>
+      <const name="ASYNC_RESOLVE">Use asynchronous (non-parallel) DNS resolutions in ResolveAddress() and ResolveName().</const>
+    </constants>
+
+    <constants lookup="NTC" comment="NetSocket states">
+      <const name="DISCONNECTED">There is no connection.</const>
+      <const name="CONNECTING">A connection is being established.</const>
+      <const name="CONNECTING_SSL">An SSL connection is being established.</const>
+      <const name="CONNECTED">There is an active connection at present.</const>
+    </constants>
+
+  </types>
+  <structs>
+    <struct name="IPAddress">
+      <field name="Data" type="ULONG" size="4">128-bit array for supporting both V4 and V6 IP addresses.</field>
+      <field name="Type" type="LONG" lookup="IPADDR"></field>
+    </struct>
+
+    <struct name="rkNetClient" comment="Simple data storage class utilised by NetSocket to represent a client machine/IP.">
+      <field name="IP" type="char" size="8">IP address in 4/8-byte format</field>
+      <field name="Next" type="struct rkNetClient *">Next client in the chain</field>
+      <field name="Prev" type="struct rkNetClient *">Previous client in the chain</field>
+      <field name="NetSocket" type="struct rkNetSocket *">Reference to the parent socket</field>
+      <field name="Sockets" type="struct rkClientSocket *">Pointer to a list of sockets opened with this client.</field>
+      <field name="UserData" type="APTR">Free for user data storage.</field>
+      <field name="TotalSockets" type="LONG">Count of all created sockets</field>
+    </struct>
+
+  </structs>
+</book>

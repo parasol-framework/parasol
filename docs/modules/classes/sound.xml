@@ -1,0 +1,510 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="class.xsl"?>
+
+<book>
+  <info>
+    <name>Sound</name>
+    <type>class</type>
+    <module>Audio</module>
+    <comment>Plays and records sound samples in a variety of different data formats.</comment>
+    <fileExtension>*.wav|*.wave|*.snd</fileExtension>
+    <fileDescription>Sound Sample</fileDescription>
+    <version>1</version>
+    <id>105ee06e</id>
+    <idstring>ID_SOUND</idstring>
+    <category>Audio</category>
+    <include>modules/sound.h</include>
+    <copyright>Paul Manias © 2002-2017</copyright>
+    <description>
+<p>The Sound class provides a simple interface for any program to load and play audio sample files. By default all loading and saving of sound data is in WAVE format.  Other audio formats can be supported through Sound class extensions, if available.</p>
+<p>Smart, transparent streaming is enabled by default.  If an attempt is made to play an audio file that is considerably large (relative to system resources), it will be streamed from the source location.  You can alter or force streaming behaviour through the <field>Stream</field> field.</p>
+<p>The following example illustrates playback of a sound sample one octave higher than its normal frequency.  The subscription to the Deactivate action will result in the program closing once the sample has finished playback.</p>
+<pre>local snd = obj.new('sound', { path='audio:samples/doorbell.wav', note='C6' })
+
+snd.subscribe("deactivate", function(SoundID)
+   mSys.SendMessage(0, MSGID_QUIT)
+end)
+
+snd.acActivate()
+</pre></description>
+    <source>
+      <file>class_sound.c</file>
+    </source>
+  </info>
+
+  <actions>
+    <action>
+      <name>Activate</name>
+      <comment>Plays the audio sample.</comment>
+    </action>
+
+    <action>
+      <name>Deactivate</name>
+      <comment>Stops the audio sample and resets the playback position.</comment>
+    </action>
+
+    <action>
+      <name>Disable</name>
+      <comment>Disable playback of an active audio sample.</comment>
+    </action>
+
+    <action>
+      <name>Enable</name>
+      <comment>Continues playing a sound if it has been disabled.</comment>
+    </action>
+
+    <action>
+      <name>GetVar</name>
+      <comment>Retrieve custom tag values.</comment>
+      <description>
+<p>The following custom tag values are formally recognised and may be defined automatically when loading sample files:</p>
+<types type="Tag">
+<type name="Author">The name of the person or organisation that created the sound sample.</type>
+<type name="Copyright">Copyright details of an audio sample.</type>
+<type name="Description">Long description for an audio sample.</type>
+<type name="Disclaimer">The disclaimer associated with an audio sample.</type>
+<type name="Software">The name of the application that was used to record the audio sample.</type>
+<type name="Title">The title of the audio sample.</type>
+</types>
+      </description>
+    </action>
+
+    <action>
+      <name>Reset</name>
+      <comment>Stops audio playback, resets configuration details and restores the playback position to the start of the sample.</comment>
+    </action>
+
+    <action>
+      <name>SaveToObject</name>
+      <comment>Saves audio sample data to an object.</comment>
+    </action>
+
+    <action>
+      <name>Seek</name>
+      <comment>Moves sample playback to a new position.</comment>
+    </action>
+
+    <action>
+      <name>SetVar</name>
+      <comment>Define custom tags that will be saved with the sample data.</comment>
+    </action>
+
+  </actions>
+
+  <fields>
+    <field>
+      <name>Active</name>
+      <comment>Returns TRUE if the sound sample is being played back.</comment>
+      <access read="G">Get</access>
+      <type>INT</type>
+    </field>
+
+    <field>
+      <name>Audio</name>
+      <comment>Refers to the audio object/device to use for playback.</comment>
+      <access read="R" write="I">Read/Init</access>
+      <type>OBJECTID</type>
+      <description>
+<p>Set this field if a specific <class name="Audio">Audio</class> object should be targeted when playing the sound sample.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>BitsPerSample</name>
+      <comment>Indicates the sample rate of the audio sample, typically 8 or 16 bit.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>INT</type>
+    </field>
+
+    <field>
+      <name>BufferLength</name>
+      <comment>Defines the size of the buffer to use when streaming is enabled.</comment>
+      <access read="R" write="I">Read/Init</access>
+      <type>INT</type>
+      <description>
+<p>This field fine-tunes the size of the buffer that is used when streaming.  When manually choosing a buffer size, it is usually best to keep the size between 64 and 128k.  Some systems may ignore the BufferLength field if the audio driver is incompatible with manually defined buffer lengths.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>BytesPerSecond</name>
+      <comment>The flow of bytes-per-second when the sample is played at normal frequency.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>INT</type>
+      <description>
+<p>This field is set on initialisation.  It indicates the total number of bytes per second that will be played if the sample is played back at its normal frequency.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>ChannelIndex</name>
+      <comment>Refers to the channel that the sound is playing through.</comment>
+      <access read="R">Read</access>
+      <type>INT</type>
+      <description>
+<p>This field reflects the audio channel index that the sound is currently playing through, or has most recently played through.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Compression</name>
+      <comment>Determines the amount of compression used when saving an audio sample.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>INT</type>
+      <description>
+<p>Setting the Compression field will determine how much compression is applied when saving an audio sample.  The range of compression is 0 to 100%, with 100% being the strongest level available while 0% is uncompressed and loss-less.  This field is ignored if the file format does not support compression.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Flags</name>
+      <comment>Optional initialisation flags.</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type lookup="SDF">INT</type>
+      <description>
+<types lookup="SDF"/>
+      </description>
+    </field>
+
+    <field>
+      <name>Frequency</name>
+      <comment>The frequency of a sampled sound is specified here.</comment>
+      <access read="R" write="I">Read/Init</access>
+      <type>INT</type>
+      <description>
+<p>This field specifies the frequency of the sampled sound data.  If the frequency cannot be determined from the source, this value will be zero.</p>
+<p>Note that if the playback frequency needs to be altered, set the <field>Playback</field> field.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Header</name>
+      <comment>Contains the first 128 bytes of data in a sample's file header.</comment>
+      <access read="G">Get</access>
+      <type>APTR []</type>
+      <description>
+<p>The Header field is a pointer to a 128 byte buffer that contains the first 128 bytes of information read from an audio file on initialisation.  This special field is considered to be helpful only to developers writing add-on components for the sound class.</p>
+<p>The buffer that is referred to by the Header field is not populated until the Init action is called on the sound object.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Length</name>
+      <comment>Indicates the total byte-length of sample data.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>INT</type>
+      <description>
+<p>This field specifies the length of the sample data in bytes.  To get the length of the sample in seconds, divide this value by the <field>BytesPerSecond</field> field.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>LoopEnd</name>
+      <comment>The byte position at which sample looping will end.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>INT</type>
+      <description>
+<p>When using looped samples (via the SDF_LOOP flag), set the LoopEnd field if the sample should end at a position that is earlier than the sample's actual length.  The LoopEnd value is specified in bytes and must be less or equal to the length of the sample and greater than the <field>LoopStart</field> value.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>LoopStart</name>
+      <comment>The byte position at which sample looping begins.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>INT</type>
+      <description>
+<p>When using looped samples (via the SDF_LOOP flag), set the LoopStart field if the sample should begin at a position other than zero.  The LoopStart value is specified in bytes and must be less than the length of the sample and the <field>LoopEnd</field> value.</p>
+<p>Note that the LoopStart variable does not affect the position at which playback occurs for the first time - it only affects the restart position when the end of the sample is reached.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Note</name>
+      <comment>The musical note to use when playing a sound sample.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type lookup="NOTE">STRING</type>
+      <description>
+<p>Set the Note field to alter the playback frequency of a sound sample.  By setting this field as opposed to the <field>Playback</field> frequency, you can be assured that the sample is played as a correctly scaled note.</p>
+<p>The Note field can be set using either string or integer based format.  If you are using the integer format, the number that you choose reflects on the position on a musical keyboard.  A value of zero refers to the middle C key.  Each octave is measured in sets of 12 notes, so a value of 24 would indicate a C note at 3 times normal playback.  To play at lower values, simply choose a negative integer to slow down sample playback.</p>
+<p>Setting the Note field with the string format is useful if human readability is valuable.  The correct format is <code>KEY OCTAVE SHARP</code>.  Here are some examples: <code>C5, D7#, G2, E3S</code>.</p>
+<p>The middle C key for this format is <code>C5</code>.  The maximum octave that you can achieve for the string format is 9 and the lowest is 0.  Use either the <code>S</code> character or the <code>#</code> character for referral to a sharp note.</p>
+<types lookup="NOTE"/>
+      </description>
+    </field>
+
+    <field>
+      <name>Octave</name>
+      <comment>The octave to use for sample playback.</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type>INT</type>
+      <description>
+<p>The Octave field determines the octave to use when playing back a sound sample.  The default setting is zero, which represents the octave at which the sound was sampled.  Setting a negative octave will lower the playback rate, while positive values raise the playback rate.  The minimum octave setting is -5 and the highest setting is +5.</p>
+<p>The octave can also be adjusted by setting the <field>Note</field> field.  Setting the Octave field directly is useful if you need to quickly double or halve the playback rate.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Pan</name>
+      <comment>Determines the horizontal position of a sound when played through stereo speakers.</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The Pan field adjusts the "horizontal position" of a sample that is being played through stereo speakers. The default value for this field is zero, which plays the sound through both speakers at an equal level.  The minimum value is -100, which forces play through the left speaker and the maximum value is 100, which forces play through the right speaker.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Path</name>
+      <comment>Location of the audio sample data.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>STRING</type>
+      <description>
+<p>This field must refer to a file that contains the audio data that will be loaded.  If creating a new sample with the SDF_NEW flag, it is not necessary to define a file source.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Playback</name>
+      <comment>The playback frequency of the sound sample can be defined here.</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type>INT</type>
+      <description>
+<p>Set this field to define the exact frequency of a sample's playback.  The playback frequency can be modified at any time, including during audio playback if real-time adjustments to a sample's audio output rate is desired.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Position</name>
+      <comment>The current playback position.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>INT</type>
+      <description>
+<p>The current playback position of the audio sample is indicated by this field.  Writing to the field will alter the playback position, either when the sample is next played, or immediately if it is currently playing.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Priority</name>
+      <comment>The priority of a sound in relation to other sound samples being played.</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type>INT</type>
+      <description>
+<p>The playback priority of the sample is defined here. This helps to determine if the sample should be played when all available mixing channels are busy. Naturally, higher priorities are played over samples with low priorities.</p>
+<p>The minimum priority value allowed is -100, the maximum is 100.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Stream</name>
+      <comment>Defines the preferred streaming method for the sample.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type lookup="STREAM">INT</type>
+      <description>
+<types lookup="STREAM"/>
+      </description>
+    </field>
+
+    <field>
+      <name>StreamFile</name>
+      <comment>Refers to a File object that is being streamed for playback.</comment>
+      <access read="R" write="I">Read/Init</access>
+      <type>OBJECTID</type>
+      <description>
+<p>This field is maintained internally and is defined post-initialisation.  It refers to a <class name="File">File</class> object that is being streamed.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Volume</name>
+      <comment>The volume to use when playing the sound sample.</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The field specifies the volume of a sound, which lies in the range 0 - 100%.  A volume of zero will not be heard, while a volume of 100 is the loudest.  Setting the field during sample playback will dynamically alter the volume.</p>
+      </description>
+    </field>
+
+  </fields>
+  <types>
+    <constants lookup="VCF" comment="Volume control flags">
+      <const name="SYNC">The mixer is synchronised.</const>
+      <const name="JOINED">The mixer channels are joined (e.g. left and right speakers cannot be adjusted separately).</const>
+      <const name="PLAYBACK">The mixer supports audio output.</const>
+      <const name="MUTE">The mixer is muted.</const>
+      <const name="CAPTURE">The mixer supports audio input.</const>
+      <const name="MONO">The mixer is restricted to mono input/output.</const>
+    </constants>
+
+    <constants lookup="SVF" comment="Flags for the SetVolume() method.">
+      <const name="SYNC">Synchronise volume settings between channels.</const>
+      <const name="CAPTURE">Set input, not output.</const>
+      <const name="MUTE">Mute the audio for this channel.</const>
+      <const name="UNMUTE">Unmute the audio for this channel.</const>
+      <const name="UNSYNC">Allow un-synchronised volume settings.</const>
+    </constants>
+
+    <constants lookup="ADF" comment="Optional flags for the Audio object.">
+      <const name="STEREO">Enable stereo output (set by default if the platform supports stereo).  If not set, output is in mono.</const>
+      <const name="OVER_SAMPLING">Enables oversampling for higher quality audio at the cost of slower mixing.</const>
+      <const name="SERVICE_MODE">Service mode gives the audio object complete control of the task.</const>
+      <const name="SYSTEM_WIDE">Mixer changes should be applied system-wide.</const>
+      <const name="FILTER_LOW">Enable a low level of output filtering to minimise distortion.</const>
+      <const name="FILTER_HIGH">Enable a high level of output filtering to minimise distortion.</const>
+      <const name="VOL_RAMPING">Enable volume ramping for softer playback when a sample is played multiple times (enabled by default).</const>
+      <const name="AUTO_SAVE">Save configuration information on exit.</const>
+    </constants>
+
+    <constants lookup="SDF" comment="Sound flags">
+      <const name="STEREO">Indicates that the sound has multiple audio channels.</const>
+      <const name="NEW">Create the sample from scratch (e.g. for audio recording purposes).</const>
+      <const name="STREAM">Read-Only. Indicates that streaming is enabled.</const>
+      <const name="RESTRICT_PLAY">Restricts playback so that the sound can never play on more than one channel at any given time.</const>
+      <const name="TERMINATE">Self-terminate when the sound sample has finished playback.</const>
+      <const name="QUERY">Query the meta data of the sample source; do not load sample data.</const>
+      <const name="LOOP">Enables sample looping. The LoopStart and LoopEnd fields determine where the looping area lies within the sample data.</const>
+    </constants>
+
+    <constants lookup="CHS" comment="Channel status types for the AudioChannel structure.">
+      <const name="STOPPED">Playing is stopped.</const>
+      <const name="FINISHED">Playing has ended (not force stopped).</const>
+      <const name="PLAYING">Sample playing and not released.</const>
+      <const name="RELEASED">Sample playing and note has been released.</const>
+      <const name="FADE_OUT">Playback is fading out.</const>
+    </constants>
+
+    <constants lookup="STREAM" comment="Streaming options">
+      <const name="NEVER">No streaming - load all data into memory.</const>
+      <const name="SMART">Smart streaming is the default.  If the sample appears to be relatively small with respect to available system RAM, it will be loaded into memory.  Otherwise it will be streamed.</const>
+      <const name="ALWAYS">Stream if the sample length exceeds 64k.</const>
+    </constants>
+
+    <constants lookup="NOTE" comment="Definitions for the Note field.  An 'S' indicates a sharp note.">
+      <const name="C"/>
+      <const name="CS"/>
+      <const name="D"/>
+      <const name="DS"/>
+      <const name="E"/>
+      <const name="F"/>
+      <const name="FS"/>
+      <const name="G"/>
+      <const name="GS"/>
+      <const name="A"/>
+      <const name="AS"/>
+      <const name="B"/>
+      <const name="OCTAVE"/>
+    </constants>
+
+    <constants lookup="LTYPE" comment="Loop types for the AudioLoop structure.">
+      <const name="UNIDIRECTIONAL">The sample playback position returns to the byte position specified in the Loop1Start field.</const>
+      <const name="BIDIRECTIONAL">The sample will play in reverse whenever it hits the end marker, then forwards when it hits the start marker.</const>
+    </constants>
+
+    <constants lookup="SFM" comment="These audio bit formats are supported by AddSample and AddStream.">
+      <const name="S16_BIT_MONO">16-bit mono signed sample.</const>
+      <const name="U8_BIT_STEREO">8-bit stereo unsigned sample.</const>
+      <const name="U8_BIT_MONO">8-bit mono unsigned sample.</const>
+      <const name="BIG_ENDIAN">Combine this flag with any audio format to declare it as big endian.</const>
+      <const name="S16_BIT_STEREO">16-bit stereo signed sample.</const>
+    </constants>
+
+    <constants lookup="CHF" comment="Optional flags for the AudioChannel structure.">
+      <const name="BACKWARD">Play channel backwards.</const>
+      <const name="CHANGED">Sample change</const>
+      <const name="VOL_RAMP">Volume ramping is enabled.</const>
+      <const name="MUTE">Channel is muted.</const>
+    </constants>
+
+    <constants lookup="CMD" comment="Audio channel commands">
+      <const name="START_SEQUENCE">Required to start a new sequence of commands.</const>
+      <const name="END_SEQUENCE">Terminates the current command sequence.</const>
+      <const name="SET_SAMPLE">Sets a new sample against a channel.  You are required to supply the sample handle (as obtained from AddSample or AddStream) in the Data parameter.  The sample will not play until you use the Play command.</const>
+      <const name="SET_VOLUME">Sets a new channel volume.  The Data parameter indicates the new volume and must be in the range of 0 - 500% (100% is normal volume, 0% is silence).</const>
+      <const name="SET_PAN">Sets a channel's panning position.  The Data parameter indicates the new pan and must be in the range of -100 to +100.  A setting of zero plays the sound at an equal level between both speakers.  If output is in mono, panning has no effect.</const>
+      <const name="SET_FREQUENCY">Sets the current playback frequency of a channel.</const>
+      <const name="SET_RATE">Defines the interval between the processing of each command, measured in milliseconds.</const>
+      <const name="STOP">Immediately stops a channel from playing any audio until the next Play command.</const>
+      <const name="STOP_LOOPING">Tells the channel to stop performing any more audio loops related to the currently playing sample.  This command does nothing if the current sample has no associated loop information.</const>
+      <const name="SET_POSITION">Sets the playback position within a channel's currently associated sample (measured in bytes).  Useful for starting playback from a preset position.</const>
+      <const name="PLAY">Plays the sample associated with the channel.  You are required to set the playback frequency in the Data parameter.  This command does nothing if the channel does not have a sample loaded against it.</const>
+      <const name="FADE_IN">Fades a channel in from zero to the current volume (as previously determined by the SetVolume command).</const>
+      <const name="FADE_OUT">Fade out a channel.</const>
+      <const name="MUTE">Mutes the channel so that no further audio will play until you unmute it.  The Data parameter needs to be set to either TRUE or FALSE to indicate the required mute status.</const>
+      <const name="SET_LENGTH">Sets the byte length of the sample playing in the channel.</const>
+      <const name="CONTINUE">Continue a sound sample that has been stopped.</const>
+    </constants>
+
+    <constants lookup="LOOP" comment="Loop modes for the AudioLoop structure.">
+      <const name="SINGLE">Single loop: Releasing will end the note.</const>
+      <const name="SINGLE_RELEASE">Single loop: Sample data after the loop will be played when the note is released.</const>
+      <const name="DOUBLE">Double loop: When the note is released, playing shifts to the second loop.</const>
+      <const name="AMIGA_NONE">Amiga loop: Do nothing.</const>
+      <const name="AMIGA">Single loop: Amiga style.</const>
+    </constants>
+
+  </types>
+  <structs>
+    <struct name="VolumeCtl">
+      <field name="Size" type="WORD">The size of the Channels array.</field>
+      <field name="Name" type="unsigned char" size="32">Name of the mixer</field>
+      <field name="Flags" type="LONG" lookup="VCF">Special flags identifying the mixer's attributes.</field>
+      <field name="Channels" type="FLOAT" size="1">A variable length array of channel volumes.</field>
+    </struct>
+
+    <struct name="AudioChannel" comment="Audio channel structure">
+      <field name="Sample" type="struct AudioSample">Sample structure</field>
+      <field name="SoundID" type="OBJECTID">ID of the sound object set on this channel</field>
+      <field name="SampleHandle" type="LONG">Internal handle reference</field>
+      <field name="Flags" type="LONG" lookup="CHF">Special flags</field>
+      <field name="Position" type="ULONG">Current playing/mixing position</field>
+      <field name="Frequency" type="ULONG">Playback frequency</field>
+      <field name="PositionLow" type="UWORD">Playing position, lower bits</field>
+      <field name="LVolume" type="WORD">Current left speaker volume (0 - 100)</field>
+      <field name="RVolume" type="WORD">Current right speaker volume (0 - 100)</field>
+      <field name="LVolumeTarget" type="WORD">Volume target when fading or ramping</field>
+      <field name="RVolumeTarget" type="WORD">Volume target when fading or ramping</field>
+      <field name="Volume" type="WORD">Playing volume (0-100)</field>
+      <field name="Priority" type="BYTE">Priority of the sound that has been assigned to this channel</field>
+      <field name="State" type="BYTE" lookup="CHS">Channel state</field>
+      <field name="LoopIndex" type="BYTE">The current active loop (either 0, 1 or 2)</field>
+      <field name="Pan" type="BYTE">Pan value (-100 to +100)</field>
+    </struct>
+
+    <struct name="AudioLoop" comment="Loop settings for the AddSample() method.">
+      <field name="LoopMode" type="WORD" lookup="LOOP">Loop mode (single, double)</field>
+      <field name="Loop1Type" type="BYTE" lookup="LTYPE">First loop type (unidirectional, bidirectional)</field>
+      <field name="Loop2Type" type="BYTE" lookup="LTYPE">Second loop type (unidirectional, bidirectional)</field>
+      <field name="Loop1Start" type="LONG">Start of the first loop</field>
+      <field name="Loop1End" type="LONG">End of the first loop</field>
+      <field name="Loop2Start" type="LONG">Start of the second loop</field>
+      <field name="Loop2End" type="LONG">End of the second loop</field>
+    </struct>
+
+    <struct name="AudioCommand" comment="Audio command structure.">
+      <field name="CommandID" type="LONG">Command ID</field>
+      <field name="Handle" type="LONG">Channel handle</field>
+      <field name="Data" type="LONG">Special data related to the command ID</field>
+    </struct>
+
+    <struct name="AudioSample" comment="Audio sample structure">
+      <field name="Data" type="UBYTE *">Private.  Pointer to the sample data.</field>
+      <field name="StreamID" type="OBJECTID">Reference to an object to use for streaming</field>
+      <field name="SampleLength" type="LONG">Length of the sample data, in bytes</field>
+      <field name="Loop1Start" type="LONG">Start of the first loop</field>
+      <field name="Loop1End" type="LONG">End of the first loop</field>
+      <field name="Loop2Start" type="LONG">Start of the second loop</field>
+      <field name="Loop2End" type="LONG">End of the second loop</field>
+      <field name="SeekStart" type="LONG"></field>
+      <field name="StreamLength" type="LONG"></field>
+      <field name="BufferLength" type="LONG"></field>
+      <field name="StreamPos" type="LONG">Current read position within the audio stream</field>
+      <field name="SampleType" type="UBYTE">Type of sample (bit format)</field>
+      <field name="LoopMode" type="BYTE">Loop mode (single, double)</field>
+      <field name="Loop1Type" type="BYTE">First loop type (unidirectional, bidirectional)</field>
+      <field name="Loop2Type" type="BYTE">Second loop type (unidirectional, bidirectional)</field>
+      <field name="Used" type="BYTE"></field>
+      <field name="Free" type="BYTE"></field>
+    </struct>
+
+  </structs>
+</book>

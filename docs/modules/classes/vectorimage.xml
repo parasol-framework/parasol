@@ -1,0 +1,250 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="class.xsl"?>
+
+<book>
+  <info>
+    <name>VectorImage</name>
+    <type>class</type>
+    <module>Vector</module>
+    <comment>Provides support for the filling and stroking of vectors with bitmap images.</comment>
+    <version>1</version>
+    <id>885aab1b</id>
+    <idstring>ID_VECTORIMAGE</idstring>
+    <category>Graphics</category>
+    <include>modules/vectorimage.h</include>
+    <copyright>Paul Manias © 2010-2017</copyright>
+    <description>
+<p>The VectorImage class is used by Vector painting algorithms to fill and stroke vectors with bitmap images.  This is achieved by initialising a VectorImage object with the desired settings and then registering it with a <class name="VectorScene">VectorScene</class> via the <class name="VectorScene" index="AddDef()">VectorScene:AddDef()</class> method.</p>
+<p>Any vector within the target scene will be able to utilise the image for filling or stroking by referencing its name through the <class name="Vector" index="Fill">Vector:Fill</class> and <class name="Vector" index="Stroke">Vector:Stroke</class> fields.  For instance 'url(#logo)'.</p>
+<p>It is strongly recommended that the VectorImage is owned by the <class name="VectorScene">VectorScene</class> that is handling the definition.  This will ensure that the VectorImage is de-allocated when the scene is destroyed.</p></description>
+    <source>
+      <file path="defs/">image.cpp</file>
+    </source>
+  </info>
+
+  <fields>
+    <field>
+      <name>Bitmap</name>
+      <comment>Reference to a source bitmap for the rendering algorithm.</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type class="Bitmap">*Bitmap</type>
+      <description>
+<p>This field must be set prior to initialisation.  It will refer to a source bitmap that will be used by the rendering algorithm.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Dimensions</name>
+      <comment>Dimension flags define whether individual dimension fields contain fixed or relative values.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type lookup="DMF">INT</type>
+      <description>
+<p>Of the Dimension flags that are available, only FIXED_X, FIXED_Y, RELATIVE_X and RELATIVE_Y are applicable.</p>
+<types lookup="DMF"/>
+      </description>
+    </field>
+
+    <field>
+      <name>Picture</name>
+      <comment>Refers to a <class name="Picture">Picture</class> from which the source <field>Bitmap</field> is acquired.</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type class="Picture">*Picture</type>
+      <description>
+<p>If an image bitmap is sourced from a <class name="Picture">Picture</class> then this field may be used to refer to the <class name="Picture">Picture</class> object.  The picture will not be used directly by the VectorImage, as only the bitmap is of interest.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>SpreadMethod</name>
+      <comment>Defines the drawing mode.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type lookup="VSPREAD">INT</type>
+      <description>
+<p>The SpreadMethod defines the way in which the image is drawn within the target area.  The default setting is PAD.</p>
+<types lookup="VSPREAD"/>
+      </description>
+    </field>
+
+    <field>
+      <name>Units</name>
+      <comment>Declares the coordinate system to use for the <field>X</field> and <field>Y</field> values.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type lookup="VUNIT">INT</type>
+      <description>
+<p>This field declares the coordinate system that is used for values in the <field>X</field> and <field>Y</field> fields.  The default is BOUNDING_BOX.</p>
+<types lookup="VUNIT"/>
+      </description>
+    </field>
+
+    <field>
+      <name>X</name>
+      <comment>Apply a horizontal offset to the image, the origin of which is determined by the <field>Units</field> value.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>DOUBLE</type>
+    </field>
+
+    <field>
+      <name>Y</name>
+      <comment>Apply a vertical offset to the image, the origin of which is determined by the <field>Units</field> value.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>DOUBLE</type>
+    </field>
+
+  </fields>
+  <types>
+    <constants lookup="ARC" comment="Options for drawing arcs.">
+      <const name="LARGE"/>
+      <const name="SWEEP"/>
+    </constants>
+
+    <constants lookup="CS" comment="Colour space options.">
+      <const name="SRGB">The default colour-space is sRGB, recommended for its speed.</const>
+      <const name="LINEAR_RGB">Linear RGB is the default colour space for SVG and produces the best results.</const>
+      <const name="INHERIT">Inherit the colour space option from the parent vector.</const>
+    </constants>
+
+    <constants lookup="VIJ" comment="Inner join options for angled lines.">
+      <const name="BEVEL">Blunts the edge of the join.</const>
+      <const name="MITER">Forms a sharp point at the join.  Typically not the best looking option.</const>
+      <const name="JAG">A special non-SVG option.</const>
+      <const name="ROUND">Rounds the edge of the join to produce the best looking results.</const>
+      <const name="INHERIT">Inherit the parent's join value.</const>
+    </constants>
+
+    <constants lookup="VBF" comment="For vecGetBoundary()">
+      <const name="INCLUSIVE">The result will be inclusive of all paths that belong to children of the queried vector.</const>
+      <const name="NO_TRANSFORM">The transformation step will not be applied to the vector's path.</const>
+    </constants>
+
+    <constants lookup="VPF" comment="Optional flags for the VectorScene object.">
+      <const name="RENDER_TIME">Compute the drawing frame-rate for the RenderTime field.</const>
+      <const name="BITMAP_SIZED">Automatically adjust the PageWidth and PageHeight to match the target Bitmap width and height.</const>
+      <const name="RESIZE">The vector will be stretched to fit the PageWidth and PageHeight values, if defined by the client.</const>
+    </constants>
+
+    <constants lookup="VSM">
+      <const name="AUTO">The default option is chosen by the system.  This will typically be bilinear, but slow machines may switch to nearest neighbour and high speed machines could use more advanced methods.</const>
+      <const name="NEIGHBOUR">Nearest neighbour is the fastest sampler at the cost of poor quality.</const>
+      <const name="BILINEAR">Bilinear is a common algorithm that produces a reasonable quality image.</const>
+      <const name="BICUBIC">Produces a similar result to bilinear with a marginally sharper after-effect.</const>
+      <const name="SPLINE16">About 1/2 the speed of bilinear, this method produces a considerably better result.</const>
+      <const name="KAISER"/>
+      <const name="QUADRIC"/>
+      <const name="GAUSSIAN"/>
+      <const name="BESSEL"/>
+      <const name="MITCHELL"/>
+      <const name="SINC3">Five times slower than bilinear, the final result is of very good quality.</const>
+      <const name="LANCZOS3">This well known algorithm may serve as a point of comparison for evaluating the results of other methods.  It shares characteristics with SINC and BLACKMAN.</const>
+      <const name="BLACKMAN3">Five times slower than bilinear, the final result will lack sharpness when compared to SINC3.</const>
+      <const name="SINC8">15 times slower than bilinear, the final result is of excellent quality but may be marginally over-sharpened.</const>
+      <const name="LANCZOS8"/>
+      <const name="BLACKMAN8">15 times slower than bilinear, the final result is of excellent quality and sharpness is well balanced.</const>
+    </constants>
+
+    <constants lookup="VGF" comment="Gradient flags">
+      <const name="FIXED_FY">FY is fixed</const>
+      <const name="RELATIVE_X2">X2 is relative</const>
+      <const name="RELATIVE_X1">X1 is relative</const>
+      <const name="FIXED_X1">X1 is fixed</const>
+      <const name="FIXED_Y2">Y2 is fixed</const>
+      <const name="RELATIVE_CX">CX is relative</const>
+      <const name="FIXED_RADIUS">is fixed</const>
+      <const name="RELATIVE_RADIUS">Radius is relative</const>
+      <const name="RELATIVE_FX">FX is relative</const>
+      <const name="FIXED_CX">CX is fixed</const>
+      <const name="RELATIVE_Y2">Y2 is relative</const>
+      <const name="RELATIVE_CY">CY is relative</const>
+      <const name="FIXED_FX">FX is fixed</const>
+      <const name="RELATIVE_FY">FY is relative</const>
+      <const name="FIXED_Y1">Y1 is fixed</const>
+      <const name="FIXED_CY">CY is fixed</const>
+      <const name="RELATIVE_Y1">Y1 is relative</const>
+      <const name="FIXED_X2">X2 is fixed</const>
+    </constants>
+
+    <constants lookup="VLC" comment="Line-cap options.">
+      <const name="BUTT">The default.  The line is sharply squared off at its exact end point.</const>
+      <const name="SQUARE">Similar to butt, the line is sharply squared off but will extend past the end point by 'StrokeWidth / 2'.</const>
+      <const name="ROUND">The line cap is a half-circle and the line's end-point forms the center point.</const>
+      <const name="INHERIT">The cap type is inherited from the parent (defaults to butt if unspecified).</const>
+    </constants>
+
+    <constants lookup="VUNIT">
+      <const name="UNDEFINED"/>
+      <const name="BOUNDING_BOX">Coordinates are relative to the object's bounding box.</const>
+      <const name="USERSPACE">Coordinates are relative to the current viewport.</const>
+    </constants>
+
+    <constants lookup="VIS" comment="Options for the Vector class' Visibility field.">
+      <const name="HIDDEN">Hide the vector and its children.</const>
+      <const name="VISIBLE">The default.  Ensures that the vector is visible.</const>
+      <const name="COLLAPSE">Hide the vector and its children.  Do not use - provided for SVG compatibility only.</const>
+      <const name="INHERIT">Inherit the visibility state from the parent.</const>
+    </constants>
+
+    <constants lookup="VTF" comment="Types of vector transforms.">
+      <const name="SKEW">Skew the vector by (X,Y)</const>
+      <const name="TRANSLATE">Translate the vector by (X,Y)</const>
+      <const name="MATRIX">Apply a 2x3 matrix transformation to the vector.</const>
+      <const name="SCALE">Scale the vector by (X,Y)</const>
+      <const name="ROTATE">Rotate the vector around (CX,CY) by Angle.</const>
+    </constants>
+
+    <constants lookup="VGT" comment="VectorGradient options.">
+      <const name="LINEAR">A linear gradient is drawn from (X1,Y1) to (X2,Y2).</const>
+      <const name="RADIAL">A radial gradient is drawn from CenterX,CenterY to Radius.  An optional focal point can be expressed with FX and FY.</const>
+      <const name="CONIC">The conic gradient is a variant on the radial type, whereby the colour values are drawn as a line that revolves around the cone's center point.</const>
+      <const name="DIAMOND">A diamond gradient is drawn as a square emanating from the center point.</const>
+      <const name="CONTOUR">Contoured gradients follow the contours of the vector path in which they are rendered.</const>
+    </constants>
+
+    <constants lookup="VSPREAD" comment="Spread method options define the method to use for tiling filled graphics.">
+      <const name="UNDEFINED">Either the default setting will be applied or the setting will be inherited from a parent object.</const>
+      <const name="PAD">Scale the graphic to the object bounds.</const>
+      <const name="REFLECT">Tile the graphic, reflecting the image alternately on the X and Y axis.</const>
+      <const name="REPEAT">Tile the graphic repeatedly.</const>
+      <const name="REFLECT_X">Tile the graphic, reflecting the image alternately on the X axis only.</const>
+      <const name="REFLECT_Y">Tile the graphic, reflecting the image alternately on the Y axis only.</const>
+      <const name="CLIP">Do not scale the graphic in any way and clip it if it extends past imposed boundaries.</const>
+    </constants>
+
+    <constants lookup="VFR" comment="Vector fill rules for the FillRule field in the Vector class.">
+      <const name="NON_ZERO">This is the default.  This rule determines the 'insideness' of a point on the canvas by drawing a ray from that point to infinity in any direction and then examining the places where a segment of the shape crosses the ray. Starting with a count of zero, add one each time a path segment crosses the ray from left to right and subtract one each time a path segment crosses the ray from right to left. After counting the crossings, if the result is zero then the point is outside the path. Otherwise, it is inside.</const>
+      <const name="EVEN_ODD">This rule determines the 'insideness' of a point on the canvas by drawing a ray from that point to infinity in any direction and counting the number of path segments from the given shape that the ray crosses. If this number is odd, the point is inside; if even, the point is outside.</const>
+      <const name="INHERIT">The rule is inherited from the parent vector(s).</const>
+    </constants>
+
+    <constants lookup="VLJ" comment="Options for the look of line joins.">
+      <const name="MITER">The default.  The join will form a pointed edge.</const>
+      <const name="MITER_REVERT"/>
+      <const name="ROUND">The join is rounded.</const>
+      <const name="BEVEL">The join is blunted, eliminating overly sharp edges.</const>
+      <const name="MITER_ROUND">Default to MITER, but switch to ROUND if the miter limit is exceeded.</const>
+      <const name="INHERIT">Inherit the join option from the parent.</const>
+    </constants>
+
+  </types>
+  <structs>
+    <struct name="PathCommand" comment="Base structure for path commands.">
+      <field name="Type" type="UBYTE"></field>
+      <field name="Curved" type="UBYTE"></field>
+      <field name="Pad1" type="WORD"></field>
+      <field name="Pad2" type="LONG"></field>
+      <field name="X" type="DOUBLE"></field>
+      <field name="Y" type="DOUBLE"></field>
+      <field name="AbsX" type="DOUBLE"></field>
+      <field name="AbsY" type="DOUBLE"></field>
+    </struct>
+
+    <struct name="VectorTransform">
+      <field name="Next" type="struct VectorTransform *">The next transform in the list.</field>
+      <field name="Prev" type="struct VectorTransform *">The previous transform in the list.</field>
+      <field name="X" type="DOUBLE">The X value, the meaning of which is defined by the Type</field>
+      <field name="Y" type="DOUBLE">The Y value, the meaning of which is defined by the Type</field>
+      <field name="Angle" type="DOUBLE">Requires VTF_ROTATE.  A rotation by Angle degrees about a given point.  If optional parameters X and Y are not specified, the rotate is about the origin of the current user coordinate system.</field>
+      <field name="Matrix[6]" type="DOUBLE">Requires VTF_MATRIX.  A transformation expressed as a matrix of six values.</field>
+      <field name="Type" type="WORD" lookup="VTF">The VTF indicates the type of transformation: rotate, skew etc</field>
+    </struct>
+
+  </structs>
+</book>

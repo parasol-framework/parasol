@@ -1,0 +1,83 @@
+<?xml version="1.0"?>
+
+<info>
+ <title>Modular Object Orientation Explained</title>
+ <author>Rocklyte Systems</author>
+ <keywords>object, oriented, modular, moo, component, class</keywords>
+ <description>A detailed explanation of modular object orientation and how it compares to language based object orientation.</description>
+</info>
+
+<include src="inc_style.rpl"/>
+
+<page>
+
+<startpage title="Modular Object Orientation Explained"/>
+
+<p>The concepts surrounding object oriented programming were first introduced in 1967, as part of a language known as Simula. Although this was followed by the more well-known Smalltalk, it was not until 1985 that object orientation concepts started to increase in popularity with the advent of C++. Historically we know that object orientation implementations have been focussed on languages, and this trend continues today with modern languages such as Delphi, Visual Basic, Java and many others.  These are often considered to be an improvement over the classic procedural languages such as C, Pascal and BASIC, but there are issues at hand that prevent all potential benefits of an object oriented methodology from being realised in programming languages alone.</p>
+
+<p>A key problem with this approach is that object oriented languages will compile down to procedural programs, primarily because they have to target procedural systems. Such programs are also strictly limited in that their &quot;object oriented world&quot; is limited to their own locale, resulting in one methodology being used internally, and the methodology of the target system being used externally. The more object oriented programs that a user runs, the more object worlds are created on the one machine. Not being able to integrate the worlds into one cohesive structure is a significant limitation, and you will understand why this is the case by the time you reach the end of this document.</p>
+
+<p>A number of myths have also surfaced over the years regarding the benefits of object oriented languages over their procedural counterparts, in order to promote the use of OOP languages. Let's examine a few of these claims:</p>
+
+<indent>
+<h3><i>"An object oriented language is required to create object oriented programs."</i></h3>
+
+<p>C++, Java, Delphi and the majority of other languages are in fact, object oriented tools that compile down to procedural programs. Because the resulting applications operate within their own private object space, it can be argued that while the 'input' is object oriented, the output is not. In the modular environment that is provided by Rocklyte, a developer can create object oriented programs using C, DML, Assembler or any language of the developer's choosing, with an end result that exhibits more advanced object orientation than what existing object oriented languages can produce.  Created objects can live independently of the program that created them and be just as useful to other programs and objects in the system.</p>
+
+<h3><i>"Using object oriented languages creates more reusable code."</i></h3>
+
+<p>The 're-usable code' claim is a common but empty promise used to promote some OO languages. There is no valid proof demonstrating that (for example) C++ classes are more reusable than well-documented C based functions.  In truth, many object oriented languages are heavily disadvantaged in the area of re-use, as each language uses different protocols for object construction.  Sharing an object created in C++ with applications written in Java, Delphi and Visual Basic for instance, is not possible.  In comparison, standard C is well established as a language that is compatible with all others.</p>
+
+<p>This point resurrects an earlier issue - that of each program creating their own object worlds that are effectively cut-off from the rest of the system. Once again, a modular approach will solve the issue, as both system and program code will conform to the same standards.</p>
+
+<h3><i>"Modern object oriented languages have improved resource management by providing garbage collection services."</i></h3>
+
+<p>Garbage collection slows the program with algorithms that assess what resources are no longer in use. Work as it may, it is also inefficient, and resourcing issues that are lingering in the program will never be brought to your attention (if you don't know that resource management errors exist in your program, it can be difficult to fix them). Garbage collection and other &quot;silent&quot; resource tracking methods often encourage lazy programming habits.</p>
+
+<p>A cleaner and more efficient method is for the system to handle resource tracking for each individual object that is created, not for the language to do so. The Rocklyte object kernel not only guarantees that it knows where every resource is in the system, but also links those resources to the objects that have allocated them.  It also guarantees that the moment any object is terminated, all of its resources will be destroyed.  Error messages that explain such resource management failures are also printed to the console for the benefit of the developer.</p>
+</indent>
+
+<p>The issues that we have raised exist because object oriented languages have evolved only so far as to provide a stop-gap implementation of object orientation on procedural systems. At Rocklyte we have no issues with the actual concept of object oriented languages, but without an end-to-end solution, it can be much like building a house without a foundation. In summary, while the theory behind object orientation is no way in dispute, it can only be as good as the method of implementation that has been used. This leads us to the development of modular object orientation - it's the same concept, but the implementation is a system-wide design that allows both developers and users experience the full benefit of object oriented theory.</p>
+
+<h2><a name="FeatureOverview">Feature Overview</a></h2>
+
+<p>The MOO design model featured in our platform supports all of the standard features expected of a modern OO implementation. Classes, objects, polymorphism, inheritance and methods are all supported. A number of new features are provided further to this, some of which we will briefly touch on in this section. They are:</p>
+
+<indent>
+<h3>Action Support</h3>
+<p>Actions provide a way of making function calls in a way that is more similar to real-world semantics. Although it is possible to invoke calls on an object via methods, actions differ in that they are generic functions that can be 'applied' to objects. For instance, if you need to move an object on the display then you would apply the Move action. A full list of available actions is provided in the official <a href="action_list.rpl">Action List</a>.</p>
+
+<h3>Sharing and Communication</h3>
+<p>Objects can be declared as private, shared or public. When you share an object, other programs can interact with it in conjunction with your program. Public objects are a special type of object that can be created outside of your program space, allowing them to stay in the system even when your program is terminated. Object networking is also supported so that objects can be shared, distributed and interacted with over networks.</p>
+
+<h3>Supportive Class Inheritance</h3>
+<p>Class inheritance can be used to add support for foreign data files and special features to any existing class. For instance, a JPEG sub-class adds support for jpeg files to the Picture class (which by default only supports IFF files).</p>
+
+<h3>Polymorphism and Abstraction</h3>
+<p>Polymorphism is supported in the system through the action services, as well as polymorphic field operations. We tend to refer to polymorphism as abstraction in our jargon.</p>
+
+<h3>Dynamic Resource Tracking</h3>
+<p>Resource tracking is provided at the object level. Resources allocated by an object will always track right back to that object - not the task that owns it. This feature is a vital requirement for modular OO, and really comes into its own for extremely large programs that need efficient resource management.  Interestingly, an object does not have to belong to any programs in order to exist in the system, but all objects take part in the structure of the system's object hierarchy as part of the resource tracking process.</p>
+</indent>
+
+<h2>Architectural Breakdown</h2>
+
+<p>The heart of the system is governed by the object kernel. This provides an object management service that is responsible for creating, maintaining and destroying objects in the system. By ensuring that every object originates from the same centralised system, standards can be developed that allow the programs and objects in the system to talk to each other through a common interface.</p>
+
+<p>With an established means of object oriented control, it becomes important to look at how classes will be added and managed within the system. This is where the term "module" comes into the picture. Rather than creating classes in a compiled program, Rocklyte classes are defined in their own module files and are loaded on demand. Module code is shared in memory, which means that while each object that is created exists as a new instance of data, only one instance of code is required. This results in light memory usage and the internal footprint of each individual object is no more than a few hundred bytes of data.</p>
+
+<p>One of the issues that is often unaddressed when creating object based server models is that each object tends to sit alone in memory with no relationship to other objects in the system. This in itself is not a problem, but it prevents objects from forming a cohesive, manageable structure. Think of it in terms of building a house out of bricks - in order to build a cohesive structure each brick needs to be cemented together. The cement acts as glue that holds the bricks in place and puts them into a massive hierarchy of objects.  In OO terms, we've used brick objects to create an entirely new type of object - a wall. This is a rather simple example, but it illustrates that by using relatively simple objects like bricks, wood, nails and wiring, we can create an extremely complex object like a house. The power of hierarchy and structure is not to be underestimated, and we can take this to the penultimate level by requiring all objects to take part in the system hierarchy.  With a hierarchical foundation, we can then achieve new concepts such as object based resource tracking and allow more effective searching of the object tree.  If you've used Athene and DML before, you may already know that complex objects like windows and menus can be easily created from many simple objects like boxes, lines and text. This illustrates the basic premise of modular OO - to achieve complexity only through the use of simplicity and structure.</p>
+
+<p>The following diagram illustrates some of the default modules and classes defined in our system:</p>
+
+<p align="center" anchor><image src="../images/services.gif" alt="Design Model"/></p>
+
+<br/>
+
+<p>The system is governed entirely by the object kernel. Besides the functions provided by the kernel, a number of internal classes are also defined that are necessary to get the system up and running. Hardware modules take the next level of precedence, representing an abstraction layer of the underlying system. Although hardware modules will communicate with lower-level devices almost exclusively, it is also possible to write new modules that access hardware directly if required. This will always create faster code, but at a cost of development time if the driver is already available in the underlying system.</p>
+
+<p>The software modules and classes are responsible for defining the range of services available within the core platform. Software modules are highly portable and their communication extends back to the object kernel, hardware modules and each other. Sub-classes are also prevalent in this area, for example the Picture class has PCX and GIF sub-classes hooked into it in order to support extra file types.</p>
+
+<p>The lower layer illustrates the use of components, which are basically classes that provide GUI services. They are responsible for user interaction and their ability to communicate with each other is paramount. Components are also used in scripts to build the GUI interface, and as such represent the face of the operating system that is built at run-time. The beauty of components is that they can be added and deleted according to what is required by the user. System growth is highest in this area, and new components are very easy to build and maintain. The majority of components produced at Rocklyte are distributed as part of the core platform, but they can be removed in custom builds to reduce installation size.</p>
+
+</page>

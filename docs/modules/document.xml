@@ -1,0 +1,83 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="module.xsl"?>
+
+<book>
+  <info>
+    <name>Document</name>
+    <type>module</type>
+    <version>1</version>
+    <copyright>Paul Manias © 2005-2017</copyright>
+    <classes>
+      <class>Document</class>
+    </classes>
+  </info>
+
+  <function>
+    <name>CharLength</name>
+    <comment>Returns the length of any character or escape code in a document data stream.</comment>
+    <prototype>LONG docCharLength(struct rkDocument * Document, LONG Index)</prototype>
+    <input>
+      <param type="struct rkDocument *" name="Document">The document to query.</param>
+      <param type="LONG" name="Index">The byte index of the character to inspect.</param>
+    </input>
+    <description>
+<p>This function will compute the byte-length of any UTF-8 character sequence or escape code in a document's data stream.</p>
+    </description>
+    <result type="LONG">The length of the character is returned, or 0 if an error occurs.</result>
+  </function>
+
+  <types>
+    <constants lookup="DBE" comment="Border edge flags.">
+      <const name="BOTTOM">Bottom border edge.</const>
+      <const name="LEFT">Left border edge.</const>
+      <const name="RIGHT">Right border edge.</const>
+      <const name="TOP">Top border edge.</const>
+    </constants>
+
+    <constants lookup="DCF" comment="Document flags">
+      <const name="UNRESTRICTED">Turn off all security measures - may only be set prior to initialisation.</const>
+      <const name="EDIT">Allow direct keyboard input and document editing.</const>
+      <const name="NO_SCROLLBARS">Do not display scrollbars if the page exceeds the size of the view.</const>
+      <const name="DISABLED">This read-only flag is set if the object has been disabled through the Disable action.</const>
+      <const name="OVERWRITE">This flag forces overwrite mode when the user enters information through the keyboard.  If the flag is not set, then insert mode is used.</const>
+      <const name="NO_LAYOUT_MSG">Turn off debug output produced during document layout and processing - useful on refresh for example.</const>
+      <const name="NO_SYS_KEYS">System-keys provide standard key support for Ctrl-C, Ctrl-X etc.  Set this flag to turn them off.</const>
+    </constants>
+
+    <constants lookup="DRT" comment="Internal trigger codes">
+      <const name="BEFORE_LAYOUT"/>
+      <const name="AFTER_LAYOUT"/>
+      <const name="USER_CLICK"/>
+      <const name="USER_CLICK_RELEASE"/>
+      <const name="USER_MOVEMENT"/>
+      <const name="REFRESH"/>
+      <const name="GOT_FOCUS"/>
+      <const name="LOST_FOCUS"/>
+      <const name="LEAVING_PAGE"/>
+      <const name="PAGE_PROCESSED"/>
+      <const name="MAX"/>
+    </constants>
+
+    <constants lookup="DEF" comment="Event flags">
+      <const name="LOCATION">The location has been changed.  Useful for detecting when the user has left the page.</const>
+    </constants>
+
+  </types>
+  <structs>
+    <struct name="DocStyle" comment="This structure is passed to objects that support the LayoutStyle field" typeName="DOCSTYLE">
+      <field name="Version" type="LONG">Version of this DocStyle structure</field>
+      <field name="Document" type="struct rkDocument *">The document object that this style originates from</field>
+      <field name="Font" type="struct rkFont *">Pointer to the current font object.  Indicates face, style etc, but not simple attributes like colour</field>
+      <field name="FontColour" type="struct RGB8">Foreground colour (colour of the font)</field>
+      <field name="FontUnderline" type="struct RGB8">Underline colour for the font, if active</field>
+      <field name="StyleFlags" type="LONG">Font style flags (FSO)</field>
+    </struct>
+
+    <struct name="escFont">
+      <field name="Index" type="WORD">Font lookup</field>
+      <field name="Options" type="WORD">FSO flags</field>
+      <field name="Colour" type="struct RGB8">Font colour</field>
+    </struct>
+
+  </structs>
+</book>

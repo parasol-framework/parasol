@@ -1,0 +1,67 @@
+<?xml version="1.0"?>
+
+<info>
+ <title>Glossary</title>
+ <author>Rocklyte Systems</author>
+ <keywords>glossary, words, explanation, detail</keywords>
+ <description>A glossary of terms used in the Rocklyte SDK.</description>
+</info>
+
+<include src="inc_style.rpl"/>
+
+<page>
+
+<startpage title="Glossary"/>
+
+<!--
+<h3><index>Abstraction</index></h3>
+<p>&nbsp;</p>
+-->
+
+<h3><index>Action Orientation</index></h3>
+<p>This is an advanced form of <a href="#ObjectOrientation">object orientation</a> that is based around real-world semantics. In language based OO, performing an action such as kicking a soccer ball would be defined as "Ball.Kick()". Under action orientation, this statement would be replaced with "Kick(Ball)". This places the emphasis on applying a function to an object, rather than calling a function from an object. This allows us to  write a generic set of code and documentation that can be applied to any object supporting the said action. With this in mind, we can then Kick(RugbyBall), Kick(Bucket) or Kick(Self) and receive a predictable outcome as specified in the  action documentation.</p>
+
+<h3><index>Child</index></h3>
+<p>Any object that is contained by another object, can be referred to as a child when used in the context of the container. For example, an Image could be the child of a Surface object.</P>
+
+<h3><index>Base Class</index></h3>
+<p>A base-class is a 'normal' <a href="#Class">class</a> definition.  Base-classes can sometimes be supported by multiple <a href="#SubClass">sub-classes</a>.</p>
+
+<h3><index>Class</index></h3>
+<p>A class is a definition that describes a particular kind of object. It is like a genetic code that can be used to create an entity with a common set of attributes, as defined by the class that conceived it. If multiple objects are created from a class, then they will all share the same attributes. The uniqueness of each object comes from treating them as individuals that are maintained independently from each other.</p>
+
+<!--
+<h3><index>Current Context</index></h3>
+<p>&nbsp;</p>
+-->
+
+<h3><index>DML</index></h3>
+<p>Short for "Dynamically Extendible Object Based Markup Language". This is a simple XML based language that allows components to be created and linked  with each other through Rocklyte's object model.</p>
+
+<h3><index>Field Abstraction</index></h3>
+<p>Objects typically consist of many fields that combine to define an object's data structure. A Surface object for example consists of Width, Height and Colour fields.  When we need to read or set the values for an object field we may do so directly, for example "Surface.Width = 100".  On the other hand, objects supporting field abstraction have their interface hidden from the developer and can only be accessed via function calls.  For example, SetFieldVariable(Surface, "Width", "100").  Also see <a href="#VirtualFields">Virtual Fields</a>.</p>
+
+<h3><index>MOO</index></h3>
+<p>Modular Object Orientation. The MOO acronym helps to distinguish language based object orientation from Rocklyte's concept of organising objects into modules and managing  them in run-time.</p>
+
+<h3><index>Object Orientation</index></h3>
+<p>Object orientation, or 'OO'  was  introduced to the world in 1967 in a language known as Simula.  Object orientation represents more of a programming philosophy than a particular set of standards, because it has been implemented in  many different ways since its conception. The basic premise is to create an environment where every entity is represented as an individual, functioning object, almost as if it had physical representation in the real world. Using OO, you can create 'classes' that define how an object behaves, what it contains, what its capabilities are and so on. Over time object orientation has evolved to support public/private object areas, polymorphism, inheritance and other technical buzzwords. While  the concept of object orientation has been with us for a long time, developers continue to debate object oriented principles, thus proving the concept's infancy.</p>
+
+<h3><index>Owner</index></h3>
+<p>Almost every object created by the object kernel is owned or 'contained' by another object. This means that the entire system structure is built into a massive hierarchy, where each object can be a child of a container, as well as being a container of other objects.  The relationship is always one-to-many; an object can only have one owner, but may own an unlimited number of objects. </P>
+
+<h3><index>Parent</index></h3>
+<p>This term  is typically used to refer to objects that have  private child objects defined in their structure. For example, "A Screen object is the parent of an internal Bitmap". It can be easy to confuse the term 'parent' with the term 'container' -  see the <a href="#Container">container</a> definition for more information.</p>
+
+<!--
+<h3><index>Polymorphism</index></h3>
+<p>See <a href="#Abstraction">Abstraction</a>.</p>
+-->
+
+<h3><index>Sub Class</index></h3>
+<p>A sub-class is a special class definition that is designed to provide enhanced support for a  <a href="#BaseClass">base class</a>.  For example, the Picture base class is supported by GIF, PCX and JPEG sub-classes.</p>
+
+<h3><index>Virtual Fields</index></h3>
+<p>Some class definitions will define  "virtual fields" in their object  structure. By using virtual fields, an object can support dynamically calculated fields or special functionality that would normally require an API function call.  Because a virtual field does not 'physically' exist in an object, they are only accessible through the GetField() and SetField() range of functions. For example to get the calculated string width of a Font we would use the call GetField(Font, FID_StrWidth, FT_LONG, &amp;Width). Also see <a href="#FieldAbstraction">Field Abstraction</a>.</p>
+
+</page>

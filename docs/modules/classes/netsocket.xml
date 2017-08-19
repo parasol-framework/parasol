@@ -1,0 +1,430 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="class.xsl"?>
+
+<book>
+  <info>
+    <name>NetSocket</name>
+    <type>class</type>
+    <module>Network</module>
+    <comment>Manages network connections via TCP/IP sockets.</comment>
+    <version>1</version>
+    <id>2b439bb5</id>
+    <idstring>ID_NETSOCKET</idstring>
+    <category>Network</category>
+    <include>modules/netsocket.h</include>
+    <copyright>Paul Manias © 2005-2017</copyright>
+    <description>
+<p>The NetSocket class provides a simple way of using TCP/IP sockets.  Connections from a single client to the server and from the server to multiple clients are supported.  SSL functionality is also integrated.</p>
+<p>The NetSocket class is designed only to cater for asynchronous (non-blocking) communication. This functionality is achieved primarily through callback fields - connection alerts are managed by <field>Feedback</field>, incoming data is received through <field>Incoming</field> and readiness for outgoing data is supported by <field>Outgoing</field>.</p>
+<header>Client-Server Connections</header>
+<p>After a connection has been established, data may be written to the server uses any of the following methods:</p>
+<list type="unsorted">
+<li>Write directly to the server at any time using either the <action>Write</action> action or <method>WriteMsg</method> method.</li>
+<li>Subscribe to the socket by referring to a routine in the <field>Outgoing</field> field.  The routine will be called to
+initially fill the internal write buffer, thereafter it will be called whenever the buffer is empty.</li>
+</list>
+<p>It is possible to write to a NetSocket object before the connection to a server is established.  Doing so will buffer the data in the socket until the connection with the server has been initiated, at which point the data will be immediately sent.</p>
+<header>Server-Client Connections</header>
+<p>To accept incoming client connections, create a NetSocket object with the SERVER flag set and define the <field>Port</field> value on which to listen for new clients.  If you wish to allow multiple connections from a single client IP address, you should also set the MULTICONNECT flag.</p>
+<p>When a new connection is detected, the <field>Feedback</field> function will be called as <code>Feedback(objNetSocket *NetSocket, OBJECTPTR Context, LONG Operation)</code></p>
+<p>The NetSocket parameter refers to the original NetSocket object, the Context refers to the object that set the Feedback field and the Operation value will be set to NTC_CONNECTED.  Information about the new connection can be read from the <field>CurrentSocket</field> field.  If a client disconnects, the Feedback function will be called in the same manner but with an Operation value of NTC_DISCONNECTED.</p>
+<p>Information on all active connections can be read from the <field>Clients</field> field.  This contains a linked list of IP addresses and their connections to the server port.</p>
+<p>To send data to a client, set the <field>CurrentSocket</field> field to reference the target client and then call the <action>Write</action> action.</p>
+<p>All data that is received from client sockets will be passed to the <field>Incoming</field> feedback routine.  The <field>CurrentSocket</field> field will refer to the socket that has received the data.</p></description>
+    <source>
+      <file path="netsocket/">netsocket.c</file>
+    </source>
+  </info>
+
+  <actions>
+    <action>
+      <name>Disable</name>
+      <comment>Disables sending and receiving on the socket.</comment>
+      <description>
+<p>This method will stop all sending and receiving of data over the socket.</p>
+      </description>
+      <result>
+        <error code="Failed">Shutdown operation failed.</error>
+        <error code="Okay">Operation successful.</error>
+      </result>
+    </action>
+
+    <action>
+      <name>Read</name>
+      <comment>Read information from the socket.</comment>
+      <description>
+<p>The Read action will read incoming data from the socket and write it to the provided buffer.  If the socket connection is safe, success will always be returned by this action regardless of whether or not data was available.  Almost all other return codes indicate permanent failure, and the socket connection will be closed when the action returns.</p>
+      </description>
+      <result>
+        <error code="NullArgs">Function call missing argument value(s)</error>
+        <error code="Failed">A permanent failure has occurred and socket has been closed.</error>
+        <error code="Disconnected">The socket connection is closed.</error>
+        <error code="Okay">Read successful (if no data was on the socket, success is still indicated).</error>
+      </result>
+    </action>
+
+    <action>
+      <name>Write</name>
+      <comment>Writes data to the socket.</comment>
+      <description>
+<p>Writing data to a socket will send raw data to the remote client or server.  Write connections are buffered, so any data overflow generated in a call to this action will be buffered into a software queue.  Resource limits placed on the software queue are governed by the <field>MsgLimit</field> field setting.</p>
+<p>In server mode, the <field>CurrentSocket</field> will designate the client that will receive the data.  If this field is not set, ERR_FieldNotSet will be returned.</p>
+<p>It is also possible to write to a socket in advance of any connection being made. The netsocket will queue the data and automatically send it once the first connection has been made.</p>
+      </description>
+    </action>
+
+  </actions>
+
+  <methods>
+    <method>
+      <name>Connect</name>
+      <comment>Connects a NetSocket to an address</comment>
+      <prototype>ERROR nsConnect(OBJECTPTR Object, CSTRING Address, LONG Port)</prototype>
+      <input>
+        <param type="CSTRING" name="Address">String containing either a domain name (e.g. "www.google.com") or an IP address (e.g. "123.123.123.123")</param>
+        <param type="LONG" name="Port">Remote port to connect to.</param>
+      </input>
+      <description>
+<p>This method initiates the connection process with a target Address.  The address to connect to can be specified either as a domain name, in which case the domain name is first resolved to an IP address, or the address can be specified in standard IP notation.</p>
+<p>This method is non-blocking.  It will return immediately and the connection will be resolved once the server responds to the connection request or an error occurs.  Client code should subscribe to the State field to respond to changes to the connection state.</p>
+<p>Pre-Condition: Must be in a connection state of NTC_DISCONNECTED</p>
+<p>Post-Condition: If this method returns ERR_Okay, will be in state NTC_CONNECTING.</p>
+      </description>
+      <result>
+        <error code="HostNotFound">Host name resolution failed.</error>
+        <error code="Args">Address was NULL, or Port was not in the required range.</error>
+        <error code="Failed">The connect failed for some other reason.</error>
+        <error code="BadState">The NetSocket was not in the state NTC_DISCONNECTED.</error>
+        <error code="Okay">The NetSocket connecting process was successfully started.</error>
+      </result>
+    </method>
+
+    <method>
+      <name>DisconnectClient</name>
+      <comment>Disconnects all sockets connected to a specific client IP.</comment>
+      <prototype>ERROR nsDisconnectClient(OBJECTPTR Object, struct rkNetClient * Client)</prototype>
+      <input>
+        <param type="struct rkNetClient *" name="Client">The client to be disconnected.</param>
+      </input>
+      <description>
+<p>For server sockets with a client connection, this method will terminate all socket connections made to a client and frees any resources allocated to it.  If <field>Feedback</field> is defined, a DISCONNECTED state message will also be issued for each socket connection.</p>
+<p>If only one socket connection needs to be disconnected, please use <method>DisconnectSocket</method>.</p>
+      </description>
+      <result>
+        <error code="NullArgs">Function call missing argument value(s)</error>
+        <error code="Okay">Operation successful.</error>
+      </result>
+    </method>
+
+    <method>
+      <name>DisconnectSocket</name>
+      <comment>Disconnects a socket that is connected to a specific client IP.</comment>
+      <prototype>ERROR nsDisconnectSocket(OBJECTPTR Object, struct rkClientSocket * Socket)</prototype>
+      <input>
+        <param type="struct rkClientSocket *" name="Socket">The client socket to be disconnected.</param>
+      </input>
+      <description>
+<p>This method will disconnect a socket connection for a given client.  If <field>Feedback</field> is defined, a DISCONNECTED state message will also be issued.</p>
+      </description>
+      <result>
+        <error code="NullArgs">Function call missing argument value(s)</error>
+        <error code="Okay">Operation successful.</error>
+      </result>
+    </method>
+
+    <method>
+      <name>GetLocalIPAddress</name>
+      <comment>Returns the IP address that the socket is locally bound to.</comment>
+      <prototype>ERROR nsGetLocalIPAddress(OBJECTPTR Object, struct IPAddress * Address)</prototype>
+      <input>
+        <param type="struct IPAddress *" name="Address">Pointer to an IPAddress structure which will be set to the result of the query if successful.</param>
+      </input>
+      <description>
+<p>This method performs the POSIX equivalent of getsockname().  It returns the current address to which the NetSocket is bound.</p>
+      </description>
+      <result>
+        <error code="NullArgs">Function call missing argument value(s)</error>
+        <error code="Failed">General failure.</error>
+        <error code="Okay">Operation successful.</error>
+      </result>
+    </method>
+
+    <method>
+      <name>ReadMsg</name>
+      <comment>Read a message from the socket.</comment>
+      <prototype>ERROR nsReadMsg(OBJECTPTR Object, APTR * Message, LONG * Length, LONG * Progress, LONG * CRC)</prototype>
+      <input>
+        <param type="APTR *" name="Message">A pointer to the message buffer will be placed here if a message has been received.</param>
+        <param type="LONG *" name="Length">The length of the message is returned here.</param>
+        <param type="LONG *" name="Progress">The number of bytes that have been read for the incoming message.</param>
+        <param type="LONG *" name="CRC">Indicates the CRC value that the message is expected to match.</param>
+      </input>
+      <description>
+<p>This method reads messages that have been sent to the socket using Parasol Message Protocols.  Any message sent with the WriteMsg method will conform to this protocol, thus simplifying message transfers between programs based on the core platform at either point of the network link.</p>
+<p>This method never returns a successful error code unless an entire message has been received from the sender.</p>
+      </description>
+      <result>
+        <error code="LimitedSuccess">Some data has arrived, but the entire message is incomplete.  The length of the incoming message may be indicated in the Length parameter.</error>
+        <error code="NoData">No new data was found for the socket.</error>
+        <error code="Args">Invalid arguments passed to function.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
+        <error code="AllocMemory">A message buffer could not be allocated.</error>
+        <error code="BadData">The message header or tail was invalid, or the message length exceeded internally imposed limits.</error>
+        <error code="Okay">A complete message has been read and indicated in the result parameters.</error>
+      </result>
+    </method>
+
+    <method>
+      <name>WriteMsg</name>
+      <comment>Writes a message to the socket.</comment>
+      <prototype>ERROR nsWriteMsg(OBJECTPTR Object, APTR Message, LONG Length)</prototype>
+      <input>
+        <param type="APTR" name="Message">Pointer to the message to send.</param>
+        <param type="LONG" name="Length">The length of the message.</param>
+      </input>
+      <description>
+<p>Messages can be written to sockets with the WriteMsg method and read back by the receiver with <method>ReadMsg</method>.  The message data is sent through the <action>Write</action> action, so the standard process will apply (the message will be queued and does not block if buffers are full).</p>
+      </description>
+      <result>
+        <error code="Okay">Operation successful.</error>
+        <error code="OutOfRange">A specified number is outside of the valid range.</error>
+        <error code="Args">Invalid arguments passed to function.</error>
+      </result>
+    </method>
+
+  </methods>
+
+  <fields>
+    <field>
+      <name>Address</name>
+      <comment>An IP address or domain name to connect to.</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type>STRING</type>
+      <description>
+<p>If this field is set with an IP address or domain name prior to initialisation, an attempt to connect to that location will be made when the NetSocket is initialised.  Post-initialisation this field cannot be set by the client, however calls to <method>Connect</method> will result in it being updated so that it always reflects the named address of the current connection.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Backlog</name>
+      <comment>The maximum number of connections that can be queued against the socket.</comment>
+      <access read="R" write="I">Read/Init</access>
+      <type>INT</type>
+      <description>
+<p>Incoming connections to NetSocket objects are queued until they are answered by the object.  As there is a limit to the number of connections that can be queued, you can adjust the backlog by writing this field.  The default setting is 10 connections.</p>
+<p>If the backlog is exceeded, subsequent connections to the socket will typically be met with a connection refused error.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>ClientLimit</name>
+      <comment>The maximum number of clients that can be connected to a server socket.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>INT</type>
+    </field>
+
+    <field>
+      <name>Clients</name>
+      <comment>For server sockets, lists all clients connected to the server.</comment>
+      <access read="R">Read</access>
+      <type>struct rkNetClient *</type>
+    </field>
+
+    <field>
+      <name>CurrentClient</name>
+      <comment>Relevant for server sockets, indicates the target client socket for communications.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>OBJECTPTR</type>
+      <description>
+<p>For server sockets, the CurrentClient field must refer to a target ClientSocket in order to perform operations such as <action>Read</action> and <action>Write</action>.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>CurrentSocket</name>
+      <comment>ServerMode - The current client being operated on (e.g. for Read/Write activity)</comment>
+      <access>-/-</access>
+      <type class="ClientSocket">*ClientSocket</type>
+    </field>
+
+    <field>
+      <name>Error</name>
+      <comment>Information about the last error that occurred during a NetSocket operation</comment>
+      <access read="R">Read</access>
+      <type>ERROR</type>
+      <description>
+<p>This field describes the last error that occurred during a NetSocket operation:</p>
+<p>In the case where a NetSocket object enters the NTC_DISCONNECTED state from the NTC_CONNECTED state, this field can be used to determine how a TCP connection was closed.</p>
+<types type="Error">
+<type name="ERR_Okay">The connection was closed gracefully.  All data sent by the peer has been received.</type>
+<type name="ERR_Disconnected">The connection was broken in a non-graceful fashion. Data may be lost.</type>
+<type name="ERR_TimeOut">The connect operation timed out.</type>
+<type name="ERR_ConnectionRefused">The connection was refused by the remote host.  Note: This error will not occur on Windows, and instead the Error field will be set to ERR_Failed.</type>
+<type name="ERR_NetworkUnreachable">The network was unreachable.  Note: This error will not occur on Windows, and instead the Error field will be set to ERR_Failed.</type>
+<type name="ERR_HostUnreachable">No path to host was found.  Note: This error will not occur on Windows, and instead the Error field will be set to ERR_Failed.</type>
+<type name="ERR_Failed">An unspecified error occurred.</type>
+</types>
+      </description>
+    </field>
+
+    <field>
+      <name>Feedback</name>
+      <comment>A callback trigger for when the state of the NetSocket is changed.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>FUNCTION</type>
+      <description>
+<p>Refer to a custom function in this field and it will be called whenever the <field>State</field> of the socket (such as connection or disconnection) changes.</p>
+<p>The function must be in the format <code>Function(*NetSocket, OBJECTPTR Context, LONG State)</code></p>
+<p>The NetSocket parameter will refer to the NetSocket object to which the Feedback function is subscribed.  The Context refers to the object that set the Feedback field and the State reflects the new value in the <field>State</field> field.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Flags</name>
+      <comment>Optional flags.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type lookup="NSF">INT</type>
+      <description>
+<types lookup="NSF"/>
+      </description>
+    </field>
+
+    <field>
+      <name>Incoming</name>
+      <comment>Callback that is triggered when the socket receives data.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>FUNCTION</type>
+      <description>
+<p>The Incoming field can be set with a custom function that will be called whenever the socket receives data.  The function must follow this definition: <code>ERROR Incoming(*NetSocket, OBJECTPTR Context)</code></p>
+<p>The NetSocket parameter refers to the NetSocket object.  The Context refers to the object that set the Incoming field.</p>
+<p>To get the data from the socket, call the <action>Read</action> action. Reading at least some of the data from the socket is compulsory - if the function does not do this, then the data will be cleared from the socket when the function returns. If your callback function returns ERR_Terminate, then the Incoming field will be cleared so that your function will no longer be called.  All other error codes are ignored.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>MsgLimit</name>
+      <comment>Limits the size of incoming and outgoing messages.</comment>
+      <access read="R" write="I">Read/Init</access>
+      <type>INT</type>
+      <description>
+<p>This field limits the size of incoming and outgoing message queues (each socket connection receives two queues assigned to both incoming and outgoing messages).  The size is defined in bytes.  Sending or receiving messages that overflow the queue results in the connection being terminated with an error.</p>
+<p>The default setting is 1 megabyte.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>OutQueueSize</name>
+      <comment>The number of bytes on the socket's outgoing queue.</comment>
+      <access read="G">Get</access>
+      <type>INT</type>
+    </field>
+
+    <field>
+      <name>Outgoing</name>
+      <comment>Callback that is triggered when the socket is ready to send data.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>FUNCTION</type>
+      <description>
+<p>The Outgoing field can be set with a custom function that will be called whenever the socket is ready to send data. The function must be in the format <code>ERROR Outgoing(*NetSocket, OBJECTPTR Context)</code></p>
+<p>The NetSocket parameter refers to the NetSocket object.  The Context refers to the object that set the Outgoing field.</p>
+<p>To send data to the NetSocket object, call the <action>Write</action> action.  If your callback function returns ERR_Terminate, then the Outgoing field will be cleared so that your function will no longer be called.  All other error codes are ignored.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Port</name>
+      <comment>The port number to use for initiating a connection.</comment>
+      <access read="R" write="I">Read/Init</access>
+      <type>INT</type>
+    </field>
+
+    <field>
+      <name>SocketHandle</name>
+      <comment>Platform specific reference to the network socket handle.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>APTR</type>
+    </field>
+
+    <field>
+      <name>State</name>
+      <comment>The current connection state of the netsocket object.</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type lookup="NTC">INT</type>
+      <description>
+<types lookup="NTC"/>
+      </description>
+    </field>
+
+    <field>
+      <name>TotalClients</name>
+      <comment>Indicates the total number of clients currently connected to the socket (if in server mode).</comment>
+      <access read="R">Read</access>
+      <type>INT</type>
+      <description>
+<p>In server mode, the netsocket will maintain a count of the total number of clients currently connected to the socket. You can read the total number of connections from this field.</p>
+<p>In client mode, this field is always set to zero.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>UserData</name>
+      <comment>A user-defined pointer that can be useful in action notify events.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>APTR</type>
+      <description>
+<p>When some client code has subscribed to a method, such as MT_NsOConnect, and when the client code receives a MT_NsOConnect event through ActionNotify, it can be helpful to have a user data pointer in order to retrieve some application defined data structure.  Typically this field is set at object creation to point to some user data structure.  For them on it can be used in ActionNotify to retrieve the structure.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>ValidCert</name>
+      <comment>Indicates certificate validity if the socket is encrypted with a certificate.</comment>
+      <access read="G">Get</access>
+      <type>INT</type>
+      <description>
+<p>After an encrypted connection has been made to a server, the ValidCert field can be used to determine the validity of the server's certificate.</p>
+<p>If encrypted communication is not supported, ERR_NoSupport is returned.  If the certificate is valid or the connection is not encrypted, a value of zero is returned to indicate that the connection is valid.</p>
+      </description>
+    </field>
+
+  </fields>
+  <types>
+    <constants lookup="IPADDR" comment="Address types for the IPAddress structure.">
+      <const name="V4"/>
+      <const name="V6"/>
+    </constants>
+
+    <constants lookup="NSF">
+      <const name="SERVER">Puts the socket into server mode.  In this state the netsocket object will wait for incoming connections from clients.</const>
+      <const name="SSL">Use Secure Sockets Layer for all communication.</const>
+      <const name="MULTI_CONNECT">Allow multiple connections from the same IP when in server mode.</const>
+      <const name="DEBUG">Print extra log messages.</const>
+      <const name="ASYNC_RESOLVE">Use asynchronous (non-parallel) DNS resolutions in ResolveAddress() and ResolveName().</const>
+    </constants>
+
+    <constants lookup="NTC" comment="NetSocket states">
+      <const name="DISCONNECTED">There is no connection.</const>
+      <const name="CONNECTING">A connection is being established.</const>
+      <const name="CONNECTING_SSL">An SSL connection is being established.</const>
+      <const name="CONNECTED">There is an active connection at present.</const>
+    </constants>
+
+  </types>
+  <structs>
+    <struct name="IPAddress">
+      <field name="Data" type="ULONG" size="4">128-bit array for supporting both V4 and V6 IP addresses.</field>
+      <field name="Type" type="LONG" lookup="IPADDR"></field>
+    </struct>
+
+    <struct name="rkNetClient" comment="Simple data storage class utilised by NetSocket to represent a client machine/IP.">
+      <field name="IP" type="char" size="8">IP address in 4/8-byte format</field>
+      <field name="Next" type="struct rkNetClient *">Next client in the chain</field>
+      <field name="Prev" type="struct rkNetClient *">Previous client in the chain</field>
+      <field name="NetSocket" type="struct rkNetSocket *">Reference to the parent socket</field>
+      <field name="Sockets" type="struct rkClientSocket *">Pointer to a list of sockets opened with this client.</field>
+      <field name="UserData" type="APTR">Free for user data storage.</field>
+      <field name="TotalSockets" type="LONG">Count of all created sockets</field>
+    </struct>
+
+  </structs>
+</book>

@@ -1,0 +1,38 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="module.xsl"?>
+
+<book>
+  <info>
+    <name>Fluid</name>
+    <type>module</type>
+    <comment>Fluid is a customised scripting language for the Script class.</comment>
+    <version>1</version>
+    <status>beta</status>
+    <prefix>fl</prefix>
+    <copyright>Paul Manias © 2006-2017</copyright>
+  </info>
+
+  <function>
+    <name>SetVariable</name>
+    <comment>Sets any variable in a loaded Fluid script.</comment>
+    <prototype>ERROR flSetVariable(OBJECTPTR Script, CSTRING Name, LONG Type, ...)</prototype>
+    <input>
+      <param type="OBJECTPTR" name="Script">Pointer to a Fluid script.</param>
+      <param type="CSTRING" name="Name">The name of the variable to set.</param>
+      <param type="LONG" name="Type" lookup="FD">A valid field type must be indicated, e.g. FD_STRING, FD_POINTER, FD_LONG, FD_DOUBLE, FD_LARGE.</param>
+      <param type="..." name="Variable">A variable that matches the indicated Type.</param>
+    </input>
+    <description>
+<p>The SetVariable() function provides a method for setting global variables in a Fluid script prior to execution of that script.  If the script is cached, the variable settings will be available on the next activation.</p>
+    </description>
+    <result type="ERROR">
+      <error code="Okay">Operation successful.</error>
+      <error code="FieldTypeMismatch">Field type mismatch while getting or setting a field.</error>
+      <error code="ObjectCorrupt">The object structure is corrupt or has not been initialised.</error>
+      <error code="Args">Invalid arguments passed to function.</error>
+    </result>
+  </function>
+
+  <structs>
+  </structs>
+</book>

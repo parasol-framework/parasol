@@ -1,0 +1,149 @@
+<?xml version="1.0"?>
+
+<date>September 2007</date>
+
+<error><code>0</code><name>Okay</name><about>No error occurred, function has executed successfully.</></error>
+<error><code>1</code><name>NoMemory</name><about>Not enough memory was available when this function attempted to allocate a memory block.</></error>
+<error><code>2</code><name>NoPointer</name><about>A required address pointer was not present.</></error>
+<error><code>3</code><name>InUse</name><about>The resource, object, or other system part is currently in use.</></error>
+<error><code>4</code><name>Failed</name><about>An unspecified failure has occurred.</></error>
+<error><code>5</code><name>File</name><about>Unspecified file error, eg file not found, disk full etc.</></error>
+<error><code>6</code><name>Data</name><about>This function encountered some data that has unrecoverable errors.</></error>
+<error><code>7</code><name>Search</name><about>An internal search was performed and it failed. This is a specific error that can occur when the function is searching inside file headers for something, eg the BODY section of an IFF file.</></error>
+<error><code>8</code><name>InitModule</name><about>This function tried to initialise a module and failed.</></error>
+<error><code>9</code><name>FileMissing</name><about>File not found, this occurs when a Location field references a file that does not exist.</></error>
+<error><code>10</code><name>WrongVersion</name><about>Wrong version, or the specified version is not supported.</></error>
+<error><code>11</code><name>Args</name><about>You tried to pass invalid arguments to this function, such as a NULL value where you should have placed a pointer.</></error>
+<error><code>12</code><name>NoData</name><about>The procedure expected some data, but the program did not supply any.</></error>
+<error><code>13</code><name>Read</name><about>Occurs if you attempt to read a file and a failure occurs. Perhaps there is nothing left to read, the file object has been invalidated, or there are surface errors on the media in question.</></error>
+<error><code>14</code><name>Write</name><about>Occurs if you attempt to write to a file and a failure occurs. Usually this is due to a hardware problem such as lack of space or surface errors on the recording media.</></error>
+<error><code>15</code><name>LockFailed</name><about>This error can occur if you attempt to get a lock on an object that is already locked out by another task, or if you try to lock an object that does not exist.</></error>
+<error><code>16</code><name>ExamineFailed</name><about>This error applies to files and directories. It can occur for various reasons, a probable cause could be a corrupt/invalidated area of a disk structure.</></error>
+<error><code>17</code><name>LostClass</name><about>This is a very serious error, which occurs if an object loses its reference to its Class. This basically means that the Object-&gt;Class pointer has been cleared or invalidated.</></error>
+<error><code>18</code><name>NoAction</name><about>If you call an action on an object, and if the object does not support that action, you will receive this message. An example of this could occur by attempting to draw a file, e.g. Draw(File).</></error>
+<error><code>19</code><name>NoSupport</name><about>Can be caused if an object fails to initialise, often due to an unsupported data format.</></error>
+<error><code>20</code><name>Memory</name><about>General memory error, such as no memory available, or memory too fragmented.</></error>
+<error><code>21</code><name>TimeOut</name><about>A time-out can occur if a function is expected to complete a process within a certain amount of time (e.g. 5 seconds). If that time runs out, this error-code will be returned.</></error>
+<error><code>22</code><name>NoStats</name><about>This error indicates near-fatal corruption to an object. A private Stats structure is kept in the header of each object (Object-&gt;Stats) and if it is lost, there has been an illegal clearance of this field.</></error>
+<error><code>23</code><name>LowCapacity</name><about>Low capacity error or warning - usually occurs when an array is almost full.</></error>
+<error><code>24</code><name>Init</name><about>An error occurred on a call to the Init action.</></error>
+<error><code>25</code><name>NoPermission</name><about>A security violation has occurred.</></error>
+<error><code>26</code><name>SystemCorrupt</name><about>The operating system has been badly corrupted.</></error>
+<error><code>27</code><name>NeedOwner</name><about>Used if an object needs an owner to operate correctly.</></error>
+<error><code>28</code><name>OwnerNeedsBitmap</name><about>The owner needs a Bitmap field. Can usually be solved by using a different owner or adding a virtual Bitmap field to the owner's source code.</></error>
+<error><code>29</code><name>KernelVersion</name><about>The kernel version is not recent enough - you need to install a more recent kernel.</></error>
+<error><code>30</code><name>NeedWidthHeight</name><about>You need to specify a Width and Height for the object.</></error>
+<error><code>31</code><name>NegativeSubClassID</name><about>Occurs if the Child ID specified for a class is less than 0.</></error>
+<error><code>32</code><name>NegativeClassID</name><about>Occurs if the Class ID specified for a class is less than 0.</></error>
+<error><code>33</code><name>MissingClassName</name><about>A newly created class has not been given a name.</></error>
+<error><code>34</code><name>OutOfRange</name><about>Number is out of range.</></error>
+<error><code>35</code><name>ObtainMethod</name><about>A call to ObtainMethod() failed.</></error>
+<error><code>36</code><name>ArrayFull</name><about>An array has reached capacity and cannot be expanded.</></error>
+<error><code>37</code><name>Query</name><about>An attempt to Query() has failed for unspecified reasons.</></error>
+<error><code>38</code><name>LostOwner</name><about>The object has not been assigned an owner.</></error>
+<error><code>39</code><name>DoNotExpunge</name><about>This code is returned by modules that do not want to be expunged by an expunge call.</></error>
+<error><code>40</code><name>MemoryCorrupt</name><about>Used when a memory block is known to be corrupt.</></error>
+<error><code>41</code><name>FieldSearch</name><about>The function could not find the field that you asked for.</></error>
+<error><code>42</code><name>InvalidPath</name><about>Invalid file or directory path detected.</></error>
+<error><code>43</code><name>SetField</name><about>An unspecific error occurred during a call to SetField().</></error>
+<error><code>44</code><name>MarkedForDeletion</name><about>A resource cannot be accessed as it is marked for deletion.</></error>
+<error><code>45</code><name>IllegalMethodID</name><about>Illegal method ID (number outside of valid range).</></error>
+<error><code>46</code><name>IllegalActionID</name><about>Illegal action ID (number outside of valid range).</></error>
+<error><code>47</code><name>ModuleOpenFailed</name><about>Module failed in its Open routine.</></error>
+<error><code>48</code><name>IllegalActionAttempt</name><about>An illegal attempt was made to execute an action on an object that belongs to another Task.</></error>
+<error><code>49</code><name>EntryMissingHeader</name><about>The ModEntry Header is missing.</></error>
+<error><code>50</code><name>ModuleMissingInit</name><about>Module has not defined support for Init().</></error>
+<error><code>51</code><name>ModuleInitFailed</name><about>Module failed its Initialisation routine.</></error>
+<error><code>52</code><name>MemoryDoesNotExist</name><about>Memory block does not exist - usually returned from memory functions such as FreeMemoryID() and MemoryPtrInfo().</></error>
+<error><code>53</code><name>DeadLock</name><about>A dead-lock was detected and the procedure was aborted. A dead-lock occurs when a task wants to use a resource that some other task has locked, but the catch is, that other task is already waiting on you to release a resource. As two tasks cannot wait on each other, the procedure must be aborted to avoid the dead-lock.</></error>
+<error><code>54</code><name>SystemLockedUp</name><about>An unspecified area of the system is locked-up. This can occur if a shared memory block has been exclusively accessed and not released, or some other type of unreleased access has been made.</></error>
+<error><code>55</code><name>ModuleMissingName</name><about>A Module has not declared an official name.</></error>
+<error><code>56</code><name>AddClass</name><about>An attempt to add a new class to the system failed.</></error>
+<error><code>57</code><name>Activate</name><about>Error while Activate()ing an object.</></error>
+<error><code>58</code><name>ActionFailed</name><about>An (undefined) action call to an object failed.</></error>
+<error><code>59</code><name>DoubleInit</name><about>An attempt to initialise an object twice was detected.</></error>
+<error><code>60</code><name>FieldNotSet</name><about>A required field has not been set in the object.</></error>
+<error><code>61</code><name>MissingClass</name><about>An object is missing its class pointer (serious corruption to the object structure is likely).</></error>
+<error><code>62</code><name>FileReadFlag</name><about>The File flag FL_READ was not set on initialisation.</></error>
+<error><code>63</code><name>FileWriteFlag</name><about>The File flag FL_WRITE was not set on initialisation.</></error>
+<error><code>64</code><name>Draw</name><about>An error occurred while drawing the object.</></error>
+<error><code>65</code><name>NoMethods</name><about>The object/class does not export any methods.</></error>
+<error><code>66</code><name>NoMatchingObject</name><about>No matching object was found for the given object ID.</></error>
+<error><code>67</code><name>AccessDenied</name><about>Failed to gain access to a shared memory block.</></error>
+<error><code>68</code><name>MissingLocation</name><about>The object is missing a setting in the Location field.</></error>
+<error><code>69</code><name>NoExclusiveLock</name><about>There is no exclusive lock on this object.</></error>
+<error><code>70</code><name>NoSearchResult</name><about>The search yielded no results.</></error>
+<error><code>71</code><name>StatementUnsatisfied</name><about>The tested statement was not satisfied.</></error>
+<error><code>72</code><name>ObjectCorrupt</name><about>The object structure is badly corrupted.</></error>
+<error><code>73</code><name>OwnerPassThrough</name><about>Owner pass through notification.</></error>
+<error><code>74</code><name>UnsupportedOwner</name><about>The given owner is not supported by this object.</></error>
+<error><code>75</code><name>False</name><about>The result is False.</></error>
+<error><code>76</code><name>ExclusiveDenied</name><about>An attempt to gain exclusive access to a shared object failed.</></error>
+<error><code>77</code><name>AllocMemory</name><about>Attempts to allocate a memory block failed.</></error>
+<error><code>78</code><name>NewObject</name><about>A call to NewObject() failed to produce a new object.</></error>
+<error><code>79</code><name>GetField</name><about>A call to GetField() failed to retrieve a field value.</></error>
+<error><code>80</code><name>NoFieldAccess</name><about>Access to a field was denied (usually occurs due to limited field permissions, i.e. read only or write only).</></error>
+<error><code>81</code><name>ReservedAssign</name><about>ResolveAssign() did not resolve the assignment because itis a reserved name, or does not need resolving.</></error>
+<error><code>82</code><name>InvalidDimension</name><about>This error is typically returned when an attempt to set a dimension field (e.g. width or height) uses an invalid value such as -1.</></error>
+<error><code>83</code><name>FieldTypeMismatch</name><about>A field mismatch indicates that a field that was being read or written does not convert to the requested type.</></error>
+<error><code>84</code><name>UnrecognisedFieldType</name><about>While reading or writing a field, you requested a field type that is completely invalid.</></error>
+<error><code>85</code><name>BufferOverflow</name><about>Through the process of normal execution, a buffer was found to be too small to hold all necessary data required to complete the process.</></error>
+<error><code>86</code><name>DirectoryEmpty</name><about>This error is reported when attempting to list the contents of a directory that is actually empty.</></error>
+<error><code>87</code><name>UnsupportedField</name><about>A requested field is not supported by the object's class.</></error>
+<error><code>88</code><name>Mismatch</name><about>A mismatch has been detected that prevents further processing.</></error>
+<error><code>89</code><name>OutOfBounds</name><about>An out-of-bounds error has occurred.</></error>
+<error><code>90</code><name>Seek</name><about>An attempt to seek to a new position failed. This error is usually returned when use of the Seek action fails.</></error>
+<error><code>91</code><name>ReallocMemory</name><about>A call to the ReallocMemory() function failed.</></error>
+<error><code>92</code><name>Loop</name><about>An infinite loop or recursive routine was detected and subsequently avoided.</></error>
+<error><code>93</code><name>FileExists</name><about>The destination file or directory already exists.</></error>
+<error><code>94</code><name>ResolveAssign</name><about>A directory assignment could not be resolved (usually caused by a bad assign reference in calls to ResolveAssign()).</></error>
+<error><code>95</code><name>CreateObject</name><about>A call to CreateObject() failed.</></error>
+<error><code>96</code><name>MemoryInfo</name><about>A call to the MemoryInfo() function failed.</></error>
+<error><code>97</code><name>ResolveFields</name><about>A call to the ResolveFields() function failed.</></error>
+<error><code>98</code><name>NotInitialised</name><about>The object has not been initialised for usage.</></error>
+<error><code>99</code><name>ResourceExists</name><about>A new resource could not be created because a matching resource exists.</></error>
+<error><code>100</code><name>Refresh</name><about>An attempt to refresh an object failed. Usually returned when a Refresh action fails.</></error>
+<error><code>101</code><name>ListChildren</name><about>A call to the ListChildren() function failed.</></error>
+<error><code>102</code><name>SystemCall</name><about></></error>
+<!--<error><code>103</code><name>SmallMask</name><about></></error>-->
+<error><code>104</code><name>LimitedSuccess</name><about>Limited success indicates that the routine was executed with minor errors that did not lead to a complete failure.</></error>
+<error><code>105</code><name>Cancelled</name><about>Operation cancelled (by the user or some area of the system).</></error>
+<error><code>106</code><name>EmptyString</name><about>A routine that encounters an empty string where it expects to see data can return this error. An empty string is defined as a pointer that refers to a null-byte.</></error>
+<error><code>107</code><name>Terminate</name><about>This special error is entirely dependent upon the context in which it is returned.</></error>
+<error><code>108</code><name>ObjectExists</name><about>Object exists. This can have various meanings depending on the context in which it is returned. Attempting to create a unique object with a name that matches another object can produce this error.</></error>
+<error><code>109</code><name>Forbid</name><about>A call to the Forbid() function failed to achieve a system lock. This is a serious error that may indicate that another task has used the Forbid() function and failed to match it with a call to Permit().</></error>
+<error><code>110</code><name>Resize</name><about>A failure occurred during the resizing of an object.</></error>
+<error><code>111</code><name>Redimension</name><about>A failure occurred during the redimensioning of an object.</></error>
+<error><code>112</code><name>AllocSemaphore</name><about>AllocSemaphore() failed.</></error>
+<error><code>113</code><name>AccessSemaphore</name><about>AccessSemaphore() failed.</></error>
+<error><code>114</code><name>NothingDone</name><about>Don't look at me, I haven't done anything!  This error code may be used when no failure has occurred, but it may be useful to communicate that no  action has been taken.</></error>
+<error><code>115</code><name>CreateFile</name><about>Failed to create a new file.</></error>
+<error><code>116</code><name>DeleteFile</name><about>Deletion of dir/file failed (e.g. permissions, read-only media).</></error>
+<error><code>117</code><name>OpenFile</name><about>File exists but could not be opened.</></error>
+<error><code>118</code><name>ReadOnly</name><about>Delete/Write operation failed due to read-only status.</></error>
+<error><code>119</code><name>DoesNotExist</name><about>Resource/Object/File does not exist.</></error>
+<error><code>120</code><name>IdenticalPaths</name><about>The destination path is the same as the source path.</></error>
+<error><code>121</code><name>Exists</name><about>Non-specific 'something exists' error.</></error>
+<error><code>122</code><name>SanityFailure</name><about>A sanity check has failed.</></error>
+<error><code>123</code><name>OutOfSpace</name><about>Run out of space, no room to complete request.</></error>
+<error><code>124</code><name>GetSurfaceInfo</name><about>GetSurfaceInfo() failed.  Often indicates that the surface ID does not exist.</></error>
+<error><code>125</code><name>Finished</name><about>Operation finished.  Typically used to indicate the end to a loop.</></error>
+<error><code>126</code><name>StringFormat</name><about>An entered string did not meet the formatting requirements of the interpreter.</></error>
+<error><code>127</code><name>BadState</name><about>Object was in an incorrect state for the operation.</></error>
+<error><code>128</code><name>HostNotFound</name><about>The internet host name could not be resolved.</></error>
+<error><code>129</code><name>InvalidURI</name><about>Invalid Uniform Resource Identifier.  Check the string syntax.</></error>
+<error><code>130</code><name>ConnectionRefused</name><about>The remote host refused the connection.</></error>
+<error><code>131</code><name>NetworkUnreachable</name><about>The network was unreachable.</></error>
+<error><code>132</code><name>HostUnreachable</name><about>No route to host.</></error>
+<error><code>133</code><name>Disconnected</name><about>A hard disconnect on the network occurred.</></error>
+<error><code>134</code><name>TaskStillExists</name><about>Task/Process still exists and is running.</></error>
+<error><code>135</code><name>IntegrityViolation</name><about>Database referential integrity / constraint violation.</></error>
+<error><code>136</code><name>SchemaViolation</name><about>Record changes would violate the database schema.</></error>
+<error><code>137</code><name>DataSize</name><about>The size of a data chunk is too large or does not match expectations.</></error>
+<error><code>138</code><name>Busy</name><about>Operation cannot complete because system is busy with an earlier operation.</></error>
+<error><code>139</code><name>ConnectionAborted</name><about>Attempt to connect to a network server has been aborted.</></error>
+<error><code>140</code><name>NullArgs</name><about>Function call missing argument value(s) - sometimes returned as an alternative to the Args error.</></error>
+<error><code>141</code><name>InvalidObject</name><about>An object of a different class was expected - for instance the function in question only operates on surfaces and a file object was supplied.</></error>
+<error><code>142</code><name>ExecViolation</name><about>Execution violation - call must be made from the task that owns the object.</></error>
+<error><code>143</code><name>Recursion</name><about>Detected illegal attempt at recursion.</></error>
+<error><code>144</code><name>IllegalAddress</name><about>Address pointer outside of the process' space.</></error>

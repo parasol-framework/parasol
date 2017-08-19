@@ -1,0 +1,70 @@
+<?xml version="1.0"?>
+
+<page name="Index">
+
+  <info>
+   <title>Introduction to the Parasol framework</title>
+   <author>Rocklyte Systems</author>
+   <keywords>rocklyte, sdk, api, library, component, engine, programming, introduction, core</keywords>
+   <description>Introduction to the Parasol framework</description>
+  </info>
+
+  <body face="veranda" fontsize="10" link="60,60,130" topmargin="20" leftmargin="20" rightmargin="20" bottommargin="8"/>
+
+  <template name="h1">
+    <p leading="2.0"><font face="Helvete" size="14" colour="#000000" style="bold"><inject/></font></p>
+  </template>
+
+  <gradient x="0" y="0" xoffset="0" height="160" firstcolour="210,210,210" lastcolour="255,255,255"
+    direction="vertical"/>
+  <!--
+  <drift maxelements="20" speed="2" colour="0,0,0,30" direction="right" framerate="25" largesize="50" mediumsize="30"
+    x="0" y="0" xoffset="0" height="180"/>
+  -->
+  <image src="../images/parasol.svgz" x="0" xoffset="0" y="0" width="200" flags="!shrink"
+     align="horizontal|vertical" layout="left|right|top"/>
+
+  <br/>
+
+  <p>This manual provides technical information for developers wishing to develop programs for the Parasol framework.  This manual accompanies the Rocklyte SDK, which provides most of the files required for a functional development system.  Please refer to the Introduction for more details on installation and usage.</p>
+
+  <p>&nbsp;</p>
+
+  <indent>
+  <list type="bullet">
+    <h1>Getting Started</>
+    <li><a href="introduction.rpl">Introduction</a></li>
+    <li><a href="installation_procedure.rpl">Installation Procedure</a></li>
+    <li><a href="moo_explained.rpl">Modular Object Orientation</a></li>
+    <br/>
+    <h1>Programming</>
+    <li><a href="program_types.rpl">Program Types</a></li>
+    <li><a href="module_interfaces.rpl">Module Interfaces</a></li>
+    <li><a href="hello_world.rpl">Your First Program</a></li>
+    <li><a href="moo_in_depth.rpl">Object Management in Depth</a></li>
+    <li><a href="distribution.rpl">Distribution and Installation</a></li>
+    <br/>
+    <h1>Development Guides</>
+    <li><a href="events.rpl">System Event Reference</a></li>
+    <li><a href="action_support_guide.rpl">Action Support Guide</a></li>
+    <li><a href="documentation_guide.rpl">Writing Documentation</a></li>
+    <li><a href="module_development_guide.rpl">Module Development Guide</a></li>
+    <li><a href="class_development_guide.rpl">Class Development Guide</a></li>
+    <li><a href="field_reference_guide.rpl">Field Reference Guide</a></li>
+    <br/>
+    <h1>API Manuals</>
+    <li><a href="action_list.rpl">Action List</a></li>
+    <li><a href="modules/kernel.rpl">Object Kernel</a></li>
+    <li><a href="classes/index.rpl">Class Manuals</a></li>
+    <li><a href="modules/index.rpl">Module Manuals</a></li>
+    <br/>
+    <h1>Appendix</>
+    <li><a href="glossary.rpl">Glossary</a></li>
+    <li><a href="error_codes.rpl">Error Codes</a></li>
+  </list>
+  </indent>
+
+  <advance y="20"/>
+  <p align="center"><font face="opti small" size="6" colour="100,100,100">Copyright Rocklyte Ltd © 2000-2014</font></p>
+
+</page>

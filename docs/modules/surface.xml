@@ -1,0 +1,458 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="module.xsl"?>
+
+<book>
+  <info>
+    <name>Surface</name>
+    <type>module</type>
+    <version>1</version>
+    <copyright>Paul Manias © 2000-2017</copyright>
+    <classes>
+      <class>Layout</class>
+      <class>Surface</class>
+    </classes>
+  </info>
+
+  <function>
+    <name>ApplyStyleGraphics</name>
+    <comment>Applies pre-defined graphics to a GUI object.</comment>
+    <prototype>ERROR drwApplyStyleGraphics(OBJECTPTR Object, OBJECTID Surface, CSTRING StyleName, CSTRING StyleType)</prototype>
+    <input>
+      <param type="OBJECTPTR" name="Object">The object that requires styling.</param>
+      <param type="OBJECTID" name="Surface">The surface that will receive the style graphics.</param>
+      <param type="CSTRING" name="StyleName">Optional.  Reference to a style that is alternative to the default.</param>
+      <param type="CSTRING" name="StyleType">Optional.  Name of the type of style decoration to be applied.  Use in conjunction with StyleName.</param>
+    </input>
+    <description>
+<p>This is an internal function created for use by classes in the GUI category.  It finds the style definition for the target Object and executes the procedure with the Surface as the graphics target.</p>
+    </description>
+    <result type="ERROR">
+      <error code="NullArgs">Function call missing argument value(s)</error>
+      <error code="NothingDone">There is nothing to process.</error>
+      <error code="BadState">Object was in an incorrect state for the operation.</error>
+      <error code="Okay">Operation successful.</error>
+    </result>
+  </function>
+
+  <function>
+    <name>ApplyStyleValues</name>
+    <comment>Applies default values to a GUI object before initialisation.</comment>
+    <prototype>ERROR drwApplyStyleValues(OBJECTPTR Object, CSTRING Name)</prototype>
+    <input>
+      <param type="OBJECTPTR" name="Object">The object that will receive the default values.</param>
+      <param type="CSTRING" name="Name">Optional.  Reference to an alternative style to be applied.</param>
+    </input>
+    <description>
+<p>The ApplyStyleValues() function is reserved for the use of GUI classes that need to pre-initialise their objects with default values.</p>
+<p>Styles are defined in the order of the application's preference, the desktop preference, and then the default if no preference has been specified or a failure occurred.</p>
+<p>An application can define its preferred style by calling <function module="Surface">SetCurrentStyle</function> with the path of the XML style file.  This function can be called at any time, allowing the style to be changed on the fly.</p>
+<p>A desktop can set its preferred style by storing style information at <code>environment:config/style.xml</code>.</p>
+<p>To prevent security breaches, users can only set a style preference if the ability to make a choice is exposed by the desktop.  This is because style files can embed script functions that are executed within each application process space.</p>
+    </description>
+    <result type="ERROR">
+      <error code="Okay">Operation successful.</error>
+    </result>
+  </function>
+
+  <function>
+    <name>CheckIfChild</name>
+    <comment>Checks if a surface is a child of another particular surface.</comment>
+    <prototype>ERROR drwCheckIfChild(OBJECTID Parent, OBJECTID Child)</prototype>
+    <input>
+      <param type="OBJECTID" name="Parent">The surface that is assumed to be the parent.</param>
+      <param type="OBJECTID" name="Child">The child surface to check.</param>
+    </input>
+    <description>
+<p>This function checks if a surface identified by the Child value is the child of the surface identified by the Parent value.  ERR_True is returned if the surface is confirmed as being a child of the parent, or if the Child and Parent values are equal.  All other return codes indicate false or failure.</p>
+    </description>
+    <result type="ERROR">
+      <error code="True">Operation successful.</error>
+      <error code="Args">Invalid arguments passed to function.</error>
+      <error code="AccessMemory">Access to a shared memory block was denied.</error>
+      <error code="False">The result is false.</error>
+    </result>
+  </function>
+
+  <function>
+    <name>CopySurface</name>
+    <comment>Copies surface graphics data into any bitmap object</comment>
+    <prototype>ERROR drwCopySurface(OBJECTID Surface, struct rkBitmap * Bitmap, LONG Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest)</prototype>
+    <input>
+      <param type="OBJECTID" name="Surface">The ID of the surface object to copy from.</param>
+      <param type="struct rkBitmap *" name="Bitmap">Must reference a target Bitmap object.</param>
+      <param type="LONG" name="Flags" lookup="BDF">Optional flags.</param>
+      <param type="LONG" name="X">The horizontal source coordinate.</param>
+      <param type="LONG" name="Y">The vertical source coordinate.</param>
+      <param type="LONG" name="Width">The width of the graphic that will be copied.</param>
+      <param type="LONG" name="Height">The height of the graphic that will be copied.</param>
+      <param type="LONG" name="XDest">The horizontal target coordinate.</param>
+      <param type="LONG" name="YDest">The vertical target coordinate.</param>
+    </input>
+    <description>
+<p>This function will copy the graphics data from any surface object into a <class name="Bitmap">Bitmap</class> of your choosing.  This is the fastest and most convenient way to get graphics information out of any surface.  As surfaces are buffered, it is guaranteed that the result will not be obscured by any overlapping surfaces that are on the display.</p>
+<p>In the event that the owner of the surface is drawing to the graphics buffer at the time that you call this function, the results could be out of sync.  If this could be a problem, set the BDF_SYNC option in the Flags parameter.  Keep in mind that syncing has the negative side effect of having to wait for the other task to complete its draw process, which can potentially result in time lags.</p>
+    </description>
+    <result type="ERROR">
+      <error code="Okay">Operation successful.</error>
+      <error code="Search">A search routine in this function failed.</error>
+      <error code="AccessMemory">Access to a shared memory block was denied.</error>
+      <error code="Args">Invalid arguments passed to function.</error>
+    </result>
+  </function>
+
+  <function>
+    <name>ExposeSurface</name>
+    <comment>Exposes the content of a surface to the display.</comment>
+    <prototype>ERROR drwExposeSurface(OBJECTID Surface, LONG X, LONG Y, LONG Width, LONG Height, LONG Flags)</prototype>
+    <input>
+      <param type="OBJECTID" name="Surface">The ID of the surface object that will be exposed.</param>
+      <param type="LONG" name="X">The horizontal coordinate of the area to expose.</param>
+      <param type="LONG" name="Y">The vertical coordinate of the area to expose.</param>
+      <param type="LONG" name="Width">The width of the expose area.</param>
+      <param type="LONG" name="Height">The height of the expose area.</param>
+      <param type="LONG" name="Flags" lookup="EXF">Optional flags - EXF_CHILDREN will expose all intersecting child regions.</param>
+    </input>
+    <description>
+<p>This expose routine will expose all content within a defined surface area, copying it to the display.  This will include all child surfaces that intersect with the region being exposed if you set the EXF_CHILDREN flag.</p>
+    </description>
+    <result type="ERROR">
+      <error code="NullArgs">Function call missing argument value(s)</error>
+      <error code="Search">A search routine in this function failed.</error>
+      <error code="AccessMemory">Access to a shared memory block was denied.</error>
+      <error code="Okay">Operation successful.</error>
+    </result>
+  </function>
+
+  <function>
+    <name>ForbidDrawing</name>
+    <comment>Temporarily turns off all drawing operations for the calling thread.</comment>
+    <prototype>void drwForbidDrawing()</prototype>
+    <description>
+<p>The ForbidDrawing() function turns off all attempts to draw or expose rendered surfaces.  Any function or method that involves drawing will return immediately with an ERR_Okay error code while the forbid is in effect.</p>
+<p>Turning off display exposures is often useful when sequential drawing operations would perform best if covered by a single mass redraw.</p>
+<p>This function call must be followed up with a call to PermitDrawing() at some stage if the graphics system is to return to its normal state of operation.</p>
+<p>Calls to ForbidDrawing() will nest.  This function is thread safe and there is no impact on the graphics operations of other threads.</p>
+    </description>
+  </function>
+
+  <function>
+    <name>ForbidExpose</name>
+    <comment>Temporarily turns off display exposures.</comment>
+    <prototype>void drwForbidExpose()</prototype>
+    <description>
+<p>The ForbidExpose() function turns off all future display exposures attempted by the calling process.  This effectively means that all calls to ExposeSurface() will return immediately (with ERR_Okay status).</p>
+<p>Turning off display exposures is often useful when performing a number of tasks (such as resizing many small surfaces) that will result in multiple exposures.  This may potentially cause display flickering that could be optimised out of the system if the exposures were covered manually with a single ExposeSurface() call.  Using ForbidExpose() to turn off the exposes will allow you to achieve such an optimisation.</p>
+<p>This function call must be followed up with a call to PermitExpose() at some stage if the graphics system is to return to its normal state of operation.</p>
+<p>Repeated calls to this function will nest.</p>
+    </description>
+  </function>
+
+  <function>
+    <name>GetModalSurface</name>
+    <comment>Returns the current modal surface (if defined) for a task.</comment>
+    <prototype>OBJECTID drwGetModalSurface(OBJECTID Task)</prototype>
+    <input>
+      <param type="OBJECTID" name="Task">The task from which to retrieve the modal surface ID.  If zero, the modal surface for the current task is returned.</param>
+    </input>
+    <description>
+<p>This function returns the modal surface that is set for a specific task.  If no modal surface has been assigned to the task, zero is returned.</p>
+    </description>
+    <result type="OBJECTID">The modal surface for the indicated task is returned.</result>
+  </function>
+
+  <function>
+    <name>GetSurfaceCoords</name>
+    <comment>Returns the dimensions of a surface.</comment>
+    <prototype>ERROR drwGetSurfaceCoords(OBJECTID Surface, LONG * X, LONG * Y, LONG * AbsX, LONG * AbsY, LONG * Width, LONG * Height)</prototype>
+    <input>
+      <param type="OBJECTID" name="Surface">The surface to query.  If zero, the top-level display is queried.</param>
+      <param type="LONG *" name="X">The X coordinate of the surface is returned here.</param>
+      <param type="LONG *" name="Y">The Y coordinate of the surface is returned here.</param>
+      <param type="LONG *" name="AbsX">The absolute X coordinate of the surface is returned here.</param>
+      <param type="LONG *" name="AbsY">The absolute Y coordinate of the surface is returned here.</param>
+      <param type="LONG *" name="Width">The width of the surface is returned here.</param>
+      <param type="LONG *" name="Height">The height of the surface is returned here.</param>
+    </input>
+    <description>
+<p>GetSurfaceCoords() retrieves the dimensions that describe a surface object's area as X, Y, Width and Height.  This is the fastest way to retrieve surface dimensions when access to the object structure is not already available.</p>
+    </description>
+    <result type="ERROR">
+      <error code="Okay">Operation successful.</error>
+      <error code="AccessMemory">Access to a shared memory block was denied.</error>
+      <error code="Search">A search routine in this function failed.</error>
+    </result>
+  </function>
+
+  <function>
+    <name>GetSurfaceFlags</name>
+    <comment>Retrieves the Flags field from a surface.</comment>
+    <prototype>ERROR drwGetSurfaceFlags(OBJECTID Surface, LONG * Flags)</prototype>
+    <input>
+      <param type="OBJECTID" name="Surface">The surface to query.  If zero, the top-level surface is queried.</param>
+      <param type="LONG *" name="Flags">The flags value is returned here.</param>
+    </input>
+    <description>
+<p>This function returns the current Flags field from a surface.  It provides the same result as reading the field directly, however it is considered advantageous in circumstances where the overhead of locking a surface object for a read operation is undesirable.</p>
+<p>For information on the available flags, please refer to the Flags field of the <class>Surface</class> class.</p>
+    </description>
+    <result type="ERROR">
+      <error code="NullArgs">Function call missing argument value(s)</error>
+      <error code="AccessMemory">Access to a shared memory block was denied.</error>
+      <error code="Okay">Operation successful.</error>
+    </result>
+  </function>
+
+  <function>
+    <name>GetSurfaceInfo</name>
+    <comment>Retrieves display information for any surface object without having to access it directly.</comment>
+    <prototype>ERROR drwGetSurfaceInfo(OBJECTID Surface, struct SurfaceInfoV2 ** Info)</prototype>
+    <input>
+      <param type="OBJECTID" name="Surface">The unique ID of a surface to query.  If zero, the root surface is returned.</param>
+      <param type="struct SurfaceInfoV2 **" name="Info">This parameter will receive a SurfaceInfo pointer that describes the Surface object.</param>
+    </input>
+    <description>
+<p>GetSurfaceInfo() is used for quickly retrieving basic information from surfaces, allowing the client to bypass the AccessObject() function.  The resulting structure values are good only up until the next call to this function, at which point those values will be overwritten.</p>
+    </description>
+    <result type="ERROR">
+      <error code="Okay">Operation successful.</error>
+      <error code="Search">A search routine in this function failed.</error>
+      <error code="AccessMemory">Access to a shared memory block was denied.</error>
+      <error code="Args">Invalid arguments passed to function.</error>
+    </result>
+  </function>
+
+  <function>
+    <name>GetUserFocus</name>
+    <comment>Returns the ID of the surface that currently has the user's focus.</comment>
+    <prototype>OBJECTID drwGetUserFocus()</prototype>
+    <description>
+<p>This function returns the unique ID of the surface that has the user's focus.</p>
+    </description>
+    <result type="OBJECTID">Returns the ID of the surface object that has the user focus, or zero on failure.</result>
+  </function>
+
+  <function>
+    <name>GetVisibleArea</name>
+    <comment>Returns the visible region of a surface.</comment>
+    <prototype>ERROR drwGetVisibleArea(OBJECTID Surface, LONG * X, LONG * Y, LONG * AbsX, LONG * AbsY, LONG * Width, LONG * Height)</prototype>
+    <input>
+      <param type="OBJECTID" name="Surface">The surface to query.  If zero, the top-level display will be queried.</param>
+      <param type="LONG *" name="X">The X coordinate of the visible area.</param>
+      <param type="LONG *" name="Y">The Y coordinate of the visible area.</param>
+      <param type="LONG *" name="AbsX">The absolute X coordinate of the visible area.</param>
+      <param type="LONG *" name="AbsY">The absolute Y coordinate of the visible area.</param>
+      <param type="LONG *" name="Width">The visible width of the surface.</param>
+      <param type="LONG *" name="Height">The visible height of the surface.</param>
+    </input>
+    <description>
+<p>The GetVisibleArea() function returns the visible area of a surface, which is based on its position within its parent surfaces. The resulting coordinates are relative to point 0,0 of the queried surface. If the surface is not obscured, then the resulting coordinates will be (0,0),(Width,Height).</p>
+    </description>
+    <result type="ERROR">
+      <error code="Okay">Operation successful.</error>
+      <error code="AccessMemory">Access to a shared memory block was denied.</error>
+      <error code="Search">A search routine in this function failed.</error>
+    </result>
+  </function>
+
+  <function>
+    <name>LockBitmap</name>
+    <comment>Returns a bitmap that represents the video area covered by the surface object.</comment>
+    <prototype>ERROR drwLockBitmap(OBJECTID Surface, struct rkBitmap ** Bitmap, LONG * Info)</prototype>
+    <input>
+      <param type="OBJECTID" name="Surface">Object ID of the surface object that you want to lock.</param>
+      <param type="struct rkBitmap **" name="Bitmap">The resulting bitmap will be returned in this parameter.</param>
+      <param type="LONG *" name="Info" lookup="LVF">Special flags may be returned in this parameter.  If LVF_EXPOSE_CHANGES is returned, any changes must be exposed in order for them to be displayed to the user.</param>
+    </input>
+    <description>
+<p>Use the LockBitmap() function to gain direct access to the bitmap information of a surface object. Because the layering buffer will be inaccessible to the UI whilst you retain the lock, you must keep your access time to an absolute minimum or desktop performance may suffer.</p>
+<p>Repeated calls to this function will nest.  To release a surface bitmap, call the <function module="Surface">UnlockBitmap</function> function.</p>
+    </description>
+    <result type="ERROR">
+      <error code="Args">Invalid arguments passed to function.</error>
+      <error code="Okay">Operation successful.</error>
+    </result>
+  </function>
+
+  <function>
+    <name>PermitDrawing</name>
+    <comment>Releases locks imposed by the ForbidDrawing() function.</comment>
+    <prototype>void drwPermitDrawing()</prototype>
+    <description>
+<p>The PermitDrawing() function reverses the effect of the <function module="Surface">ForbidDrawing</function> function. Please refer to <function module="Surface">ForbidDrawing</function> for further information.</p>
+    </description>
+  </function>
+
+  <function>
+    <name>PermitExpose</name>
+    <comment>Reverses the ForbidExpose() function.</comment>
+    <prototype>void drwPermitExpose()</prototype>
+    <description>
+<p>The PermitExpose() function reverses the effects of the <function module="Surface">ForbidExpose</function> function. Please refer to <function module="Surface">ForbidExpose</function> for further information.</p>
+    </description>
+  </function>
+
+  <function>
+    <name>SetCurrentStyle</name>
+    <comment>Sets the current style script for the application.</comment>
+    <prototype>ERROR drwSetCurrentStyle(CSTRING Path)</prototype>
+    <input>
+      <param type="CSTRING" name="Path">Location of the style script.</param>
+    </input>
+    <description>
+<p>This function changes the current style script for the application.  A path to the location of the script is required.</p>
+<p>The script does not need to provide definitions for all GUI components.  Any component not represented in the script will receive the default style settings.</p>
+<p>The style definition does not affect default style values (i.e. fonts, colours and interface).  Style values can be set by accessing the glStyle XML object directly and updating the values (do this as early as possible in the startup process).</p>
+    </description>
+    <result type="ERROR">
+      <error code="NullArgs">Function call missing argument value(s)</error>
+      <error code="CreateObject">A call to CreateObject() failed.</error>
+      <error code="EmptyString">A required string value contains no characters.</error>
+      <error code="Okay">Operation successful.</error>
+    </result>
+  </function>
+
+  <function>
+    <name>SetModalSurface</name>
+    <comment>Enables a modal surface for the current task.</comment>
+    <prototype>OBJECTID drwSetModalSurface(OBJECTID Surface)</prototype>
+    <input>
+      <param type="OBJECTID" name="Surface">The surface to enable as modal.</param>
+    </input>
+    <description>
+<p>Any surface that is created by a task can be enabled as a modal surface.  A surface that has been enabled as modal becomes the central point for all GUI interaction with the task.  All other I/O between the user and surfaces maintained by the task will be ignored for as long as the target surface remains modal.</p>
+<p>A task can switch off the current modal surface by calling this function with a Surface parameter of zero.</p>
+<p>If a surface is modal at the time that this function is called, it is not possible to switch to a new modal surface until the current modal state is dropped.</p>
+    </description>
+    <result type="OBJECTID">The object ID of the previous modal surface is returned (zero if there was no currently modal surface).</result>
+  </function>
+
+  <function>
+    <name>UnlockBitmap</name>
+    <comment>Unlocks any earlier call to drwLockBitmap().</comment>
+    <prototype>ERROR drwUnlockBitmap(OBJECTID Surface, struct rkBitmap * Bitmap)</prototype>
+    <input>
+      <param type="OBJECTID" name="Surface">The ID of the surface object that you are releasing.</param>
+      <param type="struct rkBitmap *" name="Bitmap">Pointer to the bitmap structure returned earlier by LockBitmap().</param>
+    </input>
+    <description>
+<p>Call the UnlockBitmap() function to release a surface object from earlier calls to <function module="Surface">LockBitmap</function>.</p>
+    </description>
+    <result type="ERROR">
+      <error code="NullArgs">Function call missing argument value(s)</error>
+      <error code="Okay">Operation successful.</error>
+    </result>
+  </function>
+
+  <types>
+    <constants lookup="BDF" comment="CopySurface() flags">
+      <const name="SYNC">Force synchronsiation so that changes to the source image do not occur mid-copy.</const>
+      <const name="DITHER">Allow the use of dithering to improve image quality at a cost of speed.</const>
+      <const name="REDRAW">Redraw the surface before performing the copy operation.</const>
+    </constants>
+
+    <constants lookup="SWIN" comment="Options for the Surface WindowType field.">
+      <const name="HOST">Default to the standard hosted window mode with full titlebar, borders and taskbar representation.</const>
+      <const name="TASKBAR">Create a borderless (custom) window with taskbar representation.</const>
+      <const name="ICON_TRAY">Create a borderless (custom) window with icon tray representation.</const>
+      <const name="NONE">Create a borderless (custom) window with no UI representation.</const>
+    </constants>
+
+    <constants lookup="RNF">
+      <const name="FULL_SCREEN">Allow the surface to open as a new screen display</const>
+      <const name="POST_COMPOSITE">Do not copy background information into the surface buffer - composite on the fly instead</const>
+      <const name="INIT_ONLY">Synonym for HOST | TRANSPARENT | FAST_RESIZE | DISABLED | PRECOPY | VIDEO | FIXED_BUFFER | PERVASIVE_COPY | FIXED_DEPTH | FULL_SCREEN | IGNORE_FOCUS</const>
+      <const name="FAST_RESIZE">Do not redraw when a surface is shrunk on either dimension.  If a dimension is expanded, only redraw the exposed portion.</const>
+      <const name="NO_PRECOMPOSITE">Do not copy background information into the surface buffer - composite on the fly instead</const>
+      <const name="READ_ONLY">Synonym for HAS_FOCUS | REGION | CURSOR | AFTER_COPY</const>
+      <const name="GRAB_FOCUS">Helps application windows manage the user's focus within the window</const>
+      <const name="VIDEO">Set this flag if you would like the surface object's data to be managed in video memory only.  While this can give some speed advantages, be warned that video based surfaces are limited to write-only operations.</const>
+      <const name="PERVASIVE_COPY">This flag can be set in conjunction with after-copy mode.  It forces the after-copy support routine to copy graphics over the entire surface area, rather than avoiding the graphics of child surfaces.</const>
+      <const name="STICKY">Prevents any response to the Move action.  It can be circumvented by writing to coordinate fields directly.</const>
+      <const name="PRECOPY">Enables pre-copy mode, which means that all graphics behind the surface object are copied into the bitmap buffer prior to any redraw.  This mode can have a noticable impact on CPU time when drawing.</const>
+      <const name="HOST">Define host on initialisation to create a container that can host surfaces from other processes.</const>
+      <const name="NO_VERTICAL">Turns off all vertical movement (applies to the Move action only).</const>
+      <const name="NO_HORIZONTAL">Turns off all horizontal movement (applies to the Move action only).</const>
+      <const name="AUTO_QUIT">The surface object will send a quit message to its supporting process when and if the Close method is called.  This flag is typically used when a surface object represents a core window for an application.</const>
+      <const name="TRANSPARENT">Enables transparency, which means that the internal graphics routines will ignore this surface during redraws.  It is typically used when creating containers that will host other surfaces.</const>
+      <const name="FIXED_BUFFER">Passes the NEVER_SHRINK option to the surface bitmap</const>
+      <const name="IGNORE_FOCUS">Focus is diverted directly to the parent</const>
+      <const name="DISABLED">This flag is set if the Disable action has been called on a surface object.  Calling the Enable action will turn off the flag setting.</const>
+      <const name="VISIBLE">If a surface object is visible to the user, the VISIBLE flag will be set.  If the flag is not set, the surface object is hidden.</const>
+      <const name="NO_FOCUS">Prevents any kind of focussing on this object; no circumvention is possible</const>
+      <const name="WRITE_ONLY">Set this flag if you would like the surface object's data to be managed in video memory only.  While this can give some speed advantages, be warned that video based surfaces are limited to write-only operations.</const>
+      <const name="STICK_TO_BACK">Enable if the surface object must stick to the back of its container.</const>
+      <const name="HAS_FOCUS">Read-only.  If set, this flag indicates that the surface object currently has the focus.</const>
+      <const name="TOTAL_REDRAW">Perform a total redraw of the entire surface when drawing - no partial draws</const>
+      <const name="AFTER_COPY">Read-only.  Indicates that after-copy mode has been enabled.</const>
+      <const name="SCROLL_CONTENT">If set, the surface object will send Move and MoveToPoint messages if the Scroll and ScrollToPoint actions are ever called on the object.</const>
+      <const name="FIXED_DEPTH">The target buffer always remains at the same depth</const>
+      <const name="VOLATILE">Synonym for PRECOPY | AFTER_COPY | CURSOR</const>
+      <const name="COMPOSITE">Do not copy background information into the surface buffer - composite on the fly instead</const>
+      <const name="REGION">Read/Init only.  This flag is set if the Region option has been used.</const>
+      <const name="STICK_TO_FRONT">Enable if the surface object must stick to the front of its container.</const>
+    </constants>
+
+    <constants lookup="ARF" comment="AccessSurfaceList() flags">
+      <const name="READ">Read only access required</const>
+      <const name="NO_DELAY">Do not delay when waiting for access</const>
+      <const name="WRITE">Full write access required</const>
+      <const name="UPDATE">Update a single entry (limited write access)</const>
+    </constants>
+
+    <constants lookup="EXF" comment="Optional flags for the ExposeSurface() function.">
+      <const name="REDRAW_VOLATILE">Redraw every volatile object that intersects with the expose region, including internal volatile children.</const>
+      <const name="REDRAW_VOLATILE_OVERLAP">Only redraw volatile objects that obscure the expose region from a position outside of the target surface and its children.  Useful if no redrawing has occurred in the surface, but the surface has moved to a new position and the parents need to be redrawn.</const>
+      <const name="ABSOLUTE">The supplied coordinates for exposure are absolute (relative to the display).</const>
+      <const name="CHILDREN">If set, all child surfaces that intersect with exposed region will be included in the expose operation.</const>
+      <const name="ABSOLUTE_COORDS">The supplied coordinates for exposure are absolute (relative to the display).</const>
+    </constants>
+
+    <constants lookup="LVF" comment="drwLockBitmap() result flags">
+      <const name="EXPOSE_CHANGES"/>
+    </constants>
+
+    <constants lookup="DRAG">
+      <const name="NONE">The surface is not being dragged.</const>
+      <const name="ANCHOR">The surface is being dragged and the mouse pointer is anchored to the surface.</const>
+      <const name="NORMAL">The surface is being dragged.</const>
+    </constants>
+
+  </types>
+  <structs>
+    <struct name="SurfaceCoords">
+      <field name="X" type="LONG">Horizontal coordinate</field>
+      <field name="Y" type="LONG">Vertical coordinate</field>
+      <field name="Width" type="LONG">Width</field>
+      <field name="Height" type="LONG">Height</field>
+      <field name="AbsX" type="LONG">Absolute X</field>
+      <field name="AbsY" type="LONG">Absolute Y</field>
+    </struct>
+
+    <struct name="SurfaceControl" comment="Internal structure returned by AccessList()">
+      <field name="ListIndex" type="LONG">Byte offset of the ordered list</field>
+      <field name="ArrayIndex" type="LONG">Byte offset of the list array</field>
+      <field name="EntrySize" type="LONG">Byte size of each entry in the array</field>
+      <field name="Total" type="LONG">Total number of entries currently in the list array</field>
+      <field name="ArraySize" type="LONG">Max limit of entries in the list array</field>
+    </struct>
+
+    <struct name="SurfaceInfo" typeName="SURFACEINFO">
+      <field name="ParentID" type="OBJECTID">Object that contains the surface area</field>
+      <field name="BitmapID" type="OBJECTID">Surface bitmap buffer</field>
+      <field name="DataMID" type="OBJECTID">Bitmap data memory ID</field>
+      <field name="DisplayID" type="OBJECTID">If the surface object is root, its display is reflected here</field>
+      <field name="Flags" type="LONG">Surface flags (RNF_VISIBLE etc)</field>
+      <field name="X" type="LONG">Horizontal coordinate</field>
+      <field name="Y" type="LONG">Vertical coordinate</field>
+      <field name="Width" type="LONG">Width of the surface area</field>
+      <field name="Height" type="LONG">Height of the surface area</field>
+      <field name="AbsX" type="LONG">Absolute X coordinate</field>
+      <field name="AbsY" type="LONG">Absolute Y coordinate</field>
+      <field name="Level" type="WORD">Branch level within the tree</field>
+      <field name="BitsPerPixel" type="BYTE">Bits per pixel of the bitmap</field>
+      <field name="BytesPerPixel" type="BYTE">Bytes per pixel of the bitmap</field>
+      <field name="LineWidth" type="LONG">Line width of the bitmap, in bytes</field>
+    </struct>
+
+  </structs>
+</book>
