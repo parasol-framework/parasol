@@ -7,28 +7,35 @@ Please refer to it for further information on licensing.
 ******************************************************************************
 
 -CLASS-
-Resize: The Resize class controls the resizing of rendered areas.
+Resize: Controls the resizing of surfaces in the UI.
 
-The Resize class is used for creating user-interactive resizing areas.  In most cases it is applied to the edges of
-Surface objects so that the user can make simple adjustments to display areas.  When creating a new Resize object, you
-can choose what edges of the surface border should be monitored for resizing, or alternatively you may pin-point the
+The Resize class is used for declaring user-interactive resizing areas.  In most cases it is applied to the edges of
+@Surface objects so that the user can drag the edge to a new location.  When creating a new Resize object, you
+can choose the edges of the surface border that should be monitored for resizing, or alternatively you may pin-point the
 resizing area through standard dimension specifications.  The following example demonstrates the use of both methods:
 
 <pre>
-local surface = obj.new('surface', { x=50, y=70, width=250, height=300 })
-surface.new('resize', { border="left|right|top|bottom", bordersize=10 })
-surface.new('resize', { xoffset=10, yoffset=10, width=20, height=20, direction="all" })
+surface = obj.new('surface', {
+   x=50, y=70, width=250, height=300
+})
+surface.new('resize', {
+   border='left|right|top|bottom',
+   bordersize=10
+})
+surface.new('resize', {
+   xoffset=10, yoffset=10, width=20, height=20,
+   direction='all'
+})
 </pre>
 
-The first Resize object monitors all four sides of the surface area, to a region not exceeding 10 units on either edge.
-To do this, we simply specified the borders that are to be monitored through the Border field.  The second Resize
-object monitors an area that is 20x20 units in size at an offset of 10 units from the bottom right edge.  The Direction
-field has been set to a value of 'all', which means that the user can resize the surface area in any direction by
-interacting with the Resize object.
+The first Resize object monitors all four sides of the surface, within an area that does not exceed 10 units on either
+edge.  The second Resize object monitors an area that is 20x20 units in size at an offset of 10 units from the bottom
+right edge.  The #Direction field has been set to a value of `all`, which means that the user can resize the surface
+area in any direction by interacting with the Resize object.
 
-When using Resize objects to manage the dimensions of surfaces, it is recommended that the MinWidth, MinHeight,
+When using Resize objects to manage the dimensions of a surface, it is recommended that the MinWidth, MinHeight,
 MaxWidth and MaxHeight fields are used to prevent excessive shrinkage or expansion.  These values must be set in the
-Surface object that the resize functionality is being applied to.
+@Surface object that the resize functionality is being applied to.
 
 -END-
 
@@ -531,20 +538,18 @@ static ERROR RESIZE_NewObject(objResize *Self, APTR Void)
 /*****************************************************************************
 
 -FIELD-
-Border: Set this field to define the borders that should be monitored.
+Border: Defines the surface edges that need to be monitored.
 
-If your Resize object needs to monitor the borders of the surface area that it is being applied to, use the Border
-field to specify which borders should be monitored.  If you do not supply any border flags then the Resize object will
-expect you to provide the dimensions for an area to monitor.
+Use the Border field to declare the surface edges that will be user-interactive.  If not defined on initialisation,
+the specific dimensions for a single monitored area should be provided instead.
 
-The size of the borders that are to be monitored must be set through the BorderSize field.
+The size of the borders that are to be monitored must be set through the #BorderSize field.
 
 -FIELD-
 BorderSize: Determines the size of the monitored regions when borders are used.
 
-If you have used the Border field to determine what borders should be monitored, it is recommended that you set the
-BorderSize field to define the size of the border areas.  If you do not set the BorderSize field then a default value
-will be used for determining the border size.
+If the edges in the #Border have been defined, it is recommended that the BorderSize field is set to the desired size
+of the the monitored area.  If not set, a default value will be applied.
 
 *****************************************************************************/
 
@@ -562,32 +567,24 @@ static ERROR SET_BorderSize(objResize *Self, LONG Value)
 -FIELD-
 Button: Defines the user button that starts the resize process.
 
-By default, the user can interact with a resize area by moving the mouse over it and pressing/holding the left mouse
-button or its nearest equivalent.  If you would like to change the button that the Resize object reacts to, you can set
-the Button field to a different value.  Valid settings are:
-
-<pre>
-1 = Left Mouse Button
-2 = Right Mouse Button
-3 = Middle Mouse Button
-</pre>
+By default, the user can interact with a resizeable area by moving the mouse over it and pressing/holding the left mouse
+button or its UI equivalent.  To change the button that the UI responds to, set the Button field to a different value.
+Valid settings are JET_LMB, JET_RMB and JET_MMB.
 
 -FIELD-
 Direction: Limits the directions in which the user can apply resizing.
 
-If you are using a Resize object to monitor a specific region rather than using the border functionality, you will need
-to tell the object what directions the user is allowed to apply the resize.  Valid directions are UP, DOWN, LEFT and
-RIGHT.  Setting a direction such as UP|LEFT would allow the user to resize towards the top left corner of the display,
-but not the bottom right corner.
+If using a Resize object to monitor a specific region rather than using the #Border functionality, it is necessary to
+declare the directions in which the user is allowed to apply the resize.  Setting a direction such as `UP|LEFT` would
+allow the user to resize towards the top left corner of the display, but not the bottom right corner.
 
-If you have set the Border field then there is no need to set the Direction as it will be ignored.
+Note that if the #Border field has been defined then the Direction is ignored.
 
 -FIELD-
 Object: Defines the object that is to be the recipient of the Resize() action.
 
 This field determines the object that receives resize messages when the user interacts with the Resize object.  By
-default the Resize object's container will receive the messages, but setting this field directly allows you to change
-who the recipient is.
+default the Resize object's container will receive the messages.
 -END-
 
 *****************************************************************************/
