@@ -58,17 +58,17 @@ To only build files that have changed, execute:
 make compile
 ```
 
-The build process will create a 'release' folder for your platform and this will contain all of the necessary binaries and configuration files for a standard release of the Parasol Framework.  Do not use the release folder for running your Parasol build.  Doing so will result in changes to some release files, leading to a polluted build.  Refer to section 3 for information on how to run your build from an installation folder.
+The build process will create a `release` folder for your platform and this will contain all of the necessary binaries and configuration files for a standard release of the Parasol Framework.  Do not use the release folder for running your Parasol build.  Doing so will result in changes to some release files, leading to a polluted build.  Refer to section 3 for information on how to run your build from an installation folder.
 
 ### 2.1 Quick Build
 
-When working on modules in parasol-core, it is preferential to re-make the module and not build a release from scratch.  To do this, 'cd' to the directory of the module and type 'make'.  The resulting library or executable will be targeted to the release folder with no further action required on your part.
+When working on modules in the core distribution, it is preferential to re-build that module only and not build a release from scratch.  To do this, `cd` to the module folder and enter `make`.  The resulting library or executable will be targeted to the release folder with no further action required on your part.
 
 ### 2.2 Debug Build
 
-Before resorting to a debug build, consider running parasol-cmd with the --debug option.  Doing so will print a wealth of information to stdout and this is often enough to resolve common problems quickly.
+Before resorting to a debug build, consider running `parasol-cmd` with the `--log-info` option.  Doing so will print a wealth of information to stdout and this is often enough to resolve common problems quickly.
 
-Parasol supports the use of 'gdb' as a debugger.  Making a debug build for the first time will require a full recompile.  To enable debugging for your current session, execute the following:
+Parasol supports the use of `gdb` as a debugger.  Making a debug build for the first time will require a full recompile.  To enable debugging for your current session, execute the following:
 
 ```
 export DEBUG=1
@@ -80,28 +80,28 @@ Then perform a rebuild from the parasol-build folder:
 make full-compile
 ```
 
-Now run gdb from the command-line and target parasol-cmd or the problem executable as required.  After fixing the issues, we strongly recommend returning to a standard build.  Debug builds are resource intensive and in particular are not reflective of a 'real world environment' for day to day programming.
+Now run `gdb` from the command-line and target parasol-cmd or the problem executable as required.  After fixing the issues, we strongly recommend returning to a standard build.  Debug builds are resource intensive and in particular are not reflective of a 'real world environment' for day to day programming.
 
-To debug serious issues or to get more insight into a problem, set VDEBUG=1 to enable verbose debugging, which greatly increases the quantity of messages being printed to the log.
+To debug serious issues or to get more insight into a problem, set `VDEBUG=1` to enable verbose debugging, which greatly increases the quantity of messages being printed to the log.
 
 ## 2.3 Windows Build Tools
 
 MSYS and MinGW are required for a Windows build.  Once installed, the build process is essentially identical to that of Linux.  The install of the build tools can be completed as follows:
 
-* Download MinGW-W64 from http://sourceforge.net/projects/mingw-w64/
-* Install the exe with options i686, win32, dwarf.  Choose on install path of C:\MinGW-W64
-* Download the MSYS archive from http://sourceforge.net/projects/mingwbuilds/files/external-binary-packages
-* Unzip to C:\
-* Edit C:\msys\etc\fstab and add "C:/MinGW-W64/mingw32   /mingw"
-* Download a YASM executable from http://yasm.tortall.net/Download.html and move it to C:\msys\bin\yasm.exe (remove any version suffixes).
-* Install ConsoleZ from https://github.com/cbucher/console/releases
-* Run ConsoleZ, open Options, then change the ConsoleZ default shell to "C:\msys\bin\bash.exe --login -i"
-* Open a new console tab and you should see a bash shell.  Enter 'which gcc' to ensure that the build environment's gcc executable is accessible.  Double-check that the fstab folder reference and installation folder match up if gcc cannot be found.
+* Download [MinGW-W64](http://sourceforge.net/projects/mingw-w64/)
+* Install the exe with options `i686`, `win32`, `dwarf`.  Choose on install path of `C:\MinGW-W64`
+* Download the [MSYS archive](http://sourceforge.net/projects/mingwbuilds/files/external-binary-packages)
+* Unzip to `C:\`
+* Edit `C:\msys\etc\fstab` and add `C:/MinGW-W64/mingw32   /mingw`
+* Download a [YASM executable](http://yasm.tortall.net/Download.html) and move it to `C:\msys\bin\yasm.exe` (remove any version suffixes).
+* Install [ConsoleZ](https://github.com/cbucher/console/releases)
+* Run ConsoleZ, open Options, then change the ConsoleZ default shell to `C:\msys\bin\bash.exe --login -i`
+* Open a new console tab and you should see a bash shell.  Enter `which gcc` to ensure that the build environment's gcc executable is accessible.  Double-check that the `fstab` folder reference and installation folder match up if gcc cannot be found.
 * Follow the instructions from section 2 in this readme to perform a full compile, then proceed to section 3.
 
 Installation notes:
 
-* You may need to open makefile.inc in the SDK folder and change the PARASOL_RELEASE variable so that it refers to your core platform installation.  Please do not place any trailing slashes at the end of PARASOL_RELEASE.  Notice that in MSYS, the Windows drive letters are referenced as /c/, /d/, /e/ and so forth, using forward slashes only.
+* You may need to open makefile.inc in the SDK folder and change the `PARASOL_RELEASE` variable so that it refers to your core platform installation.  Please do not place any trailing slashes at the end of `PARASOL_RELEASE`.  Notice that in MSYS, the Windows drive letters are referenced as `/c/`, `/d/`, `/e/` and so forth, using forward slashes only.
 
 ## 3. Running / Testing
 
@@ -111,9 +111,9 @@ Run the following from the root folder to create a local installation of your re
 make install
 ```
 
-This will install the release to the 'install' folder.  If you would prefer to install to another location, open the makefile and change the INSTALL variable to your preferred path.
+This will install the release to the 'install' folder.  If you would prefer to install to another location, open the makefile and change the `INSTALL` variable to your preferred path.
 
-A successful install will allow you to run the 'parasol' and 'parasol-cmd' executable programs from the installation folder.  These programs are documented in full at our web-site if further details are required on their use.  To test that you have a working build, run these programs from the command-line with no additional parameters and observe the output for any errors.  You may wish to add the install folder to your PATH so that the executables are always accessible.
+A successful install will allow you to run the `parasol` and `parasol-cmd` executable programs from the installation folder.  These programs are documented in full at our web-site if further details are required on their use.  To test that you have a working build, run these programs from the command-line with no additional parameters and observe the output for any errors.  You may wish to add the install folder to your `PATH` so that the executables are always accessible.
 
 ## 4. Next Steps
 
