@@ -1,0 +1,290 @@
+--[[
+The Icon class provides a convenient interface for creating and managing icons.
+
+Program interaction is assisted via the feedback option, which will send user interaction events back to the caller.
+Supported events are 'click', 'dblclick' and 'altclick' (e.g. right mouse button).
+
+The following example illustrates typical usage:
+
+   gui.icon({
+      target=surface,
+      x=10, y=10, text='File Manager', image='programs/filemanager',
+      feedback = function(Icon, Event)
+         print('Received event: ' .. Event.name)
+      end
+   })
+
+Valid options to use when creating the icon are as follows:
+
+  target:    Required.  Refers to a surface area that will contain the icon.
+  feedback:  Important events such as clicks and double-clicks will be passed to the feedback function defined here.
+  image:     The name of an icon image to display, in format 'category/name'.
+  x:         The x coordinate of the icon.
+  y:         The y coordinate of the icon.
+  size:      The preferred size of the icon, in pixels.
+  text:      A string to display in the icon.
+  fadeIn:    Enables fading-in of the icon.  Specifies the maximum number of seconds for the fade effect to complete.
+  fadeDelay: Delays the initial start of the icon fade effect, measured in seconds.
+--]]
+
+   require 'common'
+   require 'gui'
+
+gui.icon = function(Options)
+   local mFont = mod.load('font')
+
+   local self = { // Public variables
+      surface  = nil,
+      image    = nil,
+      feedback = Options.feedback
+   }
+
+   local lText, lScene, lViewport
+   local lFadeDelay = nz(Options.fadeDelay, 0)
+   local lFadeIn    = nz(Options.fadeIn, 0)
+   local lClick = { held=false, x=0, y=0 }
+   local lWords = { }
+   local lLines = { }
+   local lLinesConcat
+   local lIconSize = nz(Options.size, 66)
+   local lIconWidth = lIconSize
+   local MARGIN = 6
+   local FONT_FACE = 'Open Sans'
+   local FONT_SIZE = 10
+   local lVectorGroup
+   local lLineHeight = 0
+   local lFadeTime
+   local lTimerID
+
+   local function inputFeedback(Surface, Msg)
+      if (Msg.type == JET_BUTTON_1) then
+         if (Msg.value > 0) then
+            lClick.held = true
+            lClick.x = Msg.absX
+            lClick.y = Msg.absY
+            self.surface.mtSetOpacity(50, 0)
+            self.surface.acMoveToFront()
+            self.surface.acDraw()
+         else
+            lClick.held = false
+            self.surface.mtSetOpacity(100, 0)
+            self.surface.acMoveToBack()
+
+            if ((math.abs(Msg.absX - lClick.x) > 2) or (math.abs(Msg.absY - lClick.y) > 2)) then
+               // Do nothing - mouse moved/dragged when icon was clicked
+            elseif (self.feedback) then
+               if (bit.band(Msg.flags, JTYPE_DBL_CLICK) != 0) then
+                  self.feedback(self, { name='dblclick' })
+               else
+                  self.feedback(self, { name='click' })
+               end
+            end
+
+            self.surface.acDraw()
+         end
+      elseif (Msg.type == JET_BUTTON_2) then
+         self.feedback(self, { name='altclick' })
+      end
+   end
+
+   local function calcWords()
+      lWords = { }
+      lLines = { }
+      if (lText == nil) or (#lText == 0) then return end
+
+      local font = obj.new('font')
+      font.face = FONT_FACE
+
+      if (lIconSize < 26) then
+         FONT_SIZE = 6
+      elseif (lIconSize < 60) then
+         FONT_SIZE = 8
+      else
+         FONT_SIZE = 10
+      end
+      font.point = FONT_SIZE
+      font.acInit()
+      lLineHeight = font.maxHeight
+
+      // Extract each word's pixel width
+
+      local widest_word = 0
+      for _, word in ipairs(lText) do
+         local width = mFont.StringWidth(font, word, -1)
+         if (width > widest_word) then widest_word = width end
+         table.insert(lWords, { word=word, width=width })
+      end
+
+      // If necessary, expand the width of the icon to fit the longest word.
+
+      lIconWidth = lIconSize
+      if (widest_word + (MARGIN*2) > lIconWidth) then
+         lIconWidth = widest_word + (MARGIN*2)
+      end
+
+      lLinesConcat = ''
+      local current_line = nil
+      for _, word in ipairs(lWords) do
+         if (current_line == nil) then
+            current_line = word.word
+         else
+            local new_line = current_line .. ' ' .. word.word
+            local width = mFont.StringWidth(font, new_line, -1)
+            if (width + (MARGIN*2) < lIconWidth) then
+               current_line = new_line
+            else
+               lLinesConcat = lLinesConcat .. current_line .. '\n'
+               table.insert(lLines, current_line)
+               current_line = word.word // Push the word to the next line
+            end
+         end
+      end
+
+      if (current_line != nil) then
+         lLinesConcat = lLinesConcat .. current_line
+         table.insert(lLines, current_line)
+      end
+   end
+
+   local function imageLocation(Path, IconSize)
+      if nz(Path) then
+         if (Path:find('^icons:') == 1) then
+            return Path .. '(' .. IconSize .. ')'
+         else
+            local colon = Path:find('^[%w]+:')
+            if (colon == 1) then
+               return Path
+            else
+               return 'icons:' .. Path .. '(' .. IconSize .. ')'
+            end
+         end
+      end
+   end
+
+   local function drawIcon(Surface, Bitmap)
+      lScene.bitmap = Bitmap
+      lScene.pageWidth = Surface.width
+      lScene.pageHeight = Surface.height
+      lScene.acDraw()
+   end
+
+   local function fadeTimer(Subscriber, Elapsed, CurrentTime)
+      if (lFadeTime == nil) then lFadeTime = CurrentTime end
+      if (lFadeDelay > 0) then
+         if ((CurrentTime - lFadeTime) >= lFadeDelay * 1000000) then
+            lFadeDelay = 0
+            mSys.UpdateTimer(lTimerID, 0.02) // Resubscribe to the timer to clear the TotalElapsed counter
+            lFadeTime = nil
+         end
+      else
+         local value = (CurrentTime - lFadeTime) / (lFadeIn * 1000000) * 100
+         if (value >= 100) then
+            self.surface.mtSetOpacity(100, 0)
+            lTimerID = 0
+            check(ERR_Terminate)
+         else
+            self.surface.mtSetOpacity(value, 0)
+         end
+      end
+   end
+
+   local function initVectorScene()
+      lScene    = obj.new('VectorScene', { })
+      lViewport = lScene.new('VectorViewport', { }) // Main viewport for vector graphics.
+
+      // Create a dark rounded box in the background of the text, this will make it easier to distinguish the text
+      // against a busy background or one of a similar colour.
+
+      local box_height = self.surface.height - (lIconSize + MARGIN) - 0.5
+      local y = lIconSize + MARGIN
+
+      lVectorGroup = lViewport.new('VectorGroup', { })
+
+      lVectorGroup.new('VectorRectangle', {
+         fill   = 'rgb(0,0,0,128)',
+         x      = 0.5,
+         y      = y,
+         roundX = 5,
+         roundY = 5,
+         width  = lIconSize - 1.0,
+         height = box_height,
+      })
+
+      for _, line in ipairs(lLines) do
+         local vText = lVectorGroup.new('VectorText', {
+            x        = lIconSize/2,
+            face     = FONT_FACE,
+            fontSize = string.format('%.2fpt', FONT_SIZE),
+            fill     = 'rgb(255,255,255)',
+            stroke   = 'rgb(255,255,255)',
+            align    = 'horizontal',
+            string   = line
+         })
+
+         y = y + lLineHeight
+         vText.y = y
+      end
+   end
+
+   // Main entry point
+
+   catch(function()
+      if nz(Options.text) then
+         lText = Options.text:trim():gsub('%s+', ' '):split(' ')
+      else
+         lText = nil
+      end
+
+      if (not Options.target) then error('A target surface is required.') end
+
+      if not nz(Options.image) then error('The image option is required.') end
+
+      calcWords()
+
+      self.surface = obj.new('surface')
+      self.surface.width  = lIconSize
+      self.surface.parent = Options.target
+      self.surface.drag   = self.surface // Drag self
+      self.surface.cursor = 'hand'
+      self.surface.flags  = '!Precopy|Sticky|StickToBack'
+      self.surface.x      = nz(Options.x, 0)
+      self.surface.y      = nz(Options.y, 0)
+      self.surface.height = lIconSize
+      if (self.surface.acInit() != ERR_Okay) then error('Failed to initialise surface.') end
+
+      local src = imageLocation(Options.image, lIconSize)
+      if not src then error('Invalid image source ' .. Options.image) end
+      self.image = self.surface.new('image', {
+         path = src
+      })
+
+      self.surface.subscribe('free', function(Surface, Args)
+         self.image   = nil
+         self.surface = nil
+      end)
+
+      self.surface.mtAddCallback(drawIcon)
+
+      input.subscribe(JTYPE_BUTTON, self.surface, 0, inputFeedback)
+
+      if (Options.fadeIn) then
+         self.surface.opacity = 0
+         local err
+         err, lTimerID = mSys.SubscribeTimer(0.02, fadeTimer)
+      end
+
+      local gap = self.image.height * 0.1
+      if (gap < 2) then gap = 2 end
+
+      self.surface.height = self.image.height + gap + MARGIN + (lLineHeight * #lLines)
+
+      initVectorScene()
+
+      self.surface.acShow()
+   end,
+   function(Exception)
+      error('Failed to initialise Icon: ' .. Exception.message)
+   end)
+
+   return self
+end

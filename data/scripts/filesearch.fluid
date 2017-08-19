@@ -1,0 +1,234 @@
+--[[
+The FileSearch interface simplifies the process of searching for files and folders within the file system.  Support is
+provided for both wildcard filters and content searching.
+
+This example searches for text files in the 'documents:' folder that include the word 'tennis':
+
+   file.search("documents:", {
+      nameFilter    = "*.txt",
+      nameWild      = true,
+      contentFilter = "tennis",
+      matchFeedback = function(Path, FileName, File)
+         print(Path, " ", FileName)
+      end
+   })
+
+Valid options to use when creating the search object are as follows:
+
+  nameFilter:     Include file/folder names that match this filter.
+  contentFilter:  Include files that contain this content.
+  nameWild:       Set to true to enable wildcard matching for file names, or 'lua' for Lua expression matching.
+  contentWild:    Set to true to enable wildcard matching for content, or 'lua' for LUa expression matching.
+  caseSensitive:  All comparisons are case sensitive.
+  matchFeedback:  Call this function each time that a matched file is discovered.  Returning ERR_Terminate will stop the search.  Synopsis: function(Path, File, Attributes)
+  ignoreFeedback: Call this function each time that a file fails to pass filter matches.
+  minSize:        Filter out files that do not meet or exceed this minimum size.
+  maxSize:        Filter out files that exceed this size.
+  minDate:        Filter out files with a modification time less than this timestamp.
+  maxDate:        Filter out files with a modification time exceeding this timestamp.
+  scanLinks:      Allows symbolically linked files and folders to be included in the file search.
+  matchFolders:   Include matching folder names in the output of the search.
+  ignoreFiles:    Do not scan files (useful only in conjunction with MATCH_FOLDERS)."
+
+When searching files for content, it is strongly recommended that a filter or size limit is applied so that only a
+limited number of files are opened for searching.
+--]]
+
+   require "common"
+
+file.search = function(Path, Options)
+   local lOptions = Options
+   local ADJUST_LOG = 0
+   local lStop = false
+
+   local mSys = mod.load("core")
+
+   local function contentMatch(Path)
+      if lOptions.contentFilter == nil then
+         return true
+      end
+
+      local fl = obj.new('file', { path=Path, flags='READ' } )
+
+      if (fl != nil) then
+         // By default, symbolic links are not scanned for content unless the scanLinks option is set.
+
+         if (bit.bor(fl.flags, FL_LINK) != 0) and (lOptions.scanLinks == true) then
+            fl.acFree()
+            return false
+         end
+
+         local bytes = fl.size
+         if (bytes > 4096) then bytes = 4096 end
+         local buf = string.rep(nil, bytes)
+         local err, totalRead = fl.acRead(buf)
+
+         while (err == ERR_Okay) and (totalRead >= lOptions.contentFilter:len()) do
+            if (buf:find(lOptions.contentFilter) != nil) then return true end
+            if (fl.position == fl.size) then return false end
+            fl.acSeek(-lOptions.contentFilter:len(), SEEK_CURRENT)
+            err, totalRead = fl.acRead(buf)
+         end
+      end
+
+      return false
+   end
+
+   local function fileMatched(Path, FileName, File)
+      if (lOptions.matchFeedback) then
+         local result = lOptions.matchFeedback(Path, FileName, File)
+         if (result == ERR_Terminate) then lStop = true end
+      end
+   end
+
+   local function dateLessThan(DateA, DateB) // struct DateTime
+      if (a.Year < b.Year) then return true
+      elseif (a.Year > b.Year) then return false end
+
+      // else years are equal, so test months
+      if (a.Month < b.Month) then return true
+      elseif (a.Month > b.Month) then return false end
+
+      if (a.Day < b.Day) then return true
+      elseif (a.Day > b.Day) then return false end
+
+      if (a.Hour < b.Hour) then return true
+      elseif (a.Hour > b.Hour) then return false end
+
+      if (a.Minute < b.Minute) then return true
+      elseif (a.Minute > b.Minute) then return false end
+
+      if (a.Second < b.Second) then return true
+      elseif (a.Second > b.Second) then return false end
+
+      return false // files are exactly equal
+   end
+
+   local function scanPath(Path)
+      msg("scan_path() " .. nz(Path,":"))
+
+      if (lStop) then return end
+
+      local count = 0
+      local flags = 0
+      if not lOptions.matchFolders then flags = bit.bor(flags, FL_EXCLUDE_FOLDERS) end
+      if lOptions.ignoreFiles then flags = bit.bor(flags, FL_EXCLUDE_FILES) end
+
+      local folder = obj.new("file", { src=Path, flags=flags } )
+      if folder == nil then return end
+
+      local err, fl = folder.mtNext()
+      while (err == ERR_Okay) and (not lStop) do
+         msg(string.format("Found: %s (count: %d)", fl.name, count))
+
+         count = count + 1
+         processMessages(0)
+
+         local fileFolder, fileName = file.splitPath(fl.path)
+
+         // Ensure that the filename matches our filter
+
+         local match = true
+         if (lOptions.nameFilter != nil) then
+            local cmpName = fileName
+            if not lOptions.caseSensitive then
+               cmpName = cmpName:lower()
+            end
+
+            if (lOptions.nameWild == true) then
+               if (mSys.StrCompare(lOptions.nameFilter, cmpName, 0, STR_WILDCARD) != ERR_Okay) then
+                  match = false
+               end
+            elseif (lOptions.nameWild == 'lua') then
+               if (string.find(cmpName, lOptions.nameFilter) == nil) then
+                  match = false
+               end
+            elseif (cmpName != lOptions.nameFilter) then
+               match = false
+            end
+         end
+
+         if nz(lOptions.minSize) and (lOptions.minSize > 0) and (fl.size < lOptions.minSize) then match = false end
+         if (lOptions.maxSize != nil) and (lOptions.maxSize >= 0) and (fl.size > lOptions.maxSize) then match = false end
+         if (lOptions.minDateSet != nil) and dateLessThan(fl.modified, lOptions.minDate) then match = false end
+         if (lOptions.maxDateSet != nil) and dateLessThan(lOptions.maxDate, fl.modified) then match = false end
+
+         if (match) and bit.band(fl.flags, FL_FILE) != 0 then
+            match = contentMatch(fl.path)
+         end
+
+         if (match) then
+            if (lOptions.matchFeedback) then
+               mSys.AdjustLogLevel(-ADJUST_LOG) // Temporarily revert debug log so that child behaviour can be analysed
+
+                  local result = lOptions.matchFeedback(Path, fileName, fl)
+                  if (result == ERR_Terminate) then lStop = true end
+
+               mSys.AdjustLogLevel(ADJUST_LOG) // Raise log level again
+            end
+
+         elseif (lOptions.ignoreFeedback) then
+            local result = lOptions.ignoreFeedback(Path, fileName, fl)
+            if (result == ERR_Terminate) then lStop = true end
+         end
+
+         err, fl = folder.mtNext()
+      end
+
+      if (lStop) then return end
+
+      // Recursively scan directory content
+
+      local folder = obj.new("file", { src=Path, flags="!ExcludeFiles|Folder" } )
+      if (folder != nil) then
+         local err, fl = folder.mtNext()
+         while (err == ERR_Okay) and (not lStop) do
+            count = count + 1
+            if (bit.band(fl.flags, FL_LINK) != 0) then
+               // Do not scan symbolicly linked directories (possible recursion)
+            else
+               processMessages(0)
+               scanPath(fl.path)
+            end
+            err, fl = folder.mtNext()
+         end
+      end
+
+      if (count == 0) then processMessages(0) end  // Message check required if the directory was empty
+
+      collectgarbage()
+   end
+
+   // Entry point for the search
+
+   msg(string.format("Path: %s, Filter: %s, Content: %s", Path, Options.nameFilter, Options.contentFilter))
+
+   if (lOptions.maxDate != nil) then
+      local err, maxDate = mSys.StrReadDate(lOptions.maxDate)
+      if (err != ERR_Okay) then error("Invalid maxDate value.") end
+      lOptions.maxDate = maxDate
+   end
+
+   if (lOptions.minDate != nil) then
+      local err, minDate = mSys.StrReadDate(lOptions.minDate)
+      if (err != ERR_Okay) then error("Invalid minDate value.") end
+      lOptions.minDate = minDate
+   end
+
+   if (file.isFolder(Path)) then
+      mSys.AdjustLogLevel(ADJUST_LOG)
+         scanPath(Path)
+      mSys.AdjustLogLevel(-ADJUST_LOG)
+   else
+      // Single file analysis
+
+      local path, fileName = file.splitPath(Path)
+      if (Options.nameFilter == nil) or (string.find(fileName, Options.nameFilter) != nil) then
+         if contentMatch(Path) then
+            if (lOptions.matchFeedback) then
+               lOptions.matchFeedback(path, fileName, obj.new("file", { path=Path }))
+            end
+         end
+      end
+   end
+end

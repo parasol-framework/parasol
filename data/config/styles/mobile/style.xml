@@ -1,0 +1,540 @@
+<?xml version="1.0"?>
+
+<!-- Menu definitions -->
+
+<menus>
+  <menu name="default">
+    <values fonthighlight="0,0,0" highlight="220,220,235" fontcolour="0,0,0" flags="!showimages|showkeys" vspacing="5" highlightlm="1" highlightrm="1"/>
+    <menubase>
+      <*surface sticktofront hide windowtype="none" width="[@width]" height="[@height]">
+        <box border="100,100,100" colour="240,240,240"/>
+      </surface>
+    </menubase>
+    <menubreak>
+      <box x="32" xoffset="32" y="[=[@y]+2]" height="1" colour="#a0a0a0"/>
+    </menubreak>
+  </menu>
+
+  <menu name="dropdown">
+    <values fonthighlight="#000000" highlight="220,220,235" fontcolour="#000000" highlightlm="1" highlightrm="1"/>
+    <menubase>
+      <*surface sticktofront hide windowtype="none" width="[@width]" height="[@height]">
+        <box border="120,120,120" colour="#ffffff"/>
+      </surface>
+    </menubase>
+    <menubreak>
+      <box x="6" y="[=[@y]+2]" xoffset="!6" height="1" colour="#b0b0b0"/>
+    </menubreak>
+  </menu>
+
+  <menu name="popup">
+    <values fonthighlight="255,255,255" fontcolour="255,255,255" highlight="#a080c0" vspacing="5" flags="!showimages"
+      leftmargin="4" topmargin="4" bottommargin="8" rightmargin="8" highlightlm="2" highlightrm="6"/>
+    <menubase>
+      <*surface sticktofront hide precopy rightmargin="4" bottommargin="4" windowtype="none" width="[@width]" height="[@height]">
+        <!-- Shadow -->
+        <box boxes="(4,!0,!0,4) (!0,4,4,!4)" colour="0,0,0,85" colour1="0,0,0,85"/>
+        <gradient x="0" y="0" xoffset="4" yoffset="4" firstcolour="76,62,128" lastcolour="126,123,187" direction="horizontal"/>
+        <stripes direction="vertical" y="1" x="1" xoffset="5" yoffset="5">
+          <xml><line colour="0,0,0,0"/><line colour="0,0,0,100"/></xml>
+        </stripes>
+        <box raised boxes="(0,0,!4,!4)" highlight="166,163,207,85" shadow="0,0,0,85"/>
+      </surface>
+    </menubase>
+    <menubreak>
+      <box x="32" xoffset="36" y="[=[@y]+2]" height="1" colour="#a0a0a0"/>
+    </menubreak>
+  </menu>
+
+  <menu name="context">
+    <values fonthighlight="0,0,0" highlight="220,220,235" fontcolour="0,0,0" face="helvete:10" flags="!showimages|showkeys|popup" vspacing="7" highlightlm="1" highlightrm="1"/>
+    <menubase>
+      <*surface sticktofront hide windowtype="none" width="[@width]" height="[@height]">
+        <box border="100,100,100" colour="240,240,240"/>
+      </surface>
+    </menubase>
+    <menubreak>
+      <box x="32" xoffset="32" y="[=[@y]+2]" height="1" colour="#a0a0a0"/>
+    </menubreak>
+  </menu>
+</menus>
+
+<!-- Class specific GUI definitions -->
+
+<styles>
+  <class name="button">
+    <defaults> <!-- Example of using DML rather than values to make settings -->
+      <dml>
+        <set object="[%target]" exitframe="1" clickframe="2" enterframe="3" releaseframe="1" flags="!NOFOCUS"/>
+      </dml>
+    </defaults>
+
+    <graphics>
+      <dml>
+        <!-- Normal -->
+        <box frame="1" boxes="(r0,0,!0,!0) (r1,1,!1,!1)" colour="230,230,230" highlight(0)="120,120,120" highlight(1)="255,255,255" shadow(0)="80,80,80" shadow(1)="200,200,200"/>
+        <!-- Clicked -->
+        <box frame="2" boxes="(s0,0,!0,!0)" colour="200,200,200" highlight="120,120,120" shadow="80,80,80"/>
+        <!-- OnMovement -->
+        <box frame="3" boxes="(r0,0,!0,!0) (r1,1,!1,!1)" colour="245,245,245" highlight="120,120,120" highlight(1)="255,255,255" shadow="80,80,80" shadow(1)="200,200,200"/>
+      </dml>
+    </graphics>
+  </class>
+
+  <class name="checkbox">
+    <defaults>
+      <values border="[glStyle./colours/@border]"/>
+    </defaults>
+  </class>
+
+  <class name="combobox">
+    <defaults>
+      <values border="[glStyle./colours/@border]" buttonoffset="0"/>
+    </defaults>
+  </class>
+
+  <class name="input">
+    <defaults>
+      <values highlight="[glStyle./colours/@border]" shadow="[glStyle./colours/@border]"/>
+    </defaults>
+  </class>
+
+  <class name="menubar">
+    <defaults>
+      <values height="23"/>
+    </defaults>
+
+    <graphics>
+      <dml>
+        <box highlight="255,255,255,120" shadow="0,0,0,40" sunken height="2" yoffset="0"/>
+      </dml>
+    </graphics>
+  </class>
+
+  <class name="sidebar">
+    <defaults>
+      <values itemheight="50" itemgap="2" titleheight="25" titlegap="10"/>
+    </defaults>
+
+    <!-- Background graphics for each group -->
+
+    <graphics name="group">
+      <dml>
+        <box colour="100,100,100"/>
+
+        <!-- Shadow for the titlebar -->
+        <gradient firstcolour="0,0,0,90" lastcolour="0,0,0,0" direction="vertical" x="0" xoffset="0" y="25" height="10"/>
+
+        <surface x="0" xoffset="50%" y="25" height="10" sticktofront hide>
+          <movement frame="2" exitframe="1"/>
+          <box colour="60,60,60"/>
+          <arrow direction="up" x="0" y="0" xoffset="0" yoffset="0" arrowwidth="9" arrowheight="5" colour="#a0a0a0" align="center" frame="1"/>
+          <arrow direction="up" x="0" y="0" xoffset="0" yoffset="0" arrowwidth="9" arrowheight="5" colour="#ffffff" align="center" frame="2"/>
+          <set object="[%owner]" scrollup="[owner]"/>
+        </surface>
+
+        <surface x="50%" xoffset="0" y="25" height="10" sticktofront hide>
+          <movement frame="2" exitframe="1"/>
+          <box colour="60,60,60"/>
+          <arrow direction="down" x="0" y="0" xoffset="0" yoffset="0" arrowwidth="9" arrowheight="5" colour="#a0a0a0" align="center" frame="1"/>
+          <arrow direction="down" x="0" y="0" xoffset="0" yoffset="0" arrowwidth="9" arrowheight="5" colour="#ffffff" align="center" frame="2"/>
+          <set object="[%owner]" scrolldown="[owner]"/>
+        </surface>
+      </dml>
+    </graphics>
+
+    <!-- Graphics for each titlebar -->
+
+    <graphics name="titlebar">
+      <dml>
+        <gradient firstcolour="240,240,240" lastcolour="190,190,190" direction="vertical"/>
+        <box boxes="(0,0,!0,1) (0,!0,!0,1)" colour="255,255,255,205" colour1="128,128,128,205"/>
+        <text x="0" xoffset="0" frame="1" face="helvete:10" align="middle" bold colour="#404040" string="[@name]"/>
+        <text x="0" xoffset="0" frame="2" face="helvete:10" align="middle" bold colour="#606060" string="+ [@name] +"/>
+        <movement frame="2" exitframe="1"/>
+      </dml>
+    </titlebar>
+
+    <!-- Graphics for each clickable item -->
+
+    <graphics name="item">
+      <dml>
+        <movement frame="2" exitframe="1"/>
+        <box frame="2" round="5" colour="0,0,0,75" x="4" y="0" xoffset="4" yoffset="0"/>
+        <image src="[@icon]" x="4" width="[[%owner].itemheight]" height="[[%owner].itemheight]" align="center"/>
+        <text bold face="open sans:9" x="60" y="0" xoffset="10" yoffset="0" align="vertical" flags="wordwrap" string="[@name]" colour="#ffffff"/>
+      </dml>
+    </item>
+  </class>
+
+  <class name="scrollbar">
+    <!-- VERTICAL SCROLLBAR -->
+
+    <graphics name="vbar">
+      <dml>
+        <set object="[owner]" width="18" topmargin="[=[owner.width]-1]" bottommargin="[=[owner.width]-1]"/>
+        <gradient firstcolour="186,188,193" lastcolour="212,211,215" direction="horizontal"/>
+        <box boxes="(!0,0,1,!0) (0,0,1,!0)" colour="0,0,0,60" colour1="0,0,0,30"/>
+      </dml>
+    </graphics>
+
+    <graphics name="vslider">
+      <dml>
+        <gradient lastcolour="205,206,220" firstcolour="252,251,255" direction="horizontal" x="1" y="1" xoffset="1" yoffset="1"/>
+        <stripes x="5" xoffset="5" height="16" align="vertical">
+          <xml><line colour="255,255,255,128"/><line colour="0,0,0,50"/></xml>
+        </stripes>
+        <box boxes="(0,0,!0,!0)" round="1" border="148,149,160"/>
+        <box border="255,255,255,150" x="1" y="1" yoffset="1" xoffset="1"/>
+      </dml>
+    </graphics>
+
+    <graphics name="vbuttons">
+      <dml>
+        <button x="0" y="0" height="[owner.width]" xoffset="0" flags="!nofocus|nobkgd">
+          <gradient surface="[owner.region]" lastcolour="202,203,217" firstcolour="255,255,255" direction="vertical" x="0" y="0" height="[owner.width]" xoffset="0"/>
+          <box surface="[owner.region]" border="148,149,160" x="0" y="0" height="[owner.width]" xoffset="0"/>
+          <box surface="[owner.region]" border="255,255,255,128" x="1" y="1" height="[=[owner.width]-2]" xoffset="1"/>
+          <arrow surface="[owner.region]" align="center" arrowwidth="8" arrowheight="4" direction="up" colour="0,0,0,160"/>
+          <action method="addscrollbutton" object="[@scroll]" @surface="[owner.region]" @direction="1"/>
+        </button>
+
+        <button x="0" yoffset="0" height="[owner.width]" xoffset="0" flags="!nofocus|nobkgd">
+          <gradient surface="[owner.region]" lastcolour="202,203,217" firstcolour="255,255,255" direction="vertical" x="0" y="0" height="[owner.width]" xoffset="0"/>
+          <box surface="[owner.region]" border="148,149,160" x="0" y="0" height="[owner.width]" xoffset="0"/>
+          <box surface="[owner.region]" border="255,255,255,128" x="1" y="1" height="[=[owner.width]-2]" xoffset="1"/>
+          <arrow surface="[owner.region]" align="center" arrowwidth="8" arrowheight="4" direction="down" colour="0,0,0,160"/>
+          <action method="addscrollbutton" object="[@scroll]" @surface="[owner.region]" @direction="2"/>
+        </button>
+      </dml>
+    </graphics>
+
+    <!-- HORIZONTAL SCROLLBAR -->
+
+    <graphics name="hbar">
+      <dml>
+        <set object="[owner]" height="18" leftmargin="[=[owner.height]-1]" rightmargin="[=[owner.height]-1]"/>
+        <gradient firstcolour="186,188,193" lastcolour="212,211,215" direction="vertical"/>
+        <box boxes="(0,!0,!0,1) (0,0,!0,1)" colour="0,0,0,60" colour1="0,0,0,30"/>
+      </dml>
+    </graphics>
+
+    <graphics name="hslider">
+      <dml>
+        <gradient lastcolour="205,206,220" firstcolour="252,251,255" direction="vertical" x="1" y="1" xoffset="1" yoffset="1"/>
+        <stripes direction="horizontal" y="5" yoffset="5" width="16" align="horizontal">
+          <xml><line colour="255,255,255,128"/><line colour="0,0,0,50"/></xml>
+        </stripes>
+        <box boxes="(0,0,!0,!0)" round="1" border="148,149,160"/>
+        <box border="255,255,255,150" x="1" y="1" yoffset="1" xoffset="1"/>
+      </dml>
+    </graphics>
+
+    <graphics name="hbuttons">
+      <dml>
+        <button y="0" x="0" width="[owner.height]" yoffset="0" flags="!nofocus|nobkgd">
+          <gradient surface="[owner.region]" lastcolour="202,203,217" firstcolour="255,255,255" direction="vertical" x="0" y="0" height="[owner.width]" xoffset="0"/>
+          <box surface="[owner.region]" border="148,149,160" x="0" y="0" height="[owner.width]" xoffset="0"/>
+          <box surface="[owner.region]" border="255,255,255,128" x="1" y="1" height="[=[owner.width]-2]" xoffset="1"/>
+          <arrow surface="[owner.region]" align="center" arrowwidth="4" arrowheight="8" direction="left" colour="0,0,0,160"/>
+          <action method="addscrollbutton" object="[@scroll]" @surface="[owner.region]" @direction="3"/>
+        </button>
+
+        <button y="0" xoffset="0" width="[owner.height]" yoffset="0" flags="!nofocus|nobkgd">
+          <gradient surface="[owner.region]" lastcolour="202,203,217" firstcolour="255,255,255" direction="vertical" x="0" y="0" height="[owner.width]" xoffset="0"/>
+          <box surface="[owner.region]" border="148,149,160" x="0" y="0" height="[owner.width]" xoffset="0"/>
+          <box surface="[owner.region]" border="255,255,255,128" x="1" y="1" height="[=[owner.width]-2]" xoffset="1"/>
+          <arrow surface="[owner.region]" align="center" arrowwidth="4" arrowheight="8" direction="right" colour="0,0,0,160"/>
+          <action method="addscrollbutton" object="[@scroll]" @surface="[owner.region]" @direction="4"/>
+        </button>
+      </dml>
+    </graphics>
+  </class>
+
+  <class name="view">
+    <defaults>
+      <values face="open sans" groupface="open sans:9:bold" vspacing="4" coltitlefont="255,255,255,255" gfxflags="outlinetitle|branches|drawtable"
+        colhairline="255,255,255,0" colhighlight="0,0,0,0" colselecthairline="255,255,255,0" colselect="0,0,60,140" colselectfont="255,255,255"
+        colitem="#000000" colbkgdhighlight="0,0,0,10" colbackground="255,255,255" colborder="160,160,160" buttonhighlight="#e0e0e0" buttonshadow="#909090"
+        buttonbackground="#e0e0e0" buttonthickness="0"/>
+    </defaults>
+
+    <graphics name="groupheader">
+      <dml>
+        <gradient firstcolour="170,170,170" lastcolour="140,140,140" direction="vertical" y="0" yoffset="0"/>
+        <stripes direction="vertical">
+          <xml><line colour="0,0,0,20"/><line colour="0,0,0,0"/></xml>
+        </stripes>
+        <box x="0" y="0" width="26" yoffset="0" colour="0,0,0,40"/>
+        <box height="1" colour="255,255,255,64"/>
+        <box height="1" yoffset="0" colour="0,0,0,30"/>
+      </dml>
+    </graphics>
+
+    <graphics name="groupselect">
+      <dml>
+        <gradient lastcolour="200,200,200" firstcolour="140,140,140" direction="vertical" y="0" yoffset="0"/>
+        <stripes direction="vertical">
+          <xml><line colour="0,0,0,20"/><line colour="0,0,0,0"/></xml>
+        </stripes>
+        <box x="0" y="0" width="26" yoffset="0" colour="0,0,0,40"/>
+        <box height="1" colour="255,255,255,64"/>
+        <box height="1" yoffset="0" colour="0,0,0,30"/>
+      </dml>
+    </graphics>
+
+    <style name="fileview">
+      <defaults>
+        <values coltitlefont="255,255,255,255" gfxflags="outlinetitle|boldtitle|branches|drawtable" colhairline="255,255,255,0" colhighlight="0,0,0,0"
+          colselecthairline="255,255,255,0" colselect="0,0,0,140" colselectfont="255,255,255" colitem="#000000" colbkgdhighlight="0,0,0,10" colbackground="255,255,255"
+          colborder="[glStyle./colours/@border]" buttonhighlight="#e0e0e0" buttonshadow="#909090" buttonbackground="#e0e0e0" buttonthickness="0"/>
+      </defaults>
+    </style>
+  </class>
+
+  <class name="window">
+    <!-- Note that: %context = Window; %target = Surface -->
+    <defaults>
+      <values resize="all" x="[=[[%context.parent].leftmargin]+10]" y="[=[[%context.parent].topmargin]+10]" movetoback="0" resizeborder="6"
+        leftlimit="0" toplimit="0" rightlimit="0" bottomlimit="0"
+        clienttop="29" clientleft="5" clientright="5" clientbottom="5"
+        leftmargin="5" topmargin="5" bottommargin="5" rightmargin="5"/>
+    </defaults>
+
+    <graphics name="main">
+      <dml>
+         <!-- If the window is not on the desktop (e.g. it might be on a custom screen), forcibly turn off the minimise gadget. -->
+         <if statement="[owner.parent] != [desktop]">
+           <set object="[%context]" minimise="0"/>
+         </if>
+
+         <focus object="[owner]" frame="1" lostframe="2"/>
+
+         <box frame="2" boxes="(0,0,!0,!0) (1,1,!1,!1) (2,2,!2,!2) (3,3,!3,!3) (4,4,!4,!4) (4,26,!4,1) (4,27,!4,1) (4,28,!4,1)"
+           border(0)="0,0,0" border(1)="140,140,140" border(2)="160,160,160" border(3)="200,200,200" border(4)="160,160,160"
+           colour(4)="[glStyle./colours/@window]" colour(5)="160,160,160" colour(6)="200,200,200" colour(7)="160,160,160"/>
+
+         <box frame="1" boxes="(0,0,!0,!0) (1,1,!1,!1) (2,2,!2,!2) (3,3,!3,!3) (4,4,!4,!4) (4,26,!4,1) (4,27,!4,1) (4,28,!4,1)"
+           border(0)="0,0,0" border(1)="120,120,190" border(2)="140,140,210" border(3)="180,180,250" border(4)="140,140,210"
+           colour(4)="[glStyle./colours/@window]" colour(5)="140,140,210" colour(6)="180,180,250" colour(7)="140,140,210"/>
+
+         <if statement="[[%context].insideborder] = 1">
+           <box x="[=[owner.leftmargin]-1]" y="[=[owner.topmargin]-1]" xoffset="[=[owner.rightmargin]-1]" yoffset="[=[owner.bottommargin]-1]" border="180,180,200"/>
+         </if>
+       </graphics>
+     </dml>
+
+    <minimise>
+      <dml>
+        <action call="hide" object="[owner]"/>
+        <action call="focus" object="[desktop]" delay="0.02"/>
+      </dml>
+    </minimise>
+
+    <graphics name="titlebar">
+      <dml>
+         <surface drag="[owner]" height="21" x="5" y="5" xoffset="5" sticktofront>
+           <variable name="var" xoffset="3"/>
+           <focus object="[%target]" frame="1" lostframe="2"/>
+
+           <!-- Titlebar graphics -->
+           <gradient frame="1" firstcolour="76,62,128" lastcolour="126,123,187" direction="horizontal"/>
+           <gradient frame="2" firstcolour="76,76,76" lastcolour="150,150,150" direction="horizontal"/>
+           <stripes direction="vertical">
+             <xml><line colour="0,0,0,128"/><line colour="0,0,0,0"/></xml>
+           </stripes>
+           <text face="[glStyle./fonts/font[@name='titlebar']/@face]" bold colour="#ffffff" outline="40,40,40" string="[[%context].title]" x="26" xoffset="60" y="4">
+             <set object="[%context]" titleobject="[owner]"/>
+           </text>
+
+           <!-- Application icon to the left of the titlebar -->
+           <image x="5" align="vertical" src="[[%context].icon](16)"/>
+           <onclick x="5" y="1" width="17" yoffset="1" flags="!doubleclick">
+             <action static method="close" object="[%context]"/>
+           </onclick>
+
+           <onclick>
+             <action static call="movetofront" object="[%target]"/>
+           </onclick>
+
+           <if statement="[[%context].maximise] = 1">
+             <onclick x="24" xoffset="60" y="0" yoffset="0" flags="doubleclick">
+               <action static method="maximise" object="[%context]" toggle="1"/>
+             </onclick>
+           </if>
+
+           <!-- Close Gadget -->
+           <if statement="[[%context].close] = 1">
+             <surface xoffset="[var.xoffset]" y="2" width="17" height="17" region>
+               <onclick>
+                 <action static method="close" object="[%context]"/>
+               </onclick>
+               <image src="environment:images/gadget_close" align="center"/>
+             </surface>
+             <set object="[var]" xoffset="[=[var.xoffset]+20]"/>
+           </if>
+
+           <!-- Maximise Gadget -->
+           <surface width="17" height="17" y="2" xoffset="[var.xoffset]" region>
+             <onclick frame="2" releaseframe="1">
+               <action static method="maximise" object="[%context]" toggle="1"/>
+             </onclick>
+             <if statement="[[%context].maximise] = 1">
+               <image src="environment:images/gadget_maximise" align="center"/>
+             </if>
+             <else>
+               <image src="environment:images/gadget_maximise" align="center" opacity="33%"/>
+             </else>
+           </surface>
+
+           <set object="[var]" xoffset="[=[var.xoffset]+20]"/>
+
+           <!-- Minimise Gadget -->
+           <surface width="17" height="17" y="2" xoffset="[var.xoffset]" region>
+             <onclick frame="2" releaseframe="1">
+               <action static method="minimise" object="[%context]"/>
+             </onclick>
+             <if statement="[[%context].minimise] = 1">
+               <image src="environment:images/gadget_minimise" align="center"/>
+             </if>
+             <else>
+               <image src="environment:images/gadget_minimise" align="center" opacity="33%"/>
+             </else>
+           </surface>
+
+           <set object="[var]" xoffset="[=[var.xoffset]+20]"/>
+
+           <!-- Move-To-Back Gadget -->
+           <if statement="[[%context].movetoback] = 1">
+             <surface width="17" height="17" y="2" xoffset="[var.xoffset]" region>
+               <onclick frame="2" releaseframe="1">
+                 <action static call="movetoback" object="[%target]"/>
+               </onclick>
+               <image src="environment:images/gadget_movetoback" align="center"/>
+             </surface>
+             <set object="[var]" xoffset="[=[var.xoffset]+20]"/>
+           </if>
+
+           <free object="[var]"/>
+         </surface>
+
+         <!-- Add the window to the task bar -->
+         <if exists="[systemtaskbar]">
+           <if statement="[desktop] = [owner.parent]">
+             <action method="setcell" object="[systemtaskbar]" @row="0" @column="-1" @flags="1" @args="text='[[%context].title]' image='[[%context].icon](16)' window='[%context]'"/>
+           </if>
+         </if>
+      </dml>
+    </graphics>
+
+    <graphics name="menubar">
+      <dml>
+        <!-- %target = surface, %context=window -->
+        <if exists="[[%target].parent]"> <!-- Window is in the native desktop -->
+          <*menubar x="5" y="[[%context].clienttop]" xoffset="5" target="[[%target].parent]" location="[[%context].menu]" [[%context].scriptargs]>
+            <set object="[%target]" topmargin="[=[owner.bottom]+4]"/>
+          </menubar>
+        </if>
+        <else> <!-- Window is in a hosted environment (e.g. X11, Windows) -->
+          <*menubar x="0" y="0" xoffset="0" target="0" location="[[%context].menu]" [[%context].scriptargs]>
+            <set object="[%target]" topmargin="[=[owner.bottom]+4]"/>
+          </menubar>
+        </else>
+      </dml>
+    </graphics>
+  </class>
+
+  <class name="screen">
+    <defaults>
+      <values x="0" y="0" xoffset="0" yoffset="0" parent="[systemsurface]" movetoback="1" toplimit="0" leftlimit="0"
+        rightlimit="0" bottomlimit="[=-[systemsurface.height]+21]" topmargin="21" leftmargin="0" rightmargin="0" bottommargin="0"
+        colour="[glStyle./colours/@window]"/>
+    </defaults>
+
+     <graphics>
+       <dml>
+         <!-- This code will correct movement limits if the display is resized -->
+         <action static monitor="[[%context].parent]" call="redimension">
+           <set static object="[%target]" $bottomlimit="[=-[[[%context].parent].height]+21]"/>
+         </action>
+       </dml>
+     </graphics>
+
+     <minimise>
+       <dml>
+         <action call="hide" object="[owner]"/>
+         <action call="focus" object="[desktop]"/>
+       </dml>
+     </minimise>
+
+     <graphics name="titlebar">
+       <dml>
+         <surface drag="[owner]" height="21" x="0" y="0" xoffset="0" sticktoback>
+           <variable name="var" @xoffset="3"/>
+           <focus object="[%target]" frame="1" lostframe="2"/>
+
+           <!-- Titlebar graphics -->
+           <gradient frame="1" firstcolour="76,62,128" lastcolour="126,123,187" direction="horizontal"/>
+           <gradient frame="2" firstcolour="76,76,76" lastcolour="150,150,150" direction="horizontal"/>
+           <stripes direction="vertical">
+             <xml><line colour="0,0,0" opacity="65%"/><line colour="0,0,0" opacity="0%"/></xml>
+           </stripes>
+           <text face="[[glStyle./fonts/font[@name='titlebar']/@face]]" bold colour="#ffffff" outline="40,40,40" string="[[%context].title]" x="30" xoffset="60" y="4">
+             <set object="[%context]" titleobject="[owner]"/>
+           </text>
+
+           <!-- Application icon to the left of the titlebar -->
+           <image x="5" align="vertical" src="[[%context].icon](16)"/>
+           <onclick x="5" y="1" width="17" yoffset="1" flags="!doubleclick">
+             <action static method="close" object="[%context]"/>
+           </onclick>
+
+           <onclick flags="doubleclick">
+             <action static call="movetofront" object="[@owner]"/>
+           </onclick>
+
+           <!-- Close Gadget -->
+           <if statement="[[%context].close] = 1">
+             <surface xoffset="[var.xoffset]" y="2" width="17" height="17" region>
+               <onclick>
+                 <action static method="close" object="[%context]"/>
+               </onclick>
+               <image src="environment:images/gadget_close" align="center"/>
+             </surface>
+             <set object="[var]" xoffset="[=[var.xoffset]+20]"/>
+           </if>
+
+           <!-- Move-To-Back Gadget (Compulsory) -->
+           <surface width="17" height="17" y="2" xoffset="[var.xoffset]" region>
+             <onclick frame="2" releaseframe="1">
+               <action static call="movetoback" object="[@owner]"/>
+             </onclick>
+
+             <image src="environment:images/gadget_movetoback" align="center"/>
+           </surface>
+
+          <set object="[var]" xoffset="[=[var.xoffset]+20]"/>
+
+          <free object="[var]"/>
+        </surface>
+      </dml>
+    </graphics>
+    <graphics name="menubar">
+      <dml>
+        <*menubar x="0" y="[owner.topmargin]" xoffset="0" target="[[[%context].surface].parent]" location="[[%context].menu]" [[%context].scriptargs]>
+
+          <!-- NB: Fullscreen specs insist that the topmargin is flush at the top of the
+               available space.  The user can add margins by setting the screenmargin field
+               of the window object -->
+
+          <if statement="[[%context].nomargins] = 1">
+            <set object="[%target]" topmargin="[owner.bottom]"/>
+          </if>
+          <else>
+            <set object="[%target]" topmargin="[=[owner.bottom]+[[%context].screenmargin]]"/>
+          </else>
+        </menubar>
+      </dml>
+    </graphics>
+  </class>
+</styles>

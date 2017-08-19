@@ -1,0 +1,26 @@
+<?xml version="1.0"?>
+
+<fonts>
+  <!-- Use percentages for scalable sizes, where 100% is equivalent to the value of "/interface/@fontsize" -->
+
+  <font name="default"  face="Open Sans,Source Sans Pro" size="100%" colour="0,0,0"/>
+  <font name="window"   face="Open Sans,Source Sans Pro" size="100%" colour="0,0,0"/> <!-- Default inner window text -->
+  <font name="button"   face="Open Sans,Source Sans Pro" size="100%" colour="0,0,0"/> <!-- Text inside buttons -->
+  <font name="icon"     face="Open Sans,Source Sans Pro" size="100%" colour="255,255,255"/> <!-- Text at the bottom of icons -->
+  <font name="menu"     face="Open Sans,Source Sans Pro" size="100%" colour="255,255,255" highlight="255,255,255"/> <!-- Menu item text -->
+  <font name="titlebar" face="Open Sans" size="100%" colour="255,255,255"/> <!-- Title bar text (in standalone OS mode) -->
+  <font name="small"    face="Tiny" size="6" colour="0,0,0"/> <!-- Recommended text for small sizes -->
+  <font name="large"    face="Open Sans,Source Sans Pro" size="130%" colour="0,0,0"/> <!-- Recommended text for headers -->
+  <font name="widget"   face="Open Sans,Source Sans Pro" size="11" colour="255,255,255"/> <!-- Default text for widgets (e.g. combobox) -->
+  <font name="label"    face="Open Sans,Source Sans Pro:10:bold" size="11" colour="255,255,255"/> <!-- Text for labels -->
+</fonts>
+
+<colours shadow="0,0,0,100" highlight="255,255,255,150" colour="220,220,220" widget="200,200,200"
+  button="230,230,230" buttonclick="200,200,200" menubar="190,190,190" menu="240,240,240"
+  border="#909090" menuborder="200,200,200" desktop="160,160,160" recess="160,160,160"
+  white="255,255,255" red="255,0,0" green="0,255,0" blue="0,0,255" background="255,255,255"
+  texthighlight="#e0e0f0" window="220,220,220"/>
+
+<interface inputborder="1" outputborder="1" widgetmargin="5px" widgetgap="6px" textborder="1" fontsize="11"
+  slidersize="16" scrollsize="18" scrollopacity="100" iconratio="7%" icontheme="Default" iconsize="0"/>
+

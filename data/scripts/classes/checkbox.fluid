@@ -1,0 +1,276 @@
+
+   require 'common'
+   require 'gui'
+
+   include 'widget'
+
+do
+   local mSys = mod.load('core')
+   local mGfx = mod.load('display')
+
+   // Widget field extensions must be defined in advance, declaring their types and accessibility at a minimum.  This
+   // allows Parasol to understand the class in full and interoperate with other languages.  Private fields must not be
+   // declared.
+
+   // Known types are: int, double, large, string, flags, child, object
+
+   local fields = {
+      font = {
+         short  = 'Font control object.'
+         access = 'r',
+         type  = 'child:Font'
+      },
+      labelWidth = {
+         short  = 'The fixed pixel width allocated for drawing the label string.',
+         type  = 'int',
+         access = 'rw'
+      },
+      value = {
+         short  = 'Either TRUE or FALSE.',
+         access = 'rw',
+         type  = 'int',
+         set = function(Self, Value)
+            if nz(Value) then
+               Self.value = true
+               Self.region.acDraw()
+            else
+               Self.value = false
+               Self.region.acDraw()
+            end
+         end
+      },
+      align = {
+         short  = 'Alignment flags',
+         type  = 'flags:ALIGN',
+         access = 'ri'
+      },
+      label = {
+         short = 'A string to be displayed to the left of the input area.',
+         type = 'string',
+         set = function(Self, Value)
+            Self.label = mSys.StrTranslateText(Value)
+         end
+      }
+   }
+
+   // Actions are pre-defined method functions that follow system-wide rules.  This means that a call to an action
+   // such as Redimension will accept a known set of parameters and its purpose is to reposition the widget.
+
+   local actions = { }
+
+   actions.receiveInput = bit.bor(JTYPE_FEEDBACK, JTYPE_BUTTON) // Declare desired input types for input() to work.
+
+   function actions.input(Self, Surface, Msg)
+      if (Msg.type == JET_BUTTON_1) and (Msg.value > 0) then
+         if (bit.band(Self.flags, CBF_DISABLED) != 0) then continue end
+         if (Msg.x > Self.labelWidth) then
+            if (Self.clickFrame) then
+               Self.region.frame = Self.clickFrame
+            end
+            Self.acActivate()
+         end
+      elseif (Msg.type == JET_ENTERED_SURFACE) then
+         Self.entered = true
+
+         if bit.band(Self.flags, CBF_DISABLED) == 0 then
+            Self.region.frame = Self.enterFrame
+            Self.region.acDraw()
+         end
+      elseif (input->Type == JET_LEFT_SURFACE) then
+         Self.entered = false
+
+         if bit.band(Self.flags, CBF_DISABLED) == 0 then
+            Self.region.frame = Self.exitFrame
+            Self.region.acDraw()
+         end
+      end
+   end
+
+   function actions.keyboard = function(Self, Surface, Flags, Value)
+      if (bit.band(Flags, KQ_PRESSED) != 0) then
+         if (Value == K_ENTER) or (Value == K_SPACE) then
+            Self.acActivate()
+         end
+      end
+   end
+
+   function actions.draw = function(Self)
+      local chkx = Self.labelWidth
+      if bit.band(Self.flags, CBF_NO_BKGD) != 0 then
+         local colour = { r=Self.colour.red, g=Self.colour.green, b=Self.colour.blue }
+         if Self.entered then
+            if not bit.band(Surface.flags, RNF_DISABLED) then
+               if (colour.r + 20 > 255) then colour.r = 255 else colour.r = colour.r + 20 end
+               if (colour.g + 20 > 255) then colour.g = 255 else colour.g = colour.g + 20 end
+               if (colour.b + 20 > 255) then colour.b = 255 else colour.b = colour.b + 20 end
+               colour = Bitmap.mtGetColour(colour.r, colour.g, colour.b, 255)
+            end
+         end
+
+         bkgd_colour = Bitmap.mtGetColour(colour.r, colour.g, colour.b, 255)
+
+         if bit.band(Self.align, ALIGN_RIGHT) then
+            chkx = Surface.width - Surface.height
+         end
+
+         Bitmap.mtDrawRectangle(chkx, 0, Surface.Height, Surface.Height, bkgd_colour, BAF_FILL)
+
+         local shadow    = Bitmap.mtGetColour(Self.shadow.r, Self.shadow.g, Self.shadow.b)
+         local highlight = Bitmap.mtGetColour(Self.highlight, Self.highlight.g, Self.highlight.b)
+
+         if (Self.thickness > 0) then
+            for i=0, Self.thickness-1 do
+               // Top, Bottom
+               Bitmap.mtDrawRectangle(chkx + i, i, Surface.Height-i-i, 1, shadow, BAF_FILL)
+               Bitmap.mtDrawRectangle(chkx + i, Surface.Height-i-1, Surface.Height-i-i, 1, highlight, BAF_FILL)
+
+               // Left, Right
+               Bitmap.mtDrawRectangle(chkx + i, i+1, 1, Surface.Height-i-i-2, shadow, BAF_FILL)
+               Bitmap.mtDrawRectangle(chkx + Surface.Height-i-1, i+1, 1, Surface.Height-i-i-2, highlight, BAF_FILL)
+            end
+         end
+
+         if bit.band(Surface.flags, RNF_HAS_FOCUS) != 0 then
+            if not bit.band(Surface.flags, RNF_DISABLED) then
+               Bitmap.mtDrawRectangle(chkx + i, i, Surface.Height-i-i, Surface.Height-i-i,
+                  PackPixelA(Bitmap, 0, 0, 0, 32), BAF_BLEND)
+            end
+         end
+      end
+
+      if nz(Self.label) then
+         Self.font.bitmap = Bitmap
+         Self.font.string = Self.Label
+
+         if bit.band(Surface.flags, RNF_DISABLED) then
+            Self.font.opacity = 25
+         end
+
+         Self.font.X = 0
+         Self.font.Y = 0
+         Self.font.flags      = bit.bor(Self.font.flags, FTF_CHAR_CLIP)
+         Self.font.wrapEdge    = Self.labelWidth - 3
+         Self.font.align       = ALIGN_VERTICAL
+         Self.font.alignWidth  = Surface.width
+         Self.font.alignHeight = Surface.height
+         if bit.band(Self.align, ALIGN_RIGHT) then
+            Self.font.align = bit.bor(Self.font.align, ALIGN_RIGHT)
+            Self.font.alignWidth = Self.font.alignWidth - Surface.height + 4
+         end
+         Self.font.acDraw()
+
+         if bit.band(Surface.flags, RNF_DISABLED) then
+            Self.font.opacity = 100
+         end
+      end
+
+      if (Self.picture) then
+         local srcbitmap = Self.picture.bitmap
+         if not Self.Value then
+            srcbitmap.Opacity = 25
+         end
+
+         srcbitmap.mtCopyArea(Bitmap, BAF_BLEND, 0, 0, srcbitmap.Width, srcbitmap.Height,
+            chkx + ((Surface.Height - srcbitmap.Width)/2), ((Surface.Height - srcbitmap.Height)/2))
+
+         srcbitmap.Opacity = 255
+      end
+   end
+
+   function actions.new(Self, Options)
+      Self.shadow = gui.strToRGB(nz(Options.shadow, '100,100,100,255'))
+      Self.colour = gui.strToRGB(nz(Options.colour, '255,255,255,255'))
+      Self.highlight = gui.strToRGB(nz(Options.highlight, '255,255,255,255'))
+      Self.thickness = 1
+
+      if nz(Options.label) then
+         Self.label = mSys.StrTranslateText(Options.label)
+      end
+
+      Self.image = obj.new('picture', { src=nz(Options.checkImage), 'icons:items/checkmark(16)', flags='FORCE_ALPHA_32' })
+
+      local lSurface = Self.region
+      Self.font = obj.new('font', { face=nz(Options.face,'Open Sans:12') })
+
+      if (Options.height == nil) then
+         if (Options.y == nil) or (Options.yOffset == nil) then
+            Options.height = 18
+         end
+      end
+
+      if (Options.width == nil) then
+         if (Options.x == nil) or (Options.xOffset == nil) then
+            lSurface.region.width = Self.labelWidth + lSurface.region.height
+         end
+      end
+
+      if nz(Options.label) and (tonumber(Options.labelWidth) < 1) then // Calculate the width of the text label
+         Self.labelWidth = mFont.StringWidth(Self.font, Options.label, -1) + 8
+      end
+
+      lSurface.subscribe('disable', function()
+         Self.disabled = true
+         Self.region.acDraw()
+      end)
+
+      lSurface.subscribe('enable', function()
+         Self.disabled = false
+         Self.region.acDraw()
+      end)
+
+      lSurface.subscribe('focus', function()
+         Self.region.acDraw()
+      end)
+
+      lSurface.subscribe('lostfocus', function()
+         Self.region.acDraw()
+      end)
+   end
+
+   // Destructor
+
+   function actions.free(Self)
+   end
+
+   function actions.disable(Self)
+      Self.region.acDisable()
+   end
+
+   function actions.enable(Self) // See the ActionNotify routine to see what happens when the surface is enabled.
+      Self.region.acEnable()
+   end
+
+   function actions.focus(Self)
+      Self.region.acFocus()
+   end
+
+   function actions.hide(Self)
+      Self.region.acHide()
+   end
+
+   function actions.moveToBack(Self)
+      Self.region.acMoveToBack()
+   end
+
+   function actions.moveToFront(Self)
+      Self.region.acMoveToFront()
+   end
+
+   function actions.redimension(Self, X, Y, Width, Height)
+      Self.region.acRedimension(X, Y, 0, Width, Height, 0)
+   end
+
+   function actions.resize(Self, Width, Height)
+      Self.region.acResize(Width, Height, 0)
+   end
+
+   function actions.show(Self)
+      Self.region.acShow()
+   end
+
+   // Register the Checkbox class
+
+   print('==============================================================')
+   widget.new('testbox', actions, fields)
+end
+
