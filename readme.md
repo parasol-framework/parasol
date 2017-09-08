@@ -1,7 +1,7 @@
 
 # Parasol Framework
 
-#### Version: 2017.5
+#### Version: 2017.9
 
 #### Web: http://www.parasol.ws
 
@@ -9,7 +9,9 @@
 
 ## 1. Introduction
 
-Parasol is a FOSS vector engine and application sandbox that uses a simple scripting language designed to accelerate application development without compromising on speed or modern features.  Parasol includes extensive support for vector graphics programming on the desktop, which we believe is an area that has been under-valued, particularly with recent increases in display resolution.  Our long term aim for Parasol is for it to be a credible open source leader in vector graphics programming and building multi-platform sandboxed applications.
+Parasol is a FOSS vector engine and application sandbox. It provides a fully integrated scripting language that is based on Lua to simplify application development without compromising on speed or modern features.  
+
+Parasol has a development bias towards vector graphics programming on the desktop, which we believe is an area that has been under-valued, particularly with recent increases in display resolution.  Our long term aim for Parasol is for it to be a credible open source leader in vector graphics programming and building multi-platform sandboxed applications.
 
 In summary, Parasol provides:
 
@@ -27,17 +29,11 @@ Optional extensions not included with the main distribution:
 * Cryptography support (AES)
 * Database connectivity (MySQL, SQLite)
 
-The Parasol environment is platform neutral, so your scripts will work in the same way on any supported platform.  In addition we are aiming to ensure that programs are distributed in sand-boxed, permission-based archives so that users can feel comfortable running any software package without fear of being compromised.
-
-### 1.1 Contributions
-
-If you'd like to contribute to this project then please visit our project page at Bitbucket.  There are no barriers to contribute and ad-hoc submissions can be accepted.
-
-The first release of Parasol is dedicated to the memory of Maxim Shemanarev, whose seminal work on AGG makes our vector engine possible.
+The Parasol environment is platform neutral and applications will work in the same way on all supported platforms.  In addition we are aiming for programs to be distributed in sand-boxed, permission-based archives so that users can feel comfortable running any software package without concerns of being compromised.
 
 ## 2. Build Process
 
-We strongly recommend using the GCC compiler to build the framework.  If you are running Windows then we recommend using MSys and MinGW, a GCC port for Windows that is compatible with the makefiles in this archive.  Please refer to section 2.3 of this document for Windows development instructions.  Targeting Android will require Cygwin.
+We strongly recommend using the GCC compiler to build the framework.  If you are running Windows then we recommend using MSys and MinGW, which is a GCC port that is compatible with the makefiles in this archive.  Please refer to section 2.3 of this document for Windows development instructions.  Targeting Android will require Cygwin.
 
 Linux systems require a few package dependencies to be installed first.  For an Apt based system such as Debian or Ubuntu, execute the following:
 
@@ -117,13 +113,17 @@ A successful install will allow you to run the `parasol` and `parasol-cmd` execu
 
 ## 4. Next Steps
 
-Full documentation can be obtained by installing Parasol and downloading the Parasol Developer Guide as a PARC file from our website.  Where possible we also provide HTML equivalents of our documentation online, but we recommend using the Developer Guide as the documentation is both fully inclusive and easier to navigate.  Community contributions such as how-tos and tutorials are managed separately on the GitHub wiki.
+Full documentation for developers is available online from our main website.
 
-Parasol is an open source, open community project.  If you wish to get involved then you are welcome to contribute to the project via the GitHub repositories.  Please stick to convention and use push/pull requests when contributing, and provide enough information to ensure that the changes are easily understood.
+### 4.1 Contributions
+
+Parasol is an open source, open community project.  If you'd like to contribute to this project then please do so via the Git repository.  Create a feature branch for your work and then make a pull request targeting the develop branch in order to have the changes accepted.
+
+The first release of Parasol is dedicated to the memory of Maxim Shemanarev, whose seminal work on AGG makes our vector engine possible.
 
 ## 5. Source Code Licensing
 
-The Parasol Framework is the copyright of Paul Manias © 1996 - 2017.  Our source code is released under the terms of the LGPL as referenced below, except where otherwise indicated.
+Excluding third party APIs and marked contributions, the Parasol Framework is the copyright of Paul Manias © 1996 - 2017.  The source code is released under the terms of the LGPL as referenced below, except where otherwise indicated.
 
 The Parasol Framework is free software; you can redistribute it and/or modify it under the terms of the GNU Lesser General Public License as published by the Free Software Foundation; either version 2.1 of the License, or (at your option) any later version.
 
