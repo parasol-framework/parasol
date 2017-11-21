@@ -281,11 +281,9 @@ INLINE void get_kerning_xy(FT_Face Face, LONG Glyph, LONG PrevGlyph, LONG *X, LO
 
 INLINE LONG get_kerning(FT_Face Face, LONG Glyph, LONG PrevGlyph)
 {
+   if ((!Glyph) OR (!PrevGlyph)) return 0;
+
    FT_Vector delta;
-
-   if (!Glyph) return 0;
-   if (!PrevGlyph) return 0;
-
    FT_Get_Kerning(Face, PrevGlyph, Glyph, FT_KERNING_DEFAULT, &delta);
    return delta.x>>FT_DOWNSIZE;
 }

@@ -861,7 +861,7 @@ If the string is changed after initialisation, the button will be redrawn to sho
 
 static ERROR GET_String(objButton *Self, STRING *Value)
 {
-   if (Self->String) {
+   if (Self->String[0]) {
       *Value = Self->String;
       return ERR_Okay;
    }

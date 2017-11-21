@@ -82,7 +82,6 @@ static ERROR SET_Source(objXML *Self, OBJECTPTR Value);
 static const struct MethodArray clXMLMethods[];
 static const struct ActionArray clXMLActions[];
 static const struct FieldArray clFields[];
-static const struct FieldDef clFlags[];
 
 /*****************************************************************************
 ** Debug routines

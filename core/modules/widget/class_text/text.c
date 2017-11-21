@@ -93,9 +93,6 @@ enum {
 static const struct FieldArray clFields[];
 static const struct ActionArray clTextActions[];
 static const struct MethodArray clTextMethods[];
-static const struct FieldDef TextEffects[];
-static const struct FieldDef ActivationFlags[];
-static const struct FieldDef clFlags[];
 
 static void  add_history(objText *, CSTRING);
 static ERROR add_line(objText *, CSTRING, LONG, LONG, LONG);

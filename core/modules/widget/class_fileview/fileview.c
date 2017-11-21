@@ -66,7 +66,6 @@ static ERROR FILEVIEW_ParentDir(objFileView *, APTR Void);
 static void event_volume_created(OBJECTID *, evAssignCreated *, LONG InfoSize);
 static void event_volume_deleted(OBJECTID *, evAssignDeleted *, LONG InfoSize);
 
-static const struct FieldDef clAuto[];
 static const struct FieldArray clFields[];
 
 static void add_file_item(objFileView *, objXML *, struct FileInfo *);
@@ -191,7 +190,7 @@ static ERROR FILEVIEW_Activate(objFileView *Self, APTR Void)
          LONG size = StrLength(Self->Path) + StrLength(name) + 2;
          if (!AllocMemory(size, MEM_NO_CLEAR|MEM_STRING, &str, NULL)) {
             STRING copy = str;
-            if ((Self->Path) AND (Self->Path[0] != ':')) copy += StrCopy(Self->Path, copy, COPY_ALL);
+            if (Self->Path[0] != ':') copy += StrCopy(Self->Path, copy, COPY_ALL);
             copy += StrCopy(name, copy, COPY_ALL);
             if ((copy[-1] != ':') AND (copy[-1] != '/')) {
                *copy++ = '/';
@@ -1444,3 +1443,4 @@ void free_fileview(void)
 {
    if (clFileView) { acFree(clFileView); clFileView = NULL; }
 }
+

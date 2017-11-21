@@ -1464,7 +1464,7 @@ struct ActionTable {
 
 struct ChildEntry {
    OBJECTID ObjectID;    // Object ID
-   LONG     ClassID;     // The class ID of the referenced object.
+   CLASSID  ClassID;     // The class ID of the referenced object.
 };
 
 struct ListTasks {

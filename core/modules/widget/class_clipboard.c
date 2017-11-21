@@ -71,8 +71,6 @@ struct ClipEntry {
 };
 
 static const struct FieldArray clFields[];
-static const struct FieldDef clFlags[];
-static const struct FieldDef clResponse[];
 
 static ERROR add_clip(objClipboard *, LONG, CSTRING, LONG, CLASSID, LONG, LONG *);
 static void free_clip(objClipboard *, struct ClipEntry *);
@@ -779,7 +777,7 @@ static ERROR CLIPBOARD_GetFiles(objClipboard *Self, struct clipGetFiles *Args)
       struct ClipEntry *clips = (struct ClipEntry *)(header + 1);
 
       UBYTE buffer[100];
-      STRING files, *list, str;
+      STRING files, str;
       ERROR error;
       WORD index, i, j;
       LONG len;
@@ -806,6 +804,7 @@ static ERROR CLIPBOARD_GetFiles(objClipboard *Self, struct clipGetFiles *Args)
          return ERR_NoData;
       }
 
+      STRING *list = NULL;
       if (clips[index].Files) {
          if (!(error = AccessMemory(clips[index].Files, MEM_READ, 3000, &files))) {
             MEMINFO info;

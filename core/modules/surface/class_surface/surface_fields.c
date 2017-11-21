@@ -366,7 +366,7 @@ static ERROR SET_PopOver(objSurface *Self, OBJECTID Value)
    if (Self->Head.Flags & NF_INITIALISED) return PostError(ERR_Immutable);
 
    if (Value) {
-      LONG class_id = GetClassID(Value);
+      CLASSID class_id = GetClassID(Value);
       if (class_id != ID_SURFACE) {
          OBJECTPTR obj;
          if (!AccessObject(Value, 3000, &obj)) {

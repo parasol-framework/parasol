@@ -2705,7 +2705,7 @@ static struct XMLTag * get_item_xy(objView *Self, struct XMLTag **Array, LONG X,
          }
       }
    }
-   else if ((Self->Style IS VIEW_COLUMN)) {
+   else if (Self->Style IS VIEW_COLUMN) {
       for (index=0; Array[index]; index++) {
          if (!(node = Array[index]->Private)) continue;
          if (!(node->Flags & NODE_ITEM)) continue;

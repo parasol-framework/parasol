@@ -129,12 +129,6 @@ static ERROR check_overlap(objWindow *, LONG *, LONG *, LONG *, LONG *);
 static void smart_limits(objWindow *);
 static void draw_border(objWindow *, objSurface *, objBitmap *);
 
-INLINE BYTE HOSTED_WINDOW(objWindow *Self)
-{
-   if ((!Self->Surface->ParentID) AND (Self->Surface->DisplayID)) return TRUE;
-   else return FALSE;
-}
-
 //****************************************************************************
 
 static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
@@ -1377,7 +1371,7 @@ dimensions when it is loaded.
 
 static ERROR GET_Icon(objWindow *Self, STRING *Value)
 {
-   if (Self->Icon) {
+   if (Self->Icon[0]) {
       *Value = Self->Icon;
       return ERR_Okay;
    }
@@ -1523,7 +1517,7 @@ For information on the specifics of menu customisation, please refer to the @Men
 
 static ERROR GET_Menu(objWindow *Self, STRING *Value)
 {
-   if (Self->Menu) {
+   if (Self->Menu[0]) {
       *Value = Self->Menu;
       return ERR_Okay;
    }
@@ -1826,7 +1820,7 @@ trimmed if it exceeds the maximum number of possible characters.
 
 static ERROR GET_Title(objWindow *Self, STRING *Value)
 {
-   if (Self->Title) {
+   if (Self->Title[0]) {
       *Value = Self->Title;
       return ERR_Okay;
    }

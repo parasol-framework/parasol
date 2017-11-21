@@ -2198,11 +2198,16 @@ static ERROR audio_timer(objAudio *Self, LARGE Elapsed, LARGE CurrentTime)
 
    return ERR_Okay;
 
-#else
+#elif _WIN32
 
    dsPlay(Self);
 
    return ERR_Okay;
+
+#else
+
+   #warning No audio timer support on this platform.
+   return ERR_NoSupport;
 
 #endif
 }

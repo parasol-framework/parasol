@@ -55,7 +55,6 @@ static ERROR GET_Args(objParc *, CSTRING *);
 static const struct ActionArray clActions[];
 static const struct FieldArray clFields[];
 static const struct FieldDef clFlags[];
-static const struct FieldDef clMode[];
 
 //****************************************************************************
 

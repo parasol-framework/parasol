@@ -1202,7 +1202,7 @@ static void gen_group_bkgd(objView *Self, CSTRING Script, objBitmap **Bitmap, CS
    else {
       objSurface *surface;
       ERROR error;
-      if (!NewLockedObject(ID_SURFACE, NF_INTEGRAL, &surface, &Self->GroupSurfaceID)) {
+      if (!(error = NewLockedObject(ID_SURFACE, NF_INTEGRAL, &surface, &Self->GroupSurfaceID))) {
          SetFields(surface,
             FID_Parent|TLONG, 0,
             FID_Width|TLONG,  width,

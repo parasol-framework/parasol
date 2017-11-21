@@ -112,7 +112,7 @@ static LONG ReadLong(OBJECTPTR File)
    return value;
 }
 
-#ifdef __linux__
+#ifndef _WIN32
 static LONG SampleFormat(objSound *Self)
 {
    if (Self->BitsPerSample IS 8) {
