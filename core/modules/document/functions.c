@@ -6362,33 +6362,33 @@ static BYTE valid_objectid(objDocument *Self, OBJECTID ObjectID)
 
 //****************************************************************************
 
-static LONG getutf8(CSTRING str, LONG *Unicode)
+static LONG getutf8(CSTRING Value, LONG *Unicode)
 {
    LONG i, len, code;
 
-   if (*str < 128) {
-      *Unicode = *str;
+   if (!(*Value & 0x80)) {
+      if (Unicode) *Unicode = *Value;
       return 1;
    }
-   else if ((*str & 0xe0) IS 0xc0) {
+   else if ((*Value & 0xe0) IS 0xc0) {
       len  = 2;
-      code = *str & 0x1f;
+      code = *Value & 0x1f;
    }
-   else if ((*str & 0xf0) IS 0xe0) {
+   else if ((*Value & 0xf0) IS 0xe0) {
       len  = 3;
-      code = *str & 0x0f;
+      code = *Value & 0x0f;
    }
-   else if ((*str & 0xf8) IS 0xf0) {
+   else if ((*Value & 0xf8) IS 0xf0) {
       len  = 4;
-      code = *str & 0x07;
+      code = *Value & 0x07;
    }
-   else if ((*str & 0xfc) IS 0xf8) {
+   else if ((*Value & 0xfc) IS 0xf8) {
       len  = 5;
-      code = *str & 0x03;
+      code = *Value & 0x03;
    }
-   else if ((*str & 0xfc) IS 0xfc) {
+   else if ((*Value & 0xfc) IS 0xfc) {
       len  = 6;
-      code = *str & 0x01;
+      code = *Value & 0x01;
    }
    else {
       // Unprintable character
@@ -6397,17 +6397,17 @@ static LONG getutf8(CSTRING str, LONG *Unicode)
    }
 
    for (i=1; i < len; ++i) {
-      if ((str[i] & 0xc0) != 0x80) code = -1;
+      if ((Value[i] & 0xc0) != 0x80) code = -1;
       code <<= 6;
-      code |= str[i] & 0x3f;
+      code |= Value[i] & 0x3f;
    }
 
    if (code IS -1) {
-      *Unicode = 0;
+      if (Unicode) *Unicode = 0;
       return 1;
    }
    else {
-      *Unicode = code;
+      if (Unicode) *Unicode = code;
       return len;
    }
 }
