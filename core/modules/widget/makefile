@@ -11,7 +11,7 @@ SOURCES = widget.c class_button.c class_checkbox.c class_resize.c class_scrollba
           class_text/text.c class_menu/menu.c class_view/view.c class_clipboard.c class_fileview/fileview.c
 OBJECTS := $(addprefix obj/,$(subst .c,.o,$(SOURCES)))
 CFLAGS += -DMOD_NAME=$(NAME)
-BLOBS := obj/class_fileview/fileview_shortcut.o obj/class_dialog_script.o
+BLOBS := class_fileview/fileview_shortcut.c class_dialog_script.h
 
 -include deps-$(OSTYPE).mak
 
@@ -22,10 +22,13 @@ endif
 
 compile: $(DEST) hashes.h
 
-$(DEST): $(OBJECTS) $(BLOBS)
+class_dialog_script.h: class_dialog_script.rpl
+	xxd -c20 -i class_dialog_script.rpl | sed 's/class_dialog_script_rpl/glDocumentXML/g;s/glDocumentXML_len/glDocumentXMLLength/g' > $@
+
+$(DEST): $(OBJECTS)
 	$(CC) $(CFLAGS) $(LIBLINK_STDC) $^ $(LINK)
 
-$(OBJECTS): obj/%.o: %.c
+$(OBJECTS): obj/%.o: %.c class_dialog_script.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 $(SOURCES): $(HEADER)
@@ -38,13 +41,10 @@ obj/class_menu/menu.o: class_menu/functions.c class_menu/menuitem.c
 
 obj/class_view/view.o: class_view/view_fields.c class_view/view_functions.c
 
-obj/class_fileview/fileview.o: class_fileview/fileview_fields.c class_fileview/fileview_functions.c
+obj/class_fileview/fileview.o: class_fileview/fileview_fields.c class_fileview/fileview_functions.c class_fileview/fileview_shortcut.c
 
-obj/class_fileview/fileview_shortcut.o: class_fileview/fileview_shortcut.fluid makefile
-	$(OBJCOPY) $(OBJFLAGS) --redefine-sym _binary_class_fileview_fileview_shortcut_fluid_start=glNewShortcutScript --redefine-sym _binary_class_fileview_fileview_shortcut_fluid_end=glNewShortcutScriptEnd -I binary $< $@
-
-obj/class_dialog_script.o: class_dialog_script.rpl makefile
-	$(OBJCOPY) $(OBJFLAGS) --redefine-sym _binary_class_dialog_script_rpl_start=glDocumentXML --redefine-sym _binary_class_dialog_script_rpl_end=glDocumentXMLEnd -I binary $< $@
+class_fileview/fileview_shortcut.c: class_fileview/fileview_shortcut.fluid
+	xxd -c20 -i class_fileview/fileview_shortcut.fluid | sed 's/class_fileview_fileview_shortcut_fluid/glNewShortcutScript/g;s/glNewShortcutScript_len/glNewShortcutScriptLength/g' > $@
 
 hashes.h: hashes.fdl
 	$(IDL_C) src=hashes.fdl output=hashes.h

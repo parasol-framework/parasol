@@ -61,13 +61,11 @@ documentation for the aforementioned areas for further information.
 #include <parasol/modules/surface.h>
 #include "defs.h"
 
+#include "class_dialog_script.h"
+
 static objXML *glXML = NULL;
 static OBJECTPTR clDialog = NULL;
 static LONG glBreakMessageID = 0;
-
-extern const char glDocumentXML[];
-extern const char glDocumentXMLEnd[];
-LONG glDocumentXMLSize;
 
 static const struct FieldArray clFields[];
 static const struct FieldDef clDialogResponse[];
@@ -1179,9 +1177,9 @@ static ERROR create_window(objDialog *Self)
                      acSetVar(Self->Document, "Window", buffer);
 
                      STRING scriptfile;
-                     if (!AllocMemory(glDocumentXMLSize+1, MEM_STRING|MEM_NO_CLEAR, &scriptfile, NULL)) {
-                        CopyMemory(glDocumentXML, scriptfile, glDocumentXMLSize);
-                        scriptfile[glDocumentXMLSize] = 0;
+                     if (!AllocMemory(glDocumentXMLLength+1, MEM_STRING|MEM_NO_CLEAR, &scriptfile, NULL)) {
+                        CopyMemory(glDocumentXML, scriptfile, glDocumentXMLLength);
+                        scriptfile[glDocumentXMLLength] = 0;
                         acDataXML(Self->Document, scriptfile);
                         FreeMemory(scriptfile);
                         error = ERR_Okay;
@@ -1252,7 +1250,6 @@ static const struct FieldArray clFields[] = {
 
 ERROR init_dialog(void)
 {
-   glDocumentXMLSize = (LONG)(glDocumentXMLEnd - glDocumentXML);
    glBreakMessageID = AllocateID(IDTYPE_MESSAGE);
 
    // Load the default template if the environment specifies one

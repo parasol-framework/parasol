@@ -30,6 +30,8 @@ For an existing example of accepted usage, please refer to the FileDialog Fluid 
 #include <parasol/modules/surface.h>
 #include "../defs.h"
 
+#include "fileview_shortcut.c"
+
 #define TITLE_RENAME    "Rename"
 #define TITLE_CREATEDIR "Create New Directory"
 #define TITLE_DELETE    "Confirm Deletion"
@@ -435,18 +437,13 @@ AllocMemory
 
 static ERROR FILEVIEW_CreateShortcut(objFileView *Self, struct fvCreateShortcut *Args)
 {
-   extern char glNewShortcutScript[];
-   extern char glNewShortcutScriptEnd[];
-
    LogBranch(NULL);
-
-   LONG scriptsize = glNewShortcutScriptEnd - glNewShortcutScript;
-
+    
    STRING scriptfile;
    ERROR error;
-   if (!AllocMemory(scriptsize+1, MEM_STRING|MEM_NO_CLEAR, &scriptfile, NULL)) {
-      CopyMemory(glNewShortcutScript, scriptfile, scriptsize);
-      scriptfile[scriptsize] = 0;
+   if (!AllocMemory(glNewShortcutScriptLength+1, MEM_STRING|MEM_NO_CLEAR, &scriptfile, NULL)) {
+      CopyMemory(glNewShortcutScript, scriptfile, glNewShortcutScriptLength);
+      scriptfile[glNewShortcutScriptLength] = 0;
 
       OBJECTPTR script;
       if (!CreateObject(ID_SCRIPT, NF_INTEGRAL, &script,
@@ -1173,7 +1170,7 @@ restart:
 
    if (Self->DeviceInfo) { acFree(Self->DeviceInfo); Self->DeviceInfo = NULL; }
 
-   if ((Self->Path) AND (Self->Path[0] != ':') AND (Self->Path[0])) {
+   if ((Self->Path[0] != ':') AND (Self->Path[0])) {
       CreateObject(ID_STORAGEDEVICE, NF_INTEGRAL, &Self->DeviceInfo,
          FID_Volume|TSTR, Self->Path,
          TAGEND);
