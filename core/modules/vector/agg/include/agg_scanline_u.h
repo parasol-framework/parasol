@@ -126,7 +126,6 @@ namespace agg
             m_cur_span(0)
         {}
 
-        //--------------------------------------------------------------------
         void reset(int min_x, int max_x)
         {
             unsigned max_len = max_x - min_x + 2;
@@ -140,7 +139,6 @@ namespace agg
             m_cur_span = &m_spans[0];
         }
 
-        //--------------------------------------------------------------------
         void add_cell(int x, unsigned cover)
         {
             x -= m_min_x;
@@ -159,7 +157,6 @@ namespace agg
             m_last_x = x;
         }
 
-        //--------------------------------------------------------------------
         void add_cells(int x, unsigned len, const cover_type* covers)
         {
             x -= m_min_x;
@@ -178,7 +175,6 @@ namespace agg
             m_last_x = x + len - 1;
         }
 
-        //--------------------------------------------------------------------
         void add_span(int x, unsigned len, unsigned cover)
         {
             x -= m_min_x;
@@ -197,13 +193,11 @@ namespace agg
             m_last_x = x + len - 1;
         }
 
-        //--------------------------------------------------------------------
-        void finalize(int y) 
+        void finalize(int y)
         { 
             m_y = y; 
         }
 
-        //--------------------------------------------------------------------
         void reset_spans()
         {
             m_last_x    = 0x7FFFFFF0;
@@ -229,15 +223,10 @@ namespace agg
         span*                 m_cur_span;
     };
 
-
-
-
     //==========================================================scanline_u8_am
-    // 
     // The scanline container with alpha-masking
-    // 
-    //------------------------------------------------------------------------
-    template<class AlphaMask> 
+
+    template<class AlphaMask>
     class scanline_u8_am : public scanline_u8
     {
     public:
@@ -249,20 +238,13 @@ namespace agg
         scanline_u8_am() : base_type(), m_alpha_mask(0) {}
         scanline_u8_am(const AlphaMask& am) : base_type(), m_alpha_mask(&am) {}
 
-        //--------------------------------------------------------------------
-        void finalize(int span_y)
-        {
+        void finalize(int span_y) {
             base_type::finalize(span_y);
-            if(m_alpha_mask)
-            {
+            if(m_alpha_mask) {
                 typename base_type::iterator span = base_type::begin();
                 unsigned count = base_type::num_spans();
-                do
-                {
-                    m_alpha_mask->combine_hspan(span->x, 
-                                                base_type::y(), 
-                                                span->covers, 
-                                                span->len);
+                do {
+                    m_alpha_mask->combine_hspan(span->x, base_type::y(), span->covers, span->len);
                     ++span;
                 }
                 while(--count);
@@ -272,9 +254,6 @@ namespace agg
     private:
         const AlphaMask* m_alpha_mask;
     };
-
-
-
 
     //===========================================================scanline32_u8
     class scanline32_u8
@@ -336,8 +315,6 @@ namespace agg
             unsigned         m_span_idx;
         };
 
-
-
         //--------------------------------------------------------------------
         scanline32_u8() :
             m_min_x(0),
@@ -346,84 +323,48 @@ namespace agg
         {}
 
         //--------------------------------------------------------------------
-        void reset(int min_x, int max_x)
-        {
+
+        void reset(int min_x, int max_x) {
             unsigned max_len = max_x - min_x + 2;
-            if(max_len > m_covers.size())
-            {
-                m_covers.resize(max_len);
-            }
+            if (max_len > m_covers.size()) m_covers.resize(max_len);
             m_last_x = 0x7FFFFFF0;
             m_min_x  = min_x;
             m_spans.remove_all();
         }
 
-        //--------------------------------------------------------------------
-        void add_cell(int x, unsigned cover)
-        {
+        void add_cell(int x, unsigned cover) {
             x -= m_min_x;
             m_covers[x] = cover_type(cover);
-            if(x == m_last_x+1)
-            {
-                m_spans.last().len++;
-            }
-            else
-            {
-                m_spans.add(span(coord_type(x + m_min_x), 1, &m_covers[x]));
-            }
+            if (x == m_last_x+1) m_spans.last().len++;
+            else m_spans.add(span(coord_type(x + m_min_x), 1, &m_covers[x]));
             m_last_x = x;
         }
 
-        //--------------------------------------------------------------------
-        void add_cells(int x, unsigned len, const cover_type* covers)
-        {
+        void add_cells(int x, unsigned len, const cover_type* covers) {
             x -= m_min_x;
             memcpy(&m_covers[x], covers, len * sizeof(cover_type));
-            if(x == m_last_x+1)
-            {
-                m_spans.last().len += coord_type(len);
-            }
-            else
-            {
-                m_spans.add(span(coord_type(x + m_min_x), 
-                                 coord_type(len), 
-                                 &m_covers[x]));
-            }
+            if (x == m_last_x+1) m_spans.last().len += coord_type(len);
+            else m_spans.add(span(coord_type(x + m_min_x), coord_type(len), &m_covers[x]));
             m_last_x = x + len - 1;
         }
 
-        //--------------------------------------------------------------------
-        void add_span(int x, unsigned len, unsigned cover)
-        {
+        void add_span(int x, unsigned len, unsigned cover) {
             x -= m_min_x;
             memset(&m_covers[x], cover, len);
-            if(x == m_last_x+1)
-            {
-                m_spans.last().len += coord_type(len);
-            }
-            else
-            {
-                m_spans.add(span(coord_type(x + m_min_x), 
-                                 coord_type(len), 
-                                 &m_covers[x]));
-            }
+            if (x == m_last_x+1) m_spans.last().len += coord_type(len);
+            else m_spans.add(span(coord_type(x + m_min_x), coord_type(len), &m_covers[x]));
             m_last_x = x + len - 1;
         }
 
-        //--------------------------------------------------------------------
-        void finalize(int y) 
-        { 
+        void finalize(int y) {
             m_y = y; 
         }
 
-        //--------------------------------------------------------------------
-        void reset_spans()
-        {
+        void reset_spans() {
             m_last_x = 0x7FFFFFF0;
             m_spans.remove_all();
         }
 
-        //--------------------------------------------------------------------
         int      y()           const { return m_y; }
         unsigned num_spans()   const { return m_spans.size(); }
         const_iterator begin() const { return const_iterator(m_spans); }
@@ -434,21 +375,15 @@ namespace agg
         const self_type& operator = (const self_type&);
 
     private:
-        int                   m_min_x;
-        int                   m_last_x;
-        int                   m_y;
+        int m_min_x;
+        int m_last_x;
+        int m_y;
         pod_array<cover_type> m_covers;
         span_array_type       m_spans;
     };
 
-
-
-
     //========================================================scanline32_u8_am
-    // 
     // The scanline container with alpha-masking
-    // 
-    //------------------------------------------------------------------------
     template<class AlphaMask> 
     class scanline32_u8_am : public scanline32_u8
     {
