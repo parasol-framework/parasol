@@ -585,7 +585,7 @@
 
     <struct name="ChildEntry" comment="Structure for ListChildren() function">
       <field name="ObjectID" type="OBJECTID">Object ID</field>
-      <field name="ClassID" type="LONG">The class ID of the referenced object.</field>
+      <field name="ClassID" type="CLASSID">The class ID of the referenced object.</field>
     </struct>
 
     <struct name="Field" comment="Used to describe the public fields of a class.">

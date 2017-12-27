@@ -97,7 +97,7 @@
       <name>Write</name>
       <comment>Writes data to a file.</comment>
       <description>
-<p>Writes data from the provided buffer into the file, then updates the <field>Position</field> field to reflect the new read/write position.  You must have set the FL_WRITE bit in the <field>Flags</field> field when you initialised the file, or the call will fail.</p>
+<p>Writes data from the provided buffer into the file, then updates the <field>Position</field> field to reflect the new read/write position.  The FL_WRITE bit must be set in the <field>Flags</field> field when the file is initialised, or the call will fail.</p>
       </description>
       <result>
         <error code="LimitedSuccess">Only some of the data was written to the file.  Check the Result parameter to see how much data was written.</error>
@@ -1021,7 +1021,7 @@
 
     <struct name="ChildEntry" comment="Structure for ListChildren() function">
       <field name="ObjectID" type="OBJECTID">Object ID</field>
-      <field name="ClassID" type="LONG">The class ID of the referenced object.</field>
+      <field name="ClassID" type="CLASSID">The class ID of the referenced object.</field>
     </struct>
 
     <struct name="Field" comment="Used to describe the public fields of a class.">
