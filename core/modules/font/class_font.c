@@ -58,6 +58,16 @@ static ERROR SET_Style(objFont *Self, STRING Value);
 static const struct ActionArray clFontActions[];
 static const struct FieldArray clFontFields[];
 
+const char * get_ft_error(FT_Error err)
+{
+    #undef __FTERRORS_H__
+    #define FT_ERRORDEF( e, v, s )  case e: return s;
+    #define FT_ERROR_START_LIST     switch (err) {
+    #define FT_ERROR_END_LIST       }
+    #include FT_ERRORS_H
+    return "(Unknown error)";
+}
+
 //****************************************************************************
 
 static ERROR add_font_class(void)
@@ -1605,7 +1615,7 @@ static ERROR draw_vector_font(objFont *Self)
             }
             else {
                charlen = getutf8(str, &unicode); // Character to print
-               // Get the ending coordinate for the character
+               // Get the ending coordinate for the glyph
                LONG ex = dxcoord + (unicode < 256 ? Self->prvChar[unicode].Advance : Self->prvChar[Self->prvDefaultChar].Advance);
                if (ex >= Self->WrapEdge) break; // Finish if there is no room for the character
 
@@ -1687,7 +1697,10 @@ static ERROR draw_vector_font(objFont *Self)
          }
          else {
             struct font_glyph *src;
-            if (!(src = get_glyph(Self, unicode, TRUE))) break;
+            if (!(src = get_glyph(Self, unicode, TRUE))) {
+               LogMsg("Failed to acquire glyph for character %d '%lc'", unicode, unicode);
+               break;
+            }
             glyph = src->GlyphIndex;
 
             if (Self->Flags & FTF_KERNING) {
@@ -2063,10 +2076,14 @@ static struct font_glyph * get_glyph(objFont *Self, ULONG Unicode, UBYTE GetBitm
       }
    }
 
-   if (FT_Load_Glyph(Self->FTFace, glyph_index, FT_LOAD_DEFAULT)) return NULL;
+   FT_Error fterr;
+   if ((fterr = FT_Load_Glyph(Self->FTFace, glyph_index, FT_LOAD_DEFAULT))) {
+      LogF("@","Failed to load glyph %d '%lc', FT error: %s", glyph_index, Unicode, get_ft_error(fterr));
+      return NULL;
+   }
 
    if ((!Self->Angle) AND (cache->Glyphs->Total < 256)) { // Cache this glyph
-      MSG("Creating new cache entry for unicode value %d, advance %d", Unicode, (LONG)Self->FTFace->glyph->advance.x>>FT_DOWNSIZE);
+      FMSG("~get_glyph","Creating new cache entry for unicode value %d, advance %d, get-bitmap %d", Unicode, (LONG)Self->FTFace->glyph->advance.x>>FT_DOWNSIZE, GetBitmap);
 
       struct font_glyph glyph;
       ClearMemory(&glyph, sizeof(glyph));
@@ -2074,8 +2091,14 @@ static struct font_glyph * get_glyph(objFont *Self, ULONG Unicode, UBYTE GetBitm
       if (GetBitmap) {
          if (Self->Outline.Alpha > 0) generate_vector_outline(Self, &glyph);
 
-         if (FT_Render_Glyph(Self->FTFace->glyph, rendermode)) return NULL;
-         if (Self->FTFace->glyph->bitmap.pixel_mode != FT_PIXEL_MODE_GRAY) return NULL;
+         if (FT_Render_Glyph(Self->FTFace->glyph, rendermode)) { STEP(); return NULL; }
+         if (Self->FTFace->glyph->bitmap.pixel_mode != FT_PIXEL_MODE_GRAY) { STEP(); return NULL; }
+
+         if ((!Self->FTFace->glyph->bitmap.pitch) OR (!Self->FTFace->glyph->bitmap.rows)) {
+            LogF("@","Invalid glyph dimensions of %dx%d", Self->FTFace->glyph->bitmap.pitch, Self->FTFace->glyph->bitmap.rows);
+            STEP();
+            return NULL;
+         }
       }
 
       glyph.Char.Top       = Self->FTFace->glyph->bitmap_top;
@@ -2094,16 +2117,30 @@ static struct font_glyph * get_glyph(objFont *Self, ULONG Unicode, UBYTE GetBitm
       if (!KeySet(cache->Glyphs, Unicode, &glyph, sizeof(glyph))) {
          struct font_glyph *key_glyph;
          KeyGet(cache->Glyphs, Unicode, &key_glyph, NULL);
-         if (!GetBitmap) return key_glyph;
+         if (!GetBitmap) { // Don't return a copy of the bitmap
+            STEP();
+            return key_glyph;
+         }
 
          LONG size = Self->FTFace->glyph->bitmap.pitch * Self->FTFace->glyph->bitmap.rows;
          if (!AllocMemory(size, MEM_NO_CLEAR|MEM_UNTRACKED, &key_glyph->Char.Data, NULL)) {
             CopyMemory(Self->FTFace->glyph->bitmap.buffer, key_glyph->Char.Data, size);
+            STEP();
             return key_glyph;
          }
-         else return NULL;
+         else {
+            LogF("@get_glyph","Failed to allocate glyph buffer of %d bytes.", size);
+            STEP();
+            return NULL;
+         }
       }
-      else return NULL;
+      else {
+         LogF("@get_glyph","Failed to KeySet() glyph character %d.", Unicode);
+         STEP();
+         return NULL;
+      }
+
+      STEP();
    }
    else {
       // Cache is full.  Return a temporary glyph with graphics data if requested.
