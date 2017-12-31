@@ -1100,7 +1100,7 @@ static ERROR WINDOW_NewOwner(objWindow *Self, struct acNewOwner *Args)
    // yet, switch to that surface as our new window parent.
 
    if (!(Self->Head.Flags & NF_INITIALISED)) {
-      if (Args->ClassID IS ID_SURFACE) {
+      if ((CLASSID)Args->ClassID IS ID_SURFACE) {
          Self->Surface->ParentID = Args->NewOwnerID;
       }
       else if (Args->ClassID IS ID_WINDOW) {

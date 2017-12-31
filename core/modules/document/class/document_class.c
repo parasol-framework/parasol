@@ -909,7 +909,7 @@ static ERROR DOCUMENT_Init(objDocument *Self, APTR Void)
          LONG count = ARRAYSIZE(list);
          if (!ListChildren(Self->SurfaceID, list, &count)) {
             for (--count; count >= 0; count--) {
-               if ((list[count].ObjectID > 0) AND (list[count].ClassID IS ID_SCROLLBAR)) {
+               if ((list[count].ObjectID > 0) AND (list[count].ClassID IS (CLASSID)ID_SCROLLBAR)) {
                   objScrollbar *scrollbar;
                   if ((scrollbar = GetObjectAddress(list[count].ObjectID))) {
                      LONG direction;
