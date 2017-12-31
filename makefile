@@ -24,6 +24,7 @@ compile:
 # Full build: Clean everything and prepare a build suitable for binary release.
 
 full-compile:
+	mkdir -p "$(PARASOL_MODULES)"
 	$(MAKE) -C core/link -f makefile clean
 	$(MAKE) -C core/link -f makefile
 	$(MAKE) -C core/src -f makefile clean
