@@ -905,16 +905,18 @@ static ERROR MENU_Show(objMenu *Self, APTR Void)
 
       Self->prvReverseX = (Self->Flags & MNF_REVERSE_X) ? TRUE : FALSE;
 
-      if (Self->ParentID) {
+      if (Self->ParentID) { // Display this menu relative to its parent in the hierarchy
          LONG parent_x = 0, parent_y = 0, parent_width = 0;
 
          objMenu *parent;
          if (!AccessObject(Self->ParentID, 1000, &parent)) {
-            SURFACEINFO *info;
-            if ((parent->MenuSurfaceID) AND (!drwGetSurfaceInfo(parent->MenuSurfaceID, &info))) {
-               parent_x = info->X;
-               parent_y = info->Y;
-               parent_width = info->Width;
+            if (parent->MenuSurfaceID) {
+               SURFACEINFO *info;
+               if (!drwGetSurfaceInfo(parent->MenuSurfaceID, &info)) {
+                  parent_x = info->X;
+                  parent_y = info->Y;
+                  parent_width = info->Width;
+               }
             }
             parent->CurrentMenu = Self;
             ReleaseObject(parent);
@@ -930,14 +932,16 @@ static ERROR MENU_Show(objMenu *Self, APTR Void)
             else {
                SURFACEINFO *target;
                if ((Self->TargetID) AND (!drwGetSurfaceInfo(Self->TargetID, &target))) {
+                  // A specific target surface is hosting the menu layer; adjust the coordinate if necessary to keep
+                  // it from being partially hidden.
                   if (x + surface->Width >= target->Width) {
-                     x = info->X - surface->Width + Self->RightMargin;
+                     x = target->X - surface->Width + Self->RightMargin;
                      Self->prvReverseX = TRUE;
                   }
                }
             }
 
-            acMoveToPoint(surface, x, info->Y + Self->VOffset, 0, MTF_X|MTF_Y);
+            acMoveToPoint(surface, x, parent_y + Self->VOffset, 0, MTF_X|MTF_Y);
 
             ensure_on_display(Self);
          }
