@@ -6366,7 +6366,7 @@ static LONG getutf8(CSTRING Value, LONG *Unicode)
 {
    LONG i, len, code;
 
-   if (!(*Value & 0x80)) {
+   if ((*Value & 0x80) != 0x80) {
       if (Unicode) *Unicode = *Value;
       return 1;
    }
