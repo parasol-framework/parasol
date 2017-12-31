@@ -1,0 +1,10 @@
+*.ttf binary
+*.fon binary
+*.zip binary
+*.tar.gz binary
+*.gz binary
+*.tar binary
+*.dll binary
+*.so binary
+*.crt binary
+*.png diff=exif
