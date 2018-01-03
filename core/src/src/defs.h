@@ -1141,7 +1141,7 @@ struct ZipFile {
 #define HEAD_LENGTH         30   // END
 
 //****************************************************************************
-// Central directory structure for each archived file.  This appears at the end of the zip file.
+// Central folder structure for each archived file.  This appears at the end of the zip file.
 
 #define LIST_SIGNATURE      0
 #define LIST_VERSION        4

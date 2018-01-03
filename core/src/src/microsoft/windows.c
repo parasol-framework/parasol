@@ -767,7 +767,7 @@ DWORD winGetExeDirectory(DWORD Length, unsigned char *String)
    LONG len, i;
    WCHAR **list;
 
-   // Use GetModuleFileName() to get the path of our executable and then extract the directory location from that.
+   // Use GetModuleFileName() to get the path of our executable and then extract the folder location from that.
 
    if ((len = GetModuleFileName(NULL, String, Length))) {
       for (i=len; i > 0; i--) {
@@ -828,7 +828,7 @@ DWORD winGetExeDirectory(DWORD Length, unsigned char *String)
       }
    }
 
-   // Last resort - use the current directory
+   // Last resort - use the current folder
 
    return GetCurrentDirectory(Length, String);
 }
@@ -2009,7 +2009,7 @@ LONG winTestLocation(STRING Location, BYTE CaseSensitive)
          else return 0;
       }
       else {
-         // We have been asked to check for the explicit existence of a directory.
+         // We have been asked to check for the explicit existence of a folder.
 
          result = 0;
          savepos = len-1;
@@ -2343,7 +2343,7 @@ LONG winFileInfo(STRING Path, long long *Size, struct DateTime *Time, BYTE *Fold
 }
 
 //****************************************************************************
-// Returns TRUE if the directory exists.
+// Returns TRUE if the folder exists.
 
 LONG winCheckDirectoryExists(STRING Path)
 {
@@ -2384,7 +2384,7 @@ LONG winCheckDirectoryExists(STRING Path)
                   FindClose(handle);
                   return 1;
                }
-               //else printf("Path exists but is not a directory.\n");
+               //else printf("Path exists but is not a folder.\n");
 
             } while (FindNextFileW(handle, &find));
 
@@ -2410,7 +2410,7 @@ LONG winCheckDirectoryExists(STRING Path)
                Path[i-1] = save;
                return 1;
             }
-            //else printf("Path exists but is not a directory.\n");
+            //else printf("Path exists but is not a folder.\n");
 
          } while (FindNextFileA(handle, &find));
 

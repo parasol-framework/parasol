@@ -582,7 +582,7 @@ static ERROR TASK_Activate(objTask *Self, APTR Void)
    //add.Argument = buffer;
    //Action(MT_AddTaskArgument, Self, &add);
 
-   // Determine the launch directory
+   // Determine the launch folder
 
    launchdir[0] = 0;
    if ((!GET_LaunchPath(Self, &path)) AND (path)) {
@@ -763,7 +763,7 @@ static ERROR TASK_Activate(objTask *Self, APTR Void)
 
 #elif __unix__
 
-   // Add a 'cd' command so that the application starts in its own directory
+   // Add a 'cd' command so that the application starts in its own folder
 
    path = NULL;
    GET_LaunchPath(Self, &path);
@@ -1628,7 +1628,7 @@ static ERROR TASK_Init(objTask *Self, APTR Void)
             }
          }
 
-         if (!Self->PathMID) { // Set the working directory
+         if (!Self->PathMID) { // Set the working folder
             if (getcwd(buffer, sizeof(buffer))) {
                for (len=0; buffer[len]; len++);
                if (!AllocMemory(len+2, MEM_STRING|MEM_NO_CLEAR|Self->Head.MemFlags, (void **)&Self->Path, &Self->PathMID)) {
@@ -2167,7 +2167,7 @@ Lookup: TSF
 -FIELD-
 LaunchPath: Launched executables will start in the path specified here.
 
-Use the LaunchPath field to specify the directory that a launched executable will start in when the task object is
+Use the LaunchPath field to specify the folder that a launched executable will start in when the task object is
 activated.  This will override all other path options, such as the RESET_PATH flag.
 
 *****************************************************************************/
@@ -2270,9 +2270,8 @@ static ERROR SET_Location(objTask *Self, CSTRING Value)
 -FIELD-
 Instance: The instance ID that the process belongs to.
 
-All tasks that use the Parasol API belong to a run-time instance.  Multiple tasks that share the same instance ID can
-communicate with each other. Tasks that do not share the same instance ID will not share the same name space or the
-same ID space, thus preventing interprocess communication.
+All tasks that use the Parasol API belong to a run-time instance that can host multiple processes.  Tasks that share
+the same instance ID can easily communicate with each other, while those that do not will be in a separate namespace.
 
 It is not possible to change the instance ID once the process has started.  New processes can be assigned an instance
 ID on creation with the `--instance` commandline argument.  By default, any new process will share the same
@@ -2337,19 +2336,17 @@ process to return.  The time out is defined in seconds.
 -FIELD-
 ProcessID: Reflects the process ID when an executable is launched.
 
-If a task object launches an executable, the ProcessID will be set to the process ID that was assigned to the
-executable.  At all other times the ProcessID is set to zero.
+If a task object launches an executable file via Activate(), the ProcessID will be set to the 'pid' that was assigned
+to the new process by the host system.  At all other times the ProcessID is set to zero.
 
 -FIELD-
-Path: The current path being used by a task object.
+Path: The current working folder of the active process.
 
-The Path specifies a "working directory" that determines where files are loaded from when an absolute path is not
-specified for file access.  The following example demonstrates an absolute file path: `parasol:documents/readme.txt`
+The Path specifies the 'working folder' that determines where files are loaded from when an absolute path is not
+otherwise specified for file access.  Initially the working folder is usually set to the folder of the parent
+process, such as that of a terminal shell.
 
-This is a relative file path: `my/files/readme.txt`
-
-In the second instance, if the task's current path was `user:documents/` then the filesystem would expand the
-filename to `user:documents/my/files/readme.txt`.
+The working folder can be changed at any time by updating the Path with a new folder location.
 
 *****************************************************************************/
 
@@ -2420,11 +2417,11 @@ static ERROR SET_Path(objTask *Self, CSTRING Value)
 -FIELD-
 ProcessPath: The path of the executable that is associated with the task.
 
-The ProcessPath is set to the path of the executable that is associated with the task.  It is managed internally and
-cannot be altered.
+The ProcessPath is set to the path of the executable file that is associated with the task.  It is managed internally
+and cannot be altered.
 
 In Microsoft Windows it is not always possible to determine the origins of an executable, in which case the
-ProcessPath is set to the working directory in use at the time the process was launched.
+ProcessPath is set to the working folder in use at the time the process was launched.
 
 *****************************************************************************/
 
@@ -2478,8 +2475,8 @@ static ERROR SET_Priority(objTask *Self, LONG Value)
 -FIELD-
 ReturnCode: The task's return code can be retrieved following execution.
 
-If the task has executed and returned a code following its exit, you may read that code from the ReturnCode field.  If
-the task is still running, the error code ERR_TaskStillExists will be returned.
+Once a process has completed execution then its return code can be read from this field.  If process is still running,
+the error code ERR_TaskStillExists will be returned.
 
 -ERRORS-
 Okay
@@ -2548,12 +2545,11 @@ static ERROR SET_ReturnCode(objTask *Self, LONG Value)
 /*****************************************************************************
 
 -FIELD-
-Short: Short description of the program/task.
+Short: A short description of the process' purpose.
 
 This field allows for the specification of a short description for the process. The description should be under 80
 characters (one sentence).  The description is typically useful for occasions where the user is debugging the
-system or trying to get a quick overview of what tasks are currently running.  By creating a useful description,
-you can ease system maintenance for the user.
+system or trying to get a quick overview of the processes that are currently running.
 -END-
 
 *****************************************************************************/

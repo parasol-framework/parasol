@@ -1652,8 +1652,9 @@ static ERROR FILE_Watch(objFile *Self, struct flWatch *Args)
 -ACTION-
 Write: Writes data to a file.
 
-Writes data from the provided buffer into the file, then updates the #Position field to reflect the new read/write
-position.  The FL_WRITE bit must be set in the #Flags field when the file is initialised, or the call will fail.
+Writes data from the provided buffer into the file, then updates the #Position field to reflect the new
+read/write position.  You must have set the FL_WRITE bit in the #Flags field when you initialised the file, or
+the call will fail.
 
 -ERRORS-
 Okay: All of the data was written to the file.
@@ -1863,7 +1864,7 @@ static ERROR GET_Created(objFile *Self, struct DateTime **Value)
 
 /*****************************************************************************
 -FIELD-
-Date: The 'last modified' date stamp of the file.
+Date: The 'last modified' date stamp on the file.
 
 The Date field reflects the time at which the file was last modified.  It can also be used to set a new modification
 date.  Please note that if the file is open for writing, then date-stamped, then modified; the file system driver
@@ -2047,9 +2048,9 @@ static ERROR SET_Group(objFile *Self, LONG Value)
 -FIELD-
 Handle: The native system handle for the file opened by the file object.
 
-This field returns the native file system handle for the file opened by the file object.  The handle may exist as an
-integer or pointer value - in order to manage this in a multi-platform manner, the value is returned as a 64-bit
-integer.
+This field returns the native file system handle for the file opened by the file object.  The native handle may be an
+integer or pointer value in 32 or 64-bit format.  In order to manage this issue in a multi-platform manner, the value
+is returned as a 64-bit integer.
 
 ****************************************************************************/
 
@@ -2061,12 +2062,12 @@ static ERROR GET_Handle(objFile *Self, LARGE *Value)
 
 /****************************************************************************
 -FIELD-
-Icon: Returns an icon string that can be used for representing the file in a user interface.
+Icon: A path to an icon image that is suitable for representing the file in a user interface.
 
 This field returns the name of the best icon to use when representing the file to the user, for instance in a file
 list.  The icon style is determined by analysing the File's #Path.
 
-The resulting string is returned in the format `icons:category/name` and can be opened via the @Picture class.
+The resulting string is returned in the format `icons:category/name` and can be opened with the @Picture class.
 
 ****************************************************************************/
 
@@ -2322,9 +2323,10 @@ static ERROR SET_Link(objFile *Self, STRING Value)
 Path: Specifies the location of a file or folder.
 
 This field is required for initialisation and must either be in the format of a universal path string, or a path
-that is compatible with the host system.  The standard format for a universal path is `volume:folder/file`.
+that is compatible with the host system.  The standard format for a universal path is `volume:folder/file`, for
+instance `parasol:system/classes.bin`.
 
-To reference a folder, one would use `volume:folder/` (note the trailing slash).
+To reference a folder in a way that is distinct from a file, use a trailing slash as in `volume:folder/`.
 
 Referencing a `volume:` is optional.  In the event that a volume is not defined, the current working path is used
 as the point of origin.

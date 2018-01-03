@@ -68,9 +68,9 @@ module({ name="Core", copyright="Paul Manias 1996-2017" }, function()
 
   flags("TSF", { comment="Task flags" },
     "FOREIGN: Set this flag when using the task object to execute a foreign process - that is an executable that does not use the Parasol API.",
-    "DUMMY: Internal flag that marks the Task object as being for temporary use only.",
+    "DUMMY: Private. Marks the object as being for temporary use only.",
     "WAIT: This flag will cause the parent process to halt when the task is activated.  Control is returned to the parent process once the child process terminates.",
-    "RESET_PATH: If set, the executed process will start in its own directory rather than the directory of the parent process.",
+    "RESET_PATH: If set, the executed process will start in its own folder rather than the folder of the parent process.",
     "PRIVILEGED: During a normal execution process, any privileges of the parent process will be dropped so that the child process runs unprivileged.  This behaviour can be reversed if he PRIVILEGED flag is set, in which case the child process has the same privileges as the parent.",
     "SHELL: Enables shell mode.  On Unix systems, this means that a shell (usually BASH) will be used to launch the process.",
     "DEBUG: Additional debug messages will be printed during normal usage of the task class when this flag is set.",
@@ -89,7 +89,7 @@ module({ name="Core", copyright="Paul Manias 1996-2017" }, function()
     "WRITE",        "SETFIELD",       "CLIPBOARD",    "REFRESH",  "DISABLE",      "ENABLE",       "REDIMENSION",
     "MOVETOPOINT",  "SCROLLTOPOINT",  "CUSTOM",       "SORT",     "SAVESETTINGS", "SELECTAREA",   "UNDO")
 
-  flags("MHF", { comment="Internal options for request module function tables." },
+  flags("MHF", { comment="Internal options for requesting function tables from modules." },
     "NULL",
     "STRUCTURE|DEFAULT: Use structures to group exported functions (Linux, C/C++ standard)",
     "STATIC: Keep the module code in memory")
@@ -116,11 +116,11 @@ module({ name="Core", copyright="Paul Manias 1996-2017" }, function()
     "ARCHIVED: The date on which the file was most recently archived.  Not supported by most filesystems.")
 
   flags("VOLUME", { },
-    "REPLACE: If the volume already exists, all paths that are attached to it will be replaced with your new path setting.",
+    "REPLACE: If the volume already exists, all paths that are attached to it will be replaced with the new path setting.",
     "PRIORITY: If the volume already exists, the path will be inserted at the beginning of the path list so that it has priority over the others.",
-    "HIDDEN: Hides the volume so that it will not show up when reading the root directory.",
+    "HIDDEN: Hides the volume so that it will not show up when reading the root folder.",
     "SAVE: The volume will be saved to user:config/volumes.cfg if this flag is set.  This allows the volume to be automatically restored on the next reboot.  See also VOLUME_SYSTEM.",
-    "SYSTEM: If the VOLUME_SAVE option is used in conjunction with VOLUME_SYSTEM, the volume is saved to config:volumes.cfg as opposed to the user's home directory.  This means that the change is global to all users.  On secure platforms the current process may need administrative rights to write to the file.")
+    "SYSTEM: If the VOLUME_SAVE option is used in conjunction with VOLUME_SYSTEM, the volume is saved to config:volumes.cfg as opposed to the user's home folder.  This means that the change is global to all users.  On secure platforms the current process may need administrative rights to write to the file.")
 
   flags("FDL", { comment="Options for the File Delete() method." },
      "FEEDBACK: Automatically manage user feedback for deleting files by presenting dialog boxes.")
@@ -133,7 +133,7 @@ module({ name="Core", copyright="Paul Manias 1996-2017" }, function()
     "NO_LINKS: Treat symbolic links as normal files/folders.",
     "APPLY_SECURITY: When decompressing, apply individual file permissions if they are available in the compression file.")
 
-  flags("RSF", { },
+  flags("RSF", { comment="Flags for ResolvePath()"},
     "NO_FILE_CHECK: Do not test for the existence of the targeted file or folder during the resolution process.",
     "CHECK_VIRTUAL: If the volume referenced by Path is traced to another volume that is reserved by a virtual file system driver, ERR_VirtualVolume is returned. The volume is still resolved as far as possible and the resulting path will be returned by this function.",
     "APPROXIMATE: Ignores file extensions for the purpose of file name matching.",
@@ -143,10 +143,10 @@ module({ name="Core", copyright="Paul Manias 1996-2017" }, function()
 
   -- NB: The MFF flags are duplicated in the FileSystem's Win32 code if you're going to change these
 
-  flags("MFF", { comment="Flags for File Watch() method." },
-    "READ: File was accessed (read)",
-    "MODIFY|WRITE: File modified via write or truncation",
-    "CREATE: New file/link created or renamed in directory",
+  flags("MFF", { comment="Flags for the File Watch() method." },
+    "READ: File was accessed (read).",
+    "MODIFY|WRITE: File modified via write or truncation.",
+    "CREATE: New file/link created or renamed in folder.",
     "DELETE: Existing file deleted",
     "MOVED|RENAME: Existing file moved or renamed.",
     "ATTRIB: File permissions or datestamp changed.",
@@ -207,7 +207,7 @@ module({ name="Core", copyright="Paul Manias 1996-2017" }, function()
     "SIZE: Retrieve the byte size of each file.",
     "DATE|TIME: Retrieve the date stamp of each file.",
     "PERMISSIONS: Get permission/security information.",
-    "FILES|FILE: Read all files in the directory.",
+    "FILES|FILE: Read all files in the folder.",
     "FOLDERS|FOLDER: Read all folders/volumes in the folder.",
     "VOLUME: Feedback only - indicates a volume.",
     "LINK: Feedback only - file/folder is actually a link to another location.",
@@ -222,18 +222,18 @@ module({ name="Core", copyright="Paul Manias 1996-2017" }, function()
     { READ_ALL = "SIZE|DATE|PERMISSIONS|FILES|FOLDERS" })
 
   flags("FL", { comment="File flags" },
-    "WRITE: Prepares a file for writing data, starting at byte position 0.  If you want to start writing from the end of a file, use the Seek action after your file has been initialised successfully.",
-    "NEW: Set this flag when creating a new file. Note that if a file with the same name already exists, the old file (with all its data), will be destroyed. If you try to create a new file on a file that is already open by some other task, the initalisation will fail.",
-    "READ: Must be set on initialisation if the file needs to be opened for read access.",
+    "WRITE: Prepares a file for writing data, starting at byte position 0.  To start writing from the end of a file, use the Seek action after the file has been initialised.",
+    "NEW: Required when creating a new file.  If a file with the same name exists, its contents will be destroyed. If however the existing file is locked, the initalisation process will fail.",
+    "READ: Required if the file needs to be opened for read access.",
     "FOLDER|DIRECTORY: The file object represents a folder.",
-    "APPROXIMATE: Setting this flag allows a file object to find approximate matching file names when opening an existing file.  In basic terms it causes file extensions to be ignored; for instance if you attempt to open a file of 'screenshot.png' when only a file name of 'screenshot.jpg' exists under the same folder, the 'screenshot.jpg' file will be opened instead.  If multiple files could potentially match to the file name, the file object will select the first potential match that it comes across.",
+    "APPROXIMATE: Allows fuzzy matching of the file path when opening an existing file.  This means that the file extension will be ignored; for instance attempting to open a file of 'screenshot.png' when only a file name of 'screenshot.jpg' exists in the same folder, the 'screenshot.jpg' file will be opened instead.  If multiple files could potentially match to the file name, the file object will select the first match that is encountered.",
     "LINK: Read-Only.  Indicates that the file is a symbolic link or shortcut to another file.",
-    "BUFFER: Activates a special mode in which the file data is stored in a memory buffer rather than a disk file.  You are required to set the Size field to a value of at least 1 so that the file can determine the initial buffer size.  In this mode most of the available file operations are meaningless except for the Read, Write and Seek actions.",
-    "LOOP: In loop mode, the file object's position marker for read/write operations is allowed to extend past the actual file size.  Any read/write operation beyond the file size will loop back to the file at a corrected offset - for example, reading position 330 of a 100 byte file will in fact start the operation from the 30th byte.  Loop mode does not affect any other area besides the read, write and seek operations.  The loop feature is typically used to enable multimedia data streams with minimal effort.",
-    "FILE: Explicitly declares the file object as representing a file capable of storing data (as opposed to a device or folder for example).",
+    "BUFFER: Activates a special mode in which the file data is stored in a memory buffer rather than a disk file.  Set the Size field to a value of at least 1 so that the initial buffer size is configured.  In this mode many of the available file operations are meaningless except for the Read, Write and Seek actions.",
+    "LOOP: In loop mode, the file object's position marker for read/write operations is allowed to extend past the actual file size.  Any read/write operation beyond the file size will loop back to the file at a corrected offset - for example, reading position 330 of a 100 byte file will start the operation from the 30th byte.  Loop mode does not affect any other area besides the read, write and seek operations.  The loop feature is typically used to create multimedia data streams with minimal effort.",
+    "FILE: Explicitly declares the file object as an entity that stores content (as opposed to a device or folder for example).",
     "RESET_DATE: For internal use only",
-    "DEVICE: File is a system device (must set if you want to open a device for read/write)",
-    "STREAM: File data is streamed (e.g. PIPE, FIFO, socket) or is network based",
+    "DEVICE: The file is a system device (must set if opening a device for read/write operations)",
+    "STREAM: File data is streamed (e.g. PIPE, FIFO, socket) and may be accessed locally or via a network.",
     "EXCLUDE_FILES: Exclude files when scanning this folder.",
     "EXCLUDE_FOLDERS: Exclude folders when scanning this folder.")
 
@@ -255,9 +255,9 @@ module({ name="Core", copyright="Paul Manias 1996-2017" }, function()
      "IGNORE_STATUS: The timestamp and size of the file will not be checked, which will result in the cached version of the file being returned regardless of any recent file changes.")
 
   enum("FBK", { start=1, comment="Flags for file feedback." },
-     "MOVE_FILE: A file is or has been moved.",
-     "COPY_FILE: A file is or has been copied.",
-     "DELETE_FILE: A file is or has been deleted.")
+     "MOVE_FILE: A file is to be, or has been moved.",
+     "COPY_FILE: A file is to be, or has been copied.",
+     "DELETE_FILE: A file is to be, or has been deleted.")
 
   enum("FFR", { start=0, comment="Return codes available to the feedback routine" },
      "OKAY|CONTINUE: Continue processing uninterrupted.",
@@ -284,7 +284,7 @@ module({ name="Core", copyright="Paul Manias 1996-2017" }, function()
     "CREATE_LINK")
 
   enum("AST", { start=1, bits=64, comment="Tags for SetVolume()" }, -- Note: Tag names are not normally capitalised.
-    "Path|PATH: Required.  Follow this tag with the path to be set against the volume.  If setting multiple paths, separate each path with a semi-colon character.  Each path must terminate with a forward slash to denote a directory.",
+    "Path|PATH: Required.  Follow this tag with the path to be set against the volume.  If setting multiple paths, separate each path with a semi-colon character.  Each path must terminate with a forward slash to denote a folder.",
     "Name|NAME: Required.  Follow this tag with the string name of the volume.",
     "Flags|FLAGS: Optional VOLUME flags.",
     "Icon|ICON: An icon can be associated with the volume so that it has graphical representation when viewed in the UI.  The required icon string format is 'category/name'.",
@@ -307,20 +307,20 @@ module({ name="Core", copyright="Paul Manias 1996-2017" }, function()
 
   flags("NF", { comment="Flags that can be passed to NewObject().  If a flag needs to be stored with the object, it must be specified in the lower word." },
     "NO_TRACK|UNTRACKED: An object created with this flag will not be tracked back to the object that created it.  If combined with the NF_PUBLIC flag, the object can also remain in memory when the object's related task is terminated.",
-    "PUBLIC: By using the NF_PUBLIC flag, you can allocate public objects rather than the default private type.  A public object can be accessed and interacted with by any application directly, because the object structure and its data lies in public memory.  Public object structures can be accessed via exclusive access only (refer to the AccessObject() and ReleaseObject() functions).",
-    "FOREIGN_OWNER: Object is owned by an object in a foreign task.",
-    "INITIALISED: Set if the object has been initialised.",
+    "PUBLIC: Allocates a public object using shareable resources, allowing it to be accessed directly by any process.  Access is granted via exclusive access locks  - refer to the AccessObject() and ReleaseObject() functions.",
+    "FOREIGN_OWNER: Read-only indicator for when an object's parent is in a foreign process.",
+    "INITIALISED: Read-only indicator if the object has been initialised.",
     "INTEGRAL: Integral objects can only be allocated by classes that need to adopt the functionality of said object.  Integral objects do not appear in the object tree, effectively making them hidden from view.",
-    "UNLOCK_FREE: Set if the object is marked for deletion",
-    "FREE: Indicates that the object is being freed.",
-    "TIMER_SUB: Private object is subscribed to a timer.",
+    "UNLOCK_FREE: Read-only indicator for when the object is marked for deletion.",
+    "FREE: Read-only indicator for when the object is being freed.",
+    "TIMER_SUB: Indicates that the object is subscribed to a timer Zinterval.",
     "CREATE_OBJECT: Private. Called from CreateObject().",
     "FREE_MARK: Private",
     "NEW_OBJECT: Private. The object is in the process of being created.",
     "RECLASSED: The object switched from the base-class to a sub-class during initialisation.",
     "MESSAGE: Action has been called against the object through the message system (managed by ProcessMessages()).",
-    { UNIQUE = "0x40000000: Use this flag if you need to allocate an object which has a guaranteed unique name.  By using NF_UNIQUE, you can prevent your code from shadowing an object that exists with the same name.  This can be imperative when creating shared and public objects.  If it is discovered that an identically named object exists, NewObject() will return ERR_ObjectExists.  This flag works in conjunction with the Name argument.",
-      NAME   = "0x80000000: Use the Name argument to name the created object.  This flag is not required if using NF_UNIQUE.",
+    { UNIQUE = "0x40000000: Use to allocate an object that has a guaranteed unique name.  This will prevent code from shadowing any object that exists with the same name, which can be imperative when creating public objects.  If it is discovered that an identically named object exists, NewObject() will return ERR_ObjectExists.  This flag works in conjunction with the Name argument.",
+      NAME   = "0x80000000: Use the Name parameter to name the created object.  This flag is not required if using NF_UNIQUE.",
       PRIVATE = 0
     }
   )
@@ -887,13 +887,13 @@ module({ name="Core", copyright="Paul Manias 1996-2017" }, function()
   [[
    #ifdef PRV_FILE
    APTR   prvHandle;        // Directory handle.  If virtual, may store a private data address
-   STRING prvPath;          // Original directory location string
-   STRING prvResolvedPath;  // Resolved directory location
+   STRING prvPath;          // Original folder location string
+   STRING prvResolvedPath;  // Resolved folder location
    LONG   prvFlags;         // OpenFolder() RDF flags
-   LONG   prvTotal;         // Total number of items in the directory
+   LONG   prvTotal;         // Total number of items in the folder
    ULONG  prvVirtualID;     // Unique ID (name hash) for a virtual device
    union {
-      LONG prvIndex;        // Current index within the directory when scanning
+      LONG prvIndex;        // Current index within the folder when scanning
       APTR prvIndexPtr;
    };
    WORD   prvResolveLen;    // Byte length of ResolvedPath

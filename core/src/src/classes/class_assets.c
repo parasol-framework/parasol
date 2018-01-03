@@ -368,7 +368,7 @@ static ERROR GET_Size(objFile *Self, LARGE *Value)
       if (*Value >= 0) return ERR_Okay;
       else return ERR_Failed;
    }
-   else return ERR_Failed; // Either the file is a directory or hasn't been opened.
+   else return ERR_Failed; // Either the file is a folder or hasn't been opened.
 }
 
 //****************************************************************************
@@ -404,7 +404,7 @@ static ERROR open_dir(struct DirInfo *Dir)
 }
 
 //****************************************************************************
-// Scan the next entry in the directory.
+// Scan the next entry in the folder.
 
 static ERROR scan_dir(struct DirInfo *Dir)
 {
@@ -585,7 +585,7 @@ static ERROR test_path(CSTRING Path, LONG Flags, LONG *Type)
 }
 
 //****************************************************************************
-// Read the entire directory in one function call.
+// Read the entire folder in one function call.
 
 #if 0
 static ERROR read_dir(CSTRING Path, struct DirInfo **Result, LONG Flags)
@@ -630,7 +630,7 @@ static ERROR read_dir(CSTRING Path, struct DirInfo **Result, LONG Flags)
    UBYTE assetpath[300];
    LONG i;
 
-   // Read directory structure
+   // Read folder structure
 
    current = NULL;
    dirinfo->Total = 0;

@@ -169,7 +169,7 @@ function.  Remember to terminate the taglist with TAGEND.
 
 <types type="Tag">
 <type name="AST_NAME">Required.  Follow this tag with the string name of the volume.</>
-<type name="AST_PATH">Required.  Follow this tag with the path to be set against the volume.  If setting multiple paths, separate each path with a semi-colon character.  Each path must terminate with a forward slash to denote a directory.</>
+<type name="AST_PATH">Required.  Follow this tag with the path to be set against the volume.  If setting multiple paths, separate each path with a semi-colon character.  Each path must terminate with a forward slash to denote a folder.</>
 <type name="AST_COMMENT">A user comment string may be set against the volume with this tag.</>
 <type name="AST_FLAGS">Optional flags.  See below for more details.</>
 <type name="AST_ICON">You may set an icon to be associated with the volume, so that it has graphical representation when viewed in a file viewer for example.  The required icon string format is "category/name".</>

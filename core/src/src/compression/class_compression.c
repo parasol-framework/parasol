@@ -18,7 +18,7 @@ The following examples demonstrate basic usage of compression objects in Fluid:
 <pre>
 // Create a new zip archive and compress two files.
 
-cmp = obj.new('compression', { path="temp:result.zip', flags='!NEW' } )
+cmp = obj.new('compression', { path='temp:result.zip', flags='!NEW' } )
 err = cmp.mtCompressFile('config:defs/compression.def', '')
 err = cmp.mtCompressFile('config:defs/core.def', '')
 
@@ -871,11 +871,11 @@ static ERROR COMPRESSION_CompressFile(objCompression *Self, struct cmpCompressFi
             struct FileInfo *scan = dir->Info;
             if (!StrCompare(filename, scan->Name, 0, STR_WILDCARD)) {
                for (len=0; scan->Name[len]; len++);
-               UBYTE directory[pathlen+len+1];
-               for (j=0; j < pathlen; j++) directory[j] = Args->Location[j];
-               for (j=0; scan->Name[j]; j++) directory[pathlen+j] = scan->Name[j];
-               directory[pathlen+j] = 0;
-               error = compress_file(Self, directory, path, FALSE);
+               UBYTE folder[pathlen+len+1];
+               for (j=0; j < pathlen; j++) folder[j] = Args->Location[j];
+               for (j=0; scan->Name[j]; j++) folder[pathlen+j] = scan->Name[j];
+               folder[pathlen+j] = 0;
+               error = compress_file(Self, folder, path, FALSE);
             }
          }
 
@@ -949,11 +949,11 @@ static ERROR COMPRESSION_DecompressBuffer(objCompression *Self, struct cmpDecomp
 -METHOD-
 DecompressFile: Extracts one or more files from a compression object.
 
-Use the DecompressFile method to decompress a file or files to a destination directory.  The exact path name of the
+Use the DecompressFile method to decompress a file or files to a destination folder.  The exact path name of the
 compressed file is required for extraction unless using wildcards.  A single asterisk in the Path parameter will
 extract all files in a compression object.
 
-When specifying the Dest parameter, it is recommended that you specify a directory location by using a forward slash at
+When specifying the Dest parameter, it is recommended that you specify a folder location by using a forward slash at
 the end of the string.  If this is omitted, the destination will be interpreted as a file name.  If the destination
 file already exists, it will be overwritten by the decompressed data.
 
@@ -996,7 +996,7 @@ static ERROR COMPRESSION_DecompressFile(objCompression *Self, struct cmpDecompre
 
    if (!Args->Dest) {
       if (Self->OutputID) {
-         StrFormat(Self->prvOutput, SIZE_COMPRESSION_BUFFER, "Please supply a Destination that refers to a directory for decompression.\n");
+         StrFormat(Self->prvOutput, SIZE_COMPRESSION_BUFFER, "Please supply a Destination that refers to a folder for decompression.\n");
          print(Self, Self->prvOutput);
       }
 
@@ -1032,7 +1032,7 @@ static ERROR COMPRESSION_DecompressFile(objCompression *Self, struct cmpDecompre
       print(Self, Self->prvOutput);
    }
 
-   // Search for the file(s) in our archive that match the given name and extract them to the destination directory.
+   // Search for the file(s) in our archive that match the given name and extract them to the destination folder.
 
    LogF("~DecompressFile()","%s TO %s, Permissions: $%.8x", Args->Path, Args->Dest, Self->Permissions);
 
@@ -1064,7 +1064,7 @@ static ERROR COMPRESSION_DecompressFile(objCompression *Self, struct cmpDecompre
             print(Self, Self->prvOutput);
          }
 
-         // If the destination path specifies a directory, add the name of the file to the destination to generate the
+         // If the destination path specifies a folder, add the name of the file to the destination to generate the
          // correct file name.
 
          UWORD j = pos;
@@ -1075,7 +1075,7 @@ static ERROR COMPRESSION_DecompressFile(objCompression *Self, struct cmpDecompre
             location[j] = 0;
          }
 
-         // If the destination is a directory that already exists, skip this compression entry
+         // If the destination is a folder that already exists, skip this compression entry
 
          if ((location[j-1] IS '/') OR (location[j-1] IS '\\')) {
             LONG result;
@@ -1187,7 +1187,7 @@ static ERROR COMPRESSION_DecompressFile(objCompression *Self, struct cmpDecompre
             }
          }
          else {
-            // Create the destination file or directory
+            // Create the destination file or folder
 
             LONG permissions;
 
@@ -1447,7 +1447,7 @@ static ERROR COMPRESSION_DecompressObject(objCompression *Self, struct cmpDecomp
          LogErrorMsg("Unable to unzip symbolic link %s (flags $%.8x), size %d.", list->Name, list->Flags, list->OriginalSize);
          return LogBackError(0, ERR_Failed);
       }
-      else { // Create the destination file or directory
+      else { // Create the destination file or folder
          Self->prvZip.next_in   = 0;
          Self->prvZip.avail_in  = 0;
          Self->prvZip.next_out  = 0;
@@ -1819,7 +1819,7 @@ static ERROR COMPRESSION_NewObject(objCompression *Self, APTR Void)
 -METHOD-
 RemoveFile: Deletes one or more files from a compression object.
 
-This method deletes compressed files from a compression object.  If the file is in a directory then the client must
+This method deletes compressed files from a compression object.  If the file is in a folder then the client must
 specify the complete path in conjunction with the file name.  Wild cards are accepted if you want to delete multiple
 files.  A Path setting of `*` will delete an archive's entire contents, while a more conservative Path of
 `documents/ *` would delete all files and directories under the documents path.  Directories can be declared using

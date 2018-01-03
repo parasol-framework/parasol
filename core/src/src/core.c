@@ -324,7 +324,7 @@ EXPORT struct CoreBase * OpenCore(struct OpenInfo *Info)
             glRootPath[len] = 0;
          }
          else if ((!winGetCurrentDirectory(sizeof(glRootPath), glRootPath))) {
-            fprintf(stderr, "Failed to determine root directory.\n");
+            fprintf(stderr, "Failed to determine root folder.\n");
             return NULL;
          }
       #else

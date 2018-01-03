@@ -2651,7 +2651,7 @@ ERROR SubscribeTimer(DOUBLE Interval, FUNCTION *Callback, APTR *Subscription)
 -FUNCTION-
 PreciseTime: Returns the current system time, in microseconds.
 
-This function returns the current 'system time', in microseconds (1/1,000,000th of a second).  The value is monotonic
+This function returns the current 'system time', in microseconds (1 millionth of a second).  The value is monotonic
 if the host platform allows it (typically expressed as the amount of time that has elapsed since the system was
 switched on).  The benefit of monotonic time is that it is unaffected by changes to the system clock, such as daylight
 savings adjustments or manual changes by the user.

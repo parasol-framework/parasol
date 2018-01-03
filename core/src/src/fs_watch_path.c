@@ -74,7 +74,7 @@ ERROR fs_watch_path(objFile *File)
       File->prvWatch->WinFlags = winflags;
       if (!(error = RegisterFD(handle, RFD_READ, (void (*)(HOSTHANDLE, void*))&path_monitor, File))) {
       }
-      else LogErrorMsg("Failed to register directory handle.");
+      else LogErrorMsg("Failed to register folder handle.");
    }
    else LogErrorMsg("Failed to watch path %s, %s", File->prvResolvedPath, GetErrorMsg(error));
 

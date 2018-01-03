@@ -1309,7 +1309,7 @@ ERROR load_classes(void)
       #ifdef __ANDROID__
       else if ((error = register_class("FileAssets", ID_FILE, CCF_SYSTEM, "modules:core", NULL, NULL)));
       #endif
-      else if ((error = register_class("MetaClass", 0, CCF_SYSTEM, "modules:core", NULL, NULL)));
+      else error = register_class("MetaClass", 0, CCF_SYSTEM, "modules:core", NULL, NULL);
    }
 
    LogBack();

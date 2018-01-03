@@ -381,7 +381,7 @@ static ERROR MODULE_Init(objModule *Self, APTR Void)
          }
 
          // Scan the module database to find the location(s) of the module.  If the module is not registered, we will
-         // resort to looking in the modules: directory.
+         // resort to looking in the modules: folder.
 
          if (!path[0]) {
             struct ModuleItem *item;
@@ -966,7 +966,7 @@ The jump table is invalid once the module is destroyed.
 Name: The name of the module.
 
 This string pointer specifies the name of the Module.  This name will be used to load the module from the "modules:"
-directory, so this field actually reflects part of the module file name.  It is also possible to specify
+folder, so this field actually reflects part of the module file name.  It is also possible to specify
 sub-directories before the module name itself - this could become more common in module loading in future.
 
 It is critical that file extensions do not appear in the Name string, e.g. "screen.dll" as not all systems
@@ -1046,7 +1046,7 @@ APTR build_jump_table(LONG JumpType, const struct Function *FList, LONG MemFlags
 static LONG cmp_mod_names(CSTRING String1, CSTRING String2)
 {
    if ((String1) AND (String2)) {
-      // Skip past any : or / directory characters
+      // Skip past any : or / folder characters
 
       WORD i = 0;
       while (String1[i]) {

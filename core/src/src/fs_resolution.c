@@ -44,7 +44,7 @@ NullArgs:        Invalid arguments were specified.
 AllocMemory:     The result string could not be allocated.
 ExclusiveDenied: Access to the SystemVolumes object was denied.
 Search:          The given volume does not exist.
-FileNotFound:    The path was resolved, but the referenced file or directory does not exist (use RSF_NO_FILE_CHECK if you need to avoid this error code).
+FileNotFound:    The path was resolved, but the referenced file or folder does not exist (use RSF_NO_FILE_CHECK if you need to avoid this error code).
 Loop:            The volume refers back to itself.
 
 -END-
@@ -427,7 +427,7 @@ static ERROR resolve(objConfig *Config, STRING Source, STRING Dest, LONG Flags)
       while ((Source[j]) AND (k < SIZE_RESBUFFER-1)) Dest[k++] = Source[j++];
       Dest[k++] = 0;
 
-      // Fully resolve the path to a system directory before testing it (e.g. "scripts:" to "parasol:scripts/" to "c:\parasol\scripts\" will be resolved through this recursion).
+      // Fully resolve the path to a system folder before testing it (e.g. "scripts:" to "parasol:scripts/" to "c:\parasol\scripts\" will be resolved through this recursion).
 
       #ifdef _WIN32
          if ((Dest[1] IS ':') AND ((Dest[2] IS '/') OR (Dest[2] IS '\\'))) j = 0;
