@@ -3126,29 +3126,27 @@ ERROR fs_testpath(CSTRING Path, LONG Flags, LONG *Type)
 
 //****************************************************************************
 
-ERROR fs_getinfo(STRING Path, struct FileInfo *Info, LONG InfoSize)
+ERROR fs_getinfo(CSTRING Path, struct FileInfo *Info, LONG InfoSize)
 {
-#ifdef __linux__
-   struct stat64 info;
-   LONG i, len;
-
+#ifdef __unix__
    // In order to tell if a folder is a symbolic link or not, we have to remove any trailing slash...
 
-   for (len=0; Path[len]; len++);
-   if ((Path[len-1] IS '/') OR (Path[len-1] IS '\\')) Path[len-1] = 0;
+   char path_ref[256];
+   LONG len = StrCopy(Path, path_ref, sizeof(path_ref));
+   if (len >= sizeof(path_ref)-1) return ERR_BufferOverflow;
+   if ((path_ref[len-1] IS '/') OR (path_ref[len-1] IS '\\')) path_ref[len-1] = 0;
 
-   // Get the file info.  Use lstat64() and if it turns out that the file
-   // is a symbolic link, set the RDF_LINK flag and then switch to stat64().
+   // Get the file info.  Use lstat64() and if it turns out that the file is a symbolic link, set the RDF_LINK flag
+   // and then switch to stat64().
 
-   if (lstat64(Path, &info) IS -1) {
-      return ERR_FileNotFound;
-   }
+   struct stat64 info;
+   if (lstat64(path_ref, &info) IS -1) return ERR_FileNotFound;
 
    Info->Flags = NULL;
 
    if (S_ISLNK(info.st_mode)) {
       Info->Flags |= RDF_LINK;
-      if (stat64(Path, &info) IS -1) {
+      if (stat64(path_ref, &info) IS -1) {
          // We do not abort in the case of a broken link, just warn and treat it as an empty file
          LogF("@GetFileInfo","Broken link detected.");
       }
@@ -3159,9 +3157,9 @@ ERROR fs_getinfo(STRING Path, struct FileInfo *Info, LONG InfoSize)
 
    // Extract file/folder name
 
-   i = len;
-   while ((i > 0) AND (Path[i-1] != '/') AND (Path[i-1] != '\\') AND (Path[i-1] != ':')) i--;
-   i = StrCopy(Path + i, Info->Name, MAX_FILENAME-2);
+   LONG i = len;
+   while ((i > 0) AND (path_ref[i-1] != '/') AND (path_ref[i-1] != '\\') AND (path_ref[i-1] != ':')) i--;
+   i = StrCopy(path_ref + i, Info->Name, MAX_FILENAME-2);
 
    if (Info->Flags & RDF_FOLDER) {
       Info->Name[i++] = '/';
@@ -3189,8 +3187,8 @@ ERROR fs_getinfo(STRING Path, struct FileInfo *Info, LONG InfoSize)
    Info->UserID = info.st_uid;
    Info->GroupID = info.st_gid;
 
-   // Get time information.  NB: The timestamp is calculated by the
-   // filesystem's GetFileInfO() manager, using calc_timestamp().
+   // Get time information.  NB: The timestamp is calculated by the filesystem's GetFileInfo() manager, using
+   // calc_timestamp().
 
    struct tm *local;
    if ((local = localtime(&info.st_mtime))) {
@@ -3207,9 +3205,7 @@ ERROR fs_getinfo(STRING Path, struct FileInfo *Info, LONG InfoSize)
    LONG i, len;
 
    Info->Flags = 0;
-   if (!winFileInfo(Path, &Info->Size, &Info->Modified, &dir)) {
-      return ERR_File;
-   }
+   if (!winFileInfo(Path, &Info->Size, &Info->Modified, &dir)) return ERR_File;
 
    // TimeStamp has to match that produced by GET_TimeStamp
 

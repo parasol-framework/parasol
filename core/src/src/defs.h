@@ -134,7 +134,7 @@ struct ResourceManager;
 ERROR fs_closedir(struct DirInfo *);
 ERROR fs_createlink(CSTRING, CSTRING);
 ERROR fs_delete(STRING);
-ERROR fs_getinfo(STRING, struct FileInfo *, LONG);
+ERROR fs_getinfo(CSTRING, struct FileInfo *, LONG);
 ERROR fs_getdeviceinfo(CSTRING, struct rkStorageDevice *);
 void  fs_ignore_file(struct rkFile *);
 ERROR fs_makedir(CSTRING, LONG);
@@ -192,7 +192,7 @@ struct virtual_drive {
    ERROR (*TestPath)(CSTRING, LONG, LONG *);
    ERROR (*WatchPath)(struct rkFile *);
    void  (*IgnoreFile)(struct rkFile *);
-   ERROR (*GetInfo)(STRING, struct FileInfo *, LONG);
+   ERROR (*GetInfo)(CSTRING, struct FileInfo *, LONG);
    ERROR (*GetDeviceInfo)(CSTRING, struct rkStorageDevice *);
    ERROR (*IdentifyFile)(STRING, CLASSID *, CLASSID *);
    ERROR (*CreateFolder)(CSTRING, LONG);
