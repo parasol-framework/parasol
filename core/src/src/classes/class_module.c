@@ -315,7 +315,7 @@ static ERROR MODULE_Init(objModule *Self, APTR Void)
 
    DEBUG_LINE
 
-   if (!Self->Name) return PostError(ERR_FieldNotSet);
+   if (!Self->Name[0]) return PostError(ERR_FieldNotSet);
 
    // Check if the module is resident.  If not, we need to load and prepare the module for a shared environment.
 

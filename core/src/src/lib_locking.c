@@ -176,7 +176,7 @@ static void free_cond(CONDLOCK *Cond)
    }
 }
 
-static ERROR pthread_lock(THREADLOCK *Lock, LONG Timeout)
+static ERROR pthread_lock(THREADLOCK *Lock, LONG Timeout) // Timeout in milliseconds
 {
    LONG result;
 

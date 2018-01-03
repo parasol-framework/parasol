@@ -1183,7 +1183,7 @@ static ERROR CONFIG_SaveToObject(objConfig *Self, struct acSaveToObject *Args)
                section = entries[i].Section;
 
                BYTE buffer[60];
-               j = 0;
+               LONG j = 0;
                buffer[j++] = '\n';
                buffer[j++] = '[';
                for (k=0; (section[k]) AND (k < sizeof(buffer)-j-2); k++) {
@@ -1196,14 +1196,13 @@ static ERROR CONFIG_SaveToObject(objConfig *Self, struct acSaveToObject *Args)
             }
 
             if ((entries[i].Key) AND (entries[i].Data)) {
-               LONG keylen, datalen;
-               for (keylen=0; entries[i].Key[keylen]; keylen++);
-               for (datalen=0; entries[i].Data[datalen]; datalen++);
+               LONG keylen = StrLength(entries[i].Key);
+               LONG datalen = StrLength(entries[i].Data);
 
                {
-                  UBYTE buffer[keylen+datalen+4];
+                  char buffer[keylen+datalen+4];
 
-                  k = 0;
+                  LONG k = 0;
                   for (j=0; j < keylen; j++) buffer[k++] = entries[i].Key[j];
                   buffer[k++] = ' ';
                   buffer[k++] = '=';
@@ -1280,8 +1279,8 @@ It is recommended that where possible, the #Write() method is used for updating 
 
 static ERROR CONFIG_SetVar(objConfig *Self, struct acSetVar *Args)
 {
-   LONG i, len, index, j;
-   UBYTE section[160], key[160];
+   LONG i, len, j;
+   char section[160], key[160];
 
    if ((!Args) OR (!Args->Field) OR (!Args->Field[0])) return ERR_NullArgs;
 
@@ -1289,11 +1288,12 @@ static ERROR CONFIG_SetVar(objConfig *Self, struct acSetVar *Args)
       // Field is in the format "Index(SectionIndex;KeyIndex)" or "Index(OverallIndex)".
       // Quotes can be used to indicate strings instead of indexes.
 
-      i = 6;
+      LONG i = 6;
       struct ConfigEntry *entries = Self->Entries;
 
       // Extract the section index
 
+      LONG index;
       if (Args->Field[i] IS '"') {
          i++;
          for (j=0; (Args->Field[i]) AND (Args->Field[i] != '"') AND (j < sizeof(section)-1); j++) section[j] = Args->Field[i++];
@@ -1382,7 +1382,7 @@ Sort: Sorts config sections into alphabetical order.
 static ERROR CONFIG_Sort(objConfig *Self, APTR Void)
 {
    struct ConfigEntry *entries;
-   LONG i, pos, j;
+   LONG i, j;
    STRING array[Self->TotalSections+1];
    struct ConfigEntry entrybuffer[Self->AmtEntries];
 
@@ -1390,33 +1390,33 @@ static ERROR CONFIG_Sort(objConfig *Self, APTR Void)
 
    // Copy all of the section strings into an array and sort them
 
-   if ((entries = Self->Entries)) {
-      pos = 0;
-      array[pos++] = entries[0].Section;
-      for (i=0; i < Self->AmtEntries-1; i++) {
-         if (entries[i].Section != entries[i+1].Section) {
-            if (pos < Self->TotalSections) array[pos] = entries[i+1].Section;
-            pos++;
+      if ((entries = Self->Entries)) {
+         LONG pos = 0;
+         array[pos++] = entries[0].Section;
+         for (i=0; i < Self->AmtEntries-1; i++) {
+            if (entries[i].Section != entries[i+1].Section) {
+               if (pos < Self->TotalSections) array[pos] = entries[i+1].Section;
+               pos++;
+            }
          }
-      }
 
-      if (pos > Self->TotalSections) {
-         LogErrorMsg("Buffer overflow - expected %d sections, encountered %d.", Self->TotalSections, pos);
+         if (pos > Self->TotalSections) {
+            LogErrorMsg("Buffer overflow - expected %d sections, encountered %d.", Self->TotalSections, pos);
+            LogBack();
+            return ERR_BufferOverflow;
+         }
+
+         array[pos] = NULL;
+         StrSort(array, NULL);
+      }
+      else {
          LogBack();
-         return ERR_BufferOverflow;
+         return ERR_NoData;
       }
-   }
-   else {
-      LogBack();
-      return ERR_NoData;
-   }
-
-   array[pos] = NULL;
-   StrSort(array, NULL);
 
    // Re-sort the config data based on the sorted section strings
 
-   pos = 0;
+   LONG pos = 0;
    for (i=0; array[i]; i++) {
       for (j=0; j < Self->AmtEntries; j++) {
          if (!StrCompare(array[i], Self->Entries[j].Section, 0, STR_CASE|STR_MATCH_LEN)) {
@@ -1546,11 +1546,9 @@ static ERROR CONFIG_SortByKey(objConfig *Self, struct cfgSortByKey *Args)
 
 inline static BYTE sort(STRING Name1, STRING Name2)
 {
-   UBYTE char1, char2;
-
    while ((*Name1) AND (*Name2)) {
-      char1 = *Name1;
-      char2 = *Name2;
+      char char1 = *Name1;
+      char char2 = *Name2;
       if ((char1 >= 'A') AND (char1 <= 'Z')) char1 = char1 - 'A' + 'a';
       if ((char2 >= 'A') AND (char2 <= 'Z')) char2 = char2 - 'A' + 'a';
 
@@ -1568,14 +1566,11 @@ inline static BYTE sort(STRING Name1, STRING Name2)
 
 static void sift_down(struct sortlist *lookup, LONG i, LONG heapsize)
 {
-   struct sortlist temp;
-   LONG left, right;
-
    LONG largest = i;
    do {
       i = largest;
-      left	= (i << 1) + 1;
-      right	= left + 1;
+      LONG left	= (i << 1) + 1;
+      LONG right	= left + 1;
 
       if (left < heapsize){
          if (sort(lookup[largest].sort, lookup[left].sort) > 0) largest = left;
@@ -1586,7 +1581,7 @@ static void sift_down(struct sortlist *lookup, LONG i, LONG heapsize)
       }
 
       if (largest != i) {
-         temp = lookup[i];
+         struct sortlist temp = lookup[i];
          lookup[i] = lookup[largest];
          lookup[largest] = temp;
       }
@@ -1595,16 +1590,13 @@ static void sift_down(struct sortlist *lookup, LONG i, LONG heapsize)
 
 static void sift_up(struct sortlist *lookup, LONG i, LONG heapsize)
 {
-   struct sortlist temp;
-   LONG left, right;
-
    LONG largest = i;
    do {
       i = largest;
-      left	= (i << 1) + 1;
-      right	= left + 1;
+      LONG left	= (i << 1) + 1;
+      LONG right = left + 1;
 
-      if (left < heapsize){
+      if (left < heapsize) {
          if (sort(lookup[largest].sort, lookup[left].sort) < 0) largest = left;
 
          if (right < heapsize) {
@@ -1613,7 +1605,7 @@ static void sift_up(struct sortlist *lookup, LONG i, LONG heapsize)
       }
 
       if (largest != i) {
-         temp = lookup[i];
+         struct sortlist temp = lookup[i];
          lookup[i] = lookup[largest];
          lookup[largest] = temp;
       }
@@ -1651,7 +1643,7 @@ static ERROR CONFIG_WriteValue(objConfig *Self, struct cfgWriteValue *Args)
    struct ConfigEntry *entries, *newentries;
    MEMORYID newEntriesMID, newStrMID;
    STRING newstr, str;
-   LONG i, j, pos, replaceindex, len, sectionindex, strlen, strsize, maxentries;
+   LONG i, j, pos, len, strlen, maxentries;
    UBYTE section[160];
 
    if (!Args) return PostError(ERR_NullArgs);
@@ -1742,8 +1734,8 @@ static ERROR CONFIG_WriteValue(objConfig *Self, struct cfgWriteValue *Args)
    // Check if the section and key names match an existing record.  If so, we'll 'delete' that entry from the buffer
    // as our new entry information will be replacing it.
 
-   replaceindex = -1;
-   sectionindex = -1;
+   LONG replaceindex = -1;
+   LONG sectionindex = -1;
    for (i=0; i < Self->AmtEntries; i++) {
       if (!StrMatch(entries[i].Section, section)) {
          sectionindex = i;
@@ -1760,15 +1752,10 @@ static ERROR CONFIG_WriteValue(objConfig *Self, struct cfgWriteValue *Args)
 
    // Calculate the amount of bytes required for the Section, Key & Data
 
-   for (len=0; section[len]; len++);
-   strsize = len + 1;
+   LONG strsize = StrLength(section) + 1 + StrLength(Args->Key) + 1;
 
-   for (len=0; Args->Key[len]; len++);
-   strsize += len + 1;
-
-   if (Args->Data) for (len=0; Args->Data[len]; len++);
-   else len = 0;
-   strsize += len + 1;
+   if (Args->Data) strsize += StrLength(Args->Data) + 1;
+   else strsize += 1;
 
    if (replaceindex != -1) {
       // Replace an existing key.  Expand the string buffer if necessary, replace the entry with new key and data

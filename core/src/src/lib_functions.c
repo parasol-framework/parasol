@@ -1207,13 +1207,11 @@ int: The number of the message port is returned or 0 if failure occurs.  Failure
 
 LONG GetMsgPort(OBJECTID ObjectID)
 {
-   struct SharedObjectHeader *header;
-
    FMSG("GetMsgPort()","Object: #%d", ObjectID);
 
-   if (ObjectID > 0) {
-      return glTaskMessageMID;
-   }
+   struct SharedObjectHeader *header;
+
+   if (ObjectID > 0) return glTaskMessageMID;
    else if (!AccessMemory(RPM_SharedObjects, MEM_READ, 2000, (void **)&header)) {
       LONG pos;
       if (!find_public_object_entry(header, ObjectID, &pos)) {
@@ -1221,8 +1219,7 @@ LONG GetMsgPort(OBJECTID ObjectID)
          LONG msgport = list[pos].MessageMID;
          ReleaseMemoryID(RPM_SharedObjects);
 
-         if (!msgport) return glTaskMessageMID;
-         else return msgport;
+         return msgport ? msgport : glTaskMessageMID;
       }
       else {
          ReleaseMemoryID(RPM_SharedObjects);

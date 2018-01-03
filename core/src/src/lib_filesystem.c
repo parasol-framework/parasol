@@ -974,10 +974,7 @@ ERROR GetFileInfo(CSTRING Path, struct FileInfo *Info, LONG InfoSize)
 
 ERROR get_file_info(CSTRING Path, struct FileInfo *Info, LONG InfoSize, STRING NameBuffer, LONG BufferSize)
 {
-   struct ConfigEntry *entries;
-   const struct virtual_drive *virtual;
-   STRING path, section;
-   LONG i, len, pos;
+   LONG i, len;
    ERROR error;
 
    if ((!Path) OR (!Path[0]) OR (!Info) OR (InfoSize <= 0)) return LogError(ERH_GetFileInfo, ERR_Args);
@@ -990,23 +987,23 @@ ERROR get_file_info(CSTRING Path, struct FileInfo *Info, LONG InfoSize, STRING N
    for (len=0; (Path[len]) AND (Path[len] != ':'); len++);
 
    if ((Path[len] IS ':') AND (!Path[len+1])) {
-      virtual = get_fs(Path);
+      const struct virtual_drive *vfs = get_fs(Path);
 
       Info->Flags = RDF_VOLUME;
 
       for (i=0; (i < BufferSize-1) AND (Path[i]) AND (Path[i] != ':'); i++) NameBuffer[i] = Path[i];
-      pos = i;
+      LONG pos = i;
       NameBuffer[i] = 0;
 
       error = ERR_Okay;
       if (!AccessPrivateObject((OBJECTPTR)glVolumes, 3000)) {
+         struct ConfigEntry *entries;
          if ((entries = glVolumes->Entries)) {
             for (i=0; i < glVolumes->AmtEntries; i++) {
                if ((!StrMatch("Name", entries[i].Key)) AND (!StrMatch(NameBuffer, entries[i].Data))) {
-
                   while ((i > 0) AND (!StrMatch(entries[i].Section, entries[i-1].Section))) i--;
 
-                  section = entries[i].Section;
+                  STRING section = entries[i].Section;
                   for (; i < glVolumes->AmtEntries; i++) {
                      if (StrMatch(entries[i].Section, section)) break; // Check if section has ended
 
@@ -1029,11 +1026,9 @@ ERROR get_file_info(CSTRING Path, struct FileInfo *Info, LONG InfoSize, STRING N
          NameBuffer[pos++] = ':';
          NameBuffer[pos] = 0;
 
-         if (virtual->VirtualID != -1) {
+         if (vfs->VirtualID != -1) {
             Info->Flags |= RDF_VIRTUAL;
-            if (virtual->GetInfo) {
-               error = virtual->GetInfo(path, Info, InfoSize);
-            }
+            if (vfs->GetInfo) error = vfs->GetInfo(Path, Info, InfoSize);
          }
 
          return error;
@@ -1043,13 +1038,14 @@ ERROR get_file_info(CSTRING Path, struct FileInfo *Info, LONG InfoSize, STRING N
 
    FMSG("~GetFileInfo()","%s", Path);
 
+   STRING path;
    if (!(error = ResolvePath(Path, 0, &path))) {
-      virtual = get_fs(path);
+      const struct virtual_drive *vfs = get_fs(path);
 
-      if (virtual->GetInfo) {
-         if (virtual->VirtualID != -1) Info->Flags |= RDF_VIRTUAL;
+      if (vfs->GetInfo) {
+         if (vfs->VirtualID != -1) Info->Flags |= RDF_VIRTUAL;
 
-         if (!(error = virtual->GetInfo(path, Info, InfoSize))) {
+         if (!(error = vfs->GetInfo(path, Info, InfoSize))) {
             Info->TimeStamp = calc_timestamp(&Info->Modified);
          }
       }
@@ -3134,7 +3130,6 @@ ERROR fs_getinfo(STRING Path, struct FileInfo *Info, LONG InfoSize)
 {
 #ifdef __linux__
    struct stat64 info;
-   struct tm *local;
    LONG i, len;
 
    // In order to tell if a folder is a symbolic link or not, we have to remove any trailing slash...
@@ -3197,6 +3192,7 @@ ERROR fs_getinfo(STRING Path, struct FileInfo *Info, LONG InfoSize)
    // Get time information.  NB: The timestamp is calculated by the
    // filesystem's GetFileInfO() manager, using calc_timestamp().
 
+   struct tm *local;
    if ((local = localtime(&info.st_mtime))) {
       Info->Modified.Year   = 1900 + local->tm_year;
       Info->Modified.Month  = local->tm_mon + 1;
@@ -3332,9 +3328,10 @@ restart:
          if (resolve) {
             // We've done what we can - drop through
 
-            // On win32 we can get the drive information from the drive letter
-
-            #warning Plese write WIN32 code to discover the drive type in GetDeviceInfo().
+            #ifdef _WIN32
+             // On win32 we can get the drive information from the drive letter
+             #warning TODO: Write Win32 code to discover the drive type in GetDeviceInfo().
+            #endif
 
             location = resolve;
             resolve = NULL;

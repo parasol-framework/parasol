@@ -27,7 +27,9 @@ To get the current system time, use the #Query() action.
 #ifdef __unix__
 #include <sys/ioctl.h>
 #include <sys/time.h>
-#include <linux/rtc.h>
+ #ifdef __linux__
+  #include <linux/rtc.h>
+ #endif
 #include <fcntl.h>
 #include <unistd.h>
 #endif
@@ -170,20 +172,24 @@ static ERROR TIME_SetTime(struct rkTime *Self, APTR Void)
 
    // Set the BIOS clock
 
-   if ((fd = open("/dev/rtc", O_RDONLY|O_NONBLOCK)) != -1) {
-      time.tm_year  = Self->Year - 1900;
-      time.tm_mon   = Self->Month - 1;
-      time.tm_mday  = Self->Day;
-      time.tm_hour  = Self->Hour;
-      time.tm_min   = Self->Minute;
-      time.tm_sec   = Self->Second;
-      time.tm_isdst = -1;
-      time.tm_wday  = 0;
-      time.tm_yday  = 0;
-      ioctl(fd, RTC_SET_TIME, &time);
-      close(fd);
-   }
-   else LogErrorMsg("/dev/rtc not available.");
+   #ifdef __APPLE__
+      LogErrorMsg("No support for modifying the BIOS clock in OS X build");
+   #else
+      if ((fd = open("/dev/rtc", O_RDONLY|O_NONBLOCK)) != -1) {
+         time.tm_year  = Self->Year - 1900;
+         time.tm_mon   = Self->Month - 1;
+         time.tm_mday  = Self->Day;
+         time.tm_hour  = Self->Hour;
+         time.tm_min   = Self->Minute;
+         time.tm_sec   = Self->Second;
+         time.tm_isdst = -1;
+         time.tm_wday  = 0;
+         time.tm_yday  = 0;
+         ioctl(fd, RTC_SET_TIME, &time);
+         close(fd);
+      }
+      else LogErrorMsg("/dev/rtc not available.");
+   #endif
 
    // Set the internal system clock
 
