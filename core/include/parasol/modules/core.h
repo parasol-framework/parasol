@@ -768,7 +768,7 @@ struct ClipRectangle {
 #define AHASH_SELECTAREA 0xf55e615e
 #define AHASH_UNDO 0x7c9f191b
 
-// Internal options for request module function tables.
+// Internal options for requesting function tables from modules.
 
 #define MHF_NULL 0x00000001
 #define MHF_STRUCTURE 0x00000002
@@ -835,6 +835,8 @@ struct ClipRectangle {
 #define CMF_NO_LINKS 0x00000010
 #define CMF_APPLY_SECURITY 0x00000020
 
+// Flags for ResolvePath()
+
 #define RSF_NO_FILE_CHECK 0x00000001
 #define RSF_CHECK_VIRTUAL 0x00000002
 #define RSF_APPROXIMATE 0x00000004
@@ -842,7 +844,7 @@ struct ClipRectangle {
 #define RSF_PATH 0x00000010
 #define RSF_CASE_SENSITIVE 0x00000020
 
-// Flags for File Watch() method.
+// Flags for the File Watch() method.
 
 #define MFF_READ 0x00000001
 #define MFF_MODIFY 0x00000002
@@ -1613,13 +1615,13 @@ struct DirInfo {
    struct FileInfo * Info;    // Pointer to a FileInfo structure
    #ifdef PRV_FILE
    APTR   prvHandle;        // Directory handle.  If virtual, may store a private data address
-   STRING prvPath;          // Original directory location string
-   STRING prvResolvedPath;  // Resolved directory location
+   STRING prvPath;          // Original folder location string
+   STRING prvResolvedPath;  // Resolved folder location
    LONG   prvFlags;         // OpenFolder() RDF flags
-   LONG   prvTotal;         // Total number of items in the directory
+   LONG   prvTotal;         // Total number of items in the folder
    ULONG  prvVirtualID;     // Unique ID (name hash) for a virtual device
    union {
-      LONG prvIndex;        // Current index within the directory when scanning
+      LONG prvIndex;        // Current index within the folder when scanning
       APTR prvIndexPtr;
    };
    WORD   prvResolveLen;    // Byte length of ResolvedPath
@@ -3302,7 +3304,7 @@ INLINE ERROR LogBackError(LONG Header, ERROR Code) {
    return Code;
 }
 
-#ifdef __linux__
+#ifdef __unix__
 #include <pthread.h>
 #endif
 
@@ -3323,7 +3325,7 @@ struct PublicAddress {
    WORD     Flags;             // Special MEM_ address flags
    volatile UBYTE AccessCount;  // Count of locks on this address
    volatile UBYTE ExternalLock; // Incremented when a third party requires access during a lock
-   #ifdef __linux__
+   #ifdef __unix__
       volatile LONG ThreadLockID;      // Globally unique ID from get_thread_id()
       volatile LONG ProcessLockID;     // If locked, this field refers to the ID of the semaphore that locked the block
    #endif
