@@ -43,6 +43,7 @@ UNAME ?= $(shell uname -s)
 OSTYPE ?= $(UNAME)
 OSTYPE := $(call lc,$(OSTYPE))
 UNAME := $(call lc,$(UNAME))
+XXD ?= $(shell command -v xxd 2> /dev/null)
 
 MSYSTEM_PREFIX ?= /mingw
 WINDRES ?= windres

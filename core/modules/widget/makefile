@@ -23,7 +23,11 @@ endif
 compile: $(DEST) hashes.h
 
 class_dialog_script.h: class_dialog_script.rpl
-	xxd -c20 -i class_dialog_script.rpl | sed 's/class_dialog_script_rpl/glDocumentXML/g;s/glDocumentXML_len/glDocumentXMLLength/g' > $@
+ifeq ($(XXD),)
+	@echo The xxd command is unavailable on this system
+else
+	$(XXD) -c20 -i class_dialog_script.rpl | sed 's/class_dialog_script_rpl/glDocumentXML/g;s/glDocumentXML_len/glDocumentXMLLength/g' > $@
+endif
 
 $(DEST): $(OBJECTS)
 	$(CC) $(CFLAGS) $(LIBLINK_STDC) $^ $(LINK)
@@ -44,7 +48,11 @@ obj/class_view/view.o: class_view/view_fields.c class_view/view_functions.c
 obj/class_fileview/fileview.o: class_fileview/fileview_fields.c class_fileview/fileview_functions.c class_fileview/fileview_shortcut.c
 
 class_fileview/fileview_shortcut.c: class_fileview/fileview_shortcut.fluid
-	xxd -c20 -i class_fileview/fileview_shortcut.fluid | sed 's/class_fileview_fileview_shortcut_fluid/glNewShortcutScript/g;s/glNewShortcutScript_len/glNewShortcutScriptLength/g' > $@
+ifeq ($(XXD),)
+	@echo The xxd command is unavailable on this system
+else
+	$(XXD) -c20 -i class_fileview/fileview_shortcut.fluid | sed 's/class_fileview_fileview_shortcut_fluid/glNewShortcutScript/g;s/glNewShortcutScript_len/glNewShortcutScriptLength/g' > $@
+endif
 
 hashes.h: hashes.fdl
 	$(IDL_C) src=hashes.fdl output=hashes.h
