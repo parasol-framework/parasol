@@ -2139,7 +2139,7 @@ static ERROR init_filesystem(void)
                SetVolume(AST_NAME, "modules", AST_PATH, "system:modules/", AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, AST_ICON, "programs/tool", TAGEND);
             #endif
          }
-      #elif __linux__
+      #elif __unix__
          // If device volumes are already set by the user, do not attempt to discover such devices.
 
          BYTE cd_set = FALSE;
@@ -2232,7 +2232,7 @@ static ERROR init_filesystem(void)
          else i = StrCopy("system:users/default/", buffer, sizeof(buffer));
       }
       else {
-         #ifdef __linux__
+         #ifdef __unix__
             STRING homedir, logname;
             if ((homedir = getenv("HOME")) AND (homedir[0]) AND (StrMatch("/", homedir) != ERR_Okay)) {
                LogMsg("Home folder is \"%s\".", homedir);

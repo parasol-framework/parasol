@@ -27,7 +27,7 @@ ifeq ($(OSTYPE),win)
       LINKLIB += -ldbghelp
    endif
 else
-   FLAGS= $(CFLAGS) -c -D__linux__ -D__system__
+   FLAGS= $(CFLAGS) -c -D__unix__ -D__system__
 endif
 
 # DBG_DIAGNOSTICS: Print enhanced diagnostic messages on crash - e.g. semaphore and memory locks.

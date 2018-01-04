@@ -597,7 +597,7 @@ ERROR CompareFilePaths(CSTRING PathA, CSTRING PathB)
 
 ERROR fs_samefile(CSTRING Path1, CSTRING Path2)
 {
-#ifdef __linux__
+#ifdef __unix__
    struct stat64 stat1, stat2;
 
    if ((!stat64(Path1, &stat1)) AND (!stat64(Path2, &stat2))) {
@@ -634,7 +634,7 @@ cstr: The group name is returned, or NULL if the ID cannot be resolved.
 
 CSTRING ResolveGroupID(LONG GroupID)
 {
-#ifdef __linux__
+#ifdef __unix__
 
    static THREADVAR UBYTE group[40];
    struct group *info;
@@ -672,7 +672,7 @@ cstr: The user name is returned, or NULL if the ID cannot be resolved.
 
 CSTRING ResolveUserID(LONG UserID)
 {
-#ifdef __linux__
+#ifdef __unix__
 
    static THREADVAR UBYTE user[40];
    struct passwd *info;
@@ -1415,7 +1415,7 @@ File
 
 ERROR ReadFile(CSTRING Path, APTR Buffer, LONG BufferSize, LONG *BytesRead)
 {
-#if defined(__linux__) || defined(_WIN32)
+#if defined(__unix__) || defined(_WIN32)
    if ((!Path) OR (BufferSize <= 0) OR (!Buffer)) return ERR_Args;
 
    BYTE approx;
@@ -1436,7 +1436,7 @@ ERROR ReadFile(CSTRING Path, APTR Buffer, LONG BufferSize, LONG *BytesRead)
             LONG result;
             if ((result = read(handle, Buffer, BufferSize)) IS -1) {
                error = ERR_Read;
-               #ifdef __linux__
+               #ifdef __unix__
                   LogF("@ReadFile","read(%s, %p, %d): %s", Path, Buffer, BufferSize, strerror(errno));
                #endif
             }
@@ -1445,7 +1445,7 @@ ERROR ReadFile(CSTRING Path, APTR Buffer, LONG BufferSize, LONG *BytesRead)
             close(handle);
          }
          else {
-            #ifdef __linux__
+            #ifdef __unix__
                LogF("@ReadFile","open(%s): %s", Path, strerror(errno));
             #endif
             error = ERR_OpenFile;
@@ -1516,7 +1516,7 @@ ERROR test_path(STRING Path, LONG Flags)
    LONG len, type;
 #ifdef _WIN32
    LONG j;
-#elif __linux__
+#elif __unix__
    struct stat64 info;
 #endif
 
@@ -1543,7 +1543,7 @@ ERROR test_path(STRING Path, LONG Flags)
    if ((Path[len-1] IS '/') OR (Path[len-1] IS '\\')) {
       // This code handles testing for folder locations
 
-      #ifdef __linux__
+      #ifdef __unix__
 
          if (len IS 1) return ERR_Okay; // Do not lstat() the root '/' folder
 
@@ -1568,7 +1568,7 @@ ERROR test_path(STRING Path, LONG Flags)
       if (Flags & RSF_APPROXIMATE) {
          if (!findfile(Path)) return ERR_Okay;
       }
-#ifdef __linux__
+#ifdef __unix__
       else if (!lstat64(Path, &info)) {
          if (S_ISDIR(info.st_mode)) {
             Path[len++] = '/';
@@ -1827,7 +1827,7 @@ void UnloadFile(struct CacheFile *Cache)
 //****************************************************************************
 // NOTE: The argument passed as the folder must be a large buffer to compensate for the resulting filename.
 
-#ifdef __linux__
+#ifdef __unix__
 
 struct olddirent {
    long d_ino;                 // inode number
@@ -1983,7 +1983,7 @@ LONG convert_permissions(LONG Permissions)
 {
    LONG flags = 0;
 
-#ifdef __linux__
+#ifdef __unix__
    if (Permissions & PERMIT_READ)         flags |= S_IRUSR;
    if (Permissions & PERMIT_WRITE)        flags |= S_IWUSR;
    if (Permissions & PERMIT_EXEC)         flags |= S_IXUSR;
@@ -2013,7 +2013,7 @@ LONG convert_fs_permissions(LONG Permissions)
 {
    LONG flags = 0;
 
-#ifdef __linux__
+#ifdef __unix__
    if (Permissions & S_IRUSR) flags |= PERMIT_READ;
    if (Permissions & S_IWUSR) flags |= PERMIT_WRITE;
    if (Permissions & S_IXUSR) flags |= PERMIT_EXEC;
@@ -2069,7 +2069,7 @@ ERROR check_paths(CSTRING Path, LONG Permissions)
 
 ERROR fs_copy(CSTRING Source, CSTRING Dest, BYTE Move)
 {
-#ifdef __linux__
+#ifdef __unix__
    struct stat64 stinfo;
    LONG parentpermissions, gid, uid;
    LONG i;
@@ -2315,7 +2315,7 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, BYTE Move)
       goto exit;
    }
 
-#ifdef __linux__
+#ifdef __unix__
    // This code manages symbolic links
 
    if (srcdir) {
@@ -2519,7 +2519,7 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, BYTE Move)
       // Delete any existing destination file first so that we can give it new permissions.
       // This will also help when assessing the amount of free space on the destination device.
 
-#if defined(__linux__) || defined(_WIN32)
+#if defined(__unix__) || defined(_WIN32)
       unlink(dest);
 #else
       DeleteFile(dest);
@@ -2549,7 +2549,7 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, BYTE Move)
          dhandle = open(dest, O_WRONLY|O_CREAT|O_TRUNC|O_LARGEFILE|WIN32OPEN, permissions);
       }
 
-#ifdef __linux__
+#ifdef __unix__
       // Set the owner and group for the file to match the original.  This only works if the user is root.  If the sticky bits are set on the parent folder,
       // do not override the group and user settings (the id's will be inherited from the parent folder instead).
 
@@ -2611,7 +2611,7 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, BYTE Move)
          }
          else error = LogError(ERH_Function, ERR_AllocMemory);
 
-#ifdef __linux__
+#ifdef __unix__
          // If the sticky bits were set, we need to set them again because Linux sneakily turns off those bits when a
          // file is written (for security reasons).
 
@@ -2715,7 +2715,7 @@ ERROR fs_copydir(STRING Source, STRING Dest, struct FileFeedback *Feedback, BYTE
 
             AdjustLogLevel(1);
                error = CreateFolder(Dest, (glDefaultPermissions) ? glDefaultPermissions : file->Permissions);
-#ifdef __linux__
+#ifdef __unix__
                if (vdest->VirtualID IS -1) {
                   chown(Dest, (glForceUID != -1) ? glForceUID : file->UserID, (glForceGID != -1) ? glForceGID : file->GroupID);
                }
@@ -2802,7 +2802,7 @@ BYTE strip_folder(STRING Path)
 
 ERROR fs_readlink(STRING Source, STRING *Link)
 {
-#ifdef __linux__
+#ifdef __unix__
    UBYTE buffer[512];
    LONG i;
 
@@ -2821,7 +2821,7 @@ ERROR fs_readlink(STRING Source, STRING *Link)
 
 ERROR fs_createlink(CSTRING Target, CSTRING Link)
 {
-#ifdef __linux__
+#ifdef __unix__
    if (symlink(Link, Target) IS -1) {
       return convert_errno(errno, ERR_CreateFile);
    }
@@ -2886,7 +2886,7 @@ ERROR fs_delete(STRING Path)
 
 ERROR fs_scandir(struct DirInfo *Dir)
 {
-#ifdef __linux__
+#ifdef __unix__
    struct dirent *de;
    struct stat64 info, link;
    struct tm *local;
@@ -3011,7 +3011,7 @@ ERROR fs_opendir(struct DirInfo *Info)
 {
    FMSG("OpenDir","Resolve '%.40s'/ '%.40s'", Info->prvPath, Info->prvResolvedPath);
 
-#ifdef __linux__
+#ifdef __unix__
 
    if ((Info->prvHandle = opendir(Info->prvResolvedPath))) {
       rewinddir(Info->prvHandle);
@@ -3043,7 +3043,7 @@ ERROR fs_closedir(struct DirInfo *Dir)
    FMSG("fs_closedir()","Dir: %p, VirtualID: %d", Dir, Dir->prvVirtualID);
 
    if ((!Dir->prvVirtualID) OR (Dir->prvVirtualID IS DEFAULT_VIRTUALID)) {
-      #ifdef __linux__
+      #ifdef __unix__
          if (Dir->prvHandle) closedir(Dir->prvHandle);
       #elif _WIN32
          if ((Dir->prvHandle != (WINHANDLE)-1) AND (Dir->prvHandle)) {
@@ -3100,7 +3100,7 @@ ERROR fs_testpath(CSTRING Path, LONG Flags, LONG *Type)
       else return ERR_DoesNotExist;
    }
 
-   #ifdef __linux__
+   #ifdef __unix__
 
       struct stat64 info;
 
@@ -3385,7 +3385,7 @@ restart:
    if (location) FreeMemory(location);
    return LogError(ERH_GetDeviceInfo, error);
 
-#elif __linux__
+#elif __unix__
 
    if (Info->DeviceFlags & DEVICE_HARD_DISK) {
       if (!location) {
@@ -3436,7 +3436,7 @@ restart:
 
 ERROR fs_makedir(CSTRING Path, LONG Permissions)
 {
-#ifdef __linux__
+#ifdef __unix__
 
    LONG secureflags, err, len, i;
 
@@ -3619,7 +3619,7 @@ ERROR load_datatypes(void)
 //****************************************************************************
 // Private function for deleting files and folders recursively.
 
-#ifdef __linux__
+#ifdef __unix__
 
 ERROR delete_tree(STRING Path, LONG Size, struct FileFeedback *Feedback)
 {

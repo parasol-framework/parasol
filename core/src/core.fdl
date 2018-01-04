@@ -2009,7 +2009,7 @@ INLINE ERROR LogBackError(LONG Header, ERROR Code) {
    return Code;
 }
 
-#ifdef __linux__
+#ifdef __unix__
 #include <pthread.h>
 #endif
 
@@ -2030,7 +2030,7 @@ struct PublicAddress {
    WORD     Flags;             // Special MEM_ address flags
    volatile UBYTE AccessCount;  // Count of locks on this address
    volatile UBYTE ExternalLock; // Incremented when a third party requires access during a lock
-   #ifdef __linux__
+   #ifdef __unix__
       volatile LONG ThreadLockID;      // Globally unique ID from get_thread_id()
       volatile LONG ProcessLockID;     // If locked, this field refers to the ID of the semaphore that locked the block
    #endif

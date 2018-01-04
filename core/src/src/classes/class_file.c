@@ -148,7 +148,7 @@ static ERROR FILE_Activate(objFile *Self, APTR Void)
    CSTRING path;
    if (GET_ResolvedPath(Self, &path)) return ERR_ResolvePath;
 
-#ifdef __linux__
+#ifdef __unix__
    LONG secureflags = S_IRUSR|S_IWUSR|convert_permissions(Self->Permissions);
 
    // Opening /dev/ files from Parasol is disallowed because it can cause problems
@@ -178,7 +178,7 @@ static ERROR FILE_Activate(objFile *Self, APTR Void)
    }
    else LogMsg("Open \"%s\" [-]", path);
 
-   #ifdef __linux__
+   #ifdef __unix__
       // Set O_NONBLOCK to stop the task from being halted in the event that we accidentally try to open a pipe like a
       // FIFO file.  This can happen when scanning the /dev/ folder and can cause tasks to hang.
 
@@ -458,7 +458,7 @@ static ERROR FILE_Delete(objFile *Self, struct flDelete *Args)
 
       if (Self->Path[len-1] IS ':') {
          if (!DeleteVolume(Self->Path)) {
-            #ifdef __linux__
+            #ifdef __unix__
                closedir(Self->Stream);
             #endif
             Self->Stream = NULL;
@@ -477,7 +477,7 @@ static ERROR FILE_Delete(objFile *Self, struct flDelete *Args)
       if (!GET_ResolvedPath(Self, &path)) {
          BYTE buffer[512];
 
-         #ifdef __linux__
+         #ifdef __unix__
             closedir(Self->Stream);
          #endif
          Self->Stream = NULL;
@@ -563,15 +563,15 @@ static ERROR FILE_Free(objFile *Self, APTR Void)
 
    if (Self->Handle != -1) {
       if (close(Self->Handle) IS -1) {
-         #ifdef __linux__
-            LogErrorMsg("Linux Error: %s", strerror(errno));
+         #ifdef __unix__
+            LogErrorMsg("Unix filesystem error: %s", strerror(errno));
          #endif
       }
       Self->Handle = -1;
    }
 
    if (Self->Stream) {
-      #ifdef __linux__
+      #ifdef __unix__
          closedir(Self->Stream);
       #endif
       Self->Stream = NULL;
@@ -675,7 +675,7 @@ static ERROR FILE_Init(objFile *Self, APTR Void)
          Self->Permissions |= info.Permissions;
       }
       else {
-#ifdef __linux__
+#ifdef __unix__
          Self->Permissions |= get_parent_permissions(Self->Path, NULL, NULL) & (PERMIT_ALL_READ|PERMIT_ALL_WRITE);
          if (!Self->Permissions) Self->Permissions = PERMIT_READ|PERMIT_WRITE|PERMIT_GROUP_READ|PERMIT_GROUP_WRITE;
          else LogMsg("Inherited permissions: $%.8x", Self->Permissions);
@@ -756,7 +756,7 @@ retrydir:
       goto retrydir;
    }
 
-#ifdef __linux__
+#ifdef __unix__
    // Establishing whether or not the path is a link is required on initialisation.
    struct stat64 info;
    if (Self->prvResolvedPath[len-1] IS '/') Self->prvResolvedPath[len-1] = 0; // For lstat64() symlink we need to remove the slash
@@ -774,7 +774,7 @@ retrydir:
 
       acQuery(&Self->Head);
 
-      #ifdef __linux__
+      #ifdef __unix__
          if ((Self->Stream = opendir(Self->prvResolvedPath))) return ERR_Okay;
       #elif _WIN32
          // Note: The CheckDiretoryExists() function does not return a true handle, just a code of 1 to indicate that the folder is present.
@@ -787,7 +787,7 @@ retrydir:
       if (Self->Flags & FL_NEW) {
          LogMsg("Making dir \"%s\", Permissions: $%.8x", Self->prvResolvedPath, Self->Permissions);
          if (!CreateFolder(Self->prvResolvedPath, Self->Permissions)) {
-            #ifdef __linux__
+            #ifdef __unix__
                if (!(Self->Stream = opendir(Self->prvResolvedPath))) {
                   LogErrorMsg("Failed to open the folder after creating it.");
                }
@@ -1439,7 +1439,7 @@ static ERROR FILE_SetDate(objFile *Self, struct flSetDate *Args)
       }
       else return ERR_ResolvePath;
 
-   #elif __linux__
+   #elif __unix__
 
       CSTRING path;
       if (!GET_ResolvedPath(Self, &path)) {
@@ -1959,7 +1959,7 @@ ERROR SET_Date(objFile *Self, struct DateTime *Date)
    }
    else return PostError(ERR_ResolvePath);
 
-#elif __linux__
+#elif __unix__
 
    CSTRING path;
    time_t datetime;
@@ -2014,7 +2014,7 @@ If the file system does not support group ID's, ERR_NoSupport is returned.
 
 static ERROR GET_Group(objFile *Self, LONG *Value)
 {
-#ifdef __linux__
+#ifdef __unix__
    struct stat64 info;
 
    if (fstat64(Self->Handle, &info) IS -1) {
@@ -2030,7 +2030,7 @@ static ERROR GET_Group(objFile *Self, LONG *Value)
 
 static ERROR SET_Group(objFile *Self, LONG Value)
 {
-#ifdef __linux__
+#ifdef __unix__
    if (Self->Head.Flags & NF_INITIALISED) {
       LogMsg("Changing group to #%d", Value);
       if (!fchown(Self->Handle, -1, Value)) {
@@ -2276,7 +2276,7 @@ folder containing the link will need to be taken into consideration when calcula
 
 static ERROR GET_Link(objFile *Self, STRING *Value)
 {
-#ifdef __linux__
+#ifdef __unix__
    STRING path;
    UBYTE buffer[512];
 
@@ -2312,7 +2312,7 @@ static ERROR GET_Link(objFile *Self, STRING *Value)
 
 static ERROR SET_Link(objFile *Self, STRING Value)
 {
-#ifdef __linux__
+#ifdef __unix__
    //symlink().
 #endif
    return ERR_NoSupport;
@@ -2353,7 +2353,7 @@ static ERROR SET_Path(objFile *Self, CSTRING Value)
    if (Self->Head.Flags & NF_INITIALISED) return PostError(ERR_Immutable);
 
    if (Self->Stream) {
-      #ifdef __linux__
+      #ifdef __unix__
          closedir(Self->Stream);
       #endif
       Self->Stream = NULL;
@@ -2452,7 +2452,7 @@ static ERROR GET_Permissions(objFile *Self, LONG *Value)
 {
    *Value = 0;
 
-#ifdef __linux__
+#ifdef __unix__
 
    // Always read permissions straight off the disk rather than returning an internal field, because some other
    // process could always have changed the permission flags.
@@ -2511,7 +2511,7 @@ static ERROR SET_Permissions(objFile *Self, LONG Value)
 
 static ERROR set_permissions(objFile *Self, LONG Permissions)
 {
-#ifdef __linux__
+#ifdef __unix__
 
    if (Self->Handle != -1) {
       LONG flags = 0;
@@ -2724,7 +2724,7 @@ static ERROR SET_Size(objFile *Self, LARGE Size)
    }
    else return PostError(ERR_ResolvePath);
 
-#elif __linux__
+#elif __unix__
 
    #ifdef __ANDROID__
    #warning Support for ftruncate64() required for Android build.
@@ -2887,7 +2887,7 @@ If the filesystem does not support user ID's, ERR_NoSupport is returned.
 
 static ERROR GET_User(objFile *Self, LONG *Value)
 {
-#ifdef __linux__
+#ifdef __unix__
    struct stat64 info;
 
    if (fstat64(Self->Handle, &info) IS -1) {
@@ -2903,7 +2903,7 @@ static ERROR GET_User(objFile *Self, LONG *Value)
 
 static ERROR SET_User(objFile *Self, LONG Value)
 {
-#ifdef __linux__
+#ifdef __unix__
    if (Self->Head.Flags & NF_INITIALISED) {
       LogMsg("Changing user to #%d", Value);
       if (!fchown(Self->Handle, Value, -1)) {

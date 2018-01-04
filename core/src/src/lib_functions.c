@@ -1373,7 +1373,7 @@ large: Returns the value of the resource that you have requested.  If the resour
 
 LARGE GetResource(LONG Resource)
 {
-#ifdef __unix__
+#ifdef __linux__
    struct sysinfo sys;
 #endif
 
@@ -1398,7 +1398,7 @@ LARGE GetResource(LONG Resource)
       case RES_THREAD_ID:       return (MAXINT)get_thread_id();
       case RES_CORE_IDL:        return (MAXINT)glIDL;
 
-#ifdef __unix__
+#ifdef __linux__
       // NB: This value is not cached.  Although unlikely, it is feasible that the total amount of physical RAM could
       // change during runtime.
 

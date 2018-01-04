@@ -97,7 +97,7 @@ ERROR ResolvePath(CSTRING Path, LONG Flags, STRING *Result)
    else if ((Path[0] IS '\\') AND (Path[1] IS '\\')) {
       resolved = TRUE; // UNC path discovered
    }
-#elif __linux__
+#elif __unix__
    if ((Path[0] IS '/') OR (Path[0] IS '\\')) resolved = TRUE;
 #endif
 
@@ -239,7 +239,7 @@ resolved_path:
 //****************************************************************************
 // For resolving file references via the host environment's PATH variable.  This will only work for relative paths.
 
-#ifdef __linux__
+#ifdef __unix__
 
 static ERROR resolve_path_env(CSTRING RelativePath, STRING *Result)
 {

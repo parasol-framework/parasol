@@ -217,7 +217,7 @@ ERROR ReleaseSemaphore(LONG, LONG);
 #define WaitMsg(a,b,c)      (ActionMsg(a,b,c,0,0xfffffffe))
 
 struct prvThread {
-   #ifdef __linux__
+   #ifdef __unix__
       pthread_t PThread;
       LONG Msgs[2];
    #elif _WIN32
