@@ -29,37 +29,39 @@ in a file.
 #define _LARGE_TIME_API
 #include "../defs.h"
 
-#ifdef __linux__
-#define _GNU_SOURCE
-#include <unistd.h>
-#include <dirent.h>
-#include <fcntl.h>
-#include <grp.h>
-#include <pwd.h>
-#include <signal.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <time.h>
-#include <utime.h>
-#include <sys/types.h>
-#include <sys/stat.h>
+#ifdef __unix__
+ #define _GNU_SOURCE
 
-#ifndef __ANDROID__
-#include <sys/statvfs.h>
-#else
-#include <sys/vfs.h>
-#define statvfs statfs
-#define fstatvfs fstatfs
-#endif
+ #include <unistd.h>
+ #include <dirent.h>
+ #include <fcntl.h>
+ #include <grp.h>
+ #include <pwd.h>
+ #include <signal.h>
+ #include <stdlib.h>
+ #include <stdio.h>
+ #include <string.h>
+ #include <time.h>
+ #include <utime.h>
+ #include <sys/types.h>
+ #include <sys/stat.h>
 
-#include <sys/time.h>
-#include <sys/syscall.h>
-#include <sys/vfs.h>
+ #ifndef __linux__
+  #include <sys/statvfs.h>
+ #else
+  #include <sys/vfs.h>
+  #define statvfs statfs
+  #define fstatvfs fstatfs
+ #endif
 
-#include <sys/inotify.h>
-//#include "inotify-syscalls.h"
-//#include "inotify.h"
+ #include <sys/time.h>
+ #include <sys/syscall.h>
+
+ #ifdef __linux__
+  #include <sys/inotify.h>
+  //#include "inotify-syscalls.h"
+  //#include "inotify.h"
+ #endif
 #endif
 
 #include <sys/types.h>
@@ -68,25 +70,31 @@ in a file.
 #include <errno.h>
 
 #ifdef _WIN32
-#include <io.h>
-#include <fcntl.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <errno.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <time.h>
-#include <string.h>
+ #include <io.h>
+ #include <fcntl.h>
+ #include <stdlib.h>
+ #include <stdio.h>
+ #include <errno.h>
+ #include <unistd.h>
+ #include <sys/types.h>
+ #include <sys/stat.h>
+ #include <time.h>
+ #include <string.h>
 
-#define open64   open
-#define lseek64  lseek
-//#define fstat64  fstat
-//#define stat64   stat
-#undef NULL
-#define NULL 0
-
+ #define open64   open
+ #define lseek64  lseek
+ //#define fstat64  fstat
+ //#define stat64   stat
+ #undef NULL
+ #define NULL 0
 #endif // _WIN32
+
+#ifdef __APPLE__
+ #include <sys/param.h>
+ #include <sys/mount.h>
+ #define lseek64  lseek
+ #define ftruncate64 ftruncate
+#endif
 
 #include <parasol/main.h>
 
