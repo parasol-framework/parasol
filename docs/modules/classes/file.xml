@@ -97,7 +97,7 @@
       <name>Write</name>
       <comment>Writes data to a file.</comment>
       <description>
-<p>Writes data from the provided buffer into the file, then updates the <field>Position</field> field to reflect the new read/write position.  The FL_WRITE bit must be set in the <field>Flags</field> field when the file is initialised, or the call will fail.</p>
+<p>Writes data from the provided buffer into the file, then updates the <field>Position</field> field to reflect the new read/write position.  You must have set the FL_WRITE bit in the <field>Flags</field> field when you initialised the file, or the call will fail.</p>
       </description>
       <result>
         <error code="LimitedSuccess">Only some of the data was written to the file.  Check the Result parameter to see how much data was written.</error>
@@ -357,7 +357,7 @@
 
     <field>
       <name>Date</name>
-      <comment>The 'last modified' date stamp of the file.</comment>
+      <comment>The 'last modified' date stamp on the file.</comment>
       <access read="G" write="S">Get/Set</access>
       <type>APTR</type>
       <description>
@@ -394,18 +394,18 @@
       <access read="G">Get</access>
       <type>BIGINT</type>
       <description>
-<p>This field returns the native file system handle for the file opened by the file object.  The handle may exist as an integer or pointer value - in order to manage this in a multi-platform manner, the value is returned as a 64-bit integer.</p>
+<p>This field returns the native file system handle for the file opened by the file object.  The native handle may be an integer or pointer value in 32 or 64-bit format.  In order to manage this issue in a multi-platform manner, the value is returned as a 64-bit integer.</p>
       </description>
     </field>
 
     <field>
       <name>Icon</name>
-      <comment>Returns an icon string that can be used for representing the file in a user interface.</comment>
+      <comment>A path to an icon image that is suitable for representing the file in a user interface.</comment>
       <access read="G">Get</access>
       <type>STRING</type>
       <description>
 <p>This field returns the name of the best icon to use when representing the file to the user, for instance in a file list.  The icon style is determined by analysing the File's <field>Path</field>.</p>
-<p>The resulting string is returned in the format <code>icons:category/name</code> and can be opened via the <class name="Picture">Picture</class> class.</p>
+<p>The resulting string is returned in the format <code>icons:category/name</code> and can be opened with the <class name="Picture">Picture</class> class.</p>
       </description>
     </field>
 
@@ -425,8 +425,8 @@
       <access read="G" write="S">Get/Set</access>
       <type>STRING</type>
       <description>
-<p>This field is required for initialisation and must either be in the format of a universal path string, or a path that is compatible with the host system.  The standard format for a universal path is <code>volume:folder/file</code>.</p>
-<p>To reference a folder, one would use <code>volume:folder/</code> (note the trailing slash).</p>
+<p>This field is required for initialisation and must either be in the format of a universal path string, or a path that is compatible with the host system.  The standard format for a universal path is <code>volume:folder/file</code>, for instance <code>parasol:system/classes.bin</code>.</p>
+<p>To reference a folder in a way that is distinct from a file, use a trailing slash as in <code>volume:folder/</code>.</p>
 <p>Referencing a <code>volume:</code> is optional.  In the event that a volume is not defined, the current working path is used as the point of origin.</p>
 <p>The accepted method for referencing parent folders is <code>../</code>, which can be repeated for as many parent folders as needed to traverse the folder hierarchy.</p>
       </description>
@@ -814,18 +814,19 @@
 
     <constants lookup="NF" comment="Flags that can be passed to NewObject().  If a flag needs to be stored with the object, it must be specified in the lower word.">
       <const name="PRIVATE"/>
-      <const name="NAME">Use the Name argument to name the created object.  This flag is not required if using NF_UNIQUE.</const>
+      <const name="NAME">Use the Name parameter to name the created object.  This flag is not required if using NF_UNIQUE.</const>
       <const name="INTEGRAL">Integral objects can only be allocated by classes that need to adopt the functionality of said object.  Integral objects do not appear in the object tree, effectively making them hidden from view.</const>
       <const name="UNTRACKED">An object created with this flag will not be tracked back to the object that created it.  If combined with the NF_PUBLIC flag, the object can also remain in memory when the object's related task is terminated.</const>
       <const name="NO_TRACK">An object created with this flag will not be tracked back to the object that created it.  If combined with the NF_PUBLIC flag, the object can also remain in memory when the object's related task is terminated.</const>
-      <const name="PUBLIC">By using the NF_PUBLIC flag, you can allocate public objects rather than the default private type.  A public object can be accessed and interacted with by any application directly, because the object structure and its data lies in public memory.  Public object structures can be accessed via exclusive access only (refer to the AccessObject() and ReleaseObject() functions).</const>
+      <const name="TIMER_SUB">Indicates that the object is subscribed to a timer Zinterval.</const>
+      <const name="PUBLIC">Allocates a public object using shareable resources, allowing it to be accessed directly by any process.  Access is granted via exclusive access locks  - refer to the AccessObject() and ReleaseObject() functions.</const>
       <const name="RECLASSED">The object switched from the base-class to a sub-class during initialisation.</const>
-      <const name="INITIALISED">Set if the object has been initialised.</const>
-      <const name="UNIQUE">Use this flag if you need to allocate an object which has a guaranteed unique name.  By using NF_UNIQUE, you can prevent your code from shadowing an object that exists with the same name.  This can be imperative when creating shared and public objects.  If it is discovered that an identically named object exists, NewObject() will return ERR_ObjectExists.  This flag works in conjunction with the Name argument.</const>
-      <const name="UNLOCK_FREE">Set if the object is marked for deletion</const>
+      <const name="INITIALISED">Read-only indicator if the object has been initialised.</const>
+      <const name="UNIQUE">Use to allocate an object that has a guaranteed unique name.  This will prevent code from shadowing any object that exists with the same name, which can be imperative when creating public objects.  If it is discovered that an identically named object exists, NewObject() will return ERR_ObjectExists.  This flag works in conjunction with the Name argument.</const>
+      <const name="UNLOCK_FREE">Read-only indicator for when the object is marked for deletion.</const>
       <const name="MESSAGE">Action has been called against the object through the message system (managed by ProcessMessages()).</const>
-      <const name="FOREIGN_OWNER">Object is owned by an object in a foreign task.</const>
-      <const name="FREE">Indicates that the object is being freed.</const>
+      <const name="FOREIGN_OWNER">Read-only indicator for when an object's parent is in a foreign process.</const>
+      <const name="FREE">Read-only indicator for when the object is being freed.</const>
     </constants>
 
     <constants lookup="CCF" comment="Class categories">
@@ -887,7 +888,7 @@
       <const name="RECURSIVE">Set if support for recursive locking within the same thread is required.</const>
     </constants>
 
-    <constants lookup="RSF">
+    <constants lookup="RSF" comment="Flags for ResolvePath()">
       <const name="PATH">Use the PATH environment variable to resolve the file name in the Path parameter.</const>
       <const name="NO_FILE_CHECK">Do not test for the existence of the targeted file or folder during the resolution process.</const>
       <const name="APPROXIMATE">Ignores file extensions for the purpose of file name matching.</const>
@@ -906,19 +907,19 @@
       <const name="READ_ONLY">Read-only (not permissions related and might indicate read-only media).</const>
       <const name="SIZE">Retrieve the byte size of each file.</const>
       <const name="PERMISSIONS">Get permission/security information.</const>
-      <const name="FILES">Read all files in the directory.</const>
+      <const name="FILES">Read all files in the folder.</const>
       <const name="STREAM">Path is connected via a stream, e.g. network connection.</const>
       <const name="DATE">Retrieve the date stamp of each file.</const>
       <const name="FOLDER">Read all folders/volumes in the folder.</const>
       <const name="VOLUME">Feedback only - indicates a volume.</const>
       <const name="HIDDEN">Feedback only - file/folder is hidden.</const>
-      <const name="FILE">Read all files in the directory.</const>
+      <const name="FILE">Read all files in the folder.</const>
       <const name="TAGS">Receive additional information for each file, such as comments, author and copyright.  The results are stored in the Tags array for each file, using the string format 'TAGNAME:Description' for each entry.</const>
       <const name="TIME">Retrieve the date stamp of each file.</const>
       <const name="FOLDERS">Read all folders/volumes in the folder.</const>
     </constants>
 
-    <constants lookup="MFF" comment="Flags for File Watch() method.">
+    <constants lookup="MFF" comment="Flags for the File Watch() method.">
       <const name="MOVED">Existing file moved or renamed.</const>
       <const name="UNMOUNT">Host filesystem was unmounted.</const>
       <const name="ATTRIB">File permissions or datestamp changed.</const>
@@ -926,14 +927,14 @@
       <const name="CLOSED">An opened file has been closed.</const>
       <const name="FILE">File identifier; if passed to Watch() then indicates a preference for file events only.</const>
       <const name="FOLDER">Folder identifier; if passed to Watch() then indicates a preference for folder events only.</const>
-      <const name="WRITE">File modified via write or truncation</const>
+      <const name="WRITE">File modified via write or truncation.</const>
       <const name="SELF">Event applies to the monitored folder and not a contained item</const>
       <const name="OPENED">Existing file was opened.</const>
       <const name="RENAME">Existing file moved or renamed.</const>
-      <const name="READ">File was accessed (read)</const>
-      <const name="CREATE">New file/link created or renamed in directory</const>
+      <const name="READ">File was accessed (read).</const>
+      <const name="CREATE">New file/link created or renamed in folder.</const>
       <const name="DELETE">Existing file deleted</const>
-      <const name="MODIFY">File modified via write or truncation</const>
+      <const name="MODIFY">File modified via write or truncation.</const>
     </constants>
 
     <constants lookup="LOC" comment="AnalysePath() values">
@@ -952,7 +953,7 @@
       <const name="DEBUG">Additional debug messages will be printed during normal usage of the task class when this flag is set.</const>
       <const name="WAIT">This flag will cause the parent process to halt when the task is activated.  Control is returned to the parent process once the child process terminates.</const>
       <const name="QUIET">Setting this flag will divert all process output to /dev/null or the nearest equivalent for non-Unix systems.</const>
-      <const name="RESET_PATH">If set, the executed process will start in its own directory rather than the directory of the parent process.</const>
+      <const name="RESET_PATH">If set, the executed process will start in its own folder rather than the folder of the parent process.</const>
       <const name="FOREIGN">Set this flag when using the task object to execute a foreign process - that is an executable that does not use the Parasol API.</const>
       <const name="ATTACHED">Forces new task to be attached to the parent (child will close when parent closes).</const>
       <const name="DETACHED">Forces new task to be detached from the parent.</const>
@@ -974,19 +975,19 @@
     <constants lookup="FL" comment="File flags">
       <const name="LINK">Read-Only.  Indicates that the file is a symbolic link or shortcut to another file.</const>
       <const name="EXCLUDE_FOLDERS">Exclude folders when scanning this folder.</const>
-      <const name="DEVICE">File is a system device (must set if you want to open a device for read/write)</const>
-      <const name="APPROXIMATE">Setting this flag allows a file object to find approximate matching file names when opening an existing file.  In basic terms it causes file extensions to be ignored; for instance if you attempt to open a file of 'screenshot.png' when only a file name of 'screenshot.jpg' exists under the same folder, the 'screenshot.jpg' file will be opened instead.  If multiple files could potentially match to the file name, the file object will select the first potential match that it comes across.</const>
+      <const name="DEVICE">The file is a system device (must set if opening a device for read/write operations)</const>
+      <const name="APPROXIMATE">Allows fuzzy matching of the file path when opening an existing file.  This means that the file extension will be ignored; for instance attempting to open a file of 'screenshot.png' when only a file name of 'screenshot.jpg' exists in the same folder, the 'screenshot.jpg' file will be opened instead.  If multiple files could potentially match to the file name, the file object will select the first match that is encountered.</const>
       <const name="EXCLUDE_FILES">Exclude files when scanning this folder.</const>
       <const name="RESET_DATE">For internal use only</const>
-      <const name="STREAM">File data is streamed (e.g. PIPE, FIFO, socket) or is network based</const>
-      <const name="WRITE">Prepares a file for writing data, starting at byte position 0.  If you want to start writing from the end of a file, use the Seek action after your file has been initialised successfully.</const>
+      <const name="STREAM">File data is streamed (e.g. PIPE, FIFO, socket) and may be accessed locally or via a network.</const>
+      <const name="WRITE">Prepares a file for writing data, starting at byte position 0.  To start writing from the end of a file, use the Seek action after the file has been initialised.</const>
       <const name="DIRECTORY">The file object represents a folder.</const>
-      <const name="NEW">Set this flag when creating a new file. Note that if a file with the same name already exists, the old file (with all its data), will be destroyed. If you try to create a new file on a file that is already open by some other task, the initalisation will fail.</const>
-      <const name="FILE">Explicitly declares the file object as representing a file capable of storing data (as opposed to a device or folder for example).</const>
-      <const name="READ">Must be set on initialisation if the file needs to be opened for read access.</const>
-      <const name="BUFFER">Activates a special mode in which the file data is stored in a memory buffer rather than a disk file.  You are required to set the Size field to a value of at least 1 so that the file can determine the initial buffer size.  In this mode most of the available file operations are meaningless except for the Read, Write and Seek actions.</const>
+      <const name="NEW">Required when creating a new file.  If a file with the same name exists, its contents will be destroyed. If however the existing file is locked, the initalisation process will fail.</const>
+      <const name="FILE">Explicitly declares the file object as an entity that stores content (as opposed to a device or folder for example).</const>
+      <const name="READ">Required if the file needs to be opened for read access.</const>
+      <const name="BUFFER">Activates a special mode in which the file data is stored in a memory buffer rather than a disk file.  Set the Size field to a value of at least 1 so that the initial buffer size is configured.  In this mode many of the available file operations are meaningless except for the Read, Write and Seek actions.</const>
       <const name="FOLDER">The file object represents a folder.</const>
-      <const name="LOOP">In loop mode, the file object's position marker for read/write operations is allowed to extend past the actual file size.  Any read/write operation beyond the file size will loop back to the file at a corrected offset - for example, reading position 330 of a 100 byte file will in fact start the operation from the 30th byte.  Loop mode does not affect any other area besides the read, write and seek operations.  The loop feature is typically used to enable multimedia data streams with minimal effort.</const>
+      <const name="LOOP">In loop mode, the file object's position marker for read/write operations is allowed to extend past the actual file size.  Any read/write operation beyond the file size will loop back to the file at a corrected offset - for example, reading position 330 of a 100 byte file will start the operation from the 30th byte.  Loop mode does not affect any other area besides the read, write and seek operations.  The loop feature is typically used to create multimedia data streams with minimal effort.</const>
     </constants>
 
   </types>

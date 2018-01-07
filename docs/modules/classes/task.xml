@@ -276,7 +276,7 @@
       <access read="G">Get</access>
       <type>INT</type>
       <description>
-<p>All tasks that use the Parasol API belong to a run-time instance.  Multiple tasks that share the same instance ID can communicate with each other. Tasks that do not share the same instance ID will not share the same name space or the same ID space, thus preventing interprocess communication.</p>
+<p>All tasks that use the Parasol API belong to a run-time instance that can host multiple processes.  Tasks that share the same instance ID can easily communicate with each other, while those that do not will be in a separate namespace.</p>
 <p>It is not possible to change the instance ID once the process has started.  New processes can be assigned an instance ID on creation with the <code>--instance</code> commandline argument.  By default, any new process will share the same instance ID as its creator.</p>
       </description>
     </field>
@@ -287,7 +287,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>STRING</type>
       <description>
-<p>Use the LaunchPath field to specify the directory that a launched executable will start in when the task object is activated.  This will override all other path options, such as the RESET_PATH flag.</p>
+<p>Use the LaunchPath field to specify the folder that a launched executable will start in when the task object is activated.  This will override all other path options, such as the RESET_PATH flag.</p>
       </description>
     </field>
 
@@ -356,13 +356,12 @@
 
     <field>
       <name>Path</name>
-      <comment>The current path being used by a task object.</comment>
+      <comment>The current working folder of the active process.</comment>
       <access read="G" write="S">Get/Set</access>
       <type>STRING</type>
       <description>
-<p>The Path specifies a "working directory" that determines where files are loaded from when an absolute path is not specified for file access.  The following example demonstrates an absolute file path: <code>parasol:documents/readme.txt</code></p>
-<p>This is a relative file path: <code>my/files/readme.txt</code></p>
-<p>In the second instance, if the task's current path was <code>user:documents/</code> then the filesystem would expand the filename to <code>user:documents/my/files/readme.txt</code>.</p>
+<p>The Path specifies the 'working folder' that determines where files are loaded from when an absolute path is not otherwise specified for file access.  Initially the working folder is usually set to the folder of the parent process, such as that of a terminal shell.</p>
+<p>The working folder can be changed at any time by updating the Path with a new folder location.</p>
       </description>
     </field>
 
@@ -383,7 +382,7 @@
       <access read="R" write="I">Read/Init</access>
       <type>INT</type>
       <description>
-<p>If a task object launches an executable, the ProcessID will be set to the process ID that was assigned to the executable.  At all other times the ProcessID is set to zero.</p>
+<p>If a task object launches an executable file via Activate(), the ProcessID will be set to the 'pid' that was assigned to the new process by the host system.  At all other times the ProcessID is set to zero.</p>
       </description>
     </field>
 
@@ -393,8 +392,8 @@
       <access read="G">Get</access>
       <type>STRING</type>
       <description>
-<p>The ProcessPath is set to the path of the executable that is associated with the task.  It is managed internally and cannot be altered.</p>
-<p>In Microsoft Windows it is not always possible to determine the origins of an executable, in which case the ProcessPath is set to the working directory in use at the time the process was launched.</p>
+<p>The ProcessPath is set to the path of the executable file that is associated with the task.  It is managed internally and cannot be altered.</p>
+<p>In Microsoft Windows it is not always possible to determine the origins of an executable, in which case the ProcessPath is set to the working folder in use at the time the process was launched.</p>
       </description>
     </field>
 
@@ -404,17 +403,17 @@
       <access read="G" write="S">Get/Set</access>
       <type>INT</type>
       <description>
-<p>If the task has executed and returned a code following its exit, you may read that code from the ReturnCode field.  If the task is still running, the error code ERR_TaskStillExists will be returned.</p>
+<p>Once a process has completed execution then its return code can be read from this field.  If process is still running, the error code ERR_TaskStillExists will be returned.</p>
       </description>
     </field>
 
     <field>
       <name>Short</name>
-      <comment>Short description of the program/task.</comment>
+      <comment>A short description of the process' purpose.</comment>
       <access read="G" write="S">Get/Set</access>
       <type>STRING</type>
       <description>
-<p>This field allows for the specification of a short description for the process. The description should be under 80 characters (one sentence).  The description is typically useful for occasions where the user is debugging the system or trying to get a quick overview of what tasks are currently running.  By creating a useful description, you can ease system maintenance for the user.</p>
+<p>This field allows for the specification of a short description for the process. The description should be under 80 characters (one sentence).  The description is typically useful for occasions where the user is debugging the system or trying to get a quick overview of the processes that are currently running.</p>
       </description>
     </field>
 
@@ -726,18 +725,19 @@
 
     <constants lookup="NF" comment="Flags that can be passed to NewObject().  If a flag needs to be stored with the object, it must be specified in the lower word.">
       <const name="PRIVATE"/>
-      <const name="NAME">Use the Name argument to name the created object.  This flag is not required if using NF_UNIQUE.</const>
+      <const name="NAME">Use the Name parameter to name the created object.  This flag is not required if using NF_UNIQUE.</const>
       <const name="INTEGRAL">Integral objects can only be allocated by classes that need to adopt the functionality of said object.  Integral objects do not appear in the object tree, effectively making them hidden from view.</const>
       <const name="UNTRACKED">An object created with this flag will not be tracked back to the object that created it.  If combined with the NF_PUBLIC flag, the object can also remain in memory when the object's related task is terminated.</const>
       <const name="NO_TRACK">An object created with this flag will not be tracked back to the object that created it.  If combined with the NF_PUBLIC flag, the object can also remain in memory when the object's related task is terminated.</const>
-      <const name="PUBLIC">By using the NF_PUBLIC flag, you can allocate public objects rather than the default private type.  A public object can be accessed and interacted with by any application directly, because the object structure and its data lies in public memory.  Public object structures can be accessed via exclusive access only (refer to the AccessObject() and ReleaseObject() functions).</const>
+      <const name="TIMER_SUB">Indicates that the object is subscribed to a timer Zinterval.</const>
+      <const name="PUBLIC">Allocates a public object using shareable resources, allowing it to be accessed directly by any process.  Access is granted via exclusive access locks  - refer to the AccessObject() and ReleaseObject() functions.</const>
       <const name="RECLASSED">The object switched from the base-class to a sub-class during initialisation.</const>
-      <const name="INITIALISED">Set if the object has been initialised.</const>
-      <const name="UNIQUE">Use this flag if you need to allocate an object which has a guaranteed unique name.  By using NF_UNIQUE, you can prevent your code from shadowing an object that exists with the same name.  This can be imperative when creating shared and public objects.  If it is discovered that an identically named object exists, NewObject() will return ERR_ObjectExists.  This flag works in conjunction with the Name argument.</const>
-      <const name="UNLOCK_FREE">Set if the object is marked for deletion</const>
+      <const name="INITIALISED">Read-only indicator if the object has been initialised.</const>
+      <const name="UNIQUE">Use to allocate an object that has a guaranteed unique name.  This will prevent code from shadowing any object that exists with the same name, which can be imperative when creating public objects.  If it is discovered that an identically named object exists, NewObject() will return ERR_ObjectExists.  This flag works in conjunction with the Name argument.</const>
+      <const name="UNLOCK_FREE">Read-only indicator for when the object is marked for deletion.</const>
       <const name="MESSAGE">Action has been called against the object through the message system (managed by ProcessMessages()).</const>
-      <const name="FOREIGN_OWNER">Object is owned by an object in a foreign task.</const>
-      <const name="FREE">Indicates that the object is being freed.</const>
+      <const name="FOREIGN_OWNER">Read-only indicator for when an object's parent is in a foreign process.</const>
+      <const name="FREE">Read-only indicator for when the object is being freed.</const>
     </constants>
 
     <constants lookup="CCF" comment="Class categories">
@@ -799,7 +799,7 @@
       <const name="RECURSIVE">Set if support for recursive locking within the same thread is required.</const>
     </constants>
 
-    <constants lookup="RSF">
+    <constants lookup="RSF" comment="Flags for ResolvePath()">
       <const name="PATH">Use the PATH environment variable to resolve the file name in the Path parameter.</const>
       <const name="NO_FILE_CHECK">Do not test for the existence of the targeted file or folder during the resolution process.</const>
       <const name="APPROXIMATE">Ignores file extensions for the purpose of file name matching.</const>
@@ -818,19 +818,19 @@
       <const name="READ_ONLY">Read-only (not permissions related and might indicate read-only media).</const>
       <const name="SIZE">Retrieve the byte size of each file.</const>
       <const name="PERMISSIONS">Get permission/security information.</const>
-      <const name="FILES">Read all files in the directory.</const>
+      <const name="FILES">Read all files in the folder.</const>
       <const name="STREAM">Path is connected via a stream, e.g. network connection.</const>
       <const name="DATE">Retrieve the date stamp of each file.</const>
       <const name="FOLDER">Read all folders/volumes in the folder.</const>
       <const name="VOLUME">Feedback only - indicates a volume.</const>
       <const name="HIDDEN">Feedback only - file/folder is hidden.</const>
-      <const name="FILE">Read all files in the directory.</const>
+      <const name="FILE">Read all files in the folder.</const>
       <const name="TAGS">Receive additional information for each file, such as comments, author and copyright.  The results are stored in the Tags array for each file, using the string format 'TAGNAME:Description' for each entry.</const>
       <const name="TIME">Retrieve the date stamp of each file.</const>
       <const name="FOLDERS">Read all folders/volumes in the folder.</const>
     </constants>
 
-    <constants lookup="MFF" comment="Flags for File Watch() method.">
+    <constants lookup="MFF" comment="Flags for the File Watch() method.">
       <const name="MOVED">Existing file moved or renamed.</const>
       <const name="UNMOUNT">Host filesystem was unmounted.</const>
       <const name="ATTRIB">File permissions or datestamp changed.</const>
@@ -838,14 +838,14 @@
       <const name="CLOSED">An opened file has been closed.</const>
       <const name="FILE">File identifier; if passed to Watch() then indicates a preference for file events only.</const>
       <const name="FOLDER">Folder identifier; if passed to Watch() then indicates a preference for folder events only.</const>
-      <const name="WRITE">File modified via write or truncation</const>
+      <const name="WRITE">File modified via write or truncation.</const>
       <const name="SELF">Event applies to the monitored folder and not a contained item</const>
       <const name="OPENED">Existing file was opened.</const>
       <const name="RENAME">Existing file moved or renamed.</const>
-      <const name="READ">File was accessed (read)</const>
-      <const name="CREATE">New file/link created or renamed in directory</const>
+      <const name="READ">File was accessed (read).</const>
+      <const name="CREATE">New file/link created or renamed in folder.</const>
       <const name="DELETE">Existing file deleted</const>
-      <const name="MODIFY">File modified via write or truncation</const>
+      <const name="MODIFY">File modified via write or truncation.</const>
     </constants>
 
     <constants lookup="LOC" comment="AnalysePath() values">
@@ -864,7 +864,7 @@
       <const name="DEBUG">Additional debug messages will be printed during normal usage of the task class when this flag is set.</const>
       <const name="WAIT">This flag will cause the parent process to halt when the task is activated.  Control is returned to the parent process once the child process terminates.</const>
       <const name="QUIET">Setting this flag will divert all process output to /dev/null or the nearest equivalent for non-Unix systems.</const>
-      <const name="RESET_PATH">If set, the executed process will start in its own directory rather than the directory of the parent process.</const>
+      <const name="RESET_PATH">If set, the executed process will start in its own folder rather than the folder of the parent process.</const>
       <const name="FOREIGN">Set this flag when using the task object to execute a foreign process - that is an executable that does not use the Parasol API.</const>
       <const name="ATTACHED">Forces new task to be attached to the parent (child will close when parent closes).</const>
       <const name="DETACHED">Forces new task to be detached from the parent.</const>
@@ -886,19 +886,19 @@
     <constants lookup="FL" comment="File flags">
       <const name="LINK">Read-Only.  Indicates that the file is a symbolic link or shortcut to another file.</const>
       <const name="EXCLUDE_FOLDERS">Exclude folders when scanning this folder.</const>
-      <const name="DEVICE">File is a system device (must set if you want to open a device for read/write)</const>
-      <const name="APPROXIMATE">Setting this flag allows a file object to find approximate matching file names when opening an existing file.  In basic terms it causes file extensions to be ignored; for instance if you attempt to open a file of 'screenshot.png' when only a file name of 'screenshot.jpg' exists under the same folder, the 'screenshot.jpg' file will be opened instead.  If multiple files could potentially match to the file name, the file object will select the first potential match that it comes across.</const>
+      <const name="DEVICE">The file is a system device (must set if opening a device for read/write operations)</const>
+      <const name="APPROXIMATE">Allows fuzzy matching of the file path when opening an existing file.  This means that the file extension will be ignored; for instance attempting to open a file of 'screenshot.png' when only a file name of 'screenshot.jpg' exists in the same folder, the 'screenshot.jpg' file will be opened instead.  If multiple files could potentially match to the file name, the file object will select the first match that is encountered.</const>
       <const name="EXCLUDE_FILES">Exclude files when scanning this folder.</const>
       <const name="RESET_DATE">For internal use only</const>
-      <const name="STREAM">File data is streamed (e.g. PIPE, FIFO, socket) or is network based</const>
-      <const name="WRITE">Prepares a file for writing data, starting at byte position 0.  If you want to start writing from the end of a file, use the Seek action after your file has been initialised successfully.</const>
+      <const name="STREAM">File data is streamed (e.g. PIPE, FIFO, socket) and may be accessed locally or via a network.</const>
+      <const name="WRITE">Prepares a file for writing data, starting at byte position 0.  To start writing from the end of a file, use the Seek action after the file has been initialised.</const>
       <const name="DIRECTORY">The file object represents a folder.</const>
-      <const name="NEW">Set this flag when creating a new file. Note that if a file with the same name already exists, the old file (with all its data), will be destroyed. If you try to create a new file on a file that is already open by some other task, the initalisation will fail.</const>
-      <const name="FILE">Explicitly declares the file object as representing a file capable of storing data (as opposed to a device or folder for example).</const>
-      <const name="READ">Must be set on initialisation if the file needs to be opened for read access.</const>
-      <const name="BUFFER">Activates a special mode in which the file data is stored in a memory buffer rather than a disk file.  You are required to set the Size field to a value of at least 1 so that the file can determine the initial buffer size.  In this mode most of the available file operations are meaningless except for the Read, Write and Seek actions.</const>
+      <const name="NEW">Required when creating a new file.  If a file with the same name exists, its contents will be destroyed. If however the existing file is locked, the initalisation process will fail.</const>
+      <const name="FILE">Explicitly declares the file object as an entity that stores content (as opposed to a device or folder for example).</const>
+      <const name="READ">Required if the file needs to be opened for read access.</const>
+      <const name="BUFFER">Activates a special mode in which the file data is stored in a memory buffer rather than a disk file.  Set the Size field to a value of at least 1 so that the initial buffer size is configured.  In this mode many of the available file operations are meaningless except for the Read, Write and Seek actions.</const>
       <const name="FOLDER">The file object represents a folder.</const>
-      <const name="LOOP">In loop mode, the file object's position marker for read/write operations is allowed to extend past the actual file size.  Any read/write operation beyond the file size will loop back to the file at a corrected offset - for example, reading position 330 of a 100 byte file will in fact start the operation from the 30th byte.  Loop mode does not affect any other area besides the read, write and seek operations.  The loop feature is typically used to enable multimedia data streams with minimal effort.</const>
+      <const name="LOOP">In loop mode, the file object's position marker for read/write operations is allowed to extend past the actual file size.  Any read/write operation beyond the file size will loop back to the file at a corrected offset - for example, reading position 330 of a 100 byte file will start the operation from the 30th byte.  Loop mode does not affect any other area besides the read, write and seek operations.  The loop feature is typically used to create multimedia data streams with minimal effort.</const>
     </constants>
 
   </types>
