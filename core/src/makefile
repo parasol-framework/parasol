@@ -72,16 +72,20 @@ else
 	rm obj/lib.o
       endif
    else
-      # Note: -lrt is required for clock_gettime()
-
-      ifeq ($(DEBUG),1)
-	$(CC) -shared $(LINK) -Wl,-soname,$(LIBNAME)$(LIBEXT),-version-script=version -o $(PARASOL_ROOTMOD) $(OBJECTS) -ldl -lrt -lpthread $(LINKLIB)
+      ifeq ($(HOST),mac)
+	$(CC) -shared $(LINK) -o $(PARASOL_ROOTMOD) $(OBJECTS) -ldl -lrt -lpthread $(LINKLIB)
       else
+         # Note: -lrt is required for clock_gettime()
+
+         ifeq ($(DEBUG),1)
+	$(CC) -shared $(LINK) -Wl,-soname,$(LIBNAME)$(LIBEXT),-version-script=version -o $(PARASOL_ROOTMOD) $(OBJECTS) -ldl -lrt -lpthread $(LINKLIB)
+         else
 	$(TOOLCHAIN)ld -r -o obj/lib.o $(OBJECTS)
 	$(OBJCOPY) -K CloseCore -K OpenCore -R .comment -R .note --strip-unneeded obj/lib.o
 	mkdir -p $(PARASOL_MODULES)
 	$(CC) -shared -fPIC $(LINK) -Wl,-soname,$(LIBNAME)$(LIBEXT),-version-script=version -o $(PARASOL_ROOTMOD) obj/lib.o -ldl -lrt -lpthread $(LINKLIB)
 	rm obj/lib.o
+         endif
       endif
    endif
 endif
