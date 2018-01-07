@@ -43,6 +43,7 @@ UNAME ?= $(shell uname -s)
 OSTYPE ?= $(UNAME)
 OSTYPE := $(call lc,$(OSTYPE))
 UNAME := $(call lc,$(UNAME))
+XXD ?= $(shell command -v xxd 2> /dev/null)
 
 MSYSTEM_PREFIX ?= /mingw
 WINDRES ?= windres
@@ -214,6 +215,14 @@ else
       LIBEXT=   .so
       EXE=
       EXELINK_INIT= "$(PARASOL_LIB_INIT)" -ldl
+
+      # OSX specific overrides
+
+      ifeq ($(HOST),mac)
+         LIBLINK=         -shared -nostartfiles -o "$(DEST)"
+         LIBLINK_STDC=    -shared -o "$(DEST)"
+         LIBLINK_STDCPP=  -shared -o "$(DEST)"
+      endif
    endif
 endif
 
@@ -233,8 +242,8 @@ ifndef PARASOL_HEADERS
    PARASOL_HEADERS := $(if $(SDK_ROOT),$(SDK_ROOT)/core/,)include
 endif
 #-Wno-narrowing
-CFLAGS+= -Wall $(ARCH) -fno-strict-aliasing -Wno-unused-result -Wno-pointer-sign -Wno-format-zero-length -I$(PARASOL_HEADERS) -I$(SDK_ROOT)/core/link -I$(SDK_ROOT)/core/3rdparty/symlib
-CXXFLAGS+= -Wall $(ARCH) -fno-strict-aliasing -Wno-unused-result -Wno-missing-braces -Wno-char-subscripts -I$(PARASOL_HEADERS) -I$(SDK_ROOT)/core/link -I$(SDK_ROOT)/core/3rdparty/symlib
+CFLAGS+= -Wall $(ARCH) -fno-strict-aliasing -Wno-empty-body -Wno-unused-result -Wno-pointer-sign -Wno-format-zero-length -I$(PARASOL_HEADERS) -I$(SDK_ROOT)/core/link -I$(SDK_ROOT)/core/3rdparty/symlib
+CXXFLAGS+= -Wall $(ARCH) -fno-strict-aliasing -Wno-empty-body -Wno-unused-result -Wno-missing-braces -Wno-char-subscripts -I$(PARASOL_HEADERS) -I$(SDK_ROOT)/core/link -I$(SDK_ROOT)/core/3rdparty/symlib
 
 ifneq ($(HOST),mac)
    CFLAGS+= -Wno-unused-but-set-variable
@@ -249,16 +258,18 @@ ifeq ($(VDEBUG),1)
    CXXFLAGS+= -g -DDEBUG
    DEBUG ?= 1
 else
-  ifeq ($(DEBUG),1)
-   CFLAGS+= -g
-   CXXFLAGS+= -g
-  else
-   CFLAGS   += -O2
-   CXXFLAGS += -O2
-   LINK      = -s
-   LIBLINK  += -s
-   EXELINK  += -s
-  endif
+   ifeq ($(DEBUG),1)
+      CFLAGS+= -g
+      CXXFLAGS+= -g
+   else
+      CFLAGS   += -O2
+      CXXFLAGS += -O2
+      ifneq ($(HOST),mac)
+         LINK      = -s
+         LIBLINK  += -s
+         EXELINK  += -s
+      endif
+   endif
 endif
 
 # CFLAGS += -fno-tree-slp-vectorize -fno-tree-loop-vectorize \

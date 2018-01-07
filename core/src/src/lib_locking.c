@@ -22,6 +22,7 @@ Most technical code regarding system locking is managed in this area.  Also chec
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 
 #ifdef __unix__
   #include <errno.h>
@@ -106,7 +107,7 @@ static ERROR alloc_lock(THREADLOCK *Lock, WORD Flags)
 
       if (Flags & ALF_SHARED) {
          pthread_mutexattr_setpshared(&attrib, PTHREAD_PROCESS_SHARED); // Allow the mutex to be used across foreign processes.
-         #ifndef __ANDROID__
+         #if !defined(__ANDROID__) && !defined(__APPLE__)
             // If someone crashes holding the mutex, a robust mutex results in EOWNERDEAD being returned to the next
             // guy who must then call pthread_mutex_consistent() and pthread_mutex_unlock()
             pthread_mutexattr_setrobust(&attrib, PTHREAD_MUTEX_ROBUST);
@@ -189,20 +190,28 @@ retry:
    if (Timeout > 0) {
       result = pthread_mutex_trylock(Lock); // Attempt a quick-lock without resorting to the very slow clock_gettime()
       if (result IS EBUSY) {
-         struct timespec timestamp;
-         clock_gettime(CLOCK_REALTIME, &timestamp); // Slow!
+         #ifdef __APPLE__
+            LARGE end = PreciseTime() + (Timeout * 1000LL);
+            do {
+               struct timespec ts = { .tv_sec = 0, .tv_nsec = 1000000 }; // Equates to 1000 checks per second
+               nanosleep(&ts, &ts);
+            } while ((pthread_mutex_trylock(Lock) IS EBUSY) AND (PreciseTime() < end));
+         #else
+             struct timespec timestamp;
+             clock_gettime(CLOCK_REALTIME, &timestamp); // Slow!
 
-         // This subroutine is intended to perform addition with overflow management as quickly as possible (avoid a
-         // modulo operation).  Note that nsec is from 0 - 1000000000.
+             // This subroutine is intended to perform addition with overflow management as quickly as possible (avoid a
+             // modulo operation).  Note that nsec is from 0 - 1000000000.
 
-         LARGE tn = timestamp.tv_nsec + (1000000LL * (LARGE)Timeout);
-         while (tn > 1000000000LL) {
-            timestamp.tv_sec++;
-            tn -= 1000000000LL;
-         }
-         timestamp.tv_nsec = (LONG)tn;
+             LARGE tn = timestamp.tv_nsec + (1000000LL * (LARGE)Timeout);
+             while (tn > 1000000000LL) {
+                timestamp.tv_sec++;
+                tn -= 1000000000LL;
+             }
+             timestamp.tv_nsec = (LONG)tn;
 
-         result = pthread_mutex_timedlock(Lock, &timestamp);
+             result = pthread_mutex_timedlock(Lock, &timestamp);
+         #endif
       }
    }
    else if (Timeout IS 0) result = pthread_mutex_trylock(Lock);
@@ -212,7 +221,7 @@ retry:
    if ((result IS ETIMEDOUT) OR (result IS EBUSY)) return ERR_TimeOut;
    else if (result IS EOWNERDEAD) { // The previous mutex holder crashed while holding it.
       LogF("@thread_lock","Resetting the state of a crashed mutex.");
-      #ifndef __ANDROID__
+      #if !defined(__ANDROID__) && !defined(__APPLE__)
          pthread_mutex_consistent(Lock);
       #endif
       pthread_mutex_unlock(Lock);
@@ -2170,20 +2179,28 @@ retry:
          // Attempt a quick-lock without resorting to the very slow clock_gettime()
          result = pthread_mutex_trylock(&glSharedControl->PublicLocks[Index].Mutex);
          if (result IS EBUSY) {
-            struct timespec timestamp;
-            clock_gettime(CLOCK_REALTIME, &timestamp); // Slow!
+            #ifdef __APPLE__
+               LARGE end = PreciseTime() + (Timeout * 1000LL);
+               do {
+                  struct timespec ts = { .tv_sec = 0, .tv_nsec = 1000000 }; // Equates to 1000 checks per second
+                  nanosleep(&ts, &ts);
+               } while ((pthread_mutex_trylock(&glSharedControl->PublicLocks[Index].Mutex) IS EBUSY) AND (PreciseTime() < end));
+            #else
+               struct timespec timestamp;
+               clock_gettime(CLOCK_REALTIME, &timestamp); // Slow!
 
-            // This subroutine is intended to perform addition with overflow management as quickly as possible (avoid a modulo operation).
-            // Note that nsec is from 0 - 1000000000.
+               // This subroutine is intended to perform addition with overflow management as quickly as possible (avoid a modulo operation).
+               // Note that nsec is from 0 - 1000000000.
 
-            LARGE tn = timestamp.tv_nsec + (1000000LL * (LARGE)Timeout);
-            while (tn > 1000000000) {
-               timestamp.tv_sec++;
-               tn -= 1000000000;
-            }
-            timestamp.tv_nsec = (LONG)tn;
+               LARGE tn = timestamp.tv_nsec + (1000000LL * (LARGE)Timeout);
+               while (tn > 1000000000) {
+                  timestamp.tv_sec++;
+                  tn -= 1000000000;
+               }
+               timestamp.tv_nsec = (LONG)tn;
 
-            result = pthread_mutex_timedlock(&glSharedControl->PublicLocks[Index].Mutex, &timestamp);
+               result = pthread_mutex_timedlock(&glSharedControl->PublicLocks[Index].Mutex, &timestamp);
+            #endif
          }
       }
       else result = pthread_mutex_lock(&glSharedControl->PublicLocks[Index].Mutex);
@@ -2195,7 +2212,7 @@ retry:
    }
    else if (result IS EOWNERDEAD) { // The previous mutex holder crashed while holding it.
       LogF("@SysLock","Resetting the state of a crashed mutex.");
-      #ifndef __ANDROID__
+      #if !defined(__ANDROID__) && !defined(__APPLE__)
          pthread_mutex_consistent(&glSharedControl->PublicLocks[Index].Mutex);
       #endif
       pthread_mutex_unlock(&glSharedControl->PublicLocks[Index].Mutex);
