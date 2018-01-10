@@ -62,6 +62,10 @@
 #define CBF_NO_BKGD 0x00000004
 #define CBF_FADE_BORDER 0x00000008
 
+#define BHS_INSIDE 0
+#define BHS_OUTSIDE 1
+#define BHS_ENTERED 2
+
 // Button flags.
 
 #define BTF_HIDE 0x00000001
@@ -701,16 +705,9 @@ typedef struct rkButton {
    STRING   Image;          // Location of an image to display in the button.
    OBJECTID RegionID;       // Surface region created by the button object
    OBJECTID SurfaceID;      // The surface target for the button graphic
-   OBJECTID ShowOnFocusID;  // Show this object when the button has the focus
    LONG     Flags;          // Special options
-   LONG     EnterFrame;     // Frame to display when the mouse enters the button area
-   LONG     ExitFrame;      // Frame to revert to when the mouse leaves the button area
-   LONG     ClickFrame;     // Frame to display when the button is clicked
-   LONG     ReleaseFrame;   // Frame to display when the button is released
-   LONG     Thickness;      // Border thickness
-   struct RGB8 Colour;      // Colour to use as the background
-   struct RGB8 Highlight;   // Colour to use for border highlighting
-   struct RGB8 Shadow;      // Colour to use for border shadowing
+   LONG Clicked;
+   LONG HoverState;
 
 #ifdef PRV_BUTTON
    FUNCTION Feedback;
@@ -720,8 +717,6 @@ typedef struct rkButton {
    objBitmap *Bitmap;
    APTR   prvKeyEvent;      // For subscribing to keyboard events
    STRING Onclick;          // Available in Document mode only, references the function to be called when clicked
-   UBYTE  State;
-   UBYTE  Clicked;          // Set to TRUE if the button has been clicked.  Reverts back to FALSE when the user releases the button
    UBYTE  Active;
    LONG   ClickX, ClickY;
   

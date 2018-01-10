@@ -211,10 +211,6 @@ glStyles = {
    },
    button = {
       defaultValues = function(Button)
-         Button.exitFrame    = 1
-         Button.clickFrame   = 2
-         Button.enterFrame   = 3
-         Button.releaseFrame = 1
          Button.flags        = '!NOFOCUS'
          Button.font.colour  = '255,255,255'
       end,

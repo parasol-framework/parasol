@@ -13,6 +13,13 @@ static const struct FieldDef clButtonFlags[] = {
    { NULL, 0 }
 };
 
+static const struct FieldDef clButtonHoverState[] = {
+   { "Inside", 0 },
+   { "Outside", 1 },
+   { "Entered", 2 },
+   { NULL, 0 }
+};
+
 static const struct ActionArray clButtonActions[] = {
    { AC_ActionNotify, (APTR)BUTTON_ActionNotify },
    { AC_Activate, (APTR)BUTTON_Activate },
