@@ -6,6 +6,9 @@ To create a tool tip:
 Valid options to use when creating the dialog are as follows:
 
    text:  The text to display inside the tool-tip
+
+The surface representing the tooltip is readable from the 'surface' field.  Early termination of the tooltip
+is possible by calling the free method.
 --]]
 
    require 'common'
@@ -15,8 +18,12 @@ Valid options to use when creating the dialog are as follows:
 
 gui.tooltip = function(Options)
    local self = { // Public variables
-      surfaceID = nil
+      surfaceID
    }
+
+   self.free = function()
+      self.surface.acFree()
+   end
 
    catch(function()
       local pointer = obj.find('systempointer')
@@ -32,6 +39,10 @@ gui.tooltip = function(Options)
          local surface = obj.find(arg('surface'))
          if (surface != nil) then
             input.subscribe(JTYPE_MOVEMENT, nil, 0, function(Input, Message)
+               Input.unsubscribe()
+               surface.acFree()
+            end)
+            input.keyboard(nil, function()
                Input.unsubscribe()
                surface.acFree()
             end)
@@ -59,10 +70,10 @@ gui.tooltip = function(Options)
          lSurface.y = pointer.y + 20
       end
 
-      self.surfaceID = lSurface.id
-
       lSurface.acShow()
       lSurface.detach()
+
+      self.surfaceID = lSurface.id
    end,
    function(Exception)
       msg('Failed to initialise ToolTip: ' .. Exception.message)

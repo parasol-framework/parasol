@@ -58,7 +58,7 @@ hashes.h: hashes.fdl
 	$(IDL_C) src=hashes.fdl output=hashes.h
 
 clean:
-	@rm -f "$(DEST)" $(OBJECTS) $(BLOBS)
+	@rm -f "$(DEST)" $(OBJECTS)
 
 $(HEADER): $(NAME).fdl makefile
 	$(IDL_C) src=$<
