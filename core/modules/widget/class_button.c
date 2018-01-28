@@ -48,7 +48,6 @@ static OBJECTPTR clButton = NULL;
 
 static char glDefaultButtonFace[] = "[glStyle./fonts/font(@name='button')/@face]:[glStyle./fonts/font(@name='button')/@size]";
 
-static void draw_button(objButton *, objSurface *, objBitmap *);
 static void key_event(objButton *, evKey *, LONG);
 
 //****************************************************************************
@@ -247,10 +246,7 @@ static ERROR BUTTON_Focus(objButton *Self, APTR Void)
 static ERROR BUTTON_Free(objButton *Self, APTR Void)
 {
    if (Self->prvKeyEvent) { UnsubscribeEvent(Self->prvKeyEvent); Self->prvKeyEvent = NULL; }
-   if (Self->IconFilter)  { FreeMemory(Self->IconFilter); Self->IconFilter = NULL; }
-   if (Self->Image)       { FreeMemory(Self->Image); Self->Image = NULL; }
-   if (Self->Picture)     { acFree(Self->Picture); Self->Picture = NULL; }
-   else if (Self->Bitmap) { acFree(Self->Bitmap); Self->Bitmap = NULL; }
+   if (Self->Icon)        { FreeMemory(Self->Icon); Self->Icon = NULL; }
    if (Self->Font)        { acFree(Self->Font); Self->Font = NULL; }
    if (Self->RegionID)    { acFreeID(Self->RegionID); Self->RegionID = 0; }
 
@@ -286,39 +282,12 @@ static ERROR BUTTON_Init(objButton *Self, APTR Void)
 
    if (acInit(Self->Font) != ERR_Okay) return ERR_Init;
 
-   if (Self->Image) {
-      objPicture *picture;
-      ERROR error = ERR_Okay;
-
-      if (!StrCompare("icons:", Self->Image, 6, 0)) {
-         objBitmap *bitmap;
-         if (!(error = iconCreateIcon(Self->Image+6, "Button", "Default", Self->IconFilter, 0, &bitmap))) {
-            Self->Bitmap = bitmap;
-         }
-      }
-      else if (!CreateObject(ID_PICTURE, NF_INTEGRAL, &picture,
-            FID_Flags|TLONG, PCF_FORCE_ALPHA_32,
-            FID_Path|TSTR,   Self->Image,
-            TAGEND)) {
-         if (!acActivate(picture)) {
-            Self->Picture = picture;
-            Self->Bitmap = picture->Bitmap;
-         }
-         else {
-            acFree(picture);
-            error = ERR_Activate;
-         }
-      }
-      else error = ERR_CreateObject;
-
-      if (error) return error;
-   }
-
    objSurface *region;
    if (!AccessObject(Self->RegionID, 5000, &region)) {
       region->Flags |= RNF_GRAB_FOCUS;
 
-      if (Self->Flags & BTF_NO_FOCUS) region->Flags |= RNF_IGNORE_FOCUS;
+      //if (Self->Flags & BTF_NO_FOCUS)
+      region->Flags |= RNF_IGNORE_FOCUS;
 
       SetFields(region, FID_Parent|TLONG, Self->SurfaceID,
                         FID_Region|TLONG, TRUE,
@@ -333,7 +302,7 @@ static ERROR BUTTON_Init(objButton *Self, APTR Void)
       if (!(region->Dimensions & DMF_WIDTH)) {
          if ((!(region->Dimensions & DMF_X)) OR (!(region->Dimensions & DMF_X_OFFSET))) {
             LONG w = (glMargin * 4) + fntStringWidth(Self->Font, Self->String, -1);
-            if (Self->Bitmap) w += Self->Bitmap->Width + glMargin;
+            if (Self->Icon) w += 16 + glMargin;
             SetLong(region, FID_Width, w);
          }
       }
@@ -360,14 +329,6 @@ static ERROR BUTTON_Init(objButton *Self, APTR Void)
    if (drwApplyStyleGraphics(Self, Self->RegionID, NULL, NULL)) {
       return ERR_Failed; // Graphics styling is required.
    }
-
-   // Subscription comes after creation of template graphics
-
-   if (!AccessObject(Self->RegionID, 5000, &region)) {
-      drwAddCallback(region, &draw_button);
-      ReleaseObject(region);
-   }
-   else return ERR_AccessObject;
 
    if (!(Self->Flags & BTF_HIDE)) acShowID(Self->RegionID);
 
@@ -635,35 +596,18 @@ static ERROR SET_Hint(objButton *Self, CSTRING Value)
 /*****************************************************************************
 
 -FIELD-
-IconFilter: Sets the preferred icon filter.
+Icon: The image field can be set in order to load a bitmap into the button.
 
-Setting the IconFilter will change the default graphics filter when loading an icon (identified when using the 'icons:'
-volume name).
-
-*****************************************************************************/
-
-static ERROR SET_IconFilter(objButton *Self, CSTRING Value)
-{
-   if (Self->IconFilter) { FreeMemory(Self->IconFilter); Self->IconFilter = NULL; }
-   if (Value) Self->IconFilter = StrClone(Value);
-   return ERR_Okay;
-}
-
-/*****************************************************************************
-
--FIELD-
-Image: The image field can be set in order to load a bitmap into the button.
-
-To display an image inside the button, set the Image field.  The image will be displayed on the left side of the text
+To display an image inside the button, set the Icon field.  The image will be displayed on the left side of the text
 inside the button.  If no text string has been set, the image will be shown in the exact center of the button.
 -END-
 
 *****************************************************************************/
 
-static ERROR SET_Image(objButton *Self, CSTRING Value)
+static ERROR SET_Icon(objButton *Self, CSTRING Value)
 {
-   if (Self->Image) { FreeMemory(Self->Image); Self->Image = NULL; }
-   if (Value) Self->Image = StrClone(Value);
+   if (Self->Icon) { FreeMemory(Self->Icon); Self->Icon = NULL; }
+   if (Value) Self->Icon = StrClone(Value);
    return ERR_Okay;
 }
 
@@ -687,7 +631,7 @@ static ERROR SET_LayoutStyle(objButton *Self, DOCSTYLE *Value)
 /*****************************************************************************
 
 -FIELD-
-Onclick: Available when a button is declared in a document.  References a function to call when clicked.
+Onclick: Available if a button is declared in a document.  References the function to call when clicked.
 
 This field can only be used if the button has been created within a @Document.  It must reference the name of
 a function that will be called when the button is clicked.
@@ -771,9 +715,9 @@ static ERROR SET_String(objButton *Self, CSTRING Value)
 /*****************************************************************************
 
 -FIELD-
-Surface: The surface that will contain the button graphic.
+Surface: The surface that will contain the button visual.
 
-The surface that will contain the button graphic is set here.  If this field is not set prior to initialisation, the
+The surface that will contain the button visual is defined here.  If this field is not set prior to initialisation, the
 button will attempt to scan for the correct surface by analysing its parents until it finds a suitable candidate.
 
 -FIELD-
@@ -1011,51 +955,12 @@ static void key_event(objButton *Self, evKey *Event, LONG Size)
 
 //****************************************************************************
 
-static void draw_button(objButton *Self, objSurface *Surface, objBitmap *Bitmap)
-{
-   if (Self->Bitmap) {
-      objBitmap *bmp = Self->Bitmap;
-      gfxCopyArea(bmp, Bitmap, BAF_BLEND, 0, 0, bmp->Width, bmp->Height, glMargin * 2, (Surface->Height - bmp->Height)/2);
-   }
-
-   objFont *font = Self->Font;
-   font->Bitmap = Bitmap;
-
-   {
-      SetString(font, FID_String, Self->String);
-
-      if (Surface->Flags & RNF_DISABLED) SetLong(font, FID_Opacity, 25);
-
-      if (Self->Bitmap) {
-         font->X = (glMargin * 2) + Self->Bitmap->Width + glMargin;
-         font->Y = 0;
-         font->Align = ALIGN_VERTICAL;
-         font->AlignWidth = Surface->Width;
-         font->AlignHeight = Surface->Height;
-      }
-      else {
-         font->X = 0;
-         font->Y = 0;
-         font->Align = ALIGN_CENTER;
-         font->AlignWidth = Surface->Width;
-         font->AlignHeight = Surface->Height;
-      }
-
-      acDraw(font);
-   }
-
-   if (Surface->Flags & RNF_DISABLED) SetLong(font, FID_Opacity, 100);
-}
-
-//****************************************************************************
-
 #include "class_button_def.c"
 
 static const struct FieldArray clFields[] = {
    { "Font",         FDF_INTEGRAL|FDF_R,   0, NULL, NULL },
    { "Hint",         FDF_STRING|FDF_RW,    0, NULL, SET_Hint },
-   { "IconFilter",   FDF_STRING|FDF_RW,    0, NULL, SET_IconFilter },
-   { "Image",        FDF_STRING|FDF_RW,    0, NULL, SET_Image },
+   { "Icon",         FDF_STRING|FDF_RW,    0, NULL, SET_Icon },
    { "LayoutSurface",FDF_VIRTUAL|FDF_OBJECTID|FDF_SYSTEM|FDF_R, ID_SURFACE, NULL, NULL }, // VIRTUAL: This is a synonym for the Region field
    { "Region",       FDF_OBJECTID|FDF_R,   ID_SURFACE, NULL, NULL },
    { "Surface",      FDF_OBJECTID|FDF_RW,  ID_SURFACE, NULL, NULL },

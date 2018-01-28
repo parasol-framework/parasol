@@ -761,8 +761,7 @@ module({ name="Widget", copyright="Paul Manias 2003-2017", version=1.0 }, functi
   class("Button", { src="class_button.c", output="class_button_def.c" }, [[
     obj(Font) Font         # Font control object
     str Hint               # Applies a hint to a button, which can be displayed as a tool-tip.
-    str IconFilter         # Apply this icon filter if displaying an icon in the button.
-    str Image              # Location of an image to display in the button.
+    str Icon               # Name of an icon to display in the button.
     oid Region             # Surface region created by the button object
     oid Surface            # The surface target for the button graphic
     int(BTF) Flags         # Special options
@@ -772,9 +771,7 @@ module({ name="Widget", copyright="Paul Manias 2003-2017", version=1.0 }, functi
   [[
    FUNCTION Feedback;
    char String[40];            // String to display inside the button
-   struct rkPicture *Picture;  // Bitmap image inside the button
    struct rkDocument *Document;
-   objBitmap *Bitmap;
    APTR   prvKeyEvent;      // For subscribing to keyboard events
    STRING Onclick;          // Available in Document mode only, references the function to be called when clicked
    UBYTE  Active;           // For recursion management.
