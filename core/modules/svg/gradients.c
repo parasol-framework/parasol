@@ -131,11 +131,11 @@ static ERROR xtag_lineargradient(objSVG *Self, struct XMLTag *Tag)
 
       if (!acInit(gradient)) {
          if (id) SetName(gradient, id);
-         scAddDef(Self->Scene, id, (OBJECTPTR)gradient);
+         return scAddDef(Self->Scene, id, (OBJECTPTR)gradient);
       }
+      else return ERR_Init;
    }
-
-   return ERR_Okay;
+   else return ERR_NewObject;
 }
 
 //****************************************************************************
@@ -208,11 +208,11 @@ static ERROR xtag_radialgradient(objSVG *Self, struct XMLTag *Tag)
 
       if (!acInit(gradient)) {
          if (id) SetName(gradient, id);
-         scAddDef(Self->Scene, id, (OBJECTPTR)gradient);
+         return scAddDef(Self->Scene, id, (OBJECTPTR)gradient);
       }
+      else return ERR_Init;
    }
-
-   return ERR_Okay;
+   else return ERR_NewObject;
 }
 
 //****************************************************************************
@@ -284,11 +284,11 @@ static ERROR xtag_diamondgradient(objSVG *Self, struct XMLTag *Tag)
 
       if (!acInit(gradient)) {
          if (id) SetName(gradient, id);
-         scAddDef(Self->Scene, id, (OBJECTPTR)gradient);
+         return scAddDef(Self->Scene, id, (OBJECTPTR)gradient);
       }
+      else return ERR_Init;
    }
-
-   return ERR_Okay;
+   else return ERR_NewObject;
 }
 
 //****************************************************************************
@@ -356,11 +356,11 @@ static ERROR xtag_contourgradient(objSVG *Self, struct XMLTag *Tag)
 
       if (!acInit(gradient)) {
          if (id) SetName(gradient, id);
-         scAddDef(Self->Scene, id, (OBJECTPTR)gradient);
+         return scAddDef(Self->Scene, id, (OBJECTPTR)gradient);
       }
+      else return ERR_Init;
    }
-
-   return ERR_Okay;
+   else return ERR_NewObject;
 }
 
 //****************************************************************************
@@ -436,8 +436,9 @@ static ERROR xtag_conicgradient(objSVG *Self, struct XMLTag *Tag)
 
       if (!acInit(gradient)) {
          if (id) SetName(gradient, id);
-         scAddDef(Self->Scene, id, (OBJECTPTR)gradient);
+         return scAddDef(Self->Scene, id, (OBJECTPTR)gradient);
       }
+      else return ERR_Init;
    }
-   return ERR_Okay;
+   else return ERR_NewObject;
 }

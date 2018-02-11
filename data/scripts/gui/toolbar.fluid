@@ -202,7 +202,7 @@ gui.toolbar = function(Target, Options)
       last.rgb.alpha = nz(Last.a,255) / 255
       table.insert(stops, last)
 
-      local gradient = obj.new('VectorGradient', {
+      local gradient = lScene.new('VectorGradient', {
          type='linear', stops=stops, x1=X1, y1=Y1, x2=X2, y2=Y2, units=nz(Units,'boundingbox')
       })
       lScene.mtAddDef(Name, gradient)

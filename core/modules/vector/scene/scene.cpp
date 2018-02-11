@@ -71,6 +71,15 @@ static ERROR VECTORSCENE_AddDef(objVectorScene *Self, struct scAddDef *Args)
    }
    else return PostError(ERR_InvalidObject);
 
+   // If the resource does not belong to the Scene object, this can lead to invalid pointer references
+
+   if (def->OwnerID != Self->Head.UniqueID) {
+      LogF("@","The %s must belong to VectorScene #%d, but is owned by object #%d.", def->Class->ClassName, Self->Head.UniqueID, def->OwnerID);
+      return ERR_UnsupportedOwner;
+   }
+
+   // TO DO: Subscribe to the Free() action of the definition object so that we can avoid invalid pointer references.
+
    MSG("Adding definition '%s' for object #%d", Args->Name, def->UniqueID);
 
    APTR data;
