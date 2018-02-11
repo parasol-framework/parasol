@@ -67,12 +67,7 @@
 #define BTF_HIDE 0x00000001
 #define BTF_DISABLED 0x00000002
 #define BTF_NO_GFX 0x00000004
-#define BTF_NO_BKGD 0x00000008
-#define BTF_FADE_BORDER 0x00000010
-#define BTF_SUNKEN 0x00000020
-#define BTF_NO_FOCUS 0x00000040
-#define BTF_PULSE 0x00000080
-#define BTF_NO_FOCUS_GFX 0x00000100
+#define BTF_PULSE 0x00000008
 
 // Flags for the Input class.
 
@@ -250,6 +245,10 @@
 #define DF_SECRET 0x00000020
 #define DF_MODAL 0x00000040
 #define DF_QUIT 0x00000080
+
+#define BHS_OUTSIDE 0
+#define BHS_ENTERED 1
+#define BHS_INSIDE 2
 
 #define MENUFADE_FADE_IN 1
 #define MENUFADE_FADE_OUT 2
@@ -697,33 +696,21 @@ typedef struct rkButton {
    OBJECT_HEADER
    struct rkFont * Font;    // Font control object
    STRING   Hint;           // Applies a hint to a button, which can be displayed as a tool-tip.
-   STRING   IconFilter;     // Apply this icon filter if displaying an icon in the button.
-   STRING   Image;          // Location of an image to display in the button.
+   STRING   Icon;           // Name of an icon to display in the button.
    OBJECTID RegionID;       // Surface region created by the button object
    OBJECTID SurfaceID;      // The surface target for the button graphic
-   OBJECTID ShowOnFocusID;  // Show this object when the button has the focus
    LONG     Flags;          // Special options
-   LONG     EnterFrame;     // Frame to display when the mouse enters the button area
-   LONG     ExitFrame;      // Frame to revert to when the mouse leaves the button area
-   LONG     ClickFrame;     // Frame to display when the button is clicked
-   LONG     ReleaseFrame;   // Frame to display when the button is released
-   LONG     Thickness;      // Border thickness
-   struct RGB8 Colour;      // Colour to use as the background
-   struct RGB8 Highlight;   // Colour to use for border highlighting
-   struct RGB8 Shadow;      // Colour to use for border shadowing
+   LONG     Clicked;        // TRUE if the button has been clicked and reverts to FALSE when the user releases the button.
+   LONG     HoverState;     // User hover state indicator
 
 #ifdef PRV_BUTTON
    FUNCTION Feedback;
    char String[40];            // String to display inside the button
-   struct rkPicture *Picture;  // Bitmap image inside the button
    struct rkDocument *Document;
-   objBitmap *Bitmap;
    APTR   prvKeyEvent;      // For subscribing to keyboard events
    STRING Onclick;          // Available in Document mode only, references the function to be called when clicked
-   UBYTE  State;
-   UBYTE  Clicked;          // Set to TRUE if the button has been clicked.  Reverts back to FALSE when the user releases the button
-   UBYTE  Active;
-   LONG   ClickX, ClickY;
+   UBYTE  Active;           // For recursion management.
+   LONG   ClickX, ClickY;   // X/Y coordinate most recently clicked
   
 #endif
 } objButton;

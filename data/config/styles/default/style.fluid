@@ -49,6 +49,20 @@ function applyDecoration(Class, Object, Surface, StyleType)
    glSelf.error = ERR_NoSupport
 end
 
+// Apply a fill to a vector and all its children
+
+local function applyFill(Vector, Fill)
+   while (Vector != nil) do
+      if (Vector.fill != 'none') then
+         Vector.fill = Fill
+      end
+      if (Vector.stroke != nil) then Vector.stroke = Fill end
+      local child = Vector.child
+      if (child != nil) then applyFill(child, Fill) end
+      Vector = Vector.next
+   end
+end
+
 local function defineGradient(Scene, Name, First, Last, X1, Y1, X2, Y2, Units)
    local stops = { }
    local first = struct.new('GradientStop')
@@ -217,33 +231,107 @@ glStyles = {
    },
    button = {
       defaultValues = function(Button)
-         Button.exitFrame    = 1
-         Button.clickFrame   = 2
-         Button.enterFrame   = 3
-         Button.releaseFrame = 1
-         Button.flags        = '!NOFOCUS'
          Button.font.colour  = '255,255,255'
       end,
       decoration = function(Button, Surface)
-         local lScene = obj.new('VectorScene', { })
+         local lScene = obj.new('VectorScene', { name='ButtonScene' })
          local lViewport = lScene.new('VectorViewport', { })
+         local lFocusGap = 3
+         local lCount = 0
+         local lIconSize = Surface.height * 0.56
+         local svgGroup, svgGradient, svg
+         lThemeColour = { first={ r=250,g=249,b=248 }, last={ r=210,g=211,b=212 } }
+
          local lBkgd = lViewport.new('VectorRectangle', {
             fill   = 'rgb(0,0,0,40)',
             stroke = 'rgb(255,255,255,60)',
-            x      = 1,
-            y      = 1,
-            width  = Surface.width-2,
+            x      = 0,
+            y      = 0,
+            width  = '100%',
             roundX = 4,
             roundY = 4,
-            height = Surface.height-2
+            height = '100%'
          })
 
+         local lFocus = lViewport.new('VectorRectangle', {
+            stroke      = 'rgb(255,255,255,180)',
+            strokeWidth = 0.5,
+            roundX      = 3,
+            roundY      = 3,
+            dashArray   = '2 2',
+            visibility  = VIS_HIDDEN
+         })
+
+         local lLabel = lViewport.new('VectorText', {
+            x = 30,
+            face     = 'Open Sans',
+            fontSize = Surface.height * 0.66 * (3/4),
+            fill     = 'rgb(255,255,255,255)',
+            string   = 'Unlabelled'
+         })
+
+         if (Button.icon) then
+            catch(function()
+               local gname = 'btn' .. Button.id
+               svgGroup = lViewport.new('VectorViewport', { x=Surface.height * 0.3, y=(Surface.height - lIconSize)/2, width=lIconSize, height=lIconSize })
+               svgGradient = defineGradient(lScene, gname, lThemeColour.first, lThemeColour.last, 0, 0, 0, 1)
+               local svg = obj.new('svg', { target=svgGroup, path='system:icons/Default/' .. Button.icon .. '.svg' })
+               applyFill(svgGroup, 'url(#' .. gname .. ')')
+
+               local viewport = svgGroup.child
+               if (viewport != nil) then
+                  while (child != nil) do
+                     if (child.class.id == ID_VECTORVIEWPORT) then
+                        viewport = child
+                        break
+                     end
+                  end
+
+                  if (viewport.viewHeight < viewport.viewWidth) then
+                     svgGradient.y1 = viewport.viewY - ((viewport.viewWidth - viewport.viewHeight) * 0.5)
+                     svgGradient.y2 = svgGradient.y1 + viewport.viewWidth
+                  else
+                     svgGradient.y1 = viewport.viewY
+                     svgGradient.y2 = viewport.viewY + viewport.viewHeight
+                  end
+               end
+            end)
+         end
+
          Surface.mtAddCallback(function(Surface, Bitmap)
-            if (Surface.frame == 1) then
-               lBkgd.fill = 'rgb(0,0,0,40)'
-            else
-               lBkgd.fill = 'rgb(255,255,255,40)'
+            local baseColour = 'rgb(0,0,0,40)'
+
+            if (Button.clicked) then
+
             end
+
+            if ((bit.band(Surface.flags, RNF_HAS_FOCUS) != RNF_HAS_FOCUS) and
+                (bit.band(Surface.flags, RNF_DISABLED) == RNF_DISABLED)) then
+               lFocus.visibility = VIS_HIDDEN
+            else
+               local gap = 3
+               lFocus.x = gap
+               lFocus.y = gap
+               lFocus.width = Surface.width - (gap * 2)
+               lFocus.height = Surface.height - (gap * 2)
+               lFocus.visibility = VIS_VISIBLE
+            end
+
+            if ((Button.state == BHS_INSIDE) or (Button.state == BHS_ENTERED)) then
+               if (bit.band(Surface.flags, RNF_DISABLED) != RNF_DISABLED) then
+                  baseColour = 'rgb(255,255,255,40)'
+               end
+            end
+            lBkgd.fill = baseColour
+
+            if (bit.band(Surface.flags, RNF_DISABLED) == RNF_DISABLED) then
+               lLabel.opacity = 0.25
+            else
+               lLabel.opacity = 1.0
+            end
+
+            lLabel.string = Button.string
+            lLabel.y = (Surface.height/2) + (lLabel.font.height/2)
 
             lScene.bitmap = Bitmap
             lScene.pageWidth = Surface.width

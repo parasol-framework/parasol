@@ -326,12 +326,7 @@ module({ name="Widget", copyright="Paul Manias 2003-2017", version=1.0 }, functi
     "HIDE: Hide on creation, or button is currently hidden.",
     "DISABLED: Disable on creation, or button is currently disabled.  Read-only.",
     "NO_GFX: Turns off the button's foreground graphics (text and images).",
-    "NO_BKGD: Do not draw background graphics (automatically set if styles are used).",
-    "FADE_BORDER: Fade the border edges into the button colour (requires thickness > 1).",
-    "SUNKEN: Reverses the highlight and shadow definitions to create a sunken effect.",
-    "NO_FOCUS: Never draw lines around the button to indicate that it has the focus.",
-    "PULSE: Send repeated clicks when the mouse button is held down.",
-    "NO_FOCUS_GFX: Do not draw any graphics when the button has the focus.")
+    "PULSE: Send repeated clicks when the mouse button is held down.")
 
   flags("INF", { comment="Flags for the Input class." },
     "HIDE: Hide on creation, or input is currently hidden.",
@@ -497,6 +492,11 @@ module({ name="Widget", copyright="Paul Manias 2003-2017", version=1.0 }, functi
     "SECRET: User input needs to be secret (e.g. password entry).",
     "MODAL: Makes the dialog window modal, this prevents the user from interacting with other windows that belong to the program.  For batch scripts, the WAIT flag should be used instead.",
     "QUIT: A quit message will be sent to the running application once the dialog window is closed.")
+
+  enum("BHS", { start=0, "Button hover state indicators" },
+     "OUTSIDE: The cursor is outside of the button's area",
+     "ENTERED: The cursor has just entered the button's area",
+     "INSIDE: The cursor is inside the button's area")
 
   enum("MENUFADE", { start=1 },
     "FADE_IN: The menu will fade in to the foreground.",
@@ -759,35 +759,23 @@ module({ name="Widget", copyright="Paul Manias 2003-2017", version=1.0 }, functi
   ]])
 
   class("Button", { src="class_button.c", output="class_button_def.c" }, [[
-    obj(Font) Font    # Font control object
-    str Hint          # Applies a hint to a button, which can be displayed as a tool-tip.
-    str IconFilter    # Apply this icon filter if displaying an icon in the button.
-    str Image         # Location of an image to display in the button.
-    oid Region        # Surface region created by the button object
-    oid Surface       # The surface target for the button graphic
-    oid ShowOnFocus   # Show this object when the button has the focus
-    int(BTF) Flags    # Special options
-    int EnterFrame    # Frame to display when the mouse enters the button area
-    int ExitFrame     # Frame to revert to when the mouse leaves the button area
-    int ClickFrame    # Frame to display when the button is clicked
-    int ReleaseFrame  # Frame to display when the button is released
-    int Thickness     # Border thickness
-    struct(RGB8) Colour    # Colour to use as the background
-    struct(RGB8) Highlight # Colour to use for border highlighting
-    struct(RGB8) Shadow    # Colour to use for border shadowing
+    obj(Font) Font         # Font control object
+    str Hint               # Applies a hint to a button, which can be displayed as a tool-tip.
+    str Icon               # Name of an icon to display in the button.
+    oid Region             # Surface region created by the button object
+    oid Surface            # The surface target for the button graphic
+    int(BTF) Flags         # Special options
+    int Clicked            # TRUE if the button has been clicked and reverts to FALSE when the user releases the button.
+    int(BHS) HoverState    # User hover state indicator
   ]],
   [[
    FUNCTION Feedback;
    char String[40];            // String to display inside the button
-   struct rkPicture *Picture;  // Bitmap image inside the button
    struct rkDocument *Document;
-   objBitmap *Bitmap;
    APTR   prvKeyEvent;      // For subscribing to keyboard events
    STRING Onclick;          // Available in Document mode only, references the function to be called when clicked
-   UBYTE  State;
-   UBYTE  Clicked;          // Set to TRUE if the button has been clicked.  Reverts back to FALSE when the user releases the button
-   UBYTE  Active;
-   LONG   ClickX, ClickY;
+   UBYTE  Active;           // For recursion management.
+   LONG   ClickX, ClickY;   // X/Y coordinate most recently clicked
   ]])
 
   class("Resize", { src="class_resize.c", output="class_resize_def.c" }, [[

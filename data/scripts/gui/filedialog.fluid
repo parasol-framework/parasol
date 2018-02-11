@@ -58,7 +58,7 @@ gui.dialog.file = function(Options)
 
    local function sendFeedback()
       local list = { }
-      for k,v in ipairs(lView.selectedTags) do
+      for k,v in ipairs(nz(lView.selectedTags, {})) do
          local error, name = lView.xml.mtGetAttrib(v, 'name')
          table.insert(list, name)
       end
@@ -215,9 +215,7 @@ gui.dialog.file = function(Options)
          text    = nz(lOptions.cancelText, 'Cancel'),
          xOffset = glWidgetGap,
          yOffset = footer,
-         image   = 'icons:items/cancel(16)',
-         colour  = '#B71C1C',
-         iconFilter = 'pearl',
+         icon    = 'items/cancel',
          feedback = function(Button)
             if (lOptions.feedback != nil) then
                lOptions.feedback(self, nil)
@@ -230,8 +228,7 @@ gui.dialog.file = function(Options)
          text       = nz(lOptions.okText, 'OK'),
          xOffset    = lWindow.insidewidth - lCancelButton.x + glWidgetGap,
          yOffset    = footer,
-         image      = 'icons:items/checkmark(16)',
-         iconFilter = 'pearl',
+         icon       = 'items/checkmark',
          feedback   = sendFeedback
       })
 

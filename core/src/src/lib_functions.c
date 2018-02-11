@@ -22,9 +22,15 @@ Name: System
  #endif
 
  #include <sys/time.h>
- #include <sys/sysinfo.h>
+ #ifdef __linux__
+  #include <sys/sysinfo.h>
+ #elif __APPLE__
+  #include <sys/sysctl.h>
+ #endif
  #include <fcntl.h>
  #include <time.h>
+ #include <string.h> // Required for memset() on OS X
+
 #elif _WIN32
  #include <string.h> // Required for memmove()
 #endif
@@ -1471,6 +1477,8 @@ LARGE GetResource(LONG Resource)
 
          return cpu_mhz;
       }
+#elif __APPLE__
+#warning TODO: Support for sysctlbyname()
 #endif
 
       default: //LogF("@GetResource()","Unsupported resource ID %d.", Resource);
