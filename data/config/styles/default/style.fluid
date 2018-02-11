@@ -81,11 +81,17 @@ local function defineGradient(Scene, Name, First, Last, X1, Y1, X2, Y2, Units)
    last.rgb.alpha = nz(Last.a,255) / 255
    table.insert(stops, last)
 
-   local gradient = obj.new('VectorGradient', {
-      type='linear', stops=stops, x1=X1, y1=Y1, x2=X2, y2=Y2, units=nz(Units,'boundingbox')
-   })
-   if (Scene) then Scene.mtAddDef(Name, gradient) end
-   return gradient
+   if (Scene) then
+      local gradient = Scene.new('VectorGradient', {
+         name=Name, type='linear', stops=stops, x1=X1, y1=Y1, x2=X2, y2=Y2, units=nz(Units,'boundingbox')
+      })
+      Scene.mtAddDef(Name, gradient)
+      return gradient
+   else
+      return obj.new('VectorGradient', {
+         name=Name, type='linear', stops=stops, x1=X1, y1=Y1, x2=X2, y2=Y2, units=nz(Units,'boundingbox')
+      })
+   end
 end
 
 glColours = {
@@ -228,11 +234,11 @@ glStyles = {
          Button.font.colour  = '255,255,255'
       end,
       decoration = function(Button, Surface)
-         local lScene = obj.new('VectorScene', { })
+         local lScene = obj.new('VectorScene', { name='ButtonScene' })
          local lViewport = lScene.new('VectorViewport', { })
          local lFocusGap = 3
          local lCount = 0
-         local lIconSize = 16
+         local lIconSize = Surface.height * 0.56
          local svgGroup, svgGradient, svg
          lThemeColour = { first={ r=250,g=249,b=248 }, last={ r=210,g=211,b=212 } }
 
@@ -267,7 +273,7 @@ glStyles = {
          if (Button.icon) then
             catch(function()
                local gname = 'btn' .. Button.id
-               svgGroup = lViewport.new('VectorViewport', { x=0, y=0, width=lIconSize, height=lIconSize })
+               svgGroup = lViewport.new('VectorViewport', { x=Surface.height * 0.3, y=(Surface.height - lIconSize)/2, width=lIconSize, height=lIconSize })
                svgGradient = defineGradient(lScene, gname, lThemeColour.first, lThemeColour.last, 0, 0, 0, 1)
                local svg = obj.new('svg', { target=svgGroup, path='system:icons/Default/' .. Button.icon .. '.svg' })
                applyFill(svgGroup, 'url(#' .. gname .. ')')
