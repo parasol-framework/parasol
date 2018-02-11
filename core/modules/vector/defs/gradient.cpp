@@ -27,7 +27,10 @@ GRADIENT_TABLE * get_fill_gradient_table(objVector &Vector)
    GradientColours *cols = Vector.FillGradient->Colours;
    if (!cols) {
       if (Vector.FillGradient->Inherit) cols = Vector.FillGradient->Inherit->Colours;
-      if (!cols) return NULL;
+      if (!cols) {
+         LogF("@get_fill_gradient_table","No colour table referenced in gradient %p for vector #%d.", Vector.FillGradient, Vector.Head.UniqueID);
+         return NULL;
+      }
    }
 
    if ((Vector.FillOpacity IS 1.0) AND (Vector.Opacity IS 1.0)) { // Return the original gradient table if no translucency is applicable.

@@ -51,7 +51,7 @@ verify:
 
 .FORCE:
 config: .FORCE
-	rsync -avh --delete data/config "$(PARASOL_RELEASE)/system/"
+	rsync -avh --delete --exclude=config/modules.bin --exclude=config/classes.bin data/config "$(PARASOL_RELEASE)/system/"
 	rsync -avh --delete data/fonts "$(PARASOL_RELEASE)/system/"
 	rsync -avh --delete data/icons "$(PARASOL_RELEASE)/system/"
 	rsync -avh --delete data/scripts "$(PARASOL_RELEASE)/system/"
