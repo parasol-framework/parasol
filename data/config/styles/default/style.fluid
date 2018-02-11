@@ -67,11 +67,17 @@ local function defineGradient(Scene, Name, First, Last, X1, Y1, X2, Y2, Units)
    last.rgb.alpha = nz(Last.a,255) / 255
    table.insert(stops, last)
 
-   local gradient = obj.new('VectorGradient', {
-      type='linear', stops=stops, x1=X1, y1=Y1, x2=X2, y2=Y2 //, units=nz(Units,'boundingbox')
-   })
-   if (Scene) then Scene.mtAddDef(Name, gradient) end
-   return gradient
+   if (Scene) then
+      local gradient = Scene.new('VectorGradient', {
+         name=Name, type='linear', stops=stops, x1=X1, y1=Y1, x2=X2, y2=Y2, units=nz(Units,'boundingbox')
+      })
+      Scene.mtAddDef(Name, gradient)
+      return gradient
+   else
+      return obj.new('VectorGradient', {
+         name=nz(Name, 'styleGradient'), type='linear', stops=stops, x1=X1, y1=Y1, x2=X2, y2=Y2, units=nz(Units,'boundingbox')
+      })
+   end
 end
 
 glColours = {
