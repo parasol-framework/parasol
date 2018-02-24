@@ -1,5 +1,5 @@
 
-   mSys = mod.load("core")
+   mSys = mod.load('core')
 
 function dir_selected(filedialog_id)
    txtPath.string = filedialog.path
@@ -26,7 +26,7 @@ end
             local txtName = obj.find('txtName')
             local txtPath = obj.find('txtPath')
             if nz(txtName) and nz(txtPath) then
-               mSys.SetVolume(AST_NAME, txtName.string, AST_PATH, txtPath.string, AST_FLAGS, ASSIGN_REPLACE|ASSIGN_SAVE)
+               mSys.SetVolume(AST_NAME, txtName.string, AST_PATH, txtPath.string, AST_FLAGS, bit.bor(ASSIGN_REPLACE, ASSIGN_SAVE))
             end
          end
 
