@@ -28,6 +28,34 @@ public:
    void DrawPath(objBitmap *, DOUBLE StrokeWidth, OBJECTPTR StrokeStyle, OBJECTPTR FillStyle);
 };
 
+// Resource management for the SimpleVector follows.  NB: This is a beta feature in the Core.
+
+static void simplevector_free(APTR Address) {
+
+}
+
+static struct ResourceManager glResourceSimpleVector = {
+   "SimpleVector",
+   &simplevector_free
+};
+
+void set_memory_manager(APTR Address, struct ResourceManager *Manager)
+{
+   struct ResourceManager **address_mgr = (struct ResourceManager **)((char *)Address - sizeof(LONG) - sizeof(LONG) - sizeof(struct ResourceManager *));
+   address_mgr[0] = Manager;
+}
+
+static SimpleVector * new_simplevector(void)
+{
+   SimpleVector *vector;
+   if (AllocMemory(sizeof(SimpleVector), MEM_DATA|MEM_MANAGED, &vector, NULL) != ERR_Okay) return NULL;
+   set_memory_manager(vector, &glResourceSimpleVector);
+   new(vector) SimpleVector;
+   return vector;
+}
+
+//****************************************************************************
+
 #include "module_def.c"
 
 //****************************************************************************
@@ -220,7 +248,8 @@ ptr Path: Pointer to the path to deallocate.
 static void vecFreePath(APTR Path)
 {
    if (!Path) return;
-   delete (SimpleVector *)Path;
+   // NB: Refer to the deallocator for SimpleVector for anything relating to additional resource deallocation.
+   FreeMemory(Path);
 }
 
 /*****************************************************************************
@@ -273,7 +302,7 @@ static ERROR vecGenerateEllipse(DOUBLE CX, DOUBLE CY, DOUBLE RX, DOUBLE RY, LONG
 {
    if (!Path) return ERR_NullArgs;
 
-   SimpleVector *vector = new (std::nothrow) SimpleVector;
+   SimpleVector *vector = new_simplevector();
    if (!vector) return ERR_AllocMemory;
 
 #if 0
@@ -344,7 +373,7 @@ static ERROR vecGenerateRectangle(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Heigh
 {
    if (!Path) return ERR_NullArgs;
 
-   SimpleVector *vector = new (std::nothrow) SimpleVector;
+   SimpleVector *vector = new_simplevector();
    if (!vector) return ERR_AllocMemory;
 
    vector->mPath.move_to(X, Y);
@@ -410,12 +439,12 @@ static ERROR vecGeneratePath(CSTRING Sequence, APTR *Path)
    LONG total;
 
    if (!Sequence) {
-      SimpleVector *vector = new (std::nothrow) SimpleVector;
+      SimpleVector *vector = new_simplevector();
       if (vector) *Path = vector;
       else error = ERR_AllocMemory;
    }
    else if (!(error = read_path(&paths, &total, Sequence))) {
-      SimpleVector *vector = new (std::nothrow) SimpleVector;
+      SimpleVector *vector = new_simplevector();
       if (vector) {
          convert_to_aggpath(paths, total, &vector->mPath);
          *Path = vector;
