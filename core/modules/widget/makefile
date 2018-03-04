@@ -13,13 +13,13 @@ OBJECTS := $(addprefix obj/$(PLATFORM)/,$(subst .c,.o,$(SOURCES)))
 CFLAGS += -DMOD_NAME=$(NAME)
 BLOBS := class_fileview/fileview_shortcut.c class_dialog_script.h
 DIRS := obj/$(PLATFORM) obj/$(PLATFORM)/class_fileview obj/$(PLATFORM)/class_menu obj/$(PLATFORM)/class_text \
-        obj/$(PLATFORM)/class_view
+        obj/$(PLATFORM)/class_view obj/$(PLATFORM)/platform
 
 -include deps-$(OSTYPE).mak
 
 ifeq ($(OSTYPE),win)
    LINK += -lole32
-   OBJECTS += obj/$(PLATFORM)/windows.o
+   OBJECTS += obj/$(PLATFORM)/platform/windows.o
 endif
 
 compile: $(DEST) hashes.h
