@@ -759,7 +759,6 @@ module({ name="Widget", copyright="Paul Manias 2003-2017", version=1.0 }, functi
   ]])
 
   class("Button", { src="class_button.c", output="class_button_def.c" }, [[
-    obj(Font) Font         # Font control object
     str Hint               # Applies a hint to a button, which can be displayed as a tool-tip.
     str Icon               # Name of an icon to display in the button.
     oid Region             # Surface region created by the button object

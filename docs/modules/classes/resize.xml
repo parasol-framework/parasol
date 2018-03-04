@@ -150,18 +150,6 @@ surface.new('resize', {
       <const name="COMMANDLINE">Function as a command-line.  Typically used when the input box needs to remain persistent and is linked to an output system, such as a shell.</const>
     </constants>
 
-    <constants lookup="BTF" comment="Button flags.">
-      <const name="NO_GFX">Turns off the button's foreground graphics (text and images).</const>
-      <const name="PULSE">Send repeated clicks when the mouse button is held down.</const>
-      <const name="SUNKEN">Reverses the highlight and shadow definitions to create a sunken effect.</const>
-      <const name="HIDE">Hide on creation, or button is currently hidden.</const>
-      <const name="NO_FOCUS_GFX">Do not draw any graphics when the button has the focus.</const>
-      <const name="DISABLED">Disable on creation, or button is currently disabled.  Read-only.</const>
-      <const name="NO_BKGD">Do not draw background graphics (automatically set if styles are used).</const>
-      <const name="FADE_BORDER">Fade the border edges into the button colour (requires thickness &gt; 1).</const>
-      <const name="NO_FOCUS">Never draw lines around the button to indicate that it has the focus.</const>
-    </constants>
-
     <constants lookup="MIF" comment="Flags for MenuItems.">
       <const name="SELECTED">The menu item has been selected (checked).</const>
       <const name="EXTENSION">Menu item is an extension.</const>
@@ -175,11 +163,11 @@ surface.new('resize', {
       <const name="KEY_REPEAT">Respond to repeated key presses.</const>
     </constants>
 
-    <constants lookup="CBF" comment="CheckBox flags.">
-      <const name="DISABLED">Disable on creation, or object is currently disabled.</const>
-      <const name="HIDE">Hide on creation, or object is currently hidden.</const>
-      <const name="FADE_BORDER">Fade the border edges into the checkbox colour (requires thickness greater than 1).</const>
-      <const name="NO_BKGD">Do not draw background graphics (automatically set if Template graphics are used).</const>
+    <constants lookup="BTF" comment="Button flags.">
+      <const name="DISABLED">Disable on creation, or button is currently disabled.  Read-only.</const>
+      <const name="HIDE">Hide on creation, or button is currently hidden.</const>
+      <const name="PULSE">Send repeated clicks when the mouse button is held down.</const>
+      <const name="NO_GFX">Turns off the button's foreground graphics (text and images).</const>
     </constants>
 
     <constants lookup="FVA" comment="Options for the Auto field.">
@@ -188,23 +176,19 @@ surface.new('resize', {
       <const name="VIEW">View the file in a program suitable for read-only viewing.</const>
     </constants>
 
+    <constants lookup="CBF" comment="CheckBox flags.">
+      <const name="DISABLED">Disable on creation, or object is currently disabled.</const>
+      <const name="HIDE">Hide on creation, or object is currently hidden.</const>
+      <const name="FADE_BORDER">Fade the border edges into the checkbox colour (requires thickness greater than 1).</const>
+      <const name="NO_BKGD">Do not draw background graphics (automatically set if Template graphics are used).</const>
+    </constants>
+
     <constants lookup="FVF" comment="Flags for the FileView.">
       <const name="SHOW_PARENT">The file view will display an item in the file list that reverts to the parent folder when activated.</const>
       <const name="NO_FILES">Do not display files in the file list.</const>
       <const name="SYS_KEYS">System key monitoring and relevant default behaviours are active when this option is enabled.  Cut, Copy, Paste and Select-All key combinations are provided to the user in this mode.</const>
       <const name="NO_EXTENSIONS">File extensions are not displayed when this option is active.</const>
       <const name="TOTAL_REFRESH">Force a total refresh of the files listed in the monitored folder whenever a change is detected.</const>
-    </constants>
-
-    <constants lookup="DF" comment="Dialog flags.">
-      <const name="SECRET">User input needs to be secret (e.g. password entry).</const>
-      <const name="QUIT">A quit message will be sent to the running application once the dialog window is closed.</const>
-      <const name="MODAL">Makes the dialog window modal, this prevents the user from interacting with other windows that belong to the program.  For batch scripts, the WAIT flag should be used instead.</const>
-      <const name="REVERSE">Reverse the activation process (respond to negatives, not positives).</const>
-      <const name="WAIT">This option halts the program flow when the dialog box is activated.  Normal service will resume once the user responds to the dialog window.  Note that it is still possible to interact with other windows during this time, so the use of the MODAL flag may also be beneficial.</const>
-      <const name="INPUT">An input box can be created inside the dialog window by setting this flag.  In this mode, the dialog box will return a user input string in the UserInput field after the user has responded to the dialog window.</const>
-      <const name="OPTION_ON">Turn the checkbox option on by default.</const>
-      <const name="INPUT_REQUIRED">This flag can be used in conjunction with the INPUT option.  It forces the user to input at least one character in the input box, otherwise the dialog window will automatically cancel itself.</const>
     </constants>
 
     <constants lookup="DT" comment="Types of dialog box">
@@ -219,6 +203,22 @@ surface.new('resize', {
       <const name="QUESTION">A question is being asked of the user.</const>
       <const name="REQUEST">A request is being made (e.g. dialog requires user to type in input).</const>
       <const name="TEMPORARY">The dialog box will disappear after a short time-out period has expired.</const>
+    </constants>
+
+    <constants lookup="DF" comment="Dialog flags.">
+      <const name="SECRET">User input needs to be secret (e.g. password entry).</const>
+      <const name="QUIT">A quit message will be sent to the running application once the dialog window is closed.</const>
+      <const name="MODAL">Makes the dialog window modal, this prevents the user from interacting with other windows that belong to the program.  For batch scripts, the WAIT flag should be used instead.</const>
+      <const name="REVERSE">Reverse the activation process (respond to negatives, not positives).</const>
+      <const name="WAIT">This option halts the program flow when the dialog box is activated.  Normal service will resume once the user responds to the dialog window.  Note that it is still possible to interact with other windows during this time, so the use of the MODAL flag may also be beneficial.</const>
+      <const name="INPUT">An input box can be created inside the dialog window by setting this flag.  In this mode, the dialog box will return a user input string in the UserInput field after the user has responded to the dialog window.</const>
+      <const name="OPTION_ON">Turn the checkbox option on by default.</const>
+      <const name="INPUT_REQUIRED">This flag can be used in conjunction with the INPUT option.  It forces the user to input at least one character in the input box, otherwise the dialog window will automatically cancel itself.</const>
+    </constants>
+
+    <constants lookup="CLF" comment="Clipboard flags">
+      <const name="WAIT">The clipboard will wait for the user to respond to user dialogs rather than return immediately from clipboard operations.</const>
+      <const name="HOST"/>
     </constants>
 
     <constants lookup="IMF" comment="Image flags">
@@ -255,9 +255,9 @@ surface.new('resize', {
       <const name="FOCUS">Item has the user focus.</const>
     </constants>
 
-    <constants lookup="CLF" comment="Clipboard flags">
-      <const name="WAIT">The clipboard will wait for the user to respond to user dialogs rather than return immediately from clipboard operations.</const>
-      <const name="HOST"/>
+    <constants lookup="SO" comment="Direction options">
+      <const name="HORIZONTAL"/>
+      <const name="VERTICAL"/>
     </constants>
 
     <constants lookup="SD" comment="Scroll directions.">
@@ -293,9 +293,13 @@ surface.new('resize', {
       <const name="COMMANDLINE">Synonym for AUTO_CLEAR | EDIT | HISTORY</const>
     </constants>
 
-    <constants lookup="SO" comment="Direction options">
-      <const name="HORIZONTAL"/>
-      <const name="VERTICAL"/>
+    <constants lookup="CLIPTYPE" comment="Clipboard types">
+      <const name="DATA">Raw information that is uncategorised can be defined as a data clip.</const>
+      <const name="FILE">Pure file references are stored as file clips.  This type is typically used by file managers for moving and copying files.</const>
+      <const name="TEXT">Plain text files such as ASCII and UTF-8 must be identified through this clip type.</const>
+      <const name="AUDIO">An audio clip that is recognised by the Sound class (such as wav's and mp3's).</const>
+      <const name="IMAGE">Images that are recognised by the Picture class may be stored as this type (such as jpeg's and png files).</const>
+      <const name="OBJECT">An object that has been deserialised into binary form.</const>
     </constants>
 
     <constants lookup="SBF" comment="Scrollbar flags.">
@@ -304,15 +308,6 @@ surface.new('resize', {
       <const name="HIDE">Hide on creation, or scrollbar is currently hidden.</const>
       <const name="SLIDER">If set, the scrollbar behaves as a slider.  In this mode, the size of the draggable slider has a fixed size (by default the slider is proportional).</const>
       <const name="NO_INTERSECT">Do not attempt to intersect with adjacent scrollbars.</const>
-    </constants>
-
-    <constants lookup="CLIPTYPE" comment="Clipboard types">
-      <const name="DATA">Raw information that is uncategorised can be defined as a data clip.</const>
-      <const name="FILE">Pure file references are stored as file clips.  This type is typically used by file managers for moving and copying files.</const>
-      <const name="TEXT">Plain text files such as ASCII and UTF-8 must be identified through this clip type.</const>
-      <const name="AUDIO">An audio clip that is recognised by the Sound class (such as wav's and mp3's).</const>
-      <const name="IMAGE">Images that are recognised by the Picture class may be stored as this type (such as jpeg's and png files).</const>
-      <const name="OBJECT">An object that has been deserialised into binary form.</const>
     </constants>
 
     <constants lookup="SLF" comment="Flags for SelectCallback">
@@ -326,12 +321,6 @@ surface.new('resize', {
       <const name="MOVED">Change is due to the item being moved.</const>
     </constants>
 
-    <constants lookup="TF" comment="Flags for the TabFocus class.">
-      <const name="LOCAL_FOCUS">In this mode, the user's point of focus must match the monitored Surface for the tabfocus to function.</const>
-      <const name="CHILD_FOCUS">In this mode, the user's point of focus must match the monitored Surface or one of its immediate children for the tabfocus to function.</const>
-      <const name="LIMIT_TO_LIST">In limit-to-list mode, the tabfocus only functions if the user's point of focus is on the monitored Surface or one of objects in the tab list.</const>
-    </constants>
-
     <constants lookup="VGF" comment="Graphics options (normally defined by the template)">
       <const name="OUTLINE_TITLE">Draw black outline around title text.</const>
       <const name="NO_BORDER">Do not draw a border around column headers when in table mode.</const>
@@ -342,6 +331,18 @@ surface.new('resize', {
       <const name="BRANCHES">Draw grey tree branches.</const>
       <const name="ALT_GROUP">Alternate the group header graphics.</const>
       <const name="LINE_BREAKS">Draw a line break between each view item.</const>
+    </constants>
+
+    <constants lookup="TF" comment="Flags for the TabFocus class.">
+      <const name="LOCAL_FOCUS">In this mode, the user's point of focus must match the monitored Surface for the tabfocus to function.</const>
+      <const name="CHILD_FOCUS">In this mode, the user's point of focus must match the monitored Surface or one of its immediate children for the tabfocus to function.</const>
+      <const name="LIMIT_TO_LIST">In limit-to-list mode, the tabfocus only functions if the user's point of focus is on the monitored Surface or one of objects in the tab list.</const>
+    </constants>
+
+    <constants lookup="BHS">
+      <const name="OUTSIDE">The cursor is outside of the button's area</const>
+      <const name="ENTERED">The cursor has just entered the button's area</const>
+      <const name="INSIDE">The cursor is inside the button's area</const>
     </constants>
 
     <constants lookup="VIEW" comment="List options">

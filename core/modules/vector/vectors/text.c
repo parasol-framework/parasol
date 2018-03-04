@@ -898,7 +898,8 @@ static ERROR TEXT_SET_String(objVectorText *Self, CSTRING Value)
 TextLength: Reflects the expected length of the text after all computations have been taken into account.
 
 The purpose of this attribute is to allow exact alignment of the text graphic in the computed result.  If the
-#Width that is initially computed does not match this value, then the text will be scaled to fit expectations.
+#Width that is initially computed does not match this value, then the text will be scaled to match the
+TextLength.
 -END-
 *****************************************************************************/
 

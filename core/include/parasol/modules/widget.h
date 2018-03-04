@@ -694,14 +694,13 @@ typedef struct rkCheckBox {
 
 typedef struct rkButton {
    OBJECT_HEADER
-   struct rkFont * Font;    // Font control object
-   STRING   Hint;           // Applies a hint to a button, which can be displayed as a tool-tip.
-   STRING   Icon;           // Name of an icon to display in the button.
-   OBJECTID RegionID;       // Surface region created by the button object
-   OBJECTID SurfaceID;      // The surface target for the button graphic
-   LONG     Flags;          // Special options
-   LONG     Clicked;        // TRUE if the button has been clicked and reverts to FALSE when the user releases the button.
-   LONG     HoverState;     // User hover state indicator
+   STRING   Hint;      // Applies a hint to a button, which can be displayed as a tool-tip.
+   STRING   Icon;      // Name of an icon to display in the button.
+   OBJECTID RegionID;  // Surface region created by the button object
+   OBJECTID SurfaceID; // The surface target for the button graphic
+   LONG     Flags;     // Special options
+   LONG     Clicked;   // TRUE if the button has been clicked and reverts to FALSE when the user releases the button.
+   LONG     HoverState; // User hover state indicator
 
 #ifdef PRV_BUTTON
    FUNCTION Feedback;

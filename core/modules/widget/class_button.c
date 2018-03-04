@@ -26,7 +26,6 @@ are: Initialise child objects to the button for execution on activation; Listen 
 #define PRV_BUTTON
 #include <parasol/modules/display.h>
 #include <parasol/modules/document.h>
-#include <parasol/modules/font.h>
 #include <parasol/modules/iconserver.h>
 #include <parasol/modules/picture.h>
 #include <parasol/modules/surface.h>
@@ -45,8 +44,6 @@ static const struct FieldDef clAlign[] = {
 static const struct FieldArray clFields[];
 static const struct FieldDef clButtonHoverState[];
 static OBJECTPTR clButton = NULL;
-
-static char glDefaultButtonFace[] = "[glStyle./fonts/font(@name='button')/@face]:[glStyle./fonts/font(@name='button')/@size]";
 
 static void key_event(objButton *, evKey *, LONG);
 
@@ -247,7 +244,6 @@ static ERROR BUTTON_Free(objButton *Self, APTR Void)
 {
    if (Self->prvKeyEvent) { UnsubscribeEvent(Self->prvKeyEvent); Self->prvKeyEvent = NULL; }
    if (Self->Icon)        { FreeMemory(Self->Icon); Self->Icon = NULL; }
-   if (Self->Font)        { acFree(Self->Font); Self->Font = NULL; }
    if (Self->RegionID)    { acFreeID(Self->RegionID); Self->RegionID = 0; }
 
    gfxUnsubscribeInput(0); // Unsubscribe our object from all surfaces
@@ -280,7 +276,9 @@ static ERROR BUTTON_Init(objButton *Self, APTR Void)
       else return ERR_UnsupportedOwner;
    }
 
-   if (acInit(Self->Font) != ERR_Okay) return ERR_Init;
+   if (drwApplyStyleGraphics(Self, Self->RegionID, NULL, NULL)) {
+      return ERR_Failed; // Graphics styling is required.
+   }
 
    objSurface *region;
    if (!AccessObject(Self->RegionID, 5000, &region)) {
@@ -292,20 +290,6 @@ static ERROR BUTTON_Init(objButton *Self, APTR Void)
       SetFields(region, FID_Parent|TLONG, Self->SurfaceID,
                         FID_Region|TLONG, TRUE,
                         TAGEND);
-
-      if (!(region->Dimensions & DMF_HEIGHT)) {
-         if ((!(region->Dimensions & DMF_Y)) OR (!(region->Dimensions & DMF_Y_OFFSET))) {
-            SetLong(region, FID_Height, Self->Font->MaxHeight + (glMargin * 2)); // glMargin added for both the top and bottom of the button.
-         }
-      }
-
-      if (!(region->Dimensions & DMF_WIDTH)) {
-         if ((!(region->Dimensions & DMF_X)) OR (!(region->Dimensions & DMF_X_OFFSET))) {
-            LONG w = (glMargin * 4) + fntStringWidth(Self->Font, Self->String, -1);
-            if (Self->Icon) w += 16 + glMargin;
-            SetLong(region, FID_Width, w);
-         }
-      }
 
       if (!acInit(region)) {
          SubscribeActionTags(region,
@@ -326,10 +310,6 @@ static ERROR BUTTON_Init(objButton *Self, APTR Void)
    }
    else return ERR_AccessObject;
 
-   if (drwApplyStyleGraphics(Self, Self->RegionID, NULL, NULL)) {
-      return ERR_Failed; // Graphics styling is required.
-   }
-
    if (!(Self->Flags & BTF_HIDE)) acShowID(Self->RegionID);
 
    return ERR_Okay;
@@ -337,7 +317,7 @@ static ERROR BUTTON_Init(objButton *Self, APTR Void)
 
 /*****************************************************************************
 -ACTION-
-Move: Move the button to a new location.
+Move: Move the button to a new position.
 -END-
 *****************************************************************************/
 
@@ -348,7 +328,7 @@ static ERROR BUTTON_Move(objButton *Self, struct acMove *Args)
 
 /*****************************************************************************
 -ACTION-
-MoveToPoint: Move the button to a new location.
+MoveToPoint: Move the button to a new position.
 -END-
 *****************************************************************************/
 
@@ -384,14 +364,8 @@ static ERROR BUTTON_MoveToFront(objButton *Self, APTR Void)
 static ERROR BUTTON_NewObject(objButton *Self, APTR Void)
 {
    if (!NewLockedObject(ID_SURFACE, NF_INTEGRAL|Self->Head.Flags, NULL, &Self->RegionID)) {
-      if (!NewObject(ID_FONT, NF_INTEGRAL|Self->Head.Flags, &Self->Font)) {
-         SetString(Self->Font, FID_Face, glDefaultButtonFace);
-
-         drwApplyStyleValues(Self, NULL);
-
-         return ERR_Okay;
-      }
-      else return ERR_NewObject;
+      drwApplyStyleValues(Self, NULL);
+      return ERR_Okay;
    }
    else return ERR_NewObject;
 }
@@ -526,13 +500,6 @@ static ERROR SET_Feedback(objButton *Self, FUNCTION *Value)
 /*****************************************************************************
 
 -FIELD-
-Font: References the font that will draw text inside the button.
-
-All buttons have a font object that is referenced from this field.  The fields of the font object may be set prior to
-initialisation in order to configure the style of the button's text.  It is recommended that if you wish to configure
-the font style, please do so applying a style to the button.
-
--FIELD-
 Flags: Optional flags may be defined here.
 
 -FIELD-
@@ -618,10 +585,10 @@ static ERROR SET_LayoutStyle(objButton *Self, DOCSTYLE *Value)
 {
    if (!Value) return ERR_Okay;
 
-   if (Self->Head.Flags & NF_INITIALISED) {
-      docApplyFontStyle(Value->Document, Value, Self->Font);
-   }
-   else docApplyFontStyle(Value->Document, Value, Self->Font);
+   //if (Self->Head.Flags & NF_INITIALISED) {
+   //   docApplyFontStyle(Value->Document, Value, Self->Font);
+   //}
+   //else docApplyFontStyle(Value->Document, Value, Self->Font);
 
    Self->Document = Value->Document;
 
@@ -958,7 +925,6 @@ static void key_event(objButton *Self, evKey *Event, LONG Size)
 #include "class_button_def.c"
 
 static const struct FieldArray clFields[] = {
-   { "Font",         FDF_INTEGRAL|FDF_R,   0, NULL, NULL },
    { "Hint",         FDF_STRING|FDF_RW,    0, NULL, SET_Hint },
    { "Icon",         FDF_STRING|FDF_RW,    0, NULL, SET_Icon },
    { "LayoutSurface",FDF_VIRTUAL|FDF_OBJECTID|FDF_SYSTEM|FDF_R, ID_SURFACE, NULL, NULL }, // VIRTUAL: This is a synonym for the Region field
@@ -992,12 +958,6 @@ static const struct FieldArray clFields[] = {
 
 ERROR init_button(void)
 {
-   // Note that if the app wants to set its own default face, it should do this prior to GUI initialisation.
-
-   if (StrEvaluate(glDefaultButtonFace, sizeof(glDefaultButtonFace), SEF_STRICT, 0) != ERR_Okay) {
-      StrCopy("Open Sans,Source Sans Pro,*:100%", glDefaultButtonFace, sizeof(glDefaultButtonFace));
-   }
-
    return(CreateObject(ID_METACLASS, 0, &clButton,
       FID_ClassVersion|TFLOAT, VER_BUTTON,
       FID_Name|TSTR,      "Button",

@@ -3,6 +3,7 @@
    require 'gui'
 
    if (mVec == nil) then mVec = mod.load('vector') end
+   if (mFont == nil) then mFont = mod.load('font') end
 
    glSelf = obj.find('self')
 
@@ -83,7 +84,7 @@ local function defineGradient(Scene, Name, First, Last, X1, Y1, X2, Y2, Units)
 
    if (Scene) then
       local gradient = Scene.new('VectorGradient', {
-         name=Name, type='linear', stops=stops, x1=X1, y1=Y1, x2=X2, y2=Y2, units=nz(Units,'boundingbox')
+         name=nz(Name, 'styleGradient'), type='linear', stops=stops, x1=X1, y1=Y1, x2=X2, y2=Y2, units=nz(Units,'boundingbox')
       })
       Scene.mtAddDef(Name, gradient)
       return gradient
@@ -124,7 +125,7 @@ glColours = {
 glFonts = { // Use percentages for scalable sizes, where 100% is equivalent to the value of '/interface/@fontsize'
    default  = { face='Open Sans,Source Sans Pro', size='100%', colour='0,0,0' },
    window   = { face='Open Sans,Source Sans Pro', size='100%', colour='0,0,0' }, // Default inner window text, e.g. widget labels
-   button   = { face='Open Sans,Source Sans Pro', size='100%', colour='0,0,0' }, // Text inside buttons
+   button   = { face='Open Sans,Source Sans Pro,*:100%', colour='0,0,0' }, // Text inside buttons
    icon     = { face='Open Sans,Source Sans Pro', size='100%', colour='255,255,255' }, // Text at the bottom of icons
    menu     = { face='Open Sans,Source Sans Pro', size='100%', colour='255,255,255', highlight='255,255,255' }, // Menu item text
    titlebar = { face='Open Sans', size='100%', colour='255,255,255' }, // Title bar text
@@ -231,9 +232,17 @@ glStyles = {
    },
    button = {
       defaultValues = function(Button)
-         Button.font.colour  = '255,255,255'
+
       end,
       decoration = function(Button, Surface)
+         local lMargin = 5
+         if bit.band(Surface.dimensions, DMF_HEIGHT) == 0 then
+            if (bit.band(Surface.dimensions, DMF_Y) == 0) or
+               (bit.band(Surface.dimensions, DMF_Y_OFFSET) == 0) then
+               Surface.height = 20 + (lMargin * 2)
+            end
+         end
+
          local lScene = obj.new('VectorScene', { name='ButtonScene' })
          local lViewport = lScene.new('VectorViewport', { })
          local lFocusGap = 3
@@ -263,12 +272,23 @@ glStyles = {
          })
 
          local lLabel = lViewport.new('VectorText', {
-            x = 30,
-            face     = 'Open Sans',
+            x        = lMargin,
+            face     = glFonts.button.face,
             fontSize = Surface.height * 0.66 * (3/4),
             fill     = 'rgb(255,255,255,255)',
-            string   = 'Unlabelled'
+            string   = Button.string
          })
+
+         if (Button.icon) then lLabel.x = lIconSize + (lMargin * 3) end
+
+         if bit.band(Surface.dimensions, DMF_WIDTH) == 0 then
+            if (bit.band(Surface.dimensions, DMF_X) == 0) or
+               (bit.band(Surface.dimensions, DMF_X_OFFSET) == 0) then
+               local w = (lMargin * 4) + mFont.StringWidth(lLabel.font, Button.string, -1)
+               if (Button.icon) then w = w + lIconSize + (lMargin*2) end
+               Surface.width = w
+            end
+         end
 
          if (Button.icon) then
             catch(function()
@@ -305,19 +325,19 @@ glStyles = {
 
             end
 
-            if ((bit.band(Surface.flags, RNF_HAS_FOCUS) != RNF_HAS_FOCUS) and
-                (bit.band(Surface.flags, RNF_DISABLED) == RNF_DISABLED)) then
-               lFocus.visibility = VIS_HIDDEN
-            else
+            if ((bit.band(Surface.flags, RNF_HAS_FOCUS) == RNF_HAS_FOCUS) and
+                (bit.band(Surface.flags, RNF_DISABLED) != RNF_DISABLED)) then
                local gap = 3
                lFocus.x = gap
                lFocus.y = gap
                lFocus.width = Surface.width - (gap * 2)
                lFocus.height = Surface.height - (gap * 2)
                lFocus.visibility = VIS_VISIBLE
+            else
+               lFocus.visibility = VIS_HIDDEN
             end
 
-            if ((Button.state == BHS_INSIDE) or (Button.state == BHS_ENTERED)) then
+            if ((Button.hoverState == BHS_INSIDE) or (Button.hoverState == BHS_ENTERED)) then
                if (bit.band(Surface.flags, RNF_DISABLED) != RNF_DISABLED) then
                   baseColour = 'rgb(255,255,255,40)'
                end
