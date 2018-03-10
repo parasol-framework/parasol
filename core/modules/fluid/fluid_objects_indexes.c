@@ -419,6 +419,9 @@ static ERROR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, LONG
          else if ((fstruct = get_meta(Lua, ValueIndex, "Fluid.struct"))) {
             return SetPointer(obj, field->FieldID, fstruct->Data);
          }
+         else if (type IS LUA_TNIL) {
+            return SetPointer(obj, field->FieldID, NULL);
+         }
          else return ERR_FieldTypeMismatch;
       }
       else switch(type) {
