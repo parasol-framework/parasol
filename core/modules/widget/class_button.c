@@ -565,8 +565,9 @@ static ERROR SET_Hint(objButton *Self, CSTRING Value)
 -FIELD-
 Icon: The image field can be set in order to load a bitmap into the button.
 
-To display an image inside the button, set the Icon field.  The image will be displayed on the left side of the text
-inside the button.  If no text string has been set, the image will be shown in the exact center of the button.
+To display an image inside the button, set the Icon field with a string in the format of 'category/iconname'.  The icon
+will be displayed on the left side of the text inside the button.  If the button is unlabelled, the icon will be shown
+in the exact center of the button.
 -END-
 
 *****************************************************************************/

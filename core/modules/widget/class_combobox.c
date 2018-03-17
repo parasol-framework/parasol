@@ -14,9 +14,9 @@ combobox typically looks like a text entry area, but features a button positione
 Clicking on the button will pop-up a menu that the user can use to select a pre-defined menu item.  Clicking on one of
 those items will paste the item text into the combobox.
 
-A crucial feature of the combobox is the drop-down menu.  The combobox uses the @Menu class to support its
-menu construction. To add items to the drop-down menu, you need to pass instructions to it using XML.  You can learn
-more about the XML specification in the @Menu class manual.
+A crucial feature of the combobox is the drop-down menu.  The combobox uses the @Menu class to support its menu
+construction. To add items to the drop-down menu, you need to pass instructions to it using XML.  You can learn more
+about the XML specification in the @Menu class manual.
 
 When the user selects a combobox item, you may need to respond with an action.  You can do this by initialising child
 objects to the combobox. These will be executed when the combobox is activated.  When programming, you can also
