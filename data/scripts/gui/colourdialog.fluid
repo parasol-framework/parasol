@@ -461,17 +461,14 @@ gui.dialog.colour = function(Options)
          text    = nz(lOptions.cancelText, 'Cancel'),
          xOffset = lWidgetGap,
          yOffset = footer,
-         image   = 'icons:items/cancel(16)',
-         colour  = '#B71C1C',
-         iconFilter = 'pearl'
+         icon    = 'items/cancel'
       })
 
       lOkayButton = lWindow.new('button', {
          text    = nz(lOptions.okText, 'OK'),
          xOffset = lWindow.insideWidth - lCancelButton.x + lWidgetGap,
          yOffset = footer,
-         image   = 'icons:items/checkmark(16)',
-         iconFilter = 'pearl'
+         icon    = 'items/checkmark'
       })
 
       lOkayButton.subscribe('activate', function()
