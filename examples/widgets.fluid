@@ -1,0 +1,27 @@
+--[[
+A demonstration of standard widgets
+--]]
+
+   local win  = obj.new('window', { title='Widget Examples', insideWidth=400, insideHeight=200 })
+
+   local y = win.topMargin
+
+   local text = win.new('text', { x=win.leftMargin, y=y, string='Text Widget', face='Open Sans:20' })
+
+   y = y + text.textHeight + 8
+
+   local button = win.new('button', { text='Button', x=win.leftMargin, y=y, icon='items/checkmark',
+      feedback   = function()
+      end
+   })
+
+   y = y + button.height + 8
+
+   local checkbox = win.new('checkbox', { text='Checkbox', x=win.leftMargin, y=y })
+   y = y + checkbox.height + 8
+
+
+   win.acShow()
+
+   processMessages(-1) // Will sleep until the window close widget sends MSGID_QUIT
+

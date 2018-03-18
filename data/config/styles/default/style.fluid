@@ -252,7 +252,6 @@ glStyles = {
          lThemeColour = { first={ r=250,g=249,b=248 }, last={ r=210,g=211,b=212 } }
 
          local lBkgd = lViewport.new('VectorRectangle', {
-            fill   = 'rgb(0,0,0,40)',
             stroke = 'rgb(255,255,255,60)',
             x      = 0,
             y      = 0,
@@ -319,7 +318,7 @@ glStyles = {
          end
 
          Surface.mtAddCallback(function(Surface, Bitmap)
-            local baseColour = 'rgb(0,0,0,40)'
+            local baseColour = 'rgb(0,0,0,80)'
 
             if (Button.clicked) then
 
@@ -363,6 +362,112 @@ glStyles = {
    checkbox = {
       defaultValues = function(Check)
          Check.border = glColours.widget.border
+      end,
+      decoration = function(Check, Surface)
+         local checkImage = 'items/checkmark'
+         local border = 'rgb(100,100,100,255)'
+         local bkgd = 'rgb(255,255,255,255)'
+         local highlight = 'rgb(255,255,255,255)'
+         local lMargin = 5
+
+         local lScene = obj.new('VectorScene', { name='CheckboxScene' })
+         local lViewport = lScene.new('VectorViewport', { })
+         local lIconSize = Surface.height * 0.56
+         local svgGroup, svg
+
+         local lBkgd = lViewport.new('VectorRectangle', {
+            stroke = 'rgb(255,255,255,60)',
+            x      = 0,
+            y      = 0,
+            width  = '100%',
+            roundX = 4,
+            roundY = 4,
+            height = '100%'
+         })
+
+         local lLabel = lViewport.new('VectorText', {
+            x        = lMargin,
+            face     = glFonts.checkbox.face,
+            fontSize = Surface.height * 0.66 * (3/4),
+            fill     = 'rgb(255,255,255,255)',
+            string   = Check.label
+         })
+
+         if (Check.labelWidth < 1) and (Check.label[0]) then // Calculate the width of the text label, if there is one
+            Check.labelWidth = mFont.StringWidth(lLabel.font, Check.label, -1) + 8
+         end
+
+         if bit.band(Surface.dimensions, DMF_HEIGHT) == 0 then
+            if (bit.band(Surface.dimensions, DMF_Y) == 0) or
+               (bit.band(Surface.dimensions, DMF_Y_OFFSET) == 0) then
+               Surface.height = 18
+            end
+         end
+
+         if bit.band(region.dimensions, DMF_WIDTH) == 0 then
+            if (bit.band(region.dimensions, DMF_X) == 0) or
+               (bit.band(region.dimensions, DMF_X_OFFSET) == 0) then
+               region.width = Check.labelWidth + region.height
+            end
+         end
+
+         local chkx = Check.labelWidth
+         if bit.band(Check.align, ALIGN_RIGHT) == ALIGN_RIGHT then
+            chkx = Surface.width - Surface.height
+         end
+
+         Surface.mtAddCallback(function(Surface, Bitmap)
+            if (Check.entered) then
+               if not (bit.band(Surface.flags, RNF_DISABLED) == RNF_DISABLED) then
+                  lBkgd.stroke = highlight
+                  lBkgd.fill = bkgd
+               else
+                  lBkgd.fill = bkgd
+               end
+            else
+               lBkgd.fill = bkgd
+            end
+
+            if bit.band(Surface.Flags, RNF_HAS_FOCUS) == RNF_HAS_FOCUS then
+               if bit.band(Surface.Flags, RNF_DISABLED) == 0 then
+                  lBkgd.strokeWidth = 2
+               end
+            end
+
+            if (Check.label) then
+               lLabel.string = Check.label
+
+               if bit.band(Surface.flags, RNF_DISABLED) != 0 then
+                  font.opacity = 25
+               end
+
+               font.Flags      |= FTF_CHAR_CLIP
+               font.WrapEdge    = Check.LabelWidth - 3
+               font.Align       = ALIGN_VERTICAL
+               if bit.band(Check.align, ALIGN_RIGHT) == ALIGN_RIGHT then
+                  font.align = bit.bor(font.align, ALIGN_RIGHT)
+               end
+
+               if bit.band(Surface.flags, RNF_DISABLED) == RNF_DISABLED then
+                  font.opacity = '100%'
+               end
+            end
+
+            if (Check.Picture) then
+               objBitmap *src = Check.Picture.Bitmap
+               if (!Check.Value) then src.Opacity = 25 end
+
+               gfxCopyArea(src, Bitmap, BAF_BLEND, 0, 0, src.Width, src.Height,
+                  chkx + ((Surface.Height - src.Width)/2), ((Surface.Height - src.Height)/2))
+
+               src.Opacity = 255
+            end
+
+            lScene.bitmap = Bitmap
+            lScene.pageWidth = Surface.width
+            lScene.pageHeight = Surface.height
+            lScene.acDraw()
+         end)
       end
    },
    combobox = {
@@ -415,7 +520,7 @@ glStyles = {
          Surface.mtAddCallback(function(Surface, Bitmap)
             local err, path = mVec.generateRectangle(0, 0, Surface.width, Surface.height)
             if (err == ERR_Okay) then
-               mVec.drawPath(Bitmap, path, 0, nil, lGradient);
+               mVec.drawPath(Bitmap, path, 0, nil, lGradient)
                mVec.freePath(path)
             end
             local err, colA = Bitmap.mtGetColour(0, 0, 0, 60)
@@ -492,7 +597,7 @@ glStyles = {
          Surface.mtAddCallback(function(Surface, Bitmap)
             local err, path = mVec.generateRectangle(0, 0, Surface.width, Surface.height)
             if (err == ERR_Okay) then
-               mVec.drawPath(Bitmap, path, 0, nil, lGradient);
+               mVec.drawPath(Bitmap, path, 0, nil, lGradient)
                mVec.freePath(path)
             end
             local err, colA = Bitmap.mtGetColour(0, 0, 0, 60)
