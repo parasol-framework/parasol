@@ -417,7 +417,7 @@ glStyles = {
          end
 
          Surface.mtAddCallback(function(Surface, Bitmap)
-            if (Check.entered) then
+            if Check.entered then
                if not (bit.band(Surface.flags, RNF_DISABLED) == RNF_DISABLED) then
                   lBkgd.stroke = highlight
                   lBkgd.fill = bkgd
@@ -434,33 +434,33 @@ glStyles = {
                end
             end
 
-            if (Check.label) then
+            if Check.label then
                lLabel.string = Check.label
 
                if bit.band(Surface.flags, RNF_DISABLED) != 0 then
-                  font.opacity = 25
+                  lLabel.opacity = 0.25
                end
 
-               font.Flags      |= FTF_CHAR_CLIP
-               font.WrapEdge    = Check.LabelWidth - 3
-               font.Align       = ALIGN_VERTICAL
+               //font.flags    |= FTF_CHAR_CLIP
+               //font.wrapEdge  = Check.LabelWidth - 3
+               //font.align     = ALIGN_VERTICAL
                if bit.band(Check.align, ALIGN_RIGHT) == ALIGN_RIGHT then
                   font.align = bit.bor(font.align, ALIGN_RIGHT)
                end
 
                if bit.band(Surface.flags, RNF_DISABLED) == RNF_DISABLED then
-                  font.opacity = '100%'
+                  lLabel.opacity = 1.0
                end
             end
 
-            if (Check.Picture) then
-               objBitmap *src = Check.Picture.Bitmap
-               if (!Check.Value) then src.Opacity = 25 end
+            if Check.picture then
+               src = Check.picture.bitmap
+               if (!Check.value) then src.opacity = 0.25 end
 
                gfxCopyArea(src, Bitmap, BAF_BLEND, 0, 0, src.Width, src.Height,
-                  chkx + ((Surface.Height - src.Width)/2), ((Surface.Height - src.Height)/2))
+                  chkx + ((Surface.height - src.width)/2), ((Surface.height - src.height)/2))
 
-               src.Opacity = 255
+               src.opacity = 1.0
             end
 
             lScene.bitmap = Bitmap
