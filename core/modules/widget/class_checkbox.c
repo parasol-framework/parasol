@@ -7,7 +7,7 @@ Please refer to it for further information on licensing.
 ******************************************************************************
 
 -CLASS-
-CheckBox: The CheckBox class manages check boxes in the user interface.
+CheckBox: The CheckBox class displays a checkbox widget in the UI.
 
 The CheckBox class simplifies the creation and management of checkbox widgets in the user interface.  Check boxes are
 simple widgets that are limited to exhibiting an on/off state.  The CheckBox class allows for its graphics to be
