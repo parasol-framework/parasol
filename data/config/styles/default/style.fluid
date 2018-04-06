@@ -6,6 +6,8 @@
    if (mFont == nil) then mFont = mod.load('font') end
 
    glSelf = obj.find('self')
+   glCounter = 1
+   glThemeColour = { first={ r=250,g=249,b=248 }, last={ r=210,g=211,b=212 } }
 
 // The applyStyle() function is used to set style defaults against an object.
 
@@ -93,6 +95,41 @@ local function defineGradient(Scene, Name, First, Last, X1, Y1, X2, Y2, Units)
          name=nz(Name, 'styleGradient'), type='linear', stops=stops, x1=X1, y1=Y1, x2=X2, y2=Y2, units=nz(Units,'boundingbox')
       })
    end
+end
+
+local function scaleGradient(svgGroup, svgGradient)
+   local viewport = svgGroup.child
+   if (viewport != nil) then
+      local child = viewport.child
+      while (child != nil) do
+         if (child.class.id == ID_VECTORVIEWPORT) then
+            viewport = child
+            break
+         end
+         child = child.child
+      end
+
+      if (viewport.viewHeight < viewport.viewWidth) then
+         svgGradient.y1 = viewport.viewY - ((viewport.viewWidth - viewport.viewHeight) * 0.5)
+         svgGradient.y2 = svgGradient.y1 + viewport.viewWidth
+      else
+         svgGradient.y1 = viewport.viewY
+         svgGradient.y2 = viewport.viewY + viewport.viewHeight
+      end
+   end
+end
+
+-- Factory function for producing an icon with a scaled gradient background for theming.
+
+local function createIcon(Scene, IconName, Viewport, ViewportSettings)
+   local icon = { gradientName='icon' .. glCounter }
+   glCounter = glCounter + 1
+   icon.viewport = Viewport.new('VectorViewport', ViewportSettings)
+   icon.gradient = defineGradient(Scene, icon.gradientName, glThemeColour.first, glThemeColour.last, 0, 0, 0, 1)
+   icon.svg = obj.new('svg', { target=icon.viewport, path='system:icons/Default/' .. IconName .. '.svg' })
+   applyFill(icon.viewport, 'url(#' .. icon.gradientName .. ')')
+   scaleGradient(icon.viewport, icon.gradient) // Scale the gradient to the loaded icon
+   return icon
 end
 
 glColours = {
@@ -248,8 +285,7 @@ glStyles = {
          local lFocusGap = 3
          local lCount = 0
          local lIconSize = Surface.height * 0.56
-         local svgGroup, svgGradient, svg
-         lThemeColour = { first={ r=250,g=249,b=248 }, last={ r=210,g=211,b=212 } }
+         local lIcon
 
          local lBkgd = lViewport.new('VectorRectangle', {
             stroke = 'rgb(255,255,255,60)',
@@ -291,29 +327,7 @@ glStyles = {
 
          if (Button.icon) then
             catch(function()
-               local gname = 'btn' .. Button.id
-               svgGroup = lViewport.new('VectorViewport', { x=Surface.height * 0.3, y=(Surface.height - lIconSize)/2, width=lIconSize, height=lIconSize })
-               svgGradient = defineGradient(lScene, gname, lThemeColour.first, lThemeColour.last, 0, 0, 0, 1)
-               local svg = obj.new('svg', { target=svgGroup, path='system:icons/Default/' .. Button.icon .. '.svg' })
-               applyFill(svgGroup, 'url(#' .. gname .. ')')
-
-               local viewport = svgGroup.child
-               if (viewport != nil) then
-                  while (child != nil) do
-                     if (child.class.id == ID_VECTORVIEWPORT) then
-                        viewport = child
-                        break
-                     end
-                  end
-
-                  if (viewport.viewHeight < viewport.viewWidth) then
-                     svgGradient.y1 = viewport.viewY - ((viewport.viewWidth - viewport.viewHeight) * 0.5)
-                     svgGradient.y2 = svgGradient.y1 + viewport.viewWidth
-                  else
-                     svgGradient.y1 = viewport.viewY
-                     svgGradient.y2 = viewport.viewY + viewport.viewHeight
-                  end
-               end
+               lIcon = createIcon(lScene, Button.icon, lViewport, { x=Surface.height * 0.3, y=(Surface.height - lIconSize)/2, width=lIconSize, height=lIconSize })
             end)
          end
 
