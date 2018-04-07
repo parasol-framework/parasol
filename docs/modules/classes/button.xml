@@ -141,12 +141,6 @@
     </field>
 
     <field>
-      <name>Font</name>
-      <access read="R">Read</access>
-      <type>OBJECTPTR</type>
-    </field>
-
-    <field>
       <name>Height</name>
       <comment>Defines the height of a button.</comment>
       <access read="G" write="S">Get/Set</access>
@@ -178,11 +172,11 @@
 
     <field>
       <name>Icon</name>
-      <comment>The image field can be set in order to load a bitmap into the button.</comment>
+      <comment>Reference to an icon that will be displayed inside the button.</comment>
       <access read="R" write="S">Read/Set</access>
       <type>STRING</type>
       <description>
-<p>To display an image inside the button, set the Icon field.  The image will be displayed on the left side of the text inside the button.  If no text string has been set, the image will be shown in the exact center of the button.</p>
+<p>To display an image inside the button, set the Icon field with a string in the format of 'category/iconname'.  The icon will be displayed on the left side of the text inside the button.  If the button is unlabelled, the icon will be shown in the exact center of the button.</p>
       </description>
     </field>
 

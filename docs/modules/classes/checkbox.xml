@@ -6,7 +6,7 @@
     <name>CheckBox</name>
     <type>class</type>
     <module>Widget</module>
-    <comment>The CheckBox class manages check boxes in the user interface.</comment>
+    <comment>The CheckBox class displays a checkbox widget in the UI.</comment>
     <version>1</version>
     <id>11a6290c</id>
     <idstring>ID_CHECKBOX</idstring>
@@ -87,47 +87,10 @@
     </field>
 
     <field>
-      <name>Border</name>
-      <comment>String-based field for setting a single-colour border for the checkbox.</comment>
-      <access write="S">Set</access>
-      <type>STRING</type>
-      <description>
-<p>The border colour for a checkbox can be declared by writing to this field.  The colour must be in hexadecimal or separated-decimal format - for example to create a pure red colour, a setting of "#ff0000" or "255,0,0" would be valid.</p>
-      </description>
-    </field>
-
-    <field>
       <name>Bottom</name>
       <comment>The bottom coordinate of the checkbox (Y + Height).</comment>
       <access read="G">Get</access>
       <type>INT</type>
-    </field>
-
-    <field>
-      <name>CheckImage</name>
-      <comment>Defines the image that is displayed when the checkbox state is set to 'on'.</comment>
-      <access write="S">Set</access>
-      <type>STRING</type>
-      <description>
-<p>When the checkbox state is set to 'on', it will display an image inside the checkbox area.  The default image can be redefined by setting CheckImage with a path to an image file.  If the image file cannot be loaded for any reason, the checkbox will revert to its default image on initialisation.</p>
-      </description>
-    </field>
-
-    <field>
-      <name>ClickFrame</name>
-      <comment>The graphics frame to display when the checkbox is clicked.</comment>
-      <access read="R" write="W">Read/Write</access>
-      <type>INT</type>
-      <description>
-<p>This field specifies the surface frame to switch to when the user clicks on the checkbox.  By default this field is initially set to zero, which has no effect on the surface frame.  When the user releases the checkbox, it will revert to the frame indicated by the <field>ReleaseFrame</field> field.</p>
-      </description>
-    </field>
-
-    <field>
-      <name>Colour</name>
-      <comment>Defines the colour inside of the checkbox.</comment>
-      <access read="R" write="W">Read/Write</access>
-      <type>RGB8</type>
     </field>
 
     <field>
@@ -136,28 +99,8 @@
       <access read="G" write="S">Get/Set</access>
       <type>INT</type>
       <description>
-<p>The checkbox can be disabled on initialisation by setting this field to TRUE.  If you need to disable the combobox after it has been activated, it is preferred that you use the Disable action.</p>
-<p>To enable the combobox after it has been disabled, use the Enable action.</p>
-      </description>
-    </field>
-
-    <field>
-      <name>EnterFrame</name>
-      <comment>The graphics frame to display when the user's pointer enters the checkbox area.</comment>
-      <access read="R" write="W">Read/Write</access>
-      <type>INT</type>
-      <description>
-<p>This field specifies the surface frame to switch to when the user's pointer enters the checkbox area.  By default this field is initially set to zero, which has no effect on the surface frame.</p>
-      </description>
-    </field>
-
-    <field>
-      <name>ExitFrame</name>
-      <comment>The graphics frame to display when the user's pointer leaves the checkbox area.</comment>
-      <access read="R" write="W">Read/Write</access>
-      <type>INT</type>
-      <description>
-<p>This field specifies the surface frame to switch to when the user's pointer leaves the checkbox area.  This field is unused if the EnterFrame field has not been set.</p>
+<p>The checkbox can be disabled on initialisation by setting this field to TRUE.  If you need to disable the combobox after it has been activated, it is preferred that you use the <action>Disable</action> action.</p>
+<p>To enable the combobox after it has been disabled, use the <action>Enable</action> action.</p>
       </description>
     </field>
 
@@ -182,16 +125,6 @@
     </field>
 
     <field>
-      <name>Font</name>
-      <comment>The font used to draw the checkbox label.</comment>
-      <access read="R">Read</access>
-      <type class="Font">*Font</type>
-      <description>
-<p>The font object that is used to draw the checkbox label string can be referenced from this field.  Fields in the font object, such as the font face and colour can be set prior to initialisation.</p>
-      </description>
-    </field>
-
-    <field>
       <name>Height</name>
       <comment>Defines the height of a checkbox.</comment>
       <access read="G" write="S">Get/Set</access>
@@ -199,13 +132,6 @@
       <description>
 <p>A checkbox can be given a fixed or relative height by setting this field to the desired value.  To set a relative height, use the FD_PERCENT flag when setting the field.</p>
       </description>
-    </field>
-
-    <field>
-      <name>Highlight</name>
-      <comment>Defines the checkbox highlight colour.</comment>
-      <access read="R" write="W">Read/Write</access>
-      <type>RGB8</type>
     </field>
 
     <field>
@@ -239,27 +165,10 @@
     </field>
 
     <field>
-      <name>ReleaseFrame</name>
-      <comment>The graphics frame to display when a user-click is released.</comment>
-      <access read="R" write="W">Read/Write</access>
-      <type>INT</type>
-      <description>
-<p>If the <field>ClickFrame</field> field has been set, you may want to match that value by indicating the frame that should be used when the click is released.  By default, the value in this field will initially be set to 1.  This field is unused if the <field>ClickFrame</field> field has not been set.</p>
-      </description>
-    </field>
-
-    <field>
       <name>Right</name>
       <comment>The right coordinate of the checkbox (X + Width).</comment>
       <access read="G">Get</access>
       <type>INT</type>
-    </field>
-
-    <field>
-      <name>Shadow</name>
-      <comment>Defines the colour of the checkbox border shadow.</comment>
-      <access read="R" write="W">Read/Write</access>
-      <type>RGB8</type>
     </field>
 
     <field>
@@ -280,13 +189,6 @@
       <description>
 <p>The TabFocus field provides a convenient way of adding the checkbox to a TabFocus object, so that it can be focussed on via the tab key.  Simply set this field to the ID of the TabFocus object that is managing the tab-list for the application window.</p>
       </description>
-    </field>
-
-    <field>
-      <name>Thickness</name>
-      <comment>The thickness of the checkbox border.</comment>
-      <access read="R" write="W">Read/Write</access>
-      <type>INT</type>
     </field>
 
     <field>
