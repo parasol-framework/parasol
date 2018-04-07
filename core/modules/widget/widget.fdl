@@ -733,17 +733,16 @@ module({ name="Widget", copyright="Paul Manias 2003-2017", version=1.0 }, functi
   ]])
 
   class("CheckBox", { src="class_checkbox.c", output="class_checkbox_def.c" }, [[
-   oid Region             # Surface region created by the checkbox object
-   oid Surface            # The surface target for the checkbox widget
-   int(CBF) Flags         # Special options
-   int LabelWidth         # The fixed pixel width allocated for drawing the label string.
-   int Value              # Either TRUE or FALSE
-   int(ALIGN) Align       # Alignment flags
+   oid Region        # Surface region created by the checkbox object
+   oid Surface       # The surface target for the checkbox widget
+   int(CBF) Flags    # Special options
+   int LabelWidth    # The fixed pixel width allocated for drawing the label string.
+   int Value         # Either TRUE or FALSE
+   int(ALIGN) Align  # Alignment flags
   ]],
   [[
    FUNCTION Feedback;
    APTR   prvKeyEvent;
-   UBYTE  Entered:1;
    BYTE   Active;
    UBYTE  Label[48];       // Label to display alongside the checkbox
   ]])

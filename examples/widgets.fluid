@@ -10,14 +10,14 @@ A demonstration of standard widgets
 
    y = y + text.textHeight + 8
 
-   local button = win.new('button', { text='Button', x=win.leftMargin, y=y, icon='items/checkmark',
+   local button = win.new('button', { text='Button', x=win.leftMargin, y=y, icon='items/star',
       feedback   = function()
       end
    })
 
    y = y + button.height + 8
 
-   local checkbox = win.new('checkbox', { text='Checkbox', x=win.leftMargin, y=y })
+   local checkbox = win.new('checkbox', { label='Checkbox', x=win.leftMargin, y=y })
    y = y + checkbox.height + 8
 
 

@@ -119,14 +119,14 @@ local function scaleGradient(svgGroup, svgGradient)
    end
 end
 
--- Factory function for producing an icon with a scaled gradient background for theming.
+-- Create an icon with a scaled gradient background for theming.  Requires a parent Viewport for placement.
 
-local function createIcon(Scene, IconName, Viewport, ViewportSettings)
+local function createIcon(IconName, Viewport, ViewportSettings)
    local icon = { gradientName='icon' .. glCounter }
    glCounter = glCounter + 1
    icon.viewport = Viewport.new('VectorViewport', ViewportSettings)
-   icon.gradient = defineGradient(Scene, icon.gradientName, glThemeColour.first, glThemeColour.last, 0, 0, 0, 1)
-   icon.svg = obj.new('svg', { target=icon.viewport, path='system:icons/Default/' .. IconName .. '.svg' })
+   icon.gradient = defineGradient(Viewport.scene, icon.gradientName, glThemeColour.first, glThemeColour.last, 0, 0, 0, 1)
+   obj.new('svg', { target=icon.viewport, path='system:icons/Default/' .. IconName .. '.svg' })
    applyFill(icon.viewport, 'url(#' .. icon.gradientName .. ')')
    scaleGradient(icon.viewport, icon.gradient) // Scale the gradient to the loaded icon
    return icon
@@ -168,7 +168,7 @@ glFonts = { // Use percentages for scalable sizes, where 100% is equivalent to t
    titlebar = { face='Open Sans', size='100%', colour='255,255,255' }, // Title bar text
    small    = { face='Tiny', size=6, colour='0,0,0' }, // Recommended text for small sizes
    large    = { face='Open Sans,Source Sans Pro', size='130%', colour='0,0,0' },   // Recommended text for headers
-   widget   = { face='Open Sans,Source Sans Pro', size=11, colour='255,255,255' }, // Default text for widgets (e.g. combobox)
+   widget   = { face='Open Sans,Source Sans Pro,*:100%', colour='255,255,255' }, // Default text for widgets (e.g. combobox)
    label    = { face='Open Sans,Source Sans Pro:10:bold', size=11, colour='255,255,255' } // Text for labels
 }
 
@@ -272,23 +272,22 @@ glStyles = {
 
       end,
       decoration = function(Button, Surface)
-         local lMargin = 5
          if bit.band(Surface.dimensions, DMF_HEIGHT) == 0 then
             if (bit.band(Surface.dimensions, DMF_Y) == 0) or
                (bit.band(Surface.dimensions, DMF_Y_OFFSET) == 0) then
-               Surface.height = 20 + (lMargin * 2)
+               Surface.height = 30
             end
          end
 
          local lScene = obj.new('VectorScene', { name='ButtonScene' })
          local lViewport = lScene.new('VectorViewport', { })
-         local lFocusGap = 3
-         local lCount = 0
-         local lIconSize = Surface.height * 0.56
+         local ICON_SIZE = Surface.height * 0.56
          local lIcon
+         local X_GAP = Surface.height * 0.25
 
          local lBkgd = lViewport.new('VectorRectangle', {
             stroke = 'rgb(255,255,255,60)',
+            strokeWidth = 2,
             x      = 0,
             y      = 0,
             width  = '100%',
@@ -307,28 +306,32 @@ glStyles = {
          })
 
          local lLabel = lViewport.new('VectorText', {
-            x        = lMargin,
+            x        = X_GAP,
             face     = glFonts.button.face,
             fontSize = Surface.height * 0.66 * (3/4),
             fill     = 'rgb(255,255,255,255)',
             string   = Button.string
          })
 
-         if (Button.icon) then lLabel.x = lIconSize + (lMargin * 3) end
+         if (Button.icon) then
+            catch(function()
+               lIcon = createIcon(Button.icon, lViewport, {
+                  x = X_GAP,
+                  y = (Surface.height - ICON_SIZE) / 2,
+                  width  = ICON_SIZE,
+                  height = ICON_SIZE
+               })
+               lLabel.x = X_GAP + ICON_SIZE + X_GAP
+            end)
+         end
 
          if bit.band(Surface.dimensions, DMF_WIDTH) == 0 then
             if (bit.band(Surface.dimensions, DMF_X) == 0) or
                (bit.band(Surface.dimensions, DMF_X_OFFSET) == 0) then
-               local w = (lMargin * 4) + mFont.StringWidth(lLabel.font, Button.string, -1)
-               if (Button.icon) then w = w + lIconSize + (lMargin*2) end
+               local w = (X_GAP * 2) + mFont.StringWidth(lLabel.font, Button.string, -1)
+               if (lIcon) then w = w + ICON_SIZE + X_GAP end
                Surface.width = w
             end
-         end
-
-         if (Button.icon) then
-            catch(function()
-               lIcon = createIcon(lScene, Button.icon, lViewport, { x=Surface.height * 0.3, y=(Surface.height - lIconSize)/2, width=lIconSize, height=lIconSize })
-            end)
          end
 
          Surface.mtAddCallback(function(Surface, Bitmap)
@@ -364,7 +367,7 @@ glStyles = {
             end
 
             lLabel.string = Button.string
-            lLabel.y = (Surface.height/2) + (lLabel.font.height/2)
+            lLabel.y = (Surface.height / 2) + (lLabel.font.height / 2)
 
             lScene.bitmap = Bitmap
             lScene.pageWidth = Surface.width
@@ -375,41 +378,16 @@ glStyles = {
    },
    checkbox = {
       defaultValues = function(Check)
-         Check.border = glColours.widget.border
+
       end,
       decoration = function(Check, Surface)
-         local checkImage = 'items/checkmark'
-         local border = 'rgb(100,100,100,255)'
-         local bkgd = 'rgb(255,255,255,255)'
-         local highlight = 'rgb(255,255,255,255)'
-         local lMargin = 5
-
-         local lScene = obj.new('VectorScene', { name='CheckboxScene' })
-         local lViewport = lScene.new('VectorViewport', { })
-         local lIconSize = Surface.height * 0.56
-         local svgGroup, svg
-
-         local lBkgd = lViewport.new('VectorRectangle', {
-            stroke = 'rgb(255,255,255,60)',
-            x      = 0,
-            y      = 0,
-            width  = '100%',
-            roundX = 4,
-            roundY = 4,
-            height = '100%'
-         })
-
-         local lLabel = lViewport.new('VectorText', {
-            x        = lMargin,
-            face     = glFonts.checkbox.face,
-            fontSize = Surface.height * 0.66 * (3/4),
-            fill     = 'rgb(255,255,255,255)',
-            string   = Check.label
-         })
-
-         if (Check.labelWidth < 1) and (Check.label[0]) then // Calculate the width of the text label, if there is one
-            Check.labelWidth = mFont.StringWidth(lLabel.font, Check.label, -1) + 8
-         end
+         local BKGD = 'rgb(0,0,0,64)'
+         local HIGHLIGHT = 'rgb(255,255,255,255)'
+         local STROKE_NO_FOCUS = 'rgb(255,255,255,60)'
+         local STROKE_HAS_FOCUS = 'rgb(255,255,255,90)'
+         local GAP = 5
+         local lEntered = false
+         local lLabel, lIcon
 
          if bit.band(Surface.dimensions, DMF_HEIGHT) == 0 then
             if (bit.band(Surface.dimensions, DMF_Y) == 0) or
@@ -418,63 +396,120 @@ glStyles = {
             end
          end
 
-         if bit.band(region.dimensions, DMF_WIDTH) == 0 then
-            if (bit.band(region.dimensions, DMF_X) == 0) or
-               (bit.band(region.dimensions, DMF_X_OFFSET) == 0) then
-               region.width = Check.labelWidth + region.height
+         local lBoxSize = Surface.height
+         local lScene = obj.new('VectorScene', { name='CheckboxScene' })
+         local lViewport = lScene.new('VectorViewport', { })
+
+         local lBkgd = lViewport.new('VectorRectangle', {
+            stroke = STROKE_NO_FOCUS,
+            strokeWidth = 2,
+            x      = 0,
+            y      = 0,
+            width  = lBoxSize,
+            roundX = 4,
+            roundY = 4,
+            height = '100%'
+         })
+
+         if nz(Check.label) then
+            lLabel = lViewport.new('VectorText', {
+               x      = lBoxSize + GAP,
+               face   = glFonts.widget.face,
+               fill   = 'rgb(0,0,0,255)',
+               string = Check.label
+            })
+
+            if (Check.labelWidth < 1) then
+               Check.labelWidth = mFont.StringWidth(lLabel.font, Check.label, -1) + 8
             end
          end
 
-         local chkx = Check.labelWidth
-         if bit.band(Check.align, ALIGN_RIGHT) == ALIGN_RIGHT then
-            chkx = Surface.width - Surface.height
+         if bit.band(Surface.dimensions, DMF_WIDTH) == 0 then
+            if (bit.band(Surface.dimensions, DMF_X) == 0) or
+               (bit.band(Surface.dimensions, DMF_X_OFFSET) == 0) then
+               Surface.width = Check.labelWidth + lBoxSize + GAP
+            end
          end
+
+         catch(function()
+            local size = Surface.height * 0.7
+            lIcon = createIcon('items/checkmark', lViewport, {
+               x = (Surface.height - size) / 2,
+               y = (Surface.height - size) / 2,
+               width  = size,
+               height = size
+            })
+         end)
+
+         if bit.band(Check.align, ALIGN_RIGHT) == ALIGN_RIGHT then
+
+         end
+
+         input.subscribe(JTYPE_BUTTON, Surface, 0, function(Handler, Msg)
+            if (Msg.type == JET_LMB) and (Msg.value > 0) then
+               if (bit.band(Surface.flags, RNF_DISABLED) != RNF_DISABLED) and
+                  (Msg.x < lBoxSize) then
+                  Check.acActivate()
+               end
+            end
+         end)
+
+         input.subscribe(JTYPE_FEEDBACK, Surface, 0, function(Handler, Msg)
+            if (Msg.type == JET_ENTERED_SURFACE) then
+               lEntered = true
+
+               if not (bit.band(Surface.flags, RNF_DISABLED) == RNF_DISABLED) then
+                  Surface.delayCall()
+                  Surface.acDraw()
+               end
+            elseif (Msg.type == JET_LEFT_SURFACE) then
+               lEntered = false
+
+               if not (bit.band(Surface.flags, RNF_DISABLED) == RNF_DISABLED) then
+                  Surface.delayCall()
+                  Surface.acDraw()
+               end
+            end
+         end)
 
          Surface.mtAddCallback(function(Surface, Bitmap)
             if Check.entered then
                if not (bit.band(Surface.flags, RNF_DISABLED) == RNF_DISABLED) then
-                  lBkgd.stroke = highlight
-                  lBkgd.fill = bkgd
+                  lBkgd.stroke = HIGHLIGHT
+                  lBkgd.fill = BKGD
                else
-                  lBkgd.fill = bkgd
+                  lBkgd.fill = BKGD
                end
             else
-               lBkgd.fill = bkgd
+               lBkgd.fill = BKGD
             end
 
             if bit.band(Surface.Flags, RNF_HAS_FOCUS) == RNF_HAS_FOCUS then
                if bit.band(Surface.Flags, RNF_DISABLED) == 0 then
-                  lBkgd.strokeWidth = 2
+                  lBkgd.stroke = STROKE_HAS_FOCUS
+               else
+                  lBkgd.stroke = STROKE_NO_FOCUS
                end
+            else
+               lBkgd.stroke = STROKE_NO_FOCUS
             end
 
             if Check.label then
                lLabel.string = Check.label
-
-               if bit.band(Surface.flags, RNF_DISABLED) != 0 then
-                  lLabel.opacity = 0.25
-               end
-
-               //font.flags    |= FTF_CHAR_CLIP
-               //font.wrapEdge  = Check.LabelWidth - 3
-               //font.align     = ALIGN_VERTICAL
-               if bit.band(Check.align, ALIGN_RIGHT) == ALIGN_RIGHT then
-                  font.align = bit.bor(font.align, ALIGN_RIGHT)
-               end
-
+               lLabel.y = (Surface.height / 2) + (lLabel.font.height / 2)
                if bit.band(Surface.flags, RNF_DISABLED) == RNF_DISABLED then
+                  lLabel.opacity = 0.25
+               else
                   lLabel.opacity = 1.0
                end
             end
 
-            if Check.picture then
-               src = Check.picture.bitmap
-               if (!Check.value) then src.opacity = 0.25 end
-
-               gfxCopyArea(src, Bitmap, BAF_BLEND, 0, 0, src.Width, src.Height,
-                  chkx + ((Surface.height - src.width)/2), ((Surface.height - src.height)/2))
-
-               src.opacity = 1.0
+            if lIcon then
+               if Check.value == 0 then
+                  lIcon.viewport.opacity = 0.25
+               else
+                  lIcon.viewport.opacity = 1.0
+               end
             end
 
             lScene.bitmap = Bitmap

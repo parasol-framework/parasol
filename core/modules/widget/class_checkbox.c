@@ -21,9 +21,6 @@ with a callback function.
 
 #define PRV_CHECKBOX
 #include <parasol/modules/document.h>
-#include <parasol/modules/picture.h>
-#include <parasol/modules/display.h>
-#include <parasol/modules/font.h>
 #include <parasol/modules/surface.h>
 #include <parasol/modules/widget.h>
 #include "defs.h"
@@ -40,7 +37,6 @@ static const struct FieldDef Align[] = {
 
 static const struct FieldArray clFields[];
 
-static void draw_checkbox(objCheckBox *, objSurface *, objBitmap *);
 static void key_event(objCheckBox *, evKey *, LONG);
 
 //****************************************************************************
@@ -101,7 +97,6 @@ static ERROR CHECKBOX_Activate(objCheckBox *Self, APTR Void)
    if (!drwGetSurfaceInfo(Self->RegionID, &info)) {
       if (!(info->Flags & RNF_DISABLED)) {
          Self->Value ^= 1;
-
          acDrawID(Self->RegionID);
 
          if (Self->Feedback.Type IS CALL_STDC) {
@@ -141,60 +136,6 @@ static ERROR CHECKBOX_Activate(objCheckBox *Self, APTR Void)
    return ERR_Okay;
 }
 
-//****************************************************************************
-
-static ERROR CHECKBOX_DataFeed(objCheckBox *Self, struct acDataFeed *Args)
-{
-   if (!Args) return PostError(ERR_NullArgs);
-
-   if (Args->DataType IS DATA_INPUT_READY) {
-      struct InputMsg *input;
-
-      while (!gfxGetInputMsg((struct dcInputReady *)Args->Buffer, 0, &input)) {
-         if ((input->Type IS JET_LMB) AND (input->Value > 0)) {
-            if (Self->Flags & CBF_DISABLED) continue;
-            if (input->X < Self->LabelWidth) continue;
-
-            if (Self->ClickFrame) {
-               OBJECTPTR surface;
-               if (!AccessObject(Self->RegionID, 3000, &surface)) {
-                  SetLong(surface, FID_Frame, Self->ClickFrame);
-                  ReleaseObject(surface);
-               }
-            }
-
-            acActivate(Self);
-         }
-         else if (input->Type IS JET_ENTERED_SURFACE) {
-            Self->Entered = TRUE;
-
-            if (!(Self->Flags & CBF_DISABLED)) {
-               OBJECTPTR surface;
-               if (!AccessObject(Self->RegionID, 2000, &surface)) {
-                  SetLong(surface, FID_Frame, Self->EnterFrame);
-                  DelayMsg(AC_Draw, Self->RegionID, NULL);
-                  ReleaseObject(surface);
-               }
-            }
-         }
-         else if (input->Type IS JET_LEFT_SURFACE) {
-            Self->Entered = FALSE;
-
-            if (!(Self->Flags & CBF_DISABLED)) {
-               OBJECTPTR surface;
-               if (!AccessObject(Self->RegionID, 2000, &surface)) {
-                  SetLong(surface, FID_Frame, Self->ExitFrame);
-                  DelayMsg(AC_Draw, Self->RegionID, NULL);
-                  ReleaseObject(surface);
-               }
-            }
-         }
-         else MSG("Unrecognised input message type $%.8x", input->Type);
-      }
-   }
-   return ERR_Okay;
-}
-
 /*****************************************************************************
 -ACTION-
 Disable: Disables the checkbox.
@@ -205,6 +146,7 @@ static ERROR CHECKBOX_Disable(objCheckBox *Self, APTR Void)
 {
    // See the ActionNotify routine to see what happens when the surface is disabled.
 
+   LogAction(NULL);
    acDisableID(Self->RegionID);
    return ERR_Okay;
 }
@@ -218,6 +160,8 @@ Enable: Turns the checkbox on if it has been disabled.
 static ERROR CHECKBOX_Enable(objCheckBox *Self, APTR Void)
 {
    // See the ActionNotify routine to see what happens when the surface is enabled.
+
+   LogAction(NULL);
    acEnableID(Self->RegionID);
    return ERR_Okay;
 }
@@ -239,7 +183,6 @@ static ERROR CHECKBOX_Free(objCheckBox *Self, APTR Void)
 {
    if (Self->prvKeyEvent) { UnsubscribeEvent(Self->prvKeyEvent); Self->prvKeyEvent = NULL; }
    if (Self->RegionID) { acFreeID(Self->RegionID); Self->RegionID = 0; }
-   gfxUnsubscribeInput(0);
    return ERR_Okay;
 }
 
@@ -252,8 +195,7 @@ Hide: Removes the checkbox from the display.
 static ERROR CHECKBOX_Hide(objCheckBox *Self, APTR Void)
 {
    Self->Flags |= CBF_HIDE;
-   acHideID(Self->RegionID);
-   return ERR_Okay;
+   return acHideID(Self->RegionID);
 }
 
 //****************************************************************************
@@ -289,8 +231,10 @@ static ERROR CHECKBOX_Init(objCheckBox *Self, APTR Void)
             AC_LostFocus,
             TAGEND);
       }
-
-      gfxSubscribeInput(Self->RegionID, JTYPE_FEEDBACK|JTYPE_BUTTON, 0);
+      else {
+         ReleaseObject(region);
+         return ERR_Init;
+      }
 
       ReleaseObject(region);
    }
@@ -309,8 +253,7 @@ MoveToBack: Moves the checkbox to the back of the display area.
 
 static ERROR CHECKBOX_MoveToBack(objCheckBox *Self, APTR Void)
 {
-   acMoveToBackID(Self->RegionID);
-   return ERR_Okay;
+   return acMoveToBackID(Self->RegionID);
 }
 
 /*****************************************************************************
@@ -321,8 +264,7 @@ MoveToFront: Moves the checkbox to the front of the display area.
 
 static ERROR CHECKBOX_MoveToFront(objCheckBox *Self, APTR Void)
 {
-   acMoveToFrontID(Self->RegionID);
-   return ERR_Okay;
+   return acMoveToFrontID(Self->RegionID);
 }
 
 //****************************************************************************
@@ -367,8 +309,7 @@ Show: Make the checkbox visible.
 static ERROR CHECKBOX_Show(objCheckBox *Self, APTR Void)
 {
    Self->Flags &= ~CBF_HIDE;
-   acShowID(Self->RegionID);
-   return ERR_Okay;
+   return acShowID(Self->RegionID);
 }
 
 /*****************************************************************************
@@ -400,9 +341,9 @@ static ERROR GET_Bottom(objCheckBox *Self, LONG *Value)
 Disable: Disables the checkbox on initialisation.
 
 The checkbox can be disabled on initialisation by setting this field to TRUE.  If you need to disable the combobox
-after it has been activated, it is preferred that you use the Disable action.
+after it has been activated, it is preferred that you use the #Disable() action.
 
-To enable the combobox after it has been disabled, use the Enable action.
+To enable the combobox after it has been disabled, use the #Enable() action.
 
 *****************************************************************************/
 
@@ -857,14 +798,14 @@ static const struct FieldArray clFields[] = {
    { "Value",        FDF_LONG|FDF_RW,      0, NULL, SET_Value },
    { "Align",        FDF_LONGFLAGS|FDF_RW, (MAXINT)&Align, NULL, NULL },
    // Virtual fields
-   { "Bottom",       FDF_VIRTUAL|FDF_LONG|FDF_R,      0, GET_Bottom, NULL },
-   { "Disable",      FDF_VIRTUAL|FDF_LONG|FDF_RW,     0, GET_Disable, SET_Disable },
-   { "Feedback",     FDF_VIRTUAL|FDF_FUNCTIONPTR|FDF_RW, 0, GET_Feedback, SET_Feedback },
-   { "Label",        FDF_VIRTUAL|FDF_STRING|FDF_RW,   0, GET_Label, SET_Label },
+   { "Bottom",       FDF_VIRTUAL|FDF_LONG|FDF_R,               0, GET_Bottom, NULL },
+   { "Disable",      FDF_VIRTUAL|FDF_LONG|FDF_RW,              0, GET_Disable, SET_Disable },
+   { "Feedback",     FDF_VIRTUAL|FDF_FUNCTIONPTR|FDF_RW,       0, GET_Feedback, SET_Feedback },
+   { "Label",        FDF_VIRTUAL|FDF_STRING|FDF_RW,            0, GET_Label, SET_Label },
    { "LayoutStyle",  FDF_VIRTUAL|FDF_POINTER|FDF_SYSTEM|FDF_W, 0, NULL, SET_LayoutStyle },
-   { "Right",        FDF_VIRTUAL|FDF_LONG|FDF_R,      0, GET_Right, NULL },
-   { "Selected",     FDF_SYNONYM|FDF_VIRTUAL|FDF_LONG|FDF_RW, 0, GET_Value, SET_Value },
-   { "TabFocus",     FDF_VIRTUAL|FDF_OBJECTID|FDF_W,  ID_TABFOCUS, NULL,   SET_TabFocus },
+   { "Right",        FDF_VIRTUAL|FDF_LONG|FDF_R,               0, GET_Right, NULL },
+   { "Selected",     FDF_SYNONYM|FDF_VIRTUAL|FDF_LONG|FDF_RW,  0, GET_Value, SET_Value },
+   { "TabFocus",     FDF_VIRTUAL|FDF_OBJECTID|FDF_W,           ID_TABFOCUS, NULL,   SET_TabFocus },
    // Variable Fields
    { "Height",       FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, GET_Height,  SET_Height },
    { "Width",        FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, GET_Width,   SET_Width },
