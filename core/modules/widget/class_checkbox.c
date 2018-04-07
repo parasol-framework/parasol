@@ -7,7 +7,7 @@ Please refer to it for further information on licensing.
 ******************************************************************************
 
 -CLASS-
-CheckBox: The CheckBox class manages check boxes in the user interface.
+CheckBox: The CheckBox class displays a checkbox widget in the UI.
 
 The CheckBox class simplifies the creation and management of checkbox widgets in the user interface.  Check boxes are
 simple widgets that are limited to exhibiting an on/off state.  The CheckBox class allows for its graphics to be
@@ -21,9 +21,6 @@ with a callback function.
 
 #define PRV_CHECKBOX
 #include <parasol/modules/document.h>
-#include <parasol/modules/picture.h>
-#include <parasol/modules/display.h>
-#include <parasol/modules/font.h>
 #include <parasol/modules/surface.h>
 #include <parasol/modules/widget.h>
 #include "defs.h"
@@ -40,9 +37,7 @@ static const struct FieldDef Align[] = {
 
 static const struct FieldArray clFields[];
 
-static void draw_checkbox(objCheckBox *, objSurface *, objBitmap *);
 static void key_event(objCheckBox *, evKey *, LONG);
-static ERROR SET_CheckImage(objCheckBox *, CSTRING);
 
 //****************************************************************************
 
@@ -102,7 +97,6 @@ static ERROR CHECKBOX_Activate(objCheckBox *Self, APTR Void)
    if (!drwGetSurfaceInfo(Self->RegionID, &info)) {
       if (!(info->Flags & RNF_DISABLED)) {
          Self->Value ^= 1;
-
          acDrawID(Self->RegionID);
 
          if (Self->Feedback.Type IS CALL_STDC) {
@@ -142,60 +136,6 @@ static ERROR CHECKBOX_Activate(objCheckBox *Self, APTR Void)
    return ERR_Okay;
 }
 
-//****************************************************************************
-
-static ERROR CHECKBOX_DataFeed(objCheckBox *Self, struct acDataFeed *Args)
-{
-   if (!Args) return PostError(ERR_NullArgs);
-
-   if (Args->DataType IS DATA_INPUT_READY) {
-      struct InputMsg *input;
-
-      while (!gfxGetInputMsg((struct dcInputReady *)Args->Buffer, 0, &input)) {
-         if ((input->Type IS JET_LMB) AND (input->Value > 0)) {
-            if (Self->Flags & CBF_DISABLED) continue;
-            if (input->X < Self->LabelWidth) continue;
-
-            if (Self->ClickFrame) {
-               OBJECTPTR surface;
-               if (!AccessObject(Self->RegionID, 3000, &surface)) {
-                  SetLong(surface, FID_Frame, Self->ClickFrame);
-                  ReleaseObject(surface);
-               }
-            }
-
-            acActivate(Self);
-         }
-         else if (input->Type IS JET_ENTERED_SURFACE) {
-            Self->Entered = TRUE;
-
-            if (!(Self->Flags & CBF_DISABLED)) {
-               OBJECTPTR surface;
-               if (!AccessObject(Self->RegionID, 2000, &surface)) {
-                  SetLong(surface, FID_Frame, Self->EnterFrame);
-                  DelayMsg(AC_Draw, Self->RegionID, NULL);
-                  ReleaseObject(surface);
-               }
-            }
-         }
-         else if (input->Type IS JET_LEFT_SURFACE) {
-            Self->Entered = FALSE;
-
-            if (!(Self->Flags & CBF_DISABLED)) {
-               OBJECTPTR surface;
-               if (!AccessObject(Self->RegionID, 2000, &surface)) {
-                  SetLong(surface, FID_Frame, Self->ExitFrame);
-                  DelayMsg(AC_Draw, Self->RegionID, NULL);
-                  ReleaseObject(surface);
-               }
-            }
-         }
-         else MSG("Unrecognised input message type $%.8x", input->Type);
-      }
-   }
-   return ERR_Okay;
-}
-
 /*****************************************************************************
 -ACTION-
 Disable: Disables the checkbox.
@@ -206,6 +146,7 @@ static ERROR CHECKBOX_Disable(objCheckBox *Self, APTR Void)
 {
    // See the ActionNotify routine to see what happens when the surface is disabled.
 
+   LogAction(NULL);
    acDisableID(Self->RegionID);
    return ERR_Okay;
 }
@@ -219,6 +160,8 @@ Enable: Turns the checkbox on if it has been disabled.
 static ERROR CHECKBOX_Enable(objCheckBox *Self, APTR Void)
 {
    // See the ActionNotify routine to see what happens when the surface is enabled.
+
+   LogAction(NULL);
    acEnableID(Self->RegionID);
    return ERR_Okay;
 }
@@ -239,10 +182,7 @@ static ERROR CHECKBOX_Focus(objCheckBox *Self, APTR Void)
 static ERROR CHECKBOX_Free(objCheckBox *Self, APTR Void)
 {
    if (Self->prvKeyEvent) { UnsubscribeEvent(Self->prvKeyEvent); Self->prvKeyEvent = NULL; }
-   if (Self->Picture)  { acFree(Self->Picture); Self->Picture = NULL; }
-   if (Self->Font)     { acFree(Self->Font); Self->Font = NULL; }
    if (Self->RegionID) { acFreeID(Self->RegionID); Self->RegionID = 0; }
-   gfxUnsubscribeInput(0);
    return ERR_Okay;
 }
 
@@ -255,8 +195,7 @@ Hide: Removes the checkbox from the display.
 static ERROR CHECKBOX_Hide(objCheckBox *Self, APTR Void)
 {
    Self->Flags |= CBF_HIDE;
-   acHideID(Self->RegionID);
-   return ERR_Okay;
+   return acHideID(Self->RegionID);
 }
 
 //****************************************************************************
@@ -272,10 +211,8 @@ static ERROR CHECKBOX_Init(objCheckBox *Self, APTR Void)
       else return PostError(ERR_UnsupportedOwner);
    }
 
-   if (acInit(Self->Font) != ERR_Okay) return PostError(ERR_Init);
-
-   if ((Self->LabelWidth < 1) AND (Self->Label[0])) { // Calculate the width of the text label, if there is one
-      Self->LabelWidth = fntStringWidth(Self->Font, Self->Label, -1) + 8;
+   if (drwApplyStyleGraphics(Self, Self->RegionID, NULL, NULL)) {
+      return ERR_Failed; // Graphics styling is required.
    }
 
    objSurface *region;
@@ -283,18 +220,6 @@ static ERROR CHECKBOX_Init(objCheckBox *Self, APTR Void)
       SetFields(region, FID_Parent|TLONG, Self->SurfaceID,
                         FID_Region|TLONG, TRUE,
                         TAGEND);
-
-      if (!(region->Dimensions & DMF_HEIGHT)) {
-         if ((!(region->Dimensions & DMF_Y)) OR (!(region->Dimensions & DMF_Y_OFFSET))) {
-            SetLong(region, FID_Height, 18);
-         }
-      }
-
-      if (!(region->Dimensions & DMF_WIDTH)) {
-         if ((!(region->Dimensions & DMF_X)) OR (!(region->Dimensions & DMF_X_OFFSET))) {
-            SetLong(region, FID_Width, Self->LabelWidth + region->Height);
-         }
-      }
 
       region->Flags |= RNF_GRAB_FOCUS;
 
@@ -306,28 +231,14 @@ static ERROR CHECKBOX_Init(objCheckBox *Self, APTR Void)
             AC_LostFocus,
             TAGEND);
       }
-
-      gfxSubscribeInput(Self->RegionID, JTYPE_FEEDBACK|JTYPE_BUTTON, 0);
-
-      ReleaseObject(region);
-   }
-   else return ERR_AccessObject;
-
-   if (!(Self->Flags & CBF_NO_BKGD)) { // Use the base template to create the checkbox graphics
-      if (!drwApplyStyleGraphics(Self, Self->RegionID, NULL, NULL)) {
-         Self->Flags |= CBF_NO_BKGD;
+      else {
+         ReleaseObject(region);
+         return ERR_Init;
       }
-   }
 
-   if (!AccessObject(Self->RegionID, 5000, &region)) {
-      drwAddCallback(region, &draw_checkbox);
       ReleaseObject(region);
    }
    else return ERR_AccessObject;
-
-   if (!Self->Picture) { // Load the picture to be displayed when the checkbox is ticked
-      SET_CheckImage(Self, "icons:items/checkmark(16)");
-   }
 
    if (!(Self->Flags & CBF_HIDE)) acShow(Self);
 
@@ -342,8 +253,7 @@ MoveToBack: Moves the checkbox to the back of the display area.
 
 static ERROR CHECKBOX_MoveToBack(objCheckBox *Self, APTR Void)
 {
-   acMoveToBackID(Self->RegionID);
-   return ERR_Okay;
+   return acMoveToBackID(Self->RegionID);
 }
 
 /*****************************************************************************
@@ -354,8 +264,7 @@ MoveToFront: Moves the checkbox to the front of the display area.
 
 static ERROR CHECKBOX_MoveToFront(objCheckBox *Self, APTR Void)
 {
-   acMoveToFrontID(Self->RegionID);
-   return ERR_Okay;
+   return acMoveToFrontID(Self->RegionID);
 }
 
 //****************************************************************************
@@ -363,37 +272,8 @@ static ERROR CHECKBOX_MoveToFront(objCheckBox *Self, APTR Void)
 static ERROR CHECKBOX_NewObject(objCheckBox *Self, APTR Void)
 {
    if (!NewLockedObject(ID_SURFACE, Self->Head.Flags|NF_INTEGRAL, NULL, &Self->RegionID)) {
-      if (!NewObject(ID_FONT, Self->Head.Flags|NF_INTEGRAL, &Self->Font)) {
-         SetString(Self->Font, FID_Face, glDefaultFace);
-
-         Self->ExitFrame = 1;
-         Self->ReleaseFrame = 1;
-
-         // Shadow colour
-         Self->Shadow.Red   = 100;
-         Self->Shadow.Green = 100;
-         Self->Shadow.Blue  = 100;
-         Self->Shadow.Alpha = 255;
-
-         // Internal colour
-         Self->Colour.Red   = 255;
-         Self->Colour.Green = 255;
-         Self->Colour.Blue  = 255;
-         Self->Colour.Alpha = 255;
-
-         // Highlight colour
-         Self->Highlight.Red   = 255;
-         Self->Highlight.Green = 255;
-         Self->Highlight.Blue  = 255;
-         Self->Highlight.Alpha = 255;
-
-         Self->Thickness = 1;
-
-         drwApplyStyleValues(Self, NULL);
-
-         return ERR_Okay;
-      }
-      else return ERR_NewObject;
+      drwApplyStyleValues(Self, NULL);
+      return ERR_Okay;
    }
    else return ERR_NewObject;
 }
@@ -429,8 +309,7 @@ Show: Make the checkbox visible.
 static ERROR CHECKBOX_Show(objCheckBox *Self, APTR Void)
 {
    Self->Flags &= ~CBF_HIDE;
-   acShowID(Self->RegionID);
-   return ERR_Okay;
+   return acShowID(Self->RegionID);
 }
 
 /*****************************************************************************
@@ -440,24 +319,6 @@ Align: Affects the alignment of the checkbox widget within its target surface.
 
 By default the checkbox widget will be aligned to the top left of its target surface.  The checkbox can be aligned to
 the right by setting the ALIGN_RIGHT flag.
-
--FIELD-
-Border: String-based field for setting a single-colour border for the checkbox.
-
-The border colour for a checkbox can be declared by writing to this field.  The colour must be in hexadecimal or
-separated-decimal format - for example to create a pure red colour, a setting of "#ff0000" or "255,0,0" would be
-valid.
-
-*****************************************************************************/
-
-static ERROR SET_Border(objCheckBox *Self, CSTRING Colour)
-{
-   SetString(Self, FID_Highlight, Colour);
-   Self->Shadow = Self->Highlight;
-   return ERR_Okay;
-}
-
-/*****************************************************************************
 
 -FIELD-
 Bottom: The bottom coordinate of the checkbox (Y + Height).
@@ -477,44 +338,12 @@ static ERROR GET_Bottom(objCheckBox *Self, LONG *Value)
 /*****************************************************************************
 
 -FIELD-
-CheckImage: Defines the image that is displayed when the checkbox state is set to 'on'.
-
-When the checkbox state is set to 'on', it will display an image inside the checkbox area.  The default image can be
-redefined by setting CheckImage with a path to an image file.  If the image file cannot be loaded for any reason, the
-checkbox will revert to its default image on initialisation.
-
-*****************************************************************************/
-
-static ERROR SET_CheckImage(objCheckBox *Self, CSTRING Value)
-{
-   if (!CreateObject(ID_PICTURE, Self->Head.Flags|NF_INTEGRAL, &Self->Picture,
-         FID_Path|TSTR,   Value,
-         FID_Flags|TLONG, PCF_FORCE_ALPHA_32,
-         TAGEND)) {
-      return ERR_Okay;
-   }
-   else return ERR_CreateObject;
-}
-
-/*****************************************************************************
-
--FIELD-
-Colour: Defines the colour inside of the checkbox.
-
--FIELD-
-ClickFrame: The graphics frame to display when the checkbox is clicked.
-
-This field specifies the surface frame to switch to when the user clicks on the checkbox.  By default this field is
-initially set to zero, which has no effect on the surface frame.  When the user releases the checkbox, it will revert
-to the frame indicated by the #ReleaseFrame field.
-
--FIELD-
 Disable: Disables the checkbox on initialisation.
 
 The checkbox can be disabled on initialisation by setting this field to TRUE.  If you need to disable the combobox
-after it has been activated, it is preferred that you use the Disable action.
+after it has been activated, it is preferred that you use the #Disable() action.
 
-To enable the combobox after it has been disabled, use the Enable action.
+To enable the combobox after it has been disabled, use the #Enable() action.
 
 *****************************************************************************/
 
@@ -533,18 +362,6 @@ static ERROR SET_Disable(objCheckBox *Self, LONG Value)
 }
 
 /*****************************************************************************
-
--FIELD-
-EnterFrame: The graphics frame to display when the user's pointer enters the checkbox area.
-
-This field specifies the surface frame to switch to when the user's pointer enters the checkbox area.  By default
-this field is initially set to zero, which has no effect on the surface frame.
-
--FIELD-
-ExitFrame: The graphics frame to display when the user's pointer leaves the checkbox area.
-
-This field specifies the surface frame to switch to when the user's pointer leaves the checkbox area.  This field is
-unused if the EnterFrame field has not been set.
 
 -FIELD-
 Feedback: Provides instant feedback when a user interacts with the checkbox.
@@ -579,12 +396,6 @@ static ERROR SET_Feedback(objCheckBox *Self, FUNCTION *Value)
 -FIELD-
 Flags: Optional flags.
 Lookup: CBF
-
--FIELD-
-Font: The font used to draw the checkbox label.
-
-The font object that is used to draw the checkbox label string can be referenced from this field.  Fields in the font
-object, such as the font face and colour can be set prior to initialisation.
 
 -FIELD-
 Height: Defines the height of a checkbox.
@@ -627,9 +438,6 @@ static ERROR SET_Height(objCheckBox *Self, struct Variable *Value)
 /*****************************************************************************
 
 -FIELD-
-Highlight: Defines the checkbox highlight colour.
-
--FIELD-
 Label: The label is a string displayed to the left of the input area.
 
 A label can be drawn next to the input area by setting the Label field.  The label should be a short, descriptive
@@ -667,8 +475,8 @@ static ERROR SET_LayoutStyle(objCheckBox *Self, DOCSTYLE *Value)
 {
    if (!Value) return ERR_Okay;
 
-   if (Self->Head.Flags & NF_INITIALISED) docApplyFontStyle(Value->Document, Value, Self->Font);
-   else docApplyFontStyle(Value->Document, Value, Self->Font);
+   //if (Self->Head.Flags & NF_INITIALISED) docApplyFontStyle(Value->Document, Value, Self->Font);
+   //else docApplyFontStyle(Value->Document, Value, Self->Font);
 
    return ERR_Okay;
 }
@@ -681,13 +489,6 @@ Region: The surface that represents the checkbox is referenced here.
 The drawable area that represents the checkbox display can be accessed through this field.  For further information,
 refer to the @Surface class.  Note that talking to the surface directly can have adverse effects on the
 checkbox control system.  Where possible, all communication should be limited to the checkbox object itself.
-
--FIELD-
-ReleaseFrame: The graphics frame to display when a user-click is released.
-
-If the #ClickFrame field has been set, you may want to match that value by indicating the frame that should be
-used when the click is released.  By default, the value in this field will initially be set to 1.  This field is unused
-if the #ClickFrame field has not been set.
 
 -FIELD-
 Right: The right coordinate of the checkbox (X + Width).
@@ -705,9 +506,6 @@ static ERROR GET_Right(objCheckBox *Self, LONG *Value)
 }
 
 /*****************************************************************************
-
--FIELD-
-Shadow: Defines the colour of the checkbox border shadow.
 
 -FIELD-
 Surface: The surface that will represent the checkbox widget.
@@ -739,9 +537,6 @@ static ERROR SET_TabFocus(objCheckBox *Self, OBJECTID Value)
 }
 
 /*****************************************************************************
-
--FIELD-
-Thickness: The thickness of the checkbox border.
 
 -FIELD-
 Value: Indicates the current on/off state of the checkbox.
@@ -981,87 +776,6 @@ static ERROR SET_YOffset(objCheckBox *Self, struct Variable *Value)
 
 //****************************************************************************
 
-static void draw_checkbox(objCheckBox *Self, objSurface *Surface, objBitmap *Bitmap)
-{
-   LONG chkx = Self->LabelWidth;
-   if (!(Self->Flags & CBF_NO_BKGD)) {
-
-      ULONG colour;
-      if (Self->Entered) {
-         if (!(Surface->Flags & RNF_DISABLED)) {
-            colour = PackPixel(Bitmap,
-                (Self->Colour.Red   + 20 > 255) ? 255 : Self->Colour.Red + 20,
-                (Self->Colour.Green + 20 > 255) ? 255 : Self->Colour.Green + 20,
-                (Self->Colour.Blue  + 20 > 255) ? 255 : Self->Colour.Blue + 20);
-         }
-         else colour = PackPixelRGBA(Bitmap, &Self->Colour);
-      }
-      else colour = PackPixelRGBA(Bitmap, &Self->Colour);
-
-      if (Self->Align & ALIGN_RIGHT) chkx = Surface->Width - Surface->Height;
-
-      gfxDrawRectangle(Bitmap, chkx, 0, Surface->Height, Surface->Height, colour, BAF_FILL);
-
-      ULONG shadow    = PackPixelRGBA(Bitmap, &Self->Shadow);
-      ULONG highlight = PackPixelRGBA(Bitmap, &Self->Highlight);
-
-      LONG i = 0;
-      if (Self->Thickness > 0) {
-         for (i=0; i < Self->Thickness; i++) {
-            // Top, Bottom
-            gfxDrawRectangle(Bitmap, chkx + i, i, Surface->Height-i-i, 1, shadow, BAF_FILL);
-            gfxDrawRectangle(Bitmap, chkx + i, Surface->Height-i-1, Surface->Height-i-i, 1, highlight, BAF_FILL);
-
-            // Left, Right
-            gfxDrawRectangle(Bitmap, chkx + i, i+1, 1, Surface->Height-i-i-2, shadow, BAF_FILL);
-            gfxDrawRectangle(Bitmap, chkx + Surface->Height-i-1, i+1, 1, Surface->Height-i-i-2, highlight, BAF_FILL);
-         }
-      }
-
-      if (Surface->Flags & RNF_HAS_FOCUS) {
-         if (!(Surface->Flags & RNF_DISABLED)) {
-            gfxDrawRectangle(Bitmap, chkx + i, i, Surface->Height-i-i, Surface->Height-i-i, PackPixelA(Bitmap, 0, 0, 0, 32), BAF_BLEND);
-         }
-      }
-   }
-
-   if (Self->Label[0]) {
-      objFont *font = Self->Font;
-
-      SetPointer(font, FID_Bitmap, Bitmap);
-      SetString(font, FID_String, Self->Label);
-
-      if (Surface->Flags & RNF_DISABLED) SetLong(font, FID_Opacity, 25);
-
-      font->X = 0;
-      font->Y = 0;
-      font->Flags      |= FTF_CHAR_CLIP;
-      font->WrapEdge    = Self->LabelWidth - 3;
-      font->Align       = ALIGN_VERTICAL;
-      font->AlignWidth  = Surface->Width;
-      font->AlignHeight = Surface->Height;
-      if (Self->Align & ALIGN_RIGHT) {
-         font->Align |= ALIGN_RIGHT;
-         font->AlignWidth -= Surface->Height + 4;
-      }
-      acDraw(font);
-
-      if (Surface->Flags & RNF_DISABLED) SetLong(font, FID_Opacity, 100);
-   }
-
-   if (Self->Picture) {
-      objBitmap *src = Self->Picture->Bitmap;
-      if (!Self->Value) src->Opacity = 25;
-
-      gfxCopyArea(src, Bitmap, BAF_BLEND, 0, 0, src->Width, src->Height,
-         chkx + ((Surface->Height - src->Width)/2), ((Surface->Height - src->Height)/2));
-
-      src->Opacity = 255;
-   }
-}
-
-//****************************************************************************
-
 static void key_event(objCheckBox *Self, evKey *Event, LONG Size)
 {
    if (!(Event->Qualifiers & KQ_PRESSED)) return;
@@ -1076,33 +790,22 @@ static void key_event(objCheckBox *Self, evKey *Event, LONG Size)
 #include "class_checkbox_def.c"
 
 static const struct FieldArray clFields[] = {
-   { "Font",         FDF_INTEGRAL|FDF_R,      0, NULL, NULL },
    { "LayoutSurface",FDF_VIRTUAL|FDF_OBJECTID|FDF_SYSTEM|FDF_R, ID_SURFACE, NULL, NULL }, // VIRTUAL: This is a synonym for the Region field
    { "Region",       FDF_OBJECTID|FDF_RW,  ID_SURFACE, NULL, NULL },
    { "Surface",      FDF_OBJECTID|FDF_RW,  ID_SURFACE, NULL, NULL },
    { "Flags",        FDF_LONGFLAGS|FDF_RW, (MAXINT)&clCheckBoxFlags, NULL, NULL },
-   { "EnterFrame",   FDF_LONG|FDF_RW,      0, NULL, NULL },
-   { "ExitFrame",    FDF_LONG|FDF_RW,      0, NULL, NULL },
-   { "ClickFrame",   FDF_LONG|FDF_RW,      0, NULL, NULL },
-   { "ReleaseFrame", FDF_LONG|FDF_RW,      0, NULL, NULL },
-   { "Thickness",    FDF_LONG|FDF_RW,      0, NULL, NULL },
    { "LabelWidth",   FDF_LONG|FDF_RW,      0, NULL, NULL },
    { "Value",        FDF_LONG|FDF_RW,      0, NULL, SET_Value },
    { "Align",        FDF_LONGFLAGS|FDF_RW, (MAXINT)&Align, NULL, NULL },
-   { "Colour",       FDF_RGB|FDF_RW,       0, NULL, NULL },
-   { "Highlight",    FDF_RGB|FDF_RW,       0, NULL, NULL },
-   { "Shadow",       FDF_RGB|FDF_RW,       0, NULL, NULL },
    // Virtual fields
-   { "Border",       FDF_VIRTUAL|FDF_STRING|FDF_W,    0, NULL, SET_Border },
-   { "Bottom",       FDF_VIRTUAL|FDF_LONG|FDF_R,      0, GET_Bottom, NULL },
-   { "CheckImage",   FDF_VIRTUAL|FDF_STRING|FDF_W,    0, NULL, SET_CheckImage },
-   { "Disable",      FDF_VIRTUAL|FDF_LONG|FDF_RW,     0, GET_Disable, SET_Disable },
-   { "Feedback",     FDF_VIRTUAL|FDF_FUNCTIONPTR|FDF_RW, 0, GET_Feedback, SET_Feedback },
-   { "Label",        FDF_VIRTUAL|FDF_STRING|FDF_RW,   0, GET_Label, SET_Label },
+   { "Bottom",       FDF_VIRTUAL|FDF_LONG|FDF_R,               0, GET_Bottom, NULL },
+   { "Disable",      FDF_VIRTUAL|FDF_LONG|FDF_RW,              0, GET_Disable, SET_Disable },
+   { "Feedback",     FDF_VIRTUAL|FDF_FUNCTIONPTR|FDF_RW,       0, GET_Feedback, SET_Feedback },
+   { "Label",        FDF_VIRTUAL|FDF_STRING|FDF_RW,            0, GET_Label, SET_Label },
    { "LayoutStyle",  FDF_VIRTUAL|FDF_POINTER|FDF_SYSTEM|FDF_W, 0, NULL, SET_LayoutStyle },
-   { "Right",        FDF_VIRTUAL|FDF_LONG|FDF_R,      0, GET_Right, NULL },
-   { "Selected",     FDF_SYNONYM|FDF_VIRTUAL|FDF_LONG|FDF_RW, 0, GET_Value, SET_Value },
-   { "TabFocus",     FDF_VIRTUAL|FDF_OBJECTID|FDF_W,  ID_TABFOCUS, NULL,   SET_TabFocus },
+   { "Right",        FDF_VIRTUAL|FDF_LONG|FDF_R,               0, GET_Right, NULL },
+   { "Selected",     FDF_SYNONYM|FDF_VIRTUAL|FDF_LONG|FDF_RW,  0, GET_Value, SET_Value },
+   { "TabFocus",     FDF_VIRTUAL|FDF_OBJECTID|FDF_W,           ID_TABFOCUS, NULL,   SET_TabFocus },
    // Variable Fields
    { "Height",       FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, GET_Height,  SET_Height },
    { "Width",        FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, GET_Width,   SET_Width },

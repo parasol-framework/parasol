@@ -6,6 +6,8 @@
    if (mFont == nil) then mFont = mod.load('font') end
 
    glSelf = obj.find('self')
+   glCounter = 1
+   glThemeColour = { first={ r=250,g=249,b=248 }, last={ r=210,g=211,b=212 } }
 
 // The applyStyle() function is used to set style defaults against an object.
 
@@ -95,6 +97,41 @@ local function defineGradient(Scene, Name, First, Last, X1, Y1, X2, Y2, Units)
    end
 end
 
+local function scaleGradient(svgGroup, svgGradient)
+   local viewport = svgGroup.child
+   if (viewport != nil) then
+      local child = viewport.child
+      while (child != nil) do
+         if (child.class.id == ID_VECTORVIEWPORT) then
+            viewport = child
+            break
+         end
+         child = child.child
+      end
+
+      if (viewport.viewHeight < viewport.viewWidth) then
+         svgGradient.y1 = viewport.viewY - ((viewport.viewWidth - viewport.viewHeight) * 0.5)
+         svgGradient.y2 = svgGradient.y1 + viewport.viewWidth
+      else
+         svgGradient.y1 = viewport.viewY
+         svgGradient.y2 = viewport.viewY + viewport.viewHeight
+      end
+   end
+end
+
+-- Create an icon with a scaled gradient background for theming.  Requires a parent Viewport for placement.
+
+local function createIcon(IconName, Viewport, ViewportSettings)
+   local icon = { gradientName='icon' .. glCounter }
+   glCounter = glCounter + 1
+   icon.viewport = Viewport.new('VectorViewport', ViewportSettings)
+   icon.gradient = defineGradient(Viewport.scene, icon.gradientName, glThemeColour.first, glThemeColour.last, 0, 0, 0, 1)
+   obj.new('svg', { target=icon.viewport, path='system:icons/Default/' .. IconName .. '.svg' })
+   applyFill(icon.viewport, 'url(#' .. icon.gradientName .. ')')
+   scaleGradient(icon.viewport, icon.gradient) // Scale the gradient to the loaded icon
+   return icon
+end
+
 glColours = {
    button = {
       background = '230,230,230',
@@ -131,7 +168,7 @@ glFonts = { // Use percentages for scalable sizes, where 100% is equivalent to t
    titlebar = { face='Open Sans', size='100%', colour='255,255,255' }, // Title bar text
    small    = { face='Tiny', size=6, colour='0,0,0' }, // Recommended text for small sizes
    large    = { face='Open Sans,Source Sans Pro', size='130%', colour='0,0,0' },   // Recommended text for headers
-   widget   = { face='Open Sans,Source Sans Pro', size=11, colour='255,255,255' }, // Default text for widgets (e.g. combobox)
+   widget   = { face='Open Sans,Source Sans Pro,*:100%', colour='255,255,255' }, // Default text for widgets (e.g. combobox)
    label    = { face='Open Sans,Source Sans Pro:10:bold', size=11, colour='255,255,255' } // Text for labels
 }
 
@@ -235,25 +272,22 @@ glStyles = {
 
       end,
       decoration = function(Button, Surface)
-         local lMargin = 5
          if bit.band(Surface.dimensions, DMF_HEIGHT) == 0 then
             if (bit.band(Surface.dimensions, DMF_Y) == 0) or
                (bit.band(Surface.dimensions, DMF_Y_OFFSET) == 0) then
-               Surface.height = 20 + (lMargin * 2)
+               Surface.height = 30
             end
          end
 
          local lScene = obj.new('VectorScene', { name='ButtonScene' })
          local lViewport = lScene.new('VectorViewport', { })
-         local lFocusGap = 3
-         local lCount = 0
-         local lIconSize = Surface.height * 0.56
-         local svgGroup, svgGradient, svg
-         lThemeColour = { first={ r=250,g=249,b=248 }, last={ r=210,g=211,b=212 } }
+         local ICON_SIZE = Surface.height * 0.56
+         local lIcon
+         local X_GAP = Surface.height * 0.25
 
          local lBkgd = lViewport.new('VectorRectangle', {
-            fill   = 'rgb(0,0,0,40)',
             stroke = 'rgb(255,255,255,60)',
+            strokeWidth = 2,
             x      = 0,
             y      = 0,
             width  = '100%',
@@ -272,54 +306,36 @@ glStyles = {
          })
 
          local lLabel = lViewport.new('VectorText', {
-            x        = lMargin,
+            x        = X_GAP,
             face     = glFonts.button.face,
             fontSize = Surface.height * 0.66 * (3/4),
             fill     = 'rgb(255,255,255,255)',
             string   = Button.string
          })
 
-         if (Button.icon) then lLabel.x = lIconSize + (lMargin * 3) end
+         if (Button.icon) then
+            catch(function()
+               lIcon = createIcon(Button.icon, lViewport, {
+                  x = X_GAP,
+                  y = (Surface.height - ICON_SIZE) / 2,
+                  width  = ICON_SIZE,
+                  height = ICON_SIZE
+               })
+               lLabel.x = X_GAP + ICON_SIZE + X_GAP
+            end)
+         end
 
          if bit.band(Surface.dimensions, DMF_WIDTH) == 0 then
             if (bit.band(Surface.dimensions, DMF_X) == 0) or
                (bit.band(Surface.dimensions, DMF_X_OFFSET) == 0) then
-               local w = (lMargin * 4) + mFont.StringWidth(lLabel.font, Button.string, -1)
-               if (Button.icon) then w = w + lIconSize + (lMargin*2) end
+               local w = (X_GAP * 2) + mFont.StringWidth(lLabel.font, Button.string, -1)
+               if (lIcon) then w = w + ICON_SIZE + X_GAP end
                Surface.width = w
             end
          end
 
-         if (Button.icon) then
-            catch(function()
-               local gname = 'btn' .. Button.id
-               svgGroup = lViewport.new('VectorViewport', { x=Surface.height * 0.3, y=(Surface.height - lIconSize)/2, width=lIconSize, height=lIconSize })
-               svgGradient = defineGradient(lScene, gname, lThemeColour.first, lThemeColour.last, 0, 0, 0, 1)
-               local svg = obj.new('svg', { target=svgGroup, path='system:icons/Default/' .. Button.icon .. '.svg' })
-               applyFill(svgGroup, 'url(#' .. gname .. ')')
-
-               local viewport = svgGroup.child
-               if (viewport != nil) then
-                  while (child != nil) do
-                     if (child.class.id == ID_VECTORVIEWPORT) then
-                        viewport = child
-                        break
-                     end
-                  end
-
-                  if (viewport.viewHeight < viewport.viewWidth) then
-                     svgGradient.y1 = viewport.viewY - ((viewport.viewWidth - viewport.viewHeight) * 0.5)
-                     svgGradient.y2 = svgGradient.y1 + viewport.viewWidth
-                  else
-                     svgGradient.y1 = viewport.viewY
-                     svgGradient.y2 = viewport.viewY + viewport.viewHeight
-                  end
-               end
-            end)
-         end
-
          Surface.mtAddCallback(function(Surface, Bitmap)
-            local baseColour = 'rgb(0,0,0,40)'
+            local baseColour = 'rgb(0,0,0,80)'
 
             if (Button.clicked) then
 
@@ -351,7 +367,7 @@ glStyles = {
             end
 
             lLabel.string = Button.string
-            lLabel.y = (Surface.height/2) + (lLabel.font.height/2)
+            lLabel.y = (Surface.height / 2) + (lLabel.font.height / 2)
 
             lScene.bitmap = Bitmap
             lScene.pageWidth = Surface.width
@@ -362,7 +378,145 @@ glStyles = {
    },
    checkbox = {
       defaultValues = function(Check)
-         Check.border = glColours.widget.border
+
+      end,
+      decoration = function(Check, Surface)
+         local BKGD = 'rgb(0,0,0,64)'
+         local HIGHLIGHT = 'rgb(255,255,255,255)'
+         local STROKE_NO_FOCUS = 'rgb(255,255,255,60)'
+         local STROKE_HAS_FOCUS = 'rgb(255,255,255,90)'
+         local GAP = 5
+         local lEntered = false
+         local lLabel, lIcon
+
+         if bit.band(Surface.dimensions, DMF_HEIGHT) == 0 then
+            if (bit.band(Surface.dimensions, DMF_Y) == 0) or
+               (bit.band(Surface.dimensions, DMF_Y_OFFSET) == 0) then
+               Surface.height = 18
+            end
+         end
+
+         local lBoxSize = Surface.height
+         local lScene = obj.new('VectorScene', { name='CheckboxScene' })
+         local lViewport = lScene.new('VectorViewport', { })
+
+         local lBkgd = lViewport.new('VectorRectangle', {
+            stroke = STROKE_NO_FOCUS,
+            strokeWidth = 2,
+            x      = 0,
+            y      = 0,
+            width  = lBoxSize,
+            roundX = 4,
+            roundY = 4,
+            height = '100%'
+         })
+
+         if nz(Check.label) then
+            lLabel = lViewport.new('VectorText', {
+               x      = lBoxSize + GAP,
+               face   = glFonts.widget.face,
+               fill   = 'rgb(0,0,0,255)',
+               string = Check.label
+            })
+
+            if (Check.labelWidth < 1) then
+               Check.labelWidth = mFont.StringWidth(lLabel.font, Check.label, -1) + 8
+            end
+         end
+
+         if bit.band(Surface.dimensions, DMF_WIDTH) == 0 then
+            if (bit.band(Surface.dimensions, DMF_X) == 0) or
+               (bit.band(Surface.dimensions, DMF_X_OFFSET) == 0) then
+               Surface.width = Check.labelWidth + lBoxSize + GAP
+            end
+         end
+
+         catch(function()
+            local size = Surface.height * 0.7
+            lIcon = createIcon('items/checkmark', lViewport, {
+               x = (Surface.height - size) / 2,
+               y = (Surface.height - size) / 2,
+               width  = size,
+               height = size
+            })
+         end)
+
+         if bit.band(Check.align, ALIGN_RIGHT) == ALIGN_RIGHT then
+
+         end
+
+         input.subscribe(JTYPE_BUTTON, Surface, 0, function(Handler, Msg)
+            if (Msg.type == JET_LMB) and (Msg.value > 0) then
+               if (bit.band(Surface.flags, RNF_DISABLED) != RNF_DISABLED) and
+                  (Msg.x < lBoxSize) then
+                  Check.acActivate()
+               end
+            end
+         end)
+
+         input.subscribe(JTYPE_FEEDBACK, Surface, 0, function(Handler, Msg)
+            if (Msg.type == JET_ENTERED_SURFACE) then
+               lEntered = true
+
+               if not (bit.band(Surface.flags, RNF_DISABLED) == RNF_DISABLED) then
+                  Surface.delayCall()
+                  Surface.acDraw()
+               end
+            elseif (Msg.type == JET_LEFT_SURFACE) then
+               lEntered = false
+
+               if not (bit.band(Surface.flags, RNF_DISABLED) == RNF_DISABLED) then
+                  Surface.delayCall()
+                  Surface.acDraw()
+               end
+            end
+         end)
+
+         Surface.mtAddCallback(function(Surface, Bitmap)
+            if Check.entered then
+               if not (bit.band(Surface.flags, RNF_DISABLED) == RNF_DISABLED) then
+                  lBkgd.stroke = HIGHLIGHT
+                  lBkgd.fill = BKGD
+               else
+                  lBkgd.fill = BKGD
+               end
+            else
+               lBkgd.fill = BKGD
+            end
+
+            if bit.band(Surface.Flags, RNF_HAS_FOCUS) == RNF_HAS_FOCUS then
+               if bit.band(Surface.Flags, RNF_DISABLED) == 0 then
+                  lBkgd.stroke = STROKE_HAS_FOCUS
+               else
+                  lBkgd.stroke = STROKE_NO_FOCUS
+               end
+            else
+               lBkgd.stroke = STROKE_NO_FOCUS
+            end
+
+            if Check.label then
+               lLabel.string = Check.label
+               lLabel.y = (Surface.height / 2) + (lLabel.font.height / 2)
+               if bit.band(Surface.flags, RNF_DISABLED) == RNF_DISABLED then
+                  lLabel.opacity = 0.25
+               else
+                  lLabel.opacity = 1.0
+               end
+            end
+
+            if lIcon then
+               if Check.value == 0 then
+                  lIcon.viewport.opacity = 0.25
+               else
+                  lIcon.viewport.opacity = 1.0
+               end
+            end
+
+            lScene.bitmap = Bitmap
+            lScene.pageWidth = Surface.width
+            lScene.pageHeight = Surface.height
+            lScene.acDraw()
+         end)
       end
    },
    combobox = {
@@ -415,7 +569,7 @@ glStyles = {
          Surface.mtAddCallback(function(Surface, Bitmap)
             local err, path = mVec.generateRectangle(0, 0, Surface.width, Surface.height)
             if (err == ERR_Okay) then
-               mVec.drawPath(Bitmap, path, 0, nil, lGradient);
+               mVec.drawPath(Bitmap, path, 0, nil, lGradient)
                mVec.freePath(path)
             end
             local err, colA = Bitmap.mtGetColour(0, 0, 0, 60)
@@ -492,7 +646,7 @@ glStyles = {
          Surface.mtAddCallback(function(Surface, Bitmap)
             local err, path = mVec.generateRectangle(0, 0, Surface.width, Surface.height)
             if (err == ERR_Okay) then
-               mVec.drawPath(Bitmap, path, 0, nil, lGradient);
+               mVec.drawPath(Bitmap, path, 0, nil, lGradient)
                mVec.freePath(path)
             end
             local err, colA = Bitmap.mtGetColour(0, 0, 0, 60)
@@ -721,7 +875,7 @@ glStyles = {
          bar.new('image', { x=5, align='vertical', path=Window.icon .. '(16)', iconFilter='pearl' })
 
          local tlX, tlY
-         input.subscribe(JTYPE_BUTTON, bar, 0, function(SurfaceID, Msg)
+         input.subscribe(JTYPE_BUTTON, bar, 0, function(Handler, Msg)
             if (Msg.type != JET_BUTTON_1) then return end
             if (Msg.x >= 5) and (Msg.x < 22) then
                if (Msg.value > 0) then // Button down
@@ -739,7 +893,7 @@ glStyles = {
 
          // Clicking anywhere on the titlebar will move the window to the front.
 
-         input.subscribe(JTYPE_BUTTON, bar, 0, function(SurfaceID, Msg)
+         input.subscribe(JTYPE_BUTTON, bar, 0, function(Handler, Msg)
             if (Msg.type == JET_BUTTON_1) and (Msg.value > 0) then
                Surface.acMoveToFront()
             end
@@ -749,7 +903,7 @@ glStyles = {
 
          local xoffset = 3
          if nz(Window.maximise) then
-            input.subscribe(JTYPE_BUTTON, bar, 0, function(SurfaceID, Msg)
+            input.subscribe(JTYPE_BUTTON, bar, 0, function(Handler, Msg)
                if (Msg.type == JET_BUTTON_1) and (bit.band(Msg.flags, JTYPE_DBL_CLICK) != 0) and (Msg.value == 0) then
                   if (Msg.x >= 24) and (Msg.y >= 0) and (Msg.x < bar.width - 60) and (Msg.y < bar.height) then
                      Window.mtMaximise(1)
@@ -764,7 +918,7 @@ glStyles = {
             catch(function()
                local rgnClose = bar.new('surface', { xoffset=xoffset, y=2, width=17, height=17, region=true })
                rgnClose.acShow()
-               input.subscribe(JTYPE_BUTTON, rgnClose, 0, function(SurfaceID, Msg)
+               input.subscribe(JTYPE_BUTTON, rgnClose, 0, function(Handler, Msg)
                   Window.mtClose()
                end)
                rgnClose.new('image', { path='icons:items/checkmark_cross(16)', iconFilter='pearl', align='center' })
@@ -777,7 +931,7 @@ glStyles = {
          catch(function()
             local max = bar.new('surface', { width=17, height=17, y=2, xoffset=xoffset, region=true })
             max.acShow()
-            input.subscribe(JTYPE_BUTTON, max, 0, function(SurfaceID, Msg)
+            input.subscribe(JTYPE_BUTTON, max, 0, function(Handler, Msg)
                Window.mtMaximise()
             end)
             if nz(Window.maximise) then
@@ -793,7 +947,7 @@ glStyles = {
          catch(function()
             local min = bar.new('surface', { width=17, height=17, y=2, xoffset=xoffset, region=true })
             min.acShow()
-            input.subscribe(JTYPE_BUTTON, min, 0, function(SurfaceID, Msg)
+            input.subscribe(JTYPE_BUTTON, min, 0, function(Handler, Msg)
                Window.mtMinimise()
             end)
             if nz(Window.minimise) then
@@ -810,7 +964,7 @@ glStyles = {
             catch(function()
                local mtb = bar.new('surface', { width=17, height=17, y=2, xoffset=xoffset, region=true })
                mtb.acShow()
-               input.subscribe(JTYPE_BUTTON, mtb, 0, function(SurfaceID, Msg)
+               input.subscribe(JTYPE_BUTTON, mtb, 0, function(Handler, Msg)
                   Surface.acMoveToBack()
                end)
                mtb.new('image', { path='icons:layers/bringforward(16)', align='center' })

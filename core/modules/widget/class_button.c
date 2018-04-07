@@ -245,9 +245,7 @@ static ERROR BUTTON_Free(objButton *Self, APTR Void)
    if (Self->prvKeyEvent) { UnsubscribeEvent(Self->prvKeyEvent); Self->prvKeyEvent = NULL; }
    if (Self->Icon)        { FreeMemory(Self->Icon); Self->Icon = NULL; }
    if (Self->RegionID)    { acFreeID(Self->RegionID); Self->RegionID = 0; }
-
    gfxUnsubscribeInput(0); // Unsubscribe our object from all surfaces
-
    return ERR_Okay;
 }
 
@@ -259,8 +257,7 @@ Hide: Removes the button from the display.
 
 static ERROR BUTTON_Hide(objButton *Self, APTR Void)
 {
-   acHideID(Self->RegionID);
-   return ERR_Okay;
+   return acHideID(Self->RegionID);
 }
 
 //****************************************************************************
@@ -563,7 +560,7 @@ static ERROR SET_Hint(objButton *Self, CSTRING Value)
 /*****************************************************************************
 
 -FIELD-
-Icon: The image field can be set in order to load a bitmap into the button.
+Icon: Reference to an icon that will be displayed inside the button.
 
 To display an image inside the button, set the Icon field with a string in the format of 'category/iconname'.  The icon
 will be displayed on the left side of the text inside the button.  If the button is unlabelled, the icon will be shown

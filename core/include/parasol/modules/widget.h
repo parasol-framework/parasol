@@ -661,27 +661,16 @@ INLINE ERROR tabSetObject(APTR Ob, LONG Index, OBJECTID ObjectID) {
 
 typedef struct rkCheckBox {
    OBJECT_HEADER
-   struct rkFont * Font;    // Font control object
-   OBJECTID RegionID;       // Surface region created by the checkbox object
-   OBJECTID SurfaceID;      // The surface target for the checkbox widget
-   LONG     Flags;          // Special options
-   LONG     EnterFrame;     // Frame to display when the mouse enters the checkbox area
-   LONG     ExitFrame;      // Frame to revert to when the mouse leaves the checkbox area
-   LONG     ClickFrame;     // Frame to display when the checkbox is clicked
-   LONG     ReleaseFrame;   // Frame to display when the checkbox is released
-   LONG     Thickness;      // Border thickness
-   LONG     LabelWidth;     // The fixed pixel width allocated for drawing the label string.
-   LONG     Value;          // Either TRUE or FALSE
-   LONG     Align;          // Alignment flags
-   struct RGB8 Colour;      // Colour to use as the background
-   struct RGB8 Highlight;   // Colour to use for border highlighting
-   struct RGB8 Shadow;      // Colour to use for border shadowing
+   OBJECTID RegionID;  // Surface region created by the checkbox object
+   OBJECTID SurfaceID; // The surface target for the checkbox widget
+   LONG     Flags;     // Special options
+   LONG     LabelWidth; // The fixed pixel width allocated for drawing the label string.
+   LONG     Value;     // Either TRUE or FALSE
+   LONG     Align;     // Alignment flags
 
 #ifdef PRV_CHECKBOX
    FUNCTION Feedback;
    APTR   prvKeyEvent;
-   struct rkPicture *Picture; // Bitmap image to use when the box is checked
-   UBYTE  Entered:1;
    BYTE   Active;
    UBYTE  Label[48];       // Label to display alongside the checkbox
   

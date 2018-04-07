@@ -733,27 +733,16 @@ module({ name="Widget", copyright="Paul Manias 2003-2017", version=1.0 }, functi
   ]])
 
   class("CheckBox", { src="class_checkbox.c", output="class_checkbox_def.c" }, [[
-   obj(Font) Font         # Font control object
-   oid Region             # Surface region created by the checkbox object
-   oid Surface            # The surface target for the checkbox widget
-   int(CBF) Flags         # Special options
-   int EnterFrame         # Frame to display when the mouse enters the checkbox area
-   int ExitFrame          # Frame to revert to when the mouse leaves the checkbox area
-   int ClickFrame         # Frame to display when the checkbox is clicked
-   int ReleaseFrame       # Frame to display when the checkbox is released
-   int Thickness          # Border thickness
-   int LabelWidth         # The fixed pixel width allocated for drawing the label string.
-   int Value              # Either TRUE or FALSE
-   int(ALIGN) Align       # Alignment flags
-   struct(RGB8) Colour    # Colour to use as the background
-   struct(RGB8) Highlight # Colour to use for border highlighting
-   struct(RGB8) Shadow    # Colour to use for border shadowing
+   oid Region        # Surface region created by the checkbox object
+   oid Surface       # The surface target for the checkbox widget
+   int(CBF) Flags    # Special options
+   int LabelWidth    # The fixed pixel width allocated for drawing the label string.
+   int Value         # Either TRUE or FALSE
+   int(ALIGN) Align  # Alignment flags
   ]],
   [[
    FUNCTION Feedback;
    APTR   prvKeyEvent;
-   struct rkPicture *Picture; // Bitmap image to use when the box is checked
-   UBYTE  Entered:1;
    BYTE   Active;
    UBYTE  Label[48];       // Label to display alongside the checkbox
   ]])
