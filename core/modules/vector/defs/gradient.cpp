@@ -19,10 +19,10 @@ definition.  This will ensure that the VectorGradient is de-allocated when the s
 
 *****************************************************************************/
 
-// Generate a new gradient table with an opacity multiplier applied.  The table is cached with the vector so that
-// it does not need to be recalculated.
+// Return a gradient table for a vector with its opacity multiplier applied.  The table is cached with the vector so
+// that it does not need to be recalculated when required again.
 
-GRADIENT_TABLE * get_fill_gradient_table(objVector &Vector)
+GRADIENT_TABLE * get_fill_gradient_table(objVector &Vector, DOUBLE Opacity)
 {
    GradientColours *cols = Vector.FillGradient->Colours;
    if (!cols) {
@@ -33,22 +33,21 @@ GRADIENT_TABLE * get_fill_gradient_table(objVector &Vector)
       }
    }
 
-   if ((Vector.FillOpacity IS 1.0) AND (Vector.Opacity IS 1.0)) { // Return the original gradient table if no translucency is applicable.
+   if (Opacity >= 1.0) { // Return the original gradient table if no translucency is applicable.
       Vector.FillGradientAlpha = 1.0;
       return &cols->table;
    }
    else {
-      DOUBLE opacity = Vector.FillOpacity * Vector.Opacity;
-      if (opacity IS Vector.FillGradientAlpha) return Vector.FillGradientTable;
+      if (Opacity IS Vector.FillGradientAlpha) return Vector.FillGradientTable;
 
       delete Vector.FillGradientTable;
       Vector.FillGradientTable = new (std::nothrow) GRADIENT_TABLE();
       if (!Vector.FillGradientTable) return NULL;
-      Vector.FillGradientAlpha = opacity;
+      Vector.FillGradientAlpha = Opacity;
 
       for (unsigned i=0; i < Vector.FillGradientTable->size(); i++) {
          (*Vector.FillGradientTable)[i] = agg::rgba8(cols->table[i].r, cols->table[i].g, cols->table[i].b,
-            cols->table[i].a * opacity);
+            cols->table[i].a * Opacity);
       }
 
       return Vector.FillGradientTable;

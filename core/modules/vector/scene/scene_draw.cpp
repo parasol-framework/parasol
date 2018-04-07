@@ -11,6 +11,7 @@ public:
    agg::line_cap_e   mLineCap;
    agg::inner_join_e mInnerJoin;
    bool mDirty;
+   double mOpacity;
    objVectorClip *mClipMask;
 
    VectorState() :
@@ -19,6 +20,7 @@ public:
       mLineCap(agg::butt_cap),
       mInnerJoin(agg::inner_miter),
       mDirty(false),
+      mOpacity(1.0),
       mClipMask(NULL) { }
 };
 
@@ -901,6 +903,7 @@ private:
          if (shape->LineJoin != agg::inherit_join)   state.mLineJoin  = shape->LineJoin;
          if (shape->InnerJoin != agg::inner_inherit) state.mInnerJoin = shape->InnerJoin;
          if (shape->LineCap != agg::inherit_cap)     state.mLineCap   = shape->LineCap;
+         state.mOpacity = shape->Opacity * state.mOpacity;
 
          // Support for enable-background="new".  This requires the bitmap to have an alpha channel so that
          // filter blending works correctly.
@@ -1012,7 +1015,7 @@ private:
                   else if (shape->FillRule IS VFR_EVEN_ODD) shape->FillRaster->filling_rule(agg::fill_even_odd);
 
                   if (shape->FillColour.Alpha > 0) { // Solid colour
-                     mSolidRender.color(agg::rgba(shape->FillColour.Red, shape->FillColour.Green, shape->FillColour.Blue, shape->FillColour.Alpha * shape->FillOpacity * shape->Opacity));
+                     mSolidRender.color(agg::rgba(shape->FillColour.Red, shape->FillColour.Green, shape->FillColour.Blue, shape->FillColour.Alpha * shape->FillOpacity * state.mOpacity));
 
                      if (state.mClipMask) {
                         agg::alpha_mask_gray8 alpha_mask(*state.mClipMask->ClipRenderer);
@@ -1024,11 +1027,11 @@ private:
 
                   if (shape->FillImage) { // Bitmap image fill.  NB: The SVG class creates a standard VectorRectangle and associates an image with it in order to support <image> tags.
                      draw_image(shape, *shape->BasePath, shape->Scene->SampleMethod, shape->FinalX, shape->FinalY,
-                        view_width, view_height, *shape->FillImage, mRenderBase, *shape->FillRaster, 0, shape->FillOpacity * shape->Opacity);
+                        view_width, view_height, *shape->FillImage, mRenderBase, *shape->FillRaster, 0, shape->FillOpacity * state.mOpacity);
                   }
 
                   if (shape->FillGradient) {
-                     if (GRADIENT_TABLE *table = get_fill_gradient_table(*shape)) {
+                     if (GRADIENT_TABLE *table = get_fill_gradient_table(*shape, state.mOpacity * shape->FillOpacity)) {
                         draw_gradient(shape, shape->BasePath, shape->FinalX, shape->FinalY, view_width, view_height,
                            *shape->FillGradient, table, mRenderBase, *shape->FillRaster, 0);
                      }
@@ -1069,7 +1072,7 @@ private:
                      draw_texstroke(*shape->StrokeImage, mRenderBase, stroke_path, strokewidth);
                   }
                   else {
-                     mSolidRender.color(agg::rgba(shape->StrokeColour.Red, shape->StrokeColour.Green, shape->StrokeColour.Blue, shape->StrokeColour.Alpha * shape->StrokeOpacity * shape->Opacity));
+                     mSolidRender.color(agg::rgba(shape->StrokeColour.Red, shape->StrokeColour.Green, shape->StrokeColour.Blue, shape->StrokeColour.Alpha * shape->StrokeOpacity * state.mOpacity));
 
                      if (state.mClipMask) {
                         agg::alpha_mask_gray8 alpha_mask(*state.mClipMask->ClipRenderer);

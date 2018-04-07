@@ -126,7 +126,7 @@ static void apply_parent_transforms(objVector *, objVector *, agg::trans_affine 
 static void apply_transforms(struct VectorTransform *, DOUBLE, DOUBLE, agg::trans_affine &, WORD *);
 static void convert_to_aggpath(struct PathCommand *Paths, LONG TotalPoints, agg::path_storage *BasePath);
 static void gen_vector_path(objVector *);
-static GRADIENT_TABLE * get_fill_gradient_table(objVector &);
+static GRADIENT_TABLE * get_fill_gradient_table(objVector &, DOUBLE);
 static GRADIENT_TABLE * get_stroke_gradient_table(objVector &);
 static CSTRING read_numseq(CSTRING Value, ...);
 static ERROR read_path(struct PathCommand **, LONG *, CSTRING);
