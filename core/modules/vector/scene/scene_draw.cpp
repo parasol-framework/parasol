@@ -847,9 +847,8 @@ private:
 
    void draw_vectors(objVector *CurrentVector, VectorState &ParentState)
    {
-      VectorState state = VectorState(ParentState);
-
       for (objVector *shape=CurrentVector; shape; shape=(objVector *)shape->Next) {
+         VectorState state = VectorState(ParentState);
 
          if (shape->Head.ClassID != ID_VECTOR) {
             MSG("Non-Vector discovered in the vector tree.");
