@@ -333,11 +333,12 @@ static void draw_text(objText *Self, objSurface *Surface, objBitmap *Bitmap)
    if (Self->Layout->BoundX + Self->Layout->BoundWidth < Bitmap->Clip.Right) Bitmap->Clip.Right = Self->Layout->BoundX + Self->Layout->BoundWidth;
    if (Self->Layout->BoundY + Self->Layout->BoundHeight < Bitmap->Clip.Bottom) Bitmap->Clip.Bottom = Self->Layout->BoundY + Self->Layout->BoundHeight;
 
-   // Clear the background if requested
+   // Clear the background if requested.  Note that any use of alpha-blending will mean that fast scrolling
+   // is disabled.
 
    if (Self->Background.Alpha > 0) {
       ULONG bkgd = PackPixelRGBA(Bitmap, &Self->Background);
-      gfxDrawRectangle(Bitmap, Self->Layout->BoundX, Self->Layout->BoundY, Self->Layout->BoundWidth, Self->Layout->BoundHeight, bkgd, BAF_FILL);
+      gfxDrawRectangle(Bitmap, Self->Layout->BoundX, Self->Layout->BoundY, Self->Layout->BoundWidth, Self->Layout->BoundHeight, bkgd, BAF_FILL|BAF_BLEND);
    }
 
    // If an area has been selected, highlight it
