@@ -582,8 +582,7 @@ static ERROR create_menu(objMenu *Self)
          FID_Width|TLONG,     Self->Width,
          FID_Height|TLONG,    Self->Height,
          FID_Flags|TLONG,     surface->Flags | RNF_STICK_TO_FRONT,
-         FID_Hide|TLONG,      TRUE,
-         FID_WindowType|TSTR, "NONE",
+         FID_WindowType|TLONG, SWIN_NONE,
          TAGEND);
 
       // If the fade-in feature has been enabled, set the surface's opacity to zero
