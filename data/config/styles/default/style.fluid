@@ -149,6 +149,7 @@ glColours = {
       label      = '255,255,255',
       text       = '255,255,255'
    },
+   boxedFont = '255,255,255,255',
    menubar = '190,190,190',
    white = '255,255,255',
    red   = '255,0,0',
@@ -282,8 +283,8 @@ glStyles = {
          local lScene = obj.new('VectorScene', { name='ButtonScene' })
          local lViewport = lScene.new('VectorViewport', { })
          local ICON_SIZE = Surface.height * 0.56
-         local lIcon
          local X_GAP = Surface.height * 0.25
+         local lIcon
 
          local lBkgd = lViewport.new('VectorRectangle', {
             stroke = 'rgb(255,255,255,60)',
@@ -309,7 +310,7 @@ glStyles = {
             x        = X_GAP,
             face     = glFonts.button.face,
             fontSize = Surface.height * 0.66 * (3/4),
-            fill     = 'rgb(255,255,255,255)',
+            fill     = 'rgb(' .. glColours.boxedFont .. ')',
             string   = Button.string
          })
 
