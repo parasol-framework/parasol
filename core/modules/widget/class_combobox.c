@@ -39,11 +39,8 @@ To make modifications to the menu after initialisation, read the #Menu field and
 #include <parasol/modules/surface.h>
 #include "defs.h"
 
-#define MIN_MENU_WIDTH 120
-
 static OBJECTPTR clCombobox = NULL;
 
-static void draw_combobox(objComboBox *, objSurface *, objBitmap *);
 static void text_validation(objText *);
 static void text_activated(objText *);
 
@@ -99,39 +96,7 @@ Clear: Clears the content of the combobox list box.
 
 static ERROR COMBOBOX_Clear(objComboBox *Self, APTR Void)
 {
-   acClear(Self->Menu);
-   return ERR_Okay;
-}
-
-//****************************************************************************
-
-static ERROR COMBOBOX_DataFeed(objComboBox *Self, struct acDataFeed *Args)
-{
-   if (!Args) return PostError(ERR_NullArgs);
-
-   if (Args->DataType IS DATA_XML) {
-      Action(AC_DataFeed, Self->Menu, Args); // This is for passing <item>'s to the menu.
-   }
-   else if (Args->DataType IS DATA_INPUT_READY) {
-      struct InputMsg *input;
-
-      while (!gfxGetInputMsg((struct dcInputReady *)Args->Buffer, 0, &input)) {
-         if ((input->Type IS JET_LMB) AND (input->Value > 0)) {
-            if (input->OverID IS Self->ButtonID) {
-               // The button on the combobox has been pressed, so switch the menu visibility.
-               // About 300ms must pass before a switch can occur.
-               mnSwitch(Self->Menu, 200);
-            }
-            else if (input->X >= Self->LabelWidth) {
-               if (!(Self->TextInput->Flags & TXF_EDIT)) {
-                  mnSwitch(Self->Menu, 5);
-               }
-            }
-         }
-      }
-   }
-
-   return ERR_Okay;
+   return acClear(Self->Menu);
 }
 
 /*****************************************************************************
@@ -168,18 +133,13 @@ Focus: Sets the focus on the combobox.
 
 static ERROR COMBOBOX_Focus(objComboBox *Self, APTR Void)
 {
-   if (Self->Flags & CMF_EDIT) acFocusID(Self->RegionID);
-   else acFocusID(Self->ButtonID);
-
-   return ERR_Okay;
+   return acFocusID(Self->RegionID);
 }
 
 //****************************************************************************
 
 static ERROR COMBOBOX_Free(objComboBox *Self, APTR Void)
 {
-   if (Self->ButtonID)  { acFreeID(Self->ButtonID); Self->ButtonID = 0; }
-   if (Self->Font)      { acFree(Self->Font); Self->Font = NULL; }
    if (Self->TextInput) { acFree(Self->TextInput); Self->TextInput = NULL; }
    if (Self->Menu)      { acFree(Self->Menu); Self->Menu = NULL; }
    if (Self->RegionID)  { acFreeID(Self->RegionID); Self->RegionID = 0; }
@@ -430,46 +390,21 @@ static ERROR COMBOBOX_MoveToFront(objComboBox *Self, APTR Void)
 static ERROR COMBOBOX_NewObject(objComboBox *Self, APTR Void)
 {
    if (!NewLockedObject(ID_SURFACE, NF_INTEGRAL, NULL, &Self->RegionID)) {
-      if (!NewObject(ID_FONT, NF_INTEGRAL, &Self->Font)) {
-         if (!NewObject(ID_TEXT, NF_INTEGRAL, &Self->TextInput)) {
-            if (!NewObject(ID_MENU, NF_INTEGRAL, &Self->Menu)) {
-               SetString(Self->Font, FID_Face, glLabelFace);
+      if (!NewObject(ID_TEXT, NF_INTEGRAL, &Self->TextInput)) {
+         if (!NewObject(ID_MENU, NF_INTEGRAL, &Self->Menu)) {
 
-               SetLong(Self->TextInput, FID_Surface, Self->RegionID);
-               SetString(Self->TextInput->Font, FID_Face, glWidgetFace);
-               Self->TextInput->LineLimit = 1;
-               Self->TextInput->Layout->LeftMargin   = 3;
-               Self->TextInput->Layout->RightMargin  = 3;
-               Self->TextInput->Layout->TopMargin    = 2;
-               Self->TextInput->Layout->BottomMargin = 2;
+            SetLong(Self->TextInput, FID_Surface, Self->RegionID);
+            SetString(Self->TextInput->Font, FID_Face, glWidgetFace);
+            Self->TextInput->LineLimit = 1;
+            Self->TextInput->Layout->LeftMargin   = 3;
+            Self->TextInput->Layout->RightMargin  = 3;
+            Self->TextInput->Layout->TopMargin    = 2;
+            Self->TextInput->Layout->BottomMargin = 2;
 
-               SetLong(Self->TextInput, FID_Align, ALIGN_VERTICAL);
+            SetLong(Self->TextInput, FID_Align, ALIGN_VERTICAL);
 
-               Self->ReleaseFrame = 1;
-
-               // Internal colour
-               Self->Colour.Red   = 0;
-               Self->Colour.Green = 255;
-               Self->Colour.Blue  = 255;
-               Self->Colour.Alpha = 255;
-
-               // Shadow colour
-               Self->Shadow.Red   = 100;
-               Self->Shadow.Green = 100;
-               Self->Shadow.Blue  = 100;
-               Self->Shadow.Alpha = 255;
-
-               // Highlight colour
-               Self->Highlight.Red   = 255;
-               Self->Highlight.Green = 255;
-               Self->Highlight.Blue  = 255;
-               Self->Highlight.Alpha = 255;
-
-               Self->Thickness = 1;
-               drwApplyStyleValues(Self, NULL);
-               return ERR_Okay;
-            }
-            else return ERR_NewObject;
+            drwApplyStyleValues(Self, NULL);
+            return ERR_Okay;
          }
          else return ERR_NewObject;
       }
@@ -546,25 +481,6 @@ static ERROR SET_Align(objComboBox *Self, LONG Value)
 /*****************************************************************************
 
 -FIELD-
-Border: String-based field for setting a single-colour border for the combobox.
-
-The border colour for a combobox can be declared by writing to this field. The colour must be in hexadecimal or
-separated-decimal format - for example to create a pure red colour, a setting of "#ff0000" or "255,0,0" would be valid.
-
-*****************************************************************************/
-
-static ERROR SET_Border(objComboBox *Self, CSTRING Colour)
-{
-   if (Colour) {
-      StrToColour(Colour, &Self->Shadow);
-      Self->Highlight = Self->Shadow;
-   }
-   return ERR_Okay;
-}
-
-/*****************************************************************************
-
--FIELD-
 Bottom: The bottom coordinate of the combobox (Y + Height).
 
 *****************************************************************************/
@@ -582,15 +498,6 @@ static ERROR GET_Bottom(objComboBox *Self, LONG *Value)
 }
 
 /*****************************************************************************
-
--FIELD-
-Button: Refers to the button that controls the combobox list box.
-
-A combobox widget will always show a button that displays the combobox list box when clicked.  This field refers to the
-@Button that controls this functionality.
-
--FIELD-
-Colour: The fill colour to use in the combobox.
 
 -FIELD-
 Disable: Disables the combobox on initialisation.
@@ -651,19 +558,6 @@ static ERROR SET_Feedback(objComboBox *Self, FUNCTION *Value)
 Flags: Optional flags may be defined here.
 
 -FIELD-
-FocusFrame: The graphics frame to display when the combobox has the focus.
-
-This field specifies the surface frame to switch to when the user focusses on the combobox.  The default value is zero,
-which has no effect on the surface frame.  When the user leaves the combobox, it will revert to the frame indicated by
-the ReleaseFrame field.
-
--FIELD-
-Font: The font used to draw the combobox label.
-
-The font object that is used to draw the combobox label string is referenced from this field.  Fields in the font
-object, such as the font face and colour can be set prior to initialisation.
-
--FIELD-
 Height: Defines the height of the combobox.
 
 An combobox can be given a fixed or relative height by setting this field to the desired value.  To set a relative
@@ -705,9 +599,6 @@ static ERROR SET_Height(objComboBox *Self, struct Variable *Value)
 /*****************************************************************************
 
 -FIELD-
-Highlight: Defines the border colour for highlighting.
-
--FIELD-
 Label: The label is a string displayed to the left of the combobox area.
 
 A label can be drawn next to the combobox area by setting the Label field.  The label should be a short, descriptive
@@ -744,8 +635,8 @@ static ERROR SET_LayoutStyle(objComboBox *Self, DOCSTYLE *Value)
 {
    if (!Value) return ERR_Okay;
 
-   if (Self->Head.Flags & NF_INITIALISED) docApplyFontStyle(Value->Document, Value, Self->Font);
-   else docApplyFontStyle(Value->Document, Value, Self->Font);
+   //if (Self->Head.Flags & NF_INITIALISED) docApplyFontStyle(Value->Document, Value, Self->Font);
+   //else docApplyFontStyle(Value->Document, Value, Self->Font);
 
    return ERR_Okay;
 }
@@ -785,13 +676,6 @@ Menu: Provides direct access to the drop-down menu.
 
 The drop-down menu that is used for the combobox can be accessed directly through this field.  You may find this useful
 for manipulating the content of the drop-down menu following initialisation of the combobox.
-
--FIELD-
-ReleaseFrame: The graphics frame to display when the combobox loses the focus.
-
-If the FocusFrame field has been set, you may want to match that value by indicating the frame that should be used when
-the click is released. By default, the value in this field will initially be set to 1.  This field is unused if the
-FocusFrame field has not been set.
 
 -FIELD-
 Right: The right-most coordinate of the combobox (X + Width).
@@ -844,9 +728,6 @@ static ERROR GET_SelectedID(objComboBox *Self, LONG *Value)
 }
 
 /*****************************************************************************
-
--FIELD-
-Shadow: Defines the border colour for shadows.
 
 -FIELD-
 String: The string that is to be printed inside the combobox is declared here.
@@ -925,9 +806,6 @@ the combobox style definition.
 
 The face and point size of the text is derived from the #Font field on initialisation and therefore cannot be
 changed through the TextInput object directly.
-
--FIELD-
-Thickness: The thickness of the combobox border, in pixels.
 
 -FIELD-
 Width: Defines the width of a combobox.
@@ -1131,60 +1009,6 @@ static ERROR SET_YOffset(objComboBox *Self, struct Variable *Value)
 
 //****************************************************************************
 
-static void draw_combobox(objComboBox *Self, objSurface *Surface, objBitmap *Bitmap)
-{
-   if (!(Self->Flags & CMF_NO_BKGD)) {
-      gfxDrawRectangle(Bitmap, Self->LabelWidth, 0, Surface->Width - Self->LabelWidth, Surface->Height,
-         PackPixelRGBA(Bitmap, &Self->Colour), BAF_FILL|BAF_BLEND);
-
-      // Draw the borders around the rectangular area
-
-      ULONG highlight, shadow;
-      if (Self->Flags & INF_SUNKEN) {
-         // Reverse the border definitions in sunken mode
-         highlight = PackPixelRGBA(Bitmap, &Self->Shadow);
-         shadow = PackPixelRGBA(Bitmap, &Self->Highlight);
-      }
-      else {
-         shadow = PackPixelRGBA(Bitmap, &Self->Shadow);
-         highlight = PackPixelRGBA(Bitmap, &Self->Highlight);
-      }
-
-      LONG x = Self->LabelWidth;
-      LONG width = Surface->Width - Self->LabelWidth;
-
-      WORD i;
-      for (i=0; i < Self->Thickness; i++) {
-         // Top, Bottom
-         gfxDrawRectangle(Bitmap, x+i, i, width-i-i, 1, highlight, BAF_FILL|BAF_BLEND);
-         gfxDrawRectangle(Bitmap, x+i, Surface->Height-i-1, width-i-i, 1, shadow, BAF_FILL|BAF_BLEND);
-
-         // Left, Right
-         gfxDrawRectangle(Bitmap, x+i, i+1, 1, Surface->Height-i-i-2, highlight, BAF_FILL|BAF_BLEND);
-         gfxDrawRectangle(Bitmap, x+width-i-1, i+1, 1, Surface->Height-i-i-2, shadow, BAF_FILL|BAF_BLEND);
-      }
-   }
-
-   if (Self->Label[0]) {
-      objFont *font = Self->Font;
-      font->Bitmap = Bitmap;
-
-      SetString(font, FID_String, Self->Label);
-
-      if (Surface->Flags & RNF_DISABLED) SetLong(font, FID_Opacity, 25);
-
-      font->X = 0;
-      font->Y = 0;
-      font->Flags |= FTF_CHAR_CLIP;
-      font->WrapEdge = Self->LabelWidth - 3;
-      font->Align |= ALIGN_VERTICAL;
-      font->AlignWidth  = Surface->Width;
-      font->AlignHeight = Surface->Height;
-      acDraw(font);
-
-      if (Surface->Flags & RNF_DISABLED) SetLong(font, FID_Opacity, 100);
-   }
-}
 
 //**********************************************************************
 // This callback is triggered when the user moves focus away from the text widget.
@@ -1255,24 +1079,15 @@ static const struct FieldDef Align[] = {
 };
 
 static const struct FieldArray clFields[] = {
-   { "Font",         FDF_INTEGRAL|FDF_R,      0, NULL, NULL },
    { "TextInput",    FDF_INTEGRAL|FDF_R,      0, NULL, NULL },
    { "Menu",         FDF_INTEGRAL|FDF_R,      0, NULL, NULL },
    { "LayoutSurface",FDF_VIRTUAL|FDF_OBJECTID|FDF_SYSTEM|FDF_R, ID_SURFACE, NULL, NULL }, // VIRTUAL: This is a synonym for the Region field
    { "Region",       FDF_OBJECTID|FDF_RW,  ID_SURFACE, NULL, SET_Region },
    { "Surface",      FDF_OBJECTID|FDF_RW,  ID_SURFACE, NULL, NULL },
-   { "Button",       FDF_OBJECTID|FDF_RI,  0, NULL, NULL },
    { "Flags",        FDF_LONGFLAGS|FDF_RW, (MAXINT)&clComboBoxFlags, NULL, NULL },
-   { "FocusFrame",   FDF_LONG|FDF_RW,      0, NULL, NULL },
-   { "ReleaseFrame", FDF_LONG|FDF_RW,      0, NULL, NULL },
-   { "Thickness",    FDF_LONG|FDF_RI,      0, NULL, NULL },
    { "LabelWidth",   FDF_LONG|FDF_RI,      0, NULL, NULL },
-   { "Colour",       FDF_RGB|FDF_RI,       0, NULL, NULL },
-   { "Highlight",    FDF_RGB|FDF_RI,       0, NULL, NULL },
-   { "Shadow",       FDF_RGB|FDF_RI,       0, NULL, NULL },
    // Virtual fields
    { "Align",         FDF_VIRTUAL|FDF_LONGFLAGS|FDF_I, (MAXINT)&Align,  NULL, SET_Align },
-   { "Border",        FDF_VIRTUAL|FDF_STRING|FDF_W,    0, NULL, SET_Border },
    { "Bottom",        FDF_VIRTUAL|FDF_LONG|FDF_R,      0, GET_Bottom, NULL },
    { "Disable",       FDF_VIRTUAL|FDF_LONG|FDF_RW,     0, GET_Disable, SET_Disable },
    { "Feedback",      FDF_VIRTUAL|FDF_FUNCTIONPTR|FDF_RW, 0, GET_Feedback, SET_Feedback },
@@ -1297,7 +1112,7 @@ static const struct FieldArray clFields[] = {
 
 ERROR init_combobox(void)
 {
-   return(CreateObject(ID_METACLASS, 0, &clCombobox,
+   return CreateObject(ID_METACLASS, 0, &clCombobox,
       FID_ClassVersion|TFLOAT, VER_COMBOBOX,
       FID_Name|TSTRING,   "ComboBox",
       FID_Category|TLONG, CCF_GUI,
@@ -1306,7 +1121,7 @@ ERROR init_combobox(void)
       FID_Fields|TARRAY,  clFields,
       FID_Size|TLONG,     sizeof(objComboBox),
       FID_Path|TSTR,      MOD_PATH,
-      TAGEND));
+      TAGEND);
 }
 
 void free_combobox(void)

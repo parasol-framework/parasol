@@ -2,7 +2,7 @@
 #define MODULES_WIDGET 1
 
 // Name:      widget.h
-// Copyright: Paul Manias 2003-2017
+// Copyright: Paul Manias 2003-2018
 // Generator: idl-c
 
 #ifndef MAIN_H
@@ -48,19 +48,16 @@
 #define CMF_HIDE 0x00000001
 #define CMF_DISABLED 0x00000002
 #define CMF_EDIT 0x00000004
-#define CMF_NO_BKGD 0x00000008
-#define CMF_SUNKEN 0x00000010
-#define CMF_SHOW_ICONS 0x00000020
-#define CMF_LIMIT_TO_LIST 0x00000040
-#define CMF_AUTO_COMPLETE 0x00000080
-#define CMF_NO_TRANSLATION 0x00000100
+#define CMF_SHOW_ICONS 0x00000008
+#define CMF_LIMIT_TO_LIST 0x00000010
+#define CMF_AUTO_COMPLETE 0x00000020
+#define CMF_NO_TRANSLATION 0x00000040
 
 // CheckBox flags.
 
 #define CBF_DISABLED 0x00000001
 #define CBF_HIDE 0x00000002
-#define CBF_NO_BKGD 0x00000004
-#define CBF_FADE_BORDER 0x00000008
+#define CBF_FADE_BORDER 0x00000004
 
 // Button flags.
 
@@ -768,26 +765,16 @@ typedef struct rkInput {
 
 typedef struct rkComboBox {
    OBJECT_HEADER
-   struct rkFont * Font;         // Font control object - for the label graphic
    struct rkText * TextInput;    // Text control object - for the combobox area
    struct rkMenu * Menu;         // Menu control object
    OBJECTID RegionID;            // Surface region created by the combobox object
    OBJECTID SurfaceID;           // The surface target for the combobox graphic
-   OBJECTID ButtonID;            // Surface ID of the combobox button
    LONG     Flags;               // Special options
-   LONG     FocusFrame;          // Frame to display when the combobox has the focus
-   LONG     ReleaseFrame;        // Frame to display when the combobox loses the focus
-   LONG     Thickness;           // Border thickness
    LONG     LabelWidth;          // Width of the combobox label area
-   struct RGB8 Colour;           // Colour to use as the background
-   struct RGB8 Highlight;        // Colour to use for border highlighting
-   struct RGB8 Shadow;           // Colour to use for border shadowing
 
 #ifdef PRV_COMBOBOX
    UBYTE  Label[48];       // Label
    FUNCTION Feedback;
-   BYTE   Active;
-   BYTE   CalcWidth:1;
   
 #endif
 } objComboBox;

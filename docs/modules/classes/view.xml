@@ -12,7 +12,7 @@
     <idstring>ID_VIEW</idstring>
     <category>GUI</category>
     <include>modules/view.h</include>
-    <copyright>Paul Manias 2003-2017</copyright>
+    <copyright>Paul Manias 2003-2018</copyright>
     <description>
 <p>The View is an interface class that facilitates the display and management of multiple items within a surface.  It is capable of displaying items in a number of formats, including a simple list, tree view and column view. The ability to sort data and handle different types of data such as date and time information is provided.  The View class is commonly used for file displays. Certain classes such as the <class name="FileView">FileView</class> are dependent on the functionality that it provides.</p>
 <p>Items are created and stored within each view as a large XML statement and are managed via the <class name="XML">XML</class> class. This simplifies the creation and retrieval of item data and also allows you to develop hierarchies and tree structures for complex item arrangement.  The View class inherits the fields and functionality of the <class name="XML">XML</class> class, which you can use for scanning view items after they have been added.  The <class name="Font">Font</class> class is also inherited, allowing you to set details such as the default font face through the view.</p>
@@ -1096,7 +1096,6 @@
       <const name="DISABLED">Disable on creation, or object is currently disabled.</const>
       <const name="HIDE">Hide on creation, or object is currently hidden.</const>
       <const name="FADE_BORDER">Fade the border edges into the checkbox colour (requires thickness greater than 1).</const>
-      <const name="NO_BKGD">Do not draw background graphics (automatically set if Template graphics are used).</const>
     </constants>
 
     <constants lookup="FVF" comment="Flags for the FileView.">
@@ -1156,13 +1155,11 @@
     <constants lookup="CMF" comment="ComboBox flags.">
       <const name="AUTO_COMPLETE">When in edit mode, this option helps the user by auto-completing text.</const>
       <const name="EDIT">Enable edit mode, which allows the user to write free-text in the combobox.</const>
-      <const name="SUNKEN">Reverses the highlight and shadow definitions to create a sunken effect.</const>
-      <const name="HIDE">Hide on creation, or combobox is currently hidden.</const>
       <const name="SHOW_ICONS">Show icons in the dropdown list.</const>
-      <const name="LIMIT_TO_LIST">When in edit mode, limit-to-list prevents the user from entering text that isn't in the combobox list.</const>
-      <const name="NO_BKGD">Do not draw background graphics (automatically set if Template graphics are used).</const>
       <const name="DISABLED">Disable on creation; or combobox is currently disabled.</const>
-      <const name="NO_TRANSLATION">Do not attempt to translate combobox strings or the drop-down menu to the user's native language.</const>
+      <const name="HIDE">Hide on creation, or combobox is currently hidden.</const>
+      <const name="LIMIT_TO_LIST">When in edit mode, limit-to-list prevents the user from entering text that isn't in the combobox list.</const>
+      <const name="NO_TRANSLATION">Do not translate combobox strings or the drop-down menu to the user's native language.</const>
     </constants>
 
     <constants lookup="TIF" comment="MenuBar item flags.">

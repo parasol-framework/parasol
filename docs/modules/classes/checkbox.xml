@@ -12,7 +12,7 @@
     <idstring>ID_CHECKBOX</idstring>
     <category>GUI</category>
     <include>modules/checkbox.h</include>
-    <copyright>Paul Manias 2003-2017</copyright>
+    <copyright>Paul Manias 2003-2018</copyright>
     <description>
 <p>The CheckBox class simplifies the creation and management of checkbox widgets in the user interface.  Check boxes are simple widgets that are limited to exhibiting an on/off state.  The CheckBox class allows for its graphics to be customised, so it is possible to redefine how the on/off states are displayed.</p>
 <p>The standard mechanism for configuring a response to changing state in a CheckBox object is to set the <field>Feedback</field> field with a callback function.</p></description>
@@ -342,7 +342,6 @@
       <const name="DISABLED">Disable on creation, or object is currently disabled.</const>
       <const name="HIDE">Hide on creation, or object is currently hidden.</const>
       <const name="FADE_BORDER">Fade the border edges into the checkbox colour (requires thickness greater than 1).</const>
-      <const name="NO_BKGD">Do not draw background graphics (automatically set if Template graphics are used).</const>
     </constants>
 
     <constants lookup="FVF" comment="Flags for the FileView.">
@@ -402,13 +401,11 @@
     <constants lookup="CMF" comment="ComboBox flags.">
       <const name="AUTO_COMPLETE">When in edit mode, this option helps the user by auto-completing text.</const>
       <const name="EDIT">Enable edit mode, which allows the user to write free-text in the combobox.</const>
-      <const name="SUNKEN">Reverses the highlight and shadow definitions to create a sunken effect.</const>
-      <const name="HIDE">Hide on creation, or combobox is currently hidden.</const>
       <const name="SHOW_ICONS">Show icons in the dropdown list.</const>
-      <const name="LIMIT_TO_LIST">When in edit mode, limit-to-list prevents the user from entering text that isn't in the combobox list.</const>
-      <const name="NO_BKGD">Do not draw background graphics (automatically set if Template graphics are used).</const>
       <const name="DISABLED">Disable on creation; or combobox is currently disabled.</const>
-      <const name="NO_TRANSLATION">Do not attempt to translate combobox strings or the drop-down menu to the user's native language.</const>
+      <const name="HIDE">Hide on creation, or combobox is currently hidden.</const>
+      <const name="LIMIT_TO_LIST">When in edit mode, limit-to-list prevents the user from entering text that isn't in the combobox list.</const>
+      <const name="NO_TRANSLATION">Do not translate combobox strings or the drop-down menu to the user's native language.</const>
     </constants>
 
     <constants lookup="TIF" comment="MenuBar item flags.">

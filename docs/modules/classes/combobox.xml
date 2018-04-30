@@ -12,7 +12,7 @@
     <idstring>ID_COMBOBOX</idstring>
     <category>GUI</category>
     <include>modules/combobox.h</include>
-    <copyright>Paul Manias 2003-2017</copyright>
+    <copyright>Paul Manias 2003-2018</copyright>
     <description>
 <p>The ComboBox class is used to create combo boxes, also known as 'drop-down menus' in application interfaces.  A combobox typically looks like a text entry area, but features a button positioned to the right-hand side of the gadget. Clicking on the button will pop-up a menu that the user can use to select a pre-defined menu item.  Clicking on one of those items will paste the item text into the combobox.</p>
 <p>A crucial feature of the combobox is the drop-down menu.  The combobox uses the <class name="Menu">Menu</class> class to support its menu construction. To add items to the drop-down menu, you need to pass instructions to it using XML.  You can learn more about the XML specification in the <class name="Menu">Menu</class> class manual.</p>
@@ -94,16 +94,6 @@
     </field>
 
     <field>
-      <name>Border</name>
-      <comment>String-based field for setting a single-colour border for the combobox.</comment>
-      <access write="S">Set</access>
-      <type>STRING</type>
-      <description>
-<p>The border colour for a combobox can be declared by writing to this field. The colour must be in hexadecimal or separated-decimal format - for example to create a pure red colour, a setting of "#ff0000" or "255,0,0" would be valid.</p>
-      </description>
-    </field>
-
-    <field>
       <name>Bottom</name>
       <comment>The bottom coordinate of the combobox (Y + Height).</comment>
       <access read="G">Get</access>
@@ -112,19 +102,8 @@
 
     <field>
       <name>Button</name>
-      <comment>Refers to the button that controls the combobox list box.</comment>
       <access read="R" write="I">Read/Init</access>
       <type>OBJECTID</type>
-      <description>
-<p>A combobox widget will always show a button that displays the combobox list box when clicked.  This field refers to the <class name="Button">Button</class> that controls this functionality.</p>
-      </description>
-    </field>
-
-    <field>
-      <name>Colour</name>
-      <comment>The fill colour to use in the combobox.</comment>
-      <access read="R" write="I">Read/Init</access>
-      <type>RGB8</type>
     </field>
 
     <field>
@@ -140,7 +119,7 @@
 
     <field>
       <name>Feedback</name>
-      <comment>Provides instant feedback when a user interacts with the button.</comment>
+      <comment>Provides instant feedback when a user interacts with the Combobox.</comment>
       <access read="G" write="S">Get/Set</access>
       <type>FUNCTION</type>
       <description>
@@ -159,26 +138,6 @@
     </field>
 
     <field>
-      <name>FocusFrame</name>
-      <comment>The graphics frame to display when the combobox has the focus.</comment>
-      <access read="R" write="W">Read/Write</access>
-      <type>INT</type>
-      <description>
-<p>This field specifies the surface frame to switch to when the user focusses on the combobox.  The default value is zero, which has no effect on the surface frame.  When the user leaves the combobox, it will revert to the frame indicated by the ReleaseFrame field.</p>
-      </description>
-    </field>
-
-    <field>
-      <name>Font</name>
-      <comment>The font used to draw the combobox label.</comment>
-      <access read="R">Read</access>
-      <type class="Font">*Font</type>
-      <description>
-<p>The font object that is used to draw the combobox label string is referenced from this field.  Fields in the font object, such as the font face and colour can be set prior to initialisation.</p>
-      </description>
-    </field>
-
-    <field>
       <name>Height</name>
       <comment>Defines the height of the combobox.</comment>
       <access read="G" write="S">Get/Set</access>
@@ -186,13 +145,6 @@
       <description>
 <p>An combobox can be given a fixed or relative height by setting this field to the desired value.  To set a relative height, use the FD_PERCENT flag when setting the field.</p>
       </description>
-    </field>
-
-    <field>
-      <name>Highlight</name>
-      <comment>Defines the border colour for highlighting.</comment>
-      <access read="R" write="I">Read/Init</access>
-      <type>RGB8</type>
     </field>
 
     <field>
@@ -236,16 +188,6 @@
     </field>
 
     <field>
-      <name>ReleaseFrame</name>
-      <comment>The graphics frame to display when the combobox loses the focus.</comment>
-      <access read="R" write="W">Read/Write</access>
-      <type>INT</type>
-      <description>
-<p>If the FocusFrame field has been set, you may want to match that value by indicating the frame that should be used when the click is released. By default, the value in this field will initially be set to 1.  This field is unused if the FocusFrame field has not been set.</p>
-      </description>
-    </field>
-
-    <field>
       <name>Right</name>
       <comment>The right-most coordinate of the combobox (X + Width).</comment>
       <access read="G">Get</access>
@@ -262,13 +204,6 @@
 <p>Menu ID's are not guaranteed to be unique.  It is your responsibility to assign ID's and ensure that they are unique to prevent an ID from matching multiple items.</p>
 <p>If the combobox text does not reflect one of the available menu items, then the returned value will be -1.  If the selected menu item has no identifier, the default return value is 0.</p>
       </description>
-    </field>
-
-    <field>
-      <name>Shadow</name>
-      <comment>Defines the border colour for shadows.</comment>
-      <access read="R" write="I">Read/Init</access>
-      <type>RGB8</type>
     </field>
 
     <field>
@@ -309,15 +244,8 @@
       <type class="Text">*Text</type>
       <description>
 <p>The text object that is referenced here manages the display and editing of text inside the combobox area. Characteristics of the text object can be defined prior to initialisation, although we recommend that this be done from the combobox style definition.</p>
-<p>The face and point size of the text is derived from the <field>Font</field> field on initialisation and therefore cannot be changed through the TextInput object directly.</p>
+<p>The face and point size of the text is derived from the #Font field on initialisation and therefore cannot be changed through the TextInput object directly.</p>
       </description>
-    </field>
-
-    <field>
-      <name>Thickness</name>
-      <comment>The thickness of the combobox border, in pixels.</comment>
-      <access read="R" write="I">Read/Init</access>
-      <type>INT</type>
     </field>
 
     <field>
@@ -461,7 +389,6 @@
       <const name="DISABLED">Disable on creation, or object is currently disabled.</const>
       <const name="HIDE">Hide on creation, or object is currently hidden.</const>
       <const name="FADE_BORDER">Fade the border edges into the checkbox colour (requires thickness greater than 1).</const>
-      <const name="NO_BKGD">Do not draw background graphics (automatically set if Template graphics are used).</const>
     </constants>
 
     <constants lookup="FVF" comment="Flags for the FileView.">
@@ -521,13 +448,11 @@
     <constants lookup="CMF" comment="ComboBox flags.">
       <const name="AUTO_COMPLETE">When in edit mode, this option helps the user by auto-completing text.</const>
       <const name="EDIT">Enable edit mode, which allows the user to write free-text in the combobox.</const>
-      <const name="SUNKEN">Reverses the highlight and shadow definitions to create a sunken effect.</const>
-      <const name="HIDE">Hide on creation, or combobox is currently hidden.</const>
       <const name="SHOW_ICONS">Show icons in the dropdown list.</const>
-      <const name="LIMIT_TO_LIST">When in edit mode, limit-to-list prevents the user from entering text that isn't in the combobox list.</const>
-      <const name="NO_BKGD">Do not draw background graphics (automatically set if Template graphics are used).</const>
       <const name="DISABLED">Disable on creation; or combobox is currently disabled.</const>
-      <const name="NO_TRANSLATION">Do not attempt to translate combobox strings or the drop-down menu to the user's native language.</const>
+      <const name="HIDE">Hide on creation, or combobox is currently hidden.</const>
+      <const name="LIMIT_TO_LIST">When in edit mode, limit-to-list prevents the user from entering text that isn't in the combobox list.</const>
+      <const name="NO_TRANSLATION">Do not translate combobox strings or the drop-down menu to the user's native language.</const>
     </constants>
 
     <constants lookup="TIF" comment="MenuBar item flags.">
