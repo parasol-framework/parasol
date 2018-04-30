@@ -143,10 +143,8 @@ Disable: Turns the combobox off.
 static ERROR COMBOBOX_Disable(objComboBox *Self, APTR Void)
 {
    // See the ActionNotify routine to see what happens when the surface is disabled.
-
    LogAction(NULL);
-   acDisableID(Self->RegionID);
-   return ERR_Okay;
+   return acDisableID(Self->RegionID);
 }
 
 /*****************************************************************************
@@ -158,10 +156,8 @@ Enable: Turns the combobox back on if it has previously been disabled.
 static ERROR COMBOBOX_Enable(objComboBox *Self, APTR Void)
 {
    // See the ActionNotify routine to see what happens when the surface is enabled.
-
    LogAction(NULL);
-   acEnableID(Self->RegionID);
-   return ERR_Okay;
+   return acEnableID(Self->RegionID);
 }
 
 /*****************************************************************************
@@ -187,9 +183,7 @@ static ERROR COMBOBOX_Free(objComboBox *Self, APTR Void)
    if (Self->TextInput) { acFree(Self->TextInput); Self->TextInput = NULL; }
    if (Self->Menu)      { acFree(Self->Menu); Self->Menu = NULL; }
    if (Self->RegionID)  { acFreeID(Self->RegionID); Self->RegionID = 0; }
-
    gfxUnsubscribeInput(0);
-
    return ERR_Okay;
 }
 
@@ -201,8 +195,7 @@ Hide: Removes the combobox from the display.
 
 static ERROR COMBOBOX_Hide(objComboBox *Self, APTR Void)
 {
-   acHideID(Self->RegionID);
-   return ERR_Okay;
+   return acHideID(Self->RegionID);
 }
 
 //****************************************************************************
@@ -412,26 +405,24 @@ static ERROR COMBOBOX_Init(objComboBox *Self, APTR Void)
 
 /*****************************************************************************
 -ACTION-
-MoveToBack: Moves the combobox to the back of the display area.
+MoveToBack: Moves the combobox behind its siblings.
 -END-
 *****************************************************************************/
 
 static ERROR COMBOBOX_MoveToBack(objComboBox *Self, APTR Void)
 {
-   acMoveToBackID(Self->RegionID);
-   return ERR_Okay;
+   return acMoveToBackID(Self->RegionID);
 }
 
 /*****************************************************************************
 -ACTION-
-MoveToFront: Moves the combobox to the front of the display area.
+MoveToFront: Moves the combobox in front of its siblings.
 -END-
 *****************************************************************************/
 
 static ERROR COMBOBOX_MoveToFront(objComboBox *Self, APTR Void)
 {
-   acMoveToFrontID(Self->RegionID);
-   return ERR_Okay;
+   return acMoveToFrontID(Self->RegionID);
 }
 
 //****************************************************************************
@@ -517,8 +508,7 @@ SetVar: Arguments can be passed through to the combobox menu via unlisted fields
 
 static ERROR COMBOBOX_SetVar(objComboBox *Self, struct acSetVar *Args)
 {
-   Action(AC_SetVar, Self->Menu, Args);
-   return ERR_Okay;
+   return Action(AC_SetVar, Self->Menu, Args);
 }
 
 /*****************************************************************************
@@ -529,8 +519,7 @@ Show: Puts the combobox on display.
 
 static ERROR COMBOBOX_Show(objComboBox *Self, APTR Void)
 {
-   acShowID(Self->RegionID);
-   return ERR_Okay;
+   return acShowID(Self->RegionID);
 }
 
 /*****************************************************************************
@@ -629,7 +618,7 @@ static ERROR SET_Disable(objComboBox *Self, LONG Value)
 /*****************************************************************************
 
 -FIELD-
-Feedback: Provides instant feedback when a user interacts with the button.
+Feedback: Provides instant feedback when a user interacts with the Combobox.
 
 Set the Feedback field with a callback function in order to receive instant feedback when user interaction occurs.  The
 function prototype is `routine(*ComboBox)`
