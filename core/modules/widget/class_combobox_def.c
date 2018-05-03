@@ -14,7 +14,6 @@ static const struct FieldDef clComboBoxFlags[] = {
 static const struct ActionArray clComboBoxActions[] = {
    { AC_ActionNotify, (APTR)COMBOBOX_ActionNotify },
    { AC_Clear, (APTR)COMBOBOX_Clear },
-   { AC_DataFeed, (APTR)COMBOBOX_DataFeed },
    { AC_Disable, (APTR)COMBOBOX_Disable },
    { AC_Enable, (APTR)COMBOBOX_Enable },
    { AC_Focus, (APTR)COMBOBOX_Focus },

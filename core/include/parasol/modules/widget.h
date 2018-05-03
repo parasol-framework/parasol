@@ -773,6 +773,7 @@ typedef struct rkComboBox {
    LONG     LabelWidth;          // Width of the combobox label area
 
 #ifdef PRV_COMBOBOX
+   UBYTE Active:1;
    UBYTE  Label[48];       // Label
    FUNCTION Feedback;
   

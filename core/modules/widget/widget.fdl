@@ -817,6 +817,7 @@ module({ name="Widget", copyright="Paul Manias 2003-2018", version=1.0 }, functi
     int LabelWidth          # Width of the combobox label area
   ]],
   [[
+   UBYTE Active:1;
    UBYTE  Label[48];       // Label
    FUNCTION Feedback;
   ]])

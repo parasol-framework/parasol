@@ -132,6 +132,14 @@ local function createIcon(IconName, Viewport, ViewportSettings)
    return icon
 end
 
+local function getFontHeight(Font)
+   if not Font.height then
+      local fnt = obj.new('font', { face=Font.face })
+      Font.height = fnt.maxHeight
+   end
+   return Font.height
+end
+
 glColours = {
    button = {
       background = '230,230,230',
@@ -522,13 +530,205 @@ glStyles = {
    },
    combobox = {
       defaultValues = function(Combo)
-         Combo.border       = glColours.widget.border
-         Combo.buttonOffset = 2
-         Combo.font.colour  = glColours.widget.label
-         Combo.highlight    = glColours.widget.highlight
-         Combo.shadow       = glColours.widget.highlight
-         Combo.colour       = glColours.widget.background
-         Combo.textInput.colour = glColours.widget.text
+
+      end,
+      decoration = function(Combo, Surface)
+         local BKGD = 'rgb(0,0,0,64)'
+         local HIGHLIGHT = 'rgb(255,255,255,255)'
+         local STROKE_NO_FOCUS = 'rgb(255,255,255,60)'
+         local STROKE_HAS_FOCUS = 'rgb(255,255,255,90)'
+         local GAP = 5
+         local BORDER = 1
+         local MIN_MENU_WIDTH = 120
+         local MAX_MENU_WIDTH = 300
+         local lEntered = false
+         local lLabel, lIcon
+
+         // A fixed height based on the widget font must be applied
+
+         Surface.height = getFontHeight(glFonts.widget) * 1.3
+
+         local iconSize = Surface.height * 0.6
+
+         local menu = Combo.menu
+         local textInput = Combo.textInput
+
+         local lScene = obj.new('VectorScene', { name='ComboboxScene' })
+         local lViewport = lScene.new('VectorViewport', { })
+
+         if nz(Combo.label) then
+            lLabel = lViewport.new('VectorText', {
+               x      = 0,
+               face   = glFonts.widget.face,
+               fill   = 'rgb(0,0,0,255)',
+               string = Combo.label
+            })
+
+            if (Combo.labelWidth < 1) then
+               Combo.labelWidth = mFont.StringWidth(lLabel.font, Combo.label, -1) + 8
+            end
+         end
+
+         local lBkgd = lViewport.new('VectorRectangle', {
+            stroke = STROKE_NO_FOCUS,
+            strokeWidth = 2,
+            x      = Combo.labelWidth,
+            y      = 0,
+            width  = '100%',
+            roundX = 4,
+            roundY = 4,
+            height = '100%'
+         })
+
+         // Initialise the text area that the user will be able to interact with.
+
+         if bit.band(Combo.flags, CMF_EDIT) != 0 then
+            textInput.flags = TXF_EDIT
+         end
+
+         if bit.band(Combo.flags, CMF_NO_TRANSLATION) == 0 then
+            local str = textInput.string
+            local translate = mSys.strTranslateText(str)
+            if (translate != str) then
+               textInput = translate
+            end
+         end
+
+         menu.relative = Surface
+         menu.x        = Combo.labelWidth
+         menu.vSpacing = 4
+         menu.face     = Combo.font.face
+         menu.point    = Combo.font.point
+         local flags   = MNF_IGNORE_FOCUS
+         if bit.band(Combo.flags, CMF_NO_TRANSLATION) != 0 then flags = bit.bor(flags, MNF_NO_TRANSLATION) end
+         if bit.band(Combo.flags, CMF_SHOW_ICONS) != 0 then flags = bit.bor(flags, MNF_SHOW_IMAGES) end
+         menu.flags = flags
+         menu.lineLimit = 8
+
+         Combo.menu.subscribe('activate', function()
+            local item = Combo.menu.selection
+            if item then
+               if item.text != textInput.string then
+                  Combo.string = item.text
+                  Combo.acActivate()
+               end
+            else
+               error('No item selected.')
+            end
+         end)
+
+         // Compute the width of the combobox relative to the width of the drop-down menu.
+
+         if bit.band(Surface.dimensions, DMF_WIDTH) == 0 then
+            if (bit.band(Surface.dimensions, DMF_X) == 0) or
+               (bit.band(Surface.dimensions, DMF_X_OFFSET) == 0) then
+               local menuWidth = menu.width
+               if (menuWidth > MAX_MENU_WIDTH) then menuWidth = MAX_MENU_WIDTH end
+               if (Combo.labelWidth + menuWidth > MIN_MENU_WIDTH) then
+                  Surface.width = Combo.labelWidth + menuWidth + iconSize
+               else
+                  Surface.width = Combo.labelWidth + MIN_MENU_WIDTH + iconSize
+               end
+            end
+         end
+
+         // Place an icon for invoking the drop-down menu
+
+         catch(function()
+            local gap = ((Surface.height - iconSize) / 2)
+            local x = Surface.width - iconSize - gap
+            lIcon = createIcon('arrows/down', lViewport, {
+               x = x,
+               y = gap,
+               width  = iconSize,
+               height = iconSize
+            })
+            textInput.xOffset = Surface.width - x + gap
+         end,
+         function()
+            textInput.xOffset = BORDER
+         end)
+
+         // Subscribe the drawing routine prior to initialisation of the text widget.
+
+         Surface.mtAddCallback(function(Surface, Bitmap)
+            if Combo.entered then
+               if not (bit.band(Surface.flags, RNF_DISABLED) == RNF_DISABLED) then
+                  lBkgd.stroke = HIGHLIGHT
+                  lBkgd.fill = BKGD
+               else
+                  lBkgd.fill = BKGD
+               end
+            else
+               lBkgd.fill = BKGD
+            end
+
+            if bit.band(Surface.Flags, RNF_HAS_FOCUS) == RNF_HAS_FOCUS then
+               if bit.band(Surface.Flags, RNF_DISABLED) == 0 then
+                  lBkgd.stroke = STROKE_HAS_FOCUS
+               else
+                  lBkgd.stroke = STROKE_NO_FOCUS
+               end
+            else
+               lBkgd.stroke = STROKE_NO_FOCUS
+            end
+
+            if Combo.label then
+               lLabel.string = Combo.label
+               lLabel.y = (Surface.height / 2) + (lLabel.font.height / 2)
+               if bit.band(Surface.flags, RNF_DISABLED) == RNF_DISABLED then
+                  lLabel.opacity = 0.25
+               else
+                  lLabel.opacity = 1.0
+               end
+            end
+
+            if lIcon then
+               if Combo.value == 0 then
+                  lIcon.viewport.opacity = 0.25
+               else
+                  lIcon.viewport.opacity = 1.0
+               end
+            end
+
+            lScene.bitmap = Bitmap
+            lScene.pageWidth = Surface.width
+            lScene.pageHeight = Surface.height
+            lScene.acDraw()
+         end)
+
+         if Surface.acInit() != ERR_Okay then return ERR_Init end
+
+         textInput.face    = glFonts.widget.face
+         textInput.colour  = glColours.boxedFont
+         textInput.x       = Combo.labelWidth + BORDER
+         textInput.y       = BORDER
+         textInput.yOffset = BORDER
+         textInput.topMargin = 0
+         textInput.bottomMargin = 0
+
+         if textInput.acInit() != ERR_Okay then return ERR_Init end
+         if menu.acInit() != ERR_Okay then return ERR_Init end
+
+         menu.y = Surface.height - 1
+
+         input.subscribe(JTYPE_BUTTON, Surface, 0, function(Handler, Msg)
+            if (Msg.type == JET_LMB) and (Msg.value > 0) then
+               if (bit.band(Surface.flags, RNF_DISABLED) != RNF_DISABLED) and (Msg.x > Combo.labelWidth) then
+                  if (Msg.x > Surface.width - Surface.height) then
+                     // The button on the combobox has been pressed, so switch the menu visibility.
+                     // About 300ms must pass before a switch can occur.
+                     Combo.menu.mtSwitch(200)
+                  elseif (Msg.x >= Combo.labelWidth) then
+                     if bit.band(textInput.flags, TXF_EDIT) == 0 then
+                        Combo.menu.mtSwitch(5)
+                     end
+                  end
+               end
+            end
+         end)
+
+         lBkgd.width = Surface.width - Combo.labelWidth
       end
    },
    input = {

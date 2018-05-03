@@ -33,7 +33,6 @@ To make modifications to the menu after initialisation, read the #Menu field and
 #define PRV_COMBOBOX
 #include <parasol/modules/widget.h>
 #include <parasol/modules/document.h>
-#include <parasol/modules/picture.h>
 #include <parasol/modules/display.h>
 #include <parasol/modules/font.h>
 #include <parasol/modules/surface.h>
@@ -50,20 +49,7 @@ static ERROR COMBOBOX_ActionNotify(objComboBox *Self, struct acActionNotify *Arg
 {
    if (Args->Error != ERR_Okay) return ERR_Okay;
 
-   if ((Args->ActionID IS AC_Activate) AND (Args->ObjectID IS Self->Menu->Head.UniqueID)) {
-      objMenuItem *item;
-      STRING current;
-      if ((!GetPointer(Self->Menu, FID_Selection, &item)) AND (item)) {
-         if (GetString(Self->TextInput, FID_String, &current)) current = NULL;
-
-         if (StrMatch(item->Text, current) != ERR_Okay) {
-            SetString(Self, FID_String, item->Text);
-            acActivate(Self);
-         }
-      }
-      else LogErrorMsg("No item selected.");
-   }
-   else if (Args->ActionID IS AC_Redimension) {
+   if (Args->ActionID IS AC_Redimension) {
       struct acRedimension *redimension = (struct acRedimension *)Args->Args;
       SetLong(Self->Menu, FID_Width, F2T(redimension->Width) - Self->LabelWidth);
    }
@@ -171,15 +157,7 @@ static ERROR COMBOBOX_Init(objComboBox *Self, APTR Void)
       else return PostError(ERR_UnsupportedOwner);
    }
 
-   if (acInit(Self->Font) != ERR_Okay) return PostError(ERR_Init);
-
-   if ((Self->LabelWidth < 1) AND (Self->Label[0])) {  // Calculate the width of the text label, if there is one
-      Self->LabelWidth = fntStringWidth(Self->Font, Self->Label, -1) + 4;
-   }
-
    objSurface *region;
-   LONG region_height, region_width;
-   UBYTE calc_width = FALSE;
    if (!AccessObject(Self->RegionID, 5000, &region)) { // Initialise the combobox region
       SetFields(region, FID_Parent|TLONG, Self->SurfaceID,
                         FID_Region|TLONG, TRUE,
@@ -187,180 +165,28 @@ static ERROR COMBOBOX_Init(objComboBox *Self, APTR Void)
 
       region->Flags |= RNF_GRAB_FOCUS;
 
-      if (!(region->Dimensions & DMF_HEIGHT)) {
-         if ((!(region->Dimensions & DMF_Y)) OR (!(region->Dimensions & DMF_Y_OFFSET))) {
-            LONG h = Self->Font->MaxHeight + (Self->Thickness*2) + Self->TextInput->Layout->TopMargin +
-               Self->TextInput->Layout->BottomMargin;
-            SetLong(region, FID_Height, h);
-         }
-      }
-
-      if (!(region->Dimensions & DMF_WIDTH)) {
-         if ((!(region->Dimensions & DMF_X)) OR (!(region->Dimensions & DMF_X_OFFSET))) {
-            calc_width = TRUE;
-         }
-      }
-
-      if (!acInit(region)) {
-         SubscribeActionTags(region,
-            AC_Disable,
-            AC_Enable,
-            AC_LostFocus,
-            AC_Redimension,
-            TAGEND);
-
-         region_width  = region->Width;
-         region_height = region->Height;
-      }
-      else {
+      // NB: The styling code will initialise the region.
+      if (drwApplyStyleGraphics(Self, Self->RegionID, NULL, NULL)) {
          ReleaseObject(region);
-         return PostError(ERR_Init);
+         return ERR_Failed; // Graphics styling is required.
       }
 
+      SubscribeActionTags(region,
+         AC_Disable,
+         AC_Enable,
+         AC_LostFocus,
+         AC_Redimension,
+         TAGEND);
       ReleaseObject(region);
    }
    else return PostError(ERR_AccessObject);
 
-   // Initialise the text area that the user will be able to interact with.
-
-   LONG flags = 0;
-   if (Self->Flags & CMF_EDIT) flags |= TXF_EDIT;
-
-   SetFields(Self->TextInput,
-      FID_Flags|TLONG,   flags,
-      FID_Face|TSTR,     Self->Font->Face,
-      FID_Point|TDOUBLE, (DOUBLE)Self->Font->Point,
-      FID_X|TLONG,       Self->LabelWidth + Self->Thickness,
-      FID_Y|TLONG,       Self->Thickness,
-      FID_XOffset|TLONG, Self->Thickness,
-      FID_YOffset|TLONG, Self->Thickness,
-      FID_TopMargin|TLONG,    0,
-      FID_BottomMargin|TLONG, 0,
-      TAGEND);
+   if (!(Self->Flags & CMF_HIDE)) acShow(Self);
 
    SetFunctionPtr(Self->TextInput, FID_ValidateInput, &text_validation);
    SetFunctionPtr(Self->TextInput, FID_Activated, &text_activated);
 
-   if (!(Self->Flags & CMF_NO_TRANSLATION)) {
-      STRING str;
-      GetString(Self->TextInput, FID_String, &str);
-
-      CSTRING translate;
-      if ((translate = StrTranslateText(str)) != str) {
-         SetString(Self->TextInput, FID_String, translate);
-      }
-   }
-
-   SetFields(Self->Menu,
-      FID_Relative|TLONG,  Self->RegionID,
-      FID_X|TLONG,         Self->LabelWidth,
-      FID_Y|TLONG,         region_height - 1,
-      FID_VSpacing|TLONG,  4,
-      FID_Face|TSTR,       Self->Font->Face,
-      FID_Point|TDOUBLE,   Self->Font->Point,
-      FID_Flags|TLONG,     MNF_IGNORE_FOCUS |
-                           ((Self->Flags & CMF_NO_TRANSLATION) ? MNF_NO_TRANSLATION : 0) |
-                           ((Self->Flags & CMF_SHOW_ICONS) ? MNF_SHOW_IMAGES : 0),
-      FID_LineLimit|TLONG, 8,
-      TAGEND);
-
-   SubscribeAction(Self->Menu, AC_Activate);
-
-   if (!calc_width) SetLong(Self->Menu, FID_Width, region_width - Self->LabelWidth);
-
-   if (!drwApplyStyleGraphics(Self, Self->RegionID, NULL, NULL)) {
-      Self->Flags |= CMF_NO_BKGD;
-
-      if (!Self->ButtonID) { // Scan for a button object
-         struct ChildEntry list[16];
-         LONG count = ARRAYSIZE(list);
-         if (!ListChildren(Self->RegionID, list, &count)) {
-            WORD i;
-            for (i=0; i < count; i++) {
-               if (list[i].ClassID IS ID_BUTTON) {
-                  Self->ButtonID = list[i].ObjectID;
-                  break;
-               }
-            }
-         }
-      }
-   }
-
-   if (!AccessObject(Self->RegionID, 5000, &region)) {
-      drwAddCallback(region, &draw_combobox);
-      ReleaseObject(region);
-   }
-   else return ERR_AccessObject;
-
-   if (acInit(Self->TextInput)) return ERR_Init;
-   if (acInit(Self->Menu)) return ERR_Init;
-
-   ERROR error = ERR_Okay;
-   if (Self->ButtonID) {
-      // Sometimes a button can be user-defined through the graphics script (the developer simply sets the button field
-      // with a valid object.  The object in question does not necessarily have to be a true button - it can be
-      // anything - although it is typically best for it to be a true Button object.
-
-      OBJECTPTR button;
-      if (!AccessObject(Self->ButtonID, 4000, &button)) {
-         SubscribeActionTags(button, AC_Activate, TAGEND);
-         ReleaseObject(button);
-      }
-   }
-   else {
-      objSurface *button;
-      if (!NewLockedObject(ID_SURFACE, 0, &button, &Self->ButtonID)) {
-         SetFields(button,
-            FID_Owner|TLONG,   Self->RegionID,
-            FID_XOffset|TLONG, 0,
-            FID_Y|TLONG,       0,
-            FID_YOffset|TLONG, 0,
-            FID_Width|TLONG,   region_height,
-            TAGEND);
-
-         if (!acInit(button)) {
-            gfxSubscribeInput(Self->ButtonID, JTYPE_BUTTON, 0);
-
-            char icon[40];
-            StrFormat(icon, sizeof(icon), "icons:arrows/down(%d)", (LONG)((DOUBLE)region_height * 0.6));
-            if (!CreateObject(ID_IMAGE, 0, NULL,
-                  FID_Owner|TLONG,     Self->ButtonID,
-                  FID_Align|TLONG,     ALIGN_CENTER,
-                  FID_IconFilter|TSTR, "pearl",
-                  FID_Path|TSTR,       icon,
-                  TAGEND)) {
-               acShow(button);
-               error = ERR_Okay;
-            }
-            else error = ERR_CreateObject;
-         }
-         else error = ERR_Init;
-
-         ReleaseObject(button);
-      }
-      else error = ERR_CreateObject;
-   }
-
-   if (!error) {
-      if (calc_width) {
-         objSurface *region;
-         if (!AccessObject(Self->RegionID, 3000, &region)) {
-            LONG menuwidth;
-            GetLong(Self->Menu, FID_Width, &menuwidth);
-            menuwidth += region->Height + 4;
-            if (menuwidth > 200) menuwidth = 200;
-            if (Self->LabelWidth + menuwidth > MIN_MENU_WIDTH) {
-               SetLong(region, FID_Width, Self->LabelWidth + menuwidth);
-            }
-            else SetLong(region, FID_Width, Self->LabelWidth + MIN_MENU_WIDTH);
-            ReleaseObject(region);
-         }
-      }
-
-      if (!(Self->Flags & CMF_HIDE)) acShow(Self);
-   }
-
-   return error;
+   return ERR_Okay;
 }
 
 /*****************************************************************************
@@ -804,8 +630,8 @@ The text object that is referenced here manages the display and editing of text 
 Characteristics of the text object can be defined prior to initialisation, although we recommend that this be done from
 the combobox style definition.
 
-The face and point size of the text is derived from the #Font field on initialisation and therefore cannot be
-changed through the TextInput object directly.
+The face and point size of the text is set by the widget styling code and therefore cannot be changed through the
+TextInput object directly.
 
 -FIELD-
 Width: Defines the width of a combobox.
@@ -1006,9 +832,6 @@ static ERROR SET_YOffset(objComboBox *Self, struct Variable *Value)
    }
    else return ERR_AccessObject;
 }
-
-//****************************************************************************
-
 
 //**********************************************************************
 // This callback is triggered when the user moves focus away from the text widget.

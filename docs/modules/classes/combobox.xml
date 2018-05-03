@@ -52,12 +52,12 @@
 
     <action>
       <name>MoveToBack</name>
-      <comment>Moves the combobox to the back of the display area.</comment>
+      <comment>Moves the combobox behind its siblings.</comment>
     </action>
 
     <action>
       <name>MoveToFront</name>
-      <comment>Moves the combobox to the front of the display area.</comment>
+      <comment>Moves the combobox in front of its siblings.</comment>
     </action>
 
     <action>
@@ -98,12 +98,6 @@
       <comment>The bottom coordinate of the combobox (Y + Height).</comment>
       <access read="G">Get</access>
       <type>INT</type>
-    </field>
-
-    <field>
-      <name>Button</name>
-      <access read="R" write="I">Read/Init</access>
-      <type>OBJECTID</type>
     </field>
 
     <field>

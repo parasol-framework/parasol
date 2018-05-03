@@ -7,7 +7,6 @@ A demonstration of standard widgets
    local y = win.topMargin
 
    local text = win.new('text', { x=win.leftMargin, y=y, string='Text Widget', face='Open Sans:20' })
-
    y = y + text.textHeight + 8
 
    local button = win.new('button', { text='Button', x=win.leftMargin, y=y, icon='items/star',
@@ -20,6 +19,8 @@ A demonstration of standard widgets
    local checkbox = win.new('checkbox', { label='Checkbox', x=win.leftMargin, y=y })
    y = y + checkbox.height + 8
 
+   local combobox = win.new('combobox', { label='Combobox', x=win.leftMargin, y=y, string='Your text here' })
+   y = y + combobox.height + 8
 
    win.acShow()
 
