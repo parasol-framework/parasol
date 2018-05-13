@@ -7,7 +7,7 @@ CATEGORY= gui
 DEST=     $(PARASOL_MODULE)
 HEADER=    ../../include/parasol/modules/$(NAME).h
 SOURCES = widget.c class_button.c class_checkbox.c class_resize.c class_scrollbar.c class_dialog.c \
-          class_combobox.c class_tabfocus.c class_input.c class_scroll.c class_menubar.c class_image.c \
+          class_combobox.c class_tabfocus.c class_input.c class_scroll.c class_image.c \
           class_text/text.c class_menu/menu.c class_view/view.c class_clipboard.c class_fileview/fileview.c
 OBJECTS := $(addprefix obj/$(PLATFORM)/,$(subst .c,.o,$(SOURCES)))
 CFLAGS += -DMOD_NAME=$(NAME)
