@@ -118,6 +118,7 @@ static LRESULT CALLBACK WindowProcedure(HWND, UINT, WPARAM, LPARAM);
 static HWND glMainScreen = 0;
 static char glCursorEntry = FALSE;
 static HCURSOR glDefaultCursor = 0;
+static HWND glDeferredActiveWindow = 0;
 char glTrayIcon = FALSE, glTaskBar = TRUE, glStickToFront = FALSE;
 struct WinCursor *glCursors = 0;
 HCURSOR glCurrentCursor = 0;
@@ -159,12 +160,12 @@ static struct {
  { WM_MDIICONARRANGE, "WM_MDIICONARRANGE" }, { WM_MDIMAXIMIZE, "WM_MDIMAXIMIZE" }, { WM_MDINEXT, "WM_MDINEXT" }, { WM_MDIREFRESHMENU, "WM_MDIREFRESHMENU" }, { WM_MDIRESTORE, "WM_MDIRESTORE" },
  { WM_MDISETMENU, "WM_MDISETMENU" }, { WM_MDITILE, "WM_MDITILE" }, { WM_MEASUREITEM, "WM_MEASUREITEM" }, { WM_UNINITMENUPOPUP, "WM_UNINITMENUPOPUP" },
  { WM_MENURBUTTONUP, "WM_MENURBUTTONUP" }, { WM_MENUCOMMAND, "WM_MENUCOMMAND" }, { WM_MENUGETOBJECT, "WM_MENUGETOBJECT" }, { WM_MENUDRAG, "WM_MENUDRAG" },
- { WM_MENUCHAR, "WM_MENUCHAR" }, { WM_MENUSELECT, "WM_MENUSELECT" }, { WM_NEXTMENU, "WM_NEXTMENU" },
+ { WM_MENUCHAR, "WM_MENUCHAR" }, { WM_MENUSELECT, "WM_MENUSELECT" }, { WM_NEXTMENU, "WM_NEXTMENU" }, { WM_SHOWWINDOW, "WM_SHOWWINDOW" },
  { WM_MOVING, "WM_MOVING" }, { WM_NCACTIVATE, "WM_NCACTIVATE" }, { WM_NCCALCSIZE, "WM_NCCALCSIZE" }, { WM_NCCREATE, "WM_NCCREATE" },
- { WM_NCDESTROY, "WM_NCDESTROY" },
+ { WM_NCDESTROY, "WM_NCDESTROY" }, { WM_WINDOWPOSCHANGING, "WM_WINDOWPOSCHANGING" }, { WM_WINDOWPOSCHANGED, "WM_WINDOWPOSCHANGED" },
  { WM_NCLBUTTONUP, "WM_NCLBUTTONUP" }, { WM_NCMBUTTONDBLCLK, "WM_NCMBUTTONDBLCLK" }, { WM_NCMBUTTONDOWN, "WM_NCMBUTTONDOWN" }, { WM_NCMBUTTONUP, "WM_NCMBUTTONUP" },
  { WM_NCXBUTTONDOWN, "WM_NCXBUTTONDOWN" }, { WM_NCXBUTTONUP, "WM_NCXBUTTONUP" }, { WM_NCXBUTTONDBLCLK, "WM_NCXBUTTONDBLCLK" },
- { WM_NCPAINT, "WM_NCPAINT" }, { WM_NCRBUTTONDBLCLK, "WM_NCRBUTTONDBLCLK" },
+ { WM_NCPAINT, "WM_NCPAINT" }, { WM_NCRBUTTONDBLCLK, "WM_NCRBUTTONDBLCLK" }, { WM_SYSCOMMAND, "WM_SYSCOMMAND" }, { WM_GETMINMAXINFO, "WM_GETMINMAXINFO" },
  { WM_NCRBUTTONDOWN, "WM_NCRBUTTONDOWN" }, { WM_NCRBUTTONUP, "WM_NCRBUTTONUP" }, { WM_NEXTDLGCTL, "WM_NEXTDLGCTL" }, { WM_NEXTMENU, "WM_NEXTMENU" }, { WM_NOTIFY, "WM_NOTIFY" }, { WM_NOTIFYFORMAT, "WM_NOTIFYFORMAT" },
  { WM_NULL, "WM_NULL" }, { WM_PAINT, "WM_PAINT" }, { WM_PAINTCLIPBOARD, "WM_PAINTCLIPBOARD" }, { WM_PAINTICON, "WM_PAINTICON" }, { WM_PALETTECHANGED, "WM_PALETTECHANGED" }, { WM_PALETTEISCHANGING, "WM_PALETTEISCHANGING" },
  { WM_PARENTNOTIFY, "WM_PARENTNOTIFY" }, { WM_PASTE, "WM_PASTE" }, { WM_PENWINFIRST, "WM_PENWINFIRST" }, { WM_PENWINLAST, "WM_PENWINLAST" },
@@ -766,13 +767,13 @@ static LRESULT CALLBACK WindowProcedure(HWND window, UINT msgcode, WPARAM wParam
    int i;
    for (i=0; wincmd[i].code; i++) {
       if (msgcode IS wincmd[i].code) {
-         fprintf(stderr, "WinProc: %s, $%.8x, $%.8x\n", wincmd[i].name, wParam, (int)lParam);
+         fprintf(stderr, "WinProc: %s, $%.8x, $%.8x, Window: %p\n", wincmd[i].name, wParam, (int)lParam, window);
          break;
       }
    }
 
    if (!wincmd[i].code) {
-      fprintf(stderr, "WinProc: %d, $%.8x, $%.8x\n", msgcode, wParam, (int)lParam);
+      fprintf(stderr, "WinProc: %d, $%.8x, $%.8x, Window: %p\n", msgcode, wParam, (int)lParam, window);
    }
 #endif
 
@@ -797,18 +798,33 @@ static LRESULT CALLBACK WindowProcedure(HWND window, UINT msgcode, WPARAM wParam
       case WM_CREATE:
          return DefWindowProc(window, msgcode, wParam, lParam);
 
-      case WM_NCACTIVATE:
+      case WM_NCACTIVATE: // "Sent to a window when its nonclient area needs to be changed to indicate an active or inactive state."
          // When a window is about to be activated, we have the opportunity to prevent that activation.  We'll do this
          // if the surface is marked as non-interactive (e.g. a menu, which will prevent the main window from dropping its focus).
          //
          // lParam = The window that is going to be activated.  This will be 0 if the window belongs to some other task.
 
          if ((!lParam) OR (GetWindowLong((HWND)lParam, WE_INTERACTIVE) IS TRUE)) {
+            MSG("WM_NCACTIVATE: Allow activation of window %p\n", (HWND)lParam);
+            glDeferredActiveWindow = 0;
             return DefWindowProc(window, msgcode, wParam, lParam);
          }
          else { // Tell windows to avoid activating this window
+            MSG("WM_NCACTIVATE: Do not activate window %p\n", (HWND)lParam);
+            glDeferredActiveWindow = (HWND)lParam;
             return FALSE;
          }
+
+      case WM_SYSCOMMAND:
+         // If a popup window is active in our application and the user interacts with the main window menu
+         // bar, no defocus event is sent for the popup window because the focus lies with the main window.
+         // This little hack ensures that the popup window refers a lost-focus event.
+
+         if (glDeferredActiveWindow) {
+            MsgFocusState(winLookupSurfaceID(glDeferredActiveWindow), FALSE);
+            glDeferredActiveWindow = 0;
+         }
+         return DefWindowProc(window, msgcode, wParam, lParam);
 
       case WM_ACTIVATE:
          //HWND otherwindow = lParam;
@@ -1299,7 +1315,8 @@ int winShowWindow(HWND window, int Maximise)
    int result;
 
    if (GetWindowLong(window, WE_BORDERLESS) IS TRUE) {
-      // Raw surfaces (composites, borderless windows etc) do not get the focus automatically.  This mirrors the functionality within the Parasol desktop.
+      // Raw surfaces (composites, borderless windows etc) do not get the focus automatically.
+      // This mirrors the functionality within the Parasol desktop.
 
       result = ShowWindow(window, Maximise ? SW_SHOWMAXIMIZED : SW_SHOWNOACTIVATE);
    }
