@@ -207,7 +207,7 @@ gui.icon = function(Options)
          roundX = 5,
          roundY = 5,
          width  = lIconSize - 1.0,
-         height = box_height,
+         height = box_height
       })
 
       for _, line in ipairs(lLines) do
