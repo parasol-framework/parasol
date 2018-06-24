@@ -999,6 +999,10 @@ static LRESULT CALLBACK WindowProcedure(HWND window, UINT msgcode, WPARAM wParam
          }
          break;
 
+      //case WM_CAPTURECHANGED:
+         // Sent to the window that is losing the mouse capture, refers to the window gaining the capture.
+         // return 0;
+
       case WM_CLOSE: MsgWindowClose(winLookupSurfaceID(window));
                      return 0;
 
