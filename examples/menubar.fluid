@@ -1,0 +1,82 @@
+--[[
+
+--]]
+
+   require 'gui/menubar'
+
+   local win  = obj.new("window", { title="Example Menubar", insideWidth=600, insideHeight=260 })
+
+// This callback is activated whenever a menu is activated by the user.
+
+function menuCallback(ID, Name)
+   print('Callback: ' .. ID .. ', ' .. Name)
+end
+
+function itemClicked(Menu, Item)
+end
+
+// This is a universal callback for any menu item that is activated by the user.
+
+function popupClicked(Menu, Item)
+   print(Item.item)
+end
+
+   local menubar = gui.menubar(win.surface, {
+      createItems = function(Bar)
+         Bar.addItem(1, 'File', 'devices/harddisk', menuCallback, {
+            { item='New File', icon='items/file_new', qualifier='CTRL', key='N', feedback=itemClicked },
+            { item='Open File', icon='office/documents', qualifier='CTRL', key='O', feedback=itemClicked },
+            { item='Reload Document', icon='items/reload', key='F5', feedback=itemClicked },
+            { item='Save File', icon='items/file_save', qualifier='CTRL', key='S', feedback=itemClicked }
+         })
+         Bar.addItem(2, 'Edit', 'tools/edit', menuCallback, {
+            { item='Undo', icon='items/undo', qualifier='CTRL', key='Z', feedback=itemClicked },
+            { item='Redo', icon='items/redo', qualifier='CTRL', key='Y', feedback=itemClicked },
+            { menu={ text='Clipboard', icon='items/clipboard',
+                items={
+                  { item='Cut', icon='tools/cut', qualifier='CTRL', key='X', feedback=itemClicked },
+                  { item='Copy', icon='tools/copy', qualifier='CTRL', key='C', feedback=itemClicked },
+                  { item='Paste', icon='tools/paste', qualifier='CTRL', key='V', feedback=itemClicked }
+                }
+              }
+            }
+         })
+         Bar.addItem(3, 'Search', 'tools/magnifier', menuCallback, {})
+         Bar.addItem(4, 'View', 'page/page', menuCallback, {})
+         Bar.addItem(5, 'Tools', 'tools/wizard', menuCallback, {})
+         Bar.addItem(6, 'Help', 'items/help', menuCallback, {})
+      end
+   })
+
+   local popupMenu = gui.menu({
+      x = 30,
+      y = 50,
+      popup = true,
+      config = {
+         { group='Files' },
+         { item='New File', icon='items/file_new', qualifier='CTRL', key='N', feedback=popupClicked },
+         { item='Open File', icon='office/documents', qualifier='CTRL', key='O', feedback=popupClicked },
+         { item='Reload Document', icon='items/reload', key='F5', feedback=popupClicked },
+         { item='Save File', icon='items/file_save', qualifier='CTRL', key='S', feedback=popupClicked },
+         { group='Print' },
+         { item='Print', icon='devices/printer', qualifier='CTRL', key='P', feedback=popupClicked },
+         { group='Quit' },
+         { item='Quit', icon='items/quit', qualifier='CTRL', key='Q', feedback=popupClicked }
+      }
+   })
+
+   input.subscribe(JTYPE_BUTTON, win.surface, 0, function(Surface, Msg)
+      if (Msg.type == JET_BUTTON_2) then
+         if (Msg.value > 0) then
+         else
+            popupMenu.show()
+
+         end
+      end
+   end)
+
+
+   win.acShow()
+
+   processMessages(-1) // Will sleep until the window close widget sends MSGID_QUIT
+
