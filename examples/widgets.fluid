@@ -5,6 +5,7 @@ A demonstration of standard widgets
    require 'gui/toolbar'
    require 'gui/menubar'
    require 'gui/colourdialog'
+   require 'gui/fontdialog'
 
    local win  = obj.new('window', { title='Widget Examples', insideWidth=600, insideHeight=400 })
 
@@ -113,14 +114,14 @@ end
    local text = win.new('text', { x=win.leftMargin, y=y, string='Text Widget', face='Open Sans:20' })
    y = y + text.textHeight + 8
 
-   local msgButton = win.new('button', { text='Message Box', x=win.leftMargin, y=y, icon='items/star',
+   local msgButton = win.new('button', { text='Message Box', x=win.leftMargin, y=y, icon='items/question',
       feedback = function()
          // Demonstration of the dialog box
       end
    })
 
-   local colourButton = win.new('button', { text='Select Colour', x=msgButton.right + 4, y=y, icon='items/star',
-      feedback   = function()
+   local colourButton = win.new('button', { text='Select Colour', x=msgButton.right + 4, y=y, icon='tools/palette',
+      feedback = function()
          gui.dialog.colour({
             modal = true,
             colour = '255,0,0',
@@ -131,6 +132,24 @@ end
                end
 
                print('The user selected colour is ' .. Colour)
+            end
+         })
+      end
+   })
+
+   local fontButton = win.new('button', { text='Select Font', x=colourButton.right + 4, y=y, icon='items/font',
+      feedback = function()
+         gui.dialog.font({
+            okText     = 'Select Font',
+            cancelText = 'Exit',
+            modal      = true,
+            feedback = function(Dialog, Accepted)
+               if (not Accepted) then
+                  print('Dialog was cancelled.')
+               else
+                  print("The user selected '" .. Dialog.face .. "', size " .. Dialog.size .. ", style '" .. Dialog.style .. "'")
+                  print("This can be compacted to '" .. Dialog.compactFace .. "'")
+               end
             end
          })
       end
