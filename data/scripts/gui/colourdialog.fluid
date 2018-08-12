@@ -5,6 +5,7 @@ user selects a colour, or cancels the dialog window.
 
 To create a dialog box:
 
+   require 'gui/colourdialog'
    gui.dialog.colour({ Options... })
 
 If the dialog box is modal, the call will not return until the user has responded to the dialog.

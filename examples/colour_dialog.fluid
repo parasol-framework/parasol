@@ -1,20 +1,20 @@
 
-   require "gui/colourdialog"
+   require 'gui/colourdialog'
 
-   mSys = mod.load("core")
+   mSys = mod.load('core')
 
    gui.dialog.colour({
       modal = true,
-      colour = "255,0,0",
+      colour = '255,0,0',
       feedback = function(Colour)
          mSys.SendMessage(0, MSGID_QUIT)
 
          if (not Colour) then
-            print("Dialog was cancelled.")
+            print('Dialog was cancelled.')
             return
          end
 
-         print("The user selected colour is " .. Colour)
+         print('The user selected colour is ' .. Colour)
       end
    })
 
