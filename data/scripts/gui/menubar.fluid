@@ -379,6 +379,7 @@ gui.menubar = function(Target, Options)
                   lClickX  = Msg.x
                   lClickY  = Msg.y
                   hoverUpdate(lCurrentItem, true)
+                  activateItem()
                end
             end
          elseif (Msg.type == JET_BUTTON_1) then
@@ -386,15 +387,6 @@ gui.menubar = function(Target, Options)
                lClicked = nil
 
                hoverUpdate(lCurrentItem, true)
-
-               local delta_x = Msg.x - lClickX
-               local delta_y = Msg.y - lClickY
-               if (delta_x < 0) then delta_x = -delta_x end
-               if (delta_y < 0) then delta_y = -delta_y end
-
-               if (delta_x < 4) and (delta_y < 4) then
-                  activateItem()
-               end
             end
          end
       end
