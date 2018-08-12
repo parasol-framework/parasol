@@ -641,11 +641,11 @@ gui.toolbar = function(Target, Options)
          resetTipTimer()
       end)
 
-      //self.surface.subscribe('redimension', function(Surface, Args)
-      //   lSurfaceWidth  = Surface.width
-      //   lSurfaceHeight = Surface.height
+      self.surface.subscribe('redimension', function(Surface, Args)
+         lSurfaceWidth  = Surface.width
+         lSurfaceHeight = Surface.height
       //   arrangeItems()
-      //end)
+      end)
 
       self.surface.subscribe('focus', function(Surface, Args)
          self.surface.acDraw()

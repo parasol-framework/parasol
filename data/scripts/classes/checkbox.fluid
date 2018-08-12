@@ -108,7 +108,7 @@ do
             end
          end
 
-         bkgd_colour = Bitmap.mtGetColour(colour.r, colour.g, colour.b, 255)
+         local bkgd_colour = Bitmap.mtGetColour(colour.r, colour.g, colour.b, 255)
 
          if bit.band(Self.align, ALIGN_RIGHT) then
             chkx = Surface.width - Surface.height
