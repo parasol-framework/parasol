@@ -343,19 +343,6 @@ module({ name="Widget", copyright="Paul Manias 2003-2018", version=1.0 }, functi
     "CHILD_FOCUS: In this mode, the user's point of focus must match the monitored Surface or one of its immediate children for the tabfocus to function.",
     "LIMIT_TO_LIST: In limit-to-list mode, the tabfocus only functions if the user's point of focus is on the monitored Surface or one of objects in the tab list.")
 
-  flags("MHG", { comment="Menubar highlighting flags." },
-    "TEXT: Highlights the menu item text using the highlight colour.",
-    "BORDER: Draws a border around the menu item using the default highlight colour.",
-    "LIGHT_BKGD: Lightens the background behind the menu item.",
-    "DARK_BKGD: Darkens the background behind the menu item.",
-    "RAISED: Draws a raised border around the item using the highlight and shadow colours.",
-    "SUNKEN: Draws a sunken border around the item using the highlight and shadow colours.")
-
-  flags("MBF", { comment="Menubar flags." },
-    "HIDE: Hide on creation, or menubar is currently hidden.",
-    "DISABLED: Disable on creation.  Automatically switched by the Disable and Enable actions.",
-    "BREAK: Draw a break-line at the bottom of the menubar.")
-
   flags("SCF", { comment="Scroll flags." },
     "AUTO_HIDE: Automatically hide the scrollbar when possible.",
     "HORIZONTAL: The scrollbar is oriented horizontally.",
@@ -530,57 +517,6 @@ module({ name="Widget", copyright="Paul Manias 2003-2018", version=1.0 }, functi
    WORD   Opacity;
    UBYTE  IconFilter[24];
    UBYTE  IconTheme[24];
-  ]])
-
-  flags("TIF", { comment="MenuBar item flags." },
-    "DISABLED: Item is disabled.",
-    "STATEMENT: The script reference is a statement string.",
-    "FOCUS: Item has the user focus.")
-
-  struct("MenubarItem", { }, [[
-   char(28) Name
-   char(28) Translation
-   obj(Picture) Picture
-   obj(Menu) Menu
-   int  X
-   int  Width
-   char(TIF) Flags
-  ]])
-
-  methods("MenuBar", "Mb", {
-    { id=1, name="AddMenu" },
-    { id=2, name="RemoveMenu" },
-    { id=3, name="DisableMenu" },
-    { id=4, name="EnableMenu" },
-    { id=5, name="ReplaceMenu" },
-    { id=6, name="GetMenu" }
-  })
-
-  class("MenuBar", { src="class_menubar.c", output="class_menubar_def.c" }, [[
-    oid Region       # Surface region created by the menubar object
-    oid Surface      # The surface target for the menubar graphic
-    oid Target       # Target surface for menus
-    int(MBF) Flags   # Special options
-    obj(Font) Font   # Font control object
-    int Total        # Total number of items
-    int(MHG) HighlightFlags  # Item highlighting flags
-    int LeftMargin   # Left hand margin for text
-    int RightMargin  # Right hand margin for text
-    int Gap          # Amount of space between menu items
-    int TopMargin    # Top margin for graphics
-    int BottomMargin # Bottom margin for graphics
-    struct(RGB8) Highlight # Colour to use for highlighting
-    struct(RGB8) Shadow    # Colour to use for shadowing
-  ]],
-  [[
-   struct rkXML  *XML;
-   struct rkMenu *LastMenu;
-   struct KeyStore *Keys;
-   FUNCTION ItemFeedback;
-   STRING Path;
-   STRING MenuStyle;
-   LONG   Index;        // Index of the menubar item that is currently selected
-   struct MenubarItem Items[20];
   ]])
 
   class("Scrollbar", { src="class_scrollbar.c", output="class_scrollbar_def.c" }, [[

@@ -43,6 +43,9 @@ static void clear_subscriptions(objScript *Self)
 // exception containing a readable string for the error code.  It is most powerful when used in conjunction with
 // the catch() function, which will apply the line number of the exception to the result.  The error code will
 // also be propogated to the Script object's Error field.
+//
+// This function also serves a dual purpose in that it can be used to raise exceptions when an error condition needs to
+// be propogated.
 
 static int fcmd_check(lua_State *Lua)
 {

@@ -86,21 +86,6 @@
 #define TF_CHILD_FOCUS 0x00000002
 #define TF_LIMIT_TO_LIST 0x00000004
 
-// Menubar highlighting flags.
-
-#define MHG_TEXT 0x00000001
-#define MHG_BORDER 0x00000002
-#define MHG_LIGHT_BKGD 0x00000004
-#define MHG_DARK_BKGD 0x00000008
-#define MHG_RAISED 0x00000010
-#define MHG_SUNKEN 0x00000020
-
-// Menubar flags.
-
-#define MBF_HIDE 0x00000001
-#define MBF_DISABLED 0x00000002
-#define MBF_BREAK 0x00000004
-
 // Scroll flags.
 
 #define SCF_AUTO_HIDE 0x00000001
@@ -298,107 +283,6 @@ typedef struct rkImage {
   
 #endif
 } objImage;
-
-// MenuBar item flags.
-
-#define TIF_DISABLED 0x00000001
-#define TIF_STATEMENT 0x00000002
-#define TIF_FOCUS 0x00000004
-
-struct MenubarItem {
-   char Name[28];
-   char Translation[28];
-   struct rkPicture * Picture;
-   struct rkMenu * Menu;
-   LONG X;
-   LONG Width;
-   BYTE Flags;
-};
-
-// MenuBar class definition
-
-#define VER_MENUBAR (1.000000)
-
-typedef struct rkMenuBar {
-   OBJECT_HEADER
-   OBJECTID RegionID;       // Surface region created by the menubar object
-   OBJECTID SurfaceID;      // The surface target for the menubar graphic
-   OBJECTID TargetID;       // Target surface for menus
-   LONG     Flags;          // Special options
-   struct rkFont * Font;    // Font control object
-   LONG     Total;          // Total number of items
-   LONG     HighlightFlags; // Item highlighting flags
-   LONG     LeftMargin;     // Left hand margin for text
-   LONG     RightMargin;    // Right hand margin for text
-   LONG     Gap;            // Amount of space between menu items
-   LONG     TopMargin;      // Top margin for graphics
-   LONG     BottomMargin;   // Bottom margin for graphics
-   struct RGB8 Highlight;   // Colour to use for highlighting
-   struct RGB8 Shadow;      // Colour to use for shadowing
-
-#ifdef PRV_MENUBAR
-   struct rkXML  *XML;
-   struct rkMenu *LastMenu;
-   struct KeyStore *Keys;
-   FUNCTION ItemFeedback;
-   STRING Path;
-   STRING MenuStyle;
-   LONG   Index;        // Index of the menubar item that is currently selected
-   struct MenubarItem Items[20];
-  
-#endif
-} objMenuBar;
-
-// MenuBar methods
-
-#define MT_MbAddMenu -1
-#define MT_MbRemoveMenu -2
-#define MT_MbDisableMenu -3
-#define MT_MbEnableMenu -4
-#define MT_MbReplaceMenu -5
-#define MT_MbGetMenu -6
-
-struct mbAddMenu { CSTRING Name; CSTRING Icon; CSTRING Script; struct rkMenu * Menu;  };
-struct mbRemoveMenu { CSTRING Name;  };
-struct mbDisableMenu { CSTRING Name;  };
-struct mbEnableMenu { CSTRING Name;  };
-struct mbReplaceMenu { CSTRING Name; CSTRING Icon; CSTRING Script;  };
-struct mbGetMenu { CSTRING Name; struct rkMenu * Menu;  };
-
-INLINE ERROR mbAddMenu(APTR Ob, CSTRING Name, CSTRING Icon, CSTRING Script, struct rkMenu ** Menu) {
-   struct mbAddMenu args = { Name, Icon, Script, 0 };
-   ERROR error = Action(MT_MbAddMenu, Ob, &args);
-   if (Menu) *Menu = args.Menu;
-   return(error);
-}
-
-INLINE ERROR mbRemoveMenu(APTR Ob, CSTRING Name) {
-   struct mbRemoveMenu args = { Name };
-   return(Action(MT_MbRemoveMenu, Ob, &args));
-}
-
-INLINE ERROR mbDisableMenu(APTR Ob, CSTRING Name) {
-   struct mbDisableMenu args = { Name };
-   return(Action(MT_MbDisableMenu, Ob, &args));
-}
-
-INLINE ERROR mbEnableMenu(APTR Ob, CSTRING Name) {
-   struct mbEnableMenu args = { Name };
-   return(Action(MT_MbEnableMenu, Ob, &args));
-}
-
-INLINE ERROR mbReplaceMenu(APTR Ob, CSTRING Name, CSTRING Icon, CSTRING Script) {
-   struct mbReplaceMenu args = { Name, Icon, Script };
-   return(Action(MT_MbReplaceMenu, Ob, &args));
-}
-
-INLINE ERROR mbGetMenu(APTR Ob, CSTRING Name, struct rkMenu ** Menu) {
-   struct mbGetMenu args = { Name, 0 };
-   ERROR error = Action(MT_MbGetMenu, Ob, &args);
-   if (Menu) *Menu = args.Menu;
-   return(error);
-}
-
 
 // Scrollbar class definition
 
