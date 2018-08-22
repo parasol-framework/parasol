@@ -6836,7 +6836,6 @@ static void check_mouse_click(objDocument *Self, LONG X, LONG Y)
    }
 
    if (segment != -1) {
-   LogErrorMsg("resolution");
       if (!resolve_font_pos(Self, segment, X, &Self->CursorCharX, &bytepos)) {
          if (Self->CursorIndex != -1) deselect_text(Self); // A click results in the deselection of existing text
 
