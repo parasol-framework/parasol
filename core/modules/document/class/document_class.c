@@ -1854,6 +1854,7 @@ static const struct FieldArray clFields[] = {
    { "SelectColour", FDF_RGB|FDF_RW,       0, NULL, NULL },
    { "Border",       FDF_RGB|FDF_RW,       0, NULL, NULL },
    // Virtual fields
+   { "DefaultScript", FDF_OBJECT|FDF_I, 0, NULL, SET_DefaultScript },
    { "EventCallback", FDF_FUNCTIONPTR|FDF_RW, 0, GET_EventCallback, SET_EventCallback },
    { "Path",         FDF_STRING|FDF_RW,  0, GET_Path,  SET_Path },
    { "Origin",       FDF_STRING|FDF_RW,  0, GET_Path,  SET_Origin },

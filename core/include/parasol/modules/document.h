@@ -191,6 +191,7 @@ typedef struct rkDocument {
    STRING WorkingPath;       // String storage for the WorkingPath field
    APTR   prvKeyEvent;
    OBJECTPTR CurrentObject;
+   OBJECTPTR UserDefaultScript;  // Allows the developer to define a custom default script.
    OBJECTPTR DefaultScript;
    struct DocSegment *Segments; // Pointer to an array of segments
    struct SortSegment *SortSegments;

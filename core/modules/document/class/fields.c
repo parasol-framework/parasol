@@ -68,6 +68,25 @@ The colour used for the document cursor may be changed by setting this field.  T
 in edit mode.
 
 -FIELD-
+DefaultScript: Allows an external script object to be used by a document file.
+
+Setting the DefaultScript field with a reference to a Script object will allow a document file to have access to
+functionality outside of its namespace.  This feature is primarily intended for applications that need to embed
+custom documents.
+
+If a loaded document defines its own custom script, it will have priority over the script referenced here.
+
+*****************************************************************************/
+
+static ERROR SET_DefaultScript(objDocument *Self, OBJECTPTR Value)
+{
+   Self->UserDefaultScript = Value;
+   return ERR_Okay;
+}
+
+/****************************************************************************
+
+-FIELD-
 Description: A description of the document, provided by its author.
 
 If the source document includes a description, it will be copied to this field.

@@ -7850,16 +7850,16 @@ static ERROR extract_script(objDocument *Self, CSTRING Link, OBJECTPTR *Script, 
          LogErrorMsg("Unable to find '%s'", scriptref);
          return ERR_Search;
       }
-      else {
-         return ERR_Okay;
-      }
+      else return ERR_Okay;
    }
    else {
       if (!(*Script = Self->DefaultScript)) {
-         LogF("@extract_script","Cannot call function '%s', no default script in document.", Link);
-         return ERR_Search;
+         if (!(*Script = Self->UserDefaultScript)) {
+            LogF("@extract_script","Cannot call function '%s', no default script in document.", Link);
+            return ERR_Search;
+         }
       }
-      else return ERR_Okay;
+      return ERR_Okay;
    }
 }
 
