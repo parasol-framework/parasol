@@ -55,6 +55,20 @@ string.split = function(s, sep)
 end
 
 ------------------------------------------------------------------------------
+
+string.startsWith = function(s, cmp)
+   if s == nil or cmp == nil then return false end
+   return string.sub(s, 1, #cmp) == cmp
+end
+
+------------------------------------------------------------------------------
+
+string.endsWith = function(s, cmp)
+   if s == nil or cmp == nil then return false end
+   return cmp == "" or string.sub(s, -#cmp) == cmp
+end
+
+------------------------------------------------------------------------------
 -- Usage: for k,v in table.sortByKeys(the_table) do
 
 table.sortByKeys = function(t, f)
