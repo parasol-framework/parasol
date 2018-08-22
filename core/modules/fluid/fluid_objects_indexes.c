@@ -2,7 +2,7 @@
 //****************************************************************************
 // Usage: object.field = newvalue
 //
-// Unlisted fields can be referenced by using _ as the field name suffix.
+// Custom fields can be referenced by using _ as the field name suffix.
 
 static int object_newindex(lua_State *Lua)
 {
@@ -51,7 +51,7 @@ static int object_get(lua_State *Lua)
 //****************************************************************************
 // Usage: value = obj.getVar("Width", [Default])
 //
-// As for obj.get(), but explicitly references an unlisted variable name.
+// As for obj.get(), but explicitly references a custom variable name.
 
 static int object_getvar(lua_State *Lua)
 {
@@ -251,7 +251,7 @@ static ERROR getfield(lua_State *Lua, struct object *object, CSTRING FName)
    else {
       char buffer[8192];
 
-      // Assume this is an unlisted variable field since FindField() failed
+      // Assume this is a custom variable field since FindField() failed
       if ((!(error = GetVar(obj, FName, buffer, sizeof(buffer)))) AND (buffer[0])) {
          lua_pushstring(Lua, buffer);
       }
@@ -267,7 +267,7 @@ static ERROR getfield(lua_State *Lua, struct object *object, CSTRING FName)
 
 //****************************************************************************
 // Note that SetFieldEval() will translate object references and computations in the string.
-// Prefixing the field name with '_' forces the field to be set as an unlisted variable.
+// Prefixing the field name with '_' forces the field to be set as a custom variable.
 
 static ERROR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, LONG ValueIndex)
 {

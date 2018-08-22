@@ -96,7 +96,7 @@ function declareErrors()
     "FieldTypeMismatch",
     "UnrecognisedFieldType",
     "BufferOverflow",
-    "UnsupportedField",
+    "UnsupportedField",        // Field does not exist
     "Mismatch",
     "OutOfBounds",
     "Seek",                    // Seek failure
