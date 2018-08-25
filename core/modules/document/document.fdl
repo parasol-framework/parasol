@@ -14,8 +14,9 @@ module({ name="Document", copyright="Paul Manias © 2005-2017", version=1.0 }, f
 
   enum("TT", { start=1 }, "OBJECT", "LINK", "EDIT")
 
-  flags("DEF", { comment="Event flags" },
-    "LOCATION: The location has been changed.  Useful for detecting when the user has left the page.")
+  flags("DEF", { comment="Event flags for selectively receiving events from the Document object." },
+    "LOCATION: The source file path has changed.  Useful for detecting when the user has left the page.",
+    "LINK_ACTIVATED: The user has interacted with a hyperlink.  This event can be cancelled by returning ERR_Skip.")
 
   enum("DRT", { start=0, comment="Internal trigger codes" },
     "BEFORE_LAYOUT",
@@ -123,7 +124,7 @@ typedef struct escFont escFont;
   })
 
   class("Document", { src={ "class/document_class.c", "class/fields.c" }, output="class/document_def.c" }, [[
-    large(DEF) EventFlags
+    large(DEF) EventMask # Event mask for selectively receiving events from the Document object.
     str Description      # A description assigned by the author of the document
     str FontFace         # The user's default font face
     str Title            # The title of the document

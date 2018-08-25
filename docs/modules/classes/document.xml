@@ -442,6 +442,17 @@
     </field>
 
     <field>
+      <name>DefaultScript</name>
+      <comment>Allows an external script object to be used by a document file.</comment>
+      <access write="S">Set</access>
+      <type>OBJECTPTR</type>
+      <description>
+<p>Setting the DefaultScript field with a reference to a Script object will allow a document file to have access to functionality outside of its namespace.  This feature is primarily intended for applications that need to embed custom documents.</p>
+<p>If a loaded document defines its own custom script, it will have priority over the script referenced here.</p>
+      </description>
+    </field>
+
+    <field>
       <name>Description</name>
       <comment>A description of the document, provided by its author.</comment>
       <access read="R">Read</access>
@@ -467,19 +478,26 @@
       <access read="G" write="S">Get/Set</access>
       <type>FUNCTION</type>
       <description>
-<p>Set this field with a function reference to receive event notifications.  It must be set in conjunction with <field>EventFlags</field> so that you can select the type of notifications that will be received.</p>
-<p>The callback function prototype is <code>Function(*Document, LARGE EventFlag)</code>.</p>
-<p>The EventFlag value will indicate the event that occurred.  Please see the <field>EventFlags</field> field for a list of supported events and additional details.</p>
+<p>Set this field with a function reference to receive event notifications.  It must be set in conjunction with <field>EventMask</field> so that notifications are limited to those of interest.</p>
+<p>The callback function prototype is <code>ERROR Function(*Document, LARGE EventFlag)</code>.</p>
+<p>The EventFlag value will indicate the event that occurred.  Please see the <field>EventMask</field> field for a list of supported events and additional details.</p>
+<p>Error codes returned from the callback will normally be discarded, however in some cases ERR_Skip can be returned in order to prevent the event from being processed any further.</p>
       </description>
     </field>
 
     <field>
       <name>EventFlags</name>
-      <comment>Specifies events that need to be reported from the Document object.</comment>
       <access read="R" write="W">Read/Write</access>
+      <type>BIGINT</type>
+    </field>
+
+    <field>
+      <name>EventMask</name>
+      <comment>Specifies events that need to be reported from the Document object.</comment>
+      <access>-/-</access>
       <type lookup="DEF">BIGINT</type>
       <description>
-<p>To receive event notifications, set EventCallback with a function reference and the EventFlags field with a mask that indicates the events that need to be received.</p>
+<p>To receive event notifications, set <field>EventCallback</field> with a function reference and the EventMask field with a mask that indicates the events that need to be received.</p>
 <types lookup="DEF"/>
       </description>
     </field>
@@ -757,8 +775,9 @@
       <const name="MAX"/>
     </constants>
 
-    <constants lookup="DEF" comment="Event flags">
-      <const name="LOCATION">The location has been changed.  Useful for detecting when the user has left the page.</const>
+    <constants lookup="DEF" comment="Event flags for selectively receiving events from the Document object.">
+      <const name="LINK_ACTIVATED">The user has interacted with a hyperlink.  This event can be cancelled by returning ERR_Skip.</const>
+      <const name="LOCATION">The source file path has changed.  Useful for detecting when the user has left the page.</const>
     </constants>
 
   </types>

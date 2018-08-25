@@ -100,12 +100,15 @@ The most recently generated error code is stored in this field.
 EventCallback: Provides callbacks for global state changes.
 
 Set this field with a function reference to receive event notifications.  It must be set in conjunction with
-#EventFlags so that you can select the type of notifications that will be received.
+#EventMask so that notifications are limited to those of interest.
 
-The callback function prototype is `Function(*Document, LARGE EventFlag)`.
+The callback function prototype is `ERROR Function(*Document, LARGE EventFlag)`.
 
-The EventFlag value will indicate the event that occurred.  Please see the #EventFlags field for a list of
+The EventFlag value will indicate the event that occurred.  Please see the #EventMask field for a list of
 supported events and additional details.
+
+Error codes returned from the callback will normally be discarded, however in some cases ERR_Skip can be returned in
+order to prevent the event from being processed any further.
 
 *****************************************************************************/
 
@@ -132,10 +135,12 @@ static ERROR SET_EventCallback(objDocument *Self, FUNCTION *Value)
 /*****************************************************************************
 
 -FIELD-
-EventFlags: Specifies events that need to be reported from the Document object.
+EventMask: Specifies events that need to be reported from the Document object.
 
-To receive event notifications, set EventCallback with a function reference and the EventFlags field with a mask that
+To receive event notifications, set #EventCallback with a function reference and the EventMask field with a mask that
 indicates the events that need to be received.
+
+<types lookup="DEF"/>
 
 -FIELD-
 Flags: Optional flags that affect object behaviour.

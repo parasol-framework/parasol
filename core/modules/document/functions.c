@@ -7888,9 +7888,7 @@ static void exec_link(objDocument *Self, LONG Index)
 
       link = Self->Links[Index].Link;
       strlink = (STRING)(link + 1);
-      if (link->Type IS LINK_FUNCTION) {
-         // Function is in the format 'function()' or 'script.function()'
-
+      if (link->Type IS LINK_FUNCTION) { // Function is in the format 'function()' or 'script.function()'
          if (!extract_script(Self, strlink, &script, &function_name, NULL)) {
             struct ScriptArg args[40];
             LONG index;
@@ -7903,8 +7901,7 @@ static void exec_link(objDocument *Self, LONG Index)
                for (i=0; (i < link->Args) AND (index < ARRAYSIZE(args)); i++) {
                   value = arg + StrLength(arg) + 1;
 
-                  if (arg[0] IS '_') {
-                     // Global variable setting
+                  if (arg[0] IS '_') { // Global variable setting
                      acSetVar(script, arg+1, value);
                   }
                   else if (index < ARRAYSIZE(args)) {
@@ -7921,7 +7918,6 @@ static void exec_link(objDocument *Self, LONG Index)
          }
       }
       else if (link->Type IS LINK_HREF) {
-
          if (Self->Path) {
             StrCopy(Self->Path, buffer, sizeof(buffer));
             for (i=0; buffer[i]; i++) {
@@ -8147,7 +8143,7 @@ static void reset_cursor(objDocument *Self)
 
 static void report_event(objDocument *Self, LARGE Event)
 {
-   if (Event & Self->EventFlags) {
+   if (Event & Self->EventMask) {
       if (Self->EventCallback.Type) {
           if (Self->EventCallback.Type IS CALL_STDC) {
             void (*routine)(objDocument *, LARGE);
@@ -8161,11 +8157,11 @@ static void report_event(objDocument *Self, LARGE Event)
             OBJECTPTR script;
             if ((script = Self->EventCallback.Script.Script)) {
                struct ScriptArg args[2];
-               args[0].Name = "Scintilla";
+               args[0].Name = "Document";
                args[0].Type = FD_OBJECTPTR;
                args[0].Address = Self;
 
-               args[1].Name = "EventFlags";
+               args[1].Name = "EventMask";
                args[1].Type = FD_LARGE;
                args[1].Large = Event;
                scCallback(script, Self->EventCallback.Script.ProcedureID, args, ARRAYSIZE(args));

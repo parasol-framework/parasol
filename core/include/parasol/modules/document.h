@@ -39,9 +39,10 @@
 #define TT_LINK 2
 #define TT_EDIT 3
 
-// Event flags
+// Event flags for selectively receiving events from the Document object.
 
 #define DEF_LOCATION 0x00000001
+#define DEF_LINK_ACTIVATED 0x00000002
 
 // Internal trigger codes
 
@@ -141,7 +142,7 @@ struct DocTrigger {
 
 typedef struct rkDocument {
    OBJECT_HEADER
-   LARGE    EventFlags;
+   LARGE    EventMask;        // Event mask for selectively receiving events from the Document object.
    STRING   Description;      // A description assigned by the author of the document
    STRING   FontFace;         // The user's default font face
    STRING   Title;            // The title of the document
