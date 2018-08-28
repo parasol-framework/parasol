@@ -320,8 +320,7 @@ static void tag_background(objDocument *Self, objXML *XML, struct XMLTag *Tag, s
 static void tag_bold(objDocument *Self, objXML *XML, struct XMLTag *Tag, struct XMLTag *Child, LONG *Index, LONG Flags)
 {
    if (!(Self->Style.FontStyle.Options & FSO_BOLD)) {
-      struct style_status savestatus;
-      savestatus = Self->Style; // Save the current style
+      struct style_status savestatus = Self->Style; // Save the current style
       Self->Style.FontChange = TRUE; // Bold fonts are typically a different typeset
       Self->Style.FontStyle.Options |= FSO_BOLD;
       parse_tag(Self, XML, Child, Index, 0);
@@ -1160,12 +1159,11 @@ static void tag_paragraph(objDocument *Self, objXML *XML, struct XMLTag *Tag, st
 
 static void tag_print(objDocument *Self, objXML *XML, struct XMLTag *Tag, struct XMLTag *Child, LONG *Index, LONG Flags)
 {
-   // Copy the content from the value attribute into the document stream.  If used inside an object, the data is sent to that object as XML.
-
-   STRING tagname;
+   // Copy the content from the value attribute into the document stream.  If used inside an object, the data is sent
+   // to that object as XML.
 
    if (Tag->TotalAttrib > 1) {
-      tagname = Tag->Attrib[1].Name;
+      STRING tagname = Tag->Attrib[1].Name;
       if (*tagname IS '$') tagname++;
 
       if (!StrMatch("value", tagname)) {
@@ -1205,7 +1203,6 @@ static void tag_print(objDocument *Self, objXML *XML, struct XMLTag *Tag, struct
 
 static void tag_set(objDocument *Self, objXML *XML, struct XMLTag *Tag, struct XMLTag *Child, LONG *Index, LONG Flags)
 {
-   OBJECTPTR object;
    LONG i;
 
    if (Tag->TotalAttrib > 1) {
@@ -1213,6 +1210,7 @@ static void tag_set(objDocument *Self, objXML *XML, struct XMLTag *Tag, struct X
          OBJECTID objectid;
          if (!FastFindObject(Tag->Attrib[1].Value, 0, &objectid, 1, 0)) {
             if (valid_objectid(Self, objectid) IS TRUE) {
+               OBJECTPTR object;
                if (!AccessObject(objectid, 3000, &object)) {
                   for (i=2; i < Tag->TotalAttrib; i++) {
                      FMSG("tag_set:","#%d %s = '%s'", objectid, Tag->Attrib[i].Name, Tag->Attrib[i].Value);
@@ -1281,8 +1279,8 @@ static void tag_xml_content(objDocument *Self, objXML *XML, struct XMLTag *Tag, 
 {
    struct MemInfo meminfo;
    OBJECTPTR target;
-   STRING xmlstr, str, buffer;
-   LONG size, i, b_revert;
+   STRING xmlstr, str;
+   LONG i, b_revert;
    UBYTE e_revert, s_revert;
 
    if (!Tag->Child) return;
@@ -1292,8 +1290,8 @@ static void tag_xml_content(objDocument *Self, objXML *XML, struct XMLTag *Tag, 
       return;
    }
 
-   buffer = Self->Buffer + Self->BufferIndex;
-   size = Self->BufferSize - Self->BufferIndex;
+   STRING buffer = Self->Buffer + Self->BufferIndex;
+   LONG size = Self->BufferSize - Self->BufferIndex;
 
    if ((str = XMLATTRIB(Tag, "object"))) {
       FindPrivateObject(str, &target);
@@ -1366,14 +1364,11 @@ static void tag_xml_content(objDocument *Self, objXML *XML, struct XMLTag *Tag, 
 
 static void tag_font(objDocument *Self, objXML *XML, struct XMLTag *Tag, struct XMLTag *Child, LONG *Index, LONG Flags)
 {
-   struct style_status savestatus;
-   LONG i, flags;
-   UBYTE preformat;
+   struct style_status savestatus = Self->Style; // Save the current style
+   UBYTE preformat = FALSE;
+   LONG flags = 0;
 
-   savestatus = Self->Style; // Save the current style
-
-   preformat = FALSE;
-   flags = 0;
+   LONG i;
    for (i=1; i < Tag->TotalAttrib; i++) {
       if (!StrMatch("colour", Tag->Attrib[i].Name)) {
          Self->Style.StyleChange = TRUE;
@@ -2054,15 +2049,12 @@ static void tag_italic(objDocument *Self, objXML *XML, struct XMLTag *Tag, struc
 
 static void tag_li(objDocument *Self, objXML *XML, struct XMLTag *Tag, struct XMLTag *Child, LONG *Index, LONG Flags)
 {
-   STRING value, tagname;
-   struct escParagraph para;
-   LONG len, i;
-
    if (!Self->Style.List) {
       LogErrorMsg("<li> not used inside a <list> tag.");
       return;
    }
 
+   struct escParagraph para;
    ClearMemory(&para, sizeof(para));
    para.ListItem     = TRUE;
    para.LeadingRatio = 0;
@@ -2070,10 +2062,11 @@ static void tag_li(objDocument *Self, objXML *XML, struct XMLTag *Tag, struct XM
    para.BlockIndent  = Self->Style.List->BlockIndent;
    para.ItemIndent   = Self->Style.List->ItemIndent;
 
-   value = NULL;
+   STRING value = NULL;
 
+   LONG i;
    for (i=1; i < Tag->TotalAttrib; i++) {
-      tagname = Tag->Attrib[i].Name;
+      STRING tagname = Tag->Attrib[i].Name;
       if (*tagname IS '$') tagname++;
 
       if (!StrMatch("value", tagname)) {
@@ -2094,7 +2087,7 @@ static void tag_li(objDocument *Self, objXML *XML, struct XMLTag *Tag, struct XM
    if ((Self->Style.List->Type IS LT_CUSTOM) AND (value) AND (*value)) {
       style_check(Self, Index); // Font changes must take place prior to the printing of custom string items
 
-      len = sizeof(escParagraph) + StrLength(value) + 1;
+      LONG len = sizeof(escParagraph) + StrLength(value) + 1;
       UBYTE buffer[len];
 
       para.CustomString = TRUE;
@@ -2109,8 +2102,6 @@ static void tag_li(objDocument *Self, objXML *XML, struct XMLTag *Tag, struct XM
       insert_paragraph_end(Self, Index);
    }
    else if (Self->Style.List->Type IS LT_ORDERED) {
-      LONG save_insert, save_item;
-
       style_check(Self, Index); // Font changes must take place prior to the printing of custom string items
 
       i = IntToStr(Self->Style.List->ItemNum, Self->Style.List->Buffer + Self->Style.List->OrderInsert, LIST_BUFFER_SIZE - Self->Style.List->OrderInsert - 1);
@@ -2120,13 +2111,13 @@ static void tag_li(objDocument *Self, objXML *XML, struct XMLTag *Tag, struct XM
          Self->Style.List->Buffer[i] = 0;
       }
 
-      save_insert = Self->Style.List->OrderInsert;
+      LONG save_insert = Self->Style.List->OrderInsert;
       Self->Style.List->OrderInsert = i;
 
-      save_item = Self->Style.List->ItemNum;
+      LONG save_item = Self->Style.List->ItemNum;
       Self->Style.List->ItemNum = 1;
 
-      len = sizeof(escParagraph) + StrLength(Self->Style.List->Buffer) + 1;
+      LONG len = sizeof(escParagraph) + StrLength(Self->Style.List->Buffer) + 1;
       UBYTE buffer[len];
 
       para.CustomString = TRUE;
@@ -2166,16 +2157,13 @@ static void tag_underline(objDocument *Self, objXML *XML, struct XMLTag *Tag, st
 
 static void tag_repeat(objDocument *Self, objXML *XML, struct XMLTag *Tag, struct XMLTag *Child, LONG *Index, LONG Flags)
 {
-   struct XMLTag *xmlchild;
-   LONG step, saveindex, i, loopend, loopstart, count;
-   STRING indexname;
+   LONG loopstart = 0;
+   LONG loopend = 0;
+   LONG count = 0;
+   LONG step  = 0;
+   STRING indexname = NULL;
 
-   loopstart = 0;
-   loopend = 0;
-   count = 0;
-   step  = 0;
-   indexname = NULL;
-
+   LONG i;
    for (i=1; i < Tag->TotalAttrib; i++) {
       if (!StrMatch("start", Tag->Attrib[i].Name)) {
          loopstart = StrToInt(Tag->Attrib[i].Value);
@@ -2221,7 +2209,7 @@ static void tag_repeat(objDocument *Self, objXML *XML, struct XMLTag *Tag, struc
 
    FMSG("~insert_child:","Performing a repeat loop (start: %d, end: %d, step: %d).", loopstart, loopend, step);
 
-   saveindex = Self->LoopIndex;
+   LONG saveindex = Self->LoopIndex;
 
    while (loopstart < loopend) {
       if (!indexname) {
@@ -2233,7 +2221,7 @@ static void tag_repeat(objDocument *Self, objXML *XML, struct XMLTag *Tag, struc
          SetVar(Self, indexname, intstr);
       }
 
-      xmlchild = Tag->Child;
+      struct XMLTag *xmlchild = Tag->Child;
       parse_tag(Self, XML, xmlchild, Index, Flags);
 
       loopstart += step;

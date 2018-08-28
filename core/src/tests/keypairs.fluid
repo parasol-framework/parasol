@@ -83,7 +83,7 @@ function testIteration()
       mSys.VarSetString(glVars, k, k)
    end
 
-   local err, key, value, len = mSys.VarIterate(glVars, key)
+   local err, key, value, len = mSys.VarIterate(glVars, nil)
    while (err == ERR_Okay) do
       vars[key] = true
       err, key, value, len = mSys.VarIterate(glVars, key)

@@ -1921,18 +1921,17 @@ extend_page:
 
             case ESC_LINK: {
                if (l.link) {
-                  /* Close the currently open link because it's illegal to have a
-                  ** link embedded within a link.
-                  */
+                  // Close the currently open link because it's illegal to have a link embedded within a link.
+
                   if (l.font) {
                      add_link(Self, ESC_LINK, l.link, l.link_x, l.cursory, l.cursorx + l.wordwidth - l.link_x, l.line_height ? l.line_height : l.font->LineSpacing, "esc_link");
                   }
                }
 
-               l.link = ESCAPE_DATA(Self->Stream, i);
-               l.link_x = l.cursorx + l.wordwidth;
+               l.link       = ESCAPE_DATA(Self->Stream, i);
+               l.link_x     = l.cursorx + l.wordwidth;
                l.link_index = i;
-               l.link_open = TRUE;
+               l.link_open  = TRUE;
                l.link_align = l.font->Align;
                break;
             }
@@ -3269,10 +3268,9 @@ repass_row_height_ext:
             }
 
             case ESC_CELL_END: {
-               /* CELL_END helps draw_document(), so set the segment to ensure that it is
-               ** included in the draw stream.  Please refer to ESC_CELL to see how content is
-               ** processed and how the cell dimensions are formed.
-               */
+               // CELL_END helps draw_document(), so set the segment to ensure that it is
+               // included in the draw stream.  Please refer to ESC_CELL to see how content is
+               // processed and how the cell dimensions are formed.
 
                l.setsegment = TRUE;
 
@@ -3281,9 +3279,8 @@ repass_row_height_ext:
                }
 
                if ((esccell) AND (esccell->EditHash)) {
-                  /* The area of each edit cell is logged in an array, which is used for assisting interaction between
-                  ** the mouse pointer and the edit cells.
-                  */
+                  // The area of each edit cell is logged in an array, which is used for assisting interaction between
+                  // the mouse pointer and the edit cells.
 
                   if (Self->ECIndex >= Self->ECMax) {
                      struct EditCell *cells;
@@ -3416,11 +3413,10 @@ repass_row_height_ext:
          }
 
          if (l.setsegment) {
-            /* Notice that this version of our call to add_drawsegment() does not define content position information (i.e. X/Y coordinates)
-            ** because we only expect to add an escape code to the drawing sequence, with the intention that the escape code carries
-            ** information relevant to the drawing process.  It is vital therefore that all content has been set with an earlier call
-            ** to add_drawsegment() before processing of the escape code.  See earlier in this routine.
-            */
+            // Notice that this version of our call to add_drawsegment() does not define content position information (i.e. X/Y coordinates)
+            // because we only expect to add an escape code to the drawing sequence, with the intention that the escape code carries
+            // information relevant to the drawing process.  It is vital therefore that all content has been set with an earlier call
+            // to add_drawsegment() before processing of the escape code.  See earlier in this routine.
 
             add_drawsegment(Self, i, i+l.len, &l, l.cursory, 0, 0, strCodes[(UBYTE)ESCAPE_CODE(Self->Stream, i)]); //"Esc:SetSegment");
             RESET_SEGMENT_WORD(i+l.len, l.cursorx, &l);
@@ -3441,10 +3437,9 @@ repass_row_height_ext:
 
          if (Self->Stream[i] IS '\n') {
 #if 0
-            /* This link code is likely going to be needed for a case such as :
-            **   <a href="">blah blah <br/> blah </a>
-            ** But we haven't tested it in a rpl document yet.
-            */
+            // This link code is likely going to be needed for a case such as :
+            //   <a href="">blah blah <br/> blah </a>
+            // But we haven't tested it in a rpl document yet.
 
             if ((l.link) AND (l.link_open IS FALSE)) {
                // A link is due to be closed
@@ -6536,14 +6531,9 @@ static ERROR activate_edit(objDocument *Self, LONG CellIndex, LONG CursorIndex)
 static void deactivate_edit(objDocument *Self, BYTE Redraw)
 {
    UBYTE *stream;
-   LONG cell_index;
 
    if (!(stream = Self->Stream)) return;
-
-   if (!Self->ActiveEditDef) {
-      LogF("@deactivate_edit()","ActiveEditDef is NULL.");
-      return;
-   }
+   if (!Self->ActiveEditDef) return;
 
    LogF("~deactivate_edit()","Redraw: %d, CellID: %d", Redraw, Self->ActiveEditCellID);
 
@@ -6555,7 +6545,7 @@ static void deactivate_edit(objDocument *Self, BYTE Redraw)
    // The edit tag needs to be found so that we can determine if OnExit needs to be called or not.
 
    struct DocEdit *edit = Self->ActiveEditDef;
-   cell_index = find_cell(Self, Self->ActiveEditCellID, 0);
+   LONG cell_index = find_cell(Self, Self->ActiveEditCellID, 0);
 
    Self->ActiveEditCellID = 0;
    Self->ActiveEditDef = NULL;
@@ -6681,16 +6671,14 @@ static ERROR add_clip(objDocument *Self, struct SurfaceClip *Clip, LONG Index, C
 static void check_pointer_exit(objDocument *Self, LONG X, LONG Y)
 {
    struct MouseOver *scan, *next, *prev;
-   CSTRING function_name;
-   OBJECTPTR script;
-   CSTRING argstring;
 
    prev = NULL;
    for (scan=Self->MouseOverChain; scan;) {
       if ((X < scan->Left) OR (Y < scan->Top) OR (X >= scan->Right) OR (Y >= scan->Bottom)) {
-
          // Pointer has left this zone
 
+         CSTRING function_name, argstring;
+         OBJECTPTR script;
          if (!extract_script(Self, (STRING)(scan + 1), &script, &function_name, &argstring)) {
             struct ScriptArg args[] = {
                { "Element", FD_LONG, { .Long = scan->ElementID } },
@@ -6719,7 +6707,6 @@ static void check_pointer_exit(objDocument *Self, LONG X, LONG Y)
 static void pointer_enter(objDocument *Self, LONG Index, STRING Function, LONG Left, LONG Top, LONG Right, LONG Bottom)
 {
    struct MouseOver *mouseover;
-   OBJECTPTR script;
    CSTRING function_name, argstring;
 
    FMSG("~pointer_enter()","%s, %dx%d to %dx%d", Function, Left, Top, Right, Bottom);
@@ -6739,6 +6726,7 @@ static void pointer_enter(objDocument *Self, LONG Index, STRING Function, LONG L
 
       // Send feedback
 
+      OBJECTPTR script;
       if (!extract_script(Self, Function, &script, &function_name, &argstring)) {
          struct ScriptArg args[] = {
             { "Element", FD_LONG, { .Long = mouseover->ElementID } },
@@ -7806,9 +7794,7 @@ static ERROR extract_script(objDocument *Self, CSTRING Link, OBJECTPTR *Script, 
       pos += CharCopy(Link+dot, exsbuffer+pos, bracket-dot);
       exsbuffer[pos++] = 0;
 
-      // Copy args
-
-      if (Args) {
+      if (Args) { // Copy args
          bracket++;
          while ((len > bracket) AND (Link[len] != ')')) len--;
          if (Link[len] IS ')') {
@@ -7819,9 +7805,7 @@ static ERROR extract_script(objDocument *Self, CSTRING Link, OBJECTPTR *Script, 
          else LogErrorMsg("Malformed function args: %s", Link);
       }
    }
-   else {
-      pos += StrCopy(Link+dot, exsbuffer+pos, COPY_ALL);
-   }
+   else pos += StrCopy(Link+dot, exsbuffer+pos, COPY_ALL);
 
    #ifdef DEBUG
    if (pos > len) {
@@ -7831,35 +7815,35 @@ static ERROR extract_script(objDocument *Self, CSTRING Link, OBJECTPTR *Script, 
 
    // Find the script that has been referenced
 
-   if (scriptref) {
-      if (!FindPrivateObject(scriptref, Script)) {
-         // Security checks
+   if (Script) {
+      if (scriptref) {
+         if (!FindPrivateObject(scriptref, Script)) {
+            // Security checks
 
-         if (Script[0]->ClassID != ID_SCRIPT) {
-            LogErrorMsg("Function reference to object '%s' is not a Script object.", scriptref);
-            return ERR_WrongClass;
+            if (Script[0]->ClassID != ID_SCRIPT) {
+               LogErrorMsg("Function reference to object '%s' is not a Script object.", scriptref);
+               return ERR_WrongClass;
+            }
+            else if ((Script[0]->OwnerID != Self->Head.UniqueID) AND (!(Self->Flags & DCF_UNRESTRICTED))) {
+               LogErrorMsg("Script '%s' does not belong to this document.  Action ignored due to security restrictions.", scriptref);
+               return ERR_NoPermission;
+            }
          }
-         else if ((Script[0]->OwnerID != Self->Head.UniqueID) AND (!(Self->Flags & DCF_UNRESTRICTED))) {
-            LogErrorMsg("Script '%s' does not belong to this document.  Action ignored due to security restrictions.", scriptref);
-            return ERR_NoPermission;
+
+         if (!*Script) {
+            LogErrorMsg("Unable to find '%s'", scriptref);
+            return ERR_Search;
          }
       }
-
-      if (!*Script) {
-         LogErrorMsg("Unable to find '%s'", scriptref);
-         return ERR_Search;
-      }
-      else return ERR_Okay;
-   }
-   else {
-      if (!(*Script = Self->DefaultScript)) {
+      else if (!(*Script = Self->DefaultScript)) {
          if (!(*Script = Self->UserDefaultScript)) {
             LogF("@extract_script","Cannot call function '%s', no default script in document.", Link);
             return ERR_Search;
          }
       }
-      return ERR_Okay;
    }
+
+   return ERR_Okay;
 }
 
 //****************************************************************************
@@ -7876,30 +7860,23 @@ static void exec_link(objDocument *Self, LONG Index)
    Self->Processing++;
 
    if (Self->Links[Index].EscapeCode IS ESC_LINK) {
-      escLink *link;
-      CSTRING strlink;
       UBYTE buffer[400];
       OBJECTPTR script;
-      STRING cmd;
       CSTRING function_name;
       LONG class_id, subclass_id;
       WORD i, j;
-      BYTE abspath;
 
-      link = Self->Links[Index].Link;
-      strlink = (STRING)(link + 1);
+      escLink *link = Self->Links[Index].Link;
+      CSTRING strlink = (STRING)(link + 1);
       if (link->Type IS LINK_FUNCTION) { // Function is in the format 'function()' or 'script.function()'
          if (!extract_script(Self, strlink, &script, &function_name, NULL)) {
             struct ScriptArg args[40];
-            LONG index;
 
-            index = 0;
+            LONG index = 0;
             if (link->Args > 0) {
-               CSTRING arg, value;
-
-               arg = strlink + StrLength(strlink) + 1;
+               CSTRING arg = strlink + StrLength(strlink) + 1;
                for (i=0; (i < link->Args) AND (index < ARRAYSIZE(args)); i++) {
-                  value = arg + StrLength(arg) + 1;
+                  CSTRING value = arg + StrLength(arg) + 1;
 
                   if (arg[0] IS '_') { // Global variable setting
                      acSetVar(script, arg+1, value);
@@ -7927,10 +7904,7 @@ static void exec_link(objDocument *Self, LONG Index)
          else i = 0;
 
          if (strlink[0] IS ':') {
-            if (Self->Bookmark) {
-               FreeMemory(Self->Bookmark);
-               Self->Bookmark = NULL;
-            }
+            if (Self->Bookmark) FreeMemory(Self->Bookmark);
             Self->Bookmark = StrClone(strlink+1);
             show_bookmark(Self, Self->Bookmark);
          }
@@ -7943,13 +7917,11 @@ static void exec_link(objDocument *Self, LONG Index)
             if (Self->Bookmark) show_bookmark(Self, Self->Bookmark);
          }
          else {
-            UBYTE save;
-
             MSG("Link is a file reference.");
 
             // Figure out if the link is an absolute path
 
-            abspath = FALSE;
+            BYTE abspath = FALSE;
             for (j=0; strlink[j]; j++) {
                if ((strlink[j] IS '/') OR (strlink[j] IS '\\')) break;
                if (strlink[j] IS ':') { abspath = TRUE; break; }
@@ -7964,7 +7936,7 @@ static void exec_link(objDocument *Self, LONG Index)
                StrCopy(strlink, buffer+i, sizeof(buffer)-i);
             }
 
-            save = 0;
+            char save = 0;
             for (i=0; buffer[i]; i++) {
                if ((buffer[i] IS '?') OR (buffer[i] IS '#') OR (buffer[i] IS '&')) {
                   save = buffer[i];
@@ -7973,6 +7945,7 @@ static void exec_link(objDocument *Self, LONG Index)
                }
             }
 
+            STRING cmd;
             if (!IdentifyFile(buffer, "Open", 0, &class_id, &subclass_id, &cmd)) {
                if (save) buffer[i] = save;
 
@@ -7983,9 +7956,6 @@ static void exec_link(objDocument *Self, LONG Index)
                   else LogMsg("No bookmark was preset.");
                }
                else if (cmd) {
-                  OBJECTPTR task;
-                  STRING args;
-
                   // If the link is supported by a program, run that program and pass it the link.
 
                   StrCopy(cmd, buffer, sizeof(buffer));
@@ -7993,7 +7963,10 @@ static void exec_link(objDocument *Self, LONG Index)
                      StrInsert(strlink, buffer, sizeof(buffer), i, sizeof("[@file]")-1);
                   }
 
+                  STRING args;
                   fix_command(buffer, &args);
+
+                  OBJECTPTR task;
                   if (!CreateObject(ID_TASK, NF_INTEGRAL, &task,
                         FID_Path|TSTR, buffer,
                         FID_Args|TSTR, args,
@@ -8005,7 +7978,7 @@ static void exec_link(objDocument *Self, LONG Index)
                FreeMemory(cmd);
             }
             else {
-               UBYTE msg[500];
+               char msg[500];
                StrFormat(msg, sizeof(msg), "It is not possible to follow this link as the type of file is not recognised.  The referenced link is:\n\n%s", buffer);
                error_dialog("Action Cancelled", msg, 0);
             }
@@ -8013,34 +7986,28 @@ static void exec_link(objDocument *Self, LONG Index)
       }
    }
    else if (Self->Links[Index].EscapeCode IS ESC_CELL) {
-      escCell *cell;
       OBJECTPTR script;
-      CSTRING function_name, str;
-      WORD i;
+      CSTRING function_name;
 
-      cell = Self->Links[Index].Cell;
-      str = ((STRING)cell) + cell->OnClick;
+      escCell *cell = Self->Links[Index].Cell;
+      CSTRING str = ((CSTRING)cell) + cell->OnClick;
 
       if (!extract_script(Self, str, &script, &function_name, NULL)) {
+         LONG index = 0;
          struct ScriptArg args[40];
-         LONG index;
-
-         index = 0;
          if (cell->TotalArgs > 0) {
-            STRING arg, value;
-
-            arg = ((STRING)cell) + cell->Args;
+            CSTRING arg = ((CSTRING)cell) + cell->Args;
+            WORD i;
             for (i=0; (i < cell->Args) AND (index < ARRAYSIZE(args)); i++) {
-               value = arg + StrLength(arg) + 1;
+               CSTRING value = arg + StrLength(arg) + 1;
 
-               if (arg[0] IS '_') {
-                  // Global variable setting
+               if (arg[0] IS '_') { // Global variable setting
                   acSetVar(script, arg+1, value);
                }
                else if (index < ARRAYSIZE(args)) {
                   args[index].Name    = NULL;
                   args[index].Type    = FD_STRING;
-                  args[index].Address = value;
+                  args[index].Address = (APTR)value;
                   index++;
                }
                arg = value + StrLength(value) + 1;
@@ -8052,6 +8019,7 @@ static void exec_link(objDocument *Self, LONG Index)
    }
    else FMSG("exec_link()","Link index does not refer to a supported link type.");
 
+end:
    Self->Processing--;
    LogBack();
 }

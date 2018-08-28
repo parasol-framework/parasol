@@ -413,7 +413,7 @@ static ERROR DOCUMENT_Clipboard(objDocument *Self, struct acClipboard *Args)
                acFree(file);
             }
             else {
-               UBYTE msg[200];
+               char msg[200];
                StrFormat(msg, sizeof(msg), "Failed to load clipboard file \"%s\"", get.Files[0]);
                error_dialog("Paste Error", msg, 0);
             }
@@ -1711,23 +1711,19 @@ Search: The index could not be found.
 
 static ERROR DOCUMENT_ShowIndex(objDocument *Self, struct docShowIndex *Args)
 {
-   LONG i, tab;
-   escIndex *index;
-   UBYTE *stream;
-   ULONG name_hash;
-   UBYTE code;
-
    if ((!Args) OR (!Args->Name)) return PostError(ERR_NullArgs);
 
    LogMsg("Index: %s", Args->Name);
 
+   UBYTE *stream;
    if (!(stream = Self->Stream)) return ERR_Search;
 
-   name_hash = StrHash(Args->Name, 0);
-   i = 0;
+   ULONG name_hash = StrHash(Args->Name, 0);
+   LONG i = 0;
    while (stream[i]) {
       if (stream[i] IS CTRL_CODE) {
          if (ESCAPE_CODE(stream, i) IS ESC_INDEX_START) {
+            escIndex *index;
             index = ESCAPE_DATA(stream, i);
             if (name_hash IS index->NameHash) {
 
@@ -1747,7 +1743,7 @@ static ERROR DOCUMENT_ShowIndex(objDocument *Self, struct docShowIndex *Args)
                      NEXT_CHAR(stream, i);
                      while (stream[i]) {
                         if (stream[i] IS CTRL_CODE) {
-                           code = ESCAPE_CODE(stream, i);
+                           UBYTE code = ESCAPE_CODE(stream, i);
                            if (code IS ESC_INDEX_END) {
                               escIndexEnd *end;
                               end = ESCAPE_DATA(stream, i);
@@ -1758,6 +1754,7 @@ static ERROR DOCUMENT_ShowIndex(objDocument *Self, struct docShowIndex *Args)
                               escobj = ESCAPE_DATA(stream, i);
                               if (escobj->ObjectID) acShowID(escobj->ObjectID);
 
+                              LONG tab;
                               if ((tab = find_tabfocus(Self, TT_OBJECT, escobj->ObjectID)) >= 0) {
                                  Self->Tabs[tab].Active = TRUE;
                               }
@@ -1766,6 +1763,7 @@ static ERROR DOCUMENT_ShowIndex(objDocument *Self, struct docShowIndex *Args)
                               escLink *esclink;
                               esclink = ESCAPE_DATA(stream, i);
 
+                              LONG tab;
                               if ((tab = find_tabfocus(Self, TT_LINK, esclink->ID)) >= 0) {
                                  Self->Tabs[tab].Active = TRUE;
                               }
@@ -1776,9 +1774,8 @@ static ERROR DOCUMENT_ShowIndex(objDocument *Self, struct docShowIndex *Args)
                               index->ParentVisible = TRUE;
 
                               if (!index->Visible) {
-                                 /* The child index is not visible, so skip to the end of it
-                                 ** before continuing this process.
-                                 */
+                                 // The child index is not visible, so skip to the end of it before continuing this
+                                 // process.
 
                                  NEXT_CHAR(stream, i);
                                  while (stream[i]) {

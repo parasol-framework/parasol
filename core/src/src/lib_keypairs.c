@@ -474,7 +474,7 @@ while (!VarIterate(keystore, key, &key, &value, &value_len)) {
 The following equivalent can be used in Fluid:
 
 <pre>
-local err, key, value = mSys.VarIterate(glVars, key)
+local err, key, value = mSys.VarIterate(glVars, nil)
 while (err == ERR_Okay) do
    print(key, " = ", value)
    err, key, value = mSys.VarIterate(glVars, key)

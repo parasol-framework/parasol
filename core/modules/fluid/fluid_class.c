@@ -249,8 +249,8 @@ static ERROR FLUID_Activate(objScript *Self, APTR Void)
 
    prv->Recurse++;
 
-   Self->CurrentLine     = -1;
-   Self->Error           = ERR_Okay;
+   Self->CurrentLine = -1;
+   Self->Error       = ERR_Okay;
 
    // Set the script owner to the current process, prior to script execution.  Once complete, we will change back to
    // the original owner.
@@ -849,7 +849,8 @@ static ERROR run_script(objScript *Self)
                   MSG("Setting arg '%s', Value: %.20s", args->Name, (CSTRING)args->Address);
                   lua_pushstring(prv->Lua, args->Address);
                }
-               else if (type & FD_STRUCT) { // Pointer to a struct
+               else if (type & FD_STRUCT) {
+                  // Pointer to a struct, which can be referenced with a name of "StructName" or "StructName:ArgName"
                   if (args->Address) {
                      if (named_struct_to_table(prv->Lua, args->Name, args->Address) != ERR_Okay) lua_pushnil(prv->Lua);
                      if (type & FD_ALLOC) FreeMemory(args->Address);
