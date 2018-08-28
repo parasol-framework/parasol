@@ -59,8 +59,8 @@
     </constants>
 
     <constants lookup="DEF" comment="Event flags for selectively receiving events from the Document object.">
+      <const name="PATH">The source file path has changed.  Useful for detecting when the user has left the page.</const>
       <const name="LINK_ACTIVATED">The user has interacted with a hyperlink.  This event can be cancelled by returning ERR_Skip.</const>
-      <const name="LOCATION">The source file path has changed.  Useful for detecting when the user has left the page.</const>
     </constants>
 
   </types>

@@ -418,7 +418,7 @@ static ERROR SET_Path(objDocument *Self, CSTRING Value)
    }
    else Self->Error = ERR_AllocMemory;
 
-   report_event(Self, DEF_LOCATION);
+   report_event(Self, DEF_PATH, NULL, NULL);
 
    LogBack();
    return Self->Error;

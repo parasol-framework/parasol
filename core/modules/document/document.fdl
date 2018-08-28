@@ -15,7 +15,7 @@ module({ name="Document", copyright="Paul Manias © 2005-2017", version=1.0 }, f
   enum("TT", { start=1 }, "OBJECT", "LINK", "EDIT")
 
   flags("DEF", { comment="Event flags for selectively receiving events from the Document object." },
-    "LOCATION: The source file path has changed.  Useful for detecting when the user has left the page.",
+    "PATH: The source file path has changed.  Useful for detecting when the user has left the page.",
     "LINK_ACTIVATED: The user has interacted with a hyperlink.  This event can be cancelled by returning ERR_Skip.")
 
   enum("DRT", { start=0, comment="Internal trigger codes" },
@@ -65,6 +65,10 @@ module({ name="Document", copyright="Paul Manias © 2005-2017", version=1.0 }, f
     struct(RGB8) FontColour    # Foreground colour (colour of the font)
     struct(RGB8) FontUnderline # Underline colour for the font, if active
     int StyleFlags             # Font style flags (FSO)
+  ]])
+
+  struct ("deLinkActivated", { }, [[
+    ptr Parameters   # All key-values associated with the link.
   ]])
 
   struct("escFont", { }, [[

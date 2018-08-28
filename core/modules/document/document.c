@@ -591,7 +591,7 @@ static void print_sorted_lines(objDocument *) __attribute__ ((unused));
 static ERROR  process_page(objDocument *, objXML *);
 static void   process_parameters(objDocument *, CSTRING);
 static void   redraw(objDocument *, BYTE);
-static void   report_event(objDocument *, LARGE Event);
+static ERROR  report_event(objDocument *, LARGE Event, APTR EventData, CSTRING StructName);
 static void   reset_cursor(objDocument *);
 static ERROR  resolve_fontx_by_index(objDocument *, LONG Index, LONG *CharX);
 static ERROR  resolve_font_pos(objDocument *, LONG Segment, LONG X, LONG *, LONG *BytePos);

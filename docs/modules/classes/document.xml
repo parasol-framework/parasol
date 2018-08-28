@@ -486,15 +486,9 @@
     </field>
 
     <field>
-      <name>EventFlags</name>
-      <access read="R" write="W">Read/Write</access>
-      <type>BIGINT</type>
-    </field>
-
-    <field>
       <name>EventMask</name>
       <comment>Specifies events that need to be reported from the Document object.</comment>
-      <access>-/-</access>
+      <access read="R" write="W">Read/Write</access>
       <type lookup="DEF">BIGINT</type>
       <description>
 <p>To receive event notifications, set <field>EventCallback</field> with a function reference and the EventMask field with a mask that indicates the events that need to be received.</p>
@@ -776,8 +770,8 @@
     </constants>
 
     <constants lookup="DEF" comment="Event flags for selectively receiving events from the Document object.">
+      <const name="PATH">The source file path has changed.  Useful for detecting when the user has left the page.</const>
       <const name="LINK_ACTIVATED">The user has interacted with a hyperlink.  This event can be cancelled by returning ERR_Skip.</const>
-      <const name="LOCATION">The source file path has changed.  Useful for detecting when the user has left the page.</const>
     </constants>
 
   </types>

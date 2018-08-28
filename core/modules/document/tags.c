@@ -897,36 +897,35 @@ static void tag_index(objDocument *Self, objXML *XML, struct XMLTag *Tag, struct
 }
 
 //****************************************************************************
-// If calling a function with 'onclick', all arguments must be identified with the @ prefix.
-// Parameters will be passed to the function in the order in which they are given.
-// Global arguments can be set against the document object itself if the argument
-// is prefixed with an underscore.
+// If calling a function with 'onclick', all arguments must be identified with the @ prefix.  Parameters will be
+// passed to the function in the order in which they are given.  Global values can be set against the document
+// object itself, if a parameter is prefixed with an underscore.
 //
-// Script objects can be specifically referenced when calling a function, e.g.
-// "myscript.function".  If no script object is referenced, then it is assumed that
-// the default script contains the function.
+// Script objects can be specifically referenced when calling a function, e.g. "myscript.function".  If no script
+// object is referenced, then it is assumed that the default script contains the function.
 //
 // <a href="http://" onclick="function" colour="rgb" @arg1="" @arg2="" _global=""/>
+//
+// Dummy links that specify neither an href or onclick value can be useful in embedded documents if the
+// EventCallback feature is used.
 
 static void tag_link(objDocument *Self, objXML *XML, struct XMLTag *Tag, struct XMLTag *Child, LONG *Index, LONG Flags)
 {
-   struct style_status savestatus;
    escLink link;
-   STRING colour, href, function, hint, pointermotion;
-   LONG i, argsize, buffersize;
-   BYTE select;
-
    link.Type  = 0;
    link.Args  = 0;
    link.PointerMotion = 0;
-   argsize    = 0;
-   buffersize = sizeof(link);
-   href       = NULL;
-   function   = NULL;
-   colour     = NULL;
-   select     = FALSE;
-   hint       = NULL;
-   pointermotion = NULL;
+
+   LONG argsize    = 0;
+   LONG buffersize = sizeof(link);
+   STRING href     = NULL;
+   STRING function = NULL;
+   STRING colour   = NULL;
+   BYTE   select   = FALSE;
+   STRING hint     = NULL;
+   STRING pointermotion = NULL;
+
+   LONG i;
    for (i=1; i < Tag->TotalAttrib; i++) {
       if ((!link.Type) AND (!StrMatch("href", Tag->Attrib[i].Name))) {
          if ((href = Tag->Attrib[i].Value)) {
@@ -976,37 +975,32 @@ static void tag_link(objDocument *Self, objXML *XML, struct XMLTag *Tag, struct 
    buffersize += argsize;
    UBYTE buffer[buffersize];
 
-   if (link.Type) {
-      LONG pos;
-
+   if ((link.Type) OR (Tag->Child)) {
       link.ID = ++Self->LinkID;
       link.Align = Self->Style.FontStyle.Options;
 
-      pos = sizeof(link);
+      LONG pos = sizeof(link);
       if (link.Type IS LINK_FUNCTION) {
-         LONG count;
-
          pos += StrCopy(function, buffer + pos, COPY_ALL) + 1;
+      }
+      else pos += StrCopy(href ? href : "", buffer + pos, COPY_ALL) + 1;
 
-         count = 0;
-         for (i=1; i < Tag->TotalAttrib; i++) {
-            if ((Tag->Attrib[i].Name) AND (Tag->Attrib[i].Name[0] IS '@')) {
-               count++;
-               pos += StrCopy(Tag->Attrib[i].Name+1, buffer+pos, COPY_ALL) + 1;
-               pos += StrCopy(Tag->Attrib[i].Value, buffer+pos, COPY_ALL) + 1;
-               if (count >= link.Args) break;
-            }
-            else if ((Tag->Attrib[i].Name) AND (Tag->Attrib[i].Name[0] IS '_')) {
-               count++;
-               pos += StrCopy(Tag->Attrib[i].Name, buffer+pos, COPY_ALL) + 1;
-               pos += StrCopy(Tag->Attrib[i].Value, buffer+pos, COPY_ALL) + 1;
-               if (count >= link.Args) break;
-            }
+      LONG count = 0;
+      for (i=1; i < Tag->TotalAttrib; i++) {
+         if ((Tag->Attrib[i].Name) AND (Tag->Attrib[i].Name[0] IS '@')) {
+            count++;
+            pos += StrCopy(Tag->Attrib[i].Name+1, buffer+pos, COPY_ALL) + 1;
+            pos += StrCopy(Tag->Attrib[i].Value, buffer+pos, COPY_ALL) + 1;
+            if (count >= link.Args) break;
+         }
+         else if ((Tag->Attrib[i].Name) AND (Tag->Attrib[i].Name[0] IS '_')) {
+            count++;
+            pos += StrCopy(Tag->Attrib[i].Name, buffer+pos, COPY_ALL) + 1;
+            pos += StrCopy(Tag->Attrib[i].Value, buffer+pos, COPY_ALL) + 1;
+            if (count >= link.Args) break;
          }
       }
-      else {
-         pos += StrCopy(href, buffer + pos, COPY_ALL) + 1;
-      }
+      link.Args = count;
 
       if (pointermotion) {
          link.PointerMotion = pos;
@@ -1017,14 +1011,13 @@ static void tag_link(objDocument *Self, objXML *XML, struct XMLTag *Tag, struct 
 
       insert_escape(Self, Index, ESC_LINK, buffer, buffersize);
 
-      savestatus = Self->Style;
+      struct style_status savestatus = Self->Style;
+
       Self->Style.StyleChange    = TRUE;
       Self->Style.FontStyle.Options |= FSO_UNDERLINE;
       Self->Style.FontStyle.Colour   = Self->LinkColour;
 
-      if (colour) {
-         StrToColour(colour, &Self->Style.FontStyle.Colour);
-      }
+      if (colour) StrToColour(colour, &Self->Style.FontStyle.Colour);
 
       parse_tag(Self, XML, Tag->Child, Index, 0);
 
@@ -1039,7 +1032,7 @@ static void tag_link(objDocument *Self, objXML *XML, struct XMLTag *Tag, struct 
 
       style_check(Self, Index);
 
-      // Links are added to the list of tabbable points
+      // Links are added to the list of tab-able points
 
       i = add_tabfocus(Self, TT_LINK, link.ID);
       if (select) Self->FocusIndex = i;

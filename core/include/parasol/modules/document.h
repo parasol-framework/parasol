@@ -41,7 +41,7 @@
 
 // Event flags for selectively receiving events from the Document object.
 
-#define DEF_LOCATION 0x00000001
+#define DEF_PATH 0x00000001
 #define DEF_LINK_ACTIVATED 0x00000002
 
 // Internal trigger codes
@@ -98,6 +98,10 @@ typedef struct DocStyleV1 {
    struct RGB8 FontUnderline;       // Underline colour for the font, if active
    LONG StyleFlags;                 // Font style flags (FSO)
 } DOCSTYLE;
+
+struct deLinkActivated {
+   APTR Parameters;    // All key-values associated with the link.
+};
 
 struct escFont {
    WORD Index;            // Font lookup

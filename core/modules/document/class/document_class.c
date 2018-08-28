@@ -1825,7 +1825,7 @@ static ERROR DOCUMENT_ShowIndex(objDocument *Self, struct docShowIndex *Args)
 #include "document_def.c"
 
 static const struct FieldArray clFields[] = {
-   { "EventMask",    FDF_LARGE|FDF_RW,     (MAXINT)&clDocumentEventMask, NULL, NULL },
+   { "EventMask",    FDF_LARGE|FDF_FLAGS|FDF_RW, (MAXINT)&clDocumentEventMask, NULL, NULL },
    { "Description",  FDF_STRING|FDF_R,     0, NULL, NULL },
    { "FontFace",     FDF_STRING|FDF_RW,    0, NULL, SET_FontFace },
    { "Title",        FDF_STRING|FDF_RW,    0, NULL, SET_Title },
