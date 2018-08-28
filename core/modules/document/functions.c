@@ -7859,6 +7859,38 @@ static void exec_link(objDocument *Self, LONG Index)
 
    Self->Processing++;
 
+   if ((Self->Links[Index].EscapeCode IS ESC_LINK) AND (Self->EventMask & DEF_LINK_ACTIVATED)) {
+      struct deLinkActivated params;
+      if ((params.Parameters = VarNew(0, 0L))) {
+         escLink *link = Self->Links[Index].Link;
+         CSTRING strlink = (CSTRING)(link + 1);
+
+         if (link->Type IS LINK_FUNCTION) {
+            CSTRING function_name;
+            if (!extract_script(Self, strlink, NULL, &function_name, NULL)) {
+               VarSetString(params.Parameters, "onclick", function_name);
+            }
+         }
+         else if (link->Type IS LINK_HREF) {
+            VarSetString(params.Parameters, "href", strlink);
+         }
+
+         if (link->Args > 0) {
+            CSTRING arg = strlink + StrLength(strlink) + 1;
+            LONG i;
+            for (i=0; i < link->Args; i++) {
+               CSTRING value = arg + StrLength(arg) + 1;
+               VarSetString(params.Parameters, arg, value);
+               arg = value + StrLength(value) + 1;
+            }
+         }
+
+         ERROR result = report_event(Self, DEF_LINK_ACTIVATED, &params, "deLinkActivated:Parameters");
+         VarFree(params.Parameters);
+         if (result IS ERR_Skip) goto end;
+      }
+   }
+
    if (Self->Links[Index].EscapeCode IS ESC_LINK) {
       UBYTE buffer[400];
       OBJECTPTR script;
@@ -8109,32 +8141,50 @@ static void reset_cursor(objDocument *Self)
 
 //****************************************************************************
 
-static void report_event(objDocument *Self, LARGE Event)
+static ERROR report_event(objDocument *Self, LARGE Event, APTR EventData, CSTRING StructName)
 {
+   ERROR result = ERR_Okay;
+
    if (Event & Self->EventMask) {
-      if (Self->EventCallback.Type) {
-          if (Self->EventCallback.Type IS CALL_STDC) {
-            void (*routine)(objDocument *, LARGE);
+      LogF("~report_event()","Reporting event $%.8x", (LONG)Event);
 
-            OBJECTPTR context = SetContext(Self->EventCallback.StdC.Context);
-               routine = (void (*)(objDocument *, LARGE)) Self->EventCallback.StdC.Routine;
-               routine(Self, Event);
-            SetContext(context);
-         }
-         else if (Self->EventCallback.Type IS CALL_SCRIPT) {
-            OBJECTPTR script;
-            if ((script = Self->EventCallback.Script.Script)) {
-               struct ScriptArg args[2];
-               args[0].Name = "Document";
-               args[0].Type = FD_OBJECTPTR;
-               args[0].Address = Self;
+      if (Self->EventCallback.Type IS CALL_STDC) {
+         ERROR (*routine)(objDocument *, LARGE, APTR);
 
-               args[1].Name = "EventMask";
-               args[1].Type = FD_LARGE;
-               args[1].Large = Event;
-               scCallback(script, Self->EventCallback.Script.ProcedureID, args, ARRAYSIZE(args));
+         OBJECTPTR context = SetContext(Self->EventCallback.StdC.Context);
+            routine = (ERROR (*)(objDocument *, LARGE, APTR)) Self->EventCallback.StdC.Routine;
+            result = routine(Self, Event, EventData);
+         SetContext(context);
+      }
+      else if (Self->EventCallback.Type IS CALL_SCRIPT) {
+         OBJECTPTR script;
+         if ((script = Self->EventCallback.Script.Script)) {
+            struct ScriptArg args[3];
+            args[0].Name    = "Document";
+            args[0].Type    = FD_OBJECTPTR;
+            args[0].Address = Self;
+
+            args[1].Name  = "EventMask";
+            args[1].Type  = FD_LARGE;
+            args[1].Large = Event;
+
+            LONG argsize;
+            if ((EventData) AND (StructName)) {
+               args[2].Name    = StructName;
+               args[2].Type    = FD_STRUCT;
+               args[2].Address = EventData;
+               argsize = 3;
             }
+            else argsize = 2;
+
+            ERROR error = scCallback(script, Self->EventCallback.Script.ProcedureID, args, argsize);
+            if (!error) GetLong(script, FID_Error, &result);
          }
       }
+
+      LogBack();
    }
+   else FMSG("report_event()","No subscriber for event $%.8x", (LONG)Event);
+
+   return result;
 }
