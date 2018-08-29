@@ -1,0 +1,297 @@
+--[[
+To display a dialog box:
+
+   gui.dialog.message({ Parameters... })
+
+If the dialog box is modal, the call will not return until the user has responded to the dialog.
+
+To receive feedback from the dialog box, set the feedback option with a function that follows this prototype:
+
+   function feedback(Dialog, Response, State)
+
+Whereby Dialog refers to the dialog object and Response refers to a table item provided by the caller in the 'options'
+parameter.  If the dialog was cancelled then the Response is null.  The State parameter will be set if the userInput or
+checkboxLabel options were defined when the dialog was created.  The State table will contain 'input' and 'checkbox'
+values that indicate their state at the time.
+
+Note that the dialog box should be managed as a dynamic resource, i.e. created as necessary and deallocated once the
+user has responded (i.e. set all references to nil).  Retaining dialog boxes in memory will provide no descernible
+speed improvement to the user.
+
+Valid options to use when creating the dialog are as follows:
+
+   options:       An array of user options that will be listed in sequence in the dialog.  Each entry must include a
+                  'text' label and 'icon' for display.
+   popover:       Place the dialog window over the surface referenced here.
+   target:        Open the dialog window within the surface referenced here.
+   modal:         Set to true if the dialog box needs to be modal (prevents interaction with other windows).
+   message:       A message string to display in the dialog.
+   checkboxLabel: Enables a user checkbox in the dialog when set with a label name.
+   checkboxState: If true, the checkbox will be pre-selected.
+   icon:          Window icon, in the format 'category/name'
+   image:         An icon to display alongside the dialog message, in the format 'category/name'
+   userInput:     Set to true if the user can enter custom text.  Set to a string if the input box must be pre-filled.
+   secret:        Set to true if the userInput string should be kept secret (e.g. a password).
+   feedback:      Refers to a Fluid function that will receive the user's response to the dialog.
+
+Example usage:
+
+   gui.dialog.message({
+      modal = true,
+      image = 'icons:items/warning',
+      title = 'Hamlet has a question',
+      message = 'To be or not to be?',
+      userInput = 'That is the question',
+      checkboxLabel = '\'Tis nobler to suffer',
+      options = {
+         { id=1, text='To be', icon='items/checkmark' },
+         { id=2, text='Not to be', icon='items/cancel' }
+      },
+      feedback = function(Dialog, Response, State)
+      end
+   })
+--]]
+
+   require 'common'
+   include 'widget'
+
+   if (gui == nil) then gui = { } end
+   if (gui.dialog == nil) then gui.dialog = { } end
+
+gui.dialog.message = function(Options)
+   local mSys = mod.load('core')
+
+   local self = { // Public variables
+      windowID = nil
+   }
+
+   local lOptions = Options
+   local lWindow, lInput, lCheckbox
+
+   local function matchWindowToDocSize(Window, Document)
+      local page_width  = Document.pageWidth
+      local page_height = Document.pageHeight
+
+      Window.maxHeight    = page_height
+      Window.minHeight    = page_height
+      Window.insideHeight = page_height
+      Window.maxWidth     = page_width
+      Window.minWidth     = page_width
+      Window.insideWidth  = page_width
+   end
+
+   local function docEvent(Document, EventFlag, Parameters)
+      if bit.band(EventFlag, DEF_LINK_ACTIVATED) != 0 then
+         if (lOptions.feedback) then
+            local responseIndex = tonumber(mSys.VarGetString(Parameters.parameters, 'response'))
+            local response = lOptions.options[responseIndex]
+            local state = { }
+
+            if lCheckbox then
+               if lCheckbox.value == 1 then
+                  state.checkbox = true
+               else
+                  state.checkbox = false
+               end
+            end
+
+            if lInput then
+               state.input = nz(lInput.string, nil)
+               if (lOptions.inputRequired) and (string.len(state.input) < 1) then
+                  // If input is mandatory, the response is cancelled when no input is given
+                  response = nil
+               end
+            end
+
+            lOptions.feedback(self, response, state)
+         end
+
+         lWindow = nil
+      else
+         print('Document event received')
+      end
+   end
+
+   local function buildDocument()
+      local doc = [[
+<?xml version="1.0"?>
+<body leftmargin="10" topmargin="10" bottommargin="18" rightmargin="10" face="Open Sans" fontsize="10" link="70,70,120"
+  colour="240,240,250" fontcolour="0,0,0" selectcolour="80,160,80"/>
+]]
+
+      if lOptions.envTemplate then
+         // The EnvTemplate can redefine the default body, GUI templates etc
+         doc = doc .. options.envTemplate .. '\n'
+      end
+
+      if lOptions.template then
+         // A dialog-specific template can override the body style and change any class templates,
+         // header and footer etc
+         doc = doc .. '<include src="' .. options.template .. '"/>\n'
+      end
+
+      image = nz(lOptions.image, 'icons:items/question(48)')
+      if image:startsWith('icons:') then
+         image = image:gsub('^icons:(%w+)/(%w+)', 'icons:%1/%2(48)')
+      else
+         image = image:gsub('^(%w+)/(%w+)', 'icons:%1/%2(48)')
+      end
+
+      doc = doc .. [[
+<page name="Index">
+  <table columns="48,0" width="100%">
+    <row>
+      <cell>
+        <image src="]] .. image .. [[" align="left" eastgap="8"/>
+      </cell>
+      <cell>
+        <p>]] .. nz(lOptions.message,'') .. [[</p>
+]]
+
+      if lOptions.userInput then
+         local inputFlags = '!IgnoreFocus'
+         if lOptions.secret then
+            inputFlags = inputFlags .. '|Secret'
+         end
+
+         local msg
+         if type(lOptions.userInput) == 'string' then
+            msg = lOptions.userInput
+         else
+            msg = ''
+         end
+
+         doc = doc .. '<p><input name="inDialog" flags="' .. inputFlags .. '" width="200" string="' .. msg .. '"/></p>\n'
+      end
+
+      if lOptions.checkboxLabel then
+         local checkbox_value = 'false'
+         if lOptions.checkboxState then checkbox_value = 'true' end
+         doc = doc .. '<p><checkbox name="dlgCheckbox" label="' .. lOptions.checkboxLabel .. '" value="' .. checkbox_value .. '"/></p>\n'
+      end
+
+      if lOptions.inject then
+         doc = doc .. lOptions.inject
+      end
+
+      // Build the clickable options/buttons
+
+      if (type(lOptions.options) == 'table') and (#lOptions.options > 0) then
+         doc = doc .. '<p><box height="1" colour="0,0,0,50"/></p>\n<p nowrap>'
+
+         for i, option in ipairs(lOptions.options) do
+            if option['icon'] then
+               doc = doc .. '<image src="icons:' .. option.icon .. '(16)" eastgap="4"/>\n'
+            end
+
+            doc = doc .. '<a @response="' .. i .. '">' .. option.text .. '</a>\n'
+
+            if i < #lOptions.options then
+               doc = doc .. '<advance x="30"/>'
+            end
+         end
+
+         doc = doc .. '</p>'
+      end
+
+      doc = doc .. [[
+      </cell>
+    </row>
+  </table>
+  <advance y="20"/>
+</page>
+]]
+
+      return doc
+   end
+
+   catch(function()
+      lWindow = obj.new('window', {
+         insideWidth  = 290,
+         insideHeight = 102,
+         minWidth     = 190,
+         minHeight    = 102,
+         quit         = nz(lOptions.quit, false),
+         center       = true,
+         popover      = lOptions.popover,
+         parent       = lOptions.target,
+         icon         = nz(lOptions.icon, 'items/question'),
+         title        = nz(lOptions.title, 'Confirmation Required'),
+         modal        = nz(lOptions.modal, false),
+         flags        = 'NoMargins',
+         closeFeedback = function(Window)
+            if (lOptions.feedback != nil) then
+               lOptions.feedback(self, nil, nil)
+            end
+
+            lWindow = nil
+         end
+      })
+
+      self.windowID = lWindow.id
+
+      lDocSurface = lWindow.new('surface', {
+         x       = lWindow.leftMargin,
+         y       = lWindow.topMargin,
+         xOffset = lWindow.rightMargin,
+         yOffset = lWindow.bottomMargin,
+         flags   = 'GrabFocus'
+      })
+
+      lDocSurface.acShow()
+
+      lDoc = lDocSurface.new('document', {
+         eventMask     = 'LinkActivated',
+         eventCallback = docEvent,
+         path          = '#Index',
+         flags         = 'Unrestricted|NoScrollbars',
+         defaultScript = obj.find('self')
+      })
+
+      lDoc.acDataFeed(0, DATA_XML, buildDocument())
+
+      lInput = obj.find('inDialog')
+      lCheckbox = obj.find('dlgCheckbox')
+
+      if lInput then
+         lInput.textinput.mtSelectArea(0, 0, 20000, 20000)
+      end
+
+      matchWindowToDocSize(lWindow, lDoc)
+
+      lWindow.userFocus = lDocSurface.id
+
+      lWindow.acMoveToFront()
+      lWindow.acShow()
+      lDocSurface.acFocus()
+   end,
+   function(Exception)
+      error('Failed to initialise FileDialog: ' .. Exception.message)
+   end)
+
+   return self
+end
+
+   // This sub-routine is provided for languages other than Fluid to utilise the module.
+
+   do
+      local state = getExecutionState()
+      if (state.inRequire != true) then
+         local dlg = gui.dialog.file({
+            popover    = arg('popover'),
+            target     = arg('target'),
+            modal      = arg('modal'),
+            options    = arg('options'),
+            message    = arg('message'),
+            checkboxLabel = arg('checkboxLabel'),
+            checkboxState = arg('checkboxState'),
+            icon       = arg('icon'),
+            image      = arg('image'),
+            userInput  = arg('userInput', nil),
+            secret     = arg('secret')
+         })
+
+         glSelf = obj.find('self')
+         glSelf.primaryObject = dlg.windowID
+      end
+   end
