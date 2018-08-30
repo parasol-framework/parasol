@@ -230,9 +230,7 @@ static ERROR paste_to(objFileView *Self, CSTRING Folder, LONG Cluster)
    UBYTE args[512];
    LONG i;
    if ((i = StrFormat(args, sizeof(args), "commands:pastefiles.dml \"dest=%s\"", Folder)) < sizeof(args)-1) {
-      if (Cluster) {
-         i += StrFormat(args+i, sizeof(args)-i, " cluster=%d", Cluster);
-      }
+      if (Cluster) i += StrFormat(args+i, sizeof(args)-i, " cluster=%d", Cluster);
 
       if (i < sizeof(args)-1) {
          OBJECTPTR run;

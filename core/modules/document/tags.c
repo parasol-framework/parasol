@@ -85,10 +85,8 @@ static void trim_preformat(objDocument *Self, LONG *Index)
 
 static void saved_style_check(objDocument *Self, struct style_status *SaveStatus)
 {
-   UBYTE font, style;
-
-   font = Self->Style.FontChange;
-   style = Self->Style.StyleChange;
+   UBYTE font = Self->Style.FontChange;
+   UBYTE style = Self->Style.StyleChange;
 
    if (SaveStatus->FontStyle.Index != Self->Style.FontStyle.Index) font = TRUE;
 
@@ -306,14 +304,11 @@ static void tag_cache(objDocument *Self, objXML *XML, struct XMLTag *Tag, struct
 
 static void tag_call(objDocument *Self, objXML *XML, struct XMLTag *Tag, struct XMLTag *Child, LONG *Index, LONG Flags)
 {
-   OBJECTPTR script;
-   objXML *xmlinc;
-   STRING function;
    LONG i;
 
-   script = Self->DefaultScript;
+   OBJECTPTR script = Self->DefaultScript;
 
-   function = NULL;
+   STRING function = NULL;
    if (Tag->TotalAttrib > 1) {
       if (!StrMatch("function", Tag->Attrib[1].Name)) {
          function = Tag->Attrib[1].Value;
@@ -371,6 +366,7 @@ static void tag_call(objDocument *Self, objXML *XML, struct XMLTag *Tag, struct 
    CSTRING *results;
    LONG size;
    if ((!GetFieldArray(script, FID_Results, &results, &size)) AND (size > 0)) {
+      objXML *xmlinc;
       if (!CreateObject(ID_XML, 0, &xmlinc,
             FID_Statement|TSTR, results[0],
             FID_Flags|TLONG,    XMF_PARSE_HTML|XMF_STRIP_HEADERS,

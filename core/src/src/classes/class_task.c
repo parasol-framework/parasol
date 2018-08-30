@@ -1861,9 +1861,7 @@ static ERROR SET_Args(objTask *Self, CSTRING Value)
          }
          buffer[i] = 0;
 
-         if (*Value) while (*Value != ' ') Value++;
-
-         // Set the argument
+         if (*Value) while (*Value > 0x20) Value++;
 
          struct taskAddArgument add = { .Argument = buffer };
          Action(MT_TaskAddArgument, &Self->Head, &add);
@@ -1878,13 +1876,14 @@ static ERROR SET_Args(objTask *Self, CSTRING Value)
 -FIELD-
 Parameters: Command line arguments (list format).
 
-If a program is written to accept user arguments, then this field is the place to obtain them.  The arguments are
-listed in a string based array that is terminated with a NULL pointer. Thus if the user enters the following into
-a command-line:
+Command line arguments for a program can be defined here in list format, whereby each argument is an independent
+string.  The list must be terminated with a NULL pointer.
+
+To illustrate, the following command-line string:
 
 <pre>1&gt; YourProgram PREFS MyPrefs -file "documents:readme.txt"</pre>
 
-Then you will get:
+Would be represented as follows:
 
 <pre>
 CSTRING Args[] = {
@@ -1895,8 +1894,6 @@ CSTRING Args[] = {
    NULL
 };
 </pre>
-
-If the user did not supply any command line arguments, this field will be set to NULL.
 
 *****************************************************************************/
 
@@ -2021,12 +2018,11 @@ static ERROR GET_Copyright(objTask *Self, STRING *Value)
 
 static ERROR SET_Copyright(objTask *Self, CSTRING Value)
 {
-   LONG i;
-
    if (Self->Copyright)    { ReleaseMemoryID(Self->CopyrightMID);   Self->Copyright = NULL; }
    if (Self->CopyrightMID) { FreeMemoryID(Self->CopyrightMID); Self->CopyrightMID = NULL; }
 
    if ((Value) AND (*Value)) {
+      LONG i;
       for (i=0; Value[i]; i++);
       if (!AllocMemory(i+1, MEM_STRING|MEM_NO_CLEAR|Self->Head.MemFlags, (void **)&Self->Copyright, &Self->CopyrightMID)) {
          for (i=0; Value[i]; i++) Self->Copyright[i] = Value[i];
@@ -2211,7 +2207,7 @@ static ERROR SET_LaunchPath(objTask *Self, CSTRING Value)
 /*****************************************************************************
 
 -FIELD-
-Location: Location to load an executable file from.
+Location: Location of an executable file to launch.
 
 When a task object is activated, the Location field will be checked for a valid filename.  If the path is valid, the
 executable code will be loaded from this source.  The source must be in an executable format recognised by the
