@@ -109,81 +109,6 @@ static void saved_style_check(objDocument *Self, struct style_status *SaveStatus
    }
 }
 
-/*****************************************************************************
-** Internal: tag_action()
-**
-** Executes an action against an object.  This is only allowed in a trusting
-** environment as the security issues would make this code a lot more complex
-** than it currently is.  To call actions and methods on objects in a secure
-** environment, use Fluid instead.
-*/
-
-static void tag_action(objDocument *Self, objXML *XML, struct XMLTag *Tag, struct XMLTag *Child, LONG *Index, LONG Flags)
-{
-   OBJECTPTR action;
-   LONG i, retain;
-   STRING tagname;
-
-   if (!(Self->Flags & DCF_UNRESTRICTED)) {
-      LogErrorMsg("Use of <action> is only possible in trusting RIPPLE environments.");
-      return;
-   }
-
-   if (Tag->TotalAttrib > 1) {
-      if (NewObject(ID_ACTION, 0, &action)) {
-         Self->Error = ERR_NewObject;
-         return;
-      }
-
-      if (Self->CurrentObject) SetLong(action, FID_Owner, Self->CurrentObject->UniqueID);
-
-      retain = FALSE;
-      for (i=1; i < Tag->TotalAttrib; i++) {
-         tagname = Tag->Attrib[i].Name;
-         if (*tagname IS '$') tagname++;
-
-         if (!StrMatch("static", tagname)) {
-            // static actions are only possible if contained within an object
-            retain = TRUE;
-            if (!Self->CurrentObject) {
-               LogErrorMsg("<action> tag is defined as static but is not contained in an object.");
-               return;
-            }
-            continue;
-         }
-         else if (!StrMatch("delay", tagname)) retain = TRUE;
-
-         SetFieldEval(action, tagname, Tag->Attrib[i].Value ? Tag->Attrib[i].Value : (STRING)"1");
-      }
-
-      if (!acInit(action)) {
-         if (retain) {
-            struct escObject escobj;
-
-            ClearMemory(&escobj, sizeof(escobj));
-            escobj.Graphical = FALSE;
-            escobj.ObjectID  = action->UniqueID;
-            escobj.ClassID   = ID_ACTION;
-            escobj.Owned     = TRUE;
-
-            insert_escape(Self, Index, ESC_OBJECT, &escobj, sizeof(escobj));
-
-            struct docresource *resource;
-            if ((resource = add_resource_id(Self, action->UniqueID, RT_OBJECT_UNLOAD))) {
-               resource->ClassID = ID_ACTION;
-            }
-         }
-         else {
-            acActivate(action);
-            acFree(action);
-         }
-      }
-      else {
-         acFree(action);
-      }
-   }
-}
-
 //****************************************************************************
 // Advances the cursor.  It is only possible to advance positively on either axis.
 
@@ -2772,7 +2697,6 @@ static struct tagroutine glTags[] = {
    { HASH_elseif,        NULL,             TAG_CONDITIONAL },
    { HASH_repeat,        tag_repeat,       TAG_CHILDREN|TAG_CONDITIONAL },
    // Special instructions
-   { HASH_action,        tag_action,       TAG_INSTRUCTION },
    { HASH_cache,         tag_cache,        TAG_INSTRUCTION },
    { HASH_call,          tag_call,         TAG_INSTRUCTION },
    { HASH_debug,         tag_debug,        TAG_INSTRUCTION },
