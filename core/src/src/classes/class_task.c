@@ -410,11 +410,10 @@ void task_deregister_incoming(WINHANDLE Handle)
 }
 #endif
 
-/*****************************************************************************
-** This function is called when a WIN32 process that we launched has been terminated.
-**
-** For the linux equivalent, refer to internal.c validate_processID().
-*/
+//****************************************************************************
+// This function is called when a WIN32 process that we launched has been terminated.
+//
+// For the linux equivalent, refer to internal.c validate_processID().
 
 #ifdef _WIN32
 static void task_process_end(WINHANDLE FD, objTask *Task)
@@ -661,7 +660,8 @@ static ERROR TASK_Activate(objTask *Self, APTR Void)
 
          buffer[i++] = ' ';
 
-         // Check if the argument contains spaces - if so, we need to encapsulate it within quotes.  Otherwise, just copy it as normal.
+         // Check if the argument contains spaces - if so, we need to encapsulate it within quotes.  Otherwise, just
+         // copy it as normal.
 
          for (k=0; (args[j][k]) AND (args[j][k] != ' '); k++);
 
