@@ -1,55 +1,59 @@
 
 //****************************************************************************
-// This function targets a data file for opening.  This is achieved by passing the path to the Run class, which
-// searches for a program association suitable for opening the file.
+// This function targets a data file for opening.
 
 static ERROR exec_data_file(CSTRING TargetFile)
 {
-   LogMsg("Executing target '%s' using the Run class.", TargetFile);
+   LogMsg("Executing target '%s' using the Task class.", TargetFile);
 
-   OBJECTPTR run;
-   if (!CreateObject(ID_RUN, 0, &run,
-         FID_Location|TSTR, TargetFile,
-         TAGEND)) {
+   CLASSID class_id;
+   STRING command;
+   ERROR error;
 
-      if (glArgs) {
-         BYTE argbuffer[100];
-         STRING argname = argbuffer;
-         LONG i, j;
-         for (i=0; glArgs[i]; i++) {
-            CSTRING arg = glArgs[i];
-            for (j=0; (arg[j]) AND (arg[j] != '=') AND (j < (LONG)sizeof(argbuffer)-10); j++) argname[j] = arg[j];
-            argname[j] = 0;
-            LONG al = j;
+   if (!(error = IdentifyFile(TargetFile, "Open", 0, &class_id, NULL, &command))) {
+      OBJECTPTR run;
+      if (!CreateObject(ID_TASK, 0, &run,
+            FID_Location|TSTR, command,
+            TAGEND)) {
+         if (glArgs) {
+            char argbuffer[100];
+            STRING argname = argbuffer;
+            LONG i, j;
+            for (i=0; glArgs[i]; i++) {
+               CSTRING arg = glArgs[i];
+               for (j=0; (arg[j]) AND (arg[j] != '=') AND (j < (LONG)sizeof(argbuffer)-10); j++) argname[j] = arg[j];
+               argname[j] = 0;
+               LONG al = j;
 
-            if (arg[j] IS '=') {
-               j++;
-               if (arg[j] IS '{') {
-                  // Array definition, e.g. files={ file1.txt file2.txt }
-                  // This will be converted to files(0)=file.txt files(1)=file2.txt files:size=2
-
-                  // Check in case of no gap, e.g. files={arg1 ... }
-
+               if (arg[j] IS '=') {
                   j++;
-                  if (arg[j] > 0x20) SetVar(run, argbuffer, arg + j);
+                  if (arg[j] IS '{') {
+                     // Array definition, e.g. files={ file1.txt file2.txt }
+                     // This will be converted to files(0)=file.txt files(1)=file2.txt files:size=2
 
-                  i++;
-                  LONG arg_index = 0;
-                  while ((arg) AND (arg[0] != '}')) {
-                     StrFormat(argbuffer+al, sizeof(argbuffer)-al, "(%d)", arg_index);
-                     SetVar(run, argbuffer, arg);
-                     arg_index++;
+                     // Check in case of no gap, e.g. files={arg1 ... }
+
+                     j++;
+                     if (arg[j] > 0x20) SetVar(run, argbuffer, arg + j);
+
                      i++;
+                     LONG arg_index = 0;
+                     while ((arg) AND (arg[0] != '}')) {
+                        StrFormat(argbuffer+al, sizeof(argbuffer)-al, "(%d)", arg_index);
+                        SetVar(run, argbuffer, arg);
+                        arg_index++;
+                        i++;
+                     }
                   }
+                  else SetVar(run, argname, arg+j);
                }
-               else SetVar(run, argname, arg+j);
+               else SetVar(run, argname, "1");
             }
-            else SetVar(run, argname, "1");
          }
-      }
 
-      acActivate(run);
-      acFree(run);
+         acActivate(run);
+         acFree(run);
+      }
    }
 
    return(ERR_LimitedSuccess);

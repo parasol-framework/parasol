@@ -234,7 +234,7 @@ static ERROR paste_to(objFileView *Self, CSTRING Folder, LONG Cluster)
 
       if (i < sizeof(args)-1) {
          OBJECTPTR run;
-         if (!(error = CreateObject(ID_RUN, NF_INTEGRAL, &run,
+         if (!(error = CreateObject(ID_TASK, NF_INTEGRAL, &run,
                FID_Location|TSTR, "bin:parasol-gui",
                FID_Args|TSTR,     args,
                TAGEND))) {
@@ -648,21 +648,25 @@ static ERROR open_files(objFileView *Self, LONG *Tags, CSTRING Mode)
          pos += StrFormat(buffer+pos, size - pos, "\"%s%s\"", Self->Path, extract_filename(Self->View->XML->Tags[Tags[i]]));
       }
 
-      OBJECTPTR run;
-      if (!CreateObject(ID_RUN, 0, &run,
-            FID_Mode|TSTR,     Mode, // Open, Edit, View
-            FID_Location|TSTR, buffer,
-            TAGEND)) {
-         acActivate(run);
-         acFree(run);
-
-         FreeMemory(buffer);
-         return ERR_Okay;
+      CLASSID class_id;
+      STRING command;
+      ERROR error;
+      if (!(error = IdentifyFile(buffer, Mode, 0, &class_id, NULL, &command))) {
+          OBJECTPTR run;
+          if (!CreateObject(ID_TASK, 0, &run,
+                FID_Location|TSTR, command,
+                TAGEND)) {
+             acActivate(run);
+             acFree(run);
+             FreeMemory(buffer);
+             return ERR_Okay;
+          }
+          else {
+             FreeMemory(buffer);
+             return ERR_CreateObject;
+          }
       }
-      else {
-         FreeMemory(buffer);
-         return ERR_CreateObject;
-      }
+      else return error;
    }
    else return ERR_AllocMemory;
 }
@@ -958,11 +962,9 @@ static void response_delete(objDialog *Dialog, LONG Response)
 
 #ifdef EXTERNAL_CLIP
          OBJECTPTR run;
-
-         UBYTE buffer[270];
+         char buffer[270];
          StrFormat(buffer, sizeof(buffer), "commands:deleteclipfiles.dml cluster=%d", Self->DeleteClip->ClusterID);
-
-         if (!(error = CreateObject(ID_RUN, NF_INTEGRAL, &run,
+         if (!(error = CreateObject(ID_TASK, NF_INTEGRAL, &run,
                FID_Location|TSTR, "bin:parasol-gui",
                FID_Args|TSTR,     buffer,
                TAGEND))) {
