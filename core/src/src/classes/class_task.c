@@ -1831,25 +1831,24 @@ static ERROR GET_Actions(objTask *Self, struct ActionEntry **Value)
 -FIELD-
 Args: Command line arguments (string format).
 
-If you would like to set the command line arguments for a new task using a single string, define the arguments through
-this field.  The string that you pass will be disassembled and the arguments will be added to the #Parameters
-field.
+This field allows command line arguments to be set using a single string, whereby each value is separated by whitespace.
+The string will be disassembled and the arguments will be available to read from the #Parameters field.
+
+If an argument needs to include whitespace, use double-quotes to encapsulate the value.
 
 *****************************************************************************/
 
 static ERROR SET_Args(objTask *Self, CSTRING Value)
 {
-   LONG i;
-
    if ((!Value) OR (!*Value)) return ERR_Okay;
 
    while (*Value) {
-      while (*Value IS ' ') Value++;
-      if (*Value) {
-         // Extract the argument
+      while (*Value <= 0x20) Value++; // Skip whitespace
 
+      if (*Value) { // Extract the argument
          char buffer[400];
-         for (i=0; (*Value) AND (*Value != ' ') AND (i < sizeof(buffer)-1);) {
+         LONG i;
+         for (i=0; (*Value) AND (*Value > 0x20) AND (i < sizeof(buffer)-1);) {
             if (*Value IS '"') {
                Value++;
                while ((i < sizeof(buffer)-1) AND (*Value) AND (*Value != '"')) {
