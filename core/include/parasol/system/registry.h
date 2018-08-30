@@ -8,7 +8,6 @@
 #define ID_PICTURE 0xad68f281UL
 #define ID_SOUND 0x105ee06eUL
 #define ID_BITMAP 0xf42617e2UL
-#define ID_RUN 0x0b88a75aUL
 #define ID_DISPLAY 0x12cd479bUL
 #define ID_REGION 0x19290fc9UL
 #define ID_ICONSERVER 0x81d9f385UL
@@ -36,7 +35,6 @@
 #define ID_TEXT 0x7c9e690aUL
 #define ID_MODULEMASTER 0xe452db57UL
 #define ID_BROADCAST 0x091eddb8UL
-#define ID_ACTION 0xf1644d03UL
 #define ID_SCROLL 0x1b6028b4UL
 #define ID_IMAGE 0x0fa87ca8UL
 #define ID_AUDIO 0x0f1c28b7UL
@@ -56,7 +54,6 @@
 #define ID_CHECKBOX 0x11a6290cUL
 #define ID_SCROLLBAR 0xf5b38a09UL
 #define ID_WINDOW 0x251efe5dUL
-#define ID_MENUBAR 0xbdece0afUL
 #define ID_BLUETOOTH 0x57ee47bbUL
 #define ID_NETSOCKET 0x2b439bb5UL
 #define ID_VIDEO 0x1091963cUL
