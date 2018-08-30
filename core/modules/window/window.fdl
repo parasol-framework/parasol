@@ -47,7 +47,6 @@ module({ name="Window", copyright="Paul Manias © 2003-2017", version=1.0 }, fun
    oid Maximise         # The surface that represents the maximise gadget
    oid MoveToBack       # The surface that represents the move-to-back gadget
    oid Close            # The surface that represents the close gadget
-   oid MenuBar          # The menubar class object
    int(EDGE) ResizeFlags
    int ResizeBorder     # Pixel width of the resize border
    oid Canvas

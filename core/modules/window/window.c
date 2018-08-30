@@ -61,12 +61,6 @@ You should also define an object that will control the window title.  You will n
 object for the purpose of determining the titlebar configuration, plus you will need to set certain window fields
 for communication purposes.  For examples on how to generate the titlebar, please refer to your style:window.xml file.
 
-You will need to define a 'menubar' tag so that a menu strip can be created for the window if the user requests one.
-The requirements for this are similar to the title bar definition.  An [@xml] parameter will be provided that refers
-to an XML object that is to be used for configuring the menu bar.  By scanning the object you will be able to extract
-the names of each menu option that you need to create.  Please refer to your style:window.xml file to observe how
-this should be done.
-
 Finally, a number of optional tags may be used for window control purposes.  These tags can contain Fluid scripts that
 will be executed when certain actions occur to the window.  The following table describes the available tags:
 
@@ -682,13 +676,6 @@ static ERROR WINDOW_Init(objWindow *Self, APTR Void)
       else SetString(Self->Surface, FID_Colour, "230,230,230");
 
       if (Self->InsideBorder) drwAddCallback(Self->Surface, &draw_border);
-   }
-
-   // Create a menubar if one has been requested.  The user will have provided the location of the menubar XML file
-   // in the Menu field.
-
-   if (Self->Menu[0]) {
-      drwApplyStyleGraphics(Self, Self->SurfaceID, "window", "menubar");
    }
 
    if ((Self->ResizeFlags) AND (Self->ResizeBorder > 0) AND (Self->Surface->ParentID)) {
@@ -1533,11 +1520,6 @@ static ERROR SET_Menu(objWindow *Self, CSTRING Value)
 /*****************************************************************************
 
 -FIELD-
-MenuBar: Refers to the window's menubar gadget.
-
-If a menubar was generated for the window, this field will refer to it.
-
--FIELD-
 Minimise: Operator for the title bar's minimise gadget.
 
 The Minimise field controls the activity of the minimise gadget, which is typically found in the window title bar.  The
@@ -2194,7 +2176,6 @@ static const struct FieldArray clFields[] = {
    { "MaximiseObject",   FDF_OBJECTID|FDF_RI,  0, NULL, NULL },
    { "MoveToBackObject", FDF_OBJECTID|FDF_RI,  0, NULL, NULL },
    { "CloseObject",      FDF_OBJECTID|FDF_RI,  0, NULL, NULL },
-   { "MenuBar",          FDF_OBJECTID|FDF_RI,  ID_MENUBAR, NULL, NULL },
    { "Resize",           FDF_LONGFLAGS|FDF_I,  (MAXINT)&clResizeFlags, NULL, NULL },
    { "ResizeBorder",     FDF_LONG|FDF_RI,      0, NULL, NULL },
    { "Canvas",           FDF_OBJECTID|FDF_R,   0, GET_Canvas, NULL },
