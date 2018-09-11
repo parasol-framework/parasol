@@ -2717,7 +2717,7 @@ static ERROR write_socket(objHTTP *Self, APTR Buffer, LONG Length, LONG *Result)
       if (Self->Flags & HTF_DEBUG_SOCKET) {
          LONG i;
          LogMsg("SOCKET-OUTGOING: LEN: %d", Length);
-         for (i=0; i < Length; i++) if ((((STRING)Buffer)[i] < 128) AND (((STRING)Buffer)[i] >= 10)) {
+         for (i=0; i < Length; i++) if ((((UBYTE *)Buffer)[i] < 128) AND (((UBYTE *)Buffer)[i] >= 10)) {
             printf("%c", ((STRING)Buffer)[i]);
          }
          else printf("?");
