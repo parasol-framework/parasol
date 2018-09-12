@@ -16,6 +16,15 @@ void fs_ignore_file(objFile *File)
    winCloseHandle(File->prvWatch->Handle);
 }
 
+#elif __APPLE__
+
+// OSX uses an FSEvents device https://en.wikipedia.org/wiki/FSEvents
+
+void fs_ignore_file(objFile *File)
+{
+
+}
+
 #endif
 
 //****************************************************************************
