@@ -21,6 +21,8 @@ module({ name="Network", copyright="Paul Manias © 2005-2017", version=1.0, pref
 typedef LONG SOCKET_HANDLE;
 #elif _WIN32
 typedef ULONG SOCKET_HANDLE; // NOTE: declared as ULONG instead of SOCKET for now to avoid including winsock.h
+#elif __APPLE__
+typedef LONG SOCKET_HANDLE;
 #else
 #error "No support for this platform"
 #endif
