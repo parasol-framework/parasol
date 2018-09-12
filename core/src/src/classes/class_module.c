@@ -493,6 +493,9 @@ static ERROR MODULE_Init(objModule *Self, APTR Void)
                path[ext] = '.'; path[ext+1] = 's'; path[ext+2] = 'o'; path[ext+3] = 0;
             #elif _WIN32
                path[ext] = '.'; path[ext+1] = 'd'; path[ext+2] = 'l'; path[ext+3] = 'l'; path[ext+4] = 0;
+            #elif __APPLE__
+               // OSX also uses .dylib but is compatible with .so
+               path[ext] = '.'; path[ext+1] = 's'; path[ext+2] = 'o'; path[ext+3] = 0;
             #else
                #error What is the module extension for this machine type (.so/.mod/...)?
             #endif
