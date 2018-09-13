@@ -20,11 +20,15 @@ compile: $(OBJECTS)
 ifeq ($(OSTYPE),win)
 	$(CC) $(LIBLINK) -lm $?
 else
+   ifeq ($(HOST),mac)
+	$(CC) $(LIBLINK) -lm $?
+   else
 	$(TOOLCHAIN)ld -r -o lib.o $(OBJECTS)
 #	$(OBJCOPY) -K ModHeader `sed 's/^/-L /' syms.exp` -R .comment -R .note --strip-unneeded lib.o
 	$(OBJCOPY) -K ModHeader -R .comment -R .note --strip-unneeded lib.o
 	$(CC) $(CFLAGS) -nostartfiles -shared -s -Wl,-soname,$(DEST),-version-script=version,-Bsymbolic -lm -o "$(DEST)" lib.o
 	rm -f lib.o
+   endif
 endif
 
 $(OBJECTS): %.o: %.c

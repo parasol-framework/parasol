@@ -13,22 +13,30 @@ OBJECTS=  picture.o lib/png.o lib/pngset.o lib/pngget.o lib/pngread.o lib/pngpre
 HEADER= ../../include/parasol/modules/$(NAME).h
 
 LINKTO= -lm
+
 ifeq ($(OSTYPE),android)
    LINKTO += -lz
 endif
 ifeq ($(OSTYPE),win)
    LINKTO += -lz
 endif
+ifeq ($(HOST),mac)
+   LINKTO += -lz
+endif
 
 compile: $(HEADER)
 	make -j -f makefile_png
-ifeq ($(OSTYPE),win)
+ifeq ($(HOST),win)
 	$(CC) -shared -s -o "$(DEST)" $(OBJECTS) $(LINKTO)
 else
+   ifeq ($(HOST),mac)
+	$(CC) -shared -o "$(DEST)" $(OBJECTS) $(LINKTO)
+   else
 	$(TOOLCHAIN)ld -r -o lib.o $(OBJECTS)
 	$(OBJCOPY) -K ModHeader `sed 's/^/-L /' syms.exp` -R .comment -R .note --strip-unneeded lib.o
 	$(CC) $(CFLAGS) -nostartfiles -shared -s -Wl,-soname,$(DEST),-version-script=version -o "$(DEST)" lib.o $(LINKTO)
 	rm -f lib.o
+   endif
 endif
 
 $(HEADER) picture_def.c: $(NAME).fdl picture.c
