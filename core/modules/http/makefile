@@ -12,8 +12,12 @@ CFLAGS += -DMOD_NAME=$(NAME)
 compile: $(HEADER) $(OBJECTS)
 	$(CC) $(CFLAGS) $(LIBLINK) $(NAME).c $(OBJECTS)
 
-auth.o: auth.fluid
-	$(OBJCOPY) $(OBJFLAGS) --redefine-sym _binary_auth_fluid_start=glAuthScript --redefine-sym _binary_auth_fluid_end=glAuthScriptEnd -I binary $< $@
+auth.c: auth.fluid
+ifeq ($(XXD),)
+	@echo The xxd command is unavailable on this system
+else
+	$(XXD) -c20 -i auth.fluid | sed 's/auth_fluid/glAuthScript/g;s/glAuthScript_len/glAuthScriptLength/g' > $@
+endif
 
 $(HEADER): $(NAME).fdl $(NAME).c
 	$(IDL_C) src=$<

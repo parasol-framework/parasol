@@ -111,8 +111,7 @@ static OBJECTPTR clHTTP = NULL;
 static objProxy *glProxy = NULL;
 
 extern UBYTE glAuthScript[];
-extern UBYTE glAuthScriptEnd[];
-static LONG glAuthScriptSize;
+static LONG glAuthScriptLength;
 static const struct FieldDef clHTTPState[];
 
 //****************************************************************************
@@ -184,6 +183,8 @@ static const struct FieldArray clFields[];
 
 //****************************************************************************
 
+INLINE CSTRING GETSTATUS(LONG Code) __attribute__((unused));
+
 INLINE CSTRING GETSTATUS(LONG Code)
 {
    WORD i;
@@ -198,8 +199,6 @@ INLINE CSTRING GETSTATUS(LONG Code)
 static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
    CoreBase = argCoreBase;
-
-   glAuthScriptSize = (LONG)(glAuthScriptEnd - glAuthScript);
 
    if (LoadModule("network", MODVERSION_NETWORK, &modNetwork, &NetworkBase) != ERR_Okay) return ERR_InitModule;
 
@@ -674,9 +673,9 @@ static ERROR socket_incoming(objNetSocket *Socket)
 
                      ERROR error;
                      STRING scriptfile;
-                     if (!AllocMemory(glAuthScriptSize+1, MEM_STRING|MEM_NO_CLEAR, &scriptfile, NULL)) {
-                        CopyMemory(glAuthScript, scriptfile, glAuthScriptSize);
-                        scriptfile[glAuthScriptSize] = 0;
+                     if (!AllocMemory(glAuthScriptLength+1, MEM_STRING|MEM_NO_CLEAR, &scriptfile, NULL)) {
+                        CopyMemory(glAuthScript, scriptfile, glAuthScriptLength);
+                        scriptfile[glAuthScriptLength] = 0;
 
                         OBJECTPTR script;
                         if (!CreateObject(ID_SCRIPT, NF_INTEGRAL, &script,
