@@ -26,7 +26,43 @@ Name: Locks/Semaphores
 
 //#define DBG_SEMAPHORES TRUE
 
-#ifdef __unix__
+#ifdef __APPLE__
+
+ERROR plAllocPrivateSemaphore(APTR Semaphore, LONG InitialValue)
+{
+   static int num = 0;
+   char name[32] = "parasol000000000000";
+   num++;
+   IntToStr(num, name+7, sizeof(name)-7);
+   sem_t *sem = sem_open(name, O_CREAT|O_EXCL, InitialValue);
+   if (sem IS SEM_FAILED) return ERR_SystemCall;
+   ((sem_t **)Semaphore)[0] = sem;
+   return ERR_Okay;
+}
+
+void plFreePrivateSemaphore(APTR Semaphore)
+{
+   sem_close((sem_t *)Semaphore);
+}
+
+ERROR plLockSemaphore(APTR Semaphore, LONG TimeOut)
+{
+   if (!sem_wait((sem_t *)Semaphore)) {
+      return ERR_Okay;
+   }
+   else if (errno IS EINVAL) return ERR_DoesNotExist;
+   else if (errno IS EINTR) return ERR_TimeOut;
+   else if (errno IS EDEADLK) return ERR_DeadLock;
+   else return ERR_Failed;
+}
+
+void plUnlockSemaphore(APTR Semaphore)
+{
+   sem_post((sem_t *)Semaphore);
+}
+
+#elif __unix__
+
 ERROR plAllocPrivateSemaphore(APTR Semaphore, LONG InitialValue)
 {
    if (sem_init((sem_t *)Semaphore, 0, InitialValue) IS -1) {

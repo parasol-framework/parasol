@@ -56,6 +56,16 @@ static void free_lock(THREADLOCK *Lock);
 static THREADLOCK glPrivateLocks[TL_END];
 static CONDLOCK   glPrivateCond[CN_END];
 
+#ifdef __APPLE__
+struct sockaddr_un * get_socket_path(LONG ProcessID, LONG *Size)
+{
+   // OSX doesn't support anonymous sockets, so we use /tmp instead.
+   static THREADVAR struct sockaddr_un tlSocket;
+   tlSocket.sun_family = AF_UNIX;
+   *Size = sizeof(sa_family_t) + snprintf(tlSocket.sun_path, sizeof(tlSocket.sun_path), "/tmp/parasol.%d", ProcessID);
+   return &tlSocket;
+}
+#else
 struct sockaddr_un * get_socket_path(LONG ProcessID, LONG *Size)
 {
    static THREADVAR struct sockaddr_un tlSocket;
@@ -65,17 +75,17 @@ struct sockaddr_un * get_socket_path(LONG ProcessID, LONG *Size)
       tlSocket.sun_family = AF_UNIX;
       ClearMemory(tlSocket.sun_path, sizeof(tlSocket.sun_path));
       tlSocket.sun_path[0] = '\0';
-      tlSocket.sun_path[1] = 'r';
-      tlSocket.sun_path[2] = 'k';
+      tlSocket.sun_path[1] = 'p';
+      tlSocket.sun_path[2] = 's';
       tlSocket.sun_path[3] = 'l';
       init = TRUE;
    }
 
    ((LONG *)(tlSocket.sun_path+4))[0] = ProcessID;
    *Size = sizeof(sa_family_t) + 4 + sizeof(LONG);
-
    return &tlSocket;
 }
+#endif
 
 ERROR alloc_public_lock(UBYTE LockIndex, WORD Flags)
 {

@@ -615,6 +615,10 @@ EXPORT struct CoreBase * OpenCore(struct OpenInfo *Info)
          LONG socklen;
          struct sockaddr_un *sockpath = get_socket_path(glProcessID, &socklen);
 
+         #ifdef __APPLE__
+            unlink(sockpath->sun_path);
+         #endif
+
          if (bind(glSocket, (struct sockaddr *)sockpath, socklen) IS -1) {
             KERR("bind() failed [%d]: %s\n", errno, strerror(errno));
             if (errno IS EADDRINUSE) {
