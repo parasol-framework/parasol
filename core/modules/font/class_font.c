@@ -1698,7 +1698,7 @@ static ERROR draw_vector_font(objFont *Self)
          else {
             struct font_glyph *src;
             if (!(src = get_glyph(Self, unicode, TRUE))) {
-               LogMsg("Failed to acquire glyph for character %d '%lc'", unicode, unicode);
+               LogMsg("Failed to acquire glyph for character %d '%lc'", unicode, (wint_t)unicode);
                break;
             }
             glyph = src->GlyphIndex;
@@ -2078,7 +2078,7 @@ static struct font_glyph * get_glyph(objFont *Self, ULONG Unicode, UBYTE GetBitm
 
    FT_Error fterr;
    if ((fterr = FT_Load_Glyph(Self->FTFace, glyph_index, FT_LOAD_DEFAULT))) {
-      LogF("@","Failed to load glyph %d '%lc', FT error: %s", glyph_index, Unicode, get_ft_error(fterr));
+      LogF("@","Failed to load glyph %d '%lc', FT error: %s", glyph_index, (wint_t)Unicode, get_ft_error(fterr));
       return NULL;
    }
 

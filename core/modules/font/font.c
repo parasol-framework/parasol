@@ -63,6 +63,7 @@ OR
 #include <parasol/modules/display.h>
 
 #include <math.h>
+#include <wchar.h>
 
 static struct KeyStore *glCache = NULL;
 
