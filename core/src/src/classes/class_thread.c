@@ -522,6 +522,8 @@ Call the Wait method to wait for a thread to complete its activity.  Because wai
 the caller to halt all processing, the MsgInterval parameter can be used to make periodic calls to ~ProcessMessages()
 every X milliseconds.  If the MsgInterval is set to -1 then no periodic message checks will be made.
 
+Limitations: Android and OSX implementations do not currently support the TimeOut or MsgInterval parameters.
+
 -INPUT-
 int TimeOut: A timeout value measured in milliseconds.
 int MsgInterval: Check for incoming messages every X milliseconds.
@@ -542,6 +544,11 @@ static ERROR THREAD_Wait(objThread *Self, struct thWait *Args)
    if (Args->MsgInterval < -1) return PostError(ERR_Args);
 
 #ifdef __ANDROID__
+   pthread_join(Self->prv.PThread, NULL);
+   return ERR_Okay;
+#elif __APPLE__
+   // TODO: Simulation of pthread_timedjoin_np() is possible by creating locked semaphores for the threads, then
+   // wait on the semaphore here for the lock to be released.
    pthread_join(Self->prv.PThread, NULL);
    return ERR_Okay;
 #else

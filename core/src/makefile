@@ -75,7 +75,7 @@ else
       endif
    else
       ifeq ($(HOST),mac)
-	$(CC) -shared $(LINK) -o $(PARASOL_ROOTMOD) $(OBJECTS) -ldl -lrt -lpthread $(LINKLIB)
+	$(CC) -shared $(LINK) -o $(PARASOL_ROOTMOD) $(OBJECTS) -ldl  -lpthread $(LINKLIB)
       else
          # Note: -lrt is required for clock_gettime()
 
