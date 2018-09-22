@@ -106,7 +106,6 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    if (init_clipboard() != ERR_Okay) return ERR_AddClass;
    if (init_button() != ERR_Okay) return ERR_AddClass;
    if (init_checkbox() != ERR_Okay) return ERR_AddClass;
-   if (init_dialog() != ERR_Okay) return ERR_AddClass;
    if (init_resize() != ERR_Okay) return ERR_AddClass;
    if (init_scrollbar() != ERR_Okay) return ERR_AddClass;
    if (init_combobox() != ERR_Okay) return ERR_AddClass;
@@ -118,7 +117,6 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    if (init_menu() != ERR_Okay) return ERR_AddClass;
    if (init_menuitem() != ERR_Okay) return ERR_AddClass;
    if (init_view() != ERR_Okay) return ERR_AddClass;
-   if (init_fileview() != ERR_Okay) return ERR_AddClass;
 
    return ERR_Okay;
 }
@@ -137,10 +135,8 @@ static ERROR CMDExpunge(void)
    free_text();
    free_menu();
    free_menuitem();
-   free_dialog();
    free_view();
    free_clipboard();
-   free_fileview();
 
    if (modIconServer) { acFree(modIconServer); modIconServer = NULL; }
    if (modDisplay)    { acFree(modDisplay);    modDisplay = NULL; }

@@ -1287,6 +1287,29 @@ For available response values please refer to the <class>Dialog</class> class.
 
 *****************************************************************************/
 
+const char delete_feedback_script[] = "\
+   require 'gui/dialog'\n\
+\n\
+   local dlg = gui.dialog.message({\n\
+      image   = 'icons:tools/eraser',\n\
+      title   = 'File Deletion Progress',\n\
+      message = 'Deleting...',\n\
+      options = { id=1, text='Cancel', icon='items/cancel' },\n\
+      feedback = function(Dialog, Response, State)\n\
+         if Response then\n\
+            if Response.id == 1 then\n\
+               obj.find('self')._status = '1'\n\
+            end\n\
+         else\n\
+            obj.find('self')._status = '2'\n\
+         end\n\
+      end\n\
+   })\n\
+\n\
+function update_msg(Message)\n\
+   dlg.message(Message)\n\
+end\n";
+
 static LONG delete_feedback(struct FileFeedback *Feedback)
 {
    objClipboard *Self = (objClipboard *)Feedback->User;
@@ -1301,50 +1324,71 @@ static LONG delete_feedback(struct FileFeedback *Feedback)
    if (Self->ProgressTarget IS -1) return FFR_OKAY;
 
    if (Self->ProgressDialog) {
-      if (Self->ProgressDialog->Response IS RSF_CANCEL) return FFR_ABORT;
+      char response[3];
+      if (!acGetVar(Self->ProgressDialog, "response", response, sizeof(response))) {
+         if (response[0] IS '1') return FFR_ABORT;
+         else if (response[0] IS '2') {
+            // If the window was closed then continue deleting files, don't bother the user with further messages.
 
-      if (Self->ProgressDialog->Response IS RSF_CLOSED) {
-         // If the window was closed then continue deleting files, don't bother the user with further messages.
-
-         acFree(Self->ProgressDialog);
-         Self->ProgressDialog = NULL;
-         Self->ProgressTarget = -1;
-         return FFR_OKAY;
+            acFree(Self->ProgressDialog);
+            Self->ProgressDialog = NULL;
+            Self->ProgressTarget = -1;
+            return FFR_OKAY;
+         }
       }
    }
 
    // If the file processing exceeds a set time period, popup a progress window
 
    if ((!Self->ProgressDialog) AND ((PreciseTime() - Self->ProgressTime) > 500000LL)) {
-      if (!CreateObject(ID_DIALOG, NF_INTEGRAL, &Self->ProgressDialog,
-            FID_Owner|TLONG,  Self->Head.UniqueID,
-            FID_Target|TLONG, Self->ProgressTarget,
-            FID_Title|TSTR,   "File Deletion Progress",
-            FID_Image|TSTR,   "icons:tools/eraser(48)",
-            FID_Options|TSTR, "Cancel",
-            FID_String|TSTR,  "Deleting...",
+      if (!CreateObject(ID_SCRIPT, NF_INTEGRAL, (OBJECTPTR *)&Self->ProgressDialog,
+            FID_Target|TLONG,   Self->ProgressTarget,
+            FID_Statement|TSTR, delete_feedback_script,
             TAGEND)) {
          acShow(Self->ProgressDialog);
       }
    }
 
-   if (!Self->ProgressDialog) return FFR_OKAY;
+   if (Self->ProgressDialog) {
+      STRING str = Feedback->Path;
+      LONG i = len;
+      while ((i > 0) AND (str[i-1] != '/') AND (str[i-1] != '\\') AND (str[i-1] != ':')) i--;
 
-   STRING str = Feedback->Path;
-   LONG i = len;
-   while ((i > 0) AND (str[i-1] != '/') AND (str[i-1] != '\\') AND (str[i-1] != ':')) i--;
+      char buffer[256];
+      StrFormat(buffer, sizeof(buffer), "Deleting: %s", str+i);
+      SetString(Self->ProgressDialog, FID_String, buffer);
+      Self->ProgressTime = PreciseTime();
 
-   char buffer[256];
-   StrFormat(buffer, sizeof(buffer), "Deleting: %s", str+i);
-   SetString(Self->ProgressDialog, FID_String, buffer);
-   Self->ProgressTime = PreciseTime();
-
-   ProcessMessages(0, 0);
+      ProcessMessages(0, 0);
+   }
 
    return FFR_OKAY;
 }
 
 //****************************************************************************
+
+const char paste_feedback_script[] = "\
+   require 'gui/dialog'\n\
+\n\
+   local dlg = gui.dialog.message({\n\
+      image   = 'icons:tools/copy',\n\
+      title   = 'File Transfer Progress',\n\
+      message = 'Copying...\n\nPlease wait...',\n\
+      options = { id=1, text='Cancel', icon='items/cancel' },\n\
+      feedback = function(Dialog, Response, State)\n\
+         if Response then\n\
+            if Response.id == 1 then\n\
+               obj.find('self')._status = '1'\n\
+            end\n\
+         else\n\
+            obj.find('self')._status = '2'\n\
+         end\n\
+      end\n\
+   })\n\
+\n\
+function update_msg(Message)\n\
+   dlg.message(Message)\n\
+end\n";
 
 static LONG paste_feedback(struct FileFeedback *Feedback)
 {
@@ -1362,56 +1406,55 @@ static LONG paste_feedback(struct FileFeedback *Feedback)
    if (Self->ProgressTarget IS -1) return FFR_OKAY;
 
    if (Self->ProgressDialog) {
-      if (Self->ProgressDialog->Response IS RSF_CANCEL) return FFR_ABORT;
+      char response[3];
+      if (!acGetVar(Self->ProgressDialog, "response", response, sizeof(response))) {
+         if (response[0] IS '1') return FFR_ABORT;
+         else if (response[0] IS '2') {
+            // If the window was closed then continue deleting files, don't bother the user with further messages.
 
-      if (Self->ProgressDialog->Response IS RSF_CLOSED) {
-         // If the window was closed then continue deleting files, don't bother the user with further messages.
-
-         acFree(Self->ProgressDialog);
-         Self->ProgressDialog = NULL;
-         Self->ProgressTarget = -1;
-         return FFR_OKAY;
+            acFree(Self->ProgressDialog);
+            Self->ProgressDialog = NULL;
+            Self->ProgressTarget = -1;
+            return FFR_OKAY;
+         }
       }
    }
 
    // If the file processing exceeds a set time period, popup a progress window
 
    if ((!Self->ProgressDialog) AND ((PreciseTime() - Self->ProgressTime) > 500000LL)) {
-      if (!CreateObject(ID_DIALOG, NF_INTEGRAL, &Self->ProgressDialog,
-            FID_Owner|TLONG,  Self->Head.UniqueID,
-            FID_Target|TLONG, Self->ProgressTarget,
-            FID_Title|TSTR,   "File Transfer Progress",
-            FID_Image|TSTR,   "icons:tools/copy(48)",
-            FID_Options|TSTR, "Cancel",
-            FID_String|TSTR,  "Copying...\n\nPlease wait...",
+      if (!CreateObject(ID_SCRIPT, NF_INTEGRAL, (OBJECTPTR *)&Self->ProgressDialog,
+            FID_Target|TLONG,   Self->ProgressTarget,
+            FID_Statement|TSTR, paste_feedback_script,
             TAGEND)) {
-
          acShow(Self->ProgressDialog);
       }
    }
 
-   if (!Self->ProgressDialog) return FFR_OKAY;
+   if (Self->ProgressDialog) {
+      if ((Feedback->Position IS 0) OR (Feedback->Size > 32768)) {
+         STRING str = Feedback->Path;
+         WORD i = len;
+         while ((i > 0) AND (str[i-1] != '/') AND (str[i-1] != '\\') AND (str[i-1] != ':')) i--;
 
-   if ((Feedback->Position IS 0) OR (Feedback->Size > 32768)) {
-      STRING str = Feedback->Path;
-      WORD i = len;
-      while ((i > 0) AND (str[i-1] != '/') AND (str[i-1] != '\\') AND (str[i-1] != ':')) i--;
+         if (Feedback->Position IS 0) {
+            if (Feedback->Size >= 1048576) StrFormat(buffer, sizeof(buffer), "Copying: %s\n\n%.2f MB", str+i, (DOUBLE)Feedback->Size / 1048576.0);
+            else StrFormat(buffer, sizeof(buffer), "Copying: %s\n\n%.2f KB", str+i, (DOUBLE)Feedback->Size / 1024.0);
+            struct ScriptArg args[] = { { "Message", FD_STRING, { .Address = buffer } } };
+            scExec(Self->ProgressDialog, "update_msg", args, 1);
+            Self->ProgressTime = PreciseTime();
 
-      if (Feedback->Position IS 0) {
-         if (Feedback->Size >= 1048576) StrFormat(buffer, sizeof(buffer), "Copying: %s\n\n%.2f MB", str+i, (DOUBLE)Feedback->Size / 1048576.0);
-         else StrFormat(buffer, sizeof(buffer), "Copying: %s\n\n%.2f KB", str+i, (DOUBLE)Feedback->Size / 1024.0);
-         SetString(Self->ProgressDialog, FID_String, buffer);
-         Self->ProgressTime = PreciseTime();
+            ProcessMessages(0, 0);
+         }
+         else if (PreciseTime() - Self->ProgressTime > 50000LL) {
+            if (Feedback->Size >= 1048576) StrFormat(buffer, sizeof(buffer), "Copying: %s\n\n%.2f / %.2f MB", str+i, (DOUBLE)Feedback->Position / 1048576.0, (DOUBLE)Feedback->Size / 1048576.0);
+            else StrFormat(buffer, sizeof(buffer), "Copying: %s\n\n%.2f / %.2f KB", str+i, (DOUBLE)Feedback->Position / 1024.0, (DOUBLE)Feedback->Size / 1024.0);
+            struct ScriptArg args[] = { { "Message", FD_STRING, { .Address = buffer } } };
+            scExec(Self->ProgressDialog, "update_msg", args, 1);
+            Self->ProgressTime = PreciseTime();
 
-         ProcessMessages(0, 0);
-      }
-      else if (PreciseTime() - Self->ProgressTime > 50000LL) {
-         if (Feedback->Size >= 1048576) StrFormat(buffer, sizeof(buffer), "Copying: %s\n\n%.2f / %.2f MB", str+i, (DOUBLE)Feedback->Position / 1048576.0, (DOUBLE)Feedback->Size / 1048576.0);
-         else StrFormat(buffer, sizeof(buffer), "Copying: %s\n\n%.2f / %.2f KB", str+i, (DOUBLE)Feedback->Position / 1024.0, (DOUBLE)Feedback->Size / 1024.0);
-         SetString(Self->ProgressDialog, FID_String, buffer);
-         Self->ProgressTime = PreciseTime();
-
-         ProcessMessages(0, 0);
+            ProcessMessages(0, 0);
+         }
       }
    }
 

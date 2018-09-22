@@ -182,52 +182,6 @@
 #define MIF_SELECTED 0x00000100
 #define MIF_TOGGLE 0x00000200
 
-// Types of dialog box
-
-#define DT_MESSAGE 0
-#define DT_CRITICAL 1
-#define DT_ERROR 2
-#define DT_WARNING 3
-#define DT_ATTENTION 4
-#define DT_ALARM 5
-#define DT_HELP 6
-#define DT_INFO 7
-#define DT_QUESTION 8
-#define DT_REQUEST 9
-#define DT_TEMPORARY 10
-
-// Dialog response flags
-
-#define RSF_CANCEL 0x00000001
-#define RSF_YES 0x00000002
-#define RSF_NO 0x00000004
-#define RSF_OKAY 0x00000008
-#define RSF_OK 0x00000008
-#define RSF_QUIT 0x00000010
-#define RSF_NO_ALL 0x00000020
-#define RSF_YES_ALL 0x00000040
-#define RSF_NONE 0x00000080
-#define RSF_OPTION 0x00000100
-#define RSF_CLOSED 0x00000200
-#define RSF_CUSTOM_1 0x00000400
-#define RSF_CUSTOM_2 0x00000800
-#define RSF_CUSTOM_3 0x00001000
-#define RSF_CUSTOM_4 0x00002000
-#define RSF_RETRY 0x00004000
-#define RSF_POSITIVE 0x00003c4a
-#define RSF_NEGATIVE 0x00000235
-
-// Dialog flags.
-
-#define DF_WAIT 0x00000001
-#define DF_INPUT 0x00000002
-#define DF_INPUT_REQUIRED 0x00000004
-#define DF_REVERSE 0x00000008
-#define DF_OPTION_ON 0x00000010
-#define DF_SECRET 0x00000020
-#define DF_MODAL 0x00000040
-#define DF_QUIT 0x00000080
-
 #define BHS_OUTSIDE 0
 #define BHS_ENTERED 1
 #define BHS_INSIDE 2
@@ -664,49 +618,6 @@ typedef struct rkComboBox {
 #endif
 } objComboBox;
 
-// Dialog class definition
-
-#define VER_DIALOG (1.000000)
-
-typedef struct rkDialog {
-   OBJECT_HEADER
-   struct rkDocument * Document;    // Document object created by the dialog
-   OBJECTID WindowID;               // Reference to the window of the dialog box
-   OBJECTID TargetID;               // The target surface for the window (usually the desktop)
-   LONG     Flags;                  // Special options
-   LONG     Response;               // The resulting response from the user
-   LONG     Value;                  // Resulting checkbox value if the Option field is set
-   LONG     StickToFront;           // Dialog window will be stick-to-front
-   OBJECTID PopOverID;              // Surface that the dialog should open relative to
-   LONG     Type;                   // Indicates the type of dialog being presented
-   LONG     TotalOptions;           // Total number of options presented in the dialog.
-   LONG     Width;                  // Preferred dialog width
-   LONG     Height;                 // Preferred dialog height
-
-#ifdef PRV_DIALOG
-   UBYTE    Title[80];          // Window title
-   UBYTE    Image[100];         // Image location
-   UBYTE    Icon[100];          // Window icon location
-   UBYTE    UserInput[256];     // Input area text string
-   UBYTE    UserResponse[256];  // Input area text string (response from user)
-   UBYTE    Option[80];         // Optional question / combobox
-   FIELD    ResponseField;      // The name of the field to write the response result
-   STRING   Message;            // String to display in the dialog window
-   STRING   Inject;             // Inject RIPPLE content into the dialog
-   STRING   Template;           // Document template injection
-   LONG     ButtonOffset;       // Current horizontal offset of the options
-   FUNCTION Feedback;           // Function callback when the Response field is set
-   struct   {
-      LONG Response;            // Response to return from the button.  May be NULL for 'do nothing'
-      UBYTE Text[40];           // Text to print inside the button.  Button is ignored if there is no text
-   } Options[6];
-   UBYTE    Active:1;
-   UBYTE    AwaitingResponse:1;
-   struct KeyStore *Vars;       // Variable management provided by strings module
-  
-#endif
-} objDialog;
-
 // Menu class definition
 
 #define VER_MENU (1.000000)
@@ -1116,7 +1027,7 @@ typedef struct rkClipboard {
    MEMORYID ClusterID;
 
 #ifdef PRV_CLIPBOARD
-   struct rkDialog *ProgressDialog;
+   OBJECTPTR ProgressDialog;
    LARGE    ProgressTime;
    OBJECTID ProgressTarget;
    char    LastFile[80];
@@ -1186,125 +1097,6 @@ INLINE ERROR clipDelete(APTR Ob, LONG Datatype) {
 INLINE ERROR clipDeleteFiles(APTR Ob, OBJECTID TargetID) {
    struct clipDeleteFiles args = { TargetID };
    return(Action(MT_ClipDeleteFiles, Ob, &args));
-}
-
-
-// Flags for the FileView.
-
-#define FVF_SHOW_PARENT 0x00000001
-#define FVF_NO_EXTENSIONS 0x00000002
-#define FVF_SYS_KEYS 0x00000004
-#define FVF_NO_FILES 0x00000008
-#define FVF_TOTAL_REFRESH 0x00000010
-
-// Options for the Auto field.
-
-#define FVA_OPEN 1
-#define FVA_EDIT 2
-#define FVA_VIEW 3
-
-// Event flags.
-
-#define FEF_LOCATION 0x00000001
-
-// FileView class definition
-
-#define VER_FILEVIEW (1.000000)
-
-typedef struct rkFileView {
-   OBJECT_HEADER
-   DOUBLE   RefreshRate;  // Refresh the file-list every X number of seconds
-   struct rkView * View;  // External data view
-   LONG     Flags;        // Optional flags
-   OBJECTID FocusID;      // The surface to monitor for the focus
-   STRING   RootPath;     // RootPath limits the view to a directory and its sub-directories
-   LONG     Auto;         // Automatically perform this action if a folder or file is activated by the user
-   OBJECTID WindowID;     // The window that contains the view object
-   LONG     ShowHidden;   // Show hidden files if TRUE
-   LONG     ShowSystem;   // Show system files if TRUE
-   LONG     ShowDocs;     // Show document views if TRUE
-   LONG     EventMask;    // Receive events that pass the filter specified here.
-
-#ifdef PRV_FILEVIEW
-   FUNCTION EventCallback;
-   FUNCTION Feedback;
-   struct DirInfo *Dir;
-   STRING SelectionPath;       // The complete, fully qualified file-path of the current selection
-   objClipboard *DragClip;     // Private clipboard for dragging purposes
-   objClipboard *DeleteClip;
-   objDocument *Doc;
-   objFile *Watch;
-   APTR  prvKeyEvent;
-   APTR  VolumeDeletedHandle;
-   APTR  VolumeCreatedHandle;
-   LONG  FileCount;
-   LONG  DeleteIndex;
-   LONG  DragToTag;
-   TIMER Timer;
-   char  Selection[130];  // Currently selected file/directory
-   char  Path[160];
-   char  Filter[40];      // File filter
-   UBYTE Refresh:1;
-   UBYTE ResetTimer:1;
-   UBYTE Qualify:1;
-   objStorageDevice *DeviceInfo;
-  
-#endif
-} objFileView;
-
-// FileView methods
-
-#define MT_FvParentDir -1
-#define MT_FvCutFiles -2
-#define MT_FvCopyFiles -3
-#define MT_FvPasteFiles -4
-#define MT_FvDeleteFiles -5
-#define MT_FvCreateDir -6
-#define MT_FvRenameFile -7
-#define MT_FvEditFiles -8
-#define MT_FvViewFiles -9
-#define MT_FvCopyFilesTo -10
-#define MT_FvMoveFilesTo -11
-#define MT_FvOpenFiles -12
-#define MT_FvCreateShortcut -13
-
-struct fvCopyFilesTo { CSTRING Dest;  };
-struct fvMoveFilesTo { CSTRING Dest;  };
-struct fvCreateShortcut { CSTRING Message; CSTRING Shortcut; CSTRING Path;  };
-
-#define fvParentDir(obj) Action(MT_FvParentDir,(obj),0)
-
-#define fvCutFiles(obj) Action(MT_FvCutFiles,(obj),0)
-
-#define fvCopyFiles(obj) Action(MT_FvCopyFiles,(obj),0)
-
-#define fvPasteFiles(obj) Action(MT_FvPasteFiles,(obj),0)
-
-#define fvDeleteFiles(obj) Action(MT_FvDeleteFiles,(obj),0)
-
-#define fvCreateDir(obj) Action(MT_FvCreateDir,(obj),0)
-
-#define fvRenameFile(obj) Action(MT_FvRenameFile,(obj),0)
-
-#define fvEditFiles(obj) Action(MT_FvEditFiles,(obj),0)
-
-#define fvViewFiles(obj) Action(MT_FvViewFiles,(obj),0)
-
-INLINE ERROR fvCopyFilesTo(APTR Ob, CSTRING Dest) {
-   struct fvCopyFilesTo args = { Dest };
-   return(Action(MT_FvCopyFilesTo, Ob, &args));
-}
-
-INLINE ERROR fvMoveFilesTo(APTR Ob, CSTRING Dest) {
-   struct fvMoveFilesTo args = { Dest };
-   return(Action(MT_FvMoveFilesTo, Ob, &args));
-}
-
-#define fvOpenFiles(obj) Action(MT_FvOpenFiles,(obj),0)
-
-INLINE ERROR fvCreateShortcut(APTR Ob, CSTRING Message, CSTRING Shortcut, CSTRING Path) {
-   struct fvCreateShortcut args = { Message, Shortcut, Path };
-   return(Action(MT_FvCreateShortcut, Ob, &args));
 }
 
 

@@ -171,79 +171,6 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function def_fileview()
-  flags("FVF", { comment="Flags for the FileView." },
-    "SHOW_PARENT: The file view will display an item in the file list that reverts to the parent folder when activated.",
-    "NO_EXTENSIONS: File extensions are not displayed when this option is active.",
-    "SYS_KEYS: System key monitoring and relevant default behaviours are active when this option is enabled.  Cut, Copy, Paste and Select-All key combinations are provided to the user in this mode.",
-    "NO_FILES: Do not display files in the file list.",
-    "TOTAL_REFRESH: Force a total refresh of the files listed in the monitored folder whenever a change is detected.")
-
-  enum("FVA", { start=1, comment="Options for the Auto field." },
-    "OPEN: Open the file with the user's preferred program for this file type.",
-    "EDIT: Edit the file in a program suitable for editing this file type.",
-    "VIEW: View the file in a program suitable for read-only viewing.")
-
-  flags("FEF", { comment="Event flags." },
-    "LOCATION: The location has been changed (user has moved to a different folder).")
-
-  methods("fileview", "Fv", {
-    { id=1,  name="ParentDir" },
-    { id=2,  name="CutFiles" },
-    { id=3,  name="CopyFiles" },
-    { id=4,  name="PasteFiles" },
-    { id=5,  name="DeleteFiles" },
-    { id=6,  name="CreateDir" },
-    { id=7,  name="RenameFile" },
-    { id=8,  name="EditFiles" },
-    { id=9,  name="ViewFiles" },
-    { id=10, name="CopyFilesTo" },
-    { id=11, name="MoveFilesTo" },
-    { id=12, name="OpenFiles" },
-    { id=13, name="CreateShortcut" }
-  })
-
-  class("FileView", { src={ "class_fileview/fileview.c", "class_fileview/fileview_fields.c" }, output="fileview_def.c" }, [[
-    double RefreshRate  # Refresh the file-list every X number of seconds
-    obj(View) View      # External data view
-    int(FVF) Flags      # Optional flags
-    oid Focus           # The surface to monitor for the focus
-    str RootPath        # RootPath limits the view to a directory and its sub-directories
-    int(FVA) Auto       # Automatically perform this action if a folder or file is activated by the user
-    oid Window          # The window that contains the view object
-    int ShowHidden      # Show hidden files if TRUE
-    int ShowSystem      # Show system files if TRUE
-    int ShowDocs        # Show document views if TRUE
-    int(FEF) EventMask  # Receive events that pass the filter specified here.
-  ]],
-  [[
-   FUNCTION EventCallback;
-   FUNCTION Feedback;
-   struct DirInfo *Dir;
-   STRING SelectionPath;       // The complete, fully qualified file-path of the current selection
-   objClipboard *DragClip;     // Private clipboard for dragging purposes
-   objClipboard *DeleteClip;
-   objDocument *Doc;
-   objFile *Watch;
-   APTR  prvKeyEvent;
-   APTR  VolumeDeletedHandle;
-   APTR  VolumeCreatedHandle;
-   LONG  FileCount;
-   LONG  DeleteIndex;
-   LONG  DragToTag;
-   TIMER Timer;
-   char  Selection[130];  // Currently selected file/directory
-   char  Path[160];
-   char  Filter[40];      // File filter
-   UBYTE Refresh:1;
-   UBYTE ResetTimer:1;
-   UBYTE Qualify:1;
-   objStorageDevice *DeviceInfo;
-  ]])
-end
-
-----------------------------------------------------------------------------------------------------------------------
-
 function def_clipboard()
   enum("CT", { start=0 }, "DATA", "AUDIO", "IMAGE", "FILE", "OBJECT", "TEXT", "END")
 
@@ -284,7 +211,7 @@ function def_clipboard()
     mem Cluster
   ]],
   [[
-   struct rkDialog *ProgressDialog;
+   OBJECTPTR ProgressDialog;
    LARGE    ProgressTime;
    OBJECTID ProgressTarget;
    char    LastFile[80];
@@ -434,48 +361,6 @@ module({ name="Widget", copyright="Paul Manias 2003-2018", version=1.0 }, functi
     "OPTION: Item is a clickable option (clicking the item's icon will turn the option on/off).",
     "SELECTED: The menu item has been selected (checked).",
     "TOGGLE: Enables toggled menu items (checking state of on and off).")
-
-  enum("DT", { start=0, comment="Types of dialog box" },
-    "MESSAGE: The default setting.",
-    "CRITICAL: A highly critical error is being reported to the user.",
-    "ERROR: An error is being reported to the user.",
-    "WARNING: A warning message is being reported to the user.",
-    "ATTENTION: The dialog requests the user's immediate attention.",
-    "ALARM: The dialog is presented as a response to a preset alarm.",
-    "HELP: Help text is being presented in the dialog.",
-    "INFO: The dialog is providing the user with specific information on a topic.",
-    "QUESTION: A question is being asked of the user.",
-    "REQUEST: A request is being made (e.g. dialog requires user to type in input).",
-    "TEMPORARY: The dialog box will disappear after a short time-out period has expired.")
-
-  flags("RSF", { comment="Dialog response flags" },
-    "CANCEL: Negative response.",
-    "YES: Positive response.",
-    "NO: Negative response.",
-    "OKAY|OK: Positive response.",
-    "QUIT: Negative response.",
-    "NO_ALL: Negative response.",
-    "YES_ALL: Positive response.",
-    "NONE: Do nothing dummy flag.",
-    "OPTION: Combobox option ticked.",
-    "CLOSED: Window closed without response.",
-    "CUSTOM_1: Developer customised option 1 - neutral response.",
-    "CUSTOM_2: Developer customised option 2 - neutral response.",
-    "CUSTOM_3: Developer customised option 3 - neutral response.",
-    "CUSTOM_4: Developer customised option 4 - neutral response.",
-    "RETRY",
-    { POSITIVE = "YES|YES_ALL|OKAY|CUSTOM_1|CUSTOM_2|CUSTOM_3|CUSTOM_4" },
-    { NEGATIVE = "CANCEL|NO|QUIT|NO_ALL|CLOSED" })
-
-  flags("DF", { comment="Dialog flags." },
-    "WAIT: This option halts the program flow when the dialog box is activated.  Normal service will resume once the user responds to the dialog window.  Note that it is still possible to interact with other windows during this time, so the use of the MODAL flag may also be beneficial.",
-    "INPUT: An input box can be created inside the dialog window by setting this flag.  In this mode, the dialog box will return a user input string in the UserInput field after the user has responded to the dialog window.",
-    "INPUT_REQUIRED: This flag can be used in conjunction with the INPUT option.  It forces the user to input at least one character in the input box, otherwise the dialog window will automatically cancel itself.",
-    "REVERSE: Reverse the activation process (respond to negatives, not positives).",
-    "OPTION_ON: Turn the checkbox option on by default.",
-    "SECRET: User input needs to be secret (e.g. password entry).",
-    "MODAL: Makes the dialog window modal, this prevents the user from interacting with other windows that belong to the program.  For batch scripts, the WAIT flag should be used instead.",
-    "QUIT: A quit message will be sent to the running application once the dialog window is closed.")
 
   enum("BHS", { start=0, "Button hover state indicators" },
      "OUTSIDE: The cursor is outside of the button's area",
@@ -758,42 +643,6 @@ module({ name="Widget", copyright="Paul Manias 2003-2018", version=1.0 }, functi
    FUNCTION Feedback;
   ]])
 
-  class("Dialog", { src="class_dialog.c", output="class_dialog_def.c" }, [[
-    obj(Document) Document  # Document object created by the dialog
-    oid Window          # Reference to the window of the dialog box
-    oid Target          # The target surface for the window (usually the desktop)
-    int(DF) Flags       # Special options
-    int(RSF) Response   # The resulting response from the user
-    int Value           # Resulting checkbox value if the Option field is set
-    int StickToFront    # Dialog window will be stick-to-front
-    oid PopOver         # Surface that the dialog should open relative to
-    int(DT) Type        # Indicates the type of dialog being presented
-    int TotalOptions    # Total number of options presented in the dialog.
-    int Width           # Preferred dialog width
-    int Height          # Preferred dialog height
-  ]],
-  [[
-   UBYTE    Title[80];          // Window title
-   UBYTE    Image[100];         // Image location
-   UBYTE    Icon[100];          // Window icon location
-   UBYTE    UserInput[256];     // Input area text string
-   UBYTE    UserResponse[256];  // Input area text string (response from user)
-   UBYTE    Option[80];         // Optional question / combobox
-   FIELD    ResponseField;      // The name of the field to write the response result
-   STRING   Message;            // String to display in the dialog window
-   STRING   Inject;             // Inject RIPPLE content into the dialog
-   STRING   Template;           // Document template injection
-   LONG     ButtonOffset;       // Current horizontal offset of the options
-   FUNCTION Feedback;           // Function callback when the Response field is set
-   struct   {
-      LONG Response;            // Response to return from the button.  May be NULL for 'do nothing'
-      UBYTE Text[40];           // Text to print inside the button.  Button is ignored if there is no text
-   } Options[6];
-   UBYTE    Active:1;
-   UBYTE    AwaitingResponse:1;
-   struct KeyStore *Vars;       // Variable management provided by strings module
-  ]])
-
   methods("Menu", "Mn", {
     { id=1, name="Switch" },
     { id=2, name="SelectItem" },
@@ -862,5 +711,4 @@ module({ name="Widget", copyright="Paul Manias 2003-2018", version=1.0 }, functi
 
   def_view()
   def_clipboard()
-  def_fileview()
 end)
