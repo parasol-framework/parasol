@@ -92,6 +92,6 @@ end
             text = arg('text')
          })
 
-         obj.find('self').primaryObject = tip.surfaceID
+         return tip.surfaceID
       end
    end

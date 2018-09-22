@@ -291,7 +291,6 @@ end
             secret     = arg('secret')
          })
 
-         glSelf = obj.find('self')
-         glSelf.primaryObject = dlg.windowID
+         return dlg.windowID
       end
    end
