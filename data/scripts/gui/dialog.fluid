@@ -20,8 +20,9 @@ speed improvement to the user.
 
 Valid options to use when creating the dialog are as follows:
 
-   options:       An array of user options that will be listed in sequence in the dialog.  Each entry must include a
+   options:       An array of clickable user responses that will be listed in the dialog.  Each entry must include a
                   'text' label and 'icon' for display.
+   title:         A title for the dialog window.
    popover:       Place the dialog window over the surface referenced here.
    target:        Open the dialog window within the surface referenced here.
    modal:         Set to true if the dialog box needs to be modal (prevents interaction with other windows).
@@ -33,14 +34,26 @@ Valid options to use when creating the dialog are as follows:
    userInput:     Set to true if the user can enter custom text.  Set to a string if the input box must be pre-filled.
    secret:        Set to true if the userInput string should be kept secret (e.g. a password).
    feedback:      Refers to a Fluid function that will receive the user's response to the dialog.
+   type:          Categorise the dialog as one of the following:
+      message   - The default setting.
+      critical  - A highly critical error is being reported to the user.
+      error     - An error is being reported to the user.
+      warning   - A warning message is being reported to the user.
+      attention - The dialog requests the user's immediate attention.
+      alarm     - The dialog is presented as a response to a preset alarm.
+      help      - Help text is being presented in the dialog.
+      info      - The dialog is providing the user with specific information on a topic.
+      question  - A question is being asked of the user.
+      request   - A request is being made (e.g. dialog requires user to type in input).
+      temporary - The dialog box will disappear after a short time-out period has expired.
 
 Example usage:
 
    gui.dialog.message({
-      modal = true,
-      image = 'icons:items/warning',
-      title = 'Hamlet has a question',
-      message = 'To be or not to be?',
+      modal     = true,
+      image     = 'icons:items/warning',
+      title     = 'Hamlet has a question',
+      message   = 'To be or not to be?',
       userInput = 'That is the question',
       checkboxLabel = '\'Tis nobler to suffer',
       options = {
@@ -78,6 +91,21 @@ gui.dialog.message = function(Options)
       Window.maxWidth     = page_width
       Window.minWidth     = page_width
       Window.insideWidth  = page_width
+   end
+
+   local function defaultIcon()
+      if nz(lOptions.type) then
+         if lOptions.type == 'error' then return 'icons:items/error(48)' end
+         if lOptions.type == 'critical' then return 'icons:items/error(48)' end
+         if lOptions.type == 'warning' then return 'icons:items/warning(48)' end
+         if lOptions.type == 'attention' then return 'icons:items/info(48)' end
+         if lOptions.type == 'alarm' then return 'icons:time/alarm(48)' end
+         if lOptions.type == 'help' then return 'icons:items/question(48)' end
+         if lOptions.type == 'question' then return 'icons:items/question(48)' end
+         if lOptions.type == 'request' then return 'icons:items/info(48)' end
+         if lOptions.type == 'info' then return 'Self, "icons:items/info(48)' end
+      end
+      return 'icons:items/question(48)'
    end
 
    local function docEvent(Document, EventFlag, Parameters)
@@ -130,7 +158,7 @@ gui.dialog.message = function(Options)
          doc = doc .. '<include src="' .. options.template .. '"/>\n'
       end
 
-      image = nz(lOptions.image, 'icons:items/question(48)')
+      image = nz(lOptions.image, defaultIcon())
       if image:startsWith('icons:') then
          image = image:gsub('^icons:(%w+)/(%w+)', 'icons:%1/%2(48)')
       else
