@@ -13,6 +13,10 @@ ifeq ($(OSTYPE),win)
 LIBS = $(PARASOL_RELEASE)/libgcc_s_dw2-1.dll $(PARASOL_RELEASE)/system/modules/lib/libstdc++-6.dll
 endif
 
+ifeq ($(HOST),mac)
+   CXXFLAGS+=-pagezero_size 10000 -image_base 100000000
+endif
+
 compile: parasol-cmd.cpp $(PARASOL_RELEASE) $(EXEDEP_INIT) $(LIBS)
 ifeq ($(OSTYPE),win)
 	$(CXX) $(CXXFLAGS) -Wall -mconsole -I$(PARASOL_HEADERS) -I$(SDK_ROOT)/core/link $(PARASOL_LIB_INIT) \
