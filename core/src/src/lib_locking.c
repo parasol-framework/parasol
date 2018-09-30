@@ -62,7 +62,7 @@ struct sockaddr_un * get_socket_path(LONG ProcessID, LONG *Size)
    // OSX doesn't support anonymous sockets, so we use /tmp instead.
    static THREADVAR struct sockaddr_un tlSocket;
    tlSocket.sun_family = AF_UNIX;
-   *Size = sizeof(sa_family_t) + snprintf(tlSocket.sun_path, sizeof(tlSocket.sun_path), "/tmp/parasol.%d", ProcessID);
+   *Size = sizeof(sa_family_t) + snprintf(tlSocket.sun_path, sizeof(tlSocket.sun_path), "/tmp/parasol.%d", ProcessID) + 1;
    return &tlSocket;
 }
 #else

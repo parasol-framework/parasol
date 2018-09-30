@@ -490,6 +490,12 @@ restart_free: {
    free_private_lock(TL_PRINT);       // NB: After TL_PRINT is freed, any calls to message printing functions will result in a crash.
    free_private_cond(CN_PRIVATE_MEM);
 
+   #ifdef __APPLE__
+      LONG socklen;
+      struct sockaddr_un *sockpath = get_socket_path(glProcessID, &socklen);
+      unlink(sockpath->sun_path);
+   #endif
+
    glCurrentTask = NULL;
    glCurrentTaskID = 0;
    glProcessID = 0;
