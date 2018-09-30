@@ -7,6 +7,7 @@ A demonstration of standard widgets
    require 'gui/colourdialog'
    require 'gui/fontdialog'
    require 'gui/dialog'
+   require 'gui/filedialog'
 
    local win  = obj.new('window', { title='Widget Examples', insideWidth=600, insideHeight=400 })
 
@@ -174,6 +175,29 @@ end
                else
                   print("The user selected '" .. Dialog.face .. "', size " .. Dialog.size .. ", style '" .. Dialog.style .. "'")
                   print("This can be compacted to '" .. Dialog.compactFace .. "'")
+               end
+            end
+         })
+      end
+   })
+
+   local fileButton = win.new('button', { text='Select File', x=fontButton.right + 4, y=y, icon='folders/folder',
+      feedback = function()
+         gui.dialog.file({
+            filterList = 'All Files;*;MP3 Audio Files;*.mp3;Text Files;*.txt',
+            okText     = 'Select File',
+            cancelText = 'Exit',
+            modal      = true,
+            warnExists = true,
+            multiSelect = true,
+            feedback = function(Dialog, Path, Files)
+               if (Files == nil) then
+                  print('Dialog was cancelled.')
+                  return
+               end
+
+               for k, v in ipairs(Files) do
+                   print(k, ' = ', nz(Path,'') .. v)
                end
             end
          })

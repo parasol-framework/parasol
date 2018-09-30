@@ -36,6 +36,7 @@ Valid options to use when creating the dialog are as follows:
 --]]
 
    require 'common'
+   require 'gui/fileview'
    require 'gui/toolbar'
    require 'gui/box'
    include 'widget'
@@ -56,7 +57,7 @@ gui.dialog.file = function(Options)
 
    glWidgetGap = 8
 
-   local function sendFeedback()
+   local function sendFeedback(FileView)
       local list = { }
       for k,v in ipairs(nz(lView.selectedTags, {})) do
          local error, name = lView.xml.mtGetAttrib(v, 'name')
@@ -65,34 +66,33 @@ gui.dialog.file = function(Options)
 
       if (lOptions.warnExists != nil) and (#list > 0) then
          local error, type = mSys.AnalysePath(lFileView.path .. list[1])
-         if (type == LOC_FILE) then
+         if type == LOC_FILE then
             local msg
 
-            if (#list == 1) then
+            if #list == 1 then
                msg = "You are about to overwrite the file '" .. list[1] .. "'.  Do you want to continue?"
             else
                msg = 'You are about to overwrite ' .. #list .. ' files.  Do you want to continue?'
             end
 
-            local confirm = obj.new('dialog', {
-               name    = 'dlgSaveConfirm',
+            local confirm = gui.dialog.message({
                target  = lOptions.target,
-               flags   = '!Wait|Modal',
-               buttons = 'no;yes',
+               modal   = true,
+               wait    = true,
+               options = { { id=-1, text='No', icon='items/cancel' },
+                           { id=1, text='Yes', icon='items/checkmark' } },
                title   = 'Confirmation Required',
-               image   = 'icons:items/warning(48)',
+               image   = 'items/warning',
                message = msg,
                popover = windowID
             })
-
-            confirm.acShow()
 
             if (confirm.response != RSF_YES) then return end
          end
       end
 
-      if (lOptions.feedback != nil) then
-         lOptions.feedback(self, list)
+      if lOptions.feedback then
+         lOptions.feedback(self, FileView.path, list)
       end
 
       lWindow = nil
@@ -144,39 +144,39 @@ gui.dialog.file = function(Options)
             Bar.addGroup(1, 'Navigation', 2)
 
             Bar.addItem(2, 'Root', 'Root Directory', 'devices/harddisk', function()
-               lFileView.path = ''
+               lFileView.browse(nil)
             end)
 
             Bar.addItem(3, 'Parent', 'Parent Folder', 'arrows/arrow_nw', function()
-               lFileView.mtParentDir()
+               lFileView.parentDir()
             end)
 
             Bar.addGroup(4, 'Clipboard', 3)
 
             Bar.addItem(5, 'Cut', 'Cut', 'tools/cut', function()
-               lFileView.mtCutFiles()
+               lFileView.cutFiles()
             end)
 
             Bar.addItem(6, 'Copy', 'Copy', 'tools/copy', function()
-               lFileView.mtCopyFiles()
+               lFileView.copyFiles()
             end)
 
             Bar.addItem(7, 'Paste', 'Paste', 'tools/paste', function()
-               lFileView.mtPasteFiles()
+               lFileView.pasteFiles()
             end)
 
             Bar.addGroup(8, 'Actions', 3)
 
             Bar.addItem(9, 'Create Dir', 'Create Directory', 'folders/folder_new', function()
-               lFileView.mtCreateDir()
+               lFileView.createDir()
             end)
 
             Bar.addItem(10, 'Rename', 'Rename', 'layout/interface_textbox', function()
-               lFileView.mtRenameFile()
+               lFileView.renameFile()
             end)
 
             Bar.addItem(11, 'Delete', 'Delete', 'tools/eraser', function()
-               lFileView.mtDeleteFiles()
+               lFileView.deleteFiles()
             end)
 
             Bar.addGroup(12, 'View', 2)
@@ -197,11 +197,11 @@ gui.dialog.file = function(Options)
          x         = 0,
          y         = lToolbar.surface.height,
          xoffset   = 0,
-         string   = lOptions.path,
+         string    = lOptions.path,
          highlight = '0,0,0,0',
          shadow    = '0,0,0,0',
          feedback  = function(Input, Value)
-            lFileView.path = nz(Value, '')
+            lFileView.browse(nz(Value, ''))
          end
       })
 
@@ -217,7 +217,7 @@ gui.dialog.file = function(Options)
          yOffset = footer,
          icon    = 'items/cancel',
          feedback = function(Button)
-            if (lOptions.feedback != nil) then
+            if lOptions.feedback != nil then
                lOptions.feedback(self, nil)
             end
             lWindow = nil
@@ -225,7 +225,7 @@ gui.dialog.file = function(Options)
       })
 
       lOkayButton = lWindow.new('button', {
-         text       = nz(lOptions.okText, 'OK'),
+         text       = nz(lOptions.okText, 'Okay'),
          xOffset    = lWindow.insidewidth - lCancelButton.x + glWidgetGap,
          yOffset    = footer,
          icon       = 'items/checkmark',
@@ -241,16 +241,16 @@ gui.dialog.file = function(Options)
 
       if nz(lOptions.filterList) then
          local filterFlags = '!LimitToList|AutoComplete'
-         if (userInput != nil) then filterFlags = '!Edit' end
+         if userInput != nil then filterFlags = '!Edit' end
 
          local fname, fwild, firstName
          local xml = ''
          lFilters = { }
          local f = 1
          for _, val in ipairs(lOptions.filterList:split(';')) do
-            if (fname == nil) then
+            if fname == nil then
                fname = val
-               if (firstName == nil) then firstName = fname end
+               if firstName == nil then firstName = fname end
             else
                fwild = val
                xml = xml .. '<item id="' .. f .. '" text="' .. fname .. '"/>\n'
@@ -268,7 +268,7 @@ gui.dialog.file = function(Options)
             flags   = filterFlags,
             string  = firstName,
             feedback = function(ComboBox, Value)
-               if (lFilter.selectionIndex == -1) then // The user has entered a custom filter.
+               if lFilter.selectionIndex == -1 then // The user has entered a custom filter.
                   lFileView.filter = Value
                else
                   lFileView.filter = lFilters[lFilter.selectionIndex].wild
@@ -285,7 +285,7 @@ gui.dialog.file = function(Options)
       // Create the file and filter input boxes
 
       local label_width = 0
-      if (lFilter) then label_width = lFilter.labelWidth end
+      if lFilter then label_width = lFilter.labelWidth end
       lFileBox = lWindow.new('input', {
          labelWidth = label_width,
          label   = 'File:',
@@ -320,48 +320,43 @@ gui.dialog.file = function(Options)
          selectCallback = function(View, Flags, Tag)
             // Display the selected item in the file text box.
 
-            if (lFileView == nil) then return end
+            if lFileView == nil then return end
 
-            local selection = lFileView.selectionPath
+            local selection = lFileView.selectedItemPath()
             if not nz(selection) then
                lFileBox.string = ''
                return
             end
 
             local err, fileType = mSys.AnalysePath(selection)
-            if (err != ERR_Okay) then
+            if err != ERR_Okay then
                lFileBox.string = ''
                return
             end
 
-            if (fileType == LOC_FILE) then
-               lFileBox.string = lFileView.selection
+            if fileType == LOC_FILE then
+               lFileBox.string = lFileView.selection()
                return
             end
 
             if nz(lOptions.selectFolder) then
-               if (fileType == LOC_FOLDER) then
+               if fileType == LOC_FOLDER then
                   lFileBox.string = ''
-               elseif (fileType == LOC_VOLUME) then
+               elseif fileType == LOC_VOLUME then
                   lFileBox.string = ''
                end
             end
          end
       })
 
-      lFileView = lView.new('fileview', {
-         view   = lView,
-         path   = lOptions.path,
-         filter = '*',
-         flags  = '!SysKeys',
-         eventMask = 'Location',
-         feedback = sendFeedback,
-         eventCallback = function(FileView, EventFlags)
-            if (lFileView == nil) then return end
-            self.currentPath = lFileView.path // Client can read the final path from this variable.
-            if (bit.band(EventFlags, FEF_LOCATION) != 0) then
-               lPathBox.string = self.currentPath
-            end
+      lFileView = gui.fileview(lView, {
+         path     = lOptions.path,
+         filter   = '*',
+         sysKeys  = true,
+         fileSelected = sendFeedback,
+         pathChanged = function(Path)
+            self.currentPath = Path
+            lPathBox.string = self.currentPath
          end
       })
 
@@ -394,14 +389,14 @@ end
       local state = getExecutionState()
       if (state.inRequire != true) then
          local dlg = gui.dialog.file({
-            popover    = arg('popover'),
-            target     = arg('target'),
-            modal      = arg('modal'),
-            okText     = arg('okText'),
-            cancelText = arg('cancelText'),
-            filterList = arg('filterList'),
-            icon       = arg('icon'),
-            path       = arg('path'),
+            popover      = arg('popover'),
+            target       = arg('target'),
+            modal        = arg('modal'),
+            okText       = arg('okText'),
+            cancelText   = arg('cancelText'),
+            filterList   = arg('filterList'),
+            icon         = arg('icon'),
+            path         = arg('path'),
             selectFolder = arg('selectFolder', nil),
             multiSelect  = arg('multiSelect', nil),
             userInput    = arg('userInput', nil)
