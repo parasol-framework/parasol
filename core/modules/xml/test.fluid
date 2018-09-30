@@ -19,17 +19,15 @@ end
 
 function testIndexing()
    local err, index = glXML.mtFindTag("/book/function")
-   if (err == ERR_Okay) then
-
+   if err == ERR_Okay then
       print("Retrieving tag " .. index .. " of " .. glXML.tagCount)
 
       local err, tags = glXML.mtGetTag(index)
-      if (err == ERR_Okay) then
-
+      if err == ERR_Okay then
          local totalFunctions = 0
-         while (tags != nil) do
-            if (tags.totalAttrib > 0) then
-               if (tags.attrib.name != 'function') then
+         while tags != nil do
+            if tags.totalAttrib > 0 then
+               if tags.attrib.name != 'function' then
                   error("Expected 'function', got '" .. nz(tags.attrib.name,"NIL") .. "'")
                end
                totalFunctions = totalFunctions + 1
