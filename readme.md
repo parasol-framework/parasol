@@ -1,15 +1,13 @@
 
 # Parasol Framework
 
-#### Version: 2017.9
-
 #### Web: http://www.parasol.ws
 
 #### License: LGPL 2.1
 
 ## 1. Introduction
 
-Parasol is a FOSS vector engine and application sandbox. It provides a fully integrated scripting language that is based on Lua to simplify application development without compromising on speed or modern features.  
+Parasol is a FOSS vector engine and application sandbox. It provides a fully integrated scripting language that is based on Lua to simplify application development without compromising on speed or modern features.
 
 Parasol has a development bias towards vector graphics programming on the desktop, which we believe is an area that has been under-valued, particularly with recent increases in display resolution.  Our long term aim for Parasol is for it to be a credible open source leader in vector graphics programming and building multi-platform sandboxed applications.
 
@@ -119,7 +117,7 @@ Full documentation for developers is available online from our main website.
 
 Parasol is an open source, open community project.  If you'd like to contribute to this project then please do so via the Git repository.  Create a feature branch for your work and then make a pull request targeting the develop branch in order to have the changes accepted.
 
-The first release of Parasol is dedicated to the memory of Maxim Shemanarev, whose seminal work on AGG makes our vector engine possible.
+The Parasol vector engine is dedicated to the memory of Maxim Shemanarev, whose seminal work on AGG made it possible.
 
 ## 5. Source Code Licensing
 

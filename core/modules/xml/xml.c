@@ -442,7 +442,7 @@ value or NULL if not found.
 
 -INPUT-
 int Index: The index of the XML tag to search.
-cstr Attrib: The name of the attribute that you are searching for.  If NULL or an empty string, the tag name is returned as the result.
+cstr Attrib: The name of the attribute to search for (case insensitive).  If NULL or an empty string, the tag name is returned as the result.
 &cstr Value: The value of the attribute is returned here, or NULL if the named attribute does not exist.
 
 -ERRORS-
@@ -1715,7 +1715,7 @@ tag = XML->Tags[index]; // Refresh the pointer to tag.
 
 -INPUT-
 int Index: Index to the XML tag that is to be updated.
-int(XMS) Attrib: The index number of the attribute that is to be updated.  Alternatively set to XMS_NEW, XMS_UPDATE or XMS_UPDATE_ONLY.
+int(XMS) Attrib: Either the index number of the attribute that is to be updated, or set to XMS_NEW, XMS_UPDATE or XMS_UPDATE_ONLY.
 cstr Name: String containing the new name for the attribute.  If NULL, the name will not be changed.  If Attrib is XMS_NEW, XMS_UPDATE or XMS_UPDATE_ONLY, the Name is used to find the attribute.
 cstr Value: String containing the new value for the attribute.  If NULL, the attribute is removed.
 

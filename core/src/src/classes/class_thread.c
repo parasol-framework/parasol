@@ -130,9 +130,8 @@ ERROR threadpool_get(objThread **Result)
    return error;
 }
 
-/*****************************************************************************
-** Mark a thread in the pool as no longer in use.  The thread object will be destroyed if it is not in the pool.
-*/
+//****************************************************************************
+// Mark a thread in the pool as no longer in use.  The thread object will be destroyed if it is not in the pool.
 
 void threadpool_release(objThread *Thread)
 {
@@ -290,7 +289,7 @@ static void * thread_entry(objThread *Self)
 
       if (Self->prv.Callback.Type) {
          // A message needs to be placed on the process' message queue with a reference to the thread object
-         // so the callback can be processed.  See msg_threadcallback()
+         // so the callback can be processed by the main program thread.  See msg_threadcallback()
 
          struct ThreadMessage msg;
          msg.ThreadID = Self->Head.UniqueID;

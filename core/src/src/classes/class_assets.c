@@ -161,7 +161,7 @@ ERROR add_asset_class(void)
       return ERR_CreateObject;
    }
 
-   // Create the 'assets' virtual assignment
+   // Create the 'assets' virtual volume
 
    VirtualVolume("assets", VAS_OPEN_DIR,  &open_dir,
                            VAS_SCAN_DIR,  &scan_dir,
@@ -451,7 +451,7 @@ static ERROR scan_dir(struct DirInfo *Dir)
 }
 
 //****************************************************************************
-// Close the assets: assignment.
+// Close the assets: volume.
 
 static ERROR close_dir(struct DirInfo *Dir)
 {

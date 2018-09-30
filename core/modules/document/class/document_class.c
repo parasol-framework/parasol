@@ -432,8 +432,8 @@ static ERROR DOCUMENT_Clipboard(objDocument *Self, struct acClipboard *Args)
 -ACTION-
 DataFeed: Document data can be sent and consumed via feeds.
 
-One of the convenient ways to send document information to an active document object is to do so via a data feed.  The
-Document class currently supports the DATA_DOCUMENT and DATA_XML types for this purpose.
+Appending content to an active document can be achieved via the data feed feature.  The Document class currently
+supports the DATA_DOCUMENT and DATA_XML types for this purpose.
 
 The surface that is associated with the Document object will be redrawn as a result of calling this action.
 
