@@ -1524,6 +1524,8 @@ const struct SystemState * GetSystemState(void)
          else state.Platform = "Linux";
       #elif _WIN32
          state.Platform = "Windows";
+      #elif __APPLE__
+         state.Platform = "OSX";
       #else
          state.Platform = "Unknown";
       #endif
