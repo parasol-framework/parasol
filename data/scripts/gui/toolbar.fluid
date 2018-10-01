@@ -544,7 +544,7 @@ gui.toolbar = function(Target, Options)
          if (lClicked) then return end
 
          local item
-         if (Msg.overID == self.surface.id) then // Determine what item we are positioned over
+         if self.surface and Msg.overID == self.surface.id then // Determine what item we are positioned over
             item = getCursorItem(Msg.x, Msg.y)
          end
 
