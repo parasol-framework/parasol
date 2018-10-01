@@ -280,16 +280,14 @@ ActionTags(MT_Rename, Object, "user:documents.txt");
     <input>
       <param type="struct FileInfo *" name="Info">Pointer to a valid FileInfo structure.</param>
       <param type="CSTRING" name="Name">The name of the tag.</param>
-      <param type="CSTRING" name="Value">The value related to associate with the tag name.</param>
+      <param type="CSTRING" name="Value">The value to associate with the tag name.  If NULL, any existing tag with a matching Name will be removed.</param>
     </input>
     <description>
 <p>This function adds file tags to FileInfo structures.  It is intended for use by the FileSystem module and related drivers only.  Tags allow extended attributes to be associated with a file, for example the number of seconds of audio in an MP3 file.</p>
-<p>A tag cannot be removed after it has been added to the FileInfo structure.  Tag replacement is not supported, so using identical name parameters will result in multiple tags being created with the same name.</p>
     </description>
     <result type="ERROR">
       <error code="NullArgs">Function call missing argument value(s)</error>
-      <error code="MemoryInfo">Failed to obtain information on a memory block (MemoryInfo() failed).</error>
-      <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
+      <error code="CreateResource">Operation successful.</error>
       <error code="Okay">Operation successful.</error>
     </result>
   </function>
@@ -1473,7 +1471,7 @@ GetFields(screen,
     <prototype>ERROR KeyIterate(struct KeyStore * Store, ULONG Index, ULONG * Key, APTR * Data, LONG * Size)</prototype>
     <input>
       <param type="struct KeyStore *" name="Store">Must refer to a variable storage structure.</param>
-      <param type="ULONG" name="Index">Set to NULL to initiate a scan,</param>
+      <param type="ULONG" name="Index">Set to zero to initiate a scan.</param>
       <param type="ULONG *" name="Key">The next discovered key value is returned in this parameter.</param>
       <param type="APTR *" name="Data">Optional.  A pointer to the data associated with Key is returned in this parameter.</param>
       <param type="LONG *" name="Size">Optional.  The size of the Data area is returned in this parameter.</param>
@@ -1518,7 +1516,7 @@ end
       <param type="LONG" name="Size">The byte-size of the Data buffer.</param>
     </input>
     <description>
-<p>The KeySet() function will store a raw key-value pair in a KeyStore resource, using a unique integer base identifier of your choosing.  It is strongly recommended that the identifier is a hash and not part of a numerical sequence, as otherwise the keys will be poorly distributed in the internal hashmap.</p>
+<p>The KeySet() function will store a raw key-value pair in a KeyStore resource, using a unique integer base identifier of your choosing.  It is strongly recommended that the identifier is a hash and not part of a numerical sequence, as this would result in keys that are poorly distributed in the internal hashmap.</p>
 <p>The key value will be retrievable from <function module="Core">KeyGet</function> only.  Raw key-pairs are not compatible with functions that use hashed key names such as <function module="Core">VarGetString</function>.</p>
 <p>If the Data pointer is NULL, any existing key that matches will be removed and this function will return immediately.</p>
 <p>Note that the contents of Data will be copied to the KeyStore.  If the data is stored elsewhere in a permanent area that will outlast the KeyStore, consider storing a pointer or index instead as this will prevent unnecessary duplication of the data.</p>
@@ -3836,7 +3834,7 @@ SetField(Object, FID_Statement|TSTR, "string");
     <prototype>ERROR VarIterate(struct KeyStore * Store, CSTRING Index, CSTRING * Key, APTR * Data, LONG * Size)</prototype>
     <input>
       <param type="struct KeyStore *" name="Store">Must refer to a variable storage structure.</param>
-      <param type="CSTRING" name="Index">Set to NULL to initiate a scan,</param>
+      <param type="CSTRING" name="Index">Set to NULL to initiate a scan.</param>
       <param type="CSTRING *" name="Key">The next discovered key name is returned in this parameter.</param>
       <param type="APTR *" name="Data">Optional.  A pointer to the data associated with Key is returned in this parameter.</param>
       <param type="LONG *" name="Size">Optional.  The size of the Data area is returned in this parameter.</param>
@@ -3936,7 +3934,7 @@ end
       <param type="LONG *" name="DataSize">Optional.  The size of Data is returned here (identical to Size, this is present for typesafe languages).</param>
     </input>
     <description>
-<p>This function follows the same pattern as <function module="Core">VarSet</function> but eliminates the process of taking a copy of pre-prepared data. This can lead to efficiency gains for certain design patterns that would be disadvantaged by preparing key-value data in advance of a copy operation.  It is assumed that the client will manually write to the data buffer after calling this function.</p>
+<p>This function follows the same pattern as <function module="Core">VarSet</function> but eliminates the process of taking a copy of existing data. This can lead to efficiency gains for certain design patterns that would be disadvantaged by preparing key-value data in advance of a copy operation.  It is assumed that the client will manually write to the data buffer after calling this function.</p>
 <p>It is important to note that thread safety is not provisioned in the scenarios facilitated by this function. The client will need a locking mechanism in place to manage the read-write conflicts of a threaded environment.</p>
     </description>
     <result type="ERROR">
@@ -4392,7 +4390,7 @@ end
       <const name="VOLUME">Feedback only - indicates a volume.</const>
       <const name="HIDDEN">Feedback only - file/folder is hidden.</const>
       <const name="FILE">Read all files in the folder.</const>
-      <const name="TAGS">Receive additional information for each file, such as comments, author and copyright.  The results are stored in the Tags array for each file, using the string format 'TAGNAME:Description' for each entry.</const>
+      <const name="TAGS">Receive additional information for each file, such as comments, author and copyright.  The results are stored in the Tags field of each file.</const>
       <const name="TIME">Retrieve the date stamp of each file.</const>
       <const name="FOLDERS">Read all folders/volumes in the folder.</const>
     </constants>
@@ -4489,7 +4487,7 @@ end
       <field name="TimeStamp" type="LARGE">64-bit time stamp - usable only for comparison (e.g. sorting).</field>
       <field name="Next" type="struct FileInfo *">Next structure in the list, or NULL.</field>
       <field name="Name" type="STRING">The name of the file.  This string remains valid until the next call to GetFileInfo().</field>
-      <field name="Tags" type="STRING *">A list of special tag strings that are file-specific.  Each string is in the format "TAGNAME=Content".</field>
+      <field name="Tags" type="struct KeyStore *">A store of special tag strings that are file-specific.</field>
       <field name="Flags" type="LONG" lookup="FL">Additional flags to describe the file.</field>
       <field name="Permissions" type="LONG" lookup="PERMIT">Standard permission flags.</field>
       <field name="UserID" type="LONG">User  ID (Unix systems only).</field>
@@ -4562,7 +4560,7 @@ end
       <field name="CompressedSize" type="LARGE">Compressed size of the file</field>
       <field name="Next" type="struct CompressedItem *">Used only if this is a linked-list.</field>
       <field name="Path" type="CSTRING">Path to the file (includes folder prefixes).  Archived folders will include the trailing slash.</field>
-      <field name="Tags" type="CSTRING">Any archive specific information is expressed here as key value pairs: 'Key:Value[ETX]...'.  Where [ETX] is ASCII character 0x03.</field>
+      <field name="Tags" type="struct KeyStore *">Any archive specific information is expressed here as key value pairs.</field>
       <field name="Permissions" type="LONG" lookup="PERMIT">Original permissions - see PERMIT flags.</field>
       <field name="UserID" type="LONG">Original user ID</field>
       <field name="GroupID" type="LONG">Original group ID</field>
@@ -4578,7 +4576,7 @@ end
       <field name="RootPath" type="CSTRING">The current root path, which defaults to the location of the installation folder.</field>
       <field name="SystemPath" type="CSTRING">The current path of the 'system:' volume.</field>
       <field name="ModulePath" type="CSTRING">The current path to the system modules, normally 'system:modules/'</field>
-      <field name="Platform" type="CSTRING">String-based field indicating the user's platform.  Currently returns 'Native', 'Windows' or 'Linux'.</field>
+      <field name="Platform" type="CSTRING">String-based field indicating the user's platform.  Currently returns 'Native', 'Windows', 'OSX' or 'Linux'.</field>
       <field name="ConsoleFD" type="HOSTHANDLE">Internal</field>
       <field name="CoreVersion" type="LONG">Reflects the Core version number.</field>
       <field name="CoreRevision" type="LONG">Reflects the Core revision number.</field>
