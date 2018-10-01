@@ -140,7 +140,7 @@ ERROR RenameVolume(CSTRING Volume, CSTRING Name)
                for (strlen=0; Name[strlen]; strlen++);
                strlen++;
                UBYTE evcreated[sizeof(EVENTID) + strlen];
-               ((EVENTID *)evcreated)[0] = EVID_FILESYSTEM_ASSIGN_CREATED;
+               ((EVENTID *)evcreated)[0] = EVID_FILESYSTEM_VOLUME_CREATED;
                CopyMemory(Name, evcreated + sizeof(EVENTID), strlen);
                BroadcastEvent(evcreated, sizeof(EVENTID) + strlen);
 
@@ -208,7 +208,7 @@ ERROR SetVolume(LARGE TagID, ...)
    CSTRING device  = NULL;
    CSTRING devpath = NULL;
    CSTRING devid   = NULL;
-   char name[LEN_ASSIGNNAME];
+   char name[LEN_VOLUME_NAME];
    name[0] = 0;
    LONG count = 0;
    LARGE tagid = TagID;

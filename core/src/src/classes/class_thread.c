@@ -21,9 +21,9 @@ static ERROR thread_entry(objThread *Thread)
 }
 
 if (!CreateObject(ID_THREAD, 0, &thread,
-   FID_Routine|TPTR,    &thread_main,
-   FID_Flags|TLONG,     THF_AUTO_FREE,
-   TAGEND)) {
+      FID_Routine|TPTR, &thread_entry,
+      FID_Flags|TLONG,  THF_AUTO_FREE,
+      TAGEND)) {
 
    acActivate(thread);
 }
@@ -130,9 +130,8 @@ ERROR threadpool_get(objThread **Result)
    return error;
 }
 
-/*****************************************************************************
-** Mark a thread in the pool as no longer in use.  The thread object will be destroyed if it is not in the pool.
-*/
+//****************************************************************************
+// Mark a thread in the pool as no longer in use.  The thread object will be destroyed if it is not in the pool.
 
 void threadpool_release(objThread *Thread)
 {
@@ -224,7 +223,7 @@ ERROR msg_threadcallback(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LO
    if (!(msg = (struct ThreadMessage *)Message)) return ERR_Okay;
 
    objThread *thread;
-   if (AccessObject(msg->ThreadID, 5000, (OBJECTPTR *)&thread)) {
+   if (!AccessObject(msg->ThreadID, 5000, (OBJECTPTR *)&thread)) {
       thread->prv.Active = FALSE;
 
       if (thread->prv.Callback.Type IS CALL_STDC) {
@@ -246,6 +245,7 @@ ERROR msg_threadcallback(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LO
 
       ReleaseObject((OBJECTPTR)thread);
    }
+   else LogCode(ERR_AccessObject);
 
    return ERR_Okay;
 }
@@ -290,7 +290,7 @@ static void * thread_entry(objThread *Self)
 
       if (Self->prv.Callback.Type) {
          // A message needs to be placed on the process' message queue with a reference to the thread object
-         // so the callback can be processed.  See msg_threadcallback()
+         // so the callback can be processed by the main program thread.  See msg_threadcallback()
 
          struct ThreadMessage msg;
          msg.ThreadID = Self->Head.UniqueID;
@@ -590,6 +590,34 @@ static ERROR THREAD_Wait(objThread *Self, struct thWait *Args)
 /*****************************************************************************
 
 -FIELD-
+Callback: A function reference that will be called when the thread is started.
+
+Set a function reference here to receive a notification when the thread finishes processing.  The
+callback will be executed in the context of the main program loop to minimise resource locking issues.
+
+The synopsis for the callback routine is `void Callback(objThread *Thread)`.
+
+*****************************************************************************/
+
+static ERROR GET_Callback(objThread *Self, FUNCTION **Value)
+{
+   if (Self->prv.Callback.Type != CALL_NONE) {
+      *Value = &Self->prv.Callback;
+      return ERR_Okay;
+   }
+   else return ERR_FieldNotSet;
+}
+
+static ERROR SET_Callback(objThread *Self, FUNCTION *Value)
+{
+   if (Value) Self->prv.Callback = *Value;
+   else Self->prv.Callback.Type = CALL_NONE;
+   return ERR_Okay;
+}
+
+/*****************************************************************************
+
+-FIELD-
 Data: Pointer to initialisation data for the thread.
 
 The Data field will point to a data buffer if the #SetData() method has previously been called to store data in
@@ -681,7 +709,8 @@ static const struct FieldArray clFields[] = {
    { "Error",     FDF_LONG|FDF_R,      0, NULL, NULL },
    { "Flags",     FDF_LONG|FDF_RI,     (MAXINT)&clThreadFlags, NULL, NULL },
    // Virtual fields
-   { "Routine",   FDF_FUNCTIONPTR|FDF_RW,  0, GET_Routine, SET_Routine },
+   { "Callback",  FDF_FUNCTIONPTR|FDF_RW, 0, GET_Callback, SET_Callback },
+   { "Routine",   FDF_FUNCTIONPTR|FDF_RW, 0, GET_Routine, SET_Routine },
    END_FIELD
 };
 

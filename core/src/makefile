@@ -47,7 +47,7 @@ FLAGS += -DDBG_DIAGNOSTICS
 
 OBJECTS+= obj/$(PLATFORM)/core.o obj/$(PLATFORM)/data.o obj/$(PLATFORM)/data_actionlist.o obj/$(PLATFORM)/lib_log.o obj/$(PLATFORM)/lib_functions.o obj/$(PLATFORM)/lib_memory.o \
           obj/$(PLATFORM)/lib_newobject.o obj/$(PLATFORM)/lib_actions.o obj/$(PLATFORM)/lib_fields_read.o obj/$(PLATFORM)/lib_fields_write.o obj/$(PLATFORM)/lib_messages.o \
-          obj/$(PLATFORM)/lib_locking.o obj/$(PLATFORM)/internal.o obj/$(PLATFORM)/lib_semaphores.o obj/$(PLATFORM)/lib_events.o obj/$(PLATFORM)/lib_keypairs.o \
+          obj/$(PLATFORM)/lib_locking.o obj/$(PLATFORM)/internal.o obj/$(PLATFORM)/lib_semaphores.o obj/$(PLATFORM)/lib_events.o obj/$(PLATFORM)/lib_keystore.o \
           obj/$(PLATFORM)/classes/class_module.o obj/$(PLATFORM)/classes/class_task.o obj/$(PLATFORM)/classes/class_thread.o \
           obj/$(PLATFORM)/classes/class_time.o obj/$(PLATFORM)/classes/class_config.o obj/$(PLATFORM)/classes/class_metaclass.o obj/$(PLATFORM)/classes/class_script.o \
           obj/$(PLATFORM)/lib_strings.o obj/$(PLATFORM)/classes/class_file.o obj/$(PLATFORM)/classes/class_file_feedback.o obj/$(PLATFORM)/classes/class_storagedevice.o \
@@ -108,10 +108,10 @@ $(OBJECTS): obj/$(PLATFORM)/%.o: src/%.c src/defs.h src/data.c src/data_function
 
 ../include/parasol/modules/core.h: core.fdl src/lib_fields_read.c src/lib_fields_write.c src/lib_functions.c src/lib_messages.c \
    src/lib_locking.c src/lib_newobject.c src/lib_events.c src/lib_actions.c src/lib_memory.c src/lib_log.c src/core.c \
-   src/lib_keypairs.c src/lib_base64.c src/lib_conversion.c src/lib_unicode.c src/lib_strings.c src/lib_filesystem.c
+   src/lib_keystore.c src/lib_base64.c src/lib_conversion.c src/lib_unicode.c src/lib_strings.c src/lib_filesystem.c
 	$(IDL_C) src=$< output=$@ output-proto=src/prototypes.h output-defs=src/data_functions.c files={ src/lib_fields_read.c src/lib_fields_write.c src/lib_functions.c \
    src/lib_messages.c src/lib_locking.c src/lib_newobject.c src/lib_events.c src/lib_actions.c src/lib_memory.c \
-   src/lib_log.c src/core.c src/lib_keypairs.c src/lib_base64.c src/lib_conversion.c src/lib_unicode.c src/lib_strings.c \
+   src/lib_log.c src/core.c src/lib_keystore.c src/lib_base64.c src/lib_conversion.c src/lib_unicode.c src/lib_strings.c \
    src/lib_filesystem.c src/fs_folders.c src/fs_identify.c src/fs_resolution.c src/fs_volumes.c }
 	$(IDL_DEF) src=$< output=src/idl.h format=c
 

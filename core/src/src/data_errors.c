@@ -379,7 +379,8 @@ CSTRING glMessages[ERR_END] = {
  "The operation expected a folder path.",
  "This operation would violate the object's immutable status.",
  "A call to ReadFile() failed.",
- "This feature is no longer available (obsolete)."
+ "This feature is no longer available (obsolete).",
+ "Failed to create a new resource."
 };
 
 const LONG glTotalHeaders = ARRAYSIZE(glHeaders);

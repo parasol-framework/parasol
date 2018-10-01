@@ -59,7 +59,7 @@
 #define WIN32OPEN 0
 #endif
 
-#define LEN_ASSIGNNAME 40
+#define LEN_VOLUME_NAME 40
 
 #define DRIVETYPE_REMOVABLE 1
 #define DRIVETYPE_CDROM     2

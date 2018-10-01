@@ -490,7 +490,7 @@ as it works with named keys only.
 
 -INPUT-
 resource(KeyStore) Store: Must refer to a variable storage structure.
-cstr Index: Set to NULL to initiate a scan,
+cstr Index: Set to NULL to initiate a scan.
 &cstr Key: The next discovered key name is returned in this parameter.
 &ptr Data: Optional.  A pointer to the data associated with Key is returned in this parameter.
 &bufsize Size: Optional.  The size of the Data area is returned in this parameter.
@@ -801,7 +801,7 @@ APTR VarSet(struct KeyStore *Store, CSTRING Key, APTR Data, LONG Size)
 -FUNCTION-
 VarSetSized: Create a key-value pair with an empty pre-sized data buffer.
 
-This function follows the same pattern as ~VarSet() but eliminates the process of taking a copy of pre-prepared data.
+This function follows the same pattern as ~VarSet() but eliminates the process of taking a copy of existing data.
 This can lead to efficiency gains for certain design patterns that would be disadvantaged by preparing key-value data
 in advance of a copy operation.  It is assumed that the client will manually write to the data buffer after calling
 this function.
@@ -959,7 +959,7 @@ Retrieval of the value associated with a key is optional, so if not required ple
 
 -INPUT-
 resource(KeyStore) Store: Must refer to a variable storage structure.
-uint Index: Set to NULL to initiate a scan,
+uint Index: Set to zero to initiate a scan.
 &uint Key: The next discovered key value is returned in this parameter.
 &ptr Data: Optional.  A pointer to the data associated with Key is returned in this parameter.
 &bufsize Size: Optional.  The size of the Data area is returned in this parameter.
@@ -1015,7 +1015,7 @@ KeySet: Set a key-value pair with raw data.
 
 The KeySet() function will store a raw key-value pair in a KeyStore resource, using a unique integer base identifier of
 your choosing.  It is strongly recommended that the identifier is a hash and not part of a numerical sequence, as
-otherwise the keys will be poorly distributed in the internal hashmap.
+this would result in keys that are poorly distributed in the internal hashmap.
 
 The key value will be retrievable from ~KeyGet() only.  Raw key-pairs are not compatible with functions that
 use hashed key names such as ~VarGetString().

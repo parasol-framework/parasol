@@ -1421,7 +1421,7 @@ struct SystemState {
    CSTRING   RootPath;         // The current root path, which defaults to the location of the installation folder.
    CSTRING   SystemPath;       // The current path of the 'system:' volume.
    CSTRING   ModulePath;       // The current path to the system modules, normally 'system:modules/'
-   CSTRING   Platform;         // String-based field indicating the user's platform.  Currently returns 'Native', 'Windows' or 'Linux'.
+   CSTRING   Platform;         // String-based field indicating the user's platform.  Currently returns 'Native', 'Windows', 'OSX' or 'Linux'.
    HOSTHANDLE ConsoleFD;       // Internal
    LONG      CoreVersion;      // Reflects the Core version number.
    LONG      CoreRevision;     // Reflects the Core revision number.
@@ -1587,7 +1587,7 @@ struct CompressedItem {
    LARGE   CompressedSize;          // Compressed size of the file
    struct CompressedItem * Next;    // Used only if this is a linked-list.
    CSTRING Path;                    // Path to the file (includes folder prefixes).  Archived folders will include the trailing slash.
-   CSTRING Tags;                    // Any archive specific information is expressed here as key value pairs: 'Key:Value[ETX]...'.  Where [ETX] is ASCII character 0x03.
+   struct KeyStore * Tags;          // Any archive specific information is expressed here as key value pairs.
    LONG    Permissions;             // Original permissions - see PERMIT flags.
    LONG    UserID;                  // Original user ID
    LONG    GroupID;                 // Original group ID
@@ -1598,15 +1598,15 @@ struct CompressedItem {
 };
 
 struct FileInfo {
-   LARGE    Size;             // The size of the file's content.
-   LARGE    TimeStamp;        // 64-bit time stamp - usable only for comparison (e.g. sorting).
+   LARGE  Size;               // The size of the file's content.
+   LARGE  TimeStamp;          // 64-bit time stamp - usable only for comparison (e.g. sorting).
    struct FileInfo * Next;    // Next structure in the list, or NULL.
-   STRING   Name;             // The name of the file.  This string remains valid until the next call to GetFileInfo().
-   STRING * Tags;             // A list of special tag strings that are file-specific.  Each string is in the format "TAGNAME=Content".
-   LONG     Flags;            // Additional flags to describe the file.
-   LONG     Permissions;      // Standard permission flags.
-   LONG     UserID;           // User  ID (Unix systems only).
-   LONG     GroupID;          // Group ID (Unix systems only).
+   STRING Name;               // The name of the file.  This string remains valid until the next call to GetFileInfo().
+   struct KeyStore * Tags;    // A store of special tag strings that are file-specific.
+   LONG   Flags;              // Additional flags to describe the file.
+   LONG   Permissions;        // Standard permission flags.
+   LONG   UserID;             // User  ID (Unix systems only).
+   LONG   GroupID;            // Group ID (Unix systems only).
    struct DateTime Created;   // The date/time of the file's creation.
    struct DateTime Modified;  // The date/time of the last file modification.
 };
@@ -2166,7 +2166,7 @@ typedef struct rkFile {
     STRING prvResolvedPath;  // Used on initialisation to speed up processing (nb: string deallocated after initialisation).
     STRING prvLink;
     STRING prvLine;
-    STRING prvIcon;
+    CSTRING prvIcon;
     struct rkWatchPath *prvWatch;
     OBJECTPTR ProgressDialog;
     struct DirInfo *prvList;
@@ -3495,8 +3495,8 @@ typedef struct rkEvent {
 
 #define EVID_GUI_SURFACE_FOCUS          GetEventID(EVG_GUI, "surface", "focus")
 
-#define EVID_FILESYSTEM_ASSIGN_CREATED  GetEventID(EVG_FILESYSTEM, "assign", "created")
-#define EVID_FILESYSTEM_ASSIGN_DELETED  GetEventID(EVG_FILESYSTEM, "assign", "deleted")
+#define EVID_FILESYSTEM_VOLUME_CREATED  GetEventID(EVG_FILESYSTEM, "volume", "created")
+#define EVID_FILESYSTEM_VOLUME_DELETED  GetEventID(EVG_FILESYSTEM, "volume", "deleted")
 
 #define EVID_USER_STATUS_LOGIN          GetEventID(EVG_USER, "status", "login")
 #define EVID_USER_STATUS_LOGOUT         GetEventID(EVG_USER, "status", "logout")
@@ -3530,8 +3530,8 @@ typedef struct rkEvent {
 
 // Event structures.
 
-typedef struct { EVENTID EventID; UBYTE Name[1]; } evAssignCreated;
-typedef struct { EVENTID EventID; UBYTE Name[1]; } evAssignDeleted;
+typedef struct { EVENTID EventID; UBYTE Name[1]; } evVolumeCreated;
+typedef struct { EVENTID EventID; UBYTE Name[1]; } evVolumeDeleted;
 typedef struct { EVENTID EventID; OBJECTID TaskID; } evTaskCreated;
 typedef struct { EVENTID EventID; OBJECTID TaskID; OBJECTID ProcessID; } evTaskRemoved;
 typedef struct { EVENTID EventID; } evPowerSuspending;

@@ -6,6 +6,53 @@ math.round = function(num, idp)
 end
 
 ------------------------------------------------------------------------------
+-- Parse the key-values of a table into an XML string.
+
+table.toXML = function(t)
+   local out = ''
+   for tag,v in pairs(t) do
+      if type(v) == 'table' then // tag
+         out = out .. '<' .. tag
+         local child = ''
+         for ak,av in pairs(v) do
+            if type(ak) == 'number' then // key-less, can be child tag or content
+               if type(av) == 'table' then
+                  for ck,cv in pairs(av) do
+                     if type(cv) == 'table' then
+                        child = child .. table.toXML({ [ck] = cv })
+                     else
+                        child = child .. cv
+                     end
+                  end
+               else
+                  child = child .. tostring(av) // content
+               end
+            elseif type(av) == 'string' then // attribute
+               out = out .. ' ' .. ak .. '="' .. av .. '"'
+            elseif type(av) == 'number' then // attribute
+               out = out .. ' ' .. ak .. '=' .. av
+            elseif type(av) == 'boolean' then // attribute
+               if av == true then
+                  out = out .. ' ' .. ak
+               end
+            else
+               child = child .. tostring(av) // content
+            end
+         end
+
+         if child != '' then
+            out = out .. '>' .. child .. '</>'
+         else
+            out = out .. '/>'
+         end
+      else
+         out = '<' .. tag .. '/>'
+      end
+   end
+   return out
+end
+
+------------------------------------------------------------------------------
 
 string.escXML = function(s)
    if (s == nil) then return '' end
@@ -122,4 +169,10 @@ file.splitPath = function(Path)
       return nil, Path
    end
    return path, fl
+end
+
+------------------------------------------------------------------------------
+
+file.sanitisePath = function(Path)
+   return string.gsub(Path, '[:/\\][:/\\]+', function(n) return n:sub(1,1) end)
 end

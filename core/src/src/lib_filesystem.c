@@ -239,72 +239,25 @@ This function adds file tags to FileInfo structures.  It is intended for use by 
 drivers only.  Tags allow extended attributes to be associated with a file, for example the number of seconds of audio
 in an MP3 file.
 
-A tag cannot be removed after it has been added to the FileInfo structure.  Tag replacement is not supported, so using
-identical name parameters will result in multiple tags being created with the same name.
-
 -INPUT-
 struct(FileInfo) Info: Pointer to a valid FileInfo structure.
 cstr Name: The name of the tag.
-cstr Value: The value related to associate with the tag name.
+cstr Value: The value to associate with the tag name.  If NULL, any existing tag with a matching Name will be removed.
 
 -ERRORS-
 Okay:
 NullArgs:
-AllocMemory:
-MemoryInfo:
+CreateResource: Failed to create a new keystore.
 
 *****************************************************************************/
 
 ERROR AddInfoTag(struct FileInfo *Info, CSTRING Name, CSTRING Value)
 {
-   struct MemInfo meminfo;
-   LONG i;
-
-   // Tags are arranged as follows:
-   //
-   // [0] String Pointer
-   // [1] String Pointer
-   // [2] NULL
-   //     String data follows...
-   //
-   // The format for each string is:
-   //
-   //    NAME:VALUE
-
-   if ((!Name) OR (!*Name)) return ERR_NullArgs;
-
    if (!Info->Tags) {
-      STRING *tags;
-      if (!AllocMemory((sizeof(STRING)*2) + StrLength(Name) + StrLength(Value) + 2, MEM_DATA, (APTR *)&tags, NULL)) {
-         STRING str = (STRING)(tags + 2);
-         tags[0] = str;
-         tags[1] = NULL;
-         i = StrCopy(Name, str, COPY_ALL);
-         str[i++] = ':';
-         i += StrCopy(Value, str+i, COPY_ALL);
-         str[i] = 0;
-         Info->Tags = tags;
-         return ERR_Okay;
-      }
-      else return ERR_AllocMemory;
+      if (!(Info->Tags = VarNew(0, 0))) return ERR_CreateResource;
    }
-   else if (!MemoryPtrInfo(Info->Tags, &meminfo, sizeof(meminfo))) {
-      STRING *tags;
-      if (!AllocMemory(meminfo.Size + sizeof(STRING) + StrLength(Name) + StrLength(Value) + 2, MEM_DATA, (APTR *)&tags, NULL)) {
-         for (i=0; Info->Tags[i]; i++) tags[i] = Info->Tags[i];
-         STRING str = (STRING)(tags + i + 2);
-         tags[i++] = str;
-         tags[i] = NULL;
-         i = StrCopy(Name, str, COPY_ALL);
-         str[i++] = ':';
-         i += StrCopy(Value, str+i, COPY_ALL);
-         str[i] = 0;
-         Info->Tags = tags;
-         return ERR_Okay;
-      }
-      else return ERR_AllocMemory;
-   }
-   else return ERR_MemoryInfo;
+
+   return VarSetString(Info->Tags, Name, Value);
 }
 
 /*****************************************************************************
@@ -3066,13 +3019,13 @@ ERROR fs_closedir(struct DirInfo *Dir)
       if (Dir->prvFlags & RDF_OPENDIR) {
          // OpenDir() allocates Dir->Info as part of the Dir structure, so no need for a FreeMemory(Dir->Info) here.
 
-         if (Dir->Info->Tags) { FreeMemory(Dir->Info->Tags); Dir->Info->Tags = NULL; }
+         if (Dir->Info->Tags) { VarFree(Dir->Info->Tags); Dir->Info->Tags = NULL; }
       }
       else {
          struct FileInfo *list = Dir->Info;
          while (list) {
             struct FileInfo *next = list->Next;
-            if (list->Tags) { FreeMemory(list->Tags); list->Tags = NULL; }
+            if (list->Tags) { VarFree(list->Tags); list->Tags = NULL; }
             FreeMemory(list);
             list = next;
          }

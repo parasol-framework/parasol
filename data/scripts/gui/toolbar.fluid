@@ -111,13 +111,13 @@ gui.toolbar = function(Target, Options)
          item.displayName = mSys.StrTranslateText(Name)
       end
 
-      if (lLastItem) then lLastItem.next = item end
+      if lLastItem then lLastItem.next = item end
       item.prev = lLastItem
       item.next = nil
       lLastItem = item
-      if (not lFirstItem) then lFirstItem = item end
+      if not lFirstItem then lFirstItem = item end
 
-      if (ID) then lItemLookup[ID] = item end
+      if ID then lItemLookup[ID] = item end
       return item
    end
 
@@ -141,7 +141,7 @@ gui.toolbar = function(Target, Options)
    // Highlight selected item (for keyboard item selection)
 
    local function highlightItem(Item)
-      if (lVectorHighlightIcon.x == Item.x) then return end
+      if lVectorHighlightIcon.x == Item.x then return end
 
       lCurrentItem = Item
       lVectorHighlightIcon.x = Item.x
@@ -157,7 +157,7 @@ gui.toolbar = function(Target, Options)
    end
 
    local function keyFeedback(Input, Surface, Flags, Code, Unicode)
-      if (bit.band(Flags, KQ_PRESSED) != 0) then
+      if bit.band(Flags, KQ_PRESSED) != 0 then
          if (Code == K_ENTER) or (Code == K_NP_ENTER) or (Code == K_SPACE) then
             sendFeedback()
          elseif (Code == K_UP) or (Code == K_LEFT) then
@@ -217,14 +217,14 @@ gui.toolbar = function(Target, Options)
       if not nz(lSurfaceWidth) or not nz(lSurfaceHeight) then return end
 
       local groupOffset = 0
-      if (lGroupCount > 0) then
+      if lGroupCount > 0 then
          groupOffset = lGroupMargin
       end
 
       // Vector scene generation
 
-      if (not lVectorHover) then
-         if (lGroupCount > 0) then
+      if not lVectorHover then
+         if lGroupCount > 0 then
             lVectorHover = lViewport.new('VectorRectangle', { // Hover highlight
                fill='rgb(255,255,255)', x=0, y=0, width=1, height=1, visibility='hidden'
             })
@@ -237,10 +237,10 @@ gui.toolbar = function(Target, Options)
 
       // lGroupClip simplifies masking and lVectorGroup provides a container for hosting temporary vectors.
 
-      if (lGroupClip) then lGroupClip.acFree() end
-      if (lVectorGroup) then lVectorGroup.acFree() end
+      if lGroupClip then lGroupClip.acFree() end
+      if lVectorGroup then lVectorGroup.acFree() end
 
-      if (lGroupCount > 0) then
+      if lGroupCount > 0 then
          lGroupClip = lScene.new('VectorClip', { name='GroupMask', units='BoundingBox' })
       end
 
@@ -251,8 +251,8 @@ gui.toolbar = function(Target, Options)
       local y = groupOffset
       local currentGroup = nil
       local spanCount = 0
-      while (item) do
-         if (item.type == TI_BREAK) then
+      while item do
+         if item.type == TI_BREAK then
             item.x = x
             item.y = y
             item.width = 6
@@ -265,8 +265,8 @@ gui.toolbar = function(Target, Options)
             })
 
             x = x + item.width
-         elseif (item.type == TI_GROUP) then
-            if (not item.prev) then
+         elseif item.type == TI_GROUP then
+            if not item.prev then
                x = x + groupOffset
             else
                x = x + (lIconSize/4)
@@ -285,7 +285,7 @@ gui.toolbar = function(Target, Options)
                x = x, y = y, roundX = 4, roundY = 4, width = 1, height = 1
             })
 
-            if (lGroupClip) then
+            if lGroupClip then
                item.clip = lGroupClip.new('VectorRectangle', {
                   name='groupclip', x = x, y = y, roundX = 4, roundY = 4, width = 1, height = 1
                })
@@ -318,7 +318,7 @@ gui.toolbar = function(Target, Options)
                item.width = mFont.StringWidth(item.vectorText.font, item.displayName, -1) + (lCellMargin * 2)
                item.vectorText.y = ((lSurfaceHeight)/2) + (item.vectorText.font.height/2)
 
-               if (lDisabled) or (item.disabled) then
+               if lDisabled or item.disabled then
                   item.vectorText.opacity = 0.5
                end
             end
@@ -326,14 +326,14 @@ gui.toolbar = function(Target, Options)
             x = x + item.width
             spanCount = spanCount + 1
 
-            if (lCurrentGroup) then
+            if lCurrentGroup then
                lCurrentGroup.width  = x - lCurrentGroup.x
                lCurrentGroup.height = lSurfaceHeight - (groupOffset * 2)
                lCurrentGroup.border.width  = lCurrentGroup.width
                lCurrentGroup.border.height = lCurrentGroup.height
                lCurrentGroup.clip.width    = lCurrentGroup.width
                lCurrentGroup.clip.height   = lCurrentGroup.height
-               if (spanCount == lCurrentGroup.span) then
+               if spanCount == lCurrentGroup.span then
                   x = x + groupOffset // Gap between groups
                   lCurrentGroup = nil
                end
@@ -343,7 +343,7 @@ gui.toolbar = function(Target, Options)
          item = item.next
       end
 
-      if (lArrangedWidth) then
+      if lArrangedWidth then
          self.surface.width = x
       end
       lArranged = true
@@ -548,8 +548,8 @@ gui.toolbar = function(Target, Options)
             item = getCursorItem(Msg.x, Msg.y)
          end
 
-         if (item) and (item.tip) then // Tool-tip management
-            if (lTipTimer) then
+         if item and item.tip then // Tool-tip management
+            if lTipTimer then
                mSys.UpdateTimer(lTipTimer, lTipDelay)
             else
                local err
@@ -559,24 +559,24 @@ gui.toolbar = function(Target, Options)
 
          hoverUpdate(item)
 
-      elseif (bit.band(Msg.flags, JTYPE_BUTTON) != 0) then
-         if (Msg.value > 0) then
-            if (lDisabled) then return end
+      elseif bit.band(Msg.flags, JTYPE_BUTTON) != 0 then
+         if Msg.value > 0 then
+            if lDisabled then return end
 
             resetTipTimer()
 
-            if (lCurrentItem) then
-               if (lCurrentItem.disabled) then return end
+            if lCurrentItem then
+               if lCurrentItem.disabled then return end
 
-               if (Msg.type == JET_BUTTON_1) then
+               if Msg.type == JET_BUTTON_1 then
                   lClicked = lCurrentItem
                   lClickX  = Msg.x
                   lClickY  = Msg.y
                   hoverUpdate(lCurrentItem, true)
                end
             end
-         elseif (Msg.type == JET_BUTTON_1) then
-            if (lClicked) then
+         elseif Msg.type == JET_BUTTON_1 then
+            if lClicked then
                lClicked = nil
 
                hoverUpdate(lCurrentItem, true)
@@ -606,12 +606,12 @@ gui.toolbar = function(Target, Options)
    catch(function()
       if (not Target) then error('A target surface is required.') end
 
-      if (Options.groupMargin) then
+      if Options.groupMargin then
          lGroupMargin = Options.groupMargin
-         if (lGroupMargin < 1) then lGroupMargin = 1 end
+         if lGroupMargin < 1 then lGroupMargin = 1 end
       end
 
-      if (Options.theme == 'light') then
+      if Options.theme == 'light' then
          lThemeColour = { first={ r=250,g=249,b=248 }, last={ r=210,g=211,b=212 } }
       else
          lThemeColour = { first={ r=90,g=90,b=90 }, last={ r=70,g=70,b=110 } }
