@@ -113,12 +113,6 @@ A successful install will allow you to run the `parasol` and `parasol-cmd` execu
 
 Full documentation for developers is available online from our main website.
 
-### 4.1 Contributions
-
-Parasol is an open source, open community project.  If you'd like to contribute to this project then please do so via the Git repository.  Create a feature branch for your work and then make a pull request targeting the develop branch in order to have the changes accepted.
-
-The Parasol vector engine is dedicated to the memory of Maxim Shemanarev, whose seminal work on AGG made it possible.
-
 ## 5. Source Code Licensing
 
 Excluding third party APIs and marked contributions, the Parasol Framework is the copyright of Paul Manias © 1996 - 2017.  The source code is released under the terms of the LGPL as referenced below, except where otherwise indicated.
