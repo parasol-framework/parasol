@@ -201,7 +201,8 @@
       <access write="S">Set</access>
       <type>STRING</type>
       <description>
-<p>If you would like to set the command line arguments for a new task using a single string, define the arguments through this field.  The string that you pass will be disassembled and the arguments will be added to the <field>Parameters</field> field.</p>
+<p>This field allows command line arguments to be set using a single string, whereby each value is separated by whitespace. The string will be disassembled and the arguments will be available to read from the <field>Parameters</field> field.</p>
+<p>If an argument needs to include whitespace, use double-quotes to encapsulate the value.</p>
       </description>
     </field>
 
@@ -293,7 +294,7 @@
 
     <field>
       <name>Location</name>
-      <comment>Location to load an executable file from.</comment>
+      <comment>Location of an executable file to launch.</comment>
       <access read="G" write="S">Get/Set</access>
       <type>STRING</type>
       <description>
@@ -339,9 +340,10 @@
       <access read="G" write="S">Get/Set</access>
       <type>STRING []</type>
       <description>
-<p>If a program is written to accept user arguments, then this field is the place to obtain them.  The arguments are listed in a string based array that is terminated with a NULL pointer. Thus if the user enters the following into a command-line:</p>
+<p>Command line arguments for a program can be defined here in list format, whereby each argument is an independent string.  The list must be terminated with a NULL pointer.</p>
+<p>To illustrate, the following command-line string:</p>
 <pre>1&gt; YourProgram PREFS MyPrefs -file "documents:readme.txt"</pre>
-<p>Then you will get:</p>
+<p>Would be represented as follows:</p>
 <pre>CSTRING Args[] = {
    "PREFS",
    "MyPrefs",
@@ -350,7 +352,6 @@
    NULL
 };
 </pre>
-<p>If the user did not supply any command line arguments, this field will be set to NULL.</p>
       </description>
     </field>
 
@@ -825,7 +826,7 @@
       <const name="VOLUME">Feedback only - indicates a volume.</const>
       <const name="HIDDEN">Feedback only - file/folder is hidden.</const>
       <const name="FILE">Read all files in the folder.</const>
-      <const name="TAGS">Receive additional information for each file, such as comments, author and copyright.  The results are stored in the Tags array for each file, using the string format 'TAGNAME:Description' for each entry.</const>
+      <const name="TAGS">Receive additional information for each file, such as comments, author and copyright.  The results are stored in the Tags field of each file.</const>
       <const name="TIME">Retrieve the date stamp of each file.</const>
       <const name="FOLDERS">Read all folders/volumes in the folder.</const>
     </constants>
@@ -922,7 +923,7 @@
       <field name="TimeStamp" type="LARGE">64-bit time stamp - usable only for comparison (e.g. sorting).</field>
       <field name="Next" type="struct FileInfo *">Next structure in the list, or NULL.</field>
       <field name="Name" type="STRING">The name of the file.  This string remains valid until the next call to GetFileInfo().</field>
-      <field name="Tags" type="STRING *">A list of special tag strings that are file-specific.  Each string is in the format "TAGNAME=Content".</field>
+      <field name="Tags" type="struct KeyStore *">A store of special tag strings that are file-specific.</field>
       <field name="Flags" type="LONG" lookup="FL">Additional flags to describe the file.</field>
       <field name="Permissions" type="LONG" lookup="PERMIT">Standard permission flags.</field>
       <field name="UserID" type="LONG">User  ID (Unix systems only).</field>
@@ -995,7 +996,7 @@
       <field name="CompressedSize" type="LARGE">Compressed size of the file</field>
       <field name="Next" type="struct CompressedItem *">Used only if this is a linked-list.</field>
       <field name="Path" type="CSTRING">Path to the file (includes folder prefixes).  Archived folders will include the trailing slash.</field>
-      <field name="Tags" type="CSTRING">Any archive specific information is expressed here as key value pairs: 'Key:Value[ETX]...'.  Where [ETX] is ASCII character 0x03.</field>
+      <field name="Tags" type="struct KeyStore *">Any archive specific information is expressed here as key value pairs.</field>
       <field name="Permissions" type="LONG" lookup="PERMIT">Original permissions - see PERMIT flags.</field>
       <field name="UserID" type="LONG">Original user ID</field>
       <field name="GroupID" type="LONG">Original group ID</field>
@@ -1027,7 +1028,7 @@
       <field name="RootPath" type="CSTRING">The current root path, which defaults to the location of the installation folder.</field>
       <field name="SystemPath" type="CSTRING">The current path of the 'system:' volume.</field>
       <field name="ModulePath" type="CSTRING">The current path to the system modules, normally 'system:modules/'</field>
-      <field name="Platform" type="CSTRING">String-based field indicating the user's platform.  Currently returns 'Native', 'Windows' or 'Linux'.</field>
+      <field name="Platform" type="CSTRING">String-based field indicating the user's platform.  Currently returns 'Native', 'Windows', 'OSX' or 'Linux'.</field>
       <field name="ConsoleFD" type="HOSTHANDLE">Internal</field>
       <field name="CoreVersion" type="LONG">Reflects the Core version number.</field>
       <field name="CoreRevision" type="LONG">Reflects the Core revision number.</field>

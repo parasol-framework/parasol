@@ -606,7 +606,7 @@ static ERROR TASK_Activate(objTask *Self, APTR Void)
       launchdir[i] = 0;
    }
 
-   // Resolve the location of the executable (may contain an assignment) and copy it to the command line buffer.
+   // Resolve the location of the executable (may contain a volume) and copy it to the command line buffer.
 
    i = 0;
    buffer[i++] = '"';
@@ -792,7 +792,7 @@ static ERROR TASK_Activate(objTask *Self, APTR Void)
       }
    }
 
-   // Resolve the location of the executable (may contain an assignment) and copy it to the command line buffer.
+   // Resolve the location of the executable (may contain an volume) and copy it to the command line buffer.
 
    if (!ResolvePath(Self->Location, RSF_APPROXIMATE|RSF_PATH, &path)) {
       for (j=0; (path[j]) AND (i < sizeof(buffer)-1);) buffer[i++] = path[j++];

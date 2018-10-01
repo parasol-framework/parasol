@@ -1284,7 +1284,7 @@ This function returns the current Flags field from a surface.  It provides the s
 directly, however it is considered advantageous in circumstances where the overhead of locking a surface object for a
 read operation is undesirable.
 
-For information on the available flags, please refer to the Flags field of the <class>Surface</class> class.
+For information on the available flags, please refer to the Flags field of the @Surface class.
 
 -INPUT-
 oid Surface: The surface to query.  If zero, the top-level surface is queried.
@@ -2521,9 +2521,8 @@ static ERROR drwSetCurrentStyle(CSTRING Path)
    return ERR_Okay;
 }
 
-/*****************************************************************************
-** Reloads a style script if the time stamp has changed.  This should be done only when an environment change occurs.
-*/
+//****************************************************************************
+// Reloads a style script if the time stamp has changed.  This should be done only when an environment change occurs.
 
 static void check_styles(STRING Path, OBJECTPTR *Script)
 {
@@ -2649,11 +2648,10 @@ static WORD FindBitmapOwner(struct SurfaceList *List, WORD Index)
    return owner;
 }
 
-/*****************************************************************************
-** This function is responsible for inserting new surface objects into the list of layers for positional/depth management.
-**
-** Surface levels start at 1, which indicates the top-most level.
-*/
+//****************************************************************************
+// This function is responsible for inserting new surface objects into the list of layers for positional/depth management.
+//
+// Surface levels start at 1, which indicates the top-most level.
 
 static ERROR track_layer(objSurface *Self)
 {
@@ -3024,12 +3022,11 @@ static void move_layer_pos(struct SurfaceControl *ctl, LONG SrcIndex, LONG DestI
 
 static UBYTE check_volatile(struct SurfaceList *list, WORD index)
 {
-   WORD i, j;
-
    if (list[index].Flags & RNF_VOLATILE) return TRUE;
 
    // If there are children with custom root layers or are volatile, that will force volatility
 
+   WORD i, j;
    for (i=index+1; list[i].Level > list[index].Level; i++) {
       if (!(list[i].Flags & RNF_VISIBLE)) {
          j = list[i].Level;
@@ -3040,9 +3037,7 @@ static UBYTE check_volatile(struct SurfaceList *list, WORD index)
       if (list[i].Flags & RNF_VOLATILE) {
          // If a child surface is marked as volatile and is a member of our bitmap space, then effectively all members of the bitmap are volatile.
 
-         if (list[index].BitmapID IS list[i].BitmapID) {
-            return TRUE;
-         }
+         if (list[index].BitmapID IS list[i].BitmapID) return TRUE;
 
          // If this is a custom root layer, check if it refers to a surface that is going to affect our own volatility.
 
@@ -3081,10 +3076,7 @@ static UBYTE CheckVisibility(struct SurfaceList *list, WORD index)
 
 static void check_bmp_buffer_depth(objSurface *Self, objBitmap *Bitmap)
 {
-   if (Bitmap->Flags & BMF_FIXED_DEPTH) {
-      // Don't change bitmaps marked as fixed-depth
-      return;
-   }
+   if (Bitmap->Flags & BMF_FIXED_DEPTH) return;  // Don't change bitmaps marked as fixed-depth
 
    DISPLAYINFO *info;
    if (!gfxGetDisplayInfo(Self->DisplayID, &info)) {
@@ -3266,11 +3258,6 @@ static BYTE restrict_region_to_parents(struct SurfaceList *List, LONG Index, str
 
 static ERROR load_style_values(void)
 {
-   objXML *user, *style;
-   ERROR error;
-   char xpath[80];
-   LONG target, a;
-
    LogF("~load_style_values()","");
 
    CSTRING style_path;
@@ -3282,6 +3269,8 @@ static ERROR load_style_values(void)
       }
    }
 
+   objXML *user, *style;
+   ERROR error;
    if (!(error = CreateObject(ID_XML, 0, &style,
          FID_Name|TSTR, "glStyle",
          FID_Path|TSTR, style_path,
@@ -3296,10 +3285,12 @@ static ERROR load_style_values(void)
 
             struct XMLTag *tags = user->Tags[0];
             while (tags) {
+               LONG target, a;
                if (!StrMatch("fonts", tags->Attrib->Name)) {
                   struct XMLTag *src = tags->Child;
                   CSTRING fontname;
                   if ((fontname = XMLATTRIB(src, "name"))) {
+                     char xpath[80];
                      StrFormat(xpath, sizeof(xpath), "/fonts/font[@name='%s']", fontname);
                      if (!xmlFindTag(style, xpath, NULL, &target)) {
                         for (a=1; a < src->TotalAttrib; a++) {

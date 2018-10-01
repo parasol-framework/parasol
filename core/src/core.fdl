@@ -211,7 +211,7 @@ module({ name="Core", copyright="Paul Manias 1996-2017" }, function()
     "FOLDERS|FOLDER: Read all folders/volumes in the folder.",
     "VOLUME: Feedback only - indicates a volume.",
     "LINK: Feedback only - file/folder is actually a link to another location.",
-    "TAGS: Receive additional information for each file, such as comments, author and copyright.  The results are stored in the Tags array for each file, using the string format 'TAGNAME:Description' for each entry.",
+    "TAGS: Receive additional information for each file, such as comments, author and copyright.  The results are stored in the Tags field of each file.",
     "HIDDEN: Feedback only - file/folder is hidden.",
     "QUALIFY|QUALIFIED: Return fully qualified folder names (i.e. trailing slash or colon for each name).",
     "VIRTUAL: Path is to a virtual device.",
@@ -693,7 +693,7 @@ module({ name="Core", copyright="Paul Manias 1996-2017" }, function()
     cstr RootPath      # The current root path, which defaults to the location of the installation folder.
     cstr SystemPath    # The current path of the 'system:' volume.
     cstr ModulePath    # The current path to the system modules, normally 'system:modules/'
-    cstr Platform      # String-based field indicating the user's platform.  Currently returns 'Native', 'Windows' or 'Linux'.
+    cstr Platform      # String-based field indicating the user's platform.  Currently returns 'Native', 'Windows', 'OSX' or 'Linux'.
     hhandle ConsoleFD  # Internal
     int  CoreVersion   # Reflects the Core version number.
     int  CoreRevision  # Reflects the Core revision number.
@@ -857,7 +857,7 @@ module({ name="Core", copyright="Paul Manias 1996-2017" }, function()
     large CompressedSize          # Compressed size of the file
     struct(*CompressedItem) Next  # Used only if this is a linked-list.
     cstr Path                  # Path to the file (includes folder prefixes).  Archived folders will include the trailing slash.
-    cstr Tags                  # Any archive specific information is expressed here as key value pairs: 'Key:Value[ETX]...'.  Where [ETX] is ASCII character 0x03.
+    struct(*KeyStore) Tags     # Any archive specific information is expressed here as key value pairs.
     int(PERMIT) Permissions    # Original permissions - see PERMIT flags.
     int  UserID                # Original user ID
     int  GroupID               # Original group ID
@@ -872,7 +872,7 @@ module({ name="Core", copyright="Paul Manias 1996-2017" }, function()
     large TimeStamp            # 64-bit time stamp - usable only for comparison (e.g. sorting).
     struct(*FileInfo) Next     # Next structure in the list, or NULL.
     str Name                   # The name of the file.  This string remains valid until the next call to GetFileInfo().
-    ptr(str) Tags              # A list of special tag strings that are file-specific.  Each string is in the format "TAGNAME=Content".
+    struct(*KeyStore) Tags     # A store of special tag strings that are file-specific.
     int(FL) Flags              # Additional flags to describe the file.
     int(PERMIT) Permissions    # Standard permission flags.
     int UserID                 # User  ID (Unix systems only).
@@ -1244,7 +1244,7 @@ INLINE OBJECTID GetUniqueID(APTR Object) { return ((OBJECTPTR)Object)->UniqueID;
     STRING prvResolvedPath;  // Used on initialisation to speed up processing (nb: string deallocated after initialisation).
     STRING prvLink;
     STRING prvLine;
-    STRING prvIcon;
+    CSTRING prvIcon;
     struct rkWatchPath *prvWatch;
     OBJECTPTR ProgressDialog;
     struct DirInfo *prvList;
@@ -2200,8 +2200,8 @@ typedef struct rkEvent {
 
 #define EVID_GUI_SURFACE_FOCUS          GetEventID(EVG_GUI, "surface", "focus")
 
-#define EVID_FILESYSTEM_ASSIGN_CREATED  GetEventID(EVG_FILESYSTEM, "assign", "created")
-#define EVID_FILESYSTEM_ASSIGN_DELETED  GetEventID(EVG_FILESYSTEM, "assign", "deleted")
+#define EVID_FILESYSTEM_VOLUME_CREATED  GetEventID(EVG_FILESYSTEM, "volume", "created")
+#define EVID_FILESYSTEM_VOLUME_DELETED  GetEventID(EVG_FILESYSTEM, "volume", "deleted")
 
 #define EVID_USER_STATUS_LOGIN          GetEventID(EVG_USER, "status", "login")
 #define EVID_USER_STATUS_LOGOUT         GetEventID(EVG_USER, "status", "logout")
@@ -2235,8 +2235,8 @@ typedef struct rkEvent {
 
 // Event structures.
 
-typedef struct { EVENTID EventID; UBYTE Name[1]; } evAssignCreated;
-typedef struct { EVENTID EventID; UBYTE Name[1]; } evAssignDeleted;
+typedef struct { EVENTID EventID; UBYTE Name[1]; } evVolumeCreated;
+typedef struct { EVENTID EventID; UBYTE Name[1]; } evVolumeDeleted;
 typedef struct { EVENTID EventID; OBJECTID TaskID; } evTaskCreated;
 typedef struct { EVENTID EventID; OBJECTID TaskID; OBJECTID ProcessID; } evTaskRemoved;
 typedef struct { EVENTID EventID; } evPowerSuspending;

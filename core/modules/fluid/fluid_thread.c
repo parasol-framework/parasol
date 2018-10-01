@@ -1,15 +1,107 @@
 /*****************************************************************************
 
-The thread interface provides support for the parallel execution of actions and methods against objects.
+The thread interface provides support for the parallel execution of actions and methods against objects:
 
-thread.action(Object, Action, Callback, Key, Args...)
+  thread.action(Object, Action, Callback, Key, Args...)
 
-thread.method(Object, Action, Callback, Key, Args...)
+  thread.method(Object, Action, Callback, Key, Args...)
 
-thread.routine(Function, Callback, Key, Args...)
-   Currently not implemented - would create a new lua_State and execute the provided Function.
+The script() method compiles a statement string and executes it in a separate script state.  The code may not share
+variables with its creator, except via existing conventional means such as a KeyStore.
+
+  thread.script(Statement, Callback)
 
 *****************************************************************************/
+
+static ERROR thread_script_entry(objThread *);
+static ERROR thread_script_callback(objThread *);
+
+struct thread_callback {
+   LONG callbackID;
+   objScript *threadScript;
+   OBJECTID mainScriptID;
+};
+
+//****************************************************************************
+// Usage: error = thread.script(Statement, Callback)
+
+static int thread_script(lua_State *Lua)
+{
+   CSTRING statement;
+   objThread *thread;
+
+   if (!(statement = luaL_checkstring(Lua, 1))) {
+      luaL_argerror(Lua, 1, "Script statement required.");
+      return 0;
+   }
+
+   if (!CreateObject(ID_THREAD, NF_UNTRACKED, &thread,
+         FID_Flags|TLONG,  THF_AUTO_FREE,
+         FID_Routine|TPTR, &thread_script_entry,
+         TAGEND)) {
+
+      objScript *script;
+      if (!CreateObject(ID_SCRIPT, 0, &script,
+            FID_Owner|TLONG,    thread->Head.UniqueID,
+            FID_Statement|TSTR, statement,
+            TAGEND)) {
+
+         if (lua_isfunction(Lua, 2)) {
+            lua_pushvalue(Lua, 2);
+            struct thread_callback cb = {
+               .callbackID   = luaL_ref(Lua, LUA_REGISTRYINDEX),
+               .threadScript = script,
+               .mainScriptID = Lua->Script->Head.UniqueID
+            };
+            thSetData(thread, &cb, sizeof(cb));
+
+            SetPointer(thread, FID_Callback, &thread_script_callback);
+         }
+
+         if (acActivate(thread)) {
+            luaL_error(Lua, "Failed to execute thread");
+         }
+      }
+      else luaL_error(Lua, "Failed to create script for threaded execution.");
+   }
+   else luaL_error(Lua, "Failed to create new Thread object.");
+
+   return 0;
+}
+
+//****************************************************************************
+// Execute the script statement within the context of the child thread.
+
+static ERROR thread_script_entry(objThread *Thread)
+{
+   struct thread_callback *cb;
+   if (!GetPointer(Thread, FID_Data, &cb)) {
+      acActivate(cb->threadScript);
+      acFree(cb->threadScript);
+   }
+   return ERR_Okay;
+}
+
+//****************************************************************************
+// Callback following execution (within the context of the main thread, not the child)
+
+static ERROR thread_script_callback(objThread *Thread)
+{
+   struct thread_callback *cb;
+
+   if ((!GetPointer(Thread, FID_Data, &cb)) AND (cb)) {
+      objScript *script;
+      if (!AccessObject(cb->mainScriptID, 4000, &script)) {
+         struct prvFluid *prv;
+         if (!(prv = script->Head.ChildPrivate)) return LogCode(ERR_ObjectCorrupt);
+         scCallback(script, cb->callbackID, NULL, 0);
+         luaL_unref(prv->Lua, LUA_REGISTRYINDEX, cb->callbackID);
+         ReleaseObject(script);
+      }
+   }
+
+   return ERR_Okay;
+}
 
 //****************************************************************************
 // Usage: error = thread.action(Object, Action, Callback, Key, Args...)
@@ -236,6 +328,7 @@ static int thread_method(lua_State *Lua)
 static const struct luaL_reg threadlib_functions[] = {
    { "action", thread_action },
    { "method", thread_method },
+   { "script", thread_script },
    { NULL, NULL }
 };
 

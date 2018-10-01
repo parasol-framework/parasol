@@ -2140,16 +2140,11 @@ volume_found:
    if (!get_file_info(Self->Path, &info, sizeof(info), fileinfo, sizeof(fileinfo))) {
       if (info.Flags & RDF_LINK) link = TRUE;
 
-      if (info.Flags & RDF_VIRTUAL) {
-         STRING *tags;
-
-         // Virtual drives can specify custom icons, even for folders
-         for (tags=info.Tags; *tags; tags++) {
-            if (!StrCompare("ICON:", *tags, 0, 0)) {
-               *Value = Self->prvIcon = StrClone(tags[0]+5);
-               SetContext(context);
-               return ERR_Okay;
-            }
+      if (info.Flags & RDF_VIRTUAL) { // Virtual drives can specify custom icons, even for folders
+         *Value = Self->prvIcon = VarGetString(info.Tags, "Icon");
+         if (*Value) {
+            SetContext(context);
+            return ERR_Okay;
          }
       }
 

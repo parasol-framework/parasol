@@ -69,3 +69,4 @@ core/modules/fluid/luajit-2.0.*/src/host/buildvm
 core/modules/fluid/luajit-2.0.*/src/host/buildvm_arch.h
 core/modules/fluid/luajit-2.0.*/src/host/minilua
 core/modules/fluid/luajit-2.0.*/src/jit/vmdef.lua
+svg/

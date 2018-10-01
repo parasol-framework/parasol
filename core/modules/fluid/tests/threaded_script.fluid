@@ -1,0 +1,28 @@
+
+-----------------------------------------------------------------------------------------------------------------------
+
+function testThreadScript()
+   local thread_finished = false
+
+   thread.script([[
+      print('The thread is now in session.')
+   ]],
+   function()
+      thread_finished = true
+      print('The thread has been executed.')
+   end)
+
+   local i = 0
+   while not thread_finished do
+      i = i + 1
+      mSys.processMessages(0, 0)
+   end
+
+   print('Thread finished after ' .. i .. ' cycles.')
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+
+   return {
+      tests = { 'testThreadScript' }
+   }
