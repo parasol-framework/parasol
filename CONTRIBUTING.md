@@ -4,15 +4,15 @@ Parasol is an open source, open community project. If you'd like to contribute t
 
 Branches are typically named according to the area of the code that is being modified.  E.g. for modifications to modules:
 
-modules/core
+```modules/core
 modules/widget
 modules/vector
-...
+...```
 
 Acceptable miscellaneous branches:
 
-3rdparty
+```3rdparty
 documents
 examples
 launcher
-scripts
+scripts```
