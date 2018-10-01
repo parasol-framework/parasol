@@ -1587,7 +1587,7 @@ struct CompressedItem {
    LARGE   CompressedSize;          // Compressed size of the file
    struct CompressedItem * Next;    // Used only if this is a linked-list.
    CSTRING Path;                    // Path to the file (includes folder prefixes).  Archived folders will include the trailing slash.
-   CSTRING Tags;                    // Any archive specific information is expressed here as key value pairs: 'Key:Value[ETX]...'.  Where [ETX] is ASCII character 0x03.
+   struct KeyStore * Tags;          // Any archive specific information is expressed here as key value pairs.
    LONG    Permissions;             // Original permissions - see PERMIT flags.
    LONG    UserID;                  // Original user ID
    LONG    GroupID;                 // Original group ID
