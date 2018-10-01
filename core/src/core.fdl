@@ -211,7 +211,7 @@ module({ name="Core", copyright="Paul Manias 1996-2017" }, function()
     "FOLDERS|FOLDER: Read all folders/volumes in the folder.",
     "VOLUME: Feedback only - indicates a volume.",
     "LINK: Feedback only - file/folder is actually a link to another location.",
-    "TAGS: Receive additional information for each file, such as comments, author and copyright.  The results are stored in the Tags array for each file, using the string format 'TAGNAME:Description' for each entry.",
+    "TAGS: Receive additional information for each file, such as comments, author and copyright.  The results are stored in the Tags field of each file.",
     "HIDDEN: Feedback only - file/folder is hidden.",
     "QUALIFY|QUALIFIED: Return fully qualified folder names (i.e. trailing slash or colon for each name).",
     "VIRTUAL: Path is to a virtual device.",
@@ -857,7 +857,7 @@ module({ name="Core", copyright="Paul Manias 1996-2017" }, function()
     large CompressedSize          # Compressed size of the file
     struct(*CompressedItem) Next  # Used only if this is a linked-list.
     cstr Path                  # Path to the file (includes folder prefixes).  Archived folders will include the trailing slash.
-    cstr Tags                  # Any archive specific information is expressed here as key value pairs: 'Key:Value[ETX]...'.  Where [ETX] is ASCII character 0x03.
+    struct(*KeyStore) Tags     # Any archive specific information is expressed here as key value pairs.
     int(PERMIT) Permissions    # Original permissions - see PERMIT flags.
     int  UserID                # Original user ID
     int  GroupID               # Original group ID
@@ -872,7 +872,7 @@ module({ name="Core", copyright="Paul Manias 1996-2017" }, function()
     large TimeStamp            # 64-bit time stamp - usable only for comparison (e.g. sorting).
     struct(*FileInfo) Next     # Next structure in the list, or NULL.
     str Name                   # The name of the file.  This string remains valid until the next call to GetFileInfo().
-    ptr(str) Tags              # A list of special tag strings that are file-specific.  Each string is in the format "TAGNAME=Content".
+    struct(*KeyStore) Tags     # A store of special tag strings that are file-specific.
     int(FL) Flags              # Additional flags to describe the file.
     int(PERMIT) Permissions    # Standard permission flags.
     int UserID                 # User  ID (Unix systems only).
