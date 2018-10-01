@@ -2648,7 +2648,10 @@ ERROR SubscribeTimer(DOUBLE Interval, FUNCTION *Callback, APTR *Subscription)
          thread_unlock(TL_TIMER);
          return ERR_Okay;
       }
-      else return ERR_AllocMemory;
+      else {
+         thread_unlock(TL_TIMER);
+         return ERR_AllocMemory;
+      }
    }
    else return ERR_SystemLocked;
 }
