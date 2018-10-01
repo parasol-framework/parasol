@@ -3495,8 +3495,8 @@ typedef struct rkEvent {
 
 #define EVID_GUI_SURFACE_FOCUS          GetEventID(EVG_GUI, "surface", "focus")
 
-#define EVID_FILESYSTEM_ASSIGN_CREATED  GetEventID(EVG_FILESYSTEM, "assign", "created")
-#define EVID_FILESYSTEM_ASSIGN_DELETED  GetEventID(EVG_FILESYSTEM, "assign", "deleted")
+#define EVID_FILESYSTEM_VOLUME_CREATED  GetEventID(EVG_FILESYSTEM, "volume", "created")
+#define EVID_FILESYSTEM_VOLUME_DELETED  GetEventID(EVG_FILESYSTEM, "volume", "deleted")
 
 #define EVID_USER_STATUS_LOGIN          GetEventID(EVG_USER, "status", "login")
 #define EVID_USER_STATUS_LOGOUT         GetEventID(EVG_USER, "status", "logout")
@@ -3530,8 +3530,8 @@ typedef struct rkEvent {
 
 // Event structures.
 
-typedef struct { EVENTID EventID; UBYTE Name[1]; } evAssignCreated;
-typedef struct { EVENTID EventID; UBYTE Name[1]; } evAssignDeleted;
+typedef struct { EVENTID EventID; UBYTE Name[1]; } evVolumeCreated;
+typedef struct { EVENTID EventID; UBYTE Name[1]; } evVolumeDeleted;
 typedef struct { EVENTID EventID; OBJECTID TaskID; } evTaskCreated;
 typedef struct { EVENTID EventID; OBJECTID TaskID; OBJECTID ProcessID; } evTaskRemoved;
 typedef struct { EVENTID EventID; } evPowerSuspending;
