@@ -407,7 +407,6 @@ end
             userInput    = arg('userInput', nil)
          })
 
-         glSelf = obj.find('self')
-         glSelf.primaryObject = dlg.windowID
+         return dlg.windowID
       end
    end

@@ -541,6 +541,6 @@ end
             icon       = arg('icon')
          })
 
-         obj.find('self').primaryObject = dlg.windowID
+         return dlg.windowID
       end
    end

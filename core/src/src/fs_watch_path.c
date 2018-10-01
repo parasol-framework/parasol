@@ -274,14 +274,14 @@ void path_monitor(HOSTHANDLE Handle, objFile *File)
                }
                else if (File->prvWatch->Routine.Type IS CALL_SCRIPT) {
                   OBJECTPTR script;
-                  if ((script = tlFeedback.Script.Script)) {
+                  if ((script = File->prvWatch->Routine.Script.Script)) {
                      const struct ScriptArg args[] = {
-                        { "File",   FD_STRING,  { .Address = File } },
+                        { "File",   FD_OBJECTPTR, { .Address = File } },
                         { "Path",   FD_STRING,  { .Address = path } },
                         { "Custom", FD_LARGE,   { .Large = File->prvWatch->Custom } },
                         { "Flags",  FD_LONG,    { .Long = 0 } }
                      };
-                     error = scCallback(script, tlFeedback.Script.ProcedureID, args, ARRAYSIZE(args));
+                     error = scCallback(script, File->prvWatch->Routine.Script.ProcedureID, args, ARRAYSIZE(args));
                      if (!error) GetLong(script, FID_Error, &error);
                      else error = ERR_Failed;
                   }
