@@ -220,9 +220,7 @@ gui.fileview = function(View, Options)
       return false
    end
 
-   local function pathWatch(File, Path, Custom, Flags)
-      print('pathWatch() File: ' .. File .. ', Path: ' .. Path)
-
+   local function pathWatch(MonitoredFile, Path, Custom, Flags)
       if lRefresh then return end
 
       local refresh
