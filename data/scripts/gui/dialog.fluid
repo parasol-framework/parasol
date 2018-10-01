@@ -75,11 +75,18 @@ gui.dialog.message = function(Options)
    local mSys = mod.load('core')
 
    local self = { // Public variables
-      windowID = nil
+      windowID = nil,
+      document = nil
    }
 
    local lOptions = Options
    local lWindow, lInput, lCheckbox
+
+   self.message = function(Message)
+      lOptions.message = Message
+      lDoc.acClear()
+      lDoc.acDataFeed(0, DATA_XML, buildDocument())
+   end
 
    local function matchWindowToDocSize(Window, Document)
       local page_width  = Document.pageWidth
@@ -95,17 +102,17 @@ gui.dialog.message = function(Options)
 
    local function defaultIcon()
       if nz(lOptions.type) then
-         if lOptions.type == 'error' then return 'icons:items/error(48)' end
-         if lOptions.type == 'critical' then return 'icons:items/error(48)' end
-         if lOptions.type == 'warning' then return 'icons:items/warning(48)' end
-         if lOptions.type == 'attention' then return 'icons:items/info(48)' end
-         if lOptions.type == 'alarm' then return 'icons:time/alarm(48)' end
-         if lOptions.type == 'help' then return 'icons:items/question(48)' end
-         if lOptions.type == 'question' then return 'icons:items/question(48)' end
-         if lOptions.type == 'request' then return 'icons:items/info(48)' end
-         if lOptions.type == 'info' then return 'Self, "icons:items/info(48)' end
+         if lOptions.type == 'error' then return 'icons:items/error' end
+         if lOptions.type == 'critical' then return 'icons:items/error' end
+         if lOptions.type == 'warning' then return 'icons:items/warning' end
+         if lOptions.type == 'attention' then return 'icons:items/info' end
+         if lOptions.type == 'alarm' then return 'icons:time/alarm' end
+         if lOptions.type == 'help' then return 'icons:items/question' end
+         if lOptions.type == 'question' then return 'icons:items/question' end
+         if lOptions.type == 'request' then return 'icons:items/info' end
+         if lOptions.type == 'info' then return 'Self, "icons:items/info' end
       end
-      return 'icons:items/question(48)'
+      return 'icons:items/question'
    end
 
    local function docEvent(Document, EventFlag, Parameters)
@@ -173,7 +180,7 @@ gui.dialog.message = function(Options)
         <image src="]] .. image .. [[" align="left" eastgap="8"/>
       </cell>
       <cell>
-        <p>]] .. nz(lOptions.message,'') .. [[</p>
+        <p>]] .. string.escXML(nz(lOptions.message,'')) .. [[</p>
 ]]
 
       if lOptions.userInput then
@@ -256,8 +263,6 @@ gui.dialog.message = function(Options)
          end
       })
 
-      self.windowID = lWindow.id
-
       lDocSurface = lWindow.new('surface', {
          x       = lWindow.leftMargin,
          y       = lWindow.topMargin,
@@ -292,6 +297,9 @@ gui.dialog.message = function(Options)
       lWindow.acMoveToFront()
       lWindow.acShow()
       lDocSurface.acFocus()
+
+      self.windowID = lWindow.id
+      self.document = lDoc
    end,
    function(Exception)
       error('Failed to initialise FileDialog: ' .. Exception.message)
@@ -319,6 +327,6 @@ end
             secret     = arg('secret')
          })
 
-         return dlg.windowID
+         return dlg.windowID, dlg.document.id
       end
    end
