@@ -20,8 +20,9 @@ Valid options to use when creating the box are as follows:
   yOffset:   Offset the bottom of the box.
   thickness: The thickness of the box border, in pixels.
   colour:    Fill colour in RGB format
-  highlight: Border highlight in RGB format.
-  shadow:    Border shadow in RGB format.
+  border:    Draw the border using one single colour (RGB format).
+  highlight: Set a border highlight in RGB format.
+  shadow:    Set a border shadow in RGB format.
   raised:    Apply a raised effect to the box.
   sunken:    Apply a sunken effect to the box.
   opacity:   Overall opacity level of all colours, measured from 0 - 1.0
@@ -80,7 +81,7 @@ gui.box = function(Options)
       elseif (xo and x) then
          width = Surface.width - x - xo
       else
-         error('Invalid dimensions defined for the box.')
+         error('Invalid width defined for the box.')
       end
 
       if (lHeight.relative) then
@@ -90,7 +91,7 @@ gui.box = function(Options)
       elseif (xo and x) then
          height = Surface.height - y - yo
       else
-         error('Invalid dimensions defined for the box.')
+         error('Invalid height defined for the box.')
       end
 
       if ((width < 1) or (height < 1)) then
