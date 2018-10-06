@@ -15,24 +15,50 @@ basic usage:
 The first parameter is the target surface for the MenuBar graphic.  Valid options to use when creating the menubar are
 as follows:
 
-  noExtensions: If true, file extensions are not displayed when this option is active.
-  sysKeys:      If true, system key monitoring and relevant default behaviours are active when this option is enabled.  Cut, Copy, Paste and Select-All key combinations are provided to the user in this mode.
-  noFiles:      If true, do not display files in the file list.
-  showParent:   If true, the file view will display an item in the file list that reverts to the parent folder when activated.
-  showHidden:   If true, show hidden files.
-  showSystem:   If true, show system files.
-  showDocs:     If true, show document views.
-  filter:       Show only the files that match this wildcard filter, e.g. '*.csv'.
-  focus:        The surface to monitor for the focus.
-  limitPath:    Limit browsing to this folder and its sub-folders.
-  autoMode:     Automatically perform 'open', 'edit' or 'view' if a folder or file is activated by the user.
-  pathChanged:  Call this function whenever the path changes in the view.  The path string is passed in the first parameter.
-  fileSelected: Function to callback when the user has selected a file.
+   noExtensions: If true, file extensions are not displayed when this option is active.
+   sysKeys:      If true, system key monitoring and relevant default behaviours are active when this option is enabled.  Cut, Copy, Paste and Select-All key combinations are provided to the user in this mode.
+   noFiles:      If true, do not display files in the file list.
+   showParent:   If true, the file view will display an item in the file list that reverts to the parent folder when activated.
+   showHidden:   If true, show hidden files.
+   showSystem:   If true, show system files.
+   showDocs:     If true, show document views.
+   filter:       Show only the files that match this wildcard filter, e.g. '*.csv'.
+   focus:        The surface to monitor for the focus.
+   limitPath:    Limit browsing to this folder and its sub-folders.
+   autoMode:     Automatically perform 'open', 'edit' or 'view' if a folder or file is activated by the user.
+   pathChanged:  Call this function whenever the path changes in the view.  The path string is passed in the first parameter.
+   fileSelected: Function to callback when the user has selected a file.
+
+Available methods:
+
+   browse(p)        Browse the folder at (p).
+   byteSize()       Returns the size of the browsed storage device.
+   bytesFree()      Returns the amount of free space on the browsed storage device.
+   bytesUsed()      Returns the amount of used space on the browsed storage device.
+   copyFiles()      Apply all selected items to the clipboard with a copy operation.
+   copyFilesTo(p)   Copy all selected items to the path at (p).
+   createFolder()   Prompt the user to create a new folder.
+   createShortcut() Prompt the user to create a shortcut.
+   cutFiles()       Apply all selected items to the clipboard with a cut operation.
+   deleteFiles()    Prompt the user and delete all selected items.
+   editFiles()      Run the default edit command for all currently selected files.
+   filter(w)        Apply a wildcard filter to limit the display to matching file names.
+   moveFilesTo(p)   Move all selected items to the destination path at (p).
+   openFiles()      Run the default open command for all currently selected files.
+   parentDir()      Browse the parent folder of the current path.
+   pasteFiles()     Paste files from the clipboard to the current path.
+   refresh()        Force a refresh of the view.
+   renameFile()     Prompt the user to rename the selected item.
+   selectionPath()  Returns the complete, fully-qualified path of the most recently selected item.
+   selection()      Returns the name of the currently selected item, as it appears to the user.
+   selectionFile()  Returns the currently selected file or folder (fully-qualified).
+   viewFiles()      Run the default view command for all currently selected files.
 --]]
 
    require 'common'
    require 'gui'
    require 'gui/menu'
+   require 'gui/dialog'
    require 'json'
    include 'vector'
 
@@ -235,11 +261,11 @@ gui.fileview = function(View, Options)
          if (bit.band(Flags, MFF_DELETE) != 0 and bit.band(Flags, MFF_SELF) != 0)
              or bit.band(Flags, MFF_UNMOUNT) != 0 then
 
-            if lPath:sub(1,2) == 'cd' then
-            elseif lPath:sub(1,4) == 'disk' then
+            if self.path:sub(1,2) == 'cd' then
+            elseif self.path:sub(1,4) == 'disk' then
             else -- Check that the folder is definitely gone and that this is not a mis-report.
-               if mSys.AnalysePath(lPath, 0) != ERR_Okay then
-                  self.path(nil)
+               if mSys.AnalysePath(self.path, 0) != ERR_Okay then
+                  self.browse(nil)
                end
             end
          end
@@ -248,7 +274,7 @@ gui.fileview = function(View, Options)
 
       local info, info_err
       if bit.band(Flags, MFF_DELETE) == 0 then
-         info_err, info = mSys.GetFileInfo(lPath .. nz(Path,''))
+         info_err, info = mSys.GetFileInfo(self.path .. nz(Path,''))
          if info_err == ERR_Okay then
             if lNoFiles and bit.band(info.Flags, RDF_FILE) != 0 then return end
             -- Use the true file name with the trailing slash if it is a folder (important
@@ -669,7 +695,7 @@ gui.fileview = function(View, Options)
    -- name then the folder will be created in the current path of the file view.  The user may cancel the process by
    -- closing the dialog window at any time.
 
-   self.createDir = function()
+   self.createFolder = function()
       if not nz(self.path) then -- Create a new shortcut/volume at the root level
          return self.createShortcut()
       else
@@ -750,7 +776,7 @@ gui.fileview = function(View, Options)
    self.deleteFiles = function()
       local tags = self.view.selectedTags
 
-      if (#tags > 1) then
+      if tags and #tags > 1 then
          msg = 'Are you sure that you want to delete the ' .. #tags .. ' selected items?'
       else
          local file = extractFilename(tags[1])
@@ -864,7 +890,7 @@ gui.fileview = function(View, Options)
 
    -- Return the complete, fully-qualified path of the most recently selected item
 
-   self.selectedItemPath = function()
+   self.selectionPath = function()
       local ti = self.view.selectedTag
       if ti != -1 then return nz(self.path,'') .. extractFilename(ti) end
    end
