@@ -21,14 +21,14 @@ table.toXML = function(t)
                      if type(cv) == 'table' then
                         child = child .. table.toXML({ [ck] = cv })
                      else
-                        child = child .. cv
+                        child = child .. string.escXML(cv)
                      end
                   end
                else
-                  child = child .. tostring(av) // content
+                  child = child .. string.escXML(tostring(av)) // content
                end
             elseif type(av) == 'string' then // attribute
-               out = out .. ' ' .. ak .. '="' .. av .. '"'
+               out = out .. ' ' .. ak .. '="' .. string.escXML(av) .. '"'
             elseif type(av) == 'number' then // attribute
                out = out .. ' ' .. ak .. '=' .. av
             elseif type(av) == 'boolean' then // attribute
@@ -36,7 +36,7 @@ table.toXML = function(t)
                   out = out .. ' ' .. ak
                end
             else
-               child = child .. tostring(av) // content
+               child = child .. string.escXML(tostring(av)) // content
             end
          end
 
