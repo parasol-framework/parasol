@@ -506,7 +506,7 @@ gui.menu = function(Options)
          end
       end)
 
-      vs = initVectorScene()
+      initVectorScene()
    end,
    function(Exception)
       error('Failed to initialise Menu: ' .. Exception.message)

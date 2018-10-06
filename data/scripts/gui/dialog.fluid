@@ -302,7 +302,7 @@ gui.dialog.message = function(Options)
       self.document = lDoc
    end,
    function(Exception)
-      error('Failed to initialise FileDialog: ' .. Exception.message)
+      error('Failed to initialise Dialog: ' .. Exception.message)
    end)
 
    return self
@@ -313,7 +313,7 @@ end
    do
       local state = getExecutionState()
       if (state.inRequire != true) then
-         local dlg = gui.dialog.file({
+         local dlg = gui.dialog.message({
             popover    = arg('popover'),
             target     = arg('target'),
             modal      = arg('modal'),
