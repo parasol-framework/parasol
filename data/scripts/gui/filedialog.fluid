@@ -314,7 +314,7 @@ gui.dialog.file = function(Options)
       end
 
       lView = viewRegion.new('view', {
-         flags    = viewFlags,
+         flags    = viewFlags .. '|DragDrop',
          template = 'fileview',
          style    = 'column',
          selectCallback = function(View, Flags, Tag)
