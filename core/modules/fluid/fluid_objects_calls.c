@@ -154,14 +154,14 @@ static ERROR build_args(lua_State *Lua, const struct FunctionField *args, LONG A
 
       if (args[i].Type & FD_RESULT) resultcount = resultcount + 1;
 
-      FMSG("build_args","Processing arg %s, type $%.8x", args[i].Name, args[i].Type);
+      //FMSG("build_args","Processing arg %s, type $%.8x", args[i].Name, args[i].Type);
 
       if ((args[i].Type & FD_BUFFER) OR (args[i+1].Type & FD_BUFSIZE)) {
          #ifdef _LP64
             j = ALIGN64(j);
          #endif
          if ((memory = get_meta(Lua, n, "Fluid.mem"))) {
-            MSG("Arg: %s, Value: Buffer (Source is Memory)", args[i].Name);
+            //MSG("Arg: %s, Value: Buffer (Source is Memory)", args[i].Name);
 
             ((APTR *)(argbuffer + j))[0] = memory->Memory;
             j += sizeof(APTR);
@@ -173,13 +173,13 @@ static ERROR build_args(lua_State *Lua, const struct FunctionField *args, LONG A
                LONG memsize = memory->MemorySize;
                if (args[i+1].Type & FD_LONG)  ((LONG *)(argbuffer + j))[0] = memsize;
                else if (args[i+1].Type & FD_LARGE) ((LARGE *)(argbuffer + j))[0] = memsize;
-               MSG("Preset buffer size of %d bytes.", memsize);
+               //MSG("Preset buffer size of %d bytes.", memsize);
             }
 
             //n--; // Adjustment required due to successful get_meta()
          }
          else if ((fstruct = get_meta(Lua, n, "Fluid.struct"))) {
-            MSG("Arg: %s, Value: Buffer (Source is a struct)", args[i].Name);
+            //MSG("Arg: %s, Value: Buffer (Source is a struct)", args[i].Name);
 
             ((APTR *)(argbuffer + j))[0] = fstruct->Data;
             j += sizeof(APTR);
@@ -194,7 +194,7 @@ static ERROR build_args(lua_State *Lua, const struct FunctionField *args, LONG A
             n--; // Adjustment required due to successful get_meta()
          }
          else if ((farray = get_meta(Lua, n, "Fluid.array"))) {
-            MSG("Arg: %s, Value: Buffer (Source is a array)", args[i].Name);
+            //MSG("Arg: %s, Value: Buffer (Source is a array)", args[i].Name);
 
             ((APTR *)(argbuffer + j))[0] = farray->ptrPointer;
             j += sizeof(APTR);
@@ -203,7 +203,7 @@ static ERROR build_args(lua_State *Lua, const struct FunctionField *args, LONG A
                // Buffer size is optional, so set the buffer size parameter by default.  The user can
                // override it if more arguments are specified in the function call.
 
-               MSG("Advance setting of following BUFSIZE parameter to %d", farray->ArraySize);
+               //MSG("Advance setting of following BUFSIZE parameter to %d", farray->ArraySize);
 
                if (args[i+1].Type & FD_LONG) ((LONG *)(argbuffer + j))[0] = farray->ArraySize;
                else if (args[i+1].Type & FD_LARGE) ((LARGE *)(argbuffer + j))[0] = farray->ArraySize;
@@ -212,7 +212,7 @@ static ERROR build_args(lua_State *Lua, const struct FunctionField *args, LONG A
             n--; // Adjustment required due to successful get_meta()
          }
          else if (type IS LUA_TSTRING) {
-            MSG("Arg: %s, Value: Buffer (Source is String)", args[i].Name);
+            //MSG("Arg: %s, Value: Buffer (Source is String)", args[i].Name);
 
             size_t len;
             CSTRING str = lua_tolstring(Lua, n, &len);
@@ -230,7 +230,7 @@ static ERROR build_args(lua_State *Lua, const struct FunctionField *args, LONG A
             return ERR_WrongType;
          }
          else {
-            MSG("Arg: %s, Value: Buffer", args[i].Name);
+            //MSG("Arg: %s, Value: Buffer", args[i].Name);
             ((APTR *)(argbuffer + j))[0] = lua_touserdata(Lua, n);
             j += sizeof(APTR);
          }
@@ -250,7 +250,7 @@ static ERROR build_args(lua_State *Lua, const struct FunctionField *args, LONG A
          }
          else luaL_error(Lua, "Arg #%d (%s) requires a string, got %s '%s'.", i, args[i].Name, lua_typename(Lua, type), lua_tostring(Lua, n));
 
-         MSG("Arg: %s, Value: %s", args[i].Name, ((STRING *)(argbuffer + j))[0]);
+         //MSG("Arg: %s, Value: %s", args[i].Name, ((STRING *)(argbuffer + j))[0]);
 
          j += sizeof(STRING);
       }
@@ -299,7 +299,7 @@ static ERROR build_args(lua_State *Lua, const struct FunctionField *args, LONG A
             else luaL_error(Lua, "Arg #%d (%s) requires a string or function, got %s '%s'.", i, args[i].Name, lua_typename(Lua, type), lua_tostring(Lua, n));
          }
          else if (type IS LUA_TSTRING) {
-            MSG("Arg: %s, Value: Pointer (Source is String)", args[i].Name);
+            //MSG("Arg: %s, Value: Pointer (Source is String)", args[i].Name);
             ((CSTRING *)(argbuffer + j))[0] = lua_tostring(Lua, n);
          }
          else if (type IS LUA_TNUMBER) {
@@ -308,7 +308,7 @@ static ERROR build_args(lua_State *Lua, const struct FunctionField *args, LONG A
             return ERR_WrongType;
          }
          else {
-            MSG("Arg: %s, Value: Pointer, SrcType: %s", args[i].Name, lua_typename(Lua, type));
+            //MSG("Arg: %s, Value: Pointer, SrcType: %s", args[i].Name, lua_typename(Lua, type));
 
             if ((memory = get_meta(Lua, n, "Fluid.mem"))) {
                ((APTR *)(argbuffer + j))[0] = memory->Memory;
@@ -335,19 +335,19 @@ static ERROR build_args(lua_State *Lua, const struct FunctionField *args, LONG A
          else if (type != LUA_TNIL) ((LONG *)(argbuffer + j))[0] = lua_tointeger(Lua, n);
          else if (args[i].Type & FD_BUFSIZE); // Do not alter as the FD_BUFFER support would have managed it
          else ((LONG *)(argbuffer + j))[0] = 0;
-         MSG("Arg: %s, Value: %d / $%.8x", args[i].Name, ((LONG *)(argbuffer + j))[0], ((LONG *)(argbuffer + j))[0]);
+         //MSG("Arg: %s, Value: %d / $%.8x", args[i].Name, ((LONG *)(argbuffer + j))[0], ((LONG *)(argbuffer + j))[0]);
          j += sizeof(LONG);
       }
       else if (args[i].Type & FD_DOUBLE) {
          j = ALIGN64(j);
          ((DOUBLE *)(argbuffer + j))[0] = lua_tonumber(Lua, n);
-         MSG("Arg: %s, Value: %.2f", args[i].Name, ((DOUBLE *)(argbuffer + j))[0]);
+         //MSG("Arg: %s, Value: %.2f", args[i].Name, ((DOUBLE *)(argbuffer + j))[0]);
          j += sizeof(DOUBLE);
       }
       else if (args[i].Type & FD_LARGE) {
          j = ALIGN64(j);
          ((LARGE *)(argbuffer + j))[0] = lua_tonumber(Lua, n);
-         MSG("Arg: %s, Value: " PF64(), args[i].Name, ((LARGE *)(argbuffer + j))[0]);
+         //MSG("Arg: %s, Value: " PF64(), args[i].Name, ((LARGE *)(argbuffer + j))[0]);
          j += sizeof(LARGE);
       }
       else {
