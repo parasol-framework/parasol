@@ -5336,9 +5336,6 @@ static LONG get_line_from_index(objDocument *Self, LONG Index)
 static void error_dialog(CSTRING Title, CSTRING Message, ERROR Error)
 {
    static OBJECTID dialog_id = 0;
-   OBJECTPTR dialog;
-   CSTRING errstr;
-   LONG len;
 
    LogErrorMsg("%s", Message);
 
@@ -5346,23 +5343,23 @@ static void error_dialog(CSTRING Title, CSTRING Message, ERROR Error)
       if (CheckObjectExists(dialog_id, NULL) IS ERR_True) return;
    }
 
-   if (!NewObject(ID_DIALOG, 0, &dialog)) {
-      dialog_id = dialog->UniqueID;
-
+   OBJECTPTR dialog;
+   if (!NewObject(ID_SCRIPT, 0, &dialog)) {
       SetFields(dialog,
-         FID_Name|TSTR,    "dlgDocError",
+         FID_Name|TSTR,    "scDialog",
          FID_Owner|TLONG,  CurrentTaskID(),
-         FID_Type|TLONG,   DT_ERROR,
-         FID_Options|TSTR, "okay",
-         FID_Title|TSTR,   Title,
-         FID_Flags|TLONG,  DF_MODAL,
+         FID_Path|TSTR,    "system:scripts/gui/dialog.fluid",
          TAGEND);
 
+      acSetVar(dialog, "modal", "1");
+      acSetVar(dialog, "title", Title);
+      acSetVar(dialog, "options", "okay");
+      acSetVar(dialog, "type", "error");
+
+      CSTRING errstr;
       if ((Error) AND (errstr = GetErrorMsg(Error))) {
-         len = StrLength(Message);
-
-         UBYTE buffer[len+120];
-
+         LONG len = StrLength(Message);
+         char buffer[len+120];
          if (Message) {
             len = StrCopy(Message, buffer, sizeof(buffer));
             len += StrCopy("\n\nDetails: ", buffer+len, sizeof(buffer)-len);
@@ -5370,12 +5367,16 @@ static void error_dialog(CSTRING Title, CSTRING Message, ERROR Error)
          else len = StrCopy("Error: ", buffer, sizeof(buffer));
 
          StrCopy(errstr, buffer+len, sizeof(buffer)-len);
-         SetString(dialog, FID_String, buffer);
+         acSetVar(dialog, "message", buffer);
       }
-      else SetString(dialog, FID_String, Message);
+      else acSetVar(dialog, "message", Message);
 
-      if (!acInit(dialog)) {
-         acShow(dialog);
+      if ((!acInit(dialog)) AND (!acActivate(dialog))) {
+         CSTRING *results;
+         LONG size;
+         if ((!GetFieldArray(dialog, FID_Results, (APTR *)&results, &size)) AND (size > 0)) {
+            dialog_id = StrToInt(results[0]);
+         }
       }
    }
 }
