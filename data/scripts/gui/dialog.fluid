@@ -117,7 +117,7 @@ gui.dialog.message = function(Options)
 
    local function docEvent(Document, EventFlag, Parameters)
       if bit.band(EventFlag, DEF_LINK_ACTIVATED) != 0 then
-         if (lOptions.feedback) then
+         if lOptions.feedback then
             local responseIndex = tonumber(mSys.VarGetString(Parameters.parameters, 'response'))
             local response = lOptions.options[responseIndex]
             local state = { }
@@ -132,7 +132,7 @@ gui.dialog.message = function(Options)
 
             if lInput then
                state.input = nz(lInput.string, nil)
-               if (lOptions.inputRequired) and (string.len(state.input) < 1) then
+               if lOptions.inputRequired and not state.input then
                   // If input is mandatory, the response is cancelled when no input is given
                   response = nil
                end

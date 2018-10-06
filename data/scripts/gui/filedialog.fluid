@@ -87,7 +87,7 @@ gui.dialog.file = function(Options)
                popover = windowID
             })
 
-            if (confirm.response != RSF_YES) then return end
+            if confirm.response != RSF_YES then return end
          end
       end
 
@@ -143,12 +143,12 @@ gui.dialog.file = function(Options)
          createItems = function(Bar)
             Bar.addGroup(1, 'Navigation', 2)
 
-            Bar.addItem(2, 'Root', 'Root Directory', 'devices/harddisk', function()
+            Bar.addItem(2, 'Root', 'Root Folder', 'devices/harddisk', function()
                lFileView.browse(nil)
             end)
 
             Bar.addItem(3, 'Parent', 'Parent Folder', 'arrows/arrow_nw', function()
-               lFileView.parentDir()
+               lFileView.parentFolder()
             end)
 
             Bar.addGroup(4, 'Clipboard', 3)
@@ -167,8 +167,8 @@ gui.dialog.file = function(Options)
 
             Bar.addGroup(8, 'Actions', 3)
 
-            Bar.addItem(9, 'Create Dir', 'Create Directory', 'folders/folder_new', function()
-               lFileView.createDir()
+            Bar.addItem(9, 'Create Folder', 'Create Folder', 'folders/folder_new', function()
+               lFileView.createFolder()
             end)
 
             Bar.addItem(10, 'Rename', 'Rename', 'layout/interface_textbox', function()
@@ -314,7 +314,7 @@ gui.dialog.file = function(Options)
       end
 
       lView = viewRegion.new('view', {
-         flags    = viewFlags,
+         flags    = viewFlags .. '|DragDrop',
          template = 'fileview',
          style    = 'column',
          selectCallback = function(View, Flags, Tag)
@@ -322,7 +322,7 @@ gui.dialog.file = function(Options)
 
             if lFileView == nil then return end
 
-            local selection = lFileView.selectedItemPath()
+            local selection = lFileView.selectionPath()
             if not nz(selection) then
                lFileBox.string = ''
                return
