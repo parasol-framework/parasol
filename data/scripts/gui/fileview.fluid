@@ -1235,7 +1235,8 @@ gui.fileview = function(View, Options)
                   if bit.band(Flags, KQ_PRESSED) == 0 then return end
 
                   if lSysKeys and bit.band(Flags, KQ_CTRL) != 0 then
-                     -- NB: Sys-keys should only be enabled if cut/copy/paste support is not implemented in the core application.
+                     -- NB: Sys-keys should only be enabled if cut/copy/paste support is not implemented in the core
+                     -- application.
 
                      if Value == K_C then
                         copy_files()

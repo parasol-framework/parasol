@@ -284,15 +284,15 @@ static ERROR VIEW_ActionNotify(objView *Self, struct acActionNotify *Args)
 {
    if (Args->Error != ERR_Okay) return ERR_Okay;
 
-   if (Args->ActionID IS AC_DragDrop) { // Something has been dropped onto the view
+   if (Args->ActionID IS AC_DragDrop) { // Something has been dropped onto the view (acting as destination)
       struct acDragDrop *drag;
-      LONG i;
-
       if ((drag = (struct acDragDrop *)Args->Args)) {
+         LogBranch("Drag and drop source: %d, Item: %d", drag->SourceID, drag->Item);
          if ((drag->SourceID IS Self->Head.UniqueID) OR (drag->SourceID IS Self->DragSourceID)) {
             // If the items belong to our own view, we must check that the items aren't being dropped onto themselves.
 
             if ((Self->HighlightTag != -1)  AND (Self->DragItems)) {
+               LONG i;
                for (i=0; i < Self->DragItemCount; i++) {
                   if (Self->DragItems[i] IS Self->HighlightTag) {
                      MSG("Drag & drop items cannot be dragged onto themselves.");
@@ -303,6 +303,7 @@ static ERROR VIEW_ActionNotify(objView *Self, struct acActionNotify *Args)
          }
 
          NotifySubscribers(Self, AC_DragDrop, drag, 0, ERR_Okay);
+         LogBack();
       }
    }
    else if (Args->ActionID IS AC_Disable) {

@@ -185,7 +185,7 @@ int(CEF) Flags: Optional flags.
 -ERRORS-
 Okay: The files were added to the clipboard.
 Args
-MissingLoation: The Files argument was not correctly specified.
+MissingLocation: The Files argument was not correctly specified.
 LimitedSuccess: The file item was successfully added to the internal clipboard, but could not be added to the host.
 -END-
 
@@ -504,15 +504,14 @@ static ERROR CLIPBOARD_DataFeed(objClipboard *Self, struct acDataFeed *Args)
 
       #ifdef _WIN32
       {
-         // Copy text to the windows clipboard.  This requires that we convert
-         // from UTF-8 to UTF-16.  For consistency and interoperability purposes,
-         // we interact with both the Windows and internal clipboards.
+         // Copy text to the windows clipboard.  This requires a conversion from UTF-8 to UTF-16.  For consistency
+         // and interoperability purposes, we interact with both the Windows and internal clipboards.
 
          UWORD *utf16;
 
          ERROR error = ERR_Okay;
-         LONG chars = UTF8Length((STRING)Args->Buffer);
-         STRING str = (STRING)Args->Buffer;
+         LONG chars = UTF8Length((CSTRING)Args->Buffer);
+         CSTRING str = (STRING)Args->Buffer;
 
          LONG bytes = 0;
          for (chars=0; (str[bytes]) AND (bytes < Args->Size); chars++) {
@@ -541,7 +540,7 @@ static ERROR CLIPBOARD_DataFeed(objClipboard *Self, struct acDataFeed *Args)
          StrFormat(buffer, sizeof(buffer), "clipboard:text%d.000", counter);
 
          if (!CreateObject(ID_FILE, 0, &file,
-               FID_Location|TSTR,  buffer,
+               FID_Location|TSTR,     buffer,
                FID_Flags|TLONG,       FL_NEW|FL_WRITE,
                FID_Permissions|TLONG, PERMIT_READ|PERMIT_WRITE,
                TAGEND)) {
@@ -1091,15 +1090,16 @@ File: A non-specific file error occurred during the paste operation.
 *****************************************************************************/
 
 static CSTRING PasteConfirm = "STRING:\n\
+   require 'gui/dialog'\n\
    local clip = obj.find(arg('clipboard'))\n\
-   local dlg = obj.new('dialog', {\n\
-      name='PasteConfirm', type='attention'\n\
-      buttons='cancel;no;yesall;yes', title='Confirmation Required'\n\
-      flags='!WAIT', responseObject='[@scriptowner]', responseField='response'\n\
+   local dlg = gui.dialog.message({\n\
+      type    = 'attention'\n\
+      buttons = {{id=-1,text='No'},{id=1,text='Yes'}},\n\
+      title   = 'Confirmation Required'\n\
+      wait    = true,\n\
+      message = 'You are about to overwrite this location - should it be replaced?\n\n' .. arg('file','NIL')\n\
    })\n\
-   dlg.string = 'You are about to overwrite this location - should it be replaced?\n\n' .. arg('file','NIL')\n\
-   dlg.detach()\n\
-   dlg.acShow()\n";
+";
 
 static ERROR CLIPBOARD_PasteFiles(objClipboard *Self, struct clipPasteFiles *Args)
 {
@@ -1294,10 +1294,10 @@ const char delete_feedback_script[] = "\
       image   = 'icons:tools/eraser',\n\
       title   = 'File Deletion Progress',\n\
       message = 'Deleting...',\n\
-      options = { id=1, text='Cancel', icon='items/cancel' },\n\
+      options = { id=-1, text='Cancel', icon='items/cancel' },\n\
       feedback = function(Dialog, Response, State)\n\
          if Response then\n\
-            if Response.id == 1 then\n\
+            if Response.id == -1 then\n\
                obj.find('self')._status = '1'\n\
             end\n\
          else\n\
@@ -1373,7 +1373,7 @@ const char paste_feedback_script[] = "\
    local dlg = gui.dialog.message({\n\
       image   = 'icons:tools/copy',\n\
       title   = 'File Transfer Progress',\n\
-      message = 'Copying...\n\nPlease wait...',\n\
+      message = 'Copying...\\n\\nPlease wait...',\n\
       options = { id=1, text='Cancel', icon='items/cancel' },\n\
       feedback = function(Dialog, Response, State)\n\
          if Response then\n\

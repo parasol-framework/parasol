@@ -208,7 +208,7 @@ function def_clipboard()
   class("Clipboard", { src="class_clipboard.c", output="class_clipboard_def.c" }, [[
     int(RSP) Response   # Indicates the user's response to PasteFiles()
     int(CLF) Flags      # Optional flags
-    mem Cluster
+    mem Cluster         # Identifies the data cluster (item grouping) that the clipboard will work with
   ]],
   [[
    OBJECTPTR ProgressDialog;
