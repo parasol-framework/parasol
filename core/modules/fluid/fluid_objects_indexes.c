@@ -156,7 +156,7 @@ static int object_setvar(lua_State *Lua)
 
 static ERROR getfield(lua_State *Lua, struct object *object, CSTRING FName)
 {
-   FMSG("~getfield","%d, Field: %s", object->ObjectID, FName);
+   FMSG("~getfield","#%d, Field: %s", object->ObjectID, FName);
 
    OBJECTPTR obj;
    if (!(obj = access_object(object))) {

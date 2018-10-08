@@ -22,7 +22,6 @@ static void clear_subscriptions(objScript *Self)
       FreeMemory(action);
       action = nextaction;
    }
-
    prv->ActionList = NULL;
 
    // Free event subscriptions
@@ -34,18 +33,27 @@ static void clear_subscriptions(objScript *Self)
       FreeMemory(event);
       event = nextevent;
    }
-
    prv->EventList = NULL;
+
+   // Free data requests
+
+   struct datarequest *dr = prv->Requests;
+   while (dr) {
+      struct datarequest *next = dr->Next;
+      FreeMemory(dr);
+      dr = next;
+   }
+   prv->Requests = NULL;
 }
 
 //****************************************************************************
 // check() is the equivalent of an assert() for error codes.  Any error code other than Okay will be converted to an
 // exception containing a readable string for the error code.  It is most powerful when used in conjunction with
 // the catch() function, which will apply the line number of the exception to the result.  The error code will
-// also be propogated to the Script object's Error field.
+// also be propagated to the Script object's Error field.
 //
 // This function also serves a dual purpose in that it can be used to raise exceptions when an error condition needs to
-// be propogated.
+// be propagated.
 
 static int fcmd_check(lua_State *Lua)
 {
