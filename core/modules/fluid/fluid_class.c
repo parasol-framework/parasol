@@ -475,6 +475,77 @@ static ERROR FLUID_DataFeed(objScript *Self, struct acDataFeed *Args)
 
       STEP();
    }
+   else if (Args->DataType IS DATA_RECEIPT) {
+      struct prvFluid *prv = Self->Head.ChildPrivate;
+      struct datarequest *prev;
+
+      LogBranch("Incoming data receipt from #%d", Args->ObjectID);
+
+restart:
+      prev = NULL;
+      for (struct datarequest *list = prv->Requests; list; list=list->Next) {
+         if (list->SourceID IS Args->ObjectID) {
+            // Execute the callback associated with this input subscription: function({Items...})
+
+            LONG step = GetResource(RES_LOG_DEPTH); // Required as thrown errors cause the debugger to lose its step position
+
+               lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, list->Callback); // +1 Reference to callback
+               lua_newtable(prv->Lua); // +1 Item table
+
+               objXML *xml;
+               if (!CreateObject(ID_XML, NF_INTEGRAL, &xml,
+                     FID_Statement|TSTR, Args->Buffer,
+                     TAGEND)) {
+
+                  // <file path="blah.exe"/> becomes { item='file', path='blah.exe' }
+
+                  struct XMLTag *tag = xml->Tags[0];
+                  LONG i = 1;
+                  if (!StrMatch("receipt", tag->Attrib->Name)) {
+                     struct XMLTag *scan;
+                     for (scan=tag->Child; scan; scan=scan->Next) {
+                        lua_pushinteger(prv->Lua, i++);
+                        lua_newtable(prv->Lua);
+
+                        lua_pushstring(prv->Lua, "item");
+                        lua_pushstring(prv->Lua, scan->Attrib->Name);
+                        lua_settable(prv->Lua, -3);
+
+                        LONG a;
+                        for (a=1; a < scan->TotalAttrib; a++) {
+                           lua_pushstring(prv->Lua, scan->Attrib[a].Name);
+                           lua_pushstring(prv->Lua, scan->Attrib[a].Value);
+                           lua_settable(prv->Lua, -3);
+                        }
+
+                        lua_settable(prv->Lua, -3);
+                     }
+                  }
+
+                  acFree(xml);
+
+                  if (lua_pcall(prv->Lua, 1, 0, 0)) { // function(Items)
+                     process_error(Self, "Data Receipt Callback");
+                  }
+               }
+
+            SetResource(RES_LOG_DEPTH, step);
+
+            if (!prev) prv->Requests = list->Next;
+            else prev->Next = list->Next;
+            FreeMemory(list);
+            goto restart;
+         }
+
+         prev = list;
+      }
+
+      FMSG("~","Collecting garbage.");
+        lua_gc(prv->Lua, LUA_GCCOLLECT, 0); // Run the garbage collector
+      STEP();
+
+      LogBack();
+   }
 
    return ERR_Okay;
 }

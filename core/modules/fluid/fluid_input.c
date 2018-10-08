@@ -17,6 +17,12 @@ To get keyboard feedback:
 
    in.unsubscribe()
 
+For drag and drop operations, data can be requested from a source as follows:
+
+   input.requestItem(SourceID, Item, DataType, function(Items)
+
+   end)
+
 *****************************************************************************/
 
 static int input_unsubscribe(lua_State *Lua);
@@ -106,7 +112,6 @@ static int input_keyboard(lua_State *Lua)
       input->Script    = Lua->Script;
       input->SurfaceID = object_id;
       input->KeyEvent  = event;
-
       if (function_type IS LUA_TFUNCTION) {
          lua_pushvalue(Lua, 2);
          input->Callback = luaL_ref(Lua, LUA_REGISTRYINDEX);
@@ -132,6 +137,106 @@ static int input_keyboard(lua_State *Lua)
    }
 
    STEP();
+   return 0;
+}
+
+//****************************************************************************
+// Usage: req = input.requestItem(Source, Item, DataType, ReceiptFunction)
+//
+// Request an item of data from an existing object that can provision data.  Used to support drag and drop operations.
+
+static int input_request_item(lua_State *Lua)
+{
+   struct prvFluid *prv = Lua->Script->Head.ChildPrivate;
+
+   if (!lua_isfunction(Lua, 4)) {
+      luaL_argerror(Lua, 4, "Function expected.");
+      return 0;
+   }
+
+   struct datarequest *request;
+   if (!AllocMemory(sizeof(struct datarequest), MEM_NO_CLEAR|MEM_DATA, &request, NULL)) {
+      struct object *obj;
+      OBJECTID source_id;
+      ERROR error;
+
+      if ((obj = get_meta(Lua, 1, "Fluid.obj"))) {
+         source_id = obj->ObjectID;
+      }
+      else if (!(source_id = lua_tonumber(Lua, 1))) {
+         luaL_argerror(Lua, 1, "Invalid object reference");
+         return 0;
+      }
+
+      LONG item = lua_tonumber(Lua, 2);
+
+      LONG datatype;
+      if (lua_isstring(Lua, 3)) {
+         CSTRING dt = lua_tostring(Lua, 3);
+         if (!StrMatch("text", dt))              datatype = DATA_TEXT;
+         else if (!StrMatch("raw", dt))          datatype = DATA_RAW;
+         else if (!StrMatch("device_input", dt)) datatype = DATA_DEVICE_INPUT;
+         else if (!StrMatch("xml", dt))          datatype = DATA_XML;
+         else if (!StrMatch("audio", dt))        datatype = DATA_AUDIO;
+         else if (!StrMatch("record", dt))       datatype = DATA_RECORD;
+         else if (!StrMatch("image", dt))        datatype = DATA_IMAGE;
+         else if (!StrMatch("request", dt))      datatype = DATA_REQUEST;
+         else if (!StrMatch("receipt", dt))      datatype = DATA_RECEIPT;
+         else if (!StrMatch("file", dt))         datatype = DATA_FILE;
+         else if (!StrMatch("content", dt))      datatype = DATA_CONTENT;
+         else if (!StrMatch("input_ready", dt))  datatype = DATA_INPUT_READY;
+         else {
+            luaL_argerror(Lua, 3, "Unrecognised datatype");
+            return 0;
+         }
+      }
+      else if ((datatype = lua_tonumber(Lua, 3)) <= 0) {
+         luaL_argerror(Lua, 3, "Datatype invalid");
+         return 0;
+      }
+
+      request->SourceID = source_id;
+
+      LONG function_type = lua_type(Lua, 4);
+      if (function_type IS LUA_TFUNCTION) {
+         lua_pushvalue(Lua, 4);
+         request->Callback = luaL_ref(Lua, LUA_REGISTRYINDEX);
+      }
+      else if (function_type IS LUA_TSTRING) {
+         lua_getglobal(Lua, (STRING)lua_tostring(Lua, 4));
+         request->Callback = luaL_ref(Lua, LUA_REGISTRYINDEX);
+      }
+
+      request->TimeCreated = PreciseTime();
+      request->Next = prv->Requests;
+      prv->Requests = request;
+
+      struct dcRequest dcr;
+      dcr.Item          = item;
+      dcr.Preference[0] = datatype;
+      dcr.Preference[1] = 0;
+
+      struct acDataFeed dc = {
+         .Datatype = DATA_REQUEST,
+         .ObjectID = Lua->Script->Head.UniqueID,
+         .Buffer   = &dcr,
+         .Size     = sizeof(dcr)
+      };
+
+      if (!(error = ActionMsg(AC_DataFeed, source_id, &dc))) {
+         // The source will return a DATA_RECEIPT for the items that we've asked for (see the DataFeed action).
+         STEP();
+      }
+      else {
+         STEP();
+         luaL_error(Lua, "Failed to request item %d from source #%d: %s", item, source_id, GetErrorMsg(error));
+      }
+   }
+   else {
+      STEP();
+      luaL_error(Lua, "Failed to create table.");
+   }
+
    return 0;
 }
 
@@ -380,6 +485,7 @@ static void register_input_class(lua_State *Lua)
    static const struct luaL_reg inputlib_functions[] = {
       { "subscribe",   input_subscribe },
       { "keyboard",    input_keyboard },
+      { "requestItem", input_request_item },
       { NULL, NULL }
    };
 

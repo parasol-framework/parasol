@@ -30,6 +30,7 @@ struct prvFluid {
    struct actionmonitor *ActionList; // Action subscriptions managed by subscribe()
    struct eventsub *EventList; // Event subscriptions managed by subscribeEvent()
    struct finput *InputList; // Managed by the input interface
+   struct datarequest *Requests; // For drag and drop requests
    struct KeyStore *Structs;
    struct KeyStore *Includes; // Stores the status of loaded include files.
    APTR   FocusEventHandle;
@@ -155,6 +156,13 @@ struct finput {
    LONG Callback;
    LONG InputObject;
    BYTE Mode;
+};
+
+struct datarequest {
+   struct datarequest *Next;
+   OBJECTID SourceID;
+   LONG Callback;
+   LARGE TimeCreated;
 };
 
 enum { NUM_DOUBLE=1, NUM_FLOAT, NUM_LARGE, NUM_LONG, NUM_WORD, NUM_BYTE };
