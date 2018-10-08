@@ -652,7 +652,14 @@ static ERROR VIEW_DataFeed(objView *Self, struct acDataFeed *Args)
       return ERR_Okay;
    }
    else if (Args->DataType IS DATA_REQUEST) {
-      if (Self->DragSourceID) return ActionMsg(AC_DataFeed, Self->DragSourceID, Args);
+      if (Self->DragSourceID) {
+         LogBranch("Data request received for #%d", Self->DragSourceID);
+         ERROR error = ActionMsg(AC_DataFeed, Self->DragSourceID, Args);
+         LogBack();
+         if (error IS ERR_NotFound) Self->DragSourceID = 0;
+         if (error) PostError(error);
+         return error;
+      }
       else return ERR_NoSupport;
    }
    else if (Args->DataType IS DATA_INPUT_READY) {
