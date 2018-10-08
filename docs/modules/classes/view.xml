@@ -1065,45 +1065,6 @@
       <const name="FADE_BORDER">Fade the border edges into the checkbox colour (requires thickness greater than 1).</const>
     </constants>
 
-    <constants lookup="DT" comment="Types of dialog box">
-      <const name="MESSAGE">The default setting.</const>
-      <const name="CRITICAL">A highly critical error is being reported to the user.</const>
-      <const name="ERROR">An error is being reported to the user.</const>
-      <const name="WARNING">A warning message is being reported to the user.</const>
-      <const name="ATTENTION">The dialog requests the user's immediate attention.</const>
-      <const name="ALARM">The dialog is presented as a response to a preset alarm.</const>
-      <const name="HELP">Help text is being presented in the dialog.</const>
-      <const name="INFO">The dialog is providing the user with specific information on a topic.</const>
-      <const name="QUESTION">A question is being asked of the user.</const>
-      <const name="REQUEST">A request is being made (e.g. dialog requires user to type in input).</const>
-      <const name="TEMPORARY">The dialog box will disappear after a short time-out period has expired.</const>
-    </constants>
-
-    <constants lookup="FVA" comment="Options for the Auto field.">
-      <const name="OPEN">Open the file with the user's preferred program for this file type.</const>
-      <const name="EDIT">Edit the file in a program suitable for editing this file type.</const>
-      <const name="VIEW">View the file in a program suitable for read-only viewing.</const>
-    </constants>
-
-    <constants lookup="DF" comment="Dialog flags.">
-      <const name="SECRET">User input needs to be secret (e.g. password entry).</const>
-      <const name="QUIT">A quit message will be sent to the running application once the dialog window is closed.</const>
-      <const name="MODAL">Makes the dialog window modal, this prevents the user from interacting with other windows that belong to the program.  For batch scripts, the WAIT flag should be used instead.</const>
-      <const name="REVERSE">Reverse the activation process (respond to negatives, not positives).</const>
-      <const name="WAIT">This option halts the program flow when the dialog box is activated.  Normal service will resume once the user responds to the dialog window.  Note that it is still possible to interact with other windows during this time, so the use of the MODAL flag may also be beneficial.</const>
-      <const name="INPUT">An input box can be created inside the dialog window by setting this flag.  In this mode, the dialog box will return a user input string in the UserInput field after the user has responded to the dialog window.</const>
-      <const name="OPTION_ON">Turn the checkbox option on by default.</const>
-      <const name="INPUT_REQUIRED">This flag can be used in conjunction with the INPUT option.  It forces the user to input at least one character in the input box, otherwise the dialog window will automatically cancel itself.</const>
-    </constants>
-
-    <constants lookup="FVF" comment="Flags for the FileView.">
-      <const name="SHOW_PARENT">The file view will display an item in the file list that reverts to the parent folder when activated.</const>
-      <const name="NO_FILES">Do not display files in the file list.</const>
-      <const name="SYS_KEYS">System key monitoring and relevant default behaviours are active when this option is enabled.  Cut, Copy, Paste and Select-All key combinations are provided to the user in this mode.</const>
-      <const name="NO_EXTENSIONS">File extensions are not displayed when this option is active.</const>
-      <const name="TOTAL_REFRESH">Force a total refresh of the files listed in the monitored folder whenever a change is detected.</const>
-    </constants>
-
     <constants lookup="IMF" comment="Image flags">
       <const name="NO_DRAW">Stops automatic drawing of the target surface if the image is being animated or a special effect is active.</const>
       <const name="FIXED">Synonym for FIXED_SIZE</const>
@@ -1139,24 +1100,6 @@
       <const name="OBJECT">An object that has been deserialised into binary form.</const>
     </constants>
 
-    <constants lookup="MNF" comment="Flags for the Menu class.">
-      <const name="SHOW_KEYS">Print key controls on the right.</const>
-      <const name="POINTER_XY">Synonym for POINTER_PLACEMENT</const>
-      <const name="SHOW_ICONS">Synonym for SHOW_IMAGES</const>
-      <const name="SHOW_IMAGES">Allow for an image column on the left.</const>
-      <const name="POINTER_PLACEMENT">Menu is placed at the position of the mouse pointer when shown.</const>
-      <const name="REVERSE_Y">Menu's open in reverse vertical order.</const>
-      <const name="CACHE">Cache menu surface once created.</const>
-      <const name="IGNORE_FOCUS">Do not hide the menu if it loses the focus.</const>
-      <const name="SORT">Sort all items by name.</const>
-      <const name="EXT_COLUMN">Allow for an extension indicator column on the right.</const>
-      <const name="PRESERVE_BKGD">Preserve background when scrolling.</const>
-      <const name="REVERSE_X">Menu's open in reverse horizontal order.</const>
-      <const name="NO_HIDE">Activate() is prevented from hiding the menu.</const>
-      <const name="POPUP">Locks the position of the menu to the mouse pointer.</const>
-      <const name="NO_TRANSLATION">Do not translate menu text to the user's native language.</const>
-    </constants>
-
     <constants lookup="SD" comment="Scroll directions.">
       <const name="NEGATIVE"/>
       <const name="POSITIVE"/>
@@ -1190,11 +1133,6 @@
       <const name="COMMANDLINE">Synonym for AUTO_CLEAR | EDIT | HISTORY</const>
     </constants>
 
-    <constants lookup="CLF" comment="Clipboard flags">
-      <const name="WAIT">The clipboard will wait for the user to respond to user dialogs rather than return immediately from clipboard operations.</const>
-      <const name="HOST"/>
-    </constants>
-
     <constants lookup="SBF" comment="Scrollbar flags.">
       <const name="CONSTANT">Ensures that the scrollbar is always on display.</const>
       <const name="RELATIVE">Enables relative scrolling (movement is reported relative to the current slider position rather than in absolute coordinates).</const>
@@ -1203,15 +1141,22 @@
       <const name="NO_INTERSECT">Do not attempt to intersect with adjacent scrollbars.</const>
     </constants>
 
-    <constants lookup="VIEW" comment="List options">
-      <const name="LIST">Standard list view with small icons, arranged from top to bottom.</const>
-      <const name="ICON">Similar to list-view but with large icons, arranged from left to right.</const>
-      <const name="TREE">Tree mode can be used if the items are arranged in a hierarchy, where items can be embedded within items.  The tree view provides small buttons that the user can click to expand the tree and view hidden items.</const>
-      <const name="COLUMN">Long list with detail columns.</const>
-      <const name="LONG_LIST">This type is the same as the LIST view but the items will not wrap back to the top of the view when the bottom edge of the surface is encountered.</const>
-      <const name="GROUP_TREE">Similar to tree view, but root level nodes are drawn as a headline.</const>
-      <const name="DOCUMENT">Document mode allows view data to be passed to a document object for display.  You are required to provide a document object that is pre-loaded with a template capable of processing input from the view object.  Refer to the Document field for more information.</const>
-      <const name="COLUMN_TREE">This mode combines the column and tree modes.  The view displays the layout and style of normal column mode, but the first column is used to display and manage a tree hierarchy.  The tree can be expanded and collapsed just as in the standard tree mode.</const>
+    <constants lookup="AXIS" comment="Axis options.  This determines the axis that is signalled when the slider is moved (note that it is feasible for a horizontal scrollbar to signal the Y axis, if this is desired by the client)">
+      <const name="X"/>
+      <const name="Y"/>
+      <const name="Z"/>
+    </constants>
+
+    <constants lookup="VGF" comment="Graphics options (normally defined by the template)">
+      <const name="OUTLINE_TITLE">Draw black outline around title text.</const>
+      <const name="NO_BORDER">Do not draw a border around column headers when in table mode.</const>
+      <const name="DRAW_TABLE">Draw the view as a table (the basic format is the same, graphics are different).</const>
+      <const name="GROUP_SHADOW">Draw a shadow underneath the group graphics headers.</const>
+      <const name="STRIPES">Draw stripes in group titles.</const>
+      <const name="HAIRLINES">Draw a hairline between each column.</const>
+      <const name="BRANCHES">Draw grey tree branches.</const>
+      <const name="ALT_GROUP">Alternate the group header graphics.</const>
+      <const name="LINE_BREAKS">Draw a line break between each view item.</const>
     </constants>
 
     <constants lookup="SLF" comment="Flags for SelectCallback">
@@ -1237,18 +1182,6 @@
       <const name="INSIDE">The cursor is inside the button's area</const>
     </constants>
 
-    <constants lookup="VGF" comment="Graphics options (normally defined by the template)">
-      <const name="OUTLINE_TITLE">Draw black outline around title text.</const>
-      <const name="NO_BORDER">Do not draw a border around column headers when in table mode.</const>
-      <const name="DRAW_TABLE">Draw the view as a table (the basic format is the same, graphics are different).</const>
-      <const name="GROUP_SHADOW">Draw a shadow underneath the group graphics headers.</const>
-      <const name="STRIPES">Draw stripes in group titles.</const>
-      <const name="HAIRLINES">Draw a hairline between each column.</const>
-      <const name="BRANCHES">Draw grey tree branches.</const>
-      <const name="ALT_GROUP">Alternate the group header graphics.</const>
-      <const name="LINE_BREAKS">Draw a line break between each view item.</const>
-    </constants>
-
     <constants lookup="RSP">
       <const name="CANCEL"/>
       <const name="YES"/>
@@ -1256,25 +1189,21 @@
       <const name="NO"/>
     </constants>
 
-    <constants lookup="RSF" comment="Dialog response flags">
-      <const name="NO">Negative response.</const>
-      <const name="CUSTOM_2">Developer customised option 2 - neutral response.</const>
-      <const name="YES">Positive response.</const>
-      <const name="CUSTOM_4">Developer customised option 4 - neutral response.</const>
-      <const name="NO_ALL">Negative response.</const>
-      <const name="OKAY">Positive response.</const>
-      <const name="CANCEL">Negative response.</const>
-      <const name="YES_ALL">Positive response.</const>
-      <const name="CLOSED">Window closed without response.</const>
-      <const name="OK">Positive response.</const>
-      <const name="CUSTOM_3">Developer customised option 3 - neutral response.</const>
-      <const name="NEGATIVE">Synonym for CANCEL | NO | QUIT | NO_ALL | CLOSED</const>
-      <const name="POSITIVE">Synonym for YES | YES_ALL | OKAY | CUSTOM_1 | CUSTOM_2 | CUSTOM_3 | CUSTOM_4</const>
-      <const name="QUIT">Negative response.</const>
-      <const name="NONE">Do nothing dummy flag.</const>
-      <const name="OPTION">Combobox option ticked.</const>
-      <const name="CUSTOM_1">Developer customised option 1 - neutral response.</const>
-      <const name="RETRY"/>
+    <constants lookup="CLF" comment="Clipboard flags">
+      <const name="WAIT">The clipboard will wait for the user to respond to user dialogs rather than return immediately from clipboard operations.</const>
+      <const name="HOST"/>
+      <const name="DRAG_DROP">Enables drag and drop mode.  The clipboard content will be private and not share data with the host system in this mode.</const>
+    </constants>
+
+    <constants lookup="VIEW" comment="List options">
+      <const name="LIST">Standard list view with small icons, arranged from top to bottom.</const>
+      <const name="ICON">Similar to list-view but with large icons, arranged from left to right.</const>
+      <const name="TREE">Tree mode can be used if the items are arranged in a hierarchy, where items can be embedded within items.  The tree view provides small buttons that the user can click to expand the tree and view hidden items.</const>
+      <const name="COLUMN">Long list with detail columns.</const>
+      <const name="LONG_LIST">This type is the same as the LIST view but the items will not wrap back to the top of the view when the bottom edge of the surface is encountered.</const>
+      <const name="GROUP_TREE">Similar to tree view, but root level nodes are drawn as a headline.</const>
+      <const name="DOCUMENT">Document mode allows view data to be passed to a document object for display.  You are required to provide a document object that is pre-loaded with a template capable of processing input from the view object.  Refer to the Document field for more information.</const>
+      <const name="COLUMN_TREE">This mode combines the column and tree modes.  The view displays the layout and style of normal column mode, but the first column is used to display and manage a tree hierarchy.  The tree can be expanded and collapsed just as in the standard tree mode.</const>
     </constants>
 
     <constants lookup="SO" comment="Direction options">
@@ -1282,19 +1211,27 @@
       <const name="VERTICAL"/>
     </constants>
 
-    <constants lookup="AXIS" comment="Axis options.  This determines the axis that is signalled when the slider is moved (note that it is feasible for a horizontal scrollbar to signal the Y axis, if this is desired by the client)">
-      <const name="X"/>
-      <const name="Y"/>
-      <const name="Z"/>
-    </constants>
-
     <constants lookup="CEF">
       <const name="DELETE">Requests that the original file source is deleted if a successful paste operation takes place.</const>
       <const name="EXTEND">Instead of replacing existing clipboard data, add the new data to the group.</const>
     </constants>
 
-    <constants lookup="FEF" comment="Event flags.">
-      <const name="LOCATION">The location has been changed (user has moved to a different folder).</const>
+    <constants lookup="MNF" comment="Flags for the Menu class.">
+      <const name="SHOW_KEYS">Print key controls on the right.</const>
+      <const name="POINTER_XY">Synonym for POINTER_PLACEMENT</const>
+      <const name="SHOW_ICONS">Synonym for SHOW_IMAGES</const>
+      <const name="SHOW_IMAGES">Allow for an image column on the left.</const>
+      <const name="POINTER_PLACEMENT">Menu is placed at the position of the mouse pointer when shown.</const>
+      <const name="REVERSE_Y">Menu's open in reverse vertical order.</const>
+      <const name="CACHE">Cache menu surface once created.</const>
+      <const name="IGNORE_FOCUS">Do not hide the menu if it loses the focus.</const>
+      <const name="SORT">Sort all items by name.</const>
+      <const name="EXT_COLUMN">Allow for an extension indicator column on the right.</const>
+      <const name="PRESERVE_BKGD">Preserve background when scrolling.</const>
+      <const name="REVERSE_X">Menu's open in reverse horizontal order.</const>
+      <const name="NO_HIDE">Activate() is prevented from hiding the menu.</const>
+      <const name="POPUP">Locks the position of the menu to the mouse pointer.</const>
+      <const name="NO_TRANSLATION">Do not translate menu text to the user's native language.</const>
     </constants>
 
     <constants lookup="SCF" comment="Scroll flags.">
