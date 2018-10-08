@@ -156,6 +156,14 @@ static CSTRING GetDatatype(LONG Datatype)
 
 static ERROR CLIPBOARD_ActionNotify(objClipboard *Self, struct acActionNotify *Args)
 {
+   if (Args->Error != ERR_Okay) return ERR_Okay;
+
+   if (Args->ActionID IS AC_Free) {
+      if ((Self->RequestHandler.Type IS CALL_SCRIPT) AND (Self->RequestHandler.Script.Script->UniqueID IS Args->ObjectID)) {
+         Self->RequestHandler.Type = CALL_NONE;
+      }
+   }
+
    return ERR_Okay;
 }
 
@@ -201,7 +209,7 @@ static ERROR CLIPBOARD_AddFile(objClipboard *Self, struct clipAddFile *Args)
    ERROR error = add_clip(Self, Args->Datatype, Args->Path, Args->Flags & (CEF_DELETE|CEF_EXTEND), 0, 1, 0);
 
 #ifdef _WIN32
-   if (!error) {
+   if ((!(Self->Flags & CLF_DRAG_DROP)) AND (!error)) {
       struct ClipHeader *header;
       struct ClipEntry *clips;
       STRING str, win, path;
@@ -269,13 +277,8 @@ static ERROR CLIPBOARD_AddObject(objClipboard *Self, struct clipAddObject *Args)
 {
    if (!Args) return PostError(ERR_NullArgs);
 
-   struct clipAddObjects add;
-   OBJECTID objects[2];
-
-   objects[0] = Args->ObjectID;
-   objects[1] = 0;
-   add.Objects = &Args->ObjectID;
-   add.Flags   = Args->Flags;
+   OBJECTID objects[2] = { Args->ObjectID, 0 };
+   struct clipAddObjects add = { .Objects = objects, .Flags = Args->Flags };
    return CLIPBOARD_AddObjects(Self, &add);
 }
 
@@ -324,28 +327,28 @@ static ERROR CLIPBOARD_AddObjects(objClipboard *Self, struct clipAddObjects *Arg
    // Use the SaveToObject action to save each object's data to the clipboard storage area.  The class ID for each
    // object is also recorded.
 
-   OBJECTPTR object;
-   char location[100];
-   LONG counter;
-   WORD i, total;
-
-   CLASSID classid  = 0;
-   LONG datatype = 0;
    OBJECTID *list = Args->Objects;
+   WORD total;
    for (total=0; list[total]; total++);
 
+   LONG counter;
+   WORD i;
+   CLASSID classid = 0;
+   LONG datatype = 0;
    if (!add_clip(Self, datatype, 0, Args->Flags & CEF_EXTEND, 0, total, &counter)) {
       for (i=0; list[i]; i++) {
+         OBJECTPTR object;
          if (!AccessObject(list[i], 5000, &object)) {
             if (!classid) classid = object->ClassID;
 
             if (classid IS object->ClassID) {
-               datatype = Args->Datatype;
+               char location[100];
 
+               datatype = Args->Datatype;
                if (!datatype) {
                   if (object->ClassID IS ID_PICTURE) {
-                  StrFormat(location, sizeof(location), "clipboard:image%d.%.3d", counter, i);
-                  datatype = CLIPTYPE_IMAGE;
+                     StrFormat(location, sizeof(location), "clipboard:image%d.%.3d", counter, i);
+                     datatype = CLIPTYPE_IMAGE;
                   }
                   else if (object->ClassID IS ID_SOUND) {
                      StrFormat(location, sizeof(location), "clipboard:audio%d.%.3d", counter, i);
@@ -395,25 +398,20 @@ File
 
 static ERROR CLIPBOARD_AddText(objClipboard *Self, struct clipAddText *Args)
 {
-   ERROR error;
-
    if ((!Args) OR (!Args->String)) return PostError(ERR_NullArgs);
    if (!Args->String[0]) return ERR_Okay;
 
-   #ifdef _WIN32
-   {
-      // Copy text to the windows clipboard.  This requires that we convert from UTF-8 to UTF-16.  For consistency and
-      // interoperability purposes, we interact with both the Windows and internal clipboards.
+#ifdef _WIN32
+   if (!(Self->Flags & CLF_DRAG_DROP)) {
+      // Copy text to the windows clipboard.  This requires that we convert from UTF-8 to UTF-16.  For consistency
+      // and interoperability purposes, we interact with both the Windows and internal clipboards.
 
-      LONG chars, i;
-      CSTRING str;
       UWORD *utf16;
-
-      error = ERR_Okay;
-      chars = UTF8Length(Args->String);
+      ERROR error = ERR_Okay;
+      LONG chars = UTF8Length(Args->String);
       if (!AllocMemory((chars+1) * sizeof(WORD), MEM_DATA|MEM_NO_CLEAR, &utf16, NULL)) {
-         str = Args->String;
-         i = 0;
+         CSTRING str = Args->String;
+         LONG i = 0;
          while (*str) {
             utf16[i++] = UTF8ReadValue(str, NULL);
             str += UTF8CharLength(str);
@@ -426,10 +424,11 @@ static ERROR CLIPBOARD_AddText(objClipboard *Self, struct clipAddText *Args)
 
       if (error) return PostError(error);
    }
-   #endif
+#endif
 
    LogBranch(NULL);
 
+   ERROR error;
    LONG counter;
    if (!(error = add_clip(Self, CLIPTYPE_TEXT, 0, 0, 0, 1, &counter))) {
       char buffer[200];
@@ -503,7 +502,7 @@ static ERROR CLIPBOARD_DataFeed(objClipboard *Self, struct acDataFeed *Args)
       LogMsg("Copying text to the clipboard.");
 
       #ifdef _WIN32
-      {
+      if (!(Self->Flags & CLF_DRAG_DROP)) {
          // Copy text to the windows clipboard.  This requires a conversion from UTF-8 to UTF-16.  For consistency
          // and interoperability purposes, we interact with both the Windows and internal clipboards.
 
@@ -556,6 +555,39 @@ static ERROR CLIPBOARD_DataFeed(objClipboard *Self, struct acDataFeed *Args)
          else return PostError(ERR_CreateObject);
       }
       else return PostError(ERR_Failed);
+   }
+   else if ((Args->DataType IS DATA_REQUEST) AND (Self->Flags & CLF_DRAG_DROP))  {
+      if (Self->RequestHandler.Type) {
+         struct dcRequest *request = (struct dcRequest *)Args->Buffer;
+         LogBranch("Data request from #%d received for item %d, datatype %d", Args->ObjectID, request->Item, request->Preference[0]);
+
+         ERROR error;
+         if (Self->RequestHandler.Type IS CALL_STDC) {
+            ERROR (*routine)(objClipboard *, OBJECTID, LONG, BYTE *);
+            OBJECTPTR context = SetContext(Self->RequestHandler.StdC.Context);
+               routine = Self->RequestHandler.StdC.Routine;
+               error = routine(Self, Args->ObjectID, request->Item, request->Preference);
+            SetContext(context);
+         }
+         else if (Self->RequestHandler.Type IS CALL_SCRIPT) {
+            OBJECTPTR script;
+            if ((script = Self->RequestHandler.Script.Script)) {
+               const struct ScriptArg args[] = {
+                  { "Clipboard", FD_OBJECTPTR,     { .Address = Self } },
+                  { "Requester", FD_OBJECTID,      { .Long = Args->ObjectID } },
+                  { "Item",      FD_LONG,          { .Long = request->Item } },
+                  { "Datatypes", FD_ARRAY|FD_BYTE, { .Address = request->Preference } },
+                  { "Size",      FD_LONG|FD_ARRAYSIZE, { .Long = ARRAYSIZE(request->Preference) } }
+               };
+               scCallback(script, Self->RequestHandler.Script.ProcedureID, args, ARRAYSIZE(args));
+            }
+         }
+         else PostError(ERR_FieldNotSet);
+
+         LogBack();
+         return ERR_Okay;
+      }
+      else return ERR_NoSupport;
    }
    else LogErrorMsg("Unrecognised data type %d.", Args->DataType);
 
@@ -1024,9 +1056,9 @@ static ERROR CLIPBOARD_GetVar(objClipboard *Self, struct acGetVar *Args)
 
 static ERROR CLIPBOARD_Init(objClipboard *Self, APTR Void)
 {
-   if (!Self->ClusterID) {
-      // Create a new grouping for this clipboard.  It will be possible for any other clipboard to attach itself to
-      // this memory block if the ID is known.
+   if ((!Self->ClusterID) OR (Self->Flags & CLF_DRAG_DROP)) {
+      // Create a new grouping for this clipboard.  It will be possible for any other clipboard to attach
+      // itself to this memory block if the ID is known.
 
       if (!AllocMemory(sizeof(struct ClipHeader) + (MAX_CLIPS * sizeof(struct ClipEntry)), MEM_PUBLIC|MEM_NO_BLOCKING, NULL, &Self->ClusterID)) {
          Self->ClusterAllocated = TRUE;
@@ -1038,8 +1070,8 @@ static ERROR CLIPBOARD_Init(objClipboard *Self, APTR Void)
 
    CreateFolder("clipboard:", PERMIT_READ|PERMIT_WRITE);
 
-   // Scan the clipboard: directory for existing clips.  If they exist, add them to our clipboard object.  This allows
-   // the user to continue using clipboard data from the last time that the machine was powered on.
+   // Scan the clipboard: directory for existing clips.  If they exist, add them to our clipboard object.
+   // This allows the user to continue using clipboard data from the last time that the machine was powered on.
 
 /*
    struct DirInfo *dir = NULL;
@@ -1103,7 +1135,6 @@ static CSTRING PasteConfirm = "STRING:\n\
 
 static ERROR CLIPBOARD_PasteFiles(objClipboard *Self, struct clipPasteFiles *Args)
 {
-   struct clipGetFiles get;
    struct rkFunction callback;
    OBJECTID dialogid;
    OBJECTPTR dialog;
@@ -1125,6 +1156,7 @@ static ERROR CLIPBOARD_PasteFiles(objClipboard *Self, struct clipPasteFiles *Arg
 
    if (Self->ProgressDialog) { acFree(Self->ProgressDialog); Self->ProgressDialog = NULL; }
 
+   struct clipGetFiles get;
    get.Datatype = CLIPTYPE_FILE;
    if (!Action(MT_ClipGetFiles, Self, &get)) {
       // Scan the file list and move or copy each file to the destination directory
@@ -1262,6 +1294,44 @@ static ERROR CLIPBOARD_PasteFiles(objClipboard *Self, struct clipPasteFiles *Arg
 /*****************************************************************************
 
 -FIELD-
+RequestHandler: Provides a hook for responding to drag and drop requests.
+
+Applications can request data from a clipboard if it is in drag-and-drop mode by sending a DATA_REQUEST to the
+Clipboard's DataFeed action.  Doing so will result in a callback to the function that is referenced in the
+RequestHandler, which must be defined by the source application.  The RequestHandler function must follow this
+template:
+
+`ERROR RequestHandler(*Clipboard, OBJECTID Requester, LONG Item, BYTE Datatypes[4])`
+
+The function will be expected to send a DATA_RECEIPT to the object referenced in the Requester paramter.  The
+receipt must provide coverage for the referenced Item and use one of the indicated Datatypes as the data format.
+If this cannot be achieved then ERR_NoSupport should be returned by the function.
+
+*****************************************************************************/
+
+static ERROR GET_RequestHandler(objClipboard *Self, FUNCTION **Value)
+{
+   if (Self->RequestHandler.Type != CALL_NONE) {
+      *Value = &Self->RequestHandler;
+      return ERR_Okay;
+   }
+   else return ERR_FieldNotSet;
+}
+
+static ERROR SET_RequestHandler(objClipboard *Self, FUNCTION *Value)
+{
+   if (Value) {
+      if (Self->RequestHandler.Type IS CALL_SCRIPT) UnsubscribeAction(Self->RequestHandler.Script.Script, AC_Free);
+      Self->RequestHandler = *Value;
+      if (Self->RequestHandler.Type IS CALL_SCRIPT) SubscribeAction(Self->RequestHandler.Script.Script, AC_Free);
+   }
+   else Self->RequestHandler.Type = CALL_NONE;
+   return ERR_Okay;
+}
+
+/*****************************************************************************
+
+-FIELD-
 Cluster: Identifies a unique cluster of items targeted by a clipboard object.
 
 By default, all clipboard objects will operate on a global cluster of clipboard entries.  This global cluster is used
@@ -1282,7 +1352,6 @@ Response: Contains the last value received from a user request window.
 If a clipboard operation requires a user confirmation request, this field will contain the response value.  The user
 will typically be asked for a response prior to delete operations and in cases of existing file replacement.
 
-For available response values please refer to the <class>Dialog</class> class.
 -END-
 
 *****************************************************************************/
@@ -1350,7 +1419,7 @@ static LONG delete_feedback(struct FileFeedback *Feedback)
    }
 
    if (Self->ProgressDialog) {
-      STRING str = Feedback->Path;
+      CSTRING str = Feedback->Path;
       LONG i = len;
       while ((i > 0) AND (str[i-1] != '/') AND (str[i-1] != '\\') AND (str[i-1] != ':')) i--;
 
@@ -1509,8 +1578,8 @@ static void free_clip(objClipboard *Self, struct ClipEntry *Clip)
 
 //****************************************************************************
 
-static ERROR add_clip(objClipboard *Self, LONG Datatype, CSTRING File, LONG Flags, CLASSID ClassID, LONG TotalItems,
-   LONG *Counter)
+static ERROR add_clip(objClipboard *Self, LONG Datatype, CSTRING File, LONG Flags,
+   CLASSID ClassID, LONG TotalItems, LONG *Counter)
 {
    struct ClipHeader *header;
    struct ClipEntry clip, tmp, *clips;
@@ -1672,16 +1741,15 @@ extern "C" void report_windows_files(APTR Data, LONG CutOperation)
 void report_windows_files(APTR Data, LONG CutOperation)
 #endif
 {
-   objClipboard *clipboard;
-   char path[256];
-   LONG i;
-
    LogF("~Clipboard:","Windows has received files on the clipboard.  Cut: %d", CutOperation);
 
+   objClipboard *clipboard;
    if (!CreateObject(ID_CLIPBOARD, 0, &clipboard,
          FID_Flags|TLONG, CLF_HOST,
          TAGEND)) {
 
+      LONG i;
+      char path[256];
       for (i=0; winExtractFile(Data, i, path, sizeof(path)); i++) {
          add_clip(clipboard, CLIPTYPE_FILE, path, (i ? CEF_EXTEND : 0) | (CutOperation ? CEF_DELETE : 0), 0, 1, 0);
       }
@@ -1703,15 +1771,14 @@ extern "C" void report_windows_hdrop(STRING Data, LONG CutOperation)
 void report_windows_hdrop(STRING Data, LONG CutOperation)
 #endif
 {
-   objClipboard *clipboard;
-   LONG i;
-
    LogF("~Clipboard:","Windows has received files on the clipboard.  Cut: %d", CutOperation);
 
+   objClipboard *clipboard;
    if (!CreateObject(ID_CLIPBOARD, 0, &clipboard,
          FID_Flags|TLONG, CLF_HOST,
          TAGEND)) {
 
+      LONG i;
       for (i=0; *Data; i++) {
          add_clip(clipboard, CLIPTYPE_FILE, Data, (i ? CEF_EXTEND : 0) | (CutOperation ? CEF_DELETE : 0), 0, 1, 0);
          while (*Data) Data++; // Go to next file path
@@ -1736,11 +1803,9 @@ extern "C" void report_windows_clip_utf16(UWORD *String)
 void report_windows_clip_utf16(UWORD *String)
 #endif
 {
-   objClipboard *clipboard;
-   STRING u8str;
-
    LogF("~Clipboard:","Windows has received unicode text on the clipboard.");
 
+   objClipboard *clipboard;
    if (!CreateObject(ID_CLIPBOARD, 0, &clipboard,
          FID_Flags|TLONG, CLF_HOST,
          TAGEND)) {
@@ -1752,6 +1817,7 @@ void report_windows_clip_utf16(UWORD *String)
          else u8len += 3;
       }
 
+      STRING u8str;
       if (!AllocMemory(u8len+1, MEM_STRING|MEM_NO_CLEAR, &u8str, NULL)) {
          LONG i;
          UWORD value;
@@ -1792,8 +1858,9 @@ void report_windows_clip_utf16(UWORD *String)
 #include "class_clipboard_def.c"
 
 static const struct FieldArray clFields[] = {
-   { "Response", FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clClipboardResponse, NULL, NULL }, // NB: Is writeable so that our confirmation boxes can change it
-   { "Flags",    FDF_LONGFLAGS|FDF_RI,       (MAXINT)&clClipboardFlags, NULL, NULL },
-   { "Cluster",  FDF_LONG|FDF_RW,            0, NULL, NULL },
+   { "Response",       FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clClipboardResponse, NULL, NULL }, // NB: Is writeable so that our confirmation boxes can change it
+   { "Flags",          FDF_LONGFLAGS|FDF_RI,       (MAXINT)&clClipboardFlags, NULL, NULL },
+   { "Cluster",        FDF_LONG|FDF_RW,            0, NULL, NULL },
+   { "RequestHandler", FDF_FUNCTIONPTR|FDF_RW,     0, GET_RequestHandler, SET_RequestHandler },
    END_FIELD
 };

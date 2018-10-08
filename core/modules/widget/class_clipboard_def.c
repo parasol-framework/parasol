@@ -11,7 +11,8 @@ static const struct FieldDef clClipboardResponse[] = {
 
 static const struct FieldDef clClipboardFlags[] = {
    { "Wait", 0x00000001 },
-   { "Host", 0x00000002 },
+   { "Host", 0x00000004 },
+   { "DragDrop", 0x00000002 },
    { NULL, 0 }
 };
 
