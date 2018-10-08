@@ -88,7 +88,6 @@ gui.fileview = function(View, Options)
    local lDir
    local lKeyboard
    local lRefresh
-   local lDragToTag, lDragClip
    local lVolumeCreatedEvent, lVolumeDeletedEvent
 
    local function sortNum(Value)
@@ -477,11 +476,11 @@ gui.fileview = function(View, Options)
 
    local function pasteTo(Folder, Cluster)
       thread.script([[
-         local c = obj.new('clipboard', { clusterID = ]] .. Cluster .. [[ })
-         c.mtClipPasteFiles("]] .. Folder .. [[", nil)
+         local c = obj.new('clipboard', { cluster = ]] .. Cluster .. [[ })
+         c.mtPasteFiles("]] .. Folder .. [[", nil)
       ]],
       function()
-         if not lWatch then self.refresh() end
+         if not lWatch then self.refresh(true) end
       end)
    end
 
@@ -627,7 +626,7 @@ gui.fileview = function(View, Options)
          if lWatch.mtWatch(pathWatch, 0, bit.bor(MFF_CREATE,MFF_DELETE,MFF_ATTRIB,MFF_CLOSED,MFF_MOVED)) != ERR_Okay then
             lWatch = nil
             local err
-            err, lTimer = mSys.SubscribeTimer(lRefreshRate * 1000, fileviewTimer)
+            err, lTimer = mSys.SubscribeTimer(lRefreshRate * 1000, incrementalRefresh)
             msg('Timer-based file monitoring is enabled.')
          else
             msg('Active file monitoring is enabled.')
@@ -811,7 +810,7 @@ gui.fileview = function(View, Options)
 
                thread.script(statement,
                   function()
-                     if not lWatch then self.refresh() end
+                     if not lWatch then self.refresh(true) end
                   end)
             end
          end
@@ -976,7 +975,7 @@ gui.fileview = function(View, Options)
       end
    end
 
-   local function fileviewTimer(Elapsed, CurrentTime)
+   local function incrementalRefresh(Elapsed, CurrentTime)
       -- Do nothing if the fileview is currently in the process of refreshing itself.
 
       if lRefresh or lWatch then return ERR_Okay end
@@ -997,7 +996,7 @@ gui.fileview = function(View, Options)
       local dirinfo = lDir
       for filecount=0,5 do
          if mSys.ScanDir(dirinfo) != ERR_Okay then
-            -- We have reached the end of the folder - reset the scan
+            -- Reached end of the folder - reset the scan
             lDir = nil
             if lResetTimer then
                if lTimer != nil then
@@ -1007,7 +1006,7 @@ gui.fileview = function(View, Options)
 
                if not lWatch and self.path then
                   local err
-                  err, lTimer = mSys.SubscribeTimer(lRefreshRate, fileviewTimer)
+                  err, lTimer = mSys.SubscribeTimer(lRefreshRate, incrementalRefresh)
                end
             end
             break
@@ -1123,10 +1122,10 @@ gui.fileview = function(View, Options)
             elseif bit.band(lDeviceInfo.DeviceFlags, bit.bor(DEVICE_FLOPPY_DISK, DEVICE_USB)) then
                -- Slow device, do not refresh
             else
-               err, lTimer = mSys.SubscribeTimer(2.0, fileviewTimer) -- Write/Read access to removable device
+               err, lTimer = mSys.SubscribeTimer(2.0, incrementalRefresh) -- Write/Read access to removable device
             end
          else
-            err, lTimer = mSys.SubscribeTimer(lRefreshRate, fileviewTimer)
+            err, lTimer = mSys.SubscribeTimer(lRefreshRate, incrementalRefresh)
          end
       end
    end
@@ -1138,18 +1137,20 @@ gui.fileview = function(View, Options)
          -- Increase the rate of refresh to quickly scan the whole folder.  The Timer action
          -- will reset the timer on completion.
 
-         local err
          lResetTimer = true
          if lTimer then
             mSys.UpdateTimer(lTimer, 0.02)
          else
-            err, lTimer = mSys.SubscribeTimer(0.02, fileviewTimer)
+            local err
+            err, lTimer = mSys.SubscribeTimer(0.02, incrementalRefresh)
          end
          lDir = nil -- Reset the folder scanner so that it starts from the beginning
          return
       end
 
       if lRefresh then return end -- Recursion detected, aborting request.
+
+      msg('Performing a full refresh of the view.')
 
       mSurface.ForbidDrawing()
 
@@ -1235,7 +1236,8 @@ gui.fileview = function(View, Options)
                   if bit.band(Flags, KQ_PRESSED) == 0 then return end
 
                   if lSysKeys and bit.band(Flags, KQ_CTRL) != 0 then
-                     -- NB: Sys-keys should only be enabled if cut/copy/paste support is not implemented in the core application.
+                     -- NB: Sys-keys should only be enabled if cut/copy/paste support is not implemented in the core
+                     -- application.
 
                      if Value == K_C then
                         copy_files()
@@ -1260,20 +1262,88 @@ gui.fileview = function(View, Options)
          end
       end)
 
-      self.view.subscribe('dragdrop', function(ID, Args, Reference)
-         -- This notification is received when something is dropped onto the view's surface.  We respond by sending
-         -- a data request to the source.  Refer to scrStartCursorDrag() for more information.
+      -- Support for objects that need to request items from the FileView
 
-         lDragToTag = self.view.highlightTag
+      local drag_clipboard = obj.new('clipboard', {
+         name  = 'fvDragClipboard',
+         flags = 'DragDrop',
+         requestHandler = function(Clipboard, Requester, Item, Datatypes)
+            if not nz(self.path) then -- Do nothing if we are at the root level
+               errorDialog('Drag and Drop Failure', 'Drop and drop from volumes is not supported.');
+               return
+            end
 
-         -- Send the source an item request
-
-         local request = struct.new('dcRequest', { item=Args.item, preference = { DATA_FILE, 0 } })
-         local err = drag.source.acDataFeed(0, DATA_REQUEST, request)
-         if err == ERR_Okay then
-            -- The source will return a DATA_RECEIPT for the items that we've asked for (see the DataFeed action).
-
+            if Datatypes[1] == DATA_FILE then
+               local items = self.view.dragItems
+               if #items > 0 then
+                  local xml = '<receipt totalitems="' .. #items .. '" id="' .. Item .. '">'
+                  for i=1,#items do
+                     xml = xml .. '<file path="' .. string.escXML(self.path) .. string.escXML(extractFilename(items[i])) .. '"/>'
+                  end
+                  xml = xml .. '</receipt>'
+                  Requester.acDataFeed(Clipboard, DATA_RECEIPT, xml)
+               end
+            end
          end
+      })
+
+      drag_clipboard.detach()
+
+      self.view.dragSource = drag_clipboard
+
+      self.view.subscribe('dragdrop', function(ScriptID, Args, Reference)
+         -- This notification is received when something is dropped onto the view's surface.
+
+         local dest_tag = self.view.highlightTag
+
+         input.requestItem(Args.source, Args.item, 'file', function(Items)
+            drag_clipboard.mtDelete(CLIPTYPE_FILE)
+
+            local dest = self.path
+
+            -- If the item is being dropped onto a folder, the destination path will be our Path & the folder name.
+
+            if dest_tag != -1 then
+               local tag = self.view.xml.tags[dest_tag+1]
+               if 'dir' == tag.attrib.name then
+                  dest = nz(self.path,'') .. extractFilename(dest_tag)
+               end
+            end
+
+            if not nz(dest) or dest == ':' then return end
+
+            local dev_dest = obj.new('storagedevice', { volume = dest })
+            local dest_device_id = dev_dest.deviceID
+            local count = 0
+            for _, item in pairs(Items) do
+               if 'file' == item.item then
+                  if item.path != dest then
+                     local dev_src = obj.new('storagedevice', { volume = item.path })
+                     local src_device_id = dev_src.deviceID
+
+                     local flags = 0
+                     if dest_device_id != nil and src_dev_id != nil and dest_device_id == src_device_id then
+                        flags = bit.bor(flags, CEF_DELETE)
+                     elseif (dev_src.deviceFlags == dev_dest.deviceFlags) and
+                            (dev_src.bytesFree == dev_dest.bytesFree) and
+                            (dev_src.bytesUsed == dev_dest.bytesUsed) then
+                        flags = bit.bor(flags, CEF_DELETE)
+                     end
+
+                     if bit.band(flags, CEF_DELETE) != 0 then
+                        msg('Move "' .. item.path .. '" to "' .. dest .. '"')
+                     else
+                        msg('Copy "' .. item.path .. '" to "' .. dest .. '"')
+                     end
+
+                     drag_clipboard.mtAddFile(CLIPTYPE_FILE, item.path, bit.bor(flags, CEF_EXTEND))
+                     count = count + 1
+                  end
+               end
+            end
+
+            if count > 0 then pasteTo(dest, drag_clipboard.cluster) end
+         end)
       end)
 
       self.view.subscribe('activate', function()
@@ -1327,7 +1397,7 @@ gui.fileview = function(View, Options)
             local err = lWatch.mtWatch(pathWatch, 0, bit.bor(MFF_CREATE,MFF_DELETE,MFF_ATTRIB,MFF_CLOSED,MFF_MOVED))
             if err != ERR_Okay then
                lWatch = nil
-               err, lTimer = mSys.SubscribeTimer(lRefreshRate, fileviewTimer)
+               err, lTimer = mSys.SubscribeTimer(lRefreshRate, incrementalRefresh)
             end
          end
       end

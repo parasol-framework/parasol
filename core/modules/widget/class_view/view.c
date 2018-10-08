@@ -284,15 +284,15 @@ static ERROR VIEW_ActionNotify(objView *Self, struct acActionNotify *Args)
 {
    if (Args->Error != ERR_Okay) return ERR_Okay;
 
-   if (Args->ActionID IS AC_DragDrop) { // Something has been dropped onto the view
+   if (Args->ActionID IS AC_DragDrop) { // Something has been dropped onto the view (acting as destination)
       struct acDragDrop *drag;
-      LONG i;
-
       if ((drag = (struct acDragDrop *)Args->Args)) {
+         LogBranch("Drag and drop source: %d, Item: %d", drag->SourceID, drag->Item);
          if ((drag->SourceID IS Self->Head.UniqueID) OR (drag->SourceID IS Self->DragSourceID)) {
             // If the items belong to our own view, we must check that the items aren't being dropped onto themselves.
 
             if ((Self->HighlightTag != -1)  AND (Self->DragItems)) {
+               LONG i;
                for (i=0; i < Self->DragItemCount; i++) {
                   if (Self->DragItems[i] IS Self->HighlightTag) {
                      MSG("Drag & drop items cannot be dragged onto themselves.");
@@ -303,6 +303,7 @@ static ERROR VIEW_ActionNotify(objView *Self, struct acActionNotify *Args)
          }
 
          NotifySubscribers(Self, AC_DragDrop, drag, 0, ERR_Okay);
+         LogBack();
       }
    }
    else if (Args->ActionID IS AC_Disable) {
@@ -651,7 +652,14 @@ static ERROR VIEW_DataFeed(objView *Self, struct acDataFeed *Args)
       return ERR_Okay;
    }
    else if (Args->DataType IS DATA_REQUEST) {
-      if (Self->DragSourceID) return ActionMsg(AC_DataFeed, Self->DragSourceID, Args);
+      if (Self->DragSourceID) {
+         LogBranch("Data request received for #%d", Self->DragSourceID);
+         ERROR error = ActionMsg(AC_DataFeed, Self->DragSourceID, Args);
+         LogBack();
+         if (error IS ERR_NotFound) Self->DragSourceID = 0;
+         if (error) PostError(error);
+         return error;
+      }
       else return ERR_NoSupport;
    }
    else if (Args->DataType IS DATA_INPUT_READY) {

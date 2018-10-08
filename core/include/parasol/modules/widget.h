@@ -1011,7 +1011,8 @@ INLINE ERROR viewItemDimensions(APTR Ob, LONG TagIndex, LONG * X, LONG * Y, LONG
 // Clipboard flags
 
 #define CLF_WAIT 0x00000001
-#define CLF_HOST 0x00000002
+#define CLF_DRAG_DROP 0x00000002
+#define CLF_HOST 0x00000004
 
 #define CEF_DELETE 0x00000001
 #define CEF_EXTEND 0x00000002
@@ -1024,9 +1025,10 @@ typedef struct rkClipboard {
    OBJECT_HEADER
    LONG     Response;   // Indicates the user's response to PasteFiles()
    LONG     Flags;      // Optional flags
-   MEMORYID ClusterID;
+   MEMORYID ClusterID;  // Identifies the data cluster (item grouping) that the clipboard will work with
 
 #ifdef PRV_CLIPBOARD
+   FUNCTION RequestHandler;
    OBJECTPTR ProgressDialog;
    LARGE    ProgressTime;
    OBJECTID ProgressTarget;

@@ -188,6 +188,7 @@ function def_clipboard()
 
   flags("CLF", { comment="Clipboard flags" },
     "WAIT: The clipboard will wait for the user to respond to user dialogs rather than return immediately from clipboard operations.",
+    "DRAG_DROP: Enables drag and drop mode.  The clipboard content will be private and not share data with the host system in this mode.",
     "HOST")
 
   flags("CEF", { },
@@ -208,9 +209,10 @@ function def_clipboard()
   class("Clipboard", { src="class_clipboard.c", output="class_clipboard_def.c" }, [[
     int(RSP) Response   # Indicates the user's response to PasteFiles()
     int(CLF) Flags      # Optional flags
-    mem Cluster
+    mem Cluster         # Identifies the data cluster (item grouping) that the clipboard will work with
   ]],
   [[
+   FUNCTION RequestHandler;
    OBJECTPTR ProgressDialog;
    LARGE    ProgressTime;
    OBJECTID ProgressTarget;
