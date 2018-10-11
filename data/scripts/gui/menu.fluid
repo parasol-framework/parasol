@@ -445,7 +445,7 @@ gui.menu = function(Options)
 
       self.surface.subscribe('hide', function(Surface, Args)
          lVisible = false
-         lTImeHide = mSys.preciseTime()
+         lTimeHide = mSys.preciseTime()
       end)
 
       self.surface.subscribe('show', function(Surface, Args)
