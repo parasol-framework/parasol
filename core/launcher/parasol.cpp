@@ -56,7 +56,6 @@ The following parameters can be used when executing script files:\n\
  --procedure [n] The name of a procedure to execute.\n\
  --target    [n] The name of an existing object that the script will target for hosting.  Used in multi-tasking\n\
                  environments.\n\
- --program       Treat the script like a program.  The process will enter message handling mode if execution succeeds.\n\
  --time          Print the amount of time that it took to execute the program.\n\
  --sandbox       Applies the PARC sand-boxing feature when executing scripts.\n\
  --allow         For sand-boxed execution, specifies additional access rights and limitations.\n\
@@ -113,9 +112,6 @@ static ERROR process_args(void)
          else if (!StrMatch(args[i], "--sandbox")) {
             glSandbox = TRUE;
          }
-         else if (!StrMatch(args[i], "--allow")) {
-
-         }
          else if (!StrMatch(args[i], "--time")) {
             glTime = TRUE;
          }
@@ -142,11 +138,7 @@ static ERROR process_args(void)
             if (glProcedure) { FreeMemory(glProcedure); glProcedure = NULL; }
 
             if (args[i+1]) {
-               for (j=0; args[i+1][j]; j++);
-               if (!AllocMemory(j+1, MEM_STRING|MEM_NO_CLEAR, &glProcedure, NULL)) {
-                  for (j=0; args[i+1][j]; j++) glProcedure[j] = args[i+1][j];
-                  glProcedure[j] = 0;
-               }
+               glProcedure = StrClone(args[i+1]);
                i++;
             }
          }
