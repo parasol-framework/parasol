@@ -384,8 +384,9 @@ static int input_destruct(lua_State *Lua)
 static void key_event(struct finput *Input, evKey *Event, LONG Size)
 {
    struct prvFluid *prv;
+   objScript *script = Input->Script;
 
-   if ((!Input->Script) OR (!(prv = Input->Script->Head.ChildPrivate))) {
+   if ((!script) OR (!(prv = script->Head.ChildPrivate))) {
       MSG("Input->Script undefined.");
       return;
    }
@@ -403,7 +404,7 @@ static void key_event(struct finput *Input, evKey *Event, LONG Size)
       lua_pushinteger(prv->Lua, Event->Unicode);    // Arg: Unicode character
 
       if (lua_pcall(prv->Lua, 5, 0, 0)) {
-         process_error(Input->Script, "Keyboard event callback");
+         process_error(script, "Keyboard event callback");
       }
 
       lua_settop(prv->Lua, top);
@@ -423,7 +424,9 @@ static void key_event(struct finput *Input, evKey *Event, LONG Size)
 static void focus_event(lua_State *Lua, evFocus *Event, LONG Size)
 {
    struct prvFluid *prv;
-   if ((!Lua->Script) OR (!(prv = Lua->Script->Head.ChildPrivate))) {
+   objScript *script = Lua->Script;
+
+   if ((!script) OR (!(prv = script->Head.ChildPrivate))) {
       MSG("Script undefined.");
       return;
    }

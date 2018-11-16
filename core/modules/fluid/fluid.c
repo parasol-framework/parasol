@@ -173,7 +173,7 @@ static struct references * alloc_references(void)
    else return NULL;
 }
 
-static LONG get_ptr_ref(struct references *Ref, APTR Address)
+static LONG get_ptr_ref(struct references *Ref, CPTR Address)
 {
    LONG i;
    for (i=0; i < Ref->Index; i++) {
@@ -182,7 +182,7 @@ static LONG get_ptr_ref(struct references *Ref, APTR Address)
    return 0;
 }
 
-static void set_ptr_ref(struct references *Ref, APTR Address, LONG Resource)
+static void set_ptr_ref(struct references *Ref, CPTR Address, LONG Resource)
 {
    if (Ref->Index < ARRAYSIZE(Ref->List)-1) {
       LONG i = Ref->Index++;
@@ -452,7 +452,7 @@ static void hook_debug(lua_State *Lua, lua_Debug *Info)
 // Works with primitives only, for structs please use make_struct_[ptr|serial]_table() because the struct name
 // will be required.
 
-static void make_table(lua_State *Lua, LONG Type, LONG Elements, APTR Data)
+static void make_table(lua_State *Lua, LONG Type, LONG Elements, CPTR Data)
 {
    LONG i;
 
@@ -497,7 +497,7 @@ static void make_table(lua_State *Lua, LONG Type, LONG Elements, APTR Data)
 //****************************************************************************
 // Create a Lua array from a list of structure pointers.
 
-static void make_struct_ptr_table(lua_State *Lua, CSTRING StructName, LONG Elements, APTR *Values)
+static void make_struct_ptr_table(lua_State *Lua, CSTRING StructName, LONG Elements, CPTR *Values)
 {
    FMSG("make_struct_ptr_table()","%s, Elements: %d, Values: %p", StructName, Elements, Values);
 
@@ -531,7 +531,7 @@ static void make_struct_ptr_table(lua_State *Lua, CSTRING StructName, LONG Eleme
 //****************************************************************************
 // Create a Lua array from a serialised list of structures.
 
-static void make_struct_serial_table(lua_State *Lua, CSTRING StructName, LONG Elements, APTR Data)
+static void make_struct_serial_table(lua_State *Lua, CSTRING StructName, LONG Elements, CPTR Data)
 {
    FMSG("make_struct_serial_table()","%s, Elements: %d, Values: %p", StructName, Elements, Data);
 
@@ -566,10 +566,10 @@ static void make_struct_serial_table(lua_State *Lua, CSTRING StructName, LONG El
 //****************************************************************************
 // The TypeName can be in the format 'Struct:Arg' without causing any issues.
 
-static void make_any_table(lua_State *Lua, LONG Type, CSTRING TypeName, LONG Elements, APTR Values)
+static void make_any_table(lua_State *Lua, LONG Type, CSTRING TypeName, LONG Elements, CPTR Values)
 {
    if (Type & FD_STRUCT) {
-      if (Type & FD_POINTER) make_struct_ptr_table(Lua, TypeName, Elements, Values);
+      if (Type & FD_POINTER) make_struct_ptr_table(Lua, TypeName, Elements, (CPTR *)Values);
       else make_struct_serial_table(Lua, TypeName, Elements, Values);
    }
    else make_table(Lua, Type, Elements, Values);
@@ -788,7 +788,7 @@ static CSTRING load_include_constant(lua_State *Lua, CSTRING Line, CSTRING Sourc
 ** Bytecode read & write callbacks.  Returning 1 will stop processing.
 */
 
-static int code_writer_id(lua_State *Lua, const void *Data, size_t Size, void *FileID)
+static int code_writer_id(lua_State *Lua, CPTR Data, size_t Size, void *FileID)
 {
    if (Size <= 0) return 0; // Ignore bad size requests
 
@@ -801,7 +801,7 @@ static int code_writer_id(lua_State *Lua, const void *Data, size_t Size, void *F
    }
 }
 
-static int code_writer(lua_State *Lua, const void *Data, size_t Size, void *File)
+static int code_writer(lua_State *Lua, CPTR Data, size_t Size, void *File)
 {
    if (Size <= 0) return 0; // Ignore bad size requests
 

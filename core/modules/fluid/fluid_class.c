@@ -57,7 +57,6 @@ static const struct MethodArray clMethods[] = {
    { 0, NULL, NULL, NULL, 0 }
 };
 
-
 //****************************************************************************
 
 static void free_all(objScript *Self)
@@ -78,6 +77,31 @@ static void free_all(objScript *Self)
       prv->Lua = NULL;
 
    LogBack();
+}
+
+//****************************************************************************
+// Proxy functions for controlling access to global variables.
+
+static int global_index(lua_State *Lua) // Read global via proxy
+{
+   lua_rawget(Lua, lua_upvalueindex(1));
+   return 1;
+}
+
+static int global_newindex(lua_State *Lua) // Write global variable via proxy
+{
+   if (Lua->ProtectedGlobals) {
+      lua_pushvalue(Lua, 2);
+      lua_rawget(Lua, lua_upvalueindex(1));
+      LONG existing_type = lua_type(Lua, -1);
+      lua_pop(Lua, 1);
+      if (existing_type == LUA_TFUNCTION) { //(existing_type != LUA_TNIL) {
+         luaL_error(Lua, "Unpermitted attempt to overwrite existing global '%s' with a %s type.", luaL_checkstring(Lua, 2), lua_typename(Lua, lua_type(Lua, -1)));
+      }
+   }
+
+   lua_rawset(Lua, lua_upvalueindex(1));
+   return 0;
 }
 
 //****************************************************************************
@@ -268,7 +292,7 @@ static ERROR FLUID_Activate(objScript *Self, APTR Void)
 
       FLUID_Free(Self, NULL);
 
-      if (!(prv->Lua = lua_open())) {
+      if (!(prv->Lua = luaL_newstate())) {
          LogErrorMsg("Failed to open a Lua instance.");
          goto failure;
       }
@@ -277,15 +301,37 @@ static ERROR FLUID_Activate(objScript *Self, APTR Void)
    }
 
    if (reload) {
-      MSG("The Lua script will be reloaded.");
+      MSG("The Lua script will be initialised from scratch.");
+
+      prv->Lua->Script = Self;
+      prv->Lua->ProtectedGlobals = FALSE;
+
+      // Change the __newindex and __index methods of the global table so that all access passes
+      // through a proxy table that we control.
+
+      lua_newtable(prv->Lua); // Storage table
+      {
+         lua_newtable(prv->Lua); // table = { __newindex = A, __index = B }
+         {
+            lua_pushstring(prv->Lua, "__newindex");
+            lua_pushvalue(prv->Lua, 1); // Storage table
+            lua_pushcclosure(prv->Lua, global_newindex, 1);
+            lua_settable(prv->Lua, -3);
+
+            lua_pushstring(prv->Lua, "__index");
+            lua_pushvalue(prv->Lua, 1);
+            lua_pushcclosure(prv->Lua, global_index, 1);
+            lua_settable(prv->Lua, -3);
+         }
+         lua_setmetatable(prv->Lua, LUA_GLOBALSINDEX);
+      }
+      lua_pop(prv->Lua, 1); // Pop the storage table
 
       lua_gc(prv->Lua, LUA_GCSTOP, 0);  // Stop collector during initialization
          luaL_openlibs(prv->Lua);  // Open Lua libraries
       lua_gc(prv->Lua, LUA_GCRESTART, 0);
 
       // Register private variables in the registry, which is tamper proof from the user's Lua code
-
-      prv->Lua->Script = Self;
 
       if (register_interfaces(Self) != ERR_Okay) goto failure;
 
@@ -299,6 +345,8 @@ static ERROR FLUID_Activate(objScript *Self, APTR Void)
 
          lua_sethook(prv->Lua, hook_debug, LUA_MASKCALL|LUA_MASKRET|LUA_MASKLINE, 0);
       }
+
+      prv->Lua->ProtectedGlobals = TRUE;
 
       LONG result;
       if (!StrCompare(LUA_COMPILED, Self->String, 0, 0)) { // The source is compiled
@@ -380,6 +428,7 @@ static ERROR FLUID_Activate(objScript *Self, APTR Void)
 
       if ((Self->ActivationCount IS 1) OR (reload)) {
          FMSG("~","Collecting functions prior to procedure call...");
+
          if (lua_pcall(prv->Lua, 0, 0, 0)) {
             Self->Error = ERR_Failed;
             process_error(Self, "Activation");
@@ -715,7 +764,7 @@ static ERROR FLUID_Init(objScript *Self, APTR Void)
       Self->Flags |= SCF_DEBUG;
    #endif
 
-   if (!(prv->Lua = lua_open())) {
+   if (!(prv->Lua = luaL_newstate())) {
       LogErrorMsg("Failed to open a Lua instance.");
       FreeMemory(Self->Head.ChildPrivate);
       Self->Head.ChildPrivate = NULL;

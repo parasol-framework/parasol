@@ -199,15 +199,15 @@ struct object {
 struct references {
    LONG Index;
    struct {
-      APTR Address;
+      CPTR Address;
       LONG Ref;
    } List[16384];
 };
 
 static void clear_subscriptions(objScript *);
 static const char * code_reader(lua_State *, void *, size_t *);
-static int code_writer_id(lua_State *, const void *, size_t, void *) __attribute__((unused));
-static int code_writer(lua_State *, const void *, size_t, void *) __attribute__((unused));
+static int code_writer_id(lua_State *, CPTR, size_t, void *) __attribute__((unused));
+static int code_writer(lua_State *, CPTR, size_t, void *) __attribute__((unused));
 static ERROR create_fluid(void);
 static void get_line(objScript *, LONG, STRING, LONG);
 static void hook_debug(lua_State *, lua_Debug *) __attribute__ ((unused));
@@ -215,12 +215,12 @@ static void focus_event(lua_State *, evFocus *, LONG);
 static void key_event(struct finput *, evKey *, LONG);
 static ERROR load_include(objScript *, CSTRING);
 static int MAKESTRUCT(lua_State *);
-static void make_any_table(lua_State *, LONG Type, CSTRING, LONG Elements, APTR) __attribute__((unused));
-static void make_table(lua_State *, LONG Type, LONG Elements, APTR) __attribute__((unused));
+static void make_any_table(lua_State *, LONG Type, CSTRING, LONG Elements, CPTR ) __attribute__((unused));
+static void make_table(lua_State *, LONG Type, LONG Elements, CPTR ) __attribute__((unused));
 static int make_struct(lua_State *, CSTRING, CSTRING) __attribute__((unused));
 static ERROR named_struct_to_table(lua_State *, CSTRING, APTR);
-static void make_struct_ptr_table(lua_State *, CSTRING, LONG, APTR *);
-static void make_struct_serial_table(lua_State *, CSTRING, LONG, APTR);
+static void make_struct_ptr_table(lua_State *, CSTRING, LONG, CPTR *);
+static void make_struct_serial_table(lua_State *, CSTRING, LONG, CPTR);
 static struct object * push_object(lua_State *, OBJECTPTR Object);
 static ERROR push_object_id(lua_State *, OBJECTID ObjectID);
 static struct fstruct * push_struct(objScript *, APTR, CSTRING, BYTE);
@@ -236,7 +236,7 @@ static void register_thread_class(lua_State *);
 static ERROR run_script(objScript *Self);
 static ERROR save_binary(objScript *Self, OBJECTID FileID);
 static ERROR stack_args(lua_State *, OBJECTID, const struct FunctionField *, APTR Buffer);
-static ERROR struct_to_table(lua_State *, struct references *, struct structentry *, APTR);
+static ERROR struct_to_table(lua_State *, struct references *, struct structentry *, CPTR);
 
 static int fcmd_arg(lua_State *);
 static int fcmd_catch(lua_State *);
