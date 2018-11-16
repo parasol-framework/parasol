@@ -3,7 +3,6 @@
 # Use wildcard to list all folders under 'modules'
 ALL_MODULES = $(filter-out modules/makefile,$(sort $(wildcard modules/*/)))
 
-# Use a recipe of 'clean compile' if recompiling from scratch
 RECIPE ?= compile
 
 compile: $(ALL_MODULES)

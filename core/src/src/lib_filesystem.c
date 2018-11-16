@@ -2807,26 +2807,25 @@ ERROR fs_delete(STRING Path)
       struct FileFeedback feedback;
       UBYTE buffer[1024];
 
-      len = StrCopy(Path, buffer, sizeof(buffer));
+      StrCopy(Path, buffer, sizeof(buffer));
 
       if (tlFeedback.Type) {
          ClearMemory(&feedback, sizeof(feedback));
          feedback.FeedbackID = FBK_DELETE_FILE;
-         feedback.Path   = buffer;
-         feedback.User       = tlFeedbackData;
+         feedback.Path = buffer;
+         feedback.User = tlFeedbackData;
       }
 
       error = delete_tree(buffer, sizeof(buffer), &feedback);
    #else
-      if (!unlink(Path)) {
-         // Success
+      if (!unlink(Path)) { // unlink() works if the folder is empty
          error = ERR_Okay;
       }
       else if (errno IS EISDIR) {
          struct FileFeedback feedback;
          UBYTE buffer[1024];
 
-         len = StrCopy(Path, buffer, sizeof(buffer));
+         StrCopy(Path, buffer, sizeof(buffer));
 
          if (tlFeedback.Type) {
             ClearMemory(&feedback, sizeof(feedback));

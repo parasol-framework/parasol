@@ -41,6 +41,34 @@ static ERROR sleep_task(LONG);
 ERROR write_nonblock(LONG Handle, APTR Data, LONG Size, LARGE EndTime);
 #endif
 
+struct MsgHandler {
+   struct ResourceManager Resource;
+   struct MsgHandler *Prev;
+   struct MsgHandler *Next;
+   APTR Custom;            // Custom pointer to send to the message handler
+   FUNCTION Function;      // Call this function
+   LONG MsgType;           // Type of message being filtered
+};
+
+static void msghandler_free(APTR Address)
+{
+   FMSG("RemoveMsgHandler()","Handle: %p", Address);
+
+   if (!thread_lock(TL_MSGHANDLER, 5000)) {
+      struct MsgHandler *h = Address;
+      if (h IS glLastMsgHandler) glLastMsgHandler = h->Prev;
+      if (h IS glMsgHandlers) glMsgHandlers = h->Next;
+      if (h->Next) h->Next->Prev = h->Prev;
+      if (h->Prev) h->Prev->Next = h->Next;
+      thread_unlock(TL_MSGHANDLER);
+   }
+}
+
+static struct ResourceManager glResourceMsgHandler = {
+   "MsgHandler",
+   &msghandler_free
+};
+
 //#define DBG_INCOMING TRUE  // Print incoming message information
 
 static UBYTE idname[20];
@@ -79,18 +107,18 @@ Routine parameter must point to the function handler, which will follow this def
 <pre>ERROR handler(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)</pre>
 
 The handler must return ERR_Okay if the message was handled.  This means that the message will not be passed to message
-handlers that are yet to receive the message.  Return ERR_NothingDone if the message has been ignored or ERR_Continue
-if the message was processed but may be analysed by other handlers.  Return ERR_Terminate to break the current
-ProcessMessages() loop.
+handlers that are yet to receive the message.  Throw ERR_NothingDone if the message has been ignored or ERR_Continue
+if the message was processed but may be analysed by other handlers.  Throw ERR_Terminate to break the current
+ProcessMessages() loop.  When using Fluid, this is best achieved by writing `check(errorcode)` in the handler.
 
-The handler will be identified by a unique pointer returned in the Handle parameter.  This handle can be passed to
-RemoveMsgHandler() once the message handler is no longer required.
+The handler will be identified by a unique pointer returned in the Handle parameter.  This handle will be garbage
+collected or can be passed to RemoveMsgHandler() once it is no longer required.
 
 -INPUT-
 ptr Custom: A custom pointer that will be passed to the message handler when messages are received.
 int MsgType: The message type that the handler wishes to intercept.  If zero, all incoming messages are passed to the handler.
 ptr(func) Routine: Refers to the function that will handle incoming messages.
-&ptr Handle:  The resulting handle of the new message handler - this will be needed for RemoveMsgHandler().
+!resource(Handle):  The resulting handle of the new message handler - this will be needed for RemoveMsgHandler().
 
 -ERRORS-
 Okay: Message handler successfully processed.
@@ -109,7 +137,9 @@ ERROR AddMsgHandler(APTR Custom, LONG MsgType, FUNCTION *Routine, APTR *Handle)
    if (!Routine) return FuncError(__func__, ERR_NullArgs);
 
    if (!thread_lock(TL_MSGHANDLER, 5000)) {
-      if ((handler = malloc(sizeof(struct MsgHandler)))) {
+      if (!AllocMemory(sizeof(struct MsgHandler), MEM_MANAGED, (APTR *)&handler, NULL)) {
+         set_memory_manager(handler, &glResourceMsgHandler);
+
          handler->Prev     = NULL;
          handler->Next     = NULL;
          handler->Custom   = Custom;
@@ -157,21 +187,8 @@ Search: The given Handle is not recognised.
 
 ERROR RemoveMsgHandler(APTR Handle)
 {
-   FMSG("RemoveMsgHandler()","Handle: %p", Handle);
-
    if (!Handle) return ERR_NullArgs;
-
-   if (!thread_lock(TL_MSGHANDLER, 5000)) {
-      struct MsgHandler *h = Handle;
-      if (h IS glLastMsgHandler) glLastMsgHandler = h->Prev;
-      if (h IS glMsgHandlers) glMsgHandlers = h->Next;
-      if (h->Next) h->Next->Prev = h->Prev;
-      if (h->Prev) h->Prev->Next = h->Next;
-      free(h);
-      thread_unlock(TL_MSGHANDLER);
-      return ERR_Okay;
-   }
-   else return ERR_Lock;
+   return FreeMemory(Handle); // Message handles are a resource and will divert to msghandler_free()
 }
 
 /*****************************************************************************
@@ -1028,17 +1045,13 @@ Search: No more messages are left on the queue, or no messages that match the gi
 
 ERROR ScanMessages(APTR MessageQueue, LONG *Index, LONG Type, APTR Buffer, LONG BufferSize)
 {
-   struct MessageHeader *header;
-   struct TaskMessage *msg, *prevmsg;
-   LONG j;
-
    if ((!MessageQueue) OR (!Index)) return LogError(ERH_ScanMessages, ERR_NullArgs);
    if (!Buffer) BufferSize = 0;
 
-   header  = MessageQueue;
-   prevmsg = NULL;
+   struct MessageHeader *header = MessageQueue;
+   struct TaskMessage *msg, *prevmsg = NULL;
 
-   j = 0;
+   LONG j = 0;
 
    if (*Index > 0) {
       msg = (struct TaskMessage *)header->Buffer;
@@ -1096,13 +1109,13 @@ will understand.  If necessary, you can also attach data to the message if it ha
 
 If the message queue is found to be full, or if the size of your message is larger than the total size of the queue,
 this function will immediately return with an ERR_ArrayFull error code.  If you are prepared to wait for the queue
-handler to process the waiting messages, specify MSF_WAIT in the Flags parameter.  There is a maximum time-out period
+handler to process the waiting messages, specify WAIT in the Flags parameter.  There is a maximum time-out period
 of 10 seconds in case the task responsible for handling the queue is failing to process its messages.
 
 -INPUT-
-mem Queue: The memory ID of the destination message queue.
+mem Queue: The memory ID of the destination message queue.  If zero, the local message queue is targeted.
 int Type:  The message Type/ID being sent.  Unique type ID's can be obtained from ~AllocateID().
-int(MSF) Flags: Set to MF_WAIT if you are prepared to wait in situations where the message queue is too full to accept the new message.
+int(MSF) Flags: Optional flags.
 buf(ptr) Data:  Pointer to the data that will be written to the queue.  Set to NULL if there is no data to write.
 bufsize Size:  The byte-size of the data being written to the message queue.
 

@@ -248,16 +248,18 @@ ERROR msg_event(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSiz
 {
    if ((!Message) OR (MsgSize < sizeof(struct rkEvent))) return ERR_Okay;
 
-   struct eventsub *event = glEventList;
    struct rkEvent *eventmsg = Message;
-   glCallSignal++;
 
    FMSG("EventMsg()","Event $%.8x%8x has been received.", (LONG)((eventmsg->EventID>>32)& 0xffffffff),
       (LONG)(eventmsg->EventID & 0xffffffff));
 
+   struct eventsub *event;
+   glCallSignal++;
 restart:
+   event = glEventList;
    while (event) {
-      if ((eventmsg->EventID & event->EventMask) IS event->EventID) {
+      if (event->Called IS glCallSignal);
+      else if ((eventmsg->EventID & event->EventMask) IS event->EventID) {
          FMSG("EventMsg","Found listener %p for this event.", event->Callback);
 
          event->Called = glCallSignal;

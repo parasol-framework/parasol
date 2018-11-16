@@ -357,7 +357,7 @@ SetVar: Script parameters can be set through this action.
 
 static ERROR SCRIPT_SetVar(objScript *Self, struct acSetVar *Args)
 {
-   // Please note that it is okay to set zero-length string values (this has its uses in some scripts).
+   // It is acceptable to set zero-length string values (this has its uses in some scripts).
 
    if ((!Args) OR (!Args->Field) OR (!Args->Value)) return ERR_NullArgs;
    if (!Args->Field[0]) return ERR_NullArgs;
@@ -890,7 +890,7 @@ static const struct FieldArray clScriptFields[] = {
    { "Path",           FDF_STRING|FDF_RI,              0, GET_Path, SET_Path },
    { "Results",        FDF_ARRAY|FDF_POINTER|FDF_STRING|FDF_RW, 0, GET_Results, SET_Results },
    { "Src",            FDF_SYNONYM|FDF_STRING|FDF_RI,  0, GET_Path, SET_Path },
-   { "Statement",      FDF_STRING|FDF_RW,  0, GET_String, SET_String },
+   { "Statement",      FDF_STRING|FDF_RW,              0, GET_String, SET_String },
    { "String",         FDF_SYNONYM|FDF_STRING|FDF_RW,  0, GET_String, SET_String },
    { "TotalArgs",      FDF_LONG|FDF_R,                 0, GET_TotalArgs, NULL },
    { "Variables",      FDF_POINTER|FDF_SYSTEM|FDF_R,   0, GET_Variables, NULL },

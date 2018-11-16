@@ -467,12 +467,12 @@ EXPORT struct CoreBase * OpenCore(struct OpenInfo *Info)
    glShowIO = (Info->Flags & OPF_SHOW_IO) ? TRUE : FALSE;
 
 #if defined(__unix__) && !defined(__ANDROID__)
-   // It is possible to pump out so much data to the terminal that the process can sleep on a printf().  If this
-   // happens while the process has important system resources locked, deadlocking can occur between the task and
-   // the terminal.  E.g. A process hangs on printf() while RPM_SurfaceList is locked, ZTerm tries to access
-   // RPM_SurfaceList and is deadlocked because the task cannot return until ZTerm clears the stdout buffer.
+   // It is possible to write so much data to the terminal that the process can sleep on a printf().  If this
+   // happens while the process has important system resources locked, dead-locking can occur between the task and
+   // the terminal.  E.g. A process hangs on printf() while RPM_SurfaceList is locked; ZTerm tries to access
+   // RPM_SurfaceList and is dead-locked because the task cannot return until ZTerm clears the stdout buffer.
    //
-   // A non-blocking stdout will solve this problem at the cost of dropping output.  There would be better
+   // A non-blocking stdout solves this problem at the cost of dropping output.  There would be better
    // solutions, but this is a simple one.
 
    //if (glSync IS FALSE) {
@@ -488,9 +488,9 @@ EXPORT struct CoreBase * OpenCore(struct OpenInfo *Info)
    }
 #endif
 
-   // If we are running Linux, subscribe to the following signals so that we can handle system crashes correctly.
-
 #ifdef __unix__
+   // Subscribe to the following signals so that we can handle system crashes correctly.
+
    struct sigaction sig;
 
    sig.sa_flags = SA_SIGINFO;
@@ -528,6 +528,8 @@ EXPORT struct CoreBase * OpenCore(struct OpenInfo *Info)
 #endif
 
 #ifdef _WIN32
+
+   activate_console(glLogLevel > 0);
 
    // If the log detail is less than 3, use an exception handler to deal with crashes.  Otherwise, do not set the
    // handler because the developer may want to intercept the crash using a debugger.

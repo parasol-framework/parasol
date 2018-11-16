@@ -105,14 +105,6 @@ enum {
    COND_GREATER_EQUAL
 };
 
-struct MsgHandler {
-   struct MsgHandler *Prev;
-   struct MsgHandler *Next;
-   APTR Custom;            // Custom pointer to send to the message handler
-   FUNCTION Function;      // Call this function
-   LONG MsgType;           // Type of message being filtered
-};
-
 struct ChildEntry;
 struct ObjectInfo;
 struct MemInfo;
@@ -832,6 +824,7 @@ ERROR check_paths(CSTRING, LONG);
 ERROR convert_errno(LONG Error, ERROR Default);
 
 #ifdef _WIN32
+void activate_console(BYTE);
 void free_threadlock(void);
 WINHANDLE winAllocPublic(LONG);
 LONG winCheckProcessExists(LONG);
@@ -855,6 +848,7 @@ LONG winGetExitCodeProcess(WINHANDLE, LONG *Code);
 long long winGetFileSize(STRING);
 LONG winGetPageSize(void);
 APTR winGetProcAddress(LONG, CSTRING);
+WINHANDLE winGetStdInput(void);
 LARGE winGetTickCount(void);
 void winInitialise(int *, void *);
 void winInitializeCriticalSection(APTR Lock);
@@ -885,10 +879,10 @@ LONG winWaitForObjects(LONG Total, WINHANDLE *Handles, LONG Time, BYTE WinMsgs);
 LONG winWaitThread(WINHANDLE, LONG);
 LONG winWriteStd(APTR, CPTR Buffer, LONG Size);
 int winDeleteFile(char *Path);
-LONG winCheckDirectoryExists(STRING);
+LONG winCheckDirectoryExists(CSTRING);
 LONG winCreateDir(CSTRING);
 LONG winCurrentDirectory(STRING, LONG);
-LONG winFileInfo(STRING, long long *, struct DateTime *, BYTE *);
+LONG winFileInfo(CSTRING, long long *, struct DateTime *, BYTE *);
 void winFindClose(HOSTHANDLE);
 void winFindNextChangeNotification(HOSTHANDLE);
 void winGetAttrib(CSTRING, LONG *);
@@ -905,6 +899,7 @@ LONG winMoveFile(STRING, STRING);
 LONG winReadChanges(HOSTHANDLE, APTR, LONG NotifyFlags, char *, LONG, LONG *);
 LONG winReadKey(STRING, STRING, STRING, LONG);
 LONG winReadRootKey(CSTRING, STRING, STRING, LONG);
+LONG winReadStdInput(WINHANDLE FD, APTR Buffer, LONG BufferSize, LONG *Size);
 LONG winScan(APTR *, STRING, STRING, LARGE *, struct DateTime *, struct DateTime *, BYTE *, BYTE *, BYTE *, BYTE *);
 LONG winSetAttrib(CSTRING, LONG);
 LONG winSetEOF(CSTRING, LARGE);

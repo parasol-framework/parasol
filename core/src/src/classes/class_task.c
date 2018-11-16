@@ -193,6 +193,58 @@ static const struct ActionArray clActions[] = {
 
 //****************************************************************************
 
+static void task_stdinput_callback(HOSTHANDLE FD, void *Task)
+{
+   objTask *Self = (objTask *)Task;
+   char buffer[4096];
+   ERROR error;
+
+#ifdef _WIN32
+   LONG bytes_read;
+   LONG result = winReadStdInput(FD, buffer, sizeof(buffer)-1, &bytes_read);
+   if (!result) {
+      error = ERR_Okay;
+   }
+   else if (result IS 1) {
+      return;
+   }
+   else if (result IS -2) {
+      error = ERR_Finished;
+      RegisterFD(winGetStdInput(), RFD_READ|RFD_REMOVE, &task_stdinput_callback, Self);
+   }
+   else {
+      error = ERR_Failed;
+      return;
+   }
+#else
+   LONG bytes_read = read((int)stdin, buffer, sizeof(buffer)-1);
+   if (bytes_read >= 0) error = ERR_Okay;
+   else error = ERR_Finished;
+#endif
+
+   buffer[bytes_read] = 0;
+
+   if (Self->InputCallback.Type IS CALL_STDC) {
+      void (*routine)(objTask *, APTR, LONG, ERROR);
+      routine = Self->InputCallback.StdC.Routine;
+      routine(Self, buffer, bytes_read, error);
+   }
+   else if (Self->InputCallback.Type IS CALL_SCRIPT) {
+      OBJECTPTR script;
+      if ((script = Self->InputCallback.Script.Script)) {
+         const struct ScriptArg args[] = {
+            { "Task",       FD_OBJECTPTR,       { .Address = Self } },
+            { "Buffer",     FD_PTRBUFFER,       { .Address = buffer } },
+            { "BufferSize", FD_LONG|FD_BUFSIZE, { .Long = bytes_read } },
+            { "Status",     FD_ERROR,           { .Long = error } }
+         };
+         scCallback(script, Self->InputCallback.Script.ProcedureID, args, ARRAYSIZE(args));
+      }
+   }
+}
+
+//****************************************************************************
+
 ERROR add_task_class(void)
 {
    LogF("~add_task_class()","");
@@ -425,11 +477,11 @@ static void task_process_end(WINHANDLE FD, objTask *Task)
    }
    else LogF("~@task_process_end","Process %d signalled exit too early.", (LONG)FD);
 
-   // Read remaining data
-
    if (Task->Platform) {
       UBYTE buffer[4096];
       LONG size;
+
+      // Process remaining data
 
       do {
          size = sizeof(buffer);
@@ -448,14 +500,11 @@ static void task_process_end(WINHANDLE FD, objTask *Task)
          }
          else break;
       } while (size IS sizeof(buffer));
-   }
 
-   winCloseHandle(FD);
-
-   if (Task->Platform) {
       winFreeProcess(Task->Platform);
       Task->Platform = NULL;
    }
+   else winCloseHandle(FD); // winFreeProcess() normally does this with Process->Handle
 
    // Call ExitCallback, if specified
 
@@ -572,8 +621,7 @@ static ERROR TASK_Activate(objTask *Self, APTR Void)
 
    if (Self->Flags & TSF_FOREIGN) Self->Flags |= TSF_SHELL;
 
-   if (!Self->Location) return PostError(ERR_FieldNotSet);
-
+   if (!Self->Location) return PostError(ERR_MissingPath);
 
 #ifdef _WIN32
    //struct taskAddArgument add;
@@ -677,8 +725,7 @@ static ERROR TASK_Activate(objTask *Self, APTR Void)
 
    // Convert single quotes into double quotes
 
-   BYTE whitespace;
-   whitespace = TRUE;
+   BYTE whitespace = TRUE;
    for (i=0; buffer[i]; i++) {
       if (whitespace) {
          if (buffer[i] IS '"') {
@@ -1218,11 +1265,14 @@ static ERROR TASK_Free(objTask *Self, APTR Void)
       close(Self->ErrFD);
       Self->ErrFD = -1;
    }
+
+   if (Self->InputCallback.Type) RegisterFD(stdin, RFD_READ|RFD_REMOVE, &task_stdinput_callback, Self);
 #endif
 
 #ifdef _WIN32
    if (Self->Env) { FreeMemory(Self->Env); Self->Env = NULL; }
    if (Self->Platform) { winFreeProcess(Self->Platform); Self->Platform = NULL; }
+   if (Self->InputCallback.Type) RegisterFD(winGetStdInput(), RFD_READ|RFD_REMOVE, &task_stdinput_callback, Self);
 #endif
 
    // Free variable fields
@@ -1719,11 +1769,11 @@ static ERROR TASK_Quit(objTask *Self, APTR Void)
 
 static ERROR TASK_ReleaseObject(objTask *Self, APTR Void)
 {
-   if (Self->LaunchPath)  { ReleaseMemoryID(Self->LaunchPathMID);  Self->LaunchPath = NULL; }
-   if (Self->Location)    { ReleaseMemoryID(Self->LocationMID);    Self->Location  = NULL; }
+   if (Self->LaunchPath)  { ReleaseMemoryID(Self->LaunchPathMID);  Self->LaunchPath  = NULL; }
+   if (Self->Location)    { ReleaseMemoryID(Self->LocationMID);    Self->Location    = NULL; }
    if (Self->Parameters)  { ReleaseMemoryID(Self->ParametersMID);  Self->Parameters  = NULL; }
-   if (Self->Copyright)   { ReleaseMemoryID(Self->CopyrightMID);   Self->Copyright = NULL; }
-   if (Self->Path)        { ReleaseMemoryID(Self->PathMID);        Self->Path      = NULL; }
+   if (Self->Copyright)   { ReleaseMemoryID(Self->CopyrightMID);   Self->Copyright   = NULL; }
+   if (Self->Path)        { ReleaseMemoryID(Self->PathMID);        Self->Path        = NULL; }
    if (Self->ProcessPath) { ReleaseMemoryID(Self->ProcessPathMID); Self->ProcessPath = NULL; }
    return ERR_Okay;
 }
@@ -1770,8 +1820,9 @@ static ERROR TASK_SetVar(objTask *Self, struct acSetVar *Args)
 -ACTION-
 Write: Send raw data to a launched process' stdin descriptor.
 
-After a process has been launched, data can be sent to its stdin pipe by calling the Write action.  Setting the Buffer
-parameter to NULL will result in the pipe being closed (this will signal to the process that no more data is incoming).
+If a process is successfully launched with the PIPE #Flag, data can be sent to its stdin pipe by calling the Write
+action.  Setting the Buffer parameter to NULL will result in the pipe being closed (this will signal to the process
+that no more data is incoming).
 
 *****************************************************************************/
 
@@ -1781,10 +1832,13 @@ static ERROR TASK_Write(objTask *Task, struct acWrite *Args)
 
 #ifdef _WIN32
    LONG winerror;
-   if (!(winerror = winWriteStd(Task->Platform, Args->Buffer, Args->Length))) {
-      return ERR_Okay;
+   if (Task->Platform) {
+      if (!(winerror = winWriteStd(Task->Platform, Args->Buffer, Args->Length))) {
+         return ERR_Okay;
+      }
+      else return PostError(ERR_Write);
    }
-   else return ERR_Failed;
+   else return PostError(ERR_Failed);
 #else
    return PostError(ERR_NoSupport);
 #endif
@@ -2127,6 +2181,59 @@ static ERROR SET_ErrorCallback(objTask *Self, FUNCTION *Value)
 /*****************************************************************************
 
 -FIELD-
+InputCallback: This callback returns incoming data from STDIN.
+
+The InputCallback field is available for use only when the Task object represents the current process.
+The referenced function will be called when process receives data from STDIN.  The callback must follow the
+synopsis `Function(*Task, APTR Data, LONG Size, ERROR Status)`
+
+The information read from STDOUT will be returned in the Data pointer and the byte-length of the data will be indicated
+by the Size.  The data buffer is temporary and will be invalid once the callback function has returned.
+
+A status of ERR_Finished is sent if the stdinput handle has been closed.
+
+*****************************************************************************/
+
+static ERROR GET_InputCallback(objTask *Self, FUNCTION **Value)
+{
+   if (Self->InputCallback.Type != CALL_NONE) {
+      *Value = &Self->InputCallback;
+      return ERR_Okay;
+   }
+   else return ERR_FieldNotSet;
+}
+
+static ERROR SET_InputCallback(objTask *Self, FUNCTION *Value)
+{
+   if (Self != glCurrentTask) return ERR_Failed;
+
+   if (Value) {
+      ERROR error;
+      #ifdef __unix__
+      fcntl(stdin, F_SETFL, fcntl(stdin, F_GETFL) | O_NONBLOCK);
+      if (!(error = RegisterFD(stdin, RFD_READ, &task_stdinput_callback, Self))) {
+      #elif _WIN32
+      if (!(error = RegisterFD(winGetStdInput(), RFD_READ, &task_stdinput_callback, Self))) {
+      #endif
+         Self->InputCallback = *Value;
+      }
+      else return error;
+   }
+   else {
+      #ifdef _WIN32
+      if (Self->InputCallback.Type) RegisterFD(winGetStdInput(), RFD_READ|RFD_REMOVE, &task_stdinput_callback, Self);
+      #else
+      if (Self->InputCallback.Type) RegisterFD(stdin, RFD_READ|RFD_REMOVE, &task_stdinput_callback, Self);
+      #endif
+      Self->InputCallback.Type = CALL_NONE;
+   }
+
+   return ERR_Okay;
+}
+
+/*****************************************************************************
+
+-FIELD-
 OutputCallback: This callback returns incoming data from STDOUT.
 
 The OutputCallback field can be set with a function reference that will be called when an active process sends data via
@@ -2383,8 +2490,7 @@ static ERROR SET_Path(objTask *Self, CSTRING Value)
 #ifdef __unix__
          STRING path;
          if (!ResolvePath(Self->Path, RSF_NO_FILE_CHECK, &path)) {
-            int unused;
-            unused = chdir(path);
+            int unused = chdir(path);
             FreeMemory(path);
          }
          else LogErrorMsg("Failed to resolve path \"%s\"", Self->Path);
@@ -2578,6 +2684,7 @@ static const struct FieldArray clFields[] = {
    { "ErrorCallback",  FDF_FUNCTIONPTR|FDF_RI, 0, GET_ErrorCallback, SET_ErrorCallback }, // STDERR
    { "ExitCallback",   FDF_FUNCTIONPTR|FDF_RW, 0, GET_ExitCallback,  SET_ExitCallback },
    { "Instance",       FDF_LONG|FDF_R,      0, GET_Instance,         NULL },
+   { "InputCallback",  FDF_FUNCTIONPTR|FDF_RW, 0, GET_InputCallback, SET_InputCallback }, // STDIN
    { "LaunchPath",     FDF_STRING|FDF_RW,   0, GET_LaunchPath,       SET_LaunchPath },
    { "Location",       FDF_STRING|FDF_RW,   0, GET_Location,         SET_Location },
    { "MessageQueue",   FDF_LONG|FDF_R,      0, GET_MessageQueue,     NULL },
