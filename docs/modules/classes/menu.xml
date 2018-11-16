@@ -707,17 +707,6 @@
       <const name="LINE_BREAKS">Draw a line break between each view item.</const>
     </constants>
 
-    <constants lookup="SLF" comment="Flags for SelectCallback">
-      <const name="ACTIVE">The most recently active tag has changed.</const>
-      <const name="MANUAL">Item was manually selected (by the program, not the user).</const>
-      <const name="SELECTED">A tag has been selected and is now highlighted.</const>
-      <const name="INVERTED">Change is due to an inverted selection.</const>
-      <const name="KEYPRESS">Item was selected by a keypress.</const>
-      <const name="CLICK">Item was clicked - see ClickX and ClickY for coordinates.</const>
-      <const name="MULTIPLE">Multiple items were selected.</const>
-      <const name="MOVED">Change is due to the item being moved.</const>
-    </constants>
-
     <constants lookup="TF" comment="Flags for the TabFocus class.">
       <const name="LOCAL_FOCUS">In this mode, the user's point of focus must match the monitored Surface for the tabfocus to function.</const>
       <const name="CHILD_FOCUS">In this mode, the user's point of focus must match the monitored Surface or one of its immediate children for the tabfocus to function.</const>
@@ -730,17 +719,20 @@
       <const name="INSIDE">The cursor is inside the button's area</const>
     </constants>
 
-    <constants lookup="RSP">
-      <const name="CANCEL"/>
-      <const name="YES"/>
-      <const name="YES_ALL"/>
-      <const name="NO"/>
+    <constants lookup="SLF" comment="Flags for SelectCallback">
+      <const name="ACTIVE">The most recently active tag has changed.</const>
+      <const name="MANUAL">Item was manually selected (by the program, not the user).</const>
+      <const name="SELECTED">A tag has been selected and is now highlighted.</const>
+      <const name="INVERTED">Change is due to an inverted selection.</const>
+      <const name="KEYPRESS">Item was selected by a keypress.</const>
+      <const name="CLICK">Item was clicked - see ClickX and ClickY for coordinates.</const>
+      <const name="MULTIPLE">Multiple items were selected.</const>
+      <const name="MOVED">Change is due to the item being moved.</const>
     </constants>
 
     <constants lookup="CLF" comment="Clipboard flags">
-      <const name="WAIT">The clipboard will wait for the user to respond to user dialogs rather than return immediately from clipboard operations.</const>
-      <const name="HOST"/>
       <const name="DRAG_DROP">Enables drag and drop mode.  The clipboard content will be private and not share data with the host system in this mode.</const>
+      <const name="HOST">This indicator is automatically set when a clipboard was created due to incoming content from the host system.</const>
     </constants>
 
     <constants lookup="VIEW" comment="List options">

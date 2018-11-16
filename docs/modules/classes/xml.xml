@@ -167,7 +167,7 @@
       <prototype>ERROR xmlGetAttrib(OBJECTPTR Object, LONG Index, CSTRING Attrib, CSTRING * Value)</prototype>
       <input>
         <param type="LONG" name="Index">The index of the XML tag to search.</param>
-        <param type="CSTRING" name="Attrib">The name of the attribute that you are searching for.  If NULL or an empty string, the tag name is returned as the result.</param>
+        <param type="CSTRING" name="Attrib">The name of the attribute to search for (case insensitive).  If NULL or an empty string, the tag name is returned as the result.</param>
         <param type="CSTRING *" name="Value">The value of the attribute is returned here, or NULL if the named attribute does not exist.</param>
       </input>
       <description>
@@ -379,7 +379,7 @@
       <prototype>ERROR xmlSetAttrib(OBJECTPTR Object, LONG Index, LONG Attrib, CSTRING Name, CSTRING Value)</prototype>
       <input>
         <param type="LONG" name="Index">Index to the XML tag that is to be updated.</param>
-        <param type="LONG" name="Attrib" lookup="XMS">The index number of the attribute that is to be updated.  Alternatively set to XMS_NEW, XMS_UPDATE or XMS_UPDATE_ONLY.</param>
+        <param type="LONG" name="Attrib" lookup="XMS">Either the index number of the attribute that is to be updated, or set to XMS_NEW, XMS_UPDATE or XMS_UPDATE_ONLY.</param>
         <param type="CSTRING" name="Name">String containing the new name for the attribute.  If NULL, the name will not be changed.  If Attrib is XMS_NEW, XMS_UPDATE or XMS_UPDATE_ONLY, the Name is used to find the attribute.</param>
         <param type="CSTRING" name="Value">String containing the new value for the attribute.  If NULL, the attribute is removed.</param>
       </input>
@@ -400,7 +400,7 @@ tag = XML-&gt;Tags[index]; // Refresh the pointer to tag.
         <error code="Args">Invalid arguments passed to function.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
         <error code="ReadOnly">The XML object is read-only.</error>
-        <error code="END">Unknown error code.</error>
+        <error code="END">Failed to create a new resource.</error>
         <error code="Okay">Operation successful.</error>
       </result>
     </method>

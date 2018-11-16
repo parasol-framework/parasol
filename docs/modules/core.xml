@@ -2289,15 +2289,15 @@ if (!OpenDir(path, RDF_FILE|RDF_FOLDER, &amp;info)) {
     <comment>Send messages to message queues.</comment>
     <prototype>ERROR SendMessage(MEMORYID Queue, LONG Type, LONG Flags, APTR Data, LONG Size)</prototype>
     <input>
-      <param type="MEMORYID" name="Queue">The memory ID of the destination message queue.</param>
+      <param type="MEMORYID" name="Queue">The memory ID of the destination message queue.  If zero, the local message queue is targeted.</param>
       <param type="LONG" name="Type">The message Type/ID being sent.  Unique type ID's can be obtained from <function module="Core">AllocateID</function>.</param>
-      <param type="LONG" name="Flags" lookup="MSF">Set to MF_WAIT if you are prepared to wait in situations where the message queue is too full to accept the new message.</param>
+      <param type="LONG" name="Flags" lookup="MSF">Optional flags.</param>
       <param type="APTR" name="Data">Pointer to the data that will be written to the queue.  Set to NULL if there is no data to write.</param>
       <param type="LONG" name="Size">The byte-size of the data being written to the message queue.</param>
     </input>
     <description>
 <p>The SendMessage() function is used to write messages to message queues. To write a message to a queue, you must know the memory ID of that queue and be able to provide this function with a message type ID that the queue's handler will understand.  If necessary, you can also attach data to the message if it has relevance to the message type.</p>
-<p>If the message queue is found to be full, or if the size of your message is larger than the total size of the queue, this function will immediately return with an ERR_ArrayFull error code.  If you are prepared to wait for the queue handler to process the waiting messages, specify MSF_WAIT in the Flags parameter.  There is a maximum time-out period of 10 seconds in case the task responsible for handling the queue is failing to process its messages.</p>
+<p>If the message queue is found to be full, or if the size of your message is larger than the total size of the queue, this function will immediately return with an ERR_ArrayFull error code.  If you are prepared to wait for the queue handler to process the waiting messages, specify WAIT in the Flags parameter.  There is a maximum time-out period of 10 seconds in case the task responsible for handling the queue is failing to process its messages.</p>
     </description>
     <result type="ERROR">
       <error code="ArrayFull">Array has reached capacity and cannot be expanded.</error>

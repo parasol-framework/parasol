@@ -287,19 +287,19 @@
 
     <field>
       <name>Maximise</name>
+      <comment>The surface that represents the maximise gadget</comment>
+      <access>-/-</access>
+      <type>OBJECTID</type>
+    </field>
+
+    <field>
+      <name>Maximise</name>
       <comment>Operator for the window's maximise gadget.</comment>
       <access read="R" write="S">Read/Set</access>
       <type>INT</type>
       <description>
 <p>The Maximise field controls the activity of the maximise gadget, which is typically found in the window title bar. The default value for the gadget is TRUE (environment dependent) and may be switched off at any time by setting this field to FALSE.</p>
       </description>
-    </field>
-
-    <field>
-      <name>Maximise</name>
-      <comment>The surface that represents the maximise gadget</comment>
-      <access>-/-</access>
-      <type>OBJECTID</type>
     </field>
 
     <field>
@@ -322,16 +322,6 @@
 <p>To display a menu bar in the window, set this field with the location of a menu file.  The file must be in XML format and contain at least one menu tag.  Each menu tag that is specified will create a new option in the menu bar.  Non-menu tags will be ignored.</p>
 <p>Any unlisted arguments that were have specified for the window will be passed on to each created menu.</p>
 <p>For information on the specifics of menu customisation, please refer to the <class name="Menu">Menu</class> class.</p>
-      </description>
-    </field>
-
-    <field>
-      <name>MenuBar</name>
-      <comment>Refers to the window's menubar gadget.</comment>
-      <access read="R" write="I">Read/Init</access>
-      <type>OBJECTID</type>
-      <description>
-<p>If a menubar was generated for the window, this field will refer to it.</p>
       </description>
     </field>
 

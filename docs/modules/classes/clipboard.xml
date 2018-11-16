@@ -38,9 +38,9 @@
 
     <action>
       <name>GetVar</name>
-      <comment>Special field types are supported via unlisted fields.</comment>
+      <comment>Special field types are supported as variables.</comment>
       <description>
-<p>The following unlisted field types are supported by the Clipboard class:</p>
+<p>The following variable field types are supported by the Clipboard class:</p>
 <fields>
 <fld type="STRING" name="File(Datatype,Index)">Where Datatype is a recognised data format (e.g. TEXT) and Index is between 0 and the Items() field.  If you don't support multiple clipped items, use an index of zero.  On success, this field will return a file location that points to the clipped data.</fld>
 <fld type="NUMBER" name="Items(Datatype)">Returns the total number of items available for the specified data type.</fld>
@@ -133,55 +133,20 @@
     </method>
 
     <method>
-      <name>Delete</name>
-      <comment>Remove items from the clipboard.</comment>
-      <prototype>ERROR clipDelete(OBJECTPTR Object, LONG Datatype)</prototype>
-      <input>
-        <param type="LONG" name="Datatype" lookup="CLIPTYPE">The datatype(s) that will be deleted (datatypes may be logically-or'd together).</param>
-      </input>
-      <description>
-<p>The Delete method will clear all items that match a specified datatype.  Clear multiple datatypes by combining flags in the Datatype parameter.  To clear all content from the clipboard, use the <action>Clear</action> action instead of this method.</p>
-      </description>
-      <result>
-        <error code="NullArgs">Function call missing argument value(s)</error>
-        <error code="AccessMemory">The clipboard memory data was not accessible.</error>
-        <error code="Okay">Operation successful.</error>
-      </result>
-    </method>
-
-    <method>
-      <name>DeleteFiles</name>
-      <comment>Deletes all files that have been referenced in the clipboard.</comment>
-      <prototype>ERROR clipDeleteFiles(OBJECTPTR Object, OBJECTID Target)</prototype>
-      <input>
-        <param type="OBJECTID" name="Target">Set this parameter to a valid surface and the paste operation will open interactive windows (such as progress bars and user confirmations) during the paste operation.  This is usually set to the "Desktop" object, which is also the default if this argument is NULL.  Use a value of -1 if you don't want to provide feedback to the user.</param>
-      </input>
-      <description>
-<p>The DeleteFiles method is used to implement file-delete operations for the CLIPTYPE_FILE datatype in a convenient way for the developer.</p>
-<p>A progress window will popup during the delete operation if it takes an extended period of time to complete (typically over 0.5 seconds).  Any dialog windows will open on whatever surface you specify as the Target (this should be set to either the Desktop object, or a screen that you have created).  If the Target is set to NULL, the routine will discover the most appropriate space for opening new windows.  If the Target is set to -1, the routine will delete all files without progress information or telling the user about encountered errors.</p>
-      </description>
-      <result>
-        <error code="File">A non-specific file error occurred during the paste operation.</error>
-        <error code="Okay">The paste operation was performed successfully (this code is returned even if there are no files to be pasted).</error>
-        <error code="Args">Invalid arguments were specified.</error>
-      </result>
-    </method>
-
-    <method>
       <name>GetFiles</name>
       <comment>Retrieve the most recently clipped data as a list of files.</comment>
-      <prototype>ERROR clipGetFiles(OBJECTPTR Object, LONG Datatype, LONG Index, STRING ** Files, LONG * Flags)</prototype>
+      <prototype>ERROR clipGetFiles(OBJECTPTR Object, LONG * Datatype, LONG Index, CSTRING ** Files, LONG * Flags)</prototype>
       <input>
-        <param type="LONG" name="Datatype" lookup="CLIPTYPE">The types of data that you recognise for retrieval are specified here (for example CLIPTYPE_TEXT, CLIPTYPE_AUDIO, CLIPTYPE_FILE...).  You may logical-OR multiple data types together.  This parameter will be updated to reflect the retrieved data type when the method returns.</param>
-        <param type="LONG" name="Index">If the Datatype parameter is NULL, this parameter may be set to the index of the clip item that you want to retrieve.</param>
-        <param type="STRING **" name="Files">The resulting location(s) of the requested clip data are returned in this parameter; terminated with a NULL entry.  You are required to free the returned array with FreeMemory().</param>
+        <param type="LONG *" name="Datatype" lookup="CLIPTYPE">Specify accepted data types here as OR'd flags.  This parameter will be updated to reflect the retrieved data type when the method returns.</param>
+        <param type="LONG" name="Index">If the Datatype parameter is zero, this parameter may be set to the index of the desired clip item.</param>
+        <param type="CSTRING **" name="Files">The resulting location(s) of the requested clip data are returned in this parameter; terminated with a NULL entry.  You are required to free the returned array with FreeMemory().</param>
         <param type="LONG *" name="Flags" lookup="CEF">Result flags are returned in this parameter.  If CEF_DELETE is set, you need to delete the files after use in order to support the 'cut' operation.</param>
       </input>
       <description>
-<p>To retrieve items from a clipboard, you must use the GetFiles method.  You must declare the types of data that you support (or NULL if you recognise all datatypes) so that you are returned a recognisable data format.</p>
-<p>The most recent clip is always returned, so if you support text, audio and image clips and the most recent clip is an audio file, any text and image clips on the history buffer will be ignored by this routine. If you want to scan all available clip items, set the Datatype parameter to NULL and repeatedly call this method with incremented Index numbers until the error code ERR_OutOfRange is returned.</p>
-<p>On success this method will return a list of files (terminated with a NULL entry) in the Files parameter.  Each file is a readable clipboard entry - how you read it depends on the resulting Datatype.  Additionally, the IdentifyFile() function could be used to find a class that supports the data.  The resulting Files array is a memory allocation that must be freed with a call to <function module="Core">FreeMemory</function>.</p>
-<p>If this method returns the CEF_DELETE flag in the Flags parameter, you must delete the source files after successfully copying out the data.  If you are not successful in your operation, do not proceed with the deletion or the user will have lost the original data.  When cutting and pasting files within the file system, simply using the file system's 'move file' functionality may be useful for fast file transfer.</p>
+<p>This method returns a list of items that are on the clipboard.  The caller must declare the types of data that it supports (or zero if all datatypes are recognised).</p>
+<p>The most recently clipped datatype is always returned.  To scan for all available clip items, set the Datatype parameter to zero and repeatedly call this method with incremented Index numbers until the error code ERR_OutOfRange is returned.</p>
+<p>On success this method will return a list of files (terminated with a NULL entry) in the Files parameter.  Each file is a readable clipboard entry - how the client reads it depends on the resulting Datatype.  Additionally, the IdentifyFile() function could be used to find a class that supports the data.  The resulting Files array is a memory allocation that must be freed with a call to <function module="Core">FreeMemory</function>.</p>
+<p>If this method returns the CEF_DELETE flag in the Flags parameter, the client must delete the source files after successfully copying the data.  When cutting and pasting files within the file system, using <function module="Core">MoveFile</function> is recommended as the most efficient method.</p>
       </description>
       <result>
         <error code="NoData">No clip was available that matched the requested data type.</error>
@@ -192,24 +157,19 @@
     </method>
 
     <method>
-      <name>PasteFiles</name>
-      <comment>Performs the 'paste' operation on file items.</comment>
-      <prototype>ERROR clipPasteFiles(OBJECTPTR Object, CSTRING Dest, OBJECTID Target)</prototype>
+      <name>Remove</name>
+      <comment>Remove items from the clipboard.</comment>
+      <prototype>ERROR clipRemove(OBJECTPTR Object, LONG Datatype)</prototype>
       <input>
-        <param type="CSTRING" name="Dest">The destination path for the file items.  Must be identifiable as a directory location, otherwise the file(s) will be copied to a destination file.</param>
-        <param type="OBJECTID" name="Target">Set this parameter to a valid surface and the paste operation will open interactive windows (such as progress bars and user confirmations) during the paste operation.  This is usually set to the "Desktop" object, which is also the default if this argument is NULL.  Use a value of -1 if you don't want to provide feedback to the user.</param>
+        <param type="LONG" name="Datatype" lookup="CLIPTYPE">The datatype(s) that will be deleted (datatypes may be logically-or'd together).</param>
       </input>
       <description>
-<p>The PasteFiles method is used to implement file-paste operations for the CLIPTYPE_FILE datatype in a convenient way for the developer.  The correct handling for both copy and cut operations is implemented for you.</p>
-<p>You are required to specify a destination path for the file items.  This should be a directory (denoted by a trailing slash or colon character), although you may specify a single target file if you wish.</p>
-<p>Confirmation windows are automatically handled by this routine when duplicate file names or errors are encountered during processing.  Any windows will open on whatever surface you specify as the Target (this should be set to either the Desktop object, or a screen that you have created).  If the Target is set to NULL, the routine will discover the most appropriate space for opening new windows. If the Target is set to -1, the routine will overwrite all files by default and not inform the user if errors are encountered.</p>
+<p>The Remove method will clear all items that match a specified datatype.  Clear multiple datatypes by combining flags in the Datatype parameter.  To clear all content from the clipboard, use the <action>Clear</action> action instead of this method.</p>
       </description>
       <result>
-        <error code="Args">Invalid arguments passed to function.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
-        <error code="File">A non-specific file error occurred during the paste operation.</error>
-        <error code="Okay">The paste operation was performed successfully (this code is returned even if there are no files to be pasted).</error>
-        <error code="MissingPath">The object is missing a setting in the Path or Location field.</error>
+        <error code="AccessMemory">The clipboard memory data was not accessible.</error>
+        <error code="Okay">Operation successful.</error>
       </result>
     </method>
 
@@ -239,13 +199,8 @@
 
     <field>
       <name>Response</name>
-      <comment>Contains the last value received from a user request window.</comment>
       <access read="R" write="W">Read/Write</access>
-      <type lookup="RSP">INT</type>
-      <description>
-<p>If a clipboard operation requires a user confirmation request, this field will contain the response value.  The user will typically be asked for a response prior to delete operations and in cases of existing file replacement.</p>
-<types lookup="RSP"/>
-      </description>
+      <type>INT</type>
     </field>
 
   </fields>
@@ -398,17 +353,6 @@
       <const name="LINE_BREAKS">Draw a line break between each view item.</const>
     </constants>
 
-    <constants lookup="SLF" comment="Flags for SelectCallback">
-      <const name="ACTIVE">The most recently active tag has changed.</const>
-      <const name="MANUAL">Item was manually selected (by the program, not the user).</const>
-      <const name="SELECTED">A tag has been selected and is now highlighted.</const>
-      <const name="INVERTED">Change is due to an inverted selection.</const>
-      <const name="KEYPRESS">Item was selected by a keypress.</const>
-      <const name="CLICK">Item was clicked - see ClickX and ClickY for coordinates.</const>
-      <const name="MULTIPLE">Multiple items were selected.</const>
-      <const name="MOVED">Change is due to the item being moved.</const>
-    </constants>
-
     <constants lookup="TF" comment="Flags for the TabFocus class.">
       <const name="LOCAL_FOCUS">In this mode, the user's point of focus must match the monitored Surface for the tabfocus to function.</const>
       <const name="CHILD_FOCUS">In this mode, the user's point of focus must match the monitored Surface or one of its immediate children for the tabfocus to function.</const>
@@ -421,17 +365,20 @@
       <const name="INSIDE">The cursor is inside the button's area</const>
     </constants>
 
-    <constants lookup="RSP">
-      <const name="CANCEL"/>
-      <const name="YES"/>
-      <const name="YES_ALL"/>
-      <const name="NO"/>
+    <constants lookup="SLF" comment="Flags for SelectCallback">
+      <const name="ACTIVE">The most recently active tag has changed.</const>
+      <const name="MANUAL">Item was manually selected (by the program, not the user).</const>
+      <const name="SELECTED">A tag has been selected and is now highlighted.</const>
+      <const name="INVERTED">Change is due to an inverted selection.</const>
+      <const name="KEYPRESS">Item was selected by a keypress.</const>
+      <const name="CLICK">Item was clicked - see ClickX and ClickY for coordinates.</const>
+      <const name="MULTIPLE">Multiple items were selected.</const>
+      <const name="MOVED">Change is due to the item being moved.</const>
     </constants>
 
     <constants lookup="CLF" comment="Clipboard flags">
-      <const name="WAIT">The clipboard will wait for the user to respond to user dialogs rather than return immediately from clipboard operations.</const>
-      <const name="HOST"/>
       <const name="DRAG_DROP">Enables drag and drop mode.  The clipboard content will be private and not share data with the host system in this mode.</const>
+      <const name="HOST">This indicator is automatically set when a clipboard was created due to incoming content from the host system.</const>
     </constants>
 
     <constants lookup="VIEW" comment="List options">
