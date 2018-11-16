@@ -893,10 +893,11 @@ static ERROR GET_SelectedTags(objView *Self, LONG **Array, LONG *Elements)
 {
    *Array = NULL;
 
-   if (Self->SelectedTags) { FreeMemory(Self->SelectedTags); Self->SelectedTags = NULL; }
-
    OBJECTPTR context = SetContext(Self);
-   ERROR error = get_selected_tags(Self, &Self->SelectedTags, Elements);
+
+      if (Self->SelectedTags) { FreeMemory(Self->SelectedTags); Self->SelectedTags = NULL; }
+      ERROR error = get_selected_tags(Self, &Self->SelectedTags, Elements);
+
    SetContext(context);
 
    if (!error) {
