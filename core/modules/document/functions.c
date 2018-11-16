@@ -26,7 +26,6 @@ static const struct {
    { "text",        ID_TEXT,      "surface", "" },
    { "view",        ID_VIEW,      "surface", "" },
    // TOOLS
-   { "dialog",       ID_DIALOG,       NULL, "" },
    { "scintilla",    ID_SCINTILLA,    NULL, "" },
    // NETWORK
    { "http",         ID_HTTP,         NULL, "" },

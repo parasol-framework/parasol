@@ -123,7 +123,6 @@ static LONG  view_cursor(objText *);
 static LONG  view_selection(objText *);
 static LONG  xml_content_len(struct XMLTag *);
 static void  xml_extract_content(struct XMLTag *, UBYTE *, LONG *, WORD);
-static void  user_error(STRING, STRING);
 
 #define AXF_NEWLINE   0x0002
 
@@ -351,7 +350,6 @@ Clipboard: Full support for clipboard activity is provided through this action.
 
 static ERROR TEXT_Clipboard(objText *Self, struct acClipboard *Args)
 {
-   OBJECTPTR file;
    STRING buffer;
    LONG size, i, row, column, endrow, endcolumn, pos, start;
 
@@ -413,7 +411,7 @@ static ERROR TEXT_Clipboard(objText *Self, struct acClipboard *Args)
                      //draw_lines(Self, start, endrow - start + 1);
                   }
                }
-               else user_error("Cut Error", "Failed to add text to the system clipboard.");
+               else LogErrorMsg("Failed to add text to the system clipboard.");
                acFree(clipboard);
             }
 
@@ -443,6 +441,7 @@ static ERROR TEXT_Clipboard(objText *Self, struct acClipboard *Args)
          get.Datatype = CLIPTYPE_TEXT;
          get.Index = 0;
          if (!Action(MT_ClipGetFiles, clipboard, &get)) {
+            OBJECTPTR file;
             if (!CreateObject(ID_FILE, 0, &file,
                   FID_Path|TSTR,   get.Files[0],
                   FID_Flags|TLONG, FL_READ,
@@ -455,10 +454,10 @@ static ERROR TEXT_Clipboard(objText *Self, struct acClipboard *Args)
                         buffer[result] = 0;
                         acDataText(Self, buffer);
                      }
-                     else user_error("Paste Error", "Failed to read data from the clipboard file.");
+                     else LogErrorMsg("Failed to read data from the clipboard file.");
                      FreeMemory(buffer);
                   }
-                  else user_error("Paste Error", "Out of memory.");
+                  else LogErrorMsg("Out of memory.");
                }
 
                acFree(file);
@@ -466,7 +465,7 @@ static ERROR TEXT_Clipboard(objText *Self, struct acClipboard *Args)
             else {
                char msg[200];
                StrFormat(msg, sizeof(msg), "Failed to load clipboard file \"%s\"", get.Files[0]);
-               user_error("Paste Error", msg);
+               LogErrorMsg(msg);
             }
          }
          acFree(clipboard);

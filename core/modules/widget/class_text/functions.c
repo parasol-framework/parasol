@@ -1763,13 +1763,8 @@ static LONG view_selection(objText *Self)
 
    // Do the scroll action
 
-   if ((selectx) AND (!scrollx)) {
-      scrollx = selectx;
-   }
-
-   if ((selecty) AND (!scrolly)) {
-      scrolly = selecty;
-   }
+   if ((selectx) AND (!scrollx)) scrollx = selectx;
+   if ((selecty) AND (!scrolly)) scrolly = selecty;
 
    if ((scrollx) OR (scrolly)) {
       acScrollToPoint(Self, (DOUBLE)((-xpos) - scrollx), (DOUBLE)((-ypos) - scrolly), 0.0, STP_X|STP_Y);
@@ -1782,20 +1777,4 @@ static LONG view_selection(objText *Self)
    }
 
    return scroll;
-}
-
-//****************************************************************************
-
-static void user_error(STRING Title, STRING Message)
-{
-   OBJECTPTR dialog;
-
-   if (!CreateObject(ID_DIALOG, NF_INTEGRAL, &dialog,
-         FID_Image|TSTR,    "icons:items/error(48)",
-         FID_Options|TSTR,  "okay",
-         FID_Title|TSTR,    Title,
-         FID_String|TSTR,   Message,
-         TAGEND)) {
-      acShow(dialog);
-   }
 }
