@@ -134,7 +134,7 @@ end
 
 ------------------------------------------------------------------------------
 
-if (file == nil) then
+if file == nil then
    file = { }
 end
 
@@ -163,9 +163,9 @@ end
 ------------------------------------------------------------------------------
 
 file.splitPath = function(Path)
-   if (Path == nil) then return nil, nil end
+   if Path == nil then return nil, nil end
    local path, fl = string.match(Path, '^(.+[/:\\])(.+)$')
-   if (path == nil) then
+   if path == nil then
       return nil, Path
    end
    return path, fl
