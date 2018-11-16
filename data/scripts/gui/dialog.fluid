@@ -26,7 +26,8 @@ Valid options to use when creating the dialog are as follows:
    popover:       Place the dialog window over the surface referenced here.
    target:        Open the dialog window within the surface referenced here.
    modal:         Set to true if the dialog box needs to be modal (prevents interaction with other windows).
-   message:       A message string to display in the dialog.
+   message:       A plain message string to display in the dialog.
+   fmtMessage:    A tag formatted message string to display in the dialog.
    checkboxLabel: Enables a user checkbox in the dialog when set with a label name.
    checkboxState: If true, the checkbox will be pre-selected.
    icon:          Window icon, in the format 'category/name'
@@ -82,10 +83,26 @@ gui.dialog.message = function(Options)
    local lOptions = Options
    local lWindow, lInput, lCheckbox
 
+   -- Change the message in the dialog
+
    self.message = function(Message)
       lOptions.message = Message
+      lOptions.fmtMessage = nil
       lDoc.acClear()
       lDoc.acDataFeed(0, DATA_XML, buildDocument())
+   end
+
+   self.fmtMessage = function(Message)
+      lOptions.fmtMessage = Message
+      lOptions.message = nil
+      lDoc.acClear()
+      lDoc.acDataFeed(0, DATA_XML, buildDocument())
+   end
+
+   -- Wait for the user to respond to the dialog.
+
+   self.wait = function()
+      processMessages(-1)
    end
 
    local function matchWindowToDocSize(Window, Document)
@@ -102,15 +119,20 @@ gui.dialog.message = function(Options)
 
    local function defaultIcon()
       if nz(lOptions.type) then
-         if lOptions.type == 'error' then return 'icons:items/error' end
-         if lOptions.type == 'critical' then return 'icons:items/error' end
-         if lOptions.type == 'warning' then return 'icons:items/warning' end
-         if lOptions.type == 'attention' then return 'icons:items/info' end
-         if lOptions.type == 'alarm' then return 'icons:time/alarm' end
-         if lOptions.type == 'help' then return 'icons:items/question' end
-         if lOptions.type == 'question' then return 'icons:items/question' end
-         if lOptions.type == 'request' then return 'icons:items/info' end
-         if lOptions.type == 'info' then return 'Self, "icons:items/info' end
+         local icons = {
+            error     = 'error',
+            critical  = 'error',
+            warning   = 'warning',
+            attention = 'info',
+            alarm     = 'alarm',
+            help      = 'question',
+            question  = 'question',
+            request   = 'info',
+            info      = 'info'
+         }
+         for k,v in pairs(icons) do
+            if lOptions.type == k then return 'icons:items/' .. v end
+         end
       end
       return 'icons:items/question'
    end
@@ -180,7 +202,7 @@ gui.dialog.message = function(Options)
         <image src="]] .. image .. [[" align="left" eastgap="8"/>
       </cell>
       <cell>
-        <p>]] .. string.escXML(nz(lOptions.message,'')) .. [[</p>
+        <p>]] .. nz(lOptions.fmtMessage, string.escXML(nz(lOptions.message,''))) .. [[</p>
 ]]
 
       if lOptions.userInput then
@@ -263,40 +285,45 @@ gui.dialog.message = function(Options)
          end
       })
 
-      lDocSurface = lWindow.new('surface', {
-         x       = lWindow.leftMargin,
-         y       = lWindow.topMargin,
-         xOffset = lWindow.rightMargin,
-         yOffset = lWindow.bottomMargin,
-         flags   = 'GrabFocus'
-      })
+      lWindow.lock(function()
+         lDocSurface = lWindow.new('surface', {
+            name    = 'docSurface',
+            x       = lWindow.leftMargin,
+            y       = lWindow.topMargin,
+            xOffset = lWindow.rightMargin,
+            yOffset = lWindow.bottomMargin,
+            flags   = 'GrabFocus'
+         })
 
-      lDocSurface.acShow()
+         lDocSurface.lock(function()
+            lDocSurface.acShow()
 
-      lDoc = lDocSurface.new('document', {
-         eventMask     = 'LinkActivated',
-         eventCallback = docEvent,
-         path          = '#Index',
-         flags         = 'Unrestricted|NoScrollbars',
-         defaultScript = obj.find('self')
-      })
+            lDoc = lDocSurface.new('document', {
+               eventMask     = 'LinkActivated',
+               eventCallback = docEvent,
+               path          = '#Index',
+               flags         = 'Unrestricted|NoScrollbars',
+               defaultScript = obj.find('self')
+            })
 
-      lDoc.acDataFeed(0, DATA_XML, buildDocument())
+            lDoc.acDataFeed(0, DATA_XML, buildDocument())
 
-      lInput = obj.find('inDialog')
-      lCheckbox = obj.find('dlgCheckbox')
+            lInput = obj.find('inDialog')
+            lCheckbox = obj.find('dlgCheckbox')
 
-      if lInput then
-         lInput.textinput.mtSelectArea(0, 0, 20000, 20000)
-      end
+            if lInput then
+               lInput.textinput.mtSelectArea(0, 0, 20000, 20000)
+            end
 
-      matchWindowToDocSize(lWindow, lDoc)
+            matchWindowToDocSize(lWindow, lDoc)
 
-      lWindow.userFocus = lDocSurface.id
+            lWindow.userFocus = lDocSurface.id
 
-      lWindow.acMoveToFront()
-      lWindow.acShow()
-      lDocSurface.acFocus()
+            lWindow.acMoveToFront()
+            lWindow.acShow()
+            lDocSurface.acFocus()
+         end)
+      end)
 
       self.windowID = lWindow.id
       self.document = lDoc
