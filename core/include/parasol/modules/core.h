@@ -2550,6 +2550,7 @@ typedef struct rkTask {
    FUNCTION ErrorCallback;
    FUNCTION OutputCallback;
    FUNCTION ExitCallback;
+   FUNCTION InputCallback;
    #ifdef __unix__
       LONG InFD;             // stdin FD for receiving output from launched task
       LONG ErrFD;            // stderr FD for receiving output from launched task

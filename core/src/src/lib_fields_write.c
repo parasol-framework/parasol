@@ -654,28 +654,32 @@ static LONG write_array(CSTRING String, LONG Flags, WORD ArraySize, APTR Dest)
       if (Flags & FD_LONG) {
          for (i=0; (i < ArraySize) AND (*String); i++) {
             ((LONG *)Dest)[i] = StrToInt(String);
-            while ((*String > 0x20) AND (*String != ',')) String++; if (*String) String++;
+            while ((*String > 0x20) AND (*String != ',')) String++;
+            if (*String) String++;
          }
          return i;
       }
       else if (Flags & FD_BYTE) {
          for (i=0; (i < ArraySize) AND (*String); i++) {
             ((UBYTE *)Dest)[i] = StrToInt(String);
-            while ((*String > 0x20) AND (*String != ',')) String++; if (*String) String++;
+            while ((*String > 0x20) AND (*String != ',')) String++;
+            if (*String) String++;
          }
          return i;
       }
       else if (Flags & FD_FLOAT) {
          for (i=0; (i < ArraySize) AND (*String); i++) {
             ((FLOAT *)Dest)[i] = StrToFloat(String);
-            while ((*String > 0x20) AND (*String != ',')) String++; if (*String) String++;
+            while ((*String > 0x20) AND (*String != ',')) String++;
+            if (*String) String++;
          }
          return i;
       }
       else if (Flags & FD_DOUBLE) {
          for (i=0; (i < ArraySize) AND (*String); i++) {
             ((DOUBLE *)Dest)[i] = StrToFloat(String);
-            while ((*String > 0x20) AND (*String != ',')) String++; if (*String) String++;
+            while ((*String > 0x20) AND (*String != ',')) String++;
+            if (*String) String++;
          }
          return i;
       }

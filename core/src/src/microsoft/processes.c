@@ -6,12 +6,35 @@ void task_register_stdout(APTR Task, HANDLE Handle);
 void task_register_stderr(APTR Task, HANDLE Handle);
 void task_deregister_incoming(HANDLE);
 
-/*****************************************************************************
-** Internal: assign_group()
-**
-** Assigns a newly created process to a group that belongs to the current process.  This has the benefit of closing the
-** child process when the parent is destroyed.
-*/
+//****************************************************************************
+
+void winFreeProcess(struct winprocess *Process)
+{
+   if (!Process) return;
+
+   task_deregister_incoming(Process->StdOutEvent);
+   task_deregister_incoming(Process->StdErrEvent);
+
+   if (Process->StdOutEvent) CloseHandle(Process->StdOutEvent);
+   if (Process->StdErrEvent) CloseHandle(Process->StdErrEvent);
+
+   deregister_process_pipes(Process->Task, Process->Handle);
+
+   if (Process->PipeOut.Write) CloseHandle(Process->PipeOut.Write);
+   if (Process->PipeErr.Write) CloseHandle(Process->PipeErr.Write);
+   if (Process->PipeIn.Read)   CloseHandle(Process->PipeIn.Read);
+
+   if (Process->PipeOut.Read) CloseHandle(Process->PipeOut.Read);
+   if (Process->PipeErr.Read) CloseHandle(Process->PipeErr.Read);
+   if (Process->PipeIn.Write) CloseHandle(Process->PipeIn.Write);
+   if (Process->Handle) CloseHandle(Process->Handle);
+
+   free(Process);
+}
+
+//****************************************************************************
+// Assigns a newly created process to a group that belongs to the current process.  This has the benefit of closing the
+// child process when the parent is destroyed.
 
 #define JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE 0x00002000
 
@@ -51,34 +74,6 @@ static void assign_group(HANDLE Process)
    if (AssignProcessToJobObject(job, Process)) {
       // Success
    }
-}
-
-/*****************************************************************************
-** Internal: winFreeProcess()
-*/
-
-void winFreeProcess(struct winprocess *Process)
-{
-   if (!Process) return;
-
-   task_deregister_incoming(Process->StdOutEvent);
-   task_deregister_incoming(Process->StdErrEvent);
-
-   if (Process->StdOutEvent) CloseHandle(Process->StdOutEvent);
-   if (Process->StdErrEvent) CloseHandle(Process->StdErrEvent);
-
-   deregister_process_pipes(Process->Task, Process->Handle);
-
-   if (Process->PipeOut.Write) CloseHandle(Process->PipeOut.Write);
-   if (Process->PipeErr.Write) CloseHandle(Process->PipeErr.Write);
-   if (Process->PipeIn.Read)   CloseHandle(Process->PipeIn.Read);
-
-   if (Process->PipeOut.Read) CloseHandle(Process->PipeOut.Read);
-   if (Process->PipeErr.Read) CloseHandle(Process->PipeErr.Read);
-   if (Process->PipeIn.Write) CloseHandle(Process->PipeIn.Write);
-   if (Process->Handle) CloseHandle(Process->Handle);
-
-   free(Process);
 }
 
 //****************************************************************************
@@ -369,9 +364,7 @@ LONG winLaunchProcess(APTR Task, LPSTR commandline, LPSTR InitialDir, BYTE Group
    return winerror;
 }
 
-/*****************************************************************************
-** Internal: winGetExitCodeProcess()
-*/
+//****************************************************************************
 
 LONG winGetExitCodeProcess(struct winprocess *Process, LPDWORD Code)
 {
@@ -385,9 +378,7 @@ LONG winGetExitCodeProcess(struct winprocess *Process, LPDWORD Code)
    }
 }
 
-/*****************************************************************************
-** Internal: winWriteStd()
-*/
+//****************************************************************************
 
 LONG winWriteStd(struct winprocess *Platform, APTR Buffer, DWORD Size)
 {
@@ -407,12 +398,9 @@ LONG winWriteStd(struct winprocess *Platform, APTR Buffer, DWORD Size)
    else return GetLastError();
 }
 
-/*****************************************************************************
-** Internal: winReadStd()
-**
-** Designed for reading from stdin/out/err pipes.  Returns -1 on general error, -2 if the pipe is broken, e.g. child
-** process is dead.
-*/
+//****************************************************************************
+// Designed for reading from stdin/out/err pipes.  Returns -1 on general error, -2 if the pipe is broken, e.g. child
+// process is dead.
 
 LONG winReadStd(struct winprocess *Platform, LONG Type, APTR Buffer, DWORD *Size)
 {
@@ -474,9 +462,7 @@ LONG winReadStd(struct winprocess *Platform, LONG Type, APTR Buffer, DWORD *Size
    }
 }
 
-/*****************************************************************************
-** Internal: winCreateThread()
-*/
+//****************************************************************************
 
 HANDLE winCreateThread(APTR Function, APTR Arg, LONG StackSize, DWORD *ID)
 {
