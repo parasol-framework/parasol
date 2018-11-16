@@ -82,14 +82,14 @@ To debug serious issues or to get more insight into a problem, set `VDEBUG=1` to
 
 MSYS and MinGW are required for a Windows build.  Once installed, the build process is essentially identical to that of Linux.  The install of the build tools can be completed as follows:
 
-* Download [MinGW-W64](http://sourceforge.net/projects/mingw-w64/)
-* Install the exe with options `i686`, `win32`, `dwarf`.  Choose on install path of `C:\MinGW-W64`
-* Download the [MSYS archive](http://sourceforge.net/projects/mingwbuilds/files/external-binary-packages)
+* Download [MinGW-W64](https://sourceforge.net/projects/mingw-w64/)
+* Install the exe with options `i686`, `win32`, `dwarf`.  Choose an install path of `C:\MinGW-W64`
+* Download the [MSYS archive](https://sourceforge.net/projects/mingwbuilds/files/external-binary-packages/)
 * Unzip to `C:\`
 * Edit `C:\msys\etc\fstab` and add `C:/MinGW-W64/mingw32   /mingw`
 * Download a [YASM executable](http://yasm.tortall.net/Download.html) and move it to `C:\msys\bin\yasm.exe` (remove any version suffixes).
-* Install [ConsoleZ](https://github.com/cbucher/console/releases)
-* Run ConsoleZ, open Options, then change the ConsoleZ default shell to `C:\msys\bin\bash.exe --login -i`
+* Install [Cmder](http://cmder.net/)
+* Run Cmder, open Options, then change the default shell to `C:\msys\bin\bash.exe --login -i`
 * Open a new console tab and you should see a bash shell.  Enter `which gcc` to ensure that the build environment's gcc executable is accessible.  Double-check that the `fstab` folder reference and installation folder match up if gcc cannot be found.
 * Follow the instructions from section 2 in this readme to perform a full compile, then proceed to section 3.
 
