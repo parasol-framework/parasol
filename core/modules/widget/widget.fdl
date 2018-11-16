@@ -184,12 +184,9 @@ function def_clipboard()
     "OBJECT: An object that has been deserialised into binary form.",
     "TEXT: Plain text files such as ASCII and UTF-8 must be identified through this clip type.")
 
-  enum("RSP", { start=0 }, "CANCEL|NO_ALL", "YES", "YES_ALL", "NO")
-
   flags("CLF", { comment="Clipboard flags" },
-    "WAIT: The clipboard will wait for the user to respond to user dialogs rather than return immediately from clipboard operations.",
     "DRAG_DROP: Enables drag and drop mode.  The clipboard content will be private and not share data with the host system in this mode.",
-    "HOST")
+    "HOST: This indicator is automatically set when a clipboard was created due to incoming content from the host system.")
 
   flags("CEF", { },
     "DELETE: Requests that the original file source is deleted if a successful paste operation takes place.",
@@ -201,23 +198,16 @@ function def_clipboard()
     { id=3, name="AddObjects" },
     { id=4, name="GetFiles" },
     { id=5, name="AddText" },
-    { id=6, name="PasteFiles" },
-    { id=7, name="Delete" },
-    { id=8, name="DeleteFiles" },
+    { id=6, name="Remove" }
   })
 
   class("Clipboard", { src="class_clipboard.c", output="class_clipboard_def.c" }, [[
-    int(RSP) Response   # Indicates the user's response to PasteFiles()
     int(CLF) Flags      # Optional flags
     mem Cluster         # Identifies the data cluster (item grouping) that the clipboard will work with
   ]],
   [[
    FUNCTION RequestHandler;
-   OBJECTPTR ProgressDialog;
-   LARGE    ProgressTime;
-   OBJECTID ProgressTarget;
-   char    LastFile[80];
-   BYTE ClusterAllocated:1;
+   BYTE     ClusterAllocated:1;
   ]])
 end
 

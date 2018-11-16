@@ -1002,17 +1002,10 @@ INLINE ERROR viewItemDimensions(APTR Ob, LONG TagIndex, LONG * X, LONG * Y, LONG
 #define CLIPTYPE_OBJECT 0x00000010
 #define CLIPTYPE_TEXT 0x00000020
 
-#define RSP_CANCEL 0
-#define RSP_NO_ALL 0
-#define RSP_YES 1
-#define RSP_YES_ALL 2
-#define RSP_NO 3
-
 // Clipboard flags
 
-#define CLF_WAIT 0x00000001
-#define CLF_DRAG_DROP 0x00000002
-#define CLF_HOST 0x00000004
+#define CLF_DRAG_DROP 0x00000001
+#define CLF_HOST 0x00000002
 
 #define CEF_DELETE 0x00000001
 #define CEF_EXTEND 0x00000002
@@ -1023,17 +1016,12 @@ INLINE ERROR viewItemDimensions(APTR Ob, LONG TagIndex, LONG * X, LONG * Y, LONG
 
 typedef struct rkClipboard {
    OBJECT_HEADER
-   LONG     Response;   // Indicates the user's response to PasteFiles()
    LONG     Flags;      // Optional flags
    MEMORYID ClusterID;  // Identifies the data cluster (item grouping) that the clipboard will work with
 
 #ifdef PRV_CLIPBOARD
    FUNCTION RequestHandler;
-   OBJECTPTR ProgressDialog;
-   LARGE    ProgressTime;
-   OBJECTID ProgressTarget;
-   char    LastFile[80];
-   BYTE ClusterAllocated:1;
+   BYTE     ClusterAllocated:1;
   
 #endif
 } objClipboard;
@@ -1045,18 +1033,14 @@ typedef struct rkClipboard {
 #define MT_ClipAddObjects -3
 #define MT_ClipGetFiles -4
 #define MT_ClipAddText -5
-#define MT_ClipPasteFiles -6
-#define MT_ClipDelete -7
-#define MT_ClipDeleteFiles -8
+#define MT_ClipRemove -6
 
 struct clipAddFile { LONG Datatype; CSTRING Path; LONG Flags;  };
 struct clipAddObject { LONG Datatype; OBJECTID ObjectID; LONG Flags;  };
 struct clipAddObjects { LONG Datatype; OBJECTID * Objects; LONG Flags;  };
-struct clipGetFiles { LONG Datatype; LONG Index; STRING * Files; LONG Flags;  };
+struct clipGetFiles { LONG Datatype; LONG Index; CSTRING * Files; LONG Flags;  };
 struct clipAddText { CSTRING String;  };
-struct clipPasteFiles { CSTRING Dest; OBJECTID TargetID;  };
-struct clipDelete { LONG Datatype;  };
-struct clipDeleteFiles { OBJECTID TargetID;  };
+struct clipRemove { LONG Datatype;  };
 
 INLINE ERROR clipAddFile(APTR Ob, LONG Datatype, CSTRING Path, LONG Flags) {
    struct clipAddFile args = { Datatype, Path, Flags };
@@ -1073,9 +1057,10 @@ INLINE ERROR clipAddObjects(APTR Ob, LONG Datatype, OBJECTID * Objects, LONG Fla
    return(Action(MT_ClipAddObjects, Ob, &args));
 }
 
-INLINE ERROR clipGetFiles(APTR Ob, LONG Datatype, LONG Index, STRING ** Files, LONG * Flags) {
-   struct clipGetFiles args = { Datatype, Index, 0, 0 };
+INLINE ERROR clipGetFiles(APTR Ob, LONG * Datatype, LONG Index, CSTRING ** Files, LONG * Flags) {
+   struct clipGetFiles args = { 0, Index, 0, 0 };
    ERROR error = Action(MT_ClipGetFiles, Ob, &args);
+   if (Datatype) *Datatype = args.Datatype;
    if (Files) *Files = args.Files;
    if (Flags) *Flags = args.Flags;
    return(error);
@@ -1086,19 +1071,9 @@ INLINE ERROR clipAddText(APTR Ob, CSTRING String) {
    return(Action(MT_ClipAddText, Ob, &args));
 }
 
-INLINE ERROR clipPasteFiles(APTR Ob, CSTRING Dest, OBJECTID TargetID) {
-   struct clipPasteFiles args = { Dest, TargetID };
-   return(Action(MT_ClipPasteFiles, Ob, &args));
-}
-
-INLINE ERROR clipDelete(APTR Ob, LONG Datatype) {
-   struct clipDelete args = { Datatype };
-   return(Action(MT_ClipDelete, Ob, &args));
-}
-
-INLINE ERROR clipDeleteFiles(APTR Ob, OBJECTID TargetID) {
-   struct clipDeleteFiles args = { TargetID };
-   return(Action(MT_ClipDeleteFiles, Ob, &args));
+INLINE ERROR clipRemove(APTR Ob, LONG Datatype) {
+   struct clipRemove args = { Datatype };
+   return(Action(MT_ClipRemove, Ob, &args));
 }
 
 

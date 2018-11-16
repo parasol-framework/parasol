@@ -74,9 +74,6 @@ static const struct FieldArray clFields[];
 
 static ERROR add_clip(objClipboard *, LONG, CSTRING, LONG, CLASSID, LONG, LONG *);
 static void free_clip(objClipboard *, struct ClipEntry *);
-static LONG delete_feedback(struct FileFeedback *);
-static LONG paste_feedback(struct FileFeedback *);
-static void run_script(CSTRING, OBJECTID, CSTRING);
 static ERROR CLIPBOARD_AddObjects(objClipboard *, struct clipAddObjects *);
 
 //****************************************************************************
@@ -102,28 +99,24 @@ ERROR init_clipboard(void)
 
 #ifdef _WIN32
 
-   // Initialise the windows clipboard handler.  This monitors the windows clipboard for new items and copies them into
-   // our internal clipboard (the main cluster represented by RPM_Clipboard) when they appear.
+   // If this is the first initialisation of the clipboard module, we need to copy the current Windows clipboard
+   // content into our clipboard.
 
-   LogF("7","Initialise the Windows clipboard handler.");
+   struct ClipHeader *clipboard;
+   if (!AccessMemory(RPM_Clipboard, MEM_READ_WRITE, 3000, &clipboard)) {
+      if (!clipboard->Init) {
+         LogF("~","Populating clipboard for the first time from the Windows host.");
 
-   if (!winInit()) {
-      // If this is the first initialisation of the clipboard module, we need to copy the current Windows clipboard
-      // content into our clipboard.
-
-      struct ClipHeader *clipboard;
-
-      if (!AccessMemory(RPM_Clipboard, MEM_READ_WRITE, 3000, &clipboard)) {
-         if (!clipboard->Init) {
-            LogF("~","Populating clipboard for the first time.");
+         if (!winInit()) {
             clipboard->Init = TRUE;
             winCopyClipboard();
-            LogBack();
          }
-         ReleaseMemory(clipboard);
+         else PostError(ERR_SystemCall);
+
+         LogBack();
       }
+      ReleaseMemory(clipboard);
    }
-   else return PostError(ERR_SystemCall);
 
 #endif
 
@@ -204,27 +197,25 @@ static ERROR CLIPBOARD_AddFile(objClipboard *Self, struct clipAddFile *Args)
    if (!Args) return PostError(ERR_NullArgs);
    if ((!Args->Path) OR (!Args->Path[0])) return PostError(ERR_MissingPath);
 
-   LogBranch("Path: %s", Args->Path);
+   LogBranch("Cluster: %d, Path: %s", Self->ClusterID, Args->Path);
 
    ERROR error = add_clip(Self, Args->Datatype, Args->Path, Args->Flags & (CEF_DELETE|CEF_EXTEND), 0, 1, 0);
 
 #ifdef _WIN32
+   // Add the file to the host clipboard
    if ((!(Self->Flags & CLF_DRAG_DROP)) AND (!error)) {
       struct ClipHeader *header;
-      struct ClipEntry *clips;
-      STRING str, win, path;
-      LONG j, i, winpos;
-
       if (!AccessMemory(Self->ClusterID, MEM_READ_WRITE, 3000, &header)) {
-         clips = (struct ClipEntry *)(header + 1);
+         struct ClipEntry *clips = (struct ClipEntry *)(header + 1);
 
+         STRING str, win;
          if (!AccessMemory(clips->Files, MEM_READ_WRITE, 3000, &str)) {
             // Build a list of resolved path names in a new buffer that is suitable for passing to Windows.
 
             if (!AllocMemory(512 * clips->TotalItems, MEM_DATA|MEM_NO_CLEAR, &win, NULL)) {
-               j = 0;
-               winpos = 0;
+               LONG i, j = 0, winpos = 0;
                for (i=0; i < clips->TotalItems; i++) {
+                  STRING path;
                   if (!ResolvePath(str+j, 0, &path)) {
                      winpos += StrCopy(path, win+winpos, 511) + 1;
                      FreeMemory(path);
@@ -359,8 +350,7 @@ static ERROR CLIPBOARD_AddObjects(objClipboard *Self, struct clipAddObjects *Arg
                      datatype = CLIPTYPE_OBJECT;
                   }
                }
-               else {
-                  // Use the specified datatype
+               else { // Use the specified datatype
                   StrFormat(location, sizeof(location), "clipboard:%s%d.%.3d", GetDatatype(datatype), counter, i);
                }
 
@@ -579,10 +569,16 @@ static ERROR CLIPBOARD_DataFeed(objClipboard *Self, struct acDataFeed *Args)
                   { "Datatypes", FD_ARRAY|FD_BYTE, { .Address = request->Preference } },
                   { "Size",      FD_LONG|FD_ARRAYSIZE, { .Long = ARRAYSIZE(request->Preference) } }
                };
-               scCallback(script, Self->RequestHandler.Script.ProcedureID, args, ARRAYSIZE(args));
+               if (!scCallback(script, Self->RequestHandler.Script.ProcedureID, args, ARRAYSIZE(args))) {
+                  GetLong(script, FID_Error, &error);
+               }
+               else error = ERR_Terminate;
             }
+            else error = ERR_Terminate;
          }
          else PostError(ERR_FieldNotSet);
+
+         if (error IS ERR_Terminate) Self->RequestHandler.Type = 0;
 
          LogBack();
          return ERR_Okay;
@@ -597,9 +593,9 @@ static ERROR CLIPBOARD_DataFeed(objClipboard *Self, struct acDataFeed *Args)
 /*****************************************************************************
 
 -METHOD-
-Delete: Remove items from the clipboard.
+Remove: Remove items from the clipboard.
 
-The Delete method will clear all items that match a specified datatype.  Clear multiple datatypes by combining flags
+The Remove method will clear all items that match a specified datatype.  Clear multiple datatypes by combining flags
 in the Datatype parameter.  To clear all content from the clipboard, use the #Clear() action instead of this method.
 
 -INPUT-
@@ -613,11 +609,11 @@ AccessMemory: The clipboard memory data was not accessible.
 
 *****************************************************************************/
 
-static ERROR CLIPBOARD_Delete(objClipboard *Self, struct clipDelete *Args)
+static ERROR CLIPBOARD_Remove(objClipboard *Self, struct clipRemove *Args)
 {
    if ((!Args) OR (!Args->Datatype)) return PostError(ERR_NullArgs);
 
-   LogBranch("Datatype: $%x", Args->Datatype);
+   LogBranch("Cluster: %d, Datatype: $%x", Self->ClusterID, Args->Datatype);
 
    struct ClipHeader *header;
 
@@ -642,115 +638,10 @@ static ERROR CLIPBOARD_Delete(objClipboard *Self, struct clipDelete *Args)
    else return StepError(0, ERR_AccessMemory);
 }
 
-/*****************************************************************************
-
--METHOD-
-DeleteFiles: Deletes all files that have been referenced in the clipboard.
-
-The DeleteFiles method is used to implement file-delete operations for the CLIPTYPE_FILE datatype in a convenient way for
-the developer.
-
-A progress window will popup during the delete operation if it takes an extended period of time to complete (typically
-over 0.5 seconds).  Any dialog windows will open on whatever surface you specify as the Target (this should be set to
-either the Desktop object, or a screen that you have created).  If the Target is set to NULL, the routine will discover
-the most appropriate space for opening new windows.  If the Target is set to -1, the routine will delete all files
-without progress information or telling the user about encountered errors.
-
--INPUT-
-oid Target: Set this parameter to a valid surface and the paste operation will open interactive windows (such as progress bars and user confirmations) during the paste operation.  This is usually set to the "Desktop" object, which is also the default if this argument is NULL.  Use a value of -1 if you don't want to provide feedback to the user.
-
--ERRORS-
-Okay: The paste operation was performed successfully (this code is returned even if there are no files to be pasted).
-Args: Invalid arguments were specified.
-File: A non-specific file error occurred during the paste operation.
--END-
-
-*****************************************************************************/
-
-static ERROR CLIPBOARD_DeleteFiles(objClipboard *Self, struct clipDeleteFiles *Args)
-{
-   struct clipGetFiles get;
-   struct rkFunction callback;
-   OBJECTPTR dialog;
-   STRING *list;
-   ERROR error;
-   WORD i;
-
-   LogBranch(NULL);
-
-   Self->Response = RSP_YES;
-
-   Self->ProgressTime = PreciseTime();
-
-   if (Args) Self->ProgressTarget = Args->TargetID;
-   else Self->ProgressTarget = 0;
-
-   if (Self->ProgressDialog) { acFree(Self->ProgressDialog); Self->ProgressDialog = NULL; }
-
-   get.Datatype = CLIPTYPE_FILE;
-   if (!Action(MT_ClipGetFiles, Self, &get)) {
-      error = ERR_Okay;
-      list = get.Files;
-      for (i=0; list[i]; i++) {
-         StrCopy(list[i], Self->LastFile, sizeof(Self->LastFile));
-
-         SET_FUNCTION_STDC(callback, (APTR)&delete_feedback);
-         FileFeedback(&callback, Self, 0);
-
-         error = DeleteFile(list[i]);
-
-         if (error IS ERR_Cancelled) {
-            error = ERR_Okay;
-            break;
-         }
-         else if (error) {
-            if (Self->ProgressTarget != -1) {
-               char buffer[256];
-
-               if (error IS ERR_Permissions) {
-                  StrFormat(buffer, sizeof(buffer), "You do not have the necessary permissions to delete this file:\n\n%s", Self->LastFile);
-               }
-               else StrFormat(buffer, sizeof(buffer), "An error occurred while deleting this file:\n\n%s\n\n%s.  Process cancelled.", Self->LastFile, GetErrorMsg(error));
-
-               if (!CreateObject(ID_DIALOG, 0, &dialog,
-                     FID_Owner|TLONG,  Self->Head.TaskID,
-                     FID_Target|TLONG, Self->ProgressTarget,
-                     FID_Type|TSTR,    "ERROR",
-                     FID_Options|TSTR, "Okay",
-                     FID_Title|TSTR,   "File Delete Failure",
-                     FID_String|TSTR,  buffer,
-                     FID_Flags|TSTR,   (Self->Flags & CLF_WAIT) ? "WAIT" : NULL,
-                     TAGEND)) {
-                  acShow(dialog);
-               }
-            }
-
-            error = ERR_File;
-            break;
-         }
-      }
-
-      if (Self->ProgressDialog) {
-         acFree(Self->ProgressDialog);
-         Self->ProgressDialog = NULL;
-      }
-
-      FreeMemory(list);
-      LogBack();
-      return error;
-   }
-   else {
-      LogMsg("There are no files to delete from the clipboard.");
-      LogBack();
-      return ERR_Okay;
-   }
-}
-
 //****************************************************************************
 
 static ERROR CLIPBOARD_Free(objClipboard *Self, APTR Void)
 {
-   if (Self->ProgressDialog) { acFree(Self->ProgressDialog); Self->ProgressDialog = NULL; }
    if (Self->ClusterAllocated) { FreeMemoryID(Self->ClusterID); Self->ClusterID = 0; }
    return ERR_Okay;
 }
@@ -760,28 +651,26 @@ static ERROR CLIPBOARD_Free(objClipboard *Self, APTR Void)
 -METHOD-
 GetFiles: Retrieve the most recently clipped data as a list of files.
 
-To retrieve items from a clipboard, you must use the GetFiles method.  You must declare the types of data that you
-support (or NULL if you recognise all datatypes) so that you are returned a recognisable data format.
+This method returns a list of items that are on the clipboard.  The caller must declare the types of data that it
+supports (or zero if all datatypes are recognised).
 
-The most recent clip is always returned, so if you support text, audio and image clips and the most recent clip is an
-audio file, any text and image clips on the history buffer will be ignored by this routine. If you want to scan all
-available clip items, set the Datatype parameter to NULL and repeatedly call this method with incremented Index numbers
-until the error code ERR_OutOfRange is returned.
+The most recently clipped datatype is always returned.  To scan for all available clip items, set the Datatype
+parameter to zero and repeatedly call this method with incremented Index numbers until the error code ERR_OutOfRange
+is returned.
 
 On success this method will return a list of files (terminated with a NULL entry) in the Files parameter.  Each file is
-a readable clipboard entry - how you read it depends on the resulting Datatype.  Additionally, the IdentifyFile()
-function could be used to find a class that supports the data.  The resulting Files array is a memory allocation that
-must be freed with a call to ~Core.FreeMemory().
+a readable clipboard entry - how the client reads it depends on the resulting Datatype.  Additionally, the
+IdentifyFile() function could be used to find a class that supports the data.  The resulting Files array is a memory
+allocation that must be freed with a call to ~Core.FreeMemory().
 
-If this method returns the CEF_DELETE flag in the Flags parameter, you must delete the source files after successfully
-copying out the data.  If you are not successful in your operation, do not proceed with the deletion or the user will
-have lost the original data.  When cutting and pasting files within the file system, simply using the file system's
-'move file' functionality may be useful for fast file transfer.
+If this method returns the CEF_DELETE flag in the Flags parameter, the client must delete the source files after
+successfully copying the data.  When cutting and pasting files within the file system, using ~Core.MoveFile() is
+recommended as the most efficient method.
 
 -INPUT-
-int(CLIPTYPE) Datatype: The types of data that you recognise for retrieval are specified here (for example CLIPTYPE_TEXT, CLIPTYPE_AUDIO, CLIPTYPE_FILE...).  You may logical-OR multiple data types together.  This parameter will be updated to reflect the retrieved data type when the method returns.
-int Index: If the Datatype parameter is NULL, this parameter may be set to the index of the clip item that you want to retrieve.
-!array(str) Files: The resulting location(s) of the requested clip data are returned in this parameter; terminated with a NULL entry.  You are required to free the returned array with FreeMemory().
+&int(CLIPTYPE) Datatype: Specify accepted data types here as OR'd flags.  This parameter will be updated to reflect the retrieved data type when the method returns.
+int Index: If the Datatype parameter is zero, this parameter may be set to the index of the desired clip item.
+!array(cstr) Files: The resulting location(s) of the requested clip data are returned in this parameter; terminated with a NULL entry.  You are required to free the returned array with FreeMemory().
 &int(CEF) Flags: Result flags are returned in this parameter.  If CEF_DELETE is set, you need to delete the files after use in order to support the 'cut' operation.
 
 -ERRORS-
@@ -797,7 +686,7 @@ static ERROR CLIPBOARD_GetFiles(objClipboard *Self, struct clipGetFiles *Args)
 {
    if (!Args) return PostError(ERR_NullArgs);
 
-   LogMsg("Datatype: $%.8x", Args->Datatype);
+   LogBranch("Cluster: %d, Datatype: $%.8x", Self->ClusterID, Args->Datatype);
 
    Args->Files = NULL;
 
@@ -807,17 +696,12 @@ static ERROR CLIPBOARD_GetFiles(objClipboard *Self, struct clipGetFiles *Args)
    if (!AccessMemory(Self->ClusterID, MEM_READ_WRITE, 3000, &header)) {
       struct ClipEntry *clips = (struct ClipEntry *)(header + 1);
 
-      UBYTE buffer[100];
-      STRING files, str;
-      ERROR error;
-      WORD index, i, j;
-      LONG len;
+      WORD index, i;
 
-      if (!Args->Datatype) {
-         // Retrieve the most recent clip item, or the one indicated in the Index parameter.
-
+      if (!Args->Datatype) { // Retrieve the most recent clip item, or the one indicated in the Index parameter.
          if ((Args->Index < 0) OR (Args->Index >= MAX_CLIPS)) {
             ReleaseMemory(header);
+            LogBack();
             return ERR_OutOfRange;
          }
 
@@ -829,24 +713,34 @@ static ERROR CLIPBOARD_GetFiles(objClipboard *Self, struct clipGetFiles *Args)
          }
       }
 
-      if (clips[index].TotalItems < 1) {
-         LogErrorMsg("No items are set for datatype $%x at clip index %d", clips[index].Datatype, index);
+      if (index >= MAX_CLIPS) {
+         LogErrorMsg("No clips available for datatype $%x", Args->Datatype);
          ReleaseMemory(header);
+         LogBack();
+         return ERR_NoData;
+      }
+      else if (clips[index].TotalItems < 1) {
+         LogErrorMsg("No items are allocated to datatype $%x at clip index %d", clips[index].Datatype, index);
+         ReleaseMemory(header);
+         LogBack();
          return ERR_NoData;
       }
 
-      STRING *list = NULL;
+      ERROR error;
+      STRING files;
+      CSTRING *list = NULL;
       if (clips[index].Files) {
          if (!(error = AccessMemory(clips[index].Files, MEM_READ, 3000, &files))) {
             MEMINFO info;
             if (!MemoryIDInfo(clips[index].Files, &info)) {
-               if (!AllocMemory(((clips[index].TotalItems+1) * sizeof(STRING)) + info.Size, MEM_DATA, &list, NULL)) {
+               if (!AllocMemory(((clips[index].TotalItems+1) * sizeof(STRING)) + info.Size, MEM_DATA|MEM_CALLER, &list, NULL)) {
                   CopyMemory(files, list + clips[index].TotalItems + 1, info.Size);
                }
                else {
                   ReleaseMemory(files);
                   ReleaseMemory(header);
-                  return PostError(ERR_AllocMemory);
+                  LogBack();
+                  return ERR_AllocMemory;
                }
             }
             ReleaseMemory(files);
@@ -855,25 +749,28 @@ static ERROR CLIPBOARD_GetFiles(objClipboard *Self, struct clipGetFiles *Args)
             LogErrorMsg("Failed to access file string #%d, error %d.", clips[index].Files, error);
             if (error IS ERR_MemoryDoesNotExist) clips[index].Files = 0;
             ReleaseMemory(header);
-            return PostError(ERR_AccessMemory);
+            LogBack();
+            return ERR_AccessMemory;
          }
       }
       else {
          if (clips[index].Datatype IS CLIPTYPE_FILE) {
             LogErrorMsg("File datatype detected, but no file list has been set.");
             ReleaseMemory(header);
+            LogBack();
             return ERR_Failed;
          }
 
          // Calculate the length of the file strings
 
-         len = StrFormat(buffer, sizeof(buffer), "clipboard:%s%d.000", GetDatatype(clips[index].Datatype), clips[index].ID);
+         char buffer[100];
+         LONG len = StrFormat(buffer, sizeof(buffer), "clipboard:%s%d.000", GetDatatype(clips[index].Datatype), clips[index].ID);
          len = ((len + 1) * clips[index].TotalItems) + 1;
 
          // Allocate the list array with some room for the strings at the end and then fill it with data.
 
          if (!AllocMemory(((clips[index].TotalItems+1) * sizeof(STRING)) + len, MEM_DATA|MEM_CALLER, &list, NULL)) {
-            str = (STRING)(list + clips[index].TotalItems + 1);
+            STRING str = (STRING)(list + clips[index].TotalItems + 1);
             for (i=0; i < clips[index].TotalItems; i++) {
                if (i > 0) *str++ = '\0'; // Each file is separated with a NULL character
                StrFormat(str, len, "clipboard:%s%d.%.3d", GetDatatype(clips[index].Datatype), clips[index].ID, i);
@@ -883,16 +780,16 @@ static ERROR CLIPBOARD_GetFiles(objClipboard *Self, struct clipGetFiles *Args)
          }
          else {
             ReleaseMemory(header);
-            return PostError(ERR_AllocMemory);
+            LogBack();
+            return ERR_AllocMemory;
          }
       }
 
       // Setup the pointers in the string list
 
-      str = (STRING)(list + clips[index].TotalItems + 1);
-      j = 0;
+      CSTRING str = (CSTRING)(list + clips[index].TotalItems + 1);
+      LONG j = 0;
       for (i=0; i < clips[index].TotalItems; i++) {
-         LogMsg("Analysis: %d:%d: %s", i, j, str + j);
          list[i] = str + j;
          while (str[j]) j++;  // Go to the end of the string to get to the next entry
          j++;
@@ -906,17 +803,21 @@ static ERROR CLIPBOARD_GetFiles(objClipboard *Self, struct clipGetFiles *Args)
       Args->Flags    = clips[index].Flags;
 
       ReleaseMemory(header);
+      LogBack();
       return ERR_Okay;
    }
-   else return PostError(ERR_AccessMemory);
+   else {
+      LogBack();
+      return ERR_AccessMemory;
+   }
 }
 
 /*****************************************************************************
 
 -ACTION-
-GetVar: Special field types are supported via unlisted fields.
+GetVar: Special field types are supported as variables.
 
-The following unlisted field types are supported by the Clipboard class:
+The following variable field types are supported by the Clipboard class:
 
 <fields>
 <fld type="STRING" name="File(Datatype,Index)">Where Datatype is a recognised data format (e.g. TEXT) and Index is between 0 and the Items() field.  If you don't support multiple clipped items, use an index of zero.  On success, this field will return a file location that points to the clipped data.</>
@@ -929,12 +830,8 @@ The following unlisted field types are supported by the Clipboard class:
 
 static ERROR CLIPBOARD_GetVar(objClipboard *Self, struct acGetVar *Args)
 {
-   struct ClipHeader *header;
-   struct ClipEntry *clip, *clips;
    char datatype[20], index[20];
-   STRING files;
-   WORD i, j, total;
-   LONG value;
+   WORD i, j;
 
    if (!Args) return PostError(ERR_NullArgs);
 
@@ -954,7 +851,7 @@ static ERROR CLIPBOARD_GetVar(objClipboard *Self, struct acGetVar *Args)
 
       // Convert the datatype string into its equivalent value
 
-      value = 0;
+      LONG value = 0;
       for (i=0; glDatatypes[i].Name; i++) {
          if (!StrMatch(datatype, glDatatypes[i].Name)) {
             value = glDatatypes[i].Value;
@@ -968,12 +865,13 @@ static ERROR CLIPBOARD_GetVar(objClipboard *Self, struct acGetVar *Args)
       for (j=0; (Args->Field[i]) AND (Args->Field[i] != ')'); i++) index[j++] = Args->Field[i];
       index[j] = 0;
 
+      struct ClipHeader *header;
       if (!AccessMemory(Self->ClusterID, MEM_READ_WRITE, 3000, &header)) {
          // Find the clip for the requested datatype
 
-         clips = (struct ClipEntry *)(header + 1);
+         struct ClipEntry *clips = (struct ClipEntry *)(header + 1);
 
-         clip = NULL;
+         struct ClipEntry *clip = NULL;
          for (i=0; i < MAX_CLIPS; i++) {
             if (clips[i].Datatype IS value) {
                clip = &clips[i];
@@ -982,13 +880,14 @@ static ERROR CLIPBOARD_GetVar(objClipboard *Self, struct acGetVar *Args)
          }
 
          if (clip) {
-            i = StrToInt(index);
+            LONG i = StrToInt(index);
             if ((i >= 0) AND (i < clip->TotalItems)) {
                if (clip->Files) {
+                  STRING files;
                   if (!AccessMemory(clip->Files, MEM_READ, 3000, &files)) {
                      // Find the file path that we're looking for
 
-                     j = 0;
+                     LONG j = 0;
                      while ((i) AND (j < clip->FilesLen)) {
                         for (; files[j]; j++);
                         if (j < clip->FilesLen) j++; // Skip null byte separator
@@ -1022,7 +921,7 @@ static ERROR CLIPBOARD_GetVar(objClipboard *Self, struct acGetVar *Args)
 
       // Convert the datatype string into its equivalent value
 
-      value = 0;
+      LONG value = 0;
       for (i=0; glDatatypes[i].Name; i++) {
          if (!StrMatch(datatype, glDatatypes[i].Name)) {
             value = glDatatypes[i].Value;
@@ -1032,10 +931,11 @@ static ERROR CLIPBOARD_GetVar(objClipboard *Self, struct acGetVar *Args)
 
       // Calculate the total number of items available for this datatype
 
-      total = 0;
+      LONG total = 0;
       if (value) {
+         struct ClipHeader *header;
          if (!AccessMemory(Self->ClusterID, MEM_READ, 3000, &header)) {
-            clips = (struct ClipEntry *)(header + 1);
+            struct ClipEntry *clips = (struct ClipEntry *)(header + 1);
             for (i=0; i < MAX_CLIPS; i++) {
                if (clips[i].Datatype IS value) {
                   total = clips[i].TotalItems;
@@ -1092,206 +992,20 @@ static ERROR CLIPBOARD_NewObject(objClipboard *Self, APTR Void)
 
 /*****************************************************************************
 
--METHOD-
-PasteFiles: Performs the 'paste' operation on file items.
+-FIELD-
+Cluster: Identifies a unique cluster of items targeted by a clipboard object.
 
-The PasteFiles method is used to implement file-paste operations for the CLIPTYPE_FILE datatype in a convenient way for the
-developer.  The correct handling for both copy and cut operations is implemented for you.
+By default, all clipboard objects will operate on a global cluster of clipboard entries.  This global cluster is used
+by all applications, so a cut operation in application 1 would transfer selected items during a paste operation to
+application 2.
 
-You are required to specify a destination path for the file items.  This should be a directory (denoted by a trailing
-slash or colon character), although you may specify a single target file if you wish.
+If the Cluster field is set to zero prior to initialisation, a unique cluster will be assigned to that clipboard object.
+The ID of that cluster can be read from the Cluster field at any time and used in the creation of new clipboard objects.
+By sharing the ID with other applications, a private clipboard can be created that does not impact on the user's cut
+and paste operations.
 
-Confirmation windows are automatically handled by this routine when duplicate file names or errors are encountered
-during processing.  Any windows will open on whatever surface you specify as the Target (this should be set to either
-the Desktop object, or a screen that you have created).  If the Target is set to NULL, the routine will discover the
-most appropriate space for opening new windows. If the Target is set to -1, the routine will overwrite all files by
-default and not inform the user if errors are encountered.
-
--INPUT-
-cstr Dest: The destination path for the file items.  Must be identifiable as a directory location, otherwise the file(s) will be copied to a destination file.
-oid Target: Set this parameter to a valid surface and the paste operation will open interactive windows (such as progress bars and user confirmations) during the paste operation.  This is usually set to the "Desktop" object, which is also the default if this argument is NULL.  Use a value of -1 if you don't want to provide feedback to the user.
-
--ERRORS-
-Okay: The paste operation was performed successfully (this code is returned even if there are no files to be pasted).
-Args
-NullArgs
-MissingPath
-File: A non-specific file error occurred during the paste operation.
--END-
-
-*****************************************************************************/
-
-static CSTRING PasteConfirm = "STRING:\n\
-   require 'gui/dialog'\n\
-   local clip = obj.find(arg('clipboard'))\n\
-   local dlg = gui.dialog.message({\n\
-      type    = 'attention'\n\
-      buttons = {{id=-1,text='No'},{id=1,text='Yes'}},\n\
-      title   = 'Confirmation Required'\n\
-      wait    = true,\n\
-      message = 'You are about to overwrite this location - should it be replaced?\n\n' .. arg('file','NIL')\n\
-   })\n\
-";
-
-static ERROR CLIPBOARD_PasteFiles(objClipboard *Self, struct clipPasteFiles *Args)
-{
-   struct rkFunction callback;
-   OBJECTID dialogid;
-   OBJECTPTR dialog;
-   STRING *list;
-   char dest[512];
-   LONG type;
-   ERROR error;
-   WORD i, findex, dindex;
-
-   if (!Args) return PostError(ERR_NullArgs);
-   if ((!Args->Dest) OR (!Args->Dest[0])) return PostError(ERR_MissingPath);
-
-   LogBranch("Dest: %s, Target: %d", Args->Dest, Args->TargetID);
-
-   UBYTE remove_clip = FALSE;
-   Self->Response = RSP_YES;
-   Self->ProgressTime = PreciseTime();
-   Self->ProgressTarget = Args->TargetID;
-
-   if (Self->ProgressDialog) { acFree(Self->ProgressDialog); Self->ProgressDialog = NULL; }
-
-   struct clipGetFiles get;
-   get.Datatype = CLIPTYPE_FILE;
-   if (!Action(MT_ClipGetFiles, Self, &get)) {
-      // Scan the file list and move or copy each file to the destination directory
-
-      error = ERR_Okay;
-      list = get.Files;
-      for (i=0; list[i]; i++) {
-         if (Self->Response != RSP_YES_ALL) Self->Response = RSP_YES; // Reset Response to YES default
-
-         // Determine the index at which the source filename starts
-
-         for (findex=0; list[i][findex]; findex++);
-         if ((list[i][findex-1] IS '/') OR (list[i][findex-1] IS ':') OR (list[i][findex-1] IS '\\')) findex--;
-         while ((findex > 0) AND (list[i][findex-1] != '/') AND (list[i][findex-1] != ':') AND (list[i][findex-1] != '\\')) findex--;
-
-         // Copy the source's filename to the end of the destination path
-
-         dindex = StrCopy(Args->Dest, dest, sizeof(dest)-1);
-         if ((dest[dindex-1] IS '/') OR (dest[dindex-1] IS '\\') OR (dest[dindex-1] IS ':')) {
-            StrCopy(list[i]+findex, dest+dindex, sizeof(dest)-dindex);
-         }
-
-         // Check if the destination already exists
-
-         if ((Self->Response != RSP_YES_ALL) AND (Self->ProgressTarget != -1)) {
-            if (!StrMatch(list[i], dest)) {
-               if (get.Flags & CEF_DELETE) {
-                  continue; // Do nothing for move operations when the source and destination are identical
-               }
-               else {
-                  // The source and destination strings are exactly identical.  In this case, the destination will be
-                  // "Copy of [Source File]"
-
-                  if ((dest[dindex] >= 'A') AND (dest[dindex] <= 'Z')) dindex += StrCopy("Copy of ", dest+dindex, sizeof(dest)-dindex);
-                  else dindex += StrCopy("copy of ", dest+dindex, sizeof(dest)-dindex);
-
-                  dindex += StrCopy(list[i]+findex, dest+dindex, sizeof(dest)-dindex);
-               }
-            }
-
-            // Request user confirmation
-
-            STRING path;
-
-            if (!ResolvePath(dest, RSF_NO_FILE_CHECK, &path)) { // Resolve to avoid multi-directory assign problems
-               if ((!AnalysePath(path, &type)) AND ((type IS LOC_FILE) OR (type IS LOC_DIRECTORY))) {
-                  Self->Response = RSP_CANCEL;
-                  run_script(PasteConfirm, Self->ProgressTarget, dest);
-                  if (!Self->ProgressDialog) Self->ProgressTime = PreciseTime(); // Reset the start time whenever a user dialog is presented
-               }
-
-               FreeMemory(path);
-            }
-         }
-
-         if (Self->Response IS RSP_CANCEL) break;
-
-         if ((Self->Response != RSP_YES) AND (Self->Response != RSP_YES_ALL)) {
-            LogMsg("Skipping file %s, response %d", list[i], Self->Response);
-            continue;
-         }
-
-         // Copy/Move the file
-
-         while (dest[dindex]) dindex++;
-         if ((dest[dindex-1] IS '/') OR (dest[dindex-1] IS '\\')) dest[dindex-1] = 0;
-
-         SET_FUNCTION_STDC(callback, (APTR)&paste_feedback);
-         FileFeedback(&callback, Self, 0);
-
-         if (get.Flags & CEF_DELETE) {
-            if (!(error = MoveFile(list[i], dest))) {
-               remove_clip = TRUE;
-            }
-         }
-         else error = CopyFile(list[i], dest);
-
-         // If an error occurred, tell the user and stop the pasting process
-
-         if (error IS ERR_Cancelled) {
-            error = ERR_Okay;
-            break;
-         }
-         else if (error) {
-            LogErrorMsg("Error during paste operation [%d]: %s", error, GetErrorMsg(error));
-
-            if (Self->ProgressTarget != -1) {
-               char buffer[256];
-
-               if (error IS ERR_OutOfSpace) {
-                  StrFormat(buffer, sizeof(buffer), "There is not enough space in the destination drive to copy this file:\n\n%s", list[i]);
-               }
-               else if (error IS ERR_Permissions) {
-                  StrFormat(buffer, sizeof(buffer), "You do not have the necessary permissions to copy this file:\n\n%s", list[i]);
-               }
-               else StrFormat(buffer, sizeof(buffer), "An error occurred while copying this file:\n\n%s\n\n%s.  Process cancelled.", list[i], GetErrorMsg(error));
-
-               if (!CreateObject(ID_DIALOG, 0, &dialog,
-                     FID_Owner|TLONG,  Self->Head.TaskID,
-                     FID_Target|TLONG, Self->ProgressTarget,
-                     FID_Type|TSTR,    "ERROR",
-                     FID_Options|TSTR, "Okay",
-                     FID_Title|TSTR,   "File Paste Failure",
-                     FID_String|TSTR,  buffer,
-                     FID_Flags|TSTR,   (Self->Flags & CLF_WAIT) ? "WAIT" : NULL,
-                     TAGEND)) {
-                  acShow(dialog);
-               }
-            }
-
-            error = ERR_File;
-            break;
-         }
-      }
-
-      if (!FastFindObject("PasteConfirm", ID_DIALOG, &dialogid, 1, 0)) {
-         acFreeID(dialogid);
-      }
-
-      if (Self->ProgressDialog) { acFree(Self->ProgressDialog); Self->ProgressDialog = NULL; }
-
-      if (remove_clip) clipDelete(Self, CLIPTYPE_FILE); // For cut-paste operations
-
-      FreeMemory(list);
-      LogBack();
-      return error;
-   }
-   else {
-      LogMsg("There are no files to paste from the clipboard.");
-      LogBack();
-      return ERR_Okay;
-   }
-}
-
-/*****************************************************************************
+-FIELD-
+Flags: Optional flags.
 
 -FIELD-
 RequestHandler: Provides a hook for responding to drag and drop requests.
@@ -1329,224 +1043,6 @@ static ERROR SET_RequestHandler(objClipboard *Self, FUNCTION *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
-
--FIELD-
-Cluster: Identifies a unique cluster of items targeted by a clipboard object.
-
-By default, all clipboard objects will operate on a global cluster of clipboard entries.  This global cluster is used
-by all applications, so a cut operation in application 1 would transfer selected items during a paste operation to
-application 2.
-
-If the Cluster field is set to zero prior to initialisation, a unique cluster will be assigned to that clipboard object.
-The ID of that cluster can be read from the Cluster field at any time and used in the creation of new clipboard objects.
-By sharing the ID with other applications, a private clipboard can be created that does not impact on the user's cut
-and paste operations.
-
--FIELD-
-Flags: Optional flags.
-
--FIELD-
-Response: Contains the last value received from a user request window.
-
-If a clipboard operation requires a user confirmation request, this field will contain the response value.  The user
-will typically be asked for a response prior to delete operations and in cases of existing file replacement.
-
--END-
-
-*****************************************************************************/
-
-const char delete_feedback_script[] = "\
-   require 'gui/dialog'\n\
-\n\
-   local dlg = gui.dialog.message({\n\
-      image   = 'icons:tools/eraser',\n\
-      title   = 'File Deletion Progress',\n\
-      message = 'Deleting...',\n\
-      options = { id=-1, text='Cancel', icon='items/cancel' },\n\
-      feedback = function(Dialog, Response, State)\n\
-         if Response then\n\
-            if Response.id == -1 then\n\
-               obj.find('self')._status = '1'\n\
-            end\n\
-         else\n\
-            obj.find('self')._status = '2'\n\
-         end\n\
-      end\n\
-   })\n\
-\n\
-function update_msg(Message)\n\
-   dlg.message(Message)\n\
-end\n";
-
-static LONG delete_feedback(struct FileFeedback *Feedback)
-{
-   objClipboard *Self = (objClipboard *)Feedback->User;
-
-   LONG len = StrLength(Feedback->Path);
-   if (len >= (WORD)sizeof(Self->LastFile)) {
-      Self->LastFile[0] = '.'; Self->LastFile[1] = '.'; Self->LastFile[2] = '.';
-      StrCopy(Feedback->Path + len - (sizeof(Self->LastFile) - 4), Self->LastFile+3, sizeof(Self->LastFile)-3);
-   }
-   else StrCopy(Feedback->Path, Self->LastFile, sizeof(Self->LastFile));
-
-   if (Self->ProgressTarget IS -1) return FFR_OKAY;
-
-   if (Self->ProgressDialog) {
-      char response[3];
-      if (!acGetVar(Self->ProgressDialog, "response", response, sizeof(response))) {
-         if (response[0] IS '1') return FFR_ABORT;
-         else if (response[0] IS '2') {
-            // If the window was closed then continue deleting files, don't bother the user with further messages.
-
-            acFree(Self->ProgressDialog);
-            Self->ProgressDialog = NULL;
-            Self->ProgressTarget = -1;
-            return FFR_OKAY;
-         }
-      }
-   }
-
-   // If the file processing exceeds a set time period, popup a progress window
-
-   if ((!Self->ProgressDialog) AND ((PreciseTime() - Self->ProgressTime) > 500000LL)) {
-      if (!CreateObject(ID_SCRIPT, NF_INTEGRAL, (OBJECTPTR *)&Self->ProgressDialog,
-            FID_Target|TLONG,   Self->ProgressTarget,
-            FID_Statement|TSTR, delete_feedback_script,
-            TAGEND)) {
-         acShow(Self->ProgressDialog);
-      }
-   }
-
-   if (Self->ProgressDialog) {
-      CSTRING str = Feedback->Path;
-      LONG i = len;
-      while ((i > 0) AND (str[i-1] != '/') AND (str[i-1] != '\\') AND (str[i-1] != ':')) i--;
-
-      char buffer[256];
-      StrFormat(buffer, sizeof(buffer), "Deleting: %s", str+i);
-      SetString(Self->ProgressDialog, FID_String, buffer);
-      Self->ProgressTime = PreciseTime();
-
-      ProcessMessages(0, 0);
-   }
-
-   return FFR_OKAY;
-}
-
-//****************************************************************************
-
-const char paste_feedback_script[] = "\
-   require 'gui/dialog'\n\
-\n\
-   local dlg = gui.dialog.message({\n\
-      image   = 'icons:tools/copy',\n\
-      title   = 'File Transfer Progress',\n\
-      message = 'Copying...\\n\\nPlease wait...',\n\
-      options = { id=1, text='Cancel', icon='items/cancel' },\n\
-      feedback = function(Dialog, Response, State)\n\
-         if Response then\n\
-            if Response.id == 1 then\n\
-               obj.find('self')._status = '1'\n\
-            end\n\
-         else\n\
-            obj.find('self')._status = '2'\n\
-         end\n\
-      end\n\
-   })\n\
-\n\
-function update_msg(Message)\n\
-   dlg.message(Message)\n\
-end\n";
-
-static LONG paste_feedback(struct FileFeedback *Feedback)
-{
-   char buffer[256];
-
-   objClipboard *Self = (objClipboard *)Feedback->User;
-
-   LONG len = StrLength(Feedback->Path);
-   if (len >= (WORD)sizeof(Self->LastFile)) {
-      Self->LastFile[0] = '.'; Self->LastFile[1] = '.'; Self->LastFile[2] = '.';
-      StrCopy(Feedback->Path + len - (sizeof(Self->LastFile) - 4), Self->LastFile+3, sizeof(Self->LastFile)-3);
-   }
-   else StrCopy(Feedback->Path, Self->LastFile, sizeof(Self->LastFile));
-
-   if (Self->ProgressTarget IS -1) return FFR_OKAY;
-
-   if (Self->ProgressDialog) {
-      char response[3];
-      if (!acGetVar(Self->ProgressDialog, "response", response, sizeof(response))) {
-         if (response[0] IS '1') return FFR_ABORT;
-         else if (response[0] IS '2') {
-            // If the window was closed then continue deleting files, don't bother the user with further messages.
-
-            acFree(Self->ProgressDialog);
-            Self->ProgressDialog = NULL;
-            Self->ProgressTarget = -1;
-            return FFR_OKAY;
-         }
-      }
-   }
-
-   // If the file processing exceeds a set time period, popup a progress window
-
-   if ((!Self->ProgressDialog) AND ((PreciseTime() - Self->ProgressTime) > 500000LL)) {
-      if (!CreateObject(ID_SCRIPT, NF_INTEGRAL, (OBJECTPTR *)&Self->ProgressDialog,
-            FID_Target|TLONG,   Self->ProgressTarget,
-            FID_Statement|TSTR, paste_feedback_script,
-            TAGEND)) {
-         acShow(Self->ProgressDialog);
-      }
-   }
-
-   if (Self->ProgressDialog) {
-      if ((Feedback->Position IS 0) OR (Feedback->Size > 32768)) {
-         STRING str = Feedback->Path;
-         WORD i = len;
-         while ((i > 0) AND (str[i-1] != '/') AND (str[i-1] != '\\') AND (str[i-1] != ':')) i--;
-
-         if (Feedback->Position IS 0) {
-            if (Feedback->Size >= 1048576) StrFormat(buffer, sizeof(buffer), "Copying: %s\n\n%.2f MB", str+i, (DOUBLE)Feedback->Size / 1048576.0);
-            else StrFormat(buffer, sizeof(buffer), "Copying: %s\n\n%.2f KB", str+i, (DOUBLE)Feedback->Size / 1024.0);
-            struct ScriptArg args[] = { { "Message", FD_STRING, { .Address = buffer } } };
-            scExec(Self->ProgressDialog, "update_msg", args, 1);
-            Self->ProgressTime = PreciseTime();
-
-            ProcessMessages(0, 0);
-         }
-         else if (PreciseTime() - Self->ProgressTime > 50000LL) {
-            if (Feedback->Size >= 1048576) StrFormat(buffer, sizeof(buffer), "Copying: %s\n\n%.2f / %.2f MB", str+i, (DOUBLE)Feedback->Position / 1048576.0, (DOUBLE)Feedback->Size / 1048576.0);
-            else StrFormat(buffer, sizeof(buffer), "Copying: %s\n\n%.2f / %.2f KB", str+i, (DOUBLE)Feedback->Position / 1024.0, (DOUBLE)Feedback->Size / 1024.0);
-            struct ScriptArg args[] = { { "Message", FD_STRING, { .Address = buffer } } };
-            scExec(Self->ProgressDialog, "update_msg", args, 1);
-            Self->ProgressTime = PreciseTime();
-
-            ProcessMessages(0, 0);
-         }
-      }
-   }
-
-   return FFR_OKAY;
-}
-
-//****************************************************************************
-
-static void run_script(CSTRING Statement, OBJECTID Target, CSTRING File)
-{
-   if (Statement) {
-      OBJECTPTR script;
-      if (!CreateObject(ID_FLUID, NF_INTEGRAL, &script,
-            FID_String|TSTR,  Statement,
-            FID_Target|TLONG, Target,
-            TAGEND)) {
-         acSetVar(script, "File", File);
-         acActivate(script);
-         acFree(script);
-      }
-   }
-}
-
 //****************************************************************************
 
 static void free_clip(objClipboard *Self, struct ClipEntry *Clip)
@@ -1581,16 +1077,11 @@ static void free_clip(objClipboard *Self, struct ClipEntry *Clip)
 static ERROR add_clip(objClipboard *Self, LONG Datatype, CSTRING File, LONG Flags,
    CLASSID ClassID, LONG TotalItems, LONG *Counter)
 {
-   struct ClipHeader *header;
-   struct ClipEntry clip, tmp, *clips;
-   STRING str;
-   ERROR error;
-   WORD i;
-
-   LogBranch("Datatype: $%x, File: %s, Flags: $%x, Class: %d, Items: %d", Datatype, File, Flags, ClassID, TotalItems);
+   LogF("~add_clip()","Datatype: $%x, File: %s, Flags: $%x, Class: %d, Items: %d", Datatype, File, Flags, ClassID, TotalItems);
 
    Flags |= Self->Flags & CLF_HOST; // Automatically add the CLF_HOST flag
 
+   struct ClipEntry clip, tmp, *clips;
    ClearMemory(&clip, sizeof(clip));
 
    if (!TotalItems) {
@@ -1599,20 +1090,22 @@ static ERROR add_clip(objClipboard *Self, LONG Datatype, CSTRING File, LONG Flag
       return ERR_NullArgs;
    }
 
+   struct ClipHeader *header;
    if (!AccessMemory(Self->ClusterID, MEM_READ_WRITE, 3000, &header)) {
       clips = (struct ClipEntry *)(header + 1);
 
       if (Flags & CEF_EXTEND) {
          // Search for an existing clip that matches the requested datatype
+         WORD i;
          for (i=0; i < MAX_CLIPS; i++) {
             if (clips[i].Datatype IS Datatype) {
-               MSG("Found clip to extend.");
+               LogMsg("Extending existing clip record for datatype $%x.", Datatype);
 
-               error = ERR_Okay;
+               ERROR error = ERR_Okay;
 
                // We have found a matching datatype.  Start by moving the clip to the front of the queue.
 
-               CopyMemory(clips+i, &tmp, sizeof(struct ClipEntry)); // !!! We need to shift the list down, not swap entries !!!
+               CopyMemory(clips+i, &tmp, sizeof(struct ClipEntry)); // TODO We need to shift the list down, not swap entries
                CopyMemory(clips, clips+i, sizeof(struct ClipEntry));
                CopyMemory(&tmp, clips, sizeof(struct ClipEntry));
 
@@ -1620,6 +1113,7 @@ static ERROR add_clip(objClipboard *Self, LONG Datatype, CSTRING File, LONG Flag
 
                if (File) {
                   if (clips->Files) {
+                     STRING str;
                      if (!AccessMemory(clips->Files, MEM_READ_WRITE, 3000, &str)) {
                         MEMINFO meminfo;
                         if (!MemoryIDInfo(clips->Files, &meminfo)) {
@@ -1678,13 +1172,14 @@ static ERROR add_clip(objClipboard *Self, LONG Datatype, CSTRING File, LONG Flag
       clip.ID         = ++header->Counter;
       if (Counter) *Counter = clip.ID;
 
-      // Remove any existing clips that match this data type number
+      // Remove any existing clips that match this datatype
 
+      WORD i;
       for (i=0; i < MAX_CLIPS; i++) {
          if (clips[i].Datatype IS Datatype) free_clip(Self, &clips[i]);
       }
 
-      // If an entry has to be deleted due to a full historical buffer, kill it off.
+      // Remove the oldest clip if the history buffer is full.
 
       if (clips[MAX_CLIPS-1].Datatype) {
          free_clip(Self, &clips[MAX_CLIPS-1]);
@@ -1858,9 +1353,8 @@ void report_windows_clip_utf16(UWORD *String)
 #include "class_clipboard_def.c"
 
 static const struct FieldArray clFields[] = {
-   { "Response",       FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clClipboardResponse, NULL, NULL }, // NB: Is writeable so that our confirmation boxes can change it
-   { "Flags",          FDF_LONGFLAGS|FDF_RI,       (MAXINT)&clClipboardFlags, NULL, NULL },
-   { "Cluster",        FDF_LONG|FDF_RW,            0, NULL, NULL },
-   { "RequestHandler", FDF_FUNCTIONPTR|FDF_RW,     0, GET_RequestHandler, SET_RequestHandler },
+   { "Flags",            FDF_LONGFLAGS|FDF_RI,       (MAXINT)&clClipboardFlags, NULL, NULL },
+   { "Cluster",          FDF_LONG|FDF_RW,            0, NULL, NULL },
+   { "RequestHandler",   FDF_FUNCTIONPTR|FDF_RW,     0, GET_RequestHandler, SET_RequestHandler },
    END_FIELD
 };
