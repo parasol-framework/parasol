@@ -24,7 +24,6 @@ static int object_call(lua_State *Lua)
          LONG resultcount;
          if (!(error = build_args(Lua, glActions[action_id].Args, glActions[action_id].Size, argbuffer, &resultcount))) {
             if (object->DelayCall) {
-               object->DelayCall = FALSE;
                error = DelayMsg(action_id, object->ObjectID, argbuffer);
             }
             else if (object->prvObject) {
@@ -50,12 +49,14 @@ static int object_call(lua_State *Lua)
          }
 
          lua_pushinteger(Lua, error);
+         results = 1;
 
          // NB: Even if an error is returned, always get the results (any results parameters are nullified prior to
          // function entry and the action can return results legitimately even if an error code is returned - e.g.
          // quite common when returning ERR_Terminate).
 
-         results = 1 + get_results(Lua, glActions[action_id].Args, argbuffer);
+         if (!object->DelayCall) results += get_results(Lua, glActions[action_id].Args, argbuffer);
+         else object->DelayCall = FALSE;
 
          if (release) release_object(object);
       }
@@ -85,7 +86,6 @@ static int object_call(lua_State *Lua)
          LONG resultcount;
          if (!(error = build_args(Lua, methods->Args, methods->Size, argbuffer, &resultcount))) {
             if (object->DelayCall) {
-               object->DelayCall = FALSE;
                error = DelayMsg(action_id, object->ObjectID, &argbuffer);
             }
             else if (object->prvObject) error = Action(action_id, object->prvObject, &argbuffer);
@@ -109,8 +109,10 @@ static int object_call(lua_State *Lua)
          }
 
          lua_pushinteger(Lua, error);
+         results = 1;
 
-         results = 1 + get_results(Lua, methods->Args, argbuffer);
+         if (!object->DelayCall) results += get_results(Lua, methods->Args, argbuffer);
+         else object->DelayCall = FALSE;
 
          if (release) release_object(object);
       }
@@ -371,7 +373,7 @@ static ERROR build_args(lua_State *Lua, const struct FunctionField *args, LONG A
 
 // Note: Please refer to process_results() in fluid_module.c for the 'official' take on result handling.
 
-static LONG get_results(lua_State *Lua, const struct FunctionField *args, APTR ArgBuf)
+static LONG get_results(lua_State *Lua, const struct FunctionField *args, CPTR ArgBuf)
 {
    LONG i;
 
@@ -381,37 +383,31 @@ static LONG get_results(lua_State *Lua, const struct FunctionField *args, APTR A
    LONG of = 0;
    for (i=0; args[i].Name; i++) {
       LONG type = args[i].Type;
-
       if (type & FD_ARRAY) { // Pointer to an array.
          if (sizeof(APTR) IS 8) of = ALIGN64(of);
          if (type & FD_RESULT) {
-            APTR values = ((APTR *)ArgBuf + of)[0];
-            RMSG("Result-Arg: %s, Array: %p", args[i].Name, values);
-
-            LONG total_elements = -1; // Default of -1 will work for null-terminated arrays.
+            LONG total_elements = -1;  // If -1, make_any_table() assumes the array is null terminated.
             if (args[i+1].Type & FD_ARRAYSIZE) {
                const APTR size_var = ((APTR *)(ArgBuf + of + sizeof(APTR)))[0];
                if (args[i+1].Type & FD_LONG) total_elements = ((LONG *)size_var)[0];
                else if (args[i+1].Type & FD_LARGE) total_elements = ((LARGE *)size_var)[0];
-               else LogErrorMsg("Invalid arg %s, flags $%.8x", args[i+1].Name, args[i+1].Type);
+               else LogErrorMsg("Invalid parameter definition for '%s' of $%.8x", args[i+1].Name, args[i+1].Type);
+            }
 
-               if (values) {
-                  make_any_table(Lua, type, args[i].Name, total_elements, values);
-                  if (type & FD_ALLOC) FreeMemory(values);
-               }
-               else lua_pushnil(Lua);
+            CPTR values = ((APTR *)(ArgBuf + of))[0];
+            if (values) {
+               make_any_table(Lua, type, args[i].Name, total_elements, values);
+               if (type & FD_ALLOC) FreeMemory(values);
             }
-            else {
-               LogF("@get_results","Function parameter '%s' incorrectly defined.", args[i].Name);
-               lua_pushnil(Lua);
-            }
+            else lua_pushnil(Lua);
+            total++;
          }
          of += sizeof(APTR);
       }
       else if (type & FD_STR) {
          if (sizeof(APTR) IS 8) of = ALIGN64(of);
          if (type & FD_RESULT) {
-            APTR val = ArgBuf + of;
+            CPTR val = ArgBuf + of;
             RMSG("Result-Arg: %s, Value: %.20s (String)", args[i].Name, ((STRING *)val)[0]);
             lua_pushstring(Lua, ((STRING *)val)[0]);
             if (type & FD_ALLOC) {

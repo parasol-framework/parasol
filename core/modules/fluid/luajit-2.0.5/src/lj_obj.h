@@ -578,6 +578,7 @@ struct lua_State {
   void *cframe;		/* End of C stack frame chain. */
   MSize stacksize;	/* True stack size (incl. LJ_STACK_EXTRA). */
   struct rkScript *Script; // PARASOL PATCHED IN
+  uint8_t ProtectedGlobals; // PARASOL PATCHED IN
 };
 
 #define G(L)			(mref(L->glref, global_State))

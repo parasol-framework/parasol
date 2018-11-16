@@ -683,24 +683,20 @@ static LONG process_results(struct prvFluid *prv, APTR resultsidx, const struct 
          if (argtype & FD_RESULT) {
             if (var) {
                APTR values = ((APTR *)var)[0];
+               LONG total_elements = -1; // If -1, make_any_table() assumes the array is null terminated.
 
-               LONG total_elements = -1; // Default of -1 will work for null-terminated arrays.
                if (args[i+1].Type & FD_ARRAYSIZE) {
                   const APTR size_var = ((APTR *)scan)[0];
                   if (args[i+1].Type & FD_LONG) total_elements = ((LONG *)size_var)[0];
                   else if (args[i+1].Type & FD_LARGE) total_elements = ((LARGE *)size_var)[0];
                   else LogErrorMsg("Invalid arg %s, flags $%.8x", args[i+1].Name, args[i+1].Type);
+               }
 
-                  if (values) {
-                     make_any_table(prv->Lua, argtype, argname, total_elements, values);
-                     if (argtype & FD_ALLOC) FreeMemory(values);
-                  }
-                  else lua_pushnil(prv->Lua);
+               if (values) {
+                  make_any_table(prv->Lua, argtype, argname, total_elements, values);
+                  if (argtype & FD_ALLOC) FreeMemory(values);
                }
-               else {
-                  luaL_error(prv->Lua, "Function parameter '%s' incorrectly defined.", argname);
-                  lua_pushnil(prv->Lua);
-               }
+               else lua_pushnil(prv->Lua);
             }
             else lua_pushnil(prv->Lua);
             result++;

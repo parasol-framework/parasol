@@ -13,7 +13,7 @@ Only objects created through the standard obj.new() interface are permanently lo
 
 static int object_call(lua_State *);
 static ERROR build_args(lua_State *, const struct FunctionField *, LONG, APTR, LONG *);
-static LONG get_results(lua_State *, const struct FunctionField *, APTR);
+static LONG get_results(lua_State *, const struct FunctionField *, CPTR);
 static int getfield(lua_State *, struct object *, CSTRING);
 static ERROR set_object_field(lua_State *, OBJECTPTR, CSTRING, LONG);
 
@@ -587,7 +587,9 @@ static int object_lock(lua_State *Lua)
    }
 
    if (access_object(object)) {
+      LogF("~obj.lock()","Object: %d", object->ObjectID);
       lua_pcall(Lua, 0, 0, 0);
+      LogBack();
       release_object(object);
    }
    return 0;

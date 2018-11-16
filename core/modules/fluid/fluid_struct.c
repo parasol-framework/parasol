@@ -52,7 +52,7 @@ static ERROR named_struct_to_table(lua_State *Lua, CSTRING StructName, APTR Addr
    }
 }
 
-static ERROR struct_to_table(lua_State *Lua, struct references *References, struct structentry *StructDef, APTR Address)
+static ERROR struct_to_table(lua_State *Lua, struct references *References, struct structentry *StructDef, CPTR Address)
 {
    // Do not push a Lua value in the event of an error.
 
@@ -93,7 +93,7 @@ static ERROR struct_to_table(lua_State *Lua, struct references *References, stru
       CSTRING field_name = (CSTRING)(field + 1);
       lua_pushstring(Lua, field_name);
 
-      APTR address = Address + field->Offset;
+      CPTR address = Address + field->Offset;
       LONG type = field->Type;
 
       if (type & FD_ARRAY) {
@@ -102,19 +102,19 @@ static ERROR struct_to_table(lua_State *Lua, struct references *References, stru
                CSTRING struct_name = ((CSTRING)(field + 1)) + field->StructOffset;
                struct structentry *def;
                if (!VarGet(prv->Structs, struct_name, &def, NULL)) {
-                  if (((APTR *)address)[0]) make_any_table(Lua, type, struct_name, -1, address);
+                  if (((CPTR *)address)[0]) make_any_table(Lua, type, struct_name, -1, address);
                   else lua_pushnil(Lua);
                }
             }
             else if (type & FD_STRING)  make_table(Lua, FD_STRING, -1, address);
-            else if (type & FD_OBJECT)  make_table(Lua, FD_OBJECT, -1, ((APTR *)address)[0]);
-            else if (type & FD_POINTER) make_table(Lua, FD_POINTER, -1, ((APTR *)address)[0]);
-            else if (type & FD_FLOAT)   make_table(Lua, FD_FLOAT, -1, ((APTR *)address)[0]);
-            else if (type & FD_DOUBLE)  make_table(Lua, FD_DOUBLE, -1, ((APTR *)address)[0]);
-            else if (type & FD_LARGE)   make_table(Lua, FD_LARGE, -1, ((APTR *)address)[0]);
-            else if (type & FD_LONG)    make_table(Lua, FD_LONG, -1, ((APTR *)address)[0]);
-            else if (type & FD_WORD)    make_table(Lua, FD_WORD, -1, ((APTR *)address)[0]);
-            else if (type & FD_BYTE)    make_table(Lua, FD_BYTE, -1, ((APTR *)address)[0]);
+            else if (type & FD_OBJECT)  make_table(Lua, FD_OBJECT, -1, ((CPTR *)address)[0]);
+            else if (type & FD_POINTER) make_table(Lua, FD_POINTER, -1, ((CPTR *)address)[0]);
+            else if (type & FD_FLOAT)   make_table(Lua, FD_FLOAT, -1, ((CPTR *)address)[0]);
+            else if (type & FD_DOUBLE)  make_table(Lua, FD_DOUBLE, -1, ((CPTR *)address)[0]);
+            else if (type & FD_LARGE)   make_table(Lua, FD_LARGE, -1, ((CPTR *)address)[0]);
+            else if (type & FD_LONG)    make_table(Lua, FD_LONG, -1, ((CPTR *)address)[0]);
+            else if (type & FD_WORD)    make_table(Lua, FD_WORD, -1, ((CPTR *)address)[0]);
+            else if (type & FD_BYTE)    make_table(Lua, FD_BYTE, -1, ((CPTR *)address)[0]);
             else lua_pushnil(Lua);
          }
          else { // It's an embedded array of fixed size.
