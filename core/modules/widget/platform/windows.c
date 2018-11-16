@@ -79,7 +79,6 @@ void winClearClipboard(void)
 
 int winAddClip(int Datatype, void *Data, int Size, int Cut)
 {
-
    UINT format;
    HGLOBAL hdata;
    char * pdata;
@@ -121,9 +120,7 @@ int winAddClip(int Datatype, void *Data, int Size, int Cut)
    }
    else return ERR_Failed;
 
-
    return ERR_NoSupport;
-
 }
 
 //*****************************************************************************
@@ -161,6 +158,8 @@ void winCopyClipboard(void)
    }
 
    MSG("winCopyClipboard()\n");
+
+   glIgnoreClip = GetTickCount(); // Needed to avoid automated successive calls to this function.
 
    if (OleGetClipboard(&pDataObj) IS S_OK) {
       // Enumerate the formats supported by this clip.  It is assumed that the formats

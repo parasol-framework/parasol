@@ -1,0 +1,191 @@
+
+   require 'common'
+   require 'gui/dialog'
+
+file.ui.copy(Source, Dest, Options)
+   local mSys = mod.load('core')
+
+   local src = arg('src')
+   local dest_folder = arg('dest')
+
+   local MAX_PATH = 80
+   local progress_status, progress_dialog
+   local progress_time = mSys.PreciseTime()
+   local remove_clip
+
+-- pasteFeedback() is called for every file that is copied, or multiple times for large files.
+
+local function pasteFeedback(Size, Position, Path, Dest, User, FeedbackID)
+   msg('Paste feedback: ' .. Path .. ' TO ' .. Dest)
+
+   if string.len(Path) >= MAX_PATH then
+      last_file = '...' .. string.sub(Path, -MAX_PATH)
+   else
+      last_file = Path
+   end
+
+   if progress_status == 'cancel' then
+      return FFR_ABORT
+   elseif progress_status == 'closed' then
+      return FFR_OKAY
+   end
+
+   // If the file processing exceeds a set time period, popup a progress window
+
+   if (not progress_dialog) and (mSys.PreciseTime() - progress_time > 500000) then
+      progress_dialog = gui.dialog.message({
+         image   = 'tools/copy',
+         title   = 'File Transfer Progress',
+         message = 'Copying...\nPlease wait...',
+         options = { id=-1, text='Cancel', icon='items/cancel' },
+         feedback = function(Dialog, Response, State)
+            if Response then
+               if Response.id == -1 then
+                  progress_status = 'cancel'
+               end
+            else
+               progress_status = 'closed'
+            end
+         end
+      })
+   end
+
+   if progress_dialog and (Position == 0 or Size > 32768) then
+      local folder, file = file.splitPath(Path)
+
+      local msg
+      if Position == 0 then
+         if Size >= 1048576 then
+            msg = string.format('Copying: %s\n\n%.2f MB', file, Size / 1048576.0)
+         else
+            msg = string.format('Copying: %s\n\n%.2f KB', file, Size / 1024.0)
+         end
+      elseif mSys.PreciseTime() - progress_time > 50000 then
+         if Size >= 1048576 then
+            msg = string.format('Copying: %s\n\n%.2f / %.2f MB', file, Position / 1048576.0, Size / 1048576.0)
+         else
+            msg = string.format('Copying: %s\n\n%.2f / %.2f KB', file, Position / 1024.0, Size / 1024.0)
+         end
+      end
+
+      if msg then
+         progress_dialog.message(msg)
+         progress_time = mSys.PreciseTime()
+         processMessages(0)
+      end
+   end
+end
+
+   local err, _, list, options = clip.mtGetFiles(CLIPTYPE_FILE)
+   if err != ERR_Okay then return end
+
+   // Scan the file list and move or copy each file to the destination directory
+
+   local response = 'yes'
+   local err = ERR_Okay
+   for _, src_path in pairs(list) do
+      if response != 'yes-all' then response = 'yes' end // Reset response to the default
+
+      msg('Processing file source ' .. src_path)
+      local src_folder, src_file = file.splitPath(src_path)
+
+      local dest_path = dest_folder .. src_file
+
+      // Check if the destination already exists
+
+      if response != 'yes-all' then
+         if src_path == dest_path then
+            if bit.band(options, CEF_DELETE) != 0 then
+               goto continue // Do nothing for move operations when the source and destination are identical
+            elseif dest_path:find('^[A-Z].+') then
+               dest_path = dest_folder .. 'Copy of ' .. src_file
+            else
+               dest_path = dest_folder .. 'copy of ' .. src_file
+            end
+         end
+
+         // Request user confirmation
+
+         local err, path = mSys.ResolvePath(dest_path, RSF_NO_FILE_CHECK)
+
+         if err == ERR_Okay then // Resolve to avoid multi-directory volume problems
+            local err, type = mSys.AnalysePath(path)
+            if (err == ERR_Okay) and (type == LOC_FILE or type == LOC_DIRECTORY) then
+               response = 'cancel'
+
+               gui.dialog.message({
+                  type    = 'attention',
+                  buttons = { { id=-1, text='No' }, { id=1, text='Yes' }, { id=2, text='Yes to All' } },
+                  title   = 'Confirmation Required',
+                  wait    = true,
+                  message = 'You are about to overwrite this location - should it be replaced?\n\n' .. src_file,
+                  feedback = function(Dialog, Response, State)
+                     if Response then
+                        if Response.id == -1 then
+                           response = 'no'
+                        elseif Response.id == -1 then
+                           response = 'no-all'
+                        elseif Response.id == 1 then
+                           response = 'yes'
+                        elseif Response.id == 2 then
+                           response = 'yes-all'
+                        end
+                     else
+                        response = 'cancel'
+                     end
+                  end
+               })
+
+               progress_time = mSys.PreciseTime() // Reset the start time whenever a user dialog is presented
+            end
+         end
+      end
+
+      if response == 'cancel' then
+         msg('Paste operation cancelled.')
+         return
+      elseif response != 'yes' and response != 'yes-all' then
+         msg('Skipping file ' .. src_file .. ', response ' .. response)
+      else
+         mSys.FileFeedback(pasteFeedback, nil, 0)
+
+         print('Copy/Move from "' .. src_path .. '" TO "' .. dest_path .. '"')
+         if bit.band(options, CEF_DELETE) != 0 then
+            err = mSys.MoveFile(src_path, dest_path)
+            if err == ERR_Okay then remove_clip = true end
+         else
+            err = mSys.CopyFile(src_path, dest_path)
+         end
+
+         if err == ERR_Cancelled then return end
+
+         if err != ERR_Okay then
+            msg('Error during paste operation [' .. err .. ']: ' .. mSys.GetErrorMsg(err))
+
+            local message
+            if err == ERR_OutOfSpace then
+               message = 'There is not enough space in the destination drive to copy this file:\n\n' .. src_file
+            elseif err == ERR_Permissions then
+               message = 'You do not have the necessary permissions to copy this file:\n\n' .. src_file
+            else
+               message = 'An error occurred while copying this file:\n\n'
+                  .. src_file .. '\n\n' .. mSys.GetErrorMsg(err) .. '.  Process cancelled.'
+            end
+
+            gui.dialog.message({
+               type    = 'error',
+               options = { id=1, text='Okay' },
+               title   = 'File Paste Failure',
+               string  = message,
+               wait    = true
+            })
+
+            return ERR_File
+         end
+      end
+::continue::
+   end
+
+   if remove_clip then clip.mtRemove(CLIPTYPE_FILE) end // For cut-paste operations
+
+   return err

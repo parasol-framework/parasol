@@ -84,11 +84,32 @@ gui.fileview = function(View, Options)
    local lResetTimer, lWatch, lTimer
    local lDeviceInfo
    local lWindow, lFocus
+   local bkgdTasks = { }
    local lDoc
    local lDir
    local lKeyboard
    local lRefresh
    local lVolumeCreatedEvent, lVolumeDeletedEvent
+
+   local copy_list = [[
+   require 'gui/file'
+   local source_size = arg('source:size')
+   if nz(source_size) then
+      glList = { }
+      for i=1, source_size do
+         table.insert(glList, arg('source(' .. (i-1) .. ')'))
+      end
+   else
+      glList = { arg('source') }
+   end
+   if arg('move') then Move = true end
+   file.ui.copy(glList, arg('dest'), { move=Move })
+]]
+
+   local paste_clipboard = [[
+   require 'gui/file'
+   file.ui.paste(arg('dest'), arg('cluster'))
+]]
 
    local function sortNum(Value)
       return string.format('%014.0f', Value)
@@ -472,15 +493,74 @@ gui.fileview = function(View, Options)
       end
    end
 
-   -- Paste from the clipboard to a destination folder.
+   -- Paste from a list of files to a destination folder.
 
-   local function pasteTo(Folder, Cluster)
-      thread.script([[
-         local c = obj.new('clipboard', { cluster = ]] .. Cluster .. [[ })
-         c.mtPasteFiles("]] .. Folder .. [[", nil)
-      ]],
-      function()
-         if not lWatch then self.refresh(true) end
+   local function copyFromList(Folder, List, Move)
+      if not file.isFolder(Folder) then error('Invalid folder target of ' .. Folder) end
+
+      catch(function()
+         msg('copyFromList("' .. Folder ..  ')')
+
+         local params = { '--dest', Folder }
+         if Move then table.insert(params, '--move') end
+         table.insert(params, '--source')
+         table.insert(params, '{')
+         for _, src in pairs(List) do
+            table.insert(params, src)
+         end
+         table.insert(params, '}')
+
+         local task = obj.new('task', {
+            location = 'parasol:fluid',
+            parameters = params,
+            flags = '!Pipe',
+            exitCallback = function(Task)
+               if not lWatch then self.refresh(true) end
+               bkgdTasks[Task.id] = nil
+            end
+         })
+
+         task.acActivate()
+         task.acWrite(copy_list)
+         task.acWrite(nil)
+         bkgdTasks[task.id] = task
+      end,
+      function(Exception)
+         errorDialog('Copy File Failure', 'File copy attempt failed with exception: ' .. Exception.message)
+      end)
+   end
+
+   -- Paste from a clipboard to a folder
+
+   local function pasteFromClipboard(Folder, Cluster)
+      if not file.isFolder(Folder) then error('Invalid folder target of ' .. Folder) end
+
+      msg('pasteFromClipboard("' .. Folder ..  '", ' .. nz(Cluster,'nil') .. ')')
+
+      catch(function()
+         local params = { '--dest', Folder }
+         if Cluster then
+            table.insert(params, '--cluster')
+            table.insert(params, Cluster)
+         end
+
+         local task = obj.new('task', {
+            location = 'parasol:fluid',
+            flags = '!Pipe',
+            parameters = params,
+            exitCallback = function(Task)
+               if not lWatch then self.refresh(true) end
+               bkgdTasks[Task.id] = nil
+            end
+         })
+
+         task.acActivate()
+         task.acWrite(paste_clipboard)
+         task.acWrite(nil)
+         bkgdTasks[task.id] = task
+      end,
+      function(Exception)
+         errorDialog('File Paste Failure', 'File paste attempt failed with exception: ' .. Exception.message)
       end)
    end
 
@@ -545,8 +625,8 @@ gui.fileview = function(View, Options)
             lRenameReplace.var = { table.unpack(Dialog.var), dest=dest }
          else
             catch(function()
-               local file = obj.new('file', { path=Dialog.var.src, flags=FL_READ } )
-               if file.acRename(State.input) == ERR_Okay and not lWatch then
+               local fl = obj.new('file', { path=Dialog.var.src, flags=FL_READ } )
+               if fl.acRename(State.input) == ERR_Okay and not lWatch then
                   local tag = findTag(Dialog.var.name)
                   if tag then
                      local new_name = State.input
@@ -644,9 +724,9 @@ gui.fileview = function(View, Options)
       if not self.path then return end
 
       local clipboard = obj.new('clipboard')
-      clipboard.mtClipDelete(CLIPTYPE_FILE)
+      clipboard.mtRemove(CLIPTYPE_FILE)
       for _,tag in pairs(self.view.selectedTags) do
-         clipboard.mtAddFile(CLIPTYPE_FILE, self.path .. extractFilename(tags[i]), CEF_DELETE)
+         clipboard.mtAddFile(CLIPTYPE_FILE, self.path .. extractFilename(tag), CEF_DELETE)
       end
    end
 
@@ -654,21 +734,24 @@ gui.fileview = function(View, Options)
       if not self.path then return end
 
       local clipboard = obj.new('clipboard')
-      clipboard.mtClipDelete(CLIPTYPE_FILE)
+      clipboard.mtRemove(CLIPTYPE_FILE)
       for _,tag in pairs(self.view.selectedTags) do
          clipboard.mtAddFile(CLIPTYPE_FILE, self.path .. extractFilename(tag), CEF_EXTEND)
       end
    end
 
-   -- Copies selected files to a destination path. The CopyFilesTo method may return immediately following the
-   -- initial call and then copy the files in the background.  If a failure occurs, the user will be notified with an
-   -- error dialog.
+   -- Copies selected files to a destination path.  This method may return immediately and copy the files in the
+   -- background.  If a failure occurs, the user will be notified with an error dialog.
 
    self.copyFilesTo = function(Dest)
-      if nz(Dest) then
-         local fileList = self.copyFiles()
-         if #fileList > 0 then
-            pasteTo(Dest, 0)
+      if self.path and nz(Dest) then
+         local tags = self.view.selectedTags
+         if #tags > 0 then
+            local file_list = { }
+            for _,tag in pairs(tags) do
+               table.insert(file_list, self.path .. extractFilename(tag))
+            end
+            copyFromList(Dest, file_list)
          end
 
          self.view.mtSelectNone()
@@ -775,19 +858,20 @@ gui.fileview = function(View, Options)
    self.deleteFiles = function()
       local tags = self.view.selectedTags
 
+      local msg
       if tags and #tags > 1 then
          msg = 'Are you sure that you want to delete the ' .. #tags .. ' selected items?'
       else
-         local file = extractFilename(tags[1])
+         local fl = extractFilename(tags[1])
 
          local item_type = 'file'
-         if file:sub(-1) == '/' then
+         if fl:sub(-1) == '/' then
             item_type = 'folder'
-         elseif file:sub(-1) == ':' then
+         elseif fl:sub(-1) == ':' then
             item_type = 'shortcut'
          end
 
-         msg = "Are you sure that you want to delete the '" .. file .. "' " .. item_type .. '?'
+         msg = "Are you sure that you want to delete the '" .. fl .. "' " .. item_type .. '?'
       end
 
       lDeleteDialog = gui.dialog.message({
@@ -804,8 +888,8 @@ gui.fileview = function(View, Options)
                self.view.mtSelectNone()
 
                local statement = 'mSys = mod.load("core")\n'
-               for i,file in pairs(Dialog.files) do
-                  statement = statement .. 'mSys.DeleteFile("' .. file .. '")\n'
+               for i,fl in pairs(Dialog.files) do
+                  statement = statement .. 'mSys.DeleteFile("' .. fl .. '")\n'
                end
 
                thread.script(statement,
@@ -818,7 +902,7 @@ gui.fileview = function(View, Options)
 
       lDeleteDialog.files = { }
       for _,tag in pairs(tags) do
-         table.insert(lDeleteDialog.files, self.path .. extractFilename(tag))
+         table.insert(lDeleteDialog.files, nz(self.path,'') .. extractFilename(tag))
       end
    end
 
@@ -840,10 +924,14 @@ gui.fileview = function(View, Options)
    -- error dialog.
 
    self.moveFilesTo = function(Dest)
-      if nz(Dest) then
-         local fileList = self.cutFiles()
-         if #fileList > 0 then
-            pasteTo(Dest, 0)
+      if self.path and nz(Dest) then
+         local tags = self.view.selectedTags
+         if #tags > 0 then
+            local file_list = { }
+            for _,tag in pairs(tags) do
+               table.insert(file_list, self.path .. extractFilename(tag))
+            end
+            copyFromList(Dest, file_list, true)
          end
 
          self.view.mtSelectNone()
@@ -859,7 +947,7 @@ gui.fileview = function(View, Options)
    -- Pastes files from the clipboard to the current path of the file view.
 
    self.pasteFiles = function()
-      pasteTo(self.path, 0)
+      pasteFromClipboard(self.path)
    end
 
    -- Prompt the user to rename the most recently selected item in the file view.
@@ -1262,11 +1350,12 @@ gui.fileview = function(View, Options)
          end
       end)
 
-      -- Support for objects that need to request items from the FileView
+      -- Drag and drop support is implemented with help from the Clipboard class.  It allows items to be
+      -- requested from the FileView.
 
       local drag_clipboard = obj.new('clipboard', {
          name  = 'fvDragClipboard',
-         flags = 'DragDrop',
+         flags = '!DragDrop',
          requestHandler = function(Clipboard, Requester, Item, Datatypes)
             if not nz(self.path) then -- Do nothing if we are at the root level
                errorDialog('Drag and Drop Failure', 'Drop and drop from volumes is not supported.');
@@ -1276,12 +1365,19 @@ gui.fileview = function(View, Options)
             if Datatypes[1] == DATA_FILE then
                local items = self.view.dragItems
                if #items > 0 then
-                  local xml = '<receipt totalitems="' .. #items .. '" id="' .. Item .. '">'
+                  local files = { }
                   for i=1,#items do
-                     xml = xml .. '<file path="' .. string.escXML(self.path) .. string.escXML(extractFilename(items[i])) .. '"/>'
+                     table.insert(files, { file = { path=self.path .. extractFilename(items[i]) } })
                   end
-                  xml = xml .. '</receipt>'
-                  Requester.acDataFeed(Clipboard, DATA_RECEIPT, xml)
+
+                  local xml = {
+                     receipt = {
+                        totalitems = #items,
+                        id = Item,
+                        files
+                     }
+                  }
+                  Requester.acDataFeed(Clipboard, DATA_RECEIPT, table.toXML(xml))
                end
             end
          end
@@ -1297,7 +1393,7 @@ gui.fileview = function(View, Options)
          local dest_tag = self.view.highlightTag
 
          input.requestItem(Args.source, Args.item, 'file', function(Items)
-            drag_clipboard.mtDelete(CLIPTYPE_FILE)
+            drag_clipboard.mtRemove(CLIPTYPE_FILE)
 
             local dest = self.path
 
@@ -1342,7 +1438,7 @@ gui.fileview = function(View, Options)
                end
             end
 
-            if count > 0 then pasteTo(dest, drag_clipboard.cluster) end
+            if count > 0 then pasteFromClipboard(dest, drag_clipboard.cluster) end
          end)
       end)
 
