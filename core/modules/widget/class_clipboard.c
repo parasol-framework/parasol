@@ -72,8 +72,8 @@ struct ClipEntry {
 
 static const struct FieldArray clFields[];
 
-static ERROR add_clip(objClipboard *, LONG, CSTRING, LONG, CLASSID, LONG, LONG *);
-static void free_clip(objClipboard *, struct ClipEntry *);
+static ERROR add_clip(MEMORYID, LONG, CSTRING, LONG, CLASSID, LONG, LONG *);
+static void free_clip(struct ClipEntry *);
 static ERROR CLIPBOARD_AddObjects(objClipboard *, struct clipAddObjects *);
 
 //****************************************************************************
@@ -199,7 +199,7 @@ static ERROR CLIPBOARD_AddFile(objClipboard *Self, struct clipAddFile *Args)
 
    LogBranch("Cluster: %d, Path: %s", Self->ClusterID, Args->Path);
 
-   ERROR error = add_clip(Self, Args->Datatype, Args->Path, Args->Flags & (CEF_DELETE|CEF_EXTEND), 0, 1, 0);
+   ERROR error = add_clip(Self->ClusterID, Args->Datatype, Args->Path, Args->Flags & (CEF_DELETE|CEF_EXTEND), 0, 1, 0);
 
 #ifdef _WIN32
    // Add the file to the host clipboard
@@ -326,7 +326,7 @@ static ERROR CLIPBOARD_AddObjects(objClipboard *Self, struct clipAddObjects *Arg
    WORD i;
    CLASSID classid = 0;
    LONG datatype = 0;
-   if (!add_clip(Self, datatype, 0, Args->Flags & CEF_EXTEND, 0, total, &counter)) {
+   if (!add_clip(Self->ClusterID, datatype, 0, Args->Flags & CEF_EXTEND, 0, total, &counter)) {
       for (i=0; list[i]; i++) {
          OBJECTPTR object;
          if (!AccessObject(list[i], 5000, &object)) {
@@ -420,7 +420,7 @@ static ERROR CLIPBOARD_AddText(objClipboard *Self, struct clipAddText *Args)
 
    ERROR error;
    LONG counter;
-   if (!(error = add_clip(Self, CLIPTYPE_TEXT, 0, 0, 0, 1, &counter))) {
+   if (!(error = add_clip(Self->ClusterID, CLIPTYPE_TEXT, 0, 0, 0, 1, &counter))) {
       char buffer[200];
       StrFormat(buffer, sizeof(buffer), "clipboard:text%d.000", counter);
 
@@ -525,7 +525,7 @@ static ERROR CLIPBOARD_DataFeed(objClipboard *Self, struct acDataFeed *Args)
       }
       #endif
 
-      if (!add_clip(Self, CLIPTYPE_TEXT, 0, 0, 0, 1, &counter)) {
+      if (!add_clip(Self->ClusterID, CLIPTYPE_TEXT, 0, 0, 0, 1, &counter)) {
          StrFormat(buffer, sizeof(buffer), "clipboard:text%d.000", counter);
 
          if (!CreateObject(ID_FILE, 0, &file,
@@ -627,7 +627,7 @@ static ERROR CLIPBOARD_Remove(objClipboard *Self, struct clipRemove *Args)
                winClearClipboard();
                #endif
             }
-            free_clip(Self, &clips[i]);
+            free_clip(&clips[i]);
          }
       }
 
@@ -1045,7 +1045,7 @@ static ERROR SET_RequestHandler(objClipboard *Self, FUNCTION *Value)
 
 //****************************************************************************
 
-static void free_clip(objClipboard *Self, struct ClipEntry *Clip)
+static void free_clip(struct ClipEntry *Clip)
 {
    if (Clip->TotalItems > 16384) Clip->TotalItems = 16384;
 
@@ -1074,12 +1074,10 @@ static void free_clip(objClipboard *Self, struct ClipEntry *Clip)
 
 //****************************************************************************
 
-static ERROR add_clip(objClipboard *Self, LONG Datatype, CSTRING File, LONG Flags,
+static ERROR add_clip(MEMORYID ClusterID, LONG Datatype, CSTRING File, LONG Flags,
    CLASSID ClassID, LONG TotalItems, LONG *Counter)
 {
-   LogF("~add_clip()","Datatype: $%x, File: %s, Flags: $%x, Class: %d, Items: %d", Datatype, File, Flags, ClassID, TotalItems);
-
-   Flags |= Self->Flags & CLF_HOST; // Automatically add the CLF_HOST flag
+   LogF("~add_clip()","Datatype: $%x, File: %s, Flags: $%x, Class: %d, Total Items: %d", Datatype, File, Flags, ClassID, TotalItems);
 
    struct ClipEntry clip, tmp, *clips;
    ClearMemory(&clip, sizeof(clip));
@@ -1091,7 +1089,7 @@ static ERROR add_clip(objClipboard *Self, LONG Datatype, CSTRING File, LONG Flag
    }
 
    struct ClipHeader *header;
-   if (!AccessMemory(Self->ClusterID, MEM_READ_WRITE, 3000, &header)) {
+   if (!AccessMemory(ClusterID, MEM_READ_WRITE, 3000, &header)) {
       clips = (struct ClipEntry *)(header + 1);
 
       if (Flags & CEF_EXTEND) {
@@ -1176,13 +1174,13 @@ static ERROR add_clip(objClipboard *Self, LONG Datatype, CSTRING File, LONG Flag
 
       WORD i;
       for (i=0; i < MAX_CLIPS; i++) {
-         if (clips[i].Datatype IS Datatype) free_clip(Self, &clips[i]);
+         if (clips[i].Datatype IS Datatype) free_clip(&clips[i]);
       }
 
       // Remove the oldest clip if the history buffer is full.
 
       if (clips[MAX_CLIPS-1].Datatype) {
-         free_clip(Self, &clips[MAX_CLIPS-1]);
+         free_clip(&clips[MAX_CLIPS-1]);
       }
 
       // Insert the new clip entry at start of the history buffer
@@ -1238,20 +1236,15 @@ void report_windows_files(APTR Data, LONG CutOperation)
 {
    LogF("~Clipboard:","Windows has received files on the clipboard.  Cut: %d", CutOperation);
 
-   objClipboard *clipboard;
-   if (!CreateObject(ID_CLIPBOARD, 0, &clipboard,
-         FID_Flags|TLONG, CLF_HOST,
-         TAGEND)) {
-
+   APTR lock;
+   if (!AccessMemory(RPM_Clipboard, MEM_READ_WRITE, 3000, &lock)) {
       LONG i;
       char path[256];
       for (i=0; winExtractFile(Data, i, path, sizeof(path)); i++) {
-         add_clip(clipboard, CLIPTYPE_FILE, path, (i ? CEF_EXTEND : 0) | (CutOperation ? CEF_DELETE : 0), 0, 1, 0);
+         add_clip(RPM_Clipboard, CLIPTYPE_FILE, path, (i ? CEF_EXTEND : 0) | (CutOperation ? CEF_DELETE : 0), 0, 1, 0);
       }
-
-      acFree(clipboard);
+      ReleaseMemory(lock);
    }
-   else PostError(ERR_CreateObject);
 
    LogBack();
 }
@@ -1268,21 +1261,16 @@ void report_windows_hdrop(STRING Data, LONG CutOperation)
 {
    LogF("~Clipboard:","Windows has received files on the clipboard.  Cut: %d", CutOperation);
 
-   objClipboard *clipboard;
-   if (!CreateObject(ID_CLIPBOARD, 0, &clipboard,
-         FID_Flags|TLONG, CLF_HOST,
-         TAGEND)) {
-
+   APTR lock;
+   if (!AccessMemory(RPM_Clipboard, MEM_READ_WRITE, 3000, &lock)) {
       LONG i;
       for (i=0; *Data; i++) {
-         add_clip(clipboard, CLIPTYPE_FILE, Data, (i ? CEF_EXTEND : 0) | (CutOperation ? CEF_DELETE : 0), 0, 1, 0);
+         add_clip(RPM_Clipboard, CLIPTYPE_FILE, Data, (i ? CEF_EXTEND : 0) | (CutOperation ? CEF_DELETE : 0), 0, 1, 0);
          while (*Data) Data++; // Go to next file path
          Data++; // Skip null byte
       }
-
-      acFree(clipboard);
+      ReleaseMemory(lock);
    }
-   else PostError(ERR_CreateObject);
 
    LogBack();
 }

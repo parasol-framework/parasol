@@ -76,6 +76,7 @@ void winClearClipboard(void)
 }
 
 //*****************************************************************************
+// Called from clipAddFile(), clipAddText() etc
 
 int winAddClip(int Datatype, void *Data, int Size, int Cut)
 {
