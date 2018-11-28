@@ -245,7 +245,7 @@ void path_monitor(HOSTHANDLE FD, objFile *File)
 void path_monitor(HOSTHANDLE Handle, objFile *File)
 {
    static THREADVAR BYTE recursion = FALSE; // Recursion avoidance is essential for correct queuing
-   if (recursion) return;
+   if ((recursion) OR (!File->prvWatch)) return;
    recursion = TRUE;
 
    AdjustLogLevel(2);
@@ -258,7 +258,9 @@ void path_monitor(HOSTHANDLE Handle, objFile *File)
       char path[256];
       LONG status;
 
-      while (!winReadChanges(File->prvWatch->Handle, (APTR)(File->prvWatch + 1), File->prvWatch->WinFlags, path, sizeof(path), &status)) {
+      // Keep in mind that the state of the File object might change during the loop due to the code in the user's callback.
+
+      while ((File->prvWatch) AND (!winReadChanges(File->prvWatch->Handle, (APTR)(File->prvWatch + 1), File->prvWatch->WinFlags, path, sizeof(path), &status))) {
          if (!(File->prvWatch->Flags & MFF_DEEP)) { // Ignore if path is in a sub-folder and the deep option is not enabled.
             LONG i;
             for (i=0; (path[i]) AND (path[i] != '\\'); i++);
