@@ -454,7 +454,12 @@ static ERROR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, LONG
       }
    }
    else {
-      FMSG("obj.setfield","Field '%s' is not in class '%s'.", FName, src->Class->ClassName);
-      return SetFieldEval(obj, FName, lua_tostring(Lua, ValueIndex));
+      // Default to setting a custom variable rather than throwing an error - primarily for legacy reasons.
+      CSTRING vstr = lua_tostring(Lua, ValueIndex);
+      if (vstr) {
+         LogF("obj.setfield","Field '%s' is not in class '%s' - defaulting to custom variable.", FName, src->Class->ClassName);
+         return SetFieldEval(obj, FName, lua_tostring(Lua, ValueIndex));
+      }
+      else return ERR_UnsupportedField;
    }
 }
