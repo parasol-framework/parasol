@@ -28,14 +28,19 @@ static STRING glProcedure = NULL;
 static STRING glTargetFile = NULL;
 
 static const char glHelp[] = {
-"Usage: fluid [options...] script.fluid [--args arg1=v1 arg2=v2 ...]\n\
+"Usage: fluid [options...] script.fluid [arg1=v1 arg2=v2 ...]\n\
 \n\
- --procedure [n] The name of a procedure to execute.\n\
+Special options are:\n\
+\n\
+ --procedure [n] The name of a procedure in the script to execute.\n\
  --time          Print the amount of time that it took to execute the program.\n\
  --log-info      Activates run-time log messages at INFO level.\n\
  --log-error     Activates run-time log messages at ERROR level.\n\
  \n\
- If no script file is specified, the script will be parsed from std input after an EOF is received."
+ If no script file is specified, the script will be parsed from std input after an EOF is received.\n\
+ \n\
+ All parameters following the script file are passed through as arguments to the program.\n\
+ Arrays can be passed in the format key={ value1 value2 }\n"
 };
 
 //****************************************************************************
@@ -58,7 +63,7 @@ static void set_script_args(objScript *Script, CSTRING *Args)
 
       CSTRING value = NULL;
       if (Args[i][j] IS '=') {
-         value = argname + j + 1;
+         value = Args[i] + j + 1;
       }
       else if (!Args[i+1]) {
          SetVar(Script, argname, "1");

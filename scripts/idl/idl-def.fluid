@@ -3,8 +3,8 @@
 -- dynamically consumed by any language for the purpose of achieving full integration with the Parasol runtime
 -- environment, which is written in C.
 --
--- Usage: parasol-cmd sdk:scripts/idl-fluid.fluid src=source.fdl
--- Example: parasol-cmd sdk:scripts/idl-fluid.fluid src=sdk:core/modules/core/core.fdl
+-- Usage: fluid sdk:scripts/idl-fluid.fluid src=source.fdl
+-- Example: fluid sdk:scripts/idl-fluid.fluid src=sdk:core/modules/core/core.fdl
 
    require 'common'
 
