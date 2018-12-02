@@ -355,19 +355,19 @@ void ScintillaPan::Paste()
 
                      calc_longest_line(scintilla);
                   }
-                  else user_error((STRING)"Paste Error", (STRING)"Failed to read data from the clipboard file.");
+                  else error_dialog("Paste Error", "Failed to read data from the clipboard file.", 0);
 
                   FreeMemory(buffer);
                }
-               else user_error((STRING)"Paste Error", (STRING)"Out of memory.");
+               else error_dialog("Paste Error", NULL, ERR_AllocMemory);
             }
 
             acFree(file);
          }
          else {
-            BYTE msg[200];
+            char msg[200];
             snprintf(msg, sizeof(msg), "Failed to load clipboard file \"%s\"", get.Files[0]);
-            user_error((STRING)"Paste Error", (STRING)msg);
+            error_dialog("Paste Error", msg, 0);
          }
       }
       acFree(clipboard);

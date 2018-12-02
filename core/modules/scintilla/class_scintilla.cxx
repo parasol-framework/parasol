@@ -2318,19 +2318,53 @@ static void draw_scintilla(objScintilla *Self, objSurface *Surface, struct rkBit
    STEP();
 }
 
-//*****************************************************************************
+//****************************************************************************
 
-void user_error(CSTRING Title, CSTRING Message)
+static void error_dialog(CSTRING Title, CSTRING Message, ERROR Error)
 {
-   OBJECTPTR dialog;
+   static OBJECTID dialog_id = 0;
 
-   if (!CreateObject(ID_DIALOG, NF_INTEGRAL, &dialog,
-         FID_Image|TSTR,    "icons:items/error(48)",
-         FID_Options|TSTR,  "okay",
-         FID_Title|TSTR,    Title,
-         FID_String|TSTR,   Message,
-         TAGEND)) {
-      acShow(dialog);
+   LogErrorMsg("%s", Message);
+
+   if (dialog_id) {
+      if (CheckObjectExists(dialog_id, NULL) IS ERR_True) return;
+   }
+
+   OBJECTPTR dialog;
+   if (!NewObject(ID_SCRIPT, 0, &dialog)) {
+      SetFields(dialog,
+         FID_Name|TSTR,    "scDialog",
+         FID_Owner|TLONG,  CurrentTaskID(),
+         FID_Path|TSTR,    "system:scripts/gui/dialog.fluid",
+         TAGEND);
+
+      acSetVar(dialog, "modal", "1");
+      acSetVar(dialog, "title", Title);
+      acSetVar(dialog, "options", "okay");
+      acSetVar(dialog, "type", "error");
+
+      CSTRING errstr;
+      if ((Error) AND (errstr = GetErrorMsg(Error))) {
+         LONG len = StrLength(Message);
+         char buffer[len+120];
+         if (Message) {
+            len = StrCopy(Message, buffer, sizeof(buffer));
+            len += StrCopy("\n\nDetails: ", buffer+len, sizeof(buffer)-len);
+         }
+         else len = StrCopy("Error: ", buffer, sizeof(buffer));
+
+         StrCopy(errstr, buffer+len, sizeof(buffer)-len);
+         acSetVar(dialog, "message", buffer);
+      }
+      else acSetVar(dialog, "message", Message);
+
+      if ((!acInit(dialog)) AND (!acActivate(dialog))) {
+         CSTRING *results;
+         LONG size;
+         if ((!GetFieldArray(dialog, FID_Results, (APTR *)&results, &size)) AND (size > 0)) {
+            dialog_id = StrToInt(results[0]);
+         }
+      }
    }
 }
 
