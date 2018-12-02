@@ -94,25 +94,28 @@ LIBNAME  = $(NAME)
 PARASOL_RELEASE ?= $(SDK_ROOT)/release/$(call lc,$(PLATFORM))
 PARASOL_INSTALL ?= $(SDK_ROOT)/install
 
-# Use the installed parasol-cmd if available; fallback to the release folder; otherwise do nothing.
+# Use the installed parasol executable if available; fallback to the release folder; otherwise do nothing.
 
-PARASOL_CMD_EXISTS ?= $(shell which parasol-cmd 2> /dev/null)
+PARASOL_CMD_EXISTS ?= $(shell which parasol 2> /dev/null)
 
 ifeq ($(strip $(PARASOL_CMD_EXISTS)),)
-   PARASOL_CMD_VERIFY := $(shell $(PARASOL_RELEASE)/parasol-cmd --log-none --verify)
+   PARASOL_CMD_VERIFY := $(shell $(PARASOL_RELEASE)/parasol --log-none --verify)
    ifeq ($(strip $(PARASOL_CMD_VERIFY)),1)
-      PARASOL_CMD := $(PARASOL_RELEASE)/parasol-cmd
+      PARASOL_CMD := $(PARASOL_RELEASE)/parasol
+      FLUID_CMD := $(PARASOL_RELEASE)/fluid
    else
-      # If parasol-cmd is unreliable, don't allow it to run.
-      PARASOL_CMD := : parasol-cmd
+      # If parasol is unreliable, don't allow it to run.
+      PARASOL_CMD := : parasol
+      FLUID_CMD := : fluid
    endif
 else
-   PARASOL_CMD := parasol-cmd
+   PARASOL_CMD := parasol
+   FLUID_CMD := fluid
 endif
 
-FLUTE = $(PARASOL_CMD) --log-error "$(SDK_ROOT)/scripts/flute.fluid"
-IDL_C = $(PARASOL_CMD) --log-error "$(SDK_ROOT)/scripts/idl/idl-c.fluid"
-IDL_DEF = $(PARASOL_CMD) --log-error "$(SDK_ROOT)/scripts/idl/idl-def.fluid"
+FLUTE = $(FLUID_CMD) --log-error "$(SDK_ROOT)/scripts/flute.fluid"
+IDL_C = $(FLUID_CMD) --log-error "$(SDK_ROOT)/scripts/idl/idl-c.fluid"
+IDL_DEF = $(FLUID_CMD) --log-error "$(SDK_ROOT)/scripts/idl/idl-def.fluid"
 
 ifeq ($(OSTYPE),android)
    # Android settings
