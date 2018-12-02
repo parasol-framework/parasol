@@ -41,7 +41,6 @@ FDEF argsCurrentTask[] = { { "Object", FD_OBJECTPTR }, { 0, 0 } };
 FDEF argsDeleteFile[] = { { "Error", FD_LONG|FD_ERROR }, { "Path", FD_STR }, { 0, 0 } };
 FDEF argsDeleteVolume[] = { { "Error", FD_LONG|FD_ERROR }, { "Name", FD_STR }, { 0, 0 } };
 FDEF argsFastFindObject[] = { { "Error", FD_LONG|FD_ERROR }, { "Name", FD_STR }, { "ClassID", FD_LONG }, { "Array", FD_OBJECTID|FD_RESULT }, { "ArraySize", FD_LONG }, { "Count", FD_LONG|FD_RESULT }, { 0, 0 } };
-FDEF argsFileFeedback[] = { { "Error", FD_LONG|FD_ERROR }, { "Routine", FD_FUNCTIONPTR }, { "Data", FD_PTR }, { "Flags", FD_LONG }, { 0, 0 } };
 FDEF argsFindClass[] = { { "Object", FD_OBJECTPTR }, { "ClassID", FD_LONG }, { 0, 0 } };
 FDEF argsFindField[] = { { "Field", FD_PTR|FD_STRUCT }, { "Object", FD_OBJECTPTR }, { "FieldID", FD_LONG }, { "Source", FD_OBJECTPTR|FD_RESULT }, { 0, 0 } };
 FDEF argsFindObject[] = { { "Error", FD_LONG|FD_ERROR }, { "Name", FD_STR }, { "ClassID", FD_LONG }, { "List", FD_PTR|FD_ALLOC|FD_RESULT }, { "Count", FD_LONG|FD_RESULT }, { 0, 0 } };
@@ -371,7 +370,7 @@ const struct Function glFunctions[] = {
    { (APTR)IdentifyFile, "IdentifyFile", argsIdentifyFile },
    { (APTR)TranslateCmdRef, "TranslateCmdRef", argsTranslateCmdRef },
    { (APTR)CreateLink, "CreateLink", argsCreateLink },
-   { (APTR)FileFeedback, "FileFeedback", argsFileFeedback },
+   { (APTR)VarUnlock, "VarUnlock", argsVarUnlock },
    { (APTR)SetDefaultPermissions, "SetDefaultPermissions", argsSetDefaultPermissions },
    { (APTR)ResolveUserID, "ResolveUserID", argsResolveUserID },
    { (APTR)ResolveGroupID, "ResolveGroupID", argsResolveGroupID },
@@ -395,7 +394,6 @@ const struct Function glFunctions[] = {
    { (APTR)KeyIterate, "KeyIterate", argsKeyIterate },
    { (APTR)VarSetSized, "VarSetSized", argsVarSetSized },
    { (APTR)VarLock, "VarLock", argsVarLock },
-   { (APTR)VarUnlock, "VarUnlock", argsVarUnlock },
    { NULL, NULL, NULL }
 };
 

@@ -907,7 +907,7 @@ module({ name="Core", copyright="Paul Manias 1996-2017" }, function()
     str Path
     str Dest            # Destination file/path if moving or copying
     ptr User            # User data, set by FileFeedback()
-    int FeedbackID      # Set to one of the FDB integers
+    int(FDB) FeedbackID # Set to one of the FDB integers
     char(32) Reserved   # Reserved in case of future expansion
   ]])
 
@@ -1118,7 +1118,7 @@ struct ScriptArg { // For use with scExec
     "IdentifyFile",
     "TranslateCmdRef",
     "CreateLink",
-    "FileFeedback",
+    "VarUnlock",
     "SetDefaultPermissions",
     "ResolveUserID",
     "ResolveGroupID",
@@ -1141,8 +1141,7 @@ struct ScriptArg { // For use with scExec
     "NewLockedObject",
     "KeyIterate",
     "VarSetSized",
-    "VarLock",
-    "VarUnlock")
+    "VarLock")
 
   c_insert([[
 

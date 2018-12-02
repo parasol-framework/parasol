@@ -125,7 +125,7 @@ struct ResourceManager;
 
 ERROR fs_closedir(struct DirInfo *);
 ERROR fs_createlink(CSTRING, CSTRING);
-ERROR fs_delete(STRING);
+ERROR fs_delete(STRING, FUNCTION *);
 ERROR fs_getinfo(CSTRING, struct FileInfo *, LONG);
 ERROR fs_getdeviceinfo(CSTRING, struct rkStorageDevice *);
 void  fs_ignore_file(struct rkFile *);
@@ -143,8 +143,8 @@ void free_storage_class(void);
 
 ERROR check_cache(OBJECTPTR, LARGE TimeElapsed, LARGE TotalElapsed);
 ERROR get_class_cmd(CSTRING, struct rkConfig *, LONG, CLASSID, STRING *);
-ERROR fs_copy(CSTRING, CSTRING, BYTE);
-ERROR fs_copydir(STRING, STRING, struct FileFeedback *, BYTE);
+ERROR fs_copy(CSTRING, CSTRING, FUNCTION *, APTR, BYTE);
+ERROR fs_copydir(STRING, STRING, struct FileFeedback *, FUNCTION *, BYTE);
 LONG  get_parent_permissions(CSTRING, LONG *, LONG *);
 ERROR load_datatypes(void);
 ERROR RenameVolume(CSTRING, CSTRING);
@@ -177,7 +177,7 @@ struct virtual_drive {
    ULONG CaseSensitive:1;
    ERROR (*ScanDir)(struct DirInfo *);
    ERROR (*Rename)(STRING, STRING);
-   ERROR (*Delete)(STRING);
+   ERROR (*Delete)(STRING, FUNCTION *);
    ERROR (*OpenDir)(struct DirInfo *);
    ERROR (*CloseDir)(struct DirInfo *);
    ERROR (*Obsolete)(CSTRING, struct DirInfo **, LONG);
@@ -569,8 +569,6 @@ extern THREADVAR BYTE tlMainThread;
 extern THREADVAR WORD tlPreventSleep;
 extern THREADVAR WORD tlPublicLockCount;
 extern THREADVAR WORD tlPrivateLockCount;
-extern THREADVAR struct rkFunction tlFeedback;
-extern THREADVAR APTR tlFeedbackData;
 extern THREADVAR LONG glForceUID, glForceGID, glDefaultPermissions;
 
 /****************************************************************************/

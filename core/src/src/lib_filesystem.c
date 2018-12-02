@@ -106,15 +106,17 @@ static struct virtual_drive * get_virtual(CSTRING Path)
 
 //****************************************************************************
 
-LONG CALL_FEEDBACK(struct FileFeedback *Feedback)
+LONG CALL_FEEDBACK(FUNCTION *Callback, struct FileFeedback *Feedback)
 {
-   if (tlFeedback.Type IS CALL_STDC) {
-      LONG (*routine)(struct FileFeedback *) = tlFeedback.StdC.Routine;
+   if ((!Callback) OR (!Feedback)) return FFR_OKAY;
+
+   if (Callback->Type IS CALL_STDC) {
+      LONG (*routine)(struct FileFeedback *) = Callback->StdC.Routine;
       return routine(Feedback);
    }
-   else if (tlFeedback.Type IS CALL_SCRIPT) {
+   else if (Callback->Type IS CALL_SCRIPT) {
       OBJECTPTR script;
-      if ((script = tlFeedback.Script.Script)) {
+      if ((script = Callback->Script.Script)) {
          const struct ScriptArg args[] = {
             { "Size",     FD_LARGE,   { .Large   = Feedback->Size } },
             { "Position", FD_LARGE,   { .Large   = Feedback->Position } },
@@ -124,7 +126,7 @@ LONG CALL_FEEDBACK(struct FileFeedback *Feedback)
             { "FeedbackID", FD_LONG,  { .Long    = Feedback->FeedbackID } }
          };
 
-         ERROR error = scCallback(script, tlFeedback.Script.ProcedureID, args, ARRAYSIZE(args));
+         ERROR error = scCallback(script, Callback->Script.ProcedureID, args, ARRAYSIZE(args));
          if (!error) {
             CSTRING *results;
             LONG size;
@@ -679,11 +681,19 @@ This function will overwrite any destination file(s) that already exist.
 The Source parameter should always clarify the type of location that is being copied.  For example if copying a
 folder, a forward slash must terminate the string or it will be assumed that a file is the source.
 
-This function will send feedback if ~FileFeedback() has been called beforehand.
+The Callback parameter can be set with a function that matches this prototype:
+
+`LONG Callback(struct FileFeedback *)`
+
+For each file that is processed during the copy operation, a &FileFeedback structure is passed that describes the
+source file and its target.  The callback must return a constant value that can potentially affect file processing.
+Valid values are FFR_Okay (copy the file), FFR_Skip (do not copy the file) and FFR_Abort (abort the process completely
+and return ERR_Cancelled as an error code).
 
 -INPUT-
 cstr Source: The source location.
 cstr Dest:   The destination location.
+ptr(func) Callback: Optional callback for receiving feedback during the operation.
 
 -ERRORS-
 Okay: The location was copied successfully.
@@ -692,12 +702,9 @@ Failed: A failure occurred during the copy process.
 
 *****************************************************************************/
 
-ERROR CopyFile(CSTRING Source, CSTRING Dest)
+ERROR CopyFile(CSTRING Source, CSTRING Dest, FUNCTION *Callback)
 {
-   ERROR error;
-   error = fs_copy(Source, Dest, FALSE);
-   tlFeedback.Type = CALL_NONE; // Reset the feedback routine
-   return error;
+   return fs_copy(Source, Dest, Callback, NULL, FALSE);
 }
 
 /*****************************************************************************
@@ -783,10 +790,18 @@ failures are ignored, although an error will be returned if the top-level folder
 This function does not allow for the approximation of file names.  To approximate a file location, open it as a @File
 object or use ~ResolvePath() first.
 
-This function will send feedback if ~FileFeedback() has been called beforehand.
+The Callback parameter can be set with a function that matches this prototype:
+
+`LONG Callback(struct FileFeedback *)`
+
+Prior to the deletion of any file, a &FileFeedback structure is passed that describes the file's location.  The
+callback must return a constant value that can potentially affect file processing.  Valid values are FFR_Okay (delete
+the file), FFR_Skip (do not delete the file) and FFR_Abort (abort the process completely and return ERR_Cancelled as an
+error code).
 
 -INPUT-
 cstr Path: String referring to the file or folder to be deleted.  Folders must be denoted with a trailing slash.
+ptr(func) Callback: Optional callback for receiving feedback during the operation.
 
 -ERRORS-
 Okay: The file or folder was deleted successfully.
@@ -797,7 +812,7 @@ NoSupport: The filesystem driver does not support deletion.
 
 *****************************************************************************/
 
-ERROR DeleteFile(CSTRING Path)
+ERROR DeleteFile(CSTRING Path, FUNCTION *Callback)
 {
    if (!Path) return ERR_NullArgs;
 
@@ -811,60 +826,13 @@ ERROR DeleteFile(CSTRING Path)
    STRING resolve;
    if (!(error = ResolvePath(Path, 0, &resolve))) {
       const struct virtual_drive *virtual = get_fs(resolve);
-      if (virtual->Delete) error = virtual->Delete(resolve);
+      if (virtual->Delete) error = virtual->Delete(resolve, NULL);
       else error = ERR_NoSupport;
       FreeMemory(resolve);
    }
 
-   tlFeedback.Type = CALL_NONE;
-
    LogBack();
    return error;
-}
-
-/*****************************************************************************
-
--FUNCTION-
-FileFeedback: Enables continual feedback when performing long-running file operations.
-
-The FileFeedback() function is used to receive feedback from the file system when performing lengthy file operations.
-Feedback is currently supported for delete, move and copy operations, specifically: ~DeleteFile(),
-~MoveFile(), ~CopyFile() and equivalent methods in the @File class.
-
-The prototype for the Routine is `LONG Feedback(struct FileFeedback *)`
-
-On receiving feedback, the &FileFeedback structure can be queried for progress information.
-
-The feedback routine must return a constant value that can affect further file processing.  Valid values are FFR_Okay
-(do nothing), FFR_Skip (don't do anything further with the current file) and FFR_Abort (abort the file process
-completely and return ERR_Cancelled as an error code).
-
-Setting the file feedback routine is not permanent - it is only good for the next relevant filesystem call that is
-made.  Therefore it be called each time prior to any situation where feedback is required from the file system.  Thread
-safety is guaranteed, each having its own independent feedback mechanism.
-
--INPUT-
-ptr(func) Routine: Pointer to a routine that will receive feedback from the file system.
-ptr Data: Private user data to be returned in the User field of the &FileFeedback structure.
-int Flags: Optional flags, currently zero.
-
--ERRORS-
-Okay: Feedback routine set successfully.
-Args:
-
-*****************************************************************************/
-
-ERROR FileFeedback(struct rkFunction *Routine, APTR Data, LONG Flags)
-{
-   LogF("FileFeedback()","Data: %p", Data);
-
-   if (Routine) {
-      CopyMemory(Routine, &tlFeedback, sizeof(struct rkFunction));
-      tlFeedbackData = Data;
-   }
-   else tlFeedback.Type = CALL_NONE;
-
-   return ERR_Okay;
 }
 
 /*****************************************************************************
@@ -1321,11 +1289,19 @@ The Source argument should always clarify the type of location that is being cop
 folder, you must specify a forward slash at the end of the string or the function will assume that you are moving a
 file.
 
-This function will send feedback if ~FileFeedback() has been called beforehand.
+The Callback parameter can be set with a function that matches this prototype:
+
+`LONG Callback(struct FileFeedback *)`
+
+For each file that is processed during the move operation, a &FileFeedback structure is passed that describes the
+source file and its target.  The callback must return a constant value that can potentially affect file processing.
+Valid values are FFR_Okay (move the file), FFR_Skip (do not move the file) and FFR_Abort (abort the process completely
+and return ERR_Cancelled as an error code).
 
 -INPUT-
 cstr Source: The source path.
 cstr Dest:   The destination path.
+ptr(func) Callback: Optional callback for receiving feedback during the operation.
 
 -ERRORS-
 Okay
@@ -1334,15 +1310,12 @@ Failed
 
 *****************************************************************************/
 
-ERROR MoveFile(CSTRING Source, CSTRING Dest)
+ERROR MoveFile(CSTRING Source, CSTRING Dest, FUNCTION *Callback)
 {
    if ((!Source) OR (!Dest)) return ERR_NullArgs;
 
    LogF("MoveFile()","%s to %s", Source, Dest);
-
-   ERROR error = fs_copy(Source, Dest, TRUE);
-   tlFeedback.Type = CALL_NONE; // Reset the feedback routine
-   return error;
+   return fs_copy(Source, Dest, Callback, NULL, TRUE);
 }
 
 /******************************************************************************
@@ -2043,7 +2016,7 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, BYTE Move)
    STRING src, tmp;
    LONG permissions, dhandle, len;
    LONG srclen, result;
-   UBYTE dest[2000];
+   char dest[2000];
    BYTE srcdir;
    ERROR error;
 
@@ -2176,9 +2149,9 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, BYTE Move)
          if (glDefaultPermissions) CreateFolder(dest, glDefaultPermissions);
          else CreateFolder(dest, PERMIT_USER|PERMIT_GROUP);
 
-         if (!(error = fs_copydir(srcbuffer, dest, &feedback, Move))) {
+         if (!(error = fs_copydir(srcbuffer, dest, &feedback, Callback, Move))) {
             // Delete the source if we are moving folders
-            if (Move) error = DeleteFile(srcbuffer);
+            if (Move) error = DeleteFile(srcbuffer, NULL);
          }
          else LogF("@CopyFile","Folder copy process failed, error %d.", error);
 
@@ -2191,8 +2164,7 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, BYTE Move)
 
       // Use a reasonably small read buffer so that we can provide continuous feedback
 
-      if (tlFeedback.Type) bufsize = 65536;
-      else bufsize = 65536 * 2;
+      bufsize = ((Callback) AND (Callback->Type)) ? 65536 : 65536 * 2;
 
       // This routine is designed to handle streams - where either the source is a stream or the destination is a stream.
 
@@ -2253,10 +2225,10 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, BYTE Move)
 
             if (error) break;
 
-            if (tlFeedback.Type) {
+            if ((Callback) AND (Callback->Type)) {
                if (feedback.Size < feedback.Position) feedback.Size = feedback.Position;
 
-               result = CALL_FEEDBACK(&feedback);
+               result = CALL_FEEDBACK(Callback, &feedback);
 
                if (result IS FFR_ABORT) { error = ERR_Cancelled; break; }
                else if (result IS FFR_SKIP) break;
@@ -2294,8 +2266,8 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, BYTE Move)
       if ((i = readlink(src, linkto, sizeof(linkto)-1)) != -1) {
          linkto[i] = 0;
 
-         if (tlFeedback.Type) {
-            result = CALL_FEEDBACK(&feedback);
+         if ((Callback) AND (Callback->Type)) {
+            result = CALL_FEEDBACK(Callback, &feedback);
             if (result IS FFR_ABORT) { error = ERR_Cancelled; goto exit; }
             else if (result IS FFR_SKIP) { error = ERR_Okay; goto exit; }
          }
@@ -2322,7 +2294,7 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, BYTE Move)
       }
 
       if ((Move) AND (!error)) { // Delete the source
-         error = DeleteFile(src);
+         error = DeleteFile(src, NULL);
       }
 
       goto exit;
@@ -2337,8 +2309,8 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, BYTE Move)
 
       error = ERR_Okay;
 
-      if (tlFeedback.Type) {
-         result = CALL_FEEDBACK(&feedback);
+      if ((Callback) AND (Callback->Type)) {
+         result = CALL_FEEDBACK(Callback, &feedback);
          if (result IS FFR_ABORT) { error = ERR_Cancelled; goto exit; }
          else if (result IS FFR_SKIP) goto exit;
       }
@@ -2427,9 +2399,9 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, BYTE Move)
 #endif
       }
 
-      if (!(error = fs_copydir(srcbuffer, dest, &feedback, Move))) {
+      if (!(error = fs_copydir(srcbuffer, dest, &feedback, Callback, Move))) {
          // Delete the source if we are moving folders
-         if (Move) error = DeleteFile(srcbuffer);
+         if (Move) error = DeleteFile(srcbuffer, NULL);
       }
       else LogF("@CopyFile","Folder copy process failed, error %d.", error);
 
@@ -2437,8 +2409,8 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, BYTE Move)
    }
 
    if (!Move) { // (If Move is enabled, we would have already sent feedback during the earlier rename() attempt
-      if (tlFeedback.Type) {
-         result = CALL_FEEDBACK(&feedback);
+      if ((Callback) AND (Callback->Type)) {
+         result = CALL_FEEDBACK(Callback, &feedback);
          if (result IS FFR_ABORT) { error = ERR_Cancelled; goto exit; }
          else if (result IS FFR_SKIP) { error = ERR_Okay; goto exit; }
       }
@@ -2483,7 +2455,7 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, BYTE Move)
 #if defined(__unix__) || defined(_WIN32)
       unlink(dest);
 #else
-      DeleteFile(dest);
+      DeleteFile(dest, NULL);
 #endif
 
       // Check if there is enough room to copy this file to the destination
@@ -2533,15 +2505,14 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, BYTE Move)
 
       if (dhandle != -1) {
          APTR data;
-         LONG bufsize, result;
 
          // Use a reasonably small read buffer so that we can provide continuous feedback
 
-         if (tlFeedback.Type) bufsize = 65536;
-         else bufsize = 524288;
+         LONG bufsize = ((Callback) AND (Callback->Type)) ? 65536 : 524288;
          error = ERR_Okay;
          if (!AllocMemory(bufsize, MEM_DATA|MEM_NO_CLEAR, (APTR *)&data, NULL)) {
             while ((len = read(handle, data, bufsize)) > 0) {
+               LONG result;
                if ((result = write(dhandle, data, len)) IS -1) {
                   if (errno IS ENOSPC) error = LogError(ERH_Function, ERR_OutOfSpace);
                   else error = LogError(ERH_Function, ERR_Write);
@@ -2554,10 +2525,10 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, BYTE Move)
                }
 
 
-               if (tlFeedback.Type) {
+               if ((Callback) AND (Callback->Type)) {
                   feedback.Position += len;
                   if (feedback.Size < feedback.Position) feedback.Size = feedback.Position;
-                  result = CALL_FEEDBACK(&feedback);
+                  result = CALL_FEEDBACK(Callback, &feedback);
                   if (result IS FFR_ABORT) { error = ERR_Cancelled; break; }
                   else if (result IS FFR_SKIP) break;
                }
@@ -2589,9 +2560,8 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, BYTE Move)
    }
    else error = LogError(ERH_Function, ERR_FileNotFound);
 
-   if ((Move) AND (!error)) {
-      // Delete the source
-      error = DeleteFile(src);
+   if ((Move) AND (!error)) { // Delete the source
+      error = DeleteFile(src, NULL);
    }
 
 exit:
@@ -2605,7 +2575,7 @@ exit:
 //****************************************************************************
 // Generic routine for copying folders, intended to be used in conjunction with fs_copy()
 
-ERROR fs_copydir(STRING Source, STRING Dest, struct FileFeedback *Feedback, BYTE Move)
+ERROR fs_copydir(STRING Source, STRING Dest, struct FileFeedback *Feedback, FUNCTION *Callback, BYTE Move)
 {
    const struct virtual_drive *vsrc = get_fs(Source);
    const struct virtual_drive *vdest = get_fs(Dest);
@@ -2636,17 +2606,17 @@ ERROR fs_copydir(STRING Source, STRING Dest, struct FileFeedback *Feedback, BYTE
                StrCopy(file->Name, Source+srclen, COPY_ALL);
                StrCopy(file->Name, Dest+destlen, COPY_ALL);
 
-               if (tlFeedback.Type) {
+               if ((Callback) AND (Callback->Type)) {
                   Feedback->Path = Source;
                   Feedback->Dest = Dest;
-                  LONG result = CALL_FEEDBACK(Feedback);
+                  LONG result = CALL_FEEDBACK(Callback, Feedback);
                   if (result IS FFR_ABORT) { error = ERR_Cancelled; break; }
                   else if (result IS FFR_SKIP) continue;
                }
 
                STRING link;
                if (!(error = vsrc->ReadLink(Source, &link))) {
-                  DeleteFile(Dest);
+                  DeleteFile(Dest, NULL);
                   error = vdest->CreateLink(Dest, link);
                }
             }
@@ -2660,16 +2630,16 @@ ERROR fs_copydir(STRING Source, STRING Dest, struct FileFeedback *Feedback, BYTE
             StrCopy(file->Name, Dest+destlen, COPY_ALL);
 
             AdjustLogLevel(1);
-               error = fs_copy(Source, Dest, FALSE);
+               error = fs_copy(Source, Dest, Callback, NULL, FALSE);
             AdjustLogLevel(-1);
          }
          else if (file->Flags & RDF_FOLDER) {
             StrCopy(file->Name, Dest+destlen, COPY_ALL);
 
-            if (tlFeedback.Type) {
+            if ((Callback) AND (Callback->Type)) {
                Feedback->Path = Source;
                Feedback->Dest = Dest;
-               LONG result = CALL_FEEDBACK(Feedback);
+               LONG result = CALL_FEEDBACK(Callback, Feedback);
                if (result IS FFR_ABORT) { error = ERR_Cancelled; break; }
                else if (result IS FFR_SKIP) continue;
             }
@@ -2688,7 +2658,7 @@ ERROR fs_copydir(STRING Source, STRING Dest, struct FileFeedback *Feedback, BYTE
 
             if (!error) {
                StrCopy(file->Name, Source+srclen, COPY_ALL);
-               fs_copydir(Source, Dest, Feedback, Move);
+               fs_copydir(Source, Dest, Feedback, Callback, Move);
             }
          }
       }
@@ -2795,7 +2765,7 @@ ERROR fs_createlink(CSTRING Target, CSTRING Link)
 //****************************************************************************
 // NB: The path that is received is already resolved.
 
-ERROR fs_delete(STRING Path)
+ERROR fs_delete(STRING Path, FUNCTION *Callback)
 {
    ERROR error;
    LONG len;
@@ -2805,11 +2775,11 @@ ERROR fs_delete(STRING Path)
 
    #ifdef _WIN32
       struct FileFeedback feedback;
-      UBYTE buffer[1024];
+      char buffer[MAX_FILENAME];
 
       StrCopy(Path, buffer, sizeof(buffer));
 
-      if (tlFeedback.Type) {
+      if ((Callback) AND (Callback->Type)) {
          ClearMemory(&feedback, sizeof(feedback));
          feedback.FeedbackID = FBK_DELETE_FILE;
          feedback.Path = buffer;
@@ -2823,11 +2793,11 @@ ERROR fs_delete(STRING Path)
       }
       else if (errno IS EISDIR) {
          struct FileFeedback feedback;
-         UBYTE buffer[1024];
+         char buffer[MAX_FILENAME];
 
          StrCopy(Path, buffer, sizeof(buffer));
 
-         if (tlFeedback.Type) {
+         if ((Callback) AND (Callback->Type)) {
             ClearMemory(&feedback, sizeof(feedback));
             feedback.FeedbackID = FBK_DELETE_FILE;
             feedback.Path = buffer;
@@ -3581,7 +3551,7 @@ ERROR load_datatypes(void)
 
 #ifdef __unix__
 
-ERROR delete_tree(STRING Path, LONG Size, struct FileFeedback *Feedback)
+ERROR delete_tree(STRING Path, LONG Size, FUNCTION *Callback, struct FileFeedback *Feedback)
 {
    struct dirent *direntry;
    LONG len;
@@ -3594,7 +3564,7 @@ ERROR delete_tree(STRING Path, LONG Size, struct FileFeedback *Feedback)
 
    if (tlFeedback.Type) {
       Feedback->Path = Path;
-      result = CALL_FEEDBACK(Feedback);
+      result = CALL_FEEDBACK(Callback, Feedback);
       if (result IS FFR_ABORT) {
          FMSG("delete_tree","Feedback requested abort at file '%s'", Path);
          return ERR_Cancelled;

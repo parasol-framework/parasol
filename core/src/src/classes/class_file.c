@@ -98,7 +98,6 @@ in a file.
 
 #include <parasol/main.h>
 
-LONG feedback_delete(struct FileFeedback *);
 void path_monitor(HOSTHANDLE, objFile *);
 
 static ERROR FILE_Init(objFile *, APTR);
@@ -391,6 +390,7 @@ and an error code will be returned.
 
 -INPUT-
 cstr Dest: The destination file path for the copy operation.
+ptr(func) Callback: Optional callback for receiving feedback during the operation.
 
 -ERRORS-
 Okay: The file data was copied successfully.
@@ -408,7 +408,7 @@ AllocMemory:
 
 static ERROR FILE_Copy(objFile *Self, struct flCopy *Args)
 {
-   return CopyFile(Self->Path, Args->Dest);
+   return CopyFile(Self->Path, Args->Dest, Args->Callback);
 }
 
 /****************************************************************************
@@ -420,12 +420,8 @@ This method is used to delete files from their source location.  If used on a fo
 contents will be deleted in the call.   Once a file is deleted, the object effectively becomes unusable.  For this
 reason, file deletion should normally be followed up with a call to the Free action.
 
-This method supports file feedback if you have called the FileFeedback() function earlier.  Feedback is sent for each
-file or folder just before it is about to be removed by the routine.  Individual files can be skipped, or the entire
-process aborted via the feedback mechanism.
-
 -INPUT-
-int(FDL) Flags: If set to FDL_FEEDBACK, a dialog window will popup to give user feedback during deletion.
+ptr(func) Callback: Optional callback for receiving feedback during the operation.
 
 -ERRORS-
 Okay:  File deleted successfully.
@@ -442,20 +438,6 @@ BufferOverflow: The file path string is too long.
 static ERROR FILE_Delete(objFile *Self, struct flDelete *Args)
 {
    if ((!Self->Path) OR (!*Self->Path)) return PostError(ERR_MissingPath);
-
-   if ((Args) AND (Args->Flags & 0x1)) {
-      struct rkFunction callback;
-      SET_FUNCTION_STDC(callback, &feedback_delete);
-      FileFeedback(&callback, Self, 0); // See feedback_delete() for more info
-
-      ERROR error = FILE_Delete(Self, NULL);
-
-      tlFeedback.Type = CALL_NONE;
-
-      if (Self->ProgressDialog) { acFree(Self->ProgressDialog); Self->ProgressDialog = NULL; }
-
-      return error;
-   }
 
    if ((Self->Stream) AND (!(Self->Flags & FL_LINK))) {
       LogBranch("Delete Folder: %s", Self->Path);
@@ -495,7 +477,7 @@ static ERROR FILE_Delete(objFile *Self, struct flDelete *Args)
 
          struct FileFeedback fb;
          ClearMemory(&fb, sizeof(fb));
-         if (tlFeedback.Type) {
+         if ((Args->Callback) AND (Args->Callback->Type)) {
             fb.FeedbackID = FBK_DELETE_FILE;
             fb.Path       = buffer;
             fb.User       = tlFeedbackData;
@@ -844,6 +826,7 @@ The #Position field will be reset as a result of calling this method.
 
 -INPUT-
 cstr Dest: The desired path for the file.
+ptr(func) Callback: Optional callback for receiving feedback during the operation.
 
 -ERRORS-
 Okay: The File was moved successfully.
@@ -896,7 +879,7 @@ static ERROR FILE_MoveFile(objFile *Self, struct flMove *Args)
          #endif
 
          ERROR error;
-         if (!(error = fs_copy(src, newpath, TRUE))) {
+         if (!(error = fs_copy(src, newpath, Args->Callback, Self, TRUE))) {
             FreeMemory(Self->Path);
             Self->Path = newpath;
          }
@@ -919,7 +902,7 @@ static ERROR FILE_MoveFile(objFile *Self, struct flMove *Args)
          #endif
 
          ERROR error;
-         if (!(error = fs_copy(src, newpath, TRUE))) {
+         if (!(error = fs_copy(src, newpath, Args->Callback, Self, TRUE))) {
             FreeMemory(Self->Path);
             Self->Path = newpath;
             return ERR_Okay;
@@ -1277,7 +1260,7 @@ static ERROR FILE_Rename(objFile *Self, struct acRename *Args)
                new[j++] = Args->Name[i];
             }
 
-            if (!fs_copy(Self->Path, new, TRUE)) {
+            if (!fs_copy(Self->Path, new, NULL, Self, TRUE)) {
                // Add the trailing slash
                if (new[j-1] != '/') new[j++] = '/';
                new[j] = 0;
@@ -1315,7 +1298,7 @@ static ERROR FILE_Rename(objFile *Self, struct acRename *Args)
             if (Self->Handle != -1) { close(Self->Handle); Self->Handle = -1; }
          #endif
 
-         if (!fs_copy(Self->Path, new, TRUE)) {
+         if (!fs_copy(Self->Path, new, NULL, Self, TRUE)) {
             FreeMemory(Self->Path);
             Self->Path = new;
             LogBack();
