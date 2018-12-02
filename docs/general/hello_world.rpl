@@ -29,9 +29,9 @@
   &lt;/window&gt;
 &lt;/dml&gt;</code></indent>
 
-<p>The above script is written in DML, which is particularly suited for interface development.  To run the script we can use the parasol-gui or parasol-cmd executable:</p>
+<p>The above script is written in DML, which is particularly suited for interface development.  To run the script we can use the fluid or parasol executable:</p>
 
-<indent><code>parasol-gui helloworld.dml</></>
+<indent><code>parasol helloworld.dml</></>
 
 <p>For more information on DML programming we recommend referring to the DML Tutorial available in Athene.  It covers the process of writing DML scripts more thoroughly than what we can afford in this chapter.</p>
 
@@ -123,15 +123,13 @@ ERROR program(void)
    return(ERR_Okay);
 }
 
-/* This routine will kill our program if the window that we created
-** is closed by the user.
-*/
+// This routine will kill our program if the window that we created is closed by the user.
 
 ERROR msghandler(struct Message *Message)
 {
    if (Message-&gt;Type IS MSGID_QUIT) return(ERR_Terminate);
 
-   return(ERR_Failed); /* Return failure if message unrecognised */
+   return(ERR_Failed); // Return failure if message unrecognised
 }</code></indent>
 
 <box width="100%" height="1" colour="0,0,0,40"/>

@@ -18,7 +18,7 @@
 <p>The Run class is also capable of inferring the correct executable to use by analysing any targeted data file.  For instance, it can launch picture, text and custom file types.  The exact behaviour that occurs when launching a data file is dependent on the settings found in the user's "user:config/associations.cfg" file, which holds the launch settings for each registered class and file type.  In most cases a script will be run that can handle the file data.</p>
 <p>The Run class is designed for use in basic scripts.  In more powerful languages such as Fluid, we recommend that the <class name="Task">Task</class> class is used.  The Task class offers more low-level features and can handle message pipes such as stdout more effectively.</p>
 <p>Typical usage of the Run class in a Fluid script is demonstrated in the following examples:</p>
-<pre>obj.new('run', { src='parasol-cmd' })
+<pre>obj.new('run', { src='parasol' })
 obj.new('run', { mode='view', src='pictures:screenshot.png' })
 </pre>
 <p>To pass command-line parameters to an executable file, use the <field>Args</field> field as in this example:</p>

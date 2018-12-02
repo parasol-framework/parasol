@@ -46,7 +46,7 @@ static const char Help[] = {
 "This command-line program will execute scripts written for the Parasol framework.  The core distribution\n\
 supports both DML (.dml) and Fluid (.fluid) scripts.  Quick start:\n\
 \n\
-   parasol-cmd [args] [script.ext] arg1 arg2 ...\n\
+   parasol [args] [script.ext] arg1 arg2 ...\n\
 \n\
 Available commands:\n\
 \n\
@@ -186,7 +186,7 @@ extern "C" void program(void)
    ProcessMessages(0, 0);
 
 exit:
-   LogMsg("parasol-cmd now exiting...");
+   LogMsg("parasol now exiting...");
 
    if (CoreObjectID) {
       OBJECTPTR object;

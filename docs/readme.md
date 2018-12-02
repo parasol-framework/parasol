@@ -66,7 +66,7 @@ When working on modules in the core distribution, it is preferential to re-build
 
 ### 2.2 Debug Build
 
-Before resorting to a debug build, consider running `parasol-cmd` with the `--log-info` option.  Doing so will print a wealth of information to stdout and this is often enough to resolve common problems quickly.
+Before resorting to a debug build, consider running the application with the `--log-info` option.  Doing so will print a wealth of information to stdout and this is often enough to resolve common problems quickly.
 
 Parasol supports the use of `gdb` as a debugger.  Making a debug build for the first time will require a full recompile.  To enable debugging for your current session, execute the following:
 
@@ -80,7 +80,7 @@ Then perform a rebuild from the parasol-build folder:
 make full-compile
 ```
 
-Now run `gdb` from the command-line and target parasol-cmd or the problem executable as required.  After fixing the issues, we strongly recommend returning to a standard build.  Debug builds are resource intensive and in particular are not reflective of a 'real world environment' for day to day programming.
+Now run `gdb` from the command-line and target parasol or the problem executable as required.  After fixing the issues, we strongly recommend returning to a standard build.  Debug builds are resource intensive and in particular are not reflective of a 'real world environment' for day to day programming.
 
 To debug serious issues or to get more insight into a problem, set `VDEBUG=1` to enable verbose debugging, which greatly increases the quantity of messages being printed to the log.
 
@@ -113,7 +113,7 @@ make install
 
 This will install the release to the 'install' folder.  If you would prefer to install to another location, open the makefile and change the `INSTALL` variable to your preferred path.
 
-A successful install will allow you to run the `parasol` and `parasol-cmd` executable programs from the installation folder.  These programs are documented in full at our web-site if further details are required on their use.  To test that you have a working build, run these programs from the command-line with no additional parameters and observe the output for any errors.  You may wish to add the install folder to your `PATH` so that the executables are always accessible.
+A successful install will allow you to run the `fluid` and `parasol` executable programs from the installation folder.  These programs are documented in full at our web-site if further details are required on their use.  To test that you have a working build, run these programs from the command-line with no additional parameters and observe the output for any errors.  You may wish to add the install folder to your `PATH` so that the executables are always accessible.
 
 ## 4. Next Steps
 

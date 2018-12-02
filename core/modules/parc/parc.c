@@ -11,8 +11,8 @@ Parc: This class manages the execution of PARC files.
 
 The Parc class is used to execute Parasol Archives (`.parc` files) in the current process space.  In doing so, many
 system privileges for the active process may be lost in favour of running the Parc file in a restricted sandbox.  For
-this reason, it is recommended that Parc files are launched using either `parasol-cmd` or `parasol-gui` rather than
-using the Parc class directly.  After executing a Parc file via the #Activate() action, it is strongly
+this reason, it is recommended that Parc files are launched using either the `fluid` or `parasol` executables rather
+than using the Parc class directly.  After executing a Parc file via the #Activate() action, it is strongly
 recommended that the process is terminated because the loss of system privileges is irreversible.
 -END-
 

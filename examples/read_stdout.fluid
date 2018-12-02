@@ -9,7 +9,7 @@ Demonstrates how to launch a sub-process and intercept the data that it prints t
 
    catch(function()
       local task = obj.new("task", {
-         location = "parasol:parasol-cmd",
+         location = "parasol:fluid",
          args   = "--help",
          outputCallback = function(Task, Data)
             file_out.acWrite(Data)

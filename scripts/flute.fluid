@@ -73,7 +73,7 @@ end
       print("")
       print("Example usage:")
       print("")
-      print("   parasol-cmd flute.fluid file=[file]")
+      print("   fluid flute.fluid file=[file]")
       print("")
       return
    end

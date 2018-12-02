@@ -52,7 +52,7 @@ function initialise()
       print('Generating PARC file for testing.')
 
       local task = obj.new("task", {
-         src   = "parasol:parasol-cmd",
+         src   = "parasol:fluid",
          args  = "sdk:scripts/parka.fluid src=sdk:core/modules/parc/test/archive/ dest=sdk:core/modules/parc/test/test.parc",
          flags = "!WAIT"
       })
