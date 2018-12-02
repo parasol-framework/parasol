@@ -1,7 +1,7 @@
 -- This program produces C/C++ headers and documentation from Parasol FDL files.
 --
--- Usage: parasol-cmd sdk:scripts/idl-c.fluid src=source.fdl
--- Example: parasol-cmd sdk:scripts/idl-c.fluid src=sdk:core/modules/core/core.fdl
+-- Usage: fluid sdk:scripts/idl-c.fluid src=source.fdl
+-- Example: fluid sdk:scripts/idl-c.fluid src=sdk:core/modules/core/core.fdl
 
    include 'core'
    include 'xml'
@@ -639,7 +639,7 @@ function class(Name, Options, Blueprint, Private)
             method.funcName = method.funcName .. Name
          end
 
-         function pName(Param)
+         local function pName(Param)
             local name = Param.name
             if (Param.type == 'OBJECTID') or (Param.type == 'MEMORYID') then
                if (name:sub(-2) != 'ID') then
