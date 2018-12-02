@@ -34,7 +34,7 @@ full-compile:
 	$(MAKE) -C core/launcher -f makefile clean
 	$(MAKE) -C core/launcher -f makefile
 	$(MAKE) config
-	"$(PARASOL_RELEASE)/parasol-cmd" --log-error $(VERIFY_SCRIPT)
+	"$(PARASOL_RELEASE)/parasol" --log-error $(VERIFY_SCRIPT)
 
 # Generate documentation for modules and classes.
 
@@ -43,7 +43,7 @@ documents:
 	RECIPE="doc" $(MAKE) -i -k -C core
 
 verify:
-	"$(PARASOL_RELEASE)/parasol-cmd" --log-error $(VERIFY_SCRIPT)
+	"$(PARASOL_RELEASE)/parasol" --log-error $(VERIFY_SCRIPT)
 
 # Recompile everything from scratch.  The 'RECIPE' is executed by the makefile in core
 
