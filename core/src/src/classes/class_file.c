@@ -480,7 +480,6 @@ static ERROR FILE_Delete(objFile *Self, struct flDelete *Args)
          if ((Args->Callback) AND (Args->Callback->Type)) {
             fb.FeedbackID = FBK_DELETE_FILE;
             fb.Path       = buffer;
-            fb.User       = tlFeedbackData;
          }
 
          ERROR error;
@@ -879,7 +878,7 @@ static ERROR FILE_MoveFile(objFile *Self, struct flMove *Args)
          #endif
 
          ERROR error;
-         if (!(error = fs_copy(src, newpath, Args->Callback, Self, TRUE))) {
+         if (!(error = fs_copy(src, newpath, Args->Callback, TRUE))) {
             FreeMemory(Self->Path);
             Self->Path = newpath;
          }
@@ -902,7 +901,7 @@ static ERROR FILE_MoveFile(objFile *Self, struct flMove *Args)
          #endif
 
          ERROR error;
-         if (!(error = fs_copy(src, newpath, Args->Callback, Self, TRUE))) {
+         if (!(error = fs_copy(src, newpath, Args->Callback, TRUE))) {
             FreeMemory(Self->Path);
             Self->Path = newpath;
             return ERR_Okay;
@@ -1260,7 +1259,7 @@ static ERROR FILE_Rename(objFile *Self, struct acRename *Args)
                new[j++] = Args->Name[i];
             }
 
-            if (!fs_copy(Self->Path, new, NULL, Self, TRUE)) {
+            if (!fs_copy(Self->Path, new, NULL, TRUE)) {
                // Add the trailing slash
                if (new[j-1] != '/') new[j++] = '/';
                new[j] = 0;
@@ -1298,7 +1297,7 @@ static ERROR FILE_Rename(objFile *Self, struct acRename *Args)
             if (Self->Handle != -1) { close(Self->Handle); Self->Handle = -1; }
          #endif
 
-         if (!fs_copy(Self->Path, new, NULL, Self, TRUE)) {
+         if (!fs_copy(Self->Path, new, NULL, TRUE)) {
             FreeMemory(Self->Path);
             Self->Path = new;
             LogBack();

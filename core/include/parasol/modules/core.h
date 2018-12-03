@@ -1634,7 +1634,6 @@ struct FileFeedback {
    LARGE  Position;      // Current seek position within the file if moving or copying
    STRING Path;
    STRING Dest;          // Destination file/path if moving or copying
-   APTR   User;          // User data, set by FileFeedback()
    LONG   FeedbackID;    // Set to one of the FDB integers
    char   Reserved[32];  // Reserved in case of future expansion
 };
@@ -2193,9 +2192,9 @@ typedef struct rkFile {
 #define MT_FlWatch -10
 
 struct flStartStream { OBJECTID SubscriberID; LONG Flags; LONG Length;  };
-struct flDelete { LONG Flags;  };
-struct flMove { CSTRING Dest;  };
-struct flCopy { CSTRING Dest;  };
+struct flDelete { LONG Flags; FUNCTION *Callback; };
+struct flMove { CSTRING Dest; FUNCTION *Callback;  };
+struct flCopy { CSTRING Dest; FUNCTION *Callback;  };
 struct flSetDate { LONG Year; LONG Month; LONG Day; LONG Hour; LONG Minute; LONG Second; LONG Type;  };
 struct flReadLine { STRING Result;  };
 struct flNext { struct rkFile * File;  };

@@ -122,7 +122,6 @@ LONG CALL_FEEDBACK(FUNCTION *Callback, struct FileFeedback *Feedback)
             { "Position", FD_LARGE,   { .Large   = Feedback->Position } },
             { "Path",     FD_STRING,  { .Address = Feedback->Path } },
             { "Dest",     FD_STRING,  { .Address = Feedback->Dest } },
-            { "User",     FD_POINTER, { .Address = Feedback->User } },
             { "FeedbackID", FD_LONG,  { .Long    = Feedback->FeedbackID } }
          };
 
@@ -704,7 +703,7 @@ Failed: A failure occurred during the copy process.
 
 ERROR CopyFile(CSTRING Source, CSTRING Dest, FUNCTION *Callback)
 {
-   return fs_copy(Source, Dest, Callback, NULL, FALSE);
+   return fs_copy(Source, Dest, Callback, FALSE);
 }
 
 /*****************************************************************************
@@ -1315,7 +1314,7 @@ ERROR MoveFile(CSTRING Source, CSTRING Dest, FUNCTION *Callback)
    if ((!Source) OR (!Dest)) return ERR_NullArgs;
 
    LogF("MoveFile()","%s to %s", Source, Dest);
-   return fs_copy(Source, Dest, Callback, NULL, TRUE);
+   return fs_copy(Source, Dest, Callback, TRUE);
 }
 
 /******************************************************************************
@@ -2001,7 +2000,7 @@ ERROR check_paths(CSTRING Path, LONG Permissions)
 //***************************************************************************
 // This low level function is used for copying/moving/renaming files and folders.
 
-ERROR fs_copy(CSTRING Source, CSTRING Dest, BYTE Move)
+ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
 {
 #ifdef __unix__
    struct stat64 stinfo;
@@ -2083,7 +2082,6 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, BYTE Move)
 
    feedback.Path = src;
    feedback.Dest = dest;
-   feedback.User = tlFeedbackData;
 
    if ((srcvirtual->VirtualID != -1) OR (destvirtual->VirtualID != -1)) {
       APTR data;
@@ -2630,7 +2628,7 @@ ERROR fs_copydir(STRING Source, STRING Dest, struct FileFeedback *Feedback, FUNC
             StrCopy(file->Name, Dest+destlen, COPY_ALL);
 
             AdjustLogLevel(1);
-               error = fs_copy(Source, Dest, Callback, NULL, FALSE);
+               error = fs_copy(Source, Dest, Callback, FALSE);
             AdjustLogLevel(-1);
          }
          else if (file->Flags & RDF_FOLDER) {
@@ -2783,7 +2781,6 @@ ERROR fs_delete(STRING Path, FUNCTION *Callback)
          ClearMemory(&feedback, sizeof(feedback));
          feedback.FeedbackID = FBK_DELETE_FILE;
          feedback.Path = buffer;
-         feedback.User = tlFeedbackData;
       }
 
       error = delete_tree(buffer, sizeof(buffer), &feedback);
@@ -2801,7 +2798,6 @@ ERROR fs_delete(STRING Path, FUNCTION *Callback)
             ClearMemory(&feedback, sizeof(feedback));
             feedback.FeedbackID = FBK_DELETE_FILE;
             feedback.Path = buffer;
-            feedback.User = tlFeedbackData;
          }
 
          error = delete_tree(buffer, sizeof(buffer), &feedback);

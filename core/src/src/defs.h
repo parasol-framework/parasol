@@ -143,7 +143,7 @@ void free_storage_class(void);
 
 ERROR check_cache(OBJECTPTR, LARGE TimeElapsed, LARGE TotalElapsed);
 ERROR get_class_cmd(CSTRING, struct rkConfig *, LONG, CLASSID, STRING *);
-ERROR fs_copy(CSTRING, CSTRING, FUNCTION *, APTR, BYTE);
+ERROR fs_copy(CSTRING, CSTRING, FUNCTION *, BYTE);
 ERROR fs_copydir(STRING, STRING, struct FileFeedback *, FUNCTION *, BYTE);
 LONG  get_parent_permissions(CSTRING, LONG *, LONG *);
 ERROR load_datatypes(void);
