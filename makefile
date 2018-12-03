@@ -45,9 +45,8 @@ documents:
 verify:
 	"$(PARASOL_RELEASE)/parasol" --log-error $(VERIFY_SCRIPT)
 
-# Recompile everything from scratch.  The 'RECIPE' is executed by the makefile in core
-
-# Copies the configuration files to release/
+# Copies the configuration files to the release folder.  MUST be followed by a verify because the module dictionary
+# will be cleared.
 
 .FORCE:
 config: .FORCE
