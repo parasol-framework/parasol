@@ -41,15 +41,6 @@ static ERROR sleep_task(LONG);
 ERROR write_nonblock(LONG Handle, APTR Data, LONG Size, LARGE EndTime);
 #endif
 
-struct MsgHandler {
-   struct ResourceManager Resource;
-   struct MsgHandler *Prev;
-   struct MsgHandler *Next;
-   APTR Custom;            // Custom pointer to send to the message handler
-   FUNCTION Function;      // Call this function
-   LONG MsgType;           // Type of message being filtered
-};
-
 static void msghandler_free(APTR Address)
 {
    FMSG("RemoveMsgHandler()","Handle: %p", Address);
@@ -118,7 +109,7 @@ collected or can be passed to RemoveMsgHandler() once it is no longer required.
 ptr Custom: A custom pointer that will be passed to the message handler when messages are received.
 int MsgType: The message type that the handler wishes to intercept.  If zero, all incoming messages are passed to the handler.
 ptr(func) Routine: Refers to the function that will handle incoming messages.
-!resource(Handle):  The resulting handle of the new message handler - this will be needed for RemoveMsgHandler().
+!resource(MsgHandler) Handle:  The resulting handle of the new message handler - this will be needed for RemoveMsgHandler().
 
 -ERRORS-
 Okay: Message handler successfully processed.
@@ -128,7 +119,7 @@ AllocMemory
 
 *****************************************************************************/
 
-ERROR AddMsgHandler(APTR Custom, LONG MsgType, FUNCTION *Routine, APTR *Handle)
+ERROR AddMsgHandler(APTR Custom, LONG MsgType, FUNCTION *Routine, struct MsgHandler **Handle)
 {
    struct MsgHandler *handler;
 
@@ -175,7 +166,7 @@ RemoveMsgHandler: Removes message handlers from the message processing routines.
 This function removes message handlers that have been added with the ~AddMsgHandler() function.
 
 -INPUT-
-ptr Handle: The handle originally returned from AddMsgHandler().
+resource(MsgHandler) Handle: The handle originally returned from AddMsgHandler().
 
 -ERRORS-
 Okay: The handler was removed.
@@ -185,7 +176,7 @@ Search: The given Handle is not recognised.
 
 *****************************************************************************/
 
-ERROR RemoveMsgHandler(APTR Handle)
+ERROR RemoveMsgHandler(struct MsgHandler *Handle)
 {
    if (!Handle) return ERR_NullArgs;
    return FreeMemory(Handle); // Message handles are a resource and will divert to msghandler_free()

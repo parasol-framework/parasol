@@ -496,10 +496,6 @@ actions[AC_ActionNotify] = MODULE_ActionNotify;
       <const name="HOST">Query the host platform's file associations only.</const>
     </constants>
 
-    <constants lookup="FDL" comment="Options for the File Delete() method.">
-      <const name="FEEDBACK">Automatically manage user feedback for deleting files by presenting dialog boxes.</const>
-    </constants>
-
     <constants lookup="MEM" comment="Memory types used by AllocMemory().  The lower 16 bits are stored with allocated blocks, the upper 16 bits are function-relative only.">
       <const name="NO_BLOCK">If this flag is set against a public memory block then the access blocking mechanism will be permanently turned off for all accesses to that particular memory block.  This means that multiple tasks can have full read/write access to the memory block at once regardless of the flags passed to AccessMemory().</const>
       <const name="FIXED">This flag can be applied to public memory blocks that need to be mapped to a fixed address that is common to all tasks.  For instance, if the system locks the memory block to address 0x56084000 for your task, then all other tasks that map the memory block will also see it at that address.  This flag is typically used for supporting absolute code execution.</const>
@@ -775,8 +771,7 @@ actions[AC_ActionNotify] = MODULE_ActionNotify;
       <field name="Position" type="LARGE">Current seek position within the file if moving or copying</field>
       <field name="Path" type="STRING"></field>
       <field name="Dest" type="STRING">Destination file/path if moving or copying</field>
-      <field name="User" type="APTR">User data, set by FileFeedback()</field>
-      <field name="FeedbackID" type="LONG">Set to one of the FDB integers</field>
+      <field name="FeedbackID" type="LONG" lookup="FDB">Set to one of the FDB integers</field>
       <field name="Reserved" type="char" size="32">Reserved in case of future expansion</field>
     </struct>
 

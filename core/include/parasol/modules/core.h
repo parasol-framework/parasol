@@ -1548,6 +1548,14 @@ struct ActionEntry {
    ERROR (*PerformAction)(OBJECTPTR, APTR);
 };
 
+struct MsgHandler {
+   struct MsgHandler * Prev;
+   struct MsgHandler * Next;
+   APTR     Custom;             // Custom pointer to send to the message handler
+   FUNCTION Function;           // Call this function
+   LONG     MsgType;            // Type of message being filtered
+};
+
 struct KeyStore {
    APTR Mutex;                 // Internal mutex for managing thread-safety.
    struct KeyPair * * Data;    // Key-pairs are stored here.
@@ -1761,8 +1769,8 @@ struct CoreBase {
    void (*_PrintDiagnosis)(LONG, LONG);
    ERROR (*_AssociateCmd)(CSTRING, CSTRING, LONG, CSTRING);
    ERROR (*_UpdateMessage)(APTR, LONG, LONG, APTR, LONG);
-   ERROR (*_AddMsgHandler)(APTR, LONG, FUNCTION *, APTR);
-   ERROR (*_RemoveMsgHandler)(APTR);
+   ERROR (*_AddMsgHandler)(APTR, LONG, FUNCTION *, struct MsgHandler **);
+   ERROR (*_RemoveMsgHandler)(struct MsgHandler *);
    ERROR (*_FindPrivateObject)(CSTRING, APTR);
    LARGE (*_PreciseTime)(void);
    ERROR (*_SetFieldsID)(OBJECTID, ...);
@@ -1833,15 +1841,15 @@ struct CoreBase {
    CSTRING (*_UTF8ValidEncoding)(CSTRING, CSTRING);
    ERROR (*_AnalysePath)(CSTRING, LONG *);
    ERROR (*_CreateFolder)(CSTRING, LONG);
-   ERROR (*_MoveFile)(CSTRING, CSTRING);
+   ERROR (*_MoveFile)(CSTRING, CSTRING, FUNCTION *);
    ERROR (*_ResolvePath)(CSTRING, LONG, STRING *);
    ERROR (*_SetVolume)(LARGE,...);
    ERROR (*_DeleteVolume)(CSTRING);
    ERROR (*_VirtualVolume)(CSTRING, ...);
-   ERROR (*_CopyFile)(CSTRING, CSTRING);
+   ERROR (*_CopyFile)(CSTRING, CSTRING, FUNCTION *);
    ERROR (*_SetDocView)(CSTRING, CSTRING);
    CSTRING (*_GetDocView)(CSTRING);
-   ERROR (*_DeleteFile)(CSTRING);
+   ERROR (*_DeleteFile)(CSTRING, FUNCTION *);
    ERROR (*_GetFileInfo)(CSTRING, struct FileInfo *, LONG);
    ERROR (*_SaveObjectToFile)(APTR, CSTRING, LONG);
    void (*_CloseDir)(struct DirInfo *);
@@ -1850,7 +1858,7 @@ struct CoreBase {
    ERROR (*_IdentifyFile)(CSTRING, CSTRING, LONG, CLASSID *, CLASSID *, STRING *);
    ERROR (*_TranslateCmdRef)(CSTRING, STRING *);
    ERROR (*_CreateLink)(CSTRING, CSTRING);
-   ERROR (*_FileFeedback)(FUNCTION *, APTR, LONG);
+   void (*_VarUnlock)(struct KeyStore *);
    void (*_SetDefaultPermissions)(LONG, LONG, LONG);
    CSTRING (*_ResolveUserID)(LONG);
    CSTRING (*_ResolveGroupID)(LONG);
@@ -1874,7 +1882,6 @@ struct CoreBase {
    ERROR (*_KeyIterate)(struct KeyStore *, ULONG, ULONG *, APTR, LONG *);
    ERROR (*_VarSetSized)(struct KeyStore *, CSTRING, LONG, APTR, LONG *);
    ERROR (*_VarLock)(struct KeyStore *, LONG);
-   void (*_VarUnlock)(struct KeyStore *);
 };
 
 #ifndef PRV_CORE_MODULE
@@ -2048,7 +2055,7 @@ struct CoreBase {
 #define IdentifyFile(...) (CoreBase->_IdentifyFile)(__VA_ARGS__)
 #define TranslateCmdRef(...) (CoreBase->_TranslateCmdRef)(__VA_ARGS__)
 #define CreateLink(...) (CoreBase->_CreateLink)(__VA_ARGS__)
-#define FileFeedback(...) (CoreBase->_FileFeedback)(__VA_ARGS__)
+#define VarUnlock(...) (CoreBase->_VarUnlock)(__VA_ARGS__)
 #define SetDefaultPermissions(...) (CoreBase->_SetDefaultPermissions)(__VA_ARGS__)
 #define ResolveUserID(...) (CoreBase->_ResolveUserID)(__VA_ARGS__)
 #define ResolveGroupID(...) (CoreBase->_ResolveGroupID)(__VA_ARGS__)
@@ -2072,7 +2079,6 @@ struct CoreBase {
 #define KeyIterate(...) (CoreBase->_KeyIterate)(__VA_ARGS__)
 #define VarSetSized(...) (CoreBase->_VarSetSized)(__VA_ARGS__)
 #define VarLock(...) (CoreBase->_VarLock)(__VA_ARGS__)
-#define VarUnlock(...) (CoreBase->_VarUnlock)(__VA_ARGS__)
 #endif
 
 
@@ -2192,9 +2198,9 @@ typedef struct rkFile {
 #define MT_FlWatch -10
 
 struct flStartStream { OBJECTID SubscriberID; LONG Flags; LONG Length;  };
-struct flDelete { LONG Flags; FUNCTION *Callback; };
-struct flMove { CSTRING Dest; FUNCTION *Callback;  };
-struct flCopy { CSTRING Dest; FUNCTION *Callback;  };
+struct flDelete { FUNCTION * Callback;  };
+struct flMove { CSTRING Dest; FUNCTION * Callback;  };
+struct flCopy { CSTRING Dest; FUNCTION * Callback;  };
 struct flSetDate { LONG Year; LONG Month; LONG Day; LONG Hour; LONG Minute; LONG Second; LONG Type;  };
 struct flReadLine { STRING Result;  };
 struct flNext { struct rkFile * File;  };
@@ -2207,18 +2213,18 @@ INLINE ERROR flStartStream(APTR Ob, OBJECTID SubscriberID, LONG Flags, LONG Leng
 
 #define flStopStream(obj) Action(MT_FlStopStream,(obj),0)
 
-INLINE ERROR flDelete(APTR Ob, LONG Flags) {
-   struct flDelete args = { Flags };
+INLINE ERROR flDelete(APTR Ob, FUNCTION * Callback) {
+   struct flDelete args = { Callback };
    return(Action(MT_FlDelete, Ob, &args));
 }
 
-INLINE ERROR flMove(APTR Ob, CSTRING Dest) {
-   struct flMove args = { Dest };
+INLINE ERROR flMove(APTR Ob, CSTRING Dest, FUNCTION * Callback) {
+   struct flMove args = { Dest, Callback };
    return(Action(MT_FlMove, Ob, &args));
 }
 
-INLINE ERROR flCopy(APTR Ob, CSTRING Dest) {
-   struct flCopy args = { Dest };
+INLINE ERROR flCopy(APTR Ob, CSTRING Dest, FUNCTION * Callback) {
+   struct flCopy args = { Dest, Callback };
    return(Action(MT_FlCopy, Ob, &args));
 }
 

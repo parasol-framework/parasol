@@ -818,6 +818,14 @@ module({ name="Core", copyright="Paul Manias 1996-2017" }, function()
 
   struct("ActionEntry", { }, [[ fptr(error obj ptr) PerformAction ]])
 
+  struct("MsgHandler", { restrict="c" }, [[
+    ptr(struct(MsgHandler)) Prev
+    ptr(struct(MsgHandler)) Next
+    ptr Custom            # Custom pointer to send to the message handler
+    func Function         # Call this function
+    int MsgType           # Type of message being filtered
+  ]])
+
   struct("KeyStore", { comment="Key-pair storage created by VarNew()" }, [[
     ptr Mutex                   # Internal mutex for managing thread-safety.
     ptr(struct(*KeyPair)) Data  # Key-pairs are stored here.

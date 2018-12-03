@@ -2099,7 +2099,7 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
          if ((Move) AND (srcvirtual IS destvirtual)) {
             // If the source and destination use the same virtual volume, execute the move method.
 
-            error = flMove(srcfile, Dest);
+            error = flMove(srcfile, Dest, NULL);
             goto exit;
          }
 

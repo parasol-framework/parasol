@@ -122,6 +122,7 @@ struct rkConfig;
 struct ActionTable;
 struct FileFeedback;
 struct ResourceManager;
+struct MsgHandler;
 
 ERROR fs_closedir(struct DirInfo *);
 ERROR fs_createlink(CSTRING, CSTRING);
