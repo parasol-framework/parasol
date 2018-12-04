@@ -2280,11 +2280,11 @@ static ERROR init_filesystem(void)
          // folder if it does not already exist.
 
          if (StrMatch("system:users/default/", buffer) != ERR_Okay) {
-            LONG locationtype = 0;
-            if ((AnalysePath(buffer, &locationtype) != ERR_Okay) OR (locationtype != LOC_DIRECTORY)) {
+            LONG location_type = 0;
+            if ((AnalysePath(buffer, &location_type) != ERR_Okay) OR (location_type != LOC_DIRECTORY)) {
                buffer[i-1] = 0;
                SetDefaultPermissions(-1, -1, PERMIT_READ|PERMIT_WRITE);
-                  CopyFile("system:users/default/", buffer);
+                  CopyFile("system:users/default/", buffer, NULL);
                SetDefaultPermissions(-1, -1, 0);
                buffer[i-1] = '/';
             }

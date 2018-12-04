@@ -128,8 +128,10 @@ static void free_private_children(OBJECTPTR Object)
                      LogErrorMsg("Unfreed string \"%.40s\"", (CSTRING)glPrivateMemory[i].Address);
                   }
                   else if (glPrivateMemory[i].Flags & MEM_MANAGED) {
-                     struct ResourceManager *res = ((struct ResourceManager **)glPrivateMemory[i].Address)[0];
-                     if (res) LogErrorMsg("Unfreed %s resource at %p.", res->Name, glPrivateMemory[i].Address);
+                     struct ResourceManager **res = glPrivateMemory[i].Address - sizeof(LONG) - sizeof(LONG) - sizeof(struct ResourceManager *);
+                     if (res[0]) {
+                        LogErrorMsg("Unfreed %s resource at %p.", res[0]->Name, glPrivateMemory[i].Address);
+                     }
                      else LogErrorMsg("Unfreed resource at %p.", glPrivateMemory[i].Address);
                   }
                   else LogErrorMsg("Unfreed memory block %p, Size %d", glPrivateMemory[i].Address, glPrivateMemory[i].Size);

@@ -41,15 +41,6 @@ static ERROR sleep_task(LONG);
 ERROR write_nonblock(LONG Handle, APTR Data, LONG Size, LARGE EndTime);
 #endif
 
-struct MsgHandler {
-   struct ResourceManager Resource;
-   struct MsgHandler *Prev;
-   struct MsgHandler *Next;
-   APTR Custom;            // Custom pointer to send to the message handler
-   FUNCTION Function;      // Call this function
-   LONG MsgType;           // Type of message being filtered
-};
-
 static void msghandler_free(APTR Address)
 {
    FMSG("RemoveMsgHandler()","Handle: %p", Address);
@@ -71,23 +62,11 @@ static struct ResourceManager glResourceMsgHandler = {
 
 //#define DBG_INCOMING TRUE  // Print incoming message information
 
-static UBYTE idname[20];
 #ifdef _WIN32
 static THREADVAR UBYTE tlMsgSent = FALSE;
 #endif
 
 #define MAX_MSEC 1000
-
-static CSTRING action_id_name(LONG ActionID)
-{
-   if ((ActionID > 0) AND (ActionID < AC_END)) {
-      return ActionTable[ActionID].Name;
-   }
-   else {
-      IntToStr(ActionID, idname, sizeof(idname));
-      return idname;
-   }
-}
 
 /*****************************************************************************
 
@@ -118,7 +97,7 @@ collected or can be passed to RemoveMsgHandler() once it is no longer required.
 ptr Custom: A custom pointer that will be passed to the message handler when messages are received.
 int MsgType: The message type that the handler wishes to intercept.  If zero, all incoming messages are passed to the handler.
 ptr(func) Routine: Refers to the function that will handle incoming messages.
-!resource(Handle):  The resulting handle of the new message handler - this will be needed for RemoveMsgHandler().
+!resource(MsgHandler) Handle:  The resulting handle of the new message handler - this will be needed for RemoveMsgHandler().
 
 -ERRORS-
 Okay: Message handler successfully processed.
@@ -128,15 +107,14 @@ AllocMemory
 
 *****************************************************************************/
 
-ERROR AddMsgHandler(APTR Custom, LONG MsgType, FUNCTION *Routine, APTR *Handle)
+ERROR AddMsgHandler(APTR Custom, LONG MsgType, FUNCTION *Routine, struct MsgHandler **Handle)
 {
-   struct MsgHandler *handler;
-
-   FMSG("AddMsgHandler()","Custom: %p, MsgType: %d, Routine: %p, Type: %d", Custom, MsgType, Routine, Routine->Type);
-
    if (!Routine) return FuncError(__func__, ERR_NullArgs);
 
+   LogF("AddMsgHandler()","Custom: %p, MsgType: %d, Routine: %p, Type: %d", Custom, MsgType, Routine, Routine->Type);
+
    if (!thread_lock(TL_MSGHANDLER, 5000)) {
+      struct MsgHandler *handler;
       if (!AllocMemory(sizeof(struct MsgHandler), MEM_MANAGED, (APTR *)&handler, NULL)) {
          set_memory_manager(handler, &glResourceMsgHandler);
 
@@ -175,7 +153,7 @@ RemoveMsgHandler: Removes message handlers from the message processing routines.
 This function removes message handlers that have been added with the ~AddMsgHandler() function.
 
 -INPUT-
-ptr Handle: The handle originally returned from AddMsgHandler().
+resource(MsgHandler) Handle: The handle originally returned from AddMsgHandler().
 
 -ERRORS-
 Okay: The handler was removed.
@@ -185,7 +163,7 @@ Search: The given Handle is not recognised.
 
 *****************************************************************************/
 
-ERROR RemoveMsgHandler(APTR Handle)
+ERROR RemoveMsgHandler(struct MsgHandler *Handle)
 {
    if (!Handle) return ERR_NullArgs;
    return FreeMemory(Handle); // Message handles are a resource and will divert to msghandler_free()
@@ -335,220 +313,12 @@ TimeOut:
 
 *****************************************************************************/
 
-//****************************************************************************
-
-static ERROR msg_getfield(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
-{
-   LogF("@ProcessMessages","Support for GetField messages not available.");
-   return ERR_Okay;
-}
-
-//****************************************************************************
-
-static ERROR msg_setfield(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
-{
-   LogF("@ProcessMessages","Support for SetField messages not available.");
-   return ERR_Okay;
-}
-
-//****************************************************************************
-
-static ERROR msg_actionresult(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
-{
-   LogF("@ProcessMessages","Support for ActionResult messages not available.");
-   return ERR_Okay;
-}
-
-//****************************************************************************
-
-static ERROR msg_action(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
-{
-   struct ActionMessage *action;
-
-   if (!(action = (struct ActionMessage *)Message)) {
-      LogF("@ProcessMessages","No data attached to MSGID_ACTION message.");
-      return ERR_Okay;
-   }
-
-   #ifdef DBG_INCOMING
-      LogF("ProcessMessages","Executing action %s on object #%d, Data: %p, Size: %d, Args: %d", action_id_name(action->ActionID), action->ObjectID, Message, MsgSize, action->SendArgs);
-   #endif
-
-   if ((action->ObjectID) AND (action->ActionID)) {
-      OBJECTPTR obj;
-      ERROR error;
-      if (!(error = AccessObject(action->ObjectID, 5000, &obj))) {
-         if (action->SendArgs IS FALSE) {
-            obj->Flags |= NF_MESSAGE;
-            action->Error = Action(action->ActionID, obj, NULL);
-            obj->Flags &= ~NF_MESSAGE;
-            ReleaseObject(obj);
-         }
-         else {
-            const struct FunctionField *fields;
-            if (action->ActionID > 0) fields = ActionTable[action->ActionID].Args;
-            else {
-               struct rkMetaClass *objclass = (struct rkMetaClass *)obj->Class;
-               if (objclass->Base) objclass = objclass->Base;
-
-               if (objclass->Methods) {
-                  fields = objclass->Methods[-action->ActionID].Args;
-               }
-               else {
-                  LogErrorMsg("No method table for object #%d, class %d", obj->UniqueID, obj->ClassID);
-                  fields = NULL;
-                  ReleaseObject(obj);
-               }
-            }
-
-            // Use resolve_args() to process the args structure back into something readable
-
-            if (fields) {
-               if (!resolve_args(action+1, fields)) {
-                  obj->Flags |= NF_MESSAGE;
-                  action->Error = Action(action->ActionID, obj, action+1);
-                  obj->Flags &= ~NF_MESSAGE;
-                  ReleaseObject(obj);
-
-                  if ((action->ReturnResult IS TRUE) AND (action->ReturnMessage)) {
-                     SendMessage(action->ReturnMessage, MSGID_ACTION_RESULT, NULL, action, MsgSize);
-                  }
-
-                  free_ptr_args(action+1, fields, FALSE);
-               }
-               else {
-                  LogF("@ProcessMessages","Failed to resolve arguments for action %s.", action_id_name(action->ActionID));
-                  if ((action->ReturnResult IS TRUE) AND (action->ReturnMessage)) {
-                     action->Error = ERR_Args;
-                     SendMessage(action->ReturnMessage, MSGID_ACTION_RESULT, NULL, action, MsgSize);
-                  }
-                  ReleaseObject(obj);
-               }
-            }
-         }
-      }
-      else {
-         if ((error != ERR_NoMatchingObject) AND (error != ERR_MarkedForDeletion)) {
-            if (action->ActionID > 0) LogF("@ProcessMessages","Could not gain access to object %d to execute action %s.", action->ObjectID, action_id_name(action->ActionID));
-            else LogF("@ProcessMessages","Could not gain access to object %d to execute method %d.", action->ObjectID, action->ActionID);
-         }
-         else {
-            if (action->ActionID IS AC_ActionNotify) {
-               struct acActionNotify *notify = (struct acActionNotify *)(action + 1);
-
-               LogF("8ProcessMessages","ActionNotify(%d, %s) from object %d cancelled, object does not exist.", action->ObjectID, action_id_name(notify->ActionID), notify->ObjectID);
-
-               // This helpful little subroutine will remove the redundant subscription from the calling object
-
-               OBJECTPTR object;
-               if ((notify->ObjectID) AND (!AccessObject(notify->ObjectID, 3000, &object))) {
-                  UnsubscribeActionByID(object, NULL, action->ObjectID);
-                  ReleaseObject(object);
-               }
-            }
-            else LogF("8ProcessMessages","Action %s cancelled, object #%d does not exist or marked for deletion.", action_id_name(action->ActionID), action->ObjectID);
-         }
-      }
-   }
-   else LogF("@ProcessMessages","Action message %s specifies an object ID of #%d.", action_id_name(action->ActionID), action->ObjectID);
-
-   return ERR_Okay;
-}
-
-/*****************************************************************************
-** Internal debug message found.  Internal debug messages are used for diagnosing things that are in local memory to
-** the task (programs like Inspector cannot access such areas).
-*/
-
-static ERROR msg_debug(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
-{
-   struct DebugMessage *debug;
-   LONG j, i;
-
-   if (!(debug = (struct DebugMessage *)Message)) return ERR_Okay;
-
-   if (debug->DebugID IS 1) {
-      LogF("!Debug","Index   Address   MemoryID    Locks");
-      if (!thread_lock(TL_MEMORY_PAGES, 4000)) {
-         for (i=0; i < glTotalPages; i++) {
-            if ((glMemoryPages[i].Address) OR (glMemoryPages[i].MemoryID)) {
-               for (j=0; j < glTotalPages; j++) {
-                  if ((j != i) AND (glMemoryPages[j].Address IS glMemoryPages[i].Address)) break;
-               }
-               if (j < glTotalPages) LogF("!Debug","%.3d:   %p     %8d%10d [DUPLICATE WITH %d]", i, glMemoryPages[i].Address, glMemoryPages[i].MemoryID, glMemoryPages[i].AccessCount, j);
-               else LogF("!Debug","%.3d:   %p     %8d%10d", i, glMemoryPages[i].Address, glMemoryPages[i].MemoryID, glMemoryPages[i].AccessCount);
-            }
-         }
-         thread_unlock(TL_MEMORY_PAGES);
-      }
-   }
-
-   return ERR_Okay;
-}
-
-//****************************************************************************
-
-static ERROR msg_validate_process(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
-{
-   struct ValidateMessage *data;
-
-   if (!(data = (struct ValidateMessage *)Message)) return ERR_Okay;
-   validate_process(data->ProcessID);
-   return ERR_Okay;
-}
-
-//****************************************************************************
-
-static ERROR msg_quit(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
-{
-   glTaskState = TSTATE_STOPPING;
-   return ERR_Okay;
-}
-
 ERROR ProcessMessages(LONG Flags, LONG TimeOut)
 {
    LONG (*msghandler)(APTR, LONG, LONG, APTR, LONG);
-   static volatile BYTE handlers_init = FALSE;
 
    // Message processing is only possible from the main thread (for system design and synchronisation reasons)
    if ((!tlMainThread) AND (!tlThreadWriteMsg)) return LogError(ERH_ProcessMessages, ERR_OutsideMainThread);
-
-   if (!handlers_init) {
-      FUNCTION call;
-
-      handlers_init = TRUE;
-
-      call.Type = CALL_STDC;
-      call.StdC.Routine = msg_action;
-      AddMsgHandler(NULL, MSGID_ACTION, &call, NULL);
-
-      call.StdC.Routine = msg_getfield;
-      AddMsgHandler(NULL, MSGID_GET_FIELD, &call, NULL);
-
-      call.StdC.Routine = msg_setfield;
-      AddMsgHandler(NULL, MSGID_SET_FIELD, &call, NULL);
-
-      call.StdC.Routine = msg_actionresult;
-      AddMsgHandler(NULL, MSGID_ACTION_RESULT, &call, NULL);
-
-      call.StdC.Routine = msg_debug;
-      AddMsgHandler(NULL, MSGID_DEBUG, &call, NULL);
-
-      call.StdC.Routine = msg_validate_process;
-      AddMsgHandler(NULL, MSGID_VALIDATE_PROCESS, &call, NULL);
-
-      call.StdC.Routine = msg_quit;
-      AddMsgHandler(NULL, MSGID_QUIT, &call, NULL);
-
-      call.StdC.Routine = msg_event; // lib_events.c
-      AddMsgHandler(NULL, MSGID_EVENT, &call, NULL);
-
-      call.StdC.Routine = msg_threadcallback; // class_thread.c
-      AddMsgHandler(NULL, MSGID_THREAD_CALLBACK, &call, NULL);
-
-      call.StdC.Routine = msg_threadaction; // class_thread.c
-      AddMsgHandler(NULL, MSGID_THREAD_ACTION, &call, NULL);
-   }
 
    // This recursion blocker prevents ProcessMessages() from being called to breaking point.  Excessive nesting can
    // occur on occasions where ProcessMessages() sends an action to an object that performs some activity before it

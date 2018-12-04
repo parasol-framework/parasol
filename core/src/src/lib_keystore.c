@@ -612,14 +612,13 @@ struct KeyStore * VarNew(LONG InitialSize, LONG Flags)
       LONG mem_flags = MEM_DATA|MEM_MANAGED;
       if (Flags & KSF_UNTRACKED) mem_flags |= MEM_UNTRACKED;
       error = AllocMemory(sizeof(struct KeyStore), mem_flags, (APTR *)&vs, NULL);
+      if (!error) set_memory_manager(vs, &glResourceKeyStore);
    }
 
    if (error) {
       FMSG("@VarNew","Failed to allocate memory.");
       return NULL;
    }
-
-   set_memory_manager(vs, &glResourceKeyStore);
 
    if ((vs->Data = malloc(InitialSize * sizeof(STRING)))) {
       ClearMemory(vs->Data, InitialSize * sizeof(STRING));

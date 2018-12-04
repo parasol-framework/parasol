@@ -287,7 +287,7 @@ ActionTags(MT_Rename, Object, "user:documents.txt");
     </description>
     <result type="ERROR">
       <error code="NullArgs">Function call missing argument value(s)</error>
-      <error code="CreateResource">Operation successful.</error>
+      <error code="CreateResource">Failed to create a new resource.</error>
       <error code="Okay">Operation successful.</error>
     </result>
   </function>
@@ -296,20 +296,20 @@ ActionTags(MT_Rename, Object, "user:documents.txt");
     <name>AddMsgHandler</name>
     <category>Messages</category>
     <comment>Adds a new message handler for processing incoming messages.</comment>
-    <prototype>ERROR AddMsgHandler(APTR Custom, LONG MsgType, FUNCTION * Routine, APTR * Handle)</prototype>
+    <prototype>ERROR AddMsgHandler(APTR Custom, LONG MsgType, FUNCTION * Routine, struct MsgHandler ** Handle)</prototype>
     <input>
       <param type="APTR" name="Custom">A custom pointer that will be passed to the message handler when messages are received.</param>
       <param type="LONG" name="MsgType">The message type that the handler wishes to intercept.  If zero, all incoming messages are passed to the handler.</param>
       <param type="FUNCTION *" name="Routine">Refers to the function that will handle incoming messages.</param>
-      <param type="APTR *" name="Handle">The resulting handle of the new message handler - this will be needed for RemoveMsgHandler().</param>
+      <param type="struct MsgHandler **" name="Handle">The resulting handle of the new message handler - this will be needed for RemoveMsgHandler().</param>
     </input>
     <description>
 <p>This function allows handlers to be added for the interception of incoming messages.  Message handling works as follows:</p>
 <p>During a call to ProcessMessages(), each incoming message will be scanned to determine if a message handler is able to process that message.  All handlers that accept the message type will be called with a copy of the message structure and any additional data.  The message is then removed from the message queue.</p>
 <p>When calling AddMsgHandler(), you can provide an optional Custom pointer that will have meaning to the handler.  The MsgType acts as a filter so that only messages with the same type identifier will be passed to the handler.  The Routine parameter must point to the function handler, which will follow this definition:</p>
 <pre>ERROR handler(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)</pre>
-<p>The handler must return ERR_Okay if the message was handled.  This means that the message will not be passed to message handlers that are yet to receive the message.  Return ERR_NothingDone if the message has been ignored or ERR_Continue if the message was processed but may be analysed by other handlers.  Return ERR_Terminate to break the current ProcessMessages() loop.</p>
-<p>The handler will be identified by a unique pointer returned in the Handle parameter.  This handle can be passed to RemoveMsgHandler() once the message handler is no longer required.</p>
+<p>The handler must return ERR_Okay if the message was handled.  This means that the message will not be passed to message handlers that are yet to receive the message.  Throw ERR_NothingDone if the message has been ignored or ERR_Continue if the message was processed but may be analysed by other handlers.  Throw ERR_Terminate to break the current ProcessMessages() loop.  When using Fluid, this is best achieved by writing <code>check(errorcode)</code> in the handler.</p>
+<p>The handler will be identified by a unique pointer returned in the Handle parameter.  This handle will be garbage collected or can be passed to RemoveMsgHandler() once it is no longer required.</p>
     </description>
     <result type="ERROR">
       <error code="NullArgs">Function call missing argument value(s)</error>
@@ -655,10 +655,11 @@ if (!AllocMemory(1000, MEM_DATA, &amp;address, NULL)) {
     <name>CopyFile</name>
     <category>Files</category>
     <comment>Makes copies of folders and files.</comment>
-    <prototype>ERROR CopyFile(CSTRING Source, CSTRING Dest)</prototype>
+    <prototype>ERROR CopyFile(CSTRING Source, CSTRING Dest, FUNCTION * Callback)</prototype>
     <input>
       <param type="CSTRING" name="Source">The source location.</param>
       <param type="CSTRING" name="Dest">The destination location.</param>
+      <param type="FUNCTION *" name="Callback">Optional callback for receiving feedback during the operation.</param>
     </input>
     <description>
 <p>This function is used to copy files and folders to new locations.  When copying folders it will do so recursively, so as to copy all sub-folders and files within the location.</p>
@@ -669,7 +670,10 @@ if (!AllocMemory(1000, MEM_DATA, &amp;address, NULL)) {
 <p>Copying <code>parasol:pictures/</code> to <code>parasol:documents</code> results in a folder at <code>parasol:documents</code> (if the documents folder already exists, it receives additional content from the pictures folder).</p>
 <p>This function will overwrite any destination file(s) that already exist.</p>
 <p>The Source parameter should always clarify the type of location that is being copied.  For example if copying a folder, a forward slash must terminate the string or it will be assumed that a file is the source.</p>
-<p>This function will send feedback if <function module="Core">FileFeedback</function> has been called beforehand.</p>
+<p>The Callback parameter can be set with a function that matches this prototype:</p>
+<p>
+<code>LONG Callback(struct FileFeedback *)</code></p>
+<p>For each file that is processed during the copy operation, a <struct>FileFeedback</struct> structure is passed that describes the source file and its target.  The callback must return a constant value that can potentially affect file processing. Valid values are FFR_Okay (copy the file), FFR_Skip (do not copy the file) and FFR_Abort (abort the process completely and return ERR_Cancelled as an error code).</p>
     </description>
     <result type="ERROR">
       <error code="Failed">General failure.</error>
@@ -811,14 +815,18 @@ if (!AllocMemory(1000, MEM_DATA, &amp;address, NULL)) {
     <name>DeleteFile</name>
     <category>Files</category>
     <comment>Deletes files and folders.</comment>
-    <prototype>ERROR DeleteFile(CSTRING Path)</prototype>
+    <prototype>ERROR DeleteFile(CSTRING Path, FUNCTION * Callback)</prototype>
     <input>
       <param type="CSTRING" name="Path">String referring to the file or folder to be deleted.  Folders must be denoted with a trailing slash.</param>
+      <param type="FUNCTION *" name="Callback">Optional callback for receiving feedback during the operation.</param>
     </input>
     <description>
 <p>This function will delete a file or folder when given a valid file location.  The current user must have delete access to the given file. When deleting folders, all content will be scanned and deleted recursively. Individual deletion failures are ignored, although an error will be returned if the top-level folder still contains content on its deletion.</p>
 <p>This function does not allow for the approximation of file names.  To approximate a file location, open it as a <class name="File">File</class> object or use <function module="Core">ResolvePath</function> first.</p>
-<p>This function will send feedback if <function module="Core">FileFeedback</function> has been called beforehand.</p>
+<p>The Callback parameter can be set with a function that matches this prototype:</p>
+<p>
+<code>LONG Callback(struct FileFeedback *)</code></p>
+<p>Prior to the deletion of any file, a <struct>FileFeedback</struct> structure is passed that describes the file's location.  The callback must return a constant value that can potentially affect file processing.  Valid values are FFR_Okay (delete the file), FFR_Skip (do not delete the file) and FFR_Abort (abort the process completely and return ERR_Cancelled as an error code).</p>
     </description>
     <result type="ERROR">
       <error code="NoSupport">This request is not supported.</error>
@@ -875,29 +883,6 @@ FastFindObject("SystemPointer", ID_POINTER, &amp;id, 1, NULL);
       <error code="EmptyString">A required string value contains no characters.</error>
       <error code="Search">A search routine in this function failed.</error>
       <error code="AccessMemory">Access to a shared memory block was denied.</error>
-      <error code="Okay">Operation successful.</error>
-    </result>
-  </function>
-
-  <function>
-    <name>FileFeedback</name>
-    <category>Files</category>
-    <comment>Enables continual feedback when performing long-running file operations.</comment>
-    <prototype>ERROR FileFeedback(FUNCTION * Routine, APTR Data, LONG Flags)</prototype>
-    <input>
-      <param type="FUNCTION *" name="Routine">Pointer to a routine that will receive feedback from the file system.</param>
-      <param type="APTR" name="Data">Private user data to be returned in the User field of the &amp;FileFeedback structure.</param>
-      <param type="LONG" name="Flags">Optional flags, currently zero.</param>
-    </input>
-    <description>
-<p>The FileFeedback() function is used to receive feedback from the file system when performing lengthy file operations. Feedback is currently supported for delete, move and copy operations, specifically: <function module="Core">DeleteFile</function>, <function module="Core">MoveFile</function>, <function module="Core">CopyFile</function> and equivalent methods in the <class name="File">File</class> class.</p>
-<p>The prototype for the Routine is <code>LONG Feedback(struct FileFeedback *)</code></p>
-<p>On receiving feedback, the <struct>FileFeedback</struct> structure can be queried for progress information.</p>
-<p>The feedback routine must return a constant value that can affect further file processing.  Valid values are FFR_Okay (do nothing), FFR_Skip (don't do anything further with the current file) and FFR_Abort (abort the file process completely and return ERR_Cancelled as an error code).</p>
-<p>Setting the file feedback routine is not permanent - it is only good for the next relevant filesystem call that is made.  Therefore it be called each time prior to any situation where feedback is required from the file system.  Thread safety is guaranteed, each having its own independent feedback mechanism.</p>
-    </description>
-    <result type="ERROR">
-      <error code="Args">Invalid arguments passed to function.</error>
       <error code="Okay">Operation successful.</error>
     </result>
   </function>
@@ -1737,10 +1722,11 @@ if (!MemoryPtrInfo(ptr, &amp;info)) {
     <name>MoveFile</name>
     <category>Files</category>
     <comment>Moves folders and files to new locations.</comment>
-    <prototype>ERROR MoveFile(CSTRING Source, CSTRING Dest)</prototype>
+    <prototype>ERROR MoveFile(CSTRING Source, CSTRING Dest, FUNCTION * Callback)</prototype>
     <input>
       <param type="CSTRING" name="Source">The source path.</param>
       <param type="CSTRING" name="Dest">The destination path.</param>
+      <param type="FUNCTION *" name="Callback">Optional callback for receiving feedback during the operation.</param>
     </input>
     <description>
 <p>This function is used to move files and folders to new locations.  It can also be used for renaming purposes and is able to move data from one type of media to another.  When moving folders, any contents within the folder will also be moved across to the new location.</p>
@@ -1754,7 +1740,10 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
 </pre>
 <p>This function will overwrite the destination location if it already exists.</p>
 <p>The Source argument should always clarify the type of location that is being copied - e.g. if you are copying a folder, you must specify a forward slash at the end of the string or the function will assume that you are moving a file.</p>
-<p>This function will send feedback if <function module="Core">FileFeedback</function> has been called beforehand.</p>
+<p>The Callback parameter can be set with a function that matches this prototype:</p>
+<p>
+<code>LONG Callback(struct FileFeedback *)</code></p>
+<p>For each file that is processed during the move operation, a <struct>FileFeedback</struct> structure is passed that describes the source file and its target.  The callback must return a constant value that can potentially affect file processing. Valid values are FFR_Okay (move the file), FFR_Skip (do not move the file) and FFR_Abort (abort the process completely and return ERR_Cancelled as an error code).</p>
     </description>
     <result type="ERROR">
       <error code="NullArgs">Function call missing argument value(s)</error>
@@ -2064,9 +2053,9 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
     <name>RemoveMsgHandler</name>
     <category>Messages</category>
     <comment>Removes message handlers from the message processing routines.</comment>
-    <prototype>ERROR RemoveMsgHandler(APTR Handle)</prototype>
+    <prototype>ERROR RemoveMsgHandler(struct MsgHandler * Handle)</prototype>
     <input>
-      <param type="APTR" name="Handle">The handle originally returned from AddMsgHandler().</param>
+      <param type="struct MsgHandler *" name="Handle">The handle originally returned from AddMsgHandler().</param>
     </input>
     <description>
 <p>This function removes message handlers that have been added with the <function module="Core">AddMsgHandler</function> function.</p>
@@ -2399,7 +2388,7 @@ FreeMemory(memory);
       <param type="CSTRING" name="Document">The path to the document file that will be associated with the Path.</param>
     </input>
     <description>
-<p>Use SetDocView() to link document templates with file paths.  Document templates are returned as tags when <function module="Core">GetFileInfo</function> is used on paths that match those passed to this function.  Document templates are used by the <class name="FileView">FileView</class> class to switch to document mode whenever a matching location is on display. For information on the template format, please refer to the <class name="FileView">FileView</class> class.</p>
+<p>Use SetDocView() to link document templates with file paths.  Document templates are returned as tags when <function module="Core">GetFileInfo</function> is used on paths that match those passed to this function.  Document templates are used by the @FileView class to switch to document mode whenever a matching location is on display. For information on the template format, please refer to the @FileView class.</p>
     </description>
     <result type="ERROR">
       <error code="NullArgs">Function call missing argument value(s)</error>
@@ -4328,10 +4317,6 @@ end
       <const name="HOST">Query the host platform's file associations only.</const>
     </constants>
 
-    <constants lookup="FDL" comment="Options for the File Delete() method.">
-      <const name="FEEDBACK">Automatically manage user feedback for deleting files by presenting dialog boxes.</const>
-    </constants>
-
     <constants lookup="MEM" comment="Memory types used by AllocMemory().  The lower 16 bits are stored with allocated blocks, the upper 16 bits are function-relative only.">
       <const name="NO_BLOCK">If this flag is set against a public memory block then the access blocking mechanism will be permanently turned off for all accesses to that particular memory block.  This means that multiple tasks can have full read/write access to the memory block at once regardless of the flags passed to AccessMemory().</const>
       <const name="FIXED">This flag can be applied to public memory blocks that need to be mapped to a fixed address that is common to all tasks.  For instance, if the system locks the memory block to address 0x56084000 for your task, then all other tasks that map the memory block will also see it at that address.  This flag is typically used for supporting absolute code execution.</const>
@@ -4591,8 +4576,7 @@ end
       <field name="Position" type="LARGE">Current seek position within the file if moving or copying</field>
       <field name="Path" type="STRING"></field>
       <field name="Dest" type="STRING">Destination file/path if moving or copying</field>
-      <field name="User" type="APTR">User data, set by FileFeedback()</field>
-      <field name="FeedbackID" type="LONG">Set to one of the FDB integers</field>
+      <field name="FeedbackID" type="LONG" lookup="FDB">Set to one of the FDB integers</field>
       <field name="Reserved" type="char" size="32">Reserved in case of future expansion</field>
     </struct>
 

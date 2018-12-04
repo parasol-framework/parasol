@@ -50,7 +50,7 @@ OBJECTS+= obj/$(PLATFORM)/core.o obj/$(PLATFORM)/data.o obj/$(PLATFORM)/data_act
           obj/$(PLATFORM)/lib_locking.o obj/$(PLATFORM)/internal.o obj/$(PLATFORM)/lib_semaphores.o obj/$(PLATFORM)/lib_events.o obj/$(PLATFORM)/lib_keystore.o \
           obj/$(PLATFORM)/classes/class_module.o obj/$(PLATFORM)/classes/class_task.o obj/$(PLATFORM)/classes/class_thread.o \
           obj/$(PLATFORM)/classes/class_time.o obj/$(PLATFORM)/classes/class_config.o obj/$(PLATFORM)/classes/class_metaclass.o obj/$(PLATFORM)/classes/class_script.o \
-          obj/$(PLATFORM)/lib_strings.o obj/$(PLATFORM)/classes/class_file.o obj/$(PLATFORM)/classes/class_file_feedback.o obj/$(PLATFORM)/classes/class_storagedevice.o \
+          obj/$(PLATFORM)/lib_strings.o obj/$(PLATFORM)/classes/class_file.o obj/$(PLATFORM)/classes/class_storagedevice.o \
           obj/$(PLATFORM)/lib_filesystem.o obj/$(PLATFORM)/classes/class_archive.o obj/$(PLATFORM)/classes/class_compressed_stream.o obj/$(PLATFORM)/compression/class_compression.o
 
 SOURCES := $(subst obj/$(PLATFORM)/,src/,$(subst .o,.c,$(OBJECTS)))

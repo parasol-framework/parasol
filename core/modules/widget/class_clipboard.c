@@ -454,7 +454,7 @@ static ERROR CLIPBOARD_Clear(objClipboard *Self, APTR Void)
 
    STRING path;
    if (!ResolvePath("clipboard:", RSF_NO_FILE_CHECK, &path)) {
-      DeleteFile(path);
+      DeleteFile(path, NULL);
       CreateFolder(path, PERMIT_READ|PERMIT_WRITE);
       FreeMemory(path);
    }
@@ -1060,7 +1060,7 @@ static void free_clip(struct ClipEntry *Clip)
       for (i=0; i < Clip->TotalItems; i++) {
          char buffer[200];
          StrFormat(buffer, sizeof(buffer), "clipboard:%s%d.%.3d", datatype, Clip->ID, i);
-         DeleteFile(buffer);
+         DeleteFile(buffer, NULL);
       }
    }
    else LogBranch("Datatype: File");

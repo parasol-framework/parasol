@@ -224,7 +224,6 @@ struct FileFeedback {
    LARGE  Position;      // Current seek position within the file if moving or copying
    STRING Path;
    STRING Dest;          // Destination file/path if moving or copying
-   APTR   User;          // User data, set by FileFeedback()
    LONG   FeedbackID;    // Set to one of the FDB integers
    char   Reserved[32];  // Reserved in case of future expansion
 };

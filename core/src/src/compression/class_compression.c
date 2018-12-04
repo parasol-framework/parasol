@@ -1142,7 +1142,7 @@ static ERROR COMPRESSION_DecompressFile(objCompression *Self, struct cmpDecompre
                   struct acRead read = { .Buffer = Self->prvInput, .Length = SIZE_COMPRESSION_BUFFER-1 };
                   if (!(error = Action(AC_Read, Self->FileIO, &read))) {
                      Self->prvInput[read.Result] = 0;
-                     DeleteFile(location);
+                     DeleteFile(location, NULL);
                      error = CreateLink(location, Self->prvInput);
                      if (error IS ERR_NoSupport) error = ERR_Okay;
                   }
@@ -1177,7 +1177,7 @@ static ERROR COMPRESSION_DecompressFile(objCompression *Self, struct cmpDecompre
                   }
 
                   Self->prvOutput[zf->OriginalSize] = 0; // !!! We should terminate according to the amount of data decompressed
-                  DeleteFile(location);
+                  DeleteFile(location, NULL);
                   error = CreateLink(location, Self->prvOutput);
                   if (error IS ERR_NoSupport) error = ERR_Okay;
 

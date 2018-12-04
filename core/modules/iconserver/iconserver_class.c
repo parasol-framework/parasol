@@ -69,7 +69,7 @@ static ERROR ICON_Clear(objIconServer *Self, APTR Void)
    if (!OpenDir(buffer, RDF_FOLDERS, &dir)) {
       while (!ScanDir(dir)) {
          StrFormat(buffer, sizeof(buffer), "temp:iconcache/%s/%s/", Self->prvTheme, dir->Info->Name);
-         DeleteFile(buffer);
+         DeleteFile(buffer, NULL);
       }
 
       CloseDir(dir);

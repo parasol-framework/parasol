@@ -13,7 +13,7 @@ FDEF argsActionMsg[] = { { "Error", FD_LONG|FD_ERROR }, { "Action", FD_LONG }, {
 FDEF argsActionTags[] = { { "Error", FD_LONG|FD_ERROR }, { "Action", FD_LONG }, { "Object", FD_OBJECTPTR }, { "Tags", FD_TAGS }, { 0, 0 } };
 FDEF argsActionThread[] = { { "Error", FD_LONG|FD_ERROR }, { "Action", FD_LONG }, { "Object", FD_OBJECTPTR }, { "Args", FD_PTR }, { "Callback", FD_FUNCTIONPTR }, { "Key", FD_LONG }, { 0, 0 } };
 FDEF argsAddInfoTag[] = { { "Error", FD_LONG|FD_ERROR }, { "FileInfo:Info", FD_PTR|FD_STRUCT }, { "Name", FD_STR }, { "Value", FD_STR }, { 0, 0 } };
-FDEF argsAddMsgHandler[] = { { "Error", FD_LONG|FD_ERROR }, { "Custom", FD_PTR }, { "MsgType", FD_LONG }, { "Routine", FD_FUNCTIONPTR }, { "Handle", FD_PTR|FD_RESULT }, { 0, 0 } };
+FDEF argsAddMsgHandler[] = { { "Error", FD_LONG|FD_ERROR }, { "Custom", FD_PTR }, { "MsgType", FD_LONG }, { "Routine", FD_FUNCTIONPTR }, { "MsgHandler:Handle", FD_PTR|FD_STRUCT|FD_RESOURCE|FD_ALLOC|FD_RESULT }, { 0, 0 } };
 FDEF argsAdjustLogLevel[] = { { "Result", FD_LONG }, { "Adjust", FD_LONG }, { 0, 0 } };
 FDEF argsAllocMemory[] = { { "Error", FD_LONG|FD_ERROR }, { "Size", FD_LONG }, { "Flags", FD_LONG }, { "Address", FD_PTR|FD_RESULT }, { "ID", FD_LONG|FD_RESULT }, { 0, 0 } };
 FDEF argsAllocMutex[] = { { "Error", FD_LONG|FD_ERROR }, { "Flags", FD_LONG }, { "Result", FD_PTR|FD_RESULT }, { 0, 0 } };
@@ -30,7 +30,7 @@ FDEF argsClearMemory[] = { { "Error", FD_LONG|FD_ERROR }, { "Memory", FD_PTR }, 
 FDEF argsCloneMemory[] = { { "Error", FD_LONG|FD_ERROR }, { "Address", FD_PTR }, { "Flags", FD_LONG }, { "NewAddress", FD_PTR|FD_RESULT }, { "NewID", FD_LONG|FD_RESULT }, { 0, 0 } };
 FDEF argsCloseDir[] = { { "Void", FD_VOID }, { "DirInfo:Dir", FD_PTR|FD_STRUCT|FD_RESOURCE }, { 0, 0 } };
 FDEF argsCompareFilePaths[] = { { "Error", FD_LONG|FD_ERROR }, { "PathA", FD_STR }, { "PathB", FD_STR }, { 0, 0 } };
-FDEF argsCopyFile[] = { { "Error", FD_LONG|FD_ERROR }, { "Source", FD_STR }, { "Dest", FD_STR }, { 0, 0 } };
+FDEF argsCopyFile[] = { { "Error", FD_LONG|FD_ERROR }, { "Source", FD_STR }, { "Dest", FD_STR }, { "Callback", FD_FUNCTIONPTR }, { 0, 0 } };
 FDEF argsCopyMemory[] = { { "Error", FD_LONG|FD_ERROR }, { "Src", FD_PTR }, { "Dest", FD_PTR }, { "Size", FD_LONG }, { 0, 0 } };
 FDEF argsCreateFolder[] = { { "Error", FD_LONG|FD_ERROR }, { "Path", FD_STR }, { "Permissions", FD_LONG }, { 0, 0 } };
 FDEF argsCreateLink[] = { { "Error", FD_LONG|FD_ERROR }, { "From", FD_STR }, { "To", FD_STR }, { 0, 0 } };
@@ -38,10 +38,9 @@ FDEF argsCreateObject[] = { { "Error", FD_LONG|FD_ERROR }, { "ClassID", FD_LARGE
 FDEF argsCurrentContext[] = { { "Object", FD_OBJECTPTR }, { 0, 0 } };
 FDEF argsCurrentField[] = { { "Field", FD_PTR|FD_STRUCT }, { 0, 0 } };
 FDEF argsCurrentTask[] = { { "Object", FD_OBJECTPTR }, { 0, 0 } };
-FDEF argsDeleteFile[] = { { "Error", FD_LONG|FD_ERROR }, { "Path", FD_STR }, { 0, 0 } };
+FDEF argsDeleteFile[] = { { "Error", FD_LONG|FD_ERROR }, { "Path", FD_STR }, { "Callback", FD_FUNCTIONPTR }, { 0, 0 } };
 FDEF argsDeleteVolume[] = { { "Error", FD_LONG|FD_ERROR }, { "Name", FD_STR }, { 0, 0 } };
 FDEF argsFastFindObject[] = { { "Error", FD_LONG|FD_ERROR }, { "Name", FD_STR }, { "ClassID", FD_LONG }, { "Array", FD_OBJECTID|FD_RESULT }, { "ArraySize", FD_LONG }, { "Count", FD_LONG|FD_RESULT }, { 0, 0 } };
-FDEF argsFileFeedback[] = { { "Error", FD_LONG|FD_ERROR }, { "Routine", FD_FUNCTIONPTR }, { "Data", FD_PTR }, { "Flags", FD_LONG }, { 0, 0 } };
 FDEF argsFindClass[] = { { "Object", FD_OBJECTPTR }, { "ClassID", FD_LONG }, { 0, 0 } };
 FDEF argsFindField[] = { { "Field", FD_PTR|FD_STRUCT }, { "Object", FD_OBJECTPTR }, { "FieldID", FD_LONG }, { "Source", FD_OBJECTPTR|FD_RESULT }, { 0, 0 } };
 FDEF argsFindObject[] = { { "Error", FD_LONG|FD_ERROR }, { "Name", FD_STR }, { "ClassID", FD_LONG }, { "List", FD_PTR|FD_ALLOC|FD_RESULT }, { "Count", FD_LONG|FD_RESULT }, { 0, 0 } };
@@ -86,7 +85,7 @@ FDEF argsLogF[] = { { "Void", FD_VOID }, { "Header", FD_STR }, { "Message", FD_S
 FDEF argsManageAction[] = { { "Error", FD_LONG|FD_ERROR }, { "Action", FD_LONG }, { "Routine", FD_PTR }, { 0, 0 } };
 FDEF argsMemoryIDInfo[] = { { "Error", FD_LONG|FD_ERROR }, { "ID", FD_LONG }, { "MemInfo:MemInfo", FD_BUFFER|FD_PTR|FD_STRUCT }, { "Size", FD_LONG|FD_BUFSIZE }, { 0, 0 } };
 FDEF argsMemoryPtrInfo[] = { { "Error", FD_LONG|FD_ERROR }, { "Address", FD_PTR }, { "MemInfo:MemInfo", FD_BUFFER|FD_PTR|FD_STRUCT }, { "Size", FD_LONG|FD_BUFSIZE }, { 0, 0 } };
-FDEF argsMoveFile[] = { { "Error", FD_LONG|FD_ERROR }, { "Source", FD_STR }, { "Dest", FD_STR }, { 0, 0 } };
+FDEF argsMoveFile[] = { { "Error", FD_LONG|FD_ERROR }, { "Source", FD_STR }, { "Dest", FD_STR }, { "Callback", FD_FUNCTIONPTR }, { 0, 0 } };
 FDEF argsNewLockedObject[] = { { "Error", FD_LONG|FD_ERROR }, { "ClassID", FD_LARGE }, { "Flags", FD_LONG }, { "Object", FD_OBJECTPTR|FD_RESULT }, { "ID", FD_OBJECTID|FD_RESULT }, { "Name", FD_STR }, { 0, 0 } };
 FDEF argsNewObject[] = { { "Error", FD_LONG|FD_ERROR }, { "ClassID", FD_LARGE }, { "Flags", FD_LONG }, { "Object", FD_OBJECTPTR|FD_RESULT }, { 0, 0 } };
 FDEF argsNotifySubscribers[] = { { "Result", FD_LONG }, { "Object", FD_OBJECTPTR }, { "Action", FD_LONG }, { "Args", FD_PTR }, { "Flags", FD_LONG }, { "Error", FD_LONG|FD_ERROR }, { 0, 0 } };
@@ -102,7 +101,7 @@ FDEF argsReleaseMemory[] = { { "Result", FD_LONG }, { "Address", FD_PTR }, { 0, 
 FDEF argsReleaseMemoryID[] = { { "Error", FD_LONG|FD_ERROR }, { "MemoryID", FD_LONG }, { 0, 0 } };
 FDEF argsReleaseObject[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { 0, 0 } };
 FDEF argsReleasePrivateObject[] = { { "Void", FD_VOID }, { "Object", FD_OBJECTPTR }, { 0, 0 } };
-FDEF argsRemoveMsgHandler[] = { { "Error", FD_LONG|FD_ERROR }, { "Handle", FD_PTR }, { 0, 0 } };
+FDEF argsRemoveMsgHandler[] = { { "Error", FD_LONG|FD_ERROR }, { "MsgHandler:Handle", FD_PTR|FD_STRUCT|FD_RESOURCE }, { 0, 0 } };
 FDEF argsResolveClassID[] = { { "Result", FD_STR }, { "ID", FD_LONG }, { 0, 0 } };
 FDEF argsResolveClassName[] = { { "Result", FD_LONG }, { "Name", FD_STR }, { 0, 0 } };
 FDEF argsResolveGroupID[] = { { "Result", FD_STR }, { "Group", FD_LONG }, { 0, 0 } };
@@ -371,7 +370,7 @@ const struct Function glFunctions[] = {
    { (APTR)IdentifyFile, "IdentifyFile", argsIdentifyFile },
    { (APTR)TranslateCmdRef, "TranslateCmdRef", argsTranslateCmdRef },
    { (APTR)CreateLink, "CreateLink", argsCreateLink },
-   { (APTR)FileFeedback, "FileFeedback", argsFileFeedback },
+   { (APTR)VarUnlock, "VarUnlock", argsVarUnlock },
    { (APTR)SetDefaultPermissions, "SetDefaultPermissions", argsSetDefaultPermissions },
    { (APTR)ResolveUserID, "ResolveUserID", argsResolveUserID },
    { (APTR)ResolveGroupID, "ResolveGroupID", argsResolveGroupID },
@@ -395,7 +394,6 @@ const struct Function glFunctions[] = {
    { (APTR)KeyIterate, "KeyIterate", argsKeyIterate },
    { (APTR)VarSetSized, "VarSetSized", argsVarSetSized },
    { (APTR)VarLock, "VarLock", argsVarLock },
-   { (APTR)VarUnlock, "VarUnlock", argsVarUnlock },
    { NULL, NULL, NULL }
 };
 

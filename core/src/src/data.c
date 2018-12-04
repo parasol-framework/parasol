@@ -166,9 +166,7 @@ struct FileMonitor *glFileMonitor = NULL;
 #endif
 
 THREADVAR char tlFieldName[10]; // $12345678\0
-THREADVAR APTR tlFeedbackData = NULL;
 THREADVAR LONG glForceUID = -1, glForceGID = -1, glDefaultPermissions = 0;
-THREADVAR struct rkFunction tlFeedback;
 THREADVAR WORD tlDepth     = 0;
 THREADVAR WORD tlLogStatus = 1;
 THREADVAR BYTE tlMainThread = FALSE; // Will be set to TRUE on open, any other threads will remain FALSE.

@@ -20,9 +20,9 @@ static const struct FieldDef clFileFlags[] = {
 };
 
 FDEF maStartStream[] = { { "Subscriber", FD_OBJECTID }, { "Flags", FD_LONG }, { "Length", FD_LONG }, { 0, 0 } };
-FDEF maDelete[] = { { "Flags", FD_LONG }, { 0, 0 } };
-FDEF maMove[] = { { "Dest", FD_STR }, { 0, 0 } };
-FDEF maCopy[] = { { "Dest", FD_STR }, { 0, 0 } };
+FDEF maDelete[] = { { "Callback", FD_FUNCTIONPTR }, { 0, 0 } };
+FDEF maMove[] = { { "Dest", FD_STR }, { "Callback", FD_FUNCTIONPTR }, { 0, 0 } };
+FDEF maCopy[] = { { "Dest", FD_STR }, { "Callback", FD_FUNCTIONPTR }, { 0, 0 } };
 FDEF maSetDate[] = { { "Year", FD_LONG }, { "Month", FD_LONG }, { "Day", FD_LONG }, { "Hour", FD_LONG }, { "Minute", FD_LONG }, { "Second", FD_LONG }, { "Type", FD_LONG }, { 0, 0 } };
 FDEF maReadLine[] = { { "Result", FD_STR|FD_RESULT }, { 0, 0 } };
 FDEF maNext[] = { { "File", FD_OBJECTPTR|FD_ALLOC|FD_RESULT }, { 0, 0 } };

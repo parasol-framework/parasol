@@ -995,7 +995,7 @@ static ERROR fntInstallFont(CSTRING Files)
             else directory = "truetype";
 
             StrFormat(buffer, sizeof(buffer), "fonts:%s/", directory);
-            flCopy(file, buffer);
+            flCopy(file, buffer, NULL);
          }
 
          acFree(file);
@@ -1084,12 +1084,12 @@ static ERROR fntRemoveFont(CSTRING Name)
          StrFormat(buffer, sizeof(buffer), "Fixed:%s", style);
          CSTRING value;
          if (!cfgReadValue(config, entries[i].Section, buffer, &value)) {
-            if (DeleteFile(value)) error = ERR_DeleteFile;
+            if (DeleteFile(value, NULL)) error = ERR_DeleteFile;
          }
 
          StrFormat(buffer, sizeof(buffer), "Scale:%s", style);
          if (!cfgReadValue(config, entries[i].Section, buffer, &value)) {
-            if (DeleteFile(value)) error = ERR_DeleteFile;
+            if (DeleteFile(value, NULL)) error = ERR_DeleteFile;
          }
       }
    }
