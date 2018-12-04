@@ -2556,6 +2556,17 @@ typedef struct rkTask {
    FUNCTION OutputCallback;
    FUNCTION ExitCallback;
    FUNCTION InputCallback;
+   struct MsgHandler *MsgAction;
+   struct MsgHandler *MsgGetField;
+   struct MsgHandler *MsgSetField;
+   struct MsgHandler *MsgActionResult;
+   struct MsgHandler *MsgDebug;
+   struct MsgHandler *MsgValidateProcess;
+   struct MsgHandler *MsgQuit;
+   struct MsgHandler *MsgEvent;
+   struct MsgHandler *MsgThreadCallback;
+   struct MsgHandler *MsgThreadAction;
+
    #ifdef __unix__
       LONG InFD;             // stdin FD for receiving output from launched task
       LONG ErrFD;            // stderr FD for receiving output from launched task
