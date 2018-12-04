@@ -72,8 +72,10 @@ static int fcmd_check(lua_State *Lua)
 //****************************************************************************
 // Use catch() to switch on exception handling for functions that return an error code other than ERR_Okay.  Areas
 // affected include obj.new(); any module function that returns an ERROR; any method or action called on an object.
+// The caught error code is returned by default, or if no exception handler is defined then the entire exception table
+// is returned.
 //
-//   catch(function()
+//   err = catch(function()
 //      // Code to execute
 //   end,
 //   function(Exception)
@@ -83,14 +85,14 @@ static int fcmd_check(lua_State *Lua)
 //
 // As above, but the handler is only called if certain codes are raised.  Any mismatched errors will throw to the parent code.
 //
-//   catch(function()
+//   err = catch(function()
 //      // Code to execute
 //   end,
 //   { ERR_Failed, ERR_Terminate }, // Errors to filter for
 //   fuction(Exception) // Exception handler for the filtered errors
 //   end)
 //
-// To silently ignore exceptions, or receive the thrown exception details as a table result:
+// To silently ignore exceptions, or to receive the thrown exception details as a table result:
 //
 //   local exception = catch(function()
 //      // Code to execute
@@ -129,34 +131,33 @@ static int fcmd_catch(lua_State *Lua)
          }
 
          if (type IS LUA_TFUNCTION) {
-            BYTE caught = FALSE;
+            BYTE caught_by_filter = FALSE;
             prv->Catch++; // Convert ERROR results to exceptions.
             prv->CaughtError = ERR_Okay;
             lua_pushcfunction(Lua, fcmd_catch_handler);
             lua_pushvalue(Lua, 1); // Parameter #1 is the function to call.
-            if (lua_pcall(Lua, 0, 0, -2)) {
-               // An exception was raised!
-
+            LONG result_top = lua_gettop(Lua);
+            if (lua_pcall(Lua, 0, LUA_MULTRET, -2)) { // An exception was raised!
                prv->Catch--;
 
                if ((prv->CaughtError != ERR_Okay) AND (catch_filter)) { // Apply error code filtering
                   lua_rawgeti(Lua, LUA_REGISTRYINDEX, catch_filter);
                   lua_pushnil(Lua);  // First key
-                  while ((!caught) AND (lua_next(Lua, -2) != 0)) { // Iterate over each table key
+                  while ((!caught_by_filter) AND (lua_next(Lua, -2) != 0)) { // Iterate over each table key
                      // -1 is the value and -2 is the key.
                      if (lua_tointeger(Lua, -1) IS prv->CaughtError) {
-                        caught = TRUE;
+                        caught_by_filter = TRUE;
                         lua_pop(Lua, 1); // Pop the key because we're going to break the loop early.
                      }
                      lua_pop(Lua, 1); // Removes 'value'; keeps 'key' for next iteration
                   }
                   lua_pop(Lua, 1); // Pop the catch_filter
                }
-               else caught = TRUE;
+               else caught_by_filter = TRUE;
 
                if (catch_filter) luaL_unref(Lua, LUA_REGISTRYINDEX, catch_filter);
 
-               if (caught) {
+               if (caught_by_filter) {
                   lua_pushvalue(Lua, a); // For lua_call()
 
                   // Build an exception table: { code=123, message="Description" }
@@ -180,13 +181,18 @@ static int fcmd_catch(lua_State *Lua)
                   lua_pop(Lua, 1); // Pop the error message.
                }
                else luaL_error(Lua, lua_tostring(Lua, -1)); // Rethrow the message
+
+               lua_pushinteger(Lua, prv->CaughtError ? prv->CaughtError : ERR_Exception);
+               return 1;
             }
-            else { // pcall() successful
+            else { // pcall() was successful
                prv->Catch--;
                if (catch_filter) luaL_unref(Lua, LUA_REGISTRYINDEX, catch_filter);
+               lua_pushinteger(Lua, ERR_Okay);
+               LONG result_count = lua_gettop(Lua) - result_top + 1;
+               lua_insert(Lua, -result_count); // Push the error code in front of any other results
+               return result_count;
             }
-
-            lua_pop(Lua, 1); // Pop the error handler
          }
          else {
             if (catch_filter) luaL_unref(Lua, LUA_REGISTRYINDEX, catch_filter);
@@ -203,7 +209,8 @@ static int fcmd_catch(lua_State *Lua)
 
          lua_pushcfunction(Lua, fcmd_catch_handler);
          lua_pushvalue(Lua, 1); // Parameter #1 is the function to call.
-         if (lua_pcall(Lua, 0, 0, -2)) {
+         LONG result_top = lua_gettop(Lua);
+         if (lua_pcall(Lua, 0, LUA_MULTRET, -2)) {
             prv->Catch--;
 
             // -1 is the pcall() error string result
@@ -232,7 +239,13 @@ static int fcmd_catch(lua_State *Lua)
             lua_remove(Lua, -2); // Remove the error msg to balance the stack
             return 1;
          }
-         else prv->Catch--; // Successful call, return nothing
+         else {
+            prv->Catch--; // Successful call
+            lua_pushinteger(Lua, ERR_Okay);
+            LONG result_count = lua_gettop(Lua) - result_top + 1;
+            lua_insert(Lua, -result_count); // Push the error code in front of any other results
+            return result_count;
+         }
       }
       else luaL_argerror(Lua, 1, "Expected function.");
    }

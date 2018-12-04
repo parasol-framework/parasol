@@ -4,12 +4,29 @@
 -- Check that catch() does nothing if no error is raised.
 
 function testCatchClean()
-   catch(function()
+   local err, a, b, c = catch(function()
       local i = 1
+      return 1, 2, 3, 4
    end,
    function(Exception)
       error(Exception.line .. ": An exception was raised despite doing nothing.")
    end)
+
+   if (err != ERR_Okay) then
+      error("Expected the error code to be ERR_Okay")
+   end
+
+   if not (a == 1 and b == 2 and c == 3) then
+      error("Did not receive expected results from the successful function.")
+   end
+
+   local err, hello, world = catch(function()
+      return 'hello', 'world'
+   end)
+
+   if hello != 'hello' or world != 'world' then
+      error("Invalid results detected.")
+   end
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -18,13 +35,17 @@ end
 function testCatch()
    local exception_raised = false
 
-   catch(function()
+   local err = catch(function()
       error("Catch this! (Exception raised on purpose)")
    end,
    function(Exception)
       print(Exception.line .. ": Caught exception '" .. Exception.message .. "'")
       exception_raised = true
    end)
+
+   if (err != ERR_Exception) then
+      error("Expected the error code to be ERR_Exception")
+   end
 
    if (exception_raised != true) then
       error("Failed to catch the raised exception.")
@@ -37,13 +58,21 @@ end
 function testCatchErrorCode()
    local exception_raised = false
 
-   catch(function()
+   local err, result = catch(function()
       check(mSys.AllocMemory(-10, 0))
    end,
    function(Exception)
       print(Exception.line .. ": Caught exception as expected, error code #" .. Exception.code .. " '" .. Exception.message .. "'")
       exception_raised = true
    end)
+
+   if (result != nil) then
+      error("The result is not empty.")
+   end
+
+   if (err != ERR_Args) then
+      error("Expected the error code to be ERR_Args")
+   end
 
    if (exception_raised != true) then
       error("Failed to catch the raised exception.")
@@ -56,7 +85,7 @@ end
 function testCatchObject()
    local exception_raised = false
 
-   catch(function()
+   local err, result = catch(function()
       local fl = obj.new("file", { path="File does not exist" })
    end,
    function(Exception)
@@ -115,7 +144,7 @@ end
 -- Test simple catch() with no function defined to handle the exception.
 
 function testNoThrow()
-   local ex = catch(function()
+   local ex, result = catch(function()
       error("Catch this! (Exception raised on purpose)")
    end)
 
