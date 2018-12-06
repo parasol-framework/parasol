@@ -62,8 +62,8 @@ static void set_script_args(objScript *Script, CSTRING *Args)
       LONG al = j;
 
       CSTRING value = NULL;
-      if (Args[i][j] IS '=') {
-         value = Args[i] + j + 1;
+      if (Args[i][k] IS '=') {
+         value = Args[i] + k + 1;
       }
       else if (!Args[i+1]) {
          SetVar(Script, argname, "1");
