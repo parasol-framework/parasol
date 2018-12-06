@@ -48,7 +48,7 @@
       <name>DataFeed</name>
       <comment>Document data can be sent and consumed via feeds.</comment>
       <description>
-<p>One of the convenient ways to send document information to an active document object is to do so via a data feed.  The Document class currently supports the DATA_DOCUMENT and DATA_XML types for this purpose.</p>
+<p>Appending content to an active document can be achieved via the data feed feature.  The Document class currently supports the DATA_DOCUMENT and DATA_XML types for this purpose.</p>
 <p>The surface that is associated with the Document object will be redrawn as a result of calling this action.</p>
       </description>
       <result>

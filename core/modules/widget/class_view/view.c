@@ -12,8 +12,7 @@ View: The View class is used to display XML data in a number of possible formats
 The View is an interface class that facilitates the display and management of multiple items within a surface.  It is
 capable of displaying items in a number of formats, including a simple list, tree view and column view. The ability to
 sort data and handle different types of data such as date and time information is provided.  The View class is
-commonly used for file displays. Certain classes such as the @FileView are dependent on the functionality that
-it provides.
+commonly used for file displays.
 
 Items are created and stored within each view as a large XML statement and are managed via the @XML class.
 This simplifies the creation and retrieval of item data and also allows you to develop hierarchies and tree structures

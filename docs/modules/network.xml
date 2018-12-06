@@ -24,7 +24,7 @@
       <param type="struct IPAddress *" name="IPAddress">A pointer to the IPAddress structure.</param>
     </input>
     <description>
-<p>Converts an IPAddress structure to a string containing the IPAddress in dotted format.  Please free the resulting string with <function>FreeMemory</function> once it is no longer required.</p>
+<p>Converts an IPAddress structure to a string containing the IPAddress in dotted format.  Please free the resulting string with <function>FreeResource</function> once it is no longer required.</p>
     </description>
     <result type="CSTRING">The IP address is returned as an allocated string.</result>
   </function>

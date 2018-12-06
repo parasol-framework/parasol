@@ -193,7 +193,7 @@
     </input>
     <description>
 <p>This function returns the current Flags field from a surface.  It provides the same result as reading the field directly, however it is considered advantageous in circumstances where the overhead of locking a surface object for a read operation is undesirable.</p>
-<p>For information on the available flags, please refer to the Flags field of the <class>Surface</class> class.</p>
+<p>For information on the available flags, please refer to the Flags field of the <class name="Surface">Surface</class> class.</p>
     </description>
     <result type="ERROR">
       <error code="NullArgs">Function call missing argument value(s)</error>
