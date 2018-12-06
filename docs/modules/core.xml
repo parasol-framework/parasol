@@ -352,7 +352,7 @@ APTR address;
 
 if (!AllocMemory(1000, MEM_DATA, &amp;address, NULL)) {
    ...
-   FreeMemory(address);
+   FreeResource(address);
 }
 </pre>
 <p>A number of flag definitions are available that affect the memory allocation process.  They are:</p>
@@ -616,19 +616,6 @@ if (!AllocMemory(1000, MEM_DATA, &amp;address, NULL)) {
       <error code="AccessMemory">Access to a shared memory block was denied.</error>
       <error code="Okay">Operation successful.</error>
     </result>
-  </function>
-
-  <function>
-    <name>CloseDir</name>
-    <category>Files</category>
-    <comment>Closes a folder handle from OpenDir()</comment>
-    <prototype>void CloseDir(struct DirInfo * Dir)</prototype>
-    <input>
-      <param type="struct DirInfo *" name="Dir">The folder structure to be closed.</param>
-    </input>
-    <description>
-<p>This function closes a folder that has been opened with the <function module="Core">OpenDir</function> function.</p>
-    </description>
   </function>
 
   <function>
@@ -938,7 +925,7 @@ FastFindObject("SystemPointer", ID_POINTER, &amp;id, 1, NULL);
 <p>The FindObject() function is used to search for objects in the system by name and class type.  If the function cannot find any object with the name or class that you are looking for, then it will return an error code.  If it does find one or more matching objects, then a complete list of them will be returned in an allocated memory block.</p>
 <p>The List is sorted so that the oldest object is placed at the start of the list, and the most recent is placed at the end.  This will assist you in situations where you may be looking for the oldest or youngest object that has the particular name that you have searched for.</p>
 <p>The List is terminated with a NULL entry.</p>
-<p>The List is returned as an allocated memory block - please use <function module="Core">FreeMemory</function> to deallocate it.</p>
+<p>The List is returned as an allocated memory block - please use <function module="Core">FreeResource</function> to deallocate it.</p>
     </description>
     <result type="ERROR">
       <error code="AccessMemory">Access to a shared memory block was denied.</error>
@@ -973,16 +960,29 @@ FastFindObject("SystemPointer", ID_POINTER, &amp;id, 1, NULL);
   </function>
 
   <function>
-    <name>FreeMemory</name>
+    <name>FreeMutex</name>
+    <category>Locks</category>
+    <comment>Deallocate a private mutex.</comment>
+    <prototype>void FreeMutex(APTR Mutex)</prototype>
+    <input>
+      <param type="APTR" name="Mutex">Pointer to a mutex.</param>
+    </input>
+    <description>
+<p>This function will deallocate a mutex.  It is vital that no thread is sleeping on the mutex at the time this function is called.  The outcome when calling this function on a mutex still in use is undefined.</p>
+    </description>
+  </function>
+
+  <function>
+    <name>FreeResource</name>
     <category>Memory</category>
     <comment>Frees private memory blocks allocated from AllocMemory().</comment>
-    <prototype>ERROR FreeMemory(const void * Address)</prototype>
+    <prototype>ERROR FreeResource(const void * Address)</prototype>
     <input>
       <param type="const void *" name="Address">Points to the start of a memory block to be freed.</param>
     </input>
     <description>
 <p>This function frees memory areas allocated from <function module="Core">AllocMemory</function>.  Crash protection is incorporated into various areas of this function. If the memory header or tail is missing from the block, then it is assumed that a routine has has over-written the memory boundaries, or you are attempting to free a non-existent allocation. Such problems are immediately reported to the system debugger.  Bear in mind that it does pay to save your development work if such a message appears, as it indicates that important memory areas could have been destroyed.</p>
-<p>This function only works with private memory blocks.  To free a public memory block, use the <function module="Core">FreeMemoryID</function> function instead.</p>
+<p>This function only works with private memory blocks.  To free a public memory block, use the <function module="Core">FreeResourceID</function> function instead.</p>
     </description>
     <result type="ERROR">
       <error code="NullArgs">Function call missing argument value(s)</error>
@@ -992,10 +992,10 @@ FastFindObject("SystemPointer", ID_POINTER, &amp;id, 1, NULL);
   </function>
 
   <function>
-    <name>FreeMemoryID</name>
+    <name>FreeResourceID</name>
     <category>Memory</category>
     <comment>Frees public memory blocks allocated from AllocMemory().</comment>
-    <prototype>ERROR FreeMemoryID(MEMORYID ID)</prototype>
+    <prototype>ERROR FreeResourceID(MEMORYID ID)</prototype>
     <input>
       <param type="MEMORYID" name="ID">The unique ID of the memory block.</param>
     </input>
@@ -1008,19 +1008,6 @@ FastFindObject("SystemPointer", ID_POINTER, &amp;id, 1, NULL);
       <error code="MemoryDoesNotExist">Memory block does not exist.</error>
       <error code="Okay">Operation successful.</error>
     </result>
-  </function>
-
-  <function>
-    <name>FreeMutex</name>
-    <category>Locks</category>
-    <comment>Deallocate a private mutex.</comment>
-    <prototype>void FreeMutex(APTR Mutex)</prototype>
-    <input>
-      <param type="APTR" name="Mutex">Pointer to a mutex.</param>
-    </input>
-    <description>
-<p>This function will deallocate a mutex.  It is vital that no thread is sleeping on the mutex at the time this function is called.  The outcome when calling this function on a mutex still in use is undefined.</p>
-    </description>
   </function>
 
   <function>
@@ -1833,7 +1820,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
       <param type="struct DirInfo **" name="Info">A DirInfo structure will be returned in the pointer referenced here.</param>
     </input>
     <description>
-<p>The OpenDir() function is used to open a folder for scanning via the <function module="Core">ScanDir</function> function.  If the provided Path can be accessed, a DirInfo structure will be returned in the Info parameter, which will need to be passed to <function module="Core">ScanDir</function>.  Once the scanning process is complete, call the <function module="Core">CloseDir</function> function.</p>
+<p>The OpenDir() function is used to open a folder for scanning via the <function module="Core">ScanDir</function> function.  If the provided Path can be accessed, a DirInfo structure will be returned in the Info parameter, which will need to be passed to <function module="Core">ScanDir</function>.  Once the scanning process is complete, call the <function module="Core">FreeResource</function> function.</p>
 <p>When opening a folder, it is necessary to indicate the type of files that are of interest.  If no flags are defined, the scanner will return file and folder names only.  Only a subset of the available RDF flags may be used, namely SIZE, DATE, PERMISSIONS, FILE, FOLDER, QUALIFY, TAGS.</p>
     </description>
     <result type="ERROR">
@@ -2126,7 +2113,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
 <p>If the path can be resolved to more than one file, the ResolvePath() method will attempt to guess the correct path by checking the validity of each possible location.  For instance, if resolving a path of "user:document.txt" and the "user:" volume refers to both "system:users/joebloggs/" and "system:users/default/", the routine will check both directories for the existence of the "document.txt" file to determine the correct location.  While helpful, this can cause problems if the intent is to create a new file.  To circumvent this feature, use the RSF_NO_FILE_CHECK setting in the Flags parameter.</p>
 <p>When checking for the location of a file, ResolvePath() will only accept an exact file name match.  If the path must be treated as an approximation (i.e. file extensions can be ignored) then use the RSF_APPROXIMATE flag to tell the function to ignore extensions for the purpose of file name matching.</p>
 <p>To resolve the location of executable programs on Unix systems, use the RSF_PATH flag.  This uses the PATH environment variable to resolve the file name specified in the Path parameter.</p>
-<p>The resolved path will be returned in the Result parameter as an allocated memory block.  It must be removed once it is no longer required with FreeMemory().</p>
+<p>The resolved path will be returned in the Result parameter as an allocated memory block.  It must be removed once it is no longer required with FreeResource().</p>
 <types lookup="RSF"/>
 <p>If the path resolves to a virtual drive, it may not be possible to confirm whether the target file exists if the virtual driver does not support this check.  This is common when working with network drives.</p>
     </description>
@@ -2215,7 +2202,7 @@ if (!OpenDir(path, RDF_FILE|RDF_FOLDER, &amp;info)) {
    while (!ScanDir(info)) {
       LogMsg("File: %s", info-&gt;Name);
    }
-   CloseDir(info);
+   FreeResource(info);
 }
 </pre>
 <p>For each item that you scan, you will be able to read the Info structure for information on that item.  The DirInfo structure contains a FileInfo pointer that consists of the following fields:</p>
@@ -2354,7 +2341,7 @@ prev_context = SetContext(display);
 SetContext(prev_context);
 acFree(display);
 acFree(bitmap);
-FreeMemory(memory);
+FreeResource(memory);
 </pre>
 <p>Freeing the bitmap and memory block after the display would be invalid.  They can however be removed before the display is terminated, if necessary.</p>
 <p>SetContext() is intended for use by modules and classes.  Do not use it unless conditions necessitate its use.  The Core will automatically set the correct context when calling any action or method of a class, as do the field management functions.</p>
@@ -2749,7 +2736,7 @@ SetField(Object, FID_Statement|TSTR, "string");
     </input>
     <description>
 <p>This function creates an exact duplicate of a string.  It analyses the length of the supplied String, allocates a private memory block for it and then copies the string characters into the new string buffer.</p>
-<p>You are expected to free the resulting memory block once it is no longer required with <function module="Core">FreeMemory</function>.</p>
+<p>You are expected to free the resulting memory block once it is no longer required with <function module="Core">FreeResource</function>.</p>
     </description>
     <result type="STRING">Returns an exact duplicate of the String.  If this function fails to allocate the memory or if the String argument is NULL, NULL is returned.</result>
   </function>
@@ -3101,7 +3088,7 @@ SetField(Object, FID_Statement|TSTR, "string");
     <description>
 <p>This function will search a string and replace all occurrences of a Keyword or phrase with the supplied Replacement string.  If the Keyword is found, a new string will be returned which has all matches replaced with the Replacement string.</p>
 <p>If the Keyword is not found, an error code of ERR_Search will be returned.  If you want to know whether the Keyword actually exists before performing a replacement, consider calling the <function module="Core">StrSearch</function> function first.</p>
-<p>The new string will be stored in the Result parameter and must be removed with <function module="Core">FreeMemory</function> once it is no longer required.</p>
+<p>The new string will be stored in the Result parameter and must be removed with <function module="Core">FreeResource</function> once it is no longer required.</p>
     </description>
     <result type="ERROR">
       <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
@@ -3775,7 +3762,7 @@ SetField(Object, FID_Statement|TSTR, "string");
     </input>
     <description>
 <p>Key stores created with VarNew() are removed with this function.</p>
-<p>If the KSF_AUTO_REMOVE flag was used when creating the key-store, this function will remove all remaining elements using the <function module="Core">FreeMemory</function> function.  This works on the assumption that each value is a pointer to memory that was allocated with <function module="Core">AllocMemory</function>.</p>
+<p>If the KSF_AUTO_REMOVE flag was used when creating the key-store, this function will remove all remaining elements using the <function module="Core">FreeResource</function> function.  This works on the assumption that each value is a pointer to memory that was allocated with <function module="Core">AllocMemory</function>.</p>
     </description>
   </function>
 
@@ -4169,7 +4156,7 @@ end
       <const name="THREAD_SAFE">Enable thread safety for a small performance penalty.</const>
       <const name="UNTRACKED">Do not track the key-store to the object with the current context.</const>
       <const name="CASE">Enable case-sensitive keys.</const>
-      <const name="AUTO_REMOVE">Automatically call FreeMemory() on remaining key values when VarFree() is called for the key-store.</const>
+      <const name="AUTO_REMOVE">Automatically call FreeResource() on remaining key values when VarFree() is called for the key-store.</const>
     </constants>
 
     <constants lookup="CLF" comment="Flags for the MetaClass.">

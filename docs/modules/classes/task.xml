@@ -59,7 +59,7 @@
       <name>Write</name>
       <comment>Send raw data to a launched process' stdin descriptor.</comment>
       <description>
-<p>After a process has been launched, data can be sent to its stdin pipe by calling the Write action.  Setting the Buffer parameter to NULL will result in the pipe being closed (this will signal to the process that no more data is incoming).</p>
+<p>If a process is successfully launched with the PIPE #Flag, data can be sent to its stdin pipe by calling the Write action.  Setting the Buffer parameter to NULL will result in the pipe being closed (this will signal to the process that no more data is incoming).</p>
       </description>
     </action>
 
@@ -268,6 +268,18 @@
       <type lookup="TSF">INT</type>
       <description>
 <types lookup="TSF"/>
+      </description>
+    </field>
+
+    <field>
+      <name>InputCallback</name>
+      <comment>This callback returns incoming data from STDIN.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>FUNCTION</type>
+      <description>
+<p>The InputCallback field is available for use only when the Task object represents the current process. The referenced function will be called when process receives data from STDIN.  The callback must follow the synopsis <code>Function(*Task, APTR Data, LONG Size, ERROR Status)</code></p>
+<p>The information read from STDOUT will be returned in the Data pointer and the byte-length of the data will be indicated by the Size.  The data buffer is temporary and will be invalid once the callback function has returned.</p>
+<p>A status of ERR_Finished is sent if the stdinput handle has been closed.</p>
       </description>
     </field>
 
@@ -616,7 +628,7 @@
       <const name="THREAD_SAFE">Enable thread safety for a small performance penalty.</const>
       <const name="UNTRACKED">Do not track the key-store to the object with the current context.</const>
       <const name="CASE">Enable case-sensitive keys.</const>
-      <const name="AUTO_REMOVE">Automatically call FreeMemory() on remaining key values when VarFree() is called for the key-store.</const>
+      <const name="AUTO_REMOVE">Automatically call FreeResource() on remaining key values when VarFree() is called for the key-store.</const>
     </constants>
 
     <constants lookup="CLF" comment="Flags for the MetaClass.">
