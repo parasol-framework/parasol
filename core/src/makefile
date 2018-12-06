@@ -113,7 +113,7 @@ $(OBJECTS): obj/$(PLATFORM)/%.o: src/%.c src/defs.h src/data.c src/data_function
    src/lib_messages.c src/lib_locking.c src/lib_newobject.c src/lib_events.c src/lib_actions.c src/lib_memory.c \
    src/lib_log.c src/core.c src/lib_keystore.c src/lib_base64.c src/lib_conversion.c src/lib_unicode.c src/lib_strings.c \
    src/lib_filesystem.c src/fs_folders.c src/fs_identify.c src/fs_resolution.c src/fs_volumes.c }
-	$(IDL_DEF) src=$< output=src/idl.h format=c
+	$(IDL_DEF) --src=$< --output=src/idl.h --format=c
 
 ../include/parasol/system/errors.h: errors.fdl
 	$(IDL_C) src=$< output=$@

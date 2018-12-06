@@ -26,8 +26,8 @@ dsound.o: dsound.c
 	$(CC) $(CFLAGS) -I$(PARASOL_HEADERS) -c -o $@ $<
 
 $(HEADER) module_def.c: $(NAME).fdl audio.c class_audio.c
-	$(IDL_C) src=$< files={ audio.c } output-defs=module_def.c output-proto=module_def.c prototypes=static
-	$(IDL_DEF) src=$< append output=module_def.c format=c
+	$(IDL_C) --src=$< --files={ audio.c } --output-defs=module_def.c --output-proto=module_def.c --prototypes=static
+	$(IDL_DEF) --src=$< --append --output=module_def.c --format=c
 
 clean:
 	@rm -f "$(DEST)" *.o

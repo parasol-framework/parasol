@@ -24,8 +24,8 @@ $(DEST): $(OBJECTS)
 	$(CC) -c $(CFLAGS) $*.c -o $@
 
 $(HEADER) module_def.c: $(NAME).fdl surface.c class_surface/surface_class.c makefile
-	$(IDL_C) src=$< files={ surface.c } output-defs=module_def.c output-proto=module_def.c prototypes=static
-	$(IDL_DEF) src=$< append output=module_def.c format=c
+	$(IDL_C) --src=$< --files={ surface.c } --output-defs=module_def.c --output-proto=module_def.c --prototypes=static
+	$(IDL_DEF) --src=$< --append --output=module_def.c --format=c
 
 clean:
 	@rm -f "$(DEST)" $(OBJECTS) *.mak

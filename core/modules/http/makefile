@@ -20,8 +20,8 @@ else
 endif
 
 $(HEADER): $(NAME).fdl $(NAME).c
-	$(IDL_C) src=$<
-	$(IDL_DEF) src=$< append output=http_def.c format=c
+	$(IDL_C) --src=$<
+	$(IDL_DEF) --src=$< --append --output=http_def.c --format=c
 
 clean:
 	@rm -f "$(DEST)" $(OBJECTS)

@@ -22,8 +22,8 @@ compile: $(HEADER) font_def.c
 	$(CC) $(LIBLINK_STDC) $(OBJECTS) -lm $(LINK)
 
 $(HEADER) font_def.c: $(NAME).fdl $(DOCUMENT)
-	$(IDL_C) src=$< files={ font.c } output-defs=font_def.c output-proto=font_def.c prototypes=static
-	$(IDL_DEF) src=$< append output=font_def.c format=c
+	$(IDL_C) --src=$< --files={ font.c } --output-defs=font_def.c --output-proto=font_def.c --prototypes=static
+	$(IDL_DEF) --src=$< --append --output=font_def.c --format=c
 
 clean:
 	@rm -f *.mak $(OBJECTS) "$(DEST)"

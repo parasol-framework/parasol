@@ -12,7 +12,7 @@ compile: $(HEADER)
 
 $(HEADER): $(NAME).fdl $(NAME).c
 	$(IDL_C) src=$<
-	$(IDL_DEF) src=$< append output=xml_def.c format=c
+	$(IDL_DEF) src=$< --append --output=xml_def.c --format=c
 
 .FORCE:
 test: .FORCE

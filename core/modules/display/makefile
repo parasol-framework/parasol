@@ -31,5 +31,5 @@ else
 endif
 
 $(HEADER): $(NAME).fdl
-	$(IDL_C) src=$< files={ $(DOCUMENTS) } output-defs=module_def.c output-proto=module_def.c prototypes=static
-	$(IDL_DEF) src=$< output=idl.h format=c
+	$(IDL_C) --src=$< --files={ $(DOCUMENTS) } --output-defs=module_def.c --output-proto=module_def.c --prototypes=static
+	$(IDL_DEF) --src=$< --output=idl.h --format=c

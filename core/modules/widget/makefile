@@ -46,8 +46,8 @@ clean:
 	@rm -f "$(DEST)" $(OBJECTS)
 
 $(HEADER): $(NAME).fdl makefile
-	$(IDL_C) src=$<
-	$(IDL_DEF) src=$< output=widget_def.c format=c
+	$(IDL_C) --src=$<
+	$(IDL_DEF) --src=$< --output=widget_def.c --format=c
 
 deps-$(OSTYPE).mak: $(SOURCES)
 	@rm -f deps-$(OSTYPE).mak

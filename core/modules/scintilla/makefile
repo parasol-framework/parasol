@@ -42,5 +42,5 @@ clean:
 	@touch $(NAME).fdl
 
 $(HEADER): $(NAME).fdl $(DOCUMENTS)
-	$(IDL_C) src=$<
-	$(IDL_DEF) src=$< output=module_def.c format=c
+	$(IDL_C) --src=$<
+	$(IDL_DEF) --src=$< --output=module_def.c --format=c

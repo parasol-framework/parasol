@@ -47,8 +47,8 @@ compile: $(HEADER) idl.h module_def.c
 	$(CXX) $(LIBLINK_STDCPP) $(OBJ) -lm
 
 $(HEADER) module_def.c idl.h: $(NAME).fdl vector_functions.cpp defs/colour.cpp defs/gradient.cpp defs/image.cpp defs/pattern.cpp defs/transition.cpp filters/filter.cpp scene/scene.cpp vectors/clip.c vectors/ellipse.c vectors/group.c vectors/path.c vectors/polygon.c vectors/rectangle.c vectors/spiral.cpp vectors/supershape.cpp vectors/text.c vectors/vector.cpp vectors/viewport.c vectors/wave.cpp
-	$(IDL_C) src=$< files={ vector_functions.cpp } output-defs=module_def.c
-	$(IDL_DEF) src=$< output=idl.h format=c
+	$(IDL_C) --src=$< --files={ vector_functions.cpp } --output-defs=module_def.c
+	$(IDL_DEF) --src=$< --output=idl.h --format=c
 
 clean:
 	@rm -f $(OBJ) *.mak

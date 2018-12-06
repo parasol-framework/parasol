@@ -67,8 +67,8 @@ $(DNS): %.o: %.c makefile
 	$(CC) $(CFLAGS) -I. -c -o $@ $<
 
 $(HEADER) module_def.c: $(NAME).fdl $(NAME).c ssl.c
-	$(IDL_C) src=$< files={ $(NAME).c } output-defs=module_def.c output-proto=module_def.c prototypes=static
-	$(IDL_DEF) src=$< append output=module_def.c format=c
+	$(IDL_C) --src=$< --files={ $(NAME).c } --output-defs=module_def.c --output-proto=module_def.c --prototypes=static
+	$(IDL_DEF) --src=$< --append --output=module_def.c --format=c
 
 clean:
 	@rm -f $(DEST) $(OBJECTS) $(DNS)
