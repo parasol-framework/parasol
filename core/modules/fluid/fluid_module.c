@@ -395,6 +395,9 @@ static int module_call(lua_State *Lua)
             SET_FUNCTION_SCRIPT(func, &Self->Head, luaL_ref(Lua, LUA_REGISTRYINDEX));
             ((FUNCTION **)(buffer + j))[0] = &func;
          }
+         else if (type IS LUA_TNIL) {
+            ((FUNCTION **)(buffer + j))[0] = NULL;
+         }
          else {
             luaL_error(Lua, "Type mismatch, arg #%d (%s) expected function, got %s '%s'.", i, args[i].Name, lua_typename(Lua, lua_type(Lua, i)), lua_tostring(Lua, i));
             return 0;
