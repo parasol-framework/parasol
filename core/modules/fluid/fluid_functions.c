@@ -241,7 +241,7 @@ static int fcmd_catch(lua_State *Lua)
          }
          else {
             prv->Catch--; // Successful call
-            lua_pushinteger(Lua, ERR_Okay);
+            lua_pushnil(Lua); // Use nil to indicate that no exception occurred
             LONG result_count = lua_gettop(Lua) - result_top + 1;
             lua_insert(Lua, -result_count); // Push the error code in front of any other results
             return result_count;

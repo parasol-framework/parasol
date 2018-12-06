@@ -475,12 +475,19 @@ function saveOutput()
 
    print('Saving compressed IDL output to "' .. outPath .. '"')
 
-   local file
-   if (glAppend) then
-      file = obj.new('file', { flags='WRITE', path=outPath } )
-      file.acSeek(0, SEEK_END)
-   else
-      file = obj.new('file', { flags='WRITE|NEW', path=outPath } )
+   local err, file = catch(function()
+      if (glAppend) then
+         file = obj.new('file', { flags='WRITE', path=outPath } )
+         file.acSeek(0, SEEK_END)
+         return file
+      else
+         return obj.new('file', { flags='WRITE|NEW', path=outPath } )
+      end
+   end)
+
+   if err then
+      print('Failed to write output to ' .. outPath)
+      return
    end
 
    local EOL = '\n'

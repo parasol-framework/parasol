@@ -7,7 +7,7 @@
 
    local glPath = obj.find('self').workingPath
 
-   file.search(glPath .. '../core/modules/', {
+   file.search(glPath .. '../core/src/', {
       nameFilter = '*.c',
       nameWild = true,
       matchFeedback = function(Path, FileName, File)

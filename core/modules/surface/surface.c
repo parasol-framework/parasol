@@ -258,7 +258,7 @@ static inline void ClipRectangle(struct ClipRectangle *rect, struct ClipRectangl
    if (rect->Bottom > clip->Bottom) rect->Bottom = clip->Bottom;
 }
 
-static APTR glExposeHandler = NULL;
+static struct MsgHandler *glExposeHandler = NULL;
 
 //****************************************************************************
 

@@ -28,7 +28,7 @@ static STRING glProcedure = NULL;
 static STRING glTargetFile = NULL;
 
 static const char glHelp[] = {
-"Usage: fluid [options...] script.fluid [arg1=v1 arg2=v2 ...]\n\
+"Usage: fluid [options...] script.fluid [--arg1=v1 --arg2=v2 ...]\n\
 \n\
 Special options are:\n\
 \n\
@@ -88,6 +88,7 @@ static void set_script_args(objScript *Script, CSTRING *Args)
             i++;
          }
          if (!Args[i]) break;
+
          // Note that the last arg in the array will be the "}" that closes it
 
          char array_size[16];
