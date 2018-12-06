@@ -28,7 +28,6 @@ FDEF argsCheckMemoryExists[] = { { "Error", FD_LONG|FD_ERROR }, { "ID", FD_LONG 
 FDEF argsCheckObjectExists[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTID }, { "Name", FD_STR }, { 0, 0 } };
 FDEF argsClearMemory[] = { { "Error", FD_LONG|FD_ERROR }, { "Memory", FD_PTR }, { "Length", FD_LONG }, { 0, 0 } };
 FDEF argsCloneMemory[] = { { "Error", FD_LONG|FD_ERROR }, { "Address", FD_PTR }, { "Flags", FD_LONG }, { "NewAddress", FD_PTR|FD_RESULT }, { "NewID", FD_LONG|FD_RESULT }, { 0, 0 } };
-FDEF argsCloseDir[] = { { "Void", FD_VOID }, { "DirInfo:Dir", FD_PTR|FD_STRUCT|FD_RESOURCE }, { 0, 0 } };
 FDEF argsCompareFilePaths[] = { { "Error", FD_LONG|FD_ERROR }, { "PathA", FD_STR }, { "PathB", FD_STR }, { 0, 0 } };
 FDEF argsCopyFile[] = { { "Error", FD_LONG|FD_ERROR }, { "Source", FD_STR }, { "Dest", FD_STR }, { "Callback", FD_FUNCTIONPTR }, { 0, 0 } };
 FDEF argsCopyMemory[] = { { "Error", FD_LONG|FD_ERROR }, { "Src", FD_PTR }, { "Dest", FD_PTR }, { "Size", FD_LONG }, { 0, 0 } };
@@ -45,9 +44,9 @@ FDEF argsFindClass[] = { { "Object", FD_OBJECTPTR }, { "ClassID", FD_LONG }, { 0
 FDEF argsFindField[] = { { "Field", FD_PTR|FD_STRUCT }, { "Object", FD_OBJECTPTR }, { "FieldID", FD_LONG }, { "Source", FD_OBJECTPTR|FD_RESULT }, { 0, 0 } };
 FDEF argsFindObject[] = { { "Error", FD_LONG|FD_ERROR }, { "Name", FD_STR }, { "ClassID", FD_LONG }, { "List", FD_PTR|FD_ALLOC|FD_RESULT }, { "Count", FD_LONG|FD_RESULT }, { 0, 0 } };
 FDEF argsFindPrivateObject[] = { { "Error", FD_LONG|FD_ERROR }, { "Name", FD_STR }, { "Object", FD_OBJECTPTR|FD_RESULT }, { 0, 0 } };
+FDEF argsFreeMutex[] = { { "Void", FD_VOID }, { "Mutex", FD_PTR }, { 0, 0 } };
 FDEF argsFreeResource[] = { { "Error", FD_LONG|FD_ERROR }, { "Address", FD_PTR }, { 0, 0 } };
 FDEF argsFreeResourceID[] = { { "Error", FD_LONG|FD_ERROR }, { "ID", FD_LONG }, { 0, 0 } };
-FDEF argsFreeMutex[] = { { "Void", FD_VOID }, { "Mutex", FD_PTR }, { 0, 0 } };
 FDEF argsFreeSharedMutex[] = { { "Void", FD_VOID }, { "Mutex", FD_PTR }, { 0, 0 } };
 FDEF argsFuncError[] = { { "Error", FD_LONG|FD_ERROR }, { "Header", FD_STR }, { "Error", FD_LONG|FD_ERROR }, { 0, 0 } };
 FDEF argsGenCRC32[] = { { "Result", FD_LONG }, { "CRC", FD_LONG }, { "Data", FD_PTR }, { "Length", FD_LONG }, { 0, 0 } };
@@ -364,7 +363,6 @@ const struct Function glFunctions[] = {
    { (APTR)DeleteFile, "DeleteFile", argsDeleteFile },
    { (APTR)GetFileInfo, "GetFileInfo", argsGetFileInfo },
    { (APTR)SaveObjectToFile, "SaveObjectToFile", argsSaveObjectToFile },
-   { (APTR)CloseDir, "CloseDir", argsCloseDir },
    { (APTR)OpenDir, "OpenDir", argsOpenDir },
    { (APTR)ScanDir, "ScanDir", argsScanDir },
    { (APTR)IdentifyFile, "IdentifyFile", argsIdentifyFile },

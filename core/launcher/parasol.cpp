@@ -103,7 +103,7 @@ static ERROR process_args(void)
                      }
                   }
                }
-               CloseDir(dir);
+               FreeResource(dir);
             }
 
             if (total >= ARRAYSIZE(modules)) print("1");

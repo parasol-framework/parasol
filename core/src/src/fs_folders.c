@@ -28,32 +28,11 @@ static struct ResourceManager glResourceFolder = {
 /*****************************************************************************
 
 -FUNCTION-
-CloseDir: Closes a folder handle from OpenDir()
-
-This function closes a folder that has been opened with the ~OpenDir() function.
-
--INPUT-
-resource(DirInfo) Dir: The folder structure to be closed.
-
-*****************************************************************************/
-
-void CloseDir(struct DirInfo *Dir)
-{
-   if (!Dir) return;
-
-   LogF("~7CloseDir()","%p", Dir);
-      FreeResource(Dir); // Dir is a resource, so calling FreeResource() will divert to folder_free() behind the scenes.
-   LogBack();
-}
-
-/*****************************************************************************
-
--FUNCTION-
 OpenDir: Opens a folder for content scanning.
 
 The OpenDir() function is used to open a folder for scanning via the ~ScanDir() function.  If the provided Path can be
 accessed, a DirInfo structure will be returned in the Info parameter, which will need to be passed to ~ScanDir().  Once
-the scanning process is complete, call the ~CloseDir() function.
+the scanning process is complete, call the ~FreeResource() function.
 
 When opening a folder, it is necessary to indicate the type of files that are of interest.  If no flags are defined,
 the scanner will return file and folder names only.  Only a subset of the available RDF flags may be used, namely
@@ -166,7 +145,7 @@ if (!OpenDir(path, RDF_FILE|RDF_FOLDER, &info)) {
    while (!ScanDir(info)) {
       LogMsg("File: %s", info->Name);
    }
-   CloseDir(info);
+   FreeResource(info);
 }
 </pre>
 

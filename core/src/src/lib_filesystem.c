@@ -2661,7 +2661,7 @@ ERROR fs_copydir(STRING Source, STRING Dest, struct FileFeedback *Feedback, FUNC
          }
       }
 
-      CloseDir(dir);
+      FreeResource(dir);
 
       Source[srclen] = 0;
       Dest[destlen]  = 0;

@@ -1975,7 +1975,7 @@ static ERROR load_modules(void)
             total++;
          }
       }
-      CloseDir(dir);
+      FreeResource(dir);
    }
 
    if ((total > 0) AND (!(error = AllocMemory(sizeof(struct ModuleHeader) + (total * sizeof(LONG)) + pos, MEM_NO_CLEAR|MEM_PUBLIC|MEM_UNTRACKED|MEM_NO_BLOCK, (APTR *)&glModules, &glSharedControl->ModulesMID)))) {

@@ -191,7 +191,7 @@ static ERROR compress_folder(objCompression *Self, CSTRING Location, CSTRING Pat
          }
       }
 
-      CloseDir(dir);
+      FreeResource(dir);
    }
 
    acFree(&file->Head);

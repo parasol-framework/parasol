@@ -1645,7 +1645,7 @@ static void scan_truetype_folder(objConfig *Config)
          }
       }
 
-      CloseDir(dir);
+      FreeResource(dir);
    }
    else LogErrorMsg("Failed to open the fonts:truetype/ directory.");
 
@@ -1735,7 +1735,7 @@ static void scan_fixed_folder(objConfig *Config)
          }
          else LogErrorMsg("Failed to analyse %s", location);
       }
-      CloseDir(dir);
+      FreeResource(dir);
    }
    else LogErrorMsg("Failed to scan directory fonts:fixed/");
 

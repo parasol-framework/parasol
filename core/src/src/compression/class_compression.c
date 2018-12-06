@@ -879,7 +879,7 @@ static ERROR COMPRESSION_CompressFile(objCompression *Self, struct cmpCompressFi
             }
          }
 
-         CloseDir(dir);
+         FreeResource(dir);
       }
    }
 

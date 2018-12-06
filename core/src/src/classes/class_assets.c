@@ -455,7 +455,7 @@ static ERROR scan_dir(struct DirInfo *Dir)
 
 static ERROR close_dir(struct DirInfo *Dir)
 {
-   // Note: CloseDir() will take care of memory dealloactions, we only need to be concerned with deallocation of any
+   // Note: FreeResource() will take care of memory dealloactions, we only need to be concerned with deallocation of any
    // open handles.
 
    if (Dir->prvHandle) {

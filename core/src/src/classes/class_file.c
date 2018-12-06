@@ -545,7 +545,7 @@ static ERROR FILE_Free(objFile *Self, APTR Void)
    if (Self->ProgressDialog) { acFree(Self->ProgressDialog); Self->ProgressDialog = NULL; }
    if (Self->prvLine) { FreeResource(Self->prvLine); Self->prvLine = NULL; }
    if (Self->Path)    { FreeResource(Self->Path); Self->Path = NULL; }
-   if (Self->prvList) { CloseDir(Self->prvList); Self->prvList = NULL; }
+   if (Self->prvList) { FreeResource(Self->prvList); Self->prvList = NULL; }
    if (Self->prvResolvedPath) { FreeResource(Self->prvResolvedPath); Self->prvResolvedPath = NULL; }
    if (Self->prvLink) { FreeResource(Self->prvLink); Self->prvLink = NULL; }
    if (Self->Buffer)  { FreeResource(Self->Buffer); Self->Buffer = NULL; }
@@ -992,7 +992,7 @@ static ERROR FILE_NextFile(objFile *Self, struct flNext *Args)
    else {
       // Automatically close the list in the event of an error and repurpose the return code.  Subsequent
       // calls to Next() will start from the start of the file index.
-      CloseDir(Self->prvList);
+      FreeResource(Self->prvList);
       Self->prvList = NULL;
    }
 
@@ -1325,7 +1325,7 @@ Reset: If the file represents a folder, the file list index is reset by this act
 static ERROR FILE_Reset(objFile *Self, APTR Void)
 {
    if (Self->Flags & FL_FOLDER) {
-      if (Self->prvList) { CloseDir(Self->prvList); Self->prvList = NULL; }
+      if (Self->prvList) { FreeResource(Self->prvList); Self->prvList = NULL; }
    }
 
    return ERR_Okay;

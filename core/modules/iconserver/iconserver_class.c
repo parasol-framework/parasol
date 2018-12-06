@@ -72,7 +72,7 @@ static ERROR ICON_Clear(objIconServer *Self, APTR Void)
          DeleteFile(buffer, NULL);
       }
 
-      CloseDir(dir);
+      FreeResource(dir);
    }
    else LogMsg("No image directories in theme location \"%s\".", buffer);
 
@@ -190,7 +190,7 @@ static ERROR ICON_Refresh(objIconServer *Self, APTR Void)
          ((LONG *)data)[0] = CODE_END;
          acWrite(output, buffer, sizeof(LONG), 0);
 
-         CloseDir(dir);
+         FreeResource(dir);
       }
       else LogMsg("No image directories in theme location \"%s\".", buffer);
 
@@ -247,10 +247,10 @@ static ERROR GET_CacheSize(objIconServer *Self, LONG *Value)
 
          if (!OpenDir(buffer, RDF_FILE|RDF_SIZE, &subdir)) {
             while (!ScanDir(subdir)) *Value += subdir->Info->Size;
-            CloseDir(subdir);
+            FreeResource(subdir);
          }
       }
-      CloseDir(dir);
+      FreeResource(dir);
    }
 
    LogBack();
@@ -460,7 +460,7 @@ static void write_icon_category(objIconServer *Self, OBJECTPTR Output, STRING Ca
          Action(AC_Write, Output, &write);
       }
 
-      CloseDir(dir);
+      FreeResource(dir);
    }
 }
 

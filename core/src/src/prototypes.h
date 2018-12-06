@@ -164,7 +164,6 @@ CSTRING GetDocView(CSTRING Path);
 ERROR DeleteFile(CSTRING Path, FUNCTION * Callback);
 ERROR GetFileInfo(CSTRING Path, struct FileInfo * Info, LONG InfoSize);
 ERROR SaveObjectToFile(OBJECTPTR Object, CSTRING Path, LONG Permissions);
-void CloseDir(struct DirInfo * Dir);
 ERROR OpenDir(CSTRING Path, LONG Flags, struct DirInfo ** Info);
 ERROR ScanDir(struct DirInfo * Info);
 ERROR IdentifyFile(CSTRING Path, CSTRING Mode, LONG Flags, CLASSID * Class, CLASSID * SubClass, STRING * Command);

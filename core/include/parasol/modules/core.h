@@ -1852,7 +1852,6 @@ struct CoreBase {
    ERROR (*_DeleteFile)(CSTRING, FUNCTION *);
    ERROR (*_GetFileInfo)(CSTRING, struct FileInfo *, LONG);
    ERROR (*_SaveObjectToFile)(APTR, CSTRING, LONG);
-   void (*_CloseDir)(struct DirInfo *);
    ERROR (*_OpenDir)(CSTRING, LONG, struct DirInfo **);
    ERROR (*_ScanDir)(struct DirInfo *);
    ERROR (*_IdentifyFile)(CSTRING, CSTRING, LONG, CLASSID *, CLASSID *, STRING *);
@@ -2049,7 +2048,6 @@ struct CoreBase {
 #define DeleteFile(...) (CoreBase->_DeleteFile)(__VA_ARGS__)
 #define GetFileInfo(a,b) (CoreBase->_GetFileInfo)(a,b,sizeof(*b))
 #define SaveObjectToFile(...) (CoreBase->_SaveObjectToFile)(__VA_ARGS__)
-#define CloseDir(...) (CoreBase->_CloseDir)(__VA_ARGS__)
 #define OpenDir(...) (CoreBase->_OpenDir)(__VA_ARGS__)
 #define ScanDir(...) (CoreBase->_ScanDir)(__VA_ARGS__)
 #define IdentifyFile(...) (CoreBase->_IdentifyFile)(__VA_ARGS__)

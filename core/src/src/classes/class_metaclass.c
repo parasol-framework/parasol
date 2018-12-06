@@ -1361,7 +1361,7 @@ void scan_classes(void)
 
          if ((total & 0x1f) IS 0x10) Expunge(FALSE);
       }
-      CloseDir(dir);
+      FreeResource(dir);
    }
 
    LogF("Core","Class scan complete.");

@@ -1119,7 +1119,6 @@ struct ScriptArg { // For use with scExec
     "DeleteFile",
     "GetFileInfo",
     "SaveObjectToFile",
-    "CloseDir",
     "OpenDir",
     "ScanDir",
     "IdentifyFile",
