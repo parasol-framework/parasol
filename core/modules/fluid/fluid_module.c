@@ -395,7 +395,7 @@ static int module_call(lua_State *Lua)
             SET_FUNCTION_SCRIPT(func, &Self->Head, luaL_ref(Lua, LUA_REGISTRYINDEX));
             ((FUNCTION **)(buffer + j))[0] = &func;
          }
-         else if (type IS LUA_TNIL) {
+         else if ((type IS LUA_TNIL) OR (type IS LUA_TNONE)) {
             ((FUNCTION **)(buffer + j))[0] = NULL;
          }
          else {
