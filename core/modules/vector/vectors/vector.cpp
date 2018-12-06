@@ -95,7 +95,7 @@ static ERROR VECTOR_ClearTransforms(objVector *Self, APTR Void)
       struct VectorTransform *scan, *next;
       for (scan=Self->Transforms; scan; scan=next) {
          next = scan->Next;
-         FreeMemory(scan);
+         FreeResource(scan);
       }
       Self->Transforms = NULL;
    }
@@ -108,11 +108,11 @@ static ERROR VECTOR_ClearTransforms(objVector *Self, APTR Void)
 
 static ERROR VECTOR_Free(objVector *Self, APTR Args)
 {
-   if (Self->ID)           { FreeMemory(Self->ID); Self->ID = NULL; }
-   if (Self->DashArray)    { FreeMemory(Self->DashArray); Self->DashArray = NULL; }
-   if (Self->FillString)   { FreeMemory(Self->FillString); Self->FillString = NULL; }
-   if (Self->StrokeString) { FreeMemory(Self->StrokeString); Self->StrokeString = NULL; }
-   if (Self->FilterString) { FreeMemory(Self->FilterString); Self->FilterString = NULL; }
+   if (Self->ID)           { FreeResource(Self->ID); Self->ID = NULL; }
+   if (Self->DashArray)    { FreeResource(Self->DashArray); Self->DashArray = NULL; }
+   if (Self->FillString)   { FreeResource(Self->FillString); Self->FillString = NULL; }
+   if (Self->StrokeString) { FreeResource(Self->StrokeString); Self->StrokeString = NULL; }
+   if (Self->FilterString) { FreeResource(Self->FilterString); Self->FilterString = NULL; }
 
    if (Self->FillGradientTable) { delete Self->FillGradientTable; Self->FillGradientTable = NULL; }
    if (Self->StrokeGradientTable) { delete Self->StrokeGradientTable; Self->StrokeGradientTable = NULL; }
@@ -907,7 +907,7 @@ static ERROR VECTOR_GET_DashArray(objVector *Self, DOUBLE **Value, LONG *Element
 
 static ERROR VECTOR_SET_DashArray(objVector *Self, DOUBLE *Value, LONG Elements)
 {
-   if (Self->DashArray) { FreeMemory(Self->DashArray); Self->DashArray = NULL; Self->DashTotal = 0; }
+   if (Self->DashArray) { FreeResource(Self->DashArray); Self->DashArray = NULL; Self->DashTotal = 0; }
 
    if ((Value) and (Elements >= 2)) {
       LONG total = Elements;
@@ -977,7 +977,7 @@ static ERROR VECTOR_GET_Fill(objVector *Self, CSTRING *Value)
 
 static ERROR VECTOR_SET_Fill(objVector *Self, CSTRING Value)
 {
-   if (Self->FillString) { FreeMemory(Self->FillString); Self->FillString = NULL; }
+   if (Self->FillString) { FreeResource(Self->FillString); Self->FillString = NULL; }
    Self->FillString = StrClone(Value);
    vecReadPainter(&Self->Head, Value, &Self->FillColour, &Self->FillGradient, &Self->FillImage, &Self->FillPattern);
    return ERR_Okay;
@@ -1064,13 +1064,13 @@ static ERROR VECTOR_GET_Filter(objVector *Self, CSTRING *Value)
 static ERROR VECTOR_SET_Filter(objVector *Self, CSTRING Value)
 {
    if ((!Value) OR (!Value[0])) {
-      if (Self->FilterString) { FreeMemory(Self->FilterString); Self->FilterString = NULL; }
+      if (Self->FilterString) { FreeResource(Self->FilterString); Self->FilterString = NULL; }
       Self->Filter = NULL;
       return ERR_Okay;
    }
 
    if (!Self->Scene) { // Vector is not yet initialised, so store the filter string for later.
-      if (Self->FilterString) { FreeMemory(Self->FilterString); Self->FilterString = NULL; }
+      if (Self->FilterString) { FreeResource(Self->FilterString); Self->FilterString = NULL; }
       Self->FilterString = StrClone(Value);
       return ERR_Okay;
    }
@@ -1089,7 +1089,7 @@ static ERROR VECTOR_SET_Filter(objVector *Self, CSTRING Value)
    if (!def) return PostError(ERR_Search);
 
    if (def->Object->ClassID IS ID_VECTORFILTER) {
-      if (Self->FilterString) { FreeMemory(Self->FilterString); Self->FilterString = NULL; }
+      if (Self->FilterString) { FreeResource(Self->FilterString); Self->FilterString = NULL; }
       Self->FilterString = StrClone(Value);
       Self->Filter = (objVectorFilter *)def->Object;
       return ERR_Okay;
@@ -1137,7 +1137,7 @@ static ERROR VECTOR_GET_ID(objVector *Self, STRING *Value)
 
 static ERROR VECTOR_SET_ID(objVector *Self, CSTRING Value)
 {
-   if (Self->ID) FreeMemory(Self->ID);
+   if (Self->ID) FreeResource(Self->ID);
 
    if (Value) {
       Self->ID = StrClone(Value);
@@ -1452,7 +1452,7 @@ static ERROR VECTOR_GET_NumericID(objVector *Self, LONG *Value)
 static ERROR VECTOR_SET_NumericID(objVector *Self, LONG Value)
 {
    Self->NumericID = Value;
-   if (Self->ID) { FreeMemory(Self->ID); Self->ID = NULL; }
+   if (Self->ID) { FreeResource(Self->ID); Self->ID = NULL; }
    return ERR_Okay;
 }
 
@@ -1660,7 +1660,7 @@ static ERROR VECTOR_GET_Stroke(objVector *Self, CSTRING *Value)
 
 static ERROR VECTOR_SET_Stroke(objVector *Self, STRING Value)
 {
-   if (Self->StrokeString) { FreeMemory(Self->StrokeString); Self->StrokeString = NULL; }
+   if (Self->StrokeString) { FreeResource(Self->StrokeString); Self->StrokeString = NULL; }
    Self->StrokeString = StrClone(Value);
    vecReadPainter(&Self->Head, Value, &Self->StrokeColour, &Self->StrokeGradient, &Self->StrokeImage, &Self->StrokePattern);
    return ERR_Okay;

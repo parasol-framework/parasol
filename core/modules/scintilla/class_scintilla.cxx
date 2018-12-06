@@ -662,8 +662,8 @@ static ERROR SCINTILLA_Free(objScintilla *Self, APTR)
 
    if (Self->prvKeyEvent)  { UnsubscribeEvent(Self->prvKeyEvent); Self->prvKeyEvent = NULL; }
    if (Self->FileStream)   { acFree(Self->FileStream); Self->FileStream = NULL; }
-   if (Self->Path)         { FreeMemory(Self->Path);  Self->Path = NULL; }
-   if (Self->StringBuffer) { FreeMemory(Self->StringBuffer); Self->StringBuffer = NULL; }
+   if (Self->Path)         { FreeResource(Self->Path);  Self->Path = NULL; }
+   if (Self->StringBuffer) { FreeResource(Self->StringBuffer); Self->StringBuffer = NULL; }
    if (Self->Font)         { acFree(Self->Font);       Self->Font = NULL; }
    if (Self->BoldFont)     { acFree(Self->BoldFont);   Self->BoldFont = NULL; }
    if (Self->ItalicFont)   { acFree(Self->ItalicFont); Self->ItalicFont = NULL; }
@@ -1304,7 +1304,7 @@ static ERROR SCINTILLA_SaveToObject(objScintilla *Self, struct acSaveToObject *A
       if (!(AllocMemory(len+1, MEM_STRING|MEM_NO_CLEAR, &buffer, NULL))) {
          SCICALL(SCI_GETTEXT, len+1, (const char *)buffer);
          error = acWrite(object, buffer, len, NULL);
-         FreeMemory(buffer);
+         FreeResource(buffer);
       }
       else error = ERR_AllocMemory;
 
@@ -1857,7 +1857,7 @@ static ERROR SET_Path(objScintilla *Self, CSTRING Value)
 {
    LogBranch((const char *)Value);
 
-   if (Self->Path) { FreeMemory(Self->Path); Self->Path = NULL; }
+   if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
 
    if ((Value) AND (*Value)) {
       if ((Self->Path = StrClone(Value))) {
@@ -1888,7 +1888,7 @@ needs to be changed without causing a load operation.
 
 static ERROR SET_Origin(objScintilla *Self, CSTRING Value)
 {
-   if (Self->Path) { FreeMemory(Self->Path); Self->Path = NULL; }
+   if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
 
    if ((Value) AND (*Value)) {
       if (!(Self->Path = StrClone(Value))) {
@@ -2081,7 +2081,7 @@ static ERROR GET_String(objScintilla *Self, STRING *Value)
 {
    LONG len = SCICALL(SCI_GETLENGTH);
 
-   if (Self->StringBuffer) { FreeMemory(Self->StringBuffer); Self->StringBuffer = NULL; }
+   if (Self->StringBuffer) { FreeResource(Self->StringBuffer); Self->StringBuffer = NULL; }
 
    if (!AllocMemory(len+1, MEM_STRING|MEM_NO_CLEAR, &Self->StringBuffer, NULL)) {
       SCICALL(SCI_GETTEXT, len+1, (const char *)Self->StringBuffer);
@@ -2406,7 +2406,7 @@ static ERROR load_file(objScintilla *Self, CSTRING Path)
                   }
                   else error = ERR_Read;
 
-                  FreeMemory(str);
+                  FreeResource(str);
                }
                else error = ERR_AllocMemory;
             }

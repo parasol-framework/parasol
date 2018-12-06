@@ -136,7 +136,7 @@ static void free_private_children(OBJECTPTR Object)
                   }
                   else LogErrorMsg("Unfreed memory block %p, Size %d", glPrivateMemory[i].Address, glPrivateMemory[i].Size);
                }
-               if (FreeMemory(glPrivateMemory[i].Address) != ERR_Okay) LogErrorMsg("Error freeing tracked address %p", glPrivateMemory[i].Address);
+               if (FreeResource(glPrivateMemory[i].Address) != ERR_Okay) LogErrorMsg("Error freeing tracked address %p", glPrivateMemory[i].Address);
             }
             else {
                OBJECTPTR child = glPrivateMemory[i].Address;
@@ -167,7 +167,7 @@ static void free_public_children(OBJECTPTR Object)
             OBJECTPTR child;
             if (!(glSharedBlocks[i].Flags & MEM_OBJECT)) {
                LogErrorMsg("Unfreed public memory: #%d, Size %d, Object #%d, Access %d.", glSharedBlocks[i].MemoryID, glSharedBlocks[i].Size, glSharedBlocks[i].ObjectID, glSharedBlocks[i].AccessCount);
-               FreeMemoryID(glSharedBlocks[i].MemoryID);
+               FreeResourceID(glSharedBlocks[i].MemoryID);
             }
             else if (!page_memory(glSharedBlocks + i, (APTR *)&child)) {
                OBJECTID id = child->UniqueID;
@@ -737,7 +737,7 @@ retry:
                            for (j=0; j < ((LONG *)(dest + pos + sizeof(APTR)))[0]; j++) copy[j] = src[j];
                            ReleaseMemoryID(id);
                         }
-                        FreeMemoryID(((MEMORYID *)(src_msg + pos))[0]);
+                        FreeResourceID(((MEMORYID *)(src_msg + pos))[0]);
                      }
                   }
                }
@@ -1578,11 +1578,11 @@ ERROR SubscribeActionTags(OBJECTPTR Object, ...)
                   unlock_subscribers(Object);
 
                   if (Object->UniqueID < 0) {
-                     FreeMemoryID(Object->Stats->ActionSubscriptions.ID);
+                     FreeResourceID(Object->Stats->ActionSubscriptions.ID);
                      Object->Stats->ActionSubscriptions.ID = newlistid;
                   }
                   else {
-                     FreeMemory(Object->Stats->ActionSubscriptions.Ptr);
+                     FreeResource(Object->Stats->ActionSubscriptions.Ptr);
                      Object->Stats->ActionSubscriptions.Ptr = newlist;
                   }
 
@@ -1697,11 +1697,11 @@ ERROR UnsubscribeActionByID(OBJECTPTR Object, ACTIONID ActionID, OBJECTID Subscr
          APTR context = SetContext(Object);
 
             if (Object->UniqueID < 0) {
-               FreeMemoryID(Object->Stats->ActionSubscriptions.ID);
+               FreeResourceID(Object->Stats->ActionSubscriptions.ID);
                Object->Stats->ActionSubscriptions.ID = 0;
             }
             else {
-               FreeMemory(Object->Stats->ActionSubscriptions.Ptr);
+               FreeResource(Object->Stats->ActionSubscriptions.Ptr);
                Object->Stats->ActionSubscriptions.Ptr = NULL;
             }
 
@@ -1819,11 +1819,11 @@ ERROR MGR_Free(OBJECTPTR Object, APTR Void)
       }
    }
 
-   if (Object->Stats->MID_FeedList) { FreeMemoryID(Object->Stats->MID_FeedList); Object->Stats->MID_FeedList = 0; }
+   if (Object->Stats->MID_FeedList) { FreeResourceID(Object->Stats->MID_FeedList); Object->Stats->MID_FeedList = 0; }
 
    if (Object->Stats->ActionSubscriptions.ID) { // Close the action subscription list
-      if (Object->UniqueID < 0) FreeMemoryID(Object->Stats->ActionSubscriptions.ID);
-      else if (FreeMemory(Object->Stats->ActionSubscriptions.Ptr)) LogErrorMsg("Invalid ActionSubscriptions address %p.", Object->Stats->ActionSubscriptions.Ptr);
+      if (Object->UniqueID < 0) FreeResourceID(Object->Stats->ActionSubscriptions.ID);
+      else if (FreeResource(Object->Stats->ActionSubscriptions.Ptr)) LogErrorMsg("Invalid ActionSubscriptions address %p.", Object->Stats->ActionSubscriptions.Ptr);
 
       Object->Stats->ActionSubscriptions.Ptr = NULL;
    }
@@ -1831,7 +1831,7 @@ ERROR MGR_Free(OBJECTPTR Object, APTR Void)
    // If a private child structure is present, remove it
 
    if (Object->ChildPrivate) {
-      if (FreeMemory(Object->ChildPrivate)) LogErrorMsg("Invalid ChildPrivate address %p.", Object->ChildPrivate);
+      if (FreeResource(Object->ChildPrivate)) LogErrorMsg("Invalid ChildPrivate address %p.", Object->ChildPrivate);
       Object->ChildPrivate = NULL;
    }
 
@@ -1871,13 +1871,13 @@ ERROR MGR_Free(OBJECTPTR Object, APTR Void)
    }
 
    if (Object->UniqueID < 0) {
-      FreeMemoryID(Object->UniqueID);
+      FreeResourceID(Object->UniqueID);
    }
    else {
       // Clear the object header.  This helps to raise problems in any areas of code that may attempt to use the object
       // after it has been destroyed.
       ClearMemory(Object, sizeof(struct Head));
-      FreeMemory(Object);
+      FreeResource(Object);
    }
 
    LogBack();

@@ -21,7 +21,7 @@ APTR jpeg_get_small(j_common_ptr cinfo, LONG sizeofobject)
 
 void jpeg_free_small(j_common_ptr cinfo, void * object, LONG sizeofobject)
 {
-   FreeMemory(object);
+   FreeResource(object);
 }
 
 APTR jpeg_get_large(j_common_ptr cinfo, LONG sizeofobject)
@@ -33,7 +33,7 @@ APTR jpeg_get_large(j_common_ptr cinfo, LONG sizeofobject)
 
 void jpeg_free_large (j_common_ptr cinfo, void FAR * object, LONG sizeofobject)
 {
-   FreeMemory(object);
+   FreeResource(object);
 }
 
 /*****************************************************************************

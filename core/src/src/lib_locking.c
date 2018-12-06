@@ -443,7 +443,7 @@ ERROR unpage_memory(APTR Address)
          if (!glMemoryPages[index].AccessCount) {
             if ((glMemoryPages[index].Flags & MPF_LOCAL) AND (!glAlwaysUnpage)) {
                // Do nothing to unmap locally allocated memory blocks (this provides speed increases if the page is
-               // mapped again later).  We will be relying on FreeMemoryID() to do the final detach for local pages.
+               // mapped again later).  We will be relying on FreeResourceID() to do the final detach for local pages.
             }
             else {
                #ifdef STATIC_MEMORY_POOL
@@ -494,7 +494,7 @@ ERROR unpage_memory_id(MEMORYID MemoryID)
          if (!glMemoryPages[index].AccessCount) {
             if ((glMemoryPages[index].Flags & MPF_LOCAL) AND (!glAlwaysUnpage)) {
                // Do nothing to unmap locally allocated memory blocks (this provides speed increases if the page is
-               // mapped again later).  We will be relying on FreeMemoryID() to do the final detach for local pages.
+               // mapped again later).  We will be relying on FreeResourceID() to do the final detach for local pages.
             }
             else {
                #ifdef STATIC_MEMORY_POOL
@@ -1703,8 +1703,8 @@ MEMORYID ReleaseMemory(APTR Address)
 
             if (addr->Flags & MEM_DELETE) {
                FMSG("ReleaseMemory","Deleting marked public memory block #%d (MEM_DELETE)", id);
-               FreeMemoryID(id);
-               addr = NULL; // Accessing addr following FreeMemory() would be an error.
+               FreeResourceID(id);
+               addr = NULL; // Accessing addr following FreeResource() would be an error.
             }
          }
 
@@ -1773,7 +1773,7 @@ MEMORYID ReleaseMemory(APTR Address)
 
          if (glPrivateMemory[pos].Flags & MEM_DELETE) {
             FMSG("ReleaseMemory","Deleting marked private memory block #%d (MEM_DELETE)", id);
-            FreeMemory(glPrivateMemory[pos].Address); // NB: The block entry will no longer be valid from this point onward
+            FreeResource(glPrivateMemory[pos].Address); // NB: The block entry will no longer be valid from this point onward
             cond_wake_all(CN_PRIVATE_MEM); // Wake up any threads sleeping on this memory block.
             thread_unlock(TL_PRIVATE_MEM);
             return id;
@@ -1896,8 +1896,8 @@ ERROR ReleaseMemoryID(MEMORYID MemoryID)
 
             if (addr->Flags & MEM_DELETE) {
                FMSG("ReleaseMemoryID","Deleting marked public memory block #%d (MEM_DELETE)", MemoryID);
-               FreeMemoryID(MemoryID);
-               addr = NULL; // Accessing addr following FreeMemory() would be an error.
+               FreeResourceID(MemoryID);
+               addr = NULL; // Accessing addr following FreeResource() would be an error.
             }
          }
 
@@ -1958,7 +1958,7 @@ ERROR ReleaseMemoryID(MEMORYID MemoryID)
 
             if (glPrivateMemory[pos].Flags & MEM_DELETE) {
                FMSG("ReleaseMemoryID","Deleting marked private memory block #%d (MEM_DELETE)", MemoryID);
-               FreeMemory(glPrivateMemory[pos].Address);
+               FreeResource(glPrivateMemory[pos].Address);
                cond_wake_all(CN_PRIVATE_MEM); // Wake up any threads sleeping on this memory block.
                thread_unlock(TL_PRIVATE_MEM);
                return ERR_Okay;

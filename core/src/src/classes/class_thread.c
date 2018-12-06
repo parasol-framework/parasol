@@ -404,7 +404,7 @@ an active thread is made, it will be marked for termination so as to avoid the r
 static ERROR THREAD_Free(objThread *Self, APTR Void)
 {
    if ((Self->Data) AND (Self->DataSize > 0)) {
-      FreeMemory(Self->Data);
+      FreeResource(Self->Data);
       Self->Data = NULL;
       Self->DataSize = 0;
    }
@@ -496,7 +496,7 @@ static ERROR THREAD_SetData(objThread *Self, struct thSetData *Args)
    if (Args->Size < 0) return PostError(ERR_Args);
 
    if (Self->Data) {
-      FreeMemory(Self->Data);
+      FreeResource(Self->Data);
       Self->Data = NULL;
       Self->DataSize = 0;
    }

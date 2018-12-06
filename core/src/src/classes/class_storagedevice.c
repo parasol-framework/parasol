@@ -48,7 +48,7 @@ ERROR add_storage_class(void)
 
 static ERROR STORAGE_Free(objStorageDevice *Self, APTR Void)
 {
-   if (Self->prvVolume) { FreeMemory(Self->prvVolume); Self->prvVolume = NULL; }
+   if (Self->prvVolume) { FreeResource(Self->prvVolume); Self->prvVolume = NULL; }
    return ERR_Okay;
 }
 
@@ -145,7 +145,7 @@ static ERROR SET_Volume(objStorageDevice *Self, CSTRING Value)
       LONG len;
       for (len=0; (Value[len]) AND (Value[len] != ':'); len++);
 
-      if (Self->prvVolume) FreeMemory(Self->prvVolume);
+      if (Self->prvVolume) FreeResource(Self->prvVolume);
 
       if (!AllocMemory(len+2, MEM_STRING|MEM_NO_CLEAR|Self->Head.MemFlags, (APTR *)&Self->prvVolume, NULL)) {
          CopyMemory(Value, Self->prvVolume, len);

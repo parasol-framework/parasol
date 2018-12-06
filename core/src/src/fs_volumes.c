@@ -329,7 +329,7 @@ next:
                            }
                         }
 
-                        FreeMemory(str);
+                        FreeResource(str);
                         ReleasePrivateObject((OBJECTPTR)glVolumes);
                         LogBack();
                         return ERR_Okay;

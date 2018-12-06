@@ -238,13 +238,13 @@ static ERROR SCRIPT_Callback(objScript *Self, struct scCallback *Args)
 static ERROR SCRIPT_Free(objScript *Self, APTR Void)
 {
    if (Self->Vars)        { VarFree(Self->Vars);           Self->Vars = NULL; }
-   if (Self->CacheFile)   { FreeMemory(Self->CacheFile);   Self->CacheFile = NULL; }
-   if (Self->Path)        { FreeMemory(Self->Path);        Self->Path = NULL; }
-   if (Self->String)      { FreeMemory(Self->String);      Self->String = NULL; }
-   if (Self->WorkingPath) { FreeMemory(Self->WorkingPath); Self->WorkingPath = NULL; }
-   if (Self->Procedure)   { FreeMemory(Self->Procedure);   Self->Procedure = NULL; }
-   if (Self->ErrorString) { FreeMemory(Self->ErrorString); Self->ErrorString = NULL; }
-   if (Self->Results)     { FreeMemory(Self->Results);     Self->Results = NULL; }
+   if (Self->CacheFile)   { FreeResource(Self->CacheFile);   Self->CacheFile = NULL; }
+   if (Self->Path)        { FreeResource(Self->Path);        Self->Path = NULL; }
+   if (Self->String)      { FreeResource(Self->String);      Self->String = NULL; }
+   if (Self->WorkingPath) { FreeResource(Self->WorkingPath); Self->WorkingPath = NULL; }
+   if (Self->Procedure)   { FreeResource(Self->Procedure);   Self->Procedure = NULL; }
+   if (Self->ErrorString) { FreeResource(Self->ErrorString); Self->ErrorString = NULL; }
+   if (Self->Results)     { FreeResource(Self->Results);     Self->Results = NULL; }
    return ERR_Okay;
 }
 
@@ -397,7 +397,7 @@ static ERROR GET_CacheFile(objScript *Self, STRING *Value)
 
 static ERROR SET_CacheFile(objScript *Self, CSTRING Value)
 {
-   if (Self->CacheFile) { FreeMemory(Self->CacheFile); Self->CacheFile = NULL; }
+   if (Self->CacheFile) { FreeResource(Self->CacheFile); Self->CacheFile = NULL; }
    if (Value) Self->CacheFile = StrClone(Value);
    return ERR_Okay;
 }
@@ -429,7 +429,7 @@ static ERROR GET_ErrorString(objScript *Self, STRING *Value)
 
 static ERROR SET_ErrorString(objScript *Self, CSTRING Value)
 {
-   if (Self->ErrorString) { FreeMemory(Self->ErrorString); Self->ErrorString = NULL; }
+   if (Self->ErrorString) { FreeResource(Self->ErrorString); Self->ErrorString = NULL; }
    if (Value) Self->ErrorString = StrClone(Value);
    return ERR_Okay;
 }
@@ -498,9 +498,9 @@ static ERROR SET_Path(objScript *Self, CSTRING Value)
       }
    }
    else {
-      if (Self->Path)        { FreeMemory(Self->Path); Self->Path = NULL; }
-      if (Self->String)      { FreeMemory(Self->String); Self->String = NULL; }
-      if (Self->WorkingPath) { FreeMemory(Self->WorkingPath); Self->WorkingPath = NULL; }
+      if (Self->Path)        { FreeResource(Self->Path); Self->Path = NULL; }
+      if (Self->String)      { FreeResource(Self->String); Self->String = NULL; }
+      if (Self->WorkingPath) { FreeResource(Self->WorkingPath); Self->WorkingPath = NULL; }
 
       LONG i, j, len;
       if ((Value) AND (*Value)) {
@@ -649,7 +649,7 @@ static ERROR GET_Procedure(objScript *Self, CSTRING *Value)
 
 static ERROR SET_Procedure(objScript *Self, CSTRING Value)
 {
-   if (Self->Procedure) { FreeMemory(Self->Procedure); Self->Procedure = NULL; }
+   if (Self->Procedure) { FreeResource(Self->Procedure); Self->Procedure = NULL; }
    if (Value) Self->Procedure = StrClone(Value);
    return ERR_Okay;
 }
@@ -682,7 +682,7 @@ static ERROR GET_Results(objScript *Self, STRING **Value, LONG *Elements)
 
 static ERROR SET_Results(objScript *Self, CSTRING *Value, LONG Elements)
 {
-   if (Self->Results) { FreeMemory(Self->Results); Self->Results = 0; }
+   if (Self->Results) { FreeResource(Self->Results); Self->Results = 0; }
 
    Self->ResultsTotal = 0;
 
@@ -729,8 +729,8 @@ static ERROR GET_String(objScript *Self, CSTRING *Value)
 
 static ERROR SET_String(objScript *Self, CSTRING Value)
 {
-   if (Self->Path) { FreeMemory(Self->Path); Self->Path = NULL; } // Path removed when a statement string is being set
-   if (Self->String) { FreeMemory(Self->String); Self->String = NULL; }
+   if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; } // Path removed when a statement string is being set
+   if (Self->String) { FreeResource(Self->String); Self->String = NULL; }
 
    if (Value) Self->String = StrClone(check_bom(Value));
    return ERR_Okay;
@@ -863,7 +863,7 @@ static ERROR GET_WorkingPath(objScript *Self, STRING *Value)
 
 static ERROR SET_WorkingPath(objScript *Self, STRING Value)
 {
-   if (Self->WorkingPath) { FreeMemory(Self->WorkingPath); Self->WorkingPath = NULL; }
+   if (Self->WorkingPath) { FreeResource(Self->WorkingPath); Self->WorkingPath = NULL; }
    if (Value) Self->WorkingPath = StrClone(Value);
    return ERR_Okay;
 }

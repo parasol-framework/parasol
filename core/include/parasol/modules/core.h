@@ -1711,8 +1711,8 @@ struct CoreBase {
    struct rkMetaClass * (*_FindClass)(CLASSID);
    ERROR (*_FindObject)(CSTRING, CLASSID, OBJECTID **, LONG *);
    ERROR (*_ReleaseObject)(APTR);
-   ERROR (*_FreeMemory)(const void *);
-   ERROR (*_FreeMemoryID)(MEMORYID);
+   ERROR (*_FreeResource)(const void *);
+   ERROR (*_FreeResourceID)(MEMORYID);
    CLASSID (*_GetClassID)(OBJECTID);
    OBJECTID (*_GetOwnerID)(OBJECTID);
    ERROR (*_GetField)(APTR, FIELD, APTR);
@@ -1908,8 +1908,8 @@ struct CoreBase {
 #define FindClass(...) (CoreBase->_FindClass)(__VA_ARGS__)
 #define FindObject(...) (CoreBase->_FindObject)(__VA_ARGS__)
 #define ReleaseObject(...) (CoreBase->_ReleaseObject)(__VA_ARGS__)
-#define FreeMemory(...) (CoreBase->_FreeMemory)(__VA_ARGS__)
-#define FreeMemoryID(...) (CoreBase->_FreeMemoryID)(__VA_ARGS__)
+#define FreeResource(...) (CoreBase->_FreeResource)(__VA_ARGS__)
+#define FreeResourceID(...) (CoreBase->_FreeResourceID)(__VA_ARGS__)
 #define GetClassID(...) (CoreBase->_GetClassID)(__VA_ARGS__)
 #define GetOwnerID(...) (CoreBase->_GetOwnerID)(__VA_ARGS__)
 #define GetField(...) (CoreBase->_GetField)(__VA_ARGS__)

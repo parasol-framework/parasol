@@ -258,7 +258,7 @@ static ERROR ARCHIVE_Free(objFile *Self, APTR Void)
    if (prv) {
       if (prv->FileStream) { acFree(&prv->FileStream->Head); prv->FileStream = NULL; }
       if (prv->CompressedStream) { acFree(&prv->CompressedStream->Head); prv->CompressedStream = NULL; }
-      if (prv->OutputBuffer) { FreeMemory(prv->OutputBuffer); prv->OutputBuffer = NULL; }
+      if (prv->OutputBuffer) { FreeResource(prv->OutputBuffer); prv->OutputBuffer = NULL; }
    }
 
    return ERR_Okay;
@@ -308,7 +308,7 @@ static ERROR ARCHIVE_Init(objFile *Self, APTR Void)
    else error = ERR_AllocMemory;
 
    if (error) {
-      if (Self->Head.ChildPrivate) { FreeMemory(Self->Head.ChildPrivate); Self->Head.ChildPrivate = NULL; }
+      if (Self->Head.ChildPrivate) { FreeResource(Self->Head.ChildPrivate); Self->Head.ChildPrivate = NULL; }
    }
 
    return error;

@@ -318,7 +318,7 @@ static void server_client_outgoing(SOCKET_HANDLE FD, APTR Data)
 
          if (Socket->WriteQueue.Index >= Socket->WriteQueue.Length) {
             FMSG("server_out:","Terminating the write queue (pos %d/%d).", Socket->WriteQueue.Index, Socket->WriteQueue.Length);
-            FreeMemory(Socket->WriteQueue.Buffer);
+            FreeResource(Socket->WriteQueue.Buffer);
             Socket->WriteQueue.Buffer = NULL;
             Socket->WriteQueue.Index  = 0;
             Socket->WriteQueue.Length = 0;
@@ -406,7 +406,7 @@ static void free_client(objNetSocket *Self, struct rkNetClient *Client)
       if ((Self->Clients) AND (Self->Clients->Next)) Self->Clients->Next->Prev = NULL;
    }
 
-   FreeMemory(Client);
+   FreeResource(Client);
 
    Self->TotalClients--;
 
@@ -455,8 +455,8 @@ static void free_client_socket(objNetSocket *Self, objClientSocket *Socket, BYTE
       Socket->Handle = -1;
    }
 
-   if (Socket->ReadQueue.Buffer) { FreeMemory(Socket->ReadQueue.Buffer); Socket->ReadQueue.Buffer = NULL; }
-   if (Socket->WriteQueue.Buffer) { FreeMemory(Socket->WriteQueue.Buffer); Socket->WriteQueue.Buffer = NULL; }
+   if (Socket->ReadQueue.Buffer) { FreeResource(Socket->ReadQueue.Buffer); Socket->ReadQueue.Buffer = NULL; }
+   if (Socket->WriteQueue.Buffer) { FreeResource(Socket->WriteQueue.Buffer); Socket->WriteQueue.Buffer = NULL; }
 
    if (Socket->Prev) {
       Socket->Prev->Next = Socket->Next;
@@ -467,7 +467,7 @@ static void free_client_socket(objNetSocket *Self, objClientSocket *Socket, BYTE
       if (Socket->Next) Socket->Next->Prev = NULL;
    }
 
-   FreeMemory(Socket);
+   FreeResource(Socket);
 
    client->TotalSockets--;
 

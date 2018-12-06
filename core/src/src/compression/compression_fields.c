@@ -138,7 +138,7 @@ static ERROR GET_Location(objCompression *Self, CSTRING *Value)
 
 static ERROR SET_Location(objCompression *Self, CSTRING Value)
 {
-   if (Self->Location) { FreeMemory(Self->Location); Self->Location = NULL; }
+   if (Self->Location) { FreeResource(Self->Location); Self->Location = NULL; }
 
    if ((Value) AND (*Value)) {
       if (!(Self->Location = StrClone(Value))) return PostError(ERR_AllocMemory);

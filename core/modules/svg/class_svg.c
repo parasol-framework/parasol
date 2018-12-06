@@ -75,18 +75,18 @@ static ERROR SVG_Free(objSVG *Self, APTR Void)
       Self->Target = NULL;
    }
 
-   if (Self->Path)  { FreeMemory(Self->Path);  Self->Path = NULL; }
-   if (Self->Title) { FreeMemory(Self->Title); Self->Title = NULL; }
+   if (Self->Path)  { FreeResource(Self->Path);  Self->Path = NULL; }
+   if (Self->Title) { FreeResource(Self->Title); Self->Title = NULL; }
 
    struct svgAnimation *anim = Self->Animations;
    while (anim) {
       struct svgAnimation *next = anim->Next;
       LONG i;
       for (i=0; i < anim->ValueCount; i++) {
-         FreeMemory(anim->Values[i]);
+         FreeResource(anim->Values[i]);
          anim->Values[i] = NULL;
       }
-      FreeMemory(anim);
+      FreeResource(anim);
       anim = next;
    }
    Self->Animations = NULL;
@@ -94,8 +94,8 @@ static ERROR SVG_Free(objSVG *Self, APTR Void)
    svgID *symbol = Self->IDs;
    while (symbol) {
       svgID *next = symbol->Next;
-      if (symbol->ID) { FreeMemory(symbol->ID); symbol->ID = NULL; }
-      FreeMemory(symbol);
+      if (symbol->ID) { FreeResource(symbol->ID); symbol->ID = NULL; }
+      FreeResource(symbol);
       symbol = next;
    }
    Self->IDs = NULL;
@@ -103,7 +103,7 @@ static ERROR SVG_Free(objSVG *Self, APTR Void)
    svgInherit *inherit = Self->Inherit;
    while (inherit) {
       svgInherit *next = inherit->Next;
-      FreeMemory(inherit);
+      FreeResource(inherit);
       inherit = next;
    }
    Self->Inherit = NULL;
@@ -267,7 +267,7 @@ static ERROR GET_Path(objSVG *Self, STRING *Value)
 
 static ERROR SET_Path(objSVG *Self, CSTRING Value)
 {
-   if (Self->Path) { FreeMemory(Self->Path); Self->Path = NULL; }
+   if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
 
    if ((Value) AND (*Value)) {
       if (!(Self->Path = StrClone(Value))) return PostError(ERR_AllocMemory);
@@ -341,7 +341,7 @@ NULL will be returned.
 
 static ERROR SET_Title(objSVG *Self, CSTRING Value)
 {
-   if (Self->Title) { FreeMemory(Self->Title); Self->Title = NULL; }
+   if (Self->Title) { FreeResource(Self->Title); Self->Title = NULL; }
    if (Value) Self->Title = StrClone(Value);
    return ERR_Okay;
 }

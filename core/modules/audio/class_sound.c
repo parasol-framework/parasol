@@ -424,10 +424,10 @@ static ERROR SOUND_Free(objSound *Self, APTR Void)
    }
 
    if (Self->ChannelIndex)   { sndCloseChannelsID(Self->AudioID, Self->ChannelIndex); Self->ChannelIndex = NULL; }
-   if (Self->prvPath)        { FreeMemory(Self->prvPath); Self->prvPath = NULL; }
-   if (Self->prvDescription) { FreeMemory(Self->prvDescription); Self->prvDescription = NULL; }
-   if (Self->prvDisclaimer)  { FreeMemory(Self->prvDisclaimer); Self->prvDisclaimer = NULL; }
-   if (Self->prvWAVE)        { FreeMemory(Self->prvWAVE); Self->prvWAVE = NULL; }
+   if (Self->prvPath)        { FreeResource(Self->prvPath); Self->prvPath = NULL; }
+   if (Self->prvDescription) { FreeResource(Self->prvDescription); Self->prvDescription = NULL; }
+   if (Self->prvDisclaimer)  { FreeResource(Self->prvDisclaimer); Self->prvDisclaimer = NULL; }
+   if (Self->prvWAVE)        { FreeResource(Self->prvWAVE); Self->prvWAVE = NULL; }
    if (Self->File)           { acFree(Self->File); Self->File = NULL; }
    if (Self->StreamFileID)   { acFreeID(Self->StreamFileID); Self->StreamFileID = 0; }
 
@@ -977,18 +977,18 @@ static ERROR SOUND_Init(objSound *Self, APTR Void)
             add.Result       = NULL;
             if (!WaitMsg(MT_SndAddSample, Self->AudioID, &add)) {
                Self->Handle = add.Result;
-               FreeMemory(buffer);
+               FreeResource(buffer);
                return ERR_Okay;
             }
             else {
-               FreeMemory(buffer);
+               FreeResource(buffer);
                LogErrorMsg("Failed to add sample to the Audio device.");
                if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->Head.UniqueID, NULL);
                return ERR_Failed;
             }
          }
          else {
-            FreeMemory(buffer);
+            FreeResource(buffer);
             if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->Head.UniqueID, NULL);
             return PostError(ERR_Read);
          }
@@ -1304,7 +1304,7 @@ static ERROR SOUND_GET_Path(objSound *Self, STRING *Value)
 
 static ERROR SOUND_SET_Path(objSound *Self, CSTRING Value)
 {
-   if (Self->prvPath) { FreeMemory(Self->prvPath); Self->prvPath = NULL; }
+   if (Self->prvPath) { FreeResource(Self->prvPath); Self->prvPath = NULL; }
 
    if ((Value) AND (*Value)) {
       LONG i;

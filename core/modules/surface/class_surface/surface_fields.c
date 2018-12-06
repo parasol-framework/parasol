@@ -410,7 +410,7 @@ static ERROR SET_PrecopyRegion(objSurface *Self, STRING Value)
 {
    LogMsg("%s", Value);
 
-   if (Self->PrecopyMID) { FreeMemoryID(Self->PrecopyMID); Self->PrecopyMID = 0; }
+   if (Self->PrecopyMID) { FreeResourceID(Self->PrecopyMID); Self->PrecopyMID = 0; }
 
    if ((!Value) OR (!*Value)) return ERR_Okay;
 

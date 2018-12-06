@@ -129,9 +129,9 @@ static ERROR FONT_Free(objFont *Self, APTR Void)
             if (cache->OpenCount <= 0) {
                if (prev) prev->Next = cache->Next;
                else glBitmapCache = cache->Next;
-               if (cache->Data)    FreeMemory(cache->Data);
-               if (cache->Outline) FreeMemory(cache->Outline);
-               FreeMemory(cache);
+               if (cache->Data)    FreeResource(cache->Data);
+               if (cache->Outline) FreeResource(cache->Outline);
+               FreeResource(cache);
             }
             break;
          }
@@ -154,23 +154,23 @@ static ERROR FONT_Free(objFont *Self, APTR Void)
 
          CSTRING path = Self->Cache->Path;
          VarSet(glCache, path, NULL, 0);
-         if (path) FreeMemory(path);
+         if (path) FreeResource(path);
          Self->Cache = NULL;
       }
    }
 
-   if (Self->prvTempGlyph.Char.Outline) { FreeMemory(Self->prvTempGlyph.Char.Outline); Self->prvTempGlyph.Char.Outline = NULL; }
-   if (Self->Path) { FreeMemory(Self->Path); Self->Path = NULL; }
-   if (Self->prvTabs) { FreeMemory(Self->prvTabs); Self->prvTabs = NULL; }
+   if (Self->prvTempGlyph.Char.Outline) { FreeResource(Self->prvTempGlyph.Char.Outline); Self->prvTempGlyph.Char.Outline = NULL; }
+   if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
+   if (Self->prvTabs) { FreeResource(Self->prvTabs); Self->prvTabs = NULL; }
 
    if ((Self->String) AND ((APTR)Self->String != (APTR)Self->prvBuffer)) {
-      if (FreeMemory(Self->String) != ERR_Okay) {
+      if (FreeResource(Self->String) != ERR_Okay) {
          LogErrorMsg("The String field was set illegally (please use SetField)");
       }
       Self->String = NULL;
    }
 
-   //if (Self->prvChar) { FreeMemory(Self->prvChar); Self->prvChar = NULL; }
+   //if (Self->prvChar) { FreeResource(Self->prvChar); Self->prvChar = NULL; }
 
    return ERR_Okay;
 }
@@ -196,7 +196,7 @@ static ERROR FONT_Init(objFont *Self, APTR Void)
       CSTRING location;
       if (!fntSelectFont(Self->prvFace, Self->prvStyle, Self->Point, Self->Flags & (FTF_PREFER_SCALED|FTF_PREFER_FIXED|FTF_ALLOW_SCALE), &location)) {
          SetString(Self, FID_Path, location);
-         FreeMemory(location);
+         FreeResource(location);
       }
       else {
          LogErrorMsg("Font \"%s\" (point %.2f, style %s) is not recognised.", Self->prvFace, Self->Point, Self->prvStyle);
@@ -367,7 +367,7 @@ static ERROR FONT_Init(objFont *Self, APTR Void)
             if (convert_graphic(Self, cache, FTF_BOLD, &data) != ERR_Okay) return ERR_Failed;
             cache->StyleFlags |= FTF_BOLD;
 
-            FreeMemory(cache->Data);
+            FreeResource(cache->Data);
             cache->Data = data;
             Self->prvData = data;
          }
@@ -375,7 +375,7 @@ static ERROR FONT_Init(objFont *Self, APTR Void)
             if (convert_graphic(Self, cache, FTF_ITALIC, &data) != ERR_Okay) return ERR_Failed;
             cache->StyleFlags |= FTF_ITALIC;
 
-            FreeMemory(cache->Data);
+            FreeResource(cache->Data);
             cache->Data = data;
             Self->prvData = data;
          }
@@ -384,7 +384,7 @@ static ERROR FONT_Init(objFont *Self, APTR Void)
             if (convert_graphic(Self, cache, FTF_BOLD|FTF_ITALIC, &data) != ERR_Okay) return ERR_Failed;
             cache->StyleFlags |= FTF_BOLD|FTF_ITALIC;
 
-            FreeMemory(cache->Data);
+            FreeResource(cache->Data);
             cache->Data = data;
             Self->prvData = data;
          }
@@ -414,7 +414,7 @@ static ERROR FONT_Init(objFont *Self, APTR Void)
 
    // Remove the location string to reduce resource usage
 
-   if (Self->Path) { FreeMemory(Self->Path); Self->Path = NULL; }
+   if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
 
    LogF("6","Family: %s, Style: %s, Glyphs: %d, Point: %.2f, Height: %d", Self->prvFace, Self->prvStyle, Self->TotalChars, Self->Point, Self->Height);
    MSG("LineSpacing: %d, Leading: %d, Gutter: %d", Self->LineSpacing, Self->Leading, Self->Gutter);
@@ -797,7 +797,7 @@ This feature is ideal for use when distributing custom fonts with an application
 static ERROR SET_Path(objFont *Self, CSTRING Value)
 {
    if (!(Self->Head.Flags & NF_INITIALISED)) {
-      if (Self->Path) { FreeMemory(Self->Path); Self->Path = NULL; }
+      if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
       if (Value) Self->Path = StrClone(Value);
       return ERR_Okay;
    }
@@ -930,7 +930,7 @@ static ERROR SET_String(objFont *Self, CSTRING Value)
    }
 
    if ((Self->String) AND ((APTR)Self->String != (APTR)Self->prvBuffer)) {
-      FreeMemory(Self->String);
+      FreeResource(Self->String);
    }
 
    Self->String       = NULL;
@@ -1015,7 +1015,7 @@ static ERROR SET_Tabs(objFont *Self, WORD *Tabs, LONG Elements)
    if (!Tabs) return ERR_NullArgs;
    if (Elements > 0xff) return ERR_BufferOverflow;
 
-   if (Self->prvTabs) { FreeMemory(Self->prvTabs); Self->prvTabs = NULL; }
+   if (Self->prvTabs) { FreeResource(Self->prvTabs); Self->prvTabs = NULL; }
 
    if (!AllocMemory(sizeof(WORD) * Elements, MEM_NO_CLEAR, &Self->prvTabs, NULL)) {
       CopyMemory(Tabs, Self->prvTabs, sizeof(WORD) * Elements);
@@ -1244,7 +1244,7 @@ static ERROR convert_graphic(objFont *Self, struct BitmapCache *Cache, LONG Flag
             }
          }
 
-         if (*Data) FreeMemory(*Data);
+         if (*Data) FreeResource(*Data);
          *Data = buffer;
       }
       else return ERR_AllocMemory;
@@ -2146,7 +2146,7 @@ static struct font_glyph * get_glyph(objFont *Self, ULONG Unicode, UBYTE GetBitm
       // Cache is full.  Return a temporary glyph with graphics data if requested.
 
       if (Self->prvTempGlyph.Char.Outline) {
-         FreeMemory(Self->prvTempGlyph.Char.Outline);
+         FreeResource(Self->prvTempGlyph.Char.Outline);
          Self->prvTempGlyph.Char.Outline = NULL;
       }
 
@@ -2557,8 +2557,8 @@ static void free_glyph(objFont *Font)
          ULONG key = 0;
          struct font_glyph *glyph;
          while (!KeyIterate(Font->Glyph->Glyphs, key, &key, &glyph, NULL)) {
-            if (glyph->Char.Data) FreeMemory(glyph->Char.Data);
-            if (glyph->Char.Outline) FreeMemory(glyph->Char.Outline);
+            if (glyph->Char.Data) FreeResource(glyph->Char.Data);
+            if (glyph->Char.Outline) FreeResource(glyph->Char.Outline);
          }
          VarFree(Font->Glyph->Glyphs);
          Font->Glyph->Glyphs = NULL;
@@ -2583,7 +2583,7 @@ static void free_glyph(objFont *Font)
          Font->Glyph->Prev->Next = Font->Glyph->Next;
       }
 
-      FreeMemory(Font->Glyph);
+      FreeResource(Font->Glyph);
       Font->Glyph = NULL;
    }
    else FMSG("free_glyph()","Glyph cache usage reduced to %d", Font->Glyph->Usage);

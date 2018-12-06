@@ -161,7 +161,7 @@ Clear: Clears all of the data held in an XML object.
 
 static ERROR XML_Clear(objXML *Self, APTR Void)
 {
-   if (Self->Path) { FreeMemory(Self->Path); Self->Path = NULL; }
+   if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
 
    clear_tags(Self);
    Self->Modified++;
@@ -272,7 +272,7 @@ static ERROR XML_DataFeed(objXML *Self, struct acDataFeed *Args)
       Self->TagCount = index;   // Set the new tag count
       Self->Modified++;
 
-      FreeMemory(xml.Tags);
+      FreeResource(xml.Tags);
    }
 
    return ERR_Okay;
@@ -727,7 +727,7 @@ static ERROR XML_GetVar(objXML *Self, struct acGetVar *Args)
             ERROR error = xmlGetString(Self, current->Child->Index, XMF_INCLUDE_SIBLINGS, &str);
             if (!error) {
                StrCopy(str, Args->Buffer, Args->Size);
-               FreeMemory(str);
+               FreeResource(str);
             }
 
             return error;
@@ -916,7 +916,7 @@ SUPPORT NOT YET IMPLEMENTED
 
 -INPUT-
 int Index:  The index of the tag that is being targeted.
-!str Result: A string representing the tag's XPath is returned here.  Must be released with FreeMemory() when no longer required.
+!str Result: A string representing the tag's XPath is returned here.  Must be released with FreeResource() when no longer required.
 
 -ERRORS-
 Okay: The XML string was retrieved.
@@ -1010,7 +1010,7 @@ static ERROR XML_Init(objXML *Self, APTR Void)
          LogErrorMsg("XML parsing error #%d: %s", Self->ParseError, GetErrorMsg(Self->ParseError));
       }
 
-      FreeMemory(Self->Statement);
+      FreeResource(Self->Statement);
       Self->Statement = NULL;
 
       return Self->ParseError;
@@ -1553,7 +1553,7 @@ static ERROR XML_RemoveTag(objXML *Self, struct xmlRemoveTag *Args)
    // Remove the tags from the array
 
    for (i=index; (i < index + actual_count); i++) {
-      if (Self->Tags[i]) { FreeMemory(Self->Tags[i]); Self->Tags[i] = NULL; }
+      if (Self->Tags[i]) { FreeResource(Self->Tags[i]); Self->Tags[i] = NULL; }
    }
 
    // Clean up the hole that we have left in the tag list array
@@ -1677,7 +1677,7 @@ static ERROR XML_SaveToObject(objXML *Self, struct acSaveToObject *Args)
       struct acWrite write = { str, StrLength(str) };
       if (ActionMsg(AC_Write, Args->DestID, &write) != ERR_Okay) error = ERR_Write;
 
-      FreeMemory(str);
+      FreeResource(str);
       STEP();
       return error;
    }
@@ -1844,7 +1844,7 @@ static ERROR XML_SetAttrib(objXML *Self, struct xmlSetAttrib *Args)
 
       newtag->AttribSize = pos;
 
-      FreeMemory(tag);
+      FreeResource(tag);
 
       Self->Tags[tagindex] = newtag;
       Self->Modified++;
@@ -2016,7 +2016,7 @@ static ERROR XML_SetAttrib(objXML *Self, struct xmlSetAttrib *Args)
             }
          #endif
 
-         FreeMemory(tag);
+         FreeResource(tag);
          Self->Tags[tagindex] = newtag;
          Self->Modified++;
          return ERR_Okay;
@@ -2210,7 +2210,7 @@ static ERROR XML_SortXML(objXML *Self, struct xmlSort *Args)
 
    struct ListSort **lookup;
    if (AllocMemory(sizeof(APTR) * root_total, MEM_NO_CLEAR, &lookup, NULL) != ERR_Okay) {
-      FreeMemory(list);
+      FreeResource(list);
       return ERR_AllocMemory;
    }
 
@@ -2373,8 +2373,8 @@ static ERROR XML_SortXML(objXML *Self, struct xmlSort *Args)
    // Return if no sorting was required
 
    if (rearranged IS FALSE) {
-      FreeMemory(list);
-      FreeMemory(lookup);
+      FreeResource(list);
+      FreeResource(lookup);
       if (Args->Flags & XSF_REPORT_SORTING) return ERR_NothingDone;
       else return ERR_Okay;
    }
@@ -2383,8 +2383,8 @@ static ERROR XML_SortXML(objXML *Self, struct xmlSort *Args)
 
    struct XMLTag **clone_array;
    if (AllocMemory(sizeof(APTR) * (Self->TagCount + 1), MEM_UNTRACKED|MEM_NO_CLEAR, &clone_array, NULL) != ERR_Okay) {
-      FreeMemory(list);
-      FreeMemory(lookup);
+      FreeResource(list);
+      FreeResource(lookup);
       return PostError(ERR_Memory);
    }
 
@@ -2404,7 +2404,7 @@ static ERROR XML_SortXML(objXML *Self, struct xmlSort *Args)
       index += tagcount;
    }
 
-   FreeMemory(Self->Tags);
+   FreeResource(Self->Tags);
    Self->Tags = clone_array;
 
    // Reset index numbers within the sorted range
@@ -2422,8 +2422,8 @@ static ERROR XML_SortXML(objXML *Self, struct xmlSort *Args)
 
    Self->Modified++;
 
-   FreeMemory(list);
-   FreeMemory(lookup);
+   FreeResource(list);
+   FreeResource(lookup);
    return ERR_Okay;
 }
 
@@ -2462,8 +2462,8 @@ static ERROR GET_Path(objXML *Self, STRING *Value)
 static ERROR SET_Path(objXML *Self, CSTRING Value)
 {
    if (Self->Source) SET_Source(Self, NULL);
-   if (Self->Path) { FreeMemory(Self->Path); Self->Path = NULL; }
-   if (Self->Statement) { FreeMemory(Self->Statement); Self->Statement = NULL; }
+   if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
+   if (Self->Statement) { FreeResource(Self->Statement); Self->Statement = NULL; }
 
    if (!StrCompare("string:", Value, 7, 0)) {
       // If the string: path type is used then we can optimise things by setting the following path string as the
@@ -2569,8 +2569,8 @@ automatically.
 
 static ERROR SET_Source(objXML *Self, OBJECTPTR Value)
 {
-   if (Self->Path) { FreeMemory(Self->Path); Self->Path = NULL; }
-   if (Self->Statement) { FreeMemory(Self->Statement); Self->Statement = NULL; }
+   if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
+   if (Self->Statement) { FreeResource(Self->Statement); Self->Statement = NULL; }
 
    if (Value) {
       Self->Source = Value;
@@ -2645,8 +2645,8 @@ static ERROR GET_Statement(objXML *Self, STRING *Value)
 
 static ERROR SET_Statement(objXML *Self, CSTRING Value)
 {
-   if (Self->Path) { FreeMemory(Self->Path); Self->Path = NULL; }
-   if (Self->Statement) { FreeMemory(Self->Statement); Self->Statement = NULL; }
+   if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
+   if (Self->Statement) { FreeResource(Self->Statement); Self->Statement = NULL; }
 
    if ((Value) AND (*Value)) {
       if (Self->Head.Flags & NF_INITIALISED) {

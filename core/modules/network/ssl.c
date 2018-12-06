@@ -113,7 +113,7 @@ static ERROR sslSetup(objNetSocket *Self)
 
       if (!ResolvePath("config:ssl/certs", RSF_NO_FILE_CHECK, &path)) {
          if (SSL_CTX_load_verify_locations(Self->CTX, NULL, path)) {
-            FreeMemory(path);
+            FreeResource(path);
 
             if ((Self->SSL = SSL_new(Self->CTX))) {
                LogMsg("SSL connectivity has been configured successfully.");
@@ -126,7 +126,7 @@ static ERROR sslSetup(objNetSocket *Self)
             else { LogErrorMsg("Failed to initialise new SSL object."); error = ERR_Failed; }
          }
          else {
-            FreeMemory(path);
+            FreeResource(path);
             LogErrorMsg("Failed to define certificate folder: %s", path);
             error = ERR_Failed;
          }

@@ -777,7 +777,7 @@ static int object_unsubscribe(lua_State *Lua)
             if (acsub->Next) acsub->Next->Prev = acsub->Prev;
             if (acsub IS prv->ActionList) prv->ActionList = acsub->Next;
 
-            FreeMemory(acsub);
+            FreeResource(acsub);
             // Do not break (in case of multiple subscriptions)
          }
       }

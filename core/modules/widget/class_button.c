@@ -243,7 +243,7 @@ static ERROR BUTTON_Focus(objButton *Self, APTR Void)
 static ERROR BUTTON_Free(objButton *Self, APTR Void)
 {
    if (Self->prvKeyEvent) { UnsubscribeEvent(Self->prvKeyEvent); Self->prvKeyEvent = NULL; }
-   if (Self->Icon)        { FreeMemory(Self->Icon); Self->Icon = NULL; }
+   if (Self->Icon)        { FreeResource(Self->Icon); Self->Icon = NULL; }
    if (Self->RegionID)    { acFreeID(Self->RegionID); Self->RegionID = 0; }
    gfxUnsubscribeInput(0); // Unsubscribe our object from all surfaces
    return ERR_Okay;
@@ -552,7 +552,7 @@ the field is set.
 
 static ERROR SET_Hint(objButton *Self, CSTRING Value)
 {
-   if (Self->Hint) { FreeMemory(Self->Hint); Self->Hint = NULL; }
+   if (Self->Hint) { FreeResource(Self->Hint); Self->Hint = NULL; }
    if (Value) Self->Hint = StrClone(StrTranslateText(Value));
    return ERR_Okay;
 }
@@ -571,7 +571,7 @@ in the exact center of the button.
 
 static ERROR SET_Icon(objButton *Self, CSTRING Value)
 {
-   if (Self->Icon) { FreeMemory(Self->Icon); Self->Icon = NULL; }
+   if (Self->Icon) { FreeResource(Self->Icon); Self->Icon = NULL; }
    if (Value) Self->Icon = StrClone(Value);
    return ERR_Okay;
 }
@@ -613,7 +613,7 @@ static ERROR GET_Onclick(objButton *Self, STRING *Value)
 
 static ERROR SET_Onclick(objButton *Self, CSTRING Value)
 {
-   if (Self->Onclick) { FreeMemory(Self->Onclick); Self->Onclick = NULL; }
+   if (Self->Onclick) { FreeResource(Self->Onclick); Self->Onclick = NULL; }
    if (Value) Self->Onclick = StrClone(Value);
    return ERR_Okay;
 }

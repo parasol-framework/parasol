@@ -437,7 +437,7 @@ void local_free_args(APTR Parameters, const struct FunctionField *Args)
             APTR pointer;
             if ((pointer = ((APTR *)(Parameters + pos))[0])) {
                ((APTR *)(Parameters + pos))[0] = 0;
-               FreeMemory(pointer);
+               FreeResource(pointer);
             }
          }
          pos += sizeof(APTR);
@@ -527,7 +527,7 @@ ERROR free_ptr_args(APTR Parameters, const struct FunctionField *Args, WORD Rele
             if ((ptr = ((APTR *)(Buffer + pos))[0])) {
                ((APTR *)(Buffer + pos))[0] = 0;
                MEMORYID mid = ReleaseMemory(ptr);
-               if (ReleaseOnly != TRUE) FreeMemoryID(mid);
+               if (ReleaseOnly != TRUE) FreeResourceID(mid);
             }
          }
          pos += sizeof(APTR);

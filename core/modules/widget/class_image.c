@@ -78,7 +78,7 @@ static ERROR IMAGE_DataFeed(objImage *Self, struct acDataFeed *Args)
    if (!Args) return ERR_NullArgs;
 
    if (Args->DataType IS DATA_XML) {
-      if (Self->RenderString) FreeMemory(Self->RenderString);
+      if (Self->RenderString) FreeResource(Self->RenderString);
       Self->RenderString = StrClone(Args->Buffer);
 
       render_script(Self, Self->RenderString);
@@ -101,12 +101,12 @@ static ERROR IMAGE_Free(objImage *Self, APTR Void)
       Self->Picture = NULL;
    }
 
-   if (Self->Path)         { FreeMemory(Self->Path); Self->Path = NULL; }
-   if (Self->RenderString) { FreeMemory(Self->RenderString); Self->RenderString = NULL; }
+   if (Self->Path)         { FreeResource(Self->Path); Self->Path = NULL; }
+   if (Self->RenderString) { FreeResource(Self->RenderString); Self->RenderString = NULL; }
    if (Self->Bitmap)       { acFree(Self->Bitmap); Self->Bitmap = NULL; }
    if (Self->RawBitmap)    { acFree(Self->RawBitmap); Self->RawBitmap = NULL; }
    if (Self->Layout)       { acFree(Self->Layout); Self->Layout = NULL; }
-   if (Self->Hint)         { FreeMemory(Self->Hint); Self->Hint = NULL; }
+   if (Self->Hint)         { FreeResource(Self->Hint); Self->Hint = NULL; }
 
    return ERR_Okay;
 }
@@ -334,7 +334,7 @@ remain on the display until the pointer is moved by the user.
 
 static ERROR SET_Hint(objImage *Self, CSTRING Value)
 {
-   if (Self->Hint) { FreeMemory(Self->Hint); Self->Hint = NULL; }
+   if (Self->Hint) { FreeResource(Self->Hint); Self->Hint = NULL; }
    Self->Hint = StrClone(Value);
    return ERR_Okay;
 }
@@ -406,7 +406,7 @@ static ERROR GET_Path(objImage *Self, STRING *Value)
 
 static ERROR SET_Path(objImage *Self, CSTRING Value)
 {
-   if (Self->Path) { FreeMemory(Self->Path); Self->Path = NULL; }
+   if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
    if ((Value) AND (*Value)) Self->Path = StrClone(Value);
    return ERR_Okay;
 }

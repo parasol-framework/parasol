@@ -213,7 +213,7 @@ static ERROR CSTREAM_Reset(objCompressedStream *Self, APTR Void)
       Self->Deflating = FALSE;
    }
 
-   if (Self->OutputBuffer) { FreeMemory(Self->OutputBuffer); Self->OutputBuffer = NULL; }
+   if (Self->OutputBuffer) { FreeResource(Self->OutputBuffer); Self->OutputBuffer = NULL; }
 
    return ERR_Okay;
 }

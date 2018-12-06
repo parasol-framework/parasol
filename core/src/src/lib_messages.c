@@ -166,7 +166,7 @@ Search: The given Handle is not recognised.
 ERROR RemoveMsgHandler(struct MsgHandler *Handle)
 {
    if (!Handle) return ERR_NullArgs;
-   return FreeMemory(Handle); // Message handles are a resource and will divert to msghandler_free()
+   return FreeResource(Handle); // Message handles are a resource and will divert to msghandler_free()
 }
 
 /*****************************************************************************
@@ -577,7 +577,7 @@ timer_cycle:
                   else { // Message found.  Process it.
                      if ((msg) AND (msgbufsize < sizeof(struct Message) + scanmsg->DataSize)) { // Is our message buffer large enough?
                         FMSG("ProcessMessages","Freeing message buffer for expansion %d < %d + %d", msgbufsize, sizeof(struct Message), scanmsg->DataSize);
-                        FreeMemory(msg);
+                        FreeResource(msg);
                         msg = NULL;
                      }
 
@@ -763,7 +763,7 @@ timer_cycle:
 
    if (glTaskState IS TSTATE_STOPPING) returncode = ERR_Terminate;
 
-   if (msg) FreeMemory(msg);
+   if (msg) FreeResource(msg);
 
    tlMsgRecursion--;
    STEP();
@@ -1048,7 +1048,7 @@ ERROR SendMessage(MEMORYID MessageMID, LONG Type, LONG Flags, APTR Data, LONG Si
             }
 
             CopyMemory(buffer, header, sizeof(struct MessageHeader)); // Copy our new message buffer over the old one
-            FreeMemory(buffer);
+            FreeResource(buffer);
          }
 
          LogF("7SendMessage","Buffer compressed to %d bytes, %d messages on the queue.", header->NextEntry, header->Count);

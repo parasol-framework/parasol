@@ -69,7 +69,7 @@ static void * test_locking(struct thread_info *info)
 
          if (glTerminateMemory) {
             if (i >= glLockAttempts-2) {
-               FreeMemory(memory);
+               FreeResource(memory);
                ReleaseMemoryID(glMemoryID);
                memory = NULL;
                break;
@@ -110,14 +110,14 @@ static void * test_allocation(struct thread_info *info)
       AllocMemory(1024, MEM_DATA|MEM_NO_CLEAR, &memory[i], NULL);
       if (RandomNumber(10) > 7) {
          for (j=start; j < i; j++) {
-            FreeMemory(memory[j]);
+            FreeResource(memory[j]);
          }
          start = j;
       }
    }
 
    for (j=start; j < i; j++) {
-      FreeMemory(memory[j]);
+      FreeResource(memory[j]);
    }
 
    return NULL;
@@ -177,7 +177,7 @@ void program(void)
       pthread_join(glThreads[i].thread, NULL);
    }
 
-   FreeMemoryID(glMemoryID);
+   FreeResourceID(glMemoryID);
 
    print("Testing complete.\n");
 }

@@ -173,7 +173,7 @@ static ERROR NETSOCKET_Connect(objNetSocket *Self, struct nsConnect *Args)
    LogBranch("Address: %s, Port: %d", Args->Address, Args->Port);
 
    if (Args->Address != Self->Address) {
-      if (Self->Address) FreeMemory(Self->Address);
+      if (Self->Address) FreeResource(Self->Address);
       Self->Address = StrClone(Args->Address);
    }
    Self->Port = Args->Port;
@@ -366,7 +366,7 @@ static ERROR NETSOCKET_Free(objNetSocket *Self, APTR Void)
    sslDisconnect(Self);
 #endif
 
-   if (Self->Address) { FreeMemory(Self->Address); Self->Address = NULL; }
+   if (Self->Address) { FreeResource(Self->Address); Self->Address = NULL; }
 
    free_socket(Self);
 
@@ -750,7 +750,7 @@ static ERROR NETSOCKET_ReadMsg(objNetSocket *Self, struct nsReadMsg *Args)
                if (!AllocMemory(total_length, MEM_NO_CLEAR, &buffer, NULL)) {
                   if (queue->Buffer) {
                      CopyMemory(queue->Buffer, buffer, queue->Index);
-                     FreeMemory(queue->Buffer);
+                     FreeResource(queue->Buffer);
                   }
                   queue->Buffer = buffer;
                   queue->Length = total_length;
@@ -984,7 +984,7 @@ connection.
 
 static ERROR SET_Address(objNetSocket *Self, CSTRING Value)
 {
-   if (Self->Address) { FreeMemory(Self->Address); Self->Address = NULL; }
+   if (Self->Address) { FreeResource(Self->Address); Self->Address = NULL; }
    if (Value) Self->Address = StrClone(Value);
    return ERR_Okay;
 }
@@ -1369,8 +1369,8 @@ static void free_socket(objNetSocket *Self)
 
    FMSG("free_socket","Freeing I/O buffer queues.");
 
-   if (Self->WriteQueue.Buffer) { FreeMemory(Self->WriteQueue.Buffer); Self->WriteQueue.Buffer = NULL; }
-   if (Self->ReadQueue.Buffer) { FreeMemory(Self->ReadQueue.Buffer); Self->ReadQueue.Buffer = NULL; }
+   if (Self->WriteQueue.Buffer) { FreeResource(Self->WriteQueue.Buffer); Self->WriteQueue.Buffer = NULL; }
+   if (Self->ReadQueue.Buffer) { FreeResource(Self->ReadQueue.Buffer); Self->ReadQueue.Buffer = NULL; }
 
    if (!(Self->Head.Flags & NF_FREE)) {
       if (Self->State != NTC_DISCONNECTED) {
@@ -1396,7 +1396,7 @@ static ERROR write_queue(objNetSocket *Self, struct NetQueue *Queue, CPTR Messag
    if (Queue->Buffer) {
       if (Queue->Index >= Queue->Length) {
          FMSG("write_queue","Terminating the current buffer (emptied).");
-         FreeMemory(Queue->Buffer);
+         FreeResource(Queue->Buffer);
          Queue->Buffer = NULL;
       }
    }

@@ -304,7 +304,7 @@ static ERROR MODExpunge(void)
 AddressToStr: Converts an IPAddress structure to an IPAddress in dotted string form.
 
 Converts an IPAddress structure to a string containing the IPAddress in dotted format.  Please free the resulting
-string with <function>FreeMemory</> once it is no longer required.
+string with <function>FreeResource</> once it is no longer required.
 
 -INPUT-
 struct(IPAddress) IPAddress: A pointer to the IPAddress structure.
@@ -1064,7 +1064,7 @@ static void free_resolver(struct dns_resolver *Resolver)
    }
 
    OBJECTPTR context = SetContext(glModule);
-   FreeMemory(Resolver);
+   FreeResource(Resolver);
    SetContext(context);
 
    LogBack();

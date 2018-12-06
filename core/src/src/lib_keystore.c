@@ -56,7 +56,7 @@ static void KeyStore_free(APTR Address)
       void **ptr;
       LONG size;
       while (!KeyIterate(store, key, &key, (APTR *)&ptr, &size)) {
-         if (size IS sizeof(APTR)) FreeMemory(ptr[0]);
+         if (size IS sizeof(APTR)) FreeResource(ptr[0]);
          else FMSG("@VarFree","Key $%.8x has unexpected size %d", key, size);
       }
    }
@@ -340,7 +340,7 @@ VarFree: Remove an allocated variable storage resource.
 Key stores created with VarNew() are removed with this function.
 
 If the KSF_AUTO_REMOVE flag was used when creating the key-store, this function will remove all remaining elements using
-the ~FreeMemory() function.  This works on the assumption that each value is a pointer to memory that was
+the ~FreeResource() function.  This works on the assumption that each value is a pointer to memory that was
 allocated with ~AllocMemory().
 
 -INPUT-
@@ -354,7 +354,7 @@ void VarFree(struct KeyStore *Store)
    LogF("~VarFree()","Store: %p, Total Keys: %d, Flags: $%.8x", Store, Store->Total, Store->Flags);
 
    if (Store->Flags & KSF_INTERNAL) free(Store);
-   else FreeMemory(Store); // Note that KeyStore_free() will be automatically called by the resource manager.
+   else FreeResource(Store); // Note that KeyStore_free() will be automatically called by the resource manager.
 
    LogBack();
 }
@@ -627,7 +627,7 @@ struct KeyStore * VarNew(LONG InitialSize, LONG Flags)
          if ((error = AllocMutex(ALF_RECURSIVE, &vs->Mutex)) != ERR_Okay) {
             FMSG("@VarNew","AllocMutex() failed: %s", GetErrorMsg(error));
             if (Flags & KSF_INTERNAL) free(vs);
-            else FreeMemory(vs);
+            else FreeResource(vs);
             return NULL;
          }
       }
@@ -639,7 +639,7 @@ struct KeyStore * VarNew(LONG InitialSize, LONG Flags)
    }
    else {
       if (Flags & KSF_INTERNAL) free(vs);
-      else FreeMemory(vs);
+      else FreeResource(vs);
    }
 
    return NULL;

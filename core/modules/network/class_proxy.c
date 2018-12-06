@@ -148,7 +148,7 @@ if (!(CreateObject(ID_PROXY, 0, &proxy, TAGEND))) {
       do {
          ...
       } while (!prxFindNext(proxy));
-      FreeMemory(proxy);
+      FreeResource(proxy);
    }
    acFree(proxy);
 }
@@ -586,7 +586,7 @@ static ERROR PROXY_SaveSettings(objProxy *Self, APTR Void)
 
                   taskSetEnv(task, HKEY_PROXY "ProxyServer", newlist);
 
-                  FreeMemory(newlist);
+                  FreeResource(newlist);
                }
             }
             else LogErrorMsg("Windows' host proxy settings do not support port %d", Self->Port);
@@ -660,7 +660,7 @@ results of searches performed by the #Find() method.
 
 static ERROR SET_GatewayFilter(objProxy *Self, CSTRING Value)
 {
-   if (Self->GatewayFilter) { FreeMemory(Self->GatewayFilter); Self->GatewayFilter = NULL; }
+   if (Self->GatewayFilter) { FreeResource(Self->GatewayFilter); Self->GatewayFilter = NULL; }
 
    if ((Value) AND (Value[0])) {
       if (!(Self->GatewayFilter = StrClone(Value))) {
@@ -710,7 +710,7 @@ This filter must not be set if the proxy needs to work on an unnamed network.
 
 static ERROR SET_NetworkFilter(objProxy *Self, CSTRING Value)
 {
-   if (Self->NetworkFilter) { FreeMemory(Self->NetworkFilter); Self->NetworkFilter = NULL; }
+   if (Self->NetworkFilter) { FreeResource(Self->NetworkFilter); Self->NetworkFilter = NULL; }
 
    if ((Value) AND (Value[0])) {
       if (!(Self->NetworkFilter = StrClone(Value))) return ERR_AllocMemory;
@@ -732,7 +732,7 @@ proxy server.
 
 static ERROR SET_Username(objProxy *Self, CSTRING Value)
 {
-   if (Self->Username) { FreeMemory(Self->Username); Self->Username = NULL; }
+   if (Self->Username) { FreeResource(Self->Username); Self->Username = NULL; }
 
    if ((Value) AND (Value[0])) {
       if (!(Self->Username = StrClone(Value))) return ERR_AllocMemory;
@@ -754,7 +754,7 @@ the proxy.
 
 static ERROR SET_Password(objProxy *Self, CSTRING Value)
 {
-   if (Self->Password) { FreeMemory(Self->Password); Self->Password = NULL; }
+   if (Self->Password) { FreeResource(Self->Password); Self->Password = NULL; }
 
    if ((Value) AND (Value[0])) {
       if (!(Self->Password = StrClone(Value))) return ERR_AllocMemory;
@@ -774,7 +774,7 @@ A proxy can be given a human readable name by setting this field.
 
 static ERROR SET_ProxyName(objProxy *Self, CSTRING Value)
 {
-   if (Self->ProxyName) { FreeMemory(Self->ProxyName); Self->ProxyName = NULL; }
+   if (Self->ProxyName) { FreeResource(Self->ProxyName); Self->ProxyName = NULL; }
 
    if ((Value) AND (Value[0])) {
       if (!(Self->ProxyName = StrClone(Value))) return ERR_AllocMemory;
@@ -794,7 +794,7 @@ The domain name or IP address of the proxy server must be defined here.
 
 static ERROR SET_Server(objProxy *Self, CSTRING Value)
 {
-   if (Self->Server) { FreeMemory(Self->Server); Self->Server = NULL; }
+   if (Self->Server) { FreeResource(Self->Server); Self->Server = NULL; }
 
    if ((Value) AND (Value[0])) {
       if (!(Self->Server = StrClone(Value))) return ERR_AllocMemory;
@@ -900,12 +900,12 @@ static void clear_values(objProxy *Self)
    Self->Enabled    = 0;
    Self->ServerPort = 0;
    Self->Host       = 0;
-   if (Self->NetworkFilter) { FreeMemory(Self->NetworkFilter); Self->NetworkFilter = NULL; }
-   if (Self->GatewayFilter) { FreeMemory(Self->GatewayFilter); Self->GatewayFilter = NULL; }
-   if (Self->Username)      { FreeMemory(Self->Username);      Self->Username      = NULL; }
-   if (Self->Password)      { FreeMemory(Self->Password);      Self->Password      = NULL; }
-   if (Self->ProxyName)     { FreeMemory(Self->ProxyName);     Self->ProxyName     = NULL; }
-   if (Self->Server)        { FreeMemory(Self->Server);        Self->Server        = NULL; }
+   if (Self->NetworkFilter) { FreeResource(Self->NetworkFilter); Self->NetworkFilter = NULL; }
+   if (Self->GatewayFilter) { FreeResource(Self->GatewayFilter); Self->GatewayFilter = NULL; }
+   if (Self->Username)      { FreeResource(Self->Username);      Self->Username      = NULL; }
+   if (Self->Password)      { FreeResource(Self->Password);      Self->Password      = NULL; }
+   if (Self->ProxyName)     { FreeResource(Self->ProxyName);     Self->ProxyName     = NULL; }
+   if (Self->Server)        { FreeResource(Self->Server);        Self->Server        = NULL; }
 }
 
 //***************************************************************************

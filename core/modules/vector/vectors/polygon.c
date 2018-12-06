@@ -129,7 +129,7 @@ static ERROR read_points(objVectorPoly *Self, struct VectorPoint **Array, LONG *
 
 static ERROR POLYGON_Free(objVectorPoly *Self, APTR Void)
 {
-   if (Self->Points) { FreeMemory(Self->Points); Self->Points = NULL; }
+   if (Self->Points) { FreeResource(Self->Points); Self->Points = NULL; }
    return ERR_Okay;
 }
 
@@ -324,7 +324,7 @@ static ERROR POLY_SET_Points(objVectorPoly *Self, CSTRING Value)
    struct VectorPoint *points;
    LONG total;
    if (!(error = read_points(Self, &points, &total, Value))) {
-      if (Self->Points) FreeMemory(Self->Points);
+      if (Self->Points) FreeResource(Self->Points);
       Self->Points = points;
       Self->TotalPoints = total;
       reset_path(Self);

@@ -412,7 +412,7 @@ static ERROR SET_Columns(objView *Self, CSTRING Value)
          MSG("Deleting column '%s'", scan->Name);
          if (scan IS Self->Columns) Self->Columns = scan->Next;
          else if (prevcol) prevcol->Next = scan->Next;
-         FreeMemory(scan);
+         FreeResource(scan);
       }
       else prevcol = scan;
    }
@@ -423,7 +423,7 @@ static ERROR SET_Columns(objView *Self, CSTRING Value)
 
    // Save column header settings
 
-   if (Self->ColumnString) FreeMemory(Self->ColumnString);
+   if (Self->ColumnString) FreeResource(Self->ColumnString);
    Self->ColumnString = StrClone(Value);
 
    // Redraw the view if we are in column mode
@@ -540,7 +540,7 @@ static ERROR SET_DragItems(objView *Self, LONG *Value, LONG Elements)
 
    if (!Value) {
       if (Self->DragItems) {
-         FreeMemory(Self->DragItems);
+         FreeResource(Self->DragItems);
          Self->DragItems = NULL;
          Self->DragItemCount = 0;
       }
@@ -567,7 +567,7 @@ static ERROR SET_DragItemCount(objView *Self, LONG Value)
 {
    if (Value IS 0) {
       if (Self->DragItems) {
-         FreeMemory(Self->DragItems);
+         FreeResource(Self->DragItems);
          Self->DragItems = NULL;
          Self->DragItemCount = 0;
       }
@@ -677,7 +677,7 @@ field is not set, the default font face is used for the group headers.
 
 static ERROR SET_GroupFace(objView *Self, CSTRING Value)
 {
-   if (Self->GroupFace) FreeMemory(Self->GroupFace);
+   if (Self->GroupFace) FreeResource(Self->GroupFace);
 
    if ((Self->GroupFace = StrClone(Value))) {
       return ERR_Okay;
@@ -801,7 +801,7 @@ the StrCompare() function.
 
 static ERROR SET_ItemNames(objView *Self, CSTRING Value)
 {
-   if (Self->ItemNames) { FreeMemory(Self->ItemNames); Self->ItemNames = NULL; }
+   if (Self->ItemNames) { FreeResource(Self->ItemNames); Self->ItemNames = NULL; }
 
    if ((!Value) OR (!*Value)) Value = "item";
 
@@ -895,7 +895,7 @@ static ERROR GET_SelectedTags(objView *Self, LONG **Array, LONG *Elements)
 
    OBJECTPTR context = SetContext(Self);
 
-      if (Self->SelectedTags) { FreeMemory(Self->SelectedTags); Self->SelectedTags = NULL; }
+      if (Self->SelectedTags) { FreeResource(Self->SelectedTags); Self->SelectedTags = NULL; }
       ERROR error = get_selected_tags(Self, &Self->SelectedTags, Elements);
 
    SetContext(context);
@@ -1104,7 +1104,7 @@ tag will be used instead (if content is present).
 
 static ERROR SET_TextAttrib(objView *Self, CSTRING Value)
 {
-   if (Self->TextAttrib) { FreeMemory(Self->TextAttrib); Self->TextAttrib = NULL; }
+   if (Self->TextAttrib) { FreeResource(Self->TextAttrib); Self->TextAttrib = NULL; }
 
    if ((!Value) OR (!*Value)) return ERR_Okay;
 

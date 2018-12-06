@@ -263,9 +263,9 @@ ERROR CLASS_Free(struct rkMetaClass *Class, APTR Void)
 {
    VarSet(glClassMap, Class->ClassName, NULL, 0); // Deregister the class.
 
-   if (Class->prvFields) { FreeMemory(Class->prvFields); Class->prvFields = NULL; }
-   if (Class->Methods) { FreeMemory(Class->Methods); Class->Methods = NULL; }
-   if (Class->Location)  { FreeMemory(Class->Location); Class->Location = NULL; }
+   if (Class->prvFields) { FreeResource(Class->prvFields); Class->prvFields = NULL; }
+   if (Class->Methods) { FreeResource(Class->Methods); Class->Methods = NULL; }
+   if (Class->Location)  { FreeResource(Class->Location); Class->Location = NULL; }
 
    return ERR_Okay;
 }
@@ -662,7 +662,7 @@ static ERROR SET_Methods(struct rkMetaClass *Self, const struct MethodArray *Met
 {
    if (!Methods) return ERR_Failed;
 
-   if (Self->Methods) { FreeMemory(Self->Methods); Self->Methods = NULL; }
+   if (Self->Methods) { FreeResource(Self->Methods); Self->Methods = NULL; }
 
    // Search for the method with the lowest rating ID number
 
@@ -1089,7 +1089,7 @@ ERROR sort_class_fields(struct rkMetaClass *Class, struct Field *fields)
                CopyMemory(sort[i], temp+i, sizeof(struct Field));
             }
             CopyMemory(temp, fields, (Class->TotalFields) * sizeof(struct Field));
-            FreeMemory(temp);
+            FreeResource(temp);
          }
          else return ERR_AllocMemory;
       }
@@ -1242,7 +1242,7 @@ ERROR load_classes(void)
    LogF("~load_classes()","");
 
    if (glClassDB) { ReleaseMemoryID(glSharedControl->ClassesMID); glClassDB = NULL; }
-   if (glSharedControl->ClassesMID) { FreeMemoryID(glSharedControl->ClassesMID); glSharedControl->ClassesMID = 0; }
+   if (glSharedControl->ClassesMID) { FreeResourceID(glSharedControl->ClassesMID); glSharedControl->ClassesMID = 0; }
 
    ERROR error;
    if (!(error = AccessSemaphore(glSharedControl->ClassSemaphore, 3000, 0))) {
@@ -1533,7 +1533,7 @@ ERROR register_class(CSTRING Name, CLASSID ParentID, LONG Category, CSTRING Path
       // Replace the existing class array with the new one
 
       if (glClassDB) {
-         FreeMemoryID(glSharedControl->ClassesMID); // Mark for deletion
+         FreeResourceID(glSharedControl->ClassesMID); // Mark for deletion
          ReleaseMemoryID(glSharedControl->ClassesMID);
       }
       glClassDB = classes;

@@ -504,7 +504,7 @@ static ERROR COMPRESSION_CompressStreamEnd(objCompression *Self, struct cmpCompr
    // Free the output buffer if it is quite large
 
    if ((Self->OutputBuffer) AND (Self->OutputSize > 64 * 1024)) {
-      FreeMemory(Self->OutputBuffer);
+      FreeResource(Self->OutputBuffer);
       Self->OutputBuffer = NULL;
       Self->OutputSize = 0;
    }
@@ -1676,15 +1676,15 @@ static ERROR COMPRESSION_Free(objCompression *Self, APTR Void)
    struct ZipFile *chain, *next;
    for (chain=Self->prvFiles; chain != NULL; chain=next) {
       next = (struct ZipFile *)chain->Next;
-      FreeMemory(chain);
+      FreeResource(chain);
    }
    Self->prvFiles = NULL;
 
-   if (Self->OutputBuffer) { FreeMemory(Self->OutputBuffer); Self->OutputBuffer = NULL; }
-   if (Self->prvInput)     { FreeMemory(Self->prvInput); Self->prvInput = NULL; }
-   if (Self->prvOutput)    { FreeMemory(Self->prvOutput); Self->prvOutput = NULL; }
+   if (Self->OutputBuffer) { FreeResource(Self->OutputBuffer); Self->OutputBuffer = NULL; }
+   if (Self->prvInput)     { FreeResource(Self->prvInput); Self->prvInput = NULL; }
+   if (Self->prvOutput)    { FreeResource(Self->prvOutput); Self->prvOutput = NULL; }
    if (Self->FileIO)       { acFree(Self->FileIO); Self->FileIO = NULL; }
-   if (Self->Location)     { FreeMemory(Self->Location); Self->Location = NULL; }
+   if (Self->Location)     { FreeResource(Self->Location); Self->Location = NULL; }
 
    return ERR_Okay;
 }

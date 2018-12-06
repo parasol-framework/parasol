@@ -160,7 +160,7 @@ static ERROR get_bitmap(objVectorFilter *Self, objBitmap **BitmapResult, UBYTE S
    bmp->LineWidth = canvas_width * bmp->BytesPerPixel;
 
    if ((Self->Bank[bi].Data) AND (Self->Bank[bi].DataSize < bmp->LineWidth * canvas_height)) {
-      FreeMemory(Self->Bank[bi].Data);
+      FreeResource(Self->Bank[bi].Data);
       Self->Bank[bi].Data = NULL;
       bmp->Data = NULL;
    }
@@ -266,7 +266,7 @@ static void free_effect_resources(struct effect *Effect)
    if (Effect->Type IS FE_COLOURMATRIX) delete Effect->Colour.Matrix;
    else if (Effect->Type IS FE_CONVOLVEMATRIX) delete Effect->Convolve.Matrix;
    else if (Effect->Type IS FE_TURBULENCE) {
-      if (Effect->Turbulence.Tables) FreeMemory(Effect->Turbulence.Tables);
+      if (Effect->Turbulence.Tables) FreeResource(Effect->Turbulence.Tables);
    }
    else if (Effect->Type IS FE_IMAGE) {
       if (Effect->Image.Picture) acFree(Effect->Image.Picture);
@@ -284,7 +284,7 @@ static void remove_effect(objVectorFilter *Self, struct effect *Effect)
 
    free_effect_resources(Effect);
 
-   FreeMemory(Effect);
+   FreeResource(Effect);
 }
 
 //****************************************************************************
@@ -362,15 +362,15 @@ static ERROR VECTORFILTER_Clear(objVectorFilter *Self, APTR Void)
    for (auto scan=Self->Effects; scan; scan=next) {
       next = scan->Next;
       free_effect_resources(scan);
-      FreeMemory(scan);
+      FreeResource(scan);
    }
    Self->Effects = NULL;
 
-   if (Self->Merge) { FreeMemory(Self->Merge); Self->Merge = NULL; }
+   if (Self->Merge) { FreeResource(Self->Merge); Self->Merge = NULL; }
 
    for (LONG i=0; i < ARRAYSIZE(Self->Bank); i++) {
       if (Self->Bank[i].Bitmap) { acFree(Self->Bank[i].Bitmap); Self->Bank[i].Bitmap = NULL; }
-      if (Self->Bank[i].Data) { FreeMemory(Self->Bank[i].Data); Self->Bank[i].Data = NULL; }
+      if (Self->Bank[i].Data) { FreeResource(Self->Bank[i].Data); Self->Bank[i].Data = NULL; }
    }
 
    return ERR_Okay;
@@ -738,7 +738,7 @@ static ERROR VECTORFILTER_Free(objVectorFilter *Self, APTR Void)
 
    if (Self->Scene) { acFree(Self->Scene); Self->Scene = NULL; }
    if (Self->MergeBitmap) { acFree(Self->MergeBitmap);  Self->MergeBitmap = NULL; }
-   if (Self->Path) { FreeMemory(Self->Path); Self->Path = NULL; }
+   if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
    return ERR_Okay;
 }
 
@@ -905,13 +905,13 @@ static ERROR VECTORFILTER_SET_Path(objVectorFilter *Self, CSTRING Value)
          }
          str[last] = 0;
 
-         if (Self->Path) FreeMemory(Self->Path);
+         if (Self->Path) FreeResource(Self->Path);
          Self->Path = str;
       }
       else return ERR_ResolvePath;
    }
    else {
-      if (Self->Path) FreeMemory(Self->Path);
+      if (Self->Path) FreeResource(Self->Path);
       Self->Path = NULL;
    }
 

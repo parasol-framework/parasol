@@ -104,7 +104,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 ERROR CMDExpunge(void)
 {
    if (clJSON) { acFree(clJSON); clJSON = NULL; }
-   if (glTmp)  { FreeMemory(glTmp); glTmp = NULL; }
+   if (glTmp)  { FreeResource(glTmp); glTmp = NULL; }
    return ERR_Okay;
 }
 
@@ -116,7 +116,7 @@ static APTR get_tmp(LONG Size)
 
    if ((glTmp) AND (Size <= glTmpSize)) return glTmp;
 
-   if (glTmp) { FreeMemory(glTmp); glTmp = NULL; }
+   if (glTmp) { FreeResource(glTmp); glTmp = NULL; }
 
    if (!AllocMemory(Size, MEM_DATA|MEM_NO_CLEAR|MEM_UNTRACKED, &glTmp, NULL)) {
       glTmpSize = Size;
@@ -131,11 +131,11 @@ static void free_tags(objXML *Self)
 {
    LONG i;
    for (i=0; (i < Self->TagCount) AND (Self->Tags[i]); i++) {
-      FreeMemory(Self->Tags[i]);
+      FreeResource(Self->Tags[i]);
       Self->Tags[i] = NULL;
    }
 
-   FreeMemory(Self->Tags);
+   FreeResource(Self->Tags);
    Self->Tags = NULL;
    Self->TagCount = 0;
 }
@@ -199,7 +199,7 @@ static ERROR JSON_Init(objXML *Self, APTR Void)
       debug_tree(Self);
       #endif
 
-      FreeMemory(statement);
+      FreeResource(statement);
       return Self->ParseError;
    }
 
@@ -258,7 +258,7 @@ static ERROR txt_to_json(objXML *Self, CSTRING Text)
    // Allocate an array to hold all of the tags
 
    if (!AllocMemory(sizeof(APTR) * (Self->TagCount + 1), MEM_DATA|MEM_UNTRACKED, &tag, NULL)) {
-      FreeMemory(Self->Tags);
+      FreeResource(Self->Tags);
       Self->Tags = tag;
    }
    else {

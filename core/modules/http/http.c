@@ -602,7 +602,7 @@ static ERROR socket_incoming(objNetSocket *Socket)
 
                      if ((Self->AuthPreset IS FALSE) OR (Self->AuthRetries >= 2)) {
                         for (i=0; Self->Password[i]; i++) Self->Password[i] = 0xff;
-                        FreeMemory(Self->Password);
+                        FreeResource(Self->Password);
                         Self->Password = NULL;
                      }
                   }
@@ -612,9 +612,9 @@ static ERROR socket_incoming(objNetSocket *Socket)
                      if (!StrCompare("Digest", auth, 6, 0)) {
                         FMSG("http_incoming","Digest authentication mode.");
 
-                        if (Self->Realm)      { FreeMemory(Self->Realm);      Self->Realm = NULL; }
-                        if (Self->AuthNonce)  { FreeMemory(Self->AuthNonce);  Self->AuthNonce = NULL; }
-                        if (Self->AuthOpaque) { FreeMemory(Self->AuthOpaque); Self->AuthOpaque = NULL; }
+                        if (Self->Realm)      { FreeResource(Self->Realm);      Self->Realm = NULL; }
+                        if (Self->AuthNonce)  { FreeResource(Self->AuthNonce);  Self->AuthNonce = NULL; }
+                        if (Self->AuthOpaque) { FreeResource(Self->AuthOpaque); Self->AuthOpaque = NULL; }
 
                         Self->AuthAlgorithm[0] = 0;
                         Self->AuthDigest = TRUE;
@@ -630,7 +630,7 @@ static ERROR socket_incoming(objNetSocket *Socket)
                               STRING value;
                               i += extract_value(auth+i, &value);
                               StrCopy(value, Self->AuthAlgorithm, sizeof(Self->AuthAlgorithm));
-                              FreeMemory(value);
+                              FreeResource(value);
                            }
                            else if (!StrCompare("qop=", auth+i, 0, 0)) {
                               STRING value;
@@ -639,7 +639,7 @@ static ERROR socket_incoming(objNetSocket *Socket)
                                  StrCopy("auth-int", Self->AuthQOP, sizeof(Self->AuthQOP));
                               }
                               else StrCopy("auth", Self->AuthQOP, sizeof(Self->AuthQOP));
-                              FreeMemory(value);
+                              FreeResource(value);
                            }
                            else {
                               while (auth[i] > 0x20) {
@@ -688,7 +688,7 @@ static ERROR socket_incoming(objNetSocket *Socket)
                         }
                         else error = ERR_CreateObject;
 
-                        FreeMemory(scriptfile);
+                        FreeResource(scriptfile);
                      }
                      else error = ERR_AllocMemory;
                   }
@@ -724,7 +724,7 @@ static ERROR socket_incoming(objNetSocket *Socket)
 
                check_incoming_end(Self);
 
-               FreeMemory(Self->Response);
+               FreeResource(Self->Response);
                Self->Response = NULL;
 
                // Note that status check comes after processing of content, as it is legal for content to be attached
@@ -906,11 +906,11 @@ static ERROR socket_incoming(objNetSocket *Socket)
                   if ((Self->Error IS ERR_Disconnected) AND (Self->ContentLength IS -1)) {
                      FMSG("http_incoming","Received all streamed content (disconnected by peer).");
                      SetLong(Self, FID_State, HGS_COMPLETED);
-                     FreeMemory(buffer);
+                     FreeResource(buffer);
                      return ERR_Terminate;
                   }
                   else {
-                     FreeMemory(buffer);
+                     FreeResource(buffer);
                      LogF("@http_incoming","Read() returned error %d whilst reading content.", Self->Error);
                      return ERR_Terminate;
                   }
@@ -920,7 +920,7 @@ static ERROR socket_incoming(objNetSocket *Socket)
 
                process_data(Self, buffer, len);
                if (check_incoming_end(Self) IS ERR_True) {
-                  FreeMemory(buffer);
+                  FreeResource(buffer);
                   return ERR_Terminate;
                }
 
@@ -928,7 +928,7 @@ static ERROR socket_incoming(objNetSocket *Socket)
                if (PreciseTime() > timelimit) break; // Time limit reached
             }
 
-            FreeMemory(buffer);
+            FreeResource(buffer);
          }
       }
 
@@ -1094,12 +1094,12 @@ static ERROR HTTP_Activate(objHTTP *Self, APTR Void)
       Self->SecurePath = TRUE;
    }
 
-   if (Self->Response) { FreeMemory(Self->Response); Self->Response = NULL; }
+   if (Self->Response) { FreeResource(Self->Response); Self->Response = NULL; }
    if (Self->flInput) { acFree(Self->flInput); Self->flInput = NULL; }
    if (Self->flOutput) {  acFree(Self->flOutput); Self->flOutput = NULL; }
 
    if (Self->RecvBuffer) {
-      FreeMemory(Self->RecvBuffer);
+      FreeResource(Self->RecvBuffer);
       Self->RecvBuffer = NULL;
       Self->RecvSize = 0;
    }
@@ -1321,7 +1321,7 @@ static ERROR HTTP_Activate(objHTTP *Self, APTR Void)
 
    /*
          for (i=0; Self->Password[i]; i++) Self->Password[i] = 0;
-         FreeMemory(Self->Password);
+         FreeResource(Self->Password);
          Self->Password = NULL;
    */
       }
@@ -1456,7 +1456,7 @@ static ERROR HTTP_Deactivate(objHTTP *Self, APTR Void)
 
    // Free up the outgoing buffer since it is only needed during transfers and will be reallocated as necessary.
 
-   if (Self->Buffer) { FreeMemory(Self->Buffer); Self->Buffer = NULL; }
+   if (Self->Buffer) { FreeResource(Self->Buffer); Self->Buffer = NULL; }
 
    if (Self->TimeoutManager) { UpdateTimer(Self->TimeoutManager, 0); Self->TimeoutManager = 0; }
 
@@ -1495,27 +1495,27 @@ static ERROR HTTP_Free(objHTTP *Self, APTR Args)
 
    if (Self->flInput)     { acFree(Self->flInput);         Self->flInput = NULL; }
    if (Self->flOutput)    { acFree(Self->flOutput);        Self->flOutput = NULL; }
-   if (Self->Buffer)      { FreeMemory(Self->Buffer);      Self->Buffer = NULL; }
-   if (Self->Chunk)       { FreeMemory(Self->Chunk);       Self->Chunk = NULL; }
-   if (Self->Path)        { FreeMemory(Self->Path);        Self->Path = NULL; }
-   if (Self->InputFile)   { FreeMemory(Self->InputFile);   Self->InputFile = NULL; }
-   if (Self->OutputFile)  { FreeMemory(Self->OutputFile);  Self->OutputFile = NULL; }
-   if (Self->Host)        { FreeMemory(Self->Host);        Self->Host = NULL; }
-   if (Self->Response)    { FreeMemory(Self->Response);    Self->Response = NULL; }
-   if (Self->UserAgent)   { FreeMemory(Self->UserAgent);   Self->UserAgent = NULL; }
-   if (Self->Username)    { FreeMemory(Self->Username);    Self->Username = NULL; }
-   if (Self->AuthNonce)   { FreeMemory(Self->AuthNonce);   Self->AuthNonce = NULL; }
-   if (Self->Realm)       { FreeMemory(Self->Realm);       Self->Realm = NULL; }
-   if (Self->AuthOpaque)  { FreeMemory(Self->AuthOpaque);  Self->AuthOpaque = NULL; }
-   if (Self->AuthPath)    { FreeMemory(Self->AuthPath);    Self->AuthPath = NULL; }
-   if (Self->ContentType) { FreeMemory(Self->ContentType); Self->ContentType = NULL; }
-   if (Self->RecvBuffer)  { FreeMemory(Self->RecvBuffer);  Self->RecvBuffer = NULL; }
-   if (Self->ProxyServer) { FreeMemory(Self->ProxyServer); Self->ProxyServer = NULL; }
+   if (Self->Buffer)      { FreeResource(Self->Buffer);      Self->Buffer = NULL; }
+   if (Self->Chunk)       { FreeResource(Self->Chunk);       Self->Chunk = NULL; }
+   if (Self->Path)        { FreeResource(Self->Path);        Self->Path = NULL; }
+   if (Self->InputFile)   { FreeResource(Self->InputFile);   Self->InputFile = NULL; }
+   if (Self->OutputFile)  { FreeResource(Self->OutputFile);  Self->OutputFile = NULL; }
+   if (Self->Host)        { FreeResource(Self->Host);        Self->Host = NULL; }
+   if (Self->Response)    { FreeResource(Self->Response);    Self->Response = NULL; }
+   if (Self->UserAgent)   { FreeResource(Self->UserAgent);   Self->UserAgent = NULL; }
+   if (Self->Username)    { FreeResource(Self->Username);    Self->Username = NULL; }
+   if (Self->AuthNonce)   { FreeResource(Self->AuthNonce);   Self->AuthNonce = NULL; }
+   if (Self->Realm)       { FreeResource(Self->Realm);       Self->Realm = NULL; }
+   if (Self->AuthOpaque)  { FreeResource(Self->AuthOpaque);  Self->AuthOpaque = NULL; }
+   if (Self->AuthPath)    { FreeResource(Self->AuthPath);    Self->AuthPath = NULL; }
+   if (Self->ContentType) { FreeResource(Self->ContentType); Self->ContentType = NULL; }
+   if (Self->RecvBuffer)  { FreeResource(Self->RecvBuffer);  Self->RecvBuffer = NULL; }
+   if (Self->ProxyServer) { FreeResource(Self->ProxyServer); Self->ProxyServer = NULL; }
 
    if (Self->Password) {
       LONG i;
       for (i=0; Self->Password[i]; i++) Self->Password[i] = 0xff;
-      FreeMemory(Self->Password);
+      FreeResource(Self->Password);
       Self->Password = NULL;
    }
 
@@ -1554,7 +1554,7 @@ static ERROR HTTP_Init(objHTTP *Self, APTR Args)
    if (!Self->ProxyDefined) {
       if (glProxy) {
          if (!prxFind(glProxy, Self->Port, TRUE)) {
-            if (Self->ProxyServer) FreeMemory(Self->ProxyServer);
+            if (Self->ProxyServer) FreeResource(Self->ProxyServer);
             Self->ProxyServer = StrClone(glProxy->Server);
             Self->ProxyPort   = glProxy->ServerPort; // NB: Default is usually 8080
 
@@ -1706,7 +1706,7 @@ static ERROR GET_ContentType(objHTTP *Self, STRING *Value)
 
 static ERROR SET_ContentType(objHTTP *Self, CSTRING Value)
 {
-   if (Self->ContentType) { FreeMemory(Self->ContentType); Self->ContentType = NULL; }
+   if (Self->ContentType) { FreeResource(Self->ContentType); Self->ContentType = NULL; }
    if (Value) Self->ContentType = StrClone(Value);
    return ERR_Okay;
 }
@@ -1755,7 +1755,7 @@ The HTTP server to target for HTTP requests is defined here.  To change the host
 
 static ERROR SET_Host(objHTTP *Self, CSTRING Value)
 {
-   if (Self->Host) { FreeMemory(Self->Host); Self->Host = NULL; }
+   if (Self->Host) { FreeResource(Self->Host); Self->Host = NULL; }
    Self->Host = StrClone(Value);
    return ERR_Okay;
 }
@@ -1820,7 +1820,7 @@ static ERROR SET_InputFile(objHTTP *Self, CSTRING Value)
 {
    MSG("InputFile: %.80s", Value);
 
-   if (Self->InputFile) { FreeMemory(Self->InputFile);  Self->InputFile = NULL; }
+   if (Self->InputFile) { FreeResource(Self->InputFile);  Self->InputFile = NULL; }
 
    Self->MultipleInput = FALSE;
    Self->InputPos = 0;
@@ -1873,7 +1873,7 @@ static ERROR GET_Location(objHTTP *Self, STRING *Value)
 {
    Self->AuthRetries = 0; // Reset the retry counter
 
-   if (Self->URI) { FreeMemory(Self->URI); Self->URI = NULL; }
+   if (Self->URI) { FreeResource(Self->URI); Self->URI = NULL; }
 
    LONG len = 7 + StrLength(Self->Host) + 16 + StrLength(Self->Path) + 1;
    OBJECTPTR context = SetContext(Self);
@@ -1924,8 +1924,8 @@ static ERROR SET_Location(objHTTP *Self, CSTRING Value)
       Self->Flags |= HTF_SSL;
    }
 
-   if (Self->Host) { FreeMemory(Self->Host); Self->Host = NULL; }
-   if (Self->Path) { FreeMemory(Self->Path); Self->Path = NULL; }
+   if (Self->Host) { FreeResource(Self->Host); Self->Host = NULL; }
+   if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
 
    // Parse host name
 
@@ -2039,7 +2039,7 @@ set in the #Flags field.
 
 static ERROR SET_OutputFile(objHTTP *Self, CSTRING Value)
 {
-   if (Self->OutputFile) { FreeMemory(Self->OutputFile); Self->OutputFile = NULL; }
+   if (Self->OutputFile) { FreeResource(Self->OutputFile); Self->OutputFile = NULL; }
    Self->OutputFile = StrClone(Value);
    return ERR_Okay;
 }
@@ -2068,7 +2068,7 @@ A 401 status code is returned in the event of an authorisation failure.
 
 static ERROR SET_Password(objHTTP *Self, CSTRING Value)
 {
-   if (Self->Password) { FreeMemory(Self->Password); Self->Password = NULL; }
+   if (Self->Password) { FreeResource(Self->Password); Self->Password = NULL; }
    Self->Password = StrClone(Value);
    Self->AuthPreset = TRUE;
    return ERR_Okay;
@@ -2091,7 +2091,7 @@ static ERROR SET_Path(objHTTP *Self, CSTRING Value)
 {
    Self->AuthRetries = 0; // Reset the retry counter
 
-   if (Self->Path) { FreeMemory(Self->Path); Self->Path = NULL; }
+   if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
 
    if (Value) {
       while (*Value IS '/') Value++; // Skip '/' prefix
@@ -2167,7 +2167,7 @@ that the proxy server uses to receive requests, see the #ProxyPort field.
 
 static ERROR SET_ProxyServer(objHTTP *Self, CSTRING Value)
 {
-   if (Self->ProxyServer) { FreeMemory(Self->ProxyServer); Self->ProxyServer = NULL; }
+   if (Self->ProxyServer) { FreeResource(Self->ProxyServer); Self->ProxyServer = NULL; }
 
    if ((Value) AND (Value[0])) Self->ProxyServer = StrClone(Value);
 
@@ -2187,7 +2187,7 @@ this name string.
 
 static ERROR SET_Realm(objHTTP *Self, CSTRING Value)
 {
-   if (Self->Realm) { FreeMemory(Self->Realm); Self->Realm = NULL; }
+   if (Self->Realm) { FreeResource(Self->Realm); Self->Realm = NULL; }
    if (Value) Self->Realm = StrClone(Value);
    return ERR_Okay;
 }
@@ -2322,7 +2322,7 @@ This field describe the 'user-agent' value that will be sent in HTTP requests.  
 
 static ERROR SET_UserAgent(objHTTP *Self, CSTRING Value)
 {
-   if (Self->UserAgent) { FreeMemory(Self->UserAgent); Self->UserAgent = NULL; }
+   if (Self->UserAgent) { FreeResource(Self->UserAgent); Self->UserAgent = NULL; }
    Self->UserAgent = StrClone(Value);
    return ERR_Okay;
 }
@@ -2347,7 +2347,7 @@ presented with a dialog box and asked to enter the correct username and password
 
 static ERROR SET_Username(objHTTP *Self, CSTRING Value)
 {
-   if (Self->Username) { FreeMemory(Self->Username); Self->Username = NULL; }
+   if (Self->Username) { FreeResource(Self->Username); Self->Username = NULL; }
    Self->Username = StrClone(Value);
    return ERR_Okay;
 }
@@ -2894,7 +2894,7 @@ static void socket_feedback(objNetSocket *Socket, LONG State)
                   if (check_incoming_end(Self) IS ERR_True) break;
                }
 
-               FreeMemory(buffer);
+               FreeResource(buffer);
             }
          }
 

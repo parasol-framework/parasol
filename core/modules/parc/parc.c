@@ -207,8 +207,8 @@ static ERROR PARC_Free(objParc *Self, APTR Void)
    if (Self->Script)  { acFree(Self->Script);   Self->Script = NULL; }
    if (Self->Archive) { acFree(Self->Archive);  Self->Archive = NULL; }
    if (Self->Info)    { acFree(Self->Info);     Self->Info = NULL; }
-   if (Self->Args)    { FreeMemory(Self->Args); Self->Args = NULL; }
-   if (Self->Path)    { FreeMemory(Self->Path); Self->Path = NULL; }
+   if (Self->Args)    { FreeResource(Self->Args); Self->Args = NULL; }
+   if (Self->Path)    { FreeResource(Self->Path); Self->Path = NULL; }
    return ERR_Okay;
 }
 
@@ -300,7 +300,7 @@ static ERROR GET_Allow(objParc *Self, CSTRING *Value)
 
 static ERROR SET_Allow(objParc *Self, CSTRING Value)
 {
-   if (Self->Allow) { FreeMemory(Self->Allow); Self->Allow = NULL; }
+   if (Self->Allow) { FreeResource(Self->Allow); Self->Allow = NULL; }
 
    if ((Value) AND (*Value)) {
       if (!(Self->Allow = StrClone(Value))) return ERR_Okay;
@@ -333,7 +333,7 @@ static ERROR GET_Args(objParc *Self, CSTRING *Value)
 
 static ERROR SET_Args(objParc *Self, CSTRING Value)
 {
-   if (Self->Args) { FreeMemory(Self->Args); Self->Args = NULL; }
+   if (Self->Args) { FreeResource(Self->Args); Self->Args = NULL; }
 
    if ((Value) AND (*Value)) {
       LONG i;
@@ -366,7 +366,7 @@ static ERROR GET_Path(objParc *Self, STRING *Value)
 
 static ERROR SET_Path(objParc *Self, CSTRING Value)
 {
-   if (Self->Path) { FreeMemory(Self->Path); Self->Path = NULL; }
+   if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
 
    if ((Value) AND (*Value)) {
       if (!(Self->Path = StrClone(Value))) return PostError(ERR_AllocMemory);

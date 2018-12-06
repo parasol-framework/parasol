@@ -241,7 +241,7 @@ static ERROR ASSET_Init(objFile *Self, APTR Void)
             return ERR_Okay;
          }
          else {
-            FreeMemory(Self->Head.ChildPrivate);
+            FreeResource(Self->Head.ChildPrivate);
             Self->Head.ChildPrivate = NULL;
             return ERR_DoesNotExist;
          }
@@ -261,7 +261,7 @@ static ERROR ASSET_Init(objFile *Self, APTR Void)
             }
          }
 
-         FreeMemory(Self->Head.ChildPrivate);
+         FreeResource(Self->Head.ChildPrivate);
          Self->Head.ChildPrivate = NULL;
          return ERR_Failed;
       }
@@ -718,12 +718,12 @@ static ERROR read_dir(CSTRING Path, struct DirInfo **Result, LONG Flags)
       struct FileInfo *list = dirinfo->Info;
       while (list) {
          struct FileInfo *next = list->Next;
-         FreeMemory(list);
+         FreeResource(list);
          list = next;
       }
 
       if (Result) *Result = NULL;
-      FreeMemory(dirinfo);
+      FreeResource(dirinfo);
       STEP();
       return error;
    }

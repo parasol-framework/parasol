@@ -234,7 +234,7 @@ static void client_server_outgoing(SOCKET_HANDLE Void, struct rkNetSocket *Data)
 
          if (Self->WriteQueue.Index >= Self->WriteQueue.Length) {
             FMSG("client_out","Freeing the write queue (pos %d/%d).", Self->WriteQueue.Index, Self->WriteQueue.Length);
-            FreeMemory(Self->WriteQueue.Buffer);
+            FreeResource(Self->WriteQueue.Buffer);
             Self->WriteQueue.Buffer = NULL;
             Self->WriteQueue.Index = 0;
             Self->WriteQueue.Length = 0;

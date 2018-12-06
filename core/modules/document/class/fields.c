@@ -11,7 +11,7 @@ This field is always NULL if a document does not declare an author string.
 
 static ERROR SET_Author(objDocument *Self, CSTRING Value)
 {
-   if (Self->Author) { FreeMemory(Self->Author); Self->Author = NULL; }
+   if (Self->Author) { FreeResource(Self->Author); Self->Author = NULL; }
    if ((Value) AND (*Value)) Self->Author = StrClone(Value);
    return ERR_Okay;
 }
@@ -54,7 +54,7 @@ This field is always NULL if a document does not declare a copyright string.
 
 static ERROR SET_Copyright(objDocument *Self, CSTRING Value)
 {
-   if (Self->Copyright) { FreeMemory(Self->Copyright); Self->Copyright = NULL; }
+   if (Self->Copyright) { FreeResource(Self->Copyright); Self->Copyright = NULL; }
    if ((Value) AND (*Value)) Self->Copyright = StrClone(Value);
    return ERR_Okay;
 }
@@ -183,7 +183,7 @@ default font face chosen by that document.
 
 static ERROR SET_FontFace(objDocument *Self, CSTRING Value)
 {
-   if (Self->FontFace) FreeMemory(Self->FontFace);
+   if (Self->FontFace) FreeResource(Self->FontFace);
    if (Value) {
       Self->FontFace = StrClone(Value);
 
@@ -240,7 +240,7 @@ separation.
 
 static ERROR SET_Keywords(objDocument *Self, STRING Value)
 {
-   if (Self->Keywords) FreeMemory(Self->Keywords);
+   if (Self->Keywords) FreeResource(Self->Keywords);
    if ((Value) AND (*Value)) Self->Keywords = StrClone(Value);
    else Self->Keywords = NULL;
    return ERR_Okay;
@@ -381,9 +381,9 @@ static ERROR SET_Path(objDocument *Self, CSTRING Value)
    }
    recursion--;
 
-   if (Self->Path) { FreeMemory(Self->Path); Self->Path = NULL; }
-   if (Self->PageName) { FreeMemory(Self->PageName); Self->PageName = NULL; }
-   if (Self->Bookmark) { FreeMemory(Self->Bookmark); Self->Bookmark = NULL; }
+   if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
+   if (Self->PageName) { FreeResource(Self->PageName); Self->PageName = NULL; }
+   if (Self->Bookmark) { FreeResource(Self->Bookmark); Self->Bookmark = NULL; }
 
    if (newpath) {
       Self->Path = newpath;
@@ -406,11 +406,11 @@ static ERROR SET_Path(objDocument *Self, CSTRING Value)
       // If an error occurred, remove the location & page strings to show that no document is loaded.
 
       if (Self->Error) {
-         FreeMemory(Self->Path);
+         FreeResource(Self->Path);
          Self->Path = NULL;
 
-         if (Self->PageName) { FreeMemory(Self->PageName); Self->PageName = NULL; }
-         if (Self->Bookmark) { FreeMemory(Self->Bookmark); Self->Bookmark = NULL; }
+         if (Self->PageName) { FreeResource(Self->PageName); Self->PageName = NULL; }
+         if (Self->Bookmark) { FreeResource(Self->Bookmark); Self->Bookmark = NULL; }
          if (Self->XML) { acFree(Self->XML); Self->XML = NULL; }
 
          DelayMsg(MT_DrwInvalidateRegion, Self->SurfaceID, NULL);
@@ -437,7 +437,7 @@ changed without causing a load operation.
 
 static ERROR SET_Origin(objDocument *Self, STRING Value)
 {
-   if (Self->Path) { FreeMemory(Self->Path); Self->Path = NULL; }
+   if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
 
    if ((Value) AND (*Value)) {
       LONG i;
@@ -569,7 +569,7 @@ always NULL if a document does not declare a title.
 
 static ERROR SET_Title(objDocument *Self, STRING Value)
 {
-   if (Self->Title) { FreeMemory(Self->Title); Self->Title = NULL; }
+   if (Self->Title) { FreeResource(Self->Title); Self->Title = NULL; }
    if ((Value) AND (*Value)) Self->Title = StrClone(Value);
    return ERR_Okay;
 }
@@ -651,7 +651,7 @@ static ERROR GET_WorkingPath(objDocument *Self, STRING *Value)
       return ERR_FieldNotSet;
    }
 
-   if (Self->WorkingPath) { FreeMemory(Self->WorkingPath); Self->WorkingPath = NULL; }
+   if (Self->WorkingPath) { FreeResource(Self->WorkingPath); Self->WorkingPath = NULL; }
 
    // Determine if an absolute path has been indicated
 

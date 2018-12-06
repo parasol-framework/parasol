@@ -94,12 +94,12 @@ static ERROR CMDOpen(OBJECTPTR Module)
 
 static ERROR CMDExpunge(void)
 {
-   if (glDatabase)   { FreeMemory(glDatabase); glDatabase   = NULL; }
+   if (glDatabase)   { FreeResource(glDatabase); glDatabase   = NULL; }
    if (glIconStyle)  { acFree(glIconStyle);    glIconStyle  = NULL; }
    if (clIconServer) { acFree(clIconServer);   clIconServer = NULL; }
    if (modSurface)   { acFree(modSurface);     modSurface   = NULL; }
    if (modDisplay)   { acFree(modDisplay);     modDisplay   = NULL; }
-   if (glIconPath)   { FreeMemory(glIconPath); glIconPath   = NULL; }
+   if (glIconPath)   { FreeResource(glIconPath); glIconPath   = NULL; }
    return ERR_Okay;
 }
 

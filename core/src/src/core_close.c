@@ -279,15 +279,15 @@ restart_free: {
 
       if (!glCrashStatus) {
          #ifdef __linux__
-            if (glFileMonitor) { FreeMemory(glFileMonitor); glFileMonitor = NULL; }
+            if (glFileMonitor) { FreeResource(glFileMonitor); glFileMonitor = NULL; }
          #endif
 
          if (glDocView)   {
             LONG i;
             for (i=0; i < glTotalDocViews; i++) {
-               if (glDocView[i].Path) FreeMemory(glDocView[i].Path);
+               if (glDocView[i].Path) FreeResource(glDocView[i].Path);
             }
-            FreeMemory(glDocView);
+            FreeResource(glDocView);
             glDocView = NULL;
          }
 
@@ -344,7 +344,7 @@ restart_free: {
             struct MemInfo info;
             LogF("7Shutdown","Removing class database.");
             if (!MemoryPtrInfo(glClassDB, &info, sizeof(info))) {
-               FreeMemoryID(info.MemoryID); // Mark for deletion
+               FreeResourceID(info.MemoryID); // Mark for deletion
             }
          }
 
@@ -352,7 +352,7 @@ restart_free: {
             struct MemInfo info;
             LogF("7Shutdown","Removing module database.");
             if (!MemoryPtrInfo(glModules, &info, sizeof(info))) {
-               FreeMemoryID(info.MemoryID); // Mark for deletion
+               FreeResourceID(info.MemoryID); // Mark for deletion
             }
          }
       }
@@ -421,14 +421,14 @@ restart_free: {
 
    if (glCodeIndex < CP_FREE_ACTION_MANAGEMENT) {
       glCodeIndex = CP_FREE_ACTION_MANAGEMENT;
-      if (ManagedActions) { FreeMemory(ManagedActions); ManagedActions = NULL; }
+      if (ManagedActions) { FreeResource(ManagedActions); ManagedActions = NULL; }
    }
 
    // Free the program's personal function base as it won't be making any more calls.
 
    if (glCodeIndex < CP_FREE_COREBASE) {
       glCodeIndex = CP_FREE_COREBASE;
-      if (LocalCoreBase) { FreeMemory(LocalCoreBase); LocalCoreBase = NULL; }
+      if (LocalCoreBase) { FreeResource(LocalCoreBase); LocalCoreBase = NULL; }
    }
 
    // Free memory pages
@@ -776,7 +776,7 @@ static void free_private_memory(void)
       if ((glPrivateMemory[i].Address) AND (glPrivateMemory[i].Flags & MEM_STRING)) {
          if (!glCrashStatus) LogF("@Shutdown","Unfreed private string \"%.80s\" (%p).", (CSTRING)glPrivateMemory[i].Address, glPrivateMemory[i].Address);
          glPrivateMemory[i].AccessCount = 0;
-         FreeMemory(glPrivateMemory[i].Address);
+         FreeResource(glPrivateMemory[i].Address);
          glPrivateMemory[i].Address = NULL;
          count++;
       }
@@ -797,7 +797,7 @@ static void free_private_memory(void)
             else LogF("@Shutdown","Unfreed private memory #%d/%p, Size %d, Container: #%d.", glPrivateMemory[i].MemoryID, glPrivateMemory[i].Address, glPrivateMemory[i].Size, glPrivateMemory[i].ObjectID);
          }
          glPrivateMemory[i].AccessCount = 0;
-         FreeMemory(glPrivateMemory[i].Address);
+         FreeResource(glPrivateMemory[i].Address);
          glPrivateMemory[i].Address = NULL;
          count++;
       }
@@ -843,7 +843,7 @@ void free_public_resources(OBJECTID TaskID)
                LogF("5Shutdown","Freeing public object header #%d.", glSharedBlocks[i].MemoryID);
 
                OBJECTID id = glSharedBlocks[i].MemoryID;
-               FreeMemoryID(glSharedBlocks[i].MemoryID);
+               FreeResourceID(glSharedBlocks[i].MemoryID);
 
                UNLOCK_PUBLIC_MEMORY();
 
@@ -853,7 +853,7 @@ void free_public_resources(OBJECTID TaskID)
             }
             else if (glSharedBlocks[i].MemoryID) {
                LogF("5Shutdown","Freeing public memory block #%d.", glSharedBlocks[i].MemoryID);
-               FreeMemoryID(glSharedBlocks[i].MemoryID);
+               FreeResourceID(glSharedBlocks[i].MemoryID);
             }
          }
       }

@@ -163,7 +163,7 @@ static ERROR SEARCH_Find(objScintillaSearch *Self, struct ssFind *Args)
 
 static ERROR SEARCH_Free(objScintillaSearch *Self, APTR Void)
 {
-   if (Self->Text) { FreeMemory(Self->Text); Self->Text = NULL; }
+   if (Self->Text) { FreeResource(Self->Text); Self->Text = NULL; }
    return ERR_Okay;
 }
 
@@ -357,7 +357,7 @@ This field defines the string sequence that will be searched for when calling ei
 
 static ERROR SET_Text(objScintillaSearch *Self, CSTRING Value)
 {
-   if (Self->Text) { FreeMemory(Self->Text); Self->Text = NULL; }
+   if (Self->Text) { FreeResource(Self->Text); Self->Text = NULL; }
    if (Value) {
       if (!(Self->Text = StrClone(Value))) return ERR_AllocMemory;
    }

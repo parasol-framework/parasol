@@ -161,11 +161,11 @@ ERROR IdentifyFile(CSTRING Path, CSTRING Mode, LONG Flags, CLASSID *ClassID, CLA
             STRING tmp = StrClone(Path);
             tmp[i] = 0;
             if (ResolvePath(tmp, RSF_APPROXIMATE, &res_path) != ERR_Okay) {
-               FreeMemory(tmp);
+               FreeResource(tmp);
                LogBack();
                return ERR_FileNotFound;
             }
-            else FreeMemory(tmp);
+            else FreeResource(tmp);
          }
          else {
             LogBack();
@@ -312,7 +312,7 @@ ERROR IdentifyFile(CSTRING Path, CSTRING Mode, LONG Flags, CLASSID *ClassID, CLA
    }
 
 class_identified:
-   if (res_path) FreeMemory(res_path);
+   if (res_path) FreeResource(res_path);
 
    if (!error) {
       if (*ClassID) LogF("6IdentifyFile","File belongs to class $%.8x:$%.8x", *ClassID, (SubClassID) ? *SubClassID : 0);
@@ -367,7 +367,7 @@ class_identified:
                }
             }
             else FMSG("IdentifyFile","Path is not supported for +x checks.");
-            FreeMemory(resolve);
+            FreeResource(resolve);
          }
          else FMSG("IdentifyFile","Failed to resolve location '%s'", Path);
       }
@@ -441,12 +441,12 @@ restart:
    if ((!(Flags & IDF_SECTION)) AND (cmd) AND (!StrCompare("[PROG:", cmd, 6, 0))) { // Command is referencing a program
       STRING str;
       if (!(TranslateCmdRef(cmd, &str))) {
-         FreeMemory(cmd);
+         FreeResource(cmd);
          cmd = str;
       }
       else {
          LogF("@IdentifyFile","Reference to program '%s' is invalid.", buffer);
-         FreeMemory(cmd);
+         FreeResource(cmd);
          cmd = NULL;
          goto exit; // Abort if the program is not available
       }
@@ -531,7 +531,7 @@ host_platform:
 
                      if (!reserror) {
                         StrInsert(abs, buffer, sizeof(buffer), start, end-start);
-                        FreeMemory(abs);
+                        FreeResource(abs);
                      }
                   }
 
@@ -551,7 +551,7 @@ host_platform:
             }
          }
 
-         FreeMemory(res_path);
+         FreeResource(res_path);
       }
    }
 #endif

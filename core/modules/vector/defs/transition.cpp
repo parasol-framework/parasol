@@ -119,7 +119,7 @@ static ERROR set_stop_transform(objVectorTransition *Self, struct TransitionStop
    struct VectorTransform *next;
    for (auto t=Stop->Transforms; t; t=next) {
       next = t->Next;
-      FreeMemory(t);
+      FreeResource(t);
    }
    Stop->Transforms = NULL;
 
@@ -188,7 +188,7 @@ static ERROR TRANSITION_Free(objVectorTransition *Self, APTR Void)
       struct VectorTransform *next;
       for (auto t=Self->Stops[i].Transforms; t; t=next) {
          next = t->Next;
-         FreeMemory(t);
+         FreeResource(t);
       }
       delete Self->Stops[i].AGGTransform;
    }

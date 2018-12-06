@@ -183,7 +183,7 @@ static ERROR txt_to_xml(objXML *Self, CSTRING Text)
       return ERR_AllocMemory;
    }
 
-   FreeMemory(Self->Tags);
+   FreeResource(Self->Tags);
    Self->Tags = tag;
 
    // Extract the tag information.  This loop will extract the top-level tags.  The extract_tag() function is recursive
@@ -1510,7 +1510,7 @@ static ERROR parse_source(objXML *Self)
             Self->ParseError = txt_to_xml(Self, buffer);
          }
 
-         FreeMemory(buffer);
+         FreeResource(buffer);
       }
       else Self->ParseError = ERR_AllocMemory;
    }
@@ -1550,10 +1550,10 @@ static ERROR get_content(objXML *Self, struct XMLTag *Tag, STRING Buffer, LONG S
 
 static void free_xml(objXML *Self)
 {
-   if (Self->Path) { FreeMemory(Self->Path); Self->Path = NULL; }
-   if (Self->Statement) { FreeMemory(Self->Statement); Self->Statement = NULL; }
+   if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
+   if (Self->Statement) { FreeResource(Self->Statement); Self->Statement = NULL; }
    clear_tags(Self);
-   if (Self->Tags) { FreeMemory(Self->Tags); Self->Tags = NULL; }
+   if (Self->Tags) { FreeResource(Self->Tags); Self->Tags = NULL; }
 }
 
 //**********************************************************************
@@ -1562,7 +1562,7 @@ static void clear_tags(objXML *XML)
 {
    LONG i;
    for (i=0; i < XML->TagCount; i++) {
-      if (XML->Tags[i]) FreeMemory(XML->Tags[i]);
+      if (XML->Tags[i]) FreeResource(XML->Tags[i]);
    }
    if (XML->Tags) XML->Tags[0] = NULL; // Don't free the array, just null terminate it
    XML->TagCount = 0;

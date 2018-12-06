@@ -819,7 +819,7 @@ static ERROR TASK_Activate(objTask *Self, APTR Void)
       if (!ResolvePath(path, RSF_APPROXIMATE|RSF_PATH, &path)) {
          for (i=0; (path[i]) AND (i < sizeof(launchdir)-1); i++) launchdir[i] = path[i];
          launchdir[i] = 0;
-         FreeMemory(path);
+         FreeResource(path);
       }
       else {
          for (i=0; (path[i]) AND (i < sizeof(launchdir)-1); i++) launchdir[i] = path[i];
@@ -829,7 +829,7 @@ static ERROR TASK_Activate(objTask *Self, APTR Void)
    else if (Self->Flags & TSF_RESET_PATH) {
       if (!ResolvePath(Self->Location, RSF_APPROXIMATE|RSF_PATH, &path)) {
          for (i=0; (path[i]) AND (i < sizeof(launchdir)-1); i++) launchdir[i] = path[i];
-         FreeMemory(path);
+         FreeResource(path);
       }
       else for (i=0; (Self->Location[i]) AND (i < sizeof(launchdir)-1); i++) launchdir[i] = Self->Location[i];
 
@@ -846,7 +846,7 @@ static ERROR TASK_Activate(objTask *Self, APTR Void)
          if (path[j] IS '/') buffer[i] = '\\';
          else buffer[i] = path[j];
       }
-      FreeMemory(path);
+      FreeResource(path);
    }
    else {
       for (j=0; (Self->Location[j]) AND (i < sizeof(buffer)-1); i++,j++) {
@@ -986,8 +986,8 @@ static ERROR TASK_Activate(objTask *Self, APTR Void)
    }
 
    if (redirect_stderr IS redirect_stdout) redirect_stderr = NULL;
-   if (redirect_stdout) FreeMemory(redirect_stdout);
-   if (redirect_stderr) FreeMemory(redirect_stderr);
+   if (redirect_stdout) FreeResource(redirect_stdout);
+   if (redirect_stderr) FreeResource(redirect_stderr);
 
    return error;
 
@@ -1009,7 +1009,7 @@ static ERROR TASK_Activate(objTask *Self, APTR Void)
       if (!path) path = Self->Location;
       if (!ResolvePath(path, RSF_APPROXIMATE|RSF_PATH, &path)) {
          for (j=0; (path[j]) AND (i < sizeof(buffer)-1);) buffer[i++] = path[j++];
-         FreeMemory(path);
+         FreeResource(path);
       }
       else {
          for (j=0; (path[j]) AND (i < sizeof(buffer)-1);) buffer[i++] = path[j++];
@@ -1027,7 +1027,7 @@ static ERROR TASK_Activate(objTask *Self, APTR Void)
    if (!ResolvePath(Self->Location, RSF_APPROXIMATE|RSF_PATH, &path)) {
       for (j=0; (path[j]) AND (i < sizeof(buffer)-1);) buffer[i++] = path[j++];
       buffer[i] = 0;
-      FreeMemory(path);
+      FreeResource(path);
    }
    else {
       for (j=0; (Self->Location[j]) AND (i < sizeof(buffer)-1);) buffer[i++] = Self->Location[j++];
@@ -1366,7 +1366,7 @@ static ERROR TASK_AddArgument(objTask *Self, struct taskAddArgument *Args)
       *str = 0;
 
       ReleaseMemoryID(Self->ParametersMID);
-      FreeMemoryID(Self->ParametersMID);
+      FreeResourceID(Self->ParametersMID);
 
       Self->Parameters    = args;
       Self->ParametersMID = argsmid;
@@ -1453,7 +1453,7 @@ static ERROR TASK_Free(objTask *Self, APTR Void)
 #endif
 
 #ifdef _WIN32
-   if (Self->Env) { FreeMemory(Self->Env); Self->Env = NULL; }
+   if (Self->Env) { FreeResource(Self->Env); Self->Env = NULL; }
    if (Self->Platform) { winFreeProcess(Self->Platform); Self->Platform = NULL; }
    if (Self->InputCallback.Type) RegisterFD(winGetStdInput(), RFD_READ|RFD_REMOVE, &task_stdinput_callback, Self);
 #endif
@@ -1461,7 +1461,7 @@ static ERROR TASK_Free(objTask *Self, APTR Void)
    // Free variable fields
 
    LONG i;
-   for (i=0; Self->Fields[i]; i++) { FreeMemory(Self->Fields[i]); Self->Fields[i] = NULL; }
+   for (i=0; Self->Fields[i]; i++) { FreeResource(Self->Fields[i]); Self->Fields[i] = NULL; }
 
    // Free allocations
 
@@ -1472,13 +1472,13 @@ static ERROR TASK_Free(objTask *Self, APTR Void)
    if (Self->Parameters)  { ReleaseMemoryID(Self->ParametersMID);  Self->Parameters  = NULL; }
    if (Self->Copyright)   { ReleaseMemoryID(Self->CopyrightMID);   Self->Copyright   = NULL; }
 
-   if (Self->LaunchPathMID)  { FreeMemoryID(Self->LaunchPathMID);  Self->LaunchPathMID  = 0; }
-   if (Self->LocationMID)    { FreeMemoryID(Self->LocationMID);    Self->LocationMID    = 0; }
-   if (Self->PathMID)        { FreeMemoryID(Self->PathMID);        Self->PathMID        = 0; }
-   if (Self->ProcessPathMID) { FreeMemoryID(Self->ProcessPathMID); Self->ProcessPathMID = 0; }
-   if (Self->ParametersMID)  { FreeMemoryID(Self->ParametersMID);  Self->ParametersMID  = 0; }
-   if (Self->CopyrightMID)   { FreeMemoryID(Self->CopyrightMID);   Self->CopyrightMID   = 0; }
-   if (Self->MessageMID)     { FreeMemoryID(Self->MessageMID);     Self->MessageMID     = 0; }
+   if (Self->LaunchPathMID)  { FreeResourceID(Self->LaunchPathMID);  Self->LaunchPathMID  = 0; }
+   if (Self->LocationMID)    { FreeResourceID(Self->LocationMID);    Self->LocationMID    = 0; }
+   if (Self->PathMID)        { FreeResourceID(Self->PathMID);        Self->PathMID        = 0; }
+   if (Self->ProcessPathMID) { FreeResourceID(Self->ProcessPathMID); Self->ProcessPathMID = 0; }
+   if (Self->ParametersMID)  { FreeResourceID(Self->ParametersMID);  Self->ParametersMID  = 0; }
+   if (Self->CopyrightMID)   { FreeResourceID(Self->CopyrightMID);   Self->CopyrightMID   = 0; }
+   if (Self->MessageMID)     { FreeResourceID(Self->MessageMID);     Self->MessageMID     = 0; }
 
    if (Self->MsgAction)          { RemoveMsgHandler(Self->MsgAction);          Self->MsgAction          = NULL; }
    if (Self->MsgGetField)        { RemoveMsgHandler(Self->MsgGetField);        Self->MsgGetField        = NULL; }
@@ -2034,7 +2034,7 @@ static ERROR TASK_SetVar(objTask *Self, struct acSetVar *Args)
          LONG pos = StrCopy(Args->Field, field, COPY_ALL) + 1;
          StrCopy(Args->Value, field + pos, COPY_ALL);
 
-         if (Self->Fields[i]) FreeMemory(Self->Fields[i]);
+         if (Self->Fields[i]) FreeResource(Self->Fields[i]);
          Self->Fields[i] = field;
 
          return ERR_Okay;
@@ -2220,7 +2220,7 @@ static ERROR GET_Parameters(objTask *Self, CSTRING **Value, LONG *Elements)
 static ERROR SET_Parameters(objTask *Self, CSTRING *Value, LONG Elements)
 {
    if (Self->Parameters)    { ReleaseMemoryID(Self->ParametersMID); Self->Parameters = NULL; }
-   if (Self->ParametersMID) { FreeMemoryID(Self->ParametersMID);    Self->ParametersMID = NULL; }
+   if (Self->ParametersMID) { FreeResourceID(Self->ParametersMID);    Self->ParametersMID = NULL; }
 
    if (Value) {
       // Calculate the size of the argument array and strings tacked onto the end
@@ -2301,7 +2301,7 @@ static ERROR GET_Copyright(objTask *Self, STRING *Value)
 static ERROR SET_Copyright(objTask *Self, CSTRING Value)
 {
    if (Self->Copyright)    { ReleaseMemoryID(Self->CopyrightMID);   Self->Copyright = NULL; }
-   if (Self->CopyrightMID) { FreeMemoryID(Self->CopyrightMID); Self->CopyrightMID = NULL; }
+   if (Self->CopyrightMID) { FreeResourceID(Self->CopyrightMID); Self->CopyrightMID = NULL; }
 
    if ((Value) AND (*Value)) {
       LONG i;
@@ -2526,7 +2526,7 @@ static ERROR GET_LaunchPath(objTask *Self, STRING *Value)
 static ERROR SET_LaunchPath(objTask *Self, CSTRING Value)
 {
    if (Self->LaunchPath)    { ReleaseMemoryID(Self->LaunchPathMID);   Self->LaunchPath = NULL; }
-   if (Self->LaunchPathMID) { FreeMemoryID(Self->LaunchPathMID); Self->LaunchPathMID = NULL; }
+   if (Self->LaunchPathMID) { FreeResourceID(Self->LaunchPathMID); Self->LaunchPathMID = NULL; }
 
    if ((Value) AND (*Value)) {
       LONG i;
@@ -2576,7 +2576,7 @@ static ERROR GET_Location(objTask *Self, STRING *Value)
 static ERROR SET_Location(objTask *Self, CSTRING Value)
 {
    if (Self->Location)    { ReleaseMemoryID(Self->LocationMID);   Self->Location = NULL; }
-   if (Self->LocationMID) { FreeMemoryID(Self->LocationMID); Self->LocationMID = NULL; }
+   if (Self->LocationMID) { FreeResourceID(Self->LocationMID); Self->LocationMID = NULL; }
 
    if ((Value) AND (*Value)) {
       LONG i;
@@ -2704,7 +2704,7 @@ static ERROR GET_Path(objTask *Self, STRING *Value)
 static ERROR SET_Path(objTask *Self, CSTRING Value)
 {
    if (Self->Path)    { ReleaseMemoryID(Self->PathMID); Self->Path = NULL; }
-   if (Self->PathMID) { FreeMemoryID(Self->PathMID); Self->PathMID = 0; }
+   if (Self->PathMID) { FreeResourceID(Self->PathMID); Self->PathMID = 0; }
 
    LogMsg("New Path: %s", Value);
 
@@ -2720,7 +2720,7 @@ static ERROR SET_Path(objTask *Self, CSTRING Value)
          STRING path;
          if (!ResolvePath(Self->Path, RSF_NO_FILE_CHECK, &path)) {
             int unused = chdir(path);
-            FreeMemory(path);
+            FreeResource(path);
          }
          else LogErrorMsg("Failed to resolve path \"%s\"", Self->Path);
 #elif _WIN32
@@ -2728,7 +2728,7 @@ static ERROR SET_Path(objTask *Self, CSTRING Value)
          if (!ResolvePath(Self->Path, RSF_NO_FILE_CHECK|RSF_PATH, &path)) {
             LONG result = chdir(path);
             if (result) LogErrorMsg("Failed to switch current path to: %s", path);
-            FreeMemory(path);
+            FreeResource(path);
 
             if (result) return ERR_InvalidPath;
          }

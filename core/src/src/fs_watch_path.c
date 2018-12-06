@@ -55,13 +55,13 @@ ERROR fs_watch_path(objFile *File)
 
       if (handle IS -1) {
          LogF("@","%s", strerror(errno));
-         FreeMemory(path);
+         FreeResource(path);
          return ERR_SystemCall;
       }
 
       File->prvWatch->Handle = handle;
 
-      FreeMemory(path);
+      FreeResource(path);
       return ERR_Okay;
    }
 

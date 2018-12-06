@@ -979,7 +979,7 @@ EXPORT struct CoreBase * OpenCore(struct OpenInfo *Info)
          }
          else FMSG("!","Failed to read the PATH.");
 
-         FreeMemory(libpath);
+         FreeResource(libpath);
       }
       else FMSG("!","Failed to resolve system:modules/lib");
    }
@@ -2422,7 +2422,7 @@ static ERROR init_filesystem(void)
                      while ((*str) AND (*str != '\n')) str++;
                      while ((*str) AND (*str <= 0x20)) str++;
                   }
-                  FreeMemory(buffer);
+                  FreeResource(buffer);
                }
                else PostError(ERR_AllocMemory);
 

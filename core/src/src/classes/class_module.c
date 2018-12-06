@@ -236,7 +236,7 @@ ERROR MODULEMASTER_Free(struct ModuleMaster *Self, APTR Void)
 
    // Note that the order in which we perform the following actions is very important.
 
-   if (Self->CoreBase) { FreeMemory(Self->CoreBase); Self->CoreBase = NULL; }
+   if (Self->CoreBase) { FreeResource(Self->CoreBase); Self->CoreBase = NULL; }
 
    // Free the module's segment/code area
 
@@ -272,7 +272,7 @@ static ERROR MODULE_Free(objModule *Self, APTR Void)
       Self->Master = NULL;
    }
 
-   if (Self->prvMBMemory) { FreeMemory(Self->prvMBMemory); Self->prvMBMemory = NULL; }
+   if (Self->prvMBMemory) { FreeResource(Self->prvMBMemory); Self->prvMBMemory = NULL; }
    if (Self->Vars) { VarFree(Self->Vars); Self->Vars = NULL; }
    return ERR_Okay;
 }
@@ -371,7 +371,7 @@ static ERROR MODULE_Init(objModule *Self, APTR Void)
             if (!ResolvePath(path, RSF_APPROXIMATE, &volume)) {
                for (i=0; (volume[i]) AND (i < sizeof(path)-1); i++) path[i] = volume[i];
                path[i] = 0;
-               FreeMemory(volume);
+               FreeResource(volume);
             }
             else {
                LogErrorMsg("Failed to resolve the path of module '%s'", Self->Name);
@@ -396,7 +396,7 @@ static ERROR MODULE_Init(objModule *Self, APTR Void)
                if (!ResolvePath(path, RSF_APPROXIMATE, &volume)) {
                   for (i=0; (volume[i]) AND (i < sizeof(path)-1); i++) path[i] = volume[i];
                   path[i] = 0;
-                  FreeMemory(volume);
+                  FreeResource(volume);
                }
                else {
                   LogErrorMsg("Found registered module %s, but failed to resolve path '%s'", name, path);

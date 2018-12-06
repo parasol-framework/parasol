@@ -19,7 +19,7 @@ static void clear_subscriptions(objScript *Self)
             ReleaseObject(object);
          }
       }
-      FreeMemory(action);
+      FreeResource(action);
       action = nextaction;
    }
    prv->ActionList = NULL;
@@ -30,7 +30,7 @@ static void clear_subscriptions(objScript *Self)
    while (event) {
       struct eventsub *nextevent = event->Next;
       if (event->EventHandle) UnsubscribeEvent(event->EventHandle);
-      FreeMemory(event);
+      FreeResource(event);
       event = nextevent;
    }
    prv->EventList = NULL;
@@ -40,7 +40,7 @@ static void clear_subscriptions(objScript *Self)
    struct datarequest *dr = prv->Requests;
    while (dr) {
       struct datarequest *next = dr->Next;
-      FreeMemory(dr);
+      FreeResource(dr);
       dr = next;
    }
    prv->Requests = NULL;
@@ -334,7 +334,7 @@ static int fcmd_unsubscribe_event(lua_State *Lua)
             if (event->Next) event->Next->Prev = event->Prev;
             if (event IS prv->EventList) prv->EventList = event->Next;
 
-            FreeMemory(event);
+            FreeResource(event);
 
             return 0;
          }
@@ -443,7 +443,7 @@ static int fcmd_subscribe_event(lua_State *Lua)
          lua_pushinteger(Lua, error); // 2: Error code
          return 2;
       }
-      else FreeMemory(eventsub);
+      else FreeResource(eventsub);
    }
 
    lua_pushnil(Lua); // Handle
@@ -596,7 +596,7 @@ static int fcmd_require(lua_State *Lua)
                prv->RequireCounter--;
             }
             else error_msg = lua_tostring(Lua, -1);
-            FreeMemory(buffer);
+            FreeResource(buffer);
          }
          else error = ERR_AllocMemory;
          acFree(file);
@@ -765,7 +765,7 @@ static int fcmd_loadfile(lua_State *Lua)
             }
             else error_msg = lua_tostring(prv->Lua, -1);
 
-            FreeMemory(buffer);
+            FreeResource(buffer);
          }
          else error = ERR_AllocMemory;
 

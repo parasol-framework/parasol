@@ -315,7 +315,7 @@ static ERROR BITMAP_Compress(objBitmap *Self, struct bmpCompress *Args)
 
       if ((Self->DataMID) AND (Self->prvAFlags & BF_DATA)) {
          if (Self->Data) { ReleaseMemoryID(Self->DataMID); Self->Data = NULL; }
-         FreeMemoryID(Self->DataMID);
+         FreeResourceID(Self->DataMID);
          Self->DataMID = 0;
       }
 
@@ -342,7 +342,7 @@ static ERROR BITMAP_Compress(objBitmap *Self, struct bmpCompress *Args)
          APTR data;
          if (!AllocMemory(cbuf.Result, MEM_NO_CLEAR|Self->Head.MemFlags, &data, &Self->prvCompressMID)) {
             CopyMemory(buffer, data, cbuf.Result);
-            FreeMemory(buffer);
+            FreeResource(buffer);
             ReleaseMemoryID(Self->prvCompressMID);
          }
          else error = ERR_ReallocMemory;
@@ -354,7 +354,7 @@ static ERROR BITMAP_Compress(objBitmap *Self, struct bmpCompress *Args)
    if (!error) { // Free the original data
       if ((Self->DataMID) AND (Self->prvAFlags & BF_DATA)) {
          if (Self->Data) { ReleaseMemoryID(Self->DataMID); Self->Data = NULL; }
-         FreeMemoryID(Self->DataMID);
+         FreeResourceID(Self->DataMID);
          Self->DataMID = 0;
       }
 
@@ -490,7 +490,7 @@ static ERROR BITMAP_Decompress(objBitmap *Self, struct bmpDecompress *Args)
    }
    else {
       // Remove the source compression data
-      FreeMemoryID(Self->prvCompressMID);
+      FreeResourceID(Self->prvCompressMID);
       Self->prvCompressMID = NULL;
       Self->Flags &= ~BMF_COMPRESSED;
    }
@@ -771,11 +771,11 @@ static ERROR BITMAP_Free(objBitmap *Self, APTR Void)
 
    if ((Self->DataMID) AND (Self->prvAFlags & BF_DATA)) {
       if (Self->Data) { ReleaseMemoryID(Self->DataMID); Self->Data = NULL; }
-      FreeMemoryID(Self->DataMID);
+      FreeResourceID(Self->DataMID);
       Self->DataMID = 0;
    }
 
-   if (Self->prvCompressMID) { FreeMemoryID(Self->prvCompressMID); Self->prvCompressMID = 0; }
+   if (Self->prvCompressMID) { FreeResourceID(Self->prvCompressMID); Self->prvCompressMID = 0; }
 
    if (Self->ResolutionChangeHandle) {
       UnsubscribeEvent(Self->ResolutionChangeHandle);
@@ -1567,7 +1567,7 @@ static ERROR BITMAP_Resize(objBitmap *Self, struct acResize *Args)
       if (!AllocMemory(size, MEM_NO_BLOCKING|MEM_NO_POOL|Self->Head.MemFlags|Self->DataFlags|MEM_NO_CLEAR, &data, &datamid)) {
          if (Self->DataMID) {
             ReleaseMemoryID(Self->DataMID);
-            FreeMemoryID(Self->DataMID);
+            FreeResourceID(Self->DataMID);
          }
          Self->Data = data;
          Self->DataMID = datamid;
@@ -1748,7 +1748,7 @@ static ERROR BITMAP_SaveImage(objBitmap *Self, struct acSaveImage *Args)
                   }
 
                   if (dp >= (size - 10)) {
-                     FreeMemory(buffer);
+                     FreeResource(buffer);
                      ReleaseObject(dest);
                      return PostError(ERR_BufferOverflow);
                   }
@@ -1822,7 +1822,7 @@ static ERROR BITMAP_SaveImage(objBitmap *Self, struct acSaveImage *Args)
          }
 
          acWrite(dest, buffer, dp, NULL);
-         FreeMemory(buffer);
+         FreeResource(buffer);
 
          // Setup palette
 
@@ -1843,7 +1843,7 @@ static ERROR BITMAP_SaveImage(objBitmap *Self, struct acSaveImage *Args)
          return ERR_Okay;
       }
       else {
-         FreeMemory(buffer);
+         FreeResource(buffer);
          return ERR_AccessObject;
       }
    }

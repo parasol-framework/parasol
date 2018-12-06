@@ -239,7 +239,7 @@ static void xtag_filter(objSVG *Self, objXML *XML, struct XMLTag *Tag)
             STRING xml_str;
             if (!xmlGetString(XML, Tag->Child->Index, XMF_INCLUDE_SIBLINGS, &xml_str)) {
                acDataXML(filter, xml_str);
-               FreeMemory(xml_str);
+               FreeResource(xml_str);
             }
          }
 
@@ -425,7 +425,7 @@ static ERROR xtag_default(objSVG *Self, ULONG Hash, objXML *XML, svgState *State
       case SVF_CLIPPATH:         xtag_clippath(Self, XML, Tag); break;
 
       case SVF_TITLE:
-         if (Self->Title) { FreeMemory(Self->Title); Self->Title = NULL; }
+         if (Self->Title) { FreeResource(Self->Title); Self->Title = NULL; }
          if (Tag->Child) {
             UBYTE buffer[8192];
             if (!xmlGetContent(XML, Tag->Index, buffer, sizeof(buffer))) {
@@ -513,7 +513,7 @@ static ERROR load_pic(objSVG *Self, CSTRING Path, objPicture **Picture)
                   else error = ERR_File;
                }
 
-               FreeMemory(output);
+               FreeResource(output);
             }
             else error = ERR_AllocMemory;
          }
@@ -1161,7 +1161,7 @@ static ERROR xtag_animatetransform(objSVG *Self, objXML *XML, struct XMLTag *Tag
 
       switch(StrHash(Tag->Attrib[a].Name, FALSE)) {
          case SVF_ATTRIBUTENAME: // Name of the target attribute affected by the From and To values.
-            if (anim.TargetAttribute) FreeMemory(anim.TargetAttribute);
+            if (anim.TargetAttribute) FreeResource(anim.TargetAttribute);
             anim.TargetAttribute = StrClone(value);
             break;
 
@@ -1172,7 +1172,7 @@ static ERROR xtag_animatetransform(objSVG *Self, objXML *XML, struct XMLTag *Tag
             break;
 
          case SVF_ID:
-            if (anim.ID) FreeMemory(anim.ID);
+            if (anim.ID) FreeResource(anim.ID);
             anim.ID = StrClone(value);
             add_id(Self, Tag, value);
             break;
@@ -1217,14 +1217,14 @@ static ERROR xtag_animatetransform(objSVG *Self, objXML *XML, struct XMLTag *Tag
             break;
 
          case SVF_FROM: { // The starting value of the animation.
-            if (anim.Values[0]) FreeMemory(anim.Values[0]);
+            if (anim.Values[0]) FreeResource(anim.Values[0]);
             anim.Values[0] = StrClone(value);
             if (anim.ValueCount < 1) anim.ValueCount = 1;
             break;
          }
 
          case SVF_TO: {
-            if (anim.Values[1]) FreeMemory(anim.Values[1]);
+            if (anim.Values[1]) FreeResource(anim.Values[1]);
             anim.Values[1] = StrClone(value);
             if (anim.ValueCount < 2) anim.ValueCount = 2;
             break;

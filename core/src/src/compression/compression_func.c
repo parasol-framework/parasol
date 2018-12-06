@@ -200,7 +200,7 @@ static ERROR compress_folder(objCompression *Self, CSTRING Location, CSTRING Pat
 exit:
    if (entry) {
       FreeFromLL((struct CompressedFile *)entry, (struct CompressedFile *)Self->prvFiles, Self->prvFiles);
-      FreeMemory(entry);
+      FreeResource(entry);
    }
 
    acFree(&file->Head);
@@ -490,7 +490,7 @@ exit:
 
    if (entry) {
       FreeFromLL((struct CompressedFile *)entry, (struct CompressedFile *)Self->prvFiles, Self->prvFiles);
-      FreeMemory(entry);
+      FreeResource(entry);
    }
 
    if (file) acFree(&file->Head);
@@ -536,7 +536,7 @@ ERROR remove_file(objCompression *Self, struct ZipFile **File)
 
    struct ZipFile *next = (struct ZipFile *)file->Next;
    FreeFromLL((struct CompressedFile *)file, (struct CompressedFile *)Self->prvFiles, Self->prvFiles);
-   FreeMemory(file);
+   FreeResource(file);
 
    // Adjust the offset of files that were ahead of this one
 
@@ -580,7 +580,7 @@ static ERROR fast_scan_zip(objCompression *Self)
    if (!AllocMemory(tail.listsize, MEM_DATA|MEM_NO_CLEAR, (APTR *)&list, NULL)) {
       MSG("Reading end-of-central directory from index %d, %d bytes.", tail.listoffset, tail.listsize);
       if (acRead(Self->FileIO, list, tail.listsize, NULL) != ERR_Okay) {
-         FreeMemory(list);
+         FreeResource(list);
          return scan_zip(Self);
       }
 
@@ -594,10 +594,10 @@ static ERROR fast_scan_zip(objCompression *Self)
             LogErrorMsg("Zip file has corrupt end-of-file signature.");
             for (zf=Self->prvFiles; zf != NULL; zf=next) {
                next = (struct ZipFile *)zf->Next;
-               FreeMemory(zf);
+               FreeResource(zf);
             }
             Self->prvFiles = NULL;
-            FreeMemory(list);
+            FreeResource(list);
             return scan_zip(Self);
          }
 
@@ -663,7 +663,7 @@ static ERROR fast_scan_zip(objCompression *Self)
             }
          }
          else {
-            FreeMemory(list);
+            FreeResource(list);
             return ERR_AllocMemory;
          }
 
@@ -680,7 +680,7 @@ static ERROR fast_scan_zip(objCompression *Self)
       }
    }
 
-   FreeMemory(list);
+   FreeResource(list);
    return ERR_Okay;
 }
 

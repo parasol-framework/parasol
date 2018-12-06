@@ -120,7 +120,7 @@ extern "C" void program(void)
             }
          }
          else if (!StrMatch(Args[i], "--procedure")) {
-            if (procedure) { FreeMemory(procedure); procedure = NULL; }
+            if (procedure) { FreeResource(procedure); procedure = NULL; }
 
             if (Args[i+1]) {
                for (j=0; Args[i+1][j]; j++);
@@ -196,8 +196,8 @@ exit:
       }
    }
 
-   if (procedure) { FreeMemory(procedure); procedure = NULL; }
-   if (scriptfile) { FreeMemory(scriptfile); scriptfile = NULL; }
+   if (procedure) { FreeResource(procedure); procedure = NULL; }
+   if (scriptfile) { FreeResource(scriptfile); scriptfile = NULL; }
 
    if (glDirectory) {
       for (i=0; glDirectory[i]; i++);
@@ -212,7 +212,7 @@ exit:
          acFree(file);
       }
 
-      FreeMemory(glDirectory);
+      FreeResource(glDirectory);
    }
 
    if (glScript) acFree(glScript);

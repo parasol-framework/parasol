@@ -378,7 +378,7 @@ static void tag_call(objDocument *Self, objXML *XML, struct XMLTag *Tag, struct 
 
          add_resource_id(Self, xmlinc->Head.UniqueID, RT_OBJECT_TEMP);
       }
-      FreeMemory(results);
+      FreeResource(results);
    }
 }
 
@@ -655,31 +655,31 @@ static void tag_head(objDocument *Self, objXML *XML, struct XMLTag *Tag, struct 
       // Anything allocated here needs to be freed in unload_doc()
       if (!StrMatch("title", scan->Attrib->Name)) {
          if ((scan->Child) AND (!scan->Child->Attrib->Name)) {
-            if (Self->Title) FreeMemory(Self->Title);
+            if (Self->Title) FreeResource(Self->Title);
             Self->Title = StrClone(scan->Child->Attrib->Value);
          }
       }
       else if (!StrMatch("author", scan->Attrib->Name)) {
          if ((scan->Child) AND (!scan->Child->Attrib->Name)) {
-            if (Self->Author) FreeMemory(Self->Author);
+            if (Self->Author) FreeResource(Self->Author);
             Self->Author = StrClone(scan->Child->Attrib->Value);
          }
       }
       else if (!StrMatch("copyright", scan->Attrib->Name)) {
          if ((scan->Child) AND (!scan->Child->Attrib->Name)) {
-            if (Self->Copyright) FreeMemory(Self->Copyright);
+            if (Self->Copyright) FreeResource(Self->Copyright);
             Self->Copyright = StrClone(scan->Child->Attrib->Value);
          }
       }
       else if (!StrMatch("keywords", scan->Attrib->Name)) {
          if ((scan->Child) AND (!scan->Child->Attrib->Name)) {
-            if (Self->Keywords) FreeMemory(Self->Keywords);
+            if (Self->Keywords) FreeResource(Self->Keywords);
             Self->Keywords = StrClone(scan->Child->Attrib->Value);
          }
       }
       else if (!StrMatch("description", scan->Attrib->Name)) {
          if ((scan->Child) AND (!scan->Child->Attrib->Name)) {
-            if (Self->Description) FreeMemory(Self->Description);
+            if (Self->Description) FreeResource(Self->Description);
             Self->Description = StrClone(scan->Child->Attrib->Value);
          }
       }
@@ -1262,7 +1262,7 @@ static void tag_xml_content(objDocument *Self, objXML *XML, struct XMLTag *Tag, 
       }
       else acDataXML(target, xmlstr);
 
-      FreeMemory(xmlstr);
+      FreeResource(xmlstr);
    }
 
    if (Flags & (PXF_ARGS|PXF_TRANSLATE)) {
@@ -1458,7 +1458,7 @@ static void tag_object(objDocument *Self, CSTRING pagetarget, LONG class_id, str
                          (!StrMatch(template, tmp->Attrib[i].Value))) {
                         if (!xmlGetString(Self->Templates, tmp->Child->Index, XMF_INCLUDE_SIBLINGS|XMF_STRIP_CDATA, &content)) {
                            acDataXML(object, content);
-                           FreeMemory(content);
+                           FreeResource(content);
                         }
 
                         break;
@@ -1476,7 +1476,7 @@ static void tag_object(objDocument *Self, CSTRING pagetarget, LONG class_id, str
                         if (objxml->Head.ClassID IS ID_XML) {
                            if (!xmlGetString(objxml, 0, XMF_INCLUDE_SIBLINGS|XMF_STRIP_CDATA, &content)) {
                               acDataXML(object, content);
-                              FreeMemory(content);
+                              FreeResource(content);
                            }
                         }
                         else LogErrorMsg("Cannot extract XML data from a non-XML object.");
@@ -1491,7 +1491,7 @@ static void tag_object(objDocument *Self, CSTRING pagetarget, LONG class_id, str
                if (!scan->Child) continue;
                if (!xmlGetString(XML, scan->Child->Index, XMF_INCLUDE_SIBLINGS|XMF_STRIP_CDATA, &content)) {
                   acDataXML(object, content);
-                  FreeMemory(content);
+                  FreeResource(content);
                }
             }
          }
@@ -1504,7 +1504,7 @@ static void tag_object(objDocument *Self, CSTRING pagetarget, LONG class_id, str
    if ((!customised) AND (Template)) {
       if (!xmlGetString(Self->Templates, Template->Child->Index, XMF_INCLUDE_SIBLINGS|XMF_STRIP_CDATA, &content)) {
          acDataXML(object, content);
-         FreeMemory(content);
+         FreeResource(content);
       }
    }
 
@@ -2295,7 +2295,7 @@ static void tag_table(objDocument *Self, objXML *XML, struct XMLTag *Tag, struct
 
             if (i < table->TotalColumns) LogF("@tag_table","Warning - columns attribute '%s' did not define %d columns.", columns, table->TotalColumns);
 
-            FreeMemory(list);
+            FreeResource(list);
          }
          else LogF("@tag_table","Failed to build array from columns value: %s", columns);
       }

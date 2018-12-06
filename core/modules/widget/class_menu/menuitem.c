@@ -160,7 +160,7 @@ static ERROR ITEM_Activate(objMenuItem *Item, APTR Void)
 static ERROR ITEM_DataFeed(objMenuItem *Self, struct acDataFeed *Args)
 {
    if (Args->DataType IS DATA_XML) { // For menu items that open sub-menus
-      if (Self->ChildXML) { FreeMemory(Self->ChildXML); Self->ChildXML = NULL; }
+      if (Self->ChildXML) { FreeResource(Self->ChildXML); Self->ChildXML = NULL; }
       Self->ChildXML = StrClone(Args->Buffer);
       return ERR_Okay;
    }
@@ -197,11 +197,11 @@ static ERROR ITEM_Free(objMenuItem *Self, APTR Void)
 {
    if (Self->Bitmap)       { acFree(Self->Bitmap);           Self->Bitmap = NULL; }
    if (Self->SubMenu)      { acFree(Self->SubMenu);          Self->SubMenu = NULL; }
-   if (Self->Name)         { FreeMemory(Self->Name);         Self->Name = NULL; }
-   if (Self->Text)         { FreeMemory(Self->Text);         Self->Text = NULL; }
-   if (Self->Path)         { FreeMemory(Self->Path);         Self->Path = NULL; }
-   if (Self->ChildXML)     { FreeMemory(Self->ChildXML);     Self->ChildXML = NULL; }
-   if (Self->ObjectName)   { FreeMemory(Self->ObjectName);   Self->ObjectName = NULL; }
+   if (Self->Name)         { FreeResource(Self->Name);         Self->Name = NULL; }
+   if (Self->Text)         { FreeResource(Self->Text);         Self->Text = NULL; }
+   if (Self->Path)         { FreeResource(Self->Path);         Self->Path = NULL; }
+   if (Self->ChildXML)     { FreeResource(Self->ChildXML);     Self->ChildXML = NULL; }
+   if (Self->ObjectName)   { FreeResource(Self->ObjectName);   Self->ObjectName = NULL; }
 
    if (Self->Prev) Self->Prev->Next = Self->Next;
    if (Self->Next) Self->Next->Prev = Self->Prev;
@@ -323,7 +323,7 @@ file is undesirable, consider passing the configuration through the XML #DataFee
 
 static ERROR ITEM_SET_Path(objMenuItem *Self, CSTRING Value)
 {
-   if (Self->Path) { FreeMemory(Self->Path); Self->Path = NULL; }
+   if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
    if ((Value) AND (*Value)) Self->Path = StrClone(Value);
    return ERR_Okay;
 }
@@ -338,7 +338,7 @@ This field allows non-unique names to be assigned to menu items.
 
 static ERROR ITEM_SET_Name(objMenuItem *Self, CSTRING Value)
 {
-   if (Self->Name) { FreeMemory(Self->Name); Self->Name = NULL; }
+   if (Self->Name) { FreeResource(Self->Name); Self->Name = NULL; }
    if ((Value) AND (*Value)) Self->Name = StrClone(Value);
    return ERR_Okay;
 }
@@ -392,7 +392,7 @@ The text string that is rendered in the item is declared here.
 
 static ERROR ITEM_SET_Text(objMenuItem *Self, CSTRING Value)
 {
-   if (Self->Text) { FreeMemory(Self->Text); Self->Text = NULL; }
+   if (Self->Text) { FreeResource(Self->Text); Self->Text = NULL; }
    if ((Value) AND (*Value)) Self->Text = StrClone(Value);
    return ERR_Okay;
 }
@@ -608,7 +608,7 @@ static ERROR create_menu_file(objMenu *Self, objMenu *Menu, objMenuItem *item)
       }
       else error = ERR_CreateObject;
 
-      FreeMemory(list);
+      FreeResource(list);
    }
    else error = ERR_InvalidData;
 
@@ -741,7 +741,7 @@ static ERROR add_xml_item(objMenu *Self, objXML *XML, struct XMLTag *Tag)
             STRING childxml;
             if (!xmlGetString(XML, Tag->Child->Index, XMF_INCLUDE_SIBLINGS, &childxml)) {
                acDataXML(item, childxml);
-               FreeMemory(childxml);
+               FreeResource(childxml);
             }
          }
 
@@ -815,7 +815,7 @@ static ERROR add_xml_item(objMenu *Self, objXML *XML, struct XMLTag *Tag)
             STRING childxml;
             if (!xmlGetString(XML, Tag->Child->Index, XMF_INCLUDE_SIBLINGS, &childxml)) {
                acDataXML(item, childxml);
-               FreeMemory(childxml);
+               FreeResource(childxml);
             }
          }
 

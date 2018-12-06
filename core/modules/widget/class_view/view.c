@@ -420,7 +420,7 @@ static ERROR VIEW_Clear(objView *Self, APTR Void)
    acClear(Self->XML);
 
    if (Self->NodeStrings) {
-      FreeMemory(Self->NodeStrings);
+      FreeResource(Self->NodeStrings);
       Self->NodeStrings = NULL;
       Self->NSIndex = 0;
       Self->NSSize = 0;
@@ -845,19 +845,19 @@ static ERROR VIEW_Free(objView *Self, APTR Void)
    struct view_col *col = Self->Columns;
    while (col) {
       struct view_col *next = col->Next;
-      FreeMemory(col);
+      FreeResource(col);
       col = next;
    }
 
    if (Self->prvKeyEvent)    { UnsubscribeEvent(Self->prvKeyEvent); Self->prvKeyEvent = NULL; }
    if (Self->Layout)         { acFree(Self->Layout); Self->Layout = NULL; }
    if (Self->GroupSurfaceID) { acFreeID(Self->GroupSurfaceID); Self->GroupSurfaceID = 0; }
-   if (Self->SelectedTags)   { FreeMemory(Self->SelectedTags); Self->SelectedTags = NULL; }
-   if (Self->DragItems)      { FreeMemory(Self->DragItems); Self->DragItems = NULL; }
+   if (Self->SelectedTags)   { FreeResource(Self->SelectedTags); Self->SelectedTags = NULL; }
+   if (Self->DragItems)      { FreeResource(Self->DragItems); Self->DragItems = NULL; }
    if (Self->Shadow)         { acFree(Self->Shadow); Self->Shadow = NULL; }
-   if (Self->ItemNames)      { FreeMemory(Self->ItemNames); Self->ItemNames = NULL; }
-   if (Self->TextAttrib)     { FreeMemory(Self->TextAttrib); Self->TextAttrib = NULL; }
-   if (Self->NodeStrings)    { FreeMemory(Self->NodeStrings); Self->NodeStrings = NULL; }
+   if (Self->ItemNames)      { FreeResource(Self->ItemNames); Self->ItemNames = NULL; }
+   if (Self->TextAttrib)     { FreeResource(Self->TextAttrib); Self->TextAttrib = NULL; }
+   if (Self->NodeStrings)    { FreeResource(Self->NodeStrings); Self->NodeStrings = NULL; }
    if (Self->XML)            { acFree(Self->XML); Self->XML = NULL; }
    if (Self->ExpandBitmap)   { acFree(Self->ExpandBitmap); Self->ExpandBitmap = NULL; }
    if (Self->CollapseBitmap) { acFree(Self->CollapseBitmap); Self->CollapseBitmap = NULL; }
@@ -865,11 +865,11 @@ static ERROR VIEW_Free(objView *Self, APTR Void)
    if (Self->SelectBitmap)   { acFree(Self->SelectBitmap); Self->SelectBitmap = NULL; }
    if (Self->GroupFont)      { acFree(Self->GroupFont); Self->GroupFont = NULL; }
    if (Self->Font)           { acFree(Self->Font); Self->Font = NULL; }
-   if (Self->ColumnString)   { FreeMemory(Self->ColumnString); Self->ColumnString = NULL; }
-   if (Self->GroupFace)      { FreeMemory(Self->GroupFace); Self->GroupFace = NULL; }
-   if (Self->GroupHeaderXML) { FreeMemory(Self->GroupHeaderXML); Self->GroupHeaderXML = NULL; }
-   if (Self->GroupSelectXML) { FreeMemory(Self->GroupSelectXML); Self->GroupSelectXML = NULL; }
-   if (Self->BkgdXML)        { FreeMemory(Self->BkgdXML); Self->BkgdXML = NULL; }
+   if (Self->ColumnString)   { FreeResource(Self->ColumnString); Self->ColumnString = NULL; }
+   if (Self->GroupFace)      { FreeResource(Self->GroupFace); Self->GroupFace = NULL; }
+   if (Self->GroupHeaderXML) { FreeResource(Self->GroupHeaderXML); Self->GroupHeaderXML = NULL; }
+   if (Self->GroupSelectXML) { FreeResource(Self->GroupSelectXML); Self->GroupSelectXML = NULL; }
+   if (Self->BkgdXML)        { FreeResource(Self->BkgdXML); Self->BkgdXML = NULL; }
    if (Self->DragSurface)    { acFreeID(Self->DragSurface); Self->DragSurface = 0; }
    if (Self->HScrollbar)     { acFree(Self->HScrollbar); Self->HScrollbar = NULL; }
    if (Self->VScrollbar)     { acFree(Self->VScrollbar); Self->VScrollbar = NULL; }
@@ -1049,7 +1049,7 @@ static ERROR VIEW_Init(objView *Self, APTR Void)
              }
              acFree(script);
           }
-          FreeMemory(Self->BkgdXML);
+          FreeResource(Self->BkgdXML);
           Self->BkgdXML= NULL;
       }
 
@@ -1762,7 +1762,7 @@ static ERROR VIEW_Refresh(objView *Self, APTR Void)
    Self->SelectedTag  = -1;
 
    if (Self->NodeStrings) {
-      FreeMemory(Self->NodeStrings);
+      FreeResource(Self->NodeStrings);
       Self->NodeStrings = NULL;
       Self->NSIndex = 0;
       Self->NSSize = 0;

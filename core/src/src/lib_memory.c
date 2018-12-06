@@ -97,7 +97,7 @@ APTR address;
 
 if (!AllocMemory(1000, MEM_DATA, &address, NULL)) {
    ...
-   FreeMemory(address);
+   FreeResource(address);
 }
 </>
 
@@ -662,7 +662,7 @@ ERROR CloneMemory(APTR Address, LONG Flags, APTR *NewAddress, MEMORYID *MemoryID
 /*****************************************************************************
 
 -FUNCTION-
-FreeMemory: Frees private memory blocks allocated from AllocMemory().
+FreeResource: Frees private memory blocks allocated from AllocMemory().
 
 This function frees memory areas allocated from ~AllocMemory().  Crash protection is incorporated into
 various areas of this function. If the memory header or tail is missing from the block, then it is assumed that a
@@ -670,7 +670,7 @@ routine has has over-written the memory boundaries, or you are attempting to fre
 Such problems are immediately reported to the system debugger.  Bear in mind that it does pay to save your
 development work if such a message appears, as it indicates that important memory areas could have been destroyed.
 
-This function only works with private memory blocks.  To free a public memory block, use the ~FreeMemoryID()
+This function only works with private memory blocks.  To free a public memory block, use the ~FreeResourceID()
 function instead.
 
 -INPUT-
@@ -684,9 +684,9 @@ Memory: The supplied memory address is not a recognised memory block.
 
 *****************************************************************************/
 
-ERROR FreeMemory(const void *Address)
+ERROR FreeResource(const void *Address)
 {
-   if (!Address) return LogError(ERH_FreeMemory, ERR_NullArgs);
+   if (!Address) return LogError(ERH_FreeResource, ERR_NullArgs);
 
    if (!glPrivateMemory) { // This part is required for very early initialisation or expunging of the Core.
       freemem(((LONG *)Address)-2);
@@ -705,8 +705,8 @@ ERROR FreeMemory(const void *Address)
       LONG pos;
       if ((pos = find_private_mem_id(id, Address)) IS -1) {
          thread_unlock(TL_PRIVATE_MEM);
-         if (head IS CODE_MEMH) LogF("@FreeMemory","Second attempt at freeing address %p detected.", Address);
-         else LogF("@FreeMemory","Address %p is not a known private memory block.", Address);
+         if (head IS CODE_MEMH) LogF("@FreeResource","Second attempt at freeing address %p detected.", Address);
+         else LogF("@FreeResource","Address %p is not a known private memory block.", Address);
          #ifdef DEBUG
          PrintDiagnosis(0, 0);
          #endif
@@ -714,16 +714,16 @@ ERROR FreeMemory(const void *Address)
       }
 
       if (glShowPrivate) {
-         LogMsg("FreeMemory(%p, Size: %d, $%.8x, Owner: #%d)", Address, glPrivateMemory[pos].Size,
+         LogMsg("FreeResource(%p, Size: %d, $%.8x, Owner: #%d)", Address, glPrivateMemory[pos].Size,
             glPrivateMemory[pos].Flags, glPrivateMemory[pos].ObjectID);
       }
 
       if ((glPrivateMemory[pos].ObjectID) AND (tlContext->Object->UniqueID) AND (glPrivateMemory[pos].ObjectID != tlContext->Object->UniqueID)) {
-         LogF("@FreeMemory","Attempt to free address %p (size %d), which is owned by #%d.", Address, glPrivateMemory[pos].Size, glPrivateMemory[pos].ObjectID);
+         LogF("@FreeResource","Attempt to free address %p (size %d), which is owned by #%d.", Address, glPrivateMemory[pos].Size, glPrivateMemory[pos].ObjectID);
       }
 
       if (glPrivateMemory[pos].AccessCount > 0) {
-         FMSG("FreeMemory","Address %p of object #%d marked for deletion (open count %d).", Address,
+         FMSG("FreeResource","Address %p of object #%d marked for deletion (open count %d).", Address,
             glPrivateMemory[pos].ObjectID, glPrivateMemory[pos].AccessCount);
 
          glPrivateMemory[pos].Flags |= MEM_DELETE;
@@ -742,17 +742,17 @@ ERROR FreeMemory(const void *Address)
             // Reacquire the current block position - it can move if glPrivateMemory was compressed.
             if ((pos = find_private_mem_id(id, Address)) IS -1) {
                thread_unlock(TL_PRIVATE_MEM);
-               return LogError(ERH_FreeMemory, ERR_SystemCorrupt);
+               return LogError(ERH_FreeResource, ERR_SystemCorrupt);
             }
          }
-         else LogMsg("@FreeMemory","Resource manager not defined for block #%d.", id);
+         else LogMsg("@FreeResource","Resource manager not defined for block #%d.", id);
       }
 
       LONG size = glPrivateMemory[pos].Size;
       BYTE *end  = ((BYTE *)Address) + size;
 
-      if (head != CODE_MEMH) LogF("@FreeMemory","Bad header on address %p, size %d.", Address, size);
-      if (((LONG *)end)[0] != CODE_MEMT) LogF("@FreeMemory","Bad tail on address %p, size %d.", Address, size);
+      if (head != CODE_MEMH) LogF("@FreeResource","Bad header on address %p, size %d.", Address, size);
+      if (((LONG *)end)[0] != CODE_MEMT) LogF("@FreeResource","Bad tail on address %p, size %d.", Address, size);
 
       // Remove all references to this memory block
 
@@ -781,7 +781,7 @@ ERROR FreeMemory(const void *Address)
 /*****************************************************************************
 
 -FUNCTION-
-FreeMemoryID: Frees public memory blocks allocated from AllocMemory().
+FreeResourceID: Frees public memory blocks allocated from AllocMemory().
 
 When a public memory block is no longer required, it can be freed from the system with this function.  The action of
 freeing the block will not necessarily take place immediately - if another task is using the block for example,
@@ -800,7 +800,7 @@ LockFailed: Failed to lock the public memory controller.
 
 *****************************************************************************/
 
-ERROR FreeMemoryID(MEMORYID MemoryID)
+ERROR FreeResourceID(MEMORYID MemoryID)
 {
    LONG i;
 
@@ -809,7 +809,7 @@ ERROR FreeMemoryID(MEMORYID MemoryID)
          LONG entry;
          if (!find_public_mem_id(glSharedControl, MemoryID, &entry)) {
 
-            if (glShowPublic) LogMsg("FreeMemoryID(#%d, Index %d, Count: %d)", MemoryID, entry, glSharedBlocks[entry].AccessCount);
+            if (glShowPublic) LogMsg("FreeResourceID(#%d, Index %d, Count: %d)", MemoryID, entry, glSharedBlocks[entry].AccessCount);
 
             if (glSharedBlocks[entry].AccessCount > 0) {
                //if ((glSharedBlocks[entry].Flags & MEM_NO_BLOCKING) AND (glCurrentTaskID) AND
@@ -819,7 +819,7 @@ ERROR FreeMemoryID(MEMORYID MemoryID)
                //else {
                   // Mark the block for deletion.  This will leave the block in memory until the ReleaseMemory() function is called, which will then do the actual free.
 
-                  FMSG("FreeMemoryID","Public memory ID %d marked for deletion (open count %d).", MemoryID, glSharedBlocks[entry].AccessCount);
+                  FMSG("FreeResourceID","Public memory ID %d marked for deletion (open count %d).", MemoryID, glSharedBlocks[entry].AccessCount);
                   glSharedBlocks[entry].Flags |= MEM_DELETE;
                   UNLOCK_PUBLIC_MEMORY();
                   return ERR_Okay;
@@ -848,7 +848,7 @@ ERROR FreeMemoryID(MEMORYID MemoryID)
                         if (!winUnmapViewOfFile(glMemoryPages[i].Address)) {
                            UBYTE buffer[80];
                            winFormatMessage(0, buffer, sizeof(buffer));
-                           LogF("@FreeMemoryID","winUnmapViewOfFile(%p) failed: %s", glMemoryPages[i].Address, buffer);
+                           LogF("@FreeResourceID","winUnmapViewOfFile(%p) failed: %s", glMemoryPages[i].Address, buffer);
                         }
 
                         ClearMemory(glMemoryPages + i, sizeof(struct MemoryPage));
@@ -862,7 +862,7 @@ ERROR FreeMemoryID(MEMORYID MemoryID)
                   if (!winCloseHandle(glSharedBlocks[entry].Handle)) {
                      char buffer[80];
                      winFormatMessage(0, buffer, sizeof(buffer));
-                     LogF("@FreeMemoryID","winCloseHandle(%d) failed: %s", (LONG)glSharedBlocks[entry].Handle, buffer);
+                     LogF("@FreeResourceID","winCloseHandle(%d) failed: %s", (LONG)glSharedBlocks[entry].Handle, buffer);
                   }
                }
 
@@ -894,28 +894,28 @@ ERROR FreeMemoryID(MEMORYID MemoryID)
          }
          UNLOCK_PUBLIC_MEMORY();
       }
-      else return LogError(ERH_FreeMemoryID, ERR_SystemLocked);
+      else return LogError(ERH_FreeResourceID, ERR_SystemLocked);
    }
    else if (MemoryID > 0) { // Search the private memory control table
-      if (glShowPrivate) LogF("FreeMemoryID()","#%d", MemoryID);
+      if (glShowPrivate) LogF("FreeResourceID()","#%d", MemoryID);
 
       if (!thread_lock(TL_PRIVATE_MEM, 4000)) {
          if ((i = find_private_mem_id(MemoryID, NULL)) != -1) {
             ERROR error = ERR_Okay;
             if (glPrivateMemory[i].AccessCount > 0) {
-               FMSG("FreeMemoryID","Private memory ID #%d marked for deletion (open count %d).", MemoryID, glPrivateMemory[i].AccessCount);
+               FMSG("FreeResourceID","Private memory ID #%d marked for deletion (open count %d).", MemoryID, glPrivateMemory[i].AccessCount);
                glPrivateMemory[i].Flags |= MEM_DELETE;
             }
             else {
                BYTE *mem_end = ((BYTE *)glPrivateMemory[i].Address) + glPrivateMemory[i].Size;
 
                if (((LONG *)glPrivateMemory[i].Address)[-1] != CODE_MEMH) {
-                  LogF("@FreeMemoryID","Bad header on block #%d, address %p, size %d.", MemoryID, glPrivateMemory[i].Address, glPrivateMemory[i].Size);
+                  LogF("@FreeResourceID","Bad header on block #%d, address %p, size %d.", MemoryID, glPrivateMemory[i].Address, glPrivateMemory[i].Size);
                   error = ERR_InvalidData;
                }
 
                if (((LONG *)mem_end)[0] != CODE_MEMT) {
-                  LogF("@FreeMemoryID","Bad tail on block #%d, address %p, size %d.", MemoryID, glPrivateMemory[i].Address, glPrivateMemory[i].Size);
+                  LogF("@FreeResourceID","Bad tail on block #%d, address %p, size %d.", MemoryID, glPrivateMemory[i].Address, glPrivateMemory[i].Size);
                   error = ERR_InvalidData;
                }
 
@@ -939,9 +939,9 @@ ERROR FreeMemoryID(MEMORYID MemoryID)
          thread_unlock(TL_PRIVATE_MEM);
       }
    }
-   else return LogError(ERH_FreeMemoryID, ERR_NullArgs);
+   else return LogError(ERH_FreeResourceID, ERR_NullArgs);
 
-   LogF("@FreeMemoryID","Memory ID #%d does not exist.", MemoryID);
+   LogF("@FreeResourceID","Memory ID #%d does not exist.", MemoryID);
    return ERR_MemoryDoesNotExist;
 }
 
@@ -1265,13 +1265,13 @@ ERROR ReallocMemory(APTR Address, LONG NewSize, APTR *Memory, MEMORYID *MemoryID
 
       if (meminfo.Flags & MEM_PUBLIC) {
          ReleaseMemory(Address);
-         FreeMemoryID(meminfo.MemoryID);
+         FreeResourceID(meminfo.MemoryID);
       }
       else if (meminfo.AccessCount > 0) {
          ReleaseMemory(Address);
-         FreeMemory(Address);
+         FreeResource(Address);
       }
-      else FreeMemory(Address);
+      else FreeResource(Address);
 
       if ((glShowPrivate) OR (glShowPublic)) LogBack();
       return ERR_Okay;

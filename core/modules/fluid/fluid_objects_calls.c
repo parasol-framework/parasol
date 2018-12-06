@@ -397,7 +397,7 @@ static LONG get_results(lua_State *Lua, const struct FunctionField *args, CPTR A
             CPTR values = ((APTR *)(ArgBuf + of))[0];
             if (values) {
                make_any_table(Lua, type, args[i].Name, total_elements, values);
-               if (type & FD_ALLOC) FreeMemory(values);
+               if (type & FD_ALLOC) FreeResource(values);
             }
             else lua_pushnil(Lua);
             total++;
@@ -412,7 +412,7 @@ static LONG get_results(lua_State *Lua, const struct FunctionField *args, CPTR A
             lua_pushstring(Lua, ((STRING *)val)[0]);
             if (type & FD_ALLOC) {
                APTR ptr = ((STRING *)val)[0];
-               if (ptr) FreeMemory(ptr);
+               if (ptr) FreeResource(ptr);
             }
             total++;
          }
@@ -432,7 +432,7 @@ static LONG get_results(lua_State *Lua, const struct FunctionField *args, CPTR A
                      luaL_error(Lua, "Failed to create struct for %s, %p", args[i].Name, ptr_struct);
                      return total;
                   }
-                  if (type & FD_ALLOC) FreeMemory(ptr_struct);
+                  if (type & FD_ALLOC) FreeResource(ptr_struct);
                }
             }
             else lua_pushnil(Lua);
@@ -447,7 +447,7 @@ static LONG get_results(lua_State *Lua, const struct FunctionField *args, CPTR A
             FUNCTION *func;
             if ((func = ((APTR *)(ArgBuf+of))[0])) {
                MSG("Removing function memory allocation %p", func);
-               FreeMemory(func);
+               FreeResource(func);
             }
          }
          else if (type & FD_RESULT) {

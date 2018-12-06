@@ -190,7 +190,7 @@ static ERROR process_args(void)
             glTime = TRUE;
          }
          else if (!StrMatch(args[i], "--procedure")) {
-            if (glProcedure) { FreeMemory(glProcedure); glProcedure = NULL; }
+            if (glProcedure) { FreeResource(glProcedure); glProcedure = NULL; }
 
             if (args[i+1]) {
                glProcedure = StrClone(args[i+1]);
@@ -326,9 +326,9 @@ int main(int argc, CSTRING *argv)
       }
    }
 
-   if (glScriptBuffer) { FreeMemory(glScriptBuffer); glScriptBuffer = NULL; }
-   if (glProcedure)    { FreeMemory(glProcedure);    glProcedure = NULL; }
-   if (glTargetFile)   { FreeMemory(glTargetFile);   glTargetFile = NULL; }
+   if (glScriptBuffer) { FreeResource(glScriptBuffer); glScriptBuffer = NULL; }
+   if (glProcedure)    { FreeResource(glProcedure);    glProcedure = NULL; }
+   if (glTargetFile)   { FreeResource(glTargetFile);   glTargetFile = NULL; }
 
    close_parasol();
 

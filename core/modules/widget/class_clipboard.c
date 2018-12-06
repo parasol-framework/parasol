@@ -218,7 +218,7 @@ static ERROR CLIPBOARD_AddFile(objClipboard *Self, struct clipAddFile *Args)
                   STRING path;
                   if (!ResolvePath(str+j, 0, &path)) {
                      winpos += StrCopy(path, win+winpos, 511) + 1;
-                     FreeMemory(path);
+                     FreeResource(path);
                   }
 
                   while (str[j]) j++;
@@ -230,7 +230,7 @@ static ERROR CLIPBOARD_AddFile(objClipboard *Self, struct clipAddFile *Args)
                   error = ERR_LimitedSuccess;
                }
 
-               FreeMemory(win);
+               FreeResource(win);
             }
 
             ReleaseMemory(str);
@@ -408,7 +408,7 @@ static ERROR CLIPBOARD_AddText(objClipboard *Self, struct clipAddText *Args)
          }
          utf16[i] = 0;
          error = winAddClip(CLIPTYPE_TEXT, utf16, (chars+1) * sizeof(WORD), FALSE);
-         FreeMemory(utf16);
+         FreeResource(utf16);
       }
       else error = ERR_AllocMemory;
 
@@ -456,7 +456,7 @@ static ERROR CLIPBOARD_Clear(objClipboard *Self, APTR Void)
    if (!ResolvePath("clipboard:", RSF_NO_FILE_CHECK, &path)) {
       DeleteFile(path, NULL);
       CreateFolder(path, PERMIT_READ|PERMIT_WRITE);
-      FreeMemory(path);
+      FreeResource(path);
    }
 
    // Annihilate all historical clip information
@@ -517,7 +517,7 @@ static ERROR CLIPBOARD_DataFeed(objClipboard *Self, struct acDataFeed *Args)
             }
             utf16[i] = 0;
             error = winAddClip(CLIPTYPE_TEXT, utf16, (chars+1) * sizeof(WORD), FALSE);
-            FreeMemory(utf16);
+            FreeResource(utf16);
          }
          else error = ERR_AllocMemory;
 
@@ -642,7 +642,7 @@ static ERROR CLIPBOARD_Remove(objClipboard *Self, struct clipRemove *Args)
 
 static ERROR CLIPBOARD_Free(objClipboard *Self, APTR Void)
 {
-   if (Self->ClusterAllocated) { FreeMemoryID(Self->ClusterID); Self->ClusterID = 0; }
+   if (Self->ClusterAllocated) { FreeResourceID(Self->ClusterID); Self->ClusterID = 0; }
    return ERR_Okay;
 }
 
@@ -661,7 +661,7 @@ is returned.
 On success this method will return a list of files (terminated with a NULL entry) in the Files parameter.  Each file is
 a readable clipboard entry - how the client reads it depends on the resulting Datatype.  Additionally, the
 IdentifyFile() function could be used to find a class that supports the data.  The resulting Files array is a memory
-allocation that must be freed with a call to ~Core.FreeMemory().
+allocation that must be freed with a call to ~Core.FreeResource().
 
 If this method returns the CEF_DELETE flag in the Flags parameter, the client must delete the source files after
 successfully copying the data.  When cutting and pasting files within the file system, using ~Core.MoveFile() is
@@ -670,7 +670,7 @@ recommended as the most efficient method.
 -INPUT-
 &int(CLIPTYPE) Datatype: Specify accepted data types here as OR'd flags.  This parameter will be updated to reflect the retrieved data type when the method returns.
 int Index: If the Datatype parameter is zero, this parameter may be set to the index of the desired clip item.
-!array(cstr) Files: The resulting location(s) of the requested clip data are returned in this parameter; terminated with a NULL entry.  You are required to free the returned array with FreeMemory().
+!array(cstr) Files: The resulting location(s) of the requested clip data are returned in this parameter; terminated with a NULL entry.  You are required to free the returned array with FreeResource().
 &int(CEF) Flags: Result flags are returned in this parameter.  If CEF_DELETE is set, you need to delete the files after use in order to support the 'cut' operation.
 
 -ERRORS-
@@ -1065,7 +1065,7 @@ static void free_clip(struct ClipEntry *Clip)
    }
    else LogBranch("Datatype: File");
 
-   if (Clip->Files) { FreeMemoryID(Clip->Files); Clip->Files = 0; }
+   if (Clip->Files) { FreeResourceID(Clip->Files); Clip->Files = 0; }
 
    ClearMemory(Clip, sizeof(struct ClipEntry));
 
@@ -1328,7 +1328,7 @@ void report_windows_clip_utf16(UWORD *String)
          u8str[i] = 0;
 
          clipAddText(clipboard, u8str);
-         FreeMemory(u8str);
+         FreeResource(u8str);
       }
       acFree(clipboard);
    }

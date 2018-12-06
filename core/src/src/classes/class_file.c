@@ -316,7 +316,7 @@ static ERROR FILE_BufferContent(objFile *Self, APTR Void)
                   Self->Size = len;
                }
             }
-            FreeMemory(buffer);
+            FreeResource(buffer);
          }
       }
    }
@@ -331,7 +331,7 @@ static ERROR FILE_BufferContent(objFile *Self, APTR Void)
             Self->Buffer = buffer;
          }
          else {
-            FreeMemory(buffer);
+            FreeResource(buffer);
             return PostError(ERR_Read);
          }
       }
@@ -541,14 +541,14 @@ static ERROR FILE_Free(objFile *Self, APTR Void)
    }
 #endif
 
-   if (Self->prvIcon) { FreeMemory(Self->prvIcon); Self->prvIcon = NULL; }
+   if (Self->prvIcon) { FreeResource(Self->prvIcon); Self->prvIcon = NULL; }
    if (Self->ProgressDialog) { acFree(Self->ProgressDialog); Self->ProgressDialog = NULL; }
-   if (Self->prvLine) { FreeMemory(Self->prvLine); Self->prvLine = NULL; }
-   if (Self->Path)    { FreeMemory(Self->Path); Self->Path = NULL; }
+   if (Self->prvLine) { FreeResource(Self->prvLine); Self->prvLine = NULL; }
+   if (Self->Path)    { FreeResource(Self->Path); Self->Path = NULL; }
    if (Self->prvList) { CloseDir(Self->prvList); Self->prvList = NULL; }
-   if (Self->prvResolvedPath) { FreeMemory(Self->prvResolvedPath); Self->prvResolvedPath = NULL; }
-   if (Self->prvLink) { FreeMemory(Self->prvLink); Self->prvLink = NULL; }
-   if (Self->Buffer)  { FreeMemory(Self->Buffer); Self->Buffer = NULL; }
+   if (Self->prvResolvedPath) { FreeResource(Self->prvResolvedPath); Self->prvResolvedPath = NULL; }
+   if (Self->prvLink) { FreeResource(Self->prvLink); Self->prvLink = NULL; }
+   if (Self->Buffer)  { FreeResource(Self->Buffer); Self->Buffer = NULL; }
 
    if (Self->Handle != -1) {
       if (close(Self->Handle) IS -1) {
@@ -569,7 +569,7 @@ static ERROR FILE_Free(objFile *Self, APTR Void)
 #ifdef _WIN32
    if ((Self->Flags & FL_RESET_DATE) AND (path)) {
       winResetDate(path);
-      FreeMemory(path);
+      FreeResource(path);
    }
 #endif
 
@@ -879,12 +879,12 @@ static ERROR FILE_MoveFile(objFile *Self, struct flMove *Args)
 
          ERROR error;
          if (!(error = fs_copy(src, newpath, Args->Callback, TRUE))) {
-            FreeMemory(Self->Path);
+            FreeResource(Self->Path);
             Self->Path = newpath;
          }
          else {
             LogErrorMsg("Failed to move %s to %s", src, newpath);
-            FreeMemory(newpath);
+            FreeResource(newpath);
          }
          return error;
       }
@@ -902,12 +902,12 @@ static ERROR FILE_MoveFile(objFile *Self, struct flMove *Args)
 
          ERROR error;
          if (!(error = fs_copy(src, newpath, Args->Callback, TRUE))) {
-            FreeMemory(Self->Path);
+            FreeResource(Self->Path);
             Self->Path = newpath;
             return ERR_Okay;
          }
          else {
-            FreeMemory(newpath);
+            FreeResource(newpath);
             return PostError(error);
          }
       }
@@ -1195,7 +1195,7 @@ static ERROR FILE_ReadLine(objFile *Self, struct flReadLine *Args)
       return ERR_Okay;
    }
    else {
-      if (Self->prvLine) { FreeMemory(Self->prvLine); Self->prvLine = NULL; }
+      if (Self->prvLine) { FreeResource(Self->prvLine); Self->prvLine = NULL; }
       Self->prvLine    = StrClone(line);
       Self->prvLineLen = len + 1;
       Args->Result = Self->prvLine;
@@ -1232,13 +1232,13 @@ static ERROR FILE_Rename(objFile *Self, struct acRename *Args)
             if (!RenameVolume(Self->Path, new)) {
                new[i++] = ':';
                new[i++] = 0;
-               FreeMemory(Self->Path);
+               FreeResource(Self->Path);
                Self->Path = new;
                LogBack();
                return ERR_Okay;
             }
             else {
-               FreeMemory(new);
+               FreeResource(new);
                LogBack();
                return PostError(ERR_Failed);
             }
@@ -1264,13 +1264,13 @@ static ERROR FILE_Rename(objFile *Self, struct acRename *Args)
                if (new[j-1] != '/') new[j++] = '/';
                new[j] = 0;
 
-               FreeMemory(Self->Path);
+               FreeResource(Self->Path);
                Self->Path = new;
                LogBack();
                return ERR_Okay;
             }
             else {
-               FreeMemory(new);
+               FreeResource(new);
                LogBack();
                return PostError(ERR_Failed);
             }
@@ -1298,13 +1298,13 @@ static ERROR FILE_Rename(objFile *Self, struct acRename *Args)
          #endif
 
          if (!fs_copy(Self->Path, new, NULL, TRUE)) {
-            FreeMemory(Self->Path);
+            FreeResource(Self->Path);
             Self->Path = new;
             LogBack();
             return ERR_Okay;
          }
          else {
-            FreeMemory(new);
+            FreeResource(new);
             LogBack();
             return PostError(ERR_Failed);
          }
@@ -1588,7 +1588,7 @@ static ERROR FILE_Watch(objFile *Self, struct flWatch *Args)
       }
       if (v IS glVirtualTotal) LogErrorMsg("Failed to find virtual volume ID #%d", Self->prvWatch->VirtualID);
 
-      FreeMemory(Self->prvWatch);
+      FreeResource(Self->prvWatch);
       Self->prvWatch = NULL;
    }
 
@@ -2281,7 +2281,7 @@ static ERROR GET_Link(objFile *Self, STRING *Value)
             Self->prvLink = StrClone(buffer);
             *Value = Self->prvLink;
          }
-         FreeMemory(path);
+         FreeResource(path);
 
          if (*Value) return ERR_Okay;
          else return ERR_Failed;
@@ -2348,8 +2348,8 @@ static ERROR SET_Path(objFile *Self, CSTRING Value)
       Self->Handle = -1;
    }
 
-   if (Self->Path) { FreeMemory(Self->Path); Self->Path = NULL; }
-   if (Self->prvResolvedPath) { FreeMemory(Self->prvResolvedPath); Self->prvResolvedPath = NULL; }
+   if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
+   if (Self->prvResolvedPath) { FreeResource(Self->prvResolvedPath); Self->prvResolvedPath = NULL; }
 
    LONG i, j, len;
    if ((Value) AND (*Value)) {

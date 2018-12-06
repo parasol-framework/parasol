@@ -399,9 +399,9 @@ static ERROR MENU_Free(objMenu *Self, APTR Void)
    if (Self->TimerID)         { UpdateTimer(Self->TimerID, 0); Self->TimerID = 0; }
 
    if (Self->Checkmark)      { acFree(Self->Checkmark); Self->Checkmark = NULL; }
-   if (Self->Style)          { FreeMemory(Self->Style); Self->Style = NULL; }
-   if (Self->Config)         { FreeMemory(Self->Config); Self->Config = NULL; }
-   if (Self->Path)           { FreeMemory(Self->Path); Self->Path = NULL; }
+   if (Self->Style)          { FreeResource(Self->Style); Self->Style = NULL; }
+   if (Self->Config)         { FreeResource(Self->Config); Self->Config = NULL; }
+   if (Self->Path)           { FreeResource(Self->Path); Self->Path = NULL; }
    if (Self->Font)           { acFree(Self->Font); Self->Font = NULL; }
    if (Self->prvXML)         { acFree(Self->prvXML); Self->prvXML = NULL; }
 
@@ -1213,7 +1213,7 @@ initialisation.  Alternatively, set the #Path field to load the configuration fr
 
 static ERROR SET_Config(objMenu *Self, CSTRING Value)
 {
-   if (Self->Config) { FreeMemory(Self->Config); Self->Config = NULL; }
+   if (Self->Config) { FreeResource(Self->Config); Self->Config = NULL; }
 
    if ((Value) AND (*Value)) {
       Self->Config = StrClone(Value);
@@ -1411,7 +1411,7 @@ static ERROR GET_Path(objMenu *Self, STRING *Value)
 
 static ERROR SET_Path(objMenu *Self, CSTRING Value)
 {
-   if (Self->Path) { FreeMemory(Self->Path); Self->Path = NULL; }
+   if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
 
    if ((Value) AND (*Value)) {
       Self->Path = StrClone(Value);
@@ -1518,7 +1518,7 @@ Setting the Style does nothing if the style name is not recognised (an appropria
 
 static ERROR SET_Style(objMenu *Self, CSTRING Value)
 {
-   if (Self->Style) { FreeMemory(Self->Style); Self->Style = NULL; }
+   if (Self->Style) { FreeResource(Self->Style); Self->Style = NULL; }
    Self->Style = StrClone(Value);
    return ERR_Okay;
 }

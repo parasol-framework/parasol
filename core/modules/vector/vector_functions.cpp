@@ -249,7 +249,7 @@ static void vecFreePath(APTR Path)
 {
    if (!Path) return;
    // NB: Refer to the deallocator for SimpleVector for anything relating to additional resource deallocation.
-   FreeMemory(Path);
+   FreeResource(Path);
 }
 
 /*****************************************************************************
@@ -450,7 +450,7 @@ static ERROR vecGeneratePath(CSTRING Sequence, APTR *Path)
          *Path = vector;
       }
       else error = ERR_AllocMemory;
-      FreeMemory(paths);
+      FreeResource(paths);
    }
 
    return error;

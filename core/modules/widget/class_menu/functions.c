@@ -149,7 +149,7 @@ static void parse_xmltag(objMenu *Self, objXML *XML, struct XMLTag *Tag)
    }
    else if (!StrMatch("style", Tag->Attrib->Name)) {
       if (Tag->Child) {
-         if (Self->Style) { FreeMemory(Self->Style); Self->Style = NULL; }
+         if (Self->Style) { FreeResource(Self->Style); Self->Style = NULL; }
          xmlGetString(XML, Tag->Child->Index, XMF_INCLUDE_SIBLINGS, &Self->Style);
       }
    }

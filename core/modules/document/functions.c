@@ -642,7 +642,7 @@ static ERROR insert_xml(objDocument *Self, objXML *XML, struct XMLTag *Tag, LONG
          CopyMemory(Self->Stream + start, content, length); // Take a copy of the inserted data
          CopyMemory(Self->Stream + Index, Self->Stream + Index + length, start - Index); // Make room for the data at the insertion point
          CopyMemory(content, Self->Stream + Index, length); // Copy data to the insertion point
-         FreeMemory(content);
+         FreeResource(content);
       }
    }
 
@@ -1116,7 +1116,7 @@ static ERROR insert_text(objDocument *Self, LONG *Index, CSTRING Text, LONG Leng
          }
          stream[pos] = 0;
 
-         FreeMemory(Self->Stream);
+         FreeResource(Self->Stream);
          Self->Stream = stream;
          Self->StreamSize = size;
       }
@@ -1216,7 +1216,7 @@ static ERROR insert_escape(objDocument *Self, LONG *Index, WORD EscapeCode, APTR
             pos += Self->StreamLen - *Index;
          }
 
-         FreeMemory(Self->Stream);
+         FreeResource(Self->Stream);
          Self->Stream = stream;
          Self->StreamSize = size;
       }
@@ -3286,7 +3286,7 @@ repass_row_height_ext:
                      if (!AllocMemory(sizeof(Self->EditCells[0]) * (Self->ECMax + 10), MEM_NO_CLEAR, &cells, NULL)) {
                         if (Self->EditCells) {
                            CopyMemory(Self->EditCells, cells, sizeof(Self->EditCells[0]) * Self->ECMax);
-                           FreeMemory(Self->EditCells);
+                           FreeResource(Self->EditCells);
                         }
                         Self->ECMax += 10;
                         Self->EditCells = cells;
@@ -3568,7 +3568,7 @@ static void free_links(objDocument *Self)
 {
    if (!Self->Links) return;
 
-   FreeMemory(Self->Links);
+   FreeResource(Self->Links);
    Self->Links = NULL;
 
    Self->MaxLinks = 0;
@@ -4649,7 +4649,7 @@ restart:
    if (!Self->Error) {
 
       if (Self->SortSegments) {
-         FreeMemory(Self->SortSegments);
+         FreeResource(Self->SortSegments);
          Self->SortSegments = NULL;
       }
 
@@ -4949,10 +4949,10 @@ static ERROR process_page(objDocument *Self, objXML *xml)
       Self->UpdateLayout = TRUE;
       if (Self->Head.Flags & NF_INITIALISED) redraw(Self, TRUE);
 
-      if (glTranslateBuffer) { FreeMemory(glTranslateBuffer); glTranslateBuffer = NULL; }
-      if (Self->Buffer) { FreeMemory(Self->Buffer); Self->Buffer = NULL; }
-      if (Self->Temp)   { FreeMemory(Self->Temp); Self->Temp = NULL; }
-      if (Self->VArg)   { FreeMemory(Self->VArg); Self->VArg = NULL; }
+      if (glTranslateBuffer) { FreeResource(glTranslateBuffer); glTranslateBuffer = NULL; }
+      if (Self->Buffer) { FreeResource(Self->Buffer); Self->Buffer = NULL; }
+      if (Self->Temp)   { FreeResource(Self->Temp); Self->Temp = NULL; }
+      if (Self->VArg)   { FreeResource(Self->VArg); Self->VArg = NULL; }
 
       #ifdef RAW_OUTPUT
          OBJECTPTR file;
@@ -5137,18 +5137,18 @@ static ERROR unload_doc(objDocument *Self, BYTE Flags)
 
    Self->ECIndex = 0;
    Self->ECMax = 0;
-   if (Self->EditCells) { FreeMemory(Self->EditCells); Self->EditCells = NULL; }
+   if (Self->EditCells) { FreeResource(Self->EditCells); Self->EditCells = NULL; }
 
    if (Self->LinkIndex != -1) {
       Self->LinkIndex = -1;
       gfxRestoreCursor(PTR_DEFAULT, Self->Head.UniqueID);
    }
 
-   if (Self->FontFace) FreeMemory(Self->FontFace);
+   if (Self->FontFace) FreeResource(Self->FontFace);
    if (Flags & ULD_TERMINATE) Self->FontFace = NULL;
    else Self->FontFace = StrClone("Open Sans");
 
-   if (Self->Stream) FreeMemory(Self->Stream);
+   if (Self->Stream) FreeResource(Self->Stream);
    if (Flags & ULD_TERMINATE) Self->Stream = NULL;
    else Self->Stream = StrClone("");
 
@@ -5156,10 +5156,10 @@ static ERROR unload_doc(objDocument *Self, BYTE Flags)
    Self->StreamSize = 0;
    Self->PageTag = NULL;
 
-   if (Self->SortSegments) { FreeMemory(Self->SortSegments); Self->SortSegments = NULL; }
+   if (Self->SortSegments) { FreeResource(Self->SortSegments); Self->SortSegments = NULL; }
 
    if (Self->Segments) {
-      FreeMemory(Self->Segments);
+      FreeResource(Self->Segments);
       Self->Segments = NULL;
       Self->MaxSegments = 0;
    }
@@ -5176,7 +5176,7 @@ static ERROR unload_doc(objDocument *Self, BYTE Flags)
       if ((trigger = Self->Triggers[i])) {
          while (trigger) {
             next = trigger->Next;
-            FreeMemory(trigger);
+            FreeResource(trigger);
             trigger = next;
          }
          Self->Triggers[i] = NULL;
@@ -5188,19 +5188,19 @@ static ERROR unload_doc(objDocument *Self, BYTE Flags)
    }
 
    if (Self->Params)      { VarFree(Self->Params); Self->Params = NULL; }
-   if (Self->Clips)       { FreeMemory(Self->Clips); Self->Clips = NULL; }
-   if (Self->Keywords)    { FreeMemory(Self->Keywords); Self->Keywords = NULL; }
-   if (Self->Author)      { FreeMemory(Self->Author); Self->Author = NULL; }
-   if (Self->Copyright)   { FreeMemory(Self->Copyright); Self->Copyright = NULL; }
-   if (Self->Description) { FreeMemory(Self->Description); Self->Description = NULL; }
-   if (Self->Title)       { FreeMemory(Self->Title); Self->Title = NULL; }
+   if (Self->Clips)       { FreeResource(Self->Clips); Self->Clips = NULL; }
+   if (Self->Keywords)    { FreeResource(Self->Keywords); Self->Keywords = NULL; }
+   if (Self->Author)      { FreeResource(Self->Author); Self->Author = NULL; }
+   if (Self->Copyright)   { FreeResource(Self->Copyright); Self->Copyright = NULL; }
+   if (Self->Description) { FreeResource(Self->Description); Self->Description = NULL; }
+   if (Self->Title)       { FreeResource(Self->Title); Self->Title = NULL; }
 
    if (Self->EditDefs) {
       struct DocEdit *edit, *next;
       edit = Self->EditDefs;
       while (edit) {
          next = edit->Next;
-         FreeMemory(edit);
+         FreeResource(edit);
          edit = next;
       }
       Self->EditDefs = NULL;
@@ -5210,7 +5210,7 @@ static ERROR unload_doc(objDocument *Self, BYTE Flags)
    mouseover = Self->MouseOverChain;
    while (mouseover) {
       mousenext = mouseover->Next;
-      FreeMemory(mouseover);
+      FreeResource(mouseover);
       mouseover = mousenext;
    }
    Self->MouseOverChain = NULL;
@@ -5225,7 +5225,7 @@ static ERROR unload_doc(objDocument *Self, BYTE Flags)
    }
 
    if (Self->Tabs) {
-      FreeMemory(Self->Tabs);
+      FreeResource(Self->Tabs);
       Self->Tabs     = NULL;
       Self->MaxTabs  = 0;
       Self->TabIndex = 0;
@@ -5238,7 +5238,7 @@ static ERROR unload_doc(objDocument *Self, BYTE Flags)
    resource = Self->Resources;
    while (resource) {
       if (resource->Type IS RT_MEMORY) {
-         FreeMemory(resource->Memory);
+         FreeResource(resource->Memory);
       }
       else if ((resource->Type IS RT_PERSISTENT_SCRIPT) OR (resource->Type IS RT_PERSISTENT_OBJECT)) {
          if (Flags & ULD_REFRESH) {
@@ -5260,7 +5260,7 @@ static ERROR unload_doc(objDocument *Self, BYTE Flags)
       if (resource->Next) resource->Next->Prev = resource->Prev;
 
       next = resource->Next;
-      FreeMemory(resource);
+      FreeResource(resource);
       resource = next;
    }
 
@@ -5405,7 +5405,7 @@ static void add_template(objDocument *Self, objXML *XML, struct XMLTag *Tag)
 
    if (!xmlGetString(XML, Tag->Index, 0, &strxml)) {
       xmlInsertXML(Self->Templates, 0, XMI_PREV, strxml, 0);
-      FreeMemory(strxml);
+      FreeResource(strxml);
    }
    else LogErrorMsg("Failed to convert template %d to an XML string.", Tag->Index);
 }
@@ -5489,7 +5489,7 @@ static LONG create_font(CSTRING Face, CSTRING Style, LONG Point)
             glMaxFonts += FONT_BLOCK_SIZE;
             if (glFonts) {
                CopyMemory(glFonts, array, sizeof(struct FontEntry) * glTotalFonts);
-               FreeMemory(glFonts);
+               FreeResource(glFonts);
             }
             glFonts = array;
          }
@@ -5633,7 +5633,7 @@ static LONG add_drawsegment(objDocument *Self, LONG Offset, LONG Stop, struct la
    if (segment >= Self->MaxSegments) {
       if (!AllocMemory(sizeof(Self->Segments[0]) * (Self->MaxSegments + 100), MEM_NO_CLEAR, &lines, NULL)) {
          CopyMemory(Self->Segments, lines, sizeof(Self->Segments[0]) * Self->MaxSegments);
-         FreeMemory(Self->Segments);
+         FreeResource(Self->Segments);
          Self->Segments = lines;
          Self->MaxSegments += 100;
       }
@@ -5979,7 +5979,7 @@ static ERROR convert_xml_args(objDocument *Self, struct XMLAttrib *Attrib, LONG 
                         STRING tmp;
                         if (!xmlGetString(Self->InjectXML, Self->InjectTag->Index, XMF_INCLUDE_SIBLINGS, &tmp)) {
                            insert_string(tmp, Buffer, Self->BufferSize, pos, sizeof("[%content]")-1);
-                           FreeMemory(tmp);
+                           FreeResource(tmp);
                         }
                      }
                   }
@@ -6177,7 +6177,7 @@ static ERROR convert_xml_args(objDocument *Self, struct XMLAttrib *Attrib, LONG 
                            objectid = list[0];
                         }
 
-                        FreeMemory(list);
+                        FreeResource(list);
                      }
                   }
 
@@ -6210,7 +6210,7 @@ repeat:
                                     APTR newbuf;
                                     context = SetContext(modDocument);
                                     if (!AllocMemory(glTranslateBufferSize + 1024, MEM_STRING|MEM_NO_CLEAR, &newbuf, NULL)) {
-                                       FreeMemory(glTranslateBuffer);
+                                       FreeResource(glTranslateBuffer);
                                        glTranslateBuffer = newbuf;
                                        glTranslateBufferSize = glTranslateBufferSize + 1024;
                                        SetContext(context);
@@ -6645,7 +6645,7 @@ static ERROR add_clip(objDocument *Self, struct SurfaceClip *Clip, LONG Index, C
 
       if (!AllocMemory(sizeof(struct DocClip) * (Self->MaxClips + CLIP_BLOCK), MEM_NO_CLEAR, &clip, NULL)) {
          CopyMemory(Self->Clips, clip, sizeof(struct DocClip) * Self->MaxClips);
-         FreeMemory(Self->Clips);
+         FreeResource(Self->Clips);
          Self->Clips = clip;
          Self->MaxClips += CLIP_BLOCK;
       }
@@ -6690,7 +6690,7 @@ static void check_pointer_exit(objDocument *Self, LONG X, LONG Y)
          }
 
          next = scan->Next;
-         FreeMemory(scan);
+         FreeResource(scan);
          if (scan IS Self->MouseOverChain) Self->MouseOverChain = next;
          if (prev) prev->Next = next;
          scan = next;
@@ -7617,8 +7617,8 @@ static void process_parameters(objDocument *Self, CSTRING String)
 
          pagename_processed = TRUE;
 
-         if (Self->PageName) { FreeMemory(Self->PageName); Self->PageName = NULL; }
-         if (Self->Bookmark) { FreeMemory(Self->Bookmark); Self->Bookmark = NULL; }
+         if (Self->PageName) { FreeResource(Self->PageName); Self->PageName = NULL; }
+         if (Self->Bookmark) { FreeResource(Self->Bookmark); Self->Bookmark = NULL; }
 
          if (!String[1]) break;
 
@@ -7688,7 +7688,7 @@ static void process_parameters(objDocument *Self, CSTRING String)
                String++;
             }
 
-            FreeMemory(set);
+            FreeResource(set);
          }
       }
       else String++;
@@ -7766,7 +7766,7 @@ static ERROR extract_script(objDocument *Self, CSTRING Link, OBJECTPTR *Script, 
    }
 
    if (len > exsbuffer_size) {
-      if (exsbuffer) { FreeMemory(exsbuffer); exsbuffer = NULL; }
+      if (exsbuffer) { FreeResource(exsbuffer); exsbuffer = NULL; }
       if (AllocMemory(len, MEM_STRING|MEM_UNTRACKED, &exsbuffer, NULL) != ERR_Okay) return ERR_AllocMemory;
       exsbuffer_size = len;
    }
@@ -7936,7 +7936,7 @@ static void exec_link(objDocument *Self, LONG Index)
          else i = 0;
 
          if (strlink[0] IS ':') {
-            if (Self->Bookmark) FreeMemory(Self->Bookmark);
+            if (Self->Bookmark) FreeResource(Self->Bookmark);
             Self->Bookmark = StrClone(strlink+1);
             show_bookmark(Self, Self->Bookmark);
          }
@@ -8007,7 +8007,7 @@ static void exec_link(objDocument *Self, LONG Index)
                      acFree(task);
                   }
                }
-               FreeMemory(cmd);
+               FreeResource(cmd);
             }
             else {
                char msg[500];

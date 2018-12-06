@@ -74,7 +74,7 @@ static ERROR CLIP_Draw(objVectorClip *Self, struct acDraw *Args)
 
    LONG size = width * height;
    if ((Self->ClipData) AND (size > Self->ClipSize)) {
-      FreeMemory(Self->ClipData);
+      FreeResource(Self->ClipData);
       Self->ClipData = NULL;
       Self->ClipSize = 0;
    }
@@ -121,11 +121,11 @@ static ERROR CLIP_Free(objVectorClip *Self, APTR Void)
    struct VectorTransform *scan, *next;
    for (scan=Self->Transforms; scan; scan=next) {
       next = scan->Next;
-      FreeMemory(scan);
+      FreeResource(scan);
    }
    Self->Transforms = NULL;
 
-   if (Self->ClipData) { FreeMemory(Self->ClipData); Self->ClipData = NULL; }
+   if (Self->ClipData) { FreeResource(Self->ClipData); Self->ClipData = NULL; }
    if (Self->ClipPath) { delete Self->ClipPath; Self->ClipPath = NULL; }
    if (Self->ClipRenderer) { delete Self->ClipRenderer; Self->ClipRenderer = NULL; }
    return ERR_Okay;
@@ -177,7 +177,7 @@ static ERROR CLIP_SET_Transform(objVectorClip *Self, CSTRING Value)
    struct VectorTransform *scan, *next;
    for (scan=Self->Transforms; scan; scan=next) {
       next = scan->Next;
-      FreeMemory(scan);
+      FreeResource(scan);
    }
    Self->Transforms = NULL;
 

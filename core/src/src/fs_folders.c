@@ -42,7 +42,7 @@ void CloseDir(struct DirInfo *Dir)
    if (!Dir) return;
 
    LogF("~7CloseDir()","%p", Dir);
-      FreeMemory(Dir); // Dir is a resource, so calling FreeMemory() will divert to folder_free() behind the scenes.
+      FreeResource(Dir); // Dir is a resource, so calling FreeResource() will divert to folder_free() behind the scenes.
    LogBack();
 }
 
@@ -93,7 +93,7 @@ ERROR OpenDir(CSTRING Path, LONG Flags, struct DirInfo **Result)
       struct DirInfo *dir;
       if (AllocMemory(sizeof(struct DirInfo) + sizeof(struct FileInfo) + MAX_FILENAME + path_len + MAX_FILENAME,
             MEM_DATA|MEM_MANAGED, (APTR *)&dir, NULL) != ERR_Okay) {
-         FreeMemory(resolved_path);
+         FreeResource(resolved_path);
          STEP();
          return ERR_AllocMemory;
       }
@@ -113,11 +113,11 @@ ERROR OpenDir(CSTRING Path, LONG Flags, struct DirInfo **Result)
       CopyMemory(Path, dir->prvPath, path_len);
       CopyMemory(resolved_path, dir->prvResolvedPath, resolve_len);
 
-      FreeMemory(resolved_path);
+      FreeResource(resolved_path);
 
       if ((Path[0] IS ':') OR (!Path[0])) {
          if (!(Flags & RDF_FOLDER)) {
-            FreeMemory(dir);
+            FreeResource(dir);
             STEP();
             return ERR_DirEmpty;
          }
@@ -129,7 +129,7 @@ ERROR OpenDir(CSTRING Path, LONG Flags, struct DirInfo **Result)
       const struct virtual_drive *virtual = get_fs(dir->prvResolvedPath);
 
       if (!virtual->OpenDir) {
-         FreeMemory(dir);
+         FreeResource(dir);
          STEP();
          return ERR_DirEmpty;
       }
@@ -141,7 +141,7 @@ ERROR OpenDir(CSTRING Path, LONG Flags, struct DirInfo **Result)
          return ERR_Okay;
       }
 
-      FreeMemory(dir);
+      FreeResource(dir);
       STEP();
       return error;
    }

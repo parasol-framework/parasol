@@ -697,7 +697,7 @@ static LONG process_results(struct prvFluid *prv, APTR resultsidx, const struct 
 
                if (values) {
                   make_any_table(prv->Lua, argtype, argname, total_elements, values);
-                  if (argtype & FD_ALLOC) FreeMemory(values);
+                  if (argtype & FD_ALLOC) FreeResource(values);
                }
                else lua_pushnil(prv->Lua);
             }
@@ -711,7 +711,7 @@ static LONG process_results(struct prvFluid *prv, APTR resultsidx, const struct 
             if (var) {
                RMSG("Result-Arg: %s, Value: %.20s (String)", argname, ((STRING *)var)[0]);
                lua_pushstring(prv->Lua, ((STRING *)var)[0]);
-               if ((argtype & FD_ALLOC) AND (((STRING *)var)[0])) FreeMemory(((STRING *)var)[0]);
+               if ((argtype & FD_ALLOC) AND (((STRING *)var)[0])) FreeResource(((STRING *)var)[0]);
             }
             else lua_pushnil(prv->Lua);
             result++;
@@ -737,7 +737,7 @@ static LONG process_results(struct prvFluid *prv, APTR resultsidx, const struct 
                      }
                      else {
                         if (named_struct_to_table(prv->Lua, args[i].Name, ((APTR *)var)[0]) != ERR_Okay) lua_pushnil(prv->Lua);
-                        if (argtype & FD_ALLOC) FreeMemory(((APTR *)var)[0]);
+                        if (argtype & FD_ALLOC) FreeResource(((APTR *)var)[0]);
                      }
                   }
                   else lua_pushnil(prv->Lua);
@@ -758,7 +758,7 @@ static LONG process_results(struct prvFluid *prv, APTR resultsidx, const struct 
                   if (size > 0) lua_pushlstring(prv->Lua, ((APTR *)var)[0], size);
                   else lua_pushnil(prv->Lua);
 
-                  if (((APTR *)var)[0]) FreeMemory(((APTR *)var)[0]);
+                  if (((APTR *)var)[0]) FreeResource(((APTR *)var)[0]);
                }
                else if (args[i+1].Type & FD_BUFSIZE) { // We can convert the data to a binary string rather than work with unsafe pointers.
                   LARGE size = 0;

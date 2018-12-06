@@ -20,7 +20,7 @@ static void vwUserClick(objView *Self, struct InputMsg *Input)
    // Reset the drag and drop state
 
    if (Self->DragItems) {
-      FreeMemory(Self->DragItems);
+      FreeResource(Self->DragItems);
       Self->DragItems = NULL;
       Self->DragItemCount = 0;
    }
@@ -2825,7 +2825,7 @@ void drag_items(objView *Self)
    // Record the items that have been selected for the drag
 
    if (Self->DragItems) {
-      FreeMemory(Self->DragItems);
+      FreeResource(Self->DragItems);
       Self->DragItems = NULL;
       Self->DragItemCount = 0;
    }
@@ -3048,19 +3048,19 @@ static void process_style(objView *Self, objXML *xml, struct XMLTag *tag)
          STRING str;
          if (!StrMatch("groupheader", name)) {
             if (!xmlGetString(xml, tag->Child->Index, XMF_INCLUDE_SIBLINGS, &str)) {
-               if (Self->GroupHeaderXML) FreeMemory(Self->GroupHeaderXML);
+               if (Self->GroupHeaderXML) FreeResource(Self->GroupHeaderXML);
                Self->GroupHeaderXML = str;
             }
          }
          else if (!StrMatch("groupselect", name)) {
             if (!xmlGetString(xml, tag->Child->Index, XMF_INCLUDE_SIBLINGS, &str)) {
-               if (Self->GroupSelectXML) FreeMemory(Self->GroupSelectXML);
+               if (Self->GroupSelectXML) FreeResource(Self->GroupSelectXML);
                Self->GroupSelectXML = str;
             }
          }
          else if (!StrMatch("background", name)) {
             if (!xmlGetString(xml, tag->Child->Index, XMF_INCLUDE_SIBLINGS, &str)) {
-               if (Self->BkgdXML) FreeMemory(Self->BkgdXML);
+               if (Self->BkgdXML) FreeResource(Self->BkgdXML);
                Self->BkgdXML = str;
             }
          }

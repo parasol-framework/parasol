@@ -371,9 +371,9 @@ static ERROR CMDExpunge(void)
       struct BitmapCache *scan = glBitmapCache;
       while (scan) {
          struct BitmapCache *next = scan->Next;
-         if (scan->Data) FreeMemory(scan->Data);
-         if (scan->Outline) FreeMemory(scan->Outline);
-         FreeMemory(scan);
+         if (scan->Data) FreeResource(scan->Data);
+         if (scan->Outline) FreeResource(scan->Outline);
+         FreeResource(scan);
          scan = next;
       }
       glBitmapCache = NULL;
@@ -1584,7 +1584,7 @@ static void scan_truetype_folder(objConfig *Config)
          ResolvePath(location, 0, (STRING *)&open.pathname);
          open.flags    = FT_OPEN_PATHNAME;
          if (!FT_Open_Face(glFTLibrary, &open, 0, &ftface)) {
-            FreeMemory(open.pathname);
+            FreeResource(open.pathname);
 
             LogMsg("Detected font file \"%s\", name: %s, style: %s", location, ftface->family_name, ftface->style_name);
 
@@ -1640,7 +1640,7 @@ static void scan_truetype_folder(objConfig *Config)
             FT_Done_Face(ftface);
          }
          else {
-            FreeMemory(open.pathname);
+            FreeResource(open.pathname);
             LogErrorMsg("Failed to analyse scalable font file \"%s\".", location);
          }
       }
@@ -1731,7 +1731,7 @@ static void scan_fixed_folder(objConfig *Config)
             pntbuffer[j] = 0;
             cfgWriteValue(Config, section, "Points", pntbuffer);
 
-            FreeMemory(facename);
+            FreeResource(facename);
          }
          else LogErrorMsg("Failed to analyse %s", location);
       }

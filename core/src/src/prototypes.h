@@ -23,8 +23,8 @@ ERROR FastFindObject(CSTRING Name, CLASSID ClassID, OBJECTID * Array, LONG Array
 struct rkMetaClass * FindClass(CLASSID ClassID);
 ERROR FindObject(CSTRING Name, CLASSID ClassID, OBJECTID ** List, LONG * Count);
 ERROR ReleaseObject(OBJECTPTR Object);
-ERROR FreeMemory(const void * Address);
-ERROR FreeMemoryID(MEMORYID ID);
+ERROR FreeResource(const void * Address);
+ERROR FreeResourceID(MEMORYID ID);
 CLASSID GetClassID(OBJECTID Object);
 OBJECTID GetOwnerID(OBJECTID Object);
 ERROR GetField(OBJECTPTR Object, FIELD Field, APTR Result);

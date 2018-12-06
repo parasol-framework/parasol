@@ -386,7 +386,7 @@ static ERROR SURFACE_AddCallback(objSurface *Self, struct drwAddCallback *Args)
             Self->CallbackCount++;
             Self->CallbackSize = new_size;
 
-            if (Self->Callback != Self->CallbackCache) FreeMemory(Self->Callback);
+            if (Self->Callback != Self->CallbackCache) FreeResource(Self->Callback);
             Self->Callback = new;
          }
          else return ERR_AllocMemory;
@@ -911,7 +911,7 @@ static ERROR SURFACE_Free(objSurface *Self, APTR Void)
    }
 
    if ((Self->Callback) AND (Self->Callback != Self->CallbackCache)) {
-      FreeMemory(Self->Callback);
+      FreeResource(Self->Callback);
       Self->Callback = NULL;
       Self->CallbackCount = 0;
       Self->CallbackSize = 0;
@@ -968,7 +968,7 @@ static ERROR SURFACE_Free(objSurface *Self, APTR Void)
                   break;
                }
             }
-            FreeMemory(list);
+            FreeResource(list);
          }
       }
    }

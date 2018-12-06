@@ -314,7 +314,7 @@ static ERROR DISPLAY_DataFeed(objDisplay *Self, struct acDataFeed *Args)
             dc.Size     = pos+1;
             ActionMsg(AC_DataFeed, Args->ObjectID, &dc);
 
-            FreeMemory(xml);
+            FreeResource(xml);
          }
          else return PostError(ERR_AllocMemory);
       }
@@ -527,7 +527,7 @@ static ERROR DISPLAY_Free(objDisplay *Self, APTR Void)
 
    if (Self->ResolutionsMID) {
       if (Self->Resolutions) { ReleaseMemory(Self->Resolutions); Self->Resolutions = NULL; }
-      FreeMemoryID(Self->ResolutionsMID);
+      FreeResourceID(Self->ResolutionsMID);
       Self->ResolutionsMID = 0;
    }
 
@@ -1897,7 +1897,7 @@ static ERROR DISPLAY_SetMonitor(objDisplay *Self, struct gfxSetMonitor *Args)
 
    if (Self->ResolutionsMID) {
       if (Self->Resolutions) { ReleaseMemory(Self->Resolutions); Self->Resolutions = NULL; }
-      FreeMemoryID(Self->ResolutionsMID);
+      FreeResourceID(Self->ResolutionsMID);
       Self->ResolutionsMID = 0;
       Self->TotalResolutions = 0;
    }
@@ -3063,7 +3063,7 @@ static ERROR GET_Title(objDisplay *Self, STRING *Value)
    winGetWindowTitle(Self->WindowHandle, buffer, sizeof(buffer));
    if (!AllocMemory(StrLength(buffer) + 1, MEM_STRING|MEM_UNTRACKED, &str, NULL)) {
       StrCopy(buffer, str, COPY_ALL);
-      if (glWindowTitle) FreeMemory(glWindowTitle);
+      if (glWindowTitle) FreeResource(glWindowTitle);
       glWindowTitle = str;
       *Value = glWindowTitle;
       return ERR_Okay;

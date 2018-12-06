@@ -705,9 +705,9 @@ ERROR CMDExpunge(void)
       for (i=0; i < glTotalFonts; i++) acFree(glFonts[i].Font);
    }
 
-   if (exsbuffer)         { FreeMemory(exsbuffer); exsbuffer = NULL; }
-   if (glFonts)           { FreeMemory(glFonts); glFonts = NULL; }
-   if (glTranslateBuffer) { FreeMemory(glTranslateBuffer); glTranslateBuffer = NULL; }
+   if (exsbuffer)         { FreeResource(exsbuffer); exsbuffer = NULL; }
+   if (glFonts)           { FreeResource(glFonts); glFonts = NULL; }
+   if (glTranslateBuffer) { FreeResource(glTranslateBuffer); glTranslateBuffer = NULL; }
 
    if (modDisplay) { acFree(modDisplay);  modDisplay = NULL; }
    if (modSurface) { acFree(modSurface);  modSurface = NULL; }

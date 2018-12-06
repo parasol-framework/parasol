@@ -25,7 +25,7 @@ static ERROR PROGRAM_DataFeed(OBJECTPTR Task, struct acDataFeed *Args)
          buffer[i] = 0;
 
          printf("%s\n", buffer);
-         FreeMemory(buffer);
+         FreeResource(buffer);
       }
    }
 

@@ -290,7 +290,7 @@ static ERROR JPEG_Query(objPicture *Self, APTR Void)
       }
 
       jpeg_destroy_decompress(cinfo);
-      FreeMemory(cinfo);
+      FreeResource(cinfo);
 
       return acQuery(bmp);
    }

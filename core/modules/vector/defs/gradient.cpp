@@ -127,13 +127,13 @@ GradientColours::GradientColours(struct rkVectorGradient *Gradient, DOUBLE Alpha
 
 static ERROR VECTORGRADIENT_Free(objVectorGradient *Self, APTR Void)
 {
-   if (Self->Stops) { FreeMemory(Self->Stops); Self->Stops = NULL; }
+   if (Self->Stops) { FreeResource(Self->Stops); Self->Stops = NULL; }
    if (Self->Colours) { delete Self->Colours; Self->Colours = NULL; }
 
    struct VectorTransform *scan, *next;
    for (scan=Self->Transforms; scan; scan=next) {
       next = scan->Next;
-      FreeMemory(scan);
+      FreeResource(scan);
    }
    Self->Transforms = NULL;
 
@@ -408,7 +408,7 @@ static ERROR VECTORGRADIENT_GET_Stops(objVectorGradient *Self, struct GradientSt
 
 static ERROR VECTORGRADIENT_SET_Stops(objVectorGradient *Self, struct GradientStop *Value, LONG Elements)
 {
-   if (Self->Stops) { FreeMemory(Self->Stops); Self->Stops = NULL; }
+   if (Self->Stops) { FreeResource(Self->Stops); Self->Stops = NULL; }
 
    if (Elements >= 2) {
       if (!AllocMemory(sizeof(struct GradientStop) * Elements, MEM_DATA|MEM_NO_CLEAR, &Self->Stops, NULL)) {
@@ -451,7 +451,7 @@ static ERROR VECTORGRADIENT_SET_Transform(objVectorGradient *Self, CSTRING Value
    struct VectorTransform *scan, *next;
    for (scan=Self->Transforms; scan; scan=next) {
       next = scan->Next;
-      FreeMemory(scan);
+      FreeResource(scan);
    }
    Self->Transforms = NULL;
 

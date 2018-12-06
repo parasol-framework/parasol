@@ -582,7 +582,7 @@ restart:
 
             if (!prev) prv->Requests = list->Next;
             else prev->Next = list->Next;
-            FreeMemory(list);
+            FreeResource(list);
             goto restart;
          }
 
@@ -726,7 +726,7 @@ static ERROR FLUID_Init(objScript *Self, APTR Void)
             }
             else {
                MSG("Failed to read " PF64() " bytes from '%s'", src_size, Self->Path);
-               FreeMemory(Self->String);
+               FreeResource(Self->String);
                Self->String = NULL;
                error = ERR_ReadFile;
             }
@@ -766,7 +766,7 @@ static ERROR FLUID_Init(objScript *Self, APTR Void)
 
    if (!(prv->Lua = luaL_newstate())) {
       LogErrorMsg("Failed to open a Lua instance.");
-      FreeMemory(Self->Head.ChildPrivate);
+      FreeResource(Self->Head.ChildPrivate);
       Self->Head.ChildPrivate = NULL;
       return ERR_Failed;
    }
@@ -834,7 +834,7 @@ A string array of all procedures loaded into a script is returned by this functi
 activated before reading this field, or an empty list will be returned.
 
 The procedure list is built at the time of the call.  The array is allocated as a memory block and will need to be
-removed by the caller with FreeMemory().
+removed by the caller with FreeResource().
 -END-
 
 *****************************************************************************/
@@ -861,7 +861,7 @@ static ERROR GET_Procedures(objScript *Self, STRING **Value, LONG *Elements)
          *Value = StrBuildArray(list, size, total, SBF_SORT);
          *Elements = total;
 
-         FreeMemory(list);
+         FreeResource(list);
          return ERR_Okay;
       }
       else return ERR_AllocMemory;
@@ -961,7 +961,7 @@ static ERROR run_script(objScript *Self)
                   if (values) {
                      make_any_table(prv->Lua, type, arg_name, total_elements, values);
 
-                     if (type & FD_ALLOC) FreeMemory(values);
+                     if (type & FD_ALLOC) FreeResource(values);
                   }
                   else lua_pushnil(prv->Lua);
                }
@@ -973,7 +973,7 @@ static ERROR run_script(objScript *Self)
                   // Pointer to a struct, which can be referenced with a name of "StructName" or "StructName:ArgName"
                   if (args->Address) {
                      if (named_struct_to_table(prv->Lua, args->Name, args->Address) != ERR_Okay) lua_pushnil(prv->Lua);
-                     if (type & FD_ALLOC) FreeMemory(args->Address);
+                     if (type & FD_ALLOC) FreeResource(args->Address);
                   }
                   else lua_pushnil(prv->Lua);
                }
@@ -1045,7 +1045,7 @@ static ERROR run_script(objScript *Self)
             if (!GET_Procedures(Self, &list, &total_procedures)) {
                LONG i;
                for (i=0; i < total_procedures; i++) LogMsg("%s", list[i]);
-               FreeMemory(list);
+               FreeResource(list);
             }
          #endif
 

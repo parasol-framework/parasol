@@ -185,7 +185,7 @@ static struct fstruct * push_struct(objScript *Self, APTR Address, CSTRING Struc
       return push_struct_def(prv->Lua, Address, def, Deallocate);
    }
    else {
-      if (Deallocate) FreeMemory(Address);
+      if (Deallocate) FreeResource(Address);
       luaL_error(prv->Lua, "Unrecognised struct '%s'", StructName);
       return NULL;
    }
@@ -772,7 +772,7 @@ static int struct_destruct(lua_State *Lua)
    struct fstruct *fstruct;
    if ((fstruct = (struct fstruct *)luaL_checkudata(Lua, 1, "Fluid.struct"))) {
       if (fstruct->Deallocate) {
-        if (FreeMemory(fstruct->Data)) LogF("@struct_destruct","Data address %p is invalid.", fstruct->Data);
+        if (FreeResource(fstruct->Data)) LogF("@struct_destruct","Data address %p is invalid.", fstruct->Data);
         fstruct->Data = NULL;
       }
    }

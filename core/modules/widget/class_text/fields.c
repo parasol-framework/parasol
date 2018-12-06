@@ -257,7 +257,7 @@ static ERROR GET_Location(objText *Self, STRING *Value)
 
 static ERROR SET_Location(objText *Self, CSTRING Value)
 {
-   if (Self->Location) { FreeMemory(Self->Location); Self->Location = NULL; }
+   if (Self->Location) { FreeResource(Self->Location); Self->Location = NULL; }
    if ((Value) AND (*Value)) {
       if (!(Self->Location = StrClone(Value))) return PostError(ERR_AllocMemory);
       if (Self->Head.Flags & NF_INITIALISED) {
@@ -281,7 +281,7 @@ causing a load operation.
 
 static ERROR SET_Origin(objText *Self, CSTRING Value)
 {
-   if (Self->Location) { FreeMemory(Self->Location); Self->Location = NULL; }
+   if (Self->Location) { FreeResource(Self->Location); Self->Location = NULL; }
 
    if ((Value) AND (*Value)) {
       if (!(Self->Location = StrClone(Value))) return PostError(ERR_AllocMemory);
@@ -357,7 +357,7 @@ static ERROR GET_String(objText *Self, STRING *Value)
       return ERR_Okay;
    }
    else if (Self->AmtLines > 1) {
-      if (Self->StringBuffer) { FreeMemory(Self->StringBuffer); Self->StringBuffer = NULL; }
+      if (Self->StringBuffer) { FreeResource(Self->StringBuffer); Self->StringBuffer = NULL; }
 
       LONG size = 1, i;
       for (i=0; i < Self->AmtLines; i++) {

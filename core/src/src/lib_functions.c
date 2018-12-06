@@ -680,7 +680,7 @@ particular name that you have searched for.
 
 The List is terminated with a NULL entry.
 
-The List is returned as an allocated memory block - please use ~FreeMemory() to deallocate it.
+The List is returned as an allocated memory block - please use ~FreeResource() to deallocate it.
 
 -INPUT-
 cstr Name: The name of the object that you are looking for.
@@ -2048,7 +2048,7 @@ prev_context = SetContext(display);
 SetContext(prev_context);
 acFree(display);
 acFree(bitmap);
-FreeMemory(memory);
+FreeResource(memory);
 </pre>
 
 Freeing the bitmap and memory block after the display would be invalid.  They can however be removed before the display
@@ -2413,14 +2413,14 @@ ERROR SetSubscriptionPriority(OBJECTPTR Object, ACTIONID ActionID, OBJECTID Subs
                }
 
                ReleaseMemory(list);
-               FreeMemoryID(Object->Stats->ActionSubscriptions.ID);
+               FreeResourceID(Object->Stats->ActionSubscriptions.ID);
 
                Object->Stats->ActionSubscriptions.ID = newlistid;
                Object->Stats->SubscriptionSize += 10;
                list = newlist;
             }
             else {
-               FreeMemoryID(newlistid);
+               FreeResourceID(newlistid);
                ReleaseMemory(list);
                return LogError(ERH_SubscribeAction, ERR_AccessMemory);
             }
@@ -2533,7 +2533,7 @@ ERROR SubscribeFeed(OBJECTPTR Object)
             // Free the old list
 
             ReleaseMemoryID(Object->Stats->MID_FeedList);
-            FreeMemoryID(Object->Stats->MID_FeedList);
+            FreeResourceID(Object->Stats->MID_FeedList);
 
             // Insert the new list
 
@@ -2547,7 +2547,7 @@ ERROR SubscribeFeed(OBJECTPTR Object)
             prv_release(Object);
             return LogError(ERH_SubscribeFeed, ERR_AccessMemory);
          }
-         FreeMemoryID(newlistid);
+         FreeResourceID(newlistid);
       }
       else {
          prv_release(Object);
@@ -2732,7 +2732,7 @@ ERROR UnsubscribeFeed(OBJECTPTR Object)
 
             if (i <= 0) {
                // Destroy the subscription list
-               FreeMemoryID(Object->Stats->MID_FeedList);
+               FreeResourceID(Object->Stats->MID_FeedList);
                Object->Stats->MID_FeedList  = 0;
             }
 

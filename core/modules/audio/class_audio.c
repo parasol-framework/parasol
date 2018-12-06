@@ -750,12 +750,12 @@ static ERROR AUDIO_CloseChannels(objAudio *Self, struct sndCloseChannels *Args)
    if (Self->Channels[index].OpenCount <= 0) {
       if (Self->Channels[index].ChannelMID) {
          if (Self->Channels[index].Channel) ReleaseMemory(Self->Channels[index].Channel);
-         FreeMemoryID(Self->Channels[index].ChannelMID);
+         FreeResourceID(Self->Channels[index].ChannelMID);
       }
 
       if (Self->Channels[index].CommandMID) {
          if (Self->Channels[index].Commands) ReleaseMemory(Self->Channels[index].Commands);
-         FreeMemoryID(Self->Channels[index].CommandMID);
+         FreeResourceID(Self->Channels[index].CommandMID);
       }
 
       Self->TotalChannels -= Self->Channels[index].Total;
@@ -826,12 +826,12 @@ static void task_removed(APTR Reference, evTaskRemoved *Info, LONG InfoSize)
 
             if (Self->Channels[index].ChannelMID) {
                if (Self->Channels[index].Channel) ReleaseMemory(Self->Channels[index].Channel);
-               FreeMemoryID(Self->Channels[index].ChannelMID);
+               FreeResourceID(Self->Channels[index].ChannelMID);
             }
 
             if (Self->Channels[index].CommandMID) {
                if (Self->Channels[index].Commands) ReleaseMemory(Self->Channels[index].Commands);
-               FreeMemoryID(Self->Channels[index].CommandMID);
+               FreeResourceID(Self->Channels[index].CommandMID);
             }
 
             ClearMemory(&Self->Channels[index], sizeof(struct ChannelSet));
@@ -889,32 +889,32 @@ static ERROR AUDIO_Free(objAudio *Self, APTR Void)
    for (i=0; i < ARRAYSIZE(Self->Channels); i++) {
       if (Self->Channels[i].ChannelMID) {
          if (Self->Channels[i].Channel) { ReleaseMemory(Self->Channels[i].Channel); Self->Channels[i].Channel = NULL; }
-         FreeMemoryID(Self->Channels[i].ChannelMID);
+         FreeResourceID(Self->Channels[i].ChannelMID);
          Self->Channels[i].ChannelMID = 0;
       }
 
       if (Self->Channels[i].CommandMID) {
          if (Self->Channels[i].Commands) { ReleaseMemory(Self->Channels[i].Commands); Self->Channels[i].Commands = NULL; }
-         FreeMemoryID(Self->Channels[i].CommandMID);
+         FreeResourceID(Self->Channels[i].CommandMID);
          Self->Channels[i].CommandMID = 0;
       }
    }
 
    if (Self->VolumeCtlMID) {
       if (Self->VolumeCtl) { ReleaseMemory(Self->VolumeCtl); Self->VolumeCtl = NULL; }
-      FreeMemoryID(Self->VolumeCtlMID);
+      FreeResourceID(Self->VolumeCtlMID);
       Self->VolumeCtlMID = 0;
    }
 
    if (Self->BFMemoryMID) {
       if (Self->BFMemory) { ReleaseMemory(Self->BFMemory); Self->BFMemory = NULL; }
-      FreeMemoryID(Self->BFMemoryMID);
+      FreeResourceID(Self->BFMemoryMID);
       Self->BFMemoryMID = 0;
    }
 
    if (Self->BufferMemoryMID) {
       if (Self->BufferMemory) { ReleaseMemory(Self->BufferMemory); Self->BufferMemory = NULL; }
-      FreeMemoryID(Self->BufferMemoryMID);
+      FreeResourceID(Self->BufferMemoryMID);
       Self->BufferMemoryMID = 0;
    }
 
@@ -922,7 +922,7 @@ static ERROR AUDIO_Free(objAudio *Self, APTR Void)
       if (Self->Samples) {
          for (i=0; i < Self->TotalSamples; i++) {
             if (Self->Samples[i].Used IS TRUE) {
-               if (Self->Samples[i].Data) FreeMemory(Self->Samples[i].Data);
+               if (Self->Samples[i].Data) FreeResource(Self->Samples[i].Data);
                if (Self->Samples[i].Free IS TRUE) acFreeID(Self->Samples[i].StreamID);
             }
          }
@@ -930,7 +930,7 @@ static ERROR AUDIO_Free(objAudio *Self, APTR Void)
          ReleaseMemory(Self->Samples);
          Self->Samples = NULL;
       }
-      FreeMemoryID(Self->SamplesMID);
+      FreeResourceID(Self->SamplesMID);
       Self->SamplesMID = NULL;
    }
 
@@ -1232,7 +1232,7 @@ static ERROR AUDIO_RemoveSample(objAudio *Self, struct sndRemoveSample *Args)
 
          sample->Used = FALSE;
          if (sample->Data) {
-            FreeMemory(sample->Data);
+            FreeResource(sample->Data);
             sample->Data = NULL;
          }
 
@@ -2266,7 +2266,7 @@ static void load_config(objAudio *Self)
          if (i < amtentries) {
             if (Self->VolumeCtlMID) {
                if (Self->VolumeCtl) { ReleaseMemory(Self->VolumeCtl); Self->VolumeCtl = NULL; }
-               FreeMemoryID(Self->VolumeCtlMID);
+               FreeResourceID(Self->VolumeCtlMID);
                Self->VolumeCtlMID = 0;
             }
 
@@ -2326,7 +2326,7 @@ static void free_alsa(objAudio *Self)
 {
    if (Self->Handle) { snd_pcm_close(Self->Handle); Self->Handle = NULL; }
    if (Self->MixHandle) { snd_mixer_close(Self->MixHandle); Self->MixHandle = NULL; }
-   if (Self->AudioBuffer) { FreeMemory(Self->AudioBuffer); Self->AudioBuffer = NULL; }
+   if (Self->AudioBuffer) { FreeResource(Self->AudioBuffer); Self->AudioBuffer = NULL; }
 }
 #endif
 
@@ -2589,7 +2589,7 @@ next_card:
    if ((err = snd_pcm_open(&pcmhandle, pcm_name, stream, 0)) < 0) {
       LogErrorMsg("snd_pcm_open(%s) %s", pcm_name, snd_strerror(err));
       ReleaseMemory(volctl);
-      FreeMemoryID(volmid);
+      FreeResourceID(volmid);
       return ERR_Failed;
    }
 
@@ -2598,14 +2598,14 @@ next_card:
    if ((err = snd_pcm_hw_params_any(pcmhandle, hwparams)) < 0) {
       LogErrorMsg("Broken configuration for this PCM: no configurations available");
       ReleaseMemory(volctl);
-      FreeMemoryID(volmid);
+      FreeResourceID(volmid);
       return ERR_Failed;
    }
 
    if ((err = snd_pcm_hw_params_set_access(pcmhandle, hwparams, SND_PCM_ACCESS_RW_INTERLEAVED)) < 0) {
       LogErrorMsg("set_access() %d %s", err, snd_strerror(err));
       ReleaseMemory(volctl);
-      FreeMemoryID(volmid);
+      FreeResourceID(volmid);
       return ERR_Failed;
    }
 
@@ -2615,14 +2615,14 @@ next_card:
       if ((err = snd_pcm_hw_params_set_format(pcmhandle, hwparams, SND_PCM_FORMAT_S16_LE)) < 0) {
          LogErrorMsg("set_format(16) %s", snd_strerror(err));
          ReleaseMemory(volctl);
-         FreeMemoryID(volmid);
+         FreeResourceID(volmid);
          return ERR_Failed;
       }
    }
    else if ((err = snd_pcm_hw_params_set_format(pcmhandle, hwparams, SND_PCM_FORMAT_U8)) < 0) {
       LogErrorMsg("set_format(8) %s", snd_strerror(err));
       ReleaseMemory(volctl);
-      FreeMemoryID(volmid);
+      FreeResourceID(volmid);
       return ERR_Failed;
    }
 
@@ -2647,7 +2647,7 @@ next_card:
       default:
          LogErrorMsg("Hardware uses an unsupported audio format.");
          ReleaseMemory(volctl);
-         FreeMemoryID(volmid);
+         FreeResourceID(volmid);
          return ERR_Failed;
    }
 
@@ -2660,7 +2660,7 @@ next_card:
    if ((err = snd_pcm_hw_params_set_rate_near(pcmhandle, hwparams, &Self->OutputRate, &dir)) < 0) {
       LogErrorMsg("set_rate_near() %s", snd_strerror(err));
       ReleaseMemory(volctl);
-      FreeMemoryID(volmid);
+      FreeResourceID(volmid);
       return ERR_Failed;
    }
 
@@ -2671,7 +2671,7 @@ next_card:
    if ((err = snd_pcm_hw_params_set_channels_near(pcmhandle, hwparams, &channels)) < 0) {
       LogErrorMsg("set_channels_near(%d) %s", channels, snd_strerror(err));
       ReleaseMemory(volctl);
-      FreeMemoryID(volmid);
+      FreeResourceID(volmid);
       return ERR_Failed;
    }
 
@@ -2692,14 +2692,14 @@ next_card:
    if ((err = snd_pcm_hw_params_set_period_time_near(handle, hwparams, &period_time, 0)) < 0) {
       LogErrorMsg("Period failure: %s", snd_strerror(err));
       ReleaseMemory(volctl);
-      FreeMemoryID(volmid);
+      FreeResourceID(volmid);
       return ERR_Failed;
    }
 
    if ((err = snd_pcm_hw_params_set_buffer_time_near(handle, hwparams, &buffer_time, 0)) < 0) {
       LogErrorMsg("Buffer size failure: %s", snd_strerror(err));
       ReleaseMemory(volctl);
-      FreeMemoryID(volmid);
+      FreeResourceID(volmid);
       return ERR_Failed;
    }
 
@@ -2737,14 +2737,14 @@ next_card:
    if ((err = snd_pcm_hw_params_set_period_size_near(pcmhandle, hwparams, &periodsize, 0)) < 0) {
       LogErrorMsg("Period size failure: %s", snd_strerror(err));
       ReleaseMemory(volctl);
-      FreeMemoryID(volmid);
+      FreeResourceID(volmid);
       return ERR_Failed;
    }
 
    if ((err = snd_pcm_hw_params_set_buffer_size_near(pcmhandle, hwparams, &buffersize)) < 0) {
       LogErrorMsg("Buffer size failure: %s", snd_strerror(err));
       ReleaseMemory(volctl);
-      FreeMemoryID(volmid);
+      FreeResourceID(volmid);
       return ERR_Failed;
    }
 #endif
@@ -2754,14 +2754,14 @@ next_card:
    if ((err = snd_pcm_hw_params(pcmhandle, hwparams)) < 0) {
       LogErrorMsg("snd_pcm_hw_params() %s", snd_strerror(err));
       ReleaseMemory(volctl);
-      FreeMemoryID(volmid);
+      FreeResourceID(volmid);
       return ERR_Failed;
    }
 
    if ((err = snd_pcm_prepare(pcmhandle)) < 0) {
       LogErrorMsg("snd_pcm_prepare() %s", snd_strerror(err));
       ReleaseMemory(volctl);
-      FreeMemoryID(volmid);
+      FreeResourceID(volmid);
       return ERR_Failed;
    }
 
@@ -2784,7 +2784,7 @@ next_card:
 
    // Allocate a buffer that we will use for audio output
 
-   if (Self->AudioBuffer) { FreeMemory(Self->AudioBuffer); Self->AudioBuffer = NULL; }
+   if (Self->AudioBuffer) { FreeResource(Self->AudioBuffer); Self->AudioBuffer = NULL; }
 
    if (!AllocMemory(Self->AudioBufferSize, MEM_DATA, &Self->AudioBuffer, NULL)) {
       struct VolumeCtl *oldctl;
@@ -2837,14 +2837,14 @@ next_card:
 
       if (oldmid) {
          if (oldctl) ReleaseMemory(oldctl);
-         FreeMemoryID(oldmid);
+         FreeResourceID(oldmid);
       }
 
       Self->Handle = pcmhandle;
    }
    else {
       ReleaseMemory(volctl);
-      FreeMemoryID(volmid);
+      FreeResourceID(volmid);
       return PostError(ERR_AllocMemory);
    }
 

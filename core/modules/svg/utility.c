@@ -462,7 +462,7 @@ static ERROR load_svg(objSVG *Self, CSTRING Path, CSTRING Buffer)
 
       if (working_path) {
          SetString(task, FID_Path, working_path);
-         FreeMemory(working_path);
+         FreeResource(working_path);
       }
 
       acFree(xml);

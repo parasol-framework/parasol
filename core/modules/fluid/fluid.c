@@ -197,7 +197,7 @@ static void free_references(lua_State *Lua, struct references *Ref)
    for (i=0; i < Ref->Index; i++) {
       luaL_unref(Lua, LUA_REGISTRYINDEX, Ref->List[i].Ref);
    }
-   FreeMemory(Ref);
+   FreeResource(Ref);
 }
 
 //****************************************************************************

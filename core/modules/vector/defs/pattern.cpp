@@ -49,7 +49,7 @@ static ERROR PATTERN_Free(objVectorPattern *Self, APTR Void)
    struct VectorTransform *scan, *next;
    for (scan=Self->Transforms; scan; scan=next) {
       next = scan->Next;
-      FreeMemory(scan);
+      FreeResource(scan);
    }
    Self->Transforms = NULL;
 
@@ -183,7 +183,7 @@ static ERROR PATTERN_SET_Transform(objVectorPattern *Self, CSTRING Value)
    struct VectorTransform *scan, *next;
    for (scan=Self->Transforms; scan; scan=next) {
       next = scan->Next;
-      FreeMemory(scan);
+      FreeResource(scan);
    }
    Self->Transforms = NULL;
 

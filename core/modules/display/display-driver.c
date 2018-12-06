@@ -1184,7 +1184,7 @@ static ERROR CMDExpunge(void)
 {
    if (glCompress)    { acFree(glCompress); glCompress = NULL; }
    if (glAlphaLookup) { ReleaseMemory(glAlphaLookup); glAlphaLookup = NULL; }
-   if (glDither)      { FreeMemory(glDither); glDither = NULL; }
+   if (glDither)      { FreeResource(glDither); glDither = NULL; }
 
 #ifdef __xwindows__
 
@@ -5564,7 +5564,7 @@ static ERROR dither(objBitmap *Bitmap, objBitmap *Dest, struct ColourFormat *For
    // Allocate buffer for dithering
 
    if (Width * sizeof(struct RGB16) * 2 > glDitherSize) {
-      if (glDither) { FreeMemory(glDither); glDither = NULL; }
+      if (glDither) { FreeResource(glDither); glDither = NULL; }
 
       if (AllocMemory(Width * sizeof(struct RGB16) * 2, MEM_NO_CLEAR|MEM_UNTRACKED, &glDither, NULL) != ERR_Okay) {
          return ERR_AllocMemory;
@@ -5787,7 +5787,7 @@ static ERROR gfxSubscribeInput(OBJECTID SurfaceID, LONG Mask, OBJECTID DeviceID)
 
          ReleaseMemory(list);
 
-         FreeMemoryID(glSharedControl->InputMID);
+         FreeResourceID(glSharedControl->InputMID);
          glSharedControl->InputMID = newlistid;
          glSharedControl->InputSize += CHUNK_INPUT;
          list = newlist;
@@ -5879,7 +5879,7 @@ static ERROR gfxUnsubscribeInput(OBJECTID SurfaceID)
       if (!glSharedControl->InputTotal) {
          FMSG("UnsubscribeInput","Freeing subscriber memory (last subscription removed)");
          ReleaseMemory(list);
-         FreeMemoryID(glSharedControl->InputMID);
+         FreeResourceID(glSharedControl->InputMID);
          glSharedControl->InputMID   = 0;
          glSharedControl->InputSize  = 0;
          glSharedControl->InputTotal = 0;

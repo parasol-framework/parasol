@@ -107,7 +107,7 @@ static ERROR add_line(objText *Self, CSTRING String, LONG Line, LONG Length, LON
          Self->MaxLines += 100;
          if (Self->Array) {
             CopyMemory(Self->Array, newlines, sizeof(Self->Array[0]) * Self->AmtLines);
-            FreeMemory(Self->Array);
+            FreeResource(Self->Array);
          }
          Self->Array = newlines;
       }
@@ -212,7 +212,7 @@ static ERROR add_xml(objText *Self, struct XMLTag *XMLList, WORD Flags, LONG Lin
                Self->MaxLines += 100;
                if (Self->Array) {
                   CopyMemory(Self->Array, newlines, sizeof(Self->Array[0]) * Self->AmtLines);
-                  FreeMemory(Self->Array);
+                  FreeResource(Self->Array);
                }
                Self->Array = newlines;
             }
@@ -682,7 +682,7 @@ static void DeleteSelectedArea(objText *Self)
          if (Self->Array[endrow].String) for (j=endcolumn; j < Self->Array[endrow].Length; j++) str[i++] = Self->Array[endrow].String[j];
          str[i] = 0;
 
-         if (Self->Array[row].String) FreeMemory(Self->Array[row].String);
+         if (Self->Array[row].String) FreeResource(Self->Array[row].String);
          Self->Array[row].String = str;
          Self->Array[row].Length = i;
          Self->Array[row].PixelLength = calc_width(Self, str, i);
@@ -693,7 +693,7 @@ static void DeleteSelectedArea(objText *Self)
          row++;
          endrow++;
          for (i=row; i < endrow; i++) {
-            if (Self->Array[i].String) FreeMemory(Self->Array[i].String);
+            if (Self->Array[i].String) FreeResource(Self->Array[i].String);
          }
 
          for (i=row; endrow < Self->AmtLines; i++) {
@@ -929,7 +929,7 @@ static void key_event(objText *Self, evKey *Event, LONG Size)
 
                Self->CursorRow--;
                Self->CursorColumn = UTF8Length(Self->Array[Self->CursorRow].String);
-               if (Self->Array[Self->CursorRow].String) FreeMemory(Self->Array[Self->CursorRow].String);
+               if (Self->Array[Self->CursorRow].String) FreeResource(Self->Array[Self->CursorRow].String);
                Self->Array[Self->CursorRow].String = str;
                Self->Array[Self->CursorRow].Length = len;
                Self->Array[Self->CursorRow].PixelLength = calc_width(Self, str, len);
@@ -976,7 +976,7 @@ static void key_event(objText *Self, evKey *Event, LONG Size)
                for (j=0; j < Self->Array[Self->CursorRow+1].Length; j++) str[i++] = Self->Array[Self->CursorRow+1].String[j];
                str[i] = 0;
 
-               if (Self->Array[Self->CursorRow].String) FreeMemory(Self->Array[Self->CursorRow].String);
+               if (Self->Array[Self->CursorRow].String) FreeResource(Self->Array[Self->CursorRow].String);
                Self->Array[Self->CursorRow].String = str;
                Self->Array[Self->CursorRow].Length = len;
                Self->Array[Self->CursorRow].PixelLength = calc_width(Self, str, len);
@@ -1275,7 +1275,7 @@ static void insert_char(objText *Self, LONG Unicode, LONG Column)
    if ((!Self->Array[Self->CursorRow].String) OR (Self->Array[Self->CursorRow].Length < 1)) {
       if (Self->CharLimit < 1) return;
 
-      if (Self->Array[Self->CursorRow].String) FreeMemory(Self->Array[Self->CursorRow].String);
+      if (Self->Array[Self->CursorRow].String) FreeResource(Self->Array[Self->CursorRow].String);
 
       if (!AllocMemory(charlen+1, MEM_STRING|MEM_NO_CLEAR, &Self->Array[Self->CursorRow].String, NULL)) {
          for (i=0; i < charlen; i++) Self->Array[Self->CursorRow].String[i] = buffer[i];
@@ -1312,7 +1312,7 @@ static void insert_char(objText *Self, LONG Unicode, LONG Column)
          while (i < Self->Array[Self->CursorRow].Length) str[j++] = Self->Array[Self->CursorRow].String[i++]; // Copy remaining characters
          str[j] = 0;
 
-         FreeMemory(Self->Array[Self->CursorRow].String);
+         FreeResource(Self->Array[Self->CursorRow].String);
          Self->Array[Self->CursorRow].String = str;
          Self->Array[Self->CursorRow].Length += charlen;
          Self->CursorColumn++;
@@ -1382,7 +1382,7 @@ static ERROR load_file(objText *Self, CSTRING Location)
                acDataText(Self, line);
                Self->NoUpdate--;
             }
-            FreeMemory(line);
+            FreeResource(line);
          }
          else {
             acFree(file);
@@ -1444,7 +1444,7 @@ static ERROR replace_line(objText *Self, CSTRING String, LONG Line, LONG ByteLen
 
    if (len < 1) {
       // If the length is zero, clear the line
-      if (Self->Array[Line].String) FreeMemory(Self->Array[Line].String);
+      if (Self->Array[Line].String) FreeResource(Self->Array[Line].String);
       Self->Array[Line].String      = NULL;
       Self->Array[Line].Length      = 0;
       Self->Array[Line].PixelLength = 0;
@@ -1460,7 +1460,7 @@ static ERROR replace_line(objText *Self, CSTRING String, LONG Line, LONG ByteLen
       Self->Array[Line].PixelLength = calc_width(Self, String, i);
    }
    else if (AllocMemory(len+1, MEM_STRING|MEM_NO_CLEAR, &str, NULL) IS ERR_Okay) {
-      if (Self->Array[Line].String) FreeMemory(Self->Array[Line].String);
+      if (Self->Array[Line].String) FreeResource(Self->Array[Line].String);
       for (i=0; (i < len) AND (String[i]); i++) str[i] = String[i];
       str[i] = 0;
       Self->Array[Line].String = str;

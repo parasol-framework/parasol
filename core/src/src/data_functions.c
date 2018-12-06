@@ -45,8 +45,8 @@ FDEF argsFindClass[] = { { "Object", FD_OBJECTPTR }, { "ClassID", FD_LONG }, { 0
 FDEF argsFindField[] = { { "Field", FD_PTR|FD_STRUCT }, { "Object", FD_OBJECTPTR }, { "FieldID", FD_LONG }, { "Source", FD_OBJECTPTR|FD_RESULT }, { 0, 0 } };
 FDEF argsFindObject[] = { { "Error", FD_LONG|FD_ERROR }, { "Name", FD_STR }, { "ClassID", FD_LONG }, { "List", FD_PTR|FD_ALLOC|FD_RESULT }, { "Count", FD_LONG|FD_RESULT }, { 0, 0 } };
 FDEF argsFindPrivateObject[] = { { "Error", FD_LONG|FD_ERROR }, { "Name", FD_STR }, { "Object", FD_OBJECTPTR|FD_RESULT }, { 0, 0 } };
-FDEF argsFreeMemory[] = { { "Error", FD_LONG|FD_ERROR }, { "Address", FD_PTR }, { 0, 0 } };
-FDEF argsFreeMemoryID[] = { { "Error", FD_LONG|FD_ERROR }, { "ID", FD_LONG }, { 0, 0 } };
+FDEF argsFreeResource[] = { { "Error", FD_LONG|FD_ERROR }, { "Address", FD_PTR }, { 0, 0 } };
+FDEF argsFreeResourceID[] = { { "Error", FD_LONG|FD_ERROR }, { "ID", FD_LONG }, { 0, 0 } };
 FDEF argsFreeMutex[] = { { "Void", FD_VOID }, { "Mutex", FD_PTR }, { 0, 0 } };
 FDEF argsFreeSharedMutex[] = { { "Void", FD_VOID }, { "Mutex", FD_PTR }, { 0, 0 } };
 FDEF argsFuncError[] = { { "Error", FD_LONG|FD_ERROR }, { "Header", FD_STR }, { "Error", FD_LONG|FD_ERROR }, { 0, 0 } };
@@ -223,8 +223,8 @@ const struct Function glFunctions[] = {
    { (APTR)FindClass, "FindClass", argsFindClass },
    { (APTR)FindObject, "FindObject", argsFindObject },
    { (APTR)ReleaseObject, "ReleaseObject", argsReleaseObject },
-   { (APTR)FreeMemory, "FreeMemory", argsFreeMemory },
-   { (APTR)FreeMemoryID, "FreeMemoryID", argsFreeMemoryID },
+   { (APTR)FreeResource, "FreeResource", argsFreeResource },
+   { (APTR)FreeResourceID, "FreeResourceID", argsFreeResourceID },
    { (APTR)GetClassID, "GetClassID", argsGetClassID },
    { (APTR)GetOwnerID, "GetOwnerID", argsGetOwnerID },
    { (APTR)GetField, "GetField", argsGetField },

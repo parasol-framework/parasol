@@ -374,7 +374,7 @@ static ERROR WINDOW_Close(objWindow *Self, APTR Void)
                   break;
                }
             }
-            FreeMemory(list);
+            FreeResource(list);
          }
       }
    }
@@ -461,7 +461,7 @@ static ERROR WINDOW_Free(objWindow *Self, APTR Void)
                   break;
                }
             }
-            FreeMemory(list);
+            FreeResource(list);
          }
       }
    }

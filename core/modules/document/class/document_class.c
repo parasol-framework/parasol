@@ -369,7 +369,7 @@ static ERROR DOCUMENT_Clipboard(objDocument *Self, struct acClipboard *Args)
                acFree(clipboard);
             }
 
-            FreeMemory(buffer);
+            FreeResource(buffer);
          }
          else {
             LogBack();
@@ -405,7 +405,7 @@ static ERROR DOCUMENT_Clipboard(objDocument *Self, struct acClipboard *Args)
                         acDataText(Self, buffer);
                      }
                      else error_dialog("Clipboard Paste Error", NULL, ERR_Read);
-                     FreeMemory(buffer);
+                     FreeResource(buffer);
                   }
                   else error_dialog("Clipboard Paste Error", NULL, ERR_AllocMemory);
                }
@@ -751,17 +751,17 @@ static ERROR DOCUMENT_Free(objDocument *Self, APTR Void)
       Self->PointerLocked = FALSE;
    }
 
-   if (Self->PageName) { FreeMemory(Self->PageName); Self->PageName = NULL; }
-   if (Self->Bookmark) { FreeMemory(Self->Bookmark); Self->Bookmark = NULL; }
+   if (Self->PageName) { FreeResource(Self->PageName); Self->PageName = NULL; }
+   if (Self->Bookmark) { FreeResource(Self->Bookmark); Self->Bookmark = NULL; }
 
    unload_doc(Self, ULD_TERMINATE);
 
-   if (Self->Path)        { FreeMemory(Self->Path); Self->Path = NULL; }
+   if (Self->Path)        { FreeResource(Self->Path); Self->Path = NULL; }
    if (Self->XML)         { acFree(Self->XML); Self->XML = NULL; }
-   if (Self->FontFace)    { FreeMemory(Self->FontFace); Self->FontFace = NULL; }
-   if (Self->Buffer)      { FreeMemory(Self->Buffer); Self->Buffer = NULL; }
-   if (Self->Temp)        { FreeMemory(Self->Temp); Self->Temp = NULL; }
-   if (Self->WorkingPath) { FreeMemory(Self->WorkingPath); Self->WorkingPath = NULL; }
+   if (Self->FontFace)    { FreeResource(Self->FontFace); Self->FontFace = NULL; }
+   if (Self->Buffer)      { FreeResource(Self->Buffer); Self->Buffer = NULL; }
+   if (Self->Temp)        { FreeResource(Self->Temp); Self->Temp = NULL; }
+   if (Self->WorkingPath) { FreeResource(Self->WorkingPath); Self->WorkingPath = NULL; }
    if (Self->Templates)   { acFree(Self->Templates); Self->Templates = NULL; }
 
    gfxUnsubscribeInput(0);
@@ -1371,7 +1371,7 @@ static ERROR DOCUMENT_ReadContent(objDocument *Self, struct docReadContent *Args
          output[j] = 0;
 
          if (!j) {
-            FreeMemory(output);
+            FreeResource(output);
             return ERR_NoData;
          }
 
@@ -1534,7 +1534,7 @@ static ERROR DOCUMENT_RemoveListener(objDocument *Self, struct docRemoveListener
          if ((trigger->Function.Type IS CALL_STDC) AND (trigger->Function.StdC.Routine IS Args->Function->StdC.Routine)) {
             if (prev) prev->Next = trigger->Next;
             else Self->Triggers[Args->Trigger] = trigger->Next;
-            FreeMemory(trigger);
+            FreeResource(trigger);
             return ERR_Okay;
          }
          prev = trigger;
@@ -1547,7 +1547,7 @@ static ERROR DOCUMENT_RemoveListener(objDocument *Self, struct docRemoveListener
              (trigger->Function.Script.ProcedureID IS Args->Function->Script.ProcedureID)) {
             if (prev) prev->Next = trigger->Next;
             else Self->Triggers[Args->Trigger] = trigger->Next;
-            FreeMemory(trigger);
+            FreeResource(trigger);
             return ERR_Okay;
          }
          prev = trigger;

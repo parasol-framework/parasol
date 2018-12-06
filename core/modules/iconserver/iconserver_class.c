@@ -394,7 +394,7 @@ and saved to disk, even if a cached version of that icon already exists.
 
 static ERROR load_icon_db(objIconServer *Self)
 {
-   if (glDatabase) { FreeMemory(glDatabase); glDatabase = NULL; }
+   if (glDatabase) { FreeResource(glDatabase); glDatabase = NULL; }
 
    char buffer[256];
    StrFormat(buffer, sizeof(buffer), "temp:iconcache/%s/iconserver.data", Self->prvTheme);

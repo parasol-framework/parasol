@@ -317,9 +317,9 @@ static ERROR TEXT_Clear(objText *Self, APTR Void)
 
    if (Self->Array) {
       for (i=0; i < Self->AmtLines; i++) {
-         if (Self->Array[i].String) FreeMemory(Self->Array[i].String);
+         if (Self->Array[i].String) FreeResource(Self->Array[i].String);
       }
-      FreeMemory(Self->Array);
+      FreeResource(Self->Array);
    }
 
    Self->Array        = newarray;
@@ -415,7 +415,7 @@ static ERROR TEXT_Clipboard(objText *Self, struct acClipboard *Args)
                acFree(clipboard);
             }
 
-            FreeMemory(buffer);
+            FreeResource(buffer);
          }
         else {
             PostError(ERR_AllocMemory);
@@ -455,7 +455,7 @@ static ERROR TEXT_Clipboard(objText *Self, struct acClipboard *Args)
                         acDataText(Self, buffer);
                      }
                      else LogErrorMsg("Failed to read data from the clipboard file.");
-                     FreeMemory(buffer);
+                     FreeResource(buffer);
                   }
                   else LogErrorMsg("Out of memory.");
                }
@@ -579,12 +579,12 @@ static ERROR TEXT_DataFeed(objText *Self, struct acDataFeed *Args)
                      Self->CursorColumn = i;
                      for (j=0; j < len; j++) buffer[i++] = str[end+j];
                      txtReplaceLine(Self, Self->CursorRow, buffer, i);
-                     FreeMemory(buffer);
+                     FreeResource(buffer);
                   }
                }
             }
 
-            FreeMemory(str);
+            FreeResource(str);
          }
       }
       else {
@@ -981,7 +981,7 @@ static ERROR TEXT_DeleteLine(objText *Self, struct txtDeleteLine *Args)
 
    if ((!Args) OR (Args->Line < 0)) {
       // Delete the line at the very end of the list
-      if (Self->Array[Self->AmtLines-1].String) FreeMemory(Self->Array[Self->AmtLines-1].String);
+      if (Self->Array[Self->AmtLines-1].String) FreeResource(Self->Array[Self->AmtLines-1].String);
       ClearMemory(Self->Array + Self->AmtLines - 1, sizeof(Self->Array[0]));
 
       if (Self->Flags & TXF_AREA_SELECTED) {
@@ -996,7 +996,7 @@ static ERROR TEXT_DeleteLine(objText *Self, struct txtDeleteLine *Args)
    else {
       if (Args->Line >= Self->AmtLines) return PostError(ERR_Args);
 
-      if (Self->Array[Args->Line].String) FreeMemory(Self->Array[Args->Line].String);
+      if (Self->Array[Args->Line].String) FreeResource(Self->Array[Args->Line].String);
       ClearMemory(Self->Array + Args->Line, sizeof(Self->Array[0]));
 
       if (Args->Line < Self->AmtLines - 1) {
@@ -1090,18 +1090,18 @@ static ERROR TEXT_Free(objText *Self, APTR Void)
    if (Self->Array) {
       LONG i;
       for (i=0; i < Self->AmtLines; i++) {
-         if (Self->Array[i].String) FreeMemory(Self->Array[i].String);
+         if (Self->Array[i].String) FreeResource(Self->Array[i].String);
       }
-      FreeMemory(Self->Array);
+      FreeResource(Self->Array);
       Self->Array = NULL;
    }
    Self->AmtLines = 0;
    Self->MaxLines = 0;
 
    if (Self->FileStream)   { acFree(Self->FileStream); Self->FileStream = NULL; }
-   if (Self->StringBuffer) { FreeMemory(Self->StringBuffer); Self->StringBuffer = NULL; }
-   if (Self->Location) { FreeMemory(Self->Location); Self->Location = NULL; }
-   if (Self->History)  { FreeMemory(Self->History); Self->History = NULL; }
+   if (Self->StringBuffer) { FreeResource(Self->StringBuffer); Self->StringBuffer = NULL; }
+   if (Self->Location) { FreeResource(Self->Location); Self->Location = NULL; }
+   if (Self->History)  { FreeResource(Self->History); Self->History = NULL; }
    if (Self->XML)      { acFree(Self->XML);  Self->XML = NULL; }
    if (Self->Font)     { acFree(Self->Font); Self->Font = NULL; }
 

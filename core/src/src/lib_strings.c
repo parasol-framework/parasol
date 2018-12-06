@@ -42,7 +42,7 @@ void free_iconv(void)
 {
    if (modIconv) {
       if (glIconv) { iconv_close(glIconv); glIconv = NULL; }
-      if (glIconvBuffer) { FreeMemory(glIconvBuffer); glIconvBuffer = NULL; }
+      if (glIconvBuffer) { FreeResource(glIconvBuffer); glIconvBuffer = NULL; }
 
       acFree(modIconv);
       modIconv = NULL;
@@ -398,7 +398,7 @@ ERROR StrCalculate(CSTRING String, DOUBLE *Result, STRING Buffer, LONG BufferSiz
 
          CSTRING newstring;
          if (!StrReplace(String, buffer, calc, (STRING *)&newstring, TRUE)) {
-            if (alloc) FreeMemory(alloc);
+            if (alloc) FreeResource(alloc);
             alloc = String = newstring;
          }
          else break;
@@ -490,7 +490,7 @@ ERROR StrCalculate(CSTRING String, DOUBLE *Result, STRING Buffer, LONG BufferSiz
       Buffer[index] = 0;
    }
 
-   if (alloc) FreeMemory(alloc);
+   if (alloc) FreeResource(alloc);
    if (Result) *Result = overall + total;
    return ERR_Okay;
 }
@@ -546,7 +546,7 @@ StrClone: Clones string data.
 This function creates an exact duplicate of a string.  It analyses the length of the supplied String, allocates a
 private memory block for it and then copies the string characters into the new string buffer.
 
-You are expected to free the resulting memory block once it is no longer required with ~FreeMemory().
+You are expected to free the resulting memory block once it is no longer required with ~FreeResource().
 
 -INPUT-
 cstr String: The string that is to be cloned.
@@ -1240,7 +1240,7 @@ string.
 If the Keyword is not found, an error code of ERR_Search will be returned.  If you want to know whether the Keyword
 actually exists before performing a replacement, consider calling the ~StrSearch() function first.
 
-The new string will be stored in the Result parameter and must be removed with ~FreeMemory() once it is no longer required.
+The new string will be stored in the Result parameter and must be removed with ~FreeResource() once it is no longer required.
 
 -INPUT-
 cstr Src:        Points to the source string that contains occurrences of the Keyword that you are searching for.
@@ -1294,7 +1294,7 @@ ERROR StrReplace(CSTRING Source, STRING Keyword, STRING Replacement, STRING *Res
          }
          newstr[pos + replen + i] = 0;
 
-         if (alloc IS TRUE) FreeMemory(Source);
+         if (alloc IS TRUE) FreeResource(Source);
          Source = newstr;
          alloc = TRUE;
          pos += replen;
@@ -1966,7 +1966,7 @@ LONG StrTranslateRefresh(void)
                if (glTranslate) {
                   // Mark the old table as replaced
                   glTranslate->Replaced = TRUE;
-                  FreeMemory(glTranslate); // Mark the memory for deletion
+                  FreeResource(glTranslate); // Mark the memory for deletion
                   ReleaseMemory(glTranslate);
                }
 
@@ -1988,7 +1988,7 @@ LONG StrTranslateRefresh(void)
          if (glTranslate) {
             glTranslate->Replaced = TRUE;
             ReleaseMemoryID(glTranslateMID);
-            FreeMemoryID(glTranslateMID); // Mark the memory for deletion
+            FreeResourceID(glTranslateMID); // Mark the memory for deletion
             glTranslate = NULL;
             glTranslateMID = 0;
          }

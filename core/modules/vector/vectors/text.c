@@ -470,7 +470,7 @@ static void reset_font(objVectorText *Vector)
          else if (Vector->txWeight <= 300) weight = "Light";
          if (!fntSelectFont(family, weight, Vector->txFontSize, FTF_PREFER_SCALED, &location)) {
             SetString(font, FID_Path, location);
-            FreeMemory(location);
+            FreeResource(location);
          }
          else SetString(font, FID_Face, "*");
       }
@@ -497,11 +497,11 @@ static void reset_font(objVectorText *Vector)
 
 static ERROR TEXT_Free(objVectorText *Self, APTR Void)
 {
-   if (Self->txString) { FreeMemory(Self->txString); Self->txString = NULL; }
-   if (Self->txFamily) { FreeMemory(Self->txFamily); Self->txFamily = NULL; }
+   if (Self->txString) { FreeResource(Self->txString); Self->txString = NULL; }
+   if (Self->txFamily) { FreeResource(Self->txFamily); Self->txFamily = NULL; }
    if (Self->txFont)   { acFree(Self->txFont); Self->txFont = NULL; }
-   if (Self->txDX)     { FreeMemory(Self->txDX); Self->txDX = NULL; }
-   if (Self->txDY)     { FreeMemory(Self->txDY); Self->txDY = NULL; }
+   if (Self->txDX)     { FreeResource(Self->txDX); Self->txDX = NULL; }
+   if (Self->txDY)     { FreeResource(Self->txDY); Self->txDY = NULL; }
    return ERR_Okay;
 }
 
@@ -577,7 +577,7 @@ static ERROR TEXT_GET_DX(objVectorText *Self, DOUBLE **Values, LONG *Elements)
 
 static ERROR TEXT_SET_DX(objVectorText *Self, DOUBLE *Values, LONG Elements)
 {
-   if (Self->txDX) { FreeMemory(Self->txDX); Self->txDX = NULL; Self->txTotalDX = 0; }
+   if (Self->txDX) { FreeResource(Self->txDX); Self->txDX = NULL; Self->txTotalDX = 0; }
 
    if (!AllocMemory(sizeof(DOUBLE) * Elements, MEM_DATA, &Self->txDX, NULL)) {
       CopyMemory(Values, Self->txDX, Elements * sizeof(DOUBLE));
@@ -605,7 +605,7 @@ static ERROR TEXT_GET_DY(objVectorText *Self, DOUBLE **Values, LONG *Elements)
 
 static ERROR TEXT_SET_DY(objVectorText *Self, DOUBLE *Values, LONG Elements)
 {
-   if (Self->txDY) { FreeMemory(Self->txDY); Self->txDY = NULL; Self->txTotalDY = 0; }
+   if (Self->txDY) { FreeResource(Self->txDY); Self->txDY = NULL; Self->txTotalDY = 0; }
 
    if (!AllocMemory(sizeof(DOUBLE) * Elements, MEM_DATA, &Self->txDY, NULL)) {
       CopyMemory(Values, Self->txDY, Elements * sizeof(DOUBLE));
@@ -638,7 +638,7 @@ static ERROR TEXT_GET_Face(objVectorText *Self, CSTRING *Value)
 
 static ERROR TEXT_SET_Face(objVectorText *Self, CSTRING Value)
 {
-   if (Self->txFamily) { FreeMemory(Self->txFamily); Self->txFamily = NULL; }
+   if (Self->txFamily) { FreeResource(Self->txFamily); Self->txFamily = NULL; }
    if (Value) Self->txFamily = StrClone(Value);
    reset_font(Self);
    return ERR_Okay;
@@ -860,7 +860,7 @@ static ERROR TEXT_GET_Rotate(objVectorText *Self, DOUBLE **Values, LONG *Element
 
 static ERROR TEXT_SET_Rotate(objVectorText *Self, DOUBLE *Values, LONG Elements)
 {
-   if (Self->txRotate) { FreeMemory(Self->txRotate); Self->txRotate = NULL; Self->txTotalRotate = 0; }
+   if (Self->txRotate) { FreeResource(Self->txRotate); Self->txRotate = NULL; Self->txTotalRotate = 0; }
 
    if (!AllocMemory(sizeof(DOUBLE) * Elements, MEM_DATA, &Self->txRotate, NULL)) {
       CopyMemory(Values, Self->txRotate, Elements * sizeof(DOUBLE));
@@ -887,7 +887,7 @@ static ERROR TEXT_GET_String(objVectorText *Self, CSTRING *Value)
 
 static ERROR TEXT_SET_String(objVectorText *Self, CSTRING Value)
 {
-   if (Self->txString) { FreeMemory(Self->txString); Self->txString = NULL; }
+   if (Self->txString) { FreeResource(Self->txString); Self->txString = NULL; }
    if (Value) Self->txString = StrClone(Value);
    reset_path((objVector *)Self);
    return ERR_Okay;

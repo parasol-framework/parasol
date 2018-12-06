@@ -180,13 +180,13 @@ Clear: Clears all configuration data.
 static ERROR CONFIG_Clear(objConfig *Self, APTR Void)
 {
    if (Self->Entries)    { ReleaseMemoryID(Self->EntriesMID); Self->Entries = NULL; }
-   if (Self->EntriesMID) { FreeMemoryID(Self->EntriesMID); Self->EntriesMID = NULL; }
+   if (Self->EntriesMID) { FreeResourceID(Self->EntriesMID); Self->EntriesMID = NULL; }
    if (Self->Strings)    { ReleaseMemoryID(Self->StringsMID); Self->Strings = NULL; }
-   if (Self->StringsMID) { FreeMemoryID(Self->StringsMID); Self->StringsMID = NULL; }
+   if (Self->StringsMID) { FreeResourceID(Self->StringsMID); Self->StringsMID = NULL; }
    if (Self->KeyFilter)    { ReleaseMemoryID(Self->KeyFilterMID); Self->KeyFilter = NULL; }
-   if (Self->KeyFilterMID) { FreeMemoryID(Self->KeyFilterMID); Self->KeyFilterMID = NULL; }
+   if (Self->KeyFilterMID) { FreeResourceID(Self->KeyFilterMID); Self->KeyFilterMID = NULL; }
    if (Self->SectionFilter)    { ReleaseMemoryID(Self->SectionFilterMID); Self->SectionFilter = NULL; }
-   if (Self->SectionFilterMID) { FreeMemoryID(Self->SectionFilterMID); Self->SectionFilterMID = NULL; }
+   if (Self->SectionFilterMID) { FreeResourceID(Self->SectionFilterMID); Self->SectionFilterMID = NULL; }
 
    Self->AmtEntries    = 0;
    Self->StringsSize   = 0;
@@ -305,14 +305,14 @@ static ERROR defragment(objConfig *Self)
 
       if (Self->Entries) {
          ReleaseMemoryID(Self->EntriesMID);
-         FreeMemoryID(Self->EntriesMID);
+         FreeResourceID(Self->EntriesMID);
          Self->Entries = NULL;
          Self->EntriesMID = 0;
       }
 
       if (Self->Strings) {
          ReleaseMemoryID(Self->StringsMID);
-         FreeMemoryID(Self->StringsMID);
+         FreeResourceID(Self->StringsMID);
          Self->Strings = NULL;
          Self->StringsMID = 0;
       }
@@ -372,8 +372,8 @@ static ERROR defragment(objConfig *Self)
 
          // Replace old allocations with the new ones
 
-         if (Self->Entries) { ReleaseMemoryID(Self->EntriesMID); FreeMemoryID(Self->EntriesMID); }
-         if (Self->Strings) { ReleaseMemoryID(Self->StringsMID); FreeMemoryID(Self->StringsMID); }
+         if (Self->Entries) { ReleaseMemoryID(Self->EntriesMID); FreeResourceID(Self->EntriesMID); }
+         if (Self->Strings) { ReleaseMemoryID(Self->StringsMID); FreeResourceID(Self->StringsMID); }
 
          Self->Entries    = newentries;
          Self->EntriesMID = newid;
@@ -434,15 +434,15 @@ static ERROR CONFIG_Free(objConfig *Self, APTR Void)
    }
 
    if (Self->Entries)    { ReleaseMemoryID(Self->EntriesMID); Self->Entries = NULL; }
-   if (Self->EntriesMID) { FreeMemoryID(Self->EntriesMID); Self->EntriesMID = 0; }
+   if (Self->EntriesMID) { FreeResourceID(Self->EntriesMID); Self->EntriesMID = 0; }
    if (Self->Strings)    { ReleaseMemoryID(Self->StringsMID); Self->Strings = NULL; }
-   if (Self->StringsMID) { FreeMemoryID(Self->StringsMID); Self->StringsMID = 0; }
+   if (Self->StringsMID) { FreeResourceID(Self->StringsMID); Self->StringsMID = 0; }
    if (Self->Path)    { ReleaseMemoryID(Self->PathMID); Self->Path = NULL; }
-   if (Self->PathMID) { FreeMemoryID(Self->PathMID); Self->PathMID = 0; }
+   if (Self->PathMID) { FreeResourceID(Self->PathMID); Self->PathMID = 0; }
    if (Self->KeyFilter)    { ReleaseMemoryID(Self->KeyFilterMID); Self->KeyFilter = NULL; }
-   if (Self->KeyFilterMID) { FreeMemoryID(Self->KeyFilterMID); Self->KeyFilterMID = 0; }
+   if (Self->KeyFilterMID) { FreeResourceID(Self->KeyFilterMID); Self->KeyFilterMID = 0; }
    if (Self->SectionFilter)    { ReleaseMemoryID(Self->SectionFilterMID); Self->SectionFilter = NULL; }
-   if (Self->SectionFilterMID) { FreeMemoryID(Self->SectionFilterMID); Self->SectionFilterMID = 0; }
+   if (Self->SectionFilterMID) { FreeResourceID(Self->SectionFilterMID); Self->SectionFilterMID = 0; }
    return ERR_Okay;
 }
 
@@ -887,7 +887,7 @@ static ERROR CONFIG_Init(objConfig *Self, APTR Void)
 
 exit:
    if (file) acFree(&file->Head);
-   if (data) FreeMemory(data);
+   if (data) FreeResource(data);
    return error;
 }
 
@@ -1770,7 +1770,7 @@ static ERROR CONFIG_WriteValue(objConfig *Self, struct cfgWriteValue *Args)
          if (AllocMemory(strsize, Self->Head.MemFlags|MEM_NO_CLEAR, (void **)&newstr, &newStrMID) != ERR_Okay) return ERR_AllocMemory;
          CopyMemory(Self->Strings, newstr, Self->StringsPos);
          ReleaseMemoryID(Self->StringsMID);
-         FreeMemoryID(Self->StringsMID);
+         FreeResourceID(Self->StringsMID);
 
          Self->Strings = newstr;
          Self->StringsMID = newStrMID;
@@ -1812,7 +1812,7 @@ static ERROR CONFIG_WriteValue(objConfig *Self, struct cfgWriteValue *Args)
       if (!AllocMemory(maxentries * sizeof(struct ConfigEntry), Self->Head.MemFlags|MEM_NO_CLEAR, (void **)&newentries, &newEntriesMID)) {
          CopyMemory(Self->Entries, newentries, Self->AmtEntries * sizeof(struct ConfigEntry));
          ReleaseMemoryID(Self->EntriesMID);
-         FreeMemoryID(Self->EntriesMID);
+         FreeResourceID(Self->EntriesMID);
 
          Self->MaxEntries = maxentries;
          Self->Entries    = newentries;
@@ -1829,7 +1829,7 @@ static ERROR CONFIG_WriteValue(objConfig *Self, struct cfgWriteValue *Args)
       if (!AllocMemory(strsize, Self->Head.MemFlags|MEM_NO_CLEAR, (void **)&newstr, &newStrMID)) {
          CopyMemory(Self->Strings, newstr, Self->StringsPos);
          ReleaseMemoryID(Self->StringsMID);
-         FreeMemoryID(Self->StringsMID);
+         FreeResourceID(Self->StringsMID);
 
          Self->StringsSize = strsize;
          Self->Strings     = newstr;
@@ -2055,7 +2055,7 @@ static ERROR GET_KeyFilter(objConfig *Self, STRING *Value)
 static ERROR SET_KeyFilter(objConfig *Self, CSTRING Value)
 {
    if (Self->KeyFilter)    { ReleaseMemoryID(Self->KeyFilterMID);   Self->KeyFilter = NULL; }
-   if (Self->KeyFilterMID) { FreeMemoryID(Self->KeyFilterMID); Self->KeyFilterMID = NULL; }
+   if (Self->KeyFilterMID) { FreeResourceID(Self->KeyFilterMID); Self->KeyFilterMID = NULL; }
 
    if ((Value) AND (*Value)) {
       LONG i;
@@ -2098,7 +2098,7 @@ static ERROR GET_Path(objConfig *Self, STRING *Value)
 static ERROR SET_Path(objConfig *Self, CSTRING Value)
 {
    if (Self->Path)    { ReleaseMemoryID(Self->PathMID);   Self->Path = NULL; }
-   if (Self->PathMID) { FreeMemoryID(Self->PathMID); Self->PathMID = NULL; }
+   if (Self->PathMID) { FreeResourceID(Self->PathMID); Self->PathMID = NULL; }
 
    if ((Value) AND (*Value)) {
       LONG i;
@@ -2165,7 +2165,7 @@ static ERROR GET_SectionFilter(objConfig *Self, STRING *Value)
 static ERROR SET_SectionFilter(objConfig *Self, STRING Value)
 {
    if (Self->SectionFilter)    { ReleaseMemoryID(Self->SectionFilterMID);   Self->SectionFilter = NULL; }
-   if (Self->SectionFilterMID) { FreeMemoryID(Self->SectionFilterMID); Self->SectionFilterMID = NULL; }
+   if (Self->SectionFilterMID) { FreeResourceID(Self->SectionFilterMID); Self->SectionFilterMID = NULL; }
 
    if ((Value) AND (*Value)) {
       LONG i;

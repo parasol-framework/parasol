@@ -344,9 +344,9 @@ exit:
 
 static ERROR PIC_Free(objPicture *Self, APTR Void)
 {
-   if (Self->prvPath)        { FreeMemory(Self->prvPath); Self->prvPath = NULL; }
-   if (Self->prvDescription) { FreeMemory(Self->prvDescription); Self->prvDescription = NULL; }
-   if (Self->prvDisclaimer)  { FreeMemory(Self->prvDisclaimer); Self->prvDisclaimer = NULL; }
+   if (Self->prvPath)        { FreeResource(Self->prvPath); Self->prvPath = NULL; }
+   if (Self->prvDescription) { FreeResource(Self->prvDescription); Self->prvDescription = NULL; }
+   if (Self->prvDisclaimer)  { FreeResource(Self->prvDisclaimer); Self->prvDisclaimer = NULL; }
    if (Self->prvFile)        { acFree(Self->prvFile); Self->prvFile = NULL; }
    if (Self->Bitmap)         { acFree(Self->Bitmap); Self->Bitmap = NULL; }
    if (Self->Mask)           { acFree(Self->Mask); Self->Mask = NULL; }
@@ -961,7 +961,7 @@ static ERROR GET_Description(objPicture *Self, STRING *Value)
 
 static ERROR SET_Description(objPicture *Self, CSTRING Value)
 {
-   if (Self->prvDescription) { FreeMemory(Self->prvDescription); Self->prvDescription = NULL; }
+   if (Self->prvDescription) { FreeResource(Self->prvDescription); Self->prvDescription = NULL; }
 
    if ((Value) AND (*Value)) {
       if (!(Self->prvDescription = StrClone(Value))) return PostError(ERR_AllocMemory);
@@ -991,7 +991,7 @@ static ERROR GET_Disclaimer(objPicture *Self, STRING *Value)
 
 static ERROR SET_Disclaimer(objPicture *Self, CSTRING Value)
 {
-   if (Self->prvDisclaimer) { FreeMemory(Self->prvDisclaimer); Self->prvDisclaimer = NULL; }
+   if (Self->prvDisclaimer) { FreeResource(Self->prvDisclaimer); Self->prvDisclaimer = NULL; }
 
    if ((Value) AND (*Value)) {
       if (!(Self->prvDisclaimer = StrClone(Value))) return PostError(ERR_AllocMemory);
@@ -1063,7 +1063,7 @@ static ERROR GET_Path(objPicture *Self, STRING *Value)
 
 static ERROR SET_Path(objPicture *Self, CSTRING Value)
 {
-   if (Self->prvPath) { FreeMemory(Self->prvPath); Self->prvPath = NULL; }
+   if (Self->prvPath) { FreeResource(Self->prvPath); Self->prvPath = NULL; }
 
    if ((Value) AND (*Value)) {
       if (!(Self->prvPath = StrClone(Value))) return PostError(ERR_AllocMemory);
@@ -1402,7 +1402,7 @@ static ERROR decompress_png(objPicture *Self, objBitmap *Bitmap, int BitDepth, i
 
 exit:
 
-   FreeMemory(row);
+   FreeResource(row);
 
    return error;
 }

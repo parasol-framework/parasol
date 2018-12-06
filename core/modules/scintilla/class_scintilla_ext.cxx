@@ -357,7 +357,7 @@ void ScintillaPan::Paste()
                   }
                   else error_dialog("Paste Error", "Failed to read data from the clipboard file.", 0);
 
-                  FreeMemory(buffer);
+                  FreeResource(buffer);
                }
                else error_dialog("Paste Error", NULL, ERR_AllocMemory);
             }

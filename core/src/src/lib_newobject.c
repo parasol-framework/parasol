@@ -282,7 +282,7 @@ failed:
 
    if (head) {
       head->Flags &= ~NF_NEW_OBJECT;
-      FreeMemory(head);
+      FreeResource(head);
    }
 
    if (!(Flags & NF_CREATE_OBJECT)) LogBack();
@@ -550,11 +550,11 @@ failed:
       if (Flags & NF_PUBLIC) {
          if (resourced) remove_shared_object(head_id);
          ReleaseMemoryID(head_id);
-         FreeMemoryID(head_id);
+         FreeResourceID(head_id);
       }
       else {
          if (private_lock) ReleasePrivateObject(head);
-         FreeMemory(head);
+         FreeResource(head);
       }
    }
 

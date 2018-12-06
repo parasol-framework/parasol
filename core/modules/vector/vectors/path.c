@@ -276,7 +276,7 @@ static ERROR read_path(struct PathCommand **Path, LONG *Count, CSTRING Value)
 
          default: {
             LogErrorMsg("Invalid path command '%c'", *Value);
-            FreeMemory(path);
+            FreeResource(path);
             return ERR_Failed;
          }
       }
@@ -295,7 +295,7 @@ static ERROR read_path(struct PathCommand **Path, LONG *Count, CSTRING Value)
       return ERR_Okay;
    }
    else {
-      FreeMemory(path);
+      FreeResource(path);
       return ERR_Failed;
    }
 }
@@ -323,7 +323,7 @@ static ERROR VECTORPATH_Flush(objVectorPath *Self, APTR Void)
 
 static ERROR VECTORPATH_Free(objVectorPath *Self, APTR Void)
 {
-   if (Self->Commands) { FreeMemory(Self->Commands); Self->Commands = NULL; }
+   if (Self->Commands) { FreeResource(Self->Commands); Self->Commands = NULL; }
    if (Self->CustomPath) { delete Self->CustomPath; Self->CustomPath = NULL; }
    return ERR_Okay;
 }
@@ -507,7 +507,7 @@ static ERROR VECTORPATH_SetCommandList(objVectorPath *Self, struct vpSetCommandL
          return ERR_AllocMemory;
       }
 
-      if (Self->Commands) FreeMemory(Self->Commands);
+      if (Self->Commands) FreeResource(Self->Commands);
 
       Self->TotalCommands = 0;
       Self->Capacity = 0;
@@ -552,7 +552,7 @@ static ERROR VECTORPATH_SET_Capacity(objVectorPath *Self, LONG Value)
       else {
          struct PathCommand *new_list;
          if (!AllocMemory(VECTORPATH_CMD_SIZE * new_capacity, MEM_DATA|MEM_NO_CLEAR, &new_list, NULL)) {
-            if (Self->Commands) FreeMemory(Self->Commands);
+            if (Self->Commands) FreeResource(Self->Commands);
             Self->Commands = new_list;
             Self->Capacity = new_capacity;
             return ERR_Okay;
@@ -639,7 +639,7 @@ To terminate a path without joining it to the first coordinate, omit the 'Z' fro
 static ERROR VECTORPATH_SET_Sequence(objVectorPath *Self, CSTRING Value)
 {
    if (Self->Commands) {
-      FreeMemory(Self->Commands);
+      FreeResource(Self->Commands);
       Self->Commands = NULL;
       Self->TotalCommands = 0;
    }

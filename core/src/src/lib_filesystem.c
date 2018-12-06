@@ -220,7 +220,7 @@ ERROR check_cache(OBJECTPTR Subscriber, LARGE Elapsed, LARGE CurrentTime)
       if ((CurrentTime - cache->LastUse >= 60LL * 1000000LL) AND (cache->Locks <= 0)) {
          LogF("check_cache","Removing expired cache file: %.80s", cache->Path);
          VarSet(glCache, key, NULL, 0);
-         FreeMemory(cache);
+         FreeResource(cache);
       }
    }
 
@@ -350,7 +350,7 @@ ERROR AnalysePath(CSTRING Path, LONG *PathType)
       }
       else error = ERR_NoSupport;
 
-      FreeMemory(test_path);
+      FreeResource(test_path);
       STEP();
       return error;
    }
@@ -525,7 +525,7 @@ ERROR CompareFilePaths(CSTRING PathA, CSTRING PathB)
    }
 
    if ((error = ResolvePath(PathB, RSF_NO_FILE_CHECK, &path2))) {
-      FreeMemory(path1);
+      FreeResource(path1);
       return error;
    }
 
@@ -550,8 +550,8 @@ ERROR CompareFilePaths(CSTRING PathA, CSTRING PathB)
       else error = ERR_False;
    }
 
-   FreeMemory(path1);
-   FreeMemory(path2);
+   FreeResource(path1);
+   FreeResource(path2);
    return error;
 }
 
@@ -759,14 +759,14 @@ ERROR CreateLink(CSTRING From, CSTRING To)
    if (!ResolvePath(From, RSF_NO_FILE_CHECK, &src)) {
       if (!ResolvePath(To, RSF_NO_FILE_CHECK, &dest)) {
          err = symlink(dest, src);
-         FreeMemory(dest);
-         FreeMemory(src);
+         FreeResource(dest);
+         FreeResource(src);
 
          if (!err) return ERR_Okay;
          else return convert_errno(err, ERR_Failed);
       }
       else {
-         FreeMemory(src);
+         FreeResource(src);
          return ERR_ResolvePath;
       }
    }
@@ -827,7 +827,7 @@ ERROR DeleteFile(CSTRING Path, FUNCTION *Callback)
       const struct virtual_drive *virtual = get_fs(resolve);
       if (virtual->Delete) error = virtual->Delete(resolve, NULL);
       else error = ERR_NoSupport;
-      FreeMemory(resolve);
+      FreeResource(resolve);
    }
 
    LogBack();
@@ -979,7 +979,7 @@ ERROR get_file_info(CSTRING Path, struct FileInfo *Info, LONG InfoSize, STRING N
       }
       else LogError(ERH_GetFileInfo, ERR_NoSupport);
 
-      FreeMemory(path);
+      FreeResource(path);
    }
 
    STEP();
@@ -1122,14 +1122,14 @@ ERROR LoadFile(CSTRING Path, LONG Flags, struct CacheFile **Cache)
       if (Flags & LDF_IGNORE_STATUS) {
          *Cache = ptr[0];
          if (!(Flags & LDF_CHECK_EXISTS)) ptr[0]->Locks++;
-         FreeMemory(path);
+         FreeResource(path);
          return ERR_Okay;
       }
       else if (!get_file_info(path, &info, sizeof(info), filename, sizeof(filename))) {
          if ((info.Size IS ptr[0]->Size) AND (info.TimeStamp IS ptr[0]->TimeStamp)) {
             *Cache = ptr[0];
             if (!(Flags & LDF_CHECK_EXISTS)) ptr[0]->Locks++;
-            FreeMemory(path);
+            FreeResource(path);
             return ERR_Okay;
          }
          else LogF("LoadFile","Failed to match on size (" PF64() " == " PF64() ") or timestamp (" PF64() " == " PF64() ")", info.Size, ptr[0]->Size, info.TimeStamp, ptr[0]->TimeStamp);
@@ -1174,7 +1174,7 @@ ERROR LoadFile(CSTRING Path, LONG Flags, struct CacheFile **Cache)
          cache->LastUse   = PreciseTime();
 
          CopyMemory(path, cache->Path, pathlen);
-         FreeMemory(path);
+         FreeResource(path);
 
          if (!file_size) error = ERR_Okay;
          else {
@@ -1204,9 +1204,9 @@ ERROR LoadFile(CSTRING Path, LONG Flags, struct CacheFile **Cache)
    }
    else error = ERR_CreateObject;
 
-   if (cache) FreeMemory(cache);
+   if (cache) FreeResource(cache);
    if (file) acFree(file);
-   FreeMemory(path);
+   FreeResource(path);
    LogBack();
    return error;
 }
@@ -1256,7 +1256,7 @@ ERROR CreateFolder(CSTRING Path, LONG Permissions)
          error = virtual->CreateFolder(resolve, Permissions);
       }
       else error = ERR_NoSupport;
-      FreeMemory(resolve);
+      FreeResource(resolve);
    }
 
    return error;
@@ -1386,7 +1386,7 @@ ERROR ReadFile(CSTRING Path, APTR Buffer, LONG BufferSize, LONG *BytesRead)
       }
       else error = ERR_InvalidPath;
 
-      FreeMemory(res_path);
+      FreeResource(res_path);
    }
    else if (error IS ERR_VirtualVolume) {
       objFile *file;
@@ -1403,7 +1403,7 @@ ERROR ReadFile(CSTRING Path, APTR Buffer, LONG BufferSize, LONG *BytesRead)
       }
       else error = ERR_File;
 
-      FreeMemory(res_path);
+      FreeResource(res_path);
       return error;
    }
    else error = ERR_FileNotFound;
@@ -1671,7 +1671,7 @@ ERROR SetDocView(CSTRING Path, CSTRING Document)
    LONG doclen  = StrLength(Document);
 
    if (i < glTotalDocViews) {
-      FreeMemory(glDocView[i].Path);
+      FreeResource(glDocView[i].Path);
       glDocView[i].Path = NULL;
       glDocView[i].Doc  = NULL;
       if ((!Document) OR (!Document[0])) return ERR_Okay;
@@ -1751,7 +1751,7 @@ void UnloadFile(struct CacheFile *Cache)
 #if 0
       if (max_mem_exceeded) {
          VarSet(glCache, Cache->Path, NULL, 0);
-         FreeMemory(Cache);
+         FreeResource(Cache);
       }
 #endif
    }
@@ -2033,7 +2033,7 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
    }
 
    if ((error = ResolvePath(Dest, RSF_NO_FILE_CHECK, &tmp)) != ERR_Okay) {
-      FreeMemory(src);
+      FreeResource(src);
       STEP();
       return ERR_ResolvePath;
    }
@@ -2042,7 +2042,7 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
    const struct virtual_drive *destvirtual = get_fs(tmp);
 
    LONG destlen = StrCopy(tmp, dest, sizeof(dest));
-   FreeMemory(tmp);
+   FreeResource(tmp);
 
    // Check if the source is a folder
 
@@ -2235,7 +2235,7 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
             ProcessMessages(0, 0);
          }
 
-         FreeMemory(data);
+         FreeResource(data);
       }
       else error = LogError(ERH_Function, ERR_AllocMemory);
 
@@ -2537,7 +2537,7 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
                error = ERR_Read;
             }
 
-            FreeMemory(data);
+            FreeResource(data);
          }
          else error = LogError(ERH_Function, ERR_AllocMemory);
 
@@ -2565,7 +2565,7 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
 exit:
    if (srcfile) acFree(&srcfile->Head);
    if (destfile) acFree(&destfile->Head);
-   FreeMemory(src);
+   FreeResource(src);
    STEP();
    return error;
 }
@@ -2982,7 +2982,7 @@ ERROR fs_closedir(struct DirInfo *Dir)
 
    if (Dir->Info) {
       if (Dir->prvFlags & RDF_OPENDIR) {
-         // OpenDir() allocates Dir->Info as part of the Dir structure, so no need for a FreeMemory(Dir->Info) here.
+         // OpenDir() allocates Dir->Info as part of the Dir structure, so no need for a FreeResource(Dir->Info) here.
 
          if (Dir->Info->Tags) { VarFree(Dir->Info->Tags); Dir->Info->Tags = NULL; }
       }
@@ -2991,7 +2991,7 @@ ERROR fs_closedir(struct DirInfo *Dir)
          while (list) {
             struct FileInfo *next = list->Next;
             if (list->Tags) { VarFree(list->Tags); list->Tags = NULL; }
-            FreeMemory(list);
+            FreeResource(list);
             list = next;
          }
          Dir->Info = NULL;
@@ -3020,7 +3020,7 @@ ERROR fs_testpath(CSTRING Path, LONG Flags, LONG *Type)
    if (Path[len-1] IS ':') {
       if (!ResolvePath(Path, 0, &str)) {
          if (*Type) *Type = LOC_VOLUME;
-         FreeMemory(str);
+         FreeResource(str);
          return ERR_Okay;
       }
       else return ERR_DoesNotExist;
@@ -3260,7 +3260,7 @@ restart:
          }
          else {
             if (ResolvePath(Path, RSF_NO_FILE_CHECK, &resolve) != ERR_Okay) {
-               if (resolve) FreeMemory(resolve);
+               if (resolve) FreeResource(resolve);
                ReleasePrivateObject((OBJECTPTR)glVolumes);
                return ERR_ResolvePath;
             }
@@ -3270,7 +3270,7 @@ restart:
          }
       }
 
-      if (resolve) FreeMemory(resolve);
+      if (resolve) FreeResource(resolve);
 
       ReleasePrivateObject((OBJECTPTR)glVolumes);
    }
@@ -3295,20 +3295,20 @@ restart:
          Info->BytesFree = -1;
          Info->BytesUsed      = 0;
          Info->DeviceSize     = -1;
-         FreeMemory(location);
+         FreeResource(location);
          return ERR_Okay; // Even though the disk space calculation failed, we succeeded on resolving other device information
       }
       else {
          Info->BytesFree = bytes_avail;
          Info->BytesUsed      = total_size - bytes_avail;
          Info->DeviceSize     = total_size;
-         FreeMemory(location);
+         FreeResource(location);
          return ERR_Okay;
       }
    }
    else error = ERR_ResolvePath;
 
-   if (location) FreeMemory(location);
+   if (location) FreeResource(location);
    return LogError(ERH_GetDeviceInfo, error);
 
 #elif __unix__
@@ -3322,7 +3322,7 @@ restart:
       if (!error) {
          struct statfs fstat;
          LONG result = statfs(location, &fstat);
-         FreeMemory(location);
+         FreeResource(location);
 
          if (result != -1) {
             DOUBLE blocksize = (DOUBLE)fstat.f_bsize;

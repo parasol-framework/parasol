@@ -345,7 +345,7 @@ CSTRING UTF8ValidEncoding(CSTRING String, CSTRING Encoding)
    if ((!String) OR (initfailed)) {
       if (glIconvBuffer) {
          // Calling this function with a NULL String is an easy/valid way to free the internal buffer
-         FreeMemory(glIconvBuffer);
+         FreeResource(glIconvBuffer);
          glIconvBuffer = NULL;
          buffersize = 0;
       }

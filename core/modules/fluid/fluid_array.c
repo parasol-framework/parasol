@@ -157,7 +157,7 @@ static void make_array(lua_State *Lua, LONG FieldType, CSTRING StructName, APTR 
          }
          else CopyMemory(List, array->ptrPointer, cache_size);
 
-         if (alloc) FreeMemory(List);
+         if (alloc) FreeResource(List);
          array->Allocated = FALSE;
       }
       else {
@@ -171,7 +171,7 @@ static void make_array(lua_State *Lua, LONG FieldType, CSTRING StructName, APTR 
       // The array object will be returned on the stack due to the lua_newuserdata() call
    }
    else {
-      if (alloc) FreeMemory(List);
+      if (alloc) FreeResource(List);
       lua_pushnil(Lua); // Must return a value even if it is nil
    }
    STEP();
@@ -548,7 +548,7 @@ static int array_destruct(lua_State *Lua)
 
    if ((array = (struct array *)luaL_checkudata(Lua, 1, "Fluid.array"))) {
       if (array->Allocated) {
-         if (FreeMemory(array->ptrPointer)) LogF("@array_destruct","Data address %p is invalid.", array->ptrPointer);
+         if (FreeResource(array->ptrPointer)) LogF("@array_destruct","Data address %p is invalid.", array->ptrPointer);
          array->ptrPointer = NULL;
          array->Allocated = FALSE;
          array->Total = 0;

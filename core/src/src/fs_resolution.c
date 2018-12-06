@@ -26,7 +26,7 @@ To resolve the location of executable programs on Unix systems, use the RSF_PATH
 variable to resolve the file name specified in the Path parameter.
 
 The resolved path will be returned in the Result parameter as an allocated memory block.  It must be removed once it is
-no longer required with FreeMemory().
+no longer required with FreeResource().
 
 <types lookup="RSF"/>
 
