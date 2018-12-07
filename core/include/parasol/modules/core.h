@@ -1770,7 +1770,6 @@ struct CoreBase {
    ERROR (*_AssociateCmd)(CSTRING, CSTRING, LONG, CSTRING);
    ERROR (*_UpdateMessage)(APTR, LONG, LONG, APTR, LONG);
    ERROR (*_AddMsgHandler)(APTR, LONG, FUNCTION *, struct MsgHandler **);
-   ERROR (*_RemoveMsgHandler)(struct MsgHandler *);
    ERROR (*_FindPrivateObject)(CSTRING, APTR);
    LARGE (*_PreciseTime)(void);
    ERROR (*_SetFieldsID)(OBJECTID, ...);
@@ -1965,7 +1964,6 @@ struct CoreBase {
 #define AssociateCmd(...) (CoreBase->_AssociateCmd)(__VA_ARGS__)
 #define UpdateMessage(...) (CoreBase->_UpdateMessage)(__VA_ARGS__)
 #define AddMsgHandler(...) (CoreBase->_AddMsgHandler)(__VA_ARGS__)
-#define RemoveMsgHandler(...) (CoreBase->_RemoveMsgHandler)(__VA_ARGS__)
 #define FindPrivateObject(...) (CoreBase->_FindPrivateObject)(__VA_ARGS__)
 #define PreciseTime(...) (CoreBase->_PreciseTime)(__VA_ARGS__)
 #define SetFieldsID(...) (CoreBase->_SetFieldsID)(__VA_ARGS__)
