@@ -158,7 +158,7 @@
       <type>CSTRING</type>
       <description>
 <p>If a class supports file data, then the FileHeader field is used to identify the types of data that the class supports. This feature is used by routines that need to analyse files and determine which classes support them.</p>
-<p>For example, the JPEG class supports files that start with a 32-bit token to identify them as JPEG.  Declaring a FileHeader expression to match these tokens allows the Parasol FileView class to detect JPEG files and display an appropriate icon for each JPEG entry in the file list.</p>
+<p>For example, the JPEG class supports files that start with a 32-bit token to identify them as JPEG.  Declaring a FileHeader expression to match these tokens will allow the FileView feature to detect JPEG files and display an appropriate icon for each JPEG entry in the file list.</p>
 <p>The expression format is <code>[Offset:Value]...</code></p>
 <p>The offset is an integer that identifies the byte position at which the given Value will be present.  The Value is expressed as a hexadecimal number if it is prefixed with a dollar sign $, otherwise the Value is treated as case-sensitive text.  Multiple expressions can be specified in sequence if there is more than one comparison to be made - so <code>[0:$ff][8:$fe]</code> would require $ff at offset 0 and $fe at offset 8 in order to generate a match.</p>
 <p>In some cases, a series of unrelated token sequences may need to be used to match against files.  This is true for the JPEG class, which supports three different tokens all at offset 0 for identification.  Each matching sequence must be separated with an OR symbol | as demonstrated in this example for the JPEG header: <code>[0:$ffd8ffe0]|[0:$ffd8ffe1]|[0:$ffd8fffe]</code>.</p>
@@ -744,18 +744,10 @@
 
   </types>
   <structs>
-    <struct name="MethodArray">
-      <field name="MethodID" type="LONG"></field>
-      <field name="Routine" type="APTR">ERROR (*Routine)(OBJECTPTR, APTR);</field>
-      <field name="Name" type="CSTRING"></field>
-      <field name="Args" type="const struct FunctionField *"></field>
-      <field name="Size" type="LONG"></field>
-    </struct>
-
     <struct name="rkBase64Decode" comment="Private structure for the StrBase64Decode() function." typeName="BASE64DECODE">
-      <field name="Step" type="UBYTE"></field>
-      <field name="PlainChar" type="UBYTE"></field>
-      <field name="Initialised" type="UBYTE"></field>
+      <field name="Step" type="UBYTE">Internal</field>
+      <field name="PlainChar" type="UBYTE">Internal</field>
+      <field name="Initialised" type="UBYTE">Internal</field>
     </struct>
 
     <struct name="FileInfo" comment="Returned by GetFileInfo()">
@@ -790,9 +782,9 @@
     </struct>
 
     <struct name="Function" comment="Function list array structure">
-      <field name="Address" type="APTR"></field>
-      <field name="Name" type="CSTRING"></field>
-      <field name="Args" type="const struct FunctionField *"></field>
+      <field name="Address" type="APTR">Pointer to the function entry point</field>
+      <field name="Name" type="CSTRING">Name of the function</field>
+      <field name="Args" type="const struct FunctionField *">A list of parameters accepted by the function</field>
     </struct>
 
     <struct name="MemoryLocks" comment="A supplement structure for ListTasks.">
@@ -820,11 +812,11 @@
       <field name="WaitingTime" type="LONG">If the task is waiting, the time at which the sleep started (msec)</field>
       <field name="MessageID" type="MEMORYID">Message queue ID</field>
       <field name="OutputID" type="OBJECTID">The object that the task should output information to</field>
-      <field name="Semaphore" type="HOSTHANDLE"></field>
+      <field name="Semaphore" type="HOSTHANDLE">Semaphore for IPC</field>
       <field name="InstanceID" type="LONG">Instance that the task belongs to</field>
-      <field name="TotalMemoryLocks" type="LONG"></field>
-      <field name="ModalID" type="OBJECTID"></field>
-      <field name="MemoryLocks" type="struct MemoryLocks *"></field>
+      <field name="TotalMemoryLocks" type="LONG">Total number of held memory locks</field>
+      <field name="ModalID" type="OBJECTID">Refers to any surface that currently holds a modal lock.</field>
+      <field name="MemoryLocks" type="struct MemoryLocks *">An array of memory locks currently held by the process.</field>
     </struct>
 
     <struct name="DirInfo" comment="Used by OpenDir() only">
@@ -881,7 +873,7 @@
     <struct name="FileFeedback">
       <field name="Size" type="LARGE">Size of the file</field>
       <field name="Position" type="LARGE">Current seek position within the file if moving or copying</field>
-      <field name="Path" type="STRING"></field>
+      <field name="Path" type="STRING">Path to the file</field>
       <field name="Dest" type="STRING">Destination file/path if moving or copying</field>
       <field name="FeedbackID" type="LONG" lookup="FDB">Set to one of the FDB integers</field>
       <field name="Reserved" type="char" size="32">Reserved in case of future expansion</field>

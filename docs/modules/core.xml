@@ -301,7 +301,7 @@ ActionTags(MT_Rename, Object, "user:documents.txt");
       <param type="APTR" name="Custom">A custom pointer that will be passed to the message handler when messages are received.</param>
       <param type="LONG" name="MsgType">The message type that the handler wishes to intercept.  If zero, all incoming messages are passed to the handler.</param>
       <param type="FUNCTION *" name="Routine">Refers to the function that will handle incoming messages.</param>
-      <param type="struct MsgHandler **" name="Handle">The resulting handle of the new message handler - this will be needed for RemoveMsgHandler().</param>
+      <param type="struct MsgHandler **" name="Handle">The resulting handle of the new message handler - this will be needed for FreeResource().</param>
     </input>
     <description>
 <p>This function allows handlers to be added for the interception of incoming messages.  Message handling works as follows:</p>
@@ -309,7 +309,7 @@ ActionTags(MT_Rename, Object, "user:documents.txt");
 <p>When calling AddMsgHandler(), you can provide an optional Custom pointer that will have meaning to the handler.  The MsgType acts as a filter so that only messages with the same type identifier will be passed to the handler.  The Routine parameter must point to the function handler, which will follow this definition:</p>
 <pre>ERROR handler(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)</pre>
 <p>The handler must return ERR_Okay if the message was handled.  This means that the message will not be passed to message handlers that are yet to receive the message.  Throw ERR_NothingDone if the message has been ignored or ERR_Continue if the message was processed but may be analysed by other handlers.  Throw ERR_Terminate to break the current ProcessMessages() loop.  When using Fluid, this is best achieved by writing <code>check(errorcode)</code> in the handler.</p>
-<p>The handler will be identified by a unique pointer returned in the Handle parameter.  This handle will be garbage collected or can be passed to RemoveMsgHandler() once it is no longer required.</p>
+<p>The handler will be identified by a unique pointer returned in the Handle parameter.  This handle will be garbage collected or can be passed to FreeResource() once it is no longer required.</p>
     </description>
     <result type="ERROR">
       <error code="NullArgs">Function call missing argument value(s)</error>
@@ -2037,24 +2037,6 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
   </function>
 
   <function>
-    <name>RemoveMsgHandler</name>
-    <category>Messages</category>
-    <comment>Removes message handlers from the message processing routines.</comment>
-    <prototype>ERROR RemoveMsgHandler(struct MsgHandler * Handle)</prototype>
-    <input>
-      <param type="struct MsgHandler *" name="Handle">The handle originally returned from AddMsgHandler().</param>
-    </input>
-    <description>
-<p>This function removes message handlers that have been added with the <function module="Core">AddMsgHandler</function> function.</p>
-    </description>
-    <result type="ERROR">
-      <error code="NullArgs">Function call missing argument value(s)</error>
-      <error code="Search">A search routine in this function failed.</error>
-      <error code="Okay">Operation successful.</error>
-    </result>
-  </function>
-
-  <function>
     <name>ResolveClassID</name>
     <category>Objects</category>
     <comment>Converts a valid class ID to its equivalent name.</comment>
@@ -2375,7 +2357,7 @@ FreeResource(memory);
       <param type="CSTRING" name="Document">The path to the document file that will be associated with the Path.</param>
     </input>
     <description>
-<p>Use SetDocView() to link document templates with file paths.  Document templates are returned as tags when <function module="Core">GetFileInfo</function> is used on paths that match those passed to this function.  Document templates are used by the @FileView class to switch to document mode whenever a matching location is on display. For information on the template format, please refer to the @FileView class.</p>
+<p>Use SetDocView() to link document templates with file paths.  Document templates are returned as tags when <function module="Core">GetFileInfo</function> is used on paths that match those passed to this function.  Document templates are used by the FileView feature to switch to document mode whenever a matching location is on display.</p>
     </description>
     <result type="ERROR">
       <error code="NullArgs">Function call missing argument value(s)</error>
@@ -4426,18 +4408,10 @@ end
 
   </types>
   <structs>
-    <struct name="MethodArray">
-      <field name="MethodID" type="LONG"></field>
-      <field name="Routine" type="APTR">ERROR (*Routine)(OBJECTPTR, APTR);</field>
-      <field name="Name" type="CSTRING"></field>
-      <field name="Args" type="const struct FunctionField *"></field>
-      <field name="Size" type="LONG"></field>
-    </struct>
-
     <struct name="rkBase64Decode" comment="Private structure for the StrBase64Decode() function." typeName="BASE64DECODE">
-      <field name="Step" type="UBYTE"></field>
-      <field name="PlainChar" type="UBYTE"></field>
-      <field name="Initialised" type="UBYTE"></field>
+      <field name="Step" type="UBYTE">Internal</field>
+      <field name="PlainChar" type="UBYTE">Internal</field>
+      <field name="Initialised" type="UBYTE">Internal</field>
     </struct>
 
     <struct name="FileInfo" comment="Returned by GetFileInfo()">
@@ -4472,9 +4446,9 @@ end
     </struct>
 
     <struct name="Function" comment="Function list array structure">
-      <field name="Address" type="APTR"></field>
-      <field name="Name" type="CSTRING"></field>
-      <field name="Args" type="const struct FunctionField *"></field>
+      <field name="Address" type="APTR">Pointer to the function entry point</field>
+      <field name="Name" type="CSTRING">Name of the function</field>
+      <field name="Args" type="const struct FunctionField *">A list of parameters accepted by the function</field>
     </struct>
 
     <struct name="MemoryLocks" comment="A supplement structure for ListTasks.">
@@ -4502,11 +4476,11 @@ end
       <field name="WaitingTime" type="LONG">If the task is waiting, the time at which the sleep started (msec)</field>
       <field name="MessageID" type="MEMORYID">Message queue ID</field>
       <field name="OutputID" type="OBJECTID">The object that the task should output information to</field>
-      <field name="Semaphore" type="HOSTHANDLE"></field>
+      <field name="Semaphore" type="HOSTHANDLE">Semaphore for IPC</field>
       <field name="InstanceID" type="LONG">Instance that the task belongs to</field>
-      <field name="TotalMemoryLocks" type="LONG"></field>
-      <field name="ModalID" type="OBJECTID"></field>
-      <field name="MemoryLocks" type="struct MemoryLocks *"></field>
+      <field name="TotalMemoryLocks" type="LONG">Total number of held memory locks</field>
+      <field name="ModalID" type="OBJECTID">Refers to any surface that currently holds a modal lock.</field>
+      <field name="MemoryLocks" type="struct MemoryLocks *">An array of memory locks currently held by the process.</field>
     </struct>
 
     <struct name="DirInfo" comment="Used by OpenDir() only">
@@ -4547,7 +4521,7 @@ end
     <struct name="FileFeedback">
       <field name="Size" type="LARGE">Size of the file</field>
       <field name="Position" type="LARGE">Current seek position within the file if moving or copying</field>
-      <field name="Path" type="STRING"></field>
+      <field name="Path" type="STRING">Path to the file</field>
       <field name="Dest" type="STRING">Destination file/path if moving or copying</field>
       <field name="FeedbackID" type="LONG" lookup="FDB">Set to one of the FDB integers</field>
       <field name="Reserved" type="char" size="32">Reserved in case of future expansion</field>

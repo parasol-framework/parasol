@@ -1359,15 +1359,15 @@ struct ResourceManager {
 };
 
 typedef struct rkBase64Decode {
-   UBYTE Step;
-   UBYTE PlainChar;
-   UBYTE Initialised:1;
+   UBYTE Step;             // Internal
+   UBYTE PlainChar;        // Internal
+   UBYTE Initialised:1;    // Internal
 } BASE64DECODE;
 
 typedef struct rkBase64Encode {
-   UBYTE Step;
-   UBYTE Result;
-   LONG  StepCount;
+   UBYTE Step;        // Internal
+   UBYTE Result;      // Internal
+   LONG  StepCount;   // Internal
 } BASE64ENCODE;
 
 struct FeedSubscription {
@@ -1382,9 +1382,9 @@ struct FunctionField {
 };
 
 struct Function {
-   APTR    Address;
-   CSTRING Name;
-   const struct FunctionField * Args;
+   APTR    Address;                      // Pointer to the function entry point
+   CSTRING Name;                         // Name of the function
+   const struct FunctionField * Args;    // A list of parameters accepted by the function
 };
 
 struct ModHeader {
@@ -1440,16 +1440,16 @@ struct Variable {
 };
 
 struct ActionArray {
-   LONG ActionCode;
-   APTR Routine;
+   LONG ActionCode;    // Action identifier
+   APTR Routine;       // Pointer to the function entry point
 };
 
 struct MethodArray {
-   LONG    MethodID;
-   APTR    Routine;                      // ERROR (*Routine)(OBJECTPTR, APTR);
-   CSTRING Name;
-   const struct FunctionField * Args;
-   LONG    Size;
+   LONG    MethodID;                     // Unique method identifier
+   APTR    Routine;                      // The method entry point, defined as ERROR (*Routine)(OBJECTPTR, APTR);
+   CSTRING Name;                         // Name of the method
+   const struct FunctionField * Args;    // List of parameters accepted by the method
+   LONG    Size;                         // Total byte-size of all accepted parameters when they are assembled as a C structure.
 };
 
 struct MemoryLocks {
@@ -1477,11 +1477,11 @@ struct ListTasks {
    LONG     WaitingTime;                // If the task is waiting, the time at which the sleep started (msec)
    MEMORYID MessageID;                  // Message queue ID
    OBJECTID OutputID;                   // The object that the task should output information to
-   HOSTHANDLE Semaphore;
+   HOSTHANDLE Semaphore;                // Semaphore for IPC
    LONG     InstanceID;                 // Instance that the task belongs to
-   LONG     TotalMemoryLocks;
-   OBJECTID ModalID;
-   struct MemoryLocks * MemoryLocks;
+   LONG     TotalMemoryLocks;           // Total number of held memory locks
+   OBJECTID ModalID;                    // Refers to any surface that currently holds a modal lock.
+   struct MemoryLocks * MemoryLocks;    // An array of memory locks currently held by the process.
 };
 
 struct FDTable {
@@ -1499,26 +1499,26 @@ struct Message {
 };
 
 struct ExposeMessage {
-   OBJECTID ObjectID;
-   LONG     X;
-   LONG     Y;
-   LONG     Width;
-   LONG     Height;
-   LONG     Flags;
+   OBJECTID ObjectID;    // Target surface
+   LONG     X;           // Horizontal starting coordinate
+   LONG     Y;           // Vertical starting coordinate
+   LONG     Width;       // Width of exposed area
+   LONG     Height;      // Height of exposed area
+   LONG     Flags;       // Optional flags
 };
 
 struct DebugMessage {
-   LONG DebugID;
+   LONG DebugID;    // Internal
 };
 
 struct ThreadMessage {
-   OBJECTID ThreadID;
+   OBJECTID ThreadID;    // Internal
 };
 
 struct ThreadActionMessage {
    OBJECTPTR Object;    // Direct pointer to a target object.
    LONG      ActionID;  // The action to execute.
-   LONG      Key;
+   LONG      Key;       // Internal
    ERROR     Error;     // The error code resulting from the action's execution.
    FUNCTION  Callback;  // Callback function to execute on action completion.
 };
@@ -1545,12 +1545,12 @@ struct ConfigEntry {
 };
 
 struct ActionEntry {
-   ERROR (*PerformAction)(OBJECTPTR, APTR);
+   ERROR (*PerformAction)(OBJECTPTR, APTR);     // Internal
 };
 
 struct MsgHandler {
-   struct MsgHandler * Prev;
-   struct MsgHandler * Next;
+   struct MsgHandler * Prev;    // Previous message handler in the chain
+   struct MsgHandler * Next;    // Next message handler in the chain
    APTR     Custom;             // Custom pointer to send to the message handler
    FUNCTION Function;           // Call this function
    LONG     MsgType;            // Type of message being filtered
@@ -1640,7 +1640,7 @@ struct DirInfo {
 struct FileFeedback {
    LARGE  Size;          // Size of the file
    LARGE  Position;      // Current seek position within the file if moving or copying
-   STRING Path;
+   STRING Path;          // Path to the file
    STRING Dest;          // Destination file/path if moving or copying
    LONG   FeedbackID;    // Set to one of the FDB integers
    char   Reserved[32];  // Reserved in case of future expansion
