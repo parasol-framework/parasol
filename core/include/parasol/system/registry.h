@@ -24,7 +24,6 @@
 #define ID_TIMER 0x106d8b86UL
 #define ID_KEYBOARD 0xbb5d5b76UL
 #define ID_FONT 0x7c96e4fcUL
-#define ID_ONCLICK 0x6c13e8e8UL
 #define ID_MUSIC 0x0ff58e86UL
 #define ID_SCRIPT 0x1b600fbaUL
 #define ID_CONFIG 0xf6e46c7bUL
