@@ -100,7 +100,6 @@ FDEF argsReleaseMemory[] = { { "Result", FD_LONG }, { "Address", FD_PTR }, { 0, 
 FDEF argsReleaseMemoryID[] = { { "Error", FD_LONG|FD_ERROR }, { "MemoryID", FD_LONG }, { 0, 0 } };
 FDEF argsReleaseObject[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { 0, 0 } };
 FDEF argsReleasePrivateObject[] = { { "Void", FD_VOID }, { "Object", FD_OBJECTPTR }, { 0, 0 } };
-FDEF argsRemoveMsgHandler[] = { { "Error", FD_LONG|FD_ERROR }, { "MsgHandler:Handle", FD_PTR|FD_STRUCT|FD_RESOURCE }, { 0, 0 } };
 FDEF argsResolveClassID[] = { { "Result", FD_STR }, { "ID", FD_LONG }, { 0, 0 } };
 FDEF argsResolveClassName[] = { { "Result", FD_LONG }, { "Name", FD_STR }, { 0, 0 } };
 FDEF argsResolveGroupID[] = { { "Result", FD_STR }, { "Group", FD_LONG }, { 0, 0 } };
@@ -280,7 +279,6 @@ const struct Function glFunctions[] = {
    { (APTR)AssociateCmd, "AssociateCmd", argsAssociateCmd },
    { (APTR)UpdateMessage, "UpdateMessage", argsUpdateMessage },
    { (APTR)AddMsgHandler, "AddMsgHandler", argsAddMsgHandler },
-   { (APTR)RemoveMsgHandler, "RemoveMsgHandler", argsRemoveMsgHandler },
    { (APTR)FindPrivateObject, "FindPrivateObject", argsFindPrivateObject },
    { (APTR)PreciseTime, "PreciseTime", argsPreciseTime },
    { (APTR)SetFieldsID, "SetFieldsID", argsSetFieldsID },

@@ -412,7 +412,7 @@ ERROR CMDExpunge(void)
    if (glAppStyle)      { acFree(glAppStyle); glAppStyle = NULL; }
    if (glDesktopStyleScript) { acFree(glDesktopStyleScript); glDesktopStyleScript = NULL; }
    if (glDefaultStyleScript) { acFree(glDefaultStyleScript); glDefaultStyleScript = NULL; }
-   if (glExposeHandler) { RemoveMsgHandler(glExposeHandler); glExposeHandler = NULL; }
+   if (glExposeHandler) { FreeResource(glExposeHandler); glExposeHandler = NULL; }
    if (glComposite)     { acFree(glComposite); glComposite = NULL; }
    if (modDisplay)      { acFree(modDisplay); modDisplay = NULL; }
    if (SurfaceClass)    { acFree(SurfaceClass); SurfaceClass = NULL; }

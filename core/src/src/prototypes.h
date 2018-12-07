@@ -82,7 +82,6 @@ void PrintDiagnosis(LONG Process, LONG Signal);
 ERROR AssociateCmd(CSTRING Path, CSTRING Mode, LONG Flags, CSTRING Command);
 ERROR UpdateMessage(APTR Queue, LONG Message, LONG Type, APTR Data, LONG Size);
 ERROR AddMsgHandler(APTR Custom, LONG MsgType, FUNCTION * Routine, struct MsgHandler ** Handle);
-ERROR RemoveMsgHandler(struct MsgHandler * Handle);
 ERROR FindPrivateObject(CSTRING Name, OBJECTPTR * Object);
 LARGE PreciseTime();
 ERROR SetFieldsID(OBJECTID Object, ...);

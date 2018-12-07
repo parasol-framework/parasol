@@ -91,13 +91,13 @@ if the message was processed but may be analysed by other handlers.  Throw ERR_T
 ProcessMessages() loop.  When using Fluid, this is best achieved by writing `check(errorcode)` in the handler.
 
 The handler will be identified by a unique pointer returned in the Handle parameter.  This handle will be garbage
-collected or can be passed to RemoveMsgHandler() once it is no longer required.
+collected or can be passed to FreeResource() once it is no longer required.
 
 -INPUT-
 ptr Custom: A custom pointer that will be passed to the message handler when messages are received.
 int MsgType: The message type that the handler wishes to intercept.  If zero, all incoming messages are passed to the handler.
 ptr(func) Routine: Refers to the function that will handle incoming messages.
-!resource(MsgHandler) Handle:  The resulting handle of the new message handler - this will be needed for RemoveMsgHandler().
+!resource(MsgHandler) Handle:  The resulting handle of the new message handler - this will be needed for FreeResource().
 
 -ERRORS-
 Okay: Message handler successfully processed.
@@ -143,30 +143,6 @@ ERROR AddMsgHandler(APTR Custom, LONG MsgType, FUNCTION *Routine, struct MsgHand
       }
    }
    else return FuncError(__func__, ERR_Lock);
-}
-
-/*****************************************************************************
-
--FUNCTION-
-RemoveMsgHandler: Removes message handlers from the message processing routines.
-
-This function removes message handlers that have been added with the ~AddMsgHandler() function.
-
--INPUT-
-resource(MsgHandler) Handle: The handle originally returned from AddMsgHandler().
-
--ERRORS-
-Okay: The handler was removed.
-NullArgs:
-Search: The given Handle is not recognised.
--END-
-
-*****************************************************************************/
-
-ERROR RemoveMsgHandler(struct MsgHandler *Handle)
-{
-   if (!Handle) return ERR_NullArgs;
-   return FreeResource(Handle); // Message handles are a resource and will divert to msghandler_free()
 }
 
 /*****************************************************************************

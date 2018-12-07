@@ -1037,7 +1037,6 @@ struct ScriptArg { // For use with scExec
     "AssociateCmd",
     "UpdateMessage",
     "AddMsgHandler",
-    "RemoveMsgHandler",
     "FindPrivateObject",
     "PreciseTime",
     "SetFieldsID",

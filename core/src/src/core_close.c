@@ -307,7 +307,7 @@ restart_free: {
 
       // Remove all message handlers
 
-      while (glMsgHandlers) RemoveMsgHandler(glMsgHandlers);
+      while (glMsgHandlers) FreeResource(glMsgHandlers);
       glLastMsgHandler = NULL;
 
       if ((glCrashStatus) AND (glSharedControl) AND (glSharedControl->InstanceMsgPort) AND (!glMasterTask)) {

@@ -1480,16 +1480,16 @@ static ERROR TASK_Free(objTask *Self, APTR Void)
    if (Self->CopyrightMID)   { FreeResourceID(Self->CopyrightMID);   Self->CopyrightMID   = 0; }
    if (Self->MessageMID)     { FreeResourceID(Self->MessageMID);     Self->MessageMID     = 0; }
 
-   if (Self->MsgAction)          { RemoveMsgHandler(Self->MsgAction);          Self->MsgAction          = NULL; }
-   if (Self->MsgGetField)        { RemoveMsgHandler(Self->MsgGetField);        Self->MsgGetField        = NULL; }
-   if (Self->MsgSetField)        { RemoveMsgHandler(Self->MsgSetField);        Self->MsgSetField        = NULL; }
-   if (Self->MsgActionResult)    { RemoveMsgHandler(Self->MsgActionResult);    Self->MsgActionResult    = NULL; }
-   if (Self->MsgDebug)           { RemoveMsgHandler(Self->MsgDebug);           Self->MsgDebug           = NULL; }
-   if (Self->MsgValidateProcess) { RemoveMsgHandler(Self->MsgValidateProcess); Self->MsgValidateProcess = NULL; }
-   if (Self->MsgQuit)            { RemoveMsgHandler(Self->MsgQuit);            Self->MsgQuit            = NULL; }
-   if (Self->MsgEvent)           { RemoveMsgHandler(Self->MsgEvent);           Self->MsgEvent           = NULL; }
-   if (Self->MsgThreadCallback)  { RemoveMsgHandler(Self->MsgThreadCallback);  Self->MsgThreadCallback  = NULL; }
-   if (Self->MsgThreadAction)    { RemoveMsgHandler(Self->MsgThreadAction);    Self->MsgThreadAction    = NULL; }
+   if (Self->MsgAction)          { FreeResource(Self->MsgAction);          Self->MsgAction          = NULL; }
+   if (Self->MsgGetField)        { FreeResource(Self->MsgGetField);        Self->MsgGetField        = NULL; }
+   if (Self->MsgSetField)        { FreeResource(Self->MsgSetField);        Self->MsgSetField        = NULL; }
+   if (Self->MsgActionResult)    { FreeResource(Self->MsgActionResult);    Self->MsgActionResult    = NULL; }
+   if (Self->MsgDebug)           { FreeResource(Self->MsgDebug);           Self->MsgDebug           = NULL; }
+   if (Self->MsgValidateProcess) { FreeResource(Self->MsgValidateProcess); Self->MsgValidateProcess = NULL; }
+   if (Self->MsgQuit)            { FreeResource(Self->MsgQuit);            Self->MsgQuit            = NULL; }
+   if (Self->MsgEvent)           { FreeResource(Self->MsgEvent);           Self->MsgEvent           = NULL; }
+   if (Self->MsgThreadCallback)  { FreeResource(Self->MsgThreadCallback);  Self->MsgThreadCallback  = NULL; }
+   if (Self->MsgThreadAction)    { FreeResource(Self->MsgThreadAction);    Self->MsgThreadAction    = NULL; }
 
    return ERR_Okay;
 }
