@@ -2049,9 +2049,9 @@ static ERROR TASK_SetVar(objTask *Self, struct acSetVar *Args)
 -ACTION-
 Write: Send raw data to a launched process' stdin descriptor.
 
-If a process is successfully launched with the PIPE #Flag, data can be sent to its stdin pipe by calling the Write
-action.  Setting the Buffer parameter to NULL will result in the pipe being closed (this will signal to the process
-that no more data is incoming).
+If a process is successfully launched with the PIPE set in #Flags, data can be sent to its stdin pipe by calling the
+Write action.  Setting the Buffer parameter to NULL will result in the pipe being closed (this will signal to the
+process that no more data is incoming).
 
 *****************************************************************************/
 

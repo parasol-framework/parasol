@@ -1627,8 +1627,7 @@ SetDocView: Associates document display templates against certain file paths.
 
 Use SetDocView() to link document templates with file paths.  Document templates are returned as tags when
 ~GetFileInfo() is used on paths that match those passed to this function.  Document templates are used by the
-@FileView class to switch to document mode whenever a matching location is on display. For information on the
-template format, please refer to the @FileView class.
+FileView feature to switch to document mode whenever a matching location is on display.
 
 -INPUT-
 cstr Path:     The path to associate with the document template - accepts wildcards.

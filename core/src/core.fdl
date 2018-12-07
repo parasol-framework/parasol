@@ -631,15 +631,15 @@ module({ name="Core", copyright="Paul Manias 1996-2017" }, function()
   ]])
 
   struct("rkBase64Decode", { type="base64decode", comment="Private structure for the StrBase64Decode() function." }, [[
-    uchar Step
-    uchar PlainChar
-    bit(uchar) Initialised
+    uchar Step                # Internal
+    uchar PlainChar           # Internal
+    bit(uchar) Initialised    # Internal
   ]])
 
   struct("rkBase64Encode", { type="base64encode", comment="Private structure for the StrBase64Encode() function." }, [[
-    uchar Step
-    uchar Result
-    int StepCount
+    uchar Step             # Internal
+    uchar Result           # Internal
+    int StepCount          # Internal
   ]])
 
   struct("FeedSubscription", { }, [[
@@ -654,9 +654,9 @@ module({ name="Core", copyright="Paul Manias 1996-2017" }, function()
   ]])
 
   struct("Function", { comment="Function list array structure" }, [[
-    ptr Address
-    cstr Name
-    cstruct(*FunctionField) Args
+    ptr Address     # Pointer to the function entry point
+    cstr Name       # Name of the function
+    cstruct(*FunctionField) Args  # A list of parameters accepted by the function
   ]])
 
   struct("ModHeader", { comment="Module file header", restrict="c" }, [[
@@ -716,16 +716,16 @@ module({ name="Core", copyright="Paul Manias 1996-2017" }, function()
   -- Structures for defining method and action invocations.
 
   struct("ActionArray", { }, [[
-    int ActionCode
-    ptr Routine
+    int ActionCode  # Action identifier
+    ptr Routine     # Pointer to the function entry point
   ]])
 
-  struct("MethodArray", { }, [[
-    int  MethodID
-    ptr  Routine    # ERROR (*Routine)(OBJECTPTR, APTR);
-    cstr Name
-    cstruct(*FunctionField) Args
-    int  Size
+  struct("MethodArray", { restrict="c" }, [[
+    int  MethodID   # Unique method identifier
+    ptr  Routine    # The method entry point, defined as ERROR (*Routine)(OBJECTPTR, APTR);
+    cstr Name       # Name of the method
+    cstruct(*FunctionField) Args  # List of parameters accepted by the method
+    int  Size       # Total byte-size of all accepted parameters when they are assembled as a C structure.
   ]])
 
   struct("MemoryLocks", { comment="A supplement structure for ListTasks." }, [[
@@ -753,11 +753,11 @@ module({ name="Core", copyright="Paul Manias 1996-2017" }, function()
      int     WaitingTime       # If the task is waiting, the time at which the sleep started (msec)
      mem     MessageID         # Message queue ID
      oid     OutputID          # The object that the task should output information to
-     hhandle Semaphore
+     hhandle Semaphore         # Semaphore for IPC
      int     InstanceID        # Instance that the task belongs to
-     int     TotalMemoryLocks
-     oid     ModalID
-     struct(*MemoryLocks) MemoryLocks
+     int     TotalMemoryLocks  # Total number of held memory locks
+     oid     ModalID           # Refers to any surface that currently holds a modal lock.
+     struct(*MemoryLocks) MemoryLocks # An array of memory locks currently held by the process.
   ]])
 
   struct("FDTable", { comment="Internal record for processing FD activity." }, [[
@@ -775,22 +775,22 @@ module({ name="Core", copyright="Paul Manias 1996-2017" }, function()
   ]])
 
   struct("ExposeMessage", { comment="Internal Core message structures.", restrict="c" }, [[
-     oid ObjectID
-     int X
-     int Y
-     int Width
-     int Height
-     int Flags
+     oid ObjectID # Target surface
+     int X        # Horizontal starting coordinate
+     int Y        # Vertical starting coordinate
+     int Width    # Width of exposed area
+     int Height   # Height of exposed area
+     int Flags    # Optional flags
   ]])
 
-  struct("DebugMessage", { restrict="c" }, [[ int DebugID ]])
+  struct("DebugMessage", { restrict="c" }, [[ int DebugID # Internal ]])
 
-  struct("ThreadMessage", { restrict="c" }, [[ oid ThreadID ]])
+  struct("ThreadMessage", { restrict="c" }, [[ oid ThreadID # Internal ]])
 
   struct("ThreadActionMessage", { restrict="c", comment="An internal structure for managing actions executed via threads." }, [[
      obj   Object    # Direct pointer to a target object.
      int   ActionID  # The action to execute.
-     int   Key
+     int   Key       # Internal
      error Error     # The error code resulting from the action's execution.
      func  Callback  # Callback function to execute on action completion.
   ]])
@@ -816,11 +816,11 @@ module({ name="Core", copyright="Paul Manias 1996-2017" }, function()
     int DataOffset     # Internal
   ]])
 
-  struct("ActionEntry", { }, [[ fptr(error obj ptr) PerformAction ]])
+  struct("ActionEntry", { restrict="c" }, [[ fptr(error obj ptr) PerformAction # Internal ]])
 
   struct("MsgHandler", { restrict="c" }, [[
-    ptr(struct(MsgHandler)) Prev
-    ptr(struct(MsgHandler)) Next
+    ptr(struct(MsgHandler)) Prev   # Previous message handler in the chain
+    ptr(struct(MsgHandler)) Next   # Next message handler in the chain
     ptr Custom            # Custom pointer to send to the message handler
     func Function         # Call this function
     int MsgType           # Type of message being filtered
@@ -912,7 +912,7 @@ module({ name="Core", copyright="Paul Manias 1996-2017" }, function()
   struct("FileFeedback", { }, [[
     large Size          # Size of the file
     large Position      # Current seek position within the file if moving or copying
-    str Path
+    str Path            # Path to the file
     str Dest            # Destination file/path if moving or copying
     int(FDB) FeedbackID # Set to one of the FDB integers
     char(32) Reserved   # Reserved in case of future expansion

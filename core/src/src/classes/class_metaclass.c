@@ -553,7 +553,7 @@ If a class supports file data, then the FileHeader field is used to identify the
 This feature is used by routines that need to analyse files and determine which classes support them.
 
 For example, the JPEG class supports files that start with a 32-bit token to identify them as JPEG.  Declaring a
-FileHeader expression to match these tokens allows the Parasol FileView class to detect JPEG files and display an
+FileHeader expression to match these tokens will allow the FileView feature to detect JPEG files and display an
 appropriate icon for each JPEG entry in the file list.
 
 The expression format is `[Offset:Value]...`
