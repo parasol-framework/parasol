@@ -1871,7 +1871,6 @@ struct CoreBase {
    ERROR (*_SetResourcePath)(LONG, CSTRING);
    OBJECTPTR (*_CurrentTask)(void);
    struct KeyStore * (*_VarNew)(LONG, LONG);
-   void (*_VarFree)(struct KeyStore *);
    APTR (*_VarSet)(struct KeyStore *, CSTRING, APTR, LONG);
    ERROR (*_VarGet)(struct KeyStore *, CSTRING, APTR, LONG *);
    ERROR (*_KeySet)(struct KeyStore *, ULONG, const void *, LONG);
@@ -2067,7 +2066,6 @@ struct CoreBase {
 #define SetResourcePath(...) (CoreBase->_SetResourcePath)(__VA_ARGS__)
 #define CurrentTask(...) (CoreBase->_CurrentTask)(__VA_ARGS__)
 #define VarNew(...) (CoreBase->_VarNew)(__VA_ARGS__)
-#define VarFree(...) (CoreBase->_VarFree)(__VA_ARGS__)
 #define VarSet(...) (CoreBase->_VarSet)(__VA_ARGS__)
 #define VarGet(...) (CoreBase->_VarGet)(__VA_ARGS__)
 #define KeySet(...) (CoreBase->_KeySet)(__VA_ARGS__)

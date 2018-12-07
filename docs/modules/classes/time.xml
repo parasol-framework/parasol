@@ -307,7 +307,7 @@
       <const name="THREAD_SAFE">Enable thread safety for a small performance penalty.</const>
       <const name="UNTRACKED">Do not track the key-store to the object with the current context.</const>
       <const name="CASE">Enable case-sensitive keys.</const>
-      <const name="AUTO_REMOVE">Automatically call FreeResource() on remaining key values when VarFree() is called for the key-store.</const>
+      <const name="AUTO_REMOVE">Automatically call FreeResource() on remaining key values when FreeResource() is called for the key-store.</const>
     </constants>
 
     <constants lookup="CLF" comment="Flags for the MetaClass.">

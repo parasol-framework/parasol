@@ -183,7 +183,6 @@ const struct SystemState * GetSystemState();
 ERROR SetResourcePath(LONG PathType, CSTRING Path);
 OBJECTPTR CurrentTask();
 struct KeyStore * VarNew(LONG InitialSize, LONG Flags);
-void VarFree(struct KeyStore * Store);
 APTR VarSet(struct KeyStore * Store, CSTRING Key, APTR Data, LONG Size);
 ERROR VarGet(struct KeyStore * Store, CSTRING Name, APTR * Data, LONG * Size);
 ERROR KeySet(struct KeyStore * Store, ULONG Key, const void * Data, LONG Size);

@@ -273,7 +273,7 @@ static ERROR MODULE_Free(objModule *Self, APTR Void)
    }
 
    if (Self->prvMBMemory) { FreeResource(Self->prvMBMemory); Self->prvMBMemory = NULL; }
-   if (Self->Vars) { VarFree(Self->Vars); Self->Vars = NULL; }
+   if (Self->Vars) { FreeResource(Self->Vars); Self->Vars = NULL; }
    return ERR_Okay;
 }
 

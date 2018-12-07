@@ -70,7 +70,7 @@ function testCopy()
       end
    end
 
-   mSys.VarFree(clone)
+   mSys.FreeResource(clone)
 end
 
 //=====================================================================================================================
@@ -112,7 +112,7 @@ function testIntKeys()
          error("Key " .. i .. " was lost.")
       end
    end
-   mSys.VarFree(rawKeys)
+   mSys.FreeResource(rawKeys)
 end
 
 //=====================================================================================================================
@@ -123,7 +123,7 @@ end
          glVars = mSys.VarNew()
       end,
       cleanup = function()
-         mSys.VarFree(glVars)
+         mSys.FreeResource(glVars)
          glVars = nil
       end
    }

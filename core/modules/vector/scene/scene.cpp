@@ -209,7 +209,7 @@ static ERROR VECTORSCENE_Free(objVectorScene *Self, APTR Args)
    if (Self->Viewport) Self->Viewport->Parent = NULL;
    if (Self->Adaptor) { delete Self->Adaptor; Self->Adaptor = NULL; }
    if (Self->Buffer) { delete Self->Buffer; Self->Buffer = NULL; }
-   if (Self->Defs) { VarFree(Self->Defs); Self->Defs = NULL; }
+   if (Self->Defs) { FreeResource(Self->Defs); Self->Defs = NULL; }
    return ERR_Okay;
 }
 
@@ -255,7 +255,7 @@ static ERROR VECTORSCENE_Reset(objVectorScene *Self, APTR Void)
 {
    if (Self->Adaptor) { delete Self->Adaptor; Self->Adaptor = NULL; }
    if (Self->Buffer) { delete Self->Buffer; Self->Buffer = NULL; }
-   if (Self->Defs) { VarFree(Self->Defs); Self->Defs = NULL; }
+   if (Self->Defs) { FreeResource(Self->Defs); Self->Defs = NULL; }
 
    if (!(Self->Head.Flags & NF_FREE)) { // Reset all variables
       Self->Gamma = 1.0;

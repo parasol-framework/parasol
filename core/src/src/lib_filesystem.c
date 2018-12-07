@@ -2984,13 +2984,13 @@ ERROR fs_closedir(struct DirInfo *Dir)
       if (Dir->prvFlags & RDF_OPENDIR) {
          // OpenDir() allocates Dir->Info as part of the Dir structure, so no need for a FreeResource(Dir->Info) here.
 
-         if (Dir->Info->Tags) { VarFree(Dir->Info->Tags); Dir->Info->Tags = NULL; }
+         if (Dir->Info->Tags) { FreeResource(Dir->Info->Tags); Dir->Info->Tags = NULL; }
       }
       else {
          struct FileInfo *list = Dir->Info;
          while (list) {
             struct FileInfo *next = list->Next;
-            if (list->Tags) { VarFree(list->Tags); list->Tags = NULL; }
+            if (list->Tags) { FreeResource(list->Tags); list->Tags = NULL; }
             FreeResource(list);
             list = next;
          }

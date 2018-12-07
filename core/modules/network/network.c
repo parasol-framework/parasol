@@ -273,7 +273,7 @@ static ERROR MODExpunge(void)
    }
 #endif
 
-   if (glDNS) { VarFree(glDNS); glDNS = NULL; }
+   if (glDNS) { FreeResource(glDNS); glDNS = NULL; }
 
 #ifdef _WIN32
    LogMsg("Closing winsock.");

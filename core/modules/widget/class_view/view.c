@@ -254,7 +254,7 @@ ERROR init_view(void)
 void free_view(void)
 {
    if (glTick)    { acFree(glTick);    glTick = NULL; }
-   if (glCache)   { VarFree(glCache);  glCache = NULL; }
+   if (glCache)   { FreeResource(glCache);  glCache = NULL; }
    if (clView)    { acFree(clView);    clView = NULL; }
 }
 

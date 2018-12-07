@@ -5183,10 +5183,10 @@ static ERROR unload_doc(objDocument *Self, BYTE Flags)
    }
 
    if (Flags & ULD_TERMINATE) {
-      if (Self->Vars) { VarFree(Self->Vars); Self->Vars = NULL; }
+      if (Self->Vars) { FreeResource(Self->Vars); Self->Vars = NULL; }
    }
 
-   if (Self->Params)      { VarFree(Self->Params); Self->Params = NULL; }
+   if (Self->Params)      { FreeResource(Self->Params); Self->Params = NULL; }
    if (Self->Clips)       { FreeResource(Self->Clips); Self->Clips = NULL; }
    if (Self->Keywords)    { FreeResource(Self->Keywords); Self->Keywords = NULL; }
    if (Self->Author)      { FreeResource(Self->Author); Self->Author = NULL; }
@@ -7607,7 +7607,7 @@ static void process_parameters(objDocument *Self, CSTRING String)
 
    LogF("~process_params()","%s", String);
 
-   if (Self->Params) { VarFree(Self->Params); Self->Params = NULL; }
+   if (Self->Params) { FreeResource(Self->Params); Self->Params = NULL; }
 
    BYTE pagename_processed = FALSE;
    while (*String) {
@@ -7885,7 +7885,7 @@ static void exec_link(objDocument *Self, LONG Index)
          }
 
          ERROR result = report_event(Self, DEF_LINK_ACTIVATED, &params, "deLinkActivated:Parameters");
-         VarFree(params.Parameters);
+         FreeResource(params.Parameters);
          if (result IS ERR_Skip) goto end;
       }
    }

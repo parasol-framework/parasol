@@ -67,8 +67,8 @@ static void free_all(objScript *Self)
 
    clear_subscriptions(Self);
 
-   if (prv->Structs) { VarFree(prv->Structs); prv->Structs = NULL; }
-   if (prv->Includes) { VarFree(prv->Includes); prv->Includes = NULL; }
+   if (prv->Structs) { FreeResource(prv->Structs); prv->Structs = NULL; }
+   if (prv->Includes) { FreeResource(prv->Includes); prv->Includes = NULL; }
    if (prv->FocusEventHandle) { UnsubscribeEvent(prv->FocusEventHandle); prv->FocusEventHandle = NULL; }
 
    LogF("~7","Closing Lua instance %p.", prv->Lua);

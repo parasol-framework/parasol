@@ -358,7 +358,7 @@ static ERROR CMDExpunge(void)
 {
    if (glFTLibrary) { FT_Done_FreeType(glFTLibrary); glFTLibrary = NULL; }
    if (glConfigID) { acFreeID(glConfigID); glConfigID = 0; }
-   if (glCache) { VarFree(glCache); glCache = NULL; }
+   if (glCache) { FreeResource(glCache); glCache = NULL; }
 
    // Free allocated class and modules
 

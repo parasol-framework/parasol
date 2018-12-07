@@ -405,7 +405,7 @@ static ERROR SOUND_Enable(objSound *Self, APTR Void)
 
 static ERROR SOUND_Free(objSound *Self, APTR Void)
 {
-   if (Self->Fields) { VarFree(Self->Fields); Self->Fields = NULL; }
+   if (Self->Fields) { FreeResource(Self->Fields); Self->Fields = NULL; }
 
    if (Self->Flags & SDF_STREAM) {
       if (Self->Timer) { UpdateTimer(Self->Timer, 0); Self->Timer = 0; }

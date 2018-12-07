@@ -1482,8 +1482,8 @@ static ERROR HTTP_Deactivate(objHTTP *Self, APTR Void)
 
 static ERROR HTTP_Free(objHTTP *Self, APTR Args)
 {
-   if (Self->Args) { VarFree(Self->Args); Self->Args = NULL; }
-   if (Self->Headers) { VarFree(Self->Headers); Self->Headers = NULL; }
+   if (Self->Args) { FreeResource(Self->Args); Self->Args = NULL; }
+   if (Self->Headers) { FreeResource(Self->Headers); Self->Headers = NULL; }
 
    if (Self->Socket)     {
       SetPointer(Self->Socket, FID_Feedback, NULL);
@@ -1974,8 +1974,8 @@ Method: The HTTP instruction to execute is defined here (defaults to GET).
 static ERROR SET_Method(objHTTP *Self, LONG Value)
 {
    // Changing/Setting the method results in a reset of the variable fields
-   if (Self->Args) { VarFree(Self->Args); Self->Args = NULL; }
-   if (Self->Headers) { VarFree(Self->Headers); Self->Headers = NULL; }
+   if (Self->Args) { FreeResource(Self->Args); Self->Args = NULL; }
+   if (Self->Headers) { FreeResource(Self->Headers); Self->Headers = NULL; }
    Self->Method = Value;
    return ERR_Okay;
 }
@@ -2370,7 +2370,7 @@ static CSTRING adv_crlf(CSTRING String)
 
 static ERROR parse_response(objHTTP *Self, STRING Buffer)
 {
-   if (Self->Args) { VarFree(Self->Args); Self->Args = NULL; }
+   if (Self->Args) { FreeResource(Self->Args); Self->Args = NULL; }
 
    if (Self->Flags & HTF_DEBUG) LogMsg("HTTP RESPONSE HEADER\n%s", Buffer);
 

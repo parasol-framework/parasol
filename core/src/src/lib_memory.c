@@ -175,6 +175,8 @@ ERROR AllocMemory(LONG Size, LONG Flags, APTR *Address, MEMORYID *MemoryID)
    else if (tlContext != &glTopContext) object_id = tlContext->Object->UniqueID;
    else object_id = SystemTaskID;
 
+   if (!glPrivateMemory) return LogError(ERH_AllocMemory, ERR_NotInitialised);
+
    // Allocate the memory block according to whether it is public or private.
 
    if (Flags & MEM_PUBLIC) {

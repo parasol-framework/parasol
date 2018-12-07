@@ -3753,20 +3753,6 @@ SetField(Object, FID_Statement|TSTR, "string");
   </function>
 
   <function>
-    <name>VarFree</name>
-    <category>KeyStore</category>
-    <comment>Remove an allocated variable storage resource.</comment>
-    <prototype>void VarFree(struct KeyStore * Store)</prototype>
-    <input>
-      <param type="struct KeyStore *" name="Store">A variable storage resource to be removed.</param>
-    </input>
-    <description>
-<p>Key stores created with VarNew() are removed with this function.</p>
-<p>If the KSF_AUTO_REMOVE flag was used when creating the key-store, this function will remove all remaining elements using the <function module="Core">FreeResource</function> function.  This works on the assumption that each value is a pointer to memory that was allocated with <function module="Core">AllocMemory</function>.</p>
-    </description>
-  </function>
-
-  <function>
     <name>VarGet</name>
     <category>KeyStore</category>
     <comment>Retrieve the value of a key, by name.</comment>
@@ -3873,7 +3859,7 @@ end
     <description>
 <p>Call VarNew() to create a resource for storing key values.  Key pairs are managed using hashmap routines that have been optimised for the storage of key-value strings and arbitrary data buffers.</p>
 <p>Key names are case-insensitive by default, but specifying KSF_CASE in the Flags parameter will enable case sensitivity.</p>
-<p>The key store must be removed with <function module="Core">VarFree</function> once it is no longer required.</p>
+<p>The key store must be removed with <function module="Core">FreeResource</function> once it is no longer required.</p>
     </description>
     <result type="struct KeyStore *">The allocated resource is returned or NULL if a memory allocation error occurred.</result>
   </function>
@@ -4156,7 +4142,7 @@ end
       <const name="THREAD_SAFE">Enable thread safety for a small performance penalty.</const>
       <const name="UNTRACKED">Do not track the key-store to the object with the current context.</const>
       <const name="CASE">Enable case-sensitive keys.</const>
-      <const name="AUTO_REMOVE">Automatically call FreeResource() on remaining key values when VarFree() is called for the key-store.</const>
+      <const name="AUTO_REMOVE">Automatically call FreeResource() on remaining key values when FreeResource() is called for the key-store.</const>
     </constants>
 
     <constants lookup="CLF" comment="Flags for the MetaClass.">

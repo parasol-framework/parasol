@@ -2560,7 +2560,7 @@ static void free_glyph(objFont *Font)
             if (glyph->Char.Data) FreeResource(glyph->Char.Data);
             if (glyph->Char.Outline) FreeResource(glyph->Char.Outline);
          }
-         VarFree(Font->Glyph->Glyphs);
+         FreeResource(Font->Glyph->Glyphs);
          Font->Glyph->Glyphs = NULL;
       }
 

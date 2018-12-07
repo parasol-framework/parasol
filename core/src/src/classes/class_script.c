@@ -237,7 +237,7 @@ static ERROR SCRIPT_Callback(objScript *Self, struct scCallback *Args)
 
 static ERROR SCRIPT_Free(objScript *Self, APTR Void)
 {
-   if (Self->Vars)        { VarFree(Self->Vars);           Self->Vars = NULL; }
+   if (Self->Vars)        { FreeResource(Self->Vars);        Self->Vars = NULL; }
    if (Self->CacheFile)   { FreeResource(Self->CacheFile);   Self->CacheFile = NULL; }
    if (Self->Path)        { FreeResource(Self->Path);        Self->Path = NULL; }
    if (Self->String)      { FreeResource(Self->String);      Self->String = NULL; }
@@ -345,7 +345,7 @@ static ERROR SCRIPT_NewObject(objScript *Self, APTR Void)
 
 static ERROR SCRIPT_Reset(objScript *Self, APTR Void)
 {
-   if (Self->Vars) { VarFree(Self->Vars); Self->Vars = NULL; }
+   if (Self->Vars) { FreeResource(Self->Vars); Self->Vars = NULL; }
    return ERR_Okay;
 }
 

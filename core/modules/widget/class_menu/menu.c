@@ -389,7 +389,7 @@ static ERROR MENU_DataFeed(objMenu *Self, struct acDataFeed *Args)
 static ERROR MENU_Free(objMenu *Self, APTR Void)
 {
    if (Self->Translation) { acFree(Self->Translation); Self->Translation = NULL; }
-   if (Self->LocalArgs) { VarFree(Self->LocalArgs); Self->LocalArgs = NULL; }
+   if (Self->LocalArgs) { FreeResource(Self->LocalArgs); Self->LocalArgs = NULL; }
 
    acClear(Self); // Remove all items
 

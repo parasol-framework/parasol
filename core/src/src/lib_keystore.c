@@ -57,7 +57,7 @@ static void KeyStore_free(APTR Address)
       LONG size;
       while (!KeyIterate(store, key, &key, (APTR *)&ptr, &size)) {
          if (size IS sizeof(APTR)) FreeResource(ptr[0]);
-         else FMSG("@VarFree","Key $%.8x has unexpected size %d", key, size);
+         else FMSG("@FreeResource","Key $%.8x has unexpected size %d", key, size);
       }
    }
 
@@ -335,33 +335,6 @@ ERROR VarCopy(struct KeyStore *Source, struct KeyStore *Dest)
 /*****************************************************************************
 
 -FUNCTION-
-VarFree: Remove an allocated variable storage resource.
-
-Key stores created with VarNew() are removed with this function.
-
-If the KSF_AUTO_REMOVE flag was used when creating the key-store, this function will remove all remaining elements using
-the ~FreeResource() function.  This works on the assumption that each value is a pointer to memory that was
-allocated with ~AllocMemory().
-
--INPUT-
-resource(KeyStore) Store: A variable storage resource to be removed.
-
-*****************************************************************************/
-
-void VarFree(struct KeyStore *Store)
-{
-   if (!Store) return;
-   LogF("~VarFree()","Store: %p, Total Keys: %d, Flags: $%.8x", Store, Store->Total, Store->Flags);
-
-   if (Store->Flags & KSF_INTERNAL) free(Store);
-   else FreeResource(Store); // Note that KeyStore_free() will be automatically called by the resource manager.
-
-   LogBack();
-}
-
-/*****************************************************************************
-
--FUNCTION-
 VarGet: Retrieve the value of a key, by name.
 
 Named variables can be retrieved from variable stores by calling VarGet().  If a matching Name is discovered,
@@ -579,7 +552,7 @@ optimised for the storage of key-value strings and arbitrary data buffers.
 
 Key names are case-insensitive by default, but specifying KSF_CASE in the Flags parameter will enable case sensitivity.
 
-The key store must be removed with ~VarFree() once it is no longer required.
+The key store must be removed with ~FreeResource() once it is no longer required.
 
 -INPUT-
 int InitialSize: A sizing hint that indicates the minimum number of expected key values for storage.  Set to zero for the default.
@@ -601,19 +574,10 @@ struct KeyStore * VarNew(LONG InitialSize, LONG Flags)
    struct KeyStore *vs;
 
    ERROR error;
-   if (!glPrivateMemory) { // Check if AllocMemory() is feasible
-      if ((vs = malloc(sizeof(struct KeyStore)))) {
-         Flags |= KSF_INTERNAL;
-         error = ERR_Okay;
-      }
-      else error = ERR_AllocMemory;
-   }
-   else {
-      LONG mem_flags = MEM_DATA|MEM_MANAGED;
-      if (Flags & KSF_UNTRACKED) mem_flags |= MEM_UNTRACKED;
-      error = AllocMemory(sizeof(struct KeyStore), mem_flags, (APTR *)&vs, NULL);
-      if (!error) set_memory_manager(vs, &glResourceKeyStore);
-   }
+   LONG mem_flags = MEM_DATA|MEM_MANAGED;
+   if (Flags & KSF_UNTRACKED) mem_flags |= MEM_UNTRACKED;
+   error = AllocMemory(sizeof(struct KeyStore), mem_flags, (APTR *)&vs, NULL);
+   if (!error) set_memory_manager(vs, &glResourceKeyStore);
 
    if (error) {
       FMSG("@VarNew","Failed to allocate memory.");
@@ -626,8 +590,7 @@ struct KeyStore * VarNew(LONG InitialSize, LONG Flags)
       if (Flags & KSF_THREAD_SAFE) {
          if ((error = AllocMutex(ALF_RECURSIVE, &vs->Mutex)) != ERR_Okay) {
             FMSG("@VarNew","AllocMutex() failed: %s", GetErrorMsg(error));
-            if (Flags & KSF_INTERNAL) free(vs);
-            else FreeResource(vs);
+            FreeResource(vs);
             return NULL;
          }
       }
@@ -638,8 +601,7 @@ struct KeyStore * VarNew(LONG InitialSize, LONG Flags)
       return vs;
    }
    else {
-      if (Flags & KSF_INTERNAL) free(vs);
-      else FreeResource(vs);
+      FreeResource(vs);
    }
 
    return NULL;

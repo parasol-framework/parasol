@@ -291,7 +291,7 @@ restart_free: {
             glDocView = NULL;
          }
 
-         if (glCache) { VarFree(glCache); glCache = NULL; }
+         if (glCache) { FreeResource(glCache); glCache = NULL; }
 
          if (glInotify != -1) { close(glInotify); glInotify = -1; }
 
@@ -407,14 +407,14 @@ restart_free: {
 
    // The object name lookup table is no longer required
 
-   if (glObjectLookup) { VarFree(glObjectLookup); glObjectLookup = NULL; }
-   if (glFields) { VarFree(glFields); glFields = NULL; }
+   if (glObjectLookup) { FreeResource(glObjectLookup); glObjectLookup = NULL; }
+   if (glFields) { FreeResource(glFields); glFields = NULL; }
 
    // Unless we have crashed, free the Task class
 
    if (!glCrashStatus) {
       if (TaskClass) { acFree(&TaskClass->Head); TaskClass = 0; }
-      if (glClassMap) { VarFree(glClassMap); glClassMap = NULL; }
+      if (glClassMap) { FreeResource(glClassMap); glClassMap = NULL; }
    }
 
    // Remove the action management structure

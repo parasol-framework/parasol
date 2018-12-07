@@ -354,7 +354,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
 static ERROR CMDExpunge(void)
 {
-   if (glActionLookup) { VarFree(glActionLookup); glActionLookup = NULL; }
+   if (glActionLookup) { FreeResource(glActionLookup); glActionLookup = NULL; }
    if (clFluid)        { acFree(clFluid); clFluid = NULL; }
    if (modDisplay)     { acFree(modDisplay); modDisplay = NULL; }
    //if (modSurface)     { acFree(modSurface); modSurface = NULL; }

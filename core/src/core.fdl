@@ -460,7 +460,7 @@ module({ name="Core", copyright="Paul Manias 1996-2017" }, function()
      "CASE: Enable case-sensitive keys.",
      "THREAD_SAFE: Enable thread safety for a small performance penalty.",
      "UNTRACKED: Do not track the key-store to the object with the current context.",
-     "AUTO_REMOVE: Automatically call FreeResource() on remaining key values when VarFree() is called for the key-store.",
+     "AUTO_REMOVE: Automatically call FreeResource() on remaining key values when FreeResource() is called for the key-store.",
      "INTERNAL: Private.")
 
 -- Please note that when the user is using an international keyboard, the name of the key will not
@@ -1138,7 +1138,6 @@ struct ScriptArg { // For use with scExec
     "SetResourcePath",
     "CurrentTask",
     "VarNew",
-    "VarFree",
     "VarSet",
     "VarGet",
     "KeySet",
