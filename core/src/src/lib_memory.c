@@ -165,7 +165,7 @@ ERROR AllocMemory(LONG Size, LONG Flags, APTR *Address, MEMORYID *MemoryID)
 
    // Figure out what object the memory block will belong to.  The preferred default is for it to belong to the current context.
 
-   if (Flags & MEM_HIDDEN)          object_id = 0;
+   if (Flags & MEM_HIDDEN)         object_id = 0;
    else if (Flags & MEM_UNTRACKED) object_id = 0;
    else if (Flags & MEM_TASK)      object_id = glCurrentTaskID;
    else if (Flags & MEM_CALLER) {

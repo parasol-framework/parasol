@@ -2,7 +2,7 @@
 #define SYSTEM_ERRORS 1
 
 // Name:      system/errors.h
-// Copyright: Paul Manias © 1996-2017
+// Copyright: Paul Manias © 1996-2018
 // Generator: idl-c
 
 // Universal error codes

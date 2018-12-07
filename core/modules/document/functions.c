@@ -21,7 +21,6 @@ static const struct {
    { "document",    ID_DOCUMENT,  "surface", "" },
    { "image",       ID_IMAGE,     "surface", "" },
    { "input",       ID_INPUT,     "surface", "" },
-   { "onclick",     ID_ONCLICK,   "surface", "" },
    { "surface",     ID_SURFACE,   "parent",  "" },
    { "text",        ID_TEXT,      "surface", "" },
    { "view",        ID_VIEW,      "surface", "" },
