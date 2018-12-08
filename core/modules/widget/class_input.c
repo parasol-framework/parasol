@@ -162,7 +162,6 @@ static ERROR INPUT_Focus(objInput *Self, APTR Void)
 
 static ERROR INPUT_Free(objInput *Self, APTR Void)
 {
-   if (Self->Font) { acFree(Self->Font); Self->Font = NULL; }
    if (Self->TextInput) { acFree(Self->TextInput); Self->TextInput = NULL; }
 
    if (Self->RegionID) {
@@ -324,47 +323,12 @@ static ERROR INPUT_MoveToFront(objInput *Self, APTR Void)
 static ERROR INPUT_NewObject(objInput *Self, APTR Void)
 {
    if (!NewLockedObject(ID_SURFACE, NF_INTEGRAL|Self->Head.Flags, NULL, &Self->RegionID)) {
-      if (!NewObject(ID_FONT, NF_INTEGRAL|Self->Head.Flags, &Self->Font)) {
-         SetString(Self->Font, FID_Face, glLabelFace);
          if (!NewObject(ID_TEXT, NF_INTEGRAL, &Self->TextInput)) {
             SetString(Self->TextInput->Font, FID_Face, glWidgetFace);
-
-            Self->ExitFrame = 1;
-            Self->ReleaseFrame = 1;
-            Self->Flags |= INF_SUNKEN;
-            Self->Thickness = 1;
-
-            // Internal colour
-            Self->Colour.Red   = 0;
-            Self->Colour.Green = 255;
-            Self->Colour.Blue  = 255;
-            Self->Colour.Alpha = 255;
-
-            // Shadow colour
-            Self->Shadow.Red   = 100;
-            Self->Shadow.Green = 100;
-            Self->Shadow.Blue  = 100;
-            Self->Shadow.Alpha = 255;
-
-            // Highlight colour
-            Self->Highlight.Red   = 255;
-            Self->Highlight.Green = 255;
-            Self->Highlight.Blue  = 255;
-            Self->Highlight.Alpha = 255;
-
-            Self->TextInput->Layout->Align = ALIGN_VERTICAL;
-            Self->TextInput->Layout->LeftMargin   = 3;
-            Self->TextInput->Layout->RightMargin  = 3;
-            Self->TextInput->Layout->TopMargin    = 2;
-            Self->TextInput->Layout->BottomMargin = 2;
-
             drwApplyStyleValues(Self, NULL);
-
             return ERR_Okay;
          }
          else return ERR_NewObject;
-      }
-      else return ERR_NewObject;
    }
    else return ERR_NewObject;
 }
@@ -496,21 +460,6 @@ static ERROR SET_Feedback(objInput *Self, FUNCTION *Value)
 Flags: Optional flags can be defined here.
 
 -FIELD-
-FocusFrame: The graphics frame to display when the input box has the focus.
-
-This field specifies the surface frame to switch to when the user focuses on the input box.  By default this field is
-initially set to zero, which has no effect on the surface frame.  When the user leaves the input box, it will revert to
-the frame indicated by the #ReleaseFrame field.
-
--FIELD-
-Font: Refers to the font used to draw the input label.
-
-The font object is used to draw the label for the input box.  To prevent clashes with the input box code, it is
-recommended that configuring of the font object is limited to the face, point size and colour.
-
-In addition, do not attempt to reconfigure the font after initialisation.
-
--FIELD-
 Height: Defines the height of an input box.
 
 An input box can be given a fixed or relative height by setting this field to the desired value.  To set a relative
@@ -550,9 +499,6 @@ static ERROR SET_Height(objInput *Self, struct Variable *Value)
 }
 
 /*****************************************************************************
-
--FIELD-
-Highlight: The colour of the border highlight is defined here.
 
 -FIELD-
 InputWidth: The width of the input area.
@@ -628,14 +574,14 @@ LayoutStyle: Private field for supporting dynamic style changes when an input ob
 
 *****************************************************************************/
 
+// Internal field for supporting dynamic style changes when a GUI object is used in a document.
+
 static ERROR SET_LayoutStyle(objInput *Self, DOCSTYLE *Value)
 {
    if (!Value) return ERR_Okay;
 
-   if (Self->Head.Flags & NF_INITIALISED) {
-      docApplyFontStyle(Value->Document, Value, Self->Font);
-   }
-   else docApplyFontStyle(Value->Document, Value, Self->Font);
+   //if (Self->Head.Flags & NF_INITIALISED) docApplyFontStyle(Value->Document, Value, Self->Font);
+   //else docApplyFontStyle(Value->Document, Value, Self->Font);
 
    return ERR_Okay;
 }
@@ -661,36 +607,6 @@ static ERROR SET_PostLabel(objInput *Self, CSTRING Value)
 {
    if (Value) StrCopy(StrTranslateText(Value), Self->prvPostLabel, sizeof(Self->prvPostLabel));
    else Self->prvPostLabel[0] = 0;
-   return ERR_Okay;
-}
-
-/*****************************************************************************
-
--FIELD-
-Raised: If set to TRUE the input box will appear to be raised into the foreground.
-
-If you have set the Highlight and Shadow fields of an input object then you will need to decide whether or not the box
-should be given a sunken or raised effect when it is drawn.  To give it a raised effect you will need to set this field
-to TRUE, if not then you should set the Sunken field.
-
-*****************************************************************************/
-
-static ERROR GET_Raised(objInput *Self, LONG *Value)
-{
-   if (Self->Flags & INF_SUNKEN) *Value = TRUE;
-   else *Value = FALSE;
-   return ERR_Okay;
-}
-
-static ERROR SET_Raised(objInput *Self, LONG Value)
-{
-   if (Value) {
-      if (Self->Flags & INF_RAISED) return ERR_Okay;
-      Self->Flags = (Self->Flags & ~INF_SUNKEN) | INF_RAISED;
-   }
-   else Self->Flags &= ~INF_RAISED;
-
-   if (Self->Flags & INF_ACTIVE_DRAW) acDrawID(Self->RegionID);
    return ERR_Okay;
 }
 
@@ -725,13 +641,6 @@ static ERROR SET_Region(objInput *Self, LONG Value)
 /*****************************************************************************
 
 -FIELD-
-ReleaseFrame: The graphics frame to display when the input box loses the focus.
-
-If the FocusFrame field has been set, you may want to match that value by indicating the frame that should be used when
-the click is released.  By default, the value in this field will initially be set to 1.  This field is unused if the
-FocusFrame field has not been set.
-
--FIELD-
 Right: The right-most coordinate of the input box (X + Width).
 
 *****************************************************************************/
@@ -747,9 +656,6 @@ static ERROR GET_Right(objInput *Self, LONG *Value)
 }
 
 /*****************************************************************************
-
--FIELD-
-Shadow: The colour of the input box shadow is defined here.
 
 -FIELD-
 String: The string that is to be printed inside the input box is declared here.
@@ -780,36 +686,6 @@ static ERROR SET_String(objInput *Self, CSTRING Value)
       return ERR_Okay;
    }
    else return ERR_Failed;
-}
-
-/*****************************************************************************
-
--FIELD-
-Sunken: Set to TRUE to make the input box appear to sink into the background.
-
-If you have set the Highlight and Shadow fields of an input object then you will need to decide whether or not the box
-should be given a sunken or raised effect when it is drawn.  To give it a sunken effect you will need to set this field
-to TRUE, if not then you should set the Raised field.
-
-*****************************************************************************/
-
-static ERROR GET_Sunken(objInput *Self, LONG *Value)
-{
-   if (Self->Flags & INF_SUNKEN) *Value = TRUE;
-   else *Value = FALSE;
-   return ERR_Okay;
-}
-
-static ERROR SET_Sunken(objInput *Self, LONG Value)
-{
-   if (Value) {
-      if (Self->Flags & INF_SUNKEN) return ERR_Okay;
-      Self->Flags = (Self->Flags & ~INF_RAISED) | INF_SUNKEN;
-   }
-   else Self->Flags &= ~INF_SUNKEN;
-
-   if (Self->Flags & INF_ACTIVE_DRAW) acDrawID(Self->RegionID);
-   return ERR_Okay;
 }
 
 /*****************************************************************************
@@ -847,9 +723,6 @@ TextInput: Refers to a Text object that handles the text inside the input area.
 
 This field refers to a @Text object that handles the text inside the input area.  Please exercise caution if
 interacting with this object directly, as doing so may interfere with the expected behaviour of the input class.
-
--FIELD-
-Thickness: The thickness of the input border, in pixels.
 
 -FIELD-
 Width: Defines the width of an input box.
@@ -1052,72 +925,6 @@ static ERROR SET_YOffset(objInput *Self, struct Variable *Value)
    else return ERR_AccessObject;
 }
 
-//****************************************************************************
-
-static void draw_input(objInput *Self, objSurface *Surface, objBitmap *Bitmap)
-{
-   WORD width;
-
-   if (!(Self->Flags & INF_NO_BKGD)) {
-      gfxDrawRectangle(Bitmap, Self->LabelWidth, 0, (Self->InputWidth > 0) ? Self->InputWidth : Surface->Width - Self->LabelWidth,
-         Surface->Height, PackPixelRGBA(Bitmap, &Self->Colour), BAF_FILL|BAF_BLEND);
-
-      // Draw the borders around the rectangular area
-
-      ULONG highlight, shadow;
-      if (Self->Flags & INF_SUNKEN) { // Reverse the border definitions in sunken mode
-         highlight = PackPixelRGBA(Bitmap, &Self->Shadow);
-         shadow = PackPixelRGBA(Bitmap, &Self->Highlight);
-      }
-      else {
-         shadow = PackPixelRGBA(Bitmap, &Self->Shadow);
-         highlight = PackPixelRGBA(Bitmap, &Self->Highlight);
-      }
-
-      LONG x = Self->LabelWidth;
-      if (Self->InputWidth > 0) width = Self->InputWidth;
-      else width = Surface->Width - Self->LabelWidth;
-
-      WORD i;
-      for (i=0; i < Self->Thickness; i++) {
-         // Top, Bottom
-         gfxDrawRectangle(Bitmap, x+i, i, width-i-i, 1, highlight, BAF_FILL|BAF_BLEND);
-         gfxDrawRectangle(Bitmap, x+i, Surface->Height-i-1, width-i-i, 1, shadow, BAF_FILL|BAF_BLEND);
-
-         // Left, Right
-         gfxDrawRectangle(Bitmap, x+i, i+1, 1, Surface->Height-i-i-2, highlight, BAF_FILL|BAF_BLEND);
-         gfxDrawRectangle(Bitmap, x+width-i-1, i+1, 1, Surface->Height-i-i-2, shadow, BAF_FILL|BAF_BLEND);
-      }
-   }
-
-   if (Self->prvLabel[0]) {
-      objFont *font = Self->Font;
-      font->Bitmap = Bitmap;
-
-      SetString(font, FID_String, Self->prvLabel);
-
-      if (Surface->Flags & RNF_DISABLED) SetLong(font, FID_Opacity, 25);
-
-      font->X = Surface->LeftMargin;
-      font->Y = Surface->TopMargin;
-      font->Flags |= FTF_CHAR_CLIP;
-      font->WrapEdge = Self->LabelWidth - 3;
-      font->Align |= ALIGN_VERTICAL;
-      font->AlignWidth  = Surface->Width - Surface->RightMargin - Surface->LeftMargin;
-      font->AlignHeight = Surface->Height - Surface->BottomMargin - Surface->TopMargin;
-      acDraw(font);
-
-      if (Self->prvPostLabel[0]) {
-         font->X = Self->LabelWidth + Self->InputWidth;
-         font->WrapEdge = Surface->Width;
-         SetString(font, FID_String, Self->prvPostLabel);
-         acDraw(font);
-      }
-
-      if (Surface->Flags & RNF_DISABLED) SetLong(font, FID_Opacity, 100);
-   }
-}
-
 //**********************************************************************
 // This callback is triggered when the user moves focus away from the text widget.
 
@@ -1239,22 +1046,13 @@ exit:
 #include "class_input_def.c"
 
 static const struct FieldArray clFields[] = {
-   { "Font",         FDF_INTEGRAL|FDF_R,      ID_FONT, NULL, NULL },
    { "TextInput",    FDF_INTEGRAL|FDF_R,      ID_TEXT, NULL, NULL },
    { "LayoutSurface",FDF_VIRTUAL|FDF_OBJECTID|FDF_SYSTEM|FDF_R, ID_SURFACE, NULL, NULL }, // VIRTUAL: This is a synonym for the Region field
    { "Region",       FDF_OBJECTID|FDF_RW,  ID_SURFACE, NULL, SET_Region },
    { "Surface",      FDF_OBJECTID|FDF_RW,  ID_SURFACE, NULL, NULL },
    { "Flags",        FDF_LONGFLAGS|FDF_RW, (MAXINT)&clInputFlags, NULL, NULL },
-   { "EnterFrame",   FDF_LONG|FDF_RW,      0, NULL, NULL },
-   { "ExitFrame",    FDF_LONG|FDF_RW,      0, NULL, NULL },
-   { "FocusFrame",   FDF_LONG|FDF_RW,      0, NULL, NULL },
-   { "ReleaseFrame", FDF_LONG|FDF_RW,      0, NULL, NULL },
-   { "Thickness",    FDF_LONG|FDF_RW,      0, NULL, NULL },
    { "LabelWidth",   FDF_LONG|FDF_RW,      0, NULL, SET_LabelWidth },
    { "InputWidth",   FDF_LONG|FDF_RI,      0, NULL, NULL },
-   { "Colour",       FDF_RGB|FDF_RW,       0, NULL, NULL },
-   { "Highlight",    FDF_RGB|FDF_RW,       0, NULL, NULL },
-   { "Shadow",       FDF_RGB|FDF_RW,       0, NULL, NULL },
    // Virtual fields
    { "Bottom",       FDF_VIRTUAL|FDF_LONG|FDF_R,         0, GET_Bottom,        NULL },
    { "Disable",      FDF_VIRTUAL|FDF_LONG|FDF_RW,        0, GET_Disable,       SET_Disable },
@@ -1262,9 +1060,7 @@ static const struct FieldArray clFields[] = {
    { "Label",        FDF_VIRTUAL|FDF_STRING|FDF_RW,      0, GET_Label,         SET_Label },
    { "LayoutStyle",  FDF_VIRTUAL|FDF_POINTER|FDF_SYSTEM|FDF_W, 0, NULL,        SET_LayoutStyle },
    { "PostLabel",    FDF_VIRTUAL|FDF_STRING|FDF_RW,      0, GET_PostLabel,     SET_PostLabel },
-   { "Raised",       FDF_VIRTUAL|FDF_LONG|FDF_RW,        0, GET_Raised,        SET_Raised },
    { "Right",        FDF_VIRTUAL|FDF_LONG|FDF_R,         0, GET_Right,         NULL },
-   { "Sunken",       FDF_VIRTUAL|FDF_LONG|FDF_RW,        0, GET_Sunken,        SET_Sunken },
    { "String",       FDF_VIRTUAL|FDF_STRING|FDF_RW,      0, GET_String,        SET_String },
    { "TabFocus",     FDF_VIRTUAL|FDF_OBJECTID|FDF_W,     ID_TABFOCUS, NULL,    SET_TabFocus },
    { "Text",         FDF_SYNONYM|FDF_VIRTUAL|FDF_STRING|FDF_RW, 0, GET_String, SET_String },
