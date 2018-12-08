@@ -235,8 +235,7 @@ module({ name="Widget", copyright="Paul Manias 2003-2018", version=1.0 }, functi
 
   flags("CBF", { comment="CheckBox flags." },
     "DISABLED: Disable on creation, or object is currently disabled.",
-    "HIDE: Hide on creation, or object is currently hidden.",
-    "FADE_BORDER: Fade the border edges into the checkbox colour (requires thickness greater than 1).")
+    "HIDE: Hide on creation, or object is currently hidden.")
 
   flags("BTF", { comment="Button flags." },
     "HIDE: Hide on creation, or button is currently hidden.",
@@ -247,11 +246,6 @@ module({ name="Widget", copyright="Paul Manias 2003-2018", version=1.0 }, functi
   flags("INF", { comment="Flags for the Input class." },
     "HIDE: Hide on creation, or input is currently hidden.",
     "DISABLED: Disable on creation.",
-    "NO_GFX: Do not generate any text or image graphics using internal routines (use the Template graphics definition).",
-    "NO_BKGD: Do not draw background graphics (automatically set if Template graphics are used).",
-    "SUNKEN: Reverses the highlight and shadow definitions to create a sunken effect.  Read-only.",
-    "RAISED: Draw the input box with a raised (3D) border edge.  Read-only.",
-    "ACTIVE_DRAW: Pro-actively redraw the object when graphics alterations are made.",
     "COMMANDLINE: Function as a command-line.  Typically used when the input box needs to remain persistent and is linked to an output system, such as a shell.",
     "SELECT_TEXT: Select all text when the input box is shown for the first time.",
     "SECRET: Used for secret user entry (passwords).",

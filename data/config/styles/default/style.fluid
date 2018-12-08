@@ -738,6 +738,80 @@ glStyles = {
          Input.colour      = glColours.widget.background
          Input.font.colour = glColours.widget.label
          Input.textInput.colour = glColours.widget.text
+
+            Self->TextInput->Layout->Align = ALIGN_VERTICAL
+            Self->TextInput->Layout->LeftMargin   = 3
+            Self->TextInput->Layout->RightMargin  = 3
+            Self->TextInput->Layout->TopMargin    = 2
+            Self->TextInput->Layout->BottomMargin = 2
+      end,
+      decoration = function(Input, Surface)
+
+--[[
+   WORD width;
+
+   if (!(Self->Flags & INF_NO_BKGD)) {
+      gfxDrawRectangle(Bitmap, Self->LabelWidth, 0, (Self->InputWidth > 0) ? Self->InputWidth : Surface->Width - Self->LabelWidth,
+         Surface->Height, PackPixelRGBA(Bitmap, &Self->Colour), BAF_FILL|BAF_BLEND);
+
+      // Draw the borders around the rectangular area
+
+      ULONG highlight, shadow;
+      if (Self->Flags & INF_SUNKEN) { // Reverse the border definitions in sunken mode
+         highlight = PackPixelRGBA(Bitmap, &Self->Shadow);
+         shadow = PackPixelRGBA(Bitmap, &Self->Highlight);
+      }
+      else {
+         shadow = PackPixelRGBA(Bitmap, &Self->Shadow);
+         highlight = PackPixelRGBA(Bitmap, &Self->Highlight);
+      }
+
+      LONG x = Self->LabelWidth;
+      if (Self->InputWidth > 0) width = Self->InputWidth;
+      else width = Surface->Width - Self->LabelWidth;
+
+      WORD i;
+      for (i=0; i < Self->Thickness; i++) {
+         // Top, Bottom
+         gfxDrawRectangle(Bitmap, x+i, i, width-i-i, 1, highlight, BAF_FILL|BAF_BLEND);
+         gfxDrawRectangle(Bitmap, x+i, Surface->Height-i-1, width-i-i, 1, shadow, BAF_FILL|BAF_BLEND);
+
+         // Left, Right
+         gfxDrawRectangle(Bitmap, x+i, i+1, 1, Surface->Height-i-i-2, highlight, BAF_FILL|BAF_BLEND);
+         gfxDrawRectangle(Bitmap, x+width-i-1, i+1, 1, Surface->Height-i-i-2, shadow, BAF_FILL|BAF_BLEND);
+      }
+   }
+
+   if (Self->prvLabel[0]) {
+      objFont *font = Self->Font;
+      font->Bitmap = Bitmap;
+
+      SetString(font, FID_String, Self->prvLabel);
+
+      if (Surface->Flags & RNF_DISABLED) SetLong(font, FID_Opacity, 25);
+
+      font->X = Surface->LeftMargin;
+      font->Y = Surface->TopMargin;
+      font->Flags |= FTF_CHAR_CLIP;
+      font->WrapEdge = Self->LabelWidth - 3;
+      font->Align |= ALIGN_VERTICAL;
+      font->AlignWidth  = Surface->Width - Surface->RightMargin - Surface->LeftMargin;
+      font->AlignHeight = Surface->Height - Surface->BottomMargin - Surface->TopMargin;
+      acDraw(font);
+
+      if (Self->prvPostLabel[0]) {
+         font->X = Self->LabelWidth + Self->InputWidth;
+         font->WrapEdge = Surface->Width;
+         SetString(font, FID_String, Self->prvPostLabel);
+         acDraw(font);
+      }
+
+      if (Surface->Flags & RNF_DISABLED) SetLong(font, FID_Opacity, 100);
+   }
+--]]
+
+
+
       end
    },
    menubar = {
