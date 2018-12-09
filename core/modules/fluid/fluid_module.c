@@ -341,7 +341,7 @@ static int module_call(lua_State *Lua)
             //
             // ! It might be possible to add a workaround by introducing a numeric interface that returns numeric objects, e.g.
             //   num.float(n), num.int(n), num.double(n)
-            //   obj.new(..., FID_Delay, num.float(1.3), FID_Label, "Hello)
+            //   obj.new(..., FID_Delay, num.float(1.3), FID_Label, "Hello")
 
             luaL_error(Lua, "Tag-lists are not supported at this time.");
 /*

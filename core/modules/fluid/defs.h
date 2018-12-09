@@ -221,6 +221,7 @@ static int make_struct(lua_State *, CSTRING, CSTRING) __attribute__((unused));
 static ERROR named_struct_to_table(lua_State *, CSTRING, APTR);
 static void make_struct_ptr_table(lua_State *, CSTRING, LONG, CPTR *);
 static void make_struct_serial_table(lua_State *, CSTRING, LONG, CPTR);
+static int module_load(lua_State *);
 static struct object * push_object(lua_State *, OBJECTPTR Object);
 static ERROR push_object_id(lua_State *, OBJECTID ObjectID);
 static struct fstruct * push_struct(objScript *, APTR, CSTRING, BYTE);

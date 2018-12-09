@@ -346,6 +346,25 @@ static ERROR FLUID_Activate(objScript *Self, APTR Void)
          lua_sethook(prv->Lua, hook_debug, LUA_MASKCALL|LUA_MASKRET|LUA_MASKLINE, 0);
       }
 
+      // Pre-load the Core module: mSys = mod.load('core')
+
+      OBJECTPTR module;
+      if (!CreateObject(ID_MODULE, 0, &module,
+            FID_Name|TSTR, "core",
+            TAGEND)) {
+         struct module *mod = (struct module *)lua_newuserdata(prv->Lua, sizeof(struct module));
+         ClearMemory(mod, sizeof(struct module));
+         luaL_getmetatable(prv->Lua, "Fluid.mod");
+         lua_setmetatable(prv->Lua, -2);
+         mod->Module = module;
+         GetPointer(module, FID_FunctionList, &mod->Functions);
+         lua_setglobal(prv->Lua, "mSys");
+      }
+      else {
+         LogErrorMsg("Failed to create module object.");
+         goto failure;
+      }
+
       prv->Lua->ProtectedGlobals = TRUE;
 
       LONG result;
