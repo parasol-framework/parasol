@@ -440,6 +440,29 @@ static void task_incoming_stderr(WINHANDLE Handle, objTask *Task)
 }
 
 //****************************************************************************
+// These functions arrange for callbacks to be made whenever one of our process-connected pipes receives data.
+
+void task_register_stdout(objTask *Task, WINHANDLE Handle)
+{
+   FMSG("task_register_stdout()","Handle: %d", (LONG)Handle);
+   RegisterFD(Handle, RFD_READ, (void (*)(void *, void *))&task_incoming_stdout, Task);
+}
+
+void task_register_stderr(objTask *Task, WINHANDLE Handle)
+{
+   FMSG("task_register_stderr()","Handle: %d", (LONG)Handle);
+   RegisterFD(Handle, RFD_READ, (void (*)(void *, void *))&task_incoming_stderr, Task);
+}
+
+//****************************************************************************
+
+void task_deregister_incoming(WINHANDLE Handle)
+{
+   RegisterFD(Handle, RFD_REMOVE|RFD_READ|RFD_WRITE|RFD_EXCEPT, NULL, NULL);
+}
+#endif
+
+//****************************************************************************
 
 static ERROR msg_getfield(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
 {
@@ -621,29 +644,6 @@ static ERROR msg_quit(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG 
    glTaskState = TSTATE_STOPPING;
    return ERR_Okay;
 }
-
-//****************************************************************************
-// These functions arrange for callbacks to be made whenever one of our process-connected pipes receives data.
-
-void task_register_stdout(objTask *Task, WINHANDLE Handle)
-{
-   FMSG("task_register_stdout()","Handle: %d", (LONG)Handle);
-   RegisterFD(Handle, RFD_READ, (void (*)(void *, void *))&task_incoming_stdout, Task);
-}
-
-void task_register_stderr(objTask *Task, WINHANDLE Handle)
-{
-   FMSG("task_register_stderr()","Handle: %d", (LONG)Handle);
-   RegisterFD(Handle, RFD_READ, (void (*)(void *, void *))&task_incoming_stderr, Task);
-}
-
-//****************************************************************************
-
-void task_deregister_incoming(WINHANDLE Handle)
-{
-   RegisterFD(Handle, RFD_REMOVE|RFD_READ|RFD_WRITE|RFD_EXCEPT, NULL, NULL);
-}
-#endif
 
 //****************************************************************************
 // This function is called when a WIN32 process that we launched has been terminated.

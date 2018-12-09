@@ -1,7 +1,5 @@
 -- Graphical User Interface functions
 
-   if (mSys == nil) then mSys = mod.load('core') end
-
 if (gui == nil) then
    gui = {
       dpi = 160,

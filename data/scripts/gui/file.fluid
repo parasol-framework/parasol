@@ -27,7 +27,6 @@ file.ui.paste(Dest, Cluster)
    require 'common'
    require 'gui/dialog'
 
-if not mSys then mSys = mod.load('core') end
 if not file.ui then file.ui = { } end
 
 file.ui.copy = function(Source, Dest, Options)
@@ -54,8 +53,8 @@ file.ui.copy = function(Source, Dest, Options)
 
    -- copyFeedback() is called for every file that is copied, or multiple times for large files.
 
-   local function copyFeedback(Size, Position, Path, Dest, User, FeedbackID)
-      msg('Copy feedback: ' .. Path .. ' TO ' .. Dest)
+   local function copyFeedback(Size, Position, Path, Dest, FeedbackID)
+      msg('copyFedback() ' .. Path .. ' TO ' .. Dest)
 
       if string.len(Path) >= MAX_PATH then
          last_file = '...' .. string.sub(Path, -MAX_PATH)
@@ -188,13 +187,11 @@ file.ui.copy = function(Source, Dest, Options)
       elseif response != 'yes' and response != 'yes-all' then
          msg('Skipping file ' .. src_file .. ', response ' .. response)
       else
-         mSys.FileFeedback(copyFeedback, nil, 0)
-
          msg('Copy/Move from "' .. src_path .. '" TO "' .. dest_path .. '"')
          if Options.move then
-            err = mSys.MoveFile(src_path, dest_path)
+            err = mSys.MoveFile(src_path, dest_path, copyFeedback)
          else
-            err = mSys.CopyFile(src_path, dest_path)
+            err = mSys.CopyFile(src_path, dest_path, copyFeedback)
          end
 
          if err == ERR_Cancelled then return end

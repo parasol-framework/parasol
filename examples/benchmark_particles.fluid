@@ -6,7 +6,6 @@ Particle Benchmark
    require 'common'
    include 'display'
 
-   mSys = mod.load('core')
    mVec = mod.load('vector')
 
    glBestFPS = 0

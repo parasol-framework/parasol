@@ -56,7 +56,6 @@ typedef struct rkWindow {
    OBJECTID MaximiseID;           // The surface that represents the maximise gadget
    OBJECTID MoveToBackID;         // The surface that represents the move-to-back gadget
    OBJECTID CloseID;              // The surface that represents the close gadget
-   OBJECTID MenuBarID;            // The menubar class object
    LONG     ResizeFlags;
    LONG     ResizeBorder;         // Pixel width of the resize border
    OBJECTID CanvasID;

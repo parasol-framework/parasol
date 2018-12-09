@@ -73,8 +73,6 @@ Example usage:
    if (gui.dialog == nil) then gui.dialog = { } end
 
 gui.dialog.message = function(Options)
-   local mSys = mod.load('core')
-
    local self = { // Public variables
       windowID = nil,
       document = nil

@@ -44,7 +44,6 @@ TODO: Underline checkbox
    if (gui.dialog == nil) then gui.dialog = { } end
 
 gui.dialog.font = function(Options)
-   local mSys = mod.load('core')
    local mFont = mod.load('font')
 
    local self = { // Public variables

@@ -1,6 +1,4 @@
 
-   mSys = mod.load("core")
-
    if (obj.find("SystemAudio") == nil) then
       obj.new("@audio", { name="SystemAudio", flags="!AutoSave" })
    end

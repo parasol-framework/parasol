@@ -1,8 +1,6 @@
 
    require 'gui/filedialog'
 
-   mSys = mod.load('core')
-
    gui.dialog.file({
       filterList = 'All Files;*;MP3 Audio Files;*.mp3;Text Files;*.txt',
       okText     = 'Select File',
