@@ -41,8 +41,6 @@ file.search = function(Path, Options)
    local ADJUST_LOG = 0
    local lStop = false
 
-   local mSys = mod.load("core")
-
    local function contentMatch(Path)
       if lOptions.contentFilter == nil then
          return true

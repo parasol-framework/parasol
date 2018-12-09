@@ -2,8 +2,6 @@
 Demonstrates how to launch a sub-process and intercept the data that it prints to stderr and stdout.
 --]]
 
-   mSys = mod.load("core")
-
    local file_out = obj.new("file", { path="temp:output-data.txt", flags="NEW|WRITE" } )
    local file_err = obj.new("file", { path="temp:error-data.txt", flags="NEW|WRITE" } )
 

@@ -887,7 +887,7 @@ gui.fileview = function(View, Options)
             if Response.id > 0 then
                self.view.mtSelectNone()
 
-               local statement = 'mSys = mod.load("core")\n'
+               local statement = ''
                for i,fl in pairs(Dialog.files) do
                   statement = statement .. 'mSys.DeleteFile("' .. fl .. '")\n'
                end

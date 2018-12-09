@@ -2,8 +2,6 @@
 This code illustrates how to read environment variables (any platform) and Windows registry keys.
 --]]
 
-   local mSys = mod.load("core")
-
    local task = mSys.CurrentTask()
 
    local error, path = task.mtGetEnv("PATH")

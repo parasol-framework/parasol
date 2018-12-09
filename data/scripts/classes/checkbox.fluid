@@ -6,7 +6,6 @@
    include 'widget'
 
 do
-   local mSys = mod.load('core')
    local mGfx = mod.load('display')
 
    // Widget field extensions must be defined in advance, declaring their types and accessibility at a minimum.  This

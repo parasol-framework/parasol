@@ -3,8 +3,6 @@
    require 'gui/dialog'
 
 file.ui.copy(Source, Dest, Options)
-   local mSys = mod.load('core')
-
    local src = arg('src')
    local dest_folder = arg('dest')
 

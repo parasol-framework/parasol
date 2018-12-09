@@ -1,8 +1,6 @@
 
    require 'filesearch'
 
-   local mSys = mod.load('core')
-
    local time = mSys.preciseTime()
 
    local glPath = obj.find('self').workingPath

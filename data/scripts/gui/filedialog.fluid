@@ -45,8 +45,6 @@ Valid options to use when creating the dialog are as follows:
    if (gui.dialog == nil) then gui.dialog = { } end
 
 gui.dialog.file = function(Options)
-   local mSys = mod.load('core')
-
    local self = { // Public variables
       windowID = nil,
       currentPath = file.splitPath(Options.path)
