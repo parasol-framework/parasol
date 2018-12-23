@@ -63,7 +63,7 @@ gui.dialog.file = function(Options)
       end
 
       if (lOptions.warnExists != nil) and (#list > 0) then
-         local error, type = mSys.AnalysePath(lFileView.path .. list[1])
+         local error, type = mSys.AnalysePath(nz(lFileView.path,'') .. list[1])
          if type == LOC_FILE then
             local msg
 
