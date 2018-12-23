@@ -69,15 +69,10 @@
 
 #define INF_HIDE 0x00000001
 #define INF_DISABLED 0x00000002
-#define INF_NO_GFX 0x00000004
-#define INF_NO_BKGD 0x00000008
-#define INF_SUNKEN 0x00000010
-#define INF_RAISED 0x00000020
-#define INF_ACTIVE_DRAW 0x00000040
-#define INF_COMMANDLINE 0x00000080
-#define INF_SELECT_TEXT 0x00000100
-#define INF_SECRET 0x00000200
-#define INF_ENTER_TAB 0x00000400
+#define INF_COMMANDLINE 0x00000004
+#define INF_SELECT_TEXT 0x00000008
+#define INF_SECRET 0x00000010
+#define INF_ENTER_TAB 0x00000020
 
 // Flags for the TabFocus class.
 
@@ -568,28 +563,18 @@ typedef struct rkResize {
 
 typedef struct rkInput {
    OBJECT_HEADER
-   struct rkFont * Font;         // Font control object - for the label graphic
    struct rkText * TextInput;    // Text control object - for the input area
    OBJECTID RegionID;            // Surface region created by the input object
    OBJECTID SurfaceID;           // The surface target for the input graphic
    LONG     Flags;               // Special options
-   LONG     EnterFrame;          // Frame to display when the mouse enters the input area
-   LONG     ExitFrame;           // Frame to revert to when the mouse leaves the input area
-   LONG     FocusFrame;          // Frame to display when the input box has the focus
-   LONG     ReleaseFrame;        // Frame to display when the input box loses the focus
-   LONG     Thickness;           // Border thickness
    LONG     LabelWidth;          // Width of the input box label area
    LONG     InputWidth;          // Width of the input area
-   struct RGB8 Colour;           // Colour to use as the background
-   struct RGB8 Highlight;        // Colour to use for border highlighting
-   struct RGB8 Shadow;           // Colour to use for border shadowing
 
 #ifdef PRV_INPUT
    UBYTE    prvLabel[48];       // Label
    UBYTE    prvPostLabel[48];
    ULONG    prvLastStringHash;
    FUNCTION prvFeedback;
-   BYTE     prvState;
    UBYTE    prvActive:1;
    UBYTE    prvStringReset:1;
   
