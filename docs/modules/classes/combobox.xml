@@ -326,16 +326,11 @@
     </constants>
 
     <constants lookup="INF" comment="Flags for the Input class.">
-      <const name="RAISED">Draw the input box with a raised (3D) border edge.  Read-only.</const>
-      <const name="NO_GFX">Do not generate any text or image graphics using internal routines (use the Template graphics definition).</const>
+      <const name="SECRET">Used for secret user entry (passwords).</const>
       <const name="SELECT_TEXT">Select all text when the input box is shown for the first time.</const>
-      <const name="SUNKEN">Reverses the highlight and shadow definitions to create a sunken effect.  Read-only.</const>
+      <const name="DISABLED">Disable on creation.</const>
       <const name="HIDE">Hide on creation, or input is currently hidden.</const>
       <const name="ENTER_TAB">Press enter results in a virtual tab-keypress being sent.</const>
-      <const name="SECRET">Used for secret user entry (passwords).</const>
-      <const name="DISABLED">Disable on creation.</const>
-      <const name="NO_BKGD">Do not draw background graphics (automatically set if Template graphics are used).</const>
-      <const name="ACTIVE_DRAW">Pro-actively redraw the object when graphics alterations are made.</const>
       <const name="COMMANDLINE">Function as a command-line.  Typically used when the input box needs to remain persistent and is linked to an output system, such as a shell.</const>
     </constants>
 
@@ -349,7 +344,6 @@
     <constants lookup="CBF" comment="CheckBox flags.">
       <const name="DISABLED">Disable on creation, or object is currently disabled.</const>
       <const name="HIDE">Hide on creation, or object is currently hidden.</const>
-      <const name="FADE_BORDER">Fade the border edges into the checkbox colour (requires thickness greater than 1).</const>
     </constants>
 
     <constants lookup="IMF" comment="Image flags">

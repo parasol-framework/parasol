@@ -80,9 +80,8 @@
 
     <field>
       <name>Colour</name>
-      <comment>The colour inside of the input box.</comment>
       <access read="R" write="W">Read/Write</access>
-      <type>RGB8</type>
+      <type>BYTE []</type>
     </field>
 
     <field>
@@ -98,14 +97,12 @@
 
     <field>
       <name>EnterFrame</name>
-      <comment>The graphics frame to display when the user's cursor enters the input area.</comment>
       <access read="R" write="W">Read/Write</access>
       <type>INT</type>
     </field>
 
     <field>
       <name>ExitFrame</name>
-      <comment>The graphics frame to display when the user's cursor leaves the input area.</comment>
       <access read="R" write="W">Read/Write</access>
       <type>INT</type>
     </field>
@@ -133,23 +130,14 @@
 
     <field>
       <name>FocusFrame</name>
-      <comment>The graphics frame to display when the input box has the focus.</comment>
       <access read="R" write="W">Read/Write</access>
       <type>INT</type>
-      <description>
-<p>This field specifies the surface frame to switch to when the user focuses on the input box.  By default this field is initially set to zero, which has no effect on the surface frame.  When the user leaves the input box, it will revert to the frame indicated by the <field>ReleaseFrame</field> field.</p>
-      </description>
     </field>
 
     <field>
       <name>Font</name>
-      <comment>Refers to the font used to draw the input label.</comment>
       <access read="R">Read</access>
-      <type class="Font">*Font</type>
-      <description>
-<p>The font object is used to draw the label for the input box.  To prevent clashes with the input box code, it is recommended that configuring of the font object is limited to the face, point size and colour.</p>
-<p>In addition, do not attempt to reconfigure the font after initialisation.</p>
-      </description>
+      <type>OBJECTPTR</type>
     </field>
 
     <field>
@@ -164,9 +152,8 @@
 
     <field>
       <name>Highlight</name>
-      <comment>The colour of the border highlight is defined here.</comment>
       <access read="R" write="W">Read/Write</access>
-      <type>RGB8</type>
+      <type>BYTE []</type>
     </field>
 
     <field>
@@ -175,7 +162,7 @@
       <access read="R" write="I">Read/Init</access>
       <type>INT</type>
       <description>
-<p>A fixed width for the input area can be defined in this field (note that this does not include the width of the label, which is handled separately by <field>LabelWidth</field>.  By default the InputWidth is set to zero, which leads the input area to span the entire width of its container.</p>
+<p>A fixed width for the input area can be defined in this field (note that this does not include the width of the label, which is handled separately by <field>LabelWidth</field>.</p>
       </description>
     </field>
 
@@ -212,12 +199,8 @@
 
     <field>
       <name>Raised</name>
-      <comment>If set to TRUE the input box will appear to be raised into the foreground.</comment>
       <access read="G" write="S">Get/Set</access>
       <type>INT</type>
-      <description>
-<p>If you have set the Highlight and Shadow fields of an input object then you will need to decide whether or not the box should be given a sunken or raised effect when it is drawn.  To give it a raised effect you will need to set this field to TRUE, if not then you should set the Sunken field.</p>
-      </description>
     </field>
 
     <field>
@@ -232,12 +215,8 @@
 
     <field>
       <name>ReleaseFrame</name>
-      <comment>The graphics frame to display when the input box loses the focus.</comment>
       <access read="R" write="W">Read/Write</access>
       <type>INT</type>
-      <description>
-<p>If the FocusFrame field has been set, you may want to match that value by indicating the frame that should be used when the click is released.  By default, the value in this field will initially be set to 1.  This field is unused if the FocusFrame field has not been set.</p>
-      </description>
     </field>
 
     <field>
@@ -249,9 +228,8 @@
 
     <field>
       <name>Shadow</name>
-      <comment>The colour of the input box shadow is defined here.</comment>
       <access read="R" write="W">Read/Write</access>
-      <type>RGB8</type>
+      <type>BYTE []</type>
     </field>
 
     <field>
@@ -267,12 +245,8 @@
 
     <field>
       <name>Sunken</name>
-      <comment>Set to TRUE to make the input box appear to sink into the background.</comment>
       <access read="G" write="S">Get/Set</access>
       <type>INT</type>
-      <description>
-<p>If you have set the Highlight and Shadow fields of an input object then you will need to decide whether or not the box should be given a sunken or raised effect when it is drawn.  To give it a sunken effect you will need to set this field to TRUE, if not then you should set the Raised field.</p>
-      </description>
     </field>
 
     <field>
@@ -307,7 +281,6 @@
 
     <field>
       <name>Thickness</name>
-      <comment>The thickness of the input border, in pixels.</comment>
       <access read="R" write="W">Read/Write</access>
       <type>INT</type>
     </field>
@@ -396,16 +369,11 @@
     </constants>
 
     <constants lookup="INF" comment="Flags for the Input class.">
-      <const name="RAISED">Draw the input box with a raised (3D) border edge.  Read-only.</const>
-      <const name="NO_GFX">Do not generate any text or image graphics using internal routines (use the Template graphics definition).</const>
+      <const name="SECRET">Used for secret user entry (passwords).</const>
       <const name="SELECT_TEXT">Select all text when the input box is shown for the first time.</const>
-      <const name="SUNKEN">Reverses the highlight and shadow definitions to create a sunken effect.  Read-only.</const>
+      <const name="DISABLED">Disable on creation.</const>
       <const name="HIDE">Hide on creation, or input is currently hidden.</const>
       <const name="ENTER_TAB">Press enter results in a virtual tab-keypress being sent.</const>
-      <const name="SECRET">Used for secret user entry (passwords).</const>
-      <const name="DISABLED">Disable on creation.</const>
-      <const name="NO_BKGD">Do not draw background graphics (automatically set if Template graphics are used).</const>
-      <const name="ACTIVE_DRAW">Pro-actively redraw the object when graphics alterations are made.</const>
       <const name="COMMANDLINE">Function as a command-line.  Typically used when the input box needs to remain persistent and is linked to an output system, such as a shell.</const>
     </constants>
 
@@ -419,7 +387,6 @@
     <constants lookup="CBF" comment="CheckBox flags.">
       <const name="DISABLED">Disable on creation, or object is currently disabled.</const>
       <const name="HIDE">Hide on creation, or object is currently hidden.</const>
-      <const name="FADE_BORDER">Fade the border edges into the checkbox colour (requires thickness greater than 1).</const>
     </constants>
 
     <constants lookup="IMF" comment="Image flags">
