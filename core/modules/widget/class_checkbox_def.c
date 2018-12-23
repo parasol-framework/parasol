@@ -3,7 +3,6 @@
 static const struct FieldDef clCheckBoxFlags[] = {
    { "Disabled", 0x00000001 },
    { "Hide", 0x00000002 },
-   { "FadeBorder", 0x00000004 },
    { NULL, 0 }
 };
 

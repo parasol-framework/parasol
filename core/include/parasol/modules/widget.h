@@ -57,7 +57,6 @@
 
 #define CBF_DISABLED 0x00000001
 #define CBF_HIDE 0x00000002
-#define CBF_FADE_BORDER 0x00000004
 
 // Button flags.
 
