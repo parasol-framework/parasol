@@ -395,12 +395,11 @@ tag = XML-&gt;Tags[index]; // Refresh the pointer to tag.
       </description>
       <result>
         <error code="AllocMemory">A call to AllocMemory() failed.</error>
-        <error code="Search">The attribute, identified by Name, could not be found.</error>
         <error code="OutOfRange">The Index or Attrib value is out of range.</error>
         <error code="Args">Invalid arguments passed to function.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
         <error code="ReadOnly">The XML object is read-only.</error>
-        <error code="END">Failed to create a new resource.</error>
+        <error code="Search">The attribute, identified by Name, could not be found.</error>
         <error code="Okay">Operation successful.</error>
       </result>
     </method>

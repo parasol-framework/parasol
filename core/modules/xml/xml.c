@@ -1727,7 +1727,7 @@ OutOfRange: The Index or Attrib value is out of range.
 AllocMemory: A call to AllocMemory() failed.
 Search: The attribute, identified by Name, could not be found.
 ReadOnly: The XML object is read-only.
-END-
+-END-
 
 *****************************************************************************/
 
