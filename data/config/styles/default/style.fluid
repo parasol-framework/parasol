@@ -1,4 +1,4 @@
-// Class oriented UI style settings, managed by drwApplyStyleGraphics() and drwApplyStyleValues() in the Surface module.
+-- Class oriented UI style settings, managed by drwApplyStyleGraphics() and drwApplyStyleValues() in the Surface module.
 
    require 'gui'
 
@@ -9,7 +9,7 @@
    glCounter = 1
    glThemeColour = { first={ r=250,g=249,b=248 }, last={ r=210,g=211,b=212 } }
 
-// The applyStyle() function is used to set style defaults against an object.
+-- The applyStyle() function is used to set style defaults against an object.
 
 function applyStyle(Class, Object)
    if (Class) then
@@ -52,7 +52,7 @@ function applyDecoration(Class, Object, Surface, StyleType)
    glSelf.error = ERR_NoSupport
 end
 
-// Apply a fill to a vector and all its children
+-- Apply a fill to a vector and all its children
 
 local function applyFill(Vector, Fill)
    while (Vector != nil) do
@@ -128,7 +128,7 @@ local function createIcon(IconName, Viewport, ViewportSettings)
    icon.gradient = defineGradient(Viewport.scene, icon.gradientName, glThemeColour.first, glThemeColour.last, 0, 0, 0, 1)
    obj.new('svg', { target=icon.viewport, path='system:icons/Default/' .. IconName .. '.svg' })
    applyFill(icon.viewport, 'url(#' .. icon.gradientName .. ')')
-   scaleGradient(icon.viewport, icon.gradient) // Scale the gradient to the loaded icon
+   scaleGradient(icon.viewport, icon.gradient) -- Scale the gradient to the loaded icon
    return icon
 end
 
@@ -168,17 +168,17 @@ glColours = {
    }
 }
 
-glFonts = { // Use percentages for scalable sizes, where 100% is equivalent to the value of '/interface/@fontsize'
+glFonts = { -- Use percentages for scalable sizes, where 100% is equivalent to the value of '/interface/@fontsize'
    default  = { face='Open Sans,Source Sans Pro', size='100%', colour='0,0,0' },
-   window   = { face='Open Sans,Source Sans Pro', size='100%', colour='0,0,0' }, // Default inner window text, e.g. widget labels
-   button   = { face='Open Sans,Source Sans Pro,*:100%', colour='0,0,0' }, // Text inside buttons
-   icon     = { face='Open Sans,Source Sans Pro', size='100%', colour='255,255,255' }, // Text at the bottom of icons
-   menu     = { face='Open Sans,Source Sans Pro', size='100%', colour='255,255,255', highlight='255,255,255' }, // Menu item text
-   titlebar = { face='Open Sans', size='100%', colour='255,255,255' }, // Title bar text
-   small    = { face='Tiny', size=6, colour='0,0,0' }, // Recommended text for small sizes
-   large    = { face='Open Sans,Source Sans Pro', size='130%', colour='0,0,0' },   // Recommended text for headers
-   widget   = { face='Open Sans,Source Sans Pro,*:100%', colour='255,255,255' }, // Default text for widgets (e.g. combobox)
-   label    = { face='Open Sans,Source Sans Pro:10:bold', size=11, colour='255,255,255' } // Text for labels
+   window   = { face='Open Sans,Source Sans Pro', size='100%', colour='0,0,0' }, -- Default inner window text, e.g. widget labels
+   button   = { face='Open Sans,Source Sans Pro,*:100%', colour='0,0,0' }, -- Text inside buttons
+   icon     = { face='Open Sans,Source Sans Pro', size='100%', colour='255,255,255' }, -- Text at the bottom of icons
+   menu     = { face='Open Sans,Source Sans Pro', size='100%', colour='255,255,255', highlight='255,255,255' }, -- Menu item text
+   titlebar = { face='Open Sans', size='100%', colour='255,255,255' }, -- Title bar text
+   small    = { face='Tiny', size=6, colour='0,0,0' }, -- Recommended text for small sizes
+   large    = { face='Open Sans,Source Sans Pro', size='130%', colour='0,0,0' },   -- Recommended text for headers
+   widget   = { face='Open Sans,Source Sans Pro,*:100%', colour='255,255,255' }, -- Default text for widgets (e.g. combobox)
+   label    = { face='Open Sans,Source Sans Pro:10:bold', size=11, colour='255,255,255' } -- Text for labels
 }
 
 glStyles = {
@@ -193,8 +193,8 @@ glStyles = {
          Menu.highlightRM   = 1
          Menu.font.face     = 'Open Sans'
          Menu.font.point    = 10
-         //Menu.fadeDelay = ?
-         //Menu.mouseOverDelay = ?
+         --Menu.fadeDelay = ?
+         --Menu.mouseOverDelay = ?
       end,
       decoration = function(Menu, Surface)
          Surface.mtAddCallback(function(Surface, Bitmap)
@@ -292,11 +292,12 @@ glStyles = {
          local lViewport = lScene.new('VectorViewport', { })
          local ICON_SIZE = Surface.height * 0.56
          local X_GAP = Surface.height * 0.25
+         local STROKE_WIDTH = 2
          local lIcon
 
          local lBkgd = lViewport.new('VectorRectangle', {
             stroke = 'rgb(255,255,255,60)',
-            strokeWidth = 2,
+            strokeWidth = STROKE_WIDTH,
             x      = 0,
             y      = 0,
             width  = '100%',
@@ -381,6 +382,11 @@ glStyles = {
             lScene.bitmap = Bitmap
             lScene.pageWidth = Surface.width
             lScene.pageHeight = Surface.height
+
+            lBkgd.x = STROKE_WIDTH * 0.5
+            lBkgd.y = STROKE_WIDTH * 0.5
+            lBkgd.width = Surface.width - STROKE_WIDTH
+            lBkgd.height = Surface.height - STROKE_WIDTH
             lScene.acDraw()
          end)
       end
@@ -541,10 +547,11 @@ glStyles = {
          local BORDER = 1
          local MIN_MENU_WIDTH = 120
          local MAX_MENU_WIDTH = 300
+         local STROKE_WIDTH = 2
          local lEntered = false
          local lLabel, lIcon
 
-         // A fixed height based on the widget font must be applied
+         -- A fixed height based on the widget font must be applied
 
          Surface.height = getFontHeight(glFonts.widget) * 1.3
 
@@ -564,14 +571,14 @@ glStyles = {
                string = Combo.label
             })
 
-            if (Combo.labelWidth < 1) then
+            if Combo.labelWidth < 1 then
                Combo.labelWidth = mFont.StringWidth(lLabel.font, Combo.label, -1) + 8
             end
          end
 
          local lBkgd = lViewport.new('VectorRectangle', {
             stroke = STROKE_NO_FOCUS,
-            strokeWidth = 2,
+            strokeWidth = STROKE_WIDTH,
             x      = Combo.labelWidth,
             y      = 0,
             width  = '100%',
@@ -580,7 +587,7 @@ glStyles = {
             height = '100%'
          })
 
-         // Initialise the text area that the user will be able to interact with.
+         -- Initialise the text area that the user will be able to interact with.
 
          if bit.band(Combo.flags, CMF_EDIT) != 0 then
             textInput.flags = TXF_EDIT
@@ -617,7 +624,7 @@ glStyles = {
             end
          end)
 
-         // Compute the width of the combobox relative to the width of the drop-down menu.
+         -- Compute the width of the combobox relative to the width of the drop-down menu.
 
          if bit.band(Surface.dimensions, DMF_WIDTH) == 0 then
             if (bit.band(Surface.dimensions, DMF_X) == 0) or
@@ -632,7 +639,7 @@ glStyles = {
             end
          end
 
-         // Place an icon for invoking the drop-down menu
+         -- Place an icon for invoking the drop-down menu
 
          catch(function()
             local gap = ((Surface.height - iconSize) / 2)
@@ -649,7 +656,7 @@ glStyles = {
             textInput.xOffset = BORDER
          end)
 
-         // Subscribe the drawing routine prior to initialisation of the text widget.
+         -- Subscribe the drawing routine prior to initialisation of the text widget.
 
          Surface.mtAddCallback(function(Surface, Bitmap)
             if Combo.entered then
@@ -673,7 +680,7 @@ glStyles = {
                lBkgd.stroke = STROKE_NO_FOCUS
             end
 
-            if Combo.label then
+            if lLabel then
                lLabel.string = Combo.label
                lLabel.y = (Surface.height / 2) + (lLabel.font.height / 2)
                if bit.band(Surface.flags, RNF_DISABLED) == RNF_DISABLED then
@@ -694,6 +701,20 @@ glStyles = {
             lScene.bitmap = Bitmap
             lScene.pageWidth = Surface.width
             lScene.pageHeight = Surface.height
+
+            lBkgd.x = Combo.labelWidth + (STROKE_WIDTH * 0.5)
+            lBkgd.y = STROKE_WIDTH * 0.5
+            lBkgd.width = Surface.width - Combo.labelWidth - STROKE_WIDTH
+            lBkgd.height = Surface.height - STROKE_WIDTH
+
+            if Surface.x == 0 and Surface.xOffset == 0 then
+               lBkgd.roundX = 0
+               lBkgd.roundY = 0
+            else
+               lBkgd.roundX = 4
+               lBkgd.roundY = 4
+            end
+
             lScene.acDraw()
          end)
 
@@ -716,8 +737,8 @@ glStyles = {
             if (Msg.type == JET_LMB) and (Msg.value > 0) then
                if (bit.band(Surface.flags, RNF_DISABLED) != RNF_DISABLED) and (Msg.x > Combo.labelWidth) then
                   if (Msg.x > Surface.width - Surface.height) then
-                     // The button on the combobox has been pressed, so switch the menu visibility.
-                     // About 300ms must pass before a switch can occur.
+                     -- The button on the combobox has been pressed, so switch the menu visibility.
+                     -- About 300ms must pass before a switch can occur.
                      Combo.menu.mtSwitch(200)
                   elseif (Msg.x >= Combo.labelWidth) then
                      if bit.band(textInput.flags, TXF_EDIT) == 0 then
@@ -733,11 +754,195 @@ glStyles = {
    },
    input = {
       defaultValues = function(Input)
-         Input.highlight   = glColours.widget.highlight
-         Input.shadow      = glColours.widget.highlight
-         Input.colour      = glColours.widget.background
-         Input.font.colour = glColours.widget.label
+         Input.textInput.font.face = glFonts.widget.face
          Input.textInput.colour = glColours.widget.text
+         Input.textInput.layout.align = ALIGN_VERTICAL
+         Input.textInput.lineLimit    = 1
+         Input.textInput.layout.leftMargin   = 3
+         Input.textInput.layout.rightMargin  = 3
+         Input.textInput.layout.topMargin    = 2
+         Input.textInput.layout.bottomMargin = 2
+      end,
+      decoration = function(Input, Surface)
+         local BKGD = 'rgb(0,0,0,64)'
+         local HIGHLIGHT = 'rgb(255,255,255,255)'
+         local STROKE_NO_FOCUS = 'rgb(255,255,255,60)'
+         local STROKE_HAS_FOCUS = 'rgb(255,255,255,90)'
+         local GAP = 5
+         local BORDER = 1
+         local MARGIN = 2
+         local STROKE_WIDTH = 2
+         local lEntered = false
+         local lLabel, lPostLabel
+
+         -- A fixed height based on the widget font must be applied
+
+         Surface.height = getFontHeight(glFonts.widget) * 1.3
+
+         local textInput = Input.textInput
+
+         local lScene = obj.new('VectorScene', { name='InputScene' })
+         local lViewport = lScene.new('VectorViewport', { })
+
+         if nz(Input.label) then
+            lLabel = lViewport.new('VectorText', {
+               x      = 0,
+               face   = glFonts.widget.face,
+               fill   = 'rgb(0,0,0,255)',
+               string = Input.label
+            })
+
+            if Input.labelWidth < 1 then
+               Input.labelWidth = mFont.StringWidth(lLabel.font, Input.label, -1) + GAP
+            end
+         end
+
+         if nz(Input.postLabel) then
+            lLabel = lViewport.new('VectorText', {
+               x      = 0,
+               face   = glFonts.widget.face,
+               fill   = 'rgb(0,0,0,255)',
+               string = Input.postLabel
+            })
+         end
+
+         local lBkgd = lViewport.new('VectorRectangle', {
+            stroke = STROKE_NO_FOCUS, strokeWidth = STROKE_WIDTH,
+            x = Input.labelWidth, y = 0,
+            width = 1, height = 1, roundX = 4, roundY = 4
+         })
+
+         lComputeFixedWidth = true
+         if bit.band(Surface.dimensions, bit.bor(DMF_FIXED_WIDTH, DMF_RELATIVE_WIDTH)) != 0 then
+            lComputeFixedWidth = false
+         elseif bit.band(Surface.dimensions, bit.bor(DMF_FIXED_X_OFFSET, DMF_RELATIVE_X_OFFSET)) != 0 and
+                bit.band(Surface.dimensions, bit.bor(DMF_FIXED_X, DMF_RELATIVE_X)) != 0 then
+            lComputeFixedWidth = false
+         end
+
+         Surface.mtAddCallback(function(Surface, Bitmap)
+            if lEntered then
+               if bit.band(Surface.flags, RNF_DISABLED) == 0 then
+                  lBkgd.fill = BKGD
+               else
+                  lBkgd.fill = BKGD
+               end
+            else
+               lBkgd.fill = BKGD
+            end
+
+            if bit.band(Surface.Flags, RNF_HAS_FOCUS) != 0 then
+               if bit.band(Surface.Flags, RNF_DISABLED) == 0 then
+                  lBkgd.stroke = STROKE_HAS_FOCUS
+               else
+                  lBkgd.stroke = STROKE_NO_FOCUS
+               end
+            else
+               lBkgd.stroke = STROKE_NO_FOCUS
+            end
+
+            if lLabel then
+               lLabel.string = Input.label
+               lLabel.y = (Surface.height / 2) + (lLabel.font.height / 2)
+
+               if bit.band(Surface.flags, RNF_DISABLED) == 0 then
+                  lLabel.opacity = 1.0
+               else
+                  lLabel.opacity = 0.25
+               end
+            end
+
+            if lPostLabel then
+               lPostLabel.string = Input.postLabel
+               lPostLabel.x = Input.labelWidth + Input.inputWidth
+               lLabel.y = (Surface.height / 2) + (lLabel.font.height / 2)
+
+               if bit.band(Surface.flags, RNF_DISABLED) == 0 then
+                  lPostLabel.opacity = 1.0
+               else
+                  lPostLabel.opacity = 0.25
+               end
+            end
+
+            lScene.bitmap = Bitmap
+            lScene.pageWidth = Surface.width
+            lScene.pageHeight = Surface.height
+
+            lBkgd.x = Input.labelWidth + (STROKE_WIDTH * 0.5)
+            lBkgd.y = STROKE_WIDTH * 0.5
+            lBkgd.width = Surface.width - Input.labelWidth - STROKE_WIDTH
+            lBkgd.height = Surface.height - STROKE_WIDTH
+
+            if Surface.x == 0 and Surface.xOffset == 0 then
+               lBkgd.roundX = 0
+               lBkgd.roundY = 0
+            else
+               lBkgd.roundX = 4
+               lBkgd.roundY = 4
+            end
+
+            lScene.acDraw()
+         end)
+
+         if Surface.acInit() != ERR_Okay then return ERR_Init end
+
+         --region.flags |= RNF_GRAB_FOCUS
+
+         -- Initialise the text area that the user will be able to interact with.
+
+         local flags = bit.bor(textInput.flags, TXF_EDIT)
+         if bit.band(Input.flags, INF_ENTER_TAB) != 0 then flags = bit.bor(flags, TXF_ENTER_TAB) end
+         if bit.band(Input.flags, INF_SECRET) != 0 then flags = bit.bor(flags, TXF_SECRET) end
+
+         textInput.face    = glFonts.widget.face
+         textInput.colour  = glColours.boxedFont
+         textInput.x       = Input.labelWidth + (BORDER * 3)
+         textInput.y       = BORDER
+         textInput.yOffset = BORDER
+         textInput.leftMargin   = MARGIN
+         textInput.rightMargin  = MARGIN * 4
+         textInput.topMargin    = 0
+         textInput.bottomMargin = 0
+         textInput.flags = flags
+
+         if Input.inputWidth > 0 then
+            textInput.width = Input.inputWidth - (BORDER * 5)
+         else
+            textInput.xOffset = BORDER * 3
+         end
+
+         if textInput.acInit() != ERR_Okay then return ERR_Init end
+
+         if lComputeFixedWidth then -- Compute the width
+            local w = Input.inputWidth
+            if w == 0 then
+               w = mFont.StringWidth(textInput.font, Input.string, -1) + (MARGIN + BORDER) * 2
+               if w < 90 then w = 90 end
+            end
+            Surface.width = Input.labelWidth + w
+         end
+
+         if bit.band(Input.flags, INF_SELECT_TEXT) != 0 then textInput.mtSelectArea(0, 0, 20000, 20000) end
+         if bit.band(Input.flags, INF_DISABLED) != 0 then Input.acDisable() end
+         if bit.band(Input.flags, INF_HIDE) == 0 then Surface.acShow() end
+
+         input.subscribe(JTYPE_FEEDBACK, Surface, 0, function(Handler, Msg)
+            if Msg.type == JET_ENTERED_SURFACE then
+               lEntered = true
+               if bit.band(Surface.flags, RNF_DISABLED) == 0 then
+                  Surface.delayCall()
+                  Surface.acDraw()
+               end
+            elseif Msg.type == JET_LEFT_SURFACE then
+               lEntered = false
+               if bit.band(Surface.flags, RNF_DISABLED) == 0 then
+                  Surface.delayCall()
+                  Surface.acDraw()
+               end
+            end
+         end)
+
+         lBkgd.width = Surface.width - Input.labelWidth
       end
    },
    menubar = {
@@ -755,7 +960,7 @@ glStyles = {
    },
    scrollbar = {
       defaultValues = function(Scrollbar)
-         Scrollbar.breadth = 16   // Slider size
+         Scrollbar.breadth = 16   -- Slider size
          Scrollbar.opacity = 100
       end
    },
@@ -811,14 +1016,14 @@ glStyles = {
                mVec.freePath(path)
             end
             local err, colA = Bitmap.mtGetColour(148, 149, 160, 160)
-            local err, colB = Bitmap.mtGetColour(255, 255, 255, 150) // !! glColours.widget.highlight
+            local err, colB = Bitmap.mtGetColour(255, 255, 255, 150) -- !! glColours.widget.highlight
             Bitmap.mtDrawRectangle(0, 0, Surface.width, Surface.height, colA, 0)
             Bitmap.mtDrawRectangle(1, 1, Surface.width-2, Surface.height-2, colB, BAF_BLEND)
          end)
          local svgUp = button.region.new('svgimage', { path='system:icons/Default/arrows/up.svg', x='25%', xoffset='25%', y='25%', yoffset='25%' })
          Scrollbar.scroll.mtAddScrollButton(button.region, 1)
 
-         // Lower button
+         -- Lower button
 
          local button = Surface.new('button', { x=0, yOffset=0, height=Scrollbar.width, xOffset=0, flags='!nofocus|nobkgd' })
          button.region.mtAddCallback(function(Surface, Bitmap)
@@ -895,7 +1100,7 @@ glStyles = {
          local svgUp = button.region.new('svgimage', { path='system:icons/Default/arrows/left.svg', x='25%', xoffset='25%', y='25%', yoffset='25%' })
          Scrollbar.scroll.mtAddScrollButton(button.region, 3)
 
-         // Lower button
+         -- Lower button
 
          local button = Surface.new('button', { y=0, xOffset=0, width=Surface.height, yoffset=0, flags='!nofocus|nobkgd' })
          button.region.mtAddCallback(function(Surface, Bitmap)
@@ -1015,14 +1220,14 @@ glStyles = {
                err, greyC = Bitmap.mtGetColour(180, 180, 250, 255)
             end
 
-            // Window Frame
+            -- Window Frame
             Bitmap.mtDrawRectangle(0, 0, Surface.width, Surface.height, black, 0)
             Bitmap.mtDrawRectangle(1, 1, Surface.width-2, Surface.height-2, greyA, 0)
             Bitmap.mtDrawRectangle(2, 2, Surface.width-4, Surface.height-4, greyB, 0)
             Bitmap.mtDrawRectangle(3, 3, Surface.width-6, Surface.height-6, greyC, 0)
             Bitmap.mtDrawRectangle(4, 4, Surface.width-8, Surface.height-8, greyB, 0)
             Bitmap.mtDrawRectangle(5, 5, Surface.width-10, Surface.height-10, gui.bitmapColour(Bitmap, 'window'), BAF_FILL)
-            // Titlebar edge
+            -- Titlebar edge
             Bitmap.mtDrawRectangle(4, 26, Surface.width-8, 1, greyB, BAF_FILL)
             Bitmap.mtDrawRectangle(4, 27, Surface.width-8, 1, greyC, BAF_FILL)
             Bitmap.mtDrawRectangle(4, 28, Surface.width-8, 1, greyB, BAF_FILL)
@@ -1036,9 +1241,9 @@ glStyles = {
       end,
       menubar = function(Window, Surface)
          local menubar
-         if (Surface.parent != nil) then // Window is in the native desktop
+         if (Surface.parent != nil) then -- Window is in the native desktop
             menubar = Surface.new('menubar', { x=5, y=Window.clientTop, xOffset=5, target=Surface.parent, path=Window.menu })
-         else // Window is in a hosted environment (e.g. X11, Windows)
+         else -- Window is in a hosted environment (e.g. X11, Windows)
             menubar = Surface.new('menubar', { x=0, y=0, xOffset=0, path=Window.menu })
          end
          Surface.topMargin = menubar.bottom + 4
@@ -1071,7 +1276,7 @@ glStyles = {
             string=Window.title, x=26, xOffset=60, y=1
          })
 
-         // Application icon to the left of the titlebar
+         -- Application icon to the left of the titlebar
 
          bar.new('image', { x=5, align='vertical', path=Window.icon .. '(16)', iconFilter='pearl' })
 
@@ -1079,10 +1284,10 @@ glStyles = {
          input.subscribe(JTYPE_BUTTON, bar, 0, function(Handler, Msg)
             if (Msg.type != JET_BUTTON_1) then return end
             if (Msg.x >= 5) and (Msg.x < 22) then
-               if (Msg.value > 0) then // Button down
+               if (Msg.value > 0) then -- Button down
                   tlX = Msg.absX
                   tlY = Msg.absY
-               else // Released
+               else -- Released
                   if (bit.band(Msg.flags, JTYPE_DBL_CLICK) != 0) then
                      if (math.abs(Msg.absX - tlX) <= 2) and (math.abs(Msg.absY - tlY) <= 2) then
                         Window.mtClose()
@@ -1092,7 +1297,7 @@ glStyles = {
             end
          end)
 
-         // Clicking anywhere on the titlebar will move the window to the front.
+         -- Clicking anywhere on the titlebar will move the window to the front.
 
          input.subscribe(JTYPE_BUTTON, bar, 0, function(Handler, Msg)
             if (Msg.type == JET_BUTTON_1) and (Msg.value > 0) then
@@ -1100,7 +1305,7 @@ glStyles = {
             end
          end)
 
-         // Double clicking on the titlebar will maximise it.
+         -- Double clicking on the titlebar will maximise it.
 
          local xoffset = 3
          if nz(Window.maximise) then
@@ -1113,7 +1318,7 @@ glStyles = {
             end)
          end
 
-         // Close Gadget
+         -- Close Gadget
 
          if nz(Window.close) then
             catch(function()
@@ -1127,7 +1332,7 @@ glStyles = {
             end)
          end
 
-         // Maximise Gadget
+         -- Maximise Gadget
 
          catch(function()
             local max = bar.new('surface', { width=17, height=17, y=2, xoffset=xoffset, region=true })
@@ -1143,7 +1348,7 @@ glStyles = {
             xoffset = xoffset + 22
          end)
 
-         // Minimise Gadget
+         -- Minimise Gadget
 
          catch(function()
             local min = bar.new('surface', { width=17, height=17, y=2, xoffset=xoffset, region=true })
@@ -1159,7 +1364,7 @@ glStyles = {
             xoffset = xoffset + 22
          end)
 
-         // Move-To-Back Gadget
+         -- Move-To-Back Gadget
 
          if nz(Window.moveToBack) then
             catch(function()
@@ -1176,4 +1381,4 @@ glStyles = {
          bar.acShow()
       end
    }
-} // glStyles
+} -- glStyles

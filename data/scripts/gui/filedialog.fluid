@@ -194,10 +194,8 @@ gui.dialog.file = function(Options)
       lPathBox = lWindow.new('input', {
          x         = 0,
          y         = lToolbar.surface.height,
-         xoffset   = 0,
+         xOffset   = 0,
          string    = lOptions.path,
-         highlight = '0,0,0,0',
-         shadow    = '0,0,0,0',
          feedback  = function(Input, Value)
             lFileView.browse(nz(Value, ''))
          end

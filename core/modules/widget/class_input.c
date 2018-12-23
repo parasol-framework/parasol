@@ -13,10 +13,6 @@ The Input class simplifies the creation and management of input boxes as part of
 can be created by specifying as little as the graphical dimensions for the box area.  The Input class allows for the
 specifics of the graphics to be altered, such as the colours and the font used.
 
-The definitions for new input boxes are loaded by default from the environment file `style:input.xml`.  You can
-change the template file prior to initialisation by setting the Template field.  Note that any values set in the
-template will override your original field settings for the input object.
-
 It is likely that when when the user clicks or tabs away from the input box, you will need it to perform an action.
 Set the #Feedback field in order to receive this notification and respond with your own custom functionality.
 
@@ -34,13 +30,6 @@ Set the #Feedback field in order to receive this notification and respond with y
 
 static OBJECTPTR clInput = NULL;
 
-enum {
-   STATE_ENTERED=1,
-   STATE_EXITED,
-   STATE_INSIDE
-};
-
-static void draw_input(objInput *, objSurface *, objBitmap *);
 static void text_validation(objText *);
 static void text_activated(objText *);
 
@@ -68,55 +57,6 @@ static ERROR INPUT_ActionNotify(objInput *Self, struct acActionNotify *Args)
    return ERR_Okay;
 }
 
-//****************************************************************************
-
-static ERROR INPUT_DataFeed(objInput *Self, struct acDataFeed *Args)
-{
-   if (!Args) return PostError(ERR_NullArgs);
-
-   if (Args->DataType IS DATA_INPUT_READY) {
-      struct InputMsg *input;
-
-      while (!gfxGetInputMsg((struct dcInputReady *)Args->Buffer, 0, &input)) {
-         if (input->Flags & JTYPE_MOVEMENT) {
-            OBJECTPTR surface;
-
-            if (input->OverID IS Self->RegionID) {
-               if (Self->prvState IS STATE_ENTERED) Self->prvState = STATE_INSIDE;
-               else if (Self->prvState != STATE_INSIDE) Self->prvState = STATE_ENTERED;
-            }
-            else {
-               if (Self->prvState IS STATE_EXITED) continue;
-               else Self->prvState = STATE_EXITED;
-            }
-
-            // Change the surface's frame if necessary
-
-            if ((Self->prvState != STATE_INSIDE) AND (Self->EnterFrame)) {
-               if (!AccessObject(Self->RegionID, 2000, &surface)) {
-                  if (Self->prvState IS STATE_EXITED) {
-                     SetLong(surface, FID_Frame, Self->ExitFrame);
-                     DelayMsg(AC_Draw, Self->RegionID, NULL);
-                  }
-                  else if (Self->prvState IS STATE_ENTERED) {
-                     if (!(Self->Flags & INF_DISABLED)) {
-                        SetLong(surface, FID_Frame, Self->EnterFrame);
-                        DelayMsg(AC_Draw, Self->RegionID, NULL);
-                     }
-                  }
-                  ReleaseObject(surface);
-               }
-            }
-
-            if (Self->prvState IS STATE_ENTERED) Self->prvState = STATE_INSIDE;
-         }
-         else MSG("Unrecognised input message type $%.8x", input->Flags);
-      }
-   }
-
-   return ERR_Okay;
-}
-
 /*****************************************************************************
 -ACTION-
 Disable: Turns the input box off.
@@ -125,9 +65,7 @@ Disable: Turns the input box off.
 
 static ERROR INPUT_Disable(objInput *Self, APTR Void)
 {
-   // See the ActionNotify routine to see what happens when the surface is disabled.  Disabling the region will have
-   // the desired effect of turning off input box editing.
-
+   // See the ActionNotify routine to see what happens when the surface is disabled.
    acDisableID(Self->RegionID);
    return ERR_Okay;
 }
@@ -141,7 +79,6 @@ Enable: Turns the input box back on if it has previously been disabled.
 static ERROR INPUT_Enable(objInput *Self, APTR Void)
 {
    // See the ActionNotify routine to see what happens when the surface is enabled.
-
    acEnableID(Self->RegionID);
    return ERR_Okay;
 }
@@ -162,7 +99,6 @@ static ERROR INPUT_Focus(objInput *Self, APTR Void)
 
 static ERROR INPUT_Free(objInput *Self, APTR Void)
 {
-   if (Self->Font) { acFree(Self->Font); Self->Font = NULL; }
    if (Self->TextInput) { acFree(Self->TextInput); Self->TextInput = NULL; }
 
    if (Self->RegionID) {
@@ -175,7 +111,6 @@ static ERROR INPUT_Free(objInput *Self, APTR Void)
       Self->RegionID = 0;
    }
 
-   gfxUnsubscribeInput(0);
    return ERR_Okay;
 }
 
@@ -205,93 +140,28 @@ static ERROR INPUT_Init(objInput *Self, APTR Void)
       else return PostError(ERR_UnsupportedOwner);
    }
 
-   if (acInit(Self->Font) != ERR_Okay) return PostError(ERR_Init);
-
-   // Calculate the width of the text label, if there is one
-
-   if ((Self->LabelWidth < 1) AND (Self->prvLabel[0])) {
-      Self->LabelWidth = fntStringWidth(Self->Font, Self->prvLabel, -1) + 4;
-   }
-
-   // Initialise the input region
-
    objSurface *region;
    if (!AccessObject(Self->RegionID, 5000, &region)) {
-      region->Flags |= RNF_GRAB_FOCUS|RNF_REGION;
+      SetFields(region,
+         FID_Parent|TLONG, Self->SurfaceID,
+         FID_Region|TLONG, TRUE,
+         TAGEND);
 
-      SetLong(region, FID_Parent, Self->SurfaceID);
-
-      if (!(region->Dimensions & DMF_HEIGHT)) {
-         if ((!(region->Dimensions & DMF_Y)) OR (!(region->Dimensions & DMF_Y_OFFSET))) {
-            LONG h = Self->Font->MaxHeight + (Self->Thickness * 2) + Self->TextInput->Layout->TopMargin +
-               Self->TextInput->Layout->BottomMargin;
-            SetLong(region, FID_Height, h);
-         }
+      // NB: The styling code will initialise the region.
+      if (drwApplyStyleGraphics(Self, Self->RegionID, NULL, NULL)) {
+         ReleaseObject(region);
+         return ERR_Failed; // Graphics styling is required.
       }
 
-      if (!(region->Dimensions & (DMF_FIXED_WIDTH|DMF_RELATIVE_WIDTH|DMF_FIXED_X_OFFSET|DMF_RELATIVE_X_OFFSET))) {
-         SetLong(region, FID_Width, Self->LabelWidth + ((Self->InputWidth) ? Self->InputWidth : 30));
-      }
-
-      if (!acInit(region)) SubscribeActionTags(region, AC_Disable, AC_Enable, TAGEND);
-
-      gfxSubscribeInput(Self->RegionID, JTYPE_MOVEMENT, 0);
-
-      // The user may set the margins and alignment values in the input template (this is sometimes done to align text
-      // to the bottom of the surface instead of the centre).
+      SubscribeActionTags(region, AC_Disable, AC_Enable, TAGEND);
 
       ReleaseObject(region);
    }
    else return PostError(ERR_AccessObject);
 
-   // Use the base template to create the input graphics
-
-   if (!(Self->Flags & INF_NO_BKGD)) {
-      if (!drwApplyStyleGraphics(Self, Self->RegionID, NULL, NULL)) {
-         Self->Flags |= INF_NO_BKGD;
-      }
-   }
-
-   if (!AccessObject(Self->RegionID, 5000, &region)) {
-      drwAddCallback(region, &draw_input);
-      ReleaseObject(region);
-   }
-   else return ERR_AccessObject;
-
-   // Initialise the text area that the user will be able to interact with.
-
-   LONG flags;
-   GetLong(Self->TextInput, FID_Flags, &flags);
-   flags |= TXF_EDIT;
-
-   if (Self->Flags & INF_ENTER_TAB) flags |= TXF_ENTER_TAB;
-   if (Self->Flags & INF_SECRET)    flags |= TXF_SECRET;
-   if (Self->Flags & INF_NO_BKGD)   flags |= TXF_PRESERVE_BKGD;
-
-   SetFields(Self->TextInput,
-      FID_Surface|TLONG,      Self->RegionID,
-      FID_Flags|TLONG,        flags,
-      FID_Point|TDOUBLE,      Self->Font->Point,
-      FID_X|TLONG,            Self->LabelWidth + Self->Thickness,
-      FID_Y|TLONG,            Self->Thickness,
-      FID_YOffset|TLONG,      Self->Thickness,
-      FID_TopMargin|TLONG,    0,
-      FID_BottomMargin|TLONG, 0,
-      FID_LineLimit|TLONG,    1,
-      TAGEND);
-
    SetFunctionPtr(Self->TextInput, FID_ValidateInput, &text_validation);
    SetFunctionPtr(Self->TextInput, FID_Activated, &text_activated);
 
-   if (Self->InputWidth) SetLong(Self->TextInput, FID_Width, Self->InputWidth - (Self->Thickness * 2));
-   else SetLong(Self->TextInput, FID_XOffset, Self->Thickness);
-
-   if (acInit(Self->TextInput)) return PostError(ERR_Init);
-
-   if (Self->Flags & INF_SELECT_TEXT) txtSelectArea(Self->TextInput, 0, 0, 20000, 20000);
-   if (!(Self->Flags & (INF_SUNKEN|INF_RAISED))) Self->Flags |= INF_SUNKEN;
-   if (Self->Flags & INF_DISABLED) acDisable(Self);
-   if (!(Self->Flags & INF_HIDE)) acShowID(Self->RegionID);
    return ERR_Okay;
 }
 
@@ -324,45 +194,11 @@ static ERROR INPUT_MoveToFront(objInput *Self, APTR Void)
 static ERROR INPUT_NewObject(objInput *Self, APTR Void)
 {
    if (!NewLockedObject(ID_SURFACE, NF_INTEGRAL|Self->Head.Flags, NULL, &Self->RegionID)) {
-      if (!NewObject(ID_FONT, NF_INTEGRAL|Self->Head.Flags, &Self->Font)) {
-         SetString(Self->Font, FID_Face, glLabelFace);
-         if (!NewObject(ID_TEXT, NF_INTEGRAL, &Self->TextInput)) {
-            SetString(Self->TextInput->Font, FID_Face, glWidgetFace);
-
-            Self->ExitFrame = 1;
-            Self->ReleaseFrame = 1;
-            Self->Flags |= INF_SUNKEN;
-            Self->Thickness = 1;
-
-            // Internal colour
-            Self->Colour.Red   = 0;
-            Self->Colour.Green = 255;
-            Self->Colour.Blue  = 255;
-            Self->Colour.Alpha = 255;
-
-            // Shadow colour
-            Self->Shadow.Red   = 100;
-            Self->Shadow.Green = 100;
-            Self->Shadow.Blue  = 100;
-            Self->Shadow.Alpha = 255;
-
-            // Highlight colour
-            Self->Highlight.Red   = 255;
-            Self->Highlight.Green = 255;
-            Self->Highlight.Blue  = 255;
-            Self->Highlight.Alpha = 255;
-
-            Self->TextInput->Layout->Align = ALIGN_VERTICAL;
-            Self->TextInput->Layout->LeftMargin   = 3;
-            Self->TextInput->Layout->RightMargin  = 3;
-            Self->TextInput->Layout->TopMargin    = 2;
-            Self->TextInput->Layout->BottomMargin = 2;
-
-            drwApplyStyleValues(Self, NULL);
-
-            return ERR_Okay;
-         }
-         else return ERR_NewObject;
+      if (!NewObject(ID_TEXT, NF_INTEGRAL, &Self->TextInput)) {
+         SetLong(Self->TextInput, FID_Surface, Self->RegionID);
+         SetString(Self->TextInput->Font, FID_Face, glWidgetFace);
+         drwApplyStyleValues(Self, NULL);
+         return ERR_Okay;
       }
       else return ERR_NewObject;
    }
@@ -424,9 +260,6 @@ static ERROR GET_Bottom(objInput *Self, LONG *Value)
 /*****************************************************************************
 
 -FIELD-
-Colour: The colour inside of the input box.
-
--FIELD-
 Disable: If TRUE, the input box is disabled.
 
 The Disable field can be used to disable the input box in advance of being initialised, by setting the field value to
@@ -452,12 +285,6 @@ static ERROR SET_Disable(objInput *Self, LONG Value)
 }
 
 /*****************************************************************************
-
--FIELD-
-EnterFrame: The graphics frame to display when the user's cursor enters the input area.
-
--FIELD-
-ExitFrame: The graphics frame to display when the user's cursor leaves the input area.
 
 -FIELD-
 Feedback: Provides instant feedback when a user interacts with the object.
@@ -494,21 +321,6 @@ static ERROR SET_Feedback(objInput *Self, FUNCTION *Value)
 
 -FIELD-
 Flags: Optional flags can be defined here.
-
--FIELD-
-FocusFrame: The graphics frame to display when the input box has the focus.
-
-This field specifies the surface frame to switch to when the user focuses on the input box.  By default this field is
-initially set to zero, which has no effect on the surface frame.  When the user leaves the input box, it will revert to
-the frame indicated by the #ReleaseFrame field.
-
--FIELD-
-Font: Refers to the font used to draw the input label.
-
-The font object is used to draw the label for the input box.  To prevent clashes with the input box code, it is
-recommended that configuring of the font object is limited to the face, point size and colour.
-
-In addition, do not attempt to reconfigure the font after initialisation.
 
 -FIELD-
 Height: Defines the height of an input box.
@@ -552,14 +364,10 @@ static ERROR SET_Height(objInput *Self, struct Variable *Value)
 /*****************************************************************************
 
 -FIELD-
-Highlight: The colour of the border highlight is defined here.
-
--FIELD-
 InputWidth: The width of the input area.
 
 A fixed width for the input area can be defined in this field (note that this does not include the width of the label,
-which is handled separately by #LabelWidth.  By default the InputWidth is set to zero, which leads the input
-area to span the entire width of its container.
+which is handled separately by #LabelWidth.
 
 -FIELD-
 Label: The label is a string displayed to the left of the input area.
@@ -601,8 +409,7 @@ static ERROR SET_LabelWidth(objInput *Self, LONG Value)
    Self->LabelWidth = Value;
 
    if (Self->Head.Flags & NF_INITIALISED) {
-      LONG x = Self->LabelWidth + Self->Thickness;
-      SetLong(Self->TextInput, FID_X, x);
+      SetLong(Self->TextInput, FID_X, Self->LabelWidth);
    }
 
    return ERR_Okay;
@@ -628,14 +435,14 @@ LayoutStyle: Private field for supporting dynamic style changes when an input ob
 
 *****************************************************************************/
 
+// Internal field for supporting dynamic style changes when a GUI object is used in a document.
+
 static ERROR SET_LayoutStyle(objInput *Self, DOCSTYLE *Value)
 {
    if (!Value) return ERR_Okay;
 
-   if (Self->Head.Flags & NF_INITIALISED) {
-      docApplyFontStyle(Value->Document, Value, Self->Font);
-   }
-   else docApplyFontStyle(Value->Document, Value, Self->Font);
+   //if (Self->Head.Flags & NF_INITIALISED) docApplyFontStyle(Value->Document, Value, Self->Font);
+   //else docApplyFontStyle(Value->Document, Value, Self->Font);
 
    return ERR_Okay;
 }
@@ -661,36 +468,6 @@ static ERROR SET_PostLabel(objInput *Self, CSTRING Value)
 {
    if (Value) StrCopy(StrTranslateText(Value), Self->prvPostLabel, sizeof(Self->prvPostLabel));
    else Self->prvPostLabel[0] = 0;
-   return ERR_Okay;
-}
-
-/*****************************************************************************
-
--FIELD-
-Raised: If set to TRUE the input box will appear to be raised into the foreground.
-
-If you have set the Highlight and Shadow fields of an input object then you will need to decide whether or not the box
-should be given a sunken or raised effect when it is drawn.  To give it a raised effect you will need to set this field
-to TRUE, if not then you should set the Sunken field.
-
-*****************************************************************************/
-
-static ERROR GET_Raised(objInput *Self, LONG *Value)
-{
-   if (Self->Flags & INF_SUNKEN) *Value = TRUE;
-   else *Value = FALSE;
-   return ERR_Okay;
-}
-
-static ERROR SET_Raised(objInput *Self, LONG Value)
-{
-   if (Value) {
-      if (Self->Flags & INF_RAISED) return ERR_Okay;
-      Self->Flags = (Self->Flags & ~INF_SUNKEN) | INF_RAISED;
-   }
-   else Self->Flags &= ~INF_RAISED;
-
-   if (Self->Flags & INF_ACTIVE_DRAW) acDrawID(Self->RegionID);
    return ERR_Okay;
 }
 
@@ -725,13 +502,6 @@ static ERROR SET_Region(objInput *Self, LONG Value)
 /*****************************************************************************
 
 -FIELD-
-ReleaseFrame: The graphics frame to display when the input box loses the focus.
-
-If the FocusFrame field has been set, you may want to match that value by indicating the frame that should be used when
-the click is released.  By default, the value in this field will initially be set to 1.  This field is unused if the
-FocusFrame field has not been set.
-
--FIELD-
 Right: The right-most coordinate of the input box (X + Width).
 
 *****************************************************************************/
@@ -747,9 +517,6 @@ static ERROR GET_Right(objInput *Self, LONG *Value)
 }
 
 /*****************************************************************************
-
--FIELD-
-Shadow: The colour of the input box shadow is defined here.
 
 -FIELD-
 String: The string that is to be printed inside the input box is declared here.
@@ -780,36 +547,6 @@ static ERROR SET_String(objInput *Self, CSTRING Value)
       return ERR_Okay;
    }
    else return ERR_Failed;
-}
-
-/*****************************************************************************
-
--FIELD-
-Sunken: Set to TRUE to make the input box appear to sink into the background.
-
-If you have set the Highlight and Shadow fields of an input object then you will need to decide whether or not the box
-should be given a sunken or raised effect when it is drawn.  To give it a sunken effect you will need to set this field
-to TRUE, if not then you should set the Raised field.
-
-*****************************************************************************/
-
-static ERROR GET_Sunken(objInput *Self, LONG *Value)
-{
-   if (Self->Flags & INF_SUNKEN) *Value = TRUE;
-   else *Value = FALSE;
-   return ERR_Okay;
-}
-
-static ERROR SET_Sunken(objInput *Self, LONG Value)
-{
-   if (Value) {
-      if (Self->Flags & INF_SUNKEN) return ERR_Okay;
-      Self->Flags = (Self->Flags & ~INF_RAISED) | INF_SUNKEN;
-   }
-   else Self->Flags &= ~INF_SUNKEN;
-
-   if (Self->Flags & INF_ACTIVE_DRAW) acDrawID(Self->RegionID);
-   return ERR_Okay;
 }
 
 /*****************************************************************************
@@ -847,9 +584,6 @@ TextInput: Refers to a Text object that handles the text inside the input area.
 
 This field refers to a @Text object that handles the text inside the input area.  Please exercise caution if
 interacting with this object directly, as doing so may interfere with the expected behaviour of the input class.
-
--FIELD-
-Thickness: The thickness of the input border, in pixels.
 
 -FIELD-
 Width: Defines the width of an input box.
@@ -1052,72 +786,6 @@ static ERROR SET_YOffset(objInput *Self, struct Variable *Value)
    else return ERR_AccessObject;
 }
 
-//****************************************************************************
-
-static void draw_input(objInput *Self, objSurface *Surface, objBitmap *Bitmap)
-{
-   WORD width;
-
-   if (!(Self->Flags & INF_NO_BKGD)) {
-      gfxDrawRectangle(Bitmap, Self->LabelWidth, 0, (Self->InputWidth > 0) ? Self->InputWidth : Surface->Width - Self->LabelWidth,
-         Surface->Height, PackPixelRGBA(Bitmap, &Self->Colour), BAF_FILL|BAF_BLEND);
-
-      // Draw the borders around the rectangular area
-
-      ULONG highlight, shadow;
-      if (Self->Flags & INF_SUNKEN) { // Reverse the border definitions in sunken mode
-         highlight = PackPixelRGBA(Bitmap, &Self->Shadow);
-         shadow = PackPixelRGBA(Bitmap, &Self->Highlight);
-      }
-      else {
-         shadow = PackPixelRGBA(Bitmap, &Self->Shadow);
-         highlight = PackPixelRGBA(Bitmap, &Self->Highlight);
-      }
-
-      LONG x = Self->LabelWidth;
-      if (Self->InputWidth > 0) width = Self->InputWidth;
-      else width = Surface->Width - Self->LabelWidth;
-
-      WORD i;
-      for (i=0; i < Self->Thickness; i++) {
-         // Top, Bottom
-         gfxDrawRectangle(Bitmap, x+i, i, width-i-i, 1, highlight, BAF_FILL|BAF_BLEND);
-         gfxDrawRectangle(Bitmap, x+i, Surface->Height-i-1, width-i-i, 1, shadow, BAF_FILL|BAF_BLEND);
-
-         // Left, Right
-         gfxDrawRectangle(Bitmap, x+i, i+1, 1, Surface->Height-i-i-2, highlight, BAF_FILL|BAF_BLEND);
-         gfxDrawRectangle(Bitmap, x+width-i-1, i+1, 1, Surface->Height-i-i-2, shadow, BAF_FILL|BAF_BLEND);
-      }
-   }
-
-   if (Self->prvLabel[0]) {
-      objFont *font = Self->Font;
-      font->Bitmap = Bitmap;
-
-      SetString(font, FID_String, Self->prvLabel);
-
-      if (Surface->Flags & RNF_DISABLED) SetLong(font, FID_Opacity, 25);
-
-      font->X = Surface->LeftMargin;
-      font->Y = Surface->TopMargin;
-      font->Flags |= FTF_CHAR_CLIP;
-      font->WrapEdge = Self->LabelWidth - 3;
-      font->Align |= ALIGN_VERTICAL;
-      font->AlignWidth  = Surface->Width - Surface->RightMargin - Surface->LeftMargin;
-      font->AlignHeight = Surface->Height - Surface->BottomMargin - Surface->TopMargin;
-      acDraw(font);
-
-      if (Self->prvPostLabel[0]) {
-         font->X = Self->LabelWidth + Self->InputWidth;
-         font->WrapEdge = Surface->Width;
-         SetString(font, FID_String, Self->prvPostLabel);
-         acDraw(font);
-      }
-
-      if (Surface->Flags & RNF_DISABLED) SetLong(font, FID_Opacity, 100);
-   }
-}
-
 //**********************************************************************
 // This callback is triggered when the user moves focus away from the text widget.
 
@@ -1239,22 +907,13 @@ exit:
 #include "class_input_def.c"
 
 static const struct FieldArray clFields[] = {
-   { "Font",         FDF_INTEGRAL|FDF_R,      ID_FONT, NULL, NULL },
    { "TextInput",    FDF_INTEGRAL|FDF_R,      ID_TEXT, NULL, NULL },
    { "LayoutSurface",FDF_VIRTUAL|FDF_OBJECTID|FDF_SYSTEM|FDF_R, ID_SURFACE, NULL, NULL }, // VIRTUAL: This is a synonym for the Region field
    { "Region",       FDF_OBJECTID|FDF_RW,  ID_SURFACE, NULL, SET_Region },
    { "Surface",      FDF_OBJECTID|FDF_RW,  ID_SURFACE, NULL, NULL },
    { "Flags",        FDF_LONGFLAGS|FDF_RW, (MAXINT)&clInputFlags, NULL, NULL },
-   { "EnterFrame",   FDF_LONG|FDF_RW,      0, NULL, NULL },
-   { "ExitFrame",    FDF_LONG|FDF_RW,      0, NULL, NULL },
-   { "FocusFrame",   FDF_LONG|FDF_RW,      0, NULL, NULL },
-   { "ReleaseFrame", FDF_LONG|FDF_RW,      0, NULL, NULL },
-   { "Thickness",    FDF_LONG|FDF_RW,      0, NULL, NULL },
    { "LabelWidth",   FDF_LONG|FDF_RW,      0, NULL, SET_LabelWidth },
    { "InputWidth",   FDF_LONG|FDF_RI,      0, NULL, NULL },
-   { "Colour",       FDF_RGB|FDF_RW,       0, NULL, NULL },
-   { "Highlight",    FDF_RGB|FDF_RW,       0, NULL, NULL },
-   { "Shadow",       FDF_RGB|FDF_RW,       0, NULL, NULL },
    // Virtual fields
    { "Bottom",       FDF_VIRTUAL|FDF_LONG|FDF_R,         0, GET_Bottom,        NULL },
    { "Disable",      FDF_VIRTUAL|FDF_LONG|FDF_RW,        0, GET_Disable,       SET_Disable },
@@ -1262,9 +921,7 @@ static const struct FieldArray clFields[] = {
    { "Label",        FDF_VIRTUAL|FDF_STRING|FDF_RW,      0, GET_Label,         SET_Label },
    { "LayoutStyle",  FDF_VIRTUAL|FDF_POINTER|FDF_SYSTEM|FDF_W, 0, NULL,        SET_LayoutStyle },
    { "PostLabel",    FDF_VIRTUAL|FDF_STRING|FDF_RW,      0, GET_PostLabel,     SET_PostLabel },
-   { "Raised",       FDF_VIRTUAL|FDF_LONG|FDF_RW,        0, GET_Raised,        SET_Raised },
    { "Right",        FDF_VIRTUAL|FDF_LONG|FDF_R,         0, GET_Right,         NULL },
-   { "Sunken",       FDF_VIRTUAL|FDF_LONG|FDF_RW,        0, GET_Sunken,        SET_Sunken },
    { "String",       FDF_VIRTUAL|FDF_STRING|FDF_RW,      0, GET_String,        SET_String },
    { "TabFocus",     FDF_VIRTUAL|FDF_OBJECTID|FDF_W,     ID_TABFOCUS, NULL,    SET_TabFocus },
    { "Text",         FDF_SYNONYM|FDF_VIRTUAL|FDF_STRING|FDF_RW, 0, GET_String, SET_String },

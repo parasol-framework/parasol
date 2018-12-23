@@ -212,6 +212,9 @@ end
    local combobox = win.new('combobox', { label='Combobox', x=win.leftMargin, y=y, string='Your text here' })
    y = y + combobox.height + 8
 
+   local input = win.new('input', { label='Inputbox', x=win.leftMargin, y=y, labelWidth=combobox.labelWidth, string='Your text here' })
+   y = y + input.height + 8
+
    win.acShow()
 
    processMessages(-1) // Will sleep until the window close widget sends MSGID_QUIT
