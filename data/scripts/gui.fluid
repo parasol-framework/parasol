@@ -34,7 +34,7 @@ if (gui == nil) then
             err, gui.colours['shadow']        = xml.mtGetAttrib(index, 'shadow')
             err, gui.colours['highlight']     = xml.mtGetAttrib(index, 'highlight')
             err, gui.colours['colour']        = xml.mtGetAttrib(index, 'colour')
-            err, gui.colours['widget']        = xml.mtGetAttrib(index, 'widget')
+            err, gui.colours['widgetText']    = xml.mtGetAttrib(index, 'widgetText')
             err, gui.colours['button']        = xml.mtGetAttrib(index, 'button')
             err, gui.colours['buttonClick']   = xml.mtGetAttrib(index, 'buttonClick')
             err, gui.colours['menubar']       = xml.mtGetAttrib(index, 'menubar')
@@ -50,6 +50,7 @@ if (gui == nil) then
             err, gui.colours['background']    = xml.mtGetAttrib(index, 'background')
             err, gui.colours['textHighlight'] = xml.mtGetAttrib(index, 'textHighlight')
             err, gui.colours['window']        = xml.mtGetAttrib(index, 'window')
+            err, gui.colours['boxedText']     = xml.mtGetAttrib(index, 'boxedText')
          else
             error('No colours tag in style values.')
          end
@@ -79,6 +80,16 @@ if (gui == nil) then
 
       mSurface = nil
    end
+end
+
+------------------------------------------------------------------------------
+
+gui.getFontHeight = function(Font)
+   if not Font.height then
+      local fnt = obj.new('font', { face=Font.face })
+      Font.height = fnt.maxHeight
+   end
+   return Font.height
 end
 
 ------------------------------------------------------------------------------
@@ -201,3 +212,142 @@ gui.strToRGB = function(Value)
       return { r=r, g=g, b=b, a=a }
    end
 end
+
+------------------------------------------------------------------------------
+-- Convert an RGB table to a SVG colour string
+
+gui.rgbToSVG = function(Value)
+   return string.format('rgb(%d,%d,%d,%d)', Value.r, Value.g, Value.b, Value.a)
+end
+
+------------------------------------------------------------------------------
+-- Interpolate two RGB colours
+
+gui.interpolateRGB = function(Base, New)
+   return {
+      a = Base.a + ((New.a - Base.a)*0.5),
+      r = Base.r + ((New.r - Base.r)*0.5),
+      g = Base.g + ((New.g - Base.g)*0.5),
+      b = Base.b + ((New.b - Base.b)*0.5)
+   }
+end
+
+------------------------------------------------------------------------------
+-- Interpolate two HSV colours
+
+gui.interpolateHSV = function(Base, New)
+   return {
+      a = Base.a + ((New.a - Base.a)*0.5),
+      h = Base.h + ((New.h - Base.h)*0.5),
+      s = Base.s + ((New.s - Base.s)*0.5),
+      v = Base.v + ((New.v - Base.v)*0.5)
+   }
+end
+------------------------------------------------------------------------------
+-- Convert HSV table to RGB
+
+gui.hsvToRGB = function(Value)
+   local h = Value.h / 60
+   local s = Value.s
+   local v = Value.v
+   local i = math.floor(h)
+   local f = h - i
+   if bit.band(i, 1) == 0 then f = 1 - f end
+   local m = v * (1 - s)
+   local n = v * (1 - s * f)
+
+   if i == 6 or i == 0 then
+      return { r = v, g = n, b = m, a = Value.a }
+   elseif i == 1 then
+      return { r = n, g = v, b = m, a = Value.a }
+   elseif i == 2 then
+      return { r = m, g = v, b = n, a = Value.a }
+   elseif i == 3 then
+      return { r = m, g = n, b = v, a = Value.a }
+   elseif i == 4 then
+      return { r = n, g = m, b = v, a = Value.a }
+   elseif i == 5 then
+      return { r = v, g = m, b = n, a = Value.a }
+   else
+      return { r = 0, g = 0, b = 0, a = Value.a }
+   end
+end
+
+------------------------------------------------------------------------------
+-- Convert RGB table to HSV
+
+gui.rgbToHSV = function(Value)
+   local max = Value.b
+   if Value.g > max then max = Value.g end
+   if Value.r > max then max = Value.r end
+
+   local min = Value.b
+   if Value.g < min then min = Value.g end
+   if Value.r < min then min = Value.r end
+
+   local hsv = { v = max }
+   local delta = max - min
+   if max > 0 then
+      hsv.s = delta / max
+      if hsv.s == 0 then
+         hsv.h = 0
+      else
+         if Value.r >= max then
+            hsv.h = (Value.g - Value.b) / delta
+         elseif Value.g >= max then
+            hsv.h = 2.0 + (Value.b - Value.r) / delta
+         else
+            hsv.h = 4.0 + (Value.r - Value.g) / delta
+         end
+         hsv.h = hsv.h * 60
+         if hsv.h < 0 then hsv.h = hsv.h + 360 end
+      end
+   else
+      hsv.s = 0
+      hsv.h = 0
+   end
+   return hsv
+end
+
+------------------------------------------------------------------------------
+
+gui.applyFill = function(Vector, Fill)
+   while (Vector != nil) do
+      if (Vector.fill != 'none') then
+         Vector.fill = Fill
+      end
+      if (Vector.stroke != nil) then Vector.stroke = Fill end
+      local child = Vector.child
+      if (child != nil) then gui.applyFill(child, Fill) end
+      Vector = Vector.next
+   end
+end
+
+------------------------------------------------------------------------------
+-- Generate a simple gradient fill for vectors.
+
+gui.verticalGradient = function(Scene, Name, First, Last, X1, Y1, X2, Y2, Units)
+   local stops = { }
+   local first = struct.new('GradientStop')
+   first.offset    = 0
+   first.rgb.red   = First.r / 255
+   first.rgb.green = First.g / 255
+   first.rgb.blue  = First.b / 255
+   first.rgb.alpha = nz(First.a,255) / 255
+   table.insert(stops, first)
+
+   local last = struct.new('GradientStop')
+   last.offset    = 1.0
+   last.rgb.red   = Last.r / 255
+   last.rgb.green = Last.g / 255
+   last.rgb.blue  = Last.b / 255
+   last.rgb.alpha = nz(Last.a,255) / 255
+   table.insert(stops, last)
+
+   local gradient = Scene.new('VectorGradient', {
+      type='linear', stops=stops, x1=X1, y1=Y1, x2=X2, y2=Y2, units=nz(Units,'boundingbox')
+   })
+   Scene.mtAddDef(Name, gradient)
+   return gradient
+end
+

@@ -186,33 +186,6 @@ gui.toolbar = function(Target, Options)
       end
    end
 
-   // Generate a simple gradient fill for vectors.
-
-   local function verticalGradient(Name, First, Last, X1, Y1, X2, Y2, Units)
-      local stops = { }
-      local first = struct.new('GradientStop')
-      first.offset    = 0
-      first.rgb.red   = First.r / 255
-      first.rgb.green = First.g / 255
-      first.rgb.blue  = First.b / 255
-      first.rgb.alpha = nz(First.a,255) / 255
-      table.insert(stops, first)
-
-      local last = struct.new('GradientStop')
-      last.offset    = 1.0
-      last.rgb.red   = Last.r / 255
-      last.rgb.green = Last.g / 255
-      last.rgb.blue  = Last.b / 255
-      last.rgb.alpha = nz(Last.a,255) / 255
-      table.insert(stops, last)
-
-      local gradient = lScene.new('VectorGradient', {
-         type='linear', stops=stops, x1=X1, y1=Y1, x2=X2, y2=Y2, units=nz(Units,'boundingbox')
-      })
-      lScene.mtAddDef(Name, gradient)
-      return gradient
-   end
-
    local function arrangeItems()
       if not nz(lSurfaceWidth) or not nz(lSurfaceHeight) then return end
 
@@ -296,7 +269,7 @@ gui.toolbar = function(Target, Options)
             item.width = lIconSize + (lCellMargin * 2)
             item.height = lIconSize + (lCellMargin * 2)
 
-            if (item.svg) then
+            if item.svg then
                item.svgGroup.x = x + lCellMargin
                item.svgGroup.y = y + lCellMargin
                if (lDisabled) or (item.disabled) then
@@ -304,7 +277,7 @@ gui.toolbar = function(Target, Options)
                end
             elseif nz(item.displayName) then
                local gname = 'bkgd' .. counter()
-               item.svgGradient = verticalGradient(gname, lThemeColour.first, lThemeColour.last, 0, item.y, 0, item.height, 'userspace')
+               item.svgGradient = gui.verticalGradient(lScene, gname, lThemeColour.first, lThemeColour.last, 0, item.y, 0, item.height, 'userspace')
 
                item.vectorText = lVectorGroup.new('VectorText', {
                   x        = x + lCellMargin,
@@ -356,18 +329,6 @@ gui.toolbar = function(Target, Options)
       lArranged = false
    end
 
-   local function applyFill(Vector, Fill)
-      while (Vector != nil) do
-         if (Vector.fill != 'none') then
-            Vector.fill = Fill
-         end
-         if (Vector.stroke != nil) then Vector.stroke = Fill end
-         local child = Vector.child
-         if (child != nil) then applyFill(child, Fill) end
-         Vector = Vector.next
-      end
-   end
-
    // Add a clickable item to the toolbar.  The Name acts as the item text that is displayed in the toolbar if no
    // icon can be displayed.  Set the Tip string for a user hint during hover events.  The icon string must be in the
    // standard format of 'category/icon'.
@@ -384,9 +345,9 @@ gui.toolbar = function(Target, Options)
          catch(function()
             local gname = 'bkgd' .. counter()
             item.svgGroup = lViewport.new('VectorViewport', { x=0, y=0, width=lIconSize, height=lIconSize })
-            item.svgGradient = verticalGradient(gname, lThemeColour.first, lThemeColour.last, 0, 0, 0, 1)
+            item.svgGradient = gui.verticalGradient(lScene, gname, lThemeColour.first, lThemeColour.last, 0, 0, 0, 1)
             item.svg = obj.new('svg', { target=item.svgGroup, path='system:icons/Default/' .. Icon .. '.svg' })
-            applyFill(item.svgGroup, 'url(#' .. gname .. ')')
+            gui.applyFill(item.svgGroup, 'url(#' .. gname .. ')')
 
             local viewport = item.svgGroup.child
             if (viewport != nil) then
