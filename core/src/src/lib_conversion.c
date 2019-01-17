@@ -478,11 +478,11 @@ ERROR StrReadDate(CSTRING Date, struct DateTime *Output)
    struct DateTime time;
    CSTRING str;
 
-   if ((!Date) OR (!Output)) return ERR_Args;
+   if ((!Date) OR (!Output)) return ERR_NullArgs;
 
+   #warning Use of glTime is not thread safe
    if (!glTime) {
       if (CreateObject(ID_TIME, NF_UNTRACKED, (OBJECTPTR *)&glTime,
-            FID_Owner|TLONG, 0,
             TAGEND)) return ERR_CreateObject;
    }
 
