@@ -326,23 +326,23 @@ end
 ------------------------------------------------------------------------------
 -- Generate a simple gradient fill for vectors.
 
-gui.verticalGradient = function(Scene, Name, First, Last, X1, Y1, X2, Y2, Units)
+gui.simpleGradient = function(Scene, Name, Colours, X1, Y1, X2, Y2, Units)
    local stops = { }
-   local first = struct.new('GradientStop')
-   first.offset    = 0
-   first.rgb.red   = First.r / 255
-   first.rgb.green = First.g / 255
-   first.rgb.blue  = First.b / 255
-   first.rgb.alpha = nz(First.a,255) / 255
-   table.insert(stops, first)
-
-   local last = struct.new('GradientStop')
-   last.offset    = 1.0
-   last.rgb.red   = Last.r / 255
-   last.rgb.green = Last.g / 255
-   last.rgb.blue  = Last.b / 255
-   last.rgb.alpha = nz(Last.a,255) / 255
-   table.insert(stops, last)
+   local i = 0
+   for _, col in pairs(Colours) do
+      local vc = struct.new('GradientStop')
+      vc.offset    = nz(col.offset, i / #Colours)
+      vc.rgb.red   = col.r / 255
+      vc.rgb.green = col.g / 255
+      vc.rgb.blue  = col.b / 255
+      if not col.a then
+         vc.rgb.alpha = 1.0
+      else
+         vc.rgb.alpha = col.a / 255
+      end
+      table.insert(stops, vc)
+      i = i + 1
+   end
 
    local gradient = Scene.new('VectorGradient', {
       type='linear', stops=stops, x1=X1, y1=Y1, x2=X2, y2=Y2, units=nz(Units,'boundingbox')

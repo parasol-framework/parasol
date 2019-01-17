@@ -277,7 +277,7 @@ gui.toolbar = function(Target, Options)
                end
             elseif nz(item.displayName) then
                local gname = 'bkgd' .. counter()
-               item.svgGradient = gui.verticalGradient(lScene, gname, lThemeColour.first, lThemeColour.last, 0, item.y, 0, item.height, 'userspace')
+               item.svgGradient = gui.simpleGradient(lScene, gname, { lThemeColour.first, lThemeColour.last }, 0, item.y, 0, item.height, 'userspace')
 
                item.vectorText = lVectorGroup.new('VectorText', {
                   x        = x + lCellMargin,
@@ -345,7 +345,7 @@ gui.toolbar = function(Target, Options)
          catch(function()
             local gname = 'bkgd' .. counter()
             item.svgGroup = lViewport.new('VectorViewport', { x=0, y=0, width=lIconSize, height=lIconSize })
-            item.svgGradient = gui.verticalGradient(lScene, gname, lThemeColour.first, lThemeColour.last, 0, 0, 0, 1)
+            item.svgGradient = gui.simpleGradient(lScene, gname, { lThemeColour.first, lThemeColour.last }, 0, 0, 0, 1)
             item.svg = obj.new('svg', { target=item.svgGroup, path='system:icons/Default/' .. Icon .. '.svg' })
             gui.applyFill(item.svgGroup, 'url(#' .. gname .. ')')
 
