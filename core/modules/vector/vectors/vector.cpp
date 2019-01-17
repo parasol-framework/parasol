@@ -474,45 +474,43 @@ static ERROR VECTOR_Push(objVector *Self, struct vecPush *Args)
 {
    if (!Args) return PostError(ERR_NullArgs);
 
-   objVector *enode = Self;
-
    if (Args->Position < 0) { // Move backward through the stack.
-      if (enode->Parent) return ERR_Okay; // Return if the vector is already at the top of its stack position.
+      if (!Self->Prev) return ERR_Okay; // Return if the vector is at the top of its branch
 
       LONG i = -Args->Position;
-      if (enode->Prev) enode->Prev->Next = enode->Next;
-      if (enode->Next) enode->Next->Prev = enode->Prev;
+      Self->Prev->Next = Self->Next;
+      if (Self->Next) Self->Next->Prev = Self->Prev;
       objVector *scan = Self;
       while ((i > 0) and (scan->Prev)) {
          scan = scan->Prev;
          i--;
       }
-      enode->Next = scan;
-      enode->Prev = scan->Prev;
-      if (scan->Parent) {
+      Self->Next = scan;
+      Self->Prev = scan->Prev;
+      if (!Self->Prev) {
          if (scan->Parent->ClassID IS ID_VECTOR) ((objVector *)scan->Parent)->Child = Self;
          else if (scan->Parent->ClassID IS ID_VECTORSCENE) ((objVectorScene *)scan->Parent)->Viewport = Self;
-         scan->Parent = NULL;
+         Self->Parent = scan->Parent;
       }
    }
    else if (Args->Position > 0) { // Move forward through the stack.
-      if (!enode->Next) return ERR_Okay;
+      if (!Self->Next) return ERR_Okay;
 
       LONG i = Args->Position;
-      if (enode->Prev) enode->Prev->Next = enode->Next;
-      if (enode->Next) enode->Next->Prev = enode->Prev;
+      if (Self->Prev) Self->Prev->Next = Self->Next;
+      Self->Next->Prev = Self->Prev;
       objVector *scan = Self;
       while ((i > 0) and (scan->Next)) {
          scan = scan->Next;
-         i++;
+         i--;
       }
-      if (enode->Parent) {
-         if (scan->Parent->ClassID IS ID_VECTOR) ((objVector *)enode->Parent)->Child = enode->Next;
-         else if (scan->Parent->ClassID IS ID_VECTORSCENE) ((objVectorScene *)enode->Parent)->Viewport = enode->Next;
-         enode->Parent = NULL;
+      if ((!Self->Prev) AND (scan != Self)) {
+         if (Self->Parent->ClassID IS ID_VECTOR) ((objVector *)Self->Parent)->Child = Self->Next;
+         else if (Self->Parent->ClassID IS ID_VECTORSCENE) ((objVectorScene *)Self->Parent)->Viewport = Self->Next;
       }
-      enode->Prev = scan;
-      enode->Next = scan->Next;
+      Self->Prev = scan;
+      Self->Next = scan->Next;
+      scan->Next = Self;
    }
 
    return ERR_Okay;
@@ -1393,12 +1391,12 @@ static ERROR VECTOR_SET_MorphFlags(objVector *Self, LONG Value)
 -FIELD-
 Next: The next vector in the branch, or NULL.
 
-The Next value refers to the next vector in the branch.  If the value is NULL, the vector is placed at the end of the
-branch.
+The Next value refers to the next vector in the branch.  If the value is NULL, the vector is positioned at the end of
+the branch.
 
 The Next value can be set to another vector at any time, on the condition that both vectors share the same owner.  If
-this is not true, change the current owner before setting the Next field.  Changing the value will result in updates to
-the #Parent and #Prev fields.
+this is not true, change the current owner before setting the Next field.  Changing the Next value will result in
+updates to the #Parent and #Prev fields.
 
 -ERRORS-
 InvalidObject: The value is not a member of the Vector class.
@@ -1423,7 +1421,6 @@ static ERROR VECTOR_SET_Next(objVector *Self, objVector *Value)
 
    if (Value->Parent) { // Patch into the parent if we are at the start of the branch
       Self->Parent = Value->Parent;
-      Value->Parent = NULL;
       if (Self->Parent->ClassID IS ID_VECTORSCENE) ((objVectorScene *)Self->Parent)->Viewport = Self;
       else if (Self->Parent->ClassID IS ID_VECTOR) ((objVector *)Self->Parent)->Child = Self;
    }
@@ -1479,16 +1476,15 @@ static ERROR VECTOR_SET_Opacity(objVector *Self, DOUBLE Value)
 /*****************************************************************************
 
 -FIELD-
-Parent: The parent vector, or NULL if this is the top-most vector.
+Parent: The parent of the vector, or NULL if this is the top-most vector.
 
-The Parent value will refer to the owner of the vector if it is at the top of a vector branch.  In all other cases
-it will be set to NULL.  To find the parent of a branch, write a loop that scans through the #Prev
-and Parent fields in order to get to the start of the branch.
+The Parent value will refer to the owner of the vector within its respective branch.  To check if the vector is at the
+top or bottom of its branch, please refer to the @Prev and @Next fields.
 
 -FIELD-
 Prev: The previous vector in the branch, or NULL.
 
-The Prev value refers to the previous vector in the branch.  If the value is NULL, then the vector is placed at the
+The Prev value refers to the previous vector in the branch.  If the value is NULL, then the vector is positioned at the
 top of the branch.
 
 The Prev value can be set to another vector at any time, on the condition that both vectors share the same owner.  If
@@ -1525,6 +1521,7 @@ static ERROR VECTOR_SET_Prev(objVector *Self, objVector *Value)
 
    Self->Prev = Value; // Patch the chain
    Self->Next = Value->Next;
+   Self->Parent = Value->Parent;
    if (Value->Next) Value->Next->Prev = Self;
    Value->Next = Self;
 
