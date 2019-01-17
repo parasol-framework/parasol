@@ -793,7 +793,7 @@ static ERROR TEXT_SET_X(objVectorText *Self, struct Variable *Value)
    if (Value->Type & FD_DOUBLE) Self->txX = Value->Double;
    else if (Value->Type & FD_LARGE) Self->txX = Value->Large;
    else return PostError(ERR_FieldTypeMismatch);
-   reset_final_path(Self);
+   mark_dirty(Self, RC_TRANSFORM);
    return ERR_Okay;
 }
 
@@ -821,7 +821,7 @@ static ERROR TEXT_SET_Y(objVectorText *Self, struct Variable *Value)
    if (Value->Type & FD_DOUBLE) Self->txY = Value->Double;
    else if (Value->Type & FD_LARGE) Self->txY = Value->Large;
    else return PostError(ERR_FieldTypeMismatch);
-   reset_final_path(Self);
+   mark_dirty(Self, RC_TRANSFORM);
    return ERR_Okay;
 }
 
