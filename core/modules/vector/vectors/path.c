@@ -85,63 +85,63 @@ static void convert_to_aggpath(struct PathCommand *Paths, LONG TotalCommands, ag
          case PE_Curve: // curve4()
             path.AbsX = path.X;
             path.AbsY = path.Y;
-            bp->curve4(path.Curve.X1, path.Curve.Y1, path.Curve.X2, path.Curve.Y2, path.AbsX, path.AbsY);
+            bp->curve4(path.X2, path.Y2, path.X3, path.Y3, path.AbsX, path.AbsY);
             break;
 
          case PE_CurveRel:
             path.AbsX = lp.AbsX + path.X;
             path.AbsY = lp.AbsY + path.Y;
-            bp->curve4(path.Curve.X1+lp.AbsX, path.Curve.Y1+lp.AbsY, path.Curve.X2+lp.AbsX, path.Curve.Y2+lp.AbsY, path.AbsX, path.AbsY);
+            bp->curve4(path.X2+lp.AbsX, path.Y2+lp.AbsY, path.X3+lp.AbsX, path.Y3+lp.AbsY, path.AbsX, path.AbsY);
             break;
 
          case PE_Smooth: // Simplified curve3/4 with one control inherited from previous vertex
             path.AbsX = path.X;
             path.AbsY = path.Y;
-            if (!lp.Curved) bp->curve3(path.Smooth.X, path.Smooth.Y, path.AbsX, path.AbsY);
-            else bp->curve4(path.Smooth.X, path.Smooth.Y, path.AbsX, path.AbsY);
+            if (!lp.Curved) bp->curve3(path.X2, path.Y2, path.AbsX, path.AbsY);
+            else bp->curve4(path.X2, path.Y2, path.AbsX, path.AbsY);
             break;
 
          case PE_SmoothRel:
             path.AbsX = lp.AbsX + path.X;
             path.AbsY = lp.AbsY + path.Y;
-            if (!lp.Curved) bp->curve3(path.Smooth.X+lp.AbsX, path.Smooth.Y+lp.AbsY, path.AbsX, path.AbsY);
-            else bp->curve4(path.Smooth.X+lp.AbsX, path.Smooth.Y+lp.AbsY, path.AbsX, path.AbsY);
+            if (!lp.Curved) bp->curve3(path.X2+lp.AbsX, path.Y2+lp.AbsY, path.AbsX, path.AbsY);
+            else bp->curve4(path.X2+lp.AbsX, path.Y2+lp.AbsY, path.AbsX, path.AbsY);
             break;
 
          case PE_QuadCurve:
             path.AbsX = path.X;
             path.AbsY = path.Y;
-            bp->curve3(path.QuadCurve.X, path.QuadCurve.Y, path.AbsX, path.AbsY);
+            bp->curve3(path.X2, path.Y2, path.AbsX, path.AbsY);
             break;
 
          case PE_QuadCurveRel:
             path.AbsX = lp.AbsX + path.X;
             path.AbsY = lp.AbsY + path.Y;
-            bp->curve3(path.QuadCurve.X+lp.AbsX, path.QuadCurve.Y+lp.AbsY, path.AbsX, path.AbsY);
+            bp->curve3(path.X2+lp.AbsX, path.Y2+lp.AbsY, path.AbsX, path.AbsY);
             break;
 
          case PE_QuadSmooth:
             path.AbsX = path.X;
             path.AbsY = path.Y;
-            bp->curve4(path.QuadSmooth.X, path.QuadSmooth.Y, path.AbsX, path.AbsY);
+            bp->curve4(path.X2, path.Y2, path.AbsX, path.AbsY);
             break;
 
          case PE_QuadSmoothRel:
             path.AbsX = lp.AbsX + path.X;
             path.AbsY = lp.AbsY + path.Y;
-            bp->curve4(path.QuadSmooth.X+lp.AbsX, path.QuadSmooth.Y+lp.AbsY, path.AbsX, path.AbsY);
+            bp->curve4(path.X2+lp.AbsX, path.Y2+lp.AbsY, path.AbsX, path.AbsY);
             break;
 
          case PE_Arc:
             path.AbsX = path.X;
             path.AbsY = path.Y;
-            bp->arc_to(path.Arc.RX, path.Arc.RY, path.Arc.Angle, path.Arc.LargeArc, path.Arc.Sweep, path.AbsX, path.AbsY);
+            bp->arc_to(path.X2, path.Y2, path.Angle, path.LargeArc, path.Sweep, path.AbsX, path.AbsY);
             break;
 
          case PE_ArcRel:
             path.AbsX = lp.AbsX + path.X;
             path.AbsY = lp.AbsY + path.Y;
-            bp->arc_to(path.Arc.RX+lp.AbsX, path.Arc.RY+lp.AbsY, path.Arc.Angle, path.Arc.LargeArc, path.Arc.Sweep, path.AbsX, path.AbsY);
+            bp->arc_to(path.X2+lp.AbsX, path.Y2+lp.AbsY, path.Angle, path.LargeArc, path.Sweep, path.AbsX, path.AbsY);
             break;
 
          case PE_ClosePath:
@@ -222,28 +222,28 @@ static ERROR read_path(struct PathCommand **Path, LONG *Count, CSTRING Value)
             break;
 
          case 'Q': case 'q': // Quadratic Curve To
-            Value = read_numseq(Value, &path[total].QuadCurve.X, &path[total].QuadCurve.Y, &path[total].X, &path[total].Y, TAGEND);
+            Value = read_numseq(Value, &path[total].X2, &path[total].Y2, &path[total].X, &path[total].Y, TAGEND);
             if (cmd IS 'Q') path[total].Type = PE_QuadCurve;
             else path[total].Type = PE_QuadCurveRel;
             path[total].Curved = TRUE;
             break;
 
          case 'T': case 't': // Quadratic Smooth Curve To
-            Value = read_numseq(Value, &path[total].QuadSmooth.X, &path[total].QuadSmooth.Y, &path[total].X, &path[total].Y, TAGEND);
+            Value = read_numseq(Value, &path[total].X2, &path[total].Y2, &path[total].X, &path[total].Y, TAGEND);
             if (cmd IS 'T') path[total].Type = PE_QuadSmooth;
             else path[total].Type = PE_QuadSmoothRel;
              path[total].Curved = TRUE;
            break;
 
          case 'C': case 'c': // Curve To
-            Value = read_numseq(Value, &path[total].Curve.X1, &path[total].Curve.Y1, &path[total].Curve.X2, &path[total].Curve.Y2, &path[total].X, &path[total].Y, TAGEND);
+            Value = read_numseq(Value, &path[total].X2, &path[total].Y2, &path[total].X3, &path[total].Y3, &path[total].X, &path[total].Y, TAGEND);
             if (cmd IS 'C') path[total].Type = PE_Curve;
             else path[total].Type = PE_CurveRel;
             path[total].Curved = TRUE;
             break;
 
          case 'S': case 's': // Smooth Curve To
-            Value = read_numseq(Value, &path[total].Smooth.X, &path[total].Smooth.Y, &path[total].X, &path[total].Y, TAGEND);
+            Value = read_numseq(Value, &path[total].X2, &path[total].Y2, &path[total].X, &path[total].Y, TAGEND);
             if (cmd IS 'S') path[total].Type = PE_Smooth;
             else path[total].Type = PE_SmoothRel;
             path[total].Curved = TRUE;
@@ -251,9 +251,9 @@ static ERROR read_path(struct PathCommand **Path, LONG *Count, CSTRING Value)
 
          case 'A': case 'a': { // Arc
             DOUBLE largearc, sweep;
-            Value = read_numseq(Value, &path[total].Arc.RX, &path[total].Arc.RY, &path[total].Arc.Angle, &largearc, &sweep, &path[total].X, &path[total].Y, TAGEND);
-            path[total].Arc.LargeArc = F2T(largearc);
-            path[total].Arc.Sweep = F2T(sweep);
+            Value = read_numseq(Value, &path[total].X2, &path[total].Y2, &path[total].Angle, &largearc, &sweep, &path[total].X, &path[total].Y, TAGEND);
+            path[total].LargeArc = F2T(largearc);
+            path[total].Sweep = F2T(sweep);
             if (cmd IS 'A') path[total].Type = PE_Arc;
             else path[total].Type = PE_ArcRel;
             path[total].Curved = TRUE;

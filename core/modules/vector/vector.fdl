@@ -216,21 +216,18 @@ module({ name="Vector", copyright="Paul Manias © 2010-2017", version=1.0 }, fun
   struct("PathCommand", { comment="Base structure for path commands." }, [[
     uchar  Type
     uchar  Curved
-    short  Pad1
-    int    Pad2
+    uchar  LargeArc
+    uchar  Sweep        # Arc sweep
+    int    Pad
     double X
     double Y
     double AbsX
     double AbsY
-  ]],
-  [[
-   union {
-      struct { DOUBLE X1; DOUBLE Y1; DOUBLE X2; DOUBLE Y2; } Curve;
-      struct { DOUBLE X; DOUBLE Y; } Smooth;
-      struct { DOUBLE X; DOUBLE Y; } QuadCurve;
-      struct { DOUBLE X; DOUBLE Y; } QuadSmooth;
-      struct { DOUBLE RX; DOUBLE RY; DOUBLE Angle; BYTE LargeArc; BYTE Sweep; } Arc;
-   };
+    double X2           # Doubles as RX/RY for arcs
+    double Y2
+    double X3
+    double Y3
+    double Angle        # Arc angle
   ]])
 
   struct("VectorTransform", { }, [[

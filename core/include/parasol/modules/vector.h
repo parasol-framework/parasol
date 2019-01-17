@@ -256,20 +256,18 @@ struct VectorPoint {
 struct PathCommand {
    UBYTE  Type;
    UBYTE  Curved;
-   WORD   Pad1;
-   LONG   Pad2;
+   UBYTE  LargeArc;
+   UBYTE  Sweep;      // Arc sweep
+   LONG   Pad;
    DOUBLE X;
    DOUBLE Y;
    DOUBLE AbsX;
    DOUBLE AbsY;
-   union {
-      struct { DOUBLE X1; DOUBLE Y1; DOUBLE X2; DOUBLE Y2; } Curve;
-      struct { DOUBLE X; DOUBLE Y; } Smooth;
-      struct { DOUBLE X; DOUBLE Y; } QuadCurve;
-      struct { DOUBLE X; DOUBLE Y; } QuadSmooth;
-      struct { DOUBLE RX; DOUBLE RY; DOUBLE Angle; BYTE LargeArc; BYTE Sweep; } Arc;
-   };
-  
+   DOUBLE X2;         // Doubles as RX/RY for arcs
+   DOUBLE Y2;
+   DOUBLE X3;
+   DOUBLE Y3;
+   DOUBLE Angle;      // Arc angle
 };
 
 struct VectorTransform {
