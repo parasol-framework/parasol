@@ -354,20 +354,49 @@ static ERROR VECTORPATH_NewObject(objVectorPath *Self, APTR Void)
 -METHOD-
 AddCommand: Add a command to the end of the path sequence.
 
-TBA
+This method will add a series of commands to the end of a Vector's existing path sequence.  The commands must be
+provided as a sequential array.  No checks will be performed to confirm the validity of the sequence.
+
+Calling this method will also result in the path being recomputed for the next redraw.
 
 -INPUT-
-buf(struct(*PathCommand)) Command: Array of commands to add to the path.
+buf(struct(*PathCommand)) Commands: Array of commands to add to the path.
 bufsize Size: The size of the Command buffer, in bytes.
 
 -RESULT-
 Okay
+NullArgs
 
 *****************************************************************************/
 
 static ERROR VECTORPATH_AddCommand(objVectorPath *Self, struct vpAddCommand *Args)
 {
-   return ERR_NoSupport;
+   if ((!Args) OR (!Args->Commands)) return PostError(ERR_NullArgs);
+
+   LONG total_cmds = Args->Size / VECTORPATH_CMD_SIZE;
+
+   if ((total_cmds <= 0) OR (total_cmds > 1000000)) return PostError(ERR_Args);
+
+   if (Self->TotalCommands + total_cmds > Self->Capacity) {
+      struct PathCommand *new_list;
+      LONG new_capacity = Self->Capacity + total_cmds + CAPACITY_CUSHION;
+      if (AllocMemory(VECTORPATH_CMD_SIZE * new_capacity, MEM_DATA|MEM_NO_CLEAR, &new_list, NULL)) {
+         return ERR_AllocMemory;
+      }
+
+      CopyMemory(Self->Commands, new_list, Self->TotalCommands * VECTORPATH_CMD_SIZE);
+
+      if (Self->Commands) FreeResource(Self->Commands);
+
+      Self->Commands = new_list;
+      Self->Capacity = new_capacity;
+   }
+
+   CopyMemory(Args->Commands, Self->Commands + Self->TotalCommands, total_cmds * VECTORPATH_CMD_SIZE);
+   Self->TotalCommands += total_cmds;
+
+   VECTORPATH_Flush(Self, NULL);
+   return ERR_Okay;
 }
 
 /*****************************************************************************
@@ -385,6 +414,7 @@ int Index: The index of the command to retrieve.
 -RESULT-
 Okay
 NullArgs
+OutOfRange
 
 *****************************************************************************/
 
@@ -509,8 +539,6 @@ static ERROR VECTORPATH_SetCommandList(objVectorPath *Self, struct vpSetCommandL
 
       if (Self->Commands) FreeResource(Self->Commands);
 
-      Self->TotalCommands = 0;
-      Self->Capacity = 0;
       Self->Commands = new_list;
       Self->Capacity = new_capacity;
    }

@@ -3,8 +3,10 @@
 -CLASS-
 VectorGroup: Extends the Vector class with support for organising vectors into groups.
 
-Groups have a singular purpose of aiding the structural definition when linking and grouping vector objects.  Groups
-have a passive effect on the drawing process and can be effective at assigning inheritable attributes to child vectors.
+Groups provide a simple way of grouping vector objects.  Groups have a passive effect on the drawing process and can be
+effective at assigning inheritable attributes to child vectors.
+
+If the ability to adjust the group's dimensions is needed, use a @VectorViewport as a container instead.
 
 -END-
 

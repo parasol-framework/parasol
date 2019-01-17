@@ -327,14 +327,14 @@ struct PathArc {
 #define MT_VPGetCommand -33
 #define MT_VPSetCommandList -34
 
-struct vpAddCommand { struct PathCommand * Command; LONG Size;  };
+struct vpAddCommand { struct PathCommand * Commands; LONG Size;  };
 struct vpRemoveCommand { LONG Index; LONG Total;  };
 struct vpSetCommand { LONG Index; struct PathCommand * Command; LONG Size;  };
 struct vpGetCommand { LONG Index; struct PathCommand * Command;  };
 struct vpSetCommandList { APTR Commands; LONG Size;  };
 
-INLINE ERROR vpAddCommand(APTR Ob, struct PathCommand * Command, LONG Size) {
-   struct vpAddCommand args = { Command, Size };
+INLINE ERROR vpAddCommand(APTR Ob, struct PathCommand * Commands, LONG Size) {
+   struct vpAddCommand args = { Commands, Size };
    return(Action(MT_VPAddCommand, Ob, &args));
 }
 
