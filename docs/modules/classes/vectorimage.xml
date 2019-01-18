@@ -225,17 +225,6 @@
 
   </types>
   <structs>
-    <struct name="PathCommand" comment="Base structure for path commands.">
-      <field name="Type" type="UBYTE"></field>
-      <field name="Curved" type="UBYTE"></field>
-      <field name="Pad1" type="WORD"></field>
-      <field name="Pad2" type="LONG"></field>
-      <field name="X" type="DOUBLE"></field>
-      <field name="Y" type="DOUBLE"></field>
-      <field name="AbsX" type="DOUBLE"></field>
-      <field name="AbsY" type="DOUBLE"></field>
-    </struct>
-
     <struct name="VectorTransform">
       <field name="Next" type="struct VectorTransform *">The next transform in the list.</field>
       <field name="Prev" type="struct VectorTransform *">The previous transform in the list.</field>
@@ -244,6 +233,23 @@
       <field name="Angle" type="DOUBLE">Requires VTF_ROTATE.  A rotation by Angle degrees about a given point.  If optional parameters X and Y are not specified, the rotate is about the origin of the current user coordinate system.</field>
       <field name="Matrix[6]" type="DOUBLE">Requires VTF_MATRIX.  A transformation expressed as a matrix of six values.</field>
       <field name="Type" type="WORD" lookup="VTF">The VTF indicates the type of transformation: rotate, skew etc</field>
+    </struct>
+
+    <struct name="PathCommand" comment="Base structure for path commands.">
+      <field name="Type" type="UBYTE"></field>
+      <field name="Curved" type="UBYTE"></field>
+      <field name="LargeArc" type="UBYTE"></field>
+      <field name="Sweep" type="UBYTE">Arc sweep</field>
+      <field name="Pad" type="LONG"></field>
+      <field name="X" type="DOUBLE"></field>
+      <field name="Y" type="DOUBLE"></field>
+      <field name="AbsX" type="DOUBLE"></field>
+      <field name="AbsY" type="DOUBLE"></field>
+      <field name="X2" type="DOUBLE">Doubles as RX/RY for arcs</field>
+      <field name="Y2" type="DOUBLE"></field>
+      <field name="X3" type="DOUBLE"></field>
+      <field name="Y3" type="DOUBLE"></field>
+      <field name="Angle" type="DOUBLE">Arc angle</field>
     </struct>
 
   </structs>

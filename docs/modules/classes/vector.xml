@@ -470,8 +470,8 @@
       <access read="R" write="S">Read/Set</access>
       <type class="Vector">*Vector</type>
       <description>
-<p>The Next value refers to the next vector in the branch.  If the value is NULL, the vector is placed at the end of the branch.</p>
-<p>The Next value can be set to another vector at any time, on the condition that both vectors share the same owner.  If this is not true, change the current owner before setting the Next field.  Changing the value will result in updates to the <field>Parent</field> and <field>Prev</field> fields.</p>
+<p>The Next value refers to the next vector in the branch.  If the value is NULL, the vector is positioned at the end of the branch.</p>
+<p>The Next value can be set to another vector at any time, on the condition that both vectors share the same owner.  If this is not true, change the current owner before setting the Next field.  Changing the Next value will result in updates to the <field>Parent</field> and <field>Prev</field> fields.</p>
       </description>
     </field>
 
@@ -498,11 +498,11 @@
 
     <field>
       <name>Parent</name>
-      <comment>The parent vector, or NULL if this is the top-most vector.</comment>
+      <comment>The parent of the vector, or NULL if this is the top-most vector.</comment>
       <access read="R">Read</access>
       <type>OBJECTPTR</type>
       <description>
-<p>The Parent value will refer to the owner of the vector if it is at the top of a vector branch.  In all other cases it will be set to NULL.  To find the parent of a branch, write a loop that scans through the <field>Prev</field> and Parent fields in order to get to the start of the branch.</p>
+<p>The Parent value will refer to the owner of the vector within its respective branch.  To check if the vector is at the top or bottom of its branch, please refer to the @Prev and @Next fields.</p>
       </description>
     </field>
 
@@ -512,7 +512,7 @@
       <access read="R" write="S">Read/Set</access>
       <type class="Vector">*Vector</type>
       <description>
-<p>The Prev value refers to the previous vector in the branch.  If the value is NULL, then the vector is placed at the top of the branch.</p>
+<p>The Prev value refers to the previous vector in the branch.  If the value is NULL, then the vector is positioned at the top of the branch.</p>
 <p>The Prev value can be set to another vector at any time, on the condition that both vectors share the same owner.  If this is not true, change the current owner before setting the Prev field.  Changing the value will result in updates to the <field>Parent</field> and <field>Next</field> values.</p>
       </description>
     </field>
@@ -760,17 +760,6 @@ Z: Close Path
 
   </types>
   <structs>
-    <struct name="PathCommand" comment="Base structure for path commands.">
-      <field name="Type" type="UBYTE"></field>
-      <field name="Curved" type="UBYTE"></field>
-      <field name="Pad1" type="WORD"></field>
-      <field name="Pad2" type="LONG"></field>
-      <field name="X" type="DOUBLE"></field>
-      <field name="Y" type="DOUBLE"></field>
-      <field name="AbsX" type="DOUBLE"></field>
-      <field name="AbsY" type="DOUBLE"></field>
-    </struct>
-
     <struct name="VectorTransform">
       <field name="Next" type="struct VectorTransform *">The next transform in the list.</field>
       <field name="Prev" type="struct VectorTransform *">The previous transform in the list.</field>
@@ -779,6 +768,23 @@ Z: Close Path
       <field name="Angle" type="DOUBLE">Requires VTF_ROTATE.  A rotation by Angle degrees about a given point.  If optional parameters X and Y are not specified, the rotate is about the origin of the current user coordinate system.</field>
       <field name="Matrix[6]" type="DOUBLE">Requires VTF_MATRIX.  A transformation expressed as a matrix of six values.</field>
       <field name="Type" type="WORD" lookup="VTF">The VTF indicates the type of transformation: rotate, skew etc</field>
+    </struct>
+
+    <struct name="PathCommand" comment="Base structure for path commands.">
+      <field name="Type" type="UBYTE"></field>
+      <field name="Curved" type="UBYTE"></field>
+      <field name="LargeArc" type="UBYTE"></field>
+      <field name="Sweep" type="UBYTE">Arc sweep</field>
+      <field name="Pad" type="LONG"></field>
+      <field name="X" type="DOUBLE"></field>
+      <field name="Y" type="DOUBLE"></field>
+      <field name="AbsX" type="DOUBLE"></field>
+      <field name="AbsY" type="DOUBLE"></field>
+      <field name="X2" type="DOUBLE">Doubles as RX/RY for arcs</field>
+      <field name="Y2" type="DOUBLE"></field>
+      <field name="X3" type="DOUBLE"></field>
+      <field name="Y3" type="DOUBLE"></field>
+      <field name="Angle" type="DOUBLE">Arc angle</field>
     </struct>
 
   </structs>
