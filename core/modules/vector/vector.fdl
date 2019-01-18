@@ -240,41 +240,6 @@ module({ name="Vector", copyright="Paul Manias © 2010-2017", version=1.0 }, fun
     short(VTF) Type  # The VTF indicates the type of transformation: rotate, skew etc
   ]])
 
-  struct("PathCurve", { }, [[
-    struct(PathCommand) Command
-    double X1
-    double Y1
-    double X2
-    double Y2
-  ]])
-
-  struct("PathSmooth", { }, [[
-    struct(PathCommand) Command
-    double X
-    double Y
-  ]])
-
-  struct("PathQuadCurve", { }, [[
-    struct(PathCommand) Command
-    double X
-    double Y
-  ]])
-
-  struct("PathQuadSmooth", { }, [[
-    struct(PathCommand) Command
-    double X
-    double Y
-  ]])
-
-  struct("PathArc", { }, [[
-    struct(PathCommand) Command
-    double RX
-    double RY
-    double Angle
-    char LargeArc
-    char Sweep
-  ]])
-
   // VectorPath method ID's start high enough to give a cushion from inherited Vector methods.
 
   methods("VectorPath", "VP", {

@@ -280,41 +280,6 @@ struct VectorTransform {
    WORD   Type;                      // The VTF indicates the type of transformation: rotate, skew etc
 };
 
-struct PathCurve {
-   struct PathCommand Command;
-   DOUBLE X1;
-   DOUBLE Y1;
-   DOUBLE X2;
-   DOUBLE Y2;
-};
-
-struct PathSmooth {
-   struct PathCommand Command;
-   DOUBLE X;
-   DOUBLE Y;
-};
-
-struct PathQuadCurve {
-   struct PathCommand Command;
-   DOUBLE X;
-   DOUBLE Y;
-};
-
-struct PathQuadSmooth {
-   struct PathCommand Command;
-   DOUBLE X;
-   DOUBLE Y;
-};
-
-struct PathArc {
-   struct PathCommand Command;
-   DOUBLE RX;
-   DOUBLE RY;
-   DOUBLE Angle;
-   BYTE   LargeArc;
-   BYTE   Sweep;
-};
-
 // VectorPath class definition
 
 #define VER_VECTORPATH (1.000000)
