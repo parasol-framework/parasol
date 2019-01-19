@@ -126,12 +126,11 @@ static void drawBitmap(LONG SampleMethod, agg::renderer_base<agg::pixfmt_rkl> &R
 {
    agg::rendering_buffer imgSource;
    imgSource.attach(SrcBitmap->Data, SrcBitmap->Width, SrcBitmap->Height, SrcBitmap->LineWidth);
-
    agg::pixfmt_rkl pixels(*SrcBitmap);
 
-   if (Transform) {
+   if ((Transform) AND // Interpolate only if the transform specifies a scale, shear or rotate operation.
+       ((Transform->sx != 1.0) OR (Transform->sy != 1.0) OR (Transform->shx != 0.0) OR (Transform->shy != 0.0))) {
       agg::span_interpolator_linear<> interpolator(*Transform);
-
       agg::image_filter_lut filter;
       set_filter(filter, SampleMethod);  // Set the interpolation filter to use.
 
@@ -158,6 +157,11 @@ static void drawBitmap(LONG SampleMethod, agg::renderer_base<agg::pixfmt_rkl> &R
    }
    else {
       // 1:1 copy with no transforms that require interpolation
+
+      if (Transform) {
+         XOffset += Transform->tx;
+         YOffset += Transform->ty;
+      }
 
       if (SpreadMethod IS VSPREAD_REFLECT_X) {
          agg::span_reflect_x source(pixels, XOffset, YOffset);
