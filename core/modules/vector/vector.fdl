@@ -202,8 +202,8 @@ module({ name="Vector", copyright="Paul Manias © 2010-2017", version=1.0 }, fun
   ]])
 
   struct("Transition", { comment="For VectorTransition definitions" }, [[
-    double Offset
-    cstr Transform
+    double Offset   # An offset from 0.0 to 1.0 at which to apply the transform.
+    cstr Transform  # A transform string, as per SVG guidelines.
   ]])
 
   struct("VectorPoint", { comment="Structure for the VectorPolygon PointsArray field." }, [[
@@ -214,19 +214,19 @@ module({ name="Vector", copyright="Paul Manias © 2010-2017", version=1.0 }, fun
   ]])
 
   struct("PathCommand", { comment="Base structure for path commands." }, [[
-    uchar  Type
-    uchar  Curved
-    uchar  LargeArc
-    uchar  Sweep        # Arc sweep
-    int    Pad
-    double X
-    double Y
-    double AbsX
-    double AbsY
-    double X2           # Doubles as RX/RY for arcs
-    double Y2
-    double X3
-    double Y3
+    uchar  Type         # The command type (PE value)
+    uchar  Curved       # Private
+    uchar  LargeArc     # Equivalent to the large-arc-flag in SVG, it ensures that the arc follows the longest drawing path when TRUE.
+    uchar  Sweep        # Equivalent to the sweep-flag in SVG, it inverts the default behaviour in generating arc paths.
+    int    Pad          # Private
+    double X            # The targeted X coordinate for the command
+    double Y            # The targeted Y coordinate for the command
+    double AbsX         # Private
+    double AbsY         # Private
+    double X2           # The X2 coordinate for curve commands, or RX for arcs
+    double Y2           # The Y2 coordinate for curve commands, or RY for arcs
+    double X3           # The X3 coordinate for curve-to or smooth-curve-to
+    double Y3           # The Y3 coordinate for curve-to or smooth-curve-to
     double Angle        # Arc angle
   ]])
 
@@ -251,11 +251,6 @@ module({ name="Vector", copyright="Paul Manias © 2010-2017", version=1.0 }, fun
   })
 
   class("VectorPath", { src="vectors/path.c", output="vectors/path_def.c" })
-
-  c_insert([[
-// This constant is set to the struct-size of the biggest path command.
-#define VECTORPATH_CMD_SIZE sizeof(struct PathCommand)
-  ]])
 
   // Use SET_VECTOR_COLOUR() to configure the RGB values in VectorColour
 

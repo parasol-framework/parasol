@@ -242,8 +242,8 @@ struct GradientStop {
 };
 
 struct Transition {
-   DOUBLE  Offset;
-   CSTRING Transform;
+   DOUBLE  Offset;       // An offset from 0.0 to 1.0 at which to apply the transform.
+   CSTRING Transform;    // A transform string, as per SVG guidelines.
 };
 
 struct VectorPoint {
@@ -254,19 +254,19 @@ struct VectorPoint {
 };
 
 struct PathCommand {
-   UBYTE  Type;
-   UBYTE  Curved;
-   UBYTE  LargeArc;
-   UBYTE  Sweep;      // Arc sweep
-   LONG   Pad;
-   DOUBLE X;
-   DOUBLE Y;
-   DOUBLE AbsX;
-   DOUBLE AbsY;
-   DOUBLE X2;         // Doubles as RX/RY for arcs
-   DOUBLE Y2;
-   DOUBLE X3;
-   DOUBLE Y3;
+   UBYTE  Type;       // The command type (PE value)
+   UBYTE  Curved;     // Private
+   UBYTE  LargeArc;   // Equivalent to the large-arc-flag in SVG, it ensures that the arc follows the longest drawing path when TRUE.
+   UBYTE  Sweep;      // Equivalent to the sweep-flag in SVG, it inverts the default behaviour in generating arc paths.
+   LONG   Pad;        // Private
+   DOUBLE X;          // The targeted X coordinate for the command
+   DOUBLE Y;          // The targeted Y coordinate for the command
+   DOUBLE AbsX;       // Private
+   DOUBLE AbsY;       // Private
+   DOUBLE X2;         // The X2 coordinate for curve commands, or RX for arcs
+   DOUBLE Y2;         // The Y2 coordinate for curve commands, or RY for arcs
+   DOUBLE X3;         // The X3 coordinate for curve-to or smooth-curve-to
+   DOUBLE Y3;         // The Y3 coordinate for curve-to or smooth-curve-to
    DOUBLE Angle;      // Arc angle
 };
 
@@ -326,9 +326,6 @@ INLINE ERROR vpSetCommandList(APTR Ob, APTR Commands, LONG Size) {
 }
 
 
-// This constant is set to the struct-size of the biggest path command.
-#define VECTORPATH_CMD_SIZE sizeof(struct PathCommand)
-  
 // VectorColour class definition
 
 #define VER_VECTORCOLOUR (1.000000)

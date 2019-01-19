@@ -341,7 +341,7 @@ static ERROR VECTORPATH_Init(objVectorPath *Self, APTR Void)
 
 static ERROR VECTORPATH_NewObject(objVectorPath *Self, APTR Void)
 {
-   if (!AllocMemory(VECTORPATH_CMD_SIZE * CAPACITY_CUSHION, MEM_DATA, &Self->Commands, NULL)) {
+   if (!AllocMemory(sizeof(struct PathCommand) * CAPACITY_CUSHION, MEM_DATA, &Self->Commands, NULL)) {
       Self->Capacity = CAPACITY_CUSHION;
       Self->GeneratePath = (void (*)(struct rkVector *))&generate_path;
       return ERR_Okay;
@@ -373,18 +373,18 @@ static ERROR VECTORPATH_AddCommand(objVectorPath *Self, struct vpAddCommand *Arg
 {
    if ((!Args) OR (!Args->Commands)) return PostError(ERR_NullArgs);
 
-   LONG total_cmds = Args->Size / VECTORPATH_CMD_SIZE;
+   LONG total_cmds = Args->Size / sizeof(struct PathCommand);
 
    if ((total_cmds <= 0) OR (total_cmds > 1000000)) return PostError(ERR_Args);
 
    if (Self->TotalCommands + total_cmds > Self->Capacity) {
       struct PathCommand *new_list;
       LONG new_capacity = Self->Capacity + total_cmds + CAPACITY_CUSHION;
-      if (AllocMemory(VECTORPATH_CMD_SIZE * new_capacity, MEM_DATA|MEM_NO_CLEAR, &new_list, NULL)) {
+      if (AllocMemory(sizeof(struct PathCommand) * new_capacity, MEM_DATA|MEM_NO_CLEAR, &new_list, NULL)) {
          return ERR_AllocMemory;
       }
 
-      CopyMemory(Self->Commands, new_list, Self->TotalCommands * VECTORPATH_CMD_SIZE);
+      CopyMemory(Self->Commands, new_list, Self->TotalCommands * sizeof(struct PathCommand));
 
       if (Self->Commands) FreeResource(Self->Commands);
 
@@ -392,7 +392,7 @@ static ERROR VECTORPATH_AddCommand(objVectorPath *Self, struct vpAddCommand *Arg
       Self->Capacity = new_capacity;
    }
 
-   CopyMemory(Args->Commands, Self->Commands + Self->TotalCommands, total_cmds * VECTORPATH_CMD_SIZE);
+   CopyMemory(Args->Commands, Self->Commands + Self->TotalCommands, total_cmds * sizeof(struct PathCommand));
    Self->TotalCommands += total_cmds;
 
    VECTORPATH_Flush(Self, NULL);
@@ -458,7 +458,7 @@ static ERROR VECTORPATH_RemoveCommand(objVectorPath *Self, struct vpRemoveComman
       total = Self->TotalCommands - Args->Index;
    }
 
-   CopyMemory(Self->Commands + Args->Index + total, Self->Commands + Args->Index, total * VECTORPATH_CMD_SIZE);
+   CopyMemory(Self->Commands + Args->Index + total, Self->Commands + Args->Index, total * sizeof(struct PathCommand));
    Self->TotalCommands -= total;
 
    VECTORPATH_Flush(Self, NULL);
@@ -491,7 +491,7 @@ static ERROR VECTORPATH_SetCommand(objVectorPath *Self, struct vpSetCommand *Arg
    if ((!Args) OR (!Args->Command)) return ERR_NullArgs;
    if ((Args->Index < 0) OR (Args->Index > Self->Capacity-1)) return PostError(ERR_OutOfRange);
 
-   LONG total_cmds = Args->Size / VECTORPATH_CMD_SIZE;
+   LONG total_cmds = Args->Size / sizeof(struct PathCommand);
    if (Args->Index + total_cmds >= Self->Capacity) return PostError(ERR_BufferOverflow);
    if (Args->Index + total_cmds > Self->TotalCommands) Self->TotalCommands = Args->Index + total_cmds;
 
@@ -527,13 +527,13 @@ static ERROR VECTORPATH_SetCommandList(objVectorPath *Self, struct vpSetCommandL
 
    if (!(Self->Head.Flags & NF_INITIALISED)) return PostError(ERR_NotInitialised);
 
-   LONG total_cmds = Args->Size / VECTORPATH_CMD_SIZE;
+   LONG total_cmds = Args->Size / sizeof(struct PathCommand);
    if ((total_cmds < 0) OR (total_cmds > 1000000)) return PostError(ERR_Args);
 
    if (total_cmds > Self->Capacity) {
       struct PathCommand *new_list;
       LONG new_capacity = total_cmds + CAPACITY_CUSHION;
-      if (AllocMemory(VECTORPATH_CMD_SIZE * new_capacity, MEM_DATA|MEM_NO_CLEAR, &new_list, NULL)) {
+      if (AllocMemory(sizeof(struct PathCommand) * new_capacity, MEM_DATA|MEM_NO_CLEAR, &new_list, NULL)) {
          return ERR_AllocMemory;
       }
 
@@ -543,7 +543,7 @@ static ERROR VECTORPATH_SetCommandList(objVectorPath *Self, struct vpSetCommandL
       Self->Capacity = new_capacity;
    }
 
-   CopyMemory(Args->Commands, Self->Commands, total_cmds * VECTORPATH_CMD_SIZE);
+   CopyMemory(Args->Commands, Self->Commands, total_cmds * sizeof(struct PathCommand));
    Self->TotalCommands = total_cmds;
 
    VECTORPATH_Flush(Self, NULL);
@@ -571,7 +571,7 @@ static ERROR VECTORPATH_SET_Capacity(objVectorPath *Self, LONG Value)
    if (Value > Self->Capacity) {
       LONG new_capacity = Value + CAPACITY_CUSHION;
       if (Self->TotalCommands > 0) { // Preserve existing commands?
-         if (!ReallocMemory(Self->Commands, VECTORPATH_CMD_SIZE * new_capacity, &Self->Commands, NULL)) {
+         if (!ReallocMemory(Self->Commands, sizeof(struct PathCommand) * new_capacity, &Self->Commands, NULL)) {
             Self->Capacity = new_capacity;
             return ERR_Okay;
          }
@@ -579,7 +579,7 @@ static ERROR VECTORPATH_SET_Capacity(objVectorPath *Self, LONG Value)
       }
       else {
          struct PathCommand *new_list;
-         if (!AllocMemory(VECTORPATH_CMD_SIZE * new_capacity, MEM_DATA|MEM_NO_CLEAR, &new_list, NULL)) {
+         if (!AllocMemory(sizeof(struct PathCommand) * new_capacity, MEM_DATA|MEM_NO_CLEAR, &new_list, NULL)) {
             if (Self->Commands) FreeResource(Self->Commands);
             Self->Commands = new_list;
             Self->Capacity = new_capacity;

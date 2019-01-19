@@ -1479,7 +1479,7 @@ static ERROR VECTOR_SET_Opacity(objVector *Self, DOUBLE Value)
 Parent: The parent of the vector, or NULL if this is the top-most vector.
 
 The Parent value will refer to the owner of the vector within its respective branch.  To check if the vector is at the
-top or bottom of its branch, please refer to the @Prev and @Next fields.
+top or bottom of its branch, please refer to the #Prev and #Next fields.
 
 -FIELD-
 Prev: The previous vector in the branch, or NULL.

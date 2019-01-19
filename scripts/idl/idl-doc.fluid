@@ -322,7 +322,7 @@ function substituteReferences(String, Class)
             return '<function>' .. FunctionName .. '</function>'
          end
       else
-         print('Unrecognised function ' .. FunctionName .. '()')
+         print('Unrecognised function reference ~' .. FunctionName .. '()')
       end
    end)
 
@@ -333,7 +333,7 @@ function substituteReferences(String, Class)
          -- TODO: Check that the method name is valid according to the class blueprint
          return '<class name="' .. ClassName .. '" index="' .. MethodName .. '()">' .. ClassName .. ':' .. MethodName .. '()</class>'
       else
-         print('Unrecognised class ' .. ClassName)
+         print('Unrecognised reference @' .. ClassName .. '.' .. MethodName .. '()')
       end
    end)
 
@@ -350,7 +350,7 @@ function substituteReferences(String, Class)
             return '<class name="' .. ClassName .. '" index="' .. FieldName .. '">_' .. ClassName .. ':' .. FieldName .. '_</class>'
          end
       else
-         print('Unrecognised class ' .. ClassName)
+         print('Unrecognised reference @' .. ClassName .. '.' .. FieldName)
       end
    end)
 
@@ -360,7 +360,7 @@ function substituteReferences(String, Class)
       if mSys.FindClass(mSys.StrHash(ClassName, false), 0) then
          return '<class name="' .. ClassName .. '">' .. ClassName .. '</class>'
       else
-         print('Unrecognised class ' .. ClassName)
+         print('Unrecognised reference @' .. ClassName)
       end
    end)
 

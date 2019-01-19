@@ -334,19 +334,19 @@
     </struct>
 
     <struct name="PathCommand" comment="Base structure for path commands.">
-      <field name="Type" type="UBYTE"></field>
-      <field name="Curved" type="UBYTE"></field>
-      <field name="LargeArc" type="UBYTE"></field>
-      <field name="Sweep" type="UBYTE">Arc sweep</field>
-      <field name="Pad" type="LONG"></field>
-      <field name="X" type="DOUBLE"></field>
-      <field name="Y" type="DOUBLE"></field>
-      <field name="AbsX" type="DOUBLE"></field>
-      <field name="AbsY" type="DOUBLE"></field>
-      <field name="X2" type="DOUBLE">Doubles as RX/RY for arcs</field>
-      <field name="Y2" type="DOUBLE"></field>
-      <field name="X3" type="DOUBLE"></field>
-      <field name="Y3" type="DOUBLE"></field>
+      <field name="Type" type="UBYTE">The command type (PE value)</field>
+      <field name="Curved" type="UBYTE">Private</field>
+      <field name="LargeArc" type="UBYTE">Equivalent to the large-arc-flag in SVG, it ensures that the arc follows the longest drawing path when TRUE.</field>
+      <field name="Sweep" type="UBYTE">Equivalent to the sweep-flag in SVG, it inverts the default behaviour in generating arc paths.</field>
+      <field name="Pad" type="LONG">Private</field>
+      <field name="X" type="DOUBLE">The targeted X coordinate for the command</field>
+      <field name="Y" type="DOUBLE">The targeted Y coordinate for the command</field>
+      <field name="AbsX" type="DOUBLE">Private</field>
+      <field name="AbsY" type="DOUBLE">Private</field>
+      <field name="X2" type="DOUBLE">The X2 coordinate for curve commands, or RX for arcs</field>
+      <field name="Y2" type="DOUBLE">The Y2 coordinate for curve commands, or RY for arcs</field>
+      <field name="X3" type="DOUBLE">The X3 coordinate for curve-to or smooth-curve-to</field>
+      <field name="Y3" type="DOUBLE">The Y3 coordinate for curve-to or smooth-curve-to</field>
       <field name="Angle" type="DOUBLE">Arc angle</field>
     </struct>
 
