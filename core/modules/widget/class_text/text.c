@@ -462,11 +462,7 @@ static ERROR TEXT_Clipboard(objText *Self, struct acClipboard *Args)
 
                acFree(file);
             }
-            else {
-               char msg[200];
-               StrFormat(msg, sizeof(msg), "Failed to load clipboard file \"%s\"", get.Files[0]);
-               LogErrorMsg(msg);
-            }
+            else LogF("@", "Failed to load clipboard file \"%s\"", get.Files[0]);
          }
          acFree(clipboard);
       }

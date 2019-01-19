@@ -36,18 +36,18 @@ way to initiate interprocess communication is to pass your MessageQueue ID to th
 #endif
 
 #ifdef __unix__
-#include <unistd.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <fcntl.h>
-#include <time.h>
-#include <errno.h>
-#include <sys/resource.h>
-#include <sys/utsname.h>
-#include <sys/poll.h>
-#include <sys/time.h>
-#include <sys/wait.h>
+ #include <unistd.h>
+ #include <stdio.h>
+ #include <stdlib.h>
+ #include <string.h>
+ #include <fcntl.h>
+ #include <time.h>
+ #include <errno.h>
+ #include <sys/resource.h>
+ #include <sys/utsname.h>
+ #include <sys/poll.h>
+ #include <sys/time.h>
+ #include <sys/wait.h>
 #endif
 
 #ifdef _WIN32
@@ -56,7 +56,7 @@ way to initiate interprocess communication is to pass your MessageQueue ID to th
  #else
   #include <direct.h>
  #endif
-#include <stdio.h>
+ #include <stdio.h>
 #endif
 
 #include "../defs.h"
@@ -217,7 +217,7 @@ static void task_stdinput_callback(HOSTHANDLE FD, void *Task)
       return;
    }
 #else
-   LONG bytes_read = read((int)stdin, buffer, sizeof(buffer)-1);
+   LONG bytes_read = read(fileno(stdin), buffer, sizeof(buffer)-1);
    if (bytes_read >= 0) error = ERR_Okay;
    else error = ERR_Finished;
 #endif
@@ -1449,7 +1449,7 @@ static ERROR TASK_Free(objTask *Self, APTR Void)
       Self->ErrFD = -1;
    }
 
-   if (Self->InputCallback.Type) RegisterFD(stdin, RFD_READ|RFD_REMOVE, &task_stdinput_callback, Self);
+   if (Self->InputCallback.Type) RegisterFD(fileno(stdin), RFD_READ|RFD_REMOVE, &task_stdinput_callback, Self);
 #endif
 
 #ifdef _WIN32
@@ -2439,8 +2439,8 @@ static ERROR SET_InputCallback(objTask *Self, FUNCTION *Value)
    if (Value) {
       ERROR error;
       #ifdef __unix__
-      fcntl(stdin, F_SETFL, fcntl(stdin, F_GETFL) | O_NONBLOCK);
-      if (!(error = RegisterFD(stdin, RFD_READ, &task_stdinput_callback, Self))) {
+      fcntl(fileno(stdin), F_SETFL, fcntl(fileno(stdin), F_GETFL) | O_NONBLOCK);
+      if (!(error = RegisterFD(fileno(stdin), RFD_READ, &task_stdinput_callback, Self))) {
       #elif _WIN32
       if (!(error = RegisterFD(winGetStdInput(), RFD_READ, &task_stdinput_callback, Self))) {
       #endif
@@ -2452,7 +2452,7 @@ static ERROR SET_InputCallback(objTask *Self, FUNCTION *Value)
       #ifdef _WIN32
       if (Self->InputCallback.Type) RegisterFD(winGetStdInput(), RFD_READ|RFD_REMOVE, &task_stdinput_callback, Self);
       #else
-      if (Self->InputCallback.Type) RegisterFD(stdin, RFD_READ|RFD_REMOVE, &task_stdinput_callback, Self);
+      if (Self->InputCallback.Type) RegisterFD(fileno(stdin), RFD_READ|RFD_REMOVE, &task_stdinput_callback, Self);
       #endif
       Self->InputCallback.Type = CALL_NONE;
    }
@@ -2719,8 +2719,11 @@ static ERROR SET_Path(objTask *Self, CSTRING Value)
 #ifdef __unix__
          STRING path;
          if (!ResolvePath(Self->Path, RSF_NO_FILE_CHECK, &path)) {
-            int unused = chdir(path);
+            int result = chdir(path);
+            if (result) LogErrorMsg("Failed to switch current path to: %s", path);
             FreeResource(path);
+
+            if (result) return ERR_InvalidPath;
          }
          else LogErrorMsg("Failed to resolve path \"%s\"", Self->Path);
 #elif _WIN32

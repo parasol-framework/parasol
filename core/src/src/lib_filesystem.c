@@ -2782,7 +2782,7 @@ ERROR fs_delete(STRING Path, FUNCTION *Callback)
          feedback.Path = buffer;
       }
 
-      error = delete_tree(buffer, sizeof(buffer), &feedback);
+      error = delete_tree(buffer, sizeof(buffer), Callback, &feedback);
    #else
       if (!unlink(Path)) { // unlink() works if the folder is empty
          error = ERR_Okay;
@@ -2799,7 +2799,7 @@ ERROR fs_delete(STRING Path, FUNCTION *Callback)
             feedback.Path = buffer;
          }
 
-         error = delete_tree(buffer, sizeof(buffer), &feedback);
+         error = delete_tree(buffer, sizeof(buffer), Callback, &feedback);
       }
       else error = convert_errno(errno, ERR_Failed);
    #endif
@@ -3557,7 +3557,7 @@ ERROR delete_tree(STRING Path, LONG Size, FUNCTION *Callback, struct FileFeedbac
 
    FMSG("delete_tree()","Path: %s", Path);
 
-   if (tlFeedback.Type) {
+   if (Callback->Type) {
       Feedback->Path = Path;
       result = CALL_FEEDBACK(Callback, Feedback);
       if (result IS FFR_ABORT) {
@@ -3595,7 +3595,7 @@ ERROR delete_tree(STRING Path, LONG Size, FUNCTION *Callback, struct FileFeedbac
             StrCopy(direntry->d_name, Path+len+1, Size-len-1);
             if ((dummydir = opendir(Path))) {
                closedir(dummydir);
-               if (delete_tree(Path, Size, Feedback) IS ERR_Cancelled) {
+               if (delete_tree(Path, Size, Callback, Feedback) IS ERR_Cancelled) {
                   error = ERR_Cancelled;
                   break;
                }

@@ -483,7 +483,7 @@ static ERROR FILE_Delete(objFile *Self, struct flDelete *Args)
          }
 
          ERROR error;
-         if (!(error = delete_tree(buffer, sizeof(buffer), &fb)));
+         if (!(error = delete_tree(buffer, sizeof(buffer), Args->Callback, &fb)));
          else if (error != ERR_Cancelled) LogErrorMsg("Failed to delete folder \"%s\"", buffer);
 
          LogBack();

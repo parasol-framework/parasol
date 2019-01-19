@@ -707,7 +707,6 @@ struct ModuleMaster {
 
 EXPORT void Expunge(WORD);
 
-ERROR delete_tree(STRING, LONG, struct FileFeedback *);
 CSTRING action_name(OBJECTPTR Object, LONG ActionID);
 APTR   build_jump_table(LONG, const struct Function *, LONG);
 ERROR  ClearMemory(APTR Memory, LONG Length);
@@ -715,7 +714,7 @@ ERROR  copy_args(const struct FunctionField *, LONG, BYTE *, BYTE *, LONG, LONG 
 ERROR  copy_field_to_buffer(OBJECTPTR Object, struct Field *Field, LONG DestFlags, APTR Result, CSTRING Option, LONG *TotalElements);
 ERROR  create_archive_volume(void);
 ERROR  critical_janitor(OBJECTID, LONG, LONG);
-void   remove_semaphores(void);
+ERROR  delete_tree(STRING, LONG, FUNCTION *, struct FileFeedback *);
 struct ClassItem * find_class(CLASSID);
 struct ModuleItem * find_module(ULONG);
 LONG   find_public_address(struct SharedControl *, APTR);
@@ -729,9 +728,9 @@ void   free_module_entry(struct ModuleMaster *);
 ERROR  free_ptr_args(APTR, const struct FunctionField *, WORD);
 void   free_public_resources(OBJECTID);
 void   free_wakelocks(void);
-ERROR  init_sleep(LONG OtherProcessID, LONG GlobalThreadID, LONG ResourceID, LONG ResourceType, WORD *);
 LONG   get_thread_id(void);
-ERROR load_classes(void);
+ERROR  init_sleep(LONG OtherProcessID, LONG GlobalThreadID, LONG ResourceID, LONG ResourceType, WORD *);
+ERROR  load_classes(void);
 ERROR  local_copy_args(const struct FunctionField *, LONG, BYTE *, BYTE *, LONG, LONG *, CSTRING);
 void   local_free_args(APTR, const struct FunctionField *);
 struct Field * lookup_id(OBJECTPTR Object, ULONG FieldID, OBJECTPTR *Result);
@@ -746,6 +745,7 @@ ERROR  register_class(CSTRING, CLASSID ParentID, LONG Category, CSTRING Path, CS
 ERROR  remove_memlock(void);
 void   remove_process_waitlocks(void);
 void   remove_public_locks(LONG);
+void   remove_semaphores(void);
 void   remove_shared_object(OBJECTID);
 ERROR  resolve_args(APTR, const struct FunctionField *);
 APTR   resolve_public_address(struct PublicAddress *);
@@ -757,7 +757,7 @@ ERROR  threadpool_get(objThread **);
 void   threadpool_release(objThread *);
 ERROR  unpage_memory(APTR);
 ERROR  unpage_memory_id(MEMORYID MemoryID);
-ERROR UnsubscribeActionByID(OBJECTPTR Object, ACTIONID ActionID, OBJECTID SubscriberID);
+ERROR  UnsubscribeActionByID(OBJECTPTR Object, ACTIONID ActionID, OBJECTID SubscriberID);
 void   wake_sleepers(LONG ResourceID, LONG ResourceType);
 ERROR  write_class_item(struct ClassItem *);
 ERROR  writeval_default(OBJECTPTR, struct Field *, LONG, const void *, LONG);
@@ -783,12 +783,12 @@ void   free_iconv(void);
    ERROR public_thread_lock(WINHANDLE, LONG);
    void  public_thread_unlock(WINHANDLE);
    WINHANDLE get_threadlock(void);
-   void free_threadlocks(void);
+   void  free_threadlocks(void);
    ERROR wake_waitlock(WINHANDLE Lock, LONG ProcessID, LONG TotalSleepers);
    ERROR alloc_public_waitlock(WINHANDLE *Lock, const char *Name);
-   void free_public_waitlock(WINHANDLE Lock);
-   ERROR  send_thread_msg(WINHANDLE Handle, LONG Type, APTR Data, LONG Size);
-   LONG sleep_waitlock(WINHANDLE, LONG);
+   void  free_public_waitlock(WINHANDLE Lock);
+   ERROR send_thread_msg(WINHANDLE Handle, LONG Type, APTR Data, LONG Size);
+   LONG  sleep_waitlock(WINHANDLE, LONG);
 #else
    struct sockaddr_un * get_socket_path(LONG ProcessID, LONG *Size);
    ERROR alloc_public_lock(UBYTE, WORD Flags);
@@ -796,7 +796,7 @@ void   free_iconv(void);
    void  free_public_lock(UBYTE);
    void  free_public_cond(CONDLOCK *);
    ERROR public_cond_wait(THREADLOCK *Lock, CONDLOCK *Cond, LONG Timeout);
-   ERROR  send_thread_msg(LONG Handle, LONG Type, APTR Data, LONG Size);
+   ERROR send_thread_msg(LONG Handle, LONG Type, APTR Data, LONG Size);
 #endif
 
 ERROR alloc_private_lock(UBYTE, WORD);
