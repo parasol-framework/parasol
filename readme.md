@@ -54,6 +54,8 @@ make compile
 
 The build process will create a `release` folder for your platform and this will contain all of the necessary binaries and configuration files for a standard release of the Parasol Framework.  Do not use the release folder for running your Parasol build.  Doing so will result in changes to some release files, leading to a polluted build.  Refer to section 3 for information on how to run your build from an installation folder.
 
+If the compile fails for the most recent build that you have checked out from our repository, search the commit log and revert to the first build marked 'vXXXX.Y'.  These have been user validated and are much more likely to build without issues.
+
 ### 2.1 Quick Build
 
 When working on modules in the core distribution, it is preferential to re-build that module only and not build a release from scratch.  To do this, `cd` to the module folder and enter `make`.  The resulting library or executable will be targeted to the release folder with no further action required on your part.
