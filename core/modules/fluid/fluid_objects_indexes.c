@@ -187,9 +187,11 @@ static ERROR getfield(lua_State *Lua, struct object *object, CSTRING FName)
          else {
             LONG total;
             APTR list;
-
-            if ((!(error = GetFieldArray(src, field->FieldID, &list, &total))) AND (total > 0)) {
-               if (field->Flags & FD_STRING) {
+            if (!(error = GetFieldArray(src, field->FieldID, &list, &total))) {
+               if (total <= 0) {
+                  lua_pushnil(Lua);
+               }
+               else if (field->Flags & FD_STRING) {
                   make_table(Lua, FD_STRING, total, list);
                }
                else if (field->Flags & (FD_LONG|FD_LARGE|FD_FLOAT|FD_DOUBLE|FD_POINTER|FD_BYTE|FD_WORD|FD_STRUCT)) {
