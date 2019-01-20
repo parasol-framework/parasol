@@ -961,6 +961,7 @@
 #define FID_FeedList 0xef8fb495LL
 #define FID_ClassVersion 0xf6978961LL
 #define FID_Module 0x0e32c72bLL
+#define FID_SubFields 0xad7852e6LL
 #define FID_InputCallback 0x895c6922LL
 
 #endif

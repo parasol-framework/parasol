@@ -47,7 +47,7 @@ static struct Field * lookup_id_byclass(struct rkMetaClass *, ULONG, struct rkMe
 // The MetaClass is the focal point of the OO design model.  Because classes are treated like objects, they must point
 // back to a controlling class definition - this it.  See NewObject() for the management code for this data.
 
-#define TOTAL_METAFIELDS  22
+#define TOTAL_METAFIELDS  23
 #define TOTAL_METAMETHODS 1
 
 static ERROR GET_ActionTable(struct rkMetaClass *, struct ActionEntry **, LONG *);
@@ -56,6 +56,7 @@ static ERROR GET_IDL(struct rkMetaClass *, CSTRING *);
 static ERROR GET_Location(struct rkMetaClass *, CSTRING *);
 static ERROR GET_Methods(struct rkMetaClass *Self, const struct MethodArray **, LONG *);
 static ERROR GET_Module(struct rkMetaClass *, CSTRING *);
+static ERROR GET_SubFields(struct rkMetaClass *, const struct FieldArray **, LONG *);
 static ERROR GET_TotalMethods(struct rkMetaClass *, LONG *);
 
 static ERROR SET_Actions(struct rkMetaClass *, const struct ActionArray *);
@@ -110,6 +111,7 @@ static struct Field glMetaFieldsPreset[TOTAL_METAFIELDS+1] = {
    { 0, (APTR)GET_ClassName, (APTR)SET_ClassName, writeval_default, "Name", FID_Name,        sizeof(struct Head), 19, FDF_STRING|FDF_SYSTEM|FDF_RI },
    { 0, (APTR)GET_Module, 0,       writeval_default, "Module",          FID_Module,          sizeof(struct Head), 20, FDF_STRING|FDF_R },
    { 0, (APTR)GET_IDL, 0,          writeval_default, "IDL",             FID_IDL,             sizeof(struct Head), 21, FDF_STRING|FDF_R },
+   { (MAXINT)"FieldArray", (APTR)GET_SubFields, 0, writeval_default, "SubFields", FID_SubFields, sizeof(struct Head), 22, FDF_ARRAY|FD_STRUCT|FDF_SYSTEM|FDF_R },
    { 0, 0, 0, NULL, "", 0, 0, 0,  0 }
 };
 
@@ -137,6 +139,7 @@ static const struct FieldArray glMetaFields[] = {
    { "Name",            FDF_STRING|FDF_SYSTEM|FDF_RI, 0, GET_ClassName, SET_ClassName },
    { "Module",          FDF_STRING|FDF_R,             0, GET_Module, NULL },
    { "IDL",             FDF_STRING|FDF_R,             0, GET_IDL, NULL },
+   { "SubFields",       FDF_ARRAY|FD_STRUCT|FDF_SYSTEM|FDF_R, (MAXINT)"FieldArray", GET_SubFields, NULL },
    END_FIELD
 };
 
@@ -265,7 +268,7 @@ ERROR CLASS_Free(struct rkMetaClass *Class, APTR Void)
 
    if (Class->prvFields) { FreeResource(Class->prvFields); Class->prvFields = NULL; }
    if (Class->Methods) { FreeResource(Class->Methods); Class->Methods = NULL; }
-   if (Class->Location)  { FreeResource(Class->Location); Class->Location = NULL; }
+   if (Class->Location) { FreeResource(Class->Location); Class->Location = NULL; }
 
    return ERR_Okay;
 }
@@ -762,6 +765,24 @@ This field must not be set when creating a base class.
 To determine whether or not a class is a sub-class or a base class, compare the BaseClassID and SubClassID fields.  If
 they are identical then it is a base class, otherwise it is a sub-class.
 
+*****************************************************************************/
+
+static ERROR GET_SubFields(struct rkMetaClass *Self, const struct FieldArray **Fields, LONG *Elements)
+{
+   LONG i;
+   if (Self->SubFields) {
+      for (i=0; Self->SubFields[i].Name; i++);
+      *Fields = Self->SubFields;
+      *Elements = i;
+   }
+   else {
+      *Fields = NULL;
+      *Elements = 0;
+   }
+   return ERR_Okay;
+}
+
+/*****************************************************************************
 -FIELD-
 TotalFields: The total number of fields defined by a class.
 
