@@ -15,7 +15,7 @@
 
    loadFile(glPath .. 'idl-doc.fluid')
 
-------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------------------------
 
 glOutput = { }
 
@@ -23,7 +23,7 @@ function output(String)
    table.insert(glOutput, nz(String, ''))
 end
 
-------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------------------------
 
 function checkOptions(Options)
    if (type(Options) != 'table') then
@@ -36,7 +36,7 @@ function checkOptions(Options)
    return Options
 end
 
-------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------------------------
 -- FDL function
 
 function c_include(...)
@@ -61,7 +61,7 @@ function c_include(...)
    output()
 end
 
-------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------------------------
 -- FDL function
 -- Restricts the output of anything declared within the referenced function.
 
@@ -72,7 +72,7 @@ function restrict(Function)
    glRestrict = status
 end
 
-------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------------------------
 -- FDL function
 
 function module(Options, Function)
@@ -107,7 +107,7 @@ function module(Options, Function)
    Function()
 end
 
-------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------------------------
 -- FDL function
 
 function header(Options, Function)
@@ -137,7 +137,7 @@ function header(Options, Function)
    Function()
 end
 
-------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------------------------
 -- FDL function
 --
 --  flags('KQ', { comment='Special qualifier flags' },
@@ -234,7 +234,7 @@ function flags(Prefix, Options, ...)
    glCustomTypes[Prefix] = { prefix=Prefix, grouping='flags', list=lookup, comment=Options.comment, restrict=glRestrict }
 end
 
-------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------------------------
 -- FDL function
 
 function privateNames(List)
@@ -243,7 +243,7 @@ function privateNames(List)
    end
 end
 
-------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------------------------
 -- FDL function
 
 function hash(Prefix, Format, ...)
@@ -256,7 +256,7 @@ function hash(Prefix, Format, ...)
    output()
 end
 
-------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------------------------
 -- FDL function
 
 function const(Prefix, Options, ...)
@@ -306,7 +306,7 @@ function const(Prefix, Options, ...)
    }
 end
 
-------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------------------------
 -- FDL function
 
 function enum(Prefix, Options, ...)
@@ -355,7 +355,7 @@ function enum(Prefix, Options, ...)
    }
 end
 
-------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------------------------
 -- FDL function
 
 function platform(Platform, Function)
@@ -382,7 +382,7 @@ function platform(Platform, Function)
    end
 end
 
-------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------------------------
 -- FDL function
 
 function struct(Name, Options, Def, Append)
@@ -477,7 +477,7 @@ function struct(Name, Options, Def, Append)
    glCurrentStructure = prevStruct
 end
 
-------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------------------------
 -- Create a C/C++ field name from the definitions in a Field object.
 
 function cName(Field, CStruct)
@@ -503,7 +503,7 @@ function cName(Field, CStruct)
    return name
 end
 
-------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------------------------
 -- FDL Function
 
 function class(Name, Options, Blueprint, Private)
@@ -767,7 +767,7 @@ function class(Name, Options, Blueprint, Private)
    end
 end
 
-------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------------------------
 
 function processClassEntry(Class, Type, Extract)
    if (Type == "-CLASS-") then
@@ -937,20 +937,20 @@ function processMethod(class, extract)
    end
 end
 
-------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------------------------
 -- Scan class.fields for a specific field name.
 
 function findClassField(class, fieldName)
    if (class.fields != nil) then
       for _, f in ipairs(class.fields) do
          if (f.name == fieldName) then
-             return f
+            return f
          end
       end
    end
 end
 
-------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------------------------
 -- Process the formal field definitions in a class blueprint.
 
 function processClassFields(class, Blueprint, Private)
@@ -1084,7 +1084,7 @@ function processClassFields(class, Blueprint, Private)
    return cdef
 end
 
-------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------------------------
 -- Convert FD flags into a printable C type.
 
 function getFieldType(Type, CustomName, Option)
@@ -1176,7 +1176,7 @@ function getFieldType(Type, CustomName, Option)
    end
 end
 
-------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------------------------
 -- Useful for ensuring strict XML compliance, like
 --
 -- From: <something>content</>
@@ -1205,7 +1205,7 @@ function cleanXMLString(str, caller)
    return str
 end
 
-------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------------------------
 -- Extract information from a compiled class' field definition.
 
 function getMetaFieldDefinition(Field)
@@ -1252,7 +1252,7 @@ function getMetaFieldDefinition(Field)
    return fl
 end
 
-------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------------------------
 -- FDL Function
 -- This is a shortened version of functions(), where only the names of the functions need to be specified as a list.
 -- Further elaboration on the functions is normally done by embedding -FUNCTION- sections in the module code.
@@ -1277,7 +1277,7 @@ function functionNames(Prefix, ...)
    output('__FUNCTION_TABLE__')
 end
 
-------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------------------------
 -- FDL Function
 -- Register methods for a class.  This must be declared prior to the corresponding class() function call.
 
@@ -1295,14 +1295,14 @@ function methods(ClassName, Prefix, Methods)
    end
 end
 
-------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------------------------
 -- FDL Function
 
 function c_insert(Raw)
    output(Raw)
 end
 
-------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------------------------
 -- Conversion table for FDL types to their C/C++ and Field Definition equivalents.
 
 glTypes = {
@@ -1698,7 +1698,7 @@ function cType(Field, Origin)
    return Field -- type, fullType, basicType, allocated, resultValue
 end
 
-------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------------------------
 -- Returns fields as a list returned by cType, featuring { type, name, comment }
 
 function extractFields(Def, Origin)
@@ -1730,7 +1730,7 @@ function extractFields(Def, Origin)
    return fields
 end
 
-------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------------------------
 -- Convert a string such as 'SHOW_IMAGES' to 'ShowImages'
 
 function shortName(Name)
@@ -1752,7 +1752,7 @@ function shortName(Name)
    return result
 end
 
-------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------------------------
 
 function registerClass(Name)
    if not nz(Name) then error('No Name provided to registerClass()') end
@@ -1763,7 +1763,7 @@ function registerClass(Name)
    return glClasses[Name:lower()]
 end
 
-------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------------------------
 
 function processFDLFile(Source)
    local err, type = mSys.AnalysePath(Source)
@@ -1777,7 +1777,7 @@ function processFDLFile(Source)
    end
 end
 
-------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------------------------
 -- Load and process an FDL file source, then process raw source files containing -FUNCTION- definitions.
 
 function processSourceFiles()
@@ -1851,7 +1851,7 @@ function processSourceFiles()
    end
 end
 
-------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------------------------
 
 function processCategory(extract)
    extract = '-CATEGORY-\n' .. extract:trim() .. '\n-END-\n'
@@ -1859,7 +1859,7 @@ function processCategory(extract)
    glCategories[glCategory] = { name=glCategory }
 end
 
-------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------------------------
 -- Used by processSourceFiles() to process -FUNCTION- descriptions in self-documenting source code.
 
 function processFunction(extract)
@@ -1926,7 +1926,7 @@ function processFunction(extract)
    idlFunction(name, nz(category, glCategory), comment, status, description, def)
 end
 
-------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------------------------
 -- Function definitions can be embedded into source code with the idlFunction() routine.
 
 function idlFunction(Name, Category, Comment, Status, Description, Def)
@@ -2032,7 +2032,7 @@ function idlFunction(Name, Category, Comment, Status, Description, Def)
    end
 end
 
-------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------------------------
 
 function saveOutput()
    if (#glOutput < 3) then
@@ -2090,7 +2090,7 @@ function saveOutput()
    mSys.MoveFile(tempPath, outPath)
 end
 
-------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------------------------
 -- Generate private C function prototypes for the module.
 
 function buildPrototypes()
@@ -2132,7 +2132,7 @@ function buildPrototypes()
    end
 end
 
-------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------------------------
 -- Generate private C definitions that describe the public functions of a module.
 
 function buildDefs()
@@ -2181,7 +2181,7 @@ function buildDefs()
    return "#ifndef FDEF\n#define FDEF static const struct FunctionField\n#endif\n\n" .. plist .. flist
 end
 
-------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------------------------
 -- Build C parameter definitions for a function or method
 
 function buildInputParameters(List)
@@ -2201,7 +2201,7 @@ function buildInputParameters(List)
    return plist .. "{ 0, 0 }"
 end
 
-------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------------------------
 -- Build a list of all available action names and their parameters.
 
 function loadActions()
@@ -2214,7 +2214,7 @@ function loadActions()
    end
 end
 
-------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------------------------
 -- Resolve the location of the Parasol SDK and create an 'sdk:' volume.
 
 function resolveSDKPath()
@@ -2235,7 +2235,7 @@ function resolveSDKPath()
    end
 end
 
-------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------------------------
 
    glProgram     = 'idl-c' // FDL's can read this
    glSource      = arg('src')
