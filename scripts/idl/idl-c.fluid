@@ -954,8 +954,6 @@ end
 -- Process the formal field definitions in a class blueprint.
 
 function processClassFields(class, Blueprint, Private)
-   if not nz(Blueprint) then return "" end
-
    local cdef = ""
 
    -- Process fields defined in the FDL
@@ -966,11 +964,11 @@ function processClassFields(class, Blueprint, Private)
    -- information can only be taken advantage of for phase 2 processing (class documentation).
 
    if (class.meta != nil) then
-      local newFields = { }
+      local newFields = {}
 
-      local metaFields = class.meta.fields
-
-      if (metaFields == nil) then
+      local metaFields = class.meta.subFields
+      if not metaFields then metaFields = class.meta.fields end
+      if not metaFields then
          error('No compiled fields declared for class ' .. class.name)
       end
 
@@ -1047,38 +1045,45 @@ function processClassFields(class, Blueprint, Private)
    fdef = fdef .. "};\n\n"
 
    if nz(class.fields) then
-      output("typedef struct rk" .. class.name ..  " {")
-      output("   OBJECT_HEADER")
-
-      local max_len = 3 + type_max + 1 + 2
-
+      local physicalFields = false
       for _, f in ipairs(class.fields) do
-         if not f.virtual then
-            local left
-            local field_name = cName(f, true)
-            if nz(field_name) then
-               left = string.format('   %-' .. type_len .. 's %s;', f.type, field_name)
-            else
-               left = string.format('   %-' .. type_len .. 's;', f.type)
-            end
+         if not f.virtual then physicalFields = true end
+      end
 
-            if nz(f.comment) then
-               output(string.format('%-' .. max_len .. 's // %s', left, f.comment))
-            else
-               output(left)
+      if physicalFields then
+         output("typedef struct rk" .. class.name ..  " {")
+         output("   OBJECT_HEADER")
+
+         local max_len = 3 + type_max + 1 + 2
+
+         for _, f in ipairs(class.fields) do
+            if not f.virtual then
+               local left
+               local field_name = cName(f, true)
+               if nz(field_name) then
+                  left = string.format('   %-' .. type_len .. 's %s;', f.type, field_name)
+               else
+                  left = string.format('   %-' .. type_len .. 's;', f.type)
+               end
+
+               if nz(f.comment) then
+                  output(string.format('%-' .. max_len .. 's // %s', left, f.comment))
+               else
+                  output(left)
+               end
             end
          end
-      end
 
-      if (Private != nil) then
+         if (Private != nil) then
+            output()
+            output("#ifdef PRV_" .. class.name:upper())
+            output(Private)
+            output("#endif")
+         end
+
+         output("} obj" .. class.name .. ";")
          output()
-         output("#ifdef PRV_" .. class.name:upper())
-         output(Private)
-         output("#endif")
       end
-
-      output("} obj" .. class.name .. ";")
-      output()
    end
 
    return cdef
@@ -1703,6 +1708,9 @@ end
 
 function extractFields(Def, Origin)
    local fields = { }
+
+   if not Def then return fields end
+
    for line, content in ipairs(Def:split("\n")) do
       -- Extract comment, if specified
       local comment = content:match("^.+#%s-(.+)$")
