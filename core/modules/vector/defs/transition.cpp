@@ -224,7 +224,7 @@ a transform string.  The Transition structure consists of the following fields:
 
 <fields>
 <field name="Offset" type="DOUBLE">An offset in the range of 0 to 1.0.</field>
-<field name="Transform" type="STRING">A transform string as per SVG guidelines.</field>
+<field name="Transform" type="STRING">A transform string, as per SVG guidelines.</field>
 </fields>
 
 *****************************************************************************/

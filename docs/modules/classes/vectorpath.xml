@@ -84,7 +84,7 @@
         <param type="LONG" name="Size">The size of the Command buffer, in bytes.</param>
       </input>
       <description>
-<p>Use SetCommand to copy one or more commands into an existing path.  This method cannot be used to expand the path beyond its #Capacity.</p>
+<p>Use SetCommand to copy one or more commands into an existing path.  This method cannot be used to expand the path beyond its <field>Capacity</field>.</p>
       </description>
     </method>
 
@@ -102,6 +102,73 @@
     </method>
 
   </methods>
+
+  <fields>
+    <field>
+      <name>Capacity</name>
+      <comment>The maximum number of commands that can be supported before the internal buffer requires reallocation.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>INT</type>
+      <description>
+<p>The maximum number of commands that can be supported before the internal buffer requires reallocation.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Commands</name>
+      <comment>Direct pointer to the PathCommand array.</comment>
+      <access read="G">Get</access>
+      <type>STRUCT []</type>
+      <description>
+<p>Read the Commands field to obtain a direct pointer to the PathCommand array.  This will allow the path to be modified directly.  After making changes to the path, call <action>Flush</action> to register the changes for the next redraw.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>PathLength</name>
+      <comment>Calibrates the user agent's distance-along-a-path calculations with that of the author.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>INT</type>
+      <description>
+<p>The author's computation of the total length of the path, in user units. This value is used to calibrate the user agent's own distance-along-a-path calculations with that of the author. The user agent will scale all distance-along-a-path computations by the ratio of PathLength to the user agent's own computed value for total path length.  This feature potentially affects calculations for text on a path, motion animation and various stroke operations.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Sequence</name>
+      <comment>A sequence of points and instructions that will define the path.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>STRING</type>
+      <description>
+<p>The Sequence is a string of points and instructions that define the path.  It is based on the SVG standard for the path element 'd' attribute, but also provides some additional features that are present in the vector engine.  Commands are case insensitive.</p>
+<p>The following commands are supported:</p>
+<pre>M: Move To
+L: Line To
+V: Vertical Line To
+H: Horizontal Line To
+Q: Quadratic Curve To
+T: Quadratic Smooth Curve To
+C: Curve To
+S: Smooth Curve To
+A: Arc
+Z: Close Path
+</pre>
+<p>The use of lower case characters will indicate that the provided coordinates are relative (based on the coordinate of the previous command).</p>
+<p>To terminate a path without joining it to the first coordinate, omit the 'Z' from the end of the sequence.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>TotalCommands</name>
+      <comment>The total number of points defined in the path sequence.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>INT</type>
+      <description>
+<p>The total number of points defined in the path <field>Sequence</field> is reflected in this field.  Modifying the total directly is permitted if the <field>Commands</field> array is large enough to cover the new value.</p>
+      </description>
+    </field>
+
+  </fields>
   <types>
     <constants lookup="ARC" comment="Options for drawing arcs.">
       <const name="LARGE"/>
