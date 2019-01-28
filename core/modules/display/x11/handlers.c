@@ -648,7 +648,7 @@ static void handle_key_release(XEvent *xevent)
 
 static void handle_enter_notify(XCrossingEvent *xevent)
 {
-   process_movement(xevent->window, xevent->x, xevent->y);
+   process_movement(xevent->window, xevent->x_root, xevent->y_root);
 }
 
 //****************************************************************************
@@ -659,8 +659,9 @@ static void handle_motion_notify(XMotionEvent *xevent)
    // solution to this is to read all the motion events up to the most recent one, because we're only interested in the
    // most current position of the mouse pointer.
 
+   XCrossingEvent enter_event;
+   while (XCheckTypedEvent(XDisplay, EnterNotify, (XEvent *)&enter_event) IS True);
    while (XCheckTypedEvent(XDisplay, MotionNotify, (XEvent *)xevent) IS True);
-
    process_movement(xevent->window, xevent->x_root, xevent->y_root);
 }
 
