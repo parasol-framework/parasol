@@ -45,13 +45,13 @@ Valid options to use when creating the dialog are as follows:
    if (gui.dialog == nil) then gui.dialog = { } end
 
 gui.dialog.file = function(Options)
-   local self = { // Public variables
+   local self = { -- Public variables
       windowID = nil,
       currentPath = file.splitPath(Options.path)
    }
 
    local lOptions = Options
-   local lWindow, lFileView, lFilter, lFilters, lFileBox, lToolbar, lPathBox
+   local lWindow, lFileView, lFilter, lFilters, lFileBox, lToolbar, lPathBox, lView
 
    glWidgetGap = 8
 
@@ -203,7 +203,7 @@ gui.dialog.file = function(Options)
 
       lPathBox.acShow()
 
-      // Okay and cancel buttons
+      -- Okay and cancel buttons
 
       local footer = lWindow.bottomMargin
 
@@ -233,7 +233,7 @@ gui.dialog.file = function(Options)
 
       footer = footer + lOkayButton.height + glWidgetGap
 
-      // Filter selection
+      -- Filter selection
 
       if nz(lOptions.filterList) then
          local filterFlags = '!LimitToList|AutoComplete'
@@ -264,7 +264,7 @@ gui.dialog.file = function(Options)
             flags   = filterFlags,
             string  = firstName,
             feedback = function(ComboBox, Value)
-               if lFilter.selectionIndex == -1 then // The user has entered a custom filter.
+               if lFilter.selectionIndex == -1 then -- The user has entered a custom filter.
                   lFileView.filter = Value
                else
                   lFileView.filter = lFilters[lFilter.selectionIndex].wild
@@ -278,7 +278,7 @@ gui.dialog.file = function(Options)
          lFilter.acShow()
       end
 
-      // Create the file and filter input boxes
+      -- Create the file and filter input boxes
 
       local label_width = 0
       if lFilter then label_width = lFilter.labelWidth end
@@ -295,7 +295,7 @@ gui.dialog.file = function(Options)
 
       lFileBox.acShow()
 
-      // File view area
+      -- File view area
 
       local viewRegion = lWindow.new('surface', {
          x       = 0,
@@ -379,7 +379,7 @@ gui.dialog.file = function(Options)
    return self
 end
 
-   // This sub-routine is provided for languages other than Fluid to utilise the module.
+   -- This sub-routine is provided for languages other than Fluid to utilise the module.
 
    do
       local state = getExecutionState()
