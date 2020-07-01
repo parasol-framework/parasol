@@ -21,6 +21,7 @@ The first parameter is the target surface for the ToolBar graphic.  Valid option
 as follows:
 
   createItems: Required.  Defines the items that will be displayed in the toolbar.
+  orientation: Defaults to 'horizontal' (left to right item arrangement).  Set to 'vertical' for top to bottom.
   x, y:        The x and y coordinates of the toolbar.
   xOffset:     Optional x offset.  If not set then the toolbar width is calculated based on the number of items.
   tabFocus:    Optional reference to a TabFocus object for the ToolBar to connect to.
@@ -53,7 +54,9 @@ gui.toolbar = function(Target, Options)
    local lItemLookup = { }
    local lIcons = { }
    local lFirstItem, lLastItem, lClicked, lTipTimer, lScene, lViewport, lVectorGroup, lVectorHighlightIcon
-   local lVectorHover, lGroupClip, lArrangedWidth
+   local lVectorHover, lGroupClip, lColumnBreadth
+   local lArrangedWidth // True if the toolbar width is dynamic.
+   local lHorizontal // True if items are arranged from left to right
    local lShadow       = gui.strToRGB(nz(Options.shadow, '0,0,0,128'))
    local lHighlight    = gui.strToRGB(nz(Options.highlight, '255,255,255,255'))
    local lColHover     = gui.strToRGB(nz(Options.hoverColour, '255,255,255,96'))
@@ -128,6 +131,8 @@ gui.toolbar = function(Target, Options)
       end
    end
 
+   // Return the toolbar item located at position (x,y)
+
    local function getCursorItem(X, Y)
       local item = lFirstItem
       while (item) do
@@ -186,18 +191,20 @@ gui.toolbar = function(Target, Options)
       end
    end
 
+   // Main routine for arranging items within the toolbar's surface.
+
    local function arrangeItems()
       if not nz(lSurfaceWidth) or not nz(lSurfaceHeight) then return end
 
       local groupOffset = 0
-      if lGroupCount > 0 then
+      if (lGroupCount > 0) then
          groupOffset = lGroupMargin
       end
 
       // Vector scene generation
 
-      if not lVectorHover then
-         if lGroupCount > 0 then
+      if (not lVectorHover) then
+         if (lGroupCount > 0) then
             lVectorHover = lViewport.new('VectorRectangle', { // Hover highlight
                fill='rgb(255,255,255)', x=0, y=0, width=1, height=1, visibility='hidden'
             })
@@ -210,39 +217,59 @@ gui.toolbar = function(Target, Options)
 
       // lGroupClip simplifies masking and lVectorGroup provides a container for hosting temporary vectors.
 
-      if lGroupClip then lGroupClip.acFree() end
-      if lVectorGroup then lVectorGroup.acFree() end
+      if (lGroupClip) then lGroupClip.acFree() end
+      if (lVectorGroup) then lVectorGroup.acFree() end
 
-      if lGroupCount > 0 then
+      if (lGroupCount > 0) then
          lGroupClip = lScene.new('VectorClip', { name='GroupMask', units='BoundingBox' })
       end
 
       lVectorGroup = lViewport.new('VectorGroup', { name='ItemGroup' })
 
       local item = lFirstItem
-      local x = 0
-      local y = groupOffset
+
+      local x, y
+      if (lHorizontal) then
+         x = 0
+         y = groupOffset
+      else
+         x = groupOffset
+         y = 0
+      end
+
       local currentGroup = nil
       local spanCount = 0
       while item do
-         if item.type == TI_BREAK then
-            item.x = x
-            item.y = y
-            item.width = 6
+         if (item.type == TI_BREAK) then
+            item.x      = x
+            item.y      = y
+            item.width  = 6
             item.height = lIconSize + (lCellMargin * 2)
 
             local stroke = string.format('rgb(%d,%d,%d,%d)', lGroupBorder.r, lGroupBorder.g, lGroupBorder.b, lGroupBorder.a)
-            local seq =  string.format('M%f,%f l0,%f', x+(item.width-1) / 2, y+1, item.height)
+            local seq    = string.format('M%f,%f l0,%f', x+(item.width-1) / 2, y+1, item.height)
             lVectorGroup.new('VectorPath', {
-               name='break', stroke = stroke, sequence=seq, dashArray='1, 1'
+               name = 'break', stroke = stroke, sequence = seq, dashArray = '1, 1'
             })
 
-            x = x + item.width
-         elseif item.type == TI_GROUP then
-            if not item.prev then
-               x = x + groupOffset
+            if (lHorizontal) then
+               x = x + item.width
             else
-               x = x + (lIconSize/4)
+               y = y + item.height
+            end
+         elseif (item.type == TI_GROUP) then
+            if (lHorizontal) then
+               if not item.prev then
+                  x = x + groupOffset
+               else
+                  x = x + (lIconSize/4)
+               end
+            else
+               if not item.prev then
+                  y = y + groupOffset
+               else
+                  y = y + (lIconSize/4)
+               end
             end
 
             lCurrentGroup = item
@@ -250,26 +277,30 @@ gui.toolbar = function(Target, Options)
 
             item.x = x
             item.y = y
-            item.height = lIconSize + (lCellMargin * 2)
+            if (lHorizontal) then
+               item.height = lIconSize + (lCellMargin * 2)
+            else
+               item.width = lIconSize + (lCellMargin * 2)
+            end
 
             local stroke = string.format('rgb(%d,%d,%d,%d)', lGroupBorder.r, lGroupBorder.g, lGroupBorder.b, lGroupBorder.a)
             item.border = lVectorGroup.new('VectorRectangle', {
-               name='grouprect', stroke = stroke, fill = 'rgb(0,0,0,20)', strokeWidth=2,
+               name = 'grouprect', stroke = stroke, fill = 'rgb(0,0,0,20)', strokeWidth = 2,
                x = x, y = y, roundX = 4, roundY = 4, width = 1, height = 1
             })
 
-            if lGroupClip then
+            if (lGroupClip) then
                item.clip = lGroupClip.new('VectorRectangle', {
-                  name='groupclip', x = x, y = y, roundX = 4, roundY = 4, width = 1, height = 1
+                  name = 'groupclip', x = x, y = y, roundX = 4, roundY = 4, width = 1, height = 1
                })
             end
          elseif (item.type == TI_ICON) then
-            item.x = x
-            item.y = y
-            item.width = lIconSize + (lCellMargin * 2)
+            item.x      = x
+            item.y      = y
+            item.width  = lIconSize + (lCellMargin * 2)
             item.height = lIconSize + (lCellMargin * 2)
 
-            if item.svg then
+            if (item.svg) then
                item.svgGroup.x = x + lCellMargin
                item.svgGroup.y = y + lCellMargin
                if (lDisabled) or (item.disabled) then
@@ -296,18 +327,32 @@ gui.toolbar = function(Target, Options)
                end
             end
 
-            x = x + item.width
+            if (lHorizontal) then
+               x = x + item.width
+            else
+               y = y + item.height
+            end
+
             spanCount = spanCount + 1
 
-            if lCurrentGroup then
-               lCurrentGroup.width  = x - lCurrentGroup.x
-               lCurrentGroup.height = lSurfaceHeight - (groupOffset * 2)
+            if (lCurrentGroup) then
+               if (lHorizontal) then
+                  lCurrentGroup.width  = x - lCurrentGroup.x
+                  lCurrentGroup.height = lSurfaceHeight - (groupOffset * 2)
+               else
+                  lCurrentGroup.width  = lSurfaceWidth - (groupOffset * 2)
+                  lCurrentGroup.height = y - lCurrentGroup.y
+               end
                lCurrentGroup.border.width  = lCurrentGroup.width
                lCurrentGroup.border.height = lCurrentGroup.height
                lCurrentGroup.clip.width    = lCurrentGroup.width
                lCurrentGroup.clip.height   = lCurrentGroup.height
-               if spanCount == lCurrentGroup.span then
-                  x = x + groupOffset // Gap between groups
+               if (spanCount == lCurrentGroup.span) then
+                  if (lHorizontal) then
+                     x = x + groupOffset // Gap between groups
+                  else
+                     y = y + groupOffset
+                  end
                   lCurrentGroup = nil
                end
             end
@@ -316,7 +361,7 @@ gui.toolbar = function(Target, Options)
          item = item.next
       end
 
-      if lArrangedWidth then
+      if (lArrangedWidth) then
          self.surface.width = x
       end
       lArranged = true
@@ -476,10 +521,17 @@ gui.toolbar = function(Target, Options)
             lVectorHover.fill = string.format('rgb(%d,%d,%d,%d)', lColHover.r, lColHover.g, lColHover.b, lColHover.a)
          end
 
-         lVectorHover.x = lCurrentItem.x
-         lVectorHover.y = 0
-         lVectorHover.width  = lCurrentItem.width
-         lVectorHover.height = lSurfaceHeight
+         if (lHorizontal) then
+            lVectorHover.x = lCurrentItem.x
+            lVectorHover.y = 0
+            lVectorHover.width  = lCurrentItem.width
+            lVectorHover.height = lSurfaceHeight
+         else
+            lVectorHover.x = 0
+            lVectorHover.y = lCurrentItem.y
+            lVectorHover.width  = lSurfaceWidth
+            lVectorHover.height = lCurrentItem.height
+         end
          lVectorHover.visibility = 'visible'
          if (lGroupClip) then
             lVectorHover.mask = lGroupClip
@@ -567,12 +619,12 @@ gui.toolbar = function(Target, Options)
    catch(function()
       if (not Target) then error('A target surface is required.') end
 
-      if Options.groupMargin then
+      if (Options.groupMargin) then
          lGroupMargin = Options.groupMargin
          if lGroupMargin < 1 then lGroupMargin = 1 end
       end
 
-      if Options.theme == 'light' then
+      if (Options.theme == 'light') then
          lThemeColour = { first={ r=250,g=249,b=248 }, last={ r=210,g=211,b=212 } }
       else
          lThemeColour = { first={ r=90,g=90,b=90 }, last={ r=70,g=70,b=110 } }
@@ -583,12 +635,23 @@ gui.toolbar = function(Target, Options)
       self.surface.flags  = '!StickToBack'
       self.surface.x      = nz(Options.x, 0)
       self.surface.y      = nz(Options.y, 0)
-      self.surface.height = 1
+
+      if (Options.yOffset) then
+         self.surface.yOffset = Options.yOffset
+      else
+         self.surface.height = 1
+      end
+
       if (Options.xOffset) then
          self.surface.xOffset = Options.xOffset
       else
          self.surface.width = Target.width - self.surface.x
          lArrangedWidth = true
+      end
+
+      if (Options.width) then
+         self.surface.width = Options.width
+         lArrangedWidth = false
       end
 
       if (self.surface.acInit() != ERR_Okay) then error('Failed to initialise surface.') end
@@ -655,11 +718,29 @@ gui.toolbar = function(Target, Options)
 
       Options.createItems(self)
 
-      local barHeight = lIconSize + (lCellMargin * 2)
+      lColumnBreadth = lIconSize + (lCellMargin * 2)
       if (lGroupCount > 0) then
-         barHeight = barHeight + (lGroupMargin*2)
+         lColumnBreadth = lColumnBreadth + (lGroupMargin*2)
       end
-      self.surface.height = barHeight
+
+      if (Options.orientation == 'horizontal') then
+         lHorizontal = true
+      elseif (Options.orientation == 'vertical') then
+         lHorizontal = false
+      end
+
+      if (not lHorizontal) and ((Options.y) and (Options.yOffset)) then
+         lHorizontal = false
+      else
+         lHorizontal = true
+      end
+
+      if (lHorizontal) then
+         self.surface.height = lColumnBreadth
+      else
+         self.surface.width = lColumnBreadth
+      end
+
       lSurfaceWidth  = self.surface.width
       lSurfaceHeight = self.surface.height
 
