@@ -5713,10 +5713,10 @@ The input system is limited to managing messages that are related to the display
 graphics tablets and touch screens). Keyboard devices are not included in the input management system as they are
 specially supported by the <module>Keyboard</> module.
 
-To limit the number of messages being passed through the system, all input messages are placed on a global queue that
+To reduce the number of messages being passed through the system, input messages are placed on a global queue that
 is accessible to all tasks.  When a new message appears that matches a client's filtering criteria, an InputReady data
 feed message will be sent to it.  The ~Core.GetInputMsg() function can then be used to process the available
-messages in the queue.  The following code segment illustrates an example of this and would be used in the DataFeed
+messages in the queue.  The following code segment illustrates an example of this, and would be used in the DataFeed
 action:
 
 <pre>

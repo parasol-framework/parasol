@@ -243,7 +243,10 @@ static int input_request_item(lua_State *Lua)
 //****************************************************************************
 // Usage: input = input.subscribe(MaskFlags (JTYPE), SurfaceID (Optional), DeviceID (Optional), Function)
 //
-// This functionality is a wrapper for the gfxSubscribeInput() function.
+// This functionality is a wrapper for the gfxSubscribeInput() function.  Due to the fact that individual subscriptions
+// cannot be tracked as a resource, we have to subscribe to all surfaces and manipulate the event mask universally.
+// This situation could be improved if gfxSubscribeInput() uniquely tracked subscriptions, e.g. with a unique ID
+// and gfxUnsubscribeInput() used that ID for releasing each subscription.
 
 static int input_subscribe(lua_State *Lua)
 {
@@ -277,36 +280,46 @@ static int input_subscribe(lua_State *Lua)
       }
    }
 
-   FMSG("input.subscribe()","Surface: %d, Mask: $%.8x, Device: %d", object_id, mask, device_id);
-
-   if (!(error = gfxSubscribeInput(object_id, mask, device_id))) {
-      struct finput *input;
-      if ((input = (struct finput *)lua_newuserdata(Lua, sizeof(struct finput)))) {
-         luaL_getmetatable(Lua, "Fluid.input");
-         lua_setmetatable(Lua, -2);
-
-         input->SurfaceID = object_id;
-
-         if (function_type IS LUA_TFUNCTION) {
-            lua_pushvalue(Lua, 4);
-            input->Callback = luaL_ref(Lua, LUA_REGISTRYINDEX);
-         }
-         else {
-            lua_getglobal(Lua, (STRING)lua_tostring(Lua, 1));
-            input->Callback = luaL_ref(Lua, LUA_REGISTRYINDEX);
-         }
-
-         lua_pushvalue(Lua, lua_gettop(Lua)); // Take a copy of the Fluid.input object
-         input->InputObject = luaL_ref(Lua, LUA_REGISTRYINDEX);
-         input->KeyEvent    = NULL;
-         input->Mode        = FIM_DEVICE;
-         input->Next        = prv->InputList;
-         prv->InputList = input;
-         return 1;
-      }
-      else gfxUnsubscribeInput(object_id);
+   struct finput *input;
+   LONG existing_mask = 0;
+   for (input=prv->InputList; input; input=input->Next) {
+      existing_mask |= input->Mask;
    }
 
+   LogF("input.subscribe()","Surface: %d, Mask: $%.8x, Device: %d", object_id, mask, device_id);
+
+   if ((input = (struct finput *)lua_newuserdata(Lua, sizeof(struct finput)))) {
+      luaL_getmetatable(Lua, "Fluid.input");
+      lua_setmetatable(Lua, -2);
+
+      input->SurfaceID = object_id;
+
+      if (function_type IS LUA_TFUNCTION) {
+         lua_pushvalue(Lua, 4);
+         input->Callback = luaL_ref(Lua, LUA_REGISTRYINDEX);
+      }
+      else {
+         lua_getglobal(Lua, (STRING)lua_tostring(Lua, 1));
+         input->Callback = luaL_ref(Lua, LUA_REGISTRYINDEX);
+      }
+
+      lua_pushvalue(Lua, lua_gettop(Lua)); // Take a copy of the Fluid.input object
+      input->InputObject = luaL_ref(Lua, LUA_REGISTRYINDEX);
+      input->KeyEvent    = NULL;
+      input->Mask        = mask;
+      input->Mode        = FIM_DEVICE;
+      input->Next        = prv->InputList;
+      prv->InputList = input;
+
+      if ((~existing_mask) & mask) {
+         if (existing_mask) gfxUnsubscribeInput(0);
+         if ((error = gfxSubscribeInput(0, existing_mask | mask, device_id))) goto failed;
+      }
+
+      return 1;
+   }
+
+failed:
    luaL_error(Lua, "Failed to initialise input subscription.");
    return 0;
 }
@@ -324,7 +337,6 @@ static int input_unsubscribe(lua_State *Lua)
 
    FMSG("~input.unsubscribe()","");
 
-   if (input->SurfaceID)   { gfxUnsubscribeInput(input->SurfaceID); input->SurfaceID = 0; }
    if (input->InputObject) { luaL_unref(Lua, LUA_REGISTRYINDEX, input->InputObject); input->InputObject = 0; }
    if (input->Callback)    { luaL_unref(Lua, LUA_REGISTRYINDEX, input->Callback); input->Callback = 0; }
    if (input->KeyEvent)    { UnsubscribeEvent(input->KeyEvent); input->KeyEvent = NULL; }

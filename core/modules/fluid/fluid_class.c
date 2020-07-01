@@ -515,7 +515,7 @@ static ERROR FLUID_DataFeed(objScript *Self, struct acDataFeed *Args)
                processed = TRUE;
                // Execute the callback associated with this input subscription.
 
-               LONG step = GetResource(RES_LOG_DEPTH); // Required as thrown errors cause the debugger to lose its step position
+               LONG branch = GetResource(RES_LOG_DEPTH); // Required as thrown errors cause the debugger to lose its branch position
 
                   lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, list->Callback); // +1 Reference to callback
                   lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, list->InputObject); // +1 Input object
@@ -525,7 +525,7 @@ static ERROR FLUID_DataFeed(objScript *Self, struct acDataFeed *Args)
                      process_error(Self, "Input DataFeed Callback");
                   }
 
-               SetResource(RES_LOG_DEPTH, step);
+               SetResource(RES_LOG_DEPTH, branch);
             }
          }
 

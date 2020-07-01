@@ -155,6 +155,7 @@ struct finput {
    OBJECTID SurfaceID;
    LONG Callback;
    LONG InputObject;
+   LONG Mask;
    BYTE Mode;
 };
 
