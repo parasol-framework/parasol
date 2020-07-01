@@ -60,9 +60,8 @@ static ERROR LAYOUT_Show(objLayout *Self, APTR);
 static const struct FieldArray clLayoutFields[];
 static const struct ActionArray clLayoutActions[];
 
-/*****************************************************************************
-** Class methods.
-*/
+//****************************************************************************
+// Class methods.
 
 //static ERROR LAYOUT_SetOpacity(objLayout *Self, struct mtSetSurfaceOpacity *);
 
@@ -1634,9 +1633,7 @@ static ERROR GET_Layout_Width(objLayout *Self, struct Variable *Value)
    else if (Self->Dimensions & DMF_RELATIVE_WIDTH) {
       value = (DOUBLE)Self->Width * (DOUBLE)Self->ParentSurface.Width * 0.01;
    }
-   else if ((Self->Dimensions & DMF_X) AND
-            (Self->Dimensions & DMF_X_OFFSET)) {
-
+   else if ((Self->Dimensions & DMF_X) AND (Self->Dimensions & DMF_X_OFFSET)) {
       if (Self->Dimensions & DMF_FIXED_X) xcoord = Self->X;
       else xcoord = (DOUBLE)Self->ParentSurface.Width * (DOUBLE)Self->X * 0.01;
 
@@ -1914,8 +1911,7 @@ static ERROR GET_Layout_YOffset(objLayout *Self, struct Variable *Value)
    else if (Self->Dimensions & DMF_RELATIVE_Y_OFFSET) {
       value = (DOUBLE)Self->YOffset * (DOUBLE)Self->ParentSurface.Height * 0.01;
    }
-   else if ((Self->Dimensions & DMF_Y) AND
-            (Self->Dimensions & DMF_HEIGHT)) {
+   else if ((Self->Dimensions & DMF_Y) AND (Self->Dimensions & DMF_HEIGHT)) {
       if (Self->Dimensions & DMF_FIXED_HEIGHT) height = Self->Height;
       else height = (DOUBLE)Self->ParentSurface.Height * (DOUBLE)Self->Height * 0.01;
 

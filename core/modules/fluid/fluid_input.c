@@ -298,9 +298,9 @@ static int input_subscribe(lua_State *Lua)
 
          lua_pushvalue(Lua, lua_gettop(Lua)); // Take a copy of the Fluid.input object
          input->InputObject = luaL_ref(Lua, LUA_REGISTRYINDEX);
-         input->KeyEvent = NULL;
-         input->Mode = FIM_DEVICE;
-         input->Next = prv->InputList;
+         input->KeyEvent    = NULL;
+         input->Mode        = FIM_DEVICE;
+         input->Next        = prv->InputList;
          prv->InputList = input;
          return 1;
       }

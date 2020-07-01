@@ -524,9 +524,7 @@ static ERROR SURFACE_DataFeed(objSurface *Self, struct acDataFeed *Args)
                   else Self->DragStatus = DRAG_NORMAL;
                }
             }
-            else {
-               // Click released
-
+            else { // Click released
                if (Self->DragStatus) {
                   gfxUnlockCursor(Self->Head.UniqueID);
                   Self->DragStatus = DRAG_NONE;
