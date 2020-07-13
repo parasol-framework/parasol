@@ -78,8 +78,8 @@ gui.menu = function(Options)
       local clipRect = lGroupClip.new('VectorRectangle', {
          x    = 1.5,
          y    = 1.5,
-         roundX = 6,
-         roundY = 6,
+         roundX = 3,
+         roundY = 3,
          width  = 1,
          height = 1
       })
@@ -88,8 +88,8 @@ gui.menu = function(Options)
          fill   = 'rgb(240,240,240,255)',
          x      = 1.5,
          y      = 1.5,
-         roundX = 6,
-         roundY = 6,
+         roundX = 3,
+         roundY = 3,
          width  = 1,
          height = 1
       })
@@ -108,8 +108,8 @@ gui.menu = function(Options)
          strokeWidth = 1.5,
          x      = 1.5,
          y      = 1.5,
-         roundX = 6,
-         roundY = 6,
+         roundX = 3,
+         roundY = 3,
          width  = 1,
          height = 1
       })
