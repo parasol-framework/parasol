@@ -42,6 +42,7 @@ gui.menubar = function(Target, Options)
    local lItemLookup = { }
    local lIcons = { }
    local lFirstItem, lLastItem, lClicked, lScene, lViewport, lVectorGroup, lVectorHighlightIcon
+   local lSurfaceWidth, lSurfaceHeight
    local lVMargin  = 6
    local lHGap     = 26
    local lIconSize = 12

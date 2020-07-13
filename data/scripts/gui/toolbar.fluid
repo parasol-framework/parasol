@@ -54,7 +54,7 @@ gui.toolbar = function(Target, Options)
    local lItemLookup = { }
    local lIcons = { }
    local lFirstItem, lLastItem, lClicked, lTipTimer, lScene, lViewport, lVectorGroup, lVectorHighlightIcon
-   local lVectorHover, lGroupClip, lColumnBreadth
+   local lVectorHover, lGroupClip, lColumnBreadth, lSurfaceWidth, lSurfaceHeight
    local lArrangedWidth // True if the toolbar width is dynamic.
    local lHorizontal // True if items are arranged from left to right
    local lShadow       = gui.strToRGB(nz(Options.shadow, '0,0,0,128'))
