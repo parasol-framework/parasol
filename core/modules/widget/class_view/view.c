@@ -2029,6 +2029,7 @@ cstr XPath: The XPath query that will be used to select the item.
 
 -ERRORS-
 Okay: The item was selected successfully.
+Search: The path could not be resolved.
 Args
 -END-
 

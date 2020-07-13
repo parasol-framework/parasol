@@ -175,7 +175,7 @@
                           <xsl:choose>
                             <xsl:when test="access/@write='W'"><span class="glyphicon glyphicon-ok text-success" data-toggle="tooltip" title="Direct write access"/></xsl:when>
                             <xsl:when test="access/@write='S'"><span class="glyphicon glyphicon-ok text-danger" data-toggle="tooltip" title="Functional write access"/></xsl:when>
-                            <xsl:when test="access/@write='I'"><span class="glyphicon glyphicon-cog text-danger" data-toggle="tooltip" title="Initialise only"/></xsl:when>
+                            <xsl:when test="access/@write='I'"><span class="glyphicon glyphicon-cog text-danger" data-toggle="tooltip" title="Immutable"/></xsl:when>
                             <xsl:otherwise><span class="glyphicon glyphicon-minus text-muted" data-toggle="tooltip" title="Not writeable"/></xsl:otherwise>
                           </xsl:choose></td>
                         <th class="col-md-1"><xsl:value-of select="name"/></th>
