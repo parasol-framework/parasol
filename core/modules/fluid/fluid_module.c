@@ -626,11 +626,20 @@ static int module_call(lua_State *Lua)
       else lua_pushnil(Lua);
    }
    else if (restype & (FD_LONG|FD_ERROR)) {
-      if (ffi_prep_cif(&cif, FFI_DEFAULT_ABI, total_args, &ffi_type_sint32, fin) IS FFI_OK) {
-         ffi_call(&cif, function, &rc, fptr);
-         lua_pushinteger(Lua, (LONG)rc);
+      if (restype & FD_UNSIGNED) {
+         if (ffi_prep_cif(&cif, FFI_DEFAULT_ABI, total_args, &ffi_type_uint32, fin) IS FFI_OK) {
+            ffi_call(&cif, function, &rc, fptr);
+            lua_pushnumber(Lua, (ULONG)rc);
+         }
+         else lua_pushnil(Lua);
       }
-      else lua_pushnil(Lua);
+      else {
+         if (ffi_prep_cif(&cif, FFI_DEFAULT_ABI, total_args, &ffi_type_sint32, fin) IS FFI_OK) {
+            ffi_call(&cif, function, &rc, fptr);
+            lua_pushinteger(Lua, (LONG)rc);
+         }
+         else lua_pushnil(Lua);
+      }
    }
    else if (restype & FD_DOUBLE) {
       if (ffi_prep_cif(&cif, FFI_DEFAULT_ABI, total_args, &ffi_type_double, fin) IS FFI_OK) {
