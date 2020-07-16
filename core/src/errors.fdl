@@ -1,4 +1,5 @@
 --$FLUID:Include
+-- This file is included by core.fdl
 
 function declareErrors()
   enum("ERR", { start=0, comment="Universal error codes" },

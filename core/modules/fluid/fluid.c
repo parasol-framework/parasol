@@ -642,7 +642,7 @@ static ERROR load_include(objScript *Script, CSTRING IncName)
 
    AdjustLogLevel(1);
 
-      if (!StrMatch("core", IncName)) {
+      if (!StrMatch("core", IncName)) { // The Core module's IDL is accessible from the RES_CORE_IDL resource.
          CSTRING idl;
          if ((idl = GetResourcePtr(RES_CORE_IDL))) {
             while ((idl) AND (*idl)) {
@@ -656,7 +656,7 @@ static ERROR load_include(objScript *Script, CSTRING IncName)
          }
          else error = ERR_Failed;
       }
-      else {
+      else { // The IDL for standard modules is retrievable from the IDL string of a loaded module object.
          OBJECTPTR module;
          if (!CreateObject(ID_MODULE, NF_INTEGRAL, &module, FID_Name|TSTR, IncName, TAGEND)) {
             CSTRING idl;
