@@ -81,7 +81,7 @@ struct CoreBase *CoreBase;
 static struct DisplayBase *DisplayBase;
 static struct FontBase *FontBase;
 
-static OBJECTPTR clVectorScene = NULL, clVectorViewPort = NULL, clVectorGroup = NULL, clVectorColour = NULL;
+static OBJECTPTR clVectorScene = NULL, clVectorViewport = NULL, clVectorGroup = NULL, clVectorColour = NULL;
 static OBJECTPTR clVectorEllipse = NULL, clVectorRectangle = NULL, clVectorPath = NULL, clVectorWave = NULL;
 static OBJECTPTR clVectorFilter = NULL, clVectorPolygon = NULL, clVectorText = NULL, clVectorClip = NULL;
 static OBJECTPTR clVectorGradient = NULL, clVectorImage = NULL, clVectorPattern = NULL, clVector = NULL;
@@ -198,7 +198,7 @@ ERROR CMDExpunge(void)
    if (clVectorText)       { acFree(clVectorText);       clVectorText = NULL; }
    if (clVectorGradient)   { acFree(clVectorGradient);   clVectorGradient = NULL; }
    if (clVectorGroup)      { acFree(clVectorGroup);      clVectorGroup = NULL; }
-   if (clVectorViewPort)   { acFree(clVectorViewPort);   clVectorViewPort = NULL; }
+   if (clVectorViewport)   { acFree(clVectorViewport);   clVectorViewport = NULL; }
    if (clVectorPattern)    { acFree(clVectorPattern);    clVectorPattern = NULL; }
    if (clVectorFilter)     { acFree(clVectorFilter);     clVectorFilter = NULL; }
    if (clVectorImage)      { acFree(clVectorImage);      clVectorImage = NULL; }

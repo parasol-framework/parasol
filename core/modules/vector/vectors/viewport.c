@@ -1,7 +1,7 @@
 /*****************************************************************************
 
 -CLASS-
-VectorViewPort: Provides support for viewport definitions within a vector tree.
+VectorViewport: Provides support for viewport definitions within a vector tree.
 
 This class is used to declare a viewport within a vector definition.  A master viewport is required as the first object
 in a @VectorScene and it must contain all vector graphics content.
@@ -15,6 +15,28 @@ To configure the scaling method that is applied to the viewport content, set the
 -END-
 
 *****************************************************************************/
+
+/*****************************************************************************
+-ACTION-
+Clear: Free all child objects contained by the viewport.
+-END-
+*****************************************************************************/
+
+static ERROR VIEW_Clear(objVectorViewport *Self, APTR Void)
+{
+   struct ChildEntry list[512];
+   LONG count = ARRAYSIZE(list);
+   do {
+      if (!ListChildren(Self->Head.UniqueID, list, &count)) {
+         WORD i;
+         for (i=0; i < count; i++) acFreeID(list[i].ObjectID);
+      }
+   } while (count IS ARRAYSIZE(list));
+
+   return ERR_Okay;
+}
+
+//****************************************************************************
 
 static ERROR VIEW_Free(objVectorViewport *Self, APTR Void)
 {
@@ -462,6 +484,7 @@ static const struct FieldArray clViewFields[] = {
 };
 
 static const struct ActionArray clViewActions[] = {
+   { AC_Clear,       (APTR)VIEW_Clear },
    { AC_Free,        (APTR)VIEW_Free },
    { AC_Init,        (APTR)VIEW_Init },
    { AC_NewObject,   (APTR)VIEW_NewObject },
@@ -474,10 +497,10 @@ static const struct ActionArray clViewActions[] = {
 
 static ERROR init_viewport(void)
 {
-   return(CreateObject(ID_METACLASS, 0, &clVectorViewPort,
+   return(CreateObject(ID_METACLASS, 0, &clVectorViewport,
       FID_BaseClassID|TLONG, ID_VECTOR,
       FID_SubClassID|TLONG,  ID_VECTORVIEWPORT,
-      FID_Name|TSTRING,      "VectorViewPort",
+      FID_Name|TSTRING,      "VectorViewport",
       FID_Category|TLONG,    CCF_GRAPHICS,
       FID_Actions|TPTR,      clViewActions,
       FID_Fields|TARRAY,     clViewFields,

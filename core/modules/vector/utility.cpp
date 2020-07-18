@@ -115,7 +115,7 @@ static CSTRING get_name(OBJECTPTR Vector)
       case ID_VECTORTEXT:      return "Text";
       case ID_VECTORFILTER:    return "Filter";
       case ID_VECTORGROUP:     return "Group";
-      case ID_VECTORVIEWPORT:  return "ViewPort";
+      case ID_VECTORVIEWPORT:  return "Viewport";
       case ID_VECTORWAVE:      return "Wave";
    }
 
