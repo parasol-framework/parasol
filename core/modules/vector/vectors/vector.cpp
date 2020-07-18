@@ -161,6 +161,7 @@ int(VBF) Flags: Optional flags.
 Okay
 NullArgs
 NoData: The vector does not have a computable path.
+NotPossible: The vector does not support path generation.
 -END-
 
 *****************************************************************************/
@@ -211,7 +212,7 @@ static ERROR VECTOR_GetBoundary(objVector *Self, struct vecGetBoundary *Args)
          }
          else return ERR_NoData;
       }
-      else return PostError(ERR_Mismatch);
+      else return ERR_NotPossible;
    }
 }
 

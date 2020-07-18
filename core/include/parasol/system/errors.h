@@ -201,7 +201,8 @@
 #define ERR_ReadFile 176
 #define ERR_Obsolete 177
 #define ERR_CreateResource 178
-#define ERR_END 179
+#define ERR_NotPossible 179
+#define ERR_END 180
 
 // Error headers
 

@@ -220,15 +220,15 @@ CSTRING glMessages[ERR_END] = {
  "A search routine in this function failed.",
  "Trouble initialising/using a module.",
  "File not found.",
- "Wrong version or version not supported.",
+ "Wrong version, or version not supported.",
  "Invalid arguments passed to function.",
  "No data is available for use.",
  "Error reading data from file.",
  "Error writing data to file.",
  "Failed to lock a required resource.",
  "Could not examine folder or file.",
- "This object has lost its class reference.",
- "This object does not support the requested action.",
+ "The object has lost its class reference.",
+ "The object does not support this operation.",
  "This request is not supported.",
  "General memory error.",
  "Function timed-out before successful completion.",
@@ -379,7 +379,8 @@ CSTRING glMessages[ERR_END] = {
  "This operation would violate the object's immutable status.",
  "A call to ReadFile() failed.",
  "This feature is no longer available (obsolete).",
- "Failed to create a new resource."
+ "Failed to create a new resource.",
+ "It is not possible to perform the requested operation."
 };
 
 const LONG glTotalHeaders = ARRAYSIZE(glHeaders);

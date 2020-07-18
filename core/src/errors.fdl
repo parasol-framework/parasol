@@ -1,5 +1,6 @@
 --$FLUID:Include
 -- This file is included by core.fdl
+-- Refer to data_errors.c for the official description strings for each error code.
 
 function declareErrors()
   enum("ERR", { start=0, comment="Universal error codes" },
@@ -183,6 +184,7 @@ function declareErrors()
     "ReadFile",                // A call to ReadFile() failed.
     "Obsolete",                // This feature is no longer available (obsolete).
     "CreateResource",          // Failed to create a new resource.
+    "NotPossible",             // It is not possible to perform the requested operation.
     "END") // NB: Any new error messages need to be added to data_errors.c manually.
 
   enum("ERH", { start=1, comment="Error headers" },
