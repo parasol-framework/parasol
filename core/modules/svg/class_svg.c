@@ -111,7 +111,16 @@ static ERROR SVG_Free(objSVG *Self, APTR Void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+/*****************************************************************************
+-ACTION-
+Init: Initialise the SVG object.
+
+Initialising an SVG object will load an SVG source file if a #Path has been specified.  The default behaviour is to
+generate the content in a local #Scene object, or alternatively the content can be redirected to an external
+@VectorScene referred to by #Target.
+
+-END-
+*****************************************************************************/
 
 static ERROR SVG_Init(objSVG *Self, APTR Void)
 {
