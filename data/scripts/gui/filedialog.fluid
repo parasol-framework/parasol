@@ -62,7 +62,7 @@ gui.dialog.file = function(Options)
          table.insert(list, name)
       end
 
-      if (lOptions.warnExists != nil) and (#list > 0) then
+      if (lOptions.warnExists == true) and (#list > 0) then
          local error, type = mSys.AnalysePath(nz(lFileView.path,'') .. list[1])
          if type == LOC_FILE then
             local msg
@@ -304,13 +304,13 @@ gui.dialog.file = function(Options)
          yOffset = footer
       })
 
-      local viewFlags = nil
+      local viewFlags =  '!DragDrop'
       if nz(lOptions.multiSelect) then
-         viewFlags = '!MultiSelect'
+         viewFlags = viewFlags .. '|MultiSelect'
       end
 
       lView = viewRegion.new('view', {
-         flags    = viewFlags .. '|DragDrop',
+         flags    = viewFlags,
          template = 'fileview',
          style    = 'column',
          selectCallback = function(View, Flags, Tag)

@@ -150,13 +150,16 @@ gui.fileview = function(View, Options)
    -- Returns the XML tag for a given file or folder name.
 
    local function findTag(Name)
-      local err, tag = self.view.xml.mtGetTag(0)
-      while tag != nil do
-         if tag.child and Name == tag.child.attrib.value then return tag end
+      local xml = self.view.xml
+      if xml then
+         local err, tag = xml.mtGetTag(0)
+         while tag != nil do
+            if (tag.child) and (Name == tag.child.attrib.value) then return tag end
 
-         local err, tag_name = self.view.xml.mtGetAttrib(tag.index, 'name')
-         if Name == tag_name then return tag end
-         tag = tag.next
+            local err, tag_name = xml.mtGetAttrib(tag.index, 'name')
+            if (Name == tag_name) then return tag end
+            tag = tag.next
+         end
       end
    end
 
@@ -1104,7 +1107,7 @@ gui.fileview = function(View, Options)
 
          if bit.band(info.Flags, RDF_VOLUME) != 0 and bit.band(info.Flags, RDF_HIDDEN) != 0 then
             -- Ignore hidden volumes
-         elseif xml.tagCount == 0 then -- Empty view, this is the first file.
+         elseif (xml) and (xml.tagCount == 0) then -- Empty view, this is the first file.
             addFileItem(info)
             self.view.acRefresh()
             break
@@ -1138,7 +1141,7 @@ gui.fileview = function(View, Options)
          end
       end
 
-      if xml.tagCount > 0 then -- Check for deleted files
+      if (xml) and (xml.tagCount > 0) then -- Check for deleted files
          local buffer = nz(self.path,'')
 
          if not self.path then
@@ -1161,14 +1164,17 @@ gui.fileview = function(View, Options)
 
                -- Start from the correct tag position
 
-               local tag = xml.tags[1]
+               local tags = xml.tags
+               if not tags then break end
+               local tag = tags[1]
+
                for i=0,lDeleteIndex do
                   if tag then tag = tag.next end
                end
 
                if not tag then
                   lDeleteIndex = 0
-                  tag = xml.tags[1]
+                  tag = tags[1]
                end
 
                while (delete_count < 10) and (tag != nil) do
@@ -1245,7 +1251,7 @@ gui.fileview = function(View, Options)
       catch(function()
          if lDir then lDir = nil end
 
-         if self.path then
+         if nz(self.path) then
             lDeviceInfo = obj.new('storagedevice', { volume = self.path })
          else
             lDeviceInfo = nil
@@ -1482,20 +1488,19 @@ gui.fileview = function(View, Options)
 
       checkDocView()
 
-      self.path = nz(lOptions.path)
+      if (lOptions.path) then self.path = lOptions.path end
+
       self.refresh(true)
 
-      if not lWatch then
-         if not self.path then
-            -- No monitoring required when browsing volumes.
-         else
+      if (not lWatch) and nz(self.path) then
+         catch(function()
             lWatch = obj.new('file', { path = self.path })
-            local err = lWatch.mtWatch(pathWatch, 0, bit.bor(MFF_CREATE,MFF_DELETE,MFF_ATTRIB,MFF_CLOSED,MFF_MOVED))
-            if err != ERR_Okay then
-               lWatch = nil
-               err, lTimer = mSys.SubscribeTimer(lRefreshRate, incrementalRefresh)
-            end
-         end
+            lWatch.mtWatch(pathWatch, 0, bit.bor(MFF_CREATE,MFF_DELETE,MFF_ATTRIB,MFF_CLOSED,MFF_MOVED))
+         end,
+         function(Exception) // Some systems don't support path watching
+            lWatch = nil
+            err, lTimer = mSys.SubscribeTimer(lRefreshRate, incrementalRefresh)
+         end)
       end
 
       lWindow = parentWindow(self.view.layout.surface)
