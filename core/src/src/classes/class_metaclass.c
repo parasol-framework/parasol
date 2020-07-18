@@ -956,7 +956,7 @@ static ERROR field_setup(struct rkMetaClass *Class)
 
       fields[Class->TotalFields].Name      = "ClassID";
       fields[Class->TotalFields].FieldID   = FID_ClassID;
-      fields[Class->TotalFields].Flags     = FDF_LONG|FDF_R|FDF_SYSTEM;
+      fields[Class->TotalFields].Flags     = FDF_LONG|FDF_UNSIGNED|FDF_R|FDF_SYSTEM;
       fields[Class->TotalFields].Arg       = NULL;
       fields[Class->TotalFields].GetValue  = (APTR)&OBJECT_GetClassID;
       fields[Class->TotalFields].SetValue  = NULL;

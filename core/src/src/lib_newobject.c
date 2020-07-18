@@ -574,7 +574,7 @@ This function will resolve a class name to its unique ID.
 Class ID's are used by functions such as ~NewObject() for fast processing.
 
 -INPUT-
-cstr Name: The name of the class that you want to resolve.
+cstr Name: The name of the class that requires resolution.
 
 -RESULT-
 cid: Returns the class ID identified from the class name, or NULL if the class could not be found.
@@ -614,7 +614,7 @@ cstr: Returns the name of the class, or NULL if the ID is not recognised.  Stand
 
 *****************************************************************************/
 
-CSTRING ResolveClassID(ULONG ID)
+CSTRING ResolveClassID(CLASSID ID)
 {
    struct ClassItem *item;
    if ((item = find_class(ID))) return item->Name;
