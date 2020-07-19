@@ -145,7 +145,7 @@
       <error code="ObjectCorrupt">The object structure is corrupt or has not been initialised.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
       <error code="Okay">Operation successful.</error>
-      <error code="NoAction">This object does not support the requested action.</error>
+      <error code="NoAction">The object does not support this operation.</error>
       <error code="IllegalActionID">Illegal action ID (number outside of valid range).</error>
     </result>
   </function>
@@ -238,7 +238,7 @@ ActionTags(MT_Rename, Object, "user:documents.txt");
       <error code="Args">Invalid arguments passed to function.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
       <error code="IllegalActionID">Illegal action ID (number outside of valid range).</error>
-      <error code="NoAction">This object does not support the requested action.</error>
+      <error code="NoAction">The object does not support this operation.</error>
       <error code="Okay">Operation successful.</error>
     </result>
   </function>
@@ -531,7 +531,7 @@ if (!AllocMemory(1000, MEM_DATA, &amp;address, NULL)) {
     <result type="ERROR">
       <error code="NullArgs">Function call missing argument value(s)</error>
       <error code="Okay">Operation successful.</error>
-      <error code="LostClass">This object has lost its class reference.</error>
+      <error code="LostClass">The object has lost its class reference.</error>
       <error code="False">The result is false.</error>
     </result>
   </function>
@@ -542,10 +542,10 @@ if (!AllocMemory(1000, MEM_DATA, &amp;address, NULL)) {
     <comment>Checks if a memory block still exists.</comment>
     <prototype>ERROR CheckMemoryExists(MEMORYID ID)</prototype>
     <input>
-      <param type="MEMORYID" name="ID">The ID of the memory block that you wish to look for.</param>
+      <param type="MEMORYID" name="ID">The ID of the memory block that will be checked.</param>
     </input>
     <description>
-<p>If you need to know whether or not a specific memory block still exists, you can check by using the CheckMemoryExists() function.  Simply provide it with the ID of the block that you are interested in and it will return an error code of ERR_Okay if it is in the system at the time of calling.</p>
+<p>Use CheckMemoryExists() to confirm if a specific memory block still exists by referencing its ID.</p>
     </description>
     <result type="ERROR">
       <error code="NullArgs">Function call missing argument value(s)</error>
@@ -981,7 +981,7 @@ FastFindObject("SystemPointer", ID_POINTER, &amp;id, 1, NULL);
       <param type="const void *" name="Address">Points to the start of a memory block to be freed.</param>
     </input>
     <description>
-<p>This function frees memory areas allocated from <function module="Core">AllocMemory</function>.  Crash protection is incorporated into various areas of this function. If the memory header or tail is missing from the block, then it is assumed that a routine has has over-written the memory boundaries, or you are attempting to free a non-existent allocation. Such problems are immediately reported to the system debugger.  Bear in mind that it does pay to save your development work if such a message appears, as it indicates that important memory areas could have been destroyed.</p>
+<p>This function frees memory areas allocated from <function module="Core">AllocMemory</function>.  Crash protection is incorporated into various areas of this function. If the memory header or tail is missing from the block, then it is assumed that a routine has has over-written the memory boundaries, or you are attempting to free a non-existent allocation. Such problems are immediately reported to the system debugger and warrant priority attention.</p>
 <p>This function only works with private memory blocks.  To free a public memory block, use the <function module="Core">FreeResourceID</function> function instead.</p>
     </description>
     <result type="ERROR">
@@ -1511,7 +1511,7 @@ end
       <param type="LONG *" name="Count">The integer that this argument refers to must be set with a value that indicates the size of the supplied list array.  Before returning, this argument will be updated with the total number of entries listed in the array.</param>
     </input>
     <description>
-<p>The ListChildren() function provides the necessary means for listing an object's children in a single function call.</p>
+<p>The ListChildren() function returns a list of an object's children in a single function call.</p>
 <p>The client must provide an empty array of ChildEntry structures for the function to write its results.  The Count argument must point to a LONG value that indicates the size of the array that you have supplied.  Before returning, the ListChildren() function will update the Count variable so that it reflects the total number of children that were written to the array.</p>
 <p>Objects that are specially marked with the CHILD flag are not returned in the resulting list; such objects are considered to be private extensions of the targeted parent.</p>
     </description>
@@ -2056,7 +2056,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
     <comment>Resolves any class name to a unique identification ID.</comment>
     <prototype>CLASSID ResolveClassName(CSTRING Name)</prototype>
     <input>
-      <param type="CSTRING" name="Name">The name of the class that you want to resolve.</param>
+      <param type="CSTRING" name="Name">The name of the class that requires resolution.</param>
     </input>
     <description>
 <p>This function will resolve a class name to its unique ID.</p>

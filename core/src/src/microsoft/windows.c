@@ -235,7 +235,7 @@ LONG winReadPipe(HANDLE FD, APTR Buffer, DWORD *Size);
 
 //****************************************************************************
 // If the program is launched from a console, attach to it.  Otherwise create a new console window and redirect output
-// to it.
+// to it (e.g. if launched from a desktop icon).
 
 void activate_console(BYTE AllowOpenConsole)
 {
@@ -252,7 +252,7 @@ void activate_console(BYTE AllowOpenConsole)
       }
       else return;
 
-      freopen("CON", "w", stdout);
+      freopen("CON", "w", stdout);  // Redirect stdout and stderr descriptors to the attached console.
       freopen("CON", "w", stderr);
       activated = TRUE;
    }

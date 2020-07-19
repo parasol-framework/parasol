@@ -1541,7 +1541,7 @@ const struct SystemState * GetSystemState(void)
 ListChildren: Returns a list of all children belonging to an object.
 Category: Objects
 
-The ListChildren() function provides the necessary means for listing an object's children in a single function call.
+The ListChildren() function returns a list of an object's children in a single function call.
 
 The client must provide an empty array of ChildEntry structures for the function to write its results.  The Count
 argument must point to a LONG value that indicates the size of the array that you have supplied.  Before returning, the
@@ -1572,7 +1572,7 @@ ERROR ListChildren(OBJECTID ObjectID, struct ChildEntry *List, LONG *Count)
    LONG i = 0;
 
    // Build the list of public objects
-   // TODO: Optimisation
+   // TODO: Optimisation.  Most objects also won't have public children, making this redundant.
 
    struct SharedObjectHeader *header;
    if (!AccessMemory(RPM_SharedObjects, MEM_READ, 2000, (void **)&header)) {
@@ -1590,7 +1590,7 @@ ERROR ListChildren(OBJECTID ObjectID, struct ChildEntry *List, LONG *Count)
    }
 
    // Build the list of private objects
-   // TODO: Optimisation
+   // TODO: Optimisation; all private addresses are being scanned.
 
    if (i < *Count) {
       if (!thread_lock(TL_PRIVATE_MEM, 4000)) {

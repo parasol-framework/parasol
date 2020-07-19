@@ -552,12 +552,10 @@ retry:
 -FUNCTION-
 CheckMemoryExists: Checks if a memory block still exists.
 
-If you need to know whether or not a specific memory block still exists, you can check by using the CheckMemoryExists()
-function.  Simply provide it with the ID of the block that you are interested in and it will return an error code of
-ERR_Okay if it is in the system at the time of calling.
+Use CheckMemoryExists() to confirm if a specific memory block still exists by referencing its ID.
 
 -INPUT-
-mem ID: The ID of the memory block that you wish to look for.
+mem ID: The ID of the memory block that will be checked.
 
 -ERRORS-
 Okay: The block exists.
@@ -669,8 +667,7 @@ FreeResource: Frees private memory blocks allocated from AllocMemory().
 This function frees memory areas allocated from ~AllocMemory().  Crash protection is incorporated into
 various areas of this function. If the memory header or tail is missing from the block, then it is assumed that a
 routine has has over-written the memory boundaries, or you are attempting to free a non-existent allocation.
-Such problems are immediately reported to the system debugger.  Bear in mind that it does pay to save your
-development work if such a message appears, as it indicates that important memory areas could have been destroyed.
+Such problems are immediately reported to the system debugger and warrant priority attention.
 
 This function only works with private memory blocks.  To free a public memory block, use the ~FreeResourceID()
 function instead.
