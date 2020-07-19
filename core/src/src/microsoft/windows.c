@@ -234,26 +234,53 @@ extern LONG convert_errno(LONG Error, LONG Default);
 LONG winReadPipe(HANDLE FD, APTR Buffer, DWORD *Size);
 
 //****************************************************************************
+// Console checker for Cygwin
+
+BYTE is_console(HANDLE h)
+{
+   if (FILE_TYPE_UNKNOWN == GetFileType(h) && ERROR_INVALID_HANDLE == GetLastError()) {
+       if ((h = CreateFile("CONOUT$", GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL))) {
+           CloseHandle(h);
+           return TRUE;
+       }
+   }
+
+   CONSOLE_FONT_INFO cfi;
+   return GetCurrentConsoleFont(h, FALSE, &cfi) != 0;
+}
+
+//****************************************************************************
 // If the program is launched from a console, attach to it.  Otherwise create a new console window and redirect output
 // to it (e.g. if launched from a desktop icon).
 
 void activate_console(BYTE AllowOpenConsole)
 {
    static BYTE activated = FALSE;
+
    if (!activated) {
       char value[8];
       if (GetEnvironmentVariable("TERM", value, sizeof(value)) OR
           GetEnvironmentVariable("PROMPT", value, sizeof(value))) { // TERM defined by Cygwin, Mingw, PROMPT defined by cmd.exe
+
+         // NB: Cygwin stdout/err handling is broken and requires the following workaround for ensuring that stdout
+         // and stderr are managed correctly for both standard console output and file redirection.
+
+         HANDLE current_out = GetStdHandle(STD_OUTPUT_HANDLE);
+         HANDLE current_err = GetStdHandle(STD_ERROR_HANDLE);
+
          AttachConsole(ATTACH_PARENT_PROCESS);
+
+         if (is_console(current_out)) freopen("CON", "w", stdout);  // Redirect stdout and stderr descriptors to the attached console.
+         if (is_console(current_err)) freopen("CON", "w", stderr);
       }
       else if (AllowOpenConsole) { // Assume that executable was launched from desktop without a console
          AllocConsole();
          AttachConsole(GetCurrentProcessId());
+         freopen("CON", "w", stdout);  // Redirect stdout and stderr descriptors to the attached console.
+         freopen("CON", "w", stderr);
       }
       else return;
 
-      freopen("CON", "w", stdout);  // Redirect stdout and stderr descriptors to the attached console.
-      freopen("CON", "w", stderr);
       activated = TRUE;
    }
 }
