@@ -45,7 +45,7 @@ Available methods:
    filter(w)        Apply a wildcard filter to limit the display to matching file names.
    moveFilesTo(p)   Move all selected items to the destination path at (p).
    openFiles()      Run the default open command for all currently selected files.
-   parentDir()      Browse the parent folder of the current path.
+   parentFolder()   Browse the parent folder of the current path.
    pasteFiles()     Paste files from the clipboard to the current path.
    refresh()        Force a refresh of the view.
    renameFile()     Prompt the user to rename the selected item.
@@ -763,7 +763,7 @@ gui.fileview = function(View, Options)
 
    -- Jumps to the parent folder of a FileView's current path.
 
-   self.parentDir = function()
+   self.parentFolder = function()
       if not self.path then return end
       if lLimitPath and lLimitPath:lower() == self.path:lower() then return end
 
@@ -1459,7 +1459,7 @@ gui.fileview = function(View, Options)
             if string.find(name, '^.+[:/\\]$') != nil then -- Respond by switching to the new folder
                self.browse(nz(self.path,'') .. name)
             elseif parent == tags[ti+1].attrib.name then -- Go to the parent folder
-               self.parentDir()
+               self.parentFolder()
             else
                if lOptions.autoMode then
                   local tags = { self.view.activeTag, -1 }
