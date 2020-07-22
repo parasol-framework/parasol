@@ -457,6 +457,8 @@ typedef struct rkVectorGradient {
    struct GradientStop *Stops;  // An array of gradient stop colours.
    struct VectorTransform *Transforms;
    class GradientColours *Colours;
+   STRING ID;
+   LONG NumericID;
    WORD ChangeCounter;
   
 #endif

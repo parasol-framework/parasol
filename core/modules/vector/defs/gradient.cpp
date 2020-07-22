@@ -127,6 +127,7 @@ GradientColours::GradientColours(struct rkVectorGradient *Gradient, DOUBLE Alpha
 
 static ERROR VECTORGRADIENT_Free(objVectorGradient *Self, APTR Void)
 {
+   if (Self->ID) { FreeResource(Self->ID); Self->ID = NULL; }
    if (Self->Stops) { FreeResource(Self->Stops); Self->Stops = NULL; }
    if (Self->Colours) { delete Self->Colours; Self->Colours = NULL; }
 
@@ -324,6 +325,36 @@ static ERROR VECTORGRADIENT_SET_FY(objVectorGradient *Self, struct Variable *Val
 }
 
 /*****************************************************************************
+-FIELD-
+ID: String identifier for a vector.
+
+The ID field is provided for the purpose of SVG support.  Where possible we would recommend that you use the
+existing object name and automatically assigned ID's for identifiers.
+
+*****************************************************************************/
+
+static ERROR VECTORGRADIENT_GET_ID(objVectorGradient *Self, STRING *Value)
+{
+   *Value = Self->ID;
+   return ERR_Okay;
+}
+
+static ERROR VECTORGRADIENT_SET_ID(objVectorGradient *Self, CSTRING Value)
+{
+   if (Self->ID) FreeResource(Self->ID);
+
+   if (Value) {
+      Self->ID = StrClone(Value);
+      Self->NumericID = StrHash(Value, TRUE);
+   }
+   else {
+      Self->ID = NULL;
+      Self->NumericID = 0;
+   }
+   return ERR_Okay;
+}
+
+/*****************************************************************************
 
 -FIELD-
 Inherit: Inherit attributes from the VectorGradient referenced here.
@@ -340,6 +371,31 @@ static ERROR VECTORGRADIENT_SET_Inherit(objVectorGradient *Self, objVectorGradie
       else return PostError(ERR_InvalidValue);
    }
    else Self->Inherit = NULL;
+   return ERR_Okay;
+}
+
+/*****************************************************************************
+
+-FIELD-
+NumericID: A unique identifier for the vector.
+
+This field assigns a numeric ID to a vector.  Alternatively it can also reflect a case-sensitive hash of the
+#ID field if that has been defined previously.
+
+If NumericID is set by the client, then any value in #ID will be immediately cleared.
+
+*****************************************************************************/
+
+static ERROR VECTORGRADIENT_GET_NumericID(objVectorGradient *Self, LONG *Value)
+{
+   *Value = Self->NumericID;
+   return ERR_Okay;
+}
+
+static ERROR VECTORGRADIENT_SET_NumericID(objVectorGradient *Self, LONG Value)
+{
+   Self->NumericID = Value;
+   if (Self->ID) { FreeResource(Self->ID); Self->ID = NULL; }
    return ERR_Okay;
 }
 
@@ -686,6 +742,8 @@ static const struct FieldArray clGradientFields[] = {
    { "Flags",        FDF_LONGFLAGS|FDF_RW,        (MAXINT)&clVectorGradientFlags, NULL, NULL },
    { "TotalStops",   FDF_LONG|FDF_R,              0, NULL, NULL },
    // Virtual fields
+   { "NumericID",    FDF_VIRTUAL|FDF_LONG|FDF_RW, 0, (APTR)VECTORGRADIENT_GET_NumericID, (APTR)VECTORGRADIENT_SET_NumericID },
+   { "ID",           FDF_VIRTUAL|FDF_STRING|FDF_RW, 0, (APTR)VECTORGRADIENT_GET_ID, (APTR)VECTORGRADIENT_SET_ID },
    { "Stops",        FDF_VIRTUAL|FDF_ARRAY|FDF_STRUCT|FDF_RW, (MAXINT)"GradientStop", (APTR)VECTORGRADIENT_GET_Stops, (APTR)VECTORGRADIENT_SET_Stops },
    { "Transform",    FDF_VIRTUAL|FDF_STRING|FDF_W, 0, NULL, (APTR)VECTORGRADIENT_SET_Transform },
    END_FIELD

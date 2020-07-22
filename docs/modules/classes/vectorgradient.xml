@@ -78,12 +78,33 @@
     </field>
 
     <field>
+      <name>ID</name>
+      <comment>String identifier for a vector.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>STRING</type>
+      <description>
+<p>The ID field is provided for the purpose of SVG support.  Where possible we would recommend that you use the existing object name and automatically assigned ID's for identifiers.</p>
+      </description>
+    </field>
+
+    <field>
       <name>Inherit</name>
       <comment>Inherit attributes from the VectorGradient referenced here.</comment>
       <access read="R" write="S">Read/Set</access>
       <type class="VectorGradient">*VectorGradient</type>
       <description>
 <p>Attributes can be inherited from another gradient by referencing that gradient in this field.  This feature is provided primarily for the purpose of simplifying SVG compatibility and its use may result in an unnecessary performance penalty.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>NumericID</name>
+      <comment>A unique identifier for the vector.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>INT</type>
+      <description>
+<p>This field assigns a numeric ID to a vector.  Alternatively it can also reflect a case-sensitive hash of the <field>ID</field> field if that has been defined previously.</p>
+<p>If NumericID is set by the client, then any value in <field>ID</field> will be immediately cleared.</p>
       </description>
     </field>
 

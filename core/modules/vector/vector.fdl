@@ -332,6 +332,8 @@ module({ name="Vector", copyright="Paul Manias © 2010-2017", version=1.0 }, fun
    struct GradientStop *Stops;  // An array of gradient stop colours.
    struct VectorTransform *Transforms;
    class GradientColours *Colours;
+   STRING ID;
+   LONG NumericID;
    WORD ChangeCounter;
   ]])
 

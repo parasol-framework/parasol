@@ -82,6 +82,7 @@
       </description>
       <result>
         <error code="NullArgs">Function call missing argument value(s)</error>
+        <error code="NotPossible">The vector does not support path generation.</error>
         <error code="NoData">The vector does not have a computable path.</error>
         <error code="Okay">Operation successful.</error>
       </result>
