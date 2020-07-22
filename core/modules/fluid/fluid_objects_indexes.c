@@ -242,10 +242,18 @@ static ERROR getfield(lua_State *Lua, struct object *object, CSTRING FName)
          if (!(error = GetLarge(src, field->FieldID, &result))) lua_pushnumber(Lua, result);
       }
       else if (field->Flags & FD_LONG) {
-         LONG result;
-         if (!(error = GetLong(src, field->FieldID, &result))) {
-            if (field->Flags & FD_OBJECT) push_object_id(Lua, result);
-            else lua_pushinteger(Lua, result);
+         if (field->Flags & FD_UNSIGNED) {
+            ULONG result;
+            if (!(error = GetLong(src, field->FieldID, &result))) {
+               lua_pushnumber(Lua, result);
+            }
+         }
+         else {
+            LONG result;
+            if (!(error = GetLong(src, field->FieldID, &result))) {
+               if (field->Flags & FD_OBJECT) push_object_id(Lua, result);
+               else lua_pushinteger(Lua, result);
+            }
          }
       }
       else error = ERR_NoSupport;
