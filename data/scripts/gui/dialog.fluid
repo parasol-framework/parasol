@@ -197,7 +197,7 @@ gui.dialog.message = function(Options)
   <table columns="48,0" width="100%">
     <row>
       <cell>
-        <image src="]] .. image .. [[" align="left" eastgap="8"/>
+        <image src="]] .. image .. [[" align="left" eastgap="18"/>
       </cell>
       <cell>
         <p>]] .. nz(lOptions.fmtMessage, string.escXML(nz(lOptions.message,''))) .. [[</p>
@@ -229,25 +229,27 @@ gui.dialog.message = function(Options)
          doc = doc .. lOptions.inject
       end
 
-      // Build the clickable options/buttons
+      // Build the clickable options/buttons.  At minimum, there must be an OK option.
 
-      if (type(lOptions.options) == 'table') and (#lOptions.options > 0) then
-         doc = doc .. '<p><box height="1" colour="0,0,0,50"/></p>\n<p nowrap>'
+      if not ((type(lOptions.options) == 'table') and (#lOptions.options > 0)) then
+         lOptions.options = { { id=1, text='Close Dialog', icon='items/cancel' } }
+      end
 
-         for i, option in ipairs(lOptions.options) do
-            if option['icon'] then
-               doc = doc .. '<image src="icons:' .. option.icon .. '(16)" eastgap="4"/>\n'
-            end
+      doc = doc .. '<p><box height="1" colour="0,0,0,50"/></p>\n<p nowrap>'
 
-            doc = doc .. '<a @response="' .. i .. '">' .. option.text .. '</a>\n'
-
-            if i < #lOptions.options then
-               doc = doc .. '<advance x="30"/>'
-            end
+      for i, option in ipairs(lOptions.options) do
+         if option['icon'] then
+            doc = doc .. '<image src="icons:' .. option.icon .. '(16)" eastgap="4"/>\n'
          end
 
-         doc = doc .. '</p>'
+         doc = doc .. '<a @response="' .. i .. '">' .. option.text .. '</a>\n'
+
+         if i < #lOptions.options then
+            doc = doc .. '<advance x="30"/>'
+         end
       end
+
+      doc = doc .. '</p>'
 
       doc = doc .. [[
       </cell>
@@ -261,8 +263,28 @@ gui.dialog.message = function(Options)
    end
 
    catch(function()
+      local dlg_width = 320
+      if lOptions.message then
+         local longest = 0
+         for word in lOptions.message:gmatch("%S+") do
+            if (word:len() > longest) then
+               longest = word:len()
+            end
+         end
+         dlg_width = 120 + (longest * 12)
+         if dlg_width < 300 then
+            dlg_width = 300
+         elseif dlg_width > 480 then
+            dlg_width = 480
+         end
+      elseif lOptions.fmtMessage then
+         if lOptions.fmtMessage:len() > 80 then
+            dlg_width = 390
+         end
+      end
+
       lWindow = obj.new('window', {
-         insideWidth  = 290,
+         insideWidth  = dlg_width,
          insideHeight = 102,
          minWidth     = 190,
          minHeight    = 102,
