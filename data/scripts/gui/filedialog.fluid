@@ -55,11 +55,20 @@ gui.dialog.file = function(Options)
 
    glWidgetGap = 8
 
-   local function sendFeedback(FileView)
+   local function processFeedback()
       local list = { }
-      for k,v in ipairs(nz(lView.selectedTags, {})) do
-         local error, name = lView.xml.mtGetAttrib(v, 'name')
-         table.insert(list, name)
+      if nz(lOptions.multiSelect) then
+         for k,v in ipairs(nz(lView.selectedTags, {})) do
+            local error, name = lView.xml.mtGetAttrib(v, 'name')
+            table.insert(list, name)
+         end
+      end
+
+      if (#list == 0) then
+         local filename = lFileBox.string
+         if nz(filename) then
+            table.insert(list, filename)
+         end
       end
 
       if (lOptions.warnExists == true) and (#list > 0) then
@@ -76,25 +85,32 @@ gui.dialog.file = function(Options)
             local confirm = gui.dialog.message({
                target  = lOptions.target,
                modal   = true,
-               wait    = true,
                options = { { id=-1, text='No', icon='items/cancel' },
                            { id=1, text='Yes', icon='items/checkmark' } },
                title   = 'Confirmation Required',
                image   = 'items/warning',
                message = msg,
-               popover = windowID
+               popover = windowID,
+               feedback = function(Dialog, Response, State)
+                  if (Response) and (Response.id == 1) then
+                     if lOptions.feedback then
+                        lOptions.feedback(self, lFileView.path, list)
+                     end
+                     lWindow = nil
+                  end
+               end
             })
 
-            if confirm.response != RSF_YES then return end
+            return true
          end
       end
 
       if lOptions.feedback then
-         lOptions.feedback(self, FileView.path, list)
+         if (#list == 0) then list = nil end
+         lOptions.feedback(self, lFileView.path, list)
       end
 
       lWindow = nil
-
       return true
    end
 
@@ -225,7 +241,7 @@ gui.dialog.file = function(Options)
          xOffset    = lWindow.insidewidth - lCancelButton.x + glWidgetGap,
          yOffset    = footer,
          icon       = 'items/checkmark',
-         feedback   = sendFeedback
+         feedback   = processFeedback
       })
 
       lCancelButton.acShow()
@@ -264,7 +280,7 @@ gui.dialog.file = function(Options)
             flags   = filterFlags,
             string  = firstName,
             feedback = function(ComboBox, Value)
-               if lFilter.selectionIndex == -1 then -- The user has entered a custom filter.
+               if (lFilter.selectionIndex == -1) then -- The user has entered a custom filter.
                   lFileView.filter = Value
                else
                   lFileView.filter = lFilters[lFilter.selectionIndex].wild
@@ -288,7 +304,14 @@ gui.dialog.file = function(Options)
          x       = lWindow.leftMargin,
          xOffset = lWindow.rightMargin,
          yOffset = footer,
-         flags   = '!IGNORE_FOCUS'
+         flags   = '!IGNORE_FOCUS',
+         feedback = function(Input, Value, Activated)
+            lView.selectionIndex = -1
+
+            if (Activated == 1) then
+               processFeedback()
+            end
+         end
       })
 
       footer = footer + lFileBox.height + glWidgetGap
@@ -320,7 +343,7 @@ gui.dialog.file = function(Options)
 
             local selection = lFileView.selectionPath()
             if not nz(selection) then
-               lFileBox.string = ''
+               //lFileBox.string = ''
                return
             end
 
@@ -349,7 +372,7 @@ gui.dialog.file = function(Options)
          path     = lOptions.path,
          filter   = '*',
          sysKeys  = true,
-         fileSelected = sendFeedback,
+         fileSelected = processFeedback,
          pathChanged = function(Path)
             self.currentPath = Path
             lPathBox.string = self.currentPath
