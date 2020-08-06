@@ -47,7 +47,7 @@ static void clear_subscriptions(objScript *Self)
 }
 
 //****************************************************************************
-// check() is the equivalent of an assert() for error codes.  Any error code other than Okay will be converted to an
+// check() is the equivalent of an assert() for error codes.  Any major error code will be converted to an
 // exception containing a readable string for the error code.  It is most powerful when used in conjunction with
 // the catch() function, which will apply the line number of the exception to the result.  The error code will
 // also be propagated to the Script object's Error field.
@@ -60,7 +60,7 @@ static int fcmd_check(lua_State *Lua)
    LONG type = lua_type(Lua, 1);
    if (type IS LUA_TNUMBER) {
       ERROR error = lua_tonumber(Lua, 1);
-      if (error) {
+      if (error >= ERR_ExceptionThreshold) {
          struct prvFluid *prv = Lua->Script->Head.ChildPrivate;
          prv->CaughtError = error;
          luaL_error(prv->Lua, GetErrorMsg(error));
@@ -97,6 +97,9 @@ static int fcmd_check(lua_State *Lua)
 //   local exception = catch(function()
 //      // Code to execute
 //   end)
+//
+// Errors that are NOT treated as exceptions are Okay, False, LimitedSuccess, Cancelled, NothingDone, Continue, Skip,
+// Retry, DirEmpty.
 
 static int fcmd_catch_handler(lua_State *Lua)
 {
@@ -132,7 +135,7 @@ static int fcmd_catch(lua_State *Lua)
 
          if (type IS LUA_TFUNCTION) {
             BYTE caught_by_filter = FALSE;
-            prv->Catch++; // Convert ERROR results to exceptions.
+            prv->Catch++; // Flag to convert ERROR results to exceptions.
             prv->CaughtError = ERR_Okay;
             lua_pushcfunction(Lua, fcmd_catch_handler);
             lua_pushvalue(Lua, 1); // Parameter #1 is the function to call.
@@ -140,7 +143,7 @@ static int fcmd_catch(lua_State *Lua)
             if (lua_pcall(Lua, 0, LUA_MULTRET, -2)) { // An exception was raised!
                prv->Catch--;
 
-               if ((prv->CaughtError != ERR_Okay) AND (catch_filter)) { // Apply error code filtering
+               if ((prv->CaughtError >= ERR_ExceptionThreshold) AND (catch_filter)) { // Apply error code filtering
                   lua_rawgeti(Lua, LUA_REGISTRYINDEX, catch_filter);
                   lua_pushnil(Lua);  // First key
                   while ((!caught_by_filter) AND (lua_next(Lua, -2) != 0)) { // Iterate over each table key
@@ -164,7 +167,7 @@ static int fcmd_catch(lua_State *Lua)
 
                   lua_newtable(Lua);
                   lua_pushstring(Lua, "code");
-                  if (prv->CaughtError != ERR_Okay) lua_pushinteger(Lua, prv->CaughtError);
+                  if (prv->CaughtError >= ERR_ExceptionThreshold) lua_pushinteger(Lua, prv->CaughtError);
                   else lua_pushnil(Lua);
                   lua_settable(Lua, -3);
 
@@ -224,7 +227,7 @@ static int fcmd_catch(lua_State *Lua)
 
             lua_newtable(Lua); // +1 stack
             lua_pushstring(Lua, "code");
-            if (prv->CaughtError != ERR_Okay) lua_pushinteger(Lua, prv->CaughtError);
+            if (prv->CaughtError >= ERR_ExceptionThreshold) lua_pushinteger(Lua, prv->CaughtError);
             else lua_pushnil(Lua); // Distinguish Lua exceptions by setting the code to nil.
             lua_settable(Lua, -3);
 
