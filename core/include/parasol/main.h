@@ -364,7 +364,7 @@ struct Head { // Must be 64-bit aligned
    OBJECTID OwnerID;            // Refers to the owner of this object
    WORD Flags;                  // Object flags
    WORD MemFlags;               // Recommended memory allocation flags
-   OBJECTID TaskID;             // The task that this object belongs to
+   OBJECTID TaskID;             // The process that this object belongs to
    volatile LONG  ThreadID;     // Managed by prv_access() and prv_release() - set by get_thread_id()
    #ifdef _WIN32
       WINHANDLE ThreadMsg;      // Pipe for sending messages to the owner thread.

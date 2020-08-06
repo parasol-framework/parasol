@@ -18,6 +18,7 @@
 #define ERR_Retry 7
 #define ERR_DirEmpty 8
 #define ERR_Terminate 9
+#define ERR_ExceptionThreshold 9
 #define ERR_NoMemory 10
 #define ERR_NoPointer 11
 #define ERR_InUse 12

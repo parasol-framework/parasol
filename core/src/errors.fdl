@@ -14,7 +14,7 @@ function declareErrors()
     "Retry",            // Retry the operation (could not succeed at this time)
     "DirEmpty",
     // Anything above this point is considered non-fatal for exception reporting purposes.
-    "Terminate",        // Operation processed, but do not call again with these parameters.
+    "Terminate|ExceptionThreshold", // Operation processed, but do not call again with these parameters.
     "NoMemory",
     "NoPointer",
     "InUse",
