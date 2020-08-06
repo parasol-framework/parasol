@@ -59,7 +59,7 @@ function testCatchErrorCode()
    local exception_raised = false
 
    local err, result = catch(function()
-      check(mSys.AllocMemory(-10, 0))
+      mSys.AllocMemory(-10, 0)
    end,
    function(Exception)
       print(Exception.line .. ": Caught exception as expected, error code #" .. Exception.code .. " '" .. Exception.message .. "'")
@@ -99,6 +99,26 @@ function testCatchObject()
 end
 
 -----------------------------------------------------------------------------------------------------------------------
+-- Check that object actions raise exceptions correctly.
+
+function testCatchObjectAction()
+   local exception_raised = false
+
+   local err, result = catch(function()
+      local time = obj.new("time", { })
+      time.acUndo()
+   end,
+   function(Exception)
+      print(Exception.line .. ": Caught exception as expected, error code #" .. Exception.code .. " '" .. Exception.message .. "'")
+      exception_raised = true
+   end)
+
+   if (exception_raised != true) then
+      error("Failed to catch the raised exception.")
+   end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
 -- Test that filtering for error codes works.
 
 function testCatchFilter()
@@ -124,7 +144,7 @@ function testMissedFilter()
    local status, msg = pcall(function()
       catch(function()
          local xml = obj.new("xml", { flags="NEW" })
-         check(xml.acDraw())
+         xml.acDraw()
          print("This must not be reached.")
       end,
       { ERR_Failed }, // Filter for the wrong error code.
@@ -161,6 +181,6 @@ end
       tests = {
          'testCatchClean', 'testCatch', 'testCatchErrorCode',
          'testCatchFilter', 'testMissedFilter', 'testCatchObject',
-         'testNoThrow'
+         'testCatchObjectAction', 'testNoThrow'
       }
    }

@@ -129,6 +129,12 @@ static int object_call(lua_State *Lua)
       }
    }
 
+   struct prvFluid *prv = Lua->Script->Head.ChildPrivate;
+   if ((error >= ERR_ExceptionThreshold) AND (prv->Catch)) {
+      prv->CaughtError = error;
+      luaL_error(prv->Lua, GetErrorMsg(error));
+   }
+
    return results;
 }
 

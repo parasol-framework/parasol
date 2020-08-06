@@ -637,6 +637,11 @@ static int module_call(lua_State *Lua)
          if (ffi_prep_cif(&cif, FFI_DEFAULT_ABI, total_args, &ffi_type_sint32, fin) IS FFI_OK) {
             ffi_call(&cif, function, &rc, fptr);
             lua_pushinteger(Lua, (LONG)rc);
+
+            if ((prv->Catch) AND (restype & FD_ERROR) AND (rc >= ERR_ExceptionThreshold)) {
+               prv->CaughtError = rc;
+               luaL_error(prv->Lua, GetErrorMsg(rc));
+            }
          }
          else lua_pushnil(Lua);
       }

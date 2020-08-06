@@ -6,8 +6,8 @@ The core's technical design means that any object that is not directly owned by 
 treated as external to the script.  External objects must be locked appropriately whenever they are used.  Locking
 ensures that threads can interact with the object safely and that the object cannot be prematurely terminated.
 
-Only objects created through the standard obj.new() interface are permanently locked.  Those created through obj.find(),
-[obj].new() and push_object() are marked as detached (external).
+Only objects created through the standard obj.new() interface are permanently locked.  Those referenced through
+obj.find(), push_object(), or children created with some_object.new() are marked as detached.
 
 */
 
