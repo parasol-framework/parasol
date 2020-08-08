@@ -119,6 +119,26 @@ function testCatchObjectAction()
 end
 
 -----------------------------------------------------------------------------------------------------------------------
+-- Check that errors returned from writing to object fields are caught.
+
+function testSetField()
+   local exception_raised = false
+
+   local err, result = catch(function()
+      local time = obj.new("time", { })
+      time.madeup_field = -1
+   end,
+   function(Exception)
+      print(Exception.line .. ": Caught exception as expected, error code #" .. Exception.code .. " '" .. Exception.message .. "'")
+      exception_raised = true
+   end)
+
+   if (exception_raised != true) then
+      error("Failed to catch the raised exception.")
+   end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
 -- Test that filtering for error codes works.
 
 function testCatchFilter()
@@ -181,6 +201,6 @@ end
       tests = {
          'testCatchClean', 'testCatch', 'testCatchErrorCode',
          'testCatchFilter', 'testMissedFilter', 'testCatchObject',
-         'testCatchObjectAction', 'testNoThrow'
+         'testCatchObjectAction', 'testNoThrow', 'testSetField'
       }
    }

@@ -14,7 +14,11 @@ static int object_newindex(lua_State *Lua)
          if ((obj = access_object(object))) {
             ERROR error = set_object_field(Lua, obj, fieldname, 3);
             release_object(object);
-            if (error) luaL_error(Lua, GetErrorMsg(error));
+            if (error >= ERR_ExceptionThreshold) {
+               struct prvFluid *prv = Lua->Script->Head.ChildPrivate;
+               prv->CaughtError = error;
+               luaL_error(Lua, GetErrorMsg(error));
+            }
             return 0;
          }
       }
@@ -115,6 +119,13 @@ static int object_set(lua_State *Lua)
 
       release_object(object);
       lua_pushinteger(Lua, error);
+
+      if (error >= ERR_ExceptionThreshold) {
+         struct prvFluid *prv = Lua->Script->Head.ChildPrivate;
+         prv->CaughtError = error;
+         luaL_error(prv->Lua, GetErrorMsg(error));
+      }
+
       return 1;
    }
 
@@ -143,6 +154,15 @@ static int object_setvar(lua_State *Lua)
          ERROR error = acSetVar(obj, fieldname, value);
          release_object(object);
          lua_pushinteger(Lua, error);
+
+         if (error >= ERR_ExceptionThreshold) {
+            struct prvFluid *prv = Lua->Script->Head.ChildPrivate;
+            if (prv->Catch) {
+               prv->CaughtError = error;
+               luaL_error(prv->Lua, GetErrorMsg(error));
+            }
+         }
+
          return 1;
       }
    }
@@ -467,7 +487,7 @@ static ERROR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, LONG
       // Default to setting a custom variable rather than throwing an error - primarily for legacy reasons.
       CSTRING vstr = lua_tostring(Lua, ValueIndex);
       if (vstr) {
-         LogF("obj.setfield","Field '%s' is not in class '%s' - defaulting to custom variable.", FName, src->Class->ClassName);
+         LogF("obj.setfield","Field '%s' is not in class '%s' - defaulting to custom variable. [DEPRECATED]", FName, src->Class->ClassName);
          return SetFieldEval(obj, FName, vstr);
       }
       else return ERR_UnsupportedField;
