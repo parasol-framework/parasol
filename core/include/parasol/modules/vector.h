@@ -344,10 +344,11 @@ typedef struct rkVectorColour {
 
 typedef struct rkVectorScene {
    OBJECT_HEADER
-   struct rkVector * Viewport;    // Reference to the VectorViewport that contains the VectorScene.
-   struct rkBitmap * Bitmap;      // Target bitmap.
    LARGE  RenderTime;             // Microseconds elapsed during the last rendering operation.
    DOUBLE Gamma;                  // Not currently implemented.
+   struct rkVector * Viewport;    // Reference to the VectorViewport that contains the VectorScene.
+   struct rkBitmap * Bitmap;      // Target bitmap.
+   struct KeyStore * Defs;        // Stores references to gradients, images, patterns etc
    LONG   Flags;                  // Optional flags.
    LONG   PageWidth;              // Fixed page width - vector viewport width will be stretched to fit this if resizing is enabled.
    LONG   PageHeight;             // Fixed page height - vector viewport height will be stretched to fit this if resizing is enabled.
@@ -356,7 +357,6 @@ typedef struct rkVectorScene {
 #ifdef PRV_VECTORSCENE
    class VMAdaptor *Adaptor;
    agg::rendering_buffer *Buffer;
-   struct KeyStore *Defs; // Linked-list of gradients, images, patterns etc
    UBYTE  AdaptorType;
   
 #endif

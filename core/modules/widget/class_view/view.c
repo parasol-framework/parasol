@@ -2057,8 +2057,10 @@ static ERROR VIEW_SelectItem(objView *Self, struct viewSelectItem *Args)
 -METHOD-
 SelectNone: Deselects all currently selected items.
 
-This method will deselect all items in the view, as if the user had deselected them himself.  The view will be redrawn
-as a result of calling this method.
+This method will deselect all items in the view, as if the user had deselected them himself (callbacks
+will be activated as usual).  The view will be redrawn as a result of calling this method.
+
+If silent deselection is required, set the #SelectionIndex field to -1 instead.
 
 -ERRORS-
 Okay

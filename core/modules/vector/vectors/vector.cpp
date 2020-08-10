@@ -964,7 +964,7 @@ static ERROR VECTOR_SET_EnableBkgd(objVector *Self, LONG Value)
 Fill: Defines the fill painter using SVG's IRI format.
 
 The painter used for filling a vector path can be defined through this field.  The string is parsed through the
-~ReadPainter() function in the Vector module.  Please refer to it for further details on valid  formatting.
+~ReadPainter() function in the Vector module.  Please refer to it for further details on valid formatting.
 
 *****************************************************************************/
 

@@ -268,10 +268,11 @@ module({ name="Vector", copyright="Paul Manias © 2010-2017", version=1.0 }, fun
   })
 
   class("VectorScene", { src="scene/scene.cpp", output="scene/scene_def.c" }, [[
-   obj(Vector) Viewport   # Reference to the VectorViewport that contains the VectorScene.
-   obj(Bitmap) Bitmap     # Target bitmap.
    large RenderTime       # Microseconds elapsed during the last rendering operation.
    double Gamma           # Not currently implemented.
+   obj(Vector) Viewport   # Reference to the VectorViewport that contains the VectorScene.
+   obj(Bitmap) Bitmap     # Target bitmap.
+   struct(*KeyStore) Defs # Stores references to gradients, images, patterns etc
    int(VPF) Flags         # Optional flags.
    int PageWidth          # Fixed page width - vector viewport width will be stretched to fit this if resizing is enabled.
    int PageHeight         # Fixed page height - vector viewport height will be stretched to fit this if resizing is enabled.
@@ -280,7 +281,6 @@ module({ name="Vector", copyright="Paul Manias © 2010-2017", version=1.0 }, fun
   [[
    class VMAdaptor *Adaptor;
    agg::rendering_buffer *Buffer;
-   struct KeyStore *Defs; // Linked-list of gradients, images, patterns etc
    UBYTE  AdaptorType;
   ]])
 

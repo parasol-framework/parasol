@@ -457,10 +457,11 @@ VectorViewport object is initialised.
 #include "scene_def.c"
 
 static const struct FieldArray clSceneFields[] = {
-   { "Viewport",     FDF_OBJECT|FD_R,            ID_VECTORVIEWPORT, NULL, NULL },
-   { "Bitmap",       FDF_OBJECT|FDF_RW,          ID_BITMAP, NULL, (APTR)SET_Bitmap },
    { "RenderTime",   FDF_LARGE|FDF_R,            0, (APTR)GET_RenderTime, NULL },
    { "Gamma",        FDF_DOUBLE|FDF_RW,          0, NULL, NULL },
+   { "Viewport",     FDF_OBJECT|FD_R,            ID_VECTORVIEWPORT, NULL, NULL },
+   { "Bitmap",       FDF_OBJECT|FDF_RW,          ID_BITMAP, NULL, (APTR)SET_Bitmap },
+   { "Defs",         FDF_STRUCT|FDF_PTR|FDF_SYSTEM|FDF_R, (MAXINT)"KeyStore", NULL, NULL },
    { "Flags",        FDF_LONGFLAGS|FDF_RW,       (MAXINT)&clVectorSceneFlags, NULL, NULL },
    { "PageWidth",    FDF_LONG|FDF_RW,            0, NULL, (APTR)SET_PageWidth },
    { "PageHeight",   FDF_LONG|FDF_RW,            0, NULL, (APTR)SET_PageHeight },
