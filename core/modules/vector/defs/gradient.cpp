@@ -564,6 +564,22 @@ static ERROR VECTORGRADIENT_SET_Transform(objVectorGradient *Self, CSTRING Value
 }
 
 /*****************************************************************************
+-FIELD-
+Transforms: A linked list of transforms that have been applied to the gradient.
+
+Any transforms that have been applied to the gradient can be read from the Transforms field.  Each transform is
+represented by the VECTOR_TRANSFORM structure, and are linked in the order in which they are applied to the gradient.
+
+&VectorTransform
+*****************************************************************************/
+
+static ERROR VECTORGRADIENT_GET_Transforms(objVectorGradient *Self, struct VectorTransform **Value)
+{
+   *Value = Self->Transforms;
+   return ERR_Okay;
+}
+
+/*****************************************************************************
 
 -FIELD-
 Type: Specifies the type of gradient (e.g. RADIAL, LINEAR)
@@ -746,6 +762,7 @@ static const struct FieldArray clGradientFields[] = {
    { "ID",           FDF_VIRTUAL|FDF_STRING|FDF_RW, 0, (APTR)VECTORGRADIENT_GET_ID, (APTR)VECTORGRADIENT_SET_ID },
    { "Stops",        FDF_VIRTUAL|FDF_ARRAY|FDF_STRUCT|FDF_RW, (MAXINT)"GradientStop", (APTR)VECTORGRADIENT_GET_Stops, (APTR)VECTORGRADIENT_SET_Stops },
    { "Transform",    FDF_VIRTUAL|FDF_STRING|FDF_W, 0, NULL, (APTR)VECTORGRADIENT_SET_Transform },
+   { "Transforms",   FDF_VIRTUAL|FDF_POINTER|FDF_STRUCT|FDF_R, (MAXINT)"VectorTransform", (APTR)VECTORGRADIENT_GET_Transforms, NULL },
    END_FIELD
 };
 

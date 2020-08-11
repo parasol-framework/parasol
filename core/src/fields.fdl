@@ -968,5 +968,6 @@ header({ path="system/fields", copyright="Paul Manias © 1996-2017" }, function(
     "Module",
     "SubFields",
     "InputCallback",
-    "Defs")
+    "Defs",
+    "Transforms")
 end)

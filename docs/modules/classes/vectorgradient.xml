@@ -161,6 +161,17 @@
     </field>
 
     <field>
+      <name>Transforms</name>
+      <comment>A linked list of transforms that have been applied to the gradient.</comment>
+      <access read="G">Get</access>
+      <type>APTR</type>
+      <description>
+<p>Any transforms that have been applied to the gradient can be read from the Transforms field.  Each transform is represented by the VECTOR_TRANSFORM structure, and are linked in the order in which they are applied to the gradient.</p>
+<struct lookup="VectorTransform"/>
+      </description>
+    </field>
+
+    <field>
       <name>Type</name>
       <comment>Specifies the type of gradient (e.g. RADIAL, LINEAR)</comment>
       <access read="R" write="W">Read/Write</access>

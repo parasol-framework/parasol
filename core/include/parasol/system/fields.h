@@ -964,5 +964,6 @@
 #define FID_SubFields 0xad7852e6LL
 #define FID_InputCallback 0x895c6922LL
 #define FID_Defs 0x7c95a0a7LL
+#define FID_Transforms 0x960f8e14LL
 
 #endif
