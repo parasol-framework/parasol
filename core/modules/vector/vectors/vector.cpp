@@ -1590,7 +1590,7 @@ static ERROR VECTOR_GET_Sequence(objVector *Self, STRING *Value)
    by1 += Self->FinalY;
    by2 += Self->FinalY;
 
-   DOUBLE x, y;
+   DOUBLE x, y, x2, y2, x3, y3, last_x = 0, last_y = 0;
    unsigned i;
    LONG p = 0;
    for (i=0; i < base->total_vertices(); i++) {
@@ -1602,27 +1602,44 @@ static ERROR VECTOR_GET_Sequence(objVector *Self, STRING *Value)
       // leaving out the Z.
 
       switch(cmd) {
-         case agg::path_cmd_stop:
+         case agg::path_cmd_stop: // PE_ClosePath
             seq[p++] = 'Z';
             break;
 
-         case agg::path_cmd_move_to:
+         case agg::path_cmd_move_to: // PE_Move
             base->vertex(i, &x, &y);
-            p += StrFormat(seq+p, sizeof(seq)-p, "M%f,%f", x, y);
+            p += StrFormat(seq+p, sizeof(seq)-p, "M%g,%g", x, y);
+            last_x = x;
+            last_y = y;
             break;
 
-         case agg::path_cmd_line_to:
+         case agg::path_cmd_line_to: // PE_Line
             base->vertex(i, &x, &y);
-            p += StrFormat(seq+p, sizeof(seq)-p, "L%f,%f", x, y);
+            p += StrFormat(seq+p, sizeof(seq)-p, "L%g,%g", x, y);
+            last_x = x;
+            last_y = y;
             break;
 
-         case agg::path_cmd_curve3:
+         case agg::path_cmd_curve3: // PE_QuadCurve
+            base->vertex(i, &x, &y);
+            base->vertex(i+1, &x2, &y2); // End of line
+            p += StrFormat(seq+p, sizeof(seq)-p, "q%g,%g,%g,%g", x - last_x, y - last_y, x2 - last_x, y2 - last_y);
+            last_x = x;
+            last_y = y;
+            i += 1;
             break;
 
-         case agg::path_cmd_curve4:
+         case agg::path_cmd_curve4: // PE_Curve
+            base->vertex(i, &x, &y);
+            base->vertex(i+1, &x2, &y2);
+            base->vertex(i+2, &x3, &y3); // End of line
+            p += StrFormat(seq+p, sizeof(seq)-p, "c%g,%g,%g,%g,%g,%g", x - last_x, y - last_y, x2 - last_x, y2 - last_y, x3 - last_x, y3 - last_y);
+            last_x = x3;
+            last_y = y3;
+            i += 2;
             break;
 
-         case agg::path_cmd_end_poly:
+         case agg::path_cmd_end_poly: // PE_ClosePath
             seq[p++] = 'Z';
             break;
 

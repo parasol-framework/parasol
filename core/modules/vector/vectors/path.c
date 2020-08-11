@@ -120,13 +120,13 @@ static void convert_to_aggpath(struct PathCommand *Paths, LONG TotalCommands, ag
             bp->curve3(path.X2+lp.AbsX, path.Y2+lp.AbsY, path.AbsX, path.AbsY);
             break;
 
-         case PE_QuadSmooth:
+         case PE_QuadSmooth: // Inherits a control from previous vertex
             path.AbsX = path.X;
             path.AbsY = path.Y;
             bp->curve4(path.X2, path.Y2, path.AbsX, path.AbsY);
             break;
 
-         case PE_QuadSmoothRel:
+         case PE_QuadSmoothRel: // Inherits a control from previous vertex
             path.AbsX = lp.AbsX + path.X;
             path.AbsY = lp.AbsY + path.Y;
             bp->curve4(path.X2+lp.AbsX, path.Y2+lp.AbsY, path.AbsX, path.AbsY);
