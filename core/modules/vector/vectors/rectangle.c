@@ -126,6 +126,39 @@ static ERROR RECTANGLE_Resize(objVectorRectangle *Self, struct acResize *Args)
 /*****************************************************************************
 
 -FIELD-
+Dimensions: Dimension flags define whether individual dimension fields contain fixed or relative values.
+
+The following dimension flags are supported:
+
+<types lookup="DMF">
+<type name="FIXED_HEIGHT">The #Height value is a fixed coordinate.</>
+<type name="FIXED_WIDTH">The #Width value is a fixed coordinate.</>
+<type name="FIXED_X">The #X value is a fixed coordinate.</>
+<type name="FIXED_Y">The #Y value is a fixed coordinate.</>
+<type name="RELATIVE_HEIGHT">The #Height value is a relative coordinate.</>
+<type name="RELATIVE_WIDTH">The #Width value is a relative coordinate.</>
+<type name="RELATIVE_X">The #X value is a relative coordinate.</>
+<type name="RELATIVE_Y">The #Y value is a relative coordinate.</>
+</types>
+
+*****************************************************************************/
+
+static ERROR RECTANGLE_GET_Dimensions(objVectorRectangle *Self, LONG *Value)
+{
+   *Value = Self->rDimensions;
+   return ERR_Okay;
+}
+
+static ERROR RECTANGLE_SET_Dimensions(objVectorRectangle *Self, LONG Value)
+{
+   Self->rDimensions = Value;
+   reset_path(Self);
+   return ERR_Okay;
+}
+
+/*****************************************************************************
+
+-FIELD-
 Height: The height of the rectangle.  Can be expressed as a fixed or relative coordinate.
 
 The height of the rectangle is defined here as either a fixed or relative value.  Negative values are permitted (this
@@ -320,13 +353,26 @@ static ERROR RECTANGLE_SET_Y(objVectorRectangle *Self, struct Variable *Value)
 
 //****************************************************************************
 
+static const struct FieldDef clRectDimensions[] = {
+   { "FixedHeight",     DMF_FIXED_HEIGHT },
+   { "FixedWidth",      DMF_FIXED_WIDTH },
+   { "FixedX",          DMF_FIXED_X },
+   { "FixedY",          DMF_FIXED_Y },
+   { "RelativeHeight",  DMF_RELATIVE_HEIGHT },
+   { "RelativeWidth",   DMF_RELATIVE_WIDTH },
+   { "RelativeX",       DMF_RELATIVE_X },
+   { "RelativeY",       DMF_RELATIVE_Y },
+   { NULL, 0 }
+};
+
 static const struct FieldArray clRectangleFields[] = {
-   { "RoundX", FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, 0, (APTR)RECTANGLE_GET_RoundX, (APTR)RECTANGLE_SET_RoundX },
-   { "RoundY", FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, 0, (APTR)RECTANGLE_GET_RoundY, (APTR)RECTANGLE_SET_RoundY },
-   { "X",      FDF_VIRTUAL|FD_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)RECTANGLE_GET_X, (APTR)RECTANGLE_SET_X },
-   { "Y",      FDF_VIRTUAL|FD_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)RECTANGLE_GET_Y, (APTR)RECTANGLE_SET_Y },
-   { "Width",  FDF_VIRTUAL|FD_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)RECTANGLE_GET_Width, (APTR)RECTANGLE_SET_Width },
-   { "Height", FDF_VIRTUAL|FD_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)RECTANGLE_GET_Height, (APTR)RECTANGLE_SET_Height },
+   { "RoundX",     FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, 0, (APTR)RECTANGLE_GET_RoundX, (APTR)RECTANGLE_SET_RoundX },
+   { "RoundY",     FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, 0, (APTR)RECTANGLE_GET_RoundY, (APTR)RECTANGLE_SET_RoundY },
+   { "X",          FDF_VIRTUAL|FD_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)RECTANGLE_GET_X, (APTR)RECTANGLE_SET_X },
+   { "Y",          FDF_VIRTUAL|FD_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)RECTANGLE_GET_Y, (APTR)RECTANGLE_SET_Y },
+   { "Width",      FDF_VIRTUAL|FD_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)RECTANGLE_GET_Width, (APTR)RECTANGLE_SET_Width },
+   { "Height",     FDF_VIRTUAL|FD_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)RECTANGLE_GET_Height, (APTR)RECTANGLE_SET_Height },
+   { "Dimensions", FDF_VIRTUAL|FDF_LONGFLAGS|FDF_RW, (MAXINT)&clRectDimensions, (APTR)RECTANGLE_GET_Dimensions, (APTR)RECTANGLE_SET_Dimensions },
    END_FIELD
 };
 
