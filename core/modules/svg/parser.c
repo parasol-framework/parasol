@@ -969,22 +969,20 @@ static void xtag_use(objSVG *Self, objXML *XML, svgState *State, struct XMLTag *
 
 static void xtag_group(objSVG *Self, objXML *XML, svgState *State, struct XMLTag *Tag, OBJECTPTR Parent, OBJECTPTR *Vector)
 {
-   OBJECTPTR group, sibling;
-   struct XMLTag *child;
-
    FMSG("~xtag_group()","Tag: %p", Tag);
 
    svgState state = *State;
 
+   OBJECTPTR group;
    if (NewObject(ID_VECTORGROUP, 0, &group) != ERR_Okay) return;
    SetOwner(group, Parent);
-   apply_state(&state, group); // Inherit stroke/fill settings etc
    if (Tag->Child) set_state(&state, Tag); // Apply all group attribute values to the current state.
    process_attrib(Self, XML, Tag, group);
 
    // Process child tags
 
-   sibling = NULL;
+   OBJECTPTR sibling = NULL;
+   struct XMLTag *child;
    for (child = Tag->Child; child; child=child->Next) {
       if (child->Attrib->Name) {
          ULONG hash = StrHash(child->Attrib->Name, FALSE);
@@ -1720,7 +1718,7 @@ static ERROR set_property(objSVG *Self, OBJECTPTR Vector, ULONG Hash, objXML *XM
          if (!StrMatch("nonzero", StrValue)) SetLong(Vector, FID_ClipRule, VFR_NON_ZERO);
          else if (!StrMatch("evenodd", StrValue)) SetLong(Vector, FID_ClipRule, VFR_EVEN_ODD);
          else if (!StrMatch("inherit", StrValue)) SetLong(Vector, FID_ClipRule, VFR_INHERIT);
-         else LogErrorMsg("Unsupported fill-rule value '%s'", StrValue);
+         else LogErrorMsg("Unsupported clip-rule value '%s'", StrValue);
          break;
 
       case SVF_ENABLE_BACKGROUND:
