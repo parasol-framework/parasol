@@ -34,9 +34,9 @@
    struct RGB8 rgbStroke, rgbFill;
 
 struct effect {
-   struct effect *Prev;
-   struct effect *Next;
-   struct effect *Input;
+   struct effect *Prev;  // Previous effect in the chain
+   struct effect *Next;  // Next effect in the chain
+   struct effect *Input; // Reference to an additional input effect
    ULONG ID;         // Case sensitive hash identifier for the filter, if anything needs to reference it.
    UBYTE Type;       // Filter effect - FE_OFFSET, etc
    UBYTE Source;     // VSF_REFERENCE, VSF_GRAPHIC...

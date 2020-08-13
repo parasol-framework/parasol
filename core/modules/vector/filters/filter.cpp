@@ -8,7 +8,7 @@ VectorFilter: Filters can be applied as post-effects to rendered vectors.
 The VectorFilter class allows for post-effect filters to be applied to vectors once they have been rendered.  Filter
 support is closely modelled around the SVG standard, and effect results are intended to match that of the standard.
 
-Filter instructions are passed to VectorFilter objects via the XML data channel, where they will be parsed into an
+Filter instructions are passed to VectorFilter objects via the XML data feed, where they will be parsed into an
 internal list of instructions.  It is not possible to modify the instructions once they have been parsed, but they
 can be cleared and a new set of instructions can be applied.
 
@@ -398,6 +398,8 @@ The following example illustrates:
 Unsupported or invalid elements will be reported in debug output and then ignored, allowing the parser to process
 as many instructions as possible.
 
+The XML object that is used to parse the effects is accessible through the #EffectXML field.
+
 -END-
 
 *****************************************************************************/
@@ -407,12 +409,12 @@ static ERROR VECTORFILTER_DataFeed(objVectorFilter *Self, struct acDataFeed *Arg
    if (!Args) return ERR_NullArgs;
 
    if (Args->DataType IS DATA_XML) {
-      objXML *xml;
+      if (Self->EffectXML) { acFree(Self->EffectXML); Self->EffectXML = NULL; }
 
-      if (!NewObject(ID_XML, NF_INTEGRAL, &xml)) {
-         SetString(xml, FID_Statement, (CSTRING)Args->Buffer);
-         if (!acInit(xml)) {
-            for (auto tag = xml->Tags[0]; tag; tag=tag->Next) {
+      if (!NewObject(ID_XML, NF_INTEGRAL, &Self->EffectXML)) {
+         SetString(Self->EffectXML, FID_Statement, (CSTRING)Args->Buffer);
+         if (!acInit(Self->EffectXML)) {
+            for (auto tag = Self->EffectXML->Tags[0]; tag; tag=tag->Next) {
                MSG("Processing filter element '%s'", tag->Attrib->Name);
                switch(StrHash(tag->Attrib->Name, FALSE)) {
                   case SVF_FEBLUR: create_blur(Self, tag); break;
@@ -448,8 +450,6 @@ static ERROR VECTORFILTER_DataFeed(objVectorFilter *Self, struct acDataFeed *Arg
 
             calc_usage(Self);
          }
-
-         acFree(xml);
       }
       else return ERR_CreateObject;
    }
@@ -736,9 +736,10 @@ static ERROR VECTORFILTER_Free(objVectorFilter *Self, APTR Void)
 {
    VECTORFILTER_Clear(Self, NULL);
 
-   if (Self->Scene) { acFree(Self->Scene); Self->Scene = NULL; }
-   if (Self->MergeBitmap) { acFree(Self->MergeBitmap);  Self->MergeBitmap = NULL; }
-   if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
+   if (Self->EffectXML)   { acFree(Self->EffectXML);   Self->EffectXML = NULL; }
+   if (Self->Scene)       { acFree(Self->Scene);       Self->Scene = NULL; }
+   if (Self->MergeBitmap) { acFree(Self->MergeBitmap); Self->MergeBitmap = NULL; }
+   if (Self->Path)        { FreeResource(Self->Path);  Self->Path = NULL; }
    return ERR_Okay;
 }
 
@@ -1087,9 +1088,10 @@ static const struct FieldArray clFilterFields[] = {
    { "Width",          FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)VECTORFILTER_GET_Width, (APTR)VECTORFILTER_SET_Width },
    { "Height",         FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)VECTORFILTER_GET_Height, (APTR)VECTORFILTER_SET_Height },
    { "Opacity",        FDF_DOUBLE|FDF_RW,           0, NULL, (APTR)VECTORFILTER_SET_Opacity },
-   { "Scene",          FDF_INTEGRAL|FDF_R,             0, NULL, NULL },
+   { "Scene",          FDF_INTEGRAL|FDF_R,          0, NULL, NULL },
    { "Viewport",       FDF_SYSTEM|FDF_OBJECT|FDF_R, 0, NULL, NULL },
    { "Inherit",        FDF_OBJECT|FDF_RW,           0, NULL, (APTR)VECTORFILTER_SET_Inherit },
+   { "EffectXML",      FDF_OBJECT|FDF_R,            ID_XML, NULL, NULL },
    { "Units",          FDF_LONG|FDF_LOOKUP|FDF_RW,  (MAXINT)&clVectorFilterUnits, NULL, NULL },
    { "PrimitiveUnits", FDF_LONG|FDF_LOOKUP|FDF_RW,  (MAXINT)&clVectorFilterPrimitiveUnits, NULL, NULL },
    { "Dimensions",     FDF_LONGFLAGS|FDF_R,         (MAXINT)&clFilterDimensions, NULL, NULL },

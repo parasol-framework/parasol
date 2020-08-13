@@ -470,17 +470,18 @@ typedef struct rkVectorGradient {
 
 typedef struct rkVectorFilter {
    OBJECT_HEADER
-   DOUBLE X;
-   DOUBLE Y;
-   DOUBLE Width;
-   DOUBLE Height;
-   DOUBLE Opacity;
+   DOUBLE X;                              // Left-most position of filter area
+   DOUBLE Y;                              // Top-most position of filter area
+   DOUBLE Width;                          // Width of filter area
+   DOUBLE Height;                         // Height of filter area
+   DOUBLE Opacity;                        // Level of opacity from 0 - 1.0
    struct rkVectorScene * Scene;          // Internal scene
    struct rkVectorViewport * Viewport;    // Internal viewport
    struct rkVectorFilter * Inherit;       // Reference to another pattern from which to inherit attributes
+   struct rkXML * EffectXML;              // The XML object used to parse incoming effects
    LONG   Units;                          // VUNIT constant
    LONG   PrimitiveUnits;                 // VUNIT constant
-   LONG   Dimensions;
+   LONG   Dimensions;                     // Flags for detailing area values
    LONG   ColourSpace;
 
 #ifdef PRV_VECTORFILTER

@@ -338,17 +338,18 @@ module({ name="Vector", copyright="Paul Manias © 2010-2017", version=1.0 }, fun
   ]])
 
   class("VectorFilter", { src="filters/filter.cpp", output="filters/filter_def.c" }, [[
-    double X
-    double Y
-    double Width
-    double Height
-    double Opacity
+    double X                      # Left-most position of filter area
+    double Y                      # Top-most position of filter area
+    double Width                  # Width of filter area
+    double Height                 # Height of filter area
+    double Opacity                # Level of opacity from 0 - 1.0
     obj(VectorScene) Scene        # Internal scene
     obj(VectorViewport) Viewport  # Internal viewport
     obj(VectorFilter) Inherit     # Reference to another pattern from which to inherit attributes
+    obj(XML) EffectXML            # The XML object used to parse incoming effects
     int(VUNIT) Units              # VUNIT constant
     int(VUNIT) PrimitiveUnits     # VUNIT constant
-    int Dimensions
+    int Dimensions                # Flags for detailing area values
     int(CS) ColourSpace
   ]],
   [[

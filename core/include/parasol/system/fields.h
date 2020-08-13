@@ -965,5 +965,8 @@
 #define FID_InputCallback 0x895c6922LL
 #define FID_Defs 0x7c95a0a7LL
 #define FID_Transforms 0x960f8e14LL
+#define FID_PointsArray 0x44a25981LL
+#define FID_EffectXML 0xa7fe50e3LL
+#define FID_PrimitiveUnits 0xf4494b91LL
 
 #endif
