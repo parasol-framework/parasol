@@ -276,6 +276,33 @@ static ERROR POLY_SET_Closed(objVectorPoly *Self, LONG Value)
 
 /*****************************************************************************
 -FIELD-
+PathLength: Calibrates the user agent's distance-along-a-path calculations with that of the author.
+
+The author's computation of the total length of the path, in user units. This value is used to calibrate the user
+agent's own distance-along-a-path calculations with that of the author. The user agent will scale all
+distance-along-a-path computations by the ratio of PathLength to the user agent's own computed value for total path
+length.  This feature potentially affects calculations for text on a path, motion animation and various stroke
+operations.
+
+*****************************************************************************/
+
+static ERROR POLY_GET_PathLength(objVectorPoly *Self, LONG *Value)
+{
+   *Value = Self->PathLength;
+   return ERR_Okay;
+}
+
+static ERROR POLY_SET_PathLength(objVectorPoly *Self, LONG Value)
+{
+   if (Value >= 0) {
+      Self->PathLength = Value;
+      return ERR_Okay;
+   }
+   else return ERR_InvalidValue;
+}
+
+/*****************************************************************************
+-FIELD-
 PointsArray: A series of numbered pairs that define the polygon.
 
 The PointsArray field can be set with a &VectorPoint array that defines the shape of a polygon.  A minimum of two
@@ -513,6 +540,7 @@ static const struct ActionArray clPolygonActions[] = {
 
 static const struct FieldArray clPolygonFields[] = {
    { "Closed",      FDF_VIRTUAL|FDF_LONG|FD_RW,                 0, (APTR)POLY_GET_Closed, (APTR)POLY_SET_Closed },
+   { "PathLength",  FDF_VIRTUAL|FDF_LONG|FDF_RW,                0, (APTR)POLY_GET_PathLength, (APTR)POLY_SET_PathLength },
    { "PointsArray", FDF_VIRTUAL|FDF_ARRAY|FDF_POINTER|FDF_RW,   0, (APTR)POLY_GET_PointsArray, (APTR)POLY_SET_PointsArray },
    { "Points",      FDF_VIRTUAL|FDF_STRING|FDF_W,               0, NULL, (APTR)POLY_SET_Points },
    { "TotalPoints", FDF_VIRTUAL|FDF_LONG|FDF_R,                 0, (APTR)POLY_GET_TotalPoints, NULL },
