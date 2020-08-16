@@ -310,6 +310,39 @@ static ERROR WAVE_SET_Degree(objVectorWave *Self, DOUBLE Value)
 }
 
 /*****************************************************************************
+
+-FIELD-
+Dimensions: Dimension flags define whether individual dimension fields contain fixed or relative values.
+
+The following dimension flags are supported:
+
+<types lookup="DMF">
+<type name="FIXED_HEIGHT">The #Height value is a fixed coordinate.</>
+<type name="FIXED_WIDTH">The #Width value is a fixed coordinate.</>
+<type name="FIXED_X">The #X value is a fixed coordinate.</>
+<type name="FIXED_Y">The #Y value is a fixed coordinate.</>
+<type name="RELATIVE_HEIGHT">The #Height value is a relative coordinate.</>
+<type name="RELATIVE_WIDTH">The #Width value is a relative coordinate.</>
+<type name="RELATIVE_X">The #X value is a relative coordinate.</>
+<type name="RELATIVE_Y">The #Y value is a relative coordinate.</>
+</types>
+
+*****************************************************************************/
+
+static ERROR WAVE_GET_Dimensions(objVectorWave *Self, LONG *Value)
+{
+   *Value = Self->wDimensions;
+   return ERR_Okay;
+}
+
+static ERROR WAVE_SET_Dimensions(objVectorWave *Self, LONG Value)
+{
+   Self->wDimensions = Value;
+   reset_path(Self);
+   return ERR_Okay;
+}
+
+/*****************************************************************************
 -FIELD-
 Frequency: Defines the wave frequency (the distance between each wave).
 
@@ -527,6 +560,18 @@ static const struct FieldDef clWaveClose[] = {
    { NULL, 0 }
 };
 
+static const struct FieldDef clWaveDimensions[] = {
+   { "FixedHeight",     DMF_FIXED_HEIGHT },
+   { "FixedWidth",      DMF_FIXED_WIDTH },
+   { "FixedX",          DMF_FIXED_X },
+   { "FixedY",          DMF_FIXED_Y },
+   { "RelativeHeight",  DMF_RELATIVE_HEIGHT },
+   { "RelativeWidth",   DMF_RELATIVE_WIDTH },
+   { "RelativeX",       DMF_RELATIVE_X },
+   { "RelativeY",       DMF_RELATIVE_Y },
+   { NULL, 0 }
+};
+
 static const struct FieldArray clWaveFields[] = {
    { "X",         FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)WAVE_GET_X, (APTR)WAVE_SET_X },
    { "Y",         FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)WAVE_GET_Y, (APTR)WAVE_SET_Y },
@@ -538,6 +583,7 @@ static const struct FieldArray clWaveFields[] = {
    { "Degree",    FDF_VIRTUAL|FDF_DOUBLE|FDF_RW,    0, (APTR)WAVE_GET_Degree, (APTR)WAVE_SET_Degree },
    { "Close",     FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clWaveClose, (APTR)WAVE_GET_Close, (APTR)WAVE_SET_Close },
    { "Thickness", FDF_VIRTUAL|FDF_DOUBLE|FDF_RW,    0, (APTR)WAVE_GET_Thickness, (APTR)WAVE_SET_Thickness },
+   { "Dimensions", FDF_VIRTUAL|FDF_LONGFLAGS|FDF_RW, (MAXINT)&clWaveDimensions, (APTR)WAVE_GET_Dimensions, (APTR)WAVE_SET_Dimensions },
    END_FIELD
 };
 
