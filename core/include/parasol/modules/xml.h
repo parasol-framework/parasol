@@ -283,5 +283,20 @@ INLINE struct XMLTag * XMLFIND(struct XMLTag **List, CSTRING Name) {
    }
    return 0;
 }
+
+INLINE ERROR xmlSetAttribDouble(objXML *XML, LONG Tag, LONG Flags, CSTRING Attrib, DOUBLE Value)
+{
+   char buffer[48];
+   StrFormat(buffer, sizeof(buffer), "%g", Value);
+   return xmlSetAttrib(XML, Tag, Flags, Attrib, buffer);
+}
+
+INLINE ERROR xmlSetAttribLong(objXML *XML, LONG Tag, LONG Flags, CSTRING Attrib, LONG Value)
+{
+   char buffer[20];
+   StrFormat(buffer, sizeof(buffer), "%d", Value);
+   return xmlSetAttrib(XML, Tag, Flags, Attrib, buffer);
+}
+
   
 #endif
