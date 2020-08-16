@@ -126,13 +126,6 @@
     </field>
 
     <field>
-      <name>Defs</name>
-      <comment>Stores references to gradients, images, patterns etc</comment>
-      <access read="R">Read</access>
-      <type>struct KeyStore *</type>
-    </field>
-
-    <field>
       <name>Flags</name>
       <comment>Optional flags.</comment>
       <access read="R" write="W">Read/Write</access>

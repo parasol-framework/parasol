@@ -1699,11 +1699,11 @@ The data for the attribute is defined in the Name and Value parameters. You can 
 associated with the attribute.  Set the Value pointer to NULL to remove the attribute. If both Name and Value are NULL,
 an error will be returned.
 
-Please note that the attribute at index 0 declares the name of the tag and should not normally be accompanied with a
+NOTE: The attribute at index 0 declares the name of the tag and should not normally be accompanied with a
 value declaration.  However, if the tag represents content within its parent, then the Name must be set to NULL and the
 Value string will determine the content.
 
-NOTE: The address of the original tag will be invalidated as a result of calling this method.  Any tag
+NOTE: The address of the modified tag will be invalidated as a result of calling this method.  Any tag
 pointers that have been stored by the client program will need to be refreshed from the XML tag list after calling this
 method, for example:
 

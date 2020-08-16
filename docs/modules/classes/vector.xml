@@ -335,7 +335,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>STRING</type>
       <description>
-<p>The painter used for filling a vector path can be defined through this field.  The string is parsed through the <function module="Vector">ReadPainter</function> function in the Vector module.  Please refer to it for further details on valid  formatting.</p>
+<p>The painter used for filling a vector path can be defined through this field.  The string is parsed through the <function module="Vector">ReadPainter</function> function in the Vector module.  Please refer to it for further details on valid formatting.</p>
       </description>
     </field>
 

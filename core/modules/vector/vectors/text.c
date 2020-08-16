@@ -590,7 +590,7 @@ static ERROR TEXT_SET_DX(objVectorText *Self, DOUBLE *Values, LONG Elements)
 
 /*****************************************************************************
 -FIELD-
-DX: Adjusts vertical spacing on a per-character basis.
+DY: Adjusts vertical spacing on a per-character basis.
 
 This field follows the same rules described in #DX.
 

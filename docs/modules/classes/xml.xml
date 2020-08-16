@@ -386,8 +386,8 @@
       <description>
 <p>This method is used to update and add attributes to existing XML tags, as well as adding or modifying content.  You need to supply the address of a tag index and the index number of the attribute that you are going to update.</p>
 <p>The data for the attribute is defined in the Name and Value parameters. You can set a Value of "" if no data is to be associated with the attribute.  Set the Value pointer to NULL to remove the attribute. If both Name and Value are NULL, an error will be returned.</p>
-<p>Please note that the attribute at index 0 declares the name of the tag and should not normally be accompanied with a value declaration.  However, if the tag represents content within its parent, then the Name must be set to NULL and the Value string will determine the content.</p>
-<p>NOTE: The address of the original tag will be invalidated as a result of calling this method.  Any tag pointers that have been stored by the client program will need to be refreshed from the XML tag list after calling this method, for example:</p>
+<p>NOTE: The attribute at index 0 declares the name of the tag and should not normally be accompanied with a value declaration.  However, if the tag represents content within its parent, then the Name must be set to NULL and the Value string will determine the content.</p>
+<p>NOTE: The address of the modified tag will be invalidated as a result of calling this method.  Any tag pointers that have been stored by the client program will need to be refreshed from the XML tag list after calling this method, for example:</p>
 <pre>LONG index = tag-&gt;Index; // Store the index of tag.
 xmlSetAttrib(XML, tag-&gt;Index, XMS_NEW, "name", "value");
 tag = XML-&gt;Tags[index]; // Refresh the pointer to tag.

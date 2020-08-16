@@ -15,7 +15,7 @@
     <copyright>Paul Manias © 2010-2017</copyright>
     <description>
 <p>The VectorFilter class allows for post-effect filters to be applied to vectors once they have been rendered.  Filter support is closely modelled around the SVG standard, and effect results are intended to match that of the standard.</p>
-<p>Filter instructions are passed to VectorFilter objects via the XML data channel, where they will be parsed into an internal list of instructions.  It is not possible to modify the instructions once they have been parsed, but they can be cleared and a new set of instructions can be applied.</p>
+<p>Filter instructions are passed to VectorFilter objects via the XML data feed, where they will be parsed into an internal list of instructions.  It is not possible to modify the instructions once they have been parsed, but they can be cleared and a new set of instructions can be applied.</p>
 <p>It is important to note that filter effects are CPU intensive tasks and real-time performance may be disappointing. If this is an issue, it can often be rectified by pre-rendering the filter effects in advance and storing the results in cached bitmaps.</p></description>
     <source>
       <file path="filters/">filter.cpp</file>
@@ -42,6 +42,7 @@
 &lt;/feMerge&gt;
 </pre>
 <p>Unsupported or invalid elements will be reported in debug output and then ignored, allowing the parser to process as many instructions as possible.</p>
+<p>The XML object that is used to parse the effects is accessible through the <field>EffectXML</field> field.</p>
       </description>
     </action>
 
@@ -83,6 +84,13 @@
 <type name="RELATIVE_HEIGHT">The <field>Height</field> value is a relative coordinate.</type>
 </types>
       </description>
+    </field>
+
+    <field>
+      <name>EffectXML</name>
+      <comment>The XML object used to parse incoming effects</comment>
+      <access read="R">Read</access>
+      <type class="XML">*XML</type>
     </field>
 
     <field>
