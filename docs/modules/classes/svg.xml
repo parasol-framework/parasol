@@ -32,6 +32,28 @@
       <comment>Stops all playback of SVG animations.</comment>
     </action>
 
+    <action>
+      <name>Init</name>
+      <comment>Initialise the SVG object.</comment>
+      <description>
+<p>Initialising an SVG object will load an SVG source file if a <field>Path</field> has been specified.  The default behaviour is to generate the content in a local <field>Scene</field> object, or alternatively the content can be redirected to an external <class name="VectorScene">VectorScene</class> referred to by <field>Target</field>.</p>
+      </description>
+    </action>
+
+    <action>
+      <name>SaveImage</name>
+      <comment>Saves the SVG document as a PNG image.</comment>
+      <description>
+<p>This action will render the SVG document to a bitmap and save the resulting image.  The size of the image is determined by the PageWidth and PageHeight of the @Scene, or if not defined then the default of 1920x1080 is applied.</p>
+<p>The image will be saved in PNG format by default, but can be changed by specifying an alternate ClassID.  PNG is recommended in particular because it supports an alpha channel.</p>
+      </description>
+    </action>
+
+    <action>
+      <name>SaveToObject</name>
+      <comment>Saves the SVG document to a data object.</comment>
+    </action>
+
   </actions>
 
   <methods>
@@ -80,7 +102,8 @@
       <access read="G" write="S">Get/Set</access>
       <type>FUNCTION</type>
       <description>
-<p>If an SVG object is being animated, ...</p>
+<p>A callback can be referenced in this field that will trigger on the preparation of each animation frame if the SVG object is being animated.  This feature is typically used to render the SVG document to a target <class name="Bitmap">Bitmap</class>.</p>
+<p>The function prototype is <code>void Function(*SVG)</code>.</p>
       </description>
     </field>
 
