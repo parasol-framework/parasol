@@ -1012,6 +1012,9 @@ static ERROR VECTOR_SET_FillColour(objVector *Self, FLOAT *Value, LONG Elements)
       else Self->FillColour.Alpha = 1;
    }
    else Self->FillColour.Alpha = 0;
+
+   if (Self->FillString) { FreeResource(Self->FillString); Self->FillString = NULL; }
+
    return ERR_Okay;
 }
 

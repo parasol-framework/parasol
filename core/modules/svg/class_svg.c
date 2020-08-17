@@ -198,6 +198,149 @@ static ERROR SVG_Render(objSVG *Self, struct svgRender *Args)
 }
 
 /*****************************************************************************
+-ACTION-
+SaveImage: Saves the SVG document as a PNG image.
+
+This action will render the SVG document to a bitmap and save the resulting image.  The size of the image is
+determined by the PageWidth and PageHeight of the @Scene, or if not defined then the default of 1920x1080 is applied.
+
+The image will be saved in PNG format by default, but can be changed by specifying an alternate ClassID.  PNG
+is recommended in particular because it supports an alpha channel.
+
+-END-
+*****************************************************************************/
+
+static ERROR SVG_SaveImage(objSVG *Self, struct acSaveImage *Args)
+{
+   ERROR error;
+
+   if (!Args) return ERR_NullArgs;
+
+   LONG width = 0;
+   LONG height = 0;
+   GetLong(Self->Scene, FID_PageWidth, &width);
+   GetLong(Self->Scene, FID_PageHeight, &height);
+
+   if (!width) width = 1920;
+   if (!height) height = 1080;
+
+   objPicture *pic;
+   if (!CreateObject(ID_PICTURE, 0, &pic,
+         FID_Width|TLONG,  width,
+         FID_Height|TLONG, height,
+         FID_Flags|TLONG,  PCF_ALPHA|PCF_NEW,
+         TAGEND)) {
+
+      if ((error = svgRender(Self, pic->Bitmap, 0, 0, width, height))) {
+         if ((error = acSaveImage(pic, Args->DestID, Args->ClassID))) {
+            return ERR_Okay;
+         }
+      }
+
+      acFree(pic);
+   }
+   else error = ERR_CreateObject;
+
+   return error;
+}
+
+/*****************************************************************************
+-ACTION-
+SaveToObject: Saves the SVG document to a data object.
+-END-
+*****************************************************************************/
+
+static ERROR SVG_SaveToObject(objSVG *Self, struct acSaveToObject *Args)
+{
+   static char header[] =
+"<?xml version=\"1.0\" standalone=\"no\"?>\n\
+<!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\" \"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\">\n";
+   ERROR (**routine)(OBJECTPTR, APTR);
+
+   if (!Self->Viewport) return PostError(ERR_NoData);
+
+   if ((Args->ClassID) AND (Args->ClassID != ID_SVG)) {
+      struct rkMetaClass *class = (struct rkMetaClass *)FindClass(Args->ClassID);
+      if ((!GetPointer(class, FID_ActionTable, &routine)) AND (routine)) {
+         if ((routine[AC_SaveToObject]) AND (routine[AC_SaveToObject] != (APTR)SVG_SaveToObject)) {
+            return routine[AC_SaveToObject]((OBJECTPTR)Self, Args);
+         }
+         else if ((routine[AC_SaveImage]) AND (routine[AC_SaveImage] != (APTR)SVG_SaveImage)) {
+            struct acSaveImage saveimage;
+            saveimage.DestID = Args->DestID;
+            return routine[AC_SaveImage]((OBJECTPTR)Self, &saveimage);
+         }
+         else return PostError(ERR_NoSupport);
+      }
+      else return PostError(ERR_GetField);
+   }
+   else {
+      objXML *xml;
+      if (!CreateObject(ID_XML, NF_INTEGRAL, &xml,
+            FID_Flags|TLONG, XMF_NEW|XMF_READABLE|XMF_PARSE_ENTITY,
+            TAGEND)) {
+         ERROR error = xmlInsertXML(xml, 0, 0, header, NULL);
+         LONG index = xml->TagCount-1;
+
+         if (!(error = xmlInsertXML(xml, index, XMI_NEXT, "<svg version=\"1.1\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:parasol=\"http://www.parasol.ws/xmlns/svg\"/>", &index))) {
+            BYTE multiple_viewports = (Self->Scene->Viewport->Next) ? TRUE : FALSE;
+            if (multiple_viewports) {
+               objVector *scan;
+
+               save_svg_defs(Self, xml, Self->Scene, index);
+
+               for (scan=Self->Scene->Viewport; scan; scan=scan->Next) {
+                  if (!scan->Child) continue; // Ignore dummy viewports with no content
+                  save_svg_scan(Self, xml, scan, index);
+               }
+
+               acSaveToObject(xml, Args->DestID, 0);
+            }
+            else {
+               DOUBLE x, y, width, height;
+
+               if (!(error = GetFields(Self->Viewport, FID_ViewX|TDOUBLE, &x, FID_ViewY|TDOUBLE, &y, FID_ViewWidth|TDOUBLE, &width, FID_ViewHeight|TDOUBLE, &height, TAGEND))) {
+                  char buffer[80];
+                  StrFormat(buffer, sizeof(buffer), "%g %g %g %g", x, y, width, height);
+                  xmlSetAttrib(xml, index, XMS_NEW, "viewBox", buffer);
+               }
+
+               LONG dim;
+               if ((!error) AND (!(error = GetLong(Self->Viewport, FID_Dimensions, &dim)))) {
+                  if ((dim & (DMF_RELATIVE_X|DMF_FIXED_X)) AND (!GetDouble(Self->Viewport, FID_X, &x)))
+                     set_dimension(xml, index, "x", x, dim & DMF_RELATIVE_X);
+
+                  if ((dim & (DMF_RELATIVE_Y|DMF_FIXED_Y)) AND (!GetDouble(Self->Viewport, FID_Y, &y)))
+                     set_dimension(xml, index, "y", y, dim & DMF_RELATIVE_Y);
+
+                  if ((dim & (DMF_RELATIVE_WIDTH|DMF_FIXED_WIDTH)) AND (!GetDouble(Self->Viewport, FID_Width, &width)))
+                     set_dimension(xml, index, "width", width, dim & DMF_RELATIVE_WIDTH);
+
+                  if ((dim & (DMF_RELATIVE_HEIGHT|DMF_FIXED_HEIGHT)) AND (!GetDouble(Self->Viewport, FID_Height, &height)))
+                     set_dimension(xml, index, "height", height, dim & DMF_RELATIVE_HEIGHT);
+               }
+
+               if (!error) {
+                  save_svg_defs(Self, xml, Self->Scene, index);
+
+                  objVector *scan;
+                  for (scan=((objVector *)Self->Viewport)->Child; scan; scan=scan->Next) {
+                     save_svg_scan(Self, xml, scan, index);
+                  }
+
+                  acSaveToObject(xml, Args->DestID, 0);
+               }
+            }
+         }
+
+         acFree(xml);
+         return error;
+      }
+      else return ERR_CreateObject;
+   }
+}
+
+/*****************************************************************************
 
 -FIELD-
 Flags: Optional flags.
@@ -212,7 +355,10 @@ container's frame number.
 -FIELD-
 FrameCallback: Optional callback that is triggered whenever a new frame is prepared.
 
-If an SVG object is being animated, ...
+A callback can be referenced in this field that will trigger on the preparation of each animation frame if the SVG
+object is being animated.  This feature is typically used to render the SVG document to a target @Bitmap.
+
+The function prototype is `void Function(*SVG)`.
 
 *****************************************************************************/
 
@@ -321,6 +467,7 @@ static ERROR SET_Target(objSVG *Self, OBJECTPTR Value)
    if (Value->ClassID IS ID_VECTORSCENE) {
       Self->Target = Value;
       Self->Scene = (objVectorScene *)Value;
+      if (Self->Scene->Viewport) Self->Viewport = &Self->Scene->Viewport->Head;
    }
    else {
       OBJECTID owner_id = GetOwner(Value);
@@ -332,6 +479,7 @@ static ERROR SET_Target(objSVG *Self, OBJECTPTR Value)
 
       Self->Scene = (objVectorScene *)GetObjectPtr(owner_id);
       Self->Target = Value;
+      if (Self->Scene->Viewport) Self->Viewport = &Self->Scene->Viewport->Head;
    }
 
    return ERR_Okay;

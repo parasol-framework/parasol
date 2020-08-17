@@ -155,7 +155,7 @@ static void xtag_clippath(objSVG *Self, objXML *XML, struct XMLTag *Tag)
          else acFree(clip);
       }
       else {
-         LogErrorMsg("No id attribute specified in <clippath> at line %d.", Tag->LineNo);
+         LogErrorMsg("No id attribute specified in <clipPath> at line %d.", Tag->LineNo);
          acFree(clip);
       }
    }
@@ -825,6 +825,7 @@ static void xtag_morph(objSVG *Self, objXML *XML, struct XMLTag *Tag, OBJECTPTR 
       SetPointer(Parent, FID_Morph, shape);
       if (transvector) SetPointer(Parent, FID_Transition, transvector);
       SetLong(Parent, FID_MorphFlags, flags);
+      scAddDef(Self->Scene, id->ID, shape);
    }
 }
 
@@ -1493,7 +1494,7 @@ static ERROR set_property(objSVG *Self, OBJECTPTR Vector, ULONG Hash, objXML *XM
                //    oblique 12pt "Helvetica Nue", serif; font-stretch: condensed
                //
                // [ [ <'font-style'> || <'font-variant'> || <'font-weight'> ]? <'font-size'> [ / <'line-height'> ]? <'font-family'> ] | caption | icon | menu | message-box | small-caption | status-bar | inherit
-
+               #warning Add support for text font attribute
                return ERR_NoSupport;
             }
 
@@ -1615,7 +1616,6 @@ static ERROR set_property(objSVG *Self, OBJECTPTR Vector, ULONG Hash, objXML *XM
             case SVF_CX:   field_id = FID_CenterX; break;
             case SVF_CY:   field_id = FID_CenterY; break;
             case SVF_R:    field_id = FID_Radius; break;
-            case SVF_STEP: field_id = FID_Step; break;
             case SVF_N1:   field_id = FID_N1; break;
             case SVF_N2:   field_id = FID_N2; break;
             case SVF_N3:   field_id = FID_N3; break;

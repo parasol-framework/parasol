@@ -63,6 +63,10 @@ static ERROR animation_timer(objSVG *, LARGE, LARGE);
 static void convert_styles(objXML *);
 static void  process_attrib(objSVG *, objXML *, struct XMLTag *, OBJECTPTR);
 static ERROR process_shape(objSVG *, CLASSID, objXML *, svgState *, struct XMLTag *, OBJECTPTR, OBJECTPTR *);
+static ERROR save_svg_scan(objSVG *, objXML *, objVector *, LONG);
+static ERROR save_svg_defs(objSVG *, objXML *, objVectorScene *, LONG);
+static ERROR save_svg_scan_std(objSVG *, objXML *, objVector *, LONG);
+static ERROR save_svg_transform(struct VectorTransform *, char *, LONG);
 static ERROR set_property(objSVG *, OBJECTPTR, ULONG Hash, objXML *, struct XMLTag *, CSTRING);
 static ERROR xtag_defs(objSVG *, objXML *, svgState *, struct XMLTag *, OBJECTPTR);
 static void  xtag_group(objSVG *, objXML *, svgState *, struct XMLTag *, OBJECTPTR, OBJECTPTR *);
@@ -74,6 +78,7 @@ static void xtag_symbol(objSVG *, objXML *, struct XMLTag *);
 //****************************************************************************
 
 #include "utility.c"
+#include "save_svg.c"
 
 //****************************************************************************
 
