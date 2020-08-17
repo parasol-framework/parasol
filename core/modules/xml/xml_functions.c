@@ -78,7 +78,7 @@ static ERROR count_tags(objXML *Self, CSTRING Text, CSTRING *Result)
 
       if ((!*str) OR (*str IS '>') OR ((*str IS '/') AND (str[1] IS '>')) OR (*str IS '=')) break;
 
-      while ((*str > 0x20) AND (*str != '>') AND (*str != '=')) {
+      while ((*str > 0x20) AND (*str != '>') AND (*str != '=')) { // Tag name
          if ((str[0] IS '/') AND (str[1] IS '>')) break;
          str++;
       }
@@ -103,10 +103,15 @@ static ERROR count_tags(objXML *Self, CSTRING Text, CSTRING *Result)
             str++;
          }
       }
+      else if (*str IS '"') { // Notation attributes don't have names
+         str++;
+         while ((*str) AND (*str != '"')) str++;
+         if (*str IS '"') str++;
+      }
    }
 
    if ((*str IS '>') AND (*Text != '!') AND (*Text != '?')) {
-      // We have found an unclosed tag.  This means that we must extract the content within it and handle any child tags.
+      // The tag is open.  Scan the content within it and handle any child tags.
 
       str++;
       if (!(Self->Flags & XMF_ALL_CONTENT)) skipwhitespace(str);
@@ -187,14 +192,11 @@ static ERROR txt_to_xml(objXML *Self, CSTRING Text)
    Self->Tags = tag;
 
    // Extract the tag information.  This loop will extract the top-level tags.  The extract_tag() function is recursive
-   // and will thus get the child tags.
+   // to extract the child tags.
 
    MSG("Extracting tag information with extract_tag()");
 
-   struct exttag ext;
-   ext.Start = Text;
-   ext.TagIndex = 0;
-   ext.Branch = 0;
+   struct exttag ext = { .Start = Text, .TagIndex = 0, .Branch = 0 };
    struct XMLTag *prevtag = NULL;
    for (str=Text; (*str) AND (*str != '<'); str++) if (*str IS '\n') Self->LineNo++;
    ext.Pos = str;
@@ -304,54 +306,65 @@ static ERROR txt_to_xml(objXML *Self, CSTRING Text)
 }
 
 //****************************************************************************
-// Called by txt_to_xml() to extract the next tag from an XML string.  This function also recurses into itself.
+// Extracts the next tag from an XML string.  This function also recurses into itself.
 
 static CSTRING extract_tag_attrib(objXML *Self, CSTRING Str, LONG *AttribSize, WORD *TotalAttrib)
 {
-   while ((*Str) AND (*Str != '>')) {
-      if ((Str[0] IS '/') AND (Str[1] IS '>')) break;
-      if ((Str[0] IS '?') AND (Str[1] IS '>')) break;
+   CSTRING str = Str;
+   LONG size = 0;
+   while ((*str) AND (*str != '>')) {
+      if ((str[0] IS '/') AND (str[1] IS '>')) break; // Termination checks
+      if ((str[0] IS '?') AND (str[1] IS '>')) break;
 
-      while ((*Str) AND (*Str <= 0x20)) { if (*Str IS '\n') Self->LineNo++; Str++; }
-      if ((*Str IS 0) OR (*Str IS '>') OR (((*Str IS '/') OR (*Str IS '?')) AND (Str[1] IS '>'))) break;
+      while ((*str) AND (*str <= 0x20)) { if (*str IS '\n') Self->LineNo++; str++; }
+      if ((*str IS 0) OR (*str IS '>') OR (((*str IS '/') OR (*str IS '?')) AND (str[1] IS '>'))) break;
 
-      if (*Str IS '=') return NULL;
+      if (*str IS '=') return NULL; // Check for invalid XML
 
-      while ((*Str > 0x20) AND (*Str != '>') AND (*Str != '=')) {
-         if ((Str[0] IS '/') AND (Str[1] IS '>')) break;
-         if ((Str[0] IS '?') AND (Str[1] IS '>')) break;
-         Str++; AttribSize[0]++;
+      if (*str IS '"') { // Notation values can start with double quotes and have no name.
+         str++;
+         while ((*str) AND (*str != '"')) { size++; str++; }
+         if (*str IS '"') str++;
+         size++; // String termination byte
       }
-      AttribSize[0]++; // String termination byte
-
-      while ((*Str) AND (*Str <= 0x20)) { if (*Str IS '\n') Self->LineNo++; Str++; }
-
-      if (*Str IS '=') {
-         Str++;
-         while ((*Str) AND (*Str <= 0x20)) { if (*Str IS '\n') Self->LineNo++; Str++; }
-         if (*Str IS '"') {
-            Str++;
-            while ((*Str) AND (*Str != '"')) { if (*Str IS '\n') Self->LineNo++; Str++; AttribSize[0]++; }
-            if (*Str IS '"') Str++;
+      else {
+         while ((*str > 0x20) AND (*str != '>') AND (*str != '=')) {
+            if ((str[0] IS '/') AND (str[1] IS '>')) break;
+            if ((str[0] IS '?') AND (str[1] IS '>')) break;
+            str++; size++;
          }
-         else if (*Str IS '\'') {
-            Str++;
-            while ((*Str) AND (*Str != '\'')) { if (*Str IS '\n') Self->LineNo++; Str++; AttribSize[0]++; }
-            if (*Str IS '\'') Str++;
-         }
-         else while ((*Str > 0x20) AND (*Str != '>')) {
-            if ((Str[0] IS '/') AND (Str[1] IS '>')) break;
-            if ((Str[0] IS '?') AND (Str[1] IS '>')) break;
-            Str++; AttribSize[0]++;
-         }
+         size++; // String termination byte
 
-         AttribSize[0]++; // String termination byte
+         while ((*str) AND (*str <= 0x20)) { if (*str IS '\n') Self->LineNo++; str++; }
+
+         if (*str IS '=') {
+            str++;
+            while ((*str) AND (*str <= 0x20)) { if (*str IS '\n') Self->LineNo++; str++; }
+            if (*str IS '"') {
+               str++;
+               while ((*str) AND (*str != '"')) { if (*str IS '\n') Self->LineNo++; str++; size++; }
+               if (*str IS '"') str++;
+            }
+            else if (*str IS '\'') {
+               str++;
+               while ((*str) AND (*str != '\'')) { if (*str IS '\n') Self->LineNo++; str++; size++; }
+               if (*str IS '\'') str++;
+            }
+            else while ((*str > 0x20) AND (*str != '>')) {
+               if ((str[0] IS '/') AND (str[1] IS '>')) break;
+               if ((str[0] IS '?') AND (str[1] IS '>')) break;
+               str++; size++;
+            }
+
+            size++; // String termination byte
+         }
       }
 
       TotalAttrib[0]++;
    }
 
-   return Str;
+   *AttribSize += size;
+   return str;
 }
 
 //****************************************************************************
@@ -455,7 +468,7 @@ static ERROR extract_tag(objXML *Self, struct exttag *Status)
          tag->ID          = glTagID++;
          tag->AttribSize  = len + 1;
          tag->CData       = TRUE;
-         tag->Branch       = Status->Branch;
+         tag->Branch      = Status->Branch;
          tag->LineNo      = line_no;
 
          STRING buffer = ((APTR)tag->Attrib) + sizeof(struct XMLAttrib);
@@ -494,7 +507,6 @@ static ERROR extract_tag(objXML *Self, struct exttag *Status)
       }
    }
 
-
    if (totalattrib <= 0) {
       LogErrorMsg("Failed to extract a tag from \"%.10s\" (offset %d), index %d, nest %d.", Status->Pos, (LONG)(Status->Pos - Status->Start), Status->TagIndex, Status->Branch);
       return ERR_InvalidData;
@@ -510,7 +522,7 @@ static ERROR extract_tag(objXML *Self, struct exttag *Status)
    tag->TotalAttrib = totalattrib;
    tag->AttribSize  = attribsize;
    tag->ID          = glTagID++;
-   tag->Branch       = Status->Branch;
+   tag->Branch      = Status->Branch;
    tag->LineNo      = line_no;
 
    Self->Tags[Status->TagIndex] = tag;
@@ -522,24 +534,32 @@ static ERROR extract_tag(objXML *Self, struct exttag *Status)
    STRING buffer = ((APTR)tag->Attrib) + (sizeof(struct XMLAttrib) * tag->TotalAttrib);
    str    = Status->Pos+1;
    if (*str IS '?') tag->Instruction = TRUE; // Detect <?xml ?> style instruction elements.
-   LONG index  = 0;
-   LONG pos    = 0;
+   else if ((*str IS '!') AND (str[1] >= 'A') AND (str[1] <= 'Z')) tag->Notation = TRUE;
+
+   LONG a = 0;
    while ((*str) AND (*str <= 0x20)) { if (*str IS '\n') Self->LineNo++; str++; }
    while ((*str) AND (*str != '>')) {
-      if ((str[0] IS '/') AND (str[1] IS '>')) break;
+      if ((str[0] IS '/') AND (str[1] IS '>')) break; // Termination checks
       if ((str[0] IS '?') AND (str[1] IS '>')) break;
 
       if (*str IS '=') return PostError(ERR_InvalidData);
 
+      if (a >= tag->TotalAttrib) return PostError(ERR_BufferOverflow);
+
       // Extract the name of the attribute
 
-      tag->Attrib[pos].Name = buffer;
-      while ((*str > 0x20) AND (*str != '>') AND (*str != '=')) {
-         if ((str[0] IS '/') AND (str[1] IS '>')) break;
-         if ((str[0] IS '?') AND (str[1] IS '>')) break;
-         *buffer++ = *str++;
+      if (*str IS '"') { // Quoted notation attributes are parsed as values instead
+         tag->Attrib[a].Name = NULL;
       }
-      *buffer++ = 0;
+      else {
+         tag->Attrib[a].Name = buffer;
+         while ((*str > 0x20) AND (*str != '>') AND (*str != '=')) {
+            if ((str[0] IS '/') AND (str[1] IS '>')) break;
+            if ((str[0] IS '?') AND (str[1] IS '>')) break;
+            *buffer++ = *str++;
+         }
+         *buffer++ = 0;
+      }
 
       // Extract the attributes value
 
@@ -548,7 +568,7 @@ static ERROR extract_tag(objXML *Self, struct exttag *Status)
       if (*str IS '=') {
          str++;
          while ((*str) AND (*str <= 0x20)) { if (*str IS '\n') Self->LineNo++; str++; }
-         tag->Attrib[pos].Value = buffer;
+         tag->Attrib[a].Value = buffer;
          if (*str IS '"') {
             str++;
             while ((*str) AND (*str != '"')) { if (*str IS '\n') Self->LineNo++; *buffer++ = *str++; }
@@ -568,8 +588,15 @@ static ERROR extract_tag(objXML *Self, struct exttag *Status)
 
          *buffer++ = 0;
       }
+      else if ((!tag->Attrib[a].Name) AND (*str IS '"')) { // Detect notation value with no name
+         tag->Attrib[a].Value = buffer;
+         str++;
+         while ((*str) AND (*str != '"')) { if (*str IS '\n') Self->LineNo++; *buffer++ = *str++; }
+         if (*str IS '"') str++;
+         *buffer++ = 0;
+      }
 
-      pos++;
+      a++;
       while ((*str) AND (*str <= 0x20)) { if (*str IS '\n') Self->LineNo++; str++; }
    }
 
@@ -578,7 +605,7 @@ static ERROR extract_tag(objXML *Self, struct exttag *Status)
    if ((*Status->Pos IS '>') AND (tag->Attrib->Name[0] != '!') AND (tag->Attrib->Name[0] != '?')) {
       // We reached the end of an unclosed tag.  Extract the content within it and handle any child tags.
 
-      index = Status->TagIndex; // Remember the current tag position
+      LONG index = Status->TagIndex; // Remember the current tag position
       Status->Pos++;
       Status->Branch++;
       ERROR error = extract_content(Self, Status);
@@ -828,10 +855,10 @@ struct XMLTag * build_xml_string(struct XMLTag *Tag, STRING Buffer, LONG Flags, 
 
    LONG i;
    for (i=0; i < Tag->TotalAttrib; i++) {
-      offset += output_attribvalue(Tag->Attrib[i].Name, Buffer+offset);
+      if (Tag->Attrib[i].Name) offset += output_attribvalue(Tag->Attrib[i].Name, Buffer+offset);
 
       if ((Tag->Attrib[i].Value) AND (Tag->Attrib[i].Value[0])) {
-         Buffer[offset++] = '=';
+         if (Tag->Attrib[i].Name) Buffer[offset++] = '=';
          Buffer[offset++] = '"';
          offset += output_attribvalue(Tag->Attrib[i].Value, Buffer+offset);
          Buffer[offset++] = '"';
@@ -841,6 +868,10 @@ struct XMLTag * build_xml_string(struct XMLTag *Tag, STRING Buffer, LONG Flags, 
 
    if (Tag->Instruction) {
       Buffer[offset++] = '?';
+      Buffer[offset++] = '>';
+      if (Flags & XMF_READABLE) Buffer[offset++] = '\n';
+   }
+   else if (Tag->Notation) {
       Buffer[offset++] = '>';
       if (Flags & XMF_READABLE) Buffer[offset++] = '\n';
    }
@@ -897,7 +928,7 @@ struct XMLTag * len_xml_str(struct XMLTag *Tag, LONG Flags, LONG *Length)
       return Tag->Next;
    }
 
-   // Output the Attrib assigned to this tag
+   // Output the attributes assigned to this tag
 
    length++; // <
 
@@ -905,17 +936,20 @@ struct XMLTag * len_xml_str(struct XMLTag *Tag, LONG Flags, LONG *Length)
    for (i=0; i < Tag->TotalAttrib; i++) {
       LONG namelen = attrib_len(Tag->Attrib[i].Name);
 
-      if (!namelen) { // Do a check just to ensure the integrity of the XML data
-         LogErrorMsg("Attribute %d in the tag at index %d does not have its name field defined.", i, Tag->Index);
+      // Do a check just to ensure the integrity of the XML data.  Only notations can have nameless attributes
+      if ((!namelen) AND (!Tag->Notation)) {
+         LogErrorMsg("Attribute %d in the tag at index %d is missing a defined name.", i, Tag->Index);
       }
 
       length += namelen;
 
       if ((Tag->Attrib[i].Value) AND (Tag->Attrib[i].Value[0])) {
-         length += 2; // ="
+         if (namelen) length++; // =
+         length++; // "
          length += attrib_len(Tag->Attrib[i].Value);
          length++; // "
       }
+
       if (i + 1 < Tag->TotalAttrib) length++; // Space
    }
 
@@ -923,6 +957,10 @@ struct XMLTag * len_xml_str(struct XMLTag *Tag, LONG Flags, LONG *Length)
 
    if ((Tag->Attrib->Name[0] IS '?') OR (Tag->Instruction)) {
       length += 2; // ?>
+      if (Flags & XMF_READABLE) length++; // \n
+   }
+   else if (Tag->Notation) {
+      length += 1; // >
       if (Flags & XMF_READABLE) length++; // \n
    }
    else if ((xmltag = Tag->Child)) {

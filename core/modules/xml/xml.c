@@ -33,7 +33,7 @@ NOTATION     <!NOTATION gif SYSTEM "viewer.exe">
 *****************************************************************************/
 
 #undef DEBUG
-//#define DEBUG
+//#define DEBUG // Enables extensive debugging of the XML tree
 //#define DEBUG_TREE_REMOVE // Print out the tree structure whenever RemoveTag is used
 //#define DEBUG_TREE_INSERT // Print out the tree structure whenever InsertXML is used
 //#define DEBUG_TREE_MOVE   // Print out the tree structure whenever MoveTags is used
@@ -106,7 +106,7 @@ static void debug_tree(STRING Header, objXML *Self)
 
       if (tag->Attrib) {
          if (tag->Attrib->Name) {
-            LogF(Header,"%.3d/%.3d: %p<-%p->%p Child %p %s%s", index, tag->Index, tag->Prev, tag, tag->Next, tag->Child, buffer, tag->Attrib->Name);
+            LogF(Header,"%.3d/%.3d: %p<-%p->%p Child %p %s%s {%d}", index, tag->Index, tag->Prev, tag, tag->Next, tag->Child, buffer, tag->Attrib->Name, tag->TotalAttrib);
          }
          else {
             // Extract a limited amount of content

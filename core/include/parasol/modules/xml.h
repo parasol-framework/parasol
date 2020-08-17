@@ -72,6 +72,7 @@ typedef struct XMLTag {
      LONG  AttribSize;       // The length of all attribute strings, compressed together
      UWORD CData:1;          // CDATA content section
      UWORD Instruction:1;    // Processing instruction, e.g. <?xml ?> or <?php ?>
+     UWORD Notation:1;       // Unparsable notations such as <!DOCTYPE ... >
      WORD  pad01;
   #endif
     
