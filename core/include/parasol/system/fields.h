@@ -968,5 +968,6 @@
 #define FID_PointsArray 0x44a25981LL
 #define FID_EffectXML 0xa7fe50e3LL
 #define FID_PrimitiveUnits 0xf4494b91LL
+#define FID_Degree 0xf880fbf1LL
 
 #endif
