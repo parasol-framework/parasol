@@ -309,36 +309,32 @@ static ERROR SUPER_SET_Close(objVectorShape *Self, LONG Value)
 }
 
 /*****************************************************************************
--FIELD-
-Radius: The radius of the generated shape.  Expressed as a fixed or relative coordinate.
 
-The Radius defines the final size of the generated shape.  It can be expressed in fixed or relative terms.
+-FIELD-
+Dimensions: Dimension flags define whether individual dimension fields contain fixed or relative values.
+
+The following dimension flags are supported:
+
+<types lookup="DMF">
+<type name="FIXED_CENTER_X">The #CenterX value is a fixed coordinate.</>
+<type name="FIXED_CENTER_Y">The #CenterY value is a fixed coordinate.</>
+<type name="FIXED_RADIUS">The #Radius value is a fixed coordinate.</>
+<type name="RELATIVE_CENTER_X">The #CenterX value is a relative coordinate.</>
+<type name="RELATIVE_CENTER_Y">The #CenterY value is a relative coordinate.</>
+<type name="RELATIVE_RADIUS">The #Radius value is a relative coordinate.</>
+</types>
 
 *****************************************************************************/
 
-static ERROR SUPER_GET_Radius(objVectorShape *Self, struct Variable *Value)
+static ERROR SUPER_GET_Dimensions(objVectorShape *Self, LONG *Value)
 {
-   DOUBLE val = Self->Radius;
-   if ((Value->Type & FD_PERCENTAGE) and (Self->Dimensions & DMF_RELATIVE_RADIUS)) val = val * 100.0;
-   if (Value->Type & FD_DOUBLE) Value->Double = val;
-   else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
+   *Value = Self->Dimensions;
    return ERR_Okay;
 }
 
-static ERROR SUPER_SET_Radius(objVectorShape *Self, struct Variable *Value)
+static ERROR SUPER_SET_Dimensions(objVectorShape *Self, LONG Value)
 {
-   DOUBLE val;
-   if (Value->Type & FD_DOUBLE) val = Value->Double;
-   else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return PostError(ERR_FieldTypeMismatch);
-
-   if (Value->Type & FD_PERCENTAGE) {
-      val = val * 0.01;
-      Self->Dimensions = (Self->Dimensions | DMF_RELATIVE_RADIUS) & (~DMF_FIXED_RADIUS);
-   }
-   else Self->Dimensions = (Self->Dimensions | DMF_FIXED_RADIUS) & (~DMF_RELATIVE_RADIUS);
-
-   Self->Radius = val;
+   Self->Dimensions = Value;
    reset_path(Self);
    return ERR_Okay;
 }
@@ -491,6 +487,41 @@ static ERROR SUPER_SET_Phi(objVectorShape *Self, DOUBLE Value)
 
 /*****************************************************************************
 -FIELD-
+Radius: The radius of the generated shape.  Expressed as a fixed or relative coordinate.
+
+The Radius defines the final size of the generated shape.  It can be expressed in fixed or relative terms.
+
+*****************************************************************************/
+
+static ERROR SUPER_GET_Radius(objVectorShape *Self, struct Variable *Value)
+{
+   DOUBLE val = Self->Radius;
+   if ((Value->Type & FD_PERCENTAGE) and (Self->Dimensions & DMF_RELATIVE_RADIUS)) val = val * 100.0;
+   if (Value->Type & FD_DOUBLE) Value->Double = val;
+   else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
+   return ERR_Okay;
+}
+
+static ERROR SUPER_SET_Radius(objVectorShape *Self, struct Variable *Value)
+{
+   DOUBLE val;
+   if (Value->Type & FD_DOUBLE) val = Value->Double;
+   else if (Value->Type & FD_LARGE) val = Value->Large;
+   else return PostError(ERR_FieldTypeMismatch);
+
+   if (Value->Type & FD_PERCENTAGE) {
+      val = val * 0.01;
+      Self->Dimensions = (Self->Dimensions | DMF_RELATIVE_RADIUS) & (~DMF_FIXED_RADIUS);
+   }
+   else Self->Dimensions = (Self->Dimensions | DMF_FIXED_RADIUS) & (~DMF_RELATIVE_RADIUS);
+
+   Self->Radius = val;
+   reset_path(Self);
+   return ERR_Okay;
+}
+
+/*****************************************************************************
+-FIELD-
 Repeat: Repeat the generated shape multiple times.
 
 If set to a value greater than one, the Repeat field will cause the generated shape to be replicated multiple times
@@ -569,6 +600,16 @@ static ERROR SUPER_SET_Vertices(objVectorShape *Self, LONG Value)
 
 //****************************************************************************
 
+static const struct FieldDef clSuperDimensions[] = {
+   { "FixedRadius",     DMF_FIXED_RADIUS },
+   { "FixedCenterX",    DMF_FIXED_CENTER_X },
+   { "FixedCenterY",    DMF_FIXED_CENTER_Y },
+   { "RelativeRadius",  DMF_RELATIVE_RADIUS },
+   { "RelativeCenterX", DMF_RELATIVE_CENTER_X },
+   { "RelativeCenterY", DMF_RELATIVE_CENTER_Y },
+   { NULL, 0 }
+};
+
 static const struct ActionArray clVectorShapeActions[] = {
    { AC_NewObject, (APTR)SUPER_NewObject },
    { 0, NULL }
@@ -579,6 +620,7 @@ static const struct FieldArray clVectorShapeFields[] = {
    { "CenterY",    FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)SUPER_GET_CenterY, (APTR)SUPER_SET_CenterY },
    { "Radius",     FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)SUPER_GET_Radius,  (APTR)SUPER_SET_Radius },
    { "Close",      FDF_VIRTUAL|FDF_LONG|FDF_RW,   0, (APTR)SUPER_GET_Close, (APTR)SUPER_SET_Close },
+   { "Dimensions", FDF_VIRTUAL|FDF_LONGFLAGS|FDF_RW, (MAXINT)&clSuperDimensions, (APTR)SUPER_GET_Dimensions, (APTR)SUPER_SET_Dimensions },
    { "Phi",        FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, 0, (APTR)SUPER_GET_Phi,  (APTR)SUPER_SET_Phi },
    { "A",          FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, 0, (APTR)SUPER_GET_A,  (APTR)SUPER_SET_A },
    { "B",          FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, 0, (APTR)SUPER_GET_B,  (APTR)SUPER_SET_B },
@@ -589,7 +631,7 @@ static const struct FieldArray clVectorShapeFields[] = {
    { "Vertices",   FDF_VIRTUAL|FDF_LONG|FDF_RW, 0, (APTR)SUPER_GET_Vertices, (APTR)SUPER_SET_Vertices },
    { "Mod",        FDF_VIRTUAL|FDF_LONG|FDF_RW, 0, (APTR)SUPER_GET_Mod, (APTR)SUPER_SET_Mod },
    { "Spiral",     FDF_VIRTUAL|FDF_LONG|FDF_RW, 0, (APTR)SUPER_GET_Spiral, (APTR)SUPER_SET_Spiral },
-   { "Repeat",     FDF_VIRTUAL|FDF_LONG|FDF_RW,   0, (APTR)SUPER_GET_Repeat, (APTR)SUPER_SET_Repeat },
+   { "Repeat",     FDF_VIRTUAL|FDF_LONG|FDF_RW, 0, (APTR)SUPER_GET_Repeat, (APTR)SUPER_SET_Repeat },
    // Synonyms
    { "CX", FDF_SYNONYM|FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)SUPER_GET_CenterX, (APTR)SUPER_SET_CenterX },
    { "CY", FDF_SYNONYM|FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)SUPER_GET_CenterY, (APTR)SUPER_SET_CenterY },
