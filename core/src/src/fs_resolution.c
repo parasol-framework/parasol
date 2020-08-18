@@ -90,6 +90,14 @@ ERROR ResolvePath(CSTRING Path, LONG Flags, STRING *Result)
 #ifdef _WIN32
    if ((LCASE(Path[0]) >= 'a') AND (LCASE(Path[0]) <= 'z') AND (Path[1] IS ':')) {
       resolved = TRUE; // Windows drive letter reference discovered
+      if ((Path[2] != '/') AND (Path[2] != '\\')) {
+         // Ensure that the path is correctly formed in order to pass test_path()
+         src[0] = Path[0];
+         src[1] = ':';
+         src[2] = '\\';
+         StrCopy(Path+2, src+3, sizeof(src)-3);
+         Path = src;
+      }
    }
    else if ((Path[0] IS '/') AND (Path[1] IS '/')) {
       resolved = TRUE; // UNC path discovered
