@@ -12,7 +12,7 @@
     <idstring>ID_VECTORPATH</idstring>
     <category>Graphics</category>
     <include>modules/vectorpath.h</include>
-    <copyright>Paul Manias © 2010-2017</copyright>
+    <copyright>Paul Manias © 2010-2020</copyright>
     <description>
 <p>VectorPath provides support for parsing SVG styled path strings.</p></description>
     <source>

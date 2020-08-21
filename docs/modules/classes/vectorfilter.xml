@@ -12,7 +12,7 @@
     <idstring>ID_VECTORFILTER</idstring>
     <category>Graphics</category>
     <include>modules/vectorfilter.h</include>
-    <copyright>Paul Manias © 2010-2017</copyright>
+    <copyright>Paul Manias © 2010-2020</copyright>
     <description>
 <p>The VectorFilter class allows for post-effect filters to be applied to vectors once they have been rendered.  Filter support is closely modelled around the SVG standard, and effect results are intended to match that of the standard.</p>
 <p>Filter instructions are passed to VectorFilter objects via the XML data feed, where they will be parsed into an internal list of instructions.  It is not possible to modify the instructions once they have been parsed, but they can be cleared and a new set of instructions can be applied.</p>

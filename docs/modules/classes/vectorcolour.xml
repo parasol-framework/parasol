@@ -12,7 +12,7 @@
     <idstring>ID_VECTORCOLOUR</idstring>
     <category>Graphics</category>
     <include>modules/vectorcolour.h</include>
-    <copyright>Paul Manias © 2010-2017</copyright>
+    <copyright>Paul Manias © 2010-2020</copyright>
     <description>
 <p>VectorColour is a stub class for exclusive use with the Vector module's DrawPath() function, for use in either the StrokeStyle or FillStyle parameters.  VectorColour allows the path to be drawn with a solid colour, as specified in the Red, Green, Blue and Alpha fields.</p></description>
     <source>

@@ -2,7 +2,7 @@
 #define MODULES_VECTOR 1
 
 // Name:      vector.h
-// Copyright: Paul Manias © 2010-2017
+// Copyright: Paul Manias © 2010-2020
 // Generator: idl-c
 
 #ifndef MAIN_H

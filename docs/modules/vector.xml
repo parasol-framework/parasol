@@ -6,7 +6,7 @@
     <name>Vector</name>
     <type>module</type>
     <version>1</version>
-    <copyright>Paul Manias © 2010-2017</copyright>
+    <copyright>Paul Manias © 2010-2020</copyright>
     <classes>
       <class>Vector</class>
       <class>VectorColour</class>
