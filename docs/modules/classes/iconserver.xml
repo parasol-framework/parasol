@@ -12,7 +12,7 @@
     <idstring>ID_ICONSERVER</idstring>
     <category>System</category>
     <include>modules/iconserver.h</include>
-    <copyright>Paul Manias © 2014-2017</copyright>
+    <copyright>Paul Manias © 2014-2020</copyright>
     <description>
 <p>The IconServer class provides an icon management and image resizing service for all applications.  It provides this service through the icons: assignment.  Icons are requested from the server by accessing them through the virtual filesystem, making access to the icon server 'invisible'.  Direct contact with the icon server only needs to be made when requesting a new theme, or to change the default icon size.</p>
 <p>Icon files can be accessed from the icon server using the following file path formats:</p>

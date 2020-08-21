@@ -2,7 +2,7 @@
 #define MODULES_ICONSERVER 1
 
 // Name:      iconserver.h
-// Copyright: Paul Manias © 2014-2017
+// Copyright: Paul Manias © 2014-2020
 // Generator: idl-c
 
 #ifndef MAIN_H

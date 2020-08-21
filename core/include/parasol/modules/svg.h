@@ -2,7 +2,7 @@
 #define MODULES_SVG 1
 
 // Name:      svg.h
-// Copyright: Paul Manias © 2010-2017
+// Copyright: Paul Manias © 2010-2020
 // Generator: idl-c
 
 #ifndef MAIN_H

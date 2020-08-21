@@ -2,7 +2,7 @@
 #define MODULES_SURFACE 1
 
 // Name:      surface.h
-// Copyright: Paul Manias © 2000-2017
+// Copyright: Paul Manias © 2000-2020
 // Generator: idl-c
 
 #ifndef MAIN_H

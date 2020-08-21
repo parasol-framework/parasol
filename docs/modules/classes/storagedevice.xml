@@ -12,7 +12,7 @@
     <idstring>ID_STORAGEDEVICE</idstring>
     <category>System</category>
     <include>modules/storagedevice.h</include>
-    <copyright>Paul Manias 1996-2017</copyright>
+    <copyright>Paul Manias 1996-2020</copyright>
     <description>
 <p>The StorageDevice class returns the meta data of file system volumes.  A reference to an existing volume is required in the <field>Volume</field> field in order to make a successful analysis.  If the volume name cannot be resolved, initialisation will fail.</p>
 <p>Following initialisation, all meta fields describing the volume are readable for further information.</p></description>

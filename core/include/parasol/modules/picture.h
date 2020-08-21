@@ -2,7 +2,7 @@
 #define MODULES_PICTURE 1
 
 // Name:      picture.h
-// Copyright: Paul Manias © 2001-2017
+// Copyright: Paul Manias © 2001-2020
 // Generator: idl-c
 
 #ifndef MAIN_H

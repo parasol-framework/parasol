@@ -11,7 +11,7 @@
     <idstring>ID_CLIENTSOCKET</idstring>
     <category>Network</category>
     <include>modules/clientsocket.h</include>
-    <copyright>Paul Manias © 2005-2017</copyright>
+    <copyright>Paul Manias © 2005-2020</copyright>
   </info>
 
   <fields>

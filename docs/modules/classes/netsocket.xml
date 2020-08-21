@@ -12,7 +12,7 @@
     <idstring>ID_NETSOCKET</idstring>
     <category>Network</category>
     <include>modules/netsocket.h</include>
-    <copyright>Paul Manias © 2005-2017</copyright>
+    <copyright>Paul Manias © 2005-2020</copyright>
     <description>
 <p>The NetSocket class provides a simple way of using TCP/IP sockets.  Connections from a single client to the server and from the server to multiple clients are supported.  SSL functionality is also integrated.</p>
 <p>The NetSocket class is designed only to cater for asynchronous (non-blocking) communication. This functionality is achieved primarily through callback fields - connection alerts are managed by <field>Feedback</field>, incoming data is received through <field>Incoming</field> and readiness for outgoing data is supported by <field>Outgoing</field>.</p>

@@ -12,7 +12,7 @@
     <idstring>ID_METACLASS</idstring>
     <category>System</category>
     <include>modules/metaclass.h</include>
-    <copyright>Paul Manias 1996-2017</copyright>
+    <copyright>Paul Manias 1996-2020</copyright>
     <description>
 <p>The MetaClass is at the root of the Core's object oriented design and is responsible for managing the construction of new classes.  All classes that are created within the system at run-time are represented by a MetaClass object.  Each MetaClass object can be inspected to discover detailed information about the class that has been declared.  Most of the interesting structural data can be gleaned from the <field>Fields</field> array.</p>
 <p>A number of functions are available in the Core for the purpose of class management.  The Core maintains its own list of MetaClass objects, which you can search by calling the <function module="Core">FindClass</function> function.  The <function module="Core">CheckAction</function> function provides a way of checking if a particular pre-defined action is supported by a class.</p>

@@ -12,7 +12,7 @@
     <idstring>ID_SCINTILLA</idstring>
     <category>Tool</category>
     <include>modules/scintilla.h</include>
-    <copyright>Paul Manias © 2005-2017</copyright>
+    <copyright>Paul Manias © 2005-2020</copyright>
     <description>
 <p>The Scintilla class provides advanced text editing capabilities that are suitable for modifying text files of any kind, as well as simple user input features for text input boxes.  The code is based on the Scintilla project at http://scintilla.org and it may be useful to study the official Scintilla documentation for further insight into its capabilities.</p></description>
     <source>

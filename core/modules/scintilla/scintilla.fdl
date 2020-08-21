@@ -1,6 +1,6 @@
 --$FLUID:Include
 
-module({ name="Scintilla", copyright="Paul Manias © 2005-2017", version=1.0 }, function()
+module({ name="Scintilla", copyright="Paul Manias © 2005-2020", version=1.0 }, function()
   c_include("<parasol/modules/display.h>",
   "<parasol/modules/font.h>",
   "<parasol/modules/surface.h>",

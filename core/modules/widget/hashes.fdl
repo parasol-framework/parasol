@@ -1,6 +1,6 @@
 --$FLUID:Include
 
-header({ copyright="Paul Manias © 1996-2017" }, function()
+header({ copyright="Paul Manias © 1996-2020" }, function()
   hash("HASH", "0x%s",
     "GfxScript",
     "Path",

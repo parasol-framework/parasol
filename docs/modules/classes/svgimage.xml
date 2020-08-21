@@ -12,7 +12,7 @@
     <idstring>ID_SVGIMAGE</idstring>
     <category>GUI</category>
     <include>modules/svgimage.h</include>
-    <copyright>Paul Manias © 2010-2017</copyright>
+    <copyright>Paul Manias © 2010-2020</copyright>
     <description>
 <p>The SVGImage class provides support for drawing vectors to the user's display.  Most of the underlying functionality is provided by the <class name="SVG">SVG</class> and <class name="Vector">Vector</class> classes, with SVGImage only managing the rendering to a target surface.</p>
 <p>The following example illustrates how to create a simple vector scene using an embedded SVG definition:</p>

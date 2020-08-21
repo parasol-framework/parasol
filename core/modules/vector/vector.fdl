@@ -1,6 +1,6 @@
 --$FLUID:Include
 
-module({ name="Vector", copyright="Paul Manias © 2010-2017", version=1.0 }, function()
+module({ name="Vector", copyright="Paul Manias © 2010-2020", version=1.0 }, function()
   c_include("<parasol/modules/display.h>")
 
   restrict(function()
@@ -312,21 +312,21 @@ module({ name="Vector", copyright="Paul Manias © 2010-2017", version=1.0 }, fun
   ]])
 
   class("VectorGradient", { src="defs/gradient.cpp", output="defs/gradient_def.c" }, [[
-    double X1   # Starting X coordinate of the gradient 'line'
-    double Y1   # Starting Y coordinate of the gradient 'line'
-    double X2   # Ending X of the gradient 'line'
-    double Y2   # Ending Y of the gradient 'line'
-    double CenterX  # Center X coordinate of radial gradient shapes.
-    double CenterY  # Center Y coordinate of radial gradient shapes.
-    double FX       # Focal X coordinate for radial gradient shapes.
-    double FY       # Focal Y coordinate for radial gradient shapes.
-    double Radius   # The size of a radial gradient radius.
+    double X1                    # Starting X coordinate of the gradient 'line'
+    double Y1                    # Starting Y coordinate of the gradient 'line'
+    double X2                    # Ending X of the gradient 'line'
+    double Y2                    # Ending Y of the gradient 'line'
+    double CenterX               # Center X coordinate of radial gradient shapes.
+    double CenterY               # Center Y coordinate of radial gradient shapes.
+    double FX                    # Focal X coordinate for radial gradient shapes.
+    double FY                    # Focal Y coordinate for radial gradient shapes.
+    double Radius                # The size of a radial gradient radius.
     obj(VectorGradient) Inherit  # Reference to another gradient from which to inherit attributes
     int(VSPREAD) SpreadMethod    # Defines the spread method to use for gradient fills.
     int(VUNIT) Units             # Defines the coordinate system for (x1,y1),(x2,y2)
     int(VGT) Type
-    int(VGF) Flags            # Optional flags
-    int TotalStops            # The total number of records in the Stops array.
+    int(VGF) Flags               # Optional flags
+    int TotalStops               # The total number of records in the Stops array.
   ]],
   [[
    struct GradientStop *Stops;  // An array of gradient stop colours.

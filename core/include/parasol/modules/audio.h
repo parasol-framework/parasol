@@ -2,7 +2,7 @@
 #define MODULES_AUDIO 1
 
 // Name:      audio.h
-// Copyright: Paul Manias © 2002-2017
+// Copyright: Paul Manias © 2002-2020
 // Generator: idl-c
 
 #ifndef MAIN_H

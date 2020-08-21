@@ -2,7 +2,7 @@
 #define MODULES_DISPLAY 1
 
 // Name:      display.h
-// Copyright: Paul Manias 2003-2017
+// Copyright: Paul Manias 2003-2020
 // Generator: idl-c
 
 #ifndef MAIN_H

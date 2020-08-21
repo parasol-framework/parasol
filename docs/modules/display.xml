@@ -8,7 +8,7 @@
     <version>1</version>
     <status>stable</status>
     <prefix>gfx</prefix>
-    <copyright>Paul Manias 2003-2017</copyright>
+    <copyright>Paul Manias 2003-2020</copyright>
     <classes>
       <class>Bitmap</class>
       <class>Display</class>
@@ -707,7 +707,7 @@ if ((pointer = gfxAccessPointer())) {
     <description>
 <p>The SubscribeInput() function provides a method for receiving input messages.  Input messages can be filtered so that they are received in relation to surfaces and devices.  An input mask can also be applied so that only certain types of messages are received.  If no filters are applied, then all user input messages can be received.</p>
 <p>The input system is limited to managing messages that are related to the display (such as track pads, mouse pointers, graphics tablets and touch screens). Keyboard devices are not included in the input management system as they are specially supported by the <module>Keyboard</module> module.</p>
-<p>To limit the number of messages being passed through the system, all input messages are placed on a global queue that is accessible to all tasks.  When a new message appears that matches a client's filtering criteria, an InputReady data feed message will be sent to it.  The <function module="Core">GetInputMsg</function> function can then be used to process the available messages in the queue.  The following code segment illustrates an example of this and would be used in the DataFeed action:</p>
+<p>To reduce the number of messages being passed through the system, input messages are placed on a global queue that is accessible to all tasks.  When a new message appears that matches a client's filtering criteria, an InputReady data feed message will be sent to it.  The <function module="Core">GetInputMsg</function> function can then be used to process the available messages in the queue.  The following code segment illustrates an example of this, and would be used in the DataFeed action:</p>
 <pre>if (Args-&gt;DataType IS DATA_INPUT_READY) {
    struct InputMsg *input;
 

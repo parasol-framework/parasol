@@ -2,7 +2,7 @@
 #define MODULES_DOCUMENT 1
 
 // Name:      document.h
-// Copyright: Paul Manias © 2005-2017
+// Copyright: Paul Manias © 2005-2020
 // Generator: idl-c
 
 #ifndef MAIN_H

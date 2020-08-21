@@ -7,7 +7,7 @@
     <type>module</type>
     <version>1</version>
     <prefix>icon</prefix>
-    <copyright>Paul Manias © 2014-2017</copyright>
+    <copyright>Paul Manias © 2014-2020</copyright>
     <classes>
       <class>IconServer</class>
     </classes>

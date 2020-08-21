@@ -2,7 +2,7 @@
 #define MODULES_SCINTILLA 1
 
 // Name:      scintilla.h
-// Copyright: Paul Manias © 2005-2017
+// Copyright: Paul Manias © 2005-2020
 // Generator: idl-c
 
 #ifndef MAIN_H

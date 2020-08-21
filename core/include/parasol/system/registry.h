@@ -2,7 +2,7 @@
 #define SYSTEM_REGISTRY 1
 
 // Name:      system/registry.h
-// Copyright: Paul Manias 1996-2017
+// Copyright: Paul Manias 1996-2020
 // Generator: idl-c
 
 #define ID_PICTURE 0xad68f281UL

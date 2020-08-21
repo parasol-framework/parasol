@@ -1,7 +1,7 @@
 #ifndef USPTCRITLO
 #define USPTCRITLO 1
 
-// Copyright: Paul Manias © 1996-2017
+// Copyright: Paul Manias © 1996-2020
 // Generator: idl-c
 
 #define HASH_GfxScript 0x1b36591f

@@ -213,7 +213,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-module({ name="Widget", copyright="Paul Manias 2003-2018", version=1.0 }, function()
+module({ name="Widget", copyright="Paul Manias 2003-2020", version=1.0 }, function()
   c_include("<parasol/modules/font.h>", "<parasol/modules/picture.h>", "<parasol/modules/vector.h>",
     "<parasol/modules/xml.h>",  "<parasol/modules/display.h>", "<parasol/modules/document.h>")
 

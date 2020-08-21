@@ -6,7 +6,7 @@
     <name>Surface</name>
     <type>module</type>
     <version>1</version>
-    <copyright>Paul Manias © 2000-2017</copyright>
+    <copyright>Paul Manias © 2000-2020</copyright>
     <classes>
       <class>Layout</class>
       <class>Surface</class>

@@ -1,6 +1,6 @@
 --$FLUID:Include
 
-module({ name="Surface", copyright="Paul Manias © 2000-2017", version=1.0 }, function()
+module({ name="Surface", copyright="Paul Manias © 2000-2020", version=1.0 }, function()
   c_include("<parasol/modules/display.h>")
 
   restrict(function()

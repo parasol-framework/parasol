@@ -1,6 +1,6 @@
 --$FLUID:Include
 
-module({ name="IconServer", copyright="Paul Manias © 2014-2017", version=1.0, prefix="icon" }, function()
+module({ name="IconServer", copyright="Paul Manias © 2014-2020", version=1.0, prefix="icon" }, function()
   functionNames("icon",
     "CreateIcon")
 

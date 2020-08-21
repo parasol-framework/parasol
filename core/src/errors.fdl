@@ -394,7 +394,7 @@ function declareErrors()
 end
 
    if (glProgram == "idl-c") then
-      header({ path="system/errors", copyright="Paul Manias © 1996-2018" }, declareErrors)
+      header({ path="system/errors", copyright="Paul Manias © 1996-2020" }, declareErrors)
    elseif (glProgram == "idl-def") then
       declareErrors()
    end

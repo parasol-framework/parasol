@@ -2,7 +2,7 @@
 #define SYSTEM_FIELDS 1
 
 // Name:      system/fields.h
-// Copyright: Paul Manias © 1996-2017
+// Copyright: Paul Manias © 1996-2020
 // Generator: idl-c
 
 #define FID_Category 0x19ee1863LL

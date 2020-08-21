@@ -12,7 +12,7 @@
     <idstring>ID_SCRIPT</idstring>
     <category>Data</category>
     <include>modules/script.h</include>
-    <copyright>Paul Manias 1996-2017</copyright>
+    <copyright>Paul Manias 1996-2020</copyright>
     <description>
 <p>The Script class defines a common interface for the purpose of executing scripts, such as Fluid.  The class does not include a default parser or execution process of any kind.</p>
 <p>To execute a script, set the <field>Path</field> field and then <action>Activate</action> the Script object.  Global input parameters for the script can be defined via the <action>SetVar</action> action.</p>

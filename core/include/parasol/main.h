@@ -5,7 +5,7 @@
 //
 //   General include file for all programs.
 //
-//   Copyright 1996-2016 © Paul Manias
+//   Copyright 1996-2020 © Paul Manias
 
 #ifdef  __cplusplus
 extern "C" {
