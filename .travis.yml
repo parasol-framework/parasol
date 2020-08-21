@@ -1,7 +1,7 @@
 # Build pipeline configuration for Travis CI
 
 language: cpp
-sudo: required
+dist: xenial
 compiler:
 - gcc
 
@@ -16,7 +16,7 @@ script:
 - make 3rdparty
 - make full-compile
 
-install:
+after_success:
 - make install
 
 branches:
