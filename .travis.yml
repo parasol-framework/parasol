@@ -1,0 +1,24 @@
+# Build pipeline configuration for Travis CI
+
+language: cpp
+sudo: required
+compiler:
+- gcc
+
+os:
+- linux
+
+before_install:
+- sudo apt-get update
+- sudo apt-get install -y rsync libasound2-dev libxrandr-dev libxxf86dga-dev
+
+script:
+- make 3rdparty
+- make full-compile
+
+install:
+- make install
+
+branches:
+  only:
+  - master
