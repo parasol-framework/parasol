@@ -231,8 +231,8 @@ static ERROR SVG_SaveImage(objSVG *Self, struct acSaveImage *Args)
          FID_Flags|TLONG,  PCF_ALPHA|PCF_NEW,
          TAGEND)) {
 
-      if ((error = svgRender(Self, pic->Bitmap, 0, 0, width, height))) {
-         if ((error = acSaveImage(pic, Args->DestID, Args->ClassID))) {
+      if (!(error = svgRender(Self, pic->Bitmap, 0, 0, width, height))) {
+         if (!(error = acSaveImage(pic, Args->DestID, Args->ClassID))) {
             return ERR_Okay;
          }
       }
@@ -266,8 +266,7 @@ static ERROR SVG_SaveToObject(objSVG *Self, struct acSaveToObject *Args)
             return routine[AC_SaveToObject]((OBJECTPTR)Self, Args);
          }
          else if ((routine[AC_SaveImage]) AND (routine[AC_SaveImage] != (APTR)SVG_SaveImage)) {
-            struct acSaveImage saveimage;
-            saveimage.DestID = Args->DestID;
+            struct acSaveImage saveimage = { .DestID = Args->DestID };
             return routine[AC_SaveImage]((OBJECTPTR)Self, &saveimage);
          }
          else return PostError(ERR_NoSupport);
@@ -277,7 +276,7 @@ static ERROR SVG_SaveToObject(objSVG *Self, struct acSaveToObject *Args)
    else {
       objXML *xml;
       if (!CreateObject(ID_XML, NF_INTEGRAL, &xml,
-            FID_Flags|TLONG, XMF_NEW|XMF_READABLE|XMF_PARSE_ENTITY,
+            FID_Flags|TLONG, XMF_NEW|XMF_READABLE,
             TAGEND)) {
          ERROR error = xmlInsertXML(xml, 0, 0, header, NULL);
          LONG index = xml->TagCount-1;
