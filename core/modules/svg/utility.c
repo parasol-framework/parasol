@@ -368,9 +368,12 @@ static ERROR load_svg(objSVG *Self, CSTRING Path, CSTRING Buffer)
 {
    if (!Path) return ERR_NullArgs;
 
-   LogF("~load_svg()","Path: %s", Path);
+   LogF("~load_svg()","Path: %s [Log-level reduced]", Path);
 
+#ifndef DEBUG
    AdjustLogLevel(1);
+#endif
+
    objXML *xml;
    ERROR error = ERR_Okay;
    if (!NewObject(ID_XML, NF_INTEGRAL, &xml)) {
@@ -470,7 +473,9 @@ static ERROR load_svg(objSVG *Self, CSTRING Path, CSTRING Buffer)
    else error = ERR_NewObject;
 
 end:
+#ifndef DEBUG
    AdjustLogLevel(-1);
+#endif
    LogBack();
    return error;
 }
