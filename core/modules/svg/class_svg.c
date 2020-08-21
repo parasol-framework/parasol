@@ -82,10 +82,7 @@ static ERROR SVG_Free(objSVG *Self, APTR Void)
    while (anim) {
       struct svgAnimation *next = anim->Next;
       LONG i;
-      for (i=0; i < anim->ValueCount; i++) {
-         FreeResource(anim->Values[i]);
-         anim->Values[i] = NULL;
-      }
+      for (i=0; i < anim->ValueCount; i++) { FreeResource(anim->Values[i]); anim->Values[i] = NULL; }
       FreeResource(anim);
       anim = next;
    }
@@ -284,16 +281,15 @@ static ERROR SVG_SaveToObject(objSVG *Self, struct acSaveToObject *Args)
          if (!(error = xmlInsertXML(xml, index, XMI_NEXT, "<svg version=\"1.1\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:parasol=\"http://www.parasol.ws/xmlns/svg\"/>", &index))) {
             BYTE multiple_viewports = (Self->Scene->Viewport->Next) ? TRUE : FALSE;
             if (multiple_viewports) {
-               objVector *scan;
+               if (!(error = save_svg_defs(Self, xml, Self->Scene, index))) {
+                  objVector *scan;
+                  for (scan=Self->Scene->Viewport; scan; scan=scan->Next) {
+                     if (!scan->Child) continue; // Ignore dummy viewports with no content
+                     save_svg_scan(Self, xml, scan, index);
+                  }
 
-               save_svg_defs(Self, xml, Self->Scene, index);
-
-               for (scan=Self->Scene->Viewport; scan; scan=scan->Next) {
-                  if (!scan->Child) continue; // Ignore dummy viewports with no content
-                  save_svg_scan(Self, xml, scan, index);
+                  error = acSaveToObject(xml, Args->DestID, 0);
                }
-
-               acSaveToObject(xml, Args->DestID, 0);
             }
             else {
                DOUBLE x, y, width, height;
@@ -320,14 +316,14 @@ static ERROR SVG_SaveToObject(objSVG *Self, struct acSaveToObject *Args)
                }
 
                if (!error) {
-                  save_svg_defs(Self, xml, Self->Scene, index);
+                  if (!(error = save_svg_defs(Self, xml, Self->Scene, index))) {
+                     objVector *scan;
+                     for (scan=((objVector *)Self->Viewport)->Child; scan; scan=scan->Next) {
+                        save_svg_scan(Self, xml, scan, index);
+                     }
 
-                  objVector *scan;
-                  for (scan=((objVector *)Self->Viewport)->Child; scan; scan=scan->Next) {
-                     save_svg_scan(Self, xml, scan, index);
+                     error = acSaveToObject(xml, Args->DestID, 0);
                   }
-
-                  acSaveToObject(xml, Args->DestID, 0);
                }
             }
          }

@@ -1138,5 +1138,6 @@ INLINE void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
 #define SVF_ADDITIVE 0x035604af
 #define SVF_ACCUMULATE 0x5c660bc9
 #define SVF_PRESERVEASPECTRATIO 0x195673f0
+#define SVF_CLASS 0x0f3b5edb
 
 #endif

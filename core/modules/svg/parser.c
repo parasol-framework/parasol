@@ -1,9 +1,4 @@
 
-static ERROR xtag_animatetransform(objSVG *, objXML *, struct XMLTag *, OBJECTPTR);
-static ERROR xtag_animatemotion(objSVG *, objXML *, struct XMLTag *, OBJECTPTR Parent);
-static ERROR xtag_default(objSVG *, ULONG Hash, objXML *, struct svgState *, struct XMLTag *, OBJECTPTR, OBJECTPTR *);
-static void xtag_morph(objSVG *, objXML *, struct XMLTag *, OBJECTPTR Parent);
-
 //****************************************************************************
 // Apply the current state values to a vector.
 
@@ -423,6 +418,7 @@ static ERROR xtag_default(objSVG *Self, ULONG Hash, objXML *XML, svgState *State
       case SVF_FILTER:           xtag_filter(Self, XML, Tag); break;
       case SVF_DEFS:             xtag_defs(Self, XML, State, Tag, Parent); break;
       case SVF_CLIPPATH:         xtag_clippath(Self, XML, Tag); break;
+      case SVF_STYLE:            xtag_style(Self, XML, Tag); break;
 
       case SVF_TITLE:
          if (Self->Title) { FreeResource(Self->Title); Self->Title = NULL; }
@@ -706,6 +702,60 @@ static ERROR xtag_defs(objSVG *Self, objXML *XML, svgState *State, struct XMLTag
 
    STEP();
    return ERR_Okay;
+}
+
+//****************************************************************************
+
+static ERROR xtag_style(objSVG *Self, objXML *XML, struct XMLTag *Tag)
+{
+   ERROR error = ERR_Okay;
+   CSTRING type = XMLATTRIB(Tag, "type");
+
+   if ((type) AND (StrMatch("text/css", type) != ERR_Okay)) {
+      LogErrorMsg("Unsupported stylesheet '%s'", type);
+      return ERR_NoSupport;
+   }
+
+   // Parse the CSS using the Katana Parser.
+
+   STRING css_buffer;
+   LONG css_size = 256 * 1024;
+   if (!AllocMemory(css_size, MEM_DATA|MEM_STRING|MEM_NO_CLEAR, &css_buffer, NULL)) {
+      if (!(error = xmlGetContent(XML, Tag->Index, css_buffer, css_size))) {
+         KatanaOutput *css;
+
+         if ((css = katana_parse(css_buffer, StrLength(css_buffer), KatanaParserModeStylesheet))) {
+            /*#ifdef DEBUG
+               Self->CSS->mode = KatanaParserModeStylesheet;
+               katana_dump_output(css);
+            #endif*/
+
+            // For each rule in the stylesheet, apply them to the loaded XML document by injecting tags and attributes.
+            // The stylesheet attributes have precedence over inline tag attributes (therefore we can overwrite matching
+            // attribute names) however they are outranked by inline styles.
+
+            KatanaStylesheet *sheet = css->stylesheet;
+
+            LogF("xtag_style","%d CSS rules will be applied", sheet->imports.length + sheet->rules.length);
+
+            for (LONG i = 0; i < sheet->imports.length; ++i) {
+               if (sheet->imports.data[i])
+                  process_rule(Self, XML, (KatanaRule *)sheet->imports.data[i]);
+            }
+
+            for (LONG i = 0; i < sheet->rules.length; ++i) {
+               if (sheet->rules.data[i])
+                  process_rule(Self, XML, (KatanaRule *)sheet->rules.data[i]);
+            }
+
+            katana_destroy_output(css);
+         }
+      }
+      FreeResource(css_buffer);
+   }
+   else error = ERR_AllocMemory;
+
+   return error;
 }
 
 //****************************************************************************
@@ -1012,9 +1062,6 @@ static void xtag_svg(objSVG *Self, objXML *XML, svgState *State, struct XMLTag *
       LogF("@xtag_svg()","A Parent object is required.");
       return;
    }
-
-   // Process <svg> attributes
-
    OBJECTPTR viewport;
    if (NewObject(ID_VECTORVIEWPORT, 0, &viewport)) return;
    SetOwner(viewport, Parent);
@@ -1023,6 +1070,7 @@ static void xtag_svg(objSVG *Self, objXML *XML, svgState *State, struct XMLTag *
    // specified a custom target, in which case there needs to be a way to discover the root of the SVG.
 
    if (!Self->Viewport) Self->Viewport = viewport;
+   // Process <svg> attributes
 
    svgState state = *State;
    if (Tag->Child) set_state(&state, Tag); // Apply all attribute values to the current state.
@@ -1359,10 +1407,179 @@ static void process_attrib(objSVG *Self, objXML *XML, struct XMLTag *Tag, OBJECT
 }
 
 //****************************************************************************
+// Apply all attributes in a rule to a target tag.
+
+static void apply_rule(objSVG *Self, objXML *XML, KatanaArray *Properties, struct XMLTag *Tag)
+{
+   for (LONG i=0; i < Properties->length; i++) {
+      KatanaDeclaration *prop = Properties->data[i];
+
+      FMSG("apply_rule","Set property %s with %d values", prop->property, prop->values->length);
+
+      for (LONG v=0; v < prop->values->length; v++) {
+         KatanaValue *value = prop->values->data[v];
+
+         switch (value->unit) {
+            case KATANA_VALUE_NUMBER:
+            case KATANA_VALUE_PERCENTAGE:
+            case KATANA_VALUE_EMS:
+            case KATANA_VALUE_EXS:
+            case KATANA_VALUE_REMS:
+            case KATANA_VALUE_CHS:
+            case KATANA_VALUE_PX:
+            case KATANA_VALUE_CM:
+            case KATANA_VALUE_DPPX:
+            case KATANA_VALUE_DPI:
+            case KATANA_VALUE_DPCM:
+            case KATANA_VALUE_MM:
+            case KATANA_VALUE_IN:
+            case KATANA_VALUE_PT:
+            case KATANA_VALUE_PC:
+            case KATANA_VALUE_DEG:
+            case KATANA_VALUE_RAD:
+            case KATANA_VALUE_GRAD:
+            case KATANA_VALUE_MS:
+            case KATANA_VALUE_S:
+            case KATANA_VALUE_HZ:
+            case KATANA_VALUE_KHZ:
+            case KATANA_VALUE_TURN:
+               xmlSetAttrib(XML, Tag->Index, XMS_UPDATE, prop->property, value->raw);
+               break;
+
+            case KATANA_VALUE_IDENT:
+               xmlSetAttrib(XML, Tag->Index, XMS_UPDATE, prop->property, value->string);
+               break;
+
+            case KATANA_VALUE_STRING:
+               xmlSetAttrib(XML, Tag->Index, XMS_UPDATE, prop->property, value->string);
+               break;
+
+            case KATANA_VALUE_PARSER_FUNCTION: {
+               //const char* args_str = katana_stringify_value_list(parser, value->function->args);
+               //snprintf(str, sizeof(str), "%s%s)", value->function->name, args_str);
+               //katana_parser_deallocate(parser, (void*) args_str);
+               break;
+            }
+
+            case KATANA_VALUE_PARSER_OPERATOR: {
+               char str[8];
+               if (value->iValue != '=') StrFormat(str, sizeof(str), " %c ", value->iValue);
+               else StrFormat(str, sizeof(str), " %c", value->iValue);
+               xmlSetAttrib(XML, Tag->Index, XMS_UPDATE, prop->property, str);
+               break;
+            }
+
+            case KATANA_VALUE_PARSER_LIST:
+               //katana_stringify_value_list(parser, value->list);
+               break;
+
+            case KATANA_VALUE_PARSER_HEXCOLOR: {
+               char str[32];
+               StrFormat(str, sizeof(str), "#%s", value->string);
+               xmlSetAttrib(XML, Tag->Index, XMS_UPDATE, prop->property, str);
+               break;
+            }
+
+            case KATANA_VALUE_URI: {
+               char str[256];
+               StrFormat(str, sizeof(str), "url(%s)", value->string);
+               xmlSetAttrib(XML, Tag->Index, XMS_UPDATE, prop->property, str);
+               break;
+            }
+
+            default:
+               LogF("@apply_rule","Unknown property value.");
+               break;
+         }
+      }
+   }
+}
+
+//****************************************************************************
+// Scan and apply all stylesheet selectors to the loaded XML document.
+
+static void process_rule(objSVG *Self, objXML *XML, KatanaRule *Rule)
+{
+   if (!Rule) return;
+
+   switch (Rule->type) {
+      case KatanaRuleStyle: {
+         KatanaStyleRule *sr = (KatanaStyleRule *)Rule;
+         for (LONG i=0; i < sr->selectors->length; ++i) {
+            KatanaSelector *sel = sr->selectors->data[i];
+
+            switch (sel->match) {
+               case KatanaSelectorMatchTag: // Applies to all tags matching this name
+                  FMSG("process_rule","Processing selector: %s", (sel->tag) ? sel->tag->local : "UNNAMED");
+                  for (LONG t=0; t < XML->TagCount; t++) {
+                     if (!StrMatch(sel->tag->local, XML->Tags[t]->Attrib[0].Name))
+                        apply_rule(Self, XML, sr->declarations, XML->Tags[t]);
+                  }
+                  break;
+
+               case KatanaSelectorMatchId: // Applies to the first tag expressing this id
+                  break;
+
+               case KatanaSelectorMatchClass: // Requires tag to specify a class attribute
+                  FMSG("process_rule","Processing class selector: %s", (sel->data) ? sel->data->value : "UNNAMED");
+                  for (LONG t=0; t < XML->TagCount; t++) {
+                     CSTRING class_name = XMLATTRIB(XML->Tags[t], "class");
+                     if (!StrMatch(sel->data->value, class_name))
+                        apply_rule(Self, XML, sr->declarations, XML->Tags[t]);
+                  }
+                  break;
+
+               case KatanaSelectorMatchPseudoClass: // E.g. a:link
+                  break;
+
+               case KatanaSelectorMatchPseudoElement: break;
+               case KatanaSelectorMatchPagePseudoClass: break;
+               case KatanaSelectorMatchAttributeExact: break;
+               case KatanaSelectorMatchAttributeSet: break;
+               case KatanaSelectorMatchAttributeList: break;
+               case KatanaSelectorMatchAttributeHyphen: break;
+               case KatanaSelectorMatchAttributeContain: break;
+               case KatanaSelectorMatchAttributeBegin: break;
+               case KatanaSelectorMatchAttributeEnd: break;
+               case KatanaSelectorMatchUnknown: break;
+            }
+         }
+
+         break;
+      }
+
+      case KatanaRuleImport: //(KatanaImportRule*)rule
+         LogF("process_rule","Support required for KatanaRuleImport");
+         break;
+
+      case KatanaRuleFontFace: //(KatanaFontFaceRule*)rule
+         LogF("process_rule","Support required for KatanaRuleFontFace");
+         break;
+
+      case KatanaRuleKeyframes: //(KatanaKeyframesRule*)rule
+         LogF("process_rule","Support required for KatanaRuleKeyframes");
+         break;
+
+      case KatanaRuleMedia: //(KatanaMediaRule*)rule
+         LogF("process_rule","Support required for KatanaRuleMedia");
+         break;
+
+      case KatanaRuleUnkown:
+      case KatanaRuleSupports:
+      case KatanaRuleCharset:
+      case KatanaRuleHost:
+         break;
+   }
+}
+
+//****************************************************************************
 
 static ERROR set_property(objSVG *Self, OBJECTPTR Vector, ULONG Hash, objXML *XML, struct XMLTag *Tag, CSTRING StrValue)
 {
    DOUBLE num;
+
+   // Ignore stylesheet attributes
+   if ((Hash IS SVF_CLASS) OR (Hash IS SVF_ID)) return ERR_Okay;
 
    switch(Vector->SubID) {
       case ID_VECTORVIEWPORT: {
