@@ -15,8 +15,6 @@ jobs:
     - os: windows
 
 before_install:
-- if [ "$TRAVIS_OS_NAME" = "linux" ]; sudo apt-get update ; fi
-- if [ "$TRAVIS_OS_NAME" = "linux" ]; sudo apt-get install -y rsync libasound2-dev libxrandr-dev libxxf86dga-dev ; fi
 - |-
     case $TRAVIS_OS_NAME in
       windows)
@@ -33,6 +31,10 @@ before_install:
         taskkill //IM gpg-agent.exe //F  # https://travis-ci.community/t/4967
         export PATH=/C/tools/msys64/mingw64/bin:$PATH
         export MAKE=mingw32-make  # so that Autotools can find it
+        ;;
+      linux)
+        sudo apt-get update
+        sudo apt-get install -y rsync libasound2-dev libxrandr-dev libxxf86dga-dev
         ;;
     esac
 
