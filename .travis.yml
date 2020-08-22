@@ -56,8 +56,8 @@ script:
 - |-
     case $TRAVIS_OS_NAME in
       windows)
-        $mingw64 make 3rdparty
-        $mingw64 make full-compile
+        $mingw64 mingw32-make 3rdparty
+        $mingw64 mingw32-make full-compile
         ;;
       linux)
         make 3rdparty
@@ -69,7 +69,7 @@ after_success:
 - |-
     case $TRAVIS_OS_NAME in
       windows)
-        $mingw64 make install
+        $mingw64 mingw32-make install
         ;;
       linux)
         make install
