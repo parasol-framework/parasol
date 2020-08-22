@@ -15,9 +15,9 @@ openssl:
 	echo -e "#undef OPENSSL_SYS_WINDOWS\n#undef OPENSSL_SYS_WIN32\n$(cat include/openssl/dtls1.h)" >include/openssl/dtls11.h
 	# Clear dtlstest.c because it doesn't compile in mingw
 	echo "" >test/dtlstest.c
-	make dclean
+	$(MAKE) dclean
 	./configure --prefix=/usr mingw no-ssl2 no-ec no-hw shared zlib-dynamic
-	make depend && make all && make install
+	$(MAKE) depend && $(MAKE) all && $(MAKE) install
 
 libffi:
 	rm -fr libffi-3.2.1
@@ -29,9 +29,9 @@ zlib:
 	tar -zxvf $(ZLIB).tar.gz
 	mkdir -p $(PARASOL_MODULES)/lib
 ifeq ($(OSTYPE),win)
-	BINARY_PATH=/mingw/bin INCLUDE_PATH=/mingw/include LIBRARY_PATH=/mingw/lib make -C $(ZLIB) clean install -f win32/Makefile.gcc
+	BINARY_PATH=/mingw/bin INCLUDE_PATH=/mingw/include LIBRARY_PATH=/mingw/lib $(MAKE) -C $(ZLIB) clean install -f win32/Makefile.gcc
 	cd $(ZLIB) && cp zlib1.dll $(PARASOL_MODULES)/lib/
 else
-	cd $(ZLIB) && ./configure && make && cp libz.so.1.2.8 $(PARASOL_MODULES)/lib/libz.so
+	cd $(ZLIB) && ./configure && $(MAKE) && cp libz.so.1.2.8 $(PARASOL_MODULES)/lib/libz.so
 endif
 
