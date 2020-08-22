@@ -63,6 +63,10 @@ else ifeq ($(OSTYPE),cygwin)
    HOST   := win
    OSTYPE := win
    CPU    ?= x86
+else ifeq ($(TRAVIS_OS_NAME),windows)
+   HOST   := win
+   OSTYPE := win
+   CPU    ?= x86
 else ifeq ($(OSTYPE),darwin)
    HOST   := mac
    OSTYPE := unix
