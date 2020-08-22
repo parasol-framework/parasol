@@ -31,6 +31,7 @@ before_install:
         taskkill //IM gpg-agent.exe //F  # https://travis-ci.community/t/4967
         export PATH=/C/tools/msys64/mingw64/bin:$PATH
         export MAKE=mingw32-make  # so that Autotools can find it
+        export # Print all environment variables for help debugging
         ;;
       linux)
         sudo apt-get update
@@ -79,3 +80,4 @@ after_success:
 branches:
   only:
   - master
+  - test
