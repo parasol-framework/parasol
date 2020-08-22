@@ -53,11 +53,28 @@ cache:
     - /C/tools/msys64
 
 script:
-- make 3rdparty
-- make full-compile
+- |-
+    case $TRAVIS_OS_NAME in
+      windows)
+        $mingw64 make 3rdparty
+        $mingw64 make full-compile
+        ;;
+      linux)
+        make 3rdparty
+        make full-compile
+        ;;
+    esac
 
 after_success:
-- make install
+- |-
+    case $TRAVIS_OS_NAME in
+      windows)
+        $mingw64 make install
+        ;;
+      linux)
+        make install
+        ;;
+    esac
 
 branches:
   only:
