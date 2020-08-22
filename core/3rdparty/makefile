@@ -22,7 +22,7 @@ openssl:
 libffi:
 	rm -fr libffi-3.2.1
 	tar -zxvf libffi-3.2.1.tar.gz
-	cd libffi-3.2.1; ./configure --disable-dependency-tracking --prefix=`pwd`/release --includedir=`pwd`/release/include; make install
+	cd libffi-3.2.1; ./configure --disable-dependency-tracking --prefix=`pwd`/release --includedir=`pwd`/release/include; $(MAKE) install
 
 zlib:
 	rm -fr $(ZLIB)
