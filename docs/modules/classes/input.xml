@@ -12,10 +12,9 @@
     <idstring>ID_INPUT</idstring>
     <category>GUI</category>
     <include>modules/input.h</include>
-    <copyright>Paul Manias 2003-2018</copyright>
+    <copyright>Paul Manias 2003-2020</copyright>
     <description>
 <p>The Input class simplifies the creation and management of input boxes as part of the user interface.  New input areas can be created by specifying as little as the graphical dimensions for the box area.  The Input class allows for the specifics of the graphics to be altered, such as the colours and the font used.</p>
-<p>The definitions for new input boxes are loaded by default from the environment file <code>style:input.xml</code>.  You can change the template file prior to initialisation by setting the Template field.  Note that any values set in the template will override your original field settings for the input object.</p>
 <p>It is likely that when when the user clicks or tabs away from the input box, you will need it to perform an action. Set the <field>Feedback</field> field in order to receive this notification and respond with your own custom functionality.</p></description>
     <source>
       <file>class_input.c</file>
@@ -79,12 +78,6 @@
     </field>
 
     <field>
-      <name>Colour</name>
-      <access read="R" write="W">Read/Write</access>
-      <type>BYTE []</type>
-    </field>
-
-    <field>
       <name>Disable</name>
       <comment>If TRUE, the input box is disabled.</comment>
       <access read="G" write="S">Get/Set</access>
@@ -93,18 +86,6 @@
 <p>The Disable field can be used to disable the input box in advance of being initialised, by setting the field value to TRUE.  It can also be read at any time to determine the current interactive state of the input box.</p>
 <p>Post-initialisation, it is recommended that only the <action>Disable</action> and <action>Enable</action> actions are used to change the interactive state of the input box.</p>
       </description>
-    </field>
-
-    <field>
-      <name>EnterFrame</name>
-      <access read="R" write="W">Read/Write</access>
-      <type>INT</type>
-    </field>
-
-    <field>
-      <name>ExitFrame</name>
-      <access read="R" write="W">Read/Write</access>
-      <type>INT</type>
     </field>
 
     <field>
@@ -129,18 +110,6 @@
     </field>
 
     <field>
-      <name>FocusFrame</name>
-      <access read="R" write="W">Read/Write</access>
-      <type>INT</type>
-    </field>
-
-    <field>
-      <name>Font</name>
-      <access read="R">Read</access>
-      <type>OBJECTPTR</type>
-    </field>
-
-    <field>
       <name>Height</name>
       <comment>Defines the height of an input box.</comment>
       <access read="G" write="S">Get/Set</access>
@@ -148,12 +117,6 @@
       <description>
 <p>An input box can be given a fixed or relative height by setting this field to the desired value.  To set a relative height, use the FD_PERCENT flag when setting the field.</p>
       </description>
-    </field>
-
-    <field>
-      <name>Highlight</name>
-      <access read="R" write="W">Read/Write</access>
-      <type>BYTE []</type>
     </field>
 
     <field>
@@ -198,12 +161,6 @@
     </field>
 
     <field>
-      <name>Raised</name>
-      <access read="G" write="S">Get/Set</access>
-      <type>INT</type>
-    </field>
-
-    <field>
       <name>Region</name>
       <comment>The surface that represents the input box is referenced through this field.</comment>
       <access read="R" write="S">Read/Set</access>
@@ -214,22 +171,10 @@
     </field>
 
     <field>
-      <name>ReleaseFrame</name>
-      <access read="R" write="W">Read/Write</access>
-      <type>INT</type>
-    </field>
-
-    <field>
       <name>Right</name>
       <comment>The right-most coordinate of the input box (X + Width).</comment>
       <access read="G">Get</access>
       <type>INT</type>
-    </field>
-
-    <field>
-      <name>Shadow</name>
-      <access read="R" write="W">Read/Write</access>
-      <type>BYTE []</type>
     </field>
 
     <field>
@@ -241,12 +186,6 @@
 <p>The string that you would like to be displayed in the input box is specified in this field.  The string must be in UTF-8 format and may not contain line feeds.  The client can read this field at any time to determine what the user has entered in the input box.</p>
 <p>If the string is changed after initialisation, the input box will be redrawn to show the updated text.</p>
       </description>
-    </field>
-
-    <field>
-      <name>Sunken</name>
-      <access read="G" write="S">Get/Set</access>
-      <type>INT</type>
     </field>
 
     <field>
@@ -277,12 +216,6 @@
       <description>
 <p>This field refers to a <class name="Text">Text</class> object that handles the text inside the input area.  Please exercise caution if interacting with this object directly, as doing so may interfere with the expected behaviour of the input class.</p>
       </description>
-    </field>
-
-    <field>
-      <name>Thickness</name>
-      <access read="R" write="W">Read/Write</access>
-      <type>INT</type>
     </field>
 
     <field>

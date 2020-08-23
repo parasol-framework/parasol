@@ -12,7 +12,7 @@
     <idstring>ID_MENUITEM</idstring>
     <category>GUI</category>
     <include>modules/menuitem.h</include>
-    <copyright>Paul Manias 2003-2018</copyright>
+    <copyright>Paul Manias 2003-2020</copyright>
     <description>
 <p>The MenuItem is an integral part of the <class name="Menu">Menu</class> class.  It is used to represent the individual items that are listed in a menu.  Following initialisation, any MenuItem can be modified at run-time to make simple changes to the menu.  For complex or extensive changes, it may be more efficient to recreate the menu from scratch.</p>
 <p>It is not possible for a MenuItem to be owned by any object other than a <class name="Menu">Menu</class>.</p></description>

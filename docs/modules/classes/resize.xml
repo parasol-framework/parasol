@@ -12,7 +12,7 @@
     <idstring>ID_RESIZE</idstring>
     <category>GUI</category>
     <include>modules/resize.h</include>
-    <copyright>Paul Manias 2003-2018</copyright>
+    <copyright>Paul Manias 2003-2020</copyright>
     <description>
 <p>The Resize class is used for declaring user-interactive resizing areas.  In most cases it is applied to the edges of <class name="Surface">Surface</class> objects so that the user can drag the edge to a new location.  When creating a new Resize object, you can choose the edges of the surface border that should be monitored for resizing, or alternatively you may pin-point the resizing area through standard dimension specifications.  The following example demonstrates the use of both methods:</p>
 <pre>surface = obj.new('surface', {

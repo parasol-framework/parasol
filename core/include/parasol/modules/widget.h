@@ -2,7 +2,7 @@
 #define MODULES_WIDGET 1
 
 // Name:      widget.h
-// Copyright: Paul Manias 2003-2018
+// Copyright: Paul Manias 2003-2020
 // Generator: idl-c
 
 #ifndef MAIN_H
@@ -571,8 +571,8 @@ typedef struct rkInput {
    LONG     InputWidth;          // Width of the input area
 
 #ifdef PRV_INPUT
-   UBYTE    prvLabel[48];       // Label
-   UBYTE    prvPostLabel[48];
+   char    prvLabel[48];
+   char    prvPostLabel[48];
    ULONG    prvLastStringHash;
    FUNCTION prvFeedback;
    UBYTE    prvActive:1;
@@ -596,7 +596,7 @@ typedef struct rkComboBox {
 
 #ifdef PRV_COMBOBOX
    UBYTE Active:1;
-   UBYTE  Label[48];       // Label
+   char  Label[48];
    FUNCTION Feedback;
   
 #endif

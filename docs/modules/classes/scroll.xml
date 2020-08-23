@@ -12,7 +12,7 @@
     <idstring>ID_SCROLL</idstring>
     <category>GUI</category>
     <include>modules/scroll.h</include>
-    <copyright>Paul Manias 2003-2018</copyright>
+    <copyright>Paul Manias 2003-2020</copyright>
     <description>
 <p>The Scroll class provides a facility for creating scrollbars that allow the user to move surface objects within their containers.  It can also be used to scroll contents or 'pages' of information (useful for Text Editors for instance). In either case, it is most useful in situations  where the available graphics space is not sufficient for the amount of information that needs to be shown.  The Scroll class in itself is only designed to provide scrolling functionality, i.e. it does not create any gadgetry or graphics for the scrollbar.  For that reason, complete scrollbars are usually created using scripts or helper classes, such as the <class name="ScrollBar">ScrollBar</class> class.</p>
 <p>The Scroll class is designed to provide scrolling in 3 different directions - along the X, Y, or Z axis.  You can combine the different axis, so a diagonal scrolling gadget could be created for example.  It is also possible to create buttons that are attached to the scroll object.  Refer to the Left, Right, Up, Down, In and Out fields for more information.</p>

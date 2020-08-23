@@ -9,6 +9,7 @@ HEADER=    ../../include/parasol/modules/$(NAME).h
 SOURCES = widget.c class_button.c class_checkbox.c class_resize.c class_scrollbar.c \
           class_combobox.c class_tabfocus.c class_input.c class_scroll.c class_image.c \
           class_text/text.c class_menu/menu.c class_view/view.c class_clipboard.c
+DOCUMENTS = $(SOURCES)
 OBJECTS := $(addprefix obj/$(PLATFORM)/,$(subst .c,.o,$(SOURCES)))
 CFLAGS += -DMOD_NAME=$(NAME)
 DIRS := obj/$(PLATFORM) obj/$(PLATFORM)/class_menu obj/$(PLATFORM)/class_text \
@@ -45,8 +46,8 @@ hashes.h: hashes.fdl
 clean:
 	@rm -f "$(DEST)" $(OBJECTS)
 
-$(HEADER): $(NAME).fdl makefile
-	$(IDL_C) --src=$<
+$(HEADER) widget_def.c: $(NAME).fdl makefile
+	$(IDL_C) --src=$< --files={ $(DOCUMENTS) }
 	$(IDL_DEF) --src=$< --output=widget_def.c --format=c
 
 deps-$(OSTYPE).mak: $(SOURCES)

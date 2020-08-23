@@ -12,7 +12,7 @@
     <idstring>ID_MENU</idstring>
     <category>GUI</category>
     <include>modules/menu.h</include>
-    <copyright>Paul Manias 2003-2018</copyright>
+    <copyright>Paul Manias 2003-2020</copyright>
     <description>
 <p>The Menu class provides a means to create and maintain menus in the graphical user interface.</p>
 <p>This class is still in development.</p></description>

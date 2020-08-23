@@ -12,7 +12,7 @@
     <idstring>ID_IMAGE</idstring>
     <category>GUI</category>
     <include>modules/image.h</include>
-    <copyright>Paul Manias 2003-2018</copyright>
+    <copyright>Paul Manias 2003-2020</copyright>
     <description>
 <p>The Image class is designed for object scripting and closely follows the general definition of the 'img' tag in HTML. The main difference that you will notice is that it sports a few extra effects, and you have complete control over the positioning of the image graphic.</p>
 <p>There are no restrictions on the data format of the picture file, but it must be supported by one of the <class name="Picture">Picture</class> classes in the system.  If for example the file format is JPEG, but the system does not have a JPEG Picture class installed, it will not be possible to load the file.  To obtain a list of supported file formats, you need to scan the list of <class name="Picture">Picture</class> classes in the Graphics category.</p>

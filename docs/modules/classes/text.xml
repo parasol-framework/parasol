@@ -12,7 +12,7 @@
     <idstring>ID_TEXT</idstring>
     <category>GUI</category>
     <include>modules/text.h</include>
-    <copyright>Paul Manias 2003-2018</copyright>
+    <copyright>Paul Manias 2003-2020</copyright>
     <description>
 <p>The Text class provides a complete text display and editing service that is suitable for almost any situation that requires effective text management.  The class is most effective when applied to general text display, text editing services, command-lines and input boxes.</p>
 <p>The Text class is closely linked to the Font class, which provides all of the code necessary for font management.  If you require information on how to set font definitions such as the face and colour of the font, please refer to the documentation for the Font class.  All fields in the <class name="Font">Font</class> class are inherited, and you will find that the Face, Colour, Bold, Point and Align fields are particularly helpful for setting font attributes.</p>

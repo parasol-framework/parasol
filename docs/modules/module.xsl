@@ -137,13 +137,13 @@
                 <span class="icon-bar"></span>
                 <span class="icon-bar"></span>
               </button>
-              <a class="navbar-brand" href="index.html">Parasol Framework</a>
+              <a class="navbar-brand" href="/index.html">Parasol Framework</a>
             </div>
             <div id="navbar" class="collapse navbar-collapse">
               <ul class="nav navbar-nav">
                 <li class="active"><a href="core.xml">Modules</a></li>
-                <li><a href="classes.html">Classes</a></li>
-                <li><a href="fluid.html">Fluid</a></li>
+                <li><a href="/modules/classes/module.xml">Classes</a></li>
+                <li><a href="/modules/fluid.xml">Fluid</a></li>
               </ul>
             </div> <!-- nav-collapse -->
           </div>

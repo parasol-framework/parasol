@@ -12,7 +12,7 @@
     <idstring>ID_CHECKBOX</idstring>
     <category>GUI</category>
     <include>modules/checkbox.h</include>
-    <copyright>Paul Manias 2003-2018</copyright>
+    <copyright>Paul Manias 2003-2020</copyright>
     <description>
 <p>The CheckBox class simplifies the creation and management of checkbox widgets in the user interface.  Check boxes are simple widgets that are limited to exhibiting an on/off state.  The CheckBox class allows for its graphics to be customised, so it is possible to redefine how the on/off states are displayed.</p>
 <p>The standard mechanism for configuring a response to changing state in a CheckBox object is to set the <field>Feedback</field> field with a callback function.</p></description>

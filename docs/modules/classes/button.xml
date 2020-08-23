@@ -12,7 +12,7 @@
     <idstring>ID_BUTTON</idstring>
     <category>GUI</category>
     <include>modules/button.h</include>
-    <copyright>Paul Manias 2003-2018</copyright>
+    <copyright>Paul Manias 2003-2020</copyright>
     <description>
 <p>The Button class simplifies the creation and management of buttons as part of the user interface.  New buttons are typically created by declaring the graphical dimensions and the text to be displayed within them.  The Button class allows for the specifics of the button to be altered, such as the colours and the font style.</p>
 <p>Default button values and the look and feel are applied using styles.</p>

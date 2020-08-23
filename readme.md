@@ -7,27 +7,25 @@
 
 ## 1. Introduction
 
-Parasol is a FOSS vector engine and application sandbox. It provides a fully integrated scripting language that is based on Lua to simplify application development without compromising on speed or modern features.
+Parasol is a FOSS vector engine and application sandbox. An integrated scripting language based on Lua helps to simplify application development without compromising on speed or modern features.  Alternatively you can integrate the framework with your preferred environment if it supports linking with standard system libraries.
 
-Parasol has a development bias towards vector graphics programming on the desktop, which we believe is an area that has been under-valued, particularly with recent increases in display resolution.  Our long term aim for Parasol is for it to be a credible open source leader in vector graphics programming and building multi-platform sandboxed applications.
+Parasol's ongoing development is focused on enhancing vector graphics programming on the desktop. We believe that this a research area that has been historically under-valued, but this needs to change with more displays achieving resolutions at 4K and beyond.  Apart from the scalability of vector graphics, we're also hoping to experiment with more dynamic rendering features that aren't possible with traditional bitmap interfaces.
 
-In summary, Parasol provides:
+### Features
 
-* Vector graphics programming with an SVG compatible design.
-* Networking (TCP/IP Sockets, HTTP, SSL).
-* Widgets for UI development (windows, checkboxes, buttons, dialogs, text and a great deal more...).
-* Data handling (XML, JSON, ZIP, PNG, JPEG, SVG)
-* System abstraction for multi-platform support (file I/O, clipboards, threads, object management)
-* Direct graphics access (h/w accelerated drawing)
+* Fully integrated Lua scripting in our Fluid development environment.
+* Load and save SVG files.  Manipulate or create new vector scene graphs from scratch using our API that also includes feature enhancements not available in SVG.
+* Multi-platform compatible networking API, providing coverage for TCP/IP Sockets, HTTP, SSL.
+* Scalable widgets for UI development (windows, checkboxes, buttons, dialogs, text and a great deal more...).
+* Data handling APIs (XML, JSON, ZIP, PNG, JPEG, SVG)
+* Full system abstraction for multi-platform support (file I/O, clipboards, threads, object management)
 * Multi-channel audio playback
-* Text editing (implemented with scintilla.org)
+* Extensive text editing widget (implemented with scintilla.org)
 
 Optional extensions not included with the main distribution:
 
 * Cryptography support (AES)
 * Database connectivity (MySQL, SQLite)
-
-The Parasol environment is platform neutral and applications will work in the same way on all supported platforms.  In addition we are aiming for programs to be distributed in sand-boxed, permission-based archives so that users can feel comfortable running any software package without concerns of being compromised.
 
 ## 2. Build Process
 
@@ -117,7 +115,7 @@ Full documentation for developers is available online from our main website.
 
 ## 5. Source Code Licensing
 
-Excluding third party APIs and marked contributions, the Parasol Framework is the copyright of Paul Manias © 1996 - 2017.  The source code is released under the terms of the LGPL as referenced below, except where otherwise indicated.
+Excluding third party APIs and marked contributions, the Parasol Framework is the copyright of Paul Manias © 1996 - 2020.  The source code is released under the terms of the LGPL as referenced below, except where otherwise indicated.
 
 The Parasol Framework is free software; you can redistribute it and/or modify it under the terms of the GNU Lesser General Public License as published by the Free Software Foundation; either version 2.1 of the License, or (at your option) any later version.
 

@@ -12,7 +12,7 @@
     <idstring>ID_SCROLLBAR</idstring>
     <category>GUI</category>
     <include>modules/scrollbar.h</include>
-    <copyright>Paul Manias 2003-2018</copyright>
+    <copyright>Paul Manias 2003-2020</copyright>
     <description>
 <p>The ScrollBar class simplifies the creation and management of scrollbars as part of the user interface.</p>
 <p>The ScrollBar class is closely related to the <class name="Scroll">Scroll</class> class.  To configure the size of the scrollable page and the viewable area, you need to communicate that information to the <class name="Scroll">Scroll</class> class.  More information is available in the <class name="Scroll">Scroll</class> class documentation.</p>

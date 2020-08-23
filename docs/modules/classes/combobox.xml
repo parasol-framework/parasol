@@ -12,7 +12,7 @@
     <idstring>ID_COMBOBOX</idstring>
     <category>GUI</category>
     <include>modules/combobox.h</include>
-    <copyright>Paul Manias 2003-2018</copyright>
+    <copyright>Paul Manias 2003-2020</copyright>
     <description>
 <p>The ComboBox class is used to create combo boxes, also known as 'drop-down menus' in application interfaces.  A combobox typically looks like a text entry area, but features a button positioned to the right-hand side of the gadget. Clicking on the button will pop-up a menu that the user can use to select a pre-defined menu item.  Clicking on one of those items will paste the item text into the combobox.</p>
 <p>A crucial feature of the combobox is the drop-down menu.  The combobox uses the <class name="Menu">Menu</class> class to support its menu construction. To add items to the drop-down menu, you need to pass instructions to it using XML.  You can learn more about the XML specification in the <class name="Menu">Menu</class> class manual.</p>

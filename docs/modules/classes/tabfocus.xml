@@ -12,7 +12,7 @@
     <idstring>ID_TABFOCUS</idstring>
     <category>GUI</category>
     <include>modules/tabfocus.h</include>
-    <copyright>Paul Manias 2003-2018</copyright>
+    <copyright>Paul Manias 2003-2020</copyright>
     <description>
 <p>The TabFocus class manages the use of the tab key and its relationship to the user-focus in the GUI of each application.  To create a tab-list, you only need to pass a list of focus-able objects that are in the application window.  As the user presses the tab-key, the focus will switch to each surface in the list, following the order that you have specified.</p>
 <p>Objects can be added to the tabfocus using the <method>AddObject</method> method for individual objects, or you can set the Objects field for a mass addition.  Some GUI classes such as the <class name="Button">Button</class> support a TabFocus field that you can set and this will cause it to automatically add itself to the referenced tabfocus object.</p></description>
