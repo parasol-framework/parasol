@@ -1536,7 +1536,7 @@ object as a JPEG file, the Class must be set to ID_JPEG).
 -INPUT-
 obj Object: Pointer to the object that contains the image to be saved.
 cstr Path: The destination file location.
-int Class: The sub-class to use when saving the image (optional).
+cid Class: The sub-class to use when saving the image (optional).
 int(PERMIT) Permissions: File permissions to use (optional).  If NULL, file is saved with user and group permissions of read/write.
 
 -ERRORS-

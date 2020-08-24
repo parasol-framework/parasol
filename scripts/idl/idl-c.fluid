@@ -1327,7 +1327,7 @@ glTypes = {
    char       = { fd='FD_BYTE',      c_type='BYTE' },
    error      = { fd='FD_LONG|FD_ERROR', c_type='ERROR' },
    large      = { fd='FD_LARGE',     c_type='LARGE' },
-   cid        = { fd='FD_LONG',      c_type='CLASSID' },
+   cid        = { fd='FD_LONG|FD_UNSIGNED', c_type='CLASSID' },
    obj        = { fd='FD_OBJECTPTR', c_type='OBJECTPTR' },
    str        = { fd='FD_STR',       c_type='STRING' },
    cstr       = { fd='FD_STR',       c_type='CSTRING' },

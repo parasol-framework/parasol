@@ -1864,7 +1864,7 @@ struct CoreBase {
    ERROR (*_LoadFile)(CSTRING, LONG, struct CacheFile **);
    void (*_UnloadFile)(struct CacheFile *);
    ERROR (*_AddInfoTag)(struct FileInfo *, CSTRING, CSTRING);
-   ERROR (*_SaveImageToFile)(APTR, CSTRING, LONG, LONG);
+   ERROR (*_SaveImageToFile)(APTR, CSTRING, CLASSID, LONG);
    ERROR (*_CompareFilePaths)(CSTRING, CSTRING);
    const struct SystemState * (*_GetSystemState)(void);
    ERROR (*_SetResourcePath)(LONG, CSTRING);

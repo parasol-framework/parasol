@@ -176,7 +176,7 @@ ERROR ReadFile(CSTRING Path, APTR Buffer, LONG BufferSize, LONG * Result);
 ERROR LoadFile(CSTRING Path, LONG Flags, struct CacheFile ** Cache);
 void UnloadFile(struct CacheFile * Cache);
 ERROR AddInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING Value);
-ERROR SaveImageToFile(OBJECTPTR Object, CSTRING Path, LONG Class, LONG Permissions);
+ERROR SaveImageToFile(OBJECTPTR Object, CSTRING Path, CLASSID Class, LONG Permissions);
 ERROR CompareFilePaths(CSTRING PathA, CSTRING PathB);
 const struct SystemState * GetSystemState();
 ERROR SetResourcePath(LONG PathType, CSTRING Path);
