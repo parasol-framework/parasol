@@ -1548,7 +1548,7 @@ NoSupport: The object does not support the SaveImage action.
 
 *****************************************************************************/
 
-ERROR SaveImageToFile(OBJECTPTR Object, CSTRING Path, LONG ClassID, LONG Permissions)
+ERROR SaveImageToFile(OBJECTPTR Object, CSTRING Path, CLASSID ClassID, LONG Permissions)
 {
    OBJECTPTR file;
    ERROR error;
