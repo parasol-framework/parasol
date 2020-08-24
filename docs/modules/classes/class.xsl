@@ -138,8 +138,8 @@
             </div>
             <div id="navbar" class="collapse navbar-collapse">
               <ul class="nav navbar-nav">
-                <li class="active"><a href="../core.xml">Modules</a></li>
-                <li><a href="classes.html">Classes</a></li>
+                <li><a href="../core.xml">Modules</a></li>
+                <li class="active"><a href="classes.html">Classes</a></li>
                 <li><a href="../fluid.html">Fluid</a></li>
               </ul>
             </div> <!-- nav-collapse -->

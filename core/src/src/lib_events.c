@@ -52,17 +52,19 @@ void free_events(void)
 -FUNCTION-
 BroadcastEvent: Broadcast an event to all event listeners in the system.
 
-Use BroadcastEvent() to broadcast an event to all listeners for that event in the system.  You need to provide a 64-bit
-event ID and optionally any data relevant to that event.
+Use BroadcastEvent() to broadcast an event to all listeners for that event in the system.  An Event structure is
+required that must start with a 64-bit EventID acquired from ~GetEventID(), followed by any required data that is
+relevant to that event.  The C/C++ template is as follows:
 
-Some events may include data to describe the nature of the event.  This data should be described as a structure if
-possible, in which case the StructDef parameter must point to a field array describing that structure. If the data is
-too complex to describe, then StructDef must be set to NULL.  It should be noted that the use of structural definitions
-allows scripting languages to use events in a manner that is secure.  If no definition is available, restrictions may
-prevent the script from accessing the data.
+<pre>
+typedef struct rkEvent {
+   EVENTID EventID;
+   // Data follows
+} rkEvent;
+</pre>
 
-For more information about available events, please refer to the System Events Reference Manual in the SDK
-documentation.
+This document does not describe the available system events.  For more information about them, please refer to the
+System Events Reference Manual in the API documentation.
 
 -INPUT-
 ptr Event: Pointer to an event structure.

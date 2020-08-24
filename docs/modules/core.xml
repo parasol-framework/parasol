@@ -485,9 +485,13 @@ if (!AllocMemory(1000, MEM_DATA, &amp;address, NULL)) {
       <param type="LONG" name="EventSize">The size of the Event structure, in bytes.</param>
     </input>
     <description>
-<p>Use BroadcastEvent() to broadcast an event to all listeners for that event in the system.  You need to provide a 64-bit event ID and optionally any data relevant to that event.</p>
-<p>Some events may include data to describe the nature of the event.  This data should be described as a structure if possible, in which case the StructDef parameter must point to a field array describing that structure. If the data is too complex to describe, then StructDef must be set to NULL.  It should be noted that the use of structural definitions allows scripting languages to use events in a manner that is secure.  If no definition is available, restrictions may prevent the script from accessing the data.</p>
-<p>For more information about available events, please refer to the System Events Reference Manual in the SDK documentation.</p>
+<p>Use BroadcastEvent() to broadcast an event to all listeners for that event in the system.  An Event structure is required that must start with a 64-bit EventID acquired from <function module="Core">GetEventID</function>, followed by any required data that is relevant to that event.  The C/C++ template is as follows:</p>
+<pre>typedef struct rkEvent {
+   EVENTID EventID;
+   // Data follows
+} rkEvent;
+</pre>
+<p>This document does not describe the available system events.  For more information about them, please refer to the System Events Reference Manual in the API documentation.</p>
     </description>
     <result type="ERROR">
       <error code="NullArgs">Function call missing argument value(s)</error>
@@ -2128,11 +2132,11 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
     <name>SaveImageToFile</name>
     <category>Files</category>
     <comment>Saves an object's image to a destination file.</comment>
-    <prototype>ERROR SaveImageToFile(OBJECTPTR Object, CSTRING Path, LONG Class, LONG Permissions)</prototype>
+    <prototype>ERROR SaveImageToFile(OBJECTPTR Object, CSTRING Path, CLASSID Class, LONG Permissions)</prototype>
     <input>
       <param type="OBJECTPTR" name="Object">Pointer to the object that contains the image to be saved.</param>
       <param type="CSTRING" name="Path">The destination file location.</param>
-      <param type="LONG" name="Class">The sub-class to use when saving the image (optional).</param>
+      <param type="CLASSID" name="Class">The sub-class to use when saving the image (optional).</param>
       <param type="LONG" name="Permissions" lookup="PERMIT">File permissions to use (optional).  If NULL, file is saved with user and group permissions of read/write.</param>
     </input>
     <description>
