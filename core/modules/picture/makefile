@@ -41,7 +41,7 @@ endif
 
 $(HEADER) picture_def.c: $(NAME).fdl picture.c
 	$(IDL_C) src=$<
-	$(IDL_DEF) src=$< append output=picture_def.c format=c
+	$(IDL_DEF) src=$< --append --output=picture_def.c --format=c
 
 clean:
 	@rm -f $(OBJECTS) "$(DEST)"
