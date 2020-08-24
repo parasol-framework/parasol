@@ -288,7 +288,7 @@
                     <div id="classes" class="panel-collapse collapse">
                       <div class="panel-body">
                         <ul class="list-unstyled">
-                          <xsl:for-each select="info/classes/class"><li><a><xsl:attribute name="href">classes/<xsl:value-of select="."/>.xml</xsl:attribute><xsl:value-of select="."/></a></li></xsl:for-each>
+                          <xsl:for-each select="info/classes/class"><xsl:variable name="class_name"><xsl:value-of select="."/></xsl:variable><xsl:variable name="lower" select="translate($class_name,'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz')"/><li><a><xsl:attribute name="href">classes/<xsl:value-of select="$lower"/>.xml</xsl:attribute><xsl:value-of select="."/></a></li></xsl:for-each>
                         </ul>
                       </div>
                     </div>

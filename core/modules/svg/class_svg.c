@@ -199,7 +199,7 @@ static ERROR SVG_Render(objSVG *Self, struct svgRender *Args)
 SaveImage: Saves the SVG document as a PNG image.
 
 This action will render the SVG document to a bitmap and save the resulting image.  The size of the image is
-determined by the PageWidth and PageHeight of the @Scene, or if not defined then the default of 1920x1080 is applied.
+determined by the PageWidth and PageHeight of the #Scene, or if not defined then the default of 1920x1080 is applied.
 
 The image will be saved in PNG format by default, but can be changed by specifying an alternate ClassID.  PNG
 is recommended in particular because it supports an alpha channel.
