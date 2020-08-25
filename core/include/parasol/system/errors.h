@@ -203,7 +203,8 @@
 #define ERR_Obsolete 177
 #define ERR_CreateResource 178
 #define ERR_NotPossible 179
-#define ERR_END 180
+#define ERR_ResolveSymbol 180
+#define ERR_END 181
 
 // Error headers
 
