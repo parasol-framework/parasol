@@ -141,7 +141,7 @@
             </div>
             <div id="navbar" class="collapse navbar-collapse">
               <ul class="nav navbar-nav">
-                <li class="active"><a href="core.xml">Modules</a></li>
+                <li class="active"><a href="/modules/core.xml">Modules</a></li>
                 <li><a href="/modules/classes/module.xml">Classes</a></li>
                 <li><a href="/modules/fluid.xml">Fluid</a></li>
               </ul>
