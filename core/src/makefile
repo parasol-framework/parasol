@@ -1,7 +1,7 @@
-BUILD_ROOT=../../
+BUILD_ROOT:=../../
+include $(BUILD_ROOT)makefile.inc
 CFLAGS += -I../include
 CXXFLAGS += -I../include
-include ../core.mk
 
 NAME=    core
 DEST=   $(PARASOL_ROOTMOD)
