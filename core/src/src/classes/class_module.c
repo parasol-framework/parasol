@@ -809,7 +809,7 @@ static ERROR MODULE_ResolveSymbol(objModule *Self, struct modResolveSymbol *Args
       return ERR_Okay;
    }
    else {
-      FMSG("@","Failed to resolve '%s'", Args->Name);
+      LogMsg("Failed to resolve '%s' in %s module.", Args->Name, Self->Master->Name);
       return ERR_NotFound;
    }
 #elif __unix__
@@ -819,7 +819,7 @@ static ERROR MODULE_ResolveSymbol(objModule *Self, struct modResolveSymbol *Args
       return ERR_Okay;
    }
    else {
-      FMSG("@","Failed to resolve '%s'", Args->Name);
+      LogMsg("Failed to resolve '%s' in %s module.", Args->Name, Self->Master->Name);
       return ERR_NotFound;
    }
 #else

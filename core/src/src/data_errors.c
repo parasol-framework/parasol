@@ -380,7 +380,8 @@ CSTRING glMessages[ERR_END] = {
  "A call to ReadFile() failed.",
  "This feature is no longer available (obsolete).",
  "Failed to create a new resource.",
- "It is not possible to perform the requested operation."
+ "It is not possible to perform the requested operation.",
+ "Failed to resolve a linked library symbol."
 };
 
 const LONG glTotalHeaders = ARRAYSIZE(glHeaders);

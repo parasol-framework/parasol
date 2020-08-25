@@ -185,6 +185,7 @@ function declareErrors()
     "Obsolete",                // This feature is no longer available (obsolete).
     "CreateResource",          // Failed to create a new resource.
     "NotPossible",             // It is not possible to perform the requested operation.
+    "ResolveSymbol",           // Failed to resolve a linked library symbol
     "END") // NB: Any new error messages need to be added to data_errors.c manually.
 
   enum("ERH", { start=1, comment="Error headers" },
