@@ -137,7 +137,9 @@ extern "C" {
 #ifdef __CYGWIN__
 #define PF64() "%lld"
 #elif _WIN32
- #ifdef _LP64 // msys gcc-64 accepts %lld, but gcc-32 only %I64
+ #ifdef PRId64
+  #define PF64() "%"PRId64
+ #elif _LP64 // msys gcc-64 accepts %lld, but gcc-32 only %I64
   #define PF64() "%lld"
  #else
   #define PF64() "%I64d"
