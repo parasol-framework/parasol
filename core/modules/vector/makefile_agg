@@ -39,7 +39,7 @@ OBJ=$(SRC_CXX:.cpp=.o) $(SRC_C:.c=.o)
 compile: $(OBJ)
 
 %.o: %.cpp
-	$(CXX) -c $(CXXFLAGS) -Wno-narrowing -Wno-uninitialized -Iagg/include -I../font/freetype-2.7/include $*.cpp -o $@
+	$(CXX) -c $(CXXFLAGS) -Wno-narrowing -Wno-uninitialized -Iagg/include -I../font/freetype-2.10.2/include $*.cpp -o $@
 
 %.o: %.c
 	$(CC) -c $(CFLAGS) -Iagg/include $*.c -o $@

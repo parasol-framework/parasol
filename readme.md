@@ -1,7 +1,7 @@
 
 # Parasol Framework
 
-#### Web: http://www.parasol.ws
+#### Web: https://parasol.ws
 
 #### License: LGPL 2.1
 

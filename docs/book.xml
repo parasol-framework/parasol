@@ -89,17 +89,6 @@
           <chapter title="Sound Class" src="classes/viewclass.rpl?xml=sound.xml"/>
         </chapter>
 
-        <chapter title="Commands" src="classes/index.rpl?category=Command">
-          <chapter title="Action Class" src="classes/viewclass.rpl?xml=action.xml"/>
-          <chapter title="Assign Class" src="classes/viewclass.rpl?xml=assign.xml"/>
-          <chapter title="Find Files Class" src="classes/viewclass.rpl?xml=findfiles.xml"/>
-          <chapter title="Print Class" src="classes/viewclass.rpl?xml=print.xml"/>
-          <chapter title="Run Class" src="classes/viewclass.rpl?xml=run.xml"/>
-          <chapter title="Set Class" src="classes/viewclass.rpl?xml=set.xml"/>
-          <chapter title="Variable Class" src="classes/viewclass.rpl?xml=variable.xml"/>
-          <chapter title="Wait Class" src="classes/viewclass.rpl?xml=wait.xml"/>
-        </chapter>
-
         <chapter title="Data" src="classes/index.rpl?category=Data">
           <chapter title="CompressedStream Class" src="classes/viewclass.rpl?xml=compressedstream.xml"/>
           <chapter title="Compression Class" src="classes/viewclass.rpl?xml=compression.xml"/>
@@ -112,13 +101,6 @@
           <chapter title="Script Class" src="classes/viewclass.rpl?xml=script.xml"/>
           <chapter title="ScriptState Class" src="classes/viewclass.rpl?xml=scriptstate.xml"/>
           <chapter title="XML Class" src="classes/viewclass.rpl?xml=xml.xml"/>
-        </chapter>
-
-        <chapter title="Effects" src="classes/index.rpl?category=Effect">
-          <chapter title="Fade Class" src="classes/viewclass.rpl?xml=fade.xml"/>
-          <chapter title="Move Class" src="classes/viewclass.rpl?xml=move.xml"/>
-          <chapter title="Noise Class" src="classes/viewclass.rpl?xml=noise.xml"/>
-          <chapter title="Rotoplex Class" src="classes/viewclass.rpl?xml=rotoplex.xml"/>
         </chapter>
 
         <chapter title="File System" src="classes/index.rpl?category=File System">
@@ -154,36 +136,23 @@
         </chapter>
 
         <chapter title="GUI" src="classes/index.rpl?category=GUI">
-          <chapter title="Arrow Class" src="classes/viewclass.rpl?xml=arrow.xml"/>
-          <chapter title="Box Class" src="classes/viewclass.rpl?xml=box.xml"/>
           <chapter title="Button Class" src="classes/viewclass.rpl?xml=button.xml"/>
           <chapter title="CheckBox Class" src="classes/viewclass.rpl?xml=checkbox.xml"/>
-          <chapter title="Clock Class" src="classes/viewclass.rpl?xml=clock.xml"/>
           <chapter title="ComboBox Class" src="classes/viewclass.rpl?xml=combobox.xml"/>
           <chapter title="Divider Class" src="classes/viewclass.rpl?xml=divider.xml"/>
           <chapter title="Document Class" src="classes/viewclass.rpl?xml=document.xml"/>
-          <chapter title="Focus Class" src="classes/viewclass.rpl?xml=focus.xml"/>
-          <chapter title="Gradient Class" src="classes/viewclass.rpl?xml=gradient.xml"/>
-          <chapter title="Icon Class" src="classes/viewclass.rpl?xml=icon.xml"/>
           <chapter title="Image Class" src="classes/viewclass.rpl?xml=image.xml"/>
           <chapter title="Input Class" src="classes/viewclass.rpl?xml=input.xml"/>
           <chapter title="Layout Class" src="classes/viewclass.rpl?xml=layout.xml"/>
           <chapter title="Menu Class" src="classes/viewclass.rpl?xml=menu.xml"/>
-          <chapter title="MenuBar Class" src="classes/viewclass.rpl?xml=menubar.xml"/>
-          <chapter title="Movement Class" src="classes/viewclass.rpl?xml=movement.xml"/>
-          <chapter title="Onclick Class" src="classes/viewclass.rpl?xml=onclick.xml"/>
-          <chapter title="Panorama Class" src="classes/viewclass.rpl?xml=panorama.xml"/>
           <chapter title="Resize Class" src="classes/viewclass.rpl?xml=resize.xml"/>
           <chapter title="Scroll Class" src="classes/viewclass.rpl?xml=scroll.xml"/>
           <chapter title="Scrollbar Class" src="classes/viewclass.rpl?xml=scrollbar.xml"/>
-          <chapter title="Sidebar Class" src="classes/viewclass.rpl?xml=sidebar.xml"/>
-          <chapter title="Stripes Class " src="classes/viewclass.rpl?xml=stripes.xml"/>
           <chapter title="Surface Class" src="classes/viewclass.rpl?xml=surface.xml"/>
           <chapter title="SVG Class" src="classes/viewclass.rpl?xml=svg.xml"/>
           <chapter title="TabFocus Class" src="classes/viewclass.rpl?xml=tabfocus.xml"/>
           <chapter title="Table Class" src="classes/viewclass.rpl?xml=table.xml"/>
           <chapter title="Text Class" src="classes/viewclass.rpl?xml=text.xml"/>
-          <chapter title="Toolbar Class" src="classes/viewclass.rpl?xml=toolbar.xml"/>
           <chapter title="View Class" src="classes/viewclass.rpl?xml=view.xml"/>
           <chapter title="Window Class" src="classes/viewclass.rpl?xml=window.xml"/>
         </chapter>
@@ -212,12 +181,6 @@
         </chapter>
 
         <chapter title="Tools" src="classes/index.rpl?category=Tool">
-          <chapter title="Colour Dialog Class" src="classes/viewclass.rpl?xml=colourdialog.xml"/>
-          <chapter title="Dialog Class" src="classes/viewclass.rpl?xml=dialog.xml"/>
-          <chapter title="File Dialog Class" src="classes/viewclass.rpl?xml=filedialog.xml"/>
-          <chapter title="File View Class" src="classes/viewclass.rpl?xml=fileview.xml"/>
-          <chapter title="Font Dialog Class" src="classes/viewclass.rpl?xml=fontdialog.xml"/>
-          <chapter title="Mixer Dialog Class" src="classes/viewclass.rpl?xml=mixerdialog.xml"/>
           <chapter title="Scintilla Class" src="classes/viewclass.rpl?xml=scintilla.xml"/>
           <chapter title="ScintillaSearch Class" src="classes/viewclass.rpl?xml=scintillasearch.xml"/>
         </chapter>
