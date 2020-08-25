@@ -23,25 +23,27 @@ added benefit of being able to support international character sets with ease, b
 character codes above #127 without being sure that they follow UTF-8 guidelines.  Find out more about UTF-8 at
 this <a href="http://www.cl.cam.ac.uk/~mgk25/unicode.html">web page</a>.
 
-Initialisation of a new font object can be as simple as declaring its #Point size and #Face name.
-It is necessary to bear in mind that fonts are resistant to alteration after initialisation, so all style and graphical
-selections must be set early.  For example, it is not possible to change styling from regular to bold format without
-the request being rejected.  To support multiple styles of the same font, you therefore need to create a font object
-for every style that you wish to support.  Basic features such as colour, the font string and text positioning are not
-affected by these restrictions.
+Initialisation of a new font object can be as simple as declaring its #Point size and #Face name.  Font objects can
+be difficult to alter post-initialisation, so all style and graphical selections must be defined on creation.  For
+example, it is not possible to change styling from regular to bold format dynamically.  To support multiple styles
+of the same font, you need to create a font object for every style that you need to support.  Basic settings such as
+colour, the font string and text positioning are not affected by these limitations.
 
 To draw a font string to a Bitmap object, start by setting the #Bitmap and #String fields.  The #X and #Y fields
-determine string positioning and you can also use the #Align field to align a string to the right or center of the
+determine string positioning and you can also use the #Align field to position a string to the right or center of the
 surface area.
 
-Finally, here is some clarification on some of the terminology used in the Font class and further documentation:
+To clarify the terminology used in this documentation, please note the definitions for the following terms:
 
 <list type="unsorted">
 <li>'Point' determines the size of a font.  The value is relative only to other point sizes of the same font face, i.e. two faces at the same point size are not necessarily the same height.</li>
 <li>'Height' represents the 'vertical bearing' or point of the font, expressed as a pixel value.  The height does not cover for any leading at the top of the font, or the gutter space used for the tails on characters like 'g' and 'y'.</li>
 <li>'Gutter' is the amount of space that a character can descend below the base line.  Characters like 'g' and 'y' are examples of characters that utilise the gutter space.  The gutter is also sometimes known as the "external leading" of a character.</li>
 <li>'LineSpacing' is the recommended pixel distance between each line that is printed with the font.</li>
+<li>'Glyph' refers to a single font character.</li>
 </>
+
+Please note that if special effects and transforms are desired then use the @VectorText class for this purpose.
 
 -END-
 
@@ -93,8 +95,8 @@ static ERROR add_font_class(void)
 Draw: Draws a font to a Bitmap.
 
 When you are ready to draw a font to a Bitmap, use the Draw action. Drawing will start from the coordinates given in
-the #X and #Y fields, using the characters in the font #String.  The result of
-calling Draw will depend on what type of Font you are using and how you have set up the font object.
+the #X and #Y fields, using the characters in the font #String.  The result of calling Draw will depend on the type
+of Font and its configuration.
 
 -ERRORS-
 Okay
@@ -226,7 +228,7 @@ static ERROR FONT_Init(objFont *Self, APTR Void)
       struct winne_header_fields ne_header;
       struct winfnt_header_fields header, face;
       ULONG res_offset, font_offset;
-      UWORD size_shift, font_count, type_id, count;
+      UWORD font_count, type_id, count;
 
       // Check if the file is a Windows Bitmap Font
 
@@ -241,6 +243,7 @@ static ERROR FONT_Init(objFont *Self, APTR Void)
 
             // Count the number of fonts in the file
 
+            UWORD size_shift = 0;
             font_count  = 0;
             font_offset = 0;
             flReadLE2(file, &size_shift);
