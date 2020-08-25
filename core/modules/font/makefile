@@ -5,7 +5,7 @@ NAME= font
 DEST= $(PARASOL_MODULE)
 DOCUMENT= font.c class_font.c
 HEADER= ../../include/parasol/modules/$(NAME).h
-FT:= freetype-2.7/
+FT:= freetype-2.10.2/
 
 # A bug in (MinGW?) GCC requires the following flag is applied to ensure that __packed__ works correctly.
 CFLAGS += -mno-ms-bitfields -DMOD_NAME=$(NAME)
@@ -28,3 +28,8 @@ $(HEADER) font_def.c: $(NAME).fdl $(DOCUMENT)
 clean:
 	@rm -f *.mak $(OBJECTS) "$(DEST)"
 	@touch $(NAME).fdl
+
+.FORCE:
+test: .FORCE
+	$(FLUTE) file=tests/font_tests.fluid
+
