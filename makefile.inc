@@ -272,7 +272,7 @@ else
       CFLAGS   += -O2
       CXXFLAGS += -O2
       ifneq ($(HOST),mac)
-         LINK      = -s
+         LINK      = -s $(ARCH)
          LIBLINK  += -s
          EXELINK  += -s
       endif
