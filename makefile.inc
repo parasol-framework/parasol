@@ -80,7 +80,7 @@ endif
 ifeq ($(CPU),x86_64)
    CPUBITS    = 64
    ARCHEXT    = -x64
-   ARCH       = -m$(CPUBITS)
+   ARCH       = -m$(CPUBITS) -D_LP64
    ANDROIDCPU = x86_64
    OBJARCH    = i386
    OBJOUTPUT  = pei-x86-64
