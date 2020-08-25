@@ -133,8 +133,8 @@ static ERROR read_path(struct PathCommand **, LONG *, CSTRING);
 static void apply_transition(objVectorTransition *, DOUBLE, agg::trans_affine &);
 static void apply_transition_xy(objVectorTransition *, DOUBLE, DOUBLE *X, DOUBLE *Y);
 
-FT_Error (*EFT_Set_Pixel_Sizes)(FT_Face, FT_UInt  pixel_width, FT_UInt  pixel_height );
-FT_Error (*EFT_Set_Char_Size)(FT_Face, FT_F26Dot6  char_width, FT_F26Dot6  char_height, FT_UInt horz_resolution, FT_UInt vert_resolution );
+FT_Error (*EFT_Set_Pixel_Sizes)(FT_Face, FT_UInt pixel_width, FT_UInt pixel_height );
+FT_Error (*EFT_Set_Char_Size)(FT_Face, FT_F26Dot6 char_width, FT_F26Dot6 char_height, FT_UInt horz_resolution, FT_UInt vert_resolution );
 FT_Error (*EFT_Get_Kerning)(FT_Face, FT_UInt left_glyph, FT_UInt right_glyph, FT_UInt kern_mode, FT_Vector *akerning);
 FT_Error (*EFT_Get_Char_Index)(FT_Face, FT_ULong charcode);
 FT_Error (*EFT_Load_Glyph)(FT_Face, FT_UInt glyph_index, FT_Int32  load_flags);
@@ -145,14 +145,14 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
    CoreBase = argCoreBase;
 
-   if (LoadModule("display", MODVERSION_DISPLAY, &modDisplay, &DisplayBase) != ERR_Okay) return ERR_InitModule;
-   if (LoadModule("font", MODVERSION_FONT, &modFont, &FontBase) != ERR_Okay) return ERR_InitModule;
+   if (LoadModule("display", MODVERSION_DISPLAY, &modDisplay, &DisplayBase)) return ERR_InitModule;
+   if (LoadModule("font", MODVERSION_FONT, &modFont, &FontBase)) return ERR_InitModule;
 
-   modResolveSymbol(modFont, "FT_Set_Pixel_Sizes", (APTR *)&EFT_Set_Pixel_Sizes);
-   modResolveSymbol(modFont, "FT_Set_Char_Size", (APTR *)&EFT_Set_Char_Size);
-   modResolveSymbol(modFont, "FT_Get_Kerning", (APTR *)&EFT_Get_Kerning);
-   modResolveSymbol(modFont, "FT_Get_Char_Index", (APTR *)&EFT_Get_Char_Index);
-   modResolveSymbol(modFont, "FT_Load_Glyph", (APTR *)&EFT_Load_Glyph);
+   if (modResolveSymbol(modFont, "FT_Set_Pixel_Sizes", (APTR *)&EFT_Set_Pixel_Sizes)) return ERR_ResolveSymbol;
+   if (modResolveSymbol(modFont, "FT_Set_Char_Size", (APTR *)&EFT_Set_Char_Size)) return ERR_ResolveSymbol;
+   if (modResolveSymbol(modFont, "FT_Get_Kerning", (APTR *)&EFT_Get_Kerning)) return ERR_ResolveSymbol;
+   if (modResolveSymbol(modFont, "FT_Get_Char_Index", (APTR *)&EFT_Get_Char_Index)) return ERR_ResolveSymbol;
+   if (modResolveSymbol(modFont, "FT_Load_Glyph", (APTR *)&EFT_Load_Glyph)) return ERR_ResolveSymbol;
 
    FID_FreetypeFace = StrHash("FreetypeFace", FALSE);
 
