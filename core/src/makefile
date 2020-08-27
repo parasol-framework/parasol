@@ -61,7 +61,9 @@ HEADERS := ../include/parasol/modules/core.h ../include/parasol/system/errors.h 
 
 compile: $(HEADERS) $(OBJECTS)
 ifeq ($(OSTYPE),win)
-	$(CC) -shared $(LINK) -o "$(DEST)" $(OBJECTS) $(LINKLIB)
+	$(TOOLCHAIN)ld -r -o obj/$(PLATFORM)/lib.o $(OBJECTS)
+	$(OBJCOPY) --redefine-sym _ReleaseSemaphore=_CoreReleaseSemaphore --redefine-sym _ReadFile=_CoreReadFile -K CloseCore -K OpenCore -R .comment -R .note --strip-unneeded obj/$(PLATFORM)/lib.o
+	$(CC) -shared $(LINK) -o "$(DEST)" obj/$(PLATFORM)/lib.o $(LINKLIB)
 else
    ifeq ($(OSTYPE),android)
       ifeq ($(DEBUG),1)
