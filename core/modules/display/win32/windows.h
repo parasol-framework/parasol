@@ -76,7 +76,6 @@ void winShowCursor(int);
 void winSetCursor(HCURSOR);
 void winSetSurfaceID(HWND, int);
 int winSettings(int);
-WNDPROC winSetWindowProcedure(HWND, WNDPROC);
 void winSetWindowTitle(HWND, unsigned char *);
 int winShowWindow(HWND, int);
 void winUpdateWindow(HWND);

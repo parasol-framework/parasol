@@ -202,7 +202,7 @@ ERROR FreeSemaphore(LONG SemaphoreID);
 ERROR SetFieldF(OBJECTPTR, FIELD, va_list);
 ERROR SetFieldsF(OBJECTPTR, va_list);
 ERROR CreateObjectF(LARGE, LONG, OBJECTPTR *, va_list List);
-ERROR ReleaseSemaphore(LONG, LONG);
+ERROR pReleaseSemaphore(LONG, LONG);
 
 #define DelayMsg(a,b,c)     (ActionMsg(a,b,c,0,0xffffffff))
 #define DelayAction(a,b,c)  (ActionMsg(a,b,c,0,0xffffffff))

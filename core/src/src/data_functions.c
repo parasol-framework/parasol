@@ -369,7 +369,7 @@ const struct Function glFunctions[] = {
    { (APTR)SetDefaultPermissions, "SetDefaultPermissions", argsSetDefaultPermissions },
    { (APTR)ResolveUserID, "ResolveUserID", argsResolveUserID },
    { (APTR)ResolveGroupID, "ResolveGroupID", argsResolveGroupID },
-   { (APTR)ReadFile, "ReadFile", argsReadFile },
+   { (APTR)pReadFile, "ReadFile", argsReadFile },
    { (APTR)LoadFile, "LoadFile", argsLoadFile },
    { (APTR)UnloadFile, "UnloadFile", argsUnloadFile },
    { (APTR)AddInfoTag, "AddInfoTag", argsAddInfoTag },

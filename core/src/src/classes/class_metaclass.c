@@ -1314,7 +1314,7 @@ ERROR load_classes(void)
       }
       else glScanClasses = TRUE;
 
-      ReleaseSemaphore(glSharedControl->ClassSemaphore, 0);
+      pReleaseSemaphore(glSharedControl->ClassSemaphore, 0);
    }
    else error = LogError(ERH_LoadClasses, ERR_AccessSemaphore);
 
@@ -1473,7 +1473,7 @@ ERROR register_class(CSTRING Name, CLASSID ParentID, LONG Category, CSTRING Path
 
       MEMORYID classes_mid;
       if (AllocMemory(totalsize, MEM_NO_CLEAR|MEM_PUBLIC|MEM_NO_BLOCK|MEM_UNTRACKED, (APTR)&classes, &classes_mid)) {
-         ReleaseSemaphore(glSharedControl->ClassSemaphore, 0);
+         pReleaseSemaphore(glSharedControl->ClassSemaphore, 0);
          LogBack();
          return ERR_AllocMemory;
       }
@@ -1566,7 +1566,7 @@ ERROR register_class(CSTRING Name, CLASSID ParentID, LONG Category, CSTRING Path
 
       sort_class_db(); // The class lookup table must be sorted at all times.
 
-      ReleaseSemaphore(glSharedControl->ClassSemaphore, 0);
+      pReleaseSemaphore(glSharedControl->ClassSemaphore, 0);
       LogBack();
       return ERR_Okay;
    }

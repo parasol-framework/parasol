@@ -453,11 +453,14 @@ void winShowCursor(int State)
 
 //****************************************************************************
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpointer-to-int-cast"
 int winLookupSurfaceID(HWND Window)
 {
    return (int)GetProp(Window, "SurfaceID");
    //return GetWindowLong(Window, WE_SURFACE);
 }
+#pragma GCC diagnostic pop
 
 //****************************************************************************
 
@@ -494,18 +497,6 @@ void winMinimiseWindow(HWND Window)
    ShowWindow(Window, SW_MINIMIZE);
 
 #endif
-}
-
-//****************************************************************************
-
-WNDPROC winSetWindowProcedure(HWND Window, WNDPROC Procedure)
-{
-   WNDPROC oldvalue;
-
-   if (!Procedure) oldvalue = (WNDPROC)SetWindowLong(Window, GWL_WNDPROC, (int)WindowProcedure);
-   else oldvalue = (WNDPROC)SetWindowLong(Window, GWL_WNDPROC, (int)Procedure);
-
-   return oldvalue;
 }
 
 //****************************************************************************
@@ -1049,12 +1040,15 @@ static LRESULT CALLBACK WindowProcedure(HWND window, UINT msgcode, WPARAM wParam
 
 //****************************************************************************
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wint-to-pointer-cast"
 void winSetSurfaceID(HWND Window, int SurfaceID)
 {
    SetProp(Window, "SurfaceID", (HANDLE)SurfaceID);
    SetWindowLong(Window, WE_SURFACE, SurfaceID);
    SetWindowLong(Window, WE_KEY, KEY_SURFACE);
 }
+#pragma GCC diagnostic pop
 
 //****************************************************************************
 

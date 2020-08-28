@@ -613,7 +613,7 @@ Flags:     Must be set to the flags originally passed to AccessSemaphore().
 
 *****************************************************************************/
 
-ERROR ReleaseSemaphore(LONG SemaphoreID, LONG Flags)
+ERROR pReleaseSemaphore(LONG SemaphoreID, LONG Flags)
 {
    struct SemProcess *process;
    struct SemaphoreEntry *semaphores, *semaphore;

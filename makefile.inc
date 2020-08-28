@@ -12,7 +12,7 @@
 #      Set to 'win', 'linux' or 'android'
 #      When compiling for Android, be sure to use the 'android' setting and not your machine's OS.
 #   CPU:
-#      Either 'x86' or 'x64'
+#      Either 'x86' or 'x86_64'
 #   NDK:
 #      For Android only.  On Linux this is normally set to '/ndk'.  On Windows, use conventional paths, e.g. 'D:\ndk'.
 #   VDEBUG=1

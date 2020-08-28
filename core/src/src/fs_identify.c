@@ -212,7 +212,7 @@ ERROR IdentifyFile(CSTRING Path, CSTRING Mode, LONG Flags, CLASSID *ClassID, CLA
       if (!*ClassID) {
          FMSG("IdentifyFile","Loading file header to identify '%s' against class registry", res_path);
 
-         if ((!ReadFile(res_path, buffer, HEADER_SIZE, &bytes_read)) AND (bytes_read >= 4)) {
+         if ((!pReadFile(res_path, buffer, HEADER_SIZE, &bytes_read)) AND (bytes_read >= 4)) {
             FMSG("IdentifyFile","Checking file header data (%d bytes) against %d classes....", bytes_read, classes->Total);
             for (i=0; (i < classes->Total) AND (!*ClassID); i++) {
                item = ((APTR)classes) + offsets[i];
