@@ -55,6 +55,7 @@
 /core/modules/network/ares-1.11.0/test/
 /core/3rdparty/libffi-*/
 /core/3rdparty/openssl-*/
+/core/3rdparty/zlib-*/
 /scintilla374/
 /examples/test.fluid
 .idea/

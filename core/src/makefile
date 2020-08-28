@@ -1,7 +1,7 @@
-BUILD_ROOT=../../
-CFLAGS += -I../include
-CXXFLAGS += -I../include
-include ../core.mk
+BUILD_ROOT:=../../
+include $(BUILD_ROOT)makefile.inc
+CFLAGS += -I../include -I../3rdparty/zlib-1.2.11/
+CXXFLAGS += -I../include -I../3rdparty/zlib-1.2.11/
 
 NAME=    core
 DEST=   $(PARASOL_ROOTMOD)
