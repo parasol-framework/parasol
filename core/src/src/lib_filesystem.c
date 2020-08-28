@@ -1346,7 +1346,7 @@ File
 
 ******************************************************************************/
 
-ERROR ReadFile(CSTRING Path, APTR Buffer, LONG BufferSize, LONG *BytesRead)
+ERROR pReadFile(CSTRING Path, APTR Buffer, LONG BufferSize, LONG *BytesRead)
 {
 #if defined(__unix__) || defined(_WIN32)
    if ((!Path) OR (BufferSize <= 0) OR (!Buffer)) return ERR_Args;
