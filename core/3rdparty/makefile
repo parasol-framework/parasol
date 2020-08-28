@@ -20,9 +20,9 @@ openssl:
 	$(MAKE) depend && $(MAKE) all && $(MAKE) install
 
 libffi:
-	rm -fr libffi-3.2.1
-	tar -zxvf libffi-3.2.1.tar.gz
-	cd libffi-3.2.1; ./configure --disable-dependency-tracking --prefix=`pwd`/release --includedir=`pwd`/release/include; $(MAKE) install
+	rm -fr libffi-3.3
+	tar -zxvf libffi-3.3.tar.gz
+	cd libffi-3.3; ./configure --disable-dependency-tracking --prefix=`pwd`/release --includedir=`pwd`/release/include; $(MAKE) install
 
 zlib:
 	rm -fr $(ZLIB)
