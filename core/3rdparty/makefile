@@ -9,7 +9,7 @@ include $(BUILD_ROOT)makefile.inc
 compile: libffi zlib
 
 openssl:
-	tar -zxvf openssl-1.0.*.gz
+	tar -zxf openssl-1.0.*.gz
 	cd openssl-1.0.*
 	# Patch ssl/dtls1.h so that <sys/time.h> is included rather than <winsock.h>
 	echo -e "#undef OPENSSL_SYS_WINDOWS\n#undef OPENSSL_SYS_WIN32\n$(cat include/openssl/dtls1.h)" >include/openssl/dtls11.h
@@ -21,12 +21,12 @@ openssl:
 
 libffi:
 	rm -fr libffi-3.3
-	tar -zxvf libffi-3.3.tar.gz
+	tar -zxf libffi-3.3.tar.gz
 	cd libffi-3.3; ./configure --disable-dependency-tracking --prefix=`pwd`/release --includedir=`pwd`/release/include; $(MAKE) install
 
 zlib:
 	rm -fr $(ZLIB)
-	tar -zxvf $(ZLIB).tar.gz
+	tar -zxf $(ZLIB).tar.gz
 	mkdir -p $(PARASOL_MODULES)/lib
 ifeq ($(OSTYPE),win)
 	BINARY_PATH=/mingw/bin INCLUDE_PATH=/mingw/include LIBRARY_PATH=/mingw/lib $(MAKE) -C $(ZLIB) clean install -f win32/Makefile.gcc
