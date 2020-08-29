@@ -55,6 +55,10 @@ ifeq ($(MSYSTEM),MINGW32) # Matches MSYS2 running mingw32.exe
    HOST   := win
    OSTYPE := win
    CPU    ?= x86
+else ifeq ($(MSYSTEM),MINGW64) # Matches MSYS2 running mingw64.exe
+   HOST   := win
+   OSTYPE := win
+   CPU    ?= x86_64
 else ifeq ($(MSYSTEM),MSYS) # Matches MSYS2 running mingw64.exe
    HOST   := win
    OSTYPE := win
