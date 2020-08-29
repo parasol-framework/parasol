@@ -656,9 +656,9 @@ static void task_process_end(WINHANDLE FD, objTask *Task)
    winGetExitCodeProcess(Task->Platform, &Task->ReturnCode);
    if (Task->ReturnCode != 259) {
       Task->ReturnCodeSet = TRUE;
-      LogF("~task_process_end","Process %d ended, return code: %d.", (LONG)FD, Task->ReturnCode);
+      LogF("~task_process_end","Process " PF64() " ended, return code: %d.", (LARGE)FD, Task->ReturnCode);
    }
-   else LogF("~@task_process_end","Process %d signalled exit too early.", (LONG)FD);
+   else LogF("~@task_process_end","Process " PF64() " signalled exit too early.", (LARGE)FD);
 
    if (Task->Platform) {
       UBYTE buffer[4096];
