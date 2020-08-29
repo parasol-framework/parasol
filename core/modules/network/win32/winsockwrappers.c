@@ -358,7 +358,7 @@ void win_socketstate(WSW_SOCKET Socket, char Read, char Write)
 WSW_SOCKET win_accept(void *NetSocket, WSW_SOCKET S, struct sockaddr *Addr, int *AddrLen)
 {
    struct socket_info *info = get_socket(NetSocket);
-   if (!info) return INVALID_SOCKET;
+   if (!info) return (WSW_SOCKET)INVALID_SOCKET;
 
    WSW_SOCKET client = accept(S, Addr, AddrLen);
 
@@ -446,7 +446,7 @@ unsigned long win_inet_addr(const char *Str)
 
 //****************************************************************************
 
-char * win_inet_ntoa(ULONG Addr) //struct in_addr);
+char * win_inet_ntoa(unsigned long Addr) //struct in_addr);
 {
    // TODO: Check this cast is alright
    struct in_addr addr;
@@ -515,7 +515,7 @@ int win_shutdown(WSW_SOCKET S, int How)
 WSW_SOCKET win_socket(void *NetSocket, char Read, char Write)
 {
    struct socket_info *info = get_socket(NetSocket);
-   if (!info) return INVALID_SOCKET;
+   if (!info) return (WSW_SOCKET)INVALID_SOCKET;
 
    // Create the socket, make it non-blocking and configure it to wake our task when activity occurs on the socket.
 
@@ -531,7 +531,7 @@ WSW_SOCKET win_socket(void *NetSocket, char Read, char Write)
       info->Flags     = flags;
       return handle;
    }
-   else return INVALID_SOCKET;
+   else return (WSW_SOCKET)INVALID_SOCKET;
 }
 
 //****************************************************************************
