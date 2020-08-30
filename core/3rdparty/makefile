@@ -29,7 +29,7 @@ zlib:
 	tar -zxf $(ZLIB).tar.gz
 	mkdir -p $(PARASOL_MODULES)/lib
 ifeq ($(OSTYPE),win)
-	BINARY_PATH=/mingw/bin INCLUDE_PATH=/mingw/include LIBRARY_PATH=/mingw/lib $(MAKE) -C $(ZLIB) clean install -f win32/Makefile.gcc
+	BINARY_PATH=$(MSYSTEM_PREFIX)/bin INCLUDE_PATH=$(MSYSTEM_PREFIX)/include LIBRARY_PATH=$(MSYSTEM_PREFIX)/lib $(MAKE) -C $(ZLIB) clean install -f win32/Makefile.gcc
 	cd $(ZLIB) && cp zlib1.dll $(PARASOL_MODULES)/lib/
 else
 	cd $(ZLIB) && ./configure && $(MAKE) && cp libz.so.1.2.11 $(PARASOL_MODULES)/lib/libz.so

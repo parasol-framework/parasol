@@ -369,7 +369,7 @@ restart_free: {
       if ((!glCrashStatus) AND (glFDTable)) {
          for (i=0; i < glTotalFDs; i++) {
             if (glFDTable[i].FD) {
-               LogErrorMsg("FD %d was not deregistered prior to program close.  Routine: %p, Data: %p", (LONG)glFDTable[i].FD, glFDTable[i].Routine, glFDTable[i].Data);
+               LogErrorMsg("FD " PF64() " was not deregistered prior to program close.  Routine: %p, Data: %p", (LARGE)glFDTable[i].FD, glFDTable[i].Routine, glFDTable[i].Data);
             }
          }
       }

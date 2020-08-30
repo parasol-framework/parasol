@@ -84,7 +84,7 @@ LONG ExceptionFilter(LPEXCEPTION_POINTERS Args);
 char * winFormatMessage(LONG, char *Buffer, LONG BufferSize);
 static BOOL break_handler(DWORD CtrlType);
 
-static LONG (*glCrashHandler)(LONG, APTR, LONG, LONG *) = 0;
+static LONG (*glCrashHandler)(LONG, APTR, LONG, APTR) = 0;
 static void (*glBreakHandler)(void) = 0;
 
 struct stdpipe {
@@ -1340,7 +1340,7 @@ static BOOL break_handler(DWORD CtrlType)
 
 //****************************************************************************
 
-void winSetUnhandledExceptionFilter(LONG (*Function)(LONG, APTR, LONG, LONG *))
+void winSetUnhandledExceptionFilter(LONG (*Function)(LONG, APTR, LONG, APTR))
 {
    if (Function) glCrashHandler = Function;
    else if (!glCrashHandler) return;  // If we're set with NULL and no crash handler already exists, do not set or change the exception filter.
@@ -1649,8 +1649,8 @@ BYTE winGetCommand(char *Path, char *Buffer, LONG BufferSize)
 {
    if (BufferSize < MAX_PATH+3) return 1;
 
-   LONG result = (LONG)FindExecutable(Path, NULL, Buffer+1);
-   if ((result > 32) AND (Buffer[1])) { /* Success */
+   HINSTANCE result = FindExecutable(Path, NULL, Buffer+1);
+   if ((result > (HINSTANCE)32) AND (Buffer[1])) { /* Success */
       *Buffer++ = '"';
       while (*Buffer) Buffer++;
       *Buffer++ = '"';
