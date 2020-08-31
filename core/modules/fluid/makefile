@@ -35,9 +35,9 @@ $(FLUID): $(HEADER) *.c hashes.h
 
 $(LUA):
 ifeq ($(OSTYPE),win)
-	make -C $(LUA_PATH) amalg
+	$(MAKE) -C $(LUA_PATH) amalg
 else
-	CFLAGS="-fPIC" make -C $(LUA_PATH) amalg
+	CFLAGS="-fPIC" $(MAKE) -C $(LUA_PATH) amalg
 endif
 
 .FORCE:
@@ -51,4 +51,4 @@ test: .FORCE
 
 clean:
 	@rm -f $(FLUID) $(LUA) $(LUA_PATH)lj_vm.o
-	make -C $(LUA_PATH) clean
+	$(MAKE) -C $(LUA_PATH) clean
