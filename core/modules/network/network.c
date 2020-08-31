@@ -790,7 +790,9 @@ static ERROR netSetSSL(objNetSocket *Socket, ...)
 static void client_server_pending(SOCKET_HANDLE FD, APTR Self) __attribute__((unused));
 static void client_server_pending(SOCKET_HANDLE FD, APTR Self)
 {
+#pragma GCC diagnostic ignored "-Wint-to-pointer-cast"
    RegisterFD((HOSTHANDLE)((objNetSocket *)Self)->SocketHandle, RFD_REMOVE|RFD_READ|RFD_SOCKET, NULL, NULL);
+#pragma GCC diagnostic warning "-Wint-to-pointer-cast"
    client_server_incoming(FD, Self);
 }
 #endif

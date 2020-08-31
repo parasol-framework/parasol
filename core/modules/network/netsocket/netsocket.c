@@ -1357,7 +1357,9 @@ static void free_socket(objNetSocket *Self)
 
    if (Self->SocketHandle != NOHANDLE) {
       FMSG("free_socket","Deregistering socket.");
+#pragma GCC diagnostic ignored "-Wint-to-pointer-cast"
       DeregisterFD((HOSTHANDLE)Self->SocketHandle);
+#pragma GCC diagnostic warning "-Wint-to-pointer-cast"
 
       if (!Self->ExternalSocket) { CLOSESOCKET(Self->SocketHandle); Self->SocketHandle = NOHANDLE; }
    }
