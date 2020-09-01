@@ -71,7 +71,7 @@ typedef void * WINHANDLE;
 
 #undef MAXINT
 
-#ifdef _LP64
+#if defined(_LP64) || defined(__x86_64__)
 typedef LARGE MAXINT;
  #if defined(_MSC_VER)
 typedef unsigned __int64   UMAXINT;

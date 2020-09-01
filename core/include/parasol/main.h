@@ -137,7 +137,7 @@ extern "C" {
 #ifdef __CYGWIN__
 #define PF64() "%lld"
 #elif _WIN32
- #ifdef _LP64 // msys gcc-64 accepts %lld, but gcc-32 only %I64
+ #if defined(_LP64) || defined(__x86_64__) // msys gcc-64 accepts %lld, but gcc-32 only %I64
   #define PF64() "%lld"
  #else
   #define PF64() "%I64d"
@@ -268,7 +268,7 @@ struct OpenInfo {
 #undef FD_READ
 #undef FD_WRITE
 
-#ifdef _LP64     // LP64 means that that we're on 64-bit platform
+#if defined(_LP64) || defined(__x86_64__)
 #define FD_PTR64 FD_POINTER
 #else
 #define FD_PTR64 0
