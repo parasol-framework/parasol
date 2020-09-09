@@ -1862,12 +1862,11 @@ LONG StrTranslateRefresh(void)
    struct ConfigEntry *entries;
    struct SharedControl *sharectl;
    MEMORYID memoryid;
-   UBYTE buffer[80];
    STRING str;
    CSTRING language;
    LONG size, amtentries, heapsize, total, *array, temp;
    MAXINT strbuf;
-   WORD i, j, len;
+   WORD j, len;
 
    LogF("~TranslateRefresh()",NULL);
 
@@ -1883,17 +1882,18 @@ LONG StrTranslateRefresh(void)
          }
       }
 
-      i = StrCopy("config:translations/", buffer, sizeof(buffer));
-      for (j=0; (language[j]) AND (i < sizeof(buffer)-1); j++) {
-         if ((language[j] >= 'A') AND (language[j] <= 'Z')) buffer[i++] = language[j] - 'A' + 'a';
-         else buffer[i++] = language[j];
+      char path[80];
+      LONG i = StrCopy("config:translations/", path, sizeof(path));
+      for (j=0; (language[j]) AND (i < sizeof(path)-1); j++) {
+         if ((language[j] >= 'A') AND (language[j] <= 'Z')) path[i++] = language[j] - 'A' + 'a';
+         else path[i++] = language[j];
       }
-      StrCopy(".cfg", buffer+i, sizeof(buffer)-i);
+      StrCopy(".cfg", path+i, sizeof(path)-i);
 
       // Load the translation file
 
       if (!CreateObject(ID_CONFIG, NF_UNTRACKED, (OBJECTPTR *)&config,
-            FID_Path|TSTR,   buffer,
+            FID_Path|TSTR,   path,
             FID_Flags|TLONG, CNF_FILE_EXISTS,
             TAGEND)) {
 

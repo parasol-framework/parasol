@@ -240,7 +240,7 @@ endif
 EXEDEP_INIT= "$(PARASOL_LIB_INIT)"
 
 # NB: $(ARCHEXT) is use to compartmentalise compilations for different CPU's.
-PARASOL_MODULES ?= $(PARASOL_RELEASE)/system/modules$(ARCHEXT)
+PARASOL_MODULES ?= $(PARASOL_RELEASE)/system/modules
 
 #PARASOL_MODULE ?= $(PARASOL_MODULES)/$(if $(CATEGORY),$(CATEGORY)_,)$(LIBNAME)$(LIBEXT)
 PARASOL_MODULE  ?= $(PARASOL_MODULES)/$(LIBNAME)$(LIBEXT)

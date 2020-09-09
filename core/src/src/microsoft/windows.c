@@ -1222,28 +1222,17 @@ HANDLE glMemoryPool;
 
 LONG winCreateSharedMemory(char *Name, LONG mapsize, LONG initial_size, HANDLE *ControlID, void **Address)
 {
-   LONG init;
-
    // Create the shared memory area.  If it already exists, this call will not recreate the area, but link to it.
 
-   if ((*ControlID = CreateFileMapping((HANDLE)0xffffffff, NULL,
-      PAGE_READWRITE, 0, initial_size, Name))) {
-
+   if ((*ControlID = CreateFileMapping((HANDLE)-1, NULL, PAGE_READWRITE, 0, initial_size, Name))) {
       glMemoryPool = *ControlID;
-
-      // If the memory area does not exist, set the init flag to 1
-
-      if (GetLastError() != ERROR_ALREADY_EXISTS) init = 1;
-      else init = 0;
-
-      // Map the entire memory area into the current process so that we can read and write to it.
-
+      LONG init = (GetLastError() != ERROR_ALREADY_EXISTS) ? 1 : 0;
       if ((*Address = MapViewOfFile(*ControlID, FILE_MAP_WRITE, 0, 0, initial_size))) {
          return init;
       }
+      else return -2;
    }
-
-   return -1;
+   else return -1;
 }
 
 //****************************************************************************
@@ -1252,12 +1241,9 @@ LONG winCreateSharedMemory(char *Name, LONG mapsize, LONG initial_size, HANDLE *
 HANDLE winAllocPublic(LONG allocsize)
 {
    HANDLE memhandle;
-
-   if ((memhandle = CreateFileMapping((HANDLE)0xffffffff, NULL,
-      PAGE_READWRITE, 0, allocsize, 0))) {
+   if ((memhandle = CreateFileMapping((HANDLE)-1, NULL, PAGE_READWRITE, 0, allocsize, 0))) {
       return memhandle;
    }
-
    return 0;
 }
 
@@ -1465,17 +1451,13 @@ extern int ProcessMessages(int Flags, int Timeout);
 
 static LRESULT CALLBACK window_procedure(HWND window, UINT msgcode, WPARAM wParam, LPARAM lParam)
 {
-   if (glProgramStage IS STAGE_SHUTDOWN) {
-      return DefWindowProc(window, msgcode, wParam, lParam);
-   }
+   if (glProgramStage IS STAGE_SHUTDOWN) return DefWindowProc(window, msgcode, wParam, lParam);
 
    if (msgcode IS glDeadProcessMsg) {
       validate_process(wParam);
       return 0;
    }
-   else {
-      return DefWindowProc(window, msgcode, wParam, lParam);
-   }
+   else return DefWindowProc(window, msgcode, wParam, lParam);
 }
 
 //****************************************************************************

@@ -1077,8 +1077,8 @@ static ERROR open_shared_control(BYTE GlobalInstance)
    char sharename[12];
    CopyMemory(glPublicLocks[PL_FORBID].Name, sharename, 12);
    sharename[2] = 'z';
-   if ((init = winCreateSharedMemory(sharename, glMemorySize, glMemorySize + INITIAL_PUBLIC_SIZE, &glSharedControlID, (APTR *)&glSharedControl)) IS -1) {
-      KERR("Failed to create the shared memory pool in call to winCreateSharedMemory().\n");
+   if ((init = winCreateSharedMemory(sharename, glMemorySize, glMemorySize + INITIAL_PUBLIC_SIZE, &glSharedControlID, (APTR *)&glSharedControl)) < 0) {
+      KERR("Failed to create the shared memory pool in call to winCreateSharedMemory(), code %d.\n", init);
       UNLOCK_PUBLIC_MEMORY();
       return ERR_Failed;
    }
@@ -2139,11 +2139,7 @@ static ERROR init_filesystem(void)
             SetVolume(AST_NAME, "modules", AST_PATH, glModulePath, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, AST_ICON, "programs/tool", TAGEND);
          }
          else {
-            #ifdef _LP64
-               SetVolume(AST_NAME, "modules", AST_PATH, "system:modules-x64/", AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, AST_ICON, "programs/tool", TAGEND);
-            #else
-               SetVolume(AST_NAME, "modules", AST_PATH, "system:modules/", AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, AST_ICON, "programs/tool", TAGEND);
-            #endif
+            SetVolume(AST_NAME, "modules", AST_PATH, "system:modules/", AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, AST_ICON, "programs/tool", TAGEND);
          }
       #elif __unix__
          // If device volumes are already set by the user, do not attempt to discover such devices.
@@ -2170,16 +2166,9 @@ static ERROR init_filesystem(void)
          }
          else {
             UBYTE path[200];
-            i = StrCopy(glRootPath, path, sizeof(path));
-            #ifdef _LP64
-               i = StrCopy(glSystemPath, path, sizeof(path));
-               StrCopy("modules-x64/", path+i, sizeof(path)-i);
-               SetVolume(AST_NAME, "modules", AST_PATH, path, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, AST_ICON, "programs/tool",  TAGEND);
-            #else
-               i = StrCopy(glSystemPath, path, sizeof(path));
-               StrCopy("modules/", path+i, sizeof(path)-i);
-               SetVolume(AST_NAME, "modules", AST_PATH, path, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, AST_ICON, "programs/tool",  TAGEND);
-            #endif
+            i = StrCopy(glSystemPath, path, sizeof(path));
+            StrCopy("modules/", path+i, sizeof(path)-i);
+            SetVolume(AST_NAME, "modules", AST_PATH, path, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, AST_ICON, "programs/tool",  TAGEND);
          }
 
          if (!hd_set) {

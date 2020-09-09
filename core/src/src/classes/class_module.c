@@ -419,12 +419,7 @@ static ERROR MODULE_Init(objModule *Self, APTR Void)
                }
                else {
                   for (i=0; (glSystemPath[i]) AND (i < sizeof(path)-32); i++) path[i] = glSystemPath[i];
-
-                  #ifdef _LP64
-                     for (j=0; "modules-x64/"[j]; j++) path[i++] = "modules-x64/"[j];
-                  #else
-                     for (j=0; "modules/"[j]; j++) path[i++] = "modules/"[j];
-                  #endif
+                  for (j=0; "modules/"[j]; j++) path[i++] = "modules/"[j];
                }
 
                if (Self->Flags & MOF_LINK_LIBRARY) {
@@ -447,18 +442,10 @@ static ERROR MODULE_Init(objModule *Self, APTR Void)
                else if (glSystemPath[0]) {
                   for (i=0; (glSystemPath[i]) AND (i < sizeof(path)-32); i++) path[i] = glSystemPath[i];
                   if (path[i-1] != '\\') path[i++] = '\\';
-                  #ifdef _LP64
-                     for (j=0; "modules-x64/"[j]; j++) path[i++] = "modules-x64/"[j];
-                  #else
-                     for (j=0; "modules\\"[j]; j++) path[i++] = "modules\\"[j];
-                  #endif
+                  for (j=0; "modules\\"[j]; j++) path[i++] = "modules\\"[j];
                }
                else {
-                  #ifdef _LP64
-                     const char modlocation[] = "system\\modules-x64\\";
-                  #else
-                     const char modlocation[] = "system\\modules\\";
-                  #endif
+                  const char modlocation[] = "system\\modules\\";
 
                   for (i=0; (glRootPath[i]) AND (i < sizeof(path)); i++) path[i] = glRootPath[i];
                   if (path[i-1] != '\\') path[i++] = '\\';
