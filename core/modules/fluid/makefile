@@ -19,9 +19,9 @@ LUA = $(LUA_PATH)ljamalg.o
 
 compile: $(FLUID) $(LUA) $(LUA_PATH)lj_vm.o hashes.h
 ifeq ($(OSTYPE),win)
-	$(CC) -lm $(LIBLINK) $(FLUID) $(LUA) $(LUA_PATH)lj_vm.o -Wl,-Bstatic -lffi
+	$(CC) $(ARCH) -lm $(LIBLINK) $(FLUID) $(LUA) $(LUA_PATH)lj_vm.o $(FFI_PATH)/src/.libs/*.o $(FFI_PATH)/src/*/.libs/*.o
 else
-	$(CC) $(CFLAGS) $(LIBLINK_STDC) $(FLUID) $(LUA) $(LUA_PATH)lj_vm.o $(LINK) $(FFI_PATH)/src/.libs/*.o $(FFI_PATH)/src/*/.libs/*.o
+	$(CC) $(ARCH) $(CFLAGS) $(LIBLINK_STDC) $(FLUID) $(LUA) $(LUA_PATH)lj_vm.o $(LINK) $(FFI_PATH)/src/.libs/*.o $(FFI_PATH)/src/*/.libs/*.o
 endif
 
 hashes.h: hashes.fdl
