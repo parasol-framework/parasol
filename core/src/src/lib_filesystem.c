@@ -19,7 +19,7 @@ Name: Files
 typedef int HANDLE;
 #endif
 
-#ifdef __unix__
+#if defined(__unix__) && !defined(_WIN32)
  #define _GNU_SOURCE
 
  #include <unistd.h>
@@ -74,8 +74,8 @@ typedef int HANDLE;
 
  #define open64   open
  #define lseek64  lseek
- //#define fstat64  fstat
- //#define stat64   stat
+ #define fstat64  fstat
+ #define stat64   stat
  #undef NULL
  #define NULL 0
 #endif // _WIN32
@@ -3138,7 +3138,7 @@ ERROR fs_getinfo(CSTRING Path, struct FileInfo *Info, LONG InfoSize)
    struct tm *local;
 
    if (!stat64(Path, &stats)) {
-      if ((local = _localtime64(&stats.st_mtime))) {
+      if ((local = localtime(&stats.st_mtime))) {
          Info->Modified.Year   = 1900 + local->tm_year;
          Info->Modified.Month  = local->tm_mon + 1;
          Info->Modified.Day    = local->tm_mday;

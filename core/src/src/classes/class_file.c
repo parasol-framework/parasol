@@ -25,11 +25,12 @@ in a file.
 #define PRV_FILE
 #define PRV_FILESYSTEM
 #define _LARGEFILE64_SOURCE
+#define _POSIX_THREAD_SAFE_FUNCTIONS // For localtime_r
 #define _TIME64_T
 #define _LARGE_TIME_API
 #include "../defs.h"
 
-#ifdef __unix__
+#if defined(__unix__) && !defined(_WIN32)
  #define _GNU_SOURCE
 
  #include <unistd.h>
@@ -83,8 +84,8 @@ in a file.
 
  #define open64   open
  #define lseek64  lseek
- //#define fstat64  fstat
- //#define stat64   stat
+ #define fstat64  fstat
+ #define stat64   stat
  #undef NULL
  #define NULL 0
 #endif // _WIN32
@@ -1795,11 +1796,7 @@ static ERROR GET_Created(objFile *Self, struct DateTime **Value)
          // Timestamp has to match that produced by fs_getinfo()
 
          struct tm *local;
-         #ifdef _WIN32
-         if ((local = _localtime64(&stats.st_mtime))) {
-         #else
          if ((local = localtime(&stats.st_mtime))) {
-         #endif
             Self->prvCreated.Year   = 1900 + local->tm_year;
             Self->prvCreated.Month  = local->tm_mon + 1;
             Self->prvCreated.Day    = local->tm_mday;
@@ -1827,11 +1824,7 @@ static ERROR GET_Created(objFile *Self, struct DateTime **Value)
             // Timestamp has to match that produced by fs_getinfo()
 
             struct tm *local;
-            #ifdef _WIN32
-            if ((local = _localtime64(&stats.st_mtime))) {
-            #else
             if ((local = localtime(&stats.st_mtime))) {
-            #endif
                Self->prvCreated.Year   = 1900 + local->tm_year;
                Self->prvCreated.Month  = local->tm_mon + 1;
                Self->prvCreated.Day    = local->tm_mday;
@@ -1875,11 +1868,7 @@ static ERROR GET_Date(objFile *Self, struct DateTime **Value)
          // Timestamp has to match that produced by fs_getinfo()
 
          struct tm *local;
-         #ifdef _WIN32
-         if ((local = _localtime64(&stats.st_mtime))) {
-         #else
          if ((local = localtime(&stats.st_mtime))) {
-         #endif
             Self->prvModified.Year   = 1900 + local->tm_year;
             Self->prvModified.Month  = local->tm_mon + 1;
             Self->prvModified.Day    = local->tm_mday;
@@ -1909,11 +1898,7 @@ static ERROR GET_Date(objFile *Self, struct DateTime **Value)
             // Timestamp has to match that produced by fs_getinfo()
 
             struct tm *local;
-            #ifdef _WIN32
-            if ((local = _localtime64(&stats.st_mtime))) {
-            #else
             if ((local = localtime(&stats.st_mtime))) {
-            #endif
                Self->prvModified.Year   = 1900 + local->tm_year;
                Self->prvModified.Month  = local->tm_mon + 1;
                Self->prvModified.Day    = local->tm_mday;
@@ -2803,11 +2788,7 @@ static ERROR GET_TimeStamp(objFile *Self, LARGE *Value)
          // Timestamp has to match that produced by fs_getinfo()
 
          struct tm *local;
-         #ifdef _WIN32
-         if ((local = _localtime64(&stats.st_mtime))) {
-         #else
          if ((local = localtime(&stats.st_mtime))) {
-         #endif
             struct DateTime datetime;
             datetime.Year   = 1900 + local->tm_year;
             datetime.Month  = local->tm_mon + 1;
@@ -2831,11 +2812,7 @@ static ERROR GET_TimeStamp(objFile *Self, LARGE *Value)
          if (!stat64(path, &stats)) {
 
             struct tm *local;
-            #ifdef _WIN32
-            if ((local = _localtime64(&stats.st_mtime))) {
-            #else
             if ((local = localtime(&stats.st_mtime))) {
-            #endif
                struct DateTime datetime;
                datetime.Year   = 1900 + local->tm_year;
                datetime.Month  = local->tm_mon + 1;
