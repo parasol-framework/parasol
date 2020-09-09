@@ -471,9 +471,11 @@ typedef int sig_atomic_t;
 #define ENOPROTOOPT      WSAENOPROTOOPT
 #undef  EPROTONOSUPPORT  /* override definition in errno.h */
 #define EPROTONOSUPPORT  WSAEPROTONOSUPPORT
+#undef ESOCKTNOSUPPORT
 #define ESOCKTNOSUPPORT  WSAESOCKTNOSUPPORT
 #undef  EOPNOTSUPP       /* override definition in errno.h */
 #define EOPNOTSUPP       WSAEOPNOTSUPP
+#undef EPFNOSUPPORT
 #define EPFNOSUPPORT     WSAEPFNOSUPPORT
 #undef  EAFNOSUPPORT     /* override definition in errno.h */
 #define EAFNOSUPPORT     WSAEAFNOSUPPORT
@@ -497,7 +499,9 @@ typedef int sig_atomic_t;
 #define EISCONN          WSAEISCONN
 #undef  ENOTCONN         /* override definition in errno.h */
 #define ENOTCONN         WSAENOTCONN
+#undef ESHUTDOWN
 #define ESHUTDOWN        WSAESHUTDOWN
+#undef ETOOMANYREFS
 #define ETOOMANYREFS     WSAETOOMANYREFS
 #undef  ETIMEDOUT        /* override definition in errno.h */
 #define ETIMEDOUT        WSAETIMEDOUT
@@ -508,16 +512,22 @@ typedef int sig_atomic_t;
 #ifndef ENAMETOOLONG     /* possible previous definition in errno.h */
 #define ENAMETOOLONG     WSAENAMETOOLONG
 #endif
+#undef EHOSTDOWN
 #define EHOSTDOWN        WSAEHOSTDOWN
 #undef  EHOSTUNREACH     /* override definition in errno.h */
 #define EHOSTUNREACH     WSAEHOSTUNREACH
 #ifndef ENOTEMPTY        /* possible previous definition in errno.h */
 #define ENOTEMPTY        WSAENOTEMPTY
 #endif
+#undef EPROCLIM
 #define EPROCLIM         WSAEPROCLIM
+#undef EUSERS
 #define EUSERS           WSAEUSERS
+#undef EDQUOT
 #define EDQUOT           WSAEDQUOT
+#undef ESTALE
 #define ESTALE           WSAESTALE
+#undef EREMOTE
 #define EREMOTE          WSAEREMOTE
 #endif
 

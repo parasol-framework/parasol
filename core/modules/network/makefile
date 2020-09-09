@@ -1,6 +1,3 @@
-# MINGW: You need to install c-ares first with:
-#   make -f Makefile.m32
-#
 # LINUX:
 #   ./configure
 #   make
@@ -17,17 +14,18 @@ HEADER= ../../include/parasol/modules/$(NAME).h
 ARES := ares-1.11.0
 
 ifeq ($(OSTYPE),win)
-   CFLAGS+= -I$(SDK_ROOT)/core/3rdparty/openssl-*/include
-   OBJECTS= win32/winsockwrappers.o
-   USE_ARES := y
+   CFLAGS    += -I$(SDK_ROOT)/core/3rdparty/openssl-*/include -I$(ARES)/
+   OBJECTS   := win32/winsockwrappers.o
+   LINK_ARES := y
+   CFLAGS    += -DUSE_ARES -DCARES_STATICLIB
 else
 ifeq ($(OSTYPE),linux)
-   USE_ARES := y
+   LINK_ARES := y
+   CFLAGS    +=  -DUSE_ARES -DCARES_STATICLIB -I$(ARES)/
 endif
 endif
 
-ifeq ($(USE_ARES),y)
-CFLAGS+= -DUSE_ARES -DCARES_STATICLIB -I$(ARES)/
+ifeq ($(LINK_ARES),y)
 DNS+= $(ARES)/ares_cancel.o         $(ARES)/ares_parse_mx_reply.o  $(ARES)/ares__close_sockets.o    $(ARES)/ares_parse_naptr_reply.o \
       $(ARES)/ares_create_query.o   $(ARES)/ares_parse_ns_reply.o  $(ARES)/ares_data.o              $(ARES)/ares_parse_ptr_reply.o \
       $(ARES)/ares_destroy.o        $(ARES)/ares_parse_soa_reply.o $(ARES)/ares_expand_name.o       $(ARES)/ares_parse_srv_reply.o \

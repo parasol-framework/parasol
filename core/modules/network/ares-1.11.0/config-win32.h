@@ -182,6 +182,8 @@
 /* Define to the function return type for send. */
 #define SEND_TYPE_RETV int
 
+#define _SSIZE_T_DEFINED
+
 /* Specifics for the Watt-32 tcp/ip stack. */
 #ifdef WATT32
   #define SOCKET              int
@@ -206,7 +208,7 @@
 /* ---------------------------------------------------------------- */
 
 /* Define if in_addr_t is not an available 'typedefed' type. */
-#define in_addr_t unsigned long
+//#define in_addr_t unsigned long
 
 /* Define to the return type of signal handlers (int or void). */
 #define RETSIGTYPE void

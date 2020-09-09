@@ -246,7 +246,7 @@
 #define HAVE_STRCASECMP 1
 
 /* Define to 1 if you have the strcmpi function. */
-#define HAVE_STRCMPI 1
+//#define HAVE_STRCMPI 1
 
 /* Define to 1 if you have the strdup function. */
 #define HAVE_STRDUP 1

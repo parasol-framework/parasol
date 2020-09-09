@@ -21,11 +21,6 @@
 #ifndef HAVE_STRCASECMP
 int ares_strcasecmp(const char *a, const char *b)
 {
-#if defined(HAVE_STRCMPI)
-  return strcmpi(a, b);
-#elif defined(HAVE_STRICMP)
-  return stricmp(a, b);
-#else
   size_t i;
 
   for (i = 0; i < (size_t)-1; i++) {
@@ -37,18 +32,12 @@ int ares_strcasecmp(const char *a, const char *b)
       break;
   }
   return 0;
-#endif
 }
 #endif
 
 #ifndef HAVE_STRNCASECMP
 int ares_strncasecmp(const char *a, const char *b, size_t n)
 {
-#if defined(HAVE_STRNCMPI)
-  return strncmpi(a, b, n);
-#elif defined(HAVE_STRNICMP)
-  return strnicmp(a, b, n);
-#else
   size_t i;
 
   for (i = 0; i < n; i++) {
@@ -60,7 +49,6 @@ int ares_strncasecmp(const char *a, const char *b, size_t n)
       break;
   }
   return 0;
-#endif
 }
 #endif
 

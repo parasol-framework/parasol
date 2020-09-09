@@ -26,8 +26,6 @@ struct IPAddress {
 
 #include "winsockwrappers.h"
 
-#include <stdio.h>
-
 #ifdef USE_ARES
 #include "ares.h"
 #include "ares_private.h"
@@ -521,7 +519,7 @@ WSW_SOCKET win_socket(void *NetSocket, char Read, char Write)
 
    int handle;
    if ((handle = socket(PF_INET, SOCK_STREAM, 0)) != INVALID_SOCKET) {
-      u_long non_blocking = 1;
+      __ms_u_long non_blocking = 1;
       ioctlsocket(handle, FIONBIO, &non_blocking);
       int flags = FD_CLOSE|FD_ACCEPT|FD_CONNECT;
       if (Read) flags |= FD_READ;
