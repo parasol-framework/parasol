@@ -31,11 +31,7 @@ static APTR find_core(char *PathBuffer, int Size)
          for (len=0; PathBuffer[len]; len++);
          pos = len;
 
-         #ifdef _LP64
-            strncpy(PathBuffer+len, "system\\modules-x64\\core.dll", Size-len-1);
-         #else
-            strncpy(PathBuffer+len, "system\\modules\\core.dll", Size-len-1);
-         #endif
+         strncpy(PathBuffer+len, "system\\modules\\core.dll", Size-len-1);
 
          //printf("Find: %s\n", PathBuffer);
          handle = INVALID_HANDLE_VALUE;
@@ -47,11 +43,7 @@ static APTR find_core(char *PathBuffer, int Size)
                len--;
             }
 
-            #ifdef _LP64
-               strncpy(PathBuffer+len, "system\\modules\\core-x64.dll", Size-len-1);
-            #else
-               strncpy(PathBuffer+len, "system\\modules\\core.dll", Size-len-1);
-            #endif
+            strncpy(PathBuffer+len, "system\\modules\\core.dll", Size-len-1);
             //printf("Find: %s\n", PathBuffer);
             pos = len;
          }
@@ -72,18 +64,12 @@ static APTR find_core(char *PathBuffer, int Size)
             LONG i;
             for (i=0; PathBuffer[i]; i++);
             pos = i;
-            #ifdef _LP64
-               strncpy(PathBuffer+i, "system\\modules-x64\\core.dll", Size-i-1);
-            #else
-               strncpy(PathBuffer+i, "system\\modules\\core.dll", Size-i-1);
-            #endif
+            strncpy(PathBuffer+i, "system\\modules\\core.dll", Size-i-1);
          }
          CloseHandle(keyhandle);
          keyhandle = NULL;
       }
    }
-
-   //printf("%s\n", PathBuffer);
 
    {
       APTR handle;
