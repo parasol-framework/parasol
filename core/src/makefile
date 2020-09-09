@@ -24,7 +24,7 @@ endif
 ifeq ($(OSTYPE),win)
    FLAGS= $(CFLAGS) -c -D__system__
    OBJECTS= obj/$(PLATFORM)/microsoft/windows.o
-   LINKLIB += -lwsock32 -lpsapi
+   LINKLIB += -L../3rdparty/zlib-1.2.11/ -lwsock32 -lpsapi
    ifdef DEBUG
       LINKLIB += -ldbghelp
    endif
@@ -61,7 +61,7 @@ HEADERS := ../include/parasol/modules/core.h ../include/parasol/system/errors.h 
 
 compile: $(HEADERS) $(OBJECTS)
 ifeq ($(OSTYPE),win)
-	$(CC) -shared $(LINK) -o "$(DEST)" $(OBJECTS) $(LINKLIB)
+	$(CC) -shared ${ARCH} $(LINK) -o "$(DEST)" $(OBJECTS) $(LINKLIB)
 else
    ifeq ($(OSTYPE),android)
       ifeq ($(DEBUG),1)
