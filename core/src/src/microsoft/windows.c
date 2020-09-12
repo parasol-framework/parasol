@@ -330,22 +330,22 @@ static void windows_print_stacktrace(CONTEXT* context)
 
       DWORD displacement = 0;
       if (SymGetSymFromAddr(GetCurrentProcess(), frame.AddrPC.Offset, &displacement, symbol)) {
-         printf("0x%p %s\n", (APTR)frame.AddrPC.Offset, symbol->Name);
+         fprintf(stderr, "0x%p %s\n", (APTR)frame.AddrPC.Offset, symbol->Name);
 
          IMAGEHLP_LINE line;
          line.SizeOfStruct = sizeof(line);
          line.LineNumber = 0;
          displacement = 0;
          if (SymGetLineFromAddr(GetCurrentProcess(), frame.AddrPC.Offset, &displacement, &line)) {
-            printf("Line: %s, %d\n", line.FileName, (int)line.LineNumber);
+            fprintf(stderr, "Line: %s, %d\n", line.FileName, (int)line.LineNumber);
          }
          else {
             //char msg[400];
-            //printf("SymGetLineFromAddr(): %s\n", winFormatMessage(GetLastError(), msg, sizeof(msg)));
+            //fprintf(stderr, "SymGetLineFromAddr(): %s\n", winFormatMessage(GetLastError(), msg, sizeof(msg)));
          }
       }
       else {
-         printf("0x%p\n", (APTR)frame.AddrPC.Offset);
+         fprintf(stderr, "0x%p\n", (APTR)frame.AddrPC.Offset);
       }
    }
 
@@ -655,7 +655,7 @@ LONG wake_waitlock(HANDLE Lock, LONG ProcessID, LONG TotalSleepers)
       while (TotalSleepers-- > 0) {
          if (!SetEvent(Lock)) {
             char msg[100];
-            printf("SetEvent() failed: %s\n", winFormatMessage(GetLastError(), msg, sizeof(msg)));
+            fprintf(stderr, "SetEvent() failed: %s\n", winFormatMessage(GetLastError(), msg, sizeof(msg)));
             error = ERR_SystemCall;
             break;
          }
@@ -947,7 +947,7 @@ LONG winFreeLibrary(HMODULE Module)
 
 //****************************************************************************
 
-HANDLE winLoadLibrary(LPCTSTR Name)
+HANDLE winLoadLibrary(LPCSTR Name)
 {
    return LoadLibrary(Name);
 }
@@ -1068,7 +1068,7 @@ LONG winWaitForObjects(LONG Total, HANDLE *Handles, LONG Time, BYTE WinMsgs)
       }
       else {
          char msg[400];
-         printf("MsgWaitForMultipleObjects(%d) result: %d, error: %s\n", (int)Total, (int)result, winFormatMessage(error, msg, sizeof(msg)));
+         fprintf(stderr, "MsgWaitForMultipleObjects(%d) result: %d, error: %s\n", (int)Total, (int)result, winFormatMessage(error, msg, sizeof(msg)));
          return -4;
       }
    }
@@ -1621,7 +1621,7 @@ static void printerror(void)
    LPVOID lpMsgBuf;
    FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL,
       GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPTSTR)&lpMsgBuf, 0, NULL);
-   printf("WinError: %s", (LPTSTR)lpMsgBuf);
+   fprintf(stderr, "WinError: %s", (LPTSTR)lpMsgBuf);
    LocalFree(lpMsgBuf);
 }
 
@@ -1989,7 +1989,7 @@ LONG winMoveFile(STRING oldname, STRING newname)
 
 //****************************************************************************
 
-LONG winSetEOF(STRING Location, __int64 Size)
+LONG winSetEOF(CSTRING Location, __int64 Size)
 {
    HANDLE handle;
    LARGE_INTEGER li;
@@ -2453,7 +2453,7 @@ LONG winCheckDirectoryExists(CSTRING Path)
                FindClose(handle);
                return 1;
             }
-            //else printf("Path exists but is not a folder.\n");
+            //else fprintf(stderr, "Path exists but is not a folder.\n");
 
          } while (FindNextFileA(handle, &find));
 
