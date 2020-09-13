@@ -1799,6 +1799,13 @@ LONG winGetWatchBufferSize(void)
 
 //****************************************************************************
 
+void winSetDllDirectory(LPCSTR Path)
+{
+   SetDllDirectoryA(Path);
+}
+
+//****************************************************************************
+
 LONG winWatchFile(LONG Flags, CSTRING Path, APTR WatchBuffer, HANDLE *Handle, LONG *WinFlags)
 {
    if ((!Path) OR (!Path[0])) return ERR_Args;

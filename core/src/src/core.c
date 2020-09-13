@@ -960,25 +960,8 @@ EXPORT struct CoreBase * OpenCore(struct OpenInfo *Info)
 #ifdef _WIN32
    {
       STRING libpath;
-
       if (!ResolvePath("system:modules/lib", RSF_NO_FILE_CHECK, &libpath)) {
-         LONG liblen, envlen;
-         UBYTE envpath[2048];
-
-         for (liblen=0; libpath[liblen]; liblen++);
-         LONG pos = StrCopy(libpath, envpath, sizeof(envpath)-4);
-         envpath[pos++] = '\\';
-         envpath[pos++] = ';';
-
-         if ((envlen = winGetEnv("PATH", envpath+pos, sizeof(envpath)-pos)) > 0) {
-            if (pos+envlen+2 < sizeof(envpath)) {
-               envpath[pos+envlen] = 0;
-               winSetEnv("PATH", envpath);
-            }
-            else LogErrorMsg("Buffer overflow when attempting to update DLL PATH.");
-         }
-         else FMSG("!","Failed to read the PATH.");
-
+         winSetDllDirectory(libpath);
          FreeResource(libpath);
       }
       else FMSG("!","Failed to resolve system:modules/lib");
