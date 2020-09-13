@@ -909,6 +909,7 @@ APTR winFindDirectory(STRING, APTR *, STRING);
 APTR winFindFile(STRING, APTR *, STRING);
 LONG winSetFileTime(CSTRING, WORD Year, WORD Month, WORD Day, WORD Hour, WORD Minute, WORD Second);
 LONG winResetDate(STRING);
+void winSetDllDirectory(CSTRING);
 void winEnumSpecialFolders(void (*callback)(CSTRING, CSTRING, CSTRING, CSTRING, BYTE));
 
 #endif
