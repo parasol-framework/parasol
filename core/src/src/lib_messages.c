@@ -1480,7 +1480,7 @@ ERROR sleep_task(LONG Timeout, BYTE SystemOnly)
                handles[total++] = glFDTable[i].FD;
             }
             else {
-               LogF("@sleep_task","FD %d has no READ/WRITE/EXCEPT flag setting - de-registering.", (LONG)glFDTable[i].FD);
+               LogF("@sleep_task","FD " PF64() " has no READ/WRITE/EXCEPT flag setting - de-registering.", (LARGE)glFDTable[i].FD);
                RegisterFD(glFDTable[i].FD, RFD_REMOVE|RFD_READ|RFD_WRITE|RFD_EXCEPT, NULL, NULL);
                i--;
             }
@@ -1527,7 +1527,7 @@ ERROR sleep_task(LONG Timeout, BYTE SystemOnly)
          break;
       }
       else if (i IS -2) {
-         LogF("@sleep_task","WaitForObjects() failed, bad handle $%.8x.  Deregistering automatically.", (LONG)handles[0]);
+         LogF("@sleep_task","WaitForObjects() failed, bad handle " PF64() ".  Deregistering automatically.", (LARGE)handles[0]);
          RegisterFD((HOSTHANDLE)handles[0], RFD_REMOVE|RFD_READ|RFD_WRITE|RFD_EXCEPT, NULL, NULL);
       }
       else if (i IS -4) {
