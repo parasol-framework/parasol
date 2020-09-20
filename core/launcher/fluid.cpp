@@ -15,8 +15,8 @@ Please refer to it for further information on licensing.
 
 CSTRING ProgName      = "Fluid";
 CSTRING ProgAuthor    = "Paul Manias";
-CSTRING ProgDate      = "November 2018";
-CSTRING ProgCopyright = "Copyright Paul Manias © 2000-2018";
+CSTRING ProgDate      = "September 2020";
+CSTRING ProgCopyright = "Copyright Paul Manias © 2000-2020";
 LONG   ProgDebug = 0;
 FLOAT  ProgCoreVersion = VER_CORE;
 
@@ -102,26 +102,36 @@ static void set_script_args(objScript *Script, CSTRING *Args)
 
 //****************************************************************************
 
-static void run_script(objScript *Script)
+static LONG run_script(objScript *Script)
 {
    DOUBLE start_time = (DOUBLE)PreciseTime() / 1000000.0;
    ERROR error;
+
    if (!(error = acInit(Script))) {
       if (!(error = acActivate(Script))) {
          if (glTime) { // Print the execution time of the script
             DOUBLE end_time = (DOUBLE)PreciseTime() / 1000000.0;
             print("Script executed in %f seconds.\n\n", end_time - start_time);
          }
+
+         if (Script->Error) return -1;
+
+         STRING msg;
+         if ((!GetString(Script, FID_ErrorString, &msg)) AND (msg)) return -1;
+
+         return 0;
       }
       else print("Script failed during processing.  Use the --log-error option to examine the failure.");
    }
    else print("Failed to load / initialise the script: %s", GetErrorMsg(error));
+
+   return -1;
 }
 
 //****************************************************************************
 // Executes the target.
 
-static void exec_source(CSTRING TargetFile, CSTRING Procedure)
+static LONG exec_source(CSTRING TargetFile, CSTRING Procedure)
 {
    CLASSID class_id, subclass;
    ERROR error;
@@ -130,7 +140,7 @@ static void exec_source(CSTRING TargetFile, CSTRING Procedure)
       class_id = ID_SCRIPT;
    }
 
-   if (subclass != ID_FLUID) return;
+   if (subclass != ID_FLUID) return -1;
 
    objScript *script;
    if (!NewObject(ID_FLUID, 0, &script)) {
@@ -140,9 +150,12 @@ static void exec_source(CSTRING TargetFile, CSTRING Procedure)
 
       if (glArgs) set_script_args(script, glArgs);
 
-      run_script(script);
+      return run_script(script);
    }
-   else print("Internal Failure: Failed to create a new Script object for file processing.");
+   else {
+      print("Internal Failure: Failed to create a new Script object for file processing.");
+      return -1;
+   }
 }
 
 //****************************************************************************
@@ -290,13 +303,15 @@ int main(int argc, CSTRING *argv)
       return -1;
    }
 
+   int result = 0;
    if (!process_args()) {
       if (glTargetFile) {
          LONG type;
          if ((AnalysePath(glTargetFile, &type) != ERR_Okay) OR (type != LOC_FILE)) {
             print("File '%s' does not exist.", glTargetFile);
+            result = -1;
          }
-         else exec_source(glTargetFile, glProcedure);
+         else result = exec_source(glTargetFile, glProcedure);
       }
       else {
          // Read script from std input
@@ -318,10 +333,13 @@ int main(int argc, CSTRING *argv)
                SetString(script, FID_Statement, glScriptBuffer);
                if (glProcedure) SetString(script, FID_Procedure, glProcedure);
                if (glArgs) set_script_args(script, glArgs);
-               run_script(script);
+               result = run_script(script);
                acFree(script);
             }
-            else print("Internal Failure: Failed to create a new Script object for file processing.");
+            else {
+               print("Internal Failure: Failed to create a new Script object for file processing.");
+               result = -1;
+            }
          }
       }
    }
@@ -332,5 +350,5 @@ int main(int argc, CSTRING *argv)
 
    close_parasol();
 
-   return 0;
+   return result;
 }
