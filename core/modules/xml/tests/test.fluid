@@ -50,8 +50,8 @@ end
 
    return {
       tests = { 'testTagsArray', 'testIndexing' },
-      init = function()
-         glXML = obj.new("xml", { path="test.xml" })
+      init = function(ScriptFolder)
+         glXML = obj.new("xml", { path = ScriptFolder .. "test.xml" })
       end,
       cleanup = function()
          glXML = nil
