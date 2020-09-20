@@ -2,14 +2,16 @@
 --
 -- Flute (FLUid TEst) provides a standard framework for the execution of unit tests in Fluid.
 
+   require 'common'
+
 //=====================================================================================================================
 
 function runTests()
    glTestTotal = 0
    glTestsPassed = 0
 
-   local error, t = mSys.AnalysePath(glFile)
-   if (error != ERR_Okay) or (t != LOC_FILE) then
+   local err, t = mSys.AnalysePath(glFile)
+   if (err != ERR_Okay) or (t != LOC_FILE) then
       print("The targeted source file doesn't exist: " .. glFile)
       return
    end
@@ -17,7 +19,8 @@ function runTests()
    local body = loadFile(glFile)
 
    if (body.init != nil) then
-      body.init()
+      local folder = file.splitPath(glFile)
+      body.init(folder)
    end
 
    glTestTotal = glTestTotal + #body.tests
@@ -52,6 +55,12 @@ function runTests()
    end
 
    print("--")
+
+   if (glTestsPassed < glTestTotal) then
+      // Setting the errorString will ensure that an error code is returned to the shell.
+      glSelf.errorString = "Ran " .. glTestTotal .. " tests, passed " .. glTestsPassed
+   end
+
    print("Ran " .. glTestTotal .. " tests, passed " .. glTestsPassed)
 end
 
@@ -65,6 +74,7 @@ end
 //=====================================================================================================================
 
    glFile = arg("file")
+   glSelf = obj.find('self')
 
    mSys = mod.load("core")
 
