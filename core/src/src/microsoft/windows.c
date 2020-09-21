@@ -949,7 +949,8 @@ LONG winFreeLibrary(HMODULE Module)
 
 HANDLE winLoadLibrary(LPCSTR Name)
 {
-   return LoadLibrary(Name);
+   HANDLE h = LoadLibraryExA(Name, NULL, LOAD_LIBRARY_SEARCH_APPLICATION_DIR|LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR|LOAD_LIBRARY_SEARCH_USER_DIRS);
+   return h;
 }
 
 //****************************************************************************

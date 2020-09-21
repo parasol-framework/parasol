@@ -7,12 +7,12 @@
 char glProgName[32] = "Program";
 
 #ifdef __unix__
-   char glRootPath[SIZE_SYSTEM_PATH] = "/usr/local/parasol/";
-   char glSystemPath[SIZE_SYSTEM_PATH] = "/usr/local/parasol/system/";
+   char glRootPath[SIZE_SYSTEM_PATH] = "/usr/local/";
+   char glSystemPath[SIZE_SYSTEM_PATH] = "/usr/local/system/";
    char glModulePath[SIZE_SYSTEM_PATH] = ""; // Set to null to use the system path by default
 #else
    char glRootPath[SIZE_SYSTEM_PATH] = ""; // In Windows, this information is read from the registry.  If there are no registry entries, the system path is the program's working folder.
-   char glSystemPath[SIZE_SYSTEM_PATH] = "system\\";
+   char glSystemPath[SIZE_SYSTEM_PATH] = "";
    char glModulePath[SIZE_SYSTEM_PATH] = "";
 #endif
 

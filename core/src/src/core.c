@@ -2116,13 +2116,13 @@ static ERROR init_filesystem(void)
 
       #ifdef _WIN32
          SetVolume(AST_NAME, "parasol", AST_PATH, glRootPath, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, AST_ICON, "users/user", TAGEND);
-         SetVolume(AST_NAME, "system", AST_PATH, glSystemPath, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, AST_ICON, "programs/tool", TAGEND);
+         SetVolume(AST_NAME, "system", AST_PATH, glRootPath, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, AST_ICON, "programs/tool", TAGEND);
 
          if (glModulePath[0]) {
             SetVolume(AST_NAME, "modules", AST_PATH, glModulePath, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, AST_ICON, "programs/tool", TAGEND);
          }
          else {
-            SetVolume(AST_NAME, "modules", AST_PATH, "system:modules/", AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, AST_ICON, "programs/tool", TAGEND);
+            SetVolume(AST_NAME, "modules", AST_PATH, "system:lib/", AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, AST_ICON, "programs/tool", TAGEND);
          }
       #elif __unix__
          // If device volumes are already set by the user, do not attempt to discover such devices.
@@ -2150,7 +2150,7 @@ static ERROR init_filesystem(void)
          else {
             UBYTE path[200];
             i = StrCopy(glSystemPath, path, sizeof(path));
-            StrCopy("modules/", path+i, sizeof(path)-i);
+            StrCopy("lib/", path+i, sizeof(path)-i);
             SetVolume(AST_NAME, "modules", AST_PATH, path, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, AST_ICON, "programs/tool",  TAGEND);
          }
 
@@ -2167,15 +2167,16 @@ static ERROR init_filesystem(void)
       #ifdef __ANDROID__
          SetVolume(AST_NAME, "assets", AST_PATH, "CLASS:FileAssets", AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, TAGEND);
          SetVolume(AST_NAME, "templates", AST_PATH, "assets:templates/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "filetypes/empty",  TAGEND);
-         SetVolume(AST_NAME, "config", AST_PATH, "localcache:system/config/|assets:config/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "filetypes/empty",  TAGEND);
+         SetVolume(AST_NAME, "config", AST_PATH, "localcache:config/|assets:config/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "filetypes/empty",  TAGEND);
       #else
-         SetVolume(AST_NAME, "templates", AST_PATH, "programs:boot/templates/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "filetypes/empty",  TAGEND);
-         SetVolume(AST_NAME, "config", AST_PATH, "system:config/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "filetypes/empty",  TAGEND);
-         SetVolume(AST_NAME, "bin", AST_PATH, "programs:bin/", AST_FLAGS, VOLUME_HIDDEN, TAGEND);
+         SetVolume(AST_NAME, "templates", AST_PATH, "parasol:scripts/templates/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "filetypes/empty",  TAGEND);
+         SetVolume(AST_NAME, "config", AST_PATH, "parasol:config/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "filetypes/empty",  TAGEND);
+         //SetVolume(AST_NAME, "bin", AST_PATH, "parasol:bin/", AST_FLAGS, VOLUME_HIDDEN, TAGEND);
       #endif
 
       SetVolume(AST_NAME, "temp", AST_PATH, "user:temp/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "items/trash",  TAGEND);
-      SetVolume(AST_NAME, "fonts", AST_PATH, "system:fonts/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "items/charset",  TAGEND);
+      SetVolume(AST_NAME, "fonts", AST_PATH, "parasol:fonts/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "items/charset",  TAGEND);
+      SetVolume(AST_NAME, "styles", AST_PATH, "parasol:styles/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "tools/image_gallery",  TAGEND);
 
       // Some platforms need to have special volumes added - these are provided in the OpenInfo structure passed to
       // the Core.
@@ -2200,14 +2201,11 @@ static ERROR init_filesystem(void)
       }
 
       if (!StrMatch("default", glUserHomeFolder)) {
-         // Use the default folder as the main user path.  Optionally, the default folder can be defined as a
-         // location other than system:users/default/
-
          CSTRING path;
          if (!cfgReadValue(glVolumes, "User", "Path", &path)) {
             i = StrCopy(path, buffer, sizeof(buffer));
          }
-         else i = StrCopy("system:users/default/", buffer, sizeof(buffer));
+         else i = StrCopy("config:users/", buffer, sizeof(buffer));
       }
       else {
          #ifdef __unix__
@@ -2220,12 +2218,12 @@ static ERROR init_filesystem(void)
             }
             else if ((logname = getenv("LOGNAME")) AND (logname[0])) {
                LogMsg("Login name for home folder is \"%s\".", logname);
-               i = StrFormat(buffer, sizeof(buffer), "system:users/%s/", logname);
+               i = StrFormat(buffer, sizeof(buffer), "config:users/%s/", logname);
                buffer[i] = 0;
             }
             else {
                LogMsg("Unable to determine home folder, using default.");
-               i = StrCopy("system:users/default/", buffer, COPY_ALL);
+               i = StrCopy("config:users/default/", buffer, COPY_ALL);
             }
          #elif _WIN32
             // Attempt to get the path of the user's personal folder.  If the Windows system doesn't have this
@@ -2236,7 +2234,7 @@ static ERROR init_filesystem(void)
                while (buffer[i]) i++;
             }
             else {
-               i = StrCopy("system:users/", buffer, NULL);
+               i = StrCopy("config:users/", buffer, NULL);
                if ((winGetUserName(buffer+i, sizeof(buffer)-i) AND (buffer[i]))) {
                   while (buffer[i]) i++;
                   buffer[i++] = '/';
@@ -2245,23 +2243,23 @@ static ERROR init_filesystem(void)
                else i += StrCopy("default/", buffer+i, COPY_ALL);
             }
          #else
-            i = StrCopy("system:users/default/", buffer, COPY_ALL);
+            i = StrCopy("config:users/default/", buffer, COPY_ALL);
          #endif
 
          // Copy the default configuration files to the user: folder.  This also has the effect of creating the user
          // folder if it does not already exist.
 
-         if (StrMatch("system:users/default/", buffer) != ERR_Okay) {
+         if (StrMatch("config:users/default/", buffer) != ERR_Okay) {
             LONG location_type = 0;
             if ((AnalysePath(buffer, &location_type) != ERR_Okay) OR (location_type != LOC_DIRECTORY)) {
                buffer[i-1] = 0;
                SetDefaultPermissions(-1, -1, PERMIT_READ|PERMIT_WRITE);
-                  CopyFile("system:users/default/", buffer, NULL);
+                  CopyFile("config:users/default/", buffer, NULL);
                SetDefaultPermissions(-1, -1, 0);
                buffer[i-1] = '/';
             }
 
-            i += StrCopy("|system:users/default/", buffer+i, sizeof(buffer)-i);
+            i += StrCopy("|config:users/default/", buffer+i, sizeof(buffer)-i);
             buffer[i] = 0;
          }
       }
@@ -2437,8 +2435,9 @@ static ERROR init_filesystem(void)
    // FileView document templates
 
    if (!AnalysePath("templates:fileview/root.rpl", NULL)) SetDocView(":", "templates:fileview/root.rpl");
-   if (!AnalysePath("templates:fileview/system.rpl", NULL)) SetDocView("system:", "templates:fileview/system.rpl");
+   if (!AnalysePath("templates:fileview/fonts.rpl", NULL)) SetDocView("fonts:", "templates:fileview/fonts.rpl");
    if (!AnalysePath("templates:fileview/pictures.rpl", NULL)) SetDocView("pictures:", "templates:fileview/pictures.rpl");
+   if (!AnalysePath("templates:fileview/icons.rpl", NULL)) SetDocView("icons:", "templates:fileview/icons.rpl");
 
    // Create the 'archive' volume (non-essential)
 

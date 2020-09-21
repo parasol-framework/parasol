@@ -141,8 +141,7 @@ static int object_call(lua_State *Lua)
 //****************************************************************************
 // Build argument buffer for actions and methods.
 
-static ERROR build_args(lua_State *Lua, const struct FunctionField *args, LONG ArgsSize, APTR argbuffer,
-   LONG *ResultCount)
+static ERROR build_args(lua_State *Lua, const struct FunctionField *args, LONG ArgsSize, APTR argbuffer, LONG *ResultCount)
 {
    struct memory *memory;
    struct array *farray;
@@ -221,7 +220,6 @@ static ERROR build_args(lua_State *Lua, const struct FunctionField *args, LONG A
          }
          else if (type IS LUA_TSTRING) {
             //MSG("Arg: %s, Value: Buffer (Source is String)", args[i].Name);
-
             size_t len;
             CSTRING str = lua_tolstring(Lua, n, &len);
             ((CSTRING *)(argbuffer + j))[0] = str;

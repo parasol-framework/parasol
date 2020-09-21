@@ -442,10 +442,10 @@ static ERROR MODULE_Init(objModule *Self, APTR Void)
                else if (glSystemPath[0]) {
                   for (i=0; (glSystemPath[i]) AND (i < sizeof(path)-32); i++) path[i] = glSystemPath[i];
                   if (path[i-1] != '\\') path[i++] = '\\';
-                  for (j=0; "modules\\"[j]; j++) path[i++] = "modules\\"[j];
+                  for (j=0; "lib\\"[j]; j++) path[i++] = "lib\\"[j];
                }
                else {
-                  const char modlocation[] = "system\\modules\\";
+                  const char modlocation[] = "lib\\";
 
                   for (i=0; (glRootPath[i]) AND (i < sizeof(path)); i++) path[i] = glRootPath[i];
                   if (path[i-1] != '\\') path[i++] = '\\';
