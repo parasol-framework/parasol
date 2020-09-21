@@ -47,9 +47,28 @@ function testIndexing()
 end
 
 //=====================================================================================================================
+// Test the GetAttrib() method
+
+function testGetAttrib()
+   local err, index = glXML.mtFindTag("/book/function/input/param")
+   if err == ERR_Okay then
+      local err, value = glXML.mtGetAttrib(index, 'type')
+      if err == ERR_Okay then
+         if (value != 'struct rkFont *') then
+            error("Tag type value of '" .. value .. "' was not expected.")
+         end
+      else
+         error("Failed to retrieve 'type' attribute, error: " .. mSys.GetErrorMsg(err))
+      end
+   else
+      error("Failed to find /book/function/input/param, error: " .. mSys.GetErrorMsg(err))
+   end
+end
+
+//=====================================================================================================================
 
    return {
-      tests = { 'testTagsArray', 'testIndexing' },
+      tests = { 'testTagsArray', 'testIndexing', 'testGetAttrib' },
       init = function(ScriptFolder)
          glXML = obj.new("xml", { path = ScriptFolder .. "test.xml" })
       end,
