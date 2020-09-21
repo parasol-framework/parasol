@@ -14,6 +14,7 @@ if (gui == nil) then
       local xml = obj.find('glStyle')
 
       if (xml != nil) then
+         local total = 0
          xml.mtFindTag('/fonts/font',
             function(XML, TagIndex, Attrib)
                local font = { }
@@ -25,9 +26,14 @@ if (gui == nil) then
                      err, font.colour = xml.mtGetAttrib(TagIndex, 'colour')
                      err, font.highlight = xml.mtGetAttrib(TagIndex, 'highlight')
                      gui.fonts[name] = font
+                     total = total + 1
                   end
                end
             end)
+
+         if (total == 0) then
+            error('No fonts were processed from the style information.')
+         end
 
          local err, index = xml.mtFindTag('/colours')
          if (err == ERR_Okay) then

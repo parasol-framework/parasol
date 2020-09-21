@@ -529,7 +529,7 @@ EXPORT struct CoreBase * OpenCore(struct OpenInfo *Info)
 
 #ifdef _WIN32
 
-   activate_console(glLogLevel > 0);
+   activate_console(glLogLevel > 0); // This works for the MinGW runtime libraries but not MSYS2
 
    // If the log detail is less than 3, use an exception handler to deal with crashes.  Otherwise, do not set the
    // handler because the developer may want to intercept the crash using a debugger.

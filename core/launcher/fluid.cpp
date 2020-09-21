@@ -17,8 +17,8 @@ CSTRING ProgName      = "Fluid";
 CSTRING ProgAuthor    = "Paul Manias";
 CSTRING ProgDate      = "September 2020";
 CSTRING ProgCopyright = "Copyright Paul Manias © 2000-2020";
-LONG   ProgDebug = 0;
-FLOAT  ProgCoreVersion = VER_CORE;
+LONG  ProgDebug = 0;
+FLOAT ProgCoreVersion = VER_CORE;
 
 extern struct CoreBase *CoreBase;
 
@@ -34,8 +34,9 @@ Special options are:\n\
 \n\
  --procedure [n] The name of a procedure in the script to execute.\n\
  --time          Print the amount of time that it took to execute the program.\n\
- --log-info      Activates run-time log messages at INFO level.\n\
- --log-error     Activates run-time log messages at ERROR level.\n\
+ --log-info      Print log messages at INFO level.\n\
+ --log-error     Print log messages at ERROR level.\n\
+ --log-all       Print all log messages.\n\
  \n\
  If no script file is specified, the script will be parsed from std input after an EOF is received.\n\
  \n\
