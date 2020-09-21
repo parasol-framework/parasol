@@ -1,8 +1,0 @@
-# Export file
-
-png.so {
-    global:
-        ModHeader;
-    local:
-        *;
-};

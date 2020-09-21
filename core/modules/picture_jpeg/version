@@ -1,8 +1,0 @@
-# Export file
-
-jpeg.so {
-    global:
-        ModHeader;
-    local:
-        *;
-};
