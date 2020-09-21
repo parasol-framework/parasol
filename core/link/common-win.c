@@ -1,4 +1,5 @@
 
+
 //****************************************************************************
 
 static APTR find_core(char *PathBuffer, int Size)
@@ -18,6 +19,7 @@ static APTR find_core(char *PathBuffer, int Size)
          for (i=len; i > 0; i--) {
             if (PathBuffer[i] IS '\\') {
                PathBuffer[i+1] = 0;
+               AddDllDirectory(PathBuffer);
                break;
             }
          }
@@ -31,9 +33,8 @@ static APTR find_core(char *PathBuffer, int Size)
          for (len=0; PathBuffer[len]; len++);
          pos = len;
 
-         strncpy(PathBuffer+len, "system\\modules\\core.dll", Size-len-1);
+         strncpy(PathBuffer+len, "lib\\core.dll", Size-len-1);
 
-         //printf("Find: %s\n", PathBuffer);
          handle = INVALID_HANDLE_VALUE;
          while ((len) AND ((handle = FindFirstFileA(PathBuffer, &find)) IS INVALID_HANDLE_VALUE)) {
             // Regress by one folder to get to the root of the installation.
@@ -43,20 +44,19 @@ static APTR find_core(char *PathBuffer, int Size)
                len--;
             }
 
-            strncpy(PathBuffer+len, "system\\modules\\core.dll", Size-len-1);
-            //printf("Find: %s\n", PathBuffer);
+            strncpy(PathBuffer+len, "lib\\core.dll", Size-len-1);
+            //printf("Scan: %s\n", PathBuffer);
             pos = len;
          }
 
-         if (handle != INVALID_HANDLE_VALUE) {
-            // Success in finding the core.dll file
+         if (handle != INVALID_HANDLE_VALUE) { // Success in finding the core.dll file
             FindClose(handle);
          }
          else PathBuffer[0] = 0;
       }
    }
 
-   if (!PathBuffer[0]) {
+   if (!PathBuffer[0]) { // If local core library not found, check the Windows registry
       APTR keyhandle;
       if (!RegOpenKeyExA(HKEY_LOCAL_MACHINE, "Software\\Parasol", 0, KEY_READ, &keyhandle)) {
          LONG j = Size;
@@ -64,12 +64,18 @@ static APTR find_core(char *PathBuffer, int Size)
             LONG i;
             for (i=0; PathBuffer[i]; i++);
             pos = i;
-            strncpy(PathBuffer+i, "system\\modules\\core.dll", Size-i-1);
+            strncpy(PathBuffer+i, "lib\\core.dll", Size-i-1);
          }
          CloseHandle(keyhandle);
          keyhandle = NULL;
       }
    }
+
+   // Prior to loading the core we must add the root and 3rdparty lib folder to the DLL search path.
+
+   strncpy(PathBuffer+pos+4, "lib", 4);
+   SetDllDirectoryA(PathBuffer);
+   strncpy(PathBuffer+pos+4, "core.dll", 9);
 
    {
       APTR handle;
