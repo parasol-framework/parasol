@@ -861,7 +861,7 @@ ERROR FreeResourceID(MEMORYID MemoryID)
                   if (!winCloseHandle(glSharedBlocks[entry].Handle)) {
                      char buffer[80];
                      winFormatMessage(0, buffer, sizeof(buffer));
-                     LogF("@FreeResourceID","winCloseHandle(%d) failed: %s", (LONG)glSharedBlocks[entry].Handle, buffer);
+                     LogF("@FreeResourceID","winCloseHandle(" PF64() ") failed: %s", (MAXINT)glSharedBlocks[entry].Handle, buffer);
                   }
                }
 

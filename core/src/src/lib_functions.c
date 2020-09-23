@@ -1836,7 +1836,7 @@ ERROR RegisterFD(LONG FD, LONG Flags, void (*Routine)(HOSTHANDLE, APTR), APTR Da
 
    if (i >= MAX_FDS) return LogError(ERH_RegisterFD, ERR_ArrayFull);
 
-   if (i IS glTotalFDs) LogF("3RegisterFD()","FD: %d, Routine: %p, Flags: $%.2x (New)", (LONG)FD, Routine, Flags);
+   if (i IS glTotalFDs) LogF("3RegisterFD()","FD: " PF64() ", Routine: %p, Flags: $%.2x (New)", (MAXINT)FD, Routine, Flags);
 
 #ifdef _WIN32
    // Nothing to do for Win32

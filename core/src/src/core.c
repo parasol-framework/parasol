@@ -1821,7 +1821,7 @@ static LONG CrashHandler(LONG Code, APTR Address, LONG Continuable, LONG *Info)
    if (Code < EXP_END) {
       if (glCrashStatus IS 0) {
          if (glLogLevel >= 5) {
-            LogF("@Core","CRASH!"); // Using LogF is helpful for stepped output to indicate where the crash occurred
+            LogF("@Core","CRASH!"); // Using LogF is helpful because branched output can indicate where the crash occurred.
          }
          else fprintf(stderr, "\n\nCRASH!");
 
@@ -1832,7 +1832,7 @@ static LONG CrashHandler(LONG Code, APTR Address, LONG Continuable, LONG *Info)
             else if (Info[0] IS 0) type = "read";
             else if (Info[0] IS 8) type = "execution";
             else type = "access";
-            fprintf(stderr, "Attempted %s on address %p\n", type, (APTR)Info[1]);
+            fprintf(stderr, "Attempted %s on address %p\n", type, ((void **)(Info+1))[0]);
          }
          fprintf(stderr, "\n");
       }

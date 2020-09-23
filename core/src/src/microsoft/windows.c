@@ -1335,6 +1335,7 @@ void winSetUnhandledExceptionFilter(LONG (*Function)(LONG, APTR, LONG, APTR))
 }
 
 //****************************************************************************
+// https://docs.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-exception_record
 
 LONG ExceptionFilter(LPEXCEPTION_POINTERS Args)
 {

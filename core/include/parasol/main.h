@@ -268,7 +268,7 @@ struct OpenInfo {
 #undef FD_READ
 #undef FD_WRITE
 
-#if defined(_LP64) || defined(__x86_64__)
+#ifdef _LP64
 #define FD_PTR64 FD_POINTER
 #else
 #define FD_PTR64 0

@@ -71,7 +71,7 @@ typedef void * WINHANDLE;
 
 #undef MAXINT
 
-#if defined(_LP64) || defined(__x86_64__)
+#ifdef  _LP64
 typedef LARGE MAXINT;
  #if defined(_MSC_VER)
 typedef unsigned __int64   UMAXINT;
@@ -87,8 +87,8 @@ typedef unsigned int UMAXINT;
 ** Pointer types.
 */
 
-#define L64PTR(a)        (APTR)((MAXINT)(a))  // Converts a 64-bit integer to a pointer
-#define PTRL64(a)        (LARGE)((MAXINT)(a)) // Converts a pointer to an integer
+#define L64PTR(a)  (APTR)((MAXINT)(a))  // Converts a 64-bit integer to a pointer
+#define PTRL64(a)  (LARGE)((MAXINT)(a)) // Converts a pointer to an integer
 
 typedef void * TIMER;
 typedef const void * CPTR;  // Pointer with read-only content

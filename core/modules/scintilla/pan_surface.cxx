@@ -110,20 +110,16 @@ void SurfacePan::Init(Scintilla::SurfaceID sid, Scintilla::WindowID WID_NAME)
 
 void SurfacePan::InitPixMap(int width, int height, Scintilla::Surface *surface_, Scintilla::WindowID WID_NAME)
 {
-   SURFACEINFO info;
-   OBJECTID display_id;
-   ERROR error;
-
    if (bitmap) return;
 
    FMSG("~panInitPixMap()","Size: %dx%d", width, height);
 
    //DebugOff();
-   error = CreateObject(ID_BITMAP, NULL, &bitmap,
-         FID_Name|TSTR,    "sciPixmap",
-         FID_Width|TLONG,  width,
-         FID_Height|TLONG, height,
-         TAGEND);
+   ERROR error = CreateObject(ID_BITMAP, NULL, &bitmap,
+      FID_Name|TSTR,    "sciPixmap",
+      FID_Width|TLONG,  width,
+      FID_Height|TLONG, height,
+      TAGEND);
    //DebugOn();
 
    STEP();
