@@ -1,6 +1,10 @@
 #ifndef DEFS_H
 #define DEFS_H 1
 
+#ifndef PLATFORM_CONFIG_H
+#include <parasol/config.h>
+#endif
+
 #define PRV_CORE
 #define PRV_CORE_MODULE
 #define PRV_THREAD

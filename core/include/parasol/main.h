@@ -11,6 +11,10 @@
 extern "C" {
 #endif
 
+#ifndef PLATFORM_CONFIG_H
+#include <parasol/config.h>
+#endif
+
 #ifdef _MSC_VER
 #pragma warning (disable : 4244 4311 4312) // Disable annoying VC++ typecast warnings
 #endif
@@ -134,16 +138,10 @@ extern "C" {
 #define CODE_MEMH 0x4D454D48L
 #define CODE_MEMT 0x4D454D54L
 
-#ifdef __CYGWIN__
-#define PF64() "%lld"
-#elif _WIN32
- #if defined(_LP64) || defined(__x86_64__) // msys gcc-64 accepts %lld, but gcc-32 only %I64
-  #define PF64() "%lld"
- #else
+#ifdef PRINTF64I
   #define PF64() "%I64d"
- #endif
 #else
-#define PF64() "%lld"
+  #define PF64() "%lld"
 #endif
 
 /*****************************************************************************
