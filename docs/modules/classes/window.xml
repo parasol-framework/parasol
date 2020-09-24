@@ -12,7 +12,7 @@
     <idstring>ID_WINDOW</idstring>
     <category>GUI</category>
     <include>modules/window.h</include>
-    <copyright>Paul Manias © 2003-2017</copyright>
+    <copyright>Paul Manias © 2003-2020</copyright>
     <description>
 <p>The Window class provides a simple API for the creation and management of application windows within the host's UI. Windows are designed to act as containers that are physically represented by a <class name="Surface">Surface</class>.  The characteristics of the Surface class are inherited by the window, thereby allowing the client to read and manipulate surface fields (such as x, y, width and height) through the window object.</p></description>
     <source>

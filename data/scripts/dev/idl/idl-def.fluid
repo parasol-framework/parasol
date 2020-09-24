@@ -1,5 +1,5 @@
--- This program reads Parasol FDL files and saves definition headers to 'config:defs/'.  Definition headers describe
--- the structures, flags and constants used by modules with a universal format that is easy parse.  The headers can be
+-- Read Parasol FDL files and save interface information in our standard IDL string format.  IDL strings describe
+-- the structures, flags and constants used by modules in a universal format that is easy parse.  The headers can be
 -- dynamically consumed by any language for the purpose of achieving full integration with the Parasol runtime
 -- environment, which is written in C.
 --
@@ -534,25 +534,31 @@ function saveOutput()
    end
 end
 
-------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------------------------
 -- Resolve the location of the Parasol SDK and create an 'sdk:' volume.
 
-function resolveSDKPath()
-   local err = ERR_Failed
-   local limit = 5
-   local search_path = 'makefile.inc'
+function resolveSDKPath(Path)
    local sdk_path
-   while (err != ERR_Okay) and (limit > 0) do
-      search_path = '../' .. search_path
-      err, sdk_path = mSys.ResolvePath(search_path)
-      limit = limit - 1
+   local err = ERR_Failed
+   if not Path then
+      local search_path = 'CMakeLists.txt'
+      local limit = 5
+      while (err != ERR_Okay) and (limit > 0) do
+         search_path = '../' .. search_path
+         err, sdk_path = mSys.ResolvePath(search_path)
+         limit = limit - 1
+      end
+   else
+      err, sdk_path = mSys.ResolvePath(Path .. '/CMakeLists.txt')
    end
+
    if (err == ERR_Okay) then
-      sdk_path = sdk_path:match('(.+)makefile%.inc')
-      mSys.SetVolume(AST_NAME, 'sdk', AST_PATH, sdk_path, AST_COMMENT, 'Parasol Software Development Kit')
+      sdk_path = sdk_path:match("(.+)CMakeLists%.txt")
    else
       error('Failed to resolve a path to the Parasol SDK.')
    end
+
+   mSys.SetVolume(AST_NAME, 'sdk', AST_PATH, sdk_path, AST_COMMENT, 'Parasol Software Development Kit')
 end
 
 ------------------------------------------------------------------------------
@@ -572,7 +578,7 @@ end
    end
 
    mSys = mod.load('core')
-   resolveSDKPath()
+   resolveSDKPath(arg('sdk'))
 
    glOrderedStructures = { }
    glStructures = { }
