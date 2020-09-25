@@ -74,8 +74,6 @@ typedef int HANDLE;
 
  #define open64   open
  #define lseek64  lseek
- #define fstat64  fstat
- #define stat64   stat
  #undef NULL
  #define NULL 0
 #endif // _WIN32
@@ -1320,7 +1318,7 @@ ERROR MoveFile(CSTRING Source, CSTRING Dest, FUNCTION *Callback)
 /******************************************************************************
 
 -FUNCTION-
-ReadFile: Reads a file into a buffer.
+ReadFileToBuffer: Reads a file into a buffer.
 
 This function provides a simple method for reading file content into a buffer.  In some cases this procedure may be
 optimised for the host platform, which makes it the fastest way to read file content in simple cases.
@@ -1346,7 +1344,7 @@ File
 
 ******************************************************************************/
 
-ERROR pReadFile(CSTRING Path, APTR Buffer, LONG BufferSize, LONG *BytesRead)
+ERROR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG *BytesRead)
 {
 #if defined(__unix__) || defined(_WIN32)
    if ((!Path) OR (BufferSize <= 0) OR (!Buffer)) return ERR_Args;
@@ -1370,7 +1368,7 @@ ERROR pReadFile(CSTRING Path, APTR Buffer, LONG BufferSize, LONG *BytesRead)
             if ((result = read(handle, Buffer, BufferSize)) IS -1) {
                error = ERR_Read;
                #ifdef __unix__
-                  LogF("@ReadFile","read(%s, %p, %d): %s", Path, Buffer, BufferSize, strerror(errno));
+                  LogF("@ReadFileToBuffer","read(%s, %p, %d): %s", Path, Buffer, BufferSize, strerror(errno));
                #endif
             }
             else if (BytesRead) *BytesRead = result;
@@ -1379,7 +1377,7 @@ ERROR pReadFile(CSTRING Path, APTR Buffer, LONG BufferSize, LONG *BytesRead)
          }
          else {
             #ifdef __unix__
-               LogF("@ReadFile","open(%s): %s", Path, strerror(errno));
+               LogF("@ReadFileToBuffer","open(%s): %s", Path, strerror(errno));
             #endif
             error = ERR_OpenFile;
          }

@@ -181,7 +181,7 @@ function declareErrors()
     "Compression",             // Unspecified failure during compression of a data stream.
     "ExpectedFolder",          // The operation expected a folder path.
     "Immutable",               // This operation would break the object's immutable status.
-    "ReadFile",                // A call to ReadFile() failed.
+    "ReadFileToBuffer",        // A call to ReadFileToBuffer() failed.
     "Obsolete",                // This feature is no longer available (obsolete).
     "CreateResource",          // Failed to create a new resource.
     "NotPossible",             // It is not possible to perform the requested operation.

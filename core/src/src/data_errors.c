@@ -377,7 +377,7 @@ CSTRING glMessages[ERR_END] = {
  "Unspecified failure during compression of a data stream.",
  "The operation expected a folder path.",
  "This operation would violate the object's immutable status.",
- "A call to ReadFile() failed.",
+ "A call to ReadFileToBuffer() failed.",
  "This feature is no longer available (obsolete).",
  "Failed to create a new resource.",
  "It is not possible to perform the requested operation.",

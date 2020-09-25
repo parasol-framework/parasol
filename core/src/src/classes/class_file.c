@@ -84,8 +84,6 @@ in a file.
 
  #define open64   open
  #define lseek64  lseek
- #define fstat64  fstat
- #define stat64   stat
  #undef NULL
  #define NULL 0
 #endif // _WIN32
@@ -107,7 +105,6 @@ static ERROR FILE_Watch(objFile *, struct flWatch *);
 static ERROR SET_Path(objFile *, CSTRING);
 static ERROR SET_Size(objFile *, LARGE);
 
-static const struct FieldDef FileFlags[];
 static const struct FieldDef PermissionFlags[];
 static const struct FieldArray FileFields[];
 static const struct ActionArray clFileActions[];

@@ -1899,10 +1899,10 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
   </function>
 
   <function>
-    <name>ReadFile</name>
+    <name>ReadFileToBuffer</name>
     <category>Files</category>
     <comment>Reads a file into a buffer.</comment>
-    <prototype>ERROR ReadFile(CSTRING Path, APTR Buffer, LONG BufferSize, LONG * Result)</prototype>
+    <prototype>ERROR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG * Result)</prototype>
     <input>
       <param type="CSTRING" name="Path">The path of the file.</param>
       <param type="APTR" name="Buffer">Pointer to a buffer that will receive the file content.</param>

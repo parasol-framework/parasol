@@ -640,7 +640,7 @@ static int struct_get(lua_State *Lua)
 static LONG get_fieldvalue(lua_State *Lua, struct fstruct *fstruct, CSTRING fieldname)
 {
    LONG offset, type, array_size;
-   CSTRING structname;
+   CSTRING structname = NULL;
 
    if ((find_field(fstruct, fieldname, &structname, &offset, &type, &array_size))) {
       if (!fstruct->Data) {

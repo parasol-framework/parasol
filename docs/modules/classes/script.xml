@@ -287,7 +287,7 @@ SET_FUNCTION_SCRIPT(callback, script, procedure_id);
       <access read="G" write="S">Get/Set</access>
       <type>STRING</type>
       <description>
-<p>The working path for a script is defined here.  By default this is defined as the location from which the script was loaded, without the file name.  If this cannot be determined then the working path for the parent task is used (this is usually set to the location of the parasol-gui program).</p>
+<p>The working path for a script is defined here.  By default this is defined as the location from which the script was loaded, without the file name.  If this cannot be determined then the working path for the parent process is used (this is usually set to the location of the program).</p>
 <p>The working path is always fully qualified with a slash or colon at the end of the string.</p>
 <p>You can manually change the working path by setting this field with a custom string.</p>
       </description>

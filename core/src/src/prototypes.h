@@ -172,7 +172,7 @@ void VarUnlock(struct KeyStore * Store);
 void SetDefaultPermissions(LONG User, LONG Group, LONG Permissions);
 CSTRING ResolveUserID(LONG User);
 CSTRING ResolveGroupID(LONG Group);
-ERROR pReadFile(CSTRING Path, APTR Buffer, LONG BufferSize, LONG * Result);
+ERROR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG * Result);
 ERROR LoadFile(CSTRING Path, LONG Flags, struct CacheFile ** Cache);
 void UnloadFile(struct CacheFile * Cache);
 ERROR AddInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING Value);

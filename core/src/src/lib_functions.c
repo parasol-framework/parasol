@@ -1421,7 +1421,7 @@ LARGE GetResource(LONG Resource)
          UBYTE str[2048];
          LONG result;
          LARGE freemem = 0;
-         if (!pReadFile("/proc/meminfo", str, sizeof(str)-1, &result)) {
+         if (!ReadFileToBuffer("/proc/meminfo", str, sizeof(str)-1, &result)) {
             LONG i = 0;
             while (i < result) {
                if (!StrCompare("Cached", str+i, sizeof("Cached")-1, NULL)) {
