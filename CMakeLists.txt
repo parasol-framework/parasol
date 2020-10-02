@@ -51,51 +51,6 @@ endif ()
 
 include_directories("${PROJECT_SOURCE_DIR}/core/include" "${CMAKE_CURRENT_BINARY_DIR}")
 
-# Look for necessary includes
-#check_include_files ("sys/types.h"           HAVE_SYS_TYPES_H)
-#check_include_files ("sys/socket.h"          HAVE_SYS_SOCKET_H)
-#check_include_files ("arpa/inet.h"           HAVE_ARPA_INET_H)
-#check_include_files ("arpa/nameser_compat.h" HAVE_ARPA_NAMESER_COMPAT_H)
-#check_include_files ("arpa/nameser.h"        HAVE_ARPA_NAMESER_H)
-#check_include_files ("assert.h"              HAVE_ASSERT_H)
-#check_include_files ("errno.h"               HAVE_ERRNO_H)
-#check_include_files ("fcntl.h"               HAVE_FCNTL_H)
-#check_include_files ("inttypes.h"            HAVE_INTTYPES_H)
-#check_include_files ("limits.h"              HAVE_LIMITS_H)
-#check_include_files ("malloc.h"              HAVE_MALLOC_H)
-#check_include_files ("memory.h"              HAVE_MEMORY_H)
-#check_include_files ("netdb.h"               HAVE_NETDB_H)
-#check_include_files ("netinet/in.h"          HAVE_NETINET_IN_H)
-#check_include_files ("netinet/tcp.h"         HAVE_NETINET_TCP_H)
-#check_include_files ("net/if.h"              HAVE_NET_IF_H)
-#check_include_files ("signal.h"              HAVE_SIGNAL_H)
-#check_include_files ("socket.h"              HAVE_SOCKET_H)
-#check_include_files ("stdbool.h"             HAVE_STDBOOL_H)
-#check_include_files ("stdint.h"              HAVE_STDINT_H)
-#check_include_files ("stdlib.h"              HAVE_STDLIB_H)
-#check_include_files ("strings.h"             HAVE_STRINGS_H)
-#check_include_files ("string.h"              HAVE_STRING_H)
-#check_include_files ("stropts.h"             HAVE_STROPTS_H)
-#check_include_files ("sys/ioctl.h"           HAVE_SYS_IOCTL_H)
-#check_include_files ("sys/param.h"           HAVE_SYS_PARAM_H)
-#check_include_files ("sys/select.h"          HAVE_SYS_SELECT_H)
-#check_include_files ("sys/socket.h"          HAVE_SYS_SOCKET_H)
-#check_include_files ("sys/stat.h"            HAVE_SYS_STAT_H)
-#check_include_files ("sys/time.h"            HAVE_SYS_TIME_H)
-#check_include_files ("sys/types.h"           HAVE_SYS_TYPES_H)
-#check_include_files ("sys/uio.h"             HAVE_SYS_UIO_H)
-#check_include_files ("time.h"                HAVE_TIME_H)
-#check_include_files ("dlfcn.h"               HAVE_DLFCN_H)
-#check_include_files ("unistd.h"              HAVE_UNISTD_H)
-
-# Include order matters for these windows files.
-
-#check_include_files ("winsock2.h;windows.h"            HAVE_WINSOCK2_H)
-#check_include_files ("winsock2.h;ws2tcpip.h;windows.h" HAVE_WS2TCPIP_H)
-#check_include_files ("winsock.h;windows.h"             HAVE_WINSOCK_H)
-#check_include_files ("windows.h"                       HAVE_WINDOWS_H)
-
-
 	CHECK_C_SOURCE_COMPILES ("
 #include <stdio.h>
 int main() {
@@ -377,10 +332,10 @@ if (WIN32)
    add_executable (fluid_cmd WIN32 "core/launcher/fluid.cpp" "core/launcher/sandbox-win.cpp" "core/link/resource.rc")
    target_link_libraries (fluid_cmd PRIVATE init-win)
 else ()
-   add_executable (parasol "core/launcher/parasol.cpp" "core/launcher/sandbox-unix.cpp" "core/link/resource.rc")
+   add_executable (parasol "core/launcher/parasol.cpp" "core/link/resource.rc")
    target_link_libraries (parasol PRIVATE init-unix)
 
-   add_executable (fluid_cmd "core/launcher/fluid.cpp" "core/launcher/sandbox-unix.cpp" "core/link/resource.rc")
+   add_executable (fluid_cmd "core/launcher/fluid.cpp" "core/link/resource.rc")
    target_link_libraries (fluid_cmd PRIVATE init-unix)
 endif ()
 
