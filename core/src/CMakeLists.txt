@@ -106,7 +106,7 @@ target_sources (core PRIVATE
    "src/compression/class_compression.c")
 
 target_include_directories (core PRIVATE
-   "${PROJECT_SOURCE_DIR}/core/3rdparty/zlib-1.2.11")
+   ${ZLIB_HEADERS})
 
 # A bug in (MinGW?) GCC requires the following flag is applied to ensure that __packed__ works correctly.
 
@@ -120,7 +120,7 @@ set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mno-ms-bitfields")
 add_definitions("-D__system__" "-DDBG_DIAGNOSTICS")
 
 set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -L../3rdparty/zlib-1.2.11/")
-target_link_libraries (core PRIVATE z)
+target_link_libraries (core PRIVATE zlib)
 
 if (WIN32)
    target_sources (core PRIVATE src/microsoft/windows.c)
