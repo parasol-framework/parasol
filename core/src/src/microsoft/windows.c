@@ -25,6 +25,10 @@
 #include <tchar.h>
 #include <imagehlp.h>
 
+#ifndef PLATFORM_CONFIG_H
+#include <parasol/config.h>
+#endif
+
 #include "windefs.h"
 #include <parasol/system/errors.h>
 
