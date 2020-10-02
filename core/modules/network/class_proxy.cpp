@@ -35,26 +35,6 @@ static ERROR find_proxy(objProxy *);
 static void clear_values(objProxy *);
 static ERROR get_record(objProxy *);
 
-static const struct ActionArray clActions[];
-static const struct MethodArray clMethods[];
-static const struct FieldArray clFields[];
-
-//****************************************************************************
-
-ERROR init_proxy(void)
-{
-   return(CreateObject(ID_METACLASS, 0, &clProxy,
-      FID_ClassVersion|TFLOAT, VER_PROXY,
-      FID_Name|TSTR,   "Proxy",
-      FID_Category|TLONG, CCF_NETWORK,
-      FID_Actions|TPTR,   clActions,
-      FID_Methods|TARRAY, clMethods,
-      FID_Fields|TARRAY,  clFields,
-      FID_Size|TLONG,     sizeof(objProxy),
-      FID_Path|TSTR,      MOD_PATH,
-      TAGEND));
-}
-
 /*
 static void free_proxy(void)
 {
@@ -185,7 +165,6 @@ static ERROR PROXY_Find(objProxy *Self, struct prxFind *Args)
          OBJECTPTR task;
          BYTE bypass;
          LONG port, total, j, i, index, lastsection, enabled;
-         UBYTE server[80];
          CSTRING name, value;
 
          // Remove any existing host proxy settings
@@ -266,7 +245,8 @@ static ERROR PROXY_Find(objProxy *Self, struct prxFind *Args)
 
                      if ((name) AND (port != -1)) {
                         LONG id, serverport;
-                        UBYTE section[32];
+                        char section[32];
+                        char server[80];
 
                         id = 0;
                         cfgReadInt(glConfig, "ID", "Value", &id);
@@ -275,11 +255,12 @@ static ERROR PROXY_Find(objProxy *Self, struct prxFind *Args)
 
                         IntToStr(id, section, sizeof(section));
 
-                        for (j=0; servers[index+j] AND (servers[index+j] != ':') AND (j < sizeof(server)-1); j++) server[j] = servers[index+j];
-                        server[j] = 0;
+                        size_t s;
+                        for (s=0; servers[index+s] AND (servers[index+s] != ':') AND (s < sizeof(server)-1); s++) server[s] = servers[index+s];
+                        server[s] = 0;
 
-                        if (servers[index+j] IS ':') {
-                           serverport = StrToInt(servers + index + j + 1);
+                        if (servers[index+s] IS ':') {
+                           serverport = StrToInt(servers + index + s + 1);
 
                            MSG("Discovered proxy server %s, port %d", server, serverport);
 
@@ -295,7 +276,7 @@ static ERROR PROXY_Find(objProxy *Self, struct prxFind *Args)
                            cfgWriteInt(glConfig, section, "ServerPort", serverport);
                            cfgWriteInt(glConfig, section, "Host", 1); // Indicate that this proxy originates from host OS settings
 
-                           i = index + j;
+                           i = index + s;
                         }
                      }
 
@@ -530,7 +511,7 @@ static ERROR PROXY_SaveSettings(objProxy *Self, APTR Void)
          else if (Self->Port IS 0) {
             // Proxy is for all ports
 
-            UBYTE buffer[120];
+            char buffer[120];
 
             StrFormat(buffer, sizeof(buffer), "%s:%d", Self->Server, Self->ServerPort);
 
@@ -539,8 +520,9 @@ static ERROR PROXY_SaveSettings(objProxy *Self, APTR Void)
             taskSetEnv(task, HKEY_PROXY "ProxyServer", buffer);
          }
          else {
-            UBYTE buffer[120];
-            STRING portname, newlist;
+            char buffer[120];
+            CSTRING portname;
+            STRING newlist;
             LONG index, end, len;
 
             portname = NULL;
@@ -551,32 +533,31 @@ static ERROR PROXY_SaveSettings(objProxy *Self, APTR Void)
             }
 
             if (portname) {
-               STRING servers;
-               taskGetEnv(task, HKEY_PROXY "ProxyServer", (CSTRING *)&servers);
-
+               CSTRING servers;
+               char server_buffer[200];
+               taskGetEnv(task, HKEY_PROXY "ProxyServer", &servers);
                if (!servers) servers = "";
+               StrCopy(servers, server_buffer, sizeof(server_buffer));
 
                StrFormat(buffer, sizeof(buffer), "%s=", portname);
-               if ((index = StrSearch(buffer, servers, 0)) != -1) {
-                  // Entry already exists - remove it first
-
-                  for (end=index; servers[end]; end++) {
-                     if (servers[end] IS ';') {
+               if ((index = StrSearch(buffer, server_buffer, 0)) != -1) { // Entry already exists - remove it first
+                  for (end=index; server_buffer[end]; end++) {
+                     if (server_buffer[end] IS ';') {
                         end++;
                         break;
                      }
                   }
 
-                  StrShrink(servers, index, end-index);
+                  StrShrink(server_buffer, index, end-index);
                }
 
                // Add the entry to the end of the string list
 
                len = StrFormat(buffer, sizeof(buffer), "%s=%s:%d", portname, Self->Server, Self->ServerPort);
-               end = StrLength(servers);
+               end = StrLength(server_buffer);
                if (!AllocMemory(end + len + 2, MEM_STRING|MEM_NO_CLEAR, &newlist, NULL)) {
                   if (end > 0) {
-                     CopyMemory(servers, newlist, end);
+                     CopyMemory(server_buffer, newlist, end);
                      newlist[end++] = ';';
                   }
 
@@ -930,34 +911,50 @@ static const struct FieldDef clPorts[] = {
 };
 
 static const struct FieldArray clFields[] = {
-   { "NetworkFilter", FDF_STRING|FDF_RW, 0, NULL, SET_NetworkFilter },
-   { "GatewayFilter", FDF_STRING|FDF_RW, 0, NULL, SET_GatewayFilter },
-   { "Username",      FDF_STRING|FDF_RW, 0, NULL, SET_Username },
-   { "Password",      FDF_STRING|FDF_RW, 0, NULL, SET_Password },
-   { "ProxyName",     FDF_STRING|FDF_RW, 0, NULL, SET_ProxyName },
-   { "Server",        FDF_STRING|FDF_RW, 0, NULL, SET_Server },
-   { "Port",          FDF_LONG|FDF_LOOKUP|FDF_RW,   (MAXINT)&clPorts, NULL, SET_Port },
-   { "ServerPort",    FDF_LONG|FDF_RW,   0, NULL, SET_ServerPort },
-   { "Enabled",       FDF_LONG|FDF_RW,   0, NULL, SET_Enabled },
-   { "Record",        FDF_LONG|FDF_RW,   0, NULL, SET_Record },
+   { "NetworkFilter", FDF_STRING|FDF_RW, 0, NULL, (APTR)SET_NetworkFilter },
+   { "GatewayFilter", FDF_STRING|FDF_RW, 0, NULL, (APTR)SET_GatewayFilter },
+   { "Username",      FDF_STRING|FDF_RW, 0, NULL, (APTR)SET_Username },
+   { "Password",      FDF_STRING|FDF_RW, 0, NULL, (APTR)SET_Password },
+   { "ProxyName",     FDF_STRING|FDF_RW, 0, NULL, (APTR)SET_ProxyName },
+   { "Server",        FDF_STRING|FDF_RW, 0, NULL, (APTR)SET_Server },
+   { "Port",          FDF_LONG|FDF_LOOKUP|FDF_RW,   (MAXINT)&clPorts, NULL, (APTR)SET_Port },
+   { "ServerPort",    FDF_LONG|FDF_RW,   0, NULL, (APTR)SET_ServerPort },
+   { "Enabled",       FDF_LONG|FDF_RW,   0, NULL, (APTR)SET_Enabled },
+   { "Record",        FDF_LONG|FDF_RW,   0, NULL, (APTR)SET_Record },
    END_FIELD
 };
 
 static const struct ActionArray clActions[] = {
-   { AC_Disable,      PROXY_Disable },
-   { AC_Enable,       PROXY_Enable },
-   { AC_Free,         PROXY_Free },
-   { AC_Init,         PROXY_Init },
-   { AC_NewObject,    PROXY_NewObject },
-   { AC_SaveSettings, PROXY_SaveSettings },
+   { AC_Disable,      (APTR)PROXY_Disable },
+   { AC_Enable,       (APTR)PROXY_Enable },
+   { AC_Free,         (APTR)PROXY_Free },
+   { AC_Init,         (APTR)PROXY_Init },
+   { AC_NewObject,    (APTR)PROXY_NewObject },
+   { AC_SaveSettings, (APTR)PROXY_SaveSettings },
    { 0, 0 }
 };
 
 static const struct FunctionField argsFind[] = { { "Port", FD_LONG }, { "Enabled", FD_LONG }, { NULL, 0 } };
 
 static const struct MethodArray clMethods[] = {
-   { MT_PrxDelete,    PROXY_Delete,   "Delete",   NULL, 0 },
-   { MT_PrxFind,      PROXY_Find,     "Find",     argsFind,     sizeof(struct prxFind) },
-   { MT_PrxFindNext,  PROXY_FindNext, "FindNext", NULL, 0 },
+   { MT_PrxDelete,    (APTR)PROXY_Delete,   "Delete",   NULL, 0 },
+   { MT_PrxFind,      (APTR)PROXY_Find,     "Find",     argsFind, sizeof(struct prxFind) },
+   { MT_PrxFindNext,  (APTR)PROXY_FindNext, "FindNext", NULL, 0 },
    { 0, NULL, NULL, NULL, 0 }
 };
+
+//****************************************************************************
+
+ERROR init_proxy(void)
+{
+   return(CreateObject(ID_METACLASS, 0, &clProxy,
+      FID_ClassVersion|TFLOAT, VER_PROXY,
+      FID_Name|TSTR,   "Proxy",
+      FID_Category|TLONG, CCF_NETWORK,
+      FID_Actions|TPTR,   clActions,
+      FID_Methods|TARRAY, clMethods,
+      FID_Fields|TARRAY,  clFields,
+      FID_Size|TLONG,     sizeof(objProxy),
+      FID_Path|TSTR,      MOD_PATH,
+      TAGEND));
+}

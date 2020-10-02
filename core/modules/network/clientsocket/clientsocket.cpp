@@ -7,8 +7,9 @@ static const struct FieldArray clClientSocketFields[] = {
    { "UserData",    FDF_POINTER|FDF_R,  0, NULL, NULL },
    { "Outgoing",    FDF_FUNCTION|FDF_R, 0, NULL, NULL },
    { "Incoming",    FDF_FUNCTION|FDF_R, 0, NULL, NULL },
-   { "Handle",      FDF_LONG|FDF_R,     0, NULL, NULL },
    { "MsgLen",      FDF_LONG|FDF_R,     0, NULL, NULL },
+   // Virtual fields
+//   { "Handle",      FDF_LONG|FDF_R|FDF_VIRTUAL,     0, (APTR)GET_ClientHandle, (APTR)SET_ClientHandle },
    END_FIELD
 };
 

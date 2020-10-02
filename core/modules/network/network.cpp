@@ -10,7 +10,7 @@ Please refer to it for further information on licensing.
 Network: Provides miscellaneous network functions and hosts the NetSocket and ClientSocket classes.
 
 The Network module exports a few miscellaneous networking functions.  For core network functionality surrounding
-sockets and HTTP, please refer to the <class>NetSocket</class> and <class>HTTP</class> classes.
+sockets and HTTP, please refer to the @NetSocket and @HTTP classes.
 -END-
 
 *****************************************************************************/
@@ -25,14 +25,20 @@ sockets and HTTP, please refer to the <class>NetSocket</class> and <class>HTTP</
 #define NO_NETRECURSION
 
 #include <stdio.h>
+#include <sys/types.h>
 
 #include <parasol/main.h>
 #include <parasol/modules/network.h>
 
 #ifdef ENABLE_SSL
-#include <parasol/modules/openssl.h>
-#else
-   #warning OpenSSL support is not available.
+#include <openssl/ssl.h>
+#include <openssl/err.h>
+#include <openssl/bio.h>
+#include <openssl/bn.h>
+#include <openssl/rsa.h>
+#include <openssl/evp.h>
+#include <openssl/x509.h>
+#include <openssl/pem.h>
 #endif
 
 #ifdef __linux__
@@ -107,6 +113,8 @@ typedef ULONG SOCKET_HANDLE; // NOTE: declared as ULONG instead of SOCKET for no
 
 #elif _WIN32
 
+   #include <string.h>
+
    #define htons win_htons
    #define htonl win_htonl
    #define ntohs win_ntohs
@@ -119,18 +127,16 @@ typedef ULONG SOCKET_HANDLE; // NOTE: declared as ULONG instead of SOCKET for no
 //****************************************************************************
 // Ares Includes
 
-#ifdef USE_ARES
-   #ifdef __linux__
-   #include "ares_setup.h"
-   #endif
+extern const char * net_init_ares(void);
+extern void net_free_ares(void);
+extern int net_ares_error(int Code, const char **Message);
 
+#if defined(USE_ARES) && defined(__linux__)
+   #include "ares_setup.h"
    #include "ares.h"  // Note - This file is modified from the original
    #include "ares_dns.h"
    #include "ares_inet_net_pton.h"
-
-   #ifdef __linux__
-      #include "ares_private.h"
-   #endif
+   #include "ares_private.h"
 #endif
 
 //****************************************************************************
@@ -157,9 +163,8 @@ struct dns_resolver {
    LARGE client_data;
    FUNCTION callback;
    struct dns_resolver *next;
-   #if defined(ARES__H) && defined(__linux__)
-      int tcp;
-      int udp;
+   #ifdef __linux__
+      int tcp, udp; // For Ares
    #endif
    #ifdef _WIN32
       union { // For win_async_resolvename()
@@ -178,8 +183,6 @@ struct dns_cache {
 };
 
 #ifdef ENABLE_SSL
-static struct OpenSSLBase *OpenSSLBase = NULL;
-static OBJECTPTR modOpenSSL = NULL;
 static BYTE ssl_init = FALSE;
 
 static ERROR sslConnect(objNetSocket *);
@@ -205,7 +208,7 @@ static ERROR add_netsocket(void);
 static ERROR add_clientsocket(void);
 static ERROR init_proxy(void);
 
-#if defined(ARES__H) && defined(__linux__)
+#if defined(USE_ARES) && defined(__linux__)
 static int ares_socket_callback(ares_socket_t SocketHandle, int Type, struct dns_resolver *);
 #endif
 
@@ -213,6 +216,8 @@ static int ares_socket_callback(ares_socket_t SocketHandle, int Type, struct dns
 
 ERROR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
+   CSTRING msg;
+
    CoreBase = argCoreBase;
 
    GetPointer(argModule, FID_Master, &glModule);
@@ -226,21 +231,18 @@ ERROR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 #ifdef _WIN32
    // Configure Winsock
 
-   CSTRING msg;
    if ((msg = StartupWinsock()) != 0) {
       LogErrorMsg("Winsock initialisation failed: %s", msg);
       return ERR_SystemCall;
    }
 
-   SetResourcePtr(RES_NET_PROCESSING, win_net_processing); // Hooks into ProcessMessages()
+   SetResourcePtr(RES_NET_PROCESSING, reinterpret_cast<APTR>(win_net_processing)); // Hooks into ProcessMessages()
 #endif
 
-#ifdef ARES__H
-   ares_library_init(ARES_LIB_INIT_ALL);
-
-   LONG acode;
-   if ((acode = ares_init(&glAres)) != ARES_SUCCESS) {
-      LogErrorMsg("Ares network library failed to initialise: %s", ares_strerror(acode));
+#ifdef USE_ARES
+   if ((msg = net_init_ares())) {
+      LogErrorMsg("Ares network library failed to initialise: %s", msg);
+      return ERR_Failed;
    }
 #endif
 
@@ -265,14 +267,6 @@ static ERROR MODExpunge(void)
    SetResourcePtr(RES_NET_PROCESSING, NULL);
 #endif
 
-#ifdef ARES__H
-   if (glAres) {
-      ares_cancel(glAres);
-      ares_destroy(glAres);
-      glAres = NULL;
-   }
-#endif
-
    if (glDNS) { FreeResource(glDNS); glDNS = NULL; }
 
 #ifdef _WIN32
@@ -286,11 +280,15 @@ static ERROR MODExpunge(void)
    if (clProxy) { acFree(clProxy); clProxy = NULL; }
 
 #ifdef ENABLE_SSL
-   if (modOpenSSL) { acFree(modOpenSSL); modOpenSSL = NULL; }
+   if (ssl_init) {
+      ERR_free_strings();
+      EVP_cleanup();
+      CRYPTO_cleanup_all_ex_data();
+   }
 #endif
 
-#ifdef ARES__H
-   ares_library_cleanup();
+#ifdef USE_ARES
+   net_free_ares();
 #endif
 
    while (glResolvers) free_resolver(glResolvers);
@@ -516,7 +514,7 @@ static ERROR netResolveAddress(CSTRING Address, LONG Flags, FUNCTION *Callback, 
          return ERR_AllocMemory;
       }
 
-#ifdef ARES__H
+#ifdef USE_ARES
    #ifdef __linux__
       if (glAres) {
          if (ip.Type IS IPADDR_V4) ares_gethostbyaddr(glAres, &ip.Data, 4, AF_INET, (APTR)&ares_response, resolve);
@@ -627,19 +625,18 @@ static ERROR netResolveName(CSTRING HostName, LONG Flags, FUNCTION *Callback, LA
       resolve_callback(ClientData, Callback, ERR_Okay, "localhost", NULL, 0, list, 1);
    }
 
-   if (Flags & NSF_ASYNC_RESOLVE) goto async_resolve;
+   if (!(Flags & NSF_ASYNC_RESOLVE)) {
+      // Attempt synchronous resolution.
 
-   // Attempt synchronous resolution.
+      VarLock(glDNS, 0x7fffffff);
 
-   VarLock(glDNS, 0x7fffffff);
+      struct dns_resolver *resolver = new_resolver(ClientData, Callback);
+      if (!resolver) {
+         VarUnlock(glDNS);
+         return ERR_AllocMemory;
+      }
 
-   struct dns_resolver *resolver = new_resolver(ClientData, Callback);
-   if (!resolver) {
-      VarUnlock(glDNS);
-      return ERR_AllocMemory;
-   }
-
-#ifdef ARES__H
+#ifdef USE_ARES
    #ifdef __linux__
       if (glAres) {
          ares_set_socket_callback(glAres, (ares_sock_create_callback)&ares_socket_callback, resolver);
@@ -686,10 +683,10 @@ static ERROR netResolveName(CSTRING HostName, LONG Flags, FUNCTION *Callback, LA
    #endif
 #endif
 
-   free_resolver(resolver); // Remove the resolver if background resolution failed.
-   VarUnlock(glDNS);
+      free_resolver(resolver); // Remove the resolver if background resolution failed.
+      VarUnlock(glDNS);
+   }
 
-async_resolve:
    {
       struct hostent *host;
       #ifdef __linux__
@@ -780,7 +777,7 @@ static ERROR netSetSSL(objNetSocket *Socket, ...)
 }
 
 #ifdef ENABLE_SSL
-#include "ssl.c"
+#include "ssl.cpp"
 #endif
 
 //****************************************************************************
@@ -793,13 +790,13 @@ static void client_server_pending(SOCKET_HANDLE FD, APTR Self)
 #pragma GCC diagnostic ignored "-Wint-to-pointer-cast"
    RegisterFD((HOSTHANDLE)((objNetSocket *)Self)->SocketHandle, RFD_REMOVE|RFD_READ|RFD_SOCKET, NULL, NULL);
 #pragma GCC diagnostic warning "-Wint-to-pointer-cast"
-   client_server_incoming(FD, Self);
+   client_server_incoming(FD, (objNetSocket *)Self);
 }
 #endif
 
 //****************************************************************************
 
-static ERROR RECEIVE(objNetSocket *Self, LONG Socket, APTR Buffer, LONG BufferSize, LONG Flags, LONG *Result)
+static ERROR RECEIVE(objNetSocket *Self, SOCKET_HANDLE Socket, APTR Buffer, LONG BufferSize, LONG Flags, LONG *Result)
 {
    FMSG("~RECEIVE()","Socket: %d, BufSize: %d, Flags: $%.8x, SSLBusy: %d", Socket, BufferSize, Flags, Self->SSLBusy);
 
@@ -862,7 +859,7 @@ static ERROR RECEIVE(objNetSocket *Self, LONG Socket, APTR Buffer, LONG BufferSi
          }
          else {
             *Result += result;
-            Buffer += result;
+            Buffer = (APTR)((char *)Buffer + result);
             BufferSize -= result;
          }
       } while ((pending = SSL_pending(Self->SSL)) AND (!read_blocked) AND (BufferSize > 0));
@@ -884,7 +881,7 @@ static ERROR RECEIVE(objNetSocket *Self, LONG Socket, APTR Buffer, LONG BufferSi
             // In Windows we don't want to listen to FD's on a permanent basis,
             // so this is a temporary setting that will be reset by client_server_pending()
 
-            RegisterFD((HOSTHANDLE)Socket, RFD_RECALL|RFD_READ|RFD_SOCKET, &client_server_pending, (APTR)Self);
+            RegisterFD((HOSTHANDLE)(MAXINT)Socket, RFD_RECALL|RFD_READ|RFD_SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&client_server_pending), (APTR)Self);
          #endif
       }
 
@@ -926,7 +923,7 @@ static ERROR RECEIVE(objNetSocket *Self, LONG Socket, APTR Buffer, LONG BufferSi
 
 //****************************************************************************
 
-static ERROR SEND(objNetSocket *Self, LONG Socket, CPTR Buffer, LONG *Length, LONG Flags)
+static ERROR SEND(objNetSocket *Self, SOCKET_HANDLE Socket, CPTR Buffer, LONG *Length, LONG Flags)
 {
    if (!*Length) return ERR_Okay;
 
@@ -1032,7 +1029,7 @@ static struct dns_resolver * new_resolver(LARGE ClientData, FUNCTION *Callback)
    resolve->time = PreciseTime();
    resolve->client_data = ClientData;
    resolve->callback = *Callback;
-   #if defined(ARES__H) && defined(__linux__)
+   #if defined(USE_ARES) && defined(__linux__)
       resolve->tcp = 0;
       resolve->udp = 0;
    #endif
@@ -1048,7 +1045,7 @@ static void free_resolver(struct dns_resolver *Resolver)
 {
    LogF("~free_resolver()","Removing resolver %p", Resolver);
 
-#if defined(ARES__H) && defined(__linux__)
+#if defined(USE_ARES) && defined(__linux__)
    if (Resolver->tcp) DeregisterFD((HOSTHANDLE)Resolver->tcp);
    if (Resolver->udp) DeregisterFD((HOSTHANDLE)Resolver->udp);
 #endif
@@ -1081,7 +1078,7 @@ static void resolve_callback(LARGE ClientData, FUNCTION *Callback, ERROR Error, 
    if (Callback->Type IS CALL_STDC) {
       ERROR (*routine)(LARGE, ERROR, CSTRING, CSTRING *, LONG, struct IPAddress *, LONG);
       OBJECTPTR context = SetContext(Callback->StdC.Context);
-         routine = Callback->StdC.Routine;
+         routine = reinterpret_cast<ERROR (*)(LARGE, ERROR, CSTRING, CSTRING *, LONG, struct IPAddress *, LONG)>(Callback->StdC.Routine);
          routine(ClientData, Error, HostName, Aliases, TotalAliases, Addresses, TotalAddresses);
       SetContext(context);
    }
@@ -1138,7 +1135,7 @@ static struct dns_cache * cache_host(struct hostent *Host)
    struct dns_cache *cache;
    if (VarSetSized(glDNS, Host->h_name, size, &cache, NULL) != ERR_Okay) return NULL;
 
-   APTR buffer = (APTR)cache;
+   char *buffer = (char *)cache;
    LONG offset = sizeof(struct dns_cache);
 
    if (address_count > 0) {
@@ -1239,7 +1236,7 @@ void win_dns_callback(struct dns_resolver *Resolver, ERROR Error, struct hostent
 
 //****************************************************************************
 
-#if defined(__linux__) && defined(ARES__H)
+#if defined(__linux__) && defined(USE_ARES)
 
 static void fd_read(LONG FD, objNetSocket *Socket)
 {
@@ -1272,7 +1269,7 @@ static void fd_write(LONG FD, objNetSocket *Socket)
 //***************************************************************************
 // Associate handles created by Ares with their respective DNS resolver.
 
-#if defined(ARES__H) && defined(__linux__)
+#if defined(USE_ARES) && defined(__linux__)
 static int ares_socket_callback(ares_socket_t SocketHandle, int Type, struct dns_resolver *Resolver)
 {
    FMSG("Ares","Ares created socket handle %d, type %d.", SocketHandle, Type);
@@ -1287,8 +1284,8 @@ static int ares_socket_callback(ares_socket_t SocketHandle, int Type, struct dns
 
 //****************************************************************************
 
-#ifdef ARES__H
-void ares_response(struct dns_resolver *Resolver, LONG Status, LONG Timeouts, struct hostent *Host)
+#ifdef USE_ARES
+void ares_response(struct dns_resolver *Resolver, int Status, int Timeouts, struct hostent *Host)
 {
    if (Host) {
       LogF("~ares_response()","Resolved: '%s', Time: %.2fs", Host->h_name, (DOUBLE)(PreciseTime() - Resolver->time) * 0.000001);
@@ -1296,19 +1293,10 @@ void ares_response(struct dns_resolver *Resolver, LONG Status, LONG Timeouts, st
    else LogF("~ares_response()","Failed to resolve host.  Time: %.2fs", (DOUBLE)(PreciseTime() - Resolver->time) * 0.000001);
 
    if (!VarLock(glDNS, 0x7fffffff)) {
-      if (Status != ARES_SUCCESS) {
-         LogF("@ares_response","Name resolution failure: %s", ares_strerror(Status));
-         ERROR error;
-         switch(Status) {
-            case ARES_ENODATA:   error = ERR_NoData; break;
-            case ARES_EFORMERR:  error = ERR_InvalidData; break;
-            case ARES_ESERVFAIL: error = ERR_ConnectionAborted; break;
-            case ARES_ENOTFOUND: error = ERR_HostNotFound; break;
-            case ARES_ENOTIMP:   error = ERR_NoSupport; break;
-            case ARES_EREFUSED:  error = ERR_Cancelled; break;
-            default: error = ERR_Failed; break;
-         }
-
+      if (Status) {
+         const char *msg;
+         ERROR error = net_ares_error(Status, &msg);
+         LogF("@ares_response","Name resolution failure: %s", msg);
          resolve_callback(Resolver->client_data, &Resolver->callback, error, (Host) ? Host->h_name : NULL, NULL, 0, NULL, 0);
       }
       else if (Host) {
@@ -1323,18 +1311,18 @@ void ares_response(struct dns_resolver *Resolver, LONG Status, LONG Timeouts, st
    LogBack();
 }
 
-#endif // ARES__H
+#endif // USE_ARES
 
 //****************************************************************************
 
-#include "netsocket/netsocket.c"
-#include "clientsocket/clientsocket.c"
-#include "class_proxy.c"
+#include "netsocket/netsocket.cpp"
+#include "clientsocket/clientsocket.cpp"
+#include "class_proxy.cpp"
 
 //****************************************************************************
 
 PARASOL_MOD(MODInit, NULL, MODOpen, MODExpunge, MODVERSION_NETWORK)
 
 /*****************************************************************************
-                                 BACKTRACE IT!
+                                 BACKTRACE IT
 *****************************************************************************/

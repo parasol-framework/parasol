@@ -116,7 +116,7 @@ restart:
    if (Self->Incoming.Type) {
       if (Self->Incoming.Type IS CALL_STDC) {
          ERROR (*routine)(objNetSocket *);
-         if ((routine = Self->Incoming.StdC.Routine)) {
+         if ((routine = reinterpret_cast<ERROR (*)(objNetSocket *)>(Self->Incoming.StdC.Routine))) {
             OBJECTPTR context = SetContext(Self->Incoming.StdC.Context);
                error = routine(Self);
             SetContext(context);
@@ -249,7 +249,7 @@ static void client_server_outgoing(SOCKET_HANDLE Void, struct rkNetSocket *Data)
       if (Self->Outgoing.Type) {
          if (Self->Outgoing.Type IS CALL_STDC) {
             ERROR (*routine)(objNetSocket *);
-            if ((routine = Self->Outgoing.StdC.Routine)) {
+            if ((routine = reinterpret_cast<ERROR (*)(objNetSocket *)>(Self->Outgoing.StdC.Routine))) {
                OBJECTPTR context = SetContext(Self->Outgoing.StdC.Context);
                   error = routine(Self);
                SetContext(context);

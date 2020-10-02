@@ -5,13 +5,7 @@ typedef unsigned int WSW_SOCKET; // type of socket handle for these wrapper proc
 struct sockaddr;
 struct hostent;
 
-#ifdef PRV_NETWORK
-void win32_netresponse(objNetSocket *, WSW_SOCKET, LONG, ERROR);
-#else
-void win32_netresponse(void *, WSW_SOCKET, int, int);
-#endif
-
-
+void win32_netresponse(struct rkNetSocket *, WSW_SOCKET, int, int);
 void win_net_processing(int, void *);
 WSW_SOCKET win_accept(void *, WSW_SOCKET, struct sockaddr *, int *);
 int win_bind(WSW_SOCKET, const struct sockaddr *, int);
@@ -29,12 +23,12 @@ int WIN_SEND(WSW_SOCKET, const void *, int *, int);
 int win_shutdown(WSW_SOCKET, int);
 WSW_SOCKET win_socket(void *, char, char);/*uses PF_INET, SOCK_STREAM, 0 for params to socket() */
 int WIN_RECEIVE(WSW_SOCKET, void *, int, int, int *);
-int win_async_resolvename(const unsigned char *, void *, struct hostent *, int);
+int win_async_resolvename(const char *, struct dns_resolver *, struct hostent *, int);
 void winCloseResolveHandle(void *);
 
-#ifdef ARES__H
-int win_ares_resolveaddr(struct IPAddress *, ares_channel, void *);
-int win_ares_resolvename(const unsigned char *, ares_channel, void *);
+#ifdef USE_ARES
+int win_ares_resolveaddr(struct IPAddress *, struct ares_channeldata *, void *);
+int win_ares_resolvename(const char *, struct ares_channeldata *, void *);
 void win_ares_deselect(int);
 #endif
 

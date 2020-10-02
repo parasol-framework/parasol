@@ -2,11 +2,10 @@
 //****************************************************************************
 // This routine will be called when there is some activity occurring on a server socket.
 
-static void server_client_connect(SOCKET_HANDLE FD, APTR Data)
+static void server_client_connect(SOCKET_HANDLE FD, objNetSocket *Self)
 {
-   objNetSocket *Self = Data;
    UBYTE ip[8];
-   LONG clientfd;
+   SOCKET_HANDLE clientfd;
    int len;
 
    FMSG("~socket_connect()","FD: %d", FD);
@@ -177,7 +176,7 @@ static void server_client_connect(SOCKET_HANDLE FD, APTR Data)
       if (Self->Feedback.Type IS CALL_STDC) {
          void (*routine)(objNetSocket *, LONG);
          OBJECTPTR context = SetContext(Self->Feedback.StdC.Context);
-            routine = Self->Feedback.StdC.Routine;
+            routine = reinterpret_cast<void (*)(objNetSocket *, LONG)>(Self->Feedback.StdC.Routine);
             routine(Self, NTC_CONNECTED);
          SetContext(context);
       }
@@ -204,10 +203,8 @@ static void server_client_connect(SOCKET_HANDLE FD, APTR Data)
 //****************************************************************************
 // If the socket is a server, messages from clients will come in through here.
 
-static void server_client_incoming(SOCKET_HANDLE FD, APTR Data)
+static void server_client_incoming(SOCKET_HANDLE FD, objClientSocket *Socket)
 {
-   objClientSocket *Socket = Data;
-
    if ((!Socket) OR (!Socket->Client)) return;
 
    objNetSocket *Self = Socket->Client->NetSocket;
@@ -226,7 +223,7 @@ static void server_client_incoming(SOCKET_HANDLE FD, APTR Data)
          if (Socket->Incoming.Type IS CALL_STDC) {
             ERROR (*routine)(objNetSocket *, objClientSocket *);
             OBJECTPTR context = SetContext(Socket->Incoming.StdC.Context);
-               routine = Socket->Incoming.StdC.Routine;
+               routine = reinterpret_cast<ERROR (*)(objNetSocket *, objClientSocket *)>(Socket->Incoming.StdC.Routine);
                error = routine(Self, Socket);
             SetContext(context);
          }
@@ -277,9 +274,8 @@ static void server_client_incoming(SOCKET_HANDLE FD, APTR Data)
 ** If the socket is a server and has data queued against a client, this routine is called.
 */
 
-static void server_client_outgoing(SOCKET_HANDLE FD, APTR Data)
+static void server_client_outgoing(SOCKET_HANDLE FD, objClientSocket *Socket)
 {
-   objClientSocket *Socket = Data;
    objNetSocket *Self;
    ERROR error;
    LONG len;
@@ -335,7 +331,7 @@ static void server_client_outgoing(SOCKET_HANDLE FD, APTR Data)
 
             if (Socket->Outgoing.Type IS CALL_STDC) {
                ERROR (*routine)(objNetSocket *, objClientSocket *);
-               routine = Socket->Outgoing.StdC.Routine;
+               routine = reinterpret_cast<ERROR (*)(objNetSocket *, objClientSocket *)>(Socket->Outgoing.StdC.Routine);
                OBJECTPTR context = SetContext(Socket->Outgoing.StdC.Context);
                   error = routine(Self, Socket);
                SetContext(context);
@@ -365,7 +361,7 @@ static void server_client_outgoing(SOCKET_HANDLE FD, APTR Data)
 
       if (!Socket->WriteQueue.Buffer) {
          FMSG("server_out","[NetSocket:%d] Write-queue listening on FD %d will now stop.", Self->Head.UniqueID, FD);
-         RegisterFD((HOSTHANDLE)FD, RFD_REMOVE|RFD_WRITE|RFD_SOCKET, NULL, NULL);
+         RegisterFD((HOSTHANDLE)(MAXINT)FD, RFD_REMOVE|RFD_WRITE|RFD_SOCKET, NULL, NULL);
          #ifdef _WIN32
          win_socketstate(FD, -1, 0);
          #endif
@@ -430,7 +426,7 @@ static void free_client_socket(objNetSocket *Self, objClientSocket *Socket, BYTE
       if (Self->Feedback.Type IS CALL_STDC) {
          void (*routine)(objNetSocket *, LONG);
          OBJECTPTR context = SetContext(Self->Feedback.StdC.Context);
-            routine = Self->Feedback.StdC.Routine;
+            routine = reinterpret_cast<void (*)(objNetSocket *, LONG)>(Self->Feedback.StdC.Routine);
             routine(Self, NTC_DISCONNECTED);
          SetContext(context);
       }

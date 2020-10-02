@@ -60,11 +60,6 @@ All data that is received from client sockets will be passed to the #Incoming fe
 
 static LONG glMaxWriteLen = 16 * 1024;
 
-static const struct FieldArray clSocketFields[];
-static const struct ActionArray clNetSocketActions[];
-static const struct MethodArray clNetSocketMethods[];
-static const struct FieldDef clNetSocketState[];
-
 //****************************************************************************
 // Prototypes for internal methods
 
@@ -76,29 +71,11 @@ static void client_server_incoming(SOCKET_HANDLE, struct rkNetSocket *);
 static void client_server_outgoing(SOCKET_HANDLE, struct rkNetSocket *);
 static void free_client(objNetSocket *, struct rkNetClient *);
 static void free_client_socket(objNetSocket *, objClientSocket *, BYTE);
-static void server_client_incoming(SOCKET_HANDLE, APTR);
-static void server_client_outgoing(SOCKET_HANDLE, APTR);
-static void server_client_connect(SOCKET_HANDLE, APTR);
+static void server_client_incoming(SOCKET_HANDLE, objClientSocket *);
+static void server_client_outgoing(SOCKET_HANDLE, objClientSocket *);
+static void server_client_connect(SOCKET_HANDLE, objNetSocket *);
 static void free_socket(objNetSocket *);
 static ERROR write_queue(objNetSocket *, struct NetQueue *, CPTR, LONG);
-
-//****************************************************************************
-
-static ERROR add_netsocket(void)
-{
-   if (CreateObject(ID_METACLASS, 0, &clNetSocket,
-      FID_ClassVersion|TFLOAT, VER_NETSOCKET,
-      FID_Name|TSTRING,   "NetSocket",
-      FID_Category|TLONG, CCF_NETWORK,
-      FID_Actions|TPTR,   clNetSocketActions,
-      FID_Methods|TARRAY, clNetSocketMethods,
-      FID_Fields|TARRAY,  clSocketFields,
-      FID_Size|TLONG,     sizeof(objNetSocket),
-      FID_Path|TSTR,      MOD_PATH,
-      TAGEND) != ERR_Okay) return ERR_CreateObject;
-
-   return ERR_Okay;
-}
 
 //****************************************************************************
 
@@ -185,7 +162,7 @@ static ERROR NETSOCKET_Connect(objNetSocket *Self, struct nsConnect *Args)
       LogMsg("Attempting to resolve domain name '%s'...", Self->Address);
 
       FUNCTION callback;
-      SET_FUNCTION_STDC(callback, connect_name_resolved);
+      SET_FUNCTION_STDC(callback, (APTR)connect_name_resolved);
       if (netResolveName(Self->Address, 0, &callback, (MAXINT)Self) != ERR_Okay) {
          return LogBackError(0, Self->Error = ERR_HostNotFound);
       }
@@ -449,7 +426,7 @@ static ERROR NETSOCKET_Init(objNetSocket *Self, APTR Void)
 {
    ERROR error;
 
-   if (Self->SocketHandle != -1) return ERR_Okay; // The socket has been pre-configured by the developer
+   if (Self->SocketHandle != (SOCKET_HANDLE)-1) return ERR_Okay; // The socket has been pre-configured by the developer
 
 #ifdef ENABLE_SSL
    // Initialise the SSL structures (do not perform any connection yet).  Notice how the NSF_SSL flag is used to check
@@ -711,7 +688,8 @@ static ERROR NETSOCKET_ReadMsg(objNetSocket *Self, struct nsReadMsg *Args)
       }
    }
 
-   LONG msglen, result, magic, total_length;
+   LONG msglen, result, magic;
+   ULONG total_length;
    ERROR error;
 
    if (queue->Index >= sizeof(struct NetMsg)) { // The complete message header has been received
@@ -780,7 +758,7 @@ static ERROR NETSOCKET_ReadMsg(objNetSocket *Self, struct nsReadMsg *Args)
 
    //MSG("Current message is %d bytes long (raw len: %d), progress is %d bytes.", msglen, total_length, queue->Index);
 
-   if ((error = acRead(Self, queue->Buffer + queue->Index, total_length - queue->Index, &result)) IS ERR_Okay) {
+   if (!(error = acRead(Self, (char *)queue->Buffer + queue->Index, total_length - queue->Index, &result))) {
       queue->Index += result;
       Args->Progress = queue->Index - sizeof(struct NetMsg) - sizeof(struct NetMsgEnd);
       if (Args->Progress < 0) Args->Progress = 0;
@@ -874,7 +852,7 @@ static ERROR NETSOCKET_Write(objNetSocket *Self, struct acWrite *Args)
                RegisterFD((HOSTHANDLE)csocket->Handle, RFD_WRITE|RFD_SOCKET, &server_client_outgoing, csocket);
             #elif _WIN32
                win_socketstate(csocket->Handle, -1, TRUE);
-               Self->WriteSocket = (APTR)&server_client_outgoing;
+               Self->WriteClientSocket = &server_client_outgoing;
             #endif
          }
       }
@@ -1159,7 +1137,7 @@ static ERROR SET_Outgoing(objNetSocket *Self, FUNCTION *Value)
                   RegisterFD((HOSTHANDLE)csocket->Handle, RFD_WRITE|RFD_SOCKET, &server_client_outgoing, csocket);
                #elif _WIN32
                   win_socketstate(csocket->Handle, -1, TRUE);
-                  Self->WriteSocket = (APTR)&server_client_outgoing;
+                  Self->WriteClientSocket = &server_client_outgoing;
                #endif
             }
             else LogErrorMsg("Will not listen for socket-writes (no socket handle on client).");
@@ -1249,7 +1227,7 @@ State: The current connection state of the netsocket object.
 static ERROR SET_State(objNetSocket *Self, LONG Value)
 {
    if (Value != Self->State) {
-      if (Self->Flags & NSF_DEBUG) LogMsg("State changed from %s to %s", clNetSocketState[Self->State].Name, clNetSocketState[Value].Name);
+      if (Self->Flags & NSF_DEBUG) LogMsg("State changed from %d to %d", Self->State, Value);
 
       #ifdef ENABLE_SSL
       if ((Self->State IS NTC_CONNECTING_SSL) AND (Value IS NTC_CONNECTED)) {
@@ -1271,7 +1249,7 @@ static ERROR SET_State(objNetSocket *Self, LONG Value)
          if (Self->Feedback.Type IS CALL_STDC) {
             void (*routine)(objNetSocket *, LONG);
             OBJECTPTR context = SetContext(Self->Feedback.StdC.Context);
-               routine = Self->Feedback.StdC.Routine;
+               routine = reinterpret_cast<void (*)(objNetSocket *, LONG)>(Self->Feedback.StdC.Routine);
                routine(Self, Self->State);
             SetContext(context);
          }
@@ -1396,7 +1374,7 @@ static ERROR write_queue(objNetSocket *Self, struct NetQueue *Queue, CPTR Messag
    FMSG("~write_queue()","Queuing a socket message of %d bytes.", Length);
 
    if (Queue->Buffer) {
-      if (Queue->Index >= Queue->Length) {
+      if (Queue->Index >= (ULONG)Queue->Length) {
          FMSG("write_queue","Terminating the current buffer (emptied).");
          FreeResource(Queue->Buffer);
          Queue->Buffer = NULL;
@@ -1406,7 +1384,7 @@ static ERROR write_queue(objNetSocket *Self, struct NetQueue *Queue, CPTR Messag
    if (Queue->Buffer) {
       // Add more information to an existing queue
 
-      if (Queue->Length + Length > Self->MsgLimit) {
+      if (Queue->Length + Length > (ULONG)Self->MsgLimit) {
          FMSG("write_queue:","Cannot buffer message of %d bytes - it will overflow the MsgLimit.", Length);
          STEP();
          return ERR_BufferOverflow;
@@ -1456,7 +1434,7 @@ static ERROR write_queue(objNetSocket *Self, struct NetQueue *Queue, CPTR Messag
 // reliable method of managing recursion problems, but burdens the message queue.
 
 #ifdef _WIN32
-void win32_netresponse(objNetSocket *Self, SOCKET_HANDLE Socket, LONG Message, ERROR Error)
+void win32_netresponse(struct rkNetSocket *Self, SOCKET_HANDLE Socket, LONG Message, ERROR Error)
 {
    #ifdef DEBUG
    static const CSTRING msg[] = {
@@ -1478,7 +1456,7 @@ void win32_netresponse(objNetSocket *Self, SOCKET_HANDLE Socket, LONG Message, E
 
       #ifdef NO_NETRECURSION
          if (Self->WinRecursion) {
-            FMSG("win32_netsponse:","Recursion detected (read request)");
+            FMSG("win32_netsponse","Recursion detected (read request)");
             Self->InUse--;
             STEP();
             return;
@@ -1512,7 +1490,7 @@ void win32_netresponse(objNetSocket *Self, SOCKET_HANDLE Socket, LONG Message, E
 
       #ifdef NO_NETRECURSION
          if (Self->WinRecursion) {
-            FMSG("win32_netsponse:","Recursion detected (write request)");
+            FMSG("win32_netsponse","Recursion detected (write request)");
             Self->InUse--;
             STEP();
             return;
@@ -1542,23 +1520,23 @@ void win32_netresponse(objNetSocket *Self, SOCKET_HANDLE Socket, LONG Message, E
       #endif
    }
    else if (Message IS NTE_CLOSE) {
-      LogF("win32_netresponse:","Socket closed by server, error %d.", Error);
+      LogF("win32_netresponse","Socket closed by server, error %d.", Error);
       if (Self->State != NTC_DISCONNECTED) SetLong(Self, FID_State, NTC_DISCONNECTED);
       free_socket(Self);
    }
    else if (Message IS NTE_ACCEPT) {
-      FMSG("win32_netresponse:","Accept message received for new client.");
+      FMSG("win32_netresponse","Accept message received for new client.");
       server_client_connect(Self->SocketHandle, Self);
    }
    else if (Message IS NTE_CONNECT) {
       if (Error IS ERR_Okay) {
-         LogF("win32_netresponse:","Connection to server granted.");
+         LogF("win32_netresponse","Connection to server granted.");
 
          #ifdef ENABLE_SSL
             if (Self->SSL) {
                // Perform the SSL handshake
 
-               FMSG("~server_connect:","Attempting SSL handshake.");
+               FMSG("~server_connect","Attempting SSL handshake.");
 
                   sslConnect(Self);
 
@@ -1574,7 +1552,7 @@ void win32_netresponse(objNetSocket *Self, SOCKET_HANDLE Socket, LONG Message, E
          #endif
       }
       else {
-         LogF("win32_netresponse:","Connection state changed, error: %s", GetErrorMsg(Error));
+         LogF("win32_netresponse","Connection state changed, error: %s", GetErrorMsg(Error));
          Self->Error = Error;
          SetLong(Self, FID_State, NTC_DISCONNECTED);
       }
@@ -1630,8 +1608,8 @@ static const struct FieldArray clSocketFields[] = {
    { "Clients",          FDF_POINTER|FDF_STRUCT|FDF_R, (MAXINT)&"NetClient", NULL, NULL },
    { "CurrentClient",    FDF_OBJECT|FDF_RW,    ID_CLIENTSOCKET, NULL, NULL },
    { "UserData",         FDF_POINTER|FDF_RW,   0, NULL, NULL },
-   { "Address",          FDF_STRING|FDF_RI,    0, NULL, SET_Address },
-   { "State",            FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clNetSocketState, NULL, SET_State },
+   { "Address",          FDF_STRING|FDF_RI,    0, NULL, (APTR)SET_Address },
+   { "State",            FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clNetSocketState, NULL, (APTR)SET_State },
    { "Error",            FDF_LONG|FDF_R,       0, NULL, NULL },
    { "Port",             FDF_LONG|FDF_RI,      0, NULL, NULL },
    { "Flags",            FDF_LONGFLAGS|FDF_RW, (MAXINT)&clNetSocketFlags, NULL, NULL },
@@ -1640,14 +1618,32 @@ static const struct FieldArray clSocketFields[] = {
    { "ClientLimit",      FDF_LONG|FDF_RW,      0, NULL, NULL },
    { "MsgLimit",         FDF_LONG|FDF_RI,      0, NULL, NULL },
    // Virtual fields
-   { "SocketHandle",     FDF_POINTER|FDF_RI,      0, GET_SocketHandle, SET_SocketHandle },
-   { "Feedback",         FDF_FUNCTIONPTR|FDF_RW,  0, GET_Feedback, SET_Feedback },
-   { "Incoming",         FDF_FUNCTIONPTR|FDF_RW,  0, GET_Incoming, SET_Incoming },
-   { "Outgoing",         FDF_FUNCTIONPTR|FDF_RW,  0, GET_Outgoing, SET_Outgoing },
-   { "OutQueueSize",     FDF_LONG|FDF_R,          0, GET_OutQueueSize },
-   { "ValidCert",        FDF_LONG|FDF_LOOKUP,     (MAXINT)&clValidCert, GET_ValidCert, NULL },
+   { "SocketHandle",     FDF_POINTER|FDF_RI,      0, (APTR)GET_SocketHandle, (APTR)SET_SocketHandle },
+   { "Feedback",         FDF_FUNCTIONPTR|FDF_RW,  0, (APTR)GET_Feedback, (APTR)SET_Feedback },
+   { "Incoming",         FDF_FUNCTIONPTR|FDF_RW,  0, (APTR)GET_Incoming, (APTR)SET_Incoming },
+   { "Outgoing",         FDF_FUNCTIONPTR|FDF_RW,  0, (APTR)GET_Outgoing, (APTR)SET_Outgoing },
+   { "OutQueueSize",     FDF_LONG|FDF_R,          0, (APTR)GET_OutQueueSize },
+   { "ValidCert",        FDF_LONG|FDF_LOOKUP,     (MAXINT)&clValidCert, (APTR)GET_ValidCert, NULL },
    END_FIELD
 };
 
-#include "netsocket_server.c"
-#include "netsocket_client.c"
+#include "netsocket_server.cpp"
+#include "netsocket_client.cpp"
+
+//****************************************************************************
+
+static ERROR add_netsocket(void)
+{
+   if (CreateObject(ID_METACLASS, 0, &clNetSocket,
+      FID_ClassVersion|TFLOAT, VER_NETSOCKET,
+      FID_Name|TSTRING,   "NetSocket",
+      FID_Category|TLONG, CCF_NETWORK,
+      FID_Actions|TPTR,   clNetSocketActions,
+      FID_Methods|TARRAY, clNetSocketMethods,
+      FID_Fields|TARRAY,  clSocketFields,
+      FID_Size|TLONG,     sizeof(objNetSocket),
+      FID_Path|TSTR,      MOD_PATH,
+      TAGEND) != ERR_Okay) return ERR_CreateObject;
+
+   return ERR_Okay;
+}

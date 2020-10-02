@@ -9,15 +9,11 @@ static ERROR sslInit(void)
 
    FMSG("~sslInit()","");
 
-   OBJECTPTR context = SetContext(glModule);
-
-   if (LoadModule("openssl", 1.0, &modOpenSSL, &OpenSSLBase) != ERR_Okay) {
-      SetContext(context);
-      STEP();
-      return ERR_LoadModule;
-   }
-
-   SetContext(context);
+   SSL_load_error_strings();
+   ERR_load_BIO_strings();
+   ERR_load_crypto_strings();
+   SSL_library_init();
+   OPENSSL_add_all_algorithms_noconf(); // Is this call a significant resource expense?
 
    ssl_init = TRUE;
 
@@ -50,16 +46,16 @@ static void sslDisconnect(objNetSocket *Self)
 
 //****************************************************************************
 
-static void sslMsgCallback(SSL *s, int where, int ret)
+static void sslMsgCallback(const ssl_st *s, int where, int ret)
 {
    const char *str;
    LONG w = where & (~SSL_ST_MASK);
 
    if (w & SSL_ST_CONNECT) str = "SSL_Connect";
    else if (w & SSL_ST_ACCEPT) str = "SSL_Accept";
-   else if (w & SSL_ST_BEFORE) str = "SSL_Before";
-   else if (w & SSL_ST_OK) str = "SSL_OK";
-   else if (w IS SSL_ST_RENEGOTIATE) str = "SSL_Renegotiate";
+   else if (w & TLS_ST_BEFORE) str = "TLS_Before";
+   else if (w & TLS_ST_OK) str = "TLS_OK";
+   else if (w IS SSL_F_SSL_RENEGOTIATE) str = "SSL_Renegotiate";
    else str = "SSL_Undefined";
 
    if (where & SSL_CB_LOOP) {
@@ -118,7 +114,7 @@ static ERROR sslSetup(objNetSocket *Self)
             if ((Self->SSL = SSL_new(Self->CTX))) {
                LogMsg("SSL connectivity has been configured successfully.");
 
-               if (GetResource(RES_LOG_LEVEL > 3)) SSL_set_info_callback(Self->SSL, (void *)&sslMsgCallback);
+               if (GetResource(RES_LOG_LEVEL > 3)) SSL_set_info_callback(Self->SSL, &sslMsgCallback);
 
                STEP();
                return ERR_Okay;
@@ -234,12 +230,12 @@ static ERROR sslConnect(objNetSocket *Self)
 ** the RECEIVE() and SEND() functions.
 */
 
-static void ssl_handshake_write(HOSTHANDLE Socket, APTR Data)
+static void ssl_handshake_write(SOCKET_HANDLE Socket, APTR Data)
 {
-   objNetSocket *Self = Data;
+   objNetSocket *Self = reinterpret_cast<objNetSocket *>(Data);
    LONG result;
 
-   LogF("ssl_handshake_write()","Socket: %d", Socket);
+   LogF("ssl_handshake_write()","Socket: " PF64(), (MAXINT)Socket);
 
    if ((result = SSL_do_handshake(Self->SSL)) == 1) {
       // Handshake successful, connection established
@@ -250,7 +246,7 @@ static void ssl_handshake_write(HOSTHANDLE Socket, APTR Data)
          if ((Self->WriteSocket) OR (Self->Outgoing.Type != CALL_NONE) OR (Self->WriteQueue.Buffer)) {
             // Do nothing, we are already listening for writes
          }
-         else win_socketstate(Socket, -1, FALSE); // Turn off write listening
+         else win_socketstate((WSW_SOCKET)Socket, -1, FALSE); // Turn off write listening
       #endif
 
       Self->SSLBusy = SSL_NOT_BUSY;
@@ -258,7 +254,7 @@ static void ssl_handshake_write(HOSTHANDLE Socket, APTR Data)
    else switch (SSL_get_error(Self->SSL, result)) {
       case SSL_ERROR_WANT_READ:
          #ifdef _WIN32
-            win_socketstate(Socket, TRUE, -1);
+            win_socketstate((WSW_SOCKET)Socket, TRUE, -1);
          #else
             #warning Platform support required.
          #endif
@@ -266,7 +262,7 @@ static void ssl_handshake_write(HOSTHANDLE Socket, APTR Data)
 
       case SSL_ERROR_WANT_WRITE:
          #ifdef _WIN32
-            win_socketstate(Socket, -1, TRUE);
+            win_socketstate((WSW_SOCKET)Socket, -1, TRUE);
          #else
             #warning Platform support required.
          #endif
@@ -277,12 +273,12 @@ static void ssl_handshake_write(HOSTHANDLE Socket, APTR Data)
    }
 }
 
-static void ssl_handshake_read(HOSTHANDLE Socket, APTR Data)
+static void ssl_handshake_read(SOCKET_HANDLE Socket, APTR Data)
 {
-   objNetSocket *Self = Data;
+   objNetSocket *Self = reinterpret_cast<objNetSocket *>(Data);
    LONG result;
 
-   LogF("ssl_handshake_read()","Socket: %d", Socket);
+   LogF("ssl_handshake_read()","Socket: " PF64(), (MAXINT)Socket);
 
    if ((result = SSL_do_handshake(Self->SSL)) == 1) {
       // Handshake successful, connection established
@@ -299,7 +295,7 @@ static void ssl_handshake_read(HOSTHANDLE Socket, APTR Data)
    else switch (SSL_get_error(Self->SSL, result)) {
       case SSL_ERROR_WANT_READ:
          #ifdef _WIN32
-            win_socketstate(Socket, TRUE, -1);
+            win_socketstate((WSW_SOCKET)Socket, TRUE, -1);
          #else
             #warning Platform support required.
          #endif
@@ -307,7 +303,7 @@ static void ssl_handshake_read(HOSTHANDLE Socket, APTR Data)
 
       case SSL_ERROR_WANT_WRITE:
          #ifdef _WIN32
-            win_socketstate(Socket, -1, TRUE);
+            win_socketstate((WSW_SOCKET)Socket, -1, TRUE);
          #else
             #warning Platform support required.
          #endif

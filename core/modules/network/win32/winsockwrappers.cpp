@@ -29,9 +29,10 @@ struct IPAddress {
 #ifdef USE_ARES
 #include "ares.h"
 #include "ares_private.h"
+#include "ares_llist.h"
 
 extern ares_channel glAres;
-extern void ares_response(void *, int Status, int Timeouts, struct hostent *);
+extern void ares_response(struct dns_resolver *, int Status, int Timeouts, struct hostent *);
 #endif
 
 #include <parasol/system/errors.h>
@@ -189,7 +190,7 @@ static const struct {
    { 0, 0 }
 };
 
-extern void win_dns_callback(void *Resolver, int Error, struct hostent *);
+extern void win_dns_callback(struct dns_resolver *Resolver, int Error, struct hostent *);
 
 //****************************************************************************
 
@@ -249,7 +250,7 @@ static LRESULT CALLBACK win_messages(HWND window, UINT msgcode, WPARAM wParam, L
             //resub = TRUE;
          }
 
-         win32_netresponse(info->NetSocket, info->WinSocket, state, error);
+         win32_netresponse((struct rkNetSocket *)info->NetSocket, info->WinSocket, state, error);
 
          if ((resub) AND (!glSocketsDisabled)) {
             WSAAsyncSelect(info->WinSocket, glNetWindow, WM_NETWORK, info->Flags);
@@ -265,7 +266,7 @@ static LRESULT CALLBACK win_messages(HWND window, UINT msgcode, WPARAM wParam, L
             // Note that there is no requirement to close the handle according to WSAAsyncGetHostByName() documentation.
             glNetLookup[i].ResolveHandle = INVALID_HANDLE_VALUE;
 
-            win_dns_callback(glNetLookup[i].NetSocket, ERR_Okay, glNetLookup[i].NetHost);
+            win_dns_callback((struct dns_resolver *)glNetLookup[i].NetSocket, ERR_Okay, reinterpret_cast<hostent *>(glNetLookup[i].NetHost));
             LeaveCriticalSection(&csNetLookup);
             return 0;
          }
@@ -466,7 +467,7 @@ int WIN_RECEIVE(WSW_SOCKET SocketHandle, void *Buffer, int Len, int Flags, int *
 {
    *Result = 0;
    if (!Len) return ERR_Okay;
-   LONG result = recv(SocketHandle, Buffer, Len, Flags);
+   LONG result = recv(SocketHandle, reinterpret_cast<char *>(Buffer), Len, Flags);
    if (result > 0) {
       *Result = result;
       return ERR_Okay;
@@ -483,7 +484,7 @@ int WIN_RECEIVE(WSW_SOCKET SocketHandle, void *Buffer, int Len, int Flags, int *
 int WIN_SEND(WSW_SOCKET Socket, const void *Buffer, int *Length, int Flags)
 {
    if (!*Length) return ERR_Okay;
-   *Length = send(Socket, Buffer, *Length, Flags);
+   *Length = send(Socket, reinterpret_cast<const char *>(Buffer), *Length, Flags);
    if (*Length >= 0) return ERR_Okay;
    else {
       *Length = 0;
@@ -517,9 +518,9 @@ WSW_SOCKET win_socket(void *NetSocket, char Read, char Write)
 
    // Create the socket, make it non-blocking and configure it to wake our task when activity occurs on the socket.
 
-   int handle;
+   SOCKET handle;
    if ((handle = socket(PF_INET, SOCK_STREAM, 0)) != INVALID_SOCKET) {
-      __ms_u_long non_blocking = 1;
+      u_long non_blocking = 1;
       ioctlsocket(handle, FIONBIO, &non_blocking);
       int flags = FD_CLOSE|FD_ACCEPT|FD_CONNECT;
       if (Read) flags |= FD_READ;
@@ -656,7 +657,7 @@ int ShutdownWinsock()
 // running at the same time.  However if you only make the one name resolution, the effect is that of executing
 // synchronously in the background.
 
-int win_async_resolvename(const unsigned char *Name, void *Resolver, struct hostent *Host, int HostSize)
+int win_async_resolvename(const char *Name, struct dns_resolver *Resolver, struct hostent *Host, int HostSize)
 {
    struct socket_info *info = lookup_socket(Resolver);
    if (info) {
@@ -677,16 +678,15 @@ int win_async_resolvename(const unsigned char *Name, void *Resolver, struct host
 
 //****************************************************************************
 
-#ifdef ARES__H
+#ifdef USE_ARES
 
 // Refer to the code for ares_fds() to see where this loop came from.
 
 int win_ares_handler(ares_channel Ares)
 {
-   int active_queries = !ares__is_list_empty(&(Ares->all_queries));
+   int active_queries = !((Ares->all_queries.next == &Ares->all_queries) && (Ares->all_queries.prev == &Ares->all_queries));
 
-   int i;
-   for (i=0; i < Ares->nservers; i++) {
+   for (int i=0; i < Ares->nservers; i++) {
       struct server_state *server = &Ares->servers[i];
 
       #ifdef DEBUG
@@ -718,9 +718,9 @@ int win_ares_handler(ares_channel Ares)
 
 // Initiate a background host query by name.  Ares will call ares_response when it has finished.
 
-int win_ares_resolvename(const unsigned char *Name, ares_channel Ares, void *Resolver)
+int win_ares_resolvename(const char *Name, ares_channel Ares, void *Resolver)
 {
-   ares_gethostbyname(Ares, Name, AF_INET, &ares_response, Resolver);
+   ares_gethostbyname(Ares, Name, AF_INET, reinterpret_cast<void (*)(void*, int, int, hostent*)>(&ares_response), Resolver);
 
    return win_ares_handler(Ares);
 }
@@ -730,9 +730,9 @@ int win_ares_resolvename(const unsigned char *Name, ares_channel Ares, void *Res
 int win_ares_resolveaddr(struct IPAddress *Address, ares_channel Ares, void *Resolver)
 {
    if (Address->Type IS IPADDR_V4) {
-      ares_gethostbyaddr(Ares, &Address->Data, 4, AF_INET, &ares_response, Resolver);
+      ares_gethostbyaddr(Ares, &Address->Data, 4, AF_INET, reinterpret_cast<void (*)(void*, int, int, hostent*)>(&ares_response), Resolver);
    }
-   else ares_gethostbyaddr(Ares, &Address->Data, 16, AF_INET6, &ares_response, Resolver);
+   else ares_gethostbyaddr(Ares, &Address->Data, 16, AF_INET6, reinterpret_cast<void (*)(void*, int, int, hostent*)>(&ares_response), Resolver);
 
    return win_ares_handler(Ares);
 }
