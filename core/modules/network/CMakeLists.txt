@@ -17,10 +17,7 @@ add_subdirectory (c-ares-1.16.1)
 
 add_library (${MOD} SHARED)
 
-target_include_directories (${MOD} PRIVATE
-   "${OPENSSL_INCLUDE_DIR}"
-   c-ares
-)
+target_include_directories (${MOD} PRIVATE c-ares)
 
 set_module_defaults (${MOD})
 
@@ -33,6 +30,7 @@ if (OPENSSL_FOUND)
    message (STATUS "Network module will be compiled with SSL support.")
    # Linking against the .a files is necessary to ensure a static link.
    list (APPEND NETWORK_LIBS ssl.a crypto.a) #OpenSSL::SSL OpenSSL::Crypto)
+   target_include_directories (${MOD} PRIVATE "${OPENSSL_INCLUDE_DIR}")
 else ()
    message (STATUS "Network module will not be compiled with SSL support.")
 endif ()
