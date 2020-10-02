@@ -70,39 +70,6 @@ extern "C" {
 #define LOG FMSG
 #define LOGBACK STEP
 
-#ifdef _WIN32
-#ifndef _WINDEF_H
-#define __export __declspec(dllexport)
-#endif
-#else
-#define __export
-#endif
-
-#define EXPORT __export
-
-#ifndef __arm__
-//#define __pentium__   // Is this a Pentium CPU? (auto-defined by GCC, use -mpentium)
-#define __x86__         // Does the CPU support the x86 instruction set? (i486 minimum)
-#endif
-
-#define __corebase__  // Use CoreBase to make function calls
-
-#ifdef __arm__
-#define CPU_PC CPU_ARMEABI
-#elif __pentium__
-#define CPU_PC CPU_I686 // What is the minimum required CPU for the compiled code?
-#else
-#define CPU_PC CPU_I686
-#endif
-
-#ifndef REVERSE_BYTEORDER
-#define REVERSE_BYTEORDER TRUE      // Reverse byte order / little endian (true for Intel and ARM CPU's)
-#endif
-
-#ifndef LITTLE_ENDIAN
-#define LITTLE_ENDIAN TRUE
-#endif
-
 #define PRIVATE_FIELDS
 
 #undef  NULL    // Turn off any previous definition of NULL
