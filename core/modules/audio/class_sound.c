@@ -423,7 +423,7 @@ static ERROR SOUND_Free(objSound *Self, APTR Void)
       Self->Handle = 0;
    }
 
-   if (Self->ChannelIndex)   { sndCloseChannelsID(Self->AudioID, Self->ChannelIndex); Self->ChannelIndex = NULL; }
+   if (Self->ChannelIndex)   { sndCloseChannelsID(Self->AudioID, Self->ChannelIndex); Self->ChannelIndex = 0; }
    if (Self->prvPath)        { FreeResource(Self->prvPath); Self->prvPath = NULL; }
    if (Self->prvDescription) { FreeResource(Self->prvDescription); Self->prvDescription = NULL; }
    if (Self->prvDisclaimer)  { FreeResource(Self->prvDisclaimer); Self->prvDisclaimer = NULL; }

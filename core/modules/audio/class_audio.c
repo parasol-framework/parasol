@@ -2536,7 +2536,7 @@ next_card:
 
          for (channel=0; channel < ARRAYSIZE(volctl[index].Channels); channel++) volctl[index].Channels[channel] = -1;
 
-         flags = NULL;
+         flags = 0;
          if (snd_mixer_selem_has_playback_volume(elem))        flags |= VCF_PLAYBACK;
          if (snd_mixer_selem_has_capture_volume(elem))         flags |= VCF_CAPTURE;
          if (snd_mixer_selem_has_capture_volume_joined(elem))  flags |= VCF_JOINED;
