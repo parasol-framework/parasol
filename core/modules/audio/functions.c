@@ -258,7 +258,7 @@ static LONG HandleSampleEnd(objAudio *Self, struct AudioChannel *Channel)
          }
          else {
             LogF("Timer","Stream object %d has been lost.", Channel->Sample.StreamID);
-            Channel->Sample.StreamID = NULL;
+            Channel->Sample.StreamID = 0;
          }
       }
 

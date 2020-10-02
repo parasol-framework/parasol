@@ -123,7 +123,7 @@ static LONG SampleFormat(objSound *Self)
       if (Self->Flags & SDF_STEREO) return SFM_S16_BIT_STEREO;
       else return SFM_S16_BIT_MONO;
    }
-   return NULL;
+   return 0;
 }
 #endif
 
@@ -135,13 +135,13 @@ static ERROR SOUND_ActionNotify(objSound *Self, struct acActionNotify *Args)
       // Streams: When the Audio system calls the Read action, we need to decode more audio information to the stream
       // buffer.
 
-      NotifySubscribers(Self, AC_Read, Args->Args, NULL, ERR_Okay);
+      NotifySubscribers(Self, AC_Read, Args->Args, 0, ERR_Okay);
    }
    else if (Args->ActionID IS AC_Seek) {
       // Streams: If the Audio system calls the Seek action, we need to move our current decode position to the
       // requested area.
 
-      NotifySubscribers(Self, AC_Seek, Args->Args, NULL, ERR_Okay);
+      NotifySubscribers(Self, AC_Seek, Args->Args, 0, ERR_Okay);
    }
    else LogMsg("Unrecognised action #%d.", Args->ActionID);
 
@@ -420,7 +420,7 @@ static ERROR SOUND_Free(objSound *Self, APTR Void)
    if (Self->Handle) {
       struct sndRemoveSample remove = { Self->Handle };
       ActionMsg(MT_SndRemoveSample, Self->AudioID, &remove);
-      Self->Handle = NULL;
+      Self->Handle = 0;
    }
 
    if (Self->ChannelIndex)   { sndCloseChannelsID(Self->AudioID, Self->ChannelIndex); Self->ChannelIndex = NULL; }
@@ -887,7 +887,7 @@ static ERROR SOUND_Init(objSound *Self, APTR Void)
 
       // Determine the sample type
 
-      sampleformat = NULL;
+      sampleformat = 0;
       if ((Self->prvWAVE->Channels IS 1) AND (Self->BitsPerSample IS 8)) sampleformat = SFM_U8_BIT_MONO;
       else if ((Self->prvWAVE->Channels IS 2) AND (Self->BitsPerSample IS 8))  sampleformat = SFM_U8_BIT_STEREO;
       else if ((Self->prvWAVE->Channels IS 1) AND (Self->BitsPerSample IS 16)) sampleformat = SFM_S16_BIT_MONO;
@@ -932,11 +932,11 @@ static ERROR SOUND_Init(objSound *Self, APTR Void)
          }
          else {
             stream.Loop     = NULL;
-            stream.LoopSize = NULL;
+            stream.LoopSize = 0;
          }
 
          stream.Path         = Self->prvPath;
-         stream.ObjectID     = NULL;
+         stream.ObjectID     = 0;
          stream.SeekStart    = Self->prvDataOffset;
          stream.SampleFormat = sampleformat;
          stream.SampleLength = Self->Length;
@@ -968,13 +968,13 @@ static ERROR SOUND_Init(objSound *Self, APTR Void)
             }
             else {
                add.Loop     = NULL;
-               add.LoopSize = NULL;
+               add.LoopSize = 0;
             }
 
             add.SampleFormat = sampleformat;
             add.Data         = buffer;
             add.DataSize     = Self->Length;
-            add.Result       = NULL;
+            add.Result       = 0;
             if (!WaitMsg(MT_SndAddSample, Self->AudioID, &add)) {
                Self->Handle = add.Result;
                FreeResource(buffer);

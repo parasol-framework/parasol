@@ -313,8 +313,8 @@ ERROR AUDIO_AddSample(objAudio *Self, struct sndAddSample *Args)
 
    // Eliminate zero-byte loops
 
-   if (sample->Loop1Start IS sample->Loop1End) sample->Loop1Type = NULL;
-   if (sample->Loop2Start IS sample->Loop2End) sample->Loop2Type = NULL;
+   if (sample->Loop1Start IS sample->Loop1End) sample->Loop1Type = 0;
+   if (sample->Loop2Start IS sample->Loop2End) sample->Loop2Type = 0;
 
    if ((!sample->SampleType) OR (Args->DataSize <= 0) OR (!Args->Data)) {
       sample->Data = NULL;
@@ -931,7 +931,7 @@ static ERROR AUDIO_Free(objAudio *Self, APTR Void)
          Self->Samples = NULL;
       }
       FreeResourceID(Self->SamplesMID);
-      Self->SamplesMID = NULL;
+      Self->SamplesMID = 0;
    }
 
 #ifdef __linux__
@@ -947,7 +947,7 @@ static ERROR AUDIO_Free(objAudio *Self, APTR Void)
    // Destroy our task if we are in service mode
 
    if (Self->Flags & ADF_SERVICE_MODE) {
-      SendMessage(NULL, MSGID_QUIT, NULL, NULL, NULL);
+      SendMessage(0, MSGID_QUIT, 0, 0, 0);
    }
 
    return ERR_Okay;
@@ -1007,11 +1007,11 @@ static ERROR AUDIO_NewObject(objAudio *Self, APTR Void)
 #ifdef __linux__
    if (!AllocMemory(sizeof(struct VolumeCtl) * 3, Self->Head.MemFlags|MEM_NO_CLEAR, &Self->VolumeCtl, &Self->VolumeCtlMID)) {
       StrCopy("Master", Self->VolumeCtl[0].Name, sizeof(Self->VolumeCtl[0].Name));
-      Self->VolumeCtl[0].Flags = NULL;
+      Self->VolumeCtl[0].Flags = 0;
       for (i=0; i < ARRAYSIZE(Self->VolumeCtl[0].Channels); i++) Self->VolumeCtl[0].Channels[i] = 75;
 
       StrCopy("PCM", Self->VolumeCtl[1].Name, sizeof(Self->VolumeCtl[1].Name));
-      Self->VolumeCtl[1].Flags = NULL;
+      Self->VolumeCtl[1].Flags = 0;
       for (i=0; i < ARRAYSIZE(Self->VolumeCtl[1].Channels); i++) Self->VolumeCtl[1].Channels[i] = 80;
 
       Self->VolumeCtl[2].Name[0] = 0;
@@ -1083,7 +1083,7 @@ static ERROR AUDIO_OpenChannels(objAudio *Self, struct sndOpenChannels *Args)
 
    LogBranch("Total: %d, Commands: %d, Key: $%.8x", Args->Total, Args->Commands, Args->Key);
 
-   Args->Result = NULL;
+   Args->Result = 0;
    if ((Args->Total < 0) OR (Args->Total > 64) OR (Args->Commands < 0) OR (Args->Commands > 1024)) {
       return LogBackError(0, ERR_OutOfRange);
    }
@@ -1238,7 +1238,7 @@ static ERROR AUDIO_RemoveSample(objAudio *Self, struct sndRemoveSample *Args)
 
          if (sample->Free IS TRUE) {
             acFreeID(sample->StreamID);
-            sample->StreamID = NULL;
+            sample->StreamID = 0;
          }
       }
    }
@@ -1386,7 +1386,7 @@ static ERROR AUDIO_SaveToObject(objAudio *Self, struct acSaveToObject *Args)
       }
 #endif
 
-      acSaveToObject(config, Args->DestID, NULL);
+      acSaveToObject(config, Args->DestID, 0);
       acFree(config);
    }
 
@@ -2060,8 +2060,8 @@ ERROR DropMixAmount(objAudio *Self, LONG Elements)
 
                   default:
                      LogErrorMsg("Bad command ID #%d.", command->CommandID);
-                     Self->Channels[index].Position = NULL;
-                     Self->Channels[index].Commands->CommandID = NULL;
+                     Self->Channels[index].Position = 0;
+                     Self->Channels[index].Commands->CommandID = 0;
                      return ERR_Failed;
                }
 
@@ -2079,8 +2079,8 @@ ERROR DropMixAmount(objAudio *Self, LONG Elements)
             CopyMemory(command, Self->Channels[index].Commands, ((oldpos - total) * sizeof(struct AudioCommand)));
 
             Self->Channels[index].Position -= total;
-            Self->Channels[index].Commands[Self->Channels[index].Position].CommandID = NULL;
-            Self->Channels[index].Commands[Self->Channels[index].Position].Handle    = NULL;
+            Self->Channels[index].Commands[Self->Channels[index].Position].CommandID = 0;
+            Self->Channels[index].Commands[Self->Channels[index].Position].Handle    = 0;
          }
       }
    }
@@ -2578,7 +2578,7 @@ next_card:
       }
 
       volctl[index].Name[0] = 0;
-      volctl[index].Flags = NULL;
+      volctl[index].Flags = 0;
 
       LogMsg("Configured %d mixer controls.", index);
    }
@@ -2811,7 +2811,7 @@ next_card:
                if (!StrMatch(volctl[i].Name, oldctl[j].Name)) {
                   setvol.Index   = i;
                   setvol.Name    = NULL;
-                  setvol.Flags   = NULL;
+                  setvol.Flags   = 0;
                   setvol.Volume  = oldctl[j].Channels[0];
                   if (oldctl[j].Flags & VCF_MUTE) setvol.Flags |= SVF_MUTE;
                   else setvol.Flags |= SVF_UNMUTE;
@@ -2825,7 +2825,7 @@ next_card:
             if (!oldctl[j].Name[0]) {
                setvol.Index   = i;
                setvol.Name    = NULL;
-               setvol.Flags   = NULL;
+               setvol.Flags   = 0;
                setvol.Volume  = 80;
                Action(MT_SndSetVolume, Self, &setvol);
             }

@@ -249,7 +249,7 @@ static ERROR COMMAND_SetPosition(objAudio *Self, LONG Handle, LONG Position)
 
          channel->LoopIndex = 1;
          switch (channel->Sample.Loop1Type) {
-            case NULL:
+            case 0:
                // No looping - if position is below sample end, set it and start playing there
                if (bitpos < channel->Sample.SampleLength) {
                   channel->Position    = bitpos;
@@ -289,7 +289,7 @@ static ERROR COMMAND_SetPosition(objAudio *Self, LONG Handle, LONG Position)
       case CHS_RELEASED: // Playing after sample has been released - check second loop type.
          channel->LoopIndex = 2;
          switch (channel->Sample.Loop2Type) {
-            case NULL:
+            case 0:
                // No looping - if position is below sample end, set it and start playing there.
 
                if (bitpos < channel->Sample.SampleLength ) {
