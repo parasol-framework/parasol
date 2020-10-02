@@ -19,7 +19,10 @@
 #define THREADVAR __thread
 
 #cmakedefine REVERSE_BYTEORDER
+
+#ifndef LITTLE_ENDIAN // Might be defined by endian.h
 #cmakedefine LITTLE_ENDIAN
+#endif
 
 /*****************************************************************************
 ** Standard data types.
