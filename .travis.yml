@@ -37,6 +37,8 @@ before_install:
       linux)
         sudo apt-get update
         sudo apt-get install -y rsync libasound2-dev libxrandr-dev libxxf86dga-dev
+        sudo snap install cmake --beta --classic
+        cmake --version
         ;;
     esac
 
