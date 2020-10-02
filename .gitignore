@@ -71,3 +71,5 @@
 /core/modules/fluid/luajit-2.0.*/src/host/minilua
 /core/modules/fluid/luajit-2.0.*/src/jit/vmdef.lua
 /svg/
+core/modules/fluid/libffi-3.3/
+core/3rdparty/c-ares-1.16.1/
