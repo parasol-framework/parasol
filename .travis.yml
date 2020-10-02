@@ -58,12 +58,14 @@ script:
 - |-
     case $TRAVIS_OS_NAME in
       windows)
-        $mingw64 mingw32-make 3rdparty
-        $mingw64 mingw32-make full-compile
+        $mingw64 cmake -S . -B release -G"MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release
+        $mingw64 cmake --build release -j 8 -- -O
+        $mingw64 cmake cd release && ctest
         ;;
       linux)
-        make 3rdparty
-        make full-compile
+        cmake -S . -B release -G"MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release
+        cmake --build release -j 8 -- -O
+        cmake cd release && ctest
         ;;
     esac
 
@@ -71,10 +73,10 @@ after_success:
 - |-
     case $TRAVIS_OS_NAME in
       windows)
-        $mingw64 mingw32-make install
+        cmake --install release
         ;;
       linux)
-        make install
+        cmake --install release
         ;;
     esac
 
