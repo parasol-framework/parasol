@@ -48,11 +48,7 @@ const char * init_parasol(int argc, CSTRING *argv)
    closecore    = NULL;
    CSTRING msg  = NULL;
 
-   #ifdef _LP64
-      glCoreHandle = dlopen("/usr/local/parasol/system/modules-x64/core.so", RTLD_NOW);
-   #else
-      glCoreHandle = dlopen("/usr/local/parasol/system/modules/core.so", RTLD_NOW);
-   #endif
+   glCoreHandle = dlopen("/usr/local/parasol/system/modules/core.so", RTLD_NOW);
 
    char path_buf[256];
 
@@ -78,11 +74,7 @@ const char * init_parasol(int argc, CSTRING *argv)
 
    if (!glCoreHandle) {
       char *core_path;
-      #ifdef _LP64
-         core_path = "system/modules-x64/core.so";
-      #else
-         core_path = "system/modules/core.so";
-      #endif
+      core_path = "system/modules/core.so";
       glCoreHandle = dlopen(core_path, RTLD_NOW);
 
       if (glCoreHandle) {
