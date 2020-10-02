@@ -31,8 +31,6 @@ in a file.
 #include "../defs.h"
 
 #if defined(__unix__) && !defined(_WIN32)
- #define _GNU_SOURCE
-
  #include <unistd.h>
  #include <dirent.h>
  #include <fcntl.h>

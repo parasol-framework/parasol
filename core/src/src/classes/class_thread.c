@@ -37,7 +37,6 @@ within the thread routine.
 *****************************************************************************/
 
 #ifdef __unix__
-#define _GNU_SOURCE
 #include <string.h>
 #include <errno.h>
 #include <pthread.h>

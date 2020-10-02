@@ -36,7 +36,9 @@ intended for reference.
 #endif
 
 #ifdef __unix__
- #define __USE_GNU
+ #ifndef __USE_GNU
+  #define __USE_GNU
+ #endif
  #include <dlfcn.h>
  #include <sys/ipc.h>
  #include <sys/stat.h>

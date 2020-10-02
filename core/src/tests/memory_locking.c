@@ -11,10 +11,6 @@ Use parameter '-public' to test public memory locking.
 
 *****************************************************************************/
 
-#ifdef __unix__
-#define _GNU_SOURCE
-#endif
-
 #include <pthread.h>
 
 #include <parasol/startup.h>
