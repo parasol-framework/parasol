@@ -4,7 +4,7 @@
 # Install: cmake --install release
 # Test:    cd release && ctest
 
-cmake_minimum_required(VERSION 3.12)
+cmake_minimum_required(VERSION 3.13)
 
 include (CheckIncludeFiles)
 include (CheckTypeSize)
