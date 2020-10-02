@@ -1364,7 +1364,7 @@ For example, `StrShrink("Hello World", 4, 5)` results in `Helrld` by deleting th
 This function modifies the source string in-place, so no memory will be allocated.  The String will be null terminated
 and its new length will be returned.
 
-Please note that this function does not operate in compliance with UTF-8 character sequences.
+Please note that this function operates on byte positions and is not in compliance with UTF-8 character sequences.
 
 -INPUT-
 buf(str) String: Pointer to the string that will be modified.

@@ -3114,7 +3114,7 @@ SetField(Object, FID_Statement|TSTR, "string");
     <description>
 <p>This function will shrink a string by removing a sequence of characters and rearranging the remaining data. For example, <code>StrShrink("Hello World", 4, 5)</code> results in <code>Helrld</code> by deleting the characters <code>lo Wo</code>.</p>
 <p>This function modifies the source string in-place, so no memory will be allocated.  The String will be null terminated and its new length will be returned.</p>
-<p>Please note that this function does not operate in compliance with UTF-8 character sequences.</p>
+<p>Please note that this function operates on byte positions and is not in compliance with UTF-8 character sequences.</p>
     </description>
     <result type="LONG">Returns the new length of the shrunken string, not including the null byte.</result>
   </function>
