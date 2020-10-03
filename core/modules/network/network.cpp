@@ -522,19 +522,17 @@ static ERROR netResolveAddress(CSTRING Address, LONG Flags, FUNCTION *Callback, 
 
          // Ares file descriptors need to be reported to the Core if they are to be processed correctly.
 
-         if (glAres->queries) {
-            LONG i;
-            int active_queries = !ares__is_list_empty(&(glAres->all_queries));
-            for (i=0; i < glAres->nservers; i++) {
-               struct server_state *server = &glAres->servers[i];
-               if ((active_queries) AND (server->udp_socket != ARES_SOCKET_BAD)) {
-                  RegisterFD((HOSTHANDLE)server->udp_socket, RFD_READ|RFD_SOCKET, &fd_read, resolve);
-               }
+         LONG i;
+         int active_queries = !ares__is_list_empty(&(glAres->all_queries));
+         for (i=0; i < glAres->nservers; i++) {
+            struct server_state *server = &glAres->servers[i];
+            if ((active_queries) AND (server->udp_socket != ARES_SOCKET_BAD)) {
+               RegisterFD((HOSTHANDLE)server->udp_socket, RFD_READ|RFD_SOCKET, &fd_read, resolve);
+            }
 
-               if (server->tcp_socket != ARES_SOCKET_BAD) {
-                  RegisterFD((HOSTHANDLE)server->tcp_socket, RFD_READ|RFD_SOCKET, &fd_read, resolve);
-                  if (server->qhead) RegisterFD((HOSTHANDLE)server->tcp_socket, RFD_WRITE|RFD_SOCKET, &fd_write, resolve);
-               }
+            if (server->tcp_socket != ARES_SOCKET_BAD) {
+               RegisterFD((HOSTHANDLE)server->tcp_socket, RFD_READ|RFD_SOCKET, &fd_read, resolve);
+               if (server->qhead) RegisterFD((HOSTHANDLE)server->tcp_socket, RFD_WRITE|RFD_SOCKET, &fd_write, resolve);
             }
          }
 

@@ -6,7 +6,6 @@ static void server_client_connect(SOCKET_HANDLE FD, objNetSocket *Self)
 {
    UBYTE ip[8];
    SOCKET_HANDLE clientfd;
-   int len;
 
    FMSG("~socket_connect()","FD: %d", FD);
 
@@ -31,7 +30,7 @@ static void server_client_connect(SOCKET_HANDLE FD, objNetSocket *Self)
          }
          else {
             struct sockaddr_in6 addr;
-            len = sizeof(addr);
+            socklen_t len = sizeof(addr);
             clientfd = accept(FD, (struct sockaddr *)&addr, &len);
             if (clientfd IS NOHANDLE) { STEP(); return; }
             ip[0] = addr.sin6_addr.s6_addr[0];
@@ -45,7 +44,7 @@ static void server_client_connect(SOCKET_HANDLE FD, objNetSocket *Self)
          }
       #else
          struct sockaddr_in6 addr;
-         len = sizeof(addr);
+         socklen_t len = sizeof(addr);
          clientfd = accept(FD, (struct sockaddr *)&addr, &len);
          if (clientfd IS NOHANDLE) { STEP(); return; }
          ip[0] = addr.sin6_addr.s6_addr[0];
@@ -65,7 +64,7 @@ static void server_client_connect(SOCKET_HANDLE FD, objNetSocket *Self)
    else {
       struct sockaddr_in addr;
 
-      len = sizeof(addr);
+      socklen_t len = sizeof(addr);
 
       #ifdef __linux__
          clientfd = accept(FD, (struct sockaddr *)&addr, &len);
@@ -164,7 +163,7 @@ static void server_client_connect(SOCKET_HANDLE FD, objNetSocket *Self)
    client->TotalSockets++;
 
 #ifdef __linux__
-   RegisterFD(clientfd, RFD_READ|RFD_SOCKET, &server_client_incoming, socket);
+   RegisterFD(clientfd, RFD_READ|RFD_SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&server_client_incoming), socket);
 #elif _WIN32
    // Not necessary to call win_socketstate() as win_accept() sets this up for us automatically.
 #endif

@@ -6,12 +6,12 @@
 #ifdef __linux__
 static void client_connect(SOCKET_HANDLE Void, APTR Data)
 {
-   objNetSocket *Self = Data;
+   objNetSocket *Self = (objNetSocket *)Data;
 
    FMSG("client_connect()","Connection from server received.");
 
    LONG result = EHOSTUNREACH; // Default error in case getsockopt() fails
-   LONG optlen = sizeof(result);
+   socklen_t optlen = sizeof(result);
    getsockopt(Self->SocketHandle, SOL_SOCKET, SO_ERROR, &result, &optlen);
 
    // Remove the write callback
@@ -42,7 +42,7 @@ static void client_connect(SOCKET_HANDLE Void, APTR Data)
       FMSG("~client_connect","Connection succesful.");
 
          SetLong(Self, FID_State, NTC_CONNECTED);
-         RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD_READ|RFD_SOCKET, (APTR)&client_server_incoming, Self);
+         RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD_READ|RFD_SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&client_server_incoming), Self);
 
       STEP();
       return;

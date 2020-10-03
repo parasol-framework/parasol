@@ -213,7 +213,7 @@ static void connect_name_resolved(LARGE ClientData, ERROR Error, CSTRING HostNam
       }
 
       SetLong(Self, FID_State,  NTC_CONNECTING);
-      RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD_READ|RFD_SOCKET, (APTR)&client_server_incoming, Self);
+      RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD_READ|RFD_SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&client_server_incoming), Self);
 
       // The write queue will be signalled once the connection process is completed.
 
@@ -223,7 +223,7 @@ static void connect_name_resolved(LARGE ClientData, ERROR Error, CSTRING HostNam
       FMSG("connect_name_resolved","connect() successful.");
 
       SetLong(Self, FID_State, NTC_CONNECTED);
-      RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD_READ|RFD_SOCKET, (APTR)&client_server_incoming, Self);
+      RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD_READ|RFD_SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&client_server_incoming), Self);
    }
 
 #elif _WIN32
@@ -399,12 +399,13 @@ static ERROR NETSOCKET_GetLocalIPAddress(objNetSocket *Self, struct nsGetLocalIP
    if ((!Args) OR (!Args->Address)) return PostError(ERR_NullArgs);
 
    struct sockaddr_in addr;
-   LONG addr_length = sizeof(addr);
-
    LONG result;
+
 #ifdef __linux__
+   socklen_t addr_length = sizeof(addr);
    result = getsockname(Self->SocketHandle, (struct sockaddr *)&addr, &addr_length);
 #elif _WIN32
+   LONG addr_length = sizeof(addr);
    result = win_getsockname(Self->SocketHandle, (struct sockaddr *)&addr, &addr_length);
 #endif
 
@@ -502,7 +503,7 @@ static ERROR NETSOCKET_Init(objNetSocket *Self, APTR Void)
 
             if ((result = bind(Self->SocketHandle, (struct sockaddr *)&addr, sizeof(addr))) != -1) {
                listen(Self->SocketHandle, Self->Backlog);
-               RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD_READ|RFD_SOCKET, &server_client_connect, Self);
+               RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD_READ|RFD_SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&server_client_connect), Self);
                return ERR_Okay;
             }
             else if (result IS EADDRINUSE) return PostError(ERR_InUse);
@@ -526,7 +527,7 @@ static ERROR NETSOCKET_Init(objNetSocket *Self, APTR Void)
 
             if ((result = bind(Self->SocketHandle, (struct sockaddr *)&addr, sizeof(addr))) != -1) {
                listen(Self->SocketHandle, Self->Backlog);
-               RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD_READ|RFD_SOCKET, &server_client_connect, Self);
+               RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD_READ|RFD_SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&server_client_connect), Self);
                return ERR_Okay;
             }
             else if (result IS EADDRINUSE) return PostError(ERR_InUse);
@@ -849,7 +850,7 @@ static ERROR NETSOCKET_Write(objNetSocket *Self, struct acWrite *Args)
          if ((error IS ERR_DataSize) OR (error IS ERR_BufferOverflow) OR (len > 0))  {
             write_queue(Self, &csocket->WriteQueue, (BYTE *)Args->Buffer + len, Args->Length - len);
             #ifdef __linux__
-               RegisterFD((HOSTHANDLE)csocket->Handle, RFD_WRITE|RFD_SOCKET, &server_client_outgoing, csocket);
+               RegisterFD((HOSTHANDLE)csocket->Handle, RFD_WRITE|RFD_SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&server_client_outgoing), csocket);
             #elif _WIN32
                win_socketstate(csocket->Handle, -1, TRUE);
                Self->WriteClientSocket = &server_client_outgoing;
@@ -888,7 +889,7 @@ static ERROR NETSOCKET_Write(objNetSocket *Self, struct acWrite *Args)
          if ((error IS ERR_DataSize) OR (error IS ERR_BufferOverflow) OR (len > 0))  {
             write_queue(Self, &Self->WriteQueue, (BYTE *)Args->Buffer + len, Args->Length - len);
             #ifdef __linux__
-               RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD_WRITE|RFD_SOCKET, (APTR)&client_server_outgoing, Self);
+               RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD_WRITE|RFD_SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&client_server_outgoing), Self);
             #elif _WIN32
                win_socketstate(Self->SocketHandle, -1, TRUE);
                Self->WriteSocket = &client_server_outgoing;
@@ -1134,7 +1135,7 @@ static ERROR SET_Outgoing(objNetSocket *Self, FUNCTION *Value)
          if (Self->Head.Flags & NF_INITIALISED) {
             if (csocket->Handle != NOHANDLE) {
                #ifdef __linux__
-                  RegisterFD((HOSTHANDLE)csocket->Handle, RFD_WRITE|RFD_SOCKET, &server_client_outgoing, csocket);
+                  RegisterFD((HOSTHANDLE)csocket->Handle, RFD_WRITE|RFD_SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&server_client_outgoing), csocket);
                #elif _WIN32
                   win_socketstate(csocket->Handle, -1, TRUE);
                   Self->WriteClientSocket = &server_client_outgoing;
@@ -1156,7 +1157,7 @@ static ERROR SET_Outgoing(objNetSocket *Self, FUNCTION *Value)
             // Setting the Outgoing field after connectivity is established will put the socket into streamed write mode.
 
             #ifdef __linux__
-               RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD_WRITE|RFD_SOCKET, (APTR)&client_server_outgoing, Self);
+               RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD_WRITE|RFD_SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&client_server_outgoing), Self);
             #elif _WIN32
                win_socketstate(Self->SocketHandle, -1, TRUE);
                Self->WriteSocket = &client_server_outgoing;
@@ -1270,7 +1271,7 @@ static ERROR SET_State(objNetSocket *Self, LONG Value)
       if ((Self->State IS NTC_CONNECTED) AND ((Self->WriteQueue.Buffer) OR (Self->Outgoing.Type != CALL_NONE))) {
          MSG("Sending queued data to server on connection.");
          #ifdef __linux__
-            RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD_WRITE|RFD_SOCKET, (APTR)&client_server_outgoing, Self);
+            RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD_WRITE|RFD_SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&client_server_outgoing), Self);
          #elif _WIN32
             win_socketstate(Self->SocketHandle, -1, TRUE);
             Self->WriteSocket = &client_server_outgoing;
