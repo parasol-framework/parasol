@@ -37,7 +37,7 @@ add_custom_target(ffi_build DEPENDS "libffi-3.3" "${CMAKE_CURRENT_SOURCE_DIR}/li
 
 add_custom_command (OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/luajit-2.0.5/src/libluajit-${CMAKE_HOST_SYSTEM_PROCESSOR}.a"
    PRE_BUILD
-   COMMAND "CFLAGS=-fPIC" "${CMAKE_MAKE_PROGRAM}"
+   COMMAND "${CMAKE_MAKE_PROGRAM}" "CFLAGS=-fPIC"
    COMMAND "mv" "${CMAKE_CURRENT_SOURCE_DIR}/luajit-2.0.5/src/libluajit.a" "${CMAKE_CURRENT_SOURCE_DIR}/luajit-2.0.5/src/libluajit-${CMAKE_HOST_SYSTEM_PROCESSOR}.a"
    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/luajit-2.0.5"
    COMMENT "Compiling LuaJIT library"
