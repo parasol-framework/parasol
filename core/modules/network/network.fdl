@@ -75,15 +75,15 @@ typedef LONG SOCKET_HANDLE;
   ]])
 
   class("ClientSocket", { comment="Simple data storage class utilised by NetClient to host client socket information." }, [[
-    large ConnectTime           # System time for the creation of this socket
-    obj(ClientSocket) Prev      # Previous socket in the chain
-    obj(ClientSocket) Next      # Next socket in the chain
-    ptr(struct(rkNetClient)) Client   # Parent client structure
-    ptr  UserData               # Free for user data storage.
-    func Outgoing               # Callback for data being sent over the socket
-    func Incoming               # Callback for data being received from the socket
-    int  MsgLen                 # Length of the current incoming message
-    bit(int) ReadCalled         # TRUE if the Read action has been called
+    large ConnectTime                # System time for the creation of this socket
+    obj(ClientSocket) Prev           # Previous socket in the chain
+    obj(ClientSocket) Next           # Next socket in the chain
+    ptr(struct(rkNetClient)) Client  # Parent client structure
+    ptr  UserData                    # Free for user data storage.
+    func Outgoing                    # Callback for data being sent over the socket
+    func Incoming                    # Callback for data being received from the socket
+    int  MsgLen                      # Length of the current incoming message
+    bit(int) ReadCalled              # TRUE if the Read action has been called
   ]],
   [[
     SOCKET_HANDLE Handle;       // Socket FD
@@ -95,10 +95,10 @@ typedef LONG SOCKET_HANDLE;
     char(8) IP                     # IP address in 4/8-byte format
     ptr(struct(rkNetClient)) Next  # Next client in the chain
     ptr(struct(rkNetClient)) Prev  # Previous client in the chain
-    obj(NetSocket) NetSocket  # Reference to the parent socket
-    obj(ClientSocket) Sockets # Pointer to a list of sockets opened with this client.
-    ptr UserData              # Free for user data storage.
-    int TotalSockets          # Count of all created sockets
+    obj(NetSocket) NetSocket       # Reference to the parent socket
+    obj(ClientSocket) Sockets      # Pointer to a list of sockets opened with this client.
+    ptr UserData                   # Free for user data storage.
+    int TotalSockets               # Count of all created sockets
   ]])
 
   methods("proxy", "Prx", {

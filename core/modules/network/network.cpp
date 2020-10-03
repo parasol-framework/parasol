@@ -210,6 +210,8 @@ static ERROR init_proxy(void);
 
 #if defined(USE_ARES) && defined(__linux__)
 static int ares_socket_callback(ares_socket_t SocketHandle, int Type, struct dns_resolver *);
+static void fd_read(HOSTHANDLE FD, objNetSocket *Socket);
+static void fd_write(HOSTHANDLE FD, objNetSocket *Socket);
 #endif
 
 //***************************************************************************
@@ -1236,7 +1238,7 @@ void win_dns_callback(struct dns_resolver *Resolver, ERROR Error, struct hostent
 
 #if defined(__linux__) && defined(USE_ARES)
 
-static void fd_read(LONG FD, objNetSocket *Socket)
+static void fd_read(HOSTHANDLE FD, objNetSocket *Socket)
 {
    FMSG("fd_read","Socket: %p", Socket);
 
@@ -1246,10 +1248,10 @@ static void fd_read(LONG FD, objNetSocket *Socket)
       FD_SET(FD, &read_fds);
       ares_process(Socket->Ares, &read_fds, 0);
    }
-   else DeregisterFD((HOSTHANDLE)FD);
+   else DeregisterFD(FD);
 }
 
-static void fd_write(LONG FD, objNetSocket *Socket)
+static void fd_write(HOSTHANDLE FD, objNetSocket *Socket)
 {
    FMSG("fd_write","Socket: %p", Socket);
 
@@ -1259,7 +1261,7 @@ static void fd_write(LONG FD, objNetSocket *Socket)
       FD_SET(FD, &write_fds);
       ares_process(Socket->Ares, 0, &write_fds);
    }
-   else DeregisterFD((HOSTHANDLE)FD);
+   else DeregisterFD(FD);
 }
 
 #endif
