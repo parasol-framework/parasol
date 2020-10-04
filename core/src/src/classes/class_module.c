@@ -309,9 +309,9 @@ static ERROR MODULE_Init(objModule *Self, APTR Void)
    #define AF_SEGMENT      0x0002
    OBJECTPTR Task = 0;
    ERROR error = ERR_Failed;
-   LONG i, j, len;
+   LONG i, len;
    WORD ext, aflags = 0;
-   UBYTE name[60], path[300];
+   char name[60];
 
    DEBUG_LINE
 
@@ -321,10 +321,9 @@ static ERROR MODULE_Init(objModule *Self, APTR Void)
 
    APTR context = NULL;
 
-   for (i=0; Self->Name[i]; i++);
+   i = StrLength(Self->Name);
    while ((i > 0) AND (Self->Name[i-1] != ':') AND (Self->Name[i-1] != '/') AND (Self->Name[i-1] != '\\')) i--;
-   for (j=0; Self->Name[i] AND (j < sizeof(name)-1); j++) name[j] = Self->Name[i++];
-   name[j] = 0;
+   StrCopy(Self->Name+i, name, sizeof(name));
 
    MSG("Finding module %s (%s)", Self->Name, name);
 
@@ -334,6 +333,8 @@ static ERROR MODULE_Init(objModule *Self, APTR Void)
       Self->Master = master;
    }
    else if (!NewPrivateObject(ID_MODULEMASTER, NF_NO_TRACK, (APTR)&master)) {
+      char path[300];
+
       DEBUG_LINE
 
       if (!AccessObject(SystemTaskID, 5000, &Task)) {
@@ -364,8 +365,7 @@ static ERROR MODULE_Init(objModule *Self, APTR Void)
 
          if ((Self->Name[0] IS '/') OR (Self->Name[i] IS ':')) {
             MSG("Module location is absolute.");
-            for (i=0; (Self->Name[i]) AND (i < sizeof(path)-1); i++) path[i] = Self->Name[i];
-            path[i] = 0;
+            StrCopy(Self->Name, path, sizeof(path));
 
             STRING volume;
             if (!ResolvePath(path, RSF_APPROXIMATE, &volume)) {
@@ -388,14 +388,11 @@ static ERROR MODULE_Init(objModule *Self, APTR Void)
             ULONG hashname = StrHash(name, FALSE);
 
             if ((item = find_module(hashname))) {
-               CSTRING modpath = (STRING)(item + 1);
-               for (j=0; modpath[j]; j++) path[j] = modpath[j];
-               path[j] = 0;
+               StrCopy((CSTRING)(item + 1), path, sizeof(path));
 
                STRING volume;
                if (!ResolvePath(path, RSF_APPROXIMATE, &volume)) {
-                  for (i=0; (volume[i]) AND (i < sizeof(path)-1); i++) path[i] = volume[i];
-                  path[i] = 0;
+                  StrCopy(volume, path, sizeof(path));
                   FreeResource(volume);
                }
                else {
@@ -415,55 +412,44 @@ static ERROR MODULE_Init(objModule *Self, APTR Void)
 
             #ifdef __unix__
                if (glModulePath[0]) { // If no specific module path is defined, default to the system path and tack on the modules/ suffix.
-                  for (i=0; (glModulePath[i]) AND (i < sizeof(path)-32); i++) path[i] = glModulePath[i];
+                  i = StrCopy(glModulePath, path, sizeof(path));
                }
-               else {
-                  for (i=0; (glSystemPath[i]) AND (i < sizeof(path)-32); i++) path[i] = glSystemPath[i];
-                  for (j=0; "modules/"[j]; j++) path[i++] = "modules/"[j];
-               }
+               else i = StrFormat(path, sizeof(path), "%slib/parasol/", glRootPath);               
 
-               if (Self->Flags & MOF_LINK_LIBRARY) {
-                  for (j=0; ("lib/"[j]) AND (i < sizeof(path)-1); j++) path[i++] = "lib/"[j];
-               }
+               if (Self->Flags & MOF_LINK_LIBRARY) StrCopy("lib/", path+i, sizeof(path-i));               
 
                #ifdef __ANDROID__
                   if ((Self->Name[0] IS 'l') AND (Self->Name[1] IS 'i') AND (Self->Name[2] IS 'b'));
                   else for (j=0; "lib"[j]; j++) path[i++] = "lib"[j]; // Packaged Android modules have to begin with 'lib'
                #endif
 
-               for (j=0; (Self->Name[j]) AND (i < sizeof(path)-1); j++) path[i++] = Self->Name[j];
-               path[i] = 0;
+               StrCopy(Self->Name, path+i, sizeof(path)-i);
 
             #elif _WIN32
                if (glModulePath[0]) {
-                  for (i=0; (glModulePath[i]) AND (i < sizeof(path)-32); i++) path[i] = glModulePath[i];
+                  i = StrCopy(glModulePath, path, sizeof(path)-32);
                   if (path[i-1] != '\\') path[i++] = '\\';
                }
                else if (glSystemPath[0]) {
-                  for (i=0; (glSystemPath[i]) AND (i < sizeof(path)-32); i++) path[i] = glSystemPath[i];
+                  i = StrCopy(glSystemPath, path, sizeof(path)-32);
                   if (path[i-1] != '\\') path[i++] = '\\';
-                  for (j=0; "lib\\"[j]; j++) path[i++] = "lib\\"[j];
+                  StrCopy("lib\\", path+i, sizeof(path)-i);
                }
                else {
                   const char modlocation[] = "lib\\";
-
-                  for (i=0; (glRootPath[i]) AND (i < sizeof(path)); i++) path[i] = glRootPath[i];
+                  i = StrCopy(glRootPath, path, sizeof(path));
                   if (path[i-1] != '\\') path[i++] = '\\';
-                  for (j=0; (modlocation[j]) AND (i < sizeof(path)-1); j++) path[i++] = modlocation[j];
+                  StrCopy(modlocation, path+i, sizeof(path)-i);
                }
 
-               if (Self->Flags & MOF_LINK_LIBRARY) {
-                  for (j=0; ("lib\\"[j]) AND (i < sizeof(path)-1); j++) path[i++] = "lib\\"[j];
-               }
-
-               for (j=0; (Self->Name[j]) AND (i < sizeof(path)-1); j++) path[i++] = Self->Name[j];
-               path[i] = 0;
+               if (Self->Flags & MOF_LINK_LIBRARY) StrCopy("lib\\", path+i, sizeof(path-i));               
+               StrCopy(Self->Name, path+i, sizeof(path)-i);
             #endif
          }
 
          // Deal with the file extensions
 
-         for (len=0; path[len]; len++);
+         len = StrLength(path);
          ext = len;
          while ((ext > 0) AND (path[ext] != '.') AND (path[ext] != ':') AND (path[ext] != '\\') AND (path[ext] != '/')) ext--;
 
@@ -474,18 +460,24 @@ static ERROR MODULE_Init(objModule *Self, APTR Void)
          else ext = -1;
 
          if (ext IS -1) {
-            ext = len;
+            if (len < sizeof(path)-12) {
+                ext = len;
 
-            #ifdef __unix__
-               path[ext] = '.'; path[ext+1] = 's'; path[ext+2] = 'o'; path[ext+3] = 0;
-            #elif _WIN32
-               path[ext] = '.'; path[ext+1] = 'd'; path[ext+2] = 'l'; path[ext+3] = 'l'; path[ext+4] = 0;
-            #elif __APPLE__
-               // OSX also uses .dylib but is compatible with .so
-               path[ext] = '.'; path[ext+1] = 's'; path[ext+2] = 'o'; path[ext+3] = 0;
-            #else
-               #error What is the module extension for this machine type (.so/.mod/...)?
-            #endif
+                #ifdef __unix__
+                   path[ext] = '.'; path[ext+1] = 's'; path[ext+2] = 'o'; path[ext+3] = 0;
+                #elif _WIN32
+                   path[ext] = '.'; path[ext+1] = 'd'; path[ext+2] = 'l'; path[ext+3] = 'l'; path[ext+4] = 0;
+                #elif __APPLE__
+                   // OSX uses .dylib but is compatible with .so
+                   path[ext] = '.'; path[ext+1] = 's'; path[ext+2] = 'o'; path[ext+3] = 0;
+                #else
+                   #error What is the module extension for this machine type (.so/.mod/...)?
+                #endif
+            }
+            else {
+               error = ERR_BufferOverflow;
+               goto exit;
+            }
          }
          else ext = 0;
 
