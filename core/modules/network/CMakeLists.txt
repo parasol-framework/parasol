@@ -29,7 +29,7 @@ target_sources (${MOD} PRIVATE
 if (OPENSSL_FOUND)
    message (STATUS "Network module will be compiled with SSL support.")
    # Linking against the .a files is necessary to ensure a static link.
-   list (APPEND NETWORK_LIBS ssl.a crypto.a) #OpenSSL::SSL OpenSSL::Crypto)
+   list (APPEND NETWORK_LIBS ssl.a crypto.a)
    target_include_directories (${MOD} PRIVATE "${OPENSSL_INCLUDE_DIR}")
 else ()
    message (STATUS "Network module will not be compiled with SSL support.")

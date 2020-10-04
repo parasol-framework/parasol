@@ -321,7 +321,7 @@ EXPORT struct CoreBase * OpenCore(struct OpenInfo *Info)
 
          LONG len;
          if (winGetExeDirectory(sizeof(glRootPath), glRootPath)) {
-            for (len=0; glRootPath[len]; len++);
+            len = StrLength(glRootPath);
             while ((len > 1) AND (glRootPath[len-1] != '/') AND (glRootPath[len-1] != '\\') AND (glRootPath[len-1] != ':')) len--;
             glRootPath[len] = 0;
          }
@@ -330,6 +330,7 @@ EXPORT struct CoreBase * OpenCore(struct OpenInfo *Info)
             return NULL;
          }
       #else
+         // Get the folder of the running process.
          char procfile[50];
          snprintf(procfile, sizeof(procfile), "/proc/%d/exe", getpid());
 
@@ -340,6 +341,11 @@ EXPORT struct CoreBase * OpenCore(struct OpenInfo *Info)
                len--;
             }
             glRootPath[len] = 0;
+
+            // If the binary is in a 'bin' folder then the root is considered to be the parent folder.
+            if (!StrCompare("bin/", glRootPath+len-4, 4, 0)) {
+               glRootPath[len-4] = 0;
+            }
         }
       #endif
    }
@@ -352,17 +358,12 @@ EXPORT struct CoreBase * OpenCore(struct OpenInfo *Info)
       KMSG("Using a system path of '%s'\n", Info->SystemPath);
       SetResourcePath(RP_SYSTEM_PATH, Info->SystemPath);
    }
-   else if (glRootPath[0]) { // Derive system path from the root path.
-      LONG i = StrCopy(glRootPath, glSystemPath, sizeof(glSystemPath));
-      i += StrCopy("system", glSystemPath+i, sizeof(glSystemPath)-i);
-      if (i < sizeof(glSystemPath)-2) {
-         #ifdef _WIN32
-            glSystemPath[i++] = '\\';
-         #else
-            glSystemPath[i++] = '/';
-         #endif
-         glSystemPath[i] = 0;
-      }
+   else if (glRootPath[0]) { // Derive system path from the root path
+      #ifdef _WIN32
+         StrCopy(glRootPath, glSystemPath, sizeof(glSystemPath));
+      #else
+         StrFormat(glSystemPath, sizeof(glSystemPath), "%sshare/parasol/", glRootPath);
+      #endif
    }
 
    // Process the Information structure
@@ -2099,11 +2100,10 @@ static ERROR init_filesystem(void)
 
       #ifndef __ANDROID__ // For security reasons we do not use an external volume file for the Android build.
          {
-            LONG install = StrCopy(glSystemPath, buffer, sizeof(buffer));
             #ifdef _WIN32
-               StrCopy("config\\volumes.cfg", buffer+install, sizeof(buffer) - install - 1);
+               StrFormat(buffer, sizeof(buffer), "%sconfig\\volumes.cfg", glSystemPath);
             #else
-               StrCopy("config/volumes.cfg", buffer+install, sizeof(buffer) - install - 1);
+               StrFormat(buffer, sizeof(buffer), "%sconfig/volumes.cfg", glSystemPath);
             #endif
             SetString(glVolumes, FID_Path, buffer);
          }
@@ -2114,7 +2114,11 @@ static ERROR init_filesystem(void)
          return PostError(ERR_CreateObject);
       }
 
-      // Add system volumes that require run-time determination
+      // Add system volumes that require run-time determination.  For the avoidance of doubt, on Unix systems the default settings are:
+      //
+      // OPF_ROOT_PATH   : glRootPath   = /usr/local
+      // OPF_MODULE_PATH : glModulePath = %ROOT%/lib/parasol
+      // OPF_SYSTEM_PATH : glSystemPath = %ROOT%/share/parasol
 
       #ifdef _WIN32
          SetVolume(AST_NAME, "parasol", AST_PATH, glRootPath, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, AST_ICON, "users/user", TAGEND);
@@ -2143,16 +2147,15 @@ static ERROR init_filesystem(void)
             }
          }
 */
-         SetVolume(AST_NAME, "parasol", AST_PATH, glRootPath, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, AST_ICON, "users/user",  TAGEND);
+         SetVolume(AST_NAME, "parasol", AST_PATH, glSystemPath, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, AST_ICON, "users/user",  TAGEND);
          SetVolume(AST_NAME, "system", AST_PATH, glSystemPath, AST_FLAGS, VOLUME_REPLACE, AST_ICON, "programs/tool",  TAGEND);
 
          if (glModulePath[0]) {
             SetVolume(AST_NAME, "modules", AST_PATH, glModulePath, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, AST_ICON, "programs/tool",  TAGEND);
          }
          else {
-            UBYTE path[200];
-            i = StrCopy(glSystemPath, path, sizeof(path));
-            StrCopy("lib/", path+i, sizeof(path)-i);
+            char path[200];
+            StrFormat(path, sizeof(path), "%slib/parasol/", glRootPath);
             SetVolume(AST_NAME, "modules", AST_PATH, path, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, AST_ICON, "programs/tool",  TAGEND);
          }
 

@@ -130,6 +130,8 @@ if (WIN32)
       # Copy libdbghelp.a to your MinGW libs folder.
       target_link_libraries (core PRIVATE dbghelp)
    endif ()
+else ()
+   target_link_libraries (core PRIVATE pthread dl)
 endif ()
 
 flute_test (core_filesystem "tests/filesystem.fluid")
