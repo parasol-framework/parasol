@@ -8,9 +8,6 @@ set(VERSION "1.2.11")
 option(ASM686 "Enable building i686 assembly implementation")
 option(AMD64 "Enable building amd64 assembly implementation")
 
-set(INSTALL_LIB_DIR "${CMAKE_INSTALL_PREFIX}/lib" CACHE PATH "Installation directory for libraries")
-set(INSTALL_INC_DIR "${CMAKE_INSTALL_PREFIX}/include" CACHE PATH "Installation directory for headers")
-
 include(CheckTypeSize)
 include(CheckFunctionExists)
 include(CheckIncludeFile)
@@ -208,10 +205,10 @@ elseif(WIN32)
 endif()
 
 install(TARGETS zlib
-    RUNTIME DESTINATION "lib/lib"
-#    ARCHIVE DESTINATION "lib/lib"
-#    LIBRARY DESTINATION "lib/lib"
+    RUNTIME DESTINATION "lib/parasol/lib" # Win32 libraries are output here
+    ARCHIVE DESTINATION "lib/parasol/lib"
+    LIBRARY DESTINATION "lib/parasol/lib" # Linux
 )
 
-install(FILES ${ZLIB_PUBLIC_HDRS} DESTINATION "include")
+install(FILES ${ZLIB_PUBLIC_HDRS} DESTINATION "include/parasol/3rdparty")
 
