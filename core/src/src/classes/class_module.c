@@ -369,8 +369,7 @@ static ERROR MODULE_Init(objModule *Self, APTR Void)
 
             STRING volume;
             if (!ResolvePath(path, RSF_APPROXIMATE, &volume)) {
-               for (i=0; (volume[i]) AND (i < sizeof(path)-1); i++) path[i] = volume[i];
-               path[i] = 0;
+               StrCopy(volume, path, sizeof(path));
                FreeResource(volume);
             }
             else {
@@ -416,7 +415,7 @@ static ERROR MODULE_Init(objModule *Self, APTR Void)
                }
                else i = StrFormat(path, sizeof(path), "%slib/parasol/", glRootPath);               
 
-               if (Self->Flags & MOF_LINK_LIBRARY) StrCopy("lib/", path+i, sizeof(path-i));               
+               if (Self->Flags & MOF_LINK_LIBRARY) i += StrCopy("lib/", path+i, sizeof(path-i));               
 
                #ifdef __ANDROID__
                   if ((Self->Name[0] IS 'l') AND (Self->Name[1] IS 'i') AND (Self->Name[2] IS 'b'));
@@ -433,16 +432,16 @@ static ERROR MODULE_Init(objModule *Self, APTR Void)
                else if (glSystemPath[0]) {
                   i = StrCopy(glSystemPath, path, sizeof(path)-32);
                   if (path[i-1] != '\\') path[i++] = '\\';
-                  StrCopy("lib\\", path+i, sizeof(path)-i);
+                  i += StrCopy("lib\\", path+i, sizeof(path)-i);
                }
                else {
                   const char modlocation[] = "lib\\";
                   i = StrCopy(glRootPath, path, sizeof(path));
                   if (path[i-1] != '\\') path[i++] = '\\';
-                  StrCopy(modlocation, path+i, sizeof(path)-i);
+                  i += StrCopy(modlocation, path+i, sizeof(path)-i);
                }
 
-               if (Self->Flags & MOF_LINK_LIBRARY) StrCopy("lib\\", path+i, sizeof(path-i));               
+               if (Self->Flags & MOF_LINK_LIBRARY) i += StrCopy("lib\\", path+i, sizeof(path-i));               
                StrCopy(Self->Name, path+i, sizeof(path)-i);
             #endif
          }

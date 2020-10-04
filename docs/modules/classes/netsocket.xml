@@ -32,7 +32,7 @@ initially fill the internal write buffer, thereafter it will be called whenever 
 <p>To send data to a client, set the <field>CurrentSocket</field> field to reference the target client and then call the <action>Write</action> action.</p>
 <p>All data that is received from client sockets will be passed to the <field>Incoming</field> feedback routine.  The <field>CurrentSocket</field> field will refer to the socket that has received the data.</p></description>
     <source>
-      <file path="netsocket/">netsocket.c</file>
+      <file path="netsocket/">netsocket.cpp</file>
     </source>
   </info>
 

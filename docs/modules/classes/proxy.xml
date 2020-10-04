@@ -18,7 +18,7 @@
 <p>Proxy objects are designed to work similarly to database recordsets. Creating a new proxy object will allow you to create a new proxy record if all required fields are set and the object is saved.</p>
 <p>Searching through the records with the <method>Find</method> and <method>FindNext</method> methods will move the recordset through each entry the proxy database.  You may change existing values of any proxy and then save the changes by calling the <action>SaveSettings</action> action.</p></description>
     <source>
-      <file>class_proxy.c</file>
+      <file>class_proxy.cpp</file>
     </source>
   </info>
 
