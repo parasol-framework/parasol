@@ -47,7 +47,7 @@ A full build and install can be performed with:
 
 ```
 cmake --build release -j 8 -- -O
-cmake --install release
+sudo cmake --install release
 ```
 
 If problems occur at any stage during the build and you suspect an issue in the execution of a command, enable logging of the build process with the `--verbose` option.
@@ -63,9 +63,9 @@ Before resorting to a debug build, consider running the application with the `--
 Parasol supports the use of `gdb` as a debugger.  Making a debug build for the first time will require a full build and install with the release options turned off, e.g:
 
 ```
-cmake -S . -B debug -G"<BUILD ENVIRONMENT>"
+cmake -S . -B debug -DCMAKE_BUILD_TYPE=Debug -G"<BUILD ENVIRONMENT>"
 cmake --build debug -j 8 -- -O
-cmake --install debug
+sudo cmake --install debug
 ```
 
 Now run `gdb` from the command-line and target parasol or the problem executable as required.  After fixing the issues, we strongly recommend returning to a standard build.  Debug builds have a very significant performance penalty and are not reflective of a 'real world environment' for day to day programming.

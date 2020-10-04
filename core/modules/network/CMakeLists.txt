@@ -42,7 +42,7 @@ endif ()
 
 target_link_libraries (${MOD} PRIVATE ${NETWORK_LIBS} c-ares)
 
-add_definitions ("-DUSE_ARES" "-DCARES_STATICLIB" "-DMAX_ALIASES=64" "-DMAX_ADDRESSES=32")
+add_definitions ("-DUSE_ARES" "-DCARES_STATICLIB" "-DMAX_ALIASES=64" "-DMAX_ADDRESSES=32" "-DHAVE_CONFIG_H=1")
 
 flute_test(network_dns "${CMAKE_CURRENT_SOURCE_DIR}/tests/dns-parallel.fluid")
 flute_test(network_server_io "${CMAKE_CURRENT_SOURCE_DIR}/tests/server-io.fluid")
