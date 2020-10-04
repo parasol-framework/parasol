@@ -131,14 +131,6 @@ extern const char * net_init_ares(void);
 extern void net_free_ares(void);
 extern int net_ares_error(int Code, const char **Message);
 
-#if defined(USE_ARES) && defined(__linux__)
-   #include "ares_setup.h"
-   #include "ares.h"  // Note - This file is modified from the original
-   #include "ares_dns.h"
-   #include "ares_inet_net_pton.h"
-   #include "ares_private.h"
-#endif
-
 //****************************************************************************
 
 enum {
@@ -209,9 +201,10 @@ static ERROR add_clientsocket(void);
 static ERROR init_proxy(void);
 
 #if defined(USE_ARES) && defined(__linux__)
-static int ares_socket_callback(ares_socket_t SocketHandle, int Type, struct dns_resolver *);
-static void fd_read(HOSTHANDLE FD, objNetSocket *Socket);
-static void fd_write(HOSTHANDLE FD, objNetSocket *Socket);
+static int ares_socket_callback(int, int, struct dns_resolver *);
+void ares_response(void *Arg, int Status, int Timeouts, struct hostent *);
+extern void net_resolve_name(const char *HostName, struct dns_resolver *Resolver);
+extern void net_ares_resolveaddr(int, void *Data, struct dns_resolver *);
 #endif
 
 //***************************************************************************
@@ -516,40 +509,21 @@ static ERROR netResolveAddress(CSTRING Address, LONG Flags, FUNCTION *Callback, 
          return ERR_AllocMemory;
       }
 
-#ifdef USE_ARES
-   #ifdef __linux__
-      if (glAres) {
-         if (ip.Type IS IPADDR_V4) ares_gethostbyaddr(glAres, &ip.Data, 4, AF_INET, (APTR)&ares_response, resolve);
-         else ares_gethostbyaddr(glAres, &ip.Data, 16, AF_INET6, (APTR)&ares_response, resolve);
-
-         // Ares file descriptors need to be reported to the Core if they are to be processed correctly.
-
-         LONG i;
-         int active_queries = !ares__is_list_empty(&(glAres->all_queries));
-         for (i=0; i < glAres->nservers; i++) {
-            struct server_state *server = &glAres->servers[i];
-            if ((active_queries) AND (server->udp_socket != ARES_SOCKET_BAD)) {
-               RegisterFD((HOSTHANDLE)server->udp_socket, RFD_READ|RFD_SOCKET, &fd_read, resolve);
-            }
-
-            if (server->tcp_socket != ARES_SOCKET_BAD) {
-               RegisterFD((HOSTHANDLE)server->tcp_socket, RFD_READ|RFD_SOCKET, &fd_read, resolve);
-               if (server->qhead) RegisterFD((HOSTHANDLE)server->tcp_socket, RFD_WRITE|RFD_SOCKET, &fd_write, resolve);
-            }
-         }
-
-         VarUnlock(glDNS);
-         return ERR_Okay;
-      }
-   #elif _WIN32
-      if (glAres) {
-         if (!win_ares_resolveaddr(&ip, glAres, resolve)) {
+      #ifdef USE_ARES
+         if (glAres) {
+         #ifdef __linux__
+            net_ares_resolveaddr(ip.Type == IPADDR_V4, ip.Data, resolve);
             VarUnlock(glDNS);
             return ERR_Okay;
+         #elif _WIN32
+            if (!win_ares_resolveaddr(&ip, glAres, resolve)) {
+               VarUnlock(glDNS);
+               return ERR_Okay;
+            }
+         #endif
          }
-      }
-   #endif
-#endif
+      #endif
+
       free_resolver(resolve); // Remove the resolver if background resolution failed.
       VarUnlock(glDNS);
    }
@@ -639,31 +613,7 @@ static ERROR netResolveName(CSTRING HostName, LONG Flags, FUNCTION *Callback, LA
 #ifdef USE_ARES
    #ifdef __linux__
       if (glAres) {
-         ares_set_socket_callback(glAres, (ares_sock_create_callback)&ares_socket_callback, resolver);
-         ares_gethostbyname(glAres, HostName, AF_INET, (APTR)&ares_response, resolver);
-         ares_set_socket_callback(glAres, NULL, NULL);
-
-         // Ares file descriptors need to be reported to the Core if they are to be processed correctly.
-         // Refer to the code for ares_fds() to see where this loop came from.
-
-         // Commented out because the registration process is probably better served through ares_socket_callback()
-/*
-         if (glAres->queries) {
-            LONG i;
-            int active_queries = !ares__is_list_empty(&(glAres->all_queries));
-            for (i=0; i < glAres->nservers; i++) {
-               struct server_state *server = &glAres->servers[i];
-               if ((active_queries) AND (server->udp_socket != ARES_SOCKET_BAD)) {
-                  RegisterFD((HOSTHANDLE)server->udp_socket, RFD_READ|RFD_SOCKET, &fd_read, resolver);
-               }
-
-               if (server->tcp_socket != ARES_SOCKET_BAD) {
-                  RegisterFD((HOSTHANDLE)server->tcp_socket, RFD_READ|RFD_SOCKET, &fd_read, resolver);
-                  if (server->qhead) RegisterFD((HOSTHANDLE)server->tcp_socket, RFD_WRITE|RFD_SOCKET, &fd_write, resolver);
-               }
-            }
-         }
-*/
+         net_resolve_name(HostName, resolver);
          VarUnlock(glDNS);
          return ERR_Okay;
       }
@@ -1236,57 +1186,11 @@ void win_dns_callback(struct dns_resolver *Resolver, ERROR Error, struct hostent
 
 //****************************************************************************
 
-#if defined(__linux__) && defined(USE_ARES)
-
-static void fd_read(HOSTHANDLE FD, objNetSocket *Socket)
-{
-   FMSG("fd_read","Socket: %p", Socket);
-
-   if (Socket->Ares) {
-      fd_set read_fds;
-      FD_ZERO(&read_fds);
-      FD_SET(FD, &read_fds);
-      ares_process(Socket->Ares, &read_fds, 0);
-   }
-   else DeregisterFD(FD);
-}
-
-static void fd_write(HOSTHANDLE FD, objNetSocket *Socket)
-{
-   FMSG("fd_write","Socket: %p", Socket);
-
-   if (Socket->Ares) {
-      fd_set write_fds;
-      FD_ZERO(&write_fds);
-      FD_SET(FD, &write_fds);
-      ares_process(Socket->Ares, 0, &write_fds);
-   }
-   else DeregisterFD(FD);
-}
-
-#endif
-
-//***************************************************************************
-// Associate handles created by Ares with their respective DNS resolver.
-
-#if defined(USE_ARES) && defined(__linux__)
-static int ares_socket_callback(ares_socket_t SocketHandle, int Type, struct dns_resolver *Resolver)
-{
-   FMSG("Ares","Ares created socket handle %d, type %d.", SocketHandle, Type);
-
-   if (Resolver) {
-      if (Type IS SOCK_STREAM) Resolver->tcp = SocketHandle;
-      else if (Type IS SOCK_DGRAM) Resolver->udp = SocketHandle;
-   }
-   return ARES_SUCCESS;
-}
-#endif
-
-//****************************************************************************
-
 #ifdef USE_ARES
-void ares_response(struct dns_resolver *Resolver, int Status, int Timeouts, struct hostent *Host)
+void ares_response(void *Arg, int Status, int Timeouts, struct hostent *Host)
 {
+   struct dns_resolver *Resolver = reinterpret_cast<struct dns_resolver *>(Arg);
+
    if (Host) {
       LogF("~ares_response()","Resolved: '%s', Time: %.2fs", Host->h_name, (DOUBLE)(PreciseTime() - Resolver->time) * 0.000001);
    }
@@ -1309,6 +1213,27 @@ void ares_response(struct dns_resolver *Resolver, int Status, int Timeouts, stru
    }
 
    LogBack();
+}
+
+void register_read_socket(int Socket, void (*Callback)(int, void *), struct dns_resolver *Resolve)
+{
+   RegisterFD(Socket, RFD_READ|RFD_SOCKET, Callback, Resolve);
+}
+
+void register_write_socket(int Socket, void (*Callback)(int, void *), struct dns_resolver *Resolve)
+{
+   RegisterFD(Socket, RFD_WRITE|RFD_SOCKET, Callback, Resolve);
+}
+
+void deregister_fd(int FD)
+{
+   DeregisterFD(FD);
+}
+
+void set_resolver_socket(struct dns_resolver *Resolver, int UDP, int SocketHandle)
+{
+   if (UDP) Resolver->udp = SocketHandle;
+   else Resolver->tcp = SocketHandle;
 }
 
 #endif // USE_ARES
