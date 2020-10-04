@@ -60,9 +60,9 @@ target_include_directories (${MOD} PRIVATE
    "luajit-2.0.5/src")
 
 target_link_libraries (${MOD} PRIVATE
-   "m"
    "${CMAKE_CURRENT_SOURCE_DIR}/libffi-3.3/release/lib/libffi.a"
-   "${CMAKE_CURRENT_SOURCE_DIR}/luajit-2.0.5/src/libluajit-${CMAKE_HOST_SYSTEM_PROCESSOR}.a")
+   "${CMAKE_CURRENT_SOURCE_DIR}/luajit-2.0.5/src/libluajit-${CMAKE_HOST_SYSTEM_PROCESSOR}.a"
+   m) # The link order matters, math must come last
 
 add_definitions ("-DLUAJIT_ENABLE_LUA52COMPAT")
 
