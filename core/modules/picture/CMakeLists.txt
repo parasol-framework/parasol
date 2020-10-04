@@ -17,6 +17,7 @@ target_sources (${MOD} PRIVATE ${SOURCES})
 
 target_include_directories (${MOD} PRIVATE
    "${CMAKE_CURRENT_SOURCE_DIR}/lib"
-   "${PROJECT_SOURCE_DIR}/core/3rdparty/zlib-1.2.11")
+   ${ZLIB_HEADERS})
 
-target_link_libraries (${MOD} PRIVATE m z)
+target_link_libraries (${MOD} PRIVATE m zlib)
+
