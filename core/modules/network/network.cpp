@@ -201,7 +201,6 @@ static ERROR add_clientsocket(void);
 static ERROR init_proxy(void);
 
 #if defined(USE_ARES) && defined(__linux__)
-static int ares_socket_callback(int, int, struct dns_resolver *);
 void ares_response(void *Arg, int Status, int Timeouts, struct hostent *);
 extern void net_resolve_name(const char *HostName, struct dns_resolver *Resolver);
 extern void net_ares_resolveaddr(int, void *Data, struct dns_resolver *);
