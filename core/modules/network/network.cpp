@@ -1187,6 +1187,7 @@ void win_dns_callback(struct dns_resolver *Resolver, ERROR Error, struct hostent
 //****************************************************************************
 
 #ifdef USE_ARES
+
 void ares_response(void *Arg, int Status, int Timeouts, struct hostent *Host)
 {
    struct dns_resolver *Resolver = reinterpret_cast<struct dns_resolver *>(Arg);
@@ -1215,6 +1216,7 @@ void ares_response(void *Arg, int Status, int Timeouts, struct hostent *Host)
    LogBack();
 }
 
+#ifdef __linux__
 void register_read_socket(int Socket, void (*Callback)(int, void *), struct dns_resolver *Resolve)
 {
    RegisterFD(Socket, RFD_READ|RFD_SOCKET, Callback, Resolve);
@@ -1235,6 +1237,7 @@ void set_resolver_socket(struct dns_resolver *Resolver, int UDP, int SocketHandl
    if (UDP) Resolver->udp = SocketHandle;
    else Resolver->tcp = SocketHandle;
 }
+#endif
 
 #endif // USE_ARES
 

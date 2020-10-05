@@ -64,11 +64,12 @@ static void server_client_connect(SOCKET_HANDLE FD, objNetSocket *Self)
    else {
       struct sockaddr_in addr;
 
-      socklen_t len = sizeof(addr);
 
       #ifdef __linux__
+         socklen_t len = sizeof(addr);
          clientfd = accept(FD, (struct sockaddr *)&addr, &len);
       #elif _WIN32
+         LONG len = sizeof(addr);
          clientfd = win_accept(Self, FD, (struct sockaddr *)&addr, &len);
       #endif
 

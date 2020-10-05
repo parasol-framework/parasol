@@ -9,10 +9,6 @@
 #include <windows.h>
 #endif
 
-#ifdef USE_ARES
-#include "config-win32.h"
-#endif
-
 struct IPAddress {
    union {
       char Data[16];  // Bytes 0-3 are IPv4 bytes.  In host byte order
@@ -27,12 +23,15 @@ struct IPAddress {
 #include "winsockwrappers.h"
 
 #ifdef USE_ARES
+#define HAVE_STRUCT_SOCKADDR_IN6
+#define HAVE_STRUCT_ADDRINFO
+
 #include "ares.h"
 #include "ares_private.h"
 #include "ares_llist.h"
 
 extern ares_channel glAres;
-extern void ares_response(struct dns_resolver *, int Status, int Timeouts, struct hostent *);
+extern void ares_response(void *, int Status, int Timeouts, struct hostent *);
 #endif
 
 #include <parasol/system/errors.h>
