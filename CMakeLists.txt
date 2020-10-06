@@ -52,7 +52,9 @@ if (MINGW) # Undo the use of 'lib' as the default prefix set by MinGW
    set(CMAKE_STATIC_LIBRARY_PREFIX "")
 endif ()
 
-include_directories("${PROJECT_SOURCE_DIR}/core/include" "${CMAKE_CURRENT_BINARY_DIR}")
+include_directories("${PROJECT_SOURCE_DIR}/core/include"
+   "${PROJECT_SOURCE_DIR}/core/include/parasol/3rdparty"
+   "${CMAKE_CURRENT_BINARY_DIR}")
 
 	CHECK_C_SOURCE_COMPILES ("
 #include <stdio.h>
