@@ -36,9 +36,21 @@ before_install:
         ;;
       linux)
         sudo apt-get update
-        sudo apt-get install -y rsync libasound2-dev libxrandr-dev libxxf86dga-dev
-        sudo apt install cmake
-        cmake --version
+        sudo apt-get install -y libasound2-dev libxrandr-dev libxxf86dga-dev
+        ;;
+    esac
+
+install:
+- |-
+    case $TRAVIS_OS_NAME in
+      linux)
+        DEPS_DIR="${TRAVIS_BUILD_DIR}/deps"
+        mkdir ${DEPS_DIR} && cd ${DEPS_DIR}
+        travis_retry wget --no-check-certificate https://cmake.org/files/v3.18/cmake-3.18.4-Linux-x86_64.tar.gz
+        tar -xvf cmake-3.18.4-Linux-x86_64.tar.gz > /dev/null
+        mv cmake-3.18.4-Linux-x86_64 cmake-install
+        PATH=${DEPS_DIR}/cmake-install:${DEPS_DIR}/cmake-install/bin:$PATH
+        cd ${TRAVIS_BUILD_DIR}
         ;;
     esac
 
