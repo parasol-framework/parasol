@@ -531,15 +531,15 @@ static int object_children(lua_State *Lua)
       return 0;
    }
 
-   LONG class_id;
+   CLASSID class_id;
    CSTRING classfilter;
-   if ((classfilter = luaL_checkstring(Lua, 1))) {
+   if ((classfilter = luaL_optstring(Lua, 1, NULL)) AND (classfilter[0])) {
       class_id = StrHash(classfilter, 0);
    }
    else class_id = 0;
 
-   struct ChildEntry list[32];
-   LONG id[32];
+   struct ChildEntry list[512];
+   LONG id[512];
    LONG count = ARRAYSIZE(list);
 
    if (!ListChildren(object->ObjectID, list, &count)) {
@@ -552,7 +552,7 @@ static int object_children(lua_State *Lua)
          else id[index++] = list[i].ObjectID;
       }
 
-      make_table(Lua, FD_LONG, count, &id);
+      make_table(Lua, FD_LONG, index, &id);
    }
    else make_table(Lua, FD_LONG, 0, NULL);
 

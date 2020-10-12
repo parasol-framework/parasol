@@ -73,8 +73,8 @@ script:
     case $TRAVIS_OS_NAME in
       windows)
         $mingw64 cmake -S . -B release -G"MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release
-        $mingw64 cmake --build release -j 8 -- -O
-        $mingw64 cmake cd release && ctest . --verbose
+        $mingw64 cmake --build release -j 8 --verbose -- -O
+#        $mingw64 cmake cd release && ctest . --verbose
         ;;
       linux)
         cmake -S . -B release -DCMAKE_BUILD_TYPE=Release
@@ -100,3 +100,11 @@ branches:
   - /test\/.*/
   - /release\/.*/
 
+deploy:
+  provider: releases
+  api_key: "GITHUB OAUTH TOKEN"
+  file_glob: true
+  file: "release/packages/*"
+  skip_cleanup: true
+  on:
+    tags: false
