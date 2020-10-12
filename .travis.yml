@@ -89,7 +89,7 @@ after_success:
         cmake --install release
         ;;
       linux)
-        sudo cmake --install release
+        sudo $(which cmake) --install release
         ;;
     esac
 
