@@ -90,7 +90,7 @@ after_success:
         cmake --install release
         ;;
       linux)
-        cmake --install release
+        sudo cmake --install release
         ;;
     esac
 
@@ -100,11 +100,3 @@ branches:
   - /test\/.*/
   - /release\/.*/
 
-deploy:
-  provider: releases
-  api_key: "GITHUB OAUTH TOKEN"
-  file_glob: true
-  file: "release/packages/*"
-  skip_cleanup: true
-  on:
-    tags: false
