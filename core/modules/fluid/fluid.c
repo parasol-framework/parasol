@@ -454,13 +454,12 @@ static void hook_debug(lua_State *Lua, lua_Debug *Info)
 
 static void make_table(lua_State *Lua, LONG Type, LONG Elements, CPTR Data)
 {
-   LONG i;
-
    FMSG("make_table()","Type: $%.8x, Elements: %d, Data: %p", Type, Elements, Data);
 
    if (Elements < 0) {
       if (!Data) Elements = 0;
       else {
+         LONG i = 0;
          switch (Type & (FD_DOUBLE|FD_LARGE|FD_FLOAT|FD_POINTER|FD_OBJECT|FD_STRING|FD_LONG|FD_WORD|FD_BYTE)) {
             case FD_STRING:
             case FD_OBJECT:
@@ -471,7 +470,6 @@ static void make_table(lua_State *Lua, LONG Type, LONG Elements, CPTR Data)
             case FD_LONG:    for (i=0; ((LONG *)Data)[i]; i++); break;
             case FD_WORD:    for (i=0; ((WORD *)Data)[i]; i++); break;
             case FD_BYTE:    for (i=0; ((BYTE *)Data)[i]; i++); break;
-            default:         i = 0; break;
          }
 
          Elements = i;
