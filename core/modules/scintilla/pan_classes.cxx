@@ -211,7 +211,7 @@ bool Scintilla::Platform::MouseButtonBounce()
 
 void Scintilla::Platform::DebugDisplay(const char *string)
 {
-   LogF("Scintilla:", string);
+   LogF("Scintilla:", "%s", string);
 }
 
 bool Scintilla::Platform::IsKeyDown(int)
