@@ -434,7 +434,7 @@ if (WIN32) # MSYS2/MinGW builds have library dependencies that we need to take a
 endif ()
 
    install (CODE "file(REMOVE \"${PARASOL_ROOT}/config/classes.bin\" \"${PARASOL_ROOT}/config/modules.bin\")")
-   install (CODE "execute_process(COMMAND parasol --log-error ${PARASOL_ROOT}/scripts/dev/verify-modules.fluid WORKING_DIRECTORY \"${CMAKE_INSTALL_PREFIX}\")")
+   install (CODE "execute_process(COMMAND parasol --log-error \"${PARASOL_ROOT}/scripts/dev/verify-modules.fluid\" WORKING_DIRECTORY \"${CMAKE_INSTALL_PREFIX}\")")
 
 if (WIN32)
    install (CODE "MESSAGE(STATUS \"\nParasol has been installed to '${CMAKE_INSTALL_PREFIX}'.  You may need to add this folder to your PATH variable in order to run parasol.exe and fluid.exe from the command-line.\")")
