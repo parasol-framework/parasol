@@ -14,7 +14,7 @@ link_directories("${CMAKE_CURRENT_SOURCE_DIR}/libffi-3.3/release/lib" "${CMAKE_C
 add_custom_command (OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/libffi-3.3/release/lib/libffi.a"
    PRE_BUILD
    COMMAND "sh" "configure"
-      "--disable-dependency-tracking"
+      "--disable-dependency-tracking" "--disable-docs"
       "--prefix=${CMAKE_CURRENT_SOURCE_DIR}/libffi-3.3/release"
       "--includedir=${CMAKE_CURRENT_SOURCE_DIR}/libffi-3.3/release/include"
    COMMAND "${CMAKE_MAKE_PROGRAM}" "install"
