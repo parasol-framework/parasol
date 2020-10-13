@@ -31,7 +31,7 @@ static void client_connect(SOCKET_HANDLE Void, APTR Data)
       if (Self->Error) return;
 
       if (Self->State IS NTC_CONNECTING_SSL) {
-         RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD_READ|RFD_SOCKET, (APTR)&client_server_incoming, Self);
+         RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD_READ|RFD_SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&client_server_incoming), Self);
       }
 
       return;

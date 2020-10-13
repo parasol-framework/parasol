@@ -825,7 +825,7 @@ static ERROR RECEIVE(objNetSocket *Self, SOCKET_HANDLE Socket, APTR Buffer, LONG
          // data pending.
 
          #ifdef __linux__
-            RegisterFD((HOSTHANDLE)Socket, RFD_RECALL|RFD_READ|RFD_SOCKET, (APTR)&client_server_incoming, Self);
+            RegisterFD((HOSTHANDLE)Socket, RFD_RECALL|RFD_READ|RFD_SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&client_server_incoming), Self);
          #elif _WIN32
             // In Windows we don't want to listen to FD's on a permanent basis,
             // so this is a temporary setting that will be reset by client_server_pending()
