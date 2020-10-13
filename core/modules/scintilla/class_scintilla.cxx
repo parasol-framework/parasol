@@ -1852,7 +1852,7 @@ static ERROR GET_Path(objScintilla *Self, CSTRING *Value)
 
 static ERROR SET_Path(objScintilla *Self, CSTRING Value)
 {
-   LogBranch((const char *)Value);
+   LogBranch("%s", Value);
 
    if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
 
