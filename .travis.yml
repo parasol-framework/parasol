@@ -88,7 +88,7 @@ script:
         if [ $? -eq 0 ]; then
            cmake --build release -j 8 -- -O
            if [ $? -eq 0 ]; then
-              cmake cd release && ctest . --verbose
+              cd release && ctest . --verbose
            fi
         fi
         ;;
