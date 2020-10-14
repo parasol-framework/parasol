@@ -118,5 +118,6 @@ deploy:
   file: "install/*"
   skip_cleanup: true
   on:
+    branch: release
     tags: false
 
