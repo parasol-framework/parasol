@@ -118,6 +118,6 @@ deploy:
   file: "install/*"
   skip_cleanup: true
   on:
-    branch: release
-    tags: false
+    all_branches: true
+    condition: $TRAVIS_BRANCH =~ ^(release\/.*)$
 
