@@ -12,12 +12,6 @@
 #define MODVERSION_NETWORK (1)
 
 
-#if __has_include(<openssl/ssl.h>)
-   #define ENABLE_SSL
-#else
-   #undef ENABLE_SSL
-#endif
-
 #ifdef ENABLE_SSL
 #include "openssl/ssl.h"
 #endif
