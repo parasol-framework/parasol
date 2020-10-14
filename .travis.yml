@@ -26,7 +26,7 @@ before_install:
         export msys2+='& C:\\tools\\msys64\\msys2_shell.cmd -defterm -no-start'
         export mingw64="$msys2 -mingw64 -full-path -here -c "\"\$@"\" --"
         export msys2+=" -msys2 -c "\"\$@"\" --"
-        $msys2 pacman --sync --noconfirm --needed mingw-w64-x86_64-toolchain
+        $msys2 pacman --sync --noconfirm --needed mingw-w64-x86_64-cmake mingw-w64-x86_64-toolchain
         ## Install more MSYS2 packages from https://packages.msys2.org/base here
         taskkill //IM gpg-agent.exe //F  # https://travis-ci.community/t/4967
         export PATH=/C/tools/msys64/mingw64/bin:$PATH
@@ -35,8 +35,28 @@ before_install:
         gcc -dM -E - < /dev/null # Print all GCC predefined constants to aid debugging
         ;;
       linux)
+        sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
+        sudo apt-get update -qq
+        sudo apt-get install g++-8 libstdc++-8-dev
+        sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-8 90
+        sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-8 90
         sudo apt-get update
-        sudo apt-get install -y rsync libasound2-dev libxrandr-dev libxxf86dga-dev
+        sudo apt-get install -y libasound2-dev libxrandr-dev libxxf86dga-dev
+        ;;
+    esac
+
+install:
+- |-
+    case $TRAVIS_OS_NAME in
+      linux)
+        autoreconf -if
+        DEPS_DIR="${TRAVIS_BUILD_DIR}/deps"
+        mkdir ${DEPS_DIR} && cd ${DEPS_DIR}
+        travis_retry wget --no-check-certificate https://cmake.org/files/v3.18/cmake-3.18.4-Linux-x86_64.tar.gz
+        tar -xvf cmake-3.18.4-Linux-x86_64.tar.gz > /dev/null
+        mv cmake-3.18.4-Linux-x86_64 cmake-install
+        PATH=${DEPS_DIR}/cmake-install:${DEPS_DIR}/cmake-install/bin:$PATH
+        cd ${TRAVIS_BUILD_DIR}
         ;;
     esac
 
@@ -58,12 +78,19 @@ script:
 - |-
     case $TRAVIS_OS_NAME in
       windows)
-        $mingw64 mingw32-make 3rdparty
-        $mingw64 mingw32-make full-compile
+        $mingw64 cmake -S . -B release -G"MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release -DDISABLE_SSL=TRUE -DCMAKE_INSTALL_PREFIX=install
+        if [ $? -eq 0 ]; then
+           $mingw64 cmake --build release -j 8 --verbose -- -O
+        fi
         ;;
       linux)
-        make 3rdparty
-        make full-compile
+        cmake -S . -B release -DCMAKE_BUILD_TYPE=Release -DDISABLE_SSL=TRUE -DCMAKE_INSTALL_PREFIX=install
+        if [ $? -eq 0 ]; then
+           cmake --build release -j 8 -- -O
+           if [ $? -eq 0 ]; then
+              cd release && ctest . --verbose
+           fi
+        fi
         ;;
     esac
 
@@ -71,10 +98,10 @@ after_success:
 - |-
     case $TRAVIS_OS_NAME in
       windows)
-        $mingw64 mingw32-make install
+        cmake --install release
         ;;
       linux)
-        make install
+        sudo $(which cmake) --install release
         ;;
     esac
 
@@ -83,4 +110,14 @@ branches:
   - master
   - /test\/.*/
   - /release\/.*/
+
+deploy:
+  provider: releases
+  api_key: "${GITHUB_TOKEN}"
+  file_glob: true
+  file: "install/*"
+  skip_cleanup: true
+  on:
+    branch: release
+    tags: false
 

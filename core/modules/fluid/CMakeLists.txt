@@ -11,19 +11,10 @@ link_directories("${CMAKE_CURRENT_SOURCE_DIR}/libffi-3.3/release/lib" "${CMAKE_C
 
 # FFI library custom build
 
-add_custom_command (OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/libffi-3.3"
-   PRE_BUILD
-   COMMAND "rm" "-fr" "libffi-3.3"
-   COMMAND "tar" "-zxf" "libffi-3.3.tar.gz"
-   COMMAND "touch" "libffi-3.3"
-   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
-   COMMENT "Decompressing FFI archive"
-   VERBATIM)
-
 add_custom_command (OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/libffi-3.3/release/lib/libffi.a"
    PRE_BUILD
    COMMAND "sh" "configure"
-      "--disable-dependency-tracking"
+      "--disable-dependency-tracking" "--disable-docs"
       "--prefix=${CMAKE_CURRENT_SOURCE_DIR}/libffi-3.3/release"
       "--includedir=${CMAKE_CURRENT_SOURCE_DIR}/libffi-3.3/release/include"
    COMMAND "${CMAKE_MAKE_PROGRAM}" "install"
@@ -31,7 +22,7 @@ add_custom_command (OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/libffi-3.3/release/lib/l
    COMMENT "Compiling FFI library"
    VERBATIM)
 
-add_custom_target(ffi_build DEPENDS "libffi-3.3" "${CMAKE_CURRENT_SOURCE_DIR}/libffi-3.3/release/lib/libffi.a")
+add_custom_target(ffi_build DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/libffi-3.3/release/lib/libffi.a")
 
 # LuaJIT library custom build
 

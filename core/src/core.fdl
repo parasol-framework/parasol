@@ -1127,7 +1127,7 @@ struct ScriptArg { // For use with scExec
     "SetDefaultPermissions",
     "ResolveUserID",
     "ResolveGroupID",
-    "ReadFile",
+    "ReadFileToBuffer",
     "LoadFile",
     "UnloadFile",
     "AddInfoTag",

@@ -391,7 +391,7 @@ ERROR page_memory(struct PublicAddress *Block, APTR *Address)
             return ERR_Okay;
          }
          else {
-            LogF("@page_memory()","winMapMemory() failed to map handle %d (ID: %d) of process %d.  Offset %d", (LONG)Block->Handle, Block->MemoryID, Block->OwnerProcess, Block->Offset);
+            LogF("@page_memory()","winMapMemory() failed to map handle " PF64() " (ID: %d) of process %d.  Offset %d", (MAXINT)Block->Handle, Block->MemoryID, Block->OwnerProcess, Block->Offset);
             thread_unlock(TL_MEMORY_PAGES);
             return ERR_LockFailed;
          }

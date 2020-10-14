@@ -36,7 +36,9 @@ intended for reference.
 #endif
 
 #ifdef __unix__
- #define __USE_GNU
+ #ifndef __USE_GNU
+  #define __USE_GNU
+ #endif
  #include <dlfcn.h>
  #include <sys/ipc.h>
  #include <sys/stat.h>
@@ -319,7 +321,7 @@ EXPORT struct CoreBase * OpenCore(struct OpenInfo *Info)
 
          LONG len;
          if (winGetExeDirectory(sizeof(glRootPath), glRootPath)) {
-            for (len=0; glRootPath[len]; len++);
+            len = StrLength(glRootPath);
             while ((len > 1) AND (glRootPath[len-1] != '/') AND (glRootPath[len-1] != '\\') AND (glRootPath[len-1] != ':')) len--;
             glRootPath[len] = 0;
          }
@@ -328,6 +330,7 @@ EXPORT struct CoreBase * OpenCore(struct OpenInfo *Info)
             return NULL;
          }
       #else
+         // Get the folder of the running process.
          char procfile[50];
          snprintf(procfile, sizeof(procfile), "/proc/%d/exe", getpid());
 
@@ -338,6 +341,11 @@ EXPORT struct CoreBase * OpenCore(struct OpenInfo *Info)
                len--;
             }
             glRootPath[len] = 0;
+
+            // If the binary is in a 'bin' folder then the root is considered to be the parent folder.
+            if (!StrCompare("bin/", glRootPath+len-4, 4, 0)) {
+               glRootPath[len-4] = 0;
+            }
         }
       #endif
    }
@@ -350,17 +358,12 @@ EXPORT struct CoreBase * OpenCore(struct OpenInfo *Info)
       KMSG("Using a system path of '%s'\n", Info->SystemPath);
       SetResourcePath(RP_SYSTEM_PATH, Info->SystemPath);
    }
-   else if (glRootPath[0]) { // Derive system path from the root path.
-      LONG i = StrCopy(glRootPath, glSystemPath, sizeof(glSystemPath));
-      i += StrCopy("system", glSystemPath+i, sizeof(glSystemPath)-i);
-      if (i < sizeof(glSystemPath)-2) {
-         #ifdef _WIN32
-            glSystemPath[i++] = '\\';
-         #else
-            glSystemPath[i++] = '/';
-         #endif
-         glSystemPath[i] = 0;
-      }
+   else if (glRootPath[0]) { // Derive system path from the root path
+      #ifdef _WIN32
+         StrCopy(glRootPath, glSystemPath, sizeof(glSystemPath));
+      #else
+         StrFormat(glSystemPath, sizeof(glSystemPath), "%sshare/parasol/", glRootPath);
+      #endif
    }
 
    // Process the Information structure
@@ -529,7 +532,7 @@ EXPORT struct CoreBase * OpenCore(struct OpenInfo *Info)
 
 #ifdef _WIN32
 
-   activate_console(glLogLevel > 0);
+   activate_console(glLogLevel > 0); // This works for the MinGW runtime libraries but not MSYS2
 
    // If the log detail is less than 3, use an exception handler to deal with crashes.  Otherwise, do not set the
    // handler because the developer may want to intercept the crash using a debugger.
@@ -960,28 +963,11 @@ EXPORT struct CoreBase * OpenCore(struct OpenInfo *Info)
 #ifdef _WIN32
    {
       STRING libpath;
-
-      if (!ResolvePath("system:modules/lib", RSF_NO_FILE_CHECK, &libpath)) {
-         LONG liblen, envlen;
-         UBYTE envpath[2048];
-
-         for (liblen=0; libpath[liblen]; liblen++);
-         LONG pos = StrCopy(libpath, envpath, sizeof(envpath)-4);
-         envpath[pos++] = '\\';
-         envpath[pos++] = ';';
-
-         if ((envlen = winGetEnv("PATH", envpath+pos, sizeof(envpath)-pos)) > 0) {
-            if (pos+envlen+2 < sizeof(envpath)) {
-               envpath[pos+envlen] = 0;
-               winSetEnv("PATH", envpath);
-            }
-            else LogErrorMsg("Buffer overflow when attempting to update DLL PATH.");
-         }
-         else FMSG("!","Failed to read the PATH.");
-
+      if (!ResolvePath("modules:lib", RSF_NO_FILE_CHECK, &libpath)) {
+         winSetDllDirectory(libpath);
          FreeResource(libpath);
       }
-      else FMSG("!","Failed to resolve system:modules/lib");
+      else FMSG("!","Failed to resolve modules:lib");
    }
 #endif
 
@@ -1838,7 +1824,7 @@ static LONG CrashHandler(LONG Code, APTR Address, LONG Continuable, LONG *Info)
    if (Code < EXP_END) {
       if (glCrashStatus IS 0) {
          if (glLogLevel >= 5) {
-            LogF("@Core","CRASH!"); // Using LogF is helpful for stepped output to indicate where the crash occurred
+            LogF("@Core","CRASH!"); // Using LogF is helpful because branched output can indicate where the crash occurred.
          }
          else fprintf(stderr, "\n\nCRASH!");
 
@@ -1849,7 +1835,7 @@ static LONG CrashHandler(LONG Code, APTR Address, LONG Continuable, LONG *Info)
             else if (Info[0] IS 0) type = "read";
             else if (Info[0] IS 8) type = "execution";
             else type = "access";
-            fprintf(stderr, "Attempted %s on address %p\n", type, (APTR)Info[1]);
+            fprintf(stderr, "Attempted %s on address %p\n", type, ((void **)(Info+1))[0]);
          }
          fprintf(stderr, "\n");
       }
@@ -2114,11 +2100,10 @@ static ERROR init_filesystem(void)
 
       #ifndef __ANDROID__ // For security reasons we do not use an external volume file for the Android build.
          {
-            LONG install = StrCopy(glSystemPath, buffer, sizeof(buffer));
             #ifdef _WIN32
-               StrCopy("config\\volumes.cfg", buffer+install, sizeof(buffer) - install - 1);
+               StrFormat(buffer, sizeof(buffer), "%sconfig\\volumes.cfg", glSystemPath);
             #else
-               StrCopy("config/volumes.cfg", buffer+install, sizeof(buffer) - install - 1);
+               StrFormat(buffer, sizeof(buffer), "%sconfig/volumes.cfg", glSystemPath);
             #endif
             SetString(glVolumes, FID_Path, buffer);
          }
@@ -2129,17 +2114,21 @@ static ERROR init_filesystem(void)
          return PostError(ERR_CreateObject);
       }
 
-      // Add system volumes that require run-time determination
+      // Add system volumes that require run-time determination.  For the avoidance of doubt, on Unix systems the default settings are:
+      //
+      // OPF_ROOT_PATH   : glRootPath   = /usr/local
+      // OPF_MODULE_PATH : glModulePath = %ROOT%/lib/parasol
+      // OPF_SYSTEM_PATH : glSystemPath = %ROOT%/share/parasol
 
       #ifdef _WIN32
          SetVolume(AST_NAME, "parasol", AST_PATH, glRootPath, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, AST_ICON, "users/user", TAGEND);
-         SetVolume(AST_NAME, "system", AST_PATH, glSystemPath, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, AST_ICON, "programs/tool", TAGEND);
+         SetVolume(AST_NAME, "system", AST_PATH, glRootPath, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, AST_ICON, "programs/tool", TAGEND);
 
          if (glModulePath[0]) {
             SetVolume(AST_NAME, "modules", AST_PATH, glModulePath, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, AST_ICON, "programs/tool", TAGEND);
          }
          else {
-            SetVolume(AST_NAME, "modules", AST_PATH, "system:modules/", AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, AST_ICON, "programs/tool", TAGEND);
+            SetVolume(AST_NAME, "modules", AST_PATH, "system:lib/", AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, AST_ICON, "programs/tool", TAGEND);
          }
       #elif __unix__
          // If device volumes are already set by the user, do not attempt to discover such devices.
@@ -2158,16 +2147,15 @@ static ERROR init_filesystem(void)
             }
          }
 */
-         SetVolume(AST_NAME, "parasol", AST_PATH, glRootPath, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, AST_ICON, "users/user",  TAGEND);
+         SetVolume(AST_NAME, "parasol", AST_PATH, glSystemPath, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, AST_ICON, "users/user",  TAGEND);
          SetVolume(AST_NAME, "system", AST_PATH, glSystemPath, AST_FLAGS, VOLUME_REPLACE, AST_ICON, "programs/tool",  TAGEND);
 
          if (glModulePath[0]) {
             SetVolume(AST_NAME, "modules", AST_PATH, glModulePath, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, AST_ICON, "programs/tool",  TAGEND);
          }
          else {
-            UBYTE path[200];
-            i = StrCopy(glSystemPath, path, sizeof(path));
-            StrCopy("modules/", path+i, sizeof(path)-i);
+            char path[200];
+            StrFormat(path, sizeof(path), "%slib/parasol/", glRootPath);
             SetVolume(AST_NAME, "modules", AST_PATH, path, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, AST_ICON, "programs/tool",  TAGEND);
          }
 
@@ -2184,15 +2172,16 @@ static ERROR init_filesystem(void)
       #ifdef __ANDROID__
          SetVolume(AST_NAME, "assets", AST_PATH, "CLASS:FileAssets", AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, TAGEND);
          SetVolume(AST_NAME, "templates", AST_PATH, "assets:templates/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "filetypes/empty",  TAGEND);
-         SetVolume(AST_NAME, "config", AST_PATH, "localcache:system/config/|assets:config/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "filetypes/empty",  TAGEND);
+         SetVolume(AST_NAME, "config", AST_PATH, "localcache:config/|assets:config/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "filetypes/empty",  TAGEND);
       #else
-         SetVolume(AST_NAME, "templates", AST_PATH, "programs:boot/templates/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "filetypes/empty",  TAGEND);
-         SetVolume(AST_NAME, "config", AST_PATH, "system:config/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "filetypes/empty",  TAGEND);
-         SetVolume(AST_NAME, "bin", AST_PATH, "programs:bin/", AST_FLAGS, VOLUME_HIDDEN, TAGEND);
+         SetVolume(AST_NAME, "templates", AST_PATH, "parasol:scripts/templates/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "filetypes/empty",  TAGEND);
+         SetVolume(AST_NAME, "config", AST_PATH, "parasol:config/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "filetypes/empty",  TAGEND);
+         //SetVolume(AST_NAME, "bin", AST_PATH, "parasol:bin/", AST_FLAGS, VOLUME_HIDDEN, TAGEND);
       #endif
 
       SetVolume(AST_NAME, "temp", AST_PATH, "user:temp/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "items/trash",  TAGEND);
-      SetVolume(AST_NAME, "fonts", AST_PATH, "system:fonts/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "items/charset",  TAGEND);
+      SetVolume(AST_NAME, "fonts", AST_PATH, "parasol:fonts/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "items/charset",  TAGEND);
+      SetVolume(AST_NAME, "styles", AST_PATH, "parasol:styles/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "tools/image_gallery",  TAGEND);
 
       // Some platforms need to have special volumes added - these are provided in the OpenInfo structure passed to
       // the Core.
@@ -2217,14 +2206,11 @@ static ERROR init_filesystem(void)
       }
 
       if (!StrMatch("default", glUserHomeFolder)) {
-         // Use the default folder as the main user path.  Optionally, the default folder can be defined as a
-         // location other than system:users/default/
-
          CSTRING path;
          if (!cfgReadValue(glVolumes, "User", "Path", &path)) {
             i = StrCopy(path, buffer, sizeof(buffer));
          }
-         else i = StrCopy("system:users/default/", buffer, sizeof(buffer));
+         else i = StrCopy("config:users/", buffer, sizeof(buffer));
       }
       else {
          #ifdef __unix__
@@ -2237,12 +2223,12 @@ static ERROR init_filesystem(void)
             }
             else if ((logname = getenv("LOGNAME")) AND (logname[0])) {
                LogMsg("Login name for home folder is \"%s\".", logname);
-               i = StrFormat(buffer, sizeof(buffer), "system:users/%s/", logname);
+               i = StrFormat(buffer, sizeof(buffer), "config:users/%s/", logname);
                buffer[i] = 0;
             }
             else {
                LogMsg("Unable to determine home folder, using default.");
-               i = StrCopy("system:users/default/", buffer, COPY_ALL);
+               i = StrCopy("config:users/default/", buffer, COPY_ALL);
             }
          #elif _WIN32
             // Attempt to get the path of the user's personal folder.  If the Windows system doesn't have this
@@ -2253,7 +2239,7 @@ static ERROR init_filesystem(void)
                while (buffer[i]) i++;
             }
             else {
-               i = StrCopy("system:users/", buffer, NULL);
+               i = StrCopy("config:users/", buffer, NULL);
                if ((winGetUserName(buffer+i, sizeof(buffer)-i) AND (buffer[i]))) {
                   while (buffer[i]) i++;
                   buffer[i++] = '/';
@@ -2262,23 +2248,23 @@ static ERROR init_filesystem(void)
                else i += StrCopy("default/", buffer+i, COPY_ALL);
             }
          #else
-            i = StrCopy("system:users/default/", buffer, COPY_ALL);
+            i = StrCopy("config:users/default/", buffer, COPY_ALL);
          #endif
 
          // Copy the default configuration files to the user: folder.  This also has the effect of creating the user
          // folder if it does not already exist.
 
-         if (StrMatch("system:users/default/", buffer) != ERR_Okay) {
+         if (StrMatch("config:users/default/", buffer) != ERR_Okay) {
             LONG location_type = 0;
             if ((AnalysePath(buffer, &location_type) != ERR_Okay) OR (location_type != LOC_DIRECTORY)) {
                buffer[i-1] = 0;
                SetDefaultPermissions(-1, -1, PERMIT_READ|PERMIT_WRITE);
-                  CopyFile("system:users/default/", buffer, NULL);
+                  CopyFile("config:users/default/", buffer, NULL);
                SetDefaultPermissions(-1, -1, 0);
                buffer[i-1] = '/';
             }
 
-            i += StrCopy("|system:users/default/", buffer+i, sizeof(buffer)-i);
+            i += StrCopy("|config:users/default/", buffer+i, sizeof(buffer)-i);
             buffer[i] = 0;
          }
       }
@@ -2454,8 +2440,9 @@ static ERROR init_filesystem(void)
    // FileView document templates
 
    if (!AnalysePath("templates:fileview/root.rpl", NULL)) SetDocView(":", "templates:fileview/root.rpl");
-   if (!AnalysePath("templates:fileview/system.rpl", NULL)) SetDocView("system:", "templates:fileview/system.rpl");
+   if (!AnalysePath("templates:fileview/fonts.rpl", NULL)) SetDocView("fonts:", "templates:fileview/fonts.rpl");
    if (!AnalysePath("templates:fileview/pictures.rpl", NULL)) SetDocView("pictures:", "templates:fileview/pictures.rpl");
+   if (!AnalysePath("templates:fileview/icons.rpl", NULL)) SetDocView("icons:", "templates:fileview/icons.rpl");
 
    // Create the 'archive' volume (non-essential)
 

@@ -486,7 +486,7 @@ static void apply_filter(objBitmap *Icon, CSTRING FilterName, STRING Category, S
       CSTRING style_path = "environment:config/icons.fluid"; // Environment takes precedence.
       if (AnalysePath(style_path, NULL)) {
          style_path = "style:icons.fluid"; // Application defined style sheet.
-         if (AnalysePath(style_path, NULL)) style_path = "config:styles/default/icons.fluid"; // System-wide default
+         if (AnalysePath(style_path, NULL)) style_path = "styles:default/icons.fluid"; // System-wide default
       }
 
       if (CreateObject(ID_FLUID, 0, &glIconStyle,

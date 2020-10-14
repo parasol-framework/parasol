@@ -2,7 +2,7 @@
 #define MODULES_XML 1
 
 // Name:      xml.h
-// Copyright: Paul Manias © 2001-2017
+// Copyright: Paul Manias © 2001-2020
 // Generator: idl-c
 
 #ifndef MAIN_H

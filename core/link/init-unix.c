@@ -48,13 +48,7 @@ const char * init_parasol(int argc, CSTRING *argv)
    closecore    = NULL;
    CSTRING msg  = NULL;
 
-   #ifdef _LP64
-      glCoreHandle = dlopen("/usr/local/parasol/system/modules-x64/core.so", RTLD_NOW);
-   #else
-      glCoreHandle = dlopen("/usr/local/parasol/system/modules/core.so", RTLD_NOW);
-   #endif
-
-   char path_buf[256];
+   char path_buf[256]; // NB: Assigned to info.SystemPath
 
    struct OpenInfo info;
    info.Detail    = ProgDebug;
@@ -65,7 +59,7 @@ const char * init_parasol(int argc, CSTRING *argv)
    info.Copyright = ProgCopyright;
    info.Args      = argv;
    info.ArgCount  = argc;
-   info.CoreVersion   = ProgCoreVersion; // Minimum required core version
+   info.CoreVersion = ProgCoreVersion; // Minimum required core version
    info.CompiledAgainst = VER_CORE; // The core that this code is compiled against
    info.Error           = ERR_Okay;
    info.Flags = OPF_CORE_VERSION|OPF_COMPILED_AGAINST|OPF_NAME|OPF_AUTHOR|OPF_DATE|OPF_COPYRIGHT|OPF_ARGS|OPF_ERROR;
@@ -76,26 +70,26 @@ const char * init_parasol(int argc, CSTRING *argv)
       info.Flags |= OPF_DETAIL|OPF_MAX_DEPTH;
    }
 
+   glCoreHandle = dlopen("/usr/local/lib/parasol/core.so", RTLD_NOW);
+
    if (!glCoreHandle) {
-      char *core_path;
-      #ifdef _LP64
-         core_path = "system/modules-x64/core.so";
-      #else
-         core_path = "system/modules/core.so";
-      #endif
+      //fprintf(stderr, "%s\n", dlerror());
+
+      char *core_path = "lib/core.so";
       glCoreHandle = dlopen(core_path, RTLD_NOW);
 
       if (glCoreHandle) {
          if (getcwd(path_buf, sizeof(path_buf))) {
             LONG i, len;
             for (len=0; path_buf[len]; len++);
-            for (i=0; ("/system/"[i]) AND (len < sizeof(path_buf)-1); i++) path_buf[len++] = "/system/"[i];
+            for (i=0; ("/lib/"[i]) AND (len < sizeof(path_buf)-1); i++) path_buf[len++] = "/lib/"[i];
             path_buf[len] = 0;
             info.SystemPath = path_buf;
             info.Flags |= OPF_SYSTEM_PATH;
          }
       }
       else {
+         // Determine if there is a valid 'lib' folder accompanying the binary.
          // This method of path retrieval only works on Linux (most types of Unix don't provide any support for this).
 
          char procfile[50];
@@ -120,7 +114,7 @@ const char * init_parasol(int argc, CSTRING *argv)
             }
 
             path_buf[len] = 0;
-            for (i=0; ("system/"[i]) AND (len < sizeof(path_buf)-1); i++) path_buf[len++] = "system/"[i];
+            for (i=0; ("lib/"[i]) AND (len < sizeof(path_buf)-1); i++) path_buf[len++] = "lib/"[i];
             path_buf[len] = 0;
             info.SystemPath = path_buf;
             info.Flags |= OPF_SYSTEM_PATH;

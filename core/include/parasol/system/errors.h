@@ -199,7 +199,7 @@
 #define ERR_Compression 173
 #define ERR_ExpectedFolder 174
 #define ERR_Immutable 175
-#define ERR_ReadFile 176
+#define ERR_ReadFileToBuffer 176
 #define ERR_Obsolete 177
 #define ERR_CreateResource 178
 #define ERR_NotPossible 179

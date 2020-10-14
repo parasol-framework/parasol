@@ -22,7 +22,7 @@ capabilities.
 #define INTERNATIONAL_INPUT
 #define PRV_SCINTILLA
 
-#define DBGDRAW //FMSG
+#define DBGDRAW(...) //FMSG
 
 #include <stdlib.h>
 #include <string.h>
@@ -421,17 +421,15 @@ static ERROR SCINTILLA_Clipboard(objScintilla *Self, struct acClipboard *Args)
 
 static ERROR SCINTILLA_DataFeed(objScintilla *Self, struct acDataFeed *Args)
 {
-   LONG i, keyval, total;
-
    if (!Args) return PostError(ERR_NullArgs);
 
    if (Args->DataType IS DATA_TEXT) {
-      STRING str;
+      CSTRING str;
 
       // Incoming text is appended to the end of the document
 
       if (!Args->Buffer) str = "";
-      else str = (STRING)Args->Buffer;
+      else str = (CSTRING)Args->Buffer;
 
       SCICALL(SCI_APPENDTEXT, StrLength(str), str);
    }
@@ -1188,8 +1186,7 @@ Search: The keyword could not be found.
 
 static ERROR SCINTILLA_ReplaceText(objScintilla *Self, struct sciReplaceText *Args)
 {
-   LONG start, end, flags, pos;
-   LONG len, targstart, targend, findlen, replacelen;
+   LONG start, end;
 
    if ((!Args) OR (!Args->Find) OR (!*Args->Find)) return PostError(ERR_NullArgs);
 
@@ -1221,17 +1218,17 @@ static ERROR SCINTILLA_ReplaceText(objScintilla *Self, struct sciReplaceText *Ar
    SCICALL(SCI_SETTARGETSTART, start);
    SCICALL(SCI_SETTARGETEND, end);
 
-   findlen = StrLength(Args->Find);
-   replacelen = StrLength(replace);
+   LONG findlen = StrLength(Args->Find);
+   LONG replacelen = StrLength(replace);
 
-   flags = ((Args->Flags & STF_CASE) ? SCFIND_MATCHCASE : 0) |
-           ((Args->Flags & STF_EXPRESSION) ? SCFIND_REGEXP : 0);
+   LONG flags = ((Args->Flags & STF_CASE) ? SCFIND_MATCHCASE : 0) |
+                ((Args->Flags & STF_EXPRESSION) ? SCFIND_REGEXP : 0);
 
    SCICALL(SCI_SETSEARCHFLAGS, flags);
 
    SCICALL(SCI_BEGINUNDOACTION);
 
-   pos = 0;
+   LONG pos = 0;
    while (pos != -1) {
       MSG("Search between %d - %d", start, end);
 
@@ -1248,7 +1245,7 @@ static ERROR SCINTILLA_ReplaceText(objScintilla *Self, struct sciReplaceText *Ar
          // Do the replace
 
          if (Args->Flags & STF_EXPRESSION) {
-            len = SCICALL(SCI_REPLACETARGETRE, (long unsigned int)-1, replace);
+            LONG len = SCICALL(SCI_REPLACETARGETRE, (long unsigned int)-1, replace);
             end = end + (len - findlen);
          }
          else {
@@ -1855,7 +1852,7 @@ static ERROR GET_Path(objScintilla *Self, CSTRING *Value)
 
 static ERROR SET_Path(objScintilla *Self, CSTRING Value)
 {
-   LogBranch((const char *)Value);
+   LogBranch("%s", Value);
 
    if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
 
@@ -2375,7 +2372,7 @@ static ERROR load_file(objScintilla *Self, CSTRING Path)
    objFile *file;
    STRING str;
    LONG size, len;
-   ERROR error;
+   ERROR error = ERR_Okay;
 
    if (!CreateObject(ID_FILE, NF_INTEGRAL, &file,
          FID_Flags|TLONG, FL_READ,
@@ -2445,8 +2442,6 @@ static ERROR load_file(objScintilla *Self, CSTRING Path)
 
 static void key_event(objScintilla *Self, evKey *Event, LONG Size)
 {
-   LONG i;
-
    if (Self->Flags & SCF_DISABLED) return;
    if (!(Self->Flags & SCF_EDIT)) return;
 
@@ -2558,7 +2553,7 @@ static void report_event(objScintilla *Self, LARGE Event)
 
 static void calc_longest_line(objScintilla *Self)
 {
-   LONG i, linewidth, col;
+   LONG linewidth;
    #define LINE_COUNT_LIMIT 2000
 
    if (!Self->Font) return;
@@ -2572,7 +2567,6 @@ static void calc_longest_line(objScintilla *Self)
 
    LONG cwidth = 0;
    LONG cline  = 0;
-   LONG cpos   = 0;
 
    if (Self->Wordwrap) {
       Self->LongestLine = 0;
@@ -2582,7 +2576,7 @@ static void calc_longest_line(objScintilla *Self)
 
    // Find the line with the longest width
 
-   for (i=0; i < lines; i++) {
+   for (LONG i=0; i < lines; i++) {
       LONG end = SCICALL(SCI_GETLINEENDPOSITION, i);
       if (Self->Font->FixedWidth) {
          LONG col = SCICALL(SCI_GETCOLUMN, end);

@@ -23,13 +23,14 @@ static int module_load(lua_State *Lua)
    ERROR error = load_include(Lua->Script, modname);
    if ((error != ERR_Okay) AND (error != ERR_FileNotFound)) {
       LogBack();
+      luaL_error(Lua, "Failed to load include file for the %s module.", modname);
       return 0;
    }
 
    OBJECTPTR module;
-   if (!CreateObject(ID_MODULE, 0, &module,
+   if (!(error = CreateObject(ID_MODULE, 0, &module,
          FID_Name|TSTR, modname,
-         TAGEND)) {
+         TAGEND))) {
       struct module *mod = (struct module *)lua_newuserdata(Lua, sizeof(struct module));
       ClearMemory(mod, sizeof(struct module));
 
@@ -44,7 +45,7 @@ static int module_load(lua_State *Lua)
    }
    else {
       LogBack();
-      luaL_error(Lua, "Failed to create module object.");
+      luaL_error(Lua, "Failed to load the %s module.", modname);
       return 0;
    }
 }

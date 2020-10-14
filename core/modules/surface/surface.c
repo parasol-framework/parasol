@@ -2601,7 +2601,7 @@ static ERROR load_styles(void)
 
          if (!glDefaultStyleScript) {
             CreateObject(ID_FLUID, 0, &glDefaultStyleScript,
-               FID_Path|TSTR, "config:styles/default/style.fluid",
+               FID_Path|TSTR, "styles:default/style.fluid",
                TAGEND);
          }
 
@@ -3265,7 +3265,7 @@ static ERROR load_style_values(void)
    if (AnalysePath(style_path, NULL) != ERR_Okay) {
       style_path = "environment:config/values.xml";
       if (AnalysePath(style_path, NULL) != ERR_Okay) {
-         style_path = "config:styles/default/values.xml";
+         style_path = "styles:default/values.xml";
       }
    }
 

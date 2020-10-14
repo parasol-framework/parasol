@@ -30,13 +30,6 @@
     </field>
 
     <field>
-      <name>Handle</name>
-      <comment>Socket FD</comment>
-      <access read="R">Read</access>
-      <type>INT</type>
-    </field>
-
-    <field>
       <name>Incoming</name>
       <comment>Callback for data being received from the socket</comment>
       <access read="R">Read</access>

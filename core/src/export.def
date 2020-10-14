@@ -1,5 +1,0 @@
-EXPORTS
-	CleanSystem @ 1 ;
-	CloseCore @ 2 ;
-	Expunge @ 3 ;
-	OpenCore @ 4 ;

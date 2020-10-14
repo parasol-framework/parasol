@@ -93,7 +93,7 @@ FDEF argsPreciseTime[] = { { "Result", FD_LARGE }, { 0, 0 } };
 FDEF argsPrintDiagnosis[] = { { "Void", FD_VOID }, { "Process", FD_LONG }, { "Signal", FD_LONG }, { 0, 0 } };
 FDEF argsProcessMessages[] = { { "Error", FD_LONG|FD_ERROR }, { "Flags", FD_LONG }, { "TimeOut", FD_LONG }, { 0, 0 } };
 FDEF argsRandomNumber[] = { { "Result", FD_LONG }, { "Range", FD_LONG }, { 0, 0 } };
-FDEF argsReadFile[] = { { "Error", FD_LONG|FD_ERROR }, { "Path", FD_STR }, { "Buffer", FD_BUFFER|FD_PTR }, { "BufferSize", FD_LONG|FD_BUFSIZE }, { "Result", FD_LONG|FD_RESULT }, { 0, 0 } };
+FDEF argsReadFileToBuffer[] = { { "Error", FD_LONG|FD_ERROR }, { "Path", FD_STR }, { "Buffer", FD_BUFFER|FD_PTR }, { "BufferSize", FD_LONG|FD_BUFSIZE }, { "Result", FD_LONG|FD_RESULT }, { 0, 0 } };
 FDEF argsReallocMemory[] = { { "Error", FD_LONG|FD_ERROR }, { "Memory", FD_PTR }, { "Size", FD_LONG }, { "Address", FD_PTR|FD_ALLOC|FD_RESULT }, { "ID", FD_LONG|FD_RESULT }, { 0, 0 } };
 FDEF argsRegisterFD[] = { { "Error", FD_LONG|FD_ERROR }, { "FD", FD_PTR }, { "Flags", FD_LONG }, { "Routine", FD_PTR }, { "Data", FD_PTR }, { 0, 0 } };
 FDEF argsReleaseMemory[] = { { "Result", FD_LONG }, { "Address", FD_PTR }, { 0, 0 } };
@@ -369,7 +369,7 @@ const struct Function glFunctions[] = {
    { (APTR)SetDefaultPermissions, "SetDefaultPermissions", argsSetDefaultPermissions },
    { (APTR)ResolveUserID, "ResolveUserID", argsResolveUserID },
    { (APTR)ResolveGroupID, "ResolveGroupID", argsResolveGroupID },
-   { (APTR)pReadFile, "ReadFile", argsReadFile },
+   { (APTR)ReadFileToBuffer, "ReadFileToBuffer", argsReadFileToBuffer },
    { (APTR)LoadFile, "LoadFile", argsLoadFile },
    { (APTR)UnloadFile, "UnloadFile", argsUnloadFile },
    { (APTR)AddInfoTag, "AddInfoTag", argsAddInfoTag },

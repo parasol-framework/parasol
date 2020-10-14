@@ -3,6 +3,7 @@
 #include "jpeglib.h"
 #include "jversion.h"
 #include "jerror.h"
+#include <stdlib.h>
 
 #ifdef USE_WINDOWS_MESSAGEBOX
 #include <windows.h>

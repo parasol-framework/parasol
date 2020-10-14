@@ -476,7 +476,7 @@ It is possible to set this field, but only after initialisation of the surface o
 
 static ERROR GET_Layout_AbsX(objLayout *Self, LONG *Value)
 {
-   LONG absx;
+   LONG absx = 0;
    if (!drwGetSurfaceCoords(Self->SurfaceID, NULL, NULL, &absx, NULL, NULL, NULL)) {
       *Value = absx + Self->X;
       return ERR_Okay;
@@ -486,7 +486,7 @@ static ERROR GET_Layout_AbsX(objLayout *Self, LONG *Value)
 
 static ERROR SET_Layout_AbsX(objLayout *Self, LONG Value)
 {
-   LONG absx;
+   LONG absx = 0;
    if (!drwGetSurfaceCoords(Self->SurfaceID, NULL, NULL, &absx, NULL, NULL, NULL)) {
       Self->X = Value - absx;
       return ERR_Okay;
@@ -507,7 +507,7 @@ It is possible to set this field, but only after initialisation of the surface o
 
 static ERROR GET_Layout_AbsY(objLayout *Self, LONG *Value)
 {
-   LONG absy;
+   LONG absy = 0;
    if (!drwGetSurfaceCoords(Self->SurfaceID, NULL, NULL, NULL, &absy, NULL, NULL)) {
       *Value = absy + Self->Y;
       return ERR_Okay;
@@ -517,7 +517,7 @@ static ERROR GET_Layout_AbsY(objLayout *Self, LONG *Value)
 
 static ERROR SET_Layout_AbsY(objLayout *Self, LONG Value)
 {
-   LONG absy;
+   LONG absy = 0;
    if (!drwGetSurfaceCoords(Self->SurfaceID, NULL, NULL, NULL, &absy, NULL, NULL)) {
       Self->Y = Value - absy;
       return ERR_Okay;

@@ -15,7 +15,7 @@ Font: Provides font management functionality and hosts the Font and FontServer c
 
 -END-
 
-Switching from fonts.cfg to fonts.json or fonts.xml would be a lot easier to process, e.g.
+TODO: Switching from fonts.cfg to fonts.json or fonts.xml would be a lot easier to process, e.g.
 
   <fonts>
     <font name="Helvete" points="7,8,9,11" scalable="1" styles="Bold,Bold Italic,Italic,Regular">
@@ -329,14 +329,14 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    LONG type;
    UBYTE refresh;
 
-   if ((AnalysePath("config:fonts.cfg", &type) != ERR_Okay) OR (type != LOC_FILE)) refresh = TRUE;
+   if ((AnalysePath("parasol:fonts/fonts.cfg", &type) != ERR_Okay) OR (type != LOC_FILE)) refresh = TRUE;
    else refresh = FALSE;
 
    OBJECTPTR config;
    if (!NewLockedObject(ID_CONFIG, 0, &config, &glConfigID)) {
       SetFields(config,
          FID_Name|TSTR, "cfgSystemFonts",
-         FID_Path|TSTR, "config:fonts.cfg",
+         FID_Path|TSTR, "parasol:fonts/fonts.cfg",
          TAGEND);
       if (!acInit(config)) {
          if (refresh) fntRefreshFonts();
@@ -1549,7 +1549,7 @@ static ERROR fntRefreshFonts(void)
 
    OBJECTPTR file;
    if (!CreateObject(ID_FILE, 0, &file,
-         FID_Path|TSTR,   "config:fonts.cfg",
+         FID_Path|TSTR,   "parasol:fonts/fonts.cfg",
          FID_Flags|TLONG, FL_NEW|FL_WRITE,
          TAGEND)) {
       acSaveToObject(config, file->UniqueID, 0);

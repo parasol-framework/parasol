@@ -12,12 +12,6 @@
 #define MODVERSION_NETWORK (1)
 
 
-#if __has_include(<openssl/ssl.h>)
-   #define ENABLE_SSL
-#else
-   #undef ENABLE_SSL
-#endif
-
 #ifdef ENABLE_SSL
 #include "openssl/ssl.h"
 #endif
@@ -94,11 +88,11 @@ typedef struct rkClientSocket {
    APTR     UserData;               // Free for user data storage.
    FUNCTION Outgoing;               // Callback for data being sent over the socket
    FUNCTION Incoming;               // Callback for data being received from the socket
-   LONG     Handle;                 // Socket FD
    LONG     MsgLen;                 // Length of the current incoming message
    LONG     ReadCalled:1;           // TRUE if the Read action has been called
 
 #ifdef PRV_CLIENTSOCKET
+    SOCKET_HANDLE Handle;       // Socket FD
     struct NetQueue WriteQueue; // Writes to the network socket are queued here in a buffer
     struct NetQueue ReadQueue;  // Read queue, often used for reading whole messages
   
@@ -199,8 +193,14 @@ typedef struct rkNetSocket {
       #ifdef NO_NETRECURSION
          WORD WinRecursion; // For win32_netresponse()
       #endif
-      void (*ReadSocket)(HOSTHANDLE FD, struct rkNetSocket *);
-      void (*WriteSocket)(HOSTHANDLE FD, struct rkNetSocket *);
+      union {
+         void (*ReadSocket)(SOCKET_HANDLE, struct rkNetSocket *);
+         void (*ReadClientSocket)(SOCKET_HANDLE, objClientSocket *);
+      };
+      union {
+         void (*WriteSocket)(SOCKET_HANDLE, struct rkNetSocket *);
+         void (*WriteClientSocket)(SOCKET_HANDLE, objClientSocket *);
+      };
    #endif
    #ifdef ENABLE_SSL
       SSL *SSL;

@@ -10,14 +10,9 @@ This program tests the locking of private objects between threads.
 
 *****************************************************************************/
 
-#ifdef __unix__
-#define _GNU_SOURCE
-#endif
-
 #include <pthread.h>
 
 #include <parasol/startup.h>
-
 
 STRING ProgName      = "ObjectLocking";
 STRING ProgAuthor    = "Paul Manias";

@@ -1,0 +1,91 @@
+-- $FLUID
+--
+-- Flute (FLUid TEst) provides a standard framework for the execution of unit tests in Fluid.
+
+   require 'common'
+
+//=====================================================================================================================
+
+function runTests()
+   glTestTotal = 0
+   glTestsPassed = 0
+
+   local err, t = mSys.AnalysePath(glFile)
+   if (err != ERR_Okay) or (t != LOC_FILE) then
+      print("The targeted source file doesn't exist: " .. glFile)
+      return
+   end
+
+   local body = loadFile(glFile)
+
+   if (body.init != nil) then
+      local folder = file.splitPath(glFile)
+      body.init(folder)
+   end
+
+   glTestTotal = glTestTotal + #body.tests
+
+   local i = 0
+   for _,func in ipairs(body.tests) do
+      i = i + 1
+      if (type(func) == "string") then
+         print("-- Test " .. i .. ": " .. func .. " --")
+         func = _G[func]
+      else
+         print(i .. ". <Unnamed>")
+      end
+
+      local startTime = mSys.PreciseTime()
+      local status, result = pcall(func)
+      local totalTime = (mSys.PreciseTime() - startTime) / 1000000
+
+      if (status == false) then
+         print(result)
+      else
+         if nz(result) then logOutput(result) end
+         print(string.format("PASS: %.6f sec", totalTime))
+         glTestsPassed = glTestsPassed + 1
+      end
+
+      collectgarbage()
+   end
+
+   if (body.cleanup != nil) then
+      body.cleanup()
+   end
+
+   print("--")
+
+   if (glTestsPassed < glTestTotal) then
+      // Setting the errorString will ensure that an error code is returned to the shell.
+      glSelf.errorString = "Ran " .. glTestTotal .. " tests, passed " .. glTestsPassed
+   end
+
+   print("Ran " .. glTestTotal .. " tests, passed " .. glTestsPassed)
+end
+
+//=====================================================================================================================
+// Unit tests should call logOutput() for the purpose of formally logging output for the current test.
+
+function logOutput(Message)
+   print(Message)
+end
+
+//=====================================================================================================================
+
+   glFile = arg("file")
+   glSelf = obj.find('self')
+
+   mSys = mod.load("core")
+
+   if not nz(glFile) then
+      print("Flute provides a standard framework for the execution of unit tests in Fluid.")
+      print("")
+      print("Example usage:")
+      print("")
+      print("   fluid flute.fluid file=[file]")
+      print("")
+      return
+   end
+
+   runTests()

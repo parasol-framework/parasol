@@ -782,8 +782,8 @@ static ERROR GET_Variables(objScript *Self, struct KeyStore **Value)
 WorkingPath: Defines the script's working path (folder).
 
 The working path for a script is defined here.  By default this is defined as the location from which the script was
-loaded, without the file name.  If this cannot be determined then the working path for the parent task is used (this is
-usually set to the location of the parasol-gui program).
+loaded, without the file name.  If this cannot be determined then the working path for the parent process is used
+(this is usually set to the location of the program).
 
 The working path is always fully qualified with a slash or colon at the end of the string.
 

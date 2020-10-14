@@ -721,7 +721,7 @@ static ERROR FLUID_Init(objScript *Self, APTR Void)
                LogMsg("Using cache '%s'", Self->CacheFile);
                if (!AllocMemory(cache_size, MEM_STRING|MEM_NO_CLEAR|Self->Head.MemFlags, &Self->String, NULL)) {
                   LONG len;
-                  error = ReadFile(Self->CacheFile, Self->String, cache_size, &len);
+                  error = ReadFileToBuffer(Self->CacheFile, Self->String, cache_size, &len);
                   loaded_size = cache_size;
                }
                else error = ERR_AllocMemory;
@@ -732,7 +732,7 @@ static ERROR FLUID_Init(objScript *Self, APTR Void)
       if ((!error) AND (!loaded_size)) {
          if (!AllocMemory(src_size+1, MEM_STRING|MEM_NO_CLEAR, &Self->String, NULL)) {
             LONG len;
-            if (!ReadFile(Self->Path, Self->String, src_size, &len)) {
+            if (!ReadFileToBuffer(Self->Path, Self->String, src_size, &len)) {
                Self->String[len] = 0;
 
                // Unicode BOM handler - in case the file starts with a BOM header.
@@ -747,7 +747,7 @@ static ERROR FLUID_Init(objScript *Self, APTR Void)
                MSG("Failed to read " PF64() " bytes from '%s'", src_size, Self->Path);
                FreeResource(Self->String);
                Self->String = NULL;
-               error = ERR_ReadFile;
+               error = ERR_ReadFileToBuffer;
             }
          }
          else error = ERR_AllocMemory;

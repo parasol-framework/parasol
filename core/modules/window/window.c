@@ -94,7 +94,6 @@ will be executed when certain actions occur to the window.  The following table 
 #include <parasol/modules/window.h>
 #include <parasol/modules/surface.h>
 #include <parasol/modules/display.h>
-#include "window_def.c"
 
 #undef NULL
 #define NULL 0
@@ -107,11 +106,10 @@ static OBJECTPTR modSurface = NULL, modDisplay = NULL;
 static OBJECTID glDefaultDisplay = NULL;
 static LONG glDisplayType = 0;
 
-static const struct FieldDef clResizeFlags[];
-static const struct FieldDef clFlags[];
-static const struct FieldArray clFields[];
-static const struct MethodArray clMethods[];
-static const struct ActionArray clActions[];
+static const struct FieldDef clWindowFlags[];
+static const struct FieldArray clWindowFields[];
+static const struct MethodArray clWindowMethods[];
+static const struct ActionArray clWindowActions[];
 
 struct VarString {
    STRING Field;
@@ -154,9 +152,9 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
       FID_Name|TSTRING,   "Window",
       FID_Category|TLONG, CCF_GUI,
       FID_Flags|TLONG,    CLF_PROMOTE_INTEGRAL|class_flags,
-      FID_Actions|TPTR,   clActions,
-      FID_Methods|TARRAY, clMethods,
-      FID_Fields|TARRAY,  clFields,
+      FID_Actions|TPTR,   clWindowActions,
+      FID_Methods|TARRAY, clWindowMethods,
+      FID_Fields|TARRAY,  clWindowFields,
       FID_Size|TLONG,     sizeof(objWindow),
       FID_Path|TSTR,      MOD_PATH,
       TAGEND));
@@ -2092,73 +2090,11 @@ static void draw_border(objWindow *Self, objSurface *Surface, objBitmap *Bitmap)
 
 //****************************************************************************
 
-static const struct FieldDef clFlags[] = {
-   { "Disabled",       WNF_DISABLED },
-   { "SmartLimits",    WNF_SMART_LIMITS },
-   { "Background",     WNF_BACKGROUND },
-   { "Video",          WNF_VIDEO },
-   { "NoMargins",      WNF_NO_MARGINS },
-   { "Borderless",     WNF_BORDERLESS },
-   { "ForcePos",       WNF_FORCE_POS },
-   { NULL, 0 }
-};
+#include "window_def.c"
 
-static const struct FieldDef clResizeFlags[] = {
-   { "Top",         EDGE_TOP },
-   { "Left",        EDGE_LEFT },
-   { "Right",       EDGE_RIGHT },
-   { "Bottom",      EDGE_BOTTOM },
-   { "TopLeft",     EDGE_TOP_LEFT },
-   { "TopRight",    EDGE_TOP_RIGHT },
-   { "BottomLeft",  EDGE_BOTTOM_LEFT },
-   { "BottomRight", EDGE_BOTTOM_RIGHT },
-   { "All",         EDGE_ALL },
-   { NULL, 0 }
-};
-
-static const struct FieldDef clOrientation[] = {
-   { "Any",       WOR_ANY },
-   { "Portrait",  WOR_PORTRAIT },
-   { "Landscape", WOR_LANDSCAPE },
-   { NULL, 0 }
-};
-
-static const struct ActionArray clActions[] = {
-   { AC_AccessObject,  WINDOW_AccessObject },
-   { AC_ActionNotify,  WINDOW_ActionNotify },
-   { AC_Activate,      WINDOW_Activate },
-   { AC_Disable,       WINDOW_Disable },
-   { AC_Enable,        WINDOW_Enable },
-   { AC_Focus,         WINDOW_Focus },
-   { AC_Free,          WINDOW_Free },
-   { AC_Hide,          WINDOW_Hide },
-   { AC_Init,          WINDOW_Init },
-   { AC_Move,          WINDOW_Move },
-   { AC_MoveToPoint,   WINDOW_MoveToPoint },
-   { AC_MoveToBack,    WINDOW_MoveToBack },
-   { AC_MoveToFront,   WINDOW_MoveToFront },
-   { AC_NewChild,      WINDOW_NewChild },
-   { AC_NewObject,     WINDOW_NewObject },
-   { AC_NewOwner,      WINDOW_NewOwner },
-   { AC_Redimension,   WINDOW_Redimension },
-   { AC_ReleaseObject, WINDOW_ReleaseObject },
-   { AC_Resize,        WINDOW_Resize },
-   { AC_Show,          WINDOW_Show },
-   { 0, NULL }
-};
-
-static const struct FunctionField argsMaximise[] = { { "Toggle", FD_LONG }, { NULL, 0 } };
-
-static const struct MethodArray clMethods[] = {
-   { MT_WinMaximise,  WINDOW_Maximise,  "Maximise",  argsMaximise, sizeof(struct winMaximise) },
-   { MT_WinMinimise,  WINDOW_Minimise,  "Minimise",  NULL, 0 },
-   { MT_WinClose,     WINDOW_Close,     "Close",     NULL, 0 },
-   { 0, NULL, NULL, NULL, 0 }
-};
-
-static const struct FieldArray clFields[] = {
+static const struct FieldArray clWindowFields[] = {
    { "Surface",          FDF_INTEGRAL|FDF_R,   ID_SURFACE,NULL, NULL },
-   { "Flags",            FDF_LONGFLAGS|FDF_RW, (MAXINT)&clFlags,NULL, NULL },
+   { "Flags",            FDF_LONGFLAGS|FDF_RW, (MAXINT)&clWindowFlags,NULL, NULL },
    { "InsideBorder",     FDF_LONG|FDF_RI,      0, NULL, NULL },
    { "Center",           FDF_LONG|FDF_RI,      0, NULL, NULL },
    { "Minimise",         FDF_LONG|FDF_RW,      0, NULL, SET_Minimise },
@@ -2176,11 +2112,11 @@ static const struct FieldArray clFields[] = {
    { "MaximiseObject",   FDF_OBJECTID|FDF_RI,  0, NULL, NULL },
    { "MoveToBackObject", FDF_OBJECTID|FDF_RI,  0, NULL, NULL },
    { "CloseObject",      FDF_OBJECTID|FDF_RI,  0, NULL, NULL },
-   { "Resize",           FDF_LONGFLAGS|FDF_I,  (MAXINT)&clResizeFlags, NULL, NULL },
+   { "Resize",           FDF_LONGFLAGS|FDF_I,  (MAXINT)&clWindowResizeFlags, NULL, NULL },
    { "ResizeBorder",     FDF_LONG|FDF_RI,      0, NULL, NULL },
    { "Canvas",           FDF_OBJECTID|FDF_R,   0, GET_Canvas, NULL },
    { "UserFocus",        FDF_OBJECTID|FDF_RW,  0, NULL, NULL },
-   { "Orientation",      FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clOrientation, NULL, SET_Orientation },
+   { "Orientation",      FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clWindowOrientation, NULL, SET_Orientation },
    { "ClientLeft",       FDF_LONG|FDF_RI,      0, NULL, NULL },
    { "ClientRight",      FDF_LONG|FDF_RI,      0, NULL, NULL },
    { "ClientTop",        FDF_LONG|FDF_RI,      0, NULL, NULL },

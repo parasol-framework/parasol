@@ -1860,7 +1860,7 @@ struct CoreBase {
    void (*_SetDefaultPermissions)(LONG, LONG, LONG);
    CSTRING (*_ResolveUserID)(LONG);
    CSTRING (*_ResolveGroupID)(LONG);
-   ERROR (*_ReadFile)(CSTRING, APTR, LONG, LONG *);
+   ERROR (*_ReadFileToBuffer)(CSTRING, APTR, LONG, LONG *);
    ERROR (*_LoadFile)(CSTRING, LONG, struct CacheFile **);
    void (*_UnloadFile)(struct CacheFile *);
    ERROR (*_AddInfoTag)(struct FileInfo *, CSTRING, CSTRING);
@@ -2054,7 +2054,7 @@ struct CoreBase {
 #define SetDefaultPermissions(...) (CoreBase->_SetDefaultPermissions)(__VA_ARGS__)
 #define ResolveUserID(...) (CoreBase->_ResolveUserID)(__VA_ARGS__)
 #define ResolveGroupID(...) (CoreBase->_ResolveGroupID)(__VA_ARGS__)
-#define ReadFile(...) (CoreBase->_ReadFile)(__VA_ARGS__)
+#define ReadFileToBuffer(...) (CoreBase->_ReadFileToBuffer)(__VA_ARGS__)
 #define LoadFile(...) (CoreBase->_LoadFile)(__VA_ARGS__)
 #define UnloadFile(...) (CoreBase->_UnloadFile)(__VA_ARGS__)
 #define AddInfoTag(...) (CoreBase->_AddInfoTag)(__VA_ARGS__)

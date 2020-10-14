@@ -163,12 +163,12 @@ Scintilla::ElapsedTime::ElapsedTime()
 
 double Scintilla::ElapsedTime::Duration(bool reset)
 {
-   LARGE systime = PreciseTime()/1000LL;
-   LARGE lasttime = bigBit << 32 + *(ULONG*)&littleBit;
+   LARGE systime = PreciseTime() / 1000LL;
+   LARGE lasttime = ((LARGE)bigBit<<32) + *(ULONG*)&littleBit;
    DOUBLE elapsed = systime - lasttime;
 
    if (reset) {
-      bigBit = (long)(systime >> 32);
+      bigBit = (long)(systime>>32);
       *(ULONG*)&littleBit = (systime & 0xFFFFFFFF);
    }
 
@@ -211,7 +211,7 @@ bool Scintilla::Platform::MouseButtonBounce()
 
 void Scintilla::Platform::DebugDisplay(const char *string)
 {
-   LogF("Scintilla:", string);
+   LogF("Scintilla:", "%s", string);
 }
 
 bool Scintilla::Platform::IsKeyDown(int)
@@ -317,7 +317,7 @@ bool Scintilla::Platform::ShowAssertionPopUps(bool assertionPopUps_) {
 
 void Scintilla::Platform::Assert(const char *c, const char *file, int line)
 {
-   LogF("@Platform::Assert:","%s, File %s, Line %s", c, file, line);
+   LogF("@Platform::Assert:","%s, File %s, Line %d", c, file, line);
    SelfDestruct();
 }
 

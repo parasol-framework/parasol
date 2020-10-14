@@ -11,6 +11,10 @@
 extern "C" {
 #endif
 
+#ifndef PLATFORM_CONFIG_H
+#include <parasol/config.h>
+#endif
+
 #ifdef _MSC_VER
 #pragma warning (disable : 4244 4311 4312) // Disable annoying VC++ typecast warnings
 #endif
@@ -66,39 +70,6 @@ extern "C" {
 #define LOG FMSG
 #define LOGBACK STEP
 
-#ifdef _WIN32
-#ifndef _WINDEF_H
-#define __export __declspec(dllexport)
-#endif
-#else
-#define __export
-#endif
-
-#define EXPORT __export
-
-#ifndef __arm__
-//#define __pentium__   // Is this a Pentium CPU? (auto-defined by GCC, use -mpentium)
-#define __x86__         // Does the CPU support the x86 instruction set? (i486 minimum)
-#endif
-
-#define __corebase__  // Use CoreBase to make function calls
-
-#ifdef __arm__
-#define CPU_PC CPU_ARMEABI
-#elif __pentium__
-#define CPU_PC CPU_I686 // What is the minimum required CPU for the compiled code?
-#else
-#define CPU_PC CPU_I686
-#endif
-
-#ifndef REVERSE_BYTEORDER
-#define REVERSE_BYTEORDER TRUE      // Reverse byte order / little endian (true for Intel and ARM CPU's)
-#endif
-
-#ifndef LITTLE_ENDIAN
-#define LITTLE_ENDIAN TRUE
-#endif
-
 #define PRIVATE_FIELDS
 
 #undef  NULL    // Turn off any previous definition of NULL
@@ -134,16 +105,10 @@ extern "C" {
 #define CODE_MEMH 0x4D454D48L
 #define CODE_MEMT 0x4D454D54L
 
-#ifdef __CYGWIN__
-#define PF64() "%lld"
-#elif _WIN32
- #if defined(_LP64) || defined(__x86_64__) // msys gcc-64 accepts %lld, but gcc-32 only %I64
-  #define PF64() "%lld"
- #else
+#ifdef PRINTF64I
   #define PF64() "%I64d"
- #endif
 #else
-#define PF64() "%lld"
+  #define PF64() "%lld"
 #endif
 
 /*****************************************************************************
@@ -268,7 +233,7 @@ struct OpenInfo {
 #undef FD_READ
 #undef FD_WRITE
 
-#if defined(_LP64) || defined(__x86_64__)
+#ifdef _LP64
 #define FD_PTR64 FD_POINTER
 #else
 #define FD_PTR64 0

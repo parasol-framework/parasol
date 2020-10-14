@@ -454,13 +454,12 @@ static void hook_debug(lua_State *Lua, lua_Debug *Info)
 
 static void make_table(lua_State *Lua, LONG Type, LONG Elements, CPTR Data)
 {
-   LONG i;
-
    FMSG("make_table()","Type: $%.8x, Elements: %d, Data: %p", Type, Elements, Data);
 
    if (Elements < 0) {
       if (!Data) Elements = 0;
       else {
+         LONG i = 0;
          switch (Type & (FD_DOUBLE|FD_LARGE|FD_FLOAT|FD_POINTER|FD_OBJECT|FD_STRING|FD_LONG|FD_WORD|FD_BYTE)) {
             case FD_STRING:
             case FD_OBJECT:
@@ -471,7 +470,6 @@ static void make_table(lua_State *Lua, LONG Type, LONG Elements, CPTR Data)
             case FD_LONG:    for (i=0; ((LONG *)Data)[i]; i++); break;
             case FD_WORD:    for (i=0; ((WORD *)Data)[i]; i++); break;
             case FD_BYTE:    for (i=0; ((BYTE *)Data)[i]; i++); break;
-            default:         i = 0; break;
          }
 
          Elements = i;
@@ -482,15 +480,15 @@ static void make_table(lua_State *Lua, LONG Type, LONG Elements, CPTR Data)
    if (!Data) return;
 
    switch(Type & (FD_DOUBLE|FD_LARGE|FD_FLOAT|FD_POINTER|FD_OBJECT|FD_STRING|FD_LONG|FD_WORD|FD_BYTE)) {
-      case FD_STRING:  for (i=0; i < Elements; i++) { lua_pushinteger(Lua, i+1); lua_pushstring(Lua, ((CSTRING *)Data)[i]); lua_settable(Lua, -3); } break;
-      case FD_OBJECT:  for (i=0; i < Elements; i++) { lua_pushinteger(Lua, i+1); push_object(Lua, ((APTR *)Data)[i]); lua_settable(Lua, -3); } break;
-      case FD_POINTER: for (i=0; i < Elements; i++) { lua_pushinteger(Lua, i+1); lua_pushlightuserdata(Lua, ((APTR *)Data)[i]); lua_settable(Lua, -3); } break;
-      case FD_FLOAT:   for (i=0; i < Elements; i++) { lua_pushinteger(Lua, i+1); lua_pushnumber(Lua, ((FLOAT *)Data)[i]); lua_settable(Lua, -3); } break;
-      case FD_DOUBLE:  for (i=0; i < Elements; i++) { lua_pushinteger(Lua, i+1); lua_pushnumber(Lua, ((DOUBLE *)Data)[i]); lua_settable(Lua, -3); } break;
-      case FD_LARGE:   for (i=0; i < Elements; i++) { lua_pushinteger(Lua, i+1); lua_pushnumber(Lua, ((LARGE *)Data)[i]); lua_settable(Lua, -3); } break;
-      case FD_LONG:    for (i=0; i < Elements; i++) { lua_pushinteger(Lua, i+1); lua_pushinteger(Lua, ((LONG *)Data)[i]); lua_settable(Lua, -3); } break;
-      case FD_WORD:    for (i=0; i < Elements; i++) { lua_pushinteger(Lua, i+1); lua_pushinteger(Lua, ((WORD *)Data)[i]); lua_settable(Lua, -3); } break;
-      case FD_BYTE:    for (i=0; i < Elements; i++) { lua_pushinteger(Lua, i+1); lua_pushinteger(Lua, ((BYTE *)Data)[i]); lua_settable(Lua, -3); } break;
+      case FD_STRING:  for (LONG i=0; i < Elements; i++) { lua_pushinteger(Lua, i+1); lua_pushstring(Lua, ((CSTRING *)Data)[i]); lua_settable(Lua, -3); } break;
+      case FD_OBJECT:  for (LONG i=0; i < Elements; i++) { lua_pushinteger(Lua, i+1); push_object(Lua, ((APTR *)Data)[i]); lua_settable(Lua, -3); } break;
+      case FD_POINTER: for (LONG i=0; i < Elements; i++) { lua_pushinteger(Lua, i+1); lua_pushlightuserdata(Lua, ((APTR *)Data)[i]); lua_settable(Lua, -3); } break;
+      case FD_FLOAT:   for (LONG i=0; i < Elements; i++) { lua_pushinteger(Lua, i+1); lua_pushnumber(Lua, ((FLOAT *)Data)[i]); lua_settable(Lua, -3); } break;
+      case FD_DOUBLE:  for (LONG i=0; i < Elements; i++) { lua_pushinteger(Lua, i+1); lua_pushnumber(Lua, ((DOUBLE *)Data)[i]); lua_settable(Lua, -3); } break;
+      case FD_LARGE:   for (LONG i=0; i < Elements; i++) { lua_pushinteger(Lua, i+1); lua_pushnumber(Lua, ((LARGE *)Data)[i]); lua_settable(Lua, -3); } break;
+      case FD_LONG:    for (LONG i=0; i < Elements; i++) { lua_pushinteger(Lua, i+1); lua_pushinteger(Lua, ((LONG *)Data)[i]); lua_settable(Lua, -3); } break;
+      case FD_WORD:    for (LONG i=0; i < Elements; i++) { lua_pushinteger(Lua, i+1); lua_pushinteger(Lua, ((WORD *)Data)[i]); lua_settable(Lua, -3); } break;
+      case FD_BYTE:    for (LONG i=0; i < Elements; i++) { lua_pushinteger(Lua, i+1); lua_pushinteger(Lua, ((BYTE *)Data)[i]); lua_settable(Lua, -3); } break;
    }
 }
 

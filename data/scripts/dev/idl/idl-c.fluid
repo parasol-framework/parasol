@@ -1,0 +1,2314 @@
+-- This program produces C/C++ headers and documentation from Parasol FDL files.
+--
+-- Usage: fluid sdk:scripts/idl-c.fluid src=source.fdl
+-- Example: fluid sdk:scripts/idl-c.fluid src=sdk:core/modules/core/core.fdl
+
+   include 'core'
+   include 'xml'
+
+   require 'common'
+
+   iStruct = struct -- Save the struct interface because struct() is going to overwrite it.
+
+   glSelf = obj.find('self')
+   glPath = glSelf.workingPath
+
+   loadFile(glPath .. 'idl-doc.fluid')
+
+-----------------------------------------------------------------------------------------------------------------------
+
+glOutput = { }
+
+function output(String)
+   table.insert(glOutput, nz(String, ''))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+
+function checkOptions(Options)
+   if (type(Options) != 'table') then
+      if (type(Options) != 'nil') then
+         error('Invalid option type "' .. type(Options) .. '", expected table.')
+      else
+         return { }
+      end
+   end
+   return Options
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- FDL function
+
+function c_include(...)
+   for k,v in ipairs({...}) do
+      if (v:find('^<(.+)>$') != nil) then
+         local inc = v:match('^<parasol/(.+)>$')
+
+         if (inc != nil) then inc = inc:gsub('[/%.]', '_') end
+
+         if (inc != nil) then
+            output('#ifndef ' .. inc:upper())
+            output('#include ' .. v)
+            output('#endif')
+            output()
+         else
+            output('#include ' .. v)
+         end
+      else
+         output('#include "' .. v .. '"')
+      end
+   end
+   output()
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- FDL function
+-- Restricts the output of anything declared within the referenced function.
+
+function restrict(Function)
+   local status = glRestrict
+   glRestrict = 'ALL'
+   Function()
+   glRestrict = status
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- FDL function
+
+function module(Options, Function)
+   glModule = Options
+
+   if nz(glModule.name) then
+      output('#ifndef MODULES_' .. glModule.name:upper())
+      output('#define MODULES_' .. glModule.name:upper() .. ' 1')
+      output()
+   else
+      error('No "name" field specified in module() call.')
+   end
+
+   output('// Name:      ' .. glModule.name:lower() .. '.h')
+
+   if nz(Options['copyright']) then
+      output('// Copyright: ' .. Options['copyright'])
+   end
+   output('// Generator: idl-c')
+   output()
+
+   output('#ifndef MAIN_H')
+   output('#include <parasol/main.h>')
+   output('#endif')
+   output()
+
+   if nz(glModule.version) then
+      output('#define MODVERSION_' .. glModule.name:upper() .. ' (' .. glModule.version .. ')')
+      output()
+   end
+
+   Function()
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- FDL function
+
+function header(Options, Function)
+   glHeaderPath = Options['path']
+   if nz(glHeaderPath) then
+      output('#ifndef ' .. glHeaderPath:gsub('/','_'):upper())
+      output('#define ' .. glHeaderPath:gsub('/','_'):upper() .. ' 1')
+      output()
+      output('// Name:      ' .. glHeaderPath:lower() .. '.h')
+   else
+      local s = ''
+      for i=1,10 do
+         s = s .. string.char(math.random(65, 90))
+      end
+
+      output('#ifndef ' .. s:gsub('/','_'):upper())
+      output('#define ' .. s:gsub('/','_'):upper() .. ' 1')
+      output()
+   end
+
+   if nz(Options['copyright']) then
+      output('// Copyright: ' .. Options['copyright'])
+   end
+   output('// Generator: idl-c')
+   output()
+
+   Function()
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- FDL function
+--
+--  flags('KQ', { comment='Special qualifier flags' },
+--    'L_SHIFT: Left Shift is held',
+--    'R_SHIFT: Right Shift is held',
+--    { SHIFT = 'L_SHIFT|R_SHIFT' }
+--  )
+
+function flags(Prefix, Options, ...)
+   if (glFeedback == 'verbose') then print('Processing ' .. nz(Prefix,'NIL') .. ' flags.') end
+   if (glCustomTypes[Prefix]) then print('WARN: A "' .. Prefix .. '" constant already exists.') end
+
+   Options = checkOptions(Options)
+
+   local out = { }
+   if (nz(Options.comment)) then
+      table.insert(out, '// ' .. Options.comment)
+      table.insert(out, '')
+   end
+
+   local function outputFlagDef(Options, Prefix, flag_name, val)
+      if (Options.bits == 16) then
+         table.insert(out, string.format('#define %s_%s 0x%.4x', Prefix, flag_name, val))
+      else
+         -- Note: This unusual formatting solution helps to resolve output problems on 64-bit Linux
+         local hash_id = string.format('%08x', val):sub(-8)
+         table.insert(out, string.format('#define %s_%s 0x%s', Prefix, flag_name, hash_id))
+      end
+   end
+
+   local lookup = { }
+   local flags = {...}
+   local f = 0
+   for a=1,#flags do
+      local flag_name
+      if (type(flags[a]) == 'string') then
+         local key, comment = flags[a]:match('^(.-):%s+(.+)$')
+         if (key == nil) then key = flags[a] end
+
+         for _, flag_name in ipairs(key:split('|')) do
+            local val = bit.lshift(1, f)
+            outputFlagDef(Options, Prefix, flag_name, val)
+            lookup[flag_name] = { name=flag_name, value=val, comment=comment }
+         end
+      elseif (type(flags[a]) == 'table') then
+         for flag_name, ref in pairs(flags[a]) do
+            local val = 0
+
+            local key, comment
+            if (type(ref) != 'number') then
+               key, comment = ref:match('^(.-):%s+(.+)$')
+               if (key != nil) then
+                  local stype = mSys.StrDatatype(key)
+                  if (stype == STT_HEX) then
+                     key = mSys.StrToHex(key)
+                  elseif (stype == STT_FLOAT) then
+                     key = mSys.StrToFloat(key)
+                  elseif (stype == STT_NUMBER) then
+                     key = mSys.StrToInt(key)
+                  end
+               end
+            end
+
+            if (key == nil) then key = ref end
+
+            if (type(key) == 'number') then
+               val = key
+            else -- Process named reference(s) to other flags
+               local v
+               for _, v in ipairs(key:split('|')) do
+                  if (lookup[v] != nil) then
+                     val = bit.bor(val, lookup[v].value)
+                  else
+                     error("Failed to lookup flag reference '" .. v .. "' for " .. Prefix .. "_" .. flag_name)
+                  end
+               end
+               if (comment == nil) then comment = 'Synonym for ' .. key:gsub('|',' | ') end
+            end
+            outputFlagDef(Options, Prefix, flag_name, val)
+            lookup[flag_name] = { name=flag_name, value=val, comment=comment }
+         end
+      else
+         error("Invalid flag type for '" .. Prefix .. "', expected string, got '" .. type(flags[a]) .. "'")
+      end
+
+      f = f + 1
+   end
+   table.insert(out, '')
+
+   if (glRestrict == nil) then
+      for k,v in pairs(out) do table.insert(glOutput, v) end
+   end
+
+   glCustomTypes[Prefix] = { prefix=Prefix, grouping='flags', list=lookup, comment=Options.comment, restrict=glRestrict }
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- FDL function
+
+function privateNames(List)
+   for k,v in pairs(List) do
+      glPrivateNames[v] = true
+   end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- FDL function
+
+function hash(Prefix, Format, ...)
+   for k,v in ipairs({...}) do
+      local hash_name = v:gsub('[^%w]', '_')
+      -- Note: This unusual formatting solution helps to resolve output problems on 64-bit Linux
+      local hash_id = string.format('%08x', mSys.StrHash(v)):sub(-8)
+      output('#define ' .. Prefix .. '_' .. hash_name .. ' ' .. string.format(Format, hash_id))
+   end
+   output()
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- FDL function
+
+function const(Prefix, Options, ...)
+   if (glFeedback == 'verbose') then print('Processing ' .. nz(Prefix,'NIL') .. ' constants.') end
+   if (glCustomTypes[Prefix]) then print('WARN: A "' .. Prefix .. '" constant already exists.') end
+
+   Options = checkOptions(Options)
+
+   local out = { }
+   if (nz(Options.comment)) then
+      table.insert(out, '// ' .. Options.comment)
+      table.insert(out, '')
+   end
+
+   local list = { }
+   for k,va in ipairs({...}) do
+      if (type(va) == 'string') then
+         local key, comment = va:match('^(.-):%s+(.+)$')
+         if (key == nil) then key = va end
+         for _, v in ipairs(key:split('|')) do
+            table.insert(out, '#define ' .. Prefix .. '_' .. v)
+         end
+      elseif (type(va) == 'table') then
+         for k, v in pairs(va) do
+            local val, comment
+            if (type(v) == 'string') then
+               val, comment = v:match('^(.-):%s+(.+)$')
+            end
+            if (val == nil) then val = v end
+
+            table.insert(out, '#define ' .. Prefix .. '_' .. k .. ' ' .. val)
+            table.insert(list, { name=k, value=val, comment=comment })
+         end
+      else
+         error('Invalid const type for "' .. Prefix .. '", expected string, got "' .. type(va) .. '"')
+      end
+   end
+   table.insert(out, '')
+
+   if (glRestrict == nil) then
+      for k,v in pairs(out) do table.insert(glOutput, v) end
+   end
+
+   glCustomTypes[Prefix] = {
+      prefix=Prefix, grouping='constants', list=list, comment=Options.comment,
+      restrict=nz(glRestrict, Options.restrict)
+   }
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- FDL function
+
+function enum(Prefix, Options, ...)
+   if (glFeedback == 'verbose') then print('Processing ' .. nz(Prefix,'NIL') .. ' enum.') end
+   if (glCustomTypes[Prefix]) then print('WARN: A "' .. Prefix .. '" constant already exists.') end
+
+   Options = checkOptions(Options)
+
+   local out = { }
+   if (nz(Options.comment)) then
+      table.insert(out, '// ' .. Options.comment)
+      table.insert(out, '')
+   end
+
+   local list = { }
+   local inc = nz(Options.start, 0)
+   for k,va in ipairs({...}) do
+      if (type(va) == 'string') then
+         local key, comment = va:match('^(.-):%s+(.+)$')
+         if (key == nil) then key = va end
+         local synonym = false
+         for _, name in ipairs(key:split('|')) do
+            if (Options.bits == 64) then
+               table.insert(out, '#define ' .. Prefix .. '_' .. name .. ' ' .. inc .. 'LL')
+            else
+               table.insert(out, '#define ' .. Prefix .. '_' .. name .. ' ' .. inc)
+            end
+            table.insert(list, { name=name, value=inc, comment=comment, synonym=synonym })
+            synonym = true
+         end
+      else
+         error('Invalid flag type for "' .. Prefix .. '", expected string, got "' .. type(va) .. '"')
+      end
+      inc = inc + 1
+   end
+   table.insert(out, '')
+
+   if (glRestrict == nil) then
+      for k,v in pairs(out) do table.insert(glOutput, v) end
+   end
+
+   glCustomTypes[Prefix] = {
+      prefix=Prefix, grouping='constants', list=list, comment=Options.comment,
+      restrict=nz(glRestrict, Options.restrict),
+      bits=Options.bits
+   }
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- FDL function
+
+function platform(Platform, Function)
+   if (Platform:lower() == 'windows') then
+      output('#ifdef _WIN32')
+      output()
+      Function()
+      output('#endif')
+      output()
+   elseif (Platform:lower() == 'linux') then
+      output('#ifdef __linux__')
+      output()
+      Function()
+      output('#endif')
+      output()
+   elseif (Platform:lower() == 'x11') then
+      output('#ifdef __xwindows__')
+      output()
+      Function()
+      output('#endif')
+      output()
+   else
+      error('Unrecognised platform "' .. Platform .. '"')
+   end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- FDL function
+
+function struct(Name, Options, Def, Append)
+   if (glFeedback == 'verbose') then print('Processing struct ' .. nz(Name,'NIL')) end
+
+   local prevStruct = glCurrentStructure
+   glCurrentStructure = Name
+
+   catch(function()
+      Options = checkOptions(Options)
+
+      local out = { }
+      local full_name = Name
+      if (Options.version != nil) then
+         table.insert(out, '#define VER_' .. Name:upper() .. ' ' .. Options.version)
+         table.insert(out, '')
+         full_name = Name .. 'V' .. Options.version
+      end
+
+      if Options.type == nil then
+         table.insert(out, 'struct ' .. full_name ..  ' {')
+      else
+         table.insert(out, 'typedef struct ' .. full_name ..  ' {')
+      end
+
+      local fields = extractFields(Def, full_name)
+
+      local type_len = 0
+      local name_len = 0
+      local type_max = 0
+      for i, f in ipairs(fields) do
+         local field_name = cName(f, true)
+         if (field_name:len() > name_len) then name_len = field_name:len() end
+
+         if (f.type:len() > type_len) then
+            if (f.type:len() < 10) then
+               type_len = f.type:len()
+            end
+         end
+
+         if (f.type:len() + field_name:len() > type_max) then
+            type_max = f.type:len() + 2 + field_name:len()
+         end
+      end
+
+      local max_len = 3 + type_max + 1 + 2
+
+      for i, f in ipairs(fields) do
+         local field_name = cName(f, true)
+         local left
+         if nz(field_name) then
+            left = string.format('   %-' .. type_len .. 's %s;', f.type, field_name)
+         else
+            left = string.format('   %-' .. type_len .. 's;', f.type)
+         end
+
+         if nz(f.comment) then
+            table.insert(out, string.format('%-' .. max_len .. 's // %s', left, f.comment))
+         else
+            print('WARN: ' .. full_name .. '.' .. f.name .. ' requires a comment.')
+            table.insert(out, left)
+         end
+      end
+
+      if (Append != nil) then
+         table.insert(out, Append)
+      end
+
+      if Options.type == nil then
+         table.insert(out, '};')
+         table.insert(out, '')
+      else
+         Options.type = Options.type:upper()
+         table.insert(out, '} ' .. Options.type .. ';')
+         table.insert(out, '')
+      end
+
+      if (glRestrict == nil) then
+         for k,v in pairs(out) do table.insert(glOutput, v) end
+      end
+
+      glStructures[Name] = {
+         version=Options.version, type=Options.type, comment=Options.comment, fields=fields,
+         restrict=nz(glRestrict, Options.restrict)
+      }
+   end,
+   function(Exception)
+      glCurrentStructure = prevStruct
+      error(Exception.message)
+   end)
+
+   glCurrentStructure = prevStruct
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Create a C/C++ field name from the definitions in a Field object.
+
+function cName(Field, CStruct)
+   if (Field.isFunctionPtr) then return '' end // Functions have their name embedded in the type.
+
+   local name = Field.name
+   if (CStruct) then
+      if (Field.type == 'OBJECTID') or (Field.type == 'MEMORYID') then
+         if (name:sub(-2) != 'ID') then
+            name = name .. 'ID'
+         end
+      end
+   end
+
+   if (Field.arraySize != nil) and (Field.arraySize > 0) then
+      name = name .. '[' .. Field.arraySize .. ']'
+   end
+
+   if (Field.bits != nil) then
+      name = name .. ':1'
+   end
+
+   return name
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- FDL Function
+
+function class(Name, Options, Blueprint, Private)
+   if (glFeedback == 'verbose') then print('Processing class ' .. nz(Name,'NIL')) end
+
+   Options = checkOptions(Options)
+
+   output('// ' .. Name .. ' class definition')
+   output()
+   output('#define VER_' .. Name:upper() .. ' (' .. string.format('%f', nz(Options.version,1.0)) .. ')')
+   output()
+
+   local class = registerClass(Name)
+   class.name = Name -- The name defined by class() has priority over any name defined by method()
+   class.src = Options.src
+   if (type(class.src) == 'string') then class.src = { class.src } end -- Convert string to an array of strings
+
+   -- Attempt to load the class into memory.  This introduces a circular reference when the module is not yet
+   -- compiled, so the meta information may only be used for phase 2 output (i.e. documentation).
+
+   if (mSys.AnalysePath('~modules:' .. glModule.name) == ERR_Okay) then
+      class.meta = mSys.FindClass(mSys.StrHash(Name, false), 0)
+   else
+      if (glFeedback == 'verbose') then
+         print('Module ' .. glModule.name .. ' not compiled, class documentation will not be produced.')
+      end
+   end
+
+   -- Process methods and fields defined in the source code (if available)
+
+   local cdef = processClassFields(class, Blueprint, Private)
+
+   class.actions = { }
+   if (class.src != nil) then
+      -- Process -METHOD- and -FIELD- definitions
+
+      local path
+      for _, path in pairs(class.src) do
+         if (glFeedback == 'verbose') then
+            print()
+            print('Class file: ' .. path)
+         end
+
+         local content = file.readAll(path)
+         content = content:gsub('\r\n', '\n')
+
+         -- Look for C/C++ action declarations, in the format: ERROR CLASS_Action(...).  This will create a series
+         -- of dummy action entries that can be overwritten with -ACTION- sections.
+
+         for actionName in string.gmatch(content, 'ERROR%s-' .. Name:upper() .. '_(%a-)%(obj.-%)') do
+            if (glActions[actionName] != nil) then
+               if (glFeedback == 'verbose') then print('Discovered action ' .. actionName) end
+               class.actions[actionName] = { name=actionName }
+            else
+               if (glFeedback == 'verbose') then print('Ignoring declaration of ' .. actionName) end
+            end
+         end
+
+         -- Extract possible content from within comments so that we don't get interference from the code while parsing.
+
+         local extracted_content = nz(string.match(content, '^/%*+(.-)%*+/'),'') -- The first line might start with a comment.
+         for extract in string.gmatch(content, '[^/]/%*+(.-)%*+/') do
+            extracted_content = extracted_content .. '\n' .. extract
+         end
+
+         -- Parse each line individually
+
+         local currentEntry = nil
+         local processing = nil
+         for line in string.gmatch(extracted_content, '(.-\n)') do
+            if nz(line) then
+               line = nz(line:match('^(.*%S)'),'')
+               if (line == '-CLASS-') or (line == '-METHOD-') or (line == '-ACTION-') or (line == '-FIELD-') then
+                  if (currentEntry != nil) then processClassEntry(class, processing, currentEntry) end
+                  currentEntry = ''
+                  processing = line
+               elseif (line == '-END-') then
+                  if (currentEntry != nil) then processClassEntry(class, processing, currentEntry) end
+                  currentEntry = nil
+                  processing = nil
+               elseif (line == '-INTERNAL-') then
+                  currentEntry = nil
+                  processing = nil
+               elseif (currentEntry != nil) then
+                  currentEntry = currentEntry .. line .. '\n'
+               end
+            elseif (currentEntry != nil) then
+               currentEntry = currentEntry .. '\n'
+            end
+         end
+
+         if (currentEntry != nil) then processClassEntry(class, processing, currentEntry) end
+      end
+   end
+
+   -- Export method definitions according to this template:
+   --
+   -- #define MT_[Prefix][Method] [ID]
+   -- struct [Prefix][Method] { [Args] }
+   -- INLINE ERROR [Prefix][Method]([Args]) { }
+
+   if (class.methods != nil) then
+      local pfx = class.methodPrefix
+      local lpfx = pfx:lower()
+
+      if (glFeedback == 'verbose') then
+         print('Generating ' .. #class.methods .. ' methods.')
+      end
+
+      for k, method in ipairs(class.methods) do
+         if nz(method.input) then
+            local t = { }
+            local i = 1
+            for str in string.gmatch(method.input, '([^;]+)') do
+               t[i] = str:trim()
+               i = i + 1
+            end
+
+            method.params = { }
+            for _, v in ipairs(t) do
+               local param = { }
+               param.type, param.name = v:match('^(.+)%s([^%s]+)$')
+               cType(param, 'Method ' .. method.name)
+               table.insert(method.params, param)
+            end
+         end
+
+         -- Generate a modified C method name for the function declaration if the method shares a name with an existing
+         -- action.  E.g. 'XML_Sort' will become 'XML_SortXML'
+
+         method.funcName = method.name
+         if (glActions[method.funcName] != nil) then
+            method.funcName = method.funcName .. Name
+         end
+
+         local function pName(Param)
+            local name = Param.name
+            if (Param.type == 'OBJECTID') or (Param.type == 'MEMORYID') then
+               if (name:sub(-2) != 'ID') then
+                  name = name .. 'ID'
+               end
+            end
+            return name
+         end
+
+         if (method.params != nil) and (#method.params > 0) then
+            local def = '' -- struct definition
+            local values = '' -- struct values
+            local call = 'APTR Ob' -- Inline function parameters
+            local results = false
+            for _, param in ipairs(method.params) do
+               def = def .. param.basicType .. ' ' .. pName(param) .. '; '
+
+               if nz(call) then call = call .. ', ' end
+               call = call .. param.type .. ' ' .. pName(param)
+
+               if nz(values) then values = values .. ', ' end
+               if (param.resultValue) then
+                  values = values .. '0'
+                  results = true
+               else
+                  values = values .. pName(param)
+               end
+            end
+
+            class.methods[k].struct = 'struct ' .. lpfx .. method.name .. ' { ' .. def .. ' };'
+
+            if (method.inline != false) then
+               local inline = 'INLINE ERROR ' .. lpfx .. method.name .. '(' .. call .. ') {\n'
+               inline = inline .. '   struct ' .. lpfx .. method.name .. ' args = { ' .. values .. ' };\n'
+               if (results) then
+                  inline = inline .. '   ERROR error = Action(MT_' .. pfx .. method.name .. ', Ob, &args);\n'
+                  for _, p in pairs(method.params) do
+                     if (p.resultValue) then
+                        inline = inline .. '   if (' .. p.name .. ') *' .. p.name .. ' = args.' .. p.name .. ';\n'
+                     end
+                  end
+                  inline = inline .. '   return(error);\n'
+               else
+                  inline = inline .. '   return(Action(MT_' .. pfx .. method.name .. ', Ob, &args));\n'
+               end
+               inline = inline .. '}\n'
+               class.methods[k].inline = inline
+            else
+               class.methods[k].inline = nil
+            end
+         else
+            class.methods[k].inline = '#define ' .. lpfx .. method.name .. '(obj) Action(MT_' .. pfx .. method.name .. ',(obj),0)\n'
+         end
+      end
+
+      output('// ' .. Name:cap() .. ' methods')
+      output()
+
+      for _, method in ipairs(class.methods) do
+         output('#define MT_' .. pfx .. method.name .. ' -' .. method.id)
+      end
+      output()
+
+      for _, method in ipairs(class.methods) do
+         if nz(method.struct) then
+            output(method.struct)
+         end
+      end
+      output()
+
+      for _, method in ipairs(class.methods) do
+         if nz(method.inline) then
+            output(method.inline)
+         end
+      end
+      output()
+   end
+
+   class.sortedActions = { }
+   for _, a in pairs(class.actions) do
+      table.insert(class.sortedActions, a)
+   end
+
+   if nz(class.sortedActions) then
+      table.sort(class.sortedActions, function(a,b) return a.name < b.name end)
+   end
+
+   -- Output internal C definitions for this class, if an output file has been specified.
+
+   if nz(Options.output) then
+      local mdef = ''
+      if (class.methods != nil) then
+         for k, m in ipairs(class.methods) do
+            if nz(m.params) then
+               mdef = mdef .. 'FDEF ma' .. m.name .. '[] = { ' .. buildInputParameters(m.params) .. ' };\n'
+            end
+         end
+         mdef = mdef .. '\n'
+
+         mdef = mdef .. 'static const struct MethodArray cl' .. Name .. 'Methods[] = {\n'
+         for k, m in ipairs(class.methods) do
+            local structSize
+            if not nz(m.params) then
+               mdef = mdef .. '   { -' .. m.id .. ', (APTR)' .. Name:upper() .. '_' .. m.funcName .. ', "' .. m.name .. '", 0, 0 },\n'
+            else
+               structSize = 'sizeof(struct ' .. class.methodPrefix:lower() .. m.name .. ')'
+               mdef = mdef .. '   { -' .. m.id .. ', (APTR)' .. Name:upper() .. '_' .. m.funcName .. ', "' .. m.name .. '", ma' .. m.name .. ', ' .. structSize .. ' },\n'
+            end
+         end
+         mdef = mdef .. '   { 0, 0, 0, 0, 0 }\n};\n\n'
+      end
+
+      if nz(class.sortedActions) then
+         mdef = mdef .. "static const struct ActionArray cl" .. Name .. "Actions[] = {\n"
+         for _, action in ipairs(class.sortedActions) do
+            mdef = mdef .. "   { AC_" .. action.name .. ", (APTR)" .. Name:upper() .. "_" .. action.name .. " },\n"
+         end
+         mdef = mdef .. "   { 0, 0 }\n};\n\n"
+      end
+
+      local file = obj.new("file", { flags="WRITE|NEW", location=Options.output } )
+      file.acWrite("// Auto-generated by idl-c.fluid\n\n")
+      if nz(cdef) then file.acWrite(cdef) end
+      if nz(mdef) then file.acWrite(mdef) end
+   end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+
+function processClassEntry(Class, Type, Extract)
+   if (Type == "-CLASS-") then
+      processClassHeader(Class, Extract)
+   elseif (Type == "-METHOD-") then
+      processMethod(Class, Extract)
+   elseif (Type == "-ACTION-") then
+      processAction(Class, Extract)
+   elseif (Type == "-FIELD-") then
+      processField(Class, Extract)
+   end
+end
+
+function processClassHeader(Class, Extract)
+   Extract = "-CLASS-\n" .. Extract:trim() .. "\n-END-\n"
+   local name
+   name, Class.comment = Extract:match("\n(%w+):%s+(.-)\n")
+   Class.status = Extract:match("\n[Ss]tatus:%s+(.-)\n")
+
+   if (name:lower() != Class.name:lower()) then
+      error("The name specified in the -CLASS- header '" .. name .. "' does not match the name specified in the class() call '" .. Class.name .. "'")
+   end
+
+   Class.description = Extract:match("\n\n(.-)\n%-[A-Z]+%-\n")
+end
+
+function processAction(class, extract)
+   extract = "-ACTION-\n" .. extract:trim() .. "\n-END-\n"
+
+   local name    = extract:match("\n[Nn]ame:%s+(.-)\n")
+   local comment = extract:match("\n[Cc]omment:%s+(.-)\n")
+   if (name == nil) then
+      name, comment = extract:match("\n(%w+):%s+(.-)\n")
+   end
+
+   local action = class.actions[name]
+   if (action == nil) then action = { } end
+   action.name = name
+   action.comment = comment
+   action.description = extract:match("\n\n(.-)\n%-[A-Z]+%-\n")
+
+   local errors = extract:match("\n%-ERRORS%-\n(.-)%-END%-")
+   if nz(errors) then
+      action.results = { }
+
+      for line in string.gmatch(errors, "(.-)\n") do
+         if not nz(line) then break end -- A double line-break forces a premature end to error processing.
+
+         local ecode, comment = line:match("(%a-):%s+(.+)")
+         if (ecode != nil) then
+            action.results[ecode] = comment
+         else
+            ecode = line:match("(%a+):?")
+            if nz(ecode) then
+               action.results[ecode] = mSys.GetErrorMsg(_G['ERR_' .. ecode])
+            end
+        end
+      end
+   end
+end
+
+function processField(class, extract)
+   extract = "-FIELD-\n" .. extract:trim() .. "\n-END-\n"
+   local lookup  = extract:match("\n[Ll]ookup:%s+(.-)\n")
+   local status  = extract:match("\n[Ss]tatus:%s+(.-)\n")
+   local name, comment = extract:match("\n(%w+):%s+(.-)\n")
+
+   local description = extract:match("\n\n(.-)\n%-[A-Z]+%-\n")
+
+   if (status != nil) and (status:lower() == "variable") then
+      return -- Variable fields are ignored.
+   end
+
+   local f = findClassField(class, name)
+   if (f != nil) then
+      if nz(comment) then f.comment = comment end
+      if nz(lookup) then
+         if (glCustomTypes[lookup]) then
+            f.lookup = lookup
+            glCustomTypes[lookup].refCount = nz(glCustomTypes[lookup].refCount, 0) + 1
+         else
+            print('Requested lookup "' .. lookup .. '" is not known.')
+         end
+      end
+      if string.match(nz(status,''), "^[Pp]rivate") or string.match(nz(comment,''), "^[Pp]rivate") then
+         f.private = true
+         f.access = "Private"
+      end
+      f.description = description
+   elseif (class.meta != nil) then
+      print("Field '" .. class.name .. "." .. name .. "' is not defined in the FDL or compiled class blueprint.")
+   end
+end
+
+function processMethod(class, extract)
+   extract = "-METHOD-\n" .. extract:trim() .. "\n-END-\n"
+
+   local name    = extract:match("\n[Nn]ame:%s+(.-)\n")
+   local comment = extract:match("\n[Cc]omment:%s+(.-)\n")
+   if (name == nil) then
+      name, comment = extract:match("\n(%w+):%s+(.-)\n")
+   end
+
+   local status      = extract:match("\n[Ss]tatus:%s+(.-)\n")
+   local description = extract:match("\n\n(.-)\n%-[A-Z]+%-\n")
+
+   if (name:find("%(%)") != nil) then
+      name = name:match("(%a+)()")
+   end
+
+   if not nz(name) then error("Failed to extract a name tag from -METHOD- definition.") end
+   if not nz(comment) then error("Failed to extract a comment tag from -METHOD- definition of '" .. name .. "'")  end
+   if not nz(description) then error("Failed to extract a description from -METHOD- definition of '" .. name .. "'") end
+
+   if (glFeedback == "verbose") then print("Processing method " .. name) end
+
+   local method -- Retrieve the definition for this method
+   if (class.methods != nil) then
+      method = class.lookupMethods[name]
+      if (method == nil) then error("Method '" .. name .. "' is not registered in the FDL.") end
+   else
+      error("Methods need to be pre-defined for class '" .. nz(class.name,"NIL") .. "'")
+   end
+
+   method.params = { }
+   method.description = description
+   method.comment = comment
+   method.status = status
+
+   local input = extract:match("\n%-INPUT%-\n(.-)\n\n%-[A-Z]+%-\n")
+
+   local errors = extract:match("\n%-ERRORS%-\n(.-)%-END%-")
+   if nz(errors) then
+      method.results = { }
+
+      for line in string.gmatch(errors, "(.-)\n") do
+         if not nz(line) then break end -- A double line-break forces a premature end to error processing.
+
+         local ecode, comment = line:match("(%a-):%s+(.+)")
+         if (ecode != nil) then
+            method.results[ecode] = comment
+         else
+            ecode = line:match("(%a+):?")
+            if nz(ecode) then
+               method.results[ecode] = mSys.GetErrorMsg(_G['ERR_' .. ecode])
+            end
+        end
+      end
+   end
+
+   if nz(input) then
+      for line, content in ipairs(input:split("\n")) do
+         local param = { }
+         param.comment = content:match("^.+:%s-(.+)$")
+         if nz(param.comment) then content = content:match("^(.+):%s-.+$") end
+         param.type, param.name = content:match("^%s*(.+)%s+([^%s]+)%s-$")
+         if (param.type != nil) then
+            param.type = param.type:trim()
+            param.name = param.name:trim()
+            param.comment = param.comment:trim()
+            cType(param, name)
+            table.insert(method.params, param)
+         elseif nz(content:trim()) then
+            error("Unable to process line '" .. nz(content,"NULL") .. "' for method '" .. name .. "'")
+         end
+      end
+   end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Scan class.fields for a specific field name.
+
+function findClassField(class, fieldName)
+   if (class.fields != nil) then
+      for _, f in ipairs(class.fields) do
+         if (f.name == fieldName) then
+            return f
+         end
+      end
+   end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Process the formal field definitions in a class blueprint.
+
+function processClassFields(class, Blueprint, Private)
+   local cdef = ""
+
+   -- Process fields defined in the FDL
+
+   class.fields = extractFields(Blueprint, class.name)
+
+   -- Add compiled fields into the field definitions.  NB: Technically this relies on a circular reference, so such
+   -- information can only be taken advantage of for phase 2 processing (class documentation).
+
+   if (class.meta != nil) then
+      local newFields = {}
+
+      local metaFields = class.meta.subFields
+      if not metaFields then metaFields = class.meta.fields end
+      if not metaFields then
+         error('No compiled fields declared for class ' .. class.name)
+      end
+
+      for k, f in ipairs(nz(metaFields, { })) do
+         local def = getMetaFieldDefinition(f)
+         if (def != nil) and (def.synonym != true) then
+            local f = findClassField(class, def.name)
+            if (f != nil) then
+               f.write  = def.write
+               f.read   = def.read
+               f.access = nz(def.access, def.access)
+               f.private = nz(f.private, def.private)
+               if (f.type == nil) then f.type = nz(def.type,"NIL") end
+            else
+               def.virtual = true
+               def.fullType = glTypes.void -- Dummy
+               table.insert(newFields, def)
+            end
+         end
+      end
+
+      for _, f in ipairs(newFields) do
+         table.insert(class.fields, f)
+      end
+   end
+
+   class.lookupFields = { }
+   if (class.fields != nil) then
+      for _, f in ipairs(class.fields) do
+         class.lookupFields[f.name] = f
+      end
+   end
+
+   -- NB: This code does not output anything, because as yet fields (including virtual fields) cannot be accurately
+   -- described without the developer writing a custom field configuration in C.
+
+   local fdef = "static const struct FieldArray cl" .. class.name .. "Fields[] = {\n"
+   local type_len = 0
+   local name_len = 0
+   local type_max = 0
+   for _, f in ipairs(class.fields) do
+      if not f.virtual then
+         local field_name = cName(f)
+
+         if (field_name:len() > name_len) then name_len = field_name:len() end
+
+         if (f.type:len() > type_len) then
+            if (f.type:len() < 10) then
+               type_len = f.type:len()
+            end
+         end
+
+         if (f.type:len() + field_name:len() > type_max) then
+            type_max = f.type:len() + 2 + field_name:len()
+         end
+
+         if (f.ref != nil) then
+            cdef = cdef .. "static const struct FieldDef cl" .. class.name .. f.name .. "[] = {\n"
+            for _, v in pairs(f.ref.list) do
+               if (v.name:upper() != "PRIVATE") and (v.name:upper() != "END") then
+                  -- Note: This unusual formatting solution helps to resolve output problems on 64-bit Linux
+                  local hash_id = string.format("%08x", v.value):sub(-8)
+                  cdef = cdef .. string.format("   { \"%s\", 0x%s },\n", shortName(v.name), hash_id)
+               end
+            end
+            cdef = cdef .. "   { NULL, 0 }\n};\n\n"
+         end
+
+         if not nz(f.fullType) then error("The fullType is not defined for field " .. nz(f.name,"NIL")) end
+
+         fdef = fdef .. "   { \"" .. f.name .. "\", " .. f.fullType.fd .. ", 0, NULL, NULL },\n"
+      end
+   end
+   fdef = fdef .. "};\n\n"
+
+   if nz(class.fields) then
+      local physicalFields = false
+      for _, f in ipairs(class.fields) do
+         if not f.virtual then physicalFields = true end
+      end
+
+      if physicalFields then
+         output("typedef struct rk" .. class.name ..  " {")
+         output("   OBJECT_HEADER")
+
+         local max_len = 3 + type_max + 1 + 2
+
+         for _, f in ipairs(class.fields) do
+            if not f.virtual then
+               local left
+               local field_name = cName(f, true)
+               if nz(field_name) then
+                  left = string.format('   %-' .. type_len .. 's %s;', f.type, field_name)
+               else
+                  left = string.format('   %-' .. type_len .. 's;', f.type)
+               end
+
+               if nz(f.comment) then
+                  output(string.format('%-' .. max_len .. 's // %s', left, f.comment))
+               else
+                  output(left)
+               end
+            end
+         end
+
+         if (Private != nil) then
+            output()
+            output("#ifdef PRV_" .. class.name:upper())
+            output(Private)
+            output("#endif")
+         end
+
+         output("} obj" .. class.name .. ";")
+         output()
+      end
+   end
+
+   return cdef
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Convert FD flags into a printable C type.
+
+function getFieldType(Type, CustomName, Option)
+   local result
+
+   if bit.band(Type, FD_CUSTOM) != 0 then
+      if nz(CustomName) then
+         return CustomName
+      else
+         return 'APTR'
+      end
+   elseif bit.band(Type, FD_ARRAY) != 0 then
+      -- All arrays are pointers, with additional information indicating the type of values in the array.
+
+      if bit.band(Type, FD_BYTE) != 0 then
+         return 'BYTE []'
+      elseif bit.band(Type, FD_WORD) != 0 then
+         return 'WORD []'
+      elseif bit.band(Type, FD_LONG) != 0 then
+         return 'LONG []'
+      elseif bit.band(Type, FD_DOUBLE) != 0 then
+         return 'DOUBLE []'
+      elseif bit.band(Type, FD_STRING) != 0 then
+         return 'STRING []'
+      elseif bit.band(Type, FD_POINTER) != 0 then
+         return 'APTR []'
+      elseif bit.band(Type, FD_STRUCT) != 0 then
+         return 'STRUCT []'
+      else
+         return 'ARRAY'
+      end
+   elseif bit.band(Type, FD_STRING) != 0 then
+      return 'STRING'
+   elseif bit.band(Type, FD_FUNCTION) != 0 then
+      return 'FUNCTION'
+   elseif bit.band(Type, FD_POINTER) != 0 then
+      local ptr = 0
+      if bit.band(Type, FD_LONG) != 0 then
+         result = 'LONG'
+         ptr = ptr + 1
+      elseif bit.band(Type, FD_LARGE) != 0 then
+         result = 'LARGE'
+         ptr = ptr + 1
+      elseif bit.band(Type, FD_DOUBLE) != 0 then
+         result = 'DOUBLE'
+         ptr = ptr + 1
+      elseif bit.band(Type, bit.bor(FD_OBJECT, FD_INTEGRAL)) != 0 then
+         return 'OBJECTPTR'
+      elseif bit.band(Type, FD_STRING) != 0 then
+         return 'STRING'
+      elseif bit.band(Type, FD_RGB) != 0 then
+         result = 'RGB'
+         ptr = ptr + 1
+      elseif bit.band(Type, FD_FUNCTION) != 0 then
+         result = 'FUNCTION'
+         ptr = ptr + 1
+      elseif bit.band(Type, FD_STRUCT) != 0 then
+         if nz(Option) then -- We need a way to convert the Option number to a string address...
+            result = 'APTR'
+         else
+            result = 'APTR'
+         end
+      else
+         return 'APTR'
+      end
+
+      if (ptr > 0) then
+         return result .. ' ' .. string.rep('*', ptr)
+      else
+         return result
+      end
+   elseif bit.band(Type, FD_RGB) != 0 then
+      return 'RGB8'
+   elseif bit.band(Type, FD_LONG) != 0 then
+      if bit.band(Type, FD_OBJECT) != 0 then
+         return 'OBJECTID'
+      else
+         return 'LONG'
+      end
+   elseif bit.band(Type, FD_LARGE) != 0 then
+      return 'LARGE'
+   elseif bit.band(Type, FD_DOUBLE) != 0 then
+      return 'DOUBLE'
+   elseif bit.band(Type, FD_FLOAT) != 0 then
+      return 'FLOAT'
+   else
+      print(string.format('Failed to identify field type $%.8x for field "%s"', Type, CustomName))
+      return 'void'
+   end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Useful for ensuring strict XML compliance, like
+--
+-- From: <something>content</>
+-- To:   <something>content</something>
+
+function cleanXMLString(str, caller)
+   if nz(str) then
+      if (str:find('[<>]')) then
+         str = '<ROOT>' .. str .. '</ROOT>'
+
+         if cleanXMLString_xml == nil then
+            cleanXMLString_xml, err = obj.new('xml', { statement=str, flags='!AllContent' })
+         end
+
+         if (cleanXMLString_xml != nil) then
+            cleanXMLString_xml.statement = str
+            err, str = cleanXMLString_xml.mtGetString(1, bit.bor(XMF_LOWER_CASE, XMF_INCLUDE_SIBLINGS))
+            str = str:trim()
+         else
+            error('Failed to parse XML for ' .. nz(caller, 'undefined') .. '.')
+         end
+      end
+   else
+      str = ''
+   end
+   return str
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Extract information from a compiled class' field definition.
+
+function getMetaFieldDefinition(Field)
+   local fl = {
+      name  = Field.name,
+      type  = getFieldType(Field.flags, Field.name, Field.arg)
+   }
+
+   if (bit.band(Field.flags, FD_SYNONYM) != 0) then
+      fl.synonym = true
+   end
+
+   if nz(Field.getField) then
+      fl.read = 'Get'
+      fl.get = Field.getField
+   elseif bit.band(Field.flags, FD_READ) != 0 then
+      fl.read = 'Read'
+   end
+
+   if nz(Field.setField) then
+      fl.write = 'Set'
+      fl.set = Field.setField
+   elseif bit.band(Field.flags, FD_WRITE) != 0 then
+      fl.write = 'Write'
+   elseif bit.band(Field.flags, FD_INIT) != 0 then
+      fl.write = 'Init'
+   end
+
+   if (nz(fl.read) and nz(fl.write)) then
+      fl.access = fl.read .. '/' .. fl.write
+   elseif nz(fl.read) then
+      fl.access = fl.read
+   elseif nz(fl.write) then
+      fl.access = fl.write
+   else
+      fl.access = 'Private'
+   end
+
+   if (bit.band(Field.flags, FD_SYSTEM) != 0) then
+      fl.access = 'Private'
+      fl.private = true
+   end
+
+   return fl
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- FDL Function
+-- This is a shortened version of functions(), where only the names of the functions need to be specified as a list.
+-- Further elaboration on the functions is normally done by embedding -FUNCTION- sections in the module code.
+
+function functionNames(Prefix, ...)
+   glFunctionPrefix = nz(Prefix,'')
+   for _, fname in ipairs({...}) do
+      if (fname:find('[^%w]')) then
+         error('Invalid function name "' .. fname .. '"')
+      end
+
+      local func = {
+         name  = fname,
+         def   = '   void (*_' .. fname .. ')(void);',
+         macro = '#define ' .. glFunctionPrefix:lower() .. fname .. '() (' .. glModule.name .. 'Base->_' .. fname .. ')()'
+      }
+
+      table.insert(glFunctions, func)
+      glFunctionLookup[fname] = func
+   end
+
+   output('__FUNCTION_TABLE__')
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- FDL Function
+-- Register methods for a class.  This must be declared prior to the corresponding class() function call.
+
+function methods(ClassName, Prefix, Methods)
+   if (glFeedback == 'verbose') then print('Processing methods for class ' .. nz(ClassName,'NIL')) end
+
+   local class = registerClass(ClassName)
+   class.methodPrefix = Prefix
+   class.methods = Methods
+
+   -- Generate a lookup table by method name
+   class.lookupMethods = { }
+   for _, m in ipairs(class.methods) do
+      class.lookupMethods[m.name] = m
+   end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- FDL Function
+
+function c_insert(Raw)
+   output(Raw)
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Conversion table for FDL types to their C/C++ and Field Definition equivalents.
+
+glTypes = {
+   hhandle    = { fd='FD_PTR',       c_type='HOSTHANDLE' },
+   structsize = { fd='FD_LONG|FD_BUFSIZE', c_type='LONG' },
+   bufsize    = { fd='FD_LONG|FD_BUFSIZE', c_type='LONG' },
+   arraysize  = { fd='FD_LONG|FD_ARRAYSIZE', c_type='LONG' },
+   mem        = { fd='FD_LONG',      c_type='MEMORYID' },
+   int        = { fd='FD_LONG',      c_type='LONG' },
+   uint       = { fd='FD_LONG',      c_type='ULONG' },
+   ptr        = { fd='FD_PTR',       c_type='APTR' },
+   cptr       = { fd='FD_PTR',       c_type='const void *' },
+   oid        = { fd='FD_OBJECTID',  c_type='OBJECTID' },
+   short      = { fd='FD_WORD',      c_type='WORD' },
+   ushort     = { fd='FD_WORD',      c_type='UWORD' },
+   uchar      = { fd='FD_BYTE',      c_type='UBYTE' },
+   char       = { fd='FD_BYTE',      c_type='BYTE' },
+   error      = { fd='FD_LONG|FD_ERROR', c_type='ERROR' },
+   large      = { fd='FD_LARGE',     c_type='LARGE' },
+   cid        = { fd='FD_LONG|FD_UNSIGNED', c_type='CLASSID' },
+   obj        = { fd='FD_OBJECTPTR', c_type='OBJECTPTR' },
+   str        = { fd='FD_STR',       c_type='STRING' },
+   cstr       = { fd='FD_STR',       c_type='CSTRING' },
+   func       = { fd='FD_FUNCTION',  c_type='FUNCTION' },
+   float      = { fd='FD_FLOAT',     c_type='FLOAT' },
+   double     = { fd='FD_DOUBLE',    c_type='DOUBLE' },
+   maxint     = { fd='FD_LARGE',     c_type='MAXINT' },
+   eid        = { fd='FD_LONG',      c_type='EVENTID' },
+   fid        = { fd='FD_LARGE',     c_type='FIELD' },
+   tags       = { fd='FD_TAGS',      c_type='...' },
+   vtags      = { fd='FD_VARTAGS',   c_type='...' },
+   printf     = { fd='FD_TAGS',      c_type='...' },
+   void       = { fd='FD_VOID',      c_type='void' },
+   struct     = { fd='FD_STRUCT',    c_type='APTR' },
+   resource   = { fd='FD_STRUCT|FD_RESOURCE', c_type='APTR' }
+}
+
+function cType(Field, Origin)
+   if (Field.type == nil) then
+      error("Field definition incorrect, missing 'type' value for '" .. nz(Origin,"NIL") .. "'")
+   end
+
+   Field.defType = Field.type -- Save the original type name
+
+   -- A ! symbol indicates that the field is a result that is allocated and can be removed with either FreeMemory or acFree()
+   -- A & symbol indicates that the field is a pointer to a reserved area that will store a result value, e.g. LONG *
+
+   local resultValue
+   local special, result_type = Field.type:match("^([!&]+)(.+)")
+   if (special != nil) and (result_type != nil) then
+      if (special:find("!")) then Field.allocated = true end
+      resultValue = true
+      Field.type = result_type
+   end
+
+   if (Field.type:match("^structsize") != nil) then
+      Field.sizeof = true
+   end
+
+   do
+      local const, struct = Field.type:match("^(c-)struct%((.+)%)$")
+      if (struct != nil) then
+         local ptr_struct = struct:match("%*(.+)")
+         if (ptr_struct != nil) then struct = ptr_struct end
+
+         Field.struct = struct
+         Field.type = 'struct ' .. struct
+
+         if (glStructures[struct] != nil) then
+            glStructures[struct].refCount = nz(glStructures[struct].refCount, 0) + 1
+
+            if (glStructures[struct].version != nil) then
+               Field.type = Field.type .. 'V' .. glStructures[struct].version
+            end
+         elseif (glCurrentStructure != struct) then
+            if not glPrivateNames[struct] then
+               print('WARN: Unknown struct reference "' .. struct .. '"')
+            end
+         end
+
+         if (ptr_struct != nil) then
+            Field.type = Field.type .. " *"
+            Field.fullType = { fd="FD_PTR|FD_STRUCT", c_type="APTR" }
+         elseif (Field.isFunction) then
+            if (Field.isArray) then
+               Field.fullType = { fd="FD_STRUCT", c_type="APTR" }
+            else
+               Field.type = Field.type .. " *"
+               Field.fullType = { fd="FD_PTR|FD_STRUCT", c_type="APTR" }
+            end
+         else
+            Field.fullType = { fd="FD_PTR|FD_STRUCT", c_type="APTR" }
+         end
+
+         if (nz(const)) then
+            Field.type =  "const " .. Field.type
+         end
+
+         goto finalise
+      end
+   end
+
+   do -- Resources are structs, but with an FD_RESOURCE marker.
+      local const, struct = Field.type:match("^(c-)resource%((.+)%)$")
+      if (struct != nil) then
+         local ptr_struct = struct:match("%*(.+)")
+         if (ptr_struct != nil) then struct = ptr_struct end
+
+         Field.struct = struct
+         Field.type = "struct " .. struct
+
+         if (glStructures[struct] != nil) then
+            glStructures[struct].refCount = nz(glStructures[struct].refCount, 0) + 1
+
+            if (glStructures[struct].version != nil) then
+               Field.type = Field.type .. "V" .. glStructures[struct].version
+            end
+         end
+
+         if (ptr_struct != nil) then
+            Field.type = Field.type .. " *"
+            Field.fullType = { fd="FD_PTR|FD_STRUCT|FD_RESOURCE", c_type="APTR" }
+         elseif (Field.isFunction) then
+            if (Field.isArray) then
+               Field.fullType = { fd="FD_STRUCT|FD_RESOURCE", c_type="APTR" }
+            else
+               Field.type = Field.type .. " *"
+               Field.fullType = { fd="FD_PTR|FD_STRUCT|FD_RESOURCE", c_type="APTR" }
+            end
+         else
+            Field.fullType = { fd="FD_PTR|FD_STRUCT|FD_RESOURCE", c_type="APTR" }
+         end
+
+         if (nz(const)) then
+            Field.type =  "const " .. Field.type
+         end
+
+         goto finalise
+      end
+   end
+
+   do
+      local ref_obj = Field.type:match("^obj%((.+)%)$")
+      if (ref_obj != nil) then
+         local ptr_object = ref_obj:match("%*(.+)")
+         if (ptr_object != nil) then
+            Field.type = "struct rk" .. ptr_object .. " **"
+            Field.className = ptr_object
+         else
+            Field.type = "struct rk" .. ref_obj .. " *"
+            Field.className = ref_obj
+         end
+         Field.fullType = glTypes.obj
+         goto finalise
+      end
+   end
+
+   do -- Example: bit(int)
+      local bitType = Field.type:match("^bit%((.+)%)$")
+      if (bitType != nil) then
+         Field.type     = cType({ type=bitType, name='' }, Origin).type
+         Field.name     = Field.name
+         Field.fullType = glTypes[bitType]
+         Field.bits     = 1
+         goto finalise
+      end
+   end
+
+   do -- Char type reference
+      local prefix = Field.type:match("^char%((%a+)%)")
+      if (prefix != nil) then
+         Field.type     = "BYTE"
+         Field.fullType = glTypes.char
+         Field.ref      = glCustomTypes[prefix]
+         Field.lookup   = prefix
+
+         glCustomTypes[prefix].refCount = nz(glCustomTypes[prefix].refCount, 0) + 1
+         goto finalise
+      end
+   end
+
+   do -- Short type reference
+      local prefix = Field.type:match("^short%((%a+)%)")
+      if (prefix != nil) then
+         Field.type     = "WORD"
+         Field.fullType = glTypes.int
+         Field.ref      = glCustomTypes[prefix]
+         Field.lookup   = prefix
+
+         if (glCustomTypes[prefix]) then
+            glCustomTypes[prefix].refCount = nz(glCustomTypes[prefix].refCount, 0) + 1
+         else
+            print('Unknown custom type "' .. prefix .. '"')
+         end
+         goto finalise
+      end
+   end
+
+   do -- Integer type reference
+      local prefix = Field.type:match("^int%((%a+)%)")
+      if (prefix != nil) then
+         Field.type     = "LONG"
+         Field.fullType = glTypes.int
+         Field.ref      = glCustomTypes[prefix]
+         Field.lookup   = prefix
+
+         if (glCustomTypes[prefix] != nil) then
+            glCustomTypes[prefix].refCount = nz(glCustomTypes[prefix].refCount, 0) + 1
+         else
+            print('Unknown custom type "' .. prefix .. '"')
+         end
+         goto finalise
+      end
+   end
+
+   do -- Large type reference
+      local prefix = Field.type:match("^large%((%a+)%)")
+      if (prefix != nil) then
+         Field.type     = "LARGE"
+         Field.fullType = glTypes.large
+         Field.ref      = glCustomTypes[prefix]
+         Field.lookup   = prefix
+
+         glCustomTypes[prefix].refCount = nz(glCustomTypes[prefix].refCount, 0) + 1
+         goto finalise
+      end
+   end
+
+   do -- Char arrays
+      local unsigned, count = Field.type:match("^(u-)char%((.+)%)$")
+      if (count != nil) then
+         Field.type = "char"
+         if nz(unsigned) then Field.type = "unsigned " .. Field.type end
+         Field.arraySize = tonumber(count)
+         Field.fullType = glTypes.char
+         goto finalise
+      end
+   end
+
+   do -- Integer arrays
+      local unsigned, count = Field.type:match("^(u-)int%((%d+)%)")
+      if (count != nil) then
+         if nz(unsigned) then
+            Field.type = "ULONG"
+         else
+            Field.type = "LONG"
+         end
+         Field.arraySize = tonumber(count)
+         Field.fullType = glTypes.int
+         goto finalise
+      end
+   end
+
+   do -- Double arrays
+      local count = Field.type:match("^double%((.+)%)")
+      if (count != nil) then
+         Field.type = "DOUBLE"
+         Field.arraySize = tonumber(count)
+         Field.fullType = glTypes.double
+         goto finalise
+      end
+   end
+
+   do -- Float arrays
+      local count = Field.type:match("^float%((.+)%)")
+      if (count != nil) then
+         Field.type = "FLOAT"
+         Field.arraySize = tonumber(count)
+         Field.fullType = glTypes.float
+         goto finalise
+      end
+   end
+
+   do
+      local const, ptr_type = Field.type:match("^(c-)ptr%((.+)%)")
+      if (ptr_type != nil) then
+         Field.type = cType({ type=ptr_type }, Origin).type .. " *"
+         if (nz(const)) then
+            Field.type =  "const " .. Field.type
+         end
+         if (ptr_type == "func") then
+            Field.fullType = { fd="FD_FUNCTIONPTR", c_type="FUNCTION *" }
+         else
+            Field.fullType = glTypes.ptr
+         end
+         goto finalise
+      end
+   end
+
+   do
+      local buf_type = Field.type:match("^buf%((.+)%)")
+      if (buf_type != nil) then
+         Field.type = buf_type
+         Field = cType(Field, Origin)
+         Field.fullType = { fd="FD_BUFFER|" .. Field.fullType.fd, c_type="APTR" }
+         goto finalise
+      end
+   end
+
+   -- ARRAY CLIENT NOTES
+   -- For primitive embedded array types, use 'type(n)' such as 'int(4)'.  See above patterns for details.
+   -- To describe a pointer to an array of any type, use 'array(type)' such as 'array(cstr)'
+   -- To describe a pointer to a null-terminated array, use 'array(type,0)'
+   -- To describe complex embedded types of fixed size, use 'array(type,n)' such as 'array(struct(RGB8),256)'
+
+   do
+      local array_type, array_size = Field.type:match("^array%((.+),(%d+)%)$")
+      if (array_type != nil) then
+         array_size = tonumber(array_size)
+         if (array_size == 0) then
+            Field.isArray = true
+            Field.type = array_type
+            Field.arraySize = 0
+            Field = cType(Field, Origin)
+            Field.type = Field.type .. " *"
+            Field.fullType = { fd="FD_ARRAY|" .. Field.fullType.fd, c_type=Field.fullType.c_type  }
+         else
+            Field.type = array_type
+            Field = cType(Field, Origin)
+            Field.arraySize = array_size
+            Field.fullType = glTypes.ptr
+         end
+         goto finalise
+      end
+   end
+
+   do
+      local array_type = Field.type:match("^array%((.+)%)$")
+      if (array_type != nil) then
+         Field.isArray = true
+         Field.type = array_type
+         Field = cType(Field, Origin)
+         Field.type = Field.type .. " *"
+         Field.fullType = { fd="FD_ARRAY|" .. Field.fullType.fd, c_type=Field.fullType.c_type }
+         goto finalise
+      end
+   end
+
+   do
+      local args = Field.type:match("^fptr%((.+)%)$")
+      if (args != nil) then
+         local arglist = args:split(" ")
+
+         -- Process function result type
+
+         if (#arglist < 1) then
+            Field.type = "void"
+         else
+            Field.type = nz(glTypes[arglist[1]].c_type, arglist[1])
+         end
+
+         Field.type = Field.type .. " (*" .. Field.name .. ")"
+
+         -- Process function parameters
+
+         if (#arglist < 2) then
+            Field.type = Field.type .. "(void)"
+         else
+            local params = ""
+            for i=2, #arglist do
+               if nz(params) then params = params .. ", " end
+               params = params .. cType({ type=arglist[i], name='' }, Origin).type
+            end
+            Field.type = Field.type .. "(" .. params .. ")"
+         end
+
+         Field.isFunctionPtr = true
+         Field.fullType = glTypes.ptr
+         goto finalise
+      end
+   end
+
+   if (glTypes[Field.type] == nil) then
+      error("No handling for field type '" .. Field.type .. "' from " .. Origin)
+   end
+
+   Field.fullType = glTypes[Field.type]
+   Field.type = nz(glTypes[Field.type].c_type, Field.type)
+
+::finalise::
+   Field.basicType = Field.type
+   if (resultValue) then -- If the type is a result value, append a '*'
+      Field.resultValue = true
+
+      if (Field.isResponse) then
+         -- Do nothing
+      elseif Field.type:find("%*$") then
+         Field.type = Field.type .. "*"
+      else
+         Field.type = Field.type .. " *"
+      end
+   end
+   return Field -- type, fullType, basicType, allocated, resultValue
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Returns fields as a list returned by cType, featuring { type, name, comment }
+
+function extractFields(Def, Origin)
+   local fields = { }
+
+   if not Def then return fields end
+
+   for line, content in ipairs(Def:split("\n")) do
+      -- Extract comment, if specified
+      local comment = content:match("^.+#%s-(.+)$")
+      if nz(comment) then
+         content = content:match("^(.+)#%s-.+$")
+      else
+         -- Support for alternative comment format where the colon is used.
+         comment = content:match("^.+:%s-(.+)$")
+         if nz(comment) then
+            content = content:match("^(.+):%s-.+$")
+         end
+      end
+
+      local type, name = content:match("^%s*(.+)%s+([^%s]+)%s-$")
+      if (type != nil) then
+         local field = cType({ type=type:trim(), name=name:trim(), comment=string.trim(comment) }, Origin)
+         table.insert(fields, field)
+      elseif not nz(content:trim()) then
+         -- Ignore empty line
+      else
+         error("Unable to process line '" .. nz(content,"NULL") .. "' for '" .. nz(Origin,'NIL') .. "'")
+      end
+   end
+
+   return fields
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Convert a string such as 'SHOW_IMAGES' to 'ShowImages'
+
+function shortName(Name)
+   local result = ""
+   for _, n in ipairs(Name:split("_")) do
+      if (n=="XY") or (n=="SSL") or (n=="HTML") or (n=="CDATA") or (n=="2D") or (n =="3D") or (n=="DGA") or
+         (n=="DPMS") or (n=="GTF") or (n=="SRGB") or (n=="RGB") or (n=="HSV") or (n=="CX") or (n=="CY") or
+         (n=="FX") or (n=="FY") then
+         result = result .. n
+      else
+         local cap, word = n:match("^(.)(.+)$")
+         if (cap == nil) or (word == nil) then
+            result = result .. n:upper()
+         else
+            result = result .. cap:upper() .. word:lower()
+         end
+      end
+   end
+   return result
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+
+function registerClass(Name)
+   if not nz(Name) then error('No Name provided to registerClass()') end
+   if (glClasses == nil) then glClasses = { } end
+   if (glClasses[Name:lower()] == nil) then
+      glClasses[Name:lower()] = { name=Name:cap() }
+   end
+   return glClasses[Name:lower()]
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+
+function processFDLFile(Source)
+   local err, type = mSys.AnalysePath(Source)
+
+   if (type == LOC_FILE) then
+      if (glFeedback == "verbose") then print("Process FDL file " .. Source) end
+      loadFile(Source)
+      return ERR_Okay
+   else
+      error("The specified source '" .. Source .. "' is invalid.")
+   end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Load and process an FDL file source, then process raw source files containing -FUNCTION- definitions.
+
+function processSourceFiles()
+   if (glFeedback == 'verbose') then print('Processing source files...') end
+
+   local srcFiles = { }
+
+   for i=1,nz(arg('files:size'), 0) do
+      table.insert(srcFiles, arg('files(' .. (i-1) .. ')'))
+   end
+
+   if (#srcFiles < 1) then return end
+
+   local path
+   for _, path in pairs(srcFiles) do
+      -- Process --IDL_BEGIN/END-- sections, which allow the developer to embed FDL functions in the source code.
+
+      local idlExtract, extract
+      local content = file.readAll(path)
+      content = '\n' .. content:gsub('\r\n', '\n')
+      for extract in string.gmatch(content, '%-%-IDL_BEGIN%-%-(.-)%-%-IDL_END%-%-') do
+         idlExtract = nz(idlExtract,'') .. extract
+      end
+
+      if (idlExtract != nil) then
+         exec(idlExtract)
+      end
+
+      // Process -FUNCTION- definitions
+
+      if (glFeedback == 'verbose') then
+         print()
+         print('File: ' .. path)
+      end
+
+      // Extract possible content from within comments so that we don't get interference from the code while parsing.
+
+      local extracted_content = ''
+      for extract in string.gmatch(content, '[^/]/%*+(.-)%*+/') do
+         extracted_content = extracted_content .. '\n' .. extract
+      end
+      content = extracted_content
+
+      // Parse each line individually
+
+      local currentExtract = nil
+      local processing = nil
+      for line in string.gmatch(content, '(.-\n)') do
+         if nz(line) then
+            line = nz(line:match('^(.*%S)'),'')
+            if (line == '-CATEGORY-') or (line == '-FUNCTION-') then
+               if (processing == '-CATEGORY-') then processCategory(currentExtract) end
+               if (processing == '-FUNCTION-') then processFunction(currentExtract) end
+               currentExtract = ''
+               processing = line
+            elseif (line == '-END-') or (line == '-INTERNAL-') then
+               if (processing == '-CATEGORY-') then processCategory(currentExtract) end
+               if (processing == '-FUNCTION-') then processFunction(currentExtract) end
+               currentExtract = nil
+               processing = nil
+            elseif (processing != nil) then
+               currentExtract = currentExtract .. line .. '\n'
+            end
+         elseif (processing != nil) then
+            currentExtract = currentExtract .. '\n'
+         end
+      end
+
+      if (processing == '-CATEGORY-') then processCategory(currentExtract) end
+      if (processing == '-FUNCTION-') then processFunction(currentExtract) end
+   end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+
+function processCategory(extract)
+   extract = '-CATEGORY-\n' .. extract:trim() .. '\n-END-\n'
+   glCategory = extract:match('\n[Nn]ame:%s+(.-)\n')
+   glCategories[glCategory] = { name=glCategory }
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Used by processSourceFiles() to process -FUNCTION- descriptions in self-documenting source code.
+
+function processFunction(extract)
+   if not nz(extract) then return end
+
+   extract = '-FUNCTION-\n' .. extract:trim() .. '\n-END-\n'
+
+   local name, comment = extract:match('\n(%w+):%s+(.-)\n')
+   local status      = extract:match('\n[Ss]tatus:%s+(.-)\n')
+   local category    = extract:match('\n[Cc]ategory:%s+(.-)\n')
+   local ext_proto   = extract:match('\n[Ee]xtPrototype:%s+(.-)\n')
+   local description = extract:match('\n\n(.-)\n%-[A-Z]+%-\n')
+
+   if (name:find('%(%)') != nil) then
+      name = name:match('(%a+)()')
+   end
+
+   if not nz(name) then
+      error('Failed to extract a name tag from -FUNCTION- definition.')
+   end
+
+   if not nz(comment) then
+      error("Failed to extract a comment tag from -FUNCTION- definition of '" .. name .. "'")
+   end
+
+   if not nz(description) then
+      error("Failed to extract a description from -FUNCTION- definition of '" .. name .. "'")
+   end
+
+   if (glFeedback == "verbose") then
+      print("Processing function " .. name .. "()")
+   end
+
+   local def = { }
+   def.input = extract:match("\n%-INPUT%-\n(.-)\n%-[A-Z]+%-\n")
+   def.ext_proto = ext_proto
+
+   local errors = extract:match("\n%-ERRORS%-\n(.-)%-END%-")
+   if nz(errors) then
+      def.result = cType({ type="error", values={ }, isFunction=true }, "Function " .. name)
+
+      for line in string.gmatch(errors, "(.-)\n") do
+         if not nz(line) then break end // A double line-break forces a premature end to error processing.
+
+         local ecode, comment = line:match("(%a-):%s+(.-)")
+         if (ecode != nil) then
+            def.result.values[ecode] = comment
+         else
+            ecode = line:match("(%a+):?")
+            if nz(ecode) then
+               def.result.values[ecode] = mSys.GetErrorMsg(_G['ERR_' .. ecode])
+            end
+        end
+      end
+   else
+      local result = extract:match("\n%-RESULT%-\n(.-)\n%-END%-")
+      if nz(result) then
+         local ext_type, comment = result:match("(.-):%s-(.+)$")
+         if (ext_type == nil) then error("Incorrectly defined result section in function '" .. name .. "'") end
+         def.result = cType({ type=ext_type, comment=comment:trim(), isFunction=true, isResponse=true }, "Function " .. name)
+      end
+   end
+
+   idlFunction(name, nz(category, glCategory), comment, status, description, def)
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Function definitions can be embedded into source code with the idlFunction() routine.
+
+function idlFunction(Name, Category, Comment, Status, Description, Def)
+   // Find the registered function definition that must have been pre-declared in the FDL.
+
+   local func
+   for k, f in ipairs(glFunctions) do
+      if (f.name == Name) then
+         func = f
+         break
+      end
+   end
+
+   if (func == nil) then error("Function '" .. Name .. "' is not declared in the FDL.") end
+
+   func.status      = Status
+   func.comment     = Comment
+   func.description = Description
+   func.category    = Category
+
+   if (Def == nil) then Def = { } end
+
+   if nz(Def.result) then
+      func.result = Def.result
+   elseif nz(Def.errors) then
+      func.result = cType({ type="error", values=Def.errors, isFunction=true }, "Function " .. Name)
+   end
+
+   local macroArgs = ""
+   local macroValues = ""
+   local argSeq = ""
+   local proto = ""
+   local complexArgs = false
+
+   if nz(Def.input) then
+      local abc = 97
+      func.input = { }
+      for line, content in ipairs(Def.input:split("\n")) do
+         local comment = content:match("^.+:%s-(.+)$")
+         if nz(comment) then content = content:match("^(.+):%s-.+$") end
+         local type, name = content:match("^%s*(.+)%s+([^%s]+)%s-$")
+         if (type != nil) then
+            local param = cType({ type=type:trim(), name=name:trim(), comment=comment:trim(), isFunction=true }, "Function " .. Name)
+            table.insert(func.input, param)
+
+            if nz(argSeq) then
+               argSeq = argSeq .. ", "
+               proto = proto .. ", "
+               macroValues = macroValues .. ","
+            end
+
+            if (param.type == "OBJECTPTR") or (param.type == "APTR *") or (param.type == "OBJECTPTR *") then
+               argSeq = argSeq .. "APTR"
+            else
+               argSeq = argSeq .. param.type
+            end
+
+            if (param.sizeof) then
+               proto = proto .. param.type .. " " .. cName(param)
+               macroValues = macroValues .. "sizeof(*" .. string.char(abc-1) .. ")"
+               complexArgs = true
+            elseif (param.type == "...") then
+               proto = proto .. param.type
+               if nz(macroArgs) then
+                  macroArgs = macroArgs .. ","
+               else // This special case is required when '...' is the first parameter.
+                  if (param.fullType.fd == "FD_VARTAGS") then
+                     argSeq = "LARGE," .. argSeq
+                     proto = "LARGE," .. proto
+                  else
+                     argSeq = "LONG," .. argSeq
+                     proto = "LONG," .. proto
+                  end
+               end
+               macroArgs = macroArgs .. "..."
+               macroValues = macroValues .. "__VA_ARGS__"
+            else
+               proto = proto .. param.type .. " " .. cName(param)
+               if nz(macroArgs) then macroArgs = macroArgs .. "," end
+               macroArgs = macroArgs .. string.char(abc)
+               macroValues = macroValues .. string.char(abc)
+               abc = abc + 1
+            end
+         elseif nz(content:trim()) then
+            error("Unable to process line '" .. nz(content,"NULL") .. "' for function '" .. Name .. "'")
+         end
+      end
+   end
+
+   local response = func.result
+   if (func.result == nil) then
+      response = { type="void" }
+   end
+
+   func.def = "   " .. nz(response.type,"NIL") .. " (*_" .. func.name .. ")(" .. nz(nz(Def.ext_proto, argSeq),"void") .. ");"
+   func.c_proto = proto
+   func.c_response = response.type
+
+   if (complexArgs) then
+      func.macro = "#define " .. glFunctionPrefix:lower() .. func.name .. "(" .. nz(macroArgs,"") .. ") (" .. glModule.name .. "Base->_" .. func.name .. ")(" .. nz(macroValues,"") .. ")"
+   else
+      func.macro = "#define " .. glFunctionPrefix:lower() .. func.name .. "(...) (" .. glModule.name .. "Base->_" .. func.name .. ")(__VA_ARGS__)"
+   end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+
+function saveOutput()
+   if (#glOutput < 3) then
+      print("No output was generated for the destination file.")
+      return
+   end
+
+   local tempPath = "temp:" .. nz(glModule.name,"idl-c"):lower() .. ".h"
+   local outPath = glOutputPath
+   if (outPath == nil) then
+      if nz(glModule.name) then
+         outPath = "sdk:core/include/parasol/modules/" .. glModule.name:lower() .. ".h"
+      else
+         error("No output path specified in command-line.")
+      end
+   end
+
+   if (glFeedback == "verbose") then print("Saving C header to \"" .. outPath .. "\"") end
+
+   do
+      local file = obj.new("file", { flags="WRITE|NEW", location=tempPath } )
+
+      local blank = 0
+      for a=1, #glOutput do
+         if (glOutput[a] == "__FUNCTION_TABLE__") then
+            local out = "struct " .. glModule.name .. "Base {\n"
+            for k, func in ipairs(glFunctions) do
+               if nz(func.def) then
+                  out = out .. func.def .. "\n"
+               end
+            end
+            out = out .. "};\n\n" .. "#ifndef PRV_" .. glModule.name:upper() .. "_MODULE\n"
+            for k, func in ipairs(glFunctions) do
+               if nz(func.macro) then
+                  out = out .. func.macro .. "\n"
+               end
+            end
+            out = out .. "#endif\n\n"
+            file.acWrite(out, out:len())
+         else
+            local str = glOutput[a] .. "\n"
+            if (str == "\n") then
+               blank = blank + 1
+            else
+               blank = 0
+            end
+
+            if (blank < 2) then file.acWrite(str, str:len()) end
+         end
+      end
+   end
+
+   collectgarbage()
+
+   mSys.MoveFile(tempPath, outPath)
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Generate private C function prototypes for the module.
+
+function buildPrototypes()
+   if (glClasses != nil) then
+      for className, cl in pairs(glClasses) do
+         if nz(cl.methods) then
+            for _, method in ipairs(cl.methods) do
+               local proto = "OBJECTPTR Object"
+               if nz(method.params) then
+                  for _, param in ipairs(method.params) do
+                     proto = proto .. ", " .. param.type .. " " .. param.name
+                  end
+               end
+               method.prototype = "ERROR " .. cl.methodPrefix:lower() .. method.name .. "(" .. proto .. ")"
+            end
+         end
+      end
+   end
+
+   if nz(glFunctions) then
+      local proto = ""
+      for k, func in ipairs(glFunctions) do
+         if (glPrototypes == "static") then proto = proto .. "static " end
+
+         local response
+         if (func.result != nil) and (func.result.type != nil) then
+            response = func.result.fullType.c_type
+         else
+            response = "void"
+         end
+
+         func.prototype = nz(func.c_response,"void") .. " " .. nz(glFunctionPrefix,"") .. func.name .. "(" .. nz(func.c_proto,"") .. ")"
+         proto = proto .. func.prototype .. ";\n"
+      end
+      proto = proto .. "\n"
+      return proto
+   else
+      return ""
+   end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Generate private C definitions that describe the public functions of a module.
+
+function buildDefs()
+   if not nz(glFunctions) then return "" end
+
+   local flist = "\nconst struct Function glFunctions[] = {\n"
+   for k, func in ipairs(glFunctions) do
+      flist = flist .. "   { (APTR)" .. nz(glFunctionPrefix,"") .. func.name .. ", \"" .. func.name .. "\", args" .. func.name .. " },\n"
+   end
+   flist = flist .. "   { NULL, NULL, NULL }\n"
+   flist = flist .. "};\n\n"
+
+   table.sort(glFunctions, function(a,b) return a.name < b.name end)
+
+   local plist = ""
+   for _, func in ipairs(glFunctions) do
+      plist = plist .."FDEF args" .. func.name .. "[] = {"
+
+      // Process the result type first
+
+      if (func.result != nil) and (func.result.type != nil) then
+         local type = func.result.fullType
+
+         if (type != nil) then
+            local fd = type.fd
+            local result_name = "Result"
+            if (fd == "FD_LONG|FD_ERROR") then
+               result_name = "Error"
+            elseif (fd == "FD_OBJECTPTR") then
+               result_name = "Object"
+            elseif func.result.struct != nil then
+               result_name = func.result.struct
+            end
+            if (func.result.allocated) then fd = fd .. "|FD_ALLOC" end
+            plist = plist .. " { \"" .. result_name .. "\", " .. fd .. " }, "
+         else
+            plist = plist .. " { \"" .. func.result.type .. "\", FD_VOID }, "
+         end
+      else
+         plist = plist .. " { \"Void\", FD_VOID }, "
+      end
+
+      plist = plist .. buildInputParameters(func.input) .. " };\n"
+   end
+
+   return "#ifndef FDEF\n#define FDEF static const struct FunctionField\n#endif\n\n" .. plist .. flist
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Build C parameter definitions for a function or method
+
+function buildInputParameters(List)
+   local plist = ""
+   if (List != nil) then
+      for _, param in ipairs(List) do
+         local fd = param.fullType.fd
+         if (param.allocated) then fd = fd .. "|FD_ALLOC" end
+         if (param.resultValue) then fd = fd .. "|FD_RESULT" end
+         if (param.struct != nil) then
+            plist = plist .. "{ \"" .. param.struct .. ":" .. param.name .. "\", " .. fd .. " }, "
+         else
+            plist = plist .. "{ \"" .. param.name .. "\", " .. fd .. " }, "
+         end
+      end
+   end
+   return plist .. "{ 0, 0 }"
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Build a list of all available action names and their parameters.
+
+function loadActions()
+   if (glFeedback == "verbose") then print("Loading core actions...") end
+   glActions = { }
+   for id, actions in ipairs(mSys.ActionList()) do
+      if nz(actions) and nz(actions.name) then
+         glActions[actions.name] = { name=actions.name, input=actions.args, hash=actions.hash, id=id-1 }
+      end
+   end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Resolve the location of the Parasol SDK and create an 'sdk:' volume.
+
+function resolveSDKPath(Path)
+   local sdk_path
+   local err = ERR_Failed
+   if not Path then
+      local search_path = 'CMakeLists.txt'
+      local limit = 5
+      while (err != ERR_Okay) and (limit > 0) do
+         search_path = '../' .. search_path
+         err, sdk_path = mSys.ResolvePath(search_path)
+         limit = limit - 1
+      end
+   else
+      err, sdk_path = mSys.ResolvePath(Path .. '/CMakeLists.txt')
+   end
+
+   if (err == ERR_Okay) then
+      sdk_path = sdk_path:match("(.+)CMakeLists%.txt")
+   else
+      error('Failed to resolve a path to the Parasol SDK.')
+   end
+
+   mSys.SetVolume(AST_NAME, 'sdk', AST_PATH, sdk_path, AST_COMMENT, 'Parasol Software Development Kit')
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+
+   glProgram     = 'idl-c' // FDL's can read this
+   glSource      = arg('src')
+   glOutputPath  = arg('output')
+   glLanguage    = arg('language')
+   glFeedback    = arg('feedback')
+   glOutputDefs  = arg('output-defs')
+   glOutputProto = arg('output-proto')
+   glPrototypes  = arg('prototypes')
+
+   if (glSource == nil) then
+      print("This command is used to compile self-documenting source files.  Provide a reference to a")
+      print("source '.fdl' file in the SRC parameter.  The resulting data will be saved to the file")
+      print("referenced in the OUTPUT parameter.")
+      return
+   end
+
+   mSys = mod.load('core')
+
+   glFunctions   = { }
+   glFunctionLookup = { }
+   glMethods     = { }
+   glFields      = { }
+   glPaths       = { }
+   glCustomTypes = { }
+   glStructures  = { }
+   glDocuments   = { }
+   glModule      = { }
+   glTotalWarnings = 0
+   glCategory = nil
+   glCategories = { }
+   glPrivateNames = { }
+
+   resolveSDKPath(arg('sdk'))
+
+   loadActions()
+
+   if (processFDLFile(glSource) == ERR_Okay) then
+      processSourceFiles()
+      output('#endif')
+      saveOutput()
+
+      local protoDef = buildPrototypes()
+
+      if (glOutputDefs != nil) then
+         local file = obj.new('file', { flags='WRITE|NEW', location=glOutputDefs } )
+         file.acWrite('// Auto-generated by idl-c.fluid\n\n')
+         if (glOutputProto == glOutputDefs) then
+            glOutputProto = nil
+            file.acWrite(protoDef)
+         end
+         file.acWrite(buildDefs())
+      end
+
+      if (glOutputProto != nil) then
+         local file = obj.new('file', { flags='WRITE|NEW', location=glOutputProto } )
+         file.acWrite('// Auto-generated by idl-c.fluid\n\n')
+         file.acWrite(protoDef)
+      end
+
+      saveDocuments()
+   end

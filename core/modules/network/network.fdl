@@ -7,12 +7,6 @@ module({ name="Network", copyright="Paul Manias © 2005-2020", version=1.0, pref
 
   c_insert([[
 
-#if __has_include(<openssl/ssl.h>)
-   #define ENABLE_SSL
-#else
-   #undef ENABLE_SSL
-#endif
-
 #ifdef ENABLE_SSL
 #include "openssl/ssl.h"
 #endif
@@ -75,18 +69,18 @@ typedef LONG SOCKET_HANDLE;
   ]])
 
   class("ClientSocket", { comment="Simple data storage class utilised by NetClient to host client socket information." }, [[
-    large ConnectTime           # System time for the creation of this socket
-    obj(ClientSocket) Prev      # Previous socket in the chain
-    obj(ClientSocket) Next      # Next socket in the chain
-    ptr(struct(rkNetClient)) Client   # Parent client structure
-    ptr  UserData               # Free for user data storage.
-    func Outgoing               # Callback for data being sent over the socket
-    func Incoming               # Callback for data being received from the socket
-    int  Handle                 # Socket FD
-    int  MsgLen                 # Length of the current incoming message
-    bit(int) ReadCalled         # TRUE if the Read action has been called
+    large ConnectTime                # System time for the creation of this socket
+    obj(ClientSocket) Prev           # Previous socket in the chain
+    obj(ClientSocket) Next           # Next socket in the chain
+    ptr(struct(rkNetClient)) Client  # Parent client structure
+    ptr  UserData                    # Free for user data storage.
+    func Outgoing                    # Callback for data being sent over the socket
+    func Incoming                    # Callback for data being received from the socket
+    int  MsgLen                      # Length of the current incoming message
+    bit(int) ReadCalled              # TRUE if the Read action has been called
   ]],
   [[
+    SOCKET_HANDLE Handle;       // Socket FD
     struct NetQueue WriteQueue; // Writes to the network socket are queued here in a buffer
     struct NetQueue ReadQueue;  // Read queue, often used for reading whole messages
   ]])
@@ -95,10 +89,10 @@ typedef LONG SOCKET_HANDLE;
     char(8) IP                     # IP address in 4/8-byte format
     ptr(struct(rkNetClient)) Next  # Next client in the chain
     ptr(struct(rkNetClient)) Prev  # Previous client in the chain
-    obj(NetSocket) NetSocket  # Reference to the parent socket
-    obj(ClientSocket) Sockets # Pointer to a list of sockets opened with this client.
-    ptr UserData              # Free for user data storage.
-    int TotalSockets          # Count of all created sockets
+    obj(NetSocket) NetSocket       # Reference to the parent socket
+    obj(ClientSocket) Sockets      # Pointer to a list of sockets opened with this client.
+    ptr UserData                   # Free for user data storage.
+    int TotalSockets               # Count of all created sockets
   ]])
 
   methods("proxy", "Prx", {
@@ -107,7 +101,7 @@ typedef LONG SOCKET_HANDLE;
     { id=3, name="FindNext" }
   })
 
-  class("Proxy", { src="class_proxy.c" }, [[
+  class("Proxy", { src="class_proxy.cpp" }, [[
     str NetworkFilter
     str GatewayFilter
     str Username
@@ -136,7 +130,7 @@ typedef LONG SOCKET_HANDLE;
     { id=6, name="WriteMsg" }
   })
 
-  class("NetSocket", { src="netsocket/netsocket.c", output="netsocket/netsocket_def.c" }, [[
+  class("NetSocket", { src="netsocket/netsocket.cpp", output="netsocket/netsocket_def.c" }, [[
     ptr(struct(rkNetClient)) Clients # ServerMode - Attached clients
     obj(ClientSocket) CurrentSocket  # ServerMode - The current client being operated on (e.g. for Read/Write activity)
     ptr UserData      # Pointer to user data that can be used during events
@@ -170,8 +164,14 @@ typedef LONG SOCKET_HANDLE;
       #ifdef NO_NETRECURSION
          WORD WinRecursion; // For win32_netresponse()
       #endif
-      void (*ReadSocket)(HOSTHANDLE FD, struct rkNetSocket *);
-      void (*WriteSocket)(HOSTHANDLE FD, struct rkNetSocket *);
+      union {
+         void (*ReadSocket)(SOCKET_HANDLE, struct rkNetSocket *);
+         void (*ReadClientSocket)(SOCKET_HANDLE, objClientSocket *);
+      };
+      union {
+         void (*WriteSocket)(SOCKET_HANDLE, struct rkNetSocket *);
+         void (*WriteClientSocket)(SOCKET_HANDLE, objClientSocket *);
+      };
    #endif
    #ifdef ENABLE_SSL
       SSL *SSL;

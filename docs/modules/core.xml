@@ -1899,10 +1899,10 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
   </function>
 
   <function>
-    <name>ReadFile</name>
+    <name>ReadFileToBuffer</name>
     <category>Files</category>
     <comment>Reads a file into a buffer.</comment>
-    <prototype>ERROR ReadFile(CSTRING Path, APTR Buffer, LONG BufferSize, LONG * Result)</prototype>
+    <prototype>ERROR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG * Result)</prototype>
     <input>
       <param type="CSTRING" name="Path">The path of the file.</param>
       <param type="APTR" name="Buffer">Pointer to a buffer that will receive the file content.</param>
@@ -3114,7 +3114,7 @@ SetField(Object, FID_Statement|TSTR, "string");
     <description>
 <p>This function will shrink a string by removing a sequence of characters and rearranging the remaining data. For example, <code>StrShrink("Hello World", 4, 5)</code> results in <code>Helrld</code> by deleting the characters <code>lo Wo</code>.</p>
 <p>This function modifies the source string in-place, so no memory will be allocated.  The String will be null terminated and its new length will be returned.</p>
-<p>Please note that this function does not operate in compliance with UTF-8 character sequences.</p>
+<p>Please note that this function operates on byte positions and is not in compliance with UTF-8 character sequences.</p>
     </description>
     <result type="LONG">Returns the new length of the shrunken string, not including the null byte.</result>
   </function>
