@@ -963,11 +963,11 @@ EXPORT struct CoreBase * OpenCore(struct OpenInfo *Info)
 #ifdef _WIN32
    {
       STRING libpath;
-      if (!ResolvePath("system:modules/lib", RSF_NO_FILE_CHECK, &libpath)) {
+      if (!ResolvePath("modules:lib", RSF_NO_FILE_CHECK, &libpath)) {
          winSetDllDirectory(libpath);
          FreeResource(libpath);
       }
-      else FMSG("!","Failed to resolve system:modules/lib");
+      else FMSG("!","Failed to resolve modules:lib");
    }
 #endif
 

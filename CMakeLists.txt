@@ -24,12 +24,13 @@ project (Parasol LANGUAGES C CXX)
 
 set(VERSION "2020.10")
 
-option (PARASOL_STATIC      "Build as a static library" OFF)
-option (PARASOL_SHARED      "Build as a shared library" ON)
-option (PARASOL_INSTALL     "Create installation targets (chain builders may want to disable this)" ON)
-option (PARASOL_VLOG        "Enable verbose log messages in the generated binaries." OFF)
-option (PARASOL_BUILD_TESTS "Build tests" ON)
-option (PARASOL_BUILD_DEFS  "Generate IDL files, C/C++ headers and documentation" ON)
+option (PARASOL_STATIC  "Build as a static library" OFF)
+option (PARASOL_SHARED  "Build as a shared library" ON)
+option (PARASOL_INSTALL "Create installation targets (chain builders may want to disable this)" ON)
+option (PARASOL_VLOG    "Enable verbose log messages in the generated binaries" OFF)
+option (BUILD_TESTS     "Build tests" ON)
+option (BUILD_DEFS      "Generate IDL files, C/C++ headers and documentation" ON)
+option (DISABLE_SSL     "Disable built-in SSL support even if available on this system" OFF)
 
 set (CMAKE_CXX_STANDARD 11)
 set (CMAKE_CXX_STANDARD_REQUIRED True)
@@ -44,8 +45,10 @@ if (SYSTEM_ENDIAN_STYLE EQUAL 0) # Little endian (Intel)
    set (LITTLE_ENDIAN TRUE)
 endif ()
 
-set (OPENSSL_USE_STATIC_LIBS TRUE) # Doesn't work as expected in MinGW env.
-include (FindOpenSSL)
+if (NOT DISABLE_SSL)
+   set (OPENSSL_USE_STATIC_LIBS TRUE) # Doesn't work as expected in MinGW env.
+   include (FindOpenSSL)
+endif ()
 
 if (MINGW) # Undo the use of 'lib' as the default prefix set by MinGW
    set(CMAKE_SHARED_LIBRARY_PREFIX "")
@@ -95,13 +98,13 @@ find_program (FLUTE_SCRIPT "flute.fluid" PATHS "${PROJECT_SOURCE_DIR}/data/scrip
 
 if (FLUID_CMD STREQUAL "FLUID_CMD-NOTFOUND")
    message (STATUS "Definitions will not be built and tests are disabled.")
-   set (PARASOL_BUILD_DEFS OFF)
+   set (BUILD_DEFS OFF)
 else ()
-   if (PARASOL_BUILD_DEFS)
+   if (BUILD_DEFS)
       message (STATUS "Definitions will be built with the Fluid program installed @ ${FLUID_CMD}.")
    endif ()
 
-   if (PARASOL_BUILD_TESTS)
+   if (BUILD_TESTS)
       message (STATUS "Tests will be executed with the Fluid program installed @ ${FLUID_CMD}.")
       set (ENABLE_FLUID_TESTS 1)
       enable_testing()
@@ -126,7 +129,7 @@ add_custom_target(build_headers ALL COMMENT "Generate headers and definition fil
 # Use Flute to write tests against your code
 
 function (flute_test name path)
-   if (ENABLE_FLUID_TESTS AND PARASOL_BUILD_TESTS)
+   if (ENABLE_FLUID_TESTS AND BUILD_TESTS)
       add_test (NAME ${name} COMMAND "${FLUID_CMD}" "--log-error" "${FLUTE_SCRIPT}" "file=${path}")
    endif ()
 endfunction ()
@@ -137,7 +140,7 @@ endfunction ()
 function (idl_all)
    cmake_parse_arguments (PARSE_ARGV 0 IDLC "" "OUTPUT;APPEND_IDL;NAME" "ARGS;FILES")
 
-   if (PARASOL_BUILD_DEFS)
+   if (BUILD_DEFS)
       if (DEFINED IDLC_NAME)
          set (OUTPUT_NAME ${IDLC_NAME})
       else ()
@@ -180,7 +183,7 @@ endfunction ()
 function (idl_c)
    cmake_parse_arguments (PARSE_ARGV 0 IDLC "" "OUTPUT;NAME" "ARGS;FILES")
 
-   if (PARASOL_BUILD_DEFS)
+   if (BUILD_DEFS)
       if (DEFINED IDLC_NAME)
          set (OUTPUT_NAME ${IDLC_NAME})
       else ()
@@ -214,7 +217,7 @@ endfunction ()
 function (idl_def)
    cmake_parse_arguments (PARSE_ARGV 0 IDLC "" "OUTPUT;NAME" "ARGS;FILES")
 
-   if (PARASOL_BUILD_DEFS)
+   if (BUILD_DEFS)
       if (DEFINED IDLC_NAME)
          set (OUTPUT_NAME ${IDLC_NAME})
       else ()

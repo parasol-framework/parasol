@@ -31,6 +31,7 @@ if (OPENSSL_FOUND)
    # Linking against the .a files is necessary to ensure a static link.
    list (APPEND NETWORK_LIBS ssl.a crypto.a)
    target_include_directories (${MOD} PRIVATE "${OPENSSL_INCLUDE_DIR}")
+   add_definitions ("-DENABLE_SSL")
 else ()
    message (STATUS "Network module will not be compiled with SSL support.")
 endif ()
