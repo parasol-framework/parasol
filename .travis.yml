@@ -109,7 +109,7 @@ branches:
   only:
   - master
   - /test\/.*/
-  - /release\/.*/
+  - release
 
 deploy:
   provider: releases
@@ -117,6 +117,4 @@ deploy:
   file_glob: true
   file: "install/*"
   on:
-    all_branches: true
-    condition: $TRAVIS_BRANCH =~ /^(release\/.*)$/
-
+    branch: release
