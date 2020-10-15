@@ -119,5 +119,5 @@ deploy:
   skip_cleanup: true
   on:
     all_branches: true
-    condition: $TRAVIS_BRANCH =~ ^(release\/.*)$
+    condition: $TRAVIS_BRANCH =~ /^(release\/.*)$/
 
