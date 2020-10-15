@@ -113,10 +113,9 @@ branches:
 
 deploy:
   provider: releases
-  api_key: "${GITHUB_TOKEN}"
+  token: "${GITHUB_TOKEN}"
   file_glob: true
   file: "install/*"
-  skip_cleanup: true
   on:
     all_branches: true
     condition: $TRAVIS_BRANCH =~ /^(release\/.*)$/
