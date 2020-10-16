@@ -27,7 +27,15 @@ Optional extensions not included with the main distribution:
 * Cryptography support (AES)
 * Database connectivity (MySQL, SQLite)
 
-## 2. Build Process
+## 2. Checkout
+
+Source code should be checked out from the `release` branch of our GitHub repository if you are a newcomer:
+
+```
+git clone -b release https://github.com/team-parasol/parasol.git parasol
+```
+
+## 3. Build Process
 
 We recommend using the GCC compiler to build the framework on all platforms.  If you are running Windows then we recommend using MSYS2 and MinGW as your build environment.  Please refer to section 2.3 of this document for Windows development instructions.  Targeting Android will require Cygwin.
 
@@ -52,11 +60,11 @@ sudo cmake --install release
 
 If problems occur at any stage during the build and you suspect an issue in the execution of a command, enable logging of the build process with the `--verbose` option.
 
-### 2.1 Quick Builds
+### 3.1 Quick Builds
 
 We recommend that you always build with the `-j 8 -- -O` set of options for best performance.  To limit the build to a specific sub-project you are working on, use `--target <NAME>`.  All known target names are printed during the output of a standard build.
 
-### 2.2 Debug Build
+### 3.2 Debug Build
 
 Before resorting to a debug build, consider running the application with the `--log-info` option.  Doing so will print a wealth of information to stdout and this is often enough to resolve common problems quickly.
 
@@ -70,7 +78,7 @@ sudo cmake --install debug
 
 Now run `gdb` from the command-line and target parasol or the problem executable as required.  After fixing the issues, we strongly recommend returning to a standard build.  Debug builds have a very significant performance penalty and are not reflective of a 'real world environment' for day to day programming.
 
-## 2.3 Windows Build Tools
+## 3.3 Windows Build Tools
 
 MSYS2 and MinGW are required for a Windows build.  Once installed, the build process is essentially identical to that of Linux.  The install of the build tools can be completed as follows:
 
@@ -84,7 +92,7 @@ MSYS2 and MinGW are required for a Windows build.  Once installed, the build pro
 
 Please note that the default MSYS2 release of gcc is not supported.  The MinGW toolchain must be used as indicated above.
 
-## 3. Running / Testing
+## 4. Running / Testing
 
 After running `cmake --install <FOLDER>` the target installation folder will be printed to the console.  You may need to add this folder to your PATH variable permanently.
 
@@ -96,11 +104,11 @@ fluid --log-error examples/widgets.fluid
 
 Try running a second time with `--log-info` to observe run-time log output while toying with the example.  Try a few of the other examples to get a feel for what you can achieve, and load them into a text editor to see how they were created.
 
-## 4. Next Steps
+## 5. Next Steps
 
 Full documentation for developers is available online from our [main website](https://www.parasol.ws).
 
-## 5. Source Code Licensing
+## 6. Source Code Licensing
 
 Excluding third party APIs and marked contributions, the Parasol Framework is the copyright of Paul Manias © 1996 - 2020.  The source code is released under the terms of the LGPL as referenced below, except where otherwise indicated.
 
