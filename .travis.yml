@@ -70,9 +70,9 @@ before_cache:
     esac
 
 cache:
-    directories:
-    - $HOME/AppData/Local/Temp/chocolatey
-    - /C/tools/msys64
+  directories:
+  - $HOME/AppData/Local/Temp/chocolatey
+  - /C/tools/msys64
 
 script:
 - |-
@@ -111,10 +111,13 @@ branches:
   - /test\/.*/
   - release
 
+before_deploy:
+- tar -zcf ${TRAVIS_BUILD_DIR}parasol-${TRAVIS_BUILD_NUMBER}.tar.gz install
+
 deploy:
   provider: releases
+  edge: true
   token: "${GITHUB_TOKEN}"
-  file_glob: true
-  file: "install/*"
+  file: ${TRAVIS_BUILD_DIR}parasol-${TRAVIS_BUILD_NUMBER}.tar.gz
   on:
     branch: release
