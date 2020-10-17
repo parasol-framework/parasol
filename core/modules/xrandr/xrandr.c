@@ -27,7 +27,7 @@ static LONG glActualCount = 0;
 
 static void write_string(objFile *File, CSTRING String)
 {
-   struct acWrite write = { .Buffer = String; .Length = StrLength(String); };
+   struct acWrite write = { .Buffer = String, .Length = StrLength(String) };
    Action(AC_Write, File, &write);
 }
 
