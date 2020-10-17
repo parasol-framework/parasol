@@ -78,13 +78,13 @@ script:
 - |-
     case $TRAVIS_OS_NAME in
       windows)
-        $mingw64 cmake -S . -B release -G"MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release -DDISABLE_SSL=TRUE -DCMAKE_INSTALL_PREFIX=install/parasol
+        $mingw64 cmake -S . -B release -G"MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release -DDISABLE_SSL=TRUE -DCMAKE_INSTALL_PREFIX=install/parasol -DINSTALL_EXAMPLES=TRUE
         if [ $? -eq 0 ]; then
            $mingw64 cmake --build release -j 8 --verbose -- -O
         fi
         ;;
       linux)
-        cmake -S . -B release -DCMAKE_BUILD_TYPE=Release -DDISABLE_SSL=TRUE -DCMAKE_INSTALL_PREFIX=install/parasol
+        cmake -S . -B release -DCMAKE_BUILD_TYPE=Release -DDISABLE_SSL=TRUE -DCMAKE_INSTALL_PREFIX=install/parasol -DINSTALL_EXAMPLES=TRUE
         if [ $? -eq 0 ]; then
            cmake --build release -j 8 -- -O
            if [ $? -eq 0 ]; then
@@ -116,7 +116,7 @@ before_deploy:
 - git config --local user.email "paul@parasol.ws"
 - export TRAVIS_TAG=${TRAVIS_TAG:-$(date +'%Y%m%d')-$(git log --format=%h -1)}
 - git tag $TRAVIS_TAG
-- tar -zcf ${TRAVIS_BUILD_DIR}/parasol-${TRAVIS_OS_NAME}-${TRAVIS_BUILD_NUMBER}.tar.gz install/parasol
+- tar -zc --directory=install -f ${TRAVIS_BUILD_DIR}/parasol-${TRAVIS_OS_NAME}-${TRAVIS_BUILD_NUMBER}.tar.gz parasol
 
 deploy:
   provider: releases
