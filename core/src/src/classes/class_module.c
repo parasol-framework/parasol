@@ -413,9 +413,9 @@ static ERROR MODULE_Init(objModule *Self, APTR Void)
                if (glModulePath[0]) { // If no specific module path is defined, default to the system path and tack on the modules/ suffix.
                   i = StrCopy(glModulePath, path, sizeof(path));
                }
-               else i = StrFormat(path, sizeof(path), "%slib/parasol/", glRootPath);               
+               else i = StrFormat(path, sizeof(path), "%slib/parasol/", glRootPath);
 
-               if (Self->Flags & MOF_LINK_LIBRARY) i += StrCopy("lib/", path+i, sizeof(path-i));               
+               if (Self->Flags & MOF_LINK_LIBRARY) i += StrCopy("lib/", path+i, sizeof(path-i));
 
                #ifdef __ANDROID__
                   if ((Self->Name[0] IS 'l') AND (Self->Name[1] IS 'i') AND (Self->Name[2] IS 'b'));
@@ -441,7 +441,7 @@ static ERROR MODULE_Init(objModule *Self, APTR Void)
                   i += StrCopy(modlocation, path+i, sizeof(path)-i);
                }
 
-               if (Self->Flags & MOF_LINK_LIBRARY) i += StrCopy("lib\\", path+i, sizeof(path-i));               
+               if (Self->Flags & MOF_LINK_LIBRARY) i += StrCopy("lib\\", path+i, sizeof(path-i));
                StrCopy(Self->Name, path+i, sizeof(path)-i);
             #endif
          }
@@ -737,7 +737,8 @@ exit:
 
    if (error) { // Free allocations if an error occurred
 
-      LogErrorMsg("\"%s\" failed.", Self->Name);
+      if (!(error & ERF_Notified)) LogMsg("\"%s\" failed: %s", Self->Name, GetErrorMsg(error));
+      error &= ~(ERF_Notified|ERF_Delay);
 
       if (aflags & AF_MODULEMASTER) {
          if (master->Expunge) {
