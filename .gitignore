@@ -50,10 +50,7 @@
 /core/modules/kernel/genconstants
 /core/modules/fluid/luajit-*/doc
 /core/modules/display/snap/*
-/core/modules/network/ares-linux-1.10.0
 /core/android
-/core/modules/network/ares-1.11.0/test/
-/core/3rdparty/libffi-*/
 /core/3rdparty/openssl-*/
 /core/3rdparty/zlib-*/
 /scintilla374/
@@ -71,6 +68,5 @@
 /core/modules/fluid/luajit-2.0.*/src/host/minilua
 /core/modules/fluid/luajit-2.0.*/src/jit/vmdef.lua
 /svg/
-core/3rdparty/c-ares-1.16.1/
 core/modules/fluid/libffi-3.3/x86_64-w64-mingw32/
 core/modules/fluid/libffi-3.3/release/
