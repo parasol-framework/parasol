@@ -7,7 +7,7 @@
 
 ## 1. Introduction
 
-Parasol is a FOSS vector engine and application sandbox. An integrated scripting language based on Lua helps to simplify application development without compromising on speed or modern features.  Alternatively you can integrate the framework with your preferred environment if it supports linking with standard system libraries.
+Parasol is a FOSS vector engine and application sandbox for Windows and Linux. An integrated scripting language based on Lua helps to simplify application development without compromising on speed or modern features.  Alternatively you can integrate the framework with your preferred environment if it supports linking with standard system libraries.
 
 Parasol's ongoing development is focused on enhancing vector graphics programming on the desktop. We believe that this a research area that has been historically under-valued, but this needs to change with more displays achieving resolutions at 4K and beyond.  Apart from the scalability of vector graphics, we're also hoping to experiment with more dynamic rendering features that aren't possible with traditional bitmap interfaces.
 
