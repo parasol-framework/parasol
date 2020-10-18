@@ -43,6 +43,10 @@ ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    CoreBase = argCoreBase;
 
+   // Do not proceed with initialisation if the module is being probed
+
+   if (((objModule *)argModule)->Flags & MOF_SYSTEM_PROBE) return ERR_ServiceUnavailable|ERF_Notified;
+
    if (!acGetVar(argModule, "XDisplay", buffer, sizeof(buffer))) {
       XDisplay = (struct _XDisplay *)(MAXINT)StrToInt(buffer);
       if (!XDisplay) return PostError(ERR_FieldNotSet);

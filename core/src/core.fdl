@@ -103,7 +103,8 @@ module({ name="Core", copyright="Paul Manias 1996-2020" }, function()
 
   flags("MOF", { comment="Module flags" },
     "LINK_LIBRARY: Module refers to a symbolic link library (e.g. libz DLL or SO)",
-    "STATIC: This flag prevents the loaded module code from being unloaded when the module object is freed.  This may be needed in cases where a module is designed with the presumption that it will remain in memory after being loaded by the developer.")
+    "STATIC: This flag prevents the loaded module code from being unloaded when the module object is freed.  This may be needed in cases where a module is designed with the presumption that it will remain in memory after being loaded by the developer.",
+    "SYSTEM_PROBE: Indicates that the module is being probed.  Do not use outside of the core library.")
 
   flags("THF", { comment="Thread flags" },
     "AUTO_FREE: Automatically destroy the Thread object when the user routine has completed.",

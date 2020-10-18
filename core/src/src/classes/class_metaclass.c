@@ -1364,15 +1364,13 @@ void scan_classes(void)
 
             char modules[80] = "modules:";
             LONG i, k;
-            for (i=0,k=sizeof("modules:")-1; list->Name[i]; i++) modules[k++] = list->Name[i];
+            for (i=0, k=sizeof("modules:")-1; list->Name[i]; i++) modules[k++] = list->Name[i];
             modules[k] = 0;
 
             LogF("Core","Loading module for class scan: %s", modules);
 
             OBJECTPTR module;
-            if (!CreateObject(ID_MODULE, 0, &module,
-                  FID_Name|TSTR, modules,
-                  TAGEND)) {
+            if (!CreateObject(ID_MODULE, 0, &module, FID_Name|TSTR, modules, FID_Flags|TLONG, MOF_SYSTEM_PROBE, TAGEND)) {
                acFree(module);
             }
             total++;
