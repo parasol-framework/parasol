@@ -72,3 +72,5 @@
 /core/modules/fluid/luajit-2.0.*/src/jit/vmdef.lua
 /svg/
 core/3rdparty/c-ares-1.16.1/
+core/modules/fluid/libffi-3.3/x86_64-w64-mingw32/
+core/modules/fluid/libffi-3.3/release/
