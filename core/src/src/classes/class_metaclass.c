@@ -1230,6 +1230,7 @@ ERROR write_class_item(struct ClassItem *item)
             TAGEND);
          if (acInit(file) != ERR_Okay) {
             ReleaseObject(file);
+            acFree(file);
             glClassFileID = 0;
             STEP();
             return ERR_File;
