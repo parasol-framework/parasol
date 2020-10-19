@@ -15,6 +15,7 @@ include (CheckCSourceCompiles)
 include (CheckStructHasMember)
 include (CheckLibraryExists)
 include (TestBigEndian)
+include (ExternalProject)
 
 if (CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
    include(CTest)
