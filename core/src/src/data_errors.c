@@ -354,7 +354,7 @@ CSTRING glMessages[ERR_END] = {
  "A required handle is invalid.",
  "A non-specific security violation has occurred.",
  "A required value was not within expected constraints.",
- "The required service process is not running.",
+ "The required service is not available.",
  "The object must be activated with the Activate action.",
  "A lock is required before accessing this functionality.",
  "Object or resource has already been locked.",

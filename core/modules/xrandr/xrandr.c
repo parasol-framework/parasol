@@ -27,11 +27,7 @@ static LONG glActualCount = 0;
 
 static void write_string(objFile *File, CSTRING String)
 {
-   struct acWrite write;
-   WORD i;
-   write.Buffer = String;
-   for (i=0; String[i]; i++);
-   write.Length = i;
+   struct acWrite write = { .Buffer = String, .Length = StrLength(String) };
    Action(AC_Write, File, &write);
 }
 
@@ -46,6 +42,10 @@ ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    UBYTE buffer[512];
 
    CoreBase = argCoreBase;
+
+   // Do not proceed with initialisation if the module is being probed
+
+   if (((objModule *)argModule)->Flags & MOF_SYSTEM_PROBE) return ERR_ServiceUnavailable|ERF_Notified;
 
    if (!acGetVar(argModule, "XDisplay", buffer, sizeof(buffer))) {
       XDisplay = (struct _XDisplay *)(MAXINT)StrToInt(buffer);
@@ -69,16 +69,16 @@ ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
       if (XRRQueryExtension(XDisplay, &events, &errors)) {
          avail = TRUE;
       }
-      else LogMsg("XRRQueryExtension() failed.");
+      else LogF("XRandR","XRRQueryExtension() failed.");
    }
-   else LogMsg("X11 management is not enabled.");
+   else LogF("XRandR","X11 display ownership is not enabled.");
 
    if (avail) {
       if ((sizes = XRRSizes(XDisplay, screen, &count)) AND (count)) {
          glSizes = sizes;
          glSizeCount = count;
       }
-      else LogMsg("XRRSizes() failed.");
+      else LogF("XRandR","XRRSizes() failed.");
    }
 
    if ((avail) AND (glX11->RRInitialised <= 1)) {
@@ -153,7 +153,7 @@ ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    }
 
    if (avail) return ERR_Okay;
-   else return ERR_Failed;
+   else return ERR_ServiceUnavailable|ERF_Notified;
 }
 
 ERROR CMDOpen(OBJECTPTR Module)

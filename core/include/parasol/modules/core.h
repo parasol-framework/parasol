@@ -803,6 +803,7 @@ struct ClipRectangle {
 
 #define MOF_LINK_LIBRARY 0x00000001
 #define MOF_STATIC 0x00000002
+#define MOF_SYSTEM_PROBE 0x00000004
 
 // Thread flags
 

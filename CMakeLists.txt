@@ -15,6 +15,7 @@ include (CheckCSourceCompiles)
 include (CheckStructHasMember)
 include (CheckLibraryExists)
 include (TestBigEndian)
+include (ExternalProject)
 
 if (CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
    include(CTest)
@@ -31,6 +32,7 @@ option (PARASOL_VLOG     "Enable verbose log messages in the generated binaries"
 option (BUILD_TESTS      "Build tests" ON)
 option (BUILD_DEFS       "Generate IDL files, C/C++ headers and documentation" ON)
 option (DISABLE_SSL      "Disable built-in SSL support even if available on this system" OFF)
+option (DISABLE_X11      "Disable X11 even if available on this system" OFF)
 option (INSTALL_EXAMPLES "Install the example scripts, typically for compiling a distribution" OFF)
 
 set (CMAKE_CXX_STANDARD 11)
@@ -49,6 +51,10 @@ endif ()
 if (NOT DISABLE_SSL)
    set (OPENSSL_USE_STATIC_LIBS TRUE) # Doesn't work as expected in MinGW env.
    include (FindOpenSSL)
+endif ()
+
+if (NOT DISABLE_X11)
+   include (FindX11)
 endif ()
 
 if (MINGW) # Undo the use of 'lib' as the default prefix set by MinGW
@@ -340,6 +346,9 @@ add_subdirectory (core/modules/vector)
 add_subdirectory (core/modules/widget)
 add_subdirectory (core/modules/window)
 add_subdirectory (core/modules/xml)
+if (X11_Xrandr_FOUND)
+   add_subdirectory (core/modules/xrandr)
+endif ()
 
 if (WIN32)
    # Note that compiling with -static in Linux is disabled because it appears to cause segfaults when writing __thread variables.
