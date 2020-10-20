@@ -87,9 +87,9 @@ script:
         cmake -S . -B release -DCMAKE_BUILD_TYPE=Release -DDISABLE_SSL=TRUE -DCMAKE_INSTALL_PREFIX=install/parasol -DINSTALL_EXAMPLES=TRUE
         if [ $? -eq 0 ]; then
            cmake --build release -j 8 -- -O
-           if [ $? -eq 0 ]; then
+           #if [ $? -eq 0 ]; then
               #cd release && ctest . --verbose
-           fi
+           #fi
         fi
         ;;
     esac
