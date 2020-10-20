@@ -20,7 +20,7 @@ ExternalProject_Add(
       "--disable-docs"
       "--prefix=${CMAKE_BINARY_DIR}/libffi-3.3"
       "--includedir=${CMAKE_BINARY_DIR}/libffi-3.3/include"
-      "CFLAGS=${CFLAGS} -fPIC"
+      "CFLAGS=${CFLAGS} -fPIC" # fPIC has to be forced because some Linux environments need it for the static build
    BUILD_COMMAND "${CMAKE_MAKE_PROGRAM}"
    INSTALL_COMMAND "${CMAKE_MAKE_PROGRAM}" "install"
    BUILD_BYPRODUCTS "${CMAKE_BINARY_DIR}/libffi-3.3/lib/libffi.a"
