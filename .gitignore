@@ -35,6 +35,7 @@
 *.mak
 
 # Folders
+/debug/*
 /release/*
 /parasol-*/
 
@@ -47,15 +48,12 @@
 /examples/svg/w3c/
 /examples/svg/
 
-/core/modules/kernel/genconstants
-/core/modules/fluid/luajit-*/doc
-/core/modules/display/snap/*
 /core/android
 /core/3rdparty/openssl-*/
 /core/3rdparty/zlib-*/
-/scintilla374/
 /examples/test.fluid
 .idea/
+/core/modules/fluid/luajit-*/doc
 /core/modules/fluid/luajit-2.0.*/src/lj_bcdef.h
 /core/modules/fluid/luajit-2.0.*/src/lj_ffdef.h
 /core/modules/fluid/luajit-2.0.*/src/lj_folddef.h
@@ -68,5 +66,4 @@
 /core/modules/fluid/luajit-2.0.*/src/host/minilua
 /core/modules/fluid/luajit-2.0.*/src/jit/vmdef.lua
 /svg/
-core/modules/fluid/libffi-3.3/x86_64-w64-mingw32/
-core/modules/fluid/libffi-3.3/release/
+core/modules/fluid/libffi-3.3/
