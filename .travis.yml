@@ -87,9 +87,6 @@ script:
         cmake -S . -B release -DCMAKE_BUILD_TYPE=Release -DDISABLE_SSL=TRUE -DCMAKE_INSTALL_PREFIX=install/parasol -DINSTALL_EXAMPLES=TRUE
         if [ $? -eq 0 ]; then
            cmake --build release -j 8 -- -O
-           #if [ $? -eq 0 ]; then
-              #cd release && ctest . --verbose
-           #fi
         fi
         ;;
     esac
@@ -99,9 +96,11 @@ after_success:
     case $TRAVIS_OS_NAME in
       windows)
         $mingw64 cmake --install release
+        $mingw64 make test -C release
         ;;
       linux)
         cmake --install release
+        make test -C release
         ;;
     esac
 
