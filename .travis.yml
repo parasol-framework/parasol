@@ -98,7 +98,7 @@ after_success:
 - |-
     case $TRAVIS_OS_NAME in
       windows)
-        cmake --install release
+        $mingw64 cmake --install release
         ;;
       linux)
         cmake --install release
