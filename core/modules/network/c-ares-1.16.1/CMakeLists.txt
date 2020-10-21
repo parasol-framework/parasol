@@ -29,13 +29,13 @@ INCLUDE (GNUInstallDirs) # include this *AFTER* PROJECT(), otherwise paths are w
 SET (CARES_LIB_VERSIONINFO "6:1:4")
 
 
-OPTION (CARES_STATIC     "Build as a static library"                                             OFF)
-OPTION (CARES_SHARED     "Build as a shared library"                                             ON)
-OPTION (CARES_INSTALL    "Create installation targets (chain builders may want to disable this)" ON)
-OPTION (CARES_STATIC_PIC "Build the static library as PIC (position independent)"                OFF)
+OPTION (CARES_STATIC     "Build as a static library"                                             ON)
+OPTION (CARES_SHARED     "Build as a shared library"                                             OFF)
+OPTION (CARES_INSTALL    "Create installation targets (chain builders may want to disable this)" OFF)
+OPTION (CARES_STATIC_PIC "Build the static library as PIC (position independent)"                ON)
 OPTION (CARES_BUILD_TESTS "Build and run tests"                                                  OFF)
 OPTION (CARES_BUILD_CONTAINER_TESTS "Build and run container tests (implies CARES_BUILD_TESTS, Linux only)" OFF)
-OPTION (CARES_BUILD_TOOLS "Build tools"                                                          ON)
+OPTION (CARES_BUILD_TOOLS "Build tools"                                                          OFF)
 
 # Tests require static to be enabled
 IF (CARES_BUILD_TESTS)

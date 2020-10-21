@@ -110,12 +110,11 @@ else ()
    if (BUILD_DEFS)
       message (STATUS "Definitions will be built with the Fluid program installed @ ${FLUID_CMD}.")
    endif ()
+endif ()
 
-   if (BUILD_TESTS)
-      message (STATUS "Tests will be executed with the Fluid program installed @ ${FLUID_CMD}.")
-      set (ENABLE_FLUID_TESTS 1)
-      enable_testing()
-   endif ()
+if (BUILD_TESTS)
+   message (STATUS "Integration tests are enabled.")
+   enable_testing()
 endif ()
 
 if (IDL_C_SCRIPT STREQUAL "IDL_C_SCRIPT-NOTFOUND")
@@ -133,11 +132,13 @@ endif ()
 add_custom_target(build_headers ALL COMMENT "Generate headers and definition files on the fly")
 
 # ----------------------------------------------------------------------------
-# Use Flute to write tests against your code
+# Use Flute to write tests against your code.  All Flute tests are integration tests, i.e. run them post-install
+# against the target installation folder.
 
 function (flute_test name path)
-   if (ENABLE_FLUID_TESTS AND BUILD_TESTS)
-      add_test (NAME ${name} COMMAND "${FLUID_CMD}" "--log-error" "${FLUTE_SCRIPT}" "file=${path}")
+   if (BUILD_TESTS)
+      get_filename_component(FLUTE_FULL_PATH "${path}" ABSOLUTE)
+      add_test (NAME ${name} COMMAND "${CMAKE_INSTALL_PREFIX}/bin/fluid" "--log-error" "${FLUTE_SCRIPT}" "file=${FLUTE_FULL_PATH}")
    endif ()
 endfunction ()
 
@@ -268,8 +269,8 @@ function (set_module_defaults ARG_TARGET)
    set_target_properties (${ARG_TARGET}
       PROPERTIES
       PREFIX ""
-      LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/release/system/modules"
-      RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/release/system/modules")
+      LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/release/lib"
+      RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/release/lib")
 endfunction ()
 
 # ----------------------------------------------------------------------------
@@ -407,7 +408,7 @@ if (WIN32)
    set (PARASOL_ROOT "${CMAKE_INSTALL_PREFIX}")
    install (TARGETS parasol DESTINATION .)
    install (TARGETS fluid_cmd DESTINATION .)
-   install (DIRECTORY "${CMAKE_BINARY_DIR}/release/system/modules/" DESTINATION "lib" FILES_MATCHING PATTERN "*.dll")
+   install (DIRECTORY "${CMAKE_BINARY_DIR}/release/lib/" DESTINATION "lib" FILES_MATCHING PATTERN "*.dll")
    install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/ssl/" DESTINATION "config/ssl")
    install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/styles/" DESTINATION "styles")
    install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/translations/" DESTINATION "config/translations")
@@ -422,7 +423,7 @@ else ()
    set (PARASOL_ROOT "${CMAKE_INSTALL_PREFIX}/share/parasol")
    install (TARGETS parasol DESTINATION "bin")
    install (TARGETS fluid_cmd DESTINATION "bin")
-   install (DIRECTORY "${CMAKE_BINARY_DIR}/release/system/modules/" DESTINATION "lib/parasol" FILES_MATCHING PATTERN "*.so")
+   install (DIRECTORY "${CMAKE_BINARY_DIR}/release/lib/" DESTINATION "lib/parasol" FILES_MATCHING PATTERN "*.so")
    install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/ssl" DESTINATION "share/parasol")
    install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/styles" DESTINATION "share/parasol")
    install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/translations" DESTINATION "share/parasol/config")
