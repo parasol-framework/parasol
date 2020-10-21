@@ -96,7 +96,7 @@ after_success:
     case $TRAVIS_OS_NAME in
       windows)
         $mingw64 cmake --install release
-        make test -C release ARGS=--verbose
+        $mingw64 $MAKE test -C release ARGS=--verbose
         ;;
       linux)
         cmake --install release
