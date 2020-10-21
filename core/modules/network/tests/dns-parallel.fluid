@@ -63,17 +63,21 @@ end
 //=====================================================================================================================
 // In this test, a time-out is expected because it will only wait 1 millisecond (nb: unless the Network module is
 // compiled with asynchronous resolution, in which case the name is resolved before ResolveName() returns).
+// This test doesn't work on Windows due to unreliable timeout management at a micro level.
 
 function testTimeOut()
-   glTotalResolved = 0
+   local state = mSys.GetSystemState()
+   if (state.platform == 'Linux') then
+      glTotalResolved = 0
 
-   for k,v in pairs(glDomains) do
-      print("Resolving " .. v)
-      mNet.ResolveName(v, 0, name_resolved, 0)
+      for k,v in pairs(glDomains) do
+         print("Resolving " .. v)
+         mNet.ResolveName(v, 0, name_resolved, 0)
+      end
+
+      local elapsed, err = processMessages(1)
+      if (err != ERR_TimeOut) then error("Expected time-out did not occur.") end
    end
-
-   local elapsed, err = processMessages(1)
-   if (err != ERR_TimeOut) then error("Expected time-out did not occur.") end
 end
 
 //=====================================================================================================================

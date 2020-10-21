@@ -2,47 +2,47 @@
 Tests for file functions
 --]]
 
-   glPath = "parasol:"
+   glPath = 'parasol:'
 
 //=====================================================================================================================
 // Test that the standard extraction pattern for folder and file names works as expected.
 
 function testPathExtract()
-   local pattern = "([^:/]+)/-$"
+   local pattern = '([^:/]+)/-$'
 
-   if (string.match("temp:test.txt", pattern) != "test.txt") then
-      error("Failed to extract \"test.txt\"")
+   if (string.match('temp:test.txt', pattern) != 'test.txt') then
+      error('Failed to extract "test.txt"')
    end
 
-   if (string.match("temp:folder/", pattern) != "folder") then
-      error("Failed to extract \"folder\"")
+   if (string.match('temp:folder/', pattern) != 'folder') then
+      error('Failed to extract "folder"')
    end
 
-   if (string.match("temp:folder/test.", pattern) != "test.") then
-      error("Failed to extract \"test.\"")
+   if (string.match('temp:folder/test.', pattern) != 'test.') then
+      error('Failed to extract "test."')
    end
 
-   if (string.match("temp:folder/subfolder/", pattern) != "subfolder") then
-      error("Failed to extract \"subfolder\"")
+   if (string.match('temp:folder/subfolder/', pattern) != 'subfolder') then
+      error('Failed to extract "subfolder"')
    end
 
-   if (string.match("temp:.hidden", pattern) != ".hidden") then
-      error("Failed to extract \".hidden\"")
+   if (string.match('temp:.hidden', pattern) != '.hidden') then
+      error('Failed to extract ".hidden"')
    end
 
-   if (string.match("simple.txt", pattern) != "simple.txt") then
-      error("Failed to extract \"simple.txt\"")
+   if (string.match('simple.txt', pattern) != 'simple.txt') then
+      error('Failed to extract "simple.txt"')
    end
 
-   if (string.match("temp:", pattern) != nil) then
-      error("Expected no result when extracting file name from path \"temp:\"")
+   if (string.match('temp:', pattern) != nil) then
+      error('Expected no result when extracting file name from path "temp:"')
    end
 end
 
 //=====================================================================================================================
 
 function testFolderScan()
-   local folder = obj.new("file", { src=glPath } )
+   local folder = obj.new('file', { src=glPath } )
 
    local names
    local err, file = folder.mtNext()
@@ -52,22 +52,22 @@ function testFolderScan()
       local date = file.date
       if (date == nil) then error("Unable to get file's modification date.") end
 
-      local name = file.path:match("([^:/]+)/-$")
+      local name = file.path:match('([^:/]+)/-$')
 
       if not nz(names) then
-         names = "\"" .. nz(name,"NIL") .. "\""
+         names = '"' .. nz(name,'NIL') .. '"'
       else
-         names = names .. ", \"" .. nz(name,"NIL") .. "\""
+         names = names .. ', "' .. nz(name,'NIL') .. '"'
       end
-      logOutput(nz(name,"NIL") .. ", Size: " .. file.Size .. ", Date: " .. date.year .. "/" .. date.month .. "/" .. date.day)
+      logOutput(nz(name,'NIL') .. ', Size: ' .. file.Size .. ', Date: ' .. date.year .. '/' .. date.month .. '/' .. date.day)
       err, file = folder.mtNext()
    end
 
    if (count == 0) then
-      error("No files found in \"" .. glPath .. "\": " .. mSys.GetErrorMsg(err))
+      error('No files found in "' .. glPath .. '": ' .. mSys.GetErrorMsg(err))
    end
 
-   return "Found " .. count .. " files."
+   return 'Found ' .. count .. ' files.'
 end
 
 //=====================================================================================================================
@@ -80,23 +80,23 @@ function testScanDir()
          local fl = dir.info
          local created = fl.created
 
-         logOutput(fl.name .. ", Size: " .. fl.size .. ", Date: " .. created.year .. "/" .. created.month .. "/" .. created.day)
+         logOutput(fl.name .. ', Size: ' .. fl.size .. ', Date: ' .. created.year .. '/' .. created.month .. '/' .. created.day)
 
          if (created.year < 1900) or (created.year > 3000) or (created.month < 1) or (created.month > 12) or (created.day < 1) or (created.day > 31) then
-            error("Invalid Year/Month/Day retrieved for \"" .. fl.name .. "\"")
+            error('Invalid Year/Month/Day retrieved for "' .. fl.name .. '"')
          end
 
          err = mSys.ScanDir(dir)
       end
    else
-      error("OpenDir() error: " .. mSys.GetErrorMsg(err))
+      error('OpenDir() error: ' .. mSys.GetErrorMsg(err))
    end
 end
 
 //=====================================================================================================================
 
 function testScanVolumes()
-   local err, dir = mSys.OpenDir(":", bit.bor(RDF_FILES,RDF_FOLDERS,RDF_TAGS))
+   local err, dir = mSys.OpenDir(':', bit.bor(RDF_FILES,RDF_FOLDERS,RDF_TAGS))
    if (err == ERR_Okay) then
       local volumes = { }
       local names
@@ -106,7 +106,7 @@ function testScanVolumes()
          if (names == nil) then
             names = fl.name
          else
-            names = names .. " " .. fl.name
+            names = names .. ' ' .. fl.name
          end
          volumes[fl.name] = true
          err = mSys.ScanDir(dir)
@@ -115,7 +115,7 @@ function testScanVolumes()
       logOutput(names)
 
       if (not volumes['parasol']) then error("The expected 'parasol' volume is not present.") end
-      if (not volumes['bin']) then error("The expected 'bin' volume is not present.") end
+      //if (not volumes['bin']) then error("The expected 'bin' volume is not present.") end
       if (not volumes['drive1']) then error("The expected 'drive1' volume is not present.") end
       if (not volumes['system']) then error("The expected 'system' volume is not present.") end
    else
@@ -127,14 +127,14 @@ end
 // This code loads a raw file, converts it to a string, reverses it and then writes the string back to the file.
 
 function testStringify()
-   local fl = obj.new("file", { src=glRawPath, flags="!READ|WRITE" } )
+   local fl = obj.new('file', { src=glRawPath, flags='!READ|WRITE' } )
    local buf = string.rep(nil, fl.size)
    local err, result = fl.acRead(buf, fl.size)
    if (err == ERR_Okay) then
       fl.acSeek(POS_START, 0)
       fl.acWrite(buf:reverse())
    else
-      error("Failed to read file " .. fl.location);
+      error('Failed to read file ' .. fl.location);
    end
 end
 
@@ -143,14 +143,14 @@ end
    return {
       tests = { 'testPathExtract', 'testFolderScan', 'testScanDir', 'testStringify', 'testScanVolumes' },
       init = function()
-         glRawPath = "test.out"
-         local out = obj.new("file", { src=glRawPath, flags="!NEW|WRITE" } )
+         glRawPath = 'user:test.out'
+         local out = obj.new('file', { src=glRawPath, flags='!NEW|WRITE' } )
          if nz(out) then
-            out.acWrite("ABCD", 4)
+            out.acWrite('ABCD', 4)
             out = nil
             collectgarbage()
          else
-            error("Failed to create new file.")
+            error('Failed to create new file.')
          end
       end,
       cleanup = function()
