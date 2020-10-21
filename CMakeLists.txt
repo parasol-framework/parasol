@@ -137,7 +137,7 @@ add_custom_target(build_headers ALL COMMENT "Generate headers and definition fil
 
 function (flute_test name path)
    if (BUILD_TESTS)
-      add_test (NAME ${name} COMMAND "${CMAKE_INSTALL_PREFIX}/bin/fluid" "--log-error" "${FLUTE_SCRIPT}" "file=${CMAKE_CURRENT_SOURCE_DIR}/${path}")
+      add_test (NAME ${name} COMMAND "${CMAKE_INSTALL_PREFIX}/bin/fluid" "--log-error" "${FLUTE_SCRIPT}" "file=${path}")
    endif ()
 endfunction ()
 
