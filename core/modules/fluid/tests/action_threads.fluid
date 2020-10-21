@@ -75,7 +75,7 @@ end
          mSys = mod.load("core")
          glPictures = { }
 
-         local folder = obj.new("file", { src="parasol:icons/default/arrows/" } )
+         local folder = obj.new("file", { src="parasol:icons/Default/programs/" } )
          local err, file = folder.mtNext()
          while (err == ERR_Okay) do
             if (string.find(file.path, ".+%.svg")) then
