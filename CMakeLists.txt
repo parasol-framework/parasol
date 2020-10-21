@@ -268,8 +268,8 @@ function (set_module_defaults ARG_TARGET)
    set_target_properties (${ARG_TARGET}
       PROPERTIES
       PREFIX ""
-      LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/release/system/modules"
-      RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/release/system/modules")
+      LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/release/lib"
+      RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/release/lib")
 endfunction ()
 
 # ----------------------------------------------------------------------------
@@ -407,7 +407,7 @@ if (WIN32)
    set (PARASOL_ROOT "${CMAKE_INSTALL_PREFIX}")
    install (TARGETS parasol DESTINATION .)
    install (TARGETS fluid_cmd DESTINATION .)
-   install (DIRECTORY "${CMAKE_BINARY_DIR}/release/system/modules/" DESTINATION "lib" FILES_MATCHING PATTERN "*.dll")
+   install (DIRECTORY "${CMAKE_BINARY_DIR}/release/lib/" DESTINATION "lib" FILES_MATCHING PATTERN "*.dll")
    install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/ssl/" DESTINATION "config/ssl")
    install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/styles/" DESTINATION "styles")
    install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/translations/" DESTINATION "config/translations")
@@ -422,7 +422,7 @@ else ()
    set (PARASOL_ROOT "${CMAKE_INSTALL_PREFIX}/share/parasol")
    install (TARGETS parasol DESTINATION "bin")
    install (TARGETS fluid_cmd DESTINATION "bin")
-   install (DIRECTORY "${CMAKE_BINARY_DIR}/release/system/modules/" DESTINATION "lib/parasol" FILES_MATCHING PATTERN "*.so")
+   install (DIRECTORY "${CMAKE_BINARY_DIR}/release/lib/" DESTINATION "lib/parasol" FILES_MATCHING PATTERN "*.so")
    install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/ssl" DESTINATION "share/parasol")
    install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/styles" DESTINATION "share/parasol")
    install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/translations" DESTINATION "share/parasol/config")
