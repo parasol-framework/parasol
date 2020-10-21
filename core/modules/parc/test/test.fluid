@@ -15,7 +15,7 @@ function testList()
 
    // Simulate the "parc:" volume
 
-   mFile.SetVolume(AST_NAME, "parc",
+   mSys.SetVolume(AST_NAME, "parc",
       AST_PATH, "archive:parc/",
       AST_FLAGS, bit.bor(VOLUME_REPLACE, VOLUME_HIDDEN))
 
@@ -46,14 +46,14 @@ end
 function initialise()
    // Create a PARC file for testing if it doeesn't exist already.
 
-   local err, type = mFile.AnalysePath("test/test.parc")
+   local err, type = mSys.AnalysePath("test/test.parc")
 
    if (type != LOC_FILE) then
-      print('Generating PARC file for testing.')
+      msg('Generating PARC file for testing.')
 
       local task = obj.new("task", {
          src   = "parasol:fluid",
-         args  = "sdk:scripts/parka.fluid src=sdk:core/modules/parc/test/archive/ dest=sdk:core/modules/parc/test/test.parc",
+         args  = "parasol:scripts/dev/parka.fluid src=sdk:core/modules/parc/test/archive/ dest=sdk:core/modules/parc/test/test.parc",
          flags = "!WAIT"
       })
 

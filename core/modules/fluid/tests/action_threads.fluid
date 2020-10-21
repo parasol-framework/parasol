@@ -45,7 +45,7 @@ function testParallel()
    for k, v in ipairs(glPictures) do
       local err = thread.action(v.pic, "Activate", picLoaded, k)
       if (err != ERR_Okay) then
-         print("Thread failed, error: %d", err)
+         error("Thread failed to process " .. v.path .. ": " .. mSys.GetErrorMsg(err))
       end
    end
 
@@ -75,10 +75,10 @@ end
          mSys = mod.load("core")
          glPictures = { }
 
-         local folder = obj.new("file", { src="pictures:backgrounds/" } )
+         local folder = obj.new("file", { src="parasol:icons/default/arrows/" } )
          local err, file = folder.mtNext()
          while (err == ERR_Okay) do
-            if (string.find(file.path, ".+%.jpg")) then
+            if (string.find(file.path, ".+%.svg")) then
                print("Found file: " .. file.path)
                table.insert(glPictures, { path=file.path })
             end
