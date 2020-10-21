@@ -110,12 +110,11 @@ else ()
    if (BUILD_DEFS)
       message (STATUS "Definitions will be built with the Fluid program installed @ ${FLUID_CMD}.")
    endif ()
+endif ()
 
-   if (BUILD_TESTS)
-      message (STATUS "Tests will be executed with the Fluid program installed @ ${FLUID_CMD}.")
-      set (ENABLE_FLUID_TESTS 1)
-      enable_testing()
-   endif ()
+if (BUILD_TESTS)
+   message (STATUS "Integration tests are enabled.")
+   enable_testing()
 endif ()
 
 if (IDL_C_SCRIPT STREQUAL "IDL_C_SCRIPT-NOTFOUND")
@@ -133,11 +132,13 @@ endif ()
 add_custom_target(build_headers ALL COMMENT "Generate headers and definition files on the fly")
 
 # ----------------------------------------------------------------------------
-# Use Flute to write tests against your code
+# Use Flute to write tests against your code.  All Flute tests are integration tests, i.e. run them post-install
+# against the target installation folder.
 
 function (flute_test name path)
-   if (ENABLE_FLUID_TESTS AND BUILD_TESTS)
-      add_test (NAME ${name} COMMAND "${FLUID_CMD}" "--log-error" "${FLUTE_SCRIPT}" "file=${CMAKE_CURRENT_SOURCE_DIR}/${path}")
+   if (BUILD_TESTS)
+      get_filename_component(FLUTE_FULL_PATH "${path}" ABSOLUTE)
+      add_test (NAME ${name} COMMAND "${CMAKE_INSTALL_PREFIX}/bin/fluid" "--log-error" "${FLUTE_SCRIPT}" "file=${FLUTE_FULL_PATH}")
    endif ()
 endfunction ()
 
