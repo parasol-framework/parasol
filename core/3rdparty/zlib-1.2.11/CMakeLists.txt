@@ -204,16 +204,10 @@ elseif(WIN32)
     set_target_properties(zlib PROPERTIES SUFFIX "1.dll")
 endif()
 
-if (WIN32)
-   set (ZLIB_TARGET_FOLDER "lib/lib")
-else ()
-   set (ZLIB_TARGET_FOLDER "lib/parasol/lib")
-endif ()
-
 install(TARGETS zlib
-    RUNTIME DESTINATION "${ZLIB_TARGET_FOLDER}" # Win32 libraries are output to the runtime destination
-    ARCHIVE DESTINATION "${ZLIB_TARGET_FOLDER}"
-    LIBRARY DESTINATION "${ZLIB_TARGET_FOLDER}" # Linux
+    RUNTIME DESTINATION "${LIB_TARGET}/lib" # Win32 libraries are output to the runtime destination
+    ARCHIVE DESTINATION "${LIB_TARGET}/lib"
+    LIBRARY DESTINATION "${LIB_TARGET}/lib" # Linux
 )
 
 install(FILES ${ZLIB_PUBLIC_HDRS} DESTINATION "include/parasol/3rdparty")

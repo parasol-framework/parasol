@@ -19,9 +19,15 @@
 #else
 // In Windows, path information is read from the registry.  If there are no registry entries, the system
 // path is the program's working folder.
-   #define ROOT_PATH
-   #define SYSTEM_PATH
-   #define MODULE_PATH
+   #ifndef ROOT_PATH
+      #define ROOT_PATH ""
+   #endif
+   #ifndef SYSTEM_PATH
+      #define SYSTEM_PATH ""
+   #endif
+   #ifndef MODULE_PATH
+      #define MODULE_PATH ""
+   #endif
 #endif
 
 char glProgName[32] = "Program";
