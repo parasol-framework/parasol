@@ -85,7 +85,7 @@ const char * init_parasol(int argc, CSTRING *argv)
             for (i=0; ("/lib/"[i]) AND (len < sizeof(path_buf)-1); i++) path_buf[len++] = "/lib/"[i];
             path_buf[len] = 0;
             info.SystemPath = path_buf;
-            info.Flags |= OPF_SYSTEM_PATH;
+            info.Flags |= OPF_SYSTEM_PATH; // Must conform to the content of "%ROOT%/share/parasol"
          }
       }
       else {
@@ -117,7 +117,7 @@ const char * init_parasol(int argc, CSTRING *argv)
             for (i=0; ("lib/"[i]) AND (len < sizeof(path_buf)-1); i++) path_buf[len++] = "lib/"[i];
             path_buf[len] = 0;
             info.SystemPath = path_buf;
-            info.Flags |= OPF_SYSTEM_PATH;
+            info.Flags |= OPF_SYSTEM_PATH; // Must conform to the content of "%ROOT%/share/parasol"
         }
       }
 

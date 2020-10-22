@@ -312,10 +312,13 @@ EXPORT struct CoreBase * OpenCore(struct OpenInfo *Info)
    for (i='A'; i <= 'Z'; i++) glAlphaNumeric[i] = TRUE;
    for (i='0'; i <= '9'; i++) glAlphaNumeric[i] = TRUE;
 
-   if ((Info->Flags & OPF_ROOT_PATH) AND (Info->RootPath) AND (Info->RootPath[0])) {
-      SetResourcePath(RP_ROOT_PATH, Info->RootPath);
-   }
-   else {
+   if (Info->Flags & OPF_ROOT_PATH) SetResourcePath(RP_ROOT_PATH, Info->RootPath);
+
+   if (Info->Flags & OPF_MODULE_PATH) SetResourcePath(RP_MODULE_PATH, Info->ModulePath);
+
+   if (Info->Flags & OPF_SYSTEM_PATH) SetResourcePath(RP_SYSTEM_PATH, Info->SystemPath);
+
+   if (!glRootPath[0])   {
       #ifdef _WIN32
          glRootPath[0] = 0;
 
@@ -350,15 +353,7 @@ EXPORT struct CoreBase * OpenCore(struct OpenInfo *Info)
       #endif
    }
 
-   if (Info->Flags & OPF_MODULE_PATH) {
-      SetResourcePath(RP_MODULE_PATH, Info->ModulePath);
-   }
-
-   if (Info->Flags & OPF_SYSTEM_PATH) {
-      KMSG("Using a system path of '%s'\n", Info->SystemPath);
-      SetResourcePath(RP_SYSTEM_PATH, Info->SystemPath);
-   }
-   else if (glRootPath[0]) { // Derive system path from the root path
+   if (!glSystemPath[0]) { // Derive system path from the root path
       #ifdef _WIN32
          StrCopy(glRootPath, glSystemPath, sizeof(glSystemPath));
       #else
@@ -2176,7 +2171,10 @@ static ERROR init_filesystem(void)
       #else
          SetVolume(AST_NAME, "templates", AST_PATH, "parasol:scripts/templates/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "filetypes/empty",  TAGEND);
          SetVolume(AST_NAME, "config", AST_PATH, "parasol:config/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "filetypes/empty",  TAGEND);
-         //SetVolume(AST_NAME, "bin", AST_PATH, "parasol:bin/", AST_FLAGS, VOLUME_HIDDEN, TAGEND);
+         if (!AnalysePath("parasol:bin/", NULL)) {
+            SetVolume(AST_NAME, "bin", AST_PATH, "parasol:bin/", AST_FLAGS, VOLUME_HIDDEN, TAGEND);
+         }
+         else SetVolume(AST_NAME, "bin", AST_PATH, "parasol:", AST_FLAGS, VOLUME_HIDDEN, TAGEND);
       #endif
 
       SetVolume(AST_NAME, "temp", AST_PATH, "user:temp/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "items/trash",  TAGEND);

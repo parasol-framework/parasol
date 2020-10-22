@@ -4,17 +4,31 @@
 #include <parasol/modules/core.h>
 #include "idl.h"
 
+#ifdef __unix__
+// In Unix/Linux builds it is assumed that the install location is static.  Dynamic loading is enabled
+// during the build by setting the ROOT_PATH definition to a blank string.
+   #ifndef ROOT_PATH
+      #define ROOT_PATH /usr/local/
+   #endif
+   #ifndef SYSTEM_PATH
+      #define SYSTEM_PATH /usr/local/share/parasol/
+   #endif
+   #ifndef MODULE_PATH
+      #define MODULE_PATH /usr/local/lib/parasol/
+   #endif
+#else
+// In Windows, path information is read from the registry.  If there are no registry entries, the system
+// path is the program's working folder.
+   #define ROOT_PATH
+   #define SYSTEM_PATH
+   #define MODULE_PATH
+#endif
+
 char glProgName[32] = "Program";
 
-#ifdef __unix__
-   char glRootPath[SIZE_SYSTEM_PATH] = "/usr/local/";
-   char glSystemPath[SIZE_SYSTEM_PATH] = "/usr/local/system/";
-   char glModulePath[SIZE_SYSTEM_PATH] = ""; // Set to null to use the system path by default
-#else
-   char glRootPath[SIZE_SYSTEM_PATH] = ""; // In Windows, this information is read from the registry.  If there are no registry entries, the system path is the program's working folder.
-   char glSystemPath[SIZE_SYSTEM_PATH] = "";
-   char glModulePath[SIZE_SYSTEM_PATH] = "";
-#endif
+char glRootPath[SIZE_SYSTEM_PATH] = ""ROOT_PATH"";
+char glSystemPath[SIZE_SYSTEM_PATH] = ""SYSTEM_PATH"";
+char glModulePath[SIZE_SYSTEM_PATH] = ""MODULE_PATH"";
 
 CSTRING glClassBinPath = "system:config/classes.bin";
 CSTRING glModuleBinPath = "system:config/modules.bin";
