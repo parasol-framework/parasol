@@ -84,7 +84,7 @@ script:
         fi
         ;;
       linux)
-        cmake -S . -B release -DCMAKE_BUILD_TYPE=Release -DDISABLE_SSL=TRUE -DCMAKE_INSTALL_PREFIX=install/parasol -DINSTALL_EXAMPLES=TRUE
+        cmake -S . -B release -DCMAKE_BUILD_TYPE=Release -DDISABLE_SSL=TRUE -DCMAKE_INSTALL_PREFIX=install/parasol -DINSTALL_EXAMPLES=TRUE -DRUN_ANYWHERE=TRUE
         if [ $? -eq 0 ]; then
            cmake --build release -j 8 -- -O
         fi
