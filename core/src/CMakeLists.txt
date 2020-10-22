@@ -124,9 +124,9 @@ add_definitions("-D__system__" "-DDBG_DIAGNOSTICS")
 if (RUN_ANYWHERE)
    add_definitions("-DROOT_PATH=" "-DSYSTEM_PATH=" "-DMODULE_PATH=\"parasol:lib/\"")
 else ()
-   add_definitions("-DROOT_PATH=${CMAKE_INSTALL_PREFIX}/"
-      "-DSYSTEM_PATH=${CMAKE_INSTALL_PREFIX}/share/parasol/"
-      "-DMODULE_PATH=${CMAKE_INSTALL_PREFIX}/lib/parasol/")
+   add_definitions("-DROOT_PATH=\"${CMAKE_INSTALL_PREFIX}/\""
+      "-DSYSTEM_PATH=\"${CMAKE_INSTALL_PREFIX}/share/parasol/\""
+      "-DMODULE_PATH=\"${CMAKE_INSTALL_PREFIX}/lib/parasol/\"")
 endif ()
 
 set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -L../3rdparty/zlib-1.2.11/")
