@@ -1,15 +1,16 @@
 /*****************************************************************************
 
 -MODULE-
-Core: The Core module controls the Parasol system.
+Core: The core library provides system calls and controls for the Parasol system.
 
-The Parasol Core is a function library that provides the features typically found in a system kernel as well as
-an extensive object oriented programming interface.
+The Parasol Core is a function library that provides the features typically found in a system kernel, but with an
+abstraction layer that allows it to work on multiple platforms.  It also features an extensive object oriented 
+programming interface.
 
-The portability of Core has been safe-guarded by keeping the functions as generalised as possible for potential host
+The portability of the core has been safe-guarded by keeping the functions as generalised as possible for potential host
 environments.  It is vital that when writing application code for a target platform, the temptation to use the host's
-functions are avoided.  Making direct calls to the host platform will drop compatibility with other platforms that
-are supported by Parasol.
+functions are avoided.  Making direct calls to the host platform will lower the level of compatibility with other 
+platforms that are supported by Parasol.
 
 For summarised information about how the system works, please refer to the introductory manuals which cover all aspects
 of the design and object orientation in the system.  All of the information provided in this manual is technical and
