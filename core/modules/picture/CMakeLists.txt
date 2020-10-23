@@ -19,5 +19,5 @@ target_include_directories (${MOD} PRIVATE
    "${CMAKE_CURRENT_SOURCE_DIR}/lib"
    ${ZLIB_HEADERS})
 
-target_link_libraries (${MOD} PRIVATE m zlib)
+target_link_libraries (${MOD} PRIVATE m) # zlib does not need to be linked as this is done by the core
 
