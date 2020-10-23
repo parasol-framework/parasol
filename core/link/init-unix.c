@@ -13,6 +13,10 @@ restriction.
 
 #include <parasol/main.h>
 
+#ifndef ROOT_PATH
+#define ROOT_PATH "/usr/local"
+#endif
+
 extern void program(void);
 extern STRING ProgCopyright;
 extern STRING ProgAuthor;
@@ -48,7 +52,7 @@ const char * init_parasol(int argc, CSTRING *argv)
    closecore    = NULL;
    CSTRING msg  = NULL;
 
-   char path_buf[256]; // NB: Assigned to info.SystemPath
+   char path_buf[256]; // NB: Assigned to info.RootPath
 
    struct OpenInfo info;
    info.Detail    = ProgDebug;
@@ -70,59 +74,57 @@ const char * init_parasol(int argc, CSTRING *argv)
       info.Flags |= OPF_DETAIL|OPF_MAX_DEPTH;
    }
 
-   glCoreHandle = dlopen("/usr/local/lib/parasol/core.so", RTLD_NOW);
+   // Check for a local installation in the CWD.
 
-   if (!glCoreHandle) {
-      //fprintf(stderr, "%s\n", dlerror());
-
-      char *core_path = "lib/core.so";
-      glCoreHandle = dlopen(core_path, RTLD_NOW);
-
-      if (glCoreHandle) {
-         if (getcwd(path_buf, sizeof(path_buf))) {
-            LONG i, len;
-            for (len=0; path_buf[len]; len++);
-            for (i=0; ("/lib/"[i]) AND (len < sizeof(path_buf)-1); i++) path_buf[len++] = "/lib/"[i];
-            path_buf[len] = 0;
-            info.SystemPath = path_buf;
-            info.Flags |= OPF_SYSTEM_PATH; // Must conform to the content of "%ROOT%/share/parasol"
-         }
+   if ((glCoreHandle = dlopen("lib/core.so", RTLD_NOW))) {
+      // The Core will need to know the root path to the Parasol Framework
+      if (getcwd(path_buf, sizeof(path_buf))) {
+         LONG i;
+         for (i=0; path_buf[i]; i++);
+         if (path_buf[i-1] != '/') path_buf[i++] = '/';
+         path_buf[i] = 0;
+         info.RootPath = path_buf;
+         info.Flags |= OPF_ROOT_PATH;
       }
-      else {
-         // Determine if there is a valid 'lib' folder accompanying the binary.
-         // This method of path retrieval only works on Linux (most types of Unix don't provide any support for this).
+   }
+   else {
+      // Determine if there is a valid 'lib' folder in the binary's folder.
+      // Retrieving the path of the binary only works on Linux (most types of Unix don't provide any support for this).
 
-         char procfile[50];
-         snprintf(procfile, sizeof(procfile), "/proc/%d/exe", getpid());
+      char procfile[48];
+      snprintf(procfile, sizeof(procfile), "/proc/%d/exe", getpid());
 
-         LONG len;
-         if ((len = readlink(procfile, path_buf, sizeof(path_buf)-1)) > 0) {
-            while (len > 0) { // Strip the process name
-               if (path_buf[len-1] IS '/') break;
-               len--;
-            }
+      LONG path_len;
+      if ((path_len = readlink(procfile, path_buf, sizeof(path_buf)-1)) > 0) {
+         // Strip the process name
+         while ((path_len > 0) AND (path_buf[path_len-1] != '/')) path_len--;
 
-            LONG i;
-            LONG ins = len;
-            for (i=0; core_path[i]; i++) path_buf[ins++] = core_path[i];
+         LONG ins = path_len;
+         for (LONG i=0; "lib/core.so"[i]; i++) path_buf[ins++] = "lib/core.so"[i];
+         path_buf[ins++] = 0;
+         if (!(glCoreHandle = dlopen(path_buf, RTLD_NOW))) {
+            // Check the parent folder of the binary
+            while ((path_len > 0) AND (path_buf[path_len-1] != '/')) path_len--;
+
+            LONG ins = path_len;
+            for (LONG i=0; "lib/core.so"[i]; i++) path_buf[ins++] = "lib/core.so"[i];
             path_buf[ins++] = 0;
 
             glCoreHandle = dlopen(path_buf, RTLD_NOW);
-            if (!glCoreHandle) {
-               msg = dlerror();
-               goto failed_lib_open;
-            }
+         }
 
-            path_buf[len] = 0;
-            for (i=0; ("lib/"[i]) AND (len < sizeof(path_buf)-1); i++) path_buf[len++] = "lib/"[i];
-            path_buf[len] = 0;
-            info.SystemPath = path_buf;
-            info.Flags |= OPF_SYSTEM_PATH; // Must conform to the content of "%ROOT%/share/parasol"
-        }
+         if (glCoreHandle) {
+            path_buf[path_len] = 0;
+            info.RootPath = path_buf;
+            info.Flags |= OPF_ROOT_PATH;
+         }
       }
+   }
 
-      if (!glCoreHandle) {
-         msg = "Failed to find or open the core library.";
+   if (!glCoreHandle) { // Support for fixed installations
+      if (!(glCoreHandle = dlopen(ROOT_PATH"/lib/parasol/core.so", RTLD_NOW))) {
+         fprintf(stderr, "%s\n", dlerror());
+         msg = "Failed to find or open the core library at "ROOT_PATH"/lib/parasol/core.so";
          goto failed_lib_open;
       }
    }
@@ -146,7 +148,7 @@ const char * init_parasol(int argc, CSTRING *argv)
       }
    }
    else if (info.Error IS ERR_CoreVersion) msg = "This program requires the latest version of the Parasol framework.\nPlease visit www.parasol.ws to upgrade.";
-   else msg = "Failed to initialise Parasol.";
+   else msg = "Failed to initialise Parasol.  Run again with --log-info.";
 
 failed_lib_sym:
 failed_lib_open:

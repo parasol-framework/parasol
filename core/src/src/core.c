@@ -2110,11 +2110,12 @@ static ERROR init_filesystem(void)
          return PostError(ERR_CreateObject);
       }
 
-      // Add system volumes that require run-time determination.  For the avoidance of doubt, on Unix systems the default settings are:
+      // Add system volumes that require run-time determination.  For the avoidance of doubt, on Unix systems the
+      // default settings for a fixed installation are:
       //
-      // OPF_ROOT_PATH   : glRootPath   = /usr/local
-      // OPF_MODULE_PATH : glModulePath = %ROOT%/lib/parasol
-      // OPF_SYSTEM_PATH : glSystemPath = %ROOT%/share/parasol
+      // OPF_ROOT_PATH   : parasol : glRootPath   = /usr/local
+      // OPF_MODULE_PATH : modules : glModulePath = %ROOT%/lib/parasol
+      // OPF_SYSTEM_PATH : system  : glSystemPath = %ROOT%/share/parasol
 
       #ifdef _WIN32
          SetVolume(AST_NAME, "parasol", AST_PATH, glRootPath, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, AST_ICON, "users/user", TAGEND);
@@ -2143,7 +2144,7 @@ static ERROR init_filesystem(void)
             }
          }
 */
-         SetVolume(AST_NAME, "parasol", AST_PATH, glSystemPath, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, AST_ICON, "users/user",  TAGEND);
+         SetVolume(AST_NAME, "parasol", AST_PATH, glRootPath, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, AST_ICON, "users/user",  TAGEND);
          SetVolume(AST_NAME, "system", AST_PATH, glSystemPath, AST_FLAGS, VOLUME_REPLACE, AST_ICON, "programs/tool",  TAGEND);
 
          if (glModulePath[0]) {
