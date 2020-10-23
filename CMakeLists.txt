@@ -152,8 +152,8 @@ add_custom_target(build_headers ALL COMMENT "Generate headers and definition fil
 
 function (flute_test name path)
    if (BUILD_TESTS)
-      if (WIN32)
-         set (FLUTE_EXE "${CMAKE_INSTALL_PREFIX}/fluid.exe")
+      if (RUN_ANYWHERE)
+         set (FLUTE_EXE "${CMAKE_INSTALL_PREFIX}/fluid")
       else ()
          set (FLUTE_EXE "${CMAKE_INSTALL_PREFIX}/bin/fluid")
       endif ()
