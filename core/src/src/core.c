@@ -4,12 +4,12 @@
 Core: The core library provides system calls and controls for the Parasol system.
 
 The Parasol Core is a function library that provides the features typically found in a system kernel, but with an
-abstraction layer that allows it to work on multiple platforms.  It also features an extensive object oriented 
+abstraction layer that allows it to work on multiple platforms.  It also features an extensive object oriented
 programming interface.
 
 The portability of the core has been safe-guarded by keeping the functions as generalised as possible for potential host
 environments.  It is vital that when writing application code for a target platform, the temptation to use the host's
-functions are avoided.  Making direct calls to the host platform will lower the level of compatibility with other 
+functions are avoided.  Making direct calls to the host platform will lower the level of compatibility with other
 platforms that are supported by Parasol.
 
 For summarised information about how the system works, please refer to the introductory manuals which cover all aspects
@@ -2171,17 +2171,17 @@ static ERROR init_filesystem(void)
          SetVolume(AST_NAME, "templates", AST_PATH, "assets:templates/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "filetypes/empty",  TAGEND);
          SetVolume(AST_NAME, "config", AST_PATH, "localcache:config/|assets:config/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "filetypes/empty",  TAGEND);
       #else
-         SetVolume(AST_NAME, "templates", AST_PATH, "parasol:scripts/templates/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "filetypes/empty",  TAGEND);
-         SetVolume(AST_NAME, "config", AST_PATH, "parasol:config/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "filetypes/empty",  TAGEND);
-         if (!AnalysePath("parasol:bin/", NULL)) {
+         SetVolume(AST_NAME, "templates", AST_PATH, "system:scripts/templates/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "filetypes/empty",  TAGEND);
+         SetVolume(AST_NAME, "config", AST_PATH, "system:config/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "filetypes/empty",  TAGEND);
+         if (!AnalysePath("parasol:bin/", NULL)) { // Bin is the location of the fluid and parasol binaries
             SetVolume(AST_NAME, "bin", AST_PATH, "parasol:bin/", AST_FLAGS, VOLUME_HIDDEN, TAGEND);
          }
          else SetVolume(AST_NAME, "bin", AST_PATH, "parasol:", AST_FLAGS, VOLUME_HIDDEN, TAGEND);
       #endif
 
       SetVolume(AST_NAME, "temp", AST_PATH, "user:temp/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "items/trash",  TAGEND);
-      SetVolume(AST_NAME, "fonts", AST_PATH, "parasol:fonts/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "items/charset",  TAGEND);
-      SetVolume(AST_NAME, "styles", AST_PATH, "parasol:styles/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "tools/image_gallery",  TAGEND);
+      SetVolume(AST_NAME, "fonts", AST_PATH, "system:fonts/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "items/charset",  TAGEND);
+      SetVolume(AST_NAME, "styles", AST_PATH, "system:styles/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "tools/image_gallery",  TAGEND);
 
       // Some platforms need to have special volumes added - these are provided in the OpenInfo structure passed to
       // the Core.
