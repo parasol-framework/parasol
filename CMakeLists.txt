@@ -23,7 +23,8 @@ endif()
 
 project (Parasol LANGUAGES C CXX)
 
-set(VERSION "2020.10")
+set (VERSION "2020.10")
+cmake_policy (SET CMP0082 NEW) # Process install commands in the order that they appear
 
 option (PARASOL_STATIC   "Build as a static library" OFF)
 option (PARASOL_SHARED   "Build as a shared library" ON)
@@ -296,11 +297,14 @@ function (set_module_defaults ARG_TARGET)
       LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/release/lib"
       RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/release/lib")
 
-   install(TARGETS ${ARG_TARGET}
-      RUNTIME DESTINATION "${LIB_TARGET}" # Win32 libraries are output to the runtime destination
-      ARCHIVE DESTINATION "${LIB_TARGET}"
-      LIBRARY DESTINATION "${LIB_TARGET}" # Linux
-   )
+   if (WIN32)
+      install(TARGETS ${ARG_TARGET} RUNTIME DESTINATION "${LIB_TARGET}")
+   else ()
+      install(TARGETS ${ARG_TARGET}
+         RUNTIME DESTINATION "${LIB_TARGET}"
+         ARCHIVE DESTINATION "${LIB_TARGET}"
+         LIBRARY DESTINATION "${LIB_TARGET}")
+   endif ()
 endfunction ()
 
 # ----------------------------------------------------------------------------
@@ -381,7 +385,6 @@ add_subdirectory (core/modules/xml)
 if (X11_Xrandr_FOUND)
    add_subdirectory (core/modules/xrandr)
 endif ()
-set(CMAKE_INSTALL_RPATH "$ORIGIN/lib/lib")
 
 if (WIN32)
    # Note that compiling with -static in Linux is disabled because it appears to cause segfaults when writing __thread variables.
@@ -390,6 +393,12 @@ endif ()
 
 # ----------------------------------------------------------------------------
 # Parasol and Fluid executables
+
+if (RUN_ANYWHERE)
+   set (CMAKE_INSTALL_RPATH "$ORIGIN/lib/lib")
+else ()
+   set (CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib/parasol")
+endif ()
 
 if (WIN32)
    # Specifying the WIN32 option will generate a Windows GUI application
