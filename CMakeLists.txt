@@ -297,13 +297,15 @@ function (set_module_defaults ARG_TARGET)
       LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/release/lib"
       RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/release/lib")
 
-   if (WIN32)
-      install(TARGETS ${ARG_TARGET} RUNTIME DESTINATION "${LIB_TARGET}")
-   else ()
-      install(TARGETS ${ARG_TARGET}
-         RUNTIME DESTINATION "${LIB_TARGET}"
-         ARCHIVE DESTINATION "${LIB_TARGET}"
-         LIBRARY DESTINATION "${LIB_TARGET}")
+   if (PARASOL_INSTALL)
+      if (WIN32)
+         install(TARGETS ${ARG_TARGET} RUNTIME DESTINATION "${LIB_TARGET}")
+      else ()
+         install(TARGETS ${ARG_TARGET}
+            RUNTIME DESTINATION "${LIB_TARGET}"
+            ARCHIVE DESTINATION "${LIB_TARGET}"
+            LIBRARY DESTINATION "${LIB_TARGET}")
+      endif ()
    endif ()
 endfunction ()
 
