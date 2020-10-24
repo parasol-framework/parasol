@@ -354,12 +354,9 @@ EXPORT struct CoreBase * OpenCore(struct OpenInfo *Info)
       #endif
    }
 
-   if (!glSystemPath[0]) { // Derive system path from the root path
-      #ifdef _WIN32
-         StrCopy(glRootPath, glSystemPath, sizeof(glSystemPath));
-      #else
-         StrFormat(glSystemPath, sizeof(glSystemPath), "%sshare/parasol/", glRootPath);
-      #endif
+   if (!glSystemPath[0]) {
+      // When no system path is specified then treat the install as 'run-anywhere' so that "parasol:" == "system:"
+      StrCopy(glRootPath, glSystemPath, sizeof(glSystemPath));
    }
 
    // Process the Information structure
