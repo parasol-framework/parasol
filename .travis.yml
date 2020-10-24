@@ -78,16 +78,12 @@ script:
 - |-
     case $TRAVIS_OS_NAME in
       windows)
-        $mingw64 cmake -S . -B release -G"MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release -DDISABLE_SSL=TRUE -DCMAKE_INSTALL_PREFIX=install/parasol -DINSTALL_EXAMPLES=TRUE
-        if [ $? -eq 0 ]; then
-           $mingw64 cmake --build release -j 8 --verbose -- -O
-        fi
+        $mingw64 cmake -S . -B release -G"MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release -DDISABLE_SSL=TRUE -DCMAKE_INSTALL_PREFIX=install/parasol -DINSTALL_EXAMPLES=TRUE || travis_terminate 1
+        $mingw64 cmake --build release -j 8 --verbose -- -O || travis_terminate 1
         ;;
       linux)
-        cmake -S . -B release -DCMAKE_BUILD_TYPE=Release -DDISABLE_SSL=TRUE -DCMAKE_INSTALL_PREFIX=install/parasol -DINSTALL_EXAMPLES=TRUE -DRUN_ANYWHERE=TRUE
-        if [ $? -eq 0 ]; then
-           cmake --build release -j 8 -- -O
-        fi
+        cmake -S . -B release -DCMAKE_BUILD_TYPE=Release -DDISABLE_SSL=TRUE -DCMAKE_INSTALL_PREFIX=install/parasol -DINSTALL_EXAMPLES=TRUE -DRUN_ANYWHERE=TRUE || travis_terminate 1
+        cmake --build release -j 8 -- -O || travis_terminate 1
         ;;
     esac
 
@@ -95,12 +91,12 @@ after_success:
 - |-
     case $TRAVIS_OS_NAME in
       windows)
-        $mingw64 cmake --install release
-        $mingw64 $MAKE test -C release ARGS=--verbose
+        $mingw64 cmake --install release || travis_terminate 1
+        $mingw64 $MAKE test -C release ARGS=--verbose || travis_terminate 1
         ;;
       linux)
-        cmake --install release
-        make test -C release ARGS=--verbose
+        cmake --install release || travis_terminate 1
+        make test -C release ARGS=--verbose || travis_terminate 1
         ;;
     esac
 
