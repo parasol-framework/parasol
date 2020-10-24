@@ -129,7 +129,6 @@ else ()
       "-DMODULE_PATH=\"${CMAKE_INSTALL_PREFIX}/lib/parasol/\"")
 endif ()
 
-set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -L../3rdparty/zlib-1.2.11/")
 target_link_libraries (core PRIVATE zlib)
 
 if (WIN32)
