@@ -31,8 +31,8 @@ before_install:
         taskkill //IM gpg-agent.exe //F  # https://travis-ci.community/t/4967
         export PATH=/C/tools/msys64/mingw64/bin:$PATH
         export MAKE=mingw32-make  # so that Autotools can find it
-        export # Print all environment variables for help debugging
-        gcc -dM -E - < /dev/null # Print all GCC predefined constants to aid debugging
+        #export # Print all environment variables for help debugging
+        #gcc -dM -E - < /dev/null # Print all GCC predefined constants to aid debugging
         ;;
       linux)
         sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
