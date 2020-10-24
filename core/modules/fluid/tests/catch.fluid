@@ -144,7 +144,7 @@ end
 function testCatchFilter()
    catch(function()
       catch(function()
-         local pic, err = obj.new("picture", { src="nowhere:nofile.png" })
+         local pic, err = obj.new("xml", { src="nowhere:nofile.xml" })
          print("Received error " .. err)
       end,
       { ERR_CreateObject, ERR_Init, ERR_File },
