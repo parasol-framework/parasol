@@ -604,7 +604,10 @@ static int fcmd_require(lua_State *Lua)
          else error = ERR_AllocMemory;
          acFree(file);
       }
-      else error = ERR_File;
+      else {
+         luaL_error(Lua, "Failed to open file '%s', may not exist.", path);
+         return 0;
+      }
    }
    else luaL_argerror(Lua, 1, "Expected module name.");
 
