@@ -44,6 +44,8 @@ set (CMAKE_CXX_STANDARD 11)
 set (CMAKE_CXX_STANDARD_REQUIRED True)
 set (CMAKE_POSITION_INDEPENDENT_CODE ON) # Enables -fPIC and -fPIE in gcc
 
+set(BUILD_RPATH_USE_ORIGIN TRUE)
+
 set (INCLUDE_OUTPUT "${PROJECT_SOURCE_DIR}/core/include/parasol")
 set (DOCS "${PROJECT_SOURCE_DIR}/docs")
 
@@ -293,6 +295,12 @@ function (set_module_defaults ARG_TARGET)
       PREFIX ""
       LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/release/lib"
       RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/release/lib")
+
+   install(TARGETS ${ARG_TARGET}
+      RUNTIME DESTINATION "${LIB_TARGET}" # Win32 libraries are output to the runtime destination
+      ARCHIVE DESTINATION "${LIB_TARGET}"
+      LIBRARY DESTINATION "${LIB_TARGET}" # Linux
+   )
 endfunction ()
 
 # ----------------------------------------------------------------------------
@@ -347,6 +355,7 @@ if (MINGW)
   set (CMAKE_RC_COMPILE_OBJECT "<CMAKE_RC_COMPILER> -O coff -i <SOURCE> -o <OBJECT>")
 endif (MINGW)
 
+set(CMAKE_INSTALL_RPATH "$ORIGIN/lib")
 add_subdirectory (core/3rdparty/zlib-1.2.11) # Note that when upgrading, the CMakeLists.txt is customised
 add_subdirectory (core/link)
 add_subdirectory (core/src)
@@ -372,6 +381,7 @@ add_subdirectory (core/modules/xml)
 if (X11_Xrandr_FOUND)
    add_subdirectory (core/modules/xrandr)
 endif ()
+set(CMAKE_INSTALL_RPATH "$ORIGIN/lib/lib")
 
 if (WIN32)
    # Note that compiling with -static in Linux is disabled because it appears to cause segfaults when writing __thread variables.
@@ -434,7 +444,6 @@ if (PARASOL_INSTALL)
    endif ()
 
 if (WIN32)
-   install (DIRECTORY "${CMAKE_BINARY_DIR}/release/lib/" DESTINATION "${LIB_TARGET}" FILES_MATCHING PATTERN "*.dll")
    install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/ssl/" DESTINATION "config/ssl")
    install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/styles/" DESTINATION "styles")
    install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/translations/" DESTINATION "config/translations")
@@ -446,7 +455,6 @@ if (WIN32)
       install (DIRECTORY "${PROJECT_SOURCE_DIR}/examples/" DESTINATION "examples")
    endif ()
 else ()
-   install (DIRECTORY "${CMAKE_BINARY_DIR}/release/lib/" DESTINATION "${LIB_TARGET}" FILES_MATCHING PATTERN "*.so")
    install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/ssl" DESTINATION "${SHARE_TARGET}")
    install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/styles" DESTINATION "${SHARE_TARGET}")
    install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/translations" DESTINATION "${SHARE_TARGET}/config")
