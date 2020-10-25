@@ -449,9 +449,11 @@ if (PARASOL_INSTALL)
    if (RUN_ANYWHERE)
       install (TARGETS parasol DESTINATION .)
       install (TARGETS fluid_cmd DESTINATION .)
+      set (PARASOL_CMD_TARGET "${CMAKE_INSTALL_PREFIX}/parasol")
    else ()
       install (TARGETS parasol DESTINATION "bin")
       install (TARGETS fluid_cmd DESTINATION "bin")
+      set (PARASOL_CMD_TARGET "${CMAKE_INSTALL_PREFIX}/bin/parasol")
    endif ()
 
 if (WIN32)
@@ -496,9 +498,9 @@ if (WIN32) # MSYS2/MinGW builds have library dependencies that we need to take a
 endif ()
 
    install (CODE "file(REMOVE \"${PARASOL_ROOT}/config/classes.bin\" \"${PARASOL_ROOT}/config/modules.bin\")")
-   install (CODE "execute_process(COMMAND parasol --log-error \"${PARASOL_ROOT}/scripts/dev/verify-modules.fluid\" WORKING_DIRECTORY \"${CMAKE_INSTALL_PREFIX}\")")
+   install (CODE "execute_process(COMMAND \"${PARASOL_CMD_TARGET}\" --log-error \"${PARASOL_ROOT}/scripts/dev/verify-modules.fluid\" WORKING_DIRECTORY \"${CMAKE_INSTALL_PREFIX}\")")
 
-if (WIN32)
+if (RUN_ANYWHERE)
    install (CODE "MESSAGE(STATUS \"\nParasol has been installed to '${CMAKE_INSTALL_PREFIX}'.  You may need to add this folder to your PATH variable in order to run parasol.exe and fluid.exe from the command-line.\")")
 else ()
    install (CODE "MESSAGE(STATUS \"\nParasol has been installed to '${CMAKE_INSTALL_PREFIX}' and shared files are in '${PARASOL_ROOT}'.\")")
