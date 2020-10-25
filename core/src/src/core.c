@@ -1,15 +1,16 @@
 /*****************************************************************************
 
 -MODULE-
-Core: The Core module controls the Parasol system.
+Core: The core library provides system calls and controls for the Parasol system.
 
-The Parasol Core is a function library that provides the features typically found in a system kernel as well as
-an extensive object oriented programming interface.
+The Parasol Core is a function library that provides the features typically found in a system kernel, but with an
+abstraction layer that allows it to work on multiple platforms.  It also features an extensive object oriented
+programming interface.
 
-The portability of Core has been safe-guarded by keeping the functions as generalised as possible for potential host
+The portability of the core has been safe-guarded by keeping the functions as generalised as possible for potential host
 environments.  It is vital that when writing application code for a target platform, the temptation to use the host's
-functions are avoided.  Making direct calls to the host platform will drop compatibility with other platforms that
-are supported by Parasol.
+functions are avoided.  Making direct calls to the host platform will lower the level of compatibility with other
+platforms that are supported by Parasol.
 
 For summarised information about how the system works, please refer to the introductory manuals which cover all aspects
 of the design and object orientation in the system.  All of the information provided in this manual is technical and
@@ -312,10 +313,13 @@ EXPORT struct CoreBase * OpenCore(struct OpenInfo *Info)
    for (i='A'; i <= 'Z'; i++) glAlphaNumeric[i] = TRUE;
    for (i='0'; i <= '9'; i++) glAlphaNumeric[i] = TRUE;
 
-   if ((Info->Flags & OPF_ROOT_PATH) AND (Info->RootPath) AND (Info->RootPath[0])) {
-      SetResourcePath(RP_ROOT_PATH, Info->RootPath);
-   }
-   else {
+   if (Info->Flags & OPF_ROOT_PATH) SetResourcePath(RP_ROOT_PATH, Info->RootPath);
+
+   if (Info->Flags & OPF_MODULE_PATH) SetResourcePath(RP_MODULE_PATH, Info->ModulePath);
+
+   if (Info->Flags & OPF_SYSTEM_PATH) SetResourcePath(RP_SYSTEM_PATH, Info->SystemPath);
+
+   if (!glRootPath[0])   {
       #ifdef _WIN32
          glRootPath[0] = 0;
 
@@ -350,20 +354,9 @@ EXPORT struct CoreBase * OpenCore(struct OpenInfo *Info)
       #endif
    }
 
-   if (Info->Flags & OPF_MODULE_PATH) {
-      SetResourcePath(RP_MODULE_PATH, Info->ModulePath);
-   }
-
-   if (Info->Flags & OPF_SYSTEM_PATH) {
-      KMSG("Using a system path of '%s'\n", Info->SystemPath);
-      SetResourcePath(RP_SYSTEM_PATH, Info->SystemPath);
-   }
-   else if (glRootPath[0]) { // Derive system path from the root path
-      #ifdef _WIN32
-         StrCopy(glRootPath, glSystemPath, sizeof(glSystemPath));
-      #else
-         StrFormat(glSystemPath, sizeof(glSystemPath), "%sshare/parasol/", glRootPath);
-      #endif
+   if (!glSystemPath[0]) {
+      // When no system path is specified then treat the install as 'run-anywhere' so that "parasol:" == "system:"
+      StrCopy(glRootPath, glSystemPath, sizeof(glSystemPath));
    }
 
    // Process the Information structure
@@ -2114,11 +2107,12 @@ static ERROR init_filesystem(void)
          return PostError(ERR_CreateObject);
       }
 
-      // Add system volumes that require run-time determination.  For the avoidance of doubt, on Unix systems the default settings are:
+      // Add system volumes that require run-time determination.  For the avoidance of doubt, on Unix systems the
+      // default settings for a fixed installation are:
       //
-      // OPF_ROOT_PATH   : glRootPath   = /usr/local
-      // OPF_MODULE_PATH : glModulePath = %ROOT%/lib/parasol
-      // OPF_SYSTEM_PATH : glSystemPath = %ROOT%/share/parasol
+      // OPF_ROOT_PATH   : parasol : glRootPath   = /usr/local
+      // OPF_MODULE_PATH : modules : glModulePath = %ROOT%/lib/parasol
+      // OPF_SYSTEM_PATH : system  : glSystemPath = %ROOT%/share/parasol
 
       #ifdef _WIN32
          SetVolume(AST_NAME, "parasol", AST_PATH, glRootPath, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, AST_ICON, "users/user", TAGEND);
@@ -2147,7 +2141,7 @@ static ERROR init_filesystem(void)
             }
          }
 */
-         SetVolume(AST_NAME, "parasol", AST_PATH, glSystemPath, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, AST_ICON, "users/user",  TAGEND);
+         SetVolume(AST_NAME, "parasol", AST_PATH, glRootPath, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, AST_ICON, "users/user",  TAGEND);
          SetVolume(AST_NAME, "system", AST_PATH, glSystemPath, AST_FLAGS, VOLUME_REPLACE, AST_ICON, "programs/tool",  TAGEND);
 
          if (glModulePath[0]) {
@@ -2174,14 +2168,17 @@ static ERROR init_filesystem(void)
          SetVolume(AST_NAME, "templates", AST_PATH, "assets:templates/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "filetypes/empty",  TAGEND);
          SetVolume(AST_NAME, "config", AST_PATH, "localcache:config/|assets:config/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "filetypes/empty",  TAGEND);
       #else
-         SetVolume(AST_NAME, "templates", AST_PATH, "parasol:scripts/templates/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "filetypes/empty",  TAGEND);
-         SetVolume(AST_NAME, "config", AST_PATH, "parasol:config/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "filetypes/empty",  TAGEND);
-         //SetVolume(AST_NAME, "bin", AST_PATH, "parasol:bin/", AST_FLAGS, VOLUME_HIDDEN, TAGEND);
+         SetVolume(AST_NAME, "templates", AST_PATH, "system:scripts/templates/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "filetypes/empty",  TAGEND);
+         SetVolume(AST_NAME, "config", AST_PATH, "system:config/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "filetypes/empty",  TAGEND);
+         if (!AnalysePath("parasol:bin/", NULL)) { // Bin is the location of the fluid and parasol binaries
+            SetVolume(AST_NAME, "bin", AST_PATH, "parasol:bin/", AST_FLAGS, VOLUME_HIDDEN, TAGEND);
+         }
+         else SetVolume(AST_NAME, "bin", AST_PATH, "parasol:", AST_FLAGS, VOLUME_HIDDEN, TAGEND);
       #endif
 
       SetVolume(AST_NAME, "temp", AST_PATH, "user:temp/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "items/trash",  TAGEND);
-      SetVolume(AST_NAME, "fonts", AST_PATH, "parasol:fonts/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "items/charset",  TAGEND);
-      SetVolume(AST_NAME, "styles", AST_PATH, "parasol:styles/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "tools/image_gallery",  TAGEND);
+      SetVolume(AST_NAME, "fonts", AST_PATH, "system:fonts/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "items/charset",  TAGEND);
+      SetVolume(AST_NAME, "styles", AST_PATH, "system:styles/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "tools/image_gallery",  TAGEND);
 
       // Some platforms need to have special volumes added - these are provided in the OpenInfo structure passed to
       // the Core.

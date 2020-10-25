@@ -104,9 +104,22 @@
     <xsl:copy-of select="."/>
   </xsl:template>
 
+  <xsl:template name="addGoogleTracking">
+    <!-- Global site tag (gtag.js) - Google Analytics -->
+	 <script async="async" src="https://www.googletagmanager.com/gtag/js?id=G-8254DG7MT6"><xsl:text> </xsl:text></script>
+	 <script>
+	   <xsl:text disable-output-escaping="yes">
+	   window.dataLayer = window.dataLayer || [];
+	   function gtag(){dataLayer.push(arguments);}
+	   gtag('js', new Date());
+      gtag('config', 'G-8254DG7MT6');</xsl:text>
+	 </script>
+  </xsl:template>
+
   <xsl:template match="/book">
     <html xml:lang="en">
       <head>
+        <xsl:call-template name="addGoogleTracking"/>
         <meta charset="utf-8"/>
         <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
         <meta name="viewport" content="width=device-width, initial-scale=1"/>

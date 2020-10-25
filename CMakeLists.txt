@@ -23,12 +23,18 @@ endif()
 
 project (Parasol LANGUAGES C CXX)
 
-set(VERSION "2020.10")
+set (VERSION "2020.10")
+cmake_policy (SET CMP0082 NEW) # Process install commands in the order that they appear
 
 option (PARASOL_STATIC   "Build as a static library" OFF)
 option (PARASOL_SHARED   "Build as a shared library" ON)
 option (PARASOL_INSTALL  "Create installation targets (chain builders may want to disable this)" ON)
 option (PARASOL_VLOG     "Enable verbose log messages in the generated binaries" OFF)
+if (UNIX)
+   option (RUN_ANYWHERE  "Build a framework that can run directly from the main folder.  Typically used if redefining CMAKE_INSTALL_PREFIX" OFF)
+else ()
+   set (RUN_ANYWHERE ON)
+endif ()
 option (BUILD_TESTS      "Build tests" ON)
 option (BUILD_DEFS       "Generate IDL files, C/C++ headers and documentation" ON)
 option (DISABLE_SSL      "Disable built-in SSL support even if available on this system" OFF)
@@ -39,8 +45,20 @@ set (CMAKE_CXX_STANDARD 11)
 set (CMAKE_CXX_STANDARD_REQUIRED True)
 set (CMAKE_POSITION_INDEPENDENT_CODE ON) # Enables -fPIC and -fPIE in gcc
 
+set(BUILD_RPATH_USE_ORIGIN TRUE)
+
 set (INCLUDE_OUTPUT "${PROJECT_SOURCE_DIR}/core/include/parasol")
 set (DOCS "${PROJECT_SOURCE_DIR}/docs")
+
+if (RUN_ANYWHERE)
+   set (PARASOL_ROOT "${CMAKE_INSTALL_PREFIX}")
+   set (SHARE_TARGET .)
+   set (LIB_TARGET "lib")
+else ()
+   set (PARASOL_ROOT "${CMAKE_INSTALL_PREFIX}/share/parasol")
+   set (SHARE_TARGET "share/parasol")
+   set (LIB_TARGET "lib/parasol")
+endif ()
 
 test_big_endian (SYSTEM_ENDIAN_STYLE)
 if (SYSTEM_ENDIAN_STYLE EQUAL 0) # Little endian (Intel)
@@ -110,12 +128,11 @@ else ()
    if (BUILD_DEFS)
       message (STATUS "Definitions will be built with the Fluid program installed @ ${FLUID_CMD}.")
    endif ()
+endif ()
 
-   if (BUILD_TESTS)
-      message (STATUS "Tests will be executed with the Fluid program installed @ ${FLUID_CMD}.")
-      set (ENABLE_FLUID_TESTS 1)
-      enable_testing()
-   endif ()
+if (BUILD_TESTS)
+   message (STATUS "Integration tests are enabled.")
+   enable_testing()
 endif ()
 
 if (IDL_C_SCRIPT STREQUAL "IDL_C_SCRIPT-NOTFOUND")
@@ -133,11 +150,20 @@ endif ()
 add_custom_target(build_headers ALL COMMENT "Generate headers and definition files on the fly")
 
 # ----------------------------------------------------------------------------
-# Use Flute to write tests against your code
+# Use Flute to write tests against your code.  All Flute tests are integration tests, i.e. run them post-install
+# against the target installation folder.
 
 function (flute_test name path)
-   if (ENABLE_FLUID_TESTS AND BUILD_TESTS)
-      add_test (NAME ${name} COMMAND "${FLUID_CMD}" "--log-error" "${FLUTE_SCRIPT}" "file=${path}")
+   if (BUILD_TESTS)
+      if (RUN_ANYWHERE)
+         set (FLUTE_EXE "${CMAKE_INSTALL_PREFIX}/fluid")
+      else ()
+         set (FLUTE_EXE "${CMAKE_INSTALL_PREFIX}/bin/fluid")
+      endif ()
+      get_filename_component(FLUTE_FULL_PATH "${path}" ABSOLUTE)
+      add_test (NAME ${name}
+         COMMAND "${FLUTE_EXE}" "--log-error" "${FLUTE_SCRIPT}" "file=${FLUTE_FULL_PATH}"
+         WORKING_DIRECTORY "${CMAKE_INSTALL_PREFIX}")
    endif ()
 endfunction ()
 
@@ -268,8 +294,19 @@ function (set_module_defaults ARG_TARGET)
    set_target_properties (${ARG_TARGET}
       PROPERTIES
       PREFIX ""
-      LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/release/system/modules"
-      RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/release/system/modules")
+      LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/release/lib"
+      RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/release/lib")
+
+   if (PARASOL_INSTALL)
+      if (WIN32)
+         install(TARGETS ${ARG_TARGET} RUNTIME DESTINATION "${LIB_TARGET}")
+      else ()
+         install(TARGETS ${ARG_TARGET}
+            RUNTIME DESTINATION "${LIB_TARGET}"
+            ARCHIVE DESTINATION "${LIB_TARGET}"
+            LIBRARY DESTINATION "${LIB_TARGET}")
+      endif ()
+   endif ()
 endfunction ()
 
 # ----------------------------------------------------------------------------
@@ -324,6 +361,7 @@ if (MINGW)
   set (CMAKE_RC_COMPILE_OBJECT "<CMAKE_RC_COMPILER> -O coff -i <SOURCE> -o <OBJECT>")
 endif (MINGW)
 
+set(CMAKE_INSTALL_RPATH "$ORIGIN/lib")
 add_subdirectory (core/3rdparty/zlib-1.2.11) # Note that when upgrading, the CMakeLists.txt is customised
 add_subdirectory (core/link)
 add_subdirectory (core/src)
@@ -357,6 +395,12 @@ endif ()
 
 # ----------------------------------------------------------------------------
 # Parasol and Fluid executables
+
+if (RUN_ANYWHERE)
+   set (CMAKE_INSTALL_RPATH "$ORIGIN/lib/lib")
+else ()
+   set (CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib/parasol")
+endif ()
 
 if (WIN32)
    # Specifying the WIN32 option will generate a Windows GUI application
@@ -399,15 +443,18 @@ configure_file ("core/config.h.in" "parasol/config.h" NEWLINE_STYLE UNIX)
 # Installation steps
 
 if (PARASOL_INSTALL)
-
    install (DIRECTORY "${INCLUDE_OUTPUT}" DESTINATION "include")
    install (FILES "${CMAKE_BINARY_DIR}/parasol/config.h" DESTINATION "include/parasol/")
 
+   if (RUN_ANYWHERE)
+      install (TARGETS parasol DESTINATION .)
+      install (TARGETS fluid_cmd DESTINATION .)
+   else ()
+      install (TARGETS parasol DESTINATION "bin")
+      install (TARGETS fluid_cmd DESTINATION "bin")
+   endif ()
+
 if (WIN32)
-   set (PARASOL_ROOT "${CMAKE_INSTALL_PREFIX}")
-   install (TARGETS parasol DESTINATION .)
-   install (TARGETS fluid_cmd DESTINATION .)
-   install (DIRECTORY "${CMAKE_BINARY_DIR}/release/system/modules/" DESTINATION "lib" FILES_MATCHING PATTERN "*.dll")
    install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/ssl/" DESTINATION "config/ssl")
    install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/styles/" DESTINATION "styles")
    install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/translations/" DESTINATION "config/translations")
@@ -419,19 +466,15 @@ if (WIN32)
       install (DIRECTORY "${PROJECT_SOURCE_DIR}/examples/" DESTINATION "examples")
    endif ()
 else ()
-   set (PARASOL_ROOT "${CMAKE_INSTALL_PREFIX}/share/parasol")
-   install (TARGETS parasol DESTINATION "bin")
-   install (TARGETS fluid_cmd DESTINATION "bin")
-   install (DIRECTORY "${CMAKE_BINARY_DIR}/release/system/modules/" DESTINATION "lib/parasol" FILES_MATCHING PATTERN "*.so")
-   install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/ssl" DESTINATION "share/parasol")
-   install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/styles" DESTINATION "share/parasol")
-   install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/translations" DESTINATION "share/parasol/config")
-   install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/users" DESTINATION "share/parasol/config")
-   install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/fonts" DESTINATION "share/parasol")
-   install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/icons" DESTINATION "share/parasol")
-   install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/scripts" DESTINATION "share/parasol")
+   install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/ssl" DESTINATION "${SHARE_TARGET}")
+   install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/styles" DESTINATION "${SHARE_TARGET}")
+   install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/translations" DESTINATION "${SHARE_TARGET}/config")
+   install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/users" DESTINATION "${SHARE_TARGET}/config")
+   install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/fonts" DESTINATION "${SHARE_TARGET}")
+   install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/icons" DESTINATION "${SHARE_TARGET}")
+   install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/scripts" DESTINATION "${SHARE_TARGET}")
    if (INSTALL_EXAMPLES)
-      install (DIRECTORY "${PROJECT_SOURCE_DIR}/examples" DESTINATION "share/parasol")
+      install (DIRECTORY "${PROJECT_SOURCE_DIR}/examples" DESTINATION "${SHARE_TARGET}")
    endif ()
 endif ()
 

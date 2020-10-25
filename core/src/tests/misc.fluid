@@ -54,13 +54,16 @@ end
 //=====================================================================================================================
 
 function testRegistry()
-   local task = mSys.CurrentTask()
-   local err, progfiles = task.mtGetEnv("\\HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\ProgramFilesDir")
+   local state = mSys.GetSystemState()
+   if (state.platform == 'Windows') then
+      local task = mSys.CurrentTask()
+      local err, progfiles = task.mtGetEnv("\\HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\ProgramFilesDir")
 
-   if (err == ERR_Okay) then
-      print("The Windows registry key for program files is \"" .. progfiles .. "\"")
-   else
-      error("Failed to read Windows registry.")
+      if (err == ERR_Okay) then
+         print("The Windows registry key for program files is \"" .. progfiles .. "\"")
+      else
+         error("Failed to read Windows registry.")
+      end
    end
 end
 

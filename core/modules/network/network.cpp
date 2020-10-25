@@ -598,9 +598,7 @@ static ERROR netResolveName(CSTRING HostName, LONG Flags, FUNCTION *Callback, LA
       resolve_callback(ClientData, Callback, ERR_Okay, "localhost", NULL, 0, list, 1);
    }
 
-   if (!(Flags & NSF_ASYNC_RESOLVE)) {
-      // Attempt synchronous resolution.
-
+   if (!(Flags & NSF_ASYNC_RESOLVE)) { // Attempt synchronous resolution in the background, return immediately.
       VarLock(glDNS, 0x7fffffff);
 
       struct dns_resolver *resolver = new_resolver(ClientData, Callback);

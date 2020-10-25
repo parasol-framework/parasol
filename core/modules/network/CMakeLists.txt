@@ -7,12 +7,7 @@ idl_all ("${MOD}.fdl" NAME "${MOD}_defs" OUTPUT "${INCLUDE_OUTPUT}/modules/${MOD
    FILES "network.cpp"
    ARGS "--output-defs=module_def.c" "--output-proto=module_def.c" "--prototypes=static")
 
-cmake_policy(SET CMP0077 NEW)
-set (CARES_INSTALL OFF)
-set (CARES_SHARED OFF)
-set (CARES_STATIC ON)
-set (CARES_STATIC_PIC ON)
-set (CARES_BUILD_TOOLS OFF)
+# Note if upgrading c-ares, change the OPTION values to match our existing CMakeLists.txt file
 add_subdirectory (c-ares-1.16.1)
 
 add_library (${MOD} SHARED)

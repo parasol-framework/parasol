@@ -97,12 +97,12 @@ static void client_server_incoming(SOCKET_HANDLE FD, struct rkNetSocket *Data)
 #endif
 
    if (Self->IncomingRecursion) {
-      FMSG("client_incoming","[NetSocket:%d] Recursion detected on handle %p.", Self->Head.UniqueID, FD);
+      FMSG("client_incoming","[NetSocket:%d] Recursion detected on handle " PF64(), Self->Head.UniqueID, (MAXINT)FD);
       if (Self->IncomingRecursion < 2) Self->IncomingRecursion++; // Indicate that there is more data to be received
       return;
    }
 
-   FMSG("~client_incoming()","[NetSocket:%d] Socket: %p", Self->Head.UniqueID, FD);
+   FMSG("~client_incoming()","[NetSocket:%d] Socket: " PF64(), Self->Head.UniqueID, (MAXINT)FD);
 
    Self->InUse++;
    Self->IncomingRecursion++;
@@ -155,8 +155,8 @@ restart:
       LogBack();
    }
    else if (Self->IncomingRecursion > 1) {
-      // If client_server_incoming() was called again during the callback, that means that there is more
-      // data is available and we should repeat our callback so that the client can receive the rest
+      // If client_server_incoming() was called again during the callback, there is more
+      // data available and we should repeat our callback so that the client can receive the rest
       // of the data.
 
       Self->IncomingRecursion = 1;

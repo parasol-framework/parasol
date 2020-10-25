@@ -29,9 +29,9 @@ function picLoaded(ActionID, pic, Error, Key)
       print("Failed to load picture, error: " .. mSys.GetErrorMsg(Error))
    end
 
-   glPicsLoaded = glPicsLoaded + 1
+   glPicsProcessed = glPicsProcessed + 1
 
-   if (glPicsLoaded == #glPictures) then
+   if (glPicsProcessed >= #glPictures) then
       //print("All pictures have been loaded, exiting now.")
       mSys.SendMessage(0, MSGID_QUIT, 0, NULL, 0)
    end
@@ -40,12 +40,13 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 
 function testParallel()
-   glPicsLoaded = 0
+   glPicsProcessed = 0
 
    for k, v in ipairs(glPictures) do
       local err = thread.action(v.pic, "Activate", picLoaded, k)
       if (err != ERR_Okay) then
-         print("Thread failed, error: %d", err)
+         print("Thread failed to process " .. v.path .. ": " .. mSys.GetErrorMsg(err))
+         glPicsProcessed = glPicsProcessed + 1
       end
    end
 
@@ -75,10 +76,10 @@ end
          mSys = mod.load("core")
          glPictures = { }
 
-         local folder = obj.new("file", { src="pictures:backgrounds/" } )
+         local folder = obj.new("file", { src="parasol:icons/Default/programs/" } )
          local err, file = folder.mtNext()
          while (err == ERR_Okay) do
-            if (string.find(file.path, ".+%.jpg")) then
+            if (string.find(file.path, ".+%.svg")) then
                print("Found file: " .. file.path)
                table.insert(glPictures, { path=file.path })
             end

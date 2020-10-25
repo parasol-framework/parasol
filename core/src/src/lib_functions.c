@@ -2209,6 +2209,8 @@ ERROR SetResourcePath(LONG PathType, CSTRING Path)
 {
    if (!PathType) return ERR_NullArgs;
 
+   LogF("SetResourcePath()","Type: %d, Path: %s", PathType, Path);
+
    switch(PathType) {
       case RP_ROOT_PATH:
          if (Path) {

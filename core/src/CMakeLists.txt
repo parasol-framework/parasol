@@ -119,7 +119,16 @@ set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mno-ms-bitfields")
 
 add_definitions("-D__system__" "-DDBG_DIAGNOSTICS")
 
-set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -L../3rdparty/zlib-1.2.11/")
+# These definitions tell the Core where the system files are installed.
+
+if (RUN_ANYWHERE)
+   add_definitions("-DROOT_PATH=" "-DSYSTEM_PATH=" "-DMODULE_PATH=\"parasol:lib/\"")
+else ()
+   add_definitions("-DROOT_PATH=\"${CMAKE_INSTALL_PREFIX}/\""
+      "-DSYSTEM_PATH=\"${CMAKE_INSTALL_PREFIX}/share/parasol/\""
+      "-DMODULE_PATH=\"${CMAKE_INSTALL_PREFIX}/lib/parasol/\"")
+endif ()
+
 target_link_libraries (core PRIVATE zlib)
 
 if (WIN32)

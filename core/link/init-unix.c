@@ -10,8 +10,14 @@ restriction.
 #include <stdarg.h>
 #include <dlfcn.h>
 #include <unistd.h>
+#include <sys/stat.h>
+#include <string.h>
 
 #include <parasol/main.h>
+
+#ifndef ROOT_PATH
+#define ROOT_PATH "/usr/local"
+#endif
 
 extern void program(void);
 extern STRING ProgCopyright;
@@ -48,7 +54,8 @@ const char * init_parasol(int argc, CSTRING *argv)
    closecore    = NULL;
    CSTRING msg  = NULL;
 
-   char path_buf[256]; // NB: Assigned to info.SystemPath
+   char root_path[232] = ""; // NB: Assigned to info.RootPath
+   char core_path[256] = "";
 
    struct OpenInfo info;
    info.Detail    = ProgDebug;
@@ -62,7 +69,8 @@ const char * init_parasol(int argc, CSTRING *argv)
    info.CoreVersion = ProgCoreVersion; // Minimum required core version
    info.CompiledAgainst = VER_CORE; // The core that this code is compiled against
    info.Error           = ERR_Okay;
-   info.Flags = OPF_CORE_VERSION|OPF_COMPILED_AGAINST|OPF_NAME|OPF_AUTHOR|OPF_DATE|OPF_COPYRIGHT|OPF_ARGS|OPF_ERROR;
+   info.RootPath  = root_path;
+   info.Flags     = OPF_CORE_VERSION|OPF_COMPILED_AGAINST|OPF_NAME|OPF_AUTHOR|OPF_DATE|OPF_COPYRIGHT|OPF_ARGS|OPF_ERROR|OPF_ROOT_PATH;
    if (ProgDebug > 0) info.Flags |= OPF_DETAIL|OPF_MAX_DEPTH;
    if (ProgDebug IS -1) {
       info.Detail = 0;
@@ -70,70 +78,64 @@ const char * init_parasol(int argc, CSTRING *argv)
       info.Flags |= OPF_DETAIL|OPF_MAX_DEPTH;
    }
 
-   glCoreHandle = dlopen("/usr/local/lib/parasol/core.so", RTLD_NOW);
+   // Check for a local installation in the CWD.
 
-   if (!glCoreHandle) {
-      //fprintf(stderr, "%s\n", dlerror());
+   struct stat corestat = { .st_size = -1 };
+   if (!stat("lib/core.so", &corestat)) {
+      // The working directory will form the root path to the Parasol Framework
+      if (getcwd(root_path, sizeof(root_path))) {
+         LONG i = strlen(root_path);
+         if (root_path[i-1] != '/') root_path[i++] = '/';
+         root_path[i] = 0;
+      }
+      snprintf(core_path, sizeof(core_path), "%slib/core.so", root_path);
+   }
+   else {
+      // Determine if there is a valid 'lib' folder in the binary's folder.
+      // Retrieving the path of the binary only works on Linux (most types of Unix don't provide any support for this).
 
-      char *core_path = "lib/core.so";
-      glCoreHandle = dlopen(core_path, RTLD_NOW);
+      char procfile[48];
+      snprintf(procfile, sizeof(procfile), "/proc/%d/exe", getpid());
 
-      if (glCoreHandle) {
-         if (getcwd(path_buf, sizeof(path_buf))) {
-            LONG i, len;
-            for (len=0; path_buf[len]; len++);
-            for (i=0; ("/lib/"[i]) AND (len < sizeof(path_buf)-1); i++) path_buf[len++] = "/lib/"[i];
-            path_buf[len] = 0;
-            info.SystemPath = path_buf;
-            info.Flags |= OPF_SYSTEM_PATH;
+      LONG path_len;
+      if ((path_len = readlink(procfile, root_path, sizeof(root_path)-1)) > 0) {
+         // Strip the process name
+         while ((root_path > 0) AND (root_path[path_len-1] != '/')) path_len--;
+         root_path[path_len] = 0;
+
+         snprintf(core_path, sizeof(core_path), "%slib/core.so", root_path);
+         if (stat(core_path, &corestat)) {
+            // Check the parent folder of the binary
+            path_len--;
+            while ((path_len > 0) AND (root_path[path_len-1] != '/')) path_len--;
+            root_path[path_len] = 0;
+
+            snprintf(core_path, sizeof(core_path), "%slib/core.so", root_path);
+            if (stat(core_path, &corestat)) { // Support for fixed installations
+               strncpy(root_path, ROOT_PATH"/", sizeof(root_path));
+               strncpy(core_path, ROOT_PATH"/lib/parasol/core.so", sizeof(core_path));
+               if (stat(core_path, &corestat)) {
+                  msg = "Failed to find the location of the core.so library";
+                  goto failed_lib_open;
+               }
+            }
          }
-      }
-      else {
-         // Determine if there is a valid 'lib' folder accompanying the binary.
-         // This method of path retrieval only works on Linux (most types of Unix don't provide any support for this).
-
-         char procfile[50];
-         snprintf(procfile, sizeof(procfile), "/proc/%d/exe", getpid());
-
-         LONG len;
-         if ((len = readlink(procfile, path_buf, sizeof(path_buf)-1)) > 0) {
-            while (len > 0) { // Strip the process name
-               if (path_buf[len-1] IS '/') break;
-               len--;
-            }
-
-            LONG i;
-            LONG ins = len;
-            for (i=0; core_path[i]; i++) path_buf[ins++] = core_path[i];
-            path_buf[ins++] = 0;
-
-            glCoreHandle = dlopen(path_buf, RTLD_NOW);
-            if (!glCoreHandle) {
-               msg = dlerror();
-               goto failed_lib_open;
-            }
-
-            path_buf[len] = 0;
-            for (i=0; ("lib/"[i]) AND (len < sizeof(path_buf)-1); i++) path_buf[len++] = "lib/"[i];
-            path_buf[len] = 0;
-            info.SystemPath = path_buf;
-            info.Flags |= OPF_SYSTEM_PATH;
-        }
-      }
-
-      if (!glCoreHandle) {
-         msg = "Failed to find or open the core library.";
-         goto failed_lib_open;
       }
    }
 
+   if ((!core_path[0]) OR (!(glCoreHandle = dlopen(core_path, RTLD_NOW)))) {
+      fprintf(stderr, "%s: %s\n", core_path, dlerror());
+      msg = "Failed to open the core library.";
+      goto failed_lib_open;
+   }
+
    struct CoreBase * (*opencore)(struct OpenInfo *);
-   if (!(opencore = dlsym(glCoreHandle,"OpenCore"))) {
+   if (!(opencore = dlsym(glCoreHandle, "OpenCore"))) {
       msg = "Could not find the OpenCore symbol in the Core library.";
       goto failed_lib_sym;
    }
 
-   if (!(closecore = dlsym(glCoreHandle,"CloseCore"))) {
+   if (!(closecore = dlsym(glCoreHandle, "CloseCore"))) {
       msg = "Could not find the CloseCore symbol.";
       goto failed_lib_sym;
    }
@@ -146,7 +148,7 @@ const char * init_parasol(int argc, CSTRING *argv)
       }
    }
    else if (info.Error IS ERR_CoreVersion) msg = "This program requires the latest version of the Parasol framework.\nPlease visit www.parasol.ws to upgrade.";
-   else msg = "Failed to initialise Parasol.";
+   else msg = "Failed to initialise Parasol.  Run again with --log-info.";
 
 failed_lib_sym:
 failed_lib_open:

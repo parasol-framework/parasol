@@ -46,7 +46,7 @@ significant differences between the source and destination bitmap types.
 MODULE_COREBASE;
 static struct ModuleMaster *modPicture = NULL;
 static OBJECTPTR clPicture = NULL;
-static OBJECTPTR modZlib = NULL, modDisplay = NULL;
+static OBJECTPTR modDisplay = NULL;
 static struct DisplayBase *DisplayBase = NULL;
 static THREADVAR LONG glError = FALSE;
 
@@ -69,15 +69,6 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    if (GetPointer(argModule, FID_Master, &modPicture) != ERR_Okay) return ERR_GetField;
    if (LoadModule("display", MODVERSION_DISPLAY, &modDisplay, &DisplayBase) != ERR_Okay) return ERR_InitModule;
 
-#if defined(__linux__) && !defined(__ANDROID__)
-   if (CreateObject(ID_MODULE, 0, &modZlib,
-         FID_Name|TSTR,   "libz",
-         FID_Flags|TLONG, MOF_LINK_LIBRARY,
-         TAGEND)) {
-      return ERR_LoadModule;
-   }
-#endif
-
    return(CreateObject(ID_METACLASS, 0, &clPicture,
       FID_ClassVersion|TFLOAT,  VER_PICTURE,
       FID_Name|TSTR,            "Picture",
@@ -98,7 +89,6 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 static ERROR CMDExpunge(void)
 {
    if (clPicture)  { acFree(clPicture); clPicture = NULL; }
-   if (modZlib)    { acFree(modZlib); modZlib = NULL; }
    if (modDisplay) { acFree(modDisplay); modDisplay = NULL; }
    return ERR_Okay;
 }
