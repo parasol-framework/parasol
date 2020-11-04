@@ -270,7 +270,9 @@ LONG winLaunchProcess(APTR Task, LPSTR commandline, LPSTR InitialDir, BYTE Group
                process->Handle = info.hProcess;
                process->Task = Task;
 
+               #pragma GCC diagnostic ignored "-Wpointer-to-int-cast"
                MSG("winLaunchProcess() successful launch.  FDs: %d,%d,%d\n", (int)process->PipeOut.Read, (int)process->PipeErr.Read, (int)process->PipeIn.Write);
+               #pragma GCC diagnostic warning "-Wpointer-to-int-cast"
 
                register_process_pipes(Task, process->Handle);
 
@@ -446,7 +448,9 @@ LONG winReadStd(struct winprocess *Platform, LONG Type, APTR Buffer, DWORD *Size
    if (ReadFile(FD, Buffer, len, Size, 0)) {
       // Success
 
+      #pragma GCC diagnostic ignored "-Wpointer-to-int-cast"
       MSG("winReadStd(%p, FD: %d, Size: %d  .. %d)\n", Platform, (int)FD, (int)len, (int)*Size);
+      #pragma GCC diagnostic warning "-Wpointer-to-int-cast"
       return 0;
    }
    else {
@@ -456,7 +460,9 @@ LONG winReadStd(struct winprocess *Platform, LONG Type, APTR Buffer, DWORD *Size
       }
       else {
          *Size = 0;
+         #pragma GCC diagnostic ignored "-Wpointer-to-int-cast"
          MSG("winReadStd() ReadFile() failed on FD %d\n", (int)FD);
+         #pragma GCC diagnostic warning "-Wpointer-to-int-cast"
          return -1;
       }
    }

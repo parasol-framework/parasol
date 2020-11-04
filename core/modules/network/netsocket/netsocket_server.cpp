@@ -1,6 +1,6 @@
 
 //****************************************************************************
-// This routine will be called when there is some activity occurring on a server socket.
+// Called when a socket handle detects a new client wanting to connect to it.
 
 static void server_client_connect(SOCKET_HANDLE FD, objNetSocket *Self)
 {
@@ -8,6 +8,8 @@ static void server_client_connect(SOCKET_HANDLE FD, objNetSocket *Self)
    SOCKET_HANDLE clientfd;
 
    FMSG("~socket_connect()","FD: %d", FD);
+
+   OBJECTPTR context = SetContext(Self);
 
    if (Self->IPV6) {
 #ifdef __linux__
@@ -57,13 +59,14 @@ static void server_client_connect(SOCKET_HANDLE FD, objNetSocket *Self)
          ip[7] = addr.sin6_addr.s6_addr[7];
       #endif
 #else
+      LogF("@socket_connect","IPV6 not supported yet.");
+      SetContext(context);
       STEP();
       return;
 #endif
    }
    else {
       struct sockaddr_in addr;
-
 
       #ifdef __linux__
          socklen_t len = sizeof(addr);
@@ -75,6 +78,7 @@ static void server_client_connect(SOCKET_HANDLE FD, objNetSocket *Self)
 
       if (clientfd IS NOHANDLE) {
          LogF("@server_connect","accept() failed to return an FD.");
+         SetContext(context);
          STEP();
          return;
       }
@@ -92,43 +96,47 @@ static void server_client_connect(SOCKET_HANDLE FD, objNetSocket *Self)
    if (Self->TotalClients >= Self->ClientLimit) {
       CLOSESOCKET(clientfd);
       PostError(ERR_ArrayFull);
+      SetContext(context);
       STEP();
       return;
    }
 
    // Check if this IP address already has a client structure from an earlier socket connection.
+   // (One NetClient represents a single IP address; Multiple ClientSockets can connect from that IP address)
 
-   struct rkNetClient *client;
-   for (client=Self->Clients; client; client=client->Next) {
-      if (((LARGE *)&ip)[0] IS ((LARGE *)&client->IP)[0]) break;
+   struct rkNetClient *client_ip;
+   for (client_ip=Self->Clients; client_ip; client_ip=client_ip->Next) {
+      if (((LARGE *)&ip)[0] IS ((LARGE *)&client_ip->IP)[0]) break;
    }
 
-   if (!client) {
-      if (AllocMemory(sizeof(struct rkNetClient), MEM_DATA, &client, NULL) != ERR_Okay) {
+   if (!client_ip) {
+      if (AllocMemory(sizeof(struct rkNetClient), MEM_DATA, &client_ip, NULL) != ERR_Okay) {
          CLOSESOCKET(clientfd);
+         SetContext(context);
          STEP();
          return;
       }
 
-      client->NetSocket = Self;
-      ((LARGE *)&client->IP)[0] = ((LARGE *)&ip)[0];
-      client->TotalSockets = 0;
+      client_ip->NetSocket = Self;
+      ((LARGE *)&client_ip->IP)[0] = ((LARGE *)&ip)[0];
+      client_ip->TotalSockets = 0;
       Self->TotalClients++;
 
-      if (!Self->Clients) Self->Clients = client;
+      if (!Self->Clients) Self->Clients = client_ip;
       else {
-         if (Self->LastClient) Self->LastClient->Next = client;
+         if (Self->LastClient) Self->LastClient->Next = client_ip;
          if (Self->Clients) Self->Clients->Prev = Self->LastClient;
       }
-      Self->LastClient = client;
+      Self->LastClient = client_ip;
    }
 
    if (!(Self->Flags & NSF_MULTI_CONNECT)) { // Check if the IP is already registered and alive
-      if (client->Sockets) {
+      if (client_ip->Sockets) {
          // Check if the client is alive by writing to it.  If the client is dead, remove it and continue with the new connection.
 
-         LogF("socket_connect","Preventing second connection attempt from IP %d.%d.%d.%d\n", client->IP[0], client->IP[1], client->IP[2], client->IP[3]);
+         LogF("socket_connect","Preventing second connection attempt from IP %d.%d.%d.%d\n", client_ip->IP[0], client_ip->IP[1], client_ip->IP[2], client_ip->IP[3]);
          CLOSESOCKET(clientfd);
+         SetContext(context);
          STEP();
          return;
       }
@@ -136,137 +144,42 @@ static void server_client_connect(SOCKET_HANDLE FD, objNetSocket *Self)
 
    // Socket Management
 
-   objClientSocket *socket;
-   if (AllocMemory(sizeof(objClientSocket), MEM_DATA, &socket, NULL) != ERR_Okay) {
+   objClientSocket *client_socket;
+   if (!NewObject(ID_CLIENTSOCKET, 0, &client_socket)) {
+      client_socket->Handle = clientfd;
+      client_socket->Client = client_ip;
+      acInit(client_socket);
+   }
+   else {
       CLOSESOCKET(clientfd);
-      if (!client->Sockets) free_client(Self, client);
+      if (!client_ip->Sockets) free_client(Self, client_ip);
+      SetContext(context);
       STEP();
       return;
    }
 
-#ifdef __linux__
-   LONG non_blocking;
-   non_blocking = 1;
-   ioctl(clientfd, FIONBIO, &non_blocking);
-#endif
-
-   socket->Handle = clientfd;
-   socket->ConnectTime = PreciseTime() / 1000LL;
-   socket->Client = client;
-
-   if (client->Sockets) {
-      socket->Next = client->Sockets;
-      socket->Prev = NULL;
-      client->Sockets->Prev = socket;
+   if (Self->Feedback.Type IS CALL_STDC) {
+      void (*routine)(objNetSocket *, objClientSocket *, LONG);
+      OBJECTPTR context = SetContext(Self->Feedback.StdC.Context);
+         routine = reinterpret_cast<void (*)(objNetSocket *, objClientSocket *, LONG)>(Self->Feedback.StdC.Routine);
+         routine(Self, client_socket, NTC_CONNECTED);
+      SetContext(context);
    }
+   else if (Self->Feedback.Type IS CALL_SCRIPT) {
+      const struct ScriptArg args[] = {
+         { "NetSocket",    FD_OBJECTPTR, { .Address = Self } },
+         { "ClientSocket", FD_OBJECTPTR, { .Address = client_socket } },
+         { "State",        FD_LONG,      { .Long = NTC_CONNECTED } }
+      };
 
-   client->Sockets = socket;
-   client->TotalSockets++;
-
-#ifdef __linux__
-   RegisterFD(clientfd, RFD_READ|RFD_SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&server_client_incoming), socket);
-#elif _WIN32
-   // Not necessary to call win_socketstate() as win_accept() sets this up for us automatically.
-#endif
-
-   if (Self->Feedback.Type) {
-      objClientSocket *save_socket = Self->CurrentSocket;
-      Self->CurrentSocket = socket;
-
-      if (Self->Feedback.Type IS CALL_STDC) {
-         void (*routine)(objNetSocket *, LONG);
-         OBJECTPTR context = SetContext(Self->Feedback.StdC.Context);
-            routine = reinterpret_cast<void (*)(objNetSocket *, LONG)>(Self->Feedback.StdC.Routine);
-            routine(Self, NTC_CONNECTED);
-         SetContext(context);
-      }
-      else if (Self->Feedback.Type IS CALL_SCRIPT) {
-         const struct ScriptArg args[] = {
-            { "NetSocket", FD_OBJECTPTR, { .Address = Self } },
-            { "State",     FD_LONG,      { .Long = NTC_CONNECTED } }
-         };
-
-         OBJECTPTR script;
-         if ((script = Self->Feedback.Script.Script)) {
-            scCallback(script, Self->Feedback.Script.ProcedureID, args, ARRAYSIZE(args));
-         }
-      }
-
-      Self->CurrentSocket = save_socket;
-   }
-
-   FMSG("socket_connect:","Total clients: %d", Self->TotalClients);
-
-   STEP();
-}
-
-//****************************************************************************
-// If the socket is a server, messages from clients will come in through here.
-
-static void server_client_incoming(SOCKET_HANDLE FD, objClientSocket *Socket)
-{
-   if ((!Socket) OR (!Socket->Client)) return;
-
-   objNetSocket *Self = Socket->Client->NetSocket;
-   Self->InUse++;
-   Socket->ReadCalled = FALSE;
-
-   FMSG("~server_incoming:","Handle: %d", FD);
-
-   // In raw messaging mode, we tell the app to read from the client with this callback.  The app calls
-   // Read or ReadMsg to retrieve information from the client.
-
-   ERROR error;
-   if (Socket->Incoming.Type) {
-      Self->CurrentSocket = Socket;
-
-         if (Socket->Incoming.Type IS CALL_STDC) {
-            ERROR (*routine)(objNetSocket *, objClientSocket *);
-            OBJECTPTR context = SetContext(Socket->Incoming.StdC.Context);
-               routine = reinterpret_cast<ERROR (*)(objNetSocket *, objClientSocket *)>(Socket->Incoming.StdC.Routine);
-               error = routine(Self, Socket);
-            SetContext(context);
-         }
-         else if (Socket->Incoming.Type IS CALL_SCRIPT) {
-            const struct ScriptArg args[] = {
-               { "NetSocket", FD_OBJECTPTR, { .Address = Self } },
-               { "Socket",    FD_POINTER,   { .Address = Socket } }
-            };
-
-            OBJECTPTR script;
-            if ((script = Socket->Incoming.Script.Script)) {
-               if (!scCallback(script, Socket->Incoming.Script.ProcedureID, args, ARRAYSIZE(args))) {
-                  GetLong(script, FID_Error, &error);
-               }
-               else error = ERR_Terminate; // Fatal error in attempting to execute the procedure
-            }
-         }
-         else LogF("@server_incoming","No callback configured (got %d).", Socket->Incoming.Type);
-
-      Self->CurrentSocket = NULL;
-
-      if (error) Socket->Incoming.Type = CALL_NONE;
-
-      if (error IS ERR_Terminate) {
-         FMSG("server_incoming:","Termination request received.");
-         free_client_socket(Self, Socket, TRUE);
-         Self->InUse--;
-         STEP();
-         return;
+      OBJECTPTR script;
+      if ((script = Self->Feedback.Script.Script)) {
+         scCallback(script, Self->Feedback.Script.ProcedureID, args, ARRAYSIZE(args));
       }
    }
-   else LogF("@server_incoming","No callback configured.");
 
-   if (Socket->ReadCalled IS FALSE) {
-      UBYTE buffer[80];
-      LogF("@server_incoming:","Subscriber did not call Read(), cleaning buffer.");
-      LONG result;
-      do { error = RECEIVE(Self, Socket->Handle, &buffer, sizeof(buffer), 0, &result); } while (result > 0);
-      if (error) free_client_socket(Self, Socket, TRUE);
-   }
-
-   Self->InUse--;
-
+   FMSG("socket_connect","Total clients: %d", Self->TotalClients);
+   SetContext(context);
    STEP();
 }
 
@@ -276,16 +189,12 @@ static void server_client_incoming(SOCKET_HANDLE FD, objClientSocket *Socket)
 
 static void server_client_outgoing(SOCKET_HANDLE FD, objClientSocket *Socket)
 {
-   objNetSocket *Self;
-   ERROR error;
-   LONG len;
-
    if ((!Socket) OR (!Socket->Client)) {
       FMSG("@server_outgoing()","No Socket or Socket->Client.");
       return;
    }
 
-   Self = Socket->Client->NetSocket;
+   objNetSocket *Self = Socket->Client->NetSocket;
 
    if (Self->Terminating) return;
 
@@ -293,13 +202,13 @@ static void server_client_outgoing(SOCKET_HANDLE FD, objClientSocket *Socket)
 
    Self->InUse++;
 
-   error = ERR_Okay;
+   ERROR error = ERR_Okay;
 
    // Send out remaining queued data before getting new data to send
 
    if (Socket->WriteQueue.Buffer) {
       while (Socket->WriteQueue.Buffer) {
-         len = Socket->WriteQueue.Length - Socket->WriteQueue.Index;
+         LONG len = Socket->WriteQueue.Length - Socket->WriteQueue.Index;
          if (len > glMaxWriteLen) len = glMaxWriteLen;
 
          if (len > 0) {
@@ -307,13 +216,13 @@ static void server_client_outgoing(SOCKET_HANDLE FD, objClientSocket *Socket)
 
             if ((error) OR (!len)) break;
 
-            FMSG("server_out:","[NetSocket:%d] Sent %d of %d bytes remaining on the queue.", Self->Head.UniqueID, len, Socket->WriteQueue.Length-Socket->WriteQueue.Index);
+            FMSG("server_outgoing","[NetSocket:%d] Sent %d of %d bytes remaining on the queue.", Self->Head.UniqueID, len, Socket->WriteQueue.Length-Socket->WriteQueue.Index);
 
             Socket->WriteQueue.Index += len;
          }
 
          if (Socket->WriteQueue.Index >= Socket->WriteQueue.Length) {
-            FMSG("server_out:","Terminating the write queue (pos %d/%d).", Socket->WriteQueue.Index, Socket->WriteQueue.Length);
+            FMSG("server_outgoing","Terminating the write queue (pos %d/%d).", Socket->WriteQueue.Index, Socket->WriteQueue.Length);
             FreeResource(Socket->WriteQueue.Buffer);
             Socket->WriteQueue.Buffer = NULL;
             Socket->WriteQueue.Index  = 0;
@@ -360,14 +269,14 @@ static void server_client_outgoing(SOCKET_HANDLE FD, objClientSocket *Socket)
       // we don't tax the system resources.
 
       if (!Socket->WriteQueue.Buffer) {
-         FMSG("server_out","[NetSocket:%d] Write-queue listening on FD %d will now stop.", Self->Head.UniqueID, FD);
+         FMSG("server_outgoing","[NetSocket:%d] Write-queue listening on FD %d will now stop.", Self->Head.UniqueID, FD);
          RegisterFD((HOSTHANDLE)(MAXINT)FD, RFD_REMOVE|RFD_WRITE|RFD_SOCKET, NULL, NULL);
          #ifdef _WIN32
          win_socketstate(FD, -1, 0);
          #endif
       }
    }
-   else FMSG("server_out","Outgoing buffer is not empty.");
+   else FMSG("server_outgoing","Outgoing buffer is not empty.");
 
    Self->InUse--;
 
@@ -391,7 +300,14 @@ static void free_client(objNetSocket *Self, struct rkNetClient *Client)
 
    // Free all sockets related to this client
 
-   while (Client->Sockets) free_client_socket(Self, Client->Sockets, TRUE);
+   while (Client->Sockets) {
+      objClientSocket *current_socket = Client->Sockets;
+      free_client_socket(Self, Client->Sockets, TRUE);
+      if (Client->Sockets IS current_socket) {
+         LogF("@free_client","Resource management error detected in Client->Sockets");
+         break;
+      }
+   }
 
    if (Client->Prev) {
       Client->Prev->Next = Client->Next;
@@ -414,63 +330,35 @@ static void free_client(objNetSocket *Self, struct rkNetClient *Client)
 ** Terminates the connection to the client and removes associated resources.
 */
 
-static void free_client_socket(objNetSocket *Self, objClientSocket *Socket, BYTE Signal)
+static void free_client_socket(objNetSocket *Socket, objClientSocket *ClientSocket, BYTE Signal)
 {
-   if (!Socket) return;
+   if (!ClientSocket) return;
 
-   struct rkNetClient *client = Socket->Client;
+   LogF("~free_client_socket()","Handle: %d, NetSocket: %d, ClientSocket: %d", ClientSocket->SocketHandle, Socket->Head.UniqueID, ClientSocket->Head.UniqueID);
 
-   LogF("~free_socket()","Handle: %d, Client-Total: %d", Socket->Handle, client->TotalSockets);
-
-   if ((Signal) AND (Self->Feedback.Type)) {
-      if (Self->Feedback.Type IS CALL_STDC) {
-         void (*routine)(objNetSocket *, LONG);
-         OBJECTPTR context = SetContext(Self->Feedback.StdC.Context);
-            routine = reinterpret_cast<void (*)(objNetSocket *, LONG)>(Self->Feedback.StdC.Routine);
-            routine(Self, NTC_DISCONNECTED);
+   if ((Signal) AND (Socket->Feedback.Type)) {
+      if (Socket->Feedback.Type IS CALL_STDC) {
+         void (*routine)(objNetSocket *, objClientSocket *, LONG);
+         OBJECTPTR context = SetContext(Socket->Feedback.StdC.Context);
+            routine = reinterpret_cast<void (*)(objNetSocket *, objClientSocket *, LONG)>(Socket->Feedback.StdC.Routine);
+            routine(Socket, ClientSocket, NTC_DISCONNECTED);
          SetContext(context);
       }
-      else if (Self->Feedback.Type IS CALL_SCRIPT) {
+      else if (Socket->Feedback.Type IS CALL_SCRIPT) {
          const struct ScriptArg args[] = {
-            { "NetSocket", FD_OBJECTPTR, { .Address = Self } },
-            { "State",     FD_LONG,      { .Long = NTC_DISCONNECTED } }
+            { "NetSocket",    FD_OBJECTPTR, { .Address = Socket } },
+            { "ClientSocket", FD_OBJECTPTR, { .Address = ClientSocket } },
+            { "State",        FD_LONG,      { .Long = NTC_DISCONNECTED } }
          };
 
          OBJECTPTR script;
-         if ((script = Self->Feedback.Script.Script)) {
-            scCallback(script, Self->Feedback.Script.ProcedureID, args, ARRAYSIZE(args));
+         if ((script = Socket->Feedback.Script.Script)) {
+            scCallback(script, Socket->Feedback.Script.ProcedureID, args, ARRAYSIZE(args));
          }
       }
    }
 
-   if (Socket->Handle) {
-#ifdef __linux__
-      DeregisterFD(Socket->Handle);
-#endif
-      CLOSESOCKET(Socket->Handle);
-      Socket->Handle = -1;
-   }
-
-   if (Socket->ReadQueue.Buffer) { FreeResource(Socket->ReadQueue.Buffer); Socket->ReadQueue.Buffer = NULL; }
-   if (Socket->WriteQueue.Buffer) { FreeResource(Socket->WriteQueue.Buffer); Socket->WriteQueue.Buffer = NULL; }
-
-   if (Socket->Prev) {
-      Socket->Prev->Next = Socket->Next;
-      if (Socket->Next) Socket->Next->Prev = Socket->Prev;
-   }
-   else {
-      client->Sockets = Socket->Next;
-      if (Socket->Next) Socket->Next->Prev = NULL;
-   }
-
-   FreeResource(Socket);
-
-   client->TotalSockets--;
-
-   if (!client->Sockets) {
-      LogMsg("No more open sockets, removing client.");
-      free_client(Self, client);
-   }
+   acFree(ClientSocket);
 
    LogBack();
 }

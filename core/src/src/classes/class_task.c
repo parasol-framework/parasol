@@ -444,13 +444,13 @@ static void task_incoming_stderr(WINHANDLE Handle, objTask *Task)
 
 void task_register_stdout(objTask *Task, WINHANDLE Handle)
 {
-   FMSG("task_register_stdout()","Handle: %d", (LONG)Handle);
+   FMSG("task_register_stdout()","Handle: %d", (LONG)(MAXINT)Handle);
    RegisterFD(Handle, RFD_READ, (void (*)(void *, void *))&task_incoming_stdout, Task);
 }
 
 void task_register_stderr(objTask *Task, WINHANDLE Handle)
 {
-   FMSG("task_register_stderr()","Handle: %d", (LONG)Handle);
+   FMSG("task_register_stderr()","Handle: %d", (LONG)(MAXINT)Handle);
    RegisterFD(Handle, RFD_READ, (void (*)(void *, void *))&task_incoming_stderr, Task);
 }
 
@@ -722,14 +722,14 @@ static void task_process_end(WINHANDLE FD, objTask *Task)
 #ifdef _WIN32
 void register_process_pipes(objTask *Self, WINHANDLE ProcessHandle)
 {
-   FMSG("register_pipes()","Process: %d", (LONG)ProcessHandle);
+   FMSG("register_pipes()","Process: %d", (LONG)(MAXINT)ProcessHandle);
 
    RegisterFD(ProcessHandle, RFD_READ, (void (*)(void *, void *))&task_process_end, Self);
 }
 
 void deregister_process_pipes(objTask *Self, WINHANDLE ProcessHandle)
 {
-   FMSG("deregister_pipes()","Process: %d", (LONG)ProcessHandle);
+   FMSG("deregister_pipes()","Process: %d", (LONG)(MAXINT)ProcessHandle);
 
    if (ProcessHandle) RegisterFD(ProcessHandle, RFD_REMOVE|RFD_READ|RFD_WRITE|RFD_EXCEPT, NULL, NULL);
 }

@@ -531,8 +531,6 @@ static void make_struct_ptr_table(lua_State *Lua, CSTRING StructName, LONG Eleme
 
 static void make_struct_serial_table(lua_State *Lua, CSTRING StructName, LONG Elements, CPTR Data)
 {
-   FMSG("make_struct_serial_table()","%s, Elements: %d, Values: %p", StructName, Elements, Data);
-
    if (Elements < 0) Elements = 0; // The total number of structs is a hard requirement.
 
    lua_createtable(Lua, Elements, 0); // Create a new table on the stack.
@@ -542,17 +540,28 @@ static void make_struct_serial_table(lua_State *Lua, CSTRING StructName, LONG El
    struct structentry *def;
 
    if (!KeyGet(prv->Structs, STRUCTHASH(StructName), &def, NULL)) {
-      LONG i;
       struct references *ref;
+
+      // 64-bit compilers don't always align structures to 64-bit, and it's difficult to compute alignment with
+      // certainty.  It is essential that structures that are intended to be serialised into arrays are manually
+      // padded to 64-bit so that the potential for mishap is eliminated.
+
+      #ifdef _LP64
+      LONG def_size = ALIGN64(def->Size);
+      #else
+      LONG def_size = ALIGN32(def->Size);
+      #endif
+
+      char aligned = ((def->Size & 0x7) != 0) ? 'N': 'Y';
+      if (aligned IS 'N') {
+         LogF("make_struct_serial_table()","%s, Elements: %d, Values: %p, StructSize: %d, Aligned: %c", StructName, Elements, Data, def_size, aligned);
+      }
+
       if ((ref = alloc_references())) {
-         for (i=0; i < Elements; i++) {
+         for (LONG i=0; i < Elements; i++) {
             lua_pushinteger(Lua, i+1);
             if (struct_to_table(Lua, ref, def, Data) != ERR_Okay) lua_pushnil(Lua);
-            #ifdef _LP64
-               Data += ALIGN64(def->Size);
-            #else
-               Data += def->Size;
-            #endif
+            Data += def_size;
             lua_settable(Lua, -3);
          }
          free_references(Lua, ref);

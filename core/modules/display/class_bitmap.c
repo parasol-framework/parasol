@@ -928,55 +928,57 @@ static ERROR BITMAP_Init(objBitmap *Self, APTR Void)
                   else if (Self->LineWidth & 0x0002) alignment = 16;
                   else alignment = 32;
 
-                  Self->x11.XImage.width            = Self->Width;  // Image width
-                  Self->x11.XImage.height           = Self->Height; // Image height
-                  Self->x11.XImage.xoffset          = 0;            // Number of pixels offset in X direction
-                  Self->x11.XImage.format           = ZPixmap;      // XYBitmap, XYPixmap, ZPixmap
-                  Self->x11.XImage.data             = Self->Data;   // Pointer to image data
-                  if (glX11ShmImage) Self->x11.XImage.obdata = (char *)&Self->x11.ShmInfo; // Magic pointer for the XShm extension
-                  Self->x11.XImage.byte_order       = 0;            // LSBFirst / MSBFirst
-                  Self->x11.XImage.bitmap_unit      = alignment;    // Quant. of scanline - 8, 16, 32
-                  Self->x11.XImage.bitmap_bit_order = 0;            // LSBFirst / MSBFirst
-                  Self->x11.XImage.bitmap_pad       = alignment;    // 8, 16, 32, either XY or Zpixmap
-                  if (Self->BitsPerPixel IS 32) Self->x11.XImage.depth = 24;
-                  else Self->x11.XImage.depth = Self->BitsPerPixel;            // Actual bits per pixel
-                  Self->x11.XImage.bytes_per_line   = Self->LineWidth;         // Accelerator to next line
-                  Self->x11.XImage.bits_per_pixel   = Self->BytesPerPixel * 8; // Bits per pixel-group
-                  Self->x11.XImage.red_mask         = 0;
-                  Self->x11.XImage.green_mask       = 0;
-                  Self->x11.XImage.blue_mask        = 0;
+                  if (!glHeadless) {
+                     Self->x11.XImage.width            = Self->Width;  // Image width
+                     Self->x11.XImage.height           = Self->Height; // Image height
+                     Self->x11.XImage.xoffset          = 0;            // Number of pixels offset in X direction
+                     Self->x11.XImage.format           = ZPixmap;      // XYBitmap, XYPixmap, ZPixmap
+                     Self->x11.XImage.data             = Self->Data;   // Pointer to image data
+                     if (glX11ShmImage) Self->x11.XImage.obdata = (char *)&Self->x11.ShmInfo; // Magic pointer for the XShm extension
+                     Self->x11.XImage.byte_order       = 0;            // LSBFirst / MSBFirst
+                     Self->x11.XImage.bitmap_unit      = alignment;    // Quant. of scanline - 8, 16, 32
+                     Self->x11.XImage.bitmap_bit_order = 0;            // LSBFirst / MSBFirst
+                     Self->x11.XImage.bitmap_pad       = alignment;    // 8, 16, 32, either XY or Zpixmap
+                     if (Self->BitsPerPixel IS 32) Self->x11.XImage.depth = 24;
+                     else Self->x11.XImage.depth = Self->BitsPerPixel;            // Actual bits per pixel
+                     Self->x11.XImage.bytes_per_line   = Self->LineWidth;         // Accelerator to next line
+                     Self->x11.XImage.bits_per_pixel   = Self->BytesPerPixel * 8; // Bits per pixel-group
+                     Self->x11.XImage.red_mask         = 0;
+                     Self->x11.XImage.green_mask       = 0;
+                     Self->x11.XImage.blue_mask        = 0;
 
-                  XInitImage(&Self->x11.XImage);
+                     XInitImage(&Self->x11.XImage);
 
-                  // If the XShm extension is available, try using it.  Using XShm allows the
-                  // X11 server to copy image memory straight to the display rather than
-                  // having it messaged.
+                     // If the XShm extension is available, try using it.  Using XShm allows the
+                     // X11 server to copy image memory straight to the display rather than
+                     // having it messaged.
 
-                  if (glX11ShmImage) {
-                     struct MemInfo meminfo;
+                     if (glX11ShmImage) {
+                        struct MemInfo meminfo;
 
-                     if ((!MemoryIDInfo(Self->DataMID, &meminfo)) AND (meminfo.Handle)) {
-                        Self->x11.ShmInfo.shmid    = meminfo.Handle;
-                        Self->x11.ShmInfo.readOnly = False;
-                        Self->x11.ShmInfo.shmaddr  = Self->Data;
+                        if ((!MemoryIDInfo(Self->DataMID, &meminfo)) AND (meminfo.Handle)) {
+                           Self->x11.ShmInfo.shmid    = meminfo.Handle;
+                           Self->x11.ShmInfo.readOnly = False;
+                           Self->x11.ShmInfo.shmaddr  = Self->Data;
 
-                        // Attach the memory block to the X11 server
+                           // Attach the memory block to the X11 server
 
-                        if (XShmAttach(XDisplay, &Self->x11.ShmInfo)) {
-                           Self->x11.XShmImage = TRUE;
-                           XSync(XDisplay, TRUE);
+                           if (XShmAttach(XDisplay, &Self->x11.ShmInfo)) {
+                              Self->x11.XShmImage = TRUE;
+                              XSync(XDisplay, TRUE);
+                           }
+                           else LogErrorMsg("XShmAttach() failed.");
                         }
-                        else LogErrorMsg("XShmAttach() failed.");
                      }
                   }
                }
-               else return PostError(ERR_Memory);
+               else return PostError(ERR_AllocMemory);
             }
          //}
       }
    }
 
-   XSync(XDisplay, False);
+   if (!glHeadless) XSync(XDisplay, False);
 
 #elif _WIN32
 
@@ -1054,7 +1056,7 @@ static ERROR BITMAP_Init(objBitmap *Self, APTR Void)
 
 #ifdef __xwindows__
 
-   if (Self->x11.Drawable) {
+   if ((!glHeadless) AND (Self->x11.Drawable)) {
       XVisualInfo visual, *info;
       LONG items;
       visual.bits_per_rgb = Self->BytesPerPixel * 8;
@@ -2646,3 +2648,4 @@ static ERROR create_bitmap_class(void)
       FID_Path|TSTR,      MOD_PATH,
       TAGEND));
 }
+

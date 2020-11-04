@@ -177,7 +177,6 @@ static LONG test_x11(STRING Path)
 
 static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
-   STRING *args;
    LONG i;
    UBYTE display;
    CSTRING displaymod;
@@ -187,47 +186,30 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
       DISPLAY_NATIVE,
       DISPLAY_GLES1,
       DISPLAY_GLES2,
-      DISPLAY_GLES3
+      DISPLAY_GLES3,
+      DISPLAY_HEADLESS
    };
 
    CoreBase = argCoreBase;
 
    // Determine what module to load
 
-   display = DISPLAY_AUTO;
-
-   // Check user commandline arguments for --gfxdriver
-
-   if (display IS DISPLAY_AUTO) {
-      if ((!GetPointer(CurrentTask(), FID_Parameters, &args)) AND (args)) {
-         for (i=0; args[i]; i++) {
-            if (!StrMatch(args[i], "--gfxdriver=native")) {
-               display = DISPLAY_NATIVE;
-            }
-            else if (!StrMatch(args[i], "--gfxdriver=vesa")) {
-               display = DISPLAY_NATIVE;
-            }
-            else if (!StrMatch(args[i], "--gfxdriver=vga")) {
-               display = DISPLAY_NATIVE;
-            }
-            else if (!StrMatch(args[i], "--gfxdriver=x11")) {
-               display = DISPLAY_X11;
-            }
-            else if ((!StrMatch(args[i], "--gfxdriver=gles")) OR (!StrMatch(args[i], "--gfxdriver=gles1"))) {
-               display = DISPLAY_GLES1;
-            }
-            else if (!StrMatch(args[i], "--gfxdriver=gles2")) {
-               display = DISPLAY_GLES2;
-            }
-            else if (!StrMatch(args[i], "--gfxdriver=gles3")) {
-               display = DISPLAY_GLES3;
-            }
-            else if (!StrMatch(args[i], "--gfxdriver=auto")) {
-               display = DISPLAY_AUTO;
-            }
-         }
-      }
+   CSTRING driver_name;
+   if ((driver_name = GetResourcePtr(RES_DISPLAY_DRIVER))) {
+      if (!StrMatch(driver_name, "native"))     display = DISPLAY_NATIVE;
+      else if (!StrMatch(driver_name, "vesa"))  display = DISPLAY_NATIVE;
+      else if (!StrMatch(driver_name, "vga"))   display = DISPLAY_NATIVE;
+      else if (!StrMatch(driver_name, "x11"))   display = DISPLAY_X11;
+      else if (!StrMatch(driver_name, "gles"))  display = DISPLAY_GLES1;
+      else if (!StrMatch(driver_name, "gles1")) display = DISPLAY_GLES1;
+      else if (!StrMatch(driver_name, "gles2")) display = DISPLAY_GLES2;
+      else if (!StrMatch(driver_name, "gles3")) display = DISPLAY_GLES3;
+      else if (!StrMatch(driver_name, "auto"))  display = DISPLAY_AUTO;
+      else if (!StrMatch(driver_name, "none"))  display = DISPLAY_HEADLESS;
+      else if (!StrMatch(driver_name, "none"))  display = DISPLAY_HEADLESS;
+      else display = DISPLAY_AUTO;
    }
+   else display = DISPLAY_AUTO;
 
    if (display IS DISPLAY_AUTO) {
 #if defined(__linux__) && !defined(__ANDROID__)
@@ -279,6 +261,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
          }
          return ERR_InitModule;
       }
+      else if (display IS DISPLAY_HEADLESS); // Do nothing
       else return ERR_InitModule;
 #else
       return ERR_InitModule;

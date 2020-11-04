@@ -79,9 +79,9 @@
       <param type="LARGE" name="ClientData">Client data value to be passed to the Callback.</param>
     </input>
     <description>
-<p>ResolveAddress() performs a IP address resolution, converting an address to an official host name, list of aliases and IP addresses.  The resolution process involves contacting a DNS server.  As this can potentially cause a significant delay, the ResolveAddress() function supports asynchronous communication by default in order to avoid lengthy waiting periods.  If asynchronous operation is desired, the NSF_ASYNC_RESOLVE flag should be set prior to calling this method.</p>
-<p>The function referenced in the Callback parameter will receive the results of the lookup.  Its C/C++ prototype is <code>Function(LARGE ClientData, ERROR Error, CSTRING HostName, CSTRING *Aliases, LONG TotalAliases, IPAddress *Addresses, LONG TotalAddresses)</code>.</p>
-<p>The Fluid prototype is as follows, with Aliases and Addresses being passed as external arrays accessible via the array interface: <code>function Callback(ClientData, Error, HostName, Aliases, Addresses)</code>.</p>
+<p>ResolveAddress() performs a IP address resolution, converting an address to an official host name and list of IP addresses.  The resolution process involves contacting a DNS server.  As this can potentially cause a significant delay, the ResolveAddress() function supports asynchronous communication by default in order to avoid lengthy waiting periods.  If asynchronous operation is desired, the NSF_ASYNC_RESOLVE flag should be set prior to calling this method.</p>
+<p>The function referenced in the Callback parameter will receive the results of the lookup.  Its C/C++ prototype is <code>Function(LARGE ClientData, ERROR Error, CSTRING HostName, IPAddress *Addresses, LONG TotalAddresses)</code>.</p>
+<p>The Fluid prototype is as follows, with Addresses being passed as external arrays accessible via the array interface: <code>function Callback(ClientData, Error, HostName, Addresses)</code>.</p>
     </description>
     <result type="ERROR">
       <error code="NullArgs">Function call missing argument value(s)</error>
@@ -93,7 +93,7 @@
 
   <function>
     <name>ResolveName</name>
-    <comment>Resolves a domain name to an official host name, a list of aliases, and a list of IP addresses.</comment>
+    <comment>Resolves a domain name to an official host name and a list of IP addresses.</comment>
     <prototype>ERROR netResolveName(CSTRING HostName, LONG Flags, FUNCTION * Callback, LARGE ClientData)</prototype>
     <input>
       <param type="CSTRING" name="HostName">The host name to be resolved.</param>
@@ -102,10 +102,10 @@
       <param type="LARGE" name="ClientData">Client data value to be passed to the Callback.</param>
     </input>
     <description>
-<p>ResolveName() performs a domain name resolution, converting a domain name to an official host name, list of aliases and IP addresses.  The resolution process involves contacting a DNS server.  As this can potentially cause a significant delay, the ResolveName() function attempts to use synchronous communication by default so that the function can return immediately.  If asynchronous operation is desired, the NSF_ASYNC_RESOLVE flag should be set prior to calling this method and the routine will not return until it has a response.</p>
-<p>The function referenced in the Callback parameter will receive the results of the lookup.  Its C/C++ prototype is <code>Function(LARGE ClientData, ERROR Error, CSTRING HostName, CSTRING *Aliases, LONG TotalAliases, IPAddress *Addresses, LONG TotalAddresses)</code>.</p>
-<p>The Fluid prototype is as follows, with Aliases and Addresses being passed as external arrays accessible via the array interface: <code>function Callback(ClientData, Error, HostName, Aliases, Addresses)</code>.</p>
-<p>If the Error received by the callback is anything other than ERR_Okay, the HostName, Aliases and Addresses shall be set to NULL.  It is recommended that ClientData is used as the unique identifier for the original request in this situation.</p>
+<p>ResolveName() performs a domain name resolution, converting a domain name to an official host name and IP addresses.  The resolution process involves contacting a DNS server.  As this can potentially cause a significant delay, the ResolveName() function attempts to use synchronous communication by default so that the function can return immediately.  If asynchronous operation is desired, the NSF_ASYNC_RESOLVE flag should be set prior to calling this method and the routine will not return until it has a response.</p>
+<p>The function referenced in the Callback parameter will receive the results of the lookup.  Its C/C++ prototype is <code>Function(LARGE ClientData, ERROR Error, CSTRING HostName, IPAddress *Addresses, LONG TotalAddresses)</code>.</p>
+<p>The Fluid prototype is as follows, with Addresses being passed as external arrays accessible via the array interface: <code>function Callback(ClientData, Error, HostName, Addresses)</code>.</p>
+<p>If the Error received by the callback is anything other than ERR_Okay, the HostName and Addresses shall be set to NULL.  It is recommended that ClientData is used as the unique identifier for the original request in this situation.</p>
     </description>
     <result type="ERROR">
       <error code="NullArgs">Function call missing argument value(s)</error>
@@ -155,8 +155,7 @@
     <description>
 <p>Converts an IPv4 or an IPv6 address in dotted string format to an IPAddress structure.  The String must be of form <code>1.2.3.4</code> (IPv4).</p>
 <pre>struct IPAddress addr;
-result = StrToAddress("127.0.0.1", &amp;addr);
-if (result IS ERR_Okay) {
+if (!StrToAddress("127.0.0.1", &amp;addr)) {
    ...
 }
 </pre>
@@ -194,6 +193,7 @@ if (result IS ERR_Okay) {
     <struct name="IPAddress">
       <field name="Data" type="ULONG" size="4">128-bit array for supporting both V4 and V6 IP addresses.</field>
       <field name="Type" type="LONG" lookup="IPADDR"></field>
+      <field name="Pad" type="LONG">Unused padding for 64-bit alignment</field>
     </struct>
 
     <struct name="rkNetClient" comment="Simple data storage class utilised by NetSocket to represent a client machine/IP.">

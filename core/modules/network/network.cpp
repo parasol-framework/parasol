@@ -85,6 +85,17 @@ typedef ULONG SOCKET_HANDLE; // NOTE: declared as ULONG instead of SOCKET for no
       char   sin_zero[8];
    };
 
+   struct addrinfo {
+     int             ai_flags;
+     int             ai_family;
+     int             ai_socktype;
+     int             ai_protocol;
+     size_t          ai_addrlen;
+     char            *ai_canonname;
+     struct sockaddr *ai_addr;
+     struct addrinfo *ai_next;
+   };
+
    struct in6_addr {
       unsigned char   s6_addr[16];   // IPv6 address
    };
@@ -168,9 +179,7 @@ struct dns_resolver {
 
 struct dns_cache {
    CSTRING HostName;
-   CSTRING *Aliases;
    struct IPAddress *Addresses;
-   LONG   AliasCount;
    LONG   AddressCount;
 };
 
@@ -187,13 +196,14 @@ static ERROR sslSetup(objNetSocket *);
 static OBJECTPTR clProxy = NULL;
 static OBJECTPTR clNetSocket = NULL;
 static OBJECTPTR clClientSocket = NULL;
-struct ares_channeldata *glAres = NULL; // All access must be bound to a VarLock on glDNS.
+struct ares_channeldata *glAres = NULL; // All access must be bound to a VarLock on glDNS.  Defined by ares_init()
 static struct KeyStore *glDNS = NULL;
 static struct dns_resolver *glResolvers = NULL;
 
-static void resolve_callback(LARGE, FUNCTION *, ERROR, CSTRING, CSTRING *, LONG, struct IPAddress *, LONG);
+static void resolve_callback(LARGE, FUNCTION *, ERROR, CSTRING, struct IPAddress *, LONG);
 static BYTE check_machine_name(CSTRING HostName) __attribute__((unused));
-static struct dns_cache * cache_host(struct hostent *);
+static ERROR cache_host(CSTRING, struct hostent *, struct dns_cache **);
+static ERROR cache_host(CSTRING, struct addrinfo *, struct dns_cache **);
 static void free_resolver(struct dns_resolver *);
 static struct dns_resolver * new_resolver(LARGE ClientData, FUNCTION *Callback);
 static ERROR add_netsocket(void);
@@ -210,8 +220,6 @@ extern void net_ares_resolveaddr(int, void *Data, struct dns_resolver *);
 
 ERROR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
-   CSTRING msg;
-
    CoreBase = argCoreBase;
 
    GetPointer(argModule, FID_Master, &glModule);
@@ -224,19 +232,23 @@ ERROR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
 #ifdef _WIN32
    // Configure Winsock
-
-   if ((msg = StartupWinsock()) != 0) {
-      LogErrorMsg("Winsock initialisation failed: %s", msg);
-      return ERR_SystemCall;
+   {
+      CSTRING msg;
+      if ((msg = StartupWinsock()) != 0) {
+         LogErrorMsg("Winsock initialisation failed: %s", msg);
+         return ERR_SystemCall;
+      }
+      SetResourcePtr(RES_NET_PROCESSING, reinterpret_cast<APTR>(win_net_processing)); // Hooks into ProcessMessages()
    }
-
-   SetResourcePtr(RES_NET_PROCESSING, reinterpret_cast<APTR>(win_net_processing)); // Hooks into ProcessMessages()
 #endif
 
 #ifdef USE_ARES
-   if ((msg = net_init_ares())) {
-      LogErrorMsg("Ares network library failed to initialise: %s", msg);
-      return ERR_Failed;
+   {
+      CSTRING msg;
+      if ((msg = net_init_ares())) {
+         LogErrorMsg("Ares network library failed to initialise: %s", msg);
+         return ERR_Failed;
+      }
    }
 #endif
 
@@ -269,9 +281,9 @@ static ERROR MODExpunge(void)
    if (ShutdownWinsock() != 0) LogErrorMsg("Warning: Winsock DLL Cleanup failed.");
 #endif
 
-   if (clNetSocket) { acFree(clNetSocket); clNetSocket = NULL; }
+   if (clNetSocket)    { acFree(clNetSocket); clNetSocket = NULL; }
    if (clClientSocket) { acFree(clClientSocket); clClientSocket = NULL; }
-   if (clProxy) { acFree(clProxy); clProxy = NULL; }
+   if (clProxy)        { acFree(clProxy); clProxy = NULL; }
 
 #ifdef ENABLE_SSL
    if (ssl_init) {
@@ -316,7 +328,7 @@ static CSTRING netAddressToStr(struct IPAddress *Address)
    }
 
    struct in_addr addr;
-   addr.s_addr = netHostToLong(Address->Data[0]); // Convert to network byte order
+   addr.s_addr = netHostToLong(Address->Data[0]);
 
    STRING result;
 #ifdef __linux__
@@ -339,8 +351,7 @@ Converts an IPv4 or an IPv6 address in dotted string format to an IPAddress stru
 
 <pre>
 struct IPAddress addr;
-result = StrToAddress("127.0.0.1", &addr);
-if (result IS ERR_Okay) {
+if (!StrToAddress("127.0.0.1", &addr)) {
    ...
 }
 </pre>
@@ -368,10 +379,7 @@ static ERROR netStrToAddress(CSTRING Str, struct IPAddress *Address)
 
    if (result IS INADDR_NONE) return ERR_Failed;
 
-   // convert to host byte order
-   result = netLongToHost(result);
-
-   Address->Data[0] = result;
+   Address->Data[0] = netLongToHost(result);
    Address->Data[1] = 0;
    Address->Data[2] = 0;
    Address->Data[3] = 0;
@@ -465,16 +473,16 @@ static ULONG netLongToHost(ULONG Value)
 -FUNCTION-
 ResolveAddress: Resolves an IP address to a host name.
 
-ResolveAddress() performs a IP address resolution, converting an address to an official host name, list of aliases and
+ResolveAddress() performs a IP address resolution, converting an address to an official host name and list of
 IP addresses.  The resolution process involves contacting a DNS server.  As this can potentially cause a significant
 delay, the ResolveAddress() function supports asynchronous communication by default in order to avoid lengthy waiting
 periods.  If asynchronous operation is desired, the NSF_ASYNC_RESOLVE flag should be set prior to calling this method.
 
 The function referenced in the Callback parameter will receive the results of the lookup.  Its C/C++ prototype is
-`Function(LARGE ClientData, ERROR Error, CSTRING HostName, CSTRING *Aliases, LONG TotalAliases, IPAddress *Addresses, LONG TotalAddresses)`.
+`Function(LARGE ClientData, ERROR Error, CSTRING HostName, IPAddress *Addresses, LONG TotalAddresses)`.
 
-The Fluid prototype is as follows, with Aliases and Addresses being passed as external arrays accessible via the
-array interface: `function Callback(ClientData, Error, HostName, Aliases, Addresses)`.
+The Fluid prototype is as follows, with Addresses being passed as external arrays accessible via the
+array interface: `function Callback(ClientData, Error, HostName, Addresses)`.
 
 -INPUT-
 cstr Address: IP address to be resolved, e.g. 123.111.94.82.
@@ -521,6 +529,9 @@ static ERROR netResolveAddress(CSTRING Address, LONG Flags, FUNCTION *Callback, 
             }
          #endif
          }
+      #elif __linux__
+         #warning TODO: getaddrinfo_a()
+
       #endif
 
       free_resolver(resolve); // Remove the resolver if background resolution failed.
@@ -529,38 +540,88 @@ static ERROR netResolveAddress(CSTRING Address, LONG Flags, FUNCTION *Callback, 
 
 async_resolve:
    {
-      struct hostent *host;
       #ifdef _WIN32
-         host = win_gethostbyaddr(&ip);
-      #else
-         host = gethostbyaddr((const char *)&ip, sizeof(ip), (ip.Type IS IPADDR_V4) ? AF_INET : AF_INET6);
-      #endif
-      if (!host) return LogError(ERH_Function, ERR_Failed);
+         struct dns_cache *dns;
+         struct hostent *host = win_gethostbyaddr(&ip);
+         if (!host) return LogError(ERH_Function, ERR_Failed);
 
-      struct dns_cache *dns = cache_host(host);
-      if (dns) resolve_callback(ClientData, Callback, ERR_Okay, dns->HostName, dns->Aliases, dns->AliasCount, dns->Addresses, dns->AddressCount);
-      return ERR_Okay;
+         ERROR error = cache_host(NULL, host, &dns);
+         if (!error) {
+            resolve_callback(ClientData, Callback, ERR_Okay, dns->HostName, dns->Addresses, dns->AddressCount);
+            return ERR_Okay;
+         }
+         else return error;
+      #else
+         char host_name[256], service[128];
+         int result;
+         ERROR error;
+
+         if (ip.Type IS IPADDR_V4) {
+            const struct sockaddr_in sa = {
+               .sin_family = AF_INET,
+               .sin_port = 0,
+               .sin_addr = { .s_addr = ip.Data[0] }
+            };
+            result = getnameinfo((struct sockaddr *)&sa, sizeof(ip), host_name, sizeof(host_name), service, sizeof(service), NI_NAMEREQD);
+         }
+         else {
+            const struct sockaddr_in6 sa = {
+               .sin6_family   = AF_INET6,
+               .sin6_port     = 0,
+               .sin6_flowinfo = 0,
+               .sin6_scope_id = 0
+            };
+            CopyMemory(ip.Data, (APTR)sa.sin6_addr.s6_addr, 16);
+            result = getnameinfo((struct sockaddr *)&sa, sizeof(ip), host_name, sizeof(host_name), service, sizeof(service), NI_NAMEREQD);
+         }
+
+         switch(result) {
+            case 0: {
+               struct hostent host = {
+                  .h_name      = host_name,
+                  .h_addrtype  = (ip.Type IS IPADDR_V4) ? AF_INET : AF_INET6,
+                  .h_length    = 0,
+                  .h_addr_list = NULL
+               };
+               struct dns_cache *dns;
+               ERROR error = cache_host(host_name, &host, &dns);
+               if (!error) {
+                  resolve_callback(ClientData, Callback, ERR_Okay, dns->HostName, dns->Addresses, dns->AddressCount);
+                  return ERR_Okay;
+               }
+
+            }
+            case EAI_AGAIN:    error = ERR_Retry; break;
+            case EAI_MEMORY:   error = ERR_Memory; break;
+            case EAI_OVERFLOW: error = ERR_BufferOverflow; break;
+            case EAI_SYSTEM:   error = ERR_SystemCall; break;
+            default:           error = ERR_Failed; break;
+         }
+
+         resolve_callback(ClientData, Callback, error, NULL, &ip, 1);
+         return error;
+      #endif
    }
 }
 
 /*****************************************************************************
 
 -FUNCTION-
-ResolveName: Resolves a domain name to an official host name, a list of aliases, and a list of IP addresses.
+ResolveName: Resolves a domain name to an official host name and a list of IP addresses.
 
-ResolveName() performs a domain name resolution, converting a domain name to an official host name, list of aliases and
+ResolveName() performs a domain name resolution, converting a domain name to an official host name and
 IP addresses.  The resolution process involves contacting a DNS server.  As this can potentially cause a significant
 delay, the ResolveName() function attempts to use synchronous communication by default so that the function can return
 immediately.  If asynchronous operation is desired, the NSF_ASYNC_RESOLVE flag should be set prior to calling this method
 and the routine will not return until it has a response.
 
 The function referenced in the Callback parameter will receive the results of the lookup.  Its C/C++ prototype is
-`Function(LARGE ClientData, ERROR Error, CSTRING HostName, CSTRING *Aliases, LONG TotalAliases, IPAddress *Addresses, LONG TotalAddresses)`.
+`Function(LARGE ClientData, ERROR Error, CSTRING HostName, IPAddress *Addresses, LONG TotalAddresses)`.
 
-The Fluid prototype is as follows, with Aliases and Addresses being passed as external arrays accessible via the
-array interface: `function Callback(ClientData, Error, HostName, Aliases, Addresses)`.
+The Fluid prototype is as follows, with Addresses being passed as external arrays accessible via the
+array interface: `function Callback(ClientData, Error, HostName, Addresses)`.
 
-If the Error received by the callback is anything other than ERR_Okay, the HostName, Aliases and Addresses shall be set
+If the Error received by the callback is anything other than ERR_Okay, the HostName and Addresses shall be set
 to NULL.  It is recommended that ClientData is used as the unique identifier for the original request in this situation.
 
 -INPUT-
@@ -579,13 +640,13 @@ static ERROR netResolveName(CSTRING HostName, LONG Flags, FUNCTION *Callback, LA
 {
    if ((!HostName) OR (!Callback)) return PostError(ERR_NullArgs);
 
-   FMSG("ResolveName()","Host: %s", HostName);
+   FMSG("ResolveName()","Host: %s, Flags: $%.8x", HostName, Flags);
 
    { // Use the cache if available.
       struct dns_cache *dns;
       if (!VarGet(glDNS, HostName, &dns, NULL)) {
          FMSG("ResolveName","Cache hit for host %s", dns->HostName);
-         resolve_callback(ClientData, Callback, ERR_Okay, dns->HostName, dns->Aliases, dns->AliasCount, dns->Addresses, dns->AddressCount);
+         resolve_callback(ClientData, Callback, ERR_Okay, dns->HostName, dns->Addresses, dns->AddressCount);
          return ERR_Okay;
       }
    }
@@ -595,7 +656,7 @@ static ERROR netResolveName(CSTRING HostName, LONG Flags, FUNCTION *Callback, LA
    if (!StrMatch("localhost", HostName)) {
       struct IPAddress ip = { { 0x7f, 0x00, 0x00, 0x01 }, IPADDR_V4 };
       struct IPAddress list[] = { ip };
-      resolve_callback(ClientData, Callback, ERR_Okay, "localhost", NULL, 0, list, 1);
+      resolve_callback(ClientData, Callback, ERR_Okay, "localhost", list, 1);
    }
 
    if (!(Flags & NSF_ASYNC_RESOLVE)) { // Attempt synchronous resolution in the background, return immediately.
@@ -617,9 +678,10 @@ static ERROR netResolveName(CSTRING HostName, LONG Flags, FUNCTION *Callback, LA
    #elif _WIN32
       if ((glAres) AND (!check_machine_name(HostName))) {
          FMSG("ResolveName","Resolving '%s' using Ares callbacks.", HostName);
-         win_ares_resolvename(HostName, glAres, resolver);
+         ERROR error = win_ares_resolvename(HostName, glAres, resolver);
          VarUnlock(glDNS);
-         return ERR_Okay;
+         if (error) PostError(error);
+         return error;
       }
 
       FMSG("ResolveName","Resolving machine name '%s' using WSAASync callbacks.", HostName);
@@ -635,17 +697,52 @@ static ERROR netResolveName(CSTRING HostName, LONG Flags, FUNCTION *Callback, LA
    }
 
    {
-      struct hostent *host;
       #ifdef __linux__
-         host = gethostbyname(HostName);
-      #elif _WIN32
-         host = win_gethostbyname(HostName);
-      #endif
-      if (!host) return LogError(ERH_Function, ERR_Failed);
+         struct addrinfo hints, *servinfo;
 
-      struct dns_cache *dns = cache_host(host);
-      if (dns) resolve_callback(ClientData, Callback, ERR_Okay, dns->HostName, dns->Aliases, dns->AliasCount, dns->Addresses, dns->AddressCount);
-      return ERR_Okay;
+         ClearMemory(&hints, sizeof hints);
+         hints.ai_family   = AF_UNSPEC;
+         hints.ai_socktype = SOCK_STREAM;
+         hints.ai_flags    = AI_CANONNAME;
+         int result = getaddrinfo(HostName, NULL, &hints, &servinfo);
+
+         ERROR error = ERR_Failed;
+         switch (result) {
+            case 0: {
+               struct dns_cache *dns;
+               error = cache_host(HostName, servinfo, &dns);
+               freeaddrinfo(servinfo);
+               if (!error) {
+                  resolve_callback(ClientData, Callback, ERR_Okay, dns->HostName, dns->Addresses, dns->AddressCount);
+                  return ERR_Okay;
+               }
+               break;
+            }
+            case EAI_AGAIN:  error = ERR_Retry; break;
+            case EAI_FAIL:   error = ERR_Failed; break;
+            case EAI_MEMORY: error = ERR_Memory; break;
+            case EAI_SYSTEM: error = ERR_SystemCall; break;
+            default:
+               error = ERR_Failed;
+         }
+
+         resolve_callback(ClientData, Callback, error, HostName, NULL, 0);
+         return error;
+      #elif _WIN32
+         ERROR error;
+         struct hostent *host = win_gethostbyname(HostName);
+         if (!host) return LogError(ERH_Function, ERR_Failed);
+
+         struct dns_cache *dns;
+         if (!(error = cache_host(HostName, host, &dns))) {
+            resolve_callback(ClientData, Callback, ERR_Okay, dns->HostName, dns->Addresses, dns->AddressCount);
+            return ERR_Okay;
+         }
+         else {
+            resolve_callback(ClientData, Callback, error, HostName, NULL, 0);
+            return error;
+         }
+      #endif
    }
 }
 
@@ -728,15 +825,15 @@ static ERROR netSetSSL(objNetSocket *Socket, ...)
 #endif
 
 //****************************************************************************
-// Used by RECEIVE()
+// Used by RECEIVE() SSL support.
 
 #ifdef _WIN32
 static void client_server_pending(SOCKET_HANDLE FD, APTR Self) __attribute__((unused));
 static void client_server_pending(SOCKET_HANDLE FD, APTR Self)
 {
-#pragma GCC diagnostic ignored "-Wint-to-pointer-cast"
+   #pragma GCC diagnostic ignored "-Wint-to-pointer-cast"
    RegisterFD((HOSTHANDLE)((objNetSocket *)Self)->SocketHandle, RFD_REMOVE|RFD_READ|RFD_SOCKET, NULL, NULL);
-#pragma GCC diagnostic warning "-Wint-to-pointer-cast"
+   #pragma GCC diagnostic warning "-Wint-to-pointer-cast"
    client_server_incoming(FD, (objNetSocket *)Self);
 }
 #endif
@@ -990,14 +1087,10 @@ static struct dns_resolver * new_resolver(LARGE ClientData, FUNCTION *Callback)
 
 static void free_resolver(struct dns_resolver *Resolver)
 {
-   LogF("~free_resolver()","Removing resolver %p", Resolver);
-
 #if defined(USE_ARES) && defined(__linux__)
    if (Resolver->tcp) DeregisterFD((HOSTHANDLE)Resolver->tcp);
    if (Resolver->udp) DeregisterFD((HOSTHANDLE)Resolver->udp);
 #endif
-
-   // Remove the structure from the list.
 
    if (glResolvers IS Resolver) {
       glResolvers = Resolver->next;
@@ -1012,21 +1105,17 @@ static void free_resolver(struct dns_resolver *Resolver)
    OBJECTPTR context = SetContext(glModule);
    FreeResource(Resolver);
    SetContext(context);
-
-   LogBack();
 }
 
 //***************************************************************************
 
-static void resolve_callback(LARGE ClientData, FUNCTION *Callback, ERROR Error, CSTRING HostName,
-   CSTRING *Aliases, LONG TotalAliases,
-   struct IPAddress *Addresses, LONG TotalAddresses)
+static void resolve_callback(LARGE ClientData, FUNCTION *Callback, ERROR Error, CSTRING HostName, struct IPAddress *Addresses, LONG TotalAddresses)
 {
    if (Callback->Type IS CALL_STDC) {
-      ERROR (*routine)(LARGE, ERROR, CSTRING, CSTRING *, LONG, struct IPAddress *, LONG);
+      ERROR (*routine)(LARGE, ERROR, CSTRING, struct IPAddress *, LONG);
       OBJECTPTR context = SetContext(Callback->StdC.Context);
-         routine = reinterpret_cast<ERROR (*)(LARGE, ERROR, CSTRING, CSTRING *, LONG, struct IPAddress *, LONG)>(Callback->StdC.Routine);
-         routine(ClientData, Error, HostName, Aliases, TotalAliases, Addresses, TotalAddresses);
+         routine = reinterpret_cast<ERROR (*)(LARGE, ERROR, CSTRING, struct IPAddress *, LONG)>(Callback->StdC.Routine);
+         routine(ClientData, Error, HostName, Addresses, TotalAddresses);
       SetContext(context);
    }
    else if (Callback->Type IS CALL_SCRIPT) {
@@ -1036,8 +1125,6 @@ static void resolve_callback(LARGE ClientData, FUNCTION *Callback, ERROR Error, 
             { "ClientData",   FD_LARGE, { .Large   = ClientData } },
             { "Error",        FD_LONG,  { .Long    = Error } },
             { "HostName",     FD_STR,   { .Address = (STRING)HostName } },
-            { "Aliases",      FD_ARRAY|FD_STR, { .Address = Aliases } },
-            { "TotalAliases", FD_ARRAYSIZE|FD_LONG, { .Long = TotalAliases } },
             { "IPAddress:Addresses", FD_ARRAY|FD_STRUCT,   { .Address = Addresses } },
             { "TotalAddresses",      FD_ARRAYSIZE|FD_LONG, { .Long    = TotalAddresses } }
          };
@@ -1048,39 +1135,38 @@ static void resolve_callback(LARGE ClientData, FUNCTION *Callback, ERROR Error, 
 
 //***************************************************************************
 
-static struct dns_cache * cache_host(struct hostent *Host)
+static ERROR cache_host(CSTRING HostName, struct hostent *Host, struct dns_cache **Cache)
 {
-   if ((!Host) OR (!Host->h_name)) return NULL;
+   if ((!Host) OR (!Cache)) return ERR_NullArgs;
 
-   LogF("7cache_host()","Host: %s, Aliases: %p, Addresses: %p (IPV6: %d)", Host->h_name, Host->h_aliases, Host->h_addr_list, (Host->h_addrtype == AF_INET6));
+   if (!HostName) {
+      if (!(HostName = Host->h_name)) return ERR_Args;
+   }
 
+   LogF("7cache_host()","Host: %s, Addresses: %p (IPV6: %d)", HostName, Host->h_addr_list, (Host->h_addrtype == AF_INET6));
+
+   CSTRING real_name = Host->h_name;
+   if (!real_name) real_name = HostName;
+
+   *Cache = NULL;
    if ((Host->h_addrtype != AF_INET) AND (Host->h_addrtype != AF_INET6)) {
-      return NULL;
+      return ERR_Args;
    }
 
    // Calculate the size of the data structure.
 
-   LONG size = sizeof(struct dns_cache) + ALIGN64(StrLength(Host->h_name) + 1);
-   LONG alias_count = 0;
-   LONG alias_size = 0;
-   if ((Host->h_aliases) AND (Host->h_aliases[0])) {
-      for (alias_count=0; (alias_count < MAX_ALIASES) AND (Host->h_aliases[alias_count]); alias_count++) {
-         alias_size += StrLength(Host->h_aliases[alias_count]) + 1;
-      }
-   }
-
+   LONG size = sizeof(struct dns_cache) + ALIGN64(StrLength(real_name) + 1);
    LONG address_count = 0;
    if (Host->h_addr_list) {
       for (address_count=0; (address_count < MAX_ADDRESSES) AND (Host->h_addr_list[address_count]); address_count++);
    }
 
-   size += (sizeof(STRING) * alias_count) + ALIGN64(alias_size);
    size += address_count * sizeof(struct IPAddress);
 
    // Allocate an empty key-pair and fill it.
 
    struct dns_cache *cache;
-   if (VarSetSized(glDNS, Host->h_name, size, &cache, NULL) != ERR_Okay) return NULL;
+   if (VarSetSized(glDNS, HostName, size, &cache, NULL) != ERR_Okay) return ERR_Failed;
 
    char *buffer = (char *)cache;
    LONG offset = sizeof(struct dns_cache);
@@ -1114,29 +1200,84 @@ static struct dns_cache * cache_host(struct hostent *Host)
    }
    else cache->Addresses = NULL;
 
-   if (alias_count > 0) {
-      cache->Aliases = (CSTRING *)(buffer + offset);
-      offset += sizeof(STRING) * alias_count;
-
-      LONG i;
-      for (i=0; i < alias_count; i++) {
-         STRING str_alias = (STRING)(buffer + offset);
-         cache->Aliases[i] = str_alias;
-         offset += StrCopy(Host->h_aliases[i], str_alias, COPY_ALL) + 1;
-         FMSG("Alias","%s", cache->Aliases[i]);
-      }
-
-      offset = ALIGN64(offset);
-   }
-   else cache->Aliases = NULL;
-
    cache->HostName = (STRING)(buffer + offset);
-   offset += StrCopy(Host->h_name, (STRING)cache->HostName, COPY_ALL) + 1;
-
-   cache->AliasCount   = alias_count;
+   StrCopy(real_name, (STRING)cache->HostName, COPY_ALL);
    cache->AddressCount = address_count;
 
-   return cache;
+   *Cache = cache;
+   return ERR_Okay;
+}
+
+static ERROR cache_host(CSTRING HostName, struct addrinfo *Host, struct dns_cache **Cache)
+{
+   if ((!Host) OR (!Cache)) return ERR_NullArgs;
+
+   if (!HostName) {
+      if (!(HostName = Host->ai_canonname)) return ERR_Args;
+   }
+
+   LogF("7cache_host()","Host: %s, Addresses: %p (IPV6: %d)", HostName, Host->ai_addr, (Host->ai_family == AF_INET6));
+
+   CSTRING real_name = Host->ai_canonname;
+   if (!real_name) real_name = HostName;
+
+   *Cache = NULL;
+   if ((Host->ai_family != AF_INET) AND (Host->ai_family != AF_INET6)) return ERR_Args;
+
+   // Calculate the size of the data structure.
+
+   LONG size = sizeof(struct dns_cache) + ALIGN64(StrLength(real_name) + 1);
+
+   LONG address_count = 0;
+   for (struct addrinfo *scan=Host; scan; scan=scan->ai_next) {
+      if (scan->ai_addr) address_count++;
+   }
+
+   size += address_count * sizeof(struct IPAddress);
+
+   // Allocate an empty key-pair and fill it.
+
+   struct dns_cache *cache;
+   if (VarSetSized(glDNS, HostName, size, &cache, NULL) != ERR_Okay) return ERR_Failed;
+
+   char *buffer = (char *)cache;
+   LONG offset = sizeof(struct dns_cache);
+
+   if (address_count > 0) {
+      cache->Addresses = (struct IPAddress *)(buffer + offset);
+      offset += address_count * sizeof(struct IPAddress);
+
+      LONG i = 0;
+      for (struct addrinfo *scan=Host; scan; scan=scan->ai_next) {
+         if (!scan->ai_addr) continue;
+
+         if (scan->ai_family IS AF_INET) {
+            ULONG addr = ((struct sockaddr_in *)scan->ai_addr)->sin_addr.s_addr;
+            cache->Addresses[i].Data[0] = ntohl(addr);
+            cache->Addresses[i].Data[1] = 0;
+            cache->Addresses[i].Data[2] = 0;
+            cache->Addresses[i].Data[3] = 0;
+            cache->Addresses[i].Type = IPADDR_V4;
+            i++;
+         }
+         else if  (scan->ai_family IS AF_INET6) {
+            struct sockaddr_in6 *addr = (struct sockaddr_in6 *)scan->ai_addr;
+            cache->Addresses[i].Data[0] = ((ULONG *)addr)[0];
+            cache->Addresses[i].Data[1] = ((ULONG *)addr)[1];
+            cache->Addresses[i].Data[2] = ((ULONG *)addr)[2];
+            cache->Addresses[i].Data[3] = ((ULONG *)addr)[3];
+            cache->Addresses[i].Type = IPADDR_V6;
+            i++;
+         }
+      }
+   }
+   else cache->Addresses = NULL;
+
+   cache->HostName = (STRING)(buffer + offset);
+   StrCopy(real_name, (STRING)cache->HostName, COPY_ALL);
+   cache->AddressCount = address_count;
+   *Cache = cache;
+   return ERR_Okay;
 }
 
 //***************************************************************************
@@ -1165,11 +1306,13 @@ void win_dns_callback(struct dns_resolver *Resolver, ERROR Error, struct hostent
    if (!VarLock(glDNS, 0x7fffffff)) {
       if (Error != ERR_Okay) {
          LogF("@rk_callback:","Name resolution failure: %s", GetErrorMsg(Error));
-         resolve_callback(Resolver->client_data, &Resolver->callback, Error, Host->h_name, NULL, 0, NULL, 0);
+         resolve_callback(Resolver->client_data, &Resolver->callback, Error, (Host) ? Host->h_name : NULL, NULL, 0);
       }
       else if (Host) {
-         struct dns_cache *dns = cache_host(Host);
-         if (dns) resolve_callback(Resolver->client_data, &Resolver->callback, ERR_Okay, dns->HostName, dns->Aliases, dns->AliasCount, dns->Addresses, dns->AddressCount);
+         struct dns_cache *dns;
+         ERROR error = cache_host(NULL, Host, &dns);
+         if (!error) resolve_callback(Resolver->client_data, &Resolver->callback, ERR_Okay, dns->HostName, dns->Addresses, dns->AddressCount);
+         else resolve_callback(Resolver->client_data, &Resolver->callback, error, Host->h_name, NULL, 0);
       }
 
       free_resolver(Resolver);
@@ -1199,11 +1342,12 @@ void ares_response(void *Arg, int Status, int Timeouts, struct hostent *Host)
          const char *msg;
          ERROR error = net_ares_error(Status, &msg);
          LogF("@ares_response","Name resolution failure: %s", msg);
-         resolve_callback(Resolver->client_data, &Resolver->callback, error, (Host) ? Host->h_name : NULL, NULL, 0, NULL, 0);
+         resolve_callback(Resolver->client_data, &Resolver->callback, error, (Host) ? Host->h_name : NULL, NULL, 0);
       }
       else if (Host) {
-         struct dns_cache *dns = cache_host(Host);
-         if (dns) resolve_callback(Resolver->client_data, &Resolver->callback, ERR_Okay, dns->HostName, dns->Aliases, dns->AliasCount, dns->Addresses, dns->AddressCount);
+         struct dns_cache *dns;
+         ERROR error = cache_host(NULL, Host, &dns);
+         if (!error) resolve_callback(Resolver->client_data, &Resolver->callback, ERR_Okay, dns->HostName, dns->Addresses, dns->AddressCount);
       }
 
       free_resolver(Resolver);

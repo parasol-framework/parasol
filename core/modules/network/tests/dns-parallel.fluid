@@ -2,7 +2,6 @@
 Tests for resolving server names in parallel.
 --]]
 
-   local mSys = mod.load("core")
    local mNet = mod.load("network")
 
 function netAddressToString(IP)
@@ -12,50 +11,57 @@ function netAddressToString(IP)
       bit.band(IP.data[1], 0xff)
 end
 
-function name_resolved(ClientData, Error, HostName, Aliases, Addresses)
+function name_resolved(ClientData, Error, HostName, Addresses)
    if (Error == ERR_Okay) then
-      local total_aliases = 0
+      if (not HostName) then error('HostName not specified in results.') end
+
       local total_ips = 0
 
-      local alias_list = nil
-      if (Aliases != nil) then
-         total_aliases = #Aliases
-         for k,alias in ipairs(Aliases) do
-            if (alias_list == nil) then
-               alias_list = alias
-            else
-               alias_list = alias_list .. ", " .. alias
-            end
-         end
-      end
+      print('Resolved host name ' .. HostName)
 
       local ip_list = nil
       if (Addresses != nil) then
          total_ips = #Addresses
          for index, ip in pairs(Addresses) do
-            if (ip.type == IPADDR_V4) then
+            if (ip.type == IPADDR_V4) or (ip.type == IPADDR_V6) then
                if (ip_list == nil) then
                   ip_list = netAddressToString(ip)
                else
                   ip_list = ip_list .. ", " .. netAddressToString(ip)
                end
-            elseif (ip.type == IPADDR_V6) then
-
+            else
+               error('Unrecognised TCP/IP address type ' .. ip.type)
             end
          end
       end
 
-      local msg = "Resolved " .. nz(HostName,"NIL") .. " with " .. nz(total_aliases,0) .. " aliases and " .. nz(total_ips,0) .. " IP addresses."
-      if (alias_list) then msg = msg .. "  Aliases: " .. alias_list end
+      local msg = "Resolved " .. nz(HostName,"NIL") .. " with " .. total_ips .. " IP addresses."
       if (ip_list) then msg = msg .. "  IPs: " .. ip_list end
       print(msg)
    else
-      print("Failed to resolve " .. nz(HostName,"NIL") .. ", error " ..mSys.GetErrorMsg(Error))
+      error("Failed to resolve " .. nz(HostName,"NIL") .. ", error " ..mSys.GetErrorMsg(Error))
    end
 
    glTotalResolved = glTotalResolved + 1
 
    if (glTotalResolved == #glDomains) then
+      mSys.SendMessage(nil, MSGID_QUIT)
+   end
+end
+
+//=====================================================================================================================
+
+function address_resolved(ClientData, Error, HostName, Addresses)
+   if (Error == ERR_Okay) then
+      print('IP resolved to address "' .. HostName .. '"')
+      if (HostName != 'dns.google') then error('IP resolved to ' .. HostName) end
+   else
+      error("Failed to resolve " .. nz(HostName,"NIL") .. ", error " ..mSys.GetErrorMsg(Error))
+   end
+
+   glTotalResolved = glTotalResolved + 1
+
+   if (glTotalResolved == 1) then
       mSys.SendMessage(nil, MSGID_QUIT)
    end
 end
@@ -75,8 +81,12 @@ function testTimeOut()
          mNet.ResolveName(v, 0, name_resolved, 0)
       end
 
-      local elapsed, err = processMessages(1)
-      if (err != ERR_TimeOut) then error("Expected time-out did not occur.") end
+      if (glTotalResolved != #glDomains) then
+         local elapsed, err = processMessages(1)
+         if (err != ERR_TimeOut) then error("Expected time-out did not occur.") end
+      else
+         print('This test will be skipped.')
+      end
    end
 end
 
@@ -88,7 +98,7 @@ function testDuplication()
    glTotalResolved = 0
 
    local domains = { "google.com", "news.bbc.co.uk" }
-   function duplicate_resolved(ClientData, Error, HostName, Aliases, Addresses)
+   function duplicate_resolved(ClientData, Error, HostName, Addresses)
       if (Error == ERR_Okay) then
          print("Resolved: " .. nz(HostName,"NIL"))
       else
@@ -144,8 +154,17 @@ end
 
 //=====================================================================================================================
 
+function testAddressResolution()
+   mNet.ResolveAddress('8.8.8.8', 0, address_resolved, 0)
+
+   local elapsed, err = processMessages(5000)
+   if (err == ERR_TimeOut) then error("Address resolution timed-out.") end
+end
+
+//=====================================================================================================================
+
    return {
-      tests = { 'testDuplication', 'testTimeOut', 'testNameResolution', 'testNameResolutionAsync' },
+      tests = { 'testDuplication', 'testTimeOut', 'testNameResolution', 'testNameResolutionAsync', 'testAddressResolution' },
       init = function()
          //glDomains = { "amazon.co.uk" }
          glDomains = { "google.com", "parasol.ws", "amazon.co.uk", "stackoverflow.com", "theguardian.com", "www.bbc.co.uk" }

@@ -125,6 +125,7 @@ restart:
       else if (Self->Incoming.Type IS CALL_SCRIPT) {
          OBJECTPTR script;
          const struct ScriptArg args[] = { { "NetSocket", FD_OBJECTPTR, { .Address = Self } } };
+
          if ((script = Self->Incoming.Script.Script)) {
             if (!scCallback(script, Self->Incoming.Script.ProcedureID, args, ARRAYSIZE(args))) {
                GetLong(script, FID_Error, &error);
@@ -150,7 +151,7 @@ restart:
    }
 
    if (error IS ERR_Terminate) {
-      LogF("~client_incoming","Termination of socket requested.");
+      LogF("~client_incoming","Socket %d will be terminated.", FD);
       if (Self->SocketHandle != NOHANDLE) free_socket(Self);
       LogBack();
    }
@@ -170,7 +171,7 @@ restart:
 }
 
 /*****************************************************************************
-** If the socket is a client of a server, this routine will be called when there is empty space available on the socket
+** If the socket refers to a client, this routine will be called when there is empty space available on the socket
 ** for writing data to the server.
 **
 ** It should be noted that this function will prevent the task from going to sleep if it is not managed correctly.  If
@@ -227,13 +228,13 @@ static void client_server_outgoing(SOCKET_HANDLE Void, struct rkNetSocket *Data)
                break;
             }
 
-            FMSG("client_out","[NetSocket:%d] Sent %d of %d bytes remaining on the queue.", Self->Head.UniqueID, len, Self->WriteQueue.Length-Self->WriteQueue.Index);
+            FMSG("client_outgoing","[NetSocket:%d] Sent %d of %d bytes remaining on the queue.", Self->Head.UniqueID, len, Self->WriteQueue.Length-Self->WriteQueue.Index);
 
             Self->WriteQueue.Index += len;
          }
 
          if (Self->WriteQueue.Index >= Self->WriteQueue.Length) {
-            FMSG("client_out","Freeing the write queue (pos %d/%d).", Self->WriteQueue.Index, Self->WriteQueue.Length);
+            FMSG("client_outgoing","Freeing the write queue (pos %d/%d).", Self->WriteQueue.Index, Self->WriteQueue.Length);
             FreeResource(Self->WriteQueue.Buffer);
             Self->WriteQueue.Buffer = NULL;
             Self->WriteQueue.Index = 0;
@@ -273,7 +274,7 @@ static void client_server_outgoing(SOCKET_HANDLE Void, struct rkNetSocket *Data)
       // we don't tax the system resources.
 
       if ((Self->Outgoing.Type IS CALL_NONE) AND (!Self->WriteQueue.Buffer)) {
-         FMSG("client_out","[NetSocket:%d] Write-queue listening on FD %d will now stop.", Self->Head.UniqueID, Self->SocketHandle);
+         FMSG("client_outgoing","[NetSocket:%d] Write-queue listening on FD %d will now stop.", Self->Head.UniqueID, Self->SocketHandle);
          #ifdef __linux__
             RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD_REMOVE|RFD_WRITE|RFD_SOCKET, NULL, NULL);
          #elif _WIN32

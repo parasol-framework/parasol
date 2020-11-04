@@ -53,7 +53,7 @@ static void fd_write(int FD, struct rkNetSocket *Socket)
    else deregister_fd(FD);
 }
 
-void net_ares_resolveaddr(int IPV4, void *Data, struct dns_resolver *resolve) 
+void net_ares_resolveaddr(int IPV4, void *Data, struct dns_resolver *resolve)
 {
    if (IPV4) ares_gethostbyaddr(glAres, Data, 4, AF_INET, &ares_response, resolve);
    else ares_gethostbyaddr(glAres, Data, 16, AF_INET6, &ares_response, resolve);
@@ -109,13 +109,17 @@ void net_resolve_name(const char *HostName, struct dns_resolver *Resolver)
 
 const char * net_init_ares(void)
 {
-   ares_library_init(ARES_LIB_INIT_ALL);
+   int acode = ares_library_init(ARES_LIB_INIT_ALL);
 
-   int acode;
-   if ((acode = ares_init(&glAres)) != ARES_SUCCESS) {
+   if ((acode != ARES_SUCCESS) || ((acode = ares_init(&glAres)) != ARES_SUCCESS)) {
       return ares_strerror(acode);
    }
-   else return 0;
+/*
+   struct ares_options options = { };
+   acode = ares_init_options(&glAres, &options, ARES_OPT_SOCK_STATE_CB);
+   if (acode != ARES_SUCCESS) return ares_strerror(acode);
+*/
+   return 0;
 }
 
 void net_free_ares(void)
@@ -144,4 +148,3 @@ int net_ares_error(int Code, const char **Message)
 
    return ERR_Failed;
 }
-

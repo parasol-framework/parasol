@@ -371,7 +371,7 @@ ERROR page_memory(struct PublicAddress *Block, APTR *Address)
                   thread_unlock(TL_MEMORY_PAGES);
                   // Mark the process for validation and signal sleep_task() so that we can take care of this problem
                   // at a safe point in the code.
-                  FMSG("Marking process %d for validation.", Block->OwnerProcess);
+                  MSG("Marking process %d for validation.", Block->OwnerProcess);
                   glValidateProcessID = Block->OwnerProcess;
                   plUnlockSemaphore(&glValidationSemaphore); // Signals the semaphore.
                   return ERR_MemoryDoesNotExist;

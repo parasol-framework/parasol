@@ -1,9 +1,10 @@
 # Parasol Core Build File
-# Prepare: cmake -S . -B release -DCMAKE_BUILD_TYPE=Release -G"MinGW Makefiles"
-#          cmake -S . -B debug -DCMAKE_BUILD_TYPE=Debug -G"MinGW Makefiles"
-# Build:   cmake --build release -j 8 -- -O
-# Install: sudo cmake --install release
-# Test:    cd release && ctest
+# Prepare:    cmake -S . -B release -DCMAKE_BUILD_TYPE=Release -G"MinGW Makefiles"
+#             cmake -S . -B debug -DCMAKE_BUILD_TYPE=Debug -G"MinGW Makefiles"
+# Local Opts: -DCMAKE_INSTALL_PREFIX=local -DRUN_ANYWHERE=TRUE
+# Build:      cmake --build release -j 8 -- -O
+# Install:    sudo cmake --install release
+# Test:       make -C release test ARGS=--verbose
 
 cmake_minimum_required(VERSION 3.13)
 
@@ -41,7 +42,7 @@ option (DISABLE_SSL      "Disable built-in SSL support even if available on this
 option (DISABLE_X11      "Disable X11 even if available on this system" OFF)
 option (INSTALL_EXAMPLES "Install the example scripts, typically for compiling a distribution" OFF)
 
-set (CMAKE_CXX_STANDARD 11)
+set (CMAKE_CXX_STANDARD 20)
 set (CMAKE_CXX_STANDARD_REQUIRED True)
 set (CMAKE_POSITION_INDEPENDENT_CODE ON) # Enables -fPIC and -fPIE in gcc
 
@@ -162,7 +163,7 @@ function (flute_test name path)
       endif ()
       get_filename_component(FLUTE_FULL_PATH "${path}" ABSOLUTE)
       add_test (NAME ${name}
-         COMMAND "${FLUTE_EXE}" "--log-error" "${FLUTE_SCRIPT}" "file=${FLUTE_FULL_PATH}"
+         COMMAND "${FLUTE_EXE}" "--log-error" "--gfx-driver=headless" "${FLUTE_SCRIPT}" "file=${FLUTE_FULL_PATH}"
          WORKING_DIRECTORY "${CMAKE_INSTALL_PREFIX}")
    endif ()
 endfunction ()
@@ -294,6 +295,7 @@ function (set_module_defaults ARG_TARGET)
    set_target_properties (${ARG_TARGET}
       PROPERTIES
       PREFIX ""
+      CXX_STANDARD 20
       LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/release/lib"
       RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/release/lib")
 
@@ -341,6 +343,10 @@ elseif (WIN32)
    endif ()
 elseif (CMAKE_SYSTEM_NAME STREQUAL "Android")
 # TODO
+endif ()
+
+if (PARASOL_VLOG)
+   add_definitions ("-DDEBUG")
 endif ()
 
 set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wno-empty-body -Wno-unused-result -Wno-format-zero-length -Wno-unused-but-set-variable -Wno-stringop-overflow")
@@ -449,9 +455,11 @@ if (PARASOL_INSTALL)
    if (RUN_ANYWHERE)
       install (TARGETS parasol DESTINATION .)
       install (TARGETS fluid_cmd DESTINATION .)
+      set (PARASOL_CMD_TARGET "${CMAKE_INSTALL_PREFIX}/parasol")
    else ()
       install (TARGETS parasol DESTINATION "bin")
       install (TARGETS fluid_cmd DESTINATION "bin")
+      set (PARASOL_CMD_TARGET "${CMAKE_INSTALL_PREFIX}/bin/parasol")
    endif ()
 
 if (WIN32)
@@ -496,9 +504,9 @@ if (WIN32) # MSYS2/MinGW builds have library dependencies that we need to take a
 endif ()
 
    install (CODE "file(REMOVE \"${PARASOL_ROOT}/config/classes.bin\" \"${PARASOL_ROOT}/config/modules.bin\")")
-   install (CODE "execute_process(COMMAND parasol --log-error \"${PARASOL_ROOT}/scripts/dev/verify-modules.fluid\" WORKING_DIRECTORY \"${CMAKE_INSTALL_PREFIX}\")")
+   install (CODE "execute_process(COMMAND \"${PARASOL_CMD_TARGET}\" --log-error --gfx-driver=headless \"${PARASOL_ROOT}/scripts/dev/verify-modules.fluid\" WORKING_DIRECTORY \"${CMAKE_INSTALL_PREFIX}\")")
 
-if (WIN32)
+if (RUN_ANYWHERE)
    install (CODE "MESSAGE(STATUS \"\nParasol has been installed to '${CMAKE_INSTALL_PREFIX}'.  You may need to add this folder to your PATH variable in order to run parasol.exe and fluid.exe from the command-line.\")")
 else ()
    install (CODE "MESSAGE(STATUS \"\nParasol has been installed to '${CMAKE_INSTALL_PREFIX}' and shared files are in '${PARASOL_ROOT}'.\")")

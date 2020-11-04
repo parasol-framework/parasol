@@ -2546,7 +2546,7 @@ SetField(Object, FID_Statement|TSTR, "string");
       <param type="LARGE" name="Value">The new value to set for the resource.</param>
     </input>
     <description>
-<p>The SetResource() function is used to set miscellaneous resource ID's that are either global or local to your task. To set a resource you need to make a reference to it with the Resource parameter and provide a new setting in the Value parameter.  Currently the following resource ID's are available:</p>
+<p>The SetResource() function is used to set miscellaneous resource ID's that are either global or local to your process. To set a resource you need to make a reference to it with the Resource parameter and provide a new setting in the Value parameter.  Currently the following resource ID's are available:</p>
 <types prefix="RES" type="Resource">
 <type name="ALLOC_MEM_LIMIT">Adjusts the memory limit imposed on AllocMemory().  The Value specifies the memory limit in bytes.</type>
 <type name="LOG_LEVEL">Adjusts the current debug level.  The Value must be between 0 and 9, where 1 is the lowest level of debug output (errors only) and 0 is off.</type>
@@ -4172,7 +4172,6 @@ end
       <const name="THREAD_ID">Return the ID of the current thread.</const>
       <const name="CURRENT_MSG">Returns a Message structure if the program is currently processing a message - otherwise returns NULL.  This resource type is meaningful only during a ProcessMessages call.</const>
       <const name="OPEN_INFO">Pointer to the OpenInfo structure originally used to initialise the system.</const>
-      <const name="EXCEPTION_HANDLER"/>
       <const name="PROCESS_STATE">Life-cycle stage of the running process</const>
       <const name="TOTAL_MEMORY">The total amount of installed memory.</const>
       <const name="TOTAL_SWAP">The total amount of available swap space.</const>
@@ -4579,9 +4578,9 @@ end
 
     <struct name="ActionTable" comment="Structure for ActionList">
       <field name="Hash" type="ULONG">Hash of the action name.</field>
+      <field name="Size" type="LONG">Byte-size of the structure for this action.</field>
       <field name="Name" type="CSTRING">Name of the action.</field>
       <field name="Args" type="const struct FunctionField *">List of fields that are passed to this action.</field>
-      <field name="Size" type="LONG">Byte-size of the structure for this action.</field>
     </struct>
 
   </structs>

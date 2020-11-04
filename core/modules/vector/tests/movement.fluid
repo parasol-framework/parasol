@@ -7,8 +7,6 @@
 -- In addition to the movement, the radius of ellipses is also modified to ensure that base paths are recomputed
 -- correctly.
 
-   local mSys = mod.load("core")
-
    glSelf = obj.find("self")
    glFrameRate = 1
 

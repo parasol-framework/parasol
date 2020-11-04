@@ -1403,6 +1403,7 @@ LARGE GetResource(LONG Resource)
       case RES_JNI_ENV:         return (MAXINT)glJNIEnv;
       case RES_THREAD_ID:       return (MAXINT)get_thread_id();
       case RES_CORE_IDL:        return (MAXINT)glIDL;
+      case RES_DISPLAY_DRIVER:  if (glDisplayDriver[0]) return (MAXINT)glDisplayDriver; else return NULL;
 
 #ifdef __linux__
       // NB: This value is not cached.  Although unlikely, it is feasible that the total amount of physical RAM could
@@ -2267,7 +2268,7 @@ ERROR SetResourcePath(LONG PathType, CSTRING Path)
 -FUNCTION-
 SetResource: Sets miscellaneous resource identifiers.
 
-The SetResource() function is used to set miscellaneous resource ID's that are either global or local to your task.
+The SetResource() function is used to set miscellaneous resource ID's that are either global or local to your process.
 To set a resource you need to make a reference to it with the Resource parameter and provide a new setting in the
 Value parameter.  Currently the following resource ID's are available:
 
