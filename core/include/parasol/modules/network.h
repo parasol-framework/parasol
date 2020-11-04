@@ -34,6 +34,7 @@ typedef LONG SOCKET_HANDLE;
 struct IPAddress {
    ULONG Data[4];    // 128-bit array for supporting both V4 and V6 IP addresses.
    LONG  Type;
+   LONG  Pad;        // Unused padding for 64-bit alignment
 };
 
 #define NSF_SERVER 0x00000001
@@ -66,13 +67,13 @@ struct NetQueue {
 };
 
 struct NetMsg {
-   ULONG Magic;
-   ULONG Length;
+   ULONG Magic;    // Standard key to recognise the message packet
+   ULONG Length;   // Byte length of the message
 };
 
 struct NetMsgEnd {
-   ULONG CRC;
-   ULONG Magic;
+   ULONG CRC;    // Checksum of the message packet
+   ULONG Magic;  // Standard key to recognise the message packet
 };
 
 // ClientSocket class definition
@@ -92,12 +93,41 @@ typedef struct rkClientSocket {
    LONG     ReadCalled:1;           // TRUE if the Read action has been called
 
 #ifdef PRV_CLIENTSOCKET
-    SOCKET_HANDLE Handle;       // Socket FD
-    struct NetQueue WriteQueue; // Writes to the network socket are queued here in a buffer
-    struct NetQueue ReadQueue;  // Read queue, often used for reading whole messages
+   union {
+      SOCKET_HANDLE SocketHandle;
+      SOCKET_HANDLE Handle;
+   };
+   struct NetQueue WriteQueue; // Writes to the network socket are queued here in a buffer
+   struct NetQueue ReadQueue;  // Read queue, often used for reading whole messages
+   UBYTE OutgoingRecursion;
+   UBYTE InUse;
   
 #endif
 } objClientSocket;
+
+// ClientSocket methods
+
+#define MT_csReadClientMsg -1
+#define MT_csWriteClientMsg -2
+
+struct csReadClientMsg { APTR Message; LONG Length; LONG Progress; LONG CRC;  };
+struct csWriteClientMsg { APTR Message; LONG Length;  };
+
+INLINE ERROR csReadClientMsg(APTR Ob, APTR * Message, LONG * Length, LONG * Progress, LONG * CRC) {
+   struct csReadClientMsg args = { 0, 0, 0, 0 };
+   ERROR error = Action(MT_csReadClientMsg, Ob, &args);
+   if (Message) *Message = args.Message;
+   if (Length) *Length = args.Length;
+   if (Progress) *Progress = args.Progress;
+   if (CRC) *CRC = args.CRC;
+   return(error);
+}
+
+INLINE ERROR csWriteClientMsg(APTR Ob, APTR Message, LONG Length) {
+   struct csWriteClientMsg args = { Message, Length };
+   return(Action(MT_csWriteClientMsg, Ob, &args));
+}
+
 
 struct rkNetClient {
    char IP[8];                        // IP address in 4/8-byte format

@@ -315,12 +315,18 @@ static void windows_print_stacktrace(CONTEXT* context)
    STACKFRAME frame = { {0} };
 
    // setup initial stack frame
-   frame.AddrPC.Offset    = context->Eip;
-   frame.AddrPC.Mode      = AddrModeFlat;
-   frame.AddrStack.Offset = context->Esp;
-   frame.AddrStack.Mode   = AddrModeFlat;
-   frame.AddrFrame.Offset = context->Ebp;
-   frame.AddrFrame.Mode   = AddrModeFlat;
+   #ifdef _LP64
+      frame.AddrPC.Offset    = context->Rip;
+      frame.AddrStack.Offset = context->Rsp;
+      frame.AddrFrame.Offset = context->Rbp;
+   #else
+      frame.AddrPC.Offset    = context->Eip;
+      frame.AddrStack.Offset = context->Esp;
+      frame.AddrFrame.Offset = context->Ebp;
+   #endif
+   frame.AddrPC.Mode    = AddrModeFlat;
+   frame.AddrStack.Mode = AddrModeFlat;
+   frame.AddrFrame.Mode = AddrModeFlat;
 
    while (StackWalk(IMAGE_FILE_MACHINE_I386, GetCurrentProcess(), GetCurrentThread(), &frame, context, 0, SymFunctionTableAccess, SymGetModuleBase, 0)) {
       // Declare an image help symbol structure to hold symbol info and name up to 256 chars This struct is of variable length though so it must be declared as a raw byte buffer.
@@ -332,15 +338,19 @@ static void windows_print_stacktrace(CONTEXT* context)
       symbol->SizeOfStruct  = sizeof(IMAGEHLP_SYMBOL) + 255;
       symbol->MaxNameLength = 254;
 
-      DWORD displacement = 0;
+      #ifdef _LP64
+         DWORD64 displacement = 0;
+      #else
+         DWORD displacement = 0;
+      #endif
       if (SymGetSymFromAddr(GetCurrentProcess(), frame.AddrPC.Offset, &displacement, symbol)) {
          fprintf(stderr, "0x%p %s\n", (APTR)frame.AddrPC.Offset, symbol->Name);
 
          IMAGEHLP_LINE line;
          line.SizeOfStruct = sizeof(line);
          line.LineNumber = 0;
-         displacement = 0;
-         if (SymGetLineFromAddr(GetCurrentProcess(), frame.AddrPC.Offset, &displacement, &line)) {
+         DWORD line_displacement = 0;
+         if (SymGetLineFromAddr(GetCurrentProcess(), frame.AddrPC.Offset, &line_displacement, &line)) {
             fprintf(stderr, "Line: %s, %d\n", line.FileName, (int)line.LineNumber);
          }
          else {

@@ -424,7 +424,7 @@ module({ name="Core", copyright="Paul Manias 1996-2020" }, function()
      "THREAD_ID: Return the ID of the current thread.",
      "CURRENT_MSG: Returns a Message structure if the program is currently processing a message - otherwise returns NULL.  This resource type is meaningful only during a ProcessMessages call.",
      "OPEN_INFO: Pointer to the OpenInfo structure originally used to initialise the system.",
-     "EXCEPTION_HANDLER",
+     "EXCEPTION_HANDLER: Internal",
      "NET_PROCESSING: Internal windows resource for Network module",
      "PROCESS_STATE: Life-cycle stage of the running process",
      "TOTAL_MEMORY: The total amount of installed memory.",
@@ -434,7 +434,8 @@ module({ name="Core", copyright="Paul Manias 1996-2020" }, function()
      "FREE_MEMORY: The total amount of free memory.",
      "FREE_SWAP: The total amount of free swap memory.",
      "KEY_STATE: Maintains the state of key qualifiers such as caps-lock and the shift keys.",
-     "CORE_IDL: Refers to the Core module's compressed IDL string."
+     "CORE_IDL: Refers to the Core module's compressed IDL string.",
+     "DISPLAY_DRIVER: Internal.  Passes the name of the preferred display driver to the display module."
   )
 
   enum("RP", { start=1, comment="Path types for SetResourcePath()" },
@@ -736,9 +737,9 @@ module({ name="Core", copyright="Paul Manias 1996-2020" }, function()
 
   struct("ActionTable", { comment="Structure for ActionList" }, [[
     uint Hash   # Hash of the action name.
+    int  Size   # Byte-size of the structure for this action.
     cstr Name   # Name of the action.
     cstruct(*FunctionField) Args  # List of fields that are passed to this action.
-    int  Size   # Byte-size of the structure for this action.
   ]])
 
   struct("ChildEntry", { comment="Structure for ListChildren() function" }, [[

@@ -4,8 +4,6 @@
 -- All four sides of the large black rectangle must be touching the red circle during rotation.
 -- The top-left corner of the manually rotated green rectangle must overlap the top-left corner of the black rectangle.
 
-   local mSys = mod.load("core")
-
    glSelf = obj.find("self")
    glFrameRate = 120
 

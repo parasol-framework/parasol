@@ -5,7 +5,7 @@ typedef unsigned int WSW_SOCKET; // type of socket handle for these wrapper proc
 struct sockaddr;
 struct hostent;
 
-void win32_netresponse(struct rkNetSocket *, WSW_SOCKET, int, int);
+void win32_netresponse(struct Head *, WSW_SOCKET, int, int);
 void win_net_processing(int, void *);
 WSW_SOCKET win_accept(void *, WSW_SOCKET, struct sockaddr *, int *);
 int win_bind(WSW_SOCKET, const struct sockaddr *, int);
@@ -25,6 +25,7 @@ WSW_SOCKET win_socket(void *, char, char);/*uses PF_INET, SOCK_STREAM, 0 for par
 int WIN_RECEIVE(WSW_SOCKET, void *, int, int, int *);
 int win_async_resolvename(const char *, struct dns_resolver *, struct hostent *, int);
 void winCloseResolveHandle(void *);
+void win_socket_reference(WSW_SOCKET, void *);
 
 #ifdef USE_ARES
 int win_ares_resolveaddr(struct IPAddress *, struct ares_channeldata *, void *);

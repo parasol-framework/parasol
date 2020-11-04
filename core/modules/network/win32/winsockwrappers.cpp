@@ -34,6 +34,12 @@ extern ares_channel glAres;
 extern void ares_response(void *, int Status, int Timeouts, struct hostent *);
 #endif
 
+#include <unordered_map>
+#include <cstdio>
+#include <mutex>
+
+using namespace std;
+
 #include <parasol/system/errors.h>
 
 enum {
@@ -53,96 +59,33 @@ enum {
 
 #define MAX_SOCKETS 40
 
-struct socket_info {
-   void *NetSocket;   // Reference to the NetSocket object.
-   void *NetHost;     // For win_async_resolvename() and WM_RESOLVENAME
-   WSW_SOCKET WinSocket; // Winsock socket FD
-   HANDLE ResolveHandle; // For win_async_resolvename() and WM_RESOLVENAME
-   int Flags;
-   short Index;
+class socket_info { // Only the SocketHandle FD is unique.  NetSocket may be referenced multiple times for as many clients exist.
+public:
+   void *Reference = NULL;      // Reference to a NetSocket, ClientSocket, dns_resolver
+   void *NetHost = NULL;        // For win_async_resolvename() and WM_RESOLVENAME
+   HANDLE ResolveHandle = INVALID_HANDLE_VALUE; // For win_async_resolvename() and WM_RESOLVENAME
+   WSW_SOCKET SocketHandle = 0; // Winsock socket FD (same as the key)
+   int Flags = 0;
 };
 
-static CRITICAL_SECTION csNetLookup;
-static struct socket_info glNetLookup[MAX_SOCKETS];
-static short glLastSocket = 0;
-
+static std::recursive_mutex csNetLookup;
+static std::unordered_map<WSW_SOCKET, struct socket_info> glNetLookup;
 static char glSocketsDisabled = FALSE;
-
 static HWND glNetWindow = 0;
 static char glNetClassInit = FALSE;
 static char glWinsockInitialised = FALSE;
 
-// Lookup the entry for a NetSocket object (no creation if does not exist).
-
-static struct socket_info * lookup_socket(void *NetSocket)
+static struct socket_info * lookup_socket_by_ref(void *Reference)
 {
-   EnterCriticalSection(&csNetLookup);
+   const lock_guard<recursive_mutex> lock(csNetLookup);
 
-   LONG i;
-   for (i=0; i < glLastSocket; i++) {
-      if (NetSocket IS glNetLookup[i].NetSocket) {
-         struct socket_info *info = &glNetLookup[i];
-         LeaveCriticalSection(&csNetLookup);
+   for (auto it=glNetLookup.begin(); it != glNetLookup.end(); it++) {
+      if (it->second.Reference IS Reference) {
+         struct socket_info *info = &it->second;
          return info;
       }
    }
 
-   LeaveCriticalSection(&csNetLookup);
-   return NULL;
-}
-
-static struct socket_info * lookup_socket_handle(WSW_SOCKET SocketHandle)
-{
-   EnterCriticalSection(&csNetLookup);
-
-   LONG i;
-   for (i=0; i < glLastSocket; i++) {
-      if (SocketHandle IS glNetLookup[i].WinSocket) {
-         struct socket_info *info = &glNetLookup[i];
-         LeaveCriticalSection(&csNetLookup);
-         return info;
-      }
-   }
-
-   LeaveCriticalSection(&csNetLookup);
-   return NULL;
-}
-
-// Lookup for the entry for a NetSocket object, creating it if it does not exist.
-
-static struct socket_info * get_socket(void *NetSocket)
-{
-   EnterCriticalSection(&csNetLookup);
-
-   LONG i;
-   for (i=0; i < glLastSocket; i++) { // Return socket entry if it already exists.
-      if (NetSocket IS glNetLookup[i].NetSocket) {
-         struct socket_info *info = &glNetLookup[i];
-         LeaveCriticalSection(&csNetLookup);
-         return info;
-      }
-   }
-
-   for (i=0; i < glLastSocket; i++) { // Find an empty existing entry.
-      if (!glNetLookup[i].NetSocket) {
-         struct socket_info *info = &glNetLookup[i];
-         info->NetSocket = NetSocket;
-         info->Index = i;
-         LeaveCriticalSection(&csNetLookup);
-         return info;
-      }
-   }
-
-   if (glLastSocket < MAX_SOCKETS) { // Create a new entry at the end of the array.
-      i = glLastSocket++;
-      struct socket_info *info = &glNetLookup[i];
-      info->NetSocket = NetSocket;
-      info->Index = i;
-      LeaveCriticalSection(&csNetLookup);
-      return info;
-   }
-
-   LeaveCriticalSection(&csNetLookup);
    return NULL;
 }
 
@@ -228,49 +171,48 @@ static LRESULT CALLBACK win_messages(HWND window, UINT msgcode, WPARAM wParam, L
    int event = WSAGETSELECTEVENT(lParam);
 
    if (msgcode IS WM_NETWORK) {
-      int resub = FALSE;
-      int state;
-      switch (event) {
-         case FD_READ:    state = NTE_READ; break;
-         case FD_WRITE:   state = NTE_WRITE; resub = TRUE; break;
-         case FD_ACCEPT:  state = NTE_ACCEPT; break;
-         case FD_CLOSE:   state = NTE_CLOSE; break;
-         case FD_CONNECT: state = NTE_CONNECT; break;
-         default:         state = 0; break;
-      }
-
-      if (error IS WSAEWOULDBLOCK) error = ERR_Okay;
-      else if (error) error = convert_error(error);
-
-      struct socket_info * info = lookup_socket_handle((WSW_SOCKET)wParam);
-      if (info) {
-         if ((info->Flags & FD_READ) AND (!glSocketsDisabled)) {
-            WSAAsyncSelect(info->WinSocket, glNetWindow, WM_NETWORK, info->Flags & (~FD_READ));
-            //resub = TRUE;
+      const lock_guard<recursive_mutex> lock(csNetLookup);
+      if (glNetLookup.contains((WSW_SOCKET)wParam)) {
+         int state;
+         int resub = FALSE;
+         switch (event) {
+            case FD_READ:    state = NTE_READ; break;
+            case FD_WRITE:   state = NTE_WRITE; resub = TRUE; break; // Keep the socket subscribed while writing
+            case FD_ACCEPT:  state = NTE_ACCEPT; break;
+            case FD_CLOSE:   state = NTE_CLOSE; break;
+            case FD_CONNECT: state = NTE_CONNECT; break;
+            default:         state = 0; break;
          }
 
-         win32_netresponse((struct rkNetSocket *)info->NetSocket, info->WinSocket, state, error);
+         if (error IS WSAEWOULDBLOCK) error = ERR_Okay;
+         else if (error) error = convert_error(error);
+
+         struct socket_info *info = &glNetLookup[(WSW_SOCKET)wParam];
+         if ((info->Flags & FD_READ) AND (!glSocketsDisabled)) {
+            WSAAsyncSelect(info->SocketHandle, glNetWindow, WM_NETWORK, info->Flags & (~FD_READ));
+         }
+
+         if (info->Reference) win32_netresponse((struct Head *)info->Reference, info->SocketHandle, state, error);
+         else printf("win_messages() Missing reference for FD %d, state %d\n", info->SocketHandle, state);
 
          if ((resub) AND (!glSocketsDisabled)) {
-            WSAAsyncSelect(info->WinSocket, glNetWindow, WM_NETWORK, info->Flags);
+            WSAAsyncSelect(info->SocketHandle, glNetWindow, WM_NETWORK, info->Flags);
          }
          return 0;
       }
    }
    else if (msgcode IS WM_RESOLVENAME) { // Managed by win_async_resolvename() for non-Ares DNS lookups
-      int i;
-      EnterCriticalSection(&csNetLookup);
-      for (i=0; i < glLastSocket; i++) {
-         if (glNetLookup[i].ResolveHandle IS (HANDLE)wParam) {
+      const lock_guard<recursive_mutex> lock(csNetLookup);
+      for (auto it=glNetLookup.begin(); it != glNetLookup.end(); it++) {
+         if (it->second.ResolveHandle IS (HANDLE)wParam) {
+            struct socket_info *info = &it->second;
             // Note that there is no requirement to close the handle according to WSAAsyncGetHostByName() documentation.
-            glNetLookup[i].ResolveHandle = INVALID_HANDLE_VALUE;
-
-            win_dns_callback((struct dns_resolver *)glNetLookup[i].NetSocket, ERR_Okay, reinterpret_cast<hostent *>(glNetLookup[i].NetHost));
-            LeaveCriticalSection(&csNetLookup);
+            info->ResolveHandle = INVALID_HANDLE_VALUE;
+            win_dns_callback((struct dns_resolver *)info->Reference, ERR_Okay, reinterpret_cast<hostent *>(info->NetHost));
             return 0;
          }
       }
-      LeaveCriticalSection(&csNetLookup);
+
    }
    #ifdef USE_ARES
    else if (msgcode IS WM_NETWORK_ARES) {
@@ -307,27 +249,19 @@ void win_net_processing(int Status, void *Args)
    if (Status IS NETMSG_START) {
       glSocketsDisabled++;
       if (glSocketsDisabled == 1) {
-         EnterCriticalSection(&csNetLookup);
-            int i;
-            for (i=0; i < glLastSocket; i++) {
-               if (glNetLookup[i].WinSocket) {
-                  WSAAsyncSelect(glNetLookup[i].WinSocket, glNetWindow, 0, 0); // Turn off network messages
-               }
-            }
-         LeaveCriticalSection(&csNetLookup);
+         const lock_guard<recursive_mutex> lock(csNetLookup);
+         for (auto it=glNetLookup.begin(); it != glNetLookup.end(); it++) {
+            WSAAsyncSelect(it->first, glNetWindow, 0, 0); // Turn off network messages
+         }
       }
    }
    else if (Status IS NETMSG_END) {
       glSocketsDisabled--;
       if (glSocketsDisabled == 0) {
-         EnterCriticalSection(&csNetLookup);
-            int i;
-            for (i=0; i < glLastSocket; i++) {
-               if (glNetLookup[i].WinSocket) {
-                  WSAAsyncSelect(glNetLookup[i].WinSocket, glNetWindow, WM_NETWORK, glNetLookup[i].Flags); // Turn on network messages
-               }
-            }
-         LeaveCriticalSection(&csNetLookup);
+         const lock_guard<recursive_mutex> lock(csNetLookup);
+         for (auto it=glNetLookup.begin(); it != glNetLookup.end(); it++) {
+            WSAAsyncSelect(it->first, glNetWindow, WM_NETWORK, it->second.Flags); // Turn on network messages
+         }
       }
    }
 }
@@ -337,38 +271,45 @@ void win_net_processing(int Status, void *Args)
 
 void win_socketstate(WSW_SOCKET Socket, char Read, char Write)
 {
-   struct socket_info *info = lookup_socket_handle(Socket);
-   if (info) {
-      if (Read IS 0) info->Flags &= ~FD_READ;
-      else if (Read IS 1) info->Flags |= FD_READ;
+   const lock_guard<recursive_mutex> lock(csNetLookup);
+   struct socket_info *sock = &glNetLookup[Socket];
 
-      if (Write IS 0) info->Flags &= ~FD_WRITE;
-      else if (Write IS 1) info->Flags |= FD_WRITE;
-      //printf("Socket state: %d, Read: %d, Write: %d, State: $%.8x\n", Socket, Read, Write, info->Flags);
+   if (Read IS 0) sock->Flags &= ~FD_READ;
+   else if (Read IS 1) sock->Flags |= FD_READ;
 
-      if (!glSocketsDisabled) WSAAsyncSelect(info->WinSocket, glNetWindow, WM_NETWORK, info->Flags);
-   }
-   else printf("win_socketstate() failed to find socket %d\n", Socket);
+   if (Write IS 0) sock->Flags &= ~FD_WRITE;
+   else if (Write IS 1) sock->Flags |= FD_WRITE;
+
+   if (!glSocketsDisabled) WSAAsyncSelect(Socket, glNetWindow, WM_NETWORK, sock->Flags);
 }
 
 //****************************************************************************
+// Initially when accepting a connection from a client, the ClientSocket object won't exist yet.  This is rectified later
+// with a call to win_socket_reference()
 
-WSW_SOCKET win_accept(void *NetSocket, WSW_SOCKET S, struct sockaddr *Addr, int *AddrLen)
+WSW_SOCKET win_accept(void *NetSocket, WSW_SOCKET SocketHandle, struct sockaddr *Addr, int *AddrLen)
 {
-   struct socket_info *info = get_socket(NetSocket);
-   if (!info) return (WSW_SOCKET)INVALID_SOCKET;
-
-   WSW_SOCKET client = accept(S, Addr, AddrLen);
+   WSW_SOCKET client_handle = accept(SocketHandle, Addr, AddrLen);
+   //printf("win_accept() FD %d, NetSocket %p\n", client_handle, NetSocket);
 
    ULONG non_blocking = 1;
-   ioctlsocket(client, FIONBIO, &non_blocking);
+   ioctlsocket(client_handle, FIONBIO, &non_blocking);
 
    int flags = FD_CLOSE|FD_ACCEPT|FD_CONNECT|FD_READ;
-   if (!glSocketsDisabled) WSAAsyncSelect(client, glNetWindow, WM_NETWORK, flags);
+   if (!glSocketsDisabled) WSAAsyncSelect(client_handle, glNetWindow, WM_NETWORK, flags);
 
-   info->WinSocket = client;
-   info->Flags  = flags;
-   return client;
+   glNetLookup[client_handle].Reference = NetSocket;
+   glNetLookup[client_handle].SocketHandle = client_handle;
+   glNetLookup[client_handle].Flags = flags;
+   return client_handle;
+}
+
+//****************************************************************************
+// Replace the reference on a known socket handle
+
+void win_socket_reference(WSW_SOCKET SocketHandle, void *Reference)
+{
+   glNetLookup[SocketHandle].Reference = Reference;
 }
 
 //****************************************************************************
@@ -383,21 +324,8 @@ int win_bind(WSW_SOCKET SocketHandle, const struct sockaddr *Name, int NameLen)
 
 int win_closesocket(WSW_SOCKET SocketHandle)
 {
-   EnterCriticalSection(&csNetLookup);
-
-      int i;
-      for (i=0; i < glLastSocket; i++) { // Remove this socket's registration if it exists.
-         if (SocketHandle IS glNetLookup[i].WinSocket) {
-            glNetLookup[i].WinSocket = 0;
-            glNetLookup[i].NetSocket = 0;
-            break;
-         }
-      }
-
-      while ((glLastSocket > 0) AND (!glNetLookup[glLastSocket-1].NetSocket)) glLastSocket--;
-
-   LeaveCriticalSection(&csNetLookup);
-
+   const lock_guard<recursive_mutex> lock(csNetLookup);
+   glNetLookup.erase(SocketHandle);
    return closesocket(SocketHandle);
 }
 
@@ -508,16 +436,11 @@ int win_shutdown(WSW_SOCKET S, int How)
 }
 
 //****************************************************************************
-// Creates and configures new winsock sockets.
+// Create a socket, make it non-blocking and configure it to wake our task when activity occurs on the socket.
 
 WSW_SOCKET win_socket(void *NetSocket, char Read, char Write)
 {
-   struct socket_info *info = get_socket(NetSocket);
-   if (!info) return (WSW_SOCKET)INVALID_SOCKET;
-
-   // Create the socket, make it non-blocking and configure it to wake our task when activity occurs on the socket.
-
-   SOCKET handle;
+   WSW_SOCKET handle;
    if ((handle = socket(PF_INET, SOCK_STREAM, 0)) != INVALID_SOCKET) {
       u_long non_blocking = 1;
       ioctlsocket(handle, FIONBIO, &non_blocking);
@@ -525,8 +448,10 @@ WSW_SOCKET win_socket(void *NetSocket, char Read, char Write)
       if (Read) flags |= FD_READ;
       if (Write) flags |= FD_WRITE;
       if (!glSocketsDisabled) WSAAsyncSelect(handle, glNetWindow, WM_NETWORK, flags);
-      info->WinSocket = handle;
-      info->Flags     = flags;
+
+      glNetLookup[handle].Reference = NetSocket;
+      glNetLookup[handle].SocketHandle = handle;
+      glNetLookup[handle].Flags = flags;
       return handle;
    }
    else return (WSW_SOCKET)INVALID_SOCKET;
@@ -634,8 +559,7 @@ const char * StartupWinsock() // Return zero if succesful
       glWinsockInitialised = TRUE;
    }
 
-   InitializeCriticalSection(&csNetLookup);
-
+   csNetLookup.unlock();
    return NULL;
 }
 
@@ -646,7 +570,6 @@ int ShutdownWinsock()
    if (glNetWindow) { DestroyWindow(glNetWindow); glNetWindow = FALSE; }
    if (glNetClassInit) { UnregisterClass("NetClass", GetModuleHandle(NULL)); glNetClassInit = FALSE; }
    if (glWinsockInitialised) { WSACleanup(); glWinsockInitialised = FALSE; }
-   DeleteCriticalSection(&csNetLookup);
    return 0;
 }
 
@@ -658,7 +581,7 @@ int ShutdownWinsock()
 
 int win_async_resolvename(const char *Name, struct dns_resolver *Resolver, struct hostent *Host, int HostSize)
 {
-   struct socket_info *info = lookup_socket(Resolver);
+   struct socket_info *info = lookup_socket_by_ref(Resolver);
    if (info) {
       // Initiate host search and save the handle against this NetSocket object.
       if ((info->ResolveHandle = WSAAsyncGetHostByName(glNetWindow, WM_RESOLVENAME, Name, (char *)Host, HostSize)) != INVALID_HANDLE_VALUE) {
@@ -679,7 +602,9 @@ int win_async_resolvename(const char *Name, struct dns_resolver *Resolver, struc
 
 #ifdef USE_ARES
 
-// Refer to the code for ares_fds() to see where this loop came from.
+// Refer to the code for ares_fds.c to see where this loop came from.  The point of this code is to register new
+// netsockets against glNetWindow so that we can intercept network traffic from those sockets.  Ares traffic is
+// tagged as WM_NETWORK_ARES.
 
 int win_ares_handler(ares_channel Ares)
 {
@@ -688,9 +613,7 @@ int win_ares_handler(ares_channel Ares)
    for (int i=0; i < Ares->nservers; i++) {
       struct server_state *server = &Ares->servers[i];
 
-      #ifdef DEBUG
-         printf("ares_handler() Active: %d, UDP: %d, TCP: %d\n", active_queries, server->udp_socket, server->tcp_socket);
-      #endif
+      //printf("ares_handler() Active: %d, UDP: %lld, TCP: %lld\n", active_queries, server->udp_socket, server->tcp_socket);
 
       if ((active_queries) AND (server->udp_socket != ARES_SOCKET_BAD)) {
          if (WSAAsyncSelect(server->udp_socket, glNetWindow, WM_NETWORK_ARES, FD_CLOSE|FD_ACCEPT|FD_READ)) {

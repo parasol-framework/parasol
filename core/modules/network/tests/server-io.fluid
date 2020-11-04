@@ -2,34 +2,33 @@
 This test checks connectivity and I/O with a server by sending a simple HTTP request over port 80.
 --]]
 
-   include "network"
-
-   local mSys = mod.load("core")
+   include 'network'
 
 //=====================================================================================================================
 
 function testHTTP()
-   netsocket = obj.new("netsocket", {
-      feedback = function(Socket, State)
-         local state = netsocket.get("$state")
+   local netsocket
+   netsocket = obj.new('netsocket', {
+      feedback = function(Socket, Client, State)
+         local state = netsocket.get('$state')
 
-         if (string.lower(state) == "connecting") then
-            print("Connecting...")
+         if (string.lower(state) == 'connecting') then
+            print('Connecting...')
 
-         elseif (string.lower(state) == "connected") then
-            print("Connected to server.")
+         elseif (string.lower(state) == 'connected') then
+            print('Connected to server.')
 
-            netsocket.acWrite("GET /index.html HTTP/1.1\r\nHost: www.parasol.ws\r\nUser-Agent: Parasol Client\r\n\r\n")
+            netsocket.acWrite('GET /index.html HTTP/1.1\r\nHost: parasol.ws\r\nConnection: close\r\nUser-Agent: Parasol Client\r\n\r\n')
 
-         elseif (string.lower(state) == "disconnected") then
-            print("Disconnected from server.")
+         elseif (string.lower(state) == 'disconnected') then
+            print('Disconnected from server.')
             mSys.SendMessage(0, MSGID_QUIT)
          else
-            print("Unknown netsocket state: " .. state)
+            print('Unknown netsocket state: ' .. state)
          end
       end,
       incoming = function(Socket, Script)
-         print("Incoming data...")
+         print('Incoming data...')
          local buffer = string.rep(nil, 1024)
          local err, read_len = netsocket.acRead(buffer)
          if (err == ERR_Okay) then
@@ -39,11 +38,11 @@ function testHTTP()
    } )
 
    if (netsocket) then
-      netsocket.mtConnect("parasol.ws", 80)
+      netsocket.mtConnect('parasol.ws', 80)
       local elapsed, err = processMessages(5000)
-      if (err == ERR_TimeOut) then error("Failed to complete the test (timeout).") end
+      if (err == ERR_TimeOut) then error('Failed to complete the test (timeout).') end
    else
-      error("Failed to create NetSocket object.")
+      error('Failed to create NetSocket object.')
    end
 end
 

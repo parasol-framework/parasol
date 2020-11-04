@@ -27,6 +27,7 @@ typedef LONG SOCKET_HANDLE;
   struct("IPAddress", { }, [[
     uint(4) Data        # 128-bit array for supporting both V4 and V6 IP addresses.
     int(IPADDR) Type
+    int Pad             # Unused padding for 64-bit alignment
   ]])
 
   flags("NSF", { },
@@ -59,16 +60,26 @@ typedef LONG SOCKET_HANDLE;
   ]])
 
   struct("NetMsg", { restrict="c" }, [[
-    uint Magic
-    uint Length
+    uint Magic  # Standard key to recognise the message packet
+    uint Length # Byte length of the message
   ]])
 
   struct("NetMsgEnd", { restrict="c" }, [[
-    uint CRC
-    uint Magic
+    uint CRC   # Checksum of the message packet
+    uint Magic # Standard key to recognise the message packet
   ]])
 
-  class("ClientSocket", { comment="Simple data storage class utilised by NetClient to host client socket information." }, [[
+  methods("ClientSocket", "cs", {
+    { id=1, name="ReadClientMsg" },
+    { id=2, name="WriteClientMsg" }
+  })
+
+  class("ClientSocket", {
+      src="clientsocket/clientsocket.cpp",
+      output="clientsocket/clientsocket_def.c",
+      comment="Simple data storage class utilised by NetClient to represent a single client socket connection."
+  },
+  [[
     large ConnectTime                # System time for the creation of this socket
     obj(ClientSocket) Prev           # Previous socket in the chain
     obj(ClientSocket) Next           # Next socket in the chain
@@ -80,9 +91,14 @@ typedef LONG SOCKET_HANDLE;
     bit(int) ReadCalled              # TRUE if the Read action has been called
   ]],
   [[
-    SOCKET_HANDLE Handle;       // Socket FD
-    struct NetQueue WriteQueue; // Writes to the network socket are queued here in a buffer
-    struct NetQueue ReadQueue;  // Read queue, often used for reading whole messages
+   union {
+      SOCKET_HANDLE SocketHandle;
+      SOCKET_HANDLE Handle;
+   };
+   struct NetQueue WriteQueue; // Writes to the network socket are queued here in a buffer
+   struct NetQueue ReadQueue;  // Read queue, often used for reading whole messages
+   UBYTE OutgoingRecursion;
+   UBYTE InUse;
   ]])
 
   struct("rkNetClient", { comment="Simple data storage class utilised by NetSocket to represent a client machine/IP." }, [[

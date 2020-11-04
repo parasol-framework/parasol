@@ -73,7 +73,6 @@ end
 
    return {
       init = function()
-         mSys = mod.load("core")
          glPictures = { }
 
          local folder = obj.new("file", { src="parasol:icons/Default/programs/" } )

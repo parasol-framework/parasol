@@ -1473,7 +1473,7 @@ ERROR sleep_task(LONG Timeout, BYTE SystemOnly)
          for (i=0; i < glTotalFDs; i++) {
             if (glFDTable[i].Flags & RFD_SOCKET) continue; // Ignore network socket FDs (triggered as normal windows messages)
 
-            FMSG("8sleep_task","Listening to %d, Read: %d, Write: %d, Routine: %p, Flags: $%.2x", (LONG)glFDTable[i].FD, (glFDTable[i].Flags & RFD_READ) ? 1 : 0, (glFDTable[i].Flags & RFD_WRITE) ? 1 : 0, glFDTable[i].Routine, glFDTable[i].Flags);
+            FMSG("8sleep_task","Listening to %d, Read: %d, Write: %d, Routine: %p, Flags: $%.2x", (LONG)(MAXINT)glFDTable[i].FD, (glFDTable[i].Flags & RFD_READ) ? 1 : 0, (glFDTable[i].Flags & RFD_WRITE) ? 1 : 0, glFDTable[i].Routine, glFDTable[i].Flags);
 
             if (glFDTable[i].Flags & (RFD_READ|RFD_WRITE|RFD_EXCEPT)) {
                lookup[total] = i;

@@ -1165,6 +1165,7 @@ struct ClipRectangle {
 #define RES_FREE_SWAP 29
 #define RES_KEY_STATE 30
 #define RES_CORE_IDL 31
+#define RES_DISPLAY_DRIVER 32
 
 // Path types for SetResourcePath()
 
@@ -1460,9 +1461,9 @@ struct MemoryLocks {
 
 struct ActionTable {
    ULONG   Hash;                         // Hash of the action name.
+   LONG    Size;                         // Byte-size of the structure for this action.
    CSTRING Name;                         // Name of the action.
    const struct FunctionField * Args;    // List of fields that are passed to this action.
-   LONG    Size;                         // Byte-size of the structure for this action.
 };
 
 struct ChildEntry {

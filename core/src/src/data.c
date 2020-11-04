@@ -36,6 +36,8 @@ char glRootPath[SIZE_SYSTEM_PATH] = ""ROOT_PATH"";
 char glSystemPath[SIZE_SYSTEM_PATH] = ""SYSTEM_PATH"";
 char glModulePath[SIZE_SYSTEM_PATH] = ""MODULE_PATH"";
 
+char glDisplayDriver[28] = "";
+
 CSTRING glClassBinPath = "system:config/classes.bin";
 CSTRING glModuleBinPath = "system:config/modules.bin";
 struct rkMetaClass *ModuleMasterClass = 0;
