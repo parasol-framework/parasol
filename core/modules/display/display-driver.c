@@ -357,6 +357,7 @@ struct KeyboardBase *KeyboardBase;
 #endif
 static struct SurfaceBase *SurfaceBase;
 static struct ColourFormat glColourFormat;
+static BYTE glHeadless = FALSE;
 
 static struct {
    //LARGE TotalMsgs;     // Total number of messages that have been recorded
@@ -930,9 +931,17 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    GetPointer(argModule, FID_Master, &glModule);
 
+   CSTRING driver_name;
+   if ((driver_name = GetResourcePtr(RES_DISPLAY_DRIVER))) {
+      LogMsg("User requested display driver '%s'", driver_name);
+      if ((!StrMatch(driver_name, "none")) OR (!StrMatch(driver_name, "headless"))) {
+         glHeadless = TRUE;
+      }
+   }
+
    // NB: The display module cannot load the Surface module during initialisation due to recursive dependency.
 
-      glSharedControl = GetResourcePtr(RES_SHARED_CONTROL);
+   glSharedControl = GetResourcePtr(RES_SHARED_CONTROL);
 
    #ifdef _GLES_
       pthread_mutexattr_t attr;
@@ -984,131 +993,129 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    else if (error) return ERR_AllocMemory;
 
 #ifdef __xwindows__
+   if (!glHeadless) {
+      MSG("Allocating global memory structure.");
 
-   // Allocate the global memory server
-
-   MSG("Allocating global memory structure.");
-
-   memoryid = RPM_X11;
-   if (!(error = AllocMemory(sizeof(struct X11Globals), MEM_UNTRACKED|MEM_PUBLIC|MEM_RESERVED|MEM_NO_BLOCKING, (APTR)&glX11, &memoryid))) {
-      glX11->Manager = TRUE; // Assume that we are the window manager
-   }
-   else if (error IS ERR_ResourceExists) {
-      if (!glX11) {
-         if (AccessMemory(RPM_X11, MEM_READ_WRITE, 1000, &glX11) != ERR_Okay) {
-            return PostError(ERR_AccessMemory);
+      memoryid = RPM_X11;
+      if (!(error = AllocMemory(sizeof(struct X11Globals), MEM_UNTRACKED|MEM_PUBLIC|MEM_RESERVED|MEM_NO_BLOCKING, (APTR)&glX11, &memoryid))) {
+         glX11->Manager = TRUE; // Assume that we are the window manager
+      }
+      else if (error IS ERR_ResourceExists) {
+         if (!glX11) {
+            if (AccessMemory(RPM_X11, MEM_READ_WRITE, 1000, &glX11) != ERR_Okay) {
+               return PostError(ERR_AccessMemory);
+            }
          }
       }
-   }
-   else return PostError(ERR_AllocMemory);
+      else return PostError(ERR_AllocMemory);
 
-   // Attempt to open X11.  Use PARASOL_XDISPLAY if set, otherwise use the DISPLAY variable.
+      // Attempt to open X11.  Use PARASOL_XDISPLAY if set, otherwise use the DISPLAY variable.
 
-   LogMsg("Attempting to open X11...");
+      LogMsg("Attempting to open X11...");
 
-   CSTRING strdisplay = getenv("PARASOL_XDISPLAY");
-   if (!strdisplay) strdisplay = getenv("DISPLAY");
+      CSTRING strdisplay = getenv("PARASOL_XDISPLAY");
+      if (!strdisplay) strdisplay = getenv("DISPLAY");
 
-   if ((XDisplay = XOpenDisplay(strdisplay))) {
-      // Select the X messages that we want to receive from the root window.  This will also tell us if an X11 manager
-      // is currently running or not (refer to the CatchRedirectError() exception routine).
+      if ((XDisplay = XOpenDisplay(strdisplay))) {
+         // Select the X messages that we want to receive from the root window.  This will also tell us if an X11 manager
+         // is currently running or not (refer to the CatchRedirectError() exception routine).
 
-      if (glX11->InitCount < 1) {
-         XSetErrorHandler((XErrorHandler)CatchRedirectError);
+         if (glX11->InitCount < 1) {
+            XSetErrorHandler((XErrorHandler)CatchRedirectError);
 
-         XSelectInput(XDisplay, RootWindow(XDisplay, DefaultScreen(XDisplay)),
-            LeaveWindowMask|EnterWindowMask|PointerMotionMask|
-            PropertyChangeMask|SubstructureRedirectMask| // SubstructureNotifyMask |
-            KeyPressMask|ButtonPressMask|ButtonReleaseMask);
+            XSelectInput(XDisplay, RootWindow(XDisplay, DefaultScreen(XDisplay)),
+               LeaveWindowMask|EnterWindowMask|PointerMotionMask|
+               PropertyChangeMask|SubstructureRedirectMask| // SubstructureNotifyMask |
+               KeyPressMask|ButtonPressMask|ButtonReleaseMask);
 
-         if (!getenv("PARASOL_XDISPLAY")) setenv("PARASOL_XDISPLAY", strdisplay, FALSE);
+            if (!getenv("PARASOL_XDISPLAY")) setenv("PARASOL_XDISPLAY", strdisplay, FALSE);
 
-         XSync(XDisplay, False);
+            XSync(XDisplay, False);
+         }
+
+         XSetErrorHandler((XErrorHandler)CatchXError);
+         XSetIOErrorHandler(CatchXIOError);
+      }
+      else return ERR_Failed;
+
+      glX11->InitCount++;
+
+      // Try to load XRandR, but it's okay if it's not available
+
+      if (!NewObject(ID_MODULE, NULL, &modXRR)) {
+         UBYTE buffer[32];
+         IntToStr((MAXINT)XDisplay, buffer, sizeof(buffer));
+         acSetVar(modXRR, "XDisplay", buffer);
+         SetString(modXRR, FID_Name, "xrandr");
+         if (!acInit(modXRR)) {
+            if (GetPointer(modXRR, FID_ModBase, &XRandRBase) != ERR_Okay) XRandRBase = NULL;
+         }
+      }
+      else XRandRBase = NULL;
+
+      // Get the X11 file descriptor (for incoming events) and tell the Core to listen to it when the task is sleeping.
+
+      glXFD = XConnectionNumber(XDisplay);
+      fcntl(glXFD, F_SETFD, 1); // FD does not duplicate across exec()
+      SetResource(RES_X11_FD, glXFD);
+      RegisterFD(glXFD, RFD_READ, X11ManagerLoop, NULL);
+
+      // This function checks for DGA and also maps the video memory for us
+
+      glDGAAvailable = x11DGAAvailable(&glDGAVideo, &glDGAPixelsPerLine, &glDGABankSize);
+
+      LogMsg("DGA Enabled: %d", glDGAAvailable);
+
+      // Create the graphics contexts for drawing directly to X11 windows
+
+      gcv.function = GXcopy;
+      gcv.graphics_exposures = False;
+      glXGC = XCreateGC(XDisplay, DefaultRootWindow(XDisplay), GCGraphicsExposures|GCFunction, &gcv);
+
+      gcv.function = GXcopy;
+      gcv.graphics_exposures = False;
+      glClipXGC = XCreateGC(XDisplay, DefaultRootWindow(XDisplay), GCGraphicsExposures|GCFunction, &gcv);
+
+      #ifdef USE_XIMAGE
+         if (XShmQueryVersion(XDisplay, &shmmajor, &shmminor, &pixmaps)) {
+            LogMsg("X11 shared image extension is active.");
+            glX11ShmImage = TRUE;
+         }
+      #endif
+
+      if (x11WindowManager() IS FALSE) {
+         // We are an X11 client
+//         XSelectInput(XDisplay, RootWindow(XDisplay, DefaultScreen(XDisplay)), NULL);
       }
 
-      XSetErrorHandler((XErrorHandler)CatchXError);
-      XSetIOErrorHandler(CatchXIOError);
-   }
-   else return ERR_Failed;
+      C_Default = XCreateFontCursor(XDisplay, XC_left_ptr);
 
-   glX11->InitCount++;
+      XWADeleteWindow = XInternAtom(XDisplay, "WM_DELETE_WINDOW", False);
+      atomSurfaceID   = XInternAtom(XDisplay, "PARASOL_SCREENID", False);
 
-   // Try to load XRandR, but it's okay if it's not available
+      // Get root window attributes
 
-   if (!NewObject(ID_MODULE, NULL, &modXRR)) {
-      UBYTE buffer[32];
-      IntToStr((MAXINT)XDisplay, buffer, sizeof(buffer));
-      acSetVar(modXRR, "XDisplay", buffer);
-      SetString(modXRR, FID_Name, "xrandr");
-      if (!acInit(modXRR)) {
-         if (GetPointer(modXRR, FID_ModBase, &XRandRBase) != ERR_Okay) XRandRBase = NULL;
+      XGetWindowAttributes(XDisplay, DefaultRootWindow(XDisplay), &glRootWindow);
+
+      ClearMemory(KeyHeld, sizeof(KeyHeld));
+
+      // Drop superuser privileges following X11 initialisation (we only need suid for DGA).
+
+      seteuid(getuid());
+
+      MSG("Loading X11 cursor graphics.");
+
+      for (i=0; i < ARRAYSIZE(XCursors); i++) {
+         if (XCursors[i].CursorID IS PTR_INVISIBLE) XCursors[i].XCursor = create_blank_cursor();
+         else XCursors[i].XCursor = XCreateFontCursor(XDisplay, XCursors[i].XCursorID);
+      }
+
+      // Set the DISPLAY variable for clients to :10, which is the default X11 display for the rootless X Server.
+
+      if (x11WindowManager() IS TRUE) {
+         setenv("DISPLAY", ":10", TRUE);
       }
    }
-   else XRandRBase = NULL;
-
-   // Get the X11 file descriptor (for incoming events) and tell the Core to listen to it when the task is sleeping.
-
-   glXFD = XConnectionNumber(XDisplay);
-   fcntl(glXFD, F_SETFD, 1); // FD does not duplicate across exec()
-   SetResource(RES_X11_FD, glXFD);
-   RegisterFD(glXFD, RFD_READ, X11ManagerLoop, NULL);
-
-   // This function checks for DGA and also maps the video memory for us
-
-   glDGAAvailable = x11DGAAvailable(&glDGAVideo, &glDGAPixelsPerLine, &glDGABankSize);
-
-   LogMsg("DGA Enabled: %d", glDGAAvailable);
-
-   // Create the graphics contexts for drawing directly to X11 windows
-
-   gcv.function = GXcopy;
-   gcv.graphics_exposures = False;
-   glXGC = XCreateGC(XDisplay, DefaultRootWindow(XDisplay), GCGraphicsExposures|GCFunction, &gcv);
-
-   gcv.function = GXcopy;
-   gcv.graphics_exposures = False;
-   glClipXGC = XCreateGC(XDisplay, DefaultRootWindow(XDisplay), GCGraphicsExposures|GCFunction, &gcv);
-
-   #ifdef USE_XIMAGE
-      if (XShmQueryVersion(XDisplay, &shmmajor, &shmminor, &pixmaps)) {
-         LogMsg("X11 shared image extension is active.");
-         glX11ShmImage = TRUE;
-      }
-   #endif
-
-   if (x11WindowManager() IS FALSE) {
-      // We are an X11 client
-//      XSelectInput(XDisplay, RootWindow(XDisplay, DefaultScreen(XDisplay)), NULL);
-   }
-
-   C_Default = XCreateFontCursor(XDisplay, XC_left_ptr);
-
-   XWADeleteWindow = XInternAtom(XDisplay, "WM_DELETE_WINDOW", False);
-   atomSurfaceID   = XInternAtom(XDisplay, "PARASOL_SCREENID", False);
-
-   // Get root window attributes
-
-   XGetWindowAttributes(XDisplay, DefaultRootWindow(XDisplay), &glRootWindow);
-
-   ClearMemory(KeyHeld, sizeof(KeyHeld));
-
-   // Drop superuser privileges following X11 initialisation (we only need suid for DGA).
-
-   seteuid(getuid());
-
-   MSG("Loading X11 cursor graphics.");
-
-   for (i=0; i < ARRAYSIZE(XCursors); i++) {
-      if (XCursors[i].CursorID IS PTR_INVISIBLE) XCursors[i].XCursor = create_blank_cursor();
-      else XCursors[i].XCursor = XCreateFontCursor(XDisplay, XCursors[i].XCursorID);
-   }
-
-   // Set the DISPLAY variable for clients to :10, which is the default X11 display for the rootless X Server.
-
-   if (x11WindowManager() IS TRUE) {
-      setenv("DISPLAY", ":10", TRUE);
-   }
-
 #elif _WIN32
 
    // Load cursor graphics
@@ -1193,40 +1200,42 @@ static ERROR CMDExpunge(void)
 
    error = ERR_Okay;
 
-   if (modXRR) { acFree(modXRR); modXRR = NULL; }
+   if (!glHeadless) {
+      if (modXRR) { acFree(modXRR); modXRR = NULL; }
 
-   if (glXFD != -1) { DeregisterFD(glXFD); glXFD = -1; }
-   SetResource(RES_X11_FD, -1);
+      if (glXFD != -1) { DeregisterFD(glXFD); glXFD = -1; }
+      SetResource(RES_X11_FD, -1);
 
-   XSetErrorHandler(NULL);
-   XSetIOErrorHandler(NULL);
+      XSetErrorHandler(NULL);
+      XSetIOErrorHandler(NULL);
 
-   if (XDisplay) {
-      for (i=0; i < ARRAYSIZE(XCursors); i++) {
-         if (XCursors[i].XCursor) XFreeCursor(XDisplay, XCursors[i].XCursor);
+      if (XDisplay) {
+         for (i=0; i < ARRAYSIZE(XCursors); i++) {
+            if (XCursors[i].XCursor) XFreeCursor(XDisplay, XCursors[i].XCursor);
+         }
+
+         if (glXGC) { XFreeGC(XDisplay, glXGC); glXGC = 0; }
+         if (glClipXGC) { XFreeGC(XDisplay, glClipXGC); glClipXGC = 0; }
+
+         // Closing the display causes a crash, so we're not doing it anymore ...
+         /*
+         xtmp = XDisplay;
+         XDisplay = NULL;
+         XCloseDisplay(xtmp);
+         */
       }
 
-      if (glXGC) { XFreeGC(XDisplay, glXGC); glXGC = 0; }
-      if (glClipXGC) { XFreeGC(XDisplay, glClipXGC); glClipXGC = 0; }
+      if (glX11) {
+         // Note: In full-screen mode, expunging of the X11 module causes segfaults right at the end of program
+         // termination.  In order to resolve this problem, we return DoNotExpunge to prevent the removal of X11 module
+         // code.  The reason why this problem occurs is because something at program termination relies on our module
+         // code being present in the system.
 
-      // Closing the display causes a crash, so we're not doing it anymore ...
-      /*
-      xtmp = XDisplay;
-      XDisplay = NULL;
-      XCloseDisplay(xtmp);
-      */
-   }
+         if (glX11->Manager) error = ERR_DoNotExpunge;
 
-   if (glX11) {
-      // Note: In full-screen mode, expunging of the X11 module causes segfaults right at the end of program
-      // termination.  In order to resolve this problem, we return DoNotExpunge to prevent the removal of X11 module
-      // code.  The reason why this problem occurs is because something at program termination relies on our module
-      // code being present in the system.
-
-      if (glX11->Manager) error = ERR_DoNotExpunge;
-
-      ReleaseMemory(glX11);
-      glX11 = NULL;
+         ReleaseMemory(glX11);
+         glX11 = NULL;
+      }
    }
 
 #elif __ANDROID__

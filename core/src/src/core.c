@@ -424,6 +424,9 @@ EXPORT struct CoreBase * OpenCore(struct OpenInfo *Info)
                i++;
             }
          }
+         else if (!StrCompare(Info->Args[i], "--gfx-driver=", 13, 0)) {
+            StrCopy(Info->Args[i]+13, glDisplayDriver, sizeof(glDisplayDriver));
+         }
          else if (!StrMatch(Info->Args[i], "--global"))    Info->Flags |= OPF_GLOBAL_INSTANCE;
          else if (!StrMatch(Info->Args[i], "--solo"))      solo = TRUE;
          else if (!StrMatch(Info->Args[i], "--sync"))      glSync = TRUE;
@@ -1682,7 +1685,7 @@ static void CrashHandler(LONG SignalNumber, siginfo_t *Info, APTR Context)
    if (glCrashStatus > 1) {
       if ((glCodeIndex) AND (glCodeIndex IS glLastCodeIndex)) {
          fprintf(stderr, "Unable to recover - exiting immediately.\n");
-         exit(0);
+         exit(255);
       }
 
       glLastCodeIndex = glCodeIndex;
@@ -1717,7 +1720,7 @@ static void CrashHandler(LONG SignalNumber, siginfo_t *Info, APTR Context)
    else {
       fprintf(stderr, "Secondary crash or hangup request at code index %d (last %d).\n", glCodeIndex, glLastCodeIndex);
       kill(getpid(), SIGKILL);
-      exit(0);
+      exit(255);
    }
 
    glCrashStatus = 2;
@@ -1725,7 +1728,7 @@ static void CrashHandler(LONG SignalNumber, siginfo_t *Info, APTR Context)
    PrintDiagnosis(glProcessID, SignalNumber);
 
    CloseCore();
-   exit(0);
+   exit(255);
 }
 #endif
 

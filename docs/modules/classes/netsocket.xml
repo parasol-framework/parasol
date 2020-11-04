@@ -14,23 +14,23 @@
     <include>modules/netsocket.h</include>
     <copyright>Paul Manias © 2005-2020</copyright>
     <description>
-<p>The NetSocket class provides a simple way of using TCP/IP sockets.  Connections from a single client to the server and from the server to multiple clients are supported.  SSL functionality is also integrated.</p>
-<p>The NetSocket class is designed only to cater for asynchronous (non-blocking) communication. This functionality is achieved primarily through callback fields - connection alerts are managed by <field>Feedback</field>, incoming data is received through <field>Incoming</field> and readiness for outgoing data is supported by <field>Outgoing</field>.</p>
+<p>The NetSocket class provides a simple way of managing TCP/IP socket communication at a high programming tier. Connections from a single client to the server and from the server to multiple clients are supported.  SSL functionality is also integrated.</p>
+<p>The NetSocket class is designed to cater to asynchronous (non-blocking) communication.  This functionality is achieved primarily through callback fields - connection alerts are managed by <field>Feedback</field>, incoming data is received through <field>Incoming</field> and readiness for outgoing data is supported by <field>Outgoing</field>.</p>
 <header>Client-Server Connections</header>
-<p>After a connection has been established, data may be written to the server uses any of the following methods:</p>
+<p>After a connection has been established to a server socket, data may be written using any of the following methods:</p>
 <list type="unsorted">
-<li>Write directly to the server at any time using either the <action>Write</action> action or <method>WriteMsg</method> method.</li>
+<li>Write directly to the server with either the <action>Write</action> action or <method>WriteMsg</method> method.</li>
 <li>Subscribe to the socket by referring to a routine in the <field>Outgoing</field> field.  The routine will be called to
 initially fill the internal write buffer, thereafter it will be called whenever the buffer is empty.</li>
 </list>
 <p>It is possible to write to a NetSocket object before the connection to a server is established.  Doing so will buffer the data in the socket until the connection with the server has been initiated, at which point the data will be immediately sent.</p>
 <header>Server-Client Connections</header>
 <p>To accept incoming client connections, create a NetSocket object with the SERVER flag set and define the <field>Port</field> value on which to listen for new clients.  If you wish to allow multiple connections from a single client IP address, you should also set the MULTICONNECT flag.</p>
-<p>When a new connection is detected, the <field>Feedback</field> function will be called as <code>Feedback(objNetSocket *NetSocket, OBJECTPTR Context, LONG Operation)</code></p>
-<p>The NetSocket parameter refers to the original NetSocket object, the Context refers to the object that set the Feedback field and the Operation value will be set to NTC_CONNECTED.  Information about the new connection can be read from the <field>CurrentSocket</field> field.  If a client disconnects, the Feedback function will be called in the same manner but with an Operation value of NTC_DISCONNECTED.</p>
+<p>When a new connection is detected, the <field>Feedback</field> function will be called as <code>Feedback(*NetSocket, *ClientSocket, OBJECTPTR Context, LONG Operation)</code></p>
+<p>The NetSocket parameter refers to the original NetSocket object, <class name="ClientSocket">ClientSocket</class> applies if a client connection is involved, the Context refers to the object that set the <field>Feedback</field> field and the Operation value will be set to NTC_CONNECTED.  If a client disconnects, the <field>Feedback</field> function will be called in the same manner but with an Operation value of NTC_DISCONNECTED.</p>
 <p>Information on all active connections can be read from the <field>Clients</field> field.  This contains a linked list of IP addresses and their connections to the server port.</p>
-<p>To send data to a client, set the <field>CurrentSocket</field> field to reference the target client and then call the <action>Write</action> action.</p>
-<p>All data that is received from client sockets will be passed to the <field>Incoming</field> feedback routine.  The <field>CurrentSocket</field> field will refer to the socket that has received the data.</p></description>
+<p>To send data to a client, write it to the target <class name="ClientSocket">ClientSocket</class>.</p>
+<p>All data that is received from client sockets will be passed to the <field>Incoming</field> feedback routine with a reference to a <class name="ClientSocket">ClientSocket</class>.</p></description>
     <source>
       <file path="netsocket/">netsocket.cpp</file>
     </source>
@@ -68,8 +68,8 @@ initially fill the internal write buffer, thereafter it will be called whenever 
       <comment>Writes data to the socket.</comment>
       <description>
 <p>Writing data to a socket will send raw data to the remote client or server.  Write connections are buffered, so any data overflow generated in a call to this action will be buffered into a software queue.  Resource limits placed on the software queue are governed by the <field>MsgLimit</field> field setting.</p>
-<p>In server mode, the <field>CurrentSocket</field> will designate the client that will receive the data.  If this field is not set, ERR_FieldNotSet will be returned.</p>
-<p>It is also possible to write to a socket in advance of any connection being made. The netsocket will queue the data and automatically send it once the first connection has been made.</p>
+<p>In server mode, do not use this action.  Instead write to the <class name="ClientSocket">ClientSocket</class> object that will receive the data.</p>
+<p>It is possible to write to a socket in advance of any connection being made. The netsocket will queue the data and automatically send it once the first connection has been made.</p>
       </description>
     </action>
 
@@ -274,7 +274,7 @@ initially fill the internal write buffer, thereafter it will be called whenever 
       <type>FUNCTION</type>
       <description>
 <p>Refer to a custom function in this field and it will be called whenever the <field>State</field> of the socket (such as connection or disconnection) changes.</p>
-<p>The function must be in the format <code>Function(*NetSocket, OBJECTPTR Context, LONG State)</code></p>
+<p>The function must be in the format <code>Function(*NetSocket, *ClientSocket, OBJECTPTR Context, LONG State)</code></p>
 <p>The NetSocket parameter will refer to the NetSocket object to which the Feedback function is subscribed.  The Context refers to the object that set the Feedback field and the State reflects the new value in the <field>State</field> field.</p>
       </description>
     </field>
@@ -322,7 +322,7 @@ initially fill the internal write buffer, thereafter it will be called whenever 
     <field>
       <name>Outgoing</name>
       <comment>Callback that is triggered when the socket is ready to send data.</comment>
-      <access read="G" write="S">Get/Set</access>
+      <access write="S">Set</access>
       <type>FUNCTION</type>
       <description>
 <p>The Outgoing field can be set with a custom function that will be called whenever the socket is ready to send data. The function must be in the format <code>ERROR Outgoing(*NetSocket, OBJECTPTR Context)</code></p>
@@ -414,6 +414,7 @@ initially fill the internal write buffer, thereafter it will be called whenever 
     <struct name="IPAddress">
       <field name="Data" type="ULONG" size="4">128-bit array for supporting both V4 and V6 IP addresses.</field>
       <field name="Type" type="LONG" lookup="IPADDR"></field>
+      <field name="Pad" type="LONG">Unused padding for 64-bit alignment</field>
     </struct>
 
     <struct name="rkNetClient" comment="Simple data storage class utilised by NetSocket to represent a client machine/IP.">
