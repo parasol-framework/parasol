@@ -3,11 +3,9 @@
 #define WIN32
 #endif
 
-#ifndef USE_ARES
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #include <windows.h>
-#endif
 
 struct IPAddress {
    union {
@@ -21,18 +19,6 @@ struct IPAddress {
 #define IPADDR_V6 1
 
 #include "winsockwrappers.h"
-
-#ifdef USE_ARES
-#define HAVE_STRUCT_SOCKADDR_IN6
-#define HAVE_STRUCT_ADDRINFO
-
-#include "ares.h"
-#include "ares_private.h"
-#include "ares_llist.h"
-
-extern ares_channel glAres;
-extern void ares_response(void *, int Status, int Timeouts, struct hostent *);
-#endif
 
 #include <unordered_map>
 #include <cstdio>
@@ -49,8 +35,7 @@ enum {
 
 enum {
    WM_NETWORK = WM_USER + 101, // WM_USER = 1024, 1125
-   WM_RESOLVENAME, // 1126
-   WM_NETWORK_ARES // 1127
+   WM_RESOLVENAME // 1126
 };
 
 #define IS ==
@@ -61,7 +46,7 @@ enum {
 
 class socket_info { // Only the SocketHandle FD is unique.  NetSocket may be referenced multiple times for as many clients exist.
 public:
-   void *Reference = NULL;      // Reference to a NetSocket, ClientSocket, dns_resolver
+   void *Reference = NULL;      // Reference to a NetSocket, ClientSocket
    void *NetHost = NULL;        // For win_async_resolvename() and WM_RESOLVENAME
    HANDLE ResolveHandle = INVALID_HANDLE_VALUE; // For win_async_resolvename() and WM_RESOLVENAME
    WSW_SOCKET SocketHandle = 0; // Winsock socket FD (same as the key)
@@ -132,8 +117,6 @@ static const struct {
    { 0, 0 }
 };
 
-extern void win_dns_callback(struct dns_resolver *Resolver, int Error, struct hostent *);
-
 //****************************************************************************
 
 static int convert_error(int error)
@@ -201,37 +184,6 @@ static LRESULT CALLBACK win_messages(HWND window, UINT msgcode, WPARAM wParam, L
          return 0;
       }
    }
-   else if (msgcode IS WM_RESOLVENAME) { // Managed by win_async_resolvename() for non-Ares DNS lookups
-      const lock_guard<recursive_mutex> lock(csNetLookup);
-      for (auto it=glNetLookup.begin(); it != glNetLookup.end(); it++) {
-         if (it->second.ResolveHandle IS (HANDLE)wParam) {
-            struct socket_info *info = &it->second;
-            // Note that there is no requirement to close the handle according to WSAAsyncGetHostByName() documentation.
-            info->ResolveHandle = INVALID_HANDLE_VALUE;
-            win_dns_callback((struct dns_resolver *)info->Reference, ERR_Okay, reinterpret_cast<hostent *>(info->NetHost));
-            return 0;
-         }
-      }
-
-   }
-   #ifdef USE_ARES
-   else if (msgcode IS WM_NETWORK_ARES) {
-      // wParam will identify the Ares socket handle.
-
-      fd_set readers, writers;
-      FD_ZERO(&readers);
-      FD_ZERO(&writers);
-
-      if (event IS FD_READ) {
-         FD_SET(wParam, &readers);
-         ares_process(glAres, &readers, &writers);
-      }
-      else if (event IS FD_WRITE) {
-         FD_SET(wParam, &writers);
-         ares_process(glAres, &readers, &writers);
-      }
-   }
-   #endif
    else return DefWindowProc(window, msgcode, wParam, lParam);
 
    return 0;
@@ -572,96 +524,3 @@ int ShutdownWinsock()
    if (glWinsockInitialised) { WSACleanup(); glWinsockInitialised = FALSE; }
    return 0;
 }
-
-//****************************************************************************
-// Use this function for resolving Windows machine names, e.g. \\MACHINE.  The name is something of a misnomer, by
-// 'asynchronous' what Microsoft means is that multiple calls to WSAAsync() will execute in sequence as opposed to all
-// running at the same time.  However if you only make the one name resolution, the effect is that of executing
-// synchronously in the background.
-
-int win_async_resolvename(const char *Name, struct dns_resolver *Resolver, struct hostent *Host, int HostSize)
-{
-   struct socket_info *info = lookup_socket_by_ref(Resolver);
-   if (info) {
-      // Initiate host search and save the handle against this NetSocket object.
-      if ((info->ResolveHandle = WSAAsyncGetHostByName(glNetWindow, WM_RESOLVENAME, Name, (char *)Host, HostSize)) != INVALID_HANDLE_VALUE) {
-         info->NetHost = Host;
-         return ERR_Okay;
-      }
-      else {
-         win_dns_callback(Resolver, ERR_Failed, NULL);
-         return ERR_Failed;
-      }
-   }
-
-   win_dns_callback(Resolver, ERR_SystemCorrupt, NULL);
-   return ERR_SystemCorrupt;
-}
-
-//****************************************************************************
-
-#ifdef USE_ARES
-
-// Refer to the code for ares_fds.c to see where this loop came from.  The point of this code is to register new
-// netsockets against glNetWindow so that we can intercept network traffic from those sockets.  Ares traffic is
-// tagged as WM_NETWORK_ARES.
-
-int win_ares_handler(ares_channel Ares)
-{
-   int active_queries = !((Ares->all_queries.next == &Ares->all_queries) && (Ares->all_queries.prev == &Ares->all_queries));
-
-   for (int i=0; i < Ares->nservers; i++) {
-      struct server_state *server = &Ares->servers[i];
-
-      //printf("ares_handler() Active: %d, UDP: %lld, TCP: %lld\n", active_queries, server->udp_socket, server->tcp_socket);
-
-      if ((active_queries) AND (server->udp_socket != ARES_SOCKET_BAD)) {
-         if (WSAAsyncSelect(server->udp_socket, glNetWindow, WM_NETWORK_ARES, FD_CLOSE|FD_ACCEPT|FD_READ)) {
-            return ERR_SystemCall;
-         }
-      }
-
-      if (server->tcp_socket != ARES_SOCKET_BAD) {
-         if (server->qhead) { // Write and read
-            if (WSAAsyncSelect(server->tcp_socket, glNetWindow, WM_NETWORK_ARES, FD_CLOSE|FD_ACCEPT|FD_READ|FD_WRITE)) {
-               return ERR_SystemCall;
-            }
-         }
-         else { // Read only
-            if (WSAAsyncSelect(server->tcp_socket, glNetWindow, WM_NETWORK_ARES, FD_CLOSE|FD_ACCEPT|FD_READ)) {
-               return ERR_SystemCall;
-            }
-         }
-      }
-   }
-
-   return ERR_Okay;
-}
-
-// Initiate a background host query by name.  Ares will call ares_response when it has finished.
-
-int win_ares_resolvename(const char *Name, ares_channel Ares, void *Resolver)
-{
-   ares_gethostbyname(Ares, Name, AF_INET, reinterpret_cast<void (*)(void*, int, int, hostent*)>(&ares_response), Resolver);
-
-   return win_ares_handler(Ares);
-}
-
-// Initiate a background host query by IP address.  Ares will call ares_response when it has finished.
-
-int win_ares_resolveaddr(struct IPAddress *Address, ares_channel Ares, void *Resolver)
-{
-   if (Address->Type IS IPADDR_V4) {
-      ares_gethostbyaddr(Ares, &Address->Data, 4, AF_INET, reinterpret_cast<void (*)(void*, int, int, hostent*)>(&ares_response), Resolver);
-   }
-   else ares_gethostbyaddr(Ares, &Address->Data, 16, AF_INET6, reinterpret_cast<void (*)(void*, int, int, hostent*)>(&ares_response), Resolver);
-
-   return win_ares_handler(Ares);
-}
-
-void win_ares_deselect(int Handle)
-{
-   WSAAsyncSelect(Handle, glNetWindow, 0, 0); // Listen to nothing == cancellation.
-}
-
-#endif

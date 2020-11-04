@@ -23,7 +23,6 @@ int WIN_SEND(WSW_SOCKET, const void *, int *, int);
 int win_shutdown(WSW_SOCKET, int);
 WSW_SOCKET win_socket(void *, char, char);/*uses PF_INET, SOCK_STREAM, 0 for params to socket() */
 int WIN_RECEIVE(WSW_SOCKET, void *, int, int, int *);
-int win_async_resolvename(const char *, struct dns_resolver *, struct hostent *, int);
 void winCloseResolveHandle(void *);
 void win_socket_reference(WSW_SOCKET, void *);
 

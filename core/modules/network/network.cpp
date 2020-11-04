@@ -136,13 +136,6 @@ typedef ULONG SOCKET_HANDLE; // NOTE: declared as ULONG instead of SOCKET for no
 #endif
 
 //****************************************************************************
-// Ares Includes
-
-extern const char * net_init_ares(void);
-extern void net_free_ares(void);
-extern int net_ares_error(int Code, const char **Message);
-
-//****************************************************************************
 
 enum {
    SSL_NOT_BUSY=0,
@@ -160,22 +153,6 @@ static void client_server_incoming(SOCKET_HANDLE, struct rkNetSocket *);
 
 struct CoreBase *CoreBase;
 static OBJECTPTR glModule = NULL;
-
-struct dns_resolver {
-   LARGE time;
-   LARGE client_data;
-   FUNCTION callback;
-   struct dns_resolver *next;
-   #ifdef __linux__
-      int tcp, udp; // For Ares
-   #endif
-   #ifdef _WIN32
-      union { // For win_async_resolvename()
-         struct hostent Host;
-         UBYTE MaxGetHostStruct[1024]; // MAXGETHOSTSTRUCT == 1024
-      } WinHost;
-   #endif
-};
 
 struct dns_cache {
    CSTRING HostName;
@@ -196,25 +173,72 @@ static ERROR sslSetup(objNetSocket *);
 static OBJECTPTR clProxy = NULL;
 static OBJECTPTR clNetSocket = NULL;
 static OBJECTPTR clClientSocket = NULL;
-struct ares_channeldata *glAres = NULL; // All access must be bound to a VarLock on glDNS.  Defined by ares_init()
 static struct KeyStore *glDNS = NULL;
-static struct dns_resolver *glResolvers = NULL;
+static LONG glResolveNameMsgID = 0;
+static LONG glResolveAddrMsgID = 0;
 
 static void resolve_callback(LARGE, FUNCTION *, ERROR, CSTRING, struct IPAddress *, LONG);
 static BYTE check_machine_name(CSTRING HostName) __attribute__((unused));
 static ERROR cache_host(CSTRING, struct hostent *, struct dns_cache **);
 static ERROR cache_host(CSTRING, struct addrinfo *, struct dns_cache **);
-static void free_resolver(struct dns_resolver *);
-static struct dns_resolver * new_resolver(LARGE ClientData, FUNCTION *Callback);
 static ERROR add_netsocket(void);
 static ERROR add_clientsocket(void);
 static ERROR init_proxy(void);
 
-#if defined(USE_ARES) && defined(__linux__)
-void ares_response(void *Arg, int Status, int Timeouts, struct hostent *);
-extern void net_resolve_name(const char *HostName, struct dns_resolver *Resolver);
-extern void net_ares_resolveaddr(int, void *Data, struct dns_resolver *);
-#endif
+struct resolve_name_buffer {
+   LARGE client_data;
+   FUNCTION callback;
+}; // Host name is appended
+
+struct resolve_addr_buffer {
+   LARGE client_data;
+   FUNCTION callback;
+}; // Address is appended
+
+static struct MsgHandler *glResolveNameHandler = NULL;
+static struct MsgHandler *glResolveAddrHandler = NULL;
+
+//***************************************************************************
+// Used for receiving synchronous execution results from netResolveName() and netResolveAddress().
+
+static ERROR resolve_name_receiver(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
+{
+   struct resolve_name_buffer *rnb = (struct resolve_name_buffer *)Message;
+   // This call will cause the cached DNS result to be pulled and forwarded to the user's callback.
+   netResolveName((CSTRING)(rnb + 1), NSF_ASYNC_RESOLVE, &rnb->callback, rnb->client_data);
+   return ERR_Okay;
+}
+
+static ERROR resolve_addr_receiver(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
+{
+   struct resolve_addr_buffer *rab = (struct resolve_addr_buffer *)Message;
+   netResolveAddress((CSTRING)(rab + 1), NSF_ASYNC_RESOLVE, &rab->callback, rab->client_data);
+   return ERR_Okay;
+}
+
+//***************************************************************************
+// Thread routine for synchronous calls to netResolveName() and netResolveAddress()
+
+static ERROR thread_resolve_name(objThread *Thread)
+{
+   struct resolve_name_buffer *rnb = (struct resolve_name_buffer *)Thread->Data;
+   netResolveName((CSTRING)(rnb + 1), NSF_ASYNC_RESOLVE, NULL, 0);
+
+   // Signal back to the main thread so that the callback is executed in the correct context.
+   // Part of the trick to this process is that netResolveName() will have cached the IP results, so they
+   // will be retrievable when the main thread gets the message.
+
+   SendMessage(0, glResolveNameMsgID, 0, rnb, Thread->DataSize);
+   return ERR_Okay;
+}
+
+static ERROR thread_resolve_addr(objThread *Thread)
+{
+   struct resolve_addr_buffer *rab = (struct resolve_addr_buffer *)Thread->Data;
+   netResolveAddress((CSTRING)(rab + 1), NSF_ASYNC_RESOLVE, NULL, 0);
+   SendMessage(0, glResolveAddrMsgID, 0, rab, Thread->DataSize);
+   return ERR_Okay;
+}
 
 //***************************************************************************
 
@@ -230,6 +254,9 @@ ERROR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    if (add_clientsocket()) return ERR_AddClass;
    if (init_proxy()) return ERR_AddClass;
 
+   glResolveNameMsgID = AllocateID(IDTYPE_MESSAGE);
+   glResolveAddrMsgID = AllocateID(IDTYPE_MESSAGE);
+
 #ifdef _WIN32
    // Configure Winsock
    {
@@ -242,15 +269,16 @@ ERROR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    }
 #endif
 
-#ifdef USE_ARES
-   {
-      CSTRING msg;
-      if ((msg = net_init_ares())) {
-         LogErrorMsg("Ares network library failed to initialise: %s", msg);
-         return ERR_Failed;
-      }
+   FUNCTION recv_function;
+   SET_FUNCTION_STDC(recv_function, (APTR)&resolve_name_receiver);
+   if (AddMsgHandler(NULL, glResolveNameMsgID, &recv_function, &glResolveNameHandler)) {
+      return ERR_Failed;
    }
-#endif
+
+   SET_FUNCTION_STDC(recv_function, (APTR)&resolve_addr_receiver);
+   if (AddMsgHandler(NULL, glResolveAddrMsgID, &recv_function, &glResolveAddrHandler)) {
+      return ERR_Failed;
+   }
 
    return ERR_Okay;
 }
@@ -273,6 +301,8 @@ static ERROR MODExpunge(void)
    SetResourcePtr(RES_NET_PROCESSING, NULL);
 #endif
 
+   if (glResolveNameHandler) { FreeResource(glResolveNameHandler); glResolveNameHandler = NULL; }
+   if (glResolveAddrHandler) { FreeResource(glResolveAddrHandler); glResolveAddrHandler = NULL; }
    if (glDNS) { FreeResource(glDNS); glDNS = NULL; }
 
 #ifdef _WIN32
@@ -292,12 +322,6 @@ static ERROR MODExpunge(void)
       CRYPTO_cleanup_all_ex_data();
    }
 #endif
-
-#ifdef USE_ARES
-   net_free_ares();
-#endif
-
-   while (glResolvers) free_resolver(glResolvers);
 
    return ERR_Okay;
 }
@@ -500,45 +524,29 @@ Failed: The address could not be resolved
 
 static ERROR netResolveAddress(CSTRING Address, LONG Flags, FUNCTION *Callback, LARGE ClientData)
 {
-   if ((!Address) OR (!Callback)) return PostError(ERR_NullArgs);
+   if (!Address) return PostError(ERR_NullArgs);
 
    struct IPAddress ip;
    if (netStrToAddress(Address, &ip) != ERR_Okay) return ERR_Args;
 
-   if (Flags & NSF_ASYNC_RESOLVE) goto async_resolve;
-
-   // Attempt synchronous resolution.
-
-   if (!VarLock(glDNS, 0x7fffffff)) {
-      struct dns_resolver *resolve = new_resolver(ClientData, Callback);
-      if (!resolve) {
-         VarUnlock(glDNS);
-         return ERR_AllocMemory;
-      }
-
-      #ifdef USE_ARES
-         if (glAres) {
-         #ifdef __linux__
-            net_ares_resolveaddr(ip.Type == IPADDR_V4, ip.Data, resolve);
-            VarUnlock(glDNS);
+   if (!(Flags & NSF_ASYNC_RESOLVE)) { // Attempt synchronous resolution in the background, return immediately.
+      OBJECTPTR thread;
+      LONG pkg_size = sizeof(struct resolve_addr_buffer) + StrLength(Address) + 1;
+      if (!CreateObject(ID_THREAD, NF_INTEGRAL, &thread,
+            FID_Routine|TPTR, &thread_resolve_addr,
+            FID_Flags|TLONG,  THF_AUTO_FREE,
+            TAGEND)) {
+         char buffer[pkg_size];
+         struct resolve_addr_buffer *rab = (struct resolve_addr_buffer *)&buffer;
+         rab->callback = *Callback;
+         rab->client_data = ClientData;
+         StrCopy(Address, (STRING)(rab + 1), COPY_ALL);
+         if ((!thSetData(thread, rab, pkg_size)) AND (!acActivate(thread))) {
             return ERR_Okay;
-         #elif _WIN32
-            if (!win_ares_resolveaddr(&ip, glAres, resolve)) {
-               VarUnlock(glDNS);
-               return ERR_Okay;
-            }
-         #endif
          }
-      #elif __linux__
-         #warning TODO: getaddrinfo_a()
-
-      #endif
-
-      free_resolver(resolve); // Remove the resolver if background resolution failed.
-      VarUnlock(glDNS);
+      }
    }
 
-async_resolve:
    {
       #ifdef _WIN32
          struct dns_cache *dns;
@@ -633,12 +641,14 @@ large ClientData: Client data value to be passed to the Callback.
 -ERRORS-
 Okay:
 NullArgs:
+AllocMemory:
+Failed:
 
 *****************************************************************************/
 
 static ERROR netResolveName(CSTRING HostName, LONG Flags, FUNCTION *Callback, LARGE ClientData)
 {
-   if ((!HostName) OR (!Callback)) return PostError(ERR_NullArgs);
+   if (!HostName) return PostError(ERR_NullArgs);
 
    FMSG("ResolveName()","Host: %s, Flags: $%.8x", HostName, Flags);
 
@@ -660,40 +670,21 @@ static ERROR netResolveName(CSTRING HostName, LONG Flags, FUNCTION *Callback, LA
    }
 
    if (!(Flags & NSF_ASYNC_RESOLVE)) { // Attempt synchronous resolution in the background, return immediately.
-      VarLock(glDNS, 0x7fffffff);
-
-      struct dns_resolver *resolver = new_resolver(ClientData, Callback);
-      if (!resolver) {
-         VarUnlock(glDNS);
-         return ERR_AllocMemory;
+      OBJECTPTR thread;
+      LONG pkg_size = sizeof(struct resolve_name_buffer) + StrLength(HostName) + 1;
+      if (!CreateObject(ID_THREAD, NF_INTEGRAL, &thread,
+            FID_Routine|TPTR, &thread_resolve_name,
+            FID_Flags|TLONG,  THF_AUTO_FREE,
+            TAGEND)) {
+         char buffer[pkg_size];
+         struct resolve_name_buffer *rnb = (struct resolve_name_buffer *)&buffer;
+         rnb->callback = *Callback;
+         rnb->client_data = ClientData;
+         StrCopy(HostName, (STRING)(rnb + 1), COPY_ALL);
+         if ((!thSetData(thread, rnb, pkg_size)) AND (!acActivate(thread))) {
+            return ERR_Okay;
+         }
       }
-
-#ifdef USE_ARES
-   #ifdef __linux__
-      if (glAres) {
-         net_resolve_name(HostName, resolver);
-         VarUnlock(glDNS);
-         return ERR_Okay;
-      }
-   #elif _WIN32
-      if ((glAres) AND (!check_machine_name(HostName))) {
-         FMSG("ResolveName","Resolving '%s' using Ares callbacks.", HostName);
-         ERROR error = win_ares_resolvename(HostName, glAres, resolver);
-         VarUnlock(glDNS);
-         if (error) PostError(error);
-         return error;
-      }
-
-      FMSG("ResolveName","Resolving machine name '%s' using WSAASync callbacks.", HostName);
-      if (!win_async_resolvename(HostName, resolver, &resolver->WinHost.Host, sizeof(resolver->WinHost.MaxGetHostStruct))) {
-         VarUnlock(glDNS);
-         return ERR_Okay;
-      }
-   #endif
-#endif
-
-      free_resolver(resolver); // Remove the resolver if background resolution failed.
-      VarUnlock(glDNS);
    }
 
    {
@@ -1060,57 +1051,9 @@ static ERROR SEND(objNetSocket *Self, SOCKET_HANDLE Socket, CPTR Buffer, LONG *L
 
 //***************************************************************************
 
-static struct dns_resolver * new_resolver(LARGE ClientData, FUNCTION *Callback)
-{
-   struct dns_resolver *resolve;
-
-   OBJECTPTR context = SetContext(glModule);
-   ERROR error = AllocMemory(sizeof(struct dns_resolver), MEM_DATA, &resolve, NULL);
-   SetContext(context);
-   if (error) return NULL;
-
-   resolve->next = glResolvers;
-   resolve->time = PreciseTime();
-   resolve->client_data = ClientData;
-   resolve->callback = *Callback;
-   #if defined(USE_ARES) && defined(__linux__)
-      resolve->tcp = 0;
-      resolve->udp = 0;
-   #endif
-   glResolvers = resolve;
-
-   return resolve;
-}
-
-//***************************************************************************
-// Acquire a lock on glDNS before calling this function.
-
-static void free_resolver(struct dns_resolver *Resolver)
-{
-#if defined(USE_ARES) && defined(__linux__)
-   if (Resolver->tcp) DeregisterFD((HOSTHANDLE)Resolver->tcp);
-   if (Resolver->udp) DeregisterFD((HOSTHANDLE)Resolver->udp);
-#endif
-
-   if (glResolvers IS Resolver) {
-      glResolvers = Resolver->next;
-   }
-   else {
-      struct dns_resolver *scan;
-      for (scan=glResolvers; scan; scan=scan->next) {
-         if (scan->next IS Resolver) { scan->next = Resolver->next; break; }
-      }
-   }
-
-   OBJECTPTR context = SetContext(glModule);
-   FreeResource(Resolver);
-   SetContext(context);
-}
-
-//***************************************************************************
-
 static void resolve_callback(LARGE ClientData, FUNCTION *Callback, ERROR Error, CSTRING HostName, struct IPAddress *Addresses, LONG TotalAddresses)
 {
+   if (!Callback) return;
    if (Callback->Type IS CALL_STDC) {
       ERROR (*routine)(LARGE, ERROR, CSTRING, struct IPAddress *, LONG);
       OBJECTPTR context = SetContext(Callback->StdC.Context);
@@ -1284,103 +1227,11 @@ static ERROR cache_host(CSTRING HostName, struct addrinfo *Host, struct dns_cach
 
 static BYTE check_machine_name(CSTRING HostName)
 {
-   WORD i;
-   for (i=0; HostName[i]; i++) { // Check if it's a machine name
+   for (LONG i=0; HostName[i]; i++) { // Check if it's a machine name
       if (HostName[i] IS '.') return FALSE;
    }
    return TRUE;
 }
-
-//****************************************************************************
-// Non-Ares DNS callback.
-
-#if defined(_WIN32)
-
-void win_dns_callback(struct dns_resolver *Resolver, ERROR Error, struct hostent *Host)
-{
-   if (Host) {
-      LogF("~win_dns_callback()","Resolved: '%s', Time: %.4fs", Host->h_name, (DOUBLE)(PreciseTime() - Resolver->time) * 0.000001);
-   }
-   else LogF("~win_dns_callback()","Failed to resolve host.  Time: %.4fs", (DOUBLE)(PreciseTime() - Resolver->time) * 0.000001);
-
-   if (!VarLock(glDNS, 0x7fffffff)) {
-      if (Error != ERR_Okay) {
-         LogF("@rk_callback:","Name resolution failure: %s", GetErrorMsg(Error));
-         resolve_callback(Resolver->client_data, &Resolver->callback, Error, (Host) ? Host->h_name : NULL, NULL, 0);
-      }
-      else if (Host) {
-         struct dns_cache *dns;
-         ERROR error = cache_host(NULL, Host, &dns);
-         if (!error) resolve_callback(Resolver->client_data, &Resolver->callback, ERR_Okay, dns->HostName, dns->Addresses, dns->AddressCount);
-         else resolve_callback(Resolver->client_data, &Resolver->callback, error, Host->h_name, NULL, 0);
-      }
-
-      free_resolver(Resolver);
-      VarUnlock(glDNS);
-   }
-
-   LogBack();
-}
-
-#endif
-
-//****************************************************************************
-
-#ifdef USE_ARES
-
-void ares_response(void *Arg, int Status, int Timeouts, struct hostent *Host)
-{
-   struct dns_resolver *Resolver = reinterpret_cast<struct dns_resolver *>(Arg);
-
-   if (Host) {
-      LogF("~ares_response()","Resolved: '%s', Time: %.2fs", Host->h_name, (DOUBLE)(PreciseTime() - Resolver->time) * 0.000001);
-   }
-   else LogF("~ares_response()","Failed to resolve host.  Time: %.2fs", (DOUBLE)(PreciseTime() - Resolver->time) * 0.000001);
-
-   if (!VarLock(glDNS, 0x7fffffff)) {
-      if (Status) {
-         const char *msg;
-         ERROR error = net_ares_error(Status, &msg);
-         LogF("@ares_response","Name resolution failure: %s", msg);
-         resolve_callback(Resolver->client_data, &Resolver->callback, error, (Host) ? Host->h_name : NULL, NULL, 0);
-      }
-      else if (Host) {
-         struct dns_cache *dns;
-         ERROR error = cache_host(NULL, Host, &dns);
-         if (!error) resolve_callback(Resolver->client_data, &Resolver->callback, ERR_Okay, dns->HostName, dns->Addresses, dns->AddressCount);
-      }
-
-      free_resolver(Resolver);
-      VarUnlock(glDNS);
-   }
-
-   LogBack();
-}
-
-#ifdef __linux__
-void register_read_socket(int Socket, void (*Callback)(int, void *), struct dns_resolver *Resolve)
-{
-   RegisterFD(Socket, RFD_READ|RFD_SOCKET, Callback, Resolve);
-}
-
-void register_write_socket(int Socket, void (*Callback)(int, void *), struct dns_resolver *Resolve)
-{
-   RegisterFD(Socket, RFD_WRITE|RFD_SOCKET, Callback, Resolve);
-}
-
-void deregister_fd(int FD)
-{
-   DeregisterFD(FD);
-}
-
-void set_resolver_socket(struct dns_resolver *Resolver, int UDP, int SocketHandle)
-{
-   if (UDP) Resolver->udp = SocketHandle;
-   else Resolver->tcp = SocketHandle;
-}
-#endif
-
-#endif // USE_ARES
 
 //****************************************************************************
 

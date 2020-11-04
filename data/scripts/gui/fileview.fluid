@@ -1364,7 +1364,7 @@ gui.fileview = function(View, Options)
          flags = '!DragDrop',
          requestHandler = function(Clipboard, Requester, Item, Datatypes)
             if not nz(self.path) then -- Do nothing if we are at the root level
-               errorDialog('Drag and Drop Failure', 'Drop and drop from volumes is not supported.');
+               errorDialog('Drag and Drop Failure', 'Drag and drop from volumes is not supported.');
                return
             end
 

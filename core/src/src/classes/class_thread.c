@@ -473,7 +473,7 @@ Use the SetData method prior to activating a thread so that it can be initialise
 able to read the data from the #Data field.
 
 A copy of the provided data buffer will be stored with the thread object, so there is no need to retain the original
-data after this method has returned.  In some cases it may be desirable to store a direct pointer value with no data
+data after this method has returned.  In some cases it may be desirable to store a direct pointer value and bypass the
 copy operation.  To do this, set the Size parameter to zero.
 
 -INPUT-
@@ -565,10 +565,11 @@ static ERROR THREAD_Wait(objThread *Self, struct thWait *Args)
       #ifdef _WIN32
       if (!winWaitThread(Self->prv.Handle, Args->TimeOut)) {
       #else
-      struct timespec timeout;
       APTR result;
-      timeout.tv_sec = time_left / 1000;
-      timeout.tv_nsec = (time_left % 1000) * 1000000; // 1 in 1,000,000,000
+      struct timespec timeout = {
+         .tv_sec = time_left / 1000,
+         .tv_nsec = (time_left % 1000) * 1000000 // 1 in 1,000,000,000
+      };
       if (!pthread_timedjoin_np(Self->prv.PThread, &result, &timeout)) {
       #endif
          __sync_sub_and_fetch(&Self->prv.Waiting, 1);
@@ -631,19 +632,6 @@ static ERROR GET_Data(objThread *Self, APTR *Value, LONG *Elements)
    return ERR_Okay;
 }
 
-static ERROR SET_Data(objThread *Self, APTR Value, LONG Elements)
-{
-   if ((Value) AND (Elements > 0)) {
-      Self->Data = Value;
-      Self->DataSize = Elements;
-   }
-   else {
-      Self->Data = NULL;
-      Self->DataSize = 0;
-   }
-   return ERR_Okay;
-}
-
 /*****************************************************************************
 
 -FIELD-
@@ -702,7 +690,7 @@ static const struct FieldDef clThreadFlags[] = {
 };
 
 static const struct FieldArray clFields[] = {
-   { "Data",      FDF_ARRAY|FDF_BYTE|FDF_R, 0, GET_Data, SET_Data },
+   { "Data",      FDF_ARRAY|FDF_BYTE|FDF_R, 0, GET_Data, NULL },
    { "DataSize",  FD_LONG|FDF_R,       0, NULL, NULL },
    { "StackSize", FDF_LONG|FDF_RW,     0, NULL, NULL },
    { "Error",     FDF_LONG|FDF_R,      0, NULL, NULL },
