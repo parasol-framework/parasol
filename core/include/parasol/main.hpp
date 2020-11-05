@@ -92,7 +92,7 @@ class Log { // C++ wrapper for Parasol's log functionality
          va_end(arg);
       }
 
-      void error(CSTRING Message, ...) {
+      void error(CSTRING Message, ...) { // NB: Use for messages intended for the user, not the developer
          va_list arg;
          va_start(arg, Message);
          VLogF(VLF_ERROR, header, Message, arg);

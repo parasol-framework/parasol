@@ -650,14 +650,16 @@ Failed:
 
 static ERROR netResolveName(CSTRING HostName, LONG Flags, FUNCTION *Callback, LARGE ClientData)
 {
+   parasol::Log log(__FUNCTION__);
+
    if (!HostName) return log.error(ERR_NullArgs);
 
-   FMSG("ResolveName()","Host: %s, Flags: $%.8x", HostName, Flags);
+   log.trace("Host: %s, Flags: $%.8x", HostName, Flags);
 
    { // Use the cache if available.
       struct dns_cache *dns;
       if (!VarGet(glDNS, HostName, &dns, NULL)) {
-         FMSG("ResolveName","Cache hit for host %s", dns->HostName);
+         log.trace("Cache hit for host %s", dns->HostName);
          resolve_callback(ClientData, Callback, ERR_Okay, dns->HostName, dns->Addresses, dns->AddressCount);
          return ERR_Okay;
       }
@@ -772,18 +774,18 @@ static ERROR netSetSSL(objNetSocket *Socket, ...)
    ERROR error;
    va_list list;
 
+   parasol::Log log(__FUNCTION__);
+
    if (!Socket) return log.error(ERR_NullArgs);
 
    va_start(list, Socket);
    while ((tagid = va_arg(list, LONG))) {
-      FMSG("~SetSSL","Command: %d", tagid);
+      log.traceBranch("Command: %d", tagid);
 
       switch(tagid) {
          case NSL_CONNECT:
             value = va_arg(list, LONG);
-            if (value) {
-               // Initiate an SSL connection on this socket
-
+            if (value) { // Initiate an SSL connection on this socket
                if ((error = sslSetup(Socket)) IS ERR_Okay) {
                   sslLinkSocket(Socket);
                   error = sslConnect(Socket);
@@ -791,19 +793,14 @@ static ERROR netSetSSL(objNetSocket *Socket, ...)
 
                if (error) {
                   va_end(list);
-                  LOGRETURN();
                   return error;
                }
             }
-            else {
-               // Disconnect SSL (i.e. go back to unencrypted mode)
-
+            else { // Disconnect SSL (i.e. go back to unencrypted mode)
                sslDisconnect(Socket);
             }
             break;
       }
-
-      LOGRETURN();
    }
 
    va_end(list);
@@ -1044,10 +1041,9 @@ static void resolve_callback(LARGE ClientData, FUNCTION *Callback, ERROR Error, 
    if (!Callback) return;
    if (Callback->Type IS CALL_STDC) {
       ERROR (*routine)(LARGE, ERROR, CSTRING, struct IPAddress *, LONG);
-      OBJECTPTR context = SetContext(Callback->StdC.Context);
-         routine = reinterpret_cast<ERROR (*)(LARGE, ERROR, CSTRING, struct IPAddress *, LONG)>(Callback->StdC.Routine);
-         routine(ClientData, Error, HostName, Addresses, TotalAddresses);
-      SetContext(context);
+      parasol::SwitchContext(Callback);
+      routine = reinterpret_cast<ERROR (*)(LARGE, ERROR, CSTRING, struct IPAddress *, LONG)>(Callback->StdC.Routine);
+      routine(ClientData, Error, HostName, Addresses, TotalAddresses);
    }
    else if (Callback->Type IS CALL_SCRIPT) {
       OBJECTPTR script;

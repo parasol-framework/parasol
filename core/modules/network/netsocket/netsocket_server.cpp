@@ -35,7 +35,7 @@ static void server_client_connect(SOCKET_HANDLE FD, objNetSocket *Self)
             struct sockaddr_in6 addr;
             socklen_t len = sizeof(addr);
             clientfd = accept(FD, (struct sockaddr *)&addr, &len);
-            if (clientfd IS NOHANDLE) { LOGRETURN(); return; }
+            if (clientfd IS NOHANDLE) return;
             ip[0] = addr.sin6_addr.s6_addr[0];
             ip[1] = addr.sin6_addr.s6_addr[1];
             ip[2] = addr.sin6_addr.s6_addr[2];
@@ -49,7 +49,7 @@ static void server_client_connect(SOCKET_HANDLE FD, objNetSocket *Self)
          struct sockaddr_in6 addr;
          socklen_t len = sizeof(addr);
          clientfd = accept(FD, (struct sockaddr *)&addr, &len);
-         if (clientfd IS NOHANDLE) { LOGRETURN(); return; }
+         if (clientfd IS NOHANDLE) return;
          ip[0] = addr.sin6_addr.s6_addr[0];
          ip[1] = addr.sin6_addr.s6_addr[1];
          ip[2] = addr.sin6_addr.s6_addr[2];

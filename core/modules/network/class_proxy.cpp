@@ -58,9 +58,9 @@ Okay: Proxy deleted.
 
 static ERROR PROXY_Delete(objProxy *Self, APTR Void)
 {
-   if ((!Self->Section[0]) OR (!Self->Record)) return PostError(ERR_Failed);
+   if ((!Self->Section[0]) OR (!Self->Record)) return log.error(ERR_Failed);
 
-   LogBranch(NULL);
+   log.branch("");
 
    if (Self->Host) {
       #ifdef _WIN32
@@ -77,7 +77,6 @@ static ERROR PROXY_Delete(objProxy *Self, APTR Void)
       acSaveSettings(glConfig);
    }
 
-   LogReturn();
    return ERR_Okay;
 }
 
@@ -202,7 +201,7 @@ static ERROR PROXY_Find(objProxy *Self, struct prxFind *Args)
                }
 
                if ((!taskGetEnv(task, HKEY_PROXY "ProxyServer", &servers)) AND (servers[0])) {
-                  LogMsg("Host has defined default proxies: %s", servers);
+                  log.msg("Host has defined default proxies: %s", servers);
 
                   total = 0;
                   port  = 0;
@@ -287,7 +286,7 @@ static ERROR PROXY_Find(objProxy *Self, struct prxFind *Args)
                   }
                }
          }
-         else LogMsg("Host does not have proxies enabled (registry setting: %s)", HKEY_PROXY);
+         else log.msg("Host does not have proxies enabled (registry setting: %s)", HKEY_PROXY);
 
       #endif
 
@@ -406,14 +405,14 @@ static ERROR find_proxy(objProxy *Self)
          if ((match) AND (!cfgReadValue(glConfig, glConfig->Entries[i].Section, "NetworkFilter", &str))) {
             // Do any of the currently connected networks match with the filter?
 
-            LogErrorMsg("Network filters not supported yet.");
+            log.error("Network filters not supported yet.");
 
          }
 
          if ((match) AND (!cfgReadValue(glConfig, glConfig->Entries[i].Section, "GatewayFilter", &str))) {
             // Do any connected gateways match with the filter?
 
-            LogErrorMsg("Gateway filters not supported yet.");
+            log.error("Gateway filters not supported yet.");
 
          }
 
@@ -486,33 +485,25 @@ static ERROR PROXY_SaveSettings(objProxy *Self, APTR Void)
    objFile *file;
    ERROR error;
 
-   if ((!Self->Server) OR (!Self->ServerPort)) return PostError(ERR_FieldNotSet);
+   if ((!Self->Server) OR (!Self->ServerPort)) return log.error(ERR_FieldNotSet);
 
-   LogBranch("Host: %d", Self->Host);
+   log.branch("Host: %d", Self->Host);
 
    if (Self->Host) {
-      // Proxy is hosted
-
       #ifdef _WIN32
-         OBJECTPTR task;
+         OBJECTPTR task = CurrentTask();
 
-         task = CurrentTask();
-
-         if (Self->Enabled) {
-            taskSetEnv(task, HKEY_PROXY "ProxyEnable", "1");
-         }
+         if (Self->Enabled) taskSetEnv(task, HKEY_PROXY "ProxyEnable", "1");
          else taskSetEnv(task, HKEY_PROXY "ProxyEnable", "0");
 
          if ((!Self->Server) OR (!Self->Server[0])) {
             MSG("Clearing proxy server value.");
-
             taskSetEnv(task, HKEY_PROXY "ProxyServer", "");
          }
          else if (Self->Port IS 0) {
             // Proxy is for all ports
 
             char buffer[120];
-
             StrFormat(buffer, sizeof(buffer), "%s:%d", Self->Server, Self->ServerPort);
 
             MSG("Changing all-port proxy to: %s", buffer);
@@ -521,11 +512,10 @@ static ERROR PROXY_SaveSettings(objProxy *Self, APTR Void)
          }
          else {
             char buffer[120];
-            CSTRING portname;
             STRING newlist;
             LONG index, end, len;
 
-            portname = NULL;
+            CSTRING portname = NULL;
             switch(Self->Port) {
                case 21: portname = "ftp"; break;
                case 80: portname = "http"; break;
@@ -566,32 +556,21 @@ static ERROR PROXY_SaveSettings(objProxy *Self, APTR Void)
                   // Save the new proxy list
 
                   taskSetEnv(task, HKEY_PROXY "ProxyServer", newlist);
-
                   FreeResource(newlist);
                }
             }
-            else LogErrorMsg("Windows' host proxy settings do not support port %d", Self->Port);
+            else log.error("Windows' host proxy settings do not support port %d", Self->Port);
          }
 
       #endif
 
-      LogReturn();
       return ERR_Okay;
    }
 
-   if (!CreateObject(ID_CONFIG, 0, &config,
-         FID_Path|TSTR,  "user:config/network/proxies.cfg",
-         TAGEND)) {
-
-      if (Self->Section[0]) {
-         cfgDeleteSection(config, Self->Section);
-      }
-      else {
-         // This is a new proxy
-
-         LONG id;
-
-         id = 0;
+   if (!CreateObject(ID_CONFIG, 0, &config, FID_Path|TSTR,  "user:config/network/proxies.cfg", TAGEND)) {
+      if (Self->Section[0]) cfgDeleteSection(config, Self->Section);
+      else { // This is a new proxy
+         LONG id = 0;
          cfgReadInt(config, "ID", "Value", &id);
          id = id + 1;
          cfgWriteInt(config, "ID", "Value", id);
@@ -625,7 +604,6 @@ static ERROR PROXY_SaveSettings(objProxy *Self, APTR Void)
    }
    else error = ERR_CreateObject;
 
-   LogReturn();
    return error;
 }
 
@@ -799,7 +777,7 @@ static ERROR SET_ServerPort(objProxy *Self, LONG Value)
       Self->ServerPort = Value;
       return ERR_Okay;
    }
-   else return PostError(ERR_OutOfRange);
+   else return log.error(ERR_OutOfRange);
 }
 
 /****************************************************************************
@@ -848,12 +826,13 @@ static ERROR SET_Record(objProxy *Self, LONG Value)
 
 static ERROR get_record(objProxy *Self)
 {
-   CSTRING str;
+   parasol::Log log(__FUNCTION__);
 
-   FMSG("get_record()","Section: %s", Self->Section);
+   log.trace("Section: %s", Self->Section);
 
    Self->Record = StrToInt(Self->Section);
 
+   CSTRING str;
    if (!cfgReadValue(glConfig, Self->Section, "Server", &str))   {
       Self->Server = StrClone(str);
       if (!cfgReadValue(glConfig, Self->Section, "NetworkFilter", &str)) Self->NetworkFilter = StrClone(str);
@@ -867,7 +846,7 @@ static ERROR get_record(objProxy *Self)
       if (!cfgReadInt(glConfig, Self->Section, "Host", &Self->Host));
       return ERR_Okay;
    }
-   else return PostError(ERR_NotFound);
+   else return log.error(ERR_NotFound);
 }
 
 /***************************************************************************/

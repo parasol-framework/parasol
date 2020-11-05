@@ -111,9 +111,8 @@ restart:
       if (Self->Incoming.Type IS CALL_STDC) {
          ERROR (*routine)(objNetSocket *);
          if ((routine = reinterpret_cast<ERROR (*)(objNetSocket *)>(Self->Incoming.StdC.Routine))) {
-            OBJECTPTR context = SetContext(Self->Incoming.StdC.Context);
-               error = routine(Self);
-            SetContext(context);
+            parasol::SwitchContext(&Self->Incoming);
+            error = routine(Self);
          }
       }
       else if (Self->Incoming.Type IS CALL_SCRIPT) {
@@ -241,9 +240,8 @@ static void client_server_outgoing(SOCKET_HANDLE Void, struct rkNetSocket *Data)
          if (Self->Outgoing.Type IS CALL_STDC) {
             ERROR (*routine)(objNetSocket *);
             if ((routine = reinterpret_cast<ERROR (*)(objNetSocket *)>(Self->Outgoing.StdC.Routine))) {
-               OBJECTPTR context = SetContext(Self->Outgoing.StdC.Context);
-                  error = routine(Self);
-               SetContext(context);
+               parasol::SwitchContext(&Self->Outgoing);
+               error = routine(Self);
             }
          }
          else if (Self->Outgoing.Type IS CALL_SCRIPT) {

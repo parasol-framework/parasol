@@ -1140,10 +1140,9 @@ static ERROR SET_State(objNetSocket *Self, LONG Value)
 
          if (Self->Feedback.Type IS CALL_STDC) {
             void (*routine)(objNetSocket *, objClientSocket *, LONG);
-            OBJECTPTR context = SetContext(Self->Feedback.StdC.Context);
-               routine = reinterpret_cast<void (*)(objNetSocket *, objClientSocket *, LONG)>(Self->Feedback.StdC.Routine);
-               routine(Self, NULL, Self->State);
-            SetContext(context);
+            parasol::SwitchContext(&Self->Feedback);
+            routine = reinterpret_cast<void (*)(objNetSocket *, objClientSocket *, LONG)>(Self->Feedback.StdC.Routine);
+            routine(Self, NULL, Self->State);
          }
          else if (Self->Feedback.Type IS CALL_SCRIPT) {
             OBJECTPTR script;
@@ -1334,7 +1333,7 @@ void win32_netresponse(struct Head *SocketObject, SOCKET_HANDLE SocketHandle, LO
    log.traceBranch("[%d:%d:%p], %s, Error %d, InUse: %d, WinRecursion: %d", Socket->Head.UniqueID, SocketHandle, ClientSocket, msg[Message], Error, Socket->InUse, Socket->WinRecursion);
    #endif
 
-   OBJECTPTR context = SetContext(Socket);
+   parasol::SwitchContext(Socket);
 
    Socket->InUse++;
 
@@ -1345,7 +1344,6 @@ void win32_netresponse(struct Head *SocketObject, SOCKET_HANDLE SocketHandle, LO
          if (Socket->WinRecursion) {
             log.trace("Recursion detected (read request)");
             Socket->InUse--;
-            SetContext(context);
             return;
          }
          else {
@@ -1369,7 +1367,6 @@ void win32_netresponse(struct Head *SocketObject, SOCKET_HANDLE SocketHandle, LO
          if (Socket->WinRecursion) {
             log.trace("Recursion detected (write request)");
             Socket->InUse--;
-            SetContext(context);
             return;
          }
          else {
@@ -1421,7 +1418,6 @@ void win32_netresponse(struct Head *SocketObject, SOCKET_HANDLE SocketHandle, LO
    }
 
    Socket->InUse--;
-   SetContext(context);
 }
 #endif
 
