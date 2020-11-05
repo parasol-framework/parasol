@@ -494,7 +494,7 @@ static ERROR lock_graphics_active(CSTRING Caller)
       if ((glEGLState != EGL_INITIALISED) OR (glEGLDisplay IS EGL_NO_DISPLAY)) {
          pthread_mutex_unlock(&glGraphicsMutex);
          //FMSG("lock_graphics","EGL not initialised.");
-         //STEP();
+         //LOGRETURN();
          return ERR_NotInitialised;
       }
 
@@ -511,7 +511,7 @@ static ERROR lock_graphics_active(CSTRING Caller)
    }
    else {
       LogF("@lock_graphics","Failed to get lock for %s.  Locked by %s.  Error: %s", Caller, glLastLock, strerror(errno));
-      //STEP();
+      //LOGRETURN();
       return ERR_TimeOut;
    }
 }
@@ -526,7 +526,7 @@ static void unlock_graphics(void)
       }
    }
    pthread_mutex_unlock(&glGraphicsMutex);
-   //STEP();
+   //LOGRETURN();
 }
 
 #endif
@@ -1667,7 +1667,7 @@ static ERROR gfxGetInputMsg(struct dcInputReady *Input, LONG Flags, struct Input
          // Subscriber is up to date with its messages
          in->NextIndex = glInput->IndexCounter;
          ReleaseMemory(list);
-         //STEP();
+         //LOGRETURN();
          return ERR_Finished;
       }
 
@@ -1682,7 +1682,7 @@ static ERROR gfxGetInputMsg(struct dcInputReady *Input, LONG Flags, struct Input
       *Msg = glInput->Msgs + i;
 
       ReleaseMemory(list);
-      //STEP();
+      //LOGRETURN();
       return ERR_Okay;
    }
    else return FuncError(ERR_AccessMemory);
@@ -2087,12 +2087,12 @@ static ERROR gfxSetCursor(OBJECTID ObjectID, LONG Flags, LONG CursorID, CSTRING 
          pointer->BufferObject = ObjectID;
          pointer->BufferQueue  = GetResource(RES_MESSAGE_QUEUE);
          ReleaseObject(pointer);
-         STEP();
+         LOGRETURN();
          return ERR_Okay;
       }
       else {
          ReleaseObject(pointer);
-         STEP();
+         LOGRETURN();
          return ERR_LockFailed; // The pointer is locked by someone else
       }
    }
@@ -2105,7 +2105,7 @@ static ERROR gfxSetCursor(OBJECTID ObjectID, LONG Flags, LONG CursorID, CSTRING 
    if (Flags & CRF_NO_BUTTONS) {
       if ((pointer->Buttons[0].LastClicked) OR (pointer->Buttons[1].LastClicked) OR (pointer->Buttons[2].LastClicked)) {
          ReleaseObject(pointer);
-         STEP();
+         LOGRETURN();
          return ERR_NothingDone;
       }
    }
@@ -2213,7 +2213,7 @@ static ERROR gfxSetCursor(OBJECTID ObjectID, LONG Flags, LONG CursorID, CSTRING 
    pointer->MessageQueue = GetResource(RES_MESSAGE_QUEUE);
 
    ReleaseObject(pointer);
-   STEP();
+   LOGRETURN();
    return ERR_Okay;
 }
 
@@ -5934,7 +5934,7 @@ void winDragDropFromHost_Drop(int SurfaceID, char *Datatypes)
       gfxReleasePointer(pointer);
    }
 
-   LogBack();
+   LogReturn();
 #endif
 }
 #endif
@@ -5956,7 +5956,7 @@ static ERROR init_egl(void)
 
    if (glEGLDisplay != EGL_NO_DISPLAY) {
       LogF("init_egl","EGL display is already initialised.");
-      LogBack();
+      LogReturn();
       return ERR_Okay;
    }
 
@@ -6004,13 +6004,13 @@ static ERROR init_egl(void)
    }
    else {
       PostError(ERR_SystemCall);
-      LogBack();
+      LogReturn();
       return ERR_SystemCall;
    }
 
    if (eglMakeCurrent(glEGLDisplay, glEGLSurface, glEGLSurface, glEGLContext) == EGL_FALSE) {
       PostError(ERR_SystemCall);
-      LogBack();
+      LogReturn();
       return ERR_SystemCall;
    }
 
@@ -6054,7 +6054,7 @@ static ERROR init_egl(void)
 
    glEGLState = EGL_INITIALISED;
 
-   LogBack();
+   LogReturn();
    return ERR_Okay;
 }
 
@@ -6083,7 +6083,7 @@ static void refresh_display_from_egl(objDisplay *Self)
       }
    }
 
-   STEP();
+   LOGRETURN();
 }
 
 /*****************************************************************************
@@ -6116,7 +6116,7 @@ static void free_egl(void)
    else LogError(ERH_Display, ERR_LockFailed);
 
    LogF("free_egl","EGL successfully terminated.");
-   LogBack();
+   LogReturn();
 }
 #endif
 

@@ -422,7 +422,7 @@ static ERROR make_struct(lua_State *Lua, CSTRING StructName, CSTRING Sequence)
    ERROR error;
    if ((error = generate_structdef(Lua->Script, StructName, Sequence, buffer + sizeof(struct structentry), &offset,
          &total_fields, &buf_end)) != ERR_Okay) {
-      LogBack();
+      LogReturn();
       if (error IS ERR_BufferOverflow) luaL_argerror(Lua, 1, "String too long - buffer overflow");
       else if (error IS ERR_Syntax) luaL_error(Lua, "Unsupported struct character in definition: %s", Sequence);
       else luaL_error(Lua, "Failed to make struct for %s, error: %s", StructName, GetErrorMsg(error));
@@ -442,7 +442,7 @@ static ERROR make_struct(lua_State *Lua, CSTRING StructName, CSTRING Sequence)
 
    FMSG("make_struct","Struct %s has %d fields, size %d, ref %p", StructName, total_fields, offset, entry);
 
-   LogBack();
+   LogReturn();
 
    if (!VarSet(prv->Structs, StructName, entry, sizeof(struct structentry) + buf_end)) {
       luaL_error(Lua, GetErrorMsg(ERR_AllocMemory));

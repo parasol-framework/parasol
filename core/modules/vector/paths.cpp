@@ -90,7 +90,7 @@ static void gen_vector_path(objVector *Vector)
          view->vpViewWidth, view->vpViewHeight, &view->vpAlignX, &view->vpAlignY,
          &view->vpXScale, &view->vpYScale);
 
-      STEP();
+      LOGRETURN();
 
       // FinalX/Y values have no current use with respect to viewports.
 
@@ -168,7 +168,7 @@ static void gen_vector_path(objVector *Vector)
 
       if (!Vector->BasePath) {
          Vector->BasePath = new (std::nothrow) agg::path_storage;
-         if (!Vector->BasePath) { STEP(); SetContext(context); return; }
+         if (!Vector->BasePath) { LOGRETURN(); SetContext(context); return; }
          Vector->Dirty |= RC_BASE_PATH; // Since BasePath is brand new, ensure that the path is generated.
       }
 
@@ -250,7 +250,7 @@ static void gen_vector_path(objVector *Vector)
       if ((Vector->FillColour.Alpha > 0) or (Vector->FillGradient) or (Vector->FillImage) or (Vector->FillPattern)) {
          if (!Vector->FillRaster) {
             Vector->FillRaster = new (std::nothrow) agg::rasterizer_scanline_aa<>;
-            if (!Vector->FillRaster) { STEP(); SetContext(context); return; }
+            if (!Vector->FillRaster) { LOGRETURN(); SetContext(context); return; }
          }
          else Vector->FillRaster->reset();
 
@@ -271,7 +271,7 @@ static void gen_vector_path(objVector *Vector)
 
          if (!Vector->StrokeRaster) {
             Vector->StrokeRaster = new (std::nothrow) agg::rasterizer_scanline_aa<>;
-            if (!Vector->StrokeRaster) { STEP(); SetContext(context); return; }
+            if (!Vector->StrokeRaster) { LOGRETURN(); SetContext(context); return; }
          }
          else Vector->StrokeRaster->reset();
 
@@ -313,7 +313,7 @@ static void gen_vector_path(objVector *Vector)
    }
    else LogF("@gen_vector_path()","Target vector is not a shape.");
 
-   STEP();
+   LOGRETURN();
    SetContext(context);
 }
 

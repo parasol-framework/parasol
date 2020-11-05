@@ -100,7 +100,7 @@ static ERROR VECTOR_ClearTransforms(objVector *Self, APTR Void)
       Self->Transforms = NULL;
    }
 
-   STEP();
+   LOGRETURN();
    return ERR_Okay;
 }
 

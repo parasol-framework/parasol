@@ -63,30 +63,6 @@ function address_resolved(ClientData, Error, HostName, Addresses)
 end
 
 //=====================================================================================================================
-// In this test, a time-out is expected because it will only wait 1 millisecond (nb: unless the Network module is
-// compiled with asynchronous resolution, in which case the name is resolved before ResolveName() returns).
-// This test doesn't work on Windows due to unreliable timeout management at a micro level.
-
-function testTimeOut()
-   local state = mSys.GetSystemState()
-   if (state.platform == 'Linux') then
-      glTotalResolved = 0
-
-      for k,v in pairs(glDomains) do
-         print("Resolving " .. v)
-         mNet.ResolveName(v, 0, name_resolved, 0)
-      end
-
-      if (glTotalResolved != #glDomains) then
-         local elapsed, err = processMessages(1)
-         if (err != ERR_TimeOut) then error("Expected time-out did not occur.") end
-      else
-         print('This test will be skipped.')
-      end
-   end
-end
-
-//=====================================================================================================================
 // This test resolves each name more than once.  The expected response is for the callback to be called multiple times
 // for the same host.  In the log output you may see a thread being created for the first resolve, then the second call
 // will hit the local DNS cache and return immediately.
@@ -163,7 +139,7 @@ end
 //=====================================================================================================================
 
    return {
-      tests = { 'testDuplication', 'testTimeOut', 'testNameResolution', 'testNameResolutionAsync', 'testAddressResolution' },
+      tests = { 'testDuplication', 'testNameResolution', 'testNameResolutionAsync', 'testAddressResolution' },
       init = function()
          //glDomains = { "amazon.co.uk" }
          glDomains = { "google.com", "parasol.ws", "amazon.co.uk", "stackoverflow.com", "theguardian.com", "www.bbc.co.uk" }

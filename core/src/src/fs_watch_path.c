@@ -233,7 +233,7 @@ void path_monitor(HOSTHANDLE FD, objFile *File)
    }
 
    recursion = FALSE;
-   LogBack();
+   LogReturn();
    AdjustLogLevel(-2);
 #endif
 }
@@ -316,7 +316,7 @@ void path_monitor(HOSTHANDLE Handle, objFile *File)
 
    recursion = FALSE;
 
-   LogBack();
+   LogReturn();
    AdjustLogLevel(-2);
 }
 

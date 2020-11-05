@@ -268,7 +268,7 @@ static int fcmd_processMessages(lua_State *Lua)
 
    FMSG("~","Collecting garbage.");
       lua_gc(Lua, LUA_GCCOLLECT, 0); // Run the garbage collector
-   STEP();
+   LOGRETURN();
 
    if (recursion) return 0;
 
@@ -312,7 +312,7 @@ static void receive_event(struct eventsub *Event, APTR Info, LONG InfoSize)
 
    FMSG("~","Collecting garbage.");
       lua_gc(prv->Lua, LUA_GCCOLLECT, 0); // Run the garbage collector
-   STEP();
+   LOGRETURN();
 }
 
 //****************************************************************************
@@ -830,7 +830,7 @@ static int fcmd_exec(lua_State *Lua)
          }
          else error_msg = lua_tostring(prv->Lua, -1);
 
-      LogBack();
+      LogReturn();
       if (error_msg) luaL_error(Lua, error_msg);
    }
    else luaL_argerror(Lua, 1, "Fluid statement required.");

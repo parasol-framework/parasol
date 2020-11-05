@@ -842,7 +842,7 @@ public:
       }
 
       #ifdef DBG_DRAW
-         STEP();
+         LOGRETURN();
       #endif
    }
 
@@ -894,7 +894,7 @@ private:
                else MSG("Failed to set Vector reference on Filter.");
 
             #ifdef DBG_DRAW
-               STEP();
+               LOGRETURN();
             #endif
             continue;
          }
@@ -966,7 +966,7 @@ private:
                }
                else FMSG("draw_viewport","Clipping boundary results in invisible viewport.");
 
-               STEP();
+               LOGRETURN();
 
                mRenderBase.clip_box(xmin, ymin, xmax, ymax);  // Put things back to the way they were
             }
@@ -992,7 +992,7 @@ private:
                   // as definitions to be referenced by other objects (e.g. vectors being used as morph paths).
 
                   #ifdef DBG_DRAW
-                     STEP();
+                     LOGRETURN();
                   #endif
                   return;
                }
@@ -1089,7 +1089,7 @@ private:
                state.mClipMask = saved_mask;
 
                #ifdef DBG_DRAW
-                  STEP();
+                  LOGRETURN();
                #endif
             }
             else if (shape->Child) {
@@ -1113,7 +1113,7 @@ private:
          }
 
          #ifdef DBG_DRAW
-            STEP();
+            LOGRETURN();
          #endif
       }
    }
@@ -1194,6 +1194,6 @@ void SimpleVector::DrawPath(objBitmap *Bitmap, DOUBLE StrokeWidth, OBJECTPTR Str
    }
 
    #ifdef DBG_DRAW
-      STEP();
+      LOGRETURN();
    #endif
 }

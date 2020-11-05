@@ -77,7 +77,7 @@ static ERROR PROXY_Delete(objProxy *Self, APTR Void)
       acSaveSettings(glConfig);
    }
 
-   LogBack();
+   LogReturn();
    return ERR_Okay;
 }
 
@@ -575,7 +575,7 @@ static ERROR PROXY_SaveSettings(objProxy *Self, APTR Void)
 
       #endif
 
-      LogBack();
+      LogReturn();
       return ERR_Okay;
    }
 
@@ -625,7 +625,7 @@ static ERROR PROXY_SaveSettings(objProxy *Self, APTR Void)
    }
    else error = ERR_CreateObject;
 
-   LogBack();
+   LogReturn();
    return error;
 }
 

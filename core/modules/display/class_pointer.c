@@ -287,7 +287,7 @@ static ERROR PTR_DataFeed(objPointer *Self, struct acDataFeed *Args)
             else if (input->Flags & JTYPE_BUTTON) process_ptr_button(Self, input);
             else process_ptr_movement(Self, input);
 
-            //STEP();
+            //LOGRETURN();
          }
       }
    }
@@ -395,7 +395,7 @@ static void process_ptr_button(objPointer *Self, struct dcDeviceInput *Input)
       //   LogF("~","Surface %d is modal, button click on %d cancelled.", modal_id, Self->OverObjectID);
       //   DelayMsg(AC_MoveToFront, modal_id, NULL);
       //   DelayMsg(AC_Focus, modal_id, NULL);
-      //   LogBack();
+      //   LogReturn();
       //}
 
       //if (!modal_id) {
@@ -1121,7 +1121,7 @@ static ERROR PTR_Show(objPointer *Self, APTR Void)
 
    Self->Flags |= PF_VISIBLE;
 
-   LogBack();
+   LogReturn();
    return ERR_Okay;
 }
 
@@ -1484,7 +1484,7 @@ static BYTE get_over_object(objPointer *Self)
          }
          Self->OverObjectID = li_objectid;
 
-         STEP();
+         LOGRETURN();
       }
 
       Self->OverX = Self->X - li_left;
@@ -1689,7 +1689,7 @@ static ERROR init_mouse_driver(void) {
          }
       }
 
-      LogBack();
+      LogReturn();
    }
 
    // Allocate the surface for software based cursor images

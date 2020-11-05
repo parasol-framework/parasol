@@ -1746,7 +1746,7 @@ struct CoreBase {
    ERROR (*_SetFields)(APTR, ...);
    ERROR (*_SetFieldEval)(APTR, CSTRING, CSTRING);
    ERROR (*_SetName)(APTR, CSTRING);
-   void (*_LogBack)(void);
+   void (*_LogReturn)(void);
    ERROR (*_StrCompare)(CSTRING, CSTRING, LONG, LONG);
    ERROR (*_SubscribeAction)(APTR, LONG);
    ERROR (*_SubscribeFeed)(APTR);
@@ -1940,7 +1940,7 @@ struct CoreBase {
 #define SetFields(...) (CoreBase->_SetFields)(__VA_ARGS__)
 #define SetFieldEval(...) (CoreBase->_SetFieldEval)(__VA_ARGS__)
 #define SetName(...) (CoreBase->_SetName)(__VA_ARGS__)
-#define LogBack(...) (CoreBase->_LogBack)(__VA_ARGS__)
+#define LogReturn(...) (CoreBase->_LogReturn)(__VA_ARGS__)
 #define StrCompare(...) (CoreBase->_StrCompare)(__VA_ARGS__)
 #define SubscribeAction(...) (CoreBase->_SubscribeAction)(__VA_ARGS__)
 #define SubscribeFeed(...) (CoreBase->_SubscribeFeed)(__VA_ARGS__)
@@ -3311,9 +3311,9 @@ INLINE FIELD ResolveField(CSTRING Field) {
 
 #endif // PRV_CORE
 
-INLINE ERROR LogBackError(LONG Header, ERROR Code) {
+INLINE ERROR LogReturnError(LONG Header, ERROR Code) {
    LogError(Header, Code);
-   LogBack();
+   LogReturn();
    return Code;
 }
 

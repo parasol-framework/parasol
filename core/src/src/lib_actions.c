@@ -1122,7 +1122,7 @@ ERROR ActionThread(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters, FUNCTIO
 
    if (error) __sync_sub_and_fetch(&Object->ThreadPending, 1);
 
-   STEP();
+   LOGRETURN();
    return error;
 }
 
@@ -1775,7 +1775,7 @@ ERROR MGR_Free(OBJECTPTR Object, APTR Void)
             LogMsg("Object will be destroyed despite being in use.");
          }
          else {
-            LogBack();
+            LogReturn();
             return ERR_InUse|ERF_Notified;
          }
       }
@@ -1790,7 +1790,7 @@ ERROR MGR_Free(OBJECTPTR Object, APTR Void)
                LogMsg("Object will be destroyed despite being in use.");
             }
             else {
-               LogBack();
+               LogReturn();
                return ERR_InUse|ERF_Notified;
             }
          }
@@ -1880,7 +1880,7 @@ ERROR MGR_Free(OBJECTPTR Object, APTR Void)
       FreeResource(Object);
    }
 
-   LogBack();
+   LogReturn();
    return ERR_Okay|ERF_Notified;  // On returning we set the ERF_Notified flag to prevent Action() from trying to interact with the Object->Stats structure (which no longer exists after the object memory is freed).
 }
 
@@ -1926,7 +1926,7 @@ ERROR MGR_Init(OBJECTPTR Object, APTR Void)
          if (!error) set_object_flags(Object, Object->Flags|NF_INITIALISED);
       }
 
-      LogBack();
+      LogReturn();
       return error;
    }
    else {
@@ -1959,7 +1959,7 @@ ERROR MGR_Init(OBJECTPTR Object, APTR Void)
                   Object->Flags |= NF_RECLASSED; // This flag indicates that the object originally belonged to the base-class
                }
 
-               LogBack();
+               LogReturn();
                return ERR_Okay;
             }
 
@@ -1970,7 +1970,7 @@ ERROR MGR_Init(OBJECTPTR Object, APTR Void)
             else if (error != ERR_NoSupport) break;
          }
          else {
-            LogBack();
+            LogReturn();
             return ERR_Okay;
          }
 
@@ -2025,12 +2025,12 @@ ERROR MGR_Init(OBJECTPTR Object, APTR Void)
                      if (!(Object->Flags & NF_PUBLIC)) { // Increase the open count of the sub-class
                         Object->Class->OpenCount++;
                      }
-                     LogBack();
+                     LogReturn();
                      return ERR_Okay;
                   }
                }
                else {
-                  LogBack();
+                  LogReturn();
                   return ERR_Okay;
                }
             }
@@ -2043,7 +2043,7 @@ ERROR MGR_Init(OBJECTPTR Object, APTR Void)
       Object->SubID = baseclass->SubClassID;
    }
 
-   LogBack();
+   LogReturn();
    return error;
 }
 

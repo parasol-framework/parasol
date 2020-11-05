@@ -170,11 +170,11 @@ retry:
       Store->TableSize = new_size;
       free(old);
 
-      STEP();
+      LOGRETURN();
       return ERR_Okay;
    }
    else {
-      STEP();
+      LOGRETURN();
       return ERR_AllocMemory;
    }
 }
@@ -303,7 +303,7 @@ ERROR VarCopy(struct KeyStore *Source, struct KeyStore *Dest)
             else if (hm_put(Dest, clone) < 0) {
                if (Source->Flags & KSF_THREAD_SAFE) UnlockMutex(Source->Mutex);
                if (Dest->Flags & KSF_THREAD_SAFE) UnlockMutex(Dest->Mutex);
-               STEP();
+               LOGRETURN();
                return ERR_AllocMemory;
             }
          }
@@ -314,21 +314,21 @@ ERROR VarCopy(struct KeyStore *Source, struct KeyStore *Dest)
          else if (hm_put(Dest, clone) < 0) {
             if (Source->Flags & KSF_THREAD_SAFE) UnlockMutex(Source->Mutex);
             if (Dest->Flags & KSF_THREAD_SAFE) UnlockMutex(Dest->Mutex);
-            STEP();
+            LOGRETURN();
             return ERR_AllocMemory;
          }
       }
       else {
          if (Source->Flags & KSF_THREAD_SAFE) UnlockMutex(Source->Mutex);
          if (Dest->Flags & KSF_THREAD_SAFE) UnlockMutex(Dest->Mutex);
-         STEP();
+         LOGRETURN();
          return ERR_AllocMemory;
       }
    }
 
    if (Source->Flags & KSF_THREAD_SAFE) UnlockMutex(Source->Mutex);
    if (Dest->Flags & KSF_THREAD_SAFE) UnlockMutex(Dest->Mutex);
-   STEP();
+   LOGRETURN();
    return ERR_Okay;
 }
 
@@ -367,7 +367,7 @@ ERROR VarGet(struct KeyStore *Store, CSTRING Name, APTR *Data, LONG *Size)
    if ((ki = hm_get(Store, Name)) >= 0) {
       if (CHECK_DEAD_KEY(Store->Data[ki])) {
          if (Store->Flags & KSF_THREAD_SAFE) UnlockMutex(Store->Mutex);
-         STEP();
+         LOGRETURN();
          return ERR_DoesNotExist;
       }
 
@@ -375,12 +375,12 @@ ERROR VarGet(struct KeyStore *Store, CSTRING Name, APTR *Data, LONG *Size)
       if (Size) *Size = Store->Data[ki]->ValueLength;
 
       if (Store->Flags & KSF_THREAD_SAFE) UnlockMutex(Store->Mutex);
-      STEP();
+      LOGRETURN();
       return ERR_Okay;
    }
 
    if (Store->Flags & KSF_THREAD_SAFE) UnlockMutex(Store->Mutex);
-   STEP();
+   LOGRETURN();
    return ERR_DoesNotExist;
 }
 
@@ -645,7 +645,7 @@ ERROR VarSetString(struct KeyStore *Store, CSTRING Key, CSTRING Value)
       if (!Value) { // Client request to delete the key, so mark it as dead and return.
          DEAD_KEY(Store->Data[ki]);
          if (Store->Flags & KSF_THREAD_SAFE) UnlockMutex(Store->Mutex);
-         STEP();
+         LOGRETURN();
          return ERR_Okay;
       }
 
@@ -657,13 +657,13 @@ ERROR VarSetString(struct KeyStore *Store, CSTRING Key, CSTRING Value)
          free((APTR)Store->Data[ki]);
          Store->Data[ki] = kp;
          if (Store->Flags & KSF_THREAD_SAFE) UnlockMutex(Store->Mutex);
-         STEP();
+         LOGRETURN();
          return ERR_Okay;
       }
    }
    else if (!Value) { // Client requested deletion of a key that doesn't exist - ignore it.
       if (Store->Flags & KSF_THREAD_SAFE) UnlockMutex(Store->Mutex);
-      STEP();
+      LOGRETURN();
       return ERR_Okay;
    }
    else { // Brand new key
@@ -671,13 +671,13 @@ ERROR VarSetString(struct KeyStore *Store, CSTRING Key, CSTRING Value)
       if ((kp) AND ((ki = hm_put(Store, kp)) >= 0)) {
          kp->Flags |= KPF_STRING;
          if (Store->Flags & KSF_THREAD_SAFE) UnlockMutex(Store->Mutex);
-         STEP();
+         LOGRETURN();
          return ERR_Okay;
       }
    }
 
    if (Store->Flags & KSF_THREAD_SAFE) UnlockMutex(Store->Mutex);
-   STEP();
+   LOGRETURN();
    return ERR_AllocMemory;
 }
 
@@ -723,7 +723,7 @@ APTR VarSet(struct KeyStore *Store, CSTRING Key, APTR Data, LONG Size)
       if (!Data) { // Client request to delete the key, so mark it as dead and return.
          DEAD_KEY(Store->Data[ki]);
          if (Store->Flags & KSF_THREAD_SAFE) UnlockMutex(Store->Mutex);
-         STEP();
+         LOGRETURN();
          return NULL;
       }
 
@@ -734,26 +734,26 @@ APTR VarSet(struct KeyStore *Store, CSTRING Key, APTR Data, LONG Size)
          free((APTR)Store->Data[ki]);
          Store->Data[ki] = kp;
          if (Store->Flags & KSF_THREAD_SAFE) UnlockMutex(Store->Mutex);
-         STEP();
+         LOGRETURN();
          return (APTR)GET_KEY_VALUE(kp);
       }
    }
    else if (!Data) { // Client requested deletion of a key that doesn't exist - ignore it.
       if (Store->Flags & KSF_THREAD_SAFE) UnlockMutex(Store->Mutex);
-      STEP();
+      LOGRETURN();
       return NULL;
    }
    else { // Brand new key
       struct KeyPair *kp = build_key_pair(Store, Key, Data, Size);
       if ((kp) AND ((ki = hm_put(Store, kp)) >= 0)) {
          if (Store->Flags & KSF_THREAD_SAFE) UnlockMutex(Store->Mutex);
-         STEP();
+         LOGRETURN();
          return (APTR)GET_KEY_VALUE(kp);
       }
    }
 
    if (Store->Flags & KSF_THREAD_SAFE) UnlockMutex(Store->Mutex);
-   STEP();
+   LOGRETURN();
    return NULL;
 }
 
@@ -803,7 +803,7 @@ ERROR VarSetSized(struct KeyStore *Store, CSTRING Key, LONG Size, APTR *Data, LO
          if (Store->Flags & KSF_THREAD_SAFE) UnlockMutex(Store->Mutex);
          *Data = (APTR)GET_KEY_VALUE(kp);
          if (DataSize) *DataSize = Size;
-         STEP();
+         LOGRETURN();
          return ERR_Okay;
       }
    }
@@ -813,13 +813,13 @@ ERROR VarSetSized(struct KeyStore *Store, CSTRING Key, LONG Size, APTR *Data, LO
          if (Store->Flags & KSF_THREAD_SAFE) UnlockMutex(Store->Mutex);
          *Data = (APTR)GET_KEY_VALUE(kp);
          if (DataSize) *DataSize = Size;
-         STEP();
+         LOGRETURN();
          return ERR_Okay;
       }
    }
 
    if (Store->Flags & KSF_THREAD_SAFE) UnlockMutex(Store->Mutex);
-   STEP();
+   LOGRETURN();
    return ERR_AllocMemory;
 }
 

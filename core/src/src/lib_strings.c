@@ -1877,7 +1877,7 @@ LONG StrTranslateRefresh(void)
       if (glTranslate) {
          if (!StrMatch(language, glTranslate->Language)) {
             LogF("TranslateRefresh:","Language unchanged.");
-            LogBack();
+            LogReturn();
             return FALSE;
          }
       }
@@ -1976,7 +1976,7 @@ LONG StrTranslateRefresh(void)
                glTranslateMID = memoryid;
                acFree(&config->Head);
 
-               LogBack();
+               LogReturn();
                return TRUE;
             }
          }
@@ -1998,11 +1998,11 @@ LONG StrTranslateRefresh(void)
    }
    else {
       LogF("TranslateRefresh:","User's preferred language not specified.");
-      LogBack();
+      LogReturn();
       return FALSE;
    }
 
-   LogBack();
+   LogReturn();
    return FALSE;
 }
 

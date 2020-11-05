@@ -654,11 +654,11 @@ static ERROR MODULE_Init(objModule *Self, APTR Void)
             error = master->Init((OBJECTPTR)Self, modkb);
 
             if (error) {
-               STEP();
+               LOGRETURN();
                goto exit;
             }
 
-            STEP();
+            LOGRETURN();
          }
       }
       else if (Self->Flags & MOF_LINK_LIBRARY) {

@@ -319,14 +319,14 @@ static ERROR BITMAP_Compress(objBitmap *Self, struct bmpCompress *Args)
          Self->DataMID = 0;
       }
 
-      LogBack();
+      LogReturn();
       return ERR_Okay;
    }
 
    ERROR error = ERR_Okay;
    if (!glCompress) {
       if (CreateObject(ID_COMPRESSION, NULL, &glCompress, TAGEND) != ERR_Okay) {
-         return LogBackError(0, ERR_CreateObject);
+         return LogReturnError(0, ERR_CreateObject);
       }
       SetOwner(glCompress, glModule);
    }
@@ -361,7 +361,7 @@ static ERROR BITMAP_Compress(objBitmap *Self, struct bmpCompress *Args)
       Self->Flags |= BMF_COMPRESSED;
    }
 
-   LogBack();
+   LogReturn();
    return error;
 }
 
@@ -465,13 +465,13 @@ static ERROR BITMAP_Decompress(objBitmap *Self, struct bmpDecompress *Args)
       if (!AllocMemory(Self->Size, MEM_NO_BLOCKING|MEM_NO_POOL|MEM_NO_CLEAR|Self->Head.MemFlags|Self->DataFlags, &Self->Data, &Self->DataMID)) {
          Self->prvAFlags |= BF_DATA;
       }
-      else return LogBackError(0, ERR_AllocMemory);
+      else return LogReturnError(0, ERR_AllocMemory);
    }
 
    if (!glCompress) {
       if (CreateObject(ID_COMPRESSION, NULL, &glCompress,
             TAGEND) != ERR_Okay) {
-         return LogBackError(0, ERR_CreateObject);
+         return LogReturnError(0, ERR_CreateObject);
       }
       SetOwner(glCompress, glModule);
    }
@@ -495,7 +495,7 @@ static ERROR BITMAP_Decompress(objBitmap *Self, struct bmpDecompress *Args)
       Self->Flags &= ~BMF_COMPRESSED;
    }
 
-   LogBack();
+   LogReturn();
    return error;
 }
 

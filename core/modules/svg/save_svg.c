@@ -635,7 +635,7 @@ static ERROR save_svg_scan(objSVG *Self, objXML *XML, objVector *Vector, LONG Pa
       LONG dim, length;
 
       error = xmlInsertXML(XML, Parent, XMI_CHILD_END, "<parasol:spiral/>", &new_index);
-      if (error) { LogBack(); return error; }
+      if (error) { LogReturn(); return error; }
 
       if ((error = GetLong(Vector, FID_Dimensions, &dim))) return error;
 
@@ -730,7 +730,7 @@ static ERROR save_svg_scan(objSVG *Self, objXML *XML, objVector *Vector, LONG Pa
    }
    else {
       LogF("save_scan","Unrecognised class \"%s\"", Vector->Head.Class->ClassName);
-      LogBack();
+      LogReturn();
       return ERR_Okay; // Skip objects in the scene graph that we don't recognise
    }
 
@@ -741,6 +741,6 @@ static ERROR save_svg_scan(objSVG *Self, objXML *XML, objVector *Vector, LONG Pa
       }
    }
 
-   LogBack();
+   LogReturn();
    return error;
 }

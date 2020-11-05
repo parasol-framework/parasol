@@ -589,7 +589,7 @@ static int object_lock(lua_State *Lua)
    if (access_object(object)) {
       LogF("~obj.lock()","Object: %d", object->ObjectID);
       lua_pcall(Lua, 0, 0, 0);
-      LogBack();
+      LogReturn();
       release_object(object);
    }
    return 0;
@@ -619,7 +619,7 @@ static int object_detach(lua_State *Lua)
       }
    }
 
-   STEP();
+   LOGRETURN();
    return 0;
 }
 
@@ -844,7 +844,7 @@ static int object_destruct(lua_State *Lua)
             // Object is public
          }
       }
-      STEP();
+      LOGRETURN();
    }
 
    return 0;

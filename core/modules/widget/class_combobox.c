@@ -886,7 +886,7 @@ static void text_activated(objText *Text)
 
    Self->Active = FALSE;
 
-   LogBack();
+   LogReturn();
 }
 
 //****************************************************************************

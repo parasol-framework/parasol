@@ -125,18 +125,18 @@ thickness, or text inside the cell will mix with the border.
 
 #ifdef DBG_LAYOUT
  #define LAYOUT(...)   LogF(__VA_ARGS__)
- #define LAYOUT_STEP() LogBack()
+ #define LAYOUT_LOGRETURN() LogReturn()
 #else
  #define LAYOUT(...)
- #define LAYOUT_STEP()
+ #define LAYOUT_LOGRETURN()
 #endif
 
 #ifdef DBG_WORDWRAP
  #define WRAP(...)   LogF(__VA_ARGS__)
- #define WRAP_STEP() LogBack()
+ #define WRAP_LOGRETURN() LogReturn()
 #else
  #define WRAP(...)
- #define WRAP_STEP()
+ #define WRAP_LOGRETURN()
 #endif
 
 #define PRV_DOCUMENT

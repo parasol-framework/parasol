@@ -430,10 +430,10 @@ static void hook_debug(lua_State *Lua, lua_Debug *Info)
       else LogErrorMsg("lua_getinfo() failed.");
    }
    else if (Info->event IS LUA_HOOKRET) {
-      //LogBack();
+      //LogReturn();
    }
    else if (Info->event IS LUA_HOOKTAILRET) {
-      //LogBack();
+      //LogReturn();
    }
    else if (Info->event IS LUA_HOOKLINE) {
       Lua->Script->CurrentLine = Info->currentline - 1; // Our line numbers start from zero
@@ -628,7 +628,7 @@ static ERROR load_include(objScript *Script, CSTRING IncName)
 
    if ((IncName[i]) OR (i >= 32)) {
       LogF("load_include","Invalid module name; only alpha-numeric names are permitted with max 32 chars.");
-      LogBack();
+      LogReturn();
       return ERR_Syntax;
    }
 
@@ -640,7 +640,7 @@ static ERROR load_include(objScript *Script, CSTRING IncName)
       LONG *state;
       if ((!VarGet(inc, IncName, &state, NULL)) AND (state[0] == 1)) {
          FMSG("load_include","Include file '%s' has already been loaded.", IncName);
-         LogBack();
+         LogReturn();
          return ERR_Okay;
       }
    }
@@ -686,7 +686,7 @@ static ERROR load_include(objScript *Script, CSTRING IncName)
 
    AdjustLogLevel(-1);
 
-   LogBack();
+   LogReturn();
    return error;
 }
 

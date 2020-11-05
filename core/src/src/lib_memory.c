@@ -1272,11 +1272,11 @@ ERROR ReallocMemory(APTR Address, LONG NewSize, APTR *Memory, MEMORYID *MemoryID
       }
       else FreeResource(Address);
 
-      if ((glShowPrivate) OR (glShowPublic)) LogBack();
+      if ((glShowPrivate) OR (glShowPublic)) LogReturn();
       return ERR_Okay;
    }
    else {
-      if ((glShowPrivate) OR (glShowPublic)) LogBack();
+      if ((glShowPrivate) OR (glShowPublic)) LogReturn();
       return LogError(ERH_Realloc, ERR_AllocMemory);
    }
 }

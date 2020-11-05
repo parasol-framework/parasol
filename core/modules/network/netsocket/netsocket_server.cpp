@@ -34,7 +34,7 @@ static void server_client_connect(SOCKET_HANDLE FD, objNetSocket *Self)
             struct sockaddr_in6 addr;
             socklen_t len = sizeof(addr);
             clientfd = accept(FD, (struct sockaddr *)&addr, &len);
-            if (clientfd IS NOHANDLE) { STEP(); return; }
+            if (clientfd IS NOHANDLE) { LOGRETURN(); return; }
             ip[0] = addr.sin6_addr.s6_addr[0];
             ip[1] = addr.sin6_addr.s6_addr[1];
             ip[2] = addr.sin6_addr.s6_addr[2];
@@ -48,7 +48,7 @@ static void server_client_connect(SOCKET_HANDLE FD, objNetSocket *Self)
          struct sockaddr_in6 addr;
          socklen_t len = sizeof(addr);
          clientfd = accept(FD, (struct sockaddr *)&addr, &len);
-         if (clientfd IS NOHANDLE) { STEP(); return; }
+         if (clientfd IS NOHANDLE) { LOGRETURN(); return; }
          ip[0] = addr.sin6_addr.s6_addr[0];
          ip[1] = addr.sin6_addr.s6_addr[1];
          ip[2] = addr.sin6_addr.s6_addr[2];
@@ -61,7 +61,7 @@ static void server_client_connect(SOCKET_HANDLE FD, objNetSocket *Self)
 #else
       LogF("@socket_connect","IPV6 not supported yet.");
       SetContext(context);
-      STEP();
+      LOGRETURN();
       return;
 #endif
    }
@@ -79,7 +79,7 @@ static void server_client_connect(SOCKET_HANDLE FD, objNetSocket *Self)
       if (clientfd IS NOHANDLE) {
          LogF("@server_connect","accept() failed to return an FD.");
          SetContext(context);
-         STEP();
+         LOGRETURN();
          return;
       }
 
@@ -97,7 +97,7 @@ static void server_client_connect(SOCKET_HANDLE FD, objNetSocket *Self)
       CLOSESOCKET(clientfd);
       PostError(ERR_ArrayFull);
       SetContext(context);
-      STEP();
+      LOGRETURN();
       return;
    }
 
@@ -113,7 +113,7 @@ static void server_client_connect(SOCKET_HANDLE FD, objNetSocket *Self)
       if (AllocMemory(sizeof(struct rkNetClient), MEM_DATA, &client_ip, NULL) != ERR_Okay) {
          CLOSESOCKET(clientfd);
          SetContext(context);
-         STEP();
+         LOGRETURN();
          return;
       }
 
@@ -137,7 +137,7 @@ static void server_client_connect(SOCKET_HANDLE FD, objNetSocket *Self)
          LogF("socket_connect","Preventing second connection attempt from IP %d.%d.%d.%d\n", client_ip->IP[0], client_ip->IP[1], client_ip->IP[2], client_ip->IP[3]);
          CLOSESOCKET(clientfd);
          SetContext(context);
-         STEP();
+         LOGRETURN();
          return;
       }
    }
@@ -154,7 +154,7 @@ static void server_client_connect(SOCKET_HANDLE FD, objNetSocket *Self)
       CLOSESOCKET(clientfd);
       if (!client_ip->Sockets) free_client(Self, client_ip);
       SetContext(context);
-      STEP();
+      LOGRETURN();
       return;
    }
 
@@ -180,7 +180,7 @@ static void server_client_connect(SOCKET_HANDLE FD, objNetSocket *Self)
 
    FMSG("socket_connect","Total clients: %d", Self->TotalClients);
    SetContext(context);
-   STEP();
+   LOGRETURN();
 }
 
 /*****************************************************************************
@@ -223,7 +223,7 @@ static void free_client(objNetSocket *Self, struct rkNetClient *Client)
    Self->TotalClients--;
 
    recursive--;
-   LogBack();
+   LogReturn();
 }
 
 /*****************************************************************************
@@ -260,5 +260,5 @@ static void free_client_socket(objNetSocket *Socket, objClientSocket *ClientSock
 
    acFree(ClientSocket);
 
-   LogBack();
+   LogReturn();
 }

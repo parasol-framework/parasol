@@ -654,7 +654,7 @@ struct rkMetaClass * FindClass(CLASSID ClassID)
             acFree(module);  // Free the module object - the code and any classes it created will continue to remain in memory.
          }
 
-         LogBack();
+         LogReturn();
       }
 
       if (class) LogF("FindClass","Found class \"%s\"", class->ClassName);

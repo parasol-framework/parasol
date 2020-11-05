@@ -73,7 +73,7 @@ ERROR OpenDir(CSTRING Path, LONG Flags, struct DirInfo **Result)
       if (AllocMemory(sizeof(struct DirInfo) + sizeof(struct FileInfo) + MAX_FILENAME + path_len + MAX_FILENAME,
             MEM_DATA|MEM_MANAGED, (APTR *)&dir, NULL) != ERR_Okay) {
          FreeResource(resolved_path);
-         STEP();
+         LOGRETURN();
          return ERR_AllocMemory;
       }
 
@@ -97,11 +97,11 @@ ERROR OpenDir(CSTRING Path, LONG Flags, struct DirInfo **Result)
       if ((Path[0] IS ':') OR (!Path[0])) {
          if (!(Flags & RDF_FOLDER)) {
             FreeResource(dir);
-            STEP();
+            LOGRETURN();
             return ERR_DirEmpty;
          }
          *Result = dir;
-         STEP();
+         LOGRETURN();
          return ERR_Okay;
       }
 
@@ -109,23 +109,23 @@ ERROR OpenDir(CSTRING Path, LONG Flags, struct DirInfo **Result)
 
       if (!virtual->OpenDir) {
          FreeResource(dir);
-         STEP();
+         LOGRETURN();
          return ERR_DirEmpty;
       }
 
       if (!(error = virtual->OpenDir(dir))) {
          dir->prvVirtualID = virtual->VirtualID;
          *Result = dir;
-         STEP();
+         LOGRETURN();
          return ERR_Okay;
       }
 
       FreeResource(dir);
-      STEP();
+      LOGRETURN();
       return error;
    }
    else {
-      STEP();
+      LOGRETURN();
       return LogError(ERH_OpenDir, ERR_ResolvePath);
    }
 }

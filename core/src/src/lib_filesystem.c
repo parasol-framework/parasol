@@ -322,7 +322,7 @@ ERROR AnalysePath(CSTRING Path, LONG *PathType)
                   if (!glVolumes->Entries[i].Data[len-1]) {
                      if (PathType) *PathType = LOC_VOLUME;
                      ReleasePrivateObject((OBJECTPTR)glVolumes);
-                     STEP();
+                     LOGRETURN();
                      return ERR_Okay;
                   }
                }
@@ -330,7 +330,7 @@ ERROR AnalysePath(CSTRING Path, LONG *PathType)
          }
          ReleasePrivateObject((OBJECTPTR)glVolumes);
       }
-      STEP();
+      LOGRETURN();
       return ERR_DoesNotExist;
    }
 
@@ -347,12 +347,12 @@ ERROR AnalysePath(CSTRING Path, LONG *PathType)
       else error = ERR_NoSupport;
 
       FreeResource(test_path);
-      STEP();
+      LOGRETURN();
       return error;
    }
    else {
       FMSG("@AnalysePath","ResolvePath() indicates that the path does not exist.");
-      STEP();
+      LOGRETURN();
       return ERR_DoesNotExist;
    }
 }
@@ -402,7 +402,7 @@ ERROR AssociateCmd(CSTRING Path, CSTRING Mode, LONG Flags, CSTRING Command)
 
    // If Path starts with CLASS:, associate the command to a specific class type.
 
-   if (load_datatypes() != ERR_Okay) { LogBack(); return ERR_Failed; }
+   if (load_datatypes() != ERR_Okay) { LogReturn(); return ERR_Failed; }
 
    if (Flags & ACF_ALL_USERS) assoc_path = "config:associations.cfg";
    else assoc_path = "user:config/associations.cfg";
@@ -481,7 +481,7 @@ ERROR AssociateCmd(CSTRING Path, CSTRING Mode, LONG Flags, CSTRING Command)
       }
    }
 
-   LogBack();
+   LogReturn();
    return error;
 }
 
@@ -826,7 +826,7 @@ ERROR DeleteFile(CSTRING Path, FUNCTION *Callback)
       FreeResource(resolve);
    }
 
-   LogBack();
+   LogReturn();
    return error;
 }
 
@@ -978,7 +978,7 @@ ERROR get_file_info(CSTRING Path, struct FileInfo *Info, LONG InfoSize, STRING N
       FreeResource(path);
    }
 
-   STEP();
+   LOGRETURN();
    return error;
 }
 
@@ -1053,7 +1053,7 @@ ERROR TranslateCmdRef(CSTRING String, STRING *Command)
       acFree(&cfgprog->Head);
    }
 
-   STEP();
+   LOGRETURN();
    return error;
 }
 
@@ -1188,7 +1188,7 @@ ERROR LoadFile(CSTRING Path, LONG Flags, struct CacheFile **Cache)
                      SetContext(context);
                   }
 
-                  LogBack();
+                  LogReturn();
                   return ERR_Okay;
                }
                else error = PostError(ERR_Failed);
@@ -1203,7 +1203,7 @@ ERROR LoadFile(CSTRING Path, LONG Flags, struct CacheFile **Cache)
    if (cache) FreeResource(cache);
    if (file) acFree(file);
    FreeResource(path);
-   LogBack();
+   LogReturn();
    return error;
 }
 
@@ -1563,7 +1563,7 @@ ERROR SaveImageToFile(OBJECTPTR Object, CSTRING Path, CLASSID ClassID, LONG Perm
    }
    else error = LogError(ERH_Function, ERR_CreateFile);
 
-   LogBack();
+   LogReturn();
    return error;
 }
 
@@ -1607,11 +1607,11 @@ ERROR SaveObjectToFile(OBJECTPTR Object, CSTRING Path, LONG Permissions)
       error = acSaveToObject(Object, file->UniqueID, 0);
 
       acFree(file);
-      LogBack();
+      LogReturn();
       return error;
    }
    else {
-      LogBack();
+      LogReturn();
       return ERR_CreateFile;
    }
 }
@@ -1981,14 +1981,14 @@ ERROR check_paths(CSTRING Path, LONG Permissions)
          if ((path[i-1] IS ':') OR (path[i-1] IS '/') OR (path[i-1] IS '\\')) {
             path[i] = 0;
             ERROR error = CreateFolder(path, Permissions);
-            STEP();
+            LOGRETURN();
             return error;
          }
          i--;
       }
    }
 
-   STEP();
+   LOGRETURN();
    return ERR_Failed;
 }
 
@@ -2023,13 +2023,13 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
    objFile *destfile = NULL;
 
    if ((error = ResolvePath(Source, 0, &src)) != ERR_Okay) {
-      STEP();
+      LOGRETURN();
       return ERR_FileNotFound;
    }
 
    if ((error = ResolvePath(Dest, RSF_NO_FILE_CHECK, &tmp)) != ERR_Okay) {
       FreeResource(src);
-      STEP();
+      LOGRETURN();
       return ERR_ResolvePath;
    }
 
@@ -2065,7 +2065,7 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
 
    if (!CompareFilePaths(src, dest)) {
       MSG("The source and destination refer to the same location.");
-      STEP();
+      LOGRETURN();
       if (Move) return ERR_IdenticalPaths; // Move fails if source and dest are identical, since the source is not deleted
       else return ERR_Okay; // Copy succeeds if source and dest are identical
    }
@@ -2561,7 +2561,7 @@ exit:
    if (srcfile) acFree(&srcfile->Head);
    if (destfile) acFree(&destfile->Head);
    FreeResource(src);
-   STEP();
+   LOGRETURN();
    return error;
 }
 
@@ -3474,7 +3474,7 @@ ERROR load_datatypes(void)
    if (!glDatatypes) {
       if (CreateObject(ID_CONFIG, NF_UNTRACKED, (OBJECTPTR *)&glDatatypes,
             TAGEND) != ERR_Okay) {
-         STEP();
+         LOGRETURN();
          return PostError(ERR_CreateObject);
       }
    }
@@ -3524,7 +3524,7 @@ ERROR load_datatypes(void)
       if (CreateObject(ID_CONFIG, NF_UNTRACKED, (OBJECTPTR *)&datatypes,
             FID_Path|TSTR, "config:software/associations.cfg|user:config/associations.cfg",
             TAGEND) != ERR_Okay) {
-         STEP();
+         LOGRETURN();
          return PostError(ERR_CreateObject);
       }
 
@@ -3532,7 +3532,7 @@ ERROR load_datatypes(void)
       glDatatypes = datatypes;
    }
 
-   STEP();
+   LOGRETURN();
    return ERR_Okay;
 }
 #endif

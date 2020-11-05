@@ -17,7 +17,7 @@ static ERROR sslInit(void)
 
    ssl_init = TRUE;
 
-   STEP();
+   LOGRETURN();
    return ERR_Okay;
 }
 
@@ -33,7 +33,7 @@ static void sslDisconnect(objNetSocket *Self)
          SSL_free(Self->SSL);
          Self->SSL = NULL;
 
-      STEP();
+      LOGRETURN();
    }
 
    if (Self->CTX) {
@@ -41,7 +41,7 @@ static void sslDisconnect(objNetSocket *Self)
       Self->CTX = NULL;
    }
 
-   STEP();
+   LOGRETURN();
 }
 
 //****************************************************************************
@@ -116,7 +116,7 @@ static ERROR sslSetup(objNetSocket *Self)
 
                if (GetResource(RES_LOG_LEVEL > 3)) SSL_set_info_callback(Self->SSL, &sslMsgCallback);
 
-               STEP();
+               LOGRETURN();
                return ERR_Okay;
             }
             else { LogErrorMsg("Failed to initialise new SSL object."); error = ERR_Failed; }
@@ -137,7 +137,7 @@ static ERROR sslSetup(objNetSocket *Self)
       error = ERR_Failed;
    }
 
-   STEP();
+   LOGRETURN();
    return error;
 }
 
@@ -155,7 +155,7 @@ static ERROR sslLinkSocket(objNetSocket *Self)
    }
    else LogErrorMsg("Failed to create a SSL BIO object.");
 
-   STEP();
+   LOGRETURN();
    return ERR_Okay;
 }
 
@@ -172,7 +172,7 @@ static ERROR sslConnect(objNetSocket *Self)
 {
    FMSG("~sslConnect()","");
 
-   if (!Self->SSL) { STEP(); return ERR_Failed; }
+   if (!Self->SSL) { LOGRETURN(); return ERR_Failed; }
 
    LONG result = SSL_connect(Self->SSL);
 
@@ -184,17 +184,17 @@ static ERROR sslConnect(objNetSocket *Self)
 
       switch(result) {
          case SSL_ERROR_NONE:             Self->Error = ERR_Okay;
-                                          STEP();
+                                          LOGRETURN();
                                           return ERR_Okay;
 
          case SSL_ERROR_ZERO_RETURN:      Self->Error = ERR_Disconnected; break;
 
          case SSL_ERROR_WANT_READ:        SetLong(Self, FID_State, NTC_CONNECTING_SSL);
-                                          STEP();
+                                          LOGRETURN();
                                           return ERR_Okay;
 
          case SSL_ERROR_WANT_WRITE:       SetLong(Self, FID_State, NTC_CONNECTING_SSL);
-                                          STEP();
+                                          LOGRETURN();
                                           return ERR_Okay;
 
          case SSL_ERROR_WANT_CONNECT:     Self->Error = ERR_WouldBlock; break;
@@ -213,13 +213,13 @@ static ERROR sslConnect(objNetSocket *Self)
 
       SetLong(Self, FID_State, NTC_DISCONNECTED);
 
-      STEP();
+      LOGRETURN();
       return Self->Error;
    }
    else {
       FMSG("sslConnect:","SSL server connection successful.");
       SetLong(Self, FID_State, NTC_CONNECTED);
-      STEP();
+      LOGRETURN();
       return ERR_Okay;
    }
 }

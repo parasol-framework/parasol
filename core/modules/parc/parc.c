@@ -138,7 +138,7 @@ static ERROR PARC_Activate(objParc *Self, APTR Void)
    }
    else error = ERR_NothingDone;
 
-   LogBack();
+   LogReturn();
    return error;
 }
 

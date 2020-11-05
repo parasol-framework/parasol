@@ -26,7 +26,7 @@ static void client_connect(SOCKET_HANDLE Void, APTR Data)
 
          sslConnect(Self);
 
-      STEP();
+      LOGRETURN();
 
       if (Self->Error) return;
 
@@ -44,7 +44,7 @@ static void client_connect(SOCKET_HANDLE Void, APTR Data)
          SetLong(Self, FID_State, NTC_CONNECTED);
          RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD_READ|RFD_SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&client_server_incoming), Self);
 
-      STEP();
+      LOGRETURN();
       return;
    }
    else {
@@ -86,7 +86,7 @@ static void client_server_incoming(SOCKET_HANDLE FD, struct rkNetSocket *Data)
    if ((Self->SSL) AND (Self->State IS NTC_CONNECTING_SSL)) {
       FMSG("~client_incoming","Continuing SSL communication...");
          sslConnect(Self);
-      STEP();
+      LOGRETURN();
       return;
    }
 
@@ -153,7 +153,7 @@ restart:
    if (error IS ERR_Terminate) {
       LogF("~client_incoming","Socket %d will be terminated.", FD);
       if (Self->SocketHandle != NOHANDLE) free_socket(Self);
-      LogBack();
+      LogReturn();
    }
    else if (Self->IncomingRecursion > 1) {
       // If client_server_incoming() was called again during the callback, there is more
@@ -167,7 +167,7 @@ restart:
    Self->InUse--;
    Self->IncomingRecursion = 0;
 
-   STEP();
+   LOGRETURN();
 }
 
 /*****************************************************************************
@@ -202,7 +202,7 @@ static void client_server_outgoing(SOCKET_HANDLE Void, struct rkNetSocket *Data)
    FMSG("~client_outgoing()","");
 
 #ifdef ENABLE_SSL
-   if (Self->SSLBusy) { STEP(); return; } // SSL object is performing a background operation (e.g. handshake)
+   if (Self->SSLBusy) { LOGRETURN(); return; } // SSL object is performing a background operation (e.g. handshake)
 #endif
 
    Self->InUse++;
@@ -287,5 +287,5 @@ static void client_server_outgoing(SOCKET_HANDLE Void, struct rkNetSocket *Data)
    Self->InUse--;
    Self->OutgoingRecursion--;
 
-   STEP();
+   LOGRETURN();
 }

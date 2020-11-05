@@ -965,11 +965,11 @@ static ERROR CONFIG_MergeFile(objConfig *Self, struct cfgMergeFile *Args)
          cfgWriteValue(Self, src->Entries[i].Section, src->Entries[i].Key, src->Entries[i].Data);
       }
       acFree(&src->Head);
-      LogBack();
+      LogReturn();
       return ERR_Okay;
    }
    else {
-      LogBack();
+      LogReturn();
       return ERR_File;
    }
 }
@@ -1402,7 +1402,7 @@ static ERROR CONFIG_Sort(objConfig *Self, APTR Void)
 
          if (pos > Self->TotalSections) {
             LogErrorMsg("Buffer overflow - expected %d sections, encountered %d.", Self->TotalSections, pos);
-            LogBack();
+            LogReturn();
             return ERR_BufferOverflow;
          }
 
@@ -1410,7 +1410,7 @@ static ERROR CONFIG_Sort(objConfig *Self, APTR Void)
          StrSort(array, NULL);
       }
       else {
-         LogBack();
+         LogReturn();
          return ERR_NoData;
       }
 
@@ -1430,7 +1430,7 @@ static ERROR CONFIG_Sort(objConfig *Self, APTR Void)
 
    CopyMemory(entrybuffer, Self->Entries, sizeof(struct ConfigEntry) * Self->AmtEntries);
 
-   LogBack();
+   LogReturn();
    return ERR_Okay;
 }
 
@@ -1492,7 +1492,7 @@ static ERROR CONFIG_SortByKey(objConfig *Self, struct cfgSortByKey *Args)
 
    if (pos != Self->TotalSections) {
       LogErrorMsg("Buffer overflow/underflow - expected %d sections, encountered %d.", Self->TotalSections, pos);
-      LogBack();
+      LogReturn();
       return ERR_BufferOverflow;
    }
 
@@ -1540,7 +1540,7 @@ static ERROR CONFIG_SortByKey(objConfig *Self, struct cfgSortByKey *Args)
 
    CopyMemory(entrybuffer, Self->Entries, sizeof(struct ConfigEntry) * Self->AmtEntries);
 
-   LogBack();
+   LogReturn();
    return ERR_Okay;
 }
 
@@ -1955,7 +1955,7 @@ static ERROR process_config_data(objConfig *Self, UBYTE *Src)
       data = (STRING)next_line(data);
    }
 
-   STEP();
+   LOGRETURN();
    return ERR_Okay;
 }
 

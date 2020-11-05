@@ -76,7 +76,7 @@ static ERROR ICON_Clear(objIconServer *Self, APTR Void)
    }
    else LogMsg("No image directories in theme location \"%s\".", buffer);
 
-   LogBack();
+   LogReturn();
    return ERR_Okay;
 }
 
@@ -198,11 +198,11 @@ static ERROR ICON_Refresh(objIconServer *Self, APTR Void)
    }
 
    if (load_icon_db(Self) != ERR_Okay) {
-      LogBack();
+      LogReturn();
       return ERR_Failed;
    }
 
-   LogBack();
+   LogReturn();
    return ERR_Okay;
 }
 
@@ -253,7 +253,7 @@ static ERROR GET_CacheSize(objIconServer *Self, LONG *Value)
       FreeResource(dir);
    }
 
-   LogBack();
+   LogReturn();
 
    return ERR_Okay;
 }
@@ -494,7 +494,7 @@ static ERROR resolve_icon_assign(objIconServer *Self, STRING Path, STRING Buffer
    for (i=0; Path[i]; i++);
    if ((Path[i-1] IS '/') OR (Path[i-1] IS '\\') OR (Path[i-1] IS ':')) {
       StrFormat(Buffer, BufferSize, "%s%s/%s", glIconPath, Self->prvTheme, Path + 6);
-      STEP();
+      LOGRETURN();
       return ERR_Okay;
    }
 
@@ -510,8 +510,8 @@ static ERROR resolve_icon_assign(objIconServer *Self, STRING Path, STRING Buffer
    }
 
    ERROR error;
-   if ((error = extract_icon(size, Path, category, icon, ovcategory, ovicon, &size)) != ERR_Okay) { STEP(); return error; }
-   if ((error = find_icon_category(category, icon)) != ERR_Okay) { STEP(); return error; }
+   if ((error = extract_icon(size, Path, category, icon, ovcategory, ovicon, &size)) != ERR_Okay) { LOGRETURN(); return error; }
+   if ((error = find_icon_category(category, icon)) != ERR_Okay) { LOGRETURN(); return error; }
 
    FMSG("resolve_icon","Resolved %s to icon %s/%s, overlay %s/%s, size %d", Path, category, icon, ovcategory, ovicon, size);
 
@@ -551,7 +551,7 @@ static ERROR resolve_icon_assign(objIconServer *Self, STRING Path, STRING Buffer
             acFree(src);
 
             if (src_ts < cache_ts) {
-               STEP();
+               LOGRETURN();
                return ERR_Okay; // Use the existing cache file
             }
             else LogF("resolve_icon","Regenerating new cache file for icon \"%s/%s\".", category, icon);
@@ -571,7 +571,7 @@ static ERROR resolve_icon_assign(objIconServer *Self, STRING Path, STRING Buffer
          FID_Flags|TLONG, PCF_FORCE_ALPHA_32,
          TAGEND) != ERR_Okay) {
       LogF("@resolve_icon","Failed to open file \"%s\".", Buffer);
-      STEP();
+      LOGRETURN();
       return ERR_CreateObject;
    }
 
@@ -580,7 +580,7 @@ static ERROR resolve_icon_assign(objIconServer *Self, STRING Path, STRING Buffer
    objPicture *resizepic;
    if (NewObject(ID_PICTURE, NF_INTEGRAL, &resizepic) != ERR_Okay) {
       acFree(picture);
-      STEP();
+      LOGRETURN();
       return ERR_NewObject;
    }
 
@@ -611,7 +611,7 @@ static ERROR resolve_icon_assign(objIconServer *Self, STRING Path, STRING Buffer
       LogF("@resolve_icon","Failed to initialise the resize picture space.");
       acFree(resizepic);
       acFree(picture);
-      STEP();
+      LOGRETURN();
       return ERR_Init;
    }
 
@@ -673,7 +673,7 @@ static ERROR resolve_icon_assign(objIconServer *Self, STRING Path, STRING Buffer
    FMSG("resolve_icon","Path resolved to '%s' from '%s'", Buffer, Path);
 
    acFree(resizepic);
-   STEP();
+   LOGRETURN();
    return ERR_Okay;
 }
 

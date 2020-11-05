@@ -104,7 +104,7 @@ ERROR validate_process(LONG ProcessID)
 
    glValidating = 0;
 
-   LogBack();
+   LogReturn();
    return ERR_False; // Return ERR_False to indicate that the task was not healthy
 }
 
@@ -604,7 +604,7 @@ ERROR critical_janitor(OBJECTID SubscriberID, LONG Elapsed, LONG TotalElapsed)
       }
    }
 
-   STEP();
+   LOGRETURN();
 #endif
 
    return ERR_Okay;

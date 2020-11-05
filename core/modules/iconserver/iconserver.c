@@ -269,7 +269,7 @@ static ERROR iconCreateIcon(CSTRING Path, CSTRING Class, CSTRING Theme, CSTRING 
 
 end:
    AdjustLogLevel(-1);
-   STEP();
+   LOGRETURN();
    return error;
 }
 
@@ -340,7 +340,7 @@ static ERROR find_icon_category(STRING Category, CSTRING Icon)
       error = ERR_Search;
    }
 end:
-   LogBack();
+   LogReturn();
    return error;
 }
 
@@ -494,7 +494,7 @@ static void apply_filter(objBitmap *Icon, CSTRING FilterName, STRING Category, S
             FID_Path|TSTR, style_path,
             TAGEND) != ERR_Okay) {
          SetContext(context);
-         STEP();
+         LOGRETURN();
          return;
       }
    }
@@ -551,7 +551,7 @@ static void apply_filter(objBitmap *Icon, CSTRING FilterName, STRING Category, S
    }
 
    SetContext(context);
-   STEP();
+   LOGRETURN();
 }
 
 //****************************************************************************

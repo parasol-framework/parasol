@@ -95,7 +95,7 @@ static ERROR BUTTON_Activate(objButton *Self, APTR Void)
 
    if (Self->Active) {
       LogErrorMsg("Warning - recursion detected");
-      LogBack();
+      LogReturn();
       return ERR_Failed;
    }
 
@@ -128,7 +128,7 @@ static ERROR BUTTON_Activate(objButton *Self, APTR Void)
 
    Self->Active = FALSE;
 
-   LogBack();
+   LogReturn();
    return ERR_Okay;
 }
 
@@ -914,7 +914,7 @@ static void key_event(objButton *Self, evKey *Event, LONG Size)
    if ((Event->Code IS K_ENTER) OR (Event->Code IS K_NP_ENTER) OR (Event->Code IS K_SPACE)) {
       LogBranch("Enter or Space key detected.");
          acActivate(Self);
-      LogBack();
+      LogReturn();
    }
 }
 

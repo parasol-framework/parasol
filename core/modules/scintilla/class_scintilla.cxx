@@ -325,7 +325,7 @@ static ERROR SCINTILLA_ActionNotify(objScintilla *Self, struct acActionNotify *A
 
       Self->SciPan->panLostFocus();
 
-      LogBack();
+      LogReturn();
    }
    else if (Args->ActionID IS AC_Show) {
       // Parent surface now visible
@@ -386,7 +386,7 @@ static ERROR SCINTILLA_Clear(objScintilla *Self, APTR Void)
    SCICALL(SCI_CLEARALL);
    SCICALL(SCI_ENDUNDOACTION);
 
-   LogBack();
+   LogReturn();
    return ERR_Okay;
 }
 
@@ -572,7 +572,7 @@ static ERROR SCINTILLA_DeleteLine(objScintilla *Self, struct sciDeleteLine *Args
 
    SCICALL(SCI_REPLACETARGET, 0UL, "");
 
-   STEP();
+   LOGRETURN();
    return ERR_Okay;
 }
 
@@ -758,7 +758,7 @@ static ERROR SCINTILLA_GotoLine(objScintilla *Self, struct sciGotoLine *Args)
 
    LogBranch("Line: %d", Args->Line);
    SCICALL(SCI_GOTOLINE, Args->Line);
-   LogBack();
+   LogReturn();
    return ERR_Okay;
 }
 
@@ -782,7 +782,7 @@ static ERROR SCINTILLA_Hide(objScintilla *Self, APTR Void)
          Self->Visible = FALSE;
          acDraw(Self);
 
-      LogBack();
+      LogReturn();
    }
 
    return ERR_Okay;
@@ -1031,11 +1031,11 @@ static ERROR SCINTILLA_InsertText(objScintilla *Self, struct sciInsertText *Args
       SCICALL(SCI_REPLACESEL, 0UL, Args->String);
       SCICALL(SCI_ENDUNDOACTION);
 
-      LogBack();
+      LogReturn();
       return ERR_Okay;
    }
    else if (pos < -1) {
-      LogBack();
+      LogReturn();
       return PostError(ERR_OutOfRange);
    }
 
@@ -1043,7 +1043,7 @@ static ERROR SCINTILLA_InsertText(objScintilla *Self, struct sciInsertText *Args
    SCICALL(SCI_INSERTTEXT, pos, Args->String);
    SCICALL(SCI_ENDUNDOACTION);
 
-   LogBack();
+   LogReturn();
    return ERR_Okay;
 }
 
@@ -1116,7 +1116,7 @@ static ERROR SCINTILLA_Redo(objScintilla *Self, struct acRedo *Args)
 
    SCICALL(SCI_REDO);
 
-   LogBack();
+   LogReturn();
    return ERR_Okay;
 }
 
@@ -1206,7 +1206,7 @@ static ERROR SCINTILLA_ReplaceText(objScintilla *Self, struct sciReplaceText *Ar
       else end = Args->End;
 
       if (start IS end) {
-         LogBack();
+         LogReturn();
          return ERR_Search;
       }
    }
@@ -1258,7 +1258,7 @@ static ERROR SCINTILLA_ReplaceText(objScintilla *Self, struct sciReplaceText *Ar
 
    SCICALL(SCI_ENDUNDOACTION);
 
-   LogBack();
+   LogReturn();
    return ERR_Okay;
 }
 
@@ -1306,12 +1306,12 @@ static ERROR SCINTILLA_SaveToObject(objScintilla *Self, struct acSaveToObject *A
       else error = ERR_AllocMemory;
 
       ReleaseObject(object);
-      LogBack();
+      LogReturn();
       return error;
    }
    else {
       PostError(ERR_AccessObject);
-      LogBack();
+      LogReturn();
       return ERR_AccessObject;
    }
 }
@@ -1358,11 +1358,11 @@ static ERROR SCINTILLA_SetFont(objScintilla *Self, struct sciSetFont *Args)
 
       calc_longest_line(Self);
 
-      LogBack();
+      LogReturn();
       return ERR_Okay;
    }
    else {
-      LogBack();
+      LogReturn();
       return ERR_CreateObject;
    }
 }
@@ -1381,7 +1381,7 @@ static ERROR SCINTILLA_ScrollToPoint(objScintilla *Self, struct acScrollToPoint 
 
    Self->ScrollLocked--;
 
-   STEP();
+   LOGRETURN();
    return ERR_Okay;
 }
 
@@ -1423,7 +1423,7 @@ static ERROR SCINTILLA_SelectRange(objScintilla *Self, struct sciSelectRange *Ar
       SCICALL(SCI_SCROLLCARET);
    }
 
-   LogBack();
+   LogReturn();
    return ERR_Okay;
 }
 
@@ -1448,7 +1448,7 @@ static ERROR SCINTILLA_Show(objScintilla *Self, APTR Void)
 
          acDraw(Self);
 
-      LogBack();
+      LogReturn();
       return ERR_Okay;
    }
    else return ERR_Okay|ERF_Notified;
@@ -1500,7 +1500,7 @@ static ERROR SCINTILLA_TrimWhitespace(objScintilla *Self, APTR Void)
 
    SCICALL(SCI_GOTOLINE, cursorline);
 
-   STEP();
+   LOGRETURN();
    return ERR_Okay;
 }
 
@@ -1516,7 +1516,7 @@ static ERROR SCINTILLA_Undo(objScintilla *Self, struct acUndo *Args)
 
    SCICALL(SCI_UNDO);
 
-   LogBack();
+   LogReturn();
    return ERR_Okay;
 }
 
@@ -1761,7 +1761,7 @@ static ERROR SET_Lexer(objScintilla *Self, LONG Value)
    if (Self->Head.Flags & NF_INITIALISED) {
       LogBranch("Changing lexer to %d", Value);
       Self->SciPan->SetLexer(Self->Lexer);
-      LogBack();
+      LogReturn();
    }
    return ERR_Okay;
 }
@@ -1860,15 +1860,15 @@ static ERROR SET_Path(objScintilla *Self, CSTRING Value)
       if ((Self->Path = StrClone(Value))) {
          if (Self->Head.Flags & NF_INITIALISED) {
             if (load_file(Self, Self->Path) != ERR_Okay) {
-               LogBack();
+               LogReturn();
                return ERR_File;
             }
          }
       }
-      else { LogBack(); return ERR_AllocMemory; }
+      else { LogReturn(); return ERR_AllocMemory; }
    }
 
-   LogBack();
+   LogReturn();
    return ERR_Okay;
 }
 
@@ -2312,7 +2312,7 @@ static void draw_scintilla(objScintilla *Self, objSurface *Surface, struct rkBit
       gfxDrawRectangle(Bitmap, 0, 0, Bitmap->Width, Bitmap->Height, PackPixelA(Bitmap, 0, 0, 0, 64), BAF_FILL|BAF_BLEND);
    }
 
-   STEP();
+   LOGRETURN();
 }
 
 //****************************************************************************
@@ -2428,7 +2428,7 @@ static ERROR load_file(objScintilla *Self, CSTRING Path)
             Self->Lexer = glLexers[i].Lexer;
             LogBranch("Lexer for the loaded file is %d.", Self->Lexer);
             Self->SciPan->SetLexer(Self->Lexer);
-            LogBack();
+            LogReturn();
             break;
          }
       }
@@ -2501,7 +2501,7 @@ static void key_event(objScintilla *Self, evKey *Event, LONG Size)
       if (keyval) {
          FMSG("~","Keypress: %d", keyval);
          Self->SciPan->panKeyDown(keyval, Event->Qualifiers);
-         STEP();
+         LOGRETURN();
       }
    }
    else if (Event->Qualifiers & KQ_RELEASED) {
@@ -2608,7 +2608,7 @@ calc_scroll:
       else SCICALL(SCI_SETSCROLLWIDTH, 1UL);
    }
 
-   STEP();
+   LOGRETURN();
 }
 
 //****************************************************************************

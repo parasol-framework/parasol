@@ -840,7 +840,7 @@ static void text_validation(objText *Text)
 
 exit:
    Self->prvActive = FALSE;
-   LogBack();
+   LogReturn();
 }
 
 //**********************************************************************
@@ -899,7 +899,7 @@ static void text_activated(objText *Text)
 
 exit:
    Self->prvActive = FALSE;
-   LogBack();
+   LogReturn();
 }
 
 //**********************************************************************

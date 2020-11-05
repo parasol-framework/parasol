@@ -237,7 +237,7 @@ static ERROR socket_outgoing(objNetSocket *Socket, OBJECTPTR Context)
       if (Self->BufferSize > 0xffff) Self->BufferSize = 0xffff;
 
       if (AllocMemory(Self->BufferSize, MEM_DATA|MEM_NO_CLEAR, &Self->Buffer, NULL)) {
-         STEP();
+         LOGRETURN();
          return ERR_AllocMemory;
       }
    }
@@ -373,7 +373,7 @@ redo_upload:
       if (error != ERR_TimeOut) {
          SetLong(Self, FID_State, HGS_TERMINATED);
          SET_ERROR(Self, error);
-         STEP();
+         LOGRETURN();
          return ERR_Terminate;
       }
       // ERR_TimeOut: The upload process may continue
@@ -412,7 +412,7 @@ redo_upload:
 
          if (Self->Flags & HTF_DEBUG) LogMsg("Transfer complete - sent " PF64() " bytes.", Self->TotalSent);
          SetLong(Self, FID_State, HGS_SEND_COMPLETE);
-         STEP();
+         LOGRETURN();
          return ERR_Terminate;
       }
       else {
@@ -436,7 +436,7 @@ continue_upload:
    Self->WriteBuffer = NULL;
    Self->WriteSize = 0;
 
-   STEP();
+   LOGRETURN();
    if (Self->Error) return ERR_Terminate;
    return ERR_Okay;
 }
@@ -789,18 +789,18 @@ static ERROR socket_incoming(objNetSocket *Socket)
                if (Self->Error IS ERR_Disconnected) {
                   FMSG("http_incoming","Received all chunked content (disconnected by peer).");
                   SetLong(Self, FID_State, HGS_COMPLETED);
-                  STEP();
+                  LOGRETURN();
                   return ERR_Terminate;
                }
                else if (Self->Error) {
                   LogF("@http_incoming","Read() returned error %d whilst reading content.", Self->Error);
                   SetLong(Self, FID_State, HGS_COMPLETED);
-                  STEP();
+                  LOGRETURN();
                   return ERR_Terminate;
                }
                else if ((!len) AND (Self->ChunkIndex >= Self->ChunkBuffered)) {
                   FMSG("http_incoming","Nothing left to read.");
-                  STEP();
+                  LOGRETURN();
                   return ERR_Okay;
                }
                else Self->ChunkBuffered += len;
@@ -830,14 +830,14 @@ static ERROR socket_incoming(objNetSocket *Socket)
 
                               FMSG("http_incoming","End of chunks reached, optional data follows.");
                               SetLong(Self, FID_State, HGS_COMPLETED);
-                              STEP();
+                              LOGRETURN();
                               return ERR_Terminate;
                            }
                            else {
                               // We have reached the terminating line (CRLF on an empty line)
                               FMSG("http_incoming","Received all chunked content.");
                               SetLong(Self, FID_State, HGS_COMPLETED);
-                              STEP();
+                              LOGRETURN();
                               return ERR_Terminate;
                            }
                         }
@@ -883,7 +883,7 @@ static ERROR socket_incoming(objNetSocket *Socket)
                }
             }
 
-            STEP();
+            LOGRETURN();
          }
       }
       else {
@@ -1132,7 +1132,7 @@ static ERROR HTTP_Activate(objHTTP *Self, APTR Void)
          }
          else {
             LogErrorMsg("HTTP COPY request requires a destination path.");
-            LogBack();
+            LogReturn();
             SET_ERROR(Self, ERR_FieldNotSet);
             return Self->Error;
          }
@@ -1161,7 +1161,7 @@ static ERROR HTTP_Activate(objHTTP *Self, APTR Void)
          }
          else {
             LogErrorMsg("HTTP MOVE request requires a destination path.");
-            LogBack();
+            LogReturn();
             SET_ERROR(Self, ERR_FieldNotSet);
             return Self->Error;
          }
@@ -1222,7 +1222,7 @@ static ERROR HTTP_Activate(objHTTP *Self, APTR Void)
                   else Self->ContentLength = Self->Size;
                }
                else {
-                  LogBack();
+                  LogReturn();
                   SET_ERROR(Self, ERR_File);
                   return PostError(Self->Error);
                }
@@ -1240,7 +1240,7 @@ static ERROR HTTP_Activate(objHTTP *Self, APTR Void)
             }
             else {
                LogErrorMsg("No data source specified for POST/PUT method.");
-               LogBack();
+               LogReturn();
                SET_ERROR(Self, ERR_FieldNotSet);
                return Self->Error;
             }
@@ -1278,7 +1278,7 @@ static ERROR HTTP_Activate(objHTTP *Self, APTR Void)
       }
       else {
          LogErrorMsg("HTTP method no. %d not understood.", Self->Method);
-         LogBack();
+         LogReturn();
          SET_ERROR(Self, ERR_Failed);
          return Self->Error;
       }
@@ -1347,7 +1347,7 @@ static ERROR HTTP_Activate(objHTTP *Self, APTR Void)
    if (!Self->Socket) {
       if (NewObject(ID_NETSOCKET, NF_INTEGRAL, &Self->Socket) != ERR_Okay) {
          LogErrorMsg("Failed to create NetSocket.");
-         LogBack();
+         LogReturn();
          SET_ERROR(Self, ERR_NewObject);
          return PostError(Self->Error);
       }
@@ -1365,7 +1365,7 @@ static ERROR HTTP_Activate(objHTTP *Self, APTR Void)
       }
 
       if (acInit(Self->Socket) != ERR_Okay) {
-         LogBack();
+         LogReturn();
          SET_ERROR(Self, ERR_Init);
          return PostError(Self->Error);
       }
@@ -1401,27 +1401,27 @@ static ERROR HTTP_Activate(objHTTP *Self, APTR Void)
                SubscribeTimer(Self->ConnectTimeout, &callback, &Self->TimeoutManager);
             }
 
-            LogBack();
+            LogReturn();
             return ERR_Okay;
          }
          else if (result IS ERR_HostNotFound) {
-            LogBack();
+            LogReturn();
             SET_ERROR(Self, ERR_HostNotFound);
             return PostError(Self->Error);
          }
          else {
-            LogBack();
+            LogReturn();
             SET_ERROR(Self, ERR_Failed);
             return PostError(Self->Error);
          }
       }
       else {
-         LogBack();
+         LogReturn();
          return ERR_Okay;
       }
    }
    else {
-      LogBack();
+      LogReturn();
       SET_ERROR(Self, ERR_Write);
       return PostError(Self->Error);
    }
@@ -1474,7 +1474,7 @@ static ERROR HTTP_Deactivate(objHTTP *Self, APTR Void)
       }
    }
 
-   LogBack();
+   LogReturn();
    return ERR_Okay;
 }
 
@@ -2268,7 +2268,7 @@ static ERROR SET_State(objHTTP *Self, LONG Value)
       if ((Self->Error IS ERR_Terminate) AND (Self->State != HGS_TERMINATED) AND (Self->State != HGS_COMPLETED)) {
          LogBranch("State changing to HGS_TERMINATED (terminate message received).");
             SET_State(Self, HGS_TERMINATED);
-         LogBack();
+         LogReturn();
       }
    }
 
@@ -2507,7 +2507,7 @@ static ERROR process_data(objHTTP *Self, APTR Buffer, LONG Length)
       if (Self->Error IS ERR_Terminate) {
          LogBranch("State changing to HGS_TERMINATED (terminate message received).");
             SetLong(Self, FID_State, HGS_TERMINATED);
-         LogBack();
+         LogReturn();
       }
    }
 
@@ -2830,7 +2830,7 @@ static void socket_feedback(objNetSocket *Socket, LONG State)
          SET_ERROR(Self, Socket->Error);
          LogBranch("Deactivating (connect failure message received).");
             SetField(Self, FID_State, HGS_TERMINATED);
-         LogBack();
+         LogReturn();
          return;
       }
       else Self->Connecting = FALSE;
@@ -2857,7 +2857,7 @@ static void socket_feedback(objNetSocket *Socket, LONG State)
 
          LogBranch("State changing to TERMINATED due to disconnection.");
             SetLong(Self, FID_State, HGS_TERMINATED);
-         LogBack();
+         LogReturn();
       }
       else if (Self->State IS HGS_READING_CONTENT) {
          LONG len;

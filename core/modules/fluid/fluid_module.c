@@ -22,7 +22,7 @@ static int module_load(lua_State *Lua)
 
    ERROR error = load_include(Lua->Script, modname);
    if ((error != ERR_Okay) AND (error != ERR_FileNotFound)) {
-      LogBack();
+      LogReturn();
       luaL_error(Lua, "Failed to load include file for the %s module.", modname);
       return 0;
    }
@@ -40,11 +40,11 @@ static int module_load(lua_State *Lua)
       mod->Module = module;
       GetPointer(module, FID_FunctionList, &mod->Functions);
 
-      LogBack();
+      LogReturn();
       return 1;  // new userdatum is already on the stack
    }
    else {
-      LogBack();
+      LogReturn();
       luaL_error(Lua, "Failed to load the %s module.", modname);
       return 0;
    }

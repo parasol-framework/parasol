@@ -87,7 +87,7 @@ static ERROR CHECKBOX_Activate(objCheckBox *Self, APTR Void)
 
    if (Self->Active) {
       LogErrorMsg("Warning - recursion detected");
-      LogBack();
+      LogReturn();
       return ERR_Failed;
    }
 
@@ -132,7 +132,7 @@ static ERROR CHECKBOX_Activate(objCheckBox *Self, APTR Void)
 
    Self->Active = FALSE;
 
-   LogBack();
+   LogReturn();
    return ERR_Okay;
 }
 

@@ -1355,7 +1355,7 @@ exit:
       error = ERR_Search;
    }
 
-   LogBack();
+   LogReturn();
    return error;
 }
 
@@ -1434,18 +1434,18 @@ static ERROR COMPRESSION_DecompressObject(objCompression *Self, struct cmpDecomp
       // Seek to the start of the compressed data
 
       if (acSeek(Self->FileIO, list->Offset + HEAD_NAMELEN, SEEK_START) != ERR_Okay) {
-         return LogBackError(0, ERR_Seek);
+         return LogReturnError(0, ERR_Seek);
       }
 
       LONG namelen = read_word(Self->FileIO);
       LONG extralen = read_word(Self->FileIO);
       if (acSeek(Self->FileIO, namelen + extralen, SEEK_CURRENT) != ERR_Okay) {
-         return LogBackError(0, ERR_Seek);
+         return LogReturnError(0, ERR_Seek);
       }
 
       if (list->Flags & ZIP_LINK) { // For symbolic links, decompress the data to get the destination link string
          LogErrorMsg("Unable to unzip symbolic link %s (flags $%.8x), size %d.", list->Name, list->Flags, list->OriginalSize);
-         return LogBackError(0, ERR_Failed);
+         return LogReturnError(0, ERR_Failed);
       }
       else { // Create the destination file or folder
          Self->prvZip.next_in   = 0;
@@ -1558,14 +1558,14 @@ static ERROR COMPRESSION_DecompressObject(objCompression *Self, struct cmpDecomp
    }
    else {
       LogF("DecompressObject:","No files matched the path \"%s\" from %d files.", Args->Path, total_scanned);
-      LogBack();
+      LogReturn();
       return ERR_Search;
    }
 
 exit:
    if (inflateend) inflateEnd(&Self->prvZip);
    if (error) PostError(error);
-   LogBack();
+   LogReturn();
    return error;
 }
 /*****************************************************************************
@@ -1972,7 +1972,7 @@ static ERROR COMPRESSION_Scan(objCompression *Self, struct cmpScan *Args)
       }
    }
 
-   STEP();
+   LOGRETURN();
    return error;
 }
 

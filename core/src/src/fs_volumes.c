@@ -86,18 +86,18 @@ ERROR DeleteVolume(CSTRING Name)
          }
 
          ReleasePrivateObject((OBJECTPTR)glVolumes);
-         LogBack();
+         LogReturn();
          return ERR_Okay;
       }
 
       ReleasePrivateObject((OBJECTPTR)glVolumes);
       LogError(ERH_Volume, ERR_GetField);
-      LogBack();
+      LogReturn();
       return ERR_GetField;
    }
    else {
       LogError(ERH_Volume, ERR_ExclusiveDenied);
-      LogBack();
+      LogReturn();
       return ERR_ExclusiveDenied;
    }
 }
@@ -270,7 +270,7 @@ next:
    else LogF("~SetVolume()","Name: %s, Path: %s", name, path);
 
    if ((!glVolumes) OR (AccessPrivateObject((OBJECTPTR)glVolumes, 8000) != ERR_Okay)) {
-      LogBack();
+      LogReturn();
       return PostError(ERR_AccessObject);
    }
 
@@ -331,12 +331,12 @@ next:
 
                         FreeResource(str);
                         ReleasePrivateObject((OBJECTPTR)glVolumes);
-                        LogBack();
+                        LogReturn();
                         return ERR_Okay;
                      }
                      else {
                         ReleasePrivateObject((OBJECTPTR)glVolumes);
-                        LogBack();
+                        LogReturn();
                         return LogError(ERH_Volume, ERR_AllocMemory);
                      }
                   }
@@ -401,7 +401,7 @@ next:
    CopyMemory(name, evbuf + sizeof(EVENTID), strlen);
    BroadcastEvent(evbuf, sizeof(EVENTID) + strlen);
 
-   LogBack();
+   LogReturn();
    return ERR_Okay;
 }
 

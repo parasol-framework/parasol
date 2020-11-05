@@ -20,7 +20,7 @@ static void feedback_validate_input(objText *Self)
       }
    }
 
-   LogBack();
+   LogReturn();
 }
 
 //****************************************************************************
@@ -45,7 +45,7 @@ static void feedback_activated(objText *Self)
       }
    }
 
-   LogBack();
+   LogReturn();
 }
 
 //****************************************************************************
@@ -1366,7 +1366,7 @@ static ERROR load_file(objText *Self, CSTRING Location)
          }
          else {
             acFree(file);
-            LogBack();
+            LogReturn();
             return ERR_Read;
          }
       }
@@ -1386,7 +1386,7 @@ static ERROR load_file(objText *Self, CSTRING Location)
          }
          else {
             acFree(file);
-            LogBack();
+            LogReturn();
             return ERR_AllocMemory;
          }
       }
@@ -1399,11 +1399,11 @@ static ERROR load_file(objText *Self, CSTRING Location)
       }
 
       if (file) acFree(file);
-      LogBack();
+      LogReturn();
       return ERR_Okay;
    }
    else {
-      LogBack();
+      LogReturn();
       return ERR_OpenFile;
    }
 }

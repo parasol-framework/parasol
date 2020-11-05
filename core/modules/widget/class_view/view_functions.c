@@ -42,7 +42,7 @@ static void vwUserClick(objView *Self, struct InputMsg *Input)
                   Self->PointerLocked = PTR_SPLIT_HORIZONTAL;
                }
 
-               STEP();
+               LOGRETURN();
                return;
             }
             else if ((Self->ClickX >= x) AND (Self->ClickX < x + col->Width)) {
@@ -52,7 +52,7 @@ static void vwUserClick(objView *Self, struct InputMsg *Input)
                      else viewSortColumnIndex(Self, i, FALSE);
                   }
                }
-               STEP();
+               LOGRETURN();
                return;
             }
             x += col->Width;
@@ -63,7 +63,7 @@ static void vwUserClick(objView *Self, struct InputMsg *Input)
    struct view_node *node;
 
    if (Self->Flags & VWF_NO_SELECT) {
-      STEP();
+      LOGRETURN();
       return;
    }
 
@@ -105,7 +105,7 @@ static void vwUserClick(objView *Self, struct InputMsg *Input)
                   }
                }
 
-               STEP();
+               LOGRETURN();
                return;
             }
          }
@@ -126,7 +126,7 @@ static void vwUserClick(objView *Self, struct InputMsg *Input)
                      if (Self->XML->Modified != modstamp) {
                         tag = Self->XML->Tags[index];
                         draw_item(Self, tag);
-                        STEP();
+                        LOGRETURN();
                         return;
                      }
                   }
@@ -166,7 +166,7 @@ static void vwUserClick(objView *Self, struct InputMsg *Input)
                            draw_item(Self, tag);
                         }
 
-                        STEP();
+                        LOGRETURN();
                         return;
                      }
                   }
@@ -222,10 +222,10 @@ static void vwUserClick(objView *Self, struct InputMsg *Input)
 
       acActivate(Self);
 
-      STEP();
+      LOGRETURN();
    }
 
-   STEP();
+   LOGRETURN();
    return;
 }
 
@@ -317,7 +317,7 @@ static void vwUserMovement(objView *Self, struct InputMsg *Input)
 
             acDrawID(Self->Layout->SurfaceID);
          }
-         STEP();
+         LOGRETURN();
          return;
       }
       else Self->ColumnResize = NULL;
@@ -485,7 +485,7 @@ static void vwUserMovement(objView *Self, struct InputMsg *Input)
       }
    }
 
-   STEP();
+   LOGRETURN();
 }
 
 //****************************************************************************
@@ -497,7 +497,7 @@ static ERROR calc_hscroll(objView *Self)
    FMSG("~","calc_hscroll: Page: %d, View: %d", Self->Layout->BoundX + Self->PageWidth, Self->Layout->BoundWidth);
 
    if (!Self->HScroll) {
-      STEP();
+      LOGRETURN();
       return ERR_Okay;
    }
 
@@ -520,7 +520,7 @@ static ERROR calc_hscroll(objView *Self)
    scroll.Unit     = 16;
    error = Action(MT_ScUpdateScroll, Self->HScroll, &scroll);
 
-   STEP();
+   LOGRETURN();
    return error;
 }
 
@@ -581,8 +581,8 @@ static LONG arrange_tree(objView *Self, struct XMLTag *Root, LONG X)
 
    Self->TreeIndex++;
    objBitmap *expand, *collapse;
-   if (!(expand = get_expand_bitmap(Self, 0))) { STEP(); return 0; }
-   if (!(collapse = get_collapse_bitmap(Self, 0))) { STEP(); return 0; }
+   if (!(expand = get_expand_bitmap(Self, 0))) { LOGRETURN(); return 0; }
+   if (!(collapse = get_collapse_bitmap(Self, 0))) { LOGRETURN(); return 0; }
    LONG itemcount = 0;
 
    struct XMLTag *tag, *child;
@@ -628,7 +628,7 @@ static LONG arrange_tree(objView *Self, struct XMLTag *Root, LONG X)
    }
 
    Self->TreeIndex--;
-   STEP();
+   LOGRETURN();
    return itemcount;
 }
 
@@ -902,7 +902,7 @@ exit:
 
    calc_vscroll(Self);
    calc_hscroll(Self);
-   STEP();
+   LOGRETURN();
 }
 
 /*****************************************************************************
@@ -2039,7 +2039,7 @@ next:
       Tag = Tag->Next;
    }
 
-   //STEP();
+   //LOGRETURN();
 }
 
 //****************************************************************************
@@ -2277,7 +2277,7 @@ static BYTE select_item(objView *Self, struct XMLTag *Tag, LONG Flags, BYTE Mult
 
          report_selection(Self, SLF_ACTIVE|SLF_SELECTED|SLF_MULTIPLE, Tag->Index);
 
-         STEP();
+         LOGRETURN();
          return FALSE;
       }
       else if (ctrlkey) {
@@ -2292,7 +2292,7 @@ static BYTE select_item(objView *Self, struct XMLTag *Tag, LONG Flags, BYTE Mult
             Self->ActiveTag   = Tag->Index;
             Self->SelectedTag = Tag->Index;
             report_selection(Self, SLF_ACTIVE|SLF_SELECTED|SLF_MULTIPLE|Flags, Tag->Index);
-            STEP();
+            LOGRETURN();
             return FALSE;
          }
       }
@@ -2325,7 +2325,7 @@ static BYTE select_item(objView *Self, struct XMLTag *Tag, LONG Flags, BYTE Mult
 
       if ((!node->Width) AND (Self->Style != VIEW_TREE)) {
          // Redundant nodes cannot be selected
-         STEP();
+         LOGRETURN();
          return FALSE;
       }
 
@@ -2394,7 +2394,7 @@ static BYTE select_item(objView *Self, struct XMLTag *Tag, LONG Flags, BYTE Mult
          }
          if (i >= Tag->TotalAttrib) {
             acActivate(Self);
-            STEP();
+            LOGRETURN();
             return TRUE;
          }
       }
@@ -2407,7 +2407,7 @@ static BYTE select_item(objView *Self, struct XMLTag *Tag, LONG Flags, BYTE Mult
       report_selection(Self, SLF_ACTIVE|SLF_SELECTED|Flags, -1);
    }
 
-   STEP();
+   LOGRETURN();
    return FALSE;
 }
 
@@ -2676,7 +2676,7 @@ static LONG prepare_xml(objView *Self, struct XMLTag *Root, CSTRING ItemName, LO
       count++;
    }
 
-   //STEP();
+   //LOGRETURN();
    return count;
 }
 
@@ -2988,7 +2988,7 @@ static ERROR report_cellclick(objView *Self, LONG TagIndex, LONG Column, LONG In
             scCallback(script, Self->CellClick.Script.ProcedureID, args, ARRAYSIZE(args));
          }
       }
-      STEP();
+      LOGRETURN();
       return ERR_Okay;
    }
    else return ERR_NothingDone;
@@ -3018,7 +3018,7 @@ static void report_selection(objView *Self, LONG Flags, LONG TagIndex)
             scCallback(script, Self->SelectCallback.Script.ProcedureID, args, ARRAYSIZE(args));
          }
       }
-      STEP();
+      LOGRETURN();
    }
 }
 
@@ -3110,12 +3110,12 @@ static BYTE open_branch_callback(objView *Self, struct XMLTag *Tag)
          node->Flags |= NODE_OPEN;
          Self->Deselect = FALSE;
          acRefresh(Self);
-         LogBack();
+         LogReturn();
          return TRUE;
       }
       else FMSG("open_branch:","No modifications were made to the view XML (%d == %d).", Self->XML->Modified, modstamp);
    }
 
-   LogBack();
+   LogReturn();
    return FALSE;
 }

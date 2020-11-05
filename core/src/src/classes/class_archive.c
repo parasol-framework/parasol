@@ -564,7 +564,7 @@ static ERROR scan_folder(struct DirInfo *Dir)
 
          Dir->prvIndexPtr = zf->Next;
          Dir->prvTotal++;
-         STEP();
+         LOGRETURN();
          return ERR_Okay;
       }
 
@@ -585,12 +585,12 @@ static ERROR scan_folder(struct DirInfo *Dir)
 
          Dir->prvIndexPtr = zf->Next;
          Dir->prvTotal++;
-         STEP();
+         LOGRETURN();
          return ERR_Okay;
       }
    }
 
-   STEP();
+   LOGRETURN();
    return ERR_DirEmpty;
 }
 
@@ -660,13 +660,13 @@ static ERROR test_path(CSTRING Path, LONG Flags, LONG *Type)
    CSTRING file_path;
    objCompression *cmp;
    if (!(cmp = find_archive(Path, &file_path))) {
-      STEP();
+      LOGRETURN();
       return ERR_DoesNotExist;
    }
 
    if ((!file_path) OR (!file_path[0])) {
       *Type = LOC_VOLUME;
-      STEP();
+      LOGRETURN();
       return ERR_Okay;
    }
 
@@ -674,7 +674,7 @@ static ERROR test_path(CSTRING Path, LONG Flags, LONG *Type)
    ERROR error;
    if ((error = cmpFind(cmp, file_path, STR_CASE|STR_MATCH_LEN, &item))) {
       FMSG("test_path","cmpFind() did not find %s, %s", file_path, GetErrorMsg(error));
-      STEP();
+      LOGRETURN();
       if (error IS ERR_Search) return ERR_DoesNotExist;
       else return error;
    }
@@ -682,7 +682,7 @@ static ERROR test_path(CSTRING Path, LONG Flags, LONG *Type)
    if (item->Flags & FL_FOLDER) *Type = LOC_FOLDER;
    else *Type = LOC_FILE;
 
-   STEP();
+   LOGRETURN();
    return ERR_Okay;
 }
 

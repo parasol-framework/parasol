@@ -359,7 +359,7 @@ ERROR FuncError(CSTRING Header, ERROR Code)
 {
    if (tlLogStatus <= 0) return Code;
 
-   // Issue a LogBack() call if the error code is negative
+   // Issue a LogReturn() call if the error code is negative
 
    BYTE step = FALSE;
    if (Code < 0) {
@@ -368,12 +368,12 @@ ERROR FuncError(CSTRING Header, ERROR Code)
    }
 
    if (glLogLevel < 2) {
-      if (step) LogBack();
+      if (step) LogReturn();
       return Code;
    }
 
    if ((tlDepth >= glMaxDepth) OR (tlLogStatus <= 0)) {
-      if (step) LogBack();
+      if (step) LogReturn();
       return Code;
    }
 
@@ -442,7 +442,7 @@ ERROR FuncError(CSTRING Header, ERROR Code)
    }
    else LogF(Header,"Code: %d", Code);
 
-   if (step) LogBack();
+   if (step) LogReturn();
    return Code;
 }
 
@@ -468,7 +468,7 @@ ERROR LogError(LONG HeaderCode, ERROR Code)
 {
    if (tlLogStatus <= 0) return Code;
 
-   // Issue a LogBack() call if the error code is negative
+   // Issue a LogReturn() call if the error code is negative
 
    BYTE step = FALSE;
    if (Code < 0) {
@@ -477,12 +477,12 @@ ERROR LogError(LONG HeaderCode, ERROR Code)
    }
 
    if (glLogLevel < 2) {
-      if (step) LogBack();
+      if (step) LogReturn();
       return Code;
    }
 
    if ((tlDepth >= glMaxDepth) OR (tlLogStatus <= 0)) {
-      if (step) LogBack();
+      if (step) LogReturn();
       return Code;
    }
    if ((Code < glTotalMessages) AND (Code > 0)) {
@@ -564,21 +564,21 @@ ERROR LogError(LONG HeaderCode, ERROR Code)
    }
    else LogF("@LogError:","Header: %d, Code: %d", HeaderCode, Code);
 
-   if (step) LogBack();
+   if (step) LogReturn();
    return Code;
 }
 
 /*****************************************************************************
 
 -FUNCTION-
-LogBack: Revert to the previous branch in the application logging tree.
+LogReturn: Revert to the previous branch in the application logging tree.
 
-Use LogBack() to reverse any previous log message that created a new branch.  Consider the following example:
+Use LogReturn() to reverse any previous log message that created a new branch.  Consider the following example:
 
 <pre>
 LogF("~Hello:","World.");
    LogF("Goodbye:","World.");
-LogBack();
+LogReturn();
 LogF("Log:","Back to normal.");
 </pre>
 
@@ -590,7 +590,7 @@ Hello         World.
 Log           Back to normal.
 </pre>
 
-If the call to LogBack() was eliminated, the log would be permanently out of step, as follows:
+If the call to LogReturn() was eliminated, the log would be permanently out of step, as follows:
 
 <pre>
 Hello         World.
@@ -598,15 +598,15 @@ Hello         World.
  Log          Back to normal.
 </pre>
 
-As demonstrated, the creation of any branch must be matched with a call to LogBack() or the log tree will
-be meaningless.  Please ensure that when writing log code for complex functions, a call to LogBack() is used at
+As demonstrated, the creation of any branch must be matched with a call to LogReturn() or the log tree will
+be meaningless.  Please ensure that when writing log code for complex functions, a call to LogReturn() is used at
 each exit point of the function.
 
 -END-
 
 *****************************************************************************/
 
-void LogBack(void)
+void LogReturn(void)
 {
    if (tlLogStatus <= 0) return;
    if ((--tlDepth) < 0) tlDepth = 0;

@@ -141,7 +141,7 @@ void Scintilla::Window::InvalidateAll()
 
    FMSG("~Window::InvalidateAll()","");
    DelayMsg(AC_Draw, getSurfaceID(this), NULL);
-   STEP();
+   LOGRETURN();
 }
 
 /****************************************************************************/
@@ -159,7 +159,7 @@ void Scintilla::Window::InvalidateRectangle(Scintilla::PRectangle rc)
    struct acDraw draw = { rc.left, rc.top, rc.Width(), rc.Height() };
    DelayMsg(AC_Draw, getSurfaceID(this), &draw);
 
-   STEP();
+   LOGRETURN();
 }
 
 /****************************************************************************/

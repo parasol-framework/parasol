@@ -236,7 +236,7 @@ static ERROR SEARCH_Next(struct rkScintillaSearch *Self, struct ssNext *Args)
       if (start IS end) {
          if (Self->Flags & STF_WRAP) start = 0;
          else {
-            LogBack();
+            LogReturn();
             return ERR_Search;
          }
       }
@@ -274,7 +274,7 @@ static ERROR SEARCH_Next(struct rkScintillaSearch *Self, struct ssNext *Args)
    }
 
    if (pos IS -1) {
-      LogBack();
+      LogReturn();
       return ERR_Search;
    }
 
@@ -296,7 +296,7 @@ static ERROR SEARCH_Next(struct rkScintillaSearch *Self, struct ssNext *Args)
 
    Args->Pos = pos;
 
-   LogBack();
+   LogReturn();
    return ERR_Okay;
 }
 

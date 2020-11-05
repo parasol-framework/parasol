@@ -302,7 +302,7 @@ static ERROR VIEW_ActionNotify(objView *Self, struct acActionNotify *Args)
          }
 
          NotifySubscribers(Self, AC_DragDrop, drag, 0, ERR_Okay);
-         LogBack();
+         LogReturn();
       }
    }
    else if (Args->ActionID IS AC_Disable) {
@@ -375,7 +375,7 @@ static ERROR VIEW_Activate(objView *Self, APTR Void)
          acActivateID(list[i].ObjectID);
       }
 
-      LogBack();
+      LogReturn();
       return ERR_Okay;
    }
    else {
@@ -434,7 +434,7 @@ static ERROR VIEW_Clear(objView *Self, APTR Void)
 
    if ((activate) AND (Self->Flags & (VWF_NOTIFY_ON_CLEAR|VWF_SENSITIVE))) acActivate(Self);
 
-   LogBack();
+   LogReturn();
    return ERR_Okay;
 }
 
@@ -654,7 +654,7 @@ static ERROR VIEW_DataFeed(objView *Self, struct acDataFeed *Args)
       if (Self->DragSourceID) {
          LogBranch("Data request received for #%d", Self->DragSourceID);
          ERROR error = ActionMsg(AC_DataFeed, Self->DragSourceID, Args);
-         LogBack();
+         LogReturn();
          if (error IS ERR_NotFound) Self->DragSourceID = 0;
          if (error) PostError(error);
          return error;
@@ -760,7 +760,7 @@ static ERROR VIEW_OpenBranch(objView *Self, struct viewOpenBranch *Args)
    if ((Args->XPath) AND (Args->XPath[0])) {
       LONG i;
       if (xmlFindTag(Self->XML, Args->XPath, 0, &i)) {
-         LogBack();
+         LogReturn();
          return PostError(ERR_Search);
       }
       tag = Self->XML->Tags[i];
@@ -774,7 +774,7 @@ static ERROR VIEW_OpenBranch(objView *Self, struct viewOpenBranch *Args)
    }
 
    if (!tag) {
-      LogBack();
+      LogReturn();
       return PostError(ERR_Search);
    }
 
@@ -816,7 +816,7 @@ static ERROR VIEW_OpenBranch(objView *Self, struct viewOpenBranch *Args)
    }
    else MSG("Callback routine manually expanded the tree branch.");
 
-   LogBack();
+   LogReturn();
    return ERR_Okay;
 }
 
@@ -1252,7 +1252,7 @@ static void gen_group_bkgd(objView *Self, CSTRING Script, objBitmap **Bitmap, CS
       }
    }
 
-   LogBack();
+   LogReturn();
 }
 
 /*****************************************************************************
@@ -1315,7 +1315,7 @@ static ERROR VIEW_InsertItem(objView *Self, struct viewInsertItem *Args)
          FMSG("~","Path: %s, Insert Mode: %d", Args->XPath, Args->Insert);
          LONG tagindex;
          if (xmlFindTag(Self->XML, Args->XPath, 0, &tagindex)) {
-            STEP();
+            LOGRETURN();
             return PostError(ERR_Search);
          }
          tag = Self->XML->Tags[tagindex];
@@ -1341,12 +1341,12 @@ static ERROR VIEW_InsertItem(objView *Self, struct viewInsertItem *Args)
 
       if (!tag) {
          LogErrorMsg("Failed to find '%s' / %d from %d tags.", Args->XPath, Args->TagIndex, Self->XML->TagCount);
-         STEP();
+         LOGRETURN();
          return ERR_Search;
       }
 
       if (!(((struct view_node *)(tag->Private))->Flags & NODE_ITEM)) {
-         STEP();
+         LOGRETURN();
          return PostError(ERR_InvalidReference);
       }
 
@@ -1365,11 +1365,11 @@ static ERROR VIEW_InsertItem(objView *Self, struct viewInsertItem *Args)
             DelayMsg(AC_Draw, Self->Layout->SurfaceID, NULL);
          }
 
-         STEP();
+         LOGRETURN();
          return ERR_Okay;
       }
       else {
-         STEP();
+         LOGRETURN();
          return error;
       }
    }
@@ -1701,7 +1701,7 @@ static ERROR VIEW_RaiseItem(objView *Self, struct viewRaiseItem *Args)
    if ((Args) AND (Args->XPath) AND (Args->XPath != (STRING)-1) AND (Args->XPath[0])) {
       LONG tagindex;
       if (xmlFindTag(Self->XML, Args->XPath, 0, &tagindex)) {
-         LogBack();
+         LogReturn();
          return PostError(ERR_Search);
       }
    }
@@ -1711,7 +1711,7 @@ static ERROR VIEW_RaiseItem(objView *Self, struct viewRaiseItem *Args)
    else for (tag=Self->XML->Tags[0]; (tag) AND (tag->Index != Self->SelectedTag); tag=tag->Next);
 
    if (!tag) {
-      LogBack();
+      LogReturn();
       return PostError(ERR_Search);
    }
 
@@ -1735,7 +1735,7 @@ static ERROR VIEW_RaiseItem(objView *Self, struct viewRaiseItem *Args)
       }
    }
 
-   LogBack();
+   LogReturn();
    return ERR_Okay;
 }
 
@@ -1776,7 +1776,7 @@ static ERROR VIEW_Refresh(objView *Self, APTR Void)
       if (selected != Self->SelectedTag) flags |= SLF_SELECTED;
       if (flags) report_selection(Self, flags, Self->SelectedTag);
 
-   STEP();
+   LOGRETURN();
 
    arrange_items(Self); // Expected to set HighlightTag
 
@@ -1898,7 +1898,7 @@ static ERROR VIEW_RemoveTag(objView *Self, struct viewRemoveTag *Args)
    if ((Args->TagIndex >= 0) AND (Args->TagIndex < Self->XML->TagCount)) {
       tag = Self->XML->Tags[Args->TagIndex];
    }
-   else { STEP(); return PostError(ERR_OutOfRange); }
+   else { LOGRETURN(); return PostError(ERR_OutOfRange); }
 
    LONG tagindex = tag->Index;
 
@@ -1923,7 +1923,7 @@ static ERROR VIEW_RemoveTag(objView *Self, struct viewRemoveTag *Args)
 
    // Note that this is a technical routine that does not run a cleanup sub-routine for item rearrangement and notifications.
 
-   STEP();
+   LOGRETURN();
    return ERR_Okay;
 }
 
@@ -2129,7 +2129,7 @@ static ERROR VIEW_SetItem(objView *Self, struct viewSetItem *Args)
    struct XMLTag *tag = NULL;
    if ((Args) AND (Args->XPath) AND (Args->XPath != (STRING)-1) AND (Args->XPath[0])) {
       if (xmlFindTag(Self->XML, Args->XPath, 0, &tagindex)) {
-         STEP();
+         LOGRETURN();
          return PostError(ERR_Search);
       }
       tag = Self->XML->Tags[tagindex];
@@ -2138,18 +2138,18 @@ static ERROR VIEW_SetItem(objView *Self, struct viewSetItem *Args)
       tag = Self->XML->Tags[Args->TagIndex];
    }
    else {
-      STEP();
+      LOGRETURN();
       return PostError(ERR_OutOfRange);
    }
 
    if (!tag) {
       LogErrorMsg("Failed to find the root tag for path/tag '%s' / %d", Args->XPath, Args->TagIndex);
-      STEP();
+      LOGRETURN();
       return ERR_Search;
    }
 
    if (!(((struct view_node *)(tag->Private))->Flags & NODE_ITEM)) {
-      STEP();
+      LOGRETURN();
       return PostError(ERR_InvalidReference);
    }
 
@@ -2167,7 +2167,7 @@ static ERROR VIEW_SetItem(objView *Self, struct viewSetItem *Args)
 
       if (!tag) {
          LogErrorMsg("Failed to find child tag '%s'", Args->Tag);
-         STEP();
+         LOGRETURN();
          return ERR_Search;
       }
    }
@@ -2180,7 +2180,7 @@ static ERROR VIEW_SetItem(objView *Self, struct viewSetItem *Args)
       for (index=0; index < tag->TotalAttrib; index++) {
          if (!StrMatch(Args->Attrib, tag->Attrib[index].Name)) {
             if (!StrMatch(Args->Value, tag->Attrib[index].Value)) { // The new value is the same as the current value
-               STEP();
+               LOGRETURN();
                return ERR_Okay;
             }
 
@@ -2202,7 +2202,7 @@ static ERROR VIEW_SetItem(objView *Self, struct viewSetItem *Args)
                ((struct view_node *)Self->XML->Tags[tagindex]->Private)->ChildString = FALSE;
             }
 
-            STEP();
+            LOGRETURN();
             return ERR_Okay;
          }
       }
@@ -2228,11 +2228,11 @@ static ERROR VIEW_SetItem(objView *Self, struct viewSetItem *Args)
          }
       }
 
-      STEP();
+      LOGRETURN();
       return ERR_Okay;
    }
 
-   STEP();
+   LOGRETURN();
    return PostError(ERR_Search);
 }
 
