@@ -190,18 +190,17 @@ INLINE ERROR prxFind(APTR Ob, LONG Port, LONG Enabled) {
 
 typedef struct rkNetSocket {
    OBJECT_HEADER
-   struct rkNetClient * Clients;             // ServerMode - Attached clients
-   struct rkClientSocket * CurrentSocket;    // ServerMode - The current client being operated on (e.g. for Read/Write activity)
-   APTR   UserData;                          // Pointer to user data that can be used during events
-   STRING Address;                           // Connect the socket to this remote address (if client)
-   LONG   State;                             // Connection state
-   ERROR  Error;                             // The last NetSocket error can be read from this field
-   LONG   Port;                              // Connect socket to this remote port if client, or local port if server
-   LONG   Flags;                             // Optional flags
-   LONG   TotalClients;                      // Total number of clients registered (if socket is a server)
-   LONG   Backlog;                           // Server connection backlog if in server mode
-   LONG   ClientLimit;                       // Limit the number of connected clients to this value
-   LONG   MsgLimit;                          // Limit the size of messages to this value
+   struct rkNetClient * Clients;    // ServerMode - Attached clients
+   APTR   UserData;                 // Pointer to user data that can be used during events
+   STRING Address;                  // Connect the socket to this remote address (if client)
+   LONG   State;                    // Connection state
+   ERROR  Error;                    // The last NetSocket error can be read from this field
+   LONG   Port;                     // Connect socket to this remote port if client, or local port if server
+   LONG   Flags;                    // Optional flags
+   LONG   TotalClients;             // Total number of clients registered (if socket is a server)
+   LONG   Backlog;                  // Server connection backlog if in server mode
+   LONG   ClientLimit;              // Limit the number of connected clients to this value
+   LONG   MsgLimit;                 // Limit the size of messages to this value
 
 #ifdef PRV_NETSOCKET
    SOCKET_HANDLE SocketHandle;   // Handle of the socket

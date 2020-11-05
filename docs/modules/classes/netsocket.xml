@@ -241,13 +241,6 @@ initially fill the internal write buffer, thereafter it will be called whenever 
     </field>
 
     <field>
-      <name>CurrentSocket</name>
-      <comment>ServerMode - The current client being operated on (e.g. for Read/Write activity)</comment>
-      <access>-/-</access>
-      <type class="ClientSocket">*ClientSocket</type>
-    </field>
-
-    <field>
       <name>Error</name>
       <comment>Information about the last error that occurred during a NetSocket operation</comment>
       <access read="R">Read</access>
@@ -297,7 +290,7 @@ initially fill the internal write buffer, thereafter it will be called whenever 
       <description>
 <p>The Incoming field can be set with a custom function that will be called whenever the socket receives data.  The function must follow this definition: <code>ERROR Incoming(*NetSocket, OBJECTPTR Context)</code></p>
 <p>The NetSocket parameter refers to the NetSocket object.  The Context refers to the object that set the Incoming field.</p>
-<p>To get the data from the socket, call the <action>Read</action> action. Reading at least some of the data from the socket is compulsory - if the function does not do this, then the data will be cleared from the socket when the function returns. If your callback function returns ERR_Terminate, then the Incoming field will be cleared so that your function will no longer be called.  All other error codes are ignored.</p>
+<p>Retrieve data from the socket with the <action>Read</action> action. Reading at least some of the data from the socket is compulsory - if the function does not do this then the data will be cleared from the socket when the function returns. If the callback function returns ERR_Terminate then the Incoming field will be cleared and the function will no longer be called.  All other error codes are ignored.</p>
       </description>
     </field>
 
@@ -321,13 +314,14 @@ initially fill the internal write buffer, thereafter it will be called whenever 
 
     <field>
       <name>Outgoing</name>
-      <comment>Callback that is triggered when the socket is ready to send data.</comment>
+      <comment>Callback that is triggered when a socket is ready to send data.</comment>
       <access write="S">Set</access>
       <type>FUNCTION</type>
       <description>
 <p>The Outgoing field can be set with a custom function that will be called whenever the socket is ready to send data. The function must be in the format <code>ERROR Outgoing(*NetSocket, OBJECTPTR Context)</code></p>
 <p>The NetSocket parameter refers to the NetSocket object.  The Context refers to the object that set the Outgoing field.</p>
-<p>To send data to the NetSocket object, call the <action>Write</action> action.  If your callback function returns ERR_Terminate, then the Outgoing field will be cleared so that your function will no longer be called.  All other error codes are ignored.</p>
+<p>To send data to the NetSocket object, call the <action>Write</action> action.  If the callback function returns ERR_Terminate then the Outgoing field will be cleared and the function will no longer be called.  All other error codes are ignored.</p>
+<p>The Outgoing field is ineffective if the NetSocket is in server mode (target a connected client socket instead).</p>
       </description>
     </field>
 

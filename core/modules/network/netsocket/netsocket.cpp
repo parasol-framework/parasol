@@ -9,20 +9,19 @@ Please refer to it for further information on licensing.
 -CLASS-
 NetSocket: Manages network connections via TCP/IP sockets.
 
-The NetSocket class provides a simple way of managing TCP/IP socket communication at a high programming tier.
-Connections from a single client to the server and from the server to multiple clients are supported.  SSL
-functionality is also integrated.
+The NetSocket class provides a simple way of managing TCP/IP socket communications.  Connections from a single client
+to the server and from the server to multiple clients are supported.  SSL functionality is also integrated.
 
-The NetSocket class is designed to cater to asynchronous (non-blocking) communication.  This functionality is
-achieved primarily through callback fields - connection alerts are managed by #Feedback, incoming data is
-received through #Incoming and readiness for outgoing data is supported by #Outgoing.
+The design of the NetSocket class caters to asynchronous (non-blocking) communication.  This is achieved primarily
+through callback fields - connection alerts are managed by #Feedback, incoming data is received through #Incoming
+and readiness for outgoing data is supported by #Outgoing.
 
 <header>Client-Server Connections</>
 
-After a connection has been established to a server socket, data may be written using any of the following methods:
+After a connection has been established, data may be written using any of the following methods:
 
 <list type="unsorted">
-<li>Write directly to the server with either the #Write() action or #WriteMsg() method.</li>
+<li>Write directly to the socket with either the #Write() action or #WriteMsg() method.</li>
 <li>Subscribe to the socket by referring to a routine in the #Outgoing field.  The routine will be called to
 initially fill the internal write buffer, thereafter it will be called whenever the buffer is empty.</li>
 </ul>
@@ -33,9 +32,9 @@ immediately sent.
 
 <header>Server-Client Connections</>
 
-To accept incoming client connections, create a NetSocket object with the SERVER flag set and define the
-#Port value on which to listen for new clients.  If you wish to allow multiple connections from a single
-client IP address, you should also set the MULTICONNECT flag.
+To accept incoming client connections, create a NetSocket object with the SERVER flag set and define the #Port value
+on which to listen for new clients.  If multiple connections from a single client IP address are allowed, you should
+also set the MULTICONNECT flag.
 
 When a new connection is detected, the #Feedback function will be called as `Feedback(*NetSocket, *ClientSocket, OBJECTPTR Context, LONG Operation)`
 
@@ -72,7 +71,6 @@ static void clientsocket_incoming(HOSTHANDLE, APTR);
 static void clientsocket_outgoing(HOSTHANDLE, APTR);
 static void free_client(objNetSocket *, struct rkNetClient *);
 static void free_client_socket(objNetSocket *, objClientSocket *, BYTE);
-static void server_client_outgoing(SOCKET_HANDLE, objClientSocket *);
 static void server_client_connect(SOCKET_HANDLE, objNetSocket *);
 static void free_socket(objNetSocket *);
 static ERROR write_queue(objNetSocket *, struct NetQueue *, CPTR, LONG);
@@ -101,14 +99,14 @@ static ERROR NETSOCKET_ActionNotify(objNetSocket *Self, struct acActionNotify *A
 /*****************************************************************************
 
 -METHOD-
-Connect: Connects a NetSocket to an address
+Connect: Connects a NetSocket to an address.
 
-This method initiates the connection process with a target Address.  The address to connect to can be specified either
+This method initiates the connection process with a target IP address.  The address to connect to can be specified either
 as a domain name, in which case the domain name is first resolved to an IP address, or the address can be specified in
 standard IP notation.
 
 This method is non-blocking.  It will return immediately and the connection will be resolved once the server responds
-to the connection request or an error occurs.  Client code should subscribe to the State field to respond to changes to
+to the connection request or an error occurs.  Client code should subscribe to the #State field to respond to changes to
 the connection state.
 
 Pre-Condition: Must be in a connection state of NTC_DISCONNECTED
@@ -249,7 +247,7 @@ static ERROR NETSOCKET_DataFeed(objNetSocket *Self, struct acDataFeed *Args)
 -ACTION-
 Disable: Disables sending and receiving on the socket.
 
-This method will stop all sending and receiving of data over the socket.
+This method will stop all sending and receiving of data over the socket.  This is irreversible.
 
 -ERRORS-
 Okay
@@ -269,7 +267,7 @@ static ERROR NETSOCKET_Disable(objNetSocket *Self, APTR Void)
 
    if (result) { // Zero is success on both platforms
       LogErrorMsg("shutdown() failed.");
-      return ERR_Failed;
+      return ERR_SystemCall;
    }
 
    return ERR_Okay;
@@ -280,9 +278,9 @@ static ERROR NETSOCKET_Disable(objNetSocket *Self, APTR Void)
 -METHOD-
 DisconnectClient: Disconnects all sockets connected to a specific client IP.
 
-For server sockets with a client connection, this method will terminate all socket connections made to a client and
-frees any resources allocated to it.  If #Feedback is defined, a DISCONNECTED state message will also be issued
-for each socket connection.
+For server sockets with client IP connections, this method will terminate all socket connections made to a specific
+client IP and free the resources allocated to it.  If #Feedback is defined, a DISCONNECTED state message will also
+be issued for each socket connection.
 
 If only one socket connection needs to be disconnected, please use #DisconnectSocket().
 
@@ -308,7 +306,7 @@ static ERROR NETSOCKET_DisconnectClient(objNetSocket *Self, struct nsDisconnectC
 /*****************************************************************************
 
 -METHOD-
-DisconnectSocket: Disconnects a socket that is connected to a specific client IP.
+DisconnectSocket: Disconnects a single socket that is connected to a client IP address.
 
 This method will disconnect a socket connection for a given client.  If #Feedback is defined, a DISCONNECTED
 state message will also be issued.
@@ -578,7 +576,7 @@ Read: Read information from the socket.
 
 The Read action will read incoming data from the socket and write it to the provided buffer.  If the socket connection
 is safe, success will always be returned by this action regardless of whether or not data was available.  Almost all
-other return codes indicate permanent failure, and the socket connection will be closed when the action returns.
+other return codes indicate permanent failure and the socket connection will be closed when the action returns.
 
 -ERRORS-
 Okay: Read successful (if no data was on the socket, success is still indicated).
@@ -788,7 +786,7 @@ Writing data to a socket will send raw data to the remote client or server.  Wri
 data overflow generated in a call to this action will be buffered into a software queue.  Resource limits placed on the
 software queue are governed by the #MsgLimit field setting.
 
-In server mode, do not use this action.  Instead write to the @ClientSocket object that will receive the data.
+Do not use this action if in server mode.  Instead, write to the @ClientSocket object that will receive the data.
 
 It is possible to write to a socket in advance of any connection being made. The netsocket will queue the data
 and automatically send it once the first connection has been made.
@@ -997,9 +995,9 @@ function must follow this definition: `ERROR Incoming(*NetSocket, OBJECTPTR Cont
 
 The NetSocket parameter refers to the NetSocket object.  The Context refers to the object that set the Incoming field.
 
-To get the data from the socket, call the #Read() action. Reading at least some of the data from the socket is
-compulsory - if the function does not do this, then the data will be cleared from the socket when the function returns.
-If your callback function returns ERR_Terminate, then the Incoming field will be cleared so that your function will no
+Retrieve data from the socket with the #Read() action. Reading at least some of the data from the socket is
+compulsory - if the function does not do this then the data will be cleared from the socket when the function returns.
+If the callback function returns ERR_Terminate then the Incoming field will be cleared and the function will no
 longer be called.  All other error codes are ignored.
 
 *****************************************************************************/
@@ -1027,67 +1025,34 @@ static ERROR SET_Incoming(objNetSocket *Self, FUNCTION *Value)
 /*****************************************************************************
 
 -FIELD-
-Outgoing: Callback that is triggered when the socket is ready to send data.
+Outgoing: Callback that is triggered when a socket is ready to send data.
 
 The Outgoing field can be set with a custom function that will be called whenever the socket is ready to send data.
 The function must be in the format `ERROR Outgoing(*NetSocket, OBJECTPTR Context)`
 
 The NetSocket parameter refers to the NetSocket object.  The Context refers to the object that set the Outgoing field.
 
-To send data to the NetSocket object, call the #Write() action.  If your callback function returns
-ERR_Terminate, then the Outgoing field will be cleared so that your function will no longer be called.  All other error
+To send data to the NetSocket object, call the #Write() action.  If the callback function returns
+ERR_Terminate then the Outgoing field will be cleared and the function will no longer be called.  All other error
 codes are ignored.
+
+The Outgoing field is ineffective if the NetSocket is in server mode (target a connected client socket instead).
 
 *****************************************************************************/
 
 static ERROR GET_Outgoing(objNetSocket *Self, FUNCTION **Value)
 {
-   if (Self->Flags & NSF_SERVER) {
-      objClientSocket *csocket;
-
-      if (!(csocket = Self->CurrentSocket)) return PostError(ERR_Disconnected);
-
-      if (csocket->Outgoing.Type != CALL_NONE) {
-         *Value = &csocket->Outgoing;
-         return ERR_Okay;
-      }
-      else return ERR_FieldNotSet;
+   if (Self->Incoming.Type != CALL_NONE) {
+      *Value = &Self->Incoming;
+      return ERR_Okay;
    }
-   else {
-      if (Self->Outgoing.Type != CALL_NONE) {
-         *Value = &Self->Outgoing;
-         return ERR_Okay;
-      }
-      else return ERR_FieldNotSet;
-   }
+   else return ERR_FieldNotSet;
 }
 
 static ERROR SET_Outgoing(objNetSocket *Self, FUNCTION *Value)
 {
    if (Self->Flags & NSF_SERVER) {
-      objClientSocket *csocket;
-
-      if (!(csocket = Self->CurrentSocket)) return PostError(ERR_Disconnected);
-
-      if (Value) {
-         if (csocket->Outgoing.Type IS CALL_SCRIPT) UnsubscribeAction(csocket->Outgoing.Script.Script, AC_Free);
-         csocket->Outgoing = *Value;
-         if (csocket->Outgoing.Type IS CALL_SCRIPT) SubscribeAction(csocket->Outgoing.Script.Script, AC_Free);
-
-         if (Self->Head.Flags & NF_INITIALISED) {
-            if (csocket->Handle != NOHANDLE) {
-               #ifdef __linux__
-                  RegisterFD((HOSTHANDLE)csocket->Handle, RFD_WRITE|RFD_SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&server_client_outgoing), csocket);
-               #elif _WIN32
-                  win_socketstate(csocket->Handle, -1, TRUE);
-                  Self->WriteClientSocket = &server_client_outgoing;
-               #endif
-            }
-            else LogErrorMsg("Will not listen for socket-writes (no socket handle on client).");
-         }
-         else return PostError(ERR_Disconnected);
-      }
-      else csocket->Outgoing.Type = CALL_NONE;
+      return PostError(ERR_NoSupport);
    }
    else {
       if (Self->Outgoing.Type IS CALL_SCRIPT) UnsubscribeAction(Self->Outgoing.Script.Script, AC_Free);
@@ -1240,10 +1205,7 @@ In client mode, this field is always set to zero.
 -FIELD-
 UserData: A user-defined pointer that can be useful in action notify events.
 
-When some client code has subscribed to a method, such as MT_NsOConnect, and when the client code receives a
-MT_NsOConnect event through ActionNotify, it can be helpful to have a user data pointer in order to retrieve some
-application defined data structure.  Typically this field is set at object creation to point to some user data
-structure.  For them on it can be used in ActionNotify to retrieve the structure.
+This is a free-entry field value that can store user data for future reference.
 
 -FIELD-
 ValidCert: Indicates certificate validity if the socket is encrypted with a certificate.
@@ -1537,7 +1499,6 @@ static const struct FieldDef clValidCert[] = {
 
 static const struct FieldArray clSocketFields[] = {
    { "Clients",          FDF_POINTER|FDF_STRUCT|FDF_R, (MAXINT)&"NetClient", NULL, NULL },
-   { "CurrentClient",    FDF_OBJECT|FDF_RW,    ID_CLIENTSOCKET, NULL, NULL },
    { "UserData",         FDF_POINTER|FDF_RW,   0, NULL, NULL },
    { "Address",          FDF_STRING|FDF_RI,    0, NULL, (APTR)SET_Address },
    { "State",            FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clNetSocketState, NULL, (APTR)SET_State },
@@ -1552,7 +1513,7 @@ static const struct FieldArray clSocketFields[] = {
    { "SocketHandle",     FDF_POINTER|FDF_RI,     0, (APTR)GET_SocketHandle, (APTR)SET_SocketHandle },
    { "Feedback",         FDF_FUNCTIONPTR|FDF_RW, 0, (APTR)GET_Feedback, (APTR)SET_Feedback },
    { "Incoming",         FDF_FUNCTIONPTR|FDF_RW, 0, (APTR)GET_Incoming, (APTR)SET_Incoming },
-   { "Outgoing",         FDF_FUNCTIONPTR|FDF_W,  0, NULL, (APTR)SET_Outgoing },
+   { "Outgoing",         FDF_FUNCTIONPTR|FDF_W,  0, (APTR)GET_Outgoing, (APTR)SET_Outgoing },
    { "OutQueueSize",     FDF_LONG|FDF_R,         0, (APTR)GET_OutQueueSize },
    { "ValidCert",        FDF_LONG|FDF_LOOKUP,    (MAXINT)&clValidCert, (APTR)GET_ValidCert, NULL },
    END_FIELD
