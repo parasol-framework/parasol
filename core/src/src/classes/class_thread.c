@@ -96,8 +96,7 @@ ERROR threadpool_get(objThread **Result)
    FMSG("~threadpool_get()","");
 
    if (!thread_lock(TL_THREADPOOL, 2000)) {
-      LONG i;
-      for (i=0; i < glActionThreadsIndex; i++) {
+      for (LONG i=0; i < glActionThreadsIndex; i++) {
          if ((glActionThreads[i].Thread) AND (!glActionThreads[i].InUse)) {
             thread = glActionThreads[i].Thread;
             glActionThreads[i].InUse = TRUE;
@@ -109,6 +108,7 @@ ERROR threadpool_get(objThread **Result)
          if (!(error = NewPrivateObject(ID_THREAD, NF_UNTRACKED, (OBJECTPTR *)&thread))) {
             SetName(&thread->Head, "ActionThread");
             if (!(error = acInit(&thread->Head))) {
+               LONG i;
                if ((i = glActionThreadsIndex) < THREADPOOL_MAX) { // Record the thread in the pool, if there is room for it.
                   glActionThreads[i].Thread = thread;
                   glActionThreads[i].InUse = TRUE;
@@ -137,8 +137,7 @@ void threadpool_release(objThread *Thread)
    FMSG("~threadpool_release()","Thread: #%d, Total: %d", Thread->Head.UniqueID, glActionThreadsIndex);
 
    if (!thread_lock(TL_THREADPOOL, 2000)) {
-      LONG i;
-      for (i=0; i < glActionThreadsIndex; i++) {
+      for (LONG i=0; i < glActionThreadsIndex; i++) {
          if (glActionThreads[i].Thread IS Thread) {
             glActionThreads[i].InUse = FALSE;
             thread_unlock(TL_THREADPOOL);
@@ -165,8 +164,7 @@ void remove_threadpool(void)
    FMSG("~threadpool_free()","Removing the internal thread pool, size %d.", glActionThreadsIndex);
 
    if (!thread_lock(TL_THREADPOOL, 2000)) {
-      LONG i;
-      for (i=0; i < glActionThreadsIndex; i++) {
+      for (LONG i=0; i < glActionThreadsIndex; i++) {
          if (glActionThreads[i].Thread) {
             if (glActionThreads[i].InUse) LogF("@Core","Pooled thread #%d is still in use on shutdown.", i);
             acFree(&glActionThreads[i].Thread->Head);
@@ -396,7 +394,7 @@ static ERROR THREAD_Deactivate(objThread *Self, APTR Void)
 Free: Remove the object and its resources.
 
 Terminating a thread object will destroy the object unless the thread is currently active.  If an attempt to free
-an active thread is made, it will be marked for termination so as to avoid the risk of system corruption.
+an active thread is made then it will be marked for termination so as to avoid the risk of system corruption.
 -END-
 *****************************************************************************/
 
@@ -473,7 +471,7 @@ Use the SetData method prior to activating a thread so that it can be initialise
 able to read the data from the #Data field.
 
 A copy of the provided data buffer will be stored with the thread object, so there is no need to retain the original
-data after this method has returned.  In some cases it may be desirable to store a direct pointer value with no data
+data after this method has returned.  In some cases it may be desirable to store a direct pointer value and bypass the
 copy operation.  To do this, set the Size parameter to zero.
 
 -INPUT-
@@ -565,10 +563,11 @@ static ERROR THREAD_Wait(objThread *Self, struct thWait *Args)
       #ifdef _WIN32
       if (!winWaitThread(Self->prv.Handle, Args->TimeOut)) {
       #else
-      struct timespec timeout;
       APTR result;
-      timeout.tv_sec = time_left / 1000;
-      timeout.tv_nsec = (time_left % 1000) * 1000000; // 1 in 1,000,000,000
+      struct timespec timeout = {
+         .tv_sec = time_left / 1000,
+         .tv_nsec = (time_left % 1000) * 1000000 // 1 in 1,000,000,000
+      };
       if (!pthread_timedjoin_np(Self->prv.PThread, &result, &timeout)) {
       #endif
          __sync_sub_and_fetch(&Self->prv.Waiting, 1);
@@ -631,19 +630,6 @@ static ERROR GET_Data(objThread *Self, APTR *Value, LONG *Elements)
    return ERR_Okay;
 }
 
-static ERROR SET_Data(objThread *Self, APTR Value, LONG Elements)
-{
-   if ((Value) AND (Elements > 0)) {
-      Self->Data = Value;
-      Self->DataSize = Elements;
-   }
-   else {
-      Self->Data = NULL;
-      Self->DataSize = 0;
-   }
-   return ERR_Okay;
-}
-
 /*****************************************************************************
 
 -FIELD-
@@ -690,8 +676,7 @@ StackSize: The stack size to allocate for the thread.
 The initial size of the thread's stack can be modified by setting this field.  It may also be read prior to activation
 in order to check the default stack size.  Changes to the stack size when the thread is active will have no effect.
 
-Note that on some platforms it may not be possible to preset the stack size, in which case the provided value will
-be ignored.
+On some platforms it may not be possible to preset the stack size and the provided value will be ignored.
 -END-
 *****************************************************************************/
 
@@ -702,7 +687,7 @@ static const struct FieldDef clThreadFlags[] = {
 };
 
 static const struct FieldArray clFields[] = {
-   { "Data",      FDF_ARRAY|FDF_BYTE|FDF_R, 0, GET_Data, SET_Data },
+   { "Data",      FDF_ARRAY|FDF_BYTE|FDF_R, 0, GET_Data, NULL },
    { "DataSize",  FD_LONG|FDF_R,       0, NULL, NULL },
    { "StackSize", FDF_LONG|FDF_RW,     0, NULL, NULL },
    { "Error",     FDF_LONG|FDF_R,      0, NULL, NULL },

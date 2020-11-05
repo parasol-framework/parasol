@@ -55,14 +55,10 @@ function address_resolved(ClientData, Error, HostName, Addresses)
    if (Error == ERR_Okay) then
       print('IP resolved to address "' .. HostName .. '"')
       if (HostName != 'dns.google') then error('IP resolved to ' .. HostName) end
+
+      mSys.SendMessage(nil, MSGID_QUIT)
    else
       error("Failed to resolve " .. nz(HostName,"NIL") .. ", error " ..mSys.GetErrorMsg(Error))
-   end
-
-   glTotalResolved = glTotalResolved + 1
-
-   if (glTotalResolved == 1) then
-      mSys.SendMessage(nil, MSGID_QUIT)
    end
 end
 
@@ -92,7 +88,8 @@ end
 
 //=====================================================================================================================
 // This test resolves each name more than once.  The expected response is for the callback to be called multiple times
-// for the same host.
+// for the same host.  In the log output you may see a thread being created for the first resolve, then the second call
+// will hit the local DNS cache and return immediately.
 
 function testDuplication()
    glTotalResolved = 0
@@ -115,6 +112,7 @@ function testDuplication()
    for k,v in pairs(domains) do
       print("Resolving x2 " .. v)
       mNet.ResolveName(v, 0, duplicate_resolved, 0)
+      mSys.WaitTime(1, 0)
       mNet.ResolveName(v, 0, duplicate_resolved, 0)
    end
 
@@ -158,7 +156,8 @@ function testAddressResolution()
    mNet.ResolveAddress('8.8.8.8', 0, address_resolved, 0)
 
    local elapsed, err = processMessages(5000)
-   if (err == ERR_TimeOut) then error("Address resolution timed-out.") end
+   if (err == ERR_TimeOut) then error('Address resolution timed-out.') end
+   if (glTotalResolved < 1) then error('Failed to resolve the IP address.') end
 end
 
 //=====================================================================================================================

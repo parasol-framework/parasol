@@ -148,7 +148,6 @@ typedef LONG SOCKET_HANDLE;
 
   class("NetSocket", { src="netsocket/netsocket.cpp", output="netsocket/netsocket_def.c" }, [[
     ptr(struct(rkNetClient)) Clients # ServerMode - Attached clients
-    obj(ClientSocket) CurrentSocket  # ServerMode - The current client being operated on (e.g. for Read/Write activity)
     ptr UserData      # Pointer to user data that can be used during events
     str Address       # Connect the socket to this remote address (if client)
     int(NTC) State    # Connection state
