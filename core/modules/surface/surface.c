@@ -2258,7 +2258,7 @@ static OBJECTID drwSetModalSurface(OBJECTID SurfaceID)
       }
    }
 
-   LogBack();
+   LogReturn();
    return old_modal;
 }
 
@@ -2373,19 +2373,19 @@ static ERROR drwApplyStyleValues(OBJECTPTR Object, CSTRING StyleName)
    LogF("~ApplyStyleValues()","#%d, Style: %s", Object->UniqueID, StyleName);
 
    ERROR error;
-   if ((error = load_styles())) { LogBack(); return error; }
+   if ((error = load_styles())) { LogReturn(); return error; }
 
-   if (Object->Flags & NF_INITIALISED) { LogBack(); return PostError(ERR_BadState); }
+   if (Object->Flags & NF_INITIALISED) { LogReturn(); return PostError(ERR_BadState); }
 
    if (glDefaultStyleScript) apply_style(Object, glDefaultStyleScript, StyleName);
 
    if (glAppStyle) {
-      //if (!apply_style(Object, glAppStyle, StyleName)) { LogBack(); return ERR_Okay; }
+      //if (!apply_style(Object, glAppStyle, StyleName)) { LogReturn(); return ERR_Okay; }
    }
 
    if (glDesktopStyleScript) apply_style(Object, glDesktopStyleScript, StyleName);
 
-   LogBack();
+   LogReturn();
    return ERR_Okay;
 }
 
@@ -2418,7 +2418,7 @@ static ERROR drwApplyStyleGraphics(OBJECTPTR Object, OBJECTID SurfaceID, CSTRING
    LogF("~ApplyStyleGraphics()","Object: %d, Surface: %d, Style: %s, StyleType: %s", Object->UniqueID, SurfaceID, StyleName, StyleType);
 
    ERROR error;
-   if ((error = load_styles())) { LogBack(); return error; }
+   if ((error = load_styles())) { LogReturn(); return error; }
 
    // Try the app's style preference first.
 /*
@@ -2449,7 +2449,7 @@ static ERROR drwApplyStyleGraphics(OBJECTPTR Object, OBJECTID SurfaceID, CSTRING
 
       Action(MT_ScExec, glDesktopStyleScript, &exec);
       GetLong(glDesktopStyleScript, FID_Error, &error);
-      if (!error) { LogBack(); return ERR_Okay; }
+      if (!error) { LogReturn(); return ERR_Okay; }
    }
 
    // Still no luck.  Try the default.
@@ -2470,10 +2470,10 @@ static ERROR drwApplyStyleGraphics(OBJECTPTR Object, OBJECTID SurfaceID, CSTRING
 
       Action(MT_ScExec, glDefaultStyleScript, &exec);
       GetLong(glDefaultStyleScript, FID_Error, &error);
-      if (!error) { LogBack(); return ERR_Okay; }
+      if (!error) { LogReturn(); return ERR_Okay; }
    }
 
-   LogBack();
+   LogReturn();
    return ERR_NothingDone;
 }
 
@@ -2607,7 +2607,7 @@ static ERROR load_styles(void)
 
       SetContext(context);
 
-      LogBack();
+      LogReturn();
 
       if (!glDefaultStyleScript) return ERR_CreateObject;
    }
@@ -2623,7 +2623,7 @@ static ERROR load_styles(void)
                TAGEND);
          SetContext(context);
 
-         LogBack();
+         LogReturn();
       }
    }
 
@@ -3192,7 +3192,7 @@ static void process_surface_callbacks(objSurface *Self, objBitmap *Bitmap)
          else routine(Self->Callback[i].Object, Self, Bitmap);
 
          #ifdef DBG_DRAW_ROUTINES
-            LogBack();
+            LogReturn();
          #endif
       }
       else if (Self->Callback[i].Function.Type IS CALL_SCRIPT) {
@@ -3323,7 +3323,7 @@ static ERROR load_style_values(void)
       glStyle = style;
    }
 
-   LogBack();
+   LogReturn();
    return error;
 }
 

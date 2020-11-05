@@ -1334,7 +1334,7 @@ ERROR load_classes(void)
       else error = register_class("MetaClass", 0, CCF_SYSTEM, "modules:core", NULL, NULL);
    }
 
-   LogBack();
+   LogReturn();
    return error;
 }
 
@@ -1386,7 +1386,7 @@ void scan_classes(void)
 
    LogF("Core","Class scan complete.");
 
-   LogBack();
+   LogReturn();
 }
 
 /*****************************************************************************
@@ -1473,7 +1473,7 @@ ERROR register_class(CSTRING Name, CLASSID ParentID, LONG Category, CSTRING Path
       MEMORYID classes_mid;
       if (AllocMemory(totalsize, MEM_NO_CLEAR|MEM_PUBLIC|MEM_NO_BLOCK|MEM_UNTRACKED, (APTR)&classes, &classes_mid)) {
          pReleaseSemaphore(glSharedControl->ClassSemaphore, 0);
-         LogBack();
+         LogReturn();
          return ERR_AllocMemory;
       }
 
@@ -1566,12 +1566,12 @@ ERROR register_class(CSTRING Name, CLASSID ParentID, LONG Category, CSTRING Path
       sort_class_db(); // The class lookup table must be sorted at all times.
 
       pReleaseSemaphore(glSharedControl->ClassSemaphore, 0);
-      LogBack();
+      LogReturn();
       return ERR_Okay;
    }
    else {
       LogF("@register_class","Time-out on semaphore %d.", glSharedControl->ClassSemaphore);
-      LogBack();
+      LogReturn();
       return ERR_TimeOut;
    }
 }

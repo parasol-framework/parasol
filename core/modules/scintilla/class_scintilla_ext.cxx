@@ -78,7 +78,7 @@ void ScintillaPan::SetStyles(const struct styledef *Def, LONG Total)
    WndProc(SCI_STYLESETBACK, STYLE_DEFAULT, (long int)SCICOLOUR(scintilla->BkgdColour.Red, scintilla->BkgdColour.Green, scintilla->BkgdColour.Blue));
    WndProc(SCI_STYLESETFORE, STYLE_DEFAULT, (long int)SCICOLOUR(scintilla->TextColour.Red, scintilla->TextColour.Green, scintilla->TextColour.Blue));
 
-   LogBack();
+   LogReturn();
 }
 
 /*****************************************************************************
@@ -833,7 +833,7 @@ void ScintillaPan::panWordwrap(int Value)
 */
    //SendScintilla(SCI_ENSUREVISIBLE, SendScintilla(SCI_LINEFROMPOSITION, SendScintilla(SCI_GETCURRENTPOS)));
 
-   LogBack();
+   LogReturn();
 }
 
 //****************************************************************************

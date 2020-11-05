@@ -68,7 +68,7 @@ EXPORT void CloseCore(void)
             }
          #endif
 
-      LogBack();
+      LogReturn();
 
       // Wait for sub-tasks to die within the designated time limit
 
@@ -192,7 +192,7 @@ restart_free: {
                   ActionMsg(AC_Free, list[c].ObjectID, NULL, 0, 0);
                }
             }
-            LogBack();
+            LogReturn();
 
             if (count IS ARRAYSIZE(list)) goto restart_free;
          }
@@ -223,7 +223,7 @@ restart_free: {
       if (glCurrentTask) {
          LogF("~7Shutdown","Freeing the task object and its resources.");
             acFree(&glCurrentTask->Head);
-         LogBack();
+         LogReturn();
 
          // Remove allocated objects that are public/shared
 
@@ -246,7 +246,7 @@ restart_free: {
          }
       }
 
-      LogBack();
+      LogReturn();
 
       // Remove locks on any private objects that have not been unlocked yet
 
@@ -567,12 +567,12 @@ EXPORT void Expunge(WORD Force)
                      if (acFree(&mod_master->Head) != ERR_Okay) {
                         LogF("@Expunge","ModuleMaster is corrupt");
                         mod_count = ccount; // Break the loop because the chain links are broken.
-                        LogBack();
+                        LogReturn();
                         break;
                      }
                   }
                   else LogF("Expunge","Module \"%s\" does not want to be flushed.",mod_master->Name);
-                  LogBack();
+                  LogReturn();
                }
                else {
                   ccount++;
@@ -641,7 +641,7 @@ EXPORT void Expunge(WORD Force)
             mod_master->Expunge();
             mod_master->NoUnload = TRUE; // Do not actively destroy the module code as a precaution
             acFree(&mod_master->Head);
-            LogBack();
+            LogReturn();
          }
          else {
             ccount++;
@@ -651,7 +651,7 @@ EXPORT void Expunge(WORD Force)
       }
    }
 
-   LogBack();
+   LogReturn();
 }
 
 /*****************************************************************************
@@ -724,7 +724,7 @@ static void free_shared_objects(void)
       UNLOCK_PUBLIC_MEMORY();
    }
 
-   LogBack();
+   LogReturn();
 }
 
 // This function requires LOCK_PUBLIC_MEMORY() to be in use and can only be called from free_shared_objects()
@@ -808,7 +808,7 @@ static void free_private_memory(void)
 
    if ((glCrashStatus) AND (count > 0)) LogF("Shutdown","%d private memory blocks were freed.", count);
 
-   LogBack();
+   LogReturn();
 }
 
 
@@ -924,7 +924,7 @@ void remove_public_locks(LONG ProcessID)
       UNLOCK_PUBLIC_MEMORY();
    }
 
-   LogBack();
+   LogReturn();
 }
 
 //**********************************************************************

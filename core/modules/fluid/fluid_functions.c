@@ -830,7 +830,7 @@ static int fcmd_exec(lua_State *Lua)
          }
          else error_msg = lua_tostring(prv->Lua, -1);
 
-      LogBack();
+      LogReturn();
       if (error_msg) luaL_error(Lua, error_msg);
    }
    else luaL_argerror(Lua, 1, "Fluid statement required.");

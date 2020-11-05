@@ -174,7 +174,7 @@ static ERROR SURFACE_SetDisplay(objSurface *Self, struct drwSetDisplay *Args)
       Args->InsideWidth, Args->InsideHeight, Args->BitsPerPixel,
       Args->RefreshRate, Args->Flags);
 
-   LogBack();
+   LogReturn();
    return error;
 }
 

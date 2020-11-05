@@ -892,7 +892,7 @@ EXPORT struct CoreBase * OpenCore(struct OpenInfo *Info)
    if (add_asset_class() != ERR_Okay) { CloseCore(); return NULL; }
    #endif
 
-   LogBack();
+   LogReturn();
 
    if (init_filesystem()) {
       KERR("Failed to initialise the filesystem.");
@@ -2006,7 +2006,7 @@ static ERROR load_modules(void)
       error = ERR_Search;
    }
 
-   LogBack();
+   LogReturn();
    return error;
 }
 

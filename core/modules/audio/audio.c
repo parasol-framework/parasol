@@ -370,11 +370,11 @@ static ERROR sndWaitDrivers(LONG TimeOut)
 
    if (!genuine) {
       LogMsg("No sound drivers were started in the allotted time period.");
-      LogBack();
+      LogReturn();
       return ERR_Failed;
    }
 
-   LogBack();
+   LogReturn();
    return ERR_Okay;
 #else
    return ERR_Okay;

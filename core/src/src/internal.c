@@ -104,7 +104,7 @@ ERROR validate_process(LONG ProcessID)
 
    glValidating = 0;
 
-   LogBack();
+   LogReturn();
    return ERR_False; // Return ERR_False to indicate that the task was not healthy
 }
 

@@ -208,7 +208,7 @@ static ERROR xrSetDisplayMode(LONG *Width, LONG *Height)
 
       if (index IS -1) {
          LogF("@SetX11DisplayMode:","No support for requested screen mode %dx%d", width, height);
-         LogBack();
+         LogReturn();
          return ERR_NoSupport;
       }
 

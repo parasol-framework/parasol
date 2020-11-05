@@ -515,7 +515,7 @@ static ERROR WINDOW_Hide(objWindow *Self, APTR Void)
 
       }
 
-      LogBack();
+      LogReturn();
    }
    else acHide(Self->Surface);
 
@@ -966,7 +966,7 @@ static ERROR WINDOW_Minimise(objWindow *Self, APTR Void)
       }
    }
 
-   LogBack();
+   LogReturn();
    return ERR_Okay;
 }
 
@@ -1163,7 +1163,7 @@ static ERROR WINDOW_Show(objWindow *Self, APTR Void)
 
    Self->Shown = TRUE;
 
-   LogBack();
+   LogReturn();
    return ERR_Okay;
 }
 

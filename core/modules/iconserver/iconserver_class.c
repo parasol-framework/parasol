@@ -76,7 +76,7 @@ static ERROR ICON_Clear(objIconServer *Self, APTR Void)
    }
    else LogMsg("No image directories in theme location \"%s\".", buffer);
 
-   LogBack();
+   LogReturn();
    return ERR_Okay;
 }
 
@@ -198,11 +198,11 @@ static ERROR ICON_Refresh(objIconServer *Self, APTR Void)
    }
 
    if (load_icon_db(Self) != ERR_Okay) {
-      LogBack();
+      LogReturn();
       return ERR_Failed;
    }
 
-   LogBack();
+   LogReturn();
    return ERR_Okay;
 }
 
@@ -253,7 +253,7 @@ static ERROR GET_CacheSize(objIconServer *Self, LONG *Value)
       FreeResource(dir);
    }
 
-   LogBack();
+   LogReturn();
 
    return ERR_Okay;
 }

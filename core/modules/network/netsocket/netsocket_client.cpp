@@ -153,7 +153,7 @@ restart:
    if (error IS ERR_Terminate) {
       LogF("~client_incoming","Socket %d will be terminated.", FD);
       if (Self->SocketHandle != NOHANDLE) free_socket(Self);
-      LogBack();
+      LogReturn();
    }
    else if (Self->IncomingRecursion > 1) {
       // If client_server_incoming() was called again during the callback, there is more

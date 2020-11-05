@@ -4181,7 +4181,7 @@ static ERROR keypress(objDocument *Self, LONG Flags, LONG Value, LONG Unicode)
                if (Flags & KQ_SHIFT) advance_tabfocus(Self, -1);
                else advance_tabfocus(Self, 1);
             }
-            LogBack();
+            LogReturn();
             break;
          }
 
@@ -4386,7 +4386,7 @@ static ERROR keypress(objDocument *Self, LONG Flags, LONG Value, LONG Unicode)
          if (Self->TabFocusID) acFocusID(Self->TabFocusID);
          else if (Flags & KQ_SHIFT) advance_tabfocus(Self, -1);
          else advance_tabfocus(Self, 1);
-         LogBack();
+         LogReturn();
          break;
 
       case K_ENTER: {
@@ -4404,7 +4404,7 @@ static ERROR keypress(objDocument *Self, LONG Flags, LONG Value, LONG Unicode)
                }
             }
 
-            LogBack();
+            LogReturn();
          }
          break;
       }
@@ -4498,19 +4498,19 @@ static ERROR load_doc(objDocument *Self, CSTRING Path, BYTE Unload, BYTE UnloadF
 
          AdjustLogLevel(-3);
 
-         LogBack();
+         LogReturn();
          return Self->Error;
       }
       else {
          char msg[300];
          StrFormat(msg, sizeof(msg), "Failed to load document file '%s'", path);
          error_dialog("Document Load Error", msg, Self->Error);
-         LogBack();
+         LogReturn();
          return PostError(ERR_OpenFile);
       }
    }
    else {
-      LogBack();
+      LogReturn();
       return PostError(ERR_FileNotFound);
    }
 }
@@ -4737,7 +4737,7 @@ restart:
          }
       }
 
-      LogBack();
+      LogReturn();
    }
 
    LAYOUT_STEP();
@@ -4798,7 +4798,7 @@ static ERROR process_page(objDocument *Self, objXML *xml)
       if (!Self->Buffer) {
          Self->BufferSize = 65536;
          if (AllocMemory(Self->BufferSize, MEM_NO_CLEAR, &Self->Buffer, NULL) != ERR_Okay) {
-            LogBack();
+            LogReturn();
             return ERR_AllocMemory;
          }
       }
@@ -4806,14 +4806,14 @@ static ERROR process_page(objDocument *Self, objXML *xml)
       if (!Self->Temp) {
          Self->TempSize = 65536;
          if (AllocMemory(Self->TempSize, MEM_NO_CLEAR, &Self->Temp, NULL) != ERR_Okay) {
-            LogBack();
+            LogReturn();
             return ERR_AllocMemory;
          }
       }
 
       if (!Self->VArg) {
          if (AllocMemory(sizeof(Self->VArg[0]) * MAX_ARGS, MEM_NO_CLEAR, &Self->VArg, NULL) != ERR_Okay) {
-            LogBack();
+            LogReturn();
             return ERR_AllocMemory;
          }
       }
@@ -5006,7 +5006,7 @@ static ERROR process_page(objDocument *Self, objXML *xml)
 
    Self->PageProcessed = TRUE;
 
-   LogBack();
+   LogReturn();
    return Self->Error;
 }
 
@@ -5287,7 +5287,7 @@ static ERROR unload_doc(objDocument *Self, BYTE Flags)
       DRAW_PAGE(Self);
    }
 
-   LogBack();
+   LogReturn();
    return ERR_Okay;
 }
 
@@ -5477,7 +5477,7 @@ static LONG create_font(CSTRING Face, CSTRING Style, LONG Point)
             FMSG("create_font()","Match %d = %s(%s,%d)", i, Face, Style, Point);
             acFree(font);
             AdjustLogLevel(-3);
-            LogBack();
+            LogReturn();
             return i;
          }
       }
@@ -5505,7 +5505,7 @@ static LONG create_font(CSTRING Face, CSTRING Style, LONG Point)
 
 exit:
    AdjustLogLevel(-3);
-   LogBack();
+   LogReturn();
    return i;
 }
 
@@ -6433,7 +6433,7 @@ static ERROR activate_edit(objDocument *Self, LONG CellIndex, LONG CursorIndex)
    // Check the validity of the index
 
    if ((stream[CellIndex] != CTRL_CODE) OR (ESCAPE_CODE(stream, CellIndex) != ESC_CELL)) {
-      LogBack();
+      LogReturn();
       return FuncError(ERR_Failed);
    }
 
@@ -6462,7 +6462,7 @@ static ERROR activate_edit(objDocument *Self, LONG CellIndex, LONG CursorIndex)
    }
 
    if (!(edit = find_editdef(Self, cell->EditHash))) {
-      LogBack();
+      LogReturn();
       return FuncError(ERR_Search);
    }
 
@@ -6521,7 +6521,7 @@ static ERROR activate_edit(objDocument *Self, LONG CellIndex, LONG CursorIndex)
 
    DRAW_PAGE(Self);
 
-   LogBack();
+   LogReturn();
    return ERR_Okay;
 }
 
@@ -6619,7 +6619,7 @@ static void deactivate_edit(objDocument *Self, BYTE Redraw)
    }
    else LogF("@deactivate_edit", "Failed to find cell ID %d", Self->ActiveEditCellID);
 
-   LogBack();
+   LogReturn();
 }
 
 //****************************************************************************
@@ -7404,14 +7404,14 @@ static void set_focus(objDocument *Self, LONG Index, STRING Caller)
       Self->FocusIndex = 0;
       if (Self->Tabs[0].Type IS TT_LINK) {
          LogF("set_focus","First focusable element is a link - focus unchanged.");
-         LogBack();
+         LogReturn();
          return;
       }
    }
 
    if (!Self->Tabs[Index].Active) {
       LogF("@set_focus","Tab marker %d is not active.", Index);
-      LogBack();
+      LogReturn();
       return;
    }
 
@@ -7485,7 +7485,7 @@ static void set_focus(objDocument *Self, LONG Index, STRING Caller)
       }
    }
 
-   LogBack();
+   LogReturn();
 }
 
 //****************************************************************************
@@ -7695,7 +7695,7 @@ static void process_parameters(objDocument *Self, CSTRING String)
 
    LogF("process_params:","Reset page name to '%s', bookmark '%s'", Self->PageName, Self->Bookmark);
 
-   LogBack();
+   LogReturn();
 }
 
 //****************************************************************************
@@ -8052,7 +8052,7 @@ static void exec_link(objDocument *Self, LONG Index)
 
 end:
    Self->Processing--;
-   LogBack();
+   LogReturn();
 }
 
 /*****************************************************************************
@@ -8101,7 +8101,7 @@ static void show_bookmark(objDocument *Self, STRING Bookmark)
    }
    else LogErrorMsg("Failed to find bookmark '%s'", Bookmark);
 
-   LogBack();
+   LogReturn();
 }
 
 //****************************************************************************
@@ -8181,7 +8181,7 @@ static ERROR report_event(objDocument *Self, LARGE Event, APTR EventData, CSTRIN
          }
       }
 
-      LogBack();
+      LogReturn();
    }
    else FMSG("report_event()","No subscriber for event $%.8x", (LONG)Event);
 

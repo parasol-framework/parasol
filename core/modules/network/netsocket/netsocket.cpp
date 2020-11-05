@@ -161,11 +161,11 @@ static ERROR NETSOCKET_Connect(objNetSocket *Self, struct nsConnect *Args)
       FUNCTION callback;
       SET_FUNCTION_STDC(callback, (APTR)connect_name_resolved);
       if (netResolveName(Self->Address, 0, &callback, (MAXINT)Self) != ERR_Okay) {
-         return LogBackError(0, Self->Error = ERR_HostNotFound);
+         return LogReturnError(0, Self->Error = ERR_HostNotFound);
       }
    }
 
-   LogBack();
+   LogReturn();
    return ERR_Okay;
 }
 
@@ -606,7 +606,7 @@ static ERROR NETSOCKET_Read(objNetSocket *Self, struct acRead *Args)
       if (error != ERR_Okay) {
          LogBranch("Freeing socket, error '%s'", GetErrorMsg(error));
          free_socket(Self);
-         LogBack();
+         LogReturn();
       }
 
       return error;
@@ -1270,7 +1270,7 @@ static void free_socket(objNetSocket *Self)
 
    SetResourcePtr(RES_EXCEPTION_HANDLER, NULL); // Stop winsock from fooling with our exception handler
 
-   LogBack();
+   LogReturn();
 }
 
 //****************************************************************************

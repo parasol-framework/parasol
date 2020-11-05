@@ -302,7 +302,7 @@ static ERROR VIEW_ActionNotify(objView *Self, struct acActionNotify *Args)
          }
 
          NotifySubscribers(Self, AC_DragDrop, drag, 0, ERR_Okay);
-         LogBack();
+         LogReturn();
       }
    }
    else if (Args->ActionID IS AC_Disable) {
@@ -375,7 +375,7 @@ static ERROR VIEW_Activate(objView *Self, APTR Void)
          acActivateID(list[i].ObjectID);
       }
 
-      LogBack();
+      LogReturn();
       return ERR_Okay;
    }
    else {
@@ -434,7 +434,7 @@ static ERROR VIEW_Clear(objView *Self, APTR Void)
 
    if ((activate) AND (Self->Flags & (VWF_NOTIFY_ON_CLEAR|VWF_SENSITIVE))) acActivate(Self);
 
-   LogBack();
+   LogReturn();
    return ERR_Okay;
 }
 
@@ -654,7 +654,7 @@ static ERROR VIEW_DataFeed(objView *Self, struct acDataFeed *Args)
       if (Self->DragSourceID) {
          LogBranch("Data request received for #%d", Self->DragSourceID);
          ERROR error = ActionMsg(AC_DataFeed, Self->DragSourceID, Args);
-         LogBack();
+         LogReturn();
          if (error IS ERR_NotFound) Self->DragSourceID = 0;
          if (error) PostError(error);
          return error;
@@ -760,7 +760,7 @@ static ERROR VIEW_OpenBranch(objView *Self, struct viewOpenBranch *Args)
    if ((Args->XPath) AND (Args->XPath[0])) {
       LONG i;
       if (xmlFindTag(Self->XML, Args->XPath, 0, &i)) {
-         LogBack();
+         LogReturn();
          return PostError(ERR_Search);
       }
       tag = Self->XML->Tags[i];
@@ -774,7 +774,7 @@ static ERROR VIEW_OpenBranch(objView *Self, struct viewOpenBranch *Args)
    }
 
    if (!tag) {
-      LogBack();
+      LogReturn();
       return PostError(ERR_Search);
    }
 
@@ -816,7 +816,7 @@ static ERROR VIEW_OpenBranch(objView *Self, struct viewOpenBranch *Args)
    }
    else MSG("Callback routine manually expanded the tree branch.");
 
-   LogBack();
+   LogReturn();
    return ERR_Okay;
 }
 
@@ -1252,7 +1252,7 @@ static void gen_group_bkgd(objView *Self, CSTRING Script, objBitmap **Bitmap, CS
       }
    }
 
-   LogBack();
+   LogReturn();
 }
 
 /*****************************************************************************
@@ -1701,7 +1701,7 @@ static ERROR VIEW_RaiseItem(objView *Self, struct viewRaiseItem *Args)
    if ((Args) AND (Args->XPath) AND (Args->XPath != (STRING)-1) AND (Args->XPath[0])) {
       LONG tagindex;
       if (xmlFindTag(Self->XML, Args->XPath, 0, &tagindex)) {
-         LogBack();
+         LogReturn();
          return PostError(ERR_Search);
       }
    }
@@ -1711,7 +1711,7 @@ static ERROR VIEW_RaiseItem(objView *Self, struct viewRaiseItem *Args)
    else for (tag=Self->XML->Tags[0]; (tag) AND (tag->Index != Self->SelectedTag); tag=tag->Next);
 
    if (!tag) {
-      LogBack();
+      LogReturn();
       return PostError(ERR_Search);
    }
 
@@ -1735,7 +1735,7 @@ static ERROR VIEW_RaiseItem(objView *Self, struct viewRaiseItem *Args)
       }
    }
 
-   LogBack();
+   LogReturn();
    return ERR_Okay;
 }
 

@@ -1100,16 +1100,16 @@ static ERROR XML_InsertContent(objXML *Self, struct xmlInsertContent *Args)
          if (result) Args->Result = result->Index;
          else Args->Result = 0;
 
-         if (Self->Flags & XMF_DEBUG) LogBack();
+         if (Self->Flags & XMF_DEBUG) LogReturn();
          return ERR_Okay;
       }
       else {
-         if (Self->Flags & XMF_DEBUG) LogBack();
+         if (Self->Flags & XMF_DEBUG) LogReturn();
          return error;
       }
    }
    else {
-      if (Self->Flags & XMF_DEBUG) LogBack();
+      if (Self->Flags & XMF_DEBUG) LogReturn();
       return error;
    }
 }

@@ -186,7 +186,7 @@ static ERROR MENU_Activate(objMenu *Self, APTR Void)
 
    LogBranch(NULL);
    Action(MT_MnSwitch, Self, NULL);
-   LogBack();
+   LogReturn();
    return ERR_Okay|ERF_Notified;
 }
 
@@ -229,9 +229,9 @@ static ERROR MENU_Clear(objMenu *Self, APTR Void)
       }
    }
 
-   LogBack();
+   LogReturn();
 
-   LogBack();
+   LogReturn();
    return ERR_Okay;
 }
 
@@ -268,11 +268,11 @@ static ERROR MENU_DataFeed(objMenu *Self, struct acDataFeed *Args)
          }
       }
       else {
-         LogBack();
+         LogReturn();
          return PostError(ERR_CreateObject);
       }
 
-      LogBack();
+      LogReturn();
       return ERR_Okay;
    }
    else if (Args->DataType IS DATA_INPUT_READY) {
@@ -588,7 +588,7 @@ static ERROR MENU_Hide(objMenu *Self, APTR Void)
       Self->CurrentMenu = NULL;
    }
 
-   LogBack();
+   LogReturn();
    return ERR_Okay;
 }
 
@@ -1039,7 +1039,7 @@ static ERROR MENU_Show(objMenu *Self, APTR Void)
 
       ReleaseObject(surface);
 
-      LogBack();
+      LogReturn();
       return ERR_Okay;
    }
    else return PostError(ERR_AccessObject);

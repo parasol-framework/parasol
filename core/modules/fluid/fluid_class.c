@@ -76,7 +76,7 @@ static void free_all(objScript *Self)
       lua_close(prv->Lua);
       prv->Lua = NULL;
 
-   LogBack();
+   LogReturn();
 }
 
 //****************************************************************************
@@ -232,10 +232,10 @@ static ERROR FLUID_ActionNotify(objScript *Self, struct acActionNotify *Args)
 
                LogF("~7","Collecting garbage.");
                  lua_gc(prv->Lua, LUA_GCCOLLECT, 0); // Run the garbage collector
-               LogBack();
+               LogReturn();
             }
 
-         LogBack();
+         LogReturn();
 
          SetResource(RES_LOG_DEPTH, depth);
          return ERR_Okay;
@@ -267,7 +267,7 @@ static ERROR FLUID_Activate(objScript *Self, APTR Void)
       FMSG("~","Collecting garbage.");
          lua_gc(prv->Lua, LUA_GCCOLLECT, 0);
       STEP();
-      LogBack();
+      LogReturn();
       return ERR_Okay;
    }
 
@@ -486,7 +486,7 @@ failure:
 
    Self->ScriptOwnerID = 0;
    prv->Recurse--;
-   LogBack();
+   LogReturn();
    return error;
 }
 
@@ -612,7 +612,7 @@ restart:
         lua_gc(prv->Lua, LUA_GCCOLLECT, 0); // Run the garbage collector
       STEP();
 
-      LogBack();
+      LogReturn();
    }
 
    return ERR_Okay;
@@ -832,14 +832,14 @@ static ERROR FLUID_SaveToObject(objScript *Self, struct acSaveToObject *Args)
 
    if (!luaL_loadstring(prv->Lua, Self->String)) {
       ERROR error = save_binary(Self, Args->DestID);
-      LogBack();
+      LogReturn();
       return error;
    }
    else {
       CSTRING str = lua_tostring(prv->Lua,-1);
       lua_pop(prv->Lua, 1);
       LogErrorMsg("Compile Failure: %s", str);
-      LogBack();
+      LogReturn();
       return ERR_InvalidData;
    }
 }
@@ -903,7 +903,7 @@ static ERROR save_binary(objScript *Self, OBJECTID FileID)
 
    LogF("~save_binary()","Save Symbols: %d", Self->Flags & SCF_DEBUG);
 
-   if (!(prv = Self->Head.ChildPrivate)) return LogBackError(0, ERR_ObjectCorrupt);
+   if (!(prv = Self->Head.ChildPrivate)) return LogReturnError(0, ERR_ObjectCorrupt);
 
    f = clvalue(prv->Lua->top + (-1))->l.p;
 
@@ -919,7 +919,7 @@ static ERROR save_binary(objScript *Self, OBJECTID FileID)
 
       if (acWrite(dest, header, i, &result)) {
          ReleaseObject(dest);
-         return LogBackError(0, ERR_Write);
+         return LogReturnError(0, ERR_Write);
       }
       ReleaseObject(dest);
    }
@@ -929,7 +929,7 @@ static ERROR save_binary(objScript *Self, OBJECTID FileID)
    }
    else luaU_dump(prv->Lua, f, &code_writer_id, (void *)(MAXINT)FileID, (Self->Flags & SCF_DEBUG) ? 0 : 1);
 
-   LogBack();
+   LogReturn();
    return ERR_Okay;
 */
 }
@@ -1050,7 +1050,7 @@ static ERROR run_script(objScript *Self)
 
          while (r > 0) release_object(release_list[--r]);
 
-         if (Self->Flags & SCF_DEBUG) LogBack();
+         if (Self->Flags & SCF_DEBUG) LogReturn();
       }
       else {
          char buffer[200];
@@ -1148,7 +1148,7 @@ static ERROR register_interfaces(objScript *Self)
 
    load_include(Self, "core");
 
-   LogBack();
+   LogReturn();
    return ERR_Okay;
 }
 

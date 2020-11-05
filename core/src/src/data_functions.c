@@ -78,9 +78,9 @@ FDEF argsListTasks[] = { { "Error", FD_LONG|FD_ERROR }, { "Flags", FD_LONG }, { 
 FDEF argsLoadFile[] = { { "Error", FD_LONG|FD_ERROR }, { "Path", FD_STR }, { "Flags", FD_LONG }, { "CacheFile:Cache", FD_PTR|FD_STRUCT|FD_RESOURCE|FD_RESULT }, { 0, 0 } };
 FDEF argsLockMutex[] = { { "Error", FD_LONG|FD_ERROR }, { "Mutex", FD_PTR }, { "MilliSeconds", FD_LONG }, { 0, 0 } };
 FDEF argsLockSharedMutex[] = { { "Error", FD_LONG|FD_ERROR }, { "Mutex", FD_PTR }, { "MilliSeconds", FD_LONG }, { 0, 0 } };
-FDEF argsLogBack[] = { { "Void", FD_VOID }, { 0, 0 } };
 FDEF argsLogError[] = { { "Error", FD_LONG|FD_ERROR }, { "Header", FD_LONG }, { "Error", FD_LONG|FD_ERROR }, { 0, 0 } };
 FDEF argsLogF[] = { { "Void", FD_VOID }, { "Header", FD_STR }, { "Message", FD_STR }, { "Tags", FD_TAGS }, { 0, 0 } };
+FDEF argsLogReturn[] = { { "Void", FD_VOID }, { 0, 0 } };
 FDEF argsManageAction[] = { { "Error", FD_LONG|FD_ERROR }, { "Action", FD_LONG }, { "Routine", FD_PTR }, { 0, 0 } };
 FDEF argsMemoryIDInfo[] = { { "Error", FD_LONG|FD_ERROR }, { "ID", FD_LONG }, { "MemInfo:MemInfo", FD_BUFFER|FD_PTR|FD_STRUCT }, { "Size", FD_LONG|FD_BUFSIZE }, { 0, 0 } };
 FDEF argsMemoryPtrInfo[] = { { "Error", FD_LONG|FD_ERROR }, { "Address", FD_PTR }, { "MemInfo:MemInfo", FD_BUFFER|FD_PTR|FD_STRUCT }, { "Size", FD_LONG|FD_BUFSIZE }, { 0, 0 } };
@@ -253,7 +253,7 @@ const struct Function glFunctions[] = {
    { (APTR)SetFields, "SetFields", argsSetFields },
    { (APTR)SetFieldEval, "SetFieldEval", argsSetFieldEval },
    { (APTR)SetName, "SetName", argsSetName },
-   { (APTR)LogBack, "LogBack", argsLogBack },
+   { (APTR)LogReturn, "LogReturn", argsLogReturn },
    { (APTR)StrCompare, "StrCompare", argsStrCompare },
    { (APTR)SubscribeAction, "SubscribeAction", argsSubscribeAction },
    { (APTR)SubscribeFeed, "SubscribeFeed", argsSubscribeFeed },

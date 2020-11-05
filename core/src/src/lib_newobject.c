@@ -66,7 +66,7 @@ ERROR CreateObjectF(LARGE ClassID, LONG Flags, OBJECTPTR *argObject, va_list Lis
          if (!(error = acInit(object))) {
             if (argObject) *argObject = object;
             else if (object->UniqueID < 0) ReleaseObject(object);
-            LogBack();
+            LogReturn();
             return ERR_Okay;
          }
       }
@@ -81,7 +81,7 @@ ERROR CreateObjectF(LARGE ClassID, LONG Flags, OBJECTPTR *argObject, va_list Lis
    else error = ERR_NewObject;
 
    if (argObject) *argObject = NULL;
-   LogBack();
+   LogReturn();
    return error;
 }
 
@@ -274,7 +274,7 @@ ERROR NewObject(LARGE ClassID, LONG Flags, OBJECTPTR *Object)
 
    head->Flags &= ~NF_NEW_OBJECT;
    *Object = head;
-   if (!(Flags & NF_CREATE_OBJECT)) LogBack();
+   if (!(Flags & NF_CREATE_OBJECT)) LogReturn();
    return ERR_Okay;
 
 failed:
@@ -285,7 +285,7 @@ failed:
       FreeResource(head);
    }
 
-   if (!(Flags & NF_CREATE_OBJECT)) LogBack();
+   if (!(Flags & NF_CREATE_OBJECT)) LogReturn();
    return error;
 }
 
@@ -380,14 +380,14 @@ ERROR NewLockedObject(LARGE ClassID, LONG Flags, OBJECTPTR *Object, OBJECTID *Ob
             if ((!FastFindObject(Name, class_id, &search_id, 1, NULL)) AND (search_id)) {
                *ObjectID = search_id;
                ReleaseMemoryID(RPM_SharedObjects);
-               LogBack();
+               LogReturn();
                return ERR_ObjectExists; // Return ERR_ObjectExists so that the caller knows that the failure was not caused by an object creation error.
             }
          }
       }
       else {
          LogError(ERH_NewObject, ERR_AccessMemory);
-         LogBack();
+         LogReturn();
          return ERR_AccessMemory;
       }
    }
@@ -538,7 +538,7 @@ ERROR NewLockedObject(LARGE ClassID, LONG Flags, OBJECTPTR *Object, OBJECTID *Ob
    }
 
    if (sharelock) ReleaseMemoryID(RPM_SharedObjects);
-   LogBack();
+   LogReturn();
    return ERR_Okay;
 
 failed:
@@ -560,7 +560,7 @@ failed:
 
    if (sharelock) ReleaseMemoryID(RPM_SharedObjects);
    *ObjectID = 0;
-   LogBack();
+   LogReturn();
    return error;
 }
 

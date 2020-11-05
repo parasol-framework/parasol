@@ -402,7 +402,7 @@ ERROR AssociateCmd(CSTRING Path, CSTRING Mode, LONG Flags, CSTRING Command)
 
    // If Path starts with CLASS:, associate the command to a specific class type.
 
-   if (load_datatypes() != ERR_Okay) { LogBack(); return ERR_Failed; }
+   if (load_datatypes() != ERR_Okay) { LogReturn(); return ERR_Failed; }
 
    if (Flags & ACF_ALL_USERS) assoc_path = "config:associations.cfg";
    else assoc_path = "user:config/associations.cfg";
@@ -481,7 +481,7 @@ ERROR AssociateCmd(CSTRING Path, CSTRING Mode, LONG Flags, CSTRING Command)
       }
    }
 
-   LogBack();
+   LogReturn();
    return error;
 }
 
@@ -826,7 +826,7 @@ ERROR DeleteFile(CSTRING Path, FUNCTION *Callback)
       FreeResource(resolve);
    }
 
-   LogBack();
+   LogReturn();
    return error;
 }
 
@@ -1188,7 +1188,7 @@ ERROR LoadFile(CSTRING Path, LONG Flags, struct CacheFile **Cache)
                      SetContext(context);
                   }
 
-                  LogBack();
+                  LogReturn();
                   return ERR_Okay;
                }
                else error = PostError(ERR_Failed);
@@ -1203,7 +1203,7 @@ ERROR LoadFile(CSTRING Path, LONG Flags, struct CacheFile **Cache)
    if (cache) FreeResource(cache);
    if (file) acFree(file);
    FreeResource(path);
-   LogBack();
+   LogReturn();
    return error;
 }
 
@@ -1563,7 +1563,7 @@ ERROR SaveImageToFile(OBJECTPTR Object, CSTRING Path, CLASSID ClassID, LONG Perm
    }
    else error = LogError(ERH_Function, ERR_CreateFile);
 
-   LogBack();
+   LogReturn();
    return error;
 }
 
@@ -1607,11 +1607,11 @@ ERROR SaveObjectToFile(OBJECTPTR Object, CSTRING Path, LONG Permissions)
       error = acSaveToObject(Object, file->UniqueID, 0);
 
       acFree(file);
-      LogBack();
+      LogReturn();
       return error;
    }
    else {
-      LogBack();
+      LogReturn();
       return ERR_CreateFile;
    }
 }

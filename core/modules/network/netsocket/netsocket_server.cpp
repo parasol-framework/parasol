@@ -223,7 +223,7 @@ static void free_client(objNetSocket *Self, struct rkNetClient *Client)
    Self->TotalClients--;
 
    recursive--;
-   LogBack();
+   LogReturn();
 }
 
 /*****************************************************************************
@@ -260,5 +260,5 @@ static void free_client_socket(objNetSocket *Socket, objClientSocket *ClientSock
 
    acFree(ClientSocket);
 
-   LogBack();
+   LogReturn();
 }

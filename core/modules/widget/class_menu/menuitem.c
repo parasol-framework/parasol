@@ -93,7 +93,7 @@ static ERROR ITEM_Activate(objMenuItem *Item, APTR Void)
          Item->SubMenu = menu;
          if (!acShow(Item->SubMenu)) Item->Menu->CurrentMenu = Item->SubMenu;
       }
-      else return LogBackError(0, ERR_NewObject);
+      else return LogReturnError(0, ERR_NewObject);
 
       menu->ParentItem = Item;
    }
@@ -411,7 +411,7 @@ static ERROR load_submenu(objMenu *ParentMenu, objMenu **SubMenu, objMenuItem *I
 
    SURFACEINFO *info;
    if (drwGetSurfaceInfo(ParentMenu->MenuSurfaceID, &info) != ERR_Okay) {
-      return LogBackError(0, ERR_GetSurfaceInfo);
+      return LogReturnError(0, ERR_GetSurfaceInfo);
    }
 
    objMenu *menu;
@@ -465,7 +465,7 @@ static ERROR load_submenu(objMenu *ParentMenu, objMenu **SubMenu, objMenuItem *I
          if ((error = create_menu_file(ParentMenu, menu, Item)) != ERR_Okay) {
             acFree(menu);
             ReleaseObject(menu);
-            return LogBackError(0, error);
+            return LogReturnError(0, error);
          }
       }
       else {
@@ -474,7 +474,7 @@ static ERROR load_submenu(objMenu *ParentMenu, objMenu **SubMenu, objMenuItem *I
          if (acInit(menu) != ERR_Okay) {
             acFree(menu);
             ReleaseObject(menu);
-            return LogBackError(0, ERR_Init);
+            return LogReturnError(0, ERR_Init);
          }
       }
 
@@ -502,7 +502,7 @@ static ERROR load_submenu(objMenu *ParentMenu, objMenu **SubMenu, objMenuItem *I
    }
 
    *SubMenu = menu;
-   LogBack();
+   LogReturn();
    return ERR_Okay;
 }
 

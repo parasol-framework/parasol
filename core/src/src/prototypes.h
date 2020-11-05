@@ -56,7 +56,7 @@ ERROR SetField(OBJECTPTR Object, FIELD Field, ...);
 ERROR SetFields(OBJECTPTR Object, ...);
 ERROR SetFieldEval(OBJECTPTR Object, CSTRING Field, CSTRING Value);
 ERROR SetName(OBJECTPTR Object, CSTRING Name);
-void LogBack();
+void LogReturn();
 ERROR StrCompare(CSTRING String1, CSTRING String2, LONG Length, LONG Flags);
 ERROR SubscribeAction(OBJECTPTR Object, LONG Action);
 ERROR SubscribeFeed(OBJECTPTR Object);

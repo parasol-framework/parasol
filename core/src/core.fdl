@@ -1013,7 +1013,7 @@ struct ScriptArg { // For use with scExec
     "SetFields",
     "SetFieldEval",
     "SetName",
-    "LogBack",
+    "LogReturn",
     "StrCompare",
     "SubscribeAction",
     "SubscribeFeed",
@@ -2020,9 +2020,9 @@ INLINE FIELD ResolveField(CSTRING Field) {
 
 #endif // PRV_CORE
 
-INLINE ERROR LogBackError(LONG Header, ERROR Code) {
+INLINE ERROR LogReturnError(LONG Header, ERROR Code) {
    LogError(Header, Code);
-   LogBack();
+   LogReturn();
    return Code;
 }
 

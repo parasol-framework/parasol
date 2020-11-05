@@ -589,7 +589,7 @@ static int object_lock(lua_State *Lua)
    if (access_object(object)) {
       LogF("~obj.lock()","Object: %d", object->ObjectID);
       lua_pcall(Lua, 0, 0, 0);
-      LogBack();
+      LogReturn();
       release_object(object);
    }
    return 0;

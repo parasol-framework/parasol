@@ -340,7 +340,7 @@ static ERROR find_icon_category(STRING Category, CSTRING Icon)
       error = ERR_Search;
    }
 end:
-   LogBack();
+   LogReturn();
    return error;
 }
 

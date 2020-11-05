@@ -534,7 +534,7 @@ static ERROR load_pic(objSVG *Self, CSTRING Path, objPicture **Picture)
    }
 
    if (error) PostError(error);
-   LogBack();
+   LogReturn();
    return error;
 }
 

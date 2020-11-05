@@ -270,7 +270,7 @@ ERROR add_task_class(void)
    }
    else error = ERR_NewObject;
 
-   LogBack();
+   LogReturn();
    return error;
 }
 
@@ -713,7 +713,7 @@ static void task_process_end(WINHANDLE FD, objTask *Task)
 
    if ((Task->Flags & TSF_WAIT) AND (Task->TimeOut > 0)) SendMessage(0, glProcessBreak, 0, NULL, 0);
 
-   LogBack();
+   LogReturn();
 }
 #endif
 

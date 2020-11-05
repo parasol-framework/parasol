@@ -1592,32 +1592,6 @@ end
   </function>
 
   <function>
-    <name>LogBack</name>
-    <category>Logging</category>
-    <comment>Revert to the previous branch in the application logging tree.</comment>
-    <prototype>void LogBack()</prototype>
-    <description>
-<p>Use LogBack() to reverse any previous log message that created a new branch.  Consider the following example:</p>
-<pre>LogF("~Hello:","World.");
-   LogF("Goodbye:","World.");
-LogBack();
-LogF("Log:","Back to normal.");
-</pre>
-<p>This will produce the following output:</p>
-<pre>Hello         World.
- Goodbye      World.
-Log           Back to normal.
-</pre>
-<p>If the call to LogBack() was eliminated, the log would be permanently out of step, as follows:</p>
-<pre>Hello         World.
- Goodbye      World.
- Log          Back to normal.
-</pre>
-<p>As demonstrated, the creation of any branch must be matched with a call to LogBack() or the log tree will be meaningless.  Please ensure that when writing log code for complex functions, a call to LogBack() is used at each exit point of the function.</p>
-    </description>
-  </function>
-
-  <function>
     <name>LogError</name>
     <category>Logging</category>
     <comment>Sends basic error messages to the active logger.</comment>
@@ -1652,6 +1626,32 @@ Log           Back to normal.
    acFree(display);
 }
 </pre>
+    </description>
+  </function>
+
+  <function>
+    <name>LogReturn</name>
+    <category>Logging</category>
+    <comment>Revert to the previous branch in the application logging tree.</comment>
+    <prototype>void LogReturn()</prototype>
+    <description>
+<p>Use LogReturn() to reverse any previous log message that created a new branch.  Consider the following example:</p>
+<pre>LogF("~Hello:","World.");
+   LogF("Goodbye:","World.");
+LogReturn();
+LogF("Log:","Back to normal.");
+</pre>
+<p>This will produce the following output:</p>
+<pre>Hello         World.
+ Goodbye      World.
+Log           Back to normal.
+</pre>
+<p>If the call to LogReturn() was eliminated, the log would be permanently out of step, as follows:</p>
+<pre>Hello         World.
+ Goodbye      World.
+ Log          Back to normal.
+</pre>
+<p>As demonstrated, the creation of any branch must be matched with a call to LogReturn() or the log tree will be meaningless.  Please ensure that when writing log code for complex functions, a call to LogReturn() is used at each exit point of the function.</p>
     </description>
   </function>
 

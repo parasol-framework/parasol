@@ -345,7 +345,7 @@ static ERROR SOUND_Disable(objSound *Self, APTR Void)
 #endif
 
    if (!Self->ChannelIndex) {
-      LogBack();
+      LogReturn();
       return ERR_Okay;
    }
 
@@ -356,10 +356,10 @@ static ERROR SOUND_Disable(objSound *Self, APTR Void)
          COMMAND_Stop(audio, Self->ChannelIndex);
       }
       ReleaseObject(audio);
-      LogBack();
+      LogReturn();
       return ERR_Okay;
    }
-   else return LogBackError(0, ERR_AccessObject);
+   else return LogReturnError(0, ERR_AccessObject);
 }
 
 /*****************************************************************************
@@ -384,7 +384,7 @@ static ERROR SOUND_Enable(objSound *Self, APTR Void)
 #endif
 
    if (!Self->ChannelIndex) {
-      LogBack();
+      LogReturn();
       return ERR_Okay;
    }
 
@@ -395,10 +395,10 @@ static ERROR SOUND_Enable(objSound *Self, APTR Void)
          COMMAND_Continue(audio, Self->ChannelIndex);
       }
       ReleaseObject(audio);
-      LogBack();
+      LogReturn();
       return ERR_Okay;
    }
-   else return LogBackError(0, ERR_AccessObject);
+   else return LogReturnError(0, ERR_AccessObject);
 }
 
 //****************************************************************************

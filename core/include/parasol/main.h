@@ -61,7 +61,7 @@ extern "C" {
 #ifdef DEBUG
 #define MSG(...)  LogF(0,__VA_ARGS__)
 #define FMSG(...) LogF(__VA_ARGS__)
-#define STEP()    LogBack()
+#define STEP()    LogReturn()
 #else
 #define MSG(...)
 #define FMSG(...)

@@ -297,7 +297,7 @@ void MsgWindowClose(OBJECTID SurfaceID)
 
          acFreeID(SurfaceID);
 
-      LogBack();
+      LogReturn();
    }
 }
 
@@ -308,7 +308,7 @@ void MsgWindowDestroyed(OBJECTID SurfaceID)
    if (SurfaceID) {
       LogF("~WinMgr:","Freeing window surface #%d.", SurfaceID);
          acFreeID(SurfaceID);
-      LogBack();
+      LogReturn();
    }
 }
 

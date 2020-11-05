@@ -5934,7 +5934,7 @@ void winDragDropFromHost_Drop(int SurfaceID, char *Datatypes)
       gfxReleasePointer(pointer);
    }
 
-   LogBack();
+   LogReturn();
 #endif
 }
 #endif
@@ -5956,7 +5956,7 @@ static ERROR init_egl(void)
 
    if (glEGLDisplay != EGL_NO_DISPLAY) {
       LogF("init_egl","EGL display is already initialised.");
-      LogBack();
+      LogReturn();
       return ERR_Okay;
    }
 
@@ -6004,13 +6004,13 @@ static ERROR init_egl(void)
    }
    else {
       PostError(ERR_SystemCall);
-      LogBack();
+      LogReturn();
       return ERR_SystemCall;
    }
 
    if (eglMakeCurrent(glEGLDisplay, glEGLSurface, glEGLSurface, glEGLContext) == EGL_FALSE) {
       PostError(ERR_SystemCall);
-      LogBack();
+      LogReturn();
       return ERR_SystemCall;
    }
 
@@ -6054,7 +6054,7 @@ static ERROR init_egl(void)
 
    glEGLState = EGL_INITIALISED;
 
-   LogBack();
+   LogReturn();
    return ERR_Okay;
 }
 
@@ -6116,7 +6116,7 @@ static void free_egl(void)
    else LogError(ERH_Display, ERR_LockFailed);
 
    LogF("free_egl","EGL successfully terminated.");
-   LogBack();
+   LogReturn();
 }
 #endif
 

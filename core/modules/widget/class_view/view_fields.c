@@ -433,7 +433,7 @@ static ERROR SET_Columns(objView *Self, CSTRING Value)
       acDrawID(Self->Layout->SurfaceID);
    }
 
-   LogBack();
+   LogReturn();
    return ERR_Okay;
 }
 
@@ -944,14 +944,14 @@ static ERROR SET_Selection(objView *Self, CSTRING Value)
       if (str) {
          if (!StrMatch(Value, str)) {
             select_item(Self, Self->XML->Tags[index], SLF_MANUAL, TRUE, FALSE);
-            LogBack();
+            LogReturn();
             return ERR_Okay;
          }
       }
    }
 
    LogErrorMsg("Unable to find item \"%s\"", Value);
-   LogBack();
+   LogReturn();
    return ERR_Search;
 }
 
@@ -1007,7 +1007,7 @@ static ERROR SET_SelectionIndex(objView *Self, LONG Value)
                if (!index) {
                   select_item(Self, Self->XML->Tags[i], SLF_MANUAL, TRUE, FALSE);
                   acActivate(Self);
-                  LogBack();
+                  LogReturn();
                   return ERR_Okay;
                }
                index--;
@@ -1017,7 +1017,7 @@ static ERROR SET_SelectionIndex(objView *Self, LONG Value)
 
          LogErrorMsg("Index %d out of range (max %d).", Value, count);
 
-      LogBack();
+      LogReturn();
       return ERR_OutOfRange;
    }
    else {
@@ -1064,7 +1064,7 @@ static ERROR SET_Style(objView *Self, LONG Value)
             DelayMsg(AC_Draw, Self->Layout->SurfaceID, NULL);
          }
 
-         LogBack();
+         LogReturn();
       }
    }
 

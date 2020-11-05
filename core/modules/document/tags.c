@@ -1624,7 +1624,7 @@ next: // Used by PTR_SAVE_ARGS()
 
    if (object) ReleaseObject(object);
 
-   LogBack();
+   LogReturn();
 }
 
 //****************************************************************************

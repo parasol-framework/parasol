@@ -3110,12 +3110,12 @@ static BYTE open_branch_callback(objView *Self, struct XMLTag *Tag)
          node->Flags |= NODE_OPEN;
          Self->Deselect = FALSE;
          acRefresh(Self);
-         LogBack();
+         LogReturn();
          return TRUE;
       }
       else FMSG("open_branch:","No modifications were made to the view XML (%d == %d).", Self->XML->Modified, modstamp);
    }
 
-   LogBack();
+   LogReturn();
    return FALSE;
 }

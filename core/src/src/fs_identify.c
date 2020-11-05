@@ -60,7 +60,7 @@ ERROR IdentifyFile(CSTRING Path, CSTRING Mode, LONG Flags, CLASSID *ClassID, CLA
 
    if ((error = load_datatypes())) { // Load the associations configuration file
       LogError(ERH_IdentifyFile, error);
-      LogBack();
+      LogReturn();
       return error;
    }
 
@@ -149,7 +149,7 @@ ERROR IdentifyFile(CSTRING Path, CSTRING Mode, LONG Flags, CLASSID *ClassID, CLA
 
          if (!StrCompare("string:", Path, 7, NULL)) {
             // Do not check for '|' when string: is in use
-            LogBack();
+            LogReturn();
             return ERR_FileNotFound;
          }
 
@@ -162,13 +162,13 @@ ERROR IdentifyFile(CSTRING Path, CSTRING Mode, LONG Flags, CLASSID *ClassID, CLA
             tmp[i] = 0;
             if (ResolvePath(tmp, RSF_APPROXIMATE, &res_path) != ERR_Okay) {
                FreeResource(tmp);
-               LogBack();
+               LogReturn();
                return ERR_FileNotFound;
             }
             else FreeResource(tmp);
          }
          else {
-            LogBack();
+            LogReturn();
             return ERR_FileNotFound;
          }
       }
@@ -323,7 +323,7 @@ class_identified:
    }
 
    if (!Command) { // Return now if there is no request for a command string
-      LogBack();
+      LogReturn();
       if (!(*ClassID)) return ERR_Search;
       else return error;
    }
@@ -384,12 +384,12 @@ class_identified:
          while (*Path) *res_path++ = *Path++;
          *res_path++ = '"';
          *res_path = 0;
-         LogBack();
+         LogReturn();
          return ERR_Okay;
       }
       else {
          LogError(ERH_IdentifyFile, ERR_AllocMemory);
-         LogBack();
+         LogReturn();
          return ERR_AllocMemory;
       }
    }
@@ -572,7 +572,7 @@ host_platform:
 
 exit:
    FMSG("IdentifyFile","File belongs to class $%.8x", *ClassID);
-   LogBack();
+   LogReturn();
    if ((!*ClassID) AND (!cmd)) return ERR_Search;
    else return ERR_Okay;
 }

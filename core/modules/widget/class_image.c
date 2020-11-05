@@ -785,7 +785,7 @@ static void resample_image(objImage *Self, OBJECTID BufferID, LONG Width, LONG H
                FID_BitsPerPixel|TLONG, srcbitmap->BitsPerPixel,
                FID_Flags|TLONG,        srcbitmap->Flags,
                TAGEND) != ERR_Okay) {
-            LogBackError(0, ERR_CreateObject);
+            LogReturnError(0, ERR_CreateObject);
             return;
          }
       }
@@ -846,7 +846,7 @@ static void resample_image(objImage *Self, OBJECTID BufferID, LONG Width, LONG H
       gfxCompress(srcbitmap, 0);
    }
 
-   LogBack();
+   LogReturn();
 }
 
 //****************************************************************************
@@ -886,11 +886,11 @@ static ERROR load_picture(objImage *Self)
    if (drwGetSurfaceInfo(Self->Layout->SurfaceID, &info) != ERR_Okay) {
       if (!(Self->Flags & IMF_NO_FAIL)) {
          PostError(ERR_GetSurfaceInfo);
-         LogBack();
+         LogReturn();
          return ERR_GetSurfaceInfo;
       }
       else {
-         LogBack();
+         LogReturn();
          return ERR_Okay;
       }
    }
@@ -922,7 +922,7 @@ static ERROR load_picture(objImage *Self)
       acFree(bitmap);
 
       if ((error != ERR_Okay) AND (!(Self->Flags & IMF_NO_FAIL))) {
-         LogBack();
+         LogReturn();
          return error;
       }
 
@@ -958,15 +958,15 @@ static ERROR load_picture(objImage *Self)
 
          if (error != ERR_Okay) acFree(picture);
       }
-      else if (!(Self->Flags & IMF_NO_FAIL)) return LogBackError(0, ERR_NewObject);
+      else if (!(Self->Flags & IMF_NO_FAIL)) return LogReturnError(0, ERR_NewObject);
 
       if ((error != ERR_Okay) AND (!(Self->Flags & IMF_NO_FAIL))) {
-         LogBack();
+         LogReturn();
          return error;
       }
 
       if (!Self->Picture) {
-         LogBack();
+         LogReturn();
          if (!(Self->Flags & IMF_NO_FAIL)) return ERR_Failed;
          else return ERR_Okay;
       }
@@ -1003,12 +1003,12 @@ static ERROR load_picture(objImage *Self)
                acFree(Self->Picture);
                Self->Picture = NULL;
 
-               LogBack();
+               LogReturn();
                if (Self->Flags & IMF_NO_FAIL) return ERR_Okay;
                else return ERR_Activate;
             }
 
-            LogBack();
+            LogReturn();
             return ERR_Okay;
          }
       }
@@ -1018,7 +1018,7 @@ static ERROR load_picture(objImage *Self)
          acFree(Self->Picture);
          Self->Picture = NULL;
 
-         LogBack();
+         LogReturn();
          if (Self->Flags & IMF_NO_FAIL) return ERR_Okay;
          else return ERR_Activate;
       }
@@ -1195,7 +1195,7 @@ static ERROR load_picture(objImage *Self)
       Self->Bitmap = NULL;
    }
 
-   LogBack();
+   LogReturn();
    return ERR_Okay;
 }
 
@@ -1281,7 +1281,7 @@ static void render_script(objImage *Self, STRING Statement)
       else error = ERR_NewObject;
    }
 
-   LogBack();
+   LogReturn();
 }
 
 //****************************************************************************

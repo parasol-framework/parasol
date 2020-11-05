@@ -637,7 +637,7 @@ static ERROR create_menu(objMenu *Self)
    }
    else error = ERR_NewObject;
 
-   if (error) { LogBack(); return error; }
+   if (error) { LogReturn(); return error; }
 
    objMenuItem *item;
    for (item=Self->Items; item; item=item->Next) { // Regenerate item breaks and custom item graphics
@@ -651,7 +651,7 @@ static ERROR create_menu(objMenu *Self)
    calc_scrollbar(Self);
    ensure_on_display(Self);
 
-   LogBack();
+   LogReturn();
    return ERR_Okay;
 }
 
@@ -783,7 +783,7 @@ static ERROR load_icon(objMenu *Self, CSTRING Path, objBitmap **Bitmap)
    }
 
    ERROR error = iconCreateIcon(buffer, "Menu", NULL, Self->IconFilter, 16, Bitmap);
-   LogBack();
+   LogReturn();
    return error;
 }
 

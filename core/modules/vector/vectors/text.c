@@ -490,7 +490,7 @@ static void reset_font(objVectorText *Vector)
 
    SetContext(context);
 
-   LogBack();
+   LogReturn();
 }
 
 //****************************************************************************

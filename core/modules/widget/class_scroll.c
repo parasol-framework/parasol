@@ -691,11 +691,11 @@ static ERROR SCROLL_AddScrollButton(objScroll *Self, struct scAddScrollButton *A
       else Self->Buttons[i].Direction = Args->Direction;
    }
    else {
-      LogBack();
+      LogReturn();
       return PostError(ERR_Failed);
    }
 
-   LogBack();
+   LogReturn();
    return ERR_Okay;
 }
 

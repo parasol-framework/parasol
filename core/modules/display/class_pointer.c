@@ -395,7 +395,7 @@ static void process_ptr_button(objPointer *Self, struct dcDeviceInput *Input)
       //   LogF("~","Surface %d is modal, button click on %d cancelled.", modal_id, Self->OverObjectID);
       //   DelayMsg(AC_MoveToFront, modal_id, NULL);
       //   DelayMsg(AC_Focus, modal_id, NULL);
-      //   LogBack();
+      //   LogReturn();
       //}
 
       //if (!modal_id) {
@@ -1121,7 +1121,7 @@ static ERROR PTR_Show(objPointer *Self, APTR Void)
 
    Self->Flags |= PF_VISIBLE;
 
-   LogBack();
+   LogReturn();
    return ERR_Okay;
 }
 
@@ -1689,7 +1689,7 @@ static ERROR init_mouse_driver(void) {
          }
       }
 
-      LogBack();
+      LogReturn();
    }
 
    // Allocate the surface for software based cursor images

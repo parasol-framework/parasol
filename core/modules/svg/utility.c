@@ -476,7 +476,7 @@ end:
 #ifndef DEBUG
    AdjustLogLevel(-1);
 #endif
-   LogBack();
+   LogReturn();
    return error;
 }
 

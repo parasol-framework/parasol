@@ -100,7 +100,7 @@ static void * thread_entry(struct thread_info *info)
                ReleasePrivateObject(glConfig);
                #endif
                glConfig = NULL;
-               //LogBack();
+               //LogReturn();
                break;
             }
          }
@@ -117,7 +117,7 @@ static void * thread_entry(struct thread_info *info)
          if (glAccessGap > 0) WaitTime(0, glAccessGap);
       }
       else LogMsg("Attempt %d.%d: Failed to acquire a lock, error: %s", info->index, i, GetErrorMsg(error));
-      //LogBack();
+      //LogReturn();
    }
 
    LogMsg("----- Thread %d is finished.", info->index);

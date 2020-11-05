@@ -148,7 +148,7 @@ static ERROR DOCUMENT_Activate(objDocument *Self, APTR Void)
       for (i=0; i < count; i++) acActivateID(list[i].ObjectID);
    }
 
-   LogBack();
+   LogReturn();
    return ERR_Okay;
 }
 
@@ -315,7 +315,7 @@ static ERROR DOCUMENT_Clear(objDocument *Self, APTR Void)
 
    redraw(Self, FALSE);
 
-   LogBack();
+   LogReturn();
    return ERR_Okay;
 }
 
@@ -372,12 +372,12 @@ static ERROR DOCUMENT_Clipboard(objDocument *Self, struct acClipboard *Args)
             FreeResource(buffer);
          }
          else {
-            LogBack();
+            LogReturn();
             return ERR_AllocMemory;
          }
       }
 
-      LogBack();
+      LogReturn();
       return ERR_Okay;
    }
    else if (Args->Mode IS CLIPMODE_PASTE) {
@@ -421,7 +421,7 @@ static ERROR DOCUMENT_Clipboard(objDocument *Self, struct acClipboard *Args)
          acFree(clipboard);
       }
 
-      LogBack();
+      LogReturn();
       return ERR_Okay;
    }
    else return PostError(ERR_Args);
@@ -1441,7 +1441,7 @@ static ERROR DOCUMENT_Refresh(objDocument *Self, APTR Void)
    if ((Self->Path) AND (Self->Path[0] != '#') AND (Self->Path[0] != '?')) {
       LogBranch("Refreshing from path '%s'", Self->Path);
       error = load_doc(Self, Self->Path, TRUE, ULD_REFRESH);
-      LogBack();
+      LogReturn();
    }
    else if (Self->XML) {
       LogBranch("Refreshing from preloaded XML data.");
@@ -1455,7 +1455,7 @@ static ERROR DOCUMENT_Refresh(objDocument *Self, APTR Void)
 
       if (Self->FocusIndex != -1) set_focus(Self, Self->FocusIndex, "Refresh-XML");
 
-      LogBack();
+      LogReturn();
 
       error = ERR_Okay;
    }

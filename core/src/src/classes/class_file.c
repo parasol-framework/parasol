@@ -448,11 +448,11 @@ static ERROR FILE_Delete(objFile *Self, struct flDelete *Args)
                closedir(Self->Stream);
             #endif
             Self->Stream = NULL;
-            LogBack();
+            LogReturn();
             return ERR_Okay;
          }
          else {
-            LogBack();
+            LogReturn();
             return ERR_DeleteFile;
          }
       }
@@ -482,12 +482,12 @@ static ERROR FILE_Delete(objFile *Self, struct flDelete *Args)
          if (!(error = delete_tree(buffer, sizeof(buffer), Args->Callback, &fb)));
          else if (error != ERR_Cancelled) LogErrorMsg("Failed to delete folder \"%s\"", buffer);
 
-         LogBack();
+         LogReturn();
          return error;
       }
       else {
          LogError(0, ERR_ResolvePath);
-         LogBack();
+         LogReturn();
          return ERR_ResolvePath;
       }
    }
@@ -505,18 +505,18 @@ static ERROR FILE_Delete(objFile *Self, struct flDelete *Args)
          // Unlinking the file deletes it
 
          if (!unlink(buffer)) {
-            LogBack();
+            LogReturn();
             return ERR_Okay;
          }
          else {
             LogErrorMsg("unlink() failed on file \"%s\": %s", buffer, strerror(errno));
-            LogBack();
+            LogReturn();
             return convert_errno(errno, ERR_Failed);
          }
       }
       else {
          LogError(0, ERR_ResolvePath);
-         LogBack();
+         LogReturn();
          return ERR_ResolvePath;
       }
    }
@@ -1230,17 +1230,17 @@ static ERROR FILE_Rename(objFile *Self, struct acRename *Args)
                new[i++] = 0;
                FreeResource(Self->Path);
                Self->Path = new;
-               LogBack();
+               LogReturn();
                return ERR_Okay;
             }
             else {
                FreeResource(new);
-               LogBack();
+               LogReturn();
                return PostError(ERR_Failed);
             }
          }
          else {
-            LogBack();
+            LogReturn();
             return PostError(ERR_AllocMemory);
          }
       }
@@ -1262,17 +1262,17 @@ static ERROR FILE_Rename(objFile *Self, struct acRename *Args)
 
                FreeResource(Self->Path);
                Self->Path = new;
-               LogBack();
+               LogReturn();
                return ERR_Okay;
             }
             else {
                FreeResource(new);
-               LogBack();
+               LogReturn();
                return PostError(ERR_Failed);
             }
          }
          else {
-            LogBack();
+            LogReturn();
             return PostError(ERR_AllocMemory);
          }
       }
@@ -1296,17 +1296,17 @@ static ERROR FILE_Rename(objFile *Self, struct acRename *Args)
          if (!fs_copy(Self->Path, new, NULL, TRUE)) {
             FreeResource(Self->Path);
             Self->Path = new;
-            LogBack();
+            LogReturn();
             return ERR_Okay;
          }
          else {
             FreeResource(new);
-            LogBack();
+            LogReturn();
             return PostError(ERR_Failed);
          }
       }
       else {
-         LogBack();
+         LogReturn();
          return PostError(ERR_AllocMemory);
       }
    }
@@ -1589,7 +1589,7 @@ static ERROR FILE_Watch(objFile *Self, struct flWatch *Args)
    }
 
    if ((!Args) OR (!Args->Callback) OR (!Args->Flags)) {
-      LogBack();
+      LogReturn();
       return ERR_Okay;
    }
 
@@ -1602,7 +1602,7 @@ static ERROR FILE_Watch(objFile *Self, struct flWatch *Args)
       }
       else error = PostError(ERR_SystemCall);
 
-      if (error) { LogBack(); return error; }
+      if (error) { LogReturn(); return error; }
    }
 #endif
 
@@ -1629,7 +1629,7 @@ static ERROR FILE_Watch(objFile *Self, struct flWatch *Args)
       else error = ERR_NoSupport;
    }
 
-   LogBack();
+   LogReturn();
    return error;
 }
 
@@ -2551,7 +2551,7 @@ static ERROR set_permissions(objFile *Self, LONG Permissions)
       }
       else error = ERR_Okay;
 
-      LogBack();
+      LogReturn();
       return error;
    }
    else return StepError(0, ERR_ResolvePath);

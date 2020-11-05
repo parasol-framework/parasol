@@ -26,7 +26,7 @@ Other Layout classes can be used as a drop-in replacement for this default class
 #undef STEP
 #define MSG(...)  LogF(0,__VA_ARGS__)
 #define FMSG(...) LogF(__VA_ARGS__)
-#define STEP()    LogBack()
+#define STEP()    LogReturn()
 */
 
 static ERROR GET_Layout_X(objLayout *, struct Variable *);
@@ -96,7 +96,7 @@ static ERROR init_surface(objLayout *Self, OBJECTID SurfaceID)
 
          if ((!Self->Document) OR (Self->Document->ClassID != ID_DOCUMENT)) {
             LogErrorMsg("Expected a Document object to control this surface.");
-            LogBack();
+            LogReturn();
             return ERR_Failed;
          }
 
@@ -129,10 +129,10 @@ static ERROR init_surface(objLayout *Self, OBJECTID SurfaceID)
 
       ReleaseObject(surface);
 
-      LogBack();
+      LogReturn();
       return ERR_Okay;
    }
-   else return LogBackError(0, ERR_AccessObject);
+   else return LogReturnError(0, ERR_AccessObject);
 }
 
 /*****************************************************************************

@@ -101,7 +101,7 @@ static void printConfig(EGLDisplay display, EGLConfig config) {
          while (eglGetError() != EGL_SUCCESS);
       }
    }
-   LogBack();
+   LogReturn();
 }
 
 #endif
@@ -638,7 +638,7 @@ static ERROR DISPLAY_Hide(objDisplay *Self, APTR Void)
 
    Self->Flags &= ~SCR_VISIBLE;
 
-   LogBack();
+   LogReturn();
    return ERR_Okay;
 }
 
@@ -1012,7 +1012,7 @@ static ERROR DISPLAY_Minimise(objDisplay *Self, APTR Void)
 #elif __xwindows__
    if (XDisplay) XUnmapWindow(XDisplay, Self->XWindowHandle);
 #endif
-   LogBack();
+   LogReturn();
    return ERR_Okay;
 }
 
@@ -1299,12 +1299,12 @@ static ERROR DISPLAY_Resize(objDisplay *Self, struct acResize *Args)
 #ifdef _WIN32
 
    if (!Args) {
-      LogBack();
+      LogReturn();
       return PostError(ERR_NullArgs);
    }
 
    if (!winResizeWindow(Self->WindowHandle, 0x7fffffff, 0x7fffffff, Args->Width, Args->Height)) {
-      LogBack();
+      LogReturn();
       return ERR_Failed;
    }
 
@@ -1315,7 +1315,7 @@ static ERROR DISPLAY_Resize(objDisplay *Self, struct acResize *Args)
 #elif __xwindows__
 
    if (!Args) {
-      LogBack();
+      LogReturn();
       return PostError(ERR_NullArgs);
    }
 
@@ -1332,7 +1332,7 @@ static ERROR DISPLAY_Resize(objDisplay *Self, struct acResize *Args)
    LONG bestweight, weight, display;
 
    if (!Args) {
-      LogBack();
+      LogReturn();
       return PostError(ERR_Args);
    }
 
@@ -1375,7 +1375,7 @@ static ERROR DISPLAY_Resize(objDisplay *Self, struct acResize *Args)
    bytesperline = -1;
    if (sciOpenVideoMode(gfxmode, &modeinfo, &vx, &vy, &bytesperline, &Self->VideoHandle, 0) != ERR_Okay) {
       LogErrorMsg("Failed to set the requested video mode.");
-      LogBack();
+      LogReturn();
       return ERR_NoSupport;
    }
 
@@ -1397,7 +1397,7 @@ static ERROR DISPLAY_Resize(objDisplay *Self, struct acResize *Args)
    Self->HDensity = 0; // DPI needs to be recalculated.
    Self->VDensity = 0;
 
-   LogBack();
+   LogReturn();
    return ERR_Okay;
 }
 
@@ -1448,7 +1448,7 @@ static ERROR DISPLAY_SaveSettings(objDisplay *Self, APTR Void)
       acFree(config);
    }
 
-   LogBack();
+   LogReturn();
 
 #elif _WIN32
 
@@ -1572,7 +1572,7 @@ static ERROR DISPLAY_SetDisplay(objDisplay *Self, struct gfxSetDisplay *Args)
    LogF("~7","%dx%d, %dx%d", Args->X, Args->Y, Args->Width, Args->Height);
 
    if (!winResizeWindow(Self->WindowHandle, Args->X, Args->Y, Args->Width, Args->Height)) {
-      LogBack();
+      LogReturn();
       return PostError(ERR_Failed);
    }
 
@@ -1588,7 +1588,7 @@ static ERROR DISPLAY_SetDisplay(objDisplay *Self, struct gfxSetDisplay *Args)
    LogBranch("%dx%d,%dx%d @ %.2fHz, %d bit", Args->X, Args->Y, Args->Width, Args->Height, Args->RefreshRate, Args->BitsPerPixel);
 
    if ((Args->Width IS Self->Width) AND (Args->Height IS Self->Height)) {
-      LogBack();
+      LogReturn();
       return ERR_Okay;
    }
 
@@ -1607,11 +1607,11 @@ static ERROR DISPLAY_SetDisplay(objDisplay *Self, struct gfxSetDisplay *Args)
 
          // Note: The RandR extension changes the video mode without actually changing the size of the bitmap area, so we don't resize the bitmap.
 
-         LogBack();
+         LogReturn();
          return ERR_Okay;
       }
       else{
-         LogBack();
+         LogReturn();
          return ERR_Failed;
       }
    }
@@ -1631,7 +1631,7 @@ static ERROR DISPLAY_SetDisplay(objDisplay *Self, struct gfxSetDisplay *Args)
 
    if (sciOpenVideoMode(gfxmode, &modeinfo, &vx, &vy, &bytesperline, &Self->VideoHandle, Args->RefreshRate) != ERR_Okay) {
       LogErrorMsg("Failed to set the requested video mode.");
-      LogBack();
+      LogReturn();
       return ERR_Failed;
    }
 
@@ -1668,7 +1668,7 @@ static ERROR DISPLAY_SetDisplay(objDisplay *Self, struct gfxSetDisplay *Args)
 
    update_displayinfo(Self);
 
-   LogBack();
+   LogReturn();
    return ERR_Okay;
 }
 
@@ -1852,7 +1852,7 @@ static ERROR DISPLAY_SetMonitor(objDisplay *Self, struct gfxSetMonitor *Args)
 
    if (CurrentTaskID() != Self->Head.TaskID) {
       LogErrorMsg("Only the owner of the display may call this method.");
-      LogBack();
+      LogReturn();
       return ERR_Failed;
    }
 
@@ -1927,7 +1927,7 @@ static ERROR DISPLAY_SetMonitor(objDisplay *Self, struct gfxSetMonitor *Args)
 
    if (!priverror) SetResource(RES_PRIVILEGEDUSER, 0);
 
-   LogBack();
+   LogReturn();
    return ERR_Okay;
 #else
    return ERR_NoSupport;
@@ -1966,7 +1966,7 @@ ERROR DISPLAY_Show(objDisplay *Self, APTR Void)
    #ifdef __xwindows__
       if (!XDisplay) {
          LogF("!Show","No X11 display has been found for this machine.");
-         LogBack();
+         LogReturn();
          return ERR_Failed;
       }
 
@@ -2054,7 +2054,7 @@ ERROR DISPLAY_Show(objDisplay *Self, APTR Void)
       }
    }
 
-   LogBack();
+   LogReturn();
    return ERR_Okay;
 }
 
@@ -3237,7 +3237,7 @@ static void alloc_display_buffer(objDisplay *Self)
    }
    else error = ERR_NewObject;
 
-   LogBack();
+   LogReturn();
 }
 
 //****************************************************************************

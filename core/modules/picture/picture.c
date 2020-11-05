@@ -125,7 +125,7 @@ static ERROR PIC_Activate(objPicture *Self, APTR Void)
    if (!Self->prvFile) {
       STRING path;
       if (GetString(Self, FID_Path, &path) != ERR_Okay) {
-         LogBack();
+         LogReturn();
          return PostError(ERR_GetField);
       }
 
@@ -326,7 +326,7 @@ exit:
 
    png_destroy_read_struct(&read_ptr, &info_ptr, &end_info);
 
-   LogBack();
+   LogReturn();
    return error;
 }
 
@@ -530,7 +530,7 @@ static ERROR PIC_Query(objPicture *Self, APTR Void)
 
 exit:
    png_destroy_read_struct(&read_ptr, &info_ptr, &end_info);
-   LogBack();
+   LogReturn();
    return error;
 }
 
@@ -588,7 +588,7 @@ static ERROR PIC_SaveImage(objPicture *Self, struct acSaveImage *Args)
    else {
       if (GetString(Self, FID_Path, &path) != ERR_Okay) {
          PostError(ERR_MissingPath);
-         LogBack();
+         LogReturn();
          return ERR_GetField;
       }
 
@@ -596,7 +596,7 @@ static ERROR PIC_SaveImage(objPicture *Self, struct acSaveImage *Args)
             FID_Path|TSTR,   path,
             FID_Flags|TLONG, FL_NEW|FL_WRITE,
             TAGEND) != ERR_Okay) {
-         LogBack();
+         LogReturn();
          return ERR_CreateObject;
       }
    }
@@ -819,7 +819,7 @@ exit:
    }
    else if (file) acFree(file);
 
-   LogBack();
+   LogReturn();
    if (error) return PostError(error);
    else return ERR_Okay;
 }

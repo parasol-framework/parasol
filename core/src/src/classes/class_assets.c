@@ -95,7 +95,7 @@ ERROR add_asset_class(void)
 
    if (!(openinfo = GetResourcePtr(RES_OPENINFO))) {
       LogErrorMsg("No OpenInfo structure set during Core initialisation.");
-      LogBack();
+      LogReturn();
       return ERR_Failed;
    }
 
@@ -127,7 +127,7 @@ ERROR add_asset_class(void)
 
       if ((!env) OR (!classname)) {
          LogErrorMsg("Android env and class name must be defined when opening the Core.");
-         LogBack();
+         LogReturn();
          return ERR_Failed;
       }
 
@@ -139,11 +139,11 @@ ERROR add_asset_class(void)
             if (glAssetManager) {
                glAssetManager = (*env)->NewGlobalRef(env, glAssetManager); // This call is required to prevent the Java GC from collecting the reference.
             }
-            else { FMSG("@add_asset_class","Failed to get assetManager field."); LogBack(); return ERR_SystemCall; }
+            else { FMSG("@add_asset_class","Failed to get assetManager field."); LogReturn(); return ERR_SystemCall; }
          }
-         else { FMSG("@add_asset_class","Failed to get assetManager field ID."); LogBack(); return ERR_SystemCall; }
+         else { FMSG("@add_asset_class","Failed to get assetManager field ID."); LogReturn(); return ERR_SystemCall; }
       }
-      else { FMSG("@add_asset_class","Failed to get Java class %s", classname); LogBack(); return ERR_SystemCall; }
+      else { FMSG("@add_asset_class","Failed to get Java class %s", classname); LogReturn(); return ERR_SystemCall; }
    }
 
    // Create the assets: control class
@@ -157,7 +157,7 @@ ERROR add_asset_class(void)
          FID_Fields|TARRAY,     clFields,
          FID_Path|TSTR,         "modules:filesystem",
          TAGEND) != ERR_Okay) {
-      LogBack();
+      LogReturn();
       return ERR_CreateObject;
    }
 
@@ -170,7 +170,7 @@ ERROR add_asset_class(void)
                            VAS_GET_INFO,  &get_info,
                            0);
 
-   LogBack();
+   LogReturn();
    return ERR_Okay;
 }
 
