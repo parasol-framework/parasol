@@ -287,7 +287,7 @@ static ERROR PTR_DataFeed(objPointer *Self, struct acDataFeed *Args)
             else if (input->Flags & JTYPE_BUTTON) process_ptr_button(Self, input);
             else process_ptr_movement(Self, input);
 
-            //STEP();
+            //LOGRETURN();
          }
       }
    }
@@ -1484,7 +1484,7 @@ static BYTE get_over_object(objPointer *Self)
          }
          Self->OverObjectID = li_objectid;
 
-         STEP();
+         LOGRETURN();
       }
 
       Self->OverX = Self->X - li_left;

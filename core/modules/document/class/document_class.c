@@ -120,7 +120,7 @@ static ERROR DOCUMENT_ActionNotify(objDocument *Self, struct acActionNotify *Arg
          layout_doc(Self);
          AdjustLogLevel(-2);
 
-         STEP();
+         LOGRETURN();
       }
    }
 
@@ -248,7 +248,7 @@ static ERROR DOCUMENT_ApplyFontStyle(objDocument *Self, struct docApplyFontStyle
       font->Underline = style->FontUnderline;
    }
 
-   STEP();
+   LOGRETURN();
    return ERR_Okay;
 }
 
@@ -1266,7 +1266,7 @@ static ERROR DOCUMENT_InsertText(objDocument *Self, struct docInsertText *Args)
    if (Self->Style.FontStyle.Index IS -1) {
       if ((Self->Style.FontStyle.Index = create_font(Self->FontFace, "Regular", Self->FontSize)) IS -1) {
          if ((Self->Style.FontStyle.Index = create_font("Open Sans", "Regular", 12)) IS -1) {
-            STEP();
+            LOGRETURN();
             return ERR_Failed;
          }
       }
@@ -1288,7 +1288,7 @@ static ERROR DOCUMENT_InsertText(objDocument *Self, struct docInsertText *Args)
       print_stream(Self, Self->Stream);
    #endif
 
-   STEP();
+   LOGRETURN();
    return error;
 }
 

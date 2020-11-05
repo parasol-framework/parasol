@@ -231,7 +231,7 @@ static ERROR build_args(lua_State *Lua, const struct FunctionField *args, LONG A
             }
          }
          else if (type IS LUA_TNUMBER) {
-            STEP();
+            LOGRETURN();
             luaL_argerror(Lua, n, "Cannot use a number as a buffer pointer.");
             return ERR_WrongType;
          }
@@ -309,7 +309,7 @@ static ERROR build_args(lua_State *Lua, const struct FunctionField *args, LONG A
             ((CSTRING *)(argbuffer + j))[0] = lua_tostring(Lua, n);
          }
          else if (type IS LUA_TNUMBER) {
-            STEP();
+            LOGRETURN();
             luaL_argerror(Lua, n, "Unable to convert number to a pointer.");
             return ERR_WrongType;
          }
@@ -358,7 +358,7 @@ static ERROR build_args(lua_State *Lua, const struct FunctionField *args, LONG A
       }
       else {
          LogErrorMsg("Unsupported arg %s, flags $%.8x, aborting now.", args[i].Name, args[i].Type);
-         STEP();
+         LOGRETURN();
          return ERR_WrongType;
       }
    }
@@ -371,7 +371,7 @@ static ERROR build_args(lua_State *Lua, const struct FunctionField *args, LONG A
 
    FMSG("build_args","Processed %d args (%d bytes), detected %d result parameters.", i, j, resultcount);
    if (ResultCount) *ResultCount = resultcount;
-   STEP();
+   LOGRETURN();
    return ERR_Okay;
 }
 

@@ -187,13 +187,13 @@ static ERROR stack_args(lua_State *Lua, OBJECTID ObjectID, const struct Function
       }
       else {
          LogF("@stack_args","Unsupported arg %s, flags $%.8x, aborting now.", args[i].Name, args[i].Type);
-         STEP();
+         LOGRETURN();
          return ERR_Failed;
       }
       lua_settable(Lua, -3);
    }
 
-   STEP();
+   LOGRETURN();
    return ERR_Okay;
 }
 
@@ -266,7 +266,7 @@ static ERROR FLUID_Activate(objScript *Self, APTR Void)
 
       FMSG("~","Collecting garbage.");
          lua_gc(prv->Lua, LUA_GCCOLLECT, 0);
-      STEP();
+      LOGRETURN();
       LogReturn();
       return ERR_Okay;
    }
@@ -452,7 +452,7 @@ static ERROR FLUID_Activate(objScript *Self, APTR Void)
             Self->Error = ERR_Failed;
             process_error(Self, "Activation");
          }
-         STEP();
+         LOGRETURN();
       }
    }
 
@@ -467,7 +467,7 @@ failure:
    if (prv->Lua) {
       FMSG("~","Collecting garbage.");
          lua_gc(prv->Lua, LUA_GCCOLLECT, 0); // Run the garbage collector
-      STEP();
+      LOGRETURN();
    }
 
    // Change back to the original owner if it still exists.  If it doesn't, self-terminate.
@@ -539,9 +539,9 @@ static ERROR FLUID_DataFeed(objScript *Self, struct acDataFeed *Args)
 
       FMSG("~","Collecting garbage.");
         lua_gc(prv->Lua, LUA_GCCOLLECT, 0); // Run the garbage collector
-      STEP();
+      LOGRETURN();
 
-      STEP();
+      LOGRETURN();
    }
    else if (Args->DataType IS DATA_RECEIPT) {
       struct prvFluid *prv = Self->Head.ChildPrivate;
@@ -610,7 +610,7 @@ restart:
 
       FMSG("~","Collecting garbage.");
         lua_gc(prv->Lua, LUA_GCCOLLECT, 0); // Run the garbage collector
-      STEP();
+      LOGRETURN();
 
       LogReturn();
    }
@@ -1068,7 +1068,7 @@ static ERROR run_script(objScript *Self)
             }
          #endif
 
-         STEP();
+         LOGRETURN();
          Self->Error = ERR_NotFound;
          return ERR_NotFound;
       }
@@ -1104,12 +1104,12 @@ static ERROR run_script(objScript *Self)
          lua_pop(prv->Lua, results);  // pop returned values
       }
 
-      STEP();
+      LOGRETURN();
       return ERR_Okay;
    }
    else {
       process_error(Self, Self->Procedure ? Self->Procedure : "run_script");
-      STEP();
+      LOGRETURN();
       return Self->Error;
    }
 }

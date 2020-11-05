@@ -58,7 +58,7 @@ static ERROR ITEM_Activate(objMenuItem *Item, APTR Void)
 
    if (Item->Flags & MIF_EXTENSION) {
       if (Item->Flags & MIF_DISABLED) {
-         STEP();
+         LOGRETURN();
          return ERR_Okay;
       }
 
@@ -115,7 +115,7 @@ static ERROR ITEM_Activate(objMenuItem *Item, APTR Void)
       }
 
       if (Item->Flags & MIF_DISABLED) {
-         STEP();
+         LOGRETURN();
          return ERR_Okay;
       }
 
@@ -151,7 +151,7 @@ static ERROR ITEM_Activate(objMenuItem *Item, APTR Void)
       NotifySubscribers(Item->Menu, AC_Activate, 0, 0, ERR_Okay);
    }
 
-   STEP();
+   LOGRETURN();
    return ERR_Okay;
 }
 

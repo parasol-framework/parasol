@@ -261,7 +261,7 @@ static ERROR WINDOW_ActionNotify(objWindow *Self, struct acActionNotify *Args)
 
       NotifySubscribers(Self, AC_Focus, NULL, NULL, ERR_Okay);
 
-      STEP();
+      LOGRETURN();
    }
    else if ((Args->ActionID IS MT_DrwInheritedFocus) AND (Args->ObjectID IS Self->Surface->Head.UniqueID)) {
       // InheritedFocus is reported if one of the children in the window has received the focus.

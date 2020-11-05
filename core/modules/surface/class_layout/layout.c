@@ -23,10 +23,10 @@ Other Layout classes can be used as a drop-in replacement for this default class
 /*
 #undef MSG
 #undef FMSG
-#undef STEP
+#undef LOGRETURN
 #define MSG(...)  LogF(0,__VA_ARGS__)
 #define FMSG(...) LogF(__VA_ARGS__)
-#define STEP()    LogReturn()
+#define LOGRETURN()    LogReturn()
 */
 
 static ERROR GET_Layout_X(objLayout *, struct Variable *);
@@ -1685,7 +1685,7 @@ static ERROR SET_Layout_Width(objLayout *Self, struct Variable *Value)
       GET_Layout_Width(Self, &var);
       Self->BoundWidth = var.Large;
 
-      STEP();
+      LOGRETURN();
    }
 
    return ERR_Okay;
@@ -1749,7 +1749,7 @@ static ERROR SET_Layout_X(objLayout *Self, struct Variable *Value)
       GET_Layout_Width(Self, &var);
       Self->BoundWidth = var.Large;
 
-      STEP();
+      LOGRETURN();
    }
 
    return ERR_Okay;
@@ -1821,7 +1821,7 @@ static ERROR SET_Layout_XOffset(objLayout *Self, struct Variable *Value)
       GET_Layout_Width(Self, &var);
       Self->BoundWidth = var.Large;
 
-      STEP();
+      LOGRETURN();
    }
 
    return ERR_Okay;

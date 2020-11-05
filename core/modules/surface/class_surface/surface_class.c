@@ -157,7 +157,7 @@ static ERROR SURFACE_ActionNotify(objSurface *Self, struct acActionNotify *Notif
             Action(MT_DrwExpose, Self, &expose);
          }
 
-         STEP();
+         LOGRETURN();
       }
    }
    else if ((NotifyArgs->ActionID IS AC_Redimension) AND (NotifyArgs->Error IS ERR_Okay)) {
@@ -179,7 +179,7 @@ static ERROR SURFACE_ActionNotify(objSurface *Self, struct acActionNotify *Notif
             for (i=0; (i < ctl->Total) AND (list[i].SurfaceID != Self->ParentID); i++);
             if (i >= ctl->Total) {
                drwReleaseList(ARF_READ);
-               STEP();
+               LOGRETURN();
                return PostError(ERR_Search);
             }
             parentwidth  = list[i].Width;
@@ -187,7 +187,7 @@ static ERROR SURFACE_ActionNotify(objSurface *Self, struct acActionNotify *Notif
             drwReleaseList(ARF_READ);
          }
          else {
-            STEP();
+            LOGRETURN();
             return PostError(ERR_AccessMemory);
          }
       }
@@ -198,7 +198,7 @@ static ERROR SURFACE_ActionNotify(objSurface *Self, struct acActionNotify *Notif
             parentheight = display->Height;
          }
          else {
-            STEP();
+            LOGRETURN();
             return ERR_Okay;
          }
       }
@@ -272,7 +272,7 @@ static ERROR SURFACE_ActionNotify(objSurface *Self, struct acActionNotify *Notif
          acRedimension(Self, x, y, 0, width, height, resize->Depth);
       }
 
-      STEP();
+      LOGRETURN();
    }
 
    return ERR_Okay;
@@ -987,7 +987,7 @@ static ERROR SURFACE_Hide(objSurface *Self, APTR Void)
    FMSG("~",NULL);
 
    if (!(Self->Flags & RNF_VISIBLE)) {
-      STEP();
+      LOGRETURN();
       return ERR_Okay|ERF_Notified;
    }
 
@@ -996,7 +996,7 @@ static ERROR SURFACE_Hide(objSurface *Self, APTR Void)
       UpdateSurfaceField(Self, Flags);
 
       if (acHideID(Self->DisplayID) != ERR_Okay) {
-         STEP();
+         LOGRETURN();
          return ERR_Failed;
       }
    }
@@ -1034,7 +1034,7 @@ static ERROR SURFACE_Hide(objSurface *Self, APTR Void)
 
    refresh_pointer(Self);
 
-   STEP();
+   LOGRETURN();
    return ERR_Okay;
 }
 
@@ -1729,7 +1729,7 @@ static ERROR SURFACE_Move(objSurface *Self, struct acMove *Args)
 
          if ((!move.XChange) AND (!move.YChange)) {
             drwReleaseList(ARF_READ);
-            STEP();
+            LOGRETURN();
             return ERR_Failed|ERF_Notified;
          }
       }
@@ -1741,7 +1741,7 @@ static ERROR SURFACE_Move(objSurface *Self, struct acMove *Args)
       move_layer(Self, Self->X + move.XChange, Self->Y + move.YChange);
    }
    else {
-      STEP();
+      LOGRETURN();
       return PostError(ERR_LockFailed)|ERF_Notified;
    }
 
@@ -1755,9 +1755,9 @@ static ERROR SURFACE_Move(objSurface *Self, struct acMove *Args)
    FMSG("~","Sending redimension notifications");
       struct acRedimension redimension = { Self->X, Self->Y, 0, Self->Width, Self->Height, 0 };
       NotifySubscribers(Self, AC_Redimension, &redimension, NULL, ERR_Okay);
-   STEP();
+   LOGRETURN();
 
-   STEP();
+   LOGRETURN();
    return ERR_Okay|ERF_Notified;
 }
 
@@ -2509,7 +2509,7 @@ static ERROR SURFACE_Show(objSurface *Self, APTR Void)
          if (Self->Flags & RNF_HAS_FOCUS) acFocusID(Self->DisplayID);
       }
       else {
-         STEP();
+         LOGRETURN();
          return PostError(ERR_Failed);
       }
    }
@@ -2532,7 +2532,7 @@ static ERROR SURFACE_Show(objSurface *Self, APTR Void)
 
    refresh_pointer(Self);
 
-   STEP();
+   LOGRETURN();
    return ERR_Okay|notified;
 }
 
@@ -2651,7 +2651,7 @@ static void invalidate_overlap(objSurface *Self, struct SurfaceList *list, WORD 
    FMSG("~invalidate_overlap()","%dx%d %dx%d, Between %d to %d", Left, Top, Right-Left, Bottom-Top, OldIndex, Index);
 
    if ((list[Index].Flags & (RNF_REGION|RNF_TRANSPARENT)) OR (!(list[Index].Flags & RNF_VISIBLE))) {
-      STEP();
+      LOGRETURN();
       return;
    }
 
@@ -2703,7 +2703,7 @@ skipcontent:
       i = j - 1;
    }
 
-   STEP();
+   LOGRETURN();
 }
 
 //****************************************************************************

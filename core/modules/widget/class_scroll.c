@@ -100,7 +100,7 @@ static void set_position(objScroll *Self, DOUBLE Position)
       }
    }
 
-   STEP();
+   LOGRETURN();
 }
 
 //****************************************************************************
@@ -117,7 +117,7 @@ static ERROR SCROLL_ActionNotify(objScroll *Self, struct acActionNotify *Notify)
       if (Notify->ObjectID IS Self->SliderID) { // The slider has moved
          if (Self->RecursionBlock) {
             MSG("Recursive block protection.");
-            STEP();
+            LOGRETURN();
             return ERR_Okay;
          }
 
@@ -148,7 +148,7 @@ static ERROR SCROLL_ActionNotify(objScroll *Self, struct acActionNotify *Notify)
 
          position = check_position(Self, position);
 
-         if (position IS Self->Position) { STEP(); return ERR_Okay; }
+         if (position IS Self->Position) { LOGRETURN(); return ERR_Okay; }
 
          // NB: Delays are used because drawing whilst inside of Redimension notifications is disabled by the Surface class.
 
@@ -230,7 +230,7 @@ static ERROR SCROLL_ActionNotify(objScroll *Self, struct acActionNotify *Notify)
 
          // The size of the view has changed
 
-         if (Self->PageSize <= 0) { STEP(); return ERR_Okay; }
+         if (Self->PageSize <= 0) { LOGRETURN(); return ERR_Okay; }
 
          if (Self->Flags & SCF_VERTICAL) viewlength = resize->Height;
          else viewlength = resize->Width;
@@ -269,10 +269,10 @@ static ERROR SCROLL_ActionNotify(objScroll *Self, struct acActionNotify *Notify)
 
             update_scroll(Self, -1, viewsize, pos, Self->Unit);
 
-         STEP();
+         LOGRETURN();
       }
 
-      STEP();
+      LOGRETURN();
    }
    else if (Notify->ActionID IS AC_Free) {
       if ((Self->Feedback.Type IS CALL_SCRIPT) AND (Self->Feedback.Script.Script->UniqueID IS Notify->ObjectID)) {
@@ -307,7 +307,7 @@ static ERROR SCROLL_ActionNotify(objScroll *Self, struct acActionNotify *Notify)
          ReleaseObject(bar);
       }
 
-      STEP();
+      LOGRETURN();
    }
    else if (Notify->ActionID IS AC_Scroll) {
       if (Self->RecursionBlock) return ERR_Okay;
@@ -387,7 +387,7 @@ static ERROR SCROLL_ActionNotify(objScroll *Self, struct acActionNotify *Notify)
 
          update_scroll(Self, -1, -1, position, Self->Unit);
 
-         STEP();
+         LOGRETURN();
       }
    }
    else if (Notify->ActionID IS AC_Show) {
@@ -447,7 +447,7 @@ static ERROR SCROLL_ActionNotify(objScroll *Self, struct acActionNotify *Notify)
          ReleaseObject(bar);
       }
 
-      STEP();
+      LOGRETURN();
    }
 
    return ERR_Okay;
@@ -641,7 +641,7 @@ static ERROR process_click(objScroll *Self, OBJECTID NotifyID, LONG X, LONG Y)
       }
    }
 
-   STEP();
+   LOGRETURN();
    return ERR_Okay;
 }
 
@@ -776,7 +776,7 @@ static ERROR SCROLL_Hide(objScroll *Self, APTR Void)
       if (flags & RNF_VISIBLE) acHideID(Self->ScrollbarID);
    }
 
-   STEP();
+   LOGRETURN();
    return ERR_Okay;
 }
 
@@ -1057,7 +1057,7 @@ static void update_scroll(objScroll *Self, LONG PageSize, LONG ViewSize, DOUBLE 
 
    if ((Self->PageSize < 0) OR (Self->ViewSize <= 0)) {
       LogErrorMsg("Illegal pagesize (%d) and/or viewsize (%d)", Self->PageSize, Self->ViewSize);
-      STEP();
+      LOGRETURN();
       return;
    }
 
@@ -1159,7 +1159,7 @@ static void update_scroll(objScroll *Self, LONG PageSize, LONG ViewSize, DOUBLE 
    set_position(Self, Self->Position);
 
    Self->RecursionBlock--;
-   STEP();
+   LOGRETURN();
 }
 
 /*****************************************************************************

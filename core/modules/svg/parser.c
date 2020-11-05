@@ -16,7 +16,7 @@ static void apply_state(svgState *State, OBJECTPTR Vector)
    if (State->FillOpacity >= 0.0) SetDouble(Vector, FID_FillOpacity, State->FillOpacity);
    if (State->Opacity >= 0.0) SetDouble(Vector, FID_Opacity, State->Opacity);
 
-   STEP();
+   LOGRETURN();
 }
 
 //****************************************************************************
@@ -42,7 +42,7 @@ static void set_state(svgState *State, struct XMLTag *Tag)
       }
    }
 
-   STEP();
+   LOGRETURN();
 }
 
 //****************************************************************************
@@ -94,7 +94,7 @@ static void xtag_pathtransition(objSVG *Self, objXML *XML, struct XMLTag *Tag)
 
             if (!acInit(trans)) {
                scAddDef(Self->Scene, id, (OBJECTPTR)trans);
-               STEP();
+               LOGRETURN();
                return;
             }
          }
@@ -105,7 +105,7 @@ static void xtag_pathtransition(objSVG *Self, objXML *XML, struct XMLTag *Tag)
       acFree(trans);
    }
 
-   STEP();
+   LOGRETURN();
 }
 
 //****************************************************************************
@@ -155,7 +155,7 @@ static void xtag_clippath(objSVG *Self, objXML *XML, struct XMLTag *Tag)
       }
    }
 
-   STEP();
+   LOGRETURN();
 }
 
 //****************************************************************************
@@ -700,7 +700,7 @@ static ERROR xtag_defs(objSVG *Self, objXML *XML, svgState *State, struct XMLTag
       }
    }
 
-   STEP();
+   LOGRETURN();
    return ERR_Okay;
 }
 
@@ -774,7 +774,7 @@ static void xtag_symbol(objSVG *Self, objXML *XML, struct XMLTag *Tag)
    }
    else LogErrorMsg("No id attribute specified in <symbol> at line %d.", Tag->LineNo);
 
-   STEP();
+   LOGRETURN();
 }
 
 /*****************************************************************************
@@ -998,7 +998,7 @@ static void xtag_use(objSVG *Self, objXML *XML, svgState *State, struct XMLTag *
       if ((id->TagIndex >= 0) AND (id->TagIndex < XML->TagCount)) {
          FMSG("~xtag_use","Processing all child elements within %s", ref);
          process_children(Self, XML, &state, XML->Tags[id->TagIndex]->Child, vector);
-         STEP();
+         LOGRETURN();
       }
       else FMSG("xtag_use","Element TagIndex %d is out of range.", id->TagIndex);
    }
@@ -1046,7 +1046,7 @@ static void xtag_group(objSVG *Self, objXML *XML, svgState *State, struct XMLTag
    if (!acInit(group)) *Vector = group;
    else acFree(group);
 
-   STEP();
+   LOGRETURN();
 }
 
 /*****************************************************************************
@@ -1179,7 +1179,7 @@ static void xtag_svg(objSVG *Self, objXML *XML, svgState *State, struct XMLTag *
             default:       xtag_default(Self, hash, XML, &state, child, viewport, &sibling);  break;
          }
 
-         STEP();
+         LOGRETURN();
       }
    }
 

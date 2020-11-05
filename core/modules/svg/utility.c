@@ -104,7 +104,7 @@ static ERROR process_transition_stops(objSVG *Self, struct XMLTag *Tag, struct T
       else LogErrorMsg("Unknown element in transition, '%s'", scan->Attrib->Name);
    }
 
-   STEP();
+   LOGRETURN();
    return ERR_Okay;
 }
 

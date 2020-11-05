@@ -125,7 +125,7 @@ ERROR threadpool_get(objThread **Result)
 
    if (thread) *Result = thread;
 
-   STEP();
+   LOGRETURN();
    return error;
 }
 
@@ -141,7 +141,7 @@ void threadpool_release(objThread *Thread)
          if (glActionThreads[i].Thread IS Thread) {
             glActionThreads[i].InUse = FALSE;
             thread_unlock(TL_THREADPOOL);
-            STEP();
+            LOGRETURN();
             return;
          }
       }
@@ -153,7 +153,7 @@ void threadpool_release(objThread *Thread)
       acFree(&Thread->Head);
    }
 
-   STEP();
+   LOGRETURN();
 }
 
 //****************************************************************************
@@ -175,7 +175,7 @@ void remove_threadpool(void)
       thread_unlock(TL_THREADPOOL);
    }
 
-   STEP();
+   LOGRETURN();
 }
 
 //****************************************************************************

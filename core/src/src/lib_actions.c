@@ -1122,7 +1122,7 @@ ERROR ActionThread(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters, FUNCTIO
 
    if (error) __sync_sub_and_fetch(&Object->ThreadPending, 1);
 
-   STEP();
+   LOGRETURN();
    return error;
 }
 

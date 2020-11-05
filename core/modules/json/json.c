@@ -251,7 +251,7 @@ static ERROR txt_to_json(objXML *Self, CSTRING Text)
    for (str=Text; (*str) AND (*str != '{'); str++) if (*str IS '\n') Self->LineNo++;
    if (str[0] != '{') {
       LogErrorMsg("There is no JSON statement to process.");
-      STEP();
+      LOGRETURN();
       return ERR_NoData;
    }
 
@@ -262,7 +262,7 @@ static ERROR txt_to_json(objXML *Self, CSTRING Text)
       Self->Tags = tag;
    }
    else {
-      STEP();
+      LOGRETURN();
       return ERR_AllocMemory;
    }
 
@@ -286,7 +286,7 @@ static ERROR txt_to_json(objXML *Self, CSTRING Text)
 
          if (extract_item(Self, &ext, &str) != ERR_Okay) {
             LogErrorMsg("Aborting parsing of JSON statement.");
-            STEP();
+            LOGRETURN();
             return ERR_Syntax;
          }
 
@@ -301,7 +301,7 @@ static ERROR txt_to_json(objXML *Self, CSTRING Text)
 
    if (*str != '}') {
       LogErrorMsg("Missing expected '}' terminator at line %d.", Self->LineNo);
-      STEP();
+      LOGRETURN();
       return ERR_Syntax;
    }
 
@@ -354,7 +354,7 @@ static ERROR txt_to_json(objXML *Self, CSTRING Text)
 
    FMSG("txt_to_json","JSON parsing complete.");
 
-   STEP();
+   LOGRETURN();
    return ERR_Okay;
 }
 
@@ -374,7 +374,7 @@ static ERROR extract_item(objXML *Self, struct exttag *Status, CSTRING *Input)
 
    if (Status->TagIndex >= Self->TagCount) {
       if (ReallocMemory(Self->Tags, sizeof(APTR) * (Self->TagCount + 250 + 1), &Self->Tags, NULL)) {
-         STEP();
+         LOGRETURN();
          return PostError(ERR_ReallocMemory);
       }
       Self->TagCount += 250;
@@ -383,7 +383,7 @@ static ERROR extract_item(objXML *Self, struct exttag *Status, CSTRING *Input)
    str = Input[0];
    if (*str != '"') {
       LogErrorMsg("Malformed JSON statement detected at line %d, expected '\"', got '%c'.", Self->LineNo, str[0]);
-      STEP();
+      LOGRETURN();
       return ERR_Syntax;
    }
 
@@ -401,26 +401,26 @@ static ERROR extract_item(objXML *Self, struct exttag *Status, CSTRING *Input)
          else if (*str IS '"') item_name[i++] = '"';
          else {
             LogErrorMsg("Invalid use of back-slash in item name encountered at line %d", Self->LineNo);
-            STEP();
+            LOGRETURN();
             return ERR_Syntax;
          }
       }
       else if (*str < 0x20) {
          LogErrorMsg("Invalid item name encountered at line %d.", Self->LineNo);
-         STEP();
+         LOGRETURN();
          return ERR_Syntax;
       }
       else item_name[i++] = *str++;
    }
    item_name[i] = 0;
    if (i >= sizeof(item_name)) {
-      STEP();
+      LOGRETURN();
       return ERR_BufferOverflow;
    }
 
    if (*str IS '"') str++;
    else {
-      STEP();
+      LOGRETURN();
       return ERR_Syntax;
    }
 
@@ -428,7 +428,7 @@ static ERROR extract_item(objXML *Self, struct exttag *Status, CSTRING *Input)
 
    if (*str != ':') {
       LogErrorMsg("Missing separator ':' after item name '%s' at line %d.", item_name, Self->LineNo);
-      STEP();
+      LOGRETURN();
       return ERR_Syntax;
    }
 
@@ -465,7 +465,7 @@ static ERROR extract_item(objXML *Self, struct exttag *Status, CSTRING *Input)
       else if (*str IS ']') subtype = "null";
       else {
          LogErrorMsg("Invalid array defined at line %d.", line_start);
-         STEP();
+         LOGRETURN();
          return ERR_Syntax;
       }
 
@@ -505,7 +505,7 @@ static ERROR extract_item(objXML *Self, struct exttag *Status, CSTRING *Input)
                   Status->Branch++;
 
                   if ((error = extract_item(Self, Status, &str)) != ERR_Okay) {
-                     STEP();
+                     LOGRETURN();
                      return error;
                   }
 
@@ -517,7 +517,7 @@ static ERROR extract_item(objXML *Self, struct exttag *Status, CSTRING *Input)
 
                   if (*str != '}') {
                      LogErrorMsg("Missing '}' character to close an object by the end of line %d.", Self->LineNo);
-                     STEP();
+                     LOGRETURN();
                      return ERR_Syntax;
                   }
 
@@ -534,7 +534,7 @@ static ERROR extract_item(objXML *Self, struct exttag *Status, CSTRING *Input)
                }
                else {
                   LogErrorMsg("Invalid array entry encountered at line %d, expected object, encountered character '%c'.", Self->LineNo, *str);
-                  STEP();
+                  LOGRETURN();
                   return ERR_Syntax;
                }
             }
@@ -546,7 +546,7 @@ static ERROR extract_item(objXML *Self, struct exttag *Status, CSTRING *Input)
          while ((*str) AND (*str != ']')) {
             if (*str != '"') {
                LogErrorMsg("Invalid array of strings at line %d.", line_start);
-               STEP();
+               LOGRETURN();
                return ERR_Syntax;
             }
 
@@ -602,7 +602,7 @@ static ERROR extract_item(objXML *Self, struct exttag *Status, CSTRING *Input)
                while ((*str) AND (*str <= 0x20)) { if (*str IS '\n') Self->LineNo++; str++; }
             }
             else {
-               STEP();
+               LOGRETURN();
                return ERR_AllocMemory;
             }
          }
@@ -616,7 +616,7 @@ static ERROR extract_item(objXML *Self, struct exttag *Status, CSTRING *Input)
          while ((*str) AND (*str != ']')) {
             if ((str[0] != '0') OR (str[1] != 'x')) {
                LogErrorMsg("Invalid array of hexadecimal numbers at line %d.", line_start);
-               STEP();
+               LOGRETURN();
                return ERR_Syntax;
             }
 
@@ -628,14 +628,14 @@ static ERROR extract_item(objXML *Self, struct exttag *Status, CSTRING *Input)
                ((str[2] >= 'A') AND (str[2] <= 'F')) OR
                ((str[2] >= 'a') AND (str[2] <= 'f'))
             )) numbuf[i++] = *str++;
-            if (i >= sizeof(numbuf)-1) { STEP(); return ERR_BufferOverflow; }
+            if (i >= sizeof(numbuf)-1) { LOGRETURN(); return ERR_BufferOverflow; }
             numbuf[i] = 0;
 
             while ((*str) AND (*str <= 0x20)) { if (*str IS '\n') Self->LineNo++; str++; }
 
             if ((*str != ',') AND (*str != ']')) { // If the next character is something other than ',' or ']' then it indicates that the hex value has an invalid character in it, e.g. 0x939fW
                LogErrorMsg("Invalid array of hexadecimal numbers at line %d.", line_start);
-               STEP();
+               LOGRETURN();
                return ERR_Syntax;
             }
 
@@ -669,7 +669,7 @@ static ERROR extract_item(objXML *Self, struct exttag *Status, CSTRING *Input)
          while ((*str) AND (*str != ']')) {
             if (((*str < '0') OR (*str > '9')) AND (*str != '-')) {
                LogErrorMsg("Invalid array of integers at line %d.", Self->LineNo);
-               STEP();
+               LOGRETURN();
                return ERR_Syntax;
             }
 
@@ -712,7 +712,7 @@ static ERROR extract_item(objXML *Self, struct exttag *Status, CSTRING *Input)
       }
       else {
          LogErrorMsg("Invalid array defined at line %d.", line_start);
-         STEP();
+         LOGRETURN();
          return ERR_Syntax;
       }
 
@@ -720,7 +720,7 @@ static ERROR extract_item(objXML *Self, struct exttag *Status, CSTRING *Input)
 
       if (*str != ']') {
          LogErrorMsg("Array at line %d not terminated with expected ']' character.", line_start);
-         STEP();
+         LOGRETURN();
          return ERR_Syntax;
       }
       else str++; // Skip array terminator ']'
@@ -749,7 +749,7 @@ static ERROR extract_item(objXML *Self, struct exttag *Status, CSTRING *Input)
 
             if (extract_item(Self, Status, &str) != ERR_Okay) {
                LogErrorMsg("Aborting parsing of JSON statement.");
-               STEP();
+               LOGRETURN();
                return ERR_Syntax;
             }
 
@@ -765,7 +765,7 @@ static ERROR extract_item(objXML *Self, struct exttag *Status, CSTRING *Input)
 
          if (*str != '}') {
             LogErrorMsg("Missing '}' character to close one of the objects.");
-            STEP();
+            LOGRETURN();
             return ERR_Syntax;
          }
          else str++; // Skip '}'
@@ -795,7 +795,7 @@ static ERROR extract_item(objXML *Self, struct exttag *Status, CSTRING *Input)
 
       if (!str[0]) {
          LogErrorMsg("Missing final '\"' terminator for string at line %d.", Self->LineNo);
-         STEP();
+         LOGRETURN();
          return ERR_Syntax;
       }
 
@@ -824,7 +824,7 @@ static ERROR extract_item(objXML *Self, struct exttag *Status, CSTRING *Input)
             Status->Branch--;
          }
          else {
-            STEP();
+            LOGRETURN();
             return ERR_AllocMemory;
          }
 
@@ -845,7 +845,7 @@ static ERROR extract_item(objXML *Self, struct exttag *Status, CSTRING *Input)
          ((*str >= 'A') AND (*str <= 'F')) OR
          ((*str >= 'a') AND (*str <= 'f'))
       )) numbuf[i++] = *str++;
-      if (i >= sizeof(numbuf)-1) { STEP(); return ERR_BufferOverflow; }
+      if (i >= sizeof(numbuf)-1) { LOGRETURN(); return ERR_BufferOverflow; }
       numbuf[i] = 0;
 
       // Skip whitespace and check that the number was valid.
@@ -856,7 +856,7 @@ static ERROR extract_item(objXML *Self, struct exttag *Status, CSTRING *Input)
          else if (*str IS '}') break;
          else {
             LogErrorMsg("Invalid hexadecimal number '%s' at line %d", numbuf, Self->LineNo);
-            STEP();
+            LOGRETURN();
             return ERR_Syntax;
          }
          str++;
@@ -892,7 +892,7 @@ static ERROR extract_item(objXML *Self, struct exttag *Status, CSTRING *Input)
          else if (*str IS '}') break;
          else {
             LogErrorMsg("Invalid number at line %d", Self->LineNo);
-            STEP();
+            LOGRETURN();
             return ERR_Syntax;
          }
          str++;
@@ -921,12 +921,12 @@ static ERROR extract_item(objXML *Self, struct exttag *Status, CSTRING *Input)
    }
    else {
       LogErrorMsg("Invalid value character '%c' encountered for item '%s' at line %d.", *str, item_name, Self->LineNo);
-      STEP();
+      LOGRETURN();
       return ERR_Syntax;
    }
 
    *Input = str;
-   STEP();
+   LOGRETURN();
    return ERR_Okay;
 }
 

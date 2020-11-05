@@ -96,7 +96,7 @@ static ERROR SURFACE_Redimension(objSurface *Self, struct acRedimension *Args)
 
    ERROR error = resize_layer(Self, newx, newy, newwidth, newheight, newwidth, newheight, F2T(Args->Depth), 0.0, NULL);
 
-   STEP();
+   LOGRETURN();
    return error|ERF_Notified;
 }
 
@@ -218,14 +218,14 @@ static ERROR resize_layer(objSurface *Self, LONG X, LONG Y, LONG Width, LONG Hei
          }
          else {
             ReleaseObject(bitmap);
-            STEP();
+            LOGRETURN();
             return PostError(ERR_Resize);
          }
 
          ReleaseObject(bitmap);
       }
       else {
-         STEP();
+         LOGRETURN();
          return PostError(ERR_AccessObject);
       }
    }
@@ -240,7 +240,7 @@ static ERROR resize_layer(objSurface *Self, LONG X, LONG Y, LONG Width, LONG Hei
       if (!AccessObject(Self->DisplayID, 5000, &display)) { // NB: SetDisplay() always processes coordinates relative to the client area in order to resolve issues when in hosted mode.
          if (gfxSetDisplay(display, X, Y, Width, Height, InsideWidth, InsideHeight, BPP, RefreshRate, DeviceFlags)) {
             ReleaseObject(display);
-            STEP();
+            LOGRETURN();
             return PostError(ERR_Redimension);
          }
 
@@ -248,7 +248,7 @@ static ERROR resize_layer(objSurface *Self, LONG X, LONG Y, LONG Width, LONG Hei
          ReleaseObject(display);
       }
       else {
-         STEP();
+         LOGRETURN();
          return PostError(ERR_AccessObject);
       }
    }
@@ -265,7 +265,7 @@ static ERROR resize_layer(objSurface *Self, LONG X, LONG Y, LONG Width, LONG Hei
    UpdateSurfaceList(Self);
 
    if (!(Self->Head.Flags & NF_INITIALISED)) {
-      STEP();
+      LOGRETURN();
       return ERR_Okay;
    }
 
@@ -281,7 +281,7 @@ static ERROR resize_layer(objSurface *Self, LONG X, LONG Y, LONG Width, LONG Hei
    drwPermitDrawing();
 
    if (!(Self->Flags & RNF_VISIBLE)) {
-      STEP();
+      LOGRETURN();
       return ERR_Okay;
    }
 
@@ -344,11 +344,11 @@ static ERROR resize_layer(objSurface *Self, LONG X, LONG Y, LONG Width, LONG Hei
             tlVolatileIndex = 0;
          }
 
-      STEP();
+      LOGRETURN();
    }
 
    refresh_pointer(Self);
 
-   STEP();
+   LOGRETURN();
    return ERR_Okay;
 }

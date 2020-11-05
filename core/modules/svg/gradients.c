@@ -56,7 +56,7 @@ static ERROR process_gradient_stops(objSVG *Self, struct XMLTag *Tag, struct Gra
       else LogErrorMsg("Unknown element in gradient, '%s'", scan->Attrib->Name);
    }
 
-   STEP();
+   LOGRETURN();
    return ERR_Okay;
 }
 

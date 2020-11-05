@@ -2094,12 +2094,12 @@ static struct font_glyph * get_glyph(objFont *Self, ULONG Unicode, UBYTE GetBitm
       if (GetBitmap) {
          if (Self->Outline.Alpha > 0) generate_vector_outline(Self, &glyph);
 
-         if (FT_Render_Glyph(Self->FTFace->glyph, rendermode)) { STEP(); return NULL; }
-         if (Self->FTFace->glyph->bitmap.pixel_mode != FT_PIXEL_MODE_GRAY) { STEP(); return NULL; }
+         if (FT_Render_Glyph(Self->FTFace->glyph, rendermode)) { LOGRETURN(); return NULL; }
+         if (Self->FTFace->glyph->bitmap.pixel_mode != FT_PIXEL_MODE_GRAY) { LOGRETURN(); return NULL; }
 
          if ((!Self->FTFace->glyph->bitmap.pitch) OR (!Self->FTFace->glyph->bitmap.rows)) {
             LogF("@","Invalid glyph dimensions of %dx%d", Self->FTFace->glyph->bitmap.pitch, Self->FTFace->glyph->bitmap.rows);
-            STEP();
+            LOGRETURN();
             return NULL;
          }
       }
@@ -2121,29 +2121,29 @@ static struct font_glyph * get_glyph(objFont *Self, ULONG Unicode, UBYTE GetBitm
          struct font_glyph *key_glyph;
          KeyGet(cache->Glyphs, Unicode, &key_glyph, NULL);
          if (!GetBitmap) { // Don't return a copy of the bitmap
-            STEP();
+            LOGRETURN();
             return key_glyph;
          }
 
          LONG size = Self->FTFace->glyph->bitmap.pitch * Self->FTFace->glyph->bitmap.rows;
          if (!AllocMemory(size, MEM_NO_CLEAR|MEM_UNTRACKED, &key_glyph->Char.Data, NULL)) {
             CopyMemory(Self->FTFace->glyph->bitmap.buffer, key_glyph->Char.Data, size);
-            STEP();
+            LOGRETURN();
             return key_glyph;
          }
          else {
             LogF("@get_glyph","Failed to allocate glyph buffer of %d bytes.", size);
-            STEP();
+            LOGRETURN();
             return NULL;
          }
       }
       else {
          LogF("@get_glyph","Failed to KeySet() glyph character %d.", Unicode);
-         STEP();
+         LOGRETURN();
          return NULL;
       }
 
-      STEP();
+      LOGRETURN();
    }
    else {
       // Cache is full.  Return a temporary glyph with graphics data if requested.

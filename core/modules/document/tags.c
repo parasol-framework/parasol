@@ -359,7 +359,7 @@ static void tag_call(objDocument *Self, objXML *XML, struct XMLTag *Tag, struct 
    }
    else scExec(script, function, NULL, 0);
 
-   STEP();
+   LOGRETURN();
 
    // Check for a result and print it
 
@@ -740,7 +740,7 @@ static void tag_parse(objDocument *Self, objXML *XML, struct XMLTag *Tag, struct
             add_resource_id(Self, xmlinc->Head.UniqueID, RT_OBJECT_TEMP);
          }
 
-         STEP();
+         LOGRETURN();
       }
    }
 }
@@ -1217,7 +1217,7 @@ static void tag_xml_content(objDocument *Self, objXML *XML, struct XMLTag *Tag, 
    if ((str = XMLATTRIB(Tag, "object"))) {
       FindPrivateObject(str, &target);
       if (valid_object(Self, target) IS FALSE) {
-         STEP();
+         LOGRETURN();
          return;
       }
    }
@@ -1229,7 +1229,7 @@ static void tag_xml_content(objDocument *Self, objXML *XML, struct XMLTag *Tag, 
 
    if (!target) {
       LogErrorMsg("<xml> used without a valid object reference to receive the XML.");
-      LAYOUT_STEP();
+      LAYOUT_LOGRETURN();
       return;
    }
 
@@ -1278,7 +1278,7 @@ static void tag_xml_content(objDocument *Self, objXML *XML, struct XMLTag *Tag, 
    Self->BufferIndex = b_revert;
    Self->ArgIndex = s_revert;
 
-   LAYOUT_STEP();
+   LAYOUT_LOGRETURN();
 }
 
 //****************************************************************************
@@ -1529,7 +1529,7 @@ static void tag_object(objDocument *Self, CSTRING pagetarget, LONG class_id, str
             Self->CurrentObject = object;
             parse_tag(Self, XML, Tag->Child, Index, Flags & (~FILTER_ALL));
             Self->CurrentObject = prevobject;
-         STEP();
+         LOGRETURN();
       }
 
       if (child != Tag->Child) {
@@ -1538,7 +1538,7 @@ static void tag_object(objDocument *Self, CSTRING pagetarget, LONG class_id, str
             Self->CurrentObject = object;
             parse_tag(Self, XML, child, Index, Flags & (~FILTER_ALL));
             Self->CurrentObject = prevobject;
-         STEP();
+         LOGRETURN();
       }
 
       // The object can self-destruct in ClosingTag(), so check that it still exists before inserting it into the text stream.
@@ -2150,7 +2150,7 @@ static void tag_repeat(objDocument *Self, objXML *XML, struct XMLTag *Tag, struc
 
    if (!indexname) Self->LoopIndex = saveindex;
 
-   STEP();
+   LOGRETURN();
    FMSG("insert_child:","Repeat loop ends.");
 }
 

@@ -90,7 +90,7 @@ static int input_keyboard(lua_State *Lua)
          ReleaseObject(surface);
       }
       else {
-         STEP();
+         LOGRETURN();
          luaL_error(Lua, "Failed to access surface #%d.", object_id);
          return 0;
       }
@@ -127,16 +127,16 @@ static int input_keyboard(lua_State *Lua)
       input->Mode = FIM_KEYBOARD;
       input->Next = prv->InputList;
       prv->InputList = input;
-      STEP();
+      LOGRETURN();
       return 1;
    }
    else {
-      STEP();
+      LOGRETURN();
       luaL_error(Lua, "Failed to create Fluid.input object.");
       return 0;
    }
 
-   STEP();
+   LOGRETURN();
    return 0;
 }
 
@@ -225,15 +225,15 @@ static int input_request_item(lua_State *Lua)
 
       if (!(error = ActionMsg(AC_DataFeed, source_id, &dc))) {
          // The source will return a DATA_RECEIPT for the items that we've asked for (see the DataFeed action).
-         STEP();
+         LOGRETURN();
       }
       else {
-         STEP();
+         LOGRETURN();
          luaL_error(Lua, "Failed to request item %d from source #%d: %s", item, source_id, GetErrorMsg(error));
       }
    }
    else {
-      STEP();
+      LOGRETURN();
       luaL_error(Lua, "Failed to create table.");
    }
 
@@ -344,7 +344,7 @@ static int input_unsubscribe(lua_State *Lua)
    input->Script = NULL;
    input->Mode   = 0;
 
-   STEP();
+   LOGRETURN();
    return 0;
 }
 
@@ -384,7 +384,7 @@ static int input_destruct(lua_State *Lua)
          }
       }
 
-      STEP();
+      LOGRETURN();
    }
 
    return 0;
@@ -425,9 +425,9 @@ static void key_event(struct finput *Input, evKey *Event, LONG Size)
 
    FMSG("~key_event","Collecting garbage.");
      lua_gc(prv->Lua, LUA_GCCOLLECT, 0); // Run the garbage collector
-   STEP();
+   LOGRETURN();
 
-   STEP();
+   LOGRETURN();
 }
 
 //****************************************************************************
@@ -477,7 +477,7 @@ static void focus_event(lua_State *Lua, evFocus *Event, LONG Size)
       }
    }
 
-   STEP();
+   LOGRETURN();
 }
 
 //****************************************************************************

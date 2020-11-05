@@ -25,7 +25,7 @@ static void redraw_nonintersect(OBJECTID SurfaceID, struct SurfaceList *List, WO
       if (RedrawFlags != -1) _redraw_surface(SurfaceID, List, Index, Total, (rect.left > Region->Right) ? rect.left : Region->Right, rect.top, rect.right, rect.bottom, RedrawFlags);
       if (ExposeFlags != -1) _expose_surface(SurfaceID, List, Index, Total, (rect.left > Region->Right) ? rect.left : Region->Right, rect.top, rect.right, rect.bottom, ExposeFlags);
       rect.right = Region->Right;
-      if (rect.left >= rect.right) { STEP(); return; }
+      if (rect.left >= rect.right) { LOGRETURN(); return; }
    }
 
    if (rect.bottom > Region->Bottom) { // Bottom
@@ -33,7 +33,7 @@ static void redraw_nonintersect(OBJECTID SurfaceID, struct SurfaceList *List, WO
       if (RedrawFlags != -1) _redraw_surface(SurfaceID, List, Index, Total, rect.left, (rect.top > Region->Bottom) ? rect.top : Region->Bottom, rect.right, rect.bottom, RedrawFlags);
       if (ExposeFlags != -1) _expose_surface(SurfaceID, List, Index, Total, rect.left, (rect.top > Region->Bottom) ? rect.top : Region->Bottom, rect.right, rect.bottom, ExposeFlags);
       rect.bottom = Region->Bottom;
-      if (rect.top >= rect.bottom) { STEP(); return; }
+      if (rect.top >= rect.bottom) { LOGRETURN(); return; }
    }
 
    if (rect.top < Region->Top) { // Top
@@ -49,7 +49,7 @@ static void redraw_nonintersect(OBJECTID SurfaceID, struct SurfaceList *List, WO
       if (ExposeFlags != -1) _expose_surface(SurfaceID, List, Index, Total, rect.left, rect.top, (rect.right < Region->Left) ? rect.right : Region->Left, rect.bottom, ExposeFlags);
    }
 
-   STEP();
+   LOGRETURN();
 }
 
 /*****************************************************************************
@@ -162,7 +162,7 @@ ERROR SURFACE_Draw(objSurface *Self, struct acDraw *Args)
    drwRedrawSurface(Self->Head.UniqueID, x, y, width, height, IRF_RELATIVE|IRF_IGNORE_CHILDREN);
    drwExposeSurface(Self->Head.UniqueID, x, y, width, height, EXF_REDRAW_VOLATILE);
 
-   STEP();
+   LOGRETURN();
    return ERR_Okay|ERF_Notified;
 }
 
@@ -451,7 +451,7 @@ static void move_layer(objSurface *Self, LONG X, LONG Y)
          _expose_surface(Self->ParentID, list, parent_index, total, abs.Left, abs.Top, abs.Right, abs.Bottom, EXF_ABSOLUTE|EXF_REDRAW_VOLATILE_OVERLAP);
       }
 
-      STEP();
+      LOGRETURN();
    }
    else {
       // Since we do not own our graphics buffer, we need to shift the content in the buffer first, then send an
@@ -491,7 +491,7 @@ static void move_layer(objSurface *Self, LONG X, LONG Y)
          EXF_CHILDREN|EXF_REDRAW_VOLATILE);
       tlVolatileIndex = 0;
 
-      STEP();
+      LOGRETURN();
    }
 
    refresh_pointer(Self);
@@ -540,7 +540,7 @@ static void prepare_background(objSurface *Self, struct SurfaceList *list, WORD 
    // Find the parent that owns this surface (we will use this as the starting point for our copy operation).
    // Everything that gets in the way between the parent and the location of our surface is what will be copied across.
 
-   if (!list[end].ParentID) { STEP(); return; }
+   if (!list[end].ParentID) { LOGRETURN(); return; }
    LONG parentindex = end;
    while ((parentindex > 0) AND (list[parentindex].SurfaceID != list[end].ParentID)) parentindex--;
 
@@ -595,7 +595,7 @@ static void prepare_background(objSurface *Self, struct SurfaceList *list, WORD 
       }
    }
 
-   STEP();
+   LOGRETURN();
 }
 
 /*****************************************************************************
@@ -681,5 +681,5 @@ skip:
 
    SrcBitmap->Opacity = 255;
 
-   STEP();
+   LOGRETURN();
 }

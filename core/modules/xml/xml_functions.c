@@ -845,7 +845,7 @@ struct XMLTag * build_xml_string(struct XMLTag *Tag, STRING Buffer, LONG Flags, 
          Buffer[offset] = 0;
          *Offset = offset;
       }
-      STEP();
+      LOGRETURN();
       return Tag->Next;
    }
 
@@ -899,7 +899,7 @@ struct XMLTag * build_xml_string(struct XMLTag *Tag, STRING Buffer, LONG Flags, 
 
    Buffer[offset] = 0;
    *Offset = offset;
-   STEP();
+   LOGRETURN();
    return Tag->Next;
 }
 
@@ -924,7 +924,7 @@ struct XMLTag * len_xml_str(struct XMLTag *Tag, LONG Flags, LONG *Length)
          else length += content_len(Tag->Attrib->Value);
          *Length = length;
       }
-      STEP();
+      LOGRETURN();
       return Tag->Next;
    }
 
@@ -981,7 +981,7 @@ struct XMLTag * len_xml_str(struct XMLTag *Tag, LONG Flags, LONG *Length)
 
    *Length = length;
 
-   STEP();
+   LOGRETURN();
    return Tag->Next;
 }
 
@@ -1558,7 +1558,7 @@ static ERROR parse_source(objXML *Self)
    }
    else Self->ParseError = ERR_File;
 
-   STEP();
+   LOGRETURN();
    return Self->ParseError;
 }
 

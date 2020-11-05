@@ -237,7 +237,7 @@ static ERROR socket_outgoing(objNetSocket *Socket, OBJECTPTR Context)
       if (Self->BufferSize > 0xffff) Self->BufferSize = 0xffff;
 
       if (AllocMemory(Self->BufferSize, MEM_DATA|MEM_NO_CLEAR, &Self->Buffer, NULL)) {
-         STEP();
+         LOGRETURN();
          return ERR_AllocMemory;
       }
    }
@@ -373,7 +373,7 @@ redo_upload:
       if (error != ERR_TimeOut) {
          SetLong(Self, FID_State, HGS_TERMINATED);
          SET_ERROR(Self, error);
-         STEP();
+         LOGRETURN();
          return ERR_Terminate;
       }
       // ERR_TimeOut: The upload process may continue
@@ -412,7 +412,7 @@ redo_upload:
 
          if (Self->Flags & HTF_DEBUG) LogMsg("Transfer complete - sent " PF64() " bytes.", Self->TotalSent);
          SetLong(Self, FID_State, HGS_SEND_COMPLETE);
-         STEP();
+         LOGRETURN();
          return ERR_Terminate;
       }
       else {
@@ -436,7 +436,7 @@ continue_upload:
    Self->WriteBuffer = NULL;
    Self->WriteSize = 0;
 
-   STEP();
+   LOGRETURN();
    if (Self->Error) return ERR_Terminate;
    return ERR_Okay;
 }
@@ -789,18 +789,18 @@ static ERROR socket_incoming(objNetSocket *Socket)
                if (Self->Error IS ERR_Disconnected) {
                   FMSG("http_incoming","Received all chunked content (disconnected by peer).");
                   SetLong(Self, FID_State, HGS_COMPLETED);
-                  STEP();
+                  LOGRETURN();
                   return ERR_Terminate;
                }
                else if (Self->Error) {
                   LogF("@http_incoming","Read() returned error %d whilst reading content.", Self->Error);
                   SetLong(Self, FID_State, HGS_COMPLETED);
-                  STEP();
+                  LOGRETURN();
                   return ERR_Terminate;
                }
                else if ((!len) AND (Self->ChunkIndex >= Self->ChunkBuffered)) {
                   FMSG("http_incoming","Nothing left to read.");
-                  STEP();
+                  LOGRETURN();
                   return ERR_Okay;
                }
                else Self->ChunkBuffered += len;
@@ -830,14 +830,14 @@ static ERROR socket_incoming(objNetSocket *Socket)
 
                               FMSG("http_incoming","End of chunks reached, optional data follows.");
                               SetLong(Self, FID_State, HGS_COMPLETED);
-                              STEP();
+                              LOGRETURN();
                               return ERR_Terminate;
                            }
                            else {
                               // We have reached the terminating line (CRLF on an empty line)
                               FMSG("http_incoming","Received all chunked content.");
                               SetLong(Self, FID_State, HGS_COMPLETED);
-                              STEP();
+                              LOGRETURN();
                               return ERR_Terminate;
                            }
                         }
@@ -883,7 +883,7 @@ static ERROR socket_incoming(objNetSocket *Socket)
                }
             }
 
-            STEP();
+            LOGRETURN();
          }
       }
       else {

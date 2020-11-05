@@ -58,7 +58,7 @@ static void make_array(lua_State *Lua, LONG FieldType, CSTRING StructName, APTR 
 
    struct structentry *sdef = NULL;
    if (FieldType & FD_STRUCT) {
-      if (!StructName) { lua_pushnil(Lua); STEP(); return; }
+      if (!StructName) { lua_pushnil(Lua); LOGRETURN(); return; }
       {
          char struct_name[60];
          LONG i;
@@ -68,7 +68,7 @@ static void make_array(lua_State *Lua, LONG FieldType, CSTRING StructName, APTR 
          if (VarGet(prv->Structs, struct_name, &sdef, NULL) != ERR_Okay) {
             LogF("@make_array","Struct '%s' is not registered.", StructName);
             lua_pushnil(Lua);
-            STEP();
+            LOGRETURN();
             return;
          }
       }
@@ -85,7 +85,7 @@ static void make_array(lua_State *Lua, LONG FieldType, CSTRING StructName, APTR 
    else if (FieldType & FD_STRUCT) type_size = sdef->Size; // The length of sequential structs cannot be calculated.
    else {
       lua_pushnil(Lua);
-      STEP();
+      LOGRETURN();
       return;
    }
 
@@ -117,7 +117,7 @@ static void make_array(lua_State *Lua, LONG FieldType, CSTRING StructName, APTR 
          alloc = TRUE;
          if (AllocMemory(array_size, MEM_DATA, &List, NULL) != ERR_Okay) {
             lua_pushnil(Lua);
-            STEP();
+            LOGRETURN();
             return;
          }
       }
@@ -174,7 +174,7 @@ static void make_array(lua_State *Lua, LONG FieldType, CSTRING StructName, APTR 
       if (alloc) FreeResource(List);
       lua_pushnil(Lua); // Must return a value even if it is nil
    }
-   STEP();
+   LOGRETURN();
 }
 
 /*****************************************************************************
@@ -316,7 +316,7 @@ static int array_get(lua_State *Lua)
             // Check that the index is legal
 
             if ((index < 1) OR (index > array->Total)) {
-               STEP();
+               LOGRETURN();
                luaL_error(Lua, "Invalid array index: 1 < %d <= %d", index, array->Total);
                return 0;
             }
@@ -340,7 +340,7 @@ static int array_get(lua_State *Lua)
                   break;
             }
 
-         STEP();
+         LOGRETURN();
          return 1;
       }
       else if ((field = luaL_checkstring(Lua, 2))) {
@@ -374,23 +374,23 @@ static int array_get(lua_State *Lua)
                case FD_BYTE:    for (i=0; i < array->Total; i++) { lua_pushinteger(Lua, i); lua_pushinteger(Lua, array->ptrByte[i]); lua_settable(Lua, -3); } break;
             }
 
-            STEP();
+            LOGRETURN();
             return 1;
          }
          else if (!StrMatch("getstring", field)) {
             lua_pushvalue(Lua, 1); // Arg1: Duplicate the object reference
             lua_pushcclosure(Lua, array_getstring, 1);
-            STEP();
+            LOGRETURN();
             return 1;
          }
          else if (!StrMatch("copy", field)) {
             lua_pushvalue(Lua, 1); // Arg1: Duplicate the object reference
             lua_pushcclosure(Lua, array_copy, 1);
-            STEP();
+            LOGRETURN();
             return 1;
          }
 
-         STEP();
+         LOGRETURN();
          luaL_error(Lua, "Reference to %s not recognised.", field);
       }
       else luaL_error(Lua, "No field reference provided");
@@ -413,7 +413,7 @@ static int array_set(lua_State *Lua)
       if (lua_type(Lua, 2) IS LUA_TNUMBER) { // Array index
          LONG index = lua_tonumber(Lua, 2);
          if ((index < 1) OR (index > array->Total)) {
-            STEP();
+            LOGRETURN();
             luaL_error(Lua, "Invalid array index: 1 < %d <= %d", index, array->Total);
             return 0;
          }

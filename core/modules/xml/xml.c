@@ -868,11 +868,11 @@ static ERROR XML_GetString(objXML *Self, struct xmlGetString *Args)
       else MSG("Finished writing %d bytes.", size);
 
       Args->Result = buffer;
-      STEP();
+      LOGRETURN();
       return ERR_Okay;
    }
    else {
-      STEP();
+      LOGRETURN();
       return PostError(ERR_AllocMemory);
    }
 }
@@ -1213,16 +1213,16 @@ static ERROR XML_InsertXML(objXML *Self, struct xmlInsertXML *Args)
          if (result) Args->Result = result->Index;
          else Args->Result = 0;
 
-         STEP();
+         LOGRETURN();
          return ERR_Okay;
       }
       else {
-         STEP();
+         LOGRETURN();
          return error;
       }
    }
    else {
-      STEP();
+      LOGRETURN();
       return error;
    }
 }
@@ -1678,11 +1678,11 @@ static ERROR XML_SaveToObject(objXML *Self, struct acSaveToObject *Args)
       if (ActionMsg(AC_Write, Args->DestID, &write) != ERR_Okay) error = ERR_Write;
 
       FreeResource(str);
-      STEP();
+      LOGRETURN();
       return error;
    }
    else {
-      STEP();
+      LOGRETURN();
       return error;
    }
 }

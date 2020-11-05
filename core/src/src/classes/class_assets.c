@@ -598,7 +598,7 @@ static ERROR read_dir(CSTRING Path, struct DirInfo **Result, LONG Flags)
    FMSG("~read_dir()","Path: %s, Flags: $%.8x", Path, Flags);
 
    if (!(mgr = get_asset_manager())) {
-      STEP();
+      LOGRETURN();
       return PostError(ERR_SystemCall);
    }
 
@@ -615,13 +615,13 @@ static ERROR read_dir(CSTRING Path, struct DirInfo **Result, LONG Flags)
    }
 
    if (!dir) {
-      STEP();
+      LOGRETURN();
       return ERR_InvalidPath;
    }
 
    if (AllocMemory(sizeof(struct DirInfo), MEM_DATA, &dirinfo, NULL)) {
       AAssetDir_close(dir);
-      STEP();
+      LOGRETURN();
       return ERR_AllocMemory;
    }
 
@@ -724,12 +724,12 @@ static ERROR read_dir(CSTRING Path, struct DirInfo **Result, LONG Flags)
 
       if (Result) *Result = NULL;
       FreeResource(dirinfo);
-      STEP();
+      LOGRETURN();
       return error;
    }
    else {
       if (Result) *Result = dirinfo;
-      STEP();
+      LOGRETURN();
       return ERR_Okay;
    }
 }

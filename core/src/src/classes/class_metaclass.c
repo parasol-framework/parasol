@@ -1232,16 +1232,16 @@ ERROR write_class_item(struct ClassItem *item)
             ReleaseObject(file);
             acFree(file);
             glClassFileID = 0;
-            STEP();
+            LOGRETURN();
             return ERR_File;
          }
       }
-      else { STEP(); return ERR_NewObject; }
+      else { LOGRETURN(); return ERR_NewObject; }
    }
 
    if (!file) {
-      if (!glClassFileID) { STEP(); return ERR_Failed; }
-      if (AccessObject(glClassFileID, 3000, &file)) { STEP(); return ERR_AccessObject; }
+      if (!glClassFileID) { LOGRETURN(); return ERR_Failed; }
+      if (AccessObject(glClassFileID, 3000, &file)) { LOGRETURN(); return ERR_AccessObject; }
    }
 
    acSeekStart(file, 0); // Write the 32-bit header at the start (the total number of records)
@@ -1251,7 +1251,7 @@ ERROR write_class_item(struct ClassItem *item)
 
    ReleaseObject(file);
 
-   STEP();
+   LOGRETURN();
    return ERR_Okay;
 }
 

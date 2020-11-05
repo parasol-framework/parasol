@@ -180,7 +180,7 @@ static ERROR getfield(lua_State *Lua, struct object *object, CSTRING FName)
 
    OBJECTPTR obj;
    if (!(obj = access_object(object))) {
-      STEP();
+      LOGRETURN();
       return PostError(ERR_AccessObject);
    }
 
@@ -291,7 +291,7 @@ static ERROR getfield(lua_State *Lua, struct object *object, CSTRING FName)
    }
 
    release_object(object);
-   STEP();
+   LOGRETURN();
    return error;
 }
 

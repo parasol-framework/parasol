@@ -66,7 +66,7 @@ ERROR ResolvePath(CSTRING Path, LONG Flags, STRING *Result)
 
    if (!Path) {
       LogError(ERH_ResolvePath, ERR_NullArgs);
-      STEP();
+      LOGRETURN();
       return ERR_NullArgs;
    }
 
@@ -80,8 +80,8 @@ ERROR ResolvePath(CSTRING Path, LONG Flags, STRING *Result)
    }
 
    if (!StrCompare("string:", Path, 7, 0)) {
-      if ((*Result = StrClone(Path))) { STEP(); return ERR_Okay; }
-      else { STEP(); return LogError(ERH_ResolvePath, ERR_AllocMemory); }
+      if ((*Result = StrClone(Path))) { LOGRETURN(); return ERR_Okay; }
+      else { LOGRETURN(); return LogError(ERH_ResolvePath, ERR_AllocMemory); }
    }
 
    // Check if the Path argument contains a volume character.  If it does not, make a clone of the string and return it.
@@ -114,7 +114,7 @@ ERROR ResolvePath(CSTRING Path, LONG Flags, STRING *Result)
 
    if ((!resolved) AND (Flags & RSF_PATH)) {
       if (!resolve_path_env(Path, Result)) {
-         STEP();
+         LOGRETURN();
          return ERR_Okay;
       }
    }
@@ -129,7 +129,7 @@ ERROR ResolvePath(CSTRING Path, LONG Flags, STRING *Result)
          StrCopy(Path, dest, sizeof(dest));
          if (!test_path(dest, RSF_APPROXIMATE)) Path = dest;
          else {
-            STEP();
+            LOGRETURN();
             return ERR_FileNotFound;
          }
       }
@@ -137,26 +137,26 @@ ERROR ResolvePath(CSTRING Path, LONG Flags, STRING *Result)
          StrCopy(Path, dest, sizeof(dest));
          if (!test_path(dest, 0)) Path = dest;
          else {
-            STEP();
+            LOGRETURN();
             return ERR_FileNotFound;
          }
       }
 
       if (!Result) {
-         STEP();
+         LOGRETURN();
          return ERR_Okay;
       }
       else if ((*Result = cleaned_path(Path))) {
-         STEP();
+         LOGRETURN();
          return ERR_Okay;
       }
       else if ((*Result = StrClone(Path))) {
-         STEP();
+         LOGRETURN();
          return ERR_Okay;
       }
       else {
          LogError(ERH_ResolvePath, ERR_AllocMemory);
-         STEP();
+         LOGRETURN();
          return ERR_AllocMemory;
       }
    }
@@ -204,7 +204,7 @@ ERROR ResolvePath(CSTRING Path, LONG Flags, STRING *Result)
                // Copy the destination to the source buffer and repeat the resolution process.
 
                if (Flags & RSF_NO_DEEP_SCAN) {
-                  STEP();
+                  LOGRETURN();
                   return ERR_Failed;
                }
 
@@ -229,17 +229,17 @@ resolved_path:
 
       if (loop > 0) { // Note that loop starts at 10 and decrements to zero
          if ((!error) AND (!dest[0])) error = ERR_Failed;
-         STEP();
+         LOGRETURN();
          return error;
       }
       else {
-         STEP();
+         LOGRETURN();
          return ERR_Loop;
       }
    }
    else {
       LogError(ERH_ResolvePath, ERR_AccessObject);
-      STEP();
+      LOGRETURN();
       return ERR_ExclusiveDenied;
    }
 }
@@ -393,12 +393,12 @@ static ERROR resolve(objConfig *Config, STRING Source, STRING Dest, LONG Flags)
       Dest[i] = 0;
 
       if (get_virtual(Source)) {
-         STEP();
+         LOGRETURN();
          return ERR_VirtualVolume;
       }
 
       if (tlClassLoaded) { // We already attempted to load this class on a previous occasion - we must fail
-         STEP();
+         LOGRETURN();
          return ERR_Failed;
       }
 
@@ -408,7 +408,7 @@ static ERROR resolve(objConfig *Config, STRING Source, STRING Dest, LONG Flags)
 
       tlClassLoaded = TRUE; // This setting will prevent recursion
 
-      STEP();
+      LOGRETURN();
       return ERR_VirtualVolume;
    }
 
@@ -466,12 +466,12 @@ static ERROR resolve(objConfig *Config, STRING Source, STRING Dest, LONG Flags)
 
       if (loop <= 0) {
          LogF("@resolve","Infinite loop on path '%s'", Dest);
-         STEP();
+         LOGRETURN();
          return ERR_Loop;
       }
 
       if (!error) {
-         STEP();
+         LOGRETURN();
          return ERR_Okay;
       }
 
@@ -479,13 +479,13 @@ static ERROR resolve(objConfig *Config, STRING Source, STRING Dest, LONG Flags)
 
       if (Flags & RSF_NO_FILE_CHECK) {
          FMSG("resolve","No file check will be performed.");
-         STEP();
+         LOGRETURN();
          return ERR_Okay;
       }
 
       if (!test_path(Dest, Flags)) {
          FMSG("resolve","File found, path resolved successfully.");
-         STEP();
+         LOGRETURN();
          return ERR_Okay;
       }
 
@@ -500,7 +500,7 @@ static ERROR resolve(objConfig *Config, STRING Source, STRING Dest, LONG Flags)
    }
 
    FMSG("resolve","Resolved path but no matching file for %s\"%s\".", (Flags & RSF_APPROXIMATE) ? "~" : "", Source);
-   STEP();
+   LOGRETURN();
    return ERR_FileNotFound;
 }
 

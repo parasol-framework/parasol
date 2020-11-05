@@ -62,7 +62,7 @@ static void clientsocket_incoming(HOSTHANDLE SocketHandle, APTR Data)
          FMSG("clientsocket_incoming","Termination request received.");
          free_client_socket(Socket, ClientSocket, TRUE);
          Socket->InUse--;
-         STEP();
+         LOGRETURN();
          return;
       }
    }
@@ -78,7 +78,7 @@ static void clientsocket_incoming(HOSTHANDLE SocketHandle, APTR Data)
 
    Socket->InUse--;
 
-   STEP();
+   LOGRETURN();
 }
 
 /*****************************************************************************
@@ -109,7 +109,7 @@ static void clientsocket_outgoing(HOSTHANDLE Void, APTR Data)
    FMSG("~client_outgoing()","");
 
 #ifdef ENABLE_SSL
-   if (Socket->SSLBusy) { STEP(); return; } // SSL object is performing a background operation (e.g. handshake)
+   if (Socket->SSLBusy) { LOGRETURN(); return; } // SSL object is performing a background operation (e.g. handshake)
 #endif
 
    ClientSocket->InUse++;
@@ -196,7 +196,7 @@ static void clientsocket_outgoing(HOSTHANDLE Void, APTR Data)
    ClientSocket->InUse--;
    ClientSocket->OutgoingRecursion--;
 
-   STEP();
+   LOGRETURN();
 }
 
 //****************************************************************************
@@ -332,7 +332,7 @@ static ERROR CLIENTSOCKET_ReadClientMsg(objClientSocket *Self, struct csReadClie
    if (!queue->Buffer) {
       queue->Length = 2048;
       if (AllocMemory(queue->Length, MEM_NO_CLEAR, &queue->Buffer, NULL) != ERR_Okay) {
-         STEP();
+         LOGRETURN();
          return ERR_AllocMemory;
       }
    }
@@ -357,13 +357,13 @@ static ERROR CLIENTSOCKET_ReadClientMsg(objClientSocket *Self, struct csReadClie
             if (magic != NETMSG_MAGIC) {
                LogErrorMsg("Incoming message does not have the magic header (received $%.8x).", magic);
                queue->Index = 0;
-               STEP();
+               LOGRETURN();
                return ERR_InvalidData;
             }
             else if (msglen > NETMSG_SIZE_LIMIT) {
                LogErrorMsg("Incoming message of %d ($%.8x) bytes exceeds message limit.", msglen, msglen);
                queue->Index = 0;
-               STEP();
+               LOGRETURN();
                return ERR_InvalidData;
             }
 
@@ -383,20 +383,20 @@ static ERROR CLIENTSOCKET_ReadClientMsg(objClientSocket *Self, struct csReadClie
                   queue->Length = total_length;
                }
                else {
-                  STEP();
+                  LOGRETURN();
                   return PostError(ERR_AllocMemory);
                }
             }
          }
          else {
             MSG("Succeeded in reading partial message header only (%d bytes).", result);
-            STEP();
+            LOGRETURN();
             return ERR_LimitedSuccess;
          }
       }
       else {
          MSG("Read() failed, error '%s'", GetErrorMsg(error));
-         STEP();
+         LOGRETURN();
          return ERR_LimitedSuccess;
       }
    }
@@ -425,22 +425,22 @@ static ERROR CLIENTSOCKET_ReadClientMsg(objClientSocket *Self, struct csReadClie
 
          if (NETMSG_MAGIC_TAIL != magic) {
             LogErrorMsg("Incoming message has an invalid tail of $%.8x, CRC $%.8x.", magic, Args->CRC);
-            STEP();
+            LOGRETURN();
             return ERR_InvalidData;
          }
 
-         STEP();
+         LOGRETURN();
          return ERR_Okay;
       }
       else {
-         STEP();
+         LOGRETURN();
          return ERR_LimitedSuccess;
       }
    }
    else {
       LogErrorMsg("Failed to read %d bytes off the socket, error %d.", total_length - queue->Index, error);
       queue->Index = 0;
-      STEP();
+      LOGRETURN();
       return error;
    }
 }
@@ -522,7 +522,7 @@ static ERROR CLIENTSOCKET_WriteClientMsg(objClientSocket *Self, struct csWriteCl
    end->CRC   = cpu_be32(GenCRC32(0, Args->Message, Args->Length));
    acWrite(Self, &endbuffer, sizeof(endbuffer), NULL);
 
-   STEP();
+   LOGRETURN();
    return ERR_Okay;
 }
 

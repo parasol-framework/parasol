@@ -170,7 +170,7 @@ void ScintillaPan::SetVerticalScrollPos()
       else ActionMsg(MT_ScUpdateScroll, scintilla->VScrollID, &scroll);
    }
 
-   STEP();
+   LOGRETURN();
 }
 
 //****************************************************************************
@@ -190,7 +190,7 @@ void ScintillaPan::SetHorizontalScrollPos()
    if (glBitmap) DelayMsg(MT_ScUpdateScroll, scintilla->HScrollID, &scroll);
    else ActionMsg(MT_ScUpdateScroll, scintilla->HScrollID, &scroll);
 
-   STEP();
+   LOGRETURN();
 }
 
 /*****************************************************************************
@@ -246,7 +246,7 @@ bool ScintillaPan::ModifyScrollBars(int nMax, int nPage)
    if (glBitmap) DelayMsg(MT_ScUpdateScroll, scintilla->VScrollID, &scroll);
    else ActionMsg(MT_ScUpdateScroll, scintilla->VScrollID, &scroll);
 
-   STEP();
+   LOGRETURN();
    return TRUE;
 }
 
@@ -264,7 +264,7 @@ void ScintillaPan::ReconfigureScrollBars()
 	 if (verticalScrollBarVisible) acShowID(scintilla->VScroll);
 	 else acHideID(scintilla->VScroll);
 */
-   STEP();
+   LOGRETURN();
 }
 
 /****************************************************************************
@@ -283,7 +283,7 @@ void ScintillaPan::CopyToClipboard(const Scintilla::SelectionText &selectedText)
       acFree(clipboard);
    }
 
-   STEP();
+   LOGRETURN();
 }
 
 /*****************************************************************************
@@ -301,7 +301,7 @@ void ScintillaPan::Cut()
       ClearSelection();
    }
 
-   STEP();
+   LOGRETURN();
 }
 
 /*****************************************************************************
@@ -318,7 +318,7 @@ void ScintillaPan::Copy()
       CopyToClipboard(text);
    }
 
-   STEP();
+   LOGRETURN();
 }
 
 //****************************************************************************
@@ -373,7 +373,7 @@ void ScintillaPan::Paste()
       acFree(clipboard);
    }
 
-   STEP();
+   LOGRETURN();
 }
 
 //****************************************************************************
@@ -426,7 +426,7 @@ void ScintillaPan::NotifyParent(Scintilla::SCNotification scn)
          DelayMsg(MT_SciReportEvent, scintilla->Head.UniqueID, NULL);
       }
 
-      STEP();
+      LOGRETURN();
    }
    else if (code IS SCN_STYLENEEDED) {
       // If you used SCLEX_CONTAINER to make the container act as the lexer, you will receive this notification when
@@ -461,7 +461,7 @@ void ScintillaPan::NotifyParent(Scintilla::SCNotification scn)
 
       LONG pos = SendScintilla(SCI_GETSELECTIONSTART);
       if (pos != SendScintilla(SCI_GETSELECTIONEND)) {
-         STEP();
+         LOGRETURN();
          return;
       }
 
@@ -493,7 +493,7 @@ void ScintillaPan::NotifyParent(Scintilla::SCNotification scn)
       scintilla->ReportEventFlags |= SEF_NEW_CHAR;
       DelayMsg(MT_SciReportEvent, scintilla->Head.UniqueID, NULL);
 
-      STEP();
+      LOGRETURN();
    }
    else if (code IS SCN_SAVEPOINTREACHED) {
       // The document is unmodified (recently saved)
@@ -665,7 +665,7 @@ void ScintillaPan::ScrollText(int linesToMove)
    movecontent.Flags = 0;
    ActionMsg(MT_MoveContent, surfaceid, &movecontent);
 
-   STEP();
+   LOGRETURN();
 */
    Scintilla::PRectangle rect = GetClientRectangle();
    struct acDraw draw = { rect.left, rect.top, rect.Width(), rect.Height() };
@@ -782,7 +782,7 @@ void ScintillaPan::panDraw(objSurface *TargetSurface, objBitmap *Bitmap)
 
    this->paintState = notPainting;
 
-   STEP();
+   LOGRETURN();
 }
 
 /*****************************************************************************
@@ -802,7 +802,7 @@ void ScintillaPan::panFontChanged(void *Font, void *BoldFont, void *ItalicFont,
    this->InvalidateStyleRedraw();
    this->RefreshStyleData();
 
-   STEP();
+   LOGRETURN();
 }
 
 //****************************************************************************
@@ -906,7 +906,7 @@ void ScintillaPan::panMousePress(int Button, double x, double y)
 
    }
 
-   STEP();
+   LOGRETURN();
 }
 
 //****************************************************************************
@@ -939,7 +939,7 @@ void ScintillaPan::panResized()
 
    ChangeSize();
 
-   STEP();
+   LOGRETURN();
 }
 
 //****************************************************************************
@@ -948,7 +948,7 @@ void ScintillaPan::panScrollToX(double x)
 {
    FMSG("~panScrollToX()","%.2f", x);
    HorizontalScrollTo((int)(x));
-   STEP();
+   LOGRETURN();
 }
 
 //****************************************************************************
@@ -957,7 +957,7 @@ void ScintillaPan::panScrollToY(double y)
 {
    FMSG("~panScrollToY()","%.2f", y);
    ScrollTo((int)(y / vs.lineHeight));
-   STEP();
+   LOGRETURN();
 }
 
 //****************************************************************************
@@ -968,7 +968,7 @@ void ScintillaPan::SetSelectedTextStyle(int style)
 
    WndProc(SCI_STARTSTYLING, SelectionStart(), 0x1f);//mask - only overwrite the 5 style bits
    WndProc(SCI_SETSTYLING, SelectionEnd() - SelectionStart(), style);//style
-   STEP();
+   LOGRETURN();
 }
 #endif
 //****************************************************************************

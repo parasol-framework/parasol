@@ -655,7 +655,7 @@ static ERROR NETSOCKET_ReadMsg(objNetSocket *Self, struct nsReadMsg *Args)
    struct NetQueue *queue;
    if (Self->Flags & NSF_SERVER) {
       PostError(ERR_NoSupport);
-      STEP();
+      LOGRETURN();
       return ERR_NoSupport;
    }
 
@@ -664,7 +664,7 @@ static ERROR NETSOCKET_ReadMsg(objNetSocket *Self, struct nsReadMsg *Args)
    if (!queue->Buffer) {
       queue->Length = 2048;
       if (AllocMemory(queue->Length, MEM_NO_CLEAR, &queue->Buffer, NULL) != ERR_Okay) {
-         STEP();
+         LOGRETURN();
          return ERR_AllocMemory;
       }
    }
@@ -689,13 +689,13 @@ static ERROR NETSOCKET_ReadMsg(objNetSocket *Self, struct nsReadMsg *Args)
             if (magic != NETMSG_MAGIC) {
                LogErrorMsg("Incoming message does not have the magic header (received $%.8x).", magic);
                queue->Index = 0;
-               STEP();
+               LOGRETURN();
                return ERR_InvalidData;
             }
             else if (msglen > NETMSG_SIZE_LIMIT) {
                LogErrorMsg("Incoming message of %d ($%.8x) bytes exceeds message limit.", msglen, msglen);
                queue->Index = 0;
-               STEP();
+               LOGRETURN();
                return ERR_InvalidData;
             }
 
@@ -715,20 +715,20 @@ static ERROR NETSOCKET_ReadMsg(objNetSocket *Self, struct nsReadMsg *Args)
                   queue->Length = total_length;
                }
                else {
-                  STEP();
+                  LOGRETURN();
                   return PostError(ERR_AllocMemory);
                }
             }
          }
          else {
             MSG("Succeeded in reading partial message header only (%d bytes).", result);
-            STEP();
+            LOGRETURN();
             return ERR_LimitedSuccess;
          }
       }
       else {
          MSG("Read() failed, error '%s'", GetErrorMsg(error));
-         STEP();
+         LOGRETURN();
          return ERR_LimitedSuccess;
       }
    }
@@ -757,22 +757,22 @@ static ERROR NETSOCKET_ReadMsg(objNetSocket *Self, struct nsReadMsg *Args)
 
          if (NETMSG_MAGIC_TAIL != magic) {
             LogErrorMsg("Incoming message has an invalid tail of $%.8x, CRC $%.8x.", magic, Args->CRC);
-            STEP();
+            LOGRETURN();
             return ERR_InvalidData;
          }
 
-         STEP();
+         LOGRETURN();
          return ERR_Okay;
       }
       else {
-         STEP();
+         LOGRETURN();
          return ERR_LimitedSuccess;
       }
    }
    else {
       LogErrorMsg("Failed to read %d bytes off the socket, error %d.", total_length - queue->Index, error);
       queue->Index = 0;
-      STEP();
+      LOGRETURN();
       return error;
    }
 }
@@ -885,7 +885,7 @@ static ERROR NETSOCKET_WriteMsg(objNetSocket *Self, struct nsWriteMsg *Args)
    end->CRC   = cpu_be32(GenCRC32(0, Args->Message, Args->Length));
    acWrite(Self, &endbuffer, sizeof(endbuffer), NULL);
 
-   STEP();
+   LOGRETURN();
    return ERR_Okay;
 }
 
@@ -1173,7 +1173,7 @@ static ERROR SET_State(objNetSocket *Self, LONG Value)
             }
          }
 
-         STEP();
+         LOGRETURN();
       }
 
       if ((Self->State IS NTC_CONNECTED) AND ((Self->WriteQueue.Buffer) OR (Self->Outgoing.Type != CALL_NONE))) {
@@ -1262,7 +1262,7 @@ static void free_socket(objNetSocket *Self)
       if (Self->State != NTC_DISCONNECTED) {
          FMSG("~free_socket:","Changing state to disconnected.");
          SetLong(Self, FID_State, NTC_DISCONNECTED);
-         STEP();
+         LOGRETURN();
       }
    }
 
@@ -1292,7 +1292,7 @@ static ERROR write_queue(objNetSocket *Self, struct NetQueue *Queue, CPTR Messag
 
       if (Queue->Length + Length > (ULONG)Self->MsgLimit) {
          FMSG("write_queue","Cannot buffer message of %d bytes - it will overflow the MsgLimit.", Length);
-         STEP();
+         LOGRETURN();
          return ERR_BufferOverflow;
       }
 
@@ -1312,7 +1312,7 @@ static ERROR write_queue(objNetSocket *Self, struct NetQueue *Queue, CPTR Messag
          Queue->Length += Length;
       }
       else {
-         STEP();
+         LOGRETURN();
          return ERR_ReallocMemory;
       }
    }
@@ -1323,11 +1323,11 @@ static ERROR write_queue(objNetSocket *Self, struct NetQueue *Queue, CPTR Messag
       CopyMemory(Message, Queue->Buffer, Length);
    }
    else {
-      STEP();
+      LOGRETURN();
       return PostError(ERR_AllocMemory);
    }
 
-   STEP();
+   LOGRETURN();
    return ERR_Okay;
 }
 
@@ -1372,7 +1372,7 @@ void win32_netresponse(struct Head *SocketObject, SOCKET_HANDLE SocketHandle, LO
             FMSG("win32_netsponse","Recursion detected (read request)");
             Socket->InUse--;
             SetContext(context);
-            STEP();
+            LOGRETURN();
             return;
          }
          else {
@@ -1397,7 +1397,7 @@ void win32_netresponse(struct Head *SocketObject, SOCKET_HANDLE SocketHandle, LO
             FMSG("win32_netsponse","Recursion detected (write request)");
             Socket->InUse--;
             SetContext(context);
-            STEP();
+            LOGRETURN();
             return;
          }
          else {
@@ -1422,7 +1422,7 @@ void win32_netresponse(struct Head *SocketObject, SOCKET_HANDLE SocketHandle, LO
    else if (Message IS NTE_ACCEPT) {
       FMSG("~win32_netresponse","Accept message received for new client %d.", SocketHandle);
       server_client_connect(Socket->SocketHandle, Socket);
-      STEP();
+      LOGRETURN();
    }
    else if (Message IS NTE_CONNECT) {
       if (Error IS ERR_Okay) {
@@ -1432,7 +1432,7 @@ void win32_netresponse(struct Head *SocketObject, SOCKET_HANDLE SocketHandle, LO
             if (Socket->SSL) {
                FMSG("~server_connect","Attempting SSL handshake.");
                   sslConnect(Socket);
-               STEP();
+               LOGRETURN();
 
                if (Socket->State IS NTC_CONNECTING_SSL) {
                   //RegisterFD((HOSTHANDLE)Socket->SocketHandle, RFD_READ|RFD_SOCKET, &client_server_incoming, Socket);
@@ -1452,7 +1452,7 @@ void win32_netresponse(struct Head *SocketObject, SOCKET_HANDLE SocketHandle, LO
 
    Socket->InUse--;
    SetContext(context);
-   STEP();
+   LOGRETURN();
 }
 #endif
 

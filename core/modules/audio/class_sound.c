@@ -182,7 +182,7 @@ static ERROR SOUND_Activate(objSound *Self, APTR Void)
       if (Self->Flags & SDF_LOOP) sndPlay((struct PlatformData *)Self->prvPlatformData, TRUE, Self->Position);
       else sndPlay((struct PlatformData *)Self->prvPlatformData, FALSE, Self->Position);
 
-      STEP();
+      LOGRETURN();
       return ERR_Okay;
    }
    else LogMsg("A independent win32 waveform will not be used for this sample.");
@@ -223,7 +223,7 @@ static ERROR SOUND_Activate(objSound *Self, APTR Void)
             if (!(channel = priority)) {
                LogMsg("Audio channel not available for playback.");
                ReleaseObject(audio);
-               STEP();
+               LOGRETURN();
                return ERR_Failed;
             }
          }
@@ -258,12 +258,12 @@ static ERROR SOUND_Activate(objSound *Self, APTR Void)
             SET_FUNCTION_STDC(callback, &playback_timer);
             SubscribeTimer(0.25, NULL, &Self->Timer);
 
-            STEP();
+            LOGRETURN();
             return ERR_Okay;
          }
          else {
             PostError(ERR_Failed);
-            STEP();
+            LOGRETURN();
             return ERR_Failed;
          }
       }
@@ -271,13 +271,13 @@ static ERROR SOUND_Activate(objSound *Self, APTR Void)
          LogErrorMsg("Failed to set sample %d to channel $%.8x", Self->Handle, Self->ChannelIndex);
          ReleaseObject(audio);
          PostError(ERR_Failed);
-         STEP();
+         LOGRETURN();
          return ERR_Failed;
       }
    }
    else {
       PostError(ERR_AccessObject);
-      STEP();
+      LOGRETURN();
       return ERR_AccessObject;
    }
 }

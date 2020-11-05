@@ -727,7 +727,7 @@ static ERROR _expose_surface(OBJECTID SurfaceID, struct SurfaceList *list, WORD 
             _expose_surface(SurfaceID, list, index, Total, abs.Left, abs.Top, abs.Right, list[cursor].Bottom, EXF_CURSOR_SPLIT|EXF_ABSOLUTE|Flags);
             _expose_surface(SurfaceID, list, index, Total, abs.Left, list[cursor].Bottom, abs.Right, abs.Bottom, EXF_CURSOR_SPLIT|EXF_ABSOLUTE|Flags);
 
-            STEP();
+            LOGRETURN();
             goto exit;
          }
       }
@@ -881,7 +881,7 @@ static ERROR _expose_surface(OBJECTID SurfaceID, struct SurfaceList *list, WORD 
          }
       }
 
-      STEP();
+      LOGRETURN();
    }
    else {
       // Look for a software cursor at the end of the surfacelist and redraw it.  (We have to redraw the cursor as
@@ -900,13 +900,13 @@ static ERROR _expose_surface(OBJECTID SurfaceID, struct SurfaceList *list, WORD 
 
             _expose_surface(list[i].SurfaceID, list, i, Total, abs.Left, abs.Top, abs.Right, abs.Bottom, EXF_ABSOLUTE);
 
-            STEP();
+            LOGRETURN();
          }
       }
    }
 
 exit:
-   STEP();
+   LOGRETURN();
    return ERR_Okay;
 }
 
@@ -1035,7 +1035,7 @@ skip:
                FID_Width|TLONG,  list[Index].Width,
                FID_Height|TLONG, list[Index].Height,
                TAGEND) != ERR_Okay) {
-            STEP();
+            LOGRETURN();
             return;
          }
 
@@ -1087,7 +1087,7 @@ skip:
    }
    else LogF("@ExposeSurface:","Unable to access display #%d.", DisplayID);
 
-   STEP();
+   LOGRETURN();
    return;
 }
 
@@ -1683,7 +1683,7 @@ static ERROR drwRedrawSurface(OBJECTID SurfaceID, LONG Left, LONG Top, LONG Righ
    WORD index;
    if ((index = find_surface_list(list, total, SurfaceID)) IS -1) {
       FMSG("@RedrawSurface:","Unable to find surface #%d in surface list.", SurfaceID);
-      STEP();
+      LOGRETURN();
       return ERR_Search;
    }
 
@@ -1723,7 +1723,7 @@ static ERROR _redraw_surface(OBJECTID SurfaceID, struct SurfaceList *list, WORD 
          _redraw_surface(list[parent_index].SurfaceID, list, parent_index, Total, Left, Top, Right, Bottom, Flags & (~IRF_IGNORE_CHILDREN));
       }
       else FMSG("RedrawSurface","Failed to find parent surface #%d", list[index].ParentID); // No big deal, this often happens when freeing a bunch of surfaces due to the parent/child relationships.
-      STEP();
+      LOGRETURN();
       return ERR_Okay;
    }
 
@@ -1732,7 +1732,7 @@ static ERROR _redraw_surface(OBJECTID SurfaceID, struct SurfaceList *list, WORD 
    if (!(Flags & IRF_FORCE_DRAW)) {
       if ((!(list[index].Flags & RNF_VISIBLE)) OR (CheckVisibility(list, index) IS FALSE)) {
          FMSG("RedrawSurface:","Surface is not visible.");
-         STEP();
+         LOGRETURN();
          return ERR_Okay;
       }
    }
@@ -1749,7 +1749,7 @@ static ERROR _redraw_surface(OBJECTID SurfaceID, struct SurfaceList *list, WORD 
       }
       else drwInvalidateRegionID(list[index].SurfaceID, x, y, Right - Left, Bottom - Top);
 
-      STEP();
+      LOGRETURN();
       return ERR_Okay;
    }
 
@@ -1779,7 +1779,7 @@ static ERROR _redraw_surface(OBJECTID SurfaceID, struct SurfaceList *list, WORD 
    }
 
    if ((Left >= Right) OR (Top >= Bottom)) {
-      STEP();
+      LOGRETURN();
       return ERR_Okay;
    }
 
@@ -1800,7 +1800,7 @@ static ERROR _redraw_surface(OBJECTID SurfaceID, struct SurfaceList *list, WORD 
       }
       else {
          ReleaseObject(surface);
-         STEP();
+         LOGRETURN();
          return FuncError(ERR_AccessObject);
       }
 
@@ -1815,7 +1815,7 @@ static ERROR _redraw_surface(OBJECTID SurfaceID, struct SurfaceList *list, WORD 
       }
       else LogF("@RedrawSurface","Unable to access surface object #%d, error %d.", list[index].SurfaceID, error);
 
-      STEP();
+      LOGRETURN();
       return error;
    }
 
@@ -1850,7 +1850,7 @@ static ERROR _redraw_surface(OBJECTID SurfaceID, struct SurfaceList *list, WORD 
       }
    }
 
-   STEP();
+   LOGRETURN();
    return ERR_Okay;
 }
 
@@ -2099,7 +2099,7 @@ static void _redraw_surface_do(objSurface *Self, struct SurfaceList *list, WORD 
       }
    }
 
-   STEP();
+   LOGRETURN();
 }
 
 /*****************************************************************************
@@ -2117,7 +2117,7 @@ static void drwReleaseList(LONG Flags)
    if (tlListCount > 0) {
       tlListCount--;
       if (!tlListCount) {
-         //STEP();
+         //LOGRETURN();
          ReleaseMemory(tlSurfaceList);
          tlSurfaceList = NULL;
       }
@@ -3155,11 +3155,11 @@ static BYTE check_surface_list(void)
       }
 
       drwReleaseList(ARF_WRITE);
-      STEP();
+      LOGRETURN();
       return bad;
    }
    else {
-      STEP();
+      LOGRETURN();
       return FALSE;
    }
 }
@@ -3210,7 +3210,7 @@ static void process_surface_callbacks(objSurface *Self, objBitmap *Bitmap)
    Bitmap->Opacity = 255;
 
    #ifdef DBG_DRAW_ROUTINES
-      STEP();
+      LOGRETURN();
    #endif
 }
 

@@ -581,7 +581,7 @@ static ERROR insert_xml(objDocument *Self, objXML *XML, struct XMLTag *Tag, LONG
       if (Self->Style.FontStyle.Index IS -1) {
          if ((Self->Style.FontStyle.Index = create_font(Self->FontFace, "Regular", Self->FontSize)) IS -1) {
             if ((Self->Style.FontStyle.Index = create_font("Open Sans", "Regular", 10)) IS -1) {
-               STEP();
+               LOGRETURN();
                return ERR_Failed;
             }
          }
@@ -624,7 +624,7 @@ static ERROR insert_xml(objDocument *Self, objXML *XML, struct XMLTag *Tag, LONG
 
    if (Self->StreamLen <= start) {
       FMSG("insert_xml","parse_tag() did not insert any content into the stream.");
-      STEP();
+      LOGRETURN();
       return ERR_NothingDone;
    }
 
@@ -650,7 +650,7 @@ static ERROR insert_xml(objDocument *Self, objXML *XML, struct XMLTag *Tag, LONG
 
    if (Self->FocusIndex >= Self->TabIndex) Self->FocusIndex = -1;
 
-   STEP();
+   LOGRETURN();
    return ERR_Okay;
 }
 
@@ -825,7 +825,7 @@ static LONG parse_tag(objDocument *Self, objXML *XML, struct XMLTag *Tag, LONG *
 
                         Self->ArgNestIndex--;
 
-                        STEP();
+                        LOGRETURN();
 
                      END_TEMPLATE();
                   }
@@ -876,7 +876,7 @@ static LONG parse_tag(objDocument *Self, objXML *XML, struct XMLTag *Tag, LONG *
 
                if (glTags[i].Flags & TAG_PARAGRAPH) Self->ParagraphDepth--;
 
-               STEP();
+               LOGRETURN();
             }
             goto next;
          }
@@ -1015,7 +1015,7 @@ next_skiprestore:
       Tag = Tag->Next;
    }
 
-   STEP();
+   LOGRETURN();
    return result;
 }
 
@@ -1340,7 +1340,7 @@ static void end_line(objDocument *Self, struct layout *l, LONG NewLine, LONG Ind
    l->kernchar    = 0;
    l->wordwidth   = 0;
    l->paragraph_end = 0;
-   LAYOUT_STEP();
+   LAYOUT_LOGRETURN();
 }
 
 /*****************************************************************************
@@ -1395,7 +1395,7 @@ restart:
             WRAP("check_wrap:","Forcing an extension of the page width to %d", minwidth);
          }
          else *Width += 1;
-         WRAP_STEP();
+         WRAP_LOGRETURN();
          return WRAP_EXTENDPAGE;
       }
       else {
@@ -1455,7 +1455,7 @@ restart:
       if (result IS WRAP_WRAPPED) WRAP("check_wrap","A wrap to Y coordinate %d has occurred.", l->cursory);
    #endif
 
-   WRAP_STEP();
+   WRAP_LOGRETURN();
    return result;
 }
 
@@ -1494,7 +1494,7 @@ static void check_clips(objDocument *Self, LONG Index, struct layout *l,
          else height = l->line_height;
          add_link(Self, ESC_LINK, l->link, l->link_x, *GraphicY, *GraphicX + GraphicWidth - l->link_x, height, "clip_intersect");
 
-         WRAP_STEP();
+         WRAP_LOGRETURN();
 
          reset_link = TRUE;
       }
@@ -1530,7 +1530,7 @@ static void check_clips(objDocument *Self, LONG Index, struct layout *l,
       clip = l->start_clips-1; // Check all the clips from the beginning
    }
 
-   WRAP_STEP();
+   WRAP_LOGRETURN();
 }
 
 /*****************************************************************************
@@ -1633,13 +1633,13 @@ extend_page:
 
    if (Self->Error) {
       Self->Depth--;
-      LAYOUT_STEP();
+      LAYOUT_LOGRETURN();
       return 0;
    }
    else if (!Self->BreakLoop) {
       Self->Error = ERR_Loop;
       Self->Depth--;
-      LAYOUT_STEP();
+      LAYOUT_LOGRETURN();
       return 0;
    }
    Self->BreakLoop--;
@@ -1738,7 +1738,7 @@ extend_page:
                   add_drawsegment(Self, l.line_index, i, &l, l.cursory, l.cursorx - l.line_x, l.alignwidth - l.line_x, "Esc:Object");
                   RESET_SEGMENT_WORD(i, l.cursorx, &l);
                   l.alignwidth = l.wrapedge;
-               LAYOUT_STEP();
+               LAYOUT_LOGRETURN();
             }
          }
       }
@@ -2759,7 +2759,7 @@ wrap_table_cell:
                esctable->Height     = esctable->Thickness;
 
                LAYOUT("~layout_table:","(i%d) Laying out table of %dx%d, coords %dx%d,%dx%d%s, page width %d.", i, esctable->TotalColumns, esctable->Rows, esctable->X, esctable->Y, esctable->Width, esctable->MinHeight, esctable->HeightPercent ? "%" : "", *Width);
-               // NB: STEP() is matched in ESC_TABLE_END
+               // NB: LOGRETURN() is matched in ESC_TABLE_END
 
                if (esctable->ComputeColumns) {
                   // Compute the default column widths
@@ -2800,7 +2800,7 @@ wrap_table_cell:
                j = check_wordwrap("Table", Self, i, &l, AbsX, Width, i, &esctable->X, &esctable->Y, (esctable->Width < 1) ? 1 : esctable->Width, esctable->Height);
                if (j IS WRAP_EXTENDPAGE) {
                   LAYOUT("layout_table:","Expanding page width due to table size.");
-                  LAYOUT_STEP();
+                  LAYOUT_LOGRETURN();
                   goto extend_page;
                }
                else if (j IS WRAP_WRAPPED) {
@@ -2809,7 +2809,7 @@ wrap_table_cell:
                   */
                   LAYOUT("layout_table:","Restarting table calculation due to page wrap to position %dx%d.", l.cursorx, l.cursory);
                   esctable->ComputeColumns = 1;
-                  LAYOUT_STEP();
+                  LAYOUT_LOGRETURN();
                   goto wrap_table_start;
                }
                l.cursorx = esctable->X;
@@ -2902,7 +2902,7 @@ wrap_table_cell:
                               if (expanded) {
                                  LAYOUT("layout_table:","At least one cell was widened - will repass table layout.");
                                  RESTORE_STATE(&tablestate);
-                                 LAYOUT_STEP();
+                                 LAYOUT_LOGRETURN();
                                  goto wrap_table_end;
                               }
                            }
@@ -2936,7 +2936,7 @@ wrap_table_cell:
                      LAYOUT("layout_table:","Extending table height to %d (row %d+%d) due to a minimum height of %d at coord %d", minheight, lastrow->RowHeight, j, esctable->MinHeight, esctable->Y);
                      lastrow->RowHeight += j;
                      RESTORE_STATE(&rowstate);
-                     LAYOUT_STEP();
+                     LAYOUT_LOGRETURN();
                      escrow = lastrow;
                      goto repass_row_height_ext;
                   }
@@ -2953,7 +2953,7 @@ wrap_table_cell:
                if ((j > *Width) AND (*Width < WIDTH_LIMIT)) {
                   LAYOUT("layout_table:","Table width (%d+%d) increases page width to %d, layout restart forced.", esctable->X, esctable->Width, j);
                   *Width = j;
-                  LAYOUT_STEP();
+                  LAYOUT_LOGRETURN();
                   goto extend_page;
                }
 
@@ -2993,7 +2993,7 @@ wrap_table_cell:
 
                if (j IS WRAP_EXTENDPAGE) {
                   LAYOUT("layout_table:","Table wrapped - expanding page width due to table size/position.");
-                  LAYOUT_STEP();
+                  LAYOUT_LOGRETURN();
                   goto extend_page;
                }
                else if (j IS WRAP_WRAPPED) {
@@ -3001,7 +3001,7 @@ wrap_table_cell:
                   LAYOUT("layout_table:","Table wrapped - rearrangement necessary.");
 
                   RESTORE_STATE(&tablestate);
-                  LAYOUT_STEP();
+                  LAYOUT_LOGRETURN();
                   goto wrap_table_end;
                }
 
@@ -3028,7 +3028,7 @@ wrap_table_cell:
 
                l.setsegment = TRUE;
 
-               LAYOUT_STEP();
+               LAYOUT_LOGRETURN();
                break;
             }
 
@@ -3199,7 +3199,7 @@ repass_row_height_ext:
                   }
                }
 
-               LAYOUT_STEP();
+               LAYOUT_LOGRETURN();
 
                if (!i) goto exit;
 
@@ -3225,7 +3225,7 @@ repass_row_height_ext:
 
                   esctable->ResetRowHeight = TRUE; // Row heights need to be reset due to the width increase
                   RESTORE_STATE(&tablestate);
-                  LAYOUT_STEP(); // WHAT DOES THIS MATCH TO?
+                  LAYOUT_LOGRETURN(); // WHAT DOES THIS MATCH TO?
                   goto wrap_table_cell;
                }
 
@@ -3508,7 +3508,7 @@ exit:
    *VerticalRepass = object_vertical_repass;
 
    Self->Depth--;
-   LAYOUT_STEP();
+   LAYOUT_LOGRETURN();
    return i;
 }
 
@@ -4573,7 +4573,7 @@ restart:
    Self->Depth = 0;
 
    if (!(font = lookup_font(0, "layout_doc"))) { // There is no content loaded for display
-      LAYOUT_STEP();
+      LAYOUT_LOGRETURN();
       return;
    }
 
@@ -4740,7 +4740,7 @@ restart:
       LogReturn();
    }
 
-   LAYOUT_STEP();
+   LAYOUT_LOGRETURN();
 }
 
 /*****************************************************************************
@@ -4899,12 +4899,12 @@ static ERROR process_page(objDocument *Self, objXML *xml)
          else LogF("@process_page:","Tag '%s' Not supported at the root level.", xml->Tags[i]->Attrib->Name);
       }
 
-      STEP();
+      LOGRETURN();
 
       if ((Self->HeaderTag) AND (noheader IS FALSE)) {
          FMSG("~process_page:","Processing header.");
          insert_xml(Self, xml, Self->HeaderTag, Self->StreamLen, IXF_SIBLINGS|IXF_RESETSTYLE);
-         STEP();
+         LOGRETURN();
       }
 
       if (Self->BodyTag) {
@@ -4916,14 +4916,14 @@ static ERROR process_page(objDocument *Self, objXML *xml)
 
          END_TEMPLATE()
 
-         STEP();
+         LOGRETURN();
       }
       else {
          FMSG("~process_page:","Processing page '%s'.", XMLATTRIB(page[0], "name"));
 
             insert_xml(Self, xml, page[0]->Child, Self->StreamLen, IXF_SIBLINGS|IXF_RESETSTYLE);
 
-         STEP();
+         LOGRETURN();
       }
 
       if ((Self->FooterTag) AND (!nofooter)) {
@@ -4931,7 +4931,7 @@ static ERROR process_page(objDocument *Self, objXML *xml)
 
             insert_xml(Self, xml, Self->FooterTag, Self->StreamLen, IXF_SIBLINGS|IXF_RESETSTYLE);
 
-         STEP();
+         LOGRETURN();
       }
 
       drwPermitDrawing();
@@ -5263,7 +5263,7 @@ static ERROR unload_doc(objDocument *Self, BYTE Flags)
       resource = next;
    }
 
-   STEP();
+   LOGRETURN();
 
    if (!Self->Templates) {
       CreateObject(ID_XML, NF_INTEGRAL, &Self->Templates,
@@ -5311,7 +5311,7 @@ static void redraw(objDocument *Self, BYTE Focus)
 
    if ((Focus) AND (Self->FocusIndex != -1)) set_focus(Self, -1, "redraw()");
 
-   STEP();
+   LOGRETURN();
 }
 
 //****************************************************************************
@@ -6737,7 +6737,7 @@ static void pointer_enter(objDocument *Self, LONG Index, STRING Function, LONG L
       }
    }
 
-   STEP();
+   LOGRETURN();
 }
 
 //****************************************************************************
@@ -7261,7 +7261,7 @@ static void deselect_text(objDocument *Self)
 
    DRAW_PAGE(Self);  // TODO: Draw only the area that we've identified as relevant.
 
-   STEP();
+   LOGRETURN();
 }
 
 //****************************************************************************
@@ -7737,7 +7737,7 @@ static void calc_scroll(objDocument *Self)
       acMoveToPointID(Self->PageID, Self->XPosition, 0, 0, MTF_X);
    }
 
-   STEP();
+   LOGRETURN();
 }
 
 /*****************************************************************************

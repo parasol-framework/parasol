@@ -1955,7 +1955,7 @@ static ERROR process_config_data(objConfig *Self, UBYTE *Src)
       data = (STRING)next_line(data);
    }
 
-   STEP();
+   LOGRETURN();
    return ERR_Okay;
 }
 

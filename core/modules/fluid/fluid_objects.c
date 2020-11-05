@@ -619,7 +619,7 @@ static int object_detach(lua_State *Lua)
       }
    }
 
-   STEP();
+   LOGRETURN();
    return 0;
 }
 
@@ -844,7 +844,7 @@ static int object_destruct(lua_State *Lua)
             // Object is public
          }
       }
-      STEP();
+      LOGRETURN();
    }
 
    return 0;

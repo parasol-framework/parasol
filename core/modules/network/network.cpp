@@ -789,7 +789,7 @@ static ERROR netSetSSL(objNetSocket *Socket, ...)
 
                if (error) {
                   va_end(list);
-                  STEP();
+                  LOGRETURN();
                   return error;
                }
             }
@@ -801,7 +801,7 @@ static ERROR netSetSSL(objNetSocket *Socket, ...)
             break;
       }
 
-      STEP();
+      LOGRETURN();
    }
 
    va_end(list);
@@ -842,12 +842,12 @@ static ERROR RECEIVE(objNetSocket *Self, SOCKET_HANDLE Socket, APTR Buffer, LONG
    else if (Self->SSLBusy IS SSL_HANDSHAKE_READ) ssl_handshake_read(Socket, Self);
 
    if (Self->SSLBusy != SSL_NOT_BUSY) {
-      STEP();
+      LOGRETURN();
       return ERR_Okay;
    }
 #endif
 
-   if (!BufferSize) { STEP(); return ERR_Okay; }
+   if (!BufferSize) { LOGRETURN(); return ERR_Okay; }
 
 #ifdef ENABLE_SSL
    BYTE read_blocked;
@@ -862,7 +862,7 @@ static ERROR RECEIVE(objNetSocket *Self, SOCKET_HANDLE Socket, APTR Buffer, LONG
          if (result <= 0) {
             switch (SSL_get_error(Self->SSL, result)) {
                case SSL_ERROR_ZERO_RETURN:
-                  STEP();
+                  LOGRETURN();
                   return ERR_Disconnected;
 
                case SSL_ERROR_WANT_READ:
@@ -881,14 +881,14 @@ static ERROR RECEIVE(objNetSocket *Self, SOCKET_HANDLE Socket, APTR Buffer, LONG
                       win_socketstate(Socket, -1, TRUE);
                    #endif
 
-                   STEP();
+                   LOGRETURN();
                    return ERR_Okay;
 
                 case SSL_ERROR_SYSCALL:
 
                 default:
                    LogErrorMsg("SSL read problem");
-                   STEP();
+                   LOGRETURN();
                    return ERR_Okay; // Non-fatal
             }
          }
@@ -920,7 +920,7 @@ static ERROR RECEIVE(objNetSocket *Self, SOCKET_HANDLE Socket, APTR Buffer, LONG
          #endif
       }
 
-      STEP();
+      LOGRETURN();
       return ERR_Okay;
    }
 #endif
@@ -931,25 +931,25 @@ static ERROR RECEIVE(objNetSocket *Self, SOCKET_HANDLE Socket, APTR Buffer, LONG
 
       if (result > 0) {
          *Result = result;
-         STEP();
+         LOGRETURN();
          return ERR_Okay;
       }
       else if (result IS 0) { // man recv() says: The return value is 0 when the peer has performed an orderly shutdown.
-         STEP();
+         LOGRETURN();
          return ERR_Disconnected;
       }
       else if ((errno IS EAGAIN) OR (errno IS EINTR)) {
-         STEP();
+         LOGRETURN();
          return ERR_Okay;
       }
       else {
          LogErrorMsg("recv() failed: %s", strerror(errno));
-         STEP();
+         LOGRETURN();
          return ERR_Failed;
       }
    }
 #elif _WIN32
-   STEP();
+   LOGRETURN();
    return WIN_RECEIVE(Socket, Buffer, BufferSize, Flags, Result);
 #else
    #error No support for RECEIVE()
@@ -971,7 +971,7 @@ static ERROR SEND(objNetSocket *Self, SOCKET_HANDLE Socket, CPTR Buffer, LONG *L
       else if (Self->SSLBusy IS SSL_HANDSHAKE_READ) ssl_handshake_read(Socket, Self);
 
       if (Self->SSLBusy != SSL_NOT_BUSY) {
-         STEP();
+         LOGRETURN();
          return ERR_Okay;
       }
 
@@ -984,7 +984,7 @@ static ERROR SEND(objNetSocket *Self, SOCKET_HANDLE Socket, CPTR Buffer, LONG *L
          switch(ssl_error){
             case SSL_ERROR_WANT_WRITE:
                FMSG("@SEND()","Buffer overflow (SSL want write)");
-               STEP();
+               LOGRETURN();
                return ERR_BufferOverflow;
 
             // We get a WANT_READ if we're trying to rehandshake and we block on write during the current connection.
@@ -999,12 +999,12 @@ static ERROR SEND(objNetSocket *Self, SOCKET_HANDLE Socket, CPTR Buffer, LONG *L
                #elif _WIN32
                   win_socketstate(Socket, TRUE, -1);
                #endif
-               STEP();
+               LOGRETURN();
                return ERR_Okay;
 
             case SSL_ERROR_SYSCALL:
                LogErrorMsg("SSL_write() SysError %d: %s", errno, strerror(errno));
-               STEP();
+               LOGRETURN();
                return ERR_Failed;
 
             default:
@@ -1013,7 +1013,7 @@ static ERROR SEND(objNetSocket *Self, SOCKET_HANDLE Socket, CPTR Buffer, LONG *L
                   ssl_error = ERR_get_error();
                }
 
-               STEP();
+               LOGRETURN();
                return ERR_Failed;
          }
       }
@@ -1024,7 +1024,7 @@ static ERROR SEND(objNetSocket *Self, SOCKET_HANDLE Socket, CPTR Buffer, LONG *L
          *Length = bytes_sent;
       }
 
-      STEP();
+      LOGRETURN();
       return ERR_Okay;
    }
 #endif

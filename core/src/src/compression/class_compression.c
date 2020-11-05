@@ -1972,7 +1972,7 @@ static ERROR COMPRESSION_Scan(objCompression *Self, struct cmpScan *Args)
       }
    }
 
-   STEP();
+   LOGRETURN();
    return error;
 }
 

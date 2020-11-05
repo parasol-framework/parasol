@@ -742,7 +742,7 @@ timer_cycle:
    if (msg) FreeResource(msg);
 
    tlMsgRecursion--;
-   STEP();
+   LOGRETURN();
    return returncode;
 }
 
@@ -1547,7 +1547,7 @@ ERROR sleep_task(LONG Timeout, BYTE SystemOnly)
       else break;
    }
 
-   //STEP();
+   //LOGRETURN();
    return ERR_Okay;
 }
 

@@ -572,7 +572,7 @@ static ERROR SCINTILLA_DeleteLine(objScintilla *Self, struct sciDeleteLine *Args
 
    SCICALL(SCI_REPLACETARGET, 0UL, "");
 
-   STEP();
+   LOGRETURN();
    return ERR_Okay;
 }
 
@@ -1381,7 +1381,7 @@ static ERROR SCINTILLA_ScrollToPoint(objScintilla *Self, struct acScrollToPoint 
 
    Self->ScrollLocked--;
 
-   STEP();
+   LOGRETURN();
    return ERR_Okay;
 }
 
@@ -1500,7 +1500,7 @@ static ERROR SCINTILLA_TrimWhitespace(objScintilla *Self, APTR Void)
 
    SCICALL(SCI_GOTOLINE, cursorline);
 
-   STEP();
+   LOGRETURN();
    return ERR_Okay;
 }
 
@@ -2312,7 +2312,7 @@ static void draw_scintilla(objScintilla *Self, objSurface *Surface, struct rkBit
       gfxDrawRectangle(Bitmap, 0, 0, Bitmap->Width, Bitmap->Height, PackPixelA(Bitmap, 0, 0, 0, 64), BAF_FILL|BAF_BLEND);
    }
 
-   STEP();
+   LOGRETURN();
 }
 
 //****************************************************************************
@@ -2501,7 +2501,7 @@ static void key_event(objScintilla *Self, evKey *Event, LONG Size)
       if (keyval) {
          FMSG("~","Keypress: %d", keyval);
          Self->SciPan->panKeyDown(keyval, Event->Qualifiers);
-         STEP();
+         LOGRETURN();
       }
    }
    else if (Event->Qualifiers & KQ_RELEASED) {
@@ -2608,7 +2608,7 @@ calc_scroll:
       else SCICALL(SCI_SETSCROLLWIDTH, 1UL);
    }
 
-   STEP();
+   LOGRETURN();
 }
 
 //****************************************************************************

@@ -604,7 +604,7 @@ ERROR critical_janitor(OBJECTID SubscriberID, LONG Elapsed, LONG TotalElapsed)
       }
    }
 
-   STEP();
+   LOGRETURN();
 #endif
 
    return ERR_Okay;

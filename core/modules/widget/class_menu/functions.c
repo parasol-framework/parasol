@@ -804,12 +804,12 @@ static ERROR highlight_item(objMenu *Self, objMenuItem *Item)
    FMSG("~highlight_item()","Item %p, Existing %p)", Item, Self->HighlightItem);
 
    if (Item IS Self->HighlightItem) {
-      STEP();
+      LOGRETURN();
       return ERR_Okay;
    }
 
    if ((Item) AND (Item->Flags & (MIF_BREAK|MIF_DISABLED))) {
-      STEP();
+      LOGRETURN();
       return ERR_Okay;
    }
 
@@ -839,6 +839,6 @@ static ERROR highlight_item(objMenu *Self, objMenuItem *Item)
    }
    else PostError(ERR_AccessObject);
 
-   STEP();
+   LOGRETURN();
    return ERR_Okay;
 }
