@@ -4,7 +4,7 @@ set (MOD picture)
 
 idl_all ("${MOD}.fdl" NAME ${MOD}_defs APPEND_IDL "${MOD}_def.c" OUTPUT "${INCLUDE_OUTPUT}/modules/${MOD}.h")
 
-set (SOURCES "${MOD}.c"
+set (SOURCES "${MOD}.cpp"
    "lib/png.c" "lib/pngset.c" "lib/pngget.c" "lib/pngread.c" "lib/pngpread.c"
    "lib/pngrtran.c" "lib/pngrutil.c" "lib/pngtrans.c" "lib/pngwrite.c" "lib/pngwtran.c"
    "lib/pngwutil.c" "lib/pngmem.c" "lib/pngerror.c")

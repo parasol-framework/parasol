@@ -3,10 +3,10 @@
 
 #define PRV_PICTURE_FIELDS \
    STRING   prvPath; \
-   UBYTE    prvAuthor[60]; \
-   UBYTE    prvCopyright[80]; \
-   UBYTE    prvTitle[50]; \
-   UBYTE    prvSoftware[30]; \
+   char     prvAuthor[60]; \
+   char     prvCopyright[80]; \
+   char     prvTitle[50]; \
+   char     prvSoftware[30]; \
    STRING   prvDescription; \
    STRING   prvDisclaimer; \
    BYTE     prvHeader[256]; \

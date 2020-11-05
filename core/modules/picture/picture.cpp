@@ -49,16 +49,14 @@ static OBJECTPTR clPicture = NULL;
 static OBJECTPTR modDisplay = NULL;
 static struct DisplayBase *DisplayBase = NULL;
 static THREADVAR LONG glError = FALSE;
-
-static const struct FieldDef clFlags[];
-static const struct FieldArray clFields[];
-static const struct ActionArray clActions[];
+static parasol::Log plog;
 
 static ERROR decompress_png(objPicture *, objBitmap *, int, int, png_structp, png_infop, png_uint_32, png_uint_32);
 static void read_row_callback(png_structp, png_uint_32, int);
 static void write_row_callback(png_structp, png_uint_32, int);
 static void png_error_hook(png_structp png_ptr, png_const_charp message);
 static void png_warning_hook(png_structp png_ptr, png_const_charp message);
+static ERROR create_picture_class(void);
 
 //****************************************************************************
 
@@ -69,19 +67,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    if (GetPointer(argModule, FID_Master, &modPicture) != ERR_Okay) return ERR_GetField;
    if (LoadModule("display", MODVERSION_DISPLAY, &modDisplay, &DisplayBase) != ERR_Okay) return ERR_InitModule;
 
-   return(CreateObject(ID_METACLASS, 0, &clPicture,
-      FID_ClassVersion|TFLOAT,  VER_PICTURE,
-      FID_Name|TSTR,            "Picture",
-      FID_Category|TLONG,       CCF_GRAPHICS,
-      FID_Flags|TLONG,          CLF_PROMOTE_INTEGRAL|CLF_PRIVATE_ONLY,
-      FID_FileExtension|TSTR,   "*.png",
-      FID_FileDescription|TSTR, "PNG Picture",
-      FID_FileHeader|TSTR,      "[0:$89504e470d0a1a0a]",
-      FID_Actions|TPTR,         clActions,
-      FID_Fields|TARRAY,        clFields,
-      FID_Size|TLONG,           sizeof(objPicture),
-      FID_Path|TSTR,            MOD_PATH,
-      TAGEND));
+   return(create_picture_class());
 }
 
 //****************************************************************************
@@ -117,16 +103,20 @@ static ERROR PIC_Activate(objPicture *Self, APTR Void)
 {
    if (Self->Bitmap->Head.Flags & NF_INITIALISED) return ERR_Okay;
 
+   plog.branch("");
+
    ERROR error = ERR_Failed;
    glError = FALSE;
 
-   LogBranch(NULL);
+   objBitmap *bmp = Self->Bitmap;
+   png_structp read_ptr = NULL;
+   png_infop info_ptr = NULL;
+   png_infop end_info = NULL;
 
    if (!Self->prvFile) {
       STRING path;
       if (GetString(Self, FID_Path, &path) != ERR_Okay) {
-         LogReturn();
-         return PostError(ERR_GetField);
+         return plog.error(ERR_GetField);
       }
 
       if (CreateObject(ID_FILE, 0, &Self->prvFile,
@@ -137,11 +127,9 @@ static ERROR PIC_Activate(objPicture *Self, APTR Void)
 
    acSeek(Self->prvFile, 0, SEEK_START);
 
+
    // Allocate PNG structures
 
-   png_structp read_ptr = NULL;
-   png_infop info_ptr = NULL;
-   png_infop end_info = NULL;
    if (!(read_ptr = png_create_read_struct(PNG_LIBPNG_VER_STRING, Self, &png_error_hook, &png_warning_hook))) goto exit;
    if (!(info_ptr = png_create_info_struct(read_ptr))) goto exit;
    if (!(end_info = png_create_info_struct(read_ptr))) goto exit;
@@ -157,9 +145,9 @@ static ERROR PIC_Activate(objPicture *Self, APTR Void)
 
    int bit_depth, total_bit_depth, color_type;
    png_uint_32 png_width, png_height;
-   png_get_IHDR(read_ptr, info_ptr, &png_width, &png_height, &bit_depth, &color_type, NULL, NULL, NULL); if (glError) goto exit;
+   png_get_IHDR(read_ptr, info_ptr, &png_width, &png_height, &bit_depth, &color_type, NULL, NULL, NULL);
+   if (glError) goto exit;
 
-   objBitmap *bmp = Self->Bitmap;
    if (!bmp->Width)  bmp->Width  = png_width;
    if (!bmp->Height) bmp->Height = png_height;
    if (!bmp->Type)   bmp->Type   = BMP_CHUNKY;
@@ -203,9 +191,7 @@ static ERROR PIC_Activate(objPicture *Self, APTR Void)
             Self->Mask->Height = Self->Bitmap->Height;
             Self->Mask->AmtColours = 256;
             Self->Mask->Flags      |= BMF_MASK;
-            if (acInit(Self->Mask) IS ERR_Okay) {
-               Self->Flags |= PCF_MASK|PCF_ALPHA;
-            }
+            if (!acInit(Self->Mask)) Self->Flags |= PCF_MASK|PCF_ALPHA;
             else goto exit;
          }
       }
@@ -256,7 +242,7 @@ static ERROR PIC_Activate(objPicture *Self, APTR Void)
          bmp->BkgdRGB.Blue  = prgb->blue;
          bmp->BkgdRGB.Alpha = 255;
       }
-      MSG("Background Colour: %d,%d,%d", bmp->BkgdRGB.Red, bmp->BkgdRGB.Green, bmp->BkgdRGB.Blue);
+      plog.trace("Background Colour: %d,%d,%d", bmp->BkgdRGB.Red, bmp->BkgdRGB.Green, bmp->BkgdRGB.Blue);
    }
 
    // Set the bits per pixel value
@@ -268,7 +254,7 @@ static ERROR PIC_Activate(objPicture *Self, APTR Void)
       case PNG_COLOR_TYPE_RGB_ALPHA:  total_bit_depth = MAX(bit_depth, 8) * 4; break;
       case PNG_COLOR_TYPE_GRAY_ALPHA: total_bit_depth = MAX(bit_depth, 8) * 2; break;
       default:
-         LogErrorMsg("Unrecognised colour type 0x%x.", color_type);
+         plog.warning("Unrecognised colour type 0x%x.", color_type);
          total_bit_depth = MAX(bit_depth, 8);
    }
 
@@ -288,7 +274,7 @@ static ERROR PIC_Activate(objPicture *Self, APTR Void)
         ((total_bit_depth <= 8) AND (bmp->BitsPerPixel > 8)))) {
       objBitmap *tmp_bitmap;
 
-      LogMsg("Destination Depth %d < Image Depth %d - Dithering.", bmp->BitsPerPixel, total_bit_depth);
+      plog.msg("Destination Depth %d < Image Depth %d - Dithering.", bmp->BitsPerPixel, total_bit_depth);
 
       // Init our bitmap, since decompress_png() won't in this case.
 
@@ -321,12 +307,11 @@ static ERROR PIC_Activate(objPicture *Self, APTR Void)
    }
    else {
 exit:
-      PostError(error);
+      plog.error(error);
    }
 
    png_destroy_read_struct(&read_ptr, &info_ptr, &end_info);
 
-   LogReturn();
    return error;
 }
 
@@ -389,9 +374,9 @@ static ERROR PIC_Init(objPicture *Self, APTR Void)
                   Self->Mask->Flags |= PCF_MASK;
                   Self->Mask->BitsPerPixel = 8;
                   if (!acInit(Self->Mask)) Self->Flags |= PCF_MASK;
-                  else return PostError(ERR_Init);
+                  else return plog.error(ERR_Init);
                }
-               else return PostError(ERR_NewObject);
+               else return plog.error(ERR_NewObject);
             }
             else if (Self->Flags & PCF_MASK) {
                if (!NewObject(ID_BITMAP, NF_INTEGRAL, &Self->Mask)) {
@@ -400,18 +385,18 @@ static ERROR PIC_Init(objPicture *Self, APTR Void)
                   Self->Mask->Flags |= PCF_MASK;
                   Self->Mask->BitsPerPixel = 1;
                   if (!acInit(Self->Mask)) Self->Flags |= PCF_MASK;
-                  else return PostError(ERR_Init);
+                  else return plog.error(ERR_Init);
                }
-               else return PostError(ERR_NewObject);
+               else return plog.error(ERR_NewObject);
             }
 
             if (Self->Head.SubID) return ERR_Okay; // Break here to let the sub-class continue initialisation
 
             return ERR_Okay;
          }
-         else return PostError(ERR_Init);
+         else return plog.error(ERR_Init);
       }
-      else return PostError(ERR_InvalidDimension);
+      else return plog.error(ERR_InvalidDimension);
    }
    else {
       if (Self->Head.SubID) return ERR_Okay; // Break here to let the sub-class continue initialisation
@@ -427,7 +412,7 @@ static ERROR PIC_Init(objPicture *Self, APTR Void)
          acRead(Self->prvFile, Self->prvHeader, sizeof(Self->prvHeader)-1, &result);
          Self->prvHeader[result] = 0;
 
-         UBYTE *buffer = Self->prvHeader;
+         char *buffer = Self->prvHeader;
          if ((buffer[0] IS 0x89) AND (buffer[1] IS 0x50) AND (buffer[2] IS 0x4e) AND (buffer[3] IS 0x47) AND
              (buffer[4] IS 0x0d) AND (buffer[5] IS 0x0a) AND (buffer[6] IS 0x1a) AND (buffer[7] IS 0x0a)) {
             if (Self->Flags & PCF_LAZY) return ERR_Okay;
@@ -436,7 +421,7 @@ static ERROR PIC_Init(objPicture *Self, APTR Void)
          else return ERR_NoSupport;
       }
       else {
-         LogErrorMsg("Failed to open '%s'", path);
+         plog.error("Failed to open '%s'", path);
          return ERR_File;
       }
    }
@@ -453,7 +438,7 @@ static ERROR PIC_NewObject(objPicture *Self, APTR Void)
    if (!NewObject(ID_BITMAP, NF_INTEGRAL, &Self->Bitmap)) {
       return ERR_Okay;
    }
-   else return PostError(ERR_NewObject);
+   else return plog.error(ERR_NewObject);
 }
 
 //****************************************************************************
@@ -467,7 +452,7 @@ static ERROR PIC_Query(objPicture *Self, APTR Void)
    if (Self->Bitmap->Flags & BMF_QUERIED) return ERR_Okay;
    if (!Self->prvFile) return ERR_NotInitialised;
 
-   LogBranch(NULL);
+   plog.branch("");
 
    objBitmap *Bitmap = Self->Bitmap;
    ERROR error = ERR_Failed;
@@ -479,7 +464,7 @@ static ERROR PIC_Query(objPicture *Self, APTR Void)
    // Open the data file
 
    if (!Self->prvFile) {
-      if (GetString(Self, FID_Path, &path) != ERR_Okay) return PostError(ERR_GetField);
+      if (GetString(Self, FID_Path, &path) != ERR_Okay) return plog.error(ERR_GetField);
 
       if (CreateObject(ID_FILE, 0, &Self->prvFile,
             FID_Path|TSTR,   path,
@@ -530,7 +515,6 @@ static ERROR PIC_Query(objPicture *Self, APTR Void)
 
 exit:
    png_destroy_read_struct(&read_ptr, &info_ptr, &end_info);
-   LogReturn();
    return error;
 }
 
@@ -568,7 +552,7 @@ static ERROR PIC_SaveImage(objPicture *Self, struct acSaveImage *Args)
    LONG y, i, x;
    png_bytep row_pointers;
 
-   LogBranch(NULL);
+   plog.branch("");
 
    objBitmap *bmp        = Self->Bitmap;
    OBJECTPTR file        = NULL;
@@ -581,22 +565,19 @@ static ERROR PIC_SaveImage(objPicture *Self, struct acSaveImage *Args)
 
    if ((Args) AND (Args->DestID)) {
       if (AccessObject(Args->DestID, 3000, &file) != ERR_Okay) {
-         LogErrorMsg("Failed to access destination object #%d.", Args->DestID);
+         plog.error("Failed to access destination object #%d.", Args->DestID);
          goto exit;
       }
    }
    else {
       if (GetString(Self, FID_Path, &path) != ERR_Okay) {
-         PostError(ERR_MissingPath);
-         LogReturn();
-         return ERR_GetField;
+         return plog.error(ERR_MissingPath);
       }
 
       if (CreateObject(ID_FILE, 0, &file,
             FID_Path|TSTR,   path,
             FID_Flags|TLONG, FL_NEW|FL_WRITE,
             TAGEND) != ERR_Okay) {
-         LogReturn();
          return ERR_CreateObject;
       }
    }
@@ -604,14 +585,14 @@ static ERROR PIC_SaveImage(objPicture *Self, struct acSaveImage *Args)
    // Allocate PNG structures
 
    if (!(write_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, Self, &png_error_hook, &png_warning_hook))) {
-      LogErrorMsg("png_create_write_struct() failed.");
+      plog.error("png_create_write_struct() failed.");
       goto exit;
    }
 
    png_set_error_fn(write_ptr, Self, &png_error_hook, &png_warning_hook);
 
    if (!(info_ptr = png_create_info_struct(write_ptr))) {
-      LogErrorMsg("png_create_info_struct() failed.");
+      plog.error("png_create_info_struct() failed.");
       goto exit;
    }
 
@@ -623,26 +604,26 @@ static ERROR PIC_SaveImage(objPicture *Self, struct acSaveImage *Args)
 
    png_set_write_status_fn(write_ptr, write_row_callback);
    if (glError) {
-      LogErrorMsg("png_set_write_status_fn() failed.");
+      plog.error("png_set_write_status_fn() failed.");
       goto exit;
    }
 
    if ((Self->Flags & (PCF_ALPHA|PCF_MASK)) AND (!Self->Mask)) {
-      LogErrorMsg("Illegal use of the ALPHA/MASK flags without an accompanying mask bitmap.");
+      plog.error("Illegal use of the ALPHA/MASK flags without an accompanying mask bitmap.");
       Self->Flags &= ~(PCF_ALPHA|PCF_MASK);
    }
 
    if (bmp->AmtColours > 256) {
       if (bmp->Flags & BMF_ALPHA_CHANNEL) {
-         MSG("Saving as 32-bit alpha.");
+         plog.trace("Saving as 32-bit alpha.");
          png_set_IHDR(write_ptr, info_ptr, bmp->Width, bmp->Height, 8, PNG_COLOR_TYPE_RGB_ALPHA, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
       }
       else if (Self->Flags & PCF_ALPHA) {
-         MSG("Saving with alpha-mask.");
+         plog.trace("Saving with alpha-mask.");
          png_set_IHDR(write_ptr, info_ptr, bmp->Width, bmp->Height, 8, PNG_COLOR_TYPE_RGB_ALPHA, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
       }
       else {
-         MSG("Saving in standard chunky graphics mode (no alpha).");
+         plog.trace("Saving in standard chunky graphics mode (no alpha).");
          png_set_IHDR(write_ptr, info_ptr, bmp->Width, bmp->Height, 8, PNG_COLOR_TYPE_RGB, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
       }
    }
@@ -683,7 +664,7 @@ static ERROR PIC_SaveImage(objPicture *Self, struct acSaveImage *Args)
 
    png_write_info(write_ptr, info_ptr);
    if (glError) {
-      LogErrorMsg("png_write_info() failed.");
+      plog.warning("png_write_info() failed.");
       goto exit;
    }
 
@@ -819,8 +800,7 @@ exit:
    }
    else if (file) acFree(file);
 
-   LogReturn();
-   if (error) return PostError(error);
+   if (error) return plog.error(error);
    else return ERR_Okay;
 }
 
@@ -835,8 +815,8 @@ static ERROR PIC_SaveToObject(objPicture *Self, struct acSaveToObject *Args)
    ERROR (**routine)(OBJECTPTR, APTR);
 
    if ((Args->ClassID) AND (Args->ClassID != ID_PICTURE)) {
-      struct rkMetaClass *class = (struct rkMetaClass *)FindClass(Args->ClassID);
-      if ((GetPointer(class, FID_ActionTable, &routine) IS ERR_Okay) AND (routine)) {
+      struct rkMetaClass *mc = (struct rkMetaClass *)FindClass(Args->ClassID);
+      if ((GetPointer(mc, FID_ActionTable, &routine) IS ERR_Okay) AND (routine)) {
          if ((routine[AC_SaveToObject]) AND (routine[AC_SaveToObject] != (APTR)PIC_SaveToObject)) {
             return routine[AC_SaveToObject]((OBJECTPTR)Self, Args);
          }
@@ -845,9 +825,9 @@ static ERROR PIC_SaveToObject(objPicture *Self, struct acSaveToObject *Args)
             saveimage.DestID = Args->DestID;
             return routine[AC_SaveImage]((OBJECTPTR)Self, &saveimage);
          }
-         else return PostError(ERR_NoSupport);
+         else return plog.error(ERR_NoSupport);
       }
-      else return PostError(ERR_GetField);
+      else return plog.error(ERR_GetField);
    }
    else return acSaveImage(Self, Args->DestID, Args->ClassID);
 }
@@ -954,7 +934,7 @@ static ERROR SET_Description(objPicture *Self, CSTRING Value)
    if (Self->prvDescription) { FreeResource(Self->prvDescription); Self->prvDescription = NULL; }
 
    if ((Value) AND (*Value)) {
-      if (!(Self->prvDescription = StrClone(Value))) return PostError(ERR_AllocMemory);
+      if (!(Self->prvDescription = StrClone(Value))) return plog.error(ERR_AllocMemory);
    }
    return ERR_Okay;
 }
@@ -984,7 +964,7 @@ static ERROR SET_Disclaimer(objPicture *Self, CSTRING Value)
    if (Self->prvDisclaimer) { FreeResource(Self->prvDisclaimer); Self->prvDisclaimer = NULL; }
 
    if ((Value) AND (*Value)) {
-      if (!(Self->prvDisclaimer = StrClone(Value))) return PostError(ERR_AllocMemory);
+      if (!(Self->prvDisclaimer = StrClone(Value))) return plog.error(ERR_AllocMemory);
    }
    return ERR_Okay;
 }
@@ -1056,7 +1036,7 @@ static ERROR SET_Path(objPicture *Self, CSTRING Value)
    if (Self->prvPath) { FreeResource(Self->prvPath); Self->prvPath = NULL; }
 
    if ((Value) AND (*Value)) {
-      if (!(Self->prvPath = StrClone(Value))) return PostError(ERR_AllocMemory);
+      if (!(Self->prvPath = StrClone(Value))) return plog.error(ERR_AllocMemory);
    }
    return ERR_Okay;
 }
@@ -1137,8 +1117,8 @@ static void write_row_callback(png_structp write_ptr, png_uint_32 row, int pass)
 
 void png_read_data(png_structp png, png_bytep data, png_size_t length)
 {
-   struct acRead read = { data, length };
-   if ((Action(AC_Read, png->io_ptr, &read) != ERR_Okay) OR (read.Result != length)) {
+   struct acRead read = { data, (LONG)length };
+   if ((Action(AC_Read, png->io_ptr, &read) != ERR_Okay) OR ((png_size_t)read.Result != length)) {
       png_error(png, "File read error");
    }
 }
@@ -1155,8 +1135,8 @@ void png_set_read_fn(png_structp png_ptr, png_voidp io_ptr, png_rw_ptr read_data
 
 void png_write_data(png_structp png, png_const_bytep data, png_size_t length)
 {
-   struct acWrite write = { data, length };
-   if ((Action(AC_Write, png->io_ptr, &write) != ERR_Okay) OR (write.Result != length)) {
+   struct acWrite write = { data, (LONG)length };
+   if ((Action(AC_Write, png->io_ptr, &write) != ERR_Okay) OR ((png_size_t)write.Result != length)) {
       png_error(png, "File write error");
    }
 }
@@ -1181,13 +1161,13 @@ void png_set_write_fn(png_structp png_ptr, png_voidp io_ptr, png_rw_ptr write_da
 
 static void png_error_hook(png_structp png_ptr, png_const_charp message)
 {
-   LogErrorMsg("%s", message);
+   plog.warning("%s", message);
    glError = TRUE;
 }
 
 static void png_warning_hook(png_structp png_ptr, png_const_charp message)
 {
-   LogErrorMsg("Warning: %s", message);
+   plog.warning("Warning: %s", message);
    glError = FALSE;
 }
 
@@ -1206,6 +1186,7 @@ static ERROR decompress_png(objPicture *Self, objBitmap *Bitmap, int BitDepth, i
    png_bytep row_pointers;
    struct RGB8 rgb;
    LONG i, x, y;
+   parasol::Log log(__FUNCTION__);
 
    // Read the image data into our Bitmap
 
@@ -1213,7 +1194,7 @@ static ERROR decompress_png(objPicture *Self, objBitmap *Bitmap, int BitDepth, i
    if (BitDepth IS 16) png_set_strip_16(ReadPtr); // Reduce bit depth to 24bpp if the image is 48bpp
    if (BitDepth < 8) png_set_packing(ReadPtr);
 
-   LogF("decompress_png()","Size: %dx%dx%d", (LONG)PngWidth, (LONG)PngHeight, BitDepth);
+   log.branch("Size: %dx%dx%d", (LONG)PngWidth, (LONG)PngHeight, BitDepth);
 
    LONG rowsize = png_get_rowbytes(ReadPtr, InfoPtr);
    if ((error = acQuery(Bitmap)) != ERR_Okay) return error;
@@ -1223,11 +1204,11 @@ static ERROR decompress_png(objPicture *Self, objBitmap *Bitmap, int BitDepth, i
    if ((error = AllocMemory(rowsize, MEM_DATA|MEM_NO_CLEAR, &row, NULL)) != ERR_Okay) return error;
 
    if (Self->Flags & PCF_RESIZE) {
-      DOUBLE fx, fy, xScale, yScale;
+      DOUBLE fx, fy;
       LONG isrcy, isrcx, ify;
 
-      xScale = (DOUBLE)PngWidth / (DOUBLE)Bitmap->Width;
-      yScale = (DOUBLE)PngHeight / (DOUBLE)Bitmap->Height;
+      DOUBLE xScale = (DOUBLE)PngWidth / (DOUBLE)Bitmap->Width;
+      DOUBLE yScale = (DOUBLE)PngHeight / (DOUBLE)Bitmap->Height;
 
       row_pointers = row;
       if (ColourType IS PNG_COLOR_TYPE_GRAY) {
@@ -1321,16 +1302,16 @@ static ERROR decompress_png(objPicture *Self, objBitmap *Bitmap, int BitDepth, i
    else {
       // Chop the image to the bitmap dimensions
 
-      if (PngWidth > Bitmap->Width) PngWidth = Bitmap->Width;
-      if (PngHeight > Bitmap->Height) PngHeight = Bitmap->Height;
+      if (PngWidth > (png_uint_32)Bitmap->Width) PngWidth = Bitmap->Width;
+      if (PngHeight > (png_uint_32)Bitmap->Height) PngHeight = Bitmap->Height;
 
       row_pointers = row;
       if (ColourType IS PNG_COLOR_TYPE_GRAY) {
-         FMSG("decompress_png:","Greyscale image source.");
+         log.trace("Greyscale image source.");
          rgb.Alpha = 255;
-         for (y=0; y < PngHeight; y++) {
+         for (png_uint_32 y=0; y < PngHeight; y++) {
             png_read_row(ReadPtr, row_pointers, NULL); if (glError) goto exit;
-            for (x=0; x < PngWidth; x++) {
+            for (png_uint_32 x=0; x < PngWidth; x++) {
                rgb.Red   = row[x];
                rgb.Green = row[x];
                rgb.Blue  = row[x];
@@ -1339,18 +1320,18 @@ static ERROR decompress_png(objPicture *Self, objBitmap *Bitmap, int BitDepth, i
          }
       }
       else if (ColourType IS PNG_COLOR_TYPE_PALETTE) {
-         FMSG("decompress_png:","Palette-based image source.");
+         log.trace("Palette-based image source.");
          if (Bitmap->BitsPerPixel IS 8) {
-            for (y=0; y < PngHeight; y++) {
+            for (png_uint_32 y=0; y < PngHeight; y++) {
                png_read_row(ReadPtr, row_pointers, NULL); if (glError) goto exit;
-               for (x=0; x < PngWidth; x++) Bitmap->DrawUCPixel(Bitmap, x, y, row[x]);
+               for (png_uint_32 x=0; x < PngWidth; x++) Bitmap->DrawUCPixel(Bitmap, x, y, row[x]);
             }
          }
          else {
             rgb.Alpha = 255;
-            for (y=0; y < PngHeight; y++) {
+            for (png_uint_32 y=0; y < PngHeight; y++) {
                png_read_row(ReadPtr, row_pointers, NULL); if (glError) goto exit;
-               for (x=0; x < PngWidth; x++) {
+               for (png_uint_32 x=0; x < PngWidth; x++) {
                   Bitmap->DrawUCRPixel(Bitmap, x, y, &Bitmap->Palette->Col[row[x]]);
                }
             }
@@ -1359,11 +1340,11 @@ static ERROR decompress_png(objPicture *Self, objBitmap *Bitmap, int BitDepth, i
       else if (ColourType & PNG_COLOR_MASK_ALPHA) {
          // When decompressing images that support an alpha channel, the fourth byte of each pixel will contain the alpha data.
 
-         FMSG("decompress_png:","32-bit + alpha image source.");
-         for (y=0; y < PngHeight; y++) {
+         log.trace("32-bit + alpha image source.");
+         for (png_uint_32 y=0; y < PngHeight; y++) {
             png_read_row(ReadPtr, row_pointers, NULL); if (glError) goto exit;
             i = 0;
-            for (x=0; x < PngWidth; x++) {
+            for (png_uint_32 x=0; x < PngWidth; x++) {
                Bitmap->DrawUCRPixel(Bitmap, x, y, (struct RGB8 *)(row+i));
 
                // Set the alpha byte in the alpha mask (nb: refer to png_set_invert_alpha() if you want to reverse the alpha bytes)
@@ -1375,12 +1356,12 @@ static ERROR decompress_png(objPicture *Self, objBitmap *Bitmap, int BitDepth, i
          }
       }
       else {
-         FMSG("decompress_png:","24-bit image source.");
+         log.trace("24-bit image source.");
          rgb.Alpha = 255;
-         for (y=0; y < PngHeight; y++) {
+         for (png_uint_32 y=0; y < PngHeight; y++) {
             png_read_row(ReadPtr, row_pointers, NULL); if (glError) goto exit;
             i = 0;
-            for (x=0; x < PngWidth; x++) {
+            for (png_uint_32 x=0; x < PngWidth; x++) {
                rgb.Red   = row[i++];
                rgb.Green = row[i++];
                rgb.Blue  = row[i++];
@@ -1391,9 +1372,7 @@ static ERROR decompress_png(objPicture *Self, objBitmap *Bitmap, int BitDepth, i
    }
 
 exit:
-
    FreeResource(row);
-
    return error;
 }
 
@@ -1416,33 +1395,50 @@ static const struct FieldArray clFields[] = {
    { "Quality",       FDF_LONG|FDF_RW,        0,                NULL, NULL },
    { "FrameRate",     FDF_SYSTEM|FDF_LONG|FDF_R, 0,             NULL, NULL },
    // Virtual fields
-   { "Author",        FDF_STRING|FDF_RW,  0, GET_Author,      SET_Author },
-   { "Copyright",     FDF_STRING|FDF_RW,  0, GET_Copyright,   SET_Copyright },
-   { "Description",   FDF_STRING|FDF_RW,  0, GET_Description, SET_Description },
-   { "Disclaimer",    FDF_STRING|FDF_RW,  0, GET_Disclaimer,  SET_Disclaimer },
-   { "Header",        FDF_POINTER|FDF_RI, 0, GET_Header,      NULL },
-   { "Path",          FDF_STRING|FDF_RI,  0, GET_Path,        SET_Path },
-   { "Location",      FDF_SYNONYM|FDF_STRING|FDF_RI, 0, GET_Path, SET_Path },
-   { "Src",           FDF_SYNONYM|FDF_STRING|FDF_RI, 0, GET_Path, SET_Path },
-   { "Software",      FDF_STRING|FDF_RW,  0, GET_Software,    SET_Software },
-   { "Title",         FDF_STRING|FDF_RW,  0, GET_Title,       SET_Title },
+   { "Author",        FDF_STRING|FDF_RW,  0, (APTR)GET_Author,      (APTR)SET_Author },
+   { "Copyright",     FDF_STRING|FDF_RW,  0, (APTR)GET_Copyright,   (APTR)SET_Copyright },
+   { "Description",   FDF_STRING|FDF_RW,  0, (APTR)GET_Description, (APTR)SET_Description },
+   { "Disclaimer",    FDF_STRING|FDF_RW,  0, (APTR)GET_Disclaimer,  (APTR)SET_Disclaimer },
+   { "Header",        FDF_POINTER|FDF_RI, 0, (APTR)GET_Header,      NULL },
+   { "Path",          FDF_STRING|FDF_RI,  0, (APTR)GET_Path,        (APTR)SET_Path },
+   { "Location",      FDF_SYNONYM|FDF_STRING|FDF_RI, 0, (APTR)GET_Path, (APTR)SET_Path },
+   { "Src",           FDF_SYNONYM|FDF_STRING|FDF_RI, 0, (APTR)GET_Path, (APTR)SET_Path },
+   { "Software",      FDF_STRING|FDF_RW,  0, (APTR)GET_Software,    (APTR)SET_Software },
+   { "Title",         FDF_STRING|FDF_RW,  0, (APTR)GET_Title,       (APTR)SET_Title },
    END_FIELD
 };
 
 static const struct ActionArray clActions[] = {
-   { AC_Activate,      PIC_Activate },
-   { AC_Free,          PIC_Free },
-   { AC_NewObject,     PIC_NewObject },
-   { AC_Init,          PIC_Init },
-   { AC_Query,         PIC_Query },
-   { AC_Read,          PIC_Read },
-   { AC_Refresh,       PIC_Refresh },
-   { AC_SaveImage,     PIC_SaveImage },
-   { AC_SaveToObject,  PIC_SaveToObject },
-   { AC_Seek,          PIC_Seek },
-   { AC_Write,         PIC_Write },
+   { AC_Activate,      (APTR)PIC_Activate },
+   { AC_Free,          (APTR)PIC_Free },
+   { AC_NewObject,     (APTR)PIC_NewObject },
+   { AC_Init,          (APTR)PIC_Init },
+   { AC_Query,         (APTR)PIC_Query },
+   { AC_Read,          (APTR)PIC_Read },
+   { AC_Refresh,       (APTR)PIC_Refresh },
+   { AC_SaveImage,     (APTR)PIC_SaveImage },
+   { AC_SaveToObject,  (APTR)PIC_SaveToObject },
+   { AC_Seek,          (APTR)PIC_Seek },
+   { AC_Write,         (APTR)PIC_Write },
    { 0, NULL }
 };
+
+static ERROR create_picture_class(void)
+{
+   return CreateObject(ID_METACLASS, 0, &clPicture,
+      FID_ClassVersion|TFLOAT,  VER_PICTURE,
+      FID_Name|TSTR,            "Picture",
+      FID_Category|TLONG,       CCF_GRAPHICS,
+      FID_Flags|TLONG,          CLF_PROMOTE_INTEGRAL|CLF_PRIVATE_ONLY,
+      FID_FileExtension|TSTR,   "*.png",
+      FID_FileDescription|TSTR, "PNG Picture",
+      FID_FileHeader|TSTR,      "[0:$89504e470d0a1a0a]",
+      FID_Actions|TPTR,         clActions,
+      FID_Fields|TARRAY,        clFields,
+      FID_Size|TLONG,           sizeof(objPicture),
+      FID_Path|TSTR,            MOD_PATH,
+      TAGEND);
+}
 
 //****************************************************************************
 
