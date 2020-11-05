@@ -6,9 +6,10 @@
 #ifdef __linux__
 static void client_connect(SOCKET_HANDLE Void, APTR Data)
 {
+   parasol::Log log(__FUNCTION__);
    objNetSocket *Self = (objNetSocket *)Data;
 
-   FMSG("client_connect()","Connection from server received.");
+   log.trace("Connection from server received.");
 
    LONG result = EHOSTUNREACH; // Default error in case getsockopt() fails
    socklen_t optlen = sizeof(result);
@@ -22,29 +23,22 @@ static void client_connect(SOCKET_HANDLE Void, APTR Data)
    if ((Self->SSL) AND (!result)) {
       // Perform the SSL handshake
 
-      FMSG("~client_connect","Attempting SSL handshake.");
+      log.traceBranch("Attempting SSL handshake.");
 
-         sslConnect(Self);
-
-      LOGRETURN();
-
+      sslConnect(Self);
       if (Self->Error) return;
 
       if (Self->State IS NTC_CONNECTING_SSL) {
          RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD_READ|RFD_SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&client_server_incoming), Self);
       }
-
       return;
    }
    #endif
 
    if (!result) {
-      FMSG("~client_connect","Connection succesful.");
-
-         SetLong(Self, FID_State, NTC_CONNECTED);
-         RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD_READ|RFD_SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&client_server_incoming), Self);
-
-      LOGRETURN();
+      log.traceBranch("Connection succesful.");
+      SetLong(Self, FID_State, NTC_CONNECTED);
+      RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD_READ|RFD_SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&client_server_incoming), Self);
       return;
    }
    else {
@@ -56,7 +50,7 @@ static void client_connect(SOCKET_HANDLE Void, APTR Data)
       else if (result IS ETIMEDOUT)    Self->Error = ERR_TimeOut;
       else Self->Error = ERR_Failed;
 
-      PostError(Self->Error);
+      log.error(Self->Error);
 
       SetLong(Self, FID_State, NTC_DISCONNECTED);
    }
@@ -74,35 +68,35 @@ static void client_connect(SOCKET_HANDLE Void, APTR Data)
 
 static void client_server_incoming(SOCKET_HANDLE FD, struct rkNetSocket *Data)
 {
+   parasol::Log log(__FUNCTION__);
    objNetSocket *Self = Data;
 
    if (Self->Terminating) {
-      FMSG("client_incoming","[NetSocket:%d] Socket terminating...", Self->Head.UniqueID);
+      log.trace("[NetSocket:%d] Socket terminating...", Self->Head.UniqueID);
       if (Self->SocketHandle != NOHANDLE) free_socket(Self);
       return;
    }
 
 #ifdef ENABLE_SSL
    if ((Self->SSL) AND (Self->State IS NTC_CONNECTING_SSL)) {
-      FMSG("~client_incoming","Continuing SSL communication...");
-         sslConnect(Self);
-      LOGRETURN();
+      log.traceBranch("Continuing SSL communication...");
+      sslConnect(Self);
       return;
    }
 
    if (Self->SSLBusy) {
-      FMSG("client_incoming","SSL object is busy.");
+      log.trace("SSL object is busy.");
       return; // SSL object is performing a background operation (e.g. handshake)
    }
 #endif
 
    if (Self->IncomingRecursion) {
-      FMSG("client_incoming","[NetSocket:%d] Recursion detected on handle " PF64(), Self->Head.UniqueID, (MAXINT)FD);
+      log.trace("[NetSocket:%d] Recursion detected on handle " PF64(), Self->Head.UniqueID, (MAXINT)FD);
       if (Self->IncomingRecursion < 2) Self->IncomingRecursion++; // Indicate that there is more data to be received
       return;
    }
 
-   FMSG("~client_incoming()","[NetSocket:%d] Socket: " PF64(), Self->Head.UniqueID, (MAXINT)FD);
+   log.traceBranch("[NetSocket:%d] Socket: " PF64(), Self->Head.UniqueID, (MAXINT)FD);
 
    Self->InUse++;
    Self->IncomingRecursion++;
@@ -134,8 +128,8 @@ restart:
          }
       }
 
-      if (error IS ERR_Terminate) MSG("Termination of socket requested by channel subscriber.");
-      else if (!Self->ReadCalled) LogF("@client_incoming","[NetSocket:%d] Subscriber did not call Read()", Self->Head.UniqueID);
+      if (error IS ERR_Terminate) log.trace("Termination of socket requested by channel subscriber.");
+      else if (!Self->ReadCalled) log.warning("[NetSocket:%d] Subscriber did not call Read()", Self->Head.UniqueID);
    }
 
    if (!Self->ReadCalled) {
@@ -151,9 +145,8 @@ restart:
    }
 
    if (error IS ERR_Terminate) {
-      LogF("~client_incoming","Socket %d will be terminated.", FD);
+      log.traceBranch("Socket %d will be terminated.", FD);
       if (Self->SocketHandle != NOHANDLE) free_socket(Self);
-      LogReturn();
    }
    else if (Self->IncomingRecursion > 1) {
       // If client_server_incoming() was called again during the callback, there is more
@@ -166,8 +159,6 @@ restart:
 
    Self->InUse--;
    Self->IncomingRecursion = 0;
-
-   LOGRETURN();
 }
 
 /*****************************************************************************
@@ -181,6 +172,7 @@ restart:
 
 static void client_server_outgoing(SOCKET_HANDLE Void, struct rkNetSocket *Data)
 {
+   parasol::Log log(__FUNCTION__);
    objNetSocket *Self = Data;
    ERROR error;
    LONG len;
@@ -189,20 +181,20 @@ static void client_server_outgoing(SOCKET_HANDLE Void, struct rkNetSocket *Data)
 
 #ifdef ENABLE_SSL
    if ((Self->SSL) AND (Self->State IS NTC_CONNECTING_SSL)) {
-      FMSG("client_outgoing","Still connecting via SSL...");
+      log.trace("Still connecting via SSL...");
       return;
    }
 #endif
 
    if (Self->OutgoingRecursion) {
-      FMSG("client_outgoing()","Recursion detected.");
+      log.trace("Recursion detected.");
       return;
    }
 
-   FMSG("~client_outgoing()","");
+   log.traceBranch("");
 
 #ifdef ENABLE_SSL
-   if (Self->SSLBusy) { LOGRETURN(); return; } // SSL object is performing a background operation (e.g. handshake)
+   if (Self->SSLBusy) return; // SSL object is performing a background operation (e.g. handshake)
 #endif
 
    Self->InUse++;
@@ -224,17 +216,15 @@ static void client_server_outgoing(SOCKET_HANDLE Void, struct rkNetSocket *Data)
          if (len > 0) {
             error = SEND(Self, Self->SocketHandle, (BYTE *)Self->WriteQueue.Buffer + Self->WriteQueue.Index, &len, 0);
 
-            if ((error) OR (!len)) {
-               break;
-            }
+            if ((error) OR (!len)) break;
 
-            FMSG("client_outgoing","[NetSocket:%d] Sent %d of %d bytes remaining on the queue.", Self->Head.UniqueID, len, Self->WriteQueue.Length-Self->WriteQueue.Index);
+            log.trace("[NetSocket:%d] Sent %d of %d bytes remaining on the queue.", Self->Head.UniqueID, len, Self->WriteQueue.Length-Self->WriteQueue.Index);
 
             Self->WriteQueue.Index += len;
          }
 
          if (Self->WriteQueue.Index >= Self->WriteQueue.Length) {
-            FMSG("client_outgoing","Freeing the write queue (pos %d/%d).", Self->WriteQueue.Index, Self->WriteQueue.Length);
+            log.trace("Freeing the write queue (pos %d/%d).", Self->WriteQueue.Index, Self->WriteQueue.Length);
             FreeResource(Self->WriteQueue.Buffer);
             Self->WriteQueue.Buffer = NULL;
             Self->WriteQueue.Index = 0;
@@ -274,7 +264,7 @@ static void client_server_outgoing(SOCKET_HANDLE Void, struct rkNetSocket *Data)
       // we don't tax the system resources.
 
       if ((Self->Outgoing.Type IS CALL_NONE) AND (!Self->WriteQueue.Buffer)) {
-         FMSG("client_outgoing","[NetSocket:%d] Write-queue listening on FD %d will now stop.", Self->Head.UniqueID, Self->SocketHandle);
+         log.trace("[NetSocket:%d] Write-queue listening on FD %d will now stop.", Self->Head.UniqueID, Self->SocketHandle);
          #ifdef __linux__
             RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD_REMOVE|RFD_WRITE|RFD_SOCKET, NULL, NULL);
          #elif _WIN32
@@ -286,6 +276,4 @@ static void client_server_outgoing(SOCKET_HANDLE Void, struct rkNetSocket *Data)
 
    Self->InUse--;
    Self->OutgoingRecursion--;
-
-   LOGRETURN();
 }

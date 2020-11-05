@@ -368,6 +368,9 @@ INLINE LONG IntToStr(LARGE Integer, STRING String, LONG StringSize) {
 
 #ifdef  __cplusplus
 }
+
+#include <parasol/main.hpp>
+
 #endif
 
 #endif // PARASOL_MAIN_H

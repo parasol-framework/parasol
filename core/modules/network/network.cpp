@@ -143,8 +143,6 @@ enum {
    SSL_HANDSHAKE_WRITE
 };
 
-static void client_server_incoming(SOCKET_HANDLE, struct rkNetSocket *);
-
 #ifdef _WIN32
    #include "win32/winsockwrappers.h"
 #endif
@@ -177,6 +175,7 @@ static struct KeyStore *glDNS = NULL;
 static LONG glResolveNameMsgID = 0;
 static LONG glResolveAddrMsgID = 0;
 
+static void client_server_incoming(SOCKET_HANDLE, struct rkNetSocket *);
 static void resolve_callback(LARGE, FUNCTION *, ERROR, CSTRING, struct IPAddress *, LONG);
 static BYTE check_machine_name(CSTRING HostName) __attribute__((unused));
 static ERROR cache_host(CSTRING, struct hostent *, struct dns_cache **);
@@ -197,6 +196,7 @@ struct resolve_addr_buffer {
 
 static struct MsgHandler *glResolveNameHandler = NULL;
 static struct MsgHandler *glResolveAddrHandler = NULL;
+static parasol::Log log;
 
 //***************************************************************************
 // Used for receiving synchronous execution results from netResolveName() and netResolveAddress().
@@ -262,7 +262,7 @@ ERROR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    {
       CSTRING msg;
       if ((msg = StartupWinsock()) != 0) {
-         LogErrorMsg("Winsock initialisation failed: %s", msg);
+         log.warning("Winsock initialisation failed: %s", msg);
          return ERR_SystemCall;
       }
       SetResourcePtr(RES_NET_PROCESSING, reinterpret_cast<APTR>(win_net_processing)); // Hooks into ProcessMessages()
@@ -306,9 +306,9 @@ static ERROR MODExpunge(void)
    if (glDNS) { FreeResource(glDNS); glDNS = NULL; }
 
 #ifdef _WIN32
-   LogMsg("Closing winsock.");
+   log.msg("Closing winsock.");
 
-   if (ShutdownWinsock() != 0) LogErrorMsg("Warning: Winsock DLL Cleanup failed.");
+   if (ShutdownWinsock() != 0) log.warning("Warning: Winsock DLL Cleanup failed.");
 #endif
 
    if (clNetSocket)    { acFree(clNetSocket); clNetSocket = NULL; }
@@ -344,10 +344,12 @@ struct(IPAddress) IPAddress: A pointer to the IPAddress structure.
 
 static CSTRING netAddressToStr(struct IPAddress *Address)
 {
+   parasol::Log log(__FUNCTION__);
+
    if (!Address) return NULL;
 
    if (Address->Type != IPADDR_V4) {
-      LogF("@netAddressToStr()","Only IPv4 Addresses are supported currently");
+      log.warning("Only IPv4 Addresses are supported currently");
       return NULL;
    }
 
@@ -524,7 +526,7 @@ Failed: The address could not be resolved
 
 static ERROR netResolveAddress(CSTRING Address, LONG Flags, FUNCTION *Callback, LARGE ClientData)
 {
-   if (!Address) return PostError(ERR_NullArgs);
+   if (!Address) return log.error(ERR_NullArgs);
 
    struct IPAddress ip;
    if (netStrToAddress(Address, &ip) != ERR_Okay) return ERR_Args;
@@ -551,7 +553,7 @@ static ERROR netResolveAddress(CSTRING Address, LONG Flags, FUNCTION *Callback, 
       #ifdef _WIN32
          struct dns_cache *dns;
          struct hostent *host = win_gethostbyaddr(&ip);
-         if (!host) return LogError(ERH_Function, ERR_Failed);
+         if (!host) return log.error(ERH_Function, ERR_Failed);
 
          ERROR error = cache_host(NULL, host, &dns);
          if (!error) {
@@ -648,7 +650,7 @@ Failed:
 
 static ERROR netResolveName(CSTRING HostName, LONG Flags, FUNCTION *Callback, LARGE ClientData)
 {
-   if (!HostName) return PostError(ERR_NullArgs);
+   if (!HostName) return log.error(ERR_NullArgs);
 
    FMSG("ResolveName()","Host: %s, Flags: $%.8x", HostName, Flags);
 
@@ -722,7 +724,7 @@ static ERROR netResolveName(CSTRING HostName, LONG Flags, FUNCTION *Callback, LA
       #elif _WIN32
          ERROR error;
          struct hostent *host = win_gethostbyname(HostName);
-         if (!host) return LogError(ERH_Function, ERR_Failed);
+         if (!host) return log.error(ERH_Function, ERR_Failed);
 
          struct dns_cache *dns;
          if (!(error = cache_host(HostName, host, &dns))) {
@@ -770,7 +772,7 @@ static ERROR netSetSSL(objNetSocket *Socket, ...)
    ERROR error;
    va_list list;
 
-   if (!Socket) return PostError(ERR_NullArgs);
+   if (!Socket) return log.error(ERR_NullArgs);
 
    va_start(list, Socket);
    while ((tagid = va_arg(list, LONG))) {
@@ -833,7 +835,9 @@ static void client_server_pending(SOCKET_HANDLE FD, APTR Self)
 
 static ERROR RECEIVE(objNetSocket *Self, SOCKET_HANDLE Socket, APTR Buffer, LONG BufferSize, LONG Flags, LONG *Result)
 {
-   FMSG("~RECEIVE()","Socket: %d, BufSize: %d, Flags: $%.8x, SSLBusy: %d", Socket, BufferSize, Flags, Self->SSLBusy);
+   parasol::Log log(__FUNCTION__);
+
+   log.traceBranch("Socket: %d, BufSize: %d, Flags: $%.8x, SSLBusy: %d", Socket, BufferSize, Flags, Self->SSLBusy);
 
    *Result = 0;
 
@@ -841,13 +845,10 @@ static ERROR RECEIVE(objNetSocket *Self, SOCKET_HANDLE Socket, APTR Buffer, LONG
    if (Self->SSLBusy IS SSL_HANDSHAKE_WRITE) ssl_handshake_write(Socket, Self);
    else if (Self->SSLBusy IS SSL_HANDSHAKE_READ) ssl_handshake_read(Socket, Self);
 
-   if (Self->SSLBusy != SSL_NOT_BUSY) {
-      LOGRETURN();
-      return ERR_Okay;
-   }
+   if (Self->SSLBusy != SSL_NOT_BUSY) return ERR_Okay;
 #endif
 
-   if (!BufferSize) { LOGRETURN(); return ERR_Okay; }
+   if (!BufferSize) return ERR_Okay;
 
 #ifdef ENABLE_SSL
    BYTE read_blocked;
@@ -862,7 +863,6 @@ static ERROR RECEIVE(objNetSocket *Self, SOCKET_HANDLE Socket, APTR Buffer, LONG
          if (result <= 0) {
             switch (SSL_get_error(Self->SSL, result)) {
                case SSL_ERROR_ZERO_RETURN:
-                  LOGRETURN();
                   return ERR_Disconnected;
 
                case SSL_ERROR_WANT_READ:
@@ -873,7 +873,7 @@ static ERROR RECEIVE(objNetSocket *Self, SOCKET_HANDLE Socket, APTR Buffer, LONG
                   // WANT_WRITE is returned if we're trying to rehandshake and the write operation would block.  We
                   // need to wait on the socket to be writeable, then restart the read when it is.
 
-                   LogF("RECEIVE()","SSL socket handshake requested by server.");
+                   log.msg("SSL socket handshake requested by server.");
                    Self->SSLBusy = SSL_HANDSHAKE_WRITE;
                    #ifdef __linux__
                       RegisterFD((HOSTHANDLE)Socket, RFD_WRITE|RFD_SOCKET, &ssl_handshake_write, Self);
@@ -881,14 +881,12 @@ static ERROR RECEIVE(objNetSocket *Self, SOCKET_HANDLE Socket, APTR Buffer, LONG
                       win_socketstate(Socket, -1, TRUE);
                    #endif
 
-                   LOGRETURN();
                    return ERR_Okay;
 
                 case SSL_ERROR_SYSCALL:
 
                 default:
-                   LogErrorMsg("SSL read problem");
-                   LOGRETURN();
+                   log.warning("SSL read problem");
                    return ERR_Okay; // Non-fatal
             }
          }
@@ -899,7 +897,7 @@ static ERROR RECEIVE(objNetSocket *Self, SOCKET_HANDLE Socket, APTR Buffer, LONG
          }
       } while ((pending = SSL_pending(Self->SSL)) AND (!read_blocked) AND (BufferSize > 0));
 
-      FMSG("RECEIVE","Pending: %d, BufSize: %d, Blocked: %d", pending, BufferSize, read_blocked);
+      log.trace("Pending: %d, BufSize: %d, Blocked: %d", pending, BufferSize, read_blocked);
 
       if (pending) {
          // With regards to non-blocking SSL sockets, be aware that a socket can be empty in terms of incoming data,
@@ -920,7 +918,6 @@ static ERROR RECEIVE(objNetSocket *Self, SOCKET_HANDLE Socket, APTR Buffer, LONG
          #endif
       }
 
-      LOGRETURN();
       return ERR_Okay;
    }
 #endif
@@ -931,25 +928,20 @@ static ERROR RECEIVE(objNetSocket *Self, SOCKET_HANDLE Socket, APTR Buffer, LONG
 
       if (result > 0) {
          *Result = result;
-         LOGRETURN();
          return ERR_Okay;
       }
       else if (result IS 0) { // man recv() says: The return value is 0 when the peer has performed an orderly shutdown.
-         LOGRETURN();
          return ERR_Disconnected;
       }
       else if ((errno IS EAGAIN) OR (errno IS EINTR)) {
-         LOGRETURN();
          return ERR_Okay;
       }
       else {
-         LogErrorMsg("recv() failed: %s", strerror(errno));
-         LOGRETURN();
+         log.warning("recv() failed: %s", strerror(errno));
          return ERR_Failed;
       }
    }
 #elif _WIN32
-   LOGRETURN();
    return WIN_RECEIVE(Socket, Buffer, BufferSize, Flags, Result);
 #else
    #error No support for RECEIVE()
@@ -960,18 +952,19 @@ static ERROR RECEIVE(objNetSocket *Self, SOCKET_HANDLE Socket, APTR Buffer, LONG
 
 static ERROR SEND(objNetSocket *Self, SOCKET_HANDLE Socket, CPTR Buffer, LONG *Length, LONG Flags)
 {
+   parasol::Log log(__FUNCTION__);
+
    if (!*Length) return ERR_Okay;
 
 #ifdef ENABLE_SSL
 
    if (Self->SSL) {
-      FMSG("~SEND()","SSLBusy: %d, Length: %d", Self->SSLBusy, *Length);
+      log.traceBranch("SSLBusy: %d, Length: %d", Self->SSLBusy, *Length);
 
       if (Self->SSLBusy IS SSL_HANDSHAKE_WRITE) ssl_handshake_write(Socket, Self);
       else if (Self->SSLBusy IS SSL_HANDSHAKE_READ) ssl_handshake_read(Socket, Self);
 
       if (Self->SSLBusy != SSL_NOT_BUSY) {
-         LOGRETURN();
          return ERR_Okay;
       }
 
@@ -983,8 +976,7 @@ static ERROR SEND(objNetSocket *Self, SOCKET_HANDLE Socket, CPTR Buffer, LONG *L
 
          switch(ssl_error){
             case SSL_ERROR_WANT_WRITE:
-               FMSG("@SEND()","Buffer overflow (SSL want write)");
-               LOGRETURN();
+               log.traceWarning("Buffer overflow (SSL want write)");
                return ERR_BufferOverflow;
 
             // We get a WANT_READ if we're trying to rehandshake and we block on write during the current connection.
@@ -992,39 +984,35 @@ static ERROR SEND(objNetSocket *Self, SOCKET_HANDLE Socket, CPTR Buffer, LONG *L
             // We need to wait on the socket to be readable but reinitiate our write when it is
 
             case SSL_ERROR_WANT_READ:
-               MSG("SEND() Handshake requested by server.");
+               log.trace("Handshake requested by server.");
                Self->SSLBusy = SSL_HANDSHAKE_READ;
                #ifdef __linux__
                   RegisterFD((HOSTHANDLE)Socket, RFD_READ|RFD_SOCKET, &ssl_handshake_read, Self);
                #elif _WIN32
                   win_socketstate(Socket, TRUE, -1);
                #endif
-               LOGRETURN();
                return ERR_Okay;
 
             case SSL_ERROR_SYSCALL:
-               LogErrorMsg("SSL_write() SysError %d: %s", errno, strerror(errno));
-               LOGRETURN();
+               log.warning("SSL_write() SysError %d: %s", errno, strerror(errno));
                return ERR_Failed;
 
             default:
                while (ssl_error) {
-                  LogErrorMsg("SSL_write() error %d, %s", ssl_error, ERR_error_string(ssl_error, NULL));
+                  log.warning("SSL_write() error %d, %s", ssl_error, ERR_error_string(ssl_error, NULL));
                   ssl_error = ERR_get_error();
                }
 
-               LOGRETURN();
                return ERR_Failed;
          }
       }
       else {
          if (*Length != bytes_sent) {
-            FMSG("@SEND:","Sent %d of requested %d bytes.", bytes_sent, *Length);
+            log.traceWarning("Sent %d of requested %d bytes.", bytes_sent, *Length);
          }
          *Length = bytes_sent;
       }
 
-      LOGRETURN();
       return ERR_Okay;
    }
 #endif
@@ -1038,7 +1026,7 @@ static ERROR SEND(objNetSocket *Self, SOCKET_HANDLE Socket, CPTR Buffer, LONG *L
       if (errno IS EAGAIN) return ERR_BufferOverflow;
       else if (errno IS EMSGSIZE) return ERR_DataSize;
       else {
-         LogErrorMsg("send() failed: %s", strerror(errno));
+         log.warning("send() failed: %s", strerror(errno));
          return ERR_Failed;
       }
    }
@@ -1086,7 +1074,9 @@ static ERROR cache_host(CSTRING HostName, struct hostent *Host, struct dns_cache
       if (!(HostName = Host->h_name)) return ERR_Args;
    }
 
-   LogF("7cache_host()","Host: %s, Addresses: %p (IPV6: %d)", HostName, Host->h_addr_list, (Host->h_addrtype == AF_INET6));
+   parasol::Log log(__FUNCTION__);
+
+   log.debug("Host: %s, Addresses: %p (IPV6: %d)", HostName, Host->h_addr_list, (Host->h_addrtype == AF_INET6));
 
    CSTRING real_name = Host->h_name;
    if (!real_name) real_name = HostName;
@@ -1159,7 +1149,9 @@ static ERROR cache_host(CSTRING HostName, struct addrinfo *Host, struct dns_cach
       if (!(HostName = Host->ai_canonname)) return ERR_Args;
    }
 
-   LogF("7cache_host()","Host: %s, Addresses: %p (IPV6: %d)", HostName, Host->ai_addr, (Host->ai_family == AF_INET6));
+   parasol::Log log(__FUNCTION__);
+
+   log.debug("Host: %s, Addresses: %p (IPV6: %d)", HostName, Host->ai_addr, (Host->ai_family == AF_INET6));
 
    CSTRING real_name = Host->ai_canonname;
    if (!real_name) real_name = HostName;

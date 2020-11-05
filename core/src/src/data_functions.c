@@ -183,6 +183,7 @@ FDEF argsUnsubscribeEvent[] = { { "Void", FD_VOID }, { "Event", FD_PTR }, { 0, 0
 FDEF argsUnsubscribeFeed[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { 0, 0 } };
 FDEF argsUpdateMessage[] = { { "Error", FD_LONG|FD_ERROR }, { "Queue", FD_PTR }, { "Message", FD_LONG }, { "Type", FD_LONG }, { "Data", FD_BUFFER|FD_PTR }, { "Size", FD_LONG|FD_BUFSIZE }, { 0, 0 } };
 FDEF argsUpdateTimer[] = { { "Error", FD_LONG|FD_ERROR }, { "Subscription", FD_PTR }, { "Interval", FD_DOUBLE }, { 0, 0 } };
+FDEF argsVLogF[] = { { "Void", FD_VOID }, { "Flags", FD_LONG }, { "Header", FD_STR }, { "Message", FD_STR }, { "Args", FD_PTR }, { 0, 0 } };
 FDEF argsVarCopy[] = { { "Error", FD_LONG|FD_ERROR }, { "KeyStore:Source", FD_PTR|FD_STRUCT|FD_RESOURCE }, { "KeyStore:Dest", FD_PTR|FD_STRUCT|FD_RESOURCE }, { 0, 0 } };
 FDEF argsVarGet[] = { { "Error", FD_LONG|FD_ERROR }, { "KeyStore:Store", FD_PTR|FD_STRUCT|FD_RESOURCE }, { "Name", FD_STR }, { "Data", FD_PTR|FD_RESULT }, { "Size", FD_LONG|FD_BUFSIZE|FD_RESULT }, { 0, 0 } };
 FDEF argsVarGetString[] = { { "Result", FD_STR }, { "KeyStore:Store", FD_PTR|FD_STRUCT|FD_RESOURCE }, { "Key", FD_STR }, { 0, 0 } };
@@ -388,6 +389,7 @@ const struct Function glFunctions[] = {
    { (APTR)KeyIterate, "KeyIterate", argsKeyIterate },
    { (APTR)VarSetSized, "VarSetSized", argsVarSetSized },
    { (APTR)VarLock, "VarLock", argsVarLock },
+   { (APTR)VLogF, "VLogF", argsVLogF },
    { NULL, NULL, NULL }
 };
 

@@ -1613,7 +1613,7 @@ end
     <prototype>void LogF(CSTRING Header, CSTRING Message, ...)</prototype>
     <input>
       <param type="CSTRING" name="Header">A short name for the first column. Typically function names are placed here, so that the origin of the message is obvious.</param>
-      <param type="CSTRING" name="Message">The first member of the array must be a string.</param>
+      <param type="CSTRING" name="Message">A formatted message to print.</param>
       <param type="..." name="Tags">As per printf() rules, one parameter for every % symbol that has been used in the Message string is required.</param>
     </input>
     <description>
@@ -3720,6 +3720,22 @@ SetField(Object, FID_Statement|TSTR, "string");
   </function>
 
   <function>
+    <name>VLogF</name>
+    <category>Logging</category>
+    <comment>Sends formatted messages to the standard log.</comment>
+    <prototype>void VLogF(LONG Flags, CSTRING Header, CSTRING Message, APTR Args)</prototype>
+    <input>
+      <param type="LONG" name="Flags" lookup="VLF">Optional flags</param>
+      <param type="CSTRING" name="Header">A short name for the first column. Typically function names are placed here, so that the origin of the message is obvious.</param>
+      <param type="CSTRING" name="Message">A formatted message to print.</param>
+      <param type="APTR" name="Args">A va_list corresponding to the arguments referenced in Message.</param>
+    </input>
+    <description>
+<p>Please refer to LogF().  This function is not intended for external use.</p>
+    </description>
+  </function>
+
+  <function>
     <name>VarCopy</name>
     <category>KeyStore</category>
     <comment>Copies all keys in a KeyStore source to a destination KeyStore.</comment>
@@ -3947,6 +3963,16 @@ end
       <const name="COMPRESS_FILE"/>
       <const name="REMOVE_FILE"/>
       <const name="DECOMPRESS_OBJECT"/>
+    </constants>
+
+    <constants lookup="VLF" comment="VlogF flags">
+      <const name="ERROR"/>
+      <const name="WARNING"/>
+      <const name="DEBUG"/>
+      <const name="FUNCTION"/>
+      <const name="TRACE"/>
+      <const name="CRITICAL"/>
+      <const name="BRANCH"/>
     </constants>
 
     <constants lookup="MOF" comment="Module flags">
