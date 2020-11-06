@@ -288,7 +288,7 @@ gui.dialog.file = function(Options)
             end
          })
 
-         lFilter.acDataFeed(0, DATA_XML, xml)
+         lFilter.menu.acDataFeed(0, DATA_XML, xml)
 
          footer = footer + lFilter.height + glWidgetGap
          lFilter.acShow()

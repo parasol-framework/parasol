@@ -22,6 +22,12 @@ file.ui.copy(Source, Dest, Options)
 file.ui.paste(Dest, Cluster)
    Paste files on the clipboard to a destination path.
 
+file.ui.delete(Path, Options)
+   Delete the identified file or folder at Path.  A progress window is opened if the operation is taking a while to run.
+   Options are:
+
+   prompt: If true, prompt the user with a yes/no dialog before attempting to delete the item.
+
 --]]
 
    require 'common'
@@ -245,4 +251,88 @@ file.ui.paste = function(Dest, Cluster)
    if move then
       clip.mtRemove(CLIPTYPE_FILE)
    end
+end
+
+--[[
+
+** The following C clip is the original dialog feedback for file.delete()
+
+const char feedback_script[] = "
+   require 'gui/dialog'
+
+   local dlg = gui.dialog.message({
+      image   = 'icons:tools/eraser',
+      title   = 'File Deletion Progress',
+      message = 'Deleting...',
+      options = { id=1, text='Cancel', icon='items/cancel' },
+      feedback = function(Dialog, Response, State)
+         if Response then
+            if Response.id == 1 then
+               obj.find('self')._status = '1'
+            end
+         else
+            obj.find('self')._status = '2'
+         end
+      end
+   })
+
+function update_msg(Message)
+   dlg.message(Message)
+end
+"
+
+LONG feedback_delete(struct FileFeedback *Feedback)
+{
+   objFile *Self = Feedback->User;
+
+   if (Self->TargetID IS -1) return FFR_OKAY;
+
+   if (Self->ProgressDialog) {
+      char response[20];
+      if (!acGetVar(Self->ProgressDialog, "response", response, sizeof(response))) {
+         if (response[0] IS '1') return FFR_ABORT;
+         else if (response[0] IS '2') {
+            // If the window was closed then continue deleting files, don't bother the user with further messages.
+
+            acFree(Self->ProgressDialog);
+            Self->ProgressDialog = NULL;
+            Self->TargetID = -1;
+            return FFR_OKAY;
+         }
+      }
+   }
+
+   // If the copy process exceeds a set time period, popup a progress window
+
+   if ((!Self->ProgressDialog) AND ((PreciseTime() - Self->ProgressTime) > 500000LL)) {
+      if (!CreateObject(ID_SCRIPT, NF_INTEGRAL, (OBJECTPTR *)&Self->ProgressDialog,
+            FID_Target|TLONG,   Self->TargetID,
+            FID_Statement|TSTR, feedback_script,
+            TAGEND)) {
+         acShow(Self->ProgressDialog);
+      }
+   }
+
+   if (Self->ProgressDialog) {
+      LONG i;
+
+      STRING str = Feedback->Path;
+      for (i=0; str[i]; i++);
+      while ((i > 0) AND (str[i-1] != '/') AND (str[i-1] != '\\') AND (str[i-1] != ':')) i--;
+
+      char buffer[256];
+      StrFormat(buffer, sizeof(buffer), "Deleting: %s", str+i);
+      struct ScriptArg args[] = { { "Message", FD_STRING, { .Address = buffer } } };
+      scExec(Self->ProgressDialog, "update_msg", args, 1);
+      Self->ProgressTime = PreciseTime();
+
+      ProcessMessages(0, 0);
+   }
+
+   return FFR_OKAY;
+}
+--]]
+
+file.ui.delete = function(Path)
+
 end

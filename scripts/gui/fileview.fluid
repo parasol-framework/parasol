@@ -677,6 +677,8 @@ gui.fileview = function(View, Options)
 
       if Path == self.path then return self.path end
 
+      msg('fileview.browse() ' .. nz(Path, 'NIL'))
+
       if Path then -- Set the new location string
          self.path = file.sanitisePath(Path)
          if not string.find(self.path, '^.+[:/\\]$') then
@@ -705,6 +707,7 @@ gui.fileview = function(View, Options)
       end
 
       if self.path then -- Monitor the new path for changes.  Note that not all platforms support this feature.
+         msg('Monitor path "' .. self.path .. '"')
          lWatch = obj.new('file', { path = self.path })
          if lWatch.mtWatch(pathWatch, 0, bit.bor(MFF_CREATE,MFF_DELETE,MFF_ATTRIB,MFF_CLOSED,MFF_MOVED)) != ERR_Okay then
             lWatch = nil
