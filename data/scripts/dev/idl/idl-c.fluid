@@ -1342,7 +1342,8 @@ glTypes = {
    printf     = { fd='FD_TAGS',      c_type='...' },
    void       = { fd='FD_VOID',      c_type='void' },
    struct     = { fd='FD_STRUCT',    c_type='APTR' },
-   resource   = { fd='FD_STRUCT|FD_RESOURCE', c_type='APTR' }
+   resource   = { fd='FD_STRUCT|FD_RESOURCE', c_type='APTR' },
+   va_list    = { fd='FD_PTR',       c_type='va_list' }
 }
 
 function cType(Field, Origin)

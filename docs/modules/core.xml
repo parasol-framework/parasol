@@ -3723,12 +3723,12 @@ SetField(Object, FID_Statement|TSTR, "string");
     <name>VLogF</name>
     <category>Logging</category>
     <comment>Sends formatted messages to the standard log.</comment>
-    <prototype>void VLogF(LONG Flags, CSTRING Header, CSTRING Message, APTR Args)</prototype>
+    <prototype>void VLogF(LONG Flags, CSTRING Header, CSTRING Message, va_list Args)</prototype>
     <input>
       <param type="LONG" name="Flags" lookup="VLF">Optional flags</param>
       <param type="CSTRING" name="Header">A short name for the first column. Typically function names are placed here, so that the origin of the message is obvious.</param>
       <param type="CSTRING" name="Message">A formatted message to print.</param>
-      <param type="APTR" name="Args">A va_list corresponding to the arguments referenced in Message.</param>
+      <param type="va_list" name="Args">A va_list corresponding to the arguments referenced in Message.</param>
     </input>
     <description>
 <p>Please refer to LogF().  This function is not intended for external use.</p>

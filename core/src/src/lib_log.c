@@ -346,12 +346,12 @@ Please refer to LogF().  This function is not intended for external use.
 int(VLF) Flags: Optional flags
 cstr Header: A short name for the first column. Typically function names are placed here, so that the origin of the message is obvious.
 cstr Message: A formatted message to print.
-ptr Args: A va_list corresponding to the arguments referenced in Message.
+va_list Args: A va_list corresponding to the arguments referenced in Message.
 -END-
 
 *****************************************************************************/
 
-void VLogF(LONG Flags, CSTRING Header, CSTRING Message, APTR Args)
+void VLogF(LONG Flags, CSTRING Header, CSTRING Message, va_list Args)
 {
    CSTRING name, action;
    BYTE msglevel, new_branch, msgstate;
