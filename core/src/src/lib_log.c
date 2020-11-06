@@ -379,7 +379,7 @@ void VLogF(LONG Flags, CSTRING Header, CSTRING Message, va_list Args)
       if (Flags & VLF_CRITICAL) {
          if (Header) {
             #ifdef __ANDROID__
-               __android_log_vprint(ANDROID_LOG_ERROR, Header, Message, (va_list)Args);
+               __android_log_vprint(ANDROID_LOG_ERROR, Header, Message, Args);
             #else
                #ifdef ESC_OUTPUT
                   #ifdef _WIN32
@@ -391,7 +391,7 @@ void VLogF(LONG Flags, CSTRING Header, CSTRING Message, va_list Args)
                   fprintf(stderr, "%s ", Header);
                #endif
 
-               vfprintf(stderr, Message, (va_list)Args);
+               vfprintf(stderr, Message, Args);
 
                #ifdef ESC_OUTPUT
                   fprintf(stderr, "\033[0m");
@@ -477,10 +477,10 @@ void VLogF(LONG Flags, CSTRING Header, CSTRING Message, va_list Args)
                else snprintf(msg, sizeof(msg), "[%s:%d] %s", name, tlContext->Object->UniqueID, Message);
             }
 
-            __android_log_vprint((msglevel <= 2) ? ANDROID_LOG_ERROR : ANDROID_LOG_INFO, msgheader, msg, (va_list)Args);
+            __android_log_vprint((msglevel <= 2) ? ANDROID_LOG_ERROR : ANDROID_LOG_INFO, msgheader, msg, Args);
          }
          else {
-            __android_log_vprint((msglevel <= 2) ? ANDROID_LOG_ERROR : ANDROID_LOG_INFO, msgheader, Message, (va_list)Args);
+            __android_log_vprint((msglevel <= 2) ? ANDROID_LOG_ERROR : ANDROID_LOG_INFO, msgheader, Message, Args);
          }
 
       #else
@@ -513,7 +513,7 @@ void VLogF(LONG Flags, CSTRING Header, CSTRING Message, va_list Args)
          }
          else fprintf(stderr, "%s", msgheader);
 
-         vfprintf(stderr, Message, (va_list)Args);
+         vfprintf(stderr, Message, Args);
 
          #if defined(ESC_OUTPUT) AND !defined(_WIN32)
             if ((glLogLevel > 2) AND (msglevel <= 2)) fprintf(stderr, "\033[0m");
