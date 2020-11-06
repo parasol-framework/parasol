@@ -4,42 +4,54 @@
 namespace parasol {
 
 //****************************************************************************
+// Resource guard for any allocation that can be freed with FreeResource()
+
+template <class T>
+class GuardedResource { // C++ wrapper for terminating resources when scope is lost
+   private:
+      APTR resource;
+   public:
+      GuardedResource(T Resource) { resource = Resource; }
+      ~GuardedResource() { FreeResource(resource); }
+};
+
+template <class T>
+std::unique_ptr<GuardedResource<T>> ScopedResource(T Resource)
+{
+   return std::make_unique<GuardedResource<T>>(Resource);
+}
+
+//****************************************************************************
 // Resource guard for temporarily switching context and back when out of scope.
 //
 // Usage: parasol::SwitchObject(YourObject)
 
 template <class T>
-class Context { // C++ wrapper for changing the current context with a resource guard in place
+class GuardedContext { // C++ wrapper for changing the current context with a resource guard in place
    private:
       OBJECTPTR old_context;
    public:
-      Context(T NewContext) { old_context = SetContext(NewContext); }
-      ~Context() { SetContext(old_context); }
+      GuardedContext(T NewContext) { old_context = SetContext(NewContext); }
+      ~GuardedContext() { SetContext(old_context); }
 };
 
 template <class T>
-std::unique_ptr<Context<T>> SwitchContext(T Object)
+std::unique_ptr<GuardedContext<T>> SwitchContext(T Object)
 {
-   return std::make_unique<Context<T>>(Object);
+   return std::make_unique<GuardedContext<T>>(Object);
 }
 
 template <class T>
-std::unique_ptr<Context<T>> SwitchContext(FUNCTION *Function)
+std::unique_ptr<GuardedContext<T>> SwitchContext(FUNCTION *Function)
 {
-   return std::make_unique<Context<T>>(Function->StdC.Context);
+   return std::make_unique<GuardedContext<T>>(Function->StdC.Context);
 }
 
 //****************************************************************************
 
 class Log { // C++ wrapper for Parasol's log functionality
    private:
-      class LogReturnDummy {
-         public:
-            LogReturnDummy() { }
-            ~LogReturnDummy() { }
-      };
-
-      class LogReturnBranch: public LogReturnDummy {
+      class LogReturnBranch {
          public:
             LogReturnBranch() { }
             ~LogReturnBranch() {
@@ -61,27 +73,34 @@ class Log { // C++ wrapper for Parasol's log functionality
       std::unique_ptr<LogReturnBranch> branch(CSTRING Message, ...) {
          va_list arg;
          va_start(arg, Message);
-         VLogF(VLF_BRANCH, header, Message, arg);
+         VLogF(VLF_DEBUG|VLF_BRANCH, header, Message, arg);
          va_end(arg);
          return std::make_unique<LogReturnBranch>();
       }
 
-      std::unique_ptr<LogReturnDummy> traceBranch(CSTRING Message, ...) {
-         #ifdef DEBUG
-            va_list arg;
-            va_start(arg, Message);
-            VLogF(VLF_BRANCH, header, Message, arg);
-            va_end(arg);
-            return std::make_unique<LogReturnBranch>();
-         #else
-            return std::make_unique<LogReturnDummy>();
-         #endif
-      }
-
-      void msg(CSTRING Message, ...) {
+      #ifdef DEBUG
+      std::unique_ptr<LogReturnBranch> traceBranch(CSTRING Message, ...) {
          va_list arg;
          va_start(arg, Message);
-         VLogF(0, header, Message, arg);
+         VLogF(VLF_DEBUG|VLF_BRANCH, header, Message, arg);
+         va_end(arg);
+         return std::make_unique<LogReturnBranch>();
+      }
+      #else
+      void traceBranch(CSTRING Message, ...) { }
+      #endif
+
+      void app(CSTRING Message, ...) { // Info level, recommended for applications only
+         va_list arg;
+         va_start(arg, Message);
+         VLogF(VLF_DEBUG, header, Message, arg);
+         va_end(arg);
+      }
+
+      void msg(CSTRING Message, ...) { // Defaults to debug level, recommended for modules
+         va_list arg;
+         va_start(arg, Message);
+         VLogF(VLF_DEBUG, header, Message, arg);
          va_end(arg);
       }
 
@@ -106,24 +125,10 @@ class Log { // C++ wrapper for Parasol's log functionality
          va_end(arg);
       }
 
-      void function(CSTRING Message, ...) {
+      void function(CSTRING Message, ...) { // Equivalent to branch() but without a new branch being created
          va_list arg;
          va_start(arg, Message);
-         VLogF(VLF_FUNCTION, header, Message, arg);
-         va_end(arg);
-      }
-
-      void action(CSTRING Message, ...) {
-         va_list arg;
-         va_start(arg, Message);
-         VLogF(VLF_FUNCTION, header, Message, arg);
-         va_end(arg);
-      }
-
-      void method(CSTRING Message, ...) {
-         va_list arg;
-         va_start(arg, Message);
-         VLogF(VLF_FUNCTION, header, Message, arg);
+         VLogF(VLF_DEBUG|VLF_FUNCTION, header, Message, arg);
          va_end(arg);
       }
 
@@ -151,7 +156,7 @@ class Log { // C++ wrapper for Parasol's log functionality
          #ifdef DEBUG
             va_list arg;
             va_start(arg, Message);
-            VLogF(0, header, Message, arg);
+            VLogF(VLF_TRACE, header, Message, arg);
             va_end(arg);
          #endif
       }

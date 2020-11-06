@@ -12,14 +12,15 @@ This file contains all logging functions.
 
 Log levels are:
 
-1  Major errors that should be displayed to the user.
-2  Any error suitable for display to a developer or technically minded user.
-3  Application log message
-4  Application log message, level 2
-5  Top-level Parasol API messages, e.g. function entry points (default)
+0  CRITICAL Display the message irrespective of the log level.
+1  ERROR Major errors that should be displayed to the user.
+2  WARN Any error suitable for display to a developer or technically minded user.
+3  Application log message, level 1
+4  INFO Application log message, level 2
+5  DEBUG Top-level Parasol API messages, e.g. function entry points (default)
 6  Sub-level Parasol API messages.  For messages within functions, and entry-points for minor functions.
 7  More detailed API messages.
-8  Extremely detailed API messages suitable for debugging only.
+8  TRACE Extremely detailed API messages suitable for intensive debugging only.
 9  Noisy debug messages that will appear frequently, e.g. being used in inner loops.
 
 *****************************************************************************/
@@ -373,44 +374,39 @@ void VLogF(LONG Flags, CSTRING Header, CSTRING Message, va_list Args)
 
    if (Flags & VLF_FUNCTION) msgstate = MS_FUNCTION;
 
-   if (Flags & (VLF_ERROR|VLF_CRITICAL)) {
-      msglevel = 1;
-
-      if (Flags & VLF_CRITICAL) {
-         if (Header) {
-            #ifdef __ANDROID__
-               __android_log_vprint(ANDROID_LOG_ERROR, Header, Message, Args);
+   if (Flags & VLF_CRITICAL) { // Print the message irrespective of the log level
+      #ifdef __ANDROID__
+         __android_log_vprint(ANDROID_LOG_ERROR, Header ? Header : "Parasol", Message, Args);
+      #else
+         #ifdef ESC_OUTPUT
+            if (!Header) Header = "";
+            #ifdef _WIN32
+               fprintf(stderr, "!%s ", Header);
             #else
-               #ifdef ESC_OUTPUT
-                  #ifdef _WIN32
-                     fprintf(stderr, "!%s ", Header);
-                  #else
-                     fprintf(stderr, "\033[1m%s ", Header);
-                  #endif
-               #else
-                  fprintf(stderr, "%s ", Header);
-               #endif
-
-               vfprintf(stderr, Message, Args);
-
-               #ifdef ESC_OUTPUT
-                  fprintf(stderr, "\033[0m");
-               #endif
-
-               fprintf(stderr, "\n");
+               fprintf(stderr, "\033[1m%s ", Header);
             #endif
-         }
+         #else
+            if (Header) fprintf(stderr, "%s ", Header);
+         #endif
 
-         goto exit;
-      }
+         vfprintf(stderr, Message, Args);
+
+         #ifdef ESC_OUTPUT
+            #ifndef _WIN32
+               fprintf(stderr, "\033[0m");
+            #endif
+         #endif
+
+         fprintf(stderr, "\n");
+      #endif
+
+      goto exit;
    }
-   else if (Flags & VLF_WARNING) {
-      if (glLogLevel < 2) goto exit;
-      msglevel = 2;
-   }
+   else if (Flags & VLF_ERROR) msglevel = 1;
+   else if (Flags & VLF_WARNING) msglevel = 2;
    else if (Flags & VLF_DEBUG) msglevel = 5;
-   else if (Flags & VLF_TRACE) msglevel = 9;
-   else msglevel = 3;
+   else if (Flags & VLF_TRACE) msglevel = 8;
+   else msglevel = 3; // Assume application log message
 
    if ((Header) AND (!*Header)) Header = NULL;
 
