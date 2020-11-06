@@ -799,6 +799,16 @@ struct ClipRectangle {
 #define MTF_ANIM 0x00000008
 #define MTF_RELATIVE 0x00000010
 
+// VlogF flags
+
+#define VLF_BRANCH 0x00000001
+#define VLF_ERROR 0x00000002
+#define VLF_WARNING 0x00000004
+#define VLF_CRITICAL 0x00000008
+#define VLF_DEBUG 0x00000010
+#define VLF_TRACE 0x00000020
+#define VLF_FUNCTION 0x00000040
+
 // Module flags
 
 #define MOF_LINK_LIBRARY 0x00000001
@@ -1881,6 +1891,7 @@ struct CoreBase {
    ERROR (*_KeyIterate)(struct KeyStore *, ULONG, ULONG *, APTR, LONG *);
    ERROR (*_VarSetSized)(struct KeyStore *, CSTRING, LONG, APTR, LONG *);
    ERROR (*_VarLock)(struct KeyStore *, LONG);
+   void (*_VLogF)(int, const char *, const char *, va_list);
 };
 
 #ifndef PRV_CORE_MODULE
@@ -2075,6 +2086,7 @@ struct CoreBase {
 #define KeyIterate(...) (CoreBase->_KeyIterate)(__VA_ARGS__)
 #define VarSetSized(...) (CoreBase->_VarSetSized)(__VA_ARGS__)
 #define VarLock(...) (CoreBase->_VarLock)(__VA_ARGS__)
+#define VLogF(...) (CoreBase->_VLogF)(__VA_ARGS__)
 #endif
 
 

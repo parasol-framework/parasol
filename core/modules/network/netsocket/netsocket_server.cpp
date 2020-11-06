@@ -4,12 +4,13 @@
 
 static void server_client_connect(SOCKET_HANDLE FD, objNetSocket *Self)
 {
+   parasol::Log log(__FUNCTION__);
    UBYTE ip[8];
    SOCKET_HANDLE clientfd;
 
-   FMSG("~socket_connect()","FD: %d", FD);
+   log.traceBranch("FD: %d", FD);
 
-   OBJECTPTR context = SetContext(Self);
+   parasol::SwitchContext(Self);
 
    if (Self->IPV6) {
 #ifdef __linux__
@@ -22,10 +23,10 @@ static void server_client_connect(SOCKET_HANDLE FD, objNetSocket *Self)
          if (Self->SSL) {
             LONG result;
             if ((result = xtSSL_accept(Self->SSL)) != 1) {
-               LogErrorMsg("SSL_accept: %s", xtERR_error_string(xtSSL_get_error(Self->SSL, result), NULL));
+               log.warning("SSL_accept: %s", xtERR_error_string(xtSSL_get_error(Self->SSL, result), NULL));
             }
 
-            LogErrorMsg("No support for retrieving IPV6 address and client handle yet.");
+            log.warning("No support for retrieving IPV6 address and client handle yet.");
 
             clientfd = NOHANDLE;
 
@@ -34,7 +35,7 @@ static void server_client_connect(SOCKET_HANDLE FD, objNetSocket *Self)
             struct sockaddr_in6 addr;
             socklen_t len = sizeof(addr);
             clientfd = accept(FD, (struct sockaddr *)&addr, &len);
-            if (clientfd IS NOHANDLE) { LOGRETURN(); return; }
+            if (clientfd IS NOHANDLE) return;
             ip[0] = addr.sin6_addr.s6_addr[0];
             ip[1] = addr.sin6_addr.s6_addr[1];
             ip[2] = addr.sin6_addr.s6_addr[2];
@@ -48,7 +49,7 @@ static void server_client_connect(SOCKET_HANDLE FD, objNetSocket *Self)
          struct sockaddr_in6 addr;
          socklen_t len = sizeof(addr);
          clientfd = accept(FD, (struct sockaddr *)&addr, &len);
-         if (clientfd IS NOHANDLE) { LOGRETURN(); return; }
+         if (clientfd IS NOHANDLE) return;
          ip[0] = addr.sin6_addr.s6_addr[0];
          ip[1] = addr.sin6_addr.s6_addr[1];
          ip[2] = addr.sin6_addr.s6_addr[2];
@@ -59,9 +60,7 @@ static void server_client_connect(SOCKET_HANDLE FD, objNetSocket *Self)
          ip[7] = addr.sin6_addr.s6_addr[7];
       #endif
 #else
-      LogF("@socket_connect","IPV6 not supported yet.");
-      SetContext(context);
-      LOGRETURN();
+      log.warning("IPV6 not supported yet.");
       return;
 #endif
    }
@@ -77,9 +76,7 @@ static void server_client_connect(SOCKET_HANDLE FD, objNetSocket *Self)
       #endif
 
       if (clientfd IS NOHANDLE) {
-         LogF("@server_connect","accept() failed to return an FD.");
-         SetContext(context);
-         LOGRETURN();
+         log.warning("accept() failed to return an FD.");
          return;
       }
 
@@ -95,9 +92,7 @@ static void server_client_connect(SOCKET_HANDLE FD, objNetSocket *Self)
 
    if (Self->TotalClients >= Self->ClientLimit) {
       CLOSESOCKET(clientfd);
-      PostError(ERR_ArrayFull);
-      SetContext(context);
-      LOGRETURN();
+      log.error(ERR_ArrayFull);
       return;
    }
 
@@ -112,8 +107,6 @@ static void server_client_connect(SOCKET_HANDLE FD, objNetSocket *Self)
    if (!client_ip) {
       if (AllocMemory(sizeof(struct rkNetClient), MEM_DATA, &client_ip, NULL) != ERR_Okay) {
          CLOSESOCKET(clientfd);
-         SetContext(context);
-         LOGRETURN();
          return;
       }
 
@@ -134,10 +127,8 @@ static void server_client_connect(SOCKET_HANDLE FD, objNetSocket *Self)
       if (client_ip->Sockets) {
          // Check if the client is alive by writing to it.  If the client is dead, remove it and continue with the new connection.
 
-         LogF("socket_connect","Preventing second connection attempt from IP %d.%d.%d.%d\n", client_ip->IP[0], client_ip->IP[1], client_ip->IP[2], client_ip->IP[3]);
+         log.msg("Preventing second connection attempt from IP %d.%d.%d.%d\n", client_ip->IP[0], client_ip->IP[1], client_ip->IP[2], client_ip->IP[3]);
          CLOSESOCKET(clientfd);
-         SetContext(context);
-         LOGRETURN();
          return;
       }
    }
@@ -153,17 +144,14 @@ static void server_client_connect(SOCKET_HANDLE FD, objNetSocket *Self)
    else {
       CLOSESOCKET(clientfd);
       if (!client_ip->Sockets) free_client(Self, client_ip);
-      SetContext(context);
-      LOGRETURN();
       return;
    }
 
    if (Self->Feedback.Type IS CALL_STDC) {
       void (*routine)(objNetSocket *, objClientSocket *, LONG);
-      OBJECTPTR context = SetContext(Self->Feedback.StdC.Context);
-         routine = reinterpret_cast<void (*)(objNetSocket *, objClientSocket *, LONG)>(Self->Feedback.StdC.Routine);
-         routine(Self, client_socket, NTC_CONNECTED);
-      SetContext(context);
+      parasol::SwitchContext(&Self->Feedback);
+      routine = reinterpret_cast<void (*)(objNetSocket *, objClientSocket *, LONG)>(Self->Feedback.StdC.Routine);
+      routine(Self, client_socket, NTC_CONNECTED);
    }
    else if (Self->Feedback.Type IS CALL_SCRIPT) {
       const struct ScriptArg args[] = {
@@ -178,9 +166,7 @@ static void server_client_connect(SOCKET_HANDLE FD, objNetSocket *Self)
       }
    }
 
-   FMSG("socket_connect","Total clients: %d", Self->TotalClients);
-   SetContext(context);
-   LOGRETURN();
+   log.trace("Total clients: %d", Self->TotalClients);
 }
 
 /*****************************************************************************
@@ -189,6 +175,7 @@ static void server_client_connect(SOCKET_HANDLE FD, objNetSocket *Self)
 
 static void free_client(objNetSocket *Self, struct rkNetClient *Client)
 {
+   parasol::Log log(__FUNCTION__);
    static THREADVAR BYTE recursive = 0;
 
    if (!Client) return;
@@ -196,7 +183,7 @@ static void free_client(objNetSocket *Self, struct rkNetClient *Client)
 
    recursive++;
 
-   LogF("~free_client()","%d:%d:%d:%d, Sockets: %d", Client->IP[0], Client->IP[1], Client->IP[2], Client->IP[3], Client->TotalSockets);
+   log.branch("%d:%d:%d:%d, Sockets: %d", Client->IP[0], Client->IP[1], Client->IP[2], Client->IP[3], Client->TotalSockets);
 
    // Free all sockets related to this client
 
@@ -204,7 +191,7 @@ static void free_client(objNetSocket *Self, struct rkNetClient *Client)
       objClientSocket *current_socket = Client->Sockets;
       free_client_socket(Self, Client->Sockets, TRUE);
       if (Client->Sockets IS current_socket) {
-         LogF("@free_client","Resource management error detected in Client->Sockets");
+         log.warning("Resource management error detected in Client->Sockets");
          break;
       }
    }
@@ -223,7 +210,6 @@ static void free_client(objNetSocket *Self, struct rkNetClient *Client)
    Self->TotalClients--;
 
    recursive--;
-   LogReturn();
 }
 
 /*****************************************************************************
@@ -232,17 +218,18 @@ static void free_client(objNetSocket *Self, struct rkNetClient *Client)
 
 static void free_client_socket(objNetSocket *Socket, objClientSocket *ClientSocket, BYTE Signal)
 {
+   parasol::Log log(__FUNCTION__);
+
    if (!ClientSocket) return;
 
-   LogF("~free_client_socket()","Handle: %d, NetSocket: %d, ClientSocket: %d", ClientSocket->SocketHandle, Socket->Head.UniqueID, ClientSocket->Head.UniqueID);
+   log.branch("Handle: %d, NetSocket: %d, ClientSocket: %d", ClientSocket->SocketHandle, Socket->Head.UniqueID, ClientSocket->Head.UniqueID);
 
    if ((Signal) AND (Socket->Feedback.Type)) {
       if (Socket->Feedback.Type IS CALL_STDC) {
          void (*routine)(objNetSocket *, objClientSocket *, LONG);
-         OBJECTPTR context = SetContext(Socket->Feedback.StdC.Context);
-            routine = reinterpret_cast<void (*)(objNetSocket *, objClientSocket *, LONG)>(Socket->Feedback.StdC.Routine);
-            routine(Socket, ClientSocket, NTC_DISCONNECTED);
-         SetContext(context);
+         parasol::SwitchContext(&Socket->Feedback);
+         routine = reinterpret_cast<void (*)(objNetSocket *, objClientSocket *, LONG)>(Socket->Feedback.StdC.Routine);
+         routine(Socket, ClientSocket, NTC_DISCONNECTED);
       }
       else if (Socket->Feedback.Type IS CALL_SCRIPT) {
          const struct ScriptArg args[] = {
@@ -259,6 +246,4 @@ static void free_client_socket(objNetSocket *Socket, objClientSocket *ClientSock
    }
 
    acFree(ClientSocket);
-
-   LogReturn();
 }

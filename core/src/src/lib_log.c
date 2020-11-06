@@ -12,14 +12,15 @@ This file contains all logging functions.
 
 Log levels are:
 
-1  Major errors that should be displayed to the user.
-2  Any error suitable for display to a developer or technically minded user.
-3  Application log message
-4  Application log message, level 2
-5  Top-level Parasol API messages, e.g. function entry points (default)
+0  CRITICAL Display the message irrespective of the log level.
+1  ERROR Major errors that should be displayed to the user.
+2  WARN Any error suitable for display to a developer or technically minded user.
+3  Application log message, level 1
+4  INFO Application log message, level 2
+5  DEBUG Top-level Parasol API messages, e.g. function entry points (default)
 6  Sub-level Parasol API messages.  For messages within functions, and entry-points for minor functions.
 7  More detailed API messages.
-8  Extremely detailed API messages suitable for debugging only.
+8  TRACE Extremely detailed API messages suitable for intensive debugging only.
 9  Noisy debug messages that will appear frequently, e.g. being used in inner loops.
 
 *****************************************************************************/
@@ -108,7 +109,7 @@ if (!NewObject(ID_DISPLAY, 0, &display)) {
 
 -INPUT-
 cstr Header: A short name for the first column. Typically function names are placed here, so that the origin of the message is obvious.
-cstr Message: The first member of the array must be a string.
+cstr Message: A formatted message to print.
 printf Tags: As per printf() rules, one parameter for every % symbol that has been used in the Message string is required.
 -END-
 
@@ -311,6 +312,204 @@ void LogF(CSTRING Header, CSTRING Format, ...)
          va_start(arg, Format);
          vfprintf(stderr, Format, arg);
          va_end(arg);
+
+         #if defined(ESC_OUTPUT) AND !defined(_WIN32)
+            if ((glLogLevel > 2) AND (msglevel <= 2)) fprintf(stderr, "\033[0m");
+         #endif
+
+         fprintf(stderr, "\n");
+
+         #if defined(__unix__) AND !defined(__ANDROID__)
+            if (flushdbg) {
+               fflush(0); // A fflush() appears to be enough - using fsync() will synchronise to disk, which we don't want by default (slow)
+               if (glSync) fsync(STDERR_FILENO);
+               fcntl(STDERR_FILENO, F_SETFL, glStdErrFlags);
+            }
+         #endif
+      #endif
+   }
+
+exit:
+   if (new_branch) tlDepth++;
+unlock_exit:
+   thread_unlock(TL_PRINT);
+}
+
+/*****************************************************************************
+
+-FUNCTION-
+VLogF: Sends formatted messages to the standard log.
+ExtPrototype: int, const char *, const char *, va_list
+
+Please refer to LogF().  This function is not intended for external use.
+
+-INPUT-
+int(VLF) Flags: Optional flags
+cstr Header: A short name for the first column. Typically function names are placed here, so that the origin of the message is obvious.
+cstr Message: A formatted message to print.
+va_list Args: A va_list corresponding to the arguments referenced in Message.
+-END-
+
+*****************************************************************************/
+
+void VLogF(LONG Flags, CSTRING Header, CSTRING Message, va_list Args)
+{
+   CSTRING name, action;
+   BYTE msglevel, new_branch, msgstate;
+
+   if (glLogLevel <= 0) return;
+   if (tlLogStatus <= 0) return;
+   if (!Args) return;
+
+   thread_lock(TL_PRINT, -1);
+
+   if (Flags & VLF_BRANCH) {
+      new_branch = TRUE;
+      msgstate = MS_FUNCTION;
+   }
+   else {
+      new_branch = FALSE;
+      msgstate = MS_MSG;
+   }
+
+   if (Flags & VLF_FUNCTION) msgstate = MS_FUNCTION;
+
+   if (Flags & VLF_CRITICAL) { // Print the message irrespective of the log level
+      #ifdef __ANDROID__
+         __android_log_vprint(ANDROID_LOG_ERROR, Header ? Header : "Parasol", Message, Args);
+      #else
+         #ifdef ESC_OUTPUT
+            if (!Header) Header = "";
+            #ifdef _WIN32
+               fprintf(stderr, "!%s ", Header);
+            #else
+               fprintf(stderr, "\033[1m%s ", Header);
+            #endif
+         #else
+            if (Header) fprintf(stderr, "%s ", Header);
+         #endif
+
+         vfprintf(stderr, Message, Args);
+
+         #ifdef ESC_OUTPUT
+            #ifndef _WIN32
+               fprintf(stderr, "\033[0m");
+            #endif
+         #endif
+
+         fprintf(stderr, "\n");
+      #endif
+
+      goto exit;
+   }
+   else if (Flags & VLF_ERROR) msglevel = 1;
+   else if (Flags & VLF_WARNING) msglevel = 2;
+   else if (Flags & VLF_DEBUG) msglevel = 5;
+   else if (Flags & VLF_TRACE) msglevel = 8;
+   else msglevel = 3; // Assume application log message
+
+   if ((Header) AND (!*Header)) Header = NULL;
+
+   msglevel += tlBaseLine;
+   if (glLogLevel >= msglevel) {
+      //fprintf(stderr, "%.8d. ", winGetCurrentThreadId());
+
+      #if defined(__unix__) AND !defined(__ANDROID__)
+         BYTE flushdbg;
+         if (glLogLevel >= 3) {
+            flushdbg = TRUE;
+            if (tlPublicLockCount) flushdbg = FALSE;
+            if (flushdbg) fcntl(STDERR_FILENO, F_SETFL, glStdErrFlags & (~O_NONBLOCK));
+         }
+         else flushdbg = FALSE;
+      #endif
+
+      #ifdef ESC_OUTPUT
+         if ((glLogLevel > 2) AND (msglevel <= 2)) {
+            #ifdef _WIN32
+               fprintf(stderr, "!");
+            #else
+               fprintf(stderr, "\033[1m");
+            #endif
+         }
+      #endif
+
+      // If no header is provided, make one to match the current context
+
+      if (tlContext->Action) {
+         if (tlContext->Action < 0) {
+            struct rkMetaClass *mc = (struct rkMetaClass *)tlContext->Object->Class;
+            if ((mc) AND (mc->Methods) AND (-tlContext->Action < mc->TotalMethods)) {
+               action = mc->Methods[-tlContext->Action].Name;
+            }
+            else action = "Method";
+         }
+         else action = ActionTable[tlContext->Action].Name;
+      }
+      else action = glProgName;
+
+      if (!Header) {
+         Header = action;
+         action = NULL;
+      }
+
+      #ifdef __ANDROID__
+         char msgheader[COLUMN1+1];
+
+         fmsg(Header, msgheader, msgstate, msglevel);
+
+         if (tlContext->Object->Class) {
+            char msg[180];
+
+            if (tlContext->Object->Stats->Name[0]) name = tlContext->Object->Stats->Name;
+            else name = ((struct rkMetaClass *)tlContext->Object->Class)->Name;
+
+            if (glLogLevel > 5) {
+               if (tlContext->Field) snprintf(msg, sizeof(msg), "[%s%s%s:%d:%s] %s", (action) ? action : (STRING)"", (action) ? ":" : "", name, tlContext->Object->UniqueID, tlContext->Field->Name, Message);
+               else snprintf(msg, sizeof(msg), "[%s%s%s:%d] %s", (action) ? action : (STRING)"", (action) ? ":" : "", name, tlContext->Object->UniqueID, Message);
+            }
+            else {
+               if (tlContext->Field) snprintf(msg, sizeof(msg), "[%s:%d:%s] %s", name, tlContext->Object->UniqueID, tlContext->Field->Name, Message);
+               else snprintf(msg, sizeof(msg), "[%s:%d] %s", name, tlContext->Object->UniqueID, Message);
+            }
+
+            __android_log_vprint((msglevel <= 2) ? ANDROID_LOG_ERROR : ANDROID_LOG_INFO, msgheader, msg, Args);
+         }
+         else {
+            __android_log_vprint((msglevel <= 2) ? ANDROID_LOG_ERROR : ANDROID_LOG_INFO, msgheader, Message, Args);
+         }
+
+      #else
+         char msgheader[COLUMN1+1];
+         if (glLogLevel > 2) {
+            fmsg(Header, msgheader, msgstate, msglevel); // Print header with indenting
+         }
+         else {
+            LONG len;
+            for (len=0; (Header[len]) AND (len < sizeof(msgheader)-2); len++) msgheader[len] = Header[len];
+            msgheader[len++] = ' ';
+            msgheader[len] = 0;
+         }
+
+         OBJECTPTR obj = tlContext->Object;
+         if (obj->Class) {
+            if (obj->Stats->Name[0]) name = obj->Stats->Name;
+            else name = ((struct rkMetaClass *)obj->Class)->ClassName;
+
+            if (glLogLevel > 5) {
+               if (tlContext->Field) {
+                  fprintf(stderr, "%s[%s%s%s:%d:%s] ", msgheader, (action) ? action : (STRING)"", (action) ? ":" : "", name, obj->UniqueID, tlContext->Field->Name);
+               }
+               else fprintf(stderr, "%s[%s%s%s:%d] ", msgheader, (action) ? action : (STRING)"", (action) ? ":" : "", name, obj->UniqueID);
+            }
+            else if (tlContext->Field) {
+               fprintf(stderr, "%s[%s:%d:%s] ", msgheader, name, obj->UniqueID, tlContext->Field->Name);
+            }
+            else fprintf(stderr, "%s[%s:%d] ", msgheader, name, obj->UniqueID);
+         }
+         else fprintf(stderr, "%s", msgheader);
+
+         vfprintf(stderr, Message, Args);
 
          #if defined(ESC_OUTPUT) AND !defined(_WIN32)
             if ((glLogLevel > 2) AND (msglevel <= 2)) fprintf(stderr, "\033[0m");

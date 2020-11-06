@@ -191,4 +191,5 @@ ERROR NewLockedObject(LARGE ClassID, LONG Flags, OBJECTPTR * Object, OBJECTID * 
 ERROR KeyIterate(struct KeyStore * Store, ULONG Index, ULONG * Key, APTR * Data, LONG * Size);
 ERROR VarSetSized(struct KeyStore * Store, CSTRING Key, LONG Size, APTR * Data, LONG * DataSize);
 ERROR VarLock(struct KeyStore * Store, LONG Timeout);
+void VLogF(LONG Flags, CSTRING Header, CSTRING Message, va_list Args);
 

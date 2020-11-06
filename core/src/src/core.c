@@ -431,8 +431,9 @@ EXPORT struct CoreBase * OpenCore(struct OpenInfo *Info)
          else if (!StrMatch(Info->Args[i], "--solo"))      solo = TRUE;
          else if (!StrMatch(Info->Args[i], "--sync"))      glSync = TRUE;
          else if (!StrMatch(Info->Args[i], "--log-none"))  glLogLevel = 0;
-         else if (!StrMatch(Info->Args[i], "--log-error")) glLogLevel = 2;
-         else if (!StrMatch(Info->Args[i], "--log-info"))  glLogLevel = 3;  // Level 3 is for top-level function messages (no internal detail)
+         else if (!StrMatch(Info->Args[i], "--log-error")) glLogLevel = 1;
+         else if (!StrMatch(Info->Args[i], "--log-warn"))  glLogLevel = 2;
+         else if (!StrMatch(Info->Args[i], "--log-info"))  glLogLevel = 4;  // Levels 3/4 are for top-level function messages (no internal detail)
          else if (!StrMatch(Info->Args[i], "--log-debug")) glLogLevel = 5;
          else if (!StrMatch(Info->Args[i], "--log-all"))   glLogLevel = 99;
          else if (!StrMatch(Info->Args[i], "--time"))      glTimeLog = PreciseTime();

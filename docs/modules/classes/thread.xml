@@ -179,6 +179,16 @@ if (!CreateObject(ID_THREAD, 0, &amp;thread,
       <const name="DECOMPRESS_OBJECT"/>
     </constants>
 
+    <constants lookup="VLF" comment="VlogF flags">
+      <const name="ERROR"/>
+      <const name="WARNING"/>
+      <const name="DEBUG"/>
+      <const name="FUNCTION"/>
+      <const name="TRACE"/>
+      <const name="CRITICAL"/>
+      <const name="BRANCH"/>
+    </constants>
+
     <constants lookup="MOF" comment="Module flags">
       <const name="LINK_LIBRARY">Module refers to a symbolic link library (e.g. libz DLL or SO)</const>
       <const name="STATIC">This flag prevents the loaded module code from being unloaded when the module object is freed.  This may be needed in cases where a module is designed with the presumption that it will remain in memory after being loaded by the developer.</const>

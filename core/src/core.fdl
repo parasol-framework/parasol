@@ -99,7 +99,9 @@ module({ name="Core", copyright="Paul Manias 1996-2020" }, function()
 
   flags("STP", { comment="ScrollToPoint flags" }, "X", "Y", "Z", "ANIM")
 
-  flags("MTF", { comment="MoveToPoint flags", }, "X", "Y", "Z", "ANIM", "RELATIVE")
+  flags("MTF", { comment="MoveToPoint flags" }, "X", "Y", "Z", "ANIM", "RELATIVE")
+
+  flags("VLF", { comment="VlogF flags" }, "BRANCH", "ERROR", "WARNING", "CRITICAL", "DEBUG", "TRACE", "FUNCTION")
 
   flags("MOF", { comment="Module flags" },
     "LINK_LIBRARY: Module refers to a symbolic link library (e.g. libz DLL or SO)",
@@ -1147,7 +1149,8 @@ struct ScriptArg { // For use with scExec
     "NewLockedObject",
     "KeyIterate",
     "VarSetSized",
-    "VarLock")
+    "VarLock",
+    "VLogF")
 
   c_insert([[
 
