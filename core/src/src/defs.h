@@ -128,40 +128,6 @@ struct FileFeedback;
 struct ResourceManager;
 struct MsgHandler;
 
-ERROR fs_closedir(struct DirInfo *);
-ERROR fs_createlink(CSTRING, CSTRING);
-ERROR fs_delete(STRING, FUNCTION *);
-ERROR fs_getinfo(CSTRING, struct FileInfo *, LONG);
-ERROR fs_getdeviceinfo(CSTRING, struct rkStorageDevice *);
-void  fs_ignore_file(struct rkFile *);
-ERROR fs_makedir(CSTRING, LONG);
-ERROR fs_opendir(struct DirInfo *);
-ERROR fs_readlink(STRING, STRING *);
-ERROR fs_rename(STRING, STRING);
-ERROR fs_samefile(CSTRING, CSTRING);
-ERROR fs_scandir(struct DirInfo *);
-ERROR fs_testpath(CSTRING, LONG, LONG *);
-ERROR fs_watch_path(struct rkFile *);
-
-const struct virtual_drive * get_fs(CSTRING Path);
-void free_storage_class(void);
-
-ERROR check_cache(OBJECTPTR, LARGE TimeElapsed, LARGE TotalElapsed);
-ERROR get_class_cmd(CSTRING, struct rkConfig *, LONG, CLASSID, STRING *);
-ERROR fs_copy(CSTRING, CSTRING, FUNCTION *, BYTE);
-ERROR fs_copydir(STRING, STRING, struct FileFeedback *, FUNCTION *, BYTE);
-LONG  get_parent_permissions(CSTRING, LONG *, LONG *);
-ERROR load_datatypes(void);
-ERROR RenameVolume(CSTRING, CSTRING);
-ERROR findfile(STRING);
-LONG  convert_fs_permissions(LONG);
-LONG  convert_permissions(LONG);
-void set_memory_manager(APTR, struct ResourceManager *);
-BYTE  strip_folder(STRING) __attribute__ ((unused));
-ERROR get_file_info(CSTRING, struct FileInfo *, LONG, STRING, LONG);
-ERROR convert_errno(LONG Error, ERROR Default);
-void free_translate_buffer(void);
-
 struct rkWatchPath {
    LARGE      Custom;    // User's custom data pointer or value
    HOSTHANDLE Handle;    // The handle for the file being monitored, can be a special reference for virtual paths
@@ -199,14 +165,6 @@ struct virtual_drive {
 };
 
 #include "prototypes.h"
-
-ERROR AccessSemaphore(LONG, LONG, LONG);
-ERROR AllocSemaphore(CSTRING, LONG, LONG, LONG *);
-ERROR FreeSemaphore(LONG SemaphoreID);
-ERROR SetFieldF(OBJECTPTR, FIELD, va_list);
-ERROR SetFieldsF(OBJECTPTR, va_list);
-ERROR CreateObjectF(LARGE, LONG, OBJECTPTR *, va_list List);
-ERROR pReleaseSemaphore(LONG, LONG);
 
 #define DelayMsg(a,b,c)     (ActionMsg(a,b,c,0,0xffffffff))
 #define DelayAction(a,b,c)  (ActionMsg(a,b,c,0,0xffffffff))
@@ -599,18 +557,6 @@ extern struct FileMonitor *glFileMonitor;
 #endif
 
 /*****************************************************************************
-** Action managers.
-*/
-
-ERROR MGR_Init(OBJECTPTR, APTR);
-ERROR MGR_Free(OBJECTPTR, APTR);
-ERROR MGR_GetField(OBJECTPTR, struct acGetVar *);
-ERROR MGR_OwnerDestroyed(OBJECTPTR, APTR);
-ERROR MGR_Rename(OBJECTPTR, struct acRename *);
-ERROR MGR_Seek(OBJECTPTR, struct acSeek *);
-ERROR MGR_SetField(OBJECTPTR, struct acSetVar *);
-
-/*****************************************************************************
 ** Message handler chain structure.
 */
 
@@ -706,9 +652,64 @@ struct ModuleMaster {
    char   LibraryName[40]; // Name of the library loaded from disk
 };
 
-/*****************************************************************************
-** Global functions.
-*/
+#ifdef  __cplusplus
+extern "C" {
+#endif
+
+//****************************************************************************
+// Action managers.
+
+ERROR MGR_Init(OBJECTPTR, APTR);
+ERROR MGR_Free(OBJECTPTR, APTR);
+ERROR MGR_GetField(OBJECTPTR, struct acGetVar *);
+ERROR MGR_OwnerDestroyed(OBJECTPTR, APTR);
+ERROR MGR_Rename(OBJECTPTR, struct acRename *);
+ERROR MGR_Seek(OBJECTPTR, struct acSeek *);
+ERROR MGR_SetField(OBJECTPTR, struct acSetVar *);
+
+//****************************************************************************
+
+ERROR AccessSemaphore(LONG, LONG, LONG);
+ERROR AllocSemaphore(CSTRING, LONG, LONG, LONG *);
+ERROR FreeSemaphore(LONG SemaphoreID);
+ERROR SetFieldF(OBJECTPTR, FIELD, va_list);
+ERROR SetFieldsF(OBJECTPTR, va_list);
+ERROR CreateObjectF(LARGE, LONG, OBJECTPTR *, va_list List);
+ERROR pReleaseSemaphore(LONG, LONG);
+
+ERROR fs_closedir(struct DirInfo *);
+ERROR fs_createlink(CSTRING, CSTRING);
+ERROR fs_delete(STRING, FUNCTION *);
+ERROR fs_getinfo(CSTRING, struct FileInfo *, LONG);
+ERROR fs_getdeviceinfo(CSTRING, struct rkStorageDevice *);
+void  fs_ignore_file(struct rkFile *);
+ERROR fs_makedir(CSTRING, LONG);
+ERROR fs_opendir(struct DirInfo *);
+ERROR fs_readlink(STRING, STRING *);
+ERROR fs_rename(STRING, STRING);
+ERROR fs_samefile(CSTRING, CSTRING);
+ERROR fs_scandir(struct DirInfo *);
+ERROR fs_testpath(CSTRING, LONG, LONG *);
+ERROR fs_watch_path(struct rkFile *);
+
+const struct virtual_drive * get_fs(CSTRING Path);
+void free_storage_class(void);
+
+ERROR check_cache(OBJECTPTR, LARGE TimeElapsed, LARGE TotalElapsed);
+ERROR get_class_cmd(CSTRING, struct rkConfig *, LONG, CLASSID, STRING *);
+ERROR fs_copy(CSTRING, CSTRING, FUNCTION *, BYTE);
+ERROR fs_copydir(STRING, STRING, struct FileFeedback *, FUNCTION *, BYTE);
+LONG  get_parent_permissions(CSTRING, LONG *, LONG *);
+ERROR load_datatypes(void);
+ERROR RenameVolume(CSTRING, CSTRING);
+ERROR findfile(STRING);
+LONG  convert_fs_permissions(LONG);
+LONG  convert_permissions(LONG);
+void set_memory_manager(APTR, struct ResourceManager *);
+BYTE  strip_folder(STRING) __attribute__ ((unused));
+ERROR get_file_info(CSTRING, struct FileInfo *, LONG, STRING, LONG);
+ERROR convert_errno(LONG Error, ERROR Default);
+void free_translate_buffer(void);
 
 EXPORT void Expunge(WORD);
 
@@ -917,6 +918,10 @@ LONG winResetDate(STRING);
 void winSetDllDirectory(CSTRING);
 void winEnumSpecialFolders(void (*callback)(CSTRING, CSTRING, CSTRING, CSTRING, BYTE));
 
+#endif
+
+#ifdef  __cplusplus
+}
 #endif
 
 /*****************************************************************************
@@ -1215,7 +1220,7 @@ static LONG read_long(APTR File)
    LONG value;
    args.Buffer = (APTR)&value;
    args.Length = 4;
-   if (!Action(AC_Read, File, &args)) return value; // !!! Use ReadLE/BE
+   if (!Action(AC_Read, (OBJECTPTR)File, &args)) return value; // !!! Use ReadLE/BE
    else LogF("@read_long()","Failed.");
    return 0;
 }
@@ -1226,7 +1231,7 @@ static WORD read_word(APTR File)
    WORD value;
    args.Buffer = (APTR)&value;
    args.Length = 2;
-   if (!Action(AC_Read, File, &args)) return value; // !!! Use ReadLE/BE
+   if (!Action(AC_Read, (OBJECTPTR)File, &args)) return value; // !!! Use ReadLE/BE
    else LogF("@read_word()","Failed.");
    return 0;
 }

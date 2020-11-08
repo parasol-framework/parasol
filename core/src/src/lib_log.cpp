@@ -279,12 +279,12 @@ void LogF(CSTRING Header, CSTRING Format, ...)
          }
 
       #else
-         UBYTE msgheader[COLUMN1+1];
+         char msgheader[COLUMN1+1];
          if (glLogLevel > 2) {
             fmsg(Header, msgheader, msgstate, msglevel); // Print header with indenting
          }
          else {
-            LONG len;
+            size_t len;
             for (len=0; (Header[len]) AND (len < sizeof(msgheader)-2); len++) msgheader[len] = Header[len];
             msgheader[len++] = ' ';
             msgheader[len] = 0;
@@ -485,7 +485,7 @@ void VLogF(LONG Flags, CSTRING Header, CSTRING Message, va_list Args)
             fmsg(Header, msgheader, msgstate, msglevel); // Print header with indenting
          }
          else {
-            LONG len;
+            size_t len;
             for (len=0; (Header[len]) AND (len < sizeof(msgheader)-2); len++) msgheader[len] = Header[len];
             msgheader[len++] = ' ';
             msgheader[len] = 0;
@@ -529,7 +529,6 @@ void VLogF(LONG Flags, CSTRING Header, CSTRING Message, va_list Args)
 
 exit:
    if (new_branch) tlDepth++;
-unlock_exit:
    thread_unlock(TL_PRINT);
 }
 
@@ -607,7 +606,7 @@ ERROR FuncError(CSTRING Header, ERROR Code)
          }
          else __android_log_print(ANDROID_LOG_ERROR, Header, "%s", glMessages[Code]);
       #else
-         UBYTE msgheader[COLUMN1+1];
+         char msgheader[COLUMN1+1];
          CSTRING name, histart = "", hiend = "";
 
          #ifdef ESC_OUTPUT
@@ -725,7 +724,7 @@ ERROR LogError(LONG HeaderCode, ERROR Code)
             }
             else __android_log_print(ANDROID_LOG_ERROR, header, "%s", glMessages[Code]);
          #else
-            UBYTE msgheader[COLUMN1+1];
+            char msgheader[COLUMN1+1];
             CSTRING hiend = "", histart = "", name;
 
             fmsg(header, msgheader, MS_MSG, 2);

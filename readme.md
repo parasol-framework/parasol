@@ -66,7 +66,7 @@ We recommend that you always build with the `-j 8 -- -O` set of options for best
 
 ### 3.2 Debug Build
 
-Before resorting to a debug build, consider running the application with the `--log-info` option.  Doing so will print a wealth of information to stdout and this is often enough to resolve common problems quickly.
+Before resorting to a debug build, consider running the application with the `--log-debug` option.  Doing so will print a wealth of information to stdout and this is often enough to resolve common problems quickly.
 
 Parasol supports the use of `gdb` as a debugger.  Making a debug build for the first time will require a full build and install with the release options turned off, e.g:
 
@@ -102,7 +102,7 @@ A successful install will allow you to run the `fluid` and `parasol` executable 
 fluid --log-error examples/widgets.fluid
 ```
 
-Try running a second time with `--log-info` to observe run-time log output while toying with the example.  Try a few of the other examples to get a feel for what you can achieve, and load them into a text editor to see how they were created.
+Try running a second time with `--log-debug` to observe run-time log output while toying with the example.  Try a few of the other examples to get a feel for what you can achieve, and load them into a text editor to see how they were created.
 
 ## 5. Next Steps
 

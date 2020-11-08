@@ -1331,7 +1331,7 @@ INLINE ERROR cfgWriteInt(APTR Self, CSTRING Section, CSTRING Key, LONG Integer)
    }
    *str = 0;
    struct cfgWriteValue write = { Section, Key, buffer };
-   return Action(MT_CfgWriteValue, Self, &write);
+   return Action(MT_CfgWriteValue, (OBJECTPTR)Self, &write);
 }
   ]])
 
@@ -1716,28 +1716,28 @@ struct acWrite         { CPTR Buffer; LONG Length; LONG Result; };
 
 INLINE ERROR acClipboard(APTR Object, LONG Mode) {
    struct acClipboard args = { Mode };
-   return Action(AC_Clipboard, Object, &args);
+   return Action(AC_Clipboard, (OBJECTPTR)Object, &args);
 }
 
 INLINE ERROR acDrawArea(APTR Object, LONG X, LONG Y, LONG Width, LONG Height) {
    struct acDraw args = { X, Y, Width, Height };
-   return Action(AC_Draw, Object, &args);
+   return Action(AC_Draw, (OBJECTPTR)Object, &args);
 }
 
 INLINE ERROR acDataFeed(APTR Object, OBJECTID ObjectID, LONG Datatype, const void *Buffer, LONG Size) {
    struct acDataFeed args = { { ObjectID }, { Datatype }, Buffer, Size };
-   return Action(AC_DataFeed, Object, &args);
+   return Action(AC_DataFeed, (OBJECTPTR)Object, &args);
 }
 
 INLINE ERROR acMove(APTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z) {
    struct acMove args = { X, Y, Z };
-   return Action(AC_Move, Object, &args);
+   return Action(AC_Move, (OBJECTPTR)Object, &args);
 }
 
 INLINE ERROR acRead(APTR Object, APTR Buffer, LONG Bytes, LONG *Read) {
    ERROR error;
    struct acRead read = { (BYTE *)Buffer, Bytes };
-   if (!(error = Action(AC_Read, Object, &read))) {
+   if (!(error = Action(AC_Read, (OBJECTPTR)Object, &read))) {
       if (Read) *Read = read.Result;
       return ERR_Okay;
    }
@@ -1749,64 +1749,64 @@ INLINE ERROR acRead(APTR Object, APTR Buffer, LONG Bytes, LONG *Read) {
 
 INLINE ERROR acRedo(APTR Object, LONG Steps) {
    struct acRedo args = { Steps };
-   return Action(AC_Redo, Object, &args);
+   return Action(AC_Redo, (OBJECTPTR)Object, &args);
 }
 
 INLINE ERROR acRedimension(APTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z, DOUBLE Width, DOUBLE Height, DOUBLE Depth) {
    struct acRedimension args = { X, Y, Z, Width, Height, Depth };
-   return Action(AC_Redimension, Object, &args);
+   return Action(AC_Redimension, (OBJECTPTR)Object, &args);
 }
 
 INLINE ERROR acRename(APTR Object, CSTRING Name) {
    struct acRename args = { Name };
-   return Action(AC_Rename, Object, &args);
+   return Action(AC_Rename, (OBJECTPTR)Object, &args);
 }
 
 INLINE ERROR acResize(APTR Object, DOUBLE Width, DOUBLE Height, DOUBLE Depth) {
    struct acResize args = { Width, Height, Depth };
-   return Action(AC_Resize, Object, &args);
+   return Action(AC_Resize, (OBJECTPTR)Object, &args);
 }
 
 INLINE ERROR acScroll(APTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z) {
    struct acScroll args = { X, Y, Z };
-   return Action(AC_Scroll, Object, &args);
+   return Action(AC_Scroll, (OBJECTPTR)Object, &args);
 }
 
 INLINE ERROR acScrollToPoint(APTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z, LONG Flags) {
    struct acScrollToPoint args = { X, Y, Z, Flags };
-   return Action(AC_ScrollToPoint, Object, &args);
+   return Action(AC_ScrollToPoint, (OBJECTPTR)Object, &args);
 }
 
 INLINE ERROR acUndo(APTR Object, LONG Steps) {
    struct acUndo args = { Steps };
-   return Action(AC_Undo, Object, &args);
+   return Action(AC_Undo, (OBJECTPTR)Object, &args);
 }
 
 INLINE ERROR acGetVar(APTR Object, CSTRING FieldName, STRING Buffer, LONG Size) {
    struct acGetVar args = { FieldName, Buffer, Size };
-   ERROR error = Action(AC_GetVar, Object, &args);
+   ERROR error = Action(AC_GetVar, (OBJECTPTR)Object, &args);
    if ((error) AND (Buffer)) Buffer[0] = 0;
    return error;
 }
 
 INLINE ERROR acMoveToPoint(APTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z, LONG Flags) {
    struct acMoveToPoint moveto = { X, Y, Z, Flags };
-   return Action(AC_MoveToPoint, Object, &moveto);
+   return Action(AC_MoveToPoint, (OBJECTPTR)Object, &moveto);
 }
 
 INLINE ERROR acSaveImage(APTR Object, OBJECTID DestID, CLASSID ClassID) {
    struct acSaveImage args = { { DestID }, { ClassID } };
-   return Action(AC_SaveImage, Object, &args);
+   return Action(AC_SaveImage, (OBJECTPTR)Object, &args);
 }
 
 INLINE ERROR acSaveToObject(APTR Object, OBJECTID DestID, CLASSID ClassID) {
    struct acSaveToObject args = { { DestID }, { ClassID } };
-   return Action(AC_SaveToObject, Object, &args);
+   return Action(AC_SaveToObject, (OBJECTPTR)Object, &args);
 }
 
 INLINE ERROR acSeek(APTR Object, DOUBLE Offset, LONG Position) {
    struct acSeek args = { Offset, Position };
-   return Action(AC_Seek, Object, &args);
+   return Action(AC_Seek, (OBJECTPTR)Object, &args);
 }
 
 INLINE ERROR acSetVars(APTR Object, CSTRING tags, ...) {
@@ -1816,7 +1816,7 @@ INLINE ERROR acSetVars(APTR Object, CSTRING tags, ...) {
    va_start(list, tags);
    while ((args.Field = va_arg(list, STRING)) != TAGEND) {
       args.Value = va_arg(list, STRING);
-      if (Action(AC_SetVar, Object, &args) != ERR_Okay) {
+      if (Action(AC_SetVar, (OBJECTPTR)Object, &args) != ERR_Okay) {
          va_end(list);
          return ERR_Failed;
       }
@@ -1828,7 +1828,7 @@ INLINE ERROR acSetVars(APTR Object, CSTRING tags, ...) {
 INLINE ERROR acWrite(APTR Object, CPTR Buffer, LONG Bytes, LONG *Result) {
    ERROR error;
    struct acWrite write = { (BYTE *)Buffer, Bytes };
-   if (!(error = Action(AC_Write, Object, &write))) {
+   if (!(error = Action(AC_Write, (OBJECTPTR)Object, &write))) {
       if (Result) *Result = write.Result;
    }
    else if (Result) *Result = 0;
@@ -1837,7 +1837,7 @@ INLINE ERROR acWrite(APTR Object, CPTR Buffer, LONG Bytes, LONG *Result) {
 
 INLINE LONG acWriteResult(APTR Object, CPTR Buffer, LONG Bytes) {
    struct acWrite write = { (BYTE *)Buffer, Bytes };
-   if (!Action(AC_Write, Object, &write)) return write.Result;
+   if (!Action(AC_Write, (OBJECTPTR)Object, &write)) return write.Result;
    else return 0;
 }
 
@@ -1847,12 +1847,12 @@ INLINE LONG acWriteResult(APTR Object, CPTR Buffer, LONG Bytes) {
 
 INLINE ERROR acSelectArea(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height) {
    struct acSelectArea area = { X, Y, Width, Height };
-   return Action(AC_SelectArea, Object, &area);
+   return Action(AC_SelectArea, (OBJECTPTR)Object, &area);
 }
 
 INLINE ERROR acSetVar(APTR Object, CSTRING FieldName, CSTRING Value) {
    struct acSetVar args = { FieldName, Value };
-   return Action(AC_SetVar, Object, &args);
+   return Action(AC_SetVar, (OBJECTPTR)Object, &args);
 }
 
 #define GetVar(a,b,c,d)  acGetVar(a,b,c,d)
@@ -1864,69 +1864,69 @@ INLINE ERROR acSetVar(APTR Object, CSTRING FieldName, CSTRING Value) {
 #define SetUnlistedFields(a,b,...)    acSetUnlistedFields(a,b __VA_ARGS__)
 
 INLINE ERROR GetLarge(APTR Object, ULONG FieldID, LARGE *Value) {
-   return GetField(Object, (FIELD)FieldID|TLARGE, Value);
+   return GetField((OBJECTPTR)Object, (FIELD)FieldID|TLARGE, Value);
 }
 
 INLINE ERROR GetLong(APTR Object, ULONG FieldID, LONG *Value) {
-   return GetField(Object, (FIELD)FieldID|TLONG, Value);
+   return GetField((OBJECTPTR)Object, (FIELD)FieldID|TLONG, Value);
 }
 
 INLINE ERROR GetDouble(APTR Object, ULONG FieldID, DOUBLE *Value) {
-   return GetField(Object, (FIELD)FieldID|TDOUBLE, Value);
+   return GetField((OBJECTPTR)Object, (FIELD)FieldID|TDOUBLE, Value);
 }
 
 INLINE ERROR GetString(APTR Object, ULONG FieldID, STRING *Value) {
-   return GetField(Object, (FIELD)FieldID|TSTRING, Value);
+   return GetField((OBJECTPTR)Object, (FIELD)FieldID|TSTRING, Value);
 }
 
 INLINE ERROR GetPercentage(APTR Object, ULONG FieldID, DOUBLE *Value) {
-   return GetField(Object, (FIELD)FieldID|TDOUBLE|TPERCENT, Value);
+   return GetField((OBJECTPTR)Object, (FIELD)FieldID|TDOUBLE|TPERCENT, Value);
 }
 
 INLINE ERROR GetPointer(APTR Object, ULONG FieldID, APTR Value) {
-   return GetField(Object, (FIELD)FieldID|TPTR, Value);
+   return GetField((OBJECTPTR)Object, (FIELD)FieldID|TPTR, Value);
 }
 
 INLINE ERROR GetVariable(APTR Object, ULONG FieldID, struct Variable *Value) {
-   return GetField(Object, (FIELD)FieldID|TVAR, Value);
+   return GetField((OBJECTPTR)Object, (FIELD)FieldID|TVAR, Value);
 }
 
 //****************************************************************************
 
 INLINE ERROR SetLarge(APTR Object, ULONG FieldID, LARGE Value) {
-   return SetField(Object, (FIELD)FieldID|TLARGE, Value);
+   return SetField((OBJECTPTR)Object, (FIELD)FieldID|TLARGE, Value);
 }
 
 INLINE ERROR SetLong(APTR Object, ULONG FieldID, LONG Value) {
-   return SetField(Object, (FIELD)FieldID|TLONG, Value);
+   return SetField((OBJECTPTR)Object, (FIELD)FieldID|TLONG, Value);
 }
 
 INLINE ERROR SetFunction(APTR Object, ULONG FieldID, FUNCTION *Value) {
-   return SetField(Object, (FIELD)FieldID|TFUNCTION, Value);
+   return SetField((OBJECTPTR)Object, (FIELD)FieldID|TFUNCTION, Value);
 }
 
 INLINE ERROR SetFunctionPtr(APTR Object, ULONG FieldID, APTR Value) { // Yes, the pointer value will be converted to a StdC FUNCTION type internally.
-   return SetField(Object, (FIELD)FieldID|TPTR, Value);
+   return SetField((OBJECTPTR)Object, (FIELD)FieldID|TPTR, Value);
 }
 
 INLINE ERROR SetDouble(APTR Object, ULONG FieldID, DOUBLE Value) {
-   return SetField(Object, (FIELD)FieldID|TDOUBLE, Value);
+   return SetField((OBJECTPTR)Object, (FIELD)FieldID|TDOUBLE, Value);
 }
 
 INLINE ERROR SetString(APTR Object, ULONG FieldID, CSTRING Value) {
-   return SetField(Object, (FIELD)FieldID|TSTRING, Value);
+   return SetField((OBJECTPTR)Object, (FIELD)FieldID|TSTRING, Value);
 }
 
 INLINE ERROR SetPercentage(APTR Object, ULONG FieldID, DOUBLE Value) {
-   return SetField(Object, (FIELD)FieldID|TDOUBLE|TPERCENT, Value);
+   return SetField((OBJECTPTR)Object, (FIELD)FieldID|TDOUBLE|TPERCENT, Value);
 }
 
 INLINE ERROR SetPointer(APTR Object, ULONG FieldID, const void *Value) {
-   return SetField(Object, (FIELD)FieldID|TPTR, Value);
+   return SetField((OBJECTPTR)Object, (FIELD)FieldID|TPTR, Value);
 }
 
 INLINE ERROR SetVariable(APTR Object, ULONG FieldID, struct Variable *Value) {
-   return SetField(Object, (FIELD)FieldID|TVAR, Value);
+   return SetField((OBJECTPTR)Object, (FIELD)FieldID|TVAR, Value);
 }
 
 #ifndef PRV_CORE
@@ -2303,7 +2303,7 @@ INLINE void SET_DEVICE(struct dcDeviceInput *Input, WORD Type, WORD Flags, DOUBL
 
 INLINE CSTRING flReadLine(APTR Object) {
    struct flReadLine args;
-   if (!Action(MT_FlReadLine, Object, &args)) return args.Result;
+   if (!Action(MT_FlReadLine, (OBJECTPTR)Object, &args)) return args.Result;
    else return NULL;
 }
 
@@ -2317,7 +2317,7 @@ INLINE ERROR flReadLE2(APTR Object, WORD *Result)
 
    read.Buffer = data;
    read.Length = 2;
-   if (!Action(AC_Read, Object, &read)) {
+   if (!Action(AC_Read, (OBJECTPTR)Object, &read)) {
       if (read.Result IS 2) {
          #ifdef LITTLE_ENDIAN
             *Result = ((WORD *)data)[0];
@@ -2336,7 +2336,7 @@ INLINE ERROR flReadLE4(APTR Object, LONG *Result)
    UBYTE data[4];
 
    struct acRead read = { data, sizeof(data) };
-   if (!Action(AC_Read, Object, &read)) {
+   if (!Action(AC_Read, (OBJECTPTR)Object, &read)) {
       if (read.Result IS sizeof(data)) {
          #ifdef LITTLE_ENDIAN
             *Result = ((LONG *)data)[0];
@@ -2354,7 +2354,7 @@ INLINE ERROR flReadLE8(APTR Object, LARGE *Result)
 {
    UBYTE data[8];
    struct acRead read = { data, sizeof(data) };
-   if (!Action(AC_Read, Object, &read)) {
+   if (!Action(AC_Read, (OBJECTPTR)Object, &read)) {
       if (read.Result IS sizeof(data)) {
          #ifdef LITTLE_ENDIAN
             *Result = ((LARGE *)data)[0];

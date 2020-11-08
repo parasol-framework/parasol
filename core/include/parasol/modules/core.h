@@ -2216,43 +2216,43 @@ struct flWatch { FUNCTION * Callback; LARGE Custom; LONG Flags;  };
 
 INLINE ERROR flStartStream(APTR Ob, OBJECTID SubscriberID, LONG Flags, LONG Length) {
    struct flStartStream args = { SubscriberID, Flags, Length };
-   return(Action(MT_FlStartStream, Ob, &args));
+   return(Action(MT_FlStartStream, (OBJECTPTR)Ob, &args));
 }
 
 #define flStopStream(obj) Action(MT_FlStopStream,(obj),0)
 
 INLINE ERROR flDelete(APTR Ob, FUNCTION * Callback) {
    struct flDelete args = { Callback };
-   return(Action(MT_FlDelete, Ob, &args));
+   return(Action(MT_FlDelete, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR flMove(APTR Ob, CSTRING Dest, FUNCTION * Callback) {
    struct flMove args = { Dest, Callback };
-   return(Action(MT_FlMove, Ob, &args));
+   return(Action(MT_FlMove, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR flCopy(APTR Ob, CSTRING Dest, FUNCTION * Callback) {
    struct flCopy args = { Dest, Callback };
-   return(Action(MT_FlCopy, Ob, &args));
+   return(Action(MT_FlCopy, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR flSetDate(APTR Ob, LONG Year, LONG Month, LONG Day, LONG Hour, LONG Minute, LONG Second, LONG Type) {
    struct flSetDate args = { Year, Month, Day, Hour, Minute, Second, Type };
-   return(Action(MT_FlSetDate, Ob, &args));
+   return(Action(MT_FlSetDate, (OBJECTPTR)Ob, &args));
 }
 
 #define flBufferContent(obj) Action(MT_FlBufferContent,(obj),0)
 
 INLINE ERROR flNext(APTR Ob, struct rkFile ** File) {
    struct flNext args = { 0 };
-   ERROR error = Action(MT_FlNext, Ob, &args);
+   ERROR error = Action(MT_FlNext, (OBJECTPTR)Ob, &args);
    if (File) *File = args.File;
    return(error);
 }
 
 INLINE ERROR flWatch(APTR Ob, FUNCTION * Callback, LARGE Custom, LONG Flags) {
    struct flWatch args = { Callback, Custom, Flags };
-   return(Action(MT_FlWatch, Ob, &args));
+   return(Action(MT_FlWatch, (OBJECTPTR)Ob, &args));
 }
 
 
@@ -2313,65 +2313,65 @@ struct cfgSet { CSTRING Section; CSTRING Key; CSTRING Data;  };
 
 INLINE ERROR cfgReadValue(APTR Ob, CSTRING Section, CSTRING Key, CSTRING * Data) {
    struct cfgReadValue args = { Section, Key, 0 };
-   ERROR error = Action(MT_CfgReadValue, Ob, &args);
+   ERROR error = Action(MT_CfgReadValue, (OBJECTPTR)Ob, &args);
    if (Data) *Data = args.Data;
    return(error);
 }
 
 INLINE ERROR cfgReadInt(APTR Ob, CSTRING Section, CSTRING Key, LONG * Integer) {
    struct cfgReadInt args = { Section, Key, 0 };
-   ERROR error = Action(MT_CfgReadInt, Ob, &args);
+   ERROR error = Action(MT_CfgReadInt, (OBJECTPTR)Ob, &args);
    if (Integer) *Integer = args.Integer;
    return(error);
 }
 
 INLINE ERROR cfgWriteValue(APTR Ob, CSTRING Section, CSTRING Key, CSTRING Data) {
    struct cfgWriteValue args = { Section, Key, Data };
-   return(Action(MT_CfgWriteValue, Ob, &args));
+   return(Action(MT_CfgWriteValue, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR cfgDeleteIndex(APTR Ob, LONG Index) {
    struct cfgDeleteIndex args = { Index };
-   return(Action(MT_CfgDeleteIndex, Ob, &args));
+   return(Action(MT_CfgDeleteIndex, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR cfgDeleteSection(APTR Ob, CSTRING Section) {
    struct cfgDeleteSection args = { Section };
-   return(Action(MT_CfgDeleteSection, Ob, &args));
+   return(Action(MT_CfgDeleteSection, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR cfgGetSectionFromIndex(APTR Ob, LONG Index, CSTRING * Section) {
    struct cfgGetSectionFromIndex args = { Index, 0 };
-   ERROR error = Action(MT_CfgGetSectionFromIndex, Ob, &args);
+   ERROR error = Action(MT_CfgGetSectionFromIndex, (OBJECTPTR)Ob, &args);
    if (Section) *Section = args.Section;
    return(error);
 }
 
 INLINE ERROR cfgSortByKey(APTR Ob, CSTRING Key, LONG Descending) {
    struct cfgSortByKey args = { Key, Descending };
-   return(Action(MT_CfgSortByKey, Ob, &args));
+   return(Action(MT_CfgSortByKey, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR cfgReadFloat(APTR Ob, CSTRING Section, CSTRING Key, DOUBLE * Float) {
    struct cfgReadFloat args = { Section, Key, 0 };
-   ERROR error = Action(MT_CfgReadFloat, Ob, &args);
+   ERROR error = Action(MT_CfgReadFloat, (OBJECTPTR)Ob, &args);
    if (Float) *Float = args.Float;
    return(error);
 }
 
 INLINE ERROR cfgMergeFile(APTR Ob, CSTRING Path) {
    struct cfgMergeFile args = { Path };
-   return(Action(MT_CfgMergeFile, Ob, &args));
+   return(Action(MT_CfgMergeFile, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR cfgMerge(APTR Ob, OBJECTID ConfigID) {
    struct cfgMerge args = { ConfigID };
-   return(Action(MT_CfgMerge, Ob, &args));
+   return(Action(MT_CfgMerge, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR cfgSet(APTR Ob, CSTRING Section, CSTRING Key, CSTRING Data) {
    struct cfgSet args = { Section, Key, Data };
-   return(Action(MT_CfgSet, Ob, &args));
+   return(Action(MT_CfgSet, (OBJECTPTR)Ob, &args));
 }
 
 
@@ -2406,7 +2406,7 @@ INLINE ERROR cfgWriteInt(APTR Self, CSTRING Section, CSTRING Key, LONG Integer)
    }
    *str = 0;
    struct cfgWriteValue write = { Section, Key, buffer };
-   return Action(MT_CfgWriteValue, Self, &write);
+   return Action(MT_CfgWriteValue, (OBJECTPTR)Self, &write);
 }
   
 // Script class definition
@@ -2456,22 +2456,22 @@ struct scGetProcedureID { CSTRING Procedure; LARGE ProcedureID;  };
 
 INLINE ERROR scExec(APTR Ob, CSTRING Procedure, const struct ScriptArg * Args, LONG TotalArgs) {
    struct scExec args = { Procedure, Args, TotalArgs };
-   return(Action(MT_ScExec, Ob, &args));
+   return(Action(MT_ScExec, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR scDerefProcedure(APTR Ob, FUNCTION * Procedure) {
    struct scDerefProcedure args = { Procedure };
-   return(Action(MT_ScDerefProcedure, Ob, &args));
+   return(Action(MT_ScDerefProcedure, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR scCallback(APTR Ob, LARGE ProcedureID, const struct ScriptArg * Args, LONG TotalArgs) {
    struct scCallback args = { ProcedureID, Args, TotalArgs };
-   return(Action(MT_ScCallback, Ob, &args));
+   return(Action(MT_ScCallback, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR scGetProcedureID(APTR Ob, CSTRING Procedure, LARGE * ProcedureID) {
    struct scGetProcedureID args = { Procedure, 0 };
-   ERROR error = Action(MT_ScGetProcedureID, Ob, &args);
+   ERROR error = Action(MT_ScGetProcedureID, (OBJECTPTR)Ob, &args);
    if (ProcedureID) *ProcedureID = args.ProcedureID;
    return(error);
 }
@@ -2521,7 +2521,7 @@ struct mcFindField { LONG ID; struct Field * Field; struct rkMetaClass * Source;
 
 INLINE ERROR mcFindField(APTR Ob, LONG ID, struct Field ** Field, struct rkMetaClass ** Source) {
    struct mcFindField args = { ID, 0, 0 };
-   ERROR error = Action(MT_mcFindField, Ob, &args);
+   ERROR error = Action(MT_mcFindField, (OBJECTPTR)Ob, &args);
    if (Field) *Field = args.Field;
    if (Source) *Source = args.Source;
    return(error);
@@ -2605,21 +2605,21 @@ struct taskSetEnv { CSTRING Name; CSTRING Value;  };
 
 INLINE ERROR taskAddArgument(APTR Ob, CSTRING Argument) {
    struct taskAddArgument args = { Argument };
-   return(Action(MT_TaskAddArgument, Ob, &args));
+   return(Action(MT_TaskAddArgument, (OBJECTPTR)Ob, &args));
 }
 
 #define taskQuit(obj) Action(MT_TaskQuit,(obj),0)
 
 INLINE ERROR taskGetEnv(APTR Ob, CSTRING Name, CSTRING * Value) {
    struct taskGetEnv args = { Name, 0 };
-   ERROR error = Action(MT_TaskGetEnv, Ob, &args);
+   ERROR error = Action(MT_TaskGetEnv, (OBJECTPTR)Ob, &args);
    if (Value) *Value = args.Value;
    return(error);
 }
 
 INLINE ERROR taskSetEnv(APTR Ob, CSTRING Name, CSTRING Value) {
    struct taskSetEnv args = { Name, Value };
-   return(Action(MT_TaskSetEnv, Ob, &args));
+   return(Action(MT_TaskSetEnv, (OBJECTPTR)Ob, &args));
 }
 
 #define taskCloseInstance(obj) Action(MT_TaskCloseInstance,(obj),0)
@@ -2652,12 +2652,12 @@ struct thWait { LONG TimeOut; LONG MsgInterval;  };
 
 INLINE ERROR thSetData(APTR Ob, APTR Data, LONG Size) {
    struct thSetData args = { Data, Size };
-   return(Action(MT_ThSetData, Ob, &args));
+   return(Action(MT_ThSetData, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR thWait(APTR Ob, LONG TimeOut, LONG MsgInterval) {
    struct thWait args = { TimeOut, MsgInterval };
-   return(Action(MT_ThWait, Ob, &args));
+   return(Action(MT_ThWait, (OBJECTPTR)Ob, &args));
 }
 
 
@@ -2716,7 +2716,7 @@ struct modResolveSymbol { CSTRING Name; APTR Address;  };
 
 INLINE ERROR modResolveSymbol(APTR Ob, CSTRING Name, APTR * Address) {
    struct modResolveSymbol args = { Name, 0 };
-   ERROR error = Action(MT_ModResolveSymbol, Ob, &args);
+   ERROR error = Action(MT_ModResolveSymbol, (OBJECTPTR)Ob, &args);
    if (Address) *Address = args.Address;
    return(error);
 }
@@ -2823,70 +2823,70 @@ struct cmpFind { CSTRING Path; LONG Flags; struct CompressedItem * Item;  };
 
 INLINE ERROR cmpCompressBuffer(APTR Ob, APTR Input, LONG InputSize, APTR Output, LONG OutputSize, LONG * Result) {
    struct cmpCompressBuffer args = { Input, InputSize, Output, OutputSize, 0 };
-   ERROR error = Action(MT_CmpCompressBuffer, Ob, &args);
+   ERROR error = Action(MT_CmpCompressBuffer, (OBJECTPTR)Ob, &args);
    if (Result) *Result = args.Result;
    return(error);
 }
 
 INLINE ERROR cmpCompressFile(APTR Ob, CSTRING Location, CSTRING Path) {
    struct cmpCompressFile args = { Location, Path };
-   return(Action(MT_CmpCompressFile, Ob, &args));
+   return(Action(MT_CmpCompressFile, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR cmpDecompressBuffer(APTR Ob, APTR Input, APTR Output, LONG OutputSize, LONG * Result) {
    struct cmpDecompressBuffer args = { Input, Output, OutputSize, 0 };
-   ERROR error = Action(MT_CmpDecompressBuffer, Ob, &args);
+   ERROR error = Action(MT_CmpDecompressBuffer, (OBJECTPTR)Ob, &args);
    if (Result) *Result = args.Result;
    return(error);
 }
 
 INLINE ERROR cmpDecompressFile(APTR Ob, CSTRING Path, CSTRING Dest, LONG Flags) {
    struct cmpDecompressFile args = { Path, Dest, Flags };
-   return(Action(MT_CmpDecompressFile, Ob, &args));
+   return(Action(MT_CmpDecompressFile, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR cmpRemoveFile(APTR Ob, CSTRING Path) {
    struct cmpRemoveFile args = { Path };
-   return(Action(MT_CmpRemoveFile, Ob, &args));
+   return(Action(MT_CmpRemoveFile, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR cmpCompressStream(APTR Ob, APTR Input, LONG Length, FUNCTION * Callback, APTR Output, LONG OutputSize) {
    struct cmpCompressStream args = { Input, Length, Callback, Output, OutputSize };
-   return(Action(MT_CmpCompressStream, Ob, &args));
+   return(Action(MT_CmpCompressStream, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR cmpDecompressStream(APTR Ob, APTR Input, LONG Length, FUNCTION * Callback, APTR Output, LONG OutputSize) {
    struct cmpDecompressStream args = { Input, Length, Callback, Output, OutputSize };
-   return(Action(MT_CmpDecompressStream, Ob, &args));
+   return(Action(MT_CmpDecompressStream, (OBJECTPTR)Ob, &args));
 }
 
 #define cmpCompressStreamStart(obj) Action(MT_CmpCompressStreamStart,(obj),0)
 
 INLINE ERROR cmpCompressStreamEnd(APTR Ob, FUNCTION * Callback, APTR Output, LONG OutputSize) {
    struct cmpCompressStreamEnd args = { Callback, Output, OutputSize };
-   return(Action(MT_CmpCompressStreamEnd, Ob, &args));
+   return(Action(MT_CmpCompressStreamEnd, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR cmpDecompressStreamEnd(APTR Ob, FUNCTION * Callback) {
    struct cmpDecompressStreamEnd args = { Callback };
-   return(Action(MT_CmpDecompressStreamEnd, Ob, &args));
+   return(Action(MT_CmpDecompressStreamEnd, (OBJECTPTR)Ob, &args));
 }
 
 #define cmpDecompressStreamStart(obj) Action(MT_CmpDecompressStreamStart,(obj),0)
 
 INLINE ERROR cmpDecompressObject(APTR Ob, CSTRING Path, OBJECTPTR Object) {
    struct cmpDecompressObject args = { Path, Object };
-   return(Action(MT_CmpDecompressObject, Ob, &args));
+   return(Action(MT_CmpDecompressObject, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR cmpScan(APTR Ob, CSTRING Folder, CSTRING Filter, FUNCTION * Callback) {
    struct cmpScan args = { Folder, Filter, Callback };
-   return(Action(MT_CmpScan, Ob, &args));
+   return(Action(MT_CmpScan, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR cmpFind(APTR Ob, CSTRING Path, LONG Flags, struct CompressedItem ** Item) {
    struct cmpFind args = { Path, Flags, 0 };
-   ERROR error = Action(MT_CmpFind, Ob, &args);
+   ERROR error = Action(MT_CmpFind, (OBJECTPTR)Ob, &args);
    if (Item) *Item = args.Item;
    return(error);
 }
@@ -3016,28 +3016,28 @@ struct acWrite         { CPTR Buffer; LONG Length; LONG Result; };
 
 INLINE ERROR acClipboard(APTR Object, LONG Mode) {
    struct acClipboard args = { Mode };
-   return Action(AC_Clipboard, Object, &args);
+   return Action(AC_Clipboard, (OBJECTPTR)Object, &args);
 }
 
 INLINE ERROR acDrawArea(APTR Object, LONG X, LONG Y, LONG Width, LONG Height) {
    struct acDraw args = { X, Y, Width, Height };
-   return Action(AC_Draw, Object, &args);
+   return Action(AC_Draw, (OBJECTPTR)Object, &args);
 }
 
 INLINE ERROR acDataFeed(APTR Object, OBJECTID ObjectID, LONG Datatype, const void *Buffer, LONG Size) {
    struct acDataFeed args = { { ObjectID }, { Datatype }, Buffer, Size };
-   return Action(AC_DataFeed, Object, &args);
+   return Action(AC_DataFeed, (OBJECTPTR)Object, &args);
 }
 
 INLINE ERROR acMove(APTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z) {
    struct acMove args = { X, Y, Z };
-   return Action(AC_Move, Object, &args);
+   return Action(AC_Move, (OBJECTPTR)Object, &args);
 }
 
 INLINE ERROR acRead(APTR Object, APTR Buffer, LONG Bytes, LONG *Read) {
    ERROR error;
    struct acRead read = { (BYTE *)Buffer, Bytes };
-   if (!(error = Action(AC_Read, Object, &read))) {
+   if (!(error = Action(AC_Read, (OBJECTPTR)Object, &read))) {
       if (Read) *Read = read.Result;
       return ERR_Okay;
    }
@@ -3049,64 +3049,64 @@ INLINE ERROR acRead(APTR Object, APTR Buffer, LONG Bytes, LONG *Read) {
 
 INLINE ERROR acRedo(APTR Object, LONG Steps) {
    struct acRedo args = { Steps };
-   return Action(AC_Redo, Object, &args);
+   return Action(AC_Redo, (OBJECTPTR)Object, &args);
 }
 
 INLINE ERROR acRedimension(APTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z, DOUBLE Width, DOUBLE Height, DOUBLE Depth) {
    struct acRedimension args = { X, Y, Z, Width, Height, Depth };
-   return Action(AC_Redimension, Object, &args);
+   return Action(AC_Redimension, (OBJECTPTR)Object, &args);
 }
 
 INLINE ERROR acRename(APTR Object, CSTRING Name) {
    struct acRename args = { Name };
-   return Action(AC_Rename, Object, &args);
+   return Action(AC_Rename, (OBJECTPTR)Object, &args);
 }
 
 INLINE ERROR acResize(APTR Object, DOUBLE Width, DOUBLE Height, DOUBLE Depth) {
    struct acResize args = { Width, Height, Depth };
-   return Action(AC_Resize, Object, &args);
+   return Action(AC_Resize, (OBJECTPTR)Object, &args);
 }
 
 INLINE ERROR acScroll(APTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z) {
    struct acScroll args = { X, Y, Z };
-   return Action(AC_Scroll, Object, &args);
+   return Action(AC_Scroll, (OBJECTPTR)Object, &args);
 }
 
 INLINE ERROR acScrollToPoint(APTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z, LONG Flags) {
    struct acScrollToPoint args = { X, Y, Z, Flags };
-   return Action(AC_ScrollToPoint, Object, &args);
+   return Action(AC_ScrollToPoint, (OBJECTPTR)Object, &args);
 }
 
 INLINE ERROR acUndo(APTR Object, LONG Steps) {
    struct acUndo args = { Steps };
-   return Action(AC_Undo, Object, &args);
+   return Action(AC_Undo, (OBJECTPTR)Object, &args);
 }
 
 INLINE ERROR acGetVar(APTR Object, CSTRING FieldName, STRING Buffer, LONG Size) {
    struct acGetVar args = { FieldName, Buffer, Size };
-   ERROR error = Action(AC_GetVar, Object, &args);
+   ERROR error = Action(AC_GetVar, (OBJECTPTR)Object, &args);
    if ((error) AND (Buffer)) Buffer[0] = 0;
    return error;
 }
 
 INLINE ERROR acMoveToPoint(APTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z, LONG Flags) {
    struct acMoveToPoint moveto = { X, Y, Z, Flags };
-   return Action(AC_MoveToPoint, Object, &moveto);
+   return Action(AC_MoveToPoint, (OBJECTPTR)Object, &moveto);
 }
 
 INLINE ERROR acSaveImage(APTR Object, OBJECTID DestID, CLASSID ClassID) {
    struct acSaveImage args = { { DestID }, { ClassID } };
-   return Action(AC_SaveImage, Object, &args);
+   return Action(AC_SaveImage, (OBJECTPTR)Object, &args);
 }
 
 INLINE ERROR acSaveToObject(APTR Object, OBJECTID DestID, CLASSID ClassID) {
    struct acSaveToObject args = { { DestID }, { ClassID } };
-   return Action(AC_SaveToObject, Object, &args);
+   return Action(AC_SaveToObject, (OBJECTPTR)Object, &args);
 }
 
 INLINE ERROR acSeek(APTR Object, DOUBLE Offset, LONG Position) {
    struct acSeek args = { Offset, Position };
-   return Action(AC_Seek, Object, &args);
+   return Action(AC_Seek, (OBJECTPTR)Object, &args);
 }
 
 INLINE ERROR acSetVars(APTR Object, CSTRING tags, ...) {
@@ -3116,7 +3116,7 @@ INLINE ERROR acSetVars(APTR Object, CSTRING tags, ...) {
    va_start(list, tags);
    while ((args.Field = va_arg(list, STRING)) != TAGEND) {
       args.Value = va_arg(list, STRING);
-      if (Action(AC_SetVar, Object, &args) != ERR_Okay) {
+      if (Action(AC_SetVar, (OBJECTPTR)Object, &args) != ERR_Okay) {
          va_end(list);
          return ERR_Failed;
       }
@@ -3128,7 +3128,7 @@ INLINE ERROR acSetVars(APTR Object, CSTRING tags, ...) {
 INLINE ERROR acWrite(APTR Object, CPTR Buffer, LONG Bytes, LONG *Result) {
    ERROR error;
    struct acWrite write = { (BYTE *)Buffer, Bytes };
-   if (!(error = Action(AC_Write, Object, &write))) {
+   if (!(error = Action(AC_Write, (OBJECTPTR)Object, &write))) {
       if (Result) *Result = write.Result;
    }
    else if (Result) *Result = 0;
@@ -3137,7 +3137,7 @@ INLINE ERROR acWrite(APTR Object, CPTR Buffer, LONG Bytes, LONG *Result) {
 
 INLINE LONG acWriteResult(APTR Object, CPTR Buffer, LONG Bytes) {
    struct acWrite write = { (BYTE *)Buffer, Bytes };
-   if (!Action(AC_Write, Object, &write)) return write.Result;
+   if (!Action(AC_Write, (OBJECTPTR)Object, &write)) return write.Result;
    else return 0;
 }
 
@@ -3147,12 +3147,12 @@ INLINE LONG acWriteResult(APTR Object, CPTR Buffer, LONG Bytes) {
 
 INLINE ERROR acSelectArea(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height) {
    struct acSelectArea area = { X, Y, Width, Height };
-   return Action(AC_SelectArea, Object, &area);
+   return Action(AC_SelectArea, (OBJECTPTR)Object, &area);
 }
 
 INLINE ERROR acSetVar(APTR Object, CSTRING FieldName, CSTRING Value) {
    struct acSetVar args = { FieldName, Value };
-   return Action(AC_SetVar, Object, &args);
+   return Action(AC_SetVar, (OBJECTPTR)Object, &args);
 }
 
 #define GetVar(a,b,c,d)  acGetVar(a,b,c,d)
@@ -3164,69 +3164,69 @@ INLINE ERROR acSetVar(APTR Object, CSTRING FieldName, CSTRING Value) {
 #define SetUnlistedFields(a,b,...)    acSetUnlistedFields(a,b __VA_ARGS__)
 
 INLINE ERROR GetLarge(APTR Object, ULONG FieldID, LARGE *Value) {
-   return GetField(Object, (FIELD)FieldID|TLARGE, Value);
+   return GetField((OBJECTPTR)Object, (FIELD)FieldID|TLARGE, Value);
 }
 
 INLINE ERROR GetLong(APTR Object, ULONG FieldID, LONG *Value) {
-   return GetField(Object, (FIELD)FieldID|TLONG, Value);
+   return GetField((OBJECTPTR)Object, (FIELD)FieldID|TLONG, Value);
 }
 
 INLINE ERROR GetDouble(APTR Object, ULONG FieldID, DOUBLE *Value) {
-   return GetField(Object, (FIELD)FieldID|TDOUBLE, Value);
+   return GetField((OBJECTPTR)Object, (FIELD)FieldID|TDOUBLE, Value);
 }
 
 INLINE ERROR GetString(APTR Object, ULONG FieldID, STRING *Value) {
-   return GetField(Object, (FIELD)FieldID|TSTRING, Value);
+   return GetField((OBJECTPTR)Object, (FIELD)FieldID|TSTRING, Value);
 }
 
 INLINE ERROR GetPercentage(APTR Object, ULONG FieldID, DOUBLE *Value) {
-   return GetField(Object, (FIELD)FieldID|TDOUBLE|TPERCENT, Value);
+   return GetField((OBJECTPTR)Object, (FIELD)FieldID|TDOUBLE|TPERCENT, Value);
 }
 
 INLINE ERROR GetPointer(APTR Object, ULONG FieldID, APTR Value) {
-   return GetField(Object, (FIELD)FieldID|TPTR, Value);
+   return GetField((OBJECTPTR)Object, (FIELD)FieldID|TPTR, Value);
 }
 
 INLINE ERROR GetVariable(APTR Object, ULONG FieldID, struct Variable *Value) {
-   return GetField(Object, (FIELD)FieldID|TVAR, Value);
+   return GetField((OBJECTPTR)Object, (FIELD)FieldID|TVAR, Value);
 }
 
 //****************************************************************************
 
 INLINE ERROR SetLarge(APTR Object, ULONG FieldID, LARGE Value) {
-   return SetField(Object, (FIELD)FieldID|TLARGE, Value);
+   return SetField((OBJECTPTR)Object, (FIELD)FieldID|TLARGE, Value);
 }
 
 INLINE ERROR SetLong(APTR Object, ULONG FieldID, LONG Value) {
-   return SetField(Object, (FIELD)FieldID|TLONG, Value);
+   return SetField((OBJECTPTR)Object, (FIELD)FieldID|TLONG, Value);
 }
 
 INLINE ERROR SetFunction(APTR Object, ULONG FieldID, FUNCTION *Value) {
-   return SetField(Object, (FIELD)FieldID|TFUNCTION, Value);
+   return SetField((OBJECTPTR)Object, (FIELD)FieldID|TFUNCTION, Value);
 }
 
 INLINE ERROR SetFunctionPtr(APTR Object, ULONG FieldID, APTR Value) { // Yes, the pointer value will be converted to a StdC FUNCTION type internally.
-   return SetField(Object, (FIELD)FieldID|TPTR, Value);
+   return SetField((OBJECTPTR)Object, (FIELD)FieldID|TPTR, Value);
 }
 
 INLINE ERROR SetDouble(APTR Object, ULONG FieldID, DOUBLE Value) {
-   return SetField(Object, (FIELD)FieldID|TDOUBLE, Value);
+   return SetField((OBJECTPTR)Object, (FIELD)FieldID|TDOUBLE, Value);
 }
 
 INLINE ERROR SetString(APTR Object, ULONG FieldID, CSTRING Value) {
-   return SetField(Object, (FIELD)FieldID|TSTRING, Value);
+   return SetField((OBJECTPTR)Object, (FIELD)FieldID|TSTRING, Value);
 }
 
 INLINE ERROR SetPercentage(APTR Object, ULONG FieldID, DOUBLE Value) {
-   return SetField(Object, (FIELD)FieldID|TDOUBLE|TPERCENT, Value);
+   return SetField((OBJECTPTR)Object, (FIELD)FieldID|TDOUBLE|TPERCENT, Value);
 }
 
 INLINE ERROR SetPointer(APTR Object, ULONG FieldID, const void *Value) {
-   return SetField(Object, (FIELD)FieldID|TPTR, Value);
+   return SetField((OBJECTPTR)Object, (FIELD)FieldID|TPTR, Value);
 }
 
 INLINE ERROR SetVariable(APTR Object, ULONG FieldID, struct Variable *Value) {
-   return SetField(Object, (FIELD)FieldID|TVAR, Value);
+   return SetField((OBJECTPTR)Object, (FIELD)FieldID|TVAR, Value);
 }
 
 #ifndef PRV_CORE
@@ -3603,7 +3603,7 @@ INLINE void SET_DEVICE(struct dcDeviceInput *Input, WORD Type, WORD Flags, DOUBL
 
 INLINE CSTRING flReadLine(APTR Object) {
    struct flReadLine args;
-   if (!Action(MT_FlReadLine, Object, &args)) return args.Result;
+   if (!Action(MT_FlReadLine, (OBJECTPTR)Object, &args)) return args.Result;
    else return NULL;
 }
 
@@ -3617,7 +3617,7 @@ INLINE ERROR flReadLE2(APTR Object, WORD *Result)
 
    read.Buffer = data;
    read.Length = 2;
-   if (!Action(AC_Read, Object, &read)) {
+   if (!Action(AC_Read, (OBJECTPTR)Object, &read)) {
       if (read.Result IS 2) {
          #ifdef LITTLE_ENDIAN
             *Result = ((WORD *)data)[0];
@@ -3636,7 +3636,7 @@ INLINE ERROR flReadLE4(APTR Object, LONG *Result)
    UBYTE data[4];
 
    struct acRead read = { data, sizeof(data) };
-   if (!Action(AC_Read, Object, &read)) {
+   if (!Action(AC_Read, (OBJECTPTR)Object, &read)) {
       if (read.Result IS sizeof(data)) {
          #ifdef LITTLE_ENDIAN
             *Result = ((LONG *)data)[0];
@@ -3654,7 +3654,7 @@ INLINE ERROR flReadLE8(APTR Object, LARGE *Result)
 {
    UBYTE data[8];
    struct acRead read = { data, sizeof(data) };
-   if (!Action(AC_Read, Object, &read)) {
+   if (!Action(AC_Read, (OBJECTPTR)Object, &read)) {
       if (read.Result IS sizeof(data)) {
          #ifdef LITTLE_ENDIAN
             *Result = ((LARGE *)data)[0];
