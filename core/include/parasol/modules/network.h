@@ -40,7 +40,7 @@ struct IPAddress {
 #define NSF_SERVER 0x00000001
 #define NSF_SSL 0x00000002
 #define NSF_MULTI_CONNECT 0x00000004
-#define NSF_ASYNC_RESOLVE 0x00000008
+#define NSF_SYNCHRONOUS 0x00000008
 #define NSF_DEBUG 0x00000010
 
 // NetSocket states
@@ -115,7 +115,7 @@ struct csWriteClientMsg { APTR Message; LONG Length;  };
 
 INLINE ERROR csReadClientMsg(APTR Ob, APTR * Message, LONG * Length, LONG * Progress, LONG * CRC) {
    struct csReadClientMsg args = { 0, 0, 0, 0 };
-   ERROR error = Action(MT_csReadClientMsg, Ob, &args);
+   ERROR error = Action(MT_csReadClientMsg, (OBJECTPTR)Ob, &args);
    if (Message) *Message = args.Message;
    if (Length) *Length = args.Length;
    if (Progress) *Progress = args.Progress;
@@ -125,7 +125,7 @@ INLINE ERROR csReadClientMsg(APTR Ob, APTR * Message, LONG * Length, LONG * Prog
 
 INLINE ERROR csWriteClientMsg(APTR Ob, APTR Message, LONG Length) {
    struct csWriteClientMsg args = { Message, Length };
-   return(Action(MT_csWriteClientMsg, Ob, &args));
+   return(Action(MT_csWriteClientMsg, (OBJECTPTR)Ob, &args));
 }
 
 
@@ -178,7 +178,7 @@ struct prxFind { LONG Port; LONG Enabled;  };
 
 INLINE ERROR prxFind(APTR Ob, LONG Port, LONG Enabled) {
    struct prxFind args = { Port, Enabled };
-   return(Action(MT_PrxFind, Ob, &args));
+   return(Action(MT_PrxFind, (OBJECTPTR)Ob, &args));
 }
 
 #define prxFindNext(obj) Action(MT_PrxFindNext,(obj),0)
@@ -258,27 +258,27 @@ struct nsWriteMsg { APTR Message; LONG Length;  };
 
 INLINE ERROR nsConnect(APTR Ob, CSTRING Address, LONG Port) {
    struct nsConnect args = { Address, Port };
-   return(Action(MT_nsConnect, Ob, &args));
+   return(Action(MT_nsConnect, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR nsGetLocalIPAddress(APTR Ob, struct IPAddress * Address) {
    struct nsGetLocalIPAddress args = { Address };
-   return(Action(MT_nsGetLocalIPAddress, Ob, &args));
+   return(Action(MT_nsGetLocalIPAddress, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR nsDisconnectClient(APTR Ob, struct rkNetClient * Client) {
    struct nsDisconnectClient args = { Client };
-   return(Action(MT_nsDisconnectClient, Ob, &args));
+   return(Action(MT_nsDisconnectClient, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR nsDisconnectSocket(APTR Ob, struct rkClientSocket * Socket) {
    struct nsDisconnectSocket args = { Socket };
-   return(Action(MT_nsDisconnectSocket, Ob, &args));
+   return(Action(MT_nsDisconnectSocket, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR nsReadMsg(APTR Ob, APTR * Message, LONG * Length, LONG * Progress, LONG * CRC) {
    struct nsReadMsg args = { 0, 0, 0, 0 };
-   ERROR error = Action(MT_nsReadMsg, Ob, &args);
+   ERROR error = Action(MT_nsReadMsg, (OBJECTPTR)Ob, &args);
    if (Message) *Message = args.Message;
    if (Length) *Length = args.Length;
    if (Progress) *Progress = args.Progress;
@@ -288,7 +288,7 @@ INLINE ERROR nsReadMsg(APTR Ob, APTR * Message, LONG * Length, LONG * Progress, 
 
 INLINE ERROR nsWriteMsg(APTR Ob, APTR Message, LONG Length) {
    struct nsWriteMsg args = { Message, Length };
-   return(Action(MT_nsWriteMsg, Ob, &args));
+   return(Action(MT_nsWriteMsg, (OBJECTPTR)Ob, &args));
 }
 
 

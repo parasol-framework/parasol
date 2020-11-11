@@ -199,30 +199,30 @@ static struct MsgHandler *glResolveAddrHandler = NULL;
 static parasol::Log log;
 
 //***************************************************************************
-// Used for receiving synchronous execution results from netResolveName() and netResolveAddress().
+// Used for receiving asynchronous execution results from netResolveName() and netResolveAddress().
 
 static ERROR resolve_name_receiver(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
 {
    struct resolve_name_buffer *rnb = (struct resolve_name_buffer *)Message;
    // This call will cause the cached DNS result to be pulled and forwarded to the user's callback.
-   netResolveName((CSTRING)(rnb + 1), NSF_ASYNC_RESOLVE, &rnb->callback, rnb->client_data);
+   netResolveName((CSTRING)(rnb + 1), NSF_SYNCHRONOUS, &rnb->callback, rnb->client_data);
    return ERR_Okay;
 }
 
 static ERROR resolve_addr_receiver(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
 {
    struct resolve_addr_buffer *rab = (struct resolve_addr_buffer *)Message;
-   netResolveAddress((CSTRING)(rab + 1), NSF_ASYNC_RESOLVE, &rab->callback, rab->client_data);
+   netResolveAddress((CSTRING)(rab + 1), NSF_SYNCHRONOUS, &rab->callback, rab->client_data);
    return ERR_Okay;
 }
 
 //***************************************************************************
-// Thread routine for synchronous calls to netResolveName() and netResolveAddress()
+// Thread routine for asynchronous calls to netResolveName() and netResolveAddress()
 
 static ERROR thread_resolve_name(objThread *Thread)
 {
    struct resolve_name_buffer *rnb = (struct resolve_name_buffer *)Thread->Data;
-   netResolveName((CSTRING)(rnb + 1), NSF_ASYNC_RESOLVE, NULL, 0);
+   netResolveName((CSTRING)(rnb + 1), NSF_SYNCHRONOUS, NULL, 0); // Blocking
 
    // Signal back to the main thread so that the callback is executed in the correct context.
    // Part of the trick to this process is that netResolveName() will have cached the IP results, so they
@@ -235,7 +235,7 @@ static ERROR thread_resolve_name(objThread *Thread)
 static ERROR thread_resolve_addr(objThread *Thread)
 {
    struct resolve_addr_buffer *rab = (struct resolve_addr_buffer *)Thread->Data;
-   netResolveAddress((CSTRING)(rab + 1), NSF_ASYNC_RESOLVE, NULL, 0);
+   netResolveAddress((CSTRING)(rab + 1), NSF_SYNCHRONOUS, NULL, 0); // Blocking
    SendMessage(0, glResolveAddrMsgID, 0, rab, Thread->DataSize);
    return ERR_Okay;
 }
@@ -502,7 +502,8 @@ ResolveAddress: Resolves an IP address to a host name.
 ResolveAddress() performs a IP address resolution, converting an address to an official host name and list of
 IP addresses.  The resolution process involves contacting a DNS server.  As this can potentially cause a significant
 delay, the ResolveAddress() function supports asynchronous communication by default in order to avoid lengthy waiting
-periods.  If asynchronous operation is desired, the NSF_ASYNC_RESOLVE flag should be set prior to calling this method.
+periods.  If synchronous (blocking) operation is desired then the NSF_SYNCHRONOUS flag must be set prior to calling
+this method.
 
 The function referenced in the Callback parameter will receive the results of the lookup.  Its C/C++ prototype is
 `Function(LARGE ClientData, ERROR Error, CSTRING HostName, IPAddress *Addresses, LONG TotalAddresses)`.
@@ -531,7 +532,7 @@ static ERROR netResolveAddress(CSTRING Address, LONG Flags, FUNCTION *Callback, 
    struct IPAddress ip;
    if (netStrToAddress(Address, &ip) != ERR_Okay) return ERR_Args;
 
-   if (!(Flags & NSF_ASYNC_RESOLVE)) { // Attempt synchronous resolution in the background, return immediately.
+   if (!(Flags & NSF_SYNCHRONOUS)) { // Attempt asynchronous resolution in the background, return immediately.
       OBJECTPTR thread;
       LONG pkg_size = sizeof(struct resolve_addr_buffer) + StrLength(Address) + 1;
       if (!CreateObject(ID_THREAD, NF_INTEGRAL, &thread,
@@ -621,9 +622,9 @@ ResolveName: Resolves a domain name to an official host name and a list of IP ad
 
 ResolveName() performs a domain name resolution, converting a domain name to an official host name and
 IP addresses.  The resolution process involves contacting a DNS server.  As this can potentially cause a significant
-delay, the ResolveName() function attempts to use synchronous communication by default so that the function can return
-immediately.  If asynchronous operation is desired, the NSF_ASYNC_RESOLVE flag should be set prior to calling this method
-and the routine will not return until it has a response.
+delay, the ResolveName() function attempts to use asynchronous communication by default so that the function can return
+immediately.  If a synchronous (blocking) operation is desired then the NSF_SYNCHRONOUS flag must be set prior to
+calling this method and the routine will not return until it has a response.
 
 The function referenced in the Callback parameter will receive the results of the lookup.  Its C/C++ prototype is
 `Function(LARGE ClientData, ERROR Error, CSTRING HostName, IPAddress *Addresses, LONG TotalAddresses)`.
@@ -673,7 +674,7 @@ static ERROR netResolveName(CSTRING HostName, LONG Flags, FUNCTION *Callback, LA
       resolve_callback(ClientData, Callback, ERR_Okay, "localhost", list, 1);
    }
 
-   if (!(Flags & NSF_ASYNC_RESOLVE)) { // Attempt synchronous resolution in the background, return immediately.
+   if (!(Flags & NSF_SYNCHRONOUS)) { // Attempt asynchronous resolution in the background, return immediately.
       OBJECTPTR thread;
       LONG pkg_size = sizeof(struct resolve_name_buffer) + StrLength(HostName) + 1;
       if (!CreateObject(ID_THREAD, NF_INTEGRAL, &thread,

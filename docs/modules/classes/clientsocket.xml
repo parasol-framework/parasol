@@ -167,7 +167,7 @@
       <const name="SSL">Use Secure Sockets Layer for all communication.</const>
       <const name="MULTI_CONNECT">Allow multiple connections from the same IP when in server mode.</const>
       <const name="DEBUG">Print extra log messages.</const>
-      <const name="ASYNC_RESOLVE">Use asynchronous (non-parallel) DNS resolutions in ResolveAddress() and ResolveName().</const>
+      <const name="SYNCHRONOUS">Use synchronous (blocking) network calls.</const>
     </constants>
 
     <constants lookup="NTC" comment="NetSocket states">
