@@ -312,12 +312,12 @@ struct scAddScrollButton { OBJECTID SurfaceID; LONG Direction;  };
 
 INLINE ERROR scUpdateScroll(APTR Ob, LONG PageSize, LONG ViewSize, LONG Position, LONG Unit) {
    struct scUpdateScroll args = { PageSize, ViewSize, Position, Unit };
-   return(Action(MT_ScUpdateScroll, Ob, &args));
+   return(Action(MT_ScUpdateScroll, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR scAddScrollButton(APTR Ob, OBJECTID SurfaceID, LONG Direction) {
    struct scAddScrollButton args = { SurfaceID, Direction };
-   return(Action(MT_ScAddScrollButton, Ob, &args));
+   return(Action(MT_ScAddScrollButton, (OBJECTPTR)Ob, &args));
 }
 
 
@@ -399,32 +399,32 @@ struct txtSetFont { CSTRING Face;  };
 
 INLINE ERROR txtAddLine(APTR Ob, LONG Line, CSTRING String, LONG Length) {
    struct txtAddLine args = { Line, String, Length };
-   return(Action(MT_TxtAddLine, Ob, &args));
+   return(Action(MT_TxtAddLine, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR txtDeleteLine(APTR Ob, LONG Line) {
    struct txtDeleteLine args = { Line };
-   return(Action(MT_TxtDeleteLine, Ob, &args));
+   return(Action(MT_TxtDeleteLine, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR txtGetLine(APTR Ob, LONG Line, STRING Buffer, LONG Length) {
    struct txtGetLine args = { Line, Buffer, Length };
-   return(Action(MT_TxtGetLine, Ob, &args));
+   return(Action(MT_TxtGetLine, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR txtReplaceLine(APTR Ob, LONG Line, CSTRING String, LONG Length) {
    struct txtReplaceLine args = { Line, String, Length };
-   return(Action(MT_TxtReplaceLine, Ob, &args));
+   return(Action(MT_TxtReplaceLine, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR txtSelectArea(APTR Ob, LONG Row, LONG Column, LONG EndRow, LONG EndColumn) {
    struct txtSelectArea args = { Row, Column, EndRow, EndColumn };
-   return(Action(MT_TxtSelectArea, Ob, &args));
+   return(Action(MT_TxtSelectArea, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR txtSetFont(APTR Ob, CSTRING Face) {
    struct txtSetFont args = { Face };
-   return(Action(MT_TxtSetFont, Ob, &args));
+   return(Action(MT_TxtSetFont, (OBJECTPTR)Ob, &args));
 }
 
 
@@ -465,22 +465,22 @@ struct tabSetObject { LONG Index; OBJECTID ObjectID;  };
 
 INLINE ERROR tabAddObject(APTR Ob, OBJECTID ObjectID) {
    struct tabAddObject args = { ObjectID };
-   return(Action(MT_TabAddObject, Ob, &args));
+   return(Action(MT_TabAddObject, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR tabInsertObject(APTR Ob, LONG Index, OBJECTID ObjectID) {
    struct tabInsertObject args = { Index, ObjectID };
-   return(Action(MT_TabInsertObject, Ob, &args));
+   return(Action(MT_TabInsertObject, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR tabRemoveObject(APTR Ob, OBJECTID ObjectID) {
    struct tabRemoveObject args = { ObjectID };
-   return(Action(MT_TabRemoveObject, Ob, &args));
+   return(Action(MT_TabRemoveObject, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR tabSetObject(APTR Ob, LONG Index, OBJECTID ObjectID) {
    struct tabSetObject args = { Index, ObjectID };
-   return(Action(MT_TabSetObject, Ob, &args));
+   return(Action(MT_TabSetObject, (OBJECTPTR)Ob, &args));
 }
 
 
@@ -662,17 +662,17 @@ struct mnGetItem { LONG ID; struct rkMenuItem * Item;  };
 
 INLINE ERROR mnSwitch(APTR Ob, LONG TimeLapse) {
    struct mnSwitch args = { TimeLapse };
-   return(Action(MT_MnSwitch, Ob, &args));
+   return(Action(MT_MnSwitch, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR mnSelectItem(APTR Ob, LONG ID, LONG State) {
    struct mnSelectItem args = { ID, State };
-   return(Action(MT_MnSelectItem, Ob, &args));
+   return(Action(MT_MnSelectItem, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR mnGetItem(APTR Ob, LONG ID, struct rkMenuItem ** Item) {
    struct mnGetItem args = { ID, 0 };
-   ERROR error = Action(MT_MnGetItem, Ob, &args);
+   ERROR error = Action(MT_MnGetItem, (OBJECTPTR)Ob, &args);
    if (Item) *Item = args.Item;
    return(error);
 }
@@ -898,69 +898,69 @@ struct viewItemDimensions { LONG TagIndex; LONG X; LONG Y; LONG Width; LONG Heig
 
 INLINE ERROR viewSortColumn(APTR Ob, CSTRING Column, LONG Descending) {
    struct viewSortColumn args = { Column, Descending };
-   return(Action(MT_viewSortColumn, Ob, &args));
+   return(Action(MT_viewSortColumn, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR viewSortColumnIndex(APTR Ob, LONG Column, LONG Descending) {
    struct viewSortColumnIndex args = { Column, Descending };
-   return(Action(MT_viewSortColumnIndex, Ob, &args));
+   return(Action(MT_viewSortColumnIndex, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR viewSelectItem(APTR Ob, CSTRING XPath) {
    struct viewSelectItem args = { XPath };
-   return(Action(MT_viewSelectItem, Ob, &args));
+   return(Action(MT_viewSelectItem, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR viewSetItem(APTR Ob, CSTRING XPath, LONG TagIndex, CSTRING Tag, CSTRING Attrib, CSTRING Value) {
    struct viewSetItem args = { XPath, TagIndex, Tag, Attrib, Value };
-   return(Action(MT_viewSetItem, Ob, &args));
+   return(Action(MT_viewSetItem, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR viewRemoveItem(APTR Ob, CSTRING XPath, LONG TagIndex) {
    struct viewRemoveItem args = { XPath, TagIndex };
-   return(Action(MT_viewRemoveItem, Ob, &args));
+   return(Action(MT_viewRemoveItem, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR viewRemoveTag(APTR Ob, LONG TagIndex, LONG Total) {
    struct viewRemoveTag args = { TagIndex, Total };
-   return(Action(MT_viewRemoveTag, Ob, &args));
+   return(Action(MT_viewRemoveTag, (OBJECTPTR)Ob, &args));
 }
 
 #define viewSelectNone(obj) Action(MT_viewSelectNone,(obj),0)
 
 INLINE ERROR viewRaiseItem(APTR Ob, CSTRING XPath, LONG TagIndex) {
    struct viewRaiseItem args = { XPath, TagIndex };
-   return(Action(MT_viewRaiseItem, Ob, &args));
+   return(Action(MT_viewRaiseItem, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR viewLowerItem(APTR Ob, CSTRING XPath, LONG TagIndex) {
    struct viewLowerItem args = { XPath, TagIndex };
-   return(Action(MT_viewLowerItem, Ob, &args));
+   return(Action(MT_viewLowerItem, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR viewCloseBranch(APTR Ob, CSTRING XPath, LONG TagIndex) {
    struct viewCloseBranch args = { XPath, TagIndex };
-   return(Action(MT_viewCloseBranch, Ob, &args));
+   return(Action(MT_viewCloseBranch, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR viewOpenBranch(APTR Ob, CSTRING XPath, LONG TagIndex, LONG Parents) {
    struct viewOpenBranch args = { XPath, TagIndex, Parents };
-   return(Action(MT_viewOpenBranch, Ob, &args));
+   return(Action(MT_viewOpenBranch, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR viewInsertItem(APTR Ob, CSTRING XPath, LONG TagIndex, LONG Insert, CSTRING XML) {
    struct viewInsertItem args = { XPath, TagIndex, Insert, XML };
-   return(Action(MT_viewInsertItem, Ob, &args));
+   return(Action(MT_viewInsertItem, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR viewRevealItem(APTR Ob, LONG TagIndex) {
    struct viewRevealItem args = { TagIndex };
-   return(Action(MT_viewRevealItem, Ob, &args));
+   return(Action(MT_viewRevealItem, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR viewItemDimensions(APTR Ob, LONG TagIndex, LONG * X, LONG * Y, LONG * Width, LONG * Height) {
    struct viewItemDimensions args = { TagIndex, 0, 0, 0, 0 };
-   ERROR error = Action(MT_viewItemDimensions, Ob, &args);
+   ERROR error = Action(MT_viewItemDimensions, (OBJECTPTR)Ob, &args);
    if (X) *X = args.X;
    if (Y) *Y = args.Y;
    if (Width) *Width = args.Width;
@@ -1028,22 +1028,22 @@ struct clipRemove { LONG Datatype;  };
 
 INLINE ERROR clipAddFile(APTR Ob, LONG Datatype, CSTRING Path, LONG Flags) {
    struct clipAddFile args = { Datatype, Path, Flags };
-   return(Action(MT_ClipAddFile, Ob, &args));
+   return(Action(MT_ClipAddFile, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR clipAddObject(APTR Ob, LONG Datatype, OBJECTID ObjectID, LONG Flags) {
    struct clipAddObject args = { Datatype, ObjectID, Flags };
-   return(Action(MT_ClipAddObject, Ob, &args));
+   return(Action(MT_ClipAddObject, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR clipAddObjects(APTR Ob, LONG Datatype, OBJECTID * Objects, LONG Flags) {
    struct clipAddObjects args = { Datatype, Objects, Flags };
-   return(Action(MT_ClipAddObjects, Ob, &args));
+   return(Action(MT_ClipAddObjects, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR clipGetFiles(APTR Ob, LONG * Datatype, LONG Index, CSTRING ** Files, LONG * Flags) {
    struct clipGetFiles args = { 0, Index, 0, 0 };
-   ERROR error = Action(MT_ClipGetFiles, Ob, &args);
+   ERROR error = Action(MT_ClipGetFiles, (OBJECTPTR)Ob, &args);
    if (Datatype) *Datatype = args.Datatype;
    if (Files) *Files = args.Files;
    if (Flags) *Flags = args.Flags;
@@ -1052,12 +1052,12 @@ INLINE ERROR clipGetFiles(APTR Ob, LONG * Datatype, LONG Index, CSTRING ** Files
 
 INLINE ERROR clipAddText(APTR Ob, CSTRING String) {
    struct clipAddText args = { String };
-   return(Action(MT_ClipAddText, Ob, &args));
+   return(Action(MT_ClipAddText, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR clipRemove(APTR Ob, LONG Datatype) {
    struct clipRemove args = { Datatype };
-   return(Action(MT_ClipRemove, Ob, &args));
+   return(Action(MT_ClipRemove, (OBJECTPTR)Ob, &args));
 }
 
 

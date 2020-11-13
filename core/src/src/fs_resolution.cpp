@@ -1,3 +1,8 @@
+/*****************************************************************************
+-CATEGORY-
+Name: Files
+-END-
+*****************************************************************************/
 
 /*****************************************************************************
 
@@ -58,17 +63,14 @@ static THREADVAR UBYTE tlClassLoaded;
 
 ERROR ResolvePath(CSTRING Path, LONG Flags, STRING *Result)
 {
+   parasol::Log log(__FUNCTION__);
    LONG i, loop;
-   UBYTE src[SIZE_RESBUFFER];
-   UBYTE dest[SIZE_RESBUFFER];
+   char src[SIZE_RESBUFFER];
+   char dest[SIZE_RESBUFFER];
 
-   FMSG("~ResolvePath()","%s, Flags: $%.8x", Path, Flags);
+   log.traceBranch("%s, Flags: $%.8x", Path, Flags);
 
-   if (!Path) {
-      LogError(ERH_ResolvePath, ERR_NullArgs);
-      LOGRETURN();
-      return ERR_NullArgs;
-   }
+   if (!Path) return log.warning(ERR_NullArgs);
 
    if (Result) *Result = NULL;
 
@@ -80,8 +82,8 @@ ERROR ResolvePath(CSTRING Path, LONG Flags, STRING *Result)
    }
 
    if (!StrCompare("string:", Path, 7, 0)) {
-      if ((*Result = StrClone(Path))) { LOGRETURN(); return ERR_Okay; }
-      else { LOGRETURN(); return LogError(ERH_ResolvePath, ERR_AllocMemory); }
+      if ((*Result = StrClone(Path))) return ERR_Okay;
+      else return log.warning(ERR_AllocMemory);
    }
 
    // Check if the Path argument contains a volume character.  If it does not, make a clone of the string and return it.
@@ -99,12 +101,9 @@ ERROR ResolvePath(CSTRING Path, LONG Flags, STRING *Result)
          Path = src;
       }
    }
-   else if ((Path[0] IS '/') AND (Path[1] IS '/')) {
-      resolved = TRUE; // UNC path discovered
-   }
-   else if ((Path[0] IS '\\') AND (Path[1] IS '\\')) {
-      resolved = TRUE; // UNC path discovered
-   }
+   else if ((Path[0] IS '/') AND (Path[1] IS '/')) resolved = TRUE; // UNC path discovered
+   else if ((Path[0] IS '\\') AND (Path[1] IS '\\')) resolved = TRUE; // UNC path discovered
+
 #elif __unix__
    if ((Path[0] IS '/') OR (Path[0] IS '\\')) resolved = TRUE;
 #endif
@@ -113,10 +112,7 @@ ERROR ResolvePath(CSTRING Path, LONG Flags, STRING *Result)
    // (ideally with no leading folder references).
 
    if ((!resolved) AND (Flags & RSF_PATH)) {
-      if (!resolve_path_env(Path, Result)) {
-         LOGRETURN();
-         return ERR_Okay;
-      }
+      if (!resolve_path_env(Path, Result)) return ERR_Okay;
    }
 
    if (!resolved) {
@@ -128,37 +124,18 @@ ERROR ResolvePath(CSTRING Path, LONG Flags, STRING *Result)
       if (Flags & RSF_APPROXIMATE) {
          StrCopy(Path, dest, sizeof(dest));
          if (!test_path(dest, RSF_APPROXIMATE)) Path = dest;
-         else {
-            LOGRETURN();
-            return ERR_FileNotFound;
-         }
+         else return ERR_FileNotFound;
       }
       else if (!(Flags & RSF_NO_FILE_CHECK)) {
          StrCopy(Path, dest, sizeof(dest));
          if (!test_path(dest, 0)) Path = dest;
-         else {
-            LOGRETURN();
-            return ERR_FileNotFound;
-         }
+         else return ERR_FileNotFound;
       }
 
-      if (!Result) {
-         LOGRETURN();
-         return ERR_Okay;
-      }
-      else if ((*Result = cleaned_path(Path))) {
-         LOGRETURN();
-         return ERR_Okay;
-      }
-      else if ((*Result = StrClone(Path))) {
-         LOGRETURN();
-         return ERR_Okay;
-      }
-      else {
-         LogError(ERH_ResolvePath, ERR_AllocMemory);
-         LOGRETURN();
-         return ERR_AllocMemory;
-      }
+      if (!Result) return ERR_Okay;
+      else if ((*Result = cleaned_path(Path))) return ERR_Okay;
+      else if ((*Result = StrClone(Path))) return ERR_Okay;
+      else return log.warning(ERR_AllocMemory);
    }
 
    StrCopy(Path, src, sizeof(src)); // Copy the Path argument to our internal buffer
@@ -172,7 +149,7 @@ ERROR ResolvePath(CSTRING Path, LONG Flags, STRING *Result)
          error = resolve(glVolumes, src, dest, Flags);
 
          if (error IS ERR_VirtualVolume) {
-            FMSG("ResolvePath","Detected virtual volume '%s'", dest);
+            log.trace("Detected virtual volume '%s'", dest);
 
             // If RSF_CHECK_VIRTUAL is set, return ERR_VirtualVolume for reserved volume names.
 
@@ -203,11 +180,7 @@ ERROR ResolvePath(CSTRING Path, LONG Flags, STRING *Result)
             #endif
                // Copy the destination to the source buffer and repeat the resolution process.
 
-               if (Flags & RSF_NO_DEEP_SCAN) {
-                  LOGRETURN();
-                  return ERR_Failed;
-               }
-
+               if (Flags & RSF_NO_DEEP_SCAN) return ERR_Failed;
                StrCopy(dest, src, sizeof(src));
                continue; // Keep resolving
             }
@@ -229,17 +202,12 @@ resolved_path:
 
       if (loop > 0) { // Note that loop starts at 10 and decrements to zero
          if ((!error) AND (!dest[0])) error = ERR_Failed;
-         LOGRETURN();
          return error;
       }
-      else {
-         LOGRETURN();
-         return ERR_Loop;
-      }
+      else return ERR_Loop;
    }
    else {
-      LogError(ERH_ResolvePath, ERR_AccessObject);
-      LOGRETURN();
+      log.warning(ERR_AccessObject);
       return ERR_ExclusiveDenied;
    }
 }
@@ -251,16 +219,17 @@ resolved_path:
 
 static ERROR resolve_path_env(CSTRING RelativePath, STRING *Result)
 {
+   parasol::Log log("ResolvePath");
    struct stat64 info;
    CSTRING path;
-   UBYTE src[512];
+   char src[512];
 
    // If a path to the file isn't available, scan the PATH environment variable. In Unix the separator is :
 
    if ((path = getenv("PATH")) AND (path[0])) {
       LONG j = 0, k;
       while (path[j]) {
-         for (k=0; (path[j+k]) AND (path[j+k] != ':') AND (k < sizeof(src)-1); k++) {
+         for (k=0; (path[j+k]) AND (path[j+k] != ':') AND ((size_t)k < sizeof(src)-1); k++) {
             src[k] = path[j+k];
          }
          if ((k > 0) AND (src[k-1] != '/')) src[k++] = '/';
@@ -278,7 +247,7 @@ static ERROR resolve_path_env(CSTRING RelativePath, STRING *Result)
          j += k;
       }
    }
-   else MSG("Failed to read PATH environment variable.");
+   else log.trace("Failed to read PATH environment variable.");
 
    return ERR_NothingDone;
 }
@@ -287,18 +256,19 @@ static ERROR resolve_path_env(CSTRING RelativePath, STRING *Result)
 
 static ERROR resolve_path_env(CSTRING RelativePath, STRING *Result)
 {
+   parasol::Log log("ResolvePath");
    struct stat64 info;
    CSTRING path;
-   UBYTE src[512];
+   char src[512];
 
    // If a path to the file isn't available, scan the PATH environment variable. In Windows the separator is ;
 
    if ((path = getenv("PATH")) AND (path[0])) {
-      MSG("Got PATH: %s", path);
+      log.trace("Got PATH: %s", path);
 
       LONG j = 0, k;
       while (path[j]) {
-         for (k=0; (path[j+k]) AND (path[j+k] != ';') AND (k < sizeof(src)-1); k++) {
+         for (k=0; (path[j+k]) AND (path[j+k] != ';') AND ((size_t)k < sizeof(src)-1); k++) {
             src[k] = path[j+k];
          }
          j += k;
@@ -316,7 +286,7 @@ static ERROR resolve_path_env(CSTRING RelativePath, STRING *Result)
          while (path[j] IS ';') j++; // Go to the next path in the list
       }
    }
-   else MSG("Failed to read PATH environment variable.");
+   else log.trace("Failed to read PATH environment variable.");
 
    return ERR_NothingDone;
 }
@@ -336,6 +306,7 @@ static ERROR resolve_object_path(STRING, STRING, STRING, LONG);
 
 static ERROR resolve(objConfig *Config, STRING Source, STRING Dest, LONG Flags)
 {
+   parasol::Log log("ResolvePath");
    char fullpath[SIZE_RESBUFFER];
    char buffer[SIZE_RESBUFFER];
    LONG i, j, k, pos, loop;
@@ -348,17 +319,17 @@ static ERROR resolve(objConfig *Config, STRING Source, STRING Dest, LONG Flags)
    }
 
    for (pos=0; Source[pos] != ':'; pos++) {
-      if (!Source[pos]) return LogError(ERH_ResolvePath, ERR_InvalidData);
+      if (!Source[pos]) return log.warning(ERR_InvalidData);
    }
    pos++;
 
    Source[pos-1] = 0; // Remove the volume symbol for the string comparison
    fullpath[0] = 0;
-   for (i=0; i < Config->AmtEntries; i++) {
+   for (LONG i=0; i < Config->AmtEntries; i++) {
       if ((!StrMatch("Name", Config->Entries[i].Key)) AND (!StrMatch(Config->Entries[i].Data, Source))) {
          while ((i > 0) AND (!StrMatch(Config->Entries[i].Section, Config->Entries[i-1].Section))) i--;
 
-         for (j=i; j < Config->AmtEntries; j++) {
+         for (LONG j=i; j < Config->AmtEntries; j++) {
             if (!StrMatch("Path", Config->Entries[j].Key)) {
                StrCopy(Config->Entries[j].Data, fullpath, sizeof(fullpath));
                break;
@@ -369,7 +340,7 @@ static ERROR resolve(objConfig *Config, STRING Source, STRING Dest, LONG Flags)
    }
 
    if (!fullpath[0]) {
-      LogF("ResolvePath","No matching volume for \"%s\".", Source);
+      log.msg("No matching volume for \"%s\".", Source);
       Source[pos-1] = ':'; // Put back the volume symbol
       return ERR_Search;
    }
@@ -380,7 +351,7 @@ static ERROR resolve(objConfig *Config, STRING Source, STRING Dest, LONG Flags)
 
    if (fullpath[0] IS ':') return resolve_object_path(fullpath+1, Source, Dest, sizeof(fullpath)-1);
 
-   FMSG("~resolve()","%s, Resolved Path: %s, Flags: $%.8x", Source, fullpath, Flags);
+   log.traceBranch("%s, Resolved Path: %s, Flags: $%.8x", Source, fullpath, Flags);
 
    STRING path = fullpath;
 
@@ -392,23 +363,15 @@ static ERROR resolve(objConfig *Config, STRING Source, STRING Dest, LONG Flags)
       for (i=0; Source[i]; i++) Dest[i] = Source[i];  // Return an exact duplicate of the original source string
       Dest[i] = 0;
 
-      if (get_virtual(Source)) {
-         LOGRETURN();
-         return ERR_VirtualVolume;
-      }
+      if (get_virtual(Source)) return ERR_VirtualVolume;
 
-      if (tlClassLoaded) { // We already attempted to load this class on a previous occasion - we must fail
-         LOGRETURN();
+      if (tlClassLoaded) { // Already attempted to load this class on a previous occasion - we must fail
          return ERR_Failed;
       }
 
       FindClass(ResolveClassName(path + 6));
-
-      FMSG("resolve","Found virtual volume from class %s", path + 6);
-
+      log.trace("Found virtual volume from class %s", path + 6);
       tlClassLoaded = TRUE; // This setting will prevent recursion
-
-      LOGRETURN();
       return ERR_VirtualVolume;
    }
 
@@ -457,7 +420,7 @@ static ERROR resolve(objConfig *Config, STRING Source, STRING Dest, LONG Flags)
                Dest[j] = 0;
 
                // Reexamine the result for the presence of a colon.
-               for (j=0; (Dest[j]) AND (Dest[j] != ':') AND (Dest[j] != '/'); j++);
+               for (LONG j=0; (Dest[j]) AND (Dest[j] != ':') AND (Dest[j] != '/'); j++);
             }
             else break; // Path not resolved or virtual volume detected.
          }
@@ -465,42 +428,35 @@ static ERROR resolve(objConfig *Config, STRING Source, STRING Dest, LONG Flags)
       }
 
       if (loop <= 0) {
-         LogF("@resolve","Infinite loop on path '%s'", Dest);
-         LOGRETURN();
+         log.warning("Infinite loop on path '%s'", Dest);
          return ERR_Loop;
       }
 
-      if (!error) {
-         LOGRETURN();
-         return ERR_Okay;
-      }
+      if (!error) return ERR_Okay;
 
       // Return now if no file checking is to be performed
 
       if (Flags & RSF_NO_FILE_CHECK) {
-         FMSG("resolve","No file check will be performed.");
-         LOGRETURN();
+         log.trace("No file check will be performed.");
          return ERR_Okay;
       }
 
       if (!test_path(Dest, Flags)) {
-         FMSG("resolve","File found, path resolved successfully.");
-         LOGRETURN();
+         log.trace("File found, path resolved successfully.");
          return ERR_Okay;
       }
 
-      FMSG("resolve","File does not exist at %s", Dest);
+      log.trace("File does not exist at %s", Dest);
 
       if (Flags & RSF_NO_DEEP_SCAN) {
-         FMSG("resolve","No deep scanning - additional paths will not be checked.");
+         log.trace("No deep scanning - additional paths will not be checked.");
          break;
       }
 
       if (*path) path++;
    }
 
-   FMSG("resolve","Resolved path but no matching file for %s\"%s\".", (Flags & RSF_APPROXIMATE) ? "~" : "", Source);
-   LOGRETURN();
+   log.trace("Resolved path but no matching file for %s\"%s\".", (Flags & RSF_APPROXIMATE) ? "~" : "", Source);
    return ERR_FileNotFound;
 }
 
@@ -513,12 +469,13 @@ static ERROR resolve(objConfig *Config, STRING Source, STRING Dest, LONG Flags)
 
 static ERROR resolve_object_path(STRING Path, STRING Source, STRING Dest, LONG PathSize)
 {
+   parasol::Log log("ResolvePath");
    ERROR (*resolve_virtual)(OBJECTPTR, STRING, STRING, LONG);
    ERROR error = ERR_VirtualVolume;
 
    if (Path[0]) {
       OBJECTID volume_id;
-      if (!FastFindObject(Path, NULL, &volume_id, 1, NULL)) {
+      if (!FastFindObject(Path, 0, &volume_id, 1, NULL)) {
          OBJECTPTR object;
          if (!AccessObject(volume_id, 5000, &object)) {
             if ((!GetPointer(object, FID_ResolvePath, &resolve_virtual)) AND (resolve_virtual)) {
@@ -533,6 +490,6 @@ static ERROR resolve_object_path(STRING Path, STRING Source, STRING Dest, LONG P
       StrCopy(Source, Dest, COPY_ALL);
       return ERR_VirtualVolume;
    }
-   else if (error != ERR_Okay) return LogError(ERH_ResolvePath, error);
+   else if (error != ERR_Okay) return log.warning(error);
    else return ERR_Okay;
 }

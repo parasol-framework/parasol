@@ -221,7 +221,7 @@ void (*glNetProcessMessages)(LONG, APTR) = 0;
 
 // Imported string variables
 
-UBYTE glAlphaNumeric[256];
+char glAlphaNumeric[256];
 #ifdef __ANDROID__
 static struct AndroidBase *AndroidBase = 0;
 #endif

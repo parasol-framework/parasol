@@ -1333,7 +1333,7 @@ void win32_netresponse(struct Head *SocketObject, SOCKET_HANDLE SocketHandle, LO
    log.traceBranch("[%d:%d:%p], %s, Error %d, InUse: %d, WinRecursion: %d", Socket->Head.UniqueID, SocketHandle, ClientSocket, msg[Message], Error, Socket->InUse, Socket->WinRecursion);
    #endif
 
-   parasol::SwitchContext(Socket);
+   parasol::SwitchContext context(Socket);
 
    Socket->InUse++;
 

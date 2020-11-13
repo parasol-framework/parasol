@@ -2864,11 +2864,11 @@ SetField(Object, FID_Statement|TSTR, "string");
     <name>StrFormatDate</name>
     <category>Strings</category>
     <comment>Formats the content of a Time object into a date string.</comment>
-    <prototype>ERROR StrFormatDate(STRING Buffer, LONG Size, STRING Format, struct DateTime * Time)</prototype>
+    <prototype>ERROR StrFormatDate(STRING Buffer, LONG Size, CSTRING Format, struct DateTime * Time)</prototype>
     <input>
       <param type="STRING" name="Buffer">Pointer to a buffer large enough to receive the formatted data.</param>
       <param type="LONG" name="Size">The length of the Buffer, in bytes.</param>
-      <param type="STRING" name="Format">String specifying the required date format.</param>
+      <param type="CSTRING" name="Format">String specifying the required date format.</param>
       <param type="struct DateTime *" name="Time">Pointer to a DateTime structure that contains the date to be formatted.  If NULL, the current system time will be used.</param>
     </input>
     <description>
@@ -3063,11 +3063,11 @@ SetField(Object, FID_Statement|TSTR, "string");
     <name>StrReplace</name>
     <category>Strings</category>
     <comment>Replaces all occurrences of a keyword or phrase within a given string.</comment>
-    <prototype>ERROR StrReplace(CSTRING Src, STRING Keyword, STRING Replacement, STRING * Result, LONG Flags)</prototype>
+    <prototype>ERROR StrReplace(CSTRING Src, CSTRING Keyword, CSTRING Replacement, STRING * Result, LONG Flags)</prototype>
     <input>
       <param type="CSTRING" name="Src">Points to the source string that contains occurrences of the Keyword that you are searching for.</param>
-      <param type="STRING" name="Keyword">Identifies the keyword or phrase that you want to replace.</param>
-      <param type="STRING" name="Replacement">Identifies the string that will replace all occurrences of the Keyword.</param>
+      <param type="CSTRING" name="Keyword">Identifies the keyword or phrase that you want to replace.</param>
+      <param type="CSTRING" name="Replacement">Identifies the string that will replace all occurrences of the Keyword.</param>
       <param type="STRING *" name="Result">Must refer to a STRING variable that will store the resulting memory block.</param>
       <param type="LONG" name="Flags" lookup="STR">Set to STR_CASE if the keyword search should be case-sensitive.</param>
     </input>

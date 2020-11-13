@@ -10,7 +10,7 @@ Name: Strings
 
 ****************************************************************************/
 
-static void read_ordering(UBYTE *);
+static void read_ordering(char *);
 
 #define EPOCH_YR        1970
 #define SECS_DAY        (24 * 60 * 60)
@@ -148,7 +148,7 @@ set that field.
 -INPUT-
 buf(str) Buffer: Pointer to a buffer large enough to receive the formatted data.
 bufsize Size: The length of the Buffer, in bytes.
-str Format: String specifying the required date format.
+cstr Format: String specifying the required date format.
 struct(DateTime) Time: Pointer to a DateTime structure that contains the date to be formatted.  If NULL, the current system time will be used.
 
 -ERRORS-
@@ -159,15 +159,15 @@ BufferOverflow: The buffer was not large enough to hold the formatted string (th
 
 *****************************************************************************/
 
-static const STRING days[7] = { "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday" };
-static const STRING months[13] = { "", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December" };
+static const CSTRING days[7] = { "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday" };
+static const CSTRING months[13] = { "", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December" };
 
-ERROR StrFormatDate(STRING Buffer, LONG BufferSize, STRING Format, struct DateTime *Time)
+ERROR StrFormatDate(STRING Buffer, LONG BufferSize, CSTRING Format, struct DateTime *Time)
 {
    struct DateTime dt;
    STRING str;
-   UBYTE day[32], month[32], buffer[80];
-   WORD tmp, pos, i, j;
+   char day[32], month[32], buffer[80];
+   WORD pos, i, j;
 
    if ((!Buffer) OR (BufferSize < 1) OR (!Format)) return ERR_Args;
 
@@ -288,7 +288,7 @@ ERROR StrFormatDate(STRING Buffer, LONG BufferSize, STRING Format, struct DateTi
          // Year
 
          if ((Format[i+1] IS 'y') AND (Format[i+2] != 'y')) {
-            tmp = Time->Year % 100;
+            WORD tmp = Time->Year % 100;
             if (tmp < 10) str[pos++] = '0';
             pos += IntToStr(tmp, str + pos, BufferSize-pos);
          }
@@ -473,7 +473,7 @@ static void add_days(struct DateTime *Date, LONG Days)
 ERROR StrReadDate(CSTRING Date, struct DateTime *Output)
 {
    struct datepart datepart[3];
-   UBYTE ordering[3] = { 0, 0, 0 };
+   char ordering[3] = { 0, 0, 0 };
    LONG i, numparts;
    struct DateTime time;
    CSTRING str;
@@ -767,7 +767,7 @@ ERROR StrReadDate(CSTRING Date, struct DateTime *Output)
 
             while (*str) {
                if ((*str IS '+') OR (*str IS '-')) {
-                  UBYTE tz[5];
+                  char tz[5];
                   for (i=1; i < 4; i++) {
                      if ((str[i] < '0') OR (str[i] > '9')) break;
                      tz[i-1] = str[i];
@@ -912,7 +912,7 @@ Syntax
 
 *****************************************************************************/
 
-INLINE UBYTE read_nibble(CSTRING Str)
+INLINE char read_nibble(CSTRING Str)
 {
    if ((*Str >= '0') AND (*Str <= '9')) return (*Str - '0');
    else if ((*Str >= 'A') AND (*Str <= 'F')) return ((*Str - 'A')+10);
@@ -926,7 +926,7 @@ ERROR StrToColour(CSTRING Colour, struct RGB8 *RGB)
 
    if (*Colour IS '#') {
       Colour++;
-      UBYTE nibbles[8];
+      char nibbles[8];
       UBYTE n = 0;
       while ((*Colour) AND (n < ARRAYSIZE(nibbles))) nibbles[n++] = read_nibble(Colour++);
 
@@ -1016,19 +1016,18 @@ DOUBLE StrToFloat(CSTRING String)
 
    // Check for decimal place
 
-   LONG factor, number;
    if (*String IS '.') {
       String++;
       if ((*String >= '0') AND (*String <= '9')) {
+         LONG number;
          if ((number = StrToInt(String))) {
-             factor = 1;
+             LONG factor = 1;
              while ((*String >= '0') AND (*String <= '9')) {
                 factor = factor * 10;
                 String++;
              }
-             if (result < 0) {
-                result = result - (((DOUBLE)number) / factor);
-             }
+
+             if (result < 0) result = result - (((DOUBLE)number) / factor);
              else result = result + (((DOUBLE)number) / factor);
          }
       }
@@ -1153,9 +1152,7 @@ LARGE StrToInt(CSTRING str)
       str++;
    }
 
-   // Ignore leading zeros
-
-   while (*str IS '0') str++;
+   while (*str IS '0') str++; // Ignore leading zeros
 
    CSTRING start = str;
    LARGE number = 0;
@@ -1168,20 +1165,18 @@ LARGE StrToInt(CSTRING str)
       str++;
    }
 
-   if (number < 0) {
-      // If the sign reversed during parsing, an overflow occurred
-      LogF("@StrToInt:","Buffer overflow: %s", start);
+   if (number < 0) { // If the sign reversed during parsing, an overflow occurred
+      LogF("@StrToInt","Buffer overflow: %s", start);
       return 0;
    }
 
-   if (neg) return -number;
-   else return number;
+   return neg ? -number : number;
 }
 
 //****************************************************************************
 // Internal: read_ordering()
 
-static void read_ordering(UBYTE *ordering_out)
+static void read_ordering(char *ordering_out)
 {
    static UBYTE ordering[4] = { 0, 0, 0, 0 }; /*eg "dmy" or"mdy"*/
 

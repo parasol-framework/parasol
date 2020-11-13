@@ -29,12 +29,13 @@ void fs_ignore_file(objFile *File)
 
 //****************************************************************************
 
-void path_monitor(HOSTHANDLE, objFile *);
+extern "C" void path_monitor(HOSTHANDLE, objFile *);
 
 #ifdef __linux__
 
 ERROR fs_watch_path(objFile *File)
 {
+   parasol::Log log;
    STRING path;
    if ((path = StrClone(File->prvResolvedPath))) {
       strip_folder(path); // Remove trailing slash if there is one
@@ -54,7 +55,7 @@ ERROR fs_watch_path(objFile *File)
       LONG handle = inotify_add_watch(glInotify, path, nflags);
 
       if (handle IS -1) {
-         LogF("@","%s", strerror(errno));
+         log.warning("%s", strerror(errno));
          FreeResource(path);
          return ERR_SystemCall;
       }
@@ -105,13 +106,14 @@ ERROR fs_watch_path(objFile *File)
 void path_monitor(HOSTHANDLE FD, objFile *File)
 {
 #if 0
+   parasol::Log log(__FUNCTION__);
    static THREADVAR BYTE recursion = FALSE; // Recursion avoidance is essential for correct queuing
    if (recursion) return;
    recursion = TRUE;
 
    AdjustLogLevel(2);
 
-   LogF("~path_monitor()","File monitoring event received (FD %d).", FD);
+   log.branch("File monitoring event received (FD %d).", FD);
 
    // Read and process each event in sequence
 
@@ -122,14 +124,13 @@ void path_monitor(HOSTHANDLE FD, objFile *File)
    while (((result = read(FD, buffer+buffersize, sizeof(buffer)-buffersize)) > 0) OR (buffersize > 0)) {
       if (result > 0) buffersize += result;
 
-      struct inotify_event *event;
-      event = (struct inotify_event *)buffer;
+      struct inotify_event *event = (struct inotify_event *)buffer;
 
-      LogF("path_monitor","Descriptor: %d, Name: %s", event->wd, event->name);
+      log.msg("Descriptor: %d, Name: %s", event->wd, event->name);
 
       // Use the watch descriptor to determine what user routine we are supposed to call.
 
-      for (i=0; i < MAX_FILEMONITOR; i++) {
+      for (LONG i=0; i < MAX_FILEMONITOR; i++) {
          if (!glFileMonitor[i].UniqueID) continue;
          if (FD != glInotify) continue;
          if (event->wd != glFileMonitor[i].Handle) continue;
@@ -168,7 +169,7 @@ void path_monitor(HOSTHANDLE FD, objFile *File)
 
          LONG flags = 0L;
          if (event->mask & IN_Q_OVERFLOW) {
-            LogF("@path_monitor","A buffer overflow has occurred in the file monitor.");
+            log.warning("A buffer overflow has occurred in the file monitor.");
          }
          if (event->mask & IN_ACCESS) flags |= MFF_READ;
          if (event->mask & IN_MODIFY) flags |= MFF_MODIFY;
@@ -202,7 +203,7 @@ void path_monitor(HOSTHANDLE FD, objFile *File)
             else if (glFileMonitor[i].Routine.Type IS CALL_SCRIPT) {
                OBJECTPTR script;
                if ((script = tlFeedback.Script.Script)) {
-                  const struct ScriptArg args[] = {
+                  const ScriptArg args[] = {
                      { "File",   FD_STRING,  { .Address = glFileMonitor[i].File } },
                      { "Path",   FD_STRING,  { .Address = path } },
                      { "Custom", FD_LARGE,   { .Large = glFileMonitor[i].Custom } },
@@ -217,7 +218,7 @@ void path_monitor(HOSTHANDLE FD, objFile *File)
 
             if (error IS ERR_Terminate) Action(MT_FlWatch, glFileMonitor[i].File, NULL);
          }
-         else LogF("@path_monitor","Flags $%.8x not recognised.", flags);
+         else log.warning("Flags $%.8x not recognised.", flags);
          break;
       }
 
@@ -227,13 +228,13 @@ void path_monitor(HOSTHANDLE FD, objFile *File)
       buffersize -= event_size;
 
       if (++count > 50) {
-         LogF("@path_monitor","Excessive looping detected - bailing out.");
+         log.warning("Excessive looping detected - bailing out.");
          break;
       }
    }
 
    recursion = FALSE;
-   LogReturn();
+
    AdjustLogLevel(-2);
 #endif
 }
@@ -244,13 +245,15 @@ void path_monitor(HOSTHANDLE FD, objFile *File)
 
 void path_monitor(HOSTHANDLE Handle, objFile *File)
 {
+   parasol::Log log(__FUNCTION__);
+
    static THREADVAR BYTE recursion = FALSE; // Recursion avoidance is essential for correct queuing
    if ((recursion) OR (!File->prvWatch)) return;
    recursion = TRUE;
 
    AdjustLogLevel(2);
 
-   LogF("~path_monitor()","File monitoring event received (Handle %p, File #%d).", Handle, File->Head.UniqueID);
+   log.branch("File monitoring event received (Handle %p, File #%d).", Handle, File->Head.UniqueID);
 
    ERROR error;
    ERROR (*routine)(objFile *, CSTRING path, LARGE Custom, LONG Flags);
@@ -268,32 +271,30 @@ void path_monitor(HOSTHANDLE Handle, objFile *File)
          }
 
          if (File->prvWatch->Routine.StdC.Context) {
-            OBJECTPTR context = SetContext(File->prvWatch->Routine.StdC.Context);
+            parasol::SwitchContext context(File->prvWatch->Routine.StdC.Context);
 
-               if (File->prvWatch->Routine.Type IS CALL_STDC) {
-                  routine = File->prvWatch->Routine.StdC.Routine;
-                  error = routine(File, path, File->prvWatch->Custom, status);
+            if (File->prvWatch->Routine.Type IS CALL_STDC) {
+               routine = (ERROR (*)(objFile *, CSTRING, LARGE, LONG))File->prvWatch->Routine.StdC.Routine;
+               error = routine(File, path, File->prvWatch->Custom, status);
+            }
+            else if (File->prvWatch->Routine.Type IS CALL_SCRIPT) {
+               OBJECTPTR script;
+               if ((script = File->prvWatch->Routine.Script.Script)) {
+                  const ScriptArg args[] = {
+                     { "File",   FD_OBJECTPTR, { .Address = File } },
+                     { "Path",   FD_STRING,  { .Address = path } },
+                     { "Custom", FD_LARGE,   { .Large = File->prvWatch->Custom } },
+                     { "Flags",  FD_LONG,    { .Long = 0 } }
+                  };
+                  error = scCallback(script, File->prvWatch->Routine.Script.ProcedureID, args, ARRAYSIZE(args));
+                  if (!error) GetLong(script, FID_Error, &error);
+                  else error = ERR_Failed;
                }
-               else if (File->prvWatch->Routine.Type IS CALL_SCRIPT) {
-                  OBJECTPTR script;
-                  if ((script = File->prvWatch->Routine.Script.Script)) {
-                     const struct ScriptArg args[] = {
-                        { "File",   FD_OBJECTPTR, { .Address = File } },
-                        { "Path",   FD_STRING,  { .Address = path } },
-                        { "Custom", FD_LARGE,   { .Large = File->prvWatch->Custom } },
-                        { "Flags",  FD_LONG,    { .Long = 0 } }
-                     };
-                     error = scCallback(script, File->prvWatch->Routine.Script.ProcedureID, args, ARRAYSIZE(args));
-                     if (!error) GetLong(script, FID_Error, &error);
-                     else error = ERR_Failed;
-                  }
-               }
-               else error = ERR_Terminate;
-
-            SetContext(context);
+            }
+            else error = ERR_Terminate;
          }
          else {
-            routine = File->prvWatch->Routine.StdC.Routine;
+            routine = (ERROR (*)(objFile *, CSTRING, LARGE, LONG))File->prvWatch->Routine.StdC.Routine;
             error = routine(File, path, File->prvWatch->Custom, status);
          }
 
@@ -301,11 +302,10 @@ void path_monitor(HOSTHANDLE Handle, objFile *File)
       }
    }
    else {
-      routine = File->prvWatch->Routine.StdC.Routine;
+      routine = (ERROR (*)(objFile *, CSTRING, LARGE, LONG))File->prvWatch->Routine.StdC.Routine;
       if (File->prvWatch->Routine.StdC.Context) {
-         OBJECTPTR context = SetContext(File->prvWatch->Routine.StdC.Context);
+         parasol::SwitchContext context(File->prvWatch->Routine.StdC.Context);
          error = routine(File, File->Path, File->prvWatch->Custom, 0);
-         SetContext(context);
       }
       else error = routine(File, File->Path, File->prvWatch->Custom, 0);
 
@@ -316,7 +316,6 @@ void path_monitor(HOSTHANDLE Handle, objFile *File)
 
    recursion = FALSE;
 
-   LogReturn();
    AdjustLogLevel(-2);
 }
 

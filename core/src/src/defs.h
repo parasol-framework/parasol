@@ -14,6 +14,7 @@
 
 #ifdef __unix__
  #include <sys/un.h>
+ #include <sys/socket.h>
  #include <pthread.h>
  #include <semaphore.h>
  #undef NULL
@@ -88,12 +89,10 @@
 
 #include <stdarg.h>
 
-ERROR insert_string(STRING, STRING, LONG, LONG, LONG);
-
 struct translate {
    BYTE Replaced;  // TRUE if the translation table has been replaced with a new one
    LONG Total;     // Total number of array entries
-   UBYTE Language[4]; // 3 letter language code + null byte
+   char Language[4]; // 3 letter language code + null byte
 
    // An array of STRING pointers, to a maximum of Total follows, sorted alphabetically
 
@@ -144,7 +143,7 @@ struct rkWatchPath {
 
 struct virtual_drive {
    ULONG VirtualID;  // Hash name of the volume, not including the trailing colon
-   UBYTE Name[32];    // Volume name, including the trailing colon at the end
+   char Name[32];    // Volume name, including the trailing colon at the end
    ULONG CaseSensitive:1;
    ERROR (*ScanDir)(struct DirInfo *);
    ERROR (*Rename)(STRING, STRING);
@@ -346,7 +345,7 @@ struct SharedObject {
    MEMORYID  MessageMID;         // If the object is private, this field refers to the Task MessageMID that owns it
    OBJECTPTR Address;            // Pointer the object address (if in private memory)
    CLASSID   ClassID;            // Class ID of the object
-   UBYTE     Name[MAX_NAME_LEN]; // Name of the object
+   char      Name[MAX_NAME_LEN]; // Name of the object
    UWORD     Flags;              // NF flags
    LONG      InstanceID;         // Reference to the instance that this object is restricted to
 };
@@ -446,7 +445,7 @@ extern OBJECTID SystemTaskID, glCurrentTaskID; // Read-only
 extern WORD glLogLevel, glShowIO, glShowPrivate, glShowPublic, glMaxDepth;
 extern UBYTE glTaskState;
 extern LARGE glTimeLog;
-extern UBYTE glAlphaNumeric[256];
+extern char glAlphaNumeric[256];
 extern struct ModuleMaster  *glModuleList;    // Locked with TL_GENERIC.  Maintained as a linked-list; hashmap unsuitable.
 extern struct PublicAddress *glSharedBlocks;  // Locked with PL_PUBLICMEM
 extern struct SharedControl *glSharedControl; // Locked with PL_FORBID
@@ -749,6 +748,7 @@ void   PrepareSleep(void);
 ERROR  process_janitor(OBJECTID, LONG, LONG);
 ERROR  register_class(CSTRING, CLASSID ParentID, LONG Category, CSTRING Path, CSTRING FileMatch, CSTRING);
 ERROR  remove_memlock(void);
+void   remove_object_hash(OBJECTPTR);
 void   remove_process_waitlocks(void);
 void   remove_public_locks(LONG);
 void   remove_semaphores(void);
@@ -796,7 +796,7 @@ void   free_iconv(void);
    ERROR send_thread_msg(WINHANDLE Handle, LONG Type, APTR Data, LONG Size);
    LONG  sleep_waitlock(WINHANDLE, LONG);
 #else
-   struct sockaddr_un * get_socket_path(LONG ProcessID, LONG *Size);
+   struct sockaddr_un * get_socket_path(LONG ProcessID, socklen_t *Size);
    ERROR alloc_public_lock(UBYTE, WORD Flags);
    ERROR alloc_public_cond(CONDLOCK *, WORD Flags);
    void  free_public_lock(UBYTE);
@@ -902,7 +902,7 @@ LONG winGetUserName(STRING, LONG);
 LONG winGetWatchBufferSize(void);
 LONG winMoveFile(STRING, STRING);
 LONG winReadChanges(WINHANDLE, APTR, LONG NotifyFlags, char *, LONG, LONG *);
-LONG winReadKey(STRING, STRING, STRING, LONG);
+LONG winReadKey(CSTRING, CSTRING, STRING, LONG);
 LONG winReadRootKey(CSTRING, STRING, STRING, LONG);
 LONG winReadStdInput(WINHANDLE FD, APTR Buffer, LONG BufferSize, LONG *Size);
 LONG winScan(APTR *, STRING, STRING, LARGE *, struct DateTime *, struct DateTime *, BYTE *, BYTE *, BYTE *, BYTE *);
@@ -1011,26 +1011,52 @@ INLINE void prv_release(OBJECTPTR Object)
 }
 
 #else
-#define prv_access(o)
-#define prv_release(o)
+
+INLINE ERROR prv_access(OBJECTPTR Object) { return ERR_Okay; }
+INLINE void prv_release(OBJECTPTR Object) { }
+
+#endif
+
+#ifdef  __cplusplus
+
+class ScopedObjectAccess {
+   private:
+      OBJECTPTR obj;
+
+   public:
+      ERROR error;
+
+      ScopedObjectAccess(OBJECTPTR Object) {
+         error = prv_access(Object);
+         obj = Object;
+      }
+
+      ~ScopedObjectAccess() { if (!error) prv_release(obj); }
+
+      bool granted() { return error == ERR_Okay; }
+
+      void release() {
+         if (!error) {
+            prv_release(obj);
+            error = ERR_NotLocked;
+         }
+      }
+};
 
 #endif
 
 //****************************************************************************
 
-INLINE BYTE is_alpha(UBYTE c)
-{
-   return glAlphaNumeric[c];
+INLINE char is_alpha(char c) {
+   return glAlphaNumeric[(LONG)c];
 }
 
-INLINE UBYTE UCase(UBYTE Case)
-{
+INLINE char UCase(char Case) {
    if ((Case >= 'a') AND (Case <= 'z')) Case -= 0x20;
    return Case;
 }
 
-INLINE UBYTE LCase(UBYTE Case)
-{
+INLINE char LCase(char Case) {
    if ((Case >= 'A') AND (Case <= 'Z')) Case = Case - 'A' + 'Z';
    return Case;
 }
@@ -1070,8 +1096,6 @@ INLINE LARGE calc_timestamp(struct DateTime *Date)
 }
 
 /****************************************************************************/
-
-extern void remove_object_hash(OBJECTPTR);
 
 #ifdef __ANDROID__
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, "Parasol:Core", __VA_ARGS__)
@@ -1207,9 +1231,8 @@ struct ziptail {
    UWORD commentlen;
 } __attribute__((__packed__));
 
-/*****************************************************************************
-** Stubs.
-*/
+//****************************************************************************
+// Stubs.
 
 static LONG read_long(APTR File) __attribute__((unused));
 static WORD read_word(APTR File) __attribute__((unused));
@@ -1239,5 +1262,35 @@ static WORD read_word(APTR File)
 extern void add_archive(objCompression *);
 extern void remove_archive(objCompression *);
 extern void zipfile_to_item(struct ZipFile *ZF, struct CompressedItem *Item);
+
+//****************************************************************************
+
+#ifdef  __cplusplus
+
+class ThreadLock { // C++ wrapper for terminating resources when scope is lost
+   private:
+      UBYTE lock_type;
+
+   public:
+      ERROR error;
+
+      ThreadLock(UBYTE Lock, LONG Timeout) {
+         lock_type = Lock;
+         error = thread_lock(Lock, Timeout);
+      }
+
+      ~ThreadLock() { if (!error) thread_unlock(lock_type); }
+
+      bool granted() { return error == ERR_Okay; }
+
+      void release() {
+         if (!error) {
+            thread_unlock(lock_type);
+            error = ERR_NotLocked;
+         }
+      }
+};
+
+#endif
 
 #endif // DEFS_H

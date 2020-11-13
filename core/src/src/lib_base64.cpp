@@ -110,7 +110,7 @@ ERROR StrBase64Decode(struct rkBase64Decode *State, CSTRING Input, LONG InputSiz
       State->PlainChar = 0;
    }
 
-   *Written = base64_decode_block(Input, InputSize, Output, State);
+   *Written = base64_decode_block(Input, InputSize, (char *)Output, State);
    return ERR_Okay;
 }
 

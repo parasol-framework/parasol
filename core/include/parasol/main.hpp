@@ -1,10 +1,44 @@
 
 #include <memory>
+#include <optional>
 
 namespace parasol {
 
 //****************************************************************************
+
+class ScopedSysLock { // C++ wrapper for terminating a system lock when scope is lost
+   private:
+      LONG index;
+
+   public:
+      ERROR error; // ERR_Okay is used to indicate that the lock is acquired
+
+      ScopedSysLock(LONG Index, LONG Milliseconds) {
+         error = SysLock(Index, Milliseconds);
+         index = Index;
+      }
+
+      ~ScopedSysLock() { if (!error) SysUnlock(index); }
+
+      bool granted() { return error == ERR_Okay; }
+
+      void release() {
+         if (!error) {
+            SysUnlock(index);
+            error = ERR_NotLocked;
+         }
+      }
+
+      ERROR acquire(LONG Milliseconds) {
+         if (error) error = SysLock(index, Milliseconds);
+         return error;
+      }
+};
+
+//****************************************************************************
 // Resource guard for any allocation that can be freed with FreeResource()
+//
+// Usage: parasol::GuardedResource resource(thing)
 
 template <class T>
 class GuardedResource { // C++ wrapper for terminating resources when scope is lost
@@ -15,37 +49,19 @@ class GuardedResource { // C++ wrapper for terminating resources when scope is l
       ~GuardedResource() { FreeResource(resource); }
 };
 
-template <class T>
-std::unique_ptr<GuardedResource<T>> ScopedResource(T Resource)
-{
-   return std::make_unique<GuardedResource<T>>(Resource);
-}
-
 //****************************************************************************
 // Resource guard for temporarily switching context and back when out of scope.
 //
-// Usage: parasol::SwitchObject(YourObject)
+// Usage: parasol::SwitchContext context(YourObject)
 
 template <class T>
-class GuardedContext { // C++ wrapper for changing the current context with a resource guard in place
+class SwitchContext { // C++ wrapper for changing the current context with a resource guard in place
    private:
       OBJECTPTR old_context;
    public:
-      GuardedContext(T NewContext) { old_context = SetContext(NewContext); }
-      ~GuardedContext() { SetContext(old_context); }
+      SwitchContext(T NewContext) { old_context = SetContext((OBJECTPTR)NewContext); }
+      ~SwitchContext() { SetContext(old_context); }
 };
-
-template <class T>
-std::unique_ptr<GuardedContext<T>> SwitchContext(T Object)
-{
-   return std::make_unique<GuardedContext<T>>(Object);
-}
-
-template <class T>
-std::unique_ptr<GuardedContext<T>> SwitchContext(FUNCTION *Function)
-{
-   return std::make_unique<GuardedContext<T>>(Function->StdC.Context);
-}
 
 //****************************************************************************
 
@@ -62,12 +78,12 @@ class Log { // C++ wrapper for Parasol's log functionality
    public:
       CSTRING header;
 
-      Log(CSTRING Header) {
-         header = Header;
-      }
-
       Log() {
          header = NULL;
+      }
+
+      Log(CSTRING Header) {
+         header = Header;
       }
 
       std::unique_ptr<LogReturnBranch> branch(CSTRING Message, ...) {
@@ -101,6 +117,13 @@ class Log { // C++ wrapper for Parasol's log functionality
          va_list arg;
          va_start(arg, Message);
          VLogF(VLF_DEBUG, header, Message, arg);
+         va_end(arg);
+      }
+
+      void pmsg(CSTRING Message, ...) { // "Parent message", uses the scope of the caller
+         va_list arg;
+         va_start(arg, Message);
+         VLogF(VLF_DEBUG, NULL, Message, arg);
          va_end(arg);
       }
 

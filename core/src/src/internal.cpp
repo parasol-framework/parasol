@@ -22,18 +22,21 @@ Functions that are internal to the Core.
 
 #include "defs.h"
 
+using namespace parasol;
+
 //****************************************************************************
 // If a function has reason to believe that a process has crashed or is failing to unlock memory blocks, it can call
 // the validate_process() function to help clean up the system.
 
 ERROR validate_process(LONG ProcessID)
 {
+   parasol::Log log(__FUNCTION__);
    OBJECTID task_id;
    LONG i;
    BYTE broadcastpid;
    static LONG glValidating = 0;
 
-   LogF("validate_process()","PID: %d", ProcessID);
+   log.function("PID: %d", ProcessID);
 
    if (glValidating) return ERR_Okay;
    if (glValidateProcessID IS ProcessID) glValidateProcessID = 0;
@@ -48,7 +51,7 @@ ERROR validate_process(LONG ProcessID)
       if ((kill(ProcessID, 0) IS -1) AND (errno IS ESRCH));
       else return ERR_Okay;
    #else
-      LogF("!validate_process()","This platform does not support validate_process()");
+      log.error("This platform does not support validate_process()");
       return ERR_Okay;
    #endif
 
@@ -75,11 +78,11 @@ ERROR validate_process(LONG ProcessID)
    }
 
    if (!task_id) {
-      LogF("validate_process:","No task slot for process %d - handled by someone else?", ProcessID);
+      log.msg("No task slot for process %d - handled by someone else?", ProcessID);
       return ERR_False;
    }
 
-   LogF("~@validate_process()","Process %d / task #%d no longer exists, validating...", ProcessID, task_id);
+   log.branch("Process %d / task #%d no longer exists, validating...", ProcessID, task_id);
 
    glValidating = ProcessID;
 
@@ -100,11 +103,8 @@ ERROR validate_process(LONG ProcessID)
       }
    #endif
 
-   LogF("validate_process:","Validation complete.");
-
+   log.msg("Validation complete.");
    glValidating = 0;
-
-   LogReturn();
    return ERR_False; // Return ERR_False to indicate that the task was not healthy
 }
 
@@ -146,18 +146,19 @@ ACTIONNOTIFY ARGS ARRAY IN DATA.C, WHICH WE COULD DETECT AND DEAL WITH IN THIS R
 ERROR copy_args(const struct FunctionField *Args, LONG ArgsSize, BYTE *ArgsBuffer, BYTE *Buffer, LONG BufferSize,
                     LONG *NewSize, WORD *WaitResult, CSTRING ActionName)
 {
+   parasol::Log log("CopyArguments");
    BYTE *src, *data;
    MEMORYID memoryid;
    LONG memsize, i, j, len, pos, offset;
    ERROR error;
    STRING str;
 
-   if ((!Args) OR (!ArgsBuffer) OR (!Buffer)) return LogError(ERH_CopyArguments, ERR_NullArgs);
+   if ((!Args) OR (!ArgsBuffer) OR (!Buffer)) return log.warning(ERR_NullArgs);
 
    *WaitResult = FALSE;
 
    for (i=0; (i < ArgsSize); i++) { // Copy the arguments to the buffer
-      if (i >= BufferSize) return LogError(ERH_CopyArguments, ERR_BufferOverflow);
+      if (i >= BufferSize) return log.warning(ERR_BufferOverflow);
       Buffer[i] = ArgsBuffer[i];
    }
 
@@ -167,7 +168,7 @@ ERROR copy_args(const struct FunctionField *Args, LONG ArgsSize, BYTE *ArgsBuffe
       // If the current byte position in the argument structure exceeds the size of that structure, break immediately.
 
       if (pos >= ArgsSize) {
-         LogF("!copy_args:","Invalid action definition for \"%s\".  Amount of arguments exceeds limit of %d bytes.", ActionName, ArgsSize);
+         log.error("Invalid action definition for \"%s\".  Amount of arguments exceeds limit of %d bytes.", ActionName, ArgsSize);
          break;
       }
 
@@ -191,7 +192,7 @@ ERROR copy_args(const struct FunctionField *Args, LONG ArgsSize, BYTE *ArgsBuffe
       }
       else if (Args[i].Type & FD_PTR) {
          if (Args[i].Type & (FD_LONG|FD_PTRSIZE)) { // Pointer to long.
-            if (offset < (BufferSize - sizeof(LONG))) {
+            if ((size_t)offset < (BufferSize - sizeof(LONG))) {
                ((LONG *)Buffer)[offset] = ((LONG *)(ArgsBuffer + pos))[0];
                ((LONG *)(Buffer + pos))[0] = offset;
                offset += sizeof(LONG);
@@ -199,7 +200,7 @@ ERROR copy_args(const struct FunctionField *Args, LONG ArgsSize, BYTE *ArgsBuffe
             else { error = ERR_BufferOverflow; goto looperror; }
          }
          else if (Args[i].Type & (FD_DOUBLE|FD_LARGE)) { // Pointer to large/double
-            if (offset < (BufferSize - sizeof(LARGE))) {
+            if ((size_t)offset < (BufferSize - sizeof(LARGE))) {
                ((LARGE *)Buffer)[offset] = ((LARGE *)(ArgsBuffer + pos))[0];
                ((LONG *)(Buffer + pos))[0] = offset;
                offset += sizeof(LARGE);
@@ -220,7 +221,7 @@ ERROR copy_args(const struct FunctionField *Args, LONG ArgsSize, BYTE *ArgsBuffe
 
             if (!(Args[i+1].Type & FD_PTRSIZE)) {
                // If no PTRSIZE is specified, send a warning
-               LogF("@copy_args()","Warning: Argument \"%s\" is not followed up with a PTRSIZE definition.", Args[i].Name);
+               log.warning("Warning: Argument \"%s\" is not followed up with a PTRSIZE definition.", Args[i].Name);
                ((APTR *)(Buffer + pos))[0] = NULL;
             }
             else {
@@ -259,17 +260,17 @@ ERROR copy_args(const struct FunctionField *Args, LONG ArgsSize, BYTE *ArgsBuffe
                            }
                         }
                      }
-                     else ((LONG *)(Buffer + pos))[0] = NULL;
+                     else ((LONG *)(Buffer + pos))[0] = 0;
                   }
                }
-               else ((LONG *)(Buffer + pos))[0] = NULL;
+               else ((LONG *)(Buffer + pos))[0] = 0;
             }
          }
          pos += sizeof(APTR);
       }
       else if (Args[i].Type & (FD_LONG|FD_PTRSIZE)) pos += sizeof(LONG);
       else if (Args[i].Type & (FD_DOUBLE|FD_LARGE)) pos += sizeof(LARGE);
-      else LogF("@copy_args()","Bad type definition for argument \"%s\".", Args[i].Name);
+      else log.warning("Bad type definition for argument \"%s\".", Args[i].Name);
 
       if (Args[i].Type & FD_RESULT) {
          // No extra action is taken when FD_RESULT is used in conjunction with data types (e.g. FD_RESULT|FD_LONG).
@@ -286,7 +287,7 @@ looperror:
    // When an error occurs inside the loop, we back-track through the position at where the error occurred and free any
    // memory allocations that have been made.
 
-   return LogError(ERH_CopyArguments, error);
+   return log.warning(error);
 }
 
 /*****************************************************************************
@@ -296,25 +297,26 @@ looperror:
 ERROR local_copy_args(const struct FunctionField *Args, LONG ArgsSize, BYTE *ArgsBuffer, BYTE *Buffer, LONG BufferSize,
                     LONG *NewSize, CSTRING ActionName)
 {
+   parasol::Log log("CopyArguments");
    BYTE *src, *data;
-   LONG memsize, i, j, len, pos, offset;
+   LONG memsize, j, len;
    ERROR error;
    STRING str;
 
-   if ((!Args) OR (!ArgsBuffer) OR (!Buffer)) return LogError(ERH_CopyArguments, ERR_NullArgs);
+   if ((!Args) OR (!ArgsBuffer) OR (!Buffer)) return log.warning(ERR_NullArgs);
 
-   for (i=0; (i < ArgsSize); i++) { // Copy the arguments to the buffer
-      if (i >= BufferSize) return LogError(ERH_CopyArguments, ERR_BufferOverflow);
+   for (LONG i=0; (i < ArgsSize); i++) { // Copy the arguments to the buffer
+      if (i >= BufferSize) return log.warning(ERR_BufferOverflow);
       Buffer[i] = ArgsBuffer[i];
    }
 
-   pos = 0;
-   offset = ArgsSize;
-   for (i=0; Args[i].Name; i++) {
+   LONG pos = 0;
+   LONG offset = ArgsSize;
+   for (LONG i=0; Args[i].Name; i++) {
       // If the current byte position in the argument structure exceeds the size of that structure, break immediately.
 
       if (pos >= ArgsSize) {
-         LogF("!copy_args:","Invalid action definition for \"%s\".  Amount of arguments exceeds limit of %d bytes.", ActionName, ArgsSize);
+         log.error("Invalid action definition for \"%s\".  Amount of arguments exceeds limit of %d bytes.", ActionName, ArgsSize);
          break;
       }
 
@@ -336,7 +338,7 @@ ERROR local_copy_args(const struct FunctionField *Args, LONG ArgsSize, BYTE *Arg
       }
       else if (Args[i].Type & FD_PTR) {
          if (Args[i].Type & (FD_LONG|FD_PTRSIZE)) { // Pointer to long.
-            if (offset < (BufferSize - sizeof(LONG))) {
+            if ((size_t)offset < (BufferSize - sizeof(LONG))) {
                ((LONG *)Buffer)[offset] = ((LONG *)(ArgsBuffer + pos))[0];
                ((APTR *)(Buffer + pos))[0] = ArgsBuffer + offset;
                offset += sizeof(LONG);
@@ -344,7 +346,7 @@ ERROR local_copy_args(const struct FunctionField *Args, LONG ArgsSize, BYTE *Arg
             else { error = ERR_BufferOverflow; goto looperror; }
          }
          else if (Args[i].Type & (FD_DOUBLE|FD_LARGE)) { // Pointer to large/double
-            if (offset < (BufferSize - sizeof(LARGE))) {
+            if ((size_t)offset < (BufferSize - sizeof(LARGE))) {
                ((LARGE *)Buffer)[offset] = ((LARGE *)(ArgsBuffer + pos))[0];
                ((APTR *)(Buffer + pos))[0] = ArgsBuffer + offset;
                offset += sizeof(LARGE);
@@ -365,7 +367,7 @@ ERROR local_copy_args(const struct FunctionField *Args, LONG ArgsSize, BYTE *Arg
 
             if (!(Args[i+1].Type & FD_PTRSIZE)) {
                // If no PTRSIZE is specified, send a warning
-               LogF("@copy_args()","Warning: Argument \"%s\" is not followed up with a PTRSIZE definition.", Args[i].Name);
+               log.warning("Warning: Argument \"%s\" is not followed up with a PTRSIZE definition.", Args[i].Name);
                ((APTR *)(Buffer + pos))[0] = NULL;
             }
             else {
@@ -391,7 +393,7 @@ ERROR local_copy_args(const struct FunctionField *Args, LONG ArgsSize, BYTE *Arg
                         }
                         else {
                            ((APTR *)(Buffer + pos))[0] = ArgsBuffer + offset; // Record the address at which we are going to write the data
-                           for (len=0; len < memsize; len++) {
+                           for (LONG len=0; len < memsize; len++) {
                               if (offset >= BufferSize) {
                                  error = ERR_BufferOverflow;
                                  goto looperror;
@@ -400,17 +402,17 @@ ERROR local_copy_args(const struct FunctionField *Args, LONG ArgsSize, BYTE *Arg
                            }
                         }
                      }
-                     else ((LONG *)(Buffer + pos))[0] = NULL;
+                     else ((LONG *)(Buffer + pos))[0] = 0;
                   }
                }
-               else ((LONG *)(Buffer + pos))[0] = NULL;
+               else ((LONG *)(Buffer + pos))[0] = 0;
             }
          }
          pos += sizeof(APTR);
       }
       else if (Args[i].Type & (FD_LONG|FD_PTRSIZE)) pos += sizeof(LONG);
       else if (Args[i].Type & (FD_DOUBLE|FD_LARGE)) pos += sizeof(LARGE);
-      else LogF("@copy_args()","Bad type definition for argument \"%s\".", Args[i].Name);
+      else log.warning("Bad type definition for argument \"%s\".", Args[i].Name);
    }
 
    *NewSize = offset;
@@ -420,7 +422,7 @@ looperror:
    // When an error occurs inside the loop, we back-track through the position at where the error occurred and free any
    // memory allocations that have been made.
 
-   return LogError(ERH_CopyArguments, error);
+   return log.warning(error);
 }
 
 //****************************************************************************
@@ -428,15 +430,14 @@ looperror:
 
 void local_free_args(APTR Parameters, const struct FunctionField *Args)
 {
-   LONG i;
    LONG pos = 0;
-   for (i=0; Args[i].Name; i++) {
+   for (LONG i=0; Args[i].Name; i++) {
       if ((Args[i].Type & FD_PTR) AND (Args[i+1].Type & FD_PTRSIZE)) {
-         LONG size = ((LONG *)(Parameters + pos + sizeof(APTR)))[0];
+         LONG size = ((LONG *)((BYTE *)Parameters + pos + sizeof(APTR)))[0];
          if ((Args[i].Type & FD_RESULT) OR (size > MSG_MAXARGSIZE)) {
             APTR pointer;
-            if ((pointer = ((APTR *)(Parameters + pos))[0])) {
-               ((APTR *)(Parameters + pos))[0] = 0;
+            if ((pointer = ((APTR *)((BYTE *)Parameters + pos))[0])) {
+               ((APTR *)((BYTE *)Parameters + pos))[0] = 0;
                FreeResource(pointer);
             }
          }
@@ -453,6 +454,7 @@ void local_free_args(APTR Parameters, const struct FunctionField *Args)
 
 ERROR resolve_args(APTR Parameters, const struct FunctionField *Args)
 {
+   parasol::Log log(__FUNCTION__);
    LONG i;
    ERROR error;
    BYTE *Buffer = (BYTE *)Parameters;
@@ -478,13 +480,13 @@ ERROR resolve_args(APTR Parameters, const struct FunctionField *Args)
                   ((APTR *)(Buffer + pos))[0] = memory;
                }
                else {
-                  LogF("@resolve_args:","Failed to gain access to memory block #%d.", mid);
+                  log.warning("Failed to gain access to memory block #%d.", mid);
                   error = ERR_AccessMemory;
                   goto looperror;
                }
             }
             else if (mid > 0) {
-               LogF("@resolve_args:","Bad memory ID #%d for arg \"%s\", not a public allocation.", mid, Args[i].Name);
+               log.warning("Bad memory ID #%d for arg \"%s\", not a public allocation.", mid, Args[i].Name);
                error = ERR_AccessMemory;
                goto looperror;
             }
@@ -515,11 +517,9 @@ looperror:
 
 ERROR free_ptr_args(APTR Parameters, const struct FunctionField *Args, WORD ReleaseOnly)
 {
-   LONG i;
-
    BYTE *Buffer = (BYTE *)Parameters;
    LONG pos = 0;
-   for (i=0; Args[i].Name; i++) {
+   for (LONG i=0; Args[i].Name; i++) {
       if ((Args[i].Type & FD_PTR) AND (Args[i+1].Type & FD_PTRSIZE)) {
          LONG size = ((LONG *)(Buffer + pos + sizeof(APTR)))[0];
          if ((Args[i].Type & FD_RESULT) OR (size > MSG_MAXARGSIZE)) {
@@ -559,10 +559,11 @@ void fix_core_table(struct CoreBase *CoreBase, FLOAT Version)
 ERROR critical_janitor(OBJECTID SubscriberID, LONG Elapsed, LONG TotalElapsed)
 {
 #ifdef __unix__
+   parasol::Log log(__FUNCTION__);
    LARGE time;
    LONG diff, limit, murder, i, task;
 
-   FMSG("~critical_janitor()","");
+   log.traceBranch("");
 
    // Check if any process has locked out any *system critical* memory blocks for an unacceptable amount of time.  System critical blocks are in the
    // range of -1000 to -2000.  Processes that lock these memory blocks excessively are subject to being killed.
@@ -583,7 +584,7 @@ ERROR critical_janitor(OBJECTID SubscriberID, LONG Elapsed, LONG TotalElapsed)
                else limit = 3000;
 
                if (diff > limit) {
-                  LogF("@validate_process:","Killing process %d for holding onto block %d for %d usec.", glSharedBlocks[i].ProcessLockID, glSharedBlocks[i].MemoryID, diff);
+                  log.warning("Killing process %d for holding onto block %d for %d usec.", glSharedBlocks[i].ProcessLockID, glSharedBlocks[i].MemoryID, diff);
                   murder = glSharedBlocks[i].ProcessLockID;
                   break;
                }
@@ -595,7 +596,7 @@ ERROR critical_janitor(OBJECTID SubscriberID, LONG Elapsed, LONG TotalElapsed)
       if (murder) {
          // Send a safe kill signal, then followup with the most severe signal if the process didn't listen.
 
-         FMSG("critical_janitor:","Killing process %d", murder);
+         log.trace("Killing process %d", murder);
          kill(murder, SIGUSR1); // Diagnosis signal
          PrintDiagnosis(murder, 0);
          kill(murder, SIGHUP); // Safe kill signal
@@ -603,8 +604,6 @@ ERROR critical_janitor(OBJECTID SubscriberID, LONG Elapsed, LONG TotalElapsed)
          kill(murder, SIGKILL); // Force kill signal
       }
    }
-
-   LOGRETURN();
 #endif
 
    return ERR_Okay;
@@ -612,10 +611,9 @@ ERROR critical_janitor(OBJECTID SubscriberID, LONG Elapsed, LONG TotalElapsed)
 
 //****************************************************************************
 
-struct TaskList * find_process(LONG ProcessID)
+TaskList * find_process(LONG ProcessID)
 {
-   LONG i;
-   for (i=0; i < MAX_TASKS; i++) {
+   for (LONG i=0; i < MAX_TASKS; i++) {
       if (ProcessID IS shTasks[i].ProcessID) return shTasks+i;
    }
    return NULL;
@@ -626,15 +624,16 @@ struct TaskList * find_process(LONG ProcessID)
 ERROR process_janitor(OBJECTID SubscriberID, LONG Elapsed, LONG TotalElapsed)
 {
 #ifdef __unix__
-   struct TaskList *task;
-   LONG childprocess, status, i;
+   parasol::Log log(__FUNCTION__);
+   TaskList *task;
+   LONG childprocess, status;
 
    // Call waitpid() to check for zombie processes first.  This covers all processes within our own context, so our child processes, children of those children etc.
 
    // However, it can be 'blocked' from certain processes, e.g. those started from ZTerm.  Such processes are discovered in the second search routine.
 
    while ((childprocess = waitpid(-1, &status, WNOHANG)) > 0) {
-      LogF("@process_janitor()","Zombie process #%d discovered.", childprocess);
+      log.warning("Zombie process #%d discovered.", childprocess);
 
       if ((task = find_process(childprocess))) {
          task->ReturnCode = WEXITSTATUS(status);
@@ -647,7 +646,7 @@ ERROR process_janitor(OBJECTID SubscriberID, LONG Elapsed, LONG TotalElapsed)
       // Check all registered processes to see which ones are alive.  This routine can manage all processes, although exhibits
       // some problems with zombies, hence the earlier waitpid() routine to clean up such processes.
 
-      for (i=0; i < MAX_TASKS; i++) {
+      for (LONG i=0; i < MAX_TASKS; i++) {
          if (shTasks[i].ProcessID) {
             if ((kill(shTasks[i].ProcessID, 0) IS -1) AND (errno IS ESRCH)) {
                validate_process(shTasks[i].ProcessID);
@@ -657,16 +656,13 @@ ERROR process_janitor(OBJECTID SubscriberID, LONG Elapsed, LONG TotalElapsed)
    }
 
 #elif _WIN32
-   LONG i;
-
-   for (i=0; i < MAX_TASKS; i++) {
+   for (LONG i=0; i < MAX_TASKS; i++) {
       if ((shTasks[i].ProcessID) AND (shTasks[i].ProcessID != glProcessID)) {
          if (!winCheckProcessExists(shTasks[i].ProcessID)) {
             validate_process(shTasks[i].ProcessID);
          }
       }
    }
-
 #endif
 
    return ERR_Okay;

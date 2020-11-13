@@ -10,16 +10,11 @@ static void server_client_connect(SOCKET_HANDLE FD, objNetSocket *Self)
 
    log.traceBranch("FD: %d", FD);
 
-   parasol::SwitchContext(Self);
+   parasol::SwitchContext context(Self);
 
    if (Self->IPV6) {
 #ifdef __linux__
-
       #ifdef ENABLE_SSL_ACCEPT
-         // NB: I think we can just use a standard accept() and then wait
-         // for it to communicate via SSL or create an SSL connection object
-         // for it???  See BIO_s_accept() documentation for other ideas.
-
          if (Self->SSL) {
             LONG result;
             if ((result = xtSSL_accept(Self->SSL)) != 1) {
@@ -149,7 +144,7 @@ static void server_client_connect(SOCKET_HANDLE FD, objNetSocket *Self)
 
    if (Self->Feedback.Type IS CALL_STDC) {
       void (*routine)(objNetSocket *, objClientSocket *, LONG);
-      parasol::SwitchContext(&Self->Feedback);
+      parasol::SwitchContext context(Self->Feedback.StdC.Context);
       routine = reinterpret_cast<void (*)(objNetSocket *, objClientSocket *, LONG)>(Self->Feedback.StdC.Routine);
       routine(Self, client_socket, NTC_CONNECTED);
    }
@@ -227,7 +222,7 @@ static void free_client_socket(objNetSocket *Socket, objClientSocket *ClientSock
    if ((Signal) AND (Socket->Feedback.Type)) {
       if (Socket->Feedback.Type IS CALL_STDC) {
          void (*routine)(objNetSocket *, objClientSocket *, LONG);
-         parasol::SwitchContext(&Socket->Feedback);
+         parasol::SwitchContext context(Socket->Feedback.StdC.Context);
          routine = reinterpret_cast<void (*)(objNetSocket *, objClientSocket *, LONG)>(Socket->Feedback.StdC.Routine);
          routine(Socket, ClientSocket, NTC_DISCONNECTED);
       }

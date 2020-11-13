@@ -17,19 +17,19 @@ this by calling SetContext() themselves.
 #include "defs.h"
 #include <parasol/main.h>
 
-static THREADVAR UBYTE strGetField[400]; // Buffer for retrieving unlisted field values
+static THREADVAR char strGetField[400]; // Buffer for retrieving unlisted field values
 
 //****************************************************************************
 // This internal function provides a fast binary search of field names via ID.
 
-struct Field * lookup_id(OBJECTPTR Object, ULONG FieldID, OBJECTPTR *Result)
+Field * lookup_id(OBJECTPTR Object, ULONG FieldID, OBJECTPTR *Result)
 {
-   struct rkMetaClass *class = (struct rkMetaClass *)(Object->Class);
-   struct Field *field = class->prvFields;
+   rkMetaClass *mc = (rkMetaClass *)(Object->Class);
+   Field *field = mc->prvFields;
    *Result = Object;
 
    LONG floor = 0;
-   LONG ceiling = class->TotalFields;
+   LONG ceiling = mc->TotalFields;
    while (floor < ceiling) {
       LONG i = (floor + ceiling)>>1;
       if (field[i].FieldID < FieldID) floor = i + 1;
@@ -40,16 +40,15 @@ struct Field * lookup_id(OBJECTPTR Object, ULONG FieldID, OBJECTPTR *Result)
       }
    }
 
-   if (class->Flags & CLF_PROMOTE_INTEGRAL) {
-      LONG i;
-      for (i=0; class->Children[i] != 0xff; i++) {
+   if (mc->Flags & CLF_PROMOTE_INTEGRAL) {
+      for (LONG i=0; mc->Children[i] != 0xff; i++) {
          OBJECTPTR child;
-         if ((!copy_field_to_buffer(Object, class->prvFields + class->Children[i], FT_POINTER, &child, NULL, NULL)) AND (child)) {
-            struct rkMetaClass *childclass = (struct rkMetaClass *)(child->Class);
+         if ((!copy_field_to_buffer(Object, mc->prvFields + mc->Children[i], FT_POINTER, &child, NULL, NULL)) AND (child)) {
+            rkMetaClass *childclass = (rkMetaClass *)(child->Class);
             field = childclass->prvFields;
 
-            floor = 0;
-            ceiling = childclass->TotalFields;
+            LONG floor = 0;
+            LONG ceiling = childclass->TotalFields;
             while (floor < ceiling) {
                LONG j = (floor + ceiling)>>1;
                if (field[j].FieldID < FieldID) floor = j + 1;
@@ -95,7 +94,7 @@ Please note that FieldID is explicitly defined as 32-bit because using the FIELD
 
 *****************************************************************************/
 
-struct Field * FindField(OBJECTPTR Object, ULONG FieldID, OBJECTPTR *Source) // Read-only, thread safe function.
+Field * FindField(OBJECTPTR Object, ULONG FieldID, OBJECTPTR *Source) // Read-only, thread safe function.
 {
    if (!Object) return NULL;
 
@@ -105,7 +104,7 @@ struct Field * FindField(OBJECTPTR Object, ULONG FieldID, OBJECTPTR *Source) // 
    /*if (Object->ClassID IS ID_METACLASS) {
       // If FindField() is called on a meta-class, the fields declared for that class will be inspected rather than
       // the metaclass itself.
-      return lookup_id_byclass((struct rkMetaClass *)Object, FieldID, (struct rkMetaClass **)Source);
+      return lookup_id_byclass((rkMetaClass *)Object, FieldID, (rkMetaClass **)Source);
    }
    else*/ return lookup_id(Object, FieldID, Source);
 }
@@ -159,7 +158,8 @@ UnsupportedField: The Field is not supported by the object's class.
 
 ERROR GetField(OBJECTPTR Object, FIELD FieldID, APTR Result)
 {
-   if ((!Object) OR (!Result)) return LogError(ERH_GetField, ERR_NullArgs);
+   parasol::Log log(__FUNCTION__);
+   if ((!Object) OR (!Result)) return log.warning(ERR_NullArgs);
 
    ULONG type = FieldID>>32;
    FieldID = FieldID & 0xffffffff;
@@ -174,20 +174,19 @@ ERROR GetField(OBJECTPTR Object, FIELD FieldID, APTR Result)
    else *((LONG *)Result)  = 0;
 #endif
 
-   struct Field *field;
+   Field *field;
    if ((field = lookup_id(Object, FieldID, &Object))) {
       if (!(field->Flags & FD_READ)) {
-         if (!field->Name) LogF("@GetField","Illegal attempt to read field %s.", GET_FIELD_NAME(FieldID));
-         else LogF("@GetField","Illegal attempt to read field %s.", field->Name);
+         if (!field->Name) log.warning("Illegal attempt to read field %s.", GET_FIELD_NAME(FieldID));
+         else log.warning("Illegal attempt to read field %s.", field->Name);
          return ERR_NoFieldAccess;
       }
 
-      prv_access(Object);
+      ScopedObjectAccess objlock(Object);
       ERROR error = copy_field_to_buffer(Object, field, type, Result, NULL, NULL);
-      prv_release(Object);
       return error;
    }
-   else LogF("@GetField","Unsupported field %s", GET_FIELD_NAME(FieldID));
+   else log.warning("Unsupported field %s", GET_FIELD_NAME(FieldID));
 
    return ERR_UnsupportedField;
 }
@@ -224,31 +223,32 @@ Mismatch
 
 ERROR GetFieldArray(OBJECTPTR Object, FIELD FieldID, APTR *Result, LONG *Elements)
 {
-   if ((!Object) OR (!Result) OR (!Elements)) return LogError(ERH_GetField, ERR_NullArgs);
+   parasol::Log log(__FUNCTION__);
+
+   if ((!Object) OR (!Result) OR (!Elements)) return log.warning(ERR_NullArgs);
 
    LONG req_type = FieldID>>32;
    FieldID = FieldID & 0xffffffff;
 
    *Result = NULL;
 
-   struct Field *field;
+   Field *field;
    if ((field = lookup_id(Object, FieldID, &Object))) {
       if ((!(field->Flags & FD_READ)) OR (!(field->Flags & FD_ARRAY))) {
-         if (!field->Name) LogF("@GetField","Illegal attempt to read field %s.", GET_FIELD_NAME(FieldID));
-         else LogF("@GetField","Illegal attempt to read field %s.", field->Name);
+         if (!field->Name) log.warning("Illegal attempt to read field %s.", GET_FIELD_NAME(FieldID));
+         else log.warning("Illegal attempt to read field %s.", field->Name);
          return ERR_NoFieldAccess;
       }
 
       if (req_type) { // Perform simple type validation if requested to do so.
-         if (!(req_type & field->Flags)) return LogError(ERH_GetField, ERR_Mismatch);
+         if (!(req_type & field->Flags)) return log.warning(ERR_Mismatch);
       }
 
-      prv_access(Object);
+      ScopedObjectAccess objlock(Object);
       ERROR error = copy_field_to_buffer(Object, field, FD_POINTER, Result, NULL, Elements);
-      prv_release(Object);
       return error;
    }
-   else LogF("@GetFieldArray","Unsupported field %s", GET_FIELD_NAME(FieldID));
+   else log.warning("Unsupported field %s", GET_FIELD_NAME(FieldID));
 
    return ERR_UnsupportedField;
 }
@@ -298,9 +298,10 @@ UnsupportedField
 
 ERROR GetFields(OBJECTPTR Object, ...)
 {
+   parasol::Log log(__FUNCTION__);
    FIELD field_id;
 
-   if (!Object) return LogError(ERH_GetField, ERR_NullArgs);
+   if (!Object) return log.warning(ERR_NullArgs);
 
    // Please note that the loop runs through the entire list, even if an error occurs.  This ensures that all the field values are driven to zero.
 
@@ -309,7 +310,7 @@ ERROR GetFields(OBJECTPTR Object, ...)
 
    ERROR error = ERR_Okay;
 
-   prv_access(Object);
+   ScopedObjectAccess objlock(Object);
    while ((field_id = va_arg(list, FIELD)) != TAGEND) {
       LONG fieldflags = field_id>>32;
       field_id &= 0xffffffff;
@@ -321,11 +322,11 @@ ERROR GetFields(OBJECTPTR Object, ...)
       }
 
       OBJECTPTR source;
-      struct Field *field;
+      Field *field;
       if ((field = lookup_id(Object, field_id, &source))) {
          if (!(field->Flags & FD_READ)) {
-            if (!field->Name) LogF("@GetFields()","Field #%d is not readable.", (LONG)field_id);
-            else LogF("@GetFields()","Field \"%s\" is not readable.", field->Name);
+            if (!field->Name) log.warning("Field #%d is not readable.", (LONG)field_id);
+            else log.warning("Field \"%s\" is not readable.", field->Name);
          }
 
          #ifdef _LP64
@@ -339,11 +340,10 @@ ERROR GetFields(OBJECTPTR Object, ...)
          if (!error) error = copy_field_to_buffer(source, field, fieldflags, value, NULL, NULL);
       }
       else {
-         LogF("@GetFields()","Field %s is not supported by class %s.", GET_FIELD_NAME(field_id), ((struct rkMetaClass *)Object->Class)->ClassName);
+         log.warning("Field %s is not supported by class %s.", GET_FIELD_NAME(field_id), ((rkMetaClass *)Object->Class)->ClassName);
          error = ERR_UnsupportedField;
       }
    }
-   prv_release(Object);
 
    va_end(list);
    return error;
@@ -395,12 +395,14 @@ Mismatch:         The field value cannot be converted into a string.
 
 ERROR GetFieldVariable(OBJECTPTR Object, CSTRING FieldName, STRING Buffer, LONG BufferSize)
 {
+   parasol::Log log("GetVariable");
+
    if ((!Object) OR (!FieldName) OR (!Buffer) OR (BufferSize < 2)) {
-      return LogError(ERH_GetField, ERR_Args);
+      return log.warning(ERR_Args);
    }
 
-   struct Field *field;
-   UBYTE flagref[80];
+   Field *field;
+   char flagref[80];
    LONG i;
    ERROR error;
 
@@ -428,13 +430,13 @@ ERROR GetFieldVariable(OBJECTPTR Object, CSTRING FieldName, STRING Buffer, LONG 
    // Check for dots in the fieldname.  Flags can be tested by specifying the flag name after the fieldname.
 
    ULONG hash = 5381;
-   for (i=0; fname[i]; i++) {
-      UBYTE c = fname[i];
+   for (LONG i=0; fname[i]; i++) {
+      char c = fname[i];
 
       if (c IS '.') {
          WORD j;
          // Flagref == fieldname\0flagname\0
-         for (j=0; (j < sizeof(flagref)-1) AND (fname[j]); j++) flagref[j] = fname[j];
+         for (j=0; ((size_t)j < sizeof(flagref)-1) AND (fname[j]); j++) flagref[j] = fname[j];
          flagref[i] = 0; // Middle termination
          flagref[j] = 0; // End termination
          fname = flagref;
@@ -449,12 +451,12 @@ ERROR GetFieldVariable(OBJECTPTR Object, CSTRING FieldName, STRING Buffer, LONG 
 
    if ((field = lookup_id(Object, hash, &Object))) {
       if (!(field->Flags & FD_READ)) {
-         if (!field->Name) LogF("@GetVariable()","Illegal attempt to read field %d.", field->FieldID);
-         else LogF("@GetVariable()","Illegal attempt to read field %s.", field->Name);
+         if (!field->Name) log.warning("Illegal attempt to read field %d.", field->FieldID);
+         else log.warning("Illegal attempt to read field %s.", field->Name);
          return ERR_NoFieldAccess;
       }
 
-      prv_access(Object);
+      ScopedObjectAccess objlock(Object);
 
       if (field->Flags & (FD_STRING|FD_ARRAY)) {
          STRING str = NULL;
@@ -475,12 +477,11 @@ ERROR GetFieldVariable(OBJECTPTR Object, CSTRING FieldName, STRING Buffer, LONG 
          }
          else {
             Buffer[0] = 0;
-            prv_release(Object);
             return error;
          }
       }
       else if (field->Flags & (FD_LONG|FD_LARGE)) {
-         struct FieldDef *lookup;
+         FieldDef *lookup;
          LARGE large;
 
          if (!(error = copy_field_to_buffer(Object, field, FD_LARGE, &large, ext, NULL))) {
@@ -488,7 +489,7 @@ ERROR GetFieldVariable(OBJECTPTR Object, CSTRING FieldName, STRING Buffer, LONG 
                Buffer[0] = '0';
                Buffer[1] = 0;
 
-               if ((lookup = (struct FieldDef *)field->Arg)) {
+               if ((lookup = (FieldDef *)field->Arg)) {
                   while (lookup->Name) {
                      if (!StrMatch(lookup->Name, ext)) {
                         if (field->Flags & FD_FLAGS) {
@@ -500,14 +501,13 @@ ERROR GetFieldVariable(OBJECTPTR Object, CSTRING FieldName, STRING Buffer, LONG 
                      lookup++;
                   }
                }
-               else LogF("@GetVariable","No lookup table for field '%s', class '%s'.", fname, ((struct rkMetaClass *)Object->Class)->ClassName);
+               else log.warning("No lookup table for field '%s', class '%s'.", fname, ((rkMetaClass *)Object->Class)->ClassName);
 
-               prv_release(Object);
                return ERR_Okay;
             }
             else if (strconvert) {
                if (field->Flags & FD_FLAGS) {
-                  if ((lookup = (struct FieldDef *)field->Arg)) {
+                  if ((lookup = (FieldDef *)field->Arg)) {
                      LONG pos = 0;
                      while (lookup->Name) {
                         if (large & lookup->Value) {
@@ -516,12 +516,11 @@ ERROR GetFieldVariable(OBJECTPTR Object, CSTRING FieldName, STRING Buffer, LONG 
                         }
                         lookup++;
                      }
-                     prv_release(Object);
                      return ERR_Okay;
                   }
                }
                else if (field->Flags & FD_LOOKUP) {
-                  if ((lookup = (struct FieldDef *)field->Arg)) {
+                  if ((lookup = (FieldDef *)field->Arg)) {
                      while (lookup->Name) {
                         if (large IS lookup->Value) {
                            StrCopy(lookup->Name, Buffer, BufferSize);
@@ -529,7 +528,6 @@ ERROR GetFieldVariable(OBJECTPTR Object, CSTRING FieldName, STRING Buffer, LONG 
                         }
                         lookup++;
                      }
-                     prv_release(Object);
                      return ERR_Okay;
                   }
                }
@@ -541,21 +539,20 @@ ERROR GetFieldVariable(OBJECTPTR Object, CSTRING FieldName, STRING Buffer, LONG 
             }
             else IntToStr(large, Buffer, BufferSize);
          }
-         else { prv_release(Object); return error; }
+         else return error;
       }
       else if (field->Flags & FD_DOUBLE) {
          DOUBLE dbl;
          if (!(error = copy_field_to_buffer(Object, field, FD_DOUBLE, &dbl, ext, NULL))) {
             StrFormat(Buffer, BufferSize, "%f", dbl);
          }
-         else { prv_release(Object); return error; }
+         else return error;
       }
       else if (field->Flags & (FD_INTEGRAL|FD_OBJECT)) {
          OBJECTPTR obj;
          if (!(error = copy_field_to_buffer(Object, field, FD_POINTER, &obj, ext, NULL))) {
             if (ext) {
                error = GetFieldVariable(obj, ext, Buffer, BufferSize);
-               prv_release(Object);
                return error;
             }
             else {
@@ -566,12 +563,10 @@ ERROR GetFieldVariable(OBJECTPTR Object, CSTRING FieldName, STRING Buffer, LONG 
          else StrCopy("0", Buffer, BufferSize);
       }
       else {
-         LogF("@GetVariable","Field %s is not a value that can be converted to a string.", field->Name);
-         prv_release(Object);
+         log.warning("Field %s is not a value that can be converted to a string.", field->Name);
          return ERR_Mismatch;
       }
 
-      prv_release(Object);
       return ERR_Okay;
    }
    else {
@@ -584,9 +579,9 @@ ERROR GetFieldVariable(OBJECTPTR Object, CSTRING FieldName, STRING Buffer, LONG 
          if (!Action(AC_GetVar, Object, &var)) {
             return ERR_Okay;
          }
-         else LogF("GetVariable","Could not find field %s from object %p (%s).", FieldName, Object, ((struct rkMetaClass *)Object->Class)->ClassName);
+         else log.msg("Could not find field %s from object %p (%s).", FieldName, Object, ((rkMetaClass *)Object->Class)->ClassName);
       }
-      else LogF("@GetVariable","Could not find field %s from object %p (%s).", FieldName, Object, ((struct rkMetaClass *)Object->Class)->ClassName);
+      else log.warning("Could not find field %s from object %p (%s).", FieldName, Object, ((rkMetaClass *)Object->Class)->ClassName);
 
       return ERR_UnsupportedField;
    }
@@ -595,19 +590,23 @@ ERROR GetFieldVariable(OBJECTPTR Object, CSTRING FieldName, STRING Buffer, LONG 
 //****************************************************************************
 // Used by the GetField() range of functions.
 
-ERROR copy_field_to_buffer(OBJECTPTR Object, struct Field *Field, LONG DestFlags, APTR Result, CSTRING Option, LONG *TotalElements)
+ERROR copy_field_to_buffer(OBJECTPTR Object, Field *Field, LONG DestFlags, APTR Result, CSTRING Option, LONG *TotalElements)
 {
-   //LogF("ReadField","[%s:%d] Name: %s, Flags: $%x", ((struct rkMetaClass *)Object->Class)->Name, Object->UniqueID, Field->Name, DestFlags);
+   parasol::Log log("GetField");
+
+   //log.msg("[%s:%d] Name: %s, Flags: $%x", ((rkMetaClass *)Object->Class)->Name, Object->UniqueID, Field->Name, DestFlags);
+
+   BYTE value[16]; // 128 bits of space
+   APTR data;
+   LONG array_size = -1;
+   LONG srcflags = Field->Flags;
 
    if (!(DestFlags & (FD_VARIABLE|FD_LARGE|FD_LONG|FD_DOUBLE|FD_POINTER|FD_STRING|FD_ARRAY))) goto mismatch;
 
-   // Grab the field data if it has not been specified
-
-   LONG srcflags = Field->Flags;
    if (srcflags & FD_VARIABLE) {
       if (!Field->GetValue) return ERR_NoFieldAccess;
 
-      struct Variable var;
+      Variable var;
       ERROR error;
       struct Field *old_field = tlContext->Field;
       tlContext->Field = Field;
@@ -657,9 +656,6 @@ ERROR copy_field_to_buffer(OBJECTPTR Object, struct Field *Field, LONG DestFlags
       else return error;
    }
 
-   BYTE value[16]; // 128 bits of space
-   APTR data;
-   LONG array_size = -1;
    if (Field->GetValue) {
       struct Field *old_field = tlContext->Field;
       tlContext->Field = Field;
@@ -675,7 +671,7 @@ ERROR copy_field_to_buffer(OBJECTPTR Object, struct Field *Field, LONG DestFlags
 
    if (srcflags & FD_ARRAY) {
       if (array_size IS -1) {
-         LogErrorMsg("Array sizing not supported for field %s", Field->Name);
+         log.warning("Array sizing not supported for field %s", Field->Name);
          return ERR_Failed;
       }
 
@@ -684,9 +680,9 @@ ERROR copy_field_to_buffer(OBJECTPTR Object, struct Field *Field, LONG DestFlags
       if (Option) { // If an option is specified, treat it as an array index.
          LONG index = StrToInt(Option);
          if ((index >= 0) AND (index < array_size)) {
-            if (srcflags & FD_LONG) data += sizeof(LONG) * index;
-            else if (srcflags & (FD_LARGE|FD_DOUBLE)) data += sizeof(DOUBLE) * index;
-            else if (srcflags & (FD_POINTER|FD_STRING)) data += sizeof(APTR) * index;
+            if (srcflags & FD_LONG) data = (BYTE *)data + (sizeof(LONG) * index);
+            else if (srcflags & (FD_LARGE|FD_DOUBLE))   data = (BYTE *)data + (sizeof(DOUBLE) * index);
+            else if (srcflags & (FD_POINTER|FD_STRING)) data = (BYTE *)data + (sizeof(APTR) * index);
             else goto mismatch;
             // Drop through to field value conversion
          }
@@ -700,21 +696,21 @@ ERROR copy_field_to_buffer(OBJECTPTR Object, struct Field *Field, LONG DestFlags
             LONG *array = (LONG *)data;
             for (i=0; i < array_size; i++) {
                pos += IntToStr(*array++, strGetField+pos, sizeof(strGetField)-pos);
-               if ((pos < sizeof(strGetField)-2) AND (i+1 < array_size)) strGetField[pos++] = ',';
+               if (((size_t)pos < sizeof(strGetField)-2) AND (i+1 < array_size)) strGetField[pos++] = ',';
             }
          }
          else if (srcflags & FD_BYTE) {
             UBYTE *array = (UBYTE *)data;
             for (i=0; i < array_size; i++) {
                pos += IntToStr(*array++, strGetField+pos, sizeof(strGetField)-pos);
-               if ((pos < sizeof(strGetField)-2) AND (i+1 < array_size)) strGetField[pos++] = ',';
+               if (((size_t)pos < sizeof(strGetField)-2) AND (i+1 < array_size)) strGetField[pos++] = ',';
             }
          }
          else if (srcflags & FD_DOUBLE) {
             DOUBLE *array = (DOUBLE *)data;
             for (i=0; i < array_size; i++) {
                pos += StrFormat(strGetField+pos, sizeof(strGetField)-pos, "%f", *array++);
-               if ((pos < sizeof(strGetField)-2) AND (i+1 < array_size)) strGetField[pos++] = ',';
+               if (((size_t)pos < sizeof(strGetField)-2) AND (i+1 < array_size)) strGetField[pos++] = ',';
             }
          }
          strGetField[pos] = 0;
@@ -731,9 +727,9 @@ ERROR copy_field_to_buffer(OBJECTPTR Object, struct Field *Field, LONG DestFlags
       else if (DestFlags & FD_LARGE)  *((LARGE *)Result)  = *((LONG *)data);
       else if (DestFlags & FD_STRING) {
          if (srcflags & FD_LOOKUP) {
-            struct FieldDef *lookup;
+            FieldDef *lookup;
             // Reading a lookup field as a string is permissible, we just return the string registered in the lookup table
-            if ((lookup = (struct FieldDef *)Field->Arg)) {
+            if ((lookup = (FieldDef *)Field->Arg)) {
                LONG value = ((LONG *)data)[0];
                while (lookup->Name) {
                   if (value IS lookup->Value) {
@@ -775,8 +771,7 @@ ERROR copy_field_to_buffer(OBJECTPTR Object, struct Field *Field, LONG DestFlags
    else if (srcflags & (FD_POINTER|FD_STRING)) {
       if (DestFlags & (FD_POINTER|FD_STRING)) *((APTR *)Result) = *((APTR *)data);
       else if (srcflags & (FD_INTEGRAL|FD_OBJECT)) {
-         OBJECTPTR object;
-         object = *((APTR *)data);
+         OBJECTPTR object = *((OBJECTPTR *)data);
          if (object) {
             if (DestFlags & FD_LONG)       *((LONG *)Result)  = object->UniqueID;
             else if (DestFlags & FD_LARGE) *((LARGE *)Result) = object->UniqueID;
@@ -787,13 +782,13 @@ ERROR copy_field_to_buffer(OBJECTPTR Object, struct Field *Field, LONG DestFlags
       else goto mismatch;
    }
    else {
-      LogF("@GetField","I dont recognise field flags of $%.8x.", srcflags);
+      log.warning("I dont recognise field flags of $%.8x.", srcflags);
       return ERR_UnrecognisedFieldType;
    }
 
    return ERR_Okay;
 
 mismatch:
-   LogF("@GetField","Mismatch while reading %s.%s (field $%.8x, requested $%.8x).", ((struct rkMetaClass *)Object->Class)->ClassName, Field->Name, Field->Flags, DestFlags);
+   log.warning("Mismatch while reading %s.%s (field $%.8x, requested $%.8x).", ((rkMetaClass *)Object->Class)->ClassName, Field->Name, Field->Flags, DestFlags);
    return ERR_FieldTypeMismatch;
 }

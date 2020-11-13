@@ -33,7 +33,9 @@ For more information on the Fluid syntax, please refer to the official Fluid Ref
 
 *****************************************************************************/
 
-//#define DEBUG
+#ifdef DEBUG
+#undef DEBUG
+#endif
 
 #define RMSG(a...) //MSG(a) // Enable if you want to debug results returned from functions, actions etc
 

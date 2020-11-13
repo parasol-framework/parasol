@@ -37,13 +37,14 @@ Read
 
 ERROR IdentifyFile(CSTRING Path, CSTRING Mode, LONG Flags, CLASSID *ClassID, CLASSID *SubClassID, STRING *Command)
 {
+   parasol::Log log(__FUNCTION__);
    CSTRING filename;
-   LONG i, j, bytes_read;
+   LONG i, bytes_read;
    #define HEADER_SIZE 80
 
-   if ((!Path) OR (!ClassID)) return LogError(ERH_IdentifyFile, ERR_NullArgs);
+   if ((!Path) OR (!ClassID)) return log.warning(ERR_NullArgs);
 
-   LogF("~IdentifyFile()","File: %s, Mode: %s, Command: %s", Path, Mode, Command ? "Yes" : "No");
+   log.branch("File: %s, Mode: %s, Command: %s", Path, Mode, Command ? "Yes" : "No");
 
    // Determine the class type by examining the Path file name.  If the file extension does not tell us the class
    // that supports the data, we then load the first 256 bytes from the file and then compare file headers.
@@ -55,31 +56,28 @@ ERROR IdentifyFile(CSTRING Path, CSTRING Mode, LONG Flags, CLASSID *ClassID, CLA
    *ClassID = 0;
    if (SubClassID) *SubClassID = 0;
    if (Command) *Command = NULL;
+   UBYTE buffer[400] = { 0 };
 
    if (Flags & IDF_HOST) goto host_platform;
 
    if ((error = load_datatypes())) { // Load the associations configuration file
-      LogError(ERH_IdentifyFile, error);
-      LogReturn();
-      return error;
+      return log.warning(error);
    }
 
    // Scan for device associations.  A device association, e.g. http: can link to a class or provide the appropriate
    // command in its datatype section.
 
-   struct ConfigEntry *entries;
+   ConfigEntry *entries;
    if ((entries = glDatatypes->Entries)) {
-      STRING datatype, str;
-
-      for (i=0; i < glDatatypes->AmtEntries; i++) {
-         if (!StrCompare("DEV:", entries[i].Section, 4, NULL)) {
-            j = StrLength(entries[i].Section + 4);
-            if (!StrCompare(entries[i].Section + 4, Path, j, NULL)) {
-               str = entries[i].Section;
+      for (LONG i=0; i < glDatatypes->AmtEntries; i++) {
+         if (!StrCompare("DEV:", entries[i].Section, 4, 0)) {
+            LONG j = StrLength(entries[i].Section + 4);
+            if (!StrCompare(entries[i].Section + 4, Path, j, 0)) {
+               CSTRING str = entries[i].Section;
 
                if (Path[j] != ':') continue;
 
-               datatype = NULL;
+               CSTRING datatype = NULL;
                while ((i < glDatatypes->AmtEntries) AND (!StrMatch(entries[i].Section, str))) {
                   if (!StrMatch("Datatype", entries[i].Key)) {
                      datatype = entries[i].Data;
@@ -95,9 +93,9 @@ ERROR IdentifyFile(CSTRING Path, CSTRING Mode, LONG Flags, CLASSID *ClassID, CLA
                // Found device association
 
                if ((!cmd) AND (datatype)) {
-                  for (i=0; i < glDatatypes->AmtEntries; i++) {
+                  for (LONG i=0; i < glDatatypes->AmtEntries; i++) {
                      if (!StrMatch(datatype, entries[i].Section)) {
-                        FMSG("IdentifyFile","Found datatype '%s'", datatype);
+                        log.trace("Found datatype '%s'", datatype);
                         while (!StrMatch(datatype, entries[i].Section)) {
                            if (!StrMatch(Mode, entries[i].Key)) {
                               if (Flags & IDF_SECTION) cmd = StrClone(entries[i].Section);
@@ -110,9 +108,9 @@ ERROR IdentifyFile(CSTRING Path, CSTRING Mode, LONG Flags, CLASSID *ClassID, CLA
                      }
                   }
 
-                  if (!cmd) FMSG("IdentifyFile","Datatype '%s' missing mode '%s'", datatype, Mode);
+                  if (!cmd) log.trace("Datatype '%s' missing mode '%s'", datatype, Mode);
                }
-               else LogF("@IdentifyFile","No datatype reference for section '%s'", str);
+               else log.warning("No datatype reference for section '%s'", str);
 
                goto restart; // Jump to the restart label
             }
@@ -130,31 +128,29 @@ ERROR IdentifyFile(CSTRING Path, CSTRING Mode, LONG Flags, CLASSID *ClassID, CLA
          // Note: A virtual volume may return ERR_Okay even without identifying the class of the queried file.  This
          // means that the file was analysed but belongs to no known class.
 
-         struct virtual_drive *virtual;
-         if ((virtual = get_virtual(res_path))) {
-            if (virtual->IdentifyFile) {
-               if (!virtual->IdentifyFile(res_path, ClassID, SubClassID)) {
-                  FMSG("IdentifyFile","Virtual volume identified the target file.");
+         virtual_drive *vd;
+         if ((vd = get_virtual(res_path))) {
+            if (vd->IdentifyFile) {
+               if (!vd->IdentifyFile(res_path, ClassID, SubClassID)) {
+                  log.trace("Virtual volume identified the target file.");
                   goto class_identified;
                }
-               else FMSG("IdentifyFile","Virtual volume reports no support for %d:%d", *ClassID, *SubClassID);
+               else log.trace("Virtual volume reports no support for %d:%d", *ClassID, *SubClassID);
             }
-            else FMSG("IdentifyFile","Virtual volume does not support IdentifyFile()");
+            else log.trace("Virtual volume does not support IdentifyFile()");
          }
       }
       else {
          // Before we assume failure - check for the use of semicolons that split the string into multiple file names.
 
-         LogF("@IdentifyFile","ResolvePath() failed on '%s', error '%s'", Path, GetErrorMsg(reserror));
+         log.warning("ResolvePath() failed on '%s', error '%s'", Path, GetErrorMsg(reserror));
 
-         if (!StrCompare("string:", Path, 7, NULL)) {
-            // Do not check for '|' when string: is in use
-            LogReturn();
+         if (!StrCompare("string:", Path, 7, 0)) { // Do not check for '|' when string: is in use
             return ERR_FileNotFound;
          }
 
          for (i=0; (Path[i]) AND (Path[i] != '|'); i++) {
-            if (Path[i] IS ';') LogF("@IdentifyFile","Use of ';' obsolete, use '|' in path %s", Path);
+            if (Path[i] IS ';') log.warning("Use of ';' obsolete, use '|' in path %s", Path);
          }
 
          if (Path[i] IS '|') {
@@ -162,36 +158,29 @@ ERROR IdentifyFile(CSTRING Path, CSTRING Mode, LONG Flags, CLASSID *ClassID, CLA
             tmp[i] = 0;
             if (ResolvePath(tmp, RSF_APPROXIMATE, &res_path) != ERR_Okay) {
                FreeResource(tmp);
-               LogReturn();
                return ERR_FileNotFound;
             }
             else FreeResource(tmp);
          }
-         else {
-            LogReturn();
-            return ERR_FileNotFound;
-         }
+         else return ERR_FileNotFound;
       }
    }
 
    // Check against the class registry to identify what class and sub-class that this data source belongs to.
 
-   struct ClassHeader *classes;
-   struct ClassItem *item;
-   LONG *offsets;
-   UBYTE buffer[400] = { 0 };
+   ClassHeader *classes;
 
    if ((classes = glClassDB)) {
-      offsets = CL_OFFSETS(classes);
+      LONG *offsets = CL_OFFSETS(classes);
 
       // Check extension
 
-      FMSG("IdentifyFile","Checking extension against class database.");
+      log.trace("Checking extension against class database.");
 
       if (!*ClassID) {
          if ((filename = get_filename(res_path))) {
-            for (i=0; (i < classes->Total) AND (!*ClassID); i++) {
-               item = ((APTR)classes) + offsets[i];
+            for (LONG i=0; (i < classes->Total) AND (!*ClassID); i++) {
+               ClassItem *item = (ClassItem *)((char *)classes + offsets[i]);
                if (item->MatchOffset) {
                   if (!StrCompare((STRING)item + item->MatchOffset, filename, 0, STR_WILDCARD)) {
                      if (item->ParentID) {
@@ -199,7 +188,7 @@ ERROR IdentifyFile(CSTRING Path, CSTRING Mode, LONG Flags, CLASSID *ClassID, CLA
                         if (SubClassID) *SubClassID = item->ClassID;
                      }
                      else *ClassID = item->ClassID;
-                     FMSG("IdentifyFile","File identified as class $%.8x", *ClassID);
+                     log.trace("File identified as class $%.8x", *ClassID);
                      break;
                   }
                }
@@ -210,15 +199,15 @@ ERROR IdentifyFile(CSTRING Path, CSTRING Mode, LONG Flags, CLASSID *ClassID, CLA
       // Check data
 
       if (!*ClassID) {
-         FMSG("IdentifyFile","Loading file header to identify '%s' against class registry", res_path);
+         log.trace("Loading file header to identify '%s' against class registry", res_path);
 
          if ((!ReadFileToBuffer(res_path, buffer, HEADER_SIZE, &bytes_read)) AND (bytes_read >= 4)) {
-            FMSG("IdentifyFile","Checking file header data (%d bytes) against %d classes....", bytes_read, classes->Total);
-            for (i=0; (i < classes->Total) AND (!*ClassID); i++) {
-               item = ((APTR)classes) + offsets[i];
+            log.trace("Checking file header data (%d bytes) against %d classes....", bytes_read, classes->Total);
+            for (LONG i=0; (i < classes->Total) AND (!*ClassID); i++) {
+               ClassItem *item = (ClassItem *)((char *)classes + offsets[i]);
                if (!item->HeaderOffset) continue;
 
-               STRING header = (STRING)item + item->HeaderOffset; // Compare the header to the Path buffer
+               CSTRING header = (CSTRING)item + item->HeaderOffset; // Compare the header to the Path buffer
                BYTE match = TRUE;  // Headers use an offset based hex format, for example: [8:$958a9b9f9301][24:$939a9fff]
                while (*header) {
                   if (*header != '[') {
@@ -303,11 +292,11 @@ ERROR IdentifyFile(CSTRING Path, CSTRING Mode, LONG Flags, CLASSID *ClassID, CLA
                }
             } // for all classes
          }
-         else error = LogError(ERH_IdentifyFile, ERR_Read);
+         else error = log.warning(ERR_Read);
       }
    }
    else {
-      LogF("@IdentifyFile","Class database not available.");
+      log.warning("Class database not available.");
       error = ERR_Search;
    }
 
@@ -315,15 +304,14 @@ class_identified:
    if (res_path) FreeResource(res_path);
 
    if (!error) {
-      if (*ClassID) LogF("6IdentifyFile","File belongs to class $%.8x:$%.8x", *ClassID, (SubClassID) ? *SubClassID : 0);
+      if (*ClassID) log.debug("File belongs to class $%.8x:$%.8x", *ClassID, (SubClassID) ? *SubClassID : 0);
       else {
-         LogF("6IdentifyFile","Failed to identify file \"%s\"", Path);
+         log.debug("Failed to identify file \"%s\"", Path);
          error = ERR_Search;
       }
    }
 
    if (!Command) { // Return now if there is no request for a command string
-      LogReturn();
       if (!(*ClassID)) return ERR_Search;
       else return error;
    }
@@ -335,15 +323,15 @@ class_identified:
       // Testing the X file bit is only reliable in the commercial version of Parasol, as other Linux systems often
       // mount FAT partitions with +X on everything.
 
-      const struct SystemState *state = GetSystemState();
-      struct FileInfo info;
+      const SystemState *state = GetSystemState();
+      FileInfo info;
       if (!StrMatch("Native", state->Platform)) {
-         MSG("Checking for +x permissions on file %s", Path);
-         UBYTE filename[MAX_FILENAME];
+         log.trace("Checking for +x permissions on file %s", Path);
+         char filename[MAX_FILENAME];
          if (!get_file_info(Path, &info, sizeof(info), filename, sizeof(filename))) {
             if (info.Flags & RDF_FILE) {
                if (info.Permissions & PERMIT_ALL_EXEC) {
-                  MSG("Path carries +x permissions.");
+                  log.trace("Path carries +x permissions.");
                   *ClassID = ID_TASK;
                }
             }
@@ -355,25 +343,25 @@ class_identified:
             if ((!StrCompare("/usr/", resolve, 5, 0)) OR
                 (!StrCompare("/opt/", resolve, 5, 0)) OR
                 (!StrCompare("/bin/", resolve, 5, 0))) {
-               FMSG("IdentifyFile","Checking for +x permissions on file %s", resolve);
-               UBYTE filename[MAX_FILENAME];
+               log.trace("Checking for +x permissions on file %s", resolve);
+               char filename[MAX_FILENAME];
                if (!get_file_info(resolve, &info, sizeof(info), filename, sizeof(filename))) {
                   if (info.Flags & RDF_FILE) {
                      if (info.Permissions & PERMIT_ALL_EXEC) {
-                        FMSG("IdentifyFile","Path carries +x permissions");
+                        log.trace("Path carries +x permissions");
                         *ClassID = ID_TASK;
                      }
                   }
                }
             }
-            else FMSG("IdentifyFile","Path is not supported for +x checks.");
+            else log.trace("Path is not supported for +x checks.");
             FreeResource(resolve);
          }
-         else FMSG("IdentifyFile","Failed to resolve location '%s'", Path);
+         else log.trace("Failed to resolve location '%s'", Path);
       }
-      else FMSG("IdentifyFile","No +x support for platform '%s'", state->Platform);
+      else log.trace("No +x support for platform '%s'", state->Platform);
    }
-   else FMSG("IdentifyFile","Skipping checks for +x permission flags.");
+   else log.trace("Skipping checks for +x permission flags.");
 
    // If the file is an executable, return a clone of the location path
 
@@ -384,14 +372,9 @@ class_identified:
          while (*Path) *res_path++ = *Path++;
          *res_path++ = '"';
          *res_path = 0;
-         LogReturn();
          return ERR_Okay;
       }
-      else {
-         LogError(ERH_IdentifyFile, ERR_AllocMemory);
-         LogReturn();
-         return ERR_AllocMemory;
-      }
+      else return log.warning(ERR_AllocMemory);
    }
 
    // Check device names
@@ -406,19 +389,19 @@ class_identified:
          get_class_cmd(Mode, glDatatypes, Flags, *ClassID, &cmd);
       }
 
-      LogF("IdentifyFile","Class command: %s", cmd);
+      log.msg("Class command: %s", cmd);
    }
-   else LogF("IdentifyFile","No class was identified for file '%s'.", Path);
+   else log.msg("No class was identified for file '%s'.", Path);
 
    // Scan for customised file associations.  These override the default class settings, so the user can come up with
    // his own personal settings in circumstances where a class association is not suitable.
 
    if ((filename = get_filename(Path))) {
-      LogF("IdentifyFile","Scanning associations config to match: %s", filename);
+      log.msg("Scanning associations config to match: %s", filename);
 
       if ((entries = glDatatypes->Entries)) {
          CSTRING str;
-         for (i=0; i < glDatatypes->AmtEntries; i++) {
+         for (LONG i=0; i < glDatatypes->AmtEntries; i++) {
             if (StrMatch(entries[i].Key, "Match") != ERR_Okay) continue;
 
             if (!StrCompare(entries[i].Data, filename, 0, STR_WILDCARD)) {
@@ -445,7 +428,7 @@ restart:
          cmd = str;
       }
       else {
-         LogF("@IdentifyFile","Reference to program '%s' is invalid.", buffer);
+         log.warning("Reference to program '%s' is invalid.", buffer);
          FreeResource(cmd);
          cmd = NULL;
          goto exit; // Abort if the program is not available
@@ -454,11 +437,11 @@ restart:
 
 host_platform:
 #ifdef _WIN32
-   FMSG("IdentifyFile","Windows execution process...");
+   log.trace("Windows execution process...");
 
    if ((!cmd) AND (!(Flags & (IDF_SECTION|IDF_IGNORE_HOST)))) { // Check if Windows supports the file type
       if (!ResolvePath(Path, RSF_APPROXIMATE, &res_path)) {
-         UBYTE buffer[300];
+         char buffer[300];
 
          if (!StrCompare("http:", res_path, 5, NULL)) { // HTTP needs special support
             if (winReadRootKey("http\\shell\\open\\command", NULL, buffer, sizeof(buffer))) {
@@ -468,14 +451,14 @@ host_platform:
                   cmd = StrClone(buffer);
                }
                else {
-                  for (i=0; buffer[i]; i++);
+                  i = StrLength(buffer);
                   StrCopy(" \"[@file]\"", buffer+i, sizeof(buffer)-i);
                   cmd = StrClone(buffer);
                }
             }
          }
          else {
-            UBYTE key[300];
+            char key[300];
             CSTRING ext = get_extension(res_path);
 
             if ((ext) AND ((i = winReadRootKey(ext-1, NULL, key, sizeof(key))))) {
@@ -483,11 +466,9 @@ host_platform:
 
                if (winReadRootKey(key, NULL, buffer, sizeof(buffer))) {
                   i = StrSearch("%1", buffer, STR_MATCH_CASE);
-                  if (i != -1) {
-                     StrInsert("[@file]", buffer, sizeof(buffer), i, 2);
-                  }
+                  if (i != -1) StrInsert("[@file]", buffer, sizeof(buffer), i, 2);
                   else {
-                     for (i=0; buffer[i]; i++);
+                     i = StrLength(buffer);
                      StrCopy(" \"[@file]\"", buffer+i, sizeof(buffer)-i);
                   }
 
@@ -495,7 +476,7 @@ host_platform:
 
                   i = StrSearch("%SystemRoot%", buffer, 0);
                   if (i != -1) {
-                     UBYTE sysroot[100];
+                     char sysroot[100];
                      sysroot[0] = 0;
                      if (!winReadKey("\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion", "SystemRoot", sysroot, sizeof(sysroot))) {
                         if (!winReadKey("\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", "SystemRoot", sysroot, sizeof(sysroot))) {
@@ -537,17 +518,17 @@ host_platform:
 
                   cmd = StrClone(buffer);
                }
-               else FMSG("IdentifyFile","Failed to read key %s", key);
+               else log.trace("Failed to read key %s", key);
             }
-            else FMSG("IdentifyFile","Windows has no mapping for extension %s", ext);
+            else log.trace("Windows has no mapping for extension %s", ext);
 
             if (!cmd) {
                if (!winGetCommand(res_path, buffer, sizeof(buffer))) {
-                  for (i=0; buffer[i]; i++);
+                  i = StrLength(buffer);
                   StrCopy(" \"[@file]\"", buffer+i, sizeof(buffer)-i);
                   cmd = StrClone(buffer);
                }
-               else LogF("IdentifyFile","Windows cannot identify path: %s", res_path);
+               else log.msg("Windows cannot identify path: %s", res_path);
             }
          }
 
@@ -571,8 +552,7 @@ host_platform:
    *Command = cmd;
 
 exit:
-   FMSG("IdentifyFile","File belongs to class $%.8x", *ClassID);
-   LogReturn();
+   log.trace("File belongs to class $%.8x", *ClassID);
    if ((!*ClassID) AND (!cmd)) return ERR_Search;
    else return ERR_Okay;
 }
@@ -583,15 +563,16 @@ exit:
 
 ERROR get_class_cmd(CSTRING Mode, objConfig *Associations, LONG Flags, CLASSID ClassID, STRING *Command)
 {
-   if ((!ClassID) OR (!Command) OR (!Associations)) return LogError(ERH_IdentifyFile, ERR_NullArgs);
+   parasol::Log log("IdentifyFile");
 
-   struct ClassItem *item = find_class(ClassID);
+   if ((!ClassID) OR (!Command) OR (!Associations)) return log.warning(ERR_NullArgs);
+
+   ClassItem *item = find_class(ClassID);
 
    if (item) {
-      struct ConfigEntry *entries;
+      ConfigEntry *entries;
       if ((entries = Associations->Entries)) {
-         LONG i;
-         for (i=0; i < Associations->AmtEntries; i++) {
+         for (LONG i=0; i < Associations->AmtEntries; i++) {
             if (!StrMatch(entries[i].Key, "Class")) {
                if (!StrMatch(entries[i].Data, item->Name)) {
                   CSTRING str;

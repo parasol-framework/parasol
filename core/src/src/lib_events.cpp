@@ -78,12 +78,11 @@ NullArgs
 
 ERROR BroadcastEvent(APTR Event, LONG EventSize)
 {
-   if ((!Event) OR (EventSize < sizeof(struct rkEvent))) return ERR_NullArgs;
+   if ((!Event) OR ((size_t)EventSize < sizeof(struct rkEvent))) return ERR_NullArgs;
 
    LONG groupmask = 1<<((((struct rkEvent *)Event)->EventID>>56) & 0xff);
 
-   LONG i;
-   for (i=0; i < MAX_TASKS; i++) {
+   for (LONG i=0; i < MAX_TASKS; i++) {
       if (shTasks[i].ProcessID) {
          if (shTasks[i].EventMask & groupmask) {
             FMSG("BroadcastEvent","Broadcasting event $%.8x%.8x to task #%d.",
@@ -172,14 +171,14 @@ ERROR SubscribeEvent(LARGE EventID, FUNCTION *Callback, APTR Custom, APTR *Handl
    if (Callback->Type != CALL_STDC) return ERR_Args; // Currently only StdC callbacks are accepted.
 
    struct eventsub *event;
-   if ((event = malloc(sizeof(struct eventsub)))) {
+   if ((event = (struct eventsub *)malloc(sizeof(struct eventsub)))) {
       LARGE mask = 0xff00000000000000LL;
       if (EventID & 0x00ffffff00000000LL) mask |= 0x00ffffff00000000LL;
       if (EventID & 0x00000000ffffffffLL) mask |= 0x00000000ffffffffLL;
 
       OBJECTPTR context = CurrentContext();
       event->EventID   = EventID;
-      event->Callback  = Callback->StdC.Routine;
+      event->Callback  = (void (*)(APTR, APTR, LONG))Callback->StdC.Routine;
       event->Group     = ((EventID>>56) & 0xff);
       event->ContextID = context->UniqueID;
       event->Next      = glEventList;
@@ -222,7 +221,7 @@ void UnsubscribeEvent(APTR Event)
 
    LogF("6UnsubscribeEvent()","Event: %p", Event);
 
-   struct eventsub *event = Event;
+   struct eventsub *event = (eventsub *)Event;
    if (event->Prev) event->Prev->Next = event->Next;
    if (event->Next) event->Next->Prev = event->Prev;
    if (event IS glEventList) glEventList = event->Next;
@@ -248,9 +247,9 @@ void UnsubscribeEvent(APTR Event)
 
 ERROR msg_event(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
 {
-   if ((!Message) OR (MsgSize < sizeof(struct rkEvent))) return ERR_Okay;
+   if ((!Message) OR ((size_t)MsgSize < sizeof(struct rkEvent))) return ERR_Okay;
 
-   struct rkEvent *eventmsg = Message;
+   rkEvent *eventmsg = (rkEvent *)Message;
 
    FMSG("EventMsg()","Event $%.8x%8x has been received.", (LONG)((eventmsg->EventID>>32)& 0xffffffff),
       (LONG)(eventmsg->EventID & 0xffffffff));

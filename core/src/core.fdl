@@ -1364,7 +1364,7 @@ INLINE ERROR cfgWriteInt(APTR Self, CSTRING Section, CSTRING Key, LONG Integer)
    LONG     ActivationCount;      // Incremented every time the script is activated.
    LONG     ResultsTotal;
    LONG     TotalArgs;            // Total number of ProcArgs
-   UBYTE    LanguageDir[32];      // Directory to use for language files
+   char     LanguageDir[32];      // Directory to use for language files
    OBJECTID ScriptOwnerID;
   ]])
 
@@ -1430,10 +1430,10 @@ INLINE ERROR cfgWriteInt(APTR Self, CSTRING Section, CSTRING Key, LONG Integer)
    STRING   Location;         // Where to load the task from (string)
    CSTRING  *Parameters;      // Arguments (string array)
    STRING   Copyright;        // Copyright details (string)
-   UBYTE    Name[32];         // Name of the task, if specified (string)
-   UBYTE    Author[60];       // Who wrote the program (string)
-   UBYTE    Date[20];         // Date of compilation (string)
-   UBYTE    Short[80];        // Short description of program (string)
+   char     Name[32];         // Name of the task, if specified (string)
+   char     Author[60];       // Who wrote the program (string)
+   char     Date[20];         // Date of compilation (string)
+   char     Short[80];        // Short description of program (string)
    LONG     ParametersSize;   // Byte size of the arguments structure
    STRING   Fields[100];      // Unlisted field storage
    BYTE     ReturnCodeSet;    // TRUE if the ReturnCode has been set
@@ -1577,7 +1577,7 @@ struct TaskList {
    struct CompressionFeedback *FeedbackInfo;
    struct rkCompression *NextArchive;
    UBYTE     Header[32];         // The first 32 bytes of data from the compressed file (for sub-classes only)
-   UBYTE     Password[128];      // Password for the compressed object
+   char      Password[128];      // Password for the compressed object
    FUNCTION  Feedback;           // Set a function here to get de/compression feedack
    ULONG     ArchiveHash;        // Archive reference, used for the 'archive:' volume
 
@@ -1652,7 +1652,7 @@ struct acGetVar        { CSTRING Field; STRING Buffer; LONG Size; };
 struct acMove          { DOUBLE XChange; DOUBLE YChange; DOUBLE ZChange; };
 struct acMoveToPoint   { DOUBLE X; DOUBLE Y; DOUBLE Z; LONG Flags; };
 struct acNewChild      { union { OBJECTID NewChildID; OBJECTID NewChild; }; };
-struct acNewOwner      { union { OBJECTID NewOwnerID; OBJECTID NewOwner; }; LONG ClassID; };
+struct acNewOwner      { union { OBJECTID NewOwnerID; OBJECTID NewOwner; }; CLASSID ClassID; };
 struct acRead          { APTR Buffer; LONG Length; LONG Result; };
 struct acRedimension   { DOUBLE X; DOUBLE Y; DOUBLE Z; DOUBLE Width; DOUBLE Height; DOUBLE Depth; };
 struct acRedo          { LONG Steps; };
@@ -2192,7 +2192,7 @@ struct ClassItem {
    WORD  PathOffset;
    WORD  MatchOffset;
    WORD  HeaderOffset;
-   UBYTE Name[24];
+   char Name[24];
    // Followed by [path, match, header] strings
 };
 
@@ -2284,10 +2284,10 @@ struct evHotplug {
    UBYTE Section[32];    // Section name in the config file
    UBYTE Class[32];      // Class identifier (USB)
    union {
-      UBYTE Product[40]; // Name of product or the hardware device
-      UBYTE Device[40];
+      char Product[40]; // Name of product or the hardware device
+      char Device[40];
    };
-   UBYTE Vendor[40];     // Name of vendor
+   char Vendor[40];     // Name of vendor
 };
 
 INLINE void SET_DEVICE(struct dcDeviceInput *Input, WORD Type, WORD Flags, DOUBLE Value, LARGE Timestamp)

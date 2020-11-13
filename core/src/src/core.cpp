@@ -93,24 +93,24 @@ static LONG CrashHandler(LONG Code, APTR Address, LONG Continuable, LONG *Info) 
 static void BreakHandler(void)  __attribute__((unused));
 #endif
 
-extern ERROR add_archive_class(void);
-extern ERROR add_compressed_stream_class(void);
-extern ERROR add_compression_class(void);
-extern ERROR add_script_class(void);
-extern ERROR add_task_class(void);
-extern ERROR add_thread_class(void);
-extern ERROR add_module_class(void);
-extern ERROR add_config_class(void);
-extern ERROR add_time_class(void);
+extern "C" ERROR add_archive_class(void);
+extern "C" ERROR add_compressed_stream_class(void);
+extern "C" ERROR add_compression_class(void);
+extern "C" ERROR add_script_class(void);
+extern "C" ERROR add_task_class(void);
+extern "C" ERROR add_thread_class(void);
+extern "C" ERROR add_module_class(void);
+extern "C" ERROR add_config_class(void);
+extern "C" ERROR add_time_class(void);
 #ifdef __ANDROID__
-extern ERROR add_asset_class(void);
+extern "C" ERROR add_asset_class(void);
 #endif
-extern ERROR add_file_class(void);
-extern ERROR add_storage_class(void);
+extern "C" ERROR add_file_class(void);
+extern "C" ERROR add_storage_class(void);
 
 LONG InitCore(void);
-EXPORT void CloseCore(void);
-EXPORT struct CoreBase * OpenCore(struct OpenInfo *);
+extern "C" EXPORT void CloseCore(void);
+extern "C" EXPORT struct CoreBase * OpenCore(struct OpenInfo *);
 static ERROR open_shared_control(BYTE);
 static ERROR init_shared_control(void);
 static ERROR load_modules(void);
@@ -141,12 +141,11 @@ static void print_class_list(void) __attribute__ ((unused));
 static void print_class_list(void)
 {
    char buffer[1024];
-   LONG pos = 0;
+   size_t pos = 0;
    LONG *offsets = CL_OFFSETS(glClassDB);
-   WORD i, j;
-   for (i=0; i < glClassDB->Total; i++) {
-      struct ClassItem *item = ((APTR)glClassDB) + offsets[i];
-      for (j=0; (item->Name[j]) AND (pos < sizeof(buffer)-2); j++) buffer[pos++] = item->Name[j];
+   for (WORD i=0; i < glClassDB->Total; i++) {
+      struct ClassItem *item = (struct ClassItem *)(((BYTE *)glClassDB) + offsets[i]);
+      for (WORD j=0; (item->Name[j]) AND (pos < sizeof(buffer)-2); j++) buffer[pos++] = item->Name[j];
       if ((i < glClassDB->Total-1) AND (pos < sizeof(buffer)-1)) buffer[pos++] = ' ';
    }
    buffer[pos] = 0;
@@ -265,7 +264,7 @@ EXPORT struct CoreBase * OpenCore(struct OpenInfo *Info)
    #ifdef DEBUG
       winInitialise(&id, NULL); // Don't set a break handler, this will allow GDB intercept CTRL-C.
    #else
-      winInitialise(&id, &BreakHandler);
+      winInitialise(&id, (APTR)&BreakHandler);
    #endif
 
    const char lookup[] = "0123456789ABCDEF";
@@ -451,11 +450,10 @@ EXPORT struct CoreBase * OpenCore(struct OpenInfo *Info)
 
       if (glLogLevel > 2) {
          char cmdline[160];
-         LONG j;
-         LONG pos = 0;
-         for (i=0; (i < Info->ArgCount) AND (pos < sizeof(cmdline)-1); i++) {
+         size_t pos = 0;
+         for (LONG i=0; (i < Info->ArgCount) AND (pos < sizeof(cmdline)-1); i++) {
             if (i > 0) cmdline[pos++] = ' ';
-            for (j=0; (Info->Args[i][j]) AND (pos < sizeof(cmdline)-1); j++) {
+            for (LONG j=0; (Info->Args[i][j]) AND (pos < sizeof(cmdline)-1); j++) {
                cmdline[pos++] = Info->Args[i][j];
             }
          }
@@ -494,7 +492,7 @@ EXPORT struct CoreBase * OpenCore(struct OpenInfo *Info)
    struct sigaction sig;
 
    sig.sa_flags = SA_SIGINFO;
-   sig.sa_sigaction = (void *)CrashHandler;
+   sig.sa_sigaction = CrashHandler;
    sigaction(SIGINT,  &sig, 0);  // Interrupt from keyboard
    sigaction(SIGHUP,  &sig, 0);  // Hang up detected on controlling terminal
    sigaction(SIGQUIT, &sig, 0);  // Quit from keyboard (ctrl-c)
@@ -503,10 +501,10 @@ EXPORT struct CoreBase * OpenCore(struct OpenInfo *Info)
    sigaction(SIGFPE,  &sig, 0);  // Floating point exception
    sigaction(SIGILL,  &sig, 0);  // Illegal instruction
 
-   sig.sa_sigaction = (void *)DiagnosisHandler;
+   sig.sa_sigaction = DiagnosisHandler;
    sigaction(SIGUSR1, &sig, 0);      // Print a status report for user signal #1
 
-   sig.sa_sigaction = (void *)NullHandler;
+   sig.sa_sigaction = NullHandler;
    sigaction(SIGALRM, &sig, 0);       // Do nothing when alarms are signalled
 
    //signal(SIGIO,   NullHandler);     // SIGIO is handled by the filesystem module
@@ -515,7 +513,7 @@ EXPORT struct CoreBase * OpenCore(struct OpenInfo *Info)
    signal(SIGXFSZ, SIG_IGN);           // Do not signal if writing a large file (e.g. > 2GB)
 
    //sig.sa_flags |= SA_NOCLDWAIT;
-   sig.sa_sigaction = (void *)child_handler;
+   sig.sa_sigaction = child_handler;
    sigaction(SIGCHLD, &sig, 0);      // This handler is important for responding to dead child tasks immediately (the default for SIGCHILD is ignore)
    sig.sa_flags &= ~SA_NOCLDWAIT;
 
@@ -604,9 +602,9 @@ EXPORT struct CoreBase * OpenCore(struct OpenInfo *Info)
 
    // Determine shared addresses
 
-   glSharedBlocks = ResolveAddress(glSharedControl, glSharedControl->BlocksOffset);
-   shSemaphores   = ResolveAddress(glSharedControl, glSharedControl->SemaphoreOffset);
-   shTasks        = ResolveAddress(glSharedControl, glSharedControl->TaskOffset);
+   glSharedBlocks = (PublicAddress *)ResolveAddress(glSharedControl, glSharedControl->BlocksOffset);
+   shSemaphores   = (SemaphoreEntry *)ResolveAddress(glSharedControl, glSharedControl->SemaphoreOffset);
+   shTasks        = (TaskList *)ResolveAddress(glSharedControl, glSharedControl->TaskOffset);
 
    // Sockets are used on Unix systems to tell our processes when new messages are available for them to read.
 
@@ -614,7 +612,7 @@ EXPORT struct CoreBase * OpenCore(struct OpenInfo *Info)
       if ((glSocket = socket(PF_UNIX, SOCK_DGRAM, 0)) != -1) {
          fcntl(glSocket, F_SETFL, O_NONBLOCK);
 
-         LONG socklen;
+         socklen_t socklen;
          struct sockaddr_un *sockpath = get_socket_path(glProcessID, &socklen);
 
          #ifdef __APPLE__
@@ -753,7 +751,7 @@ EXPORT struct CoreBase * OpenCore(struct OpenInfo *Info)
          glSharedControl->InstanceMsgPort = glTaskMessageMID;
 
          FUNCTION call;
-         SET_FUNCTION_STDC(call, &process_janitor);
+         SET_FUNCTION_STDC(call, (APTR)&process_janitor);
          SubscribeTimer(60, &call, &glProcessJanitor);
       }
       else {
@@ -789,7 +787,7 @@ EXPORT struct CoreBase * OpenCore(struct OpenInfo *Info)
 
    glMemRegSize = 1000;
    LogF("Core","Allocating an initial private memory register of %d entries.", glMemRegSize);
-   if (!(glPrivateMemory = malloc(sizeof(struct PrivateAddress) * glMemRegSize))) {
+   if (!(glPrivateMemory = (PrivateAddress *)malloc(sizeof(struct PrivateAddress) * glMemRegSize))) {
       if (Info->Flags & OPF_ERROR) Info->Error = ERR_AllocMemory;
       CloseCore();
       return NULL;
@@ -798,7 +796,7 @@ EXPORT struct CoreBase * OpenCore(struct OpenInfo *Info)
    // Allocate the page management table for public memory blocks.
 
    glTotalPages = PAGE_TABLE_CHUNK;
-   if (!(glMemoryPages = calloc(glTotalPages, sizeof(struct MemoryPage)))) {
+   if (!(glMemoryPages = (MemoryPage *)calloc(glTotalPages, sizeof(struct MemoryPage)))) {
       LogF("@Core","Failed to allocate the memory page management table.");
       CloseCore();
       if (Info->Flags & OPF_ERROR) Info->Error = ERR_AllocMemory;
@@ -834,10 +832,10 @@ EXPORT struct CoreBase * OpenCore(struct OpenInfo *Info)
 
    // Local action management routines
 
-   ManageAction(AC_Init, MGR_Init);
-   ManageAction(AC_Free, MGR_Free);
-   ManageAction(AC_Rename, MGR_Rename);
-   ManageAction(AC_Seek, MGR_Seek);
+   ManageAction(AC_Init, (APTR)MGR_Init);
+   ManageAction(AC_Free, (APTR)MGR_Free);
+   ManageAction(AC_Rename, (APTR)MGR_Rename);
+   ManageAction(AC_Seek, (APTR)MGR_Seek);
 
    if (!(glClassMap = VarNew(0, KSF_THREAD_SAFE))) {
       fprintf(stderr, "Failed to allocate glClassMap.\n");
@@ -924,8 +922,7 @@ EXPORT struct CoreBase * OpenCore(struct OpenInfo *Info)
 
       if (Info->Flags & OPF_NAME) {
          SetField((OBJECTPTR)localtask, FID_Name|TSTRING, Info->Name);
-         for (i=0; Info->Name[i] AND (i < sizeof(glProgName)-1); i++) glProgName[i] = Info->Name[i];
-         glProgName[i] = 0;
+         StrCopy(Info->Name, glProgName, sizeof(glProgName));
       }
 
       if (Info->Flags & OPF_AUTHOR)    SetField((OBJECTPTR)localtask, FID_Author|TSTR, Info->Author);
@@ -972,7 +969,7 @@ EXPORT struct CoreBase * OpenCore(struct OpenInfo *Info)
 
    if (!(Info->Flags & OPF_JUMPTABLE)) Info->JumpTable = MHF_STRUCTURE;
 
-   LocalCoreBase = build_jump_table(Info->JumpTable, glFunctions, MEM_UNTRACKED);
+   LocalCoreBase = (struct CoreBase *)build_jump_table(Info->JumpTable, glFunctions, MEM_UNTRACKED);
    if (Info->Flags & OPF_COMPILED_AGAINST) fix_core_table(LocalCoreBase, Info->CompiledAgainst);
 
    // Broadcast the creation of the new task
@@ -1032,9 +1029,8 @@ static ERROR open_shared_control(BYTE GlobalInstance)
    FMSG("open_shared_control()","Global: %d", GlobalInstance);
 
    ERROR error;
-   LONG i;
 
-   for (i=1; i < PL_END; i++) {
+   for (LONG i=1; i < PL_END; i++) {
       if (glPublicLocks[i].Event) {
          if ((error = alloc_public_waitlock(&glPublicLocks[i].Lock, glPublicLocks[i].Name))) { // Event
             LogErrorMsg("Failed to allocate system waitlock %d '%s', error %d", i, glPublicLocks[i].Name, error);
@@ -1083,7 +1079,7 @@ static ERROR open_shared_control(BYTE GlobalInstance)
    LONG memkey = 0xd39f7ea1;
 
    Dl_info dlinfo;
-   if (dladdr(OpenCore, &dlinfo)) {
+   if (dladdr((CPTR)OpenCore, &dlinfo)) {
       struct stat flinfo;
       if (!stat(dlinfo.dli_fname, &flinfo)) {
          memkey ^= flinfo.st_ino;
@@ -1167,7 +1163,7 @@ static ERROR open_shared_control(BYTE GlobalInstance)
       }
       else KMSG("Shared memory block already exists - will attach to it.\n");
 
-      if ((glSharedControl = shmat(glSharedControlID, 0, SHM_R|SHM_W)) IS (void *)-1) {
+      if ((glSharedControl = (SharedControl *)shmat(glSharedControlID, 0, SHM_R|SHM_W)) IS (void *)-1) {
          glSharedControl = NULL;
          KERR("\033[1mFailed to connect to the public memory pool.\033[0m\n");
          return ERR_Failed;
@@ -1196,14 +1192,14 @@ static ERROR open_shared_control(BYTE GlobalInstance)
             // Mark all previous shared memory blocks for deletion.
             // You can check the success of this routine by running "ipcs", which lists allocated shm blocks.
 
-            LONG id, i;
+            LONG id;
 
-            shSemaphores = ResolveAddress(glSharedControl, glSharedControl->SemaphoreOffset);
-            shTasks      = ResolveAddress(glSharedControl, glSharedControl->TaskOffset);
+            shSemaphores = (SemaphoreEntry *)ResolveAddress(glSharedControl, glSharedControl->SemaphoreOffset);
+            shTasks      = (TaskList *)ResolveAddress(glSharedControl, glSharedControl->TaskOffset);
 
             if (glSharedControl->BlocksOffset) {
-               glSharedBlocks = ResolveAddress(glSharedControl, glSharedControl->BlocksOffset);
-               for (i=glSharedControl->NextBlock-1; i >= 0; i--) {
+               glSharedBlocks = (PublicAddress *)ResolveAddress(glSharedControl, glSharedControl->BlocksOffset);
+               for (LONG i=glSharedControl->NextBlock-1; i >= 0; i--) {
                   if (glSharedBlocks[i].MemoryID) {
                      if ((id = shmget(SHMKEY + glSharedBlocks[i].MemoryID, glSharedBlocks[i].Size, S_IRWXO|S_IRWXG|S_IRWXU)) != -1) {
                         shmctl(id, IPC_RMID, NULL);
@@ -1300,7 +1296,7 @@ static ERROR init_shared_control(void)
       UBYTE i;
       KMSG("Initialising %d global locks\n", PL_END-1);
       for (i=1; i < PL_END; i++) {
-         if (alloc_public_lock(i, ALF_RECURSIVE)) { CloseCore(); return NULL; };
+         if (alloc_public_lock(i, ALF_RECURSIVE)) { CloseCore(); return ERR_Failed; };
       }
    #endif
 
@@ -1311,6 +1307,7 @@ static ERROR init_shared_control(void)
 
 -FUNCTION-
 PrintDiagnosis: Prints program state information to stdout.
+Category: Logging
 
 An analysis of any task's current state can be printed to stdout by calling this function.  This information is useful
 solely for the purpose of debugging, particularly in difficult situations where reviewing the current context and
@@ -1480,9 +1477,8 @@ void PrintDiagnosis(LONG ProcessID, LONG Signal)
 {
    FILE *fd;
 #ifndef _WIN32
-   UBYTE filename[64];
+   char filename[64];
 #endif
-   WORD j;
 
    //if (glLogLevel <= 1) return;
 
@@ -1571,7 +1567,7 @@ void PrintDiagnosis(LONG ProcessID, LONG Signal)
       if (!LOCK_PUBLIC_MEMORY(4000)) {
          // Print memory locking information
 
-         struct PublicAddress *memblocks = ResolveAddress(glSharedControl, glSharedControl->BlocksOffset);
+         struct PublicAddress *memblocks = (PublicAddress *)ResolveAddress(glSharedControl, glSharedControl->BlocksOffset);
 
          LONG index;
          for (index=0; index < glSharedControl->MaxBlocks; index++) {
@@ -1597,12 +1593,11 @@ void PrintDiagnosis(LONG ProcessID, LONG Signal)
       if (!LOCK_SEMAPHORES(4000)) {
          // Print semaphore locking information
 
-         struct SemaphoreEntry *semlist = ResolveAddress(glSharedControl, glSharedControl->SemaphoreOffset);
+         struct SemaphoreEntry *semlist = (SemaphoreEntry *)ResolveAddress(glSharedControl, glSharedControl->SemaphoreOffset);
 
-         LONG index;
-         for (index=1; index < MAX_SEMAPHORES; index++) {
+         for (LONG index=1; index < MAX_SEMAPHORES; index++) {
             if (semlist[index].InstanceID IS glInstanceID) {
-               for (j=0; j < ARRAYSIZE(semlist[index].Processes); j++) {
+               for (LONG j=0; j < ARRAYSIZE(semlist[index].Processes); j++) {
                   if (semlist[index].Processes[j].ProcessID IS ProcessID) {
                      fprintf(fd, "  Semaphore[%.4d]:  Access: %d,  Blocking: %d\n", index, semlist[index].Processes[j].AccessCount, semlist[index].Processes[j].BlockCount);
                      break;
@@ -1639,7 +1634,7 @@ void PrintDiagnosis(LONG ProcessID, LONG Signal)
 
    if (fd != stderr) {
       char buffer[4096];
-      WORD len;
+      LONG len;
 
       rewind(fd);
       if ((len = fread(buffer, 1, sizeof(buffer)-1, fd)) > 0) {
@@ -1699,7 +1694,7 @@ static void CrashHandler(LONG SignalNumber, siginfo_t *Info, APTR Context)
    if (glCrashStatus IS 0) {
       if (((SignalNumber IS SIGQUIT) OR (SignalNumber IS SIGHUP)))  {
          LogF("Core","Termination request - SIGQUIT or SIGHUP.");
-         SendMessage(glTaskMessageMID, MSGID_QUIT, NULL, NULL, NULL);
+         SendMessage(glTaskMessageMID, MSGID_QUIT, 0, NULL, 0);
          glCrashStatus = 1;
          return;
       }
@@ -1827,7 +1822,7 @@ static LONG CrashHandler(LONG Code, APTR Address, LONG Continuable, LONG *Info)
 
          fprintf(stderr, "\n%s (%s), at address: %p\n", ExceptionTable[Code], (Continuable) ? "Continuable" : "Fatal", Address);
          if ((Code IS EXP_ACCESS_VIOLATION) AND (Info)) {
-            STRING type;
+            CSTRING type;
             if (Info[0] IS 1) type = "write";
             else if (Info[0] IS 0) type = "read";
             else if (Info[0] IS 8) type = "execution";
@@ -1898,9 +1893,9 @@ static ERROR load_modules(void)
    }
 
    LogF("~load_modules()","Scanning for available modules.");
-   UBYTE modules[16384];
+   char modules[16384];
 
-   LONG pos = 0;
+   size_t pos = 0;
    LONG total = 0;
 
    struct DirInfo *dir;
@@ -1940,9 +1935,9 @@ static ERROR load_modules(void)
                }
                else continue;  // Anything not starting with 'lib' is ignored.
             #else
-               UBYTE modname[60];
+               char modname[60];
 
-               for (i=0; folder->Name[i] AND (folder->Name[i] != '.') AND (i < sizeof(modname)); i++) modname[i] = folder->Name[i];
+               for (i=0; folder->Name[i] AND (folder->Name[i] != '.') AND (i < (LONG)sizeof(modname)); i++) modname[i] = folder->Name[i];
                modname[i] = 0;
 
                item->Hash = StrHash(modname, FALSE);
@@ -1962,17 +1957,15 @@ static ERROR load_modules(void)
    }
 
    if ((total > 0) AND (!(error = AllocMemory(sizeof(struct ModuleHeader) + (total * sizeof(LONG)) + pos, MEM_NO_CLEAR|MEM_PUBLIC|MEM_UNTRACKED|MEM_NO_BLOCK, (APTR *)&glModules, &glSharedControl->ModulesMID)))) {
-      // Configure the header
-
       glModules->Total = total;
 
       // Generate the offsets
 
       LONG *offsets = (LONG *)(glModules + 1);
       struct ModuleItem *item = (struct ModuleItem *)((APTR)modules);
-      for (i=0; i < total; i++) {
+      for (LONG i=0; i < total; i++) {
          offsets[i] = (MAXINT)item - (MAXINT)modules + sizeof(struct ModuleHeader) + (total<<2);
-         item = ((APTR)item) + item->Size;
+         item = (struct ModuleItem *)(((char *)item) + item->Size);
       }
 
       CopyMemory(modules, offsets + total, pos);
@@ -1982,9 +1975,9 @@ static ERROR load_modules(void)
       LONG h = 1;
       while (h < total / 9) h = 3 * h + 1;
       for (; h > 0; h /= 3) {
-         for (i=h; i < total; i++) {
+         for (LONG i=h; i < total; i++) {
             LONG temp = offsets[i];
-            for (j=i; (j >= h) AND (((struct ModuleItem *)((APTR)glModules + offsets[j-h]))->Hash > ((struct ModuleItem *)((APTR)glModules + temp))->Hash); j -= h) {
+            for (j=i; (j >= h) AND (((struct ModuleItem *)((char *)glModules + offsets[j-h]))->Hash > ((struct ModuleItem *)((char *)glModules + temp))->Hash); j -= h) {
                offsets[j] = offsets[j - h];
             }
             offsets[j] = temp;
@@ -2218,7 +2211,7 @@ static ERROR init_filesystem(void)
             STRING homedir, logname;
             if ((homedir = getenv("HOME")) AND (homedir[0]) AND (StrMatch("/", homedir) != ERR_Okay)) {
                LogMsg("Home folder is \"%s\".", homedir);
-               for (i=0; (homedir[i]) AND (i < sizeof(buffer)-1); i++) buffer[i] = homedir[i];
+               for (i=0; (homedir[i]) AND (i < (LONG)sizeof(buffer)-1); i++) buffer[i] = homedir[i];
                while ((i > 0) AND (buffer[i-1] IS '/')) i--;
                i += StrFormat(buffer+i, sizeof(buffer)-i, "/.%s%d/", glUserHomeFolder, F2T(VER_CORE));
             }
@@ -2240,7 +2233,7 @@ static ERROR init_filesystem(void)
                while (buffer[i]) i++;
             }
             else {
-               i = StrCopy("config:users/", buffer, NULL);
+               i = StrCopy("config:users/", buffer, 0);
                if ((winGetUserName(buffer+i, sizeof(buffer)-i) AND (buffer[i]))) {
                   while (buffer[i]) i++;
                   buffer[i++] = '/';
@@ -2373,18 +2366,18 @@ static ERROR init_filesystem(void)
 
                   CSTRING str = buffer;
                   while (*str) {
-                     if (!StrCompare("/dev/hd", str, 0, NULL)) {
+                     if (!StrCompare("/dev/hd", str, 0, 0)) {
                         // Extract mount point
 
                         i = 0;
                         while ((*str) AND (*str > 0x20)) {
-                           if (i < sizeof(devpath)-1) devpath[i++] = *str;
+                           if (i < (LONG)sizeof(devpath)-1) devpath[i++] = *str;
                            str++;
                         }
                         devpath[i] = 0;
 
                         while ((*str) AND (*str <= 0x20)) str++;
-                        for (i=0; (*str) AND (*str > 0x20) AND (i < sizeof(mount)-1); i++) mount[i] = *str++;
+                        for (i=0; (*str) AND (*str > 0x20) AND (i < (LONG)sizeof(mount)-1); i++) mount[i] = *str++;
                         mount[i] = 0;
 
                         if ((mount[0] IS '/') AND (!mount[1]));
@@ -2452,4 +2445,4 @@ static ERROR init_filesystem(void)
    return ERR_Okay;
 }
 
-#include "core_close.c"
+#include "core_close.cpp"

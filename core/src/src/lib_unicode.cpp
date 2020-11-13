@@ -92,10 +92,8 @@ LONG UTF8Copy(CSTRING String, STRING Dest, LONG Chars, LONG Size)
       return 0;
    }
 
-   LONG i;
-   UBYTE j, copy;
-
-   i = 0;
+   UBYTE copy;
+   LONG i = 0;
    while (Chars > 0) {
       // Determine the number of bytes to copy for this character
 
@@ -115,7 +113,7 @@ LONG UTF8Copy(CSTRING String, STRING Dest, LONG Chars, LONG Size)
       // Do the copy
 
       Dest[i++] = *String++; // First character
-      for (j=1; j < copy; j++) { // Subsequent characters are subject to UTF8 validity
+      for (UBYTE j=1; j < copy; j++) { // Subsequent characters are subject to UTF8 validity
          if ((*String & 0xc0) != 0x80) break;
          Dest[i++] = *String++;
       }
@@ -229,9 +227,8 @@ uint: Returns the extracted unicode value.  If a failure occurs (the encoding is
 
 ULONG UTF8ReadValue(CSTRING String, LONG *Length)
 {
-   WORD i;
    ULONG code;
-   const UBYTE *str;
+   const char *str;
 
    if (!(str = String)) {
       if (Length) *Length = 0;
@@ -253,7 +250,7 @@ ULONG UTF8ReadValue(CSTRING String, LONG *Length)
    else if ((*str & 0xf0) IS 0xe0) {
       if (Length) *Length = 3;
       code = *str & 0x0f;
-      for (i=1; i < 3; i++) {
+      for (WORD i=1; i < 3; i++) {
          if ((str[i] & 0xc0) != 0x80) return 0;
          code = (code<<6) | (str[i] & 0x3f);
       }
@@ -261,7 +258,7 @@ ULONG UTF8ReadValue(CSTRING String, LONG *Length)
    else if ((*str & 0xf8) IS 0xf0) {
       if (Length) *Length = 4;
       code = *str & 0x07;
-      for (i=1; i < 4; i++) {
+      for (WORD i=1; i < 4; i++) {
          if ((str[i] & 0xc0) != 0x80) return 0;
          code = (code<<6) | (str[i] & 0x3f);
       }
@@ -269,7 +266,7 @@ ULONG UTF8ReadValue(CSTRING String, LONG *Length)
    else if ((*str & 0xfc) IS 0xf8) {
       if (Length) *Length = 5;
       code = *str & 0x03;
-      for (i=1; i < 5; i++) {
+      for (WORD i=1; i < 5; i++) {
          if ((str[i] & 0xc0) != 0x80) return 0;
          code = (code<<6) | (str[i] & 0x3f);
       }
@@ -277,7 +274,7 @@ ULONG UTF8ReadValue(CSTRING String, LONG *Length)
    else if ((*str & 0xfc) IS 0xfc) {
       if (Length) *Length = 6;
       code = *str & 0x01;
-      for (i=1; i < 6; i++) {
+      for (WORD i=1; i < 6; i++) {
          if ((str[i] & 0xc0) != 0x80) return 0;
          code = (code<<6) | (str[i] & 0x3f);
       }
@@ -456,7 +453,7 @@ CSTRING UTF8ValidEncoding(CSTRING String, CSTRING Encoding)
                inleft = 1;
                output = glIconvBuffer + out;
                outleft = buffersize - out;
-               if (iconv(glIconv, (void *)&input, &inleft, (void *)&output, &outleft) != -1) {
+               if (iconv(glIconv, (const char **)&input, &inleft, (char **)&output, &outleft) != (size_t)-1) {
                   out += (buffersize - out) - outleft;
                }
                else {

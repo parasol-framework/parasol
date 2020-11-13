@@ -123,14 +123,12 @@ void LogF(CSTRING Header, CSTRING Format, ...)
    if (glLogLevel <= 0) return;
    if (tlLogStatus <= 0) return;
 
-   thread_lock(TL_PRINT, -1);
+   ThreadLock lock(TL_PRINT, -1);
 
    if (!Format) Format = "";
 
    if (Header) {
-      // ~ is the create-branch code
-
-      if (*Header IS '~') {
+      if (*Header IS '~') { // ~ is the create-branch code
          new_branch = TRUE;
          msgstate = MS_FUNCTION;
          Header++;
@@ -140,9 +138,7 @@ void LogF(CSTRING Header, CSTRING Format, ...)
          msgstate = MS_MSG;
       }
 
-      // ! and @ are error level codes
-
-      if (*Header IS '!') {
+      if (*Header IS '!') { // ! and @ are error level codes
          msglevel = 1;
          Header++;
 
@@ -199,8 +195,10 @@ void LogF(CSTRING Header, CSTRING Format, ...)
       if (!*Header) Header = NULL;
    }
    else {
-      if (glLogLevel < 3) goto unlock_exit;
-      msglevel = 3; new_branch = FALSE; msgstate = MS_NONE;
+      if (glLogLevel < 3) return;
+      msglevel = 3;
+      new_branch = FALSE;
+      msgstate = MS_NONE;
    }
 
    msglevel += tlBaseLine;
@@ -331,8 +329,6 @@ void LogF(CSTRING Header, CSTRING Format, ...)
 
 exit:
    if (new_branch) tlDepth++;
-unlock_exit:
-   thread_unlock(TL_PRINT);
 }
 
 /*****************************************************************************
@@ -361,7 +357,7 @@ void VLogF(LONG Flags, CSTRING Header, CSTRING Message, va_list Args)
    if (tlLogStatus <= 0) return;
    if (!Args) return;
 
-   thread_lock(TL_PRINT, -1);
+   ThreadLock lock(TL_PRINT, -1);
 
    if (Flags & VLF_BRANCH) {
       new_branch = TRUE;
@@ -529,7 +525,6 @@ void VLogF(LONG Flags, CSTRING Header, CSTRING Message, va_list Args)
 
 exit:
    if (new_branch) tlDepth++;
-   thread_unlock(TL_PRINT);
 }
 
 /*****************************************************************************
@@ -687,7 +682,7 @@ ERROR LogError(LONG HeaderCode, ERROR Code)
       if ((HeaderCode < glTotalHeaders) AND (HeaderCode >= 0)) {
          // Print the header
 
-         thread_lock(TL_PRINT, -1);
+         ThreadLock lock(TL_PRINT, -1);
 
          CSTRING header;
          if (!HeaderCode) {
@@ -755,8 +750,6 @@ ERROR LogError(LONG HeaderCode, ERROR Code)
                if (glSync) { fflush(0); fsync(STDERR_FILENO); }
             #endif
          #endif
-
-         thread_unlock(TL_PRINT);
       }
       else LogF("@LogError:","Header: %d, Code: %d", HeaderCode, Code);
    }

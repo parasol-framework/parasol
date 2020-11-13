@@ -1042,7 +1042,7 @@ static void resolve_callback(LARGE ClientData, FUNCTION *Callback, ERROR Error, 
    if (!Callback) return;
    if (Callback->Type IS CALL_STDC) {
       ERROR (*routine)(LARGE, ERROR, CSTRING, struct IPAddress *, LONG);
-      parasol::SwitchContext(Callback);
+      parasol::SwitchContext context(Callback->StdC.Context);
       routine = reinterpret_cast<ERROR (*)(LARGE, ERROR, CSTRING, struct IPAddress *, LONG)>(Callback->StdC.Routine);
       routine(ClientData, Error, HostName, Addresses, TotalAddresses);
    }

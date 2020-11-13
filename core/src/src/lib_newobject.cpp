@@ -7,8 +7,8 @@ Name: Objects
 #include "defs.h"
 #include <parasol/main.h>
 
-extern ERROR CLASS_Free(struct rkMetaClass *, APTR);
-extern ERROR CLASS_Init(struct rkMetaClass *, APTR);
+extern "C" ERROR CLASS_Free(rkMetaClass *, APTR);
+extern "C" ERROR CLASS_Init(rkMetaClass *, APTR);
 
 static LONG add_shared_object(OBJECTPTR, OBJECTID, WORD);
 
@@ -49,14 +49,16 @@ ERROR CreateObject(LARGE ClassID, LONG Flags, OBJECTPTR *argObject, ...)
 
 ERROR CreateObjectF(LARGE ClassID, LONG Flags, OBJECTPTR *argObject, va_list List)
 {
+   parasol::Log log("CreateObject");
+
    if (glLogLevel > 2) {
-      struct rkMetaClass **ptr;
+      rkMetaClass **ptr;
       if (!KeyGet(glClassMap, ClassID, (APTR *)&ptr, NULL)) {
-         LogF("~CreateObject()","Class: %s", ptr[0]->ClassName);
+         log.branch("Class: %s", ptr[0]->ClassName);
       }
-      else LogF("~CreateObject()","Class: $%.8x", (ULONG)ClassID);
+      else log.branch("Class: $%.8x", (ULONG)ClassID);
    }
-   else LogF("~CreateObject()","Class: $%.8x", (ULONG)ClassID);
+   else log.branch("Class: $%.8x", (ULONG)ClassID);
 
    OBJECTPTR object;
    ERROR error;
@@ -66,11 +68,10 @@ ERROR CreateObjectF(LARGE ClassID, LONG Flags, OBJECTPTR *argObject, va_list Lis
          if (!(error = acInit(object))) {
             if (argObject) *argObject = object;
             else if (object->UniqueID < 0) ReleaseObject(object);
-            LogReturn();
             return ERR_Okay;
          }
       }
-      else error = LogError(ERH_CreateObject, ERR_SetField);
+      else error = log.warning(ERR_SetField);
 
       if (object->UniqueID < 0) {
          acFree(object);
@@ -81,7 +82,6 @@ ERROR CreateObjectF(LARGE ClassID, LONG Flags, OBJECTPTR *argObject, va_list Lis
    else error = ERR_NewObject;
 
    if (argObject) *argObject = NULL;
-   LogReturn();
    return error;
 }
 
@@ -121,16 +121,17 @@ ObjectExists: An object with the provided Name already exists in the system (app
 
 ERROR NewObject(LARGE ClassID, LONG Flags, OBJECTPTR *Object)
 {
+   parasol::Log log(__FUNCTION__);
    static BYTE master_sorted = FALSE;
 
    ULONG class_id = (ULONG)(ClassID & 0xffffffff);
-   if ((!class_id) OR (!Object)) return LogError(ERH_NewObject, ERR_NullArgs);
+   if ((!class_id) OR (!Object)) return log.warning(ERR_NullArgs);
 
-   struct rkMetaClass *class;
+   rkMetaClass *mc;
    if (class_id IS ID_METACLASS) {
-      class = &glMetaClass;
-      glMetaClass.ActionTable[AC_Free].PerformAction = (APTR)CLASS_Free;
-      glMetaClass.ActionTable[AC_Init].PerformAction = (APTR)CLASS_Init;
+      mc = &glMetaClass;
+      glMetaClass.ActionTable[AC_Free].PerformAction = (ERROR (*)(OBJECTPTR, APTR))CLASS_Free;
+      glMetaClass.ActionTable[AC_Init].PerformAction = (ERROR (*)(OBJECTPTR, APTR))CLASS_Init;
       // Initialise the glMetaClass fields if this has not already been done.
 
       if (!master_sorted) {
@@ -138,8 +139,12 @@ ERROR NewObject(LARGE ClassID, LONG Flags, OBJECTPTR *Object)
          master_sorted = TRUE;
       }
    }
-   else if (!(class = (struct rkMetaClass *)FindClass(class_id))) {
-      LogF("NewObject()","Class $%.8x was not found in the system.", class_id);
+   else if (!(mc = (rkMetaClass *)FindClass(class_id))) {
+      rkMetaClass **ptr;
+      if (!KeyGet(glClassMap, ClassID, (APTR *)&ptr, NULL)) {
+         log.function("Class %s was not found in the system.", ptr[0]->ClassName);
+      }
+      else log.function("Class $%.8x was not found in the system.", class_id);
       return ERR_MissingClass;
    }
 
@@ -154,37 +159,34 @@ ERROR NewObject(LARGE ClassID, LONG Flags, OBJECTPTR *Object)
 
    // Force certain flags on the class' behalf
 
-   if (class->Flags & CLF_PUBLIC_OBJECTS) Flags |= NF_PUBLIC;
-   if (class->Flags & CLF_NO_OWNERSHIP)   Flags |= NF_UNTRACKED;
+   if (mc->Flags & CLF_PUBLIC_OBJECTS) Flags |= NF_PUBLIC;
+   if (mc->Flags & CLF_NO_OWNERSHIP)   Flags |= NF_UNTRACKED;
 
    if (Flags & NF_PUBLIC) {
-      LogF("@NewObject","Request to allocate public object denied, use NewLockedObject().");
-      return LogError(ERH_NewObject, ERR_Args);
+      log.warning("Request to allocate public object denied, use NewLockedObject().");
+      return ERR_Args;
    }
 
-   if (!(Flags & NF_CREATE_OBJECT)) {
-      LogF("~NewObject()","%s #%d, Flags: $%x", class->ClassName, glSharedControl->PrivateIDCounter, Flags);
-   }
+   auto b = (!(Flags & NF_CREATE_OBJECT)) ? log.branch("%s #%d, Flags: $%x", mc->ClassName, glSharedControl->PrivateIDCounter, Flags) : NULL;
 
-   OBJECTPTR context = NULL;
    OBJECTPTR head = NULL;
    MEMORYID head_id = 0;
-   ERROR error = ERR_Failed;
+   ERROR error = ERR_Okay;
 
-   if (!AllocMemory(class->Size + sizeof(struct Stats), MEM_OBJECT|MEM_NO_LOCK, (APTR *)&head, &head_id)) {
-      head->Stats = ResolveAddress(head, class->Size);
-      head->UniqueID = head_id;
+   if (!AllocMemory(mc->Size + sizeof(Stats), MEM_OBJECT|MEM_NO_LOCK, (APTR *)&head, &head_id)) {
+      head->Stats     = (Stats *)ResolveAddress(head, mc->Size);
+      head->UniqueID  = head_id;
       head->MemFlags |= MEM_NO_LOCK; // Prevents private memory allocations made by this class from being automatically locked.
-      head->ClassID = class->BaseClassID;
-      if (class->BaseClassID IS class->SubClassID) { // Object derived from a base class
+      head->ClassID   = mc->BaseClassID;
+      if (mc->BaseClassID IS mc->SubClassID) { // Object derived from a base class
          head->SubID   = 0;
       }
       else { // Object derived from a sub-class
-         head->SubID   = class->SubClassID;
+         head->SubID = mc->SubClassID;
       }
 
-      head->Class = (struct rkMetaClass *)class;
-      if ((glCurrentTaskID != SystemTaskID) AND (!(class->Flags & CLF_NO_OWNERSHIP))) {
+      head->Class = (rkMetaClass *)mc;
+      if ((glCurrentTaskID != SystemTaskID) AND (!(mc->Flags & CLF_NO_OWNERSHIP))) {
          head->TaskID = glCurrentTaskID;
       }
 
@@ -198,94 +200,85 @@ ERROR NewObject(LARGE ClassID, LONG Flags, OBJECTPTR *Object)
 
       set_object_flags(head, (WORD)Flags);
       head->Flags |= NF_NEW_OBJECT;
-   }
-   else { error = ERR_AllocMemory; goto failed; }
 
-   // Tracking for our new object is configured here.
+      // Tracking for our new object is configured here.
 
-   OBJECTPTR task;
-   if (class->Flags & CLF_NO_OWNERSHIP) {
-   }
-   else if (Flags & NF_UNTRACKED) {
-      if (class_id IS ID_MODULE); // Untracked modules have no owner, due to the expunge process.
-      else {
-         // If the object is private and untracked, set its owner to the current task.  This will ensure that the object
-         // is deallocated correctly when the Core is closed.
-
-         if (glCurrentTaskID) {
-            if (!AccessObject(glCurrentTaskID, 5000, &task)) {
-               SetOwner(head, task);
-               ReleaseObject(task);
-            }
-            else LogF("NewObject","Unable to access local task (ID: %d).", glCurrentTaskID);
-         }
+      OBJECTPTR task;
+      if (mc->Flags & CLF_NO_OWNERSHIP) {
       }
-   }
-   else if (tlContext != &glTopContext) { // Track the object to the current context
-      SetOwner(head, tlContext->Object);
-   }
-   else if (glCurrentTaskID) { // If no current context is available then track the object to the local task
-      if (!AccessObject(glCurrentTaskID, 3000, &task)) {
-         SetOwner(head, task);
-         ReleaseObject(task);
-      }
-      else LogF("NewObject","Unable to access the local task #%d", glCurrentTaskID);
-   }
-   else if (SystemTaskID) { // If no current task is available then track the object to the system task
-      if (!AccessObject(SystemTaskID, 3000, &task)) {
-         SetOwner(head, task);
-         ReleaseObject(task);
-      }
-      else LogF("NewObject","Unable to access the system task #%d", SystemTaskID);
-   }
-
-   // After the header has been created we can set the context, then call the base class's NewObject() support.  If the
-   // class is a child, we will also call its supporting NewObject() action if it has specified one.
-   //
-   // Note: The NewObject support caller has a special feature where it passes the expected object context in the args pointer.
-
-   context = SetContext(head);
-
-      if (class->Base) {
-         if (class->Base->ActionTable[AC_NewObject].PerformAction) {
-            if ((error = class->Base->ActionTable[AC_NewObject].PerformAction(head, NULL)) != ERR_Okay) {
-               LogError(ERH_NewObject, error);
-               goto failed;
-            }
-         }
+      else if (Flags & NF_UNTRACKED) {
+         if (class_id IS ID_MODULE); // Untracked modules have no owner, due to the expunge process.
          else {
-            error = LogError(ERH_NewObject, ERR_NoAction);
-            goto failed;
+            // If the object is private and untracked, set its owner to the current task.  This will ensure that the object
+            // is deallocated correctly when the Core is closed.
+
+            if (glCurrentTaskID) {
+               if (!AccessObject(glCurrentTaskID, 5000, &task)) {
+                  SetOwner(head, task);
+                  ReleaseObject(task);
+               }
+               else log.msg("Unable to access local task (ID: %d).", glCurrentTaskID);
+            }
+         }
+      }
+      else if (tlContext != &glTopContext) { // Track the object to the current context
+         SetOwner(head, tlContext->Object);
+      }
+      else if (glCurrentTaskID) { // If no current context is available then track the object to the local task
+         if (!AccessObject(glCurrentTaskID, 3000, &task)) {
+            SetOwner(head, task);
+            ReleaseObject(task);
+         }
+         else log.msg("Unable to access the local task #%d", glCurrentTaskID);
+      }
+      else if (SystemTaskID) { // If no current task is available then track the object to the system task
+         if (!AccessObject(SystemTaskID, 3000, &task)) {
+            SetOwner(head, task);
+            ReleaseObject(task);
+         }
+         else log.msg("Unable to access the system task #%d", SystemTaskID);
+      }
+
+      // After the header has been created we can set the context, then call the base class's NewObject() support.  If the
+      // class is a child, we will also call its supporting NewObject() action if it has specified one.
+      //
+      // Note: The NewObject support caller has a special feature where it passes the expected object context in the args pointer.
+
+      if (!error) {
+         parasol::SwitchContext context(head); // Scope must be limited to the PerformAction() call
+
+         if (mc->Base) {
+            if (mc->Base->ActionTable[AC_NewObject].PerformAction) {
+               if ((error = mc->Base->ActionTable[AC_NewObject].PerformAction(head, NULL))) {
+                  log.warning(error);
+               }
+            }
+            else error = log.warning(ERR_NoAction);
+         }
+
+         if ((!error) AND (mc->ActionTable[AC_NewObject].PerformAction)) {
+            if ((error = mc->ActionTable[AC_NewObject].PerformAction(head, NULL))) {
+               log.warning(error);
+            }
          }
       }
 
-      if (class->ActionTable[AC_NewObject].PerformAction) {
-         if ((error = class->ActionTable[AC_NewObject].PerformAction(head, NULL)) != ERR_Okay) {
-            LogError(ERH_NewObject, error);
-            goto failed;
-         }
+      if (!error) {
+         ((rkMetaClass *)head->Class)->OpenCount++;
+         if (mc->Base) mc->Base->OpenCount++;
+
+         head->Flags &= ~NF_NEW_OBJECT;
+         *Object = head;
+         return ERR_Okay;
       }
-
-   SetContext(context);
-   context = NULL;
-
-   ((struct rkMetaClass *)head->Class)->OpenCount++;
-   if (class->Base) class->Base->OpenCount++;
-
-   head->Flags &= ~NF_NEW_OBJECT;
-   *Object = head;
-   if (!(Flags & NF_CREATE_OBJECT)) LogReturn();
-   return ERR_Okay;
-
-failed:
-   if (context) SetContext(context);
+   }
+   else error = ERR_AllocMemory;
 
    if (head) {
       head->Flags &= ~NF_NEW_OBJECT;
       FreeResource(head);
    }
 
-   if (!(Flags & NF_CREATE_OBJECT)) LogReturn();
    return error;
 }
 
@@ -322,17 +315,19 @@ ObjectExists: An object with the provided Name already exists in the system (app
 
 ERROR NewLockedObject(LARGE ClassID, LONG Flags, OBJECTPTR *Object, OBJECTID *ObjectID, CSTRING Name)
 {
+   parasol::Log log(__FUNCTION__);
+
    static BYTE master_sorted = FALSE;
    static BYTE private_lock = FALSE;
 
    ULONG class_id = (ULONG)(ClassID & 0xffffffff);
-   if ((!class_id) OR (!ObjectID)) return LogError(ERH_NewObject, ERR_NullArgs);
+   if ((!class_id) OR (!ObjectID)) return log.warning(ERR_NullArgs);
 
-   struct rkMetaClass *class;
+   rkMetaClass *mc;
    if (class_id IS ID_METACLASS) {
-      class = &glMetaClass;
-      glMetaClass.ActionTable[AC_Free].PerformAction = (APTR)CLASS_Free;
-      glMetaClass.ActionTable[AC_Init].PerformAction = (APTR)CLASS_Init;
+      mc = &glMetaClass;
+      glMetaClass.ActionTable[AC_Free].PerformAction = (ERROR (*)(OBJECTPTR, APTR))CLASS_Free;
+      glMetaClass.ActionTable[AC_Init].PerformAction = (ERROR (*)(OBJECTPTR, APTR))CLASS_Init;
       // Initialise the glMetaClass fields if this has not already been done.
 
       if (!master_sorted) {
@@ -340,12 +335,16 @@ ERROR NewLockedObject(LARGE ClassID, LONG Flags, OBJECTPTR *Object, OBJECTID *Ob
          master_sorted = TRUE;
       }
    }
-   else if (!(class = (struct rkMetaClass *)FindClass(class_id))) {
-      LogF("NewLockedObject()","Class $%.8x was not found in the system.", class_id);
+   else if (!(mc = (rkMetaClass *)FindClass(class_id))) {
+      rkMetaClass **ptr;
+      if (!KeyGet(glClassMap, ClassID, (APTR *)&ptr, NULL)) {
+         log.function("Class %s was not found in the system.", ptr[0]->ClassName);
+      }
+      else log.function("Class $%.8x was not found in the system.", class_id);
       return ERR_MissingClass;
    }
 
-   if (Object)   *Object   = NULL;
+   if (Object) *Object = NULL;
    *ObjectID = 0;
 
    Flags &= (NF_UNTRACKED|NF_INTEGRAL|NF_UNIQUE|NF_NAME|NF_PUBLIC|NF_CREATE_OBJECT); // Very important to eliminate any internal flags.
@@ -357,18 +356,16 @@ ERROR NewLockedObject(LARGE ClassID, LONG Flags, OBJECTPTR *Object, OBJECTID *Ob
 
    // Force certain flags on the class' behalf
 
-   if (class->Flags & CLF_PUBLIC_OBJECTS) Flags |= NF_PUBLIC;
-   if (class->Flags & CLF_NO_OWNERSHIP)   Flags |= NF_UNTRACKED;
+   if (mc->Flags & CLF_PUBLIC_OBJECTS) Flags |= NF_PUBLIC;
+   if (mc->Flags & CLF_NO_OWNERSHIP)   Flags |= NF_UNTRACKED;
 
-   if (Flags & NF_PUBLIC) LogF("~NewLockedObject()","%s #%d, Flags: $%x", class->ClassName, glSharedControl->IDCounter, Flags);
-   else LogF("~NewLockedObject()","%s #%d, Flags: $%x", class->ClassName, glSharedControl->PrivateIDCounter, Flags);
+   log.branch("%s #%d, Flags: $%x", mc->ClassName, (Flags & NF_PUBLIC) ? glSharedControl->IDCounter : glSharedControl->PrivateIDCounter, Flags);
 
-   OBJECTPTR context = NULL;
    OBJECTPTR head = NULL;
    MEMORYID head_id = 0;
    APTR sharelock = NULL;
    BYTE resourced = FALSE;
-   ERROR error = ERR_Failed;
+   ERROR error = ERR_Okay;
 
    if (((Flags & NF_UNIQUE) AND (Name)) OR (Flags & NF_PUBLIC)) {
       // Locking RPM_SharedObjects for the duration of this function will ensure that other tasks do not create shared
@@ -380,188 +377,177 @@ ERROR NewLockedObject(LARGE ClassID, LONG Flags, OBJECTPTR *Object, OBJECTID *Ob
             if ((!FastFindObject(Name, class_id, &search_id, 1, NULL)) AND (search_id)) {
                *ObjectID = search_id;
                ReleaseMemoryID(RPM_SharedObjects);
-               LogReturn();
                return ERR_ObjectExists; // Return ERR_ObjectExists so that the caller knows that the failure was not caused by an object creation error.
             }
          }
       }
-      else {
-         LogError(ERH_NewObject, ERR_AccessMemory);
-         LogReturn();
-         return ERR_AccessMemory;
-      }
+      else return log.warning(ERR_AccessMemory);
    }
 
-   if ((Flags & NF_PUBLIC) AND (class->Flags & CLF_PRIVATE_ONLY)) {
-      LogF("@NewLockedObject","Public objects cannot be allocated from class $%.8x.", class_id);
+   if ((Flags & NF_PUBLIC) AND (mc->Flags & CLF_PRIVATE_ONLY)) {
+      log.warning("Public objects cannot be allocated from class $%.8x.", class_id);
       Flags &= ~NF_PUBLIC;
    }
 
    if (Flags & NF_PUBLIC) {
-      if (!AllocMemory(class->Size + sizeof(struct Stats), MEM_PUBLIC|MEM_OBJECT, (void **)&head, &head_id)) {
-         head->Stats = ResolveAddress(head, class->Size);
+      if (!AllocMemory(mc->Size + sizeof(Stats), MEM_PUBLIC|MEM_OBJECT, (void **)&head, &head_id)) {
+         head->Stats = (Stats *)ResolveAddress(head, mc->Size);
          head->MemFlags |= MEM_PUBLIC;
          head->UniqueID = head_id;
       }
-      else { error = ERR_AllocMemory; goto failed; }
+      else error = ERR_AllocMemory;
    }
-   else if (!AllocMemory(class->Size + sizeof(struct Stats), MEM_OBJECT|MEM_NO_LOCK, (APTR *)&head, &head_id)) {
-      head->Stats = ResolveAddress(head, class->Size);
+   else if (!AllocMemory(mc->Size + sizeof(Stats), MEM_OBJECT|MEM_NO_LOCK, (APTR *)&head, &head_id)) {
+      head->Stats = (Stats *)ResolveAddress(head, mc->Size);
       head->UniqueID = head_id;
       head->MemFlags |= MEM_NO_LOCK; // Prevents private memory allocations made by this class from being automatically locked.
    }
-   else { error = ERR_AllocMemory; goto failed; }
+   else error = ERR_AllocMemory;
 
-   head->ClassID = class->BaseClassID;
-   if (class->BaseClassID IS class->SubClassID) { // Object derived from a base class
-      head->SubID = 0;
-   }
-   else head->SubID = class->SubClassID; // Object derived from a sub-class
-
-   head->Class = (struct rkMetaClass *)class;
-   if ((glCurrentTaskID != SystemTaskID) AND (!(class->Flags & CLF_NO_OWNERSHIP))) {
-      head->TaskID = glCurrentTaskID;
-   }
-
-   if (!(Flags & (NF_PUBLIC|NF_UNTRACKED))) { // Don't track public and untracked objects to specific threads.
-      head->ThreadMsg = tlThreadWriteMsg; // If the object needs to belong to a thread, this will record it.
-   }
-
-   // Add the object to our lists.  This must be done before calling the NewObject action because we will otherwise
-   // risk stuffing up the list order.
-
-   if (Flags & NF_PUBLIC) {
-      if (add_shared_object(head, head_id, (WORD)Flags) != ERR_Okay) goto failed;
-      resourced = TRUE;
-   }
-
-   // Note that the untracked flag is turned off because if it is left on, objects will allocate their children as
-   // being untracked (due to use of ObjectFlags as a reference for child allocation).
-
-   set_object_flags(head, (WORD)Flags);
-   head->Flags |= NF_NEW_OBJECT;
-
-   // Tracking for our newly created object is setup here.
-
-   OBJECTPTR task;
-   if (class->Flags & CLF_NO_OWNERSHIP); // The class mandates that objects have no owner.
-   else if (Flags & NF_UNTRACKED) {
-      if (class_id IS ID_MODULE); // Untracked modules have no owner, due to the expunge process.
-      else if (!(Flags & NF_PUBLIC)) {
-         // If the object is private and untracked, set its owner to the current task.  This will ensure that the object
-         // is deallocated correctly when the Core is closed.
-
-         if (glCurrentTaskID) {
-            if (!AccessObject(glCurrentTaskID, 5000, &task)) {
-               SetOwner(head, task);
-               ReleaseObject(task);
-            }
-            else LogF("NewLockedObject","Unable to access local task (ID: %d).", glCurrentTaskID);
-         }
+   if (!error) {
+      head->ClassID = mc->BaseClassID;
+      if (mc->BaseClassID IS mc->SubClassID) { // Object derived from a base class
+         head->SubID = 0;
       }
-   }
-   else if (tlContext != &glTopContext) { // Track the object to the current context
-      SetOwner(head, tlContext->Object);
-   }
-   else if (glCurrentTaskID) { // If no current context is available then track the object to the local task
-      if (!AccessObject(glCurrentTaskID, 3000, &task)) {
-         SetOwner(head, task);
-         ReleaseObject(task);
-      }
-      else LogF("NewLockedObject","Unable to access the local task #%d", glCurrentTaskID);
-   }
-   else if (SystemTaskID) { // If no current task is available then track the object to the system task
-      if (!AccessObject(SystemTaskID, 3000, &task)) {
-         SetOwner(head, task);
-         ReleaseObject(task);
-      }
-      else LogF("NewLockedObject","Unable to access the system task #%d", SystemTaskID);
-   }
+      else head->SubID = mc->SubClassID; // Object derived from a sub-class
 
-   if ((Object) AND (!(Flags & NF_PUBLIC))) {
-      if (AccessPrivateObject(head, 0x7fffffff) != ERR_Okay) goto failed;
-      private_lock = TRUE;
-   }
-
-   // After the header has been created we can set the context, then call the base class's NewObject() support.  If the
-   // class is a child, we will also call its supporting NewObject() action if it has specified one.
-   //
-   // Note: The NewObject support caller has a special feature where it passes the expected object context in the args pointer.
-
-   context = SetContext(head);
-
-      if (class->Base) {
-         if (class->Base->ActionTable[AC_NewObject].PerformAction) {
-            if ((error = class->Base->ActionTable[AC_NewObject].PerformAction(head, NULL)) != ERR_Okay) {
-               LogError(ERH_NewObject, error);
-               goto failed;
-            }
-         }
-         else {
-            error = LogError(ERH_NewObject, ERR_NoAction);
-            goto failed;
-         }
+      head->Class = mc;
+      if ((glCurrentTaskID != SystemTaskID) AND (!(mc->Flags & CLF_NO_OWNERSHIP))) {
+         head->TaskID = glCurrentTaskID;
       }
 
-      if (class->ActionTable[AC_NewObject].PerformAction) {
-         if ((error = class->ActionTable[AC_NewObject].PerformAction(head, NULL)) != ERR_Okay) {
-            LogError(ERH_NewObject, error);
-            goto failed;
-         }
+      if (!(Flags & (NF_PUBLIC|NF_UNTRACKED))) { // Don't track public and untracked objects to specific threads.
+         head->ThreadMsg = tlThreadWriteMsg; // If the object needs to belong to a thread, this will record it.
       }
 
-   SetContext(context);
-   context = NULL;
-
-   // Increment the class' open count if the object is private.  We do not increment the count for public objects,
-   // because this prevents the Core from expunging modules correctly during shutdown.
-
-   if (!(Flags & NF_PUBLIC)) {
-      ((struct rkMetaClass *)head->Class)->OpenCount++;
-      if (class->Base) class->Base->OpenCount++;
-   }
-
-   *ObjectID = head_id;
-
-   if ((Flags & (NF_UNIQUE|NF_NAME)) AND (Name)) SetName(head, Name); // Set the object's name if it was specified
-
-   head->Flags &= ~NF_NEW_OBJECT;
-   if (Flags & NF_PUBLIC) {
-      if (Object) { // All we need to do is set the Locked flag rather than making a call to AccessObject()
-         head->Locked = TRUE;
-         *Object = head;
-      }
-      else ReleaseMemoryID(head_id);
-   }
-   else {
-      if (Object) *Object = head;
-   }
-
-   if (sharelock) ReleaseMemoryID(RPM_SharedObjects);
-   LogReturn();
-   return ERR_Okay;
-
-failed:
-   if (context) SetContext(context);
-
-   if (head) {
-      head->Flags &= ~NF_NEW_OBJECT;
+      // Add the object to our lists.  This must be done before calling the NewObject action because we will otherwise
+      // risk stuffing up the list order.
 
       if (Flags & NF_PUBLIC) {
-         if (resourced) remove_shared_object(head_id);
-         ReleaseMemoryID(head_id);
-         FreeResourceID(head_id);
-      }
-      else {
-         if (private_lock) ReleasePrivateObject(head);
-         FreeResource(head);
+         if (!(error = add_shared_object(head, head_id, (WORD)Flags))) resourced = TRUE;
       }
    }
 
-   if (sharelock) ReleaseMemoryID(RPM_SharedObjects);
-   *ObjectID = 0;
-   LogReturn();
-   return error;
+   if (!error) {
+      // Note that the untracked flag is turned off because if it is left on, objects will allocate their children as
+      // being untracked (due to use of ObjectFlags as a reference for child allocation).
+
+      set_object_flags(head, (WORD)Flags);
+      head->Flags |= NF_NEW_OBJECT;
+
+      // Tracking for our newly created object is configured here.
+
+      OBJECTPTR task;
+      if (mc->Flags & CLF_NO_OWNERSHIP); // The class mandates that objects have no owner.
+      else if (Flags & NF_UNTRACKED) {
+         if (class_id IS ID_MODULE); // Untracked modules have no owner, due to the expunge process.
+         else if (!(Flags & NF_PUBLIC)) {
+            // If the object is private and untracked, set its owner to the current task.  This will ensure that the object
+            // is deallocated correctly when the Core is closed.
+
+            if (glCurrentTaskID) {
+               if (!AccessObject(glCurrentTaskID, 5000, &task)) {
+                  SetOwner(head, task);
+                  ReleaseObject(task);
+               }
+               else log.msg("Unable to access local task (ID: %d).", glCurrentTaskID);
+            }
+         }
+      }
+      else if (tlContext != &glTopContext) { // Track the object to the current context
+         SetOwner(head, tlContext->Object);
+      }
+      else if (glCurrentTaskID) { // If no current context is available then track the object to the local task
+         if (!AccessObject(glCurrentTaskID, 3000, &task)) {
+            SetOwner(head, task);
+            ReleaseObject(task);
+         }
+         else log.msg("Unable to access the local task #%d", glCurrentTaskID);
+      }
+      else if (SystemTaskID) { // If no current task is available then track the object to the system task
+         if (!AccessObject(SystemTaskID, 3000, &task)) {
+            SetOwner(head, task);
+            ReleaseObject(task);
+         }
+         else log.msg("Unable to access the system task #%d", SystemTaskID);
+      }
+   }
+
+   if ((!error) AND (Object) AND (!(Flags & NF_PUBLIC))) {
+      if (AccessPrivateObject(head, 0x7fffffff)) error = ERR_AccessObject;
+      else private_lock = TRUE;
+   }
+
+   if (!error) {
+      // Call the base class's NewObject() support.  If the class is a child, we will also call its supporting
+      // NewObject() action if it has specified one.  Note: The NewObject support caller has a special feature
+      // where it passes the expected object context in the args pointer.
+
+      parasol::SwitchContext context(head); // Scope must be limited to the PerformAction() call
+
+      if (mc->Base) {
+         if (mc->Base->ActionTable[AC_NewObject].PerformAction) {
+            if ((error = mc->Base->ActionTable[AC_NewObject].PerformAction(head, NULL))) {
+               log.warning(error);
+            }
+         }
+         else error = log.warning(ERR_NoAction);
+      }
+
+      if ((!error) AND (mc->ActionTable[AC_NewObject].PerformAction)) {
+         if ((error = mc->ActionTable[AC_NewObject].PerformAction(head, NULL))) {
+            log.warning(error);
+         }
+      }
+   }
+
+   if (!error) {
+      // Increment the class' open count if the object is private.  We do not increment the count for public objects,
+      // because this prevents the Core from expunging modules correctly during shutdown.
+
+      if (!(Flags & NF_PUBLIC)) {
+         ((rkMetaClass *)head->Class)->OpenCount++;
+         if (mc->Base) mc->Base->OpenCount++;
+      }
+
+      *ObjectID = head_id;
+
+      if ((Flags & (NF_UNIQUE|NF_NAME)) AND (Name)) SetName(head, Name); // Set the object's name if it was specified
+
+      head->Flags &= ~NF_NEW_OBJECT;
+      if (Flags & NF_PUBLIC) {
+         if (Object) { // All we need to do is set the Locked flag rather than making a call to AccessObject()
+            head->Locked = TRUE;
+            *Object = head;
+         }
+         else ReleaseMemoryID(head_id);
+      }
+      else {
+         if (Object) *Object = head;
+      }
+
+      if (sharelock) ReleaseMemoryID(RPM_SharedObjects);
+      return ERR_Okay;
+   }
+   else {
+      if (head) {
+         head->Flags &= ~NF_NEW_OBJECT;
+
+         if (Flags & NF_PUBLIC) {
+            if (resourced) remove_shared_object(head_id);
+            ReleaseMemoryID(head_id);
+            FreeResourceID(head_id);
+         }
+         else {
+            if (private_lock) ReleasePrivateObject(head);
+            FreeResource(head);
+         }
+      }
+
+      if (sharelock) ReleaseMemoryID(RPM_SharedObjects);
+      *ObjectID = 0;
+      return error;
+   }
 }
 
 /*****************************************************************************
@@ -584,13 +570,14 @@ cid: Returns the class ID identified from the class name, or NULL if the class c
 
 CLASSID ResolveClassName(CSTRING ClassName)
 {
-   struct ClassItem *item;
+   parasol::Log log(__FUNCTION__);
 
    if ((!ClassName) OR (!*ClassName)) {
-      LogError(ERH_ResolveClassName, ERR_NullArgs);
-      return NULL;
+      log.warning(ERR_NullArgs);
+      return 0;
    }
 
+   ClassItem *item;
    if ((item = find_class(StrHash(ClassName, FALSE)))) {
       return item->ClassID;
    }
@@ -616,25 +603,26 @@ cstr: Returns the name of the class, or NULL if the ID is not recognised.  Stand
 
 CSTRING ResolveClassID(CLASSID ID)
 {
-   struct ClassItem *item;
+   parasol::Log log(__FUNCTION__);
+   ClassItem *item;
+
    if ((item = find_class(ID))) return item->Name;
    else {
-      LogF("@ResolveClassID()","Failed to resolve ID $%.8x", ID);
+      log.warning("Failed to resolve ID $%.8x", ID);
       return NULL;
    }
 }
 
 //****************************************************************************
 
-ERROR find_public_object_entry(struct SharedObjectHeader *Header, OBJECTID ObjectID, LONG *Position)
+ERROR find_public_object_entry(SharedObjectHeader *Header, OBJECTID ObjectID, LONG *Position)
 {
-   struct SharedObject *array = ResolveAddress(Header, Header->Offset);
+   SharedObject *array = (SharedObject *)ResolveAddress(Header, Header->Offset);
 
-   LONG j;
    LONG floor   = 0;
    LONG ceiling = Header->NextEntry;
    LONG i       = ceiling>>1;
-   for (j=0; j < 2; j++) {
+   for (LONG j=0; j < 2; j++) {
       while ((!array[i].ObjectID) AND (i > 0)) i--;
 
       if (ObjectID < array[i].ObjectID)      floor = i + 1;
@@ -676,29 +664,30 @@ ERROR find_public_object_entry(struct SharedObjectHeader *Header, OBJECTID Objec
 
 static ERROR add_shared_object(OBJECTPTR Object, OBJECTID ObjectID, WORD Flags)
 {
+   parasol::Log log(__FUNCTION__);
+
    // This routine guarantees that the public_objects table will be sorted in the order of object creation (ObjectID)
    // so long as the ObjectID is incremented correctly.
 
-   if (ObjectID >= 0) return LogError(ERH_AddSharedObject, ERR_Args);
+   if (ObjectID >= 0) return log.warning(ERR_Args);
 
-   struct SharedObjectHeader *public_hdr;
+   SharedObjectHeader *public_hdr;
    if (!AccessMemory(RPM_SharedObjects, MEM_READ_WRITE, 2000, (void **)&public_hdr)) {
-      struct SharedObject *public_objects;
-      LONG i, j, k;
+      LONG j;
 
-      public_objects = ResolveAddress(public_hdr, public_hdr->Offset);
+      SharedObject *public_objects = (SharedObject *)ResolveAddress(public_hdr, public_hdr->Offset);
 
       // If the table is at its limit, compact it first by eliminating entries that no longer contain any data.
 
       if (public_hdr->NextEntry >= public_hdr->ArraySize) {
          LONG last_entry = 0;
-         LONG entry_size = sizeof(struct SharedObject)>>1;
-         for (i=0; i < public_hdr->ArraySize; i++) {
+         LONG entry_size = sizeof(SharedObject)>>1;
+         for (LONG i=0; i < public_hdr->ArraySize; i++) {
             if (!public_objects[i].ObjectID) {
-               for (j=i+1; (j < public_hdr->ArraySize) AND (public_objects[j].ObjectID IS NULL); j++);
+               for (j=i+1; (j < public_hdr->ArraySize) AND (!public_objects[j].ObjectID); j++);
                if (j < public_hdr->ArraySize) {
                   // Move the record at position j to position i
-                  for (k=0; k < entry_size; k++) {
+                  for (LONG k=0; k < entry_size; k++) {
                      ((WORD *)(public_objects+i))[k] = ((WORD *)(public_objects+j))[k];
                   }
                   // Kill the moved record at its previous position
@@ -712,20 +701,20 @@ static ERROR add_shared_object(OBJECTPTR Object, OBJECTID ObjectID, WORD Flags)
          }
          if (last_entry < public_hdr->ArraySize-1) public_hdr->NextEntry = last_entry + 1;
          else public_hdr->NextEntry = public_hdr->ArraySize;
-         LogF("4AddObject","Public object array compressed from %d entries to %d entries.", public_hdr->ArraySize, public_hdr->NextEntry);
+         log.msg("Public object array compressed from %d entries to %d entries.", public_hdr->ArraySize, public_hdr->NextEntry);
       }
 
       // If the table is at capacity, we must allocate more space for new records
 
       if (public_hdr->NextEntry >= public_hdr->ArraySize) {
-         LogF("@AddObject","The public object array is at capacity (%d blocks)", public_hdr->ArraySize);
+         log.warning("The public object array is at capacity (%d blocks)", public_hdr->ArraySize);
          ReleaseMemoryID(RPM_SharedObjects);
          return ERR_ArrayFull;
       }
 
       // "Pull-back" the NextPublicObject position if there are null entries present at the tail-end of the array (occurs if objects are allocated then quickly freed).
 
-      while ((public_hdr->NextEntry > 0) AND (public_objects[public_hdr->NextEntry-1].ObjectID IS NULL)) {
+      while ((public_hdr->NextEntry > 0) AND (public_objects[public_hdr->NextEntry-1].ObjectID IS 0)) {
          public_hdr->NextEntry--;
       }
 
@@ -734,7 +723,7 @@ static ERROR add_shared_object(OBJECTPTR Object, OBJECTID ObjectID, WORD Flags)
       public_objects[public_hdr->NextEntry].ObjectID = ObjectID;
       public_objects[public_hdr->NextEntry].OwnerID  = Object->OwnerID;
 
-      if (((struct rkMetaClass *)(Object->Class))->Flags & CLF_NO_OWNERSHIP) {
+      if (((rkMetaClass *)(Object->Class))->Flags & CLF_NO_OWNERSHIP) {
          public_objects[public_hdr->NextEntry].MessageMID = 0;
       }
       else public_objects[public_hdr->NextEntry].MessageMID = glTaskMessageMID;
@@ -756,31 +745,32 @@ static ERROR add_shared_object(OBJECTPTR Object, OBJECTID ObjectID, WORD Flags)
          UNLOCK_TASKS();
       }
 */
-      if (Flags & NF_PUBLIC) public_objects[public_hdr->NextEntry].Address  = NULL;
-      else public_objects[public_hdr->NextEntry].Address  = Object;
+      if (Flags & NF_PUBLIC) public_objects[public_hdr->NextEntry].Address = NULL;
+      else public_objects[public_hdr->NextEntry].Address = Object;
 
-      public_objects[public_hdr->NextEntry].ClassID     = Object->ClassID;
-      public_objects[public_hdr->NextEntry].Name[0]     = 0;
-      public_objects[public_hdr->NextEntry].Flags       = Flags;
-      public_objects[public_hdr->NextEntry].InstanceID  = glInstanceID;
+      public_objects[public_hdr->NextEntry].ClassID    = Object->ClassID;
+      public_objects[public_hdr->NextEntry].Name[0]    = 0;
+      public_objects[public_hdr->NextEntry].Flags      = Flags;
+      public_objects[public_hdr->NextEntry].InstanceID = glInstanceID;
       public_hdr->NextEntry++;
 
       ReleaseMemoryID(RPM_SharedObjects);
       return ERR_Okay;
    }
-   else return LogError(ERH_AddSharedObject, ERR_AccessMemory);
+   else return log.warning(ERR_AccessMemory);
 }
 
 //****************************************************************************
 
 void remove_shared_object(OBJECTID ObjectID)
 {
-   struct SharedObjectHeader *publichdr;
+   parasol::Log log(__FUNCTION__);
+   SharedObjectHeader *publichdr;
 
    if (!AccessMemory(RPM_SharedObjects, MEM_READ_WRITE, 2000, (void **)&publichdr)) {
       LONG pos;
       if (find_public_object_entry(publichdr, ObjectID, &pos) IS ERR_Okay) {
-         struct SharedObject *obj = ResolveAddress(publichdr, publichdr->Offset);
+         SharedObject *obj = (SharedObject *)ResolveAddress(publichdr, publichdr->Offset);
          obj[pos].ObjectID   = 0;
          obj[pos].ClassID    = 0;
          obj[pos].OwnerID    = 0;
@@ -788,9 +778,9 @@ void remove_shared_object(OBJECTID ObjectID)
          obj[pos].Flags      = 0;
          obj[pos].InstanceID = 0;
       }
-      else LogF("@remove_shared_object","Object #%d is not registered in the public object list.", ObjectID);
+      else log.warning("Object #%d is not registered in the public object list.", ObjectID);
       ReleaseMemoryID(RPM_SharedObjects);
    }
-   else LogError(ERH_RemoveObject, ERR_AccessMemory);
+   else log.warning(ERR_AccessMemory);
 }
 

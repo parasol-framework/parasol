@@ -18,6 +18,7 @@ Name: Strings
 
 static LONG test_statement(CSTRING TestString, CSTRING CompareString, LONG Condition);
 static void sift(STRING Buffer, LONG *, LONG, LONG);
+static ERROR  insert_string(CSTRING, STRING, LONG, LONG, LONG);
 
 typedef void * iconv_t;
 iconv_t (*iconv_open)(const char* tocode, const char* fromcode);
@@ -56,7 +57,7 @@ static char * get_translate_buffer(void)
 {
    if (!tlBuffer) {
       tlBufferSize = 256;
-      if ((tlBuffer = malloc(tlBufferSize))) {
+      if ((tlBuffer = (char *)malloc(tlBufferSize))) {
          tlBuffer[0] = 0;
       }
    }
@@ -70,7 +71,7 @@ void free_translate_buffer(void)
    tlBufferSize = 0;
 }
 
-static struct Field * find_field(OBJECTPTR Object, CSTRING Name, OBJECTPTR *Source) // Read-only, thread safe function.
+static Field * find_field(OBJECTPTR Object, CSTRING Name, OBJECTPTR *Source) // Read-only, thread safe function.
 {
    // Skip any special characters that are leading the field name (e.g. $, @).  Some symbols like / are used for XPath
    // lookups, so we only want to skip reserved symbols or we risk confusion between real fields and variable fields.
@@ -154,19 +155,19 @@ STRING * StrBuildArray(STRING List, LONG Size, LONG Total, LONG Flags)
    if (!List) return NULL;
 
    LONG i;
-   UBYTE *csvbuffer_alloc = NULL;
-   UBYTE csvbuffer[1024];
+   char *csvbuffer_alloc = NULL;
+   char csvbuffer[1024];
    if (Flags & SBF_CSV) {
       // Note that empty strings (commas following no content) are allowed and are treated as null strings.
 
       // We are going to modify the string with some nulls, so make a copy of it
 
       i = StrLength(List);
-      if (i < sizeof(csvbuffer)) {
+      if ((size_t)i < sizeof(csvbuffer)) {
          CopyMemory(List, csvbuffer, i+1);
          List = csvbuffer;
       }
-      else if ((csvbuffer_alloc = malloc(i+1))) {
+      else if ((csvbuffer_alloc = (char *)malloc(i+1))) {
          CopyMemory(List, csvbuffer_alloc, i+1);
          List = csvbuffer_alloc;
       }
@@ -351,8 +352,7 @@ ERROR StrCalculate(CSTRING String, DOUBLE *Result, STRING Buffer, LONG BufferSiz
       return ERR_Args;
    }
 
-   UBYTE buffer[180], calc[20];
-   LONG i, j;
+   char buffer[180], calc[20];
 
    // Search for brackets and translate them first
 
@@ -361,7 +361,7 @@ ERROR StrCalculate(CSTRING String, DOUBLE *Result, STRING Buffer, LONG BufferSiz
       // Find the last bracketed reference
 
       LONG bracketpos = 0;
-      for (i=0; String[i]; i++) {
+      for (LONG i=0; String[i]; i++) {
          if (String[i] IS '\'') {
             // Skip anything that is in quotes
             i++;
@@ -383,10 +383,10 @@ ERROR StrCalculate(CSTRING String, DOUBLE *Result, STRING Buffer, LONG BufferSiz
 
       if (bracketpos > 0) {
          buffer[0] = ' ';
-         j = 1;
-         for (i=bracketpos+1; (String[i] != 0) AND (String[i] != ')'); i++) {
+         LONG j = 1;
+         for (LONG i=bracketpos+1; (String[i] != 0) AND (String[i] != ')'); i++) {
             buffer[j++] = String[i];
-            if (j > sizeof(buffer)-3) break;
+            if ((size_t)j > sizeof(buffer)-3) break;
          }
          buffer[0] = '(';
          buffer[j++] = ')';
@@ -907,7 +907,7 @@ int: TRUE or FALSE will be returned as an output of the evaluation.
 
 LONG StrEvalConditional(CSTRING String)
 {
-   static const struct FieldDef table[] = {
+   static const FieldDef table[] = {
       { "<>", COND_NOT_EQUAL },
       { "!=", COND_NOT_EQUAL },
       { "=",  COND_EQUAL },
@@ -1243,11 +1243,11 @@ actually exists before performing a replacement, consider calling the ~StrSearch
 The new string will be stored in the Result parameter and must be removed with ~FreeResource() once it is no longer required.
 
 -INPUT-
-cstr Src:        Points to the source string that contains occurrences of the Keyword that you are searching for.
-str Keyword:     Identifies the keyword or phrase that you want to replace.
-str Replacement: Identifies the string that will replace all occurrences of the Keyword.
-!str Result:     Must refer to a STRING variable that will store the resulting memory block.
-int(STR) Flags:  Set to STR_CASE if the keyword search should be case-sensitive.
+cstr Src:         Points to the source string that contains occurrences of the Keyword that you are searching for.
+cstr Keyword:     Identifies the keyword or phrase that you want to replace.
+cstr Replacement: Identifies the string that will replace all occurrences of the Keyword.
+!str Result:      Must refer to a STRING variable that will store the resulting memory block.
+int(STR) Flags:   Set to STR_CASE if the keyword search should be case-sensitive.
 
 -ERRORS-
 Okay
@@ -1258,7 +1258,7 @@ AllocMemory: Memory for the resulting string could not be allocated.
 
 *****************************************************************************/
 
-ERROR StrReplace(CSTRING Source, STRING Keyword, STRING Replacement, STRING *Result, LONG CaseSensitive)
+ERROR StrReplace(CSTRING Source, CSTRING Keyword, CSTRING Replacement, STRING *Result, LONG CaseSensitive)
 {
    *Result = NULL;
 
@@ -1275,7 +1275,7 @@ ERROR StrReplace(CSTRING Source, STRING Keyword, STRING Replacement, STRING *Res
 
    // Calculate string lengths
 
-   LONG i, j, keylen, replen, offset;
+   LONG keylen, replen, offset;
    for (keylen=0; Keyword[keylen]; keylen++);
    for (replen=0; Replacement[replen]; replen++);
 
@@ -1287,8 +1287,9 @@ ERROR StrReplace(CSTRING Source, STRING Keyword, STRING Replacement, STRING *Res
       pos += offset;
       LONG newsize = StrLength(Source) - keylen + replen + 1;
       if (!AllocMemory(newsize, MEM_STRING|MEM_NO_CLEAR, (APTR *)&newstr, NULL)) {
+         LONG i;
          for (i=0; i < pos; i++) newstr[i] = Source[i];  // Copy first set of bytes up to the keyword
-         for (j=0; j < replen; j++) newstr[i + j] = Replacement[j];  // Copy the replacement
+         for (LONG j=0; j < replen; j++) newstr[i + j] = Replacement[j];  // Copy the replacement
          for (i=0; Source[pos + keylen + i] != 0; i++) {  // Copy the remaining bytes
             newstr[pos + replen + i] = Source[pos + keylen + i];
          }
@@ -1625,7 +1626,7 @@ ERROR StrEvaluate(STRING Buffer, LONG BufferLength, LONG Flags, OBJECTID OwnerID
 
    FMSG("StrEvaluate()","Size: %d, %s", BufferLength, Buffer);
 
-   struct Field *classfield;
+   Field *classfield;
 
    ERROR error = ERR_Okay;
    ERROR majorerror = ERR_Okay;
@@ -1673,14 +1674,14 @@ ERROR StrEvaluate(STRING Buffer, LONG BufferLength, LONG Flags, OBJECTID OwnerID
 
          if (Buffer[pos+1] IS '=') { // Perform a calculation
             DOUBLE value;
-            UBYTE calc[endbracket-pos];
+            char calc[endbracket-pos];
 
             CopyMemory(Buffer+pos+2, calc, endbracket-(pos+2));
             calc[endbracket-(pos+2)] = 0;
 
             if ((calcbuffer) OR (BufferLength > 2048)) {
                if (!calcbuffer) {
-                  if (!(calcbuffer = malloc(BufferLength))) {
+                  if (!(calcbuffer = (char *)malloc(BufferLength))) {
                      return ERR_AllocMemory;
                   }
                }
@@ -1692,7 +1693,7 @@ ERROR StrEvaluate(STRING Buffer, LONG BufferLength, LONG Flags, OBJECTID OwnerID
                }
             }
             else {
-               UBYTE calcbuffer[2048];
+               char calcbuffer[2048];
                StrCalculate(calc, &value, calcbuffer, sizeof(calcbuffer));
                if (insert_string(calcbuffer, Buffer, BufferLength, pos, endbracket-pos+1)) {
                   LogF("@StrEvaluate:","Buffer overflow (%d bytes) while inserting to buffer \"%.30s\"", BufferLength, Buffer);
@@ -1710,17 +1711,17 @@ ERROR StrEvaluate(STRING Buffer, LONG BufferLength, LONG Flags, OBJECTID OwnerID
             continue;
          }
          else {
-            UBYTE name[MAX_NAME_LEN];
+            char name[MAX_NAME_LEN];
 
             LONG j = 0;
             for (i=pos+1; (Buffer[i] != '.') AND (i < endbracket); i++) {
-               if (j < sizeof(name)-1) name[j++] = LCASE(Buffer[i]);
+               if ((size_t)j < sizeof(name)-1) name[j++] = LCASE(Buffer[i]);
             }
             name[j] = 0;
 
             // Check for [lb] and [rb] escape codes
 
-            UBYTE code = 0;
+            char code = 0;
             if (j IS 2) {
                if ((name[0] IS 'r') AND (name[1] IS 'b')) code = ']';
                else if ((name[0] IS 'l') AND (name[1] IS 'b')) code = '[';
@@ -1759,8 +1760,8 @@ ERROR StrEvaluate(STRING Buffer, LONG BufferLength, LONG Flags, OBJECTID OwnerID
                      i++;
 
                      LONG j = 0;
-                     UBYTE field[60];
-                     while ((i < endbracket) AND (j < sizeof(field)-1)) {
+                     char field[60];
+                     while ((i < endbracket) AND ((size_t)j < sizeof(field)-1)) {
                         field[j++] = Buffer[i++];
                      }
                      field[j] = 0;
@@ -1778,7 +1779,7 @@ repeat:
 
                            if (str[tlBufferSize-1]) {
                               char *newbuf;
-                              if ((newbuf = malloc(tlBufferSize + 1024))) {
+                              if ((newbuf = (char *)malloc(tlBufferSize + 1024))) {
                                  free(tlBuffer);
                                  tlBuffer = newbuf;
                                  tlBufferSize = tlBufferSize + 1024;
@@ -1859,8 +1860,8 @@ LONG StrTranslateRefresh(void)
 {
    struct translate *translate;
    objConfig *config;
-   struct ConfigEntry *entries;
-   struct SharedControl *sharectl;
+   ConfigEntry *entries;
+   SharedControl *sharectl;
    MEMORYID memoryid;
    STRING str;
    CSTRING language;
@@ -1884,7 +1885,7 @@ LONG StrTranslateRefresh(void)
 
       char path[80];
       LONG i = StrCopy("config:translations/", path, sizeof(path));
-      for (j=0; (language[j]) AND (i < sizeof(path)-1); j++) {
+      for (j=0; (language[j]) AND ((size_t)i < sizeof(path)-1); j++) {
          if ((language[j] >= 'A') AND (language[j] <= 'Z')) path[i++] = language[j] - 'A' + 'a';
          else path[i++] = language[j];
       }
@@ -1970,7 +1971,7 @@ LONG StrTranslateRefresh(void)
                   ReleaseMemory(glTranslate);
                }
 
-               sharectl = GetResourcePtr(RES_SHARED_CONTROL);
+               sharectl = (SharedControl *)GetResourcePtr(RES_SHARED_CONTROL);
                sharectl->TranslationMID = memoryid;
                glTranslate = translate;
                glTranslateMID = memoryid;
@@ -1992,7 +1993,7 @@ LONG StrTranslateRefresh(void)
             glTranslate = NULL;
             glTranslateMID = 0;
          }
-         sharectl = GetResourcePtr(RES_SHARED_CONTROL);
+         sharectl = (SharedControl *)GetResourcePtr(RES_SHARED_CONTROL);
          sharectl->TranslationMID = 0;
       }
    }
@@ -2033,7 +2034,7 @@ CSTRING StrTranslateText(CSTRING Text)
 {
    if (!Text) return Text;
 
-   struct SharedControl *sharectl = GetResourcePtr(RES_SHARED_CONTROL);
+   SharedControl *sharectl = (SharedControl *)GetResourcePtr(RES_SHARED_CONTROL);
 
    if ((!glTranslate) AND (!sharectl->TranslationMID)) {
       if (glTranslateLoad IS FALSE) {
@@ -2095,7 +2096,7 @@ restart:
 
       if (Text[pos]) {
          LONG j;
-         for (j=0; (j < pos) AND (j < sizeof(glTranslateBuffer)-1); j++) glTranslateBuffer[j] = Text[j];
+         for (j=0; (j < pos) AND ((size_t)j < sizeof(glTranslateBuffer)-1); j++) glTranslateBuffer[j] = Text[j];
          glTranslateBuffer[j] = 0;
          txt = glTranslateBuffer;
          goto restart;
@@ -2110,19 +2111,17 @@ found:
    str++;
 
    LONG j;
-   for (j=0; (str[j]) AND (j < sizeof(glTranslateBuffer)-1); j++) glTranslateBuffer[j] = str[j];
+   for (j=0; (str[j]) AND ((size_t)j < sizeof(glTranslateBuffer)-1); j++) glTranslateBuffer[j] = str[j];
 
-   if (txt IS glTranslateBuffer) {
-      // Copy trailing non-alphabetic symbols
-      while ((Text[pos]) AND (j < sizeof(glTranslateBuffer)-1)) glTranslateBuffer[j++] = Text[pos++];
+   if (txt IS glTranslateBuffer) { // Copy trailing non-alphabetic symbols
+      while ((Text[pos]) AND ((size_t)j < sizeof(glTranslateBuffer)-1)) glTranslateBuffer[j++] = Text[pos++];
    }
 
    glTranslateBuffer[j] = 0;
 
    // Check the capitalisation of the text
 
-   if ((Text[0] >= 'a') AND (Text[0] <= 'z')) {
-      // All lower case
+   if ((Text[0] >= 'a') AND (Text[0] <= 'z')) { // All lower case
       for (i=0; glTranslateBuffer[i]; i++) {
          if ((glTranslateBuffer[i] >= 'A') AND (glTranslateBuffer[i] <= 'Z')) glTranslateBuffer[i] = glTranslateBuffer[i] - 'A' + 'a';
       }
@@ -2174,7 +2173,7 @@ void StrUpper(STRING String)
 ** The only error that this function can return is a buffer overflow.
 */
 
-ERROR insert_string(STRING Insert, STRING Buffer, LONG Size, LONG Pos, LONG Replace)
+ERROR insert_string(CSTRING Insert, STRING Buffer, LONG Size, LONG Pos, LONG Replace)
 {
    LONG inlen, i, strlen, j;
 
@@ -2286,6 +2285,6 @@ static LONG test_statement(CSTRING TestString, CSTRING CompareString, LONG Condi
 
 //****************************************************************************
 
-#include "lib_base64.c"
-#include "lib_conversion.c"
-#include "lib_unicode.c"
+#include "lib_base64.cpp"
+#include "lib_conversion.cpp"
+#include "lib_unicode.cpp"

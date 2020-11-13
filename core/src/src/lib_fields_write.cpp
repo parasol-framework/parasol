@@ -20,22 +20,22 @@ Name: Fields
 #define OP_AND       1
 #define OP_OVERWRITE 2
 
-static ERROR writeval_array(OBJECTPTR, struct Field *, LONG, const void *, LONG);
-static ERROR writeval_flags(OBJECTPTR, struct Field *, LONG, const void *, LONG);
-static ERROR writeval_long(OBJECTPTR, struct Field *, LONG, const void *, LONG);
-static ERROR writeval_large(OBJECTPTR, struct Field *, LONG, const void *, LONG);
-static ERROR writeval_double(OBJECTPTR, struct Field *, LONG, const void *, LONG);
-static ERROR writeval_function(OBJECTPTR, struct Field *, LONG, const void *, LONG);
-static ERROR writeval_ptr(OBJECTPTR, struct Field *, LONG, const void *, LONG);
+static ERROR writeval_array(OBJECTPTR, Field *, LONG, const void *, LONG);
+static ERROR writeval_flags(OBJECTPTR, Field *, LONG, const void *, LONG);
+static ERROR writeval_long(OBJECTPTR, Field *, LONG, const void *, LONG);
+static ERROR writeval_large(OBJECTPTR, Field *, LONG, const void *, LONG);
+static ERROR writeval_double(OBJECTPTR, Field *, LONG, const void *, LONG);
+static ERROR writeval_function(OBJECTPTR, Field *, LONG, const void *, LONG);
+static ERROR writeval_ptr(OBJECTPTR, Field *, LONG, const void *, LONG);
 
-static ERROR setval_large(OBJECTPTR Object, struct Field *, LONG Flags, const void *Data, LONG Elements);
-static ERROR setval_pointer(OBJECTPTR Object, struct Field *, LONG Flags, const void *Data, LONG Elements);
-static ERROR setval_double(OBJECTPTR Object, struct Field *, LONG Flags, const void *Data, LONG Elements);
-static ERROR setval_long(OBJECTPTR Object, struct Field *, LONG Flags, const void *Data, LONG Elements);
-static ERROR setval_function(OBJECTPTR Object, struct Field *, LONG Flags, const void *Data, LONG Elements);
-static ERROR setval_array(OBJECTPTR Object, struct Field *, LONG Flags, const void *Data, LONG Elements);
-static ERROR setval_brgb(OBJECTPTR Object, struct Field *, LONG Flags, const void *Data, LONG Elements);
-static ERROR setval_variable(OBJECTPTR Object, struct Field *, LONG Flags, const void *Data, LONG Elements);
+static ERROR setval_large(OBJECTPTR, Field *, LONG Flags, const void *, LONG);
+static ERROR setval_pointer(OBJECTPTR, Field *, LONG Flags, const void *, LONG);
+static ERROR setval_double(OBJECTPTR, Field *, LONG Flags, const void *, LONG);
+static ERROR setval_long(OBJECTPTR, Field *, LONG Flags, const void *, LONG);
+static ERROR setval_function(OBJECTPTR, Field *, LONG Flags, const void *, LONG);
+static ERROR setval_array(OBJECTPTR, Field *, LONG Flags, const void *, LONG);
+static ERROR setval_brgb(OBJECTPTR, Field *, LONG Flags, const void *, LONG);
+static ERROR setval_variable(OBJECTPTR, Field *, LONG Flags, const void *, LONG);
 
 /*****************************************************************************
 
@@ -72,25 +72,27 @@ NoFieldAccess:    The field is read-only.
 
 ERROR SetArray(OBJECTPTR Object, FIELD FieldID, APTR Array, LONG Elements)
 {
-   if (!Object) return LogError(ERH_SetField, ERR_NullArgs);
-   if (Elements <= 0) LogF("@SetArray","Element count not specified.");
+   parasol::Log log(__FUNCTION__);
+
+   if (!Object) return log.warning(ERR_NullArgs);
+   if (Elements <= 0) log.warning("Element count not specified.");
 
    LONG type = (FieldID>>32)|FD_ARRAY;
    FieldID = FieldID & 0xffffffff;
 
-   struct Field *field;
+   Field *field;
    if ((field = lookup_id(Object, FieldID, &Object))) {
-      if (!(field->Flags & FD_ARRAY)) return LogError(ERH_SetField, ERR_FieldTypeMismatch);
+      if (!(field->Flags & FD_ARRAY)) return log.warning(ERR_FieldTypeMismatch);
 
       if ((!(field->Flags & (FD_INIT|FD_WRITE))) AND (tlContext->Object != Object)) {
-         if (!field->Name) LogF("@SetArray","Field %s of class %s is not writeable.", GET_FIELD_NAME(field->FieldID), ((struct rkMetaClass *)Object->Class)->ClassName);
-         else LogF("@SetArray","Field \"%s\" of class %s is not writeable.", field->Name, ((struct rkMetaClass *)Object->Class)->ClassName);
+         if (!field->Name) log.warning("Field %s of class %s is not writeable.", GET_FIELD_NAME(field->FieldID), ((rkMetaClass *)Object->Class)->ClassName);
+         else log.warning("Field \"%s\" of class %s is not writeable.", field->Name, ((rkMetaClass *)Object->Class)->ClassName);
          return ERR_NoFieldAccess;
       }
 
       if ((field->Flags & FD_INIT) AND (Object->Flags & NF_INITIALISED) AND (tlContext->Object != Object)) {
-         if (!field->Name) LogF("@SetArray","Field %s in class %s is init-only.", GET_FIELD_NAME(field->FieldID), ((struct rkMetaClass *)Object->Class)->ClassName);
-         else LogF("@SetArray","Field \"%s\" in class %s is init-only.", field->Name, ((struct rkMetaClass *)Object->Class)->ClassName);
+         if (!field->Name) log.warning("Field %s in class %s is init-only.", GET_FIELD_NAME(field->FieldID), ((rkMetaClass *)Object->Class)->ClassName);
+         else log.warning("Field \"%s\" in class %s is init-only.", field->Name, ((rkMetaClass *)Object->Class)->ClassName);
          return ERR_NoFieldAccess;
       }
 
@@ -101,7 +103,7 @@ ERROR SetArray(OBJECTPTR Object, FIELD FieldID, APTR Array, LONG Elements)
       return error;
    }
    else {
-      LogF("@SetArray()","Could not find field %s in object class %s.", GET_FIELD_NAME(FieldID), ((struct rkMetaClass *)Object->Class)->ClassName);
+      log.warning("Could not find field %s in object class %s.", GET_FIELD_NAME(FieldID), ((rkMetaClass *)Object->Class)->ClassName);
       return ERR_UnsupportedField;
    }
 }
@@ -159,24 +161,26 @@ NoFieldAccess:    The field is read-only.
 
 ERROR SetField(OBJECTPTR Object, FIELD FieldID, ...)
 {
-   if (!Object) return LogError(ERH_SetField, ERR_NullArgs);
+   parasol::Log log(__FUNCTION__);
+
+   if (!Object) return log.warning(ERR_NullArgs);
 
    ULONG type = FieldID>>32;
    FieldID = FieldID & 0xffffffff;
 
    ERROR error;
-   struct Field *field;
+   Field *field;
    if ((field = lookup_id(Object, FieldID, &Object))) {
       // Validation
 
       if ((!(field->Flags & (FD_INIT|FD_WRITE))) AND (tlContext->Object != Object)) {
-         if (!field->Name) LogF("@SetField","Field %s of class %s is not writeable.", GET_FIELD_NAME(field->FieldID), ((struct rkMetaClass *)Object->Class)->ClassName);
-         else LogF("@SetField","Field \"%s\" of class %s is not writeable.", field->Name, ((struct rkMetaClass *)Object->Class)->ClassName);
+         if (!field->Name) log.warning("Field %s of class %s is not writeable.", GET_FIELD_NAME(field->FieldID), ((rkMetaClass *)Object->Class)->ClassName);
+         else log.warning("Field \"%s\" of class %s is not writeable.", field->Name, ((rkMetaClass *)Object->Class)->ClassName);
          return ERR_NoFieldAccess;
       }
       else if ((field->Flags & FD_INIT) AND (Object->Flags & NF_INITIALISED) AND (tlContext->Object != Object)) {
-         if (!field->Name) LogF("@SetField","Field %s in class %s is init-only.", GET_FIELD_NAME(field->FieldID), ((struct rkMetaClass *)Object->Class)->ClassName);
-         else LogF("@SetField","Field \"%s\" in class %s is init-only.", field->Name, ((struct rkMetaClass *)Object->Class)->ClassName);
+         if (!field->Name) log.warning("Field %s in class %s is init-only.", GET_FIELD_NAME(field->FieldID), ((rkMetaClass *)Object->Class)->ClassName);
+         else log.warning("Field \"%s\" in class %s is init-only.", field->Name, ((rkMetaClass *)Object->Class)->ClassName);
          return ERR_NoFieldAccess;
       }
 
@@ -208,7 +212,7 @@ ERROR SetField(OBJECTPTR Object, FIELD FieldID, ...)
       prv_release(Object);
    }
    else {
-      LogF("@SetField()","Could not find field %s in object class %s.", GET_FIELD_NAME(FieldID), ((struct rkMetaClass *)Object->Class)->ClassName);
+      log.warning("Could not find field %s in object class %s.", GET_FIELD_NAME(FieldID), ((rkMetaClass *)Object->Class)->ClassName);
       error = ERR_UnsupportedField;
    }
 
@@ -262,10 +266,11 @@ Failed: A field setting failed due to an unspecified error.
 
 ERROR SetFields(OBJECTPTR Object, ...)
 {
+   parasol::Log log(__FUNCTION__);
    ERROR error;
 
    if (!Object) {
-      LogF("@SetFields()","Object argument not set.");
+      log.warning("Object argument not set.");
       return ERR_Args;
    }
 
@@ -279,8 +284,10 @@ ERROR SetFields(OBJECTPTR Object, ...)
 
 ERROR SetFieldsF(OBJECTPTR Object, va_list List)
 {
+   parasol::Log log("SetFields");
+
    if (!Object) {
-      LogF("@SetFields()","Object argument not set.");
+      log.warning("Object argument not set.");
       return ERR_Args;
    }
 
@@ -290,15 +297,14 @@ ERROR SetFieldsF(OBJECTPTR Object, va_list List)
    while ((field_id = va_arg(List, LARGE)) != TAGEND) {
       LONG flags = field_id>>32;
 
-      struct Field *field;
+      Field *field;
       OBJECTPTR source;
       if ((field = lookup_id(Object, (ULONG)field_id, &source))) {
-
          // Validation checks
 
          if ((!(field->Flags & (FD_INIT|FD_WRITE))) AND (tlContext->Object != Object)) {
-            if (!field->Name) LogF("@SetFields","Field %s of class %s is not writeable.", GET_FIELD_NAME(field->FieldID), ((struct rkMetaClass *)Object->Class)->ClassName);
-            else LogF("@SetFields","Field \"%s\" of class %s is not writeable.", field->Name, ((struct rkMetaClass *)Object->Class)->ClassName);
+            if (!field->Name) log.warning("Field %s of class %s is not writeable.", GET_FIELD_NAME(field->FieldID), ((rkMetaClass *)Object->Class)->ClassName);
+            else log.warning("Field \"%s\" of class %s is not writeable.", field->Name, ((rkMetaClass *)Object->Class)->ClassName);
 
             if (flags & (FD_DOUBLE|FD_LARGE|FD_PTR64)) va_arg(List, LARGE);
             #ifdef _LP64
@@ -308,8 +314,8 @@ ERROR SetFieldsF(OBJECTPTR Object, va_list List)
             continue;
          }
          else if ((field->Flags & FD_INIT) AND (Object->Flags & NF_INITIALISED) AND (tlContext->Object != Object)) {
-            if (!field->Name) LogF("@SetFields","Field %s of class %s is init-only.", GET_FIELD_NAME(field->FieldID), ((struct rkMetaClass *)Object->Class)->ClassName);
-            else LogF("@SetFields","Field \"%s\" of class %s is init-only.", field->Name, ((struct rkMetaClass *)Object->Class)->ClassName);
+            if (!field->Name) log.warning("Field %s of class %s is init-only.", GET_FIELD_NAME(field->FieldID), ((rkMetaClass *)Object->Class)->ClassName);
+            else log.warning("Field \"%s\" of class %s is init-only.", field->Name, ((rkMetaClass *)Object->Class)->ClassName);
 
             if (flags & (FD_DOUBLE|FD_LARGE|FD_PTR64)) va_arg(List, LARGE);
             #ifdef _LP64
@@ -339,13 +345,13 @@ ERROR SetFieldsF(OBJECTPTR Object, va_list List)
          }
 
          if ((error) AND (error != ERR_NoSupport)) {
-            LogF("@SetFields","(%s:%d) Failed to set field %s (error #%d).", ((struct rkMetaClass *)source->Class)->ClassName, source->UniqueID, GET_FIELD_NAME(field_id), error);
+            log.warning("(%s:%d) Failed to set field %s (error #%d).", ((rkMetaClass *)source->Class)->ClassName, source->UniqueID, GET_FIELD_NAME(field_id), error);
             prv_release(Object);
             return error;
          }
       }
       else {
-         LogF("@SetFields","Field %s is not supported by class %s.", GET_FIELD_NAME(field_id), ((struct rkMetaClass *)Object->Class)->ClassName);
+         log.warning("Field %s is not supported by class %s.", GET_FIELD_NAME(field_id), ((rkMetaClass *)Object->Class)->ClassName);
          prv_release(Object);
          return ERR_UnsupportedField;
       }
@@ -384,12 +390,13 @@ Failed:           A field setting failed due to an unspecified error.
 
 ERROR SetFieldsID(OBJECTID ObjectID, ...)
 {
+   parasol::Log log("SetFields");
    ERROR error;
 
    va_list list;
    va_start(list, ObjectID);
 
-   if (!ObjectID) return LogError(ERH_SetFields, ERR_NullArgs);
+   if (!ObjectID) return log.warning(ERR_NullArgs);
 
    OBJECTPTR object;
    if (!AccessObject(ObjectID, 3000, &object)) {
@@ -447,6 +454,8 @@ UnrecognisedFieldType
 
 ERROR SetFieldEval(OBJECTPTR Object, CSTRING FieldName, CSTRING Value)
 {
+   parasol::Log log("WriteField");
+
    if ((!Object) OR (!FieldName) OR (!Value)) return ERR_NullArgs;
 
    UBYTE unlisted;
@@ -459,7 +468,7 @@ ERROR SetFieldEval(OBJECTPTR Object, CSTRING FieldName, CSTRING Value)
    LONG i;
    ULONG hash = 5381;
    for (i=0; FieldName[i]; i++) {
-      UBYTE c = FieldName[i];
+      char c = FieldName[i];
 
       if (c IS '.') {
          FieldName += i + 1;
@@ -492,28 +501,26 @@ ERROR SetFieldEval(OBJECTPTR Object, CSTRING FieldName, CSTRING Value)
       }
    }
 
-   struct Field *Field;
+   Field *Field;
    if ((unlisted) OR (!(Field = lookup_id(Object, hash, &Object)))) {
       // If the field does not exist, check if the class supports the SetVar action.
 
       if (!CheckAction(Object, AC_SetVar)) {
-         struct acSetVar var;
-         var.Field = FieldName;
-         var.Value = Value;
+         struct acSetVar var = { .Field = FieldName, .Value = Value };
          return Action(AC_SetVar, Object, &var);
       }
-      else LogF("@SetVariable","Object %d (%s) does not support field '%s' or variable fields.", Object->UniqueID, ((struct rkMetaClass *)Object->Class)->ClassName, FieldName);
+      else log.warning("Object %d (%s) does not support field '%s' or variable fields.", Object->UniqueID, ((rkMetaClass *)Object->Class)->ClassName, FieldName);
 
       return ERR_Search;
    }
 
    if ((!(Field->Flags & (FD_INIT|FD_WRITE))) AND (tlContext->Object != Object)) {
-      LogF("@SetVariable","Field \"%s\" of class %s is not writable.", FieldName, ((struct rkMetaClass *)Object->Class)->ClassName);
+      log.warning("Field \"%s\" of class %s is not writable.", FieldName, ((rkMetaClass *)Object->Class)->ClassName);
       return ERR_NoFieldAccess;
    }
 
    if ((Field->Flags & FD_INIT) AND (Object->Flags & NF_INITIALISED) AND (tlContext->Object != Object)) {
-      LogF("@SetVariable","Field \"%s\" in class %s is init-only.", FieldName, ((struct rkMetaClass *)Object->Class)->ClassName);
+      log.warning("Field \"%s\" in class %s is init-only.", FieldName, ((rkMetaClass *)Object->Class)->ClassName);
       return ERR_NoFieldAccess;
    }
 
@@ -529,7 +536,7 @@ ERROR SetFieldEval(OBJECTPTR Object, CSTRING FieldName, CSTRING Value)
       error = Field->WriteValue(Object, Field, FD_POINTER|FD_STRING, Value, 0);
    }
    else if (Field->Flags & FD_STRING) {
-      if (!Value) LogF("6SetVariable","Warning: Sending a NULL string to field %s, class %s", Field->Name, ((struct rkMetaClass *)Object->Class)->ClassName);
+      if (!Value) log.debug("Warning: Sending a NULL string to field %s, class %s", Field->Name, ((rkMetaClass *)Object->Class)->ClassName);
       error = Field->WriteValue(Object, Field, FD_POINTER|FD_STRING, Value, 0);
    }
    else if (Field->Flags & FD_FUNCTION) {
@@ -568,7 +575,7 @@ ERROR SetFieldEval(OBJECTPTR Object, CSTRING FieldName, CSTRING Value)
                object_id = array[i-1];
             }
             else {
-               LogF("@SetVariable","Object \"%s\" could not be found.", Value);
+               log.warning("Object \"%s\" could not be found.", Value);
                prv_release(Object);
                return ERR_Search;
             }
@@ -605,7 +612,7 @@ ERROR SetFieldEval(OBJECTPTR Object, CSTRING FieldName, CSTRING Value)
       else error = ERR_UnrecognisedFieldType;
    }
    else if (Field->Flags & FD_VARIABLE) {
-      if (!Value) LogF("SetVariable","Warning: Sending a NULL string to field %s, class %s", Field->Name, ((struct rkMetaClass *)Object->Class)->ClassName);
+      if (!Value) log.msg("Warning: Sending a NULL string to field %s, class %s", Field->Name, ((rkMetaClass *)Object->Class)->ClassName);
       error = Field->WriteValue(Object, Field, FD_POINTER|FD_STRING, Value, 0);
    }
    else error = ERR_UnrecognisedFieldType;
@@ -691,9 +698,11 @@ static LONG write_array(CSTRING String, LONG Flags, WORD ArraySize, APTR Dest)
 //****************************************************************************
 // Used by the SetField() range of instructions.
 
-ERROR writeval_default(OBJECTPTR Object, struct Field *Field, LONG flags, const void *Data, LONG Elements)
+ERROR writeval_default(OBJECTPTR Object, Field *Field, LONG flags, const void *Data, LONG Elements)
 {
-   //FMSG("WriteField","[%s:%d] Name: %s, SetValue: %c, FieldFlags: $%.8x, SrcFlags: $%.8x", ((struct rkMetaClass *)Object->Class)->ClassName, Object->UniqueID, Field->Name, Field->SetValue ? 'Y' : 'N', Field->Flags, flags);
+   parasol::Log log("WriteField");
+
+   //FMSG("WriteField","[%s:%d] Name: %s, SetValue: %c, FieldFlags: $%.8x, SrcFlags: $%.8x", ((rkMetaClass *)Object->Class)->ClassName, Object->UniqueID, Field->Name, Field->SetValue ? 'Y' : 'N', Field->Flags, flags);
 
    if (!flags) flags = Field->Flags;
 
@@ -705,9 +714,9 @@ ERROR writeval_default(OBJECTPTR Object, struct Field *Field, LONG flags, const 
       else if (Field->Flags & FD_DOUBLE)   error = writeval_double(Object, Field, flags, Data, 0);
       else if (Field->Flags & FD_FUNCTION) error = writeval_function(Object, Field, flags, Data, 0);
       else if (Field->Flags & (FD_POINTER|FD_STRING)) error = writeval_ptr(Object, Field, flags, Data, 0);
-      else LogF("@WriteField","Unrecognised field flags $%.8x.", Field->Flags);
+      else log.warning("Unrecognised field flags $%.8x.", Field->Flags);
 
-      if (error != ERR_Okay) LogF("@WriteField","An error occurred writing to field %s (field type $%.8x, source type $%.8x).", Field->Name, Field->Flags, flags);
+      if (error != ERR_Okay) log.warning("An error occurred writing to field %s (field type $%.8x, source type $%.8x).", Field->Name, Field->Flags, flags);
       return error;
    }
    else {
@@ -727,8 +736,10 @@ ERROR writeval_default(OBJECTPTR Object, struct Field *Field, LONG flags, const 
 // The writeval() functions are used as optimised calls for all cases where the client has not provided a SetValue()
 // function.
 
-static ERROR writeval_array(OBJECTPTR Object, struct Field *Field, LONG SrcType, const void *Source, LONG Elements)
+static ERROR writeval_array(OBJECTPTR Object, Field *Field, LONG SrcType, const void *Source, LONG Elements)
 {
+   parasol::Log log("WriteField");
+
    // Direct writing to field arrays without a SET function is only supported for the RGB type.  The client should
    // define a SET function for all other cases.
 
@@ -736,46 +747,44 @@ static ERROR writeval_array(OBJECTPTR Object, struct Field *Field, LONG SrcType,
 
    if ((SrcType & FD_STRING) AND (Field->Flags & FD_RGB)) {
       if (!Source) Source = "0,0,0,0"; // A string of NULL will 'clear' the colour (the alpha value will be zero)
-      else {
-         if (Field->Flags & FD_LONG)      ((struct RGB8 *)offset)->Alpha = 255;
-         else if (Field->Flags & FD_BYTE) ((struct RGB8 *)offset)->Alpha = 255;
-      }
-      write_array(Source, Field->Flags, 4, offset);
+      else if (Field->Flags & FD_LONG) ((RGB8 *)offset)->Alpha = 255;
+      else if (Field->Flags & FD_BYTE) ((RGB8 *)offset)->Alpha = 255;
+      write_array((CSTRING)Source, Field->Flags, 4, offset);
       return ERR_Okay;
    }
    else if ((SrcType & FD_POINTER) AND (Field->Flags & FD_RGB)) { // Presume the source is a pointer to an RGB structure
-      struct RGB8 *rgb = (struct RGB8 *)Source;
-      ((struct RGB8 *)offset)->Red   = rgb->Red;
-      ((struct RGB8 *)offset)->Green = rgb->Green;
-      ((struct RGB8 *)offset)->Blue  = rgb->Blue;
-      ((struct RGB8 *)offset)->Alpha = rgb->Alpha;
+      RGB8 *rgb = (RGB8 *)Source;
+      ((RGB8 *)offset)->Red   = rgb->Red;
+      ((RGB8 *)offset)->Green = rgb->Green;
+      ((RGB8 *)offset)->Blue  = rgb->Blue;
+      ((RGB8 *)offset)->Alpha = rgb->Alpha;
       return ERR_Okay;
    }
 
-   LogErrorMsg("Field array '%s' is poorly defined.");
+   log.warning("Field array '%s' is poorly defined.");
    return ERR_Failed;
 }
 
-static ERROR writeval_flags(OBJECTPTR Object, struct Field *Field, LONG Flags, const void *Data, LONG Elements)
+static ERROR writeval_flags(OBJECTPTR Object, Field *Field, LONG Flags, const void *Data, LONG Elements)
 {
-   LONG j, currentflags, int32;
-   WORD op, reverse;
-   const unsigned char *str;
+   parasol::Log log("WriteField");
+   LONG j, int32;
 
    // Converts flags to numeric form if the source value is a string.
 
    if (Flags & FD_STRING) {
       LARGE int64 = 0;
 
-      if ((str = Data)) {
+      CSTRING str;
+      if ((str = (CSTRING)Data)) {
          // Check if the string is a number
          for (j=0; str[j] AND (str[j] >= '0') AND (str[j] <= '9'); j++);
          if (!str[j]) {
             int64 = StrToInt(str);
          }
          else if (Field->Arg) {
-            reverse   = FALSE;
-            op        = OP_OVERWRITE;
+            WORD reverse   = FALSE;
+            WORD op        = OP_OVERWRITE;
             while (*str) {
                if (*str IS '&')      { op = OP_AND;       str++; }
                else if (*str IS '!') { op = OP_OR;        str++; }
@@ -786,7 +795,7 @@ static ERROR writeval_flags(OBJECTPTR Object, struct Field *Field, LONG Flags, c
                   for (j=0; (str[j]) AND (str[j] != '|'); j++);
 
                   if (j > 0) {
-                     struct FieldDef *lk = (struct FieldDef *)Field->Arg;
+                     FieldDef *lk = (FieldDef *)Field->Arg;
                      while (lk->Name) {
                         if ((!StrCompare(lk->Name, str, j, 0)) AND (!lk->Name[j])) {
                            int64 |= lk->Value;
@@ -806,6 +815,7 @@ static ERROR writeval_flags(OBJECTPTR Object, struct Field *Field, LONG Flags, c
 
             if (op != OP_OVERWRITE) {
                ERROR error;
+               LONG currentflags;
                if (!(error = copy_field_to_buffer(Object, Field, FT_LONG, &currentflags, NULL, NULL))) {
                   if (op IS OP_OR) int64 = currentflags | int64;
                   else if (op IS OP_AND) int64 = currentflags & int64;
@@ -813,7 +823,7 @@ static ERROR writeval_flags(OBJECTPTR Object, struct Field *Field, LONG Flags, c
                else return error;
             }
          }
-         else LogF("@WriteField","Missing flag definitions for field \"%s\"", Field->Name);
+         else log.warning("Missing flag definitions for field \"%s\"", Field->Name);
       }
 
       if (Field->Flags & FD_LONG) {
@@ -831,24 +841,25 @@ static ERROR writeval_flags(OBJECTPTR Object, struct Field *Field, LONG Flags, c
    return writeval_default(Object, Field, Flags, Data, Elements);
 }
 
-static ERROR writeval_lookup(OBJECTPTR Object, struct Field *Field, LONG Flags, const void *Data, LONG Elements)
+static ERROR writeval_lookup(OBJECTPTR Object, Field *Field, LONG Flags, const void *Data, LONG Elements)
 {
+   parasol::Log log("WriteField");
    LONG int32;
 
    if (Flags & FD_STRING) {
       if (Data) {
-         struct FieldDef *lookup;
-         int32 = StrToInt(Data); // If the Data string is a number rather than a lookup, this will extract it
-         if ((lookup = (struct FieldDef *)Field->Arg)) {
+         FieldDef *lookup;
+         int32 = StrToInt((CSTRING)Data); // If the Data string is a number rather than a lookup, this will extract it
+         if ((lookup = (FieldDef *)Field->Arg)) {
             while (lookup->Name) {
-               if (!StrCompare(Data, lookup->Name, 0, STR_MATCH_LEN)) {
+               if (!StrCompare((CSTRING)Data, lookup->Name, 0, STR_MATCH_LEN)) {
                   int32 = lookup->Value;
                   break;
                }
                lookup++;
             }
          }
-         else LogF("@WriteField","Missing lookup table definitions for field \"%s\"", Field->Name);
+         else log.warning("Missing lookup table definitions for field \"%s\"", Field->Name);
       }
       else int32 = 0;
 
@@ -859,7 +870,7 @@ static ERROR writeval_lookup(OBJECTPTR Object, struct Field *Field, LONG Flags, 
    return writeval_default(Object, Field, Flags, Data, Elements);
 }
 
-static ERROR writeval_long(OBJECTPTR Object, struct Field *Field, LONG Flags, const void *Data, LONG Elements)
+static ERROR writeval_long(OBJECTPTR Object, Field *Field, LONG Flags, const void *Data, LONG Elements)
 {
    LONG *offset = (LONG *)((BYTE *)Object + Field->Offset);
    if (Flags & FD_LONG)        *offset = *((LONG *)Data);
@@ -870,7 +881,7 @@ static ERROR writeval_long(OBJECTPTR Object, struct Field *Field, LONG Flags, co
    return ERR_Okay;
 }
 
-static ERROR writeval_large(OBJECTPTR Object, struct Field *Field, LONG Flags, const void *Data, LONG Elements)
+static ERROR writeval_large(OBJECTPTR Object, Field *Field, LONG Flags, const void *Data, LONG Elements)
 {
    LARGE *offset = (LARGE *)((BYTE *)Object + Field->Offset);
    if (Flags & FD_LARGE)       *offset = *((LARGE *)Data);
@@ -881,7 +892,7 @@ static ERROR writeval_large(OBJECTPTR Object, struct Field *Field, LONG Flags, c
    return ERR_Okay;
 }
 
-static ERROR writeval_double(OBJECTPTR Object, struct Field *Field, LONG Flags, const void *Data, LONG Elements)
+static ERROR writeval_double(OBJECTPTR Object, Field *Field, LONG Flags, const void *Data, LONG Elements)
 {
    DOUBLE *offset = (DOUBLE *)((BYTE *)Object + Field->Offset);
    if (Flags & FD_DOUBLE)      *offset = *((DOUBLE *)Data);
@@ -892,7 +903,7 @@ static ERROR writeval_double(OBJECTPTR Object, struct Field *Field, LONG Flags, 
    return ERR_Okay;
 }
 
-static ERROR writeval_function(OBJECTPTR Object, struct Field *Field, LONG Flags, const void *Data, LONG Elements)
+static ERROR writeval_function(OBJECTPTR Object, Field *Field, LONG Flags, const void *Data, LONG Elements)
 {
    FUNCTION *offset = (FUNCTION *)((BYTE *)Object + Field->Offset);
    if (Flags & FD_FUNCTION) {
@@ -907,7 +918,7 @@ static ERROR writeval_function(OBJECTPTR Object, struct Field *Field, LONG Flags
    return ERR_Okay;
 }
 
-static ERROR writeval_ptr(OBJECTPTR Object, struct Field *Field, LONG Flags, const void *Data, LONG Elements)
+static ERROR writeval_ptr(OBJECTPTR Object, Field *Field, LONG Flags, const void *Data, LONG Elements)
 {
    APTR *offset = (APTR *)((BYTE *)Object + Field->Offset);
    if (Flags & (FD_POINTER|FD_STRING)) *offset = (void *)Data;
@@ -917,38 +928,49 @@ static ERROR writeval_ptr(OBJECTPTR Object, struct Field *Field, LONG Flags, con
 
 //****************************************************************************
 
-#define SET_CONTEXT(obj, field) \
-   if ((tlContext->Field IS (field)) AND (tlContext->Object IS (obj))) return ERR_Recursion; \
-   struct ObjectContext new_context = { .Stack = tlContext, .Object = (obj), .Action = AC_SetField, .Field = (field) }; \
-   tlContext = &new_context; \
-   (obj)->ActionDepth++;
+INLINE void SET_CONTEXT(OBJECTPTR Object, Field *CurrentField, ObjectContext *Context)
+{
+   if ((tlContext->Field IS CurrentField) AND (tlContext->Object IS Object)) return; // Detect recursion
 
-#define RESTORE_CONTEXT(obj)    (obj)->ActionDepth--; tlContext = tlContext->Stack;
+   Context->Stack  = tlContext;
+   Context->Object = Object;
+   Context->Field  = CurrentField;
+   Context->Action = AC_SetField;
 
-static ERROR setval_variable(OBJECTPTR Object, struct Field *Field, LONG Flags, const void *Data, LONG Elements)
+   tlContext = Context;
+   Object->ActionDepth++;
+}
+
+INLINE void RESTORE_CONTEXT(OBJECTPTR Object)
+{
+   Object->ActionDepth--;
+   tlContext = tlContext->Stack;
+}
+
+static ERROR setval_variable(OBJECTPTR Object, Field *Field, LONG Flags, const void *Data, LONG Elements)
 {
    // Convert the value to match what the variable will accept, then call the variable field's set function.
 
-   struct Variable var;
+   Variable var;
    ERROR error;
-
-   SET_CONTEXT(Object, Field);
+   ObjectContext ctx;
+   SET_CONTEXT(Object, Field, &ctx);
 
    if (Flags & (FD_LONG|FD_LARGE)) {
       var.Type = FD_LARGE | (Flags & (~(FD_LONG|FD_LARGE|FD_DOUBLE|FD_POINTER|FD_STRING)));
       if (Flags & FD_LONG) var.Large = *((LONG *)Data);
       else var.Large = *((LARGE *)Data);
-      error = ((ERROR (*)(APTR, struct Variable *))(Field->SetValue))(Object, &var);
+      error = ((ERROR (*)(APTR, Variable *))(Field->SetValue))(Object, &var);
    }
    else if (Flags & FD_DOUBLE) {
       var.Type = FD_DOUBLE | (Flags & (~(FD_LONG|FD_LARGE|FD_DOUBLE|FD_POINTER|FD_STRING)));
       var.Double = *((DOUBLE *)Data);
-      error = ((ERROR (*)(APTR, struct Variable *))(Field->SetValue))(Object, &var);
+      error = ((ERROR (*)(APTR, Variable *))(Field->SetValue))(Object, &var);
    }
    else if (Flags & (FD_POINTER|FD_STRING)) {
       var.Type = FD_POINTER | (Flags & (~(FD_LONG|FD_LARGE|FD_DOUBLE|FD_POINTER))); // Allows support flags like FD_STRING to fall through
       var.Pointer = (APTR)Data;
-      error = ((ERROR (*)(APTR, struct Variable *))(Field->SetValue))(Object, &var);
+      error = ((ERROR (*)(APTR, Variable *))(Field->SetValue))(Object, &var);
    }
    else if (Flags & FD_VARIABLE) {
       error = ((ERROR (*)(APTR, APTR))(Field->SetValue))(Object, (APTR)Data);
@@ -959,15 +981,16 @@ static ERROR setval_variable(OBJECTPTR Object, struct Field *Field, LONG Flags, 
    return error;
 }
 
-static ERROR setval_brgb(OBJECTPTR Object, struct Field *Field, LONG Flags, const void *Data, LONG Elements)
+static ERROR setval_brgb(OBJECTPTR Object, Field *Field, LONG Flags, const void *Data, LONG Elements)
 {
    if (Field->Flags & FD_BYTE) {
-      SET_CONTEXT(Object, Field);
+      ObjectContext ctx;
+      SET_CONTEXT(Object, Field, &ctx);
 
-      struct RGB8 rgb;
+      RGB8 rgb;
       rgb.Alpha = 255;
-      write_array(Data, FD_BYTE, 4, &rgb);
-      ERROR error = ((ERROR (*)(APTR, struct RGB8 *, LONG))(Field->SetValue))(Object, &rgb, 4);
+      write_array((CSTRING)Data, FD_BYTE, 4, &rgb);
+      ERROR error = ((ERROR (*)(APTR, RGB8 *, LONG))(Field->SetValue))(Object, &rgb, 4);
 
       RESTORE_CONTEXT(Object);
       return error;
@@ -975,11 +998,13 @@ static ERROR setval_brgb(OBJECTPTR Object, struct Field *Field, LONG Flags, cons
    else return ERR_FieldTypeMismatch;
 }
 
-static ERROR setval_array(OBJECTPTR Object, struct Field *Field, LONG Flags, const void *Data, LONG Elements)
+static ERROR setval_array(OBJECTPTR Object, Field *Field, LONG Flags, const void *Data, LONG Elements)
 {
+   parasol::Log log(__FUNCTION__);
    ERROR error;
 
-   SET_CONTEXT(Object, Field);
+   ObjectContext ctx;
+   SET_CONTEXT(Object, Field, &ctx);
 
    if (Flags & FD_ARRAY) {
       // Basic type checking
@@ -993,20 +1018,20 @@ static ERROR setval_array(OBJECTPTR Object, struct Field *Field, LONG Flags, con
    }
    else if (Flags & FD_STRING) {
       APTR arraybuffer;
-      if ((arraybuffer = malloc(StrLength(Data) * 8))) {
+      if ((arraybuffer = malloc(StrLength((CSTRING)Data) * 8))) {
          if (!Data) {
             if (Field->Flags & FD_RGB) {
                Data = "0,0,0,0"; // A string of NULL will 'clear' the colour (the alpha value will be zero)
-               Elements = write_array(Data, Field->Flags, Field->Arg, arraybuffer);
+               Elements = write_array((CSTRING)Data, Field->Flags, Field->Arg, arraybuffer);
             }
             else Elements = 0;
          }
          else if (Field->Flags & FD_RGB) {
-            Elements = write_array(Data, Field->Flags, 4, arraybuffer);
-            if (Field->Flags & FD_LONG)      ((struct RGB8 *)arraybuffer)->Alpha = 255;
-            else if (Field->Flags & FD_BYTE) ((struct RGB8 *)arraybuffer)->Alpha = 255;
+            Elements = write_array((CSTRING)Data, Field->Flags, 4, arraybuffer);
+            if (Field->Flags & FD_LONG)      ((RGB8 *)arraybuffer)->Alpha = 255;
+            else if (Field->Flags & FD_BYTE) ((RGB8 *)arraybuffer)->Alpha = 255;
          }
-         else Elements = write_array(Data, Field->Flags, 0, arraybuffer);
+         else Elements = write_array((CSTRING)Data, Field->Flags, 0, arraybuffer);
 
          error = ((ERROR (*)(APTR, APTR, LONG))(Field->SetValue))(Object, arraybuffer, Elements);
 
@@ -1015,7 +1040,7 @@ static ERROR setval_array(OBJECTPTR Object, struct Field *Field, LONG Flags, con
       else error = ERR_AllocMemory;
    }
    else {
-      LogErrorMsg("Arrays can only be set using the FD_ARRAY type.");
+      log.warning("Arrays can only be set using the FD_ARRAY type.");
       error = ERR_FieldTypeMismatch;
    }
 
@@ -1023,11 +1048,12 @@ static ERROR setval_array(OBJECTPTR Object, struct Field *Field, LONG Flags, con
    return error;
 }
 
-static ERROR setval_function(OBJECTPTR Object, struct Field *Field, LONG Flags, const void *Data, LONG Elements)
+static ERROR setval_function(OBJECTPTR Object, Field *Field, LONG Flags, const void *Data, LONG Elements)
 {
    OBJECTPTR current_context = tlContext->Object;
 
-   SET_CONTEXT(Object, Field);
+   ObjectContext ctx;
+   SET_CONTEXT(Object, Field, &ctx);
 
    ERROR error;
    if (Flags & FD_FUNCTION) {
@@ -1049,15 +1075,16 @@ static ERROR setval_function(OBJECTPTR Object, struct Field *Field, LONG Flags, 
    return error;
 }
 
-static ERROR setval_long(OBJECTPTR Object, struct Field *Field, LONG Flags, const void *Data, LONG Elements)
+static ERROR setval_long(OBJECTPTR Object, Field *Field, LONG Flags, const void *Data, LONG Elements)
 {
-   SET_CONTEXT(Object, Field);
+   ObjectContext ctx;
+   SET_CONTEXT(Object, Field, &ctx);
 
    LONG int32;
    ERROR error;
    if (Flags & FD_LARGE)       int32 = (LONG)(*((LARGE *)Data));
    else if (Flags & FD_DOUBLE) int32 = F2I(*((DOUBLE *)Data));
-   else if (Flags & FD_STRING) int32 = StrToInt(Data);
+   else if (Flags & FD_STRING) int32 = StrToInt((STRING)Data);
    else if (Flags & FD_LONG)   int32 = *((LONG *)Data);
    else { RESTORE_CONTEXT(Object); return ERR_FieldTypeMismatch; }
 
@@ -1067,14 +1094,15 @@ static ERROR setval_long(OBJECTPTR Object, struct Field *Field, LONG Flags, cons
    return error;
 }
 
-static ERROR setval_double(OBJECTPTR Object, struct Field *Field, LONG Flags, const void *Data, LONG Elements)
+static ERROR setval_double(OBJECTPTR Object, Field *Field, LONG Flags, const void *Data, LONG Elements)
 {
-   SET_CONTEXT(Object, Field);
+   ObjectContext ctx;
+   SET_CONTEXT(Object, Field, &ctx);
 
    DOUBLE float64;
    if (Flags & FD_LONG)        float64 = *((LONG *)Data);
    else if (Flags & FD_LARGE)  float64 = (DOUBLE)(*((LARGE *)Data));
-   else if (Flags & FD_STRING) float64 = StrToFloat(Data);
+   else if (Flags & FD_STRING) float64 = StrToFloat((CSTRING)Data);
    else if (Flags & FD_DOUBLE) float64 = *((DOUBLE *)Data);
    else { RESTORE_CONTEXT(Object); return ERR_FieldTypeMismatch; }
 
@@ -1084,11 +1112,11 @@ static ERROR setval_double(OBJECTPTR Object, struct Field *Field, LONG Flags, co
    return error;
 }
 
-static ERROR setval_pointer(OBJECTPTR Object, struct Field *Field, LONG Flags, const void *Data, LONG Elements)
+static ERROR setval_pointer(OBJECTPTR Object, Field *Field, LONG Flags, const void *Data, LONG Elements)
 {
    ERROR error;
-
-   SET_CONTEXT(Object, Field);
+   ObjectContext ctx;
+   SET_CONTEXT(Object, Field, &ctx);
 
    if (Flags & (FD_POINTER|FD_STRING)) {
       error = ((ERROR (*)(APTR, const void *))(Field->SetValue))(Object, Data);
@@ -1114,16 +1142,16 @@ static ERROR setval_pointer(OBJECTPTR Object, struct Field *Field, LONG Flags, c
    return error;
 }
 
-static ERROR setval_large(OBJECTPTR Object, struct Field *Field, LONG Flags, const void *Data, LONG Elements)
+static ERROR setval_large(OBJECTPTR Object, Field *Field, LONG Flags, const void *Data, LONG Elements)
 {
    ERROR error;
    LARGE int64;
-
-   SET_CONTEXT(Object, Field);
+   ObjectContext ctx;
+   SET_CONTEXT(Object, Field, &ctx);
 
    if (Flags & FD_LONG)        int64 = *((LONG *)Data);
    else if (Flags & FD_DOUBLE) int64 = F2I(*((DOUBLE *)Data));
-   else if (Flags & FD_STRING) int64 = StrToInt(Data);
+   else if (Flags & FD_STRING) int64 = StrToInt((CSTRING)Data);
    else if (Flags & FD_LARGE)  int64 = *((LARGE *)Data);
    else { RESTORE_CONTEXT(Object); return ERR_FieldTypeMismatch; }
 
@@ -1137,8 +1165,10 @@ static ERROR setval_large(OBJECTPTR Object, struct Field *Field, LONG Flags, con
 // This routine configures WriteValue so that it uses the correct set-field function, according to the field type that
 // has been defined.
 
-void optimise_write_field(struct Field *Field)
+void optimise_write_field(Field *Field)
 {
+   parasol::Log log("WriteField");
+
    if (Field->Flags & FD_FLAGS)       Field->WriteValue = writeval_flags;
    else if (Field->Flags & FD_LOOKUP) Field->WriteValue = writeval_lookup;
    else if (!Field->SetValue) {
@@ -1148,13 +1178,13 @@ void optimise_write_field(struct Field *Field)
       else if (Field->Flags & FD_DOUBLE)   Field->WriteValue = writeval_double;
       else if (Field->Flags & FD_FUNCTION) Field->WriteValue = writeval_function;
       else if (Field->Flags & (FD_POINTER|FD_STRING)) Field->WriteValue = writeval_ptr;
-      else LogF("@optimise_write_field","Invalid field flags for %s: $%.8x.", Field->Name, Field->Flags);
+      else log.warning("Invalid field flags for %s: $%.8x.", Field->Name, Field->Flags);
    }
    else {
       if (Field->Flags & FD_VARIABLE)      Field->WriteValue = setval_variable;
       else if (Field->Flags & FD_RGB) {
          if (Field->Flags & FD_BYTE) Field->WriteValue = setval_brgb;
-         else LogF("@optimise_write_field","Invalid field flags for %s: $%.8x.", Field->Name, Field->Flags);
+         else log.warning("Invalid field flags for %s: $%.8x.", Field->Name, Field->Flags);
       }
       else if (Field->Flags & FD_ARRAY)    Field->WriteValue = setval_array;
       else if (Field->Flags & FD_FUNCTION) Field->WriteValue = setval_function;
@@ -1162,6 +1192,6 @@ void optimise_write_field(struct Field *Field)
       else if (Field->Flags & FD_DOUBLE)   Field->WriteValue = setval_double;
       else if (Field->Flags & (FD_POINTER|FD_STRING)) Field->WriteValue = setval_pointer;
       else if (Field->Flags & FD_LARGE)    Field->WriteValue = setval_large;
-      else LogF("@optimise_write_field","Invalid field flags for %s: $%.8x.", Field->Name, Field->Flags);
+      else log.warning("Invalid field flags for %s: $%.8x.", Field->Name, Field->Flags);
    }
 }

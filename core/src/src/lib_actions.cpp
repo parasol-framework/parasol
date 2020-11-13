@@ -21,14 +21,16 @@ Name: Objects
 
 #include "defs.h"
 
+using namespace parasol;
+
 #define SIZE_ACTIONBUFFER 2048
 
 //****************************************************************************
 // Action subscription array locking.
 
-static struct ActionSubscription * lock_subscribers(OBJECTPTR Object)
+static ActionSubscription * lock_subscribers(OBJECTPTR Object)
 {
-   struct ActionSubscription *list;
+   ActionSubscription *list;
 
    if (Object->UniqueID < 0) {
       if (Object->Stats->ActionSubscriptions.ID) {
@@ -39,7 +41,7 @@ static struct ActionSubscription * lock_subscribers(OBJECTPTR Object)
       }
       else return NULL;
    }
-   else return Object->Stats->ActionSubscriptions.Ptr;
+   else return (ActionSubscription *)Object->Stats->ActionSubscriptions.Ptr;
 }
 
 INLINE void unlock_subscribers(OBJECTPTR Object)
@@ -73,10 +75,10 @@ struct thread_data {
    BYTE Parameters;
 };
 
-static ERROR thread_action(struct rkThread *Thread)
+static ERROR thread_action(rkThread *Thread)
 {
    ERROR error;
-   struct thread_data *data = Thread->Data;
+   thread_data *data = (thread_data *)Thread->Data;
    OBJECTPTR obj = data->Object;
 
    if (!(error = AccessPrivateObject(obj, 5000))) { // Access the object and process the action.
@@ -98,12 +100,13 @@ static ERROR thread_action(struct rkThread *Thread)
    // Send a callback notification via messaging if required.  The receiver is in msg_threadaction() in class_thread.c
 
    if (data->Callback.Type) {
-      struct ThreadActionMessage msg = {
-         .ActionID = data->ActionID,
+      ThreadActionMessage msg = {
          .Object   = obj,
-         .Callback = data->Callback,
+         .ActionID = data->ActionID,
          .Key      = data->Key,
-         .Error    = error };
+         .Error    = error,
+         .Callback = data->Callback
+      };
       SendMessage(0, MSGID_THREAD_ACTION, MSF_ADD, &msg, sizeof(msg));
    }
 
@@ -116,41 +119,41 @@ static ERROR thread_action(struct rkThread *Thread)
 
 static void free_private_children(OBJECTPTR Object)
 {
-   if (!thread_lock(TL_PRIVATE_MEM, 4000)) {
-      LONG i;
-      for (i=glNextPrivateAddress-1; i >= 0; i--) {
+   parasol::Log log;
+
+   ThreadLock lock(TL_PRIVATE_MEM, 4000);
+   if (lock.granted()) {
+      for (LONG i=glNextPrivateAddress-1; i >= 0; i--) {
          if ((glPrivateMemory[i].ObjectID IS Object->UniqueID) AND (glPrivateMemory[i].Address)) {
             if (glPrivateMemory[i].Flags & MEM_DELETE) continue; // Ignore blocks already marked for deletion
 
             if (!(glPrivateMemory[i].Flags & MEM_OBJECT)) {
                if (glLogLevel >= 3) {
                   if (glPrivateMemory[i].Flags & MEM_STRING) {
-                     LogErrorMsg("Unfreed string \"%.40s\"", (CSTRING)glPrivateMemory[i].Address);
+                     log.warning("Unfreed string \"%.40s\"", (CSTRING)glPrivateMemory[i].Address);
                   }
                   else if (glPrivateMemory[i].Flags & MEM_MANAGED) {
-                     struct ResourceManager **res = glPrivateMemory[i].Address - sizeof(LONG) - sizeof(LONG) - sizeof(struct ResourceManager *);
+                     ResourceManager **res = (ResourceManager **)((char *)glPrivateMemory[i].Address - sizeof(LONG) - sizeof(LONG) - sizeof(ResourceManager *));
                      if (res[0]) {
-                        LogErrorMsg("Unfreed %s resource at %p.", res[0]->Name, glPrivateMemory[i].Address);
+                        log.warning("Unfreed %s resource at %p.", res[0]->Name, glPrivateMemory[i].Address);
                      }
-                     else LogErrorMsg("Unfreed resource at %p.", glPrivateMemory[i].Address);
+                     else log.warning("Unfreed resource at %p.", glPrivateMemory[i].Address);
                   }
-                  else LogErrorMsg("Unfreed memory block %p, Size %d", glPrivateMemory[i].Address, glPrivateMemory[i].Size);
+                  else log.warning("Unfreed memory block %p, Size %d", glPrivateMemory[i].Address, glPrivateMemory[i].Size);
                }
-               if (FreeResource(glPrivateMemory[i].Address) != ERR_Okay) LogErrorMsg("Error freeing tracked address %p", glPrivateMemory[i].Address);
+               if (FreeResource(glPrivateMemory[i].Address) != ERR_Okay) log.warning("Error freeing tracked address %p", glPrivateMemory[i].Address);
             }
             else {
-               OBJECTPTR child = glPrivateMemory[i].Address;
+               OBJECTPTR child = (OBJECTPTR)glPrivateMemory[i].Address;
                if (!(child->Flags & NF_UNLOCK_FREE)) {
                   if (child->Flags & NF_INTEGRAL) {
-                     LogErrorMsg("Found unfreed child object #%d (class %s) belonging to %s object #%d.", child->UniqueID, ResolveClassID(child->ClassID), Object->Class->ClassName, Object->UniqueID);
+                     log.warning("Found unfreed child object #%d (class %s) belonging to %s object #%d.", child->UniqueID, ResolveClassID(child->ClassID), Object->Class->ClassName, Object->UniqueID);
                   }
                   acFree(child);
                }
             }
          }
       }
-
-      thread_unlock(TL_PRIVATE_MEM);
    }
 }
 
@@ -158,29 +161,31 @@ static void free_private_children(OBJECTPTR Object)
 
 static void free_public_children(OBJECTPTR Object)
 {
-   if (!LOCK_PUBLIC_MEMORY(5000)) {
-      LONG i;
-      for (i=glSharedControl->NextBlock-1; i >= 0; i--) {
+   parasol::Log log;
+
+   ScopedSysLock lock(PL_PUBLICMEM, 5000);
+   if (lock.granted()) {
+      for (LONG i=glSharedControl->NextBlock-1; i >= 0; i--) {
          if ((glSharedBlocks[i].ObjectID IS Object->UniqueID) AND (glSharedBlocks[i].MemoryID)) {
             if (glSharedBlocks[i].Flags & MEM_DELETE) continue; // Ignore blocks already marked for deletion
 
             OBJECTPTR child;
             if (!(glSharedBlocks[i].Flags & MEM_OBJECT)) {
-               LogErrorMsg("Unfreed public memory: #%d, Size %d, Object #%d, Access %d.", glSharedBlocks[i].MemoryID, glSharedBlocks[i].Size, glSharedBlocks[i].ObjectID, glSharedBlocks[i].AccessCount);
+               log.warning("Unfreed public memory: #%d, Size %d, Object #%d, Access %d.", glSharedBlocks[i].MemoryID, glSharedBlocks[i].Size, glSharedBlocks[i].ObjectID, glSharedBlocks[i].AccessCount);
                FreeResourceID(glSharedBlocks[i].MemoryID);
             }
             else if (!page_memory(glSharedBlocks + i, (APTR *)&child)) {
                OBJECTID id = child->UniqueID;
                if (!(child->Flags & (NF_UNLOCK_FREE|NF_FREE_MARK))) {
                   child->Flags |= NF_FREE_MARK;
-                  if (child->Flags & NF_INTEGRAL) LogErrorMsg("Found unfreed object #%d (class $%.8x).", id, child->ClassID);
+                  if (child->Flags & NF_INTEGRAL) log.warning("Found unfreed object #%d (class $%.8x).", id, child->ClassID);
                   unpage_memory(child);
-                  UNLOCK_PUBLIC_MEMORY();
+                  lock.release();
 
-                  ActionMsg(AC_Free, id, NULL, NULL, NULL);
+                  ActionMsg(AC_Free, id, NULL, 0, 0);
 
-                  if (LOCK_PUBLIC_MEMORY(5000) != ERR_Okay) {
-                     LogError(ERH_Free, ERR_SystemLocked);
+                  if (lock.acquire(5000) != ERR_Okay) {
+                     log.warning(ERR_SystemLocked);
                      break;
                   }
                   i = glSharedControl->NextBlock-1; // Reset the counter because we gave up control
@@ -189,7 +194,6 @@ static void free_public_children(OBJECTPTR Object)
             }
          }
       }
-      UNLOCK_PUBLIC_MEMORY();
    }
 }
 
@@ -250,7 +254,9 @@ ObjectCorrupt:   The object that was received is badly corrupted in a critical a
 
 ERROR Action(LONG ActionID, OBJECTPTR argObject, APTR Parameters)
 {
-   if (!argObject) return LogError(ERH_Action, ERR_NullArgs);
+   parasol::Log log(__FUNCTION__);
+
+   if (!argObject) return log.warning(ERR_NullArgs);
 
    OBJECTPTR obj = (OBJECTPTR)argObject;
    OBJECTID object_id = obj->UniqueID;
@@ -265,11 +271,11 @@ ERROR Action(LONG ActionID, OBJECTPTR argObject, APTR Parameters)
       if (!(obj->Flags & NF_PUBLIC)) {
          if ((obj->TaskID) AND (glCurrentTaskID != obj->TaskID) AND (obj->TaskID != SystemTaskID)) {
             if (object_id < 0) {
-               LogF("@Action()","Public object #%d corrupt - missing the NF_PUBLIC flag ($%.8x)", object_id, obj->Flags);
+               log.warning("Public object #%d corrupt - missing the NF_PUBLIC flag ($%.8x)", object_id, obj->Flags);
                prv_release(obj);
                return ERR_ObjectCorrupt;
             }
-            LogF("@Action()","Cannot execute action %s on non-public object #%d, class $%.8x (belongs to task %d, I am %d).", action_name(obj, ActionID), object_id, obj->ClassID, obj->TaskID, glCurrentTaskID);
+            log.warning("Cannot execute action %s on non-public object #%d, class $%.8x (belongs to task %d, I am %d).", action_name(obj, ActionID), object_id, obj->ClassID, obj->TaskID, glCurrentTaskID);
             prv_release(obj);
             return ERR_IllegalActionAttempt;
          }
@@ -279,17 +285,17 @@ ERROR Action(LONG ActionID, OBJECTPTR argObject, APTR Parameters)
 
    // Set the current context to the given object
 
-   struct ObjectContext new_context = {
-      .Stack = tlContext,
+   ObjectContext new_context = {
+      .Stack  = tlContext,
       .Object = (OBJECTPTR)obj,
-      .Action = ActionID,
-      .Field = NULL
+      .Field  = NULL,
+      .Action = (WORD)ActionID
    };
    tlContext = &new_context;
 
    obj->ActionDepth++;
 
-   struct rkMetaClass *cl = obj->Class;
+   rkMetaClass *cl = obj->Class;
 
    ERROR error;
    if (ActionID > 0) {
@@ -299,7 +305,7 @@ ERROR Action(LONG ActionID, OBJECTPTR argObject, APTR Parameters)
       // 2. If applicable, the object's sub-class (e.g. Picture:JPEG).
       // 3. The base-class.
 
-      if (ActionID > glActionCount) error = LogError(ERH_Action, ERR_IllegalActionID);
+      if (ActionID > glActionCount) error = log.warning(ERR_IllegalActionID);
       else if (ManagedActions[ActionID]) error = ManagedActions[ActionID](obj, Parameters);
       else if (cl->ActionTable[ActionID].PerformAction) error = cl->ActionTable[ActionID].PerformAction(obj, Parameters);
       else if ((cl->Base) AND (cl->Base->ActionTable[ActionID].PerformAction)) {
@@ -311,14 +317,14 @@ ERROR Action(LONG ActionID, OBJECTPTR argObject, APTR Parameters)
       ERROR (*routine)(OBJECTPTR, APTR);
       if ((cl->Methods) AND (cl->Methods[-ActionID].Routine)) {
          // Note that sub-classes may return ERR_NoAction if propagation to the base class is desirable.
-         routine = cl->Methods[-ActionID].Routine;
+         routine = (ERROR (*)(OBJECTPTR, APTR))cl->Methods[-ActionID].Routine;
          error = routine(obj, Parameters);
       }
       else error = ERR_NoAction;
 
       if ((error IS ERR_NoAction) AND (cl->Base)) {  // If this is a child, check the base class
          if ((cl->Base->Methods) AND (cl->Base->Methods[-ActionID].Routine)) {
-            routine = cl->Base->Methods[-ActionID].Routine;
+            routine = (ERROR (*)(OBJECTPTR, APTR))cl->Base->Methods[-ActionID].Routine;
             error = routine(obj, Parameters);
          }
       }
@@ -335,9 +341,9 @@ ERROR Action(LONG ActionID, OBJECTPTR argObject, APTR Parameters)
       else result = obj->Stats->MethodFlags[(-ActionID)>>5] & (1<<((-ActionID) & 31));
 
       if (result) {
-         struct ActionSubscription *list;
+         ActionSubscription *list;
          if ((list = lock_subscribers(obj))) {
-            struct acActionNotify notify;
+            acActionNotify notify;
             notify.ObjectID = object_id;
             notify.Args     = Parameters;
             if (ActionID > 0) notify.Size = ActionTable[ActionID].Size;
@@ -354,13 +360,12 @@ ERROR Action(LONG ActionID, OBJECTPTR argObject, APTR Parameters)
             LONG recursionsave = tlMsgRecursion;
             tlMsgRecursion = 255; // This prevents ProcessMessages() from being used while inside notification routines
 
-            WORD i;
-            for (i=0; (i < obj->Stats->SubscriptionSize); i++) {
+            for (WORD i=0; (i < obj->Stats->SubscriptionSize); i++) {
                if (list[i].ActionID IS ActionID) {
                   if (ActionMsg(AC_ActionNotify, list[i].SubscriberID, &notify, list[i].MessagePortMID, list[i].ClassID) IS ERR_MemoryDoesNotExist) {
                      // If the message port does not exist, remove the object from the list.
 
-                     FMSG("Action","Removing object #%d from the notification list for object #%d.", list[i].SubscriberID, object_id);
+                     log.trace("Removing object #%d from the notification list for object #%d.", list[i].SubscriberID, object_id);
                      list[i].SubscriberID   = 0;
                      list[i].ActionID       = 0;
                      list[i].MessagePortMID = 0;
@@ -373,7 +378,7 @@ ERROR Action(LONG ActionID, OBJECTPTR argObject, APTR Parameters)
 
             unlock_subscribers(obj);
          }
-         else FMSG("@Action","Denied access to ActionSubscriptions #%d of object #%d.", obj->Stats->ActionSubscriptions.ID, object_id);
+         else log.traceWarning("Denied access to ActionSubscriptions #%d of object #%d.", obj->Stats->ActionSubscriptions.ID, object_id);
       }
    }
 
@@ -482,14 +487,16 @@ struct msgAction {
 
 ERROR ActionMsg(LONG ActionID, OBJECTID ObjectID, APTR Args, MEMORYID MessageMID, CLASSID ClassID)
 {
+   parasol::Log log(__FUNCTION__);
+
    if ((!ActionID) OR (ActionID >= AC_END)) {
-      LogF("@ActionMsg()","Invalid arguments: Action: %d, Object: %d", ActionID, ObjectID);
+      log.warning("Invalid arguments: Action: %d, Object: %d", ActionID, ObjectID);
       return ERR_Args;
    }
 
    if (!ObjectID) {
-      if (ActionID > 0) LogF("ActionMsg()","Object: 0, Action: %s", ActionTable[ActionID].Name);
-      else LogF("ActionMsg()","Object: 0, Method: %d", ActionID);
+      if (ActionID > 0) log.function("Object: 0, Action: %s", ActionTable[ActionID].Name);
+      else log.function("Object: 0, Method: %d", ActionID);
       return ERR_NullArgs;
    }
 
@@ -498,11 +505,11 @@ ERROR ActionMsg(LONG ActionID, OBJECTID ObjectID, APTR Args, MEMORYID MessageMID
 
    BYTE wait = FALSE;
    BYTE delay = FALSE;
-   if (ClassID IS -1) {
+   if (ClassID IS (CLASSID)-1) {
       delay = TRUE;
       ClassID = 0;
    }
-   else if (ClassID IS -2) {
+   else if (ClassID IS (CLASSID)-2) {
       wait = TRUE;
       ClassID = 0;
    }
@@ -512,19 +519,18 @@ ERROR ActionMsg(LONG ActionID, OBJECTID ObjectID, APTR Args, MEMORYID MessageMID
 
    // Get the message port that manages this object
 
-   struct SharedObjectHeader *header;
-   struct SharedObject *list;
+   SharedObjectHeader *header;
+   SharedObject *list;
    LONG pos, msgsize;
 
    if (!MessageMID) {
-      if (ObjectID > 0) {
-         // Object is private (local)
+      if (ObjectID > 0) { // Object is private (local)
          MessageMID = glTaskMessageMID;
          ClassID = 0;
       }
       else if (!AccessMemory(RPM_SharedObjects, MEM_READ, 2000, (void **)&header)) {
-         if (find_public_object_entry(header, ObjectID, &pos) IS ERR_Okay) {
-            list = ResolveAddress(header, header->Offset);
+         if (!find_public_object_entry(header, ObjectID, &pos)) {
+            list = (SharedObject *)ResolveAddress(header, header->Offset);
             MessageMID = list[pos].MessageMID;
             ClassID    = list[pos].ClassID;
             ReleaseMemoryID(RPM_SharedObjects);
@@ -538,7 +544,7 @@ ERROR ActionMsg(LONG ActionID, OBJECTID ObjectID, APTR Args, MEMORYID MessageMID
             return ERR_NoMatchingObject;
          }
       }
-      else return LogError(ERH_ActionMsg, ERR_AccessMemory);
+      else return log.warning(ERR_AccessMemory);
    }
 
    // If the object belongs to the message port of our task, execute the action immediately (unless a delay has been requested).
@@ -571,7 +577,7 @@ ERROR ActionMsg(LONG ActionID, OBJECTID ObjectID, APTR Args, MEMORYID MessageMID
 */
    // Copy the argument structure to the message argument section
 
-   struct msgAction msg;
+   msgAction msg;
 
    msg.Action.ObjectID      = ObjectID;
    msg.Action.ActionID      = ActionID;
@@ -582,8 +588,8 @@ ERROR ActionMsg(LONG ActionID, OBJECTID ObjectID, APTR Args, MEMORYID MessageMID
    msg.Action.Time          = 0;
    msg.Action.ReturnMessage = glTaskMessageMID;
 
-   const struct FunctionField *fields = NULL;
-   LONG argssize = NULL;
+   const FunctionField *fields = NULL;
+   LONG argssize = 0;
 
    if (Args) {
       if (ActionID > 0) {
@@ -591,46 +597,46 @@ ERROR ActionMsg(LONG ActionID, OBJECTID ObjectID, APTR Args, MEMORYID MessageMID
             fields   = ActionTable[ActionID].Args;
             argssize = ActionTable[ActionID].Size;
             WORD waitresult;
-            if (copy_args(fields, argssize, Args, msg.Buffer, SIZE_ACTIONBUFFER, &msgsize, &waitresult, ActionTable[ActionID].Name) != ERR_Okay) {
-               LogF("@ActionMsg","Failed to buffer arguments for action \"%s\".", ActionTable[ActionID].Name);
+            if (copy_args(fields, argssize, (BYTE *)Args, msg.Buffer, SIZE_ACTIONBUFFER, &msgsize, &waitresult, ActionTable[ActionID].Name) != ERR_Okay) {
+               log.warning("Failed to buffer arguments for action \"%s\".", ActionTable[ActionID].Name);
                return ERR_Failed;
             }
 
-            msgsize += sizeof(struct ActionMessage);
+            msgsize += sizeof(ActionMessage);
             msg.Action.SendArgs = TRUE;
          }
-         else msgsize = sizeof(struct ActionMessage);
+         else msgsize = sizeof(ActionMessage);
       }
       else {
          if (!ClassID) {
             if (!(ClassID = GetClassID(ObjectID))) {
-               LogF("@ActionMsg","Class ID indeterminable for object %d - cannot execute action %d.", ObjectID, ActionID);
+               log.warning("Class ID indeterminable for object %d - cannot execute action %d.", ObjectID, ActionID);
                return ERR_Failed;
             }
          }
 
-         struct rkMetaClass *Class;
+         rkMetaClass *Class;
          if ((Class = FindClass(ClassID))) {
             if ((-ActionID) < Class->TotalMethods) {
                fields   = Class->Methods[-ActionID].Args;
                argssize = Class->Methods[-ActionID].Size;
                WORD waitresult;
-               if (copy_args(fields, argssize, Args, msg.Buffer, SIZE_ACTIONBUFFER, &msgsize, &waitresult, Class->Methods[-ActionID].Name) != ERR_Okay) {
-                  LogF("@ActionMsg","Failed to buffer arguments for method \"%s\".", Class->Methods[-ActionID].Name);
+               if (copy_args(fields, argssize, (BYTE *)Args, msg.Buffer, SIZE_ACTIONBUFFER, &msgsize, &waitresult, Class->Methods[-ActionID].Name) != ERR_Okay) {
+                  log.warning("Failed to buffer arguments for method \"%s\".", Class->Methods[-ActionID].Name);
                   return ERR_Failed;
                }
-               msgsize += sizeof(struct ActionMessage);
+               msgsize += sizeof(ActionMessage);
                msg.Action.SendArgs = TRUE;
             }
             else {
-               LogF("@ActionMsg","Illegal method ID %d executed on class %s.", ActionID, Class->ClassName);
+               log.warning("Illegal method ID %d executed on class %s.", ActionID, Class->ClassName);
                return ERR_IllegalMethodID;
             }
          }
-         else return LogError(ERH_ActionMsg, ERR_MissingClass);
+         else return log.warning(ERR_MissingClass);
       }
    }
-   else msgsize = sizeof(struct ActionMessage);
+   else msgsize = sizeof(ActionMessage);
 
    if (wait IS TRUE) msg.Action.ReturnResult = TRUE;
    else msg.Action.ReturnResult = FALSE;
@@ -641,22 +647,21 @@ retry:
 
    if (error) {
       if ((error IS ERR_MemoryDoesNotExist) AND (ObjectID < 0)) {
-         OBJECTPTR object;
-
          // If the message queue does not exist for a shared object, the object can still remain in memory if it is
          // untracked - so try to execute the action directly.
 
-         LogF("@ActionMsg","Object #%d is orphaned and will now be disowned.", ObjectID);
+         log.warning("Object #%d is orphaned and will now be disowned.", ObjectID);
 
          if (!AccessMemory(RPM_SharedObjects, MEM_READ, 2000, (void **)&header)) {
             // Wipe the message MID so that all future executions are within the caller's process space
             if (find_public_object_entry(header, ObjectID, &pos) IS ERR_Okay) {
-               list = ResolveAddress(header, header->Offset);
+               list = (SharedObject *)ResolveAddress(header, header->Offset);
                list[pos].MessageMID = 0;
             }
             ReleaseMemoryID(RPM_SharedObjects);
          }
 
+         OBJECTPTR object;
          if (delay) {  // Since a delay is enforced, try again but with our task message queue.
             if (!AccessObject(ObjectID, 1000, &object)) {
                object->TaskID = 0; // The originating task no longer exists
@@ -676,12 +681,12 @@ retry:
 
       if (ActionID > 0) {
          if (ActionID IS AC_ActionNotify) {
-            struct acActionNotify *notify = Args;
-            LogF("@ActionMsg","Action %s on object #%d failed, SendMsg error: %s", ActionTable[notify->ActionID].Name, ObjectID, glMessages[error]);
+            struct acActionNotify *notify = (struct acActionNotify *)Args;
+            log.warning("Action %s on object #%d failed, SendMsg error: %s", ActionTable[notify->ActionID].Name, ObjectID, glMessages[error]);
          }
-         else LogF("@ActionMsg","Action %s on object #%d failed, SendMsg error: %s", ActionTable[ActionID].Name, ObjectID, glMessages[error]);
+         else log.warning("Action %s on object #%d failed, SendMsg error: %s", ActionTable[ActionID].Name, ObjectID, glMessages[error]);
       }
-      else LogF("@ActionMsg","Method %d on object #%d failed, SendMsg error: %s", ActionID, ObjectID, glMessages[error]);
+      else log.warning("Method %d on object #%d failed, SendMsg error: %s", ActionID, ObjectID, glMessages[error]);
 
       if (error IS ERR_MemoryDoesNotExist) error = ERR_NoMatchingObject; // If the queue does not exist, the object does not exist
 
@@ -692,9 +697,9 @@ retry:
    // respond within 10 seconds we cancel the wait and return a time-out error.
 
    if ((wait IS TRUE) AND (glTaskMessageMID != MessageMID)) {
-      struct msgAction receive;
-      if (!GetMessage(glTaskMessageMID, MSGID_ACTION_RESULT, MSF_WAIT, &receive, msgsize + sizeof(struct Message))) {
-         LONG i, j;
+      msgAction receive;
+      if (!GetMessage(glTaskMessageMID, MSGID_ACTION_RESULT, MSF_WAIT, &receive, msgsize + sizeof(Message))) {
+         LONG j;
 
          // Here we convert the returned structure over to the current process space. We are mostly interested in
          // pointer and result variables, and we also free any allocated memory blocks.
@@ -703,13 +708,13 @@ retry:
          //    The result_msg contains structural results (keep in mind that any address pointers come from the foreign task).
          //    The Dest is the argument structure that we need to copy the results to.
 
-         //LogF("WaitMsg","[%d] Action: %d, Error: %d", receive.Action.ObjectID, receive.Action.ActionID, receive.Action.Error);
+         //log.msg("[%d] Action: %d, Error: %d", receive.Action.ObjectID, receive.Action.ActionID, receive.Action.Error);
 
          BYTE *src_msg = msg.Buffer;
          BYTE *result_msg = receive.Buffer;
-         BYTE *dest = Args;
+         BYTE *dest = (BYTE *)Args;
          LONG pos = 0;
-         for (i=0; fields[i].Name; i++) {
+         for (LONG i=0; fields[i].Name; i++) {
             if (fields[i].Type & FD_RESULT) {
                if (fields[i].Type & FD_LONG) {
                   LONG *dest_long = (LONG *)(dest + pos);
@@ -733,7 +738,7 @@ retry:
                         MEMORYID id = ((MEMORYID *)(src_msg + pos))[0];
                         BYTE *src;
                         if (!AccessMemory(id, MEM_READ_WRITE, 2000, (void **)&src)) {
-                           BYTE *copy = ((APTR *)(dest + pos))[0];
+                           BYTE *copy = ((BYTE **)(dest + pos))[0];
                            for (j=0; j < ((LONG *)(dest + pos + sizeof(APTR)))[0]; j++) copy[j] = src[j];
                            ReleaseMemoryID(id);
                         }
@@ -741,7 +746,7 @@ retry:
                      }
                   }
                }
-               else LogF("@ActionMsg()","Bad type definition for argument \"%s\".", fields[i].Name);
+               else log.warning("Bad type definition for argument \"%s\".", fields[i].Name);
 
                pos += sizeof(APTR);
             }
@@ -755,7 +760,7 @@ retry:
          return receive.Action.Error;
       }
       else {
-         LogF("@ActionMsg()","Time-out waiting for foreign process to return action results.");
+         log.warning("Time-out waiting for foreign process to return action results.");
          return ERR_TimeOut;
       }
    }
@@ -799,17 +804,18 @@ IllegalMethodID: The Action is not a supported method of the target object.
 
 ERROR ActionTags(LONG ActionID, OBJECTPTR argObject, ...)
 {
-   struct ActionSubscription *list;
+   parasol::Log log(__FUNCTION__);
+   ActionSubscription *list;
    ERROR error;
    LONG result;
    va_list vlist;
 
-   if (!argObject) return LogError(ERH_Action, ERR_NullArgs);
-   if (ActionID > glActionCount) return LogError(ERH_Action, ERR_IllegalActionID);
+   if (!argObject) return log.warning(ERR_NullArgs);
+   if (ActionID > glActionCount) return log.warning(ERR_IllegalActionID);
 
    OBJECTPTR obj = (OBJECTPTR)argObject;
    OBJECTID object_id = obj->UniqueID;
-   struct rkMetaClass *sysclass = obj->Class;
+   rkMetaClass *sysclass = obj->Class;
 
    prv_access(obj);
 
@@ -820,21 +826,21 @@ ERROR ActionTags(LONG ActionID, OBJECTPTR argObject, ...)
       if (!(obj->Flags & NF_PUBLIC)) {
          if ((obj->TaskID) AND (glCurrentTaskID != obj->TaskID) AND (obj->TaskID != SystemTaskID)) {
             if (object_id < 0) {
-               LogF("@Action()","Public object #%d corrupt - missing the NF_PUBLIC flag ($%.8x)", object_id, obj->Flags);
+               log.warning("Public object #%d corrupt - missing the NF_PUBLIC flag ($%.8x)", object_id, obj->Flags);
                prv_release(obj);
                return ERR_ObjectCorrupt;
             }
             if (ActionID > 0) {
-               LogF("@Action()","Cannot execute action %s on non-public object #%d, class $%.8x (belongs to task %d, I am %d).", ActionTable[ActionID].Name, object_id, obj->ClassID, obj->TaskID, glCurrentTaskID);
+               log.warning("Cannot execute action %s on non-public object #%d, class $%.8x (belongs to task %d, I am %d).", ActionTable[ActionID].Name, object_id, obj->ClassID, obj->TaskID, glCurrentTaskID);
             }
-            else LogF("@Action()","Cannot execute method %s on non-public object #%d (belongs to task %d, I am %d).", sysclass->Methods[-ActionID].Name, object_id, obj->TaskID, glCurrentTaskID);
+            else log.warning("Cannot execute method %s on non-public object #%d (belongs to task %d, I am %d).", sysclass->Methods[-ActionID].Name, object_id, obj->TaskID, glCurrentTaskID);
             prv_release(obj);
             return ERR_IllegalActionAttempt;
          }
       }
    }
 
-   const struct FunctionField *fields;
+   const FunctionField *fields;
    LONG argssize;
    if (ActionID > 0) {
       fields   = ActionTable[ActionID].Args;
@@ -849,7 +855,7 @@ ERROR ActionTags(LONG ActionID, OBJECTPTR argObject, ...)
       argssize = sysclass->Methods[-ActionID].Size;
    }
    else {
-      LogF("@ActionTags","Illegal method ID %d executed on class %s.", ActionID, sysclass->ClassName);
+      log.warning("Illegal method ID %d executed on class %s.", ActionID, sysclass->ClassName);
       prv_release(obj);
       return ERR_IllegalMethodID;
    }
@@ -857,7 +863,7 @@ ERROR ActionTags(LONG ActionID, OBJECTPTR argObject, ...)
    if (argssize <= 0) {
       // Calling ActionTags() on an action that does not declare arguments makes no sense and is not supported (use
       // Action() instead)
-      LogF("@Action()","Do not call ActionTags() on an action that does not declare arguments. Use Action() instead.");
+      log.warning("Do not call ActionTags() on an action that does not declare arguments. Use Action() instead.");
       prv_release(obj);
       return ERR_IllegalActionAttempt;
    }
@@ -867,20 +873,19 @@ ERROR ActionTags(LONG ActionID, OBJECTPTR argObject, ...)
    struct ObjectContext new_context = {
       .Stack  = tlContext,
       .Object = (OBJECTPTR)obj,
-      .Action = ActionID,
-      .Field  = NULL
+      .Field  = NULL,
+      .Action = (WORD)ActionID
    };
    tlContext = &new_context;
 
    obj->ActionDepth++;
 
-   UBYTE params[argssize];
-   APTR dest = params;
+   char params[argssize];
+   char *dest = params;
 
    va_start(vlist, argObject);
 
-   WORD i;
-   for (i=0; fields[i].Name; i++) {
+   for (WORD i=0; fields[i].Name; i++) {
       if (fields[i].Type & FD_LONG) {
          ((LONG *)dest)[0] = va_arg(vlist, LONG);
          dest += sizeof(LONG);
@@ -893,7 +898,7 @@ ERROR ActionTags(LONG ActionID, OBJECTPTR argObject, ...)
          ((APTR *)dest)[0] = va_arg(vlist, APTR);
          dest += sizeof(APTR);
       }
-      else LogF("@Action()","Bad type definition for argument \"%s\".", fields[i].Name);
+      else log.warning("Bad type definition for argument \"%s\".", fields[i].Name);
    }
 
    va_end(vlist);
@@ -918,7 +923,7 @@ ERROR ActionTags(LONG ActionID, OBJECTPTR argObject, ...)
 
       if (sysclass->Methods) {
          if (sysclass->Methods[-ActionID].Routine) {
-            routine = sysclass->Methods[-ActionID].Routine;
+            routine = (ERROR (*)(OBJECTPTR, APTR))sysclass->Methods[-ActionID].Routine;
             error = routine(obj, params);
          }
          else error = ERR_NoAction;
@@ -930,7 +935,7 @@ ERROR ActionTags(LONG ActionID, OBJECTPTR argObject, ...)
       if (((error IS ERR_NoAction) /*OR (!error)*/) AND (sysclass->Base)) {
          if (sysclass->Base->Methods) {
             if (sysclass->Base->Methods[-ActionID].Routine) {
-               routine = sysclass->Base->Methods[-ActionID].Routine;
+               routine = (ERROR (*)(OBJECTPTR, APTR))sysclass->Base->Methods[-ActionID].Routine;
                error = routine(obj, params);
             }
          }
@@ -951,7 +956,7 @@ ERROR ActionTags(LONG ActionID, OBJECTPTR argObject, ...)
 
       if (result) {
          if ((list = lock_subscribers(obj))) {
-            struct acActionNotify notify;
+            acActionNotify notify;
             notify.ObjectID = object_id;
             notify.Args     = params;
             if (ActionID > 0) notify.Size = ActionTable[ActionID].Size;
@@ -970,12 +975,12 @@ ERROR ActionTags(LONG ActionID, OBJECTPTR argObject, ...)
             LONG recursionsave = tlMsgRecursion;
             tlMsgRecursion = 255; // This prevents ProcessMessages() from being used while inside notification routines
 
-            for (i=0; (i < obj->Stats->SubscriptionSize); i++) {
+            for (LONG i=0; (i < obj->Stats->SubscriptionSize); i++) {
                if (list[i].ActionID IS ActionID) {
                   if (ActionMsg(AC_ActionNotify, list[i].SubscriberID, &notify, list[i].MessagePortMID, list[i].ClassID) IS ERR_MemoryDoesNotExist) {
                      // If the message port does not exist, remove the object from the list.
 
-                     FMSG("Action","Removing object #%d from the notification list for object #%d.", list[i].SubscriberID, object_id);
+                     log.trace("Removing object #%d from the notification list for object #%d.", list[i].SubscriberID, object_id);
                      list[i].SubscriberID   = 0;
                      list[i].ActionID       = 0;
                      list[i].MessagePortMID = 0;
@@ -988,15 +993,13 @@ ERROR ActionTags(LONG ActionID, OBJECTPTR argObject, ...)
 
             unlock_subscribers(obj);
          }
-         else FMSG("@Action","Denied access to ActionSubscriptions #%d of object #%d.", obj->Stats->ActionSubscriptions.ID, object_id);
+         else log.traceWarning("Denied access to ActionSubscriptions #%d of object #%d.", obj->Stats->ActionSubscriptions.ID, object_id);
       }
    }
 
    // Put the context settings back
 
-   if (ActionID != AC_Free) {
-      obj->ActionDepth--;
-   }
+   if (ActionID != AC_Free) obj->ActionDepth--;
    prv_release(obj);
    tlContext = tlContext->Stack;
    return error;
@@ -1044,9 +1047,11 @@ Init
 
 ERROR ActionThread(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters, FUNCTION *Callback, LONG Key)
 {
+   parasol::Log log(__FUNCTION__);
+
    if ((!ActionID) OR (!Object)) return ERR_NullArgs;
 
-   FMSG("~ActionThread()","Action: %d, Object: %d, Parameters: %p, Callback: %p, Key: %d", ActionID, Object->UniqueID, Parameters, Callback, Key);
+   log.traceBranch("Action: %d, Object: %d, Parameters: %p, Callback: %p, Key: %d", ActionID, Object->UniqueID, Parameters, Callback, Key);
 
    __sync_add_and_fetch(&Object->ThreadPending, 1);
 
@@ -1056,48 +1061,48 @@ ERROR ActionThread(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters, FUNCTIO
       // Prepare the parameter buffer for passing to the thread routine.
 
       LONG argssize;
-      UBYTE call_data[sizeof(struct thread_data) + SIZE_ACTIONBUFFER];
+      BYTE call_data[sizeof(thread_data) + SIZE_ACTIONBUFFER];
       BYTE free_args = FALSE;
-      const struct FunctionField *args = NULL;
-      struct rkMetaClass *metaclass;
+      const FunctionField *args = NULL;
+      rkMetaClass *metaclass;
 
       if (Parameters) {
          if (ActionID > 0) {
             args = ActionTable[ActionID].Args;
             if ((argssize = ActionTable[ActionID].Size) > 0) {
-               if (!(error = local_copy_args(args, argssize, Parameters, call_data + sizeof(struct thread_data), SIZE_ACTIONBUFFER, &argssize, ActionTable[ActionID].Name))) {
+               if (!(error = local_copy_args(args, argssize, (BYTE *)Parameters, call_data + sizeof(thread_data), SIZE_ACTIONBUFFER, &argssize, ActionTable[ActionID].Name))) {
                   free_args = TRUE;
                }
 
-               argssize += sizeof(struct thread_data);
+               argssize += sizeof(thread_data);
             }
-            else argssize = sizeof(struct thread_data);
+            else argssize = sizeof(thread_data);
          }
          else if ((metaclass = Object->Class)) {
             if ((-ActionID) < metaclass->TotalMethods) {
                args = metaclass->Methods[-ActionID].Args;
                if ((argssize = metaclass->Methods[-ActionID].Size) > 0) {
-                  if (!(error = local_copy_args(args, argssize, Parameters, call_data + sizeof(struct thread_data), SIZE_ACTIONBUFFER, &argssize, metaclass->Methods[-ActionID].Name))) {
+                  if (!(error = local_copy_args(args, argssize, (BYTE *)Parameters, call_data + sizeof(thread_data), SIZE_ACTIONBUFFER, &argssize, metaclass->Methods[-ActionID].Name))) {
                      free_args = TRUE;
                   }
                }
-               else FMSG("ActionThread","Ignoring parameters provided for method %s", metaclass->Methods[-ActionID].Name);
+               else log.trace("Ignoring parameters provided for method %s", metaclass->Methods[-ActionID].Name);
 
-               argssize += sizeof(struct thread_data);
+               argssize += sizeof(thread_data);
             }
-            else error = LogError(ERH_Action, ERR_IllegalMethodID);
+            else error = log.warning(ERR_IllegalMethodID);
          }
-         else error = LogError(ERH_Action, ERR_MissingClass);
+         else error = log.warning(ERR_MissingClass);
       }
-      else argssize = sizeof(struct thread_data);
+      else argssize = sizeof(thread_data);
 
       // Execute the thread that will call the action.  Refer to thread_action() for the routine.
 
       if (!error) {
-         SET_FUNCTION_STDC(thread->prv.Routine, &thread_action);
+         SET_FUNCTION_STDC(thread->prv.Routine, (APTR)&thread_action);
 
-         struct thread_data *call = (struct thread_data *)call_data;
-         call->Object = Object;
+         thread_data *call = (thread_data *)call_data;
+         call->Object   = Object;
          call->ActionID = ActionID;
          call->Key      = Key;
          call->Parameters = Parameters ? TRUE : FALSE;
@@ -1115,14 +1120,13 @@ ERROR ActionThread(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters, FUNCTIO
 
       if (error) {
          threadpool_release(thread);
-         if (free_args) local_free_args(call_data + sizeof(struct thread_data), args);
+         if (free_args) local_free_args(call_data + sizeof(thread_data), args);
       }
    }
    else error = ERR_NewObject;
 
    if (error) __sync_sub_and_fetch(&Object->ThreadPending, 1);
 
-   LOGRETURN();
    return error;
 }
 
@@ -1154,9 +1158,11 @@ LostClass: The object has lost its class reference (object corrupt).
 
 ERROR CheckAction(OBJECTPTR Object, LONG ActionID)
 {
+   parasol::Log log(__FUNCTION__);
+
    if ((Object) AND (ActionID)) {
       if (Object->ClassID IS ID_METACLASS) {
-         if (((struct rkMetaClass *)Object)->ActionTable[ActionID].PerformAction) return ERR_Okay;
+         if (((rkMetaClass *)Object)->ActionTable[ActionID].PerformAction) return ERR_Okay;
          else return ERR_False;
       }
       else if (Object->Class) {
@@ -1166,9 +1172,9 @@ ERROR CheckAction(OBJECTPTR Object, LONG ActionID)
          }
          return ERR_False;
       }
-      else return LogError(ERH_CheckAction, ERR_LostClass);
+      else return log.warning(ERR_LostClass);
    }
-   else return LogError(ERH_CheckAction, ERR_NullArgs);
+   else return log.warning(ERR_NullArgs);
 }
 
 /*****************************************************************************
@@ -1188,7 +1194,7 @@ resource(Message): A Message structure is returned if the function is called in 
 
 *****************************************************************************/
 
-struct Message * GetActionMsg(void)
+Message * GetActionMsg(void)
 {
    if (tlContext->Object) {
       if (tlContext->Object->Flags & NF_MESSAGE) {
@@ -1228,18 +1234,20 @@ AllocMemory: The management array could not be expanded to accommodate the manag
 
 ERROR ManageAction(LONG ActionID, APTR Routine)
 {
-   LogF("ManageAction()","ActionID: %d, Routine: %p", ActionID, Routine);
+   parasol::Log log(__FUNCTION__);
+
+   log.branch("ActionID: %d, Routine: %p", ActionID, Routine);
 
    if (ActionID > 0) {
       // Check if the ActionID extends the amount of registered actions.  If so, reallocate the action management table.
 
-      if (!thread_lock(TL_GENERIC, 50)) {
+      ThreadLock lock(TL_GENERIC, 50);
+      if (lock.granted()) {
          if (ActionID > glActionCount) {
             glActionCount = ActionID;
             if (ManagedActions) {
-               if (ReallocMemory((ULONG *)ManagedActions, sizeof(APTR) * glActionCount, (APTR)&ManagedActions, NULL) != ERR_Okay) {
-                  thread_unlock(TL_GENERIC);
-                  return LogError(ERH_ManageAction, ERR_AllocMemory);
+               if (ReallocMemory((ULONG *)ManagedActions, sizeof(APTR) * glActionCount, (APTR *)&ManagedActions, NULL) != ERR_Okay) {
+                  return log.warning(ERR_AllocMemory);
                }
             }
          }
@@ -1249,20 +1257,18 @@ ERROR ManageAction(LONG ActionID, APTR Routine)
 
          if (!ManagedActions) {
             if (AllocMemory(sizeof(APTR) * glActionCount, MEM_TASK, (APTR *)&ManagedActions, NULL) != ERR_Okay) {
-               thread_unlock(TL_GENERIC);
-               return LogError(ERH_ManageAction, ERR_AllocMemory);
+               return log.warning(ERR_AllocMemory);
             }
          }
-         thread_unlock(TL_GENERIC);
       }
 
       // Set the action management routine
 
-      ManagedActions[ActionID] = Routine;
+      ManagedActions[ActionID] = (LONG (*)(OBJECTPTR, APTR))Routine;
 
       return ERR_Okay;
    }
-   else return LogError(ERH_ManageAction, ERR_Args);
+   else return log.warning(ERR_Args);
 }
 
 /*****************************************************************************
@@ -1296,8 +1302,10 @@ int: The total number of subscribers that were called is returned.
 
 LONG NotifySubscribers(OBJECTPTR Object, LONG ActionID, APTR Parameters, LONG Flags, ERROR ErrorCode)
 {
+   parasol::Log log(__FUNCTION__);
+
    if (!Object) {
-      LogError(ERH_NotifySubscribers, ERR_NullArgs);
+      log.warning(ERR_NullArgs);
       return 0;
    }
 
@@ -1315,12 +1323,12 @@ LONG NotifySubscribers(OBJECTPTR Object, LONG ActionID, APTR Parameters, LONG Fl
    tlMsgRecursion = 255; // This prevents ProcessMessages() from being used while inside notification routines
 
    WORD count = 0;
-   struct ActionSubscription *list;
+   ActionSubscription *list;
    if ((list = lock_subscribers(Object))) {
       struct acActionNotify notify = {
+         .ActionID = ActionID,
          .ObjectID = Object->UniqueID,
          .Args     = Parameters,
-         .ActionID = ActionID,
          .Error    = ErrorCode
       };
       if (ActionID > 0) notify.Size = ActionTable[ActionID].Size;
@@ -1329,11 +1337,10 @@ LONG NotifySubscribers(OBJECTPTR Object, LONG ActionID, APTR Parameters, LONG Fl
       // Generate a shadow copy of the list - this is required in case calls to SubscribeAction() or
       // UnsubscribeAction() are made during the execution of the subscriber routines.
 
-      struct ActionSubscription shadow[Object->Stats->SubscriptionSize];
+      ActionSubscription shadow[Object->Stats->SubscriptionSize];
 
       count = 0;
-      WORD i;
-      for (i=0; (i < Object->Stats->SubscriptionSize); i++) {
+      for (LONG i=0; (i < Object->Stats->SubscriptionSize); i++) {
          if (list[i].ActionID IS ActionID) shadow[count++] = list[i];
          else if (!list[i].ActionID) break; // End of array
       }
@@ -1341,7 +1348,7 @@ LONG NotifySubscribers(OBJECTPTR Object, LONG ActionID, APTR Parameters, LONG Fl
       unlock_subscribers(Object);
 
       if (count) {
-         for (i=0; i < count; i++) {
+         for (LONG i=0; i < count; i++) {
             ERROR error = ERR_Okay;
             if (Flags & NSF_LOCAL_TASK) { // The LOCALTASK option means that only objects that are within the local task's address space will be sent the message.
                if ((shadow[i].MessagePortMID) AND (glTaskMessageMID) AND (shadow[i].MessagePortMID != glTaskMessageMID)) {
@@ -1376,7 +1383,7 @@ LONG NotifySubscribers(OBJECTPTR Object, LONG ActionID, APTR Parameters, LONG Fl
             // If the message port or the object does not exist, remove the object from the list.
 
             if ((error IS ERR_MemoryDoesNotExist) OR (error IS ERR_NoMatchingObject) OR (error IS ERR_MarkedForDeletion)) {
-               FMSG("NotifySubscribers","Removing object #%d (port %d) from #%d's notification list (%s).", shadow[i].SubscriberID, shadow[i].MessagePortMID, Object->UniqueID, glMessages[error]);
+               log.trace("Removing object #%d (port %d) from #%d's notification list (%s).", shadow[i].SubscriberID, shadow[i].MessagePortMID, Object->UniqueID, glMessages[error]);
                UnsubscribeActionByID(Object, 0, shadow[i].SubscriberID);
             }
          }
@@ -1386,7 +1393,7 @@ LONG NotifySubscribers(OBJECTPTR Object, LONG ActionID, APTR Parameters, LONG Fl
          else Object->Stats->MethodFlags[(-ActionID)>>5] &= (~(1<<((-ActionID) & 31)));
       }
    }
-   else LogError(ERH_NotifySubscribers, ERR_AccessMemory);
+   else log.warning(ERR_AccessMemory);
 
    tlMsgRecursion = recursionsave;
 
@@ -1472,7 +1479,9 @@ Exists:       A matching subscription already exists.
 
 ERROR SubscribeActionTags(OBJECTPTR Object, ...)
 {
-   if (!Object) return LogError(ERH_SubscribeAction, ERR_NullArgs);
+   parasol::Log log(__FUNCTION__);
+
+   if (!Object) return log.warning(ERR_NullArgs);
 
    if (Object IS &glMetaClass.Head) return ERR_NoSupport; // Monitoring the MetaClass is prohibited.
 
@@ -1490,18 +1499,18 @@ ERROR SubscribeActionTags(OBJECTPTR Object, ...)
 
    ERROR error;
    if (!Object->Stats->ActionSubscriptions.Ptr) { // Allocate the subscription array if it does not exist
-      APTR context = SetContext(Object);
+      OBJECTPTR context = SetContext(Object);
       if (count < 10) count = 10; // Allocate at least 10 slots
 
       if (Object->UniqueID < 0) {
-         error = AllocMemory(sizeof(struct ActionSubscription) * count, memflags, NULL, &Object->Stats->ActionSubscriptions.ID);
+         error = AllocMemory(sizeof(ActionSubscription) * count, memflags, NULL, &Object->Stats->ActionSubscriptions.ID);
       }
-      else error = AllocMemory(sizeof(struct ActionSubscription) * count, memflags, &Object->Stats->ActionSubscriptions.Ptr, NULL);
+      else error = AllocMemory(sizeof(ActionSubscription) * count, memflags, &Object->Stats->ActionSubscriptions.Ptr, NULL);
 
       if (error) {
          SetContext(context);
          prv_release(Object);
-         return LogError(ERH_SubscribeAction, ERR_AllocMemory);
+         return log.warning(ERR_AllocMemory);
       }
 
       Object->Stats->SubscriptionSize = count;
@@ -1512,7 +1521,7 @@ ERROR SubscribeActionTags(OBJECTPTR Object, ...)
    LONG i, j;
    ERROR warnerror = ERR_Okay;
    LONG warntag = 0;
-   struct ActionSubscription *list;
+   ActionSubscription *list;
    if ((list = lock_subscribers(Object))) {
       va_start(vlist, Object);
       ACTIONID actionid;
@@ -1547,7 +1556,7 @@ ERROR SubscribeActionTags(OBJECTPTR Object, ...)
                if ((i < Object->Stats->SubscriptionSize-1) AND (list[i+1].ActionID)) {
                   for (j=i; (j < Object->Stats->SubscriptionSize-1) AND (list[j].ActionID); j++);
                   // Shift the actions down a notch
-                  CopyMemory(list+i+1, list+i, sizeof(struct ActionSubscription) * (Object->Stats->SubscriptionSize - i));
+                  CopyMemory(list+i+1, list+i, sizeof(ActionSubscription) * (Object->Stats->SubscriptionSize - i));
                   i = j; // Set the insertion point to the end of the list
                }
                break;
@@ -1555,25 +1564,26 @@ ERROR SubscribeActionTags(OBJECTPTR Object, ...)
          }
 
          if (i >= Object->Stats->SubscriptionSize) { // Enlarge the size of the object's subscription list
-            LogF("7SubscribeActionTags","Extending array for object %d to %d entries.", Object->UniqueID, Object->Stats->SubscriptionSize);
+            log.debug("Extending array for object %d to %d entries.", Object->UniqueID, Object->Stats->SubscriptionSize);
             if (glLogLevel >= 5) { // Report any dead subscribers if we're in log mode
                for (i=0; (i < Object->Stats->SubscriptionSize) AND (list[i].ActionID); i++) {
                   if (CheckObjectExists(list[i].SubscriberID, 0) != ERR_True) {
-                     LogF("@SubscribeAction","Dead subscriber @ index %d, Action %d, Object %d - Fix your code!", i, list[i].ActionID, list[i].SubscriberID);
+                     log.warning("Dead subscriber @ index %d, Action %d, Object %d - Fix your code!", i, list[i].ActionID, list[i].SubscriberID);
                   }
                }
             }
 
-            struct ActionSubscription *newlist;
+            ActionSubscription *newlist;
 
-            APTR context = SetContext(Object);
+            {
+               parasol::SwitchContext context(Object);
 
                MEMORYID newlistid;
-               if (Object->UniqueID < 0) error = AllocMemory(sizeof(struct ActionSubscription)*(Object->Stats->SubscriptionSize+10), memflags, (APTR *)&newlist, &newlistid);
-               else error = AllocMemory(sizeof(struct ActionSubscription)*(Object->Stats->SubscriptionSize+10), memflags, (APTR *)&newlist, NULL);
+               if (Object->UniqueID < 0) error = AllocMemory(sizeof(ActionSubscription)*(Object->Stats->SubscriptionSize+10), memflags, (APTR *)&newlist, &newlistid);
+               else error = AllocMemory(sizeof(ActionSubscription)*(Object->Stats->SubscriptionSize+10), memflags, (APTR *)&newlist, NULL);
 
                if (!error) {
-                  CopyMemory(list, newlist, Object->Stats->SubscriptionSize * sizeof(struct ActionSubscription));
+                  CopyMemory(list, newlist, Object->Stats->SubscriptionSize * sizeof(ActionSubscription));
 
                   unlock_subscribers(Object);
 
@@ -1589,14 +1599,13 @@ ERROR SubscribeActionTags(OBJECTPTR Object, ...)
                   Object->Stats->SubscriptionSize += 10;
                   list = newlist;
                }
-
-            SetContext(context);
+            }
 
             if (error) {
                unlock_subscribers(Object);
                va_end(vlist);
                prv_release(Object);
-               return LogError(ERH_SubscribeAction, ERR_AllocMemory);
+               return log.warning(ERR_AllocMemory);
             }
          }
 
@@ -1624,7 +1633,7 @@ ERROR SubscribeActionTags(OBJECTPTR Object, ...)
    else {
       va_end(vlist);
       prv_release(Object);
-      return LogError(ERH_SubscribeAction, ERR_AccessMemory);
+      return log.warning(ERR_AccessMemory);
    }
 
    va_end(vlist);
@@ -1662,19 +1671,20 @@ ERROR UnsubscribeAction(OBJECTPTR Object, ACTIONID ActionID)
 
 ERROR UnsubscribeActionByID(OBJECTPTR Object, ACTIONID ActionID, OBJECTID SubscriberID)
 {
-   if (!Object) return LogError(ERH_UnsubscribeAction, ERR_NullArgs);
+   parasol::Log log(__FUNCTION__);
+
+   if (!Object) return log.warning(ERR_NullArgs);
 
    prv_access(Object);
 
-   //LogErrorMsg("UnsubscribeAction(%d, Subscriber %d, Action %d)", Object->UniqueID, ActionID);
+   //log.msg("UnsubscribeAction(%d, Subscriber %d, Action %d)", Object->UniqueID, ActionID);
 
-   struct ActionSubscription *list;
+   ActionSubscription *list;
    if ((list = lock_subscribers(Object))) {
       // Clear matching array entries and perform compaction of the array so that there are no gaps.
 
-      LONG i;
       LONG j = 0;
-      for (i=0; i < Object->Stats->SubscriptionSize; i++) {
+      for (LONG i=0; i < Object->Stats->SubscriptionSize; i++) {
          if ((list[i].SubscriberID IS SubscriberID) AND ((!ActionID) OR (ActionID IS list[i].ActionID))) {
             list[i].ActionID = 0;
          }
@@ -1691,25 +1701,23 @@ ERROR UnsubscribeActionByID(OBJECTPTR Object, ACTIONID ActionID, OBJECTID Subscr
       // If there is nothing left in this list, destroy it
 
       if (!list[0].ActionID) {
-         //LogF("UnsubscribeAction","Object %d list empty - removing list.", Object->UniqueID);
+         //log.msg("Object %d list empty - removing list.", Object->UniqueID);
          unlock_subscribers(Object);
 
-         APTR context = SetContext(Object);
+         parasol::SwitchContext context(Object);
 
-            if (Object->UniqueID < 0) {
-               FreeResourceID(Object->Stats->ActionSubscriptions.ID);
-               Object->Stats->ActionSubscriptions.ID = 0;
-            }
-            else {
-               FreeResource(Object->Stats->ActionSubscriptions.Ptr);
-               Object->Stats->ActionSubscriptions.Ptr = NULL;
-            }
-
-         SetContext(context);
+         if (Object->UniqueID < 0) {
+            FreeResourceID(Object->Stats->ActionSubscriptions.ID);
+            Object->Stats->ActionSubscriptions.ID = 0;
+         }
+         else {
+            FreeResource(Object->Stats->ActionSubscriptions.Ptr);
+            Object->Stats->ActionSubscriptions.Ptr = NULL;
+         }
 
          Object->Stats->SubscriptionSize  = 0;
-         for (i=0; i < ARRAYSIZE(Object->Stats->NotifyFlags); i++) Object->Stats->NotifyFlags[i] = 0;
-         for (i=0; i < ARRAYSIZE(Object->Stats->MethodFlags); i++) Object->Stats->MethodFlags[i] = 0;
+         for (WORD i=0; i < ARRAYSIZE(Object->Stats->NotifyFlags); i++) Object->Stats->NotifyFlags[i] = 0;
+         for (WORD i=0; i < ARRAYSIZE(Object->Stats->MethodFlags); i++) Object->Stats->MethodFlags[i] = 0;
       }
       else unlock_subscribers(Object);
    }
@@ -1724,20 +1732,21 @@ ERROR UnsubscribeActionByID(OBJECTPTR Object, ACTIONID ActionID, OBJECTID Subscr
 
 ERROR MGR_Free(OBJECTPTR Object, APTR Void)
 {
-   struct rkMetaClass *class;
+   parasol::Log log("Free");
+   rkMetaClass *mc;
 
    Object->ActionDepth--; // See Action() regarding this
 
-   if (!(class = Object->Class)) {
-      FMSG("Free()","Object %p #%d is missing its class pointer.", Object, Object->UniqueID);
-      return LogError(ERH_Free, ERR_ObjectCorrupt)|ERF_Notified;
+   if (!(mc = Object->Class)) {
+      log.trace("Object %p #%d is missing its class pointer.", Object, Object->UniqueID);
+      return log.warning(ERR_ObjectCorrupt)|ERF_Notified;
    }
 
    // Check to see if the object is currently locked from AccessObject().  If it is, we mark it for deletion so that we
    // can safely get rid of it during ReleaseObject().
 
    if ((Object->Locked) OR (Object->ThreadPending)) {
-      LogF("7","Object #%d locked; marking for deletion.", Object->UniqueID);
+      log.debug("Object #%d locked; marking for deletion.", Object->UniqueID);
       set_object_flags(Object, Object->Flags|NF_UNLOCK_FREE);
       return ERR_Okay|ERF_Notified;
    }
@@ -1745,54 +1754,48 @@ ERROR MGR_Free(OBJECTPTR Object, APTR Void)
    // Return if the object is currently in the process of being freed (i.e. avoid recursion)
 
    if (Object->Flags & NF_FREE) {
-      MSG("Object already marked with NF_FREE.");
+      log.trace("Object already marked with NF_FREE.");
       return ERR_Okay|ERF_Notified;
    }
 
    if (Object->ActionDepth > 0) { // Free() is being called while the object itself is still in use.  This can be an issue with private objects that haven't been locked with AccessObject().
-      MSG("Free() attempt while object is in use.");
+      log.trace("Free() attempt while object is in use.");
       if (!(Object->Flags & NF_FREE_MARK)) {
          set_object_flags(Object, Object->Flags|NF_FREE_MARK);
-         ActionMsg(AC_Free, Object->UniqueID, NULL, NULL, -1);
+         ActionMsg(AC_Free, Object->UniqueID, NULL, 0, -1);
       }
       return ERR_Okay|ERF_Notified;
    }
 
-   if (Object->ClassID IS ID_METACLASS)   LogF("~Free()","%s, Owner: %d", class->ClassName, Object->OwnerID);
-   else if (Object->ClassID IS ID_MODULE) LogF("~Free()","%s, Owner: %d", ((struct rkModule *)Object)->Name, Object->OwnerID);
-   else if (Object->Stats->Name[0])       LogF("~Free()","Name: %s, Owner: %d", Object->Stats->Name, Object->OwnerID);
-   else LogF("~Free()","Owner: %d", Object->OwnerID);
+   if (Object->ClassID IS ID_METACLASS)   log.branch("%s, Owner: %d", mc->ClassName, Object->OwnerID);
+   else if (Object->ClassID IS ID_MODULE) log.branch("%s, Owner: %d", ((rkModule *)Object)->Name, Object->OwnerID);
+   else if (Object->Stats->Name[0])       log.branch("Name: %s, Owner: %d", Object->Stats->Name, Object->OwnerID);
+   else log.branch("Owner: %d", Object->OwnerID);
 
    // If the object wants to be warned when the free process is about to be executed, it will subscribe to the
    // FreeWarning action.  The process can be aborted by returning ERR_InUse.
 
-   if (class->ActionTable[AC_FreeWarning].PerformAction) {
-      if (class->ActionTable[AC_FreeWarning].PerformAction(Object, NULL) IS ERR_InUse) {
+   if (mc->ActionTable[AC_FreeWarning].PerformAction) {
+      if (mc->ActionTable[AC_FreeWarning].PerformAction(Object, NULL) IS ERR_InUse) {
          if ((Object->Flags & (NF_FREE_MARK|NF_FREE))) {
             // If the object is marked for deletion then it is not possible to avoid destruction (this prevents objects
             // from locking up the shutdown process).
 
-            LogMsg("Object will be destroyed despite being in use.");
+            log.msg("Object will be destroyed despite being in use.");
          }
-         else {
-            LogReturn();
-            return ERR_InUse|ERF_Notified;
-         }
+         else return ERR_InUse|ERF_Notified;
       }
    }
 
-   if (class->Base) { // Sub-class detected, so call the base class
-      if (class->Base->ActionTable[AC_FreeWarning].PerformAction) {
-         if (class->Base->ActionTable[AC_FreeWarning].PerformAction(Object, NULL) IS ERR_InUse) {
+   if (mc->Base) { // Sub-class detected, so call the base class
+      if (mc->Base->ActionTable[AC_FreeWarning].PerformAction) {
+         if (mc->Base->ActionTable[AC_FreeWarning].PerformAction(Object, NULL) IS ERR_InUse) {
             if ((Object->Flags & (NF_FREE_MARK|NF_FREE))) {
                // If the object is marked for deletion then it is not possible to avoid destruction (this prevents
                // objects from locking up the shutdown process).
-               LogMsg("Object will be destroyed despite being in use.");
+               log.msg("Object will be destroyed despite being in use.");
             }
-            else {
-               LogReturn();
-               return ERR_InUse|ERF_Notified;
-            }
+            else return ERR_InUse|ERF_Notified;
          }
       }
    }
@@ -1802,20 +1805,20 @@ ERROR MGR_Free(OBJECTPTR Object, APTR Void)
 
    set_object_flags(Object, (Object->Flags|NF_FREE) & (~NF_UNLOCK_FREE));
 
-   NotifySubscribers(Object, AC_Free, NULL, NULL, ERR_Okay);
+   NotifySubscribers(Object, AC_Free, NULL, 0, ERR_Okay);
 
    // AC_OwnerDestroyed is internal, it notifies objects in foreign tasks that are resource-linked to the object.
    // Refer to SetOwner() for more info.
 
-   NotifySubscribers(Object, AC_OwnerDestroyed, NULL, NULL, ERR_Okay);
+   NotifySubscribers(Object, AC_OwnerDestroyed, NULL, 0, ERR_Okay);
 
-   if (class->ActionTable[AC_Free].PerformAction) {  // If the class that formed the object is a sub-class, we call its Free() support first, and then the base-class to clean up.
-      class->ActionTable[AC_Free].PerformAction(Object, NULL);
+   if (mc->ActionTable[AC_Free].PerformAction) {  // If the class that formed the object is a sub-class, we call its Free() support first, and then the base-class to clean up.
+      mc->ActionTable[AC_Free].PerformAction(Object, NULL);
    }
 
-   if (class->Base) { // Sub-class detected, so call the base class
-      if (class->Base->ActionTable[AC_Free].PerformAction) {
-         class->Base->ActionTable[AC_Free].PerformAction(Object, NULL);
+   if (mc->Base) { // Sub-class detected, so call the base class
+      if (mc->Base->ActionTable[AC_Free].PerformAction) {
+         mc->Base->ActionTable[AC_Free].PerformAction(Object, NULL);
       }
    }
 
@@ -1823,7 +1826,7 @@ ERROR MGR_Free(OBJECTPTR Object, APTR Void)
 
    if (Object->Stats->ActionSubscriptions.ID) { // Close the action subscription list
       if (Object->UniqueID < 0) FreeResourceID(Object->Stats->ActionSubscriptions.ID);
-      else if (FreeResource(Object->Stats->ActionSubscriptions.Ptr)) LogErrorMsg("Invalid ActionSubscriptions address %p.", Object->Stats->ActionSubscriptions.Ptr);
+      else if (FreeResource(Object->Stats->ActionSubscriptions.Ptr)) log.warning("Invalid ActionSubscriptions address %p.", Object->Stats->ActionSubscriptions.Ptr);
 
       Object->Stats->ActionSubscriptions.Ptr = NULL;
    }
@@ -1831,7 +1834,7 @@ ERROR MGR_Free(OBJECTPTR Object, APTR Void)
    // If a private child structure is present, remove it
 
    if (Object->ChildPrivate) {
-      if (FreeResource(Object->ChildPrivate)) LogErrorMsg("Invalid ChildPrivate address %p.", Object->ChildPrivate);
+      if (FreeResource(Object->ChildPrivate)) log.warning("Invalid ChildPrivate address %p.", Object->ChildPrivate);
       Object->ChildPrivate = NULL;
    }
 
@@ -1839,12 +1842,13 @@ ERROR MGR_Free(OBJECTPTR Object, APTR Void)
    free_public_children(Object);
 
    if (Object->Flags & NF_TIMER_SUB) {
-      if (!thread_lock(TL_TIMER, 200)) {
-         struct CoreTimer *timer, *next;
+      ThreadLock lock(TL_TIMER, 200);
+      if (lock.granted()) {
+         CoreTimer *timer, *next;
          for (timer=glTimers; timer; timer=next) {
             next = timer->Next;
             if (timer->SubscriberID IS Object->UniqueID) {
-               LogErrorMsg("%s object #%d has an unfreed timer subscription.", class->ClassName, Object->UniqueID);
+               log.warning("%s object #%d has an unfreed timer subscription.", mc->ClassName, Object->UniqueID);
 
                if (timer->Next) timer->Next->Prev = timer->Prev;
                if (timer->Prev) timer->Prev->Next = timer->Next;
@@ -1852,21 +1856,20 @@ ERROR MGR_Free(OBJECTPTR Object, APTR Void)
                free(timer);
             }
          }
-         thread_unlock(TL_TIMER);
       }
    }
 
    if (Object->Flags & NF_PUBLIC) remove_shared_object(Object->UniqueID);  // If the object is shared, remove it from the shared list
 
    if (!(Object->Flags & NF_PUBLIC)) { // Decrement the counters associated with the class that this object belongs to.
-      if ((class->Base) AND (class->Base->OpenCount > 0)) class->Base->OpenCount--; // Child detected
-      if (class->OpenCount > 0) class->OpenCount--;
+      if ((mc->Base) AND (mc->Base->OpenCount > 0)) mc->Base->OpenCount--; // Child detected
+      if (mc->OpenCount > 0) mc->OpenCount--;
    }
 
    if ((glObjectLookup) AND (Object->Stats->Name[0])) { // Remove the object from the name lookup list
-      if (!thread_lock(TL_OBJECT_LOOKUP, 4000)) {
+      ThreadLock lock(TL_OBJECT_LOOKUP, 4000);
+      if (lock.granted()) {
          remove_object_hash(Object);
-         thread_unlock(TL_OBJECT_LOOKUP);
       }
    }
 
@@ -1876,11 +1879,10 @@ ERROR MGR_Free(OBJECTPTR Object, APTR Void)
    else {
       // Clear the object header.  This helps to raise problems in any areas of code that may attempt to use the object
       // after it has been destroyed.
-      ClearMemory(Object, sizeof(struct Head));
+      ClearMemory(Object, sizeof(Head));
       FreeResource(Object);
    }
 
-   LogReturn();
    return ERR_Okay|ERF_Notified;  // On returning we set the ERF_Notified flag to prevent Action() from trying to interact with the Object->Stats structure (which no longer exists after the object memory is freed).
 }
 
@@ -1890,23 +1892,25 @@ ERROR MGR_Free(OBJECTPTR Object, APTR Void)
 
 ERROR MGR_Init(OBJECTPTR Object, APTR Void)
 {
-   if (!Object->Stats) return LogError(ERH_Init, ERR_NoStats);
+   parasol::Log log("Init");
 
-   struct rkMetaClass *baseclass;
-   if (!(baseclass = Object->Class)) return LogError(ERH_Init, ERR_LostClass);
+   if (!Object->Stats) return log.warning(ERR_NoStats);
+
+   rkMetaClass *baseclass;
+   if (!(baseclass = Object->Class)) return log.warning(ERR_LostClass);
 
    if (Object->ClassID != baseclass->BaseClassID) {
-      LogErrorMsg("Cannot initialise object #%d - the Object.ClassID ($%.8x) does not match the Class.BaseClassID ($%.8x)", Object->UniqueID, Object->ClassID, baseclass->BaseClassID);
+      log.warning("Cannot initialise object #%d - the Object.ClassID ($%.8x) does not match the Class.BaseClassID ($%.8x)", Object->UniqueID, Object->ClassID, baseclass->BaseClassID);
       return ERR_ObjectCorrupt;
    }
 
    if (Object->Flags & NF_INITIALISED) {  // Initialising twice does not cause an error, but send a warning and return
-      LogError(ERH_Init, ERR_DoubleInit);
+      log.warning(ERR_DoubleInit);
       return ERR_Okay;
    }
 
-   if (Object->Stats->Name[0]) LogF("~Init()","Name: %s, Owner: %d", Object->Stats->Name, Object->OwnerID);
-   else LogF("~Init()","Owner: %d", Object->OwnerID);
+   if (Object->Stats->Name[0]) log.branch("Name: %s, Owner: %d", Object->Stats->Name, Object->OwnerID);
+   else log.branch("Owner: %d", Object->OwnerID);
 
    BYTE use_subclass = FALSE;
    ERROR error = ERR_Okay;
@@ -1926,7 +1930,6 @@ ERROR MGR_Init(OBJECTPTR Object, APTR Void)
          if (!error) set_object_flags(Object, Object->Flags|NF_INITIALISED);
       }
 
-      LogReturn();
       return error;
    }
    else {
@@ -1938,7 +1941,7 @@ ERROR MGR_Init(OBJECTPTR Object, APTR Void)
       //
       // ERR_UseSubClass: Similar to ERR_NoSupport, but avoids scanning of sub-classes that aren't loaded in memory.
 
-      struct rkMetaClass * sublist[16];
+      rkMetaClass * sublist[16];
       LONG sli = -1;
 
       while (Object->Class) {
@@ -1951,7 +1954,7 @@ ERROR MGR_Init(OBJECTPTR Object, APTR Void)
                   // Due to the switch, increase the open count of the sub-class (see NewObject() for details on object
                   // reference counting).
 
-                  LogMsg("Object class switched to sub-class \"%s\".", Object->Class->ClassName);
+                  log.msg("Object class switched to sub-class \"%s\".", Object->Class->ClassName);
 
                   if (!(Object->Flags & NF_PUBLIC)) Object->Class->OpenCount++;
 
@@ -1959,31 +1962,27 @@ ERROR MGR_Init(OBJECTPTR Object, APTR Void)
                   Object->Flags |= NF_RECLASSED; // This flag indicates that the object originally belonged to the base-class
                }
 
-               LogReturn();
                return ERR_Okay;
             }
 
             if (error IS ERR_UseSubClass) {
-               FMSG("MGR_Init","Requested to use registered sub-class.");
+               log.trace("Requested to use registered sub-class.");
                use_subclass = TRUE;
             }
             else if (error != ERR_NoSupport) break;
          }
-         else {
-            LogReturn();
-            return ERR_Okay;
-         }
+         else return ERR_Okay;
 
          if (sli IS -1) {
             // Initialise a list of all known sub-classes for querying in sequence.
             sli = 0;
             LONG i = 0;
-            struct rkMetaClass **ptr;
+            rkMetaClass **ptr;
             CSTRING key = NULL;
             while ((i < ARRAYSIZE(sublist)-1) AND (!VarIterate(glClassMap, key, &key, (APTR *)&ptr, NULL))) {
-               struct rkMetaClass *class = ptr[0];
-               if ((Object->ClassID IS class->BaseClassID) AND (class->BaseClassID != class->SubClassID)) {
-                  sublist[i++] = class;
+               rkMetaClass *mc = ptr[0];
+               if ((Object->ClassID IS mc->BaseClassID) AND (mc->BaseClassID != mc->SubClassID)) {
+                  sublist[i++] = mc;
                }
             }
             sublist[i++] = NULL;
@@ -1992,7 +1991,7 @@ ERROR MGR_Init(OBJECTPTR Object, APTR Void)
          // Attempt to initialise with the next known sub-class.
 
          if ((Object->Class = sublist[sli++])) {
-            FMSG("MGR_Init","Attempting initialisation with sub-class '%s'", Object->Class->ClassName);
+            log.trace("Attempting initialisation with sub-class '%s'", Object->Class->ClassName);
             Object->SubID = Object->Class->SubClassID;
          }
       }
@@ -2007,43 +2006,38 @@ ERROR MGR_Init(OBJECTPTR Object, APTR Void)
    // This is the only way we can support the automatic loading of sub-classes without causing undue load on CPU and
    // memory resources (loading each sub-class into memory just to check whether or not the data is supported is overkill).
 
-   STRING location;
+   CSTRING location;
    if (use_subclass) { // If ERR_UseSubClass was set and the sub-class was not registered, do not call IdentifyFile()
-      LogF("@MGR_Init","ERR_UseSubClass was used but no suitable sub-class was registered.");
+      log.warning("ERR_UseSubClass was used but no suitable sub-class was registered.");
    }
    else if ((error IS ERR_NoSupport) AND (!GetField(Object, FID_Location|TSTR, &location)) AND (location)) {
       CLASSID classid;
       if (!IdentifyFile(location, NULL, 0, &classid, &Object->SubID, NULL)) {
          if ((classid IS Object->ClassID) AND (Object->SubID)) {
-            LogF("MGR_Init","Searching for subclass $%.8x", Object->SubID);
+            log.msg("Searching for subclass $%.8x", Object->SubID);
             if ((Object->Class = FindClass(Object->SubID))) {
                if (Object->Class->ActionTable[AC_Init].PerformAction) {
                   if (!(error = Object->Class->ActionTable[AC_Init].PerformAction(Object, NULL))) {
-                     LogF("MGR_Init","Object class switched to sub-class \"%s\".", Object->Class->ClassName);
+                     log.msg("Object class switched to sub-class \"%s\".", Object->Class->ClassName);
                      set_object_flags(Object, Object->Flags|NF_INITIALISED);
 
                      if (!(Object->Flags & NF_PUBLIC)) { // Increase the open count of the sub-class
                         Object->Class->OpenCount++;
                      }
-                     LogReturn();
                      return ERR_Okay;
                   }
                }
-               else {
-                  LogReturn();
-                  return ERR_Okay;
-               }
+               else return ERR_Okay;
             }
-            else LogF("@MGR_Init","Failed to load module for class #%d.", Object->SubID);
+            else log.warning("Failed to load module for class #%d.", Object->SubID);
          }
       }
-      else LogF("@MGR_Init","File '%s' does not belong to class '%s', got $%.8x.", location, Object->Class->ClassName, classid);
+      else log.warning("File '%s' does not belong to class '%s', got $%.8x.", location, Object->Class->ClassName, classid);
 
       Object->Class = baseclass;  // Put back the original to retain object integrity
       Object->SubID = baseclass->SubClassID;
    }
 
-   LogReturn();
    return error;
 }
 
@@ -2053,7 +2047,8 @@ ERROR MGR_Init(OBJECTPTR Object, APTR Void)
 
 ERROR MGR_OwnerDestroyed(OBJECTPTR Object, APTR Void)
 {
-   LogAction("Owner %d has been destroyed.", Object->UniqueID);
+   parasol::Log log("OwnerDestroyed");
+   log.function("Owner %d has been destroyed.", Object->UniqueID);
    acFree(Object);
    return ERR_Okay;
 }
@@ -2064,7 +2059,9 @@ ERROR MGR_OwnerDestroyed(OBJECTPTR Object, APTR Void)
 
 ERROR MGR_Rename(OBJECTPTR Object, struct acRename *Args)
 {
-   if (!Args) return PostError(ERR_NullArgs);
+   parasol::Log log("Rename");
+
+   if (!Args) return log.warning(ERR_NullArgs);
 
    if (Object->Class) {
       if (Object->Class->ActionTable[AC_Rename].PerformAction) {
@@ -2072,7 +2069,7 @@ ERROR MGR_Rename(OBJECTPTR Object, struct acRename *Args)
       }
       else return SetField(Object, FID_FileName|TPTR, Args->Name);
    }
-   else return LogError(ERH_Rename, ERR_LostClass);
+   else return log.warning(ERR_LostClass);
 }
 
 /*****************************************************************************
@@ -2081,7 +2078,9 @@ ERROR MGR_Rename(OBJECTPTR Object, struct acRename *Args)
 
 ERROR MGR_Seek(OBJECTPTR Object, struct acSeek *Args)
 {
-   if (!Args) return PostError(ERR_NullArgs);
+   parasol::Log log("Seek");
+
+   if (!Args) return log.warning(ERR_NullArgs);
 
    ERROR error;
    if (Object->Class) {
@@ -2089,12 +2088,12 @@ ERROR MGR_Seek(OBJECTPTR Object, struct acSeek *Args)
          // Check and correct the Pos and Mode if SEEK_END
 
          if ((Args->Position IS SEEK_END) AND (Args->Offset < 0)) Args->Offset = -Args->Offset;
-         else if ((Args->Position IS SEEK_START) AND (Args->Position < 0)) return LogError(ERH_Seek, ERR_Args);
+         else if ((Args->Position IS SEEK_START) AND (Args->Position < 0)) return log.warning(ERR_Args);
          return Object->Class->ActionTable[AC_Seek].PerformAction(Object, Args);
       }
       else error = ERR_NoSupport;
    }
    else error = ERR_LostClass;
 
-   return LogError(ERH_Seek, error);
+   return log.warning(error);
 }

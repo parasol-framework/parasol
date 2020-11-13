@@ -585,7 +585,9 @@ static ERROR fast_scan_zip(objCompression *Self)
       }
 
       struct ZipFile *lastentry = NULL;
+      #pragma GCC diagnostic ignored "-Waddress-of-packed-member"
       ULONG *head = (ULONG *)list;
+      #pragma GCC diagnostic warning "-Waddress-of-packed-member"
       LONG i;
       for (i=0; i < tail.filecount; i++) {
          struct ZipFile *zf, *next;

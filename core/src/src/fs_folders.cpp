@@ -1,16 +1,21 @@
+/*****************************************************************************
+-CATEGORY-
+Name: Files
+-END-
+*****************************************************************************/
 
 static void folder_free(APTR Address)
 {
-   struct DirInfo *folder = (struct DirInfo *)Address;
+   parasol::Log log("CloseDir");
+   DirInfo *folder = (DirInfo *)Address;
 
    // Note: Virtual file systems should focus on destroying handles as fs_closedir() will take care of memory and list
    // deallocations.
 
    if ((folder->prvVirtualID) AND (folder->prvVirtualID != DEFAULT_VIRTUALID)) {
-      ULONG v;
-      for (v=0; v < glVirtualTotal; v++) {
+      for (auto v=0; v < glVirtualTotal; v++) {
          if (glVirtual[v].VirtualID IS folder->prvVirtualID) {
-            FMSG("CloseDir()","Virtual file driver function @ %p", glVirtual[v].CloseDir);
+            log.trace("Virtual file driver function @ %p", glVirtual[v].CloseDir);
             if (glVirtual[v].CloseDir) glVirtual[v].CloseDir(folder);
             break;
          }
@@ -20,7 +25,7 @@ static void folder_free(APTR Address)
    fs_closedir(folder);
 }
 
-static struct ResourceManager glResourceFolder = {
+static ResourceManager glResourceFolder = {
    "Folder",
    &folder_free
 };
@@ -52,11 +57,13 @@ AllocMemory
 
 *****************************************************************************/
 
-ERROR OpenDir(CSTRING Path, LONG Flags, struct DirInfo **Result)
+ERROR OpenDir(CSTRING Path, LONG Flags, DirInfo **Result)
 {
-   if ((!Path) OR (!Result)) return LogError(ERH_OpenDir, ERR_NullArgs);
+   parasol::Log log(__FUNCTION__);
 
-   FMSG("~OpenDir()","Path: '%s'", Path);
+   if ((!Path) OR (!Result)) return log.warning(ERR_NullArgs);
+
+   log.traceBranch("Path: '%s'", Path);
 
    *Result = NULL;
 
@@ -69,17 +76,16 @@ ERROR OpenDir(CSTRING Path, LONG Flags, struct DirInfo **Result)
       // NB: We use MAX_FILENAME rather than resolve_len in the allocation size because fs_opendir() requires more space.
       LONG path_len = StrLength(Path) + 1;
       LONG resolve_len = StrLength(resolved_path) + 1;
-      struct DirInfo *dir;
-      if (AllocMemory(sizeof(struct DirInfo) + sizeof(struct FileInfo) + MAX_FILENAME + path_len + MAX_FILENAME,
+      DirInfo *dir;
+      if (AllocMemory(sizeof(DirInfo) + sizeof(FileInfo) + MAX_FILENAME + path_len + MAX_FILENAME,
             MEM_DATA|MEM_MANAGED, (APTR *)&dir, NULL) != ERR_Okay) {
          FreeResource(resolved_path);
-         LOGRETURN();
          return ERR_AllocMemory;
       }
 
       set_memory_manager(dir, &glResourceFolder);
 
-      dir->Info         = (struct FileInfo *)(dir + 1);
+      dir->Info         = (FileInfo *)(dir + 1);
       dir->Info->Name   = (STRING)(dir->Info + 1);
       dir->prvPath      = dir->Info->Name + MAX_FILENAME;
       dir->prvFlags     = Flags | RDF_OPENDIR;
@@ -97,37 +103,29 @@ ERROR OpenDir(CSTRING Path, LONG Flags, struct DirInfo **Result)
       if ((Path[0] IS ':') OR (!Path[0])) {
          if (!(Flags & RDF_FOLDER)) {
             FreeResource(dir);
-            LOGRETURN();
             return ERR_DirEmpty;
          }
          *Result = dir;
-         LOGRETURN();
          return ERR_Okay;
       }
 
-      const struct virtual_drive *virtual = get_fs(dir->prvResolvedPath);
+      const virtual_drive *vd = get_fs(dir->prvResolvedPath);
 
-      if (!virtual->OpenDir) {
+      if (!vd->OpenDir) {
          FreeResource(dir);
-         LOGRETURN();
          return ERR_DirEmpty;
       }
 
-      if (!(error = virtual->OpenDir(dir))) {
-         dir->prvVirtualID = virtual->VirtualID;
+      if (!(error = vd->OpenDir(dir))) {
+         dir->prvVirtualID = vd->VirtualID;
          *Result = dir;
-         LOGRETURN();
          return ERR_Okay;
       }
 
       FreeResource(dir);
-      LOGRETURN();
       return error;
    }
-   else {
-      LOGRETURN();
-      return LogError(ERH_OpenDir, ERR_ResolvePath);
-   }
+   else return log.warning(ERR_ResolvePath);
 }
 
 /*****************************************************************************
@@ -167,13 +165,15 @@ DirEmpty: There are no more items to scan.
 
 *****************************************************************************/
 
-ERROR ScanDir(struct DirInfo *Dir)
+ERROR ScanDir(DirInfo *Dir)
 {
-   if (!Dir) return LogError(ERH_ScanDir, ERR_NullArgs);
+   parasol::Log log(__FUNCTION__);
 
-   struct FileInfo *file;
-   if (!(file = Dir->Info)) { FMSG("ScanDir","Missing Dir->Info"); return LogError(ERH_ScanDir, ERR_InvalidData); }
-   if (!file->Name) { FMSG("ScanDir","Missing Dir->Info->Name"); return LogError(ERH_ScanDir, ERR_InvalidData); }
+   if (!Dir) return log.warning(ERR_NullArgs);
+
+   FileInfo *file;
+   if (!(file = Dir->Info)) { log.trace("Missing Dir->Info"); return log.warning(ERR_InvalidData); }
+   if (!file->Name) { log.trace("Missing Dir->Info->Name"); return log.warning(ERR_InvalidData); }
 
    file->Name[0] = 0;
    file->Flags   = 0;
@@ -189,7 +189,7 @@ ERROR ScanDir(struct DirInfo *Dir)
    if ((Dir->prvPath[0] IS ':') OR (!Dir->prvPath[0])) {
       LONG i;
       if (!AccessPrivateObject((OBJECTPTR)glVolumes, 8000)) {
-         struct ConfigEntry *entries = glVolumes->Entries;
+         ConfigEntry *entries = glVolumes->Entries;
 
          if ((!entries) OR (glVolumes->AmtEntries <= 0)) {
             ReleasePrivateObject((OBJECTPTR)glVolumes);
@@ -231,9 +231,7 @@ ERROR ScanDir(struct DirInfo *Dir)
             }
             else if (Dir->prvFlags & RDF_TAGS) {
                if (!StrMatch("Label", entries[i].Key)) {
-                  if (entries[i].Data[0]) {
-                     AddInfoTag(file, "Label", entries[i].Data);
-                  }
+                  if (entries[i].Data[0]) AddInfoTag(file, "Label", entries[i].Data);
                }
             }
 
@@ -257,8 +255,7 @@ ERROR ScanDir(struct DirInfo *Dir)
       error = fs_scandir(Dir);
    }
    else {
-      UWORD v;
-      for (v=0; v < glVirtualTotal; v++) {
+      for (auto v=0; v < glVirtualTotal; v++) {
          if (glVirtual[v].VirtualID != Dir->prvVirtualID) continue;
          if (glVirtual[v].ScanDir) error = glVirtual[v].ScanDir(Dir);
          break;

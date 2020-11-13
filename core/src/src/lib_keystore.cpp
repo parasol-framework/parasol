@@ -32,24 +32,25 @@ struct KeyPair {
    // Key name follows
 };
 
-INLINE CSTRING GET_KEY_VALUE(struct KeyPair *KP) { return (CSTRING)(((APTR)KP) + KP->ValueOffset); }
-INLINE CSTRING GET_KEY_NAME(struct KeyPair *KP) { return (KP->Flags & KPF_PREHASHED) ? NULL : ((CSTRING)(KP + 1)); }
-INLINE void DEAD_KEY(struct KeyPair *KP) { KP->Flags |= KPF_DEAD; }
-INLINE LONG CHECK_DEAD_KEY(struct KeyPair *KP) { return (KP->Flags & KPF_DEAD) != 0; }
-INLINE LONG GET_KEY_SIZE(struct KeyPair *KP) { return KP->ValueOffset + KP->ValueLength; }
+INLINE CSTRING GET_KEY_VALUE(KeyPair *KP) { return (CSTRING)(((char *)KP) + KP->ValueOffset); }
+INLINE CSTRING GET_KEY_NAME(KeyPair *KP) { return (KP->Flags & KPF_PREHASHED) ? NULL : ((CSTRING)(KP + 1)); }
+INLINE void DEAD_KEY(KeyPair *KP) { KP->Flags |= KPF_DEAD; }
+INLINE LONG CHECK_DEAD_KEY(KeyPair *KP) { return (KP->Flags & KPF_DEAD) != 0; }
+INLINE LONG GET_KEY_SIZE(KeyPair *KP) { return KP->ValueOffset + KP->ValueLength; }
 
 #define INITIAL_SIZE 128 // The table size must always be a power of 2
 #define BUCKET_SIZE 8
 
 #define MOD_TABLESIZE(val,size) ((val) & (size - 1))
-#define HEAD_SIZE sizeof(struct KeyPair)
+#define HEAD_SIZE sizeof(KeyPair)
 
 //****************************************************************************
 // Resource management for KeyStore.
 
 static void KeyStore_free(APTR Address)
 {
-   struct KeyStore *store = (struct KeyStore *)Address;
+   parasol::Log log(__FUNCTION__);
+   KeyStore *store = (KeyStore *)Address;
 
    if (store->Flags & KSF_AUTO_REMOVE) {
       ULONG key = 0;
@@ -57,13 +58,12 @@ static void KeyStore_free(APTR Address)
       LONG size;
       while (!KeyIterate(store, key, &key, (APTR *)&ptr, &size)) {
          if (size IS sizeof(APTR)) FreeResource(ptr[0]);
-         else FMSG("@FreeResource","Key $%.8x has unexpected size %d", key, size);
+         else log.trace("Key $%.8x has unexpected size %d", key, size);
       }
    }
 
    if (store->Data) {
-      LONG i;
-      for (i=0; i < store->TableSize; i++) {
+      for (LONG i=0; i < store->TableSize; i++) {
          if (store->Data[i]) free((APTR)store->Data[i]);
       }
       free(store->Data);
@@ -76,7 +76,7 @@ static void KeyStore_free(APTR Address)
    }
 }
 
-static struct ResourceManager glResourceKeyStore = {
+static ResourceManager glResourceKeyStore = {
    "KeyStore",
    &KeyStore_free
 };
@@ -90,11 +90,11 @@ INLINE LONG hm_hash_index(LONG TableSize, ULONG KeyHash) {
 
 //****************************************************************************
 
-static struct KeyPair * build_key_pair(struct KeyStore *Store, CSTRING Key, const void *Value, LONG Length)
+static KeyPair * build_key_pair(KeyStore *Store, CSTRING Key, const void *Value, LONG Length)
 {
    LONG key_len = StrLength(Key) + 1;
-   struct KeyPair *kp;
-   if ((kp = (struct KeyPair *)malloc(HEAD_SIZE + key_len + Length))) {
+   KeyPair *kp;
+   if ((kp = (KeyPair *)malloc(HEAD_SIZE + key_len + Length))) {
       kp->ValueOffset = HEAD_SIZE + key_len;
       kp->Flags       = 0;
       kp->KeyHash     = StrHash(Key, (Store->Flags & KSF_CASE) != 0);
@@ -106,10 +106,10 @@ static struct KeyPair * build_key_pair(struct KeyStore *Store, CSTRING Key, cons
    else return NULL;
 }
 
-static struct KeyPair * build_hashed_key_pair(struct KeyStore *Store, ULONG Key, const void *Value, LONG Length)
+static KeyPair * build_hashed_key_pair(KeyStore *Store, ULONG Key, const void *Value, LONG Length)
 {
-   struct KeyPair *kp;
-   if ((kp = (struct KeyPair *)malloc(HEAD_SIZE + 1 + Length))) {
+   KeyPair *kp;
+   if ((kp = (KeyPair *)malloc(HEAD_SIZE + 1 + Length))) {
       kp->ValueOffset = HEAD_SIZE + 1;
       kp->Flags       = KPF_PREHASHED;
       kp->KeyHash     = Key;
@@ -124,19 +124,19 @@ static struct KeyPair * build_hashed_key_pair(struct KeyStore *Store, ULONG Key,
 //****************************************************************************
 // Doubles the size of the hashmap, and rehashes all the elements
 
-static ERROR hm_rehash(struct KeyStore *Store)
+static ERROR hm_rehash(KeyStore *Store)
 {
-   struct KeyPair **nv;
-   struct KeyPair **old = Store->Data;
+   parasol::Log log(__FUNCTION__);
+   KeyPair **nv;
+   KeyPair **old = Store->Data;
    LONG old_size = Store->TableSize;
    LONG new_size = 2 * Store->TableSize; // Doubling the table size ensures that it's always a power of 2.
 
-   FMSG("~hm_rehash()","Store: %p", Store);
+   log.traceBranch("Store: %p", Store);
 retry:
-   if ((nv = malloc(new_size * sizeof(struct KeyPair **)))) {
-      ClearMemory(nv, new_size * sizeof(struct KeyPair **));
-      LONG i;
-      for (i=0; i < old_size; i++) {
+   if ((nv = (KeyPair **)malloc(new_size * sizeof(KeyPair **)))) {
+      ClearMemory(nv, new_size * sizeof(KeyPair **));
+      for (LONG i=0; i < old_size; i++) {
          if (old[i]) {
             // Check for dead keys during rehashing - these must be removed.
 
@@ -170,28 +170,25 @@ retry:
       Store->TableSize = new_size;
       free(old);
 
-      LOGRETURN();
       return ERR_Okay;
    }
-   else {
-      LOGRETURN();
-      return ERR_AllocMemory;
-   }
+   else return ERR_AllocMemory;
 }
 
 //****************************************************************************
 // Used for setting values in the map, this returns the integer of the location to store a new item, or -1.
 
-static LONG hm_newkey(struct KeyStore *Store, struct KeyPair *KeyPair)
+static LONG hm_newkey(KeyStore *Store, KeyPair *KeyPair)
 {
+   parasol::Log log(__FUNCTION__);
+
    if (Store->Total >= Store->TableSize / 2) {
-      FMSG("hm_newkey()","Hashmap is full and requires expansion.");
+      log.trace("Hashmap is full and requires expansion.");
       return -1;
    }
 
    LONG index = hm_hash_index(Store->TableSize, KeyPair->KeyHash);
-   LONG i;
-   for (i=0; i < BUCKET_SIZE; i++) {
+   for (LONG i=0; i < BUCKET_SIZE; i++) {
       if (!Store->Data[index]) return index;
       index = MOD_TABLESIZE(index + 1, Store->TableSize);
    }
@@ -202,7 +199,7 @@ static LONG hm_newkey(struct KeyStore *Store, struct KeyPair *KeyPair)
 // Note: It is presumed that you have checked for duplicates because this routine does not check for an existing key
 // with the same name.
 
-static LONG hm_put(struct KeyStore *Store, struct KeyPair *KeyPair)
+static LONG hm_put(KeyStore *Store, KeyPair *KeyPair)
 {
    LONG index = hm_newkey(Store, KeyPair); // Find a place to put our value
    while (index IS -1) {
@@ -220,12 +217,11 @@ static LONG hm_put(struct KeyStore *Store, struct KeyPair *KeyPair)
 // This function also breaks immediately if a NULL pointer is found in the bucket.  This is a useful optimisation, but
 // presumes that keys are never removed and that they can only become 'dead'.  Such keys are cleaned up during a rehash.
 
-static LONG hm_get(struct KeyStore *Store, CSTRING Key)
+static LONG hm_get(KeyStore *Store, CSTRING Key)
 {
    ULONG key_hash = StrHash(Key, (Store->Flags & KSF_CASE) != 0);
    LONG index = hm_hash_index(Store->TableSize, key_hash);
-   LONG i;
-   for (i=0; i < BUCKET_SIZE; i++){
+   for (LONG i=0; i < BUCKET_SIZE; i++){
       if (!Store->Data[index]) break;
       if (Store->Data[index]->KeyHash IS key_hash) {
          if (Store->Flags & KSF_CASE) {
@@ -239,11 +235,10 @@ static LONG hm_get(struct KeyStore *Store, CSTRING Key)
    return -1;
 }
 
-static LONG hm_get_hashed(struct KeyStore *Store, ULONG Key)
+static LONG hm_get_hashed(KeyStore *Store, ULONG Key)
 {
    LONG index = hm_hash_index(Store->TableSize, Key);
-   LONG i;
-   for (i=0; i < BUCKET_SIZE; i++){
+   for (LONG i=0; i < BUCKET_SIZE; i++){
       if (!Store->Data[index]) break;
       if (Store->Data[index]->KeyHash IS Key) return index;
       index = MOD_TABLESIZE(index + 1, Store->TableSize);
@@ -272,13 +267,15 @@ AllocMemory
 
 *****************************************************************************/
 
-ERROR VarCopy(struct KeyStore *Source, struct KeyStore *Dest)
+ERROR VarCopy(KeyStore *Source, KeyStore *Dest)
 {
+   parasol::Log log(__FUNCTION__);
+
    if ((!Source) OR (!Dest)) return ERR_NullArgs;
 
    if (!Source->Total) return ERR_Okay; // Nothing to be merged
 
-   FMSG("~VarCopy()","%p to %p", Source, Dest);
+   log.traceBranch("%p to %p", Source, Dest);
 
    if (Source->Flags & KSF_THREAD_SAFE) LockMutex(Source->Mutex, 0x7fffffff);
    if (Dest->Flags & KSF_THREAD_SAFE) LockMutex(Dest->Mutex, 0x7fffffff);
@@ -290,7 +287,7 @@ ERROR VarCopy(struct KeyStore *Source, struct KeyStore *Dest)
 
       LONG size = GET_KEY_SIZE(Source->Data[i]);
 
-      struct KeyPair *clone = malloc(size);
+      KeyPair *clone = (KeyPair *)malloc(size);
       if (clone) {
          CopyMemory(Source->Data[i], clone, size);
 
@@ -303,7 +300,6 @@ ERROR VarCopy(struct KeyStore *Source, struct KeyStore *Dest)
             else if (hm_put(Dest, clone) < 0) {
                if (Source->Flags & KSF_THREAD_SAFE) UnlockMutex(Source->Mutex);
                if (Dest->Flags & KSF_THREAD_SAFE) UnlockMutex(Dest->Mutex);
-               LOGRETURN();
                return ERR_AllocMemory;
             }
          }
@@ -314,21 +310,18 @@ ERROR VarCopy(struct KeyStore *Source, struct KeyStore *Dest)
          else if (hm_put(Dest, clone) < 0) {
             if (Source->Flags & KSF_THREAD_SAFE) UnlockMutex(Source->Mutex);
             if (Dest->Flags & KSF_THREAD_SAFE) UnlockMutex(Dest->Mutex);
-            LOGRETURN();
             return ERR_AllocMemory;
          }
       }
       else {
          if (Source->Flags & KSF_THREAD_SAFE) UnlockMutex(Source->Mutex);
          if (Dest->Flags & KSF_THREAD_SAFE) UnlockMutex(Dest->Mutex);
-         LOGRETURN();
          return ERR_AllocMemory;
       }
    }
 
    if (Source->Flags & KSF_THREAD_SAFE) UnlockMutex(Source->Mutex);
    if (Dest->Flags & KSF_THREAD_SAFE) UnlockMutex(Dest->Mutex);
-   LOGRETURN();
    return ERR_Okay;
 }
 
@@ -355,11 +348,13 @@ DoesNotExist
 
 *****************************************************************************/
 
-ERROR VarGet(struct KeyStore *Store, CSTRING Name, APTR *Data, LONG *Size)
+ERROR VarGet(KeyStore *Store, CSTRING Name, APTR *Data, LONG *Size)
 {
+   parasol::Log log(__FUNCTION__);
+
    if ((!Name) OR (!*Name) OR (!Store) OR (!Data)) return ERR_NullArgs;
 
-   FMSG("~VarGet()","%s", Name);
+   log.traceBranch("%s", Name);
 
    if (Store->Flags & KSF_THREAD_SAFE) LockMutex(Store->Mutex, 0x7fffffff);
 
@@ -367,7 +362,6 @@ ERROR VarGet(struct KeyStore *Store, CSTRING Name, APTR *Data, LONG *Size)
    if ((ki = hm_get(Store, Name)) >= 0) {
       if (CHECK_DEAD_KEY(Store->Data[ki])) {
          if (Store->Flags & KSF_THREAD_SAFE) UnlockMutex(Store->Mutex);
-         LOGRETURN();
          return ERR_DoesNotExist;
       }
 
@@ -375,12 +369,10 @@ ERROR VarGet(struct KeyStore *Store, CSTRING Name, APTR *Data, LONG *Size)
       if (Size) *Size = Store->Data[ki]->ValueLength;
 
       if (Store->Flags & KSF_THREAD_SAFE) UnlockMutex(Store->Mutex);
-      LOGRETURN();
       return ERR_Okay;
    }
 
    if (Store->Flags & KSF_THREAD_SAFE) UnlockMutex(Store->Mutex);
-   LOGRETURN();
    return ERR_DoesNotExist;
 }
 
@@ -401,7 +393,7 @@ cstr: The value for the given key is returned.  If no match is possible then a N
 
 *****************************************************************************/
 
-CSTRING VarGetString(struct KeyStore *Store, CSTRING Key)
+CSTRING VarGetString(KeyStore *Store, CSTRING Key)
 {
    if ((!Key) OR (!*Key) OR (!Store)) return NULL;
 
@@ -476,7 +468,7 @@ Finished: All keys have been iterated.
 
 *****************************************************************************/
 
-ERROR VarIterate(struct KeyStore *Store, CSTRING Index, CSTRING *Key, APTR *Data, LONG *Size)
+ERROR VarIterate(KeyStore *Store, CSTRING Index, CSTRING *Key, APTR *Data, LONG *Size)
 {
    if (!Store) return ERR_NullArgs;
 
@@ -535,7 +527,7 @@ TimeOut
 
 *****************************************************************************/
 
-ERROR VarLock(struct KeyStore *Store, LONG Timeout)
+ERROR VarLock(KeyStore *Store, LONG Timeout)
 {
    if (!Store) return ERR_NullArgs;
    if (!Store->Mutex) return ERR_BadState;
@@ -563,33 +555,35 @@ resource(KeyStore): The allocated resource is returned or NULL if a memory alloc
 
 *****************************************************************************/
 
-struct KeyStore * VarNew(LONG InitialSize, LONG Flags)
+KeyStore * VarNew(LONG InitialSize, LONG Flags)
 {
+   parasol::Log log(__FUNCTION__);
+
    if (InitialSize < INITIAL_SIZE) InitialSize = INITIAL_SIZE;
 
    // Ensure that InitialSize is rounded up to a power of 2
 
    InitialSize = 1<<((__builtin_clz(InitialSize-1) ^ 31) + 1);
 
-   struct KeyStore *vs;
+   KeyStore *vs;
 
    ERROR error;
    LONG mem_flags = MEM_DATA|MEM_MANAGED;
    if (Flags & KSF_UNTRACKED) mem_flags |= MEM_UNTRACKED;
-   error = AllocMemory(sizeof(struct KeyStore), mem_flags, (APTR *)&vs, NULL);
+   error = AllocMemory(sizeof(KeyStore), mem_flags, (APTR *)&vs, NULL);
    if (!error) set_memory_manager(vs, &glResourceKeyStore);
 
    if (error) {
-      FMSG("@VarNew","Failed to allocate memory.");
+      log.traceWarning("Failed to allocate memory.");
       return NULL;
    }
 
-   if ((vs->Data = malloc(InitialSize * sizeof(STRING)))) {
+   if ((vs->Data = (KeyPair **)malloc(InitialSize * sizeof(STRING)))) {
       ClearMemory(vs->Data, InitialSize * sizeof(STRING));
 
       if (Flags & KSF_THREAD_SAFE) {
          if ((error = AllocMutex(ALF_RECURSIVE, &vs->Mutex)) != ERR_Okay) {
-            FMSG("@VarNew","AllocMutex() failed: %s", GetErrorMsg(error));
+            log.traceWarning("AllocMutex() failed: %s", GetErrorMsg(error));
             FreeResource(vs);
             return NULL;
          }
@@ -600,9 +594,7 @@ struct KeyStore * VarNew(LONG InitialSize, LONG Flags)
       vs->Flags = Flags;
       return vs;
    }
-   else {
-      FreeResource(vs);
-   }
+   else FreeResource(vs);
 
    return NULL;
 }
@@ -630,13 +622,15 @@ AllocMemory
 
 *****************************************************************************/
 
-ERROR VarSetString(struct KeyStore *Store, CSTRING Key, CSTRING Value)
+ERROR VarSetString(KeyStore *Store, CSTRING Key, CSTRING Value)
 {
+   parasol::Log log(__FUNCTION__);
+
    if ((!Key) OR (!Store)) return ERR_NullArgs;
 
-   FMSG("~VarSetString()","%p: %s = %.60s", Store, Key, Value);
+   log.traceBranch("%p: %s = %.60s", Store, Key, Value);
 
-   if (Key[0] IS '+') LogF("!VarSetString","The use of '+' to for appending keys is no longer supported: %s", Key);
+   if (Key[0] IS '+') log.error("The use of '+' to for appending keys is no longer supported: %s", Key);
 
    if (Store->Flags & KSF_THREAD_SAFE) LockMutex(Store->Mutex, 0x7fffffff);
 
@@ -645,39 +639,34 @@ ERROR VarSetString(struct KeyStore *Store, CSTRING Key, CSTRING Value)
       if (!Value) { // Client request to delete the key, so mark it as dead and return.
          DEAD_KEY(Store->Data[ki]);
          if (Store->Flags & KSF_THREAD_SAFE) UnlockMutex(Store->Mutex);
-         LOGRETURN();
          return ERR_Okay;
       }
 
       // Free the existing key-pair and replace it with a new one.
 
-      struct KeyPair *kp = build_key_pair(Store, Key, Value, StrLength(Value) + 1);
+      KeyPair *kp = build_key_pair(Store, Key, Value, StrLength(Value) + 1);
       if (kp) {
          kp->Flags |= KPF_STRING;
          free((APTR)Store->Data[ki]);
          Store->Data[ki] = kp;
          if (Store->Flags & KSF_THREAD_SAFE) UnlockMutex(Store->Mutex);
-         LOGRETURN();
          return ERR_Okay;
       }
    }
    else if (!Value) { // Client requested deletion of a key that doesn't exist - ignore it.
       if (Store->Flags & KSF_THREAD_SAFE) UnlockMutex(Store->Mutex);
-      LOGRETURN();
       return ERR_Okay;
    }
    else { // Brand new key
-      struct KeyPair *kp = build_key_pair(Store, Key, Value, StrLength(Value) + 1);
+      KeyPair *kp = build_key_pair(Store, Key, Value, StrLength(Value) + 1);
       if ((kp) AND ((ki = hm_put(Store, kp)) >= 0)) {
          kp->Flags |= KPF_STRING;
          if (Store->Flags & KSF_THREAD_SAFE) UnlockMutex(Store->Mutex);
-         LOGRETURN();
          return ERR_Okay;
       }
    }
 
    if (Store->Flags & KSF_THREAD_SAFE) UnlockMutex(Store->Mutex);
-   LOGRETURN();
    return ERR_AllocMemory;
 }
 
@@ -710,11 +699,13 @@ ptr: A pointer to the cached version of the data is returned, or NULL if failure
 
 *****************************************************************************/
 
-APTR VarSet(struct KeyStore *Store, CSTRING Key, APTR Data, LONG Size)
+APTR VarSet(KeyStore *Store, CSTRING Key, APTR Data, LONG Size)
 {
+   parasol::Log log(__FUNCTION__);
+
    if ((!Key) OR (!Store)) return NULL;
 
-   FMSG("~VarSet()","%p: %s = %p", Store, Key, Data);
+   log.traceBranch("%p: %s = %p", Store, Key, Data);
 
    if (Store->Flags & KSF_THREAD_SAFE) LockMutex(Store->Mutex, 0x7fffffff);
 
@@ -723,37 +714,32 @@ APTR VarSet(struct KeyStore *Store, CSTRING Key, APTR Data, LONG Size)
       if (!Data) { // Client request to delete the key, so mark it as dead and return.
          DEAD_KEY(Store->Data[ki]);
          if (Store->Flags & KSF_THREAD_SAFE) UnlockMutex(Store->Mutex);
-         LOGRETURN();
          return NULL;
       }
 
       // Free the existing key-pair and replace it with a new one.
 
-      struct KeyPair *kp = build_key_pair(Store, Key, Data, Size);
+      KeyPair *kp = build_key_pair(Store, Key, Data, Size);
       if (kp) {
          free((APTR)Store->Data[ki]);
          Store->Data[ki] = kp;
          if (Store->Flags & KSF_THREAD_SAFE) UnlockMutex(Store->Mutex);
-         LOGRETURN();
          return (APTR)GET_KEY_VALUE(kp);
       }
    }
    else if (!Data) { // Client requested deletion of a key that doesn't exist - ignore it.
       if (Store->Flags & KSF_THREAD_SAFE) UnlockMutex(Store->Mutex);
-      LOGRETURN();
       return NULL;
    }
    else { // Brand new key
-      struct KeyPair *kp = build_key_pair(Store, Key, Data, Size);
+      KeyPair *kp = build_key_pair(Store, Key, Data, Size);
       if ((kp) AND ((ki = hm_put(Store, kp)) >= 0)) {
          if (Store->Flags & KSF_THREAD_SAFE) UnlockMutex(Store->Mutex);
-         LOGRETURN();
          return (APTR)GET_KEY_VALUE(kp);
       }
    }
 
    if (Store->Flags & KSF_THREAD_SAFE) UnlockMutex(Store->Mutex);
-   LOGRETURN();
    return NULL;
 }
 
@@ -784,11 +770,13 @@ AllocMemory:
 
 *****************************************************************************/
 
-ERROR VarSetSized(struct KeyStore *Store, CSTRING Key, LONG Size, APTR *Data, LONG *DataSize)
+ERROR VarSetSized(KeyStore *Store, CSTRING Key, LONG Size, APTR *Data, LONG *DataSize)
 {
+   parasol::Log log(__FUNCTION__);
+
    if ((!Key) OR (!Store) OR (!Size) OR (!Data)) return ERR_NullArgs;
 
-   FMSG("~VarSetSized()","%p: %s, Size: %d", Store, Key, Size);
+   log.traceBranch("%p: %s, Size: %d", Store, Key, Size);
 
    if (Store->Flags & KSF_THREAD_SAFE) LockMutex(Store->Mutex, 0x7fffffff);
 
@@ -796,30 +784,27 @@ ERROR VarSetSized(struct KeyStore *Store, CSTRING Key, LONG Size, APTR *Data, LO
    if ((ki = hm_get(Store, Key)) >= 0) { // Key already exists.  Replace it.
       // Free the existing key-pair and replace it with a new one.
 
-      struct KeyPair *kp = build_key_pair(Store, Key, NULL, Size);
+      KeyPair *kp = build_key_pair(Store, Key, NULL, Size);
       if (kp) {
          free((APTR)Store->Data[ki]);
          Store->Data[ki] = kp;
          if (Store->Flags & KSF_THREAD_SAFE) UnlockMutex(Store->Mutex);
          *Data = (APTR)GET_KEY_VALUE(kp);
          if (DataSize) *DataSize = Size;
-         LOGRETURN();
          return ERR_Okay;
       }
    }
    else { // Brand new key
-      struct KeyPair *kp = build_key_pair(Store, Key, NULL, Size);
+      KeyPair *kp = build_key_pair(Store, Key, NULL, Size);
       if ((kp) AND ((ki = hm_put(Store, kp)) >= 0)) {
          if (Store->Flags & KSF_THREAD_SAFE) UnlockMutex(Store->Mutex);
          *Data = (APTR)GET_KEY_VALUE(kp);
          if (DataSize) *DataSize = Size;
-         LOGRETURN();
          return ERR_Okay;
       }
    }
 
    if (Store->Flags & KSF_THREAD_SAFE) UnlockMutex(Store->Mutex);
-   LOGRETURN();
    return ERR_AllocMemory;
 }
 
@@ -835,7 +820,7 @@ resource(KeyStore) Store: The key store to lock.
 
 *****************************************************************************/
 
-void VarUnlock(struct KeyStore *Store)
+void VarUnlock(KeyStore *Store)
 {
    if ((!Store) OR (!Store->Mutex)) return;
    UnlockMutex(Store->Mutex);
@@ -862,7 +847,7 @@ DoesNotExist
 
 *****************************************************************************/
 
-ERROR KeyGet(struct KeyStore *Store, ULONG Key, APTR *Data, LONG *Size)
+ERROR KeyGet(KeyStore *Store, ULONG Key, APTR *Data, LONG *Size)
 {
    if ((!Store) OR (!Data)) return ERR_NullArgs;
 
@@ -933,7 +918,7 @@ Finished: All keys have been iterated.
 
 *****************************************************************************/
 
-ERROR KeyIterate(struct KeyStore *Store, ULONG Index, ULONG *Key, APTR *Data, LONG *Size)
+ERROR KeyIterate(KeyStore *Store, ULONG Index, ULONG *Key, APTR *Data, LONG *Size)
 {
    if (!Store) return ERR_NullArgs;
 
@@ -1001,7 +986,7 @@ AllocMemory
 
 *****************************************************************************/
 
-ERROR KeySet(struct KeyStore *Store, ULONG Key, const void *Data, LONG Size)
+ERROR KeySet(KeyStore *Store, ULONG Key, const void *Data, LONG Size)
 {
    if (!Store) return ERR_NullArgs;
 
@@ -1017,7 +1002,7 @@ ERROR KeySet(struct KeyStore *Store, ULONG Key, const void *Data, LONG Size)
 
       // Free the existing key-pair and replace it with a new one.
 
-      struct KeyPair *kp = build_hashed_key_pair(Store, Key, Data, Size);
+      KeyPair *kp = build_hashed_key_pair(Store, Key, Data, Size);
       if (kp) {
          free((APTR)Store->Data[ki]);
          Store->Data[ki] = kp;
@@ -1035,7 +1020,7 @@ ERROR KeySet(struct KeyStore *Store, ULONG Key, const void *Data, LONG Size)
          return PostError(ERR_DataSize);
       }
 
-      struct KeyPair *kp = build_hashed_key_pair(Store, Key, Data, Size);
+      KeyPair *kp = build_hashed_key_pair(Store, Key, Data, Size);
       if ((kp) AND ((ki = hm_put(Store, kp)) >= 0)) {
          if (Store->Flags & KSF_THREAD_SAFE) UnlockMutex(Store->Mutex);
          return ERR_Okay;

@@ -1,3 +1,8 @@
+/*****************************************************************************
+-CATEGORY-
+Name: Files
+-END-
+*****************************************************************************/
 
 /*****************************************************************************
 
@@ -21,16 +26,18 @@ ExclusiveDenied: Access to the SystemVolumes object was denied.
 
 ERROR DeleteVolume(CSTRING Name)
 {
+   parasol::Log log(__FUNCTION__);
+
    if ((!Name) OR (!Name[0])) return ERR_NullArgs;
 
-   LogF("~2DeleteVolume()","Name: %s", Name);
+   log.branch("Name: %s", Name);
 
-   LONG i, j;
+   LONG i;
    if (!AccessPrivateObject((OBJECTPTR)glVolumes, 8000)) {
       struct ConfigEntry *entries;
       if ((entries = glVolumes->Entries)) {
-         BYTE buffer[40+1];
-         for (i=0; (Name[i]) AND (Name[i] != ':') AND (i < sizeof(buffer)-1); i++) buffer[i] = Name[i];
+         char buffer[40+1];
+         for (i=0; (Name[i]) AND (Name[i] != ':') AND ((size_t)i < sizeof(buffer)-1); i++) buffer[i] = Name[i];
          buffer[i] = 0;
 
          // Check that the name of the volume is not reserved by the system
@@ -42,7 +49,7 @@ ERROR DeleteVolume(CSTRING Name)
             return ERR_NoPermission;
          }
 
-         for (j=0; j < glVolumes->AmtEntries; j++) {
+         for (LONG j=0; j < glVolumes->AmtEntries; j++) {
             if (!StrMatch("Name", entries[j].Key)) {
                if (!StrMatch(buffer, entries[j].Data)) {
                   cfgDeleteSection(glVolumes, entries[j].Section);
@@ -59,7 +66,7 @@ ERROR DeleteVolume(CSTRING Name)
                TAGEND)) {
 
             if ((entries = userconfig->Entries)) {
-               for (j=0; j < userconfig->AmtEntries; j++) {
+               for (LONG j=0; j < userconfig->AmtEntries; j++) {
                   if (!StrMatch("Name", entries[j].Key)) {
                      if (!StrMatch(buffer, entries[j].Data)) {
                         cfgDeleteSection(userconfig, entries[j].Section);
@@ -67,15 +74,11 @@ ERROR DeleteVolume(CSTRING Name)
 
                         // Broadcast the change
 
-                        LONG strlen;
-
-                        for (strlen=0; buffer[strlen]; strlen++);
-                        strlen++;
+                        LONG strlen = StrLength(buffer) + 1;
                         UBYTE evbuf[sizeof(EVENTID) + strlen];
                         ((EVENTID *)evbuf)[0] = GetEventID(EVG_FILESYSTEM, "volume", "deleted");
                         CopyMemory(buffer, evbuf + sizeof(EVENTID), strlen);
                         BroadcastEvent(evbuf, sizeof(EVENTID) + strlen);
-
                         break;
                      }
                   }
@@ -86,20 +89,13 @@ ERROR DeleteVolume(CSTRING Name)
          }
 
          ReleasePrivateObject((OBJECTPTR)glVolumes);
-         LogReturn();
          return ERR_Okay;
       }
 
       ReleasePrivateObject((OBJECTPTR)glVolumes);
-      LogError(ERH_Volume, ERR_GetField);
-      LogReturn();
-      return ERR_GetField;
+      return log.warning(ERR_GetField);
    }
-   else {
-      LogError(ERH_Volume, ERR_ExclusiveDenied);
-      LogReturn();
-      return ERR_ExclusiveDenied;
-   }
+   else return log.warning(ERR_ExclusiveDenied);
 }
 
 /*****************************************************************************
@@ -113,32 +109,28 @@ RenameVolume: Renames a volume.
 ERROR RenameVolume(CSTRING Volume, CSTRING Name)
 {
    struct ConfigEntry *entries;
-   UBYTE buffer[200], section[100];
+   char buffer[200], section[100];
 
    if (!AccessPrivateObject((OBJECTPTR)glVolumes, 5000)) {
       if ((entries = glVolumes->Entries)) {
          LONG i;
-         for (i=0; (Volume[i]) AND (Volume[i] != ':') AND (i < sizeof(buffer)-1); i++) buffer[i] = Volume[i];
+         for (i=0; (Volume[i]) AND (Volume[i] != ':') AND ((size_t)i < sizeof(buffer)-1); i++) buffer[i] = Volume[i];
          buffer[i] = 0;
 
-         for (i=0; i < glVolumes->AmtEntries; i++) {
+         for (LONG i=0; i < glVolumes->AmtEntries; i++) {
             if ((!StrMatch("Name", entries[i].Key)) AND (!StrMatch(buffer, entries[i].Data))) {
                StrCopy(entries[i].Section, section, sizeof(section));
                cfgWriteValue(glVolumes, section, "Name", Name);
 
                // Broadcast the change
 
-               LONG strlen;
-
-               for (strlen=0; buffer[strlen]; strlen++);
-               strlen++;
+               LONG strlen = StrLength(buffer) + 1;
                UBYTE evdeleted[sizeof(EVENTID) + strlen];
                ((EVENTID *)evdeleted)[0] = GetEventID(EVG_FILESYSTEM, "volume", "deleted");
                CopyMemory(buffer, evdeleted + sizeof(EVENTID), strlen);
                BroadcastEvent(evdeleted, sizeof(EVENTID) + strlen);
 
-               for (strlen=0; Name[strlen]; strlen++);
-               strlen++;
+               strlen = StrLength(Name) + 1;
                UBYTE evcreated[sizeof(EVENTID) + strlen];
                ((EVENTID *)evcreated)[0] = EVID_FILESYSTEM_VOLUME_CREATED;
                CopyMemory(Name, evcreated + sizeof(EVENTID), strlen);
@@ -195,6 +187,7 @@ AllocMemory:
 
 ERROR SetVolume(LARGE TagID, ...)
 {
+   parasol::Log log(__FUNCTION__);
    LONG i, j;
 
    va_list list;
@@ -218,7 +211,7 @@ ERROR SetVolume(LARGE TagID, ...)
          switch ((ULONG)tagid) {
             case AST_NAME: {
                CSTRING str = va_arg(list, CSTRING);
-               for (i=0; (str[i]) AND (str[i] != ':') AND (i < sizeof(name)-1); i++) {
+               for (i=0; (str[i]) AND (str[i] != ':') AND ((size_t)i < sizeof(name)-1); i++) {
                   name[i] = str[i];
                }
                name[i] = 0;
@@ -254,9 +247,9 @@ ERROR SetVolume(LARGE TagID, ...)
          }
       }
 
-      LogF("@SetVolume()","Bad tag ID $%.8x%.8x, unrecognised flags $%.8x @ tag-pair %d.", (ULONG)(tagid>>32), (ULONG)tagid, type, count);
+      log.warning("Bad tag ID $%.8x%.8x, unrecognised flags $%.8x @ tag-pair %d.", (ULONG)(tagid>>32), (ULONG)tagid, type, count);
       va_end(list);
-      return LogError(ERH_Volume, ERR_WrongType);
+      return log.warning(ERR_WrongType);
 next:
       tagid = va_arg(list, LARGE);
       count++;
@@ -264,14 +257,13 @@ next:
 
    va_end(list);
 
-   if ((!name[0]) OR (!path)) return LogError(ERH_Volume, ERR_NullArgs);
+   if ((!name[0]) OR (!path)) return log.warning(ERR_NullArgs);
 
-   if (label) LogF("~SetVolume()","Name: %s (%s), Path: %s", name, label, path);
-   else LogF("~SetVolume()","Name: %s, Path: %s", name, path);
+   if (label) log.branch("Name: %s (%s), Path: %s", name, label, path);
+   else log.branch("Name: %s, Path: %s", name, path);
 
    if ((!glVolumes) OR (AccessPrivateObject((OBJECTPTR)glVolumes, 8000) != ERR_Okay)) {
-      LogReturn();
-      return PostError(ERR_AccessObject);
+      return log.warning(ERR_AccessObject);
    }
 
    CSTRING savefile;
@@ -291,7 +283,7 @@ next:
    if (!(flags & VOLUME_REPLACE)) {
       struct ConfigEntry *entries;
       if ((entries = glVolumes->Entries)) {
-         for (i=0; i < glVolumes->AmtEntries; i++) {
+         for (LONG i=0; i < glVolumes->AmtEntries; i++) {
             if ((!StrMatch("Name", entries[i].Key)) AND (!StrMatch(name, entries[i].Data))) {
                while ((i > 0) AND (!StrMatch(entries[i].Section, entries[i-1].Section))) i--;
 
@@ -331,13 +323,11 @@ next:
 
                         FreeResource(str);
                         ReleasePrivateObject((OBJECTPTR)glVolumes);
-                        LogReturn();
                         return ERR_Okay;
                      }
                      else {
                         ReleasePrivateObject((OBJECTPTR)glVolumes);
-                        LogReturn();
-                        return LogError(ERH_Volume, ERR_AllocMemory);
+                        return log.warning(ERR_AllocMemory);
                      }
                   }
                }
@@ -375,9 +365,9 @@ next:
 
          cfgWriteValue(userconfig, name, "Name", name);
          cfgWriteValue(userconfig, name, "Path", path);
-         if (icon) cfgWriteValue(userconfig, name, "Icon", icon);
+         if (icon)    cfgWriteValue(userconfig, name, "Icon", icon);
          if (comment) cfgWriteValue(userconfig, name, "Comment", comment);
-         if (devid) cfgWriteValue(userconfig, name, "ID", devid);
+         if (devid)   cfgWriteValue(userconfig, name, "ID", devid);
          if (flags & VOLUME_HIDDEN) cfgWriteValue(userconfig, name, "Hidden", "Yes");
 
          SaveObjectToFile((OBJECTPTR)userconfig, savefile, savepermissions);
@@ -393,15 +383,11 @@ next:
 
    ReleasePrivateObject((OBJECTPTR)glVolumes);
 
-   LONG strlen;
-   for (strlen=0; name[strlen]; strlen++);
-   strlen++;
+   LONG strlen = StrLength(name) + 1;
    UBYTE evbuf[sizeof(EVENTID) + strlen];
    ((EVENTID *)evbuf)[0] = GetEventID(EVG_FILESYSTEM, "volume", "created");
    CopyMemory(name, evbuf + sizeof(EVENTID), strlen);
    BroadcastEvent(evbuf, sizeof(EVENTID) + strlen);
-
-   LogReturn();
    return ERR_Okay;
 }
 
@@ -428,9 +414,11 @@ Exists: The named volume already exists.
 
 ERROR VirtualVolume(CSTRING Name, ...)
 {
-   if ((!Name) OR (!Name[0])) return LogError(ERH_Volume, ERR_NullArgs);
+   parasol::Log log(__FUNCTION__);
 
-   LogF("VirtualVolume()","%s", Name);
+   if ((!Name) OR (!Name[0])) return log.warning(ERR_NullArgs);
+
+   log.branch("%s", Name);
 
    ULONG name_hash = StrHash(Name, FALSE);
 
@@ -442,7 +430,7 @@ ERROR VirtualVolume(CSTRING Name, ...)
       if (name_hash IS glVirtual[index].VirtualID) return ERR_Exists;
    }
 
-   if (index >= ARRAYSIZE(glVirtual)) return LogError(ERH_Volume, ERR_ArrayFull);
+   if (index >= ARRAYSIZE(glVirtual)) return log.warning(ERR_ArrayFull);
 
    LONG i = StrCopy(Name, glVirtual[index].Name, sizeof(glVirtual[0].Name)-2);
    glVirtual[index].Name[i++] = ':';
@@ -477,59 +465,59 @@ ERROR VirtualVolume(CSTRING Name, ...)
             break;
 
          case VAS_CLOSE_DIR:
-            glVirtual[index].CloseDir = va_arg(list, APTR);
+            glVirtual[index].CloseDir = va_arg(list, ERROR (*)(DirInfo*));
             break;
 
          case VAS_DELETE:
-            glVirtual[index].Delete = va_arg(list, APTR);
+            glVirtual[index].Delete = va_arg(list, ERROR (*)(STRING, FUNCTION*));
             break;
 
          case VAS_GET_INFO:
-            glVirtual[index].GetInfo =  va_arg(list, APTR);
+            glVirtual[index].GetInfo =  va_arg(list, ERROR (*)(CSTRING, FileInfo*, LONG));
             break;
 
          case VAS_GET_DEVICE_INFO:
-            glVirtual[index].GetDeviceInfo = va_arg(list, APTR);
+            glVirtual[index].GetDeviceInfo = va_arg(list, ERROR (*)(CSTRING, rkStorageDevice*));
             break;
 
          case VAS_IDENTIFY_FILE:
-            glVirtual[index].IdentifyFile = va_arg(list, APTR);
+            glVirtual[index].IdentifyFile = va_arg(list, ERROR (*)(STRING, CLASSID*, CLASSID*));
             break;
 
          case VAS_IGNORE_FILE:
-            glVirtual[index].IgnoreFile = va_arg(list, APTR);
+            glVirtual[index].IgnoreFile = va_arg(list, void (*)(rkFile*));
             break;
 
          case VAS_MAKE_DIR:
-            glVirtual[index].CreateFolder = va_arg(list, APTR);
+            glVirtual[index].CreateFolder = va_arg(list, ERROR (*)(CSTRING, LONG));
             break;
 
          case VAS_OPEN_DIR:
-            glVirtual[index].OpenDir = va_arg(list, APTR);
+            glVirtual[index].OpenDir = va_arg(list, ERROR (*)(DirInfo*));
             break;
 
          case VAS_RENAME:
-            glVirtual[index].Rename = va_arg(list, APTR);
+            glVirtual[index].Rename = va_arg(list, ERROR (*)(STRING, STRING));
             break;
 
          case VAS_SAME_FILE:
-            glVirtual[index].SameFile = va_arg(list, APTR);
+            glVirtual[index].SameFile = va_arg(list, ERROR (*)(CSTRING, CSTRING));
             break;
 
          case VAS_SCAN_DIR:
-            glVirtual[index].ScanDir = va_arg(list, APTR);
+            glVirtual[index].ScanDir = va_arg(list, ERROR (*)(DirInfo*));
             break;
 
          case VAS_TEST_PATH:
-            glVirtual[index].TestPath = va_arg(list, APTR);
+            glVirtual[index].TestPath = va_arg(list, ERROR (*)(CSTRING, LONG, LONG*));
             break;
 
          case VAS_WATCH_PATH:
-            glVirtual[index].WatchPath = va_arg(list, APTR);
+            glVirtual[index].WatchPath = va_arg(list, ERROR (*)(rkFile*));
             break;
 
          default:
-            LogF("@VirtualVolume()","Bad VAS tag $%.8x @ pair index %d, aborting.", tagid, arg);
+            log.warning("Bad VAS tag $%.8x @ pair index %d, aborting.", tagid, arg);
             va_end(list);
             return ERR_Args;
       }
