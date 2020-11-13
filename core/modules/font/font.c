@@ -329,14 +329,14 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    LONG type;
    UBYTE refresh;
 
-   if ((AnalysePath("parasol:fonts/fonts.cfg", &type) != ERR_Okay) OR (type != LOC_FILE)) refresh = TRUE;
+   if ((AnalysePath("system:fonts/fonts.cfg", &type) != ERR_Okay) OR (type != LOC_FILE)) refresh = TRUE;
    else refresh = FALSE;
 
    OBJECTPTR config;
    if (!NewLockedObject(ID_CONFIG, 0, &config, &glConfigID)) {
       SetFields(config,
          FID_Name|TSTR, "cfgSystemFonts",
-         FID_Path|TSTR, "parasol:fonts/fonts.cfg",
+         FID_Path|TSTR, "system:fonts/fonts.cfg",
          TAGEND);
       if (!acInit(config)) {
          if (refresh) fntRefreshFonts();
@@ -1549,7 +1549,7 @@ static ERROR fntRefreshFonts(void)
 
    OBJECTPTR file;
    if (!CreateObject(ID_FILE, 0, &file,
-         FID_Path|TSTR,   "parasol:fonts/fonts.cfg",
+         FID_Path|TSTR,   "system:fonts/fonts.cfg",
          FID_Flags|TLONG, FL_NEW|FL_WRITE,
          TAGEND)) {
       acSaveToObject(config, file->UniqueID, 0);
