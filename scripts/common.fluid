@@ -141,8 +141,14 @@ end
 -- Will throw an exception if the file is not found or the complete data cannot be read.
 
 file.readAll = function(Path)
-   local fl = obj.new('file', { flags='READ', path=Path } )
-   if (fl == nil) then error('Failed to open file "' .. nz(Path,'NIL') .. '"') end
+   local fl
+   catch(function()
+      fl = obj.new('file', { flags='READ', path=Path } )
+   end,
+   function(Exception)
+      error('Failed to open file "' .. nz(Path,'NIL') .. '": ' .. Exception.message)
+   end)
+
    local fileBuffer = string.rep(nil, fl.size)
    local err, bytesRead = fl.acRead(fileBuffer)
    if (err == ERR_Okay) then

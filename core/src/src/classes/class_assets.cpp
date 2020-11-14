@@ -26,7 +26,7 @@ FileAssets: For Android systems only.  The FileAssets sub-class provides access 
 
 static OBJECTPTR glAssetClass = NULL;
 
-extern struct CoreBase *CoreBase;
+extern CoreBase *CoreBase;
 static AAssetManager *glAssetManager = NULL;
 static BYTE glAssetManagerFree = FALSE;
 
@@ -46,20 +46,20 @@ static ERROR GET_Size(objFile *, LARGE *);
 
 static ERROR SET_Permissions(objFile *, APTR);
 
-static const struct FieldArray clFields[] = {
+static const FieldArray clFields[] = {
    { "Permissions", FDF_LONG|FDF_RW, 0, GET_Permissions, SET_Permissions },
    { "Size",        FDF_LARGE|FDF_R, 0, GET_Size,        NULL },
    END_FIELD
 };
 
-static const struct ActionArray clActions[] = {
-   { AC_Free,   ASSET_Free },
-   { AC_Init,   ASSET_Init },
-   { AC_Move,   ASSET_Move },
-   { AC_Read,   ASSET_Read },
-   { AC_Rename, ASSET_Rename },
-   { AC_Seek,   ASSET_Seek },
-   { AC_Write,  ASSET_Write },
+static const ActionArray clActions[] = {
+   { AC_Free,   (APTR)ASSET_Free },
+   { AC_Init,   (APTR)ASSET_Init },
+   { AC_Move,   (APTR)ASSET_Move },
+   { AC_Read,   (APTR)ASSET_Read },
+   { AC_Rename, (APTR)ASSET_Rename },
+   { AC_Seek,   (APTR)ASSET_Seek },
+   { AC_Write,  (APTR)ASSET_Write },
    { 0, NULL }
 };
 
@@ -69,17 +69,17 @@ struct prvFileAsset {
    AAssetManager *Mgr;
 };
 
-static const struct MethodArray clMethods[] = {
+static const MethodArray clMethods[] = {
    { MT_FileDelete, ASSET_Delete, "Delete", NULL, 0 },
    { MT_FileMove,   ASSET_Move, "Move", NULL, 0 },
    { 0, NULL, NULL, NULL, 0 }
 };
 
-static ERROR close_dir(struct DirInfo *);
-static ERROR open_dir(struct DirInfo *);
-static ERROR get_info(CSTRING Path, struct FileInfo *Info, LONG InfoSize);
-static ERROR read_dir(CSTRING, struct DirInfo **, LONG);
-static ERROR scan_dir(struct DirInfo *);
+static ERROR close_dir(DirInfo *);
+static ERROR open_dir(DirInfo *);
+static ERROR get_info(CSTRING Path, FileInfo *Info, LONG InfoSize);
+static ERROR read_dir(CSTRING, DirInfo **, LONG);
+static ERROR scan_dir(DirInfo *);
 static ERROR test_path(CSTRING, LONG *);
 static AAssetManager * get_asset_manager(void);
 
@@ -87,15 +87,15 @@ static AAssetManager * get_asset_manager(void);
 
 ERROR add_asset_class(void)
 {
-   struct OpenInfo *openinfo;
+   parasol::Log log(__FUNCTION__);
+   OpenInfo *openinfo;
    CSTRING classname;
    LONG i;
 
-   LogF("~add_asset_class()","");
+   log.branch("");
 
    if (!(openinfo = GetResourcePtr(RES_OPENINFO))) {
       LogErrorMsg("No OpenInfo structure set during Core initialisation.");
-      LogReturn();
       return ERR_Failed;
    }
 
@@ -127,7 +127,6 @@ ERROR add_asset_class(void)
 
       if ((!env) OR (!classname)) {
          LogErrorMsg("Android env and class name must be defined when opening the Core.");
-         LogReturn();
          return ERR_Failed;
       }
 
@@ -139,11 +138,11 @@ ERROR add_asset_class(void)
             if (glAssetManager) {
                glAssetManager = (*env)->NewGlobalRef(env, glAssetManager); // This call is required to prevent the Java GC from collecting the reference.
             }
-            else { FMSG("@add_asset_class","Failed to get assetManager field."); LogReturn(); return ERR_SystemCall; }
+            else { log.traceWarning("Failed to get assetManager field."); return ERR_SystemCall; }
          }
-         else { FMSG("@add_asset_class","Failed to get assetManager field ID."); LogReturn(); return ERR_SystemCall; }
+         else { log.traceWarning("Failed to get assetManager field ID."); return ERR_SystemCall; }
       }
-      else { FMSG("@add_asset_class","Failed to get Java class %s", classname); LogReturn(); return ERR_SystemCall; }
+      else { log.traceWarning("Failed to get Java class %s", classname); return ERR_SystemCall; }
    }
 
    // Create the assets: control class
@@ -157,7 +156,6 @@ ERROR add_asset_class(void)
          FID_Fields|TARRAY,     clFields,
          FID_Path|TSTR,         "modules:filesystem",
          TAGEND) != ERR_Okay) {
-      LogReturn();
       return ERR_CreateObject;
    }
 
@@ -206,19 +204,20 @@ static ERROR ASSET_Free(objFile *Self, APTR Void)
 
 static ERROR ASSET_Init(objFile *Self, APTR Void)
 {
-   struct prvFileAsset *prv;
+   parasol::Log log(__FUNCTION__);
+   prvFileAsset *prv;
 
    if (!Self->Path) return ERR_FieldNotSet;
 
-   MSG("Path: %s", Self->Path);
+   log.trace("Path: %s", Self->Path);
 
    if (StrCompare("assets:", Self->Path, LEN_ASSETS, 0) != ERR_Okay) return ERR_NoSupport;
 
-   if (Self->Flags & (FL_NEW|FL_WRITE)) return PostError(ERR_ReadOnly);
+   if (Self->Flags & (FL_NEW|FL_WRITE)) return log.warning(ERR_ReadOnly);
 
    // Allocate private structure
 
-   if (!AllocMemory(sizeof(struct prvFileAsset), Self->Head.MemFlags, &Self->Head.ChildPrivate, NULL)) {
+   if (!AllocMemory(sizeof(prvFileAsset), Self->Head.MemFlags, &Self->Head.ChildPrivate, NULL)) {
       LONG len;
       for (len=0; Self->Path[len]; len++);
 
@@ -232,7 +231,7 @@ static ERROR ASSET_Init(objFile *Self, APTR Void)
 
          StrCopy(Self->Path+LEN_ASSETS, dirpath, COPY_ALL);
 
-         MSG("Checking that path exists for '%s'", dirpath);
+         log.trace("Checking that path exists for '%s'", dirpath);
 
          AAssetDir *dir;
          if ((dir = AAssetManager_openDir(get_asset_manager(), dirpath))) {
@@ -256,9 +255,7 @@ static ERROR ASSET_Init(objFile *Self, APTR Void)
             if ((prv->Asset = AAssetManager_open(mgr, Self->Path+LEN_ASSETS, AASSET_MODE_RANDOM))) { // AASSET_MODE_UNKNOWN, AASSET_MODE_RANDOM
                return ERR_Okay;
             }
-            else {
-               LogF("@FileAssets", "Failed to open asset file \"%s\"", Self->Path+LEN_ASSETS);
-            }
+            else log.warning("Failed to open asset file \"%s\"", Self->Path+LEN_ASSETS);
          }
 
          FreeResource(Self->Head.ChildPrivate);
@@ -266,7 +263,7 @@ static ERROR ASSET_Init(objFile *Self, APTR Void)
          return ERR_Failed;
       }
    }
-   else return PostError(ERR_AllocMemory);
+   else return log.warning(ERR_AllocMemory);
 }
 
 //****************************************************************************
@@ -280,22 +277,24 @@ static ERROR ASSET_Move(objFile *Self, struct mtFileMove *Args)
 
 static ERROR ASSET_Read(objFile *Self, struct acRead *Args)
 {
-   struct prvFileAsset *prv;
-   if (!(prv = Self->Head.ChildPrivate)) return PostError(ERR_ObjectCorrupt);
-   if (!(Self->Flags & FL_READ)) return PostError(ERR_FileReadFlag);
+   parasol::Log log(__FUNCTION__);
+   prvFileAsset *prv;
+
+   if (!(prv = Self->Head.ChildPrivate)) return log.warning(ERR_ObjectCorrupt);
+   if (!(Self->Flags & FL_READ)) return log.warning(ERR_FileReadFlag);
 
    Args->Result = AAsset_read(prv->Asset, Args->Buffer, Args->Length);
 
    if (Args->Result != Args->Length) {
       if (Args->Result IS -1) {
-         LogMsg("Failed to read %d bytes from the file.", Args->Length);
+         log.msg("Failed to read %d bytes from the file.", Args->Length);
          Args->Result = 0;
          return ERR_Failed;
       }
 
       // Return ERR_Okay even though not all data was read, because this was not due to a failure.
 
-      LogF("5Read()","%d of the intended %d bytes were read from the file.", Args->Result, Args->Length);
+      log.msg("%d of the intended %d bytes were read from the file.", Args->Result, Args->Length);
       Self->Position += Args->Result;
       return ERR_Okay;
    }
@@ -316,15 +315,15 @@ static ERROR ASSET_Rename(objFile *Self, struct acRename *Args)
 
 static ERROR ASSET_Seek(objFile *Self, struct acSeek *Args)
 {
-   struct prvFileAsset *prv;
+   prvFileAsset *prv;
    LONG method;
 
-   if (!(prv = Self->Head.ChildPrivate)) return PostError(ERR_ObjectCorrupt);
+   if (!(prv = Self->Head.ChildPrivate)) return log.warning(ERR_ObjectCorrupt);
 
    if (Args->Position IS POS_START) method = SEEK_SET;
    else if (Args->Position IS POS_END) method = SEEK_END;
    else if (Args->Position IS POS_CURRENT) method = SEEK_CUR;
-   else return PostError(ERR_Args);
+   else return log.warning(ERR_Args);
 
    off_t offset = AAsset_seek(prv->Asset, Args->Offset, method);
    if (offset != -1) Self->Position = offset;
@@ -359,9 +358,9 @@ static ERROR SET_Permissions(objFile *Self, APTR Value)
 
 static ERROR GET_Size(objFile *Self, LARGE *Value)
 {
-   struct prvFileAsset *prv;
+   prvFileAsset *prv;
 
-   if (!(prv = Self->Head.ChildPrivate)) return PostError(ERR_ObjectCorrupt);
+   if (!(prv = Self->Head.ChildPrivate)) return log.warning(ERR_ObjectCorrupt);
 
    if (prv->Asset) {
       *Value = AAsset_getLength(prv->Asset);
@@ -374,16 +373,15 @@ static ERROR GET_Size(objFile *Self, LARGE *Value)
 //****************************************************************************
 // Open the assets: volume for scanning.
 
-static ERROR open_dir(struct DirInfo *Dir)
+static ERROR open_dir(DirInfo *Dir)
 {
+   parasol::Log log(__FUNCTION__);
    AAssetManager *mgr;
    LONG len;
 
-   FMSG("open_dir()","%s", Dir->prvResolvedPath);
+   log.traceBranch("%s", Dir->prvResolvedPath);
 
-   if (!(mgr = get_asset_manager())) {
-      return PostError(ERR_SystemCall);
-   }
+   if (!(mgr = get_asset_manager())) return log.warning(ERR_SystemCall);
 
    // openDir() doesn't like trailing slashes, this code will handle such circumstances.
 
@@ -406,15 +404,15 @@ static ERROR open_dir(struct DirInfo *Dir)
 //****************************************************************************
 // Scan the next entry in the folder.
 
-static ERROR scan_dir(struct DirInfo *Dir)
+static ERROR scan_dir(DirInfo *Dir)
 {
    CSTRING filename;
    AAssetManager *mgr;
 
-   FMSG("scan_dir()","Asset file scan on %s", Dir->prvResolvedPath);
+   log.traceBranch("Asset file scan on %s", Dir->prvResolvedPath);
 
    if (!(mgr = get_asset_manager())) {
-      return PostError(ERR_SystemCall);
+      return log.warning(ERR_SystemCall);
    }
 
    while ((filename = AAssetDir_getNextFileName(Dir->prvHandle))) {
@@ -453,7 +451,7 @@ static ERROR scan_dir(struct DirInfo *Dir)
 //****************************************************************************
 // Close the assets: volume.
 
-static ERROR close_dir(struct DirInfo *Dir)
+static ERROR close_dir(DirInfo *Dir)
 {
    // Note: FreeResource() will take care of memory dealloactions, we only need to be concerned with deallocation of any
    // open handles.
@@ -468,8 +466,9 @@ static ERROR close_dir(struct DirInfo *Dir)
 
 //****************************************************************************
 
-static ERROR get_info(CSTRING Path, struct FileInfo *Info, LONG InfoSize)
+static ERROR get_info(CSTRING Path, FileInfo *Info, LONG InfoSize)
 {
+   parasol::Log log(__FUNCTION__);
    BYTE dir;
    LONG i, len;
 
@@ -535,21 +534,20 @@ static ERROR get_info(CSTRING Path, struct FileInfo *Info, LONG InfoSize)
 
 static ERROR test_path(CSTRING Path, LONG Flags, LONG *Type)
 {
+   parasol::Log log(__FUNCTION__);
    AAssetManager *mgr;
    AAsset *asset;
    AAssetDir *dir;
    LONG len;
 
-   FMSG("test_path()","%s", Path);
+   log.traceBranch("%s", Path);
 
-   if (!(mgr = get_asset_manager())) {
-      return ERR_SystemCall;
-   }
+   if (!(mgr = get_asset_manager())) return ERR_SystemCall;
 
    for (len=0; Path[len]; len++);  // Check if the reference is explicitly defined as a folder.
    if (Path[len-1] != '/') {
       if ((asset = AAssetManager_open(mgr, Path+LEN_ASSETS, AASSET_MODE_UNKNOWN))) {
-         FMSG("test_path","Path identified as a file.");
+         log.trace("Path identified as a file.");
          *Type = LOC_FILE;
          AAsset_close(asset);
          return ERR_Okay;
@@ -572,7 +570,7 @@ static ERROR test_path(CSTRING Path, LONG Flags, LONG *Type)
 
    if (dir) {
       if (AAssetDir_getNextFileName(dir)) {
-         FMSG("test_path","Path identified as a folder.");
+         log.trace("Path identified as a folder.");
          *Type = LOC_DIRECTORY;
          AAssetDir_close(dir);
          return ERR_Okay;
@@ -580,7 +578,7 @@ static ERROR test_path(CSTRING Path, LONG Flags, LONG *Type)
       else AAssetDir_close(dir);
    }
 
-   FMSG("test_path","Path '%s' does not exist.", Path + LEN_ASSETS);
+   log.trace("Path '%s' does not exist.", Path + LEN_ASSETS);
    return ERR_DoesNotExist;
 }
 
@@ -588,18 +586,17 @@ static ERROR test_path(CSTRING Path, LONG Flags, LONG *Type)
 // Read the entire folder in one function call.
 
 #if 0
-static ERROR read_dir(CSTRING Path, struct DirInfo **Result, LONG Flags)
+static ERROR read_dir(CSTRING Path, DirInfo **Result, LONG Flags)
 {
-   struct DirInfo *dirinfo;
+   DirInfo *dirinfo;
    AAssetDir *dir;
    AAssetManager *mgr;
    LONG len;
 
-   FMSG("~read_dir()","Path: %s, Flags: $%.8x", Path, Flags);
+   log.traceBranch("Path: %s, Flags: $%.8x", Path, Flags);
 
    if (!(mgr = get_asset_manager())) {
-      LOGRETURN();
-      return PostError(ERR_SystemCall);
+      return log.warning(ERR_SystemCall);
    }
 
    // openDir() doesn't like trailing slashes, this code will handle such circumstances.
@@ -615,18 +612,16 @@ static ERROR read_dir(CSTRING Path, struct DirInfo **Result, LONG Flags)
    }
 
    if (!dir) {
-      LOGRETURN();
       return ERR_InvalidPath;
    }
 
-   if (AllocMemory(sizeof(struct DirInfo), MEM_DATA, &dirinfo, NULL)) {
+   if (AllocMemory(sizeof(DirInfo), MEM_DATA, &dirinfo, NULL)) {
       AAssetDir_close(dir);
-      LOGRETURN();
       return ERR_AllocMemory;
    }
 
    const char *filename;
-   struct FileInfo *entry, *current;
+   FileInfo *entry, *current;
    UBYTE assetpath[300];
    LONG i;
 
@@ -649,7 +644,7 @@ static ERROR read_dir(CSTRING Path, struct DirInfo **Result, LONG Flags)
       AAsset *asset;
       if ((asset = AAssetManager_open(mgr, assetpath, AASSET_MODE_UNKNOWN))) {
          if (Flags & RDF_FILE) {
-            LONG size = sizeof(struct FileInfo) + StrLength(filename) + 2;
+            LONG size = sizeof(FileInfo) + StrLength(filename) + 2;
             if (!AllocMemory(size, MEM_DATA, &entry, NULL)) {
                entry->Flags = RDF_FILE;
 
@@ -680,7 +675,7 @@ static ERROR read_dir(CSTRING Path, struct DirInfo **Result, LONG Flags)
       }
       else {
          if (Flags & RDF_FOLDER) {
-            LONG size = sizeof(struct FileInfo) + StrLength(filename) + 2;
+            LONG size = sizeof(FileInfo) + StrLength(filename) + 2;
             if (!AllocMemory(size, MEM_DATA, &entry, NULL)) {
                entry->Flags = RDF_FOLDER;
 
@@ -710,26 +705,24 @@ static ERROR read_dir(CSTRING Path, struct DirInfo **Result, LONG Flags)
 
    AAssetDir_close(dir);
 
-   FMSG("read_dir","Found %d files, error code %d", dirinfo->Total, error);
+   log.trace("Found %d files, error code %d", dirinfo->Total, error);
 
    if (error) {
       // Remove all allocations.
 
-      struct FileInfo *list = dirinfo->Info;
+      FileInfo *list = dirinfo->Info;
       while (list) {
-         struct FileInfo *next = list->Next;
+         FileInfo *next = list->Next;
          FreeResource(list);
          list = next;
       }
 
       if (Result) *Result = NULL;
       FreeResource(dirinfo);
-      LOGRETURN();
       return error;
    }
    else {
       if (Result) *Result = dirinfo;
-      LOGRETURN();
       return ERR_Okay;
    }
 }
@@ -739,7 +732,7 @@ static ERROR read_dir(CSTRING Path, struct DirInfo **Result, LONG Flags)
 
 static AAssetManager * get_asset_manager(void)
 {
-   FMSG("get_asset_manager()","Native Access: %d", glAssetManagerFree);
+   log.trace("Native Access: %d", glAssetManagerFree);
 
    if (glAssetManagerFree) {
       return AAssetManager_fromJava(GetResourcePtr(RES_JNI_ENV), glAssetManager);

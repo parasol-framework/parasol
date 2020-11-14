@@ -1390,7 +1390,7 @@ struct FeedSubscription {
 
 struct FunctionField {
    CSTRING Name;    // Name of the field
-   LONG    Type;    // Type of the field
+   ULONG   Type;    // Type of the field
 };
 
 struct Function {
@@ -1416,7 +1416,7 @@ struct ModHeader {
 
 struct FieldArray {
    CSTRING Name;    // The name of the field, e.g. "Width"
-   LONG    Flags;   // Special flags that describe the field
+   ULONG   Flags;   // Special flags that describe the field
    MAXINT  Arg;     // Can be a pointer or an integer value
    APTR    GetField; // void GetField(*Object, APTR Result);
    APTR    SetField; // ERROR SetField(*Object, APTR Value);
@@ -1667,7 +1667,7 @@ struct Field {
    ULONG   FieldID;                                                              // Provides a fast way of finding fields, e.g. FID_WIDTH
    UWORD   Offset;                                                               // Field offset within the object
    UWORD   Index;                                                                // Field array index
-   LONG    Flags;                                                                // Special flags that describe the field
+   ULONG   Flags;                                                                // Special flags that describe the field
 };
 
 struct ScriptArg { // For use with scExec
@@ -3473,10 +3473,10 @@ struct SharedControl {
 
 // Class database.
 
-#define CL_ITEMS(c)        (struct ClassItem *)( ((APTR)(c)) + sizeof(struct ClassHeader) + ((c)->Total<<2) )
+#define CL_ITEMS(c)        (struct ClassItem *)( (BYTE *)(c) + sizeof(struct ClassHeader) + ((c)->Total<<2) )
 #define CL_OFFSETS(c)      ((LONG *)((c) + 1))
 #define CL_SIZE_OFFSETS(c) (sizeof(LONG) * (c)->Total)
-#define CL_ITEM(c,i)       ((struct ClassItem *)(((APTR)(c)) + offsets[(i)]))
+#define CL_ITEM(c,i)       ((struct ClassItem *)((BYTE *)(c) + offsets[(i)]))
 
 struct ClassHeader {
    LONG Total;          // Total number of registered classes

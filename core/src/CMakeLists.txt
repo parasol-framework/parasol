@@ -54,7 +54,7 @@ if (BUILD_DEFS)
       COMMAND ${FLUID_CMD} ${IDL_C_SCRIPT} "--log-error" "--src=fields.fdl" "--output=${INCLUDE_OUTPUT}/system/fields.h" "--sdk=${PROJECT_SOURCE_DIR}"
       COMMAND ${FLUID_CMD} ${IDL_C_SCRIPT} "--log-error" "--src=core.fdl" "--sdk=${PROJECT_SOURCE_DIR}" "--output-proto=src/prototypes.h" "--output-defs=src/data_functions.c" "--files={" ${FUNCTIONS} "}"
       COMMAND ${FLUID_CMD} ${IDL_DEF_SCRIPT} "--log-error" "--src=core.fdl" "--output=${CMAKE_CURRENT_SOURCE_DIR}/src/idl.h" "--sdk=${PROJECT_SOURCE_DIR}" "--format=c"
-      DEPENDS "core.fdl" "errors.fdl" "registry.fdl" "fields.fdl" ${FUNCTIONS}
+      DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/core.fdl" "${CMAKE_CURRENT_SOURCE_DIR}/errors.fdl" "${CMAKE_CURRENT_SOURCE_DIR}/registry.fdl" "${CMAKE_CURRENT_SOURCE_DIR}/fields.fdl" ${FUNCTIONS}
       WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
       COMMENT "Producing definition files for the Core library"
       VERBATIM)
@@ -92,11 +92,11 @@ target_sources (core PRIVATE
    "src/lib_newobject.cpp"
    "src/lib_semaphores.cpp"
    "src/lib_strings.cpp"
-   "src/classes/class_archive.c"
-   "src/classes/class_compressed_stream.c"
-   "src/classes/class_config.c"
-   "src/classes/class_file.c"
-   "src/classes/class_metaclass.c"
+   "src/classes/class_archive.cpp"
+   "src/classes/class_compressed_stream.cpp"
+   "src/classes/class_config.cpp"
+   "src/classes/class_file.cpp"
+   "src/classes/class_metaclass.cpp"
    "src/classes/class_module.c"
    "src/classes/class_script.c"
    "src/classes/class_storagedevice.c"

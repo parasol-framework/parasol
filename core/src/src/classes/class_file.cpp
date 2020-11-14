@@ -95,7 +95,7 @@ in a file.
 
 #include <parasol/main.h>
 
-void path_monitor(HOSTHANDLE, objFile *);
+extern "C" void path_monitor(HOSTHANDLE, objFile *);
 
 static ERROR FILE_Init(objFile *, APTR);
 static ERROR FILE_Watch(objFile *, struct flWatch *);
@@ -103,32 +103,9 @@ static ERROR FILE_Watch(objFile *, struct flWatch *);
 static ERROR SET_Path(objFile *, CSTRING);
 static ERROR SET_Size(objFile *, LARGE);
 
-static const struct FieldDef PermissionFlags[];
-static const struct FieldArray FileFields[];
-static const struct ActionArray clFileActions[];
-static const struct MethodArray clFileMethods[];
-
 static ERROR GET_ResolvedPath(objFile *, CSTRING *);
 
-static ERROR  set_permissions(objFile *, LONG);
-
-//****************************************************************************
-
-ERROR add_file_class(void)
-{
-   extern objMetaClass *glFileClass;
-   return CreateObject(ID_METACLASS, 0, (OBJECTPTR *)&glFileClass,
-      FID_ClassVersion|TFLOAT, VER_FILE,
-      FID_Name|TSTR,      "File",
-      FID_Category|TLONG, CCF_SYSTEM,
-      FID_Flags|TLONG,    CLF_PRIVATE_ONLY,
-      FID_Actions|TPTR,   clFileActions,
-      FID_Methods|TARRAY, clFileMethods,
-      FID_Fields|TARRAY,  FileFields,
-      FID_Size|TLONG,     sizeof(objFile),
-      FID_Path|TSTR,      "modules:core",
-      TAGEND);
-}
+static ERROR set_permissions(objFile *, LONG);
 
 /*****************************************************************************
 -ACTION-
@@ -138,8 +115,10 @@ Activate: Opens the file.  Performed automatically if NEW, READ or WRITE flags w
 
 static ERROR FILE_Activate(objFile *Self, APTR Void)
 {
+   parasol::Log log;
+
    if (Self->Handle != -1) return ERR_Okay;
-   if (!(Self->Flags & (FL_NEW|FL_READ|FL_WRITE))) return PostError(ERR_NothingDone);
+   if (!(Self->Flags & (FL_NEW|FL_READ|FL_WRITE))) return log.warning(ERR_NothingDone);
 
    // Setup the open flags.  Note that for new files, the owner will always have read/write/delete permissions by
    // default.  Extra flags can be set through the Permissions field.  If the user wishes to turn off his access to
@@ -160,7 +139,7 @@ static ERROR FILE_Activate(objFile *Self, APTR Void)
       openflags |= O_NOCTTY; // Prevent device from becoming the controlling terminal
    }
    else if (!StrCompare("/dev/", path, 0, 0)) {
-      LogErrorMsg("Opening devices not permitted without the DEVICE flag.");
+      log.warning("Opening devices not permitted without the DEVICE flag.");
       return ERR_NoPermission;
    }
 #else
@@ -168,18 +147,18 @@ static ERROR FILE_Activate(objFile *Self, APTR Void)
 #endif
 
    if ((Self->Flags & (FL_READ|FL_WRITE)) IS (FL_READ|FL_WRITE)) {
-      LogMsg("Open \"%s\" [RW]", path);
+      log.msg("Open \"%s\" [RW]", path);
       openflags |= O_RDWR;
    }
    else if (Self->Flags & FL_READ) {
-      LogMsg("Open \"%s\" [R]", path);
+      log.msg("Open \"%s\" [R]", path);
       openflags |= O_RDONLY;
    }
    else if (Self->Flags & FL_WRITE) {
-      LogMsg("Open \"%s\" [W|%s]", path, (Self->Flags & FL_NEW) ? "New" : "Existing");
+      log.msg("Open \"%s\" [W|%s]", path, (Self->Flags & FL_NEW) ? "New" : "Existing");
       openflags |= O_RDWR;
    }
-   else LogMsg("Open \"%s\" [-]", path);
+   else log.msg("Open \"%s\" [-]", path);
 
    #ifdef __unix__
       // Set O_NONBLOCK to stop the task from being halted in the event that we accidentally try to open a pipe like a
@@ -207,15 +186,15 @@ static ERROR FILE_Activate(objFile *Self, APTR Void)
          }
 
          if (Self->Handle IS -1) {
-            LogErrorMsg("New file error \"%s\"", path);
-            if (err IS EACCES) return PostError(ERR_NoPermission);
-            else if (err IS ENAMETOOLONG) return PostError(ERR_BufferOverflow);
+            log.warning("New file error \"%s\"", path);
+            if (err IS EACCES) return log.warning(ERR_NoPermission);
+            else if (err IS ENAMETOOLONG) return log.warning(ERR_BufferOverflow);
             else return ERR_CreateFile;
          }
       }
       else if ((errno IS EROFS) AND (Self->Flags & FL_READ)) {
          // Drop requested access rights to read-only and try again
-         LogErrorMsg("Reverting to read-only access for this read-only file.");
+         log.warning("Reverting to read-only access for this read-only file.");
          openflags = O_RDONLY;
          Self->Flags &= ~FL_WRITE;
          Self->Handle = open(path, openflags|WIN32OPEN|O_LARGEFILE, secureflags);
@@ -229,12 +208,12 @@ static ERROR FILE_Activate(objFile *Self, APTR Void)
 
       if ((Self->Handle IS -1) AND (!(Self->Flags & FL_LINK))) {
          switch(errno) {
-            case EACCES: return PostError(ERR_NoPermission);
-            case EEXIST: return PostError(ERR_FileExists);
-            case EINVAL: return PostError(ERR_Args);
-            case ENOENT: return PostError(ERR_FileNotFound);
+            case EACCES: return log.warning(ERR_NoPermission);
+            case EEXIST: return log.warning(ERR_FileExists);
+            case EINVAL: return log.warning(ERR_Args);
+            case ENOENT: return log.warning(ERR_FileNotFound);
             default:
-               LogErrorMsg("Could not open \"%s\", error: %s", path, strerror(errno));
+               log.warning("Could not open \"%s\", error: %s", path, strerror(errno));
                return ERR_Failed;
          }
       }
@@ -247,8 +226,7 @@ static ERROR FILE_Activate(objFile *Self, APTR Void)
       else if ((Self->Size = lseek64(Self->Handle, 0, SEEK_END)) != -1) {  // Get the size of the file.  Could be zero if the file is a stream.
          lseek64(Self->Handle, 0, SEEK_SET);
       }
-      else {
-         // lseek64() can fail if the file is special
+      else { // lseek64() can fail if the file is special
          Self->Size = 0;
       }
    }
@@ -288,6 +266,7 @@ Read: Failed to read the file content.
 
 static ERROR FILE_BufferContent(objFile *Self, APTR Void)
 {
+   parasol::Log log;
    LONG len;
 
    if (Self->Buffer) return ERR_Okay;
@@ -320,7 +299,7 @@ static ERROR FILE_BufferContent(objFile *Self, APTR Void)
       // Allocate buffer and load file content.  A NULL byte is added so that there is some safety in the event that
       // the file content is treated as a string.
 
-      UBYTE *buffer;
+      BYTE *buffer;
       if (!AllocMemory(Self->Size+1, Self->Head.MemFlags|MEM_NO_CLEAR, (APTR *)&buffer, NULL)) {
          buffer[Self->Size] = 0;
          if (!acRead(Self, buffer, Self->Size, &len)) {
@@ -328,21 +307,21 @@ static ERROR FILE_BufferContent(objFile *Self, APTR Void)
          }
          else {
             FreeResource(buffer);
-            return PostError(ERR_Read);
+            return log.warning(ERR_Read);
          }
       }
-      else return PostError(ERR_AllocMemory);
+      else return log.warning(ERR_AllocMemory);
    }
 
    // If the file was empty, allocate a 1-byte memory block for the Buffer field, in order to satisfy condition tests.
 
    if (!Self->Buffer) {
       if (AllocMemory(1, Self->Head.MemFlags, (APTR *)&Self->Buffer, NULL) != ERR_Okay) {
-         return PostError(ERR_AllocMemory);
+         return log.warning(ERR_AllocMemory);
       }
    }
 
-   LogMsg("File content now buffered in a " PF64() " byte memory block.", Self->Size);
+   log.msg("File content now buffered in a " PF64() " byte memory block.", Self->Size);
 
    close(Self->Handle);
    Self->Handle = -1;
@@ -362,10 +341,12 @@ Streaming data of any type to a file will result in the content being written to
 
 static ERROR FILE_DataFeed(objFile *Self, struct acDataFeed *Args)
 {
-   if ((!Args) OR (!Args->Buffer)) return PostError(ERR_NullArgs);
+   parasol::Log log;
+
+   if ((!Args) OR (!Args->Buffer)) return log.warning(ERR_NullArgs);
 
    if (Args->Size) return acWrite(Self, Args->Buffer, Args->Size, NULL);
-   else return acWrite(Self, Args->Buffer, StrLength(Args->Buffer), NULL);
+   else return acWrite(Self, Args->Buffer, StrLength((CSTRING)Args->Buffer), NULL);
 }
 
 /****************************************************************************
@@ -433,45 +414,42 @@ BufferOverflow: The file path string is too long.
 
 static ERROR FILE_Delete(objFile *Self, struct flDelete *Args)
 {
-   if ((!Self->Path) OR (!*Self->Path)) return PostError(ERR_MissingPath);
+   parasol::Log log;
+
+   if ((!Self->Path) OR (!*Self->Path)) return log.warning(ERR_MissingPath);
 
    if ((Self->Stream) AND (!(Self->Flags & FL_LINK))) {
-      LogBranch("Delete Folder: %s", Self->Path);
+      log.branch("Delete Folder: %s", Self->Path);
 
       // Check if the Path is a volume
 
       LONG len = StrLength(Self->Path);
-
       if (Self->Path[len-1] IS ':') {
          if (!DeleteVolume(Self->Path)) {
             #ifdef __unix__
-               closedir(Self->Stream);
+               closedir((DIR *)Self->Stream);
             #endif
             Self->Stream = NULL;
-            LogReturn();
             return ERR_Okay;
          }
-         else {
-            LogReturn();
-            return ERR_DeleteFile;
-         }
+         else return ERR_DeleteFile;
       }
 
       // Delete the folder and its contents
 
       CSTRING path;
       if (!GET_ResolvedPath(Self, &path)) {
-         BYTE buffer[512];
+         char buffer[512];
 
          #ifdef __unix__
-            closedir(Self->Stream);
+            closedir((DIR *)Self->Stream);
          #endif
          Self->Stream = NULL;
 
-         len = StrCopy(path, buffer, sizeof(buffer));
+         LONG len = StrCopy(path, buffer, sizeof(buffer));
          if ((buffer[len-1] IS '/') OR (buffer[len-1] IS '\\')) buffer[len-1] = 0;
 
-         struct FileFeedback fb;
+         FileFeedback fb;
          ClearMemory(&fb, sizeof(fb));
          if ((Args->Callback) AND (Args->Callback->Type)) {
             fb.FeedbackID = FBK_DELETE_FILE;
@@ -480,23 +458,18 @@ static ERROR FILE_Delete(objFile *Self, struct flDelete *Args)
 
          ERROR error;
          if (!(error = delete_tree(buffer, sizeof(buffer), Args->Callback, &fb)));
-         else if (error != ERR_Cancelled) LogErrorMsg("Failed to delete folder \"%s\"", buffer);
+         else if (error != ERR_Cancelled) log.warning("Failed to delete folder \"%s\"", buffer);
 
-         LogReturn();
          return error;
       }
-      else {
-         LogError(0, ERR_ResolvePath);
-         LogReturn();
-         return ERR_ResolvePath;
-      }
+      else return log.warning(ERR_ResolvePath);
    }
    else {
-      LogBranch("Delete File: %s", Self->Path);
+      log.branch("Delete File: %s", Self->Path);
 
       CSTRING path;
       if (!GET_ResolvedPath(Self, &path)) {
-         BYTE buffer[512];
+         char buffer[512];
          LONG len = StrCopy(path, buffer, sizeof(buffer));
          if ((buffer[len-1] IS '/') OR (buffer[len-1] IS '\\')) buffer[len-1] = 0;
 
@@ -504,21 +477,13 @@ static ERROR FILE_Delete(objFile *Self, struct flDelete *Args)
 
          // Unlinking the file deletes it
 
-         if (!unlink(buffer)) {
-            LogReturn();
-            return ERR_Okay;
-         }
+         if (!unlink(buffer)) return ERR_Okay;
          else {
-            LogErrorMsg("unlink() failed on file \"%s\": %s", buffer, strerror(errno));
-            LogReturn();
+            log.warning("unlink() failed on file \"%s\": %s", buffer, strerror(errno));
             return convert_errno(errno, ERR_Failed);
          }
       }
-      else {
-         LogError(0, ERR_ResolvePath);
-         LogReturn();
-         return ERR_ResolvePath;
-      }
+      else return log.warning(ERR_ResolvePath);
    }
 }
 
@@ -526,13 +491,15 @@ static ERROR FILE_Delete(objFile *Self, struct flDelete *Args)
 
 static ERROR FILE_Free(objFile *Self, APTR Void)
 {
+   parasol::Log log;
+
    if (Self->prvWatch) Action(MT_FlWatch, &Self->Head, NULL);
 
 #ifdef _WIN32
    STRING path = NULL;
    if (Self->Flags & FL_RESET_DATE) {
       // If we have to reset the date, get the file path
-      MSG("Resetting the file date.");
+      log.trace("Resetting the file date.");
       ResolvePath(Self->Path, 0, &path);
    }
 #endif
@@ -549,7 +516,7 @@ static ERROR FILE_Free(objFile *Self, APTR Void)
    if (Self->Handle != -1) {
       if (close(Self->Handle) IS -1) {
          #ifdef __unix__
-            LogErrorMsg("Unix filesystem error: %s", strerror(errno));
+            log.warning("Unix filesystem error: %s", strerror(errno));
          #endif
       }
       Self->Handle = -1;
@@ -557,7 +524,7 @@ static ERROR FILE_Free(objFile *Self, APTR Void)
 
    if (Self->Stream) {
       #ifdef __unix__
-         closedir(Self->Stream);
+         closedir((DIR *)Self->Stream);
       #endif
       Self->Stream = NULL;
    }
@@ -608,6 +575,7 @@ NoPermission: Permission was denied when accessing or creating the file.
 
 static ERROR FILE_Init(objFile *Self, APTR Void)
 {
+   parasol::Log log;
    LONG j, len;
    ERROR error;
 
@@ -623,14 +591,14 @@ static ERROR FILE_Init(objFile *Self, APTR Void)
          // content is treated as a string.
 
          if (AllocMemory((Self->Size < 1) ? 1 : Self->Size+1, Self->Head.MemFlags|MEM_NO_CLEAR, (APTR *)&Self->Buffer, NULL) != ERR_Okay) {
-            return PostError(ERR_AllocMemory);
+            return log.warning(ERR_AllocMemory);
          }
          ((BYTE *)Self->Buffer)[Self->Size] = 0;
       }
       return ERR_Okay;
    }
 
-   if (!Self->Path) return PostError(ERR_MissingPath);
+   if (!Self->Path) return log.warning(ERR_MissingPath);
 
    if (glDefaultPermissions) Self->Permissions = glDefaultPermissions;
 
@@ -643,27 +611,27 @@ static ERROR FILE_Init(objFile *Self, APTR Void)
             CopyMemory(Self->Path + 7, Self->Buffer, Self->Size);
             return ERR_Okay;
          }
-         else return PostError(ERR_AllocMemory);
+         else return log.warning(ERR_AllocMemory);
       }
-      else return PostError(ERR_Failed);
+      else return log.warning(ERR_Failed);
    }
 
    if ((!Self->Permissions) OR (Self->Permissions & PERMIT_INHERIT)) {
-      struct FileInfo info;
-      UBYTE namebuf[MAX_FILENAME];
+      FileInfo info;
+      char namebuf[MAX_FILENAME];
 
       // If the file already exists, pull the permissions from it.  Otherwise use a default set of permissions (if
       // possible, inherit permissions from the file's folder).
 
       if ((Self->Flags & FL_NEW) AND (get_file_info(Self->Path, &info, sizeof(info), namebuf, sizeof(namebuf)) IS ERR_Okay)) {
-         LogMsg("Using permissions of the original file.");
+         log.msg("Using permissions of the original file.");
          Self->Permissions |= info.Permissions;
       }
       else {
 #ifdef __unix__
          Self->Permissions |= get_parent_permissions(Self->Path, NULL, NULL) & (PERMIT_ALL_READ|PERMIT_ALL_WRITE);
          if (!Self->Permissions) Self->Permissions = PERMIT_READ|PERMIT_WRITE|PERMIT_GROUP_READ|PERMIT_GROUP_WRITE;
-         else LogMsg("Inherited permissions: $%.8x", Self->Permissions);
+         else log.msg("Inherited permissions: $%.8x", Self->Permissions);
 #else
          Self->Permissions = PERMIT_READ|PERMIT_WRITE|PERMIT_GROUP_READ|PERMIT_GROUP_WRITE;
 #endif
@@ -675,7 +643,7 @@ static ERROR FILE_Init(objFile *Self, APTR Void)
    if ((Self->Static) AND ((!Self->Path) OR (!Self->Path[0]))) return ERR_Okay;
 
    if (Self->Path[0] IS ':') {
-      MSG("Root folder initialised.");
+      log.trace("Root folder initialised.");
       return ERR_Okay;
    }
 
@@ -684,21 +652,21 @@ static ERROR FILE_Init(objFile *Self, APTR Void)
 
 retrydir:
    if (Self->Flags & FL_FOLDER) {
-      ULONG len = StrLength(Self->Path);
-      if (len > 512) return PostError(ERR_BufferOverflow);
+      LONG len = StrLength(Self->Path);
+      if (len > 512) return log.warning(ERR_BufferOverflow);
 
       if ((Self->Path[len-1] != '/') AND (Self->Path[len-1] != '\\') AND (Self->Path[len-1] != ':')) {
-         UBYTE buffer[len+1];
+         char buffer[len+1];
          for (j=0; j < len; j++) buffer[j] = Self->Path[j];
          buffer[j] = 0;
          if (SetString(Self, FID_Path, buffer) != ERR_Okay) {
-            return PostError(ERR_SetField);
+            return log.warning(ERR_SetField);
          }
       }
    }
 
    if (Self->Stream) {
-      MSG("Folder stream already set.");
+      log.trace("Folder stream already set.");
       return ERR_Okay;
    }
 
@@ -716,7 +684,7 @@ retrydir:
          if (StrMatch(Self->Path, Self->prvResolvedPath) != ERR_Okay) {
             SET_Path(Self, Self->prvResolvedPath);
          }
-         MSG("ResolvePath() reports virtual volume, will delegate to sub-class...");
+         log.trace("ResolvePath() reports virtual volume, will delegate to sub-class...");
          return ERR_UseSubClass;
       }
       else {
@@ -727,7 +695,7 @@ retrydir:
             goto retrydir;
          }
 
-         LogMsg("File not found \"%s\".", Self->Path);
+         log.msg("File not found \"%s\".", Self->Path);
          return ERR_FileNotFound;
       }
    }
@@ -752,7 +720,7 @@ retrydir:
 
    if (Self->prvType & STAT_FOLDER) { // Open the folder
       if (Self->Flags & FL_FILE) { // Check if the user expected the source to be a file, not a folder
-         return PostError(ERR_ExpectedFile);
+         return log.warning(ERR_ExpectedFile);
       }
 
       Self->Flags |= FL_FOLDER;
@@ -770,15 +738,15 @@ retrydir:
       #endif
 
       if (Self->Flags & FL_NEW) {
-         LogMsg("Making dir \"%s\", Permissions: $%.8x", Self->prvResolvedPath, Self->Permissions);
+         log.msg("Making dir \"%s\", Permissions: $%.8x", Self->prvResolvedPath, Self->Permissions);
          if (!CreateFolder(Self->prvResolvedPath, Self->Permissions)) {
             #ifdef __unix__
                if (!(Self->Stream = opendir(Self->prvResolvedPath))) {
-                  LogErrorMsg("Failed to open the folder after creating it.");
+                  log.warning("Failed to open the folder after creating it.");
                }
             #elif _WIN32
                if (!(Self->Stream = winCheckDirectoryExists(Self->prvResolvedPath))) {
-                  LogErrorMsg("Failed to open the folder after creating it.");
+                  log.warning("Failed to open the folder after creating it.");
                }
             #else
                #error Require folder open or folder marking code.
@@ -786,10 +754,10 @@ retrydir:
 
             return ERR_Okay;
          }
-         else return PostError(ERR_CreateFile);
+         else return log.warning(ERR_CreateFile);
       }
       else {
-         LogErrorMsg("Could not open folder \"%s\", %s.", Self->prvResolvedPath, strerror(errno));
+         log.warning("Could not open folder \"%s\", %s.", Self->prvResolvedPath, strerror(errno));
          return ERR_File;
       }
    }
@@ -834,17 +802,19 @@ Failed
 
 static ERROR FILE_MoveFile(objFile *Self, struct flMove *Args)
 {
-   if ((!Args) OR (!Args->Dest)) return PostError(ERR_NullArgs);
-   if (!Self->Path) return PostError(ERR_FieldNotSet);
+   parasol::Log log;
+
+   if ((!Args) OR (!Args->Dest)) return log.warning(ERR_NullArgs);
+   if (!Self->Path) return log.warning(ERR_FieldNotSet);
 
    STRING src   = Self->Path;
    CSTRING dest = Args->Dest;
 
    LONG len, i, j;
    for (len=0; dest[len]; len++);
-   if (len <= 1) return PostError(ERR_Args);
+   if (len <= 1) return log.warning(ERR_Args);
 
-   LogMsg("%s to %s", src, dest);
+   log.msg("%s to %s", src, dest);
 
    if ((dest[len-1] IS '/') OR (dest[len-1] IS '\\') OR (dest[len-1] IS ':')) {
       // If a trailing slash has been specified, we are moving the file into a folder, rather than to a direct path.
@@ -852,7 +822,7 @@ static ERROR FILE_MoveFile(objFile *Self, struct flMove *Args)
       for (i=0; src[i]; i++);
       i--;
       if (src[i] IS ':') {
-         LogErrorMsg("Moving volumes is illegal.");
+         log.warning("Moving volumes is illegal.");
          return ERR_Failed;
       }
       else if ((src[i] IS '/') OR (src[i] IS '\\')) i--;
@@ -879,12 +849,12 @@ static ERROR FILE_MoveFile(objFile *Self, struct flMove *Args)
             Self->Path = newpath;
          }
          else {
-            LogErrorMsg("Failed to move %s to %s", src, newpath);
+            log.warning("Failed to move %s to %s", src, newpath);
             FreeResource(newpath);
          }
          return error;
       }
-      else return PostError(ERR_AllocMemory);
+      else return log.warning(ERR_AllocMemory);
    }
    else {
       STRING newpath;
@@ -904,10 +874,10 @@ static ERROR FILE_MoveFile(objFile *Self, struct flMove *Args)
          }
          else {
             FreeResource(newpath);
-            return PostError(error);
+            return log.warning(error);
          }
       }
-      else return PostError(ERR_AllocMemory);
+      else return log.warning(ERR_AllocMemory);
    }
 }
 
@@ -949,8 +919,10 @@ DirEmpty: The index has reached the end of the file list.
 
 static ERROR FILE_NextFile(objFile *Self, struct flNext *Args)
 {
-   if (!Args) return PostError(ERR_NullArgs);
-   if (!(Self->Flags & FL_FOLDER)) return PostError(ERR_ExpectedFolder);
+   parasol::Log log;
+
+   if (!Args) return log.warning(ERR_NullArgs);
+   if (!(Self->Flags & FL_FOLDER)) return log.warning(ERR_ExpectedFolder);
 
    if (!Self->prvList) {
       LONG flags = RDF_QUALIFY;
@@ -970,7 +942,7 @@ static ERROR FILE_NextFile(objFile *Self, struct flNext *Args)
       LONG name_len = StrLength(Self->prvList->Info->Name);
 
       {
-         UBYTE path[folder_len + name_len + 2];
+         char path[folder_len + name_len + 2];
          CopyMemory(Self->Path, path, folder_len);
          CopyMemory(Self->prvList->Info->Name, path + folder_len, name_len);
          path[folder_len + name_len] = 0;
@@ -982,7 +954,7 @@ static ERROR FILE_NextFile(objFile *Self, struct flNext *Args)
             Args->File = file;
             return ERR_Okay;
          }
-         else return PostError(ERR_CreateObject);
+         else return log.warning(ERR_CreateObject);
       }
    }
    else {
@@ -1004,8 +976,6 @@ Query: Read a file's meta information from source.
 static ERROR FILE_Query(objFile *Self, APTR Void)
 {
 #ifdef _WIN32
-
-
    return ERR_Okay;
 #else
    return ERR_Okay;
@@ -1036,18 +1006,20 @@ Failed: The file object refers to a folder, or the object is corrupt.
 
 static ERROR FILE_Read(objFile *Self, struct acRead *Args)
 {
-   if ((!Args) OR (!Args->Buffer)) return PostError(ERR_NullArgs);
+   parasol::Log log;
+
+   if ((!Args) OR (!Args->Buffer)) return log.warning(ERR_NullArgs);
    else if (Args->Length == 0) return ERR_Okay;
    else if (Args->Length < 0) return ERR_OutOfRange;
 
-   if (!(Self->Flags & FL_READ)) return PostError(ERR_FileReadFlag);
+   if (!(Self->Flags & FL_READ)) return log.warning(ERR_FileReadFlag);
 
    if (Self->Buffer) {
       if (Self->Flags & FL_LOOP) {
          // In loop mode, we must make the file buffer appear to be of infinite length in terms of the read/write
          // position marker.
 
-         BYTE *dest = Args->Buffer;
+         BYTE *dest = (BYTE *)Args->Buffer;
          LONG len, readlen;
          for (readlen=Args->Length; readlen > 0; readlen -= len) {
             len = Self->Size - (Self->Position % Self->Size); // Calculate amount of space ahead of us.
@@ -1077,7 +1049,7 @@ static ERROR FILE_Read(objFile *Self, struct acRead *Args)
       }
    }
 
-   if (Self->prvType & STAT_FOLDER) return PostError(ERR_ExpectedFile);
+   if (Self->prvType & STAT_FOLDER) return log.warning(ERR_ExpectedFile);
 
    if (Self->Handle IS -1) return ERR_NotInitialised;
 
@@ -1085,14 +1057,14 @@ static ERROR FILE_Read(objFile *Self, struct acRead *Args)
 
    if (Args->Result != Args->Length) {
       if (Args->Result IS -1) {
-         LogMsg("Failed to read %d bytes from the file.", Args->Length);
+         log.msg("Failed to read %d bytes from the file.", Args->Length);
          Args->Result = 0;
          return ERR_SystemCall;
       }
 
       // Return ERR_Okay because even though not all data was read, this was not due to a failure.
 
-      LogF("5Read()","%d of the intended %d bytes were read from the file.", Args->Result, Args->Length);
+      log.msg("%d of the intended %d bytes were read from the file.", Args->Result, Args->Length);
       Self->Position += Args->Result;
       return ERR_Okay;
    }
@@ -1130,17 +1102,19 @@ NoData: There is no more data left to read.
 
 static ERROR FILE_ReadLine(objFile *Self, struct flReadLine *Args)
 {
-   if (!Args) return PostError(ERR_NullArgs);
+   parasol::Log log;
 
-   if (!(Self->Flags & FL_READ)) return PostError(ERR_FileReadFlag);
+   if (!Args) return log.warning(ERR_NullArgs);
+
+   if (!(Self->Flags & FL_READ)) return log.warning(ERR_FileReadFlag);
 
    LONG i, len;
-   UBYTE line[4096];
+   char line[4096];
    LONG pos = Self->Position;
    if (Self->Buffer) {
       len = 0;
       i = Self->Position;
-      while ((i < Self->Size) AND (len < sizeof(line)-1)) {
+      while ((i < Self->Size) AND ((size_t)len < sizeof(line)-1)) {
          line[len] = Self->Buffer[i++];
          if (line[len] IS '\n') {
             break; // Break once a line-feed is encountered
@@ -1151,8 +1125,8 @@ static ERROR FILE_ReadLine(objFile *Self, struct flReadLine *Args)
       Self->Position = i;
    }
    else {
-      if (Self->prvType & STAT_FOLDER) return PostError(ERR_ExpectedFile);
-      if (Self->Handle IS -1) return PostError(ERR_ObjectCorrupt);
+      if (Self->prvType & STAT_FOLDER) return log.warning(ERR_ExpectedFile);
+      if (Self->Handle IS -1) return log.warning(ERR_ObjectCorrupt);
 
       // Read the line
 
@@ -1160,17 +1134,16 @@ static ERROR FILE_ReadLine(objFile *Self, struct flReadLine *Args)
       LONG bytes = 256;
       len = 0;
       while ((result = read(Self->Handle, line+len, bytes)) > 0) {
-         for (i=0; i < result; i++) {
+         for (LONG i=0; i < result; i++) {
             if (line[len] IS '\n') break;
-            if (++len >= sizeof(line)) {
-               // Buffer overflow
+            if (++len >= (LONG)sizeof(line)) { // Buffer overflow
                lseek64(Self->Handle, Self->Position, SEEK_SET); // Reset the file position back to normal
-               return PostError(ERR_BufferOverflow);
+               return log.warning(ERR_BufferOverflow);
             }
          }
          if (line[len] IS '\n') break;
 
-         if (len + bytes > sizeof(line)) bytes = sizeof(line) - len;
+         if ((size_t)len + bytes > sizeof(line)) bytes = sizeof(line) - len;
       }
 
       Self->Position += len;
@@ -1207,108 +1180,94 @@ Rename: Changes the name of a file.
 
 static ERROR FILE_Rename(objFile *Self, struct acRename *Args)
 {
+   parasol::Log log;
    LONG namelen, i, j;
-   STRING new;
+   STRING n;
 
-   if ((!Args) OR (!Args->Name)) return PostError(ERR_NullArgs);
+   if ((!Args) OR (!Args->Name)) return log.warning(ERR_NullArgs);
    for (namelen=0; Args->Name[namelen]; namelen++);
-   if (!namelen) return PostError(ERR_Args);
+   if (!namelen) return log.warning(ERR_Args);
 
-   if (!Self->Path) return PostError(ERR_FieldNotSet);
+   if (!Self->Path) return log.warning(ERR_FieldNotSet);
 
-   LogBranch("%s to %s", Self->Path, Args->Name);
+   log.branch("%s to %s", Self->Path, Args->Name);
 
-   for (i=0; Self->Path[i]; i++);
+   i = StrLength(Self->Path);
 
    if ((Self->prvType & STAT_FOLDER) OR (Self->Flags & FL_FOLDER)) {
       if (Self->Path[i-1] IS ':') { // Renaming a volume
-         if (!AllocMemory(namelen+2, MEM_STRING|Self->Head.MemFlags, (APTR *)&new, NULL)) {
-            for (i=0; (Args->Name[i]) AND (Args->Name[i] != ':') AND (Args->Name[i] != '/') AND (Args->Name[i] != '\\'); i++) new[i] = Args->Name[i];
-            new[i] = 0;
-            if (!RenameVolume(Self->Path, new)) {
-               new[i++] = ':';
-               new[i++] = 0;
+         if (!AllocMemory(namelen+2, MEM_STRING|Self->Head.MemFlags, (APTR *)&n, NULL)) {
+            for (i=0; (Args->Name[i]) AND (Args->Name[i] != ':') AND (Args->Name[i] != '/') AND (Args->Name[i] != '\\'); i++) n[i] = Args->Name[i];
+            n[i] = 0;
+            if (!RenameVolume(Self->Path, n)) {
+               n[i++] = ':';
+               n[i++] = 0;
                FreeResource(Self->Path);
-               Self->Path = new;
-               LogReturn();
+               Self->Path = n;
                return ERR_Okay;
             }
             else {
-               FreeResource(new);
-               LogReturn();
-               return PostError(ERR_Failed);
+               FreeResource(n);
+               return log.warning(ERR_Failed);
             }
          }
-         else {
-            LogReturn();
-            return PostError(ERR_AllocMemory);
-         }
+         else return log.warning(ERR_AllocMemory);
       }
       else {
          // We are renaming a folder
          for (--i; (i > 0) AND (Self->Path[i-1] != ':') AND (Self->Path[i-1] != '/') AND (Self->Path[i-1] != '\\'); i--);
 
-         if (!AllocMemory(i+namelen+2, MEM_STRING|Self->Head.MemFlags, (APTR *)&new, NULL)) {
-            for (j=0; j < i; j++) new[j] = Self->Path[j];
+         if (!AllocMemory(i+namelen+2, MEM_STRING|Self->Head.MemFlags, (APTR *)&n, NULL)) {
+            for (j=0; j < i; j++) n[j] = Self->Path[j];
 
             for (i=0; (Args->Name[i]) AND (Args->Name[i] != '/') AND (Args->Name[i] != '\\') AND (Args->Name[i] != ':'); i++) {
-               new[j++] = Args->Name[i];
+               n[j++] = Args->Name[i];
             }
 
-            if (!fs_copy(Self->Path, new, NULL, TRUE)) {
+            if (!fs_copy(Self->Path, n, NULL, TRUE)) {
                // Add the trailing slash
-               if (new[j-1] != '/') new[j++] = '/';
-               new[j] = 0;
+               if (n[j-1] != '/') n[j++] = '/';
+               n[j] = 0;
 
                FreeResource(Self->Path);
-               Self->Path = new;
-               LogReturn();
+               Self->Path = n;
                return ERR_Okay;
             }
             else {
-               FreeResource(new);
-               LogReturn();
-               return PostError(ERR_Failed);
+               FreeResource(n);
+               return log.warning(ERR_Failed);
             }
          }
-         else {
-            LogReturn();
-            return PostError(ERR_AllocMemory);
-         }
+         else return log.warning(ERR_AllocMemory);
       }
    }
    else { // We are renaming a file
       while ((i > 0) AND (Self->Path[i-1] != ':') AND (Self->Path[i-1] != '/') AND (Self->Path[i-1] != '\\')) i--;
-      if (!AllocMemory(i+namelen+1, MEM_STRING|Self->Head.MemFlags, (APTR *)&new, NULL)) {
+      if (!AllocMemory(i+namelen+1, MEM_STRING|Self->Head.MemFlags, (APTR *)&n, NULL)) {
          // Generate the new path, then rename the file
 
-         for (j=0; j < i; j++) new[j] = Self->Path[j];
+         for (j=0; j < i; j++) n[j] = Self->Path[j];
          for (i=0; Args->Name[i]; i++);
          while ((i > 0) AND (Args->Name[i] != '/') AND (Args->Name[i] != '\\') AND (Args->Name[i] != ':')) i--;
          if ((Args->Name[i] IS '/') OR (Args->Name[i] IS '\\') OR (Args->Name[i] IS ':')) i++;
-         while (Args->Name[i]) new[j++] = Args->Name[i++];
-         new[j] = 0;
+         while (Args->Name[i]) n[j++] = Args->Name[i++];
+         n[j] = 0;
 
          #ifdef _WIN32
             if (Self->Handle != -1) { close(Self->Handle); Self->Handle = -1; }
          #endif
 
-         if (!fs_copy(Self->Path, new, NULL, TRUE)) {
+         if (!fs_copy(Self->Path, n, NULL, TRUE)) {
             FreeResource(Self->Path);
-            Self->Path = new;
-            LogReturn();
+            Self->Path = n;
             return ERR_Okay;
          }
          else {
-            FreeResource(new);
-            LogReturn();
-            return PostError(ERR_Failed);
+            FreeResource(n);
+            return log.warning(ERR_Failed);
          }
       }
-      else {
-         LogReturn();
-         return PostError(ERR_AllocMemory);
-      }
+      else return log.warning(ERR_AllocMemory);
    }
 }
 
@@ -1335,6 +1294,8 @@ Seek: Seeks to a new read/write position within a file.
 
 static ERROR FILE_Seek(objFile *Self, struct acSeek *Args)
 {
+   parasol::Log log;
+
    LARGE oldpos = Self->Position;
 
    // Set the new setting for the Self->Position field
@@ -1350,7 +1311,7 @@ static ERROR FILE_Seek(objFile *Self, struct acSeek *Args)
    else if (Args->Position IS SEEK_CURRENT) {
       Self->Position = Self->Position + (LARGE)Args->Offset;
    }
-   else return PostError(ERR_Args);
+   else return log.warning(ERR_Args);
 
    // Make sure we are greater than zero, otherwise set as zero
 
@@ -1362,11 +1323,11 @@ static ERROR FILE_Seek(objFile *Self, struct acSeek *Args)
       return ERR_Okay;
    }
 
-   if (Self->Handle IS -1) return PostError(ERR_ObjectCorrupt);
+   if (Self->Handle IS -1) return log.warning(ERR_ObjectCorrupt);
 
    LARGE ret;
    if ((ret = lseek64(Self->Handle, Self->Position, SEEK_SET)) != Self->Position) {
-      LogErrorMsg("Failed to Seek to new position of " PF64() " (return " PF64() ").", Self->Position, ret);
+      log.warning("Failed to Seek to new position of " PF64() " (return " PF64() ").", Self->Position, ret);
       Self->Position = oldpos;
       return ERR_SystemCall;
    }
@@ -1410,9 +1371,11 @@ NoSupport: The platform does not support file date setting.
 
 static ERROR FILE_SetDate(objFile *Self, struct flSetDate *Args)
 {
-   if (!Args) return PostError(ERR_NullArgs);
+   parasol::Log log;
 
-   LogMsg("%d/%d/%d %.2d:%.2d:%.2d", Args->Day, Args->Month, Args->Year, Args->Hour, Args->Minute, Args->Second);
+   if (!Args) return log.warning(ERR_NullArgs);
+
+   log.msg("%d/%d/%d %.2d:%.2d:%.2d", Args->Day, Args->Month, Args->Year, Args->Hour, Args->Minute, Args->Second);
 
    #ifdef _WIN32
       CSTRING path;
@@ -1421,7 +1384,7 @@ static ERROR FILE_SetDate(objFile *Self, struct flSetDate *Args)
             Self->Flags |= FL_RESET_DATE;
             return ERR_Okay;
          }
-         else return PostError(ERR_SystemCall);
+         else return log.warning(ERR_SystemCall);
       }
       else return ERR_ResolvePath;
 
@@ -1450,11 +1413,11 @@ static ERROR FILE_SetDate(objFile *Self, struct flSetDate *Args)
                return ERR_Okay;
             }
             else {
-               LogErrorMsg("Failed to set the file date.");
-               return PostError(ERR_SystemCall);
+               log.warning("Failed to set the file date.");
+               return log.warning(ERR_SystemCall);
             }
          }
-         else return PostError(ERR_SystemCall);
+         else return log.warning(ERR_SystemCall);
       }
       else return ERR_ResolvePath;
 
@@ -1505,7 +1468,9 @@ NoSupport: The file is not streamed.
 
 static ERROR FILE_StartStream(objFile *Self, struct flStartStream *Args)
 {
-   if ((!Args) OR (!Args->SubscriberID)) return PostError(ERR_NullArgs);
+   parasol::Log log;
+
+   if ((!Args) OR (!Args->SubscriberID)) return log.warning(ERR_NullArgs);
 
    // Streaming from standard files is pointless - it's the virtual drives that provide streaming features.
 
@@ -1570,7 +1535,9 @@ NullArgs
 
 static ERROR FILE_Watch(objFile *Self, struct flWatch *Args)
 {
-   LogF("~","%s, Flags: $%.8x", Self->Path, (Args) ? Args->Flags : 0);
+   parasol::Log log;
+
+   log.branch("%s, Flags: $%.8x", Self->Path, (Args) ? Args->Flags : 0);
 
    // Drop any previously configured watch.
 
@@ -1582,54 +1549,50 @@ static ERROR FILE_Watch(objFile *Self, struct flWatch *Args)
             break;
          }
       }
-      if (v IS glVirtualTotal) LogErrorMsg("Failed to find virtual volume ID #%d", Self->prvWatch->VirtualID);
+      if (v IS glVirtualTotal) log.warning("Failed to find virtual volume ID #%d", Self->prvWatch->VirtualID);
 
       FreeResource(Self->prvWatch);
       Self->prvWatch = NULL;
    }
 
-   if ((!Args) OR (!Args->Callback) OR (!Args->Flags)) {
-      LogReturn();
-      return ERR_Okay;
-   }
+   if ((!Args) OR (!Args->Callback) OR (!Args->Flags)) return ERR_Okay;
 
 #ifdef __linux__ // Initialise inotify if not done already.
    if (glInotify IS -1) {
       ERROR error;
       if ((glInotify = inotify_init()) != -1) {
          fcntl(glInotify, F_SETFL, fcntl(glInotify, F_GETFL)|O_NONBLOCK);
-         error = RegisterFD(glInotify, RFD_READ, (APTR)path_monitor, NULL);
+         error = RegisterFD(glInotify, RFD_READ, (void (*)(HOSTHANDLE, APTR))path_monitor, NULL);
       }
-      else error = PostError(ERR_SystemCall);
+      else error = log.warning(ERR_SystemCall);
 
-      if (error) { LogReturn(); return error; }
+      if (error) return error;
    }
 #endif
 
    CSTRING resolve;
    ERROR error;
    if (!(error = GET_ResolvedPath(Self, &resolve))) {
-      const struct virtual_drive *virtual = get_fs(resolve);
+      const virtual_drive *vd = get_fs(resolve);
 
-      if (virtual->WatchPath) {
+      if (vd->WatchPath) {
          #ifdef _WIN32
-         if (!AllocMemory(sizeof(struct rkWatchPath) + winGetWatchBufferSize(), MEM_DATA, (APTR *)&Self->prvWatch, NULL)) {
+         if (!AllocMemory(sizeof(rkWatchPath) + winGetWatchBufferSize(), MEM_DATA, (APTR *)&Self->prvWatch, NULL)) {
          #else
-         if (!AllocMemory(sizeof(struct rkWatchPath), MEM_DATA, (APTR *)&Self->prvWatch, NULL)) {
+         if (!AllocMemory(sizeof(rkWatchPath), MEM_DATA, (APTR *)&Self->prvWatch, NULL)) {
          #endif
-            Self->prvWatch->VirtualID = virtual->VirtualID;
+            Self->prvWatch->VirtualID = vd->VirtualID;
             Self->prvWatch->Routine   = *Args->Callback;
             Self->prvWatch->Flags     = Args->Flags;
             Self->prvWatch->Custom    = Args->Custom;
 
-            error = virtual->WatchPath(Self);
+            error = vd->WatchPath(Self);
          }
          else error = ERR_AllocMemory;
       }
       else error = ERR_NoSupport;
    }
 
-   LogReturn();
    return error;
 }
 
@@ -1657,19 +1620,21 @@ LimitedSuccess: Only some of the data was written to the file.  Check the Result
 
 static ERROR FILE_Write(objFile *Self, struct acWrite *Args)
 {
-   if (!Args) return PostError(ERR_NullArgs);
+   parasol::Log log;
+
+   if (!Args) return log.warning(ERR_NullArgs);
    if (Args->Length <= 0) return ERR_Args;
 
-   if (!(Self->Flags & FL_WRITE)) return PostError(ERR_FileWriteFlag);
+   if (!(Self->Flags & FL_WRITE)) return log.warning(ERR_FileWriteFlag);
 
    if (Self->Buffer) {
       if (Self->Flags & FL_LOOP) {
          // In loop mode, we must make the file buffer appear to be of infinite length in terms of the read/write
          // position marker.
 
-         const char *src = Args->Buffer;
-         LONG len, writelen;
-         for (writelen=Args->Length; writelen > 0; writelen -= len) {
+         CSTRING src = (CSTRING)Args->Buffer;
+         LONG len;
+         for (LONG writelen=Args->Length; writelen > 0; writelen -= len) {
             len = Self->Size - (Self->Position % Self->Size); // Calculate amount of space ahead of us.
             if (len > writelen) len = writelen; // Restrict the length to the requested amount to write.
 
@@ -1698,7 +1663,7 @@ static ERROR FILE_Write(objFile *Self, struct acWrite *Args)
                Self->Size = Self->Position + Args->Length;
                Self->Buffer[Self->Size] = 0;
             }
-            else return PostError(ERR_ReallocMemory);
+            else return log.warning(ERR_ReallocMemory);
          }
 
          Args->Result = Args->Length;
@@ -1710,9 +1675,9 @@ static ERROR FILE_Write(objFile *Self, struct acWrite *Args)
       }
    }
 
-   if ((Self->prvType & STAT_FOLDER) OR (Self->Flags & FL_FOLDER)) return PostError(ERR_ExpectedFile);
+   if ((Self->prvType & STAT_FOLDER) OR (Self->Flags & FL_FOLDER)) return log.warning(ERR_ExpectedFile);
 
-   if (Self->Handle IS -1) return PostError(ERR_ObjectCorrupt);
+   if (Self->Handle IS -1) return log.warning(ERR_ObjectCorrupt);
 
    // If no buffer was supplied then we will write out null values to a limit indicated by the Length field.
 
@@ -1743,7 +1708,7 @@ static ERROR FILE_Write(objFile *Self, struct acWrite *Args)
    }
 
    if (Args->Result != Args->Length) {
-      LogF("5","%d of the intended %d bytes were written to the file.", Args->Result, Args->Length);
+      log.msg("%d of the intended %d bytes were written to the file.", Args->Result, Args->Length);
       return ERR_LimitedSuccess;
    }
 
@@ -1781,8 +1746,10 @@ To simplify time management, information is read and set via a &DateTime structu
 
 *****************************************************************************/
 
-static ERROR GET_Created(objFile *Self, struct DateTime **Value)
+static ERROR GET_Created(objFile *Self, DateTime **Value)
 {
+   parasol::Log log;
+
    *Value = 0;
 
    if (Self->Handle != -1) {
@@ -1802,15 +1769,15 @@ static ERROR GET_Created(objFile *Self, struct DateTime **Value)
             *Value = &Self->prvCreated;
             return ERR_Okay;
          }
-         else return PostError(ERR_SystemCall);
+         else return log.warning(ERR_SystemCall);
       }
-      else return PostError(ERR_SystemCall);
+      else return log.warning(ERR_SystemCall);
    }
    else {
       CSTRING path;
       ERROR error;
       if (!GET_ResolvedPath(Self, &path)) {
-         BYTE buffer[512];
+         char buffer[512];
          LONG len = StrCopy(path, buffer, sizeof(buffer));
          if ((buffer[len-1] IS '/') OR (buffer[len-1] IS '\\')) buffer[len-1] = 0;
 
@@ -1830,11 +1797,11 @@ static ERROR GET_Created(objFile *Self, struct DateTime **Value)
                *Value = &Self->prvCreated;
                error = ERR_Okay;
             }
-            else error = PostError(ERR_SystemCall);
+            else error = log.warning(ERR_SystemCall);
          }
-         else error = PostError(ERR_SystemCall);
+         else error = log.warning(ERR_SystemCall);
       }
-      else error = PostError(ERR_ResolvePath);
+      else error = log.warning(ERR_ResolvePath);
 
       return error;
    }
@@ -1852,8 +1819,10 @@ Information is read and set using a standard &DateTime structure.
 
 *****************************************************************************/
 
-static ERROR GET_Date(objFile *Self, struct DateTime **Value)
+static ERROR GET_Date(objFile *Self, DateTime **Value)
 {
+   parasol::Log log;
+
    *Value = 0;
 
    if (Self->Handle != -1) {
@@ -1874,9 +1843,9 @@ static ERROR GET_Date(objFile *Self, struct DateTime **Value)
             *Value = &Self->prvModified;
             error = ERR_Okay;
          }
-         else error = PostError(ERR_SystemCall);
+         else error = log.warning(ERR_SystemCall);
       }
-      else error = PostError(ERR_SystemCall);
+      else error = log.warning(ERR_SystemCall);
 
       return error;
    }
@@ -1884,7 +1853,7 @@ static ERROR GET_Date(objFile *Self, struct DateTime **Value)
       CSTRING path;
       ERROR error;
       if (!GET_ResolvedPath(Self, &path)) {
-         BYTE buffer[512];
+         char buffer[512];
          LONG len = StrCopy(path, buffer, sizeof(buffer));
          if ((buffer[len-1] IS '/') OR (buffer[len-1] IS '\\')) buffer[len-1] = 0;
 
@@ -1904,19 +1873,21 @@ static ERROR GET_Date(objFile *Self, struct DateTime **Value)
                *Value = &Self->prvModified;
                error = ERR_Okay;
             }
-            else error = PostError(ERR_SystemCall);
+            else error = log.warning(ERR_SystemCall);
          }
-         else error = PostError(ERR_SystemCall);
+         else error = log.warning(ERR_SystemCall);
       }
-      else error = PostError(ERR_ResolvePath);
+      else error = log.warning(ERR_ResolvePath);
 
       return error;
    }
 }
 
-ERROR SET_Date(objFile *Self, struct DateTime *Date)
+ERROR SET_Date(objFile *Self, DateTime *Date)
 {
-   if (!Date) return PostError(ERR_NullArgs);
+   parasol::Log log;
+
+   if (!Date) return log.warning(ERR_NullArgs);
 
 #ifdef _WIN32
    CSTRING path;
@@ -1925,9 +1896,9 @@ ERROR SET_Date(objFile *Self, struct DateTime *Date)
          Self->Flags |= FL_RESET_DATE;
          return ERR_Okay;
       }
-      else return PostError(ERR_SystemCall);
+      else return log.warning(ERR_SystemCall);
    }
-   else return PostError(ERR_ResolvePath);
+   else return log.warning(ERR_ResolvePath);
 
 #elif __unix__
 
@@ -1954,9 +1925,9 @@ ERROR SET_Date(objFile *Self, struct DateTime *Date)
             Self->Flags |= FL_RESET_DATE;
             return ERR_Okay;
          }
-         else return PostError(ERR_SystemCall);
+         else return log.warning(ERR_SystemCall);
       }
-      else return PostError(ERR_SystemCall);
+      else return log.warning(ERR_SystemCall);
    }
    else return ERR_ResolvePath;
 
@@ -1986,11 +1957,7 @@ static ERROR GET_Group(objFile *Self, LONG *Value)
 {
 #ifdef __unix__
    struct stat64 info;
-
-   if (fstat64(Self->Handle, &info) IS -1) {
-      return ERR_FileNotFound;
-   }
-
+   if (fstat64(Self->Handle, &info) IS -1) return ERR_FileNotFound;
    *Value = info.st_gid;
    return ERR_Okay;
 #else
@@ -2001,14 +1968,13 @@ static ERROR GET_Group(objFile *Self, LONG *Value)
 static ERROR SET_Group(objFile *Self, LONG Value)
 {
 #ifdef __unix__
+   parasol::Log log;
    if (Self->Head.Flags & NF_INITIALISED) {
-      LogMsg("Changing group to #%d", Value);
-      if (!fchown(Self->Handle, -1, Value)) {
-         return ERR_Okay;
-      }
-      else return PostError(convert_errno(errno, ERR_Failed));
+      log.msg("Changing group to #%d", Value);
+      if (!fchown(Self->Handle, -1, Value)) return ERR_Okay;
+      else return log.warning(convert_errno(errno, ERR_Failed));
    }
-   else return PostError(ERR_NotInitialised);
+   else return log.warning(ERR_NotInitialised);
 #else
    return ERR_NoSupport;
 #endif
@@ -2048,11 +2014,10 @@ static ERROR GET_Icon(objFile *Self, CSTRING *Value)
       return ERR_Okay;
    }
 
-   OBJECTPTR context = SetContext(&Self->Head);
+   parasol::SwitchContext context(Self);
 
    if ((!Self->Path) OR (!Self->Path[0])) {
       *Value = Self->prvIcon = StrClone("icons:filetypes/empty");
-      SetContext(context);
       return ERR_Okay;
    }
 
@@ -2065,13 +2030,13 @@ static ERROR GET_Icon(objFile *Self, CSTRING *Value)
       char icon[40] = "icons:folders/folder";
 
       if (!AccessPrivateObject((OBJECTPTR)glVolumes, 8000)) {
-         struct ConfigEntry *entries;
+         ConfigEntry *entries;
          if ((entries = glVolumes->Entries)) {
-            UBYTE volume[40];
-            if (i >= sizeof(volume)) i = sizeof(volume) - 1;
+            char volume[40];
+            if ((size_t)i >= sizeof(volume)) i = sizeof(volume) - 1;
             volume[CharCopy(Self->Path, volume, i)] = 0;
 
-            for (i=0; i < glVolumes->AmtEntries; i++) {
+            for (LONG i=0; i < glVolumes->AmtEntries; i++) {
                if ((!StrMatch("Name", entries[i].Key)) AND (!StrMatch(volume, entries[i].Data))) {
                   while ((i > 0) AND (!StrMatch(entries[i].Section, entries[i-1].Section))) i--;
 
@@ -2092,12 +2057,11 @@ volume_found:
       }
 
       *Value = Self->prvIcon = StrClone(icon);
-      SetContext(context);
       return ERR_Okay;
    }
 
-   struct FileInfo info;
-   UBYTE fileinfo[MAX_FILENAME];
+   FileInfo info;
+   char fileinfo[MAX_FILENAME];
    BYTE link = FALSE;
    if (!get_file_info(Self->Path, &info, sizeof(info), fileinfo, sizeof(fileinfo))) {
       if (info.Flags & RDF_LINK) link = TRUE;
@@ -2105,7 +2069,6 @@ volume_found:
       if (info.Flags & RDF_VIRTUAL) { // Virtual drives can specify custom icons, even for folders
          *Value = Self->prvIcon = VarGetString(info.Tags, "Icon");
          if (*Value) {
-            SetContext(context);
             return ERR_Okay;
          }
       }
@@ -2113,7 +2076,6 @@ volume_found:
       if (info.Flags & RDF_FOLDER) {
          if (link) *Value = Self->prvIcon = StrClone("icons:folders/folder+overlays/link");
          else *Value = Self->prvIcon = StrClone("icons:folders/folder");
-         SetContext(context);
          return ERR_Okay;
       }
    }
@@ -2122,7 +2084,6 @@ volume_found:
    if ((Self->Path[i-1] IS '/') OR (Self->Path[i-1] IS '\\')) {
       if (link) *Value = Self->prvIcon = StrClone("icons:folders/folder+overlays/link");
       else *Value = Self->prvIcon = StrClone("icons:folders/folder");
-      SetContext(context);
       return ERR_Okay;
    }
 
@@ -2133,12 +2094,11 @@ volume_found:
       if (load_datatypes() != ERR_Okay) {
          if (link) *Value = Self->prvIcon = StrClone("icons:filetypes/empty+overlays/link");
          else *Value = Self->prvIcon = StrClone("icons:filetypes/empty");
-         SetContext(context);
          return ERR_Okay;
       }
    }
 
-   struct ConfigEntry *entries;
+   ConfigEntry *entries;
    char icon[80] = "";
    if ((entries = glDatatypes->Entries)) {
       // Scan file extensions first, because this saves us from having to open and read the file content.
@@ -2147,8 +2107,7 @@ volume_found:
       for (k=i; (k > 0) AND (Self->Path[k-1] != ':') AND (Self->Path[k-1] != '/') AND (Self->Path[k-1] != '\\'); k--);
 
       if (Self->Path[k]) {
-         LONG j;
-         for (j=0; j < glDatatypes->AmtEntries; j++) {
+         for (LONG j=0; j < glDatatypes->AmtEntries; j++) {
             if (StrMatch(entries[j].Key, "Match") != ERR_Okay) continue;
 
             if (!StrCompare(entries[j].Data, Self->Path+k, 0, STR_WILDCARD)) {
@@ -2170,12 +2129,12 @@ volume_found:
          if (!IdentifyFile(Self->Path, NULL, 0, &class_id, &subclass_id, NULL)) {
             if (!subclass_id) subclass_id = class_id;
 
-            struct ClassHeader *classes;
+            ClassHeader *classes;
 
             if ((classes = glClassDB)) {
                LONG *offsets = CL_OFFSETS(classes);
-               for (i=0; i < classes->Total; i++) {
-                  struct ClassItem *item = ((APTR)classes) + offsets[i];
+               for (LONG i=0; i < classes->Total; i++) {
+                  auto item = (ClassItem *)((BYTE *)classes + offsets[i]);
                   if (item->ClassID IS subclass_id) {
                      StrCopy(item->Name, classname, sizeof(classname));
                   }
@@ -2189,8 +2148,7 @@ volume_found:
          // Scan class names
 
          if ((classname[0]) OR (mastername[0])) {
-            LONG j;
-            for (j=0; j < glDatatypes->AmtEntries; j++) {
+            for (LONG j=0; j < glDatatypes->AmtEntries; j++) {
                if (!StrMatch(entries[j].Key, "Class")) {
                   CSTRING str;
                   if (!StrMatch(entries[j].Data, classname)) {
@@ -2210,7 +2168,6 @@ volume_found:
    if (!icon[0]) {
       if (link) *Value = Self->prvIcon = StrClone("icons:filetypes/empty+overlays/link");
       else *Value = Self->prvIcon = StrClone("icons:filetypes/empty");
-      SetContext(context);
       return ERR_Okay;
    }
 
@@ -2220,12 +2177,11 @@ volume_found:
    }
 
    if (link) {
-      for (i=0; icon[i]; i++);
+      i = StrLength(icon);
       StrCopy("+overlays/link", icon + i, sizeof(icon)-i);
    }
 
    *Value = Self->prvIcon = StrClone(icon);
-   SetContext(context);
    return ERR_Okay;
 }
 
@@ -2242,8 +2198,9 @@ folder containing the link will need to be taken into consideration when calcula
 static ERROR GET_Link(objFile *Self, STRING *Value)
 {
 #ifdef __unix__
+   parasol::Log log;
    STRING path;
-   UBYTE buffer[512];
+   char buffer[512];
 
    if (Self->prvLink) { // The link has already been read previously, just re-use it
       *Value = Self->prvLink;
@@ -2253,10 +2210,9 @@ static ERROR GET_Link(objFile *Self, STRING *Value)
    *Value = NULL;
    if (Self->Flags & FL_LINK) {
       if (!ResolvePath(Self->Path, 0, &path)) {
-         LONG i;
-         for (i=0; path[i]; i++);
+         LONG i = StrLength(path);
          if (path[i-1] IS '/') path[i-1] = 0;
-         if (((i = readlink(path, buffer, sizeof(buffer)-1)) > 0) AND (i < sizeof(buffer)-1)) {
+         if (((i = readlink(path, buffer, sizeof(buffer)-1)) > 0) AND ((size_t)i < sizeof(buffer)-1)) {
             buffer[i] = 0;
             Self->prvLink = StrClone(buffer);
             *Value = Self->prvLink;
@@ -2315,11 +2271,13 @@ static ERROR GET_Path(objFile *Self, STRING *Value)
 
 static ERROR SET_Path(objFile *Self, CSTRING Value)
 {
-   if (Self->Head.Flags & NF_INITIALISED) return PostError(ERR_Immutable);
+   parasol::Log log;
+
+   if (Self->Head.Flags & NF_INITIALISED) return log.warning(ERR_Immutable);
 
    if (Self->Stream) {
       #ifdef __unix__
-         closedir(Self->Stream);
+         closedir((DIR *)Self->Stream);
       #endif
       Self->Stream = NULL;
    }
@@ -2336,7 +2294,7 @@ static ERROR SET_Path(objFile *Self, CSTRING Value)
       if (StrCompare("string:", Value, 7, 0) != ERR_Okay) {
          for (len=0; (Value[len]) AND (Value[len] != '|'); len++) {
             if (Value[len] IS ';') {
-               LogErrorMsg("Warning - use of ; is obsolete as a separator, use | in path %s", Value);
+               log.warning("Warning - use of ; is obsolete as a separator, use | in path %s", Value);
             }
          }
       }
@@ -2389,7 +2347,7 @@ static ERROR SET_Path(objFile *Self, CSTRING Value)
 
          // Check if the path is a folder/volume or a file
 
-         for (i=0; Self->Path[i]; i++);
+         i = StrLength(Self->Path);
 
          if ((Self->Path[i-1] IS ':') OR (Self->Path[i-1] IS '/') OR (Self->Path[i-1] IS '\\')) {
             Self->prvType |= STAT_FOLDER;
@@ -2400,7 +2358,7 @@ static ERROR SET_Path(objFile *Self, CSTRING Value)
             Self->prvType |= STAT_FOLDER;
          }
       }
-      else return PostError(ERR_AllocMemory);
+      else return log.warning(ERR_AllocMemory);
    }
 
    return ERR_Okay;
@@ -2415,6 +2373,8 @@ Lookup: PERMIT
 
 static ERROR GET_Permissions(objFile *Self, LONG *Value)
 {
+   parasol::Log log;
+
    *Value = 0;
 
 #ifdef __unix__
@@ -2438,9 +2398,7 @@ static ERROR GET_Permissions(objFile *Self, LONG *Value)
       }
       else if (Self->Stream) {
          struct stat64 info;
-         if (stat64(path, &info) != -1) {
-            Self->Permissions |= convert_fs_permissions(info.st_mode);
-         }
+         if (stat64(path, &info) != -1) Self->Permissions |= convert_fs_permissions(info.st_mode);
          else return convert_errno(errno, ERR_SystemCall);
       }
 
@@ -2476,6 +2434,7 @@ static ERROR SET_Permissions(objFile *Self, LONG Value)
 
 static ERROR set_permissions(objFile *Self, LONG Permissions)
 {
+   parasol::Log log(__FUNCTION__);
 #ifdef __unix__
 
    if (Self->Handle != -1) {
@@ -2533,28 +2492,24 @@ static ERROR set_permissions(objFile *Self, LONG Permissions)
             Self->Permissions = Permissions;
             return ERR_Okay;
          }
-         else return PostError(convert_errno(errno, ERR_SystemCall));
+         else return log.warning(convert_errno(errno, ERR_SystemCall));
       }
-      else return PostError(ERR_ResolvePath);
+      else return log.warning(ERR_ResolvePath);
    }
-   else return PostError(ERR_InvalidHandle);
+   else return log.warning(ERR_InvalidHandle);
 
 #elif _WIN32
 
-   LogF("~set_permissions()","$%.8x", Permissions);
+   log.branch("$%.8x", Permissions);
 
    CSTRING path;
    if (!GET_ResolvedPath(Self, &path)) {
       ERROR error;
-      if (winSetAttrib(path, Permissions)) {
-         error = PostError(ERR_Failed);
-      }
+      if (winSetAttrib(path, Permissions)) error = log.warning(ERR_Failed);
       else error = ERR_Okay;
-
-      LogReturn();
       return error;
    }
-   else return StepError(0, ERR_ResolvePath);
+   else return log.warning(ERR_ResolvePath);
 
 #else
 
@@ -2625,6 +2580,8 @@ position being set to the end of the file.
 
 static ERROR GET_Size(objFile *Self, LARGE *Size)
 {
+   parasol::Log log;
+
    if (Self->Flags & FL_FOLDER) {
       *Size = 0;
       return ERR_Okay;
@@ -2645,18 +2602,20 @@ static ERROR GET_Size(objFile *Self, LARGE *Size)
       struct stat64 stats;
       if (!stat64(path, &stats)) {
          *Size = stats.st_size;
-         MSG("The file size is " PF64(), *Size);
+         log.trace("The file size is " PF64(), *Size);
          return ERR_Okay;
       }
       else return convert_errno(errno, ERR_SystemCall);
    }
-   else return PostError(ERR_ResolvePath);
+   else return log.warning(ERR_ResolvePath);
 }
 
 static ERROR SET_Size(objFile *Self, LARGE Size)
 {
+   parasol::Log log;
+
    if (Size IS Self->Size) return ERR_Okay;
-   if (Size < 0) return PostError(ERR_OutOfRange);
+   if (Size < 0) return log.warning(ERR_OutOfRange);
 
    if (Self->Buffer) {
       if (Self->Head.Flags & NF_INITIALISED) return ERR_NoSupport;
@@ -2683,11 +2642,11 @@ static ERROR SET_Size(objFile *Self, LARGE Size)
          return ERR_Okay;
       }
       else {
-         LogErrorMsg("Failed to set file size to " PF64(), Size);
+         log.warning("Failed to set file size to " PF64(), Size);
          return ERR_SystemCall;
       }
    }
-   else return PostError(ERR_ResolvePath);
+   else return log.warning(ERR_ResolvePath);
 
 #elif __unix__
 
@@ -2705,7 +2664,7 @@ static ERROR SET_Size(objFile *Self, LARGE Size)
       // Some filesystem drivers do not support truncation for the purpose of
       // enlarging files.  In this case, we have to write to the end of the file.
 
-      LogErrorMsg("" PF64() " bytes, ftruncate: %s", Size, strerror(errno));
+      log.warning("" PF64() " bytes, ftruncate: %s", Size, strerror(errno));
 
       if (Size > Self->Size) {
          CSTRING path;
@@ -2717,10 +2676,10 @@ static ERROR SET_Size(objFile *Self, LARGE Size)
             struct statfs fstat;
             if (statfs(path, &fstat) != -1) {
                if (Size < (LARGE)fstat.f_bavail * (LARGE)fstat.f_bsize) {
-                  LogMsg("Attempting to use the write-past-boundary method.");
+                  log.msg("Attempting to use the write-past-boundary method.");
 
                   if (lseek64(Self->Handle, Size - 1, SEEK_SET) != -1) {
-                     BYTE c = 0;
+                     char c = 0;
                      if (write(Self->Handle, &c, 1) IS 1) {
                         lseek64(Self->Handle, Self->Position, SEEK_SET);
                         Self->Size = Size;
@@ -2731,7 +2690,7 @@ static ERROR SET_Size(objFile *Self, LARGE Size)
                   }
                   else return convert_errno(errno, ERR_SystemCall);
                }
-               else return PostError(ERR_OutOfSpace);
+               else return log.warning(ERR_OutOfSpace);
             }
             else return convert_errno(errno, ERR_SystemCall);
          }
@@ -2740,8 +2699,8 @@ static ERROR SET_Size(objFile *Self, LARGE Size)
       else return ERR_Failed;
    }
 #else
-   MSG("No support for truncating file sizes on this platform.");
-   return PostError(ERR_NoSupport);
+   log.trace("No support for truncating file sizes on this platform.");
+   return log.warning(ERR_NoSupport);
 #endif
 }
 
@@ -2775,6 +2734,8 @@ for comparison to the time stamps of other files.  For a parsed time structure, 
 
 static ERROR GET_TimeStamp(objFile *Self, LARGE *Value)
 {
+   parasol::Log log;
+
    *Value = 0;
 
    if (Self->Handle != -1) {
@@ -2784,7 +2745,7 @@ static ERROR GET_TimeStamp(objFile *Self, LARGE *Value)
 
          struct tm *local;
          if ((local = localtime(&stats.st_mtime))) {
-            struct DateTime datetime;
+            DateTime datetime;
             datetime.Year   = 1900 + local->tm_year;
             datetime.Month  = local->tm_mon + 1;
             datetime.Day    = local->tm_mday;
@@ -2808,7 +2769,7 @@ static ERROR GET_TimeStamp(objFile *Self, LARGE *Value)
 
             struct tm *local;
             if ((local = localtime(&stats.st_mtime))) {
-               struct DateTime datetime;
+               DateTime datetime;
                datetime.Year   = 1900 + local->tm_year;
                datetime.Month  = local->tm_mon + 1;
                datetime.Day    = local->tm_mday;
@@ -2820,11 +2781,10 @@ static ERROR GET_TimeStamp(objFile *Self, LARGE *Value)
                return ERR_Okay;
             }
             else return convert_errno(errno, ERR_SystemCall);
-
          }
          else return convert_errno(errno, ERR_SystemCall);
       }
-      else return PostError(ERR_ResolvePath);
+      else return log.warning(ERR_ResolvePath);
    }
 }
 
@@ -2847,9 +2807,7 @@ static ERROR GET_User(objFile *Self, LONG *Value)
 #ifdef __unix__
    struct stat64 info;
 
-   if (fstat64(Self->Handle, &info) IS -1) {
-      return ERR_FileNotFound;
-   }
+   if (fstat64(Self->Handle, &info) IS -1) return ERR_FileNotFound;
 
    *Value = info.st_uid;
    return ERR_Okay;
@@ -2861,14 +2819,15 @@ static ERROR GET_User(objFile *Self, LONG *Value)
 static ERROR SET_User(objFile *Self, LONG Value)
 {
 #ifdef __unix__
+   parasol::Log log;
    if (Self->Head.Flags & NF_INITIALISED) {
-      LogMsg("Changing user to #%d", Value);
+      log.msg("Changing user to #%d", Value);
       if (!fchown(Self->Handle, Value, -1)) {
          return ERR_Okay;
       }
-      else return PostError(convert_errno(errno, ERR_Failed));
+      else return log.warning(convert_errno(errno, ERR_Failed));
    }
-   else return PostError(ERR_Failed);
+   else return log.warning(ERR_Failed);
 #else
    return ERR_NoSupport;
 #endif
@@ -2876,7 +2835,7 @@ static ERROR SET_User(objFile *Self, LONG Value)
 
 //****************************************************************************
 
-static const struct FieldDef PermissionFlags[] = {
+static const FieldDef PermissionFlags[] = {
    { "Read",         PERMIT_READ },
    { "Write",        PERMIT_WRITE },
    { "Exec",         PERMIT_EXEC },
@@ -2906,27 +2865,45 @@ static const struct FieldDef PermissionFlags[] = {
 
 #include "class_file_def.c"
 
-static const struct FieldArray FileFields[] = {
-   { "Position", FDF_LARGE|FDF_RW,     0, NULL, SET_Position },
+static const FieldArray FileFields[] = {
+   { "Position", FDF_LARGE|FDF_RW,     0, NULL, (APTR)SET_Position },
    { "Flags",    FDF_LONGFLAGS|FDF_RI, (MAXINT)&clFileFlags, NULL, NULL },
    { "Static",   FDF_LONG|FDF_RI,      0, NULL, NULL },
    { "Target",   FDF_OBJECTID|FDF_RW,  ID_SURFACE, NULL, NULL },
-   { "Buffer",   FDF_ARRAY|FDF_BYTE|FDF_R,  0, GET_Buffer, NULL },
+   { "Buffer",   FDF_ARRAY|FDF_BYTE|FDF_R,  0, (APTR)GET_Buffer, NULL },
    // Virtual fields
-   { "Date",        FDF_POINTER|FDF_STRUCT|FDF_RW, (MAXINT)"DateTime", GET_Date, SET_Date },
-   { "Created",     FDF_POINTER|FDF_STRUCT|FDF_RW, (MAXINT)"DateTime", GET_Created, NULL },
-   { "Handle",      FDF_LARGE|FDF_R,      0, GET_Handle, NULL },
-   { "Icon",        FDF_STRING|FDF_R, 0, GET_Icon, NULL },
-   { "Path",        FDF_STRING|FDF_RI,    0, GET_Path, SET_Path },
-   { "Permissions", FDF_LONGFLAGS|FDF_RW, (MAXINT)&PermissionFlags, GET_Permissions, SET_Permissions },
-   { "ResolvedPath", FDF_STRING|FDF_R,    0, GET_ResolvedPath, NULL },
-   { "Size",        FDF_LARGE|FDF_RW,     0, GET_Size, SET_Size },
-   { "TimeStamp",   FDF_LARGE|FDF_R,      0, GET_TimeStamp, NULL },
-   { "Link",        FDF_STRING|FDF_RW,    0, GET_Link, SET_Link },
-   { "User",        FDF_LONG|FDF_RW,      0, GET_User, SET_User },
-   { "Group",       FDF_LONG|FDF_RW,      0, GET_Group, SET_Group },
+   { "Date",        FDF_POINTER|FDF_STRUCT|FDF_RW, (MAXINT)"DateTime", (APTR)GET_Date, (APTR)SET_Date },
+   { "Created",     FDF_POINTER|FDF_STRUCT|FDF_RW, (MAXINT)"DateTime", (APTR)GET_Created, NULL },
+   { "Handle",      FDF_LARGE|FDF_R,   0, (APTR)GET_Handle, NULL },
+   { "Icon",        FDF_STRING|FDF_R,  0, (APTR)GET_Icon, NULL },
+   { "Path",        FDF_STRING|FDF_RI, 0, (APTR)GET_Path, (APTR)SET_Path },
+   { "Permissions", FDF_LONGFLAGS|FDF_RW, (MAXINT)&PermissionFlags, (APTR)GET_Permissions, (APTR)SET_Permissions },
+   { "ResolvedPath", FDF_STRING|FDF_R, 0, (APTR)GET_ResolvedPath, NULL },
+   { "Size",        FDF_LARGE|FDF_RW,  0, (APTR)GET_Size, (APTR)SET_Size },
+   { "TimeStamp",   FDF_LARGE|FDF_R,   0, (APTR)GET_TimeStamp, NULL },
+   { "Link",        FDF_STRING|FDF_RW, 0, (APTR)GET_Link, (APTR)SET_Link },
+   { "User",        FDF_LONG|FDF_RW,   0, (APTR)GET_User, (APTR)SET_User },
+   { "Group",       FDF_LONG|FDF_RW,   0, (APTR)GET_Group, (APTR)SET_Group },
    // Synonyms
-   { "Src",         FDF_STRING|FDF_SYNONYM|FDF_RI,    0, GET_Path, SET_Path },
-   { "Location",    FDF_STRING|FDF_SYNONYM|FDF_RI, 0, GET_Path, SET_Path },
+   { "Src",         FDF_STRING|FDF_SYNONYM|FDF_RI, 0, (APTR)GET_Path, (APTR)SET_Path },
+   { "Location",    FDF_STRING|FDF_SYNONYM|FDF_RI, 0, (APTR)GET_Path, (APTR)SET_Path },
    END_FIELD
 };
+
+//****************************************************************************
+
+extern "C" ERROR add_file_class(void)
+{
+   extern objMetaClass *glFileClass;
+   return CreateObject(ID_METACLASS, 0, (OBJECTPTR *)&glFileClass,
+      FID_ClassVersion|TFLOAT, VER_FILE,
+      FID_Name|TSTR,      "File",
+      FID_Category|TLONG, CCF_SYSTEM,
+      FID_Flags|TLONG,    CLF_PRIVATE_ONLY,
+      FID_Actions|TPTR,   clFileActions,
+      FID_Methods|TARRAY, clFileMethods,
+      FID_Fields|TARRAY,  FileFields,
+      FID_Size|TLONG,     sizeof(objFile),
+      FID_Path|TSTR,      "modules:core",
+      TAGEND);
+}

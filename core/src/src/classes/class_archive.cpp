@@ -43,10 +43,12 @@ reference.  The format is `archive:ArchiveName/path/to/file.ext` and the example
 #include "../defs.h"
 #include <parasol/main.h>
 
+using namespace parasol;
+
 #define LEN_ARCHIVE 8 // "archive:" length
 
 struct prvFileArchive {
-   struct ZipFile Info;
+   ZipFile Info;
    z_stream Stream;
    objFile *FileStream;
    objCompressedStream *CompressedStream;
@@ -54,23 +56,21 @@ struct prvFileArchive {
    UBYTE Inflating:1;
 };
 
-static const struct ActionArray clArchiveActions[];
-static const struct MethodArray clArchiveMethods[];
-static const struct FieldArray clArchiveFields[];
-
 static objCompression *glArchives = NULL;
 
-static ERROR close_folder(struct DirInfo *);
-static ERROR open_folder(struct DirInfo *);
-static ERROR get_info(CSTRING Path, struct FileInfo *, LONG InfoSize);
-static ERROR scan_folder(struct DirInfo *);
+static ERROR close_folder(DirInfo *);
+static ERROR open_folder(DirInfo *);
+static ERROR get_info(CSTRING Path, FileInfo *, LONG InfoSize);
+static ERROR scan_folder(DirInfo *);
 static ERROR test_path(CSTRING, LONG, LONG *);
-static ERROR convert_error(z_stream *Stream, LONG Result) __attribute__((unused));
 
+static ERROR convert_error(z_stream *Stream, LONG Result) __attribute__((unused));
 static ERROR convert_error(z_stream *Stream, LONG Result)
 {
-   if (Stream->msg) LogErrorMsg("%s", Stream->msg);
-   else LogErrorMsg("Zip error: %d", Result);
+   parasol::Log log;
+
+   if (Stream->msg) log.warning("%s", Stream->msg);
+   else log.warning("Zip error: %d", Result);
 
    switch(Result) {
       case Z_STREAM_ERROR:  return ERR_Failed;
@@ -87,42 +87,13 @@ static ERROR convert_error(z_stream *Stream, LONG Result)
 
 INLINE CSTRING name_from_path(CSTRING Path)
 {
-   LONG i;
-   for (i=0; Path[i]; i++) {
+   for (LONG i=0; Path[i]; i++) {
       if ((Path[i] IS '/') OR (Path[i] IS '\\')) {
          Path = Path + i + 1;
          i = -1;
       }
    }
    return Path;
-}
-
-//****************************************************************************
-
-ERROR add_archive_class(void)
-{
-   return CreateObject(ID_METACLASS, 0, (OBJECTPTR *)&glArchiveClass,
-      FID_BaseClassID|TLONG, ID_FILE,
-      FID_SubClassID|TLONG,  ID_FILEARCHIVE,
-      FID_Name|TSTRING,      "FileArchive",
-      FID_Actions|TPTR,      clArchiveActions,
-      FID_Methods|TARRAY,    clArchiveMethods,
-      FID_Fields|TARRAY,     clArchiveFields,
-      FID_Path|TSTR,         "modules:core",
-      TAGEND);
-}
-
-//****************************************************************************
-
-ERROR create_archive_volume(void)
-{
-   return VirtualVolume("archive",
-      VAS_OPEN_DIR,  &open_folder,
-      VAS_SCAN_DIR,  &scan_folder,
-      VAS_CLOSE_DIR, &close_folder,
-      VAS_TEST_PATH, &test_path,
-      VAS_GET_INFO,  &get_info,
-      0);
 }
 
 //****************************************************************************
@@ -158,13 +129,15 @@ extern void remove_archive(objCompression *Compression)
 
 extern objCompression * find_archive(CSTRING Path, CSTRING *FilePath)
 {
+   parasol::Log log(__FUNCTION__);
+
    if (!Path) return NULL;
 
    // Compute the hash of the referenced archive.
 
    CSTRING path = Path + LEN_ARCHIVE;
    ULONG hash = 5381;
-   UBYTE c;
+   char c;
    while ((c = *path++) AND (c != '/') AND (c != '\\')) {
       if ((c >= 'A') AND (c <= 'Z')) hash = (hash<<5) + hash + c - 'A' + 'a';
       else hash = (hash<<5) + hash + c;
@@ -180,13 +153,13 @@ extern objCompression * find_archive(CSTRING Path, CSTRING *FilePath)
    objCompression *cmp = glArchives;
    while (cmp) {
       if (cmp->ArchiveHash IS hash) {
-         FMSG("find_archive","Found matching archive for %s", Path);
+         log.trace("Found matching archive for %s", Path);
          return cmp;
       }
       cmp = cmp->NextArchive;
    }
 
-   FMSG("@find_archive","No match for path %s", Path);
+   log.warning("No match for path %s", Path);
    return NULL;
 }
 
@@ -194,14 +167,16 @@ extern objCompression * find_archive(CSTRING Path, CSTRING *FilePath)
 
 static ERROR ARCHIVE_Activate(objFile *Self, APTR Void)
 {
-   MSG("Activating archive object...");
+   parasol::Log log(__FUNCTION__);
 
-   struct prvFileArchive *prv = Self->Head.ChildPrivate;
+   log.trace("Activating archive object...");
+
+   auto prv = (prvFileArchive *)Self->Head.ChildPrivate;
 
    CSTRING file_path;
    objCompression *cmp = find_archive(Self->Path, &file_path);
 
-   if (!cmp) return PostError(ERR_Search);
+   if (!cmp) return log.warning(ERR_Search);
 
    ERROR error;
    if (!prv->FileStream) {
@@ -210,10 +185,10 @@ static ERROR ARCHIVE_Activate(objFile *Self, APTR Void)
             FID_Flags|TLONG,   FL_READ,
             TAGEND)) {
 
-         struct ZipFile *item = cmp->prvFiles;
+         ZipFile *item = cmp->prvFiles;
          while (item) {
             if (!StrCompare(file_path, item->Name, 0, STR_WILDCARD)) break;
-            else item = (struct ZipFile *)item->Next;
+            else item = (ZipFile *)item->Next;
          }
 
          acSeekStart(prv->FileStream, item->Offset + HEAD_EXTRALEN);
@@ -221,7 +196,7 @@ static ERROR ARCHIVE_Activate(objFile *Self, APTR Void)
          UWORD extralen = read_word(prv->FileStream);
          ULONG stream_start = item->Offset + HEAD_LENGTH + item->NameLen + extralen;
          if (acSeekStart(prv->FileStream, stream_start) != ERR_Okay) {
-            error = PostError(ERR_Seek);
+            error = log.warning(ERR_Seek);
          }
          else if (item->CompressedSize > 0) {
             Self->Flags |= FL_FILE;
@@ -253,7 +228,7 @@ static ERROR ARCHIVE_Activate(objFile *Self, APTR Void)
 
 static ERROR ARCHIVE_Free(objFile *Self, APTR Void)
 {
-   struct prvFileArchive *prv = Self->Head.ChildPrivate;
+   auto prv = (prvFileArchive *)Self->Head.ChildPrivate;
 
    if (prv) {
       if (prv->FileStream) { acFree(&prv->FileStream->Head); prv->FileStream = NULL; }
@@ -268,14 +243,16 @@ static ERROR ARCHIVE_Free(objFile *Self, APTR Void)
 
 static ERROR ARCHIVE_Init(objFile *Self, APTR Void)
 {
+   parasol::Log log(__FUNCTION__);
+
    if (!Self->Path) return ERR_FieldNotSet;
 
    if (StrCompare("archive:", Self->Path, LEN_ARCHIVE, 0) != ERR_Okay) return ERR_NoSupport;
 
-   if (Self->Flags & (FL_NEW|FL_WRITE)) return PostError(ERR_ReadOnly);
+   if (Self->Flags & (FL_NEW|FL_WRITE)) return log.warning(ERR_ReadOnly);
 
    ERROR error = ERR_Failed;
-   if (!AllocMemory(sizeof(struct prvFileArchive), Self->Head.MemFlags, &Self->Head.ChildPrivate, NULL)) {
+   if (!AllocMemory(sizeof(prvFileArchive), Self->Head.MemFlags, &Self->Head.ChildPrivate, NULL)) {
       LONG len;
       for (len=0; Self->Path[len]; len++);
 
@@ -287,17 +264,15 @@ static ERROR ARCHIVE_Init(objFile *Self, APTR Void)
          objCompression *cmp = find_archive(Self->Path, &file_path);
 
          if (cmp) {
-            struct ZipFile *item = cmp->prvFiles;
+            ZipFile *item = cmp->prvFiles;
             while (item) {
                if (!StrCompare(file_path, item->Name, 0, STR_WILDCARD)) break;
-               else item = (struct ZipFile *)item->Next;
+               else item = (ZipFile *)item->Next;
             }
 
             if (item) {
-               ((struct prvFileArchive *)(Self->Head.ChildPrivate))->Info = *item;
-
+               ((prvFileArchive *)(Self->Head.ChildPrivate))->Info = *item;
                error = acActivate((OBJECTPTR)Self);
-
                if (!error) error = acQuery((OBJECTPTR)Self);
             }
             else error = ERR_Search;
@@ -318,7 +293,7 @@ static ERROR ARCHIVE_Init(objFile *Self, APTR Void)
 
 static ERROR ARCHIVE_Query(objFile *Self, APTR Void)
 {
-   struct prvFileArchive *prv = (struct prvFileArchive *)(Self->Head.ChildPrivate);
+   prvFileArchive *prv = (prvFileArchive *)(Self->Head.ChildPrivate);
 
    // Activate the source if this hasn't been done already.
 
@@ -328,7 +303,7 @@ static ERROR ARCHIVE_Query(objFile *Self, APTR Void)
       if (error) return error;
    }
 
-   struct ZipFile *item = &prv->Info;
+   ZipFile *item = &prv->Info;
 
    // If security flags are present, convert them to file system permissions.
 
@@ -358,11 +333,13 @@ static ERROR ARCHIVE_Query(objFile *Self, APTR Void)
 
 static ERROR ARCHIVE_Read(objFile *Self, struct acRead *Args)
 {
-   if ((!Args) OR (!Args->Buffer)) return PostError(ERR_NullArgs);
+   parasol::Log log(__FUNCTION__);
+
+   if ((!Args) OR (!Args->Buffer)) return log.warning(ERR_NullArgs);
    else if (Args->Length == 0) return ERR_Okay;
    else if (Args->Length < 0) return ERR_OutOfRange;
 
-   struct prvFileArchive *prv = Self->Head.ChildPrivate;
+   auto prv = (prvFileArchive *)Self->Head.ChildPrivate;
 
    if (prv->Info.DeflateMethod IS 0) {
       ERROR error = acRead(prv->FileStream, Args->Buffer, Args->Length, &Args->Result);
@@ -397,9 +374,9 @@ static ERROR ARCHIVE_Read(objFile *Self, struct acRead *Args)
 
       LONG out_offset = 0;
       ERROR error = ERR_Okay;
-      while ((Args->Result < prv->Info.OriginalSize) AND (Args->Result < Args->Length)) {
+      while ((Args->Result < (LONG)prv->Info.OriginalSize) AND (Args->Result < Args->Length)) {
 
-         if (acRead(prv->FileStream, inputstream, inputsize, &length)) return PostError(ERR_Read);
+         if (acRead(prv->FileStream, inputstream, inputsize, &length)) return log.warning(ERR_Read);
 
          if (length <= 0) return ERR_Okay;
 
@@ -410,7 +387,7 @@ static ERROR ARCHIVE_Read(objFile *Self, struct acRead *Args)
 
          LONG result = Z_OK;
          while ((result IS Z_OK) AND (prv->Stream.avail_in > 0) AND (out_offset < outputsize)) {
-            prv->Stream.next_out  = output + out_offset;
+            prv->Stream.next_out  = (Bytef *)output + out_offset;
             prv->Stream.avail_out = outputsize;
             result = inflate(&prv->Stream, Z_SYNC_FLUSH);
 
@@ -425,7 +402,7 @@ static ERROR ARCHIVE_Read(objFile *Self, struct acRead *Args)
                out_offset += total_output;
             }
             else { // Decompression is to the temporary buffer.
-               CopyMemory(output, Args->Buffer + Args->Result, total_output);
+               CopyMemory(output, (BYTE *)Args->Buffer + Args->Result, total_output);
             }
 
             Args->Result += total_output;
@@ -448,13 +425,15 @@ static ERROR ARCHIVE_Read(objFile *Self, struct acRead *Args)
 
 static ERROR ARCHIVE_Seek(objFile *Self, struct acSeek *Args)
 {
+   parasol::Log log(__FUNCTION__);
    LONG pos;
+
    if (Args->Position IS SEEK_START) pos = Args->Offset;
    else if (Args->Position IS SEEK_END) pos = Self->Size - Args->Offset;
    else if (Args->Position IS SEEK_CURRENT) pos = Self->Position + Args->Offset;
-   else return PostError(ERR_Args);
+   else return log.warning(ERR_Args);
 
-   struct prvFileArchive *prv = Self->Head.ChildPrivate;
+   auto prv = (prvFileArchive *)Self->Head.ChildPrivate;
    ERROR error = acSeek(prv->CompressedStream, Args->Position, Args->Offset);
    if (!error) {
       if (pos < 0) pos = 0;
@@ -469,14 +448,15 @@ static ERROR ARCHIVE_Seek(objFile *Self, struct acSeek *Args)
 
 static ERROR ARCHIVE_Write(objFile *Self, struct acWrite *Args)
 {
-   return PostError(ERR_NoSupport);
+   parasol::Log log(__FUNCTION__);
+   return log.warning(ERR_NoSupport);
 }
 
 //****************************************************************************
 
 static ERROR ARCHIVE_GET_Size(objFile *Self, LARGE *Value)
 {
-   struct prvFileArchive *prv = Self->Head.ChildPrivate;
+   auto prv = (prvFileArchive *)Self->Head.ChildPrivate;
    if (prv) {
       *Value = prv->Info.OriginalSize;
       return ERR_Okay;
@@ -487,7 +467,7 @@ static ERROR ARCHIVE_GET_Size(objFile *Self, LARGE *Value)
 //****************************************************************************
 // Open the archive: volume for scanning.
 
-static ERROR open_folder(struct DirInfo *Dir)
+static ERROR open_folder(DirInfo *Dir)
 {
    Dir->prvIndex = 0;
    Dir->prvTotal = 0;
@@ -499,27 +479,29 @@ static ERROR open_folder(struct DirInfo *Dir)
 //****************************************************************************
 // Scan the next entry in the folder.
 
-static ERROR scan_folder(struct DirInfo *Dir)
+static ERROR scan_folder(DirInfo *Dir)
 {
+   parasol::Log log(__FUNCTION__);
+
    // Retrieve the file path, skipping the "archive:name/" part.
 
    CSTRING path = Dir->prvResolvedPath + LEN_ARCHIVE + 1;
    while ((*path) AND (*path != '/') AND (*path != '\\')) path++;
    if ((*path IS '/') OR (*path IS '\\')) path++;
 
-   FMSG("~scan_folder()","Path: \"%s\", Flags: $%.8x", path, Dir->prvFlags);
+   log.traceBranch("Path: \"%s\", Flags: $%.8x", path, Dir->prvFlags);
 
-   objCompression *archive = Dir->prvHandle;
+   auto archive = (objCompression *)Dir->prvHandle;
 
-   struct ZipFile *zf = archive->prvFiles;
-   if (Dir->prvIndexPtr) zf = Dir->prvIndexPtr;
+   ZipFile *zf = archive->prvFiles;
+   if (Dir->prvIndexPtr) zf = (ZipFile *)Dir->prvIndexPtr;
 
-   for (; zf; zf = (struct ZipFile *)zf->Next) {
+   for (; zf; zf = (ZipFile *)zf->Next) {
       if (*path) {
          if (StrCompare(path, zf->Name, 0, 0) != ERR_Okay) continue;
       }
 
-      FMSG("scan_folder:", "%s: %s, $%.8x", path, zf->Name, zf->Flags);
+      log.trace("%s: %s, $%.8x", path, zf->Name, zf->Flags);
 
       // Single folders will appear as 'ABCDEF/'
       // Single files will appear as 'ABCDEF.ABC' (no slash)
@@ -564,7 +546,6 @@ static ERROR scan_folder(struct DirInfo *Dir)
 
          Dir->prvIndexPtr = zf->Next;
          Dir->prvTotal++;
-         LOGRETURN();
          return ERR_Okay;
       }
 
@@ -585,27 +566,25 @@ static ERROR scan_folder(struct DirInfo *Dir)
 
          Dir->prvIndexPtr = zf->Next;
          Dir->prvTotal++;
-         LOGRETURN();
          return ERR_Okay;
       }
    }
 
-   LOGRETURN();
    return ERR_DirEmpty;
 }
 
 //****************************************************************************
 
-static ERROR close_folder(struct DirInfo *Dir)
+static ERROR close_folder(DirInfo *Dir)
 {
    return ERR_Okay;
 }
 
 //****************************************************************************
 
-static ERROR get_info(CSTRING Path, struct FileInfo *Info, LONG InfoSize)
+static ERROR get_info(CSTRING Path, FileInfo *Info, LONG InfoSize)
 {
-   struct CompressedItem *item;
+   CompressedItem *item;
    objCompression *cmp;
    CSTRING file_path;
    ERROR error;
@@ -655,26 +634,25 @@ static ERROR get_info(CSTRING Path, struct FileInfo *Info, LONG InfoSize)
 
 static ERROR test_path(CSTRING Path, LONG Flags, LONG *Type)
 {
-   FMSG("~test_path","%s", Path);
+   parasol::Log log(__FUNCTION__);
+
+   log.traceBranch("%s", Path);
 
    CSTRING file_path;
    objCompression *cmp;
    if (!(cmp = find_archive(Path, &file_path))) {
-      LOGRETURN();
       return ERR_DoesNotExist;
    }
 
    if ((!file_path) OR (!file_path[0])) {
       *Type = LOC_VOLUME;
-      LOGRETURN();
       return ERR_Okay;
    }
 
-   struct CompressedItem *item;
+   CompressedItem *item;
    ERROR error;
    if ((error = cmpFind(cmp, file_path, STR_CASE|STR_MATCH_LEN, &item))) {
-      FMSG("test_path","cmpFind() did not find %s, %s", file_path, GetErrorMsg(error));
-      LOGRETURN();
+      log.trace("cmpFind() did not find %s, %s", file_path, GetErrorMsg(error));
       if (error IS ERR_Search) return ERR_DoesNotExist;
       else return error;
    }
@@ -682,28 +660,55 @@ static ERROR test_path(CSTRING Path, LONG Flags, LONG *Type)
    if (item->Flags & FL_FOLDER) *Type = LOC_FOLDER;
    else *Type = LOC_FILE;
 
-   LOGRETURN();
    return ERR_Okay;
 }
 
 //****************************************************************************
 
-static const struct ActionArray clArchiveActions[] = {
-   { AC_Activate, ARCHIVE_Activate },
-   { AC_Free,     ARCHIVE_Free },
-   { AC_Init,     ARCHIVE_Init },
-   { AC_Query,    ARCHIVE_Query },
-   { AC_Read,     ARCHIVE_Read },
-   { AC_Seek,     ARCHIVE_Seek },
-   { AC_Write,    ARCHIVE_Write },
+static const ActionArray clArchiveActions[] = {
+   { AC_Activate, (APTR)ARCHIVE_Activate },
+   { AC_Free,     (APTR)ARCHIVE_Free },
+   { AC_Init,     (APTR)ARCHIVE_Init },
+   { AC_Query,    (APTR)ARCHIVE_Query },
+   { AC_Read,     (APTR)ARCHIVE_Read },
+   { AC_Seek,     (APTR)ARCHIVE_Seek },
+   { AC_Write,    (APTR)ARCHIVE_Write },
    { 0, NULL }
 };
 
-static const struct MethodArray clArchiveMethods[] = {
+static const MethodArray clArchiveMethods[] = {
    { 0, NULL, NULL, NULL, 0 }
 };
 
 static const struct FieldArray clArchiveFields[] = {
-   { "Size", FDF_LARGE|FDF_R, 0, ARCHIVE_GET_Size, NULL },
+   { "Size", FDF_LARGE|FDF_R, 0, (APTR)ARCHIVE_GET_Size, NULL },
     END_FIELD
 };
+
+//****************************************************************************
+
+extern "C" ERROR add_archive_class(void)
+{
+   return CreateObject(ID_METACLASS, 0, (OBJECTPTR *)&glArchiveClass,
+      FID_BaseClassID|TLONG, ID_FILE,
+      FID_SubClassID|TLONG,  ID_FILEARCHIVE,
+      FID_Name|TSTRING,      "FileArchive",
+      FID_Actions|TPTR,      clArchiveActions,
+      FID_Methods|TARRAY,    clArchiveMethods,
+      FID_Fields|TARRAY,     clArchiveFields,
+      FID_Path|TSTR,         "modules:core",
+      TAGEND);
+}
+
+//****************************************************************************
+
+extern "C" ERROR create_archive_volume(void)
+{
+   return VirtualVolume("archive",
+      VAS_OPEN_DIR,  &open_folder,
+      VAS_SCAN_DIR,  &scan_folder,
+      VAS_CLOSE_DIR, &close_folder,
+      VAS_TEST_PATH, &test_path,
+      VAS_GET_INFO,  &get_info,
+      0);
+}

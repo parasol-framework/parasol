@@ -1782,7 +1782,7 @@ function processFDLFile(Source)
       loadFile(Source)
       return ERR_Okay
    else
-      error("The specified source '" .. Source .. "' is invalid.")
+      error("The specified source '" .. Source .. "' could not be located.")
    end
 end
 

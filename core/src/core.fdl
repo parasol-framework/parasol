@@ -654,7 +654,7 @@ module({ name="Core", copyright="Paul Manias 1996-2020" }, function()
 
   struct("FunctionField", { comment="Used by ActionTable and Function structures to declare lists of parameters." }, [[
     cstr Name   # Name of the field
-    int Type    # Type of the field
+    uint Type   # Type of the field
   ]])
 
   struct("Function", { comment="Function list array structure" }, [[
@@ -680,7 +680,7 @@ module({ name="Core", copyright="Paul Manias 1996-2020" }, function()
 
   struct("FieldArray", { comment="Used to construct class blueprints for the MetaClass." }, [[
     cstr   Name      # The name of the field, e.g. "Width"
-    int    Flags     # Special flags that describe the field
+    uint   Flags     # Special flags that describe the field
     maxint Arg       # Can be a pointer or an integer value
     ptr    GetField  # void GetField(*Object, APTR Result);
     ptr    SetField  # ERROR SetField(*Object, APTR Value);
@@ -931,7 +931,7 @@ module({ name="Core", copyright="Paul Manias 1996-2020" }, function()
     uint FieldID       # Provides a fast way of finding fields, e.g. FID_WIDTH
     ushort Offset      # Field offset within the object
     ushort Index       # Field array index
-    int Flags          # Special flags that describe the field
+    uint Flags         # Special flags that describe the field
   ]]) -- [32/52]
 
   c_insert([[
@@ -1232,7 +1232,7 @@ INLINE OBJECTID GetUniqueID(APTR Object) { return ((OBJECTPTR)Object)->UniqueID;
     { id=10, name="Watch" }
   })
 
-  class("File", { version=1.2, src="src/classes/class_file.c", output="src/classes/class_file_def.c" }, [[
+  class("File", { version=1.2, src="src/classes/class_file.cpp", output="src/classes/class_file_def.c" }, [[
     large Position   # The current read/write byte position in a file.
     int(FL) Flags    # File flags and options.
     int   Static     # Set to TRUE if a file object should be static.
@@ -1277,7 +1277,7 @@ INLINE OBJECTID GetUniqueID(APTR Object) { return ((OBJECTPTR)Object)->UniqueID;
     { id=11, name="Set" }
   })
 
-  class("Config", { src="src/classes/class_config.c", output="src/classes/class_config_def.c" }, [[
+  class("Config", { src="src/classes/class_config.cpp", output="src/classes/class_config_def.c" }, [[
     struct(*ConfigEntry) Entries # Pointer to the array of configuration entries
     str Path            # The location pointer
     str KeyFilter       # Enables key filtering, removing any unwanted keys on load.
@@ -1372,7 +1372,7 @@ INLINE ERROR cfgWriteInt(APTR Self, CSTRING Section, CSTRING Key, LONG Integer)
     { id=1, name="FindField" },
   })
 
-  class("MetaClass", { src="src/classes/class_metaclass.c" }, [[
+  class("MetaClass", { src="src/classes/class_metaclass.cpp" }, [[
     double ClassVersion    # Version of the class
     struct(*MethodArray) Methods # Original method array supplied by the module.
     cstruct(*FieldArray) Fields  # Original field array supplied by the module.
@@ -1596,7 +1596,7 @@ struct TaskList {
    UBYTE  Inflating;
   ]])
 
-  class("CompressedStream", { src="src/classes/class_compressed_stream.c", output="src/classes/class_compressed_stream_def.c" }, [[
+  class("CompressedStream", { src="src/classes/class_compressed_stream.cpp", output="src/classes/class_compressed_stream_def.c" }, [[
     large TotalOutput  # Count of the total bytes that have been output.
     obj Input          # The object that is the source of the compressed data.
     obj Output         # The object that is the destination for the compressed data.
@@ -2173,10 +2173,10 @@ struct SharedControl {
 
 // Class database.
 
-#define CL_ITEMS(c)        (struct ClassItem *)( ((APTR)(c)) + sizeof(struct ClassHeader) + ((c)->Total<<2) )
+#define CL_ITEMS(c)        (struct ClassItem *)( (BYTE *)(c) + sizeof(struct ClassHeader) + ((c)->Total<<2) )
 #define CL_OFFSETS(c)      ((LONG *)((c) + 1))
 #define CL_SIZE_OFFSETS(c) (sizeof(LONG) * (c)->Total)
-#define CL_ITEM(c,i)       ((struct ClassItem *)(((APTR)(c)) + offsets[(i)]))
+#define CL_ITEM(c,i)       ((struct ClassItem *)((BYTE *)(c) + offsets[(i)]))
 
 struct ClassHeader {
    LONG Total;          // Total number of registered classes

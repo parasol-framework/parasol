@@ -43,8 +43,7 @@ print('The Action class is located at ' .. str)
 You can also search through config data using your own array iterator.  The following example illustrates:
 
 <pre>
-LONG i;
-for (i=0; i < cfg->Entries; i++) {
+for (LONG i=0; i < cfg->Entries; i++) {
    LogMsg("Section: %s, Key: %s, Data: %s", cfg->Entries[i].Section,
       cfg->Entries[i].Key, cfg->Entries[i].Data);
 }
@@ -61,7 +60,7 @@ for (i=0; i < cfg->Entries; i++) {
 #include "../defs.h"
 #include <parasol/main.h>
 
-static ERROR GET_Entries(objConfig *, struct ConfigEntry **);
+static ERROR GET_Entries(objConfig *, ConfigEntry **);
 static ERROR GET_KeyFilter(objConfig *, STRING *);
 static ERROR GET_Path(objConfig *, STRING *);
 static ERROR GET_SectionFilter(objConfig *, STRING *);
@@ -69,7 +68,7 @@ static ERROR GET_TotalSections(objConfig *, LONG *);
 
 static ERROR CONFIG_SaveSettings(objConfig *, APTR);
 
-static const struct FieldDef clFlags[] = {
+static const FieldDef clFlags[] = {
    { "AutoSave",    CNF_AUTO_SAVE },
    { "StripQuotes", CNF_STRIP_QUOTES },
    { "LockRecords", CNF_LOCK_RECORDS },
@@ -85,84 +84,48 @@ static CSTRING next_section(CSTRING);
 static CSTRING next_line(CSTRING);
 static LONG check_filter(objConfig *, STRING, STRING, STRING);
 static ERROR defragment(objConfig *);
-static ERROR process_config_data(objConfig *, UBYTE *);
+static ERROR process_config_data(objConfig *, char *);
 static LONG find_section(objConfig *, LONG);
 static LONG find_section_name(objConfig *, CSTRING);
 static LONG find_section_wild(objConfig *, CSTRING);
 static STRING read_config(objConfig *, CSTRING, CSTRING);
 
-static const struct FieldArray clFields[];
-static const struct MethodArray clConfigMethods[];
-static const struct ActionArray clConfigActions[];
-
 static void resolve_addresses(objConfig *Self)
 {
-   LONG i;
-   for (i=0; i < Self->AmtEntries; i++) {
+   for (LONG i=0; i < Self->AmtEntries; i++) {
       Self->Entries[i].Section = Self->Strings + Self->Entries[i].SectionOffset;
-      Self->Entries[i].Key    = Self->Strings + Self->Entries[i].KeyOffset;
+      Self->Entries[i].Key     = Self->Strings + Self->Entries[i].KeyOffset;
       Self->Entries[i].Data    = Self->Strings + Self->Entries[i].DataOffset;
    }
-}
-
-INLINE LONG scopy(CSTRING Src, STRING Dest)
-{
-   LONG i;
-   for (i=0; Src[i]; i++) Dest[i] = Src[i];
-   Dest[i++] = 0;
-   return i;
-}
-
-//****************************************************************************
-
-ERROR add_config_class(void)
-{
-   if (!NewPrivateObject(ID_METACLASS, 0, (OBJECTPTR *)&ConfigClass)) {
-      if (!SetFields((OBJECTPTR)ConfigClass,
-            FID_BaseClassID|TLONG,    ID_CONFIG,
-            FID_ClassVersion|TFLOAT,  VER_CONFIG,
-            FID_Name|TSTR,            "Config",
-            FID_Category|TLONG,       CCF_DATA,
-            FID_FileExtension|TSTR,   "*.cfg|*.cnf|*.config",
-            FID_FileDescription|TSTR, "Config File",
-            FID_Actions|TPTR,         clConfigActions,
-            FID_Methods|TARRAY,       clConfigMethods,
-            FID_Fields|TARRAY,        clFields,
-            FID_Size|TLONG,           sizeof(objConfig),
-            FID_Path|TSTR,            "modules:core",
-            TAGEND)) {
-         return acInit(&ConfigClass->Head);
-      }
-      else return ERR_SetField;
-   }
-   else return ERR_NewObject;
 }
 
 //****************************************************************************
 
 static ERROR CONFIG_AccessObject(objConfig *Self, APTR Void)
 {
+   parasol::Log log;
+
    if (Self->EntriesMID) {
-      if (AccessMemory(Self->EntriesMID, MEM_READ_WRITE, 2000, (void **)&Self->Entries) != ERR_Okay) {
-         return PostError(ERR_AccessMemory);
+      if (AccessMemory(Self->EntriesMID, MEM_READ_WRITE, 2000, (void **)&Self->Entries)) {
+         return log.warning(ERR_AccessMemory);
       }
    }
 
    if (Self->StringsMID) {
-      if (AccessMemory(Self->StringsMID, MEM_READ_WRITE, 2000, (void **)&Self->Strings) != ERR_Okay) {
-         return PostError(ERR_AccessMemory);
+      if (AccessMemory(Self->StringsMID, MEM_READ_WRITE, 2000, (void **)&Self->Strings)) {
+         return log.warning(ERR_AccessMemory);
       }
    }
 
    if (Self->KeyFilterMID) {
-      if (AccessMemory(Self->KeyFilterMID, MEM_READ_WRITE, 2000, (void **)&Self->KeyFilter) != ERR_Okay) {
-         return PostError(ERR_AccessMemory);
+      if (AccessMemory(Self->KeyFilterMID, MEM_READ_WRITE, 2000, (void **)&Self->KeyFilter)) {
+         return log.warning(ERR_AccessMemory);
       }
    }
 
    if (Self->SectionFilterMID) {
-      if (AccessMemory(Self->SectionFilterMID, MEM_READ_WRITE, 2000, (void **)&Self->SectionFilter) != ERR_Okay) {
-         return PostError(ERR_AccessMemory);
+      if (AccessMemory(Self->SectionFilterMID, MEM_READ_WRITE, 2000, (void **)&Self->SectionFilter)) {
+         return log.warning(ERR_AccessMemory);
       }
    }
 
@@ -180,13 +143,13 @@ Clear: Clears all configuration data.
 static ERROR CONFIG_Clear(objConfig *Self, APTR Void)
 {
    if (Self->Entries)    { ReleaseMemoryID(Self->EntriesMID); Self->Entries = NULL; }
-   if (Self->EntriesMID) { FreeResourceID(Self->EntriesMID); Self->EntriesMID = NULL; }
+   if (Self->EntriesMID) { FreeResourceID(Self->EntriesMID); Self->EntriesMID = 0; }
    if (Self->Strings)    { ReleaseMemoryID(Self->StringsMID); Self->Strings = NULL; }
-   if (Self->StringsMID) { FreeResourceID(Self->StringsMID); Self->StringsMID = NULL; }
+   if (Self->StringsMID) { FreeResourceID(Self->StringsMID); Self->StringsMID = 0; }
    if (Self->KeyFilter)    { ReleaseMemoryID(Self->KeyFilterMID); Self->KeyFilter = NULL; }
-   if (Self->KeyFilterMID) { FreeResourceID(Self->KeyFilterMID); Self->KeyFilterMID = NULL; }
+   if (Self->KeyFilterMID) { FreeResourceID(Self->KeyFilterMID); Self->KeyFilterMID = 0; }
    if (Self->SectionFilter)    { ReleaseMemoryID(Self->SectionFilterMID); Self->SectionFilter = NULL; }
-   if (Self->SectionFilterMID) { FreeResourceID(Self->SectionFilterMID); Self->SectionFilterMID = NULL; }
+   if (Self->SectionFilterMID) { FreeResourceID(Self->SectionFilterMID); Self->SectionFilterMID = 0; }
 
    Self->AmtEntries    = 0;
    Self->StringsSize   = 0;
@@ -219,22 +182,23 @@ GetField: The Entries field could not be retrieved.
 
 static ERROR CONFIG_DeleteIndex(objConfig *Self, struct cfgDeleteIndex *Args)
 {
-   if (!Args) return PostError(ERR_NullArgs);
+   parasol::Log log;
+
+   if (!Args) return log.warning(ERR_NullArgs);
 
    if ((Args->Index < 0) OR (Args->Index >= Self->AmtEntries)) {
-      LogErrorMsg("Index %d is out of bounds.", Args->Index);
+      log.warning("Index %d is out of bounds.", Args->Index);
       return ERR_Args;
    }
 
-   LogMsg("Index: %d", Args->Index);
+   log.msg("Index: %d", Args->Index);
 
    BYTE lastsection = TRUE;
    if ((Args->Index > 0) AND (Self->Entries[Args->Index].Section IS Self->Entries[Args->Index-1].Section)) lastsection = FALSE;
    if ((Args->Index < Self->AmtEntries) AND (Self->Entries[Args->Index].Section IS Self->Entries[Args->Index+1].Section)) lastsection = FALSE;
 
-   LONG i;
-   for (i=Args->Index; i < Self->AmtEntries-1; i++) {
-      CopyMemory(Self->Entries+i+1, Self->Entries+i, sizeof(struct ConfigEntry));
+   for (LONG i=Args->Index; i < Self->AmtEntries-1; i++) {
+      CopyMemory(Self->Entries+i+1, Self->Entries+i, sizeof(ConfigEntry));
    }
 
    Self->AmtEntries--;
@@ -263,7 +227,9 @@ GetField: The Entries field could not be retrieved.
 
 static ERROR CONFIG_DeleteSection(objConfig *Self, struct cfgDeleteSection *Args)
 {
-   if ((!Args) OR (!Args->Section)) return PostError(ERR_NullArgs);
+   parasol::Log log;
+
+   if ((!Args) OR (!Args->Section)) return log.warning(ERR_NullArgs);
 
    UBYTE found = FALSE;
    LONG i;
@@ -274,7 +240,7 @@ static ERROR CONFIG_DeleteSection(objConfig *Self, struct cfgDeleteSection *Args
          // Entries are deleted by manipulating the entries array
 
          if (i < Self->AmtEntries-1) {
-            CopyMemory(Self->Entries+i+1, Self->Entries+i, sizeof(struct ConfigEntry) * (Self->AmtEntries - i - 1));
+            CopyMemory(Self->Entries+i+1, Self->Entries+i, sizeof(ConfigEntry) * (Self->AmtEntries - i - 1));
          }
 
          Self->AmtEntries--;
@@ -283,7 +249,6 @@ static ERROR CONFIG_DeleteSection(objConfig *Self, struct cfgDeleteSection *Args
 
    if (found) {
       Self->TotalSections--;
-
       return defragment(Self);
    }
    else return ERR_Okay;
@@ -295,13 +260,14 @@ static ERROR CONFIG_DeleteSection(objConfig *Self, struct cfgDeleteSection *Args
 
 static ERROR defragment(objConfig *Self)
 {
-   struct ConfigEntry *newentries;
+   parasol::Log log(__FUNCTION__);
+   ConfigEntry *newentries;
    MEMORYID newid, newstrid;
    STRING newstr, current_section;
-   LONG i, current_sectionpos;
+   LONG current_sectionpos;
 
    if (!Self->AmtEntries) {
-      FMSG("defragment()","Emptying config object.");
+      log.trace("Emptying config object.");
 
       if (Self->Entries) {
          ReleaseMemoryID(Self->EntriesMID);
@@ -322,14 +288,14 @@ static ERROR defragment(objConfig *Self)
       Self->TotalSections = 0;
       return ERR_Okay;
    }
-   else FMSG("defragment()","Reducing size from %d entries, %d sections, %d string bytes.", Self->AmtEntries, Self->TotalSections, Self->StringsSize);
+   else log.trace("Reducing size from %d entries, %d sections, %d string bytes.", Self->AmtEntries, Self->TotalSections, Self->StringsSize);
 
-   if (!AllocMemory(Self->AmtEntries * sizeof(struct ConfigEntry), Self->Head.MemFlags|MEM_NO_CLEAR, (void **)&newentries, &newid)) {
+   if (!AllocMemory(Self->AmtEntries * sizeof(ConfigEntry), Self->Head.MemFlags|MEM_NO_CLEAR, (void **)&newentries, &newid)) {
       // Calculate the size of the string buffer
 
       LONG strsize = 0;
       STRING lastsection = NULL;
-      for (i=0; i < Self->AmtEntries; i++) {
+      for (LONG i=0; i < Self->AmtEntries; i++) {
          if (lastsection != Self->Entries[i].Section) {
             lastsection = Self->Entries[i].Section;
             strsize += StrLength(Self->Entries[i].Section) + 1;
@@ -343,7 +309,7 @@ static ERROR defragment(objConfig *Self)
       if (!AllocMemory(strsize, Self->Head.MemFlags|MEM_NO_CLEAR, (void **)&newstr, &newstrid)) {
          // Copy the entries array
 
-         CopyMemory(Self->Entries, newentries, sizeof(struct ConfigEntry) * Self->AmtEntries);
+         CopyMemory(Self->Entries, newentries, sizeof(ConfigEntry) * Self->AmtEntries);
 
          // Copy the strings
 
@@ -351,7 +317,7 @@ static ERROR defragment(objConfig *Self)
          lastsection = NULL;
          current_section = NULL;
          current_sectionpos = 0;
-         for (i=0; i < Self->AmtEntries; i++) {
+         for (LONG i=0; i < Self->AmtEntries; i++) {
             if (lastsection != Self->Entries[i].Section) {
                lastsection = Self->Entries[i].Section;
                current_section = newstr + pos;
@@ -388,7 +354,7 @@ static ERROR defragment(objConfig *Self)
 
          resolve_addresses(Self);
 
-         FMSG("defragment","There are now %d sections and %d entries.  Strings Buffer: %d bytes", Self->TotalSections, Self->AmtEntries, Self->StringsSize);
+         log.trace("There are now %d sections and %d entries.  Strings Buffer: %d bytes", Self->TotalSections, Self->AmtEntries, Self->StringsSize);
          return ERR_Okay;
       }
       else return ERR_AllocMemory;
@@ -411,25 +377,27 @@ static ERROR CONFIG_Flush(objConfig *Self, APTR Void)
 
 static ERROR CONFIG_Free(objConfig *Self, APTR Void)
 {
+   parasol::Log log;
+
    if (Self->Flags & CNF_AUTO_SAVE) {
       if (!GET_Path(Self, &Self->Path)) {
-         ULONG crc = GenCRC32(0, (BYTE *)Self->Entries, Self->AmtEntries * sizeof(struct ConfigEntry));
+         ULONG crc = GenCRC32(0, (BYTE *)Self->Entries, Self->AmtEntries * sizeof(ConfigEntry));
          crc = GenCRC32(crc, Self->Strings, Self->StringsPos);
 
          if ((!crc) OR (crc != (ULONG)Self->CRC)) {
-            LogMsg("Auto-saving changes to \"%s\" (CRC: %d : %d)", Self->Path, Self->CRC, crc);
+            log.msg("Auto-saving changes to \"%s\" (CRC: %d : %d)", Self->Path, Self->CRC, crc);
 
             OBJECTPTR file;
             if (!CreateObject(ID_FILE, 0, &file,
                   FID_Path|TSTR,         Self->Path,
                   FID_Flags|TLONG,       FL_WRITE|FL_NEW,
-                  FID_Permissions|TLONG, NULL,
+                  FID_Permissions|TLONG, 0,
                   TAGEND)) {
                ActionTags(AC_SaveToObject, (OBJECTPTR)Self, file->UniqueID, 0);
                acFree(file);
             }
          }
-         else LogMsg("Not auto-saving data (CRC unchanged).");
+         else log.msg("Not auto-saving data (CRC unchanged).");
       }
    }
 
@@ -467,10 +435,12 @@ NoData: There is no data loaded into the config object.
 
 static ERROR CONFIG_GetSectionFromIndex(objConfig *Self, struct cfgGetSectionFromIndex *Args)
 {
-   if ((!Args) OR (Args->Index < 0)) return PostError(ERR_Args);
+   parasol::Log log;
+
+   if ((!Args) OR (Args->Index < 0)) return log.warning(ERR_Args);
 
    LONG index = Args->Index;
-   struct ConfigEntry *entries;
+   ConfigEntry *entries;
    if (!GET_Entries(Self, &entries)) {
       LONG pos = 0; // Position starts from the requested index at the very least
       while ((index > 0) AND (pos < Self->AmtEntries-1)) {
@@ -482,9 +452,9 @@ static ERROR CONFIG_GetSectionFromIndex(objConfig *Self, struct cfgGetSectionFro
          Args->Section = entries[pos].Section;
          return ERR_Okay;
       }
-      else return PostError(ERR_OutOfRange);
+      else return log.warning(ERR_OutOfRange);
    }
-   else return PostError(ERR_NoData);
+   else return log.warning(ERR_NoData);
 }
 
 /*****************************************************************************
@@ -509,6 +479,8 @@ To retrieve the name of a key rather than its data, use the string format `key(v
 
 static ERROR CONFIG_GetVar(objConfig *Self, struct acGetVar *Args)
 {
+   parasol::Log log;
+
    if (!Args) return ERR_NullArgs;
    if ((!Args->Field) OR (!Args->Buffer) OR (Args->Size < 1)) return ERR_Args;
 
@@ -518,14 +490,14 @@ static ERROR CONFIG_GetVar(objConfig *Self, struct acGetVar *Args)
    CSTRING fieldname = Args->Field;
    BYTE getkey = FALSE;
 
-   LONG section_index, i, j, pos, k, index;
-   UBYTE section[160], key[160];
+   LONG section_index, i, j, k, index;
+   char section[160], key[160];
 
-   struct ConfigEntry *entries;
+   ConfigEntry *entries;
    struct cfgGetSectionFromIndex getsection;
-   if (GET_Entries(Self, &entries) != ERR_Okay) return PostError(ERR_NoData);
+   if (GET_Entries(Self, &entries) != ERR_Okay) return log.warning(ERR_NoData);
 
-   if (!StrCompare("section(", fieldname, 8, NULL)) {
+   if (!StrCompare("section(", fieldname, 8, 0)) {
       // Field is in the format: Section(SectionIndex) OR Section(#AbsIndex)
       // The value that is returned is the name of the section at the specified index.
       // The index is not absolute.
@@ -548,8 +520,8 @@ static ERROR CONFIG_GetVar(objConfig *Self, struct acGetVar *Args)
          else return ERR_OutOfRange;
       }
    }
-   else if ((!StrCompare("index(", fieldname, 6, NULL)) OR
-            (!StrCompare("key(", fieldname, 5, NULL))) {
+   else if ((!StrCompare("index(", fieldname, 6, 0)) OR
+            (!StrCompare("key(", fieldname, 5, 0))) {
       // Field is one of these formats:
       //
       //    Index(["SectionName"|'SectionName'|SectionIndex],["Key"|KeyIndex])
@@ -558,7 +530,7 @@ static ERROR CONFIG_GetVar(objConfig *Self, struct acGetVar *Args)
       // You can use any combination of string or numeric references.  Quotes should be used to
       // explicitly indicate strings instead of indexes.
 
-      if (!StrCompare("key(", fieldname, 5, NULL)) {
+      if (!StrCompare("key(", fieldname, 5, 0)) {
          i = 5;
          getkey = TRUE;
       }
@@ -568,20 +540,20 @@ static ERROR CONFIG_GetVar(objConfig *Self, struct acGetVar *Args)
 
       if (fieldname[i] IS '"') {
          i++;
-         for (j=0; (fieldname[i]) AND (fieldname[i] != '"') AND (j < sizeof(section)-1); j++) section[j] = fieldname[i++];
+         for (j=0; (fieldname[i]) AND (fieldname[i] != '"') AND ((size_t)j < sizeof(section)-1); j++) section[j] = fieldname[i++];
          section[j] = 0;
          if (fieldname[i] IS '"') i++;
          index = find_section_wild(Self, section); // Convert the section string to an absolute index
       }
       else if (fieldname[i] IS '\'') {
          i++;
-         for (j=0; (fieldname[i]) AND (fieldname[i] != '\'') AND (j < sizeof(section)-1); j++) section[j] = fieldname[i++];
+         for (j=0; (fieldname[i]) AND (fieldname[i] != '\'') AND ((size_t)j < sizeof(section)-1); j++) section[j] = fieldname[i++];
          section[j] = 0;
          if (fieldname[i] IS '\'') i++;
          index = find_section_wild(Self, section); // Convert the section string to an absolute index
       }
       else {
-         for (j=0; (fieldname[i]) AND (fieldname[i] != ')') AND (fieldname[i] != ',') AND (j < sizeof(section)-1); j++) section[j] = fieldname[i++];
+         for (j=0; (fieldname[i]) AND (fieldname[i] != ')') AND (fieldname[i] != ',') AND ((size_t)j < sizeof(section)-1); j++) section[j] = fieldname[i++];
          section[j] = 0;
 
          if (StrDatatype(section) IS STT_NUMBER) {
@@ -592,7 +564,7 @@ static ERROR CONFIG_GetVar(objConfig *Self, struct acGetVar *Args)
             while ((fieldname[i]) AND (fieldname[i] <= 0x20)) i++;
             if (fieldname[i] IS ',') {
                if ((index = find_section(Self, section_index)) IS -1) {
-                  LogErrorMsg("Invalid section index %d (from \"%s\")", section_index, section);
+                  log.warning("Invalid section index %d (from \"%s\")", section_index, section);
                   return ERR_OutOfRange;
                }
             }
@@ -602,7 +574,7 @@ static ERROR CONFIG_GetVar(objConfig *Self, struct acGetVar *Args)
       }
 
       if (index IS -1) {
-         LogMsg("Failed to find section '%s' (ref: %s)", section, Args->Field);
+         log.msg("Failed to find section '%s' (ref: %s)", section, Args->Field);
          return ERR_Search;
       }
 
@@ -616,11 +588,11 @@ static ERROR CONFIG_GetVar(objConfig *Self, struct acGetVar *Args)
          if ((fieldname[i] IS '"') OR (fieldname[i] IS '\'')) {
             if (fieldname[i] IS '"') {
                i++;
-               for (j=0; (fieldname[i]) AND (fieldname[i] != '"') AND (j < sizeof(key)-1); j++) key[j] = fieldname[i++];
+               for (j=0; (fieldname[i]) AND (fieldname[i] != '"') AND ((size_t)j < sizeof(key)-1); j++) key[j] = fieldname[i++];
             }
             else {
                i++;
-               for (j=0; (fieldname[i]) AND (fieldname[i] != '\'') AND (j < sizeof(key)-1); j++) key[j] = fieldname[i++];
+               for (j=0; (fieldname[i]) AND (fieldname[i] != '\'') AND ((size_t)j < sizeof(key)-1); j++) key[j] = fieldname[i++];
             }
             key[j] = 0;
 
@@ -635,7 +607,7 @@ static ERROR CONFIG_GetVar(objConfig *Self, struct acGetVar *Args)
             }
          }
          else {
-            for (j=0; (fieldname[i]) AND (fieldname[i] != ')') AND (j < sizeof(key)-1); j++) key[j] = fieldname[i++];
+            for (j=0; (fieldname[i]) AND (fieldname[i] != ')') AND ((size_t)j < sizeof(key)-1); j++) key[j] = fieldname[i++];
             key[j] = 0;
 
             if (StrDatatype(key) IS STT_NUMBER) index += StrToInt(key);
@@ -652,7 +624,7 @@ static ERROR CONFIG_GetVar(objConfig *Self, struct acGetVar *Args)
 
       // We now have an overall index that we can use
 
-      if ((index >= Self->AmtEntries) OR (index < 0)) return PostError(ERR_OutOfRange);
+      if ((index >= Self->AmtEntries) OR (index < 0)) return log.warning(ERR_OutOfRange);
 
       if (getkey IS TRUE) StrCopy(entries[index].Key, buffer, Args->Size);
       else StrCopy(entries[index].Data, buffer, Args->Size);
@@ -664,6 +636,7 @@ static ERROR CONFIG_GetVar(objConfig *Self, struct acGetVar *Args)
    for (i=0; (fieldname[i]) AND (fieldname[i] != '('); i++) key[i] = fieldname[i];
    key[i] = 0;
 
+   LONG pos;
    if (fieldname[i] IS '(') {
       i++;
 
@@ -688,16 +661,16 @@ static ERROR CONFIG_GetVar(objConfig *Self, struct acGetVar *Args)
       else {
          if (fieldname[i] IS '"') {
             i++;
-            for (j=0; (fieldname[i]) AND (fieldname[i] != '"') AND (j < sizeof(section)-1); j++) section[j] = fieldname[i++];
+            for (j=0; (fieldname[i]) AND (fieldname[i] != '"') AND ((size_t)j < sizeof(section)-1); j++) section[j] = fieldname[i++];
             section[j] = 0;
          }
          else if (fieldname[i] IS '\'') {
             i++;
-            for (j=0; (fieldname[i]) AND (fieldname[i] != '\'') AND (j < sizeof(section)-1); j++) section[j] = fieldname[i++];
+            for (j=0; (fieldname[i]) AND (fieldname[i] != '\'') AND ((size_t)j < sizeof(section)-1); j++) section[j] = fieldname[i++];
             section[j] = 0;
          }
          else {
-            for (j=0; (fieldname[i]) AND (fieldname[i] != ')') AND (j < sizeof(section)-1); j++) section[j] = fieldname[i++];
+            for (j=0; (fieldname[i]) AND (fieldname[i] != ')') AND ((size_t)j < sizeof(section)-1); j++) section[j] = fieldname[i++];
             section[j] = 0;
          }
 
@@ -729,9 +702,11 @@ static ERROR CONFIG_GetVar(objConfig *Self, struct acGetVar *Args)
 
 static ERROR CONFIG_Init(objConfig *Self, APTR Void)
 {
+   parasol::Log log;
+
    if (Self->Flags & CNF_NEW) return ERR_Okay; // Do not load any data - location refers to a new file yet to be created
 
-   struct rkFile *file = NULL;
+   rkFile *file = NULL;
    STRING data = NULL;
    ERROR error = ERR_Failed;
 
@@ -787,18 +762,18 @@ static ERROR CONFIG_Init(objConfig *Self, APTR Void)
 
    // Key filtering
 
-   BYTE section[40];
+   char section[40];
    LONG j;
 
    if ((Self->KeyFilterMID) AND (Self->Entries)) {
       if (!Self->KeyFilter) {
-         AccessMemory(Self->KeyFilterMID, MEM_READ, 2000, (void *)&Self->KeyFilter);
+         AccessMemory(Self->KeyFilterMID, MEM_READ, 2000, (void **)&Self->KeyFilter);
       }
 
       if (Self->KeyFilter) {
-         BYTE current_section[sizeof(section)];
+         char current_section[sizeof(section)];
 
-         for (j=0; (Self->Entries[0].Section[j]) AND (j < sizeof(current_section)-1); j++) current_section[j] = Self->Entries[0].Section[j];
+         for (j=0; (Self->Entries[0].Section[j]) AND ((size_t)j < sizeof(current_section)-1); j++) current_section[j] = Self->Entries[0].Section[j];
          current_section[j] = 0;
 
          LONG i;
@@ -807,12 +782,12 @@ static ERROR CONFIG_Init(objConfig *Self, APTR Void)
             // If we run through a section without encountering the given key, we must delete the entire section.
 
             if (StrMatch(Self->Entries[i].Section, current_section) != ERR_Okay) {
-               struct cfgDeleteSection delete = { current_section };
-               CONFIG_DeleteSection(Self, &delete);
+               struct cfgDeleteSection del = { current_section };
+               CONFIG_DeleteSection(Self, &del);
                i = last_index-1;
 
                if (last_index < Self->AmtEntries) {
-                  for (j=0; (Self->Entries[last_index].Section[j]) AND (j < sizeof(current_section)-1); j++) {
+                  for (j=0; (Self->Entries[last_index].Section[j]) AND ((size_t)j < sizeof(current_section)-1); j++) {
                      current_section[j] = Self->Entries[last_index].Section[j];
                   }
                   current_section[j] = 0;
@@ -825,22 +800,22 @@ static ERROR CONFIG_Init(objConfig *Self, APTR Void)
                   last_index = i+1;
 
                   if (i+1 < Self->AmtEntries) {
-                     for (j=0; (Self->Entries[i+1].Section[j]) AND (j < sizeof(current_section)-1); j++) {
+                     for (j=0; (Self->Entries[i+1].Section[j]) AND ((size_t)j < sizeof(current_section)-1); j++) {
                         current_section[j] = Self->Entries[i+1].Section[j];
                      }
                      current_section[j] = 0;
                   }
                }
                else if ((status IS 0) OR (i IS Self->AmtEntries-1)) {
-                  for (j=0; (Self->Entries[i].Section[j]) AND (j < sizeof(section)-1); j++) section[j] = Self->Entries[i].Section[j];
+                  for (j=0; (Self->Entries[i].Section[j]) AND ((size_t)j < sizeof(section)-1); j++) section[j] = Self->Entries[i].Section[j];
                   section[j] = 0;
-                  struct cfgDeleteSection delete = { section };
-                  CONFIG_DeleteSection(Self, &delete);
+                  struct cfgDeleteSection del = { section };
+                  CONFIG_DeleteSection(Self, &del);
                   i = last_index-1;
 
                   // Update the current section
                   if (last_index < Self->AmtEntries) {
-                     for (j=0; (Self->Entries[last_index].Section[j]) AND (j < sizeof(current_section)-1); j++) {
+                     for (j=0; (Self->Entries[last_index].Section[j]) AND ((size_t)j < sizeof(current_section)-1); j++) {
                         current_section[j] = Self->Entries[last_index].Section[j];
                      }
                      current_section[j] = 0;
@@ -848,7 +823,7 @@ static ERROR CONFIG_Init(objConfig *Self, APTR Void)
                }
             }
          }
-         LogMsg("Filtered keys with \"%s\", reduced entries to %d.", Self->KeyFilter, Self->AmtEntries);
+         log.msg("Filtered keys with \"%s\", reduced entries to %d.", Self->KeyFilter, Self->AmtEntries);
       }
    }
 
@@ -856,24 +831,24 @@ static ERROR CONFIG_Init(objConfig *Self, APTR Void)
 
    if (Self->SectionFilterMID) {
       if (!Self->SectionFilter) {
-         AccessMemory(Self->SectionFilterMID, MEM_READ, 2000, (void *)&Self->SectionFilter);
+         AccessMemory(Self->SectionFilterMID, MEM_READ, 2000, (void **)&Self->SectionFilter);
       }
 
       if (Self->SectionFilter) {
          LONG i;
          for (i=Self->AmtEntries-1; i >= 0; i--) {
             if (check_filter(Self, Self->SectionFilter, Self->Entries[i].Section, NULL)) {
-               for (j=0; (Self->Entries[i].Section[j]) AND (j < sizeof(section)-1); j++) {
+               for (j=0; (Self->Entries[i].Section[j]) AND ((size_t)j < sizeof(section)-1); j++) {
                   section[j] = Self->Entries[i].Section[j];
                }
                section[j] = 0;
-               struct cfgDeleteSection delete = { section };
-               CONFIG_DeleteSection(Self, &delete);
+               struct cfgDeleteSection del = { section };
+               CONFIG_DeleteSection(Self, &del);
                if (i > Self->AmtEntries) i = Self->AmtEntries;
             }
          }
 
-         LogMsg("Filtered sections with \"%s\", reduced entries to %d.", Self->SectionFilter, Self->AmtEntries);
+         log.msg("Filtered sections with \"%s\", reduced entries to %d.", Self->SectionFilter, Self->AmtEntries);
       }
    }
 
@@ -881,7 +856,7 @@ static ERROR CONFIG_Init(objConfig *Self, APTR Void)
 
    if (Self->Flags & CNF_AUTO_SAVE) {
       // Calculate a checksum for all the data
-      Self->CRC = GenCRC32(0, (BYTE *)Self->Entries, Self->AmtEntries * sizeof(struct ConfigEntry));
+      Self->CRC = GenCRC32(0, (BYTE *)Self->Entries, Self->AmtEntries * sizeof(ConfigEntry));
       Self->CRC = GenCRC32(Self->CRC, Self->Strings, Self->StringsPos);
    }
 
@@ -917,13 +892,11 @@ static ERROR CONFIG_Merge(objConfig *Self, struct cfgMerge *Args)
 
    objConfig *src;
    if (!AccessObject(Args->ConfigID, 5000, (OBJECTPTR *)&src)) {
-      LONG i;
-      for (i=0; i < src->AmtEntries; i++) {
+      for (LONG i=0; i < src->AmtEntries; i++) {
          cfgWriteValue(Self, src->Entries[i].Section, src->Entries[i].Key, src->Entries[i].Data);
       }
 
       acFree(&src->Head);
-
       ReleaseObject((OBJECTPTR)src);
       return ERR_Okay;
    }
@@ -952,26 +925,21 @@ File: Failed to load the source file.
 
 static ERROR CONFIG_MergeFile(objConfig *Self, struct cfgMergeFile *Args)
 {
-   if ((!Args) OR (!Args->Path)) return PostError(ERR_NullArgs);
+   parasol::Log log;
 
-   LogBranch(Args->Path);
+   if ((!Args) OR (!Args->Path)) return log.warning(ERR_NullArgs);
+
+   log.branch("%s", Args->Path);
 
    objConfig *src;
-   if (!CreateObject(ID_CONFIG, 0, (OBJECTPTR *)&src,
-         FID_Path|TSTR, Args->Path,
-         TAGEND)) {
-      LONG i;
-      for (i=0; i < src->AmtEntries; i++) {
+   if (!CreateObject(ID_CONFIG, 0, (OBJECTPTR *)&src, FID_Path|TSTR, Args->Path, TAGEND)) {
+      for (LONG i=0; i < src->AmtEntries; i++) {
          cfgWriteValue(Self, src->Entries[i].Section, src->Entries[i].Key, src->Entries[i].Data);
       }
       acFree(&src->Head);
-      LogReturn();
       return ERR_Okay;
    }
-   else {
-      LogReturn();
-      return ERR_File;
-   }
+   else return ERR_File;
 }
 
 /*****************************************************************************
@@ -1003,14 +971,15 @@ Search: The requested configuration entry does not exist.
 
 static ERROR CONFIG_ReadValue(objConfig *Self, struct cfgReadValue *Args)
 {
-   if (!Args) return PostError(ERR_NullArgs);
+   parasol::Log log;
+
+   if (!Args) return log.warning(ERR_NullArgs);
    if (!Self->Entries) return ERR_Search;
 
    Args->Data = NULL;
 
    if (!Args->Section) {
-      LONG i;
-      for (i=0; i < Self->AmtEntries; i++) {
+      for (LONG i=0; i < Self->AmtEntries; i++) {
          if ((!Args->Key) OR (!StrMatch(Args->Key, Self->Entries[i].Key))) {
             Args->Data = Self->Entries[i].Data;
             return ERR_Okay;
@@ -1018,8 +987,7 @@ static ERROR CONFIG_ReadValue(objConfig *Self, struct cfgReadValue *Args)
       }
    }
    else {
-      LONG i;
-      for (i=0; i < Self->AmtEntries; i++) {
+      for (LONG i=0; i < Self->AmtEntries; i++) {
          if (!StrMatch(Args->Section, Self->Entries[i].Section)) {
             if ((!Args->Key) OR (!StrMatch(Args->Key, Self->Entries[i].Key))) {
                Args->Data = Self->Entries[i].Data;
@@ -1033,7 +1001,7 @@ static ERROR CONFIG_ReadValue(objConfig *Self, struct cfgReadValue *Args)
       }
    }
 
-   MSG("Could not find key %s : %s.", Args->Section, Args->Key);
+   log.trace("Could not find key %s : %s.", Args->Section, Args->Key);
    return ERR_Search;
 }
 
@@ -1136,10 +1104,12 @@ This action will save the configuration data back to its original file source (a
 
 static ERROR CONFIG_SaveSettings(objConfig *Self, APTR Void)
 {
+   parasol::Log log;
+
    ULONG crc = 0;
    if (Self->Flags & CNF_AUTO_SAVE) {
       // Perform a CRC check
-      crc = GenCRC32(0, (BYTE *)Self->Entries, Self->AmtEntries * sizeof(struct ConfigEntry));
+      crc = GenCRC32(0, (BYTE *)Self->Entries, Self->AmtEntries * sizeof(ConfigEntry));
       crc = GenCRC32(crc, Self->Strings, Self->StringsPos);
       if (crc IS Self->CRC) return ERR_Okay;
    }
@@ -1170,23 +1140,25 @@ SaveToObject: Saves configuration data to an object, using standard config text 
 
 static ERROR CONFIG_SaveToObject(objConfig *Self, struct acSaveToObject *Args)
 {
-   LogMsg("Saving %d keys to object #%d.", Self->AmtEntries, Args->DestID);
+   parasol::Log log;
+
+   log.msg("Saving %d keys to object #%d.", Self->AmtEntries, Args->DestID);
 
    OBJECTPTR object;
    if (!AccessObject(Args->DestID, 5000, &object)) {
-      struct ConfigEntry *entries;
+      ConfigEntry *entries;
       if (!GET_Entries(Self, &entries)) {
          STRING section = NULL;
-         LONG i, j, k;
-         for (i=0; i < Self->AmtEntries; i++) {
+         for (LONG i=0; i < Self->AmtEntries; i++) {
             if ((!section) OR (StrMatch(section, entries[i].Section) != ERR_Okay)) {
                section = entries[i].Section;
 
-               BYTE buffer[60];
+               char buffer[60];
+               LONG k;
                LONG j = 0;
                buffer[j++] = '\n';
                buffer[j++] = '[';
-               for (k=0; (section[k]) AND (k < sizeof(buffer)-j-2); k++) {
+               for (k=0; (section[k]) AND ((size_t)k < sizeof(buffer)-j-2); k++) {
                   buffer[j++] = section[k];
                }
                buffer[j++] = ']';
@@ -1203,11 +1175,11 @@ static ERROR CONFIG_SaveToObject(objConfig *Self, struct acSaveToObject *Args)
                   char buffer[keylen+datalen+4];
 
                   LONG k = 0;
-                  for (j=0; j < keylen; j++) buffer[k++] = entries[i].Key[j];
+                  for (LONG j=0; j < keylen; j++) buffer[k++] = entries[i].Key[j];
                   buffer[k++] = ' ';
                   buffer[k++] = '=';
                   buffer[k++] = ' ';
-                  for (j=0; j < datalen; j++) buffer[k++] = entries[i].Data[j];
+                  for (LONG j=0; j < datalen; j++) buffer[k++] = entries[i].Data[j];
                   buffer[k++] = '\n';
 
                   acWrite(object, buffer, k, NULL);
@@ -1279,24 +1251,25 @@ It is recommended that where possible, the #Write() method is used for updating 
 
 static ERROR CONFIG_SetVar(objConfig *Self, struct acSetVar *Args)
 {
+   parasol::Log log;
    LONG i, len, j;
    char section[160], key[160];
 
    if ((!Args) OR (!Args->Field) OR (!Args->Field[0])) return ERR_NullArgs;
 
-   if (!StrCompare("Index(", Args->Field, 6, NULL)) {
+   if (!StrCompare("Index(", Args->Field, 6, 0)) {
       // Field is in the format "Index(SectionIndex;KeyIndex)" or "Index(OverallIndex)".
       // Quotes can be used to indicate strings instead of indexes.
 
       LONG i = 6;
-      struct ConfigEntry *entries = Self->Entries;
+      ConfigEntry *entries = Self->Entries;
 
       // Extract the section index
 
       LONG index;
       if (Args->Field[i] IS '"') {
          i++;
-         for (j=0; (Args->Field[i]) AND (Args->Field[i] != '"') AND (j < sizeof(section)-1); j++) section[j] = Args->Field[i++];
+         for (j=0; (Args->Field[i]) AND (Args->Field[i] != '"') AND ((size_t)j < sizeof(section)-1); j++) section[j] = Args->Field[i++];
          section[j] = 0;
 
          if (Args->Field[i] IS '"') i++;
@@ -1312,7 +1285,7 @@ static ERROR CONFIG_SetVar(objConfig *Self, struct acSetVar *Args)
          if (Args->Field[i] IS ',') {
             i++;
             // Convert the section index so that it is absolute
-            if ((index = find_section(Self, index)) IS -1) return PostError(ERR_OutOfRange);
+            if ((index = find_section(Self, index)) IS -1) return log.warning(ERR_OutOfRange);
          }
       }
 
@@ -1320,7 +1293,7 @@ static ERROR CONFIG_SetVar(objConfig *Self, struct acSetVar *Args)
 
       if (Args->Field[i] IS '"') {
          i++;
-         for (j=0; (Args->Field[i]) AND (Args->Field[i] != '"') AND (j < sizeof(key)-2); j++) key[j] = Args->Field[i++];
+         for (j=0; (Args->Field[i]) AND (Args->Field[i] != '"') AND ((size_t)j < sizeof(key)-2); j++) key[j] = Args->Field[i++];
          key[j] = 0;
 
          while (index < Self->AmtEntries) {
@@ -1339,7 +1312,7 @@ static ERROR CONFIG_SetVar(objConfig *Self, struct acSetVar *Args)
 
       // We now have an overall index that we can use
 
-      if ((index >= Self->AmtEntries) OR (index < 0)) return PostError(ERR_OutOfRange);
+      if ((index >= Self->AmtEntries) OR (index < 0)) return log.warning(ERR_OutOfRange);
 
       StrCopy(entries[index].Section, section, sizeof(section));
       StrCopy(entries[index].Key, key, sizeof(key));
@@ -1349,19 +1322,19 @@ static ERROR CONFIG_SetVar(objConfig *Self, struct acSetVar *Args)
    for (len=0; Args->Field[len]; len++) {
       if ((Args->Field[len] IS ';') OR (Args->Field[len] IS '.')) {
          // Field is in the format: "Section;Key" or "Section.Key"
-         UBYTE buffer[len+1];
+         char buffer[len+1];
          for (i=0; i < len; i++) buffer[i] = Args->Field[i];
          buffer[i] = 0;
          return cfgWriteValue(Self, buffer, Args->Field + len + 1, Args->Value);
       }
       else if (Args->Field[len] IS '(') {
          // Field is in the format "Section(Key)"
-         UBYTE section[len+1], field[40];
+         char section[len+1], field[40];
          for (i=0; i < len; i++) section[i] = Args->Field[i];
          section[i] = 0;
 
          len++;
-         for (i=0; (Args->Field[len]) AND (Args->Field[len] != ')') AND (i < sizeof(field)-1); i++) field[i] = Args->Field[len++];
+         for (i=0; (Args->Field[len]) AND (Args->Field[len] != ')') AND ((size_t)i < sizeof(field)-1); i++) field[i] = Args->Field[len++];
          field[i] = 0;
          return cfgWriteValue(Self, section, field, Args->Value);
       }
@@ -1381,46 +1354,42 @@ Sort: Sorts config sections into alphabetical order.
 
 static ERROR CONFIG_Sort(objConfig *Self, APTR Void)
 {
-   struct ConfigEntry *entries;
-   LONG i, j;
+   parasol::Log log;
+   ConfigEntry *entries;
    STRING array[Self->TotalSections+1];
-   struct ConfigEntry entrybuffer[Self->AmtEntries];
+   ConfigEntry entrybuffer[Self->AmtEntries];
 
-   LogBranch("Sorting by section name.");
+   log.branch("Sorting by section name.");
 
    // Copy all of the section strings into an array and sort them
 
-      if ((entries = Self->Entries)) {
-         LONG pos = 0;
-         array[pos++] = entries[0].Section;
-         for (i=0; i < Self->AmtEntries-1; i++) {
-            if (entries[i].Section != entries[i+1].Section) {
-               if (pos < Self->TotalSections) array[pos] = entries[i+1].Section;
-               pos++;
-            }
+   if ((entries = Self->Entries)) {
+      LONG pos = 0;
+      array[pos++] = entries[0].Section;
+      for (LONG i=0; i < Self->AmtEntries-1; i++) {
+         if (entries[i].Section != entries[i+1].Section) {
+            if (pos < Self->TotalSections) array[pos] = entries[i+1].Section;
+            pos++;
          }
-
-         if (pos > Self->TotalSections) {
-            LogErrorMsg("Buffer overflow - expected %d sections, encountered %d.", Self->TotalSections, pos);
-            LogReturn();
-            return ERR_BufferOverflow;
-         }
-
-         array[pos] = NULL;
-         StrSort(array, NULL);
       }
-      else {
-         LogReturn();
-         return ERR_NoData;
+
+      if (pos > Self->TotalSections) {
+         log.warning("Buffer overflow - expected %d sections, encountered %d.", Self->TotalSections, pos);
+         return ERR_BufferOverflow;
       }
+
+      array[pos] = 0;
+      StrSort(array, 0);
+   }
+   else return ERR_NoData;
 
    // Re-sort the config data based on the sorted section strings
 
    LONG pos = 0;
-   for (i=0; array[i]; i++) {
-      for (j=0; j < Self->AmtEntries; j++) {
+   for (LONG i=0; array[i]; i++) {
+      for (LONG j=0; j < Self->AmtEntries; j++) {
          if (!StrCompare(array[i], Self->Entries[j].Section, 0, STR_CASE|STR_MATCH_LEN)) {
-            CopyMemory(Self->Entries + j, entrybuffer + pos, sizeof(struct ConfigEntry));
+            CopyMemory(Self->Entries + j, entrybuffer + pos, sizeof(ConfigEntry));
             pos++;
          }
       }
@@ -1428,9 +1397,7 @@ static ERROR CONFIG_Sort(objConfig *Self, APTR Void)
 
    // Copy our sorted buffer back into the config entry array
 
-   CopyMemory(entrybuffer, Self->Entries, sizeof(struct ConfigEntry) * Self->AmtEntries);
-
-   LogReturn();
+   CopyMemory(entrybuffer, Self->Entries, sizeof(ConfigEntry) * Self->AmtEntries);
    return ERR_Okay;
 }
 
@@ -1457,30 +1424,31 @@ struct sortlist {
    STRING sort;    // The text to sort the section on
 };
 
-static void sift_down(struct sortlist *, LONG, LONG);
-static void sift_up(struct sortlist *, LONG, LONG);
+static void sift_down(sortlist *, LONG, LONG);
+static void sift_up(sortlist *, LONG, LONG);
 
 static ERROR CONFIG_SortByKey(objConfig *Self, struct cfgSortByKey *Args)
 {
-   struct ConfigEntry *entries;
-   LONG i, pos, j, heapsize;
-   struct sortlist array[Self->TotalSections+1], temp;
-   struct ConfigEntry entrybuffer[Self->AmtEntries];
+   parasol::Log log;
+   ConfigEntry *entries;
+   LONG i;
+   sortlist array[Self->TotalSections+1], temp;
+   ConfigEntry entrybuffer[Self->AmtEntries];
 
    // If no args are provided, use the default Sort action instead
 
    if ((!Args) OR (!Args->Key)) return CONFIG_Sort(Self, NULL);
 
-   if (!(entries = Self->Entries)) return PostError(ERR_NoData);
+   if (!(entries = Self->Entries)) return log.warning(ERR_NoData);
 
-   LogBranch("Key: %s", Args->Key);
+   log.branch("Key: %s", Args->Key);
 
    // Generate a sorting table consisting of unique section names and the key values that we will be sorting on.
 
    array[0].section = entries[0].Section;
    array[0].sort    = read_config(Self, entries[0].Section, Args->Key);
-   pos = 1;
-   for (i=0; i < Self->AmtEntries-1; i++) {
+   LONG pos = 1;
+   for (LONG i=0; i < Self->AmtEntries-1; i++) {
       if (entries[i].Section != entries[i+1].Section) {
          if (pos < Self->TotalSections) {
             array[pos].section = entries[i+1].Section;
@@ -1491,8 +1459,7 @@ static ERROR CONFIG_SortByKey(objConfig *Self, struct cfgSortByKey *Args)
    }
 
    if (pos != Self->TotalSections) {
-      LogErrorMsg("Buffer overflow/underflow - expected %d sections, encountered %d.", Self->TotalSections, pos);
-      LogReturn();
+      log.warning("Buffer overflow/underflow - expected %d sections, encountered %d.", Self->TotalSections, pos);
       return ERR_BufferOverflow;
    }
 
@@ -1504,7 +1471,7 @@ static ERROR CONFIG_SortByKey(objConfig *Self, struct cfgSortByKey *Args)
    if (Args->Descending) {
       for (i=Self->TotalSections>>1; i >= 0; i--) sift_down(array, i, Self->TotalSections);
 
-      heapsize = Self->TotalSections;
+      LONG heapsize = Self->TotalSections;
       for (i=heapsize; i > 0; i--) {
          temp = array[0];
          array[0] = array[i-1];
@@ -1515,7 +1482,7 @@ static ERROR CONFIG_SortByKey(objConfig *Self, struct cfgSortByKey *Args)
    else {
       for (i=Self->TotalSections>>1; i >= 0; i--) sift_up(array, i, Self->TotalSections);
 
-      heapsize = Self->TotalSections;
+      LONG heapsize = Self->TotalSections;
       for (i=heapsize; i > 0; i--) {
          temp = array[0];
          array[0] = array[i-1];
@@ -1527,10 +1494,10 @@ static ERROR CONFIG_SortByKey(objConfig *Self, struct cfgSortByKey *Args)
    // Re-sort the config data according to the sort results
 
    pos = 0;
-   for (i=0; i < Self->TotalSections; i++) {
-      for (j=0; j < Self->AmtEntries; j++) {
+   for (LONG i=0; i < Self->TotalSections; i++) {
+      for (LONG j=0; j < Self->AmtEntries; j++) {
          if (!StrCompare(array[i].section, Self->Entries[j].Section, 0, STR_CASE|STR_MATCH_LEN)) {
-            CopyMemory(Self->Entries + j, entrybuffer + pos, sizeof(struct ConfigEntry));
+            CopyMemory(Self->Entries + j, entrybuffer + pos, sizeof(ConfigEntry));
             pos++;
          }
       }
@@ -1538,9 +1505,7 @@ static ERROR CONFIG_SortByKey(objConfig *Self, struct cfgSortByKey *Args)
 
    // Copy our sorted buffer back into the config entry array
 
-   CopyMemory(entrybuffer, Self->Entries, sizeof(struct ConfigEntry) * Self->AmtEntries);
-
-   LogReturn();
+   CopyMemory(entrybuffer, Self->Entries, sizeof(ConfigEntry) * Self->AmtEntries);
    return ERR_Okay;
 }
 
@@ -1581,14 +1546,14 @@ static void sift_down(struct sortlist *lookup, LONG i, LONG heapsize)
       }
 
       if (largest != i) {
-         struct sortlist temp = lookup[i];
+         sortlist temp = lookup[i];
          lookup[i] = lookup[largest];
          lookup[largest] = temp;
       }
    } while (largest != i);
 }
 
-static void sift_up(struct sortlist *lookup, LONG i, LONG heapsize)
+static void sift_up(sortlist *lookup, LONG i, LONG heapsize)
 {
    LONG largest = i;
    do {
@@ -1605,7 +1570,7 @@ static void sift_up(struct sortlist *lookup, LONG i, LONG heapsize)
       }
 
       if (largest != i) {
-         struct sortlist temp = lookup[i];
+         sortlist temp = lookup[i];
          lookup[i] = lookup[largest];
          lookup[largest] = temp;
       }
@@ -1640,23 +1605,24 @@ GetField: The Entries field could not be retrieved.
 
 static ERROR CONFIG_WriteValue(objConfig *Self, struct cfgWriteValue *Args)
 {
-   struct ConfigEntry *entries, *newentries;
+   parasol::Log log;
+   ConfigEntry *entries, *newentries;
    MEMORYID newEntriesMID, newStrMID;
    STRING newstr, str;
-   LONG i, j, pos, len, strlen, maxentries;
-   UBYTE section[160];
+   LONG i, j, pos, strlen, maxentries;
+   char section[160];
 
-   if (!Args) return PostError(ERR_NullArgs);
+   if (!Args) return log.warning(ERR_NullArgs);
 
-   //MSG("%s.%s = %s", Args->Section, Args->Key, Args->Data);
+   //log.trace("%s.%s = %s", Args->Section, Args->Key, Args->Data);
 
    if ((!Args->Section) OR (!Args->Section[0])) {
-      LogErrorMsg("The Section argument is missing.");
+      log.warning("The Section argument is missing.");
       return ERR_Args;
    }
 
    if ((!Args->Key) OR (!Args->Key[0])) {
-      LogErrorMsg("The Key argument is missing.");
+      log.warning("The Key argument is missing.");
       return ERR_Args;
    }
 
@@ -1664,7 +1630,7 @@ static ERROR CONFIG_WriteValue(objConfig *Self, struct cfgWriteValue *Args)
    // refers to our own address space (e.g. entries[i].Section), and since this function invalidates that address
    // space, it's safer to make a copy.
 
-   for (i=0; (Args->Section[i]) AND (i < sizeof(section)-1); i++) section[i] = Args->Section[i];
+   for (i=0; (Args->Section[i]) AND ((size_t)i < sizeof(section)-1); i++) section[i] = Args->Section[i];
    section[i] = 0;
 
    if (section[0] IS '#') {
@@ -1673,36 +1639,29 @@ static ERROR CONFIG_WriteValue(objConfig *Self, struct cfgWriteValue *Args)
       LONG index = StrToInt(section+1);
       if ((i = find_section(Self, index)) != -1) {
          if ((entries = Self->Entries)) {
-            for (j=0; (entries[i].Section[j]) AND (j < sizeof(section)-1); j++) section[j] = entries[i].Section[j];
+            for (j=0; (entries[i].Section[j]) AND ((size_t)j < sizeof(section)-1); j++) section[j] = entries[i].Section[j];
             section[j] = 0;
          }
-         else return PostError(ERR_NoData);
+         else return log.warning(ERR_NoData);
       }
-      else return PostError(ERR_Search);
+      else return log.warning(ERR_Search);
    }
 
    if (Self->AmtEntries < 1) {
       // Create the first entry and return
 
-      for (len=0; section[len]; len++);
-      strlen = len + 1;
-
-      for (len=0; Args->Key[len]; len++);
-      strlen += len + 1;
-
-      if (Args->Data) for (len=0; Args->Data[len]; len++);
-      else len = 0;
-      strlen += len + 1;
+      strlen = StrLength(section) + 1 + StrLength(Args->Key) + 1;
+      strlen += ((Args->Data) ? StrLength(Args->Data) : 0) + 1;
 
       Self->MaxEntries = ENTBLOCKSIZE;
 
       if (strlen > STRBLOCKSIZE) Self->StringsSize = strlen;
       else Self->StringsSize = STRBLOCKSIZE;
 
-      if (!AllocMemory(Self->MaxEntries * sizeof(struct ConfigEntry), Self->Head.MemFlags|MEM_NO_CLEAR, (void **)&Self->Entries, &Self->EntriesMID)) {
+      if (!AllocMemory(Self->MaxEntries * sizeof(ConfigEntry), Self->Head.MemFlags|MEM_NO_CLEAR, (void **)&Self->Entries, &Self->EntriesMID)) {
          if (!AllocMemory(Self->StringsSize, Self->Head.MemFlags|MEM_NO_CLEAR, (void **)&Self->Strings, &Self->StringsMID)) {
-            pos = 0;
-            str = Self->Strings;
+            LONG pos = 0;
+            STRING str = Self->Strings;
 
             Self->Entries[0].Section = str + pos;
             Self->Entries[0].SectionOffset = pos;
@@ -1736,14 +1695,12 @@ static ERROR CONFIG_WriteValue(objConfig *Self, struct cfgWriteValue *Args)
 
    LONG replaceindex = -1;
    LONG sectionindex = -1;
-   for (i=0; i < Self->AmtEntries; i++) {
+   for (LONG i=0; i < Self->AmtEntries; i++) {
       if (!StrMatch(entries[i].Section, section)) {
          sectionindex = i;
          if (!StrMatch(entries[i].Key, Args->Key)) {
             if (!StrMatch(entries[i].Data, Args->Data)) return ERR_Okay;
-
             if (Self->Flags & CNF_LOCK_RECORDS) return ERR_Exists;
-
             replaceindex = i;
             break;
          }
@@ -1761,7 +1718,7 @@ static ERROR CONFIG_WriteValue(objConfig *Self, struct cfgWriteValue *Args)
       // Replace an existing key.  Expand the string buffer if necessary, replace the entry with new key and data
       // string pointers, then return.  The section remains unchanged in the event of a replace operation.
 
-      MSG("Replace %d/%d %s / %s = %s TO %d/%d", replaceindex, Self->AmtEntries, Args->Section, Args->Key, Args->Data, Self->StringsPos, Self->StringsSize);
+      log.trace("Replace %d/%d %s / %s = %s TO %d/%d", replaceindex, Self->AmtEntries, Args->Section, Args->Key, Args->Data, Self->StringsPos, Self->StringsSize);
 
       if (Self->StringsPos + strsize >= Self->StringsSize) {
          if (strsize > STRBLOCKSIZE) strsize = Self->StringsPos + strsize;
@@ -1783,18 +1740,18 @@ static ERROR CONFIG_WriteValue(objConfig *Self, struct cfgWriteValue *Args)
       str = Self->Strings;
 
       if (StrMatch(Self->Entries[replaceindex].Key, Args->Key) != ERR_Okay) {
-         MSG("Replace @ Key offset %d", pos);
+         log.trace("Replace @ Key offset %d", pos);
          Self->Entries[replaceindex].Key       = str + pos;
          Self->Entries[replaceindex].KeyOffset = pos;
-         for (j=0; Args->Key[j]; j++) str[pos++] = Args->Key[j];
+         for (LONG j=0; Args->Key[j]; j++) str[pos++] = Args->Key[j];
          str[pos++] = 0;
       }
 
       if (StrMatch(Self->Entries[replaceindex].Data, Args->Data) != ERR_Okay) {
-         MSG("Replace @ Data offset %d", pos);
+         log.trace("Replace @ Data offset %d", pos);
          Self->Entries[replaceindex].Data       = str + pos;
          Self->Entries[replaceindex].DataOffset = pos;
-         if (Args->Data) for (j=0; Args->Data[j]; j++) str[pos++] = Args->Data[j];
+         if (Args->Data) for (LONG j=0; Args->Data[j]; j++) str[pos++] = Args->Data[j];
          str[pos++] = 0;
       }
 
@@ -1803,14 +1760,14 @@ static ERROR CONFIG_WriteValue(objConfig *Self, struct cfgWriteValue *Args)
       return ERR_Okay;
    }
 
-   //MSG("Total Entries: %d++, [%s] Key: '%.10s' = '%.10s'", Self->AmtEntries, Args->Section, Args->Key, Args->Data);
+   //log.trace("Total Entries: %d++, [%s] Key: '%.10s' = '%.10s'", Self->AmtEntries, Args->Section, Args->Key, Args->Data);
 
    if (Self->AmtEntries >= Self->MaxEntries-1) {
       // Expand the entries array
-      MSG("Expanding the entries array.");
+      log.trace("Expanding the entries array.");
       maxentries = Self->MaxEntries + ENTBLOCKSIZE;
-      if (!AllocMemory(maxentries * sizeof(struct ConfigEntry), Self->Head.MemFlags|MEM_NO_CLEAR, (void **)&newentries, &newEntriesMID)) {
-         CopyMemory(Self->Entries, newentries, Self->AmtEntries * sizeof(struct ConfigEntry));
+      if (!AllocMemory(maxentries * sizeof(ConfigEntry), Self->Head.MemFlags|MEM_NO_CLEAR, (void **)&newentries, &newEntriesMID)) {
+         CopyMemory(Self->Entries, newentries, Self->AmtEntries * sizeof(ConfigEntry));
          ReleaseMemoryID(Self->EntriesMID);
          FreeResourceID(Self->EntriesMID);
 
@@ -1822,7 +1779,7 @@ static ERROR CONFIG_WriteValue(objConfig *Self, struct cfgWriteValue *Args)
    }
 
    if (Self->StringsPos + strsize >= Self->StringsSize) {
-      MSG("Expanding the strings array.");
+      log.trace("Expanding the strings array.");
       if (strsize > STRBLOCKSIZE) strsize = Self->StringsPos + strsize;
       else strsize = Self->StringsPos + STRBLOCKSIZE;
 
@@ -1845,7 +1802,7 @@ static ERROR CONFIG_WriteValue(objConfig *Self, struct cfgWriteValue *Args)
       sectionindex++;
       if (sectionindex < Self->AmtEntries) {
          // Create a space in the entries array
-         CopyMemory(Self->Entries + sectionindex, Self->Entries + sectionindex + 1, sizeof(struct ConfigEntry) * (Self->AmtEntries - sectionindex));
+         CopyMemory(Self->Entries + sectionindex, Self->Entries + sectionindex + 1, sizeof(ConfigEntry) * (Self->AmtEntries - sectionindex));
       }
 
       Self->Entries[sectionindex].SectionOffset = Self->Entries[sectionindex-1].SectionOffset;
@@ -1856,17 +1813,17 @@ static ERROR CONFIG_WriteValue(objConfig *Self, struct cfgWriteValue *Args)
       sectionindex = Self->AmtEntries;
       Self->Entries[sectionindex].SectionOffset = Self->StringsPos;
       Self->Entries[sectionindex].Section = Self->Strings + Self->StringsPos;
-      Self->StringsPos += scopy(Args->Section, Self->Strings + Self->StringsPos);
+      Self->StringsPos += StrCopy(Args->Section, Self->Strings + Self->StringsPos, COPY_ALL) + 1;
       Self->TotalSections++;
    }
 
    Self->Entries[sectionindex].KeyOffset = Self->StringsPos;
    Self->Entries[sectionindex].Key       = Self->Strings + Self->StringsPos;
-   Self->StringsPos += scopy(Args->Key, Self->Strings + Self->StringsPos);
+   Self->StringsPos += StrCopy(Args->Key, Self->Strings + Self->StringsPos, COPY_ALL) + 1;
 
    Self->Entries[sectionindex].DataOffset = Self->StringsPos;
    Self->Entries[sectionindex].Data       = Self->Strings + Self->StringsPos;
-   Self->StringsPos += scopy(Args->Data ? Args->Data : (STRING)"", Self->Strings + Self->StringsPos);
+   Self->StringsPos += StrCopy(Args->Data ? Args->Data : (STRING)"", Self->Strings + Self->StringsPos, COPY_ALL) + 1;
 
    Self->AmtEntries++;
    return ERR_Okay;
@@ -1874,28 +1831,24 @@ static ERROR CONFIG_WriteValue(objConfig *Self, struct cfgWriteValue *Args)
 
 //****************************************************************************
 
-static ERROR process_config_data(objConfig *Self, UBYTE *Src)
+static ERROR process_config_data(objConfig *Self, char *Src)
 {
-   struct cfgWriteValue write;
-   STRING data;
-   CSTRING start;
-   LONG pos, sectionpos;
+   parasol::Log log(__FUNCTION__);
 
    if (!Src) return ERR_NoData;
 
-   FMSG("~process_config()","%.20s", Src);
+   log.traceBranch("%.20s", Src);
 
    // Process the file and get rid of PC carriage returns (by replacing them with standard line feeds).
 
-   data = Src;
+   STRING data = Src;
    while (*data != 0) {
       if (*data IS '\r') *data = '\n';
       data++;
    }
 
+   struct cfgWriteValue write;
    write.Section = NULL;
-   pos = 0;
-   sectionpos = 0;
 
    if (!(data = (STRING)next_section(Src))) { // Find the first section
       data = Src;
@@ -1942,7 +1895,7 @@ static ERROR process_config_data(objConfig *Self, UBYTE *Src)
 
       if (*data IS '[') {
          data++; // Skip '[' character
-         start = data;
+         CSTRING start = data;
          while ((*data != ']') AND (*data != '\n') AND (*data)) data++;
          if (*data IS ']') {
             write.Section = start;
@@ -1955,7 +1908,6 @@ static ERROR process_config_data(objConfig *Self, UBYTE *Src)
       data = (STRING)next_line(data);
    }
 
-   LOGRETURN();
    return ERR_Okay;
 }
 
@@ -2055,14 +2007,12 @@ static ERROR GET_KeyFilter(objConfig *Self, STRING *Value)
 static ERROR SET_KeyFilter(objConfig *Self, CSTRING Value)
 {
    if (Self->KeyFilter)    { ReleaseMemoryID(Self->KeyFilterMID);   Self->KeyFilter = NULL; }
-   if (Self->KeyFilterMID) { FreeResourceID(Self->KeyFilterMID); Self->KeyFilterMID = NULL; }
+   if (Self->KeyFilterMID) { FreeResourceID(Self->KeyFilterMID); Self->KeyFilterMID = 0; }
 
    if ((Value) AND (*Value)) {
-      LONG i;
-      for (i=0; Value[i]; i++);
+      LONG i = StrLength(Value);
       if (!AllocMemory(i+1, MEM_STRING|MEM_NO_CLEAR|Self->Head.MemFlags, (void **)&Self->KeyFilter, &Self->KeyFilterMID)) {
-         for (i=0; Value[i]; i++) Self->KeyFilter[i] = Value[i];
-         Self->KeyFilter[i] = 0;
+         CopyMemory(Value, Self->KeyFilter, i+1);
       }
       else return ERR_AllocMemory;
    }
@@ -2097,15 +2047,13 @@ static ERROR GET_Path(objConfig *Self, STRING *Value)
 
 static ERROR SET_Path(objConfig *Self, CSTRING Value)
 {
-   if (Self->Path)    { ReleaseMemoryID(Self->PathMID);   Self->Path = NULL; }
-   if (Self->PathMID) { FreeResourceID(Self->PathMID); Self->PathMID = NULL; }
+   if (Self->Path)    { ReleaseMemoryID(Self->PathMID); Self->Path = NULL; }
+   if (Self->PathMID) { FreeResourceID(Self->PathMID); Self->PathMID = 0; }
 
    if ((Value) AND (*Value)) {
-      LONG i;
-      for (i=0; Value[i]; i++);
+      LONG i = StrLength(Value);
       if (!AllocMemory(i+1, MEM_STRING|MEM_NO_CLEAR|Self->Head.MemFlags, (void **)&Self->Path, &Self->PathMID)) {
-         for (i=0; Value[i]; i++) Self->Path[i] = Value[i];
-         Self->Path[i] = 0;
+         CopyMemory(Value, Self->Path, i+1);
       }
       else return ERR_AllocMemory;
    }
@@ -2164,15 +2112,13 @@ static ERROR GET_SectionFilter(objConfig *Self, STRING *Value)
 
 static ERROR SET_SectionFilter(objConfig *Self, STRING Value)
 {
-   if (Self->SectionFilter)    { ReleaseMemoryID(Self->SectionFilterMID);   Self->SectionFilter = NULL; }
-   if (Self->SectionFilterMID) { FreeResourceID(Self->SectionFilterMID); Self->SectionFilterMID = NULL; }
+   if (Self->SectionFilter)    { ReleaseMemoryID(Self->SectionFilterMID); Self->SectionFilter = NULL; }
+   if (Self->SectionFilterMID) { FreeResourceID(Self->SectionFilterMID); Self->SectionFilterMID = 0; }
 
    if ((Value) AND (*Value)) {
-      LONG i;
-      for (i=0; Value[i]; i++);
+      LONG i = StrLength(Value);
       if (!AllocMemory(i+1, MEM_STRING|MEM_NO_CLEAR|Self->Head.MemFlags, (void **)&Self->SectionFilter, &Self->SectionFilterMID)) {
-         for (i=0; Value[i]; i++) Self->SectionFilter[i] = Value[i];
-         Self->SectionFilter[i] = 0;
+         CopyMemory(Value, Self->SectionFilter, i+1);
       }
       else return ERR_AllocMemory;
    }
@@ -2187,19 +2133,18 @@ TotalSections: Returns the total number of sections in a config object.
 
 static ERROR GET_TotalSections(objConfig *Self, LONG *Result)
 {
-   struct ConfigEntry *entries;
+   ConfigEntry *entries;
 
    if (!GET_Entries(Self, &entries)) {
       LONG count = 1;
-      LONG i;
-      for (i=0; i < Self->AmtEntries-1; i++) {
+      for (LONG i=0; i < Self->AmtEntries-1; i++) {
          if (entries[i].Section != entries[i+1].Section) count++;
       }
       *Result = count;
       return ERR_Okay;
    }
    else {
-      *Result = NULL;
+      *Result = 0;
       return ERR_FieldNotSet;
    }
 }
@@ -2244,13 +2189,13 @@ static LONG check_filter(objConfig *Self, STRING Filter, STRING Key, STRING Data
    // Pull out the key
 
    #define DATA_SIZE 100
-   BYTE data[DATA_SIZE];
+   char data[DATA_SIZE];
    LONG i;
    for (i=0; (*Filter != '=') AND (i < DATA_SIZE-1); i++) data[i] = *Filter++;
    while ((i > 0) AND (data[i-1] <= 0x20)) i--;
    data[i] = 0;
 
-   if (StrMatch(data, Key) IS ERR_Okay) {
+   if (!StrMatch(data, Key)) {
       if (!Data) return 1;
 
       // Skip " = "
@@ -2330,13 +2275,9 @@ static LONG find_section_name(objConfig *Self, CSTRING Section)
 {
    if ((!Section) OR (!*Section)) return ERR_NullArgs;
 
-   LONG index;
-   for (index=0; index < Self->AmtEntries; index++) {
+   for (LONG index=0; index < Self->AmtEntries; index++) {
       if ((index > 0) AND (Self->Entries[index-1].Section IS Self->Entries[index].Section)) continue; // Avoid string comparisons where we can help it
-
-      if (!StrMatch(Section, Self->Entries[index].Section)) {
-         return index;
-      }
+      if (!StrMatch(Section, Self->Entries[index].Section)) return index;
    }
    return -1;
 }
@@ -2348,13 +2289,9 @@ static LONG find_section_wild(objConfig *Self, CSTRING Section)
 {
    if ((!Section) OR (!*Section)) return ERR_NullArgs;
 
-   LONG index;
-   for (index=0; index < Self->AmtEntries; index++) {
+   for (LONG index=0; index < Self->AmtEntries; index++) {
       if ((index > 0) AND (Self->Entries[index-1].Section IS Self->Entries[index].Section)) continue; // Avoid string comparisons where we can help it
-
-      if (!StrCompare(Section, Self->Entries[index].Section, NULL, STR_WILDCARD)) {
-         return index;
-      }
+      if (!StrCompare(Section, Self->Entries[index].Section, 0, STR_WILDCARD)) return index;
    }
 
    return -1;
@@ -2364,8 +2301,7 @@ static LONG find_section_wild(objConfig *Self, CSTRING Section)
 
 static STRING read_config(objConfig *Self, CSTRING Section, CSTRING Key)
 {
-   LONG i;
-   for (i=0; i < Self->AmtEntries; i++) {
+   for (LONG i=0; i < Self->AmtEntries; i++) {
       if (Section IS Self->Entries[i].Section) {
          if (!StrMatch(Key, Self->Entries[i].Key)) return Self->Entries[i].Data;
       }
@@ -2377,17 +2313,42 @@ static STRING read_config(objConfig *Self, CSTRING Section, CSTRING Key)
 
 #include "class_config_def.c"
 
-static const struct FieldArray clFields[] = {
-   { "Entries",       FDF_POINTER|FDF_R, 0, GET_Entries, NULL },   // This is not an FDF_ARRAY because each entry is sizeof(struct ConfigEntry)
-   { "Path",          FDF_STRING|FDF_RI, 0, GET_Path, SET_Path },
-   { "KeyFilter",     FDF_STRING|FDF_RI, 0, GET_KeyFilter, SET_KeyFilter },
-   { "SectionFilter", FDF_STRING|FDF_RW, 0, GET_SectionFilter, SET_SectionFilter },
+static const FieldArray clFields[] = {
+   { "Entries",       FDF_POINTER|FDF_R, 0, (APTR)GET_Entries, NULL },   // This is not an FDF_ARRAY because each entry is sizeof(ConfigEntry)
+   { "Path",          FDF_STRING|FDF_RI, 0, (APTR)GET_Path, (APTR)SET_Path },
+   { "KeyFilter",     FDF_STRING|FDF_RI, 0, (APTR)GET_KeyFilter, (APTR)SET_KeyFilter },
+   { "SectionFilter", FDF_STRING|FDF_RW, 0, (APTR)GET_SectionFilter, (APTR)SET_SectionFilter },
    { "AmtEntries",    FDF_LONG|FDF_R, 0, NULL, NULL },
    { "Flags",         FDF_LONGFLAGS|FDF_RW, (MAXINT)&clFlags, NULL, NULL },
-   { "TotalSections", FDF_LONG|FDF_R, 0, GET_TotalSections, NULL },
+   { "TotalSections", FDF_LONG|FDF_R, 0, (APTR)GET_TotalSections, NULL },
    // Virtual fields
-   { "Location",      FDF_SYNONYM|FDF_STRING|FDF_RI, 0, GET_Path, SET_Path },
-   { "Src",           FDF_SYNONYM|FDF_STRING|FDF_RI, 0, GET_Path, SET_Path },
+   { "Location",      FDF_SYNONYM|FDF_STRING|FDF_RI, 0, (APTR)GET_Path, (APTR)SET_Path },
+   { "Src",           FDF_SYNONYM|FDF_STRING|FDF_RI, 0, (APTR)GET_Path, (APTR)SET_Path },
    END_FIELD
 };
+
+//****************************************************************************
+
+extern "C" ERROR add_config_class(void)
+{
+   if (!NewPrivateObject(ID_METACLASS, 0, (OBJECTPTR *)&ConfigClass)) {
+      if (!SetFields((OBJECTPTR)ConfigClass,
+            FID_BaseClassID|TLONG,    ID_CONFIG,
+            FID_ClassVersion|TFLOAT,  VER_CONFIG,
+            FID_Name|TSTR,            "Config",
+            FID_Category|TLONG,       CCF_DATA,
+            FID_FileExtension|TSTR,   "*.cfg|*.cnf|*.config",
+            FID_FileDescription|TSTR, "Config File",
+            FID_Actions|TPTR,         clConfigActions,
+            FID_Methods|TARRAY,       clConfigMethods,
+            FID_Fields|TARRAY,        clFields,
+            FID_Size|TLONG,           sizeof(objConfig),
+            FID_Path|TSTR,            "modules:core",
+            TAGEND)) {
+         return acInit(&ConfigClass->Head);
+      }
+      else return ERR_SetField;
+   }
+   else return ERR_NewObject;
+}
 

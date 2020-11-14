@@ -40,26 +40,7 @@ to the streaming process.
 #include "../defs.h"
 #include <parasol/modules/core.h>
 
-static const struct ActionArray clStreamActions[];
-static const struct FieldArray clStreamFields[];
 static ERROR CSTREAM_Reset(objCompressedStream *, APTR);
-
-//****************************************************************************
-
-ERROR add_compressed_stream_class(void)
-{
-   return(CreateObject(ID_METACLASS, 0, (OBJECTPTR *)&glCompressedStreamClass,
-      FID_BaseClassID|TLONG,    ID_COMPRESSEDSTREAM,
-      FID_ClassVersion|TFLOAT,  1.0,
-      FID_Name|TSTRING,         "CompressedStream",
-      FID_FileDescription|TSTR, "GZip File",
-      FID_Category|TLONG,       CCF_DATA,
-      FID_Actions|TPTR,         clStreamActions,
-      FID_Fields|TARRAY,        clStreamFields,
-      FID_Size|TLONG,           sizeof(objCompressedStream),
-      FID_Path|TSTR,            "modules:core",
-      TAGEND));
-}
 
 //****************************************************************************
 
@@ -73,10 +54,12 @@ static ERROR CSTREAM_Free(objCompressedStream *Self, APTR Void)
 
 static ERROR CSTREAM_Init(objCompressedStream *Self, APTR Void)
 {
-   if ((!Self->Input) AND (!Self->Output)) return PostError(ERR_FieldNotSet);
+   parasol::Log log(__FUNCTION__);
+
+   if ((!Self->Input) AND (!Self->Output)) return log.warning(ERR_FieldNotSet);
 
    if ((Self->Input) AND (Self->Output)) {
-      LogErrorMsg("A CompressedStream can operate in either read or write mode, not both.");
+      log.warning("A CompressedStream can operate in either read or write mode, not both.");
       return ERR_Failed;
    }
 
@@ -100,8 +83,10 @@ Read: Decompress data from the input stream and write it to the supplied buffer.
 
 static ERROR CSTREAM_Read(objCompressedStream *Self, struct acRead *Args)
 {
-   if ((!Args) OR (!Args->Buffer)) return PostError(ERR_NullArgs);
-   if (!(Self->Head.Flags & NF_INITIALISED)) return PostError(ERR_NotInitialised);
+   parasol::Log log(__FUNCTION__);
+
+   if ((!Args) OR (!Args->Buffer)) return log.warning(ERR_NullArgs);
+   if (!(Self->Head.Flags & NF_INITIALISED)) return log.warning(ERR_NotInitialised);
 
    Args->Result = 0;
    if (Args->Length <= 0) return ERR_Okay;
@@ -118,19 +103,19 @@ static ERROR CSTREAM_Read(objCompressedStream *Self, struct acRead *Args)
       ClearMemory(&Self->Stream, sizeof(Self->Stream));
       switch (Self->Format) {
          case CF_ZLIB:
-            if (inflateInit2(&Self->Stream, MAX_WBITS) != ERR_Okay) return PostError(ERR_Decompression);
+            if (inflateInit2(&Self->Stream, MAX_WBITS) != ERR_Okay) return log.warning(ERR_Decompression);
             break;
 
          case CF_DEFLATE:
-            if (inflateInit2(&Self->Stream, -MAX_WBITS) != ERR_Okay) return PostError(ERR_Decompression);
+            if (inflateInit2(&Self->Stream, -MAX_WBITS) != ERR_Okay) return log.warning(ERR_Decompression);
             break;
 
          case CF_GZIP:
          default:
-            if (inflateInit2(&Self->Stream, 15 + 32) != ERR_Okay) return PostError(ERR_Decompression);
+            if (inflateInit2(&Self->Stream, 15 + 32) != ERR_Okay) return log.warning(ERR_Decompression);
             // Read the uncompressed size from the gzip header
             if (inflateGetHeader(&Self->Stream, &Self->Header) != Z_OK) {
-               return PostError(ERR_InvalidData);
+               return log.warning(ERR_InvalidData);
             }
       }
 
@@ -154,13 +139,13 @@ static ERROR CSTREAM_Read(objCompressedStream *Self, struct acRead *Args)
    ERROR error = ERR_Okay;
    LONG result = Z_OK;
    while ((result IS Z_OK) AND (Self->Stream.avail_in > 0) AND (outputsize > 0)) {
-      Self->Stream.next_out  = output;
+      Self->Stream.next_out  = (Bytef *)output;
       Self->Stream.avail_out = outputsize;
       result = inflate(&Self->Stream, Z_SYNC_FLUSH);
 
       if ((result) AND (result != Z_STREAM_END)) {
-         if (Self->Stream.msg) LogErrorMsg("%s", Self->Stream.msg);
-         else LogErrorMsg("Zip error: %d", result);
+         if (Self->Stream.msg) log.warning("%s", Self->Stream.msg);
+         else log.warning("Zip error: %d", result);
 
          switch(result) {
             case Z_STREAM_ERROR:  error = ERR_Decompression; break;
@@ -176,10 +161,9 @@ static ERROR CSTREAM_Read(objCompressedStream *Self, struct acRead *Args)
       if (error) break;
 
       Args->Result += outputsize - Self->Stream.avail_out;
-      output += outputsize - Self->Stream.avail_out;
+      output = (Bytef *)output + outputsize - Self->Stream.avail_out;
 
-      if (result IS Z_STREAM_END) {
-         // Decompression is complete
+      if (result IS Z_STREAM_END) { // Decompression is complete
          Self->Inflating = FALSE;
          Self->TotalOutput = Self->Stream.total_out;
          return ERR_Okay;
@@ -226,13 +210,15 @@ Seek: For use in decompressing streams only.  Seeks to a position within the str
 
 static ERROR CSTREAM_Seek(objCompressedStream *Self, struct acSeek *Args)
 {
+   parasol::Log log(__FUNCTION__);
+
    if (!Args) return ERR_NullArgs;
 
    if (Self->Output) { // Seeking in write mode isn't possible (violates the streaming process).
-      return PostError(ERR_NoSupport);
+      return log.warning(ERR_NoSupport);
    }
 
-   if (!Self->Input) return PostError(ERR_FieldNotSet);
+   if (!Self->Input) return log.warning(ERR_FieldNotSet);
 
    // Seeking results in a reset of the compression object's state.  It then needs to decompress the stream up to the
    // position requested by the client.
@@ -242,14 +228,14 @@ static ERROR CSTREAM_Seek(objCompressedStream *Self, struct acSeek *Args)
    LARGE pos = 0;
    if (Args->Position IS SEEK_START) pos = F2T(Args->Offset);
    else if (Args->Position IS SEEK_CURRENT) pos = Self->TotalOutput + F2T(Args->Offset);
-   else return PostError(ERR_Args);
+   else return log.warning(ERR_Args);
 
-   if (pos < 0) return PostError(ERR_OutOfRange);
+   if (pos < 0) return log.warning(ERR_OutOfRange);
 
    UBYTE buffer[1024];
    while (pos > 0) {
-      struct acRead read = { .Length = pos, .Buffer = buffer };
-      if (read.Length > sizeof(buffer)) read.Length = sizeof(buffer);
+      struct acRead read = { .Buffer = buffer, .Length = (LONG)pos };
+      if ((size_t)read.Length > sizeof(buffer)) read.Length = sizeof(buffer);
       if (Action(AC_Read, (OBJECTPTR)Self, &read)) return ERR_Decompression;
       pos -= read.Result;
    }
@@ -265,8 +251,10 @@ Write: Compress raw data in a buffer and write it to the Output object.
 
 static ERROR CSTREAM_Write(objCompressedStream *Self, struct acWrite *Args)
 {
-   if ((!Args) OR (!Args->Buffer)) return PostError(ERR_NullArgs);
-   if (!(Self->Head.Flags & NF_INITIALISED)) return PostError(ERR_NotInitialised);
+   parasol::Log log(__FUNCTION__);
+
+   if ((!Args) OR (!Args->Buffer)) return log.warning(ERR_NullArgs);
+   if (!(Self->Head.Flags & NF_INITIALISED)) return log.warning(ERR_NotInitialised);
 
    if (!Self->Deflating) {
       ClearMemory(&Self->Stream, sizeof(Self->Stream));
@@ -274,20 +262,20 @@ static ERROR CSTREAM_Write(objCompressedStream *Self, struct acWrite *Args)
       switch (Self->Format) {
          case CF_ZLIB:
             if (deflateInit2(&Self->Stream, 9, Z_DEFLATED, MAX_WBITS, ZLIB_MEM_LEVEL, Z_DEFAULT_STRATEGY)) {
-               return PostError(ERR_Compression);
+               return log.warning(ERR_Compression);
             }
             break;
 
          case CF_DEFLATE:
             if (deflateInit2(&Self->Stream, 9, Z_DEFLATED, -MAX_WBITS, ZLIB_MEM_LEVEL, Z_DEFAULT_STRATEGY)) {
-               return PostError(ERR_Compression);
+               return log.warning(ERR_Compression);
             }
             break;
 
          case CF_GZIP:
          default:
             if (deflateInit2(&Self->Stream, 9, Z_DEFLATED, 15 + 32, ZLIB_MEM_LEVEL, Z_DEFAULT_STRATEGY)) {
-               return PostError(ERR_Compression);
+               return log.warning(ERR_Compression);
             }
       }
 
@@ -308,7 +296,7 @@ static ERROR CSTREAM_Write(objCompressedStream *Self, struct acWrite *Args)
    }
    else {
       mode = Z_NO_FLUSH;
-      Self->Stream.next_in  = (APTR)Args->Buffer;
+      Self->Stream.next_in  = (Bytef *)Args->Buffer;
       Self->Stream.avail_in = Args->Length;
    }
 
@@ -406,23 +394,40 @@ TotalOutput: A live counter of total bytes that have been output by the stream.
 
 #include "class_compressed_stream_def.c"
 
-static const struct FieldArray clStreamFields[] = {
+//****************************************************************************
+
+static const FieldArray clStreamFields[] = {
    { "TotalOutput", FDF_LARGE|FDF_R,   0, NULL, NULL },
    { "Input",       FDF_OBJECT|FDF_RI, 0, NULL, NULL },
    { "Output",      FDF_OBJECT|FDF_RI, 0, NULL, NULL },
    { "Format",      FDF_LONG|FDF_LOOKUP|FD_RI, (MAXINT)&clCompressedStreamFormat, NULL, NULL },
    // Virtual fields
-   { "Size",        FDF_LARGE|FDF_R,   0, CSTREAM_GET_Size, NULL },
+   { "Size",        FDF_LARGE|FDF_R,   0, (APTR)CSTREAM_GET_Size, NULL },
    END_FIELD
 };
 
-static const struct ActionArray clStreamActions[] = {
-   { AC_Free,      CSTREAM_Free },
-   { AC_Init,      CSTREAM_Init },
-   { AC_NewObject, CSTREAM_NewObject },
-   { AC_Read,      CSTREAM_Read },
-   { AC_Reset,     CSTREAM_Reset },
-   { AC_Seek,      CSTREAM_Seek },
-   { AC_Write,     CSTREAM_Write },
+static const ActionArray clStreamActions[] = {
+   { AC_Free,      (APTR)CSTREAM_Free },
+   { AC_Init,      (APTR)CSTREAM_Init },
+   { AC_NewObject, (APTR)CSTREAM_NewObject },
+   { AC_Read,      (APTR)CSTREAM_Read },
+   { AC_Reset,     (APTR)CSTREAM_Reset },
+   { AC_Seek,      (APTR)CSTREAM_Seek },
+   { AC_Write,     (APTR)CSTREAM_Write },
    { 0, NULL }
 };
+
+extern "C" ERROR add_compressed_stream_class(void)
+{
+   return(CreateObject(ID_METACLASS, 0, (OBJECTPTR *)&glCompressedStreamClass,
+      FID_BaseClassID|TLONG,    ID_COMPRESSEDSTREAM,
+      FID_ClassVersion|TFLOAT,  1.0,
+      FID_Name|TSTRING,         "CompressedStream",
+      FID_FileDescription|TSTR, "GZip File",
+      FID_Category|TLONG,       CCF_DATA,
+      FID_Actions|TPTR,         clStreamActions,
+      FID_Fields|TARRAY,        clStreamFields,
+      FID_Size|TLONG,           sizeof(objCompressedStream),
+      FID_Path|TSTR,            "modules:core",
+      TAGEND));
+}
