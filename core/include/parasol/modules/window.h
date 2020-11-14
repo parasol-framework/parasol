@@ -81,7 +81,7 @@ struct winMaximise { LONG Toggle;  };
 
 INLINE ERROR winMaximise(APTR Ob, LONG Toggle) {
    struct winMaximise args = { Toggle };
-   return(Action(MT_WinMaximise, Ob, &args));
+   return(Action(MT_WinMaximise, (OBJECTPTR)Ob, &args));
 }
 
 #define winMinimise(obj) Action(MT_WinMinimise,(obj),0)

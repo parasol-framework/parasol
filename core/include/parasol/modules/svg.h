@@ -52,7 +52,7 @@ struct svgRender { struct rkBitmap * Bitmap; LONG X; LONG Y; LONG Width; LONG He
 
 INLINE ERROR svgRender(APTR Ob, struct rkBitmap * Bitmap, LONG X, LONG Y, LONG Width, LONG Height) {
    struct svgRender args = { Bitmap, X, Y, Width, Height };
-   return(Action(MT_SvgRender, Ob, &args));
+   return(Action(MT_SvgRender, (OBJECTPTR)Ob, &args));
 }
 
 

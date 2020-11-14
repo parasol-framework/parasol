@@ -30,7 +30,7 @@ if (!CreateObject(ID_MODULE, 0, &amp;modDisplay,
 <p>Post-initialisation there is very little that you need to do with the object besides reading its function base from the <field>ModBase</field> field.  Keep in mind that you must not free the module object until you are finished with the functions that it provides.</p>
 <p>A list of officially recognised modules that export function tables can be found in the Module Index manual. If you would like to learn more about modules in general, refer to the Module Interfaces manual.  If you would like to write a new module, please read the Module Development Guide.</p></description>
     <source>
-      <file path="src/classes/">class_module.c</file>
+      <file path="src/classes/">class_module.cpp</file>
     </source>
   </info>
 

@@ -22,7 +22,7 @@
 <p>The Picture class will clip any loaded picture so that it fits the size given in the <field>Bitmap</field>'s Width and Height. If you specify the RESIZE flag, the picture will be shrunk or enlarged to fit the given dimensions. If you leave the Width and Height at NULL, then the picture will be loaded at its default dimensions.  If you need to find out general information about a picture before initialising it, you may <action>Query</action> it first so that the picture object can load initial details on the file format.</p>
 <p>Images are also remapped automatically if the source palette and destination palettes do not match, or if there are significant differences between the source and destination bitmap types.</p></description>
     <source>
-      <file>picture.c</file>
+      <file>picture.cpp</file>
     </source>
   </info>
 

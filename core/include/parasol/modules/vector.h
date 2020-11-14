@@ -300,29 +300,29 @@ struct vpSetCommandList { APTR Commands; LONG Size;  };
 
 INLINE ERROR vpAddCommand(APTR Ob, struct PathCommand * Commands, LONG Size) {
    struct vpAddCommand args = { Commands, Size };
-   return(Action(MT_VPAddCommand, Ob, &args));
+   return(Action(MT_VPAddCommand, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR vpRemoveCommand(APTR Ob, LONG Index, LONG Total) {
    struct vpRemoveCommand args = { Index, Total };
-   return(Action(MT_VPRemoveCommand, Ob, &args));
+   return(Action(MT_VPRemoveCommand, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR vpSetCommand(APTR Ob, LONG Index, struct PathCommand * Command, LONG Size) {
    struct vpSetCommand args = { Index, Command, Size };
-   return(Action(MT_VPSetCommand, Ob, &args));
+   return(Action(MT_VPSetCommand, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR vpGetCommand(APTR Ob, LONG Index, struct PathCommand ** Command) {
    struct vpGetCommand args = { Index, 0 };
-   ERROR error = Action(MT_VPGetCommand, Ob, &args);
+   ERROR error = Action(MT_VPGetCommand, (OBJECTPTR)Ob, &args);
    if (Command) *Command = args.Command;
    return(error);
 }
 
 INLINE ERROR vpSetCommandList(APTR Ob, APTR Commands, LONG Size) {
    struct vpSetCommandList args = { Commands, Size };
-   return(Action(MT_VPSetCommandList, Ob, &args));
+   return(Action(MT_VPSetCommandList, (OBJECTPTR)Ob, &args));
 }
 
 
@@ -374,19 +374,19 @@ struct scFindDef { CSTRING Name; OBJECTPTR Def;  };
 
 INLINE ERROR scAddDef(APTR Ob, CSTRING Name, OBJECTPTR Def) {
    struct scAddDef args = { Name, Def };
-   return(Action(MT_ScAddDef, Ob, &args));
+   return(Action(MT_ScAddDef, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR scSearchByID(APTR Ob, LONG ID, OBJECTPTR * Result) {
    struct scSearchByID args = { ID, 0 };
-   ERROR error = Action(MT_ScSearchByID, Ob, &args);
+   ERROR error = Action(MT_ScSearchByID, (OBJECTPTR)Ob, &args);
    if (Result) *Result = args.Result;
    return(error);
 }
 
 INLINE ERROR scFindDef(APTR Ob, CSTRING Name, OBJECTPTR * Def) {
    struct scFindDef args = { Name, 0 };
-   ERROR error = Action(MT_ScFindDef, Ob, &args);
+   ERROR error = Action(MT_ScFindDef, (OBJECTPTR)Ob, &args);
    if (Def) *Def = args.Def;
    return(error);
 }
@@ -582,17 +582,17 @@ struct vecGetTransform { LONG Type; struct VectorTransform * Transform;  };
 
 INLINE ERROR vecPush(APTR Ob, LONG Position) {
    struct vecPush args = { Position };
-   return(Action(MT_VecPush, Ob, &args));
+   return(Action(MT_VecPush, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR vecTracePath(APTR Ob, FUNCTION * Callback) {
    struct vecTracePath args = { Callback };
-   return(Action(MT_VecTracePath, Ob, &args));
+   return(Action(MT_VecTracePath, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR vecGetBoundary(APTR Ob, LONG Flags, DOUBLE * X, DOUBLE * Y, DOUBLE * Width, DOUBLE * Height) {
    struct vecGetBoundary args = { Flags, 0, 0, 0, 0 };
-   ERROR error = Action(MT_VecGetBoundary, Ob, &args);
+   ERROR error = Action(MT_VecGetBoundary, (OBJECTPTR)Ob, &args);
    if (X) *X = args.X;
    if (Y) *Y = args.Y;
    if (Width) *Width = args.Width;
@@ -602,44 +602,44 @@ INLINE ERROR vecGetBoundary(APTR Ob, LONG Flags, DOUBLE * X, DOUBLE * Y, DOUBLE 
 
 INLINE ERROR vecRotate(APTR Ob, DOUBLE Angle, DOUBLE CenterX, DOUBLE CenterY) {
    struct vecRotate args = { Angle, CenterX, CenterY };
-   return(Action(MT_VecRotate, Ob, &args));
+   return(Action(MT_VecRotate, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR vecTransform(APTR Ob, CSTRING Transform) {
    struct vecTransform args = { Transform };
-   return(Action(MT_VecTransform, Ob, &args));
+   return(Action(MT_VecTransform, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR vecApplyMatrix(APTR Ob, DOUBLE A, DOUBLE B, DOUBLE C, DOUBLE D, DOUBLE E, DOUBLE F) {
    struct vecApplyMatrix args = { A, B, C, D, E, F };
-   return(Action(MT_VecApplyMatrix, Ob, &args));
+   return(Action(MT_VecApplyMatrix, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR vecTranslate(APTR Ob, DOUBLE X, DOUBLE Y) {
    struct vecTranslate args = { X, Y };
-   return(Action(MT_VecTranslate, Ob, &args));
+   return(Action(MT_VecTranslate, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR vecScale(APTR Ob, DOUBLE X, DOUBLE Y) {
    struct vecScale args = { X, Y };
-   return(Action(MT_VecScale, Ob, &args));
+   return(Action(MT_VecScale, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR vecSkew(APTR Ob, DOUBLE X, DOUBLE Y) {
    struct vecSkew args = { X, Y };
-   return(Action(MT_VecSkew, Ob, &args));
+   return(Action(MT_VecSkew, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR vecPointInPath(APTR Ob, DOUBLE X, DOUBLE Y) {
    struct vecPointInPath args = { X, Y };
-   return(Action(MT_VecPointInPath, Ob, &args));
+   return(Action(MT_VecPointInPath, (OBJECTPTR)Ob, &args));
 }
 
 #define vecClearTransforms(obj) Action(MT_VecClearTransforms,(obj),0)
 
 INLINE ERROR vecGetTransform(APTR Ob, LONG Type, struct VectorTransform ** Transform) {
    struct vecGetTransform args = { Type, 0 };
-   ERROR error = Action(MT_VecGetTransform, Ob, &args);
+   ERROR error = Action(MT_VecGetTransform, (OBJECTPTR)Ob, &args);
    if (Transform) *Transform = args.Transform;
    return(error);
 }

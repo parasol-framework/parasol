@@ -351,47 +351,47 @@ struct bmpCopyStretch { struct rkBitmap * DestBitmap; LONG Flags; LONG X; LONG Y
 
 INLINE ERROR bmpCopyArea(APTR Ob, struct rkBitmap * DestBitmap, LONG Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest) {
    struct bmpCopyArea args = { DestBitmap, Flags, X, Y, Width, Height, XDest, YDest };
-   return(Action(MT_BmpCopyArea, Ob, &args));
+   return(Action(MT_BmpCopyArea, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR bmpCompress(APTR Ob, LONG Level) {
    struct bmpCompress args = { Level };
-   return(Action(MT_BmpCompress, Ob, &args));
+   return(Action(MT_BmpCompress, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR bmpDecompress(APTR Ob, LONG RetainData) {
    struct bmpDecompress args = { RetainData };
-   return(Action(MT_BmpDecompress, Ob, &args));
+   return(Action(MT_BmpDecompress, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR bmpFlip(APTR Ob, LONG Orientation) {
    struct bmpFlip args = { Orientation };
-   return(Action(MT_BmpFlip, Ob, &args));
+   return(Action(MT_BmpFlip, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR bmpFlood(APTR Ob, LONG X, LONG Y, ULONG Colour) {
    struct bmpFlood args = { X, Y, Colour };
-   return(Action(MT_BmpFlood, Ob, &args));
+   return(Action(MT_BmpFlood, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR bmpDrawRectangle(APTR Ob, LONG X, LONG Y, LONG Width, LONG Height, ULONG Colour, LONG Flags) {
    struct bmpDrawRectangle args = { X, Y, Width, Height, Colour, Flags };
-   return(Action(MT_BmpDrawRectangle, Ob, &args));
+   return(Action(MT_BmpDrawRectangle, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR bmpSetClipRegion(APTR Ob, LONG Number, LONG Left, LONG Top, LONG Right, LONG Bottom, LONG Terminate) {
    struct bmpSetClipRegion args = { Number, Left, Top, Right, Bottom, Terminate };
-   return(Action(MT_BmpSetClipRegion, Ob, &args));
+   return(Action(MT_BmpSetClipRegion, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR bmpDrawLine(APTR Ob, LONG X, LONG Y, LONG XEnd, LONG YEnd, ULONG Colour) {
    struct bmpDrawLine args = { X, Y, XEnd, YEnd, Colour };
-   return(Action(MT_BmpDrawLine, Ob, &args));
+   return(Action(MT_BmpDrawLine, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR bmpCopyStretch(APTR Ob, struct rkBitmap * DestBitmap, LONG Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest, LONG DestWidth, LONG DestHeight) {
    struct bmpCopyStretch args = { DestBitmap, Flags, X, Y, Width, Height, XDest, YDest, DestWidth, DestHeight };
-   return(Action(MT_BmpCopyStretch, Ob, &args));
+   return(Action(MT_BmpCopyStretch, (OBJECTPTR)Ob, &args));
 }
 
 
@@ -511,39 +511,39 @@ struct gfxUpdateDisplay { struct rkBitmap * Bitmap; LONG X; LONG Y; LONG Width; 
 
 INLINE ERROR gfxUpdatePalette(APTR Ob, struct RGBPalette * NewPalette) {
    struct gfxUpdatePalette args = { NewPalette };
-   return(Action(MT_GfxUpdatePalette, Ob, &args));
+   return(Action(MT_GfxUpdatePalette, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR gfxSetDisplay(APTR Ob, LONG X, LONG Y, LONG Width, LONG Height, LONG InsideWidth, LONG InsideHeight, LONG BitsPerPixel, DOUBLE RefreshRate, LONG Flags) {
    struct gfxSetDisplay args = { X, Y, Width, Height, InsideWidth, InsideHeight, BitsPerPixel, RefreshRate, Flags };
-   return(Action(MT_GfxSetDisplay, Ob, &args));
+   return(Action(MT_GfxSetDisplay, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR gfxSizeHints(APTR Ob, LONG MinWidth, LONG MinHeight, LONG MaxWidth, LONG MaxHeight) {
    struct gfxSizeHints args = { MinWidth, MinHeight, MaxWidth, MaxHeight };
-   return(Action(MT_GfxSizeHints, Ob, &args));
+   return(Action(MT_GfxSizeHints, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR gfxSetGamma(APTR Ob, DOUBLE Red, DOUBLE Green, DOUBLE Blue, LONG Flags) {
    struct gfxSetGamma args = { Red, Green, Blue, Flags };
-   return(Action(MT_GfxSetGamma, Ob, &args));
+   return(Action(MT_GfxSetGamma, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR gfxSetGammaLinear(APTR Ob, DOUBLE Red, DOUBLE Green, DOUBLE Blue, LONG Flags) {
    struct gfxSetGammaLinear args = { Red, Green, Blue, Flags };
-   return(Action(MT_GfxSetGammaLinear, Ob, &args));
+   return(Action(MT_GfxSetGammaLinear, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR gfxSetMonitor(APTR Ob, CSTRING Name, LONG MinH, LONG MaxH, LONG MinV, LONG MaxV, LONG Flags) {
    struct gfxSetMonitor args = { Name, MinH, MaxH, MinV, MaxV, Flags };
-   return(Action(MT_GfxSetMonitor, Ob, &args));
+   return(Action(MT_GfxSetMonitor, (OBJECTPTR)Ob, &args));
 }
 
 #define gfxMinimise(obj) Action(MT_GfxMinimise,(obj),0)
 
 INLINE ERROR gfxUpdateDisplay(APTR Ob, struct rkBitmap * Bitmap, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest) {
    struct gfxUpdateDisplay args = { Bitmap, X, Y, Width, Height, XDest, YDest };
-   return(Action(MT_GfxUpdateDisplay, Ob, &args));
+   return(Action(MT_GfxUpdateDisplay, (OBJECTPTR)Ob, &args));
 }
 
 #define gfxCheckXWindow(obj) Action(MT_GfxCheckXWindow,(obj),0)
