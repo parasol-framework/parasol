@@ -205,11 +205,11 @@ ERROR GetMessage(MEMORYID MessageMID, LONG Type, LONG Flags, APTR Buffer, LONG B
          // The Type argument actually refers to a unique message ID when MSF_MESSAGE_ID is used
          if (msg->UniqueID != Type) goto next;
       }
-      else if ((Type) AND (msg->Type != Type)) goto next;
+      else if ((Type) and (msg->Type != Type)) goto next;
 
       // Copy the message to the buffer
 
-      if ((Buffer) AND ((size_t)BufferSize >= sizeof(Message))) {
+      if ((Buffer) and ((size_t)BufferSize >= sizeof(Message))) {
          LONG len;
          ((Message *)Buffer)->UniqueID = msg->UniqueID;
          ((Message *)Buffer)->Type     = msg->Type;
@@ -293,7 +293,7 @@ ERROR ProcessMessages(LONG Flags, LONG TimeOut)
    parasol::Log log(__FUNCTION__);
 
    // Message processing is only possible from the main thread (for system design and synchronisation reasons)
-   if ((!tlMainThread) AND (!tlThreadWriteMsg)) return log.warning(ERR_OutsideMainThread);
+   if ((!tlMainThread) and (!tlThreadWriteMsg)) return log.warning(ERR_OutsideMainThread);
 
    // This recursion blocker prevents ProcessMessages() from being called to breaking point.  Excessive nesting can
    // occur on occasions where ProcessMessages() sends an action to an object that performs some activity before it
@@ -387,12 +387,12 @@ ERROR ProcessMessages(LONG Flags, LONG TimeOut)
 
                // Handle the message here.
 
-               if ((msg->Type IS MSGID_BREAK) AND (tlMsgRecursion > 1)) breaking = TRUE; // MSGID_BREAK will break out of recursive calls to ProcessMessages() only
+               if ((msg->Type IS MSGID_BREAK) and (tlMsgRecursion > 1)) breaking = TRUE; // MSGID_BREAK will break out of recursive calls to ProcessMessages() only
 
                ThreadLock lock(TL_MSGHANDLER, 5000);
                if (lock.granted()) {
                   for (MsgHandler *handler=glMsgHandlers; handler; handler=handler->Next) {
-                     if ((!handler->MsgType) OR (handler->MsgType IS msg->Type)) {
+                     if ((!handler->MsgType) or (handler->MsgType IS msg->Type)) {
                         ERROR result = ERR_NoSupport;
                         if (handler->Function.Type IS CALL_STDC) {
                            auto msghandler = (LONG (*)(APTR, LONG, LONG, APTR, LONG))handler->Function.StdC.Routine;
@@ -434,7 +434,7 @@ ERROR ProcessMessages(LONG Flags, LONG TimeOut)
             }
          }
 
-         if ((glTaskState IS TSTATE_STOPPING) OR (breaking)) {
+         if ((glTaskState IS TSTATE_STOPPING) or (breaking)) {
             log.trace("Breaking message loop.");
             break;
          }
@@ -455,7 +455,7 @@ ERROR ProcessMessages(LONG Flags, LONG TimeOut)
 
       glTimerCycle++;
 timer_cycle:
-      if ((glTaskState != TSTATE_STOPPING) AND (!thread_lock(TL_TIMER, 200))) {
+      if ((glTaskState != TSTATE_STOPPING) and (!thread_lock(TL_TIMER, 200))) {
          LARGE current_time = PreciseTime();
          for (CoreTimer *timer=glTimers; timer; timer=timer->Next) {
             if (current_time < timer->NextCall) continue;
@@ -540,13 +540,13 @@ timer_cycle:
 
                while (1) {
                   if (!scanmsg->Type); // Ignore removed messages.
-                  else if ((scanmsg->DataSize < 0) OR (scanmsg->DataSize > 1024 * 1024)) { // Check message validity
+                  else if ((scanmsg->DataSize < 0) or (scanmsg->DataSize > 1024 * 1024)) { // Check message validity
                      log.warning("Invalid message found in queue: Type: %d, Size: %d", scanmsg->Type, scanmsg->DataSize);
                      scanmsg->Type = 0;
                      scanmsg->DataSize = 0;
                   }
                   else { // Message found.  Process it.
-                     if ((msg) AND ((size_t)msgbufsize < sizeof(Message) + scanmsg->DataSize)) { // Is our message buffer large enough?
+                     if ((msg) and ((size_t)msgbufsize < sizeof(Message) + scanmsg->DataSize)) { // Is our message buffer large enough?
                         log.trace("Freeing message buffer for expansion %d < %d + %d", msgbufsize, sizeof(Message), scanmsg->DataSize);
                         FreeResource(msg);
                         msg = NULL;
@@ -603,12 +603,12 @@ timer_cycle:
 
          tlCurrentMsg = (Message *)msg; // This global variable is available through GetResourcePtr(RES_CURRENTMSG)
 
-         if ((msg->Type IS MSGID_BREAK) AND (tlMsgRecursion > 1)) breaking = TRUE; // MSGID_BREAK will break out of recursive calls to ProcessMessages() only
+         if ((msg->Type IS MSGID_BREAK) and (tlMsgRecursion > 1)) breaking = TRUE; // MSGID_BREAK will break out of recursive calls to ProcessMessages() only
 
          ThreadLock lock(TL_MSGHANDLER, 5000);
          if (lock.granted()) {
             for (MsgHandler *handler=glMsgHandlers; handler; handler=handler->Next) {
-               if ((!handler->MsgType) OR (handler->MsgType IS msg->Type)) {
+               if ((!handler->MsgType) or (handler->MsgType IS msg->Type)) {
                   ERROR result = ERR_NoSupport;
                   if (handler->Function.Type IS CALL_STDC) {
                      auto msghandler = (LONG (*)(APTR, LONG, LONG, APTR, LONG))handler->Function.StdC.Routine;
@@ -675,7 +675,7 @@ timer_cycle:
       #endif
 
       LARGE wait = 0;
-      if ((repass) OR (breaking) OR (glTaskState IS TSTATE_STOPPING));
+      if ((repass) or (breaking) or (glTaskState IS TSTATE_STOPPING));
       else if (timeout_end > 0) {
          // Wait for someone to communicate with us, or stall until an interrupt is due.
 
@@ -716,7 +716,7 @@ timer_cycle:
       // Continue the loop?
 
       if (repass) continue; // There are messages left unprocessed
-      if ((glTaskState IS TSTATE_STOPPING) OR (breaking)) {
+      if ((glTaskState IS TSTATE_STOPPING) or (breaking)) {
          log.trace("Breaking message loop.");
          break;
       }
@@ -786,7 +786,7 @@ ERROR ScanMessages(APTR MessageQueue, LONG *Index, LONG Type, APTR Buffer, LONG 
 {
    parasol::Log log(__FUNCTION__);
 
-   if ((!MessageQueue) OR (!Index)) return log.warning(ERR_NullArgs);
+   if ((!MessageQueue) or (!Index)) return log.warning(ERR_NullArgs);
    if (!Buffer) BufferSize = 0;
 
    MessageHeader *header = (MessageHeader *)MessageQueue;
@@ -796,7 +796,7 @@ ERROR ScanMessages(APTR MessageQueue, LONG *Index, LONG Type, APTR Buffer, LONG 
 
    if (*Index > 0) {
       msg = (TaskMessage *)header->Buffer;
-      while ((j < header->Count) AND (j < *Index)) {
+      while ((j < header->Count) and (j < *Index)) {
          if (msg->Type) j++;
          prevmsg = msg;
          if (!msg->NextMsg) break;
@@ -810,8 +810,8 @@ ERROR ScanMessages(APTR MessageQueue, LONG *Index, LONG Type, APTR Buffer, LONG 
    else msg = (TaskMessage *)header->Buffer;
 
    while (j < header->Count) {
-      if ((msg->Type) AND ((msg->Type IS Type) OR (!Type))) {
-         if ((Buffer) AND ((size_t)BufferSize >= sizeof(Message))) {
+      if ((msg->Type) and ((msg->Type IS Type) or (!Type))) {
+         if ((Buffer) and ((size_t)BufferSize >= sizeof(Message))) {
             ((Message *)Buffer)->UniqueID = msg->UniqueID;
             ((Message *)Buffer)->Type     = msg->Type;
             ((Message *)Buffer)->Size     = msg->DataSize;
@@ -904,7 +904,7 @@ ERROR SendMessage(MEMORYID MessageMID, LONG Type, LONG Flags, APTR Data, LONG Si
 
    if (Type IS MSGID_QUIT) log.function("A quit message is being posted to queue #%d, context #%d.", MessageMID, tlContext->Object->UniqueID);
 
-   if ((!Type) OR (Size < 0)) return log.warning(ERR_Args);
+   if ((!Type) or (Size < 0)) return log.warning(ERR_Args);
 
    if (!MessageMID) {
       MessageMID = glTaskMessageMID;
@@ -1050,7 +1050,7 @@ ERROR SendMessage(MEMORYID MessageMID, LONG Type, LONG Flags, APTR Data, LONG Si
 
       // Copy the message data, if given
 
-      if ((Data) AND (msgsize)) CopyMemory(Data, msg + 1, Size);
+      if ((Data) and (msgsize)) CopyMemory(Data, msg + 1, Size);
 
       header->NextEntry += msg->NextMsg;
       header->Count++;
@@ -1099,7 +1099,7 @@ ERROR send_thread_msg(LONG Handle, LONG Type, APTR Data, LONG Size)
 #ifdef _WIN32
    LONG write = sizeof(msg);
    if (!winWritePipe(Handle, &msg, &write)) { // Write the header first.
-      if ((Data) AND (Size > 0)) {
+      if ((Data) and (Size > 0)) {
          // Write the main message.
          write = Size;
          if (!winWritePipe(Handle, Data, &write)) {
@@ -1113,7 +1113,7 @@ ERROR send_thread_msg(LONG Handle, LONG Type, APTR Data, LONG Size)
 #else
    LARGE end_time = (PreciseTime()/1000LL) + 10000LL;
    error = write_nonblock(Handle, &msg, sizeof(msg), end_time);
-   if ((!error) AND (Data) AND (Size > 0)) { // Write the main message.
+   if ((!error) and (Data) and (Size > 0)) { // Write the main message.
       error = write_nonblock(Handle, Data, Size, end_time);
    }
 #endif
@@ -1135,7 +1135,7 @@ ERROR write_nonblock(LONG Handle, APTR Data, LONG Size, LARGE EndTime)
    LONG offset = 0;
    ERROR error = ERR_Okay;
 
-   while ((offset < Size) AND (!error)) {
+   while ((offset < Size) and (!error)) {
       LONG write_size = Size;
       if (write_size > 1024) write_size = 1024;  // Limiting the size will make the chance of an EWOULDBLOCK error less likely.
       LONG len = write(Handle, (char *)Data+offset, write_size - offset);
@@ -1143,10 +1143,10 @@ ERROR write_nonblock(LONG Handle, APTR Data, LONG Size, LARGE EndTime)
       if (offset IS Size) break;
 
       if (len IS -1) { // An error occurred.
-         if ((errno IS EAGAIN) OR (errno IS EWOULDBLOCK)) { // The write() failed because it would have blocked.  Try again!
+         if ((errno IS EAGAIN) or (errno IS EWOULDBLOCK)) { // The write() failed because it would have blocked.  Try again!
             fd_set wfds;
             struct timeval tv;
-            while (((PreciseTime()/1000LL) < EndTime) AND (!error)) {
+            while (((PreciseTime()/1000LL) < EndTime) and (!error)) {
                FD_ZERO(&wfds);
                FD_SET(Handle, &wfds);
                tv.tv_sec = (EndTime - (PreciseTime()/1000LL)) / 1000LL;
@@ -1157,7 +1157,7 @@ ERROR write_nonblock(LONG Handle, APTR Data, LONG Size, LARGE EndTime)
                else break;
             }
          }
-         else if ((errno IS EINVAL) OR (errno IS EBADF) OR (errno IS EPIPE)) { error = ERR_InvalidHandle; break; }
+         else if ((errno IS EINVAL) or (errno IS EBADF) or (errno IS EPIPE)) { error = ERR_InvalidHandle; break; }
          else { error = ERR_Write; break; }
       }
 
@@ -1205,10 +1205,10 @@ ERROR UpdateMessage(APTR Queue, LONG MessageID, LONG Type, APTR Buffer, LONG Buf
 {
    parasol::Log log(__FUNCTION__);
 
-   if ((!Queue) OR (!MessageID)) return log.warning(ERR_NullArgs);
+   if ((!Queue) or (!MessageID)) return log.warning(ERR_NullArgs);
 
-   MessageHeader *header = (MessageHeader *)Queue;
-   TaskMessage *msg = (TaskMessage *)header->Buffer;
+   auto header = (MessageHeader *)Queue;
+   auto msg = (TaskMessage *)header->Buffer;
    TaskMessage *prevmsg = NULL;
    LONG j = 0;
    while (j < header->Count) {
@@ -1257,7 +1257,7 @@ ERROR sleep_task(LONG Timeout)
    else if (tlPrivateLockCount != 0) {
       char buffer[120];
       WORD pos = 0;
-      for (LONG i=0; (i < glNextPrivateAddress) AND ((size_t)pos < sizeof(buffer)-1); i++) {
+      for (LONG i=0; (i < glNextPrivateAddress) and ((size_t)pos < sizeof(buffer)-1); i++) {
          if (glPrivateMemory[i].AccessCount > 0) {
             pos += snprintf(buffer+pos, sizeof(buffer)-pos, "%d.%d ", glPrivateMemory[i].MemoryID, glPrivateMemory[i].AccessCount);
          }
@@ -1427,7 +1427,7 @@ ERROR sleep_task(LONG Timeout, BYTE SystemOnly)
    else if (tlPrivateLockCount != 0) {
       char buffer[120];
       WORD pos = 0;
-      for (LONG i=0; (i < glNextPrivateAddress) AND ((size_t)pos < sizeof(buffer)-1); i++) {
+      for (LONG i=0; (i < glNextPrivateAddress) and ((size_t)pos < sizeof(buffer)-1); i++) {
          if (glPrivateMemory[i].AccessCount > 0) {
             pos += snprintf(buffer+pos, sizeof(buffer)-pos, "#%d +%d ", glPrivateMemory[i].MemoryID, glPrivateMemory[i].AccessCount);
          }
@@ -1462,11 +1462,11 @@ ERROR sleep_task(LONG Timeout, BYTE SystemOnly)
       lookup[1] = 0;
       LONG total = 2;
 
-      if ((SystemOnly) AND (!tlMessageBreak)) {
+      if ((SystemOnly) and (!tlMessageBreak)) {
          log.trace("Sleeping on process semaphore only.");
       }
       else {
-         for (i=0; i < glTotalFDs; i++) {
+         for (LONG i=0; i < glTotalFDs; i++) {
             if (glFDTable[i].Flags & RFD_SOCKET) continue; // Ignore network socket FDs (triggered as normal windows messages)
 
             log.trace("Listening to %d, Read: %d, Write: %d, Routine: %p, Flags: $%.2x", (LONG)(MAXINT)glFDTable[i].FD, (glFDTable[i].Flags & RFD_READ) ? 1 : 0, (glFDTable[i].Flags & RFD_WRITE) ? 1 : 0, glFDTable[i].Routine, glFDTable[i].Flags);
@@ -1505,7 +1505,7 @@ ERROR sleep_task(LONG Timeout, BYTE SystemOnly)
             glValidateProcessID = 0;
          }
       }
-      else if ((i > 1) AND (i < total)) {
+      else if ((i > 1) and (i < total)) {
          log.trace("WaitForObjects() Handle: %d (%d) of %d, Timeout: %d, Break: %d", i, lookup[i], total, Timeout, tlMessageBreak);
 
          // Process only the handle routine that was signalled: NOTE: This is potentially an issue if the handle is early on in the list and is being frequently
@@ -1514,7 +1514,7 @@ ERROR sleep_task(LONG Timeout, BYTE SystemOnly)
          LONG ifd = lookup[i];
          if (glFDTable[ifd].Routine) glFDTable[ifd].Routine(glFDTable[ifd].FD, glFDTable[ifd].Data);
 
-         if ((glTotalFDs > 1) AND (ifd < glTotalFDs-1)) { // Move the most recently signalled handle to the end of the queue
+         if ((glTotalFDs > 1) and (ifd < glTotalFDs-1)) { // Move the most recently signalled handle to the end of the queue
             FDTable last = glFDTable[glTotalFDs-1];
             glFDTable[glTotalFDs-1] = glFDTable[ifd];
             glFDTable[ifd] = last;
