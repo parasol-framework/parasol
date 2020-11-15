@@ -24,12 +24,11 @@ Clear: Free all child objects contained by the viewport.
 
 static ERROR VIEW_Clear(objVectorViewport *Self, APTR Void)
 {
-   struct ChildEntry list[512];
+   ChildEntry list[512];
    LONG count = ARRAYSIZE(list);
    do {
       if (!ListChildren(Self->Head.UniqueID, list, &count)) {
-         WORD i;
-         for (i=0; i < count; i++) acFreeID(list[i].ObjectID);
+         for (WORD i=0; i < count; i++) acFreeID(list[i].ObjectID);
       }
    } while (count IS ARRAYSIZE(list));
 
@@ -192,7 +191,7 @@ full coverage.
 
 *****************************************************************************/
 
-static ERROR VIEW_GET_Height(objVectorViewport *Self, struct Variable *Value)
+static ERROR VIEW_GET_Height(objVectorViewport *Self, Variable *Value)
 {
    DOUBLE val;
 
@@ -218,7 +217,7 @@ static ERROR VIEW_GET_Height(objVectorViewport *Self, struct Variable *Value)
    return ERR_Okay;
 }
 
-static ERROR VIEW_SET_Height(objVectorViewport *Self, struct Variable *Value)
+static ERROR VIEW_SET_Height(objVectorViewport *Self, Variable *Value)
 {
    DOUBLE val;
 
@@ -341,7 +340,7 @@ full coverage.
 
 *****************************************************************************/
 
-static ERROR VIEW_GET_Width(objVectorViewport *Self, struct Variable *Value)
+static ERROR VIEW_GET_Width(objVectorViewport *Self, Variable *Value)
 {
    DOUBLE val;
    if (Self->vpDimensions & DMF_FIXED_WIDTH) { // Working with a fixed dimension
@@ -366,7 +365,7 @@ static ERROR VIEW_GET_Width(objVectorViewport *Self, struct Variable *Value)
    return ERR_Okay;
 }
 
-static ERROR VIEW_SET_Width(objVectorViewport *Self, struct Variable *Value)
+static ERROR VIEW_SET_Width(objVectorViewport *Self, Variable *Value)
 {
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
@@ -393,7 +392,7 @@ The display position targeted by the viewport is declared in the (X,Y) fields.
 
 *****************************************************************************/
 
-static ERROR VIEW_GET_X(objVectorViewport *Self, struct Variable *Value)
+static ERROR VIEW_GET_X(objVectorViewport *Self, Variable *Value)
 {
    DOUBLE val = Self->vpTargetX;
    if (Value->Type & FD_PERCENTAGE) val = val * 100.0;
@@ -402,7 +401,7 @@ static ERROR VIEW_GET_X(objVectorViewport *Self, struct Variable *Value)
    return ERR_Okay;
 }
 
-static ERROR VIEW_SET_X(objVectorViewport *Self, struct Variable *Value)
+static ERROR VIEW_SET_X(objVectorViewport *Self, Variable *Value)
 {
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
@@ -428,7 +427,7 @@ The display position targeted by the viewport is declared in the (X,Y) fields.
 -END-
 *****************************************************************************/
 
-static ERROR VIEW_GET_Y(objVectorViewport *Self, struct Variable *Value)
+static ERROR VIEW_GET_Y(objVectorViewport *Self, Variable *Value)
 {
    DOUBLE val = Self->vpTargetY;
    if (Value->Type & FD_PERCENTAGE) val = val * 100.0;
@@ -437,7 +436,7 @@ static ERROR VIEW_GET_Y(objVectorViewport *Self, struct Variable *Value)
    return ERR_Okay;
 }
 
-static ERROR VIEW_SET_Y(objVectorViewport *Self, struct Variable *Value)
+static ERROR VIEW_SET_Y(objVectorViewport *Self, Variable *Value)
 {
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
@@ -457,7 +456,7 @@ static ERROR VIEW_SET_Y(objVectorViewport *Self, struct Variable *Value)
 
 //****************************************************************************
 
-static const struct FieldDef clViewDimensions[] = {
+static const FieldDef clViewDimensions[] = {
    { "RelativeX",      DMF_RELATIVE_X },
    { "RelativeY",      DMF_RELATIVE_Y },
    { "RelativeWidth",  DMF_RELATIVE_WIDTH },
@@ -469,7 +468,7 @@ static const struct FieldDef clViewDimensions[] = {
    { NULL, 0 }
 };
 
-static const struct FieldArray clViewFields[] = {
+static const FieldArray clViewFields[] = {
    { "X",           FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)VIEW_GET_X,      (APTR)VIEW_SET_X },
    { "Y",           FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)VIEW_GET_Y,      (APTR)VIEW_SET_Y },
    { "Width",       FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)VIEW_GET_Width,  (APTR)VIEW_SET_Width },
@@ -483,7 +482,7 @@ static const struct FieldArray clViewFields[] = {
    END_FIELD
 };
 
-static const struct ActionArray clViewActions[] = {
+static const ActionArray clViewActions[] = {
    { AC_Clear,       (APTR)VIEW_Clear },
    { AC_Free,        (APTR)VIEW_Free },
    { AC_Init,        (APTR)VIEW_Init },

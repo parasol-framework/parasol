@@ -53,9 +53,9 @@ UBYTE const stack_blur_tables<T>::g_stack_blur8_shr[255] =
 //****************************************************************************
 // Create a new blur filter.
 
-static ERROR create_blur(objVectorFilter *Self, struct XMLTag *Tag)
+static ERROR create_blur(objVectorFilter *Self, XMLTag *Tag)
 {
-   struct effect *effect;
+   effect *effect;
 
    if (!(effect = add_effect(Self, FE_BLUR))) return ERR_AllocMemory;
    effect->Blur.RX = 0; // SVG default values are zero
@@ -80,13 +80,10 @@ static ERROR create_blur(objVectorFilter *Self, struct XMLTag *Tag)
    return ERR_Okay;
 }
 
-/*****************************************************************************
-** Internal: apply_blur()
-**
-** This is the stack blur algorithm originally implemented in AGG.
-*/
+//****************************************************************************
+// This is the stack blur algorithm originally implemented in AGG.
 
-static void apply_blur(objVectorFilter *Self, struct effect *Effect)
+static void apply_blur(objVectorFilter *Self, effect *Effect)
 {
    objBitmap *bmp = Effect->Bitmap;
    if (bmp->BytesPerPixel != 4) return;

@@ -46,8 +46,8 @@ static ERROR PATTERN_Draw(objVectorPattern *Self, struct acDraw *Args)
 
 static ERROR PATTERN_Free(objVectorPattern *Self, APTR Void)
 {
-   struct VectorTransform *scan, *next;
-   for (scan=Self->Transforms; scan; scan=next) {
+   VectorTransform *next;
+   for (auto scan=Self->Transforms; scan; scan=next) {
       next = scan->Next;
       FreeResource(scan);
    }
@@ -63,14 +63,16 @@ static ERROR PATTERN_Free(objVectorPattern *Self, APTR Void)
 
 static ERROR PATTERN_Init(objVectorPattern *Self, APTR Void)
 {
+   parasol::Log log;
+
    if ((Self->SpreadMethod <= 0) or (Self->SpreadMethod >= VSPREAD_END)) {
-      FMSG("@","Invalid SpreadMethod value of %d", Self->SpreadMethod);
-      return PostError(ERR_OutOfRange);
+      log.traceWarning("Invalid SpreadMethod value of %d", Self->SpreadMethod);
+      return log.warning(ERR_OutOfRange);
    }
 
    if ((Self->Units <= 0) or (Self->Units >= VUNIT_END)) {
-      FMSG("@","Invalid Units value of %d", Self->Units);
-      return PostError(ERR_OutOfRange);
+      log.traceWarning("Invalid Units value of %d", Self->Units);
+      return log.warning(ERR_OutOfRange);
    }
 
    if (acInit(Self->Scene)) return ERR_Init;
@@ -126,7 +128,7 @@ static ERROR PATTERN_SET_Inherit(objVectorPattern *Self, objVectorPattern *Value
       if (Value->Head.ClassID IS ID_VECTORPATTERN) {
          Self->Inherit = Value;
       }
-      else return PostError(ERR_InvalidValue);
+      else return ERR_InvalidValue;
    }
    else Self->Inherit = NULL;
    return ERR_Okay;
@@ -176,18 +178,18 @@ A transform can be applied to the pattern by setting this field with an SVG comp
 
 static ERROR PATTERN_SET_Transform(objVectorPattern *Self, CSTRING Value)
 {
-   if (!Value) return PostError(ERR_NullArgs);
+   if (!Value) return ERR_NullArgs;
 
    // Clear any existing transforms.
 
-   struct VectorTransform *scan, *next;
-   for (scan=Self->Transforms; scan; scan=next) {
+   VectorTransform *next;
+   for (auto scan=Self->Transforms; scan; scan=next) {
       next = scan->Next;
       FreeResource(scan);
    }
    Self->Transforms = NULL;
 
-   struct VectorTransform *transform;
+   VectorTransform *transform;
 
    CSTRING str = Value;
    while (*str) {
@@ -260,7 +262,7 @@ The (X,Y) field values define the starting coordinate for mapping patterns.
 
 *****************************************************************************/
 
-static ERROR PATTERN_GET_X(objVectorPattern *Self, struct Variable *Value)
+static ERROR PATTERN_GET_X(objVectorPattern *Self, Variable *Value)
 {
    DOUBLE val = Self->X;
    if ((Value->Type & FD_PERCENTAGE) and (Self->Dimensions & DMF_RELATIVE_X)) val = val * 100.0;
@@ -269,12 +271,12 @@ static ERROR PATTERN_GET_X(objVectorPattern *Self, struct Variable *Value)
    return ERR_Okay;
 }
 
-static ERROR PATTERN_SET_X(objVectorPattern *Self, struct Variable *Value)
+static ERROR PATTERN_SET_X(objVectorPattern *Self, Variable *Value)
 {
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return PostError(ERR_FieldTypeMismatch);
+   else return ERR_FieldTypeMismatch;
 
    if (Value->Type & FD_PERCENTAGE) {
       val = val * 0.01;
@@ -296,7 +298,7 @@ The (X,Y) field values define the starting coordinate for mapping patterns.
 
 *****************************************************************************/
 
-static ERROR PATTERN_GET_Y(objVectorPattern *Self, struct Variable *Value)
+static ERROR PATTERN_GET_Y(objVectorPattern *Self, Variable *Value)
 {
    DOUBLE val = Self->Y;
    if ((Value->Type & FD_PERCENTAGE) and (Self->Dimensions & DMF_RELATIVE_Y)) val = val * 100.0;
@@ -305,12 +307,12 @@ static ERROR PATTERN_GET_Y(objVectorPattern *Self, struct Variable *Value)
    return ERR_Okay;
 }
 
-static ERROR PATTERN_SET_Y(objVectorPattern *Self, struct Variable *Value)
+static ERROR PATTERN_SET_Y(objVectorPattern *Self, Variable *Value)
 {
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return PostError(ERR_FieldTypeMismatch);
+   else return ERR_FieldTypeMismatch;
 
    if (Value->Type & FD_PERCENTAGE) {
       val = val * 0.01;
@@ -324,7 +326,7 @@ static ERROR PATTERN_SET_Y(objVectorPattern *Self, struct Variable *Value)
 
 /****************************************************************************/
 
-static const struct ActionArray clPatternActions[] = {
+static const ActionArray clPatternActions[] = {
    { AC_Draw,      (APTR)PATTERN_Draw },
    { AC_Free,      (APTR)PATTERN_Free },
    { AC_Init,      (APTR)PATTERN_Init },
@@ -332,7 +334,7 @@ static const struct ActionArray clPatternActions[] = {
    { 0, NULL }
 };
 
-static const struct FieldDef clPatternDimensions[] = {
+static const FieldDef clPatternDimensions[] = {
    { "FixedX",         DMF_FIXED_X },
    { "FixedY",         DMF_FIXED_Y },
    { "RelativeX",      DMF_RELATIVE_X },
@@ -344,13 +346,13 @@ static const struct FieldDef clPatternDimensions[] = {
    { NULL, 0 }
 };
 
-static const struct FieldDef clPatternUnits[] = {
+static const FieldDef clPatternUnits[] = {
    { "BoundingBox", VUNIT_BOUNDING_BOX },  // Coordinates are relative to the object's bounding box
    { "UserSpace",   VUNIT_USERSPACE },    // Coordinates are relative to the current viewport
    { NULL, 0 }
 };
 
-static const struct FieldDef clPatternSpread[] = {
+static const FieldDef clPatternSpread[] = {
    { "Pad",      VSPREAD_PAD },
    { "Reflect",  VSPREAD_REFLECT },
    { "Repeat",   VSPREAD_REPEAT },
@@ -359,7 +361,7 @@ static const struct FieldDef clPatternSpread[] = {
    { NULL, 0 }
 };
 
-static const struct FieldArray clPatternFields[] = {
+static const FieldArray clPatternFields[] = {
    { "X",            FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)PATTERN_GET_X, (APTR)PATTERN_SET_X },
    { "Y",            FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)PATTERN_GET_Y, (APTR)PATTERN_SET_Y },
    { "Opacity",      FDF_DOUBLE|FDF_RW,          0, NULL, (APTR)PATTERN_SET_Opacity },

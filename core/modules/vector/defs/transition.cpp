@@ -63,9 +63,12 @@ static inline void apply_transition(objVectorTransition *Self, DOUBLE Index, agg
 
          Transform.multiply(interp);
 
-         //MSG("Index: %.2f, Scale: %.2f, Left: %d, Right: %d, TotalStops: %d", Index, scale, left, right, Self->TotalStops);
+         //log.trace("Index: %.2f, Scale: %.2f, Left: %d, Right: %d, TotalStops: %d", Index, scale, left, right, Self->TotalStops);
       }
-      else LogErrorMsg("Invalid transition.  Index: %.2f, Left: %d, Right: %d, TotalStops: %d", Index, left, right, Self->TotalStops);
+      else {
+         parasol::Log log(__FUNCTION__);
+         log.warning("Invalid transition.  Index: %.2f, Left: %d, Right: %d, TotalStops: %d", Index, left, right, Self->TotalStops);
+      }
    }
 }
 
@@ -107,23 +110,25 @@ static void apply_transition_xy(objVectorTransition *Self, DOUBLE Index, DOUBLE 
 
 //****************************************************************************
 
-static ERROR set_stop_transform(objVectorTransition *Self, struct TransitionStop *Stop, CSTRING Value)
+static ERROR set_stop_transform(objVectorTransition *Self, TransitionStop *Stop, CSTRING Value)
 {
-   FMSG("set_stop()","%s", Value);
+   parasol::Log log;
+
+   log.traceBranch("%s", Value);
 
    Self->Dirty = TRUE;
    if (!Value) Value = ""; // Empty transforms are permitted - it will result in an identity matrix being created.
 
    // Clear any existing transforms.
 
-   struct VectorTransform *next;
+   VectorTransform *next;
    for (auto t=Stop->Transforms; t; t=next) {
       next = t->Next;
       FreeResource(t);
    }
    Stop->Transforms = NULL;
 
-   struct VectorTransform *transform;
+   VectorTransform *transform;
 
    auto str = Value;
    while (*str) {
@@ -185,7 +190,7 @@ static ERROR set_stop_transform(objVectorTransition *Self, struct TransitionStop
 static ERROR TRANSITION_Free(objVectorTransition *Self, APTR Void)
 {
    for (auto i=0; i < Self->TotalStops; i++) {
-      struct VectorTransform *next;
+      VectorTransform *next;
       for (auto t=Self->Stops[i].Transforms; t; t=next) {
          next = t->Next;
          FreeResource(t);
@@ -201,7 +206,8 @@ static ERROR TRANSITION_Free(objVectorTransition *Self, APTR Void)
 
 static ERROR TRANSITION_Init(objVectorTransition *Self, APTR Void)
 {
-   if (Self->TotalStops < 2) return PostError(ERR_FieldNotSet);
+   parasol::Log log;
+   if (Self->TotalStops < 2) return log.warning(ERR_FieldNotSet);
    return ERR_Okay;
 }
 
@@ -229,14 +235,15 @@ a transform string.  The Transition structure consists of the following fields:
 
 *****************************************************************************/
 
-static ERROR TRANSITION_SET_Stops(objVectorTransition *Self, struct Transition *Value, LONG Elements)
+static ERROR TRANSITION_SET_Stops(objVectorTransition *Self, Transition *Value, LONG Elements)
 {
+   parasol::Log log;
    if ((Elements >= 2) and (Elements < MAX_TRANSITION_STOPS)) {
       Self->TotalStops = Elements;
       DOUBLE last_offset = 0;
       for (auto i=0; i < Elements; i++) {
-         if (Value[i].Offset < last_offset) return PostError(ERR_InvalidValue); // Offsets must be in incrementing order.
-         if ((Value[i].Offset < 0.0) OR (Value[i].Offset > 1.0)) return PostError(ERR_OutOfRange);
+         if (Value[i].Offset < last_offset) return log.warning(ERR_InvalidValue); // Offsets must be in incrementing order.
+         if ((Value[i].Offset < 0.0) OR (Value[i].Offset > 1.0)) return log.warning(ERR_OutOfRange);
 
          Self->Stops[i].Offset = Value[i].Offset;
          set_stop_transform(Self, &Self->Stops[i], Value[i].Transform);
@@ -245,7 +252,7 @@ static ERROR TRANSITION_SET_Stops(objVectorTransition *Self, struct Transition *
       }
       return ERR_Okay;
    }
-   else return PostError(ERR_DataSize);
+   else return log.warning(ERR_DataSize);
 }
 
 /*****************************************************************************
@@ -258,14 +265,14 @@ This read-only field indicates the total number of stops that have been defined 
 
 *****************************************************************************/
 
-static const struct ActionArray clTransitionActions[] = {
+static const ActionArray clTransitionActions[] = {
    { AC_Free,      (APTR)TRANSITION_Free },
    { AC_Init,      (APTR)TRANSITION_Init },
    { AC_NewObject, (APTR)TRANSITION_NewObject },
    { 0, NULL }
 };
 
-static const struct FieldArray clTransitionFields[] = {
+static const FieldArray clTransitionFields[] = {
    { "TotalStops",   FDF_LONG|FDF_R, 0, NULL, NULL },
    // Virtual fields
    { "Stops",        FDF_VIRTUAL|FDF_ARRAY|FDF_STRUCT|FDF_W, (MAXINT)"Transition", NULL, (APTR)TRANSITION_SET_Stops },

@@ -62,7 +62,7 @@ static ERROR VECTOR_ApplyMatrix(objVector *Self, struct vecApplyMatrix *Args)
 {
    if (!Args) return ERR_NullArgs;
 
-   struct VectorTransform *transform;
+   VectorTransform *transform;
    if ((transform = add_transform(Self, VTF_MATRIX, FALSE))) {
       transform->Matrix[0] = Args->A;
       transform->Matrix[1] = Args->B;
@@ -90,17 +90,19 @@ Okay
 
 static ERROR VECTOR_ClearTransforms(objVector *Self, APTR Void)
 {
-   FMSG("~",NULL);
+   parasol::Log log;
+
+   log.traceBranch("");
+
    if (Self->Transforms) {
-      struct VectorTransform *scan, *next;
-      for (scan=Self->Transforms; scan; scan=next) {
+      VectorTransform *next;
+      for (auto scan=Self->Transforms; scan; scan=next) {
          next = scan->Next;
          FreeResource(scan);
       }
       Self->Transforms = NULL;
    }
 
-   LOGRETURN();
    return ERR_Okay;
 }
 
@@ -168,9 +170,11 @@ NotPossible: The vector does not support path generation.
 
 static ERROR VECTOR_GetBoundary(objVector *Self, struct vecGetBoundary *Args)
 {
-   if (!Args) return PostError(ERR_NullArgs);
+   parasol::Log log;
 
-   if (!Self->Scene) return PostError(ERR_NotInitialised);
+   if (!Args) return log.warning(ERR_NullArgs);
+
+   if (!Self->Scene) return log.warning(ERR_NotInitialised);
 
    if (Args->Flags & VBF_INCLUSIVE) {
       std::array<DOUBLE, 4> bounds = { 1000000, 1000000, -1000000, -1000000 };
@@ -242,11 +246,12 @@ NoData: No transformations are applied to the vector.
 
 static ERROR VECTOR_GetTransform(objVector *Self, struct vecGetTransform *Args)
 {
-   if (!Args) return PostError(ERR_NullArgs);
+   parasol::Log log;
+
+   if (!Args) return log.warning(ERR_NullArgs);
 
    if (Args->Type & Self->ActiveTransforms) {
-      struct VectorTransform *t;
-      for (t=Self->Transforms; t; t=t->Next) {
+      for (auto t=Self->Transforms; t; t=t->Next) {
          if (t->Type IS Args->Type) {
             Args->Transform = t;
             return ERR_Okay;
@@ -265,12 +270,14 @@ static ERROR VECTOR_GetTransform(objVector *Self, struct vecGetTransform *Args)
 
 static ERROR VECTOR_Init(objVector *Self, APTR Void)
 {
+   parasol::Log log;
+
    if ((!Self->Head.SubID) OR (Self->Head.SubID IS ID_VECTOR)) {
-      LogErrorMsg("Vector cannot be instantiated directly (use a sub-class).");
+      log.warning("Vector cannot be instantiated directly (use a sub-class).");
       return ERR_Failed;
    }
 
-   MSG("Parent: #%d, Siblings: #%d #%d, Vector: %p", Self->Parent ? Self->Parent->UniqueID : 0,
+   log.trace("Parent: #%d, Siblings: #%d #%d, Vector: %p", Self->Parent ? Self->Parent->UniqueID : 0,
       Self->Prev ? Self->Prev->Head.UniqueID : 0, Self->Next ? Self->Next->Head.UniqueID : 0, Self);
 
    OBJECTPTR parent;
@@ -301,9 +308,9 @@ static ERROR VECTOR_Init(objVector *Self, APTR Void)
       else if (parent->ClassID IS ID_VECTORSCENE) {
          Self->Scene = (objVectorScene *)parent;
       }
-      else return PostError(ERR_UnsupportedOwner);
+      else return log.warning(ERR_UnsupportedOwner);
    }
-   else return PostError(ERR_UnsupportedOwner);
+   else return log.warning(ERR_UnsupportedOwner);
 
    // Find the nearest parent viewport.
 
@@ -349,9 +356,11 @@ static ERROR VECTOR_NewObject(objVector *Self, APTR Void)
 
 static ERROR VECTOR_NewOwner(objVector *Self, struct acNewOwner *Args)
 {
+   parasol::Log log;
+
    if (!Self->Head.SubID) return ERR_Okay;
    if (Self->Scene) { // Modifying the owner after the root vector has been established is not permitted.
-      return PostError(ERR_UnsupportedOwner);
+      return log.warning(ERR_UnsupportedOwner);
    }
 
    // Objects that don't belong to the Vector class will be ignored (i.e. they won't appear in the tree).
@@ -420,7 +429,9 @@ NoSupport: The vector type does not support path generation.
 
 static ERROR VECTOR_PointInPath(objVector *Self, struct vecPointInPath *Args)
 {
-   if (!Args) return PostError(ERR_NullArgs);
+   parasol::Log log;
+
+   if (!Args) return log.warning(ERR_NullArgs);
 
    if (Self->GeneratePath) {
       if ((!Self->BasePath) OR (Self->Dirty)) {
@@ -473,7 +484,9 @@ NullArgs:
 
 static ERROR VECTOR_Push(objVector *Self, struct vecPush *Args)
 {
-   if (!Args) return PostError(ERR_NullArgs);
+   parasol::Log log;
+
+   if (!Args) return log.warning(ERR_NullArgs);
 
    if (Args->Position < 0) { // Move backward through the stack.
       if (!Self->Prev) return ERR_Okay; // Return if the vector is at the top of its branch
@@ -556,9 +569,11 @@ AllocMemory:
 
 static ERROR VECTOR_Rotate(objVector *Self, struct vecRotate *Args)
 {
-   if (!Args) return PostError(ERR_NullArgs);
+   parasol::Log log;
 
-   struct VectorTransform *transform;
+   if (!Args) return log.warning(ERR_NullArgs);
+
+   VectorTransform *transform;
    if ((transform = add_transform(Self, VTF_ROTATE, FALSE))) {
       transform->Angle = Args->Angle;
       transform->X = Args->CenterX;
@@ -593,7 +608,9 @@ NullArgs:
 
 static ERROR VECTOR_TracePath(objVector *Self, struct vecTracePath *Args)
 {
-   if ((!Args) or (Args->Callback)) return PostError(ERR_NullArgs);
+   parasol::Log log;
+
+   if ((!Args) or (Args->Callback)) return log.warning(ERR_NullArgs);
 
    if (Self->Dirty) {
       gen_vector_path(Self);
@@ -607,23 +624,20 @@ static ERROR VECTOR_TracePath(objVector *Self, struct vecTracePath *Args)
       LONG cmd = -1;
 
      if (Args->Callback->Type IS CALL_STDC) {
-         void (*routine)(objVector *, LONG, LONG, DOUBLE, DOUBLE);
-         routine = ((void (*)(objVector *, LONG, LONG, DOUBLE, DOUBLE))(Args->Callback->StdC.Routine));
+         auto routine = ((void (*)(objVector *, LONG, LONG, DOUBLE, DOUBLE))(Args->Callback->StdC.Routine));
 
-         OBJECTPTR context = SetContext(GetParentContext());
+         parasol::SwitchContext context(GetParentContext());
 
-            LONG index = 0;
-            do {
-              cmd = Self->BasePath->vertex(&x, &y);
-              if (agg::is_vertex(cmd)) {
-                 routine(Self, index++, cmd, x, y);
-              }
-            } while (cmd != agg::path_cmd_stop);
-
-         SetContext(context);
+         LONG index = 0;
+         do {
+           cmd = Self->BasePath->vertex(&x, &y);
+           if (agg::is_vertex(cmd)) {
+              routine(Self, index++, cmd, x, y);
+           }
+         } while (cmd != agg::path_cmd_stop);
       }
       else if (Args->Callback->Type IS CALL_SCRIPT) {
-         struct ScriptArg args[] = {
+         ScriptArg args[] = {
             { "Vector",  FD_OBJECTID },
             { "Index",   FD_LONG },
             { "Command", FD_LONG },
@@ -682,11 +696,13 @@ AllocMemory:
 
 static ERROR VECTOR_Transform(objVector *Self, struct vecTransform *Args)
 {
-   if ((!Args) or (!Args->Transform)) return PostError(ERR_NullArgs);
+   parasol::Log log;
+
+   if ((!Args) or (!Args->Transform)) return log.warning(ERR_NullArgs);
 
    VECTOR_ClearTransforms(Self, NULL);
 
-   struct VectorTransform *transform;
+   VectorTransform *transform;
 
    CSTRING str = Args->Transform;
    while (*str) {
@@ -759,9 +775,11 @@ AllocMemory:
 
 static ERROR VECTOR_Translate(objVector *Self, struct vecTranslate *Args)
 {
-   if (!Args) return PostError(ERR_NullArgs);
+   parasol::Log log;
 
-   struct VectorTransform *transform;
+   if (!Args) return log.warning(ERR_NullArgs);
+
+   VectorTransform *transform;
    if ((transform = add_transform(Self, VTF_TRANSLATE, FALSE))) {
       transform->X = Args->X;
       transform->Y = Args->Y;
@@ -792,17 +810,19 @@ OutOfRange: At least one of the angles is out of the allowable range.
 
 static ERROR VECTOR_Skew(objVector *Self, struct vecSkew *Args)
 {
-   if ((!Args) or ((!Args->X) and (!Args->Y))) return PostError(ERR_NullArgs);
+   parasol::Log log;
 
-   struct VectorTransform *transform;
+   if ((!Args) or ((!Args->X) and (!Args->Y))) return log.warning(ERR_NullArgs);
+
+   VectorTransform *transform;
    if ((transform = add_transform(Self, VTF_SKEW, FALSE))) {
       if ((Args->X > -90) and (Args->X < 90)) {
          transform->X = Args->X;
       }
-      else return PostError(ERR_OutOfRange);
+      else return log.warning(ERR_OutOfRange);
 
       if ((Args->Y > -90) and (Args->Y < 90)) transform->Y = Args->Y;
-      else return PostError(ERR_OutOfRange);
+      else return log.warning(ERR_OutOfRange);
 
       return ERR_Okay;
    }
@@ -839,9 +859,11 @@ AllocMemory
 
 static ERROR VECTOR_Scale(objVector *Self, struct vecScale *Args)
 {
-   if (!Args) return PostError(ERR_NullArgs);
+   parasol::Log log;
 
-   struct VectorTransform *transform;
+   if (!Args) return log.warning(ERR_NullArgs);
+
+   VectorTransform *transform;
    if ((transform = add_transform(Self, VTF_SKEW, FALSE))) {
       transform->X = Args->X;
       transform->Y = Args->Y;
@@ -1036,11 +1058,13 @@ static ERROR VECTOR_GET_FillOpacity(objVector *Self, DOUBLE *Value)
 
 static ERROR VECTOR_SET_FillOpacity(objVector *Self, DOUBLE Value)
 {
+   parasol::Log log;
+
    if ((Value >= 0) and (Value <= 1.0)) {
       Self->FillOpacity = Value;
       return ERR_Okay;
    }
-   else return PostError(ERR_OutOfRange);
+   else return log.warning(ERR_OutOfRange);
 }
 
 /*****************************************************************************
@@ -1065,6 +1089,8 @@ static ERROR VECTOR_GET_Filter(objVector *Self, CSTRING *Value)
 
 static ERROR VECTOR_SET_Filter(objVector *Self, CSTRING Value)
 {
+   parasol::Log log;
+
    if ((!Value) OR (!Value[0])) {
       if (Self->FilterString) { FreeResource(Self->FilterString); Self->FilterString = NULL; }
       Self->Filter = NULL;
@@ -1077,7 +1103,7 @@ static ERROR VECTOR_SET_Filter(objVector *Self, CSTRING Value)
       return ERR_Okay;
    }
 
-   struct VectorDef *def = NULL;
+   VectorDef *def = NULL;
    if (!StrCompare("url(#", Value, 5, 0)) {
       CSTRING str = Value + 5;
       char name[80];
@@ -1088,7 +1114,7 @@ static ERROR VECTOR_SET_Filter(objVector *Self, CSTRING Value)
    }
    else VarGet(Self->Scene->Defs, Value, &def, NULL);
 
-   if (!def) return PostError(ERR_Search);
+   if (!def) return log.warning(ERR_Search);
 
    if (def->Object->ClassID IS ID_VECTORFILTER) {
       if (Self->FilterString) { FreeResource(Self->FilterString); Self->FilterString = NULL; }
@@ -1096,7 +1122,7 @@ static ERROR VECTOR_SET_Filter(objVector *Self, CSTRING Value)
       Self->Filter = (objVectorFilter *)def->Object;
       return ERR_Okay;
    }
-   else return PostError(ERR_InvalidValue);
+   else return log.warning(ERR_InvalidValue);
 }
 
 /*****************************************************************************
@@ -1283,6 +1309,8 @@ static ERROR VECTOR_GET_Mask(objVector *Self, objVectorClip **Value)
 
 static ERROR VECTOR_SET_Mask(objVector *Self, objVectorClip *Value)
 {
+   parasol::Log log;
+
    if (!Value) {
       if (Self->ClipMask) {
          UnsubscribeAction(Self->ClipMask, AC_Free);
@@ -1297,9 +1325,9 @@ static ERROR VECTOR_SET_Mask(objVector *Self, objVectorClip *Value)
          Self->ClipMask = Value;
          return ERR_Okay;
       }
-      else return PostError(ERR_NotInitialised);
+      else return log.warning(ERR_NotInitialised);
    }
-   else return PostError(ERR_InvalidObject);
+   else return log.warning(ERR_InvalidObject);
 }
 
 /*****************************************************************************
@@ -1324,11 +1352,13 @@ them for theta less than approximately 29 degrees, and a limit of 10.0 converts 
 
 static ERROR VECTOR_SET_MiterLimit(objVector *Self, DOUBLE Value)
 {
+   parasol::Log log;
+
    if (Value >= 1.0) {
       Self->MiterLimit = Value;
       return ERR_Okay;
    }
-   else return PostError(ERR_InvalidValue);
+   else return log.warning(ERR_InvalidValue);
 }
 
 /*****************************************************************************
@@ -1352,6 +1382,8 @@ static ERROR VECTOR_GET_Morph(objVector *Self, objVector **Value)
 
 static ERROR VECTOR_SET_Morph(objVector *Self, objVector *Value)
 {
+   parasol::Log log;
+
    if (!Value) {
       if (Self->Morph) {
          UnsubscribeAction(Self->Morph, AC_Free);
@@ -1366,9 +1398,9 @@ static ERROR VECTOR_SET_Morph(objVector *Self, objVector *Value)
          Self->Morph = Value;
          return ERR_Okay;
       }
-      else return PostError(ERR_NotInitialised);
+      else return log.warning(ERR_NotInitialised);
    }
-   else return PostError(ERR_InvalidObject);
+   else return log.warning(ERR_InvalidObject);
 }
 
 /*****************************************************************************
@@ -1411,9 +1443,11 @@ UnsupportedOwner: The referenced vector does not share the same owner.
 
 static ERROR VECTOR_SET_Next(objVector *Self, objVector *Value)
 {
-   if (Value->Head.ClassID != ID_VECTOR) return PostError(ERR_InvalidObject);
-   if ((!Value) or (Value IS Self)) return PostError(ERR_InvalidValue);
-   if (Self->Head.OwnerID != Value->Head.OwnerID) return PostError(ERR_UnsupportedOwner); // Owners must match
+   parasol::Log log;
+
+   if (Value->Head.ClassID != ID_VECTOR) return log.warning(ERR_InvalidObject);
+   if ((!Value) or (Value IS Self)) return log.warning(ERR_InvalidValue);
+   if (Self->Head.OwnerID != Value->Head.OwnerID) return log.warning(ERR_UnsupportedOwner); // Owners must match
 
    if (Self->Next) Self->Next->Prev = NULL; // Detach from the current Next object.
    if (Self->Prev) Self->Prev->Next = NULL; // Detach from the current Prev object.
@@ -1504,9 +1538,11 @@ UnsupportedOwner: The referenced vector does not share the same owner.
 
 static ERROR VECTOR_SET_Prev(objVector *Self, objVector *Value)
 {
-   if (Value->Head.ClassID != ID_VECTOR) return PostError(ERR_InvalidObject);
-   if (!Value) return PostError(ERR_InvalidValue);
-   if (Self->Head.OwnerID != Value->Head.OwnerID) return PostError(ERR_UnsupportedOwner); // Owners must match
+   parasol::Log log;
+
+   if (Value->Head.ClassID != ID_VECTOR) return log.warning(ERR_InvalidObject);
+   if (!Value) return log.warning(ERR_InvalidValue);
+   if (Self->Head.OwnerID != Value->Head.OwnerID) return log.warning(ERR_UnsupportedOwner); // Owners must match
 
    if (Self->Next) Self->Next->Prev = NULL; // Detach from the current Next object.
    if (Self->Prev) Self->Prev->Next = NULL; // Detach from the current Prev object.
@@ -1569,7 +1605,9 @@ of the previous command).
 
 static ERROR VECTOR_GET_Sequence(objVector *Self, STRING *Value)
 {
-   if (!Self->GeneratePath) return PostError(ERR_Mismatch); // Path generation must be supported by the vector.
+   parasol::Log log;
+
+   if (!Self->GeneratePath) return log.warning(ERR_Mismatch); // Path generation must be supported by the vector.
 
    if ((!Self->BasePath) OR (Self->Dirty)) {
       gen_vector_path(Self);
@@ -1742,7 +1780,7 @@ static ERROR VECTOR_SET_StrokeOpacity(objVector *Self, DOUBLE Value)
       Self->StrokeOpacity = Value;
       return ERR_Okay;
    }
-   else return PostError(ERR_OutOfRange);
+   else return ERR_OutOfRange;
 }
 
 /*****************************************************************************
@@ -1786,14 +1824,16 @@ and @VectorWave are able to take full advantage of this feature.
 
 *****************************************************************************/
 
-static ERROR VECTOR_GET_Transition(objVector *Self, struct rkVectorTransition **Value)
+static ERROR VECTOR_GET_Transition(objVector *Self, rkVectorTransition **Value)
 {
    *Value = Self->Transition;
    return ERR_Okay;
 }
 
-static ERROR VECTOR_SET_Transition(objVector *Self, struct rkVectorTransition *Value)
+static ERROR VECTOR_SET_Transition(objVector *Self, rkVectorTransition *Value)
 {
+   parasol::Log log;
+
    if (!Value) {
       if (Self->Transition) {
          UnsubscribeAction(Self->Transition, AC_Free);
@@ -1808,9 +1848,9 @@ static ERROR VECTOR_SET_Transition(objVector *Self, struct rkVectorTransition *V
          Self->Transition = Value;
          return ERR_Okay;
       }
-      else return PostError(ERR_NotInitialised);
+      else return log.warning(ERR_NotInitialised);
    }
-   else return PostError(ERR_InvalidObject);
+   else return log.warning(ERR_InvalidObject);
 }
 
 /*****************************************************************************
@@ -1821,7 +1861,7 @@ Visibility: Controls the visibility of a vector and its children.
 
 *****************************************************************************/
 
-static const struct FieldDef clTransformFlags[] = {
+static const FieldDef clTransformFlags[] = {
    { "Matrix",    VTF_MATRIX },
    { "Translate", VTF_TRANSLATE },
    { "Scale",     VTF_SCALE },
@@ -1830,7 +1870,7 @@ static const struct FieldDef clTransformFlags[] = {
    { NULL, 0 }
 };
 
-static const struct FieldDef clMorphFlags[] = {
+static const FieldDef clMorphFlags[] = {
    { "Stretch",     VMF_STRETCH },
    { "AutoSpacing", VMF_AUTO_SPACING },
    { "XMin",        VMF_X_MIN },
@@ -1842,7 +1882,7 @@ static const struct FieldDef clMorphFlags[] = {
    { NULL, 0 }
 };
 
-static const struct FieldDef clLineJoin[] = {
+static const FieldDef clLineJoin[] = {
    { "Miter",       VLJ_MITER },
    { "Round",       VLJ_ROUND },
    { "Bevel",       VLJ_BEVEL },
@@ -1852,7 +1892,7 @@ static const struct FieldDef clLineJoin[] = {
    { NULL, 0 }
 };
 
-static const struct FieldDef clLineCap[] = {
+static const FieldDef clLineCap[] = {
    { "Butt",    VLC_BUTT },
    { "Square",  VLC_SQUARE },
    { "Round",   VLC_ROUND },
@@ -1860,7 +1900,7 @@ static const struct FieldDef clLineCap[] = {
    { NULL, 0 }
 };
 
-static const struct FieldDef clInnerJoin[] = {
+static const FieldDef clInnerJoin[] = {
    { "Miter",   VIJ_MITER },
    { "Round",   VIJ_ROUND },
    { "Bevel",   VIJ_BEVEL },
@@ -1869,14 +1909,14 @@ static const struct FieldDef clInnerJoin[] = {
    { NULL, 0 }
 };
 
-static const struct FieldDef clFillRule[] = {
+static const FieldDef clFillRule[] = {
    { "EvenOdd", VFR_EVEN_ODD },
    { "NonZero", VFR_NON_ZERO },
    { "Inherit", VFR_INHERIT },
    { NULL, 0 }
 };
 
-static const struct FieldDef clVisibility[] = {
+static const FieldDef clVisibility[] = {
    { "Hidden",   VIS_HIDDEN },
    { "Visible",  VIS_VISIBLE },
    { "Collapse", VIS_COLLAPSE },
@@ -1884,7 +1924,7 @@ static const struct FieldDef clVisibility[] = {
    { NULL, 0 }
 };
 
-static const struct FieldArray clVectorFields[] = {
+static const FieldArray clVectorFields[] = {
    { "Child",            FDF_OBJECT|FD_R,       ID_VECTOR, NULL, NULL },
    { "Scene",            FDF_OBJECT|FD_R,       ID_VECTORSCENE, NULL, NULL },
    { "Next",             FDF_OBJECT|FD_RW,      ID_VECTOR, NULL, (APTR)VECTOR_SET_Next },

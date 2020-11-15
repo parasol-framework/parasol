@@ -73,7 +73,9 @@ Move: Moves the vector to a new position.
 
 static ERROR RECTANGLE_Move(objVectorRectangle *Self, struct acMove *Args)
 {
-   if (!Args) return PostError(ERR_NullArgs);
+   parasol::Log log;
+
+   if (!Args) return log.warning(ERR_NullArgs);
 
    Self->rX += Args->XChange;
    Self->rY += Args->YChange;
@@ -89,7 +91,9 @@ MoveToPoint: Moves the vector to a new fixed position.
 
 static ERROR RECTANGLE_MoveToPoint(objVectorRectangle *Self, struct acMoveToPoint *Args)
 {
-   if (!Args) return PostError(ERR_NullArgs);
+   parasol::Log log;
+
+   if (!Args) return log.warning(ERR_NullArgs);
 
    if (Args->Flags & MTF_X) Self->rX = Args->X;
    if (Args->Flags & MTF_Y) Self->rY = Args->Y;
@@ -103,7 +107,7 @@ static ERROR RECTANGLE_MoveToPoint(objVectorRectangle *Self, struct acMoveToPoin
 
 static ERROR RECTANGLE_NewObject(objVectorRectangle *Self, APTR Void)
 {
-   Self->GeneratePath = (void (*)(struct rkVector *))&generate_rectangle;
+   Self->GeneratePath = (void (*)(rkVector *))&generate_rectangle;
    return ERR_Okay;
 }
 
@@ -115,7 +119,9 @@ Resize: Changes the rectangle dimensions.
 
 static ERROR RECTANGLE_Resize(objVectorRectangle *Self, struct acResize *Args)
 {
-   if (!Args) return PostError(ERR_NullArgs);
+   parasol::Log log;
+
+   if (!Args) return log.warning(ERR_NullArgs);
 
    Self->rWidth = Args->Width;
    Self->rHeight = Args->Height;
@@ -166,7 +172,7 @@ will flip the rectangle on the vertical axis).
 
 *****************************************************************************/
 
-static ERROR RECTANGLE_GET_Height(objVectorRectangle *Self, struct Variable *Value)
+static ERROR RECTANGLE_GET_Height(objVectorRectangle *Self, Variable *Value)
 {
    DOUBLE val = Self->rHeight;
    if (Value->Type & FD_PERCENTAGE) val = val * 100.0;
@@ -175,12 +181,14 @@ static ERROR RECTANGLE_GET_Height(objVectorRectangle *Self, struct Variable *Val
    return ERR_Okay;
 }
 
-static ERROR RECTANGLE_SET_Height(objVectorRectangle *Self, struct Variable *Value)
+static ERROR RECTANGLE_SET_Height(objVectorRectangle *Self, Variable *Value)
 {
+   parasol::Log log;
    DOUBLE val;
+
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return PostError(ERR_FieldTypeMismatch);
+   else return log.warning(ERR_FieldTypeMismatch);
 
    if (Value->Type & FD_PERCENTAGE) {
       val = val * 0.01;
@@ -250,7 +258,7 @@ The position of the rectangle on the x-axis is defined here as a fixed or relati
 
 *****************************************************************************/
 
-static ERROR RECTANGLE_GET_X(objVectorRectangle *Self, struct Variable *Value)
+static ERROR RECTANGLE_GET_X(objVectorRectangle *Self, Variable *Value)
 {
    DOUBLE val = Self->rX;
    if (Value->Type & FD_PERCENTAGE) val = val * 100.0;
@@ -259,12 +267,14 @@ static ERROR RECTANGLE_GET_X(objVectorRectangle *Self, struct Variable *Value)
    return ERR_Okay;
 }
 
-static ERROR RECTANGLE_SET_X(objVectorRectangle *Self, struct Variable *Value)
+static ERROR RECTANGLE_SET_X(objVectorRectangle *Self, Variable *Value)
 {
+   parasol::Log log;
    DOUBLE val;
+
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return PostError(ERR_FieldTypeMismatch);
+   else return log.warning(ERR_FieldTypeMismatch);
 
    if (Value->Type & FD_PERCENTAGE) {
       val = val * 0.01;
@@ -287,7 +297,7 @@ will flip the rectangle on the horizontal axis).
 
 *****************************************************************************/
 
-static ERROR RECTANGLE_GET_Width(objVectorRectangle *Self, struct Variable *Value)
+static ERROR RECTANGLE_GET_Width(objVectorRectangle *Self, Variable *Value)
 {
    DOUBLE val = Self->rWidth;
    if (Value->Type & FD_PERCENTAGE) val = val * 100.0;
@@ -296,12 +306,14 @@ static ERROR RECTANGLE_GET_Width(objVectorRectangle *Self, struct Variable *Valu
    return ERR_Okay;
 }
 
-static ERROR RECTANGLE_SET_Width(objVectorRectangle *Self, struct Variable *Value)
+static ERROR RECTANGLE_SET_Width(objVectorRectangle *Self, Variable *Value)
 {
+   parasol::Log log;
    DOUBLE val;
+
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return PostError(ERR_FieldTypeMismatch);
+   else return log.warning(ERR_FieldTypeMismatch);
 
    if (Value->Type & FD_PERCENTAGE) {
       val = val * 0.01;
@@ -324,7 +336,7 @@ The position of the rectangle on the y-axis is defined here as a fixed or relati
 
 *****************************************************************************/
 
-static ERROR RECTANGLE_GET_Y(objVectorRectangle *Self, struct Variable *Value)
+static ERROR RECTANGLE_GET_Y(objVectorRectangle *Self, Variable *Value)
 {
    DOUBLE val = Self->rY;
    if (Value->Type & FD_PERCENTAGE) val = val * 100.0;
@@ -333,12 +345,14 @@ static ERROR RECTANGLE_GET_Y(objVectorRectangle *Self, struct Variable *Value)
    return ERR_Okay;
 }
 
-static ERROR RECTANGLE_SET_Y(objVectorRectangle *Self, struct Variable *Value)
+static ERROR RECTANGLE_SET_Y(objVectorRectangle *Self, Variable *Value)
 {
+   parasol::Log log;
    DOUBLE val;
+
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return PostError(ERR_FieldTypeMismatch);
+   else return log.warning(ERR_FieldTypeMismatch);
 
    if (Value->Type & FD_PERCENTAGE) {
       val = val * 0.01;
@@ -353,7 +367,7 @@ static ERROR RECTANGLE_SET_Y(objVectorRectangle *Self, struct Variable *Value)
 
 //****************************************************************************
 
-static const struct FieldDef clRectDimensions[] = {
+static const FieldDef clRectDimensions[] = {
    { "FixedHeight",     DMF_FIXED_HEIGHT },
    { "FixedWidth",      DMF_FIXED_WIDTH },
    { "FixedX",          DMF_FIXED_X },
@@ -365,7 +379,7 @@ static const struct FieldDef clRectDimensions[] = {
    { NULL, 0 }
 };
 
-static const struct FieldArray clRectangleFields[] = {
+static const FieldArray clRectangleFields[] = {
    { "RoundX",     FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, 0, (APTR)RECTANGLE_GET_RoundX, (APTR)RECTANGLE_SET_RoundX },
    { "RoundY",     FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, 0, (APTR)RECTANGLE_GET_RoundY, (APTR)RECTANGLE_SET_RoundY },
    { "X",          FDF_VIRTUAL|FD_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)RECTANGLE_GET_X, (APTR)RECTANGLE_SET_X },
@@ -376,7 +390,7 @@ static const struct FieldArray clRectangleFields[] = {
    END_FIELD
 };
 
-static const struct ActionArray clRectangleActions[] = {
+static const ActionArray clRectangleActions[] = {
    { AC_Move,          (APTR)RECTANGLE_Move },
    { AC_MoveToPoint,   (APTR)RECTANGLE_MoveToPoint },
    { AC_NewObject,     (APTR)RECTANGLE_NewObject },

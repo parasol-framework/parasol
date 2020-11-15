@@ -825,9 +825,9 @@ public:
 
    void draw(struct rkBitmap *Bitmap)
    {
-      #ifdef DBG_DRAW
-         FMSG("~draw()","Bitmap: %dx%d,%dx%d, Viewport: %p", Bitmap->Clip.Left, Bitmap->Clip.Top, Bitmap->Clip.Right, Bitmap->Clip.Bottom, Scene->Viewport);
-      #endif
+      parasol::Log log;
+
+      log.traceBranch("Bitmap: %dx%d,%dx%d, Viewport: %p", Bitmap->Clip.Left, Bitmap->Clip.Top, Bitmap->Clip.Right, Bitmap->Clip.Bottom, Scene->Viewport);
 
       if (Scene->Viewport) {
          mBitmap = Bitmap;
@@ -840,10 +840,6 @@ public:
          VectorState state;
          draw_vectors(Scene->Viewport, state);
       }
-
-      #ifdef DBG_DRAW
-         LOGRETURN();
-      #endif
    }
 
 private:
@@ -851,11 +847,13 @@ private:
 
    void draw_vectors(objVector *CurrentVector, VectorState &ParentState)
    {
+      parasol::Log log;
+
       for (objVector *shape=CurrentVector; shape; shape=(objVector *)shape->Next) {
          VectorState state = VectorState(ParentState);
 
          if (shape->Head.ClassID != ID_VECTOR) {
-            MSG("Non-Vector discovered in the vector tree.");
+            log.trace("Non-Vector discovered in the vector tree.");
             continue;
          }
 
@@ -874,28 +872,24 @@ private:
             else if (shape->Visibility != VIS_VISIBLE) visible = FALSE;
 
             if (!visible) {
-               #ifdef DBG_DRAW
-                  FMSG("draw_vectors()","%s: #%d, Not Visible", get_name(shape), shape->Head.UniqueID);
-               #endif
+               log.trace("%s: #%d, Not Visible", get_name(shape), shape->Head.UniqueID);
                continue;
             }
          }
 
          objVectorFilter *filter;
          if ((filter = shape->Filter)) {
+            parasol::Log log;
             #ifdef DBG_DRAW
-               FMSG("~draw_vectors()","Processing filter.");
+               log.traceBranch("Processing filter.");
             #endif
 
-               if (!SetPointer(filter, FID_Vector, shape)) { // Divert rendering of this vector through the filter.
-                  filter->BkgdBitmap = mBitmap;
-                  acDraw(filter);
-               }
-               else MSG("Failed to set Vector reference on Filter.");
+            if (!SetPointer(filter, FID_Vector, shape)) { // Divert rendering of this vector through the filter.
+               filter->BkgdBitmap = mBitmap;
+               acDraw(filter);
+            }
+            else log.trace("Failed to set Vector reference on Filter.");
 
-            #ifdef DBG_DRAW
-               LOGRETURN();
-            #endif
             continue;
          }
 
@@ -929,7 +923,9 @@ private:
 
          if (shape->Head.SubID IS ID_VECTORVIEWPORT) {
             if (shape->Child) {
-               objVectorViewport *view = (objVectorViewport *)shape;
+               parasol::Log log;
+
+               auto view = (objVectorViewport *)shape;
 
                LONG xmin = mRenderBase.xmin(), ymin = mRenderBase.ymin(), xmax = mRenderBase.xmax(), ymax = mRenderBase.ymax();
 
@@ -941,19 +937,17 @@ private:
                mRenderBase.clip_box(x1, y1, x2, y2);
 
                #ifdef DBG_DRAW
-                  FMSG("~draw_viewport()","Viewport #%d clip region (%d %d %d %d) bounded by (%d %d %d %d)", shape->Head.UniqueID, x1, y1, x2, y2, xmin, ymin, xmax, ymax);
+                  log.traceBranch("Viewport #%d clip region (%d %d %d %d) bounded by (%d %d %d %d)", shape->Head.UniqueID, x1, y1, x2, y2, xmin, ymin, xmax, ymax);
                #endif
 
                if ((x2 > x1) and (y2 > y1)) { // Continue only if the clipping region is good.
                   objVectorClip *saved_mask = state.mClipMask;
                   if (view->vpClipMask) state.mClipMask = view->vpClipMask;
 
-                  #ifdef DBG_DRAW
-                  FMSG("draw_viewport","ViewBox (%.2f %.2f %.2f %.2f) Scale (%.2f %.2f) Fix (%.2f %.2f %.2f %.2f)",
+                  log.trace("ViewBox (%.2f %.2f %.2f %.2f) Scale (%.2f %.2f) Fix (%.2f %.2f %.2f %.2f)",
                     view->vpViewX, view->vpViewY, view->vpViewWidth, view->vpViewHeight,
                     view->vpXScale, view->vpYScale,
                     view->vpFixedRelX, view->vpFixedRelY, view->vpFixedWidth, view->vpFixedHeight);
-                  #endif
 
                   objVectorViewport *saved_viewport = mView;  // Save current viewport state and switch to the new viewport state
                   mView = view;
@@ -964,9 +958,7 @@ private:
 
                   mView = saved_viewport;
                }
-               else FMSG("draw_viewport","Clipping boundary results in invisible viewport.");
-
-               LOGRETURN();
+               else log.trace("Clipping boundary results in invisible viewport.");
 
                mRenderBase.clip_box(xmin, ymin, xmax, ymax);  // Put things back to the way they were
             }
@@ -983,17 +975,15 @@ private:
             }
 
             if (shape->GeneratePath) { // A vector that generates a path can be drawn
+               parasol::Log log;
                #ifdef DBG_DRAW
-                  FMSG("~draw_vector()","%s: #%d, Mask: %p", get_name(shape), shape->Head.UniqueID, shape->ClipMask);
+                  log.traceBranch("%s: #%d, Mask: %p", get_name(shape), shape->Head.UniqueID, shape->ClipMask);
                #endif
 
                if (!mView) {
                   // Vectors outside of a view cannot be drawn, however this is permitted because they may be allocated
                   // as definitions to be referenced by other objects (e.g. vectors being used as morph paths).
 
-                  #ifdef DBG_DRAW
-                     LOGRETURN();
-                  #endif
                   return;
                }
 
@@ -1087,10 +1077,6 @@ private:
                }
 
                state.mClipMask = saved_mask;
-
-               #ifdef DBG_DRAW
-                  LOGRETURN();
-               #endif
             }
             else if (shape->Child) {
                objVectorClip *saved_mask = state.mClipMask;
@@ -1124,6 +1110,8 @@ private:
 
 void SimpleVector::DrawPath(objBitmap *Bitmap, DOUBLE StrokeWidth, OBJECTPTR StrokeStyle, OBJECTPTR FillStyle)
 {
+   parasol::Log log("draw_path");
+
    agg::scanline_u8 scanline;
    agg::pixfmt_rkl format;
 
@@ -1132,9 +1120,7 @@ void SimpleVector::DrawPath(objBitmap *Bitmap, DOUBLE StrokeWidth, OBJECTPTR Str
    mRenderer.clip_box(Bitmap->Clip.Left, Bitmap->Clip.Top, Bitmap->Clip.Right-1, Bitmap->Clip.Bottom-1);
    //if (Gamma != 1.0) mRaster.gamma(agg::gamma_power(Gamma));
 
-   #ifdef DBG_DRAW
-   FMSG("~draw_path()","Bitmap: %p, Stroke: %p (%s), Fill: %p (%s)", Bitmap, StrokeStyle, get_name(StrokeStyle), FillStyle, get_name(FillStyle));
-   #endif
+   log.traceBranch("Bitmap: %p, Stroke: %p (%s), Fill: %p (%s)", Bitmap, StrokeStyle, get_name(StrokeStyle), FillStyle, get_name(FillStyle));
 
    if (FillStyle) {
       mRaster.reset();
@@ -1157,7 +1143,7 @@ void SimpleVector::DrawPath(objBitmap *Bitmap, DOUBLE StrokeWidth, OBJECTPTR Str
       else if (FillStyle->ClassID IS ID_VECTORPATTERN) {
          draw_pattern(NULL, &mPath, VSM_AUTO, 0, 0, Bitmap->Width, Bitmap->Height, (objVectorPattern &)*FillStyle, mRenderer, mRaster);
       }
-      else LogErrorMsg("The FillStyle is not supported.");
+      else log.warning("The FillStyle is not supported.");
    }
 
    if ((StrokeWidth > 0) and (StrokeStyle)){
@@ -1190,10 +1176,6 @@ void SimpleVector::DrawPath(objBitmap *Bitmap, DOUBLE StrokeWidth, OBJECTPTR Str
          solid.color(agg::rgba(colour->Red, colour->Green, colour->Blue, colour->Alpha));
          agg::render_scanlines(mRaster, scanline, solid);
       }
-      else LogErrorMsg("The StrokeStyle is not supported.");
+      else log.warning("The StrokeStyle is not supported.");
    }
-
-   #ifdef DBG_DRAW
-      LOGRETURN();
-   #endif
 }

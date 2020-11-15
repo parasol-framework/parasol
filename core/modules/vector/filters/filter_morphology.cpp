@@ -11,7 +11,7 @@ enum {
 
 //****************************************************************************
 
-static void erode(struct effect *Effect)
+static void erode(effect *Effect)
 {
    objBitmap *bmp = Effect->Bitmap;
    if (bmp->BytesPerPixel != 4) return;
@@ -117,7 +117,7 @@ static void erode(struct effect *Effect)
 
 //****************************************************************************
 
-static void dilate(struct effect *Effect)
+static void dilate(effect *Effect)
 {
    objBitmap *bmp = Effect->Bitmap;
    if (bmp->BytesPerPixel != 4) return;
@@ -225,7 +225,7 @@ static void dilate(struct effect *Effect)
 ** Internal: apply_morph()
 */
 
-static void apply_morph(objVectorFilter *Self, struct effect *Effect)
+static void apply_morph(objVectorFilter *Self, effect *Effect)
 {
    if (Effect->Morph.Type IS OP_ERODE) erode(Effect);
    else dilate(Effect);
@@ -234,9 +234,9 @@ static void apply_morph(objVectorFilter *Self, struct effect *Effect)
 //****************************************************************************
 // Create a new morph matrix filter.
 
-static ERROR create_morph(objVectorFilter *Self, struct XMLTag *Tag)
+static ERROR create_morph(objVectorFilter *Self, XMLTag *Tag)
 {
-   struct effect *effect;
+   effect *effect;
    if (!(effect = add_effect(Self, FE_MORPHOLOGY))) return ERR_AllocMemory;
 
    effect->Morph.RX = 0; // SVG default is 0

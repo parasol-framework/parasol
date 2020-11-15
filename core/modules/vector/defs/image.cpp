@@ -18,20 +18,22 @@ definition.  This will ensure that the VectorImage is de-allocated when the scen
 
 static ERROR IMAGE_Init(objVectorImage *Self, APTR Void)
 {
+   parasol::Log log;
+
    if ((Self->SpreadMethod <= 0) OR (Self->SpreadMethod >= VSPREAD_END)) {
-      FMSG("@","Invalid SpreadMethod value of %d", Self->SpreadMethod);
-      return PostError(ERR_OutOfRange);
+      log.traceWarning("Invalid SpreadMethod value of %d", Self->SpreadMethod);
+      return log.warning(ERR_OutOfRange);
    }
 
    if ((Self->Units != VUNIT_BOUNDING_BOX) AND (Self->Units != VUNIT_USERSPACE)) {
-      FMSG("@","Invalid Units value of %d", Self->Units);
-      return PostError(ERR_OutOfRange);
+      log.traceWarning("Invalid Units value of %d", Self->Units);
+      return log.warning(ERR_OutOfRange);
    }
 
-   if (!Self->Bitmap) return PostError(ERR_FieldNotSet);
+   if (!Self->Bitmap) return log.warning(ERR_FieldNotSet);
 
    if ((Self->Bitmap->BitsPerPixel != 24) AND (Self->Bitmap->BitsPerPixel != 32)) {
-      return PostError(ERR_NoSupport);
+      return log.warning(ERR_NoSupport);
    }
 
    return ERR_Okay;
@@ -106,13 +108,13 @@ Y: Apply a vertical offset to the image, the origin of which is determined by th
 
 *****************************************************************************/
 
-static const struct ActionArray clImageActions[] = {
+static const ActionArray clImageActions[] = {
    { AC_Init,      (APTR)IMAGE_Init },
    { AC_NewObject, (APTR)IMAGE_NewObject },
    { 0, NULL }
 };
 
-static const struct FieldDef clImageSpread[] = {
+static const FieldDef clImageSpread[] = {
    { "Pad",      VSPREAD_PAD },
    { "Repeat",   VSPREAD_REPEAT },
    { "ReflectX", VSPREAD_REFLECT_X },
@@ -121,19 +123,19 @@ static const struct FieldDef clImageSpread[] = {
    { NULL, 0 }
 };
 
-static const struct FieldDef clImageUnits[] = {
+static const FieldDef clImageUnits[] = {
    { "BoundingBox", VUNIT_BOUNDING_BOX },  // Coordinates are relative to the object's bounding box
    { "UserSpace",   VUNIT_USERSPACE },    // Coordinates are relative to the current viewport
    { NULL, 0 }
 };
 
-static const struct FieldDef clImageDimensions[] = {
+static const FieldDef clImageDimensions[] = {
    { "RelativeX", DMF_RELATIVE_X },
    { "RelativeY", DMF_RELATIVE_Y },
    { NULL, 0 }
 };
 
-static const struct FieldArray clImageFields[] = {
+static const FieldArray clImageFields[] = {
    { "X",            FDF_DOUBLE|FDF_RW, 0, NULL, NULL },
    { "Y",            FDF_DOUBLE|FDF_RW, 0, NULL, NULL },
    { "Picture",      FDF_OBJECT|FDF_RW, ID_PICTURE, NULL, (APTR)IMAGE_SET_Picture },

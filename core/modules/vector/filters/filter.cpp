@@ -20,29 +20,29 @@ in cached bitmaps.
 
 *****************************************************************************/
 
-static struct effect * add_effect(objVectorFilter *, UBYTE Type);
-static void apply_cmatrix(objVectorFilter *, struct effect *);
-static void apply_convolve(objVectorFilter *, struct effect *);
-static void apply_blur(objVectorFilter *, struct effect *);
-static void apply_composite(objVectorFilter *, struct effect *);
-static void apply_flood(objVectorFilter *, struct effect *);
-static void apply_image(objVectorFilter *, struct effect *);
-static void apply_morph(objVectorFilter *, struct effect *);
-static void apply_turbulence(objVectorFilter *, struct effect *);
-static ERROR create_blur(objVectorFilter *, struct XMLTag *);
-static ERROR create_cmatrix(objVectorFilter *, struct XMLTag *);
-static ERROR create_convolve(objVectorFilter *, struct XMLTag *);
-static ERROR create_composite(objVectorFilter *, struct XMLTag *);
-static ERROR create_flood(objVectorFilter *, struct XMLTag *);
-static ERROR create_image(objVectorFilter *, struct XMLTag *);
-static ERROR create_morph(objVectorFilter *, struct XMLTag *);
-static ERROR create_turbulence(objVectorFilter *, struct XMLTag *);
+static effect * add_effect(objVectorFilter *, UBYTE Type);
+static void apply_cmatrix(objVectorFilter *, effect *);
+static void apply_convolve(objVectorFilter *, effect *);
+static void apply_blur(objVectorFilter *, effect *);
+static void apply_composite(objVectorFilter *, effect *);
+static void apply_flood(objVectorFilter *, effect *);
+static void apply_image(objVectorFilter *, effect *);
+static void apply_morph(objVectorFilter *, effect *);
+static void apply_turbulence(objVectorFilter *, effect *);
+static ERROR create_blur(objVectorFilter *, XMLTag *);
+static ERROR create_cmatrix(objVectorFilter *, XMLTag *);
+static ERROR create_convolve(objVectorFilter *, XMLTag *);
+static ERROR create_composite(objVectorFilter *, XMLTag *);
+static ERROR create_flood(objVectorFilter *, XMLTag *);
+static ERROR create_image(objVectorFilter *, XMLTag *);
+static ERROR create_morph(objVectorFilter *, XMLTag *);
+static ERROR create_turbulence(objVectorFilter *, XMLTag *);
 static void demultiply_bitmap(objBitmap *);
-static ERROR fe_default(objVectorFilter *, struct effect *, ULONG ID, CSTRING Value);
-static struct effect * find_effect(objVectorFilter *, CSTRING Name);
-static ERROR get_bitmap(objVectorFilter *, objBitmap **, UBYTE, struct effect *);
+static ERROR fe_default(objVectorFilter *, effect *, ULONG ID, CSTRING Value);
+static effect * find_effect(objVectorFilter *, CSTRING Name);
+static ERROR get_bitmap(objVectorFilter *, objBitmap **, UBYTE, effect *);
 static void premultiply_bitmap(objBitmap *);
-static void remove_effect(objVectorFilter *, struct effect *);
+static void remove_effect(objVectorFilter *, effect *);
 
 //****************************************************************************
 
@@ -125,9 +125,10 @@ static void demultiply_bitmap(objBitmap *bmp)
 //****************************************************************************
 // Retrieve a bitmap that is associated with the effect.
 
-static ERROR get_bitmap(objVectorFilter *Self, objBitmap **BitmapResult, UBYTE Source, struct effect *Input)
+static ERROR get_bitmap(objVectorFilter *Self, objBitmap **BitmapResult, UBYTE Source, effect *Input)
 {
-   //FMSG("get_bitmap()","Effect: %p, Size: %dx%d", Effect, width, height);
+   parasol::Log log(__FUNCTION__);
+   //log.trace("Effect: %p, Size: %dx%d", Effect, width, height);
 
    // Retrieve a bitmap from the bank.  In order to save memory, bitmap data is managed internally so that it always
    // reflects the size of the clipping region.
@@ -224,14 +225,14 @@ static ERROR get_bitmap(objVectorFilter *Self, objBitmap **BitmapResult, UBYTE S
          //bmpDrawRectangle(bmp, 0, 0, bmp->Width, bmp->Height, 0x00000000, BAF_FILL);
          gfxCopyArea(input, bmp, 0, 0, 0, input->Width, input->Height, 0, 0);
       }
-      else LogErrorMsg("Referenced filter has no bitmap.");
+      else log.warning("Referenced filter has no bitmap.");
    }
    else if (Source IS VSF_IGNORE) {
       *BitmapResult = NULL;
       return ERR_Continue;
    }
    else {
-      LogErrorMsg("Effect source %d is not supported.", Source);
+      log.warning("Effect source %d is not supported.", Source);
       return ERR_Failed;
    }
 
@@ -241,11 +242,13 @@ static ERROR get_bitmap(objVectorFilter *Self, objBitmap **BitmapResult, UBYTE S
 //****************************************************************************
 // Create a new filter and append it to the filter chain.
 
-static struct effect * add_effect(objVectorFilter *Filter, UBYTE Type)
+static effect * add_effect(objVectorFilter *Filter, UBYTE Type)
 {
-   struct effect *effect;
-   FMSG("add_effect()","Type: %d", Type);
-   if (!AllocMemory(sizeof(struct effect), MEM_DATA, &effect, NULL)) {
+   parasol::Log log(__FUNCTION__);
+   effect *effect;
+
+   log.trace("Type: %d", Type);
+   if (!AllocMemory(sizeof(effect), MEM_DATA, &effect, NULL)) {
       effect->Prev = Filter->LastEffect;
       effect->Next = NULL;
       effect->Type = Type;
@@ -261,7 +264,7 @@ static struct effect * add_effect(objVectorFilter *Filter, UBYTE Type)
 
 //****************************************************************************
 
-static void free_effect_resources(struct effect *Effect)
+static void free_effect_resources(effect *Effect)
 {
    if (Effect->Type IS FE_COLOURMATRIX) delete Effect->Colour.Matrix;
    else if (Effect->Type IS FE_CONVOLVEMATRIX) delete Effect->Convolve.Matrix;
@@ -275,7 +278,7 @@ static void free_effect_resources(struct effect *Effect)
 
 //****************************************************************************
 
-static void remove_effect(objVectorFilter *Self, struct effect *Effect)
+static void remove_effect(objVectorFilter *Self, effect *Effect)
 {
    if (Effect->Prev) Effect->Prev->Next = Effect->Next;
    if (Effect->Next) Effect->Next->Prev = Effect->Prev;
@@ -289,13 +292,14 @@ static void remove_effect(objVectorFilter *Self, struct effect *Effect)
 
 //****************************************************************************
 
-static struct effect * find_effect(objVectorFilter *Self, CSTRING Name)
+static effect * find_effect(objVectorFilter *Self, CSTRING Name)
 {
    ULONG id = StrHash(Name, TRUE);
-   for (struct effect *e=Self->Effects; e; e=e->Next) {
+   for (auto *e=Self->Effects; e; e=e->Next) {
       if (e->ID IS id) return e;
    }
-   LogF("@find_effect","Failed to find effect '%s'", Name);
+   parasol::Log log(__FUNCTION__);
+   log.warning("Failed to find effect '%s'", Name);
    return NULL;
 }
 
@@ -304,8 +308,7 @@ static struct effect * find_effect(objVectorFilter *Self, CSTRING Name)
 
 static void calc_usage(objVectorFilter *Self)
 {
-   struct effect *e;
-   for (e=Self->Effects; e; e=e->Next) {
+   for (auto e=Self->Effects; e; e=e->Next) {
       e->UsageCount = 0;
       if (e->Input) e->Input->UsageCount++;
       if ((e->Type IS FE_COMPOSITE) AND (e->Composite.Input)) e->Composite.Input->UsageCount++;
@@ -315,7 +318,7 @@ static void calc_usage(objVectorFilter *Self)
 //****************************************************************************
 // Parser for common filter attributes.
 
-static ERROR fe_default(objVectorFilter *Self, struct effect *Effect, ULONG ID, CSTRING Value)
+static ERROR fe_default(objVectorFilter *Self, effect *Effect, ULONG ID, CSTRING Value)
 {
    switch (ID) {
       case SVF_IN: {
@@ -327,7 +330,7 @@ static ERROR fe_default(objVectorFilter *Self, struct effect *Effect, ULONG ID, 
             case SVF_FILLPAINT:       Effect->Source = VSF_FILL; break;
             case SVF_STROKEPAINT:     Effect->Source = VSF_STROKE; break;
             default:  {
-               struct effect *e;
+               effect *e;
                if ((e = find_effect(Self, Value))) {
                   if (e != Effect) {
                      Effect->Source = VSF_REFERENCE;
@@ -356,9 +359,10 @@ Clear: Clears all filter instructions from the object.
 
 static ERROR VECTORFILTER_Clear(objVectorFilter *Self, APTR Void)
 {
-   MSG("Clearing all effects.");
+   parasol::Log log(__FUNCTION__);
+   log.trace("Clearing all effects.");
 
-   struct effect *next;
+   effect *next;
    for (auto scan=Self->Effects; scan; scan=next) {
       next = scan->Next;
       free_effect_resources(scan);
@@ -406,6 +410,8 @@ The XML object that is used to parse the effects is accessible through the #Effe
 
 static ERROR VECTORFILTER_DataFeed(objVectorFilter *Self, struct acDataFeed *Args)
 {
+   parasol::Log log;
+
    if (!Args) return ERR_NullArgs;
 
    if (Args->DataType IS DATA_XML) {
@@ -415,7 +421,7 @@ static ERROR VECTORFILTER_DataFeed(objVectorFilter *Self, struct acDataFeed *Arg
          SetString(Self->EffectXML, FID_Statement, (CSTRING)Args->Buffer);
          if (!acInit(Self->EffectXML)) {
             for (auto tag = Self->EffectXML->Tags[0]; tag; tag=tag->Next) {
-               MSG("Processing filter element '%s'", tag->Attrib->Name);
+               log.trace("Processing filter element '%s'", tag->Attrib->Name);
                switch(StrHash(tag->Attrib->Name, FALSE)) {
                   case SVF_FEBLUR: create_blur(Self, tag); break;
                   case SVF_FEGAUSSIANBLUR: create_blur(Self, tag); break;
@@ -439,11 +445,11 @@ static ERROR VECTORFILTER_DataFeed(objVectorFilter *Self, struct acDataFeed *Arg
                   case SVF_FEDISTANTLIGHT:
                   case SVF_FEPOINTLIGHT:
                   case SVF_FESPOTLIGHT:
-                     LogErrorMsg("Filter element '%s' is not currently supported.", tag->Attrib->Name);
+                     log.warning("Filter element '%s' is not currently supported.", tag->Attrib->Name);
                      break;
 
                   default:
-                     LogErrorMsg("Filter element '%s' not recognised.", tag->Attrib->Name);
+                     log.warning("Filter element '%s' not recognised.", tag->Attrib->Name);
                      break;
                }
             }
@@ -461,12 +467,14 @@ static ERROR VECTORFILTER_DataFeed(objVectorFilter *Self, struct acDataFeed *Arg
 
 static ERROR VECTORFILTER_Draw(objVectorFilter *Self, struct acDraw *Args)
 {
+   parasol::Log log;
+
    if ((!Self->Scene) or (!Self->Viewport)) {
-      MSG("Scene and/or Viewport not defined.");
-      return PostError(ERR_FieldNotSet);
+      log.trace("Scene and/or Viewport not defined.");
+      return log.warning(ERR_FieldNotSet);
    }
 
-   if (!Self->Viewport->Child) { LogErrorMsg("Target vector not defined."); return ERR_FieldNotSet; }
+   if (!Self->Viewport->Child) { log.warning("Target vector not defined."); return ERR_FieldNotSet; }
 
    Self->DrawStamp = PreciseTime();
 
@@ -503,7 +511,7 @@ static ERROR VECTORFILTER_Draw(objVectorFilter *Self, struct acDraw *Args)
       calc_full_boundary((objVector *)Self->Viewport->Child, bounds);
 
       if ((bounds[2] <= bounds[0]) or (bounds[3] <= bounds[1])) {
-         LogErrorMsg("Unable to draw filter as no child vector produces a path.");
+         log.warning("Unable to draw filter as no child vector produces a path.");
          return ERR_Failed;
       }
 
@@ -652,7 +660,7 @@ static ERROR VECTORFILTER_Draw(objVectorFilter *Self, struct acDraw *Args)
       else error = get_bitmap(Self, &e->Bitmap, e->Source, e->Input);
 
       if (!error) {
-         //MSG("Processing effect %s with source type %d", get_effect_name(e->Type), e->Source);
+         //log.trace("Processing effect %s with source type %d", get_effect_name(e->Type), e->Source);
 
          switch (e->Type) {
             case FE_BLUR:           apply_blur(Self, e); break;
@@ -665,10 +673,10 @@ static ERROR VECTORFILTER_Draw(objVectorFilter *Self, struct acDraw *Args)
             case FE_TURBULENCE:     apply_turbulence(Self, e); break;
             case FE_MORPHOLOGY:     apply_morph(Self, e); break;
             default:
-               LogErrorMsg("No support for applying effect %s", get_effect_name(e->Type)); break;
+               log.warning("No support for applying effect %s", get_effect_name(e->Type)); break;
          }
       }
-      else if (error != ERR_Continue) LogErrorMsg("Failed to configure bitmap for effect type %s", get_effect_name(e->Type));
+      else if (error != ERR_Continue) log.warning("Failed to configure bitmap for effect type %s", get_effect_name(e->Type));
    }
 
    // Render the filter results to the destination bitmap
@@ -723,7 +731,7 @@ static ERROR VECTORFILTER_Draw(objVectorFilter *Self, struct acDraw *Args)
             gfxCopyArea(bmp, Self->BkgdBitmap, BAF_BLEND|BAF_COPY, 0, 0, bmp->Width, bmp->Height, 0, 0);
             bmp->Opacity = 255;
          }
-         else MSG("No Bitmap generated by effect '%s'.", get_effect_name(e->Type));
+         else log.trace("No Bitmap generated by effect '%s'.", get_effect_name(e->Type));
       }
    }
 
@@ -747,9 +755,11 @@ static ERROR VECTORFILTER_Free(objVectorFilter *Self, APTR Void)
 
 static ERROR VECTORFILTER_Init(objVectorFilter *Self, APTR Void)
 {
+   parasol::Log log(__FUNCTION__);
+
    if ((Self->Units <= 0) or (Self->Units >= VUNIT_END)) {
-      FMSG("@","Invalid Units value of %d", Self->Units);
-      return PostError(ERR_OutOfRange);
+      log.traceWarning("Invalid Units value of %d", Self->Units);
+      return log.warning(ERR_OutOfRange);
    }
 
    if (acInit(Self->Scene)) return ERR_Init;
@@ -826,12 +836,12 @@ static ERROR VECTORFILTER_GET_Height(objVectorFilter *Self, struct Variable *Val
    return ERR_Okay;
 }
 
-static ERROR VECTORFILTER_SET_Height(objVectorFilter *Self, struct Variable *Value)
+static ERROR VECTORFILTER_SET_Height(objVectorFilter *Self, Variable *Value)
 {
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return PostError(ERR_FieldTypeMismatch);
+   else return ERR_FieldTypeMismatch;
 
    if (val > 0) {
       if (Value->Type & FD_PERCENTAGE) {
@@ -843,7 +853,7 @@ static ERROR VECTORFILTER_SET_Height(objVectorFilter *Self, struct Variable *Val
       Self->Height = val;
       return ERR_Okay;
    }
-   else return PostError(ERR_InvalidValue);
+   else return ERR_InvalidValue;
 }
 
 /*****************************************************************************
@@ -858,10 +868,8 @@ primarily for the purpose of simplifying SVG compatibility and its use may resul
 static ERROR VECTORFILTER_SET_Inherit(objVectorFilter *Self, objVectorFilter *Value)
 {
    if (Value) {
-      if (Value->Head.ClassID IS ID_VECTORFILTER) {
-         Self->Inherit = Value;
-      }
-      else return PostError(ERR_InvalidValue);
+      if (Value->Head.ClassID IS ID_VECTORFILTER) Self->Inherit = Value;
+      else return ERR_InvalidValue;
    }
    else Self->Inherit = NULL;
    return ERR_Okay;
@@ -949,9 +957,9 @@ static ERROR VECTORFILTER_SET_Vector(objVectorFilter *Self, objVector *Value)
          Self->Viewport->Child = Value;
          return ERR_Okay;
       }
-      else return PostError(ERR_InvalidValue);
+      else return ERR_InvalidValue;
    }
-   else return PostError(ERR_NotInitialised);
+   else return ERR_NotInitialised;
 }
 
 /*****************************************************************************
@@ -969,7 +977,7 @@ The width of the filter area is expressed here as a fixed or relative coordinate
 
 *****************************************************************************/
 
-static ERROR VECTORFILTER_GET_Width(objVectorFilter *Self, struct Variable *Value)
+static ERROR VECTORFILTER_GET_Width(objVectorFilter *Self, Variable *Value)
 {
    DOUBLE val = Self->Width;
    if (Value->Type & FD_PERCENTAGE) val = val * 100.0;
@@ -978,12 +986,12 @@ static ERROR VECTORFILTER_GET_Width(objVectorFilter *Self, struct Variable *Valu
    return ERR_Okay;
 }
 
-static ERROR VECTORFILTER_SET_Width(objVectorFilter *Self, struct Variable *Value)
+static ERROR VECTORFILTER_SET_Width(objVectorFilter *Self, Variable *Value)
 {
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return PostError(ERR_FieldTypeMismatch);
+   else return ERR_FieldTypeMismatch;
 
    if (val > 0) {
       if (Value->Type & FD_PERCENTAGE) {
@@ -995,7 +1003,7 @@ static ERROR VECTORFILTER_SET_Width(objVectorFilter *Self, struct Variable *Valu
       Self->Width = val;
       return ERR_Okay;
    }
-   else return PostError(ERR_InvalidValue);
+   else return ERR_InvalidValue;
 }
 
 /*****************************************************************************
@@ -1006,7 +1014,7 @@ The (X,Y) field values define the starting coordinate for mapping filters.
 -END-
 *****************************************************************************/
 
-static ERROR VECTORFILTER_GET_X(objVectorFilter *Self, struct Variable *Value)
+static ERROR VECTORFILTER_GET_X(objVectorFilter *Self, Variable *Value)
 {
    DOUBLE val = Self->X;
    if ((Value->Type & FD_PERCENTAGE) and (Self->Dimensions & DMF_RELATIVE_X)) val = val * 100.0;
@@ -1015,12 +1023,12 @@ static ERROR VECTORFILTER_GET_X(objVectorFilter *Self, struct Variable *Value)
    return ERR_Okay;
 }
 
-static ERROR VECTORFILTER_SET_X(objVectorFilter *Self, struct Variable *Value)
+static ERROR VECTORFILTER_SET_X(objVectorFilter *Self, Variable *Value)
 {
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return PostError(ERR_FieldTypeMismatch);
+   else return ERR_FieldTypeMismatch;
 
    if (Value->Type & FD_PERCENTAGE) {
       val = val * 0.01;
@@ -1040,7 +1048,7 @@ The (X,Y) field values define the starting coordinate for mapping filters.
 -END-
 *****************************************************************************/
 
-static ERROR VECTORFILTER_GET_Y(objVectorFilter *Self, struct Variable *Value)
+static ERROR VECTORFILTER_GET_Y(objVectorFilter *Self, Variable *Value)
 {
    DOUBLE val = Self->Y;
    if ((Value->Type & FD_PERCENTAGE) and (Self->Dimensions & DMF_RELATIVE_Y)) val = val * 100.0;
@@ -1049,12 +1057,12 @@ static ERROR VECTORFILTER_GET_Y(objVectorFilter *Self, struct Variable *Value)
    return ERR_Okay;
 }
 
-static ERROR VECTORFILTER_SET_Y(objVectorFilter *Self, struct Variable *Value)
+static ERROR VECTORFILTER_SET_Y(objVectorFilter *Self, Variable *Value)
 {
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return PostError(ERR_FieldTypeMismatch);
+   else return ERR_FieldTypeMismatch;
 
    if (Value->Type & FD_PERCENTAGE) {
       val = val * 0.01;
@@ -1068,7 +1076,7 @@ static ERROR VECTORFILTER_SET_Y(objVectorFilter *Self, struct Variable *Value)
 
 //****************************************************************************
 
-static const struct FieldDef clFilterDimensions[] = {
+static const FieldDef clFilterDimensions[] = {
    { "FixedX",         DMF_FIXED_X },
    { "FixedY",         DMF_FIXED_Y },
    { "RelativeX",      DMF_RELATIVE_X },
@@ -1082,7 +1090,7 @@ static const struct FieldDef clFilterDimensions[] = {
 
 #include "filter_def.c"
 
-static const struct FieldArray clFilterFields[] = {
+static const FieldArray clFilterFields[] = {
    { "X",              FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)VECTORFILTER_GET_X, (APTR)VECTORFILTER_SET_X },
    { "Y",              FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)VECTORFILTER_GET_Y, (APTR)VECTORFILTER_SET_Y },
    { "Width",          FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)VECTORFILTER_GET_Width, (APTR)VECTORFILTER_SET_Width },

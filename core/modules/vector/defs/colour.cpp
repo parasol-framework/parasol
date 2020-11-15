@@ -36,12 +36,12 @@ static ERROR COLOUR_NewObject(objVectorColour *Self, APTR Void)
    return ERR_Okay;
 }
 
-static const struct ActionArray clColourActions[] = {
+static const ActionArray clColourActions[] = {
    { AC_NewObject, (APTR)COLOUR_NewObject },
    { 0, NULL }
 };
 
-static const struct FieldArray clColourFields[] = {
+static const FieldArray clColourFields[] = {
    { "Red",   FDF_DOUBLE|FDF_RW, 0, NULL, NULL },
    { "Green", FDF_DOUBLE|FDF_RW, 0, NULL, NULL },
    { "Blue",  FDF_DOUBLE|FDF_RW, 0, NULL, NULL },

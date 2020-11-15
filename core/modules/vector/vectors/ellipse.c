@@ -133,7 +133,7 @@ static ERROR ELLIPSE_MoveToPoint(objVectorEllipse *Self, struct acMoveToPoint *A
 
 static ERROR ELLIPSE_NewObject(objVectorEllipse *Self, APTR Void)
 {
-   Self->GeneratePath = (void (*)(struct rkVector *))&generate_ellipse;
+   Self->GeneratePath = (void (*)(rkVector *))&generate_ellipse;
    return ERR_Okay;
 }
 
@@ -178,7 +178,7 @@ The height of the ellipse is defined here as the equivalent of #RadiusY * 2.0.
 
 *****************************************************************************/
 
-static ERROR ELLIPSE_GET_Height(objVectorEllipse *Self, struct Variable *Value)
+static ERROR ELLIPSE_GET_Height(objVectorEllipse *Self, Variable *Value)
 {
    DOUBLE val = Self->RadiusY * 2.0;
    if (Value->Type & FD_PERCENTAGE) val = val * 100.0;
@@ -187,7 +187,7 @@ static ERROR ELLIPSE_GET_Height(objVectorEllipse *Self, struct Variable *Value)
    return ERR_Okay;
 }
 
-static ERROR ELLIPSE_SET_Height(objVectorEllipse *Self, struct Variable *Value)
+static ERROR ELLIPSE_SET_Height(objVectorEllipse *Self, Variable *Value)
 {
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
@@ -206,7 +206,7 @@ The horizontal center of the ellipse is defined here as either a fixed or relati
 
 *****************************************************************************/
 
-static ERROR ELLIPSE_GET_CenterX(objVectorEllipse *Self, struct Variable *Value)
+static ERROR ELLIPSE_GET_CenterX(objVectorEllipse *Self, Variable *Value)
 {
    DOUBLE val = Self->CX;
    if ((Value->Type & FD_PERCENTAGE) AND (Self->Dimensions & DMF_RELATIVE_CENTER_X)) val = val * 100.0;
@@ -215,7 +215,7 @@ static ERROR ELLIPSE_GET_CenterX(objVectorEllipse *Self, struct Variable *Value)
    return ERR_Okay;
 }
 
-static ERROR ELLIPSE_SET_CenterX(objVectorEllipse *Self, struct Variable *Value)
+static ERROR ELLIPSE_SET_CenterX(objVectorEllipse *Self, Variable *Value)
 {
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
@@ -242,7 +242,7 @@ The vertical center of the ellipse is defined here as either a fixed or relative
 
 *****************************************************************************/
 
-static ERROR ELLIPSE_GET_CenterY(objVectorEllipse *Self, struct Variable *Value)
+static ERROR ELLIPSE_GET_CenterY(objVectorEllipse *Self, Variable *Value)
 {
    DOUBLE val = Self->CY;
    if ((Value->Type & FD_PERCENTAGE) AND (Self->Dimensions & DMF_RELATIVE_CENTER_Y)) val = val * 100.0;
@@ -251,7 +251,7 @@ static ERROR ELLIPSE_GET_CenterY(objVectorEllipse *Self, struct Variable *Value)
    return ERR_Okay;
 }
 
-static ERROR ELLIPSE_SET_CenterY(objVectorEllipse *Self, struct Variable *Value)
+static ERROR ELLIPSE_SET_CenterY(objVectorEllipse *Self, Variable *Value)
 {
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
@@ -278,7 +278,7 @@ The radius of the ellipse is defined here as either a fixed or relative value.  
 
 *****************************************************************************/
 
-static ERROR ELLIPSE_GET_Radius(objVectorEllipse *Self, struct Variable *Value)
+static ERROR ELLIPSE_GET_Radius(objVectorEllipse *Self, Variable *Value)
 {
    DOUBLE val = (Self->RadiusX + Self->RadiusY) * 0.5;
    if ((Value->Type & FD_PERCENTAGE) AND (Self->Dimensions & DMF_RELATIVE_RADIUS)) val = val * 100.0;
@@ -287,7 +287,7 @@ static ERROR ELLIPSE_GET_Radius(objVectorEllipse *Self, struct Variable *Value)
    return ERR_Okay;
 }
 
-static ERROR ELLIPSE_SET_Radius(objVectorEllipse *Self, struct Variable *Value)
+static ERROR ELLIPSE_SET_Radius(objVectorEllipse *Self, Variable *Value)
 {
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
@@ -313,7 +313,7 @@ The horizontal radius of the ellipse is defined here as either a fixed or relati
 
 *****************************************************************************/
 
-static ERROR ELLIPSE_GET_RadiusX(objVectorEllipse *Self, struct Variable *Value)
+static ERROR ELLIPSE_GET_RadiusX(objVectorEllipse *Self, Variable *Value)
 {
    DOUBLE val = Self->RadiusX;
    if ((Value->Type & FD_PERCENTAGE) AND (Self->Dimensions & DMF_RELATIVE_RADIUS_X)) val = val * 100.0;
@@ -322,7 +322,7 @@ static ERROR ELLIPSE_GET_RadiusX(objVectorEllipse *Self, struct Variable *Value)
    return ERR_Okay;
 }
 
-static ERROR ELLIPSE_SET_RadiusX(objVectorEllipse *Self, struct Variable *Value)
+static ERROR ELLIPSE_SET_RadiusX(objVectorEllipse *Self, Variable *Value)
 {
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
@@ -348,7 +348,7 @@ The vertical radius of the ellipse is defined here as either a fixed or relative
 
 *****************************************************************************/
 
-static ERROR ELLIPSE_GET_RadiusY(objVectorEllipse *Self, struct Variable *Value)
+static ERROR ELLIPSE_GET_RadiusY(objVectorEllipse *Self, Variable *Value)
 {
    DOUBLE val = Self->RadiusY;
    if ((Value->Type & FD_PERCENTAGE) AND (Self->Dimensions & DMF_RELATIVE_RADIUS_Y)) val = val * 100.0;
@@ -357,7 +357,7 @@ static ERROR ELLIPSE_GET_RadiusY(objVectorEllipse *Self, struct Variable *Value)
    return ERR_Okay;
 }
 
-static ERROR ELLIPSE_SET_RadiusY(objVectorEllipse *Self, struct Variable *Value)
+static ERROR ELLIPSE_SET_RadiusY(objVectorEllipse *Self, Variable *Value)
 {
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
@@ -411,7 +411,7 @@ The width of the ellipse is defined here as the equivalent of #RadiusX * 2.0.
 -END-
 *****************************************************************************/
 
-static ERROR ELLIPSE_GET_Width(objVectorEllipse *Self, struct Variable *Value)
+static ERROR ELLIPSE_GET_Width(objVectorEllipse *Self, Variable *Value)
 {
    DOUBLE val = Self->RadiusX * 2.0;
    if (Value->Type & FD_PERCENTAGE) val = val * 100.0;
@@ -420,7 +420,7 @@ static ERROR ELLIPSE_GET_Width(objVectorEllipse *Self, struct Variable *Value)
    return ERR_Okay;
 }
 
-static ERROR ELLIPSE_SET_Width(objVectorEllipse *Self, struct Variable *Value)
+static ERROR ELLIPSE_SET_Width(objVectorEllipse *Self, Variable *Value)
 {
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
@@ -433,7 +433,7 @@ static ERROR ELLIPSE_SET_Width(objVectorEllipse *Self, struct Variable *Value)
 
 //****************************************************************************
 
-static const struct FieldDef clEllipseDimensions[] = {
+static const FieldDef clEllipseDimensions[] = {
    { "FixedRadiusX",    DMF_FIXED_RADIUS_X },
    { "FixedRadiusY",    DMF_FIXED_RADIUS_Y },
    { "FixedCenterX",    DMF_FIXED_CENTER_X },
@@ -445,7 +445,7 @@ static const struct FieldDef clEllipseDimensions[] = {
    { NULL, 0 }
 };
 
-static const struct FieldArray clEllipseFields[] = {
+static const FieldArray clEllipseFields[] = {
    { "Width",      FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)ELLIPSE_GET_Width,   (APTR)ELLIPSE_SET_Width },
    { "Height",     FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)ELLIPSE_GET_Height,  (APTR)ELLIPSE_SET_Height },
    { "CenterX",    FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)ELLIPSE_GET_CenterX, (APTR)ELLIPSE_SET_CenterX },
@@ -464,7 +464,7 @@ static const struct FieldArray clEllipseFields[] = {
    END_FIELD
 };
 
-static const struct ActionArray clEllipseActions[] = {
+static const ActionArray clEllipseActions[] = {
    { AC_NewObject,     (APTR)ELLIPSE_NewObject },
    { AC_Move,          (APTR)ELLIPSE_Move },
    { AC_MoveToPoint,   (APTR)ELLIPSE_MoveToPoint },
