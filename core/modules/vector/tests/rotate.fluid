@@ -1,4 +1,4 @@
-﻿-- Test the vector class' rotate method.
+-- Test the vector class' rotate method.
 --
 -- The blue rectangle should move around the inner side of the circle, just touching the circle's edge.
 -- All four sides of the large black rectangle must be touching the red circle during rotation.

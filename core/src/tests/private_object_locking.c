@@ -1,4 +1,4 @@
-﻿/*****************************************************************************
+/*****************************************************************************
 
 The source code of the Parasol project is made publicly available under the
 terms described in the LICENSE.TXT file that is distributed with this package.

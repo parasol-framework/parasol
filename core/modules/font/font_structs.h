@@ -1,4 +1,4 @@
-﻿
+
 #define CHAR_TAB     (0x09)
 #define CHAR_ENTER   (10)
 #define CHAR_SPACE   '.'     // Character to use for determining the size of a space

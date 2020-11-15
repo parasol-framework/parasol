@@ -1,4 +1,4 @@
-﻿-- Test the use of action threading (asynchronous callbacks) by loading multiple pictures simultaneously.
+-- Test the use of action threading (asynchronous callbacks) by loading multiple pictures simultaneously.
 --
 -- The  testParallel() function executes the threads and then waits for them to complete by calling processInput()
 -- until picLoaded() sends a MSGID_QUIT message.
