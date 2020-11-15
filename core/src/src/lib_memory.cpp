@@ -725,7 +725,7 @@ ERROR FreeResource(const void *Address)
       }
 
       if (glPrivateMemory[pos].AccessCount > 0) {
-         FMSG("FreeResource","Address %p of object #%d marked for deletion (open count %d).", Address,
+         log.trace("Address %p of object #%d marked for deletion (open count %d).", Address,
             glPrivateMemory[pos].ObjectID, glPrivateMemory[pos].AccessCount);
 
          glPrivateMemory[pos].Flags |= MEM_DELETE;
@@ -817,7 +817,7 @@ ERROR FreeResourceID(MEMORYID MemoryID)
                //else {
                   // Mark the block for deletion.  This will leave the block in memory until the ReleaseMemory() function is called, which will then do the actual free.
 
-                  FMSG("FreeResourceID","Public memory ID %d marked for deletion (open count %d).", MemoryID, glSharedBlocks[entry].AccessCount);
+                  log.trace("Public memory ID %d marked for deletion (open count %d).", MemoryID, glSharedBlocks[entry].AccessCount);
                   glSharedBlocks[entry].Flags |= MEM_DELETE;
                   return ERR_Okay;
                //}

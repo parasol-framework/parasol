@@ -20,7 +20,7 @@ is opened by a client.  This is a very simple class that assists in the manageme
 static void clientsocket_incoming(HOSTHANDLE SocketHandle, APTR Data)
 {
    parasol::Log log(__FUNCTION__);
-   objClientSocket *ClientSocket = reinterpret_cast<objClientSocket *>(Data);
+   auto ClientSocket = (objClientSocket *)Data;
    if (!ClientSocket->Client) return;
    objNetSocket *Socket = ClientSocket->Client->NetSocket;
 
@@ -32,13 +32,12 @@ static void clientsocket_incoming(HOSTHANDLE SocketHandle, APTR Data)
    ERROR error;
    if (Socket->Incoming.Type) {
       if (Socket->Incoming.Type IS CALL_STDC) {
-         ERROR (*routine)(objNetSocket *, objClientSocket *);
          parasol::SwitchContext(&Socket->Incoming);
-         routine = reinterpret_cast<ERROR (*)(objNetSocket *, objClientSocket *)>(Socket->Incoming.StdC.Routine);
+         auto routine = reinterpret_cast<ERROR (*)(objNetSocket *, objClientSocket *)>(Socket->Incoming.StdC.Routine);
          error = routine(Socket, ClientSocket);
       }
       else if (Socket->Incoming.Type IS CALL_SCRIPT) {
-         const struct ScriptArg args[] = {
+         const ScriptArg args[] = {
             { "NetSocket",    FD_OBJECTPTR, { .Address = Socket } },
             { "ClientSocket", FD_OBJECTPTR, { .Address = ClientSocket } }
          };
@@ -87,7 +86,7 @@ static void clientsocket_incoming(HOSTHANDLE SocketHandle, APTR Data)
 static void clientsocket_outgoing(HOSTHANDLE Void, APTR Data)
 {
    parasol::Log log(__FUNCTION__);
-   objClientSocket *ClientSocket = reinterpret_cast<objClientSocket *>(Data);
+   auto ClientSocket = (objClientSocket *)Data;
    objNetSocket *Socket = ClientSocket->Client->NetSocket;
 
    if (Socket->Terminating) return;
@@ -128,11 +127,8 @@ static void clientsocket_outgoing(HOSTHANDLE Void, APTR Data)
 
          if (len > 0) {
             error = SEND(Socket, ClientSocket->SocketHandle, (BYTE *)ClientSocket->WriteQueue.Buffer + ClientSocket->WriteQueue.Index, &len, 0);
-
             if ((error) OR (!len)) break;
-
             log.trace("[NetSocket:%d] Sent %d of %d bytes remaining on the queue.", Socket->Head.UniqueID, len, ClientSocket->WriteQueue.Length - ClientSocket->WriteQueue.Index);
-
             ClientSocket->WriteQueue.Index += len;
          }
 
@@ -160,7 +156,7 @@ static void clientsocket_outgoing(HOSTHANDLE Void, APTR Data)
          }
          else if (ClientSocket->Outgoing.Type IS CALL_SCRIPT) {
             OBJECTPTR script;
-            const struct ScriptArg args[] = {
+            const ScriptArg args[] = {
                { "NetSocket", FD_OBJECTPTR, { .Address = Socket } },
                { "ClientSocket", FD_OBJECTPTR, { .Address = ClientSocket } }
             };
@@ -196,6 +192,8 @@ static void clientsocket_outgoing(HOSTHANDLE Void, APTR Data)
 
 static ERROR CLIENTSOCKET_Free(objClientSocket *Self, APTR Void)
 {
+   parasol::Log log;
+
    if (Self->SocketHandle) {
 #ifdef __linux__
       DeregisterFD(Self->Handle);
@@ -274,6 +272,7 @@ Failed: A permanent failure has occurred and socket has been closed.
 
 static ERROR CLIENTSOCKET_Read(objClientSocket *Self, struct acRead *Args)
 {
+   parasol::Log log;
    if ((!Args) OR (!Args->Buffer)) return log.error(ERR_NullArgs);
    if (Self->SocketHandle IS NOHANDLE) return log.error(ERR_Disconnected);
    Self->ReadCalled = TRUE;
@@ -311,6 +310,8 @@ AllocMemory: A message buffer could not be allocated.
 
 static ERROR CLIENTSOCKET_ReadClientMsg(objClientSocket *Self, struct csReadClientMsg *Args)
 {
+   parasol::Log log;
+
    if (!Args) return log.error(ERR_NullArgs);
 
    log.traceBranch("Reading message.");
@@ -320,7 +321,7 @@ static ERROR CLIENTSOCKET_ReadClientMsg(objClientSocket *Self, struct csReadClie
    Args->CRC      = 0;
    Args->Progress = 0;
 
-   struct NetQueue *queue = &Self->ReadQueue;
+   NetQueue *queue = &Self->ReadQueue;
 
    if (!queue->Buffer) {
       queue->Length = 2048;
@@ -333,18 +334,18 @@ static ERROR CLIENTSOCKET_ReadClientMsg(objClientSocket *Self, struct csReadClie
    ULONG total_length;
    ERROR error;
 
-   if (queue->Index >= sizeof(struct NetMsg)) { // The complete message header has been received
-      msglen = be32_cpu(((struct NetMsg *)queue->Buffer)->Length);
-      total_length = sizeof(struct NetMsg) + msglen + 1 + sizeof(struct NetMsgEnd);
+   if (queue->Index >= sizeof(NetMsg)) { // The complete message header has been received
+      msglen = be32_cpu(((NetMsg *)queue->Buffer)->Length);
+      total_length = sizeof(NetMsg) + msglen + 1 + sizeof(NetMsgEnd);
    }
    else { // The message header has not been read yet
-      if (!(error = acRead(Self, (BYTE *)queue->Buffer + queue->Index, sizeof(struct NetMsg) - queue->Index, &result))) {
+      if (!(error = acRead(Self, (BYTE *)queue->Buffer + queue->Index, sizeof(NetMsg) - queue->Index, &result))) {
          queue->Index += result;
 
-         if (queue->Index >= sizeof(struct NetMsg)) {
+         if (queue->Index >= sizeof(NetMsg)) {
             // We have the message header
-            magic  = be32_cpu(((struct NetMsg *)queue->Buffer)->Magic);
-            msglen = be32_cpu(((struct NetMsg *)queue->Buffer)->Length);
+            magic  = be32_cpu(((NetMsg *)queue->Buffer)->Magic);
+            msglen = be32_cpu(((NetMsg *)queue->Buffer)->Length);
 
             if (magic != NETMSG_MAGIC) {
                log.warning("Incoming message does not have the magic header (received $%.8x).", magic);
@@ -357,7 +358,7 @@ static ERROR CLIENTSOCKET_ReadClientMsg(objClientSocket *Self, struct csReadClie
                return ERR_InvalidData;
             }
 
-            total_length = sizeof(struct NetMsg) + msglen + 1 + sizeof(struct NetMsgEnd);
+            total_length = sizeof(NetMsg) + msglen + 1 + sizeof(NetMsgEnd);
 
             // Check if the queue buffer needs to be extended
 
@@ -386,21 +387,21 @@ static ERROR CLIENTSOCKET_ReadClientMsg(objClientSocket *Self, struct csReadClie
       }
    }
 
-   struct NetMsgEnd *msgend;
-   Args->Message = (BYTE *)queue->Buffer + sizeof(struct NetMsg);
+   NetMsgEnd *msgend;
+   Args->Message = (BYTE *)queue->Buffer + sizeof(NetMsg);
    Args->Length = msglen;
 
    //log.trace("Current message is %d bytes long (raw len: %d), progress is %d bytes.", msglen, total_length, queue->Index);
 
    if (!(error = acRead(Self, (char *)queue->Buffer + queue->Index, total_length - queue->Index, &result))) {
       queue->Index += result;
-      Args->Progress = queue->Index - sizeof(struct NetMsg) - sizeof(struct NetMsgEnd);
+      Args->Progress = queue->Index - sizeof(NetMsg) - sizeof(NetMsgEnd);
       if (Args->Progress < 0) Args->Progress = 0;
 
       // If the entire message has been read, we can report success to the user
 
       if (queue->Index >= total_length) {
-         msgend = (struct NetMsgEnd *)((BYTE *)queue->Buffer + sizeof(struct NetMsg) + msglen + 1);
+         msgend = (NetMsgEnd *)((BYTE *)queue->Buffer + sizeof(NetMsg) + msglen + 1);
          magic = be32_cpu(msgend->Magic);
          queue->Index   = 0;
          Args->Progress = Args->Length;
@@ -437,6 +438,8 @@ software queue are governed by the #MsgLimit field setting.
 
 static ERROR CLIENTSOCKET_Write(objClientSocket *Self, struct acWrite *Args)
 {
+   parasol::Log log;
+
    if (!Args) return ERR_NullArgs;
    Args->Result = 0;
    if (Self->SocketHandle IS NOHANDLE) return log.error(ERR_Disconnected);
@@ -459,7 +462,6 @@ static ERROR CLIENTSOCKET_Write(objClientSocket *Self, struct acWrite *Args)
    else log.trace("Successfully wrote all %d bytes to the server.", Args->Length);
 
    Args->Result = Args->Length;
-
    return ERR_Okay;
 }
 
@@ -485,17 +487,19 @@ OutOfRange
 
 static ERROR CLIENTSOCKET_WriteClientMsg(objClientSocket *Self, struct csWriteClientMsg *Args)
 {
+   parasol::Log log;
+
    if ((!Args) OR (!Args->Message) OR (Args->Length < 1)) return log.error(ERR_Args);
    if ((Args->Length < 1) OR (Args->Length > NETMSG_SIZE_LIMIT)) return log.error(ERR_OutOfRange);
 
    log.traceBranch("Message: %p, Length: %d", Args->Message, Args->Length);
 
-   struct NetMsg msg = { .Magic = cpu_be32(NETMSG_MAGIC), .Length = cpu_be32(Args->Length) };
+   NetMsg msg = { .Magic = cpu_be32(NETMSG_MAGIC), .Length = cpu_be32(Args->Length) };
    acWrite(Self, &msg, sizeof(msg), NULL);
    acWrite(Self, Args->Message, Args->Length, NULL);
 
-   UBYTE endbuffer[sizeof(struct NetMsgEnd) + 1];
-   struct NetMsgEnd *end = (struct NetMsgEnd *)(endbuffer + 1);
+   UBYTE endbuffer[sizeof(NetMsgEnd) + 1];
+   NetMsgEnd *end = (NetMsgEnd *)(endbuffer + 1);
    endbuffer[0] = 0; // This null terminator helps with message parsing
    end->Magic = cpu_be32((ULONG)NETMSG_MAGIC_TAIL);
    end->CRC   = cpu_be32(GenCRC32(0, Args->Message, Args->Length));
@@ -508,7 +512,7 @@ static ERROR CLIENTSOCKET_WriteClientMsg(objClientSocket *Self, struct csWriteCl
 
 #include "clientsocket_def.c"
 
-static const struct FieldArray clClientSocketFields[] = {
+static const FieldArray clClientSocketFields[] = {
    { "ConnectTime", FDF_LARGE|FDF_R,    0, NULL, NULL },
    { "Prev",        FDF_OBJECT|FDF_R,   ID_CLIENTSOCKET, NULL, NULL },
    { "Next",        FDF_OBJECT|FDF_R,   ID_CLIENTSOCKET, NULL, NULL },

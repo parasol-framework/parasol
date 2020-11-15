@@ -313,7 +313,7 @@ ERROR CLASS_Init(rkMetaClass *Self, APTR Void)
 
    if ((Self->BaseClassID) AND (Self->SubClassID != Self->BaseClassID)) {
       if ((base = (rkMetaClass *)FindClass(Self->BaseClassID))) {
-         MSG("Using baseclass $%.8x (%s) for %s", Self->BaseClassID, base->ClassName, Self->ClassName);
+         log.trace("Using baseclass $%.8x (%s) for %s", Self->BaseClassID, base->ClassName, Self->ClassName);
          if (!Self->FileDescription) Self->FileDescription = base->FileDescription;
          if (!Self->FileExtension)   Self->FileExtension   = base->FileExtension;
          if (!Self->ClassVersion)    Self->ClassVersion    = base->ClassVersion;

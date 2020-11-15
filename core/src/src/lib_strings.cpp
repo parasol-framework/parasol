@@ -152,6 +152,8 @@ int(SBF) Flags: Set to SBF_SORT to sort the list, SBF_NO_DUPLICATES to sort the 
 
 STRING * StrBuildArray(STRING List, LONG Size, LONG Total, LONG Flags)
 {
+   parasol::Log log(__FUNCTION__);
+
    if (!List) return NULL;
 
    LONG i;
@@ -208,7 +210,7 @@ STRING * StrBuildArray(STRING List, LONG Size, LONG Total, LONG Flags)
             array[i] = str+pos;
             while ((str[pos]) AND (pos < Size)) pos++;
             if (str[pos]) {
-               LogF("@StrBuildArray()","The string buffer exceeds its specified length of %d bytes.", Size);
+               log.warning("The string buffer exceeds its specified length of %d bytes.", Size);
                break;
             }
             pos++;
@@ -335,8 +337,10 @@ static WORD write_calc(STRING Buffer, LONG BufferSize, DOUBLE Value, WORD Precis
 
 ERROR StrCalculate(CSTRING String, DOUBLE *Result, STRING Buffer, LONG BufferSize)
 {
+   parasol::Log log(__FUNCTION__);
+
    if ((!String) OR ((!Result) AND (!Buffer))) {
-      LogF("@StrCalculate()","Missing arguments.");
+      log.warning("Missing arguments.");
       return ERR_Args;
    }
 
@@ -348,7 +352,7 @@ ERROR StrCalculate(CSTRING String, DOUBLE *Result, STRING Buffer, LONG BufferSiz
    }
 
    if ((String >= Buffer) AND (String < Buffer+BufferSize)) {
-      LogF("@StrCalculate()","Input (%p) == Output (%p)", String, Buffer);
+      log.warning("Input (%p) == Output (%p)", String, Buffer);
       return ERR_Args;
    }
 
@@ -769,12 +773,14 @@ int: Returns the total amount of characters that were copied, not including the 
 
 LONG StrCopy(CSTRING String, STRING Dest, LONG Length)
 {
+   parasol::Log log(__FUNCTION__);
+
    if (Length < 0) return 0;
 
    LONG i = 0;
    if ((String) AND (Dest)) {
       if (!Length) {
-         LogF("@StrCopy()","Warning - zero length given for copying string \"%s\".", String);
+         log.warning("Warning - zero length given for copying string \"%s\".", String);
          ((UBYTE *)0)[0] = 0;
       }
 
@@ -783,7 +789,7 @@ LONG StrCopy(CSTRING String, STRING Dest, LONG Length)
       }
 
       if ((*String) AND (i >= Length)) {
-         //LogF("@StrCopy()","Overflow: %d/%d \"%.20s\"", i, Length, Dest);
+         //log.warning("Overflow: %d/%d \"%.20s\"", i, Length, Dest);
          Dest[i-1] = 0; // If we ran out of buffer space, we have to terminate from one character back
       }
       else Dest[i] = 0;
@@ -864,6 +870,8 @@ int: Returns the new length of the expanded string, not including the null byte.
 
 LONG StrExpand(STRING String, LONG Pos, LONG AmtChars)
 {
+   parasol::Log log(__FUNCTION__);
+
    if ((String) AND (AmtChars)) {
       LONG len, i;
       if ((len = StrLength(String)) > 0) {
@@ -882,7 +890,7 @@ LONG StrExpand(STRING String, LONG Pos, LONG AmtChars)
          return len + AmtChars;
       }
    }
-   else LogF("@StrExpand:","Bad arguments.");
+   else log.warning("Bad arguments.");
 
    return 0;
 }
@@ -907,6 +915,8 @@ int: TRUE or FALSE will be returned as an output of the evaluation.
 
 LONG StrEvalConditional(CSTRING String)
 {
+   parasol::Log log(__FUNCTION__);
+
    static const FieldDef table[] = {
       { "<>", COND_NOT_EQUAL },
       { "!=", COND_NOT_EQUAL },
@@ -977,9 +987,9 @@ LONG StrEvalConditional(CSTRING String)
       if (condition) {
          truth = test_statement(test, String+i, condition);
       }
-      else LogF("@StrEvalConditional:","No test condition in \"%s\".", String);
+      else log.warning("No test condition in \"%s\".", String);
    }
-   else LogF("@StrEvalConditional:","No test value in \"%s\".", String);
+   else log.warning("No test value in \"%s\".", String);
 
    if (reverse) return truth ^ 1;
    else return truth;
@@ -1083,6 +1093,8 @@ BufferOverflow: There is not enough space in the destination buffer for the inse
 
 ERROR StrInsert(CSTRING Insert, STRING Buffer, LONG Size, LONG Pos, LONG ReplaceChars)
 {
+   parasol::Log log(__FUNCTION__);
+
    if (!Insert) Insert = "";
 
    LONG insertlen;
@@ -1106,7 +1118,7 @@ ERROR StrInsert(CSTRING Insert, STRING Buffer, LONG Size, LONG Pos, LONG Replace
       LONG strlen, i, j;
       for (strlen=0; Buffer[strlen]; strlen++);
       if ((Size - 1) < (strlen + (ReplaceChars - insertlen))) {
-         LogF("@StrInsert()","Buffer overflow: \"%.60s\"", Buffer);
+         log.warning("Buffer overflow: \"%.60s\"", Buffer);
          return ERR_BufferOverflow;
       }
 
@@ -1614,6 +1626,7 @@ AllocMemory:
 
 ERROR StrEvaluate(STRING Buffer, LONG BufferLength, LONG Flags, OBJECTID OwnerID)
 {
+   parasol::Log log(__FUNCTION__);
    LONG pos, i, j;
 
    if ((!Buffer) OR (BufferLength < 3)) return LogError(ERH_Strings, ERR_Args);
@@ -1624,7 +1637,7 @@ ERROR StrEvaluate(STRING Buffer, LONG BufferLength, LONG Flags, OBJECTID OwnerID
       if (!Buffer[pos]) return ERR_EmptyString;
    }
 
-   FMSG("StrEvaluate()","Size: %d, %s", BufferLength, Buffer);
+   log.traceBranch("Size: %d, %s", BufferLength, Buffer);
 
    Field *classfield;
 
@@ -1643,7 +1656,7 @@ ERROR StrEvaluate(STRING Buffer, LONG BufferLength, LONG Flags, OBJECTID OwnerID
          pos--;
          while ((pos >= 0) AND (Buffer[pos] != '"')) pos--;
          if (pos < 0) {
-            LogF("@","StrEvaluate() Badly defined string: %.80s", Buffer);
+            log.warning("Badly defined string: %.80s", Buffer);
             if (calcbuffer) free(calcbuffer);
             return ERR_InvalidData;
          }
@@ -1667,7 +1680,7 @@ ERROR StrEvaluate(STRING Buffer, LONG BufferLength, LONG Flags, OBJECTID OwnerID
          }
 
          if (Buffer[endbracket] != ']') {
-            LogF("@","StrEvaluate() Unbalanced string: %.90s ...", Buffer);
+            log.warning("Unbalanced string: %.90s ...", Buffer);
             if (calcbuffer) free(calcbuffer);
             return ERR_InvalidData;
          }
@@ -1687,7 +1700,7 @@ ERROR StrEvaluate(STRING Buffer, LONG BufferLength, LONG Flags, OBJECTID OwnerID
                }
                StrCalculate(calc, &value, calcbuffer, BufferLength);
                if (insert_string(calcbuffer, Buffer, BufferLength, pos, endbracket-pos+1)) {
-                  LogF("@StrEvaluate:","Buffer overflow (%d bytes) while inserting to buffer \"%.30s\"", BufferLength, Buffer);
+                  log.warning("Buffer overflow (%d bytes) while inserting to buffer \"%.30s\"", BufferLength, Buffer);
                   free(calcbuffer);
                   return ERR_BufferOverflow;
                }
@@ -1696,7 +1709,7 @@ ERROR StrEvaluate(STRING Buffer, LONG BufferLength, LONG Flags, OBJECTID OwnerID
                char calcbuffer[2048];
                StrCalculate(calc, &value, calcbuffer, sizeof(calcbuffer));
                if (insert_string(calcbuffer, Buffer, BufferLength, pos, endbracket-pos+1)) {
-                  LogF("@StrEvaluate:","Buffer overflow (%d bytes) while inserting to buffer \"%.30s\"", BufferLength, Buffer);
+                  log.warning("Buffer overflow (%d bytes) while inserting to buffer \"%.30s\"", BufferLength, Buffer);
                   return ERR_BufferOverflow;
                }
             }
@@ -1803,7 +1816,7 @@ repeat:
                      if (object) ReleaseObject(object);
 
                      if (error) {
-                        LogF("@StrEvaluate:","Buffer overflow (%d bytes) while inserting to buffer \"%.30s\"", BufferLength, Buffer);
+                        log.warning("Buffer overflow (%d bytes) while inserting to buffer \"%.30s\"", BufferLength, Buffer);
                         if (calcbuffer) free(calcbuffer);
                         return ERR_BufferOverflow;
                      }
@@ -1812,7 +1825,7 @@ repeat:
                }
                else {
                   error = ERR_NoMatchingObject;
-                  FMSG("@StrEvaluate:","Failed to find object '%s'", name);
+                  log.traceWarning("Failed to find object '%s'", name);
                }
             }
          }
@@ -1835,7 +1848,7 @@ repeat:
       else pos--;
    }
 
-   FMSG("StrEvaluate()","Result: %s", Buffer);
+   log.trace("Result: %s", Buffer);
 
    if (calcbuffer) free(calcbuffer);
    return majorerror;
@@ -1858,6 +1871,7 @@ int: Returns TRUE if the translation table was refreshed.
 
 LONG StrTranslateRefresh(void)
 {
+   parasol::Log log(__FUNCTION__);
    struct translate *translate;
    objConfig *config;
    ConfigEntry *entries;
@@ -1869,16 +1883,15 @@ LONG StrTranslateRefresh(void)
    MAXINT strbuf;
    WORD j, len;
 
-   LogF("~TranslateRefresh()",NULL);
+   log.branch("");
 
    refresh_locale();
    if (!StrReadLocale("language", &language)) {
-      LogF("TranslateRefresh:","Language: %s", language);
+      log.msg("Language: %s", language);
 
       if (glTranslate) {
          if (!StrMatch(language, glTranslate->Language)) {
-            LogF("TranslateRefresh:","Language unchanged.");
-            LogReturn();
+            log.msg("Language unchanged.");
             return FALSE;
          }
       }
@@ -1957,7 +1970,7 @@ LONG StrTranslateRefresh(void)
                   str = (STRING)(array + total);
                   for (i=0; i < total-1; i++) {
                      if (!StrCompare(str+array[i], str+array[i+1], 0, STR_MATCH_LEN)) {
-                        LogF("@Translator:","Duplicate string \"%s\"", str+array[i]);
+                        log.warning("Duplicate string \"%s\"", str+array[i]);
                      }
                   }
                }
@@ -1977,7 +1990,6 @@ LONG StrTranslateRefresh(void)
                glTranslateMID = memoryid;
                acFree(&config->Head);
 
-               LogReturn();
                return TRUE;
             }
          }
@@ -1998,12 +2010,10 @@ LONG StrTranslateRefresh(void)
       }
    }
    else {
-      LogF("TranslateRefresh:","User's preferred language not specified.");
-      LogReturn();
+      log.msg("User's preferred language not specified.");
       return FALSE;
    }
 
-   LogReturn();
    return FALSE;
 }
 
@@ -2032,6 +2042,8 @@ cstr: If the string was able to be translated, a translation is returned.  Other
 
 CSTRING StrTranslateText(CSTRING Text)
 {
+   parasol::Log log(__FUNCTION__);
+
    if (!Text) return Text;
 
    SharedControl *sharectl = (SharedControl *)GetResourcePtr(RES_SHARED_CONTROL);
@@ -2047,7 +2059,7 @@ CSTRING StrTranslateText(CSTRING Text)
    // Reload the translation table if it has been replaced with a new one
 
    if ((!glTranslate) OR (glTranslate->Replaced)) {
-      LogF("StrTranslateText:","Reloading the translation table.");
+      log.msg("Reloading the translation table.");
       if (glTranslate) {
          ReleaseMemoryID(glTranslateMID); // Memory is already marked for deletion, so should free itself on the final release
          glTranslate = NULL;
@@ -2249,7 +2261,9 @@ static void sift(STRING Buffer, LONG *lookup, LONG i, LONG heapsize)
 
 static LONG test_statement(CSTRING TestString, CSTRING CompareString, LONG Condition)
 {
-   //LogMsg("\"%s\" %d \"%s\"", TestString, Condition, CompareString);
+   parasol::Log log(__FUNCTION__);
+
+   //log.msg("\"%s\" %d \"%s\"", TestString, Condition, CompareString);
 
    // Convert the If->Compare to its specified type
 
@@ -2267,7 +2281,7 @@ static LONG test_statement(CSTRING TestString, CSTRING CompareString, LONG Condi
          case COND_LESS_EQUAL:    if (test_float <= cmp_float) result = TRUE; break;
          case COND_GREATER_THAN:  if (test_float >  cmp_float) result = TRUE; break;
          case COND_GREATER_EQUAL: if (test_float >= cmp_float) result = TRUE; break;
-         default: LogF("@StrEvalConditional","Unsupported condition type %d.", Condition);
+         default: log.warning("Unsupported condition type %d.", Condition);
       }
    }
    else {
@@ -2277,7 +2291,7 @@ static LONG test_statement(CSTRING TestString, CSTRING CompareString, LONG Condi
       else if (Condition IS COND_NOT_EQUAL) {
          if (StrMatch(TestString, CompareString) != ERR_Okay) result = TRUE;
       }
-      else LogF("@StrEvalConditional","String comparison for condition %d not possible.", Condition);
+      else log.warning("String comparison for condition %d not possible.", Condition);
    }
 
    return result;

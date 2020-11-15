@@ -143,9 +143,8 @@ static void server_client_connect(SOCKET_HANDLE FD, objNetSocket *Self)
    }
 
    if (Self->Feedback.Type IS CALL_STDC) {
-      void (*routine)(objNetSocket *, objClientSocket *, LONG);
       parasol::SwitchContext context(Self->Feedback.StdC.Context);
-      routine = reinterpret_cast<void (*)(objNetSocket *, objClientSocket *, LONG)>(Self->Feedback.StdC.Routine);
+      auto routine = reinterpret_cast<void (*)(objNetSocket *, objClientSocket *, LONG)>(Self->Feedback.StdC.Routine);
       routine(Self, client_socket, NTC_CONNECTED);
    }
    else if (Self->Feedback.Type IS CALL_SCRIPT) {
@@ -221,9 +220,8 @@ static void free_client_socket(objNetSocket *Socket, objClientSocket *ClientSock
 
    if ((Signal) AND (Socket->Feedback.Type)) {
       if (Socket->Feedback.Type IS CALL_STDC) {
-         void (*routine)(objNetSocket *, objClientSocket *, LONG);
          parasol::SwitchContext context(Socket->Feedback.StdC.Context);
-         routine = reinterpret_cast<void (*)(objNetSocket *, objClientSocket *, LONG)>(Socket->Feedback.StdC.Routine);
+         auto routine = reinterpret_cast<void (*)(objNetSocket *, objClientSocket *, LONG)>(Socket->Feedback.StdC.Routine);
          routine(Socket, ClientSocket, NTC_DISCONNECTED);
       }
       else if (Socket->Feedback.Type IS CALL_SCRIPT) {

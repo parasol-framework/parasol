@@ -62,7 +62,7 @@ way to initiate interprocess communication is to pass your MessageQueue ID to th
 #include "../defs.h"
 #include <parasol/main.h>
 
-extern void CloseCore(void);
+extern "C" void CloseCore(void);
 
 static ERROR InterceptedAction(objTask *, APTR);
 
@@ -94,9 +94,9 @@ static void task_stderr(HOSTHANDLE FD, APTR);
 #define MAX_PATH 260
 #define INVALID_HANDLE_VALUE (void *)(-1)
 
-DLLCALL LONG WINAPI RegOpenKeyExA(LONG,CSTRING,LONG,LONG,APTR *);
-DLLCALL LONG WINAPI RegQueryValueExA(APTR,CSTRING,LONG *,LONG *,BYTE *,LONG *);
-DLLCALL LONG WINAPI RegSetValueExA(APTR hKey, CSTRING lpValueName, LONG Reserved, LONG dwType, const void *lpData, LONG cbData);
+extern "C" DLLCALL LONG WINAPI RegOpenKeyExA(LONG,CSTRING,LONG,LONG,APTR *);
+extern "C" DLLCALL LONG WINAPI RegQueryValueExA(APTR,CSTRING,LONG *,LONG *,BYTE *,LONG *);
+extern "C" DLLCALL LONG WINAPI RegSetValueExA(APTR hKey, CSTRING lpValueName, LONG Reserved, LONG dwType, const void *lpData, LONG cbData);
 
 static LONG glProcessBreak = 0;
 #endif
@@ -119,7 +119,7 @@ static ERROR TASK_CloseInstance(objTask *, APTR);
 static ERROR TASK_Expunge(objTask *, APTR);
 static ERROR TASK_Quit(objTask *, APTR);
 
-static const struct FieldDef clFlags[] = {
+static const FieldDef clFlags[] = {
    { "Foreign",    TSF_FOREIGN },
    { "Dummy",      TSF_DUMMY },
    { "Wait",       TSF_WAIT },
@@ -134,59 +134,57 @@ static const struct FieldDef clFlags[] = {
    { NULL, 0 }
 };
 
-static const struct FieldArray clFields[];
-
-static const struct ActionArray clActions[] = {
-   { AC_Activate,      TASK_Activate },
-   { AC_Free,          TASK_Free },
-   { AC_GetVar,        TASK_GetVar },
-   { AC_NewObject,     TASK_NewObject },
-   { AC_ReleaseObject, TASK_ReleaseObject },
-   { AC_SetVar,        TASK_SetVar },
-   { AC_Init,          TASK_Init },
-   { AC_Write,         TASK_Write },
+static const ActionArray clActions[] = {
+   { AC_Activate,      (APTR)TASK_Activate },
+   { AC_Free,          (APTR)TASK_Free },
+   { AC_GetVar,        (APTR)TASK_GetVar },
+   { AC_NewObject,     (APTR)TASK_NewObject },
+   { AC_ReleaseObject, (APTR)TASK_ReleaseObject },
+   { AC_SetVar,        (APTR)TASK_SetVar },
+   { AC_Init,          (APTR)TASK_Init },
+   { AC_Write,         (APTR)TASK_Write },
    // The following actions are program dependent
-   { AC_ActionNotify,  InterceptedAction },
-   { AC_Clear,         InterceptedAction },
-   { AC_Custom,        InterceptedAction },
-   { AC_DataFeed,      InterceptedAction },
-   { AC_Deactivate,    InterceptedAction },
-   { AC_Disable,       InterceptedAction },
-   { AC_Draw,          InterceptedAction },
-   { AC_Enable,        InterceptedAction },
-   { AC_Flush,         InterceptedAction },
-   { AC_Focus,         InterceptedAction },
-   { AC_Hide,          InterceptedAction },
-   { AC_Lock,          InterceptedAction },
-   { AC_LostFocus,     InterceptedAction },
-   { AC_Move,          InterceptedAction },
-   { AC_MoveToBack,    InterceptedAction },
-   { AC_MoveToFront,   InterceptedAction },
-   { AC_MoveToPoint,   InterceptedAction },
-   { AC_NewChild,      InterceptedAction },
-   { AC_NewOwner,      InterceptedAction },
-   { AC_Query,         InterceptedAction },
-   { AC_Read,          InterceptedAction },
-   { AC_Redimension,   InterceptedAction },
-   { AC_Rename,        InterceptedAction },
-   { AC_Reset,         InterceptedAction },
-   { AC_Resize,        InterceptedAction },
-   { AC_SaveImage,     InterceptedAction },
-   { AC_SaveToObject,  InterceptedAction },
-   { AC_Scroll,        InterceptedAction },
-   { AC_ScrollToPoint, InterceptedAction },
-   { AC_Seek,          InterceptedAction },
-   { AC_Show,          InterceptedAction },
-   { AC_Unlock,        InterceptedAction },
-   { AC_Clipboard,     InterceptedAction },
-   { AC_Refresh,       InterceptedAction },
-   { AC_Sort,          InterceptedAction },
-   { AC_SaveSettings,  InterceptedAction },
-   { AC_SelectArea,    InterceptedAction },
-   { AC_Undo,          InterceptedAction },
-   { AC_Redo,          InterceptedAction },
-   { AC_DragDrop,      InterceptedAction },
-   { NULL, NULL }
+   { AC_ActionNotify,  (APTR)InterceptedAction },
+   { AC_Clear,         (APTR)InterceptedAction },
+   { AC_Custom,        (APTR)InterceptedAction },
+   { AC_DataFeed,      (APTR)InterceptedAction },
+   { AC_Deactivate,    (APTR)InterceptedAction },
+   { AC_Disable,       (APTR)InterceptedAction },
+   { AC_Draw,          (APTR)InterceptedAction },
+   { AC_Enable,        (APTR)InterceptedAction },
+   { AC_Flush,         (APTR)InterceptedAction },
+   { AC_Focus,         (APTR)InterceptedAction },
+   { AC_Hide,          (APTR)InterceptedAction },
+   { AC_Lock,          (APTR)InterceptedAction },
+   { AC_LostFocus,     (APTR)InterceptedAction },
+   { AC_Move,          (APTR)InterceptedAction },
+   { AC_MoveToBack,    (APTR)InterceptedAction },
+   { AC_MoveToFront,   (APTR)InterceptedAction },
+   { AC_MoveToPoint,   (APTR)InterceptedAction },
+   { AC_NewChild,      (APTR)InterceptedAction },
+   { AC_NewOwner,      (APTR)InterceptedAction },
+   { AC_Query,         (APTR)InterceptedAction },
+   { AC_Read,          (APTR)InterceptedAction },
+   { AC_Redimension,   (APTR)InterceptedAction },
+   { AC_Rename,        (APTR)InterceptedAction },
+   { AC_Reset,         (APTR)InterceptedAction },
+   { AC_Resize,        (APTR)InterceptedAction },
+   { AC_SaveImage,     (APTR)InterceptedAction },
+   { AC_SaveToObject,  (APTR)InterceptedAction },
+   { AC_Scroll,        (APTR)InterceptedAction },
+   { AC_ScrollToPoint, (APTR)InterceptedAction },
+   { AC_Seek,          (APTR)InterceptedAction },
+   { AC_Show,          (APTR)InterceptedAction },
+   { AC_Unlock,        (APTR)InterceptedAction },
+   { AC_Clipboard,     (APTR)InterceptedAction },
+   { AC_Refresh,       (APTR)InterceptedAction },
+   { AC_Sort,          (APTR)InterceptedAction },
+   { AC_SaveSettings,  (APTR)InterceptedAction },
+   { AC_SelectArea,    (APTR)InterceptedAction },
+   { AC_Undo,          (APTR)InterceptedAction },
+   { AC_Redo,          (APTR)InterceptedAction },
+   { AC_DragDrop,      (APTR)InterceptedAction },
+   { 0, NULL }
 };
 
 #include "class_task_def.c"
@@ -195,7 +193,7 @@ static const struct ActionArray clActions[] = {
 
 static void task_stdinput_callback(HOSTHANDLE FD, void *Task)
 {
-   objTask *Self = (objTask *)Task;
+   auto Self = (objTask *)Task;
    char buffer[4096];
    ERROR error;
 
@@ -225,14 +223,13 @@ static void task_stdinput_callback(HOSTHANDLE FD, void *Task)
    buffer[bytes_read] = 0;
 
    if (Self->InputCallback.Type IS CALL_STDC) {
-      void (*routine)(objTask *, APTR, LONG, ERROR);
-      routine = Self->InputCallback.StdC.Routine;
+      auto routine = (void (*)(objTask *, APTR, LONG, ERROR))Self->InputCallback.StdC.Routine;
       routine(Self, buffer, bytes_read, error);
    }
    else if (Self->InputCallback.Type IS CALL_SCRIPT) {
       OBJECTPTR script;
       if ((script = Self->InputCallback.Script.Script)) {
-         const struct ScriptArg args[] = {
+         const ScriptArg args[] = {
             { "Task",       FD_OBJECTPTR,       { .Address = Self } },
             { "Buffer",     FD_PTRBUFFER,       { .Address = buffer } },
             { "BufferSize", FD_LONG|FD_BUFSIZE, { .Long = bytes_read } },
@@ -241,37 +238,6 @@ static void task_stdinput_callback(HOSTHANDLE FD, void *Task)
          scCallback(script, Self->InputCallback.Script.ProcedureID, args, ARRAYSIZE(args));
       }
    }
-}
-
-//****************************************************************************
-
-ERROR add_task_class(void)
-{
-   LogF("~add_task_class()","");
-
-   ERROR error;
-   if (!NewPrivateObject(ID_METACLASS, 0, (OBJECTPTR *)&TaskClass)) {
-      if (!SetFields((OBJECTPTR)TaskClass,
-            FID_ClassVersion|TFLOAT,  VER_TASK,
-            FID_Name|TSTRING,         "Task",
-            FID_Category|TLONG,       CCF_SYSTEM,
-            FID_FileExtension|TSTR,   "*.exe|*.bat|*.com",
-            FID_FileDescription|TSTR, "Executable File",
-            FID_FileHeader|TSTR,      "[0:$4d5a]|[0:$7f454c46]",
-            FID_Actions|TPTR,         clActions,
-            FID_Methods|TARRAY,       clTaskMethods,
-            FID_Fields|TARRAY,        clFields,
-            FID_Size|TLONG,           sizeof(objTask),
-            FID_Path|TSTR,            "modules:core",
-            TAGEND)) {
-         error = acInit(&TaskClass->Head);
-      }
-      else error = ERR_SetField;
-   }
-   else error = ERR_NewObject;
-
-   LogReturn();
-   return error;
 }
 
 #ifdef __unix__
@@ -311,20 +277,19 @@ static void task_stdout(HOSTHANDLE FD, APTR Task)
    recursive++;
 
    LONG len;
-   UBYTE buffer[2048];
+   char buffer[2048];
    if ((len = read(FD, buffer, sizeof(buffer)-1)) > 0) {
       buffer[len] = 0;
 
-      objTask *task = Task;
+      auto task = (objTask *)Task;
       if (task->OutputCallback.Type IS CALL_STDC) {
-         void (*routine)(objTask *, APTR, LONG);
-         routine = task->OutputCallback.StdC.Routine;
-         routine(Task, buffer, len);
+         auto routine = (void (*)(objTask *, APTR, LONG))task->OutputCallback.StdC.Routine;
+         routine(task, buffer, len);
       }
       else if (task->OutputCallback.Type IS CALL_SCRIPT) {
          OBJECTPTR script;
          if ((script = task->OutputCallback.Script.Script)) {
-            const struct ScriptArg args[] = {
+            const ScriptArg args[] = {
                { "Task",       FD_OBJECTPTR,       { .Address = Task } },
                { "Buffer",     FD_PTRBUFFER,       { .Address = buffer } },
                { "BufferSize", FD_LONG|FD_BUFSIZE, { .Long = len } }
@@ -338,7 +303,7 @@ static void task_stdout(HOSTHANDLE FD, APTR Task)
 
 static void task_stderr(HOSTHANDLE FD, APTR Task)
 {
-   UBYTE buffer[2048];
+   char buffer[2048];
    LONG len;
    static UBYTE recursive = 0;
 
@@ -348,17 +313,16 @@ static void task_stderr(HOSTHANDLE FD, APTR Task)
    if ((len = read(FD, buffer, sizeof(buffer)-1)) > 0) {
       buffer[len] = 0;
 
-      objTask *task = Task;
+      auto task = (objTask *)Task;
       if (task->ErrorCallback.Type) {
          if (task->ErrorCallback.Type IS CALL_STDC) {
-            void (*routine)(objTask *, APTR, LONG);
-            routine = task->ErrorCallback.StdC.Routine;
-            routine(Task, buffer, len);
+            auto routine = (void (*)(objTask *, APTR, LONG))task->ErrorCallback.StdC.Routine;
+            routine(task, buffer, len);
          }
          else if (task->ErrorCallback.Type IS CALL_SCRIPT) {
             OBJECTPTR script;
             if ((script = task->ErrorCallback.Script.Script)) {
-               const struct ScriptArg args[] = {
+               const ScriptArg args[] = {
                   { "Task", FD_OBJECTPTR,       { .Address = Task } },
                   { "Data", FD_PTRBUFFER,       { .Address = buffer } },
                   { "Size", FD_LONG|FD_BUFSIZE, { .Long = len } }
@@ -380,14 +344,13 @@ static void task_stderr(HOSTHANDLE FD, APTR Task)
 static void output_callback(objTask *Task, FUNCTION *Callback, APTR Buffer, LONG Size)
 {
    if (Callback->Type IS CALL_STDC) {
-      void (*routine)(objTask *, APTR, LONG);
-      routine = Callback->StdC.Routine;
+      auto routine = (void (*)(objTask *, APTR, LONG))Callback->StdC.Routine;
       routine(Task, Buffer, Size);
    }
    else if (Callback->Type IS CALL_SCRIPT) {
       OBJECTPTR script;
       if ((script = Callback->Script.Script)) {
-         const struct ScriptArg args[] = {
+         const ScriptArg args[] = {
             { "Task", FD_OBJECTPTR,       { .Address = Task } },
             { "Data", FD_PTRBUFFER,       { .Address = Buffer } },
             { "Size", FD_LONG|FD_BUFSIZE, { .Long = Size } }
@@ -399,14 +362,15 @@ static void output_callback(objTask *Task, FUNCTION *Callback, APTR Buffer, LONG
 
 static void task_incoming_stdout(WINHANDLE Handle, objTask *Task)
 {
+   parasol::Log log(__FUNCTION__);
    static UBYTE recursive = 0;
 
    if (recursive) return;
    if (!Task->Platform) return;
 
-   FMSG("task_stdout()","");
+   log.traceBranch("");
 
-   UBYTE buffer[4096];
+   char buffer[4096];
    LONG size = sizeof(buffer) - 1;
    winResetStdOut(Task->Platform, buffer, &size);
 
@@ -420,14 +384,15 @@ static void task_incoming_stdout(WINHANDLE Handle, objTask *Task)
 
 static void task_incoming_stderr(WINHANDLE Handle, objTask *Task)
 {
+   parasol::Log log(__FUNCTION__);
    static UBYTE recursive = 0;
 
    if (recursive) return;
    if (!Task->Platform) return;
 
-   FMSG("task_stderr()","");
+   log.traceBranch("");
 
-   UBYTE buffer[4096];
+   char buffer[4096];
    LONG size = sizeof(buffer) - 1;
    winResetStdErr(Task->Platform, buffer, &size);
 
@@ -442,21 +407,23 @@ static void task_incoming_stderr(WINHANDLE Handle, objTask *Task)
 //****************************************************************************
 // These functions arrange for callbacks to be made whenever one of our process-connected pipes receives data.
 
-void task_register_stdout(objTask *Task, WINHANDLE Handle)
+extern "C" void task_register_stdout(objTask *Task, WINHANDLE Handle)
 {
-   FMSG("task_register_stdout()","Handle: %d", (LONG)(MAXINT)Handle);
+   parasol::Log log(__FUNCTION__);
+   log.traceBranch("Handle: %d", (LONG)(MAXINT)Handle);
    RegisterFD(Handle, RFD_READ, (void (*)(void *, void *))&task_incoming_stdout, Task);
 }
 
-void task_register_stderr(objTask *Task, WINHANDLE Handle)
+extern "C" void task_register_stderr(objTask *Task, WINHANDLE Handle)
 {
-   FMSG("task_register_stderr()","Handle: %d", (LONG)(MAXINT)Handle);
+   parasol::Log log(__FUNCTION__);
+   log.traceBranch("Handle: %d", (LONG)(MAXINT)Handle);
    RegisterFD(Handle, RFD_READ, (void (*)(void *, void *))&task_incoming_stderr, Task);
 }
 
 //****************************************************************************
 
-void task_deregister_incoming(WINHANDLE Handle)
+extern "C" void task_deregister_incoming(WINHANDLE Handle)
 {
    RegisterFD(Handle, RFD_REMOVE|RFD_READ|RFD_WRITE|RFD_EXCEPT, NULL, NULL);
 }
@@ -466,7 +433,8 @@ void task_deregister_incoming(WINHANDLE Handle)
 
 static ERROR msg_getfield(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
 {
-   LogF("@ProcessMessages","Support for GetField messages not available.");
+   parasol::Log log("ProcessMessages");
+   log.warning("Support for GetField messages not available.");
    return ERR_Okay;
 }
 
@@ -474,7 +442,8 @@ static ERROR msg_getfield(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, L
 
 static ERROR msg_setfield(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
 {
-   LogF("@ProcessMessages","Support for SetField messages not available.");
+   parasol::Log log("ProcessMessages");
+   log.warning("Support for SetField messages not available.");
    return ERR_Okay;
 }
 
@@ -482,7 +451,8 @@ static ERROR msg_setfield(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, L
 
 static ERROR msg_actionresult(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
 {
-   LogF("@ProcessMessages","Support for ActionResult messages not available.");
+   parasol::Log log("ProcessMessages");
+   log.warning("Support for ActionResult messages not available.");
    return ERR_Okay;
 }
 
@@ -504,15 +474,16 @@ static CSTRING action_id_name(LONG ActionID)
 
 static ERROR msg_action(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
 {
-   struct ActionMessage *action;
+   parasol::Log log("ProcessMessages");
+   ActionMessage *action;
 
-   if (!(action = (struct ActionMessage *)Message)) {
-      LogF("@ProcessMessages","No data attached to MSGID_ACTION message.");
+   if (!(action = (ActionMessage *)Message)) {
+      log.warning("No data attached to MSGID_ACTION message.");
       return ERR_Okay;
    }
 
    #ifdef DBG_INCOMING
-      LogF("ProcessMessages","Executing action %s on object #%d, Data: %p, Size: %d, Args: %d", action_id_name(action->ActionID), action->ObjectID, Message, MsgSize, action->SendArgs);
+      log.function("Executing action %s on object #%d, Data: %p, Size: %d, Args: %d", action_id_name(action->ActionID), action->ObjectID, Message, MsgSize, action->SendArgs);
    #endif
 
    if ((action->ObjectID) AND (action->ActionID)) {
@@ -526,17 +497,17 @@ static ERROR msg_action(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LON
             ReleaseObject(obj);
          }
          else {
-            const struct FunctionField *fields;
+            const FunctionField *fields;
             if (action->ActionID > 0) fields = ActionTable[action->ActionID].Args;
             else {
-               struct rkMetaClass *objclass = (struct rkMetaClass *)obj->Class;
+               rkMetaClass *objclass = (rkMetaClass *)obj->Class;
                if (objclass->Base) objclass = objclass->Base;
 
                if (objclass->Methods) {
                   fields = objclass->Methods[-action->ActionID].Args;
                }
                else {
-                  LogErrorMsg("No method table for object #%d, class %d", obj->UniqueID, obj->ClassID);
+                  log.warning("No method table for object #%d, class %d", obj->UniqueID, obj->ClassID);
                   fields = NULL;
                   ReleaseObject(obj);
                }
@@ -552,16 +523,16 @@ static ERROR msg_action(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LON
                   ReleaseObject(obj);
 
                   if ((action->ReturnResult IS TRUE) AND (action->ReturnMessage)) {
-                     SendMessage(action->ReturnMessage, MSGID_ACTION_RESULT, NULL, action, MsgSize);
+                     SendMessage(action->ReturnMessage, MSGID_ACTION_RESULT, 0, action, MsgSize);
                   }
 
                   free_ptr_args(action+1, fields, FALSE);
                }
                else {
-                  LogF("@ProcessMessages","Failed to resolve arguments for action %s.", action_id_name(action->ActionID));
+                  log.warning("Failed to resolve arguments for action %s.", action_id_name(action->ActionID));
                   if ((action->ReturnResult IS TRUE) AND (action->ReturnMessage)) {
                      action->Error = ERR_Args;
-                     SendMessage(action->ReturnMessage, MSGID_ACTION_RESULT, NULL, action, MsgSize);
+                     SendMessage(action->ReturnMessage, MSGID_ACTION_RESULT, 0, action, MsgSize);
                   }
                   ReleaseObject(obj);
                }
@@ -570,28 +541,28 @@ static ERROR msg_action(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LON
       }
       else {
          if ((error != ERR_NoMatchingObject) AND (error != ERR_MarkedForDeletion)) {
-            if (action->ActionID > 0) LogF("@ProcessMessages","Could not gain access to object %d to execute action %s.", action->ObjectID, action_id_name(action->ActionID));
-            else LogF("@ProcessMessages","Could not gain access to object %d to execute method %d.", action->ObjectID, action->ActionID);
+            if (action->ActionID > 0) log.warning("Could not gain access to object %d to execute action %s.", action->ObjectID, action_id_name(action->ActionID));
+            else log.warning("Could not gain access to object %d to execute method %d.", action->ObjectID, action->ActionID);
          }
          else {
             if (action->ActionID IS AC_ActionNotify) {
                struct acActionNotify *notify = (struct acActionNotify *)(action + 1);
 
-               LogF("8ProcessMessages","ActionNotify(%d, %s) from object %d cancelled, object does not exist.", action->ObjectID, action_id_name(notify->ActionID), notify->ObjectID);
+               log.debug("ActionNotify(%d, %s) from object %d cancelled, object does not exist.", action->ObjectID, action_id_name(notify->ActionID), notify->ObjectID);
 
                // This helpful little subroutine will remove the redundant subscription from the calling object
 
                OBJECTPTR object;
                if ((notify->ObjectID) AND (!AccessObject(notify->ObjectID, 3000, &object))) {
-                  UnsubscribeActionByID(object, NULL, action->ObjectID);
+                  UnsubscribeActionByID(object, 0, action->ObjectID);
                   ReleaseObject(object);
                }
             }
-            else LogF("8ProcessMessages","Action %s cancelled, object #%d does not exist or marked for deletion.", action_id_name(action->ActionID), action->ObjectID);
+            else log.debug("Action %s cancelled, object #%d does not exist or marked for deletion.", action_id_name(action->ActionID), action->ObjectID);
          }
       }
    }
-   else LogF("@ProcessMessages","Action message %s specifies an object ID of #%d.", action_id_name(action->ActionID), action->ObjectID);
+   else log.warning("Action message %s specifies an object ID of #%d.", action_id_name(action->ActionID), action->ObjectID);
 
    return ERR_Okay;
 }
@@ -602,24 +573,25 @@ static ERROR msg_action(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LON
 
 static ERROR msg_debug(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
 {
-   struct DebugMessage *debug;
-   LONG j, i;
+   parasol::Log log("Debug");
+   DebugMessage *debug;
+   LONG j;
 
-   if (!(debug = (struct DebugMessage *)Message)) return ERR_Okay;
+   if (!(debug = (DebugMessage *)Message)) return ERR_Okay;
 
    if (debug->DebugID IS 1) {
-      LogF("!Debug","Index   Address   MemoryID    Locks");
-      if (!thread_lock(TL_MEMORY_PAGES, 4000)) {
-         for (i=0; i < glTotalPages; i++) {
+      log.error("Index   Address   MemoryID    Locks");
+      ThreadLock lock(TL_MEMORY_PAGES, 4000);
+      if (lock.granted()) {
+         for (LONG i=0; i < glTotalPages; i++) {
             if ((glMemoryPages[i].Address) OR (glMemoryPages[i].MemoryID)) {
                for (j=0; j < glTotalPages; j++) {
                   if ((j != i) AND (glMemoryPages[j].Address IS glMemoryPages[i].Address)) break;
                }
-               if (j < glTotalPages) LogF("!Debug","%.3d:   %p     %8d%10d [DUPLICATE WITH %d]", i, glMemoryPages[i].Address, glMemoryPages[i].MemoryID, glMemoryPages[i].AccessCount, j);
-               else LogF("!Debug","%.3d:   %p     %8d%10d", i, glMemoryPages[i].Address, glMemoryPages[i].MemoryID, glMemoryPages[i].AccessCount);
+               if (j < glTotalPages) log.error("%.3d:   %p     %8d%10d [DUPLICATE WITH %d]", i, glMemoryPages[i].Address, glMemoryPages[i].MemoryID, glMemoryPages[i].AccessCount, j);
+               else log.error("%.3d:   %p     %8d%10d", i, glMemoryPages[i].Address, glMemoryPages[i].MemoryID, glMemoryPages[i].AccessCount);
             }
          }
-         thread_unlock(TL_MEMORY_PAGES);
       }
    }
 
@@ -630,9 +602,9 @@ static ERROR msg_debug(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG
 
 static ERROR msg_validate_process(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
 {
-   struct ValidateMessage *data;
+   ValidateMessage *data;
 
-   if (!(data = (struct ValidateMessage *)Message)) return ERR_Okay;
+   if (!(data = (ValidateMessage *)Message)) return ERR_Okay;
    validate_process(data->ProcessID);
    return ERR_Okay;
 }
@@ -653,15 +625,17 @@ static ERROR msg_quit(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG 
 #ifdef _WIN32
 static void task_process_end(WINHANDLE FD, objTask *Task)
 {
+   parasol::Log log(__FUNCTION__);
+
    winGetExitCodeProcess(Task->Platform, &Task->ReturnCode);
    if (Task->ReturnCode != 259) {
       Task->ReturnCodeSet = TRUE;
-      LogF("~task_process_end","Process " PF64() " ended, return code: %d.", (LARGE)FD, Task->ReturnCode);
+      log.branch("Process " PF64() " ended, return code: %d.", (LARGE)FD, Task->ReturnCode);
    }
-   else LogF("~@task_process_end","Process " PF64() " signalled exit too early.", (LARGE)FD);
+   else log.branch("Process " PF64() " signalled exit too early.", (LARGE)FD);
 
    if (Task->Platform) {
-      UBYTE buffer[4096];
+      char buffer[4096];
       LONG size;
 
       // Process remaining data
@@ -669,7 +643,7 @@ static void task_process_end(WINHANDLE FD, objTask *Task)
       do {
          size = sizeof(buffer);
          if ((!winReadStd(Task->Platform, TSTD_OUT, buffer, &size)) AND (size)) {
-            LogF("task_process_end","Processing %d remaining bytes on stdout.", size);
+            log.msg("Processing %d remaining bytes on stdout.", size);
             output_callback(Task, &Task->OutputCallback, buffer, size);
          }
          else break;
@@ -678,7 +652,7 @@ static void task_process_end(WINHANDLE FD, objTask *Task)
       do {
          size = sizeof(buffer);
          if ((!winReadStd(Task->Platform, TSTD_ERR, buffer, &size)) AND (size)) {
-            LogF("task_process_end","Processing %d remaining bytes on stderr.", size);
+            log.msg("Processing %d remaining bytes on stderr.", size);
             output_callback(Task, &Task->ErrorCallback, buffer, size);
          }
          else break;
@@ -692,14 +666,13 @@ static void task_process_end(WINHANDLE FD, objTask *Task)
    // Call ExitCallback, if specified
 
    if (Task->ExitCallback.Type IS CALL_STDC) {
-      void (*routine)(objTask *);
-      routine = Task->ExitCallback.StdC.Routine;
+      auto routine = (void (*)(objTask *))Task->ExitCallback.StdC.Routine;
       routine(Task);
    }
    else if (Task->ExitCallback.Type IS CALL_SCRIPT) {
       OBJECTPTR script;
       if ((script = Task->ExitCallback.Script.Script)) {
-         const struct ScriptArg args[] = { { "Task", FD_OBJECTPTR, { .Address = Task } } };
+         const ScriptArg args[] = { { "Task", FD_OBJECTPTR, { .Address = Task } } };
          scCallback(script, Task->ExitCallback.Script.ProcedureID, args, ARRAYSIZE(args));
       }
    }
@@ -712,25 +685,23 @@ static void task_process_end(WINHANDLE FD, objTask *Task)
    // Send a break if we're waiting for this process to end
 
    if ((Task->Flags & TSF_WAIT) AND (Task->TimeOut > 0)) SendMessage(0, glProcessBreak, 0, NULL, 0);
-
-   LogReturn();
 }
 #endif
 
 //****************************************************************************
 
 #ifdef _WIN32
-void register_process_pipes(objTask *Self, WINHANDLE ProcessHandle)
+extern "C" void register_process_pipes(objTask *Self, WINHANDLE ProcessHandle)
 {
-   FMSG("register_pipes()","Process: %d", (LONG)(MAXINT)ProcessHandle);
-
+   parasol::Log log;
+   log.traceBranch("Process: %d", (LONG)(MAXINT)ProcessHandle);
    RegisterFD(ProcessHandle, RFD_READ, (void (*)(void *, void *))&task_process_end, Self);
 }
 
-void deregister_process_pipes(objTask *Self, WINHANDLE ProcessHandle)
+extern "C" void deregister_process_pipes(objTask *Self, WINHANDLE ProcessHandle)
 {
-   FMSG("deregister_pipes()","Process: %d", (LONG)(MAXINT)ProcessHandle);
-
+   parasol::Log log;
+   log.traceBranch("Process: %d", (LONG)(MAXINT)ProcessHandle);
    if (ProcessHandle) RegisterFD(ProcessHandle, RFD_REMOVE|RFD_READ|RFD_WRITE|RFD_EXCEPT, NULL, NULL);
 }
 #endif
@@ -781,12 +752,13 @@ TimeOut:     Can be returned if the WAIT flag is used.  Indicates that the proce
 
 static ERROR TASK_Activate(objTask *Self, APTR Void)
 {
+   parasol::Log log;
    LONG i, j, k;
-   BYTE buffer[1000];
+   char buffer[1000];
    STRING path, *args;
    ERROR error;
    #ifdef _WIN32
-      UBYTE launchdir[500];
+      char launchdir[500];
       STRING redirect_stdout, redirect_stderr;
       BYTE hide_output;
       LONG winerror;
@@ -804,7 +776,7 @@ static ERROR TASK_Activate(objTask *Self, APTR Void)
 
    if (Self->Flags & TSF_FOREIGN) Self->Flags |= TSF_SHELL;
 
-   if (!Self->Location) return PostError(ERR_MissingPath);
+   if (!Self->Location) return log.warning(ERR_MissingPath);
 
 #ifdef _WIN32
    //struct taskAddArgument add;
@@ -817,21 +789,21 @@ static ERROR TASK_Activate(objTask *Self, APTR Void)
    launchdir[0] = 0;
    if ((!GET_LaunchPath(Self, &path)) AND (path)) {
       if (!ResolvePath(path, RSF_APPROXIMATE|RSF_PATH, &path)) {
-         for (i=0; (path[i]) AND (i < sizeof(launchdir)-1); i++) launchdir[i] = path[i];
+         for (i=0; (path[i]) AND ((size_t)i < sizeof(launchdir)-1); i++) launchdir[i] = path[i];
          launchdir[i] = 0;
          FreeResource(path);
       }
       else {
-         for (i=0; (path[i]) AND (i < sizeof(launchdir)-1); i++) launchdir[i] = path[i];
+         for (i=0; (path[i]) AND ((size_t)i < sizeof(launchdir)-1); i++) launchdir[i] = path[i];
          launchdir[i] = 0;
       }
    }
    else if (Self->Flags & TSF_RESET_PATH) {
       if (!ResolvePath(Self->Location, RSF_APPROXIMATE|RSF_PATH, &path)) {
-         for (i=0; (path[i]) AND (i < sizeof(launchdir)-1); i++) launchdir[i] = path[i];
+         for (i=0; (path[i]) AND ((size_t)i < sizeof(launchdir)-1); i++) launchdir[i] = path[i];
          FreeResource(path);
       }
-      else for (i=0; (Self->Location[i]) AND (i < sizeof(launchdir)-1); i++) launchdir[i] = Self->Location[i];
+      else for (i=0; (Self->Location[i]) AND ((size_t)i < sizeof(launchdir)-1); i++) launchdir[i] = Self->Location[i];
 
       while ((i > 0) AND (launchdir[i] != '\\')) i--;
       launchdir[i] = 0;
@@ -842,14 +814,14 @@ static ERROR TASK_Activate(objTask *Self, APTR Void)
    i = 0;
    buffer[i++] = '"';
    if (!ResolvePath(Self->Location, RSF_APPROXIMATE|RSF_PATH, &path)) {
-      for (j=0; (path[j]) AND (i < sizeof(buffer)-1); i++,j++) {
+      for (j=0; (path[j]) AND ((size_t)i < sizeof(buffer)-1); i++,j++) {
          if (path[j] IS '/') buffer[i] = '\\';
          else buffer[i] = path[j];
       }
       FreeResource(path);
    }
    else {
-      for (j=0; (Self->Location[j]) AND (i < sizeof(buffer)-1); i++,j++) {
+      for (j=0; (Self->Location[j]) AND ((size_t)i < sizeof(buffer)-1); i++,j++) {
          if (Self->Location[j] IS '/') buffer[i] = '\\';
          else buffer[i] = Self->Location[j];
       }
@@ -871,19 +843,19 @@ static ERROR TASK_Activate(objTask *Self, APTR Void)
                redirect_stderr = redirect_stdout;
             }
 
-            LogMsg("StdOut/Err redirected to %s", redirect_stdout);
+            log.msg("StdOut/Err redirected to %s", redirect_stdout);
 
             hide_output = TRUE;
             continue;
          }
          else if ((args[j][0] IS '2') AND (args[j][1] IS '>')) {
-            LogMsg("StdErr redirected to %s", args[j] + 2);
+            log.msg("StdErr redirected to %s", args[j] + 2);
             ResolvePath(args[j] + 2, RSF_NO_FILE_CHECK, &redirect_stderr);
             hide_output = TRUE;
             continue;
          }
          else if ((args[j][0] IS '1') AND (args[j][1] IS '>')) {
-            LogMsg("StdOut redirected to %s", args[j] + 2);
+            log.msg("StdOut redirected to %s", args[j] + 2);
             ResolvePath(args[j] + 2, RSF_NO_FILE_CHECK, &redirect_stdout);
             hide_output = TRUE;
             continue;
@@ -938,7 +910,7 @@ static ERROR TASK_Activate(objTask *Self, APTR Void)
       else whitespace = FALSE;
    }
 
-   MSG("Exec: %s", buffer);
+   log.trace("Exec: %s", buffer);
 
    // Hide window if this is designated a shell program (i.e. hide the DOS window).
    // NB: If you hide a non-shell program, this usually results in the first GUI window that pops up being hidden.
@@ -967,7 +939,7 @@ static ERROR TASK_Activate(objTask *Self, APTR Void)
 
       error = ERR_Okay;
       if ((Self->Flags & TSF_WAIT) AND (Self->TimeOut > 0)) {
-         LogMsg("Waiting for process to exit.  TimeOut: %.2f sec", Self->TimeOut);
+         log.msg("Waiting for process to exit.  TimeOut: %.2f sec", Self->TimeOut);
 
          //if (!glProcessBreak) glProcessBreak = AllocateID(IDTYPE_MESSAGE);
          glProcessBreak = MSGID_BREAK;
@@ -979,9 +951,9 @@ static ERROR TASK_Activate(objTask *Self, APTR Void)
       }
    }
    else {
-      UBYTE msg[300];
+      char msg[300];
       winFormatMessage(winerror, msg, sizeof(msg));
-      LogErrorMsg("Launch Error: %s", msg);
+      log.warning("Launch Error: %s", msg);
       error = ERR_Failed;
    }
 
@@ -1008,11 +980,11 @@ static ERROR TASK_Activate(objTask *Self, APTR Void)
 
       if (!path) path = Self->Location;
       if (!ResolvePath(path, RSF_APPROXIMATE|RSF_PATH, &path)) {
-         for (j=0; (path[j]) AND (i < sizeof(buffer)-1);) buffer[i++] = path[j++];
+         for (j=0; (path[j]) AND ((size_t)i < sizeof(buffer)-1);) buffer[i++] = path[j++];
          FreeResource(path);
       }
       else {
-         for (j=0; (path[j]) AND (i < sizeof(buffer)-1);) buffer[i++] = path[j++];
+         for (j=0; (path[j]) AND ((size_t)i < sizeof(buffer)-1);) buffer[i++] = path[j++];
       }
 
       while ((i > 0) AND (buffer[i-1] != '/')) i--;
@@ -1025,12 +997,12 @@ static ERROR TASK_Activate(objTask *Self, APTR Void)
    // Resolve the location of the executable (may contain an volume) and copy it to the command line buffer.
 
    if (!ResolvePath(Self->Location, RSF_APPROXIMATE|RSF_PATH, &path)) {
-      for (j=0; (path[j]) AND (i < sizeof(buffer)-1);) buffer[i++] = path[j++];
+      for (j=0; (path[j]) AND ((size_t)i < sizeof(buffer)-1);) buffer[i++] = path[j++];
       buffer[i] = 0;
       FreeResource(path);
    }
    else {
-      for (j=0; (Self->Location[j]) AND (i < sizeof(buffer)-1);) buffer[i++] = Self->Location[j++];
+      for (j=0; (Self->Location[j]) AND ((size_t)i < sizeof(buffer)-1);) buffer[i++] = Self->Location[j++];
       buffer[i] = 0;
    }
 
@@ -1070,7 +1042,7 @@ static ERROR TASK_Activate(objTask *Self, APTR Void)
 
    for (i=0; buffer[i]; i++) if (buffer[i] IS '\'') buffer[i] = '"';
 
-   LogErrorMsg(buffer);
+   log.warning(buffer);
 
    // If we're not going to run in shell mode, create an argument list for passing to the program.
 
@@ -1085,7 +1057,7 @@ static ERROR TASK_Activate(objTask *Self, APTR Void)
 
       if (Self->Flags & TSF_DEBUG) {
          for (i=1; argslist[i]; i++) {
-            LogMsg("Arg %d: %s", i, argslist[i]);
+            log.msg("Arg %d: %s", i, argslist[i]);
          }
       }
    }
@@ -1101,13 +1073,13 @@ static ERROR TASK_Activate(objTask *Self, APTR Void)
    input_fd = open("/dev/null", O_RDONLY); // Input is always NULL, we don't want the child process reading from our own stdin stream
 
    if (Self->OutputCallback.Type) {
-      MSG("Output will be sent to callback.");
+      log.trace("Output will be sent to callback.");
       if (!pipe(outpipe)) {
          out_fd = outpipe[1]; // for writing
          in_fd  = outpipe[0]; // for reading
       }
       else {
-         LogErrorMsg("Failed to create pipe: %s", strerror(errno));
+         log.warning("Failed to create pipe: %s", strerror(errno));
          if (input_fd != -1) close(input_fd);
          if (out_fd != -1)   close(out_fd);
          return ERR_Failed;
@@ -1115,18 +1087,18 @@ static ERROR TASK_Activate(objTask *Self, APTR Void)
    }
 
    if ((out_fd IS -1) AND (Self->Flags & TSF_QUIET)) {
-      LogMsg("Output will go to NULL");
+      log.msg("Output will go to NULL");
       out_fd = open("/dev/null", O_RDONLY);
    }
 
    if (Self->ErrorCallback.Type) {
-      MSG("Error output will be sent to a callback.");
+      log.trace("Error output will be sent to a callback.");
       if (!pipe(errpipe)) {
          out_errfd = errpipe[1];
          in_errfd  = errpipe[0];
       }
       else {
-         LogErrorMsg("Failed to create pipe: %s", strerror(errno));
+         log.warning("Failed to create pipe: %s", strerror(errno));
          if (input_fd != -1) close(input_fd);
          if (out_fd != -1)   close(out_fd);
          return ERR_Failed;
@@ -1148,7 +1120,7 @@ static ERROR TASK_Activate(objTask *Self, APTR Void)
       if (out_errfd != -1) close(out_errfd);
       if (in_fd != -1)     close(in_fd);
       if (in_errfd != -1)  close(in_errfd);
-      return PostError(ERR_SystemLocked);
+      return log.warning(ERR_SystemLocked);
    }
 
    pid = fork();
@@ -1160,14 +1132,14 @@ static ERROR TASK_Activate(objTask *Self, APTR Void)
       if (out_errfd != -1) close(out_errfd);
       if (in_fd != -1)     close(in_fd);
       if (in_errfd != -1)  close(in_errfd);
-      LogErrorMsg("Failed in an attempt to fork().");
+      log.warning("Failed in an attempt to fork().");
       return ERR_Failed;
    }
 
    if (pid) {
       // The following code is executed by the initiating process thread
 
-      LogMsg("Created new process %d.  Shell: %d", pid, shell);
+      log.msg("Created new process %d.  Shell: %d", pid, shell);
 
       Self->ProcessID = pid; // Record the native process ID
 
@@ -1206,7 +1178,7 @@ static ERROR TASK_Activate(objTask *Self, APTR Void)
 
       error = ERR_Okay;
       if (Self->Flags & TSF_WAIT) {
-         LogMsg("Waiting for process to turn into a zombie.");
+         log.msg("Waiting for process to turn into a zombie.");
 
          // Wait for the child process to turn into a zombie.  NB: A parent process or our own child handler may
          // potentially pick this up but that's fine as waitpid() will just fail with -1 in that case.
@@ -1217,7 +1189,7 @@ static ERROR TASK_Activate(objTask *Self, APTR Void)
             ProcessMessages(0, 20);
 
             if ((Self->TimeOut) AND (PreciseTime() >= ticks)) {
-               error = PostError(ERR_TimeOut);
+               error = log.warning(ERR_TimeOut);
                break;
             }
          }
@@ -1279,7 +1251,7 @@ static ERROR TASK_Activate(objTask *Self, APTR Void)
 
       execl("/bin/sh", "sh", "-c", buffer, (char *)NULL);
    }
-   else execv(buffer, (APTR)&argslist);
+   else execv(buffer, (char * const *)&argslist);
 
    exit(EXIT_FAILURE);
 #endif
@@ -1307,7 +1279,9 @@ AllocMemory: Memory for the new Parameters could not be allocated.
 
 static ERROR TASK_AddArgument(objTask *Self, struct taskAddArgument *Args)
 {
-   if ((!Args) OR (!Args->Argument) OR (!*Args->Argument)) return PostError(ERR_NullArgs);
+   parasol::Log log;
+
+   if ((!Args) OR (!Args->Argument) OR (!*Args->Argument)) return log.warning(ERR_NullArgs);
 
    if (!Self->ParametersMID) {
       CSTRING array[2];
@@ -1318,7 +1292,7 @@ static ERROR TASK_AddArgument(objTask *Self, struct taskAddArgument *Args)
    if (!Self->Parameters) {
       CSTRING *args;
       if (GetField((OBJECTPTR)Self, FID_Parameters|TPTR, &args) != ERR_Okay) {
-         return PostError(ERR_GetField);
+         return log.warning(ERR_GetField);
       }
       Self->Parameters = args;
    }
@@ -1372,7 +1346,7 @@ static ERROR TASK_AddArgument(objTask *Self, struct taskAddArgument *Args)
       Self->ParametersMID = argsmid;
       return ERR_Okay;
    }
-   else return PostError(ERR_AllocMemory);
+   else return log.warning(ERR_AllocMemory);
 }
 
 /*****************************************************************************
@@ -1390,9 +1364,8 @@ Okay
 
 static ERROR TASK_CloseInstance(objTask *Self, APTR Void)
 {
-   LONG i;
-   for (i=0; i < MAX_TASKS; i++) {
-      if (shTasks[i].TaskID) SendMessage(shTasks[i].MessageID, MSGID_QUIT, NULL, NULL, NULL);
+   for (LONG i=0; i < MAX_TASKS; i++) {
+      if (shTasks[i].TaskID) SendMessage(shTasks[i].MessageID, MSGID_QUIT, 0, NULL, 0);
    }
    return ERR_Okay;
 }
@@ -1415,14 +1388,13 @@ Okay
 static ERROR TASK_Expunge(objTask *Self, APTR Void)
 {
    if (Self->Head.UniqueID IS SystemTaskID) {
-      if (!LOCK_PROCESS_TABLE(4000)) {
-         LONG i;
-         for (i=0; i < MAX_TASKS; i++) {
+      parasol::ScopedSysLock lock(PL_PROCESSES, 4000);
+      if (lock.granted()) {
+         for (LONG i=0; i < MAX_TASKS; i++) {
             if ((shTasks[i].TaskID) AND (shTasks[i].TaskID != Self->Head.UniqueID)) {
-               ActionMsg(MT_TaskExpunge, shTasks[i].TaskID, NULL, NULL, NULL);
+               ActionMsg(MT_TaskExpunge, shTasks[i].TaskID, NULL, 0, 0);
             }
          }
-         UNLOCK_PROCESS_TABLE();
       }
    }
    else Expunge(FALSE);
@@ -1434,6 +1406,8 @@ static ERROR TASK_Expunge(objTask *Self, APTR Void)
 
 static ERROR TASK_Free(objTask *Self, APTR Void)
 {
+   parasol::Log log;
+
 #ifdef __unix__
    check_incoming(Self);
 
@@ -1458,10 +1432,7 @@ static ERROR TASK_Free(objTask *Self, APTR Void)
    if (Self->InputCallback.Type) RegisterFD(winGetStdInput(), RFD_READ|RFD_REMOVE, &task_stdinput_callback, Self);
 #endif
 
-   // Free variable fields
-
-   LONG i;
-   for (i=0; Self->Fields[i]; i++) { FreeResource(Self->Fields[i]); Self->Fields[i] = NULL; }
+   for (LONG i=0; Self->Fields[i]; i++) { FreeResource(Self->Fields[i]); Self->Fields[i] = NULL; }
 
    // Free allocations
 
@@ -1532,7 +1503,9 @@ NoSupport: The platform does not support environment variables.
 
 static ERROR TASK_GetEnv(objTask *Self, struct taskGetEnv *Args)
 {
-   if ((!Args) OR (!Args->Name)) return PostError(ERR_NullArgs);
+   parasol::Log log;
+
+   if ((!Args) OR (!Args->Name)) return log.warning(ERR_NullArgs);
 
 #ifdef _WIN32
 
@@ -1561,13 +1534,10 @@ static ERROR TASK_GetEnv(objTask *Self, struct taskGetEnv *Args)
          { 0, 0 }
       };
 
-      LONG i, ki;
-      for (ki=0; ki < ARRAYSIZE(keys); ki++) {
+      for (LONG ki=0; ki < ARRAYSIZE(keys); ki++) {
          if (!StrCompare(keys[ki].HKey, Args->Name, 0, 0)) {
-            for (len=0; keys[ki].HKey[len]; len++);
-
-            CSTRING str = Args->Name + len; // str = Parasol\Something
-            for (len=0; str[len]; len++); // End of string
+            CSTRING str = Args->Name + StrLength(keys[ki].HKey); // str = Parasol\Something
+            len = StrLength(str); // End of string
 
             while (len > 0) {
                if (str[len] IS '\\') break;
@@ -1575,22 +1545,22 @@ static ERROR TASK_GetEnv(objTask *Self, struct taskGetEnv *Args)
             }
 
             if (len > 0) {
-               UBYTE path[len];
-               for (i=0; i < len; i++) path[i] = str[i];
-               path[i] = 0;
+               char path[len];
+               CopyMemory(str, path, len);
+               path[len] = 0;
 
                APTR keyhandle;
                if (!RegOpenKeyExA(keys[ki].ID, path, 0, KEY_READ, &keyhandle)) {
                   LONG type;
 
-                  len = ENV_SIZE;
-                  if (!RegQueryValueExA(keyhandle, str+i+1, 0, &type, Self->Env, &len)) {
+                  LONG envlen = ENV_SIZE;
+                  if (!RegQueryValueExA(keyhandle, str+len+1, 0, &type, Self->Env, &envlen)) {
                      // Numerical registry types can be converted into strings
 
                      switch(type) {
-                        case REG_DWORD:     IntToStr(((LONG *)Self->Env)[0], Self->Env, ENV_SIZE); break;
+                        case REG_DWORD: IntToStr(((LONG *)Self->Env)[0], Self->Env, ENV_SIZE); break;
                         case REG_DWORD_BIG_ENDIAN: IntToStr(((LONG *)Self->Env)[0], Self->Env, ENV_SIZE); break; // Not quite right... we should convert the endianness first.
-                        case REG_QWORD:     IntToStr(((LARGE *)Self->Env)[0], Self->Env, ENV_SIZE); break;
+                        case REG_QWORD: IntToStr(((LARGE *)Self->Env)[0], Self->Env, ENV_SIZE); break;
                      }
 
                      Args->Value = Self->Env;
@@ -1601,14 +1571,14 @@ static ERROR TASK_GetEnv(objTask *Self, struct taskGetEnv *Args)
                if (Args->Value) return ERR_Okay;
                else return ERR_DoesNotExist;
             }
-            else return PostError(ERR_Syntax);
+            else return log.warning(ERR_Syntax);
          }
       }
    }
 
    len = winGetEnv(Args->Name, Self->Env, ENV_SIZE);
    if (!len) return ERR_DoesNotExist;
-   if (len >= ENV_SIZE) return PostError(ERR_BufferOverflow);
+   if (len >= ENV_SIZE) return log.warning(ERR_BufferOverflow);
 
    Args->Value = Self->Env;
    return ERR_Okay;
@@ -1660,7 +1630,9 @@ NoSupport: The platform does not support environment variables.
 
 static ERROR TASK_SetEnv(objTask *Self, struct taskSetEnv *Args)
 {
-   if ((!Args) OR (!Args->Name)) return PostError(ERR_NullArgs);
+   parasol::Log log;
+
+   if ((!Args) OR (!Args->Name)) return log.warning(ERR_NullArgs);
 
 #ifdef _WIN32
 
@@ -1677,7 +1649,7 @@ static ERROR TASK_SetEnv(objTask *Self, struct taskSetEnv *Args)
          { 0, 0 }
       };
 
-      LogMsg("Registry: %s = %s", Args->Name, Args->Value);
+      log.msg("Registry: %s = %s", Args->Name, Args->Value);
 
       for (ki=0; ki < ARRAYSIZE(keys); ki++) {
          if (!StrCompare(keys[ki].HKey, Args->Name, 0, 0)) {
@@ -1692,7 +1664,7 @@ static ERROR TASK_SetEnv(objTask *Self, struct taskSetEnv *Args)
             }
 
             if (len > 0) {
-               UBYTE path[len];
+               char path[len];
                for (i=0; i < len; i++) path[i] = str[i];
                path[i] = 0;
 
@@ -1721,20 +1693,18 @@ static ERROR TASK_SetEnv(objTask *Self, struct taskSetEnv *Args)
                         }
                      }
                   }
-                  else {
-                     RegSetValueExA(keyhandle, str+i+1, 0, REG_SZ, Args->Value, StrLength(Args->Value)+1);
-                  }
+                  else RegSetValueExA(keyhandle, str+i+1, 0, REG_SZ, Args->Value, StrLength(Args->Value)+1);
 
                   winCloseHandle(keyhandle);
                }
 
                return ERR_Okay;
             }
-            else return PostError(ERR_Syntax);
+            else return log.warning(ERR_Syntax);
          }
       }
 
-      return PostError(ERR_Failed);
+      return log.warning(ERR_Failed);
    }
    else {
       winSetEnv(Args->Name, Args->Value);
@@ -1763,13 +1733,14 @@ GetVar: Retrieves variable field values.
 
 static ERROR TASK_GetVar(objTask *Self, struct acGetVar *Args)
 {
-   LONG i, j;
+   parasol::Log log;
+   LONG j;
 
-   if ((!Args) OR (!Args->Buffer)) return PostError(ERR_NullArgs);
+   if ((!Args) OR (!Args->Buffer)) return log.warning(ERR_NullArgs);
 
-   for (i=0; Self->Fields[i]; i++) {
-      if (!StrCompare(Args->Field, Self->Fields[i], NULL, STR_MATCH_LEN)) {
-         STRING fieldvalue;
+   for (LONG i=0; Self->Fields[i]; i++) {
+      if (!StrCompare(Args->Field, Self->Fields[i], 0, STR_MATCH_LEN)) {
+         CSTRING fieldvalue;
          for (fieldvalue=Self->Fields[i]; *fieldvalue; fieldvalue++);
          fieldvalue++;
 
@@ -1781,7 +1752,7 @@ static ERROR TASK_GetVar(objTask *Self, struct acGetVar *Args)
       }
    }
 
-   LogErrorMsg("The variable \"%s\" does not exist.", Args->Field);
+   log.warning("The variable \"%s\" does not exist.", Args->Field);
 
    return ERR_Okay;
 }
@@ -1790,7 +1761,8 @@ static ERROR TASK_GetVar(objTask *Self, struct acGetVar *Args)
 
 static ERROR TASK_Init(objTask *Self, APTR Void)
 {
-   struct MessageHeader *msgblock;
+   parasol::Log log;
+   MessageHeader *msgblock;
    LONG i, len;
 
    if (Self->Head.UniqueID IS SystemTaskID) {
@@ -1807,7 +1779,7 @@ static ERROR TASK_Init(objTask *Self, APTR Void)
 
       // Allocate the message block for this Task
 
-      if (!AllocMemory(sizeof(struct MessageHeader), MEM_PUBLIC, (void **)&msgblock, &glTaskMessageMID)) {
+      if (!AllocMemory(sizeof(MessageHeader), MEM_PUBLIC, (void **)&msgblock, &glTaskMessageMID)) {
          Self->MessageMID = glTaskMessageMID;
          msgblock->TaskIndex = glTaskEntry->Index;
          ReleaseMemoryID(glTaskMessageMID);
@@ -1823,9 +1795,9 @@ static ERROR TASK_Init(objTask *Self, APTR Void)
       }
 
 #ifdef _WIN32
-      UBYTE buffer[300];
+      char buffer[300];
       if (winGetExeDirectory(sizeof(buffer), buffer)) {
-         for (len=0; buffer[len]; len++);
+         len = StrLength(buffer);
          while ((len > 1) AND (buffer[len-1] != '/') AND (buffer[len-1] != '\\') AND (buffer[len-1] != ':')) len--;
          if (!AllocMemory(len+1, MEM_STRING|MEM_NO_CLEAR|Self->Head.MemFlags, (void **)&Self->ProcessPath, &Self->ProcessPathMID)) {
             for (i=0; i < len; i++) Self->ProcessPath[i] = buffer[i];
@@ -1888,39 +1860,39 @@ static ERROR TASK_Init(objTask *Self, APTR Void)
 
       FUNCTION call;
       call.Type = CALL_STDC;
-      call.StdC.Routine = msg_action;
+      call.StdC.Routine = (APTR)msg_action;
       AddMsgHandler(NULL, MSGID_ACTION, &call, &Self->MsgAction);
 
-      call.StdC.Routine = msg_getfield;
+      call.StdC.Routine = (APTR)msg_getfield;
       AddMsgHandler(NULL, MSGID_GET_FIELD, &call, &Self->MsgGetField);
 
-      call.StdC.Routine = msg_setfield;
+      call.StdC.Routine = (APTR)msg_setfield;
       AddMsgHandler(NULL, MSGID_SET_FIELD, &call, &Self->MsgSetField);
 
-      call.StdC.Routine = msg_actionresult;
+      call.StdC.Routine = (APTR)msg_actionresult;
       AddMsgHandler(NULL, MSGID_ACTION_RESULT, &call, &Self->MsgActionResult);
 
-      call.StdC.Routine = msg_debug;
+      call.StdC.Routine = (APTR)msg_debug;
       AddMsgHandler(NULL, MSGID_DEBUG, &call, &Self->MsgDebug);
 
-      call.StdC.Routine = msg_validate_process;
+      call.StdC.Routine = (APTR)msg_validate_process;
       AddMsgHandler(NULL, MSGID_VALIDATE_PROCESS, &call, &Self->MsgValidateProcess);
 
-      call.StdC.Routine = msg_quit;
+      call.StdC.Routine = (APTR)msg_quit;
       AddMsgHandler(NULL, MSGID_QUIT, &call, &Self->MsgQuit);
 
-      call.StdC.Routine = msg_event; // lib_events.c
+      call.StdC.Routine = (APTR)msg_event; // lib_events.c
       AddMsgHandler(NULL, MSGID_EVENT, &call, &Self->MsgEvent);
 
-      call.StdC.Routine = msg_threadcallback; // class_thread.c
+      call.StdC.Routine = (APTR)msg_threadcallback; // class_thread.c
       AddMsgHandler(NULL, MSGID_THREAD_CALLBACK, &call, &Self->MsgThreadCallback);
 
-      call.StdC.Routine = msg_threadaction; // class_thread.c
+      call.StdC.Routine = (APTR)msg_threadaction; // class_thread.c
       AddMsgHandler(NULL, MSGID_THREAD_ACTION, &call, &Self->MsgThreadAction);
 
 
-      LogMsg("Process Path: %s", Self->ProcessPath);
-      LogMsg("Working Path: %s", Self->Path);
+      log.msg("Process Path: %s", Self->ProcessPath);
+      log.msg("Working Path: %s", Self->Path);
    }
    else if (Self->ProcessID) {
       // The process ID has been preset - this means that the task could represent a link to an existing Parasol
@@ -1928,7 +1900,7 @@ static ERROR TASK_Init(objTask *Self, APTR Void)
 
       for (i=0; i < MAX_TASKS; i++) {
          if ((shTasks[i].TaskID) AND (shTasks[i].ProcessID IS Self->ProcessID)) {
-            LogMsg("Connected process %d to task %d, message port %d.", Self->ProcessID, shTasks[i].TaskID, shTasks[i].MessageID);
+            log.msg("Connected process %d to task %d, message port %d.", Self->ProcessID, shTasks[i].TaskID, shTasks[i].MessageID);
             Self->MessageMID = shTasks[i].MessageID;
             break;
          }
@@ -1972,8 +1944,10 @@ Okay
 
 static ERROR TASK_Quit(objTask *Self, APTR Void)
 {
+   parasol::Log log;
+
    if ((Self->ProcessID) AND (Self->ProcessID != glProcessID)) {
-      LogMsg("Terminating foreign process %d", Self->ProcessID);
+      log.msg("Terminating foreign process %d", Self->ProcessID);
 
       #ifdef __unix__
          kill(Self->ProcessID, SIGHUP); // Safe kill signal - this actually results in that process generating an internal MSGID_QUIT message
@@ -1984,12 +1958,12 @@ static ERROR TASK_Quit(objTask *Self, APTR Void)
       #endif
    }
    else if (Self->MessageMID) {
-      LogMethod("Sending quit message to queue %d.", Self->MessageMID);
-      if (!SendMessage(Self->MessageMID, MSGID_QUIT, NULL, NULL, NULL)) {
+      log.branch("Sending quit message to queue %d.", Self->MessageMID);
+      if (!SendMessage(Self->MessageMID, MSGID_QUIT, 0, NULL, 0)) {
          return ERR_Okay;
       }
    }
-   else LogErrorMsg("Task is not linked to a message queue or process.");
+   else log.warning("Task is not linked to a message queue or process.");
 
    return ERR_Okay;
 }
@@ -2015,15 +1989,15 @@ SetVar: Variable fields are supported for the general storage of program variabl
 
 static ERROR TASK_SetVar(objTask *Self, struct acSetVar *Args)
 {
+   parasol::Log log;
+
    if ((!Args) OR (!Args->Field) OR (!Args->Value)) return ERR_NullArgs;
 
    // Find the insertion point
 
    LONG i;
    for (i=0; Self->Fields[i]; i++) {
-      if (!StrMatch(Args->Field, Self->Fields[i])) {
-         break;
-      }
+      if (!StrMatch(Args->Field, Self->Fields[i])) break;
    }
 
    if (i < ARRAYSIZE(Self->Fields) - 1) {
@@ -2039,9 +2013,9 @@ static ERROR TASK_SetVar(objTask *Self, struct acSetVar *Args)
 
          return ERR_Okay;
       }
-      else return PostError(ERR_AllocMemory);
+      else return log.warning(ERR_AllocMemory);
    }
-   else return PostError(ERR_ArrayFull);
+   else return log.warning(ERR_ArrayFull);
 }
 
 /*****************************************************************************
@@ -2057,7 +2031,9 @@ process that no more data is incoming).
 
 static ERROR TASK_Write(objTask *Task, struct acWrite *Args)
 {
-   if (!Args) return PostError(ERR_NullArgs);
+   parasol::Log log;
+
+   if (!Args) return log.warning(ERR_NullArgs);
 
 #ifdef _WIN32
    LONG winerror;
@@ -2065,11 +2041,11 @@ static ERROR TASK_Write(objTask *Task, struct acWrite *Args)
       if (!(winerror = winWriteStd(Task->Platform, Args->Buffer, Args->Length))) {
          return ERR_Okay;
       }
-      else return PostError(ERR_Write);
+      else return log.warning(ERR_Write);
    }
-   else return PostError(ERR_Failed);
+   else return log.warning(ERR_Failed);
 #else
-   return PostError(ERR_NoSupport);
+   return log.warning(ERR_NoSupport);
 #endif
 }
 
@@ -2131,10 +2107,10 @@ static ERROR SET_Args(objTask *Self, CSTRING Value)
       if (*Value) { // Extract the argument
          char buffer[400];
          LONG i;
-         for (i=0; (*Value) AND (*Value > 0x20) AND (i < sizeof(buffer)-1);) {
+         for (i=0; (*Value) AND (*Value > 0x20) AND ((size_t)i < sizeof(buffer)-1);) {
             if (*Value IS '"') {
                Value++;
-               while ((i < sizeof(buffer)-1) AND (*Value) AND (*Value != '"')) {
+               while (((size_t)i < sizeof(buffer)-1) AND (*Value) AND (*Value != '"')) {
                   buffer[i++] = *Value++;
                }
                if (*Value IS '"') Value++;
@@ -2181,13 +2157,15 @@ CSTRING Args[] = {
 
 static ERROR GET_Parameters(objTask *Self, CSTRING **Value, LONG *Elements)
 {
+   parasol::Log log;
+
    if (Self->Parameters) {
       *Value = Self->Parameters;
       *Elements = 0;
       return ERR_Okay;
    }
    else if (!Self->ParametersMID) {
-      LogMsg("No arguments to return.");
+      log.msg("No arguments to return.");
       *Value = NULL;
       *Elements = 0;
       return ERR_FieldNotSet;
@@ -2213,14 +2191,16 @@ static ERROR GET_Parameters(objTask *Self, CSTRING **Value, LONG *Elements)
    else {
       *Value = NULL;
       *Elements = 0;
-      return PostError(ERR_AccessMemory);
+      return log.warning(ERR_AccessMemory);
    }
 }
 
 static ERROR SET_Parameters(objTask *Self, CSTRING *Value, LONG Elements)
 {
+   parasol::Log log;
+
    if (Self->Parameters)    { ReleaseMemoryID(Self->ParametersMID); Self->Parameters = NULL; }
-   if (Self->ParametersMID) { FreeResourceID(Self->ParametersMID);    Self->ParametersMID = NULL; }
+   if (Self->ParametersMID) { FreeResourceID(Self->ParametersMID);    Self->ParametersMID = 0; }
 
    if (Value) {
       // Calculate the size of the argument array and strings tacked onto the end
@@ -2244,7 +2224,7 @@ static ERROR SET_Parameters(objTask *Self, CSTRING *Value, LONG Elements)
          }
          Self->Parameters[j] = 0;
       }
-      else return PostError(ERR_AllocMemory);
+      else return log.warning(ERR_AllocMemory);
    }
    return ERR_Okay;
 }
@@ -2280,6 +2260,8 @@ Copyright: Copyright/licensing details.
 
 static ERROR GET_Copyright(objTask *Self, STRING *Value)
 {
+   parasol::Log log;
+
    if (Self->Copyright) {
       *Value = Self->Copyright;
       return ERR_Okay;
@@ -2294,23 +2276,23 @@ static ERROR GET_Copyright(objTask *Self, STRING *Value)
    }
    else {
       *Value = NULL;
-      return PostError(ERR_AccessMemory);
+      return log.warning(ERR_AccessMemory);
    }
 }
 
 static ERROR SET_Copyright(objTask *Self, CSTRING Value)
 {
+   parasol::Log log;
+
    if (Self->Copyright)    { ReleaseMemoryID(Self->CopyrightMID);   Self->Copyright = NULL; }
-   if (Self->CopyrightMID) { FreeResourceID(Self->CopyrightMID); Self->CopyrightMID = NULL; }
+   if (Self->CopyrightMID) { FreeResourceID(Self->CopyrightMID); Self->CopyrightMID = 0; }
 
    if ((Value) AND (*Value)) {
-      LONG i;
-      for (i=0; Value[i]; i++);
-      if (!AllocMemory(i+1, MEM_STRING|MEM_NO_CLEAR|Self->Head.MemFlags, (void **)&Self->Copyright, &Self->CopyrightMID)) {
-         for (i=0; Value[i]; i++) Self->Copyright[i] = Value[i];
-         Self->Copyright[i] = 0;
+      LONG len = StrLength(Value);
+      if (!AllocMemory(len+1, MEM_STRING|MEM_NO_CLEAR|Self->Head.MemFlags, (void **)&Self->Copyright, &Self->CopyrightMID)) {
+         CopyMemory(Value, Self->Copyright, len+1);
       }
-      else return PostError(ERR_AllocMemory);
+      else return log.warning(ERR_AllocMemory);
    }
    return ERR_Okay;
 }
@@ -2505,6 +2487,8 @@ activated.  This will override all other path options, such as the RESET_PATH fl
 
 static ERROR GET_LaunchPath(objTask *Self, STRING *Value)
 {
+   parasol::Log log;
+
    if (Self->LaunchPath) {
       *Value = Self->LaunchPath;
       return ERR_Okay;
@@ -2519,14 +2503,16 @@ static ERROR GET_LaunchPath(objTask *Self, STRING *Value)
    }
    else {
       *Value = NULL;
-      return PostError(ERR_AccessMemory);
+      return log.warning(ERR_AccessMemory);
    }
 }
 
 static ERROR SET_LaunchPath(objTask *Self, CSTRING Value)
 {
+   parasol::Log log;
+
    if (Self->LaunchPath)    { ReleaseMemoryID(Self->LaunchPathMID);   Self->LaunchPath = NULL; }
-   if (Self->LaunchPathMID) { FreeResourceID(Self->LaunchPathMID); Self->LaunchPathMID = NULL; }
+   if (Self->LaunchPathMID) { FreeResourceID(Self->LaunchPathMID); Self->LaunchPathMID = 0; }
 
    if ((Value) AND (*Value)) {
       LONG i;
@@ -2534,7 +2520,7 @@ static ERROR SET_LaunchPath(objTask *Self, CSTRING Value)
       if (!AllocMemory(i+1, MEM_STRING|MEM_NO_CLEAR|Self->Head.MemFlags, (void **)&Self->LaunchPath, &Self->LaunchPathMID)) {
          CopyMemory(Value, Self->LaunchPath, i+1);
       }
-      else return PostError(ERR_AllocMemory);
+      else return log.warning(ERR_AllocMemory);
    }
    return ERR_Okay;
 }
@@ -2555,6 +2541,8 @@ only the quoted portion of the string will be used as the source path.
 
 static ERROR GET_Location(objTask *Self, STRING *Value)
 {
+   parasol::Log log;
+
    if (Self->Location) {
       *Value = Self->Location;
       return ERR_Okay;
@@ -2569,14 +2557,16 @@ static ERROR GET_Location(objTask *Self, STRING *Value)
    }
    else {
       *Value = NULL;
-      return PostError(ERR_AccessMemory);
+      return log.warning(ERR_AccessMemory);
    }
 }
 
 static ERROR SET_Location(objTask *Self, CSTRING Value)
 {
+   parasol::Log log;
+
    if (Self->Location)    { ReleaseMemoryID(Self->LocationMID);   Self->Location = NULL; }
-   if (Self->LocationMID) { FreeResourceID(Self->LocationMID); Self->LocationMID = NULL; }
+   if (Self->LocationMID) { FreeResourceID(Self->LocationMID); Self->LocationMID = 0; }
 
    if ((Value) AND (*Value)) {
       LONG i;
@@ -2591,7 +2581,7 @@ static ERROR SET_Location(objTask *Self, CSTRING Value)
          else for (i=0; *Value; i++) Self->Location[i] = *Value++;
          Self->Location[i] = 0;
       }
-      else return PostError(ERR_AllocMemory);
+      else return log.warning(ERR_AllocMemory);
    }
    return ERR_Okay;
 }
@@ -2683,6 +2673,8 @@ The working folder can be changed at any time by updating the Path with a new fo
 
 static ERROR GET_Path(objTask *Self, STRING *Value)
 {
+   parasol::Log log;
+
    if (Self->Path) {
       *Value = Self->Path;
       return ERR_Okay;
@@ -2697,16 +2689,18 @@ static ERROR GET_Path(objTask *Self, STRING *Value)
    }
    else {
       *Value = NULL;
-      return PostError(ERR_AccessMemory);
+      return log.warning(ERR_AccessMemory);
    }
 }
 
 static ERROR SET_Path(objTask *Self, CSTRING Value)
 {
+   parasol::Log log;
+
    if (Self->Path)    { ReleaseMemoryID(Self->PathMID); Self->Path = NULL; }
    if (Self->PathMID) { FreeResourceID(Self->PathMID); Self->PathMID = 0; }
 
-   LogMsg("New Path: %s", Value);
+   log.msg("New Path: %s", Value);
 
    if ((Value) AND (*Value)) {
       LONG len, j;
@@ -2720,27 +2714,27 @@ static ERROR SET_Path(objTask *Self, CSTRING Value)
          STRING path;
          if (!ResolvePath(Self->Path, RSF_NO_FILE_CHECK, &path)) {
             int result = chdir(path);
-            if (result) LogErrorMsg("Failed to switch current path to: %s", path);
+            if (result) log.warning("Failed to switch current path to: %s", path);
             FreeResource(path);
 
             if (result) return ERR_InvalidPath;
          }
-         else LogErrorMsg("Failed to resolve path \"%s\"", Self->Path);
+         else log.warning("Failed to resolve path \"%s\"", Self->Path);
 #elif _WIN32
          STRING path;
          if (!ResolvePath(Self->Path, RSF_NO_FILE_CHECK|RSF_PATH, &path)) {
             LONG result = chdir(path);
-            if (result) LogErrorMsg("Failed to switch current path to: %s", path);
+            if (result) log.warning("Failed to switch current path to: %s", path);
             FreeResource(path);
 
             if (result) return ERR_InvalidPath;
          }
-         else return PostError(ERR_InvalidPath);
+         else return log.warning(ERR_InvalidPath);
 #else
 #warn Support required for changing the current path.
 #endif
       }
-      else return PostError(ERR_AllocMemory);
+      else return log.warning(ERR_AllocMemory);
    }
    return ERR_Okay;
 }
@@ -2760,6 +2754,8 @@ ProcessPath is set to the working folder in use at the time the process was laun
 
 static ERROR GET_ProcessPath(objTask *Self, CSTRING *Value)
 {
+   parasol::Log log;
+
    if (Self->ProcessPath) {
       *Value = Self->ProcessPath;
       return ERR_Okay;
@@ -2774,7 +2770,7 @@ static ERROR GET_ProcessPath(objTask *Self, CSTRING *Value)
    }
    else {
       *Value = NULL;
-      return PostError(ERR_AccessMemory);
+      return log.warning(ERR_AccessMemory);
    }
 }
 
@@ -2820,13 +2816,15 @@ DoesNotExist: The task is yet to be successfully launched with the Activate acti
 
 static ERROR GET_ReturnCode(objTask *Self, LONG *Value)
 {
+   parasol::Log log;
+
    if (Self->ReturnCodeSet) {
       *Value = Self->ReturnCode;
       return ERR_Okay;
    }
 
    if (!Self->ProcessID) {
-      LogMsg("Task hasn't been launched yet.");
+      log.msg("Task hasn't been launched yet.");
       return ERR_DoesNotExist;
    }
 
@@ -2901,33 +2899,62 @@ static ERROR SET_Short(objTask *Self, CSTRING Value)
 
 //****************************************************************************
 
-static const struct FieldArray clFields[] = {
+static const FieldArray clFields[] = {
    { "TimeOut",         FDF_DOUBLE|FDF_RW,     0, NULL, NULL },
    { "Flags",           FDF_LONGFLAGS|FDF_RI, (MAXINT)&clFlags, NULL, NULL },
-   { "ReturnCode",      FDF_LONG|FDF_RW,      0, GET_ReturnCode, SET_ReturnCode },
+   { "ReturnCode",      FDF_LONG|FDF_RW,      0, (APTR)GET_ReturnCode, (APTR)SET_ReturnCode },
    { "ProcessID",       FDF_LONG|FDF_RI,      0, NULL, NULL },
    // Virtual fields
-   { "Actions",        FDF_POINTER|FDF_R,   0, GET_Actions,          NULL },
-   { "Args",           FDF_STRING|FDF_W,    0, NULL,                 SET_Args },
-   { "Parameters",     FDF_ARRAY|FDF_STRING|FDF_RW, 0, GET_Parameters, SET_Parameters },
-   { "Author",         FDF_STRING|FDF_RW,   0, GET_Author,           SET_Author },
-   { "Copyright",      FDF_STRING|FDF_RW,   0, GET_Copyright,        SET_Copyright },
-   { "Date",           FDF_STRING|FDF_RW,   0, GET_Date,             SET_Date },
-   { "ErrorCallback",  FDF_FUNCTIONPTR|FDF_RI, 0, GET_ErrorCallback, SET_ErrorCallback }, // STDERR
-   { "ExitCallback",   FDF_FUNCTIONPTR|FDF_RW, 0, GET_ExitCallback,  SET_ExitCallback },
-   { "Instance",       FDF_LONG|FDF_R,      0, GET_Instance,         NULL },
-   { "InputCallback",  FDF_FUNCTIONPTR|FDF_RW, 0, GET_InputCallback, SET_InputCallback }, // STDIN
-   { "LaunchPath",     FDF_STRING|FDF_RW,   0, GET_LaunchPath,       SET_LaunchPath },
-   { "Location",       FDF_STRING|FDF_RW,   0, GET_Location,         SET_Location },
-   { "MessageQueue",   FDF_LONG|FDF_R,      0, GET_MessageQueue,     NULL },
-   { "Name",           FDF_STRING|FDF_RW,   0, GET_Name,             SET_Name },
-   { "OutputCallback", FDF_FUNCTIONPTR|FDF_RI, 0, GET_OutputCallback, SET_OutputCallback }, // STDOUT
-   { "Path",           FDF_STRING|FDF_RW,   0, GET_Path,              SET_Path },
-   { "ProcessPath",    FDF_STRING|FDF_R,    0, GET_ProcessPath,       NULL },
-   { "Priority",       FDF_LONG|FDF_W,      0, NULL,                  SET_Priority },
-   { "Short",          FDF_STRING|FDF_RW,   0, GET_Short,             SET_Short },
+   { "Actions",        FDF_POINTER|FDF_R,   0, (APTR)GET_Actions,          NULL },
+   { "Args",           FDF_STRING|FDF_W,    0, NULL,                       (APTR)SET_Args },
+   { "Parameters",     FDF_ARRAY|FDF_STRING|FDF_RW, 0, (APTR)GET_Parameters, (APTR)SET_Parameters },
+   { "Author",         FDF_STRING|FDF_RW,   0, (APTR)GET_Author,           (APTR)SET_Author },
+   { "Copyright",      FDF_STRING|FDF_RW,   0, (APTR)GET_Copyright,        (APTR)SET_Copyright },
+   { "Date",           FDF_STRING|FDF_RW,   0, (APTR)GET_Date,             (APTR)SET_Date },
+   { "ErrorCallback",  FDF_FUNCTIONPTR|FDF_RI, 0, (APTR)GET_ErrorCallback, (APTR)SET_ErrorCallback }, // STDERR
+   { "ExitCallback",   FDF_FUNCTIONPTR|FDF_RW, 0, (APTR)GET_ExitCallback,  (APTR)SET_ExitCallback },
+   { "Instance",       FDF_LONG|FDF_R,      0, (APTR)GET_Instance,         NULL },
+   { "InputCallback",  FDF_FUNCTIONPTR|FDF_RW, 0, (APTR)GET_InputCallback, (APTR)SET_InputCallback }, // STDIN
+   { "LaunchPath",     FDF_STRING|FDF_RW,   0, (APTR)GET_LaunchPath,       (APTR)SET_LaunchPath },
+   { "Location",       FDF_STRING|FDF_RW,   0, (APTR)GET_Location,         (APTR)SET_Location },
+   { "MessageQueue",   FDF_LONG|FDF_R,      0, (APTR)GET_MessageQueue,     NULL },
+   { "Name",           FDF_STRING|FDF_RW,   0, (APTR)GET_Name,             (APTR)SET_Name },
+   { "OutputCallback", FDF_FUNCTIONPTR|FDF_RI, 0, (APTR)GET_OutputCallback, (APTR)SET_OutputCallback }, // STDOUT
+   { "Path",           FDF_STRING|FDF_RW,   0, (APTR)GET_Path,              (APTR)SET_Path },
+   { "ProcessPath",    FDF_STRING|FDF_R,    0, (APTR)GET_ProcessPath,       NULL },
+   { "Priority",       FDF_LONG|FDF_W,      0, NULL,                        (APTR)SET_Priority },
+   { "Short",          FDF_STRING|FDF_RW,   0, (APTR)GET_Short,             (APTR)SET_Short },
    // Synonyms
-   { "Src",            FDF_SYNONYM|FDF_STRING|FDF_RW,   0, GET_Location,     SET_Location },
-   { "ArgsList",       FDF_ARRAY|FDF_STRING|FDF_SYSTEM|FDF_RW, 0, GET_Parameters, SET_Parameters }, // OBSOLETE
+   { "Src",            FDF_SYNONYM|FDF_STRING|FDF_RW, 0, (APTR)GET_Location, (APTR)SET_Location },
+   { "ArgsList",       FDF_ARRAY|FDF_STRING|FDF_SYSTEM|FDF_RW, 0, (APTR)GET_Parameters, (APTR)SET_Parameters }, // OBSOLETE
    END_FIELD
 };
+
+//****************************************************************************
+
+extern "C" ERROR add_task_class(void)
+{
+   parasol::Log log(__FUNCTION__);
+
+   log.branch("");
+
+   if (!NewPrivateObject(ID_METACLASS, 0, (OBJECTPTR *)&TaskClass)) {
+      if (!SetFields((OBJECTPTR)TaskClass,
+            FID_ClassVersion|TFLOAT,  VER_TASK,
+            FID_Name|TSTRING,         "Task",
+            FID_Category|TLONG,       CCF_SYSTEM,
+            FID_FileExtension|TSTR,   "*.exe|*.bat|*.com",
+            FID_FileDescription|TSTR, "Executable File",
+            FID_FileHeader|TSTR,      "[0:$4d5a]|[0:$7f454c46]",
+            FID_Actions|TPTR,         clActions,
+            FID_Methods|TARRAY,       clTaskMethods,
+            FID_Fields|TARRAY,        clFields,
+            FID_Size|TLONG,           sizeof(objTask),
+            FID_Path|TSTR,            "modules:core",
+            TAGEND)) {
+         return acInit(&TaskClass->Head);
+      }
+      else return ERR_SetField;
+   }
+   else return ERR_NewObject;
+}

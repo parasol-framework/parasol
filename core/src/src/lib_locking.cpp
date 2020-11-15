@@ -881,7 +881,7 @@ ERROR AccessMemory(MEMORYID MemoryID, LONG Flags, LONG MilliSeconds, APTR *Resul
    }
 
    // NB: Printing AccessMemory() calls is usually a waste of time unless the process is going to sleep.
-   //MSG("AccessMemory() MemoryID: %d, Flags: $%x, TimeOut: %d", MemoryID, Flags, MilliSeconds);
+   //log.trace("MemoryID: %d, Flags: $%x, TimeOut: %d", MemoryID, Flags, MilliSeconds);
 
    *Result = NULL;
    if (MemoryID < 0) {
@@ -2062,12 +2062,14 @@ obj Object: Pointer to the object to be released.
 
 void ReleasePrivateObject(OBJECTPTR Object)
 {
+   parasol::Log log(__FUNCTION__);
+
    if (!Object) return;
 
    #ifdef DEBUG
       LONG our_thread = get_thread_id();
       if (Object->ThreadID != our_thread) {
-         FMSG("@ReleasePrivateObject()","Invalid call to ReleasePrivateObject(), locked by thread #%d, we are #%d", Object->ThreadID, our_thread);
+         log.traceWarning("Invalid call to ReleasePrivateObject(), locked by thread #%d, we are #%d", Object->ThreadID, our_thread);
          return;
       }
    #endif
@@ -2080,15 +2082,16 @@ void ReleasePrivateObject(OBJECTPTR Object)
    Object->Locked = 0;
 
    if (Object->SleepQueue > 0) {
-      FMSG("ReleasePrivateObject()","Thread: %d - Waking 1 of %d threads", our_thread, Object->SleepQueue);
+      #ifdef DEBUG
+         log.traceBranch("Thread: %d - Waking 1 of %d threads", our_thread, Object->SleepQueue);
+      #endif
 
       if (!thread_lock(TL_PRIVATE_OBJECTS, -1)) {
          if (Object->Flags & (NF_FREE|NF_UNLOCK_FREE)) { // We have to tell other threads that the object is marked for deletion.
             // NB: A lock on PL_WAITLOCKS is not required because we're already protected by the TL_PRIVATE_OBJECTS
             // barrier (which is common between AccessPrivateObject() and ReleasePrivateObject()
             WaitLock *locks = (WaitLock *)ResolveAddress(glSharedControl, glSharedControl->WLOffset);
-            WORD i;
-            for (i=0; i < glSharedControl->WLIndex; i++) {
+            for (WORD i=0; i < glSharedControl->WLIndex; i++) {
                if ((locks[i].WaitingForResourceID IS Object->UniqueID) AND (locks[i].WaitingForResourceType IS RT_OBJECT)) {
                   locks[i].Flags |= WLF_REMOVED;
                }

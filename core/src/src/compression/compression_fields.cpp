@@ -12,9 +12,7 @@ module.  Please refer to the @FileArchive class for further information on this 
 
 static ERROR SET_ArchiveName(objCompression *Self, CSTRING Value)
 {
-   if ((Value) AND (*Value)) {
-      Self->ArchiveHash = StrHash(Value, 0);
-   }
+   if ((Value) AND (*Value)) Self->ArchiveHash = StrHash(Value, 0);
    else Self->ArchiveHash = 0;
 
    if (Self->ArchiveHash) add_archive(Self);
@@ -96,11 +94,13 @@ FeedbackInfo: For script usage only, returns a CompressionFeedback structure.
 
 static ERROR GET_FeedbackInfo(objCompression *Self, struct CompressionFeedback **Value)
 {
+   parasol::Log log;
+
    if (Self->FeedbackInfo) {
       *Value  = Self->FeedbackInfo;
       return ERR_Okay;
    }
-   else return PostError(ERR_FieldNotSet);
+   else return log.warning(ERR_FieldNotSet);
 }
 
 /****************************************************************************
@@ -138,10 +138,12 @@ static ERROR GET_Location(objCompression *Self, CSTRING *Value)
 
 static ERROR SET_Location(objCompression *Self, CSTRING Value)
 {
+   parasol::Log log;
+
    if (Self->Location) { FreeResource(Self->Location); Self->Location = NULL; }
 
    if ((Value) AND (*Value)) {
-      if (!(Self->Location = StrClone(Value))) return PostError(ERR_AllocMemory);
+      if (!(Self->Location = StrClone(Value))) return log.warning(ERR_AllocMemory);
    }
    return ERR_Okay;
 }
@@ -186,7 +188,7 @@ static ERROR SET_Password(objCompression *Self, CSTRING Value)
 {
    if ((Value) AND (*Value)) {
       LONG i;
-      for (i=0; (i < sizeof(Self->Password)-1) AND (Value[i]); i++) Self->Password[i] = Value[i];
+      for (i=0; ((size_t)i < sizeof(Self->Password)-1) AND (Value[i]); i++) Self->Password[i] = Value[i];
       Self->Password[i] = 0;
       Self->Flags |= CMF_PASSWORD;
    }
@@ -211,10 +213,7 @@ Size: Indicates the size of the source archive, in bytes.
 static ERROR GET_Size(objCompression *Self, LARGE *Value)
 {
    *Value = 0;
-
-   if (Self->FileIO) {
-      return GetLarge(Self->FileIO, FID_Size, Value);
-   }
+   if (Self->FileIO) return GetLarge(Self->FileIO, FID_Size, Value);
    else return ERR_Okay;
 }
 
@@ -238,9 +237,8 @@ information that may identify the compressed data is not included in the total.
 static ERROR GET_UncompressedSize(objCompression *Self, LARGE *Value)
 {
    LARGE size = 0;
-   struct ZipFile *filelist;
-   for (filelist=Self->prvFiles; filelist; filelist=(struct ZipFile *)filelist->Next) {
-      size += filelist->OriginalSize;
+   for (ZipFile *f=Self->prvFiles; f; f=(ZipFile *)f->Next) {
+      size += f->OriginalSize;
    }
    *Value = size;
    return ERR_Okay;
@@ -264,6 +262,8 @@ To support GZIP decompression, please set the WindowBits value to 47.
 
 static ERROR SET_WindowBits(objCompression *Self, LONG Value)
 {
+   parasol::Log log;
+
    if (((Value >= 8) AND (Value <= 15)) OR
        ((Value >= -15) AND (Value <= -8)) OR
        (Value IS 15 + 32) OR
@@ -271,5 +271,5 @@ static ERROR SET_WindowBits(objCompression *Self, LONG Value)
       Self->WindowBits = Value;
       return ERR_Okay;
    }
-   else return PostError(ERR_OutOfRange);
+   else return log.warning(ERR_OutOfRange);
 }

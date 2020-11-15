@@ -179,7 +179,9 @@ static void client_server_incoming(SOCKET_HANDLE, struct rkNetSocket *);
 static void resolve_callback(LARGE, FUNCTION *, ERROR, CSTRING, struct IPAddress *, LONG);
 static BYTE check_machine_name(CSTRING HostName) __attribute__((unused));
 static ERROR cache_host(CSTRING, struct hostent *, struct dns_cache **);
+#ifdef __linux__
 static ERROR cache_host(CSTRING, struct addrinfo *, struct dns_cache **);
+#endif
 static ERROR add_netsocket(void);
 static ERROR add_clientsocket(void);
 static ERROR init_proxy(void);
@@ -196,7 +198,6 @@ struct resolve_addr_buffer {
 
 static struct MsgHandler *glResolveNameHandler = NULL;
 static struct MsgHandler *glResolveAddrHandler = NULL;
-static parasol::Log log;
 
 //***************************************************************************
 // Used for receiving asynchronous execution results from netResolveName() and netResolveAddress().
@@ -244,6 +245,8 @@ static ERROR thread_resolve_addr(objThread *Thread)
 
 ERROR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
+   parasol::Log log;
+
    CoreBase = argCoreBase;
 
    GetPointer(argModule, FID_Master, &glModule);
@@ -297,6 +300,8 @@ ERROR MODOpen(OBJECTPTR Module)
 
 static ERROR MODExpunge(void)
 {
+   parasol::Log log;
+
 #ifdef _WIN32
    SetResourcePtr(RES_NET_PROCESSING, NULL);
 #endif
@@ -527,6 +532,8 @@ Failed: The address could not be resolved
 
 static ERROR netResolveAddress(CSTRING Address, LONG Flags, FUNCTION *Callback, LARGE ClientData)
 {
+   parasol::Log log(__FUNCTION__);
+
    if (!Address) return log.error(ERR_NullArgs);
 
    struct IPAddress ip;
@@ -1138,6 +1145,7 @@ static ERROR cache_host(CSTRING HostName, struct hostent *Host, struct dns_cache
    return ERR_Okay;
 }
 
+#ifdef __linux__
 static ERROR cache_host(CSTRING HostName, struct addrinfo *Host, struct dns_cache **Cache)
 {
    if ((!Host) OR (!Cache)) return ERR_NullArgs;
@@ -1211,6 +1219,7 @@ static ERROR cache_host(CSTRING HostName, struct addrinfo *Host, struct dns_cach
    *Cache = cache;
    return ERR_Okay;
 }
+#endif
 
 //***************************************************************************
 

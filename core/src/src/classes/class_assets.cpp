@@ -95,7 +95,7 @@ ERROR add_asset_class(void)
    log.branch("");
 
    if (!(openinfo = GetResourcePtr(RES_OPENINFO))) {
-      LogErrorMsg("No OpenInfo structure set during Core initialisation.");
+      log.warning("No OpenInfo structure set during Core initialisation.");
       return ERR_Failed;
    }
 
@@ -126,7 +126,7 @@ ERROR add_asset_class(void)
       glAssetManagerFree = TRUE;
 
       if ((!env) OR (!classname)) {
-         LogErrorMsg("Android env and class name must be defined when opening the Core.");
+         log.warning("Android env and class name must be defined when opening the Core.");
          return ERR_Failed;
       }
 
@@ -168,7 +168,6 @@ ERROR add_asset_class(void)
                            VAS_GET_INFO,  &get_info,
                            0);
 
-   LogReturn();
    return ERR_Okay;
 }
 

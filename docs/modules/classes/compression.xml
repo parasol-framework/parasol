@@ -35,8 +35,8 @@ err = cmp.mtDecompressFile('*.def', 'temp:')
 <p>To adjust the level of compression used to pack each file, set the <field>CompressionLevel</field> field to a value between 0 and 100%.</p>
 <p>This code is based on the work of Jean-loup Gailly and Mark Adler.</p></description>
     <source>
-      <file path="src/compression/">class_compression.c</file>
-      <file path="src/compression/">compression_fields.c</file>
+      <file path="src/compression/">class_compression.cpp</file>
+      <file path="src/compression/">compression_fields.cpp</file>
     </source>
   </info>
 
@@ -533,10 +533,13 @@ if (!error) {
       <const name="ERROR"/>
       <const name="WARNING"/>
       <const name="DEBUG"/>
-      <const name="FUNCTION"/>
+      <const name="EXTAPI"/>
+      <const name="BRANCH"/>
+      <const name="INFO"/>
+      <const name="API"/>
       <const name="TRACE"/>
       <const name="CRITICAL"/>
-      <const name="BRANCH"/>
+      <const name="FUNCTION"/>
     </constants>
 
     <constants lookup="MOF" comment="Module flags">

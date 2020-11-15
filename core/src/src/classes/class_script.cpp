@@ -32,9 +32,9 @@ static ERROR SET_String(objScript *, CSTRING);
 
 INLINE CSTRING check_bom(CSTRING Value)
 {
-   if (((UBYTE)Value[0] IS 0xef) AND ((UBYTE)Value[1] IS 0xbb) AND ((UBYTE)Value[2] IS 0xbf)) Value += 3; // UTF-8 BOM
-   else if (((UBYTE)Value[0] IS 0xfe) AND ((UBYTE)Value[1] IS 0xff)) Value += 2; // UTF-16 BOM big endian
-   else if (((UBYTE)Value[0] IS 0xff) AND ((UBYTE)Value[1] IS 0xfe)) Value += 2; // UTF-16 BOM little endian
+   if ((Value[0] IS 0xef) AND (Value[1] IS 0xbb) AND (Value[2] IS 0xbf)) Value += 3; // UTF-8 BOM
+   else if ((Value[0] IS 0xfe) AND (Value[1] IS 0xff)) Value += 2; // UTF-16 BOM big endian
+   else if ((Value[0] IS 0xff) AND (Value[1] IS 0xfe)) Value += 2; // UTF-16 BOM little endian
    return Value;
 }
 
@@ -60,10 +60,10 @@ static ERROR SCRIPT_DataFeed(objScript *Self, struct acDataFeed *Args)
    if (!Args) return ERR_NullArgs;
 
    if (Args->DataType IS DATA_XML) {
-      SetString(Self, FID_String, Args->Buffer);
+      SetString(Self, FID_String, (CSTRING)Args->Buffer);
    }
    else if (Args->DataType IS DATA_TEXT) {
-      SetString(Self, FID_String, Args->Buffer);
+      SetString(Self, FID_String, (CSTRING)Args->Buffer);
    }
 
    return ERR_Okay;
@@ -163,8 +163,10 @@ Args: The TotalArgs value is invalid.
 
 static ERROR SCRIPT_Exec(objScript *Self, struct scExec *Args)
 {
-   if (!Args) return PostError(ERR_NullArgs);
-   if ((Args->TotalArgs < 0) OR (Args->TotalArgs > 32)) return PostError(ERR_Args);
+   parasol::Log log;
+
+   if (!Args) return log.warning(ERR_NullArgs);
+   if ((Args->TotalArgs < 0) OR (Args->TotalArgs > 32)) return log.warning(ERR_Args);
 
    LARGE save_id = Self->ProcedureID;
    CSTRING save_name = Self->Procedure;
@@ -209,8 +211,10 @@ Args:
 
 static ERROR SCRIPT_Callback(objScript *Self, struct scCallback *Args)
 {
-   if (!Args) return PostError(ERR_NullArgs);
-   if ((Args->TotalArgs < 0) OR (Args->TotalArgs > 1024)) return PostError(ERR_Args);
+   parasol::Log log;
+
+   if (!Args) return log.warning(ERR_NullArgs);
+   if ((Args->TotalArgs < 0) OR (Args->TotalArgs > 1024)) return log.warning(ERR_Args);
 
    LARGE save_id = Self->ProcedureID;
    CSTRING save_name = Self->Procedure;
@@ -278,7 +282,9 @@ NullArgs
 
 static ERROR SCRIPT_GetProcedureID(objScript *Self, struct scGetProcedureID *Args)
 {
-   if ((!Args) OR (!Args->Procedure) OR (!Args->Procedure[0])) return PostError(ERR_NullArgs);
+   parasol::Log log;
+
+   if ((!Args) OR (!Args->Procedure) OR (!Args->Procedure[0])) return log.warning(ERR_NullArgs);
 
    Args->ProcedureID = StrHash(Args->Procedure, 0);
 
@@ -293,8 +299,10 @@ GetVar: Script parameters can be retrieved through this action.
 
 static ERROR SCRIPT_GetVar(objScript *Self, struct acGetVar *Args)
 {
+   parasol::Log log;
+
    if ((!Args) OR (!Args->Buffer) OR (!Args->Field)) return ERR_NullArgs;
-   if (Args->Size < 2) return PostError(ERR_Args);
+   if (Args->Size < 2) return log.warning(ERR_Args);
 
    CSTRING arg = VarGetString(Self->Vars, Args->Field);
 
@@ -312,8 +320,10 @@ static ERROR SCRIPT_GetVar(objScript *Self, struct acGetVar *Args)
 
 static ERROR SCRIPT_Init(objScript *Self, APTR Void)
 {
+   parasol::Log log;
+
    if (!Self->TargetID) { // Define the target if it has not been set already
-      LogF("6","Target not set, defaulting to owner #%d.", Self->Head.OwnerID);
+      log.debug("Target not set, defaulting to owner #%d.", Self->Head.OwnerID);
       Self->TargetID = Self->Head.OwnerID;
    }
 
@@ -357,12 +367,14 @@ SetVar: Script parameters can be set through this action.
 
 static ERROR SCRIPT_SetVar(objScript *Self, struct acSetVar *Args)
 {
+   parasol::Log log;
+
    // It is acceptable to set zero-length string values (this has its uses in some scripts).
 
    if ((!Args) OR (!Args->Field) OR (!Args->Value)) return ERR_NullArgs;
    if (!Args->Field[0]) return ERR_NullArgs;
 
-   MSG("%s = %s", Args->Field, Args->Value);
+   log.trace("%s = %s", Args->Field, Args->Value);
 
    CSTRING field = Args->Field;
    if (*field IS '%') field++;
@@ -490,6 +502,8 @@ static ERROR GET_Path(objScript *Self, STRING *Value)
 
 static ERROR SET_Path(objScript *Self, CSTRING Value)
 {
+   parasol::Log log;
+
    if (Self->Path) {
       // If the location has already been set, throw the value to SetVar instead.
 
@@ -517,7 +531,7 @@ static ERROR SET_Path(objScript *Self, CSTRING Value)
             // If a semi-colon has been used, this indicates that a procedure follows the filename.
 
             if (Value[i] IS ';') {
-               UBYTE buffer[800], arg[100], argval[400];
+               char buffer[800], arg[100], argval[400];
 
                i++;
                while ((Value[i]) AND (Value[i] <= 0x20)) i++;
@@ -611,6 +625,8 @@ static ERROR GET_Owner(objScript *Self, OBJECTID *Value)
 
 static ERROR SET_Owner(objScript *Self, OBJECTID Value)
 {
+   parasol::Log log;
+
    if (Value) {
       OBJECTPTR newowner;
       if (!AccessObject(Value, 2000, &newowner)) {
@@ -618,9 +634,9 @@ static ERROR SET_Owner(objScript *Self, OBJECTID Value)
          ReleaseObject(newowner);
          return ERR_Okay;
       }
-      else return PostError(ERR_ExclusiveDenied);
+      else return log.warning(ERR_ExclusiveDenied);
    }
-   else return PostError(ERR_Args);
+   else return log.warning(ERR_Args);
 }
 
 /*****************************************************************************
@@ -682,15 +698,16 @@ static ERROR GET_Results(objScript *Self, STRING **Value, LONG *Elements)
 
 static ERROR SET_Results(objScript *Self, CSTRING *Value, LONG Elements)
 {
+   parasol::Log log;
+
    if (Self->Results) { FreeResource(Self->Results); Self->Results = 0; }
 
    Self->ResultsTotal = 0;
 
    if (Value) {
-      LONG i;
       LONG len = 0;
-      for (i=0; i < Elements; i++) {
-         if (!Value[i]) return PostError(ERR_InvalidData);
+      for (LONG i=0; i < Elements; i++) {
+         if (!Value[i]) return log.warning(ERR_InvalidData);
          len += StrLength(Value[i]) + 1;
       }
       Self->ResultsTotal = Elements;
@@ -794,11 +811,13 @@ You can manually change the working path by setting this field with a custom str
 
 static ERROR GET_WorkingPath(objScript *Self, STRING *Value)
 {
+   parasol::Log log;
+
    // The working path is determined when the first attempt to read it is made.
 
    if (!Self->WorkingPath) {
       if (!Self->Path) {
-         LogErrorMsg("Script has no defined Path.");
+         log.warning("Script has no defined Path.");
          return ERR_MissingPath;
       }
 
@@ -828,7 +847,7 @@ static ERROR GET_WorkingPath(objScript *Self, STRING *Value)
       if (path) {
          // Extract absolute path
 
-         UBYTE save = Self->Path[j];
+         char save = Self->Path[j];
          Self->Path[j] = 0;
          OBJECTPTR context = SetContext(&Self->Head);
             Self->WorkingPath = StrClone(Self->Path);
@@ -836,12 +855,12 @@ static ERROR GET_WorkingPath(objScript *Self, STRING *Value)
          Self->Path[j] = save;
       }
       else if ((!GetString(CurrentTask(), FID_Path, &workingpath)) AND (workingpath)) {
-         UBYTE buf[1024];
+         char buf[1024];
 
          // Using ResolvePath() can help to determine relative paths such as "../path/file"
 
          if (j > 0) {
-            UBYTE save = Self->Path[j];
+            char save = Self->Path[j];
             Self->Path[j] = 0;
             StrFormat(buf, sizeof(buf), "%s%s", workingpath, Self->Path);
             Self->Path[j] = save;
@@ -854,7 +873,7 @@ static ERROR GET_WorkingPath(objScript *Self, STRING *Value)
          }
          SetContext(context);
       }
-      else LogErrorMsg("No working path.");
+      else log.warning("No working path.");
    }
 
    *Value = Self->WorkingPath;
@@ -879,27 +898,27 @@ static const struct FieldArray clScriptFields[] = {
    { "CurrentLine",   FDF_LONG|FDF_R,       0, NULL, NULL },
    { "LineOffset",    FDF_LONG|FDF_RW,      0, NULL, NULL },
    // Virtual Fields
-   { "CacheFile",      FDF_STRING|FDF_RW,              0, GET_CacheFile, SET_CacheFile },
-   { "ErrorString",    FDF_STRING|FDF_RW,              0, GET_ErrorString, SET_ErrorString },
-   { "WorkingPath",    FDF_STRING|FDF_RW,              0, GET_WorkingPath, SET_WorkingPath },
-   { "Language",       FDF_STRING|FDF_R,               0, GET_Language, NULL },
-   { "Location",       FDF_SYNONYM|FDF_STRING|FDF_RI,  0, GET_Path, SET_Path },
-   { "Procedure",      FDF_STRING|FDF_RW,              0, GET_Procedure, SET_Procedure },
-   { "Name",           FDF_STRING|FDF_SYSTEM|FDF_RW,   0, NULL, SET_Name },
-   { "Owner",          FDF_OBJECTID|FDF_SYSTEM|FDF_RW, 0, GET_Owner, SET_Owner },
-   { "Path",           FDF_STRING|FDF_RI,              0, GET_Path, SET_Path },
-   { "Results",        FDF_ARRAY|FDF_POINTER|FDF_STRING|FDF_RW, 0, GET_Results, SET_Results },
-   { "Src",            FDF_SYNONYM|FDF_STRING|FDF_RI,  0, GET_Path, SET_Path },
-   { "Statement",      FDF_STRING|FDF_RW,              0, GET_String, SET_String },
-   { "String",         FDF_SYNONYM|FDF_STRING|FDF_RW,  0, GET_String, SET_String },
-   { "TotalArgs",      FDF_LONG|FDF_R,                 0, GET_TotalArgs, NULL },
-   { "Variables",      FDF_POINTER|FDF_SYSTEM|FDF_R,   0, GET_Variables, NULL },
+   { "CacheFile",      FDF_STRING|FDF_RW,              0, (APTR)GET_CacheFile, (APTR)SET_CacheFile },
+   { "ErrorString",    FDF_STRING|FDF_RW,              0, (APTR)GET_ErrorString, (APTR)SET_ErrorString },
+   { "WorkingPath",    FDF_STRING|FDF_RW,              0, (APTR)GET_WorkingPath, (APTR)SET_WorkingPath },
+   { "Language",       FDF_STRING|FDF_R,               0, (APTR)GET_Language, NULL },
+   { "Location",       FDF_SYNONYM|FDF_STRING|FDF_RI,  0, (APTR)GET_Path, (APTR)SET_Path },
+   { "Procedure",      FDF_STRING|FDF_RW,              0, (APTR)GET_Procedure, (APTR)SET_Procedure },
+   { "Name",           FDF_STRING|FDF_SYSTEM|FDF_RW,   0, NULL, (APTR)SET_Name },
+   { "Owner",          FDF_OBJECTID|FDF_SYSTEM|FDF_RW, 0, (APTR)GET_Owner, (APTR)SET_Owner },
+   { "Path",           FDF_STRING|FDF_RI,              0, (APTR)GET_Path, (APTR)SET_Path },
+   { "Results",        FDF_ARRAY|FDF_POINTER|FDF_STRING|FDF_RW, 0, (APTR)GET_Results, (APTR)SET_Results },
+   { "Src",            FDF_SYNONYM|FDF_STRING|FDF_RI,  0, (APTR)GET_Path, (APTR)SET_Path },
+   { "Statement",      FDF_STRING|FDF_RW,              0, (APTR)GET_String, (APTR)SET_String },
+   { "String",         FDF_SYNONYM|FDF_STRING|FDF_RW,  0, (APTR)GET_String, (APTR)SET_String },
+   { "TotalArgs",      FDF_LONG|FDF_R,                 0, (APTR)GET_TotalArgs, NULL },
+   { "Variables",      FDF_POINTER|FDF_SYSTEM|FDF_R,   0, (APTR)GET_Variables, NULL },
    END_FIELD
 };
 
 //****************************************************************************
 
-ERROR add_script_class(void)
+extern "C" ERROR add_script_class(void)
 {
    return(CreateObject(ID_METACLASS, 0, (OBJECTPTR *)&glScriptClass,
       FID_ClassVersion|TFLOAT, VER_SCRIPT,

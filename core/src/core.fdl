@@ -101,7 +101,7 @@ module({ name="Core", copyright="Paul Manias 1996-2020" }, function()
 
   flags("MTF", { comment="MoveToPoint flags" }, "X", "Y", "Z", "ANIM", "RELATIVE")
 
-  flags("VLF", { comment="VlogF flags" }, "BRANCH", "ERROR", "WARNING", "CRITICAL", "DEBUG", "TRACE", "FUNCTION")
+  flags("VLF", { comment="VlogF flags" }, "BRANCH", "ERROR", "WARNING", "CRITICAL", "INFO", "API", "EXTAPI", "DEBUG", "TRACE", "FUNCTION")
 
   flags("MOF", { comment="Module flags" },
     "LINK_LIBRARY: Module refers to a symbolic link library (e.g. libz DLL or SO)",
@@ -947,7 +947,7 @@ struct ScriptArg { // For use with scExec
 };
   ]])
 
-  class("StorageDevice", { src="src/classes/class_storagedevice.c" }, [[
+  class("StorageDevice", { src="src/classes/class_storagedevice.cpp" }, [[
     large(DEVICE) DeviceFlags  # Flags identifying the type of media
     large DeviceSize           # Size of the device
     large BytesFree            # Bytes available to the user
@@ -1342,7 +1342,7 @@ INLINE ERROR cfgWriteInt(APTR Self, CSTRING Section, CSTRING Key, LONG Integer)
     { id=4, name="GetProcedureID" }
   })
 
-  class("Script", { src={ "src/classes/class_script.c" }, output="src/classes/class_script_def.c" }, [[
+  class("Script", { src={ "src/classes/class_script.cpp" }, output="src/classes/class_script_def.c" }, [[
     oid Target           # The object that script objects must be initialised to, e.g. for obj.new()
     int(SCF) Flags       # Optional flags
     error Error          # If an error occurred, this field will indicate the error number
@@ -1410,7 +1410,7 @@ INLINE ERROR cfgWriteInt(APTR Self, CSTRING Section, CSTRING Key, LONG Integer)
     { id=6, name="CloseInstance" }
   })
 
-  class("Task", { src="src/classes/class_task.c", output="src/classes/class_task_def.c" }, [[
+  class("Task", { src="src/classes/class_task.cpp", output="src/classes/class_task_def.c" }, [[
     double TimeOut
     int Flags
     int ReturnCode
@@ -1468,7 +1468,7 @@ INLINE ERROR cfgWriteInt(APTR Self, CSTRING Section, CSTRING Key, LONG Integer)
     { id=2, name="Wait" }
   })
 
-  class("Thread", { src="src/classes/class_thread.c", output="src/classes/class_thread_def.c" }, [[
+  class("Thread", { src="src/classes/class_thread.cpp", output="src/classes/class_thread_def.c" }, [[
    ptr   Data         # User data pointer.
    int   DataSize     # Size of user data.
    int   StackSize    # Pre-set stack size
@@ -1509,7 +1509,7 @@ struct TaskList {
     { id=1,  name="ResolveSymbol" },
   })
 
-  class("Module", { src="src/classes/class_module.c" }, [[
+  class("Module", { src="src/classes/class_module.cpp" }, [[
     double Version                  # Minimum required version of the module
     cstruct(*Function) FunctionList # Array of functions
     ptr ModBase                     # Ptr to function jump table
@@ -1529,7 +1529,7 @@ struct TaskList {
     { id=1, name="SetTime" },
   })
 
-  class("Time", { src="src/classes/class_time.c" }, [[
+  class("Time", { src="src/classes/class_time.cpp" }, [[
     large SystemTime  # Total number of microseconds passed since the system base time
     int Year          # Year   (-ve for BC, +ve for AD)
     int Month         # Month  (1 - 12)
@@ -1560,7 +1560,7 @@ struct TaskList {
     { id=14, name="Find" }
   })
 
-  class("Compression", { src={ "src/compression/class_compression.c", "src/compression/compression_fields.c" }, output="src/compression/class_compression_def.c" }, [[
+  class("Compression", { src={ "src/compression/class_compression.cpp", "src/compression/compression_fields.cpp" }, output="src/compression/class_compression_def.c" }, [[
     large TotalOutput       # Total number of bytes output (e.g. during compression of a stream)
     oid Output              # Reference to output object for user messages
     int CompressionLevel    # Compression level (percentage - 0% none, 100% high)

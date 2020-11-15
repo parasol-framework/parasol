@@ -18,7 +18,7 @@
 <p>To execute a script, set the <field>Path</field> field and then <action>Activate</action> the Script object.  Global input parameters for the script can be defined via the <action>SetVar</action> action.</p>
 <p>Activating a script can result in the generation of objects that outlive the script after it is destroyed.</p></description>
     <source>
-      <file path="src/classes/">class_script.c</file>
+      <file path="src/classes/">class_script.cpp</file>
     </source>
   </info>
 
@@ -306,10 +306,13 @@ SET_FUNCTION_SCRIPT(callback, script, procedure_id);
       <const name="ERROR"/>
       <const name="WARNING"/>
       <const name="DEBUG"/>
-      <const name="FUNCTION"/>
+      <const name="EXTAPI"/>
+      <const name="BRANCH"/>
+      <const name="INFO"/>
+      <const name="API"/>
       <const name="TRACE"/>
       <const name="CRITICAL"/>
-      <const name="BRANCH"/>
+      <const name="FUNCTION"/>
     </constants>
 
     <constants lookup="MOF" comment="Module flags">

@@ -58,17 +58,13 @@ This code is based on the work of Jean-loup Gailly and Mark Adler.
 static ERROR compress_folder(objCompression *, CSTRING, CSTRING);
 static ERROR compress_file(objCompression *, CSTRING, CSTRING, BYTE);
 static void print(objCompression *, CSTRING);
-static ERROR remove_file(objCompression *, struct ZipFile **);
+static ERROR remove_file(objCompression *, ZipFile **);
 static ERROR scan_zip(objCompression *);
 static ERROR fast_scan_zip(objCompression *);
-static ERROR send_feedback(objCompression *, struct CompressionFeedback *);
+static ERROR send_feedback(objCompression *, CompressionFeedback *);
 static void write_eof(objCompression *Self);
 
 static ERROR GET_Size(objCompression *, LARGE *);
-
-static const struct MethodArray clCompressionMethods[];
-static const struct ActionArray clCompressionActions[];
-static const struct FieldArray clFields[];
 
 //****************************************************************************
 // Special definitions.
@@ -120,21 +116,18 @@ static const UBYTE glTail[TAIL_LENGTH] = {
    // End of file comment follows
 };
 
-ERROR add_compression_class(void)
+#undef FreeFromLL
+
+void FreeFromLL(CompressedFile *a, CompressedFile *b, CompressedFile **c)
 {
-   return(CreateObject(ID_METACLASS, 0, (OBJECTPTR *)&glCompressionClass,
-      FID_ClassVersion|TFLOAT,  VER_COMPRESSION,
-      FID_Name|TSTRING,         "Compression",
-      FID_FileExtension|TSTR,   "*.zip",
-      FID_FileDescription|TSTR, "ZIP File",
-      FID_FileHeader|TSTR,      "[0:$504b0304]",
-      FID_Category|TLONG,       CCF_DATA,
-      FID_Actions|TPTR,         clCompressionActions,
-      FID_Methods|TARRAY,       clCompressionMethods,
-      FID_Fields|TARRAY,        clFields,
-      FID_Size|TLONG,           sizeof(objCompression),
-      FID_Path|TSTR,            "modules:core",
-      TAGEND));
+   if (a->Prev) a->Prev->Next = a->Next;
+   if (a->Next) a->Next->Prev = a->Prev;
+   if (a == b) {
+      *c = a->Next;
+      if (a->Next) a->Next->Prev = 0;
+   }
+   a->Prev = 0;
+   a->Next = 0;
 }
 
 //****************************************************************************
@@ -186,13 +179,15 @@ BufferOverflow: The output buffer is not large enough.
 
 static ERROR COMPRESSION_CompressBuffer(objCompression *Self, struct cmpCompressBuffer *Args)
 {
+   parasol::Log log;
+
    if ((!Args) OR (!Args->Input) OR (Args->InputSize <= 0) OR (!Args->Output) OR (Args->OutputSize <= 8)) {
-      return PostError(ERR_Args);
+      return log.warning(ERR_Args);
    }
 
-   Self->prvZip.next_in   = Args->Input;
+   Self->prvZip.next_in   = (Bytef *)Args->Input;
    Self->prvZip.avail_in  = Args->InputSize;
-   Self->prvZip.next_out  = Args->Output + 8;
+   Self->prvZip.next_out  = (Bytef *)Args->Output + 8;
    Self->prvZip.avail_out = Args->OutputSize - 8;
 
    LONG err, level;
@@ -206,19 +201,19 @@ static ERROR COMPRESSION_CompressBuffer(objCompression *Self, struct cmpCompress
          Args->Result = Self->prvZip.total_out + 8;
          deflateEnd(&Self->prvZip);
 
-         ((BYTE *)Args->Output)[0] = 'Z';
-         ((BYTE *)Args->Output)[1] = 'L';
-         ((BYTE *)Args->Output)[2] = 'I';
-         ((BYTE *)Args->Output)[3] = 'B';
+         ((char *)Args->Output)[0] = 'Z';
+         ((char *)Args->Output)[1] = 'L';
+         ((char *)Args->Output)[2] = 'I';
+         ((char *)Args->Output)[3] = 'B';
          ((LONG *)Args->Output)[1] = Self->prvZip.total_out;
          return ERR_Okay;
       }
       else {
          deflateEnd(&Self->prvZip);
-         return PostError(ERR_BufferOverflow);
+         return log.warning(ERR_BufferOverflow);
       }
    }
-   else return PostError(ERR_Failed);
+   else return log.warning(ERR_Failed);
 }
 
 /*****************************************************************************
@@ -236,6 +231,8 @@ Failed: Failed to initialise the decompression process.
 
 static ERROR COMPRESSION_CompressStreamStart(objCompression *Self, APTR Void)
 {
+   parasol::Log log;
+
    if (Self->Deflating) {
       deflateEnd(&Self->Stream);
       Self->Deflating = FALSE;
@@ -250,11 +247,11 @@ static ERROR COMPRESSION_CompressStreamStart(objCompression *Self, APTR Void)
    Self->TotalOutput = 0;
    LONG err;
    if ((err = deflateInit2(&Self->Stream, level, Z_DEFLATED, Self->WindowBits, ZLIB_MEM_LEVEL, Z_DEFAULT_STRATEGY)) IS ERR_Okay) {
-      MSG("Compression stream initialised.");
+      log.trace("Compression stream initialised.");
       Self->Deflating = TRUE;
       return ERR_Okay;
    }
-   else return PostError(ERR_Failed);
+   else return log.warning(ERR_Failed);
 }
 
 /*****************************************************************************
@@ -330,11 +327,13 @@ Retry: Please recall the method using a larger output buffer.
 
 static ERROR COMPRESSION_CompressStream(objCompression *Self, struct cmpCompressStream *Args)
 {
-   if ((!Args) OR (!Args->Input) OR (!Args->Callback)) return PostError(ERR_NullArgs);
+   parasol::Log log;
 
-   if (!Self->Deflating) return PostError(ERR_Failed);
+   if ((!Args) OR (!Args->Input) OR (!Args->Callback)) return log.warning(ERR_NullArgs);
 
-   Self->Stream.next_in   = Args->Input;
+   if (!Self->Deflating) return log.warning(ERR_Failed);
+
+   Self->Stream.next_in   = (Bytef *)Args->Input;
    Self->Stream.avail_in  = Args->Length;
 
    APTR output;
@@ -342,7 +341,7 @@ static ERROR COMPRESSION_CompressStream(objCompression *Self, struct cmpCompress
    if ((output = Args->Output)) {
       outputsize = Args->OutputSize;
       if (outputsize < Self->MinOutputSize) {
-         LogErrorMsg("OutputSize (%d) < MinOutputSize (%d)", outputsize, Self->MinOutputSize);
+         log.warning("OutputSize (%d) < MinOutputSize (%d)", outputsize, Self->MinOutputSize);
          return ERR_BufferOverflow;
       }
    }
@@ -358,7 +357,7 @@ static ERROR COMPRESSION_CompressStream(objCompression *Self, struct cmpCompress
       outputsize = Self->OutputSize;
    }
 
-   MSG("Compressing Input: %p, Len: %d to buffer of size %d bytes.", Args->Input, Args->Length, outputsize);
+   log.trace("Compressing Input: %p, Len: %d to buffer of size %d bytes.", Args->Input, Args->Length, outputsize);
 
    // If zlib succeeds but sets avail_out to zero, this means that data was written to the output buffer, but the
    // output buffer is not large enough (so keep calling until avail_out > 0).
@@ -366,7 +365,7 @@ static ERROR COMPRESSION_CompressStream(objCompression *Self, struct cmpCompress
    ERROR error;
    Self->Stream.avail_out = 0;
    while (Self->Stream.avail_out IS 0) {
-      Self->Stream.next_out  = output;
+      Self->Stream.next_out  = (Bytef *)output;
       Self->Stream.avail_out = outputsize;
       if ((err = deflate(&Self->Stream, Z_NO_FLUSH))) {
          deflateEnd(&Self->Stream);
@@ -380,19 +379,17 @@ static ERROR COMPRESSION_CompressStream(objCompression *Self, struct cmpCompress
       if (len > 0) {
          Self->TotalOutput += len;
 
-         MSG("%d bytes (total " PF64() ") were compressed.", len, Self->TotalOutput);
+         log.trace("%d bytes (total " PF64() ") were compressed.", len, Self->TotalOutput);
 
          if (Args->Callback->Type IS CALL_STDC) {
-            ERROR (*routine)(objCompression *Self, APTR Output, LONG Length);
-            OBJECTPTR context = SetContext(Args->Callback->StdC.Context);
-               routine = Args->Callback->StdC.Routine;
-               error = routine(Self, output, len);
-            SetContext(context);
+            parasol::SwitchContext context(Args->Callback->StdC.Context);
+            auto routine = (ERROR (*)(objCompression *, APTR, LONG))Args->Callback->StdC.Routine;
+            error = routine(Self, output, len);
          }
          else if (Args->Callback->Type IS CALL_SCRIPT) {
             OBJECTPTR script = Args->Callback->Script.Script;
             if (script) {
-               const struct ScriptArg args[] = {
+               const ScriptArg args[] = {
                   { "Compression", FD_OBJECTPTR, { .Address = Self } },
                   { "Output", FD_BUFFER, { .Address = output } },
                   { "OutputLength", FD_LONG|FD_BUFSIZE, { .Long = len } }
@@ -404,7 +401,7 @@ static ERROR COMPRESSION_CompressStream(objCompression *Self, struct cmpCompress
             else error = ERR_Terminate;
          }
          else {
-            LogErrorMsg("Callback function structure does not specify a recognised Type.");
+            log.warning("Callback function structure does not specify a recognised Type.");
             break;
          }
       }
@@ -412,12 +409,12 @@ static ERROR COMPRESSION_CompressStream(objCompression *Self, struct cmpCompress
          // deflate() may not output anything if it needs more data to fill up a compression frame.  Return ERR_Okay
          // and wait for more data, or for the developer to call CompressStreamEnd().
 
-         //MSG("No data output on this cycle.");
+         //log.trace("No data output on this cycle.");
          break;
       }
    }
 
-   if (error) PostError(error);
+   if (error) log.warning(error);
    return error;
 }
 
@@ -445,7 +442,9 @@ BufferOverflow: The supplied Output buffer is not large enough (check the MinOut
 
 static ERROR COMPRESSION_CompressStreamEnd(objCompression *Self, struct cmpCompressStreamEnd *Args)
 {
-   if ((!Args) OR (!Args->Callback)) return PostError(ERR_NullArgs);
+   parasol::Log log;
+
+   if ((!Args) OR (!Args->Callback)) return log.warning(ERR_NullArgs);
    if (!Self->Deflating) return ERR_Okay;
 
    APTR output;
@@ -453,14 +452,14 @@ static ERROR COMPRESSION_CompressStreamEnd(objCompression *Self, struct cmpCompr
 
    if ((output = Args->Output)) {
       outputsize = Args->OutputSize;
-      if (outputsize < Self->MinOutputSize) return PostError(ERR_BufferOverflow);
+      if (outputsize < Self->MinOutputSize) return log.warning(ERR_BufferOverflow);
    }
    else if ((output = Self->OutputBuffer)) {
       outputsize = Self->OutputSize;
    }
-   else return PostError(ERR_FieldNotSet);
+   else return log.warning(ERR_FieldNotSet);
 
-   MSG("Output Size: %d", outputsize);
+   log.trace("Output Size: %d", outputsize);
 
    Self->Stream.next_in   = 0;
    Self->Stream.avail_in  = 0;
@@ -469,28 +468,26 @@ static ERROR COMPRESSION_CompressStreamEnd(objCompression *Self, struct cmpCompr
    ERROR error;
    LONG err = Z_OK;
    while ((Self->Stream.avail_out IS 0) AND (err IS Z_OK)) {
-      Self->Stream.next_out  = output;
+      Self->Stream.next_out  = (Bytef *)output;
       Self->Stream.avail_out = outputsize;
       if ((err = deflate(&Self->Stream, Z_FINISH)) AND (err != Z_STREAM_END)) {
-         error = PostError(ERR_BufferOverflow);
+         error = log.warning(ERR_BufferOverflow);
          break;
       }
 
       Self->TotalOutput += outputsize - Self->Stream.avail_out;
 
       if (Args->Callback->Type IS CALL_STDC) {
-         ERROR (*routine)(objCompression *, APTR Output, LONG Length);
-         OBJECTPTR context = SetContext(Args->Callback->StdC.Context);
-            routine = Args->Callback->StdC.Routine;
-            error = routine(Self, output, outputsize - Self->Stream.avail_out);
-         SetContext(context);
+         parasol::SwitchContext(Args->Callback->StdC.Context);
+         auto routine = (ERROR (*)(objCompression *, APTR, LONG))Args->Callback->StdC.Routine;
+         error = routine(Self, output, outputsize - Self->Stream.avail_out);
       }
       else if (Args->Callback->Type IS CALL_SCRIPT) {
          OBJECTPTR script = Args->Callback->Script.Script;
-         const struct ScriptArg args[] = {
+         const ScriptArg args[] = {
             { "Compression",  FD_OBJECTPTR, { .Address = Self } },
             { "Output",       FD_BUFFER, { .Address = output } },
-            { "OutputLength", FD_LONG|FD_BUFSIZE, { .Long = outputsize - Self->Stream.avail_out } }
+            { "OutputLength", FD_LONG|FD_BUFSIZE, { .Long = (LONG)(outputsize - Self->Stream.avail_out) } }
          };
          if (script) {
             error = scCallback(script, Args->Callback->Script.ProcedureID, args, ARRAYSIZE(args));
@@ -536,6 +533,8 @@ Failed: Failed to initialise the decompression process.
 
 static ERROR COMPRESSION_DecompressStreamStart(objCompression *Self, APTR Void)
 {
+   parasol::Log log;
+
    if (Self->Inflating) {
       inflateEnd(&Self->Stream);
       Self->Inflating = FALSE;
@@ -547,11 +546,11 @@ static ERROR COMPRESSION_DecompressStreamStart(objCompression *Self, APTR Void)
 
    LONG err;
    if ((err = inflateInit2(&Self->Stream, Self->WindowBits)) IS ERR_Okay) {
-      MSG("Decompression stream initialised.");
+      log.trace("Decompression stream initialised.");
       Self->Inflating = TRUE;
       return ERR_Okay;
    }
-   else return PostError(ERR_Failed);
+   else return log.warning(ERR_Failed);
 }
 
 /*****************************************************************************
@@ -592,7 +591,9 @@ BufferOverflow: The output buffer is not large enough.
 
 static ERROR COMPRESSION_DecompressStream(objCompression *Self, struct cmpDecompressStream *Args)
 {
-   if ((!Args) OR (!Args->Input) OR (!Args->Callback)) return PostError(ERR_NullArgs);
+   parasol::Log log;
+
+   if ((!Args) OR (!Args->Input) OR (!Args->Callback)) return log.warning(ERR_NullArgs);
    if (!Self->Inflating) return ERR_Okay; // Decompression is complete
 
    APTR output;
@@ -600,7 +601,7 @@ static ERROR COMPRESSION_DecompressStream(objCompression *Self, struct cmpDecomp
 
    if ((output = Args->Output)) {
       outputsize = Args->OutputSize;
-      if (outputsize < Self->MinOutputSize) return PostError(ERR_BufferOverflow);
+      if (outputsize < Self->MinOutputSize) return log.warning(ERR_BufferOverflow);
    }
    else if ((output = Self->OutputBuffer)) {
       outputsize = Self->OutputSize;
@@ -614,7 +615,7 @@ static ERROR COMPRESSION_DecompressStream(objCompression *Self, struct cmpDecomp
       outputsize = Self->OutputSize;
    }
 
-   Self->Stream.next_in  = Args->Input;
+   Self->Stream.next_in  = (Bytef *)Args->Input;
    Self->Stream.avail_in = Args->Length;
 
    // Keep looping until Z_STREAM_END or an error is returned
@@ -622,13 +623,13 @@ static ERROR COMPRESSION_DecompressStream(objCompression *Self, struct cmpDecomp
    ERROR error = ERR_Okay;
    LONG result = Z_OK;
    while ((result IS Z_OK) AND (Self->Stream.avail_in > 0)) {
-      Self->Stream.next_out  = output;
+      Self->Stream.next_out  = (Bytef *)output;
       Self->Stream.avail_out = outputsize;
       result = inflate(&Self->Stream, Z_SYNC_FLUSH);
 
       if ((result) AND (result != Z_STREAM_END)) {
-         if (Self->Stream.msg) LogErrorMsg("%s", Self->Stream.msg);
-         else LogErrorMsg("Zip error: %d", result);
+         if (Self->Stream.msg) log.warning("%s", Self->Stream.msg);
+         else log.warning("Zip error: %d", result);
 
          switch(result) {
             case Z_STREAM_ERROR:  error = ERR_Failed; break;
@@ -648,16 +649,14 @@ static ERROR COMPRESSION_DecompressStream(objCompression *Self, struct cmpDecomp
       LONG len = outputsize - Self->Stream.avail_out;
       if (len > 0) {
          if (Args->Callback->Type IS CALL_STDC) {
-            ERROR (*routine)(objCompression *, APTR Output, LONG Length);
-            OBJECTPTR context = SetContext(Args->Callback->StdC.Context);
-               routine = Args->Callback->StdC.Routine;
-               error = routine(Self, output, len);
-            SetContext(context);
+            parasol::SwitchContext(Args->Callback->StdC.Context);
+            auto routine = (ERROR (*)(objCompression *, APTR, LONG))Args->Callback->StdC.Routine;
+            error = routine(Self, output, len);
          }
          else if (Args->Callback->Type IS CALL_SCRIPT) {
             OBJECTPTR script = Args->Callback->Script.Script;
             if (script) {
-               const struct ScriptArg args[] = {
+               const ScriptArg args[] = {
                   { "Compression",  FD_OBJECTPTR, { .Address = Self } },
                   { "Output",       FD_BUFFER, { .Address = output } },
                   { "OutputLength", FD_LONG|FD_BUFSIZE, { .Long = len } }
@@ -669,7 +668,7 @@ static ERROR COMPRESSION_DecompressStream(objCompression *Self, struct cmpDecomp
             else error = ERR_Terminate;
          }
          else {
-            LogErrorMsg("Callback function structure does not specify a recognised Type.");
+            log.warning("Callback function structure does not specify a recognised Type.");
             break;
          }
       }
@@ -684,7 +683,7 @@ static ERROR COMPRESSION_DecompressStream(objCompression *Self, struct cmpDecomp
       }
    }
 
-   if (error) PostError(error);
+   if (error) log.warning(error);
    return error;
 }
 
@@ -707,9 +706,11 @@ NullArgs
 
 static ERROR COMPRESSION_DecompressStreamEnd(objCompression *Self, struct cmpDecompressStreamEnd *Args)
 {
+   parasol::Log log;
+
    if (Self->Inflating IS FALSE) return ERR_Okay;
 
-   if ((!Args) OR (!Args->Callback)) return PostError(ERR_NullArgs);
+   if ((!Args) OR (!Args->Callback)) return log.warning(ERR_NullArgs);
 
    Self->TotalOutput = Self->Stream.total_out;
    inflateEnd(&Self->Stream);
@@ -750,16 +751,18 @@ NoSupport: The sub-class does not support this method.
 
 static ERROR COMPRESSION_CompressFile(objCompression *Self, struct cmpCompressFile *Args)
 {
-   if ((!Args) OR (!Args->Location) OR (!*Args->Location)) return PostError(ERR_NullArgs);
-   if (!Self->FileIO) return PostError(ERR_MissingPath);
+   parasol::Log log;
 
-   if (Self->Flags & CMF_READ_ONLY) return PostError(ERR_NoPermission);
+   if ((!Args) OR (!Args->Location) OR (!*Args->Location)) return log.warning(ERR_NullArgs);
+   if (!Self->FileIO) return log.warning(ERR_MissingPath);
 
-   if (Self->Head.SubID) return PostError(ERR_NoSupport);
+   if (Self->Flags & CMF_READ_ONLY) return log.warning(ERR_NoPermission);
+
+   if (Self->Head.SubID) return log.warning(ERR_NoSupport);
 
    if (Self->OutputID) {
-      StrFormat(Self->prvOutput, SIZE_COMPRESSION_BUFFER, "Compressing \"%s\" to \"%s\".\n", Args->Location, Self->Location);
-      print(Self, Self->prvOutput);
+      StrFormat((char *)Self->prvOutput, SIZE_COMPRESSION_BUFFER, "Compressing \"%s\" to \"%s\".\n", Args->Location, Self->Location);
+      print(Self, (CSTRING)Self->prvOutput);
    }
 
    LONG i;
@@ -781,10 +784,10 @@ static ERROR COMPRESSION_CompressFile(objCompression *Self, struct cmpCompressFi
          if ((path[i] IS '*') OR (path[i] IS '?') OR (path[i] IS '"') OR
              (path[i] IS ':') OR (path[i] IS '|') OR (path[i] IS '<') OR
              (path[i] IS '>')) {
-            LogErrorMsg("Illegal characters in path: %s", path);
+            log.warning("Illegal characters in path: %s", path);
             if (Self->OutputID) {
-               StrFormat(Self->prvOutput, SIZE_COMPRESSION_BUFFER, "Warning - path ignored due to illegal characters: %s\n", path);
-               print(Self, Self->prvOutput);
+               StrFormat((char *)Self->prvOutput, SIZE_COMPRESSION_BUFFER, "Warning - path ignored due to illegal characters: %s\n", path);
+               print(Self, (CSTRING)Self->prvOutput);
             }
             path = "";
             break;
@@ -792,7 +795,7 @@ static ERROR COMPRESSION_CompressFile(objCompression *Self, struct cmpCompressFi
       }
    }
 
-   LogF("CompressFile()","Location: %s, Path: %s", Args->Location, path);
+   log.branch("Location: %s, Path: %s", Args->Location, path);
 
    Self->prvFileIndex = 0;
 
@@ -817,7 +820,7 @@ static ERROR COMPRESSION_CompressFile(objCompression *Self, struct cmpCompressFi
          for (pathlen=0; path[pathlen]; pathlen++);
 
          if ((inclen) OR ((path[pathlen-1] != '/') AND (path[pathlen-1] != '\\'))) {
-            UBYTE newpath[inclen+1+pathlen+2];
+            char newpath[inclen+1+pathlen+2];
 
             LONG j = 0;
             if (inclen > 0) {
@@ -851,8 +854,8 @@ static ERROR COMPRESSION_CompressFile(objCompression *Self, struct cmpCompressFi
       return compress_file(Self, Args->Location, path, FALSE);
    }
    else {
-      UBYTE filename[len-pathlen+1];
-      UBYTE dirlocation[len+1];
+      char filename[len-pathlen+1];
+      char dirlocation[len+1];
 
       // Extract the file name from the location (drop the path)
 
@@ -865,13 +868,13 @@ static ERROR COMPRESSION_CompressFile(objCompression *Self, struct cmpCompressFi
       for (j=0; j < pathlen; j++) dirlocation[j] = Args->Location[j];
       dirlocation[j] = 0;
 
-      struct DirInfo *dir;
+      DirInfo *dir;
       if (!OpenDir(dirlocation, RDF_FILE, &dir)) {
          while (!ScanDir(dir)) {
-            struct FileInfo *scan = dir->Info;
+            FileInfo *scan = dir->Info;
             if (!StrCompare(filename, scan->Name, 0, STR_WILDCARD)) {
                for (len=0; scan->Name[len]; len++);
-               UBYTE folder[pathlen+len+1];
+               char folder[pathlen+len+1];
                for (j=0; j < pathlen; j++) folder[j] = Args->Location[j];
                for (j=0; scan->Name[j]; j++) folder[pathlen+j] = scan->Name[j];
                folder[pathlen+j] = 0;
@@ -886,8 +889,8 @@ static ERROR COMPRESSION_CompressFile(objCompression *Self, struct cmpCompressFi
    if (Self->OutputID) {
       LARGE size;
       GET_Size(Self, &size);
-      StrFormat(Self->prvOutput, SIZE_COMPRESSION_BUFFER, "\nCompression complete.  Archive is " PF64() " bytes in size.", size);
-      print(Self, Self->prvOutput);
+      StrFormat((char *)Self->prvOutput, SIZE_COMPRESSION_BUFFER, "\nCompression complete.  Archive is " PF64() " bytes in size.", size);
+      print(Self, (CSTRING)Self->prvOutput);
    }
 
    return error;
@@ -918,13 +921,15 @@ BufferOverflow: The output buffer is not large enough to hold the decompressed i
 
 static ERROR COMPRESSION_DecompressBuffer(objCompression *Self, struct cmpDecompressBuffer *Args)
 {
+   parasol::Log log;
+
    if ((!Args) OR (!Args->Input) OR (!Args->Output) OR (Args->OutputSize <= 0)) {
-      return PostError(ERR_NullArgs);
+      return log.warning(ERR_NullArgs);
    }
 
-   Self->prvZip.next_in   = Args->Input + 8;
+   Self->prvZip.next_in   = (Bytef *)Args->Input + 8;
    Self->prvZip.avail_in  = ((LONG *)Args->Input)[1];
-   Self->prvZip.next_out  = Args->Output;
+   Self->prvZip.next_out  = (Bytef *)Args->Output;
    Self->prvZip.avail_out = Args->OutputSize;
 
    if (inflateInit2(&Self->prvZip, Self->WindowBits) IS ERR_Okay) {
@@ -936,12 +941,12 @@ static ERROR COMPRESSION_DecompressBuffer(objCompression *Self, struct cmpDecomp
       }
       else {
          inflateEnd(&Self->prvZip);
-         if (Self->prvZip.msg) LogErrorMsg("%s", Self->prvZip.msg);
-         else PostError(ERR_BufferOverflow);
+         if (Self->prvZip.msg) log.warning("%s", Self->prvZip.msg);
+         else log.warning(ERR_BufferOverflow);
          return ERR_BufferOverflow;
       }
    }
-   else return PostError(ERR_Failed);
+   else return log.warning(ERR_Failed);
 }
 
 /*****************************************************************************
@@ -981,44 +986,46 @@ Failed
 
 static ERROR COMPRESSION_DecompressFile(objCompression *Self, struct cmpDecompressFile *Args)
 {
+   parasol::Log log;
+
    if (!Self->prvFiles) return ERR_NoData;
 
    // Validate arguments
 
    if ((!Args) OR (!Args->Path)) {
       if (Self->OutputID) {
-         StrFormat(Self->prvOutput, SIZE_COMPRESSION_BUFFER, "Please supply a Path setting that refers to a compressed file archive.\n");
-         print(Self, Self->prvOutput);
+         StrFormat((char *)Self->prvOutput, SIZE_COMPRESSION_BUFFER, "Please supply a Path setting that refers to a compressed file archive.\n");
+         print(Self, (CSTRING)Self->prvOutput);
       }
 
-      return PostError(ERR_NullArgs);
+      return log.warning(ERR_NullArgs);
    }
 
    if (!Args->Dest) {
       if (Self->OutputID) {
-         StrFormat(Self->prvOutput, SIZE_COMPRESSION_BUFFER, "Please supply a Destination that refers to a folder for decompression.\n");
-         print(Self, Self->prvOutput);
+         StrFormat((char *)Self->prvOutput, SIZE_COMPRESSION_BUFFER, "Please supply a Destination that refers to a folder for decompression.\n");
+         print(Self, (CSTRING)Self->prvOutput);
       }
 
-      return PostError(ERR_NullArgs);
+      return log.warning(ERR_NullArgs);
    }
 
    if ((!*Args->Path) OR (!*Args->Dest)) {
       if (Self->OutputID) {
-         StrFormat(Self->prvOutput, SIZE_COMPRESSION_BUFFER, "Please supply valid Path and Destination settings.\n");
-         print(Self, Self->prvOutput);
+         StrFormat((char *)Self->prvOutput, SIZE_COMPRESSION_BUFFER, "Please supply valid Path and Destination settings.\n");
+         print(Self, (CSTRING)Self->prvOutput);
       }
 
-      return PostError(ERR_Args);
+      return log.warning(ERR_Args);
    }
 
    if (!Self->FileIO) {
       if (Self->OutputID) {
-         StrFormat(Self->prvOutput, SIZE_COMPRESSION_BUFFER, "Internal error - decompression aborted.\n");
-         print(Self, Self->prvOutput);
+         StrFormat((char *)Self->prvOutput, SIZE_COMPRESSION_BUFFER, "Internal error - decompression aborted.\n");
+         print(Self, (CSTRING)Self->prvOutput);
       }
 
-      return PostError(ERR_MissingPath);
+      return log.warning(ERR_MissingPath);
    }
 
    // If the object belongs to a Compression sub-class, return ERR_NoSupport
@@ -1028,17 +1035,17 @@ static ERROR COMPRESSION_DecompressFile(objCompression *Self, struct cmpDecompre
    // Tell the user what we are doing
 
    if (Self->OutputID) {
-      StrFormat(Self->prvOutput, SIZE_COMPRESSION_BUFFER, "Decompressing archive \"%s\" with path \"%s\" to \"%s\".\n", Self->Location, Args->Path, Args->Dest);
-      print(Self, Self->prvOutput);
+      StrFormat((char *)Self->prvOutput, SIZE_COMPRESSION_BUFFER, "Decompressing archive \"%s\" with path \"%s\" to \"%s\".\n", Self->Location, Args->Path, Args->Dest);
+      print(Self, (CSTRING)Self->prvOutput);
    }
 
    // Search for the file(s) in our archive that match the given name and extract them to the destination folder.
 
-   LogF("~DecompressFile()","%s TO %s, Permissions: $%.8x", Args->Path, Args->Dest, Self->Permissions);
+   log.branch("%s TO %s, Permissions: $%.8x", Args->Path, Args->Dest, Self->Permissions);
 
    UWORD i, pos;
 
-   UBYTE location[400];
+   char location[400];
    for (pos=0; (Args->Dest[pos]) AND (pos < sizeof(location)-1); pos++) location[pos] = Args->Dest[pos];
    location[pos] = 0;
 
@@ -1050,18 +1057,18 @@ static ERROR COMPRESSION_DecompressFile(objCompression *Self, struct cmpDecompre
    objFile *file    = NULL;
    Self->prvFileIndex = 0;
 
-   struct CompressionFeedback feedback;
+   CompressionFeedback feedback;
    ClearMemory(&feedback, sizeof(feedback));
 
-   struct ZipFile *zf;
-   for (zf=Self->prvFiles; zf; zf=(struct ZipFile *)zf->Next) {
-      MSG("Found %s", zf->Name);
+   ZipFile *zf;
+   for (zf=Self->prvFiles; zf; zf=(ZipFile *)zf->Next) {
+      log.trace("Found %s", zf->Name);
       if (!StrCompare(Args->Path, zf->Name, 0, STR_WILDCARD)) {
-         MSG("Extracting \"%s\"", zf->Name);
+         log.trace("Extracting \"%s\"", zf->Name);
 
          if (Self->OutputID) {
-            StrFormat(Self->prvOutput, SIZE_COMPRESSION_BUFFER, "  %s", zf->Name);
-            print(Self, Self->prvOutput);
+            StrFormat((char *)Self->prvOutput, SIZE_COMPRESSION_BUFFER, "  %s", zf->Name);
+            print(Self, (CSTRING)Self->prvOutput);
          }
 
          // If the destination path specifies a folder, add the name of the file to the destination to generate the
@@ -1116,14 +1123,14 @@ static ERROR COMPRESSION_DecompressFile(objCompression *Self, struct cmpDecompre
          // Seek to the start of the compressed data
 
          if (acSeek(Self->FileIO, zf->Offset + HEAD_NAMELEN, SEEK_START) != ERR_Okay) {
-            error = PostError(ERR_Seek);
+            error = log.warning(ERR_Seek);
             goto exit;
          }
 
          UWORD namelen = read_word(Self->FileIO);
          UWORD extralen = read_word(Self->FileIO);
          if (acSeek(Self->FileIO, namelen + extralen, SEEK_CURRENT) != ERR_Okay) {
-            error = PostError(ERR_Seek);
+            error = log.warning(ERR_Seek);
             goto exit;
          }
 
@@ -1143,7 +1150,7 @@ static ERROR COMPRESSION_DecompressFile(objCompression *Self, struct cmpDecompre
                   if (!(error = Action(AC_Read, Self->FileIO, &read))) {
                      Self->prvInput[read.Result] = 0;
                      DeleteFile(location, NULL);
-                     error = CreateLink(location, Self->prvInput);
+                     error = CreateLink(location, (CSTRING)Self->prvInput);
                      if (error IS ERR_NoSupport) error = ERR_Okay;
                   }
 
@@ -1171,14 +1178,14 @@ static ERROR COMPRESSION_DecompressFile(objCompression *Self, struct cmpDecompre
                   err = inflate(&Self->prvZip, Z_SYNC_FLUSH);
 
                   if ((err != ERR_Okay) AND (err != Z_STREAM_END)) {
-                     if (Self->prvZip.msg) LogF("!","%s", Self->prvZip.msg);
+                     if (Self->prvZip.msg) log.error("%s", Self->prvZip.msg);
                      error = ERR_Failed;
                      goto exit;
                   }
 
                   Self->prvOutput[zf->OriginalSize] = 0; // !!! We should terminate according to the amount of data decompressed
                   DeleteFile(location, NULL);
-                  error = CreateLink(location, Self->prvOutput);
+                  error = CreateLink(location, (CSTRING)Self->prvOutput);
                   if (error IS ERR_NoSupport) error = ERR_Okay;
 
                   inflateEnd(&Self->prvZip);
@@ -1215,7 +1222,7 @@ static ERROR COMPRESSION_DecompressFile(objCompression *Self, struct cmpDecompre
                   FID_Flags|TLONG,       FL_NEW|FL_WRITE,
                   FID_Permissions|TLONG, permissions,
                   TAGEND)) != ERR_Okay) {
-               LogErrorMsg("Error %d creating file \"%s\".", error, location);
+               log.warning("Error %d creating file \"%s\".", error, location);
                goto exit;
             }
 
@@ -1228,7 +1235,7 @@ static ERROR COMPRESSION_DecompressFile(objCompression *Self, struct cmpDecompre
                if (zf->DeflateMethod IS 0) {
                   // This routine is used if the file is stored rather than compressed
 
-                  MSG("Extracting file without compression.");
+                  log.trace("Extracting file without compression.");
 
                   LONG inputlen = zf->CompressedSize;
 
@@ -1239,7 +1246,7 @@ static ERROR COMPRESSION_DecompressFile(objCompression *Self, struct cmpDecompre
 
                   while ((!(error = Action(AC_Read, Self->FileIO, &read))) AND (read.Result > 0)) {
                      struct acWrite write = { .Buffer = Self->prvInput, .Length = read.Result };
-                     if (Action(AC_Write, &file->Head, &write) != ERR_Okay) { error = PostError(ERR_Write); goto exit; }
+                     if (Action(AC_Write, &file->Head, &write) != ERR_Okay) { error = log.warning(ERR_Write); goto exit; }
 
                      inputlen -= read.Result;
                      if (inputlen <= 0) break;
@@ -1252,13 +1259,13 @@ static ERROR COMPRESSION_DecompressFile(objCompression *Self, struct cmpDecompre
                else if ((zf->DeflateMethod IS 8) AND (inflateInit2(&Self->prvZip, -MAX_WBITS) IS ERR_Okay)) {
                   // Decompressing a file
 
-                  MSG("Inflating file from %d -> %d bytes @ offset %d.", zf->CompressedSize, zf->OriginalSize, zf->Offset);
+                  log.trace("Inflating file from %d -> %d bytes @ offset %d.", zf->CompressedSize, zf->OriginalSize, zf->Offset);
 
                   inflateend = TRUE;
 
                   struct acRead read = {
                      .Buffer = Self->prvInput,
-                     .Length = (zf->CompressedSize < SIZE_COMPRESSION_BUFFER) ? zf->CompressedSize : SIZE_COMPRESSION_BUFFER
+                     .Length = (zf->CompressedSize < SIZE_COMPRESSION_BUFFER) ? (LONG)zf->CompressedSize : SIZE_COMPRESSION_BUFFER
                   };
 
                   if ((error = Action(AC_Read, Self->FileIO, &read)) != ERR_Okay) goto exit;
@@ -1277,7 +1284,7 @@ static ERROR COMPRESSION_DecompressFile(objCompression *Self, struct cmpDecompre
                      err = inflate(&Self->prvZip, Z_SYNC_FLUSH);
 
                      if ((err != ERR_Okay) AND (err != Z_STREAM_END)) {
-                        if (Self->prvZip.msg) LogF("!","%s", Self->prvZip.msg);
+                        if (Self->prvZip.msg) log.error("%s", Self->prvZip.msg);
                         error = ERR_Failed;
                         goto exit;
                      }
@@ -1286,9 +1293,9 @@ static ERROR COMPRESSION_DecompressFile(objCompression *Self, struct cmpDecompre
 
                      struct acWrite write = {
                         .Buffer = Self->prvOutput,
-                        .Length = SIZE_COMPRESSION_BUFFER - Self->prvZip.avail_out
+                        .Length = (LONG)(SIZE_COMPRESSION_BUFFER - Self->prvZip.avail_out)
                      };
-                     if (Action(AC_Write, &file->Head, &write) != ERR_Okay) { error = PostError(ERR_Write); goto exit; }
+                     if (Action(AC_Write, &file->Head, &write) != ERR_Okay) { error = log.warning(ERR_Write); goto exit; }
 
                      // Exit if all data has been written out
 
@@ -1342,8 +1349,8 @@ static ERROR COMPRESSION_DecompressFile(objCompression *Self, struct cmpDecompre
    }
 
    if (Self->OutputID) {
-      StrFormat(Self->prvOutput, SIZE_COMPRESSION_BUFFER, "\nDecompression complete.");
-      print(Self, Self->prvOutput);
+      StrFormat((char *)Self->prvOutput, SIZE_COMPRESSION_BUFFER, "\nDecompression complete.");
+      print(Self, (CSTRING)Self->prvOutput);
    }
 
 exit:
@@ -1351,11 +1358,10 @@ exit:
    if (file) acFree(&file->Head);
 
    if ((error IS ERR_Okay) AND (Self->prvFileIndex <= 0)) {
-      LogF("DecompressFile:","No files matched the path \"%s\".", Args->Path);
+      log.msg("No files matched the path \"%s\".", Args->Path);
       error = ERR_Search;
    }
 
-   LogReturn();
    return error;
 }
 
@@ -1388,22 +1394,24 @@ Failed
 
 static ERROR COMPRESSION_DecompressObject(objCompression *Self, struct cmpDecompressObject *Args)
 {
-   if ((!Args) OR (!Args->Path) OR (!Args->Path[0])) return PostError(ERR_NullArgs);
-   if (!Args->Object) return PostError(ERR_NullArgs);
-   if (!Self->FileIO) return PostError(ERR_MissingPath);
+   parasol::Log log;
+
+   if ((!Args) OR (!Args->Path) OR (!Args->Path[0])) return log.warning(ERR_NullArgs);
+   if (!Args->Object) return log.warning(ERR_NullArgs);
+   if (!Self->FileIO) return log.warning(ERR_MissingPath);
    if (Self->Head.SubID) return ERR_NoSupport; // Object belongs to a Compression sub-class
 
-   LogF("~DecompressObject()","%s TO %p, Permissions: $%.8x", Args->Path, Args->Object, Self->Permissions);
+   log.branch("%s TO %p, Permissions: $%.8x", Args->Path, Args->Object, Self->Permissions);
 
    BYTE inflateend = FALSE;
    Self->prvFileIndex = 0;
 
-   struct CompressionFeedback fb;
+   CompressionFeedback fb;
    ClearMemory(&fb, sizeof(fb));
 
-   struct ZipFile *list;
+   ZipFile *list;
    LONG total_scanned = 0;
-   for (list=Self->prvFiles; (list); list=(struct ZipFile *)list->Next) {
+   for (list=Self->prvFiles; (list); list=(ZipFile *)list->Next) {
       total_scanned++;
       if (StrCompare(Args->Path, list->Name, 0, STR_WILDCARD)) continue;
       else break;
@@ -1411,7 +1419,7 @@ static ERROR COMPRESSION_DecompressObject(objCompression *Self, struct cmpDecomp
 
    ERROR error = ERR_Okay;
    if (list) {
-      MSG("Decompressing \"%s\"", list->Name);
+      log.trace("Decompressing \"%s\"", list->Name);
 
       // Send compression feedback
 
@@ -1434,18 +1442,18 @@ static ERROR COMPRESSION_DecompressObject(objCompression *Self, struct cmpDecomp
       // Seek to the start of the compressed data
 
       if (acSeek(Self->FileIO, list->Offset + HEAD_NAMELEN, SEEK_START) != ERR_Okay) {
-         return LogReturnError(0, ERR_Seek);
+         return log.warning(ERR_Seek);
       }
 
       LONG namelen = read_word(Self->FileIO);
       LONG extralen = read_word(Self->FileIO);
       if (acSeek(Self->FileIO, namelen + extralen, SEEK_CURRENT) != ERR_Okay) {
-         return LogReturnError(0, ERR_Seek);
+         return log.warning(ERR_Seek);
       }
 
       if (list->Flags & ZIP_LINK) { // For symbolic links, decompress the data to get the destination link string
-         LogErrorMsg("Unable to unzip symbolic link %s (flags $%.8x), size %d.", list->Name, list->Flags, list->OriginalSize);
-         return LogReturnError(0, ERR_Failed);
+         log.warning("Unable to unzip symbolic link %s (flags $%.8x), size %d.", list->Name, list->Flags, list->OriginalSize);
+         return ERR_Failed;
       }
       else { // Create the destination file or folder
          Self->prvZip.next_in   = 0;
@@ -1459,15 +1467,12 @@ static ERROR COMPRESSION_DecompressObject(objCompression *Self, struct cmpDecomp
 
                LONG inputlen = list->CompressedSize;
 
-               struct acRead read;
-               read.Buffer = Self->prvInput;
+               struct acRead read = { .Buffer = Self->prvInput };
                if (inputlen < SIZE_COMPRESSION_BUFFER) read.Length = inputlen;
                else read.Length = SIZE_COMPRESSION_BUFFER;
 
                while ((!(error = Action(AC_Read, Self->FileIO, &read))) AND (read.Result > 0)) {
-                  struct acWrite write;
-                  write.Buffer = Self->prvInput;
-                  write.Length = read.Result;
+                  struct acWrite write = { .Buffer = Self->prvInput, .Length = read.Result };
                   if (Action(AC_Write, Args->Object, &write) != ERR_Okay) { error = ERR_Write; goto exit; }
 
                   inputlen -= read.Result;
@@ -1504,14 +1509,14 @@ static ERROR COMPRESSION_DecompressObject(objCompression *Self, struct cmpDecomp
                   err = inflate(&Self->prvZip, Z_SYNC_FLUSH);
 
                   if ((err != ERR_Okay) AND (err != Z_STREAM_END)) {
-                     if (Self->prvZip.msg) LogF("!","%s", Self->prvZip.msg);
+                     if (Self->prvZip.msg) log.error("%s", Self->prvZip.msg);
                      error = ERR_Decompression;
                      goto exit;
                   }
 
                   // Write out the decompressed data
 
-                  struct acWrite write = { Self->prvOutput, SIZE_COMPRESSION_BUFFER - Self->prvZip.avail_out };
+                  struct acWrite write = { Self->prvOutput, (LONG)(SIZE_COMPRESSION_BUFFER - Self->prvZip.avail_out) };
                   if (Action(AC_Write, Args->Object, &write) != ERR_Okay) { error = ERR_Write; goto exit; }
 
                   // Exit if all data has been written out
@@ -1557,15 +1562,13 @@ static ERROR COMPRESSION_DecompressObject(objCompression *Self, struct cmpDecomp
       Self->prvFileIndex++;
    }
    else {
-      LogF("DecompressObject:","No files matched the path \"%s\" from %d files.", Args->Path, total_scanned);
-      LogReturn();
+      log.msg("No files matched the path \"%s\" from %d files.", Args->Path, total_scanned);
       return ERR_Search;
    }
 
 exit:
    if (inflateend) inflateEnd(&Self->prvZip);
-   if (error) PostError(error);
-   LogReturn();
+   if (error) log.warning(error);
    return error;
 }
 /*****************************************************************************
@@ -1595,16 +1598,18 @@ Search
 
 *****************************************************************************/
 
-static THREADVAR struct CompressedItem glFindMeta;
+static THREADVAR CompressedItem glFindMeta;
 
 static ERROR COMPRESSION_Find(objCompression *Self, struct cmpFind *Args)
 {
-   if ((!Args) OR (!Args->Path)) return PostError(ERR_NullArgs);
+   parasol::Log log;
+
+   if ((!Args) OR (!Args->Path)) return log.warning(ERR_NullArgs);
 
    if (Self->Head.SubID) return ERR_NoSupport;
 
-   FMSG("~","Path: %s, Flags: $%.8x", Args->Path, Args->Flags);
-   for (struct ZipFile *item = Self->prvFiles; item; item = (struct ZipFile *)item->Next) {
+   log.traceBranch("Path: %s, Flags: $%.8x", Args->Path, Args->Flags);
+   for (ZipFile *item = Self->prvFiles; item; item = (ZipFile *)item->Next) {
       if (StrCompare(Args->Path, item->Name, 0, Args->Flags)) continue;
 
       zipfile_to_item(item, &glFindMeta);
@@ -1673,9 +1678,9 @@ static ERROR COMPRESSION_Free(objCompression *Self, APTR Void)
 
    // Free memory and resources
 
-   struct ZipFile *chain, *next;
+   ZipFile *chain, *next;
    for (chain=Self->prvFiles; chain != NULL; chain=next) {
-      next = (struct ZipFile *)chain->Next;
+      next = (ZipFile *)chain->Next;
       FreeResource(chain);
    }
    Self->prvFiles = NULL;
@@ -1693,7 +1698,9 @@ static ERROR COMPRESSION_Free(objCompression *Self, APTR Void)
 
 static ERROR COMPRESSION_Init(objCompression *Self, APTR Void)
 {
+   parasol::Log log;
    STRING path;
+
    GetString(Self, FID_Location, &path);
 
    if (!path) {
@@ -1713,11 +1720,11 @@ static ERROR COMPRESSION_Init(objCompression *Self, APTR Void)
       }
       else {
          if (Self->OutputID) {
-            StrFormat(Self->prvOutput, SIZE_COMPRESSION_BUFFER, "Failed to create file \"%s\".", path);
-            print(Self, Self->prvOutput);
+            StrFormat((char *)Self->prvOutput, SIZE_COMPRESSION_BUFFER, "Failed to create file \"%s\".", path);
+            print(Self, (CSTRING)Self->prvOutput);
          }
 
-         return PostError(ERR_CreateObject);
+         return log.warning(ERR_CreateObject);
       }
    }
    else {
@@ -1737,11 +1744,11 @@ static ERROR COMPRESSION_Init(objCompression *Self, APTR Void)
          // Try switching to read-only access if we were denied permission.
 
          if ((error IS ERR_NoPermission) AND (!(Self->Flags & CMF_READ_ONLY))) {
-            MSG("Trying read-only access...");
+            log.trace("Trying read-only access...");
             if (!(error = CreateObject(ID_FILE, NF_INTEGRAL, (OBJECTPTR *)&Self->FileIO,
-               FID_Location|TSTRING, path,
-               FID_Flags|TLONG,      FL_READ|FL_APPROXIMATE,
-               TAGEND))) {
+                  FID_Location|TSTRING, path,
+                  FID_Flags|TLONG,      FL_READ|FL_APPROXIMATE,
+                  TAGEND))) {
                Self->Flags |= CMF_READ_ONLY;
             }
          }
@@ -1752,7 +1759,7 @@ static ERROR COMPRESSION_Init(objCompression *Self, APTR Void)
          // Test the given location to see if it matches our supported file format (pkzip).
 
          struct acRead read = { Self->Header, sizeof(Self->Header) };
-         if (Action(AC_Read, Self->FileIO, &read) != ERR_Okay) return PostError(ERR_Read);
+         if (Action(AC_Read, Self->FileIO, &read) != ERR_Okay) return log.warning(ERR_Read);
 
          // If the file is empty then we will accept it as a zip file
 
@@ -1763,7 +1770,7 @@ static ERROR COMPRESSION_Init(objCompression *Self, APTR Void)
          if ((Self->Header[0] IS 0x50) AND (Self->Header[1] IS 0x4b) AND
              (Self->Header[2] IS 0x03) AND (Self->Header[3] IS 0x04)) {
             error = fast_scan_zip(Self);
-            if (error != ERR_Okay) return PostError(error);
+            if (error != ERR_Okay) return log.warning(error);
             else return error;
          }
          else return ERR_NoSupport;
@@ -1771,7 +1778,7 @@ static ERROR COMPRESSION_Init(objCompression *Self, APTR Void)
       else if ((!exists) AND (Self->Flags & CMF_CREATE_FILE)) {
          // Create a new file if the requested location does not exist
 
-         LogMsg("Creating a new file because the location does not exist.");
+         log.msg("Creating a new file because the location does not exist.");
 
          if (!CreateObject(ID_FILE, NF_INTEGRAL, (OBJECTPTR *)&Self->FileIO,
                FID_Path|TSTR,   path,
@@ -1782,17 +1789,17 @@ static ERROR COMPRESSION_Init(objCompression *Self, APTR Void)
          }
          else {
             if (Self->OutputID) {
-               StrFormat(Self->prvOutput, SIZE_COMPRESSION_BUFFER, "Failed to create file \"%s\".", path);
-               print(Self, Self->prvOutput);
+               StrFormat((char *)Self->prvOutput, SIZE_COMPRESSION_BUFFER, "Failed to create file \"%s\".", path);
+               print(Self, (CSTRING)Self->prvOutput);
             }
 
-            return PostError(ERR_CreateObject);
+            return log.warning(ERR_CreateObject);
          }
       }
       else {
-         StrFormat(Self->prvOutput, SIZE_COMPRESSION_BUFFER, "Failed to open \"%s\".", path);
-         print(Self, Self->prvOutput);
-         return PostError(ERR_File);
+         StrFormat((char *)Self->prvOutput, SIZE_COMPRESSION_BUFFER, "Failed to open \"%s\".", path);
+         print(Self, (CSTRING)Self->prvOutput);
+         return log.warning(ERR_File);
       }
    }
 }
@@ -1801,6 +1808,8 @@ static ERROR COMPRESSION_Init(objCompression *Self, APTR Void)
 
 static ERROR COMPRESSION_NewObject(objCompression *Self, APTR Void)
 {
+   parasol::Log log;
+
    if (!AllocMemory(SIZE_COMPRESSION_BUFFER, MEM_DATA, (APTR *)&Self->prvOutput, NULL)) {
       if (!AllocMemory(SIZE_COMPRESSION_BUFFER, MEM_DATA, (APTR *)&Self->prvInput, NULL)) {
          Self->CompressionLevel = 60; // 60% compression by default
@@ -1809,9 +1818,9 @@ static ERROR COMPRESSION_NewObject(objCompression *Self, APTR Void)
          Self->WindowBits = MAX_WBITS; // If negative then you get raw compression when dealing with buffers and stream data, i.e. no header information
          return ERR_Okay;
       }
-      else return PostError(ERR_AllocMemory);
+      else return log.warning(ERR_AllocMemory);
    }
-   else return PostError(ERR_AllocMemory);
+   else return log.warning(ERR_AllocMemory);
 }
 
 /*****************************************************************************
@@ -1841,28 +1850,30 @@ NoSupport
 
 static ERROR COMPRESSION_RemoveFile(objCompression *Self, struct cmpRemoveFile *Args)
 {
-   if ((!Args) OR (!Args->Path)) return PostError(ERR_NullArgs);
+   parasol::Log log;
+
+   if ((!Args) OR (!Args->Path)) return log.warning(ERR_NullArgs);
 
    if (Self->Head.SubID) return ERR_NoSupport;
 
    // Search for the file(s) in our archive that match the given name and delete them.
 
-   LogMsg("%s", Args->Path);
+   log.msg("%s", Args->Path);
 
-   struct ZipFile *filelist = Self->prvFiles;
+   ZipFile *filelist = Self->prvFiles;
    while (filelist) {
       if (!StrCompare(Args->Path, filelist->Name, 0, STR_WILDCARD)) {
          // Delete the file from the archive
 
          if (Self->OutputID) {
-            StrFormat(Self->prvOutput, SIZE_COMPRESSION_BUFFER, "Removing file \"%s\".", filelist->Name);
-            print(Self, Self->prvOutput);
+            StrFormat((char *)Self->prvOutput, SIZE_COMPRESSION_BUFFER, "Removing file \"%s\".", filelist->Name);
+            print(Self, (CSTRING)Self->prvOutput);
          }
 
          ERROR error;
          if ((error = remove_file(Self, &filelist)) != ERR_Okay) return error;
       }
-      else filelist = (struct ZipFile *)filelist->Next;
+      else filelist = (ZipFile *)filelist->Next;
    }
 
    return ERR_Okay;
@@ -1900,11 +1911,13 @@ NullArgs
 
 static ERROR COMPRESSION_Scan(objCompression *Self, struct cmpScan *Args)
 {
-   if ((!Args) OR (!Args->Callback)) return PostError(ERR_NullArgs);
+   parasol::Log log;
+
+   if ((!Args) OR (!Args->Callback)) return log.warning(ERR_NullArgs);
 
    if (Self->Head.SubID) return ERR_NoSupport;
 
-   FMSG("~","Folder: \"%s\", Filter: \"%s\"", Args->Folder, Args->Filter);
+   log.traceBranch("Folder: \"%s\", Filter: \"%s\"", Args->Folder, Args->Filter);
 
    LONG folder_len = 0;
    if (Args->Folder) {
@@ -1914,8 +1927,8 @@ static ERROR COMPRESSION_Scan(objCompression *Self, struct cmpScan *Args)
 
    ERROR error = ERR_Okay;
 
-   for (struct ZipFile *item = Self->prvFiles; item; item = (struct ZipFile *)item->Next) {
-      MSG("Item: %s", item->Name);
+   for (ZipFile *item = Self->prvFiles; item; item = (ZipFile *)item->Next) {
+      log.trace("Item: %s", item->Name);
 
       if (Args->Folder) {
          LONG name_len = StrLength(item->Name);
@@ -1942,21 +1955,19 @@ static ERROR COMPRESSION_Scan(objCompression *Self, struct cmpScan *Args)
          else continue;
       }
 
-      struct CompressedItem meta;
+      CompressedItem meta;
       zipfile_to_item(item, &meta);
 
       {
          if (Args->Callback->Type IS CALL_STDC) {
-            ERROR (*routine)(objCompression *, struct CompressedItem *);
-            OBJECTPTR context = SetContext(Args->Callback->StdC.Context);
-               routine = Args->Callback->StdC.Routine;
-               error = routine(Self, &meta);
-            SetContext(context);
+            parasol::SwitchContext context(Args->Callback->StdC.Context);
+            auto routine = (ERROR (*)(objCompression *, CompressedItem *))Args->Callback->StdC.Routine;
+            error = routine(Self, &meta);
          }
          else if (Args->Callback->Type IS CALL_SCRIPT) {
             OBJECTPTR script = Args->Callback->Script.Script;
             if (script) {
-               const struct ScriptArg args[] = {
+               const ScriptArg args[] = {
                   { "Compression", FD_OBJECTPTR, { .Address = Self } },
                   { "CompressedItem:Item", FD_STRUCT|FD_PTR, { .Address = &meta } }
                };
@@ -1966,22 +1977,21 @@ static ERROR COMPRESSION_Scan(objCompression *Self, struct cmpScan *Args)
             }
             else error = ERR_Terminate;
          }
-         else error = PostError(ERR_WrongType);
+         else error = log.warning(ERR_WrongType);
 
          if (error) break; // Break the scanning loop.
       }
    }
 
-   LOGRETURN();
    return error;
 }
 
 //****************************************************************************
 
-#include "compression_fields.c"
-#include "compression_func.c"
+#include "compression_fields.cpp"
+#include "compression_func.cpp"
 
-static const struct FieldDef clPermissionFlags[] = {
+static const FieldDef clPermissionFlags[] = {
    { "Read",         PERMIT_READ },
    { "Write",        PERMIT_WRITE },
    { "Exec",         PERMIT_EXEC },
@@ -2008,24 +2018,41 @@ static const struct FieldDef clPermissionFlags[] = {
 
 #include "class_compression_def.c"
 
-static const struct FieldArray clFields[] = {
+static const FieldArray clFields[] = {
    { "TotalOutput",        FDF_LARGE|FDF_R,            0, NULL, NULL },
    { "Output",             FDF_OBJECTID|FDF_RI,        0, NULL, NULL },
-   { "CompressionLevel",   FDF_LONG|FDF_RW,            0, NULL, SET_CompressionLevel },
+   { "CompressionLevel",   FDF_LONG|FDF_RW,            0, NULL, (APTR)SET_CompressionLevel },
    { "Flags",              FDF_LONGFLAGS|FDF_RW,       (MAXINT)&clCompressionFlags, NULL, NULL },
    { "SegmentSize",        FDF_LONG|FDF_SYSTEM|FDF_RW, 0, NULL, NULL },
    { "Permissions",        FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clPermissionFlags, NULL, NULL },
    { "MinOutputSize",      FDF_LONG|FDF_R,             0, NULL, NULL },
-   { "WindowBits",         FDF_LONG|FDF_RW,            0, NULL, SET_WindowBits },
+   { "WindowBits",         FDF_LONG|FDF_RW,            0, NULL, (APTR)SET_WindowBits },
    // Virtual fields
-   { "ArchiveName",      FDF_STRING|FDF_W,       0, NULL, SET_ArchiveName },
-   { "Location",         FDF_STRING|FDF_RW,      0, GET_Location, SET_Location },
-   { "Feedback",         FDF_FUNCTIONPTR|FDF_RW, 0, GET_Feedback, SET_Feedback },
-   { "FeedbackInfo",     FDF_POINTER|FDF_STRUCT|FDF_R, (MAXINT)"CompressionFeedback", GET_FeedbackInfo, NULL },
-   { "Header",           FDF_POINTER|FDF_R,      0, GET_Header,   NULL },
-   { "Password",         FDF_STRING|FDF_RW,      0, GET_Password, SET_Password },
-   { "Size",             FDF_LARGE|FDF_R,        0, GET_Size, NULL },
-   { "Src",              FDF_SYNONYM|FDF_STRING|FDF_RW, 0, GET_Location, SET_Location },
-   { "UncompressedSize", FDF_LARGE|FDF_R,        0, GET_UncompressedSize, NULL },
+   { "ArchiveName",      FDF_STRING|FDF_W,       0, NULL, (APTR)SET_ArchiveName },
+   { "Location",         FDF_STRING|FDF_RW,      0, (APTR)GET_Location, (APTR)SET_Location },
+   { "Feedback",         FDF_FUNCTIONPTR|FDF_RW, 0, (APTR)GET_Feedback, (APTR)SET_Feedback },
+   { "FeedbackInfo",     FDF_POINTER|FDF_STRUCT|FDF_R, (MAXINT)"CompressionFeedback", (APTR)GET_FeedbackInfo, NULL },
+   { "Header",           FDF_POINTER|FDF_R,      0, (APTR)GET_Header,   NULL },
+   { "Password",         FDF_STRING|FDF_RW,      0, (APTR)GET_Password, (APTR)SET_Password },
+   { "Size",             FDF_LARGE|FDF_R,        0, (APTR)GET_Size, NULL },
+   { "Src",              FDF_SYNONYM|FDF_STRING|FDF_RW, 0, (APTR)GET_Location, (APTR)SET_Location },
+   { "UncompressedSize", FDF_LARGE|FDF_R,        0, (APTR)GET_UncompressedSize, NULL },
    END_FIELD
 };
+
+extern "C" ERROR add_compression_class(void)
+{
+   return(CreateObject(ID_METACLASS, 0, (OBJECTPTR *)&glCompressionClass,
+      FID_ClassVersion|TFLOAT,  VER_COMPRESSION,
+      FID_Name|TSTRING,         "Compression",
+      FID_FileExtension|TSTR,   "*.zip",
+      FID_FileDescription|TSTR, "ZIP File",
+      FID_FileHeader|TSTR,      "[0:$504b0304]",
+      FID_Category|TLONG,       CCF_DATA,
+      FID_Actions|TPTR,         clCompressionActions,
+      FID_Methods|TARRAY,       clCompressionMethods,
+      FID_Fields|TARRAY,        clFields,
+      FID_Size|TLONG,           sizeof(objCompression),
+      FID_Path|TSTR,            "modules:core",
+      TAGEND));
+}

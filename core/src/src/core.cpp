@@ -110,7 +110,7 @@ extern "C" ERROR add_storage_class(void);
 
 LONG InitCore(void);
 extern "C" EXPORT void CloseCore(void);
-extern "C" EXPORT struct CoreBase * OpenCore(struct OpenInfo *);
+extern "C" EXPORT struct CoreBase * OpenCore(OpenInfo *);
 static ERROR open_shared_control(BYTE);
 static ERROR init_shared_control(void);
 static ERROR load_modules(void);
@@ -140,16 +140,17 @@ static CSTRING glUserHomeFolder = NULL;
 static void print_class_list(void) __attribute__ ((unused));
 static void print_class_list(void)
 {
+   parasol::Log log("Class List");
    char buffer[1024];
    size_t pos = 0;
    LONG *offsets = CL_OFFSETS(glClassDB);
    for (WORD i=0; i < glClassDB->Total; i++) {
-      struct ClassItem *item = (struct ClassItem *)(((BYTE *)glClassDB) + offsets[i]);
+      ClassItem *item = (ClassItem *)(((BYTE *)glClassDB) + offsets[i]);
       for (WORD j=0; (item->Name[j]) AND (pos < sizeof(buffer)-2); j++) buffer[pos++] = item->Name[j];
       if ((i < glClassDB->Total-1) AND (pos < sizeof(buffer)-1)) buffer[pos++] = ' ';
    }
    buffer[pos] = 0;
-   FMSG("Class List","Total: %d, %s", glClassDB->Total, buffer);
+   log.trace("Total: %d, %s", glClassDB->Total, buffer);
 }
 
 /*****************************************************************************
@@ -167,7 +168,7 @@ void _init(void)
 
 //****************************************************************************
 
-EXPORT struct CoreBase * OpenCore(struct OpenInfo *Info)
+EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
 {
    #ifdef __unix__
       struct timeval tmday;
@@ -176,7 +177,7 @@ EXPORT struct CoreBase * OpenCore(struct OpenInfo *Info)
          BYTE hold_priority;
       #endif
    #endif
-   struct rkTask *localtask;
+   rkTask *localtask;
    LONG i;
    OBJECTPTR SystemTask;
    ERROR error;
@@ -379,7 +380,7 @@ EXPORT struct CoreBase * OpenCore(struct OpenInfo *Info)
    // Android sets an important JNI pointer on initialisation.
 
    if ((Info->Flags & OPF_OPTIONS) AND (Info->Options)) {
-      for (i=0; Info->Options[i].Tag != TAGEND; i++) {
+      for (LONG i=0; Info->Options[i].Tag != TAGEND; i++) {
          switch (Info->Options[i].Tag) {
             case TOI_ANDROID_ENV: {
                glJNIEnv = Info->Options[i].Value.Pointer;
@@ -426,16 +427,19 @@ EXPORT struct CoreBase * OpenCore(struct OpenInfo *Info)
          else if (!StrCompare(Info->Args[i], "--gfx-driver=", 13, 0)) {
             StrCopy(Info->Args[i]+13, glDisplayDriver, sizeof(glDisplayDriver));
          }
-         else if (!StrMatch(Info->Args[i], "--global"))    Info->Flags |= OPF_GLOBAL_INSTANCE;
-         else if (!StrMatch(Info->Args[i], "--solo"))      solo = TRUE;
-         else if (!StrMatch(Info->Args[i], "--sync"))      glSync = TRUE;
-         else if (!StrMatch(Info->Args[i], "--log-none"))  glLogLevel = 0;
-         else if (!StrMatch(Info->Args[i], "--log-error")) glLogLevel = 1;
-         else if (!StrMatch(Info->Args[i], "--log-warn"))  glLogLevel = 2;
-         else if (!StrMatch(Info->Args[i], "--log-info"))  glLogLevel = 4;  // Levels 3/4 are for top-level function messages (no internal detail)
-         else if (!StrMatch(Info->Args[i], "--log-debug")) glLogLevel = 5;
-         else if (!StrMatch(Info->Args[i], "--log-all"))   glLogLevel = 99;
-         else if (!StrMatch(Info->Args[i], "--time"))      glTimeLog = PreciseTime();
+         else if (!StrMatch(Info->Args[i], "--global"))      Info->Flags |= OPF_GLOBAL_INSTANCE;
+         else if (!StrMatch(Info->Args[i], "--solo"))        solo = TRUE;
+         else if (!StrMatch(Info->Args[i], "--sync"))        glSync = TRUE;
+         else if (!StrMatch(Info->Args[i], "--log-none"))    glLogLevel = 0;
+         else if (!StrMatch(Info->Args[i], "--log-error"))   glLogLevel = 1;
+         else if (!StrMatch(Info->Args[i], "--log-warn"))    glLogLevel = 2;
+         else if (!StrMatch(Info->Args[i], "--log-warning")) glLogLevel = 2;
+         else if (!StrMatch(Info->Args[i], "--log-info"))    glLogLevel = 4; // Levels 3/4 are for applications (no internal detail)
+         else if (!StrMatch(Info->Args[i], "--log-api"))     glLogLevel = 5; // Default level for API messages
+         else if (!StrMatch(Info->Args[i], "--log-extapi"))  glLogLevel = 6;
+         else if (!StrMatch(Info->Args[i], "--log-debug"))   glLogLevel = 7;
+         else if (!StrMatch(Info->Args[i], "--log-all"))     glLogLevel = 9; // 9 is the absolute maximum
+         else if (!StrMatch(Info->Args[i], "--time"))        glTimeLog = PreciseTime();
          #if defined(__unix__) && !defined(__ANDROID__)
          else if (!StrMatch(Info->Args[i], "--holdpriority")) hold_priority = TRUE;
          #endif
@@ -525,6 +529,8 @@ EXPORT struct CoreBase * OpenCore(struct OpenInfo *Info)
    setrlimit(RLIMIT_FSIZE, &rlp);
 #endif
 
+   parasol::Log log("Core");
+
 #ifdef _WIN32
 
    activate_console(glLogLevel > 0); // This works for the MinGW runtime libraries but not MSYS2
@@ -549,10 +555,10 @@ EXPORT struct CoreBase * OpenCore(struct OpenInfo *Info)
 
          if (!open_public_waitlock(&handle, glPublicLocks[CN_SEMAPHORES].Name)) { // Existing event resource is accessible
             free_public_waitlock(handle);
-            MSG("This process will attach to an existing global process.");
+            log.trace("This process will attach to an existing global process.");
             standalone = FALSE;
          }
-         else MSG("Unable to access all parent process' locks, will run standalone");
+         else log.trace("Unable to access all parent process' locks, will run standalone");
       }
 
       if (standalone) { // Process will run standalone - generate unique resource names based on our process ID.
@@ -580,7 +586,7 @@ EXPORT struct CoreBase * OpenCore(struct OpenInfo *Info)
    // If going solo, we need to wait for all other programs using this install to release the shared control semaphore
 
    if (solo) {
-      MSG("Process will only run solo - will wait if other processes are running.");
+      log.trace("Process will only run solo - will wait if other processes are running.");
       while (1) {
          WINHANDLE handle;
          if (!open_public_lock(&handle, glPublicLocks[PL_FORBID].Name)) {
@@ -776,18 +782,18 @@ EXPORT struct CoreBase * OpenCore(struct OpenInfo *Info)
 
    // Print task information
 
-   LogF("Core","Version: %.1f : Process: %d, Instance: %d, MemPool Address: %p", VER_CORE, glProcessID, glInstanceID, glSharedControl);
-   LogF("Core","Blocks Used: %d, MaxBlocks: %d, Sync: %s, Root: %s", glSharedControl->BlocksUsed, glSharedControl->MaxBlocks, (glSync) ? "Y" : "N", glRootPath);
+   log.msg("Version: %.1f : Process: %d, Instance: %d, MemPool Address: %p", VER_CORE, glProcessID, glInstanceID, glSharedControl);
+   log.msg("Blocks Used: %d, MaxBlocks: %d, Sync: %s, Root: %s", glSharedControl->BlocksUsed, glSharedControl->MaxBlocks, (glSync) ? "Y" : "N", glRootPath);
 #ifdef __unix__
-   LogF("Core","UID: %d (%d), EUID: %d (%d); GID: %d (%d), EGID: %d (%d)", getuid(), glUID, geteuid(), glEUID, getgid(), glGID, getegid(), glEGID);
+   log.msg("UID: %d (%d), EUID: %d (%d); GID: %d (%d), EGID: %d (%d)", getuid(), glUID, geteuid(), glEUID, getgid(), glGID, getegid(), glEGID);
 #endif
-   LogF("Core","Public Offsets: %d, %d, %d", glSharedControl->BlocksOffset, glSharedControl->SemaphoreOffset, glSharedControl->TaskOffset);
+   log.msg("Core","Public Offsets: %d, %d, %d", glSharedControl->BlocksOffset, glSharedControl->SemaphoreOffset, glSharedControl->TaskOffset);
 
    // Private memory block handling
 
    glMemRegSize = 1000;
-   LogF("Core","Allocating an initial private memory register of %d entries.", glMemRegSize);
-   if (!(glPrivateMemory = (PrivateAddress *)malloc(sizeof(struct PrivateAddress) * glMemRegSize))) {
+   log.msg("Allocating an initial private memory register of %d entries.", glMemRegSize);
+   if (!(glPrivateMemory = (PrivateAddress *)malloc(sizeof(PrivateAddress) * glMemRegSize))) {
       if (Info->Flags & OPF_ERROR) Info->Error = ERR_AllocMemory;
       CloseCore();
       return NULL;
@@ -796,8 +802,8 @@ EXPORT struct CoreBase * OpenCore(struct OpenInfo *Info)
    // Allocate the page management table for public memory blocks.
 
    glTotalPages = PAGE_TABLE_CHUNK;
-   if (!(glMemoryPages = (MemoryPage *)calloc(glTotalPages, sizeof(struct MemoryPage)))) {
-      LogF("@Core","Failed to allocate the memory page management table.");
+   if (!(glMemoryPages = (MemoryPage *)calloc(glTotalPages, sizeof(MemoryPage)))) {
+      log.warning("Failed to allocate the memory page management table.");
       CloseCore();
       if (Info->Flags & OPF_ERROR) Info->Error = ERR_AllocMemory;
       return NULL;
@@ -806,19 +812,19 @@ EXPORT struct CoreBase * OpenCore(struct OpenInfo *Info)
    // Allocate the public object table
 
    {
-      struct SharedObjectHeader *publichdr;
+      SharedObjectHeader *publichdr;
 
-      LogF("5Core","Allocating public object table.");
+      log.msg("Allocating public object table.");
 
       MEMORYID memid = RPM_SharedObjects;
-      if (!(error = AllocMemory(sizeof(struct SharedObjectHeader) + (sizeof(struct SharedObject) * PUBLIC_TABLE_CHUNK), MEM_UNTRACKED|MEM_RESERVED|MEM_PUBLIC|MEM_READ_WRITE, (void **)&publichdr, &memid))) {
-         publichdr->Offset    = sizeof(struct SharedObjectHeader);
+      if (!(error = AllocMemory(sizeof(SharedObjectHeader) + (sizeof(SharedObject) * PUBLIC_TABLE_CHUNK), MEM_UNTRACKED|MEM_RESERVED|MEM_PUBLIC|MEM_READ_WRITE, (void **)&publichdr, &memid))) {
+         publichdr->Offset    = sizeof(SharedObjectHeader);
          publichdr->NextEntry = 0;
          publichdr->ArraySize = PUBLIC_TABLE_CHUNK;
          ReleaseMemoryID(memid);
       }
       else if (error != ERR_ResourceExists) {
-         LogF("@Core","Failed to allocate the public object memory table, error %d.", error);
+         log.warning("Failed to allocate the public object memory table, error %d.", error);
          if (Info->Flags & OPF_ERROR) Info->Error = ERR_AllocMemory;
          CloseCore();
          return NULL;
@@ -874,24 +880,25 @@ EXPORT struct CoreBase * OpenCore(struct OpenInfo *Info)
 
    // Register Core classes in the system
 
-   LogF("~Core","Registering Core classes.");
+   {
+      parasol::Log log("Core");
+      log.branch("Registering Core classes.");
 
-   if (add_thread_class() != ERR_Okay)  { CloseCore(); return NULL; }
-   if (add_module_class() != ERR_Okay)  { CloseCore(); return NULL; }
-   if (add_time_class() != ERR_Okay)    { CloseCore(); return NULL; }
-   if (add_config_class() != ERR_Okay)  { CloseCore(); return NULL; }
-   if (add_storage_class() != ERR_Okay) { CloseCore(); return NULL; }
-   if (add_file_class() != ERR_Okay)    { CloseCore(); return NULL; }
-   if (add_script_class() != ERR_Okay)  { CloseCore(); return NULL; }
-   if (add_archive_class() != ERR_Okay) { CloseCore(); return NULL; }
-   if (add_compressed_stream_class() != ERR_Okay) { CloseCore(); return NULL; }
-   if (add_compression_class() != ERR_Okay) { CloseCore(); return NULL; }
+      if (add_thread_class() != ERR_Okay)  { CloseCore(); return NULL; }
+      if (add_module_class() != ERR_Okay)  { CloseCore(); return NULL; }
+      if (add_time_class() != ERR_Okay)    { CloseCore(); return NULL; }
+      if (add_config_class() != ERR_Okay)  { CloseCore(); return NULL; }
+      if (add_storage_class() != ERR_Okay) { CloseCore(); return NULL; }
+      if (add_file_class() != ERR_Okay)    { CloseCore(); return NULL; }
+      if (add_script_class() != ERR_Okay)  { CloseCore(); return NULL; }
+      if (add_archive_class() != ERR_Okay) { CloseCore(); return NULL; }
+      if (add_compressed_stream_class() != ERR_Okay) { CloseCore(); return NULL; }
+      if (add_compression_class() != ERR_Okay) { CloseCore(); return NULL; }
 
-   #ifdef __ANDROID__
-   if (add_asset_class() != ERR_Okay) { CloseCore(); return NULL; }
-   #endif
-
-   LogReturn();
+      #ifdef __ANDROID__
+      if (add_asset_class() != ERR_Okay) { CloseCore(); return NULL; }
+      #endif
+   }
 
    if (init_filesystem()) {
       KERR("Failed to initialise the filesystem.");
@@ -909,7 +916,7 @@ EXPORT struct CoreBase * OpenCore(struct OpenInfo *Info)
    }
 
    if (error != ERR_Okay) {
-      LogF("@Core","Failed to load the system classes.");
+      log.warning("Failed to load the system classes.");
       if (Info->Flags & OPF_ERROR) Info->Error = error;
       CloseCore();
       return NULL;
@@ -961,7 +968,7 @@ EXPORT struct CoreBase * OpenCore(struct OpenInfo *Info)
          winSetDllDirectory(libpath);
          FreeResource(libpath);
       }
-      else FMSG("!","Failed to resolve modules:lib");
+      else log.trace("Failed to resolve modules:lib");
    }
 #endif
 
@@ -978,7 +985,7 @@ EXPORT struct CoreBase * OpenCore(struct OpenInfo *Info)
    BroadcastEvent(&task_created, sizeof(task_created));
 
    if (Info->Flags & OPF_SCAN_MODULES) {
-      LogF("Core","Class scanning has been enforced by user request.");
+      log.msg("Class scanning has been enforced by user request.");
       glScanClasses = TRUE;
    }
 
@@ -990,7 +997,7 @@ EXPORT struct CoreBase * OpenCore(struct OpenInfo *Info)
       print_class_list();
    #endif
 
-   LogF("Core","PROGRAM OPENED");
+   log.msg("PROGRAM OPENED");
 
    glSharedControl->SystemState = 0; // Indicates that initialisation is complete.
    if (Info->Flags & OPF_ERROR) Info->Error = ERR_Okay;
@@ -1003,7 +1010,8 @@ EXPORT struct CoreBase * OpenCore(struct OpenInfo *Info)
 
 EXPORT void CleanSystem(LONG Flags)
 {
-   LogF("CleanSystem()","Flags: $%.8x", Flags);
+   parasol::Log log("Core");
+   log.msg("Flags: $%.8x", Flags);
    Expunge(FALSE);
 }
 
@@ -1018,27 +1026,29 @@ EXPORT void CleanSystem(LONG Flags)
 
 #define MAGICKEY 0x58392712
 
-static LONG glMemorySize = sizeof(struct SharedControl) + (sizeof(struct PublicAddress) * MAX_BLOCKS) +
-                           (sizeof(struct SemaphoreEntry) * MAX_SEMAPHORES) +
-                           (sizeof(struct WaitLock) * MAX_WAITLOCKS) +
-                           (sizeof(struct TaskList) * MAX_TASKS);
+static LONG glMemorySize = sizeof(SharedControl) + (sizeof(PublicAddress) * MAX_BLOCKS) +
+                           (sizeof(SemaphoreEntry) * MAX_SEMAPHORES) +
+                           (sizeof(WaitLock) * MAX_WAITLOCKS) +
+                           (sizeof(TaskList) * MAX_TASKS);
 
 #ifdef _WIN32
 static ERROR open_shared_control(BYTE GlobalInstance)
 {
-   FMSG("open_shared_control()","Global: %d", GlobalInstance);
+   parasol::Log log(__FUNCTION__);
+
+   log.trace("Global: %d", GlobalInstance);
 
    ERROR error;
 
    for (LONG i=1; i < PL_END; i++) {
       if (glPublicLocks[i].Event) {
          if ((error = alloc_public_waitlock(&glPublicLocks[i].Lock, glPublicLocks[i].Name))) { // Event
-            LogErrorMsg("Failed to allocate system waitlock %d '%s', error %d", i, glPublicLocks[i].Name, error);
+            log.warning("Failed to allocate system waitlock %d '%s', error %d", i, glPublicLocks[i].Name, error);
             return error;
          }
       }
       else if ((error = alloc_public_lock(&glPublicLocks[i].Lock, glPublicLocks[i].Name))) { // Mutex
-         LogErrorMsg("Failed to allocate system lock, error %d", error);
+         log.warning("Failed to allocate system lock, error %d", error);
          return error;
       }
    }
@@ -1073,6 +1083,8 @@ static ERROR open_shared_control(BYTE GlobalInstance)
 
 static ERROR open_shared_control(BYTE GlobalInstance)
 {
+   parasol::Log log("Core");
+
    // Generate a resource sharing key based on the unique file inode of the core library.  This prevents
    // conflicts with other installations of the system core on this machine.
 
@@ -1187,7 +1199,7 @@ static ERROR open_shared_control(BYTE GlobalInstance)
             // The global instance no longer exists - this indicates that a crash occurred and the IPC's weren't
             // terminated correctly.
 
-            LogF("@Core","Cleaning up system failure detected for previous execution.");
+            log.warning("Cleaning up system failure detected for previous execution.");
 
             // Mark all previous shared memory blocks for deletion.
             // You can check the success of this routine by running "ipcs", which lists allocated shm blocks.
@@ -1274,19 +1286,19 @@ static ERROR init_shared_control(void)
    glSharedControl->GlobalIDCount    = 1;
    glSharedControl->ThreadIDCount    = 0;
 
-   LONG offset = sizeof(struct SharedControl);
+   LONG offset = sizeof(SharedControl);
 
    glSharedControl->BlocksOffset = offset;
-   offset += sizeof(struct PublicAddress) * glSharedControl->MaxBlocks;
+   offset += sizeof(PublicAddress) * glSharedControl->MaxBlocks;
 
    glSharedControl->SemaphoreOffset = offset;
-   offset += sizeof(struct SemaphoreEntry) * MAX_SEMAPHORES;
+   offset += sizeof(SemaphoreEntry) * MAX_SEMAPHORES;
 
    glSharedControl->WLOffset = offset;
-   offset += sizeof(struct WaitLock) * MAX_WAITLOCKS;
+   offset += sizeof(WaitLock) * MAX_WAITLOCKS;
 
    glSharedControl->TaskOffset = offset;
-   offset += sizeof(struct TaskList) * MAX_TASKS;
+   offset += sizeof(TaskList) * MAX_TASKS;
 
    glSharedControl->MemoryOffset = RoundPageSize(glMemorySize);
 
@@ -1370,7 +1382,7 @@ void PrintDiagnosis(LONG ProcessID, LONG Signal)
    if (!shTasks) return;
 
    WORD j, index;
-   struct TaskList *task = NULL;
+   TaskList *task = NULL;
    for (j=0; j < MAX_TASKS; j++) {
       if (shTasks[j].ProcessID IS ProcessID) {
          task = &shTasks[j];
@@ -1430,7 +1442,7 @@ void PrintDiagnosis(LONG ProcessID, LONG Signal)
       if (!LOCK_PUBLIC_MEMORY(4000)) {
          // Print memory locking information
 
-         struct PublicAddress *memblocks = ResolveAddress(glSharedControl, glSharedControl->BlocksOffset);
+         PublicAddress *memblocks = ResolveAddress(glSharedControl, glSharedControl->BlocksOffset);
 
          for (index=0; index < glSharedControl->MaxBlocks; index++) {
             if (!memblocks[index].MemoryID) continue;
@@ -1456,7 +1468,7 @@ void PrintDiagnosis(LONG ProcessID, LONG Signal)
       if (!LOCK_SEMAPHORES(4000)) {
          // Print semaphore locking information
 
-         struct SemaphoreEntry *semlist = ResolveAddress(glSharedControl, glSharedControl->SemaphoreOffset);
+         SemaphoreEntry *semlist = ResolveAddress(glSharedControl, glSharedControl->SemaphoreOffset);
          for (index=1; index < MAX_SEMAPHORES; index++) {
             for (j=0; j < ARRAYSIZE(semlist[index].Processes); j++) {
                if (semlist[index].Processes[j].ProcessID IS ProcessID) {
@@ -1501,7 +1513,7 @@ void PrintDiagnosis(LONG ProcessID, LONG Signal)
 
    // Print details of the object context at the time of the crash.  If this code fails, it indicates that the object context is corrupt.
 
-   struct TaskList *task;
+   TaskList *task;
    if (!(task = glTaskEntry)) {
       fprintf(fd, "This process has no registered task entry.\n");
       return;
@@ -1567,7 +1579,7 @@ void PrintDiagnosis(LONG ProcessID, LONG Signal)
       if (!LOCK_PUBLIC_MEMORY(4000)) {
          // Print memory locking information
 
-         struct PublicAddress *memblocks = (PublicAddress *)ResolveAddress(glSharedControl, glSharedControl->BlocksOffset);
+         PublicAddress *memblocks = (PublicAddress *)ResolveAddress(glSharedControl, glSharedControl->BlocksOffset);
 
          LONG index;
          for (index=0; index < glSharedControl->MaxBlocks; index++) {
@@ -1593,7 +1605,7 @@ void PrintDiagnosis(LONG ProcessID, LONG Signal)
       if (!LOCK_SEMAPHORES(4000)) {
          // Print semaphore locking information
 
-         struct SemaphoreEntry *semlist = (SemaphoreEntry *)ResolveAddress(glSharedControl, glSharedControl->SemaphoreOffset);
+         SemaphoreEntry *semlist = (SemaphoreEntry *)ResolveAddress(glSharedControl, glSharedControl->SemaphoreOffset);
 
          for (LONG index=1; index < MAX_SEMAPHORES; index++) {
             if (semlist[index].InstanceID IS glInstanceID) {
@@ -1678,6 +1690,8 @@ static void DiagnosisHandler(LONG SignalNumber, siginfo_t *Info, APTR Context)
 #ifdef __unix__
 static void CrashHandler(LONG SignalNumber, siginfo_t *Info, APTR Context)
 {
+   parasol::Log log("Core");
+
    if (glCrashStatus > 1) {
       if ((glCodeIndex) AND (glCodeIndex IS glLastCodeIndex)) {
          fprintf(stderr, "Unable to recover - exiting immediately.\n");
@@ -1693,14 +1707,14 @@ static void CrashHandler(LONG SignalNumber, siginfo_t *Info, APTR Context)
 
    if (glCrashStatus IS 0) {
       if (((SignalNumber IS SIGQUIT) OR (SignalNumber IS SIGHUP)))  {
-         LogF("Core","Termination request - SIGQUIT or SIGHUP.");
+         log.msg("Termination request - SIGQUIT or SIGHUP.");
          SendMessage(glTaskMessageMID, MSGID_QUIT, 0, NULL, 0);
          glCrashStatus = 1;
          return;
       }
 
       if (glLogLevel >= 5) {
-         LogF("Core","Process terminated.\n");
+         log.msg("Process terminated.\n");
       }
       else if ((SignalNumber > 0) AND (SignalNumber < ARRAYSIZE(signals))) {
          fprintf(stderr, "\nProcess terminated, signal %s.\n\n", signals[SignalNumber]);
@@ -1743,7 +1757,8 @@ static void NullHandler(LONG SignalNumber, siginfo_t *Info, APTR Context)
 static void child_handler(LONG SignalNumber, siginfo_t *Info, APTR Context)
 {
 #if 0
-   struct rkTask *task;
+   parasol:Log log(__FUNCTION__);
+   rkTask *task;
    LONG childprocess, status, result, i;
 
    childprocess = Info->si_pid;
@@ -1754,7 +1769,7 @@ static void child_handler(LONG SignalNumber, siginfo_t *Info, APTR Context)
    waitpid(Info->si_pid, &status, WNOHANG);
    result = WEXITSTATUS(status);
 
-   LogF("@child_handler()","Process #%d exited, return-code %d.", childprocess, result);
+   log.warning("Process #%d exited, return-code %d.", childprocess, result);
 
    // Store the return code for this process in any Task object that is associated with it.
    //
@@ -1800,6 +1815,8 @@ APTR glExceptionAddress = 0;
 
 static LONG CrashHandler(LONG Code, APTR Address, LONG Continuable, LONG *Info)
 {
+   parasol::Log log("Core");
+
    //winDeathBringer(0);  // Win7 doesn't like us calling SendMessage() during our handler?
 
    if (!glProcessID) return 1;
@@ -1816,7 +1833,7 @@ static LONG CrashHandler(LONG Code, APTR Address, LONG Continuable, LONG *Info)
    if (Code < EXP_END) {
       if (glCrashStatus IS 0) {
          if (glLogLevel >= 5) {
-            LogF("@Core","CRASH!"); // Using LogF is helpful because branched output can indicate where the crash occurred.
+            log.warning("CRASH!"); // Using LogF is helpful because branched output can indicate where the crash occurred.
          }
          else fprintf(stderr, "\n\nCRASH!");
 
@@ -1857,6 +1874,7 @@ static LONG CrashHandler(LONG Code, APTR Address, LONG Continuable, LONG *Info)
 
 static ERROR load_modules(void)
 {
+   parasol::Log log(__FUNCTION__);
    LONG i, j;
 
    // Entry structure:
@@ -1871,7 +1889,7 @@ static ERROR load_modules(void)
       if (!AccessMemory(glSharedControl->ModulesMID, MEM_READ, 2000, (APTR *)&glModules)) {
          return ERR_Okay;
       }
-      else return LogError(ERH_LoadModules, ERR_AccessMemory);
+      else return log.warning(ERH_LoadModules, ERR_AccessMemory);
    }
    else if (!CreateObject(ID_FILE, 0, &file,
          FID_Path|TSTR,   glModuleBinPath,
@@ -1887,23 +1905,23 @@ static ERROR load_modules(void)
 
       if (!error) return ERR_Okay;
       else {
-         LogF("!","Failed to read %s", glModuleBinPath);
+         log.error("Failed to read %s", glModuleBinPath);
          return ERR_File;
       }
    }
 
-   LogF("~load_modules()","Scanning for available modules.");
+   log.branch("Scanning for available modules.");
    char modules[16384];
 
    size_t pos = 0;
    LONG total = 0;
 
-   struct DirInfo *dir;
+   DirInfo *dir;
    if (!OpenDir("modules:", RDF_QUALIFY, &dir)) {
       while ((!ScanDir(dir)) AND (pos < (sizeof(modules)-256))) {
-         struct FileInfo *folder = dir->Info;
+         FileInfo *folder = dir->Info;
          if (folder->Flags & RDF_FILE) {
-            struct ModuleItem *item = (struct ModuleItem *)(modules + pos);
+            ModuleItem *item = (ModuleItem *)(modules + pos);
 
             #ifdef __ANDROID__
                UBYTE modname[60];
@@ -1916,7 +1934,7 @@ static ERROR load_modules(void)
 
                   // Skip category if one is specified, since we just want the module's short name.
 
-                  for (j=0; foldername[j]; j++) {
+                  for (LONG j=0; foldername[j]; j++) {
                      if (foldername[j] IS '_') {
                         foldername += j + 1;
                         break;
@@ -1928,7 +1946,7 @@ static ERROR load_modules(void)
 
                   item->Hash = StrHash(modname, FALSE);
 
-                  pos += sizeof(struct ModuleItem);
+                  pos += sizeof(ModuleItem);
                   pos += StrCopy("modules:", modules+pos, sizeof(modules)-pos-1);
                   for (i=0; folder->Name[i] AND (folder->Name[i] != '.') AND (pos < sizeof(modules)-1); i++) modules[pos++] = folder->Name[i]; // Copy everything up to the extension.
                   modules[pos++] = 0; // Include the null byte.
@@ -1942,7 +1960,7 @@ static ERROR load_modules(void)
 
                item->Hash = StrHash(modname, FALSE);
 
-               pos += sizeof(struct ModuleItem);
+               pos += sizeof(ModuleItem);
                pos += StrCopy("modules:", modules+pos, sizeof(modules)-pos-1);
                pos += StrCopy(modname, modules+pos, sizeof(modules)-pos-1);
                pos++; // Include the null byte.
@@ -1956,16 +1974,16 @@ static ERROR load_modules(void)
       FreeResource(dir);
    }
 
-   if ((total > 0) AND (!(error = AllocMemory(sizeof(struct ModuleHeader) + (total * sizeof(LONG)) + pos, MEM_NO_CLEAR|MEM_PUBLIC|MEM_UNTRACKED|MEM_NO_BLOCK, (APTR *)&glModules, &glSharedControl->ModulesMID)))) {
+   if ((total > 0) AND (!(error = AllocMemory(sizeof(ModuleHeader) + (total * sizeof(LONG)) + pos, MEM_NO_CLEAR|MEM_PUBLIC|MEM_UNTRACKED|MEM_NO_BLOCK, (APTR *)&glModules, &glSharedControl->ModulesMID)))) {
       glModules->Total = total;
 
       // Generate the offsets
 
       LONG *offsets = (LONG *)(glModules + 1);
-      struct ModuleItem *item = (struct ModuleItem *)((APTR)modules);
+      ModuleItem *item = (ModuleItem *)((APTR)modules);
       for (LONG i=0; i < total; i++) {
-         offsets[i] = (MAXINT)item - (MAXINT)modules + sizeof(struct ModuleHeader) + (total<<2);
-         item = (struct ModuleItem *)(((char *)item) + item->Size);
+         offsets[i] = (MAXINT)item - (MAXINT)modules + sizeof(ModuleHeader) + (total<<2);
+         item = (ModuleItem *)(((char *)item) + item->Size);
       }
 
       CopyMemory(modules, offsets + total, pos);
@@ -1977,7 +1995,7 @@ static ERROR load_modules(void)
       for (; h > 0; h /= 3) {
          for (LONG i=h; i < total; i++) {
             LONG temp = offsets[i];
-            for (j=i; (j >= h) AND (((struct ModuleItem *)((char *)glModules + offsets[j-h]))->Hash > ((struct ModuleItem *)((char *)glModules + temp))->Hash); j -= h) {
+            for (j=i; (j >= h) AND (((ModuleItem *)((char *)glModules + offsets[j-h]))->Hash > ((ModuleItem *)((char *)glModules + temp))->Hash); j -= h) {
                offsets[j] = offsets[j - h];
             }
             offsets[j] = temp;
@@ -1996,11 +2014,10 @@ static ERROR load_modules(void)
       }
    }
    else {
-      LogF("@load_modules","Failed to find anything in 'modules:'");
+      log.warning("Failed to find anything in 'modules:'");
       error = ERR_Search;
    }
 
-   LogReturn();
    return error;
 }
 
@@ -2036,10 +2053,12 @@ ERROR convert_errno(LONG Error, ERROR Default)
 #ifdef _WIN32
 static void BreakHandler(void)
 {
+   parasol::Log log("Core");
+
    //winDeathBringer(0);  // Win7 doesn't like us calling SendMessage() during our handler?
 
    if (glLogLevel >= 5) {
-      LogF("@Core","USER BREAK"); // Using LogF is helpful for stepped output to indicate where the crash occurred
+      log.warning("USER BREAK"); // Using log is helpful for branched output to indicate where the crash occurred
    }
    else fprintf(stderr, "\nUSER BREAK");
 
@@ -2070,10 +2089,11 @@ static void win32_enum_folders(CSTRING Volume, CSTRING Label, CSTRING Path, CSTR
 
 static ERROR init_filesystem(void)
 {
+   parasol::Log log("Core");
    LONG i;
-   BYTE buffer[300];
+   char buffer[300];
 
-   LogF("Core","Initialising filesystem.");
+   log.branch("Initialising filesystem.");
 
    glVirtualTotal = 1;
    glVirtual[0] = glFSDefault;
@@ -2082,7 +2102,7 @@ static ERROR init_filesystem(void)
    // way to resolve volume names to file locations, as well as providing other classes with a way to
    // peruse the volumes registered within the system.
 
-   MSG("Attempting to create SystemVolumes object.");
+   log.trace("Attempting to create SystemVolumes object.");
 
    ERROR error;
    if (!(error = NewObject(ID_CONFIG, NF_NO_TRACK, (OBJECTPTR *)&glVolumes))) {
@@ -2127,7 +2147,7 @@ static ERROR init_filesystem(void)
          BYTE cd_set = FALSE;
          BYTE hd_set = FALSE;
 /*
-         struct ConfigEntry *entries;
+         ConfigEntry *entries;
          if ((entries = config->Entries)) {
             for (i=0; i < config->AmtEntries; i++) {
                if (!StrMatch("Name", entries[i].Item)) {
@@ -2210,18 +2230,18 @@ static ERROR init_filesystem(void)
          #ifdef __unix__
             STRING homedir, logname;
             if ((homedir = getenv("HOME")) AND (homedir[0]) AND (StrMatch("/", homedir) != ERR_Okay)) {
-               LogMsg("Home folder is \"%s\".", homedir);
+               log.msg("Home folder is \"%s\".", homedir);
                for (i=0; (homedir[i]) AND (i < (LONG)sizeof(buffer)-1); i++) buffer[i] = homedir[i];
                while ((i > 0) AND (buffer[i-1] IS '/')) i--;
                i += StrFormat(buffer+i, sizeof(buffer)-i, "/.%s%d/", glUserHomeFolder, F2T(VER_CORE));
             }
             else if ((logname = getenv("LOGNAME")) AND (logname[0])) {
-               LogMsg("Login name for home folder is \"%s\".", logname);
+               log.msg("Login name for home folder is \"%s\".", logname);
                i = StrFormat(buffer, sizeof(buffer), "config:users/%s/", logname);
                buffer[i] = 0;
             }
             else {
-               LogMsg("Unable to determine home folder, using default.");
+               log.msg("Unable to determine home folder, using default.");
                i = StrCopy("config:users/default/", buffer, COPY_ALL);
             }
          #elif _WIN32
@@ -2265,7 +2285,7 @@ static ERROR init_filesystem(void)
 
       // Reset the user: volume
 
-      LogMsg("Home Folder: %s", buffer);
+      log.msg("Home Folder: %s", buffer);
 
       SetVolume(AST_NAME, "user:", AST_PATH, buffer, AST_Flags, VOLUME_REPLACE, AST_ICON, "users/user", TAGEND);
 
@@ -2294,7 +2314,7 @@ static ERROR init_filesystem(void)
       // NOTE: In the native release all media, including volumes, are controlled by the mountdrives program.
       // Mountdrives also happens to manage the system:hardware/drives.cfg file.
 
-      const struct SystemState *state = GetSystemState();
+      const SystemState *state = GetSystemState();
       if (StrMatch("Native", state->Platform) != ERR_Okay) {
 #ifdef _WIN32
          LONG len;
@@ -2309,7 +2329,7 @@ static ERROR init_filesystem(void)
 
                buffer[i+2] = '/';
 
-               UBYTE label[2];
+               char label[2];
                label[0] = buffer[i];
                label[1] = 0;
 
@@ -2329,7 +2349,7 @@ static ERROR init_filesystem(void)
                   SetVolume(AST_NAME, net, AST_PATH, buffer+i, AST_LABEL, label, AST_ICON, "devices/network", AST_DEVICE, "network", TAGEND);
                   net[3]++;
                }
-               else LogErrorMsg("Drive %s identified as unsupported type %d.", buffer+i, type);
+               else log.warning("Drive %s identified as unsupported type %d.", buffer+i, type);
 
                while (buffer[i]) i++;
             }
@@ -2351,7 +2371,7 @@ static ERROR init_filesystem(void)
             char mount[80], drivename[] = "driveXXX", devpath[40];
             LONG file;
 
-            LogMsg("Scanning /proc/mounts for hard disks");
+            log.msg("Scanning /proc/mounts for hard disks");
 
             LONG driveno = 2; // Drive 1 is already assigned to root, so start from #2
             if ((file = open("/proc/mounts", O_RDONLY)) != -1) {
@@ -2399,7 +2419,7 @@ static ERROR init_filesystem(void)
             }
             else PostError(ERR_File);
          }
-         else LogMsg("Not scanning for hard disks because user has defined drive1.");
+         else log.msg("Not scanning for hard disks because user has defined drive1.");
 
          if (!cd_set) {
             CSTRING cdroms[] = {
@@ -2427,7 +2447,7 @@ static ERROR init_filesystem(void)
       cfgMergeFile(glVolumes, "user:config/volumes.cfg");
    }
    else if (error != ERR_ObjectExists) {
-      LogErrorMsg("Failed to create the SystemVolumes object.");
+      log.warning("Failed to create the SystemVolumes object.");
       return ERR_NewObject;
    }
 

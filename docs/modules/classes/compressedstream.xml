@@ -87,10 +87,13 @@
       <const name="ERROR"/>
       <const name="WARNING"/>
       <const name="DEBUG"/>
-      <const name="FUNCTION"/>
+      <const name="EXTAPI"/>
+      <const name="BRANCH"/>
+      <const name="INFO"/>
+      <const name="API"/>
       <const name="TRACE"/>
       <const name="CRITICAL"/>
-      <const name="BRANCH"/>
+      <const name="FUNCTION"/>
     </constants>
 
     <constants lookup="MOF" comment="Module flags">

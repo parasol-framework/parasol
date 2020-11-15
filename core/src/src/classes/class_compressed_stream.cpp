@@ -99,7 +99,7 @@ static ERROR CSTREAM_Read(objCompressedStream *Self, struct acRead *Args)
    if (length <= 0) return ERR_Okay;
 
    if (!Self->Inflating) {
-      MSG("Initialising decompression of the stream.");
+      log.trace("Initialising decompression of the stream.");
       ClearMemory(&Self->Stream, sizeof(Self->Stream));
       switch (Self->Format) {
          case CF_ZLIB:
@@ -318,14 +318,14 @@ static ERROR CSTREAM_Write(objCompressedStream *Self, struct acWrite *Args)
 
       if (len > 0) {
          Self->TotalOutput += len;
-         MSG("%d bytes (total " PF64() ") were compressed.", len, Self->TotalOutput);
+         log.trace("%d bytes (total " PF64() ") were compressed.", len, Self->TotalOutput);
          acWrite(Self->Output, Self->OutputBuffer, len, NULL);
       }
       else {
          // deflate() may not output anything if it needs more data to fill up a compression frame.  Return ERR_Okay
          // and wait for more data, or for the developer to end the stream.
 
-         //MSG("No data output on this cycle.");
+         //log.trace("No data output on this cycle.");
          break;
       }
    }

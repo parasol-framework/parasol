@@ -3,6 +3,8 @@
 
 static void print(objCompression *Self, CSTRING Buffer)
 {
+   parasol::Log log;
+
    if (Self->OutputID) {
       struct acDataFeed feed = {
          .ObjectID = Self->Head.UniqueID,
@@ -12,14 +14,16 @@ static void print(objCompression *Self, CSTRING Buffer)
       feed.Size = StrLength(Buffer) + 1;
       ActionMsg(AC_DataFeed, Self->OutputID, &feed, 0, 0);
    }
-   else LogMsg("%s", Buffer);
+   else log.msg("%s", Buffer);
 }
 
 //*********************************************************************************************************************
 
 static ERROR compress_folder(objCompression *Self, CSTRING Location, CSTRING Path)
 {
-   LogF("6CompressFolder()","Compressing folder \"%s\" to \"%s\"", Location, Path);
+   parasol::Log log(__FUNCTION__);
+
+   log.branch("Compressing folder \"%s\" to \"%s\"", Location, Path);
 
    if ((!Self) OR (!Location)) return ERR_NullArgs;
    if (!Path) Path = "";
@@ -32,26 +36,26 @@ static ERROR compress_folder(objCompression *Self, CSTRING Location, CSTRING Pat
    }
 
    if ((file->Flags & FL_LINK) AND (!(Self->Flags & CMF_NO_LINKS))) {
-      LogF("CompressFolder:","Folder is a link.");
+      log.msg("Folder is a link.");
       acFree(&file->Head);
       return compress_file(Self, Location, Path, TRUE);
    }
 
    if (Self->OutputID) {
-      StrFormat(Self->prvOutput, SIZE_COMPRESSION_BUFFER, "  Compressing folder \"%s\".", Location);
-      print(Self, Self->prvOutput);
+      StrFormat((char *)Self->prvOutput, SIZE_COMPRESSION_BUFFER, "  Compressing folder \"%s\".", Location);
+      print(Self, (CSTRING)Self->prvOutput);
    }
 
    // Send feedback if requested to do so
 
-   struct CompressionFeedback feedback = {
+   CompressionFeedback feedback = {
       .FeedbackID     = FDB_COMPRESS_FILE,
       .Index          = Self->prvFileIndex,
       .Path           = Location,
       .Dest           = Path,
+      .Progress       = 0,
       .OriginalSize   = 0,
-      .CompressedSize = 0,
-      .Progress       = 0
+      .CompressedSize = 0
    };
 
    ERROR error = send_feedback(Self, &feedback);
@@ -69,23 +73,23 @@ static ERROR compress_folder(objCompression *Self, CSTRING Location, CSTRING Pat
 
    // Clear default variables
 
-   struct ZipFile *fileexists = NULL;
-   struct ZipFile *entry      = NULL;
+   ZipFile *fileexists = NULL;
+   ZipFile *entry      = NULL;
 
-   LONG i, j, len, pathlen;
-   for (pathlen=0; Path[pathlen]; pathlen++);
+   LONG i, j, len;
+   LONG pathlen = StrLength(Path);
 
    error = ERR_Failed;
    if (pathlen > 0) {
       // Seek to the position at which this new directory entry will be added
 
-      struct ZipFile *chain;
+      ZipFile *chain;
       ULONG dataoffset = 0;
       if ((chain = Self->prvFiles)) {
-         while (chain->Next) chain = (struct ZipFile *)chain->Next;
+         while (chain->Next) chain = (ZipFile *)chain->Next;
          if (acSeekStart(Self->FileIO, chain->Offset + HEAD_NAMELEN) != ERR_Okay) {
             acFree(&file->Head);
-            return FuncError(__func__, ERR_Seek);
+            return log.warning(ERR_Seek);
          }
          UWORD namelen    = read_word(Self->FileIO);
          UWORD extralen   = read_word(Self->FileIO);
@@ -96,13 +100,13 @@ static ERROR compress_folder(objCompression *Self, CSTRING Location, CSTRING Pat
 
       // If a matching file name already exists in the archive, make a note of its position
 
-      for (fileexists=Self->prvFiles; fileexists; fileexists=(struct ZipFile *)fileexists->Next) {
+      for (fileexists=Self->prvFiles; fileexists; fileexists=(ZipFile *)fileexists->Next) {
          if (!StrMatch(fileexists->Name, Location)) break;
       }
 
       // Allocate the file entry structure and set up some initial variables.
 
-      if (AllocMemory(sizeof(struct ZipFile) + pathlen + 1, MEM_DATA, (APTR *)&entry, NULL) != ERR_Okay) {
+      if (AllocMemory(sizeof(ZipFile) + pathlen + 1, MEM_DATA, (APTR *)&entry, NULL) != ERR_Okay) {
          acFree(&file->Head);
          return ERR_AllocMemory;
       }
@@ -119,7 +123,7 @@ static ERROR compress_folder(objCompression *Self, CSTRING Location, CSTRING Pat
 
       // Convert the file date stamp into a DOS time stamp for zip
 
-      struct DateTime *tm;
+      DateTime *tm;
       if (!GetPointer(file, FID_Date, &tm)) {
          if (tm->Year < 1980) entry->TimeStamp = 0x00210000;
          else entry->TimeStamp = ((tm->Year-1980)<<25) | (tm->Month<<21) | (tm->Day<<16) | (tm->Hour<<11) | (tm->Minute<<5) | (tm->Second>>1);
@@ -144,9 +148,9 @@ static ERROR compress_folder(objCompression *Self, CSTRING Location, CSTRING Pat
       // Add the entry to the file chain
 
       if ((chain = Self->prvFiles)) {
-         while (chain->Next) chain = (struct ZipFile *)chain->Next;
-         entry->Prev = (struct CompressedFile *)chain;
-         chain->Next = (struct CompressedFile *)entry;
+         while (chain->Next) chain = (ZipFile *)chain->Next;
+         entry->Prev = (CompressedFile *)chain;
+         chain->Next = (CompressedFile *)entry;
       }
       else Self->prvFiles = entry;
 
@@ -159,32 +163,22 @@ static ERROR compress_folder(objCompression *Self, CSTRING Location, CSTRING Pat
 
    // Enter the directory and compress its contents
 
-   struct DirInfo *dir;
+   DirInfo *dir;
    if (!OpenDir(Location, RDF_FILE|RDF_FOLDER|RDF_QUALIFY, &dir)) {
-      // Get the length of the location and path arguments
-
-      for (len=0; Location[len]; len++);
-      for (pathlen=0; Path[pathlen]; pathlen++);
-
-      // Recurse for each directory in the list
-
-      while (!ScanDir(dir)) {
-         struct FileInfo *scan = dir->Info;
+      len = StrLength(Location);
+      pathlen = StrLength(Path);
+      while (!ScanDir(dir)) { // Recurse for each directory in the list
+         FileInfo *scan = dir->Info;
          if ((scan->Flags & RDF_FOLDER) AND (!(scan->Flags & RDF_LINK))) {
-            for (j=0; scan->Name[j]; j++);
-
-            UBYTE location[len+j+1];
-            UBYTE path[pathlen+j+1];
-
+            j = StrLength(scan->Name);
+            char location[len+j+1];
+            char path[pathlen+j+1];
             StrFormat(location, sizeof(location), "%s%s", Location, scan->Name);
             StrFormat(path, sizeof(path), "%s%s", Path, scan->Name);
             compress_folder(Self, location, path);
          }
          else if (scan->Flags & (RDF_FILE|RDF_LINK)) {
-            for (j=0; scan->Name[j]; j++);
-
-            UBYTE location[len+j+1];
-
+            char location[len+StrLength(scan->Name)+1];
             j = StrCopy(Location, location, sizeof(location));
             StrCopy(scan->Name, location + j, sizeof(location) - j);
             compress_file(Self, location, Path, (scan->Flags & RDF_LINK) ? TRUE : FALSE);
@@ -199,7 +193,7 @@ static ERROR compress_folder(objCompression *Self, CSTRING Location, CSTRING Pat
 
 exit:
    if (entry) {
-      FreeFromLL((struct CompressedFile *)entry, (struct CompressedFile *)Self->prvFiles, Self->prvFiles);
+      FreeFromLL((CompressedFile *)entry, (CompressedFile *)Self->prvFiles, (CompressedFile **)&Self->prvFiles);
       FreeResource(entry);
    }
 
@@ -211,41 +205,48 @@ exit:
 
 static ERROR compress_file(objCompression *Self, CSTRING Location, CSTRING Path, BYTE Link)
 {
+   parasol::Log log(__FUNCTION__);
+
    if ((!Self) OR (!Location) OR (!Path)) return ERR_NullArgs;
 
-   LogF("6compress_file()","Compressing file \"%s\" to \"%s\"", Location, Path);
+   log.branch("Compressing file \"%s\" to \"%s\"", Location, Path);
 
-   struct ZipFile *fileexists = NULL;
-   struct ZipFile *entry = NULL;
+   ZipFile *fileexists = NULL;
+   ZipFile *entry = NULL;
    STRING symlink = NULL;
    UBYTE deflateend = FALSE;
    ERROR error = ERR_Failed;
+   objFile *file = NULL;
+   ZipFile *chain;
+   ULONG dataoffset = 0;
+   char filename[512] = "";
+   LONG i, len;
+   WORD level = Self->CompressionLevel / 10;
+   if (level < 0) level = 0;
+   else if (level > 9) level = 9;
 
    // Open the source file for reading only
 
-   objFile *file = NULL;
    if (CreateObject(ID_FILE, NF_INTEGRAL, (OBJECTPTR *)&file,
          FID_Path|TSTR,   Location,
          FID_Flags|TLONG, (Link IS TRUE) ? 0 : FL_READ,
          TAGEND) != ERR_Okay) {
       if (Self->OutputID) {
-         StrFormat(Self->prvOutput, SIZE_COMPRESSION_BUFFER, "  Error opening file \"%s\".", Location);
-         print(Self, Self->prvOutput);
+         StrFormat((char *)Self->prvOutput, SIZE_COMPRESSION_BUFFER, "  Error opening file \"%s\".", Location);
+         print(Self, (CSTRING)Self->prvOutput);
       }
-      error = FuncError(__func__, ERR_OpenFile);
+      error = log.warning(ERR_OpenFile);
       goto exit;
    }
 
    if ((Link) AND (!(file->Flags & FL_LINK))) {
-      LogErrorMsg("Internal Error: Expected a link, but the file is not.");
+      log.warning("Internal Error: Expected a link, but the file is not.");
       error = ERR_Failed;
       goto exit;
    }
 
    // Determine the name that will be used for storing this file
 
-   UBYTE filename[512] = "";
-   LONG i, len;
    for (i=0; Location[i]; i++);
    if ((i > 0) AND ((Location[i-1] IS '/') OR (Location[i-1] IS '\\'))) i--; // Ignore trailing slashes for symbolically linked folders
    while ((i > 0) AND (Location[i-1] != ':') AND (Location[i-1] != '/') AND (Location[i-1] != '\\')) i--;
@@ -261,7 +262,7 @@ static ERROR compress_file(objCompression *Self, CSTRING Location, CSTRING Path,
 
    // Send feedback
 
-   struct CompressionFeedback fb;
+   CompressionFeedback fb;
    fb.FeedbackID     = FDB_COMPRESS_FILE;
    fb.Index          = Self->prvFileIndex;
    fb.Path           = Location;
@@ -278,17 +279,15 @@ static ERROR compress_file(objCompression *Self, CSTRING Location, CSTRING Path,
    // Send informative output to the user
 
    if (Self->OutputID) {
-      StrFormat(Self->prvOutput, SIZE_COMPRESSION_BUFFER, "  Compressing file \"%s\".", Location);
-      print(Self, Self->prvOutput);
+      StrFormat((char *)Self->prvOutput, SIZE_COMPRESSION_BUFFER, "  Compressing file \"%s\".", Location);
+      print(Self, (CSTRING)Self->prvOutput);
    }
 
    // Seek to the position at which this new file will be added
 
-   struct ZipFile *chain;
-   ULONG dataoffset = 0;
    if ((chain = Self->prvFiles)) {
-      while (chain->Next) chain = (struct ZipFile *)chain->Next;
-      if (acSeek(Self->FileIO, chain->Offset + HEAD_NAMELEN, SEEK_START) != ERR_Okay) return FuncError(__func__, ERR_Seek);
+      while (chain->Next) chain = (ZipFile *)chain->Next;
+      if (acSeek(Self->FileIO, chain->Offset + HEAD_NAMELEN, SEEK_START) != ERR_Okay) return log.warning(ERR_Seek);
       UWORD namelen    = read_word(Self->FileIO);
       UWORD extralen   = read_word(Self->FileIO);
       dataoffset = chain->Offset + HEAD_LENGTH + namelen + extralen + chain->CompressedSize;
@@ -299,10 +298,6 @@ static ERROR compress_file(objCompression *Self, CSTRING Location, CSTRING Path,
    // Initialise the compression algorithm
 
    Self->prvCompressionCount++;
-
-   WORD level = Self->CompressionLevel / 10;
-   if (level < 0) level = 0;
-   else if (level > 9) level = 9;
 
    Self->prvZip.next_in   = 0;
    Self->prvZip.avail_in  = 0;
@@ -323,14 +318,14 @@ static ERROR compress_file(objCompression *Self, CSTRING Location, CSTRING Path,
 
    // If a matching file name already exists in the archive, make a note of its position
 
-   for (fileexists=Self->prvFiles; fileexists; fileexists=(struct ZipFile *)fileexists->Next) {
+   for (fileexists=Self->prvFiles; fileexists; fileexists=(ZipFile *)fileexists->Next) {
       if (!StrCompare(fileexists->Name, filename, 0, STR_MATCH_LEN)) break;
    }
 
    // Allocate the file entry structure and set up some initial variables.
 
    len = StrLength(filename);
-   if (!AllocMemory(sizeof(struct ZipFile) + len + 1, MEM_DATA, (APTR *)&entry, NULL)) {
+   if (!AllocMemory(sizeof(ZipFile) + len + 1, MEM_DATA, (APTR *)&entry, NULL)) {
       entry->Name = (STRING)(entry+1);
       entry->NameLen = len;
       for (i=0; i < entry->NameLen; i++) entry->Name[i] = filename[i];
@@ -342,14 +337,14 @@ static ERROR compress_file(objCompression *Self, CSTRING Location, CSTRING Path,
 
       if ((!(Self->Flags & CMF_NO_LINKS)) AND (file->Flags & FL_LINK)) {
          if (!GetString(file, FID_Link, &symlink)) {
-            LogF("compress_file","Note: File \"%s\" is a symbolic link to \"%s\"", filename, symlink);
+            log.msg("Note: File \"%s\" is a symbolic link to \"%s\"", filename, symlink);
             entry->Flags |= ZIP_LINK;
          }
       }
 
       // Convert the file date stamp into a DOS time stamp for zip
 
-      struct DateTime *time;
+      DateTime *time;
       if (!GetPointer(file, FID_Date, &time)) {
          if (time->Year < 1980) entry->TimeStamp = 0x00210000;
          else entry->TimeStamp = ((time->Year-1980)<<25) | (time->Month<<21) | (time->Day<<16) | (time->Hour<<11) | (time->Minute<<5) | (time->Second>>1);
@@ -388,12 +383,12 @@ static ERROR compress_file(objCompression *Self, CSTRING Location, CSTRING Path,
    if (entry->Flags & ZIP_LINK) {
       // Compress the symbolic link to the zip file, rather than the data
       len = StrLength(symlink);
-      Self->prvZip.next_in   = symlink;
+      Self->prvZip.next_in   = (Bytef *)symlink;
       Self->prvZip.avail_in  = len;
       Self->prvZip.next_out  = Self->prvOutput;
       Self->prvZip.avail_out = SIZE_COMPRESSION_BUFFER;
       if (deflate(&Self->prvZip, Z_NO_FLUSH) != ERR_Okay) {
-         LogErrorMsg("Failure during data compression.");
+         log.warning("Failure during data compression.");
          goto exit;
       }
       entry->CRC = GenCRC32(entry->CRC, symlink, len);
@@ -420,7 +415,7 @@ static ERROR compress_file(objCompression *Self, CSTRING Location, CSTRING Path,
             }
 
             if (deflate(&Self->prvZip, Z_NO_FLUSH) != ERR_Okay) {
-               LogErrorMsg("Failure during data compression.");
+               log.warning("Failure during data compression.");
                goto exit;
             }
          }
@@ -447,9 +442,9 @@ static ERROR compress_file(objCompression *Self, CSTRING Location, CSTRING Path,
    }
 
    if ((chain = Self->prvFiles)) {
-      while (chain->Next) chain = (struct ZipFile *)chain->Next;
-      entry->Prev = (struct CompressedFile *)chain;
-      chain->Next = (struct CompressedFile *)entry;
+      while (chain->Next) chain = (ZipFile *)chain->Next;
+      entry->Prev = (CompressedFile *)chain;
+      chain->Next = (CompressedFile *)entry;
    }
    else Self->prvFiles = entry;
 
@@ -489,7 +484,7 @@ exit:
    if (deflateend IS TRUE) deflateEnd(&Self->prvZip);
 
    if (entry) {
-      FreeFromLL((struct CompressedFile *)entry, (struct CompressedFile *)Self->prvFiles, Self->prvFiles);
+      FreeFromLL((CompressedFile *)entry, (CompressedFile *)Self->prvFiles, (CompressedFile **)&Self->prvFiles);
       FreeResource(entry);
    }
 
@@ -501,46 +496,47 @@ exit:
 
 //*********************************************************************************************************************
 
-ERROR remove_file(objCompression *Self, struct ZipFile **File)
+ERROR remove_file(objCompression *Self, ZipFile **File)
 {
-   struct ZipFile *file = *File;
+   parasol::Log log(__FUNCTION__);
+   ZipFile *file = *File;
 
-   LogMsg("Deleting \"%s\"", file->Name);
+   log.branch("Deleting \"%s\"", file->Name);
 
    // Seek to the end of the compressed file.  We are going to delete the file by shifting all the data after the file
    // to the start of the file's position.
 
-   if (acSeekStart(Self->FileIO, file->Offset + HEAD_NAMELEN) != ERR_Okay) return FuncError(__func__, ERR_Seek);
+   if (acSeekStart(Self->FileIO, file->Offset + HEAD_NAMELEN) != ERR_Okay) return log.warning(ERR_Seek);
    UWORD namelen    = read_word(Self->FileIO);
    UWORD extralen   = read_word(Self->FileIO);
    LONG chunksize  = HEAD_LENGTH + namelen + extralen + file->CompressedSize;
    DOUBLE currentpos = file->Offset + chunksize;
-   if (acSeekStart(Self->FileIO, currentpos) != ERR_Okay) return FuncError(__func__, ERR_Seek);
+   if (acSeekStart(Self->FileIO, currentpos) != ERR_Okay) return log.warning(ERR_Seek);
 
    DOUBLE writepos = file->Offset;
 
    struct acRead read = { Self->prvInput, SIZE_COMPRESSION_BUFFER };
    while ((!Action(AC_Read, Self->FileIO, &read)) AND (read.Result > 0)) {
-      if (acSeekStart(Self->FileIO, writepos) != ERR_Okay) return FuncError(__func__, ERR_Seek);
+      if (acSeekStart(Self->FileIO, writepos) != ERR_Okay) return log.warning(ERR_Seek);
       struct acWrite write = { Self->prvInput, read.Result };
-      if (Action(AC_Write, Self->FileIO, &write) != ERR_Okay) return FuncError(__func__, ERR_Write);
+      if (Action(AC_Write, Self->FileIO, &write) != ERR_Okay) return log.warning(ERR_Write);
       writepos += write.Result;
 
       currentpos += read.Result;
-      if (acSeekStart(Self->FileIO, currentpos) != ERR_Okay) return FuncError(__func__, ERR_Seek);
+      if (acSeekStart(Self->FileIO, currentpos) != ERR_Okay) return log.warning(ERR_Seek);
    }
 
    SetDouble(Self->FileIO, FID_Size, writepos);
 
    // Remove the file reference from the chain
 
-   struct ZipFile *next = (struct ZipFile *)file->Next;
-   FreeFromLL((struct CompressedFile *)file, (struct CompressedFile *)Self->prvFiles, Self->prvFiles);
+   ZipFile *next = (ZipFile *)file->Next;
+   FreeFromLL((CompressedFile *)file, (CompressedFile *)Self->prvFiles, (CompressedFile **)&Self->prvFiles);
    FreeResource(file);
 
    // Adjust the offset of files that were ahead of this one
 
-   for (file=next; file != NULL; file=(struct ZipFile *)file->Next) file->Offset -= chunksize;
+   for (file=next; file != NULL; file=(ZipFile *)file->Next) file->Offset -= chunksize;
 
    *File = next;
    return ERR_Okay;
@@ -555,9 +551,10 @@ ERROR remove_file(objCompression *Self, struct ZipFile **File)
 
 static ERROR fast_scan_zip(objCompression *Self)
 {
-   struct ziptail tail;
+   parasol::Log log(__FUNCTION__);
+   ziptail tail;
 
-   FMSG("fast_scan_zip()","");
+   log.traceBranch("");
 
    if (acSeek(Self->FileIO, TAIL_LENGTH, SEEK_END) != ERR_Okay) return ERR_Seek; // Surface error, fail
    if (acRead(Self->FileIO, &tail, TAIL_LENGTH, NULL) != ERR_Okay) return ERR_Read; // Surface error, fail
@@ -575,27 +572,27 @@ static ERROR fast_scan_zip(objCompression *Self)
 
    if (acSeek(Self->FileIO, tail.listoffset, SEEK_START) != ERR_Okay) return ERR_Seek;
 
-   struct zipentry *list, *scan;
+   zipentry *list, *scan;
    LONG total_files = 0;
    if (!AllocMemory(tail.listsize, MEM_DATA|MEM_NO_CLEAR, (APTR *)&list, NULL)) {
-      MSG("Reading end-of-central directory from index %d, %d bytes.", tail.listoffset, tail.listsize);
+      log.trace("Reading end-of-central directory from index %d, %d bytes.", tail.listoffset, tail.listsize);
       if (acRead(Self->FileIO, list, tail.listsize, NULL) != ERR_Okay) {
          FreeResource(list);
          return scan_zip(Self);
       }
 
-      struct ZipFile *lastentry = NULL;
+      ZipFile *lastentry = NULL;
       #pragma GCC diagnostic ignored "-Waddress-of-packed-member"
       ULONG *head = (ULONG *)list;
       #pragma GCC diagnostic warning "-Waddress-of-packed-member"
       LONG i;
       for (i=0; i < tail.filecount; i++) {
-         struct ZipFile *zf, *next;
+         ZipFile *zf, *next;
 
          if (0x02014b50 != head[0]) {
-            LogErrorMsg("Zip file has corrupt end-of-file signature.");
+            log.warning("Zip file has corrupt end-of-file signature.");
             for (zf=Self->prvFiles; zf != NULL; zf=next) {
-               next = (struct ZipFile *)zf->Next;
+               next = (ZipFile *)zf->Next;
                FreeResource(zf);
             }
             Self->prvFiles = NULL;
@@ -603,7 +600,7 @@ static ERROR fast_scan_zip(objCompression *Self)
             return scan_zip(Self);
          }
 
-         scan = (struct zipentry *)(head + 1);
+         scan = (zipentry *)(head + 1);
 
 #ifndef REVERSE_BYTEORDER
          scan->deflatemethod  = le16_cpu(scan->deflatemethod);
@@ -622,7 +619,7 @@ static ERROR fast_scan_zip(objCompression *Self)
 
          // Check the header validity
 
-         if (!AllocMemory(sizeof(struct ZipFile) + scan->namelen + 1 + scan->commentlen + 1, MEM_DATA, (APTR *)&zf, NULL)) {
+         if (!AllocMemory(sizeof(ZipFile) + scan->namelen + 1 + scan->commentlen + 1, MEM_DATA, (APTR *)&zf, NULL)) {
             total_files++;
 
             // Build the file entry structure
@@ -672,8 +669,8 @@ static ERROR fast_scan_zip(objCompression *Self)
          // Linked-list management
 
          if (lastentry) {
-            zf->Prev = (struct CompressedFile *)lastentry;
-            lastentry->Next = (struct CompressedFile *)zf;
+            zf->Prev = (CompressedFile *)lastentry;
+            lastentry->Next = (CompressedFile *)zf;
          }
          else Self->prvFiles = zf;
          lastentry = zf;
@@ -691,18 +688,20 @@ static ERROR fast_scan_zip(objCompression *Self)
 
 static ERROR scan_zip(objCompression *Self)
 {
-   FMSG("scan_zip()","");
+   parasol::Log log(__FUNCTION__);
 
-   if (acSeek(Self->FileIO, 0.0, SEEK_START) != ERR_Okay) return FuncError(__func__, ERR_Seek);
+   log.traceBranch("");
 
-   struct ZipFile *lastentry = NULL;
+   if (acSeek(Self->FileIO, 0.0, SEEK_START) != ERR_Okay) return log.warning(ERR_Seek);
+
+   ZipFile *lastentry = NULL;
    LONG type, result;
    LONG total_files = 0;
    while ((type = read_long(Self->FileIO))) {
       if (type IS 0x04034b50) {
          // PKZIP file header entry detected
 
-         if (acSeek(Self->FileIO, (DOUBLE)HEAD_COMPRESSEDSIZE-4, SEEK_CURRENT) != ERR_Okay) return FuncError(__func__, ERR_Seek);
+         if (acSeek(Self->FileIO, (DOUBLE)HEAD_COMPRESSEDSIZE-4, SEEK_CURRENT) != ERR_Okay) return log.warning(ERR_Seek);
 
          struct {
             ULONG compressedsize;
@@ -711,7 +710,7 @@ static ERROR scan_zip(objCompression *Self)
             UWORD extralen;
          } header;
 
-         if (acRead(Self->FileIO, &header, sizeof(header), &result) != ERR_Okay) return FuncError(__func__, ERR_Read);
+         if (acRead(Self->FileIO, &header, sizeof(header), &result) != ERR_Okay) return log.warning(ERR_Read);
 
 #ifndef REVERSE_BYTEORDER
          header.compressedsize = le32_cpu(header.compressedsize);
@@ -720,15 +719,15 @@ static ERROR scan_zip(objCompression *Self)
          header.extralen       = le16_cpu(header.extralen);
 #endif
 
-         if (acSeekCurrent(Self->FileIO, header.compressedsize + header.namelen + header.extralen) != ERR_Okay) return FuncError(__func__, ERR_Seek);
+         if (acSeekCurrent(Self->FileIO, header.compressedsize + header.namelen + header.extralen) != ERR_Okay) return log.warning(ERR_Seek);
       }
       else if (type IS 0x02014b50) {
          // PKZIP list entry detected
 
          total_files++;
 
-         struct zipentry zipentry;
-         if (acRead(Self->FileIO, &zipentry, sizeof(zipentry), &result) != ERR_Okay) return FuncError(__func__, ERR_Read);
+         zipentry zipentry;
+         if (acRead(Self->FileIO, &zipentry, sizeof(zipentry), &result) != ERR_Okay) return log.warning(ERR_Read);
 
 #ifndef REVERSE_BYTEORDER
          zipentry.deflatemethod  = le16_cpu(zipentry.deflatemethod);
@@ -747,8 +746,8 @@ static ERROR scan_zip(objCompression *Self)
 
          // Note: Hidden memory is allocated to save time and resource tracking space when loading huge compressed files.
 
-         struct ZipFile *entry;
-         if (AllocMemory(sizeof(struct ZipFile) + zipentry.namelen + 1 + zipentry.commentlen + 1, MEM_DATA, (APTR *)&entry, NULL) != ERR_Okay) return FuncError(__func__, ERR_Memory);
+         ZipFile *entry;
+         if (AllocMemory(sizeof(ZipFile) + zipentry.namelen + 1 + zipentry.commentlen + 1, MEM_DATA, (APTR *)&entry, NULL) != ERR_Okay) return log.warning(ERR_Memory);
 
          // Read the file name string
 
@@ -756,14 +755,14 @@ static ERROR scan_zip(objCompression *Self)
          if (!acRead(Self->FileIO, entry->Name, zipentry.namelen, &result)) {
             entry->Name[zipentry.namelen] = 0;
          }
-         else return FuncError(__func__, ERR_Read);
+         else return log.warning(ERR_Read);
 
          // Read extra file information
 
-         UBYTE strbuffer[256];
+         char strbuffer[256];
          if (zipentry.extralen > 0) {
             struct acRead read = { strbuffer, zipentry.extralen };
-            if (Action(AC_Read, Self->FileIO, &read)) return FuncError(__func__, ERR_Read);
+            if (Action(AC_Read, Self->FileIO, &read)) return log.warning(ERR_Read);
          }
 
          // Read the file comment string, if any
@@ -774,7 +773,7 @@ static ERROR scan_zip(objCompression *Self)
                CopyMemory(strbuffer, entry->Comment, zipentry.commentlen);
                entry->Comment[zipentry.commentlen] = 0;
             }
-            else return FuncError(__func__, ERR_Read);
+            else return log.warning(ERR_Read);
          }
 
          // Build the file entry structure
@@ -804,8 +803,8 @@ static ERROR scan_zip(objCompression *Self)
          // Chain management
 
          if (lastentry) {
-            entry->Prev = (struct CompressedFile *)lastentry;
-            lastentry->Next = (struct CompressedFile *)entry;
+            entry->Prev = (CompressedFile *)lastentry;
+            lastentry->Next = (CompressedFile *)entry;
          }
          else Self->prvFiles = entry;
 
@@ -813,43 +812,42 @@ static ERROR scan_zip(objCompression *Self)
       }
       else if (type IS 0x06054b50) {
          // PKZIP end of file directory signature detected
-         FMSG("scan_zip","End of central directory signature detected.");
+         log.trace("End of central directory signature detected.");
          break; // End the loop
       }
       else {
          // Unrecognised PKZIP data
-         LogErrorMsg("Unrecognised PKZIP entry $%.8x in the central directory.", type);
+         log.warning("Unrecognised PKZIP entry $%.8x in the central directory.", type);
          return ERR_InvalidData;
       }
    }
 
-   FMSG("scan_zip","Detected %d files.", total_files);
+   log.trace("Detected %d files.", total_files);
    return ERR_Okay;
 }
 
 //*********************************************************************************************************************
 
-static ERROR send_feedback(objCompression *Self, struct CompressionFeedback *Feedback)
+static ERROR send_feedback(objCompression *Self, CompressionFeedback *Feedback)
 {
+   parasol::Log log(__FUNCTION__);
    ERROR error;
 
    if (Self->Feedback.Type) {
       Self->FeedbackInfo = Feedback;
 
       if (Self->Feedback.Type IS CALL_STDC) {
-         ERROR (*routine)(objCompression *, struct CompressionFeedback *);
-         routine = Self->Feedback.StdC.Routine;
+         auto routine = (ERROR (*)(objCompression *, CompressionFeedback *))Self->Feedback.StdC.Routine;
          if (Self->Feedback.StdC.Context) {
-            OBJECTPTR context = SetContext(Self->Feedback.StdC.Context);
+            parasol::SwitchContext context(Self->Feedback.StdC.Context);
             error = routine(Self, Feedback);
-            SetContext(context);
          }
          else error = routine(Self, Feedback);
       }
       else if (Self->Feedback.Type IS CALL_SCRIPT) {
          OBJECTPTR script = Self->Feedback.Script.Script;
          if (script) {
-            const struct ScriptArg args[] = {
+            const ScriptArg args[] = {
                { "Compression", FD_OBJECTPTR, { .Address = Self } },
                { "Feedback",    FD_POINTER, { .Address = Feedback } }
             };
@@ -860,7 +858,7 @@ static ERROR send_feedback(objCompression *Self, struct CompressionFeedback *Fee
          else error = ERR_Failed;
       }
       else {
-         LogErrorMsg("Callback function structure does not specify a recognised Type.");
+         log.warning("Callback function structure does not specify a recognised Type.");
          error = ERR_Terminate;
       }
 
@@ -875,13 +873,13 @@ static ERROR send_feedback(objCompression *Self, struct CompressionFeedback *Fee
 
 static void write_eof(objCompression *Self)
 {
-   struct ZipFile *chain;
+   ZipFile *chain;
 
    if ((Self->FileIO) AND (!Self->Head.SubID) AND (Self->prvCompressionCount > 0)) {
       if ((chain = Self->prvFiles)) {
          // Determine the start of the list offset
 
-         while (chain->Next) chain = (struct ZipFile *)chain->Next;
+         while (chain->Next) chain = (ZipFile *)chain->Next;
          acSeekStart(Self->FileIO, chain->Offset + HEAD_NAMELEN);
          UWORD namelen = read_word(Self->FileIO);
          UWORD extralen = read_word(Self->FileIO);
@@ -892,7 +890,7 @@ static void write_eof(objCompression *Self)
 
          ULONG listsize   = 0;
          UWORD filecount  = 0;
-         for (chain=Self->prvFiles; chain != NULL; chain=(struct ZipFile *)chain->Next) {
+         for (chain=Self->prvFiles; chain != NULL; chain=(ZipFile *)chain->Next) {
             UBYTE elist[sizeof(glList)];
             CopyMemory(glList, elist, sizeof(glList));
 
@@ -935,7 +933,7 @@ static void write_eof(objCompression *Self)
 
 //*********************************************************************************************************************
 
-void zipfile_to_item(struct ZipFile *ZF, struct CompressedItem *Item)
+void zipfile_to_item(ZipFile *ZF, CompressedItem *Item)
 {
    ClearMemory(Item, sizeof(*Item));
 

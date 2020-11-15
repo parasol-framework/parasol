@@ -34,12 +34,14 @@ static UBYTE glEventListAltered = FALSE;
 
 void free_events(void)
 {
-   LogF("Core","Freeing the event list.");
+   parasol::Log log("Core");
 
-   struct eventsub *event = glEventList;
+   log.function("Freeing the event list.");
+
+   eventsub *event = glEventList;
    while (event) {
-      MSG("Freeing event %p", event);
-      struct eventsub *next = event->Next;
+      log.trace("Freeing event %p", event);
+      eventsub *next = event->Next;
       free(event);
       event = next;
    }
@@ -78,16 +80,18 @@ NullArgs
 
 ERROR BroadcastEvent(APTR Event, LONG EventSize)
 {
-   if ((!Event) OR ((size_t)EventSize < sizeof(struct rkEvent))) return ERR_NullArgs;
+   parasol::Log log(__FUNCTION__);
 
-   LONG groupmask = 1<<((((struct rkEvent *)Event)->EventID>>56) & 0xff);
+   if ((!Event) OR ((size_t)EventSize < sizeof(rkEvent))) return ERR_NullArgs;
+
+   LONG groupmask = 1<<((((rkEvent *)Event)->EventID>>56) & 0xff);
 
    for (LONG i=0; i < MAX_TASKS; i++) {
       if (shTasks[i].ProcessID) {
          if (shTasks[i].EventMask & groupmask) {
-            FMSG("BroadcastEvent","Broadcasting event $%.8x%.8x to task #%d.",
-               (LONG)(((struct rkEvent *)Event)->EventID>>32 & 0xffffffff),
-               (LONG)(((struct rkEvent *)Event)->EventID>>32 & 0xffffffff), shTasks[i].TaskID);
+            log.trace("Broadcasting event $%.8x%.8x to task #%d.",
+               (LONG)(((rkEvent *)Event)->EventID>>32 & 0xffffffff),
+               (LONG)(((rkEvent *)Event)->EventID>>32 & 0xffffffff), shTasks[i].TaskID);
             SendMessage(shTasks[i].MessageID, MSGID_EVENT, 0, Event, EventSize);
          }
       }
@@ -126,13 +130,15 @@ large: The EventID is returned as a 64-bit integer.
 
 LARGE GetEventID(LONG Group, CSTRING SubGroup, CSTRING Event)
 {
+   parasol::Log log(__FUNCTION__);
+
    if (!Group) return 0;
 
    LARGE event_id = ((LARGE)(Group & 0xff))<<58;
    if ((SubGroup) AND (SubGroup[0] != '*')) event_id |= ((LARGE)(StrHash(SubGroup, FALSE) & 0x00ffffff)) <<32;
    if ((Event) AND (Event[0] != '*')) event_id |= StrHash(Event, FALSE);
 
-   FMSG("GetEventID()","Group: %d, SubGroup: %s, Event: %s, Result: $%.8x%.8x", Group, SubGroup, Event, (LONG)((event_id>>32)& 0xffffffff), (LONG)(event_id & 0xffffffff));
+   log.traceBranch("Group: %d, SubGroup: %s, Event: %s, Result: $%.8x%.8x", Group, SubGroup, Event, (LONG)((event_id>>32)& 0xffffffff), (LONG)(event_id & 0xffffffff));
 
    return event_id;
 }
@@ -166,6 +172,8 @@ AllocMemory
 
 ERROR SubscribeEvent(LARGE EventID, FUNCTION *Callback, APTR Custom, APTR *Handle)
 {
+   parasol::Log log(__FUNCTION__);
+
    if ((!Callback) OR (!EventID) OR (!Handle)) return ERR_NullArgs;
 
    if (Callback->Type != CALL_STDC) return ERR_Args; // Currently only StdC callbacks are accepted.
@@ -191,7 +199,7 @@ ERROR SubscribeEvent(LARGE EventID, FUNCTION *Callback, APTR Custom, APTR *Handl
 
       glTaskEntry->EventMask |= 1<<event->Group;
 
-      LogF("6SubscribeEvent()","Custom: %p, Callback: %p, Mask: $%.8x, Event: %p", Custom, Callback, glTaskEntry->EventMask, event);
+      log.function("Custom: %p, Callback: %p, Mask: $%.8x, Event: %p", Custom, Callback, glTaskEntry->EventMask, event);
 
       *Handle = event;
 
@@ -216,10 +224,12 @@ ptr Event: An event handle returned from SubscribeEvent()
 
 void UnsubscribeEvent(APTR Event)
 {
+   parasol::Log log(__FUNCTION__);
+
    if (!Event) return;
    if (!glEventList) return; // All events have already been freed (i.e. Core is closing)
 
-   LogF("6UnsubscribeEvent()","Event: %p", Event);
+   log.function("Event: %p", Event);
 
    struct eventsub *event = (eventsub *)Event;
    if (event->Prev) event->Prev->Next = event->Next;
@@ -247,11 +257,13 @@ void UnsubscribeEvent(APTR Event)
 
 ERROR msg_event(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
 {
-   if ((!Message) OR ((size_t)MsgSize < sizeof(struct rkEvent))) return ERR_Okay;
+   parasol::Log log(__FUNCTION__);
+
+   if ((!Message) OR ((size_t)MsgSize < sizeof(rkEvent))) return ERR_Okay;
 
    rkEvent *eventmsg = (rkEvent *)Message;
 
-   FMSG("EventMsg()","Event $%.8x%8x has been received.", (LONG)((eventmsg->EventID>>32)& 0xffffffff),
+   log.branch("Event $%.8x%8x has been received.", (LONG)((eventmsg->EventID>>32)& 0xffffffff),
       (LONG)(eventmsg->EventID & 0xffffffff));
 
    struct eventsub *event;
@@ -261,7 +273,7 @@ restart:
    while (event) {
       if (event->Called IS glCallSignal);
       else if ((eventmsg->EventID & event->EventMask) IS event->EventID) {
-         FMSG("EventMsg","Found listener %p for this event.", event->Callback);
+         log.trace("Found listener %p for this event.", event->Callback);
 
          event->Called = glCallSignal;
 

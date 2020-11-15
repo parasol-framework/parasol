@@ -131,6 +131,7 @@ static void connect_name_resolved(LARGE, ERROR, CSTRING HostName, struct IPAddre
 
 static ERROR NETSOCKET_Connect(objNetSocket *Self, struct nsConnect *Args)
 {
+   parasol::Log log;
    struct IPAddress server_ip;
 
    if ((!Args) OR (!Args->Address) OR (Args->Port <= 0) OR (Args->Port >= 65536)) return log.error(ERR_Args);
@@ -237,6 +238,8 @@ static void connect_name_resolved(LARGE ClientData, ERROR Error, CSTRING HostNam
 
 static ERROR NETSOCKET_DataFeed(objNetSocket *Self, struct acDataFeed *Args)
 {
+   parasol::Log log;
+
    if (!Args) return log.error(ERR_NullArgs);
 
    return ERR_Okay;
@@ -257,7 +260,9 @@ Failed: Shutdown operation failed.
 
 static ERROR NETSOCKET_Disable(objNetSocket *Self, APTR Void)
 {
-   MSG(NULL);
+   parasol::Log log;
+
+   log.trace("");
 
 #ifdef __linux__
    LONG result = shutdown(Self->SocketHandle, 2);
@@ -296,6 +301,8 @@ NullArgs
 
 static ERROR NETSOCKET_DisconnectClient(objNetSocket *Self, struct nsDisconnectClient *Args)
 {
+   parasol::Log log;
+
    if ((!Args) OR (!Args->Client)) return log.error(ERR_NullArgs);
 
    free_client(Self, Args->Client);
@@ -323,6 +330,8 @@ NullArgs
 
 static ERROR NETSOCKET_DisconnectSocket(objNetSocket *Self, struct nsDisconnectSocket *Args)
 {
+   parasol::Log log;
+
    if ((!Args) OR (!Args->Socket)) return log.error(ERR_NullArgs);
 
    free_client_socket(Self, Args->Socket, TRUE);
@@ -358,6 +367,8 @@ static ERROR NETSOCKET_Free(objNetSocket *Self, APTR Void)
 
 static ERROR NETSOCKET_FreeWarning(objNetSocket *Self, APTR Void)
 {
+   parasol::Log log;
+
    if (Self->InUse) {
       if (!Self->Terminating) { // Check terminating state to prevent flooding of the message queue
          log.msg("NetSocket in use, cannot free yet (request delayed).");
@@ -390,7 +401,9 @@ Failed
 
 static ERROR NETSOCKET_GetLocalIPAddress(objNetSocket *Self, struct nsGetLocalIPAddress *Args)
 {
-   MSG(NULL);
+   parasol::Log log;
+
+   log.traceBranch("");
 
    if ((!Args) OR (!Args->Address)) return log.error(ERR_NullArgs);
 
@@ -421,6 +434,7 @@ static ERROR NETSOCKET_GetLocalIPAddress(objNetSocket *Self, struct nsGetLocalIP
 
 static ERROR NETSOCKET_Init(objNetSocket *Self, APTR Void)
 {
+   parasol::Log log;
    ERROR error;
 
    if (Self->SocketHandle != (SOCKET_HANDLE)-1) return ERR_Okay; // The socket has been pre-configured by the developer
@@ -588,6 +602,8 @@ Failed: A permanent failure has occurred and socket has been closed.
 
 static ERROR NETSOCKET_Read(objNetSocket *Self, struct acRead *Args)
 {
+   parasol::Log log;
+
    if ((!Args) OR (!Args->Buffer)) return log.error(ERR_NullArgs);
 
    if (Self->Flags & NSF_SERVER) {
@@ -642,6 +658,8 @@ AllocMemory: A message buffer could not be allocated.
 
 static ERROR NETSOCKET_ReadMsg(objNetSocket *Self, struct nsReadMsg *Args)
 {
+   parasol::Log log;
+
    if (!Args) return log.error(ERR_NullArgs);
 
    log.traceBranch("Reading message.");
@@ -708,9 +726,7 @@ static ERROR NETSOCKET_ReadMsg(objNetSocket *Self, struct nsReadMsg *Args)
                   queue->Buffer = buffer;
                   queue->Length = total_length;
                }
-               else {
-                  return log.error(ERR_AllocMemory);
-               }
+               else return log.error(ERR_AllocMemory);
             }
          }
          else {
@@ -753,9 +769,7 @@ static ERROR NETSOCKET_ReadMsg(objNetSocket *Self, struct nsReadMsg *Args)
 
          return ERR_Okay;
       }
-      else {
-         return ERR_LimitedSuccess;
-      }
+      else return ERR_LimitedSuccess;
    }
    else {
       log.error("Failed to read %d bytes off the socket, error %d.", total_length - queue->Index, error);
@@ -782,6 +796,8 @@ and automatically send it once the first connection has been made.
 
 static ERROR NETSOCKET_Write(objNetSocket *Self, struct acWrite *Args)
 {
+   parasol::Log log;
+
    if (!Args) return ERR_NullArgs;
 
    Args->Result = 0;
@@ -852,20 +868,22 @@ OutOfRange
 
 static ERROR NETSOCKET_WriteMsg(objNetSocket *Self, struct nsWriteMsg *Args)
 {
+   parasol::Log log;
+
    if ((!Args) OR (!Args->Message) OR (Args->Length < 1)) return log.error(ERR_Args);
    if ((Args->Length < 1) OR (Args->Length > NETMSG_SIZE_LIMIT)) return log.error(ERR_OutOfRange);
 
    log.traceBranch("Message: %p, Length: %d", Args->Message, Args->Length);
 
-   struct NetMsg msg;
-   msg.Magic = cpu_be32(NETMSG_MAGIC);
+   NetMsg msg;
+   msg.Magic  = cpu_be32(NETMSG_MAGIC);
    msg.Length = cpu_be32(Args->Length);
    acWrite(Self, &msg, sizeof(msg), NULL);
 
    acWrite(Self, Args->Message, Args->Length, NULL);
 
-   UBYTE endbuffer[sizeof(struct NetMsgEnd) + 1];
-   struct NetMsgEnd *end = (struct NetMsgEnd *)(endbuffer + 1);
+   UBYTE endbuffer[sizeof(NetMsgEnd) + 1];
+   NetMsgEnd *end = (NetMsgEnd *)(endbuffer + 1);
    endbuffer[0] = 0; // This null terminator helps with message parsing
    end->Magic = cpu_be32((ULONG)NETMSG_MAGIC_TAIL);
    end->CRC   = cpu_be32(GenCRC32(0, Args->Message, Args->Length));
@@ -1035,6 +1053,8 @@ static ERROR GET_Outgoing(objNetSocket *Self, FUNCTION **Value)
 
 static ERROR SET_Outgoing(objNetSocket *Self, FUNCTION *Value)
 {
+   parasol::Log log;
+
    if (Self->Flags & NSF_SERVER) {
       return log.error(ERR_NoSupport);
    }
@@ -1118,6 +1138,8 @@ State: The current connection state of the netsocket object.
 
 static ERROR SET_State(objNetSocket *Self, LONG Value)
 {
+   parasol::Log log;
+
    if (Value != Self->State) {
       if (Self->Flags & NSF_DEBUG) log.msg("State changed from %d to %d", Self->State, Value);
 
@@ -1139,9 +1161,8 @@ static ERROR SET_State(objNetSocket *Self, LONG Value)
          log.traceBranch("Reporting state change to subscriber, operation %d.", Self->State);
 
          if (Self->Feedback.Type IS CALL_STDC) {
-            void (*routine)(objNetSocket *, objClientSocket *, LONG);
             parasol::SwitchContext(&Self->Feedback);
-            routine = reinterpret_cast<void (*)(objNetSocket *, objClientSocket *, LONG)>(Self->Feedback.StdC.Routine);
+            auto routine = reinterpret_cast<void (*)(objNetSocket *, objClientSocket *, LONG)>(Self->Feedback.StdC.Routine);
             routine(Self, NULL, Self->State);
          }
          else if (Self->Feedback.Type IS CALL_SCRIPT) {

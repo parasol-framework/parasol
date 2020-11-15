@@ -379,7 +379,7 @@ static ERROR resolve(objConfig *Config, STRING Source, STRING Dest, LONG Flags)
       // Copy the resolved volume path to the destination buffer
 
       for (k=0; (*path) AND (*path != '|') AND (k < SIZE_RESBUFFER-1);) {
-         if (*path IS ';') LogF("@resolve","Use of ';' obsolete, use | in path %s", fullpath);
+         if (*path IS ';') log.warning("Use of ';' obsolete, use | in path %s", fullpath);
 
          if (k > 0) {
             if ((*path IS '\\') AND (path[1] IS '\\')) path++; // Eliminate dual slashes - with an exception for UNC paths

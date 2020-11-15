@@ -44,12 +44,11 @@ significant differences between the source and destination bitmap types.
 #include <parasol/modules/display.h>
 
 MODULE_COREBASE;
-static struct ModuleMaster *modPicture = NULL;
+static ModuleMaster *modPicture = NULL;
 static OBJECTPTR clPicture = NULL;
 static OBJECTPTR modDisplay = NULL;
-static struct DisplayBase *DisplayBase = NULL;
+static DisplayBase *DisplayBase = NULL;
 static THREADVAR LONG glError = FALSE;
-static parasol::Log plog;
 
 static ERROR decompress_png(objPicture *, objBitmap *, int, int, png_structp, png_infop, png_uint_32, png_uint_32);
 static void read_row_callback(png_structp, png_uint_32, int);
@@ -101,9 +100,11 @@ Bitmap using its available drawing methods.
 
 static ERROR PIC_Activate(objPicture *Self, APTR Void)
 {
+   parasol::Log log;
+
    if (Self->Bitmap->Head.Flags & NF_INITIALISED) return ERR_Okay;
 
-   plog.branch("");
+   log.branch("");
 
    ERROR error = ERR_Failed;
    glError = FALSE;
@@ -116,7 +117,7 @@ static ERROR PIC_Activate(objPicture *Self, APTR Void)
    if (!Self->prvFile) {
       STRING path;
       if (GetString(Self, FID_Path, &path) != ERR_Okay) {
-         return plog.error(ERR_GetField);
+         return log.error(ERR_GetField);
       }
 
       if (CreateObject(ID_FILE, 0, &Self->prvFile,
@@ -157,9 +158,8 @@ static ERROR PIC_Activate(objPicture *Self, APTR Void)
 
    // If the image contains a palette, load the palette into our Bitmap
 
-   LONG i;
    if (info_ptr->valid & PNG_INFO_PLTE) {
-      for (i=0; (i < info_ptr->num_palette) AND (i < 256); i++) {
+      for (LONG i=0; (i < info_ptr->num_palette) AND (i < 256); i++) {
          bmp->Palette->Col[i].Red   = info_ptr->palette[i].red;
          bmp->Palette->Col[i].Green = info_ptr->palette[i].green;
          bmp->Palette->Col[i].Blue  = info_ptr->palette[i].blue;
@@ -167,7 +167,7 @@ static ERROR PIC_Activate(objPicture *Self, APTR Void)
       }
    }
    else if (color_type IS PNG_COLOR_TYPE_GRAY) {
-      for (i=0; i < 256; i++) {
+      for (LONG i=0; i < 256; i++) {
          bmp->Palette->Col[i].Red   = i;
          bmp->Palette->Col[i].Green = i;
          bmp->Palette->Col[i].Blue  = i;
@@ -203,7 +203,7 @@ static ERROR PIC_Activate(objPicture *Self, APTR Void)
    if (info_ptr->valid & PNG_INFO_tRNS) {
       // The first colour index in the list is taken as the background, any others are ignored
 
-      struct RGB8 rgb;
+      RGB8 rgb;
       if ((info_ptr->color_type IS PNG_COLOR_TYPE_PALETTE) OR
           (info_ptr->color_type IS PNG_COLOR_TYPE_GRAY) OR
           (info_ptr->color_type IS PNG_COLOR_TYPE_GRAY_ALPHA)) {
@@ -242,7 +242,7 @@ static ERROR PIC_Activate(objPicture *Self, APTR Void)
          bmp->BkgdRGB.Blue  = prgb->blue;
          bmp->BkgdRGB.Alpha = 255;
       }
-      plog.trace("Background Colour: %d,%d,%d", bmp->BkgdRGB.Red, bmp->BkgdRGB.Green, bmp->BkgdRGB.Blue);
+      log.trace("Background Colour: %d,%d,%d", bmp->BkgdRGB.Red, bmp->BkgdRGB.Green, bmp->BkgdRGB.Blue);
    }
 
    // Set the bits per pixel value
@@ -254,7 +254,7 @@ static ERROR PIC_Activate(objPicture *Self, APTR Void)
       case PNG_COLOR_TYPE_RGB_ALPHA:  total_bit_depth = MAX(bit_depth, 8) * 4; break;
       case PNG_COLOR_TYPE_GRAY_ALPHA: total_bit_depth = MAX(bit_depth, 8) * 2; break;
       default:
-         plog.warning("Unrecognised colour type 0x%x.", color_type);
+         log.warning("Unrecognised colour type 0x%x.", color_type);
          total_bit_depth = MAX(bit_depth, 8);
    }
 
@@ -274,7 +274,7 @@ static ERROR PIC_Activate(objPicture *Self, APTR Void)
         ((total_bit_depth <= 8) AND (bmp->BitsPerPixel > 8)))) {
       objBitmap *tmp_bitmap;
 
-      plog.msg("Destination Depth %d < Image Depth %d - Dithering.", bmp->BitsPerPixel, total_bit_depth);
+      log.msg("Destination Depth %d < Image Depth %d - Dithering.", bmp->BitsPerPixel, total_bit_depth);
 
       // Init our bitmap, since decompress_png() won't in this case.
 
@@ -307,7 +307,7 @@ static ERROR PIC_Activate(objPicture *Self, APTR Void)
    }
    else {
 exit:
-      plog.error(error);
+      log.error(error);
    }
 
    png_destroy_read_struct(&read_ptr, &info_ptr, &end_info);
@@ -349,6 +349,7 @@ Query actions to load or find out more information about the image format.
 
 static ERROR PIC_Init(objPicture *Self, APTR Void)
 {
+   parasol::Log log;
    STRING path;
 
    GetString(Self, FID_Path, &path);
@@ -374,9 +375,9 @@ static ERROR PIC_Init(objPicture *Self, APTR Void)
                   Self->Mask->Flags |= PCF_MASK;
                   Self->Mask->BitsPerPixel = 8;
                   if (!acInit(Self->Mask)) Self->Flags |= PCF_MASK;
-                  else return plog.error(ERR_Init);
+                  else return log.error(ERR_Init);
                }
-               else return plog.error(ERR_NewObject);
+               else return log.error(ERR_NewObject);
             }
             else if (Self->Flags & PCF_MASK) {
                if (!NewObject(ID_BITMAP, NF_INTEGRAL, &Self->Mask)) {
@@ -385,18 +386,18 @@ static ERROR PIC_Init(objPicture *Self, APTR Void)
                   Self->Mask->Flags |= PCF_MASK;
                   Self->Mask->BitsPerPixel = 1;
                   if (!acInit(Self->Mask)) Self->Flags |= PCF_MASK;
-                  else return plog.error(ERR_Init);
+                  else return log.error(ERR_Init);
                }
-               else return plog.error(ERR_NewObject);
+               else return log.error(ERR_NewObject);
             }
 
             if (Self->Head.SubID) return ERR_Okay; // Break here to let the sub-class continue initialisation
 
             return ERR_Okay;
          }
-         else return plog.error(ERR_Init);
+         else return log.error(ERR_Init);
       }
-      else return plog.error(ERR_InvalidDimension);
+      else return log.error(ERR_InvalidDimension);
    }
    else {
       if (Self->Head.SubID) return ERR_Okay; // Break here to let the sub-class continue initialisation
@@ -421,7 +422,7 @@ static ERROR PIC_Init(objPicture *Self, APTR Void)
          else return ERR_NoSupport;
       }
       else {
-         plog.error("Failed to open '%s'", path);
+         log.error("Failed to open '%s'", path);
          return ERR_File;
       }
    }
@@ -433,18 +434,21 @@ static ERROR PIC_Init(objPicture *Self, APTR Void)
 
 static ERROR PIC_NewObject(objPicture *Self, APTR Void)
 {
+   parasol::Log log;
+
    Self->Quality = 80; // 80% quality rating when saving
 
    if (!NewObject(ID_BITMAP, NF_INTEGRAL, &Self->Bitmap)) {
       return ERR_Okay;
    }
-   else return plog.error(ERR_NewObject);
+   else return log.error(ERR_NewObject);
 }
 
 //****************************************************************************
 
 static ERROR PIC_Query(objPicture *Self, APTR Void)
 {
+   parasol::Log log;
    STRING path;
    png_uint_32 width, height;
    int bit_depth, color_type;
@@ -452,7 +456,7 @@ static ERROR PIC_Query(objPicture *Self, APTR Void)
    if (Self->Bitmap->Flags & BMF_QUERIED) return ERR_Okay;
    if (!Self->prvFile) return ERR_NotInitialised;
 
-   plog.branch("");
+   log.branch("");
 
    objBitmap *Bitmap = Self->Bitmap;
    ERROR error = ERR_Failed;
@@ -464,7 +468,7 @@ static ERROR PIC_Query(objPicture *Self, APTR Void)
    // Open the data file
 
    if (!Self->prvFile) {
-      if (GetString(Self, FID_Path, &path) != ERR_Okay) return plog.error(ERR_GetField);
+      if (GetString(Self, FID_Path, &path) != ERR_Okay) return log.error(ERR_GetField);
 
       if (CreateObject(ID_FILE, 0, &Self->prvFile,
             FID_Path|TSTR,   path,
@@ -548,11 +552,12 @@ SaveImage: Saves the picture image to a data object.
 
 static ERROR PIC_SaveImage(objPicture *Self, struct acSaveImage *Args)
 {
+   parasol::Log log;
    STRING path;
-   LONG y, i, x;
+   LONG y, i;
    png_bytep row_pointers;
 
-   plog.branch("");
+   log.branch("");
 
    objBitmap *bmp        = Self->Bitmap;
    OBJECTPTR file        = NULL;
@@ -565,13 +570,13 @@ static ERROR PIC_SaveImage(objPicture *Self, struct acSaveImage *Args)
 
    if ((Args) AND (Args->DestID)) {
       if (AccessObject(Args->DestID, 3000, &file) != ERR_Okay) {
-         plog.error("Failed to access destination object #%d.", Args->DestID);
+         log.error("Failed to access destination object #%d.", Args->DestID);
          goto exit;
       }
    }
    else {
       if (GetString(Self, FID_Path, &path) != ERR_Okay) {
-         return plog.error(ERR_MissingPath);
+         return log.error(ERR_MissingPath);
       }
 
       if (CreateObject(ID_FILE, 0, &file,
@@ -585,14 +590,14 @@ static ERROR PIC_SaveImage(objPicture *Self, struct acSaveImage *Args)
    // Allocate PNG structures
 
    if (!(write_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, Self, &png_error_hook, &png_warning_hook))) {
-      plog.error("png_create_write_struct() failed.");
+      log.error("png_create_write_struct() failed.");
       goto exit;
    }
 
    png_set_error_fn(write_ptr, Self, &png_error_hook, &png_warning_hook);
 
    if (!(info_ptr = png_create_info_struct(write_ptr))) {
-      plog.error("png_create_info_struct() failed.");
+      log.error("png_create_info_struct() failed.");
       goto exit;
    }
 
@@ -604,26 +609,26 @@ static ERROR PIC_SaveImage(objPicture *Self, struct acSaveImage *Args)
 
    png_set_write_status_fn(write_ptr, write_row_callback);
    if (glError) {
-      plog.error("png_set_write_status_fn() failed.");
+      log.error("png_set_write_status_fn() failed.");
       goto exit;
    }
 
    if ((Self->Flags & (PCF_ALPHA|PCF_MASK)) AND (!Self->Mask)) {
-      plog.error("Illegal use of the ALPHA/MASK flags without an accompanying mask bitmap.");
+      log.error("Illegal use of the ALPHA/MASK flags without an accompanying mask bitmap.");
       Self->Flags &= ~(PCF_ALPHA|PCF_MASK);
    }
 
    if (bmp->AmtColours > 256) {
       if (bmp->Flags & BMF_ALPHA_CHANNEL) {
-         plog.trace("Saving as 32-bit alpha.");
+         log.trace("Saving as 32-bit alpha.");
          png_set_IHDR(write_ptr, info_ptr, bmp->Width, bmp->Height, 8, PNG_COLOR_TYPE_RGB_ALPHA, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
       }
       else if (Self->Flags & PCF_ALPHA) {
-         plog.trace("Saving with alpha-mask.");
+         log.trace("Saving with alpha-mask.");
          png_set_IHDR(write_ptr, info_ptr, bmp->Width, bmp->Height, 8, PNG_COLOR_TYPE_RGB_ALPHA, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
       }
       else {
-         plog.trace("Saving in standard chunky graphics mode (no alpha).");
+         log.trace("Saving in standard chunky graphics mode (no alpha).");
          png_set_IHDR(write_ptr, info_ptr, bmp->Width, bmp->Height, 8, PNG_COLOR_TYPE_RGB, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
       }
    }
@@ -664,7 +669,7 @@ static ERROR PIC_SaveImage(objPicture *Self, struct acSaveImage *Args)
 
    png_write_info(write_ptr, info_ptr);
    if (glError) {
-      plog.warning("png_write_info() failed.");
+      log.warning("png_write_info() failed.");
       goto exit;
    }
 
@@ -676,10 +681,10 @@ static ERROR PIC_SaveImage(objPicture *Self, struct acSaveImage *Args)
          row_pointers = row;
          UBYTE *data = bmp->Data;
          UBYTE *mask = Self->Mask->Data;
-         for (y=0; y < bmp->Height; y++) {
-            i = 0;
+         for (LONG y=0; y < bmp->Height; y++) {
+            LONG i = 0;
             WORD maskx = 0;
-            for (x=0; x < bmp->ByteWidth; x+=3) {
+            for (LONG x=0; x < bmp->ByteWidth; x+=3) {
                row[i++] = data[x+0];  // Blue
                row[i++] = data[x+1];  // Green
                row[i++] = data[x+2];  // Red
@@ -702,9 +707,9 @@ static ERROR PIC_SaveImage(objPicture *Self, struct acSaveImage *Args)
          UBYTE row[bmp->Width * 4];
          row_pointers = row;
          UBYTE *data = bmp->Data;
-         for (y=0; y < bmp->Height; y++) {
-            i = 0;
-            for (x=0; x < (bmp->Width<<2); x+=4) {
+         for (LONG y=0; y < bmp->Height; y++) {
+            LONG i = 0;
+            for (LONG x=0; x < (bmp->Width<<2); x+=4) {
                row[i++] = data[x+0];  // Blue
                row[i++] = data[x+1];  // Green
                row[i++] = data[x+2];  // Red
@@ -720,10 +725,10 @@ static ERROR PIC_SaveImage(objPicture *Self, struct acSaveImage *Args)
          row_pointers = row;
          UBYTE *data = bmp->Data;
          UBYTE *mask = Self->Mask->Data;
-         for (y=0; y < bmp->Height; y++) {
-            i = 0;
+         for (LONG y=0; y < bmp->Height; y++) {
+            LONG i = 0;
             WORD maskx = 0;
-            for (x=0; x < (bmp->Width<<2); x+=4) {
+            for (LONG x=0; x < (bmp->Width<<2); x+=4) {
                row[i++] = data[x+0];     // Blue
                row[i++] = data[x+1];     // Green
                row[i++] = data[x+2];     // Red
@@ -738,9 +743,9 @@ static ERROR PIC_SaveImage(objPicture *Self, struct acSaveImage *Args)
          UBYTE row[bmp->Width * 3];
          row_pointers = row;
          UBYTE *data = bmp->Data;
-         for (y=0; y < bmp->Height; y++) {
+         for (LONG y=0; y < bmp->Height; y++) {
             i = 0;
-            for (x=0; x < (bmp->Width<<2); x+=4) {
+            for (LONG x=0; x < (bmp->Width<<2); x+=4) {
                row[i++] = data[x+0];  // Blue
                row[i++] = data[x+1];  // Green
                row[i++] = data[x+2];  // Red
@@ -756,10 +761,10 @@ static ERROR PIC_SaveImage(objPicture *Self, struct acSaveImage *Args)
          row_pointers = row;
          UWORD *data = (UWORD *)bmp->Data;
          UBYTE *mask = Self->Mask->Data;
-         for (y=0; y < bmp->Height; y++) {
-            i = 0;
+         for (LONG y=0; y < bmp->Height; y++) {
+            LONG i = 0;
             WORD maskx = 0;
-            for (x=0; x < bmp->Width; x++) {
+            for (LONG x=0; x < bmp->Width; x++) {
                row[i++] = UnpackBlue(bmp, data[x]);
                row[i++] = UnpackGreen(bmp, data[x]);
                row[i++] = UnpackRed(bmp, data[x]);
@@ -775,9 +780,9 @@ static ERROR PIC_SaveImage(objPicture *Self, struct acSaveImage *Args)
 
          row_pointers = row;
          UWORD *data = (UWORD *)bmp->Data;
-         for (y=0; y < bmp->Height; y++) {
-            i = 0;
-            for (x=0; x < bmp->Width; x++) {
+         for (LONG y=0; y < bmp->Height; y++) {
+            LONG i = 0;
+            for (LONG x=0; x < bmp->Width; x++) {
                row[i++] = UnpackBlue(bmp, data[x]);
                row[i++] = UnpackGreen(bmp, data[x]);
                row[i++] = UnpackRed(bmp, data[x]);
@@ -800,7 +805,7 @@ exit:
    }
    else if (file) acFree(file);
 
-   if (error) return plog.error(error);
+   if (error) return log.error(error);
    else return ERR_Okay;
 }
 
@@ -812,10 +817,11 @@ SaveToObject: Saves the picture image to a data object.
 
 static ERROR PIC_SaveToObject(objPicture *Self, struct acSaveToObject *Args)
 {
+   parasol::Log log;
    ERROR (**routine)(OBJECTPTR, APTR);
 
    if ((Args->ClassID) AND (Args->ClassID != ID_PICTURE)) {
-      struct rkMetaClass *mc = (struct rkMetaClass *)FindClass(Args->ClassID);
+      rkMetaClass *mc = (rkMetaClass *)FindClass(Args->ClassID);
       if ((GetPointer(mc, FID_ActionTable, &routine) IS ERR_Okay) AND (routine)) {
          if ((routine[AC_SaveToObject]) AND (routine[AC_SaveToObject] != (APTR)PIC_SaveToObject)) {
             return routine[AC_SaveToObject]((OBJECTPTR)Self, Args);
@@ -825,9 +831,9 @@ static ERROR PIC_SaveToObject(objPicture *Self, struct acSaveToObject *Args)
             saveimage.DestID = Args->DestID;
             return routine[AC_SaveImage]((OBJECTPTR)Self, &saveimage);
          }
-         else return plog.error(ERR_NoSupport);
+         else return log.error(ERR_NoSupport);
       }
-      else return plog.error(ERR_GetField);
+      else return log.error(ERR_GetField);
    }
    else return acSaveImage(Self, Args->DestID, Args->ClassID);
 }
@@ -931,10 +937,12 @@ static ERROR GET_Description(objPicture *Self, STRING *Value)
 
 static ERROR SET_Description(objPicture *Self, CSTRING Value)
 {
+   parasol::Log log;
+
    if (Self->prvDescription) { FreeResource(Self->prvDescription); Self->prvDescription = NULL; }
 
    if ((Value) AND (*Value)) {
-      if (!(Self->prvDescription = StrClone(Value))) return plog.error(ERR_AllocMemory);
+      if (!(Self->prvDescription = StrClone(Value))) return log.error(ERR_AllocMemory);
    }
    return ERR_Okay;
 }
@@ -961,10 +969,12 @@ static ERROR GET_Disclaimer(objPicture *Self, STRING *Value)
 
 static ERROR SET_Disclaimer(objPicture *Self, CSTRING Value)
 {
+   parasol::Log log;
+
    if (Self->prvDisclaimer) { FreeResource(Self->prvDisclaimer); Self->prvDisclaimer = NULL; }
 
    if ((Value) AND (*Value)) {
-      if (!(Self->prvDisclaimer = StrClone(Value))) return plog.error(ERR_AllocMemory);
+      if (!(Self->prvDisclaimer = StrClone(Value))) return log.error(ERR_AllocMemory);
    }
    return ERR_Okay;
 }
@@ -1033,10 +1043,12 @@ static ERROR GET_Path(objPicture *Self, STRING *Value)
 
 static ERROR SET_Path(objPicture *Self, CSTRING Value)
 {
+   parasol::Log log;
+
    if (Self->prvPath) { FreeResource(Self->prvPath); Self->prvPath = NULL; }
 
    if ((Value) AND (*Value)) {
-      if (!(Self->prvPath = StrClone(Value))) return plog.error(ERR_AllocMemory);
+      if (!(Self->prvPath = StrClone(Value))) return log.error(ERR_AllocMemory);
    }
    return ERR_Okay;
 }
@@ -1161,13 +1173,15 @@ void png_set_write_fn(png_structp png_ptr, png_voidp io_ptr, png_rw_ptr write_da
 
 static void png_error_hook(png_structp png_ptr, png_const_charp message)
 {
-   plog.warning("%s", message);
+   parasol::Log log;
+   log.warning("%s", message);
    glError = TRUE;
 }
 
 static void png_warning_hook(png_structp png_ptr, png_const_charp message)
 {
-   plog.warning("Warning: %s", message);
+   parasol::Log log;
+   log.warning("Warning: %s", message);
    glError = FALSE;
 }
 
@@ -1184,7 +1198,7 @@ static ERROR decompress_png(objPicture *Self, objBitmap *Bitmap, int BitDepth, i
    ERROR error;
    UBYTE *row;
    png_bytep row_pointers;
-   struct RGB8 rgb;
+   RGB8 rgb;
    LONG i, x, y;
    parasol::Log log(__FUNCTION__);
 
@@ -1345,7 +1359,7 @@ static ERROR decompress_png(objPicture *Self, objBitmap *Bitmap, int BitDepth, i
             png_read_row(ReadPtr, row_pointers, NULL); if (glError) goto exit;
             i = 0;
             for (png_uint_32 x=0; x < PngWidth; x++) {
-               Bitmap->DrawUCRPixel(Bitmap, x, y, (struct RGB8 *)(row+i));
+               Bitmap->DrawUCRPixel(Bitmap, x, y, (RGB8 *)(row+i));
 
                // Set the alpha byte in the alpha mask (nb: refer to png_set_invert_alpha() if you want to reverse the alpha bytes)
 
@@ -1376,7 +1390,7 @@ exit:
    return error;
 }
 
-static const struct FieldDef clFlags[] = {
+static const FieldDef clFlags[] = {
    { "ResizeX",   PCF_RESIZE_X   }, { "ResizeY", PCF_RESIZE_Y },
    { "Resize",    PCF_RESIZE     }, { "Stretch", PCF_RESIZE },
    { "New",       PCF_NEW        }, { "Lazy",    PCF_LAZY },
@@ -1386,7 +1400,7 @@ static const struct FieldDef clFlags[] = {
    { NULL, 0 }
 };
 
-static const struct FieldArray clFields[] = {
+static const FieldArray clFields[] = {
    { "Bitmap",        FDF_INTEGRAL|FDF_R,     ID_BITMAP,        NULL, NULL },
    { "Mask",          FDF_INTEGRAL|FDF_R,     ID_BITMAP,        NULL, NULL },
    { "Flags",         FDF_LONGFLAGS|FDF_RW,   (MAXINT)&clFlags, NULL, NULL },
@@ -1408,7 +1422,7 @@ static const struct FieldArray clFields[] = {
    END_FIELD
 };
 
-static const struct ActionArray clActions[] = {
+static const ActionArray clActions[] = {
    { AC_Activate,      (APTR)PIC_Activate },
    { AC_Free,          (APTR)PIC_Free },
    { AC_NewObject,     (APTR)PIC_NewObject },

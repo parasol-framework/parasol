@@ -416,6 +416,7 @@ Failed:
 
 static CSTRING find_datepart(CSTRING Date, struct datepart *Part)
 {
+   parasol::Log log(__FUNCTION__);
    UBYTE ch;
    WORD i;
 
@@ -432,7 +433,7 @@ static CSTRING find_datepart(CSTRING Date, struct datepart *Part)
             else if (Part->Number > 31) Part->Type = DP_YEAR;
             else if (Part->Number > 12) Part->Type = DP_DAY;
             else Part->Type = 0;
-            MSG("Found date type $%.2x", Part->Type);
+            log.trace("Found date type $%.2x", Part->Type);
             return Date;
          }
          else {
@@ -445,7 +446,7 @@ static CSTRING find_datepart(CSTRING Date, struct datepart *Part)
                      Part->Number  = i;
                      Part->Type    = DP_MONTH;
                      while (glAlphaNumeric[((UBYTE *)Date)[0]]) Date++;
-                     MSG("Found date type 'month'");
+                     log.trace("Found date type 'month'");
                      return Date;
                   }
                }
@@ -472,6 +473,7 @@ static void add_days(struct DateTime *Date, LONG Days)
 
 ERROR StrReadDate(CSTRING Date, struct DateTime *Output)
 {
+   parasol::Log log(__FUNCTION__);
    struct datepart datepart[3];
    char ordering[3] = { 0, 0, 0 };
    LONG i, numparts;
@@ -697,19 +699,19 @@ ERROR StrReadDate(CSTRING Date, struct DateTime *Output)
       // Abort if any of the parts are missing
 
       if (missing != (DP_DAY|DP_MONTH|DP_YEAR)) {
-         MSG("Duplicate part detected in date: %s", Date);
+         log.trace("Duplicate part detected in date: %s", Date);
          return ERR_InvalidData;
       }
    }
    else return ERR_InvalidData;
 
    if ((time.Month < 1) OR (time.Month > 12)) {
-      MSG("Invalid month value %d in date: %s", time.Month, Date);
+      log.trace("Invalid month value %d in date: %s", time.Month, Date);
       return ERR_InvalidData;
    }
 
    if ((time.Day < 1) OR (time.Day > 31)) {
-      MSG("Invalid day value %d in date: %s", time.Day, Date);
+      log.trace("Invalid day value %d in date: %s", time.Day, Date);
       return ERR_InvalidData;
    }
 
@@ -830,6 +832,8 @@ NoData: Locale information is not available.
 
 ERROR StrReadLocale(CSTRING Key, CSTRING *Value)
 {
+   parasol::Log log(__FUNCTION__);
+
    if ((!Key) OR (!Value)) return ERR_NullArgs;
 
    #ifdef __ANDROID__
@@ -869,7 +873,7 @@ ERROR StrReadLocale(CSTRING Key, CSTRING *Value)
             }
          }
 
-         LogMsg("Android language code: %s", code);
+         log.msg("Android language code: %s", code);
 
          if (code[0]) { *Value = code; return ERR_Okay; }
          else return ERR_Failed;
@@ -1140,6 +1144,8 @@ large: Returns the integer value that was calculated from the String.
 
 LARGE StrToInt(CSTRING str)
 {
+   parasol::Log log(__FUNCTION__);
+
    if (!str) return 0;
 
    // Ignore any leading characters
@@ -1166,7 +1172,7 @@ LARGE StrToInt(CSTRING str)
    }
 
    if (number < 0) { // If the sign reversed during parsing, an overflow occurred
-      LogF("@StrToInt","Buffer overflow: %s", start);
+      log.warning("Buffer overflow: %s", start);
       return 0;
    }
 
@@ -1178,6 +1184,8 @@ LARGE StrToInt(CSTRING str)
 
 static void read_ordering(char *ordering_out)
 {
+   parasol::Log log(__FUNCTION__);
+
    static UBYTE ordering[4] = { 0, 0, 0, 0 }; /*eg "dmy" or"mdy"*/
 
    if (ordering[0] != 0) { /*if config has already been loaded in...*/
@@ -1211,7 +1219,7 @@ static void read_ordering(char *ordering_out)
          }
 
          if ((seen_y) AND (seen_m) AND (seen_d)) {
-            LogF("5read_order:","Date ordering loaded: %s", ordering);
+            log.msg("Date ordering loaded: %s", ordering);
             ordering_loaded = TRUE;
          }
       }
@@ -1222,7 +1230,7 @@ static void read_ordering(char *ordering_out)
          ordering[0] = DP_DAY;
          ordering[1] = DP_MONTH;
          ordering[2] = DP_YEAR;
-         LogF("@read_order","Config load failed; using default ordering: %s", ordering);
+         log.warning("Config load failed; using default ordering: %s", ordering);
       }
    }
 

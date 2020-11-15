@@ -214,11 +214,8 @@ static void client_server_outgoing(SOCKET_HANDLE Void, struct rkNetSocket *Data)
 
          if (len > 0) {
             error = SEND(Self, Self->SocketHandle, (BYTE *)Self->WriteQueue.Buffer + Self->WriteQueue.Index, &len, 0);
-
             if ((error) OR (!len)) break;
-
             log.trace("[NetSocket:%d] Sent %d of %d bytes remaining on the queue.", Self->Head.UniqueID, len, Self->WriteQueue.Length-Self->WriteQueue.Index);
-
             Self->WriteQueue.Index += len;
          }
 

@@ -34,64 +34,10 @@ To get the current system time, use the #Query() action.
 #include <unistd.h>
 #endif
 
-static ERROR GET_TimeStamp(struct rkTime *, LARGE *);
+static ERROR GET_TimeStamp(objTime *, LARGE *);
 
-static ERROR TIME_Query(struct rkTime *, APTR);
-static ERROR TIME_SetTime(struct rkTime *, APTR);
-
-static const struct FieldArray TimeFields[] = {
-   { "SystemTime",   FDF_LARGE|FDF_RW, 0, 0, 0 },
-   { "Year",         FDF_LONG|FDF_RW, 0, 0, 0 },
-   { "Month",        FDF_LONG|FDF_RW, 0, 0, 0 },
-   { "Day",          FDF_LONG|FDF_RW, 0, 0, 0 },
-   { "Hour",         FDF_LONG|FDF_RW, 0, 0, 0 },
-   { "Minute",       FDF_LONG|FDF_RW, 0, 0, 0 },
-   { "Second",       FDF_LONG|FDF_RW, 0, 0, 0 },
-   { "TimeZone",     FDF_LONG|FDF_RW, 0, 0, 0 },
-   { "DayOfWeek",    FDF_LONG|FDF_RW, 0, 0, 0 },
-   { "MilliSecond",  FDF_LONG|FDF_RW, 0, 0, 0 },
-   { "MicroSecond",  FDF_LONG|FDF_RW, 0, 0, 0 },
-   // Virtual fields
-   { "TimeStamp",    FDF_LARGE|FDF_R, 0, GET_TimeStamp, NULL },
-   END_FIELD
-};
-
-static const struct ActionArray TimeActions[] = {
-   { AC_Query,      TIME_Query },
-   { AC_Refresh,    TIME_Query },
-   { 0, NULL }
-};
-
-static const struct MethodArray TimeMethods[] = {
-   { MT_TmSetTime, TIME_SetTime, "SetTime", 0, 0 },
-   { 0, NULL, NULL }
-};
-
-//****************************************************************************
-
-ERROR add_time_class(void)
-{
-   if (!NewPrivateObject(ID_METACLASS, 0, (OBJECTPTR *)&TimeClass)) {
-      if (SetFields((OBJECTPTR)TimeClass,
-            FID_BaseClassID|TLONG,   ID_TIME,
-            FID_ClassVersion|TFLOAT, VER_TIME,
-            FID_Name|TSTRING,   "Time",
-            FID_Category|TLONG, CCF_SYSTEM,
-            FID_Actions|TPTR,   TimeActions,
-            FID_Methods|TARRAY, TimeMethods,
-            FID_Fields|TARRAY,  TimeFields,
-            FID_Size|TLONG,     sizeof(struct rkTime),
-            FID_Path|TSTR,      "modules:core",
-            TAGEND) IS ERR_Okay) {
-         if (!acInit(&TimeClass->Head)) {
-            return ERR_Okay;
-         }
-         else return ERR_Init;
-      }
-      else return ERR_SetField;
-   }
-   else return ERR_NewObject;
-}
+static ERROR TIME_Query(objTime *, APTR);
+static ERROR TIME_SetTime(objTime *, APTR);
 
 /*****************************************************************************
 -ACTION-
@@ -99,7 +45,7 @@ Query: Updates the values in a time object with the current system date and time
 -END-
 *****************************************************************************/
 
-static ERROR TIME_Query(struct rkTime *Self, APTR Void)
+static ERROR TIME_Query(objTime *Self, APTR Void)
 {
    #ifdef __unix__
 
@@ -161,19 +107,20 @@ work if the user is logged in as the administrator.
 
 *****************************************************************************/
 
-static ERROR TIME_SetTime(struct rkTime *Self, APTR Void)
+static ERROR TIME_SetTime(objTime *Self, APTR Void)
 {
 #ifdef __unix__
+   parasol::Log log;
    struct timeval tmday;
    struct tm time;
    LONG fd;
 
-   LogMsg(NULL);
+   log.branch("");
 
    // Set the BIOS clock
 
    #ifdef __APPLE__
-      LogErrorMsg("No support for modifying the BIOS clock in OS X build");
+      log.warning("No support for modifying the BIOS clock in OS X build");
    #else
       if ((fd = open("/dev/rtc", O_RDONLY|O_NONBLOCK)) != -1) {
          time.tm_year  = Self->Year - 1900;
@@ -188,7 +135,7 @@ static ERROR TIME_SetTime(struct rkTime *Self, APTR Void)
          ioctl(fd, RTC_SET_TIME, &time);
          close(fd);
       }
-      else LogErrorMsg("/dev/rtc not available.");
+      else log.warning("/dev/rtc not available.");
    #endif
 
    // Set the internal system clock
@@ -206,10 +153,10 @@ static ERROR TIME_SetTime(struct rkTime *Self, APTR Void)
    if ((tmday.tv_sec = mktime(&time)) != -1) {
       tmday.tv_usec = 0;
       if (settimeofday(&tmday, NULL) IS -1) {
-         LogErrorMsg("settimeofday() failed.");
+         log.warning("settimeofday() failed.");
       }
    }
-   else LogErrorMsg("mktime() failed [%d/%d/%d, %d:%d:%d]", Self->Day, Self->Month, Self->Year, Self->Hour, Self->Minute, Self->Second);
+   else log.warning("mktime() failed [%d/%d/%d, %d:%d:%d]", Self->Day, Self->Month, Self->Year, Self->Hour, Self->Minute, Self->Second);
 
    return ERR_Okay;
 #else
@@ -264,7 +211,7 @@ The TimeStamp is dynamically calculated when you read this field.
 
 *****************************************************************************/
 
-static ERROR GET_TimeStamp(struct rkTime *Self, LARGE *Value)
+static ERROR GET_TimeStamp(objTime *Self, LARGE *Value)
 {
    *Value = Self->Second +
             ((LARGE)Self->Minute * 60) +
@@ -285,3 +232,57 @@ static ERROR GET_TimeStamp(struct rkTime *Self, LARGE *Value)
 Year: Year (-ve for BC, +ve for AD).
 -END-
 *****************************************************************************/
+
+static const FieldArray TimeFields[] = {
+   { "SystemTime",   FDF_LARGE|FDF_RW, 0, 0, 0 },
+   { "Year",         FDF_LONG|FDF_RW, 0, 0, 0 },
+   { "Month",        FDF_LONG|FDF_RW, 0, 0, 0 },
+   { "Day",          FDF_LONG|FDF_RW, 0, 0, 0 },
+   { "Hour",         FDF_LONG|FDF_RW, 0, 0, 0 },
+   { "Minute",       FDF_LONG|FDF_RW, 0, 0, 0 },
+   { "Second",       FDF_LONG|FDF_RW, 0, 0, 0 },
+   { "TimeZone",     FDF_LONG|FDF_RW, 0, 0, 0 },
+   { "DayOfWeek",    FDF_LONG|FDF_RW, 0, 0, 0 },
+   { "MilliSecond",  FDF_LONG|FDF_RW, 0, 0, 0 },
+   { "MicroSecond",  FDF_LONG|FDF_RW, 0, 0, 0 },
+   // Virtual fields
+   { "TimeStamp",    FDF_LARGE|FDF_R, 0, (APTR)GET_TimeStamp, NULL },
+   END_FIELD
+};
+
+static const ActionArray TimeActions[] = {
+   { AC_Query,      (APTR)TIME_Query },
+   { AC_Refresh,    (APTR)TIME_Query },
+   { 0, NULL }
+};
+
+static const MethodArray TimeMethods[] = {
+   { MT_TmSetTime, (APTR)TIME_SetTime, "SetTime", 0, 0 },
+   { 0, NULL, NULL }
+};
+
+//****************************************************************************
+
+extern "C" ERROR add_time_class(void)
+{
+   if (!NewPrivateObject(ID_METACLASS, 0, (OBJECTPTR *)&TimeClass)) {
+      if (SetFields((OBJECTPTR)TimeClass,
+            FID_BaseClassID|TLONG,   ID_TIME,
+            FID_ClassVersion|TFLOAT, VER_TIME,
+            FID_Name|TSTRING,   "Time",
+            FID_Category|TLONG, CCF_SYSTEM,
+            FID_Actions|TPTR,   TimeActions,
+            FID_Methods|TARRAY, TimeMethods,
+            FID_Fields|TARRAY,  TimeFields,
+            FID_Size|TLONG,     sizeof(objTime),
+            FID_Path|TSTR,      "modules:core",
+            TAGEND) IS ERR_Okay) {
+         if (!acInit(&TimeClass->Head)) {
+            return ERR_Okay;
+         }
+         else return ERR_Init;
+      }
+      else return ERR_SetField;
+   }
+   else return ERR_NewObject;
+}

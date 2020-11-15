@@ -47,10 +47,6 @@ within the thread routine.
 #include "../defs.h"
 #include <parasol/main.h>
 
-static const struct FieldArray clFields[];
-static const struct ActionArray clThreadActions[];
-static const struct MethodArray clThreadMethods[];
-
 #define THREADPOOL_MAX 6
 
 static LONG glActionThreadsIndex = 0;
@@ -60,42 +56,18 @@ static struct {
 } glActionThreads[THREADPOOL_MAX];
 
 //****************************************************************************
-
-ERROR add_thread_class(void)
-{
-   ERROR error;
-
-   if (!NewPrivateObject(ID_METACLASS, NULL, (OBJECTPTR *)&ThreadClass)) {
-      if (!SetFields((OBJECTPTR)ThreadClass,
-            FID_ClassVersion|TFLOAT, VER_THREAD,
-            FID_Name|TSTR,      "Thread",
-            FID_Category|TLONG, CCF_SYSTEM,
-            FID_Actions|TPTR,   clThreadActions,
-            FID_Methods|TARRAY, clThreadMethods,
-            FID_Fields|TARRAY,  clFields,
-            FID_Size|TLONG,     sizeof(objThread),
-            FID_Path|TSTR,      "modules:core",
-            TAGEND)) {
-         error = acInit(&ThreadClass->Head);
-      }
-      else error = ERR_SetField;
-   }
-   else error = ERR_NewObject;
-
-   return error;
-}
-
-//****************************************************************************
 // Retrieve a thread object from the thread pool.
 
 ERROR threadpool_get(objThread **Result)
 {
+   parasol::Log log;
    objThread *thread = NULL;
    ERROR error = ERR_Okay;
 
-   FMSG("~threadpool_get()","");
+   log.traceBranch("");
 
-   if (!thread_lock(TL_THREADPOOL, 2000)) {
+   ThreadLock lock(TL_THREADPOOL, 2000);
+   if (lock.granted()) {
       for (LONG i=0; i < glActionThreadsIndex; i++) {
          if ((glActionThreads[i].Thread) AND (!glActionThreads[i].InUse)) {
             thread = glActionThreads[i].Thread;
@@ -118,14 +90,11 @@ ERROR threadpool_get(objThread **Result)
             else { acFree(&thread->Head); thread = NULL; }
          }
       }
-
-      thread_unlock(TL_THREADPOOL);
    }
-   else error = LogError(ERH_Core, ERR_Lock);
+   else error = log.warning(ERR_Lock);
 
    if (thread) *Result = thread;
 
-   LOGRETURN();
    return error;
 }
 
@@ -134,26 +103,24 @@ ERROR threadpool_get(objThread **Result)
 
 void threadpool_release(objThread *Thread)
 {
-   FMSG("~threadpool_release()","Thread: #%d, Total: %d", Thread->Head.UniqueID, glActionThreadsIndex);
+   parasol::Log log;
 
-   if (!thread_lock(TL_THREADPOOL, 2000)) {
+   log.traceBranch("Thread: #%d, Total: %d", Thread->Head.UniqueID, glActionThreadsIndex);
+
+   ThreadLock lock(TL_THREADPOOL, 2000);
+   if (lock.granted()) {
       for (LONG i=0; i < glActionThreadsIndex; i++) {
          if (glActionThreads[i].Thread IS Thread) {
             glActionThreads[i].InUse = FALSE;
-            thread_unlock(TL_THREADPOOL);
-            LOGRETURN();
             return;
          }
       }
 
-      thread_unlock(TL_THREADPOOL);
-
       // If the thread object is not pooled, assume it was allocated dynamically from threadpool_get() and destroy it.
 
+      lock.release();
       acFree(&Thread->Head);
    }
-
-   LOGRETURN();
 }
 
 //****************************************************************************
@@ -161,21 +128,21 @@ void threadpool_release(objThread *Thread)
 
 void remove_threadpool(void)
 {
-   FMSG("~threadpool_free()","Removing the internal thread pool, size %d.", glActionThreadsIndex);
+   parasol::Log log("Core");
 
-   if (!thread_lock(TL_THREADPOOL, 2000)) {
+   log.traceBranch("Removing the internal thread pool, size %d.", glActionThreadsIndex);
+
+   ThreadLock lock(TL_THREADPOOL, 2000);
+   if (lock.granted()) {
       for (LONG i=0; i < glActionThreadsIndex; i++) {
          if (glActionThreads[i].Thread) {
-            if (glActionThreads[i].InUse) LogF("@Core","Pooled thread #%d is still in use on shutdown.", i);
+            if (glActionThreads[i].InUse) log.warning("Pooled thread #%d is still in use on shutdown.", i);
             acFree(&glActionThreads[i].Thread->Head);
             glActionThreads[i].Thread = NULL;
             glActionThreads[i].InUse = FALSE;
          }
       }
-      thread_unlock(TL_THREADPOOL);
    }
-
-   LOGRETURN();
 }
 
 //****************************************************************************
@@ -184,19 +151,19 @@ void remove_threadpool(void)
 
 ERROR msg_threadaction(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
 {
-   struct ThreadActionMessage *msg;
+   ThreadActionMessage *msg;
 
-   if (!(msg = (struct ThreadActionMessage *)Message)) return ERR_Okay;
+   if (!(msg = (ThreadActionMessage *)Message)) return ERR_Okay;
 
    if (msg->Callback.Type IS CALL_STDC) {
-      void (*routine)(ACTIONID, OBJECTPTR, ERROR, LONG) = msg->Callback.StdC.Routine;
+      auto routine = (void (*)(ACTIONID, OBJECTPTR, ERROR, LONG))msg->Callback.StdC.Routine;
       routine(msg->ActionID, msg->Object, msg->Error, msg->Key);
    }
    else if (msg->Callback.Type IS CALL_SCRIPT) {
       OBJECTPTR script;
       if ((script = msg->Callback.Script.Script)) {
          if (!AccessPrivateObject(script, 5000)) {
-            const struct ScriptArg args[] = {
+            const ScriptArg args[] = {
                { "ActionID", FD_LONG,      { .Long = msg->ActionID } },
                { "Object",   FD_OBJECTPTR, { .Address = msg->Object } },
                { "Error",    FD_LONG,      { .Long = msg->Error } },
@@ -216,22 +183,22 @@ ERROR msg_threadaction(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG
 
 ERROR msg_threadcallback(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
 {
-   struct ThreadMessage *msg;
-   if (!(msg = (struct ThreadMessage *)Message)) return ERR_Okay;
+   ThreadMessage *msg;
+   if (!(msg = (ThreadMessage *)Message)) return ERR_Okay;
 
    objThread *thread;
    if (!AccessObject(msg->ThreadID, 5000, (OBJECTPTR *)&thread)) {
       thread->prv.Active = FALSE;
 
       if (thread->prv.Callback.Type IS CALL_STDC) {
-         void (*callback)(objThread *) = thread->prv.Callback.StdC.Routine;
+         auto callback = (void (*)(objThread *))thread->prv.Callback.StdC.Routine;
          callback(thread);
       }
       else if (thread->prv.Callback.Type IS CALL_SCRIPT) {
          OBJECTPTR script;
          if ((script = thread->prv.Callback.Script.Script)) {
             if (!AccessPrivateObject(script, 5000)) {
-               const struct ScriptArg args[] = { { "Thread", FD_OBJECTPTR, { .Address = thread } } };
+               const ScriptArg args[] = { { "Thread", FD_OBJECTPTR, { .Address = thread } } };
                scCallback(script, thread->prv.Callback.Script.ProcedureID, args, ARRAYSIZE(args));
                ReleasePrivateObject(script);
             }
@@ -267,14 +234,14 @@ static void * thread_entry(objThread *Self)
       Self->prv.Active = TRUE;
 
       if (Self->prv.Routine.Type IS CALL_STDC) {
-         ERROR (*routine)(objThread *) = Self->prv.Routine.StdC.Routine;
+         auto routine = (ERROR (*)(objThread *))Self->prv.Routine.StdC.Routine;
          Self->Error = routine(Self);
       }
       else if (Self->prv.Routine.Type IS CALL_SCRIPT) {
          OBJECTPTR script;
          if ((script = Self->prv.Routine.Script.Script)) {
             if (!AccessPrivateObject(script, 5000)) {
-               const struct ScriptArg args[] = { { "Thread", FD_OBJECTPTR, { .Address = Self } } };
+               const ScriptArg args[] = { { "Thread", FD_OBJECTPTR, { .Address = Self } } };
                scCallback(script, Self->prv.Routine.Script.ProcedureID, args, ARRAYSIZE(args));
                ReleasePrivateObject(script);
             }
@@ -289,7 +256,7 @@ static void * thread_entry(objThread *Self)
          // A message needs to be placed on the process' message queue with a reference to the thread object
          // so the callback can be processed by the main program thread.  See msg_threadcallback()
 
-         struct ThreadMessage msg;
+         ThreadMessage msg;
          msg.ThreadID = Self->Head.UniqueID;
          SendMessage(0, MSGID_THREAD_CALLBACK, MSF_ADD, &msg, sizeof(msg));
 
@@ -327,6 +294,8 @@ Activate: Spawn a new thread that calls the function referenced in the #Routine 
 
 static ERROR THREAD_Activate(objThread *Self, APTR Void)
 {
+   parasol::Log log;
+
    if (Self->prv.Active) return ERR_NothingDone;
 
 #ifdef __unix__
@@ -334,26 +303,24 @@ static ERROR THREAD_Activate(objThread *Self, APTR Void)
    pthread_attr_init(&attr);
    // On Linux it is better not to set the stack size, as it implies you intend to manually allocate the stack and guard it...
    //pthread_attr_setstacksize(&attr, Self->StackSize);
-   if (!pthread_create(&Self->prv.PThread, &attr, (APTR)&thread_entry, Self)) {
+   if (!pthread_create(&Self->prv.PThread, &attr, (APTR (*)(APTR))&thread_entry, Self)) {
       pthread_attr_destroy(&attr);
       return ERR_Okay;
    }
    else {
       char errstr[80];
       strerror_r(errno, errstr, sizeof(errstr));
-      LogErrorMsg("pthread_create() failed with error: %s.", errstr);
+      log.warning("pthread_create() failed with error: %s.", errstr);
       pthread_attr_destroy(&attr);
       return ERR_Failed;
    }
 
 #elif _WIN32
 
-   if ((Self->prv.Handle = winCreateThread(&thread_entry, Self, Self->StackSize, &Self->prv.ThreadID))) {
+   if ((Self->prv.Handle = winCreateThread((APTR)&thread_entry, Self, Self->StackSize, &Self->prv.ThreadID))) {
       return ERR_Okay;
    }
-   else {
-      return PostError(ERR_Failed);
-   }
+   else return log.warning(ERR_Failed);
 
 #else
    #error Platform support for threads is required.
@@ -432,18 +399,20 @@ static ERROR THREAD_FreeWarning(objThread *Self, APTR Void)
 
 static ERROR THREAD_Init(objThread *Self, APTR Void)
 {
+   parasol::Log log;
+
    if (Self->StackSize < 1024) Self->StackSize = 1024;
-   else if (Self->StackSize > 1024 * 1024) return PostError(ERR_OutOfRange);
+   else if (Self->StackSize > 1024 * 1024) return log.warning(ERR_OutOfRange);
 
    if (Self->Flags & THF_MSG_HANDLER) {
       #ifdef _WIN32
-         if (winCreatePipe(&Self->prv.Msgs[0], &Self->prv.Msgs[1])) return PostError(ERR_SystemCall);
+         if (winCreatePipe(&Self->prv.Msgs[0], &Self->prv.Msgs[1])) return log.warning(ERR_SystemCall);
       #else
          if (!pipe(Self->prv.Msgs)) {
             //fcntl(Self->prv.Msgs[0], F_SETFL, fcntl(Self->prv.Msgs[0], F_GETFL)|O_NONBLOCK); // Do not block on read
             fcntl(Self->prv.Msgs[1], F_SETFL, fcntl(Self->prv.Msgs[1], F_GETFL)|O_NONBLOCK); // Do not block on write (see send_thread_msg())
          }
-         else return PostError(ERR_SystemCall);
+         else return log.warning(ERR_SystemCall);
       #endif
    }
 
@@ -489,8 +458,10 @@ AllocMemory
 
 static ERROR THREAD_SetData(objThread *Self, struct thSetData *Args)
 {
-   if ((!Args) OR (!Args->Data)) return PostError(ERR_NullArgs);
-   if (Args->Size < 0) return PostError(ERR_Args);
+   parasol::Log log;
+
+   if ((!Args) OR (!Args->Data)) return log.warning(ERR_NullArgs);
+   if (Args->Size < 0) return log.warning(ERR_Args);
 
    if (Self->Data) {
       FreeResource(Self->Data);
@@ -507,7 +478,7 @@ static ERROR THREAD_SetData(objThread *Self, struct thSetData *Args)
       CopyMemory(Args->Data, Self->Data, Args->Size);
       return ERR_Okay;
    }
-   else return PostError(ERR_AllocMemory);
+   else return log.warning(ERR_AllocMemory);
 }
 
 /*****************************************************************************
@@ -536,9 +507,11 @@ TimeOut: The timeout was reached before the thread completed.
 
 static ERROR THREAD_Wait(objThread *Self, struct thWait *Args)
 {
-   if (!Args) return PostError(ERR_NullArgs);
-   if (Args->TimeOut < 0) return PostError(ERR_Args);
-   if (Args->MsgInterval < -1) return PostError(ERR_Args);
+   parasol::Log log;
+
+   if (!Args) return log.warning(ERR_NullArgs);
+   if (Args->TimeOut < 0) return log.warning(ERR_Args);
+   if (Args->MsgInterval < -1) return log.warning(ERR_Args);
 
 #ifdef __ANDROID__
    pthread_join(Self->prv.PThread, NULL);
@@ -577,7 +550,7 @@ static ERROR THREAD_Wait(objThread *Self, struct thWait *Args)
 
       if (ProcessMessages(0, 0) IS ERR_Terminate) break;
 
-      current_time = (PreciseTime()/1000LL);
+      current_time = (PreciseTime() / 1000LL);
    } while (current_time < end_time);
 
    __sync_sub_and_fetch(&Self->prv.Waiting, 1);
@@ -680,22 +653,44 @@ On some platforms it may not be possible to preset the stack size and the provid
 -END-
 *****************************************************************************/
 
-static const struct FieldDef clThreadFlags[] = {
+static const FieldDef clThreadFlags[] = {
    { "AutoFree",   THF_AUTO_FREE },
    { "MsgHandler", THF_MSG_HANDLER },
    { NULL, 0 }
 };
 
-static const struct FieldArray clFields[] = {
-   { "Data",      FDF_ARRAY|FDF_BYTE|FDF_R, 0, GET_Data, NULL },
+static const FieldArray clFields[] = {
+   { "Data",      FDF_ARRAY|FDF_BYTE|FDF_R, 0, (APTR)GET_Data, NULL },
    { "DataSize",  FD_LONG|FDF_R,       0, NULL, NULL },
    { "StackSize", FDF_LONG|FDF_RW,     0, NULL, NULL },
    { "Error",     FDF_LONG|FDF_R,      0, NULL, NULL },
    { "Flags",     FDF_LONG|FDF_RI,     (MAXINT)&clThreadFlags, NULL, NULL },
    // Virtual fields
-   { "Callback",  FDF_FUNCTIONPTR|FDF_RW, 0, GET_Callback, SET_Callback },
-   { "Routine",   FDF_FUNCTIONPTR|FDF_RW, 0, GET_Routine, SET_Routine },
+   { "Callback",  FDF_FUNCTIONPTR|FDF_RW, 0, (APTR)GET_Callback, (APTR)SET_Callback },
+   { "Routine",   FDF_FUNCTIONPTR|FDF_RW, 0, (APTR)GET_Routine, (APTR)SET_Routine },
    END_FIELD
 };
 
 #include "class_thread_def.c"
+
+//****************************************************************************
+
+extern "C" ERROR add_thread_class(void)
+{
+   if (!NewPrivateObject(ID_METACLASS, 0, (OBJECTPTR *)&ThreadClass)) {
+      if (!SetFields((OBJECTPTR)ThreadClass,
+            FID_ClassVersion|TFLOAT, VER_THREAD,
+            FID_Name|TSTR,      "Thread",
+            FID_Category|TLONG, CCF_SYSTEM,
+            FID_Actions|TPTR,   clThreadActions,
+            FID_Methods|TARRAY, clThreadMethods,
+            FID_Fields|TARRAY,  clFields,
+            FID_Size|TLONG,     sizeof(objThread),
+            FID_Path|TSTR,      "modules:core",
+            TAGEND)) {
+         return acInit(&ThreadClass->Head);
+      }
+      else return ERR_SetField;
+   }
+   else return ERR_NewObject;
+}

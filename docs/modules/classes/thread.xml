@@ -31,7 +31,7 @@ if (!CreateObject(ID_THREAD, 0, &amp;thread,
 </pre>
 <p>To initialise the thread with data, call <method>SetData</method> prior to execution and read the <field>Data</field> field from within the thread routine.</p></description>
     <source>
-      <file path="src/classes/">class_thread.c</file>
+      <file path="src/classes/">class_thread.cpp</file>
     </source>
   </info>
 
@@ -183,10 +183,13 @@ if (!CreateObject(ID_THREAD, 0, &amp;thread,
       <const name="ERROR"/>
       <const name="WARNING"/>
       <const name="DEBUG"/>
-      <const name="FUNCTION"/>
+      <const name="EXTAPI"/>
+      <const name="BRANCH"/>
+      <const name="INFO"/>
+      <const name="API"/>
       <const name="TRACE"/>
       <const name="CRITICAL"/>
-      <const name="BRANCH"/>
+      <const name="FUNCTION"/>
     </constants>
 
     <constants lookup="MOF" comment="Module flags">

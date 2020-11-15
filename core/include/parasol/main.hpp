@@ -67,13 +67,7 @@ class SwitchContext { // C++ wrapper for changing the current context with a res
 
 class Log { // C++ wrapper for Parasol's log functionality
    private:
-      class LogReturnBranch {
-         public:
-            LogReturnBranch() { }
-            ~LogReturnBranch() {
-               LogReturn();
-            }
-      };
+      LONG branches = 0;
 
    public:
       CSTRING header;
@@ -86,44 +80,60 @@ class Log { // C++ wrapper for Parasol's log functionality
          header = Header;
       }
 
-      std::unique_ptr<LogReturnBranch> branch(CSTRING Message, ...) {
+      ~Log() {
+         while (branches > 0) { branches--; LogReturn(); }
+      }
+
+      void branch(CSTRING Message, ...) {
          va_list arg;
          va_start(arg, Message);
-         VLogF(VLF_DEBUG|VLF_BRANCH, header, Message, arg);
+         VLogF(VLF_API|VLF_BRANCH, header, Message, arg);
          va_end(arg);
-         return std::make_unique<LogReturnBranch>();
+         branches++;
       }
 
       #ifdef DEBUG
-      std::unique_ptr<LogReturnBranch> traceBranch(CSTRING Message, ...) {
+      void traceBranch(CSTRING Message, ...) {
          va_list arg;
          va_start(arg, Message);
          VLogF(VLF_DEBUG|VLF_BRANCH, header, Message, arg);
          va_end(arg);
-         return std::make_unique<LogReturnBranch>();
+         branches++;
       }
       #else
       void traceBranch(CSTRING Message, ...) { }
       #endif
 
+      void debranch() {
+         branches--;
+         LogReturn();
+      }
+
       void app(CSTRING Message, ...) { // Info level, recommended for applications only
          va_list arg;
          va_start(arg, Message);
-         VLogF(VLF_DEBUG, header, Message, arg);
+         VLogF(VLF_INFO, header, Message, arg);
          va_end(arg);
       }
 
-      void msg(CSTRING Message, ...) { // Defaults to debug level, recommended for modules
+      void msg(CSTRING Message, ...) { // Defaults to API level, recommended for modules
          va_list arg;
          va_start(arg, Message);
-         VLogF(VLF_DEBUG, header, Message, arg);
+         VLogF(VLF_API, header, Message, arg);
+         va_end(arg);
+      }
+
+      void extmsg(CSTRING Message, ...) { // Extended API message
+         va_list arg;
+         va_start(arg, Message);
+         VLogF(VLF_EXTAPI, header, Message, arg);
          va_end(arg);
       }
 
       void pmsg(CSTRING Message, ...) { // "Parent message", uses the scope of the caller
          va_list arg;
          va_start(arg, Message);
-         VLogF(VLF_DEBUG, NULL, Message, arg);
+         VLogF(VLF_API, NULL, Message, arg);
          va_end(arg);
       }
 
@@ -151,7 +161,7 @@ class Log { // C++ wrapper for Parasol's log functionality
       void function(CSTRING Message, ...) { // Equivalent to branch() but without a new branch being created
          va_list arg;
          va_start(arg, Message);
-         VLogF(VLF_DEBUG|VLF_FUNCTION, header, Message, arg);
+         VLogF(VLF_API|VLF_FUNCTION, header, Message, arg);
          va_end(arg);
       }
 

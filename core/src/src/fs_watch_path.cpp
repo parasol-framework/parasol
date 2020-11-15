@@ -73,6 +73,7 @@ ERROR fs_watch_path(objFile *File)
 
 ERROR fs_watch_path(objFile *File)
 {
+   parasol::Log log(__FUNCTION__);
    HOSTHANDLE handle;
    LONG winflags;
    ERROR error;
@@ -84,9 +85,9 @@ ERROR fs_watch_path(objFile *File)
       File->prvWatch->WinFlags = winflags;
       if (!(error = RegisterFD(handle, RFD_READ, (void (*)(HOSTHANDLE, void*))&path_monitor, File))) {
       }
-      else LogErrorMsg("Failed to register folder handle.");
+      else log.warning("Failed to register folder handle.");
    }
-   else LogErrorMsg("Failed to watch path %s, %s", File->prvResolvedPath, GetErrorMsg(error));
+   else log.warning("Failed to watch path %s, %s", File->prvResolvedPath, GetErrorMsg(error));
 
    return error;
 }

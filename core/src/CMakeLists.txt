@@ -97,13 +97,13 @@ target_sources (core PRIVATE
    "src/classes/class_config.cpp"
    "src/classes/class_file.cpp"
    "src/classes/class_metaclass.cpp"
-   "src/classes/class_module.c"
-   "src/classes/class_script.c"
-   "src/classes/class_storagedevice.c"
-   "src/classes/class_task.c"
-   "src/classes/class_thread.c"
-   "src/classes/class_time.c"
-   "src/compression/class_compression.c")
+   "src/classes/class_module.cpp"
+   "src/classes/class_script.cpp"
+   "src/classes/class_storagedevice.cpp"
+   "src/classes/class_task.cpp"
+   "src/classes/class_thread.cpp"
+   "src/classes/class_time.cpp"
+   "src/compression/class_compression.cpp")
 
 target_include_directories (core PRIVATE
    ${ZLIB_HEADERS})

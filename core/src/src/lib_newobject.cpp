@@ -167,7 +167,7 @@ ERROR NewObject(LARGE ClassID, LONG Flags, OBJECTPTR *Object)
       return ERR_Args;
    }
 
-   auto b = (!(Flags & NF_CREATE_OBJECT)) ? log.branch("%s #%d, Flags: $%x", mc->ClassName, glSharedControl->PrivateIDCounter, Flags) : NULL;
+   if (!(Flags & NF_CREATE_OBJECT)) log.branch("%s #%d, Flags: $%x", mc->ClassName, glSharedControl->PrivateIDCounter, Flags);
 
    OBJECTPTR head = NULL;
    MEMORYID head_id = 0;

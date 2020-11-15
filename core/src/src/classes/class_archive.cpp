@@ -409,7 +409,7 @@ static ERROR ARCHIVE_Read(objFile *Self, struct acRead *Args)
 
             if (result IS Z_STREAM_END) {
                // Decompression is complete
-               MSG("Decompression complete.  Output %d bytes.", out_offset);
+               log.trace("Decompression complete.  Output %d bytes.", out_offset);
                prv->Inflating = FALSE;
                error = ERR_Okay;
                break;

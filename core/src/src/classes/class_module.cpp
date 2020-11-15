@@ -61,40 +61,40 @@ void * GetProcAddress(APTR, STRING);
 int FreeLibrary(APTR);
 #endif
 
-static struct ModuleMaster glCoreMaster;
-static struct ModHeader glCoreHeader;
+static ModuleMaster glCoreMaster;
+static ModHeader glCoreHeader;
 
 static LONG cmp_mod_names(CSTRING, CSTRING);
-static struct ModuleMaster * check_resident(objModule *, CSTRING);
-static ERROR intercepted_master(struct ModuleMaster *, APTR);
+static ModuleMaster * check_resident(objModule *, CSTRING);
+static ERROR intercepted_master(ModuleMaster *, APTR);
 static void free_module(MODHANDLE handle);
 
 //****************************************************************************
 
-static ERROR GET_Actions(objModule *, struct ActionEntry **);
+static ERROR GET_Actions(objModule *, ActionEntry **);
 static ERROR GET_IDL(objModule *, CSTRING *);
 static ERROR GET_Name(objModule *, CSTRING *);
 
-static ERROR SET_Header(objModule *, struct ModHeader *);
+static ERROR SET_Header(objModule *, ModHeader *);
 static ERROR SET_Name(objModule *, CSTRING);
 
-static const struct FieldDef clFlags[] = {
+static const FieldDef clFlags[] = {
    { "LinkLibrary", MOF_LINK_LIBRARY },
    { "Static",      MOF_STATIC },
    { NULL, 0 }
 };
 
-static const struct FieldArray glModuleFields[] = {
+static const FieldArray glModuleFields[] = {
    { "Version",      FDF_DOUBLE|FDF_RI,  0, NULL, NULL },
    { "FunctionList", FDF_POINTER|FDF_RW, 0, NULL, NULL },
    { "ModBase",      FDF_POINTER|FDF_R,  0, NULL, NULL },
    { "Master",       FDF_POINTER|FDF_R,  0, NULL, NULL },
-   { "Header",       FDF_POINTER|FDF_RI, 0, NULL, SET_Header },
+   { "Header",       FDF_POINTER|FDF_RI, 0, NULL, (APTR)SET_Header },
    { "Flags",        FDF_LONG|FDF_RI,    (MAXINT)&clFlags, NULL, NULL },
    // Virtual fields
-   { "Actions",      FDF_POINTER|FDF_R, 0, GET_Actions, NULL },
-   { "Name",         FDF_STRING|FDF_RI, 0, GET_Name, SET_Name },
-   { "IDL",          FDF_STRING|FDF_R, 0, GET_IDL, NULL },
+   { "Actions",      FDF_POINTER|FDF_R, 0, (APTR)GET_Actions, NULL },
+   { "Name",         FDF_STRING|FDF_RI, 0, (APTR)GET_Name, (APTR)SET_Name },
+   { "IDL",          FDF_STRING|FDF_R,  0, (APTR)GET_IDL, NULL },
    END_FIELD
 };
 
@@ -103,11 +103,11 @@ static ERROR MODULE_Init(objModule *, APTR);
 static ERROR MODULE_Free(objModule *, APTR);
 static ERROR MODULE_SetVar(objModule *, struct acSetVar *);
 
-static const struct ActionArray glModuleActions[] = {
-   { AC_Free,   MODULE_Free },
-   { AC_GetVar, MODULE_GetVar },
-   { AC_Init,   MODULE_Init },
-   { AC_SetVar, MODULE_SetVar },
+static const ActionArray glModuleActions[] = {
+   { AC_Free,   (APTR)MODULE_Free },
+   { AC_GetVar, (APTR)MODULE_GetVar },
+   { AC_Init,   (APTR)MODULE_Init },
+   { AC_SetVar, (APTR)MODULE_SetVar },
    { 0, NULL }
 };
 
@@ -115,71 +115,71 @@ static const struct ActionArray glModuleActions[] = {
 
 static ERROR MODULE_ResolveSymbol(objModule *, struct modResolveSymbol *);
 
-static const struct FunctionField argsResolveSymbol[] = { { "Name", FD_STR }, { "Address", FD_PTR|FD_RESULT }, { NULL, 0 } };
+static const FunctionField argsResolveSymbol[] = { { "Name", FD_STR }, { "Address", FD_PTR|FD_RESULT }, { NULL, 0 } };
 
-static const struct MethodArray glModuleMethods[] = {
-   { MT_ModResolveSymbol, MODULE_ResolveSymbol, "ResolveSymbol", argsResolveSymbol, sizeof(struct modResolveSymbol) },
+static const MethodArray glModuleMethods[] = {
+   { MT_ModResolveSymbol, (APTR)MODULE_ResolveSymbol, "ResolveSymbol", argsResolveSymbol, sizeof(struct modResolveSymbol) },
    { 0, NULL, NULL, 0 }
 };
 
 //****************************************************************************
 
-static ERROR GET_MMActions(struct ModuleMaster *, struct ActionEntry **);
+static ERROR GET_MMActions(ModuleMaster *, ActionEntry **);
 
-static const struct FieldArray glModuleMasterFields[] = {
+static const FieldArray glModuleMasterFields[] = {
    // Virtual fields
-   { "Actions", FDF_POINTER|FDF_R, 0, GET_MMActions, NULL },
+   { "Actions", FDF_POINTER|FDF_R, 0, (APTR)GET_MMActions, NULL },
    END_FIELD
 };
 
-static ERROR MODULEMASTER_Free(struct ModuleMaster *, APTR);
+static ERROR MODULEMASTER_Free(ModuleMaster *, APTR);
 
-static const struct ActionArray glModuleMasterActions[] = {
-   { AC_Free, MODULEMASTER_Free },
+static const ActionArray glModuleMasterActions[] = {
+   { AC_Free,             (APTR)MODULEMASTER_Free },
    // The following actions are program dependent
-   { AC_ActionNotify,     intercepted_master },
-   { AC_Clear,            intercepted_master },
-   { AC_DataFeed,         intercepted_master },
-   { AC_Deactivate,       intercepted_master },
-   { AC_Draw,             intercepted_master },
-   { AC_Flush,            intercepted_master },
-   { AC_Focus,            intercepted_master },
-   { AC_GetVar,           intercepted_master },
-   { AC_Hide,             intercepted_master },
-   { AC_Lock,             intercepted_master },
-   { AC_LostFocus,        intercepted_master },
-   { AC_Move,             intercepted_master },
-   { AC_MoveToBack,       intercepted_master },
-   { AC_MoveToFront,      intercepted_master },
-   { AC_NewChild,         intercepted_master },
-   { AC_NewOwner,         intercepted_master },
-   { AC_Query,            intercepted_master },
-   { AC_Read,             intercepted_master },
-   { AC_Rename,           intercepted_master },
-   { AC_Reset,            intercepted_master },
-   { AC_Resize,           intercepted_master },
-   { AC_SaveImage,        intercepted_master },
-   { AC_SaveToObject,     intercepted_master },
-   { AC_Scroll,           intercepted_master },
-   { AC_Seek,             intercepted_master },
-   { AC_SetVar,           intercepted_master },
-   { AC_Show,             intercepted_master },
-   { AC_Unlock,           intercepted_master },
-   { AC_Write,            intercepted_master },
-   { AC_Clipboard,        intercepted_master },
-   { AC_Refresh,          intercepted_master },
-   { AC_Disable,          intercepted_master },
-   { AC_Enable,           intercepted_master },
-   { AC_Redimension,      intercepted_master },
-   { AC_MoveToPoint,      intercepted_master },
-   { AC_ScrollToPoint,    intercepted_master },
-   { AC_Custom,           intercepted_master },
+   { AC_ActionNotify,     (APTR)intercepted_master },
+   { AC_Clear,            (APTR)intercepted_master },
+   { AC_DataFeed,         (APTR)intercepted_master },
+   { AC_Deactivate,       (APTR)intercepted_master },
+   { AC_Draw,             (APTR)intercepted_master },
+   { AC_Flush,            (APTR)intercepted_master },
+   { AC_Focus,            (APTR)intercepted_master },
+   { AC_GetVar,           (APTR)intercepted_master },
+   { AC_Hide,             (APTR)intercepted_master },
+   { AC_Lock,             (APTR)intercepted_master },
+   { AC_LostFocus,        (APTR)intercepted_master },
+   { AC_Move,             (APTR)intercepted_master },
+   { AC_MoveToBack,       (APTR)intercepted_master },
+   { AC_MoveToFront,      (APTR)intercepted_master },
+   { AC_NewChild,         (APTR)intercepted_master },
+   { AC_NewOwner,         (APTR)intercepted_master },
+   { AC_Query,            (APTR)intercepted_master },
+   { AC_Read,             (APTR)intercepted_master },
+   { AC_Rename,           (APTR)intercepted_master },
+   { AC_Reset,            (APTR)intercepted_master },
+   { AC_Resize,           (APTR)intercepted_master },
+   { AC_SaveImage,        (APTR)intercepted_master },
+   { AC_SaveToObject,     (APTR)intercepted_master },
+   { AC_Scroll,           (APTR)intercepted_master },
+   { AC_Seek,             (APTR)intercepted_master },
+   { AC_SetVar,           (APTR)intercepted_master },
+   { AC_Show,             (APTR)intercepted_master },
+   { AC_Unlock,           (APTR)intercepted_master },
+   { AC_Write,            (APTR)intercepted_master },
+   { AC_Clipboard,        (APTR)intercepted_master },
+   { AC_Refresh,          (APTR)intercepted_master },
+   { AC_Disable,          (APTR)intercepted_master },
+   { AC_Enable,           (APTR)intercepted_master },
+   { AC_Redimension,      (APTR)intercepted_master },
+   { AC_MoveToPoint,      (APTR)intercepted_master },
+   { AC_ScrollToPoint,    (APTR)intercepted_master },
+   { AC_Custom,           (APTR)intercepted_master },
    { 0, NULL }
 };
 
 //****************************************************************************
 
-ERROR add_module_class(void)
+extern "C" ERROR add_module_class(void)
 {
    if (CreateObject(ID_METACLASS, 0, (OBJECTPTR *)&ModuleClass,
          FID_BaseClassID|TLONG,    ID_MODULE,
@@ -202,7 +202,7 @@ ERROR add_module_class(void)
          FID_Category|TLONG,      CCF_SYSTEM,
          FID_Actions|TPTR,        glModuleMasterActions,
          FID_Fields|TARRAY,       glModuleMasterFields,
-         FID_Size|TLONG,          sizeof(struct ModuleMaster),
+         FID_Size|TLONG,          sizeof(ModuleMaster),
          FID_Path|TSTR,           "modules:core",
          TAGEND) != ERR_Okay) return ERR_AddClass;
 
@@ -212,7 +212,7 @@ ERROR add_module_class(void)
 //****************************************************************************
 // Action interception routine.
 
-static ERROR intercepted_master(struct ModuleMaster *Self, APTR Args)
+static ERROR intercepted_master(ModuleMaster *Self, APTR Args)
 {
    if (Self->prvActions[tlContext->Action].PerformAction) {
       return Self->prvActions[tlContext->Action].PerformAction((OBJECTPTR)Self, Args);
@@ -222,7 +222,7 @@ static ERROR intercepted_master(struct ModuleMaster *Self, APTR Args)
 
 //****************************************************************************
 
-static ERROR GET_MMActions(struct ModuleMaster *Self, struct ActionEntry **Value)
+static ERROR GET_MMActions(ModuleMaster *Self, ActionEntry **Value)
 {
    *Value = Self->prvActions;
    return ERR_Okay;
@@ -230,7 +230,7 @@ static ERROR GET_MMActions(struct ModuleMaster *Self, struct ActionEntry **Value
 
 //****************************************************************************
 
-ERROR MODULEMASTER_Free(struct ModuleMaster *Self, APTR Void)
+ERROR MODULEMASTER_Free(ModuleMaster *Self, APTR Void)
 {
    if (Self->Table) Self->Table->Master = NULL; // Remove the DLL's reference to the master.
 
@@ -245,13 +245,12 @@ ERROR MODULEMASTER_Free(struct ModuleMaster *Self, APTR Void)
       Self->LibraryBase = NULL;
    }
 
-   // Patch the gap
-
-   if (!thread_lock(TL_GENERIC, 200)) {
+   ThreadLock lock(TL_GENERIC, 200);
+   if (lock.granted()) { // Patch the gap
       if (Self->Prev) Self->Prev->Next = Self->Next;
       else glModuleList = Self->Next;
+
       if (Self->Next) Self->Next->Prev = Self->Prev;
-      thread_unlock(TL_GENERIC);
    }
 
    return ERR_Okay;
@@ -285,8 +284,10 @@ GetVar: Module parameters can be retrieved through this action.
 
 static ERROR MODULE_GetVar(objModule *Self, struct acGetVar *Args)
 {
-   if ((!Args) OR (!Args->Buffer) OR (!Args->Field)) return PostError(ERR_NullArgs);
-   if (Args->Size < 2) return PostError(ERR_Args);
+   parasol::Log log;
+
+   if ((!Args) OR (!Args->Buffer) OR (!Args->Field)) return log.warning(ERR_NullArgs);
+   if (Args->Size < 2) return log.warning(ERR_Args);
    if (!Self->Vars) return ERR_UnsupportedField;
 
    CSTRING arg = VarGetString(Self->Vars, Args->Field);
@@ -305,6 +306,7 @@ static ERROR MODULE_GetVar(objModule *Self, struct acGetVar *Args)
 
 static ERROR MODULE_Init(objModule *Self, APTR Void)
 {
+   parasol::Log log;
    #define AF_MODULEMASTER 0x0001
    #define AF_SEGMENT      0x0002
    OBJECTPTR Task = 0;
@@ -315,24 +317,24 @@ static ERROR MODULE_Init(objModule *Self, APTR Void)
 
    DEBUG_LINE
 
-   if (!Self->Name[0]) return PostError(ERR_FieldNotSet);
+   if (!Self->Name[0]) return log.warning(ERR_FieldNotSet);
 
    // Check if the module is resident.  If not, we need to load and prepare the module for a shared environment.
 
-   APTR context = NULL;
+   OBJECTPTR context = NULL;
 
    i = StrLength(Self->Name);
    while ((i > 0) AND (Self->Name[i-1] != ':') AND (Self->Name[i-1] != '/') AND (Self->Name[i-1] != '\\')) i--;
    StrCopy(Self->Name+i, name, sizeof(name));
 
-   MSG("Finding module %s (%s)", Self->Name, name);
+   log.trace("Finding module %s (%s)", Self->Name, name);
 
-   struct ModuleMaster *master;
-   struct ModHeader *table;
+   ModuleMaster *master;
+   ModHeader *table;
    if ((master = check_resident(Self, name))) {
       Self->Master = master;
    }
-   else if (!NewPrivateObject(ID_MODULEMASTER, NF_NO_TRACK, (APTR)&master)) {
+   else if (!NewPrivateObject(ID_MODULEMASTER, NF_NO_TRACK, (OBJECTPTR *)&master)) {
       char path[300];
 
       DEBUG_LINE
@@ -364,7 +366,7 @@ static ERROR MODULE_Init(objModule *Self, APTR Void)
          path[0] = 0;
 
          if ((Self->Name[0] IS '/') OR (Self->Name[i] IS ':')) {
-            MSG("Module location is absolute.");
+            log.trace("Module location is absolute.");
             StrCopy(Self->Name, path, sizeof(path));
 
             STRING volume;
@@ -373,7 +375,7 @@ static ERROR MODULE_Init(objModule *Self, APTR Void)
                FreeResource(volume);
             }
             else {
-               LogErrorMsg("Failed to resolve the path of module '%s'", Self->Name);
+               log.warning("Failed to resolve the path of module '%s'", Self->Name);
                error = ERR_ResolvePath;
                goto exit;
             }
@@ -383,7 +385,7 @@ static ERROR MODULE_Init(objModule *Self, APTR Void)
          // resort to looking in the modules: folder.
 
          if (!path[0]) {
-            struct ModuleItem *item;
+            ModuleItem *item;
             ULONG hashname = StrHash(name, FALSE);
 
             if ((item = find_module(hashname))) {
@@ -395,12 +397,12 @@ static ERROR MODULE_Init(objModule *Self, APTR Void)
                   FreeResource(volume);
                }
                else {
-                  LogErrorMsg("Found registered module %s, but failed to resolve path '%s'", name, path);
+                  log.warning("Found registered module %s, but failed to resolve path '%s'", name, path);
                   error = ERR_ResolvePath;
                   goto exit;
                }
             }
-            else LogMsg("Module '%s' #%.8x is not registered in the database.", name, hashname);
+            else log.msg("Module '%s' #%.8x is not registered in the database.", name, hashname);
          }
 
          DEBUG_LINE
@@ -459,7 +461,7 @@ static ERROR MODULE_Init(objModule *Self, APTR Void)
          else ext = -1;
 
          if (ext IS -1) {
-            if (len < sizeof(path)-12) {
+            if ((size_t)len < sizeof(path)-12) {
                 ext = len;
 
                 #ifdef __unix__
@@ -480,7 +482,7 @@ static ERROR MODULE_Init(objModule *Self, APTR Void)
          }
          else ext = 0;
 
-         MSG("Loading module \"%s\".", path);
+         log.trace("Loading module \"%s\".", path);
 
          // Open the module file.  Note that we will dlclose() the module in the expunge sequence of the Core (see core.c).
 
@@ -504,8 +506,8 @@ static ERROR MODULE_Init(objModule *Self, APTR Void)
                DEBUG_LINE
 
                if (!(Self->Flags & MOF_LINK_LIBRARY)) {
-                  if (!(table = dlsym(master->LibraryBase, "ModHeader"))) {
-                     LogErrorMsg("The 'ModHeader' structure is missing from module %s.", path);
+                  if (!(table = (ModHeader *)dlsym(master->LibraryBase, "ModHeader"))) {
+                     log.warning("The 'ModHeader' structure is missing from module %s.", path);
                      goto exit;
                   }
                }
@@ -517,26 +519,25 @@ static ERROR MODULE_Init(objModule *Self, APTR Void)
                      path[ext] = '.'; path[ext+1] = 'd'; path[ext+2] = 'l'; path[ext+3] = 'l'; path[ext+4] = 0;
                   }
 
-                  MSG("Attempting to load module as a DLL.");
+                  log.trace("Attempting to load module as a DLL.");
                   if ((master->LibraryBase = LoadLibraryA(path))) {
-
-                     MSG("Identified module as a DLL.");
+                     log.trace("Identified module as a DLL.");
                      master->DLL = TRUE;
                      aflags |= AF_SEGMENT;
                      if (!(Self->Flags & MOF_LINK_LIBRARY)) {
                         if (!(table = GetProcAddress(master->LibraryBase, "ModHeader"))) {
                            if (!(table = GetProcAddress(master->LibraryBase, "_ModHeader"))) {
-                              LogErrorMsg("The 'ModHeader' structure is missing from module %s.", path);
+                              log.warning("The 'ModHeader' structure is missing from module %s.", path);
                               goto exit;
                            }
                         }
                      }
 
-                     MSG("Retrieved ModHeader: $%.8x", table);
+                     log.trace("Retrieved ModHeader: $%.8x", table);
                   }
                #endif
 
-               LogErrorMsg("%s: %s", name, (CSTRING)dlerror());
+               log.warning("%s: %s", name, (CSTRING)dlerror());
                error = ERR_NoSupport;
                goto exit;
             }
@@ -547,17 +548,17 @@ static ERROR MODULE_Init(objModule *Self, APTR Void)
                aflags |= AF_SEGMENT;
 
                if (!(Self->Flags & MOF_LINK_LIBRARY)) {
-                  if (!(table = winGetProcAddress(master->LibraryBase, "ModHeader"))) {
-                     if (!(table = winGetProcAddress(master->LibraryBase, "_ModHeader"))) {
-                        LogErrorMsg("The 'ModHeader' structure is missing from module %s.", path);
+                  if (!(table = (ModHeader *)winGetProcAddress(master->LibraryBase, "ModHeader"))) {
+                     if (!(table = (ModHeader *)winGetProcAddress(master->LibraryBase, "_ModHeader"))) {
+                        log.warning("The 'ModHeader' structure is missing from module %s.", path);
                         goto exit;
                      }
                   }
                }
             }
             else {
-               UBYTE msg[100];
-               LogF("!", "Failed to load DLL '%s' (call: winLoadLibrary(): %s).", path, winFormatMessage(0, msg, sizeof(msg)));
+               char msg[100];
+               log.error("Failed to load DLL '%s' (call: winLoadLibrary(): %s).", path, winFormatMessage(0, msg, sizeof(msg)));
                error = ERR_Read;
                goto exit;
             }
@@ -573,11 +574,11 @@ static ERROR MODULE_Init(objModule *Self, APTR Void)
 
       if (table) {
          if ((table->ModVersion > 500) OR (table->ModVersion < 0)) {
-            LogErrorMsg("Corrupt module version number %d for module '%s'", (LONG)master->ModVersion, path);
+            log.warning("Corrupt module version number %d for module '%s'", (LONG)master->ModVersion, path);
             goto exit;
          }
          else if ((table->HeaderVersion < MODULE_HEADER_V1) OR (table->HeaderVersion > MODULE_HEADER_V1 + 256)) {
-            LogErrorMsg("Invalid module header $%.8x", table->HeaderVersion);
+            log.warning("Invalid module header $%.8x", table->HeaderVersion);
             goto exit;
          }
       }
@@ -594,7 +595,7 @@ static ERROR MODULE_Init(objModule *Self, APTR Void)
 
          if (table->HeaderVersion >= MODULE_HEADER_V2) {
             if (table->Master) {
-               LogF("8","Module already loaded as #%d, reverting to original ModuleMaster object.", table->Master->Head.UniqueID);
+               log.debug("Module already loaded as #%d, reverting to original ModuleMaster object.", table->Master->Head.UniqueID);
 
                SetContext(context);
                context = NULL;
@@ -611,8 +612,8 @@ static ERROR MODULE_Init(objModule *Self, APTR Void)
             table->Master = master;
          }
 
-         if (!table->Init) { PostError(ERR_ModuleMissingInit); goto exit; }
-         if (!table->Name) { PostError(ERR_ModuleMissingName); goto exit; }
+         if (!table->Init) { log.warning(ERR_ModuleMissingInit); goto exit; }
+         if (!table->Name) { log.warning(ERR_ModuleMissingName); goto exit; }
 
          master->Header = table;
          Self->FunctionList = table->DefaultList;
@@ -627,11 +628,11 @@ static ERROR MODULE_Init(objModule *Self, APTR Void)
 
 #ifdef DEBUG
          if (master->Name) { // Give the master object a nicer name for debug output.
-            UBYTE mmname[30];
+            char mmname[30];
             mmname[0] = 'm';
             mmname[1] = 'm';
             mmname[2] = '_';
-            for (i=0; i < sizeof(mmname)-4; i++) mmname[i+3] = master->Name[i];
+            for (i=0; (size_t) i < sizeof(mmname)-4; i++) mmname[i+3] = master->Name[i];
             mmname[i+3] = 0;
             SetName((OBJECTPTR)master, mmname);
          }
@@ -645,27 +646,20 @@ static ERROR MODULE_Init(objModule *Self, APTR Void)
       if (master->Init) {
          // Build a Core base for the module to use
          struct CoreBase *modkb;
-         if ((modkb = build_jump_table(master->Table->Flags, glFunctions, NULL))) {
+         if ((modkb = (struct CoreBase *)build_jump_table(master->Table->Flags, glFunctions, 0))) {
             master->CoreBase = modkb;
             fix_core_table(modkb, table->CoreVersion);
 
-            FMSG("~","Initialising the module.");
-
+            log.traceBranch("Initialising the module.");
             error = master->Init((OBJECTPTR)Self, modkb);
-
-            if (error) {
-               LOGRETURN();
-               goto exit;
-            }
-
-            LOGRETURN();
+            if (error) goto exit;
          }
       }
       else if (Self->Flags & MOF_LINK_LIBRARY) {
-         LogMsg("Loaded link library '%s'", Self->Name);
+         log.msg("Loaded link library '%s'", Self->Name);
       }
       else {
-         PostError(ERR_ModuleMissingInit);
+         log.warning(ERR_ModuleMissingInit);
          goto exit;
       }
 
@@ -673,7 +667,7 @@ static ERROR MODULE_Init(objModule *Self, APTR Void)
       context = NULL;
    }
    else {
-      error = PostError(ERR_NewObject);
+      error = log.warning(ERR_NewObject);
       goto exit;
    }
 
@@ -691,9 +685,9 @@ open_module:
    // OPEN
 
    if (master->Open) {
-      MSG("Opening %s module.", Self->Name);
+      log.trace("Opening %s module.", Self->Name);
       if (master->Open((OBJECTPTR)Self) != ERR_Okay) {
-         PostError(ERR_ModuleOpenFailed);
+         log.warning(ERR_ModuleOpenFailed);
          goto exit;
       }
    }
@@ -710,13 +704,13 @@ open_module:
       if (master->Header) {
          Self->FunctionList = master->Header->DefaultList;
       }
-      else if (!(Self->Flags & MOF_LINK_LIBRARY)) error = PostError(ERR_EntryMissingHeader);
+      else if (!(Self->Flags & MOF_LINK_LIBRARY)) error = log.warning(ERR_EntryMissingHeader);
    }
 
    // Build the jump table for the program
 
    if (Self->FunctionList) {
-      if ((Self->ModBase = build_jump_table(MHF_STRUCTURE, Self->FunctionList, NULL)) IS NULL) {
+      if ((Self->ModBase = build_jump_table(MHF_STRUCTURE, Self->FunctionList, 0)) IS NULL) {
          goto exit;
       }
       Self->prvMBMemory = Self->ModBase;
@@ -729,7 +723,7 @@ open_module:
       winSetUnhandledExceptionFilter(NULL);
    #endif
 
-   MSG("Module has been successfully initialised.");
+   log.trace("Module has been successfully initialised.");
    error = ERR_Okay;
 
 exit:
@@ -737,12 +731,12 @@ exit:
 
    if (error) { // Free allocations if an error occurred
 
-      if (!(error & ERF_Notified)) LogMsg("\"%s\" failed: %s", Self->Name, GetErrorMsg(error));
+      if (!(error & ERF_Notified)) log.msg("\"%s\" failed: %s", Self->Name, GetErrorMsg(error));
       error &= ~(ERF_Notified|ERF_Delay);
 
       if (aflags & AF_MODULEMASTER) {
          if (master->Expunge) {
-            LogMsg("Expunging...");
+            log.msg("Expunging...");
             master->Expunge();
          }
 
@@ -779,7 +773,9 @@ NoSupport: The host platform does not support this method.
 
 static ERROR MODULE_ResolveSymbol(objModule *Self, struct modResolveSymbol *Args)
 {
-   if ((!Args) OR (!Args->Name)) return PostError(ERR_NullArgs);
+   parasol::Log log;
+
+   if ((!Args) OR (!Args->Name)) return log.warning(ERR_NullArgs);
 
 #ifdef _WIN32
    if ((!Self->Master) OR (!Self->Master->LibraryBase)) return ERR_FieldNotSet;
@@ -788,7 +784,7 @@ static ERROR MODULE_ResolveSymbol(objModule *Self, struct modResolveSymbol *Args
       return ERR_Okay;
    }
    else {
-      LogMsg("Failed to resolve '%s' in %s module.", Args->Name, Self->Master->Name);
+      log.msg("Failed to resolve '%s' in %s module.", Args->Name, Self->Master->Name);
       return ERR_NotFound;
    }
 #elif __unix__
@@ -798,7 +794,7 @@ static ERROR MODULE_ResolveSymbol(objModule *Self, struct modResolveSymbol *Args
       return ERR_Okay;
    }
    else {
-      LogMsg("Failed to resolve '%s' in %s module.", Args->Name, Self->Master->Name);
+      log.msg("Failed to resolve '%s' in %s module.", Args->Name, Self->Master->Name);
       return ERR_NotFound;
    }
 #else
@@ -815,11 +811,13 @@ SetVar: Passes variable parameters to loaded modules.
 
 static ERROR MODULE_SetVar(objModule *Self, struct acSetVar *Args)
 {
+   parasol::Log log;
+
    if ((!Args) OR (!Args->Field)) return ERR_NullArgs;
    if (!Args->Field[0]) return ERR_EmptyString;
 
    if (!Self->Vars) {
-      if (!(Self->Vars = VarNew(0, 0))) return LogError(0, ERR_AllocMemory);
+      if (!(Self->Vars = VarNew(0, 0))) return log.warning(ERR_AllocMemory);
    }
 
    return VarSetString(Self->Vars, Args->Field, Args->Value);
@@ -853,13 +851,15 @@ code for before.
 
 *****************************************************************************/
 
-static ERROR GET_Actions(objModule *Self, struct ActionEntry **Value)
+static ERROR GET_Actions(objModule *Self, ActionEntry **Value)
 {
+   parasol::Log log;
+
    if (Self->Master) {
       *Value = Self->Master->prvActions;
       return ERR_Okay;
    }
-   else return PostError(ERR_FieldNotSet);
+   else return log.warning(ERR_FieldNotSet);
 }
 
 /*****************************************************************************
@@ -875,12 +875,14 @@ IDL: Returns a compressed IDL string from the module, if available.
 
 static ERROR GET_IDL(objModule *Self, CSTRING *Value)
 {
+   parasol::Log log;
+
    if ((Self->Master) AND (Self->Master->Header)) {
       *Value = Self->Master->Header->Definitions;
-      MSG("No IDL for module %s", Self->Name);
+      log.trace("No IDL for module %s", Self->Name);
       return ERR_Okay;
    }
-   else return PostError(ERR_NotInitialised);
+   else return log.warning(ERR_NotInitialised);
 }
 
 /*****************************************************************************
@@ -907,7 +909,7 @@ than on disk.
 
 *****************************************************************************/
 
-static ERROR SET_Header(objModule *Self, struct ModHeader *Value)
+static ERROR SET_Header(objModule *Self, ModHeader *Value)
 {
    if (!Value) return ERR_Failed;
    Self->Header = Value;
@@ -967,7 +969,7 @@ static ERROR SET_Name(objModule *Self, CSTRING Name)
    if (!Name) return ERR_Okay;
 
    WORD i;
-   for (i=0; (Name[i]) AND (i < sizeof(Self->Name)-1); i++) {
+   for (i=0; (Name[i]) AND ((size_t)i < sizeof(Self->Name)-1); i++) {
       if ((Name[i] >= 'A') AND (Name[i] <= 'Z')) Self->Name[i] = Name[i] - 'A' + 'a';
       else Self->Name[i] = Name[i];
    }
@@ -998,25 +1000,26 @@ After initialisation, the Version field will be updated to reflect the actual ve
 //****************************************************************************
 // Builds jump tables that link programs to modules.
 
-APTR build_jump_table(LONG JumpType, const struct Function *FList, LONG MemFlags)
+APTR build_jump_table(LONG JumpType, const Function *FList, LONG MemFlags)
 {
-   void **functions;
+   parasol::Log log(__FUNCTION__);
 
-   if ((!JumpType) OR (!FList)) LogErrorMsg("JumpTable() Invalid arguments.");
+   if ((!JumpType) OR (!FList)) log.warning("JumpTable() Invalid arguments.");
 
    if (JumpType & MHF_STRUCTURE) {
       LONG size = 0;
       LONG i;
       for (i=0; FList[i].Address; i++) size += sizeof(APTR);
+      log.trace("%d functions have been detected in the function list.", i);
 
-      FMSG("JumpTable:","%d functions have been detected in the function list.",i);
-
-      if (!AllocMemory(size + sizeof(APTR), MEM_NO_CLEAR|MemFlags, (APTR)&functions, NULL)) {
+      void **functions;
+      if (!AllocMemory(size + sizeof(APTR), MEM_NO_CLEAR|MemFlags, (APTR *)&functions, NULL)) {
+         LONG i;
          for (i=0; FList[i].Address; i++) functions[i] = FList[i].Address;
          functions[i] = NULL;
          return functions;
       }
-      else LogError(ERH_Module, ERR_AllocMemory);
+      else log.warning(ERR_AllocMemory);
    }
 
    return NULL;
@@ -1073,17 +1076,18 @@ static LONG cmp_mod_names(CSTRING String1, CSTRING String2)
 // Searches the system for a ModuleMaster header that matches the Module details.  The module must have been
 // loaded into memory in order for this function to return successfully.
 
-static struct ModuleMaster * check_resident(objModule *Self, CSTRING ModuleName)
+static ModuleMaster * check_resident(objModule *Self, CSTRING ModuleName)
 {
-   struct ModuleMaster *master;
+   parasol::Log log(__FUNCTION__);
+   ModuleMaster *master;
    static BYTE kminit = FALSE;
 
    if (!ModuleName) return NULL;
 
-   FMSG("check_resident()","Module Name: %s", ModuleName);
+   log.traceBranch("Module Name: %s", ModuleName);
 
    if (!StrMatch("core", ModuleName)) {
-      LogMsg("Self-reference to the Core detected.");
+      log.msg("Self-reference to the Core detected.");
       if (kminit IS FALSE) {
          kminit = TRUE;
          ClearMemory(&glCoreMaster, sizeof(glCoreMaster));
@@ -1104,7 +1108,7 @@ static struct ModuleMaster * check_resident(objModule *Self, CSTRING ModuleName)
    else if ((master = glModuleList)) {
       while (master) {
          if (cmp_mod_names(master->Name, ModuleName) IS TRUE) {
-            MSG("Entry for module \"%s\" (\"%s\") found.", ModuleName, master->Name);
+            log.trace("Entry for module \"%s\" (\"%s\") found.", ModuleName, master->Name);
             return master;
          }
          master = master->Next;
@@ -1117,24 +1121,26 @@ static struct ModuleMaster * check_resident(objModule *Self, CSTRING ModuleName)
 //****************************************************************************
 // Search the module database (loaded from disk).
 
-struct ModuleItem * find_module(ULONG Hash)
+ModuleItem * find_module(ULONG Hash)
 {
+   parasol::Log log(__FUNCTION__);
+
    if (glModules) {
       LONG *offsets = (LONG *)(glModules + 1);
 
-      FMSG("find_module()","Scanning %d modules for %x", glModules->Total, Hash);
+      log.traceBranch("Scanning %d modules for %x", glModules->Total, Hash);
 
       LONG floor = 0;
       LONG ceiling = glModules->Total;
       while (floor < ceiling) {
          LONG i = (floor + ceiling)>>1;
-         struct ModuleItem *item = (struct ModuleItem *)((APTR)glModules + offsets[i]);
+         ModuleItem *item = (ModuleItem *)((BYTE *)glModules + offsets[i]);
          if (item->Hash < Hash) floor = i + 1;
          else if (item->Hash > Hash) ceiling = i;
          else return item;
       }
    }
-   else FMSG("find_module()","glModules not defined.");
+   else log.trace("glModules not defined.");
 
    return NULL;
 }
@@ -1143,9 +1149,11 @@ struct ModuleItem * find_module(ULONG Hash)
 
 static void free_module(MODHANDLE handle)
 {
+   parasol::Log log(__FUNCTION__);
+
    if (!handle) return;
 
-   FMSG("free_module()","%p", handle);
+   log.traceBranch("%p", handle);
 
    #ifdef __unix__
       #ifdef DLL

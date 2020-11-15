@@ -18,9 +18,17 @@
 <p>Please note that the Time class uses strict metric interpretations of "millisecond" and "microsecond" terminology. That is, a millisecond is 1/1000th (one thousandth) of a second, a microsecond is 1/1000000th (one millionth) of a second.</p>
 <p>To get the current system time, use the <action>Query</action> action.</p></description>
     <source>
-      <file path="src/classes/">class_time.c</file>
+      <file path="src/classes/">class_time.cpp</file>
     </source>
   </info>
+
+  <actions>
+    <action>
+      <name>Query</name>
+      <comment>Updates the values in a time object with the current system date and time.</comment>
+    </action>
+
+  </actions>
 
   <methods>
     <method>
@@ -132,10 +140,13 @@
       <const name="ERROR"/>
       <const name="WARNING"/>
       <const name="DEBUG"/>
-      <const name="FUNCTION"/>
+      <const name="EXTAPI"/>
+      <const name="BRANCH"/>
+      <const name="INFO"/>
+      <const name="API"/>
       <const name="TRACE"/>
       <const name="CRITICAL"/>
-      <const name="BRANCH"/>
+      <const name="FUNCTION"/>
     </constants>
 
     <constants lookup="MOF" comment="Module flags">

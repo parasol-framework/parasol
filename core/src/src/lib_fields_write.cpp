@@ -702,7 +702,7 @@ ERROR writeval_default(OBJECTPTR Object, Field *Field, LONG flags, const void *D
 {
    parasol::Log log("WriteField");
 
-   //FMSG("WriteField","[%s:%d] Name: %s, SetValue: %c, FieldFlags: $%.8x, SrcFlags: $%.8x", ((rkMetaClass *)Object->Class)->ClassName, Object->UniqueID, Field->Name, Field->SetValue ? 'Y' : 'N', Field->Flags, flags);
+   //log.trace("[%s:%d] Name: %s, SetValue: %c, FieldFlags: $%.8x, SrcFlags: $%.8x", ((rkMetaClass *)Object->Class)->ClassName, Object->UniqueID, Field->Name, Field->SetValue ? 'Y' : 'N', Field->Flags, flags);
 
    if (!flags) flags = Field->Flags;
 

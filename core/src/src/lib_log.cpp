@@ -17,9 +17,9 @@ Log levels are:
 2  WARN Any error suitable for display to a developer or technically minded user.
 3  Application log message, level 1
 4  INFO Application log message, level 2
-5  DEBUG Top-level Parasol API messages, e.g. function entry points (default)
-6  Sub-level Parasol API messages.  For messages within functions, and entry-points for minor functions.
-7  More detailed API messages.
+5  API Top-level API messages, e.g. function entry points (default)
+6  EXTAPI Extended API messages.  For messages within functions, and entry-points for minor functions.
+7  DEBUG More detailed API messages.
 8  TRACE Extremely detailed API messages suitable for intensive debugging only.
 9  Noisy debug messages that will appear frequently, e.g. being used in inner loops.
 
@@ -118,7 +118,7 @@ printf Tags: As per printf() rules, one parameter for every % symbol that has be
 void LogF(CSTRING Header, CSTRING Format, ...)
 {
    CSTRING name, action;
-   BYTE msglevel, new_branch, msgstate;
+   BYTE msglevel, new_branch, msgstate, adjust = 0;
 
    if (glLogLevel <= 0) return;
    if (tlLogStatus <= 0) return;
@@ -219,6 +219,7 @@ void LogF(CSTRING Header, CSTRING Format, ...)
          if ((glLogLevel > 2) AND (msglevel <= 2)) {
             #ifdef _WIN32
                fprintf(stderr, "!");
+               adjust = 1;
             #else
                fprintf(stderr, "\033[1m");
             #endif
@@ -229,7 +230,7 @@ void LogF(CSTRING Header, CSTRING Format, ...)
 
       if (tlContext->Action) {
          if (tlContext->Action < 0) {
-            struct rkMetaClass *mc = (struct rkMetaClass *)tlContext->Object->Class;
+            rkMetaClass *mc = (rkMetaClass *)tlContext->Object->Class;
             if ((mc) AND (mc->Methods) AND (-tlContext->Action < mc->TotalMethods)) {
                action = mc->Methods[-tlContext->Action].Name;
             }
@@ -247,13 +248,13 @@ void LogF(CSTRING Header, CSTRING Format, ...)
       #ifdef __ANDROID__
          char msgheader[COLUMN1+1];
 
-         fmsg(Header, msgheader, msgstate, msglevel);
+         fmsg(Header, msgheader, msgstate, 0);
 
          if (tlContext->Object->Class) {
             char msg[180];
 
             if (tlContext->Object->Stats->Name[0]) name = tlContext->Object->Stats->Name;
-            else name = ((struct rkMetaClass *)tlContext->Object->Class)->Name;
+            else name = ((rkMetaClass *)tlContext->Object->Class)->Name;
 
             if (glLogLevel > 5) {
                if (tlContext->Field) snprintf(msg, sizeof(msg), "[%s%s%s:%d:%s] %s", (action) ? action : (STRING)"", (action) ? ":" : "", name, tlContext->Object->UniqueID, tlContext->Field->Name, Format);
@@ -279,7 +280,7 @@ void LogF(CSTRING Header, CSTRING Format, ...)
       #else
          char msgheader[COLUMN1+1];
          if (glLogLevel > 2) {
-            fmsg(Header, msgheader, msgstate, msglevel); // Print header with indenting
+            fmsg(Header, msgheader, msgstate, adjust); // Print header with indenting
          }
          else {
             size_t len;
@@ -291,7 +292,7 @@ void LogF(CSTRING Header, CSTRING Format, ...)
          OBJECTPTR obj = tlContext->Object;
          if (obj->Class) {
             if (obj->Stats->Name[0]) name = obj->Stats->Name;
-            else name = ((struct rkMetaClass *)obj->Class)->ClassName;
+            else name = ((rkMetaClass *)obj->Class)->ClassName;
 
             if (glLogLevel > 5) {
                if (tlContext->Field) {
@@ -350,25 +351,20 @@ va_list Args: A va_list corresponding to the arguments referenced in Message.
 
 void VLogF(LONG Flags, CSTRING Header, CSTRING Message, va_list Args)
 {
-   CSTRING name, action;
-   BYTE msglevel, new_branch, msgstate;
-
-   if (glLogLevel <= 0) return;
    if (tlLogStatus <= 0) return;
-   if (!Args) return;
 
-   ThreadLock lock(TL_PRINT, -1);
-
-   if (Flags & VLF_BRANCH) {
-      new_branch = TRUE;
-      msgstate = MS_FUNCTION;
-   }
-   else {
-      new_branch = FALSE;
-      msgstate = MS_MSG;
-   }
-
-   if (Flags & VLF_FUNCTION) msgstate = MS_FUNCTION;
+   static ULONG log_levels[10] = {
+      VLF_CRITICAL,
+      VLF_ERROR|VLF_CRITICAL,
+      VLF_WARNING|VLF_ERROR|VLF_CRITICAL,
+      VLF_INFO|VLF_WARNING|VLF_ERROR|VLF_CRITICAL,
+      VLF_INFO|VLF_WARNING|VLF_ERROR|VLF_CRITICAL,
+      VLF_API|VLF_INFO|VLF_WARNING|VLF_ERROR|VLF_CRITICAL,
+      VLF_EXTAPI|VLF_API|VLF_INFO|VLF_WARNING|VLF_ERROR|VLF_CRITICAL,
+      VLF_DEBUG|VLF_EXTAPI|VLF_API|VLF_INFO|VLF_WARNING|VLF_ERROR|VLF_CRITICAL,
+      VLF_TRACE|VLF_DEBUG|VLF_EXTAPI|VLF_API|VLF_INFO|VLF_WARNING|VLF_ERROR|VLF_CRITICAL,
+      VLF_TRACE|VLF_DEBUG|VLF_EXTAPI|VLF_API|VLF_INFO|VLF_WARNING|VLF_ERROR|VLF_CRITICAL
+   };
 
    if (Flags & VLF_CRITICAL) { // Print the message irrespective of the log level
       #ifdef __ANDROID__
@@ -396,18 +392,25 @@ void VLogF(LONG Flags, CSTRING Header, CSTRING Message, va_list Args)
          fprintf(stderr, "\n");
       #endif
 
-      goto exit;
+      return;
    }
-   else if (Flags & VLF_ERROR) msglevel = 1;
-   else if (Flags & VLF_WARNING) msglevel = 2;
-   else if (Flags & VLF_DEBUG) msglevel = 5;
-   else if (Flags & VLF_TRACE) msglevel = 8;
-   else msglevel = 3; // Assume application log message
 
-   if ((Header) AND (!*Header)) Header = NULL;
+   LONG level = glLogLevel + tlBaseLine;
+   if (level > 9) level = 9;
+   else if (level < 0) return;
 
-   msglevel += tlBaseLine;
-   if (glLogLevel >= msglevel) {
+   if ((log_levels[level] & Flags) != 0) {
+      CSTRING name, action;
+      BYTE msgstate;
+      BYTE adjust = 0;
+
+      ThreadLock lock(TL_PRINT, -1);
+
+      if ((Header) AND (!*Header)) Header = NULL;
+
+      if (Flags & (VLF_BRANCH|VLF_FUNCTION)) msgstate = MS_FUNCTION;
+      else msgstate = MS_MSG;
+
       //fprintf(stderr, "%.8d. ", winGetCurrentThreadId());
 
       #if defined(__unix__) AND !defined(__ANDROID__)
@@ -420,10 +423,11 @@ void VLogF(LONG Flags, CSTRING Header, CSTRING Message, va_list Args)
          else flushdbg = FALSE;
       #endif
 
-      #ifdef ESC_OUTPUT
-         if ((glLogLevel > 2) AND (msglevel <= 2)) {
+      #ifdef ESC_OUTPUT // Highlight errors if the log output is crowded
+         if ((glLogLevel > 2) AND (Flags & (VLF_ERROR|VLF_WARNING))) {
             #ifdef _WIN32
                fprintf(stderr, "!");
+               adjust = 1;
             #else
                fprintf(stderr, "\033[1m");
             #endif
@@ -434,7 +438,7 @@ void VLogF(LONG Flags, CSTRING Header, CSTRING Message, va_list Args)
 
       if (tlContext->Action) {
          if (tlContext->Action < 0) {
-            struct rkMetaClass *mc = (struct rkMetaClass *)tlContext->Object->Class;
+            rkMetaClass *mc = (rkMetaClass *)tlContext->Object->Class;
             if ((mc) AND (mc->Methods) AND (-tlContext->Action < mc->TotalMethods)) {
                action = mc->Methods[-tlContext->Action].Name;
             }
@@ -452,13 +456,13 @@ void VLogF(LONG Flags, CSTRING Header, CSTRING Message, va_list Args)
       #ifdef __ANDROID__
          char msgheader[COLUMN1+1];
 
-         fmsg(Header, msgheader, msgstate, msglevel);
+         fmsg(Header, msgheader, msgstate, 0);
 
          if (tlContext->Object->Class) {
             char msg[180];
 
             if (tlContext->Object->Stats->Name[0]) name = tlContext->Object->Stats->Name;
-            else name = ((struct rkMetaClass *)tlContext->Object->Class)->Name;
+            else name = ((rkMetaClass *)tlContext->Object->Class)->Name;
 
             if (glLogLevel > 5) {
                if (tlContext->Field) snprintf(msg, sizeof(msg), "[%s%s%s:%d:%s] %s", (action) ? action : (STRING)"", (action) ? ":" : "", name, tlContext->Object->UniqueID, tlContext->Field->Name, Message);
@@ -469,16 +473,16 @@ void VLogF(LONG Flags, CSTRING Header, CSTRING Message, va_list Args)
                else snprintf(msg, sizeof(msg), "[%s:%d] %s", name, tlContext->Object->UniqueID, Message);
             }
 
-            __android_log_vprint((msglevel <= 2) ? ANDROID_LOG_ERROR : ANDROID_LOG_INFO, msgheader, msg, Args);
+            __android_log_vprint((level <= 2) ? ANDROID_LOG_ERROR : ANDROID_LOG_INFO, msgheader, msg, Args);
          }
          else {
-            __android_log_vprint((msglevel <= 2) ? ANDROID_LOG_ERROR : ANDROID_LOG_INFO, msgheader, Message, Args);
+            __android_log_vprint((level <= 2) ? ANDROID_LOG_ERROR : ANDROID_LOG_INFO, msgheader, Message, Args);
          }
 
       #else
          char msgheader[COLUMN1+1];
          if (glLogLevel > 2) {
-            fmsg(Header, msgheader, msgstate, msglevel); // Print header with indenting
+            fmsg(Header, msgheader, msgstate, adjust); // Print header with indenting
          }
          else {
             size_t len;
@@ -490,7 +494,7 @@ void VLogF(LONG Flags, CSTRING Header, CSTRING Message, va_list Args)
          OBJECTPTR obj = tlContext->Object;
          if (obj->Class) {
             if (obj->Stats->Name[0]) name = obj->Stats->Name;
-            else name = ((struct rkMetaClass *)obj->Class)->ClassName;
+            else name = ((rkMetaClass *)obj->Class)->ClassName;
 
             if (glLogLevel > 5) {
                if (tlContext->Field) {
@@ -508,7 +512,7 @@ void VLogF(LONG Flags, CSTRING Header, CSTRING Message, va_list Args)
          vfprintf(stderr, Message, Args);
 
          #if defined(ESC_OUTPUT) AND !defined(_WIN32)
-            if ((glLogLevel > 2) AND (msglevel <= 2)) fprintf(stderr, "\033[0m");
+            if ((glLogLevel > 2) AND (level <= 2)) fprintf(stderr, "\033[0m");
          #endif
 
          fprintf(stderr, "\n");
@@ -523,8 +527,7 @@ void VLogF(LONG Flags, CSTRING Header, CSTRING Message, va_list Args)
       #endif
    }
 
-exit:
-   if (new_branch) tlDepth++;
+   if (Flags & VLF_BRANCH) tlDepth++;
 }
 
 /*****************************************************************************
@@ -576,7 +579,7 @@ ERROR FuncError(CSTRING Header, ERROR Code)
       if (!Header) {
          if (tlContext->Action) {
             if (tlContext->Action < 0) {
-               struct rkMetaClass *mc = (struct rkMetaClass *)tlContext->Object->Class;
+               rkMetaClass *mc = (rkMetaClass *)tlContext->Object->Class;
                if ((mc) AND (mc->Methods) AND (-tlContext->Action < mc->TotalMethods)) {
                   Header = mc->Methods[-tlContext->Action].Name;
                }
@@ -592,7 +595,7 @@ ERROR FuncError(CSTRING Header, ERROR Code)
             STRING name;
 
             if (tlContext->Object->Stats->Name[0]) name = tlContext->Object->Stats->Name;
-            else name = ((struct rkMetaClass *)tlContext->Object->Class)->Name;
+            else name = ((rkMetaClass *)tlContext->Object->Class)->Name;
 
             if (tlContext->Field) {
                 __android_log_print(ANDROID_LOG_ERROR, Header, "[%s:%d:%s] %s", name, tlContext->Object->UniqueID, tlContext->Field->Name, glMessages[Code]);
@@ -619,7 +622,7 @@ ERROR FuncError(CSTRING Header, ERROR Code)
 
          if (tlContext->Object->Class) {
             if (tlContext->Object->Stats->Name[0]) name = tlContext->Object->Stats->Name;
-            else name = ((struct rkMetaClass *)tlContext->Object->Class)->ClassName;
+            else name = ((rkMetaClass *)tlContext->Object->Class)->ClassName;
 
             if (tlContext->Field) {
                fprintf(stderr, "%s%s[%s:%d:%s] %s%s\n", histart, msgheader, name, tlContext->Object->UniqueID, tlContext->Field->Name, glMessages[Code], hiend);
@@ -688,7 +691,7 @@ ERROR LogError(LONG HeaderCode, ERROR Code)
          if (!HeaderCode) {
             if (tlContext->Action) {
                if (tlContext->Action < 0) {
-                  struct rkMetaClass *mc = (struct rkMetaClass *)tlContext->Object->Class;
+                  rkMetaClass *mc = (rkMetaClass *)tlContext->Object->Class;
                   if ((mc) AND (mc->Methods) AND (-tlContext->Action < mc->TotalMethods)) {
                      header = mc->Methods[-tlContext->Action].Name;
                   }
@@ -699,7 +702,7 @@ ERROR LogError(LONG HeaderCode, ERROR Code)
             else header = "Function";
          }
          else if (HeaderCode < 0) {
-            struct rkMetaClass *mc = (struct rkMetaClass *)tlContext->Object->Class;
+            rkMetaClass *mc = (rkMetaClass *)tlContext->Object->Class;
             if ((mc) AND (mc->Methods) AND (-HeaderCode < mc->TotalMethods)) header = mc->Methods[-HeaderCode].Name;
             else header = "Method";
          }
@@ -710,7 +713,7 @@ ERROR LogError(LONG HeaderCode, ERROR Code)
                STRING name;
 
                if (tlContext->Object->Stats->Name[0]) name = tlContext->Object->Stats->Name;
-               else name = ((struct rkMetaClass *)tlContext->Object->Class)->Name;
+               else name = ((rkMetaClass *)tlContext->Object->Class)->Name;
 
                if (tlContext->Field) {
                   __android_log_print(ANDROID_LOG_ERROR, header, "[%s:%d:%s] %s", name, tlContext->Object->UniqueID, tlContext->Field->Name, glMessages[Code]);
@@ -737,7 +740,7 @@ ERROR LogError(LONG HeaderCode, ERROR Code)
 
             if (tlContext->Object->Class) {
                if (tlContext->Object->Stats->Name[0]) name = tlContext->Object->Stats->Name;
-               else name = ((struct rkMetaClass *)tlContext->Object->Class)->ClassName;
+               else name = ((rkMetaClass *)tlContext->Object->Class)->ClassName;
 
                if (tlContext->Field) {
                   fprintf(stderr, "%s%s[%s:%d:%s] %s%s\n", histart, msgheader, name, tlContext->Object->UniqueID, tlContext->Field->Name, glMessages[Code], hiend);
@@ -805,7 +808,7 @@ void LogReturn(void)
 
 //*****************************************************************************
 
-static void fmsg(CSTRING Header, STRING Buffer, BYTE Colon, BYTE Level) // Buffer must be COLUMN1+1 in size
+static void fmsg(CSTRING Header, STRING Buffer, BYTE Colon, BYTE Sub) // Buffer must be COLUMN1+1 in size
 {
    if (!Header) Header = "";
 
@@ -818,9 +821,9 @@ static void fmsg(CSTRING Header, STRING Buffer, BYTE Colon, BYTE Level) // Buffe
    else {
       depth = tlDepth;
       #ifdef _WIN32
-         if ((Level <= 2) AND (depth > 0)) {
+         if (Sub AND (depth > 0)) {
             col--;
-            depth--; // Make a correction to the depth level if an error mark is displayed.
+            depth--; // Make a correction to the depth level if an error mark is printed.
          }
       #endif
    }

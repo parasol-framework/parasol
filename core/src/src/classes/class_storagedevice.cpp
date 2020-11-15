@@ -25,25 +25,6 @@ Following initialisation, all meta fields describing the volume are readable for
 static ERROR STORAGE_Free(objStorageDevice *, APTR);
 static ERROR STORAGE_Init(objStorageDevice *, APTR);
 
-static const struct FieldArray clFields[];
-static const struct ActionArray clActions[];
-
-ERROR add_storage_class(void)
-{
-   extern objMetaClass *glStorageClass;
-   return CreateObject(ID_METACLASS, 0, (OBJECTPTR *)&glStorageClass,
-      FID_BaseClassID|TLONG,   ID_STORAGEDEVICE,
-      FID_ClassVersion|TFLOAT, VER_STORAGEDEVICE,
-      FID_Name|TSTR,      "StorageDevice",
-      FID_Category|TLONG, CCF_SYSTEM,
-      FID_Flags|TLONG,    CLF_PRIVATE_ONLY,
-      FID_Actions|TPTR,   clActions,
-      FID_Fields|TARRAY,  clFields,
-      FID_Size|TLONG,     sizeof(objStorageDevice),
-      FID_Path|TSTR,      "modules:core",
-      TAGEND);
-}
-
 //****************************************************************************
 
 static ERROR STORAGE_Free(objStorageDevice *Self, APTR Void)
@@ -56,19 +37,19 @@ static ERROR STORAGE_Free(objStorageDevice *Self, APTR Void)
 
 static ERROR STORAGE_Init(objStorageDevice *Self, APTR Void)
 {
-   if (!Self->prvVolume) return PostError(ERR_FieldNotSet);
+   parasol::Log log;
 
-   const struct virtual_drive *virtual = get_fs(Self->prvVolume);
+   if (!Self->prvVolume) return log.warning(ERR_FieldNotSet);
 
-   if (virtual->VirtualID != -1) Self->DeviceFlags |= DEVICE_SOFTWARE;
+   const virtual_drive *vd = get_fs(Self->prvVolume);
+
+   if (vd->VirtualID != 0xffffffff) Self->DeviceFlags |= DEVICE_SOFTWARE;
 
    Self->BytesFree  = -1;
    Self->BytesUsed  = 0;
    Self->DeviceSize = -1;
 
-   if (virtual->GetDeviceInfo) {
-      return virtual->GetDeviceInfo(Self->prvVolume, Self);
-   }
+   if (vd->GetDeviceInfo) return vd->GetDeviceInfo(Self->prvVolume, Self);
    else return ERR_Okay;
 }
 
@@ -139,7 +120,9 @@ static ERROR GET_Volume(objStorageDevice *Self, STRING *Value)
 
 static ERROR SET_Volume(objStorageDevice *Self, CSTRING Value)
 {
-   if (Self->Head.Flags & NF_INITIALISED) return PostError(ERR_Immutable);
+   parasol::Log log;
+
+   if (Self->Head.Flags & NF_INITIALISED) return log.warning(ERR_Immutable);
 
    if ((Value) AND (*Value)) {
       LONG len;
@@ -153,14 +136,14 @@ static ERROR SET_Volume(objStorageDevice *Self, CSTRING Value)
          Self->prvVolume[len+1] = 0;
          return ERR_Okay;
       }
-      else return PostError(ERR_AllocMemory);
+      else return log.warning(ERR_AllocMemory);
    }
    else return ERR_Okay;
 }
 
 //****************************************************************************
 
-static const struct FieldDef clDeviceFlags[] = {
+static const FieldDef clDeviceFlags[] = {
    { "CompactDisc",  DEVICE_COMPACT_DISC },
    { "HardDisk",     DEVICE_HARD_DISK },
    { "FloppyDisk",   DEVICE_FLOPPY_DISK },
@@ -179,19 +162,35 @@ static const struct FieldDef clDeviceFlags[] = {
    { NULL, 0 }
 };
 
-static const struct FieldArray clFields[] = {
+static const FieldArray clFields[] = {
    { "DeviceFlags", FDF_LARGE|FDF_R, (MAXINT)&clDeviceFlags, NULL, NULL },
    { "DeviceSize",  FDF_LARGE|FDF_R, 0, NULL, NULL },
    { "BytesFree",   FDF_LARGE|FDF_R, 0, NULL, NULL },
    { "BytesUsed",   FDF_LARGE|FDF_R, 0, NULL, NULL },
    // Virtual fields
-   { "DeviceID",    FDF_STRING|FDF_R, 0, GET_DeviceID, NULL },
-   { "Volume",      FDF_STRING|FDF_REQUIRED|FDF_RI, 0, GET_Volume, SET_Volume },
+   { "DeviceID",    FDF_STRING|FDF_R, 0, (APTR)GET_DeviceID, NULL },
+   { "Volume",      FDF_STRING|FDF_REQUIRED|FDF_RI, 0, (APTR)GET_Volume, (APTR)SET_Volume },
     END_FIELD
 };
 
-static const struct ActionArray clActions[] = {
-   { AC_Free, STORAGE_Free },
-   { AC_Init, STORAGE_Init },
+static const ActionArray clActions[] = {
+   { AC_Free, (APTR)STORAGE_Free },
+   { AC_Init, (APTR)STORAGE_Init },
    { 0, NULL }
 };
+
+extern "C" ERROR add_storage_class(void)
+{
+   extern objMetaClass *glStorageClass;
+   return CreateObject(ID_METACLASS, 0, (OBJECTPTR *)&glStorageClass,
+      FID_BaseClassID|TLONG,   ID_STORAGEDEVICE,
+      FID_ClassVersion|TFLOAT, VER_STORAGEDEVICE,
+      FID_Name|TSTR,      "StorageDevice",
+      FID_Category|TLONG, CCF_SYSTEM,
+      FID_Flags|TLONG,    CLF_PRIVATE_ONLY,
+      FID_Actions|TPTR,   clActions,
+      FID_Fields|TARRAY,  clFields,
+      FID_Size|TLONG,     sizeof(objStorageDevice),
+      FID_Path|TSTR,      "modules:core",
+      TAGEND);
+}

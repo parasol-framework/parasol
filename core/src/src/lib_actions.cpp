@@ -572,8 +572,8 @@ ERROR ActionMsg(LONG ActionID, OBJECTID ObjectID, APTR Args, MEMORYID MessageMID
       else if (error != ERR_TimeOut) return error;
    }
 /*
-   if (ActionID > 0) LogF("ActionMsg","Passing action %s to object #%d.", ActionTable[ActionID].Name, ObjectID);
-   else LogF("ActionMsg","Passing method %d to object #%d.", ActionID, ObjectID);
+   if (ActionID > 0) log.msg("Passing action %s to object #%d.", ActionTable[ActionID].Name, ObjectID);
+   else log.msg("Passing method %d to object #%d.", ActionID, ObjectID);
 */
    // Copy the argument structure to the message argument section
 
@@ -1352,7 +1352,7 @@ LONG NotifySubscribers(OBJECTPTR Object, LONG ActionID, APTR Parameters, LONG Fl
             ERROR error = ERR_Okay;
             if (Flags & NSF_LOCAL_TASK) { // The LOCALTASK option means that only objects that are within the local task's address space will be sent the message.
                if ((shadow[i].MessagePortMID) AND (glTaskMessageMID) AND (shadow[i].MessagePortMID != glTaskMessageMID)) {
-                  //LogF("@NotifySubscribers","Subscriber %d skipped, belongs to port %d (we are %d).", shadow[i].SubscriberID, shadow[i].MessagePortMID, glTaskMessageMID);
+                  //log.warning("Subscriber %d skipped, belongs to port %d (we are %d).", shadow[i].SubscriberID, shadow[i].MessagePortMID, glTaskMessageMID);
                   continue;
                }
             }
