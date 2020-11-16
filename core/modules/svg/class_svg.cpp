@@ -23,7 +23,7 @@ static ERROR SVG_Activate(objSVG *Self, APTR Void)
    if (Self->Animated) {
       if (!Self->AnimationTimer) {
          FUNCTION timer;
-         SET_FUNCTION_STDC(timer, animation_timer);
+         SET_FUNCTION_STDC(timer, (APTR)animation_timer);
          SubscribeTimer(1.0 / (DOUBLE)Self->FrameRate, &timer, &Self->AnimationTimer);
       }
       else UpdateTimer(Self->AnimationTimer, 1.0 / (DOUBLE)Self->FrameRate);
@@ -55,7 +55,7 @@ static ERROR SVG_DataFeed(objSVG *Self, struct acDataFeed *Args)
    if (!Args) return ERR_NullArgs;
 
    if (Args->DataType IS DATA_XML) {
-      return load_svg(Self, NULL, Args->Buffer);
+      return load_svg(Self, 0, (CSTRING)Args->Buffer);
    }
 
    return ERR_Okay;
@@ -78,11 +78,10 @@ static ERROR SVG_Free(objSVG *Self, APTR Void)
    if (Self->Path)  { FreeResource(Self->Path);  Self->Path = NULL; }
    if (Self->Title) { FreeResource(Self->Title); Self->Title = NULL; }
 
-   struct svgAnimation *anim = Self->Animations;
+   svgAnimation *anim = Self->Animations;
    while (anim) {
-      struct svgAnimation *next = anim->Next;
-      LONG i;
-      for (i=0; i < anim->ValueCount; i++) { FreeResource(anim->Values[i]); anim->Values[i] = NULL; }
+      svgAnimation *next = anim->Next;
+      for (LONG i=0; i < anim->ValueCount; i++) { FreeResource(anim->Values[i]); anim->Values[i] = NULL; }
       FreeResource(anim);
       anim = next;
    }
@@ -257,8 +256,8 @@ static ERROR SVG_SaveToObject(objSVG *Self, struct acSaveToObject *Args)
    if (!Self->Viewport) return PostError(ERR_NoData);
 
    if ((Args->ClassID) AND (Args->ClassID != ID_SVG)) {
-      struct rkMetaClass *class = (struct rkMetaClass *)FindClass(Args->ClassID);
-      if ((!GetPointer(class, FID_ActionTable, &routine)) AND (routine)) {
+      auto mc = (rkMetaClass *)FindClass(Args->ClassID);
+      if ((!GetPointer(mc, FID_ActionTable, &routine)) AND (routine)) {
          if ((routine[AC_SaveToObject]) AND (routine[AC_SaveToObject] != (APTR)SVG_SaveToObject)) {
             return routine[AC_SaveToObject]((OBJECTPTR)Self, Args);
          }
@@ -282,8 +281,7 @@ static ERROR SVG_SaveToObject(objSVG *Self, struct acSaveToObject *Args)
             BYTE multiple_viewports = (Self->Scene->Viewport->Next) ? TRUE : FALSE;
             if (multiple_viewports) {
                if (!(error = save_svg_defs(Self, xml, Self->Scene, index))) {
-                  objVector *scan;
-                  for (scan=Self->Scene->Viewport; scan; scan=scan->Next) {
+                  for (objVector *scan=Self->Scene->Viewport; scan; scan=scan->Next) {
                      if (!scan->Child) continue; // Ignore dummy viewports with no content
                      save_svg_scan(Self, xml, scan, index);
                   }
@@ -317,8 +315,7 @@ static ERROR SVG_SaveToObject(objSVG *Self, struct acSaveToObject *Args)
 
                if (!error) {
                   if (!(error = save_svg_defs(Self, xml, Self->Scene, index))) {
-                     objVector *scan;
-                     for (scan=((objVector *)Self->Viewport)->Child; scan; scan=scan->Next) {
+                     for (objVector *scan=((objVector *)Self->Viewport)->Child; scan; scan=scan->Next) {
                         save_svg_scan(Self, xml, scan, index);
                      }
 
@@ -397,7 +394,7 @@ static ERROR SET_FrameRate(objSVG *Self, LONG Value)
       Self->FrameRate = Value;
       return ERR_Okay;
    }
-   else return PostError(ERR_OutOfRange);
+   else return ERR_OutOfRange;
 }
 
 /*****************************************************************************
@@ -420,7 +417,7 @@ static ERROR SET_Path(objSVG *Self, CSTRING Value)
    if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
 
    if ((Value) AND (*Value)) {
-      if (!(Self->Path = StrClone(Value))) return PostError(ERR_AllocMemory);
+      if (!(Self->Path = StrClone(Value))) return ERR_AllocMemory;
    }
    return ERR_Okay;
 }
@@ -470,7 +467,7 @@ static ERROR SET_Target(objSVG *Self, OBJECTPTR Value)
          owner_id = GetOwnerID(owner_id);
       }
 
-      if (!owner_id) return PostError(ERR_Failed);
+      if (!owner_id) return ERR_Failed;
 
       Self->Scene = (objVectorScene *)GetObjectPtr(owner_id);
       Self->Target = Value;
@@ -518,26 +515,26 @@ static ERROR GET_Viewport(objSVG *Self, OBJECTPTR *Value)
 
 //****************************************************************************
 
-#include "animation.c"
-#include "gradients.c"
-#include "parser.c"
+#include "animation.cpp"
+#include "gradients.cpp"
+#include "parser.cpp"
 
 //****************************************************************************
 
 #include "class_svg_def.c"
 
-static const struct FieldArray clSVGFields[] = {
-   { "Target",    FDF_OBJECT|FDF_RI,    0, NULL, SET_Target },
-   { "Path",      FDF_STRING|FDF_RW,    0, GET_Path, SET_Path },
-   { "Title",     FDF_STRING|FDF_RW,    0, NULL, SET_Title },
+static const FieldArray clSVGFields[] = {
+   { "Target",    FDF_OBJECT|FDF_RI,    0, NULL, (APTR)SET_Target },
+   { "Path",      FDF_STRING|FDF_RW,    0, (APTR)GET_Path, (APTR)SET_Path },
+   { "Title",     FDF_STRING|FDF_RW,    0, NULL, (APTR)SET_Title },
    { "Frame",     FDF_LONG|FDF_RW,      0, NULL, NULL },
    { "Flags",     FDF_LONGFLAGS|FDF_RW, (MAXINT)&clSVGFlags, NULL, NULL },
-   { "FrameRate", FDF_LONG|FDF_RW,      0, NULL, SET_FrameRate },
-   { "FrameCallback", FDF_FUNCTION|FDF_RW, 0, GET_FrameCallback, SET_FrameCallback },
+   { "FrameRate", FDF_LONG|FDF_RW,      0, NULL, (APTR)SET_FrameRate },
+   { "FrameCallback", FDF_FUNCTION|FDF_RW, 0, (APTR)GET_FrameCallback, (APTR)SET_FrameCallback },
    // Virtual Fields
-   { "Src",      FDF_SYNONYM|FDF_VIRTUAL|FDF_STRING|FDF_RW, 0, GET_Path, SET_Path },
-   { "Scene",    FDF_VIRTUAL|FDF_OBJECT|FDF_R, 0, GET_Scene, NULL },
-   { "Viewport", FDF_VIRTUAL|FDF_OBJECT|FDF_R, 0, GET_Viewport, NULL },
+   { "Src",      FDF_SYNONYM|FDF_VIRTUAL|FDF_STRING|FDF_RW, 0, (APTR)GET_Path, (APTR)SET_Path },
+   { "Scene",    FDF_VIRTUAL|FDF_OBJECT|FDF_R, 0, (APTR)GET_Scene, NULL },
+   { "Viewport", FDF_VIRTUAL|FDF_OBJECT|FDF_R, 0, (APTR)GET_Viewport, NULL },
    END_FIELD
 };
 

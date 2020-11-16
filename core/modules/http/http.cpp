@@ -96,11 +96,7 @@ typedef char HASHHEX[HASHHEXLEN+1];
 #define BUFFER_READ_SIZE 16384  // Dictates how many bytes are read from the network socket at a time.  Do not make this greater than 64k
 #define BUFFER_WRITE_SIZE 16384 // Dictates how many bytes are written to the network socket at a time.  Do not make this greater than 64k
 
-INLINE void SET_ERROR(objHTTP *http, ERROR code)
-{
-   http->Error = code;
-   FMSG("SetHTTPError","Code: %d, Msg: %s", code, GetErrorMsg(code));
-}
+#define SET_ERROR(http, code) { (http)->Error = (code); log.trace("SetHTTPError","Code: %d, Msg: %s", code, GetErrorMsg(code)); }
 
 static ERROR create_http_class(void);
 
@@ -112,11 +108,22 @@ static objProxy *glProxy = NULL;
 
 extern UBYTE glAuthScript[];
 static LONG glAuthScriptLength;
-static const struct FieldDef clHTTPState[];
+
+static ERROR HTTP_ActionNotify(objHTTP *, struct acActionNotify *);
+static ERROR HTTP_Activate(objHTTP *, APTR);
+static ERROR HTTP_Deactivate(objHTTP *, APTR);
+static ERROR HTTP_Free(objHTTP *, APTR);
+static ERROR HTTP_GetVar(objHTTP *, struct acGetVar *);
+static ERROR HTTP_Init(objHTTP *, APTR);
+static ERROR HTTP_NewObject(objHTTP *, APTR);
+static ERROR HTTP_SetVar(objHTTP *, struct acSetVar *);
+static ERROR HTTP_Write(objHTTP *, struct acWrite *);
+
+#include "http_def.c"
 
 //****************************************************************************
 
-static const struct FieldDef clStatus[] = {
+static const FieldDef clStatus[] = {
    { "Continue",                 HTS_CONTINUE },
    { "Switching Protocols",      HTS_SWITCH_PROTOCOLS },
    { "Okay",                     HTS_OKAY },
@@ -176,10 +183,7 @@ static LONG  set_http_method(objHTTP *, STRING Buffer, LONG Size, CSTRING Method
 static void  socket_feedback(objNetSocket *, LONG);
 static ERROR SET_Path(objHTTP *, CSTRING);
 static ERROR SET_Location(objHTTP *, CSTRING);
-static ERROR HTTP_Activate(objHTTP *, APTR);
 static ERROR timeout_manager(objHTTP *, LARGE, LARGE);
-
-static const struct FieldArray clFields[];
 
 //****************************************************************************
 
@@ -187,8 +191,7 @@ INLINE CSTRING GETSTATUS(LONG Code) __attribute__((unused));
 
 INLINE CSTRING GETSTATUS(LONG Code)
 {
-   WORD i;
-   for (i=0; clStatus[i].Name; i++) {
+   for (WORD i=0; clStatus[i].Name; i++) {
       if (clStatus[i].Value IS Code) return clStatus[i].Name;
    }
    return "Unrecognised Status Code";
@@ -202,8 +205,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    if (LoadModule("network", MODVERSION_NETWORK, &modNetwork, &NetworkBase) != ERR_Okay) return ERR_InitModule;
 
-   if (!CreateObject(ID_PROXY, 0, &glProxy,
-         TAGEND)) {
+   if (!CreateObject(ID_PROXY, 0, &glProxy, TAGEND)) {
    }
 
    return create_http_class();
@@ -223,12 +225,14 @@ static ERROR CMDExpunge(void)
 
 static ERROR socket_outgoing(objNetSocket *Socket, OBJECTPTR Context)
 {
+   parasol::Log log(__FUNCTION__);
+
    #define CHUNK_LENGTH_OFFSET 16
    #define CHUNK_TAIL 2 // CRLF
 
-   FMSG("~http_outgoing()","Socket: %p, Object: %d", Socket, Context->UniqueID);
+   log.traceBranch("Socket: %p, Object: %d", Socket, Context->UniqueID);
 
-   objHTTP *Self = Socket->UserData;
+   auto Self = (objHTTP *)Socket->UserData;
 
    LONG total_out = 0;
 
@@ -237,14 +241,13 @@ static ERROR socket_outgoing(objNetSocket *Socket, OBJECTPTR Context)
       if (Self->BufferSize > 0xffff) Self->BufferSize = 0xffff;
 
       if (AllocMemory(Self->BufferSize, MEM_DATA|MEM_NO_CLEAR, &Self->Buffer, NULL)) {
-         LOGRETURN();
          return ERR_AllocMemory;
       }
    }
 
    ERROR error;
 redo_upload:
-   Self->WriteBuffer = Self->Buffer;
+   Self->WriteBuffer = (UBYTE *)Self->Buffer;
    Self->WriteSize   = Self->BufferSize;
    if (Self->Chunked) {
       Self->WriteBuffer += CHUNK_LENGTH_OFFSET;
@@ -258,15 +261,14 @@ redo_upload:
    LONG len = 0;
    if (Self->Outgoing.Type != CALL_NONE) {
       if (Self->Outgoing.Type IS CALL_STDC) {
-         ERROR (*routine)(struct rkHTTP *, APTR, LONG, LONG *);
-         routine = Self->Outgoing.StdC.Routine;
+         auto routine = (ERROR (*)(rkHTTP *, APTR, LONG, LONG *))Self->Outgoing.StdC.Routine;
          error = routine(Self, Self->WriteBuffer, Self->WriteSize, &len);
       }
       else if (Self->Outgoing.Type IS CALL_SCRIPT) {
          // For a script to write to the buffer, it needs to make a call to the Write() action.
          OBJECTPTR script;
          if ((script = Self->Outgoing.Script.Script)) {
-            const struct ScriptArg args[] = {
+            const ScriptArg args[] = {
                { "HTTP",       FD_OBJECTPTR, { .Address = Self } },
                { "BufferSize", FD_LONG,      { .Long = Self->WriteSize } }
             };
@@ -274,7 +276,7 @@ redo_upload:
             if (!error) GetLong(script, FID_Error, &error);
             if (!error) len = Self->WriteOffset;
             else {
-               LogF("@http_outgoing","Procedure " PF64() " failed, aborting HTTP call.", Self->Outgoing.Script.ProcedureID);
+               log.warning("Procedure " PF64() " failed, aborting HTTP call.", Self->Outgoing.Script.ProcedureID);
                error = ERR_Failed; // Fatal error in attempting to execute the procedure
             }
          }
@@ -282,31 +284,31 @@ redo_upload:
       else error = ERR_Failed;
 
       if (len > Self->WriteSize) { // Sanity check, this should never happen if the client uses valid code.
-         LogErrorMsg("Returned length exceeds buffer size!  %d > %d", len, Self->WriteSize);
+         log.warning("Returned length exceeds buffer size!  %d > %d", len, Self->WriteSize);
          len = Self->WriteSize;
          error = ERR_BufferOverflow;
       }
-      else if ((error) AND (error != ERR_Terminate)) LogF("@http_outgoing","Outgoing callback error: %s", GetErrorMsg(error));
+      else if ((error) AND (error != ERR_Terminate)) log.warning("Outgoing callback error: %s", GetErrorMsg(error));
    }
    else if (Self->flInput) {
-      if (Self->Flags & HTF_DEBUG) LogF("http_outgoing","Sending content from an Input file.");
+      if (Self->Flags & HTF_DEBUG) log.msg("Sending content from an Input file.");
 
       error = acRead(Self->flInput, Self->WriteBuffer, Self->WriteSize, &len);
 
-      if (error) LogErrorMsg("Input file read error: %s", GetErrorMsg(error));
+      if (error) log.warning("Input file read error: %s", GetErrorMsg(error));
 
       LARGE size;
       GetLarge(Self->flInput, FID_Size, &size);
 
       if (Self->flInput->Position IS size) {
-         FMSG("http_outgoing","All file content read (%d bytes) - freeing file.", (LONG)size);
+         log.trace("All file content read (%d bytes) - freeing file.", (LONG)size);
          acFree(Self->flInput);
          Self->flInput = NULL;
          if (!error) error = ERR_Terminate;
       }
    }
    else if (Self->InputObjectID) {
-      if (Self->Flags & HTF_DEBUG) LogMsg("Sending content from InputObject #%d.", Self->InputObjectID);
+      if (Self->Flags & HTF_DEBUG) log.msg("Sending content from InputObject #%d.", Self->InputObjectID);
 
       OBJECTPTR object;
       if (!(error = AccessObject(Self->InputObjectID, 100, &object))) {
@@ -314,20 +316,20 @@ redo_upload:
          ReleaseObject(object);
       }
 
-      if (error) LogF("@http_outgoing","Input object read error: %s", GetErrorMsg(error));
+      if (error) log.warning("Input object read error: %s", GetErrorMsg(error));
    }
    else {
       if (Self->MultipleInput) error = ERR_NoData;
       else error = ERR_Terminate;
 
-      LogF("@http_outgoing","Method %d: No input fields are defined for me to send data to the server.", Self->Method);
+      log.warning("Method %d: No input fields are defined for me to send data to the server.", Self->Method);
    }
 
    if (((!error) OR (error IS ERR_Terminate)) AND (len)) {
       LONG result, csize;
       ERROR writeerror;
 
-      FMSG("http_outgoing","Writing %d bytes (of expected " PF64() ") to socket.  Chunked: %d", len, Self->ContentLength, Self->Chunked);
+      log.trace("Writing %d bytes (of expected " PF64() ") to socket.  Chunked: %d", len, Self->ContentLength, Self->Chunked);
 
       if (Self->Chunked) {
          if (len & 0xf000)      { csize = 4+2; StrFormat(Self->WriteBuffer-6, 5, "%.4x", len); }
@@ -351,7 +353,7 @@ redo_upload:
       }
       else {
          writeerror = write_socket(Self, Self->WriteBuffer, len, &result);
-         if (len != result) LogErrorMsg("Only sent %d of %d bytes.", len, result);
+         if (len != result) log.warning("Only sent %d of %d bytes.", len, result);
          len = result;
       }
 
@@ -361,19 +363,18 @@ redo_upload:
       SetLarge(Self, FID_Index, Self->Index + len);
 
       if (writeerror) {
-         LogErrorMsg("write_socket() failed: %s", GetErrorMsg(writeerror));
+         log.warning("write_socket() failed: %s", GetErrorMsg(writeerror));
          error = writeerror;
       }
 
-      FMSG("http_outgoing","Outgoing index now " PF64() " of " PF64(), Self->Index, Self->ContentLength);
+      log.trace("Outgoing index now " PF64() " of " PF64(), Self->Index, Self->ContentLength);
    }
-   else FMSG("http_outgoing","Finishing (an error occurred, or there is no more content to write to socket).");
+   else log.trace("Finishing (an error occurred, or there is no more content to write to socket).");
 
    if ((error) AND (error != ERR_Terminate)) {
       if (error != ERR_TimeOut) {
          SetLong(Self, FID_State, HGS_TERMINATED);
          SET_ERROR(Self, error);
-         LOGRETURN();
          return ERR_Terminate;
       }
       // ERR_TimeOut: The upload process may continue
@@ -382,13 +383,13 @@ redo_upload:
       // Check for multiple input files
 
       if ((Self->MultipleInput) AND (!Self->flInput)) {
-         /*if (Self->Flags & HTF_DEBUG)*/ LogMsg("Sequential input stream has uploaded " PF64() "/" PF64() " bytes.", Self->Index, Self->ContentLength);
+         /*if (Self->Flags & HTF_DEBUG)*/ log.msg("Sequential input stream has uploaded " PF64() "/" PF64() " bytes.", Self->Index, Self->ContentLength);
 
          // Open the next file
 
-         if (!parse_file(Self, Self->Buffer, Self->BufferSize)) {
+         if (!parse_file(Self, (STRING)Self->Buffer, Self->BufferSize)) {
             if (!(CreateObject(ID_FILE, NF_INTEGRAL, &Self->flInput,
-                  FID_Path|TSTR,   Self->Buffer,
+                  FID_Path|TSTR,   (CSTRING)Self->Buffer,
                   FID_Flags|TLONG, FL_READ,
                   TAGEND))) {
 
@@ -408,15 +409,14 @@ redo_upload:
       if (((Self->ContentLength > 0) AND (Self->Index >= Self->ContentLength)) OR (error IS ERR_Terminate)) {
          LONG result;
 
-         if (Self->Chunked) write_socket(Self, "0\r\n\r\n", 5, &result);
+         if (Self->Chunked) write_socket(Self, (UBYTE *)"0\r\n\r\n", 5, &result);
 
-         if (Self->Flags & HTF_DEBUG) LogMsg("Transfer complete - sent " PF64() " bytes.", Self->TotalSent);
+         if (Self->Flags & HTF_DEBUG) log.msg("Transfer complete - sent " PF64() " bytes.", Self->TotalSent);
          SetLong(Self, FID_State, HGS_SEND_COMPLETE);
-         LOGRETURN();
          return ERR_Terminate;
       }
       else {
-         if (Self->Flags & HTF_DEBUG) LogMsg("Sent " PF64() " bytes of " PF64(), Self->Index, Self->ContentLength);
+         if (Self->Flags & HTF_DEBUG) log.msg("Sent " PF64() " bytes of " PF64(), Self->Index, Self->ContentLength);
       }
    }
 
@@ -429,14 +429,13 @@ continue_upload:
    if (Self->TimeoutManager) UpdateTimer(Self->TimeoutManager, time_limit);
    else {
       FUNCTION callback;
-      SET_FUNCTION_STDC(callback, &timeout_manager);
+      SET_FUNCTION_STDC(callback, (APTR)&timeout_manager);
       SubscribeTimer(time_limit, &callback, &Self->TimeoutManager);
    }
 
    Self->WriteBuffer = NULL;
    Self->WriteSize = 0;
 
-   LOGRETURN();
    if (Self->Error) return ERR_Terminate;
    return ERR_Okay;
 }
@@ -447,40 +446,41 @@ continue_upload:
 
 static ERROR socket_incoming(objNetSocket *Socket)
 {
+   parasol::Log log("http_incoming");
    LONG len;
-   objHTTP *Self = Socket->UserData;
+   auto Self = (objHTTP *)Socket->UserData;
 
    if (Self->State >= HGS_COMPLETED) {
       // Erroneous data received from server while we are in a completion/resting state.  Returning a terminate message
       // will cause the socket object to close the connection to the server so that we stop receiving erroneous data.
 
-      LogF("@http_incoming","Unexpected data incoming from server - terminating socket.");
+      log.warning("Unexpected data incoming from server - terminating socket.");
       return ERR_Terminate;
    }
 
    if (Self->State IS HGS_SENDING_CONTENT) {
       if (Self->ContentLength IS -1) {
-         LogF("@http_incoming","Incoming data while streaming content - " PF64() " bytes already written.", Self->Index);
+         log.warning("Incoming data while streaming content - " PF64() " bytes already written.", Self->Index);
       }
       else if (Self->Index < Self->ContentLength) {
-         LogF("@http_incoming","Incoming data while sending content - only " PF64() "/" PF64() " bytes written!", Self->Index, Self->ContentLength);
+         log.warning("Incoming data while sending content - only " PF64() "/" PF64() " bytes written!", Self->Index, Self->ContentLength);
       }
    }
 
    if ((Self->State IS HGS_SENDING_CONTENT) OR (Self->State IS HGS_SEND_COMPLETE)) {
-      FMSG("http_incoming","Switching state from sending content to reading header.");
+      log.trace("Switching state from sending content to reading header.");
       SetLong(Self, FID_State, HGS_READING_HEADER);
       Self->Index = 0;
    }
 
    if ((Self->State IS HGS_READING_HEADER) OR (Self->State IS HGS_AUTHENTICATING)) {
-      FMSG("http_incoming","HTTP received data, reading header.");
+      log.trace("HTTP received data, reading header.");
 
       while (1) {
          if (!Self->Response) {
             Self->ResponseSize = 256;
             if (AllocMemory(Self->ResponseSize + 1, MEM_STRING|MEM_NO_CLEAR, &Self->Response, NULL) != ERR_Okay) {
-               SET_ERROR(Self, PostError(ERR_AllocMemory));
+               SET_ERROR(Self, log.warning(ERR_AllocMemory));
                return ERR_Terminate;
             }
          }
@@ -488,7 +488,7 @@ static ERROR socket_incoming(objNetSocket *Socket)
          if (Self->ResponseIndex >= Self->ResponseSize) {
             Self->ResponseSize += 256;
             if (ReallocMemory(Self->Response, Self->ResponseSize + 1, &Self->Response, NULL) != ERR_Okay) {
-               SET_ERROR(Self, PostError(ERR_ReallocMemory));
+               SET_ERROR(Self, log.warning(ERR_ReallocMemory));
                return ERR_Terminate;
             }
          }
@@ -496,7 +496,7 @@ static ERROR socket_incoming(objNetSocket *Socket)
          Self->Error = acRead(Socket, Self->Response+Self->ResponseIndex, Self->ResponseSize - Self->ResponseIndex, &len);
 
          if (Self->Error) {
-            PostError(Self->Error);
+            log.warning(Self->Error);
             return ERR_Terminate;
          }
 
@@ -511,7 +511,7 @@ static ERROR socket_incoming(objNetSocket *Socket)
                Self->Response[Self->SearchIndex] = 0; // Terminate the header at the CRLF point
 
                if (parse_response(Self, Self->Response) != ERR_Okay) {
-                  SET_ERROR(Self, PostError(ERR_InvalidHTTPResponse));
+                  SET_ERROR(Self, log.warning(ERR_InvalidHTTPResponse));
                   return ERR_Terminate;
                }
 
@@ -519,25 +519,22 @@ static ERROR socket_incoming(objNetSocket *Socket)
                   if (Self->Status IS 200) {
                      // Proxy tunnel established.  Convert the socket to an SSL connection, then send the HTTP command.
 
-                     if (!netSetSSL(Socket,
-                           NSL_CONNECT, TRUE,
-                           TAGEND)) {
-
+                     if (!netSetSSL(Socket, NSL_CONNECT, TRUE, TAGEND)) {
                         return acActivate(Self);
                      }
                      else {
-                        SET_ERROR(Self, PostError(ERR_ConnectionAborted));
+                        SET_ERROR(Self, log.warning(ERR_ConnectionAborted));
                         return ERR_Terminate;
                      }
                   }
                   else {
-                     SET_ERROR(Self, PostError(ERR_ProxySSLTunnel));
+                     SET_ERROR(Self, log.warning(ERR_ProxySSLTunnel));
                      return ERR_Terminate;
                   }
                }
 
                if ((Self->State IS HGS_AUTHENTICATING) AND (Self->Status != 401)) {
-                  LogF("http_incoming","Authentication successful, reactivating...");
+                  log.msg("Authentication successful, reactivating...");
                   Self->SecurePath = FALSE;
                   SetLong(Self, FID_State, HGS_AUTHENTICATED);
                   DelayMsg(AC_Activate, Self->Head.UniqueID, NULL);
@@ -548,23 +545,23 @@ static ERROR socket_incoming(objNetSocket *Socket)
                   if (Self->Flags & HTF_MOVED) {
                      // Chaining of MovedPermanently messages is disallowed (could cause circular referencing).
 
-                     LogF("@http_incoming","Sequential MovedPermanently messages are not supported.");
+                     log.warning("Sequential MovedPermanently messages are not supported.");
                   }
                   else {
-                     UBYTE buffer[512];
+                     char buffer[512];
                      if (!acGetVar(Self, "Location", buffer, sizeof(buffer))) {
-                        LogF("http_incoming","MovedPermanently to %s", buffer);
-                        if (!StrCompare("http:", buffer, 5, 0)) {
-                           SetString(Self, FID_Location, buffer);
+                        log.msg("MovedPermanently to %s", buffer);
+                        if (!StrCompare("http:", (CSTRING)buffer, 5, 0)) {
+                           SetString(Self, FID_Location, (CSTRING)buffer);
                         }
-                        else SetString(Self, FID_Path, buffer);
+                        else SetString(Self, FID_Path, (CSTRING)buffer);
                         acActivate(Self); // Try again
                         Self->Flags |= HTF_MOVED;
                         return ERR_Okay;
                      }
                      else {
                         Self->Flags |= HTF_MOVED;
-                        LogF("@http_incoming","Invalid MovedPermanently HTTP response received (no location specified).");
+                        log.warning("Invalid MovedPermanently HTTP response received (no location specified).");
                      }
                   }
                }
@@ -572,18 +569,18 @@ static ERROR socket_incoming(objNetSocket *Socket)
                   if (Self->Flags & HTF_REDIRECTED) {
                      // Chaining of TempRedirect messages is disallowed (could cause circular referencing).
 
-                     LogF("@http_incoming","Sequential TempRedirect messages are not supported.");
+                     log.warning("Sequential TempRedirect messages are not supported.");
                   }
                   else Self->Flags |= HTF_REDIRECTED;
                }
 
                if ((!Self->ContentLength) OR (Self->ContentLength < -1)) {
-                  LogF("http_incoming","Reponse header received, no content imminent.");
+                  log.msg("Reponse header received, no content imminent.");
                   SetLong(Self, FID_State, HGS_COMPLETED);
                   return ERR_Terminate;
                }
 
-               LogF("http_incoming","Complete response header has been received.  Incoming Content: " PF64(), Self->ContentLength);
+               log.msg("Complete response header has been received.  Incoming Content: " PF64(), Self->ContentLength);
 
                if (Self->State != HGS_READING_CONTENT) {
                   SetLong(Self, FID_State, HGS_READING_CONTENT);
@@ -591,8 +588,6 @@ static ERROR socket_incoming(objNetSocket *Socket)
 
                Self->AuthDigest = FALSE;
                if ((Self->Status IS 401) AND (Self->AuthRetries < MAX_AUTH_RETRIES)) {
-                  LONG i;
-
                   Self->AuthRetries++;
 
                   if (Self->Password) {
@@ -601,7 +596,7 @@ static ERROR socket_incoming(objNetSocket *Socket)
                      // authorisation attempts are required in order to receive the 401 from the server first).
 
                      if ((Self->AuthPreset IS FALSE) OR (Self->AuthRetries >= 2)) {
-                        for (i=0; Self->Password[i]; i++) Self->Password[i] = 0xff;
+                        for (LONG i=0; Self->Password[i]; i++) Self->Password[i] = 0xff;
                         FreeResource(Self->Password);
                         Self->Password = NULL;
                      }
@@ -610,7 +605,7 @@ static ERROR socket_incoming(objNetSocket *Socket)
                   CSTRING auth;
                   if ((auth = VarGetString(Self->Args, "WWW-Authenticate"))) {
                      if (!StrCompare("Digest", auth, 6, 0)) {
-                        FMSG("http_incoming","Digest authentication mode.");
+                        log.trace("Digest authentication mode.");
 
                         if (Self->Realm)      { FreeResource(Self->Realm);      Self->Realm = NULL; }
                         if (Self->AuthNonce)  { FreeResource(Self->AuthNonce);  Self->AuthNonce = NULL; }
@@ -619,7 +614,7 @@ static ERROR socket_incoming(objNetSocket *Socket)
                         Self->AuthAlgorithm[0] = 0;
                         Self->AuthDigest = TRUE;
 
-                        i = 6;
+                        LONG i = 6;
                         while ((auth[i]) AND (auth[i] <= 0x20)) i++;
 
                         while (auth[i]) {
@@ -629,16 +624,16 @@ static ERROR socket_incoming(objNetSocket *Socket)
                            else if (!StrCompare("algorithm=", auth+i, 0, 0)) {
                               STRING value;
                               i += extract_value(auth+i, &value);
-                              StrCopy(value, Self->AuthAlgorithm, sizeof(Self->AuthAlgorithm));
+                              StrCopy(value, (STRING)Self->AuthAlgorithm, sizeof(Self->AuthAlgorithm));
                               FreeResource(value);
                            }
                            else if (!StrCompare("qop=", auth+i, 0, 0)) {
                               STRING value;
                               i += extract_value(auth+i, &value);
                               if (StrSearch("auth-int", value, 0) >= 0) {
-                                 StrCopy("auth-int", Self->AuthQOP, sizeof(Self->AuthQOP));
+                                 StrCopy("auth-int", (STRING)Self->AuthQOP, sizeof(Self->AuthQOP));
                               }
-                              else StrCopy("auth", Self->AuthQOP, sizeof(Self->AuthQOP));
+                              else StrCopy("auth", (STRING)Self->AuthQOP, sizeof(Self->AuthQOP));
                               FreeResource(value);
                            }
                            else {
@@ -661,9 +656,9 @@ static ERROR socket_incoming(objNetSocket *Socket)
                            }
                         }
                      }
-                     else FMSG("http_incoming","Basic authentication mode.");
+                     else log.trace("Basic authentication mode.");
                   }
-                  else LogF("http_incoming","Authenticate method unknown.");
+                  else log.msg("Authenticate method unknown.");
 
                   SetLong(Self, FID_State, HGS_AUTHENTICATING);
 
@@ -700,7 +695,7 @@ static ERROR socket_incoming(objNetSocket *Socket)
                len = Self->ResponseIndex - (Self->SearchIndex + 4);
 
                if (Self->Chunked) {
-                  FMSG("http_incoming","Content to be received in chunks.");
+                  log.trace("Content to be received in chunks.");
                   Self->ChunkSize  = 4096;
                   Self->ChunkIndex = 0; // Number of bytes processed for the current chunk
                   Self->ChunkLen   = 0;  // Length of the first chunk is unknown at this stage
@@ -710,14 +705,14 @@ static ERROR socket_incoming(objNetSocket *Socket)
                      if (len > 0) CopyMemory(Self->Response + Self->SearchIndex + 4, Self->Chunk, len);
                   }
                   else {
-                     SET_ERROR(Self, PostError(ERR_AllocMemory));
+                     SET_ERROR(Self, log.warning(ERR_AllocMemory));
                      return ERR_Terminate;
                   }
 
                   Self->SearchIndex = 0;
                }
                else {
-                  FMSG("http_incoming", PF64() " bytes of content is incoming.  Bytes Buffered: %d, Index: " PF64(), Self->ContentLength, len, Self->Index);
+                  log.trace(PF64() " bytes of content is incoming.  Bytes Buffered: %d, Index: " PF64(), Self->ContentLength, len, Self->Index);
 
                   if (len > 0) process_data(Self, Self->Response + Self->SearchIndex + 4, len);
                }
@@ -732,13 +727,13 @@ static ERROR socket_incoming(objNetSocket *Socket)
 
                if ((Self->Status < 200) OR (Self->Status >= 300)) {
                   if (Self->State != HGS_READING_CONTENT) {
-                     if (Self->Status IS 401) LogF("@http_incoming","Exhausted maximum number of retries.");
-                     else LogF("@http_incoming","Status code %d != 2xx", Self->Status);
+                     if (Self->Status IS 401) log.warning("Exhausted maximum number of retries.");
+                     else log.warning("Status code %d != 2xx", Self->Status);
 
                      SET_ERROR(Self, ERR_Failed);
                      return ERR_Terminate;
                   }
-                  else LogF("@http_incoming","Status code %d != 2xx.  Receiving content...", Self->Status);
+                  else log.warning("Status code %d != 2xx.  Receiving content...", Self->Status);
                }
 
                return ERR_Okay;
@@ -766,12 +761,13 @@ static ERROR socket_incoming(objNetSocket *Socket)
 
          LONG i, count;
          for (count=2; count > 0; count--) { //while (Self->ChunkIndex < Self->ChunkBuffered) {
-            FMSG("~http_incoming","Receiving content (chunk mode) Index: %d/%d/%d, Length: %d", Self->ChunkIndex, Self->ChunkBuffered, Self->ChunkSize, Self->ChunkLen);
+            parasol::Log log("http_incoming");
+            log.traceBranch("Receiving content (chunk mode) Index: %d/%d/%d, Length: %d", Self->ChunkIndex, Self->ChunkBuffered, Self->ChunkSize, Self->ChunkLen);
 
             // Compress the buffer
 
             if (Self->ChunkIndex > 0) {
-               //FMSG("http_incoming","Compressing the chunk buffer.");
+               //log.msg("Compressing the chunk buffer.");
                if (Self->ChunkBuffered > Self->ChunkIndex) {
                   CopyMemory(Self->Chunk + Self->ChunkIndex, Self->Chunk, Self->ChunkBuffered - Self->ChunkIndex);
                }
@@ -784,30 +780,27 @@ static ERROR socket_incoming(objNetSocket *Socket)
             if (Self->ChunkBuffered < Self->ChunkSize) {
                Self->Error = acRead(Socket, Self->Chunk + Self->ChunkBuffered, Self->ChunkSize - Self->ChunkBuffered, &len);
 
-               //FMSG("http_incoming","Filling the chunk buffer: Read %d bytes.", len);
+               //log.msg("Filling the chunk buffer: Read %d bytes.", len);
 
                if (Self->Error IS ERR_Disconnected) {
-                  FMSG("http_incoming","Received all chunked content (disconnected by peer).");
+                  log.msg("Received all chunked content (disconnected by peer).");
                   SetLong(Self, FID_State, HGS_COMPLETED);
-                  LOGRETURN();
                   return ERR_Terminate;
                }
                else if (Self->Error) {
-                  LogF("@http_incoming","Read() returned error %d whilst reading content.", Self->Error);
+                  log.warning("Read() returned error %d whilst reading content.", Self->Error);
                   SetLong(Self, FID_State, HGS_COMPLETED);
-                  LOGRETURN();
                   return ERR_Terminate;
                }
                else if ((!len) AND (Self->ChunkIndex >= Self->ChunkBuffered)) {
-                  FMSG("http_incoming","Nothing left to read.");
-                  LOGRETURN();
+                  log.msg("Nothing left to read.");
                   return ERR_Okay;
                }
                else Self->ChunkBuffered += len;
             }
 
             while (Self->ChunkIndex < Self->ChunkBuffered) {
-               //FMSG("http_incoming","Status: Index: %d/%d, CurrentChunk: %d", Self->ChunkIndex, Self->ChunkBuffered, Self->ChunkLen);
+               //log.msg("Status: Index: %d/%d, CurrentChunk: %d", Self->ChunkIndex, Self->ChunkBuffered, Self->ChunkLen);
 
                if (!Self->ChunkLen) {
                   // Read the next chunk header.  It is assumed that the format is:
@@ -815,12 +808,12 @@ static ERROR socket_incoming(objNetSocket *Socket)
                   // ChunkSize\r\n
                   // Data...
 
-                  FMSG("http_incoming","Examining chunk header (%d bytes buffered).", Self->ChunkBuffered - Self->ChunkIndex);
+                  log.msg("Examining chunk header (%d bytes buffered).", Self->ChunkBuffered - Self->ChunkIndex);
 
                   for (i=Self->ChunkIndex; i < Self->ChunkBuffered-1; i++) {
                      if ((Self->Chunk[i] IS '\r') AND (Self->Chunk[i+1] IS '\n')) {
                         Self->Chunk[i] = 0;
-                        Self->ChunkLen = StrToHex(Self->Chunk+Self->ChunkIndex);
+                        Self->ChunkLen = StrToHex((CSTRING)Self->Chunk + Self->ChunkIndex);
                         Self->Chunk[i] = '\r';
 
                         if (Self->ChunkLen <= 0) {
@@ -828,21 +821,19 @@ static ERROR socket_incoming(objNetSocket *Socket)
                               // A line of "0\r\n" indicates an end to the chunks, followed by optional data for
                               // interpretation.
 
-                              FMSG("http_incoming","End of chunks reached, optional data follows.");
+                              log.msg("End of chunks reached, optional data follows.");
                               SetLong(Self, FID_State, HGS_COMPLETED);
-                              LOGRETURN();
                               return ERR_Terminate;
                            }
                            else {
                               // We have reached the terminating line (CRLF on an empty line)
-                              FMSG("http_incoming","Received all chunked content.");
+                              log.msg("Received all chunked content.");
                               SetLong(Self, FID_State, HGS_COMPLETED);
-                              LOGRETURN();
                               return ERR_Terminate;
                            }
                         }
 
-                        FMSG("http_incoming","Next chunk length is %d bytes.", Self->ChunkLen);
+                        log.msg("Next chunk length is %d bytes.", Self->ChunkLen);
                         Self->ChunkIndex = i + 2; // \r\n
                         break;
                      }
@@ -857,7 +848,7 @@ static ERROR socket_incoming(objNetSocket *Socket)
                   len = Self->ChunkBuffered - Self->ChunkIndex;
                   if (len > Self->ChunkLen) len = Self->ChunkLen; // Cannot process more bytes than the expected chunk length
 
-                  //FMSG("http_incoming","%d bytes left to process in current chunk, sending %d bytes", Self->ChunkLen, len);
+                  //log.msg("%d bytes left to process in current chunk, sending %d bytes", Self->ChunkLen, len);
 
                   Self->ChunkLen -= len;
                   process_data(Self, Self->Chunk+Self->ChunkIndex, len);
@@ -866,13 +857,13 @@ static ERROR socket_incoming(objNetSocket *Socket)
 
                   if (!Self->ChunkLen) {
                      // The end of the chunk binary is followed with a CRLF
-                     //FMSG("http_incoming","A complete chunk has been processed.");
+                     //log.msg("A complete chunk has been processed.");
                      Self->ChunkLen = -2;
                   }
                }
 
                if (Self->ChunkLen < 0) {
-                  //FMSG("http_incoming","Skipping %d bytes.", -Self->ChunkLen);
+                  //log.msg("Skipping %d bytes.", -Self->ChunkLen);
 
                   while ((Self->ChunkLen < 0) AND (Self->ChunkIndex < Self->ChunkBuffered)) {
                      Self->ChunkIndex++;
@@ -882,8 +873,6 @@ static ERROR socket_incoming(objNetSocket *Socket)
                   if (Self->ChunkLen < 0) break; // If we did not receive all the bytes, break to continue processing until more bytes are ready
                }
             }
-
-            LOGRETURN();
          }
       }
       else {
@@ -904,14 +893,14 @@ static ERROR socket_incoming(objNetSocket *Socket)
 
                if ((Self->Error = acRead(Socket, buffer, len, &len))) {
                   if ((Self->Error IS ERR_Disconnected) AND (Self->ContentLength IS -1)) {
-                     FMSG("http_incoming","Received all streamed content (disconnected by peer).");
+                     log.trace("Received all streamed content (disconnected by peer).");
                      SetLong(Self, FID_State, HGS_COMPLETED);
                      FreeResource(buffer);
                      return ERR_Terminate;
                   }
                   else {
                      FreeResource(buffer);
-                     LogF("@http_incoming","Read() returned error %d whilst reading content.", Self->Error);
+                     log.warning("Read() returned error %d whilst reading content.", Self->Error);
                      return ERR_Terminate;
                   }
                }
@@ -937,7 +926,7 @@ static ERROR socket_incoming(objNetSocket *Socket)
       if (Self->TimeoutManager) UpdateTimer(Self->TimeoutManager, Self->DataTimeout);
       else {
          FUNCTION callback;
-         SET_FUNCTION_STDC(callback, &timeout_manager);
+         SET_FUNCTION_STDC(callback, (APTR)&timeout_manager);
          SubscribeTimer(Self->DataTimeout, &callback, &Self->TimeoutManager);
       }
 
@@ -945,14 +934,12 @@ static ERROR socket_incoming(objNetSocket *Socket)
    }
    else {
       UBYTE buffer[512];
-
       // Indeterminate data received from HTTP server
 
       if ((!acRead(Socket, buffer, sizeof(buffer)-1, &len)) AND (len > 0)) {
          buffer[len] = 0;
-
-         LogF("@http_incoming","WARNING: Received data whilst in state %d.", Self->State);
-         LogF("@http_incoming","Content (%d bytes) Follows:\n%.80s", len, buffer);
+         log.warning("WARNING: Received data whilst in state %d.", Self->State);
+         log.warning("Content (%d bytes) Follows:\n%.80s", len, buffer);
       }
    }
 
@@ -963,6 +950,8 @@ static ERROR socket_incoming(objNetSocket *Socket)
 
 static ERROR HTTP_ActionNotify(objHTTP *Self, struct acActionNotify *Args)
 {
+   parasol::Log log;
+
    if (!Args) return ERR_NullArgs;
    if (Args->Error != ERR_Okay) return ERR_Okay;
 
@@ -973,7 +962,7 @@ static ERROR HTTP_ActionNotify(objHTTP *Self, struct acActionNotify *Args)
             HTTP_Activate(Self, NULL);
          }
          else {
-            LogMsg("No username and password provided, deactivating...");
+            log.msg("No username and password provided, deactivating...");
             SetLong(Self, FID_State, HGS_TERMINATED);
          }
          return ERR_Okay;
@@ -995,7 +984,7 @@ static ERROR HTTP_ActionNotify(objHTTP *Self, struct acActionNotify *Args)
          return ERR_Okay;
       }
    }
-   return PostError(ERR_NoSupport);
+   return log.warning(ERR_NoSupport);
 }
 
 /*****************************************************************************
@@ -1005,20 +994,18 @@ Activate: Executes an HTTP method.
 
 This action starts an HTTP operation against a target server.  Based on the desired #Method, an HTTP request
 will be sent to the target server and the action will immediately return whilst the HTTP object will wait for a
-response from the server.  If the server fails to respond within the time period indicated by the
-#ConnectTimeout, the HTTP object will be deactivated (for further details, refer to the
-#Deactivate() action).
+response from the server.  If the server fails to respond within the time period indicated by the #ConnectTimeout,
+the HTTP object will be deactivated (for further details, refer to the #Deactivate() action).
 
 Successful interpretation of the HTTP request at the server will result in a response being received, followed by file
-data (if applicable). The HTTP response code will be stored in the #Status field.  The HTTP object
-will automatically parse the response data and store the received values in the HTTP object as variable fields.  It is
+data (if applicable). The HTTP response code will be stored in the #Status field.  The HTTP object will
+automatically parse the response data and store the received values in the HTTP object as variable fields.  It is
 possible to be alerted to the complete receipt of a response by listening to the #State field, or waiting for
 the Deactivate action to kick in.
 
 Following a response, incoming data can be managed in a number of ways. It may be streamed to an object referenced by
-the #OutputObject field through data feeds.  It can be written to the target object if the
-#ObjectMode is set to READ_WRITE.  Finally it can be received through C style callbacks if the
-#Incoming field is set.
+the #OutputObject field through data feeds.  It can be written to the target object if the #ObjectMode is set to
+READ_WRITE.  Finally it can be received through C style callbacks if the #Incoming field is set.
 
 On completion of an HTTP request, the #Deactivate() action is called, regardless of the level of success.
 
@@ -1035,11 +1022,8 @@ HostNotFound: DNS resolution of the domain name in the URI failed.
 
 static ERROR parse_file(objHTTP *Self, STRING Buffer, LONG Size)
 {
-   LONG pos, i;
-   UBYTE quote;
-
-   pos = Self->InputPos;
-   quote = 0;
+   LONG i;
+   LONG pos = Self->InputPos;
    for (i=0; (i < Size-1) AND (Self->InputFile[pos]);) {
       if (Self->InputFile[pos] IS '"') {
          pos++;
@@ -1065,15 +1049,14 @@ static ERROR parse_file(objHTTP *Self, STRING Buffer, LONG Size)
 
 static ERROR HTTP_Activate(objHTTP *Self, APTR Void)
 {
-   UBYTE cmd[2048];
+   parasol::Log log;
+   char cmd[2048];
    LONG len, resume_from, i;
    ERROR result;
 
-   if (!(Self->Head.Flags & NF_INITIALISED)) {
-      return PostError(ERR_NotInitialised);
-   }
+   if (!(Self->Head.Flags & NF_INITIALISED)) return log.warning(ERR_NotInitialised);
 
-   LogBranch("Host: %s, Port: %d, Path: %s, Proxy: %s, SSL: %d", Self->Host, Self->Port, Self->Path, Self->ProxyServer, (Self->Flags & HTF_SSL) ? 1 : 0);
+   log.branch("Host: %s, Port: %d, Path: %s, Proxy: %s, SSL: %d", Self->Host, Self->Port, Self->Path, Self->ProxyServer, (Self->Flags & HTF_SSL) ? 1 : 0);
 
    if (Self->TimeoutManager) { UpdateTimer(Self->TimeoutManager, 0); Self->TimeoutManager = 0; }
 
@@ -1110,7 +1093,7 @@ static ERROR HTTP_Activate(objHTTP *Self, APTR Void)
       // SSL tunnelling is required.  Send a CONNECT request to the proxy and
       // then we will follow this up with the actual HTTP requests.
 
-      MSG("SSL tunnelling is required.");
+      log.trace("SSL tunnelling is required.");
 
       len = StrFormat(cmd, sizeof(cmd), "CONNECT %s:%d HTTP/1.1%sHost: %s%sUser-Agent: %s%sProxy-Connection: keep-alive%sConnection: keep-alive%s", Self->Host, Self->Port, CRLF, Self->Host, CRLF, Self->UserAgent, CRLF, CRLF, CRLF);
       Self->Tunneling = TRUE;
@@ -1131,8 +1114,7 @@ static ERROR HTTP_Activate(objHTTP *Self, APTR Void)
             }
          }
          else {
-            LogErrorMsg("HTTP COPY request requires a destination path.");
-            LogReturn();
+            log.warning("HTTP COPY request requires a destination path.");
             SET_ERROR(Self, ERR_FieldNotSet);
             return Self->Error;
          }
@@ -1145,7 +1127,6 @@ static ERROR HTTP_Activate(objHTTP *Self, APTR Void)
          if (Self->Index) len += StrFormat(cmd+len, sizeof(cmd)-len, "Range: bytes=" PF64() "-%s", Self->Index, CRLF);
       }
       else if (Self->Method IS HTM_LOCK) {
-
          len = 0;
       }
       else if (Self->Method IS HTM_MK_COL) {
@@ -1160,8 +1141,7 @@ static ERROR HTTP_Activate(objHTTP *Self, APTR Void)
             len += StrFormat(cmd+len, sizeof(cmd)-len, "Destination: http://%s/%s%s", Self->Host, dest, CRLF);
          }
          else {
-            LogErrorMsg("HTTP MOVE request requires a destination path.");
-            LogReturn();
+            log.warning("HTTP MOVE request requires a destination path.");
             SET_ERROR(Self, ERR_FieldNotSet);
             return Self->Error;
          }
@@ -1173,12 +1153,12 @@ static ERROR HTTP_Activate(objHTTP *Self, APTR Void)
          else len = set_http_method(Self, cmd, sizeof(cmd), "OPTIONS");
       }
       else if ((Self->Method IS HTM_POST) OR (Self->Method IS HTM_PUT)) {
-         MSG("POST/PUT request being processed.");
+         log.trace("POST/PUT request being processed.");
 
          Self->Chunked = FALSE;
 
          if ((!(Self->Flags & HTF_NO_HEAD)) AND ((Self->SecurePath) OR (Self->State IS HGS_AUTHENTICATING))) {
-            MSG("Executing HEAD statement for authentication.");
+            log.trace("Executing HEAD statement for authentication.");
             len = set_http_method(Self, cmd, sizeof(cmd), "HEAD");
             SetLong(Self, FID_State, HGS_AUTHENTICATING);
          }
@@ -1222,9 +1202,8 @@ static ERROR HTTP_Activate(objHTTP *Self, APTR Void)
                   else Self->ContentLength = Self->Size;
                }
                else {
-                  LogReturn();
                   SET_ERROR(Self, ERR_File);
-                  return PostError(Self->Error);
+                  return log.warning(Self->Error);
                }
             }
             else if (Self->InputObjectID) {
@@ -1239,8 +1218,7 @@ static ERROR HTTP_Activate(objHTTP *Self, APTR Void)
                else Self->ContentLength = Self->Size;
             }
             else {
-               LogErrorMsg("No data source specified for POST/PUT method.");
-               LogReturn();
+               log.warning("No data source specified for POST/PUT method.");
                SET_ERROR(Self, ERR_FieldNotSet);
                return Self->Error;
             }
@@ -1251,7 +1229,7 @@ static ERROR HTTP_Activate(objHTTP *Self, APTR Void)
                len += StrFormat(cmd+len, sizeof(cmd)-len, "Content-length: " PF64() "\r\n", Self->ContentLength);
             }
             else {
-               LogMsg("Content-length not defined for POST/PUT (transfer will be streamed).");
+               log.msg("Content-length not defined for POST/PUT (transfer will be streamed).");
 
                // Using chunked encoding for post/put will help the server manage streaming
                // uploads, and may even be of help when the content length is known.
@@ -1263,7 +1241,7 @@ static ERROR HTTP_Activate(objHTTP *Self, APTR Void)
             }
 
             if (Self->ContentType) {
-               MSG("User content type: %s", Self->ContentType);
+               log.trace("User content type: %s", Self->ContentType);
                len += StrFormat(cmd+len, sizeof(cmd)-len, "Content-type: %s\r\n", Self->ContentType);
             }
             else if (Self->Method IS HTM_POST) {
@@ -1277,8 +1255,7 @@ static ERROR HTTP_Activate(objHTTP *Self, APTR Void)
 
       }
       else {
-         LogErrorMsg("HTTP method no. %d not understood.", Self->Method);
-         LogReturn();
+         log.warning("HTTP method no. %d not understood.", Self->Method);
          SET_ERROR(Self, ERR_Failed);
          return Self->Error;
       }
@@ -1292,13 +1269,11 @@ static ERROR HTTP_Activate(objHTTP *Self, APTR Void)
             UBYTE nonce_count[9] = "00000001";
             HASHHEX HA1, HA2 = "", response;
 
-            for (i=0; i < 8; i++) {
-               Self->AuthCNonce[i] = '0' + RandomNumber(10);
-            }
+            for (i=0; i < 8; i++) Self->AuthCNonce[i] = '0' + RandomNumber(10);
             Self->AuthCNonce[i] = 0;
 
             digest_calc_ha1(Self, HA1);
-            digest_calc_response(Self, cmd, nonce_count, HA1, HA2, response);
+            digest_calc_response(Self, cmd, (CSTRING)nonce_count, HA1, HA2, response);
 
             len += StrCopy("Authorization: Digest ", cmd+len, sizeof(cmd)-len);
             len += StrFormat(cmd+len, sizeof(cmd)-len, "username=\"%s\", realm=\"%s\", nonce=\"%s\", uri=\"/%s\", qop=%s, nc=%s, cnonce=\"%s\", response=\"%s\"",
@@ -1309,7 +1284,7 @@ static ERROR HTTP_Activate(objHTTP *Self, APTR Void)
             len += StrCopy("\r\n", cmd+len, sizeof(cmd)-len);
          }
          else {
-            UBYTE buffer[256];
+            char buffer[256];
 
             len += StrCopy("Authorization: Basic ", cmd+len, sizeof(cmd)-len);
             StrFormat(buffer, sizeof(buffer), "%s:%s", Self->Username, Self->Password);
@@ -1332,12 +1307,12 @@ static ERROR HTTP_Activate(objHTTP *Self, APTR Void)
          CSTRING key = NULL, value;
          LONG value_len;
          while (!VarIterate(Self->Headers, key, &key, &value, &value_len)) {
-            MSG("Custom header: %s: %s", key, value);
+            log.trace("Custom header: %s: %s", key, value);
             len += StrFormat(cmd+len, sizeof(cmd)-len, "%s: %s\r\n", key, value);
          }
       }
 
-      if (Self->Flags & HTF_DEBUG) LogMsg("HTTP REQUEST HEADER\n%s", cmd);
+      if (Self->Flags & HTF_DEBUG) log.msg("HTTP REQUEST HEADER\n%s", cmd);
    }
 
    // Terminating line feed
@@ -1346,10 +1321,9 @@ static ERROR HTTP_Activate(objHTTP *Self, APTR Void)
 
    if (!Self->Socket) {
       if (NewObject(ID_NETSOCKET, NF_INTEGRAL, &Self->Socket) != ERR_Okay) {
-         LogErrorMsg("Failed to create NetSocket.");
-         LogReturn();
+         log.warning("Failed to create NetSocket.");
          SET_ERROR(Self, ERR_NewObject);
-         return PostError(Self->Error);
+         return log.warning(Self->Error);
       }
 
       SetFields(Self->Socket,
@@ -1365,22 +1339,21 @@ static ERROR HTTP_Activate(objHTTP *Self, APTR Void)
       }
 
       if (acInit(Self->Socket) != ERR_Okay) {
-         LogReturn();
          SET_ERROR(Self, ERR_Init);
-         return PostError(Self->Error);
+         return log.warning(Self->Error);
       }
    }
    else {
-      MSG("Re-using existing socket/server connection.");
+      log.trace("Re-using existing socket/server connection.");
 
-      SetPointer(Self->Socket, FID_Incoming, &socket_incoming);
-      SetPointer(Self->Socket, FID_Feedback, &socket_feedback);
+      SetPointer(Self->Socket, FID_Incoming, (APTR)&socket_incoming);
+      SetPointer(Self->Socket, FID_Feedback, (APTR)&socket_feedback);
    }
 
    if (!Self->Tunneling) {
       if (Self->State != HGS_AUTHENTICATING) {
          if ((Self->Method IS HTM_PUT) OR (Self->Method IS HTM_POST)) {
-            SetPointer(Self->Socket, FID_Outgoing, &socket_outgoing);
+            SetPointer(Self->Socket, FID_Outgoing, (APTR)&socket_outgoing);
          }
          else SetPointer(Self->Socket, FID_Outgoing, NULL);
       }
@@ -1397,33 +1370,26 @@ static ERROR HTTP_Activate(objHTTP *Self, APTR Void)
             if (Self->TimeoutManager) UpdateTimer(Self->TimeoutManager, Self->ConnectTimeout);
             else {
                FUNCTION callback;
-               SET_FUNCTION_STDC(callback, &timeout_manager);
+               SET_FUNCTION_STDC(callback, (APTR)&timeout_manager);
                SubscribeTimer(Self->ConnectTimeout, &callback, &Self->TimeoutManager);
             }
 
-            LogReturn();
             return ERR_Okay;
          }
          else if (result IS ERR_HostNotFound) {
-            LogReturn();
             SET_ERROR(Self, ERR_HostNotFound);
-            return PostError(Self->Error);
+            return log.warning(Self->Error);
          }
          else {
-            LogReturn();
             SET_ERROR(Self, ERR_Failed);
-            return PostError(Self->Error);
+            return log.warning(Self->Error);
          }
       }
-      else {
-         LogReturn();
-         return ERR_Okay;
-      }
+      else return ERR_Okay;
    }
    else {
-      LogReturn();
       SET_ERROR(Self, ERR_Write);
-      return PostError(Self->Error);
+      return log.warning(Self->Error);
    }
 }
 
@@ -1443,11 +1409,11 @@ Active HTTP requests can be manually cancelled by calling the Deactivate action 
 
 static ERROR HTTP_Deactivate(objHTTP *Self, APTR Void)
 {
-   LogBranch("Closing connection to server & signalling children.");
+   parasol::Log log;
 
-   if (Self->State < HGS_COMPLETED) {
-      SetLong(Self, FID_State, HGS_TERMINATED);
-   }
+   log.branch("Closing connection to server & signalling children.");
+
+   if (Self->State < HGS_COMPLETED) SetLong(Self, FID_State, HGS_TERMINATED);
 
    // Closing files is important for dropping the file locks
 
@@ -1457,7 +1423,6 @@ static ERROR HTTP_Deactivate(objHTTP *Self, APTR Void)
    // Free up the outgoing buffer since it is only needed during transfers and will be reallocated as necessary.
 
    if (Self->Buffer) { FreeResource(Self->Buffer); Self->Buffer = NULL; }
-
    if (Self->TimeoutManager) { UpdateTimer(Self->TimeoutManager, 0); Self->TimeoutManager = 0; }
 
    if (Self->Socket) {
@@ -1466,7 +1431,7 @@ static ERROR HTTP_Deactivate(objHTTP *Self, APTR Void)
       // server being processed when we don't want it.
 
       if ((Self->Socket->State IS NTC_DISCONNECTED) OR (Self->State IS HGS_TERMINATED)) {
-         LogMsg("Terminating socket (disconnected).");
+         log.msg("Terminating socket (disconnected).");
          SetPointer(Self->Socket, FID_Feedback, NULL);
          acFree(Self->Socket);
          Self->Socket = NULL;
@@ -1474,7 +1439,6 @@ static ERROR HTTP_Deactivate(objHTTP *Self, APTR Void)
       }
    }
 
-   LogReturn();
    return ERR_Okay;
 }
 
@@ -1493,8 +1457,8 @@ static ERROR HTTP_Free(objHTTP *Self, APTR Args)
 
    if (Self->TimeoutManager) { UpdateTimer(Self->TimeoutManager, 0); Self->TimeoutManager = 0; }
 
-   if (Self->flInput)     { acFree(Self->flInput);         Self->flInput = NULL; }
-   if (Self->flOutput)    { acFree(Self->flOutput);        Self->flOutput = NULL; }
+   if (Self->flInput)     { acFree(Self->flInput);           Self->flInput = NULL; }
+   if (Self->flOutput)    { acFree(Self->flOutput);          Self->flOutput = NULL; }
    if (Self->Buffer)      { FreeResource(Self->Buffer);      Self->Buffer = NULL; }
    if (Self->Chunk)       { FreeResource(Self->Chunk);       Self->Chunk = NULL; }
    if (Self->Path)        { FreeResource(Self->Path);        Self->Path = NULL; }
@@ -1513,8 +1477,7 @@ static ERROR HTTP_Free(objHTTP *Self, APTR Args)
    if (Self->ProxyServer) { FreeResource(Self->ProxyServer); Self->ProxyServer = NULL; }
 
    if (Self->Password) {
-      LONG i;
-      for (i=0; Self->Password[i]; i++) Self->Password[i] = 0xff;
+      for (LONG i=0; Self->Password[i]; i++) Self->Password[i] = 0xff;
       FreeResource(Self->Password);
       Self->Password = NULL;
    }
@@ -1551,6 +1514,8 @@ static ERROR HTTP_GetVar(objHTTP *Self, struct acGetVar *Args)
 
 static ERROR HTTP_Init(objHTTP *Self, APTR Args)
 {
+   parasol::Log log;
+
    if (!Self->ProxyDefined) {
       if (glProxy) {
          if (!prxFind(glProxy, Self->Port, TRUE)) {
@@ -1558,12 +1523,12 @@ static ERROR HTTP_Init(objHTTP *Self, APTR Args)
             Self->ProxyServer = StrClone(glProxy->Server);
             Self->ProxyPort   = glProxy->ServerPort; // NB: Default is usually 8080
 
-            LogMsg("Using preset proxy server '%s:%d'", Self->ProxyServer, Self->ProxyPort);
+            log.msg("Using preset proxy server '%s:%d'", Self->ProxyServer, Self->ProxyPort);
          }
       }
-      else LogMsg("Global proxy configuration object is missing.");
+      else log.msg("Global proxy configuration object is missing.");
    }
-   else LogMsg("Proxy pre-defined by user.");
+   else log.msg("Proxy pre-defined by user.");
 
    return ERR_Okay;
 }
@@ -1578,8 +1543,8 @@ static ERROR HTTP_NewObject(objHTTP *Self, APTR Args)
    Self->ConnectTimeout = 10.0;
    Self->Datatype       = DATA_RAW;
    Self->BufferSize     = 16 * 1024;
-   StrCopy("auth", Self->AuthQOP, sizeof(Self->AuthQOP));
-   StrCopy("md5", Self->AuthAlgorithm, sizeof(Self->AuthAlgorithm));
+   StrCopy("auth", (STRING)Self->AuthQOP, sizeof(Self->AuthQOP));
+   StrCopy("md5", (STRING)Self->AuthAlgorithm, sizeof(Self->AuthAlgorithm));
    return ERR_Okay;
 }
 
@@ -1818,7 +1783,9 @@ An alternative is to set the #InputObject for abstracting the data source.
 
 static ERROR SET_InputFile(objHTTP *Self, CSTRING Value)
 {
-   MSG("InputFile: %.80s", Value);
+   parasol::Log log;
+
+   log.trace("InputFile: %.80s", Value);
 
    if (Self->InputFile) { FreeResource(Self->InputFile);  Self->InputFile = NULL; }
 
@@ -1829,8 +1796,7 @@ static ERROR SET_InputFile(objHTTP *Self, CSTRING Value)
 
       // Check if the path contains multiple inputs, separated by the pipe symbol.
 
-      LONG i;
-      for (i=0; Self->InputFile[i]; i++) {
+      for (LONG i=0; Self->InputFile[i]; i++) {
          if (Self->InputFile[i] IS '"') {
             i++;
             while ((Self->InputFile[i]) AND (Self->InputFile[i] != '"')) i++;
@@ -1871,12 +1837,14 @@ URI string is inconvenient.
 
 static ERROR GET_Location(objHTTP *Self, STRING *Value)
 {
+   parasol::Log log;
+
    Self->AuthRetries = 0; // Reset the retry counter
 
    if (Self->URI) { FreeResource(Self->URI); Self->URI = NULL; }
 
-   LONG len = 7 + StrLength(Self->Host) + 16 + StrLength(Self->Path) + 1;
    OBJECTPTR context = SetContext(Self);
+   LONG len = 7 + StrLength(Self->Host) + 16 + StrLength(Self->Path) + 1;
    ERROR error = AllocMemory(len, MEM_STRING|MEM_NO_CLEAR, &Self->URI, NULL);
    SetContext(context);
 
@@ -1893,12 +1861,14 @@ static ERROR GET_Location(objHTTP *Self, STRING *Value)
    }
    else {
       *Value = NULL;
-      return PostError(ERR_AllocMemory);
+      return log.warning(ERR_AllocMemory);
    }
 }
 
 static ERROR SET_Location(objHTTP *Self, CSTRING Value)
 {
+   parasol::Log log;
+
    if (Self->Head.Flags & NF_INITIALISED) {
       if (Self->TimeoutManager) { UpdateTimer(Self->TimeoutManager, 0); Self->TimeoutManager = 0; }
 
@@ -1910,7 +1880,7 @@ static ERROR SET_Location(objHTTP *Self, CSTRING Value)
          Self->Socket = NULL;
       }
 
-      LogMsg("%s", Value);
+      log.msg("%s", Value);
    }
 
    CSTRING str = Value;
@@ -2168,9 +2138,7 @@ that the proxy server uses to receive requests, see the #ProxyPort field.
 static ERROR SET_ProxyServer(objHTTP *Self, CSTRING Value)
 {
    if (Self->ProxyServer) { FreeResource(Self->ProxyServer); Self->ProxyServer = NULL; }
-
    if ((Value) AND (Value[0])) Self->ProxyServer = StrClone(Value);
-
    Self->ProxyDefined = TRUE;
    return ERR_Okay;
 }
@@ -2234,9 +2202,11 @@ On completion of an HTTP request, the state will be changed to either COMPLETED 
 
 static ERROR SET_State(objHTTP *Self, LONG Value)
 {
-   if ((Value < 0) OR (Value >= HGS_END)) return PostError(ERR_OutOfRange);
+   parasol::Log log;
 
-   if (Self->Flags & HTF_DEBUG) LogMsg("New State: %s, Currently: %s", clHTTPState[Value].Name, clHTTPState[Self->State].Name);
+   if ((Value < 0) OR (Value >= HGS_END)) return log.warning(ERR_OutOfRange);
+
+   if (Self->Flags & HTF_DEBUG) log.msg("New State: %s, Currently: %s", clHTTPState[Value].Name, clHTTPState[Self->State].Name);
 
    if ((Value >= HGS_COMPLETED) AND (Self->State < HGS_COMPLETED)) {
       Self->State = Value;
@@ -2246,13 +2216,13 @@ static ERROR SET_State(objHTTP *Self, LONG Value)
 
    if (Self->StateChanged.Type != CALL_NONE) {
       if (Self->StateChanged.Type IS CALL_STDC) {
-         ERROR (*routine)(struct rkHTTP *, LONG) = Self->StateChanged.StdC.Routine;
+         auto routine = (ERROR (*)(rkHTTP *, LONG))Self->StateChanged.StdC.Routine;
          Self->Error = routine(Self, Self->State);
       }
       else if (Self->StateChanged.Type IS CALL_SCRIPT) {
          OBJECTPTR script;
          if ((script = Self->StateChanged.Script.Script)) {
-            const struct ScriptArg args[] = {
+            const ScriptArg args[] = {
                { "HTTP", FD_OBJECTID, { .Long = Self->Head.UniqueID } },
                { "State", FD_LONG, { .Long = Self->State } }
             };
@@ -2266,9 +2236,8 @@ static ERROR SET_State(objHTTP *Self, LONG Value)
       }
 
       if ((Self->Error IS ERR_Terminate) AND (Self->State != HGS_TERMINATED) AND (Self->State != HGS_COMPLETED)) {
-         LogBranch("State changing to HGS_TERMINATED (terminate message received).");
-            SET_State(Self, HGS_TERMINATED);
-         LogReturn();
+         log.branch("State changing to HGS_TERMINATED (terminate message received).");
+         SET_State(Self, HGS_TERMINATED);
       }
    }
 
@@ -2370,14 +2339,16 @@ static CSTRING adv_crlf(CSTRING String)
 
 static ERROR parse_response(objHTTP *Self, STRING Buffer)
 {
+   parasol::Log log;
+
    if (Self->Args) { FreeResource(Self->Args); Self->Args = NULL; }
 
-   if (Self->Flags & HTF_DEBUG) LogMsg("HTTP RESPONSE HEADER\n%s", Buffer);
+   if (Self->Flags & HTF_DEBUG) log.msg("HTTP RESPONSE HEADER\n%s", Buffer);
 
    // First line: HTTP/1.1 200 OK
 
    if (StrCompare("HTTP/", Buffer, 5, 0) != ERR_Okay) {
-      LogErrorMsg("Invalid response header, missing 'HTTP/'");
+      log.warning("Invalid response header, missing 'HTTP/'");
       return ERR_InvalidHTTPResponse;
    }
 
@@ -2401,7 +2372,7 @@ static ERROR parse_response(objHTTP *Self, STRING Buffer)
 
    // Parse response fields
 
-   LogF("parse_response:","HTTP response header received, status code %d", Self->Status);
+   log.msg("HTTP response header received, status code %d", Self->Status);
 
    char field[60], value[300];
    while (*str) {
@@ -2443,7 +2414,9 @@ static ERROR parse_response(objHTTP *Self, STRING Buffer)
 
 static ERROR process_data(objHTTP *Self, APTR Buffer, LONG Length)
 {
-   FMSG("process_data()","Buffer: %p, Length: %d", Buffer, Length);
+   parasol::Log log(__FUNCTION__);
+
+   log.trace("Buffer: %p, Length: %d", Buffer, Length);
 
    if (!Length) return ERR_Okay;
 
@@ -2477,21 +2450,20 @@ static ERROR process_data(objHTTP *Self, APTR Buffer, LONG Length)
    }
 
    if (Self->Incoming.Type != CALL_NONE) {
-      FMSG("process_data","Incoming callback is set.");
+      log.trace("Incoming callback is set.");
 
       if (Self->Incoming.Type IS CALL_STDC) {
-         ERROR (*routine)(struct rkHTTP *, APTR, LONG);
-         routine = Self->Incoming.StdC.Routine;
+         auto routine = (ERROR (*)(rkHTTP *, APTR, LONG))Self->Incoming.StdC.Routine;
          Self->Error = routine(Self, Buffer, Length);
       }
       else if (Self->Incoming.Type IS CALL_SCRIPT) {
          // For speed, the client will receive a direct pointer to the buffer memory via the 'mem' interface.
 
-         FMSG("process_data","Calling script procedure " PF64(), Self->Incoming.Script.ProcedureID);
+         log.trace("Calling script procedure " PF64(), Self->Incoming.Script.ProcedureID);
 
          OBJECTPTR script;
          if ((script = Self->Incoming.Script.Script)) {
-            const struct ScriptArg args[] = {
+            const ScriptArg args[] = {
                { "HTTP",       FD_OBJECTPTR, { .Address = Self } },
                { "Buffer",     FD_PTRBUFFER, { .Address = Buffer } },
                { "BufferSize", FD_LONG|FD_BUFSIZE, { .Long = Length } }
@@ -2505,9 +2477,9 @@ static ERROR process_data(objHTTP *Self, APTR Buffer, LONG Length)
       }
 
       if (Self->Error IS ERR_Terminate) {
-         LogBranch("State changing to HGS_TERMINATED (terminate message received).");
-            SetLong(Self, FID_State, HGS_TERMINATED);
-         LogReturn();
+         parasol::Log log(__FUNCTION__);
+         log.branch("State changing to HGS_TERMINATED (terminate message received).");
+         SetLong(Self, FID_State, HGS_TERMINATED);
       }
    }
 
@@ -2618,32 +2590,26 @@ static void digest_calc_ha1(objHTTP *Self, HASHHEX SessionKey)
 
    MD5Init(&md5);
 
-   if (Self->Username) MD5Update(&md5, Self->Username, StrLength(Self->Username));
+   if (Self->Username) MD5Update(&md5, (UBYTE *)Self->Username, StrLength(Self->Username));
 
-   MD5Update(&md5, ":", 1);
+   MD5Update(&md5, (UBYTE *)":", 1);
 
-   if (Self->Realm) MD5Update(&md5, Self->Realm, StrLength(Self->Realm));
+   if (Self->Realm) MD5Update(&md5, (UBYTE *)Self->Realm, StrLength(Self->Realm));
 
-   MD5Update(&md5, ":", 1);
+   MD5Update(&md5, (UBYTE *)":", 1);
 
-   if (Self->Password) MD5Update(&md5, Self->Password, StrLength(Self->Password));
+   if (Self->Password) MD5Update(&md5, (UBYTE *)Self->Password, StrLength(Self->Password));
 
-   MD5Final(HA1, &md5);
+   MD5Final((UBYTE *)HA1, &md5);
 
-   if (!StrMatch(Self->AuthAlgorithm, "md5-sess")) {
+   if (!StrMatch((CSTRING)Self->AuthAlgorithm, "md5-sess")) {
       MD5Init(&md5);
-
-      MD5Update(&md5, HA1, HASHLEN);
-
-      MD5Update(&md5, ":", 1);
-
-      if (Self->AuthNonce) MD5Update(&md5, Self->AuthNonce, StrLength(Self->AuthNonce));
-
-      MD5Update(&md5, ":", 1);
-
-      MD5Update(&md5, Self->AuthCNonce, StrLength(Self->AuthCNonce));
-
-      MD5Final(HA1, &md5);
+      MD5Update(&md5, (UBYTE *)HA1, HASHLEN);
+      MD5Update(&md5, (UBYTE *)":", 1);
+      if (Self->AuthNonce) MD5Update(&md5, (UBYTE *)Self->AuthNonce, StrLength((CSTRING)Self->AuthNonce));
+      MD5Update(&md5, (UBYTE *)":", 1);
+      MD5Update(&md5, (UBYTE *)Self->AuthCNonce, StrLength((CSTRING)Self->AuthCNonce));
+      MD5Final((UBYTE *)HA1, &md5);
    }
 
    writehex(HA1, SessionKey);
@@ -2654,6 +2620,7 @@ static void digest_calc_ha1(objHTTP *Self, HASHHEX SessionKey)
 
 static void digest_calc_response(objHTTP *Self, CSTRING Request, CSTRING NonceCount, HASHHEX HA1, HASHHEX HEntity, HASHHEX Response)
 {
+   parasol::Log log;
    MD5_CTX md5;
    HASH HA2;
    HASH RespHash;
@@ -2665,58 +2632,59 @@ static void digest_calc_response(objHTTP *Self, CSTRING Request, CSTRING NonceCo
    MD5Init(&md5);
 
    for (i=0; Request[i] > 0x20; i++);
-   MD5Update(&md5, Request, i); // Compute MD5 from the name of the HTTP method that we are calling
+   MD5Update(&md5, (UBYTE *)Request, i); // Compute MD5 from the name of the HTTP method that we are calling
    Request += i;
    while ((*Request) AND (*Request <= 0x20)) Request++;
 
-   MD5Update(&md5, ":", 1);
+   MD5Update(&md5, (UBYTE *)":", 1);
 
    for (i=0; Request[i] > 0x20; i++);
-   MD5Update(&md5, Request, i); // Compute MD5 from the path of the HTTP method that we are calling
+   MD5Update(&md5, (UBYTE *)Request, i); // Compute MD5 from the path of the HTTP method that we are calling
 
-   if (!StrMatch(Self->AuthQOP, "auth-int")) {
-      MD5Update(&md5, ":", 1);
-      MD5Update(&md5, HEntity, HASHHEXLEN);
+   if (!StrMatch((CSTRING)Self->AuthQOP, "auth-int")) {
+      MD5Update(&md5, (UBYTE *)":", 1);
+      MD5Update(&md5, (UBYTE *)HEntity, HASHHEXLEN);
    }
 
-   MD5Final(HA2, &md5);
+   MD5Final((UBYTE *)HA2, &md5);
    writehex(HA2, HA2Hex);
 
    // Calculate response:  HA1Hex:Nonce:NonceCount:CNonce:auth:HA2Hex
 
    MD5Init(&md5);
-   MD5Update(&md5, HA1, HASHHEXLEN);
-   MD5Update(&md5, ":", 1);
-   MD5Update(&md5, Self->AuthNonce, StrLength(Self->AuthNonce));
-   MD5Update(&md5, ":", 1);
+   MD5Update(&md5, (UBYTE *)HA1, HASHHEXLEN);
+   MD5Update(&md5, (UBYTE *)":", 1);
+   MD5Update(&md5, (UBYTE *)Self->AuthNonce, StrLength((CSTRING)Self->AuthNonce));
+   MD5Update(&md5, (UBYTE *)":", 1);
 
    if (Self->AuthQOP[0]) {
-      MD5Update(&md5, NonceCount, StrLength(NonceCount));
-      MD5Update(&md5, ":", 1);
-      MD5Update(&md5, Self->AuthCNonce, StrLength(Self->AuthCNonce));
-      MD5Update(&md5, ":", 1);
-      MD5Update(&md5, Self->AuthQOP, StrLength(Self->AuthQOP));
-      MD5Update(&md5, ":", 1);
+      MD5Update(&md5, (UBYTE *)NonceCount, StrLength((CSTRING)NonceCount));
+      MD5Update(&md5, (UBYTE *)":", 1);
+      MD5Update(&md5, (UBYTE *)Self->AuthCNonce, StrLength((CSTRING)Self->AuthCNonce));
+      MD5Update(&md5, (UBYTE *)":", 1);
+      MD5Update(&md5, (UBYTE *)Self->AuthQOP, StrLength((CSTRING)Self->AuthQOP));
+      MD5Update(&md5, (UBYTE *)":", 1);
    }
 
-   MD5Update(&md5, HA2Hex, HASHHEXLEN);
-   MD5Final(RespHash, &md5);
+   MD5Update(&md5, (UBYTE *)HA2Hex, HASHHEXLEN);
+   MD5Final((UBYTE *)RespHash, &md5);
    writehex(RespHash, Response);
 
-   FMSG("calc_response:","%s:%s:%s:%s:%s:%s", HA1, Self->AuthNonce, NonceCount, Self->AuthCNonce, Self->AuthQOP, HA2Hex);
+   log.trace("%s:%s:%s:%s:%s:%s", HA1, Self->AuthNonce, NonceCount, Self->AuthCNonce, Self->AuthQOP, HA2Hex);
 }
 
 //****************************************************************************
 
 static ERROR write_socket(objHTTP *Self, APTR Buffer, LONG Length, LONG *Result)
 {
+   parasol::Log log(__FUNCTION__);
+
    if (Length > 0) {
-      //FMSG("write_socket:","Length: %d", Length);
+      //log.trace("Length: %d", Length);
 
       if (Self->Flags & HTF_DEBUG_SOCKET) {
-         LONG i;
-         LogMsg("SOCKET-OUTGOING: LEN: %d", Length);
-         for (i=0; i < Length; i++) if ((((UBYTE *)Buffer)[i] < 128) AND (((UBYTE *)Buffer)[i] >= 10)) {
+         log.msg("SOCKET-OUTGOING: LEN: %d", Length);
+         for (LONG i=0; i < Length; i++) if ((((UBYTE *)Buffer)[i] < 128) AND (((UBYTE *)Buffer)[i] >= 10)) {
             printf("%c", ((STRING)Buffer)[i]);
          }
          else printf("?");
@@ -2727,7 +2695,7 @@ static ERROR write_socket(objHTTP *Self, APTR Buffer, LONG Length, LONG *Result)
    }
    else {
       *Result = 0;
-      FMSG("@write_socket:","Warning - empty write_socket() call.");
+      log.traceWarning("Warning - empty write_socket() call.");
       return ERR_Okay;
    }
 }
@@ -2741,8 +2709,9 @@ static ERROR write_socket(objHTTP *Self, APTR Buffer, LONG Length, LONG *Result)
 
 static ERROR timeout_manager(objHTTP *Self, LARGE Elapsed, LARGE CurrentTime)
 {
-   LogErrorMsg("Timeout detected - disconnecting from server (connect %.2fs, data %.2fs).", Self->ConnectTimeout, Self->DataTimeout);
+   parasol::Log log(__FUNCTION__);
 
+   log.warning("Timeout detected - disconnecting from server (connect %.2fs, data %.2fs).", Self->ConnectTimeout, Self->DataTimeout);
    Self->TimeoutManager = 0;
    SET_ERROR(Self, ERR_TimeOut);
    SetLong(Self, FID_State, HGS_TERMINATED);
@@ -2754,21 +2723,19 @@ static ERROR timeout_manager(objHTTP *Self, LARGE Elapsed, LARGE CurrentTime)
 
 static ERROR check_incoming_end(objHTTP *Self)
 {
+   parasol::Log log(__FUNCTION__);
+
    if (Self->State IS HGS_AUTHENTICATING) return ERR_False;
    if (Self->State >= HGS_COMPLETED) return ERR_True;
 
    if ((Self->ContentLength != -1) AND (Self->Index >= Self->ContentLength)) {
-      FMSG("check_incoming_end()","Transmission over.");
-
-      if (Self->Index > Self->ContentLength) {
-         LogErrorMsg("Warning: received too much content.");
-      }
-
+      log.trace("Transmission over.");
+      if (Self->Index > Self->ContentLength) log.warning("Warning: received too much content.");
       SetLong(Self, FID_State, HGS_COMPLETED);
       return ERR_True;
    }
    else {
-      FMSG("check_incoming_end()","Transmission continuing.");
+      log.trace("Transmission continuing.");
       return ERR_False;
    }
 }
@@ -2792,15 +2759,16 @@ static LONG set_http_method(objHTTP *Self, STRING Buffer, LONG Size, CSTRING Met
 
 static void socket_feedback(objNetSocket *Socket, LONG State)
 {
+   parasol::Log log(__FUNCTION__);
    objHTTP *Self = (objHTTP *)CurrentContext();
 
    if (State IS NTC_CONNECTING) {
-      LogMsg("Waiting for connection...");
+      log.msg("Waiting for connection...");
 
       if (Self->TimeoutManager) UpdateTimer(Self->TimeoutManager, Self->ConnectTimeout);
       else {
          FUNCTION callback;
-         SET_FUNCTION_STDC(callback, &timeout_manager);
+         SET_FUNCTION_STDC(callback, (APTR)&timeout_manager);
          SubscribeTimer(Self->ConnectTimeout, &callback, &Self->TimeoutManager);
       }
 
@@ -2810,17 +2778,15 @@ static void socket_feedback(objNetSocket *Socket, LONG State)
       // The GET request has been pre-written to the socket on its creation, so we don't need to do anything further
       // here.
 
-      LogMsg("Connection confirmed.");
-
+      log.msg("Connection confirmed.");
       if (Self->TimeoutManager) { UpdateTimer(Self->TimeoutManager, 0); Self->TimeoutManager = 0; }
-
       Self->Connecting = FALSE;
    }
    else if (State IS NTC_DISCONNECTED) {
       // Socket disconnected.  The HTTP state must change to either COMPLETED (completed naturally) or TERMINATED
       // (abnormal termination) to correctly inform the user as to what has happened.
 
-      LogMsg("Disconnected from socket while in state %s.", clHTTPState[Self->State].Name);
+      log.msg("Disconnected from socket while in state %s.", clHTTPState[Self->State].Name);
 
       if (Self->TimeoutManager) { UpdateTimer(Self->TimeoutManager, 0); Self->TimeoutManager = 0; }
 
@@ -2828,9 +2794,8 @@ static void socket_feedback(objNetSocket *Socket, LONG State)
          Self->Connecting = FALSE;
 
          SET_ERROR(Self, Socket->Error);
-         LogBranch("Deactivating (connect failure message received).");
-            SetField(Self, FID_State, HGS_TERMINATED);
-         LogReturn();
+         log.branch("Deactivating (connect failure message received).");
+         SetField(Self, FID_State, HGS_TERMINATED);
          return;
       }
       else Self->Connecting = FALSE;
@@ -2840,9 +2805,7 @@ static void socket_feedback(objNetSocket *Socket, LONG State)
       }
       else if (Self->State IS HGS_READING_HEADER) {
          SET_ERROR(Self, Socket->Error ? Socket->Error : ERR_Disconnected);
-
-         MSG("Received broken header as follows:\n%s", Self->Response);
-
+         log.trace("Received broken header as follows:\n%s", Self->Response);
          SetField(Self, FID_State, HGS_TERMINATED);
       }
       else if (Self->State IS HGS_SEND_COMPLETE) {
@@ -2855,9 +2818,8 @@ static void socket_feedback(objNetSocket *Socket, LONG State)
 
          // If the socket is not active, then the disconnection is a result of destroying the object (e.g. due to a redirect).
 
-         LogBranch("State changing to TERMINATED due to disconnection.");
-            SetLong(Self, FID_State, HGS_TERMINATED);
-         LogReturn();
+         log.branch("State changing to TERMINATED due to disconnection.");
+         SetLong(Self, FID_State, HGS_TERMINATED);
       }
       else if (Self->State IS HGS_READING_CONTENT) {
          LONG len;
@@ -2865,9 +2827,7 @@ static void socket_feedback(objNetSocket *Socket, LONG State)
          // Unread data can remain on the socket following disconnection, so try to read anything that's been left.
 
          if (Self->Chunked) {
-            FMSG("@","Support code required to read chunked data following a disconnected socket.");
-
-
+            log.traceWarning("Support code required to read chunked data following a disconnected socket.");
          }
          else if ((Self->ContentLength IS -1) OR (Self->Index < Self->ContentLength)) {
             UBYTE *buffer;
@@ -2880,12 +2840,12 @@ static void socket_feedback(objNetSocket *Socket, LONG State)
                   }
 
                   if ((Self->Error = acRead(Socket, buffer, len, &len))) {
-                     LogErrorMsg("Read() returned error: %s", GetErrorMsg(Self->Error));
+                     log.warning("Read() returned error: %s", GetErrorMsg(Self->Error));
                   }
 
                   if (!len) { // No more incoming data
                      if (Self->Flags & HTF_DEBUG_SOCKET) {
-                        LogMsg("Received %d bytes of content in this content reading session.", len);
+                        log.msg("Received %d bytes of content in this content reading session.", len);
                      }
                      break;
                   }
@@ -2900,7 +2860,7 @@ static void socket_feedback(objNetSocket *Socket, LONG State)
 
          if (Self->ContentLength IS -1) {
             if (Socket->Error IS ERR_Okay) {
-               MSG("Orderly shutdown while streaming data.");
+               log.msg("Orderly shutdown while streaming data.");
                SetLong(Self, FID_State, HGS_COMPLETED);
             }
             else {
@@ -2909,12 +2869,12 @@ static void socket_feedback(objNetSocket *Socket, LONG State)
             }
          }
          else if (Self->Index < Self->ContentLength) {
-            LogErrorMsg("Disconnected before all content was downloaded (" PF64() " of " PF64() ")", Self->Index, Self->ContentLength);
+            log.warning("Disconnected before all content was downloaded (" PF64() " of " PF64() ")", Self->Index, Self->ContentLength);
             SET_ERROR(Self, Socket->Error ? Socket->Error : ERR_Disconnected);
             SetField(Self, FID_State, HGS_TERMINATED);
          }
          else {
-            MSG("Orderly shutdown, received " PF64() " of the expected " PF64() " bytes.", Self->Index, Self->ContentLength);
+            log.trace("Orderly shutdown, received " PF64() " of the expected " PF64() " bytes.", Self->Index, Self->ContentLength);
             SetField(Self, FID_State, HGS_COMPLETED);
          }
       }
@@ -2938,49 +2898,47 @@ static void socket_feedback(objNetSocket *Socket, LONG State)
       // If the state is set to HGS_COMPLETED or HGS_TERMINATED, our code should have returned ERR_Terminate to switch
       // off the socket.  This section is entered if we forgot to do that.
 
-      LogErrorMsg("Warning - socket channel was not closed correctly (didn't return ERR_Terminate).");
+      log.warning("Warning - socket channel was not closed correctly (didn't return ERR_Terminate).");
    }
 }
 
-#include "http_def.c"
-
-static const struct FieldArray clFields[] = {
+static const FieldArray clFields[] = {
    { "DataTimeout",    FDF_DOUBLE|FDF_RW,          0, NULL, NULL },
    { "ConnectTimeout", FDF_DOUBLE|FDF_RW,          0, NULL, NULL },
    { "Index",          FDF_LARGE|FDF_RW,           0, NULL, NULL }, // Writeable only because we update it using SetField()
    { "ContentLength",  FDF_LARGE|FDF_RW,           0, NULL, NULL },
    { "Size",           FDF_LARGE|FDF_RW,           0, NULL, NULL },
-   { "Host",           FDF_STRING|FDF_RI,          0, NULL, SET_Host },
-   { "Realm",          FDF_STRING|FDF_RW,          0, NULL, SET_Realm },
-   { "Path",           FDF_STRING|FDF_RW,          0, NULL, SET_Path },
-   { "OutputFile",     FDF_STRING|FDF_RW,          0, NULL, SET_OutputFile },
-   { "InputFile",      FDF_STRING|FDF_RW,          0, NULL, SET_InputFile },
-   { "UserAgent",      FDF_STRING|FDF_RW,          0, NULL, SET_UserAgent },
+   { "Host",           FDF_STRING|FDF_RI,          0, NULL, (APTR)SET_Host },
+   { "Realm",          FDF_STRING|FDF_RW,          0, NULL, (APTR)SET_Realm },
+   { "Path",           FDF_STRING|FDF_RW,          0, NULL, (APTR)SET_Path },
+   { "OutputFile",     FDF_STRING|FDF_RW,          0, NULL, (APTR)SET_OutputFile },
+   { "InputFile",      FDF_STRING|FDF_RW,          0, NULL, (APTR)SET_InputFile },
+   { "UserAgent",      FDF_STRING|FDF_RW,          0, NULL, (APTR)SET_UserAgent },
    { "UserData",       FDF_POINTER|FDF_RW,         0, NULL, NULL },
    { "InputObject",    FDF_LONG|FDF_OBJECT|FDF_RW, 0, NULL, NULL },
    { "OutputObject",   FDF_LONG|FDF_OBJECT|FDF_RW, 0, NULL, NULL },
-   { "Method",         FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clHTTPMethod, NULL, SET_Method },
+   { "Method",         FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clHTTPMethod, NULL, (APTR)SET_Method },
    { "Port",           FDF_LONG|FDF_RW,            0, NULL, NULL },
    { "ObjectMode",     FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clHTTPObjectMode, NULL, NULL },
    { "Flags",          FDF_LONGFLAGS|FDF_RW,       (MAXINT)&clHTTPFlags, NULL, NULL },
    { "Status",         FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clStatus, NULL, NULL },
    { "Error",          FDF_LONG|FDF_RW,            0, NULL, NULL },
    { "Datatype",       FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clHTTPDatatype, NULL, NULL },
-   { "State",          FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clHTTPState, NULL, SET_State },
-   { "ProxyServer",    FDF_STRING|FDF_RW,          0, NULL, SET_ProxyServer },
+   { "State",          FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clHTTPState, NULL, (APTR)SET_State },
+   { "ProxyServer",    FDF_STRING|FDF_RW,          0, NULL, (APTR)SET_ProxyServer },
    { "ProxyPort",      FDF_LONG|FDF_RW,            0, NULL, NULL },
-   { "BufferSize",     FDF_LONG|FDF_RW,            0, NULL, SET_BufferSize },
+   { "BufferSize",     FDF_LONG|FDF_RW,            0, NULL, (APTR)SET_BufferSize },
    // Virtual fields
-   { "AuthCallback",   FDF_FUNCTIONPTR|FDF_RW,   0, GET_AuthCallback, SET_AuthCallback },
-   { "ContentType",    FDF_STRING|FDF_RW,        0, GET_ContentType, SET_ContentType },
-   { "Incoming",       FDF_FUNCTIONPTR|FDF_RW,   0, GET_Incoming, SET_Incoming },
-   { "Location",       FDF_STRING|FDF_RW,        0, GET_Location, SET_Location },
-   { "Outgoing",       FDF_FUNCTIONPTR|FDF_RW,   0, GET_Outgoing, SET_Outgoing },
-   { "RecvBuffer",     FDF_ARRAY|FDF_BYTE|FDF_R, 0, GET_RecvBuffer, NULL },
-   { "Src",            FDF_STRING|FDF_SYNONYM|FDF_RW, 0, GET_Location, SET_Location },
-   { "StateChanged",   FDF_FUNCTIONPTR|FDF_RW,   0, GET_StateChanged, SET_StateChanged },
-   { "Username",       FDF_STRING|FDF_W,         0, NULL, SET_Username },
-   { "Password",       FDF_STRING|FDF_W,         0, NULL, SET_Password },
+   { "AuthCallback",   FDF_FUNCTIONPTR|FDF_RW,   0, (APTR)GET_AuthCallback, (APTR)SET_AuthCallback },
+   { "ContentType",    FDF_STRING|FDF_RW,        0, (APTR)GET_ContentType, (APTR)SET_ContentType },
+   { "Incoming",       FDF_FUNCTIONPTR|FDF_RW,   0, (APTR)GET_Incoming, (APTR)SET_Incoming },
+   { "Location",       FDF_STRING|FDF_RW,        0, (APTR)GET_Location, (APTR)SET_Location },
+   { "Outgoing",       FDF_FUNCTIONPTR|FDF_RW,   0, (APTR)GET_Outgoing, (APTR)SET_Outgoing },
+   { "RecvBuffer",     FDF_ARRAY|FDF_BYTE|FDF_R, 0, (APTR)GET_RecvBuffer, NULL },
+   { "Src",            FDF_STRING|FDF_SYNONYM|FDF_RW, 0, (APTR)GET_Location, (APTR)SET_Location },
+   { "StateChanged",   FDF_FUNCTIONPTR|FDF_RW,   0, (APTR)GET_StateChanged, (APTR)SET_StateChanged },
+   { "Username",       FDF_STRING|FDF_W,         0, NULL, (APTR)SET_Username },
+   { "Password",       FDF_STRING|FDF_W,         0, NULL, (APTR)SET_Password },
    END_FIELD
 };
 

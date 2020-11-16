@@ -31,7 +31,7 @@ typedef struct rkIconServer {
    LONG   VolatileIcons;
 
 #ifdef PRV_ICONSERVER
-   UBYTE prvTheme[60];
+   char prvTheme[60];
   
 #endif
 } objIconServer;

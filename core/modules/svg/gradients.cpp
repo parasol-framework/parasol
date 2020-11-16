@@ -2,14 +2,14 @@
 //****************************************************************************
 // Note that all offsets are percentages.
 
-static ERROR process_gradient_stops(objSVG *Self, struct XMLTag *Tag, struct GradientStop *Stops)
+static ERROR process_gradient_stops(objSVG *Self, XMLTag *Tag, GradientStop *Stops)
 {
-   struct XMLTag *scan;
+   parasol::Log log(__FUNCTION__);
 
-   FMSG("~process_gradient_stops()","");
+   log.traceBranch("");
 
    LONG i = 0;
-   for (scan=Tag->Child; scan; scan=scan->Next) {
+   for (auto scan=Tag->Child; scan; scan=scan->Next) {
       if (!StrMatch("stop", scan->Attrib->Name)) {
          DOUBLE stop_opacity = 1.0;
          Stops[i].Offset = 0;
@@ -18,8 +18,7 @@ static ERROR process_gradient_stops(objSVG *Self, struct XMLTag *Tag, struct Gra
          Stops[i].RGB.Blue  = 0;
          Stops[i].RGB.Alpha = 0;
 
-         LONG a;
-         for (a=1; a < scan->TotalAttrib; a++) {
+         for (LONG a=1; a < scan->TotalAttrib; a++) {
             CSTRING name = scan->Attrib[a].Name;
             CSTRING value = scan->Attrib[a].Value;
             if (!value) continue;
@@ -44,26 +43,26 @@ static ERROR process_gradient_stops(objSVG *Self, struct XMLTag *Tag, struct Gra
                stop_opacity = StrToFloat(value);
             }
             else if (!StrMatch("id", name)) {
-               MSG("Use of id attribute in <stop/> ignored.");
+               log.trace("Use of id attribute in <stop/> ignored.");
             }
-            else LogErrorMsg("Unable to process stop attribute '%s'", name);
+            else log.warning("Unable to process stop attribute '%s'", name);
          }
 
          Stops[i].RGB.Alpha = ((DOUBLE)Stops[i].RGB.Alpha) * stop_opacity;
 
          i++;
       }
-      else LogErrorMsg("Unknown element in gradient, '%s'", scan->Attrib->Name);
+      else log.warning("Unknown element in gradient, '%s'", scan->Attrib->Name);
    }
 
-   LOGRETURN();
    return ERR_Okay;
 }
 
 //****************************************************************************
 
-static ERROR xtag_lineargradient(objSVG *Self, struct XMLTag *Tag)
+static ERROR xtag_lineargradient(objSVG *Self, XMLTag *Tag)
 {
+   parasol::Log log(__FUNCTION__);
    objVectorGradient *gradient;
 
    CSTRING id = NULL;
@@ -83,15 +82,14 @@ static ERROR xtag_lineargradient(objSVG *Self, struct XMLTag *Tag)
 
       gradient->Units = VUNIT_BOUNDING_BOX;
 
-      LONG a;
-      for (a=1; a < Tag->TotalAttrib; a++) {
+      for (LONG a=1; a < Tag->TotalAttrib; a++) {
          if (!StrMatch("gradientUnits", Tag->Attrib[a].Name)) {
             if (!StrMatch("userSpaceOnUse", Tag->Attrib[a].Value)) gradient->Units = VUNIT_USERSPACE;
             break;
          }
       }
 
-      for (a=1; a < Tag->TotalAttrib; a++) {
+      for (LONG a=1; a < Tag->TotalAttrib; a++) {
          CSTRING val;
          if (!(val = Tag->Attrib[a].Value)) continue;
 
@@ -116,7 +114,7 @@ static ERROR xtag_lineargradient(objSVG *Self, struct XMLTag *Tag)
                LONG j;
                for (j=0; Tag->Attrib[a].Name[j] AND (Tag->Attrib[a].Name[j] != ':'); j++);
                if (Tag->Attrib[a].Name[j] IS ':') break;
-               LogErrorMsg("%s attribute '%s' unrecognised @ line %d", Tag->Attrib->Name, Tag->Attrib[a].Name, Tag->LineNo);
+               log.warning("%s attribute '%s' unrecognised @ line %d", Tag->Attrib->Name, Tag->Attrib[a].Name, Tag->LineNo);
                break;
             }
          }
@@ -124,7 +122,7 @@ static ERROR xtag_lineargradient(objSVG *Self, struct XMLTag *Tag)
 
       LONG stopcount = count_stops(Self, Tag);
       if (stopcount >= 2) {
-         struct GradientStop stops[stopcount];
+         GradientStop stops[stopcount];
          process_gradient_stops(Self, Tag, stops);
          SetArray((OBJECTPTR)gradient, FID_Stops, stops, stopcount);
       }
@@ -140,8 +138,9 @@ static ERROR xtag_lineargradient(objSVG *Self, struct XMLTag *Tag)
 
 //****************************************************************************
 
-static ERROR xtag_radialgradient(objSVG *Self, struct XMLTag *Tag)
+static ERROR xtag_radialgradient(objSVG *Self, XMLTag *Tag)
 {
+   parasol::Log log(__FUNCTION__);
    objVectorGradient *gradient;
    CSTRING id = NULL;
 
@@ -156,22 +155,20 @@ static ERROR xtag_radialgradient(objSVG *Self, struct XMLTag *Tag)
          FID_Radius|TDOUBLE|TPERCENT,  50.0,
          TAGEND);
 
-      LONG a;
-
       // Determine the user coordinate system first.
 
       gradient->Units = VUNIT_BOUNDING_BOX;
-      for (a=1; a < Tag->TotalAttrib; a++) {
+      for (LONG a=1; a < Tag->TotalAttrib; a++) {
          if (!StrMatch("gradientUnits", Tag->Attrib[a].Name)) {
             if (!StrMatch("userSpaceOnUse", Tag->Attrib[a].Value)) gradient->Units = VUNIT_USERSPACE;
             break;
          }
       }
 
-      for (a=1; a < Tag->TotalAttrib; a++) {
+      for (LONG a=1; a < Tag->TotalAttrib; a++) {
          CSTRING val = Tag->Attrib[a].Value;
          if (!val) continue;
-         MSG("Processing radial gradient attribute %s = %s", Tag->Attrib[a].Name, val);
+         log.trace("Processing radial gradient attribute %s = %s", Tag->Attrib[a].Name, val);
 
          switch(StrHash(Tag->Attrib[a].Name, FALSE)) {
             case SVF_CX: set_double_units(gradient, FID_CenterX, val, gradient->Units); break;
@@ -201,7 +198,7 @@ static ERROR xtag_radialgradient(objSVG *Self, struct XMLTag *Tag)
 
       LONG stopcount = count_stops(Self, Tag);
       if (stopcount >= 2) {
-         struct GradientStop stops[stopcount];
+         GradientStop stops[stopcount];
          process_gradient_stops(Self, Tag, stops);
          SetArray((OBJECTPTR)gradient, FID_Stops, stops, stopcount);
       }
@@ -217,8 +214,9 @@ static ERROR xtag_radialgradient(objSVG *Self, struct XMLTag *Tag)
 
 //****************************************************************************
 
-static ERROR xtag_diamondgradient(objSVG *Self, struct XMLTag *Tag)
+static ERROR xtag_diamondgradient(objSVG *Self, XMLTag *Tag)
 {
+   parasol::Log log(__FUNCTION__);
    objVectorGradient *gradient;
    CSTRING id = NULL;
 
@@ -233,23 +231,21 @@ static ERROR xtag_diamondgradient(objSVG *Self, struct XMLTag *Tag)
          FID_Radius|TDOUBLE|TPERCENT,  50.0,
          TAGEND);
 
-      LONG a;
-
       // Determine the user coordinate system first.
 
       gradient->Units = VUNIT_BOUNDING_BOX;
-      for (a=1; a < Tag->TotalAttrib; a++) {
+      for (LONG a=1; a < Tag->TotalAttrib; a++) {
          if (!StrMatch("gradientUnits", Tag->Attrib[a].Name)) {
             if (!StrMatch("userSpaceOnUse", Tag->Attrib[a].Value)) gradient->Units = VUNIT_USERSPACE;
             break;
          }
       }
 
-      for (a=1; a < Tag->TotalAttrib; a++) {
+      for (LONG a=1; a < Tag->TotalAttrib; a++) {
          CSTRING val;
          if (!(val = Tag->Attrib[a].Value)) continue;
 
-         MSG("Processing diamond gradient attribute %s =  %s", Tag->Attrib[a].Name, val);
+         log.trace("Processing diamond gradient attribute %s =  %s", Tag->Attrib[a].Name, val);
 
          switch(StrHash(Tag->Attrib[a].Name, FALSE)) {
             case SVF_GRADIENTUNITS: break; // Already processed
@@ -269,7 +265,7 @@ static ERROR xtag_diamondgradient(objSVG *Self, struct XMLTag *Tag)
                LONG j;
                for (j=0; Tag->Attrib[a].Name[j] AND (Tag->Attrib[a].Name[j] != ':'); j++);
                if (Tag->Attrib[a].Name[j] IS ':') break;
-               LogErrorMsg("%s attribute '%s' unrecognised @ line %d", Tag->Attrib->Name, Tag->Attrib[a].Name, Tag->LineNo);
+               log.warning("%s attribute '%s' unrecognised @ line %d", Tag->Attrib->Name, Tag->Attrib[a].Name, Tag->LineNo);
                break;
             }
          }
@@ -277,7 +273,7 @@ static ERROR xtag_diamondgradient(objSVG *Self, struct XMLTag *Tag)
 
       LONG stopcount = count_stops(Self, Tag);
       if (stopcount >= 2) {
-         struct GradientStop stops[stopcount];
+         GradientStop stops[stopcount];
          process_gradient_stops(Self, Tag, stops);
          SetArray((OBJECTPTR)gradient, FID_Stops, stops, stopcount);
       }
@@ -294,8 +290,9 @@ static ERROR xtag_diamondgradient(objSVG *Self, struct XMLTag *Tag)
 //****************************************************************************
 // NB: Contour gradients are not part of the SVG standard.
 
-static ERROR xtag_contourgradient(objSVG *Self, struct XMLTag *Tag)
+static ERROR xtag_contourgradient(objSVG *Self, XMLTag *Tag)
 {
+   parasol::Log log(__FUNCTION__);
    objVectorGradient *gradient;
    CSTRING id = NULL;
 
@@ -306,23 +303,21 @@ static ERROR xtag_contourgradient(objSVG *Self, struct XMLTag *Tag)
          FID_Type|TLONG, VGT_CONTOUR,
          TAGEND);
 
-      LONG a;
-
       // Determine the user coordinate system first.
 
       gradient->Units = VUNIT_BOUNDING_BOX;
-      for (a=1; a < Tag->TotalAttrib; a++) {
+      for (LONG a=1; a < Tag->TotalAttrib; a++) {
          if (!StrMatch("gradientUnits", Tag->Attrib[a].Name)) {
             if (!StrMatch("userSpaceOnUse", Tag->Attrib[a].Value)) gradient->Units = VUNIT_USERSPACE;
             break;
          }
       }
 
-      for (a=1; a < Tag->TotalAttrib; a++) {
+      for (LONG a=1; a < Tag->TotalAttrib; a++) {
          CSTRING val;
          if (!(val = Tag->Attrib[a].Value)) continue;
 
-         MSG("Processing contour gradient attribute %s =  %s", Tag->Attrib[a].Name, val);
+         log.trace("Processing contour gradient attribute %s =  %s", Tag->Attrib[a].Name, val);
 
          switch(StrHash(Tag->Attrib[a].Name, FALSE)) {
             case SVF_GRADIENTUNITS: break; // Already processed
@@ -349,7 +344,7 @@ static ERROR xtag_contourgradient(objSVG *Self, struct XMLTag *Tag)
 
       LONG stopcount = count_stops(Self, Tag);
       if (stopcount >= 2) {
-         struct GradientStop stops[stopcount];
+         GradientStop stops[stopcount];
          process_gradient_stops(Self, Tag, stops);
          SetArray((OBJECTPTR)gradient, FID_Stops, stops, stopcount);
       }
@@ -365,8 +360,9 @@ static ERROR xtag_contourgradient(objSVG *Self, struct XMLTag *Tag)
 
 //****************************************************************************
 
-static ERROR xtag_conicgradient(objSVG *Self, struct XMLTag *Tag)
+static ERROR xtag_conicgradient(objSVG *Self, XMLTag *Tag)
 {
+   parasol::Log log(__FUNCTION__);
    objVectorGradient *gradient;
 
    if (!NewObject(ID_VECTORGRADIENT, 0, &gradient)) {
@@ -382,23 +378,21 @@ static ERROR xtag_conicgradient(objSVG *Self, struct XMLTag *Tag)
 
       CSTRING id = NULL;
 
-      LONG a;
-
       // Determine the user coordinate system first.
 
       gradient->Units = VUNIT_BOUNDING_BOX;
-      for (a=1; a < Tag->TotalAttrib; a++) {
+      for (LONG a=1; a < Tag->TotalAttrib; a++) {
          if (!StrMatch("gradientUnits", Tag->Attrib[a].Name)) {
             if (!StrMatch("userSpaceOnUse", Tag->Attrib[a].Value)) gradient->Units = VUNIT_USERSPACE;
             break;
          }
       }
 
-      for (a=1; a < Tag->TotalAttrib; a++) {
+      for (LONG a=1; a < Tag->TotalAttrib; a++) {
          CSTRING val;
          if (!(val = Tag->Attrib[a].Value)) continue;
 
-         MSG("Processing diamond gradient attribute %s =  %s", Tag->Attrib[a].Name, val);
+         log.trace("Processing diamond gradient attribute %s =  %s", Tag->Attrib[a].Name, val);
 
          switch(StrHash(Tag->Attrib[a].Name, FALSE)) {
             case SVF_GRADIENTUNITS:
@@ -421,7 +415,7 @@ static ERROR xtag_conicgradient(objSVG *Self, struct XMLTag *Tag)
                LONG j;
                for (j=0; Tag->Attrib[a].Name[j] AND (Tag->Attrib[a].Name[j] != ':'); j++);
                if (Tag->Attrib[a].Name[j] IS ':') break;
-               LogErrorMsg("%s attribute '%s' unrecognised @ line %d", Tag->Attrib->Name, Tag->Attrib[a].Name, Tag->LineNo);
+               log.warning("%s attribute '%s' unrecognised @ line %d", Tag->Attrib->Name, Tag->Attrib[a].Name, Tag->LineNo);
                break;
             }
          }
@@ -429,7 +423,7 @@ static ERROR xtag_conicgradient(objSVG *Self, struct XMLTag *Tag)
 
       LONG stopcount = count_stops(Self, Tag);
       if (stopcount >= 2) {
-         struct GradientStop stops[stopcount];
+         GradientStop stops[stopcount];
          process_gradient_stops(Self, Tag, stops);
          SetArray((OBJECTPTR)gradient, FID_Stops, stops, stopcount);
       }

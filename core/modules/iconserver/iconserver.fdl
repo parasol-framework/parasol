@@ -4,13 +4,13 @@ module({ name="IconServer", copyright="Paul Manias © 2014-2020", version=1.0, p
   functionNames("icon",
     "CreateIcon")
 
-  class("IconServer", { src="iconserver_class.c" }, [[
+  class("IconServer", { src="iconserver_class.cpp" }, [[
     double IconRatio
     fptr(error obj(IconServer) str str int) ResolvePath
     int FixedSize
     int VolatileIcons
   ]],
   [[
-   UBYTE prvTheme[60];
+   char prvTheme[60];
   ]])
 end)

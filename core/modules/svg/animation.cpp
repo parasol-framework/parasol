@@ -3,13 +3,12 @@
 
 static ERROR animation_timer(objSVG *SVG, LARGE TimeElapsed, LARGE CurrentTime)
 {
-   struct svgAnimation *anim;
-   for (anim=SVG->Animations; anim; anim=anim->Next) {
+   for (auto anim=SVG->Animations; anim; anim=anim->Next) {
       if (anim->ValueCount < 2) continue; // Skip animation if no From and To list is specified.
       if (anim->EndTime) continue;
 restart:
       {
-         LARGE current_time = PreciseTime()/1000LL;
+         LARGE current_time = PreciseTime() / 1000LL;
 
          if (!anim->StartTime) {
             // Check if one of the animation's begin triggers has been tripped.  If there are no triggers then the
@@ -82,15 +81,14 @@ restart:
 
    if (SVG->FrameCallback.Type != CALL_NONE) {
       if (SVG->FrameCallback.Type IS CALL_STDC) {
-         OBJECTPTR context = SetContext(SVG->FrameCallback.StdC.Context);
-            void (*routine)(struct rkSVG *) = SVG->FrameCallback.StdC.Routine;
-            routine(SVG);
-         SetContext(context);
+         parasol::SwitchContext context(SVG->FrameCallback.StdC.Context);
+         auto routine = (void (*)(rkSVG *))SVG->FrameCallback.StdC.Routine;
+         routine(SVG);
       }
       else if (SVG->FrameCallback.Type IS CALL_SCRIPT) {
          OBJECTPTR script;
          if ((script = SVG->FrameCallback.Script.Script)) {
-            const struct ScriptArg args[] = {
+            const ScriptArg args[] = {
                { "SVG", FD_OBJECTPTR, { .Address = SVG } }
             };
             scCallback(script, SVG->FrameCallback.Script.ProcedureID, args, ARRAYSIZE(args));

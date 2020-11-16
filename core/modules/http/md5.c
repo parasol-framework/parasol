@@ -196,7 +196,7 @@ memset(p, 0, count - 8);
  */
 void MD5Transform(uint32 buf[4], uint32 const in[16])
 {
-    register uint32 a, b, c, d;
+    uint32 a, b, c, d;
 
     a = buf[0];
     b = buf[1];

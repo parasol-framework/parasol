@@ -17,7 +17,7 @@
 <p>The SVG class provides support for parsing SVG statements into native <class name="Vector">Vector</class> objects and related definitions. For low-level vector programming, consider using the <class name="Vector">Vector</class> class directly, or use the SVG class to parse an SVG script and then access the <field>Viewport</field> field to perform transforms and manipulation of the vector group.</p>
 <p>Please refer to the W3C documentation on SVG for a complete reference to the attributes that can be applied to SVG elements.  Unfortunately we do not support all SVG capabilities at this time, but support will improve in future.</p></description>
     <source>
-      <file>class_svg.c</file>
+      <file>class_svg.cpp</file>
     </source>
   </info>
 

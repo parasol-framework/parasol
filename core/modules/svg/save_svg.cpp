@@ -30,7 +30,9 @@ static ERROR save_vectorpath(objSVG *Self, objXML *XML, objVector *Vector, LONG 
 
 static ERROR save_svg_defs(objSVG *Self, objXML *XML, objVectorScene *Scene, LONG Parent)
 {
-   struct KeyStore *keystore;
+   parasol::Log log(__FUNCTION__);
+   KeyStore *keystore;
+
    if (!GetPointer(Scene, FID_Defs, &keystore)) {
       char buffer[200];
       CSTRING key = NULL;
@@ -43,7 +45,7 @@ static ERROR save_svg_defs(objSVG *Self, objXML *XML, objVectorScene *Scene, LON
          }
 
          def = value[0];
-         LogF("save_svg_defs","Processing definition %s (%x %x)", def->Class->ClassName, def->ClassID, def->SubID);
+         log.msg("Processing definition %s (%x %x)", def->Class->ClassName, def->ClassID, def->SubID);
 
          if (def->ClassID IS ID_VECTORGRADIENT) {
             objVectorGradient *gradient = (objVectorGradient *)def;
@@ -100,7 +102,7 @@ static ERROR save_svg_defs(objSVG *Self, objXML *XML, objVectorScene *Scene, LON
                   error = set_dimension(XML, new_index, "r", gradient->Radius, gradient->Flags & VGF_RELATIVE_RADIUS);
             }
 
-            struct VectorTransform *transform;
+            VectorTransform *transform;
             if ((!error) AND (!GetPointer(gradient, FID_Transforms, &transform)) AND (transform)) {
                if (!save_svg_transform(transform, buffer, sizeof(buffer))) {
                   error = xmlSetAttrib(XML, new_index, XMS_NEW, "gradientTransform", buffer);
@@ -108,10 +110,10 @@ static ERROR save_svg_defs(objSVG *Self, objXML *XML, objVectorScene *Scene, LON
             }
 
             if (gradient->TotalStops > 0) {
-               struct GradientStop *stops;
-               LONG total_stops, s, stop_index;
+               GradientStop *stops;
+               LONG total_stops, stop_index;
                if (!GetFieldArray(gradient, FID_Stops, &stops, &total_stops)) {
-                  for (s=0; (s < total_stops) AND (!error); s++) {
+                  for (LONG s=0; (s < total_stops) AND (!error); s++) {
                      if (!(error = xmlInsertXML(XML, new_index, XMI_CHILD_END, "<stop/>", &stop_index))) {
                         error = xmlSetAttribDouble(XML, stop_index, XMS_NEW, "offset", stops[s].Offset);
 
@@ -123,13 +125,13 @@ static ERROR save_svg_defs(objSVG *Self, objXML *XML, objVectorScene *Scene, LON
             }
          }
          else if (def->ClassID IS ID_VECTORIMAGE) {
-            LogF("@save_svg_defs","VectorImage not supported.");
+            log.warning("VectorImage not supported.");
          }
          else if (def->SubID IS ID_VECTORPATH) {
             error = save_vectorpath(Self, XML, (objVector *)def, def_index);
          }
          else if (def->ClassID IS ID_VECTORPATTERN) {
-            LogF("@save_svg_defs","VectorPattern not supported.");
+            log.warning("VectorPattern not supported.");
          }
          else if (def->ClassID IS ID_VECTORFILTER) {
             objVectorFilter *filter = (objVectorFilter *)def;
@@ -179,15 +181,15 @@ static ERROR save_svg_defs(objSVG *Self, objXML *XML, objVectorScene *Scene, LON
             }
          }
          else if (def->ClassID IS ID_VECTORTRANSITION) {
-            LogF("@save_svg_defs","VectorTransition not supported.");
+            log.warning("VectorTransition not supported.");
          }
          else if (def->SubID IS ID_VECTORCLIP) {
-            LogF("@save_svg_defs","VectorClip not supported.");
+            log.warning("VectorClip not supported.");
          }
          else if (def->ClassID IS ID_VECTOR) {
-            LogF("@save_svg_defs","%s not supported.", def->Class->ClassName);
+            log.warning("%s not supported.", def->Class->ClassName);
          }
-         else LogF("@save_svg_defs","Unrecognised definition class %x", def->ClassID);
+         else log.warning("Unrecognised definition class %x", def->ClassID);
       }
 
       return ERR_Okay;
@@ -197,9 +199,9 @@ static ERROR save_svg_defs(objSVG *Self, objXML *XML, objVectorScene *Scene, LON
 
 //*********************************************************************************************************************
 
-static ERROR save_svg_transform(struct VectorTransform *Transform, char *Buffer, LONG Size)
+static ERROR save_svg_transform(VectorTransform *Transform, char *Buffer, LONG Size)
 {
-   struct VectorTransform *t = Transform;
+   VectorTransform *t = Transform;
    LONG pos = 0;
    Buffer[0] = 0;
    while (t->Next) t = t->Next;
@@ -235,6 +237,7 @@ static ERROR save_svg_transform(struct VectorTransform *Transform, char *Buffer,
 
 static ERROR save_svg_scan_std(objSVG *Self, objXML *XML, objVector *Vector, LONG Tag)
 {
+   parasol::Log log(__FUNCTION__);
    char buffer[160];
    STRING str;
    FLOAT *colour;
@@ -292,11 +295,11 @@ static ERROR save_svg_scan_std(objSVG *Self, objXML *XML, objVector *Vector, LON
       DOUBLE *dash_array;
       LONG dash_total;
       if (!GetFieldArray(Vector, FID_DashArray, &dash_array, &dash_total)) {
-         LONG i, pos = 0;
-         for (i=0; i < dash_total; i++) {
+         LONG pos = 0;
+         for (LONG i=0; i < dash_total; i++) {
             if (pos != 0) buffer[pos++] = ',';
             pos += StrFormat(buffer+pos, sizeof(buffer)-pos, "%g", dash_array[i]);
-            if (pos >= sizeof(buffer)-2) return ERR_BufferOverflow;
+            if ((size_t)pos >= sizeof(buffer)-2) return ERR_BufferOverflow;
          }
          error = xmlSetAttrib(XML, Tag, XMS_NEW, "stroke-dasharray", buffer);
       }
@@ -341,7 +344,7 @@ static ERROR save_svg_scan_std(objSVG *Self, objXML *XML, objVector *Vector, LON
    if ((!error) AND (!GetString(Vector, FID_Filter, &str)) AND (str))
       error = xmlSetAttrib(XML, Tag, XMS_NEW, "filter", str);
 
-   struct VectorTransform *transform;
+   VectorTransform *transform;
    if ((!error) AND (!GetPointer(Vector, FID_Transforms, &transform)) AND (transform)) {
       if (!(error = save_svg_transform(transform, buffer, sizeof(buffer)))) {
          error = xmlSetAttrib(XML, Tag, XMS_NEW, "transform", buffer);
@@ -403,9 +406,11 @@ static ERROR save_svg_scan_std(objSVG *Self, objXML *XML, objVector *Vector, LON
 
 static ERROR save_svg_scan(objSVG *Self, objXML *XML, objVector *Vector, LONG Parent)
 {
+   parasol::Log log(__FUNCTION__);
+
    LONG new_index = -1;
 
-   LogF("~save_scan()","%s", Vector->Head.Class->ClassName);
+   log.branch("%s", Vector->Head.Class->ClassName);
 
    ERROR error = ERR_Okay;
    if (Vector->Head.SubID IS ID_VECTORRECTANGLE) {
@@ -457,7 +462,7 @@ static ERROR save_svg_scan(objSVG *Self, objXML *XML, objVector *Vector, LONG Pa
       error = save_vectorpath(Self, XML, Vector, Parent);
    }
    else if (Vector->Head.SubID IS ID_VECTORPOLYGON) { // Serves <polygon>, <line> and <polyline>
-      struct VectorPoint *points;
+      VectorPoint *points;
       LONG total_points, i;
       char buffer[2048];
 
@@ -476,7 +481,7 @@ static ERROR save_svg_scan(objSVG *Self, objXML *XML, objVector *Vector, LONG Pa
                   WORD pos = 0;
                   for (i=0; i < total_points; i++) {
                      pos += StrFormat(buffer+pos, sizeof(buffer)-pos, "%g,%g ", points[i].X, points[i].Y);
-                     if (pos >= sizeof(buffer)) { error = ERR_BufferOverflow; break; }
+                     if ((size_t)pos >= sizeof(buffer)) { error = ERR_BufferOverflow; break; }
                   }
                }
                if (!error) error = xmlSetAttrib(XML, new_index, XMS_NEW, "points", buffer);
@@ -490,7 +495,7 @@ static ERROR save_svg_scan(objSVG *Self, objXML *XML, objVector *Vector, LONG Pa
             WORD pos = 0;
             for (i=0; i < total_points; i++) {
                pos += StrFormat(buffer+pos, sizeof(buffer)-pos, "%g,%g ", points[i].X, points[i].Y);
-               if (pos >= sizeof(buffer)) { error = ERR_BufferOverflow; break; }
+               if ((size_t)pos >= sizeof(buffer)) { error = ERR_BufferOverflow; break; }
             }
             if (!error) error = xmlSetAttrib(XML, new_index, XMS_NEW, "points", buffer);
          }
@@ -519,10 +524,10 @@ static ERROR save_svg_scan(objSVG *Self, objXML *XML, objVector *Vector, LONG Pa
 
       if ((!error) AND (!(error = GetFieldArray(Vector, FID_DX, &dx, &total))) AND (total > 0)) {
          LONG pos = 0;
-         for (i=0; i < total; i++) {
+         for (LONG i=0; i < total; i++) {
             if (pos != 0) buffer[pos++] = ',';
             pos += StrFormat(buffer+pos, sizeof(buffer)-pos, "%g", dx[i]);
-            if (pos >= sizeof(buffer)-2) return ERR_BufferOverflow;
+            if ((size_t)pos >= sizeof(buffer)-2) return ERR_BufferOverflow;
          }
          error = xmlSetAttrib(XML, new_index, XMS_NEW, "dx", buffer);
       }
@@ -532,7 +537,7 @@ static ERROR save_svg_scan(objSVG *Self, objXML *XML, objVector *Vector, LONG Pa
          for (i=0; i < total; i++) {
             if (pos != 0) buffer[pos++] = ',';
             pos += StrFormat(buffer+pos, sizeof(buffer)-pos, "%g", dy[i]);
-            if (pos >= sizeof(buffer)-2) return ERR_BufferOverflow;
+            if ((size_t)pos >= sizeof(buffer)-2) return ERR_BufferOverflow;
          }
          error = xmlSetAttrib(XML, new_index, XMS_NEW, "dy", buffer);
       }
@@ -547,7 +552,7 @@ static ERROR save_svg_scan(objSVG *Self, objXML *XML, objVector *Vector, LONG Pa
          for (i=0; i < total; i++) {
             if (pos != 0) buffer[pos++] = ',';
             pos += StrFormat(buffer+pos, sizeof(buffer)-pos, "%g", rotate[i]);
-            if (pos >= sizeof(buffer)-2) return ERR_BufferOverflow;
+            if ((size_t)pos >= sizeof(buffer)-2) return ERR_BufferOverflow;
          }
          error = xmlSetAttrib(XML, new_index, XMS_NEW, "rotate", buffer);
       }
@@ -635,7 +640,7 @@ static ERROR save_svg_scan(objSVG *Self, objXML *XML, objVector *Vector, LONG Pa
       LONG dim, length;
 
       error = xmlInsertXML(XML, Parent, XMI_CHILD_END, "<parasol:spiral/>", &new_index);
-      if (error) { LogReturn(); return error; }
+      if (error) { return error; }
 
       if ((error = GetLong(Vector, FID_Dimensions, &dim))) return error;
 
@@ -729,18 +734,15 @@ static ERROR save_svg_scan(objSVG *Self, objXML *XML, objVector *Vector, LONG Pa
       }
    }
    else {
-      LogF("save_scan","Unrecognised class \"%s\"", Vector->Head.Class->ClassName);
-      LogReturn();
+      log.msg("Unrecognised class \"%s\"", Vector->Head.Class->ClassName);
       return ERR_Okay; // Skip objects in the scene graph that we don't recognise
    }
 
    if (!error) {
-      objVector *scan;
-      for (scan=Vector->Child; scan; scan=scan->Next) {
+      for (auto scan=Vector->Child; scan; scan=scan->Next) {
          save_svg_scan(Self, XML, scan, new_index);
       }
    }
 
-   LogReturn();
    return error;
 }

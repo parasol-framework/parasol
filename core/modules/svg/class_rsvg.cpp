@@ -3,13 +3,11 @@
 
 static ERROR RSVG_Activate(objPicture *Self, APTR Void)
 {
-   struct prvSVG *prv;
-   if (!(prv = Self->Head.ChildPrivate)) return ERR_NotInitialised;
+   prvSVG *prv;
+   if (!(prv = (prvSVG *)Self->Head.ChildPrivate)) return ERR_NotInitialised;
 
    ERROR error;
-   if ((error = acQuery(Self)) != ERR_Okay) {
-      return error;
-   }
+   if ((error = acQuery(Self)) != ERR_Okay) return error;
 
    objBitmap *bmp = Self->Bitmap;
    if (!(bmp->Head.Flags & NF_INITIALISED)) {
@@ -17,9 +15,7 @@ static ERROR RSVG_Activate(objPicture *Self, APTR Void)
    }
 
    gfxDrawRectangle(bmp, 0, 0, bmp->Width, bmp->Height, 0, BAF_FILL); // Black background
-
    svgRender(prv->SVG, bmp, 0, 0, bmp->Width, bmp->Height);
-
    return ERR_Okay;
 }
 
@@ -27,8 +23,8 @@ static ERROR RSVG_Activate(objPicture *Self, APTR Void)
 
 static ERROR RSVG_Free(objPicture *Self, APTR Void)
 {
-   struct prvSVG *prv;
-   if ((prv = Self->Head.ChildPrivate)) {
+   prvSVG *prv;
+   if ((prv = (prvSVG *)Self->Head.ChildPrivate)) {
       if (prv->SVG) { acFree(prv->SVG); prv->SVG = NULL; }
    }
    return ERR_Okay;
@@ -38,14 +34,16 @@ static ERROR RSVG_Free(objPicture *Self, APTR Void)
 
 static ERROR RSVG_Init(objPicture *Self, APTR Void)
 {
+   parasol::Log log;
    STRING path;
+
    GetString(Self, FID_Path, &path);
 
    if ((!path) OR (Self->Flags & PCF_NEW)) {
       return ERR_NoSupport; // Creating new SVG's is not supported in this module.
    }
 
-   UBYTE *buffer;
+   char *buffer;
 
    if (!StrCompare("*.svg|*.svgz", path, 0, STR_WILDCARD));
    else if (!GetPointer(Self, FID_Header, &buffer)) {
@@ -55,11 +53,11 @@ static ERROR RSVG_Init(objPicture *Self, APTR Void)
    }
    else return ERR_NoSupport;
 
-   MSG("File \"%s\" is in SVG format.", path);
+   log.trace("File \"%s\" is in SVG format.", path);
 
    Self->Flags |= PCF_SCALABLE;
 
-   if (!AllocMemory(sizeof(struct prvSVG), Self->Head.MemFlags, &Self->Head.ChildPrivate, NULL)) {
+   if (!AllocMemory(sizeof(prvSVG), Self->Head.MemFlags, &Self->Head.ChildPrivate, NULL)) {
       if (Self->Flags & PCF_LAZY) return ERR_Okay;
       return acActivate(Self);
    }
@@ -70,11 +68,12 @@ static ERROR RSVG_Init(objPicture *Self, APTR Void)
 
 static ERROR RSVG_Query(objPicture *Self, APTR Void)
 {
-   struct prvSVG *prv;
-   if (!(prv = Self->Head.ChildPrivate)) return ERR_NotInitialised;
-
+   parasol::Log log;
+   prvSVG *prv;
    objBitmap *bmp;
-   if (!(bmp = Self->Bitmap)) return PostError(ERR_ObjectCorrupt);
+
+   if (!(prv = (prvSVG *)Self->Head.ChildPrivate)) return ERR_NotInitialised;
+   if (!(bmp = Self->Bitmap)) return log.warning(ERR_ObjectCorrupt);
 
    if (Self->Queried) return ERR_Okay;
    Self->Queried = TRUE;
@@ -86,9 +85,9 @@ static ERROR RSVG_Query(objPicture *Self, APTR Void)
                FID_Path|TSTR, path,
                TAGEND)) {
          }
-         else return PostError(ERR_CreateObject);
+         else return log.warning(ERR_CreateObject);
       }
-      else return PostError(ERR_GetField);
+      else return log.warning(ERR_GetField);
    }
 
    objVectorScene *scene;
@@ -105,7 +104,7 @@ static ERROR RSVG_Query(objPicture *Self, APTR Void)
       objVector *view = scene->Viewport;
       while ((view) AND (view->Head.SubID != ID_VECTORVIEWPORT)) view = view->Next;
       if (!view) {
-         LogErrorMsg("SVG source file does not define a valid <svg/> tag.");
+         log.warning("SVG source file does not define a valid <svg/> tag.");
          return ERR_Failed;
       }
 
@@ -149,8 +148,8 @@ static ERROR RSVG_Query(objPicture *Self, APTR Void)
       return error;
    }
    else {
-      MSG("Failed to retrieve Vector from SVG.");
-      return PostError(error);
+      log.trace("Failed to retrieve Vector from SVG.");
+      return log.warning(error);
    }
 }
 
@@ -158,10 +157,10 @@ static ERROR RSVG_Query(objPicture *Self, APTR Void)
 
 static ERROR RSVG_Resize(objPicture *Self, struct acResize *Args)
 {
-   struct prvSVG *prv;
-   if (!(prv = Self->Head.ChildPrivate)) return ERR_NotInitialised;
+   prvSVG *prv;
+   if (!(prv = (prvSVG *)Self->Head.ChildPrivate)) return ERR_NotInitialised;
 
-   if (!Args) return PostError(ERR_NullArgs);
+   if (!Args) return ERR_NullArgs;
 
    if (prv->SVG) {
       if (!(Self->Bitmap->Head.Flags & NF_INITIALISED)) {
@@ -188,12 +187,12 @@ static ERROR RSVG_Resize(objPicture *Self, struct acResize *Args)
 
 //****************************************************************************
 
-static const struct ActionArray clActions[] = {
-   { AC_Activate,  RSVG_Activate },
-   { AC_Free,      RSVG_Free },
-   { AC_Init,      RSVG_Init },
-   { AC_Query,     RSVG_Query },
-   { AC_Resize,    RSVG_Resize },
+static const ActionArray clActions[] = {
+   { AC_Activate, (APTR)RSVG_Activate },
+   { AC_Free,     (APTR)RSVG_Free },
+   { AC_Init,     (APTR)RSVG_Init },
+   { AC_Query,    (APTR)RSVG_Query },
+   { AC_Resize,   (APTR)RSVG_Resize },
    { 0, NULL }
 };
 

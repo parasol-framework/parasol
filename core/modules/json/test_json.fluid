@@ -11,15 +11,25 @@ glJSON = '{ "string":"foo bar",\n' ..
          '  "an-object":{ "field1":"value1", "field2":2 }\n' ..
          '}\n'
 
-   modJSON = mod.load("system:modules/data/json")
+   modJSON = mod.load('json')
 
-   print("Interpreting JSON statement:\n" .. glJSON)
+function testLoadJSON()
+   print('Interpreting JSON statement:\n' .. glJSON)
 
-   local json = obj.new("json", { statement=glJSON, flags="!READABLE" } )
+   local json = obj.new('json', { statement=glJSON, flags='!READABLE' } )
 
-   if (json == nil) then
-      print("Failed to create JSON object.");
-      return
-   end
+   if (json == nil) then error('Failed to load JSON data.'); end
 
    print(json.statement)
+end
+
+//=====================================================================================================================
+
+   return {
+      tests = {
+        'testLoadJSON'
+      },
+      init = nil,
+      cleanup = function()
+      end
+   }

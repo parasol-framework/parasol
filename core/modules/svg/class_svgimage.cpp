@@ -90,7 +90,7 @@ Activate: Initiates playback of SVG animations.
 
 static ERROR SVGIMAGE_Activate(objSVGImage *Self, APTR Void)
 {
-   SetFunctionPtr(Self->SVG, FID_FrameCallback, &svgimage_animation);
+   SetFunctionPtr(Self->SVG, FID_FrameCallback, (APTR)&svgimage_animation);
    return acActivate(Self->SVG);
 }
 
@@ -116,7 +116,7 @@ static ERROR SVGIMAGE_DataFeed(objSVGImage *Self, struct acDataFeed *Args)
    if (!Args) return ERR_NullArgs;
 
    if (Args->DataType IS DATA_XML) {
-      return load_svg(Self->SVG, NULL, Args->Buffer);
+      return load_svg(Self->SVG, 0, (CSTRING)Args->Buffer);
    }
 
    return ERR_Okay;
@@ -142,8 +142,8 @@ static ERROR SVGIMAGE_Hide(objSVGImage *Self, APTR Void)
 
 static ERROR SVGIMAGE_Init(objSVGImage *Self, APTR Void)
 {
-   SetFunctionPtr(Self->Layout, FID_DrawCallback, &draw_vector);
-   SetFunctionPtr(Self->Layout, FID_ResizeCallback, &resize_vector);
+   SetFunctionPtr(Self->Layout, FID_DrawCallback, (APTR)&draw_vector);
+   SetFunctionPtr(Self->Layout, FID_ResizeCallback, (APTR)&resize_vector);
    if (!acInit(Self->Layout)) {
       if (!acInit(Self->SVG)) {
          SetFields(Self->SVG->Scene,
@@ -181,7 +181,7 @@ static ERROR SVGIMAGE_Show(objSVGImage *Self, APTR Void)
 
 #include "class_svgimage_def.c"
 
-static const struct FieldArray clSVGImageFields[] = {
+static const FieldArray clSVGImageFields[] = {
    { "SVG",    FDF_INTEGRAL|FDF_SYSTEM|FDF_R, 0, NULL, NULL },
    { "Layout", FDF_INTEGRAL|FDF_SYSTEM|FDF_R, 0, NULL, NULL },
    END_FIELD

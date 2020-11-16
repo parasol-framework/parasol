@@ -5,6 +5,7 @@ static void debug_branch(CSTRING Header, OBJECTPTR, LONG *Level) __attribute__ (
 
 static void debug_branch(CSTRING Header, OBJECTPTR Vector, LONG *Level)
 {
+   parasol::Log log(Header);
    UBYTE spacing[*Level + 1];
    LONG i;
 
@@ -14,12 +15,12 @@ static void debug_branch(CSTRING Header, OBJECTPTR Vector, LONG *Level)
 
    while (Vector) {
       if (Vector->ClassID IS ID_VECTORSCENE) {
-         LogF(Header, "Scene: %p", Vector);
+         log.msg("Scene: %p", Vector);
          if (((objVectorScene *)Vector)->Viewport) debug_branch(Header, &((objVectorScene *)Vector)->Viewport->Head, Level);
       }
       else if (Vector->ClassID IS ID_VECTOR) {
          objVector *shape = (objVector *)Vector;
-         LogF(Header,"%p<-%p->%p Child %p %s%s", shape->Prev, shape, shape->Next, shape->Child, spacing, shape->Head.Class->ClassName);
+         log.msg("%p<-%p->%p Child %p %s%s", shape->Prev, shape, shape->Next, shape->Child, spacing, shape->Head.Class->ClassName);
          if (shape->Child) debug_branch(Header, (OBJECTPTR)shape->Child, Level);
          Vector = &shape->Next->Head;
       }
@@ -45,15 +46,11 @@ static void debug_tree(CSTRING Header, OBJECTPTR Vector)
 
 //****************************************************************************
 
-static LONG count_stops(objSVG *Self, struct XMLTag *Tag)
+static LONG count_stops(objSVG *Self, XMLTag *Tag)
 {
-   struct XMLTag *scan;
-
    LONG stopcount = 0;
-   for (scan=Tag->Child; scan; scan=scan->Next) {
-      if (!StrMatch("stop", scan->Attrib->Name)) {
-         stopcount++;
-      }
+   for (auto scan=Tag->Child; scan; scan=scan->Next) {
+      if (!StrMatch("stop", scan->Attrib->Name)) stopcount++;
    }
 
    return stopcount;
@@ -62,28 +59,25 @@ static LONG count_stops(objSVG *Self, struct XMLTag *Tag)
 //****************************************************************************
 // Note that all offsets are percentages.
 
-static ERROR process_transition_stops(objSVG *Self, struct XMLTag *Tag, struct Transition *Stops)
+static ERROR process_transition_stops(objSVG *Self, XMLTag *Tag, Transition *Stops)
 {
-   struct XMLTag *scan;
+   parasol::Log log("process_stops");
 
-   FMSG("~process_stops()","");
+   log.traceBranch("");
 
    LONG i = 0;
-   for (scan=Tag->Child; scan; scan=scan->Next) {
+   for (auto scan=Tag->Child; scan; scan=scan->Next) {
       if (!StrMatch("stop", scan->Attrib->Name)) {
          Stops[i].Offset = 0;
          Stops[i].Transform = NULL;
-
-         LONG a;
-         for (a=1; a < scan->TotalAttrib; a++) {
+         for (LONG a=1; a < scan->TotalAttrib; a++) {
             CSTRING name = scan->Attrib[a].Name;
             CSTRING value = scan->Attrib[a].Value;
             if (!value) continue;
 
             if (!StrMatch("offset", name)) {
                Stops[i].Offset = StrToFloat(value);
-               LONG j;
-               for (j=0; value[j]; j++) {
+               for (LONG j=0; value[j]; j++) {
                   if (value[j] IS '%') {
                      Stops[i].Offset = Stops[i].Offset * 0.01; // Must be in the range of 0 - 1.0
                      break;
@@ -96,23 +90,23 @@ static ERROR process_transition_stops(objSVG *Self, struct XMLTag *Tag, struct T
             else if (!StrMatch("transform", name)) {
                Stops[i].Transform = value;
             }
-            else LogErrorMsg("Unable to process stop attribute '%s'", name);
+            else log.warning("Unable to process stop attribute '%s'", name);
          }
 
          i++;
       }
-      else LogErrorMsg("Unknown element in transition, '%s'", scan->Attrib->Name);
+      else log.warning("Unknown element in transition, '%s'", scan->Attrib->Name);
    }
 
-   LOGRETURN();
    return ERR_Okay;
 }
 
 //****************************************************************************
 // Save an id reference for an SVG element.  The element can be then be found at any time with find_href().
 
-static void add_id(objSVG *Self, struct XMLTag *Tag, CSTRING Name)
+static void add_id(objSVG *Self, XMLTag *Tag, CSTRING Name)
 {
+   parasol::Log log(__FUNCTION__);
    svgID *id;
 
    if (!AllocMemory(sizeof(svgID), MEM_DATA, &id, NULL)) {
@@ -121,7 +115,7 @@ static void add_id(objSVG *Self, struct XMLTag *Tag, CSTRING Name)
       id->IDHash   = StrHash(id->ID, TRUE);
       if (Self->IDs) id->Next = Self->IDs;
       Self->IDs = id;
-      FMSG("add_id()","Name: %s = $%.8x", id->ID, id->IDHash);
+      log.trace("Name: %s = $%.8x", id->ID, id->IDHash);
    }
 }
 
@@ -136,14 +130,13 @@ static svgID * find_href(objSVG *Self, CSTRING Ref)
       char name[80];
       WORD i;
       Ref += 5;
-      for (i=0; (Ref[i] != ')') AND (Ref[i]) AND (i < sizeof(name)-1); i++) name[i] = Ref[i];
+      for (i=0; (Ref[i] != ')') AND (Ref[i]) AND ((size_t)i < sizeof(name)-1); i++) name[i] = Ref[i];
       name[i] = 0;
       hash = StrHash(name, TRUE);
    }
    else hash = StrHash(Ref, TRUE);
 
-   svgID *id;
-   for (id=Self->IDs; id; id=id->Next) {
+   for (auto id=Self->IDs; id; id=id->Next) {
       if (id->IDHash IS hash) return id;
    }
    return NULL;
@@ -338,8 +331,9 @@ static CSTRING read_numseq(CSTRING Value, ...)
 
 static void add_inherit(objSVG *Self, OBJECTPTR Object, CSTRING ID)
 {
+   parasol::Log log(__FUNCTION__);
    svgInherit *inherit;
-   FMSG("add_inherit()","Object: %d, ID: %s", Object->UniqueID, ID);
+   log.trace("Object: %d, ID: %s", Object->UniqueID, ID);
    if (!AllocMemory(sizeof(svgInherit), MEM_DATA|MEM_NO_CLEAR, &inherit, NULL)) {
       inherit->Object = Object;
       inherit->Next = Self->Inherit;
@@ -366,9 +360,11 @@ static void reset_state(svgState *State)
 
 static ERROR load_svg(objSVG *Self, CSTRING Path, CSTRING Buffer)
 {
+   parasol::Log log(__FUNCTION__);
+
    if (!Path) return ERR_NullArgs;
 
-   LogF("~load_svg()","Path: %s [Log-level reduced]", Path);
+   log.branch("Path: %s [Log-level reduced]", Path);
 
 #ifndef DEBUG
    AdjustLogLevel(1);
@@ -378,7 +374,6 @@ static ERROR load_svg(objSVG *Self, CSTRING Path, CSTRING Buffer)
    ERROR error = ERR_Okay;
    if (!NewObject(ID_XML, NF_INTEGRAL, &xml)) {
       OBJECTPTR task = CurrentTask();
-
       STRING working_path = NULL;
 
       if (Path) {
@@ -415,8 +410,8 @@ static ERROR load_svg(objSVG *Self, CSTRING Path, CSTRING Buffer)
          // Set a new working path based on the path
 
          char folder[512];
-         WORD i, last = 0;
-         for (i=0; (Path[i]) AND (i < sizeof(folder)-1); i++) {
+         WORD last = 0;
+         for (LONG i=0; (Path[i]) AND ((size_t)i < sizeof(folder)-1); i++) {
             folder[i] = Path[i];
             if ((Path[i] IS '/') OR (Path[i] IS '\\') OR (Path[i] IS ':')) last = i+1;
          }
@@ -430,9 +425,8 @@ static ERROR load_svg(objSVG *Self, CSTRING Path, CSTRING Buffer)
 
          convert_styles(xml);
 
-         struct XMLTag *tag;
          OBJECTPTR sibling = NULL;
-         for (tag=xml->Tags[0]; (tag); tag=tag->Next) {
+         for (auto tag=xml->Tags[0]; (tag); tag=tag->Next) {
             if (!StrMatch("svg", tag->Attrib->Name)) {
                svgState state;
                reset_state(&state);
@@ -449,7 +443,7 @@ static ERROR load_svg(objSVG *Self, CSTRING Path, CSTRING Buffer)
             if (!scFindDef(Self->Scene, inherit->ID, &ref)) {
                SetPointer(inherit->Object, FID_Inherit, ref);
             }
-            else LogErrorMsg("Failed to resolve ID %s for inheritance.", inherit->ID);
+            else log.warning("Failed to resolve ID %s for inheritance.", inherit->ID);
             inherit = inherit->Next;
          }
 
@@ -476,7 +470,6 @@ end:
 #ifndef DEBUG
    AdjustLogLevel(-1);
 #endif
-   LogReturn();
    return error;
 }
 
@@ -484,12 +477,12 @@ end:
 
 static void convert_styles(objXML *XML)
 {
-   LONG t;
-   for (t=0; t < XML->TagCount; t++) {
-      UBYTE value[1024];
-      LONG a;
-      struct XMLTag *tag = XML->Tags[t];
-      for (a=1; a < tag->TotalAttrib; a++) {
+   parasol::Log log(__FUNCTION__);
+
+   for (LONG t=0; t < XML->TagCount; t++) {
+      char value[1024];
+      XMLTag *tag = XML->Tags[t];
+      for (LONG a=1; a < tag->TotalAttrib; a++) {
          if (!StrMatch("style", tag->Attrib[a].Name)) {
             // Convert all the style values into real attributes.
 
@@ -500,7 +493,7 @@ static void convert_styles(objXML *XML)
                while ((value[v]) AND (value[v] <= 0x20)) v++;
 
                LONG ni = v;
-               UBYTE c;
+               char c;
                while ((c = value[v]) AND (c != ':')) v++;
 
                if (c IS ':') {
@@ -511,7 +504,7 @@ static void convert_styles(objXML *XML)
                   if (value[v] IS ';') value[v++] = 0;
                   if (v > vi) xmlSetAttrib(XML, tagindex, XMS_NEW, value+ni, value+vi);
                }
-               else LogErrorMsg("Style string missing ':' to denote value: %s", value);
+               else log.warning("Style string missing ':' to denote value: %s", value);
             }
 
             xmlSetAttrib(XML, tagindex, XMS_UPDATE, "style", NULL); // Remove the style attribute.

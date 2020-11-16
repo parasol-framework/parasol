@@ -33,7 +33,7 @@ struct prvSVG {
 typedef struct svgInherit {
    struct svgInherit *Next;
    OBJECTPTR Object;
-   UBYTE ID[60];
+   char ID[60];
 } svgInherit;
 
 typedef struct svgID { // All elements using the 'id' attribute will be registered with one of these structures.
@@ -62,30 +62,30 @@ static ERROR init_svgimage(void);
 static ERROR init_rsvg(void);
 static ERROR animation_timer(objSVG *, LARGE, LARGE);
 static void  convert_styles(objXML *);
-static void  process_attrib(objSVG *, objXML *, struct XMLTag *, OBJECTPTR);
+static void  process_attrib(objSVG *, objXML *, XMLTag *, OBJECTPTR);
 static void  process_rule(objSVG *, objXML *, KatanaRule *);
-static ERROR process_shape(objSVG *, CLASSID, objXML *, svgState *, struct XMLTag *, OBJECTPTR, OBJECTPTR *);
+static ERROR process_shape(objSVG *, CLASSID, objXML *, svgState *, XMLTag *, OBJECTPTR, OBJECTPTR *);
 static ERROR save_svg_scan(objSVG *, objXML *, objVector *, LONG);
 static ERROR save_svg_defs(objSVG *, objXML *, objVectorScene *, LONG);
 static ERROR save_svg_scan_std(objSVG *, objXML *, objVector *, LONG);
-static ERROR save_svg_transform(struct VectorTransform *, char *, LONG);
-static ERROR set_property(objSVG *, OBJECTPTR, ULONG Hash, objXML *, struct XMLTag *, CSTRING);
-static ERROR xtag_animatemotion(objSVG *, objXML *, struct XMLTag *, OBJECTPTR Parent);
-static ERROR xtag_animatetransform(objSVG *, objXML *, struct XMLTag *, OBJECTPTR);
-static ERROR xtag_default(objSVG *, ULONG Hash, objXML *, struct svgState *, struct XMLTag *, OBJECTPTR, OBJECTPTR *);
-static ERROR xtag_defs(objSVG *, objXML *, svgState *, struct XMLTag *, OBJECTPTR);
-static void  xtag_group(objSVG *, objXML *, svgState *, struct XMLTag *, OBJECTPTR, OBJECTPTR *);
-static ERROR xtag_image(objSVG *, objXML *, svgState *, struct XMLTag *, OBJECTPTR, OBJECTPTR *);
-static void  xtag_morph(objSVG *, objXML *, struct XMLTag *, OBJECTPTR Parent);
-static void  xtag_svg(objSVG *, objXML *, svgState *, struct XMLTag *, OBJECTPTR, OBJECTPTR *);
-static void  xtag_use(objSVG *, objXML *, svgState *, struct XMLTag *, OBJECTPTR);
-static ERROR xtag_style(objSVG *, objXML *, struct XMLTag *);
-static void  xtag_symbol(objSVG *, objXML *, struct XMLTag *);
+static ERROR save_svg_transform(VectorTransform *, char *, LONG);
+static ERROR set_property(objSVG *, OBJECTPTR, ULONG Hash, objXML *, XMLTag *, CSTRING);
+static ERROR xtag_animatemotion(objSVG *, objXML *, XMLTag *, OBJECTPTR Parent);
+static ERROR xtag_animatetransform(objSVG *, objXML *, XMLTag *, OBJECTPTR);
+static ERROR xtag_default(objSVG *, ULONG Hash, objXML *, svgState *, XMLTag *, OBJECTPTR, OBJECTPTR *);
+static ERROR xtag_defs(objSVG *, objXML *, svgState *, XMLTag *, OBJECTPTR);
+static void  xtag_group(objSVG *, objXML *, svgState *, XMLTag *, OBJECTPTR, OBJECTPTR *);
+static ERROR xtag_image(objSVG *, objXML *, svgState *, XMLTag *, OBJECTPTR, OBJECTPTR *);
+static void  xtag_morph(objSVG *, objXML *, XMLTag *, OBJECTPTR Parent);
+static void  xtag_svg(objSVG *, objXML *, svgState *, XMLTag *, OBJECTPTR, OBJECTPTR *);
+static void  xtag_use(objSVG *, objXML *, svgState *, XMLTag *, OBJECTPTR);
+static ERROR xtag_style(objSVG *, objXML *, XMLTag *);
+static void  xtag_symbol(objSVG *, objXML *, XMLTag *);
 
 //****************************************************************************
 
-#include "utility.c"
-#include "save_svg.c"
+#include "utility.cpp"
+#include "save_svg.cpp"
 
 //****************************************************************************
 
@@ -117,9 +117,9 @@ ERROR CMDExpunge(void)
 
 //****************************************************************************
 
-#include "class_svg.c"
-#include "class_svgimage.c"
-#include "class_rsvg.c"
+#include "class_svg.cpp"
+#include "class_svgimage.cpp"
+#include "class_rsvg.cpp"
 
 //****************************************************************************
 

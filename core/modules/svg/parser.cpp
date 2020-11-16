@@ -4,7 +4,9 @@
 
 static void apply_state(svgState *State, OBJECTPTR Vector)
 {
-   FMSG("~apply_state()","%s: Fill: %s, Stroke: %s, Opacity: %.2f, Font: %s %s", Vector->Class->ClassName, State->Fill, State->Stroke, State->Opacity, State->FontFamily, State->FontSize);
+   parasol::Log log(__FUNCTION__);
+
+   log.traceBranch("%s: Fill: %s, Stroke: %s, Opacity: %.2f, Font: %s %s", Vector->Class->ClassName, State->Fill, State->Stroke, State->Opacity, State->FontFamily, State->FontSize);
 
    if (State->Fill)         SetString(Vector, FID_Fill, State->Fill);
    if (State->Stroke)       SetString(Vector, FID_Stroke, State->Stroke);
@@ -15,16 +17,16 @@ static void apply_state(svgState *State, OBJECTPTR Vector)
    }
    if (State->FillOpacity >= 0.0) SetDouble(Vector, FID_FillOpacity, State->FillOpacity);
    if (State->Opacity >= 0.0) SetDouble(Vector, FID_Opacity, State->Opacity);
-
-   LOGRETURN();
 }
 
 //****************************************************************************
 // Copy a tag's attributes to the current state.
 
-static void set_state(svgState *State, struct XMLTag *Tag)
+static void set_state(svgState *State, XMLTag *Tag)
 {
-   FMSG("~set_state()","Total Attributes: %d", Tag->TotalAttrib);
+   parasol::Log log(__FUNCTION__);
+
+   log.traceBranch("Total Attributes: %d", Tag->TotalAttrib);
 
    LONG a;
    for (a=1; a < Tag->TotalAttrib; a++) {
@@ -41,18 +43,15 @@ static void set_state(svgState *State, struct XMLTag *Tag)
          case SVF_OPACITY:      State->Opacity = StrToFloat(val); break;
       }
    }
-
-   LOGRETURN();
 }
 
 //****************************************************************************
 // Process all child elements that belong to the target Tag.
 
-static void process_children(objSVG *Self, objXML *XML, struct svgState *State, struct XMLTag *Tag, OBJECTPTR Vector)
+static void process_children(objSVG *Self, objXML *XML, svgState *State, XMLTag *Tag, OBJECTPTR Vector)
 {
-   struct XMLTag *child;
    OBJECTPTR sibling = NULL;
-   for (child=Tag; child; child=child->Next) {
+   for (auto child=Tag; child; child=child->Next) {
       if (child->Attrib->Name) {
          ULONG hash = StrHash(child->Attrib->Name, FALSE);
          xtag_default(Self, hash, XML, State, child, Vector, &sibling);
@@ -62,12 +61,13 @@ static void process_children(objSVG *Self, objXML *XML, struct svgState *State, 
 
 //****************************************************************************
 
-static void xtag_pathtransition(objSVG *Self, objXML *XML, struct XMLTag *Tag)
+static void xtag_pathtransition(objSVG *Self, objXML *XML, XMLTag *Tag)
 {
-   FMSG("~xtag_pathtransition()","Tag: %p", Tag);
+   parasol::Log log(__FUNCTION__);
+
+   log.traceBranch("Tag: %p", Tag);
 
    OBJECTPTR trans;
-
    if (!NewObject(ID_VECTORTRANSITION, 0, &trans)) {
       SetFields(trans,
          FID_Owner|TLONG, Self->Scene->Head.UniqueID, // All clips belong to the root page to prevent hierarchy issues.
@@ -75,8 +75,7 @@ static void xtag_pathtransition(objSVG *Self, objXML *XML, struct XMLTag *Tag)
          TAGEND);
 
       CSTRING id = NULL;
-      LONG a;
-      for (a=1; a < Tag->TotalAttrib; a++) {
+      for (LONG a=1; a < Tag->TotalAttrib; a++) {
          CSTRING val = Tag->Attrib[a].Value;
          if (!val) continue;
 
@@ -88,31 +87,30 @@ static void xtag_pathtransition(objSVG *Self, objXML *XML, struct XMLTag *Tag)
       if (id) {
          LONG stopcount = count_stops(Self, Tag);
          if (stopcount >= 2) {
-            struct Transition stops[stopcount];
+            Transition stops[stopcount];
             process_transition_stops(Self, Tag, stops);
             SetArray((OBJECTPTR)trans, FID_Stops, stops, stopcount);
 
             if (!acInit(trans)) {
                scAddDef(Self->Scene, id, (OBJECTPTR)trans);
-               LOGRETURN();
                return;
             }
          }
-         else LogErrorMsg("At least two stops are required for <pathTransition> at line %d.", Tag->LineNo);
+         else log.warning("At least two stops are required for <pathTransition> at line %d.", Tag->LineNo);
       }
-      else LogErrorMsg("No id attribute specified in <pathTransition> at line %d.", Tag->LineNo);
+      else log.warning("No id attribute specified in <pathTransition> at line %d.", Tag->LineNo);
 
       acFree(trans);
    }
-
-   LOGRETURN();
 }
 
 //****************************************************************************
 
-static void xtag_clippath(objSVG *Self, objXML *XML, struct XMLTag *Tag)
+static void xtag_clippath(objSVG *Self, objXML *XML, XMLTag *Tag)
 {
-   FMSG("~xtag_clippath()","Tag: %p", Tag);
+   parasol::Log log(__FUNCTION__);
+
+   log.traceBranch("Tag: %p", Tag);
 
    OBJECTPTR clip;
    CSTRING id = NULL;
@@ -124,8 +122,7 @@ static void xtag_clippath(objSVG *Self, objXML *XML, struct XMLTag *Tag)
          FID_Units|TLONG, VUNIT_BOUNDING_BOX,
          TAGEND);
 
-      LONG a;
-      for (a=1; a < Tag->TotalAttrib; a++) {
+      for (LONG a=1; a < Tag->TotalAttrib; a++) {
          CSTRING val = Tag->Attrib[a].Value;
          if (!val) continue;
 
@@ -150,18 +147,18 @@ static void xtag_clippath(objSVG *Self, objXML *XML, struct XMLTag *Tag)
          else acFree(clip);
       }
       else {
-         LogErrorMsg("No id attribute specified in <clipPath> at line %d.", Tag->LineNo);
+         log.warning("No id attribute specified in <clipPath> at line %d.", Tag->LineNo);
          acFree(clip);
       }
    }
-
-   LOGRETURN();
 }
 
 //****************************************************************************
 
-static void xtag_filter(objSVG *Self, objXML *XML, struct XMLTag *Tag)
+static void xtag_filter(objSVG *Self, objXML *XML, XMLTag *Tag)
 {
+   parasol::Log log(__FUNCTION__);
+
    objVectorFilter *filter;
    CSTRING id = NULL;
 
@@ -174,8 +171,7 @@ static void xtag_filter(objSVG *Self, objXML *XML, struct XMLTag *Tag)
          FID_Path|TSTR,         Self->Path,
          TAGEND);
 
-      LONG a;
-      for (a=1; a < Tag->TotalAttrib; a++) {
+      for (LONG a=1; a < Tag->TotalAttrib; a++) {
          CSTRING val = Tag->Attrib[a].Value;
          if (!val) continue;
 
@@ -223,7 +219,7 @@ static void xtag_filter(objSVG *Self, objXML *XML, struct XMLTag *Tag)
             }
 */
             default:
-               LogErrorMsg("<%s> attribute '%s' unrecognised @ line %d", Tag->Attrib->Name, Tag->Attrib[a].Name, Tag->LineNo);
+               log.warning("<%s> attribute '%s' unrecognised @ line %d", Tag->Attrib->Name, Tag->Attrib[a].Name, Tag->LineNo);
                break;
          }
       }
@@ -246,8 +242,9 @@ static void xtag_filter(objSVG *Self, objXML *XML, struct XMLTag *Tag)
 
 //****************************************************************************
 
-static void process_pattern(objSVG *Self, objXML *XML, struct XMLTag *Tag)
+static void process_pattern(objSVG *Self, objXML *XML, XMLTag *Tag)
 {
+   parasol::Log log(__FUNCTION__);
    objVectorPattern *pattern;
    CSTRING id = NULL;
 
@@ -259,8 +256,7 @@ static void process_pattern(objSVG *Self, objXML *XML, struct XMLTag *Tag)
          FID_SpreadMethod|TLONG, VSPREAD_REPEAT,
          TAGEND);
 
-      LONG a;
-      for (a=1; a < Tag->TotalAttrib; a++) {
+      for (LONG a=1; a < Tag->TotalAttrib; a++) {
          CSTRING val = Tag->Attrib[a].Value;
          if (!val) continue;
 
@@ -307,14 +303,14 @@ static void process_pattern(objSVG *Self, objXML *XML, struct XMLTag *Tag)
             }
 
             default:
-               LogErrorMsg("%s attribute '%s' unrecognised @ line %d", Tag->Attrib->Name, Tag->Attrib[a].Name, Tag->LineNo);
+               log.warning("%s attribute '%s' unrecognised @ line %d", Tag->Attrib->Name, Tag->Attrib[a].Name, Tag->LineNo);
                break;
          }
       }
 
       if (!id) {
          acFree(pattern);
-         MSG("Failed to create a valid definition.");
+         log.trace("Failed to create a valid definition.");
       }
 
       if (!acInit(pattern)) {
@@ -327,16 +323,17 @@ static void process_pattern(objSVG *Self, objXML *XML, struct XMLTag *Tag)
       }
       else {
          acFree(pattern);
-         MSG("Pattern initialisation failed.");
+         log.trace("Pattern initialisation failed.");
       }
    }
 }
 
 //****************************************************************************
 
-static ERROR process_shape(objSVG *Self, CLASSID VectorID, objXML *XML, svgState *State, struct XMLTag *Tag,
+static ERROR process_shape(objSVG *Self, CLASSID VectorID, objXML *XML, svgState *State, XMLTag *Tag,
    OBJECTPTR Parent, OBJECTPTR *Result)
 {
+   parasol::Log log(__FUNCTION__);
    ERROR error;
    OBJECTPTR vector;
 
@@ -351,8 +348,7 @@ static ERROR process_shape(objSVG *Self, CLASSID VectorID, objXML *XML, svgState
       if (!acInit(vector)) {
          // Process child tags
 
-         struct XMLTag *child;
-         for (child=Tag->Child; child; child=child->Next) {
+         for (auto child=Tag->Child; child; child=child->Next) {
             if (child->Attrib->Name) {
                switch(StrHash(child->Attrib->Name, FALSE)) {
                   case SVF_ANIMATETRANSFORM: xtag_animatetransform(Self, XML, child, vector); break;
@@ -361,20 +357,20 @@ static ERROR process_shape(objSVG *Self, CLASSID VectorID, objXML *XML, svgState
                   case SVF_TEXTPATH:
                      if (VectorID IS ID_VECTORTEXT) {
                         if (child->Child) {
-                           UBYTE buffer[8192];
+                           char buffer[8192];
                            if (!xmlGetContent(XML, child->Index, buffer, sizeof(buffer))) {
                               LONG ws;
                               for (ws=0; (buffer[ws]) AND (buffer[ws] <= 0x20); ws++); // All leading whitespace is ignored.
                               SetString(vector, FID_String, buffer + ws);
                            }
-                           else MSG("Failed to retrieve content for <text> @ line %d", Tag->LineNo);
+                           else log.msg("Failed to retrieve content for <text> @ line %d", Tag->LineNo);
                         }
 
                         xtag_morph(Self, XML, child, vector);
                      }
                      break;
                   default:
-                     LogErrorMsg("Failed to interpret vector child element <%s/> @ line %d", child->Attrib->Name, child->LineNo);
+                     log.warning("Failed to interpret vector child element <%s/> @ line %d", child->Attrib->Name, child->LineNo);
                      break;
                }
             }
@@ -393,8 +389,10 @@ static ERROR process_shape(objSVG *Self, CLASSID VectorID, objXML *XML, svgState
 
 //****************************************************************************
 
-static ERROR xtag_default(objSVG *Self, ULONG Hash, objXML *XML, svgState *State, struct XMLTag *Tag, OBJECTPTR Parent, OBJECTPTR *Vector)
+static ERROR xtag_default(objSVG *Self, ULONG Hash, objXML *XML, svgState *State, XMLTag *Tag, OBJECTPTR Parent, OBJECTPTR *Vector)
 {
+   parasol::Log log(__FUNCTION__);
+
    switch(Hash) {
       case SVF_USE:     xtag_use(Self, XML, State, Tag, Parent); break;
       case SVF_G:       xtag_group(Self, XML, State, Tag, Parent, Vector); break;
@@ -423,7 +421,7 @@ static ERROR xtag_default(objSVG *Self, ULONG Hash, objXML *XML, svgState *State
       case SVF_TITLE:
          if (Self->Title) { FreeResource(Self->Title); Self->Title = NULL; }
          if (Tag->Child) {
-            UBYTE buffer[8192];
+            char buffer[8192];
             if (!xmlGetContent(XML, Tag->Index, buffer, sizeof(buffer))) {
                LONG ws;
                for (ws=0; buffer[ws] AND (buffer[ws] <= 0x20); ws++); // All leading whitespace is ignored.
@@ -451,12 +449,13 @@ static ERROR xtag_default(objSVG *Self, ULONG Hash, objXML *XML, svgState *State
                if ((!GetString(*Vector, FID_String, &str)) AND (str)) {
                   ws = StrCopy(str, buffer, sizeof(buffer));
                }
+
                if (!xmlGetContent(XML, Tag->Index, buffer + ws, sizeof(buffer) - ws)) {
                   if (!ws) while (buffer[ws] AND (buffer[ws] <= 0x20)) ws++; // All leading whitespace is ignored.
                   else ws = 0;
                   SetString(*Vector, FID_String, buffer + ws);
                }
-               else MSG("Failed to retrieve content for <text> @ line %d", Tag->LineNo);
+               else log.msg("Failed to retrieve content for <text> @ line %d", Tag->LineNo);
             }
          }
          break;
@@ -464,7 +463,7 @@ static ERROR xtag_default(objSVG *Self, ULONG Hash, objXML *XML, svgState *State
 
       case SVF_DESC: break; // Ignore descriptions
 
-      default: LogErrorMsg("Failed to interpret tag <%s/> ($%.8x) @ line %d", Tag->Attrib->Name, Hash, Tag->LineNo); return ERR_NoSupport;
+      default: log.warning("Failed to interpret tag <%s/> ($%.8x) @ line %d", Tag->Attrib->Name, Hash, Tag->LineNo); return ERR_NoSupport;
    }
 
    return ERR_Okay;
@@ -474,13 +473,15 @@ static ERROR xtag_default(objSVG *Self, ULONG Hash, objXML *XML, svgState *State
 
 static ERROR load_pic(objSVG *Self, CSTRING Path, objPicture **Picture)
 {
+   parasol::Log log(__FUNCTION__);
+
    *Picture = NULL;
    objFile *file = NULL;
    CSTRING val = Path;
 
    ERROR error = ERR_Okay;
    if (!StrCompare("data:", val, 5, 0)) { // Check for embedded content
-      LogF("~load_pic()","Detected embedded source data");
+      log.branch("Detected embedded source data");
       val += 5;
       if (!StrCompare("image/", val, 6, 0)) { // Has to be an image type
          val += 6;
@@ -490,7 +491,7 @@ static ERROR load_pic(objSVG *Self, CSTRING Path, objPicture **Picture)
             while ((*val) AND (*val != ',')) val++;
             if (*val IS ',') val++;
 
-            struct rkBase64Decode state;
+            rkBase64Decode state;
             ClearMemory(&state, sizeof(state));
 
             UBYTE *output;
@@ -517,7 +518,7 @@ static ERROR load_pic(objSVG *Self, CSTRING Path, objPicture **Picture)
       }
       else error = ERR_StringFormat;
    }
-   else LogF("~load_pic()","%s", Path);
+   else log.branch("%s", Path);
 
    if (!error) {
       error = CreateObject(ID_PICTURE, 0, Picture,
@@ -533,16 +534,16 @@ static ERROR load_pic(objSVG *Self, CSTRING Path, objPicture **Picture)
       acFree(file);
    }
 
-   if (error) PostError(error);
-   LogReturn();
+   if (error) log.warning(error);
    return error;
 }
 
 //****************************************************************************
 // Definition images are stored once, allowing them to be used multiple times via Fill and Stroke references.
 
-static void def_image(objSVG *Self, struct XMLTag *Tag)
+static void def_image(objSVG *Self, XMLTag *Tag)
 {
+   parasol::Log log(__FUNCTION__);
    objVectorImage *image;
    CSTRING id = NULL;
    objPicture *pic = NULL;
@@ -555,8 +556,7 @@ static void def_image(objSVG *Self, struct XMLTag *Tag)
          FID_SpreadMethod|TLONG, VSPREAD_PAD,
          TAGEND);
 
-      LONG a;
-      for (a=1; a < Tag->TotalAttrib; a++) {
+      for (LONG a=1; a < Tag->TotalAttrib; a++) {
          CSTRING val = Tag->Attrib[a].Value;
          if (!val) continue;
 
@@ -574,7 +574,7 @@ static void def_image(objSVG *Self, struct XMLTag *Tag)
                // Check if this was a reference to some other namespace (ignorable).
                LONG i;
                for (i=0; val[i] AND (val[i] != ':'); i++);
-               if (val[i] != ':') LogErrorMsg("Failed to parse attrib '%s' in <image/> tag @ line %d", Tag->Attrib[a].Name, Tag->LineNo);
+               if (val[i] != ':') log.warning("Failed to parse attrib '%s' in <image/> tag @ line %d", Tag->Attrib[a].Name, Tag->LineNo);
                break;
             }
          }
@@ -589,33 +589,33 @@ static void def_image(objSVG *Self, struct XMLTag *Tag)
             }
             else {
                acFree(image);
-               MSG("Picture initialisation failed.");
+               log.trace("Picture initialisation failed.");
             }
          }
          else {
             acFree(image);
-            MSG("Unable to load a picture for <image/> '%s' at line %d", id, Tag->LineNo);
+            log.trace("Unable to load a picture for <image/> '%s' at line %d", id, Tag->LineNo);
          }
       }
       else {
          acFree(image);
-         MSG("No id specified in <image/> at line %d", Tag->LineNo);
+         log.trace("No id specified in <image/> at line %d", Tag->LineNo);
       }
    }
 }
 
 //****************************************************************************
 
-static ERROR xtag_image(objSVG *Self, objXML *XML, svgState *State, struct XMLTag *Tag, OBJECTPTR Parent, OBJECTPTR *Vector)
+static ERROR xtag_image(objSVG *Self, objXML *XML, svgState *State, XMLTag *Tag, OBJECTPTR Parent, OBJECTPTR *Vector)
 {
+   parasol::Log log(__FUNCTION__);
    STRING ratio = NULL;
    BYTE width_set = FALSE;
    BYTE height_set = FALSE;
    svgState state = *State;
    objPicture *pic = NULL;
 
-   LONG a;
-   for (a=1; a < Tag->TotalAttrib; a++) {
+   for (LONG a=1; a < Tag->TotalAttrib; a++) {
       if (!StrMatch("xlink:href", Tag->Attrib[a].Name)) {
          load_pic(Self, Tag->Attrib[a].Value, &pic);
       }
@@ -646,7 +646,7 @@ static ERROR xtag_image(objSVG *Self, objXML *XML, svgState *State, struct XMLTa
          SetOwner(pic, image); // It's best if the pic belongs to the image.
          scAddDef(Self->Scene, id, (OBJECTPTR)image);
 
-         UBYTE fillname[256];
+         char fillname[256];
          StrFormat(fillname, sizeof(fillname), "url(#%s)", id);
 
          // Use a rectangle shape to represent the image
@@ -661,20 +661,20 @@ static ERROR xtag_image(objSVG *Self, objXML *XML, svgState *State, struct XMLTa
       }
       else return ERR_Failed;
    }
-   else LogF("@xtag_image","Failed to load picture via xlink:href.");
+   else log.warning("Failed to load picture via xlink:href.");
 
    return ERR_Failed;
 }
 
 //****************************************************************************
 
-static ERROR xtag_defs(objSVG *Self, objXML *XML, svgState *State, struct XMLTag *Tag, OBJECTPTR Parent)
+static ERROR xtag_defs(objSVG *Self, objXML *XML, svgState *State, XMLTag *Tag, OBJECTPTR Parent)
 {
-   struct XMLTag *child;
+   parasol::Log log(__FUNCTION__);
 
-   FMSG("~xtag_defs()","Tag: %p", Tag);
+   log.traceBranch("Tag: %p", Tag);
 
-   for (child=Tag->Child; child; child=child->Next) {
+   for (auto child=Tag->Child; child; child=child->Next) {
       switch (StrHash(child->Attrib->Name, FALSE)) {
          case SVF_CONTOURGRADIENT: xtag_contourgradient(Self, child); break;
          case SVF_RADIALGRADIENT:  xtag_radialgradient(Self, child); break;
@@ -685,11 +685,10 @@ static ERROR xtag_defs(objSVG *Self, objXML *XML, svgState *State, struct XMLTag
          case SVF_IMAGE:           def_image(Self, child); break;
          case SVF_FILTER:          xtag_filter(Self, XML, child); break;
          case SVF_CLIPPATH:        xtag_clippath(Self, XML, child); break;
-         case SVF_PARASOL_TRANSITION:  xtag_pathtransition(Self, XML, child); break;
+         case SVF_PARASOL_TRANSITION: xtag_pathtransition(Self, XML, child); break;
 
          default: { // Anything not immediately recognised is added if it has an 'id' attribute.
-            LONG a;
-            for (a=1; a < child->TotalAttrib; a++) {
+            for (LONG a=1; a < child->TotalAttrib; a++) {
                if (!StrMatch("id", child->Attrib[a].Name)) {
                   add_id(Self, child, child->Attrib[a].Value);
                   break;
@@ -700,19 +699,19 @@ static ERROR xtag_defs(objSVG *Self, objXML *XML, svgState *State, struct XMLTag
       }
    }
 
-   LOGRETURN();
    return ERR_Okay;
 }
 
 //****************************************************************************
 
-static ERROR xtag_style(objSVG *Self, objXML *XML, struct XMLTag *Tag)
+static ERROR xtag_style(objSVG *Self, objXML *XML, XMLTag *Tag)
 {
+   parasol::Log log(__FUNCTION__);
    ERROR error = ERR_Okay;
    CSTRING type = XMLATTRIB(Tag, "type");
 
    if ((type) AND (StrMatch("text/css", type) != ERR_Okay)) {
-      LogErrorMsg("Unsupported stylesheet '%s'", type);
+      log.warning("Unsupported stylesheet '%s'", type);
       return ERR_NoSupport;
    }
 
@@ -736,14 +735,14 @@ static ERROR xtag_style(objSVG *Self, objXML *XML, struct XMLTag *Tag)
 
             KatanaStylesheet *sheet = css->stylesheet;
 
-            LogF("xtag_style","%d CSS rules will be applied", sheet->imports.length + sheet->rules.length);
+            log.msg("%d CSS rules will be applied", sheet->imports.length + sheet->rules.length);
 
-            for (LONG i = 0; i < sheet->imports.length; ++i) {
+            for (ULONG i = 0; i < sheet->imports.length; ++i) {
                if (sheet->imports.data[i])
                   process_rule(Self, XML, (KatanaRule *)sheet->imports.data[i]);
             }
 
-            for (LONG i = 0; i < sheet->rules.length; ++i) {
+            for (ULONG i=0; i < sheet->rules.length; ++i) {
                if (sheet->rules.data[i])
                   process_rule(Self, XML, (KatanaRule *)sheet->rules.data[i]);
             }
@@ -764,27 +763,26 @@ static ERROR xtag_style(objSVG *Self, objXML *XML, struct XMLTag *Tag)
 // When a use element is encountered, it looks for the associated symbol ID and then processes the XML child tags that
 // belong to it.
 
-static void xtag_symbol(objSVG *Self, objXML *XML, struct XMLTag *Tag)
+static void xtag_symbol(objSVG *Self, objXML *XML, XMLTag *Tag)
 {
-   FMSG("~xtag_symbol()","Tag: %p", Tag);
+   parasol::Log log(__FUNCTION__);
+   log.traceBranch("Tag: %p", Tag);
 
    CSTRING id = XMLATTRIB(Tag, "id");
-   if (id) {
-      add_id(Self, Tag, id);
-   }
-   else LogErrorMsg("No id attribute specified in <symbol> at line %d.", Tag->LineNo);
-
-   LOGRETURN();
+   if (id) add_id(Self, Tag, id);
+   else log.warning("No id attribute specified in <symbol> at line %d.", Tag->LineNo);
 }
 
 /*****************************************************************************
 ** Most vector shapes can be morphed to the path of another vector.
 */
 
-static void xtag_morph(objSVG *Self, objXML *XML, struct XMLTag *Tag, OBJECTPTR Parent)
+static void xtag_morph(objSVG *Self, objXML *XML, XMLTag *Tag, OBJECTPTR Parent)
 {
+   parasol::Log log(__FUNCTION__);
+
    if ((!Parent) OR (Parent->ClassID != ID_VECTOR)) {
-      FMSG("@xtag_morph()","Unable to apply morph to non-vector parent object.");
+      log.traceWarning("Unable to apply morph to non-vector parent object.");
       return;
    }
 
@@ -794,8 +792,7 @@ static void xtag_morph(objSVG *Self, objXML *XML, struct XMLTag *Tag, OBJECTPTR 
    CSTRING ref = NULL;
    CSTRING transition = NULL;
    LONG flags = 0;
-   LONG a;
-   for (a=1; (a < Tag->TotalAttrib); a++) {
+   for (LONG a=1; (a < Tag->TotalAttrib); a++) {
       CSTRING val = Tag->Attrib[a].Value;
 
       switch(StrHash(Tag->Attrib[a].Name, FALSE)) {
@@ -826,27 +823,27 @@ static void xtag_morph(objSVG *Self, objXML *XML, struct XMLTag *Tag, OBJECTPTR 
    }
 
    if (!ref) {
-      LogErrorMsg("<morph> element @ line %d is missing a valid xlink:href attribute.", Tag->LineNo);
+      log.warning("<morph> element @ line %d is missing a valid xlink:href attribute.", Tag->LineNo);
       return;
    }
 
    // Find the matching element with matching ID
 
-   struct svgID *id = find_href(Self, ref);
+   svgID *id = find_href(Self, ref);
    if (!id) {
-      LogErrorMsg("Unable to find element '%s' referenced at line %d", ref, Tag->LineNo);
+      log.warning("Unable to find element '%s' referenced at line %d", ref, Tag->LineNo);
       return;
    }
 
    OBJECTPTR transvector = NULL;
    if (transition) {
       if (scFindDef(Self->Scene, transition, &transvector)) {
-         LogErrorMsg("Unable to find element '%s' referenced at line %d", transition, Tag->LineNo);
+         log.warning("Unable to find element '%s' referenced at line %d", transition, Tag->LineNo);
          return;
       }
    }
 
-   struct XMLTag *tagref = XML->Tags[id->TagIndex];
+   XMLTag *tagref = XML->Tags[id->TagIndex];
 
    CLASSID class_id = 0;
    switch (StrHash(tagref->Attrib[0].Name, FALSE)) {
@@ -859,7 +856,7 @@ static void xtag_morph(objSVG *Self, objXML *XML, struct XMLTag *Tag, OBJECTPTR 
       case SVF_PARASOL_WAVE:   class_id = ID_VECTORWAVE; break;
       case SVF_PARASOL_SHAPE:  class_id = ID_VECTORSHAPE; break;
       default:
-         LogErrorMsg("Invalid reference '%s', '%s' is not recognised by <morph>.", ref, tagref->Attrib[0].Name);
+         log.warning("Invalid reference '%s', '%s' is not recognised by <morph>.", ref, tagref->Attrib[0].Name);
    }
 
    if (!(flags & (VMF_Y_MIN|VMF_Y_MID|VMF_Y_MAX))) {
@@ -886,31 +883,32 @@ static void xtag_morph(objSVG *Self, objXML *XML, struct XMLTag *Tag, OBJECTPTR 
 // non-exposed DOM tree which had the 'use' element as its parent and all of the 'use' element's ancestors as its
 // higher-level ancestors.
 
-static void xtag_use(objSVG *Self, objXML *XML, svgState *State, struct XMLTag *Tag, OBJECTPTR Parent)
+static void xtag_use(objSVG *Self, objXML *XML, svgState *State, XMLTag *Tag, OBJECTPTR Parent)
 {
+   parasol::Log log(__FUNCTION__);
    CSTRING ref = NULL;
-   LONG a;
-   for (a=1; (a < Tag->TotalAttrib) AND (!ref); a++) {
+
+   for (LONG a=1; (a < Tag->TotalAttrib) AND (!ref); a++) {
       switch(StrHash(Tag->Attrib[a].Name, FALSE)) {
          case SVF_XLINK_HREF: ref = Tag->Attrib[a].Value; break;
       }
    }
 
    if (!ref) {
-      LogErrorMsg("<use> element @ line %d is missing a valid xlink:href attribute.", Tag->LineNo);
+      log.warning("<use> element @ line %d is missing a valid xlink:href attribute.", Tag->LineNo);
       return;
    }
 
    // Find the matching element with matching ID
 
-   struct svgID *id = find_href(Self, ref);
+   svgID *id = find_href(Self, ref);
    if (!id) {
-      LogErrorMsg("Unable to find element '%s'", ref);
+      log.warning("Unable to find element '%s'", ref);
       return;
    }
 
    OBJECTPTR vector = NULL;
-   struct XMLTag *tagref = XML->Tags[id->TagIndex];
+   XMLTag *tagref = XML->Tags[id->TagIndex];
 
    svgState state = *State;
    set_state(&state, Tag); // Apply all attribute values to the current state.
@@ -921,7 +919,7 @@ static void xtag_use(objSVG *Self, objXML *XML, svgState *State, struct XMLTag *
 
       OBJECTPTR group;
       UBYTE need_group = FALSE;
-      for (a=1; (a < Tag->TotalAttrib) AND (!need_group); a++) {
+      for (LONG a=1; (a < Tag->TotalAttrib) AND (!need_group); a++) {
          switch(StrHash(Tag->Attrib[a].Name, FALSE)) {
             case SVF_X: case SVF_Y: case SVF_WIDTH: case SVF_HEIGHT: break;
             default: need_group = TRUE; break;
@@ -945,7 +943,7 @@ static void xtag_use(objSVG *Self, objXML *XML, svgState *State, struct XMLTag *
       SetFields(vector, FID_Width|TPERCENT|TDOUBLE, 100.0, FID_Height|TPERCENT|TDOUBLE, 100.0, TAGEND); // SVG default
 
       // Apply attributes from 'use'
-      for (a=1; a < Tag->TotalAttrib; a++) {
+      for (LONG a=1; a < Tag->TotalAttrib; a++) {
          CSTRING val;
          if (!(val = Tag->Attrib[a].Value)) continue;
          ULONG hash = StrHash(Tag->Attrib[a].Name, FALSE);
@@ -966,7 +964,7 @@ static void xtag_use(objSVG *Self, objXML *XML, svgState *State, struct XMLTag *
 
       // Apply attributes from the symbol itself to the viewport
 
-      for (a=1; a < tagref->TotalAttrib; a++) {
+      for (LONG a=1; a < tagref->TotalAttrib; a++) {
          CSTRING val;
          if (!(val = tagref->Attrib[a].Value)) continue;
 
@@ -987,7 +985,7 @@ static void xtag_use(objSVG *Self, objXML *XML, svgState *State, struct XMLTag *
                break;
             }
             case SVF_ID: break; // Ignore (already processed).
-            default: LogErrorMsg("Not processing attribute '%s'", tagref->Attrib[a].Name); break;
+            default: log.warning("Not processing attribute '%s'", tagref->Attrib[a].Name); break;
          }
       }
 
@@ -996,11 +994,10 @@ static void xtag_use(objSVG *Self, objXML *XML, svgState *State, struct XMLTag *
       // Add all child elements in <symbol> to the viewport.
 
       if ((id->TagIndex >= 0) AND (id->TagIndex < XML->TagCount)) {
-         FMSG("~xtag_use","Processing all child elements within %s", ref);
+         log.traceBranch("Processing all child elements within %s", ref);
          process_children(Self, XML, &state, XML->Tags[id->TagIndex]->Child, vector);
-         LOGRETURN();
       }
-      else FMSG("xtag_use","Element TagIndex %d is out of range.", id->TagIndex);
+      else log.trace("Element TagIndex %d is out of range.", id->TagIndex);
    }
    else { // SVG requires that the 'use' element is converted to a 'g' and that the 'use' attributes are applied to it.
       if (!NewObject(ID_VECTORGROUP, 0, &vector)) {
@@ -1018,9 +1015,11 @@ static void xtag_use(objSVG *Self, objXML *XML, svgState *State, struct XMLTag *
 
 //****************************************************************************
 
-static void xtag_group(objSVG *Self, objXML *XML, svgState *State, struct XMLTag *Tag, OBJECTPTR Parent, OBJECTPTR *Vector)
+static void xtag_group(objSVG *Self, objXML *XML, svgState *State, XMLTag *Tag, OBJECTPTR Parent, OBJECTPTR *Vector)
 {
-   FMSG("~xtag_group()","Tag: %p", Tag);
+   parasol::Log log(__FUNCTION__);
+
+   log.traceBranch("Tag: %p", Tag);
 
    svgState state = *State;
 
@@ -1033,8 +1032,7 @@ static void xtag_group(objSVG *Self, objXML *XML, svgState *State, struct XMLTag
    // Process child tags
 
    OBJECTPTR sibling = NULL;
-   struct XMLTag *child;
-   for (child = Tag->Child; child; child=child->Next) {
+   for (auto child = Tag->Child; child; child=child->Next) {
       if (child->Attrib->Name) {
          ULONG hash = StrHash(child->Attrib->Name, FALSE);
          switch(hash) {
@@ -1045,8 +1043,6 @@ static void xtag_group(objSVG *Self, objXML *XML, svgState *State, struct XMLTag
 
    if (!acInit(group)) *Vector = group;
    else acFree(group);
-
-   LOGRETURN();
 }
 
 /*****************************************************************************
@@ -1054,14 +1050,16 @@ static void xtag_group(objSVG *Self, objXML *XML, svgState *State, struct XMLTag
 ** Refer to section 7.9 of the SVG Specification for more information.
 */
 
-static void xtag_svg(objSVG *Self, objXML *XML, svgState *State, struct XMLTag *Tag, OBJECTPTR Parent, OBJECTPTR *Vector)
+static void xtag_svg(objSVG *Self, objXML *XML, svgState *State, XMLTag *Tag, OBJECTPTR Parent, OBJECTPTR *Vector)
 {
+   parasol::Log log(__FUNCTION__);
    LONG a;
 
    if (!Parent) {
-      LogF("@xtag_svg()","A Parent object is required.");
+      log.warning("A Parent object is required.");
       return;
    }
+
    OBJECTPTR viewport;
    if (NewObject(ID_VECTORVIEWPORT, 0, &viewport)) return;
    SetOwner(viewport, Parent);
@@ -1158,7 +1156,7 @@ static void xtag_svg(objSVG *Self, objXML *XML, svgState *State, struct XMLTag *
             LONG i;
             for (i=0; val[i] AND (val[i] != ':'); i++);
             if (val[i] != ':') {
-               LogErrorMsg("Failed to parse attrib '%s' in <svg/> tag @ line %d", Tag->Attrib[a].Name, Tag->LineNo);
+               log.warning("Failed to parse attrib '%s' in <svg/> tag @ line %d", Tag->Attrib[a].Name, Tag->LineNo);
             }
          }
       }
@@ -1167,19 +1165,16 @@ static void xtag_svg(objSVG *Self, objXML *XML, svgState *State, struct XMLTag *
    // Process child tags
 
    OBJECTPTR sibling = NULL;
-   struct XMLTag *child;
-   for (child=Tag->Child; child; child=child->Next) {
+   for (auto child=Tag->Child; child; child=child->Next) {
       if (child->Attrib->Name) {
          ULONG hash = StrHash(child->Attrib->Name, FALSE);
 
-         FMSG("~xtag_svg","Processing <%s/>", child->Attrib->Name);
+         log.trace("Processing <%s/>", child->Attrib->Name);
 
          switch(hash) {
             case SVF_DEFS: xtag_defs(Self, XML, &state, child, viewport); break;
             default:       xtag_default(Self, hash, XML, &state, child, viewport, &sibling);  break;
          }
-
-         LOGRETURN();
       }
    }
 
@@ -1191,10 +1186,10 @@ static void xtag_svg(objSVG *Self, objXML *XML, svgState *State, struct XMLTag *
 // <animateTransform attributeType="XML" attributeName="transform" type="rotate" from="0,150,150" to="360,150,150"
 //   begin="0s" dur="5s" repeatCount="indefinite"/>
 
-static ERROR xtag_animatetransform(objSVG *Self, objXML *XML, struct XMLTag *Tag, OBJECTPTR Parent)
+static ERROR xtag_animatetransform(objSVG *Self, objXML *XML, XMLTag *Tag, OBJECTPTR Parent)
 {
-   struct svgAnimation anim;
-   LONG a;
+   parasol::Log log(__FUNCTION__);
+   svgAnimation anim;
 
    Self->Animated = TRUE;
 
@@ -1203,7 +1198,7 @@ static ERROR xtag_animatetransform(objSVG *Self, objXML *XML, struct XMLTag *Tag
    anim.TargetVector = Parent->UniqueID;
 
    CSTRING value;
-   for (a=1; a < Tag->TotalAttrib; a++) {
+   for (LONG a=1; a < Tag->TotalAttrib; a++) {
       if (!(value = Tag->Attrib[a].Value)) continue;
 
       switch(StrHash(Tag->Attrib[a].Name, FALSE)) {
@@ -1250,7 +1245,7 @@ static ERROR xtag_animatetransform(objSVG *Self, objXML *XML, struct XMLTag *Tag
             else if (!StrMatch("rotate", value)) anim.Transform = AT_ROTATE;
             else if (!StrMatch("skewX", value))  anim.Transform = AT_SKEW_X;
             else if (!StrMatch("skewY", value))  anim.Transform = AT_SKEW_Y;
-            else LogErrorMsg("Unsupported type '%s'", value);
+            else log.warning("Unsupported type '%s'", value);
             break;
 
          case SVF_MIN:
@@ -1333,10 +1328,10 @@ static ERROR xtag_animatetransform(objSVG *Self, objXML *XML, struct XMLTag *Tag
       }
    }
 
-   struct svgAnimation *newAnim;
-   if (!AllocMemory(sizeof(struct svgAnimation), MEM_DATA|MEM_NO_CLEAR, &newAnim, NULL)) {
+   svgAnimation *newAnim;
+   if (!AllocMemory(sizeof(svgAnimation), MEM_DATA|MEM_NO_CLEAR, &newAnim, NULL)) {
       if (Self->Animations) anim.Next = Self->Animations;
-      CopyMemory(&anim, newAnim, sizeof(struct svgAnimation));
+      CopyMemory(&anim, newAnim, sizeof(svgAnimation));
       Self->Animations = newAnim;
       return ERR_Okay;
    }
@@ -1346,13 +1341,11 @@ static ERROR xtag_animatetransform(objSVG *Self, objXML *XML, struct XMLTag *Tag
 //****************************************************************************
 // <animateMotion from="0,0" to="100,100" dur="4s" fill="freeze"/>
 
-static ERROR xtag_animatemotion(objSVG *Self, objXML *XML, struct XMLTag *Tag, OBJECTPTR Parent)
+static ERROR xtag_animatemotion(objSVG *Self, objXML *XML, XMLTag *Tag, OBJECTPTR Parent)
 {
-   LONG a;
-
    Self->Animated = TRUE;
 
-   for (a=1; a < Tag->TotalAttrib; a++) {
+   for (LONG a=1; a < Tag->TotalAttrib; a++) {
       if (!Tag->Attrib[a].Value) continue;
 
       switch(StrHash(Tag->Attrib[a].Name, FALSE)) {
@@ -1379,11 +1372,11 @@ static ERROR xtag_animatemotion(objSVG *Self, objXML *XML, struct XMLTag *Tag, O
 
 //****************************************************************************
 
-static void process_attrib(objSVG *Self, objXML *XML, struct XMLTag *Tag, OBJECTPTR Vector)
+static void process_attrib(objSVG *Self, objXML *XML, XMLTag *Tag, OBJECTPTR Vector)
 {
-   LONG t;
+   parasol::Log log(__FUNCTION__);
 
-   for (t=1; t < Tag->TotalAttrib; t++) {
+   for (LONG t=1; t < Tag->TotalAttrib; t++) {
       if (!Tag->Attrib[t].Value) continue;
 
       // Do not interpret non-SVG attributes, e.g. 'inkscape:dx'
@@ -1396,12 +1389,12 @@ static void process_attrib(objSVG *Self, objXML *XML, struct XMLTag *Tag, OBJECT
 
       ULONG hash = StrHash(Tag->Attrib[t].Name, FALSE);
 
-      FMSG("process_attrib","%s | %.8x = %.40s", Tag->Attrib[t].Name, hash, Tag->Attrib[t].Value);
+      log.trace("%s | %.8x = %.40s", Tag->Attrib[t].Name, hash, Tag->Attrib[t].Value);
 
       // Analyse the value to determine if it is a string or number
 
       if (set_property(Self, Vector, hash, XML, Tag, Tag->Attrib[t].Value)) {
-         LogF("@process_attrib","Failed to set field '%s' with '%s' of %s", Tag->Attrib[t].Name, Tag->Attrib[t].Value, Vector->Class->ClassName);
+         log.warning("Failed to set field '%s' with '%s' of %s", Tag->Attrib[t].Name, Tag->Attrib[t].Value, Vector->Class->ClassName);
       }
    }
 }
@@ -1409,15 +1402,17 @@ static void process_attrib(objSVG *Self, objXML *XML, struct XMLTag *Tag, OBJECT
 //****************************************************************************
 // Apply all attributes in a rule to a target tag.
 
-static void apply_rule(objSVG *Self, objXML *XML, KatanaArray *Properties, struct XMLTag *Tag)
+static void apply_rule(objSVG *Self, objXML *XML, KatanaArray *Properties, XMLTag *Tag)
 {
-   for (LONG i=0; i < Properties->length; i++) {
-      KatanaDeclaration *prop = Properties->data[i];
+   parasol::Log log(__FUNCTION__);
 
-      FMSG("apply_rule","Set property %s with %d values", prop->property, prop->values->length);
+   for (ULONG i=0; i < Properties->length; i++) {
+      auto prop = (KatanaDeclaration *)Properties->data[i];
 
-      for (LONG v=0; v < prop->values->length; v++) {
-         KatanaValue *value = prop->values->data[v];
+      log.trace("Set property %s with %d values", prop->property, prop->values->length);
+
+      for (ULONG v=0; v < prop->values->length; v++) {
+         auto value = (KatanaValue *)prop->values->data[v];
 
          switch (value->unit) {
             case KATANA_VALUE_NUMBER:
@@ -1488,7 +1483,7 @@ static void apply_rule(objSVG *Self, objXML *XML, KatanaArray *Properties, struc
             }
 
             default:
-               LogF("@apply_rule","Unknown property value.");
+               log.warning("Unknown property value.");
                break;
          }
       }
@@ -1500,17 +1495,19 @@ static void apply_rule(objSVG *Self, objXML *XML, KatanaArray *Properties, struc
 
 static void process_rule(objSVG *Self, objXML *XML, KatanaRule *Rule)
 {
+   parasol::Log log(__FUNCTION__);
+
    if (!Rule) return;
 
    switch (Rule->type) {
       case KatanaRuleStyle: {
-         KatanaStyleRule *sr = (KatanaStyleRule *)Rule;
-         for (LONG i=0; i < sr->selectors->length; ++i) {
-            KatanaSelector *sel = sr->selectors->data[i];
+         auto sr = (KatanaStyleRule *)Rule;
+         for (ULONG i=0; i < sr->selectors->length; ++i) {
+            auto sel = (KatanaSelector *)sr->selectors->data[i];
 
             switch (sel->match) {
                case KatanaSelectorMatchTag: // Applies to all tags matching this name
-                  FMSG("process_rule","Processing selector: %s", (sel->tag) ? sel->tag->local : "UNNAMED");
+                  log.trace("Processing selector: %s", (sel->tag) ? sel->tag->local : "UNNAMED");
                   for (LONG t=0; t < XML->TagCount; t++) {
                      if (!StrMatch(sel->tag->local, XML->Tags[t]->Attrib[0].Name))
                         apply_rule(Self, XML, sr->declarations, XML->Tags[t]);
@@ -1521,7 +1518,7 @@ static void process_rule(objSVG *Self, objXML *XML, KatanaRule *Rule)
                   break;
 
                case KatanaSelectorMatchClass: // Requires tag to specify a class attribute
-                  FMSG("process_rule","Processing class selector: %s", (sel->data) ? sel->data->value : "UNNAMED");
+                  log.trace("Processing class selector: %s", (sel->data) ? sel->data->value : "UNNAMED");
                   for (LONG t=0; t < XML->TagCount; t++) {
                      CSTRING class_name = XMLATTRIB(XML->Tags[t], "class");
                      if (!StrMatch(sel->data->value, class_name))
@@ -1549,19 +1546,19 @@ static void process_rule(objSVG *Self, objXML *XML, KatanaRule *Rule)
       }
 
       case KatanaRuleImport: //(KatanaImportRule*)rule
-         LogF("process_rule","Support required for KatanaRuleImport");
+         log.msg("Support required for KatanaRuleImport");
          break;
 
       case KatanaRuleFontFace: //(KatanaFontFaceRule*)rule
-         LogF("process_rule","Support required for KatanaRuleFontFace");
+         log.msg("Support required for KatanaRuleFontFace");
          break;
 
       case KatanaRuleKeyframes: //(KatanaKeyframesRule*)rule
-         LogF("process_rule","Support required for KatanaRuleKeyframes");
+         log.msg("Support required for KatanaRuleKeyframes");
          break;
 
       case KatanaRuleMedia: //(KatanaMediaRule*)rule
-         LogF("process_rule","Support required for KatanaRuleMedia");
+         log.msg("Support required for KatanaRuleMedia");
          break;
 
       case KatanaRuleUnkown:
@@ -1574,8 +1571,9 @@ static void process_rule(objSVG *Self, objXML *XML, KatanaRule *Rule)
 
 //****************************************************************************
 
-static ERROR set_property(objSVG *Self, OBJECTPTR Vector, ULONG Hash, objXML *XML, struct XMLTag *Tag, CSTRING StrValue)
+static ERROR set_property(objSVG *Self, OBJECTPTR Vector, ULONG Hash, objXML *XML, XMLTag *Tag, CSTRING StrValue)
 {
+   parasol::Log log(__FUNCTION__);
    DOUBLE num;
 
    // Ignore stylesheet attributes
@@ -1745,7 +1743,7 @@ static ERROR set_property(objSVG *Self, OBJECTPTR Vector, ULONG Hash, objXML *XM
                   case VTS_SEMI_EXPANDED:   SetLong(Vector, FID_Stretch, VTS_SEMI_EXPANDED); return ERR_Okay;
                   case VTS_EXTRA_EXPANDED:  SetLong(Vector, FID_Stretch, VTS_EXTRA_EXPANDED); return ERR_Okay;
                   case VTS_ULTRA_EXPANDED:  SetLong(Vector, FID_Stretch, VTS_ULTRA_EXPANDED); return ERR_Okay;
-                  default: LogErrorMsg("no support for font-stretch value '%s'", StrValue);
+                  default: log.warning("no support for font-stretch value '%s'", StrValue);
                }
                break;
 
@@ -1761,7 +1759,7 @@ static ERROR set_property(objSVG *Self, OBJECTPTR Vector, ULONG Hash, objXML *XM
                   case SVF_BOLD:    SetLong(Vector, FID_Weight, 700); return ERR_Okay;
                   case SVF_BOLDER:  SetLong(Vector, FID_Weight, 900); return ERR_Okay; // +100 on the inherited weight
                   case SVF_INHERIT: SetLong(Vector, FID_Weight, 400); return ERR_Okay; // Not supported correctly yet.
-                  default: LogErrorMsg("No support for font-weight value '%s'", StrValue); // Non-fatal
+                  default: log.warning("No support for font-weight value '%s'", StrValue); // Non-fatal
                }
                break;
             }
@@ -1775,7 +1773,7 @@ static ERROR set_property(objSVG *Self, OBJECTPTR Vector, ULONG Hash, objXML *XM
                   case SVF_MIDDLE:  SetLong(Vector, FID_Align, ALIGN_HORIZONTAL); return ERR_Okay;
                   case SVF_END:     SetLong(Vector, FID_Align, ALIGN_RIGHT); return ERR_Okay;
                   case SVF_INHERIT: SetLong(Vector, FID_Align, 0); return ERR_Okay;
-                  default: LogErrorMsg("text-anchor: No support for value '%s'", StrValue);
+                  default: log.warning("text-anchor: No support for value '%s'", StrValue);
                }
                break;
 
@@ -1799,7 +1797,7 @@ static ERROR set_property(objSVG *Self, OBJECTPTR Vector, ULONG Hash, objXML *XM
                   case SVF_LINETHROUGH:  SetLong(Vector, FID_Flags, VTXF_LINE_THROUGH); return ERR_Okay;
                   case SVF_BLINK:        SetLong(Vector, FID_Flags, VTXF_BLINK); return ERR_Okay;
                   case SVF_INHERIT:      return ERR_Okay;
-                  default: LogErrorMsg("No support for text-decoration value '%s'", StrValue);
+                  default: log.warning("No support for text-decoration value '%s'", StrValue);
                }
                return ERR_Okay;
          }
@@ -1882,7 +1880,7 @@ static ERROR set_property(objSVG *Self, OBJECTPTR Vector, ULONG Hash, objXML *XM
       case SVF_TRANSITION: {
          OBJECTPTR trans = NULL;
          if (!scFindDef(Self->Scene, StrValue, &trans)) SetPointer(Vector, FID_Transition, trans);
-         else LogErrorMsg("Unable to find element '%s' referenced at line %d", StrValue, Tag->LineNo);
+         else log.warning("Unable to find element '%s' referenced at line %d", StrValue, Tag->LineNo);
          break;
       }
 
@@ -1921,21 +1919,21 @@ static ERROR set_property(objSVG *Self, OBJECTPTR Vector, ULONG Hash, objXML *XM
          else if (!StrMatch("hidden", StrValue))   SetLong(Vector, FID_Visibility, VIS_HIDDEN);
          else if (!StrMatch("collapse", StrValue)) SetLong(Vector, FID_Visibility, VIS_COLLAPSE); // Same effect as hidden, kept for SVG compatibility
          else if (!StrMatch("inherit", StrValue))  SetLong(Vector, FID_Visibility, VIS_INHERIT);
-         else LogErrorMsg("Unsupported visibility value '%s'", StrValue);
+         else log.warning("Unsupported visibility value '%s'", StrValue);
          break;
 
       case SVF_FILL_RULE:
          if (!StrMatch("nonzero", StrValue)) SetLong(Vector, FID_FillRule, VFR_NON_ZERO);
          else if (!StrMatch("evenodd", StrValue)) SetLong(Vector, FID_FillRule, VFR_EVEN_ODD);
          else if (!StrMatch("inherit", StrValue)) SetLong(Vector, FID_FillRule, VFR_INHERIT);
-         else LogErrorMsg("Unsupported fill-rule value '%s'", StrValue);
+         else log.warning("Unsupported fill-rule value '%s'", StrValue);
          break;
 
       case SVF_CLIP_RULE:
          if (!StrMatch("nonzero", StrValue)) SetLong(Vector, FID_ClipRule, VFR_NON_ZERO);
          else if (!StrMatch("evenodd", StrValue)) SetLong(Vector, FID_ClipRule, VFR_EVEN_ODD);
          else if (!StrMatch("inherit", StrValue)) SetLong(Vector, FID_ClipRule, VFR_INHERIT);
-         else LogErrorMsg("Unsupported clip-rule value '%s'", StrValue);
+         else log.warning("Unsupported clip-rule value '%s'", StrValue);
          break;
 
       case SVF_ENABLE_BACKGROUND:
@@ -1948,14 +1946,14 @@ static ERROR set_property(objSVG *Self, OBJECTPTR Vector, ULONG Hash, objXML *XM
          break;
 
       case SVF_NUMERIC_ID:       SetString(Vector, FID_NumericID, StrValue); break;
-      case SVF_DISPLAY:          LogErrorMsg("display is not supported."); break;
+      case SVF_DISPLAY:          log.warning("display is not supported."); break;
       case SVF_OVERFLOW: // visible | hidden | scroll | auto | inherit
-         MSG("overflow is not supported.");
+         log.trace("overflow is not supported.");
          break;
-      case SVF_MARKER:           LogErrorMsg("marker is not supported."); break;
-      case SVF_MARKER_END:       LogErrorMsg("marker-end is not supported."); break;
-      case SVF_MARKER_MID:       LogErrorMsg("marker-mid is not supported."); break;
-      case SVF_MARKER_START:     LogErrorMsg("marker-start is not supported."); break;
+      case SVF_MARKER:           log.warning("marker is not supported."); break;
+      case SVF_MARKER_END:       log.warning("marker-end is not supported."); break;
+      case SVF_MARKER_MID:       log.warning("marker-mid is not supported."); break;
+      case SVF_MARKER_START:     log.warning("marker-start is not supported."); break;
 
       case SVF_FILTER:           SetString(Vector, FID_Filter, StrValue); break;
       case SVF_STROKE:           SetString(Vector, FID_Stroke, StrValue); break;
@@ -1976,9 +1974,9 @@ static ERROR set_property(objSVG *Self, OBJECTPTR Vector, ULONG Hash, objXML *XM
       case SVF_STROKE_DASHOFFSET:       field_id = FID_DashOffset; break;
 
       case SVF_MASK: {
-         struct svgID *id = find_href(Self, StrValue);
+         svgID *id = find_href(Self, StrValue);
          if (!id) {
-            LogErrorMsg("Unable to find mask '%s'", StrValue);
+            log.warning("Unable to find mask '%s'", StrValue);
             return ERR_Search;
          }
 
@@ -1993,7 +1991,7 @@ static ERROR set_property(objSVG *Self, OBJECTPTR Vector, ULONG Hash, objXML *XM
             SetPointer(Vector, FID_Mask, clip);
          }
          else {
-            LogErrorMsg("Unable to find clip-path '%s'", StrValue);
+            log.warning("Unable to find clip-path '%s'", StrValue);
             return ERR_Search;
          }
          break;

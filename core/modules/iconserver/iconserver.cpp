@@ -20,8 +20,6 @@ Please refer to it for further information on licensing.
 
 #define BUFFERSIZE 60
 
-const struct Function glFunctions[];
-
 MODULE_COREBASE;
 static struct SurfaceBase *SurfaceBase;
 static struct DisplayBase *DisplayBase;
@@ -46,9 +44,6 @@ enum {
 #define DEFAULT_SIZE 16
 #define MAX_SIZE     1024
 
-static const struct FieldArray clFields[];
-static const struct ActionArray clActions[];
-
 static ERROR load_icon_db(objIconServer *);
 static void write_icon_category(objIconServer *, OBJECTPTR, STRING);
 static ERROR extract_icon(LONG, CSTRING, STRING, STRING, STRING, STRING, LONG *);
@@ -56,52 +51,6 @@ static ERROR find_icon_category(STRING, CSTRING);
 static void apply_filter(objBitmap *, CSTRING, STRING, STRING, CSTRING);
 static void get_style(void);
 static ERROR add_iconserver(void);
-
-//****************************************************************************
-
-static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
-{
-   CoreBase = argCoreBase;
-
-   GetPointer(argModule, FID_Master, &modIconServer);
-   if (LoadModule("surface", MODVERSION_SURFACE, &modSurface, &SurfaceBase) != ERR_Okay) return ERR_InitModule;
-   if (LoadModule("display", MODVERSION_DISPLAY, &modDisplay, &DisplayBase) != ERR_Okay) return ERR_InitModule;
-
-   if (add_iconserver() != ERR_Okay) return ERR_AddClass;
-
-   // Add the icons: special assignment
-
-   SetVolume(AST_NAME, "icons",
-             AST_PATH, ":SystemIcons", // Tells the filesystem resolver to use 'SystemIcons' to perform resolution.
-             AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN,
-             AST_ICON, "programs/iconthemes",
-             TAGEND);
-
-   if (ResolvePath("iconsource:", 0, &glIconPath) != ERR_Okay) {
-      glIconPath = StrClone("system:icons/");
-   }
-
-   get_style();
-
-   return ERR_Okay;
-}
-
-static ERROR CMDOpen(OBJECTPTR Module)
-{
-   SetPointer(Module, FID_FunctionList, glFunctions);
-   return ERR_Okay;
-}
-
-static ERROR CMDExpunge(void)
-{
-   if (glDatabase)   { FreeResource(glDatabase); glDatabase   = NULL; }
-   if (glIconStyle)  { acFree(glIconStyle);    glIconStyle  = NULL; }
-   if (clIconServer) { acFree(clIconServer);   clIconServer = NULL; }
-   if (modSurface)   { acFree(modSurface);     modSurface   = NULL; }
-   if (modDisplay)   { acFree(modDisplay);     modDisplay   = NULL; }
-   if (glIconPath)   { FreeResource(glIconPath); glIconPath   = NULL; }
-   return ERR_Okay;
-}
 
 /*****************************************************************************
 
@@ -127,7 +76,9 @@ NullArgs
 
 static ERROR iconCreateIcon(CSTRING Path, CSTRING Class, CSTRING Theme, CSTRING Filter, LONG Size, objBitmap **BitmapResult)
 {
-   if ((!Path) OR (!BitmapResult)) return PostError(ERR_NullArgs);
+   parasol::Log log("CreateIcon");
+
+   if ((!Path) or (!BitmapResult)) return log.warning(ERR_NullArgs);
 
    if (!StrCompare("icons:", Path, 6, 0)) Path += 6;
    *BitmapResult = NULL;
@@ -135,7 +86,7 @@ static ERROR iconCreateIcon(CSTRING Path, CSTRING Class, CSTRING Theme, CSTRING 
    char theme_buffer[80] = "Default";
    if (!glIconServerID) FastFindObject("systemicons", ID_ICONSERVER, &glIconServerID, 1, NULL);
    objIconServer *server;
-   if ((glIconServerID) AND (!AccessObject(glIconServerID, 3000, &server))) {
+   if ((glIconServerID) and (!AccessObject(glIconServerID, 3000, &server))) {
       if (Size <= 0) {
          Size = server->FixedSize;
          if (Size < 12) {
@@ -146,16 +97,16 @@ static ERROR iconCreateIcon(CSTRING Path, CSTRING Class, CSTRING Theme, CSTRING 
          }
       }
 
-      if ((!Theme) OR (!Theme[0])) {
+      if ((!Theme) or (!Theme[0])) {
          Theme = theme_buffer;
          StrCopy(server->prvTheme, theme_buffer, sizeof(theme_buffer));
       }
 
       ReleaseObject(server);
    }
-   else if ((!Theme) OR (!Theme[0])) Theme = theme_buffer;
+   else if ((!Theme) or (!Theme[0])) Theme = theme_buffer;
 
-   FMSG("~CreateIcon()","Path: %s, Class: %s, Theme: %s, Filter: %s, Size: %d", Path, Class, Theme, Filter, Size);
+   log.traceBranch("Path: %s, Class: %s, Theme: %s, Filter: %s, Size: %d", Path, Class, Theme, Filter, Size);
 
    AdjustLogLevel(1);
 
@@ -163,6 +114,8 @@ static ERROR iconCreateIcon(CSTRING Path, CSTRING Class, CSTRING Theme, CSTRING 
 
    ERROR error;
    char category[BUFFERSIZE], icon[BUFFERSIZE], ovcategory[BUFFERSIZE], ovicon[BUFFERSIZE]; // NB: path extraction code assumes these are all the same array size
+   objBitmap *bmp = NULL;
+   error = ERR_Okay;
 
    if ((error = extract_icon(Size, Path, category, icon, ovcategory, ovicon, &Size)) != ERR_Okay) goto end;
    if ((error = find_icon_category(category, icon)) != ERR_Okay) goto end;
@@ -170,15 +123,13 @@ static ERROR iconCreateIcon(CSTRING Path, CSTRING Class, CSTRING Theme, CSTRING 
    char filepath[BUFFERSIZE];
    StrFormat(filepath, sizeof(filepath), "%s%s/%s/%s", glIconPath, Theme, category, icon);
 
-   MSG("Resolved '%s' to '%s', overlay '%s/%s', size %d", Path, filepath, ovcategory[0] ? (STRING)ovcategory : "-", ovicon[0] ? (STRING)ovicon : "-", Size);
+   log.trace("Resolved '%s' to '%s', overlay '%s/%s', size %d", Path, filepath, ovcategory[0] ? (STRING)ovcategory : "-", ovicon[0] ? (STRING)ovicon : "-", Size);
 
    if (ovcategory[0]) {
       if (find_icon_category(ovcategory, ovicon) != ERR_Okay) ovcategory[0] = 0;
-      MSG("Overlay category '%s', icon '%s'", ovcategory, ovicon);
+      log.trace("Overlay category '%s', icon '%s'", ovcategory, ovicon);
    }
 
-   objBitmap *bmp = NULL;
-   error = ERR_Okay;
    objPicture *picture;
    if (!CreateObject(ID_PICTURE, NF_INTEGRAL, &picture,
          FID_Path|TSTR,   filepath,
@@ -229,11 +180,11 @@ static ERROR iconCreateIcon(CSTRING Path, CSTRING Class, CSTRING Theme, CSTRING 
       if (!error) {
          apply_filter(bmp, Filter, category, icon, Class);
 
-         if ((ovcategory[0]) AND (ovicon[0])) { // Load an overlay on top of the icon if requested.  Errors here are not fatal.
+         if ((ovcategory[0]) and (ovicon[0])) { // Load an overlay on top of the icon if requested.  Errors here are not fatal.
             objPicture *ovpic;
             char overlay[256];
 
-            MSG("Loading overlay %s/%s", ovcategory, ovicon);
+            log.trace("Loading overlay %s/%s", ovcategory, ovicon);
 
             StrFormat(overlay, sizeof(overlay), "%s%s/%s/%s", glIconPath, Theme, ovcategory, ovicon);
 
@@ -260,7 +211,7 @@ static ERROR iconCreateIcon(CSTRING Path, CSTRING Class, CSTRING Theme, CSTRING 
       acFree(picture);
    }
    else {
-      LogF("!CreateIcon","Failed to open icon image at \"%s\".", filepath);
+      log.error("Failed to open icon image at \"%s\".", filepath);
       error = ERR_CreateObject;
    }
 
@@ -269,7 +220,6 @@ static ERROR iconCreateIcon(CSTRING Path, CSTRING Class, CSTRING Theme, CSTRING 
 
 end:
    AdjustLogLevel(-1);
-   LOGRETURN();
    return error;
 }
 
@@ -278,7 +228,9 @@ end:
 
 static ERROR find_icon_category(STRING Category, CSTRING Icon)
 {
-   LogF("~7find_icon","Category: %s, Icon: %s", Category, Icon);
+   parasol::Log log(__FUNCTION__);
+
+   log.traceBranch("Category: %s, Icon: %s", Category, Icon);
 
    // Check the database to see if the requested icon exists at the specified category.  If it doesn't, clear the
    // category so that we can scan for the icon in other areas.
@@ -289,23 +241,23 @@ static ERROR find_icon_category(STRING Category, CSTRING Icon)
          WORD code = ((LONG *)data)[0];
 
          if (code IS CODE_END) {
-            LogF("@find_icon","Category '%s' does not exist for icon '%s'.", Category, Icon);
+            log.warning("Category '%s' does not exist for icon '%s'.", Category, Icon);
             Category[0] = 0;
             break;
          }
 
          if (code IS CODE_CATEGORY) {
-            if (!StrMatch(Category, data + (sizeof(LONG)*2))) {
+            if (!StrMatch(Category, (char *)data + (sizeof(LONG)*2))) {
                // Scan within this category to see if the icon lives there
 
                data = data + ((LONG *)data)[1];
                while (((LONG *)data)[0] IS CODE_ICON) {
-                  if (!StrMatch(Icon, data + (sizeof(LONG)*2))) break;
+                  if (!StrMatch(Icon, (char *)data + (sizeof(LONG)*2))) break;
                   data = data + ((LONG *)data)[1];
                }
 
                if (((LONG *)data)[0] != CODE_ICON) {
-                  LogF("@find_icon","Icon '%s' does not exist in category '%s'", Icon, Category);
+                  log.warning("Icon '%s' does not exist in category '%s'", Icon, Category);
                   Category[0] = 0;
                }
                break;
@@ -320,15 +272,15 @@ static ERROR find_icon_category(STRING Category, CSTRING Icon)
 
    ERROR error = ERR_Okay;
    if (!Category[0]) {
-      LogMsg("Scanning database for a category for icon '%s'.", Icon);
+      log.msg("Scanning database for a category for icon '%s'.", Icon);
 
       UBYTE *data = glDatabase;
       while (data) {
          WORD code = ((LONG *)data)[0];
          if (code IS CODE_END) { error = ERR_Search; goto end; } // Return if we got to the end without any result
-         if (code IS CODE_CATEGORY) StrCopy(data + (sizeof(LONG)*2), Category, BUFFERSIZE);
+         if (code IS CODE_CATEGORY) StrCopy((char *)data + (sizeof(LONG)*2), Category, BUFFERSIZE);
          if (code IS CODE_ICON) {
-            if (!StrMatch(Icon, data + (sizeof(LONG)*2))) {
+            if (!StrMatch(Icon, (char *)data + (sizeof(LONG)*2))) {
                // We have the correct category, so we just need to break the loop
                goto end;
             }
@@ -340,7 +292,6 @@ static ERROR find_icon_category(STRING Category, CSTRING Icon)
       error = ERR_Search;
    }
 end:
-   LogReturn();
    return error;
 }
 
@@ -359,7 +310,9 @@ end:
 
 static ERROR extract_icon(LONG PixelSize, CSTRING Path, STRING category, STRING icon, STRING ovcategory, STRING ovicon, LONG *Size)
 {
-   FMSG("extract_icon()","%s", Path);
+   parasol::Log log(__FUNCTION__);
+
+   log.traceBranch("%s", Path);
 
    category[0]   = 0;
    icon[0]       = 0;
@@ -371,27 +324,27 @@ static ERROR extract_icon(LONG PixelSize, CSTRING Path, STRING category, STRING 
    // Extract the category and the name of the icon
 
    WORD i;
-   for (i=0; (Path[i] != ':') AND (Path[i]); i++);
+   for (i=0; (Path[i] != ':') and (Path[i]); i++);
    if (Path[i]) i++;
    else i = 0;
 
    WORD j = 0;
-   while ((Path[i] != '/') AND (Path[i] != '\\') AND (Path[i] != '(') AND (Path[i] != '+') AND (Path[i])) category[j++] = Path[i++];
+   while ((Path[i] != '/') and (Path[i] != '\\') and (Path[i] != '(') and (Path[i] != '+') and (Path[i])) category[j++] = Path[i++];
    category[j] = 0;
 
    if (Path[i] IS '(') {
       i++;
       size = StrToInt(Path+i);
-      while ((Path[i]) AND (Path[i] != ')')) i++;
+      while ((Path[i]) and (Path[i] != ')')) i++;
       if (Path[i] IS ')') i++;
    }
 
-   if ((Path[i]) AND (Path[i] != '+')) {
+   if ((Path[i]) and (Path[i] != '+')) {
       // Extract the icon name
-      while ((Path[i]) AND (Path[i] != '+')) i++;
-      while ((i > 0) AND (Path[i-1] != '/') AND (Path[i-1] != '\\')) i--;
+      while ((Path[i]) and (Path[i] != '+')) i++;
+      while ((i > 0) and (Path[i-1] != '/') and (Path[i-1] != '\\')) i--;
       j = 0;
-      while ((Path[i] != '/') AND (Path[i] != '\\') AND (Path[i] != '(') AND (Path[i] != '+') AND (Path[i])) icon[j++] = Path[i++];
+      while ((Path[i] != '/') and (Path[i] != '\\') and (Path[i] != '(') and (Path[i] != '+') and (Path[i])) icon[j++] = Path[i++];
       icon[j] = 0;
    }
    else {
@@ -404,12 +357,12 @@ static ERROR extract_icon(LONG PixelSize, CSTRING Path, STRING category, STRING 
    // Strip the file extension if one is specified
 
    WORD k = j;
-   while ((k > 0) AND (icon[k] != '.') AND (icon[k] != ':') AND (icon[k] != '/') AND (icon[k] != '\\')) k--;
+   while ((k > 0) and (icon[k] != '.') and (icon[k] != ':') and (icon[k] != '/') and (icon[k] != '\\')) k--;
    if (icon[k] IS '.') { j = k; icon[k] = 0; }
 
    // Extract the icon size if one is specified
 
-   FMSG("extract_icon","Checking for size (default %d) from %s", size, Path);
+   log.trace("Checking for size (default %d) from %s", size, Path);
 
    if (Path[i] IS '(') size = StrToInt(Path + i);
    else {
@@ -427,7 +380,7 @@ static ERROR extract_icon(LONG PixelSize, CSTRING Path, STRING category, STRING 
 
    // Check for an overlay before returning
 
-   while ((Path[i]) AND (Path[i] != '+')) i++;
+   while ((Path[i]) and (Path[i] != '+')) i++;
    if (Path[i] != '+') return ERR_Okay;
    i++; // Skip ;
 
@@ -441,14 +394,14 @@ static ERROR extract_icon(LONG PixelSize, CSTRING Path, STRING category, STRING 
    }
 
    j = 0;
-   while ((Path[i] != '/') AND (Path[i] != '\\') AND (Path[i] != '(') AND (Path[i])) ovcategory[j++] = Path[i++];
+   while ((Path[i] != '/') and (Path[i] != '\\') and (Path[i] != '(') and (Path[i])) ovcategory[j++] = Path[i++];
    ovcategory[j] = 0;
 
    if (Path[i]) { // Extract the icon name
       while (Path[i]) i++;
-      while ((i > 0) AND (Path[i-1] != '/') AND (Path[i-1] != '\\')) i--;
+      while ((i > 0) and (Path[i-1] != '/') and (Path[i-1] != '\\')) i--;
       j = 0;
-      while ((Path[i] != '/') AND (Path[i] != '\\') AND (Path[i] != '(') AND (Path[i])) ovicon[j++] = Path[i++];
+      while ((Path[i] != '/') and (Path[i] != '\\') and (Path[i] != '(') and (Path[i])) ovicon[j++] = Path[i++];
       ovicon[j] = 0;
    }
    else { // There is no listed category (the first string was a reference to the icon name)
@@ -459,7 +412,7 @@ static ERROR extract_icon(LONG PixelSize, CSTRING Path, STRING category, STRING 
 
    // Strip the .png extension from the icon name if one is specified
 
-   while ((j > 0) AND (ovicon[j] != '.') AND (ovicon[j] != ':') AND (ovicon[j] != '/') AND (ovicon[j] != '\\')) j--;
+   while ((j > 0) and (ovicon[j] != '.') and (ovicon[j] != ':') and (ovicon[j] != '/') and (ovicon[j] != '\\')) j--;
    if (ovicon[j] IS '.') ovicon[j] = 0;
 
    return ERR_Okay;
@@ -478,9 +431,11 @@ static void get_style(void)
 
 static void apply_filter(objBitmap *Icon, CSTRING FilterName, STRING Category, STRING IconName, CSTRING ClassName)
 {
-   FMSG("~apply_filter()","Icon: #%d", Icon->Head.UniqueID);
+   parasol::Log log(__FUNCTION__);
 
-   OBJECTPTR context = SetContext(modIconServer);
+   log.traceBranch("Icon: #%d", Icon->Head.UniqueID);
+
+   parasol::SwitchContext context(modIconServer);
 
    if (!glIconStyle) {
       CSTRING style_path = "environment:config/icons.fluid"; // Environment takes precedence.
@@ -493,8 +448,6 @@ static void apply_filter(objBitmap *Icon, CSTRING FilterName, STRING Category, S
             FID_Name|TSTR, "IconStyles",
             FID_Path|TSTR, style_path,
             TAGEND) != ERR_Okay) {
-         SetContext(context);
-         LOGRETURN();
          return;
       }
    }
@@ -507,7 +460,7 @@ static void apply_filter(objBitmap *Icon, CSTRING FilterName, STRING Category, S
          FID_BytesPerPixel|TLONG, Icon->BytesPerPixel,
          TAGEND)) {
 
-      const struct ScriptArg filter_args[] = {
+      const ScriptArg filter_args[] = {
          { "Bitmap",   FDF_OBJECT,   { .Address = scratch } },
          { "Filter",   FDF_STRING,   { .Address = (APTR)FilterName } },
          { "Class",    FDF_STRING,   { .Address = (APTR)ClassName } },
@@ -530,9 +483,8 @@ static void apply_filter(objBitmap *Icon, CSTRING FilterName, STRING Category, S
          ULONG *bkgd = (ULONG *)scratch->Data;
          ULONG alpha_mask_out = ~(Icon->ColourFormat->AlphaMask << Icon->ColourFormat->AlphaPos);
          ULONG alpha_mask_in = Icon->ColourFormat->AlphaMask << Icon->ColourFormat->AlphaPos;
-         LONG x, y;
-         for (y=0; y < Icon->Height; y++) {
-            for (x=0; x < Icon->Width; x++) {
+         for (LONG y=0; y < Icon->Height; y++) {
+            for (LONG x=0; x < Icon->Width; x++) {
                mask[x] = (mask[x] & alpha_mask_in) | (bkgd[x] & alpha_mask_out);
             }
             mask = (ULONG *)(((UBYTE *)mask) + Icon->LineWidth);
@@ -549,16 +501,59 @@ static void apply_filter(objBitmap *Icon, CSTRING FilterName, STRING Category, S
 
       acFree(scratch);
    }
-
-   SetContext(context);
-   LOGRETURN();
 }
 
 //****************************************************************************
 
 #include "module_def.c"
 
-#include "iconserver_class.c"
+#include "iconserver_class.cpp"
+
+//****************************************************************************
+
+static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
+{
+   CoreBase = argCoreBase;
+
+   GetPointer(argModule, FID_Master, &modIconServer);
+   if (LoadModule("surface", MODVERSION_SURFACE, &modSurface, &SurfaceBase) != ERR_Okay) return ERR_InitModule;
+   if (LoadModule("display", MODVERSION_DISPLAY, &modDisplay, &DisplayBase) != ERR_Okay) return ERR_InitModule;
+
+   if (add_iconserver() != ERR_Okay) return ERR_AddClass;
+
+   // Add the icons: special assignment
+
+   SetVolume(AST_NAME, "icons",
+             AST_PATH, ":SystemIcons", // Tells the filesystem resolver to use 'SystemIcons' to perform resolution.
+             AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN,
+             AST_ICON, "programs/iconthemes",
+             TAGEND);
+
+   if (ResolvePath("iconsource:", 0, &glIconPath) != ERR_Okay) {
+      glIconPath = StrClone("system:icons/");
+   }
+
+   get_style();
+
+   return ERR_Okay;
+}
+
+static ERROR CMDOpen(OBJECTPTR Module)
+{
+   SetPointer(Module, FID_FunctionList, glFunctions);
+   return ERR_Okay;
+}
+
+static ERROR CMDExpunge(void)
+{
+   if (glDatabase)   { FreeResource(glDatabase); glDatabase   = NULL; }
+   if (glIconStyle)  { acFree(glIconStyle);    glIconStyle  = NULL; }
+   if (clIconServer) { acFree(clIconServer);   clIconServer = NULL; }
+   if (modSurface)   { acFree(modSurface);     modSurface   = NULL; }
+   if (modDisplay)   { acFree(modDisplay);     modDisplay   = NULL; }
+   if (glIconPath)   { FreeResource(glIconPath); glIconPath   = NULL; }
+   return ERR_Okay;
+}
 
 //****************************************************************************
 
