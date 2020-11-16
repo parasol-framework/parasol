@@ -258,7 +258,7 @@ vtags Tags: Each tag set consists of a field ID OR'd with a type flag, followed 
 
 -ERRORS-
 Okay:
-Args:
+NullArgs:
 UnsupportedField: One of the fields is not supported by the target object.
 Failed: A field setting failed due to an unspecified error.
 
@@ -267,18 +267,13 @@ Failed: A field setting failed due to an unspecified error.
 ERROR SetFields(OBJECTPTR Object, ...)
 {
    parasol::Log log(__FUNCTION__);
-   ERROR error;
 
-   if (!Object) {
-      log.warning("Object argument not set.");
-      return ERR_Args;
-   }
+   if (!Object) return log.warning(ERR_NullArgs);
 
    va_list list;
    va_start(list, Object);
-   error = SetFieldsF(Object, list);
+   ERROR error = SetFieldsF(Object, list);
    va_end(list);
-
    return error;
 }
 
@@ -286,10 +281,7 @@ ERROR SetFieldsF(OBJECTPTR Object, va_list List)
 {
    parasol::Log log("SetFields");
 
-   if (!Object) {
-      log.warning("Object argument not set.");
-      return ERR_Args;
-   }
+   if (!Object) return ERR_NullArgs;
 
    prv_access(Object);
 
@@ -390,27 +382,18 @@ Failed:           A field setting failed due to an unspecified error.
 
 ERROR SetFieldsID(OBJECTID ObjectID, ...)
 {
-   parasol::Log log("SetFields");
-   ERROR error;
-
-   va_list list;
-   va_start(list, ObjectID);
-
-   if (!ObjectID) return log.warning(ERR_NullArgs);
+   if (!ObjectID) return ERR_NullArgs;
 
    OBJECTPTR object;
    if (!AccessObject(ObjectID, 3000, &object)) {
-      error = SetFieldsF(object, list);
+      va_list list;
+      va_start(list, ObjectID);
+      ERROR error = SetFieldsF(object, list);
+      va_end(list);
       ReleaseObject(object);
       return error;
    }
-   else {
-      va_end(list);
-      return ERR_AccessObject;
-   }
-
-   va_end(list);
-   return ERR_Okay;
+   else return ERR_AccessObject;
 }
 
 /*****************************************************************************
