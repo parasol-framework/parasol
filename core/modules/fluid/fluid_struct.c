@@ -175,7 +175,7 @@ static ERROR struct_to_table(lua_State *Lua, struct references *References, stru
 //****************************************************************************
 // Use this for creating a struct on the Lua stack.
 
-static struct fstruct * push_struct(objScript *Self, APTR Address, CSTRING StructName, BYTE Deallocate)
+static struct fstruct * push_struct(objScript *Self, APTR Address, CSTRING StructName, BYTE Deallocate, BYTE AllowEmpty)
 {
    FMSG("push_struct()","Struct: %s, Address: %p, Deallocate: %d", StructName, Address, Deallocate);
 
@@ -183,6 +183,14 @@ static struct fstruct * push_struct(objScript *Self, APTR Address, CSTRING Struc
    struct structentry *def;
    if (!KeyGet(prv->Structs, STRUCTHASH(StructName), &def, NULL)) {
       return push_struct_def(prv->Lua, Address, def, Deallocate);
+   }
+   else if (AllowEmpty) {
+      // The AllowEmpty option is useful in situations where a successful API call returns a structure that is strictly
+      // unavailable to Fluid.  Rather than throw an exception because the structure isn't in the dictionary, we return
+      // an empty structure declaration.
+
+      static struct structentry empty = { .Total = 0, .Size = 0, .NameHash = 0 };
+      return push_struct_def(prv->Lua, Address, &empty, FALSE);
    }
    else {
       if (Deallocate) FreeResource(Address);
@@ -655,12 +663,12 @@ static LONG get_fieldvalue(lua_State *Lua, struct fstruct *fstruct, CSTRING fiel
             if (type & FD_ARRAY) { // Array of pointers to structures.
                make_array(Lua, type, structname, address, array_size, FALSE);
             }
-            else push_struct(Lua->Script, ((APTR *)address)[0], structname, FALSE);
+            else push_struct(Lua->Script, ((APTR *)address)[0], structname, FALSE, FALSE);
          }
          else lua_pushnil(Lua);
       }
       else if (type & FD_STRUCT) { // Embedded structure
-         push_struct(Lua->Script, address, structname, FALSE);
+         push_struct(Lua->Script, address, structname, FALSE, FALSE);
       }
       else if (type & FD_STRING) {
          if (type & FD_ARRAY) make_array(Lua, FD_STRING, NULL, address, array_size, FALSE);

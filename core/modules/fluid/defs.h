@@ -225,7 +225,7 @@ static void make_struct_serial_table(lua_State *, CSTRING, LONG, CPTR);
 static int module_load(lua_State *);
 static struct object * push_object(lua_State *, OBJECTPTR Object);
 static ERROR push_object_id(lua_State *, OBJECTID ObjectID);
-static struct fstruct * push_struct(objScript *, APTR, CSTRING, BYTE);
+static struct fstruct * push_struct(objScript *, APTR, CSTRING, BYTE, BYTE);
 static struct fstruct * push_struct_def(lua_State *, APTR, struct structentry *, BYTE);
 static void register_array_class(lua_State *);
 static void register_input_class(lua_State *);

@@ -602,7 +602,7 @@ static int module_call(lua_State *Lua)
             APTR structptr = (APTR)rc;
             if (structptr) {
                ERROR error;
-               if (restype & FD_RESOURCE) push_struct(Self, structptr, args->Name, (restype & FD_ALLOC) ? TRUE : FALSE);
+               if (restype & FD_RESOURCE) push_struct(Self, structptr, args->Name, (restype & FD_ALLOC) ? TRUE : FALSE, TRUE);
                else if ((error = named_struct_to_table(Lua, args->Name, structptr)) != ERR_Okay) {
                   if (error IS ERR_Search) {
                      // Unknown structs are returned as pointers - this is mainly to indicate that there is a value
@@ -748,7 +748,7 @@ static LONG process_results(struct prvFluid *prv, APTR resultsidx, const struct 
                   if (((APTR *)var)[0]) {
                      if (argtype & FD_RESOURCE) {
                         // Resource structures are managed with direct data addresses.
-                        push_struct(prv->Lua->Script, ((APTR *)var)[0], args[i].Name, (argtype & FD_ALLOC) ? TRUE : FALSE);
+                        push_struct(prv->Lua->Script, ((APTR *)var)[0], args[i].Name, (argtype & FD_ALLOC) ? TRUE : FALSE, TRUE);
                      }
                      else {
                         if (named_struct_to_table(prv->Lua, args[i].Name, ((APTR *)var)[0]) != ERR_Okay) lua_pushnil(prv->Lua);

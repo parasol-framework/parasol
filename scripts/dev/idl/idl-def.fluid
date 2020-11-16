@@ -86,7 +86,6 @@ function flags(Prefix, Options, ...)
          end
       elseif (type(flag_def) == 'table') then
          for flag, ref in pairs(flag_def) do
-
             local key, comment
             if (type(ref) != 'number') then
                key, comment = ref:match('^(.+):%s+(.+)$')
