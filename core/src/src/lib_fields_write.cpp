@@ -20,22 +20,22 @@ Name: Fields
 #define OP_AND       1
 #define OP_OVERWRITE 2
 
-static ERROR writeval_array(OBJECTPTR, Field *, LONG, const void *, LONG);
-static ERROR writeval_flags(OBJECTPTR, Field *, LONG, const void *, LONG);
-static ERROR writeval_long(OBJECTPTR, Field *, LONG, const void *, LONG);
-static ERROR writeval_large(OBJECTPTR, Field *, LONG, const void *, LONG);
-static ERROR writeval_double(OBJECTPTR, Field *, LONG, const void *, LONG);
-static ERROR writeval_function(OBJECTPTR, Field *, LONG, const void *, LONG);
-static ERROR writeval_ptr(OBJECTPTR, Field *, LONG, const void *, LONG);
+static ERROR writeval_array(OBJECTPTR, Field *, LONG, CPTR , LONG);
+static ERROR writeval_flags(OBJECTPTR, Field *, LONG, CPTR , LONG);
+static ERROR writeval_long(OBJECTPTR, Field *, LONG, CPTR , LONG);
+static ERROR writeval_large(OBJECTPTR, Field *, LONG, CPTR , LONG);
+static ERROR writeval_double(OBJECTPTR, Field *, LONG, CPTR , LONG);
+static ERROR writeval_function(OBJECTPTR, Field *, LONG, CPTR , LONG);
+static ERROR writeval_ptr(OBJECTPTR, Field *, LONG, CPTR , LONG);
 
-static ERROR setval_large(OBJECTPTR, Field *, LONG Flags, const void *, LONG);
-static ERROR setval_pointer(OBJECTPTR, Field *, LONG Flags, const void *, LONG);
-static ERROR setval_double(OBJECTPTR, Field *, LONG Flags, const void *, LONG);
-static ERROR setval_long(OBJECTPTR, Field *, LONG Flags, const void *, LONG);
-static ERROR setval_function(OBJECTPTR, Field *, LONG Flags, const void *, LONG);
-static ERROR setval_array(OBJECTPTR, Field *, LONG Flags, const void *, LONG);
-static ERROR setval_brgb(OBJECTPTR, Field *, LONG Flags, const void *, LONG);
-static ERROR setval_variable(OBJECTPTR, Field *, LONG Flags, const void *, LONG);
+static ERROR setval_large(OBJECTPTR, Field *, LONG Flags, CPTR , LONG);
+static ERROR setval_pointer(OBJECTPTR, Field *, LONG Flags, CPTR , LONG);
+static ERROR setval_double(OBJECTPTR, Field *, LONG Flags, CPTR , LONG);
+static ERROR setval_long(OBJECTPTR, Field *, LONG Flags, CPTR , LONG);
+static ERROR setval_function(OBJECTPTR, Field *, LONG Flags, CPTR , LONG);
+static ERROR setval_array(OBJECTPTR, Field *, LONG Flags, CPTR , LONG);
+static ERROR setval_brgb(OBJECTPTR, Field *, LONG Flags, CPTR , LONG);
+static ERROR setval_variable(OBJECTPTR, Field *, LONG Flags, CPTR , LONG);
 
 /*****************************************************************************
 
@@ -279,9 +279,9 @@ ERROR SetFields(OBJECTPTR Object, ...)
 
 ERROR SetFieldsF(OBJECTPTR Object, va_list List)
 {
-   parasol::Log log("SetFields");
-
    if (!Object) return ERR_NullArgs;
+
+   parasol::Log log("SetFields");
 
    prv_access(Object);
 
@@ -681,7 +681,7 @@ static LONG write_array(CSTRING String, LONG Flags, WORD ArraySize, APTR Dest)
 //****************************************************************************
 // Used by the SetField() range of instructions.
 
-ERROR writeval_default(OBJECTPTR Object, Field *Field, LONG flags, const void *Data, LONG Elements)
+ERROR writeval_default(OBJECTPTR Object, Field *Field, LONG flags, CPTR Data, LONG Elements)
 {
    parasol::Log log("WriteField");
 
@@ -719,7 +719,7 @@ ERROR writeval_default(OBJECTPTR Object, Field *Field, LONG flags, const void *D
 // The writeval() functions are used as optimised calls for all cases where the client has not provided a SetValue()
 // function.
 
-static ERROR writeval_array(OBJECTPTR Object, Field *Field, LONG SrcType, const void *Source, LONG Elements)
+static ERROR writeval_array(OBJECTPTR Object, Field *Field, LONG SrcType, CPTR Source, LONG Elements)
 {
    parasol::Log log("WriteField");
 
@@ -748,7 +748,7 @@ static ERROR writeval_array(OBJECTPTR Object, Field *Field, LONG SrcType, const 
    return ERR_Failed;
 }
 
-static ERROR writeval_flags(OBJECTPTR Object, Field *Field, LONG Flags, const void *Data, LONG Elements)
+static ERROR writeval_flags(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data, LONG Elements)
 {
    parasol::Log log("WriteField");
    LONG j, int32;
@@ -766,8 +766,8 @@ static ERROR writeval_flags(OBJECTPTR Object, Field *Field, LONG Flags, const vo
             int64 = StrToInt(str);
          }
          else if (Field->Arg) {
-            WORD reverse   = FALSE;
-            WORD op        = OP_OVERWRITE;
+            WORD reverse = FALSE;
+            WORD op      = OP_OVERWRITE;
             while (*str) {
                if (*str IS '&')      { op = OP_AND;       str++; }
                else if (*str IS '!') { op = OP_OR;        str++; }
@@ -824,7 +824,7 @@ static ERROR writeval_flags(OBJECTPTR Object, Field *Field, LONG Flags, const vo
    return writeval_default(Object, Field, Flags, Data, Elements);
 }
 
-static ERROR writeval_lookup(OBJECTPTR Object, Field *Field, LONG Flags, const void *Data, LONG Elements)
+static ERROR writeval_lookup(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data, LONG Elements)
 {
    parasol::Log log("WriteField");
    LONG int32;
@@ -853,7 +853,7 @@ static ERROR writeval_lookup(OBJECTPTR Object, Field *Field, LONG Flags, const v
    return writeval_default(Object, Field, Flags, Data, Elements);
 }
 
-static ERROR writeval_long(OBJECTPTR Object, Field *Field, LONG Flags, const void *Data, LONG Elements)
+static ERROR writeval_long(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data, LONG Elements)
 {
    LONG *offset = (LONG *)((BYTE *)Object + Field->Offset);
    if (Flags & FD_LONG)        *offset = *((LONG *)Data);
@@ -864,7 +864,7 @@ static ERROR writeval_long(OBJECTPTR Object, Field *Field, LONG Flags, const voi
    return ERR_Okay;
 }
 
-static ERROR writeval_large(OBJECTPTR Object, Field *Field, LONG Flags, const void *Data, LONG Elements)
+static ERROR writeval_large(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data, LONG Elements)
 {
    LARGE *offset = (LARGE *)((BYTE *)Object + Field->Offset);
    if (Flags & FD_LARGE)       *offset = *((LARGE *)Data);
@@ -875,7 +875,7 @@ static ERROR writeval_large(OBJECTPTR Object, Field *Field, LONG Flags, const vo
    return ERR_Okay;
 }
 
-static ERROR writeval_double(OBJECTPTR Object, Field *Field, LONG Flags, const void *Data, LONG Elements)
+static ERROR writeval_double(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data, LONG Elements)
 {
    DOUBLE *offset = (DOUBLE *)((BYTE *)Object + Field->Offset);
    if (Flags & FD_DOUBLE)      *offset = *((DOUBLE *)Data);
@@ -886,7 +886,7 @@ static ERROR writeval_double(OBJECTPTR Object, Field *Field, LONG Flags, const v
    return ERR_Okay;
 }
 
-static ERROR writeval_function(OBJECTPTR Object, Field *Field, LONG Flags, const void *Data, LONG Elements)
+static ERROR writeval_function(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data, LONG Elements)
 {
    FUNCTION *offset = (FUNCTION *)((BYTE *)Object + Field->Offset);
    if (Flags & FD_FUNCTION) {
@@ -901,7 +901,7 @@ static ERROR writeval_function(OBJECTPTR Object, Field *Field, LONG Flags, const
    return ERR_Okay;
 }
 
-static ERROR writeval_ptr(OBJECTPTR Object, Field *Field, LONG Flags, const void *Data, LONG Elements)
+static ERROR writeval_ptr(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data, LONG Elements)
 {
    APTR *offset = (APTR *)((BYTE *)Object + Field->Offset);
    if (Flags & (FD_POINTER|FD_STRING)) *offset = (void *)Data;
@@ -930,7 +930,7 @@ INLINE void RESTORE_CONTEXT(OBJECTPTR Object)
    tlContext = tlContext->Stack;
 }
 
-static ERROR setval_variable(OBJECTPTR Object, Field *Field, LONG Flags, const void *Data, LONG Elements)
+static ERROR setval_variable(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data, LONG Elements)
 {
    // Convert the value to match what the variable will accept, then call the variable field's set function.
 
@@ -964,7 +964,7 @@ static ERROR setval_variable(OBJECTPTR Object, Field *Field, LONG Flags, const v
    return error;
 }
 
-static ERROR setval_brgb(OBJECTPTR Object, Field *Field, LONG Flags, const void *Data, LONG Elements)
+static ERROR setval_brgb(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data, LONG Elements)
 {
    if (Field->Flags & FD_BYTE) {
       ObjectContext ctx;
@@ -981,7 +981,7 @@ static ERROR setval_brgb(OBJECTPTR Object, Field *Field, LONG Flags, const void 
    else return ERR_FieldTypeMismatch;
 }
 
-static ERROR setval_array(OBJECTPTR Object, Field *Field, LONG Flags, const void *Data, LONG Elements)
+static ERROR setval_array(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data, LONG Elements)
 {
    parasol::Log log(__FUNCTION__);
    ERROR error;
@@ -1031,7 +1031,7 @@ static ERROR setval_array(OBJECTPTR Object, Field *Field, LONG Flags, const void
    return error;
 }
 
-static ERROR setval_function(OBJECTPTR Object, Field *Field, LONG Flags, const void *Data, LONG Elements)
+static ERROR setval_function(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data, LONG Elements)
 {
    OBJECTPTR current_context = tlContext->Object;
 
@@ -1058,7 +1058,7 @@ static ERROR setval_function(OBJECTPTR Object, Field *Field, LONG Flags, const v
    return error;
 }
 
-static ERROR setval_long(OBJECTPTR Object, Field *Field, LONG Flags, const void *Data, LONG Elements)
+static ERROR setval_long(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data, LONG Elements)
 {
    ObjectContext ctx;
    SET_CONTEXT(Object, Field, &ctx);
@@ -1077,7 +1077,7 @@ static ERROR setval_long(OBJECTPTR Object, Field *Field, LONG Flags, const void 
    return error;
 }
 
-static ERROR setval_double(OBJECTPTR Object, Field *Field, LONG Flags, const void *Data, LONG Elements)
+static ERROR setval_double(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data, LONG Elements)
 {
    ObjectContext ctx;
    SET_CONTEXT(Object, Field, &ctx);
@@ -1095,14 +1095,14 @@ static ERROR setval_double(OBJECTPTR Object, Field *Field, LONG Flags, const voi
    return error;
 }
 
-static ERROR setval_pointer(OBJECTPTR Object, Field *Field, LONG Flags, const void *Data, LONG Elements)
+static ERROR setval_pointer(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data, LONG Elements)
 {
    ERROR error;
    ObjectContext ctx;
    SET_CONTEXT(Object, Field, &ctx);
 
    if (Flags & (FD_POINTER|FD_STRING)) {
-      error = ((ERROR (*)(APTR, const void *))(Field->SetValue))(Object, Data);
+      error = ((ERROR (*)(APTR, CPTR ))(Field->SetValue))(Object, Data);
    }
    else if (Flags & FD_LONG) {
       char buffer[32];
@@ -1125,7 +1125,7 @@ static ERROR setval_pointer(OBJECTPTR Object, Field *Field, LONG Flags, const vo
    return error;
 }
 
-static ERROR setval_large(OBJECTPTR Object, Field *Field, LONG Flags, const void *Data, LONG Elements)
+static ERROR setval_large(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data, LONG Elements)
 {
    ERROR error;
    LARGE int64;

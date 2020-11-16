@@ -154,7 +154,7 @@ static OBJECTPTR glModule = NULL;
 
 struct dns_cache {
    CSTRING HostName;
-   struct IPAddress *Addresses;
+   IPAddress *Addresses;
    LONG   AddressCount;
 };
 
@@ -171,12 +171,12 @@ static ERROR sslSetup(objNetSocket *);
 static OBJECTPTR clProxy = NULL;
 static OBJECTPTR clNetSocket = NULL;
 static OBJECTPTR clClientSocket = NULL;
-static struct KeyStore *glDNS = NULL;
+static KeyStore *glDNS = NULL;
 static LONG glResolveNameMsgID = 0;
 static LONG glResolveAddrMsgID = 0;
 
-static void client_server_incoming(SOCKET_HANDLE, struct rkNetSocket *);
-static void resolve_callback(LARGE, FUNCTION *, ERROR, CSTRING, struct IPAddress *, LONG);
+static void client_server_incoming(SOCKET_HANDLE, rkNetSocket *);
+static void resolve_callback(LARGE, FUNCTION *, ERROR, CSTRING, IPAddress *, LONG);
 static BYTE check_machine_name(CSTRING HostName) __attribute__((unused));
 static ERROR cache_host(CSTRING, struct hostent *, struct dns_cache **);
 #ifdef __linux__
@@ -196,15 +196,16 @@ struct resolve_addr_buffer {
    FUNCTION callback;
 }; // Address is appended
 
-static struct MsgHandler *glResolveNameHandler = NULL;
-static struct MsgHandler *glResolveAddrHandler = NULL;
+static MsgHandler *glResolveNameHandler = NULL;
+static MsgHandler *glResolveAddrHandler = NULL;
 
 //***************************************************************************
-// Used for receiving asynchronous execution results from netResolveName() and netResolveAddress().
+// Used for receiving asynchronous execution results (sent as a message) from netResolveName() and netResolveAddress().
+// These routines execute in the main process.
 
 static ERROR resolve_name_receiver(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
 {
-   struct resolve_name_buffer *rnb = (struct resolve_name_buffer *)Message;
+   auto rnb = (resolve_name_buffer *)Message;
    // This call will cause the cached DNS result to be pulled and forwarded to the user's callback.
    netResolveName((CSTRING)(rnb + 1), NSF_SYNCHRONOUS, &rnb->callback, rnb->client_data);
    return ERR_Okay;
@@ -212,7 +213,7 @@ static ERROR resolve_name_receiver(APTR Custom, LONG MsgID, LONG MsgType, APTR M
 
 static ERROR resolve_addr_receiver(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
 {
-   struct resolve_addr_buffer *rab = (struct resolve_addr_buffer *)Message;
+   auto rab = (resolve_addr_buffer *)Message;
    netResolveAddress((CSTRING)(rab + 1), NSF_SYNCHRONOUS, &rab->callback, rab->client_data);
    return ERR_Okay;
 }
@@ -222,7 +223,7 @@ static ERROR resolve_addr_receiver(APTR Custom, LONG MsgID, LONG MsgType, APTR M
 
 static ERROR thread_resolve_name(objThread *Thread)
 {
-   struct resolve_name_buffer *rnb = (struct resolve_name_buffer *)Thread->Data;
+   auto rnb = (resolve_name_buffer *)Thread->Data;
    netResolveName((CSTRING)(rnb + 1), NSF_SYNCHRONOUS, NULL, 0); // Blocking
 
    // Signal back to the main thread so that the callback is executed in the correct context.
@@ -235,7 +236,7 @@ static ERROR thread_resolve_name(objThread *Thread)
 
 static ERROR thread_resolve_addr(objThread *Thread)
 {
-   struct resolve_addr_buffer *rab = (struct resolve_addr_buffer *)Thread->Data;
+   auto rab = (resolve_addr_buffer *)Thread->Data;
    netResolveAddress((CSTRING)(rab + 1), NSF_SYNCHRONOUS, NULL, 0); // Blocking
    SendMessage(0, glResolveAddrMsgID, 0, rab, Thread->DataSize);
    return ERR_Okay;
@@ -347,7 +348,7 @@ struct(IPAddress) IPAddress: A pointer to the IPAddress structure.
 
 *****************************************************************************/
 
-static CSTRING netAddressToStr(struct IPAddress *Address)
+static CSTRING netAddressToStr(IPAddress *Address)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -398,7 +399,7 @@ Failed:  The String was not a valid IP Address.
 
 *****************************************************************************/
 
-static ERROR netStrToAddress(CSTRING Str, struct IPAddress *Address)
+static ERROR netStrToAddress(CSTRING Str, IPAddress *Address)
 {
    if ((!Str) OR (!Address)) return ERR_NullArgs;
 
@@ -536,18 +537,18 @@ static ERROR netResolveAddress(CSTRING Address, LONG Flags, FUNCTION *Callback, 
 
    if (!Address) return log.error(ERR_NullArgs);
 
-   struct IPAddress ip;
+   IPAddress ip;
    if (netStrToAddress(Address, &ip) != ERR_Okay) return ERR_Args;
 
    if (!(Flags & NSF_SYNCHRONOUS)) { // Attempt asynchronous resolution in the background, return immediately.
       OBJECTPTR thread;
-      LONG pkg_size = sizeof(struct resolve_addr_buffer) + StrLength(Address) + 1;
+      LONG pkg_size = sizeof(resolve_addr_buffer) + StrLength(Address) + 1;
       if (!CreateObject(ID_THREAD, NF_INTEGRAL, &thread,
             FID_Routine|TPTR, &thread_resolve_addr,
             FID_Flags|TLONG,  THF_AUTO_FREE,
             TAGEND)) {
          char buffer[pkg_size];
-         struct resolve_addr_buffer *rab = (struct resolve_addr_buffer *)&buffer;
+         resolve_addr_buffer *rab = (resolve_addr_buffer *)&buffer;
          rab->callback = *Callback;
          rab->client_data = ClientData;
          StrCopy(Address, (STRING)(rab + 1), COPY_ALL);
@@ -676,24 +677,24 @@ static ERROR netResolveName(CSTRING HostName, LONG Flags, FUNCTION *Callback, LA
    // Resolve 'localhost' immediately
 
    if (!StrMatch("localhost", HostName)) {
-      struct IPAddress ip = { { 0x7f, 0x00, 0x00, 0x01 }, IPADDR_V4 };
-      struct IPAddress list[] = { ip };
+      IPAddress ip = { { 0x7f, 0x00, 0x00, 0x01 }, IPADDR_V4 };
+      IPAddress list[] = { ip };
       resolve_callback(ClientData, Callback, ERR_Okay, "localhost", list, 1);
    }
 
    if (!(Flags & NSF_SYNCHRONOUS)) { // Attempt asynchronous resolution in the background, return immediately.
       OBJECTPTR thread;
-      LONG pkg_size = sizeof(struct resolve_name_buffer) + StrLength(HostName) + 1;
+      LONG pkg_size = sizeof(resolve_name_buffer) + StrLength(HostName) + 1;
       if (!CreateObject(ID_THREAD, NF_INTEGRAL, &thread,
             FID_Routine|TPTR, &thread_resolve_name,
             FID_Flags|TLONG,  THF_AUTO_FREE,
             TAGEND)) {
          char buffer[pkg_size];
-         struct resolve_name_buffer *rnb = (struct resolve_name_buffer *)&buffer;
+         auto rnb = (resolve_name_buffer *)&buffer;
          rnb->callback = *Callback;
          rnb->client_data = ClientData;
          StrCopy(HostName, (STRING)(rnb + 1), COPY_ALL);
-         if ((!thSetData(thread, rnb, pkg_size)) AND (!acActivate(thread))) {
+         if ((!thSetData(thread, buffer, pkg_size)) AND (!acActivate(thread))) {
             return ERR_Okay;
          }
       }
@@ -1044,19 +1045,18 @@ static ERROR SEND(objNetSocket *Self, SOCKET_HANDLE Socket, CPTR Buffer, LONG *L
 
 //***************************************************************************
 
-static void resolve_callback(LARGE ClientData, FUNCTION *Callback, ERROR Error, CSTRING HostName, struct IPAddress *Addresses, LONG TotalAddresses)
+static void resolve_callback(LARGE ClientData, FUNCTION *Callback, ERROR Error, CSTRING HostName, IPAddress *Addresses, LONG TotalAddresses)
 {
    if (!Callback) return;
    if (Callback->Type IS CALL_STDC) {
-      ERROR (*routine)(LARGE, ERROR, CSTRING, struct IPAddress *, LONG);
       parasol::SwitchContext context(Callback->StdC.Context);
-      routine = reinterpret_cast<ERROR (*)(LARGE, ERROR, CSTRING, struct IPAddress *, LONG)>(Callback->StdC.Routine);
+      auto routine = (ERROR (*)(LARGE, ERROR, CSTRING, IPAddress *, LONG))(Callback->StdC.Routine);
       routine(ClientData, Error, HostName, Addresses, TotalAddresses);
    }
    else if (Callback->Type IS CALL_SCRIPT) {
       OBJECTPTR script;
       if ((script = Callback->Script.Script)) {
-         const struct ScriptArg args[] = {
+         const ScriptArg args[] = {
             { "ClientData",   FD_LARGE, { .Large   = ClientData } },
             { "Error",        FD_LONG,  { .Long    = Error } },
             { "HostName",     FD_STR,   { .Address = (STRING)HostName } },
@@ -1098,7 +1098,7 @@ static ERROR cache_host(CSTRING HostName, struct hostent *Host, struct dns_cache
       for (address_count=0; (address_count < MAX_ADDRESSES) AND (Host->h_addr_list[address_count]); address_count++);
    }
 
-   size += address_count * sizeof(struct IPAddress);
+   size += address_count * sizeof(IPAddress);
 
    // Allocate an empty key-pair and fill it.
 
@@ -1109,8 +1109,8 @@ static ERROR cache_host(CSTRING HostName, struct hostent *Host, struct dns_cache
    LONG offset = sizeof(struct dns_cache);
 
    if (address_count > 0) {
-      cache->Addresses = (struct IPAddress *)(buffer + offset);
-      offset += address_count * sizeof(struct IPAddress);
+      cache->Addresses = (IPAddress *)(buffer + offset);
+      offset += address_count * sizeof(IPAddress);
 
       if (Host->h_addrtype IS AF_INET) {
          LONG i;
@@ -1173,7 +1173,7 @@ static ERROR cache_host(CSTRING HostName, struct addrinfo *Host, struct dns_cach
       if (scan->ai_addr) address_count++;
    }
 
-   size += address_count * sizeof(struct IPAddress);
+   size += address_count * sizeof(IPAddress);
 
    // Allocate an empty key-pair and fill it.
 
@@ -1184,8 +1184,8 @@ static ERROR cache_host(CSTRING HostName, struct addrinfo *Host, struct dns_cach
    LONG offset = sizeof(struct dns_cache);
 
    if (address_count > 0) {
-      cache->Addresses = (struct IPAddress *)(buffer + offset);
-      offset += address_count * sizeof(struct IPAddress);
+      cache->Addresses = (IPAddress *)(buffer + offset);
+      offset += address_count * sizeof(IPAddress);
 
       LONG i = 0;
       for (struct addrinfo *scan=Host; scan; scan=scan->ai_next) {

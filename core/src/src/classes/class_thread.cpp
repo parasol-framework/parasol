@@ -69,7 +69,7 @@ ERROR threadpool_get(objThread **Result)
    ThreadLock lock(TL_THREADPOOL, 2000);
    if (lock.granted()) {
       for (LONG i=0; i < glActionThreadsIndex; i++) {
-         if ((glActionThreads[i].Thread) AND (!glActionThreads[i].InUse)) {
+         if ((glActionThreads[i].Thread) and (!glActionThreads[i].InUse)) {
             thread = glActionThreads[i].Thread;
             glActionThreads[i].InUse = TRUE;
             break;
@@ -367,7 +367,7 @@ an active thread is made then it will be marked for termination so as to avoid t
 
 static ERROR THREAD_Free(objThread *Self, APTR Void)
 {
-   if ((Self->Data) AND (Self->DataSize > 0)) {
+   if ((Self->Data) and (Self->DataSize > 0)) {
       FreeResource(Self->Data);
       Self->Data = NULL;
       Self->DataSize = 0;
@@ -460,7 +460,7 @@ static ERROR THREAD_SetData(objThread *Self, struct thSetData *Args)
 {
    parasol::Log log;
 
-   if ((!Args) OR (!Args->Data)) return log.warning(ERR_NullArgs);
+   if ((!Args) or (!Args->Data)) return log.warning(ERR_NullArgs);
    if (Args->Size < 0) return log.warning(ERR_Args);
 
    if (Self->Data) {

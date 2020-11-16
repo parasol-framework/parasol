@@ -1843,10 +1843,13 @@ static ERROR GET_Location(objHTTP *Self, STRING *Value)
 
    if (Self->URI) { FreeResource(Self->URI); Self->URI = NULL; }
 
-   OBJECTPTR context = SetContext(Self);
-   LONG len = 7 + StrLength(Self->Host) + 16 + StrLength(Self->Path) + 1;
-   ERROR error = AllocMemory(len, MEM_STRING|MEM_NO_CLEAR, &Self->URI, NULL);
-   SetContext(context);
+   ERROR error;
+   LONG len;
+   {
+      parasol::SwitchContext context(Self);
+      len = 7 + StrLength(Self->Host) + 16 + StrLength(Self->Path) + 1;
+      error = AllocMemory(len, MEM_STRING|MEM_NO_CLEAR, &Self->URI, NULL);
+   }
 
    if (!error) {
       if (Self->Port IS 80) StrFormat(Self->URI, len, "http://%s/%s", Self->Host, Self->Path); // http

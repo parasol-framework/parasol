@@ -109,9 +109,9 @@ restart:
    ERROR error = ERR_Okay;
    if (Self->Incoming.Type) {
       if (Self->Incoming.Type IS CALL_STDC) {
-         ERROR (*routine)(objNetSocket *);
-         if ((routine = reinterpret_cast<ERROR (*)(objNetSocket *)>(Self->Incoming.StdC.Routine))) {
-            parasol::SwitchContext(&Self->Incoming);
+         auto routine = (ERROR (*)(objNetSocket *))Self->Incoming.StdC.Routine;
+         if (routine) {
+            parasol::SwitchContext(Self->Incoming.StdC.Context);
             error = routine(Self);
          }
       }
@@ -235,9 +235,9 @@ static void client_server_outgoing(SOCKET_HANDLE Void, struct rkNetSocket *Data)
    if ((!Self->WriteQueue.Buffer) OR (Self->WriteQueue.Index >= Self->WriteQueue.Length)) {
       if (Self->Outgoing.Type) {
          if (Self->Outgoing.Type IS CALL_STDC) {
-            ERROR (*routine)(objNetSocket *);
-            if ((routine = reinterpret_cast<ERROR (*)(objNetSocket *)>(Self->Outgoing.StdC.Routine))) {
-               parasol::SwitchContext(&Self->Outgoing);
+            auto routine = (ERROR (*)(objNetSocket *))Self->Outgoing.StdC.Routine;
+            if (routine) {
+               parasol::SwitchContext(Self->Outgoing.StdC.Context);
                error = routine(Self);
             }
          }

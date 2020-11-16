@@ -1147,8 +1147,7 @@ static ERROR SET_State(objNetSocket *Self, LONG Value)
       if ((Self->State IS NTC_CONNECTING_SSL) AND (Value IS NTC_CONNECTED)) {
          // SSL connection has just been established
 
-         if (SSL_get_verify_result(Self->SSL) != X509_V_OK) {
-             // Handle the failed verification
+         if (SSL_get_verify_result(Self->SSL) != X509_V_OK) { // Handle the failed verification
              log.trace("SSL certification was not validated.");
          }
          else log.trace("SSL certification is valid.");
@@ -1161,9 +1160,9 @@ static ERROR SET_State(objNetSocket *Self, LONG Value)
          log.traceBranch("Reporting state change to subscriber, operation %d.", Self->State);
 
          if (Self->Feedback.Type IS CALL_STDC) {
-            parasol::SwitchContext(&Self->Feedback);
-            auto routine = reinterpret_cast<void (*)(objNetSocket *, objClientSocket *, LONG)>(Self->Feedback.StdC.Routine);
-            routine(Self, NULL, Self->State);
+            parasol::SwitchContext(Self->Feedback.StdC.Context);
+            auto routine = (void (*)(objNetSocket *, objClientSocket *, LONG))Self->Feedback.StdC.Routine;
+            if (routine) routine(Self, NULL, Self->State);
          }
          else if (Self->Feedback.Type IS CALL_SCRIPT) {
             OBJECTPTR script;

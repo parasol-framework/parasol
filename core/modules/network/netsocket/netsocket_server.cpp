@@ -144,8 +144,8 @@ static void server_client_connect(SOCKET_HANDLE FD, objNetSocket *Self)
 
    if (Self->Feedback.Type IS CALL_STDC) {
       parasol::SwitchContext context(Self->Feedback.StdC.Context);
-      auto routine = reinterpret_cast<void (*)(objNetSocket *, objClientSocket *, LONG)>(Self->Feedback.StdC.Routine);
-      routine(Self, client_socket, NTC_CONNECTED);
+      auto routine = (void (*)(objNetSocket *, objClientSocket *, LONG))Self->Feedback.StdC.Routine;
+      if (routine) routine(Self, client_socket, NTC_CONNECTED);
    }
    else if (Self->Feedback.Type IS CALL_SCRIPT) {
       const struct ScriptArg args[] = {
@@ -196,7 +196,7 @@ static void free_client(objNetSocket *Self, struct rkNetClient *Client)
    }
    else {
       Self->Clients = Client->Next;
-      if ((Self->Clients) AND (Self->Clients->Next)) Self->Clients->Next->Prev = NULL;
+      if ((Self->Clients) and (Self->Clients->Next)) Self->Clients->Next->Prev = NULL;
    }
 
    FreeResource(Client);
@@ -218,11 +218,11 @@ static void free_client_socket(objNetSocket *Socket, objClientSocket *ClientSock
 
    log.branch("Handle: %d, NetSocket: %d, ClientSocket: %d", ClientSocket->SocketHandle, Socket->Head.UniqueID, ClientSocket->Head.UniqueID);
 
-   if ((Signal) AND (Socket->Feedback.Type)) {
+   if ((Signal) and (Socket->Feedback.Type)) {
       if (Socket->Feedback.Type IS CALL_STDC) {
          parasol::SwitchContext context(Socket->Feedback.StdC.Context);
-         auto routine = reinterpret_cast<void (*)(objNetSocket *, objClientSocket *, LONG)>(Socket->Feedback.StdC.Routine);
-         routine(Socket, ClientSocket, NTC_DISCONNECTED);
+         auto routine = (void (*)(objNetSocket *, objClientSocket *, LONG))Socket->Feedback.StdC.Routine;
+         if (routine) routine(Socket, ClientSocket, NTC_DISCONNECTED);
       }
       else if (Socket->Feedback.Type IS CALL_SCRIPT) {
          const struct ScriptArg args[] = {

@@ -32,9 +32,9 @@ static void clientsocket_incoming(HOSTHANDLE SocketHandle, APTR Data)
    ERROR error;
    if (Socket->Incoming.Type) {
       if (Socket->Incoming.Type IS CALL_STDC) {
-         parasol::SwitchContext(&Socket->Incoming);
-         auto routine = reinterpret_cast<ERROR (*)(objNetSocket *, objClientSocket *)>(Socket->Incoming.StdC.Routine);
-         error = routine(Socket, ClientSocket);
+         parasol::SwitchContext(Socket->Incoming.StdC.Context);
+         auto routine = (ERROR (*)(objNetSocket *, objClientSocket *))Socket->Incoming.StdC.Routine;
+         if (routine) error = routine(Socket, ClientSocket);
       }
       else if (Socket->Incoming.Type IS CALL_SCRIPT) {
          const ScriptArg args[] = {
@@ -150,7 +150,7 @@ static void clientsocket_outgoing(HOSTHANDLE Void, APTR Data)
          if (ClientSocket->Outgoing.Type IS CALL_STDC) {
             ERROR (*routine)(objNetSocket *, objClientSocket *);
             if ((routine = reinterpret_cast<ERROR (*)(objNetSocket *, objClientSocket *)>(ClientSocket->Outgoing.StdC.Routine))) {
-               parasol::SwitchContext(&ClientSocket->Outgoing);
+               parasol::SwitchContext(ClientSocket->Outgoing.StdC.Context);
                error = routine(Socket, ClientSocket);
             }
          }

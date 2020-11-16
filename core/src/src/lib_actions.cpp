@@ -258,7 +258,7 @@ ERROR Action(LONG ActionID, OBJECTPTR argObject, APTR Parameters)
 
    if (!argObject) return log.warning(ERR_NullArgs);
 
-   OBJECTPTR obj = (OBJECTPTR)argObject;
+   auto obj = (OBJECTPTR)argObject;
    OBJECTID object_id = obj->UniqueID;
 
    prv_access(obj);
@@ -285,12 +285,7 @@ ERROR Action(LONG ActionID, OBJECTPTR argObject, APTR Parameters)
 
    // Set the current context to the given object
 
-   ObjectContext new_context = {
-      .Stack  = tlContext,
-      .Object = (OBJECTPTR)obj,
-      .Field  = NULL,
-      .Action = (WORD)ActionID
-   };
+   ObjectContext new_context = { .Stack = tlContext, .Object = obj, .Field = NULL, .Action = (WORD)ActionID };
    tlContext = &new_context;
 
    obj->ActionDepth++;
