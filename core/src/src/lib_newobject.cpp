@@ -125,7 +125,7 @@ ERROR NewObject(LARGE ClassID, LONG Flags, OBJECTPTR *Object)
    static BYTE master_sorted = FALSE;
 
    ULONG class_id = (ULONG)(ClassID & 0xffffffff);
-   if ((!class_id) OR (!Object)) return log.warning(ERR_NullArgs);
+   if ((!class_id) or (!Object)) return log.warning(ERR_NullArgs);
 
    rkMetaClass *mc;
    if (class_id IS ID_METACLASS) {
@@ -186,7 +186,7 @@ ERROR NewObject(LARGE ClassID, LONG Flags, OBJECTPTR *Object)
       }
 
       head->Class = (rkMetaClass *)mc;
-      if ((glCurrentTaskID != SystemTaskID) AND (!(mc->Flags & CLF_NO_OWNERSHIP))) {
+      if ((glCurrentTaskID != SystemTaskID) and (!(mc->Flags & CLF_NO_OWNERSHIP))) {
          head->TaskID = glCurrentTaskID;
       }
 
@@ -256,7 +256,7 @@ ERROR NewObject(LARGE ClassID, LONG Flags, OBJECTPTR *Object)
             else error = log.warning(ERR_NoAction);
          }
 
-         if ((!error) AND (mc->ActionTable[AC_NewObject].PerformAction)) {
+         if ((!error) and (mc->ActionTable[AC_NewObject].PerformAction)) {
             if ((error = mc->ActionTable[AC_NewObject].PerformAction(head, NULL))) {
                log.warning(error);
             }
@@ -321,7 +321,7 @@ ERROR NewLockedObject(LARGE ClassID, LONG Flags, OBJECTPTR *Object, OBJECTID *Ob
    static BYTE private_lock = FALSE;
 
    ULONG class_id = (ULONG)(ClassID & 0xffffffff);
-   if ((!class_id) OR (!ObjectID)) return log.warning(ERR_NullArgs);
+   if ((!class_id) or (!ObjectID)) return log.warning(ERR_NullArgs);
 
    rkMetaClass *mc;
    if (class_id IS ID_METACLASS) {
@@ -367,14 +367,14 @@ ERROR NewLockedObject(LARGE ClassID, LONG Flags, OBJECTPTR *Object, OBJECTID *Ob
    BYTE resourced = FALSE;
    ERROR error = ERR_Okay;
 
-   if (((Flags & NF_UNIQUE) AND (Name)) OR (Flags & NF_PUBLIC)) {
+   if (((Flags & NF_UNIQUE) and (Name)) or (Flags & NF_PUBLIC)) {
       // Locking RPM_SharedObjects for the duration of this function will ensure that other tasks do not create shared
       // objects with the same name when NF_UNIQUE is in use.
 
       if (!AccessMemory(RPM_SharedObjects, MEM_READ_WRITE, 2000, &sharelock)) {
          if (Flags & NF_UNIQUE) {
             OBJECTID search_id;
-            if ((!FastFindObject(Name, class_id, &search_id, 1, NULL)) AND (search_id)) {
+            if ((!FastFindObject(Name, class_id, &search_id, 1, NULL)) and (search_id)) {
                *ObjectID = search_id;
                ReleaseMemoryID(RPM_SharedObjects);
                return ERR_ObjectExists; // Return ERR_ObjectExists so that the caller knows that the failure was not caused by an object creation error.
@@ -384,7 +384,7 @@ ERROR NewLockedObject(LARGE ClassID, LONG Flags, OBJECTPTR *Object, OBJECTID *Ob
       else return log.warning(ERR_AccessMemory);
    }
 
-   if ((Flags & NF_PUBLIC) AND (mc->Flags & CLF_PRIVATE_ONLY)) {
+   if ((Flags & NF_PUBLIC) and (mc->Flags & CLF_PRIVATE_ONLY)) {
       log.warning("Public objects cannot be allocated from class $%.8x.", class_id);
       Flags &= ~NF_PUBLIC;
    }
@@ -412,7 +412,7 @@ ERROR NewLockedObject(LARGE ClassID, LONG Flags, OBJECTPTR *Object, OBJECTID *Ob
       else head->SubID = mc->SubClassID; // Object derived from a sub-class
 
       head->Class = mc;
-      if ((glCurrentTaskID != SystemTaskID) AND (!(mc->Flags & CLF_NO_OWNERSHIP))) {
+      if ((glCurrentTaskID != SystemTaskID) and (!(mc->Flags & CLF_NO_OWNERSHIP))) {
          head->TaskID = glCurrentTaskID;
       }
 
@@ -473,7 +473,7 @@ ERROR NewLockedObject(LARGE ClassID, LONG Flags, OBJECTPTR *Object, OBJECTID *Ob
       }
    }
 
-   if ((!error) AND (Object) AND (!(Flags & NF_PUBLIC))) {
+   if ((!error) and (Object) and (!(Flags & NF_PUBLIC))) {
       if (AccessPrivateObject(head, 0x7fffffff)) error = ERR_AccessObject;
       else private_lock = TRUE;
    }
@@ -494,7 +494,7 @@ ERROR NewLockedObject(LARGE ClassID, LONG Flags, OBJECTPTR *Object, OBJECTID *Ob
          else error = log.warning(ERR_NoAction);
       }
 
-      if ((!error) AND (mc->ActionTable[AC_NewObject].PerformAction)) {
+      if ((!error) and (mc->ActionTable[AC_NewObject].PerformAction)) {
          if ((error = mc->ActionTable[AC_NewObject].PerformAction(head, NULL))) {
             log.warning(error);
          }
@@ -512,7 +512,7 @@ ERROR NewLockedObject(LARGE ClassID, LONG Flags, OBJECTPTR *Object, OBJECTID *Ob
 
       *ObjectID = head_id;
 
-      if ((Flags & (NF_UNIQUE|NF_NAME)) AND (Name)) SetName(head, Name); // Set the object's name if it was specified
+      if ((Flags & (NF_UNIQUE|NF_NAME)) and (Name)) SetName(head, Name); // Set the object's name if it was specified
 
       head->Flags &= ~NF_NEW_OBJECT;
       if (Flags & NF_PUBLIC) {
@@ -522,9 +522,7 @@ ERROR NewLockedObject(LARGE ClassID, LONG Flags, OBJECTPTR *Object, OBJECTID *Ob
          }
          else ReleaseMemoryID(head_id);
       }
-      else {
-         if (Object) *Object = head;
-      }
+      else if (Object) *Object = head;
 
       if (sharelock) ReleaseMemoryID(RPM_SharedObjects);
       return ERR_Okay;
@@ -572,7 +570,7 @@ CLASSID ResolveClassName(CSTRING ClassName)
 {
    parasol::Log log(__FUNCTION__);
 
-   if ((!ClassName) OR (!*ClassName)) {
+   if ((!ClassName) or (!*ClassName)) {
       log.warning(ERR_NullArgs);
       return 0;
    }
@@ -623,7 +621,7 @@ ERROR find_public_object_entry(SharedObjectHeader *Header, OBJECTID ObjectID, LO
    LONG ceiling = Header->NextEntry;
    LONG i       = ceiling>>1;
    for (LONG j=0; j < 2; j++) {
-      while ((!array[i].ObjectID) AND (i > 0)) i--;
+      while ((!array[i].ObjectID) and (i > 0)) i--;
 
       if (ObjectID < array[i].ObjectID)      floor = i + 1;
       else if (ObjectID > array[i].ObjectID) ceiling = i;
@@ -634,7 +632,7 @@ ERROR find_public_object_entry(SharedObjectHeader *Header, OBJECTID ObjectID, LO
       i = floor + ((ceiling - floor)>>1);
   }
 
-   while ((!array[i].ObjectID) AND (i > 0)) i--;
+   while ((!array[i].ObjectID) and (i > 0)) i--;
 
    if (ObjectID < array[i].ObjectID) {
       while (i < ceiling) {
@@ -684,7 +682,7 @@ static ERROR add_shared_object(OBJECTPTR Object, OBJECTID ObjectID, WORD Flags)
          LONG entry_size = sizeof(SharedObject)>>1;
          for (LONG i=0; i < public_hdr->ArraySize; i++) {
             if (!public_objects[i].ObjectID) {
-               for (j=i+1; (j < public_hdr->ArraySize) AND (!public_objects[j].ObjectID); j++);
+               for (j=i+1; (j < public_hdr->ArraySize) and (!public_objects[j].ObjectID); j++);
                if (j < public_hdr->ArraySize) {
                   // Move the record at position j to position i
                   for (LONG k=0; k < entry_size; k++) {
@@ -714,7 +712,7 @@ static ERROR add_shared_object(OBJECTPTR Object, OBJECTID ObjectID, WORD Flags)
 
       // "Pull-back" the NextPublicObject position if there are null entries present at the tail-end of the array (occurs if objects are allocated then quickly freed).
 
-      while ((public_hdr->NextEntry > 0) AND (public_objects[public_hdr->NextEntry-1].ObjectID IS 0)) {
+      while ((public_hdr->NextEntry > 0) and (public_objects[public_hdr->NextEntry-1].ObjectID IS 0)) {
          public_hdr->NextEntry--;
       }
 
