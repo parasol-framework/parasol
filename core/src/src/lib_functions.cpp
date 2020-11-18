@@ -2467,39 +2467,33 @@ ERROR SubscribeFeed(OBJECTPTR Object)
 
    ScopedObjectAccess objlock(Object);
 
-   log.trace("%s: %d", ((rkMetaClass *)Object->Class)->ClassName, Object->UniqueID);
+   log.traceBranch("%s: %d", ((rkMetaClass *)Object->Class)->ClassName, Object->UniqueID);
 
    if (Object->Flags & NF_PUBLIC) memflags = Object->MemFlags|MEM_PUBLIC;
    else memflags = Object->MemFlags;
 
-   if (!Object->Stats->MID_FeedList) {
-      // Allocate a feed list for the first time
+   parasol::SwitchContext context(Object);
 
-      OBJECTPTR context = SetContext(Object);
-         error = AllocMemory(sizeof(FeedSubscription)*2, MEM_NO_CLEAR|memflags, NULL, &Object->Stats->MID_FeedList);
-      SetContext(context);
-
-      if (!error) {
+   if (!Object->Stats->MID_FeedList) { // Allocate a feed list for the first time
+      if (!AllocMemory(sizeof(FeedSubscription)*2, MEM_NO_CLEAR|memflags, NULL, &Object->Stats->MID_FeedList)) {
          if (!AccessMemory(Object->Stats->MID_FeedList, MEM_WRITE, 2000, (APTR *)&list)) {
             list[0].SubscriberID   = tlContext->Object->UniqueID;
             list[0].MessagePortMID = glTaskMessageMID;
             list[0].ClassID        = tlContext->Object->ClassID;
             list[1].SubscriberID   = 0;
             ReleaseMemoryID(Object->Stats->MID_FeedList);
+            return ERR_Okay;
          }
+         else error = ERR_AccessMemory;
       }
-      else return log.warning(ERR_AllocMemory);
+      else error = log.warning(ERR_AllocMemory);
    }
    else if (!AccessMemory(Object->Stats->MID_FeedList, MEM_READ_WRITE, 2000, (APTR *)&list)) {
       // Reallocate the feed list from scratch
 
       for (i=0; list[i].SubscriberID; i++);
 
-      OBJECTPTR context = SetContext(Object);
-         error = AllocMemory(sizeof(FeedSubscription) * (i + 2), MEM_NO_CLEAR|memflags, NULL, &newlistid);
-      SetContext(context);
-
-      if (!error) {
+      if (!(AllocMemory(sizeof(FeedSubscription) * (i + 2), MEM_NO_CLEAR|memflags, NULL, &newlistid))) {
          if (!AccessMemory(newlistid, MEM_READ_WRITE, 2000, (APTR *)&newlist)) {
             // Copy the object list over to the new array and insert the new object ID.
 
@@ -2512,26 +2506,23 @@ ERROR SubscribeFeed(OBJECTPTR Object)
             newlist[i+1].MessagePortMID = 0;
             newlist[i+1].ClassID        = 0;
 
-            // Free the old list
+            // Free the old list, insert the new
 
             ReleaseMemoryID(Object->Stats->MID_FeedList);
             FreeResourceID(Object->Stats->MID_FeedList);
-
-            // Insert the new list
-
             Object->Stats->MID_FeedList = newlistid;
-
             ReleaseMemoryID(newlistid);
             return ERR_Okay;
          }
-         else return log.warning(ERR_AccessMemory);
+         else error = log.warning(ERR_AccessMemory);
          FreeResourceID(newlistid);
       }
-      else return log.warning(ERR_AllocMemory);
+      else error = log.warning(ERR_AllocMemory);
       ReleaseMemoryID(Object->Stats->MID_FeedList);
    }
+   else error = ERR_AccessMemory;
 
-   return ERR_Okay;
+   return error;
 }
 
 /*****************************************************************************
