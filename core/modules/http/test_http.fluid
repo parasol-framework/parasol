@@ -1,0 +1,265 @@
+--[[
+Various HTTP examples that demonstrate how to GET, POST, etc.
+
+Note: Network communications take place in the background once started.  In order to ensure that an HTTP operation
+fully completes, it is crucial that the HTTP object remains in memory for the entire procedure.  In Fluid we can do
+this by maintaining at least one reference to the object at all times, which will prevent it from being garbage
+collected too early.
+--]]
+
+   require 'common'
+
+   local glPath = obj.find('self').workingPath
+   local glOutFile = 'temp:http-output.txt'
+   local glInFile  = glPath .. 'test_http.fluid'
+
+function testGet()
+   local http = obj.new('http', {
+      src        = 'http://www.parasol.ws/index.html',
+      method     = 'get',
+      outputFile = glOutFile,
+      flags      = '!DEBUG',
+      stateChanged = function(HTTP, State)
+         if (State == HGS_COMPLETED) then
+            local content = file.readAll(glOutFile)
+            print(string.format('%.80s [80 of %d bytes]', content, content:len()))
+         end
+         if (State == HGS_COMPLETED) or (State == HGS_TERMINATED) then
+            mSys.SendMessage(0, MSGID_QUIT)
+         end
+      end
+   })
+
+   http.acActivate()
+   local elapsed, err = processMessages(5000)
+   if (err == ERR_TimeOut) then error('Test timed-out.') end
+   if (http.error != ERR_Okay) then error('HTTP object returned error: ' .. mSys.GetErrorMsg(http.error)) end
+end
+
+function testPostString()
+   local http = obj.new('http', {
+      src        = 'http://ptsv2.com/t/bgef9-1605557717/post', // See results at http://ptsv2.com/t/bgef9-1605557717
+      method     = 'post',
+      flags      = '!debug',
+      outputFile = glOutFile,
+      outgoing   = function(HTTP, BufferSize)
+         if (testPostStringCompleted) then error('This routine has been called a second time.') end
+         print('Request for data received.')
+         HTTP.acWrite('fname=smith&amp;lname=jones')
+         testPostStringCompleted = true
+         check(ERR_Terminate)
+      end,
+      stateChanged = function(HTTP, State)
+         if (State == HGS_COMPLETED) then
+            print(file.readAll(glOutFile))
+         end
+         if (State == HGS_COMPLETED) or (State == HGS_TERMINATED) then
+            mSys.SendMessage(0, MSGID_QUIT)
+         end
+      end
+   })
+
+   http.acActivate()
+   local elapsed, err = processMessages(5000)
+   if (err == ERR_TimeOut) then error('Test timed-out.') end
+   if (http.error != ERR_Okay) then error('HTTP object returned error: ' .. mSys.GetErrorMsg(http.error)) end
+end
+
+function testPostFile()
+   local http = obj.new('http', {
+      src        = 'http://ptsv2.com/t/bgef9-1605557717/post', // See results at http://ptsv2.com/t/bgef9-1605557717
+      method     = 'post',
+      flags      = '!debug',
+      inputFile  = glInFile,
+      outputFile = glOutFile,
+      stateChanged = function(HTTP, State)
+         if (State == HGS_COMPLETED) or (State == HGS_TERMINATED) then
+            print(file.readAll(glOutFile))
+            mSys.SendMessage(0, MSGID_QUIT)
+         end
+      end
+   })
+
+   http.acActivate()
+   local elapsed, err = processMessages(5000)
+   if (err == ERR_TimeOut) then error('Test timed-out.') end
+   if (http.error != ERR_Okay) then error('HTTP object returned error: ' .. mSys.GetErrorMsg(http.error)) end
+end
+
+//=====================================================================================================================
+
+function testSSLProxy()
+   local http = obj.new('http', {
+      src         = 'https://www.google.co.uk/',
+      method      = 'get',
+      outputFile  = glOutFile,
+      flags       = '!debug|debugsocket',
+      proxyserver = 'localhost',
+      proxyport   = '8080'
+   })
+
+   http.acActivate()
+   local elapsed, err = processMessages(5000)
+   if (err == ERR_TimeOut) then error('Test timed-out.') end
+end
+
+function testHTTPS()
+   local http = obj.new('http', {
+      src        = 'https://www.google.co.uk',
+      method     = 'get',
+      outputFile = glOutFile,
+      flags      = '!debug',
+      stateChanged = function(HTTP, State)
+         if (State == HGS_COMPLETED) then
+            local content = file.readAll(glOutFile)
+            print(string.format('%.80s [%d bytes]', content, content:len()))
+         end
+         if (State == HGS_COMPLETED) or (State == HGS_TERMINATED) then
+            mSys.SendMessage(0, MSGID_QUIT)
+         end
+         return ERR_Okay
+      end
+   })
+
+   http.acActivate()
+   local elapsed, err = processMessages(5000)
+   if (err == ERR_TimeOut) then error('Test timed-out.') end
+end
+
+function testPHPPost()
+   local http = obj.new('http', {
+      src        = 'http://parasol.ws/upload.php',
+      method     = 'post',
+      flags      = '!debug|debugoutgoing',
+      inputfile  = 'string:file=fred.txt&amp;contentsize=4&amp;content=ABCD',
+      outputFile = glOutFile
+   })
+
+   http.acActivate()
+   local elapsed, err = processMessages(5000)
+   if (err == ERR_TimeOut) then error('Test timed-out.') end
+end
+
+function testUploadChunked()
+   local http = obj.new('http', {
+      src        = 'http://parasol.ws/upload.php',
+      method     = 'post',
+      flags      = '!debug|debugoutgoing',
+      inputfile  = glInFile,
+      outputFile = glOutFile
+   })
+
+   http.acActivate()
+   local elapsed, err = processMessages(5000)
+   if (err == ERR_TimeOut) then error('Test timed-out.') end
+end
+
+function testChunks()
+   // Test chunking
+   local http = obj.new('http', {
+      src        = 'http://news.bbc.co.uk',
+      method     = 'get',
+      outputFile = glOutFile,
+      flags      = '!debug'
+   })
+
+   http.acActivate()
+   local elapsed, err = processMessages(5000)
+   if (err == ERR_TimeOut) then error('Test timed-out.') end
+end
+
+function testDownload()
+   // Test non-chunking
+   local http = obj.new('http', {
+      src        = 'http://www.parasol.ws/index.html',
+      method     = 'get',
+      outputFile = glOutFile,
+      flags      = '!debug'
+   })
+
+   http.acActivate()
+   local elapsed, err = processMessages(5000)
+   if (err == ERR_TimeOut) then error('Test timed-out.') end
+end
+
+function testUpload()
+   // Test uploading
+   local http = obj.new('http', {
+      src       = 'http://www.parasol.ws/dav/boing.dml',
+      method    = 'put',
+      inputfile = glinFile,
+      flags     = '!debug'
+   })
+
+   http.acActivate()
+   local elapsed, err = processMessages(5000)
+   if (err == ERR_TimeOut) then error('Test timed-out.') end
+end
+
+function testMultiPart()
+   local boundary = '----------d6sXWGimDGTgb2GDuLZqbR'
+
+   local http = obj.new('http', {
+      src         = 'http://parasol.ws/tkr/upload.php',
+      method      = 'post',
+      outputFile  = glOutFile,
+      flags       = '!nohead|debug',
+      contenttype = 'multipart/form-data; boundary=' .. boundary
+   } )
+
+   local str = ''
+   local CRLF = string.char(13,10)
+   local filepath = args('inFile')
+   local filename = string.gsub(filepath, '.*[:/\\](.-)', '%1', 1)
+
+   // Parameters
+
+   msg('Building parameters')
+   str = str .. '--' .. boundary .. CRLF
+   str = str .. "Content-Disposition: form-data; name=\"method\"" .. CRLF .. CRLF
+   str = str .. 'fileUpload' .. CRLF
+
+   str = str .. '--' .. boundary .. CRLF
+   str = str .. "Content-Disposition: form-data; name=\"workspace\"" .. CRLF .. CRLF
+   str = str .. '1' .. CRLF
+
+   // File header
+
+   str = str .. '--' .. boundary .. CRLF
+   str = str .. "Content-Disposition: form-data; name=\"file\"; filename=\"" .. filename .. "\"" .. CRLF
+   str = str .. 'Content-Type: application/octet-stream' .. CRLF .. CRLF
+
+   local headfile = obj.new('file', { src='temp:http-head', flags='WRITE|NEW' } )
+   headfile.acWrite(str, str:len())
+
+   local tailfile = obj.new('file', { src='temp:http-tail', flags='WRITE|NEW' } )
+   str = CRLF .. '--' .. boundary .. '--' .. CRLF
+   tailfile.acWrite(str, str:len())
+
+   local srcfile = obj.new('file', { src=filepath, flags='READ' } )
+
+   if (srcfile) then
+      http.size = headfile.size + tailfile.size + srcfile.size
+      http.inputfile = headfile.location .. '|' .. srcfile.location .. '|' .. tailfile.location
+      http.acActivate()
+   end
+
+   headfile = nil
+   tailfile = nil
+   srcfile = nil
+
+   http.detach()
+   local elapsed, err = processMessages(5000)
+   if (err == ERR_TimeOut) then error('Test timed-out.') end
+end
+
+//=====================================================================================================================
+
+   return {
+      tests = {
+        'testGet' --, 'testPostString', 'testPostFile'
+      },
+      init = nil,
+      cleanup = function()
+      end
+   }

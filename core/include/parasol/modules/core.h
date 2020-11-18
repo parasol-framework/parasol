@@ -2115,6 +2115,7 @@ struct CoreBase {
 
 #undef FuncError
 #define FuncError(a)              (CoreBase->_FuncError)((CSTRING)__func__, a)
+#define HeadError(a,b)            (CoreBase->_FuncError)(a, b)
 
 #undef NewLockedObject
 #define NewLockedObject(a,b,c,d)        (CoreBase->_NewLockedObject(a,b,c,d,0))

@@ -478,7 +478,7 @@ static ERROR COMPRESSION_CompressStreamEnd(objCompression *Self, struct cmpCompr
       Self->TotalOutput += outputsize - Self->Stream.avail_out;
 
       if (Args->Callback->Type IS CALL_STDC) {
-         parasol::SwitchContext(Args->Callback->StdC.Context);
+         parasol::SwitchContext context(Args->Callback->StdC.Context);
          auto routine = (ERROR (*)(objCompression *, APTR, LONG))Args->Callback->StdC.Routine;
          error = routine(Self, output, outputsize - Self->Stream.avail_out);
       }
@@ -649,7 +649,7 @@ static ERROR COMPRESSION_DecompressStream(objCompression *Self, struct cmpDecomp
       LONG len = outputsize - Self->Stream.avail_out;
       if (len > 0) {
          if (Args->Callback->Type IS CALL_STDC) {
-            parasol::SwitchContext(Args->Callback->StdC.Context);
+            parasol::SwitchContext context(Args->Callback->StdC.Context);
             auto routine = (ERROR (*)(objCompression *, APTR, LONG))Args->Callback->StdC.Routine;
             error = routine(Self, output, len);
          }

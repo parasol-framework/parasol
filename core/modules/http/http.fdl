@@ -1,6 +1,6 @@
 --$FLUID:Include
 
-module({ name="HTTP", copyright="Paul Manias © 2005-2017", version=1.0 }, function()
+module({ name="HTTP", copyright="Paul Manias © 2005-2020", version=1.0 }, function()
   restrict(function()
     loadFile(glPath .. 'common.fdl')
   end)
@@ -123,12 +123,12 @@ module({ name="HTTP", copyright="Paul Manias © 2005-2017", version=1.0 }, funct
    int BufferSize      # Preferred buffer size for things like outgoing operations (sending data)
   ]],
   [[
-   FUNCTION Incoming;      // ERROR Incoming(struct rkHTTP *, APTR, LONG)
-   FUNCTION Outgoing;      // ERROR Outgoing(struct rkHTTP *, APTR, LONG, LONG *)
-   FUNCTION AuthCallback;  // ERROR AuthCallback(struct rkHTTP *, STRING *, STRING *)
-   FUNCTION StateChanged;  // ERROR StateChanged(struct rkHTTP *, LONG)
-   struct KeyStore *Args;
-   struct KeyStore *Headers;
+   FUNCTION Incoming;
+   FUNCTION Outgoing;
+   FUNCTION AuthCallback;
+   FUNCTION StateChanged;
+   std::unordered_map<std::string, std::string> *Args;
+   std::unordered_map<std::string, std::string> *Headers;
    STRING Response;         // Response header buffer
    STRING URI;              // Temporary string, used only when the user reads the URI
    STRING Username;
@@ -137,7 +137,7 @@ module({ name="HTTP", copyright="Paul Manias © 2005-2017", version=1.0 }, funct
    STRING AuthOpaque;
    STRING AuthPath;
    STRING ContentType;
-   UBYTE *RecvBuffer;     // Receive buffer - aids downloading if HTF_RECVBUFFER is defined
+   UBYTE  *RecvBuffer;      // Receive buffer - aids downloading if HTF_RECVBUFFER is defined
    UBYTE  *WriteBuffer;
    LONG   WriteSize;
    LONG   WriteOffset;

@@ -94,13 +94,13 @@ static void server_client_connect(SOCKET_HANDLE FD, objNetSocket *Self)
    // Check if this IP address already has a client structure from an earlier socket connection.
    // (One NetClient represents a single IP address; Multiple ClientSockets can connect from that IP address)
 
-   struct rkNetClient *client_ip;
+   rkNetClient *client_ip;
    for (client_ip=Self->Clients; client_ip; client_ip=client_ip->Next) {
       if (((LARGE *)&ip)[0] IS ((LARGE *)&client_ip->IP)[0]) break;
    }
 
    if (!client_ip) {
-      if (AllocMemory(sizeof(struct rkNetClient), MEM_DATA, &client_ip, NULL) != ERR_Okay) {
+      if (AllocMemory(sizeof(rkNetClient), MEM_DATA, &client_ip, NULL) != ERR_Okay) {
          CLOSESOCKET(clientfd);
          return;
       }
@@ -148,7 +148,7 @@ static void server_client_connect(SOCKET_HANDLE FD, objNetSocket *Self)
       if (routine) routine(Self, client_socket, NTC_CONNECTED);
    }
    else if (Self->Feedback.Type IS CALL_SCRIPT) {
-      const struct ScriptArg args[] = {
+      const ScriptArg args[] = {
          { "NetSocket",    FD_OBJECTPTR, { .Address = Self } },
          { "ClientSocket", FD_OBJECTPTR, { .Address = client_socket } },
          { "State",        FD_LONG,      { .Long = NTC_CONNECTED } }
@@ -167,7 +167,7 @@ static void server_client_connect(SOCKET_HANDLE FD, objNetSocket *Self)
 ** Terminates the connection to the client and removes associated resources.
 */
 
-static void free_client(objNetSocket *Self, struct rkNetClient *Client)
+static void free_client(objNetSocket *Self, rkNetClient *Client)
 {
    parasol::Log log(__FUNCTION__);
    static THREADVAR BYTE recursive = 0;
@@ -225,7 +225,7 @@ static void free_client_socket(objNetSocket *Socket, objClientSocket *ClientSock
          if (routine) routine(Socket, ClientSocket, NTC_DISCONNECTED);
       }
       else if (Socket->Feedback.Type IS CALL_SCRIPT) {
-         const struct ScriptArg args[] = {
+         const ScriptArg args[] = {
             { "NetSocket",    FD_OBJECTPTR, { .Address = Socket } },
             { "ClientSocket", FD_OBJECTPTR, { .Address = ClientSocket } },
             { "State",        FD_LONG,      { .Long = NTC_DISCONNECTED } }

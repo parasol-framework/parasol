@@ -84,7 +84,7 @@ class Log { // C++ wrapper for Parasol's log functionality
          while (branches > 0) { branches--; LogReturn(); }
       }
 
-      void branch(CSTRING Message, ...) {
+      void branch(CSTRING Message, ...) __attribute__((format(printf, 2, 3))) {
          va_list arg;
          va_start(arg, Message);
          VLogF(VLF_API|VLF_BRANCH, header, Message, arg);
@@ -93,7 +93,7 @@ class Log { // C++ wrapper for Parasol's log functionality
       }
 
       #ifdef DEBUG
-      void traceBranch(CSTRING Message, ...) {
+      void traceBranch(CSTRING Message, ...) __attribute__((format(printf, 2, 3))) {
          va_list arg;
          va_start(arg, Message);
          VLogF(VLF_DEBUG|VLF_BRANCH, header, Message, arg);
@@ -101,7 +101,7 @@ class Log { // C++ wrapper for Parasol's log functionality
          branches++;
       }
       #else
-      void traceBranch(CSTRING Message, ...) { }
+      void traceBranch(CSTRING Message, ...) __attribute__((format(printf, 2, 3))) { }
       #endif
 
       void debranch() {
@@ -116,49 +116,49 @@ class Log { // C++ wrapper for Parasol's log functionality
          va_end(arg);
       }
 
-      void msg(CSTRING Message, ...) { // Defaults to API level, recommended for modules
+      void msg(CSTRING Message, ...) __attribute__((format(printf, 2, 3))) { // Defaults to API level, recommended for modules
          va_list arg;
          va_start(arg, Message);
          VLogF(VLF_API, header, Message, arg);
          va_end(arg);
       }
 
-      void extmsg(CSTRING Message, ...) { // Extended API message
+      void extmsg(CSTRING Message, ...) __attribute__((format(printf, 2, 3))) { // Extended API message
          va_list arg;
          va_start(arg, Message);
          VLogF(VLF_EXTAPI, header, Message, arg);
          va_end(arg);
       }
 
-      void pmsg(CSTRING Message, ...) { // "Parent message", uses the scope of the caller
+      void pmsg(CSTRING Message, ...) __attribute__((format(printf, 2, 3))) { // "Parent message", uses the scope of the caller
          va_list arg;
          va_start(arg, Message);
          VLogF(VLF_API, NULL, Message, arg);
          va_end(arg);
       }
 
-      void warning(CSTRING Message, ...) {
+      void warning(CSTRING Message, ...) __attribute__((format(printf, 2, 3))) {
          va_list arg;
          va_start(arg, Message);
          VLogF(VLF_WARNING, header, Message, arg);
          va_end(arg);
       }
 
-      void error(CSTRING Message, ...) { // NB: Use for messages intended for the user, not the developer
+      void error(CSTRING Message, ...) __attribute__((format(printf, 2, 3))) { // NB: Use for messages intended for the user, not the developer
          va_list arg;
          va_start(arg, Message);
          VLogF(VLF_ERROR, header, Message, arg);
          va_end(arg);
       }
 
-      void debug(CSTRING Message, ...) {
+      void debug(CSTRING Message, ...) __attribute__((format(printf, 2, 3))) {
          va_list arg;
          va_start(arg, Message);
          VLogF(VLF_DEBUG, header, Message, arg);
          va_end(arg);
       }
 
-      void function(CSTRING Message, ...) { // Equivalent to branch() but without a new branch being created
+      void function(CSTRING Message, ...) __attribute__((format(printf, 2, 3))) { // Equivalent to branch() but without a new branch being created
          va_list arg;
          va_start(arg, Message);
          VLogF(VLF_API|VLF_FUNCTION, header, Message, arg);
@@ -166,7 +166,11 @@ class Log { // C++ wrapper for Parasol's log functionality
       }
 
       ERROR error(ERROR Code) { // Technically a warning
-         LogError(0, Code);
+         #ifdef PRV_CORE_MODULE
+         FuncError(header, Code);
+         #else
+         HeadError(header, Code);
+         #endif
          return Code;
       }
 
@@ -176,7 +180,11 @@ class Log { // C++ wrapper for Parasol's log functionality
       }
 
       ERROR warning(ERROR Code) {
-         LogError(0, Code);
+         #ifdef PRV_CORE_MODULE
+         FuncError(header, Code);
+         #else
+         HeadError(header, Code);
+         #endif
          return Code;
       }
 

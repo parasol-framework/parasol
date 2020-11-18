@@ -231,6 +231,10 @@ static void * thread_entry(objThread *Self)
    // ENTRY
 
    if (Self->prv.Routine.Type) {
+      // Replace the default dummy context with one that pertains to the thread
+      ObjectContext thread_ctx = { .Stack = tlContext, .Object = &Self->Head, .Field = NULL, .Action = 0 };
+      tlContext = &thread_ctx;
+
       Self->prv.Active = TRUE;
 
       if (Self->prv.Routine.Type IS CALL_STDC) {
@@ -251,6 +255,8 @@ static void * thread_entry(objThread *Self)
       if (Self->Flags & THF_MSG_HANDLER) {
          while (!ProcessMessages(0, -1));
       }
+
+      tlContext = &glTopContext; // Revert back to the dummy context
 
       if (Self->prv.Callback.Type) {
          // A message needs to be placed on the process' message queue with a reference to the thread object
