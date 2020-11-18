@@ -663,7 +663,7 @@ static ERROR netResolveName(CSTRING HostName, LONG Flags, FUNCTION *Callback, LA
 
    if (!HostName) return log.error(ERR_NullArgs);
 
-   log.trace("Host: %s, Flags: $%.8x", HostName, Flags);
+   log.branch("Host: %s, Flags: $%.8x, Callback: %p", HostName, Flags, Callback);
 
    { // Use the cache if available.
       struct dns_cache *dns;
@@ -783,12 +783,11 @@ static ERROR netSetSSL(objNetSocket *Socket, ...)
    ERROR error;
    va_list list;
 
-   parasol::Log log(__FUNCTION__);
-
-   if (!Socket) return log.error(ERR_NullArgs);
+   if (!Socket) return ERR_NullArgs;
 
    va_start(list, Socket);
    while ((tagid = va_arg(list, LONG))) {
+      parasol::Log log(__FUNCTION__);
       log.traceBranch("Command: %d", tagid);
 
       switch(tagid) {

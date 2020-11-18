@@ -2500,7 +2500,7 @@ SetField(Object, FID_Statement|TSTR, "string");
       <param type="CSTRING" name="Name">The name that you want to set for the object.</param>
     </input>
     <description>
-<p>To set the name of an object, use this function.  Please note that the length of the Name will be limited to the value indicated in the "main.h" include file, under the MAX_NAME_LEN definition.  If the Name is longer than the allowed length, it will be trimmed to fit.</p>
+<p>To set the name of an object, use this function.  Please note that the length of the Name will be limited to the value indicated in the <code>main.h</code> include file, under the <code>MAX_NAME_LEN</code> definition.  If the Name is longer than the allowed length, it will be trimmed to fit.</p>
 <p>Object names are limited to alpha-numeric characters and the underscore symbol.  Invalid characters will be skipped while setting the object name.</p>
     </description>
     <result type="ERROR">

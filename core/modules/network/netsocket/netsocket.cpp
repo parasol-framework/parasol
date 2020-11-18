@@ -65,15 +65,15 @@ static LONG glMaxWriteLen = 16 * 1024;
 static void client_connect(HOSTHANDLE, APTR);
 #endif
 
-static void client_server_incoming(SOCKET_HANDLE, struct rkNetSocket *);
-static void client_server_outgoing(SOCKET_HANDLE, struct rkNetSocket *);
+static void client_server_incoming(SOCKET_HANDLE, rkNetSocket *);
+static void client_server_outgoing(SOCKET_HANDLE, rkNetSocket *);
 static void clientsocket_incoming(HOSTHANDLE, APTR);
 static void clientsocket_outgoing(HOSTHANDLE, APTR);
-static void free_client(objNetSocket *, struct rkNetClient *);
+static void free_client(objNetSocket *, rkNetClient *);
 static void free_client_socket(objNetSocket *, objClientSocket *, BYTE);
 static void server_client_connect(SOCKET_HANDLE, objNetSocket *);
 static void free_socket(objNetSocket *);
-static ERROR write_queue(objNetSocket *, struct NetQueue *, CPTR, LONG);
+static ERROR write_queue(objNetSocket *, NetQueue *, CPTR, LONG);
 
 //****************************************************************************
 
@@ -127,12 +127,11 @@ Failed: The connect failed for some other reason.
 
 *****************************************************************************/
 
-static void connect_name_resolved(LARGE, ERROR, CSTRING HostName, struct IPAddress *IPs, LONG TotalIPs);
+static void connect_name_resolved(LARGE, ERROR, CSTRING HostName, IPAddress *IPs, LONG TotalIPs);
 
 static ERROR NETSOCKET_Connect(objNetSocket *Self, struct nsConnect *Args)
 {
    parasol::Log log;
-   struct IPAddress server_ip;
 
    if ((!Args) OR (!Args->Address) OR (Args->Port <= 0) OR (Args->Port >= 65536)) return log.error(ERR_Args);
 
@@ -153,6 +152,7 @@ static ERROR NETSOCKET_Connect(objNetSocket *Self, struct nsConnect *Args)
    }
    Self->Port = Args->Port;
 
+   IPAddress server_ip;
    if (!netStrToAddress(Self->Address, &server_ip)) { // The address is an IP string, no resolution is necessary
       connect_name_resolved((MAXINT)Self, ERR_Okay, NULL, &server_ip, 1);
    }
@@ -172,10 +172,10 @@ static ERROR NETSOCKET_Connect(objNetSocket *Self, struct nsConnect *Args)
 //****************************************************************************
 // This function is called on completion of nsResolveName().
 
-static void connect_name_resolved(LARGE ClientData, ERROR Error, CSTRING HostName, struct IPAddress *IPs, LONG TotalIPs)
+static void connect_name_resolved(LARGE ClientData, ERROR Error, CSTRING HostName, IPAddress *IPs, LONG TotalIPs)
 {
    parasol::Log log(__FUNCTION__);
-   objNetSocket *Self = (objNetSocket *)(MAXINT)ClientData;
+   auto Self = (objNetSocket *)(MAXINT)ClientData;
    struct sockaddr_in server_address;
 
    if (Error != ERR_Okay) {
@@ -210,17 +210,17 @@ static void connect_name_resolved(LARGE ClientData, ERROR Error, CSTRING HostNam
       }
 
       SetLong(Self, FID_State,  NTC_CONNECTING);
-      RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD_READ|RFD_SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&client_server_incoming), Self);
+      RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD_READ|RFD_SOCKET, (void (*)(HOSTHANDLE, APTR))&client_server_incoming, Self);
 
       // The write queue will be signalled once the connection process is completed.
 
       RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD_WRITE|RFD_SOCKET, &client_connect, Self);
    }
    else {
-      FMSG("connect_name_resolved","connect() successful.");
+      log.trace("connect() successful.");
 
       SetLong(Self, FID_State, NTC_CONNECTED);
-      RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD_READ|RFD_SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&client_server_incoming), Self);
+      RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD_READ|RFD_SOCKET, (void (*)(HOSTHANDLE, APTR))&client_server_incoming, Self);
    }
 
 #elif _WIN32
@@ -301,12 +301,8 @@ NullArgs
 
 static ERROR NETSOCKET_DisconnectClient(objNetSocket *Self, struct nsDisconnectClient *Args)
 {
-   parasol::Log log;
-
-   if ((!Args) OR (!Args->Client)) return log.error(ERR_NullArgs);
-
+   if ((!Args) OR (!Args->Client)) return ERR_NullArgs;
    free_client(Self, Args->Client);
-
    return ERR_Okay;
 }
 
@@ -330,12 +326,8 @@ NullArgs
 
 static ERROR NETSOCKET_DisconnectSocket(objNetSocket *Self, struct nsDisconnectSocket *Args)
 {
-   parasol::Log log;
-
-   if ((!Args) OR (!Args->Socket)) return log.error(ERR_NullArgs);
-
+   if ((!Args) OR (!Args->Socket)) return ERR_NullArgs;
    free_client_socket(Self, Args->Socket, TRUE);
-
    return ERR_Okay;
 }
 
@@ -669,7 +661,7 @@ static ERROR NETSOCKET_ReadMsg(objNetSocket *Self, struct nsReadMsg *Args)
    Args->CRC     = 0;
    Args->Progress = 0;
 
-   struct NetQueue *queue;
+   NetQueue *queue;
    if (Self->Flags & NSF_SERVER) {
       return log.error(ERR_NoSupport);
    }
@@ -687,18 +679,18 @@ static ERROR NETSOCKET_ReadMsg(objNetSocket *Self, struct nsReadMsg *Args)
    ULONG total_length;
    ERROR error;
 
-   if (queue->Index >= sizeof(struct NetMsg)) { // The complete message header has been received
-      msglen = be32_cpu(((struct NetMsg *)queue->Buffer)->Length);
-      total_length = sizeof(struct NetMsg) + msglen + 1 + sizeof(struct NetMsgEnd);
+   if (queue->Index >= sizeof(NetMsg)) { // The complete message header has been received
+      msglen = be32_cpu(((NetMsg *)queue->Buffer)->Length);
+      total_length = sizeof(NetMsg) + msglen + 1 + sizeof(NetMsgEnd);
    }
    else { // The message header has not been read yet
-      if (!(error = acRead(Self, (BYTE *)queue->Buffer + queue->Index, sizeof(struct NetMsg) - queue->Index, &result))) {
+      if (!(error = acRead(Self, (BYTE *)queue->Buffer + queue->Index, sizeof(NetMsg) - queue->Index, &result))) {
          queue->Index += result;
 
-         if (queue->Index >= sizeof(struct NetMsg)) {
+         if (queue->Index >= sizeof(NetMsg)) {
             // We have the message header
-            magic  = be32_cpu(((struct NetMsg *)queue->Buffer)->Magic);
-            msglen = be32_cpu(((struct NetMsg *)queue->Buffer)->Length);
+            magic  = be32_cpu(((NetMsg *)queue->Buffer)->Magic);
+            msglen = be32_cpu(((NetMsg *)queue->Buffer)->Length);
 
             if (magic != NETMSG_MAGIC) {
                log.error("Incoming message does not have the magic header (received $%.8x).", magic);
@@ -711,7 +703,7 @@ static ERROR NETSOCKET_ReadMsg(objNetSocket *Self, struct nsReadMsg *Args)
                return ERR_InvalidData;
             }
 
-            total_length = sizeof(struct NetMsg) + msglen + 1 + sizeof(struct NetMsgEnd);
+            total_length = sizeof(NetMsg) + msglen + 1 + sizeof(NetMsgEnd);
 
             // Check if the queue buffer needs to be extended
 
@@ -740,21 +732,21 @@ static ERROR NETSOCKET_ReadMsg(objNetSocket *Self, struct nsReadMsg *Args)
       }
    }
 
-   struct NetMsgEnd *msgend;
-   Args->Message = (BYTE *)queue->Buffer + sizeof(struct NetMsg);
+   NetMsgEnd *msgend;
+   Args->Message = (BYTE *)queue->Buffer + sizeof(NetMsg);
    Args->Length = msglen;
 
    //log.trace("Current message is %d bytes long (raw len: %d), progress is %d bytes.", msglen, total_length, queue->Index);
 
    if (!(error = acRead(Self, (char *)queue->Buffer + queue->Index, total_length - queue->Index, &result))) {
       queue->Index += result;
-      Args->Progress = queue->Index - sizeof(struct NetMsg) - sizeof(struct NetMsgEnd);
+      Args->Progress = queue->Index - sizeof(NetMsg) - sizeof(NetMsgEnd);
       if (Args->Progress < 0) Args->Progress = 0;
 
       // If the entire message has been read, we can report success to the user
 
       if (queue->Index >= total_length) {
-         msgend = (struct NetMsgEnd *)((BYTE *)queue->Buffer + sizeof(struct NetMsg) + msglen + 1);
+         msgend = (NetMsgEnd *)((BYTE *)queue->Buffer + sizeof(NetMsg) + msglen + 1);
          magic = be32_cpu(msgend->Magic);
          queue->Index   = 0;
          Args->Progress = Args->Length;
@@ -803,7 +795,7 @@ static ERROR NETSOCKET_Write(objNetSocket *Self, struct acWrite *Args)
    Args->Result = 0;
 
    if (Self->Flags & NSF_SERVER) {
-      log.error("!","DEPRECATED: Write to the target ClientSocket object rather than the NetSocket");
+      log.error("DEPRECATED: Write to the target ClientSocket object rather than the NetSocket");
       return ERR_NoSupport;
    }
 
@@ -981,6 +973,7 @@ static ERROR SET_Feedback(objNetSocket *Self, FUNCTION *Value)
       if (Self->Feedback.Type IS CALL_SCRIPT) SubscribeAction(Self->Feedback.Script.Script, AC_Free);
    }
    else Self->Feedback.Type = CALL_NONE;
+
    return ERR_Okay;
 }
 
@@ -1157,17 +1150,17 @@ static ERROR SET_State(objNetSocket *Self, LONG Value)
       Self->State = Value;
 
       if (Self->Feedback.Type) {
-         log.traceBranch("Reporting state change to subscriber, operation %d.", Self->State);
+         log.traceBranch("Reporting state change to subscriber, operation %d, context %p.", Self->State, Self->Feedback.StdC.Context);
 
          if (Self->Feedback.Type IS CALL_STDC) {
-            parasol::SwitchContext(Self->Feedback.StdC.Context);
+            parasol::SwitchContext context(Self->Feedback.StdC.Context);
             auto routine = (void (*)(objNetSocket *, objClientSocket *, LONG))Self->Feedback.StdC.Routine;
             if (routine) routine(Self, NULL, Self->State);
          }
          else if (Self->Feedback.Type IS CALL_SCRIPT) {
             OBJECTPTR script;
             if ((script = Self->Feedback.Script.Script)) {
-               const struct ScriptArg args[] = {
+               const ScriptArg args[] = {
                   { "NetSocket",    FD_OBJECTPTR, { .Address = Self } },
                   { "ClientSocket", FD_OBJECTPTR, { .Address = NULL } },
                   { "State",        FD_LONG,      { .Long = Self->State } }
@@ -1276,7 +1269,7 @@ static void free_socket(objNetSocket *Self)
 
 //****************************************************************************
 
-static ERROR write_queue(objNetSocket *Self, struct NetQueue *Queue, CPTR Message, LONG Length)
+static ERROR write_queue(objNetSocket *Self, NetQueue *Queue, CPTR Message, LONG Length)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -1332,7 +1325,7 @@ static ERROR write_queue(objNetSocket *Self, struct NetQueue *Queue, CPTR Messag
 // reliable method of managing recursion problems, but burdens the message queue.
 
 #ifdef _WIN32
-void win32_netresponse(struct Head *SocketObject, SOCKET_HANDLE SocketHandle, LONG Message, ERROR Error)
+void win32_netresponse(Head *SocketObject, SOCKET_HANDLE SocketHandle, LONG Message, ERROR Error)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -1443,7 +1436,7 @@ void win32_netresponse(struct Head *SocketObject, SOCKET_HANDLE SocketHandle, LO
 
 //****************************************************************************
 
-static const struct FieldDef clValidCert[] = {
+static const FieldDef clValidCert[] = {
    { "Okay",                          SCV_OK },                                 // The operation was successful.
    { "UnableToGetIssuerCert",         SCV_UNABLE_TO_GET_ISSUER_CERT },          // unable to get issuer certificate the issuer certificate could not be found: this occurs if the issuer certificate of an untrusted certificate cannot be found.
    { "UnableToGetCRL",                SCV_UNABLE_TO_GET_CRL },                  // unable to get certificate CRL the CRL of a certificate could not be found. Unused.
@@ -1482,7 +1475,7 @@ static const struct FieldDef clValidCert[] = {
 
 #include "netsocket_def.c"
 
-static const struct FieldArray clSocketFields[] = {
+static const FieldArray clSocketFields[] = {
    { "Clients",          FDF_POINTER|FDF_STRUCT|FDF_R, (MAXINT)&"NetClient", NULL, NULL },
    { "UserData",         FDF_POINTER|FDF_RW,   0, NULL, NULL },
    { "Address",          FDF_STRING|FDF_RI,    0, NULL, (APTR)SET_Address },

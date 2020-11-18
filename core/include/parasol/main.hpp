@@ -166,7 +166,11 @@ class Log { // C++ wrapper for Parasol's log functionality
       }
 
       ERROR error(ERROR Code) { // Technically a warning
-         LogError(0, Code);
+         #ifdef PRV_CORE_MODULE
+         FuncError(header, Code);
+         #else
+         HeadError(header, Code);
+         #endif
          return Code;
       }
 
@@ -176,7 +180,11 @@ class Log { // C++ wrapper for Parasol's log functionality
       }
 
       ERROR warning(ERROR Code) {
-         LogError(0, Code);
+         #ifdef PRV_CORE_MODULE
+         FuncError(header, Code);
+         #else
+         HeadError(header, Code);
+         #endif
          return Code;
       }
 

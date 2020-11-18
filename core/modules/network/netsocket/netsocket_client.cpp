@@ -66,7 +66,7 @@ static void client_connect(SOCKET_HANDLE Void, APTR Data)
 ** This function is called from win32_netresponse() and is managed outside of the normal message queue.
 */
 
-static void client_server_incoming(SOCKET_HANDLE FD, struct rkNetSocket *Data)
+static void client_server_incoming(SOCKET_HANDLE FD, rkNetSocket *Data)
 {
    parasol::Log log(__FUNCTION__);
    objNetSocket *Self = Data;
@@ -111,13 +111,13 @@ restart:
       if (Self->Incoming.Type IS CALL_STDC) {
          auto routine = (ERROR (*)(objNetSocket *))Self->Incoming.StdC.Routine;
          if (routine) {
-            parasol::SwitchContext(Self->Incoming.StdC.Context);
+            parasol::SwitchContext context(Self->Incoming.StdC.Context);
             error = routine(Self);
          }
       }
       else if (Self->Incoming.Type IS CALL_SCRIPT) {
          OBJECTPTR script;
-         const struct ScriptArg args[] = { { "NetSocket", FD_OBJECTPTR, { .Address = Self } } };
+         const ScriptArg args[] = { { "NetSocket", FD_OBJECTPTR, { .Address = Self } } };
 
          if ((script = Self->Incoming.Script.Script)) {
             if (!scCallback(script, Self->Incoming.Script.ProcedureID, args, ARRAYSIZE(args))) {
@@ -169,12 +169,10 @@ restart:
 ** to the write queue.
 */
 
-static void client_server_outgoing(SOCKET_HANDLE Void, struct rkNetSocket *Data)
+static void client_server_outgoing(SOCKET_HANDLE Void, rkNetSocket *Data)
 {
    parasol::Log log(__FUNCTION__);
    objNetSocket *Self = Data;
-   ERROR error;
-   LONG len;
 
    if (Self->Terminating) return;
 
@@ -199,13 +197,13 @@ static void client_server_outgoing(SOCKET_HANDLE Void, struct rkNetSocket *Data)
    Self->InUse++;
    Self->OutgoingRecursion++;
 
-   error = ERR_Okay;
+   ERROR error = ERR_Okay;
 
    // Send out remaining queued data before getting new data to send
 
    if (Self->WriteQueue.Buffer) {
       while (Self->WriteQueue.Buffer) {
-         len = Self->WriteQueue.Length - Self->WriteQueue.Index;
+         LONG len = Self->WriteQueue.Length - Self->WriteQueue.Index;
          #ifdef ENABLE_SSL
          if ((!Self->SSL) AND (len > glMaxWriteLen)) len = glMaxWriteLen;
          #else
@@ -237,13 +235,13 @@ static void client_server_outgoing(SOCKET_HANDLE Void, struct rkNetSocket *Data)
          if (Self->Outgoing.Type IS CALL_STDC) {
             auto routine = (ERROR (*)(objNetSocket *))Self->Outgoing.StdC.Routine;
             if (routine) {
-               parasol::SwitchContext(Self->Outgoing.StdC.Context);
+               parasol::SwitchContext context(Self->Outgoing.StdC.Context);
                error = routine(Self);
             }
          }
          else if (Self->Outgoing.Type IS CALL_SCRIPT) {
             OBJECTPTR script;
-            const struct ScriptArg args[] = { { "NetSocket", FD_OBJECTPTR, { .Address = Self } } };
+            const ScriptArg args[] = { { "NetSocket", FD_OBJECTPTR, { .Address = Self } } };
             if ((script = Self->Outgoing.Script.Script)) {
                if (!scCallback(script, Self->Outgoing.Script.ProcedureID, args, ARRAYSIZE(args))) {
                   GetLong(script, FID_Error, &error);

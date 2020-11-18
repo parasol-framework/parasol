@@ -787,7 +787,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
 #ifdef __unix__
    log.msg("UID: %d (%d), EUID: %d (%d); GID: %d (%d), EGID: %d (%d)", getuid(), glUID, geteuid(), glEUID, getgid(), glGID, getegid(), glEGID);
 #endif
-   log.msg("Core","Public Offsets: %d, %d, %d", glSharedControl->BlocksOffset, glSharedControl->SemaphoreOffset, glSharedControl->TaskOffset);
+   log.msg("Public Offsets: %d, %d, %d", glSharedControl->BlocksOffset, glSharedControl->SemaphoreOffset, glSharedControl->TaskOffset);
 
    // Private memory block handling
 

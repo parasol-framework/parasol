@@ -2071,7 +2071,7 @@ SetName: Sets the name of an object.
 Category: Objects
 
 To set the name of an object, use this function.  Please note that the length of the Name will be limited to the value
-indicated in the "main.h" include file, under the MAX_NAME_LEN definition.  If the Name is longer than the allowed
+indicated in the `main.h` include file, under the `MAX_NAME_LEN` definition.  If the Name is longer than the allowed
 length, it will be trimmed to fit.
 
 Object names are limited to alpha-numeric characters and the underscore symbol.  Invalid characters will be skipped
