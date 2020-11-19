@@ -6,6 +6,31 @@ namespace parasol {
 
 //****************************************************************************
 
+class ScopedAccessMemory { // C++ wrapper for automatically releasing shared memory
+   public:
+      LONG id;
+      APTR ptr;
+      ERROR error;
+
+      ScopedAccessMemory(LONG ID, LONG Flags, LONG Milliseconds) {
+         id = ID;
+         error = AccessMemory(ID, Flags, Milliseconds, &ptr);
+      }
+
+      ~ScopedAccessMemory() { if (!error) ReleaseMemory(ptr); }
+
+      bool granted() { return error == ERR_Okay; }
+
+      void release() {
+         if (!error) {
+            ReleaseMemory(ptr);
+            error = ERR_NotLocked;
+         }
+      }
+};
+
+//****************************************************************************
+
 template <class T>
 class ScopedObject { // C++ wrapper for automatically releasing an object
    public:
@@ -13,9 +38,7 @@ class ScopedObject { // C++ wrapper for automatically releasing an object
 
       ScopedObject(T *Object) { obj = Object; }
       ScopedObject() { obj = NULL; }
-
       ~ScopedObject() { if (obj) acFree(obj); }
-
 };
 
 //****************************************************************************
