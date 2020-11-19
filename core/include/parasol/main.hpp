@@ -6,6 +6,20 @@ namespace parasol {
 
 //****************************************************************************
 
+template <class T>
+class ScopedObject { // C++ wrapper for automatically releasing an object
+   public:
+      T *obj;
+
+      ScopedObject(T *Object) { obj = Object; }
+      ScopedObject() { obj = NULL; }
+
+      ~ScopedObject() { if (obj) acFree(obj); }
+
+};
+
+//****************************************************************************
+
 class ScopedSysLock { // C++ wrapper for terminating a system lock when scope is lost
    private:
       LONG index;
