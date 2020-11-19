@@ -513,7 +513,7 @@ void VLogF(LONG Flags, CSTRING Header, CSTRING Message, va_list Args)
          vfprintf(stderr, Message, Args);
 
          #if defined(ESC_OUTPUT) AND !defined(_WIN32)
-            if ((glLogLevel > 2) AND (level <= 2)) fprintf(stderr, "\033[0m");
+            if ((glLogLevel > 2) AND (Flags & (VLF_ERROR|VLF_WARNING))) fprintf(stderr, "\033[0m");
          #endif
 
          fprintf(stderr, "\n");
