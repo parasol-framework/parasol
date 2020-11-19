@@ -351,7 +351,7 @@ va_list Args: A va_list corresponding to the arguments referenced in Message.
 
 void VLogF(LONG Flags, CSTRING Header, CSTRING Message, va_list Args)
 {
-   if (tlLogStatus <= 0) return;
+   if (tlLogStatus <= 0) { if (Flags & VLF_BRANCH) tlDepth++; return; }
 
    static ULONG log_levels[10] = {
       VLF_CRITICAL,
@@ -392,12 +392,13 @@ void VLogF(LONG Flags, CSTRING Header, CSTRING Message, va_list Args)
          fprintf(stderr, "\n");
       #endif
 
+      if (Flags & VLF_BRANCH) tlDepth++;
       return;
    }
 
    LONG level = glLogLevel + tlBaseLine;
    if (level > 9) level = 9;
-   else if (level < 0) return;
+   else if (level < 0) { if (Flags & VLF_BRANCH) tlDepth++; return; }
 
    if ((log_levels[level] & Flags) != 0) {
       CSTRING name, action;

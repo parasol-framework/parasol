@@ -1042,7 +1042,7 @@ static ERROR TASK_Activate(objTask *Self, APTR Void)
 
    for (i=0; buffer[i]; i++) if (buffer[i] IS '\'') buffer[i] = '"';
 
-   log.warning(buffer);
+   log.warning("%s", buffer);
 
    // If we're not going to run in shell mode, create an argument list for passing to the program.
 

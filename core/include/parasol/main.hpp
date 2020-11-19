@@ -137,6 +137,14 @@ class Log { // C++ wrapper for Parasol's log functionality
          va_end(arg);
       }
 
+      void msg(LONG Flags, CSTRING Message, ...) __attribute__((format(printf, 3, 4))) { // Defaults to API level, recommended for modules
+         va_list arg;
+         va_start(arg, Message);
+         VLogF(Flags, header, Message, arg);
+         va_end(arg);
+         if (Flags & VLF_BRANCH) branches++;
+      }
+
       void extmsg(CSTRING Message, ...) __attribute__((format(printf, 2, 3))) { // Extended API message
          va_list arg;
          va_start(arg, Message);

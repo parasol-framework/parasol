@@ -744,7 +744,7 @@ static ERROR writeval_array(OBJECTPTR Object, Field *Field, LONG SrcType, CPTR S
       return ERR_Okay;
    }
 
-   log.warning("Field array '%s' is poorly defined.");
+   log.warning("Field array '%s' is poorly defined.", Field->Name);
    return ERR_Failed;
 }
 
