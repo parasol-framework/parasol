@@ -36,13 +36,14 @@ static void dump_global_table(objScript *, STRING Global) __attribute__ ((unused
 
 static void dump_global_table(objScript *Self, STRING Global)
 {
-   lua_State *lua = ((prvFluid *)Self->Head.ChildPrivate)->Lua;
+   parasol::Log log("print_env");
+   lua_State *lua = ((struct prvFluid *)Self->Head.ChildPrivate)->Lua;
    lua_getglobal(lua, Global);
    if (lua_istable(lua, -1) ) {
       lua_pushnil(lua);
       while (lua_next(lua, -2) != 0) {
          LONG type = lua_type(lua, -2);
-         LogF("print_env:","%s = %s", lua_tostring(lua, -2), lua_typename(lua, type));
+         log.msg("%s = %s", lua_tostring(lua, -2), lua_typename(lua, type));
          lua_pop(lua, 1);
       }
    }
@@ -100,12 +101,8 @@ static void free_all(objScript *Self)
    if (prv->Includes) { FreeResource(prv->Includes); prv->Includes = NULL; }
    if (prv->FocusEventHandle) { UnsubscribeEvent(prv->FocusEventHandle); prv->FocusEventHandle = NULL; }
 
-   LogF("~7","Closing Lua instance %p.", prv->Lua);
-
-      lua_close(prv->Lua);
-      prv->Lua = NULL;
-
-   LogReturn();
+   lua_close(prv->Lua);
+   prv->Lua = NULL;
 }
 
 //****************************************************************************
@@ -141,30 +138,31 @@ void process_error(objScript *Self, CSTRING Procedure)
 {
    auto prv = (prvFluid *)Self->Head.ChildPrivate;
 
-   CSTRING header = "@";
+   LONG flags = VLF_WARNING;
    if (prv->CaughtError) {
       Self->Error = prv->CaughtError;
-      if (Self->Error <= ERR_Terminate) header = "7"; // Non-critical errors are kept silent to prevent noise.
+      if (Self->Error <= ERR_Terminate) flags |= VLF_EXTAPI; // Non-critical errors are kept silent to prevent noise.
    }
 
+   parasol::Log log;
    CSTRING str = lua_tostring(prv->Lua, -1);
    lua_pop(prv->Lua, 1);  // pop returned value
    SetString(Self, FID_ErrorString, str);
 
    CSTRING file = Self->Path;
    if (file) {
-      LONG i = StrLength(file);
+      LONG i;
       for (i=StrLength(file); (i > 0) and (file[i-1] != '/') and (file[i-1] != '\\'); i--);
-      LogF(header, "%s: %s", file+i, str);
+      log.msg(flags, "%s: %s", file+i, str);
    }
-   else LogF(header, "%s: Error: %s", Procedure, str);
+   else log.msg(flags, "%s: Error: %s", Procedure, str);
 
    // NB: CurrentLine is set by hook_debug(), so if debugging isn't active, you don't know what line we're on.
 
    if (Self->CurrentLine >= 0) {
       char line[60];
-      get_line(Self, Self->CurrentLine, (STRING)line, sizeof(line));
-      LogF(header, "Line %d: %s...", Self->CurrentLine+1+Self->LineOffset, line);
+      get_line(Self, Self->CurrentLine, line, sizeof(line));
+      log.msg(flags, "Line %d: %s...", Self->CurrentLine+1+Self->LineOffset, line);
    }
 }
 
@@ -173,20 +171,21 @@ void process_error(objScript *Self, CSTRING Procedure)
 ** action and copies them into a table.  Each value is represented by the relevant parameter name for ease of use.
 */
 
-static ERROR stack_args(lua_State *Lua, OBJECTID ObjectID, const struct FunctionField *args, BYTE *Buffer)
+static ERROR stack_args(lua_State *Lua, OBJECTID ObjectID, const FunctionField *args, BYTE *Buffer)
 {
-   LONG i, j;
+   parasol::Log log(__FUNCTION__);
+   LONG j;
 
    if (!args) return ERR_Okay;
 
-   FMSG("~stack_args()","Args: %p, Buffer: %p", args, Buffer);
+   log.traceBranch("Args: %p, Buffer: %p", args, Buffer);
 
-   for (i=0; args[i].Name; i++) {
+   for (LONG i=0; args[i].Name; i++) {
       char name[StrLength(args[i].Name)+1];
       for (j=0; args[i].Name[j]; j++) name[j] = LCASE(args[i].Name[j]);
       name[j] = 0;
 
-      lua_pushlstring(Lua, (CSTRING)name, j);
+      lua_pushlstring(Lua, name, j);
 
       // Note: If the object is public and the call was messaged from a foreign process, all strings/pointers are
       // invalid because the message handlers cannot do deep pointer resolution of the structure we receive from
@@ -215,14 +214,12 @@ static ERROR stack_args(lua_State *Lua, OBJECTID ObjectID, const struct Function
          Buffer += sizeof(LARGE);
       }
       else {
-         LogF("@stack_args","Unsupported arg %s, flags $%.8x, aborting now.", args[i].Name, args[i].Type);
-         LOGRETURN();
+         log.warning("Unsupported arg %s, flags $%.8x, aborting now.", args[i].Name, args[i].Type);
          return ERR_Failed;
       }
       lua_settable(Lua, -3);
    }
 
-   LOGRETURN();
    return ERR_Okay;
 }
 
@@ -241,7 +238,10 @@ static ERROR FLUID_ActionNotify(objScript *Self, struct acActionNotify *Args)
       if ((Args->ObjectID IS scan->ObjectID) and (Args->ActionID IS scan->ActionID)) {
          LONG depth = GetResource(RES_LOG_DEPTH); // Required because thrown errors cause the debugger to lose its branch
 
-         LogF("~7","Action notification for object #%d, action %d.  Top: %d", Args->ObjectID, Args->ActionID, lua_gettop(prv->Lua));
+         {
+            parasol::Log log;
+
+            log.msg(VLF_BRANCH|VLF_EXTAPI, "Action notification for object #%d, action %d.  Top: %d", Args->ObjectID, Args->ActionID, lua_gettop(prv->Lua));
 
             lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, scan->Function); // +1 stack: Get the function reference
             push_object_id(prv->Lua, Args->ObjectID);  // +1: Pass the object ID
@@ -258,12 +258,10 @@ static ERROR FLUID_ActionNotify(objScript *Self, struct acActionNotify *Args)
                   process_error(Self, "Action Subscription");
                }
 
-               LogF("~7","Collecting garbage.");
-                 lua_gc(prv->Lua, LUA_GCCOLLECT, 0); // Run the garbage collector
-               LogReturn();
+               log.msg(VLF_BRANCH|VLF_EXTAPI, "Collecting garbage.");
+               lua_gc(prv->Lua, LUA_GCCOLLECT, 0); // Run the garbage collector
             }
-
-         LogReturn();
+         }
 
          SetResource(RES_LOG_DEPTH, depth);
          return ERR_Okay;
@@ -277,11 +275,12 @@ static ERROR FLUID_ActionNotify(objScript *Self, struct acActionNotify *Args)
 
 static ERROR FLUID_Activate(objScript *Self, APTR Void)
 {
-   if (CurrentTaskID() != Self->Head.TaskID) return LogCode(ERR_IllegalActionAttempt);
+   parasol::Log log;
 
+   if (CurrentTaskID() != Self->Head.TaskID) return LogCode(ERR_IllegalActionAttempt);
    if ((!Self->String) or (!Self->String[0])) return LogCode(ERR_FieldNotSet);
 
-   LogF("~7","Target: %d, Procedure: %s / ID #" PF64(), Self->TargetID, Self->Procedure ? Self->Procedure : (STRING)".", Self->ProcedureID);
+   log.msg(VLF_EXTAPI, "Target: %d, Procedure: %s / ID #" PF64(), Self->TargetID, Self->Procedure ? Self->Procedure : (STRING)".", Self->ProcedureID);
 
    ERROR error = ERR_Failed;
 
@@ -292,10 +291,12 @@ static ERROR FLUID_Activate(objScript *Self, APTR Void)
       error = run_script(Self);
       if (error) Self->Error = error;
 
-      FMSG("~","Collecting garbage.");
+      {
+         parasol::Log log;
+         log.traceBranch("Collecting garbage.");
          lua_gc(prv->Lua, LUA_GCCOLLECT, 0);
-      LOGRETURN();
-      LogReturn();
+      }
+
       return ERR_Okay;
    }
 
@@ -321,7 +322,7 @@ static ERROR FLUID_Activate(objScript *Self, APTR Void)
       FLUID_Free(Self, NULL);
 
       if (!(prv->Lua = luaL_newstate())) {
-         LogErrorMsg("Failed to open a Lua instance.");
+         log.warning("Failed to open a Lua instance.");
          goto failure;
       }
 
@@ -329,7 +330,7 @@ static ERROR FLUID_Activate(objScript *Self, APTR Void)
    }
 
    if (reload) {
-      MSG("The Lua script will be initialised from scratch.");
+      log.trace("The Lua script will be initialised from scratch.");
 
       prv->Lua->Script = Self;
       prv->Lua->ProtectedGlobals = FALSE;
@@ -377,10 +378,8 @@ static ERROR FLUID_Activate(objScript *Self, APTR Void)
       // Pre-load the Core module: mSys = mod.load('core')
 
       OBJECTPTR module;
-      if (!CreateObject(ID_MODULE, 0, &module,
-            FID_Name|TSTR, "core",
-            TAGEND)) {
-         struct module *mod = (struct module *)lua_newuserdata(prv->Lua, sizeof(struct module));
+      if (!CreateObject(ID_MODULE, 0, &module, FID_Name|TSTR, "core", TAGEND)) {
+         auto mod = (struct module *)lua_newuserdata(prv->Lua, sizeof(struct module));
          ClearMemory(mod, sizeof(struct module));
          luaL_getmetatable(prv->Lua, "Fluid.mod");
          lua_setmetatable(prv->Lua, -2);
@@ -389,7 +388,7 @@ static ERROR FLUID_Activate(objScript *Self, APTR Void)
          lua_setglobal(prv->Lua, "mSys");
       }
       else {
-         LogErrorMsg("Failed to create module object.");
+         log.warning("Failed to create module object.");
          goto failure;
       }
 
@@ -397,12 +396,12 @@ static ERROR FLUID_Activate(objScript *Self, APTR Void)
 
       LONG result;
       if (!StrCompare(LUA_COMPILED, Self->String, 0, 0)) { // The source is compiled
-         MSG("Loading pre-compiled Lua script.");
+         log.trace("Loading pre-compiled Lua script.");
          LONG headerlen = StrLength(Self->String) + 1;
          result = luaL_loadbuffer(prv->Lua, Self->String + headerlen, prv->LoadedSize - headerlen, "DefaultChunk");
       }
       else {
-         MSG("Compiling Lua script.");
+         log.trace("Compiling Lua script.");
          result = luaL_loadstring(prv->Lua, Self->String);
       }
 
@@ -437,18 +436,18 @@ static ERROR FLUID_Activate(objScript *Self, APTR Void)
                }
                SetString(Self, FID_ErrorString, buffer);
 
-               LogErrorMsg("Parser Failed: %s", Self->ErrorString);
+               log.warning("Parser Failed: %s", Self->ErrorString);
             }
-            else LogErrorMsg("Parser Failed: %s", errorstr);
+            else log.warning("Parser Failed: %s", errorstr);
          }
 
          lua_pop(prv->Lua, 1);  // Pop error string
          goto failure;
       }
-      else MSG("Script successfully compiled.");
+      else log.trace("Script successfully compiled.");
 
       if (prv->SaveCompiled) { // Compile the script and save the result to the cache file
-         LogMsg("Compiling the source into the cache file.");
+         log.msg("Compiling the source into the cache file.");
 
          prv->SaveCompiled = FALSE;
 
@@ -466,7 +465,7 @@ static ERROR FLUID_Activate(objScript *Self, APTR Void)
          }
       }
    }
-   else MSG("Using the Lua script cache.");
+   else log.trace("Using the Lua script cache.");
 
    Self->ActivationCount++;
 
@@ -474,18 +473,18 @@ static ERROR FLUID_Activate(objScript *Self, APTR Void)
       // The Lua script needs to have been executed at least once in order for the procedures to be initialised and recognised.
 
       if ((Self->ActivationCount IS 1) or (reload)) {
-         FMSG("~","Collecting functions prior to procedure call...");
+         parasol::Log log;
+         log.traceBranch("Collecting functions prior to procedure call...");
 
          if (lua_pcall(prv->Lua, 0, 0, 0)) {
             Self->Error = ERR_Failed;
             process_error(Self, "Activation");
          }
-         LOGRETURN();
       }
    }
 
    if (!Self->Error) {
-      error = run_script(Self);
+      run_script(Self); // Will set Self->Error if there's an issue
    }
 
    error = ERR_Okay; // The error reflects on the initial processing of the script only - the developer must check the Error field for information on script execution
@@ -493,9 +492,9 @@ static ERROR FLUID_Activate(objScript *Self, APTR Void)
 failure:
 
    if (prv->Lua) {
-      FMSG("~","Collecting garbage.");
-         lua_gc(prv->Lua, LUA_GCCOLLECT, 0); // Run the garbage collector
-      LOGRETURN();
+      parasol::Log log;
+      log.traceBranch("Collecting garbage.");
+      lua_gc(prv->Lua, LUA_GCCOLLECT, 0); // Run the garbage collector
    }
 
    // Change back to the original owner if it still exists.  If it doesn't, self-terminate.
@@ -507,14 +506,13 @@ failure:
          ReleaseObject(owner);
       }
       else {
-         LogMsg("Owner #%d no longer exists - self-terminating.", owner_id);
+         log.msg("Owner #%d no longer exists - self-terminating.", owner_id);
          acFree(Self);
       }
    }
 
    Self->ScriptOwnerID = 0;
    prv->Recurse--;
-   LogReturn();
    return error;
 }
 
@@ -522,6 +520,8 @@ failure:
 
 static ERROR FLUID_DataFeed(objScript *Self, struct acDataFeed *Args)
 {
+   parasol::Log log;
+
    if (!Args) return ERR_NullArgs;
 
    if (Args->DataType IS DATA_TEXT) {
@@ -533,12 +533,12 @@ static ERROR FLUID_DataFeed(objScript *Self, struct acDataFeed *Args)
    else if (Args->DataType IS DATA_INPUT_READY) {
       auto prv = (prvFluid *)Self->Head.ChildPrivate;
 
-      FMSG("~","Incoming input for surface #%d", Args->ObjectID);
+      log.traceBranch("Incoming input for surface #%d", Args->ObjectID);
 
-      struct InputMsg *input;
+      InputMsg *input;
       while (!gfxGetInputMsg((struct dcInputReady *)Args->Buffer, 0, &input)) {
          UBYTE processed = FALSE;
-         for (struct finput *list = prv->InputList; list; list=list->Next) {
+         for (auto list = prv->InputList; list; list=list->Next) {
             if (((list->SurfaceID IS input->RecipientID) or (!list->SurfaceID)) and (list->Mode IS FIM_DEVICE)) {
                processed = TRUE;
                // Execute the callback associated with this input subscription.
@@ -558,28 +558,28 @@ static ERROR FLUID_DataFeed(objScript *Self, struct acDataFeed *Args)
          }
 
          if (!processed) {
-            LogF("@","Dangling input feed subscription on surface #%d", input->RecipientID);
+            log.warning("Dangling input feed subscription on surface #%d", input->RecipientID);
             if (gfxUnsubscribeInput(input->RecipientID) IS ERR_NotFound) {
                gfxUnsubscribeInput(0);
             }
          }
       }
 
-      FMSG("~","Collecting garbage.");
-        lua_gc(prv->Lua, LUA_GCCOLLECT, 0); // Run the garbage collector
-      LOGRETURN();
-
-      LOGRETURN();
+      {
+         parasol::Log log;
+         log.traceBranch("Collecting garbage.");
+         lua_gc(prv->Lua, LUA_GCCOLLECT, 0); // Run the garbage collector
+      }
    }
    else if (Args->DataType IS DATA_RECEIPT) {
       auto prv = (prvFluid *)Self->Head.ChildPrivate;
       struct datarequest *prev;
 
-      LogBranch("Incoming data receipt from #%d", Args->ObjectID);
+      log.branch("Incoming data receipt from #%d", Args->ObjectID);
 
 restart:
       prev = NULL;
-      for (struct datarequest *list = prv->Requests; list; list=list->Next) {
+      for (auto list=prv->Requests; list; list=list->Next) {
          if (list->SourceID IS Args->ObjectID) {
             // Execute the callback associated with this input subscription: function({Items...})
 
@@ -589,17 +589,13 @@ restart:
                lua_newtable(prv->Lua); // +1 Item table
 
                objXML *xml;
-               if (!CreateObject(ID_XML, NF_INTEGRAL, &xml,
-                     FID_Statement|TSTR, Args->Buffer,
-                     TAGEND)) {
-
+               if (!CreateObject(ID_XML, NF_INTEGRAL, &xml, FID_Statement|TSTR, Args->Buffer, TAGEND)) {
                   // <file path="blah.exe"/> becomes { item='file', path='blah.exe' }
 
-                  struct XMLTag *tag = xml->Tags[0];
+                  XMLTag *tag = xml->Tags[0];
                   LONG i = 1;
                   if (!StrMatch("receipt", tag->Attrib->Name)) {
-                     struct XMLTag *scan;
-                     for (scan=tag->Child; scan; scan=scan->Next) {
+                     for (auto scan=tag->Child; scan; scan=scan->Next) {
                         lua_pushinteger(prv->Lua, i++);
                         lua_newtable(prv->Lua);
 
@@ -607,8 +603,7 @@ restart:
                         lua_pushstring(prv->Lua, scan->Attrib->Name);
                         lua_settable(prv->Lua, -3);
 
-                        LONG a;
-                        for (a=1; a < scan->TotalAttrib; a++) {
+                        for (LONG a=1; a < scan->TotalAttrib; a++) {
                            lua_pushstring(prv->Lua, scan->Attrib[a].Name);
                            lua_pushstring(prv->Lua, scan->Attrib[a].Value);
                            lua_settable(prv->Lua, -3);
@@ -636,11 +631,11 @@ restart:
          prev = list;
       }
 
-      FMSG("~","Collecting garbage.");
-        lua_gc(prv->Lua, LUA_GCCOLLECT, 0); // Run the garbage collector
-      LOGRETURN();
-
-      LogReturn();
+      {
+         parasol::Log log;
+         log.traceBranch("Collecting garbage.");
+         lua_gc(prv->Lua, LUA_GCCOLLECT, 0); // Run the garbage collector
+      }
    }
 
    return ERR_Okay;
@@ -650,14 +645,16 @@ restart:
 
 static ERROR FLUID_DerefProcedure(objScript *Self, struct scDerefProcedure *Args)
 {
+   parasol::Log log;
+
    if (!Args) return ERR_NullArgs;
 
    if ((Args->Procedure) and (Args->Procedure->Type IS CALL_SCRIPT)) {
       if (Args->Procedure->Script.Script IS &Self->Head) { // Verification of ownership
          auto prv = (prvFluid *)Self->Head.ChildPrivate;
-         if (!prv) return LogCode(ERR_ObjectCorrupt);
+         if (!prv) return log.warning(ERR_ObjectCorrupt);
 
-         MSG("Dereferencing procedure #" PF64(), Args->Procedure->Script.ProcedureID);
+         log.trace("Dereferencing procedure #" PF64(), Args->Procedure->Script.ProcedureID);
 
          if (Args->Procedure->Script.ProcedureID) {
             luaL_unref(prv->Lua, LUA_REGISTRYINDEX, Args->Procedure->Script.ProcedureID);
@@ -665,9 +662,9 @@ static ERROR FLUID_DerefProcedure(objScript *Self, struct scDerefProcedure *Args
          }
          return ERR_Okay;
       }
-      else return LogCode(ERR_Args);
+      else return log.warning(ERR_Args);
    }
-   else return LogCode(ERR_Args);
+   else return log.warning(ERR_Args);
 }
 
 //****************************************************************************
@@ -682,13 +679,15 @@ static ERROR FLUID_Free(objScript *Self, APTR Void)
 
 static ERROR FLUID_GetProcedureID(objScript *Self, struct scGetProcedureID *Args)
 {
-   if ((!Args) or (!Args->Procedure) or (!Args->Procedure[0])) return LogCode(ERR_NullArgs);
+   parasol::Log log;
+
+   if ((!Args) or (!Args->Procedure) or (!Args->Procedure[0])) return log.warning(ERR_NullArgs);
 
    auto prv = (prvFluid *)Self->Head.ChildPrivate;
-   if (!prv) return LogCode(ERR_ObjectCorrupt);
+   if (!prv) return log.warning(ERR_ObjectCorrupt);
 
    if ((!prv->Lua) or (!Self->ActivationCount)) {
-      LogErrorMsg("Cannot resolve function '%s'.  Script requires activation.", Args->Procedure);
+      log.warning("Cannot resolve function '%s'.  Script requires activation.", Args->Procedure);
       return ERR_NotFound;
    }
 
@@ -699,7 +698,7 @@ static ERROR FLUID_GetProcedureID(objScript *Self, struct scGetProcedureID *Args
       return ERR_Okay;
    }
    else {
-      LogErrorMsg("Failed to resolve function name '%s' to an ID.", Args->Procedure);
+      log.warning("Failed to resolve function name '%s' to an ID.", Args->Procedure);
       return ERR_NotFound;
    }
 }
@@ -708,15 +707,17 @@ static ERROR FLUID_GetProcedureID(objScript *Self, struct scGetProcedureID *Args
 
 static ERROR FLUID_Init(objScript *Self, APTR Void)
 {
+   parasol::Log log;
+
    if (Self->Path) {
       if (StrCompare("*.fluid|*.fb|*.lua", Self->Path, 0, STR_WILDCARD) != ERR_Okay) {
-         MSG("No support for path '%s'", Self->Path);
+         log.trace("No support for path '%s'", Self->Path);
          return ERR_NoSupport;
       }
    }
 
    if ((Self->Head.Flags & NF_RECLASSED) and (!Self->String)) {
-      MSG("No support for reclassed Script with no String field value.");
+      log.trace("No support for reclassed Script with no String field value.");
       return ERR_NoSupport;
    }
 
@@ -724,13 +725,13 @@ static ERROR FLUID_Init(objScript *Self, APTR Void)
    ERROR error;
    BYTE compile = FALSE;
    LONG loaded_size = 0;
-   objFile *src_file = NULL;
+   parasol::ScopedObject<objFile> src_file;
    if ((!Self->String) and (Self->Path)) {
-      error = CreateObject(ID_FILE, NF_INTEGRAL, &src_file, FID_Path|TSTR, Self->Path, TAGEND);
+      error = CreateObject(ID_FILE, NF_INTEGRAL, &src_file.obj, FID_Path|TSTR, Self->Path, TAGEND);
 
       LARGE src_ts, src_size;
       if (!error) {
-         error = GetFields(src_file, FID_TimeStamp|TLARGE, &src_ts, FID_Size|TLARGE, &src_size, TAGEND);
+         error = GetFields(src_file.obj, FID_TimeStamp|TLARGE, &src_ts, FID_Size|TLARGE, &src_size, TAGEND);
       }
       else error = ERR_File;
 
@@ -746,7 +747,7 @@ static ERROR FLUID_Init(objScript *Self, APTR Void)
             acFree(cache_file);
 
             if ((cache_ts IS src_ts) or (error)) {
-               LogMsg("Using cache '%s'", Self->CacheFile);
+               log.msg("Using cache '%s'", Self->CacheFile);
                if (!AllocMemory(cache_size, MEM_STRING|MEM_NO_CLEAR|Self->Head.MemFlags, &Self->String, NULL)) {
                   LONG len;
                   error = ReadFileToBuffer(Self->CacheFile, Self->String, cache_size, &len);
@@ -772,7 +773,7 @@ static ERROR FLUID_Init(objScript *Self, APTR Void)
                if (Self->CacheFile) compile = TRUE; // Saving a compilation of the source is desired
             }
             else {
-               MSG("Failed to read " PF64() " bytes from '%s'", src_size, Self->Path);
+               log.trace("Failed to read " PF64() " bytes from '%s'", src_size, Self->Path);
                FreeResource(Self->String);
                Self->String = NULL;
                error = ERR_ReadFileToBuffer;
@@ -790,36 +791,34 @@ static ERROR FLUID_Init(objScript *Self, APTR Void)
       if (!AllocMemory(sizeof(prvFluid), Self->Head.MemFlags, &Self->Head.ChildPrivate, NULL)) {
          prv = (prvFluid *)Self->Head.ChildPrivate;
          if ((prv->SaveCompiled = compile)) {
-            struct DateTime *dt;
-            if (!GetPointer(src_file, FID_Date, &dt)) prv->CacheDate = *dt;
-            GetLong(src_file, FID_Permissions, &prv->CachePermissions);
+            DateTime *dt;
+            if (!GetPointer(src_file.obj, FID_Date, &dt)) prv->CacheDate = *dt;
+            GetLong(src_file.obj, FID_Permissions, &prv->CachePermissions);
             prv->LoadedSize = loaded_size;
          }
       }
       else error = ERR_AllocMemory;
    }
 
-   if (src_file) { acFree(src_file); src_file = NULL; }
+   if (error) return log.warning(error);
 
-   if (error) return LogCode(error);
+   //if (!(prv->ObjectList = VarNew(0, 0))) return log.warning(ERR_AllocMemory);
 
-   //if (!(prv->ObjectList = VarNew(0, 0))) return LogCode(ERR_AllocMemory);
-
-   MSG("Opening a Lua instance.");
+   log.trace("Opening a Lua instance.");
 
    #ifdef DEBUG
       Self->Flags |= SCF_DEBUG;
    #endif
 
    if (!(prv->Lua = luaL_newstate())) {
-      LogErrorMsg("Failed to open a Lua instance.");
+      log.warning("Failed to open a Lua instance.");
       FreeResource(Self->Head.ChildPrivate);
       Self->Head.ChildPrivate = NULL;
       return ERR_Failed;
    }
 
    if (!(str = Self->String)) {
-      MSG("No statement specified at this stage.");
+      log.trace("No statement specified at this stage.");
       return ERR_Okay; // Assume that the script's text will be incoming later
    }
 
@@ -849,25 +848,25 @@ usage.
 
 static ERROR FLUID_SaveToObject(objScript *Self, struct acSaveToObject *Args)
 {
-   if ((!Args) or (!Args->DestID)) return LogCode(ERR_NullArgs);
+   parasol::Log log;
 
-   if (!Self->String) return LogCode(ERR_FieldNotSet);
+   if ((!Args) or (!Args->DestID)) return log.warning(ERR_NullArgs);
 
-   LogBranch("Compiling the statement...");
+   if (!Self->String) return log.warning(ERR_FieldNotSet);
+
+   log.branch("Compiling the statement...");
 
    auto prv = (prvFluid *)Self->Head.ChildPrivate;
-   if (!prv) return LogCode(ERR_ObjectCorrupt);
+   if (!prv) return log.warning(ERR_ObjectCorrupt);
 
    if (!luaL_loadstring(prv->Lua, Self->String)) {
       ERROR error = save_binary(Self, Args->DestID);
-      LogReturn();
       return error;
    }
    else {
       CSTRING str = lua_tostring(prv->Lua,-1);
       lua_pop(prv->Lua, 1);
-      LogErrorMsg("Compile Failure: %s", str);
-      LogReturn();
+      log.warning("Compile Failure: %s", str);
       return ERR_InvalidData;
    }
 }
@@ -964,11 +963,13 @@ static ERROR save_binary(objScript *Self, OBJECTID FileID)
 
 //****************************************************************************
 
-ERROR run_script(objScript *Self)
+static ERROR run_script(objScript *Self)
 {
+   parasol::Log log(__FUNCTION__);
+
    auto prv = (prvFluid *)Self->Head.ChildPrivate;
 
-   FMSG("~run_script()","Procedure: %s, Top: %d", Self->Procedure, lua_gettop(prv->Lua));
+   log.traceBranch("Procedure: %s, Top: %d", Self->Procedure, lua_gettop(prv->Lua));
 
    prv->CaughtError = ERR_Okay;
    struct object * release_list[8];
@@ -980,19 +981,18 @@ ERROR run_script(objScript *Self)
       else lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, Self->ProcedureID);
 
       if (lua_isfunction(prv->Lua, -1)) {
-         if (Self->Flags & SCF_DEBUG) LogF("~","Executing procedure: %s, Args: %d", Self->Procedure, Self->TotalArgs);
+         if (Self->Flags & SCF_DEBUG) log.branch("Executing procedure: %s, Args: %d", Self->Procedure, Self->TotalArgs);
 
          top = lua_gettop(prv->Lua);
 
          LONG count = 0;
-         const struct ScriptArg *args;
+         const ScriptArg *args;
          if ((args = Self->ProcArgs)) {
-            LONG i;
-            for (i=0; i < Self->TotalArgs; i++, args++) {
+            for (LONG i=0; i < Self->TotalArgs; i++, args++) {
                LONG type = args->Type;
 
                if (type & FD_ARRAY) {
-                  MSG("Setting arg '%s', Array: %p", args->Name, args->Address);
+                  log.trace("Setting arg '%s', Array: %p", args->Name, args->Address);
 
                   APTR values = args->Address;
                   LONG total_elements = -1;
@@ -1003,7 +1003,7 @@ ERROR run_script(objScript *Self)
                      else values = NULL;
                      i++; args++; // Because we took the array-size parameter into account
                   }
-                  else MSG("The size of the array is not defined.");
+                  else log.trace("The size of the array is not defined.");
 
                   if (values) {
                      make_any_table(prv->Lua, type, arg_name, total_elements, values);
@@ -1013,7 +1013,7 @@ ERROR run_script(objScript *Self)
                   else lua_pushnil(prv->Lua);
                }
                else if (type & FD_STR) {
-                  MSG("Setting arg '%s', Value: %.20s", args->Name, (CSTRING)args->Address);
+                  log.trace("Setting arg '%s', Value: %.20s", args->Name, (CSTRING)args->Address);
                   lua_pushstring(prv->Lua, (CSTRING)args->Address);
                }
                else if (type & FD_STRUCT) {
@@ -1029,7 +1029,7 @@ ERROR run_script(objScript *Self)
                   // (In a secure environment, pointers may be passed around but may be useless if their use is
                   // disallowed within Lua).
 
-                  MSG("Setting arg '%s', Value: %p", args->Name, args->Address);
+                  log.trace("Setting arg '%s', Value: %p", args->Name, args->Address);
                   if ((type & FD_BUFFER) and (i+1 < Self->TotalArgs) and (args[1].Type & FD_BUFSIZE)) {
                      // Buffers are considered to be directly writable regions of memory, so the array interface is
                      // used to represent them.
@@ -1054,16 +1054,16 @@ ERROR run_script(objScript *Self)
                   else lua_pushlightuserdata(prv->Lua, args->Address);
                }
                else if (type & FD_LONG)   {
-                  MSG("Setting arg '%s', Value: %d", args->Name, args->Long);
+                  log.trace("Setting arg '%s', Value: %d", args->Name, args->Long);
                   if (type & FD_OBJECT) {
                      if (args->Long) push_object_id(prv->Lua, args->Long);
                      else lua_pushnil(prv->Lua);
                   }
                   else lua_pushinteger(prv->Lua, args->Long);
                }
-               else if (type & FD_LARGE)  { MSG("Setting arg '%s', Value: " PF64(), args->Name, args->Large); lua_pushnumber(prv->Lua, args->Large); }
-               else if (type & FD_DOUBLE) { MSG("Setting arg '%s', Value: %.2f", args->Name, args->Double); lua_pushnumber(prv->Lua, args->Double); }
-               else { lua_pushnil(prv->Lua); LogErrorMsg("Arg '%s' uses unrecognised type $%.8x", args->Name, type); }
+               else if (type & FD_LARGE)  { log.trace("Setting arg '%s', Value: " PF64(), args->Name, args->Large); lua_pushnumber(prv->Lua, args->Large); }
+               else if (type & FD_DOUBLE) { log.trace("Setting arg '%s', Value: %.2f", args->Name, args->Double); lua_pushnumber(prv->Lua, args->Double); }
+               else { lua_pushnil(prv->Lua); log.warning("Arg '%s' uses unrecognised type $%.8x", args->Name, type); }
                count++;
             }
          }
@@ -1077,26 +1077,22 @@ ERROR run_script(objScript *Self)
          SetResource(RES_LOG_DEPTH, step);
 
          while (r > 0) release_object(release_list[--r]);
-
-         if (Self->Flags & SCF_DEBUG) LogReturn();
       }
       else {
          char buffer[200];
          StrFormat(buffer, sizeof(buffer), "Procedure '%s' / #" PF64() " does not exist in the script.", Self->Procedure, Self->ProcedureID);
          SetString(Self, FID_ErrorString, buffer);
-         LogErrorMsg("%s", buffer);
+         log.warning("%s", buffer);
 
          #ifdef DEBUG
             STRING *list;
             LONG total_procedures;
             if (!GET_Procedures(Self, &list, &total_procedures)) {
-               LONG i;
-               for (i=0; i < total_procedures; i++) LogMsg("%s", list[i]);
+               for (LONG i=0; i < total_procedures; i++) log.trace("%s", list[i]);
                FreeResource(list);
             }
          #endif
 
-         LOGRETURN();
          Self->Error = ERR_NotFound;
          return ERR_NotFound;
       }
@@ -1124,29 +1120,27 @@ ERROR run_script(objScript *Self)
 
          for (i=0; i < results; i++) {
             array[i] = lua_tostring(prv->Lua, -results+i);
-            MSG("Result: %d/%d: %s", i, results, array[i]);
+            log.trace("Result: %d/%d: %s", i, results, array[i]);
          }
          array[i] = NULL;
          SetArray(Self, FID_Results, array, i);
-
          lua_pop(prv->Lua, results);  // pop returned values
       }
 
-      LOGRETURN();
       return ERR_Okay;
    }
    else {
       process_error(Self, Self->Procedure ? Self->Procedure : "run_script");
-      LOGRETURN();
       return Self->Error;
    }
 }
-
 //****************************************************************************
 
 static ERROR register_interfaces(objScript *Self)
 {
-   LogF("~6register_interfaces()","Registering Parasol and Fluid interfaces with Lua.");
+   parasol::Log log;
+
+   log.traceBranch("Registering Parasol and Fluid interfaces with Lua.");
 
    auto prv = (prvFluid *)Self->Head.ChildPrivate;
 
@@ -1176,7 +1170,6 @@ static ERROR register_interfaces(objScript *Self)
 
    load_include(Self, "core");
 
-   LogReturn();
    return ERR_Okay;
 }
 
