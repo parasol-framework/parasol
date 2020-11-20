@@ -5,17 +5,21 @@
 #include <parasol/main.h>
 #include <parasol/modules/fluid.h>
 #include <inttypes.h>
-#include "lua.h"
-#include "lualib.h"
-#include "lauxlib.h"
-#include "lj_obj.h"
+
+extern "C" {
+ #include "lua.h"
+ #include "lualib.h"
+ #include "lauxlib.h"
+ #include "lj_obj.h"
+}
+
 #include "hashes.h"
 #include "defs.h"
 
 #include <ffi.h>
 
 static int module_call(lua_State *);
-static LONG process_results(struct prvFluid *, APTR resultsidx, const struct FunctionField *, LONG);
+static LONG process_results(prvFluid *, APTR, const FunctionField *, LONG);
 
 /*****************************************************************************
 ** Usage: module = mod.load("core")
@@ -29,35 +33,32 @@ static int module_load(lua_State *Lua)
       return 0;
    }
 
-   LogF("~mod.new()", "Module: %s", modname);
+   parasol::Log log(__FUNCTION__);
+   log.branch("Module: %s", modname);
 
    // Check if there is an include file with the same name as this module.
 
    ERROR error = load_include(Lua->Script, modname);
    if ((error != ERR_Okay) AND (error != ERR_FileNotFound)) {
-      LogReturn();
+      log.debranch();
       luaL_error(Lua, "Failed to load include file for the %s module.", modname);
       return 0;
    }
 
-   OBJECTPTR module;
-   if (!(error = CreateObject(ID_MODULE, 0, &module,
-         FID_Name|TSTR, modname,
-         TAGEND))) {
-      struct module *mod = (struct module *)lua_newuserdata(Lua, sizeof(struct module));
+   OBJECTPTR loaded_mod;
+   if (!(error = CreateObject(ID_MODULE, 0, &loaded_mod, FID_Name|TSTR, modname, TAGEND))) {
+      auto mod = (struct module *)lua_newuserdata(Lua, sizeof(struct module));
       ClearMemory(mod, sizeof(struct module));
 
       luaL_getmetatable(Lua, "Fluid.mod");
       lua_setmetatable(Lua, -2);
 
-      mod->Module = module;
-      GetPointer(module, FID_FunctionList, &mod->Functions);
-
-      LogReturn();
+      mod->Module = loaded_mod;
+      GetPointer(loaded_mod, FID_FunctionList, &mod->Functions);
       return 1;  // new userdatum is already on the stack
    }
    else {
-      LogReturn();
+      log.debranch();
       luaL_error(Lua, "Failed to load the %s module.", modname);
       return 0;
    }
@@ -70,7 +71,6 @@ static int module_load(lua_State *Lua)
 static int module_destruct(lua_State *Lua)
 {
    struct module *mod;
-
    if ((mod = (struct module *)luaL_checkudata(Lua, 1, "Fluid.mod"))) {
       acFree(mod->Module);
    }
@@ -85,7 +85,6 @@ static int module_destruct(lua_State *Lua)
 static int module_tostring(lua_State *Lua)
 {
    struct module *mod;
-
    if ((mod = (struct module *)luaL_checkudata(Lua, 1, "Fluid.mod"))) {
       STRING name;
       if (!GetString(mod->Module, FID_Name, &name)) {
@@ -108,14 +107,11 @@ static int module_index(lua_State *Lua)
    if ((mod = (struct module *)luaL_checkudata(Lua, 1, "Fluid.mod"))) {
       CSTRING function;
       if ((function = luaL_checkstring(Lua, 2))) {
-         struct Function *list;
-         if ((list = mod->Functions)) {
-            LONG i;
-            for (i=0; list[i].Name; i++) {
+         auto list = mod->Functions;
+         if (list) {
+            for (LONG i=0; list[i].Name; i++) {
                CSTRING name = list[i].Name;
-               if (!StrMatch(name, function)) {
-                  // Function call stack management
-
+               if (!StrMatch(name, function)) { // Function call stack management
                   lua_pushvalue(Lua, 1); // Arg1: Duplicate the module reference
                   lua_pushinteger(Lua, i); // Arg2: Index of the function that is being called
                   lua_pushcclosure(Lua, module_call, 2);
@@ -142,16 +138,17 @@ static int module_index(lua_State *Lua)
 
 static int module_call(lua_State *Lua)
 {
+   parasol::Log log(__FUNCTION__);
    objScript *Self = Lua->Script;
-   struct prvFluid *prv;
    UBYTE buffer[256]; // +8 for overflow protection
    FUNCTION func;
    LONG i, type;
 
-   if (!(prv = Self->Head.ChildPrivate)) return PostError(ERR_ObjectCorrupt);
+   auto prv = (prvFluid *)Self->Head.ChildPrivate;
+   if (!prv) return log.warning(ERR_ObjectCorrupt);
 
    struct module *mod;
-   if (!(mod = get_meta(Lua, lua_upvalueindex(1), "Fluid.mod"))) {
+   if (!(mod = (struct module *)get_meta(Lua, lua_upvalueindex(1), "Fluid.mod"))) {
       luaL_error(Lua, "object_call() expected object in upvalue.");
       return 0;
    }
@@ -159,7 +156,6 @@ static int module_call(lua_State *Lua)
    UWORD index = lua_tointeger(Lua, lua_upvalueindex(2));
 
    if (!mod) { luaL_argerror(Lua, 1, "Expected module from module_index()."); return 0; }
-
    if (!mod->Functions) return 0;
 
    LONG nargs = lua_gettop(Lua);
@@ -167,12 +163,11 @@ static int module_call(lua_State *Lua)
 
    UBYTE *end = buffer + sizeof(buffer);
 
-   FMSG("module_call()","%s() Index: %d, Args: %d", mod->Functions[index].Name, index, nargs);
+   log.trace("%s() Index: %d, Args: %d", mod->Functions[index].Name, index, nargs);
 
-   const struct FunctionField *args;
+   const FunctionField *args;
    if (!(args = mod->Functions[index].Args)) {
-      void (*function)(void);
-      function = mod->Functions[index].Address;
+      auto function = (void (*)(void))mod->Functions[index].Address;
       function();
       return 0;
    }
@@ -185,10 +180,10 @@ static int module_call(lua_State *Lua)
    LONG in = 0;
 
    LONG j = 0;
-   for (i=1; (args[i].Name) AND (j < sizeof(buffer)-8); i++) {
+   for (i=1; (args[i].Name) AND ((size_t)j < sizeof(buffer)-8); i++) {
       LONG argtype = args[i].Type;
 
-      //FMSG("module_call()","%s() Arg: %s, Offset: %d, Type: $%.8x (received %s)", mod->Functions[index].Name, args[i].Name, j, argtype, lua_typename(Lua, lua_type(Lua, i)));
+      //log.trace("%s() Arg: %s, Offset: %d, Type: $%.8x (received %s)", mod->Functions[index].Name, args[i].Name, j, argtype, lua_typename(Lua, lua_type(Lua, i)));
 
       if (argtype & FD_RESULT) {
          // Result arguments are stored in the buffer with a pointer to an empty variable space (stored at the end of
@@ -200,29 +195,29 @@ static int module_call(lua_State *Lua)
             // User is required to supply an argument that will store a buffer result.  This is a different case to the
             // storage of type values.
 
-            struct memory *memory;
-            if ((memory = get_meta(Lua, i, "Fluid.mem"))) {
-               ((APTR *)(buffer + j))[0] = memory->Address;
+            memory *mem;
+            if ((mem = (struct memory *)get_meta(Lua, i, "Fluid.mem"))) {
+               ((APTR *)(buffer + j))[0] = mem->Address;
                fptr[in] = buffer + j;
                fin[in++] = &ffi_type_pointer;
                j += sizeof(APTR);
 
                if (args[i+1].Type & FD_BUFSIZE) {
                   if (args[i+1].Type & FD_LONG) {
-                     ((LONG *)(buffer + j))[0] = memory->MemorySize;
+                     ((LONG *)(buffer + j))[0] = mem->MemorySize;
                      fptr[in] = buffer + j;
                      fin[in++] = &ffi_type_sint32;
                      i++;
                      j += sizeof(LONG);
                   }
                   else if (args[i+1].Type & FD_LARGE) {
-                     ((LARGE *)(buffer + j))[0] = memory->MemorySize;
+                     ((LARGE *)(buffer + j))[0] = mem->MemorySize;
                      fptr[in] = buffer + j;
                      fin[in++] = &ffi_type_sint64;
                      i++;
                      j += sizeof(LARGE);
                   }
-                  else LogErrorMsg("Integer type unspecified for BUFSIZE argument in %s()", mod->Functions[index].Name);
+                  else log.warning("Integer type unspecified for BUFSIZE argument in %s()", mod->Functions[index].Name);
                }
             }
             else {
@@ -266,7 +261,7 @@ static int module_call(lua_State *Lua)
          }
          else {
             LONG fixed_args = i-1;
-            while ((i <= nargs) AND (j < sizeof(buffer)-20)) {
+            while ((i <= nargs) AND ((size_t)j < sizeof(buffer)-20)) {
                if (lua_type(Lua, i) IS LUA_TNUMBER) { // Tags have to be expressed as numbers.
                   LARGE tag = lua_tonumber(Lua, i++);
                   if (tag IS TAGEND) break;
@@ -315,7 +310,7 @@ static int module_call(lua_State *Lua)
                      j += sizeof(APTR);
                   }
                   else {
-                     LogF("@module_call","Unrecognised tag type $%.8x00000000 at arg %d", (ULONG)(tag>>32), i);
+                     log.warning("Unrecognised tag type $%.8x00000000 at arg %d", (ULONG)(tag>>32), i);
                      luaL_error(Lua, "Invalid tag type detected.");
                      return 0;
                   }
@@ -331,13 +326,13 @@ static int module_call(lua_State *Lua)
             LONG result = 1;
             if (args->Type & FD_LONG) {
                if (ffi_prep_cif_var(&cif, FFI_DEFAULT_ABI, fixed_args, in, &ffi_type_sint32, fin) IS FFI_OK) {
-                  ffi_call(&cif, function, &rc, fptr);
+                  ffi_call(&cif, (void (*)())function, &rc, fptr);
                   lua_pushinteger(Lua, (LONG)rc);
                   return process_results(prv, buffer, args, result);
                }
             }
             else if (ffi_prep_cif_var(&cif, FFI_DEFAULT_ABI, fixed_args, in, &ffi_type_void, fin) IS FFI_OK) {
-               ffi_call(&cif, function, &rc, fptr);
+               ffi_call(&cif, (void (*)())function, &rc, fptr);
                return process_results(prv, buffer, args, 0);
             }
 
@@ -444,8 +439,8 @@ static int module_call(lua_State *Lua)
          j += sizeof(STRING);
       }
       else if (argtype & FD_PTR) {
-         struct memory *memory;
-         struct fstruct *fstruct;
+         memory *memory;
+         fstruct *fstruct;
          struct object *obj;
 
          type = lua_type(Lua, i);
@@ -474,7 +469,7 @@ static int module_call(lua_State *Lua)
                }
             }
          }
-         else if ((memory = get_meta(Lua, i, "Fluid.mem"))) {
+         else if ((memory = (struct memory *)get_meta(Lua, i, "Fluid.mem"))) {
             ((APTR *)(buffer + j))[0] = memory->Address;
             fptr[in] = buffer + j;
             fin[in++] = &ffi_type_pointer;
@@ -497,7 +492,7 @@ static int module_call(lua_State *Lua)
                }
             }
          }
-         else if ((fstruct = get_meta(Lua, i, "Fluid.struct"))) {
+         else if ((fstruct = (struct fstruct *)get_meta(Lua, i, "Fluid.struct"))) {
             ((APTR *)(buffer + j))[0] = fstruct->Data;
             fptr[in] = buffer + j;
             fin[in++] = &ffi_type_pointer;
@@ -521,18 +516,18 @@ static int module_call(lua_State *Lua)
                }
             }
          }
-         else if ((obj = get_meta(Lua, i, "Fluid.obj"))) {
+         else if ((obj = (object *)get_meta(Lua, i, "Fluid.obj"))) {
             OBJECTPTR ptr_obj;
 
             if (obj->prvObject) {
                ((OBJECTPTR *)(buffer + j))[0] = obj->prvObject;
             }
-            else if ((ptr_obj = access_object(obj))) {
+            else if ((ptr_obj = (OBJECTPTR)access_object(obj))) {
                ((OBJECTPTR *)(buffer + j))[0] = ptr_obj;
                release_object(obj);
             }
             else {
-               LogF("@","Unable to resolve object pointer for #%d.", obj->ObjectID);
+               log.warning("Unable to resolve object pointer for #%d.", obj->ObjectID);
                ((OBJECTPTR *)(buffer + j))[0] = NULL;
             }
 
@@ -549,8 +544,8 @@ static int module_call(lua_State *Lua)
       }
       else if (argtype & FD_LONG) {
          if (argtype & FD_OBJECT) {
-            struct object *obj;
-            if ((obj = get_meta(Lua, i, "Fluid.obj"))) {
+            object *obj;
+            if ((obj = (object *)get_meta(Lua, i, "Fluid.obj"))) {
                ((LONG *)(buffer + j))[0] = obj->ObjectID;
             }
             else ((LONG *)(buffer + j))[0] = F2I(lua_tonumber(Lua, i));
@@ -579,7 +574,7 @@ static int module_call(lua_State *Lua)
          j += sizeof(LONG);
       }
       else {
-         LogF("@module_call_i32","%s() unsupported arg '%s', flags $%.8x, aborting now.", mod->Functions[index].Name, args[i].Name, argtype);
+         log.warning("%s() unsupported arg '%s', flags $%.8x, aborting now.", mod->Functions[index].Name, args[i].Name, argtype);
          return 0;
       }
    }
@@ -592,16 +587,16 @@ static int module_call(lua_State *Lua)
 
    if (restype & FD_STR) {
       if (ffi_prep_cif(&cif, FFI_DEFAULT_ABI, total_args, &ffi_type_pointer, fin) IS FFI_OK) {
-         ffi_call(&cif, function, &rc, fptr);
+         ffi_call(&cif, (void (*)())function, &rc, fptr);
          lua_pushstring(Lua, (CSTRING)rc);
       }
       else lua_pushnil(Lua);
    }
    else if (restype & FD_OBJECT) {
       if (ffi_prep_cif(&cif, FFI_DEFAULT_ABI, total_args, &ffi_type_pointer, fin) IS FFI_OK) {
-         ffi_call(&cif, function, &rc, fptr);
+         ffi_call(&cif, (void (*)())function, &rc, fptr);
          if ((OBJECTPTR)rc) {
-            struct object *obj = push_object(Lua, (OBJECTPTR)rc);
+            object *obj = push_object(Lua, (OBJECTPTR)rc);
             if (restype & FD_ALLOC) obj->Detached = FALSE;
          }
          else lua_pushnil(Lua);
@@ -611,7 +606,7 @@ static int module_call(lua_State *Lua)
    else if (restype & FD_PTR) {
       if (restype & FD_STRUCT) {
          if (ffi_prep_cif(&cif, FFI_DEFAULT_ABI, total_args, &ffi_type_pointer, fin) IS FFI_OK) {
-            ffi_call(&cif, function, &rc, fptr);
+            ffi_call(&cif, (void (*)())function, &rc, fptr);
             APTR structptr = (APTR)rc;
             if (structptr) {
                ERROR error;
@@ -633,7 +628,7 @@ static int module_call(lua_State *Lua)
          else lua_pushnil(Lua);
       }
       else if (ffi_prep_cif(&cif, FFI_DEFAULT_ABI, total_args, &ffi_type_pointer, fin) IS FFI_OK) {
-         ffi_call(&cif, function, &rc, fptr);
+         ffi_call(&cif, (void (*)())function, &rc, fptr);
          if ((APTR)rc) lua_pushlightuserdata(Lua, (APTR)rc);
          else lua_pushnil(Lua);
       }
@@ -642,14 +637,14 @@ static int module_call(lua_State *Lua)
    else if (restype & (FD_LONG|FD_ERROR)) {
       if (restype & FD_UNSIGNED) {
          if (ffi_prep_cif(&cif, FFI_DEFAULT_ABI, total_args, &ffi_type_uint32, fin) IS FFI_OK) {
-            ffi_call(&cif, function, &rc, fptr);
+            ffi_call(&cif, (void (*)())function, &rc, fptr);
             lua_pushnumber(Lua, (ULONG)rc);
          }
          else lua_pushnil(Lua);
       }
       else {
          if (ffi_prep_cif(&cif, FFI_DEFAULT_ABI, total_args, &ffi_type_sint32, fin) IS FFI_OK) {
-            ffi_call(&cif, function, &rc, fptr);
+            ffi_call(&cif, (void (*)())function, &rc, fptr);
             lua_pushinteger(Lua, (LONG)rc);
 
             if ((prv->Catch) AND (restype & FD_ERROR) AND (rc >= ERR_ExceptionThreshold)) {
@@ -662,26 +657,26 @@ static int module_call(lua_State *Lua)
    }
    else if (restype & FD_DOUBLE) {
       if (ffi_prep_cif(&cif, FFI_DEFAULT_ABI, total_args, &ffi_type_double, fin) IS FFI_OK) {
-         ffi_call(&cif, function, &rc, fptr);
+         ffi_call(&cif, (void (*)())function, &rc, fptr);
          lua_pushnumber(Lua, (DOUBLE)rc);
       }
       else lua_pushnil(Lua);
    }
    else if (restype & FD_LARGE) {
       if (ffi_prep_cif(&cif, FFI_DEFAULT_ABI, total_args, &ffi_type_sint64, fin) IS FFI_OK) {
-         ffi_call(&cif, function, &rc, fptr);
+         ffi_call(&cif, (void (*)())function, &rc, fptr);
          lua_pushnumber(Lua, (LARGE)rc);
       }
       else lua_pushnil(Lua);
    }
    else { // Void
       if (ffi_prep_cif(&cif, FFI_DEFAULT_ABI, total_args, &ffi_type_void, fin) IS FFI_OK) {
-         ffi_call(&cif, function, &rc, fptr);
+         ffi_call(&cif, (void (*)())function, &rc, fptr);
       }
       result = 0;
    }
 
-   if (j >= sizeof(buffer)-8) {
+   if ((size_t)j >= sizeof(buffer)-8) {
       luaL_error(Lua, "Too many arguments - buffer overflow.");
       return 0;
    }
@@ -693,12 +688,13 @@ static int module_call(lua_State *Lua)
 ** This code looks for FD_RESULT arguments in the function's parameter list and converts them into multiple Fluid results.
 */
 
-static LONG process_results(struct prvFluid *prv, APTR resultsidx, const struct FunctionField *args, LONG result)
+static LONG process_results(prvFluid *prv, APTR resultsidx, const FunctionField *args, LONG result)
 {
+   parasol::Log log(__FUNCTION__);
    LONG i;
    APTR var;
 
-   UBYTE *scan = resultsidx;
+   auto scan = (UBYTE *)resultsidx;
    for (i=1; args[i].Name; i++) {
       LONG argtype = args[i].Type;
       CSTRING argname = args[i].Name;
@@ -717,10 +713,10 @@ static LONG process_results(struct prvFluid *prv, APTR resultsidx, const struct 
                LONG total_elements = -1; // If -1, make_any_table() assumes the array is null terminated.
 
                if (args[i+1].Type & FD_ARRAYSIZE) {
-                  const APTR size_var = ((APTR *)scan)[0];
+                  CPTR size_var = ((APTR *)scan)[0];
                   if (args[i+1].Type & FD_LONG) total_elements = ((LONG *)size_var)[0];
                   else if (args[i+1].Type & FD_LARGE) total_elements = ((LARGE *)size_var)[0];
-                  else LogErrorMsg("Invalid arg %s, flags $%.8x", args[i+1].Name, args[i+1].Type);
+                  else log.warning("Invalid arg %s, flags $%.8x", args[i+1].Name, args[i+1].Type);
                }
 
                if (values) {
@@ -750,9 +746,9 @@ static LONG process_results(struct prvFluid *prv, APTR resultsidx, const struct 
          if (argtype & FD_RESULT) {
             if (var) {
                if (argtype & FD_OBJECT) {
-                  RMSG("Result-Arg: %s, Value: %p (Object)", argname, ((APTR *)var)[0]);
+                  RMSG("Result-Arg: %s, Value: %p (Object)", argname, ((OBJECTPTR *)var)[0]);
                   if (((APTR *)var)[0]) {
-                     struct object *obj = push_object(prv->Lua, ((APTR *)var)[0]);
+                     object *obj = push_object(prv->Lua, ((OBJECTPTR *)var)[0]);
                      if (argtype & FD_ALLOC) obj->Detached = FALSE;
                   }
                   else lua_pushnil(prv->Lua);
@@ -776,30 +772,30 @@ static LONG process_results(struct prvFluid *prv, APTR resultsidx, const struct 
                      const APTR size_var = ((APTR *)scan)[0];
                      if (args[i+1].Type & FD_LONG) size = ((LONG *)size_var)[0];
                      else if (args[i+1].Type & FD_LARGE) size = ((LARGE *)size_var)[0];
-                     else LogErrorMsg("Invalid arg %s, flags $%.8x", args[i+1].Name, args[i+1].Type);
+                     else log.warning("Invalid arg %s, flags $%.8x", args[i+1].Name, args[i+1].Type);
                   }
                   else {
-                     struct MemInfo meminfo;
+                     MemInfo meminfo;
                      if (!MemoryPtrInfo(((APTR *)var)[0], &meminfo)) size = meminfo.Size;
                   }
 
-                  if (size > 0) lua_pushlstring(prv->Lua, ((APTR *)var)[0], size);
+                  if (size > 0) lua_pushlstring(prv->Lua, ((CSTRING *)var)[0], size);
                   else lua_pushnil(prv->Lua);
 
                   if (((APTR *)var)[0]) FreeResource(((APTR *)var)[0]);
                }
                else if (args[i+1].Type & FD_BUFSIZE) { // We can convert the data to a binary string rather than work with unsafe pointers.
                   LARGE size = 0;
-                  const APTR size_var = ((APTR *)scan)[0];
+                  CPTR size_var = ((APTR *)scan)[0];
                   if (args[i+1].Type & FD_LONG) size = ((LONG *)size_var)[0];
                   else if (args[i+1].Type & FD_LARGE) size = ((LARGE *)size_var)[0];
-                  else LogErrorMsg("Invalid arg %s, flags $%.8x", args[i+1].Name, args[i+1].Type);
+                  else log.warning("Invalid arg %s, flags $%.8x", args[i+1].Name, args[i+1].Type);
 
-                  if (size > 0) lua_pushlstring(prv->Lua, ((APTR *)var)[0], size);
+                  if (size > 0) lua_pushlstring(prv->Lua, ((CSTRING *)var)[0], size);
                   else lua_pushnil(prv->Lua);
                }
                else {
-                  RMSG("Result-Arg: %s, Value: %p (Pointer)", argname, ((APTR *)var)[0]);
+                  RMSG("Result-Arg: %s, Value: %p (Pointer)", argname, ((CSTRING *)var)[0]);
                   lua_pushlightuserdata(prv->Lua, ((APTR *)var)[0]);
                }
             }
@@ -848,7 +844,7 @@ static LONG process_results(struct prvFluid *prv, APTR resultsidx, const struct 
          break;
       }
       else {
-         LogF("@process_results","Unsupported arg '%s', flags $%x, aborting now.", argname, argtype);
+         log.warning("Unsupported arg '%s', flags $%x, aborting now.", argname, argtype);
          break;
       }
    }
