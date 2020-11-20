@@ -13,10 +13,11 @@ The num interface provides support for processing a range of numeric types other
 #define PRV_FLUID_MODULE
 #include <parasol/main.h>
 #include <parasol/modules/fluid.h>
-#include "lua.h"
-#include "lualib.h"
-#include "lauxlib.h"
-#include "lj_obj.h"
+
+extern "C" {
+ #include "lauxlib.h"
+}
+
 #include "hashes.h"
 #include "defs.h"
 
@@ -177,7 +178,7 @@ static int number_tostring(lua_State *Lua)
 
 void register_number_class(lua_State *Lua)
 {
-   static const struct luaL_reg numlib_functions[] = {
+   static const luaL_reg numlib_functions[] = {
       { "int",    number_i32 },
       { "long",   number_i32 },
       { "large",  number_i64 },
@@ -189,13 +190,14 @@ void register_number_class(lua_State *Lua)
       { NULL, NULL }
    };
 
-   static const struct luaL_reg numlib_methods[] = {
+   static const luaL_reg numlib_methods[] = {
       { "__tostring", number_tostring },
       { "__index",    number_index },
       { NULL, NULL }
    };
 
-   MSG("Registering number interface.");
+   parasol::Log log(__FUNCTION__);
+   log.trace("Registering number interface.");
 
    luaL_newmetatable(Lua, "Fluid.num");
    lua_pushstring(Lua, "__index");
