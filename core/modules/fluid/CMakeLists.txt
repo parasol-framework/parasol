@@ -47,7 +47,7 @@ set_module_defaults (${MOD})
 
 add_dependencies (${MOD} libffi luajit)
 
-target_sources (${MOD} PRIVATE "${MOD}.c" "fluid_module.c" "fluid_thread.cpp" "fluid_struct.c"
+target_sources (${MOD} PRIVATE "${MOD}.c" "fluid_module.c" "fluid_thread.cpp" "fluid_struct.cpp"
    "fluid_number.cpp" "fluid_input.cpp" "fluid_functions.c" "fluid_objects.c" "fluid_array.cpp" "fluid_class.c")
 
 target_include_directories (${MOD} PRIVATE

@@ -35,10 +35,14 @@ terminated arrays, use [0].
 #include <parasol/main.h>
 #include <parasol/modules/fluid.h>
 #include <inttypes.h>
-#include "lua.h"
-#include "lualib.h"
-#include "lauxlib.h"
-#include "lj_obj.h"
+
+extern "C" {
+ #include "lua.h"
+ #include "lualib.h"
+ #include "lauxlib.h"
+ #include "lj_obj.h"
+}
+
 #include "hashes.h"
 #include "defs.h"
 
@@ -48,8 +52,7 @@ static LONG get_fieldvalue(lua_State *, struct fstruct *, CSTRING);
 
 static LONG get_ptr_ref(struct references *Ref, CPTR Address)
 {
-   LONG i;
-   for (i=0; i < Ref->Index; i++) {
+   for (LONG i=0; i < Ref->Index; i++) {
       if (Address IS Ref->List[i].Address) return Ref->List[i].Ref;
    }
    return 0;
@@ -72,22 +75,25 @@ static void set_ptr_ref(struct references *Ref, CPTR Address, LONG Resource)
 
 ERROR named_struct_to_table(lua_State *Lua, CSTRING StructName, APTR Address)
 {
-   struct prvFluid *prv = Lua->Script->Head.ChildPrivate;
-   struct structentry *def;
+   auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
+   structentry *def;
    if (!KeyGet(prv->Structs, STRUCTHASH(StructName), &def, NULL)) {
       return struct_to_table(Lua, NULL, def, Address);
    }
    else {
-      LogF("@named_struct_to_table()","Unknown struct name '%s'", StructName);
+      parasol::Log log(__FUNCTION__);
+      log.warning("Unknown struct name '%s'", StructName);
       return ERR_Search;
    }
 }
 
 ERROR struct_to_table(lua_State *Lua, struct references *References, struct structentry *StructDef, CPTR Address)
 {
+   parasol::Log log(__FUNCTION__);
+
    // Do not push a Lua value in the event of an error.
 
-   FMSG("struct_to_table()","Data: %p, StructDef: %p, References: %p, Index: %d", Address, StructDef, References, References ? References->Index : -1);
+   log.traceBranch("Data: %p, StructDef: %p, References: %p, Index: %d", Address, StructDef, References, References ? References->Index : -1);
 
    if (!Address) { lua_pushnil(Lua); return ERR_Okay; }
 
@@ -116,22 +122,21 @@ ERROR struct_to_table(lua_State *Lua, struct references *References, struct stru
    set_ptr_ref(References, Address, table_ref);
    lua_rawgeti(Lua, LUA_REGISTRYINDEX, table_ref); // Retrieve the struct table
 
-   struct prvFluid *prv = Lua->Script->Head.ChildPrivate;
+   auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
 
-   LONG f;
-   struct structdef_field *field = (struct structdef_field *)(StructDef + 1);
-   for (f=0; f < StructDef->Total; f++, field=((APTR)field) + field->Length) {
+   auto field = (structdef_field *)(StructDef + 1);
+   for (LONG f=0; f < StructDef->Total; f++, field=(structdef_field *)((BYTE *)field + field->Length)) {
       CSTRING field_name = (CSTRING)(field + 1);
       lua_pushstring(Lua, field_name);
 
-      CPTR address = Address + field->Offset;
+      CPTR address = (BYTE *)Address + field->Offset;
       LONG type = field->Type;
 
       if (type & FD_ARRAY) {
          if (field->ArraySize IS -1) { // Pointer to a null-terminated array.
             if (type & FD_STRUCT) {
                CSTRING struct_name = ((CSTRING)(field + 1)) + field->StructOffset;
-               struct structentry *def;
+               structentry *def;
                if (!VarGet(prv->Structs, struct_name, &def, NULL)) {
                   if (((CPTR *)address)[0]) make_any_table(Lua, type, struct_name, -1, address);
                   else lua_pushnil(Lua);
@@ -151,7 +156,7 @@ ERROR struct_to_table(lua_State *Lua, struct references *References, struct stru
          else { // It's an embedded array of fixed size.
             if (type & FD_STRUCT) {
                CSTRING struct_name = ((CSTRING)(field + 1)) + field->StructOffset;
-               struct structentry *def;
+               structentry *def;
                if (!VarGet(prv->Structs, struct_name, &def, NULL)) {
                   make_any_table(Lua, type, struct_name, field->ArraySize, address);
                }
@@ -170,7 +175,7 @@ ERROR struct_to_table(lua_State *Lua, struct references *References, struct stru
       }
       else if (type & FD_STRUCT) {
          CSTRING struct_name = ((CSTRING)(field + 1)) + field->StructOffset;
-         struct structentry *def;
+         structentry *def;
          if (!VarGet(prv->Structs, struct_name, &def, NULL)) {
             if (type & FD_PTR) {
                if (((APTR *)address)[0]) {
@@ -208,10 +213,12 @@ ERROR struct_to_table(lua_State *Lua, struct references *References, struct stru
 
 struct fstruct * push_struct(objScript *Self, APTR Address, CSTRING StructName, BYTE Deallocate, BYTE AllowEmpty)
 {
-   FMSG("push_struct()","Struct: %s, Address: %p, Deallocate: %d", StructName, Address, Deallocate);
+   parasol::Log log(__FUNCTION__);
 
-   struct prvFluid *prv = Self->Head.ChildPrivate;
-   struct structentry *def;
+   log.traceBranch("Struct: %s, Address: %p, Deallocate: %d", StructName, Address, Deallocate);
+
+   auto prv = (prvFluid *)Self->Head.ChildPrivate;
+   structentry *def;
    if (!KeyGet(prv->Structs, STRUCTHASH(StructName), &def, NULL)) {
       return push_struct_def(prv->Lua, Address, def, Deallocate);
    }
@@ -220,7 +227,7 @@ struct fstruct * push_struct(objScript *Self, APTR Address, CSTRING StructName, 
       // unavailable to Fluid.  Rather than throw an exception because the structure isn't in the dictionary, we return
       // an empty structure declaration.
 
-      static struct structentry empty = { .Total = 0, .Size = 0, .NameHash = 0 };
+      static structentry empty = { .Total = 0, .Size = 0, .NameHash = 0 };
       return push_struct_def(prv->Lua, Address, &empty, FALSE);
    }
    else {
@@ -230,18 +237,18 @@ struct fstruct * push_struct(objScript *Self, APTR Address, CSTRING StructName, 
    }
 }
 
-struct fstruct * push_struct_def(lua_State *Lua, APTR Address, struct structentry *StructDef, BYTE Deallocate)
+struct fstruct * push_struct_def(lua_State *Lua, APTR Address, structentry *StructDef, BYTE Deallocate)
 {
-   struct fstruct *fstruct;
-   if ((fstruct = (struct fstruct *)lua_newuserdata(Lua, sizeof(struct fstruct)))) {
-      fstruct->Data       = Address;
-      fstruct->Def        = StructDef;
-      fstruct->StructSize = StructDef->Size;
-      fstruct->AlignedSize = ALIGN64(StructDef->Size);
-      fstruct->Deallocate = Deallocate;
+   fstruct *fs;
+   if ((fs = (fstruct *)lua_newuserdata(Lua, sizeof(fstruct)))) {
+      fs->Data        = Address;
+      fs->Def         = StructDef;
+      fs->StructSize  = StructDef->Size;
+      fs->AlignedSize = ALIGN64(StructDef->Size);
+      fs->Deallocate  = Deallocate;
       luaL_getmetatable(Lua, "Fluid.struct");
       lua_setmetatable(Lua, -2);
-      return fstruct;
+      return fs;
    }
    else luaL_error(Lua, "Failed to create new struct.");
 
@@ -257,15 +264,9 @@ struct fstruct * push_struct_def(lua_State *Lua, APTR Address, struct structentr
 int MAKESTRUCT(lua_State *Lua)
 {
    CSTRING sequence, name;
-
-   if (!(name = lua_tostring(Lua, 1))) {
-      luaL_argerror(Lua, 1, "Structure name required.");
-   }
-   else if (!(sequence = lua_tostring(Lua, 2))) {
-      luaL_argerror(Lua, 2, "Structure definition required.");
-   }
+   if (!(name = lua_tostring(Lua, 1))) luaL_argerror(Lua, 1, "Structure name required.");
+   else if (!(sequence = lua_tostring(Lua, 2))) luaL_argerror(Lua, 2, "Structure definition required.");
    else make_struct(Lua, name, sequence);
-
    return 0;
 }
 
@@ -296,17 +297,18 @@ static ERROR eval_type(objScript *Self, CSTRING Sequence, LONG *Pos, LONG *Type,
       // Embedded structure.  Get the name so that we can determine the struct size.
       *Type = FD_STRUCT;
       LONG i;
-      for (i=pos; (Sequence[i]) AND (Sequence[i] != ':') AND (Sequence[i] != ','); i++);
+      for (i=pos; (Sequence[i]) and (Sequence[i] != ':') and (Sequence[i] != ','); i++);
 
       if (Sequence[i] IS ':') {
          i++;
          struct structentry *def;
-         struct prvFluid *prv = Self->Head.ChildPrivate;
+         auto prv = (prvFluid *)Self->Head.ChildPrivate;
          if (!KeyGet(prv->Structs, STRUCTHASH(Sequence+i), &def, NULL)) {
             *Size = def->Size;
          }
          else {
-            LogF("@eval_type","Failed to find referenced struct '%s'", Sequence+i);
+            parasol::Log log(__FUNCTION__);
+            log.warning("Failed to find referenced struct '%s'", Sequence+i);
             return ERR_NotFound;
          }
       }
@@ -332,7 +334,9 @@ static ERROR eval_type(objScript *Self, CSTRING Sequence, LONG *Pos, LONG *Type,
 // The TypeName is optional and usually refers to the name of a struct.  The list is sorted by name for fast lookups.
 
 static ERROR generate_structdef(objScript *Self, CSTRING StructName, CSTRING Sequence, BYTE *Buffer, LONG *Offset,
-      LONG *TotalFields, LONG *BufferEnd) {
+      LONG *TotalFields, LONG *BufferEnd)
+{
+   parasol::Log log(__FUNCTION__);
    LONG offset = 0;
    LONG pos    = 0;
    LONG total  = 0;
@@ -349,8 +353,8 @@ static ERROR generate_structdef(objScript *Self, CSTRING StructName, CSTRING Seq
 
       STRING field_name = Buffer + buf + sizeof(struct structdef_field);
       LONG i;
-      for (i=0; (Sequence[pos]) AND (Sequence[pos] != ',') AND (Sequence[pos] != '[') AND
-                (Sequence[pos] != ':') AND (i < 64); i++) {
+      for (i=0; (Sequence[pos]) and (Sequence[pos] != ',') and (Sequence[pos] != '[') AND
+                (Sequence[pos] != ':') and (i < 64); i++) {
          field_name[i] = Sequence[pos++];
       }
       field_name[i++] = 0;
@@ -361,7 +365,7 @@ static ERROR generate_structdef(objScript *Self, CSTRING StructName, CSTRING Seq
       if (Sequence[pos] IS ':') {
          pos++;
          struct_offset = i; // Index to the struct's name
-         while ((Sequence[pos]) AND (Sequence[pos] != ',') AND (Sequence[pos] != '[') AND (i < 64)) {
+         while ((Sequence[pos]) and (Sequence[pos] != ',') and (Sequence[pos] != '[') and (i < 64)) {
             field_name[i++] = Sequence[pos++];
          }
          field_name[i++] = 0;
@@ -371,12 +375,11 @@ static ERROR generate_structdef(objScript *Self, CSTRING StructName, CSTRING Seq
 
       // Camel-case adjustment.  Has to handle cases like IPAddress -> ipAddress
 
-      LONG f;
-      if ((field_name[0] >= 'A') AND (field_name[0] <= 'Z')) field_name[0] = field_name[0] - 'A' + 'a';
+      if ((field_name[0] >= 'A') and (field_name[0] <= 'Z')) field_name[0] = field_name[0] - 'A' + 'a';
 
       UBYTE lcase = FALSE;
-      for (f=1; field_name[f]; f++) {
-         if ((field_name[f] >= 'A') AND (field_name[f] <= 'Z')) {
+      for (LONG f=1; field_name[f]; f++) {
+         if ((field_name[f] >= 'A') and (field_name[f] <= 'Z')) {
             if (lcase) field_name[f-1] = field_name[f-1] - 'A' + 'a';
             lcase = TRUE;
          }
@@ -387,12 +390,12 @@ static ERROR generate_structdef(objScript *Self, CSTRING StructName, CSTRING Seq
 
       LONG entry_size = sizeof(struct structdef_field) + AlignLong(i); // 32-bit alignment applies to each array entry
 
-      if ((field_size >= 8) AND (type != FD_STRUCT)) {
-         if (offset & 7) LogMsg("Warning: %s.%s (%d bytes) is mis-aligned.", StructName, field_name, field_size);
+      if ((field_size >= 8) and (type != FD_STRUCT)) {
+         if (offset & 7) log.msg("Warning: %s.%s (%d bytes) is mis-aligned.", StructName, field_name, field_size);
          offset = ALIGN64(offset); // 64-bit alignment
       }
       else if (field_size IS 4) offset = AlignLong(offset);
-      else if ((field_size IS 2) AND (offset & 1)) offset++; // 16-bit alignment
+      else if ((field_size IS 2) and (offset & 1)) offset++; // 16-bit alignment
 
       // Manage fields that are based on fixed array sizes.  NOTE: An array size of zero, i.e. [0] is an indicator
       // that the field is a pointer to a null terminated array.
@@ -402,27 +405,27 @@ static ERROR generate_structdef(objScript *Self, CSTRING StructName, CSTRING Seq
          pos++;
          array_size = StrToInt(Sequence+pos);
          type |= FD_ARRAY;
-         while ((Sequence[pos]) AND (Sequence[pos] != ']') AND (Sequence[pos] != ',')) pos++;
+         while ((Sequence[pos]) and (Sequence[pos] != ']') and (Sequence[pos] != ',')) pos++;
          if (Sequence[pos] IS ']') pos++;
       }
 
-      while ((Sequence[pos]) AND (Sequence[pos] != ',')) pos++;
+      while ((Sequence[pos]) and (Sequence[pos] != ',')) pos++;
 
-      ((struct structdef_field *)(Buffer+buf))->Length       = entry_size;
-      ((struct structdef_field *)(Buffer+buf))->Offset       = offset;
-      ((struct structdef_field *)(Buffer+buf))->Type         = type;
-      ((struct structdef_field *)(Buffer+buf))->ArraySize    = array_size ? array_size : -1;
-      ((struct structdef_field *)(Buffer+buf))->StructOffset = struct_offset;
-      ((struct structdef_field *)(Buffer+buf))->NameHash     = StrHash(field_name, FALSE);
+      ((structdef_field *)(Buffer+buf))->Length       = entry_size;
+      ((structdef_field *)(Buffer+buf))->Offset       = offset;
+      ((structdef_field *)(Buffer+buf))->Type         = type;
+      ((structdef_field *)(Buffer+buf))->ArraySize    = array_size ? array_size : -1;
+      ((structdef_field *)(Buffer+buf))->StructOffset = struct_offset;
+      ((structdef_field *)(Buffer+buf))->NameHash     = StrHash(field_name, FALSE);
 
-      MSG("Added field %s @ offset %d", field_name, offset);
+      log.trace("Added field %s @ offset %d", field_name, offset);
 
       if (array_size) offset += field_size * array_size;
       else offset += sizeof(APTR); // Pointer to a null-terminated array.
       buf += entry_size;
       total++;
 
-      while ((Sequence[pos]) AND ((Sequence[pos] <= 0x20) OR (Sequence[pos] IS ','))) pos++;
+      while ((Sequence[pos]) and ((Sequence[pos] <= 0x20) or (Sequence[pos] IS ','))) pos++;
    }
 
    *Offset = offset;
@@ -435,33 +438,32 @@ static ERROR generate_structdef(objScript *Self, CSTRING StructName, CSTRING Seq
 
 ERROR make_struct(lua_State *Lua, CSTRING StructName, CSTRING Sequence)
 {
-   if ((!StructName) OR (!Sequence)) {
+   if ((!StructName) or (!Sequence)) {
       luaL_error(Lua, "Missing struct name and/or definition.");
       return ERR_NullArgs;
    }
 
-   struct prvFluid *prv = Lua->Script->Head.ChildPrivate;
-   if ((prv->Structs) AND (!VarGet(prv->Structs, StructName, NULL, NULL))) {
+   auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
+   if ((prv->Structs) and (!VarGet(prv->Structs, StructName, NULL, NULL))) {
       luaL_error(Lua, "Structure name '%s' is already registered.", StructName);
       return ERR_Exists;
    }
 
-   if (!prv->Structs) {
-      if (!(prv->Structs = VarNew(0, KSF_CASE))) {
-         luaL_error(Lua, "Failed to allocate key-store.");
-         return ERR_AllocMemory;
-      }
+   if ((!prv->Structs) and (!(prv->Structs = VarNew(0, KSF_CASE)))) {
+      luaL_error(Lua, "Failed to allocate key-store.");
+      return ERR_AllocMemory;
    }
 
-   LogF("~7make_struct()","%s, %.50s", StructName, Sequence);
+   parasol::Log log(__FUNCTION__);
+   log.msg(VLF_BRANCH|VLF_DEBUG, "%s, %.50s", StructName, Sequence);
 
    UBYTE buffer[sizeof(struct structentry) + MAX_STRUCT_DEF + 8];
 
    LONG offset, total_fields, buf_end;
    ERROR error;
-   if ((error = generate_structdef(Lua->Script, StructName, Sequence, buffer + sizeof(struct structentry), &offset,
+   if ((error = generate_structdef(Lua->Script, StructName, Sequence, (BYTE *)buffer + sizeof(struct structentry), &offset,
          &total_fields, &buf_end)) != ERR_Okay) {
-      LogReturn();
+      log.debranch();
       if (error IS ERR_BufferOverflow) luaL_argerror(Lua, 1, "String too long - buffer overflow");
       else if (error IS ERR_Syntax) luaL_error(Lua, "Unsupported struct character in definition: %s", Sequence);
       else luaL_error(Lua, "Failed to make struct for %s, error: %s", StructName, GetErrorMsg(error));
@@ -479,11 +481,10 @@ ERROR make_struct(lua_State *Lua, CSTRING StructName, CSTRING Sequence)
    entry->Size  = offset;
    entry->NameHash = STRUCTHASH(StructName);
 
-   FMSG("make_struct","Struct %s has %d fields, size %d, ref %p", StructName, total_fields, offset, entry);
-
-   LogReturn();
+   log.trace("Struct %s has %d fields, size %d, ref %p", StructName, total_fields, offset, entry);
 
    if (!VarSet(prv->Structs, StructName, entry, sizeof(struct structentry) + buf_end)) {
+      log.debranch();
       luaL_error(Lua, GetErrorMsg(ERR_AllocMemory));
    }
 
@@ -494,15 +495,13 @@ ERROR make_struct(lua_State *Lua, CSTRING StructName, CSTRING Sequence)
 
 static LONG find_field(struct fstruct *Struct, CSTRING FieldName, CSTRING *StructName, LONG *Offset, LONG *Type, LONG *ArraySize)
 {
-   struct structentry *def;
+   structentry *def;
    if ((def = Struct->Def)) {
-      struct structdef_field *fields = (struct structdef_field *)(def + 1);
-
-      LONG i;
+      auto fields = (structdef_field *)(def + 1);
       ULONG field_hash = StrHash(FieldName, FALSE);
-      for (i=0; i < def->Total; i++) {
+      for (LONG i=0; i < def->Total; i++) {
          if (fields->NameHash IS field_hash) {
-            if ((fields->Type & FD_STRUCT) AND (StructName)) {
+            if ((fields->Type & FD_STRUCT) and (StructName)) {
                *StructName = (CSTRING)(fields + 1) + fields->StructOffset;
             }
             *Offset = fields->Offset;
@@ -513,7 +512,7 @@ static LONG find_field(struct fstruct *Struct, CSTRING FieldName, CSTRING *Struc
             }
             return TRUE;
          }
-         fields = ((APTR)fields) + fields->Length;
+         fields = (structdef_field *)((BYTE *)fields + fields->Length);
       }
    }
 
@@ -530,8 +529,8 @@ static int struct_size(lua_State *Lua)
 {
    CSTRING name;
    if ((name = lua_tostring(Lua, 1))) {
-      struct prvFluid *prv = Lua->Script->Head.ChildPrivate;
-      struct structentry *def;
+      auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
+      structentry *def;
       if (!VarGet(prv->Structs, name, &def, NULL)) {
          lua_pushnumber(Lua, def->Size);
          return 1;
@@ -539,7 +538,6 @@ static int struct_size(lua_State *Lua)
       else luaL_argerror(Lua, 1, "The requested structure is not defined.");
    }
    else luaL_argerror(Lua, 1, "Structure name required.");
-
    return 0;
 }
 
@@ -553,51 +551,52 @@ static int struct_size(lua_State *Lua)
 static int struct_new(lua_State *Lua)
 {
    CSTRING struct_name;
+
    if ((struct_name = lua_tostring(Lua, 1))) {
-      struct prvFluid *prv = Lua->Script->Head.ChildPrivate;
-      struct structentry *def;
+      auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
+      structentry *def;
       if (VarGet(prv->Structs, struct_name, &def, NULL)) {
          luaL_argerror(Lua, 1, "The requested structure is not defined.");
          return 0;
       }
 
-      MSG("struct.new(%p, fields: %d, size: %d)", def, def->Total, def->Size);
-
-      struct fstruct *fstruct;
-      if ((fstruct = (struct fstruct *)lua_newuserdata(Lua, sizeof(struct fstruct) + def->Size))) {
+      fstruct *fs;
+      if ((fs = (fstruct *)lua_newuserdata(Lua, sizeof(fstruct) + def->Size))) {
          luaL_getmetatable(Lua, "Fluid.struct");
          lua_setmetatable(Lua, -2);
 
-         fstruct->Data  = (APTR)(fstruct + 1);
-         ClearMemory(fstruct->Data, def->Size);
+         fs->Data  = (APTR)(fs + 1);
+         ClearMemory(fs->Data, def->Size);
 
-         fstruct->Def         = def;
-         fstruct->StructSize  = def->Size;
-         fstruct->AlignedSize = ALIGN64(def->Size);
-         fstruct->Deallocate  = FALSE;
+         fs->Def         = def;
+         fs->StructSize  = def->Size;
+         fs->AlignedSize = ALIGN64(def->Size);
+         fs->Deallocate  = FALSE;
 
          if (lua_istable(Lua, 2)) {
+            parasol::Log log(__FUNCTION__);
+            log.trace("struct.new(%p, fields: %d, size: %d)", def, def->Total, def->Size);
             ERROR field_error = ERR_Okay;
             CSTRING field_name = NULL;
             lua_pushnil(Lua);  // Access first key for lua_next()
             while (lua_next(Lua, 2) != 0) {
                if ((field_name = luaL_checkstring(Lua, -2))) {
                   LONG offset, type;
-                  if ((find_field(fstruct, field_name, NULL, &offset, &type, NULL))) {
-                     MSG("struct.set() Offset %d, $%.8x", offset, type);
-                     APTR address = fstruct->Data + offset;
+                  if ((find_field(fs, field_name, NULL, &offset, &type, NULL))) {
+                     log.trace("struct.set() Offset %d, $%.8x", offset, type);
+                     APTR address = (BYTE *)fs->Data + offset;
                      if (type & FD_STRING) {
-                        MSG("Strings not supported yet.");
+                        log.trace("Strings not supported yet.");
                         // In order to set strings, we'd need make a copy of the string received from
                         // Lua and free it when the field changes or the structure is destroyed.
                      }
-                     else if (type & FD_OBJECT)  ((OBJECTPTR *)address)[0] = lua_touserdata(Lua, 3);
+                     else if (type & FD_OBJECT)  ((OBJECTPTR *)address)[0] = (OBJECTPTR)lua_touserdata(Lua, 3);
                      else if (type & FD_LONG)   ((LONG *)address)[0]   = lua_tointeger(Lua, 3);
                      else if (type & FD_WORD)   ((WORD *)address)[0]   = lua_tointeger(Lua, 3);
                      else if (type & FD_BYTE)   ((BYTE *)address)[0]   = lua_tointeger(Lua, 3);
                      else if (type & FD_DOUBLE) ((DOUBLE *)address)[0] = lua_tonumber(Lua, 3);
                      else if (type & FD_FLOAT)  ((FLOAT *)address)[0]  = lua_tonumber(Lua, 3);
-                     else LogF("@","Cannot set unsupported field type for %s", field_name);
+                     else log.warning("Cannot set unsupported field type for %s", field_name);
                   }
                   else field_error = ERR_UnsupportedField;
                }
@@ -626,14 +625,15 @@ static int struct_new(lua_State *Lua)
 
 static int struct_structsize(lua_State *Lua)
 {
-   struct fstruct *fstruct;
-   if (!(fstruct = get_meta(Lua, lua_upvalueindex(1), "Fluid.struct"))) {
+   auto fs = (fstruct *)get_meta(Lua, lua_upvalueindex(1), "Fluid.struct");
+   if (!fs) {
       luaL_argerror(Lua, 1, "Expected struct.");
       return 0;
    }
-
-   lua_pushnumber(Lua, fstruct->StructSize);
-   return 1;
+   else {
+      lua_pushnumber(Lua, fs->StructSize);
+      return 1;
+   }
 }
 
 //****************************************************************************
@@ -642,14 +642,15 @@ static int struct_structsize(lua_State *Lua)
 
 static int struct_len(lua_State *Lua)
 {
-   struct fstruct *fstruct;
-   if (!(fstruct = (struct fstruct *)lua_touserdata(Lua, 1))) {
+   auto fs = (struct fstruct *)lua_touserdata(Lua, 1);
+   if (!fs) {
       luaL_argerror(Lua, 1, "Expected struct.");
       return 0;
    }
-
-   lua_pushnumber(Lua, fstruct->Def->Total);
-   return 1;
+   else {
+      lua_pushnumber(Lua, fs->Def->Total);
+      return 1;
+   }
 }
 
 //****************************************************************************
@@ -657,9 +658,9 @@ static int struct_len(lua_State *Lua)
 
 static int struct_get(lua_State *Lua)
 {
-   struct fstruct *fstruct;
+   auto fs = (struct fstruct *)lua_touserdata(Lua, 1);
 
-   if ((fstruct = (struct fstruct *)lua_touserdata(Lua, 1))) {
+   if (fs) {
       CSTRING fieldname;
       if ((fieldname = luaL_checkstring(Lua, 2))) {
          if (!StrCompare("structsize", fieldname, 0, STR_MATCH_CASE)) {
@@ -667,7 +668,7 @@ static int struct_get(lua_State *Lua)
             lua_pushcclosure(Lua, &struct_structsize, 1);
             return 1;
          }
-         else return get_fieldvalue(Lua, fstruct, fieldname);
+         else return get_fieldvalue(Lua, fs, fieldname);
       }
    }
 
@@ -676,23 +677,23 @@ static int struct_get(lua_State *Lua)
 
 //****************************************************************************
 
-static LONG get_fieldvalue(lua_State *Lua, struct fstruct *fstruct, CSTRING fieldname)
+static LONG get_fieldvalue(lua_State *Lua, struct fstruct *FS, CSTRING fieldname)
 {
    LONG offset, type, array_size;
    CSTRING structname = NULL;
 
-   if ((find_field(fstruct, fieldname, &structname, &offset, &type, &array_size))) {
-      if (!fstruct->Data) {
+   if ((find_field(FS, fieldname, &structname, &offset, &type, &array_size))) {
+      if (!FS->Data) {
          luaL_error(Lua, "Cannot reference field '%s' because struct address is NULL.", fieldname);
          return 0;
       }
 
-      APTR address = fstruct->Data + offset;
+      APTR address = (BYTE *)FS->Data + offset;
 
-      if ((type & FD_STRUCT) AND (type & FD_PTR) AND (structname)) { // Pointer to structure
+      if ((type & FD_STRUCT) and (type & FD_PTR) and (structname)) { // Pointer to structure
          if (((APTR *)address)[0]) {
             if (type & FD_ARRAY) { // Array of pointers to structures.
-               make_array(Lua, type, structname, address, array_size, FALSE);
+               make_array(Lua, type, structname, (APTR *)address, array_size, FALSE);
             }
             else push_struct(Lua->Script, ((APTR *)address)[0], structname, FALSE, FALSE);
          }
@@ -702,7 +703,7 @@ static LONG get_fieldvalue(lua_State *Lua, struct fstruct *fstruct, CSTRING fiel
          push_struct(Lua->Script, address, structname, FALSE, FALSE);
       }
       else if (type & FD_STRING) {
-         if (type & FD_ARRAY) make_array(Lua, FD_STRING, NULL, address, array_size, FALSE);
+         if (type & FD_ARRAY) make_array(Lua, FD_STRING, NULL, (APTR *)address, array_size, FALSE);
          else lua_pushstring(Lua, ((STRING *)address)[0]);
       }
       else if (type & FD_OBJECT) {
@@ -716,35 +717,35 @@ static LONG get_fieldvalue(lua_State *Lua, struct fstruct *fstruct, CSTRING fiel
          lua_pushnil(Lua);
       }
       else if (type & FD_FLOAT)   {
-         if (type & FD_ARRAY) make_array(Lua, FD_FLOAT, NULL, address, array_size, FALSE);
+         if (type & FD_ARRAY) make_array(Lua, FD_FLOAT, NULL, (APTR *)address, array_size, FALSE);
          else lua_pushnumber(Lua, ((FLOAT *)address)[0]);
       }
       else if (type & FD_DOUBLE) {
-         if (type & FD_ARRAY) make_array(Lua, FD_DOUBLE, NULL, address, array_size, FALSE);
+         if (type & FD_ARRAY) make_array(Lua, FD_DOUBLE, NULL, (APTR *)address, array_size, FALSE);
          else lua_pushnumber(Lua, ((DOUBLE *)address)[0]);
       }
       else if (type & FD_LARGE) {
-         if (type & FD_ARRAY) make_array(Lua, FD_LARGE, NULL, address, array_size, FALSE);
+         if (type & FD_ARRAY) make_array(Lua, FD_LARGE, NULL, (APTR *)address, array_size, FALSE);
          else lua_pushnumber(Lua, ((LARGE *)address)[0]);
       }
       else if (type & FD_LONG) {
-         if (type & FD_ARRAY) make_array(Lua, FD_LONG, NULL, address, array_size, FALSE);
+         if (type & FD_ARRAY) make_array(Lua, FD_LONG, NULL, (APTR *)address, array_size, FALSE);
          else lua_pushinteger(Lua, ((LONG *)address)[0]);
       }
       else if (type & FD_WORD) {
-         if (type & FD_ARRAY) make_array(Lua, FD_WORD, NULL, address, array_size, FALSE);
+         if (type & FD_ARRAY) make_array(Lua, FD_WORD, NULL, (APTR *)address, array_size, FALSE);
          else lua_pushinteger(Lua, ((WORD *)address)[0]);
       }
       else if (type & FD_BYTE) {
-         if ((type & FD_CUSTOM) AND (type & FD_ARRAY)) {
+         if ((type & FD_CUSTOM) and (type & FD_ARRAY)) {
             // Character arrays are interpreted as strings.  Use 'b' instead of 'c' if this behaviour is undesirable
-            lua_pushstring(Lua, ((UBYTE *)address));
+            lua_pushstring(Lua, (CSTRING)address);
          }
-         else if (type & FD_ARRAY) make_array(Lua, FD_BYTE, NULL, address, array_size, FALSE);
+         else if (type & FD_ARRAY) make_array(Lua, FD_BYTE, NULL, (APTR *)address, array_size, FALSE);
          else lua_pushinteger(Lua, ((UBYTE *)address)[0]);
       }
       else {
-         UBYTE buffer[80];
+         char buffer[80];
          StrFormat(buffer, sizeof(buffer), "Field '%s' does not use a supported type ($%.8x).", fieldname, type);
          luaL_error(Lua, buffer);
          return 0;
@@ -762,30 +763,31 @@ static LONG get_fieldvalue(lua_State *Lua, struct fstruct *fstruct, CSTRING fiel
 
 static int struct_set(lua_State *Lua)
 {
-   struct fstruct *fstruct;
+   auto fs = (struct fstruct *)lua_touserdata(Lua, 1);
 
-   if ((fstruct = (struct fstruct *)lua_touserdata(Lua, 1))) {
+   if (fs) {
       CSTRING ref;
       if ((ref = luaL_checkstring(Lua, 2))) {
-         if (!fstruct->Data) {
+         if (!fs->Data) {
             luaL_error(Lua, "Cannot reference field '%s' because struct address is NULL.", ref);
             return 0;
          }
 
          CSTRING structname;
          LONG offset, type;
-         if ((find_field(fstruct, ref, &structname, &offset, &type, NULL))) {
-            MSG("struct.set() %s, Offset %d, $%.8x", ref, offset, type);
+         if ((find_field(fs, ref, &structname, &offset, &type, NULL))) {
+            parasol::Log log;
+            log.trace("struct.set() %s, Offset %d, $%.8x", ref, offset, type);
 
-            APTR address = fstruct->Data + offset;
+            APTR address = (BYTE *)fs->Data + offset;
 
             if (type & FD_STRING) {
-               MSG("Strings not supported yet.");
+               log.trace("Strings not supported yet.");
                // In order to set strings, we'd need make a copy of the string received from
                // Lua and free it when the field changes or the structure is destroyed.
 
             }
-            else if (type & FD_OBJECT)  ((OBJECTPTR *)address)[0] = lua_touserdata(Lua, 3);
+            else if (type & FD_OBJECT)  ((OBJECTPTR *)address)[0] = (OBJECTPTR)lua_touserdata(Lua, 3);
             else if (type & FD_POINTER) ((APTR *)address)[0] = lua_touserdata(Lua, 3);
             else if (type & FD_FUNCTION);
             else if (type & FD_LONG)   ((LONG *)address)[0]   = lua_tointeger(Lua, 3);
@@ -808,12 +810,10 @@ static int struct_set(lua_State *Lua)
 
 static int struct_destruct(lua_State *Lua)
 {
-   struct fstruct *fstruct;
-   if ((fstruct = (struct fstruct *)luaL_checkudata(Lua, 1, "Fluid.struct"))) {
-      if (fstruct->Deallocate) {
-        if (FreeResource(fstruct->Data)) LogF("@struct_destruct","Data address %p is invalid.", fstruct->Data);
-        fstruct->Data = NULL;
-      }
+   auto fs = (fstruct *)luaL_checkudata(Lua, 1, "Fluid.struct");
+   if ((fs) AND (fs->Deallocate)) {
+      FreeResource(fs->Data);
+      fs->Data = NULL;
    }
 
    return 0;
@@ -822,13 +822,13 @@ static int struct_destruct(lua_State *Lua)
 //****************************************************************************
 // Register the fstruct interface.
 
-static const struct luaL_reg structlib_functions[] = {
+static const luaL_reg structlib_functions[] = {
    { "new",   struct_new },
    { "size",  struct_size },
    { NULL, NULL }
 };
 
-static const struct luaL_reg structlib_methods[] = {
+static const luaL_reg structlib_methods[] = {
    { "__index",    struct_get },
    { "__newindex", struct_set },
    { "__len",      struct_len },
@@ -838,7 +838,8 @@ static const struct luaL_reg structlib_methods[] = {
 
 void register_struct_class(lua_State *Lua)
 {
-   MSG("Registering struct interface.");
+   parasol::Log log(__FUNCTION__);
+   log.trace("Registering struct interface.");
 
    luaL_newmetatable(Lua, "Fluid.struct");
    lua_pushstring(Lua, "__index");
