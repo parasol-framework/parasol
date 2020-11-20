@@ -1,4 +1,17 @@
 
+#define PRV_SCRIPT
+#define PRV_FLUID
+#define PRV_FLUID_MODULE
+#include <parasol/main.h>
+#include <parasol/modules/fluid.h>
+#include <inttypes.h>
+#include "lua.h"
+#include "lualib.h"
+#include "lauxlib.h"
+#include "lj_obj.h"
+#include "hashes.h"
+#include "defs.h"
+
 #include <ffi.h>
 
 static int module_call(lua_State *);
@@ -849,7 +862,7 @@ static LONG process_results(struct prvFluid *prv, APTR resultsidx, const struct 
 ** Register the module interface.
 */
 
-static void register_module_class(lua_State *Lua)
+void register_module_class(lua_State *Lua)
 {
    static const struct luaL_reg modlib_functions[] = {
       { "new",  module_load },

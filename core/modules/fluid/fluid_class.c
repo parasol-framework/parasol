@@ -1,4 +1,30 @@
 
+#define PRV_SCRIPT
+#define PRV_FLUID
+#define PRV_FLUID_MODULE
+#include <parasol/main.h>
+#include <parasol/modules/xml.h>
+#include <parasol/modules/display.h>
+#include <parasol/modules/fluid.h>
+#include "lua.h"
+#include "lualib.h"
+#include "lauxlib.h"
+#include "lj_obj.h"
+#include "hashes.h"
+#include "defs.h"
+
+static ERROR run_script(objScript *Self);
+static ERROR stack_args(lua_State *, OBJECTID, const struct FunctionField *, APTR Buffer);
+static ERROR save_binary(objScript *Self, OBJECTID FileID);
+
+INLINE CSTRING check_bom(CSTRING Value)
+{
+   if (((UBYTE)Value[0] IS 0xef) AND ((UBYTE)Value[1] IS 0xbb) AND ((UBYTE)Value[2] IS 0xbf)) Value += 3; // UTF-8 BOM
+   else if (((UBYTE)Value[0] IS 0xfe) AND ((UBYTE)Value[1] IS 0xff)) Value += 2; // UTF-16 BOM big endian
+   else if (((UBYTE)Value[0] IS 0xff) AND ((UBYTE)Value[1] IS 0xfe)) Value += 2; // UTF-16 BOM little endian
+   return Value;
+}
+
 // Dump the variables of any global table
 
 static ERROR register_interfaces(objScript *) __attribute__ ((unused));
@@ -108,7 +134,7 @@ static int global_newindex(lua_State *Lua) // Write global variable via proxy
 // Only to be used immediately after a failed lua_pcall().  Lua stores a description of the error that occurred on the
 // stack, this will be popped and copied to the ErrorString field.
 
-static void process_error(objScript *Self, CSTRING Procedure)
+void process_error(objScript *Self, CSTRING Procedure)
 {
    struct prvFluid *prv = Self->Head.ChildPrivate;
 
@@ -936,7 +962,7 @@ static ERROR save_binary(objScript *Self, OBJECTID FileID)
 
 //****************************************************************************
 
-static ERROR run_script(objScript *Self)
+ERROR run_script(objScript *Self)
 {
    struct prvFluid *prv = Self->Head.ChildPrivate;
 
@@ -1154,7 +1180,7 @@ static ERROR register_interfaces(objScript *Self)
 
 //****************************************************************************
 
-static ERROR create_fluid(void)
+ERROR create_fluid(void)
 {
    return(CreateObject(ID_METACLASS, 0, &clFluid,
       FID_BaseClassID|TLONG,    ID_SCRIPT,

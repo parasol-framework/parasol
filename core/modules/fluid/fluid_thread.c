@@ -13,6 +13,18 @@ variables with its creator, except via existing conventional means such as a Key
 
 *****************************************************************************/
 
+#define PRV_SCRIPT
+#define PRV_FLUID
+#define PRV_FLUID_MODULE
+#include <parasol/main.h>
+#include <parasol/modules/fluid.h>
+#include "lua.h"
+#include "lualib.h"
+#include "lauxlib.h"
+#include "lj_obj.h"
+#include "hashes.h"
+#include "defs.h"
+
 static ERROR thread_script_entry(objThread *);
 static ERROR thread_script_callback(objThread *);
 
@@ -338,7 +350,7 @@ static const struct luaL_reg threadlib_methods[] = {
    { NULL, NULL }
 };
 
-static void register_thread_class(lua_State *Lua)
+void register_thread_class(lua_State *Lua)
 {
    MSG("Registering thread interface.");
 

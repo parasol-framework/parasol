@@ -47,7 +47,8 @@ set_module_defaults (${MOD})
 
 add_dependencies (${MOD} libffi luajit)
 
-target_sources (${MOD} PRIVATE "${MOD}.c")
+target_sources (${MOD} PRIVATE "${MOD}.c" "fluid_module.c" "fluid_thread.c" "fluid_struct.c"
+   "fluid_number.c" "fluid_input.c" "fluid_functions.c" "fluid_objects.c" "fluid_array.c" "fluid_class.c")
 
 target_include_directories (${MOD} PRIVATE
    "${CMAKE_BINARY_DIR}/libffi-3.3/include"

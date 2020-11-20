@@ -29,9 +29,40 @@ terminated arrays, use [0].
 
 *****************************************************************************/
 
+#define PRV_SCRIPT
+#define PRV_FLUID
+#define PRV_FLUID_MODULE
+#include <parasol/main.h>
+#include <parasol/modules/fluid.h>
+#include <inttypes.h>
+#include "lua.h"
+#include "lualib.h"
+#include "lauxlib.h"
+#include "lj_obj.h"
+#include "hashes.h"
+#include "defs.h"
+
 #define MAX_STRUCT_DEF 2048 // Struct definitions are typically 100 - 400 bytes.
 
 static LONG get_fieldvalue(lua_State *, struct fstruct *, CSTRING);
+
+static LONG get_ptr_ref(struct references *Ref, CPTR Address)
+{
+   LONG i;
+   for (i=0; i < Ref->Index; i++) {
+      if (Address IS Ref->List[i].Address) return Ref->List[i].Ref;
+   }
+   return 0;
+}
+
+static void set_ptr_ref(struct references *Ref, CPTR Address, LONG Resource)
+{
+   if (Ref->Index < ARRAYSIZE(Ref->List)-1) {
+      LONG i = Ref->Index++;
+      Ref->List[i].Address = Address;
+      Ref->List[i].Ref = Resource;
+   }
+}
 
 //****************************************************************************
 // Create a standard Lua table and copy the struct values to that table.  Pushes nil if there was a conversion issue.
@@ -39,7 +70,7 @@ static LONG get_fieldvalue(lua_State *, struct fstruct *, CSTRING);
 //
 // NOTE: In the event of an error code being returned, no value is pushed to the stack.
 
-static ERROR named_struct_to_table(lua_State *Lua, CSTRING StructName, APTR Address)
+ERROR named_struct_to_table(lua_State *Lua, CSTRING StructName, APTR Address)
 {
    struct prvFluid *prv = Lua->Script->Head.ChildPrivate;
    struct structentry *def;
@@ -52,7 +83,7 @@ static ERROR named_struct_to_table(lua_State *Lua, CSTRING StructName, APTR Addr
    }
 }
 
-static ERROR struct_to_table(lua_State *Lua, struct references *References, struct structentry *StructDef, CPTR Address)
+ERROR struct_to_table(lua_State *Lua, struct references *References, struct structentry *StructDef, CPTR Address)
 {
    // Do not push a Lua value in the event of an error.
 
@@ -175,7 +206,7 @@ static ERROR struct_to_table(lua_State *Lua, struct references *References, stru
 //****************************************************************************
 // Use this for creating a struct on the Lua stack.
 
-static struct fstruct * push_struct(objScript *Self, APTR Address, CSTRING StructName, BYTE Deallocate, BYTE AllowEmpty)
+struct fstruct * push_struct(objScript *Self, APTR Address, CSTRING StructName, BYTE Deallocate, BYTE AllowEmpty)
 {
    FMSG("push_struct()","Struct: %s, Address: %p, Deallocate: %d", StructName, Address, Deallocate);
 
@@ -199,7 +230,7 @@ static struct fstruct * push_struct(objScript *Self, APTR Address, CSTRING Struc
    }
 }
 
-static struct fstruct * push_struct_def(lua_State *Lua, APTR Address, struct structentry *StructDef, BYTE Deallocate)
+struct fstruct * push_struct_def(lua_State *Lua, APTR Address, struct structentry *StructDef, BYTE Deallocate)
 {
    struct fstruct *fstruct;
    if ((fstruct = (struct fstruct *)lua_newuserdata(Lua, sizeof(struct fstruct)))) {
@@ -223,7 +254,7 @@ static struct fstruct * push_struct_def(lua_State *Lua, APTR Address, struct str
 ** This function makes a structure definition which can be passed to struct.new()
 */
 
-static int MAKESTRUCT(lua_State *Lua)
+int MAKESTRUCT(lua_State *Lua)
 {
    CSTRING sequence, name;
 
@@ -402,7 +433,7 @@ static ERROR generate_structdef(objScript *Self, CSTRING StructName, CSTRING Seq
 
 //****************************************************************************
 
-static ERROR make_struct(lua_State *Lua, CSTRING StructName, CSTRING Sequence)
+ERROR make_struct(lua_State *Lua, CSTRING StructName, CSTRING Sequence)
 {
    if ((!StructName) OR (!Sequence)) {
       luaL_error(Lua, "Missing struct name and/or definition.");
@@ -805,7 +836,7 @@ static const struct luaL_reg structlib_methods[] = {
    { NULL, NULL }
 };
 
-static void register_struct_class(lua_State *Lua)
+void register_struct_class(lua_State *Lua)
 {
    MSG("Registering struct interface.");
 
