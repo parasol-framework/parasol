@@ -18,10 +18,12 @@ variables with its creator, except via existing conventional means such as a Key
 #define PRV_FLUID_MODULE
 #include <parasol/main.h>
 #include <parasol/modules/fluid.h>
-#include "lua.h"
-#include "lualib.h"
+
+extern "C" {
 #include "lauxlib.h"
 #include "lj_obj.h"
+}
+
 #include "hashes.h"
 #include "defs.h"
 
@@ -67,7 +69,7 @@ static int thread_script(lua_State *Lua)
             };
             thSetData(thread, &cb, sizeof(cb));
 
-            SetPointer(thread, FID_Callback, &thread_script_callback);
+            SetPointer(thread, FID_Callback, (CPTR)&thread_script_callback);
          }
 
          if (acActivate(thread)) {
@@ -99,13 +101,14 @@ static ERROR thread_script_entry(objThread *Thread)
 
 static ERROR thread_script_callback(objThread *Thread)
 {
+   parasol::Log log("thread");
    struct thread_callback *cb;
 
    if ((!GetPointer(Thread, FID_Data, &cb)) AND (cb)) {
       objScript *script;
       if (!AccessObject(cb->mainScriptID, 4000, &script)) {
-         struct prvFluid *prv;
-         if (!(prv = script->Head.ChildPrivate)) return LogCode(ERR_ObjectCorrupt);
+         auto prv = (prvFluid *)script->Head.ChildPrivate;
+         if (!prv) return log.warning(ERR_ObjectCorrupt);
          scCallback(script, cb->callbackID, NULL, 0);
          luaL_unref(prv->Lua, LUA_REGISTRYINDEX, cb->callbackID);
          ReleaseObject(script);
@@ -120,6 +123,8 @@ static ERROR thread_script_callback(objThread *Thread)
 
 static int thread_action(lua_State *Lua)
 {
+   parasol::Log log(__FUNCTION__);
+
    // Args: Object (1), Action (2), Callback (3), Key (4), Parameters...
 
    struct object *object;
@@ -170,7 +175,7 @@ static int thread_action(lua_State *Lua)
    else callback.Type = 0;
 
    LONG argsize = 0;
-   const struct FunctionField *args = NULL;
+   const FunctionField *args = NULL;
    OBJECTPTR obj;
    ERROR error = ERR_Okay;
 
@@ -179,10 +184,10 @@ static int thread_action(lua_State *Lua)
       args = glActions[action_id].Args;
    }
 
-   FMSG("thread_action","#%d/%p, Action: %s/%d, Key: %d, Args: %d", object->ObjectID, object->prvObject, action, action_id, key, argsize);
+   log.trace("#%d/%p, Action: %s/%d, Key: %d, Args: %d", object->ObjectID, object->prvObject, action, action_id, key, argsize);
 
    if (argsize > 0) {
-      UBYTE argbuffer[argsize+8]; // +8 for overflow protection in build_args()
+      BYTE argbuffer[argsize+8]; // +8 for overflow protection in build_args()
       LONG resultcount;
 
       if (!(error = build_args(Lua, args, argsize, argbuffer, &resultcount))) {
@@ -196,7 +201,7 @@ static int thread_action(lua_State *Lua)
                   release_object(object);
                }
             }
-            else LogErrorMsg("Actions that return results have not been tested/supported for release of resources.");
+            else log.warning("Actions that return results have not been tested/supported for release of resources.");
          }
       }
       else {
@@ -214,7 +219,7 @@ static int thread_action(lua_State *Lua)
          error = ActionThread(action_id, obj, NULL, &callback, key);
          release_object(object);
       }
-      else error = PostError(ERR_AccessObject);
+      else error = log.warning(ERR_AccessObject);
    }
 
    if ((error) AND (callback.Type)) luaL_unref(Lua, LUA_REGISTRYINDEX, callback.Script.ProcedureID);
@@ -227,6 +232,7 @@ static int thread_action(lua_State *Lua)
 
 static int thread_method(lua_State *Lua)
 {
+   parasol::Log log(__FUNCTION__);
    struct object *object;
    CSTRING method;
 
@@ -234,15 +240,15 @@ static int thread_method(lua_State *Lua)
 
    if ((object = (struct object *)luaL_checkudata(Lua, 1, "Fluid.obj"))) {
       if ((method = luaL_checkstring(Lua, 2))) {
-         struct rkMetaClass *class;
-         struct MethodArray *table;
+         rkMetaClass *mc;
+         MethodArray *table;
          LONG total_methods, i;
 
-         if (!(class = FindClass(object->ClassID))) {
+         if (!(mc = FindClass(object->ClassID))) {
             luaL_error(Lua, "Failed to resolve class %d", object->ClassID);
          }
 
-         if ((!GetFieldArray(class, FID_Methods, &table, &total_methods)) AND (table)) {
+         if ((!GetFieldArray(mc, FID_Methods, &table, &total_methods)) AND (table)) {
             BYTE found = FALSE;
             for (i=1; i < total_methods+1; i++) {
                if ((table[i].Name) AND (!StrMatch(table[i].Name, method))) { found = TRUE; break; }
@@ -258,7 +264,7 @@ static int thread_method(lua_State *Lua)
                   release_object(object);
                }
 
-               const struct FunctionField *args = table[i].Args;
+               const FunctionField *args = table[i].Args;
                LONG argsize = table[i].Size;
                LONG action_id = table[i].MethodID;
                ERROR error;
@@ -278,10 +284,10 @@ static int thread_method(lua_State *Lua)
                else callback.Type = 0;
 
                if (argsize > 0) {
-                  UBYTE argbuffer[argsize+8]; // +8 for overflow protection in build_args()
+                  BYTE argbuffer[argsize+8]; // +8 for overflow protection in build_args()
                   LONG resultcount;
 
-                  lua_remove(Lua, 1);
+                  lua_remove(Lua, 1); // Remove all 4 required arguments so that the user's custom parameters are then left on the stack
                   lua_remove(Lua, 1);
                   lua_remove(Lua, 1);
                   lua_remove(Lua, 1);
@@ -296,7 +302,7 @@ static int thread_method(lua_State *Lua)
                               release_object(object);
                            }
                         }
-                        else LogErrorMsg("Actions that return results have not been tested/supported for release of resources.");
+                        else log.warning("Actions that return results have not been tested/supported for release of resources.");
                      }
                   }
                   else {
@@ -323,7 +329,7 @@ static int thread_method(lua_State *Lua)
             }
          }
 
-         luaL_error(Lua, "No '%s' method for class %s.", method, class->ClassName);
+         luaL_error(Lua, "No '%s' method for class %s.", method, mc->ClassName);
          return 0;
       }
       else luaL_argerror(Lua, 2, "Action name required.");
