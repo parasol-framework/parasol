@@ -17,17 +17,21 @@ obj.find(), push_object(), or children created with some_object.new() are marked
 #include <parasol/main.h>
 #include <parasol/modules/fluid.h>
 #include <inttypes.h>
-#include "lua.h"
-#include "lualib.h"
-#include "lauxlib.h"
-#include "lj_obj.h"
+
+extern "C" {
+ #include "lua.h"
+ #include "lualib.h"
+ #include "lauxlib.h"
+ #include "lj_obj.h"
+}
+
 #include "hashes.h"
 #include "defs.h"
 
 #define RMSG(a...) //MSG(a) // Enable if you want to debug results returned from functions, actions etc
 
 static int object_call(lua_State *);
-static LONG get_results(lua_State *, const struct FunctionField *, CPTR);
+static LONG get_results(lua_State *, const FunctionField *, const BYTE *);
 static int getfield(lua_State *, struct object *, CSTRING);
 static ERROR set_object_field(lua_State *, OBJECTPTR, CSTRING, LONG);
 
@@ -47,7 +51,7 @@ static int object_newindex(lua_State *Lua);
 INLINE void SET_CONTEXT(lua_State *Lua, APTR Function)
 {
    lua_pushvalue(Lua, 1); // Duplicate the object reference
-   lua_pushcclosure(Lua, Function, 1); // C function to call - the number indicates the number of values pushed onto the stack that are to be associated as private values relevant to the C function being called
+   lua_pushcclosure(Lua, (lua_CFunction)Function, 1); // C function to call - the number indicates the number of values pushed onto the stack that are to be associated as private values relevant to the C function being called
 }
 
 //****************************************************************************
@@ -71,15 +75,15 @@ static LONG get_action_info(lua_State *Lua, LONG ClassID, CSTRING action, const 
    }
 
    if (!action_id) { // Search methods
-      objMetaClass *class;
-      if (!(class = FindClass(ClassID))) {
+      objMetaClass *mc;
+      if (!(mc = FindClass(ClassID))) {
          luaL_error(Lua, GetErrorMsg(ERR_Search));
          return 0;
       }
 
       struct MethodArray *table;
       LONG total_methods;
-      if ((!GetFieldArray(class, FID_Methods, &table, &total_methods)) AND (table)) {
+      if ((!GetFieldArray(mc, FID_Methods, &table, &total_methods)) AND (table)) {
          LONG i;
          for (i=1; i < total_methods+1; i++) {
             if ((table[i].Name) AND (!StrMatch(action, table[i].Name))) {
@@ -90,7 +94,7 @@ static LONG get_action_info(lua_State *Lua, LONG ClassID, CSTRING action, const 
             }
          }
       }
-      else LogF("@","No methods declared for class %s, cannot call %s()", class->ClassName, action);
+      else LogF("@","No methods declared for class %s, cannot call %s()", mc->ClassName, action);
    }
 
    return action_id;
@@ -112,7 +116,7 @@ static int object_new(lua_State *Lua)
    CSTRING class_name;
    CLASSID class_id;
 
-   struct prvFluid *prv = Lua->Script->Head.ChildPrivate;
+   auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
 
    LONG objflags = 0;
    LONG type = lua_type(Lua, 1);
@@ -236,12 +240,12 @@ static int object_new(lua_State *Lua)
 static int object_newchild(lua_State *Lua)
 {
    struct object *parent;
-   if (!(parent = get_meta(Lua, lua_upvalueindex(1), "Fluid.obj"))) {
+   if (!(parent = (struct object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj"))) {
       luaL_argerror(Lua, 1, "Expected object.");
       return 0;
    }
 
-   struct prvFluid *prv = Lua->Script->Head.ChildPrivate;
+   auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
 
    CSTRING class_name;
    CLASSID class_id;
@@ -405,6 +409,45 @@ ERROR push_object_id(lua_State *Lua, OBJECTID ObjectID)
 ** The fluid object itself can be found by using the name "self".
 */
 
+static int object_find_private(lua_State *Lua, OBJECTPTR obj)
+{
+   // Private objects discovered by obj.find() have to be treated as an external reference at all times
+   // (access must controlled by access_object() and release_object() calls).
+
+   auto_load_include(Lua, obj->Class);
+
+   struct object *object = (struct object *)lua_newuserdata(Lua, sizeof(struct object)); // +1 stack
+   ClearMemory(object, sizeof(struct object));
+   luaL_getmetatable(Lua, "Fluid.obj"); // +1 stack
+   lua_setmetatable(Lua, -2); // -1 stack
+
+   object->prvObject   = NULL;
+   object->ObjectID    = obj->UniqueID;
+   object->ClassID     = obj->SubID ? obj->SubID : obj->ClassID;
+   object->Class       = FindClass(object->ClassID); //obj->Class;
+   object->Detached    = TRUE;
+   object->Locked      = FALSE;
+   object->AccessCount = 0;
+   return 1;
+}
+
+static int object_find_public(lua_State *Lua, OBJECTID object_id)
+{
+   struct object *object = (struct object *)lua_newuserdata(Lua, sizeof(struct object));
+   ClearMemory(object, sizeof(struct object));
+   luaL_getmetatable(Lua, "Fluid.obj");
+   lua_setmetatable(Lua, -2);
+
+   object->prvObject   = NULL;
+   object->ObjectID    = object_id;
+   object->ClassID     = GetClassID(object_id);
+   object->Class       = FindClass(object->ClassID);
+   object->Detached    = TRUE;
+   object->Locked      = FALSE;
+   object->AccessCount = 0;
+   return 1;
+}
+
 static int object_find(lua_State *Lua)
 {
    OBJECTPTR obj;
@@ -426,72 +469,33 @@ static int object_find(lua_State *Lua)
       MSG("obj.find(%s, $%.8x)", object_name, class_id);
 
       if ((!StrMatch("self", object_name)) AND (!class_id)) {
-         obj = (OBJECTPTR)Lua->Script;
-         goto private_object;
+         return object_find_private(Lua, (OBJECTPTR)Lua->Script);
       }
       else if (!StrMatch("owner", object_name)) {
          if ((obj = GetObjectPtr(Lua->Script->Head.OwnerID))) {
-            goto private_object;
+            return object_find_private(Lua, obj);
          }
          else return 0;
       }
 
       if (!FindPrivateObject(object_name, &obj)) {
-         // Private objects discovered by obj.find() have to be treated as an external reference at all times
-         // (access must controlled by access_object() and release_object() calls).
-private_object:
-         auto_load_include(Lua, obj->Class);
-
-         {
-            struct object *object = (struct object *)lua_newuserdata(Lua, sizeof(struct object)); // +1 stack
-            ClearMemory(object, sizeof(struct object));
-            luaL_getmetatable(Lua, "Fluid.obj"); // +1 stack
-            lua_setmetatable(Lua, -2); // -1 stack
-
-            object->prvObject   = NULL;
-            object->ObjectID    = obj->UniqueID;
-            object->ClassID     = obj->SubID ? obj->SubID : obj->ClassID;
-            object->Class       = FindClass(object->ClassID); //obj->Class;
-            object->Detached    = TRUE;
-            object->Locked      = FALSE;
-            object->AccessCount = 0;
-         }
-         return 1;
+         return object_find_private(Lua, obj);
       }
       else if (!FastFindObject(object_name, class_id, &object_id, 1, NULL)) {
-public_object:
-         {
-            struct object *object = (struct object *)lua_newuserdata(Lua, sizeof(struct object));
-            ClearMemory(object, sizeof(struct object));
-            luaL_getmetatable(Lua, "Fluid.obj");
-            lua_setmetatable(Lua, -2);
-
-            object->prvObject   = NULL;
-            object->ObjectID    = object_id;
-            object->ClassID     = GetClassID(object_id);
-            object->Class       = FindClass(object->ClassID);
-            object->Detached    = TRUE;
-            object->Locked      = FALSE;
-            object->AccessCount = 0;
-         }
-         return 1;
+         return object_find_public(Lua, object_id);
       }
       else LogF("7obj.find","Unable to find object '%s'", object_name);
    }
    else if ((type IS LUA_TNUMBER) AND ((object_id = lua_tointeger(Lua, 1)))) {
       MSG("obj.find(#%d)", object_id);
 
-      if (CheckObjectIDExists(object_id) != ERR_Okay) {
-         return 0;
-      }
-      else if (object_id < 0) {
-         goto public_object;
-      }
+      if (CheckObjectIDExists(object_id) != ERR_Okay) return 0;
+      else if (object_id < 0) return object_find_public(Lua, object_id);
       else {
-         UBYTE buffer[32] = "#";
+         char buffer[32] = "#";
          IntToStr(object_id, buffer+1, sizeof(buffer)-1);
          if (!FindPrivateObject(buffer, &obj)) {
-            goto private_object;
+            return object_find_private(Lua, obj);
          }
       }
    }
@@ -508,7 +512,7 @@ public_object:
 static int object_class(lua_State *Lua)
 {
    struct object *query;
-   if (!(query = get_meta(Lua, 1, "Fluid.obj"))) {
+   if (!(query = (struct object *)get_meta(Lua, 1, "Fluid.obj"))) {
       luaL_argerror(Lua, 1, "Expected object.");
       return 0;
    }
@@ -540,7 +544,7 @@ static int object_children(lua_State *Lua)
    MSG("obj.children()");
 
    struct object *object;
-   if (!(object = get_meta(Lua, lua_upvalueindex(1), "Fluid.obj"))) {
+   if (!(object = (struct object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj"))) {
       luaL_argerror(Lua, 1, "Expected object.");
       return 0;
    }
@@ -585,7 +589,7 @@ static int object_lock(lua_State *Lua)
 {
    struct object *object;
 
-   if (!(object = get_meta(Lua, lua_upvalueindex(1), "Fluid.obj"))) {
+   if (!(object = (struct object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj"))) {
       luaL_argerror(Lua, 1, "Expected object.");
       return 0;
    }
@@ -618,7 +622,7 @@ static int object_lock(lua_State *Lua)
 static int object_detach(lua_State *Lua)
 {
    struct object *object;
-   if (!(object = get_meta(Lua, lua_upvalueindex(1), "Fluid.obj"))) {
+   if (!(object = (struct object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj"))) {
       luaL_argerror(Lua, 1, "Expected object.");
       return 0;
    }
@@ -647,7 +651,7 @@ static int object_exists(lua_State *Lua)
 {
    struct object *object;
 
-   if ((object = get_meta(Lua, lua_upvalueindex(1), "Fluid.obj"))) {
+   if ((object = (struct object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj"))) {
       OBJECTPTR obj;
       if ((obj = access_object(object))) {
          release_object(object);
@@ -668,12 +672,12 @@ static int object_exists(lua_State *Lua)
 static int object_subscribe(lua_State *Lua)
 {
    struct object *object;
-   if (!(object = get_meta(Lua, lua_upvalueindex(1), "Fluid.obj"))) {
+   if (!(object = (struct object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj"))) {
       luaL_error(Lua, "Expected object.");
       return 0;
    }
 
-   struct prvFluid *prv = Lua->Script->Head.ChildPrivate;
+   auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
 
    CSTRING action;
    if (!(action = lua_tostring(Lua, 1))) {
@@ -747,10 +751,10 @@ static int object_subscribe(lua_State *Lua)
 
 static int object_unsubscribe(lua_State *Lua)
 {
-   struct prvFluid *prv = Lua->Script->Head.ChildPrivate;
+   auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
 
    struct object *object;
-   if (!(object = get_meta(Lua, lua_upvalueindex(1), "Fluid.obj"))) {
+   if (!(object = (struct object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj"))) {
       luaL_error(Lua, "Expected object.");
       return 0;
    }
@@ -812,7 +816,7 @@ static int object_unsubscribe(lua_State *Lua)
 static int object_delaycall(lua_State *Lua)
 {
    struct object *obj;
-   if (!(obj = get_meta(Lua, lua_upvalueindex(1), "Fluid.obj"))) {
+   if (!(obj = (struct object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj"))) {
       luaL_argerror(Lua, 1, "Expected object.");
       return 0;
    }
@@ -931,25 +935,25 @@ static int object_index(lua_State *Lua)
          }
          else {
             switch (StrHash(code, 0)) {
-               case HASH_LOCK:        SET_CONTEXT(Lua, object_lock); return 1;
-               case HASH_CHILDREN:    SET_CONTEXT(Lua, object_children); return 1;
-               case HASH_DETACH:      SET_CONTEXT(Lua, object_detach); return 1;
-               case HASH_GET:         SET_CONTEXT(Lua, object_get); return 1;
-               case HASH_NEW:         SET_CONTEXT(Lua, object_newchild); return 1;
+               case HASH_LOCK:        SET_CONTEXT(Lua, (APTR)object_lock); return 1;
+               case HASH_CHILDREN:    SET_CONTEXT(Lua, (APTR)object_children); return 1;
+               case HASH_DETACH:      SET_CONTEXT(Lua, (APTR)object_detach); return 1;
+               case HASH_GET:         SET_CONTEXT(Lua, (APTR)object_get); return 1;
+               case HASH_NEW:         SET_CONTEXT(Lua, (APTR)object_newchild); return 1;
                case HASH_VAR:
-               case HASH_GETVAR:      SET_CONTEXT(Lua, object_getvar); return 1;
-               case HASH_SET:         SET_CONTEXT(Lua, object_set); return 1;
-               case HASH_SETVAR:      SET_CONTEXT(Lua, object_setvar); return 1;
-               case HASH_DELAYCALL:   SET_CONTEXT(Lua, object_delaycall); return 1;
-               case HASH_EXISTS:      SET_CONTEXT(Lua, object_exists); return 1;
-               case HASH_SUBSCRIBE:   SET_CONTEXT(Lua, object_subscribe); return 1;
-               case HASH_UNSUBSCRIBE: SET_CONTEXT(Lua, object_unsubscribe); return 1;
+               case HASH_GETVAR:      SET_CONTEXT(Lua, (APTR)object_getvar); return 1;
+               case HASH_SET:         SET_CONTEXT(Lua, (APTR)object_set); return 1;
+               case HASH_SETVAR:      SET_CONTEXT(Lua, (APTR)object_setvar); return 1;
+               case HASH_DELAYCALL:   SET_CONTEXT(Lua, (APTR)object_delaycall); return 1;
+               case HASH_EXISTS:      SET_CONTEXT(Lua, (APTR)object_exists); return 1;
+               case HASH_SUBSCRIBE:   SET_CONTEXT(Lua, (APTR)object_subscribe); return 1;
+               case HASH_UNSUBSCRIBE: SET_CONTEXT(Lua, (APTR)object_unsubscribe); return 1;
                default: {
                   // Default to retrieving the field name.  It's a good solution given the aforementioned string checks,
                   // so long as there are no fields named 'access' or 'release' and the user doesn't write field names
                   // with odd caps.
 
-                  struct prvFluid *prv = Lua->Script->Head.ChildPrivate;
+                  auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
                   prv->CaughtError = getfield(Lua, object, code);
                   if (!prv->CaughtError) return 1;
                   //if (prv->ThrowErrors) luaL_error(Lua, GetErrorMsg);
@@ -968,7 +972,7 @@ static int object_index(lua_State *Lua)
 
 static int object_next_pair(lua_State *Lua)
 {
-   struct FieldArray *fields = lua_touserdata(Lua, lua_upvalueindex(1));
+   FieldArray *fields = (FieldArray *)lua_touserdata(Lua, lua_upvalueindex(1));
    LONG field_total = lua_tointeger(Lua, lua_upvalueindex(2));
    LONG field_index = lua_tointeger(Lua, lua_upvalueindex(3));
 
@@ -988,7 +992,7 @@ static int object_pairs(lua_State *Lua)
    struct object *object;
 
    if ((object = (struct object *)luaL_checkudata(Lua, 1, "Fluid.obj"))) {
-      struct FieldArray *fields;
+      FieldArray *fields;
       LONG total;
       if (!GetFieldArray(object->Class, FID_Fields, &fields, &total)) {
          lua_pushlightuserdata(Lua, fields);
@@ -1008,7 +1012,7 @@ static int object_pairs(lua_State *Lua)
 
 static int object_next_ipair(lua_State *Lua)
 {
-   struct FieldArray *fields = lua_touserdata(Lua, lua_upvalueindex(1));
+   FieldArray *fields = (FieldArray *)lua_touserdata(Lua, lua_upvalueindex(1));
    LONG field_total = lua_tointeger(Lua, lua_upvalueindex(2));
    LONG field_index = lua_tointeger(Lua, 2); // Arg 2 is the previous index.  It's nil if this is the first iteration.
 
@@ -1025,7 +1029,7 @@ static int object_ipairs(lua_State *Lua)
    struct object *object;
 
    if ((object = (struct object *)luaL_checkudata(Lua, 1, "Fluid.obj"))) {
-      struct FieldArray *fields;
+      FieldArray *fields;
       LONG total;
       if (!GetFieldArray(object->Class, FID_Fields, &fields, &total)) {
          lua_pushlightuserdata(Lua, fields);
@@ -1041,8 +1045,8 @@ static int object_ipairs(lua_State *Lua)
 
 //****************************************************************************
 
-#include "fluid_objects_indexes.c"
-#include "fluid_objects_calls.c"
+#include "fluid_objects_indexes.cpp"
+#include "fluid_objects_calls.cpp"
 
 //****************************************************************************
 // Register the object interface.
