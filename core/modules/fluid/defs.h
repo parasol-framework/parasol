@@ -229,7 +229,7 @@ int code_writer(lua_State *, CPTR, size_t, void *) __attribute__((unused));
 ERROR create_fluid(void);
 void free_references(lua_State *, struct references *);
 void get_line(objScript *, LONG, STRING, LONG);
-APTR get_meta(lua_State *Lua, LONG Arg, STRING MetaTable);
+APTR get_meta(lua_State *Lua, LONG Arg, CSTRING);
 void hook_debug(lua_State *, lua_Debug *) __attribute__ ((unused));
 ERROR load_include(objScript *, CSTRING);
 int MAKESTRUCT(lua_State *);

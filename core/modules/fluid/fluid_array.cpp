@@ -32,10 +32,12 @@ To convert the C array values to a Lua table:
 #define PRV_FLUID_MODULE
 #include <parasol/main.h>
 #include <parasol/modules/fluid.h>
-#include "lua.h"
-#include "lualib.h"
-#include "lauxlib.h"
-#include "lj_obj.h"
+
+extern "C" {
+ #include "lauxlib.h"
+ #include "lj_obj.h"
+}
+
 #include "hashes.h"
 #include "defs.h"
 
@@ -56,31 +58,31 @@ static int array_copy(lua_State *);
 
 void make_array(lua_State *Lua, LONG FieldType, CSTRING StructName, APTR *List, LONG Total, BYTE Cache)
 {
+   parasol::Log log(__FUNCTION__);
    objScript *Self = Lua->Script;
-   struct prvFluid *prv = Self->Head.ChildPrivate;
+   auto prv = (prvFluid *)Self->Head.ChildPrivate;
 
    FieldType &= (FD_DOUBLE|FD_LARGE|FD_FLOAT|FD_POINTER|FD_STRING|FD_STRUCT|FD_FLOAT|FD_LONG|FD_WORD|FD_BYTE);
 
    if (FieldType & FD_STRING) FieldType = FD_STRING; // Eliminate confusion when FD_STRING|FD_POINTER might be combined
 
-   FMSG("~make_array()","Content: %p, Type: $%.8x, Struct: %s, Total: %d, Cache: %d", List, FieldType, StructName, Total, Cache);
+   log.traceBranch("Content: %p, Type: $%.8x, Struct: %s, Total: %d, Cache: %d", List, FieldType, StructName, Total, Cache);
 
    // Find the struct definition if this array references one.  Note that struct arrays can be pointer based if
    // FD_POINTER is used, otherwise it is presumed that they are sequential.
 
    struct structentry *sdef = NULL;
    if (FieldType & FD_STRUCT) {
-      if (!StructName) { lua_pushnil(Lua); LOGRETURN(); return; }
+      if (!StructName) { lua_pushnil(Lua); return; }
       {
          char struct_name[60];
          LONG i;
-         for (i=0; (i < sizeof(struct_name)-1) AND (StructName[i] != ':'); i++) struct_name[i] = StructName[i];
+         for (i=0; ((size_t)i < sizeof(struct_name)-1) and (StructName[i] != ':'); i++) struct_name[i] = StructName[i];
          struct_name[i] = 0;
 
          if (VarGet(prv->Structs, struct_name, &sdef, NULL) != ERR_Okay) {
-            LogF("@make_array","Struct '%s' is not registered.", StructName);
+            log.warning("Struct '%s' is not registered.", StructName);
             lua_pushnil(Lua);
-            LOGRETURN();
             return;
          }
       }
@@ -97,13 +99,12 @@ void make_array(lua_State *Lua, LONG FieldType, CSTRING StructName, APTR *List, 
    else if (FieldType & FD_STRUCT) type_size = sdef->Size; // The length of sequential structs cannot be calculated.
    else {
       lua_pushnil(Lua);
-      LOGRETURN();
       return;
    }
 
    // Calculate the array length if the total is unspecified.
 
-   if ((List) AND (Total < 0)) {
+   if ((List) and (Total < 0)) {
       if (FieldType & FD_LONG)        for (Total=0; ((LONG *)List)[Total]; Total++);
       else if (FieldType & FD_WORD)   for (Total=0; ((WORD *)List)[Total]; Total++);
       else if (FieldType & FD_BYTE)   for (Total=0; ((BYTE *)List)[Total]; Total++);
@@ -129,64 +130,59 @@ void make_array(lua_State *Lua, LONG FieldType, CSTRING StructName, APTR *List, 
          alloc = TRUE;
          if (AllocMemory(array_size, MEM_DATA, &List, NULL) != ERR_Okay) {
             lua_pushnil(Lua);
-            LOGRETURN();
             return;
          }
       }
    }
 
-   if ((Cache) AND (List) AND (Total > 0)) {
+   if ((Cache) and (List) and (Total > 0)) {
       if (FieldType & FD_STRING) {
-         LONG i;
-         for (i=0; i < Total; i++) cache_size += StrLength(List[i]) + 1;
+         for (LONG i=0; i < Total; i++) cache_size += StrLength((CSTRING)List[i]) + 1;
       }
    }
 
    LONG struct_nsize = 0;
    if (StructName) struct_nsize = StrLength(StructName) + 1;
 
-   struct array *array;
-   if ((array = (struct array *)lua_newuserdata(Lua, sizeof(struct array) + cache_size + struct_nsize))) {
-      array->Total     = Total;
-      array->Type      = FieldType;
-      array->ArraySize = array_size;
-      array->StructDef = sdef;
-      array->TypeSize  = type_size;
-      array->ReadOnly  = (FieldType & FD_READ) ? TRUE : FALSE;
+   struct array *a;
+   if ((a = (struct array *)lua_newuserdata(Lua, sizeof(struct array) + cache_size + struct_nsize))) {
+      a->Total     = Total;
+      a->Type      = FieldType;
+      a->ArraySize = array_size;
+      a->StructDef = sdef;
+      a->TypeSize  = type_size;
+      a->ReadOnly  = (FieldType & FD_READ) ? TRUE : FALSE;
 
-      if ((Cache) AND (List) AND (Total > 0)) {
-         array->ptrPointer = (APTR *)(array + 1);
+      if ((Cache) and (List) and (Total > 0)) {
+         a->ptrPointer = (APTR *)(a + 1);
 
          if (FieldType & FD_STRING) {
-            CopyMemory(List, array->ptrPointer, Total * sizeof(APTR));
+            CopyMemory(List, a->ptrPointer, Total * sizeof(APTR));
 
-            STRING str = (STRING)(array->ptrString + Total);
-            LONG i;
-            for (i=0; i < Total; i++) {
-               array->ptrString[i] = str;
-               str += StrCopy(List[i], str, COPY_ALL) + 1;
+            STRING str = (STRING)(a->ptrString + Total);
+            for (LONG i=0; i < Total; i++) {
+               a->ptrString[i] = str;
+               str += StrCopy((CSTRING)List[i], str, COPY_ALL) + 1;
             }
          }
-         else CopyMemory(List, array->ptrPointer, cache_size);
+         else CopyMemory(List, a->ptrPointer, cache_size);
 
          if (alloc) FreeResource(List);
-         array->Allocated = FALSE;
+         a->Allocated = FALSE;
       }
       else {
-         array->ptrPointer = List;
-         array->Allocated = alloc;
+         a->ptrPointer = List;
+         a->Allocated = alloc;
       }
 
       luaL_getmetatable(Lua, "Fluid.array");
       lua_setmetatable(Lua, -2);
-      MSG("Succeeded in creating array.");
       // The array object will be returned on the stack due to the lua_newuserdata() call
    }
    else {
       if (alloc) FreeResource(List);
       lua_pushnil(Lua); // Must return a value even if it is nil
    }
-   LOGRETURN();
 }
 
 /*****************************************************************************
@@ -203,25 +199,24 @@ void make_array(lua_State *Lua, LONG FieldType, CSTRING StructName, APTR *List, 
 
 static int array_new(lua_State *Lua)
 {
-   FMSG("array_new()","");
-
    CSTRING type;
    if ((type = lua_tostring(Lua, 2))) {
+      parasol::Log log(__FUNCTION__);
       LONG total;
-      if (!StrMatch("bytestring", type)) {
-         // Represent a string as an array of bytes
 
+      log.trace("");
+      if (!StrMatch("bytestring", type)) { // Represent a string as an array of bytes
          CSTRING str;
          size_t len;
          if ((str = lua_tolstring(Lua, 1, &len))) {
             MSG("Generating byte array from string of length %d: %.30s", (int)len, str);
 
-            struct array *array;
-            if ((array = (struct array *)lua_newuserdata(Lua, sizeof(struct array) + len + 1))) {
-               array->Total   = len;
-               array->Type    = FD_BYTE;
-               array->ptrByte = (BYTE *)(array + 1);
-               CopyMemory(str, array->ptrByte, len + 1);
+            struct array *a;
+            if ((a = (struct array *)lua_newuserdata(Lua, sizeof(struct array) + len + 1))) {
+               a->Total   = len;
+               a->Type    = FD_BYTE;
+               a->ptrByte = (UBYTE *)(a + 1);
+               CopyMemory(str, a->ptrByte, len + 1);
 
                luaL_getmetatable(Lua, "Fluid.array");
                lua_setmetatable(Lua, -2);
@@ -272,13 +267,13 @@ static int array_new(lua_State *Lua)
 
 static int array_getstring(lua_State *Lua)
 {
-   struct array *array;
-   if (!(array = get_meta(Lua, lua_upvalueindex(1), "Fluid.array"))) {
+   auto a = (struct array *)get_meta(Lua, lua_upvalueindex(1), "Fluid.array");
+   if (!a) {
       luaL_error(Lua, "Expected array in upvalue.");
       return 0;
    }
 
-   if (array->Type != FD_BYTE) {
+   if (a->Type != FD_BYTE) {
       luaL_error(Lua, "getstring() only works with byte arrays.");
       return 0;
    }
@@ -287,7 +282,7 @@ static int array_getstring(lua_State *Lua)
    if (lua_isnil(Lua, 1)) start = 0;
    else {
       start = lua_tointeger(Lua, 1);
-      if ((start < 0) OR (start >= array->Total)) {
+      if ((start < 0) or (start >= a->Total)) {
          luaL_argerror(Lua, 1, "Invalid starting index.");
          return 0;
       }
@@ -295,15 +290,15 @@ static int array_getstring(lua_State *Lua)
 
    if (lua_isnumber(Lua,2)) {
       len = lua_tointeger(Lua, 2);
-      if ((len < 1) OR (start+len > array->Total)) {
-         luaL_error(Lua, "Invalid length: Index %d < %d < %d", start, start+len, array->Total);
+      if ((len < 1) or (start+len > a->Total)) {
+         luaL_error(Lua, "Invalid length: Index %d < %d < %d", start, start+len, a->Total);
          return 0;
       }
    }
-   else len = array->Total - start;
+   else len = a->Total - start;
 
    if (len < 1) lua_pushstring(Lua, "");
-   else lua_pushlstring(Lua, array->ptrByte + start, len);
+   else lua_pushlstring(Lua, (CSTRING)a->ptrByte + start, len);
 
    return 1;
 }
@@ -316,93 +311,80 @@ static int array_getstring(lua_State *Lua)
 
 static int array_get(lua_State *Lua)
 {
-   struct array *array;
-   if ((array = (struct array *)luaL_checkudata(Lua, 1, "Fluid.array"))) {
-
+   auto a = (struct array *)luaL_checkudata(Lua, 1, "Fluid.array");
+   if (a) {
+      parasol::Log log(__FUNCTION__);
       CSTRING field;
       if (lua_type(Lua, 2) IS LUA_TNUMBER) { // Array reference discovered, e.g. myarray[18]
          LONG index = lua_tonumber(Lua, 2);
 
-         FMSG("~array_get()","Index: %d", index);
+         if ((index < 1) or (index > a->Total)) {
+            luaL_error(Lua, "Invalid array index: 1 < %d <= %d", index, a->Total);
+            return 0;
+         }
 
-            // Check that the index is legal
+         log.trace("array.index(%d)", index);
 
-            if ((index < 1) OR (index > array->Total)) {
-               LOGRETURN();
-               luaL_error(Lua, "Invalid array index: 1 < %d <= %d", index, array->Total);
-               return 0;
-            }
+         index--; // Convert Lua index to C index
+         switch(a->Type & (FD_DOUBLE|FD_LARGE|FD_FLOAT|FD_POINTER|FD_STRUCT|FD_STRING|FD_LONG|FD_WORD|FD_BYTE)) {
+            case FD_STRUCT:  if (struct_to_table(Lua, NULL, a->StructDef, a->ptrPointer[index]) != ERR_Okay) lua_pushnil(Lua); break;
+            case FD_STRING:  lua_pushstring(Lua, a->ptrString[index]); break;
+            case FD_POINTER: lua_pushlightuserdata(Lua, a->ptrPointer[index]); break;
+            case FD_FLOAT:   lua_pushnumber(Lua, a->ptrFloat[index]); break;
+            case FD_DOUBLE:  lua_pushnumber(Lua, a->ptrDouble[index]); break;
+            case FD_LARGE:   lua_pushnumber(Lua, a->ptrLarge[index]); break;
+            case FD_LONG:    lua_pushinteger(Lua, a->ptrLong[index]); break;
+            case FD_WORD:    lua_pushinteger(Lua, a->ptrWord[index]); break;
+            case FD_BYTE:    lua_pushinteger(Lua, a->ptrByte[index]); break;
+            default:
+               log.warning("Unsupported array type $%.8x", a->Type);
+               lua_pushnil(Lua);
+               break;
+         }
 
-            MSG("array.index(%d)", index);
-
-            index--; // Convert Lua index to C index
-            switch(array->Type & (FD_DOUBLE|FD_LARGE|FD_FLOAT|FD_POINTER|FD_STRUCT|FD_STRING|FD_LONG|FD_WORD|FD_BYTE)) {
-               case FD_STRUCT:  if (struct_to_table(Lua, NULL, array->StructDef, array->ptrPointer[index]) != ERR_Okay) lua_pushnil(Lua); break;
-               case FD_STRING:  lua_pushstring(Lua, array->ptrString[index]); break;
-               case FD_POINTER: lua_pushlightuserdata(Lua, array->ptrPointer[index]); break;
-               case FD_FLOAT:   lua_pushnumber(Lua, array->ptrFloat[index]); break;
-               case FD_DOUBLE:  lua_pushnumber(Lua, array->ptrDouble[index]); break;
-               case FD_LARGE:   lua_pushnumber(Lua, array->ptrLarge[index]); break;
-               case FD_LONG:    lua_pushinteger(Lua, array->ptrLong[index]); break;
-               case FD_WORD:    lua_pushinteger(Lua, array->ptrWord[index]); break;
-               case FD_BYTE:    lua_pushinteger(Lua, array->ptrByte[index]); break;
-               default:
-                  LogErrorMsg("Unsupported array type $%.8x", array->Type);
-                  lua_pushnil(Lua);
-                  break;
-            }
-
-         LOGRETURN();
          return 1;
       }
       else if ((field = luaL_checkstring(Lua, 2))) {
-         FMSG("~array_get()","Field: %s", field);
+         log.trace("Field: %s", field);
 
-         if (!StrMatch("table", field)) {
-            // Convert the array to a standard Lua table.
-
-            lua_createtable(Lua, array->Total, 0); // Create a new table on the stack.
-            LONG i;
-            switch(array->Type & (FD_DOUBLE|FD_LARGE|FD_FLOAT|FD_POINTER|FD_STRUCT|FD_STRING|FD_LONG|FD_WORD|FD_BYTE)) {
+         if (!StrMatch("table", field)) { // Convert the array to a standard Lua table.
+            lua_createtable(Lua, a->Total, 0); // Create a new table on the stack.
+            switch(a->Type & (FD_DOUBLE|FD_LARGE|FD_FLOAT|FD_POINTER|FD_STRUCT|FD_STRING|FD_LONG|FD_WORD|FD_BYTE)) {
                case FD_STRUCT:  {
                   struct references *ref;
                   if ((ref = alloc_references())) {
-                     for (i=0; i < array->Total; i++) {
+                     for (LONG i=0; i < a->Total; i++) {
                         lua_pushinteger(Lua, i);
-                        if (struct_to_table(Lua, ref, array->StructDef, array->ptrPointer[i]) != ERR_Okay) lua_pushnil(Lua);
+                        if (struct_to_table(Lua, ref, a->StructDef, a->ptrPointer[i]) != ERR_Okay) lua_pushnil(Lua);
                         lua_settable(Lua, -3);
                      }
                      free_references(Lua, ref);
                   }
                   break;
                }
-               case FD_STRING:  for (i=0; i < array->Total; i++) { lua_pushinteger(Lua, i); lua_pushstring(Lua, array->ptrString[i]); lua_settable(Lua, -3); } break;
-               case FD_POINTER: for (i=0; i < array->Total; i++) { lua_pushinteger(Lua, i); lua_pushlightuserdata(Lua, array->ptrPointer[i]); lua_settable(Lua, -3); } break;
-               case FD_FLOAT:   for (i=0; i < array->Total; i++) { lua_pushinteger(Lua, i); lua_pushnumber(Lua, array->ptrFloat[i]); lua_settable(Lua, -3); } break;
-               case FD_DOUBLE:  for (i=0; i < array->Total; i++) { lua_pushinteger(Lua, i); lua_pushnumber(Lua, array->ptrDouble[i]); lua_settable(Lua, -3); } break;
-               case FD_LARGE:   for (i=0; i < array->Total; i++) { lua_pushinteger(Lua, i); lua_pushnumber(Lua, array->ptrLarge[i]); lua_settable(Lua, -3); } break;
-               case FD_LONG:    for (i=0; i < array->Total; i++) { lua_pushinteger(Lua, i); lua_pushinteger(Lua, array->ptrLong[i]); lua_settable(Lua, -3); } break;
-               case FD_WORD:    for (i=0; i < array->Total; i++) { lua_pushinteger(Lua, i); lua_pushinteger(Lua, array->ptrWord[i]); lua_settable(Lua, -3); } break;
-               case FD_BYTE:    for (i=0; i < array->Total; i++) { lua_pushinteger(Lua, i); lua_pushinteger(Lua, array->ptrByte[i]); lua_settable(Lua, -3); } break;
+               case FD_STRING:  for (LONG i=0; i < a->Total; i++) { lua_pushinteger(Lua, i); lua_pushstring(Lua, a->ptrString[i]); lua_settable(Lua, -3); } break;
+               case FD_POINTER: for (LONG i=0; i < a->Total; i++) { lua_pushinteger(Lua, i); lua_pushlightuserdata(Lua, a->ptrPointer[i]); lua_settable(Lua, -3); } break;
+               case FD_FLOAT:   for (LONG i=0; i < a->Total; i++) { lua_pushinteger(Lua, i); lua_pushnumber(Lua, a->ptrFloat[i]); lua_settable(Lua, -3); } break;
+               case FD_DOUBLE:  for (LONG i=0; i < a->Total; i++) { lua_pushinteger(Lua, i); lua_pushnumber(Lua, a->ptrDouble[i]); lua_settable(Lua, -3); } break;
+               case FD_LARGE:   for (LONG i=0; i < a->Total; i++) { lua_pushinteger(Lua, i); lua_pushnumber(Lua, a->ptrLarge[i]); lua_settable(Lua, -3); } break;
+               case FD_LONG:    for (LONG i=0; i < a->Total; i++) { lua_pushinteger(Lua, i); lua_pushinteger(Lua, a->ptrLong[i]); lua_settable(Lua, -3); } break;
+               case FD_WORD:    for (LONG i=0; i < a->Total; i++) { lua_pushinteger(Lua, i); lua_pushinteger(Lua, a->ptrWord[i]); lua_settable(Lua, -3); } break;
+               case FD_BYTE:    for (LONG i=0; i < a->Total; i++) { lua_pushinteger(Lua, i); lua_pushinteger(Lua, a->ptrByte[i]); lua_settable(Lua, -3); } break;
             }
 
-            LOGRETURN();
             return 1;
          }
          else if (!StrMatch("getstring", field)) {
             lua_pushvalue(Lua, 1); // Arg1: Duplicate the object reference
             lua_pushcclosure(Lua, array_getstring, 1);
-            LOGRETURN();
             return 1;
          }
          else if (!StrMatch("copy", field)) {
             lua_pushvalue(Lua, 1); // Arg1: Duplicate the object reference
             lua_pushcclosure(Lua, array_copy, 1);
-            LOGRETURN();
             return 1;
          }
 
-         LOGRETURN();
          luaL_error(Lua, "Reference to %s not recognised.", field);
       }
       else luaL_error(Lua, "No field reference provided");
@@ -418,45 +400,43 @@ static int array_get(lua_State *Lua)
 
 static int array_set(lua_State *Lua)
 {
-   struct array *array;
-   if ((array = (struct array *)luaL_checkudata(Lua, 1, "Fluid.array"))) {
-      if (array->ReadOnly) { luaL_error(Lua, "Array is read-only."); return 0; }
+   auto a = (struct array *)luaL_checkudata(Lua, 1, "Fluid.array");
+   if (a) {
+      if (a->ReadOnly) { luaL_error(Lua, "Array is read-only."); return 0; }
 
       if (lua_type(Lua, 2) IS LUA_TNUMBER) { // Array index
          LONG index = lua_tonumber(Lua, 2);
-         if ((index < 1) OR (index > array->Total)) {
-            LOGRETURN();
-            luaL_error(Lua, "Invalid array index: 1 < %d <= %d", index, array->Total);
+         if ((index < 1) or (index > a->Total)) {
+            luaL_error(Lua, "Invalid array index: 1 < %d <= %d", index, a->Total);
             return 0;
          }
 
          index--; // Convert Lua index to C index
 
-         if (array->Type & FD_STRUCT) {
-            if (array->Type & FD_POINTER) { // Array of struct pointers
+         if (a->Type & FD_STRUCT) {
+            if (a->Type & FD_POINTER) { // Array of struct pointers
                luaL_error(Lua, "Writing to struct pointer arrays not yet supported.");
             }
             else { // Array of sequential structs
                luaL_error(Lua, "Writing to struct arrays not yet supported.");
             }
          }
-         else if (array->Type & FD_STRING)  {
+         else if (a->Type & FD_STRING)  {
             //The code below would need a Lua reference to the string, or clone of it.
-            //array->ptrString[index]  = (STRING)lua_tostring(Lua, 3);
+            //a->ptrString[index]  = (STRING)lua_tostring(Lua, 3);
             luaL_error(Lua, "Writing to string arrays is not yet supported.");
          }
-         else if (array->Type & FD_POINTER) {
-            // Writing to pointer arrays is too dangerous
-            //array->ptrPointer[index] = lua_touserdata(Lua, 3);
+         else if (a->Type & FD_POINTER) { // Writing to pointer arrays is too dangerous
+            //a->ptrPointer[index] = lua_touserdata(Lua, 3);
             luaL_error(Lua, "Writing to pointer arrays is not supported.");
          }
-         else if (array->Type & FD_FLOAT)   array->ptrFloat[index]   = lua_tonumber(Lua, 3);
-         else if (array->Type & FD_DOUBLE)  array->ptrDouble[index]  = lua_tonumber(Lua, 3);
-         else if (array->Type & FD_LARGE)   array->ptrLarge[index]   = lua_tointeger(Lua, 3);
-         else if (array->Type & FD_LONG)    array->ptrLong[index]    = lua_tointeger(Lua, 3);
-         else if (array->Type & FD_WORD)    array->ptrWord[index]    = lua_tointeger(Lua, 3);
-         else if (array->Type & FD_BYTE)    array->ptrByte[index]    = lua_tointeger(Lua, 3);
-         else luaL_error(Lua, "Unsupported array type $%.8x", array->Type);
+         else if (a->Type & FD_FLOAT)   a->ptrFloat[index]   = lua_tonumber(Lua, 3);
+         else if (a->Type & FD_DOUBLE)  a->ptrDouble[index]  = lua_tonumber(Lua, 3);
+         else if (a->Type & FD_LARGE)   a->ptrLarge[index]   = lua_tointeger(Lua, 3);
+         else if (a->Type & FD_LONG)    a->ptrLong[index]    = lua_tointeger(Lua, 3);
+         else if (a->Type & FD_WORD)    a->ptrWord[index]    = lua_tointeger(Lua, 3);
+         else if (a->Type & FD_BYTE)    a->ptrByte[index]    = lua_tointeger(Lua, 3);
+         else luaL_error(Lua, "Unsupported array type $%.8x", a->Type);
       }
       else luaL_error(Lua, "Array index expected in 2nd argument.");
    }
@@ -472,13 +452,14 @@ static int array_set(lua_State *Lua)
 
 static int array_copy(lua_State *Lua)
 {
-   struct array *array;
-   if (!(array = get_meta(Lua, lua_upvalueindex(1), "Fluid.array"))) {
+   auto a = (struct array *)get_meta(Lua, lua_upvalueindex(1), "Fluid.array");
+
+   if (!a) {
       luaL_error(Lua, "Expected array in upvalue.");
       return 0;
    }
 
-   if (array->ReadOnly) { luaL_error(Lua, "Array is read-only."); return 0; }
+   if (a->ReadOnly) { luaL_error(Lua, "Array is read-only."); return 0; }
 
    LONG to_index = 1;
    if (!lua_isnumber(Lua, 2)) {
@@ -489,7 +470,7 @@ static int array_copy(lua_State *Lua)
       }
    }
 
-   size_t req_total = -1;
+   LONG req_total = -1;
    if (lua_isnumber(Lua, 3)) {
       req_total = lua_tointeger(Lua, 3);
       if (req_total < 1) { luaL_argerror(Lua, 3, "Invalid total."); return 0; }
@@ -497,16 +478,16 @@ static int array_copy(lua_State *Lua)
 
    struct array *src_array;
    size_t src_total;
-   const void *src;
+   BYTE *src;
    LONG src_typesize;
-   if ((src = luaL_checklstring(Lua, 1, &src_total))) {
+   if ((src = (BYTE *)luaL_checklstring(Lua, 1, &src_total))) {
       src_typesize = 1;
-      if (req_total > src_total) {
+      if ((size_t)req_total > src_total) {
          luaL_argerror(Lua, 3, "Invalid total.");
          return 0;
       }
    }
-   else if ((src_array = get_meta(Lua, 1, "Fluid.array"))) {
+   else if ((src_array = (struct array *)get_meta(Lua, 1, "Fluid.array"))) {
       src_typesize = src_array->TypeSize;
       src_total    = src_array->Total;
    }
@@ -517,17 +498,16 @@ static int array_copy(lua_State *Lua)
    else { luaL_argerror(Lua, 1, "String or array expected."); return 0; }
 
    to_index--; // Lua index to C index
-   if (to_index + src_total > array->Total) {
-      luaL_error(Lua, "Invalid index or total (%d+%d > %d).", to_index, src_total, array->Total);
+   if (to_index + src_total > (size_t)a->Total) {
+      luaL_error(Lua, "Invalid index or total (%d+%d > %d).", to_index, src_total, a->Total);
       return 0;
    }
 
-   if (src_typesize IS array->TypeSize) {
-      CopyMemory(src, array->ptrPointer + (to_index * src_typesize), req_total * src_typesize);
+   if (src_typesize IS a->TypeSize) {
+      CopyMemory(src, a->ptrPointer + (to_index * src_typesize), req_total * src_typesize);
    }
    else {
-      LONG i;
-      for (i=0; i < req_total; i++) {
+      for (LONG i=0; i < req_total; i++) {
          LARGE s;
          switch (src_typesize) {
             case 1: s = ((BYTE *)src)[0]; break;
@@ -537,7 +517,7 @@ static int array_copy(lua_State *Lua)
             default: s = 0; break;
          }
 
-         switch (array->TypeSize) {
+         switch (a->TypeSize) {
             case 1: ((BYTE *)src)[0]  = s; break;
             case 2: ((WORD *)src)[0]  = s; break;
             case 4: ((LONG *)src)[0]  = s; break;
@@ -556,16 +536,14 @@ static int array_copy(lua_State *Lua)
 
 static int array_destruct(lua_State *Lua)
 {
-   struct array *array;
+   auto a = (struct array *)luaL_checkudata(Lua, 1, "Fluid.array");
 
-   if ((array = (struct array *)luaL_checkudata(Lua, 1, "Fluid.array"))) {
-      if (array->Allocated) {
-         if (FreeResource(array->ptrPointer)) LogF("@array_destruct","Data address %p is invalid.", array->ptrPointer);
-         array->ptrPointer = NULL;
-         array->Allocated = FALSE;
-         array->Total = 0;
-         array->Type = 0;
-      }
+   if ((a) and (a->Allocated)) {
+      FreeResource(a->ptrPointer);
+      a->ptrPointer = NULL;
+      a->Allocated = FALSE;
+      a->Total = 0;
+      a->Type = 0;
    }
 
    return 0;
@@ -576,12 +554,9 @@ static int array_destruct(lua_State *Lua)
 
 static int array_len(lua_State *Lua)
 {
-   struct array *array;
-   if ((array = (struct array *)luaL_checkudata(Lua, 1, "Fluid.array"))) {
-      lua_pushinteger(Lua, array->Total);
-   }
+   auto a = (struct array *)luaL_checkudata(Lua, 1, "Fluid.array");
+   if (a) lua_pushinteger(Lua, a->Total);
    else lua_pushinteger(Lua, 0);
-
    return 1;
 }
 

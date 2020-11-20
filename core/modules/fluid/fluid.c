@@ -179,7 +179,7 @@ void free_references(lua_State *Lua, struct references *Ref)
 
 //****************************************************************************
 
-APTR get_meta(lua_State *Lua, LONG Arg, STRING MetaTable)
+APTR get_meta(lua_State *Lua, LONG Arg, CSTRING MetaTable)
 {
    APTR address;
    if ((address = (struct object *)lua_touserdata(Lua, Arg))) {
