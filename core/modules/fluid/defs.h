@@ -1,4 +1,8 @@
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define LUA_COMPILED "-- $FLUID:compiled"
 #define VER_FLUID 1.0
 #define SIZE_READ 1024
@@ -214,7 +218,7 @@ extern OBJECTPTR modFluid;
 extern struct DisplayBase *DisplayBase;
 extern OBJECTPTR clFluid;
 
-APTR access_object(struct object *);
+OBJECTPTR access_object(struct object *);
 struct references * alloc_references(void);
 void auto_load_include(lua_State *Lua, objMetaClass *MetaClass);
 ERROR build_args(lua_State *, const struct FunctionField *, LONG, APTR, LONG *);
@@ -292,3 +296,7 @@ INLINE ULONG STRUCTHASH(CSTRING String)
    }
    return hash;
 }
+
+#ifdef __cplusplus
+}
+#endif

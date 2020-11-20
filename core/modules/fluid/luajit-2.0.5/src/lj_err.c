@@ -764,19 +764,32 @@ LUA_API lua_CFunction lua_atpanic(lua_State *L, lua_CFunction panicf)
 }
 
 /* Forwarders for the public API (C calling convention and no LJ_NORET). */
+#ifdef __cplusplus
+LUA_API int lua_error [[ noreturn ]] (lua_State *L)
+#else
 LUA_API int lua_error(lua_State *L)
+#endif
 {
   lj_err_run(L);
   return 0;  /* unreachable */
 }
 
+#ifdef __cplusplus
+LUALIB_API int luaL_argerror [[ noreturn ]] (lua_State *L, int narg, const char *msg)
+#else
 LUALIB_API int luaL_argerror(lua_State *L, int narg, const char *msg)
+#endif
 {
   err_argmsg(L, narg, msg);
   return 0;  /* unreachable */
 }
 
+
+#ifdef __cplusplus
+LUALIB_API int luaL_typerror [[ noreturn ]] (lua_State *L, int narg, const char *xname)
+#else
 LUALIB_API int luaL_typerror(lua_State *L, int narg, const char *xname)
+#endif
 {
   lj_err_argtype(L, narg, xname);
   return 0;  /* unreachable */
@@ -789,7 +802,11 @@ LUALIB_API void luaL_where(lua_State *L, int level)
   lj_debug_addloc(L, "", frame, size ? frame+size : NULL);
 }
 
+#ifdef __cplusplus
+LUALIB_API int luaL_error [[ noreturn ]] (lua_State *L, const char *fmt, ...)
+#else
 LUALIB_API int luaL_error(lua_State *L, const char *fmt, ...)
+#endif
 {
   const char *msg;
   va_list argp;

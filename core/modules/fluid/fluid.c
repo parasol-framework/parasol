@@ -200,7 +200,7 @@ APTR get_meta(lua_State *Lua, LONG Arg, STRING MetaTable)
 ** Returns a pointer to an object (if the object exists).
 */
 
-APTR access_object(struct object *Object)
+OBJECTPTR access_object(struct object *Object)
 {
    if (Object->AccessCount) {
       Object->AccessCount++;
