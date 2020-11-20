@@ -8,6 +8,18 @@ The num interface provides support for processing a range of numeric types other
 
 *****************************************************************************/
 
+#define PRV_SCRIPT
+#define PRV_FLUID
+#define PRV_FLUID_MODULE
+#include <parasol/main.h>
+#include <parasol/modules/fluid.h>
+#include "lua.h"
+#include "lualib.h"
+#include "lauxlib.h"
+#include "lj_obj.h"
+#include "hashes.h"
+#include "defs.h"
+
 /*****************************************************************************
 ** Any Read accesses to the object will pass through here.
 */
@@ -163,7 +175,7 @@ static int number_tostring(lua_State *Lua)
 ** Register the number interface.
 */
 
-static void register_number_class(lua_State *Lua)
+void register_number_class(lua_State *Lua)
 {
    static const struct luaL_reg numlib_functions[] = {
       { "int",    number_i32 },

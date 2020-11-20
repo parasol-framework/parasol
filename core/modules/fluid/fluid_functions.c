@@ -1,7 +1,20 @@
 
+#define PRV_SCRIPT
+#define PRV_FLUID
+#define PRV_FLUID_MODULE
+#include <parasol/main.h>
+#include <parasol/modules/fluid.h>
+#include <inttypes.h>
+#include "lua.h"
+#include "lualib.h"
+#include "lauxlib.h"
+#include "lj_obj.h"
+#include "hashes.h"
+#include "defs.h"
+
 //****************************************************************************
 
-static void clear_subscriptions(objScript *Self)
+void clear_subscriptions(objScript *Self)
 {
    struct prvFluid *prv;
    if (!(prv = Self->Head.ChildPrivate)) return;
@@ -55,7 +68,7 @@ static void clear_subscriptions(objScript *Self)
 // This function also serves a dual purpose in that it can be used to raise exceptions when an error condition needs to
 // be propagated.
 
-static int fcmd_check(lua_State *Lua)
+int fcmd_check(lua_State *Lua)
 {
    LONG type = lua_type(Lua, 1);
    if (type IS LUA_TNUMBER) {
@@ -101,7 +114,7 @@ static int fcmd_check(lua_State *Lua)
 // Errors that are NOT treated as exceptions are Okay, False, LimitedSuccess, Cancelled, NothingDone, Continue, Skip,
 // Retry, DirEmpty.
 
-static int fcmd_catch_handler(lua_State *Lua)
+int fcmd_catch_handler(lua_State *Lua)
 {
    lua_Debug ar;
    struct prvFluid *prv = Lua->Script->Head.ChildPrivate;
@@ -115,7 +128,7 @@ static int fcmd_catch_handler(lua_State *Lua)
    return 1; // Return 1 to rethrow the exception table, no need to re-push the value
 }
 
-static int fcmd_catch(lua_State *Lua)
+int fcmd_catch(lua_State *Lua)
 {
    struct prvFluid *prv = Lua->Script->Head.ChildPrivate;
 
@@ -262,7 +275,7 @@ static int fcmd_catch(lua_State *Lua)
 // Processes incoming messages.  Returns the number of microseconds that elapsed, followed by the error from
 // ProcessMessages().  To process messages until a QUIT message is received, call processMessages(-1)
 
-static int fcmd_processMessages(lua_State *Lua)
+int fcmd_processMessages(lua_State *Lua)
 {
    static volatile BYTE recursion = 0; // Intentionally accessible to all threads
 
@@ -318,7 +331,7 @@ static void receive_event(struct eventsub *Event, APTR Info, LONG InfoSize)
 //****************************************************************************
 // Usage: unsubscribeEvent(handle)
 
-static int fcmd_unsubscribe_event(lua_State *Lua)
+int fcmd_unsubscribe_event(lua_State *Lua)
 {
    struct prvFluid *prv;
    if (!(prv = Lua->Script->Head.ChildPrivate)) return 0;
@@ -353,7 +366,7 @@ static int fcmd_unsubscribe_event(lua_State *Lua)
 //****************************************************************************
 // Usage: error, handle = subscribeEvent("group.subgroup.name", function)
 
-static int fcmd_subscribe_event(lua_State *Lua)
+int fcmd_subscribe_event(lua_State *Lua)
 {
    CSTRING event;
    if (!(event = lua_tostring(Lua, 1))) {
@@ -458,7 +471,7 @@ static int fcmd_subscribe_event(lua_State *Lua)
 // Usage: msg("Message")
 // Prints a debug message, with no support for input parameters.  This is the safest way to call LogF().
 
-static int fcmd_msg(lua_State *Lua)
+int fcmd_msg(lua_State *Lua)
 {
    int n = lua_gettop(Lua);  // number of arguments
    int i;
@@ -482,7 +495,7 @@ static int fcmd_msg(lua_State *Lua)
 // Usage: print(...)
 // Prints a message to stderr.  On Android stderr is unavailable, so the message is printed in the debug output.
 
-static int fcmd_print(lua_State *Lua)
+int fcmd_print(lua_State *Lua)
 {
    int n = lua_gettop(Lua);  // number of arguments
    int i;
@@ -511,7 +524,7 @@ static int fcmd_print(lua_State *Lua)
 ** Usage: include "File1","File2","File3",...
 */
 
-static int fcmd_include(lua_State *Lua)
+int fcmd_include(lua_State *Lua)
 {
    if (!lua_isstring(Lua, 1)) {
       luaL_argerror(Lua, 1, "Include name(s) required.");
@@ -541,7 +554,7 @@ static int fcmd_include(lua_State *Lua)
 ** prevents multiple executions and the folder restriction improves security.
 */
 
-static int fcmd_require(lua_State *Lua)
+int fcmd_require(lua_State *Lua)
 {
    struct prvFluid *prv = Lua->Script->Head.ChildPrivate;
 
@@ -623,7 +636,7 @@ static int fcmd_require(lua_State *Lua)
 ** Returns miscellaneous information about the code's current state of execution.
 */
 
-static int fcmd_get_execution_state(lua_State *Lua)
+int fcmd_get_execution_state(lua_State *Lua)
 {
    struct prvFluid *prv = Lua->Script->Head.ChildPrivate;
 
@@ -642,7 +655,7 @@ static int fcmd_get_execution_state(lua_State *Lua)
 ** Loads a Fluid language file from any location and executes it.
 */
 
-static int fcmd_loadfile(lua_State *Lua)
+int fcmd_loadfile(lua_State *Lua)
 {
    struct prvFluid *prv = Lua->Script->Head.ChildPrivate;
 
@@ -800,7 +813,7 @@ struct luaReader {
 
 static const char * code_reader_buffer(lua_State *, void *, size_t *);
 
-static int fcmd_exec(lua_State *Lua)
+int fcmd_exec(lua_State *Lua)
 {
    struct prvFluid *prv = Lua->Script->Head.ChildPrivate;
 
@@ -851,7 +864,7 @@ static const char * code_reader_buffer(lua_State *Lua, void *Source, size_t *Res
 //****************************************************************************
 // Usage: arg = arg("Width", IfNullValue)
 
-static int fcmd_arg(lua_State *Lua)
+int fcmd_arg(lua_State *Lua)
 {
    objScript *Self = Lua->Script;
 
@@ -886,7 +899,7 @@ static int fcmd_arg(lua_State *Lua)
 ** return zeroval'.
 */
 
-static int fcmd_nz(lua_State *Lua)
+int fcmd_nz(lua_State *Lua)
 {
    LONG args = lua_gettop(Lua);
    if ((args != 2) AND (args != 1)) {

@@ -11,8 +11,22 @@ obj.find(), push_object(), or children created with some_object.new() are marked
 
 */
 
+#define PRV_SCRIPT
+#define PRV_FLUID
+#define PRV_FLUID_MODULE
+#include <parasol/main.h>
+#include <parasol/modules/fluid.h>
+#include <inttypes.h>
+#include "lua.h"
+#include "lualib.h"
+#include "lauxlib.h"
+#include "lj_obj.h"
+#include "hashes.h"
+#include "defs.h"
+
+#define RMSG(a...) //MSG(a) // Enable if you want to debug results returned from functions, actions etc
+
 static int object_call(lua_State *);
-static ERROR build_args(lua_State *, const struct FunctionField *, LONG, APTR, LONG *);
 static LONG get_results(lua_State *, const struct FunctionField *, CPTR);
 static int getfield(lua_State *, struct object *, CSTRING);
 static ERROR set_object_field(lua_State *, OBJECTPTR, CSTRING, LONG);
@@ -333,7 +347,7 @@ static int object_newchild(lua_State *Lua)
 //****************************************************************************
 // Throws exceptions.  Used for returning objects to the user.
 
-static struct object * push_object(lua_State *Lua, OBJECTPTR Object)
+struct object * push_object(lua_State *Lua, OBJECTPTR Object)
 {
    struct object *newobject;
    if ((newobject = (struct object *)lua_newuserdata(Lua, sizeof(struct object)))) {
@@ -360,7 +374,7 @@ static struct object * push_object(lua_State *Lua, OBJECTPTR Object)
 //****************************************************************************
 // Guaranteed to not throw exceptions.
 
-static ERROR push_object_id(lua_State *Lua, OBJECTID ObjectID)
+ERROR push_object_id(lua_State *Lua, OBJECTID ObjectID)
 {
    if (!ObjectID) { lua_pushnil(Lua); return ERR_Okay; }
 
@@ -1050,7 +1064,7 @@ static const struct luaL_reg objectlib_methods[] = {
    { NULL, NULL }
 };
 
-static void register_object_class(lua_State *Lua)
+void register_object_class(lua_State *Lua)
 {
    MSG("Registering object interface.");
 

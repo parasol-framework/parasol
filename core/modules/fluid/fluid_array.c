@@ -27,6 +27,18 @@ To convert the C array values to a Lua table:
 
 *****************************************************************************/
 
+#define PRV_SCRIPT
+#define PRV_FLUID
+#define PRV_FLUID_MODULE
+#include <parasol/main.h>
+#include <parasol/modules/fluid.h>
+#include "lua.h"
+#include "lualib.h"
+#include "lauxlib.h"
+#include "lj_obj.h"
+#include "hashes.h"
+#include "defs.h"
+
 static int array_copy(lua_State *);
 
 /*****************************************************************************
@@ -42,7 +54,7 @@ static int array_copy(lua_State *);
 ** Cache      - Set to TRUE if the array should be cached (important if the List is temporary data).
 */
 
-static void make_array(lua_State *Lua, LONG FieldType, CSTRING StructName, APTR *List, LONG Total, BYTE Cache)
+void make_array(lua_State *Lua, LONG FieldType, CSTRING StructName, APTR *List, LONG Total, BYTE Cache)
 {
    objScript *Self = Lua->Script;
    struct prvFluid *prv = Self->Head.ChildPrivate;
@@ -576,7 +588,7 @@ static int array_len(lua_State *Lua)
 //****************************************************************************
 // Register the array interface.
 
-static void register_array_class(lua_State *Lua)
+void register_array_class(lua_State *Lua)
 {
    static const struct luaL_reg functions[] = {
       { "new",  array_new },

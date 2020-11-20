@@ -25,7 +25,24 @@ For drag and drop operations, data can be requested from a source as follows:
 
 *****************************************************************************/
 
+#define PRV_SCRIPT
+#define PRV_FLUID
+#define PRV_FLUID_MODULE
+#include <parasol/main.h>
+#include <parasol/modules/surface.h>
+#include <parasol/modules/display.h>
+#include <parasol/modules/fluid.h>
+#include <inttypes.h>
+#include "lua.h"
+#include "lualib.h"
+#include "lauxlib.h"
+#include "lj_obj.h"
+#include "hashes.h"
+#include "defs.h"
+
 static int input_unsubscribe(lua_State *Lua);
+static void focus_event(lua_State *, evFocus *, LONG);
+static void key_event(struct finput *, evKey *, LONG);
 
 //****************************************************************************
 // Any Read accesses to the object will pass through here.
@@ -495,7 +512,7 @@ static int input_tostring(lua_State *Lua)
 
 //****************************************************************************
 
-static void register_input_class(lua_State *Lua)
+void register_input_class(lua_State *Lua)
 {
    static const struct luaL_reg inputlib_functions[] = {
       { "subscribe",   input_subscribe },

@@ -141,7 +141,7 @@ static int object_call(lua_State *Lua)
 //****************************************************************************
 // Build argument buffer for actions and methods.
 
-static ERROR build_args(lua_State *Lua, const struct FunctionField *args, LONG ArgsSize, APTR argbuffer, LONG *ResultCount)
+ERROR build_args(lua_State *Lua, const struct FunctionField *args, LONG ArgsSize, APTR argbuffer, LONG *ResultCount)
 {
    struct memory *memory;
    struct array *farray;
