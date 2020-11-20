@@ -291,6 +291,7 @@ ERROR Action(LONG ActionID, OBJECTPTR argObject, APTR Parameters)
    obj->ActionDepth++;
 
    rkMetaClass *cl = obj->Class;
+   auto log_depth = tlDepth;
 
    ERROR error;
    if (ActionID > 0) {
@@ -381,6 +382,9 @@ ERROR Action(LONG ActionID, OBJECTPTR argObject, APTR Parameters)
 
    prv_release(obj);
    tlContext = tlContext->Stack;
+
+   if (log_depth != tlDepth) log.warning("Call to #%d.%s() failed to debranch the log correctly (%d <> %d).", object_id, ActionTable[ActionID].Name, log_depth, tlDepth);
+
    return error;
 }
 
