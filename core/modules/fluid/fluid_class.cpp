@@ -6,22 +6,26 @@
 #include <parasol/modules/xml.h>
 #include <parasol/modules/display.h>
 #include <parasol/modules/fluid.h>
-#include "lua.h"
-#include "lualib.h"
-#include "lauxlib.h"
-#include "lj_obj.h"
+
+extern "C" {
+ #include "lua.h"
+ #include "lualib.h"
+ #include "lauxlib.h"
+ #include "lj_obj.h"
+}
+
 #include "hashes.h"
 #include "defs.h"
 
-static ERROR run_script(objScript *Self);
-static ERROR stack_args(lua_State *, OBJECTID, const struct FunctionField *, APTR Buffer);
-static ERROR save_binary(objScript *Self, OBJECTID FileID);
+static ERROR run_script(objScript *);
+static ERROR stack_args(lua_State *, OBJECTID, const FunctionField *, BYTE *);
+static ERROR save_binary(objScript *, OBJECTID);
 
 INLINE CSTRING check_bom(CSTRING Value)
 {
-   if (((UBYTE)Value[0] IS 0xef) AND ((UBYTE)Value[1] IS 0xbb) AND ((UBYTE)Value[2] IS 0xbf)) Value += 3; // UTF-8 BOM
-   else if (((UBYTE)Value[0] IS 0xfe) AND ((UBYTE)Value[1] IS 0xff)) Value += 2; // UTF-16 BOM big endian
-   else if (((UBYTE)Value[0] IS 0xff) AND ((UBYTE)Value[1] IS 0xfe)) Value += 2; // UTF-16 BOM little endian
+   if (((char)Value[0] IS 0xef) and ((char)Value[1] IS 0xbb) and ((char)Value[2] IS 0xbf)) Value += 3; // UTF-8 BOM
+   else if (((char)Value[0] IS 0xfe) and ((char)Value[1] IS 0xff)) Value += 2; // UTF-16 BOM big endian
+   else if (((char)Value[0] IS 0xff) and ((char)Value[1] IS 0xfe)) Value += 2; // UTF-16 BOM little endian
    return Value;
 }
 
@@ -32,7 +36,7 @@ static void dump_global_table(objScript *, STRING Global) __attribute__ ((unused
 
 static void dump_global_table(objScript *Self, STRING Global)
 {
-   lua_State *lua = ((struct prvFluid *)Self->Head.ChildPrivate)->Lua;
+   lua_State *lua = ((prvFluid *)Self->Head.ChildPrivate)->Lua;
    lua_getglobal(lua, Global);
    if (lua_istable(lua, -1) ) {
       lua_pushnil(lua);
@@ -49,7 +53,7 @@ static void dump_global_table(objScript *Self, STRING Global)
 static ERROR GET_Procedures(objScript *, STRING **, LONG *);
 
 static const struct FieldArray clFields[] = {
-   { "Procedures", FDF_VIRTUAL|FDF_ARRAY|FDF_STRING|FDF_ALLOC|FDF_R, 0, GET_Procedures, NULL },
+   { "Procedures", FDF_VIRTUAL|FDF_ARRAY|FDF_STRING|FDF_ALLOC|FDF_R, 0, (APTR)GET_Procedures, NULL },
    END_FIELD
 };
 
@@ -63,12 +67,12 @@ static ERROR FLUID_Init(objScript *, APTR);
 static ERROR FLUID_SaveToObject(objScript *, struct acSaveToObject *);
 
 static const struct ActionArray clActions[] = {
-   { AC_ActionNotify, FLUID_ActionNotify },
-   { AC_Activate,     FLUID_Activate },
-   { AC_DataFeed,     FLUID_DataFeed },
-   { AC_Free,         FLUID_Free },
-   { AC_Init,         FLUID_Init },
-   { AC_SaveToObject, FLUID_SaveToObject },
+   { AC_ActionNotify, (APTR)FLUID_ActionNotify },
+   { AC_Activate,     (APTR)FLUID_Activate },
+   { AC_DataFeed,     (APTR)FLUID_DataFeed },
+   { AC_Free,         (APTR)FLUID_Free },
+   { AC_Init,         (APTR)FLUID_Init },
+   { AC_SaveToObject, (APTR)FLUID_SaveToObject },
    { 0, NULL }
 };
 
@@ -78,8 +82,8 @@ static ERROR FLUID_GetProcedureID(objScript *, struct scGetProcedureID *);
 static ERROR FLUID_DerefProcedure(objScript *, struct scDerefProcedure *);
 
 static const struct MethodArray clMethods[] = {
-   { MT_ScGetProcedureID, FLUID_GetProcedureID, "GetProcedureID", NULL, 0 },
-   { MT_ScDerefProcedure, FLUID_DerefProcedure, "DerefProcedure", NULL, 0 },
+   { MT_ScGetProcedureID, (APTR)FLUID_GetProcedureID, "GetProcedureID", NULL, 0 },
+   { MT_ScDerefProcedure, (APTR)FLUID_DerefProcedure, "DerefProcedure", NULL, 0 },
    { 0, NULL, NULL, NULL, 0 }
 };
 
@@ -87,9 +91,8 @@ static const struct MethodArray clMethods[] = {
 
 static void free_all(objScript *Self)
 {
-   struct prvFluid *prv;
-
-   if (!(prv = Self->Head.ChildPrivate)) return; // Not a problem - indicates the object did not pass initialisation
+   auto prv = (prvFluid *)Self->Head.ChildPrivate;
+   if (!prv) return; // Not a problem - indicates the object did not pass initialisation
 
    clear_subscriptions(Self);
 
@@ -136,7 +139,7 @@ static int global_newindex(lua_State *Lua) // Write global variable via proxy
 
 void process_error(objScript *Self, CSTRING Procedure)
 {
-   struct prvFluid *prv = Self->Head.ChildPrivate;
+   auto prv = (prvFluid *)Self->Head.ChildPrivate;
 
    CSTRING header = "@";
    if (prv->CaughtError) {
@@ -151,7 +154,7 @@ void process_error(objScript *Self, CSTRING Procedure)
    CSTRING file = Self->Path;
    if (file) {
       LONG i = StrLength(file);
-      for (i=StrLength(file); (i > 0) AND (file[i-1] != '/') AND (file[i-1] != '\\'); i--);
+      for (i=StrLength(file); (i > 0) and (file[i-1] != '/') and (file[i-1] != '\\'); i--);
       LogF(header, "%s: %s", file+i, str);
    }
    else LogF(header, "%s: Error: %s", Procedure, str);
@@ -159,8 +162,8 @@ void process_error(objScript *Self, CSTRING Procedure)
    // NB: CurrentLine is set by hook_debug(), so if debugging isn't active, you don't know what line we're on.
 
    if (Self->CurrentLine >= 0) {
-      UBYTE line[60];
-      get_line(Self, Self->CurrentLine, line, sizeof(line));
+      char line[60];
+      get_line(Self, Self->CurrentLine, (STRING)line, sizeof(line));
       LogF(header, "Line %d: %s...", Self->CurrentLine+1+Self->LineOffset, line);
    }
 }
@@ -170,7 +173,7 @@ void process_error(objScript *Self, CSTRING Procedure)
 ** action and copies them into a table.  Each value is represented by the relevant parameter name for ease of use.
 */
 
-static ERROR stack_args(lua_State *Lua, OBJECTID ObjectID, const struct FunctionField *args, APTR Buffer)
+static ERROR stack_args(lua_State *Lua, OBJECTID ObjectID, const struct FunctionField *args, BYTE *Buffer)
 {
    LONG i, j;
 
@@ -179,11 +182,11 @@ static ERROR stack_args(lua_State *Lua, OBJECTID ObjectID, const struct Function
    FMSG("~stack_args()","Args: %p, Buffer: %p", args, Buffer);
 
    for (i=0; args[i].Name; i++) {
-      UBYTE name[StrLength(args[i].Name)+1];
+      char name[StrLength(args[i].Name)+1];
       for (j=0; args[i].Name[j]; j++) name[j] = LCASE(args[i].Name[j]);
       name[j] = 0;
 
-      lua_pushlstring(Lua, name, j);
+      lua_pushlstring(Lua, (CSTRING)name, j);
 
       // Note: If the object is public and the call was messaged from a foreign process, all strings/pointers are
       // invalid because the message handlers cannot do deep pointer resolution of the structure we receive from
@@ -231,12 +234,11 @@ static ERROR FLUID_ActionNotify(objScript *Self, struct acActionNotify *Args)
    if (!Args) return ERR_NullArgs;
    if (Args->Error != ERR_Okay) return ERR_Okay;
 
-   struct prvFluid *prv = Self->Head.ChildPrivate;
+   auto prv = (prvFluid *)Self->Head.ChildPrivate;
    if (!prv) return ERR_Okay;
 
-   struct actionmonitor *scan;
-   for (scan=prv->ActionList; scan; scan=scan->Next) {
-      if ((Args->ObjectID IS scan->ObjectID) AND (Args->ActionID IS scan->ActionID)) {
+   for (auto scan=prv->ActionList; scan; scan=scan->Next) {
+      if ((Args->ObjectID IS scan->ObjectID) and (Args->ActionID IS scan->ActionID)) {
          LONG depth = GetResource(RES_LOG_DEPTH); // Required because thrown errors cause the debugger to lose its branch
 
          LogF("~7","Action notification for object #%d, action %d.  Top: %d", Args->ObjectID, Args->ActionID, lua_gettop(prv->Lua));
@@ -244,7 +246,7 @@ static ERROR FLUID_ActionNotify(objScript *Self, struct acActionNotify *Args)
             lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, scan->Function); // +1 stack: Get the function reference
             push_object_id(prv->Lua, Args->ObjectID);  // +1: Pass the object ID
             lua_newtable(prv->Lua);  // +1: Table to store the parameters
-            if (!stack_args(prv->Lua, Args->ObjectID, scan->Args, Args->Args)) {
+            if (!stack_args(prv->Lua, Args->ObjectID, scan->Args, (STRING)Args->Args)) {
                LONG total_args;
                if (scan->Reference) { // +1: Custom reference (optional)
                   lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, scan->Reference);
@@ -277,14 +279,14 @@ static ERROR FLUID_Activate(objScript *Self, APTR Void)
 {
    if (CurrentTaskID() != Self->Head.TaskID) return LogCode(ERR_IllegalActionAttempt);
 
-   if ((!Self->String) OR (!Self->String[0])) return LogCode(ERR_FieldNotSet);
+   if ((!Self->String) or (!Self->String[0])) return LogCode(ERR_FieldNotSet);
 
    LogF("~7","Target: %d, Procedure: %s / ID #" PF64(), Self->TargetID, Self->Procedure ? Self->Procedure : (STRING)".", Self->ProcedureID);
 
    ERROR error = ERR_Failed;
 
-   struct prvFluid *prv;
-   if (!(prv = Self->Head.ChildPrivate)) return LogCode(ERR_ObjectCorrupt);
+   auto prv = (prvFluid *)Self->Head.ChildPrivate;
+   if (!prv) return LogCode(ERR_ObjectCorrupt);
 
    if (prv->Recurse) { // When performing a recursive call, we can assume that the code has already been loaded.
       error = run_script(Self);
@@ -313,7 +315,7 @@ static ERROR FLUID_Activate(objScript *Self, APTR Void)
    if (!Self->ActivationCount) reload = TRUE;
 
    LONG i, j;
-   if ((Self->ActivationCount) AND (!Self->Procedure) AND (!Self->ProcedureID)) {
+   if ((Self->ActivationCount) and (!Self->Procedure) and (!Self->ProcedureID)) {
       // If no procedure has been specified, kill the old Lua instance to restart from scratch
 
       FLUID_Free(Self, NULL);
@@ -412,7 +414,7 @@ static ERROR FLUID_Activate(objScript *Self, APTR Void)
                char buffer[240];
                i += 3;
                LONG line = StrToInt(errorstr + i);
-               while ((errorstr[i]) AND (errorstr[i] != ':')) i++;
+               while ((errorstr[i]) and (errorstr[i] != ':')) i++;
                if (errorstr[i] IS ':') i++;
                i = StrFormat(buffer, sizeof(buffer), "Line %d: %s\n", line+Self->LineOffset, errorstr + i);
                CSTRING str = Self->String;
@@ -421,14 +423,14 @@ static ERROR FLUID_Activate(objScript *Self, APTR Void)
                   if (j >= line-1) {
                      i += StrFormat(buffer+i, sizeof(buffer)-i, "%d: ", j+Self->LineOffset);
                      LONG k;
-                     for (k=0; (str[k]) AND (str[k] != '\n') AND (str[k] != '\r') AND (k < 120); k++) {
-                        if (i >= sizeof(buffer)-1) break;
+                     for (k=0; (str[k]) and (str[k] != '\n') and (str[k] != '\r') and (k < 120); k++) {
+                        if ((size_t)i >= sizeof(buffer)-1) break;
                         buffer[i++] = str[k];
                      }
                      if (k IS 120) {
-                        for (k=0; (k < 3) AND (i < sizeof(buffer)-1); k++) buffer[i++] = '.';
+                        for (k=0; (k < 3) and ((size_t)i < sizeof(buffer)-1); k++) buffer[i++] = '.';
                      }
-                     if (i < sizeof(buffer)-1) buffer[i++] = '\n';
+                     if ((size_t)i < sizeof(buffer)-1) buffer[i++] = '\n';
                      buffer[i] = 0;
                   }
                   if (!(str = StrNextLine(str))) break;
@@ -468,10 +470,10 @@ static ERROR FLUID_Activate(objScript *Self, APTR Void)
 
    Self->ActivationCount++;
 
-   if ((Self->Procedure) OR (Self->ProcedureID)) {
+   if ((Self->Procedure) or (Self->ProcedureID)) {
       // The Lua script needs to have been executed at least once in order for the procedures to be initialised and recognised.
 
-      if ((Self->ActivationCount IS 1) OR (reload)) {
+      if ((Self->ActivationCount IS 1) or (reload)) {
          FMSG("~","Collecting functions prior to procedure call...");
 
          if (lua_pcall(prv->Lua, 0, 0, 0)) {
@@ -523,13 +525,13 @@ static ERROR FLUID_DataFeed(objScript *Self, struct acDataFeed *Args)
    if (!Args) return ERR_NullArgs;
 
    if (Args->DataType IS DATA_TEXT) {
-      SetString(Self, FID_String, Args->Buffer);
+      SetString(Self, FID_String, (CSTRING)Args->Buffer);
    }
    else if (Args->DataType IS DATA_XML) {
-      SetString(Self, FID_String, Args->Buffer);
+      SetString(Self, FID_String, (CSTRING)Args->Buffer);
    }
    else if (Args->DataType IS DATA_INPUT_READY) {
-      struct prvFluid *prv = Self->Head.ChildPrivate;
+      auto prv = (prvFluid *)Self->Head.ChildPrivate;
 
       FMSG("~","Incoming input for surface #%d", Args->ObjectID);
 
@@ -537,7 +539,7 @@ static ERROR FLUID_DataFeed(objScript *Self, struct acDataFeed *Args)
       while (!gfxGetInputMsg((struct dcInputReady *)Args->Buffer, 0, &input)) {
          UBYTE processed = FALSE;
          for (struct finput *list = prv->InputList; list; list=list->Next) {
-            if (((list->SurfaceID IS input->RecipientID) OR (!list->SurfaceID)) AND (list->Mode IS FIM_DEVICE)) {
+            if (((list->SurfaceID IS input->RecipientID) or (!list->SurfaceID)) and (list->Mode IS FIM_DEVICE)) {
                processed = TRUE;
                // Execute the callback associated with this input subscription.
 
@@ -570,7 +572,7 @@ static ERROR FLUID_DataFeed(objScript *Self, struct acDataFeed *Args)
       LOGRETURN();
    }
    else if (Args->DataType IS DATA_RECEIPT) {
-      struct prvFluid *prv = Self->Head.ChildPrivate;
+      auto prv = (prvFluid *)Self->Head.ChildPrivate;
       struct datarequest *prev;
 
       LogBranch("Incoming data receipt from #%d", Args->ObjectID);
@@ -650,10 +652,10 @@ static ERROR FLUID_DerefProcedure(objScript *Self, struct scDerefProcedure *Args
 {
    if (!Args) return ERR_NullArgs;
 
-   if ((Args->Procedure) AND (Args->Procedure->Type IS CALL_SCRIPT)) {
+   if ((Args->Procedure) and (Args->Procedure->Type IS CALL_SCRIPT)) {
       if (Args->Procedure->Script.Script IS &Self->Head) { // Verification of ownership
-         struct prvFluid *prv;
-         if (!(prv = Self->Head.ChildPrivate)) return LogCode(ERR_ObjectCorrupt);
+         auto prv = (prvFluid *)Self->Head.ChildPrivate;
+         if (!prv) return LogCode(ERR_ObjectCorrupt);
 
          MSG("Dereferencing procedure #" PF64(), Args->Procedure->Script.ProcedureID);
 
@@ -680,19 +682,19 @@ static ERROR FLUID_Free(objScript *Self, APTR Void)
 
 static ERROR FLUID_GetProcedureID(objScript *Self, struct scGetProcedureID *Args)
 {
-   if ((!Args) OR (!Args->Procedure) OR (!Args->Procedure[0])) return LogCode(ERR_NullArgs);
+   if ((!Args) or (!Args->Procedure) or (!Args->Procedure[0])) return LogCode(ERR_NullArgs);
 
-   struct prvFluid *prv;
-   if (!(prv = Self->Head.ChildPrivate)) return LogCode(ERR_ObjectCorrupt);
+   auto prv = (prvFluid *)Self->Head.ChildPrivate;
+   if (!prv) return LogCode(ERR_ObjectCorrupt);
 
-   if ((!prv->Lua) OR (!Self->ActivationCount)) {
+   if ((!prv->Lua) or (!Self->ActivationCount)) {
       LogErrorMsg("Cannot resolve function '%s'.  Script requires activation.", Args->Procedure);
       return ERR_NotFound;
    }
 
    lua_getglobal(prv->Lua, Args->Procedure);
    LONG id = luaL_ref(prv->Lua, LUA_REGISTRYINDEX);
-   if ((id != LUA_REFNIL) AND (id != LUA_NOREF)) {
+   if ((id != LUA_REFNIL) and (id != LUA_NOREF)) {
       Args->ProcedureID = id;
       return ERR_Okay;
    }
@@ -713,7 +715,7 @@ static ERROR FLUID_Init(objScript *Self, APTR Void)
       }
    }
 
-   if ((Self->Head.Flags & NF_RECLASSED) AND (!Self->String)) {
+   if ((Self->Head.Flags & NF_RECLASSED) and (!Self->String)) {
       MSG("No support for reclassed Script with no String field value.");
       return ERR_NoSupport;
    }
@@ -723,7 +725,7 @@ static ERROR FLUID_Init(objScript *Self, APTR Void)
    BYTE compile = FALSE;
    LONG loaded_size = 0;
    objFile *src_file = NULL;
-   if ((!Self->String) AND (Self->Path)) {
+   if ((!Self->String) and (Self->Path)) {
       error = CreateObject(ID_FILE, NF_INTEGRAL, &src_file, FID_Path|TSTR, Self->Path, TAGEND);
 
       LARGE src_ts, src_size;
@@ -733,7 +735,7 @@ static ERROR FLUID_Init(objScript *Self, APTR Void)
       else error = ERR_File;
 
       if (Self->CacheFile) {
-         // Compare the cache file date to the original source.  If they match, OR if there was a problem
+         // Compare the cache file date to the original source.  If they match, or if there was a problem
          // analysing the original location (i.e. the original location does not exist) then the cache file is loaded
          // instead of the original source code.
 
@@ -743,7 +745,7 @@ static ERROR FLUID_Init(objScript *Self, APTR Void)
             GetFields(cache_file, FID_TimeStamp|TLARGE, &cache_ts, FID_Size|TLARGE, &cache_size, TAGEND);
             acFree(cache_file);
 
-            if ((cache_ts IS src_ts) OR (error)) {
+            if ((cache_ts IS src_ts) or (error)) {
                LogMsg("Using cache '%s'", Self->CacheFile);
                if (!AllocMemory(cache_size, MEM_STRING|MEM_NO_CLEAR|Self->Head.MemFlags, &Self->String, NULL)) {
                   LONG len;
@@ -755,7 +757,7 @@ static ERROR FLUID_Init(objScript *Self, APTR Void)
          }
       }
 
-      if ((!error) AND (!loaded_size)) {
+      if ((!error) and (!loaded_size)) {
          if (!AllocMemory(src_size+1, MEM_STRING|MEM_NO_CLEAR, &Self->String, NULL)) {
             LONG len;
             if (!ReadFileToBuffer(Self->Path, Self->String, src_size, &len)) {
@@ -783,10 +785,10 @@ static ERROR FLUID_Init(objScript *Self, APTR Void)
 
    // Allocate private structure
 
-   struct prvFluid *prv;
+   prvFluid *prv;
    if (!error) {
-      if (!AllocMemory(sizeof(struct prvFluid), Self->Head.MemFlags, &Self->Head.ChildPrivate, NULL)) {
-         prv = Self->Head.ChildPrivate;
+      if (!AllocMemory(sizeof(prvFluid), Self->Head.MemFlags, &Self->Head.ChildPrivate, NULL)) {
+         prv = (prvFluid *)Self->Head.ChildPrivate;
          if ((prv->SaveCompiled = compile)) {
             struct DateTime *dt;
             if (!GetPointer(src_file, FID_Date, &dt)) prv->CacheDate = *dt;
@@ -847,14 +849,14 @@ usage.
 
 static ERROR FLUID_SaveToObject(objScript *Self, struct acSaveToObject *Args)
 {
-   if ((!Args) OR (!Args->DestID)) return LogCode(ERR_NullArgs);
+   if ((!Args) or (!Args->DestID)) return LogCode(ERR_NullArgs);
 
    if (!Self->String) return LogCode(ERR_FieldNotSet);
 
    LogBranch("Compiling the statement...");
 
-   struct prvFluid *prv;
-   if (!(prv = Self->Head.ChildPrivate)) return LogCode(ERR_ObjectCorrupt);
+   auto prv = (prvFluid *)Self->Head.ChildPrivate;
+   if (!prv) return LogCode(ERR_ObjectCorrupt);
 
    if (!luaL_loadstring(prv->Lua, Self->String)) {
       ERROR error = save_binary(Self, Args->DestID);
@@ -886,8 +888,8 @@ removed by the caller with FreeResource().
 
 static ERROR GET_Procedures(objScript *Self, STRING **Value, LONG *Elements)
 {
-   struct prvFluid *prv;
-   if ((prv = Self->Head.ChildPrivate)) {
+   auto prv = (prvFluid *)Self->Head.ChildPrivate;
+   if (prv) {
       LONG memsize = 1024 * 64;
       UBYTE *list;
       if (!AllocMemory(memsize, MEM_DATA|MEM_NO_CLEAR, &list, NULL)) {
@@ -897,13 +899,13 @@ static ERROR GET_Procedures(objScript *Self, STRING **Value, LONG *Elements)
          while (lua_next(prv->Lua, LUA_GLOBALSINDEX)) {
             if (lua_type(prv->Lua, -1) IS LUA_TFUNCTION) {
                CSTRING name = lua_tostring(prv->Lua, -2);
-               size += StrCopy(name, list+size, memsize - size) + 1;
+               size += StrCopy(name, (STRING)list+size, memsize - size) + 1;
                total++;
             }
             lua_pop(prv->Lua, 1);
          }
 
-         *Value = StrBuildArray(list, size, total, SBF_SORT);
+         *Value = StrBuildArray((STRING)list, size, total, SBF_SORT);
          *Elements = total;
 
          FreeResource(list);
@@ -922,7 +924,7 @@ static ERROR save_binary(objScript *Self, OBJECTID FileID)
 
    return ERR_NoSupport;
 /*
-   struct prvFluid *prv;
+   prvFluid *prv;
    OBJECTPTR dest;
    const Proto *f;
    LONG i;
@@ -950,7 +952,7 @@ static ERROR save_binary(objScript *Self, OBJECTID FileID)
       ReleaseObject(dest);
    }
 
-   if ((code_writer_id > 0) AND ((dest = GetObjectPtr(FileID)))) {
+   if ((code_writer_id > 0) and ((dest = GetObjectPtr(FileID)))) {
       luaU_dump(prv->Lua, f, &code_writer, dest, (Self->Flags & SCF_DEBUG) ? 0 : 1);
    }
    else luaU_dump(prv->Lua, f, &code_writer_id, (void *)(MAXINT)FileID, (Self->Flags & SCF_DEBUG) ? 0 : 1);
@@ -964,7 +966,7 @@ static ERROR save_binary(objScript *Self, OBJECTID FileID)
 
 ERROR run_script(objScript *Self)
 {
-   struct prvFluid *prv = Self->Head.ChildPrivate;
+   auto prv = (prvFluid *)Self->Head.ChildPrivate;
 
    FMSG("~run_script()","Procedure: %s, Top: %d", Self->Procedure, lua_gettop(prv->Lua));
 
@@ -973,7 +975,7 @@ ERROR run_script(objScript *Self)
    LONG r = 0;
    LONG top;
    LONG pcall_failed = FALSE;
-   if ((Self->Procedure) OR (Self->ProcedureID)) {
+   if ((Self->Procedure) or (Self->ProcedureID)) {
       if (Self->Procedure) lua_getglobal(prv->Lua, Self->Procedure);
       else lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, Self->ProcedureID);
 
@@ -1012,7 +1014,7 @@ ERROR run_script(objScript *Self)
                }
                else if (type & FD_STR) {
                   MSG("Setting arg '%s', Value: %.20s", args->Name, (CSTRING)args->Address);
-                  lua_pushstring(prv->Lua, args->Address);
+                  lua_pushstring(prv->Lua, (CSTRING)args->Address);
                }
                else if (type & FD_STRUCT) {
                   // Pointer to a struct, which can be referenced with a name of "StructName" or "StructName:ArgName"
@@ -1028,11 +1030,11 @@ ERROR run_script(objScript *Self)
                   // disallowed within Lua).
 
                   MSG("Setting arg '%s', Value: %p", args->Name, args->Address);
-                  if ((type & FD_BUFFER) AND (i+1 < Self->TotalArgs) AND (args[1].Type & FD_BUFSIZE)) {
+                  if ((type & FD_BUFFER) and (i+1 < Self->TotalArgs) and (args[1].Type & FD_BUFSIZE)) {
                      // Buffers are considered to be directly writable regions of memory, so the array interface is
                      // used to represent them.
-                     if (args[1].Type & FD_LONG) make_array(prv->Lua, FD_BYTE|FD_WRITE, NULL, args->Address, args[1].Long, FALSE);
-                     else if (args[1].Type & FD_LARGE) make_array(prv->Lua, FD_BYTE|FD_WRITE, NULL, args->Address, args[1].Large, FALSE);
+                     if (args[1].Type & FD_LONG) make_array(prv->Lua, FD_BYTE|FD_WRITE, NULL, (APTR *)args->Address, args[1].Long, FALSE);
+                     else if (args[1].Type & FD_LARGE) make_array(prv->Lua, FD_BYTE|FD_WRITE, NULL, (APTR *)args->Address, args[1].Large, FALSE);
                      else lua_pushnil(prv->Lua);
                      i++; args++; // Because we took the buffer-size parameter into account
                   }
@@ -1043,7 +1045,7 @@ ERROR run_script(objScript *Self)
 
                      if (args->Address) {
                         struct object *obj = push_object(prv->Lua, (OBJECTPTR)args->Address);
-                        if ((r < ARRAYSIZE(release_list)) AND (access_object(obj))) {
+                        if ((r < ARRAYSIZE(release_list)) and (access_object(obj))) {
                            release_list[r++] = obj;
                         }
                      }
@@ -1146,7 +1148,7 @@ static ERROR register_interfaces(objScript *Self)
 {
    LogF("~6register_interfaces()","Registering Parasol and Fluid interfaces with Lua.");
 
-   struct prvFluid *prv = Self->Head.ChildPrivate;
+   auto prv = (prvFluid *)Self->Head.ChildPrivate;
 
    register_array_class(prv->Lua);
    register_object_class(prv->Lua);

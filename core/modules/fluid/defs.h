@@ -221,7 +221,7 @@ extern OBJECTPTR clFluid;
 OBJECTPTR access_object(struct object *);
 struct references * alloc_references(void);
 void auto_load_include(lua_State *Lua, objMetaClass *MetaClass);
-ERROR build_args(lua_State *, const struct FunctionField *, LONG, APTR, LONG *);
+ERROR build_args(lua_State *, const struct FunctionField *, LONG, BYTE *, LONG *);
 void clear_subscriptions(objScript *);
 const char * code_reader(lua_State *, void *, size_t *);
 int code_writer_id(lua_State *, CPTR, size_t, void *) __attribute__((unused));
