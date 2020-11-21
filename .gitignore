@@ -50,7 +50,7 @@
 
 /core/android
 /core/3rdparty/openssl-*/
-/core/3rdparty/zlib-*/
+/3rdparty/zlib-*/
 /examples/test.fluid
 .idea/
 /core/modules/fluid/luajit-*/doc

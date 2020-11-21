@@ -368,7 +368,7 @@ if (MINGW)
 endif (MINGW)
 
 set(CMAKE_INSTALL_RPATH "$ORIGIN/lib")
-add_subdirectory (core/3rdparty/zlib-1.2.11) # Note that when upgrading, the CMakeLists.txt is customised
+add_subdirectory (3rdparty/zlib-1.2.11) # Note that when upgrading, the CMakeLists.txt is customised
 add_subdirectory (core/link)
 add_subdirectory (core/src)
 add_subdirectory (core/modules/audio)
