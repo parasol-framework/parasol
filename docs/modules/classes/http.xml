@@ -26,19 +26,35 @@
 </list>
 <p>For information on command execution and a technical overview of HTTP processing, please refer to the <action>Activate</action> action.</p>
 <header>Sending Content</header>
-<p>There are a variety of ways to send content to a server when using methods such as PUT and POST.  Content can be sent from objects by setting the <field>InputObject</field> field.  To send content from files, set the <field>InputFile</field> field.  To send string content, use an <field>InputFile</field> location that starts with 'string:' followed by the text based content to send.</p>
+<p>There are a variety of ways to send content to a server when using methods such as PUT and POST.  Content can be sent from objects by setting the <field>InputObject</field> field.  To send content from files, set the <field>InputFile</field> field.  To send string content, use an <field>InputFile</field> location that starts with 'string:' followed by the text to send.</p>
 <header>Receiving Content</header>
-<p>There are three possible methods for content download - two of which are relevant to script usage.  This first example downloads content to a temporary file for further processing:</p>
-<pre>&lt;http src="http://www.parasol.ws/index.html" method="get" outputfile="temp:index.html"/&gt;
+<p>There are three possible methods for content download.  This first example downloads content to a temporary file for further processing:</p>
+<pre>http = obj.new('http', {
+   src        = 'http://www.parasol.ws/index.html',
+   method     = 'get',
+   outputFile = 'temp:index.html',
+   stateChanged = function(HTTP, State)
+      if (State == HGS_COMPLETED) then print(content) end
+   end
+})
+
+http.acActivate()
 </pre>
 <p>This example uses data feeds to push the downloaded data to another object in text format:</p>
-<pre>&lt;scintilla name="doc"/&gt;
-&lt;http src="http://www.parasol.ws/index.html" method="get" outputobject="[doc]" objectmode="datafeed" datafeed="text"/&gt;
+<pre>doc = obj.new('scintilla')
+http = obj.new('http', {
+   src        = 'http://www.parasol.ws/index.html',
+   method     = 'get',
+   dataFeed   = 'text'
+   objectMode = 'datafeed'
+   outputObject = doc
+})
+http.acActivate()
 </pre>
 <p>Note that the target object needs to support the datatype that you specify, or it will ignore the incoming data.  The default datatype is RAW (binary format), but the most commonly supported datatype is TEXT.</p>
-<p>The third method is to use function callbacks.  This method is supported by C/C++ and the Fluid programming language. Refer to the <field>Incoming</field> field for further information on receiving data through callbacks.</p>
+<p>The third method is to use function callbacks.  Refer to the <field>Incoming</field> field for further information on receiving data through callbacks.</p>
 <header>Progress Reports</header>
-<p>To receive progress reports when uploading or downloading data from a server, subscribe to the <field>Index</field> field, which indicates the current read/write position within the overall data stream (indicated by the <field>ContentLength</field>).  Alternatively, use a timer and read the <field>Index</field> periodically.</p>
+<p>To receive progress reports when uploading or downloading data from a server, subscribe to the <field>Index</field> field, which indicates the current read/write position within the overall data stream (indicated by the <field>ContentLength</field>). Alternatively, use a timer and read the <field>Index</field> periodically.</p>
 <header>SSL Support (HTTPS)</header>
 <p>Secure sockets are supported and can be enabled by setting the <field>Port</field> to 443 prior to connection, or by using https:// in URI strings.  Methods of communication remain unchanged when using SSL, as encrypted communication is handled transparently.</p></description>
     <source>

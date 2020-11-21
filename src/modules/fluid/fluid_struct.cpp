@@ -459,7 +459,7 @@ ERROR make_struct(lua_State *Lua, CSTRING StructName, CSTRING Sequence)
 
    UBYTE buffer[sizeof(struct structentry) + MAX_STRUCT_DEF + 8];
 
-   LONG offset, total_fields, buf_end;
+   LONG offset = 0, total_fields = 0, buf_end = 0;
    ERROR error;
    if ((error = generate_structdef(Lua->Script, StructName, Sequence, (BYTE *)buffer + sizeof(struct structentry), &offset,
          &total_fields, &buf_end)) != ERR_Okay) {

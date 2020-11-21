@@ -404,6 +404,27 @@ ERROR FastFindObject(CSTRING InitialName, CLASSID ClassID, OBJECTID *Array, LONG
          ReleaseMemoryID(RPM_SharedObjects);
       }
       else return log.warning(ERR_AccessMemory);
+
+      // Sort the list so that the highest number is at the top and the lowest number is at the bottom.
+
+      if (count > 0) {
+         if (ObjectCount) *ObjectCount = count;
+
+         for (LONG i=0; i < count-1; i++) {
+            if (Array[i] < Array[i+1]) {
+               OBJECTID swap = Array[i];
+               Array[i] = Array[i+1];
+               Array[i+1] = swap;
+               i = -1;
+            }
+         }
+
+         return ERR_Okay;
+      }
+      else {
+         log.extmsg("Could not find any object for class $%.8x.", ClassID);
+         return ERR_Search;
+      }
    }
    else if (InitialName) {
       if (!InitialName[0]) return log.warning(ERR_EmptyString);
@@ -552,27 +573,6 @@ ERROR FastFindObject(CSTRING InitialName, CLASSID ClassID, OBJECTID *Array, LONG
       else return log.warning(ERR_AccessMemory);
    }
    else return log.warning(ERR_NullArgs);
-
-   // Sort the list so that the highest number is at the top and the lowest number is at the bottom.
-
-   if (count > 0) {
-      if (ObjectCount) *ObjectCount = count;
-
-      for (LONG i=0; i < count-1; i++) {
-         if (Array[i] < Array[i+1]) {
-            OBJECTID swap = Array[i];
-            Array[i] = Array[i+1];
-            Array[i+1] = swap;
-            i = -1;
-         }
-      }
-
-      return ERR_Okay;
-   }
-   else {
-      if (glLogLevel >= 4) log.msg("Could not find object \"%s\".", InitialName);
-      return ERR_Search;
-   }
 }
 
 /*****************************************************************************
