@@ -54,7 +54,7 @@ EXPORT void CloseCore(void)
             killpg(0, SIGHUP);
          #else
             for (LONG i=0; i < MAX_TASKS; i++) {
-               if ((shTasks[i].ProcessID) AND (shTasks[i].ProcessID != glProcessID)) {
+               if ((shTasks[i].ProcessID) and (shTasks[i].ProcessID != glProcessID)) {
                   log.msg("Removing sub-process #%d (pid %d).", shTasks[i].TaskID, shTasks[i].ProcessID);
 
                   #ifdef __unix__
@@ -79,7 +79,7 @@ EXPORT void CloseCore(void)
       LONG cycle;
       for (cycle=0; cycle < (TIMETODIE * 10); cycle++) {
          for (j=0; j < MAX_TASKS; j++) { // Break if any other process is found in the task array.
-            if ((shTasks[j].ProcessID) AND (shTasks[j].ProcessID != glProcessID)) {
+            if ((shTasks[j].ProcessID) and (shTasks[j].ProcessID != glProcessID)) {
                log.msg("Process %d is still live.", shTasks[j].ProcessID);
                break;
             }
@@ -95,7 +95,7 @@ EXPORT void CloseCore(void)
          if (cycle >= TIMETODIE) {
             for (LONG j=0; j < MAX_TASKS; j++) {
                log.warning("Sending a kill signal to sub-task #%d (process %d).", shTasks[j].TaskID, shTasks[j].ProcessID);
-               if ((shTasks[j].ProcessID) AND (shTasks[j].ProcessID != glProcessID)) {
+               if ((shTasks[j].ProcessID) and (shTasks[j].ProcessID != glProcessID)) {
                   kill(shTasks[j].ProcessID, SIGTERM);
                }
             }
@@ -111,7 +111,7 @@ EXPORT void CloseCore(void)
 
    // Run the video recovery routine if one has been set and we have crashed
 
-   if ((glCrashStatus) AND (glVideoRecovery)) {
+   if ((glCrashStatus) and (glVideoRecovery)) {
       void (*routine)(void);
       routine = glVideoRecovery;
       glVideoRecovery = NULL;
@@ -127,7 +127,7 @@ EXPORT void CloseCore(void)
    // list just yet, as cooperation with other tasks is often needed when shared objects are freed during the shutdown
    // process.
 
-   if ((glCurrentTaskID) OR (glProcessID)) remove_process_waitlocks();
+   if ((glCurrentTaskID) or (glProcessID)) remove_process_waitlocks();
 
    // Remove locks from private and public memory blocks
 
@@ -155,12 +155,12 @@ EXPORT void CloseCore(void)
       // Remove locks on public objects that we have not unlocked yet.  We do this by setting the lock-count to zero so
       // that others can then gain access to the public object.
 
-      if ((glSharedControl) AND (glSharedBlocks)) {
+      if ((glSharedControl) and (glSharedBlocks)) {
          log.trace("Removing locks on public objects.");
 
          if (!LOCK_PUBLIC_MEMORY(4000)) {
             for (i=glSharedControl->NextBlock-1; i >= 0; i--) {
-               if ((glSharedBlocks[i].ProcessLockID IS glProcessID) AND (glSharedBlocks[i].AccessCount > 0)) {
+               if ((glSharedBlocks[i].ProcessLockID IS glProcessID) and (glSharedBlocks[i].AccessCount > 0)) {
                   if (glSharedBlocks[i].Flags & MEM_OBJECT) {
                      OBJECTPTR header;
                      if ((header = (OBJECTPTR)resolve_public_address(glSharedBlocks + i))) {
@@ -245,7 +245,7 @@ restart_free:
             if ((glPrivateMemory[i].Flags & MEM_OBJECT)) {
                OBJECTPTR header;
                if ((header = (OBJECTPTR)glPrivateMemory[i].Address)) {
-                  if ((header->Stats) AND (header->Flags & NF_FOREIGN_OWNER)) {
+                  if ((header->Stats) and (header->Flags & NF_FOREIGN_OWNER)) {
                      acFree(header);
                   }
                }
@@ -256,7 +256,7 @@ restart_free:
       // Remove locks on any private objects that have not been unlocked yet
 
       for (LONG i=glNextPrivateAddress-1; i >= 0; i--) {
-         if ((glPrivateMemory[i].Flags & MEM_OBJECT) AND (glPrivateMemory[i].AccessCount > 0)) {
+         if ((glPrivateMemory[i].Flags & MEM_OBJECT) and (glPrivateMemory[i].AccessCount > 0)) {
             OBJECTPTR header;
             if ((header = (OBJECTPTR)glPrivateMemory[i].Address)) {
                log.warning("Removing locks on object #%d, Owner: %d, Locks: %d", header->UniqueID, header->OwnerID, glPrivateMemory[i].AccessCount);
@@ -314,7 +314,7 @@ restart_free:
       while (glMsgHandlers) FreeResource(glMsgHandlers);
       glLastMsgHandler = NULL;
 
-      if ((glCrashStatus) AND (glSharedControl) AND (glSharedControl->InstanceMsgPort) AND (!glMasterTask)) {
+      if ((glCrashStatus) and (glSharedControl) and (glSharedControl->InstanceMsgPort) and (!glMasterTask)) {
          ValidateMessage msg;
          msg.ProcessID = glProcessID;
          SendMessage(glSharedControl->InstanceMsgPort, MSGID_VALIDATE_PROCESS, 0, &msg, sizeof(msg));
@@ -370,7 +370,7 @@ restart_free:
          if (glSocket != -1) RegisterFD(glSocket, RFD_REMOVE, NULL, NULL);
       #endif
 
-      if ((!glCrashStatus) AND (glFDTable)) {
+      if ((!glCrashStatus) and (glFDTable)) {
          for (LONG i=0; i < glTotalFDs; i++) {
             if (glFDTable[i].FD) {
                log.warning("FD " PF64() " was not deregistered prior to program close.  Routine: %p, Data: %p", (LARGE)glFDTable[i].FD, glFDTable[i].Routine, glFDTable[i].Data);
@@ -401,7 +401,7 @@ restart_free:
    // Remove our process from the global list completely IF THIS IS THE MASTER TASK.  Note that from this point onwards
    // we will not be able to interact with any other processes, so all types of sharing/locking is disallowed henceforth.
 
-   if ((glMasterTask) AND (glTaskEntry)) {
+   if ((glMasterTask) and (glTaskEntry)) {
       if (LOCK_PROCESS_TABLE(4000) IS ERR_Okay) {
          ClearMemory(glTaskEntry, sizeof(TaskList));
          glTaskEntry = NULL;
@@ -534,11 +534,9 @@ EXPORT void Expunge(WORD Force)
    WORD ccount   = 0;
    WORD Pass     = 1;
 
-   ModuleMaster *mod_master;
-
    while (ccount > mod_count) {
       mod_count = ccount;
-      mod_master = glModuleList;
+      auto mod_master = glModuleList;
       log.msg("Stage 1 pass #%d", Pass++);
 
       while (mod_master) {
@@ -550,35 +548,29 @@ EXPORT void Expunge(WORD Force)
 
             BYTE classinuse = FALSE;
             for (LONG i=0; i < glNextPrivateAddress; i++) {
-               if ((glPrivateMemory[i].Flags & MEM_OBJECT) AND (glPrivateMemory[i].ObjectID IS mod_master->Head.UniqueID)) {
-                  rkMetaClass *mc;
-                  if ((mc = (rkMetaClass *)glPrivateMemory[i].Address)) {
-                     if (mc->Head.ClassID IS ID_METACLASS) {
-                        if (mc->OpenCount > 0) {
-                           //log.msg("Module %s manages a class that is in use - Class: %s, Count: %d.", mod_master->Name, mc->Name, mc->OpenCount);
-                           classinuse = TRUE;
-                           break;
-                        }
-                     }
+               if ((glPrivateMemory[i].Flags & MEM_OBJECT) and (glPrivateMemory[i].ObjectID IS mod_master->Head.UniqueID)) {
+                  auto mc = (rkMetaClass *)glPrivateMemory[i].Address;
+                  if ((mc) and (mc->Head.ClassID IS ID_METACLASS) and (mc->OpenCount > 0)) {
+                     log.msg("Module %s manages a class that is in use - Class: %s, Count: %d.", mod_master->Name, mc->ClassName, mc->OpenCount);
+                     classinuse = TRUE;
+                     break;
                   }
                }
             }
 
             if (!classinuse) {
                if (mod_master->Expunge) {
-                  {
-                     parasol::Log log(__FUNCTION__);
-                     log.branch("Sending expunge request to the %s module, routine %p, master #%d.", mod_master->Name, mod_master->Expunge, mod_master->Head.UniqueID);
-                     if (mod_master->Expunge() IS ERR_Okay) {
-                        ccount++;
-                        if (acFree(&mod_master->Head) != ERR_Okay) {
-                           log.warning("ModuleMaster is corrupt");
-                           mod_count = ccount; // Break the loop because the chain links are broken.
-                           break;
-                        }
+                  parasol::Log log(__FUNCTION__);
+                  log.branch("Sending expunge request to the %s module, routine %p, master #%d.", mod_master->Name, mod_master->Expunge, mod_master->Head.UniqueID);
+                  if (mod_master->Expunge() IS ERR_Okay) {
+                     ccount++;
+                     if (acFree(&mod_master->Head) != ERR_Okay) {
+                        log.warning("ModuleMaster is corrupt");
+                        mod_count = ccount; // Break the loop because the chain links are broken.
+                        break;
                      }
-                     else log.msg("Module \"%s\" does not want to be flushed.",mod_master->Name);
                   }
+                  else log.msg("Module \"%s\" does not want to be flushed.",mod_master->Name);
                }
                else {
                   ccount++;
@@ -608,24 +600,19 @@ EXPORT void Expunge(WORD Force)
       ccount   = 0;
       while (ccount > mod_count) {
          mod_count = ccount;
-         mod_master = glModuleList;
+         auto mod_master = glModuleList;
          log.msg("Stage 2 pass #%d", Pass++);
          while (mod_master) {
-            ModuleMaster *next = mod_master->Next;
-
+            auto next = mod_master->Next;
             if (mod_master->OpenCount <= 0) {
                // Search for classes that have been created by this module and check their open count values to figure
                // out if the module code is in use.
 
                for (LONG i=0; i < glNextPrivateAddress; i++) {
-                  if ((glPrivateMemory[i].Flags & MEM_OBJECT) AND (glPrivateMemory[i].ObjectID IS mod_master->Head.UniqueID)) {
-                     rkMetaClass *mc;
-                     if ((mc = (rkMetaClass *)glPrivateMemory[i].Address)) {
-                        if (mc->Head.ClassID IS ID_METACLASS) {
-                           if (mc->OpenCount > 0) {
-                              log.warning("Warning: The %s module holds a class with existing objects (Class: %s, Objects: %d)", mod_master->Name, mc->ClassName, mc->OpenCount);
-                           }
-                        }
+                  if ((glPrivateMemory[i].Flags & MEM_OBJECT) and (glPrivateMemory[i].ObjectID IS mod_master->Head.UniqueID)) {
+                     auto mc = (rkMetaClass *)glPrivateMemory[i].Address;
+                     if ((mc) and (mc->Head.ClassID IS ID_METACLASS) and (mc->OpenCount > 0)) {
+                        log.warning("Warning: The %s module holds a class with existing objects (Class: %s, Objects: %d)", mod_master->Name, mc->ClassName, mc->OpenCount);
                      }
                   }
                }
@@ -637,9 +624,9 @@ EXPORT void Expunge(WORD Force)
 
       // If we are shutting down, force the expunging of any stubborn modules
 
-      mod_master = glModuleList;
+      auto mod_master = glModuleList;
       while (mod_master) {
-         ModuleMaster *next = mod_master->Next;
+         auto next = mod_master->Next;
          if (mod_master->Expunge) {
             parasol::Log log(__FUNCTION__);
             log.branch("Forcing the expunge of stubborn module %s.", mod_master->Name);
@@ -664,7 +651,7 @@ static void free_shared_objects(void)
 {
    parasol::Log log("Shutdown");
 
-   if ((!glSharedControl) OR (!glCurrentTaskID)) return;
+   if ((!glSharedControl) or (!glCurrentTaskID)) return;
 
    log.branch("Freeing public objects allocated by process %d.", glCurrentTaskID);
 
@@ -673,7 +660,7 @@ static void free_shared_objects(void)
       // removed correctly, as it means that the deallocation process follows normal hierarchical rules.
 
       for (LONG i=glSharedControl->NextBlock-1; i >= 0; i--) {
-         if ((glSharedBlocks[i].TaskID IS glCurrentTaskID) AND (glSharedBlocks[i].Flags & MEM_OBJECT)) {
+         if ((glSharedBlocks[i].TaskID IS glCurrentTaskID) and (glSharedBlocks[i].Flags & MEM_OBJECT)) {
             OBJECTPTR hdr;
             if (page_memory(glSharedBlocks + i, (APTR *)&hdr) IS ERR_Okay) {
                if (hdr->OwnerID) {
@@ -695,11 +682,11 @@ static void free_shared_objects(void)
       }
 
       for (LONG i=glSharedControl->NextBlock-1; i >= 0; i--) {
-         if ((glSharedBlocks[i].TaskID IS glCurrentTaskID) AND (glSharedBlocks[i].Flags & MEM_OBJECT)) {
+         if ((glSharedBlocks[i].TaskID IS glCurrentTaskID) and (glSharedBlocks[i].Flags & MEM_OBJECT)) {
             OBJECTPTR hdr;
             if (page_memory(glSharedBlocks + i, (APTR *)&hdr) IS ERR_Okay) {
                OBJECTID id;
-               if ((!hdr->OwnerID) OR (hdr->OwnerID IS glCurrentTaskID)) id = glSharedBlocks[i].MemoryID;
+               if ((!hdr->OwnerID) or (hdr->OwnerID IS glCurrentTaskID)) id = glSharedBlocks[i].MemoryID;
                else id = 0;
                unpage_memory(hdr);
                UNLOCK_PUBLIC_MEMORY();
@@ -714,7 +701,7 @@ static void free_shared_objects(void)
       // Now deallocate all objects related to our process regardless of their position in the hierarchy.
 
       for (LONG i=glSharedControl->NextBlock-1; i >= 0; i--) {
-         if ((glSharedBlocks[i].TaskID IS glCurrentTaskID) AND (glSharedBlocks[i].Flags & MEM_OBJECT)) {
+         if ((glSharedBlocks[i].TaskID IS glCurrentTaskID) and (glSharedBlocks[i].Flags & MEM_OBJECT)) {
             OBJECTID id = glSharedBlocks[i].MemoryID;
             UNLOCK_PUBLIC_MEMORY();
 
@@ -735,7 +722,7 @@ static ERROR free_shared_object(LONG ObjectID, OBJECTID OwnerID)
 
    for (i=glSharedControl->NextBlock-1; i >= 0; i--) {
       if (glSharedBlocks[i].MemoryID IS OwnerID) { // Owner found
-         if ((glSharedBlocks[i].TaskID IS glCurrentTaskID) AND (glSharedBlocks[i].Flags & MEM_OBJECT)) { // Does the owner belong to our process?
+         if ((glSharedBlocks[i].TaskID IS glCurrentTaskID) and (glSharedBlocks[i].Flags & MEM_OBJECT)) { // Does the owner belong to our process?
             OBJECTPTR header;
             if ((header = (OBJECTPTR)resolve_public_address(glSharedBlocks + i))) {
                if (header->OwnerID) {
@@ -774,7 +761,7 @@ static void free_private_memory(void)
 
    LONG count = 0;
    for (LONG i=glNextPrivateAddress-1; i >= 0; i--) {
-      if ((glPrivateMemory[i].Address) AND (glPrivateMemory[i].Flags & MEM_STRING)) {
+      if ((glPrivateMemory[i].Address) and (glPrivateMemory[i].Flags & MEM_STRING)) {
          if (!glCrashStatus) log.warning("Unfreed private string \"%.80s\" (%p).", (CSTRING)glPrivateMemory[i].Address, glPrivateMemory[i].Address);
          glPrivateMemory[i].AccessCount = 0;
          FreeResource(glPrivateMemory[i].Address);
@@ -807,7 +794,7 @@ static void free_private_memory(void)
    free(glPrivateMemory);
    glPrivateMemory = NULL;
 
-   if ((glCrashStatus) AND (count > 0)) log.msg("%d private memory blocks were freed.", count);
+   if ((glCrashStatus) and (count > 0)) log.msg("%d private memory blocks were freed.", count);
 }
 
 
@@ -826,7 +813,7 @@ void free_public_resources(OBJECTID TaskID)
    parasol::ScopedSysLock lock(PL_PUBLICMEM, 4000);
    if (lock.granted()) {
       for (LONG i=glSharedControl->NextBlock-1; i >= 0; i--) {
-         if ((glSharedBlocks[i].TaskID IS TaskID) OR (glSharedBlocks[i].ObjectID IS TaskID)) {
+         if ((glSharedBlocks[i].TaskID IS TaskID) or (glSharedBlocks[i].ObjectID IS TaskID)) {
             if (glSharedBlocks[i].Flags & MEM_OBJECT) {
                if (TaskID IS glCurrentTaskID) {
                   APTR address;
@@ -868,7 +855,7 @@ void remove_public_locks(LONG ProcessID)
 {
    parasol::Log log(__FUNCTION__);
 
-   if ((!glSharedControl) OR (!glSharedBlocks)) return;
+   if ((!glSharedControl) or (!glSharedBlocks)) return;
 
    log.branch("Process: %d", ProcessID);
 
@@ -877,7 +864,7 @@ void remove_public_locks(LONG ProcessID)
       // Release owned public blocks
 
       for (LONG i=glSharedControl->NextBlock-1; i >= 0; i--) {
-         if ((glSharedBlocks[i].ProcessLockID IS ProcessID) AND (glSharedBlocks[i].AccessCount > 0)) {
+         if ((glSharedBlocks[i].ProcessLockID IS ProcessID) and (glSharedBlocks[i].AccessCount > 0)) {
             if (glSharedBlocks[i].Flags & MEM_OBJECT) {
                OBJECTPTR header;
                if ((header = (OBJECTPTR)resolve_public_address(glSharedBlocks + i))) {
@@ -902,7 +889,7 @@ void remove_public_locks(LONG ProcessID)
 
       if (shTasks) {
          LONG task;
-         for (task=0; (task < MAX_TASKS) AND (shTasks[task].ProcessID != ProcessID); task++);
+         for (task=0; (task < MAX_TASKS) and (shTasks[task].ProcessID != ProcessID); task++);
 
          if (task < MAX_TASKS) {
             for (LONG i=MAX_NB_LOCKS-1; i >= 0; i--) {
@@ -930,7 +917,7 @@ static void remove_private_locks(void)
    parasol::Log log("Shutdown");
 
    for (LONG i=0; i < glNextPrivateAddress; i++) {
-      if ((glPrivateMemory[i].Address) AND (glPrivateMemory[i].AccessCount > 0)) {
+      if ((glPrivateMemory[i].Address) and (glPrivateMemory[i].AccessCount > 0)) {
          if (!glCrashStatus) log.msg("Removing %d locks on private memory block #%d, size %d, index %d.", glPrivateMemory[i].AccessCount, glPrivateMemory[i].MemoryID, glPrivateMemory[i].Size, i);
          glPrivateMemory[i].AccessCount = 0;
       }
@@ -954,14 +941,14 @@ static void free_shared_control(void)
 
       // Check if we are the last active task
 
-      if ((glMasterTask) AND (glSharedControl->GlobalInstance) AND
+      if ((glMasterTask) and (glSharedControl->GlobalInstance) AND
           (glInstanceID IS glSharedControl->GlobalInstance)) {
          // If we're the master, global task for everything, we're taking all the resources down, no matter what else
          // we have running.
       }
       else for (LONG i=0; i < MAX_TASKS; i++) {
          if (shTasks[i].ProcessID) {
-            if ((kill(shTasks[i].ProcessID, 0) IS -1) AND (errno IS ESRCH));
+            if ((kill(shTasks[i].ProcessID, 0) IS -1) and (errno IS ESRCH));
             else taskcount++;
          }
       }

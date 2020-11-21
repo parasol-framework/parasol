@@ -17,17 +17,21 @@ obj.find(), push_object(), or children created with some_object.new() are marked
 #include <parasol/main.h>
 #include <parasol/modules/fluid.h>
 #include <inttypes.h>
-#include "lua.h"
-#include "lualib.h"
-#include "lauxlib.h"
-#include "lj_obj.h"
+
+extern "C" {
+ #include "lua.h"
+ #include "lualib.h"
+ #include "lauxlib.h"
+ #include "lj_obj.h"
+}
+
 #include "hashes.h"
 #include "defs.h"
 
 #define RMSG(a...) //MSG(a) // Enable if you want to debug results returned from functions, actions etc
 
 static int object_call(lua_State *);
-static LONG get_results(lua_State *, const struct FunctionField *, CPTR);
+static LONG get_results(lua_State *, const FunctionField *, const BYTE *);
 static int getfield(lua_State *, struct object *, CSTRING);
 static ERROR set_object_field(lua_State *, OBJECTPTR, CSTRING, LONG);
 
@@ -47,17 +51,19 @@ static int object_newindex(lua_State *Lua);
 INLINE void SET_CONTEXT(lua_State *Lua, APTR Function)
 {
    lua_pushvalue(Lua, 1); // Duplicate the object reference
-   lua_pushcclosure(Lua, Function, 1); // C function to call - the number indicates the number of values pushed onto the stack that are to be associated as private values relevant to the C function being called
+   lua_pushcclosure(Lua, (lua_CFunction)Function, 1); // C function to call - the number indicates the number of values pushed onto the stack that are to be associated as private values relevant to the C function being called
 }
 
 //****************************************************************************
 
-static LONG get_action_info(lua_State *Lua, LONG ClassID, CSTRING action, const struct FunctionField **Args)
+static LONG get_action_info(lua_State *Lua, LONG ClassID, CSTRING action, const FunctionField **Args)
 {
+   parasol::Log log;
+
    *Args = NULL;
 
    ACTIONID action_id;
-   if ((action[0] IS 'm') AND (action[1] IS 't')) {
+   if ((action[0] IS 'm') and (action[1] IS 't')) {
       action += 2; // User is explicitly referring to a method
       action_id = 0;
    }
@@ -71,18 +77,17 @@ static LONG get_action_info(lua_State *Lua, LONG ClassID, CSTRING action, const 
    }
 
    if (!action_id) { // Search methods
-      objMetaClass *class;
-      if (!(class = FindClass(ClassID))) {
+      objMetaClass *mc;
+      if (!(mc = FindClass(ClassID))) {
          luaL_error(Lua, GetErrorMsg(ERR_Search));
          return 0;
       }
 
-      struct MethodArray *table;
+      MethodArray *table;
       LONG total_methods;
-      if ((!GetFieldArray(class, FID_Methods, &table, &total_methods)) AND (table)) {
-         LONG i;
-         for (i=1; i < total_methods+1; i++) {
-            if ((table[i].Name) AND (!StrMatch(action, table[i].Name))) {
+      if ((!GetFieldArray(mc, FID_Methods, &table, &total_methods)) and (table)) {
+         for (LONG i=1; i < total_methods+1; i++) {
+            if ((table[i].Name) and (!StrMatch(action, table[i].Name))) {
                action_id = table[i].MethodID;
                *Args = table[i].Args;
                i = 0x7ffffff0;
@@ -90,7 +95,7 @@ static LONG get_action_info(lua_State *Lua, LONG ClassID, CSTRING action, const 
             }
          }
       }
-      else LogF("@","No methods declared for class %s, cannot call %s()", class->ClassName, action);
+      else log.warning("No methods declared for class %s, cannot call %s()", mc->ClassName, action);
    }
 
    return action_id;
@@ -109,17 +114,18 @@ static LONG get_action_info(lua_State *Lua, LONG ClassID, CSTRING action, const 
 
 static int object_new(lua_State *Lua)
 {
+   parasol::Log log("obj.new");
    CSTRING class_name;
    CLASSID class_id;
 
-   struct prvFluid *prv = Lua->Script->Head.ChildPrivate;
+   auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
 
    LONG objflags = 0;
    LONG type = lua_type(Lua, 1);
    if (type IS LUA_TNUMBER) {
       class_id = lua_tonumber(Lua, 1);
       class_name = NULL;
-      MSG("obj.new(%d)", class_id);
+      log.trace("$%.8x", class_id);
    }
    else if ((class_name = luaL_checkstring(Lua, 1))) {
       if (class_name[0] IS '@') {
@@ -127,10 +133,10 @@ static int object_new(lua_State *Lua)
          objflags |= NF_PUBLIC;
       }
       class_id = StrHash(class_name, 0);
-      MSG("obj.new(%s,$%.8x)", class_name, class_id);
+      log.trace("%s, $%.8x", class_name, class_id);
    }
    else {
-      LogF("@obj.new","String or ID expected for class name, got '%s'.", lua_typename(Lua, type));
+      log.warning("String or ID expected for class name, got '%s'.", lua_typename(Lua, type));
       prv->CaughtError = ERR_Mismatch;
       luaL_error(Lua, GetErrorMsg(ERR_Mismatch));
       return 0;
@@ -172,7 +178,7 @@ static int object_new(lua_State *Lua)
             else lua_pop(Lua, 1);  // removes 'value'; keeps 'key' for the proceeding lua_next() iteration
          }
 
-         if ((field_error) OR ((error = acInit(obj)) != ERR_Okay)) {
+         if ((field_error) or ((error = acInit(obj)) != ERR_Okay)) {
             acFree(obj);
             ReleaseObject(obj);
 
@@ -181,7 +187,7 @@ static int object_new(lua_State *Lua)
                luaL_error(Lua, "Failed to set field '%s', error: %s", field_name, GetErrorMsg(field_error));
             }
             else {
-               LogF("@obj.new","Failed to Init() object '%s', error: %s", class_name, GetErrorMsg(error));
+               log.warning("Failed to Init() object '%s', error: %s", class_name, GetErrorMsg(error));
                prv->CaughtError = error;
                luaL_error(Lua, GetErrorMsg(error));
             }
@@ -235,13 +241,15 @@ static int object_new(lua_State *Lua)
 
 static int object_newchild(lua_State *Lua)
 {
+   parasol::Log log("obj.child");
    struct object *parent;
-   if (!(parent = get_meta(Lua, lua_upvalueindex(1), "Fluid.obj"))) {
+
+   if (!(parent = (struct object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj"))) {
       luaL_argerror(Lua, 1, "Expected object.");
       return 0;
    }
 
-   struct prvFluid *prv = Lua->Script->Head.ChildPrivate;
+   auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
 
    CSTRING class_name;
    CLASSID class_id;
@@ -250,7 +258,7 @@ static int object_newchild(lua_State *Lua)
    if (type IS LUA_TNUMBER) {
       class_id = lua_tonumber(Lua, 1);
       class_name = NULL;
-      MSG("obj.child(%d)", class_id);
+      log.trace("$%.8x", class_id);
    }
    else if ((class_name = luaL_checkstring(Lua, 1))) {
       if (class_name[0] IS '@') {
@@ -258,10 +266,10 @@ static int object_newchild(lua_State *Lua)
          objflags |= NF_PUBLIC;
       }
       class_id = StrHash(class_name, 0);
-      MSG("obj.child(%s,$%.8x)", class_name, class_id);
+      log.trace("%s, $%.8x", class_name, class_id);
    }
    else {
-      LogF("@obj.child","String or ID expected for class name, got '%s'.", lua_typename(Lua, type));
+      log.warning("String or ID expected for class name, got '%s'.", lua_typename(Lua, type));
       prv->CaughtError = ERR_Mismatch;
       luaL_error(Lua, GetErrorMsg(ERR_Mismatch));
       return 0;
@@ -277,8 +285,8 @@ static int object_newchild(lua_State *Lua)
 
       auto_load_include(Lua, obj->Class);
 
-      struct object *object = (struct object *)lua_newuserdata(Lua, sizeof(struct object));
-      ClearMemory(object, sizeof(struct object));
+      auto def = (struct object *)lua_newuserdata(Lua, sizeof(struct object));
+      ClearMemory(def, sizeof(struct object));
 
       luaL_getmetatable(Lua, "Fluid.obj");
       lua_setmetatable(Lua, -2);
@@ -308,7 +316,7 @@ static int object_newchild(lua_State *Lua)
             else lua_pop(Lua, 1);  // removes 'value'; keeps 'key' for the proceeding lua_next() iteration
          }
 
-         if ((field_error) OR ((error = acInit(obj)) != ERR_Okay)) {
+         if ((field_error) or ((error = acInit(obj)) != ERR_Okay)) {
             acFree(obj);
             ReleaseObject(obj);
 
@@ -317,7 +325,7 @@ static int object_newchild(lua_State *Lua)
                luaL_error(Lua, "Failed to set field '%s', error: %s", field_name, GetErrorMsg(field_error));
             }
             else {
-               LogF("@obj.child","Failed to Init() object '%s', error: %s", class_name, GetErrorMsg(error));
+               log.warning("Failed to Init() object '%s', error: %s", class_name, GetErrorMsg(error));
                prv->CaughtError = ERR_Init;
                luaL_error(Lua, GetErrorMsg(ERR_Init));
             }
@@ -327,13 +335,13 @@ static int object_newchild(lua_State *Lua)
 
       // Objects created as children are treated as detached.
 
-      object->prvObject   = NULL;
-      object->AccessCount = 0;
-      object->Locked   = FALSE;
-      object->Detached = TRUE;
-      object->ObjectID = obj->UniqueID;
-      object->ClassID  = obj->SubID ? obj->SubID : obj->ClassID;
-      object->Class    = FindClass(object->ClassID); //obj->Class;
+      def->prvObject   = NULL;
+      def->AccessCount = 0;
+      def->Locked   = FALSE;
+      def->Detached = TRUE;
+      def->ObjectID = obj->UniqueID;
+      def->ClassID  = obj->SubID ? obj->SubID : obj->ClassID;
+      def->Class    = FindClass(def->ClassID); //obj->Class;
       ReleaseObject(obj);
       return 1;
    }
@@ -405,8 +413,48 @@ ERROR push_object_id(lua_State *Lua, OBJECTID ObjectID)
 ** The fluid object itself can be found by using the name "self".
 */
 
+static int object_find_private(lua_State *Lua, OBJECTPTR obj)
+{
+   // Private objects discovered by obj.find() have to be treated as an external reference at all times
+   // (access must controlled by access_object() and release_object() calls).
+
+   auto_load_include(Lua, obj->Class);
+
+   struct object *object = (struct object *)lua_newuserdata(Lua, sizeof(struct object)); // +1 stack
+   ClearMemory(object, sizeof(struct object));
+   luaL_getmetatable(Lua, "Fluid.obj"); // +1 stack
+   lua_setmetatable(Lua, -2); // -1 stack
+
+   object->prvObject   = NULL;
+   object->ObjectID    = obj->UniqueID;
+   object->ClassID     = obj->SubID ? obj->SubID : obj->ClassID;
+   object->Class       = FindClass(object->ClassID); //obj->Class;
+   object->Detached    = TRUE;
+   object->Locked      = FALSE;
+   object->AccessCount = 0;
+   return 1;
+}
+
+static int object_find_public(lua_State *Lua, OBJECTID object_id)
+{
+   struct object *object = (struct object *)lua_newuserdata(Lua, sizeof(struct object));
+   ClearMemory(object, sizeof(struct object));
+   luaL_getmetatable(Lua, "Fluid.obj");
+   lua_setmetatable(Lua, -2);
+
+   object->prvObject   = NULL;
+   object->ObjectID    = object_id;
+   object->ClassID     = GetClassID(object_id);
+   object->Class       = FindClass(object->ClassID);
+   object->Detached    = TRUE;
+   object->Locked      = FALSE;
+   object->AccessCount = 0;
+   return 1;
+}
+
 static int object_find(lua_State *Lua)
 {
+   parasol::Log log("object.find");
    OBJECTPTR obj;
    CSTRING object_name;
    CLASSID class_id;
@@ -423,79 +471,40 @@ static int object_find(lua_State *Lua)
       }
       else class_id = 0;
 
-      MSG("obj.find(%s, $%.8x)", object_name, class_id);
+      log.trace("obj.find(%s, $%.8x)", object_name, class_id);
 
       if ((!StrMatch("self", object_name)) AND (!class_id)) {
-         obj = (OBJECTPTR)Lua->Script;
-         goto private_object;
+         return object_find_private(Lua, (OBJECTPTR)Lua->Script);
       }
       else if (!StrMatch("owner", object_name)) {
          if ((obj = GetObjectPtr(Lua->Script->Head.OwnerID))) {
-            goto private_object;
+            return object_find_private(Lua, obj);
          }
          else return 0;
       }
 
       if (!FindPrivateObject(object_name, &obj)) {
-         // Private objects discovered by obj.find() have to be treated as an external reference at all times
-         // (access must controlled by access_object() and release_object() calls).
-private_object:
-         auto_load_include(Lua, obj->Class);
-
-         {
-            struct object *object = (struct object *)lua_newuserdata(Lua, sizeof(struct object)); // +1 stack
-            ClearMemory(object, sizeof(struct object));
-            luaL_getmetatable(Lua, "Fluid.obj"); // +1 stack
-            lua_setmetatable(Lua, -2); // -1 stack
-
-            object->prvObject   = NULL;
-            object->ObjectID    = obj->UniqueID;
-            object->ClassID     = obj->SubID ? obj->SubID : obj->ClassID;
-            object->Class       = FindClass(object->ClassID); //obj->Class;
-            object->Detached    = TRUE;
-            object->Locked      = FALSE;
-            object->AccessCount = 0;
-         }
-         return 1;
+         return object_find_private(Lua, obj);
       }
       else if (!FastFindObject(object_name, class_id, &object_id, 1, NULL)) {
-public_object:
-         {
-            struct object *object = (struct object *)lua_newuserdata(Lua, sizeof(struct object));
-            ClearMemory(object, sizeof(struct object));
-            luaL_getmetatable(Lua, "Fluid.obj");
-            lua_setmetatable(Lua, -2);
-
-            object->prvObject   = NULL;
-            object->ObjectID    = object_id;
-            object->ClassID     = GetClassID(object_id);
-            object->Class       = FindClass(object->ClassID);
-            object->Detached    = TRUE;
-            object->Locked      = FALSE;
-            object->AccessCount = 0;
-         }
-         return 1;
+         return object_find_public(Lua, object_id);
       }
-      else LogF("7obj.find","Unable to find object '%s'", object_name);
+      else log.debug("Unable to find object '%s'", object_name);
    }
    else if ((type IS LUA_TNUMBER) AND ((object_id = lua_tointeger(Lua, 1)))) {
-      MSG("obj.find(#%d)", object_id);
+      log.trace("obj.find(#%d)", object_id);
 
-      if (CheckObjectIDExists(object_id) != ERR_Okay) {
-         return 0;
-      }
-      else if (object_id < 0) {
-         goto public_object;
-      }
+      if (CheckObjectIDExists(object_id) != ERR_Okay) return 0;
+      else if (object_id < 0) return object_find_public(Lua, object_id);
       else {
-         UBYTE buffer[32] = "#";
+         char buffer[32] = "#";
          IntToStr(object_id, buffer+1, sizeof(buffer)-1);
          if (!FindPrivateObject(buffer, &obj)) {
-            goto private_object;
+            return object_find_private(Lua, obj);
          }
       }
    }
-   else LogF("@obj.find","String or ID expected for object name, got '%s'.", lua_typename(Lua, type));
+   else log.warning("String or ID expected for object name, got '%s'.", lua_typename(Lua, type));
 
    return 0;
 }
@@ -508,24 +517,24 @@ public_object:
 static int object_class(lua_State *Lua)
 {
    struct object *query;
-   if (!(query = get_meta(Lua, 1, "Fluid.obj"))) {
+   if (!(query = (struct object *)get_meta(Lua, 1, "Fluid.obj"))) {
       luaL_argerror(Lua, 1, "Expected object.");
       return 0;
    }
 
-   struct rkMetaClass *cl = query->Class;
-   struct object *object = (struct object *)lua_newuserdata(Lua, sizeof(struct object)); // +1 stack
-   ClearMemory(object, sizeof(struct object));
+   rkMetaClass *cl = query->Class;
+   auto def = (struct object *)lua_newuserdata(Lua, sizeof(struct object)); // +1 stack
+   ClearMemory(def, sizeof(struct object));
    luaL_getmetatable(Lua, "Fluid.obj"); // +1 stack
    lua_setmetatable(Lua, -2); // -1 stack
 
-   object->prvObject = &cl->Head;
-   object->ObjectID  = cl->Head.UniqueID;
-   object->ClassID   = cl->Head.SubID ? cl->Head.SubID : cl->Head.ClassID;
-   object->Class     = cl;
-   object->Detached  = TRUE;
-   object->Locked    = FALSE;
-   object->AccessCount = 0;
+   def->prvObject = &cl->Head;
+   def->ObjectID  = cl->Head.UniqueID;
+   def->ClassID   = cl->Head.SubID ? cl->Head.SubID : cl->Head.ClassID;
+   def->Class     = cl;
+   def->Detached  = TRUE;
+   def->Locked    = FALSE;
+   def->AccessCount = 0;
    return 1;
 }
 
@@ -537,17 +546,19 @@ static int object_class(lua_State *Lua)
 
 static int object_children(lua_State *Lua)
 {
-   MSG("obj.children()");
+   parasol::Log log("obj.children");
+
+   log.trace("");
 
    struct object *object;
-   if (!(object = get_meta(Lua, lua_upvalueindex(1), "Fluid.obj"))) {
+   if (!(object = (struct object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj"))) {
       luaL_argerror(Lua, 1, "Expected object.");
       return 0;
    }
 
    CLASSID class_id;
    CSTRING classfilter;
-   if ((classfilter = luaL_optstring(Lua, 1, NULL)) AND (classfilter[0])) {
+   if ((classfilter = luaL_optstring(Lua, 1, NULL)) and (classfilter[0])) {
       class_id = StrHash(classfilter, 0);
    }
    else class_id = 0;
@@ -558,8 +569,7 @@ static int object_children(lua_State *Lua)
 
    if (!ListChildren(object->ObjectID, list, &count)) {
       LONG index = 0;
-      LONG i;
-      for (i=0; i < count; i++) {
+      for (LONG i=0; i < count; i++) {
          if (class_id) {
             if (list[i].ClassID IS class_id) id[index++] = list[i].ObjectID;
          }
@@ -583,14 +593,14 @@ static int object_children(lua_State *Lua)
 
 static int object_lock(lua_State *Lua)
 {
-   struct object *object;
+   struct object *def;
 
-   if (!(object = get_meta(Lua, lua_upvalueindex(1), "Fluid.obj"))) {
+   if (!(def = (struct object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj"))) {
       luaL_argerror(Lua, 1, "Expected object.");
       return 0;
    }
 
-   if (object->ObjectID < 0) { // Security measure - public locks are not allowed.
+   if (def->ObjectID < 0) { // Security measure - public locks are not allowed.
       luaL_error(Lua, "Locking public objects is not supported.");
       return 0;
    }
@@ -600,11 +610,11 @@ static int object_lock(lua_State *Lua)
       return 0;
    }
 
-   if (access_object(object)) {
-      LogF("~obj.lock()","Object: %d", object->ObjectID);
+   if (access_object(def)) {
+      parasol::Log log("obj.lock");
+      log.branch("Object: %d", def->ObjectID);
       lua_pcall(Lua, 0, 0, 0);
-      LogReturn();
-      release_object(object);
+      release_object(def);
    }
    return 0;
 }
@@ -617,23 +627,24 @@ static int object_lock(lua_State *Lua)
 
 static int object_detach(lua_State *Lua)
 {
-   struct object *object;
-   if (!(object = get_meta(Lua, lua_upvalueindex(1), "Fluid.obj"))) {
+   struct object *def;
+
+   if (!(def = (struct object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj"))) {
       luaL_argerror(Lua, 1, "Expected object.");
       return 0;
    }
 
-   FMSG("~obj.detach()","Detached: %d, NewLock: %d", object->Detached, object->NewLock);
+   parasol::Log log("obj.detach");
+   log.traceBranch("Detached: %d, NewLock: %d", def->Detached, def->NewLock);
 
-   if (!object->Detached) {
-      object->Detached = TRUE;
-      if (object->NewLock) { // If created by obj.new(), undo the persistent lock that we have.
-         object->NewLock = FALSE;
-         release_object(object);
+   if (!def->Detached) {
+      def->Detached = TRUE;
+      if (def->NewLock) { // If created by obj.new(), undo the persistent lock that we have.
+         def->NewLock = FALSE;
+         release_object(def);
       }
    }
 
-   LOGRETURN();
    return 0;
 }
 
@@ -645,12 +656,12 @@ static int object_detach(lua_State *Lua)
 
 static int object_exists(lua_State *Lua)
 {
-   struct object *object;
+   struct object *def;
 
-   if ((object = get_meta(Lua, lua_upvalueindex(1), "Fluid.obj"))) {
+   if ((def = (struct object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj"))) {
       OBJECTPTR obj;
-      if ((obj = access_object(object))) {
-         release_object(object);
+      if ((obj = access_object(def))) {
+         release_object(def);
          lua_pushboolean(Lua, TRUE);
          return 1;
       }
@@ -667,13 +678,12 @@ static int object_exists(lua_State *Lua)
 
 static int object_subscribe(lua_State *Lua)
 {
-   struct object *object;
-   if (!(object = get_meta(Lua, lua_upvalueindex(1), "Fluid.obj"))) {
+   struct object *def;
+
+   if (!(def = (struct object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj"))) {
       luaL_error(Lua, "Expected object.");
       return 0;
    }
-
-   struct prvFluid *prv = Lua->Script->Head.ChildPrivate;
 
    CSTRING action;
    if (!(action = lua_tostring(Lua, 1))) {
@@ -686,26 +696,29 @@ static int object_subscribe(lua_State *Lua)
       return 0;
    }
 
-   const struct FunctionField *arglist;
-   ACTIONID action_id = get_action_info(Lua, object->ClassID, action, &arglist);
+   const FunctionField *arglist;
+   ACTIONID action_id = get_action_info(Lua, def->ClassID, action, &arglist);
 
    if (!action_id) {
       luaL_argerror(Lua, 1, "Action/Method name is invalid.");
       return 0;
    }
 
-   FMSG("subscribe()","Object: %d, Action: %s (ID %d)", object->ObjectID, action, action_id);
-
    OBJECTPTR obj;
-   if (!(obj = access_object(object))) {
+   if (!(obj = access_object(def))) {
       luaL_error(Lua, GetErrorMsg(ERR_AccessObject));
       return 0;
    }
 
+   parasol::Log log("obj.subscribe");
+   log.trace("Object: %d, Action: %s (ID %d)", def->ObjectID, action, action_id);
+
+   auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
+
    ERROR error;
    if (!(error = SubscribeActionTags(obj, action_id, TAGEND))) {
-      struct actionmonitor *acsub;
-      if (!AllocMemory(sizeof(struct actionmonitor), MEM_DATA, &acsub, NULL)) {
+      actionmonitor *acsub;
+      if (!AllocMemory(sizeof(actionmonitor), MEM_DATA, &acsub, NULL)) {
          if (!lua_isnil(Lua, 3)) { // A custom reference for the callback can be specified in arg 3.
             lua_settop(prv->Lua, 3);
             acsub->Reference = luaL_ref(prv->Lua, LUA_REGISTRYINDEX); // Pops value from stack and returns it as a reference that can be used later.
@@ -713,32 +726,32 @@ static int object_subscribe(lua_State *Lua)
 
          lua_settop(prv->Lua, 2);
          acsub->Function = luaL_ref(prv->Lua, LUA_REGISTRYINDEX); // Pops value from stack and returns it as a reference that can be used later.
-         acsub->Object   = object;
+         acsub->Object   = def;
          acsub->Args     = arglist;
-         acsub->ObjectID = object->ObjectID;
+         acsub->ObjectID = def->ObjectID;
          acsub->ActionID = action_id;
 
          if (prv->ActionList) prv->ActionList->Prev = acsub;
          acsub->Next = prv->ActionList;
          prv->ActionList = acsub;
 
-         release_object(object);
+         release_object(def);
          return 0;
       }
       else {
          UnsubscribeAction(obj, action_id);
-         release_object(object);
+         release_object(def);
          luaL_error(Lua, GetErrorMsg(ERR_AllocMemory));
          return 0;
       }
    }
    else {
-      release_object(object);
+      release_object(def);
       luaL_error(Lua, GetErrorMsg(error));
       return 0;
    }
 
-   release_object(object);
+   release_object(def);
    return 0;
 }
 
@@ -747,10 +760,12 @@ static int object_subscribe(lua_State *Lua)
 
 static int object_unsubscribe(lua_State *Lua)
 {
-   struct prvFluid *prv = Lua->Script->Head.ChildPrivate;
+   parasol::Log log("unsubscribe");
 
-   struct object *object;
-   if (!(object = get_meta(Lua, lua_upvalueindex(1), "Fluid.obj"))) {
+   auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
+
+   struct object *def;
+   if (!(def = (struct object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj"))) {
       luaL_error(Lua, "Expected object.");
       return 0;
    }
@@ -761,27 +776,26 @@ static int object_unsubscribe(lua_State *Lua)
       return 0;
    }
 
-   const struct FunctionField *arglist;
-   ACTIONID action_id = get_action_info(Lua, object->ClassID, action, &arglist);
+   const FunctionField *arglist;
+   ACTIONID action_id = get_action_info(Lua, def->ClassID, action, &arglist);
 
    if (!action_id) {
       luaL_argerror(Lua, 1, "Action/Method name is invalid.");
       return 0;
    }
 
-   FMSG("subscribe()","Object: %d, Action: %s", object->ObjectID, action);
+   log.trace("Object: %d, Action: %s", def->ObjectID, action);
 
    OBJECTPTR obj;
-   if (!(obj = access_object(object))) {
+   if (!(obj = access_object(def))) {
       luaL_error(Lua, GetErrorMsg(ERR_AccessObject));
       return 0;
    }
 
-   struct actionmonitor *acsub = prv->ActionList;
-   while (acsub) {
-      struct actionmonitor *next = acsub->Next;
-      if (acsub->ObjectID IS object->ObjectID) {
-         if ((!action_id) OR (acsub->ActionID IS action_id)) {
+   for (auto acsub=prv->ActionList, next=acsub; acsub; acsub = next) {
+      next = acsub->Next;
+      if (acsub->ObjectID IS def->ObjectID) {
+         if ((!action_id) or (acsub->ActionID IS action_id)) {
             luaL_unref(Lua, LUA_REGISTRYINDEX, acsub->Function);
             if (acsub->Reference) luaL_unref(Lua, LUA_REGISTRYINDEX, acsub->Reference);
 
@@ -795,10 +809,9 @@ static int object_unsubscribe(lua_State *Lua)
             // Do not break (in case of multiple subscriptions)
          }
       }
-      acsub = next;
    }
 
-   release_object(object);
+   release_object(def);
 
    lua_pushinteger(Lua, ERR_Okay);
    return 1;
@@ -811,13 +824,13 @@ static int object_unsubscribe(lua_State *Lua)
 
 static int object_delaycall(lua_State *Lua)
 {
-   struct object *obj;
-   if (!(obj = get_meta(Lua, lua_upvalueindex(1), "Fluid.obj"))) {
+   struct object *def;
+   if (!(def = (struct object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj"))) {
       luaL_argerror(Lua, 1, "Expected object.");
       return 0;
    }
 
-   obj->DelayCall = TRUE;
+   def->DelayCall = TRUE;
    return 0;
 }
 
@@ -826,39 +839,40 @@ static int object_delaycall(lua_State *Lua)
 
 static int object_destruct(lua_State *Lua)
 {
-   struct object *object;
-   if ((object = (struct object *)luaL_checkudata(Lua, 1, "Fluid.obj"))) {
-      #ifdef DEBUG
-         struct rkMetaClass *cl = object->Class;
-         if (cl) FMSG("~","obj.destruct(#%d, Owner #%d, Class %s, Detached: %d, Locks: %d)", object->ObjectID, GetOwnerID(object->ObjectID), cl->ClassName, object->Detached, object->AccessCount);
-         else FMSG("~","obj.destruct(#%d, Owner #%d, Class $%.8x, Detached: %d, Locks: %d)", object->ObjectID, GetOwnerID(object->ObjectID), object->ClassID, object->Detached, object->AccessCount);
-      #endif
+   parasol::Log log("obj.destruct");
+   struct object *def;
 
-      while (object->AccessCount > 0) {
-         release_object(object);
+   if ((def = (struct object *)luaL_checkudata(Lua, 1, "Fluid.obj"))) {
+      // NOTE: It is possible for the referenced object to have already been destroyed if it is owned by something outside of
+      // Fluid's environment.  This is commonplace for UI objects.  In addition the object's class may have been removed if
+      // the termination process is running during an expunge.
+
+      //log.traceBranch("obj.destruct(#%d, Owner #%d, Class $%.8x, Detached: %d, Locks: %d)", def->ObjectID, GetOwnerID(def->ObjectID), def->ClassID, def->Detached, def->AccessCount);
+
+      while (def->AccessCount > 0) {
+         release_object(def);
       }
 
-      if (!object->Detached) {
+      if (!def->Detached) {
          // Object belongs to this Lua instance.  Note that it is possible that an object could destroy itself prior to
          // the garbage collector picking it up.  Because of this, we cannot rely on the integrity of the object
          // address and must free it on the ID.
 
-         if (object->ObjectID > 0) {
+         if (def->ObjectID > 0) {
             // Object is private.  Note that if the object's owner has switched to something out of our context, we
             // don't terminate it (an exception is applied for Recordset objects as these must be
             // owned by a Database object).
 
-            OBJECTID owner_id = GetOwnerID(object->ObjectID);
-            if ((object->ClassID IS ID_RECORDSET) OR (owner_id IS Lua->Script->Head.UniqueID) OR (owner_id IS Lua->Script->TargetID)) {
-               MSG("Freeing Fluid-owned object #%d.", object->ObjectID);
-               acFreeID(object->ObjectID);
+            auto owner_id = GetOwnerID(def->ObjectID);
+            if ((def->ClassID IS ID_RECORDSET) or (owner_id IS Lua->Script->Head.UniqueID) or (owner_id IS Lua->Script->TargetID)) {
+               log.trace("Freeing Fluid-owned object #%d.", def->ObjectID);
+               acFreeID(def->ObjectID);
             }
          }
          else {
             // Object is public
          }
       }
-      LOGRETURN();
    }
 
    return 0;
@@ -869,14 +883,13 @@ static int object_destruct(lua_State *Lua)
 
 static int object_tostring(lua_State *Lua)
 {
-   struct object *object;
-
-   if ((object = (struct object *)luaL_checkudata(Lua, 1, "Fluid.obj"))) {
-      MSG("obj.tostring(%d)", object->ObjectID);
-      lua_pushfstring(Lua, "#%d", object->ObjectID);
+   struct object *def;
+   if ((def = (struct object *)luaL_checkudata(Lua, 1, "Fluid.obj"))) {
+      parasol::Log log("obj.tostring");
+      log.trace("#%d", def->ObjectID);
+      lua_pushfstring(Lua, "#%d", def->ObjectID);
    }
    else lua_pushstring(Lua, "?");
-
    return 1;
 }
 
@@ -885,14 +898,15 @@ static int object_tostring(lua_State *Lua)
 
 static int object_index(lua_State *Lua)
 {
-   struct object *object;
+   parasol::Log log;
+   struct object *def;
 
-   if ((object = (struct object *)luaL_checkudata(Lua, 1, "Fluid.obj"))) {
+   if ((def = (struct object *)luaL_checkudata(Lua, 1, "Fluid.obj"))) {
       CSTRING code;
       if ((code = luaL_checkstring(Lua, 2))) {
-         MSG("obj.index(#%d, %s)", object->ObjectID, code);
+         log.trace("obj.index(#%d, %s)", def->ObjectID, code);
 
-         if ((code[0] IS 'a') AND (code[1] IS 'c') AND (code[2] >= 'A') AND (code[2] <= 'Z')) {
+         if ((code[0] IS 'a') and (code[1] IS 'c') and (code[2] >= 'A') and (code[2] <= 'Z')) {
             ACTIONID *ptr;
             if (!VarGet(glActionLookup, code + 2, &ptr, NULL)) {
                lua_pushvalue(Lua, 1); // Arg1: Duplicate the object reference
@@ -904,19 +918,19 @@ static int object_index(lua_State *Lua)
             luaL_error(Lua, "Action '%s' not recognised.", code+2);
             return 0;
          }
-         else if ((code[0] IS 'm') AND (code[1] IS 't') AND (code[2] >= 'A') AND (code[2] <= 'Z')) {
+         else if ((code[0] IS 'm') and (code[1] IS 't') and (code[2] >= 'A') and (code[2] <= 'Z')) {
             // Method
 
-            struct rkMetaClass *cl = FindClass(object->ClassID); //object->Class;
+            auto cl = FindClass(def->ClassID); //object->Class;
             if (!cl) {
-               luaL_error(Lua, "Failed to resolve class %d", object->ClassID);
+               luaL_error(Lua, "Failed to resolve class %d", def->ClassID);
                return 0;
             }
 
-            struct MethodArray *table;
-            LONG total_methods, i;
-            if ((!GetFieldArray(cl, FID_Methods, &table, &total_methods)) AND (table)) {
-               for (i=1; i < total_methods+1; i++) { // TODO: Sorted hash IDs and a binary search would be best
+            MethodArray *table;
+            LONG total_methods;
+            if ((!GetFieldArray(cl, FID_Methods, &table, &total_methods)) and (table)) {
+               for (LONG i=1; i < total_methods+1; i++) { // TODO: Sorted hash IDs and a binary search would be best
                   if (!StrMatch(table[i].Name, code+2)) {
                      lua_pushvalue(Lua, 1); // Arg1: Duplicate the object reference
                      lua_pushinteger(Lua, table[i].MethodID); // Arg2: Method ID
@@ -931,26 +945,26 @@ static int object_index(lua_State *Lua)
          }
          else {
             switch (StrHash(code, 0)) {
-               case HASH_LOCK:        SET_CONTEXT(Lua, object_lock); return 1;
-               case HASH_CHILDREN:    SET_CONTEXT(Lua, object_children); return 1;
-               case HASH_DETACH:      SET_CONTEXT(Lua, object_detach); return 1;
-               case HASH_GET:         SET_CONTEXT(Lua, object_get); return 1;
-               case HASH_NEW:         SET_CONTEXT(Lua, object_newchild); return 1;
+               case HASH_LOCK:        SET_CONTEXT(Lua, (APTR)object_lock); return 1;
+               case HASH_CHILDREN:    SET_CONTEXT(Lua, (APTR)object_children); return 1;
+               case HASH_DETACH:      SET_CONTEXT(Lua, (APTR)object_detach); return 1;
+               case HASH_GET:         SET_CONTEXT(Lua, (APTR)object_get); return 1;
+               case HASH_NEW:         SET_CONTEXT(Lua, (APTR)object_newchild); return 1;
                case HASH_VAR:
-               case HASH_GETVAR:      SET_CONTEXT(Lua, object_getvar); return 1;
-               case HASH_SET:         SET_CONTEXT(Lua, object_set); return 1;
-               case HASH_SETVAR:      SET_CONTEXT(Lua, object_setvar); return 1;
-               case HASH_DELAYCALL:   SET_CONTEXT(Lua, object_delaycall); return 1;
-               case HASH_EXISTS:      SET_CONTEXT(Lua, object_exists); return 1;
-               case HASH_SUBSCRIBE:   SET_CONTEXT(Lua, object_subscribe); return 1;
-               case HASH_UNSUBSCRIBE: SET_CONTEXT(Lua, object_unsubscribe); return 1;
+               case HASH_GETVAR:      SET_CONTEXT(Lua, (APTR)object_getvar); return 1;
+               case HASH_SET:         SET_CONTEXT(Lua, (APTR)object_set); return 1;
+               case HASH_SETVAR:      SET_CONTEXT(Lua, (APTR)object_setvar); return 1;
+               case HASH_DELAYCALL:   SET_CONTEXT(Lua, (APTR)object_delaycall); return 1;
+               case HASH_EXISTS:      SET_CONTEXT(Lua, (APTR)object_exists); return 1;
+               case HASH_SUBSCRIBE:   SET_CONTEXT(Lua, (APTR)object_subscribe); return 1;
+               case HASH_UNSUBSCRIBE: SET_CONTEXT(Lua, (APTR)object_unsubscribe); return 1;
                default: {
                   // Default to retrieving the field name.  It's a good solution given the aforementioned string checks,
                   // so long as there are no fields named 'access' or 'release' and the user doesn't write field names
                   // with odd caps.
 
-                  struct prvFluid *prv = Lua->Script->Head.ChildPrivate;
-                  prv->CaughtError = getfield(Lua, object, code);
+                  auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
+                  prv->CaughtError = getfield(Lua, def, code);
                   if (!prv->CaughtError) return 1;
                   //if (prv->ThrowErrors) luaL_error(Lua, GetErrorMsg);
                }
@@ -968,11 +982,11 @@ static int object_index(lua_State *Lua)
 
 static int object_next_pair(lua_State *Lua)
 {
-   struct FieldArray *fields = lua_touserdata(Lua, lua_upvalueindex(1));
+   auto fields = (FieldArray *)lua_touserdata(Lua, lua_upvalueindex(1));
    LONG field_total = lua_tointeger(Lua, lua_upvalueindex(2));
    LONG field_index = lua_tointeger(Lua, lua_upvalueindex(3));
 
-   if ((field_index >= 0) AND (field_index < field_total)) {
+   if ((field_index >= 0) and (field_index < field_total)) {
       lua_pushinteger(Lua, field_index + 1);
       lua_replace(Lua, lua_upvalueindex(3)); // Update the field counter
 
@@ -985,12 +999,11 @@ static int object_next_pair(lua_State *Lua)
 
 static int object_pairs(lua_State *Lua)
 {
-   struct object *object;
-
-   if ((object = (struct object *)luaL_checkudata(Lua, 1, "Fluid.obj"))) {
-      struct FieldArray *fields;
+   auto def = (struct object *)luaL_checkudata(Lua, 1, "Fluid.obj");
+   if (def) {
+      FieldArray *fields;
       LONG total;
-      if (!GetFieldArray(object->Class, FID_Fields, &fields, &total)) {
+      if (!GetFieldArray(def->Class, FID_Fields, &fields, &total)) {
          lua_pushlightuserdata(Lua, fields);
          lua_pushinteger(Lua, total);
          lua_pushinteger(Lua, 0);
@@ -1008,11 +1021,11 @@ static int object_pairs(lua_State *Lua)
 
 static int object_next_ipair(lua_State *Lua)
 {
-   struct FieldArray *fields = lua_touserdata(Lua, lua_upvalueindex(1));
+   auto fields = (FieldArray *)lua_touserdata(Lua, lua_upvalueindex(1));
    LONG field_total = lua_tointeger(Lua, lua_upvalueindex(2));
    LONG field_index = lua_tointeger(Lua, 2); // Arg 2 is the previous index.  It's nil if this is the first iteration.
 
-   if ((field_index >= 0) AND (field_index < field_total)) {
+   if ((field_index >= 0) and (field_index < field_total)) {
       lua_pushinteger(Lua, field_index + 1);
       lua_pushstring(Lua, fields[field_index].Name);
       return 2;
@@ -1022,12 +1035,11 @@ static int object_next_ipair(lua_State *Lua)
 
 static int object_ipairs(lua_State *Lua)
 {
-   struct object *object;
-
-   if ((object = (struct object *)luaL_checkudata(Lua, 1, "Fluid.obj"))) {
-      struct FieldArray *fields;
+   struct object *def;
+   if ((def = (struct object *)luaL_checkudata(Lua, 1, "Fluid.obj"))) {
+      FieldArray *fields;
       LONG total;
-      if (!GetFieldArray(object->Class, FID_Fields, &fields, &total)) {
+      if (!GetFieldArray(def->Class, FID_Fields, &fields, &total)) {
          lua_pushlightuserdata(Lua, fields);
          lua_pushinteger(Lua, total);
          lua_pushcclosure(Lua, object_next_ipair, 2);
@@ -1041,8 +1053,8 @@ static int object_ipairs(lua_State *Lua)
 
 //****************************************************************************
 
-#include "fluid_objects_indexes.c"
-#include "fluid_objects_calls.c"
+#include "fluid_objects_indexes.cpp"
+#include "fluid_objects_calls.cpp"
 
 //****************************************************************************
 // Register the object interface.
@@ -1066,7 +1078,9 @@ static const struct luaL_reg objectlib_methods[] = {
 
 void register_object_class(lua_State *Lua)
 {
-   MSG("Registering object interface.");
+   parasol::Log log(__FUNCTION__);
+
+   log.trace("Registering object interface.");
 
    luaL_newmetatable(Lua, "Fluid.obj");
    lua_pushstring(Lua, "__index");

@@ -1766,7 +1766,7 @@ ERROR MGR_Free(OBJECTPTR Object, APTR Void)
       return ERR_Okay|ERF_Notified;
    }
 
-   if (Object->ClassID IS ID_METACLASS)   log.branch("%s, Owner: %d", mc->ClassName, Object->OwnerID);
+   if (Object->ClassID IS ID_METACLASS)   log.branch("%s, Owner: %d", ((rkMetaClass *)Object)->ClassName, Object->OwnerID);
    else if (Object->ClassID IS ID_MODULE) log.branch("%s, Owner: %d", ((rkModule *)Object)->Name, Object->OwnerID);
    else if (Object->Stats->Name[0])       log.branch("Name: %s, Owner: %d", Object->Stats->Name, Object->OwnerID);
    else log.branch("Owner: %d", Object->OwnerID);

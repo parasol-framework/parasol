@@ -5,10 +5,15 @@
 #include <parasol/main.h>
 #include <parasol/modules/fluid.h>
 #include <inttypes.h>
-#include "lua.h"
-#include "lualib.h"
-#include "lauxlib.h"
-#include "lj_obj.h"
+#include <mutex>
+
+extern "C" {
+ #include "lua.h"
+ #include "lualib.h"
+ #include "lauxlib.h"
+ #include "lj_obj.h"
+}
+
 #include "hashes.h"
 #include "defs.h"
 
@@ -16,14 +21,14 @@
 
 void clear_subscriptions(objScript *Self)
 {
-   struct prvFluid *prv;
-   if (!(prv = Self->Head.ChildPrivate)) return;
+   auto prv = (prvFluid *)Self->Head.ChildPrivate;
+   if (!prv) return;
 
    // Free action subscriptions
 
-   struct actionmonitor *action = prv->ActionList;
+   auto action = prv->ActionList;
    while (action) {
-      struct actionmonitor *nextaction = action->Next;
+      auto nextaction = action->Next;
 
       if (action->ObjectID) {
          OBJECTPTR object;
@@ -39,9 +44,9 @@ void clear_subscriptions(objScript *Self)
 
    // Free event subscriptions
 
-   struct eventsub *event = prv->EventList;
+   auto event = prv->EventList;
    while (event) {
-      struct eventsub *nextevent = event->Next;
+      auto nextevent = event->Next;
       if (event->EventHandle) UnsubscribeEvent(event->EventHandle);
       FreeResource(event);
       event = nextevent;
@@ -50,9 +55,9 @@ void clear_subscriptions(objScript *Self)
 
    // Free data requests
 
-   struct datarequest *dr = prv->Requests;
+   auto dr = prv->Requests;
    while (dr) {
-      struct datarequest *next = dr->Next;
+      auto next = dr->Next;
       FreeResource(dr);
       dr = next;
    }
@@ -70,11 +75,10 @@ void clear_subscriptions(objScript *Self)
 
 int fcmd_check(lua_State *Lua)
 {
-   LONG type = lua_type(Lua, 1);
-   if (type IS LUA_TNUMBER) {
+   if (lua_type(Lua, 1) IS LUA_TNUMBER) {
       ERROR error = lua_tonumber(Lua, 1);
       if (error >= ERR_ExceptionThreshold) {
-         struct prvFluid *prv = Lua->Script->Head.ChildPrivate;
+         auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
          prv->CaughtError = error;
          luaL_error(prv->Lua, GetErrorMsg(error));
       }
@@ -117,7 +121,7 @@ int fcmd_check(lua_State *Lua)
 int fcmd_catch_handler(lua_State *Lua)
 {
    lua_Debug ar;
-   struct prvFluid *prv = Lua->Script->Head.ChildPrivate;
+   auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
    if (lua_getstack(Lua, 2, &ar)) {
       lua_getinfo(Lua, "nSl", &ar);
       // ar.currentline, ar.name, ar.source, ar.short_src, ar.linedefined, ar.lastlinedefined, ar.what
@@ -130,7 +134,7 @@ int fcmd_catch_handler(lua_State *Lua)
 
 int fcmd_catch(lua_State *Lua)
 {
-   struct prvFluid *prv = Lua->Script->Head.ChildPrivate;
+   auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
 
    if (lua_gettop(Lua) >= 2) {
       LONG type = lua_type(Lua, 1);
@@ -156,10 +160,10 @@ int fcmd_catch(lua_State *Lua)
             if (lua_pcall(Lua, 0, LUA_MULTRET, -2)) { // An exception was raised!
                prv->Catch--;
 
-               if ((prv->CaughtError >= ERR_ExceptionThreshold) AND (catch_filter)) { // Apply error code filtering
+               if ((prv->CaughtError >= ERR_ExceptionThreshold) and (catch_filter)) { // Apply error code filtering
                   lua_rawgeti(Lua, LUA_REGISTRYINDEX, catch_filter);
                   lua_pushnil(Lua);  // First key
-                  while ((!caught_by_filter) AND (lua_next(Lua, -2) != 0)) { // Iterate over each table key
+                  while ((!caught_by_filter) and (lua_next(Lua, -2) != 0)) { // Iterate over each table key
                      // -1 is the value and -2 is the key.
                      if (lua_tointeger(Lua, -1) IS prv->CaughtError) {
                         caught_by_filter = TRUE;
@@ -277,23 +281,23 @@ int fcmd_catch(lua_State *Lua)
 
 int fcmd_processMessages(lua_State *Lua)
 {
-   static volatile BYTE recursion = 0; // Intentionally accessible to all threads
+   static std::mutex recursion; // Intentionally accessible to all threads
 
-   FMSG("~","Collecting garbage.");
-      lua_gc(Lua, LUA_GCCOLLECT, 0); // Run the garbage collector
-   LOGRETURN();
-
-   if (recursion) return 0;
+   {
+      parasol::Log log;
+      log.traceBranch("Collecting garbage.");
+      lua_gc(Lua, LUA_GCCOLLECT, 0);
+   }
 
    LONG timeout = lua_tointeger(Lua, 1);
 
-   recursion++;
+   recursion.lock();
 
       LARGE time = PreciseTime();
       ERROR error = ProcessMessages(0, timeout);
       time = PreciseTime() - time;
 
-   recursion--;
+   recursion.unlock();
 
    lua_pushnumber(Lua, time);
    lua_pushinteger(Lua, error);
@@ -308,24 +312,24 @@ int fcmd_processMessages(lua_State *Lua)
 // Where Args is a named array containing the event parameters.  If the event is not known to Fluid, then no Args will
 // be provided.
 
-static void receive_event(struct eventsub *Event, APTR Info, LONG InfoSize)
+static void receive_event(eventsub *Event, APTR Info, LONG InfoSize)
 {
-   FMSG("Fluid","Received event $%.8x%.8x", (LONG)((Event->EventID>>32) & 0xffffffff), (LONG)(Event->EventID & 0xffffffff));
+   auto Script = (objScript *)CurrentContext();
+   auto prv = (prvFluid *)Script->Head.ChildPrivate;
+   if (!prv) return;
 
-   struct prvFluid *prv;
-   objScript *Script = (objScript *)CurrentContext();
-   if (!(prv = Script->Head.ChildPrivate)) return;
+   parasol::Log log(__FUNCTION__);
+   log.trace("Received event $%.8x%.8x", (LONG)((Event->EventID>>32) & 0xffffffff), (LONG)(Event->EventID & 0xffffffff));
 
    lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, Event->Function);
 
-   lua_pushnumber(prv->Lua, ((struct rkEvent *)Info)->EventID);
+   lua_pushnumber(prv->Lua, ((rkEvent *)Info)->EventID);
    if (lua_pcall(prv->Lua, 1, 0, 0)) {
       process_error(Script, "Event Subscription");
    }
 
-   FMSG("~","Collecting garbage.");
-      lua_gc(prv->Lua, LUA_GCCOLLECT, 0); // Run the garbage collector
-   LOGRETURN();
+   log.traceBranch("Collecting garbage.");
+   lua_gc(prv->Lua, LUA_GCCOLLECT, 0); // Run the garbage collector
 }
 
 //****************************************************************************
@@ -333,15 +337,15 @@ static void receive_event(struct eventsub *Event, APTR Info, LONG InfoSize)
 
 int fcmd_unsubscribe_event(lua_State *Lua)
 {
-   struct prvFluid *prv;
-   if (!(prv = Lua->Script->Head.ChildPrivate)) return 0;
+   auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
+   if (!prv) return 0;
 
    APTR handle;
    if ((handle = lua_touserdata(Lua, 1))) {
-      if (Lua->Script->Flags & SCF_DEBUG) LogF("unsubscribeevent()","Handle: %p", handle);
+      parasol::Log log("unsubscribe_event");
+      if (Lua->Script->Flags & SCF_DEBUG) log.msg("Handle: %p", handle);
 
-      struct eventsub *event;
-      for (event=prv->EventList; event; event=event->Next) {
+      for (auto event=prv->EventList; event; event=event->Next) {
          if (event->EventHandle IS handle) {
             UnsubscribeEvent(event->EventHandle);
             luaL_unref(prv->Lua, LUA_REGISTRYINDEX, event->Function);
@@ -351,12 +355,11 @@ int fcmd_unsubscribe_event(lua_State *Lua)
             if (event IS prv->EventList) prv->EventList = event->Next;
 
             FreeResource(event);
-
             return 0;
          }
       }
 
-      LogF("@unsubscribeevent","Failed to link an event to handle %p.", handle);
+      log.warning("Failed to link an event to handle %p.", handle);
    }
    else luaL_argerror(Lua, 1, "No handle provided.");
 
@@ -385,21 +388,20 @@ int fcmd_subscribe_event(lua_State *Lua)
 
    char group[60];
    ULONG group_hash = 0, subgroup_hash = 0;
-   LONG i;
-   for (i=0; event[i]; i++) {
+   for (LONG i=0; event[i]; i++) {
       if (event[i] IS '.') {
          LONG j;
-         if (i >= sizeof(group)) luaL_error(Lua, "Buffer overflow.");
-         for (j=0; (j < i) AND (j < sizeof(group)-1); j++) group[j] = event[j];
+         if ((size_t)i >= sizeof(group)) luaL_error(Lua, "Buffer overflow.");
+         for (j=0; (j < i) and ((size_t)j < sizeof(group)-1); j++) group[j] = event[j];
          group[j] = 0;
          group_hash = StrHash(group, 0);
          event += i + 1;
 
-         for (i=0; event[i]; i++) {
+         for (LONG i=0; event[i]; i++) {
             if (event[i] IS '.') {
                LONG j;
-               if (i >= sizeof(group)) luaL_error(Lua, "Buffer overflow.");
-               for (j=0; (j < i) AND (j < sizeof(group)-1); j++) group[j] = event[j];
+               if ((size_t)i >= sizeof(group)) luaL_error(Lua, "Buffer overflow.");
+               for (j=0; (j < i) and ((size_t)j < sizeof(group)-1); j++) group[j] = event[j];
                group[j] = 0;
                subgroup_hash = StrHash(group, 0);
                event += i + 1;
@@ -411,7 +413,7 @@ int fcmd_subscribe_event(lua_State *Lua)
    }
 
    LONG group_id = 0;
-   if ((group_hash) AND (subgroup_hash)) {
+   if ((group_hash) and (subgroup_hash)) {
       switch (group_hash) {
          case HASH_FILESYSTEM: group_id = EVG_FILESYSTEM; break;
          case HASH_NETWORK:    group_id = EVG_NETWORK; break;
@@ -435,31 +437,30 @@ int fcmd_subscribe_event(lua_State *Lua)
 
    EVENTID event_id = GetEventID(group_id, group, event);
 
-   struct eventsub *eventsub;
+   struct eventsub *es;
    ERROR error;
    if (!event_id) {
       luaL_argerror(Lua, 1, "Failed to build event ID.");
       lua_pushinteger(Lua, ERR_Failed);
       return 1;
    }
-   else if (!(error = AllocMemory(sizeof(struct eventsub), MEM_DATA, &eventsub, NULL))) {
+   else if (!(error = AllocMemory(sizeof(struct eventsub), MEM_DATA, &es, NULL))) {
       FUNCTION call;
-
-      SET_FUNCTION_STDC(call, receive_event);
-      if (!(error = SubscribeEvent(event_id, &call, eventsub, &eventsub->EventHandle))) {
-         struct prvFluid *prv = Lua->Script->Head.ChildPrivate;
+      SET_FUNCTION_STDC(call, (APTR)receive_event);
+      if (!(error = SubscribeEvent(event_id, &call, es, &es->EventHandle))) {
+         auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
          lua_settop(Lua, 2);
-         eventsub->Function = luaL_ref(Lua, LUA_REGISTRYINDEX);
-         eventsub->EventID  = event_id;
-         eventsub->Next     = prv->EventList;
-         if (prv->EventList) prv->EventList->Prev = eventsub;
-         prv->EventList = eventsub;
+         es->Function = luaL_ref(Lua, LUA_REGISTRYINDEX);
+         es->EventID  = event_id;
+         es->Next     = prv->EventList;
+         if (prv->EventList) prv->EventList->Prev = es;
+         prv->EventList = es;
 
-         lua_pushlightuserdata(Lua, eventsub->EventHandle); // 1: Handle
+         lua_pushlightuserdata(Lua, es->EventHandle); // 1: Handle
          lua_pushinteger(Lua, error); // 2: Error code
          return 2;
       }
-      else FreeResource(eventsub);
+      else FreeResource(es);
    }
 
    lua_pushnil(Lua); // Handle
@@ -474,17 +475,18 @@ int fcmd_subscribe_event(lua_State *Lua)
 int fcmd_msg(lua_State *Lua)
 {
    int n = lua_gettop(Lua);  // number of arguments
-   int i;
-
    lua_getglobal(Lua, "tostring");
-   for (i=1; i <= n; i++) {
+   for (LONG i=1; i <= n; i++) {
       lua_pushvalue(Lua, -1);  // function to be called (tostring)
       lua_pushvalue(Lua, i);   // value to pass to tostring
       lua_call(Lua, 1, 1);
       CSTRING s = lua_tostring(Lua, -1);  // get result
       if (!s) return luaL_error(Lua, LUA_QL("tostring") " must return a string to " LUA_QL("print"));
 
-      LogF("Fluid","%s", s);
+      {
+         parasol::Log log("Fluid");
+         log.msg("%s", s);
+      }
 
       lua_pop(Lua, 1);  // pop the string result
    }
@@ -498,22 +500,23 @@ int fcmd_msg(lua_State *Lua)
 int fcmd_print(lua_State *Lua)
 {
    int n = lua_gettop(Lua);  // number of arguments
-   int i;
-
    lua_getglobal(Lua, "tostring");
-   for (i=1; i <= n; i++) {
+   for (LONG i=1; i <= n; i++) {
       lua_pushvalue(Lua, -1);  // function to be called
       lua_pushvalue(Lua, i);   // value to print
       lua_call(Lua, 1, 1);
-      const char *s = lua_tostring(Lua, -1);  // get result
-      if (!s) {
-         return luaL_error(Lua, LUA_QL("tostring") " must return a string to " LUA_QL("print"));
-      }
+      CSTRING s = lua_tostring(Lua, -1);  // get result
+      if (!s) return luaL_error(Lua, LUA_QL("tostring") " must return a string to " LUA_QL("print"));
+
       #ifdef __ANDROID__
-         LogF("Fluid","%s", s);
+         {
+            parasol::Log log("Fluid");
+            log.msg("%s", s);
+         }
       #else
          fprintf(stderr, "%s", s);
       #endif
+
       lua_pop(Lua, 1);  // pop result
    }
    fprintf(stderr, "\n");
@@ -532,10 +535,8 @@ int fcmd_include(lua_State *Lua)
    }
 
    LONG top = lua_gettop(Lua);
-   LONG n;
-   for (n=1; n <= top; n++) {
+   for (LONG n=1; n <= top; n++) {
       CSTRING include = lua_tostring(Lua, n);
-
       ERROR error;
       if ((error = load_include(Lua->Script, include))) {
          if (error IS ERR_FileNotFound) luaL_error(Lua, "Requested include file '%s' does not exist.", include);
@@ -556,7 +557,7 @@ int fcmd_include(lua_State *Lua)
 
 int fcmd_require(lua_State *Lua)
 {
-   struct prvFluid *prv = Lua->Script->Head.ChildPrivate;
+   auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
 
    CSTRING module, error_msg = NULL;
    ERROR error = ERR_Okay;
@@ -566,14 +567,14 @@ int fcmd_require(lua_State *Lua)
       LONG i;
       LONG slash_count = 0;
       for (i=0; module[i]; i++) {
-         if ((module[i] >= 'a') AND (module[i] <= 'z')) continue;
-         if ((module[i] >= 'A') AND (module[i] <= 'Z')) continue;
-         if ((module[i] >= '0') AND (module[i] <= '9')) continue;
+         if ((module[i] >= 'a') and (module[i] <= 'z')) continue;
+         if ((module[i] >= 'A') and (module[i] <= 'Z')) continue;
+         if ((module[i] >= '0') and (module[i] <= '9')) continue;
          if (module[i] IS '/') { slash_count++; continue; }
          break;
       }
 
-      if ((module[i]) OR (i >= 32) OR (slash_count > 1)) {
+      if ((module[i]) or (i >= 32) or (slash_count > 1)) {
          luaL_error(Lua, "Invalid module name; only alpha-numeric names are permitted with max 32 chars.");
          return 0;
       }
@@ -592,19 +593,13 @@ int fcmd_require(lua_State *Lua)
       StrFormat(path, sizeof(path), "system:scripts/%s.fluid", module);
 
       objFile *file;
-      if (!(error = CreateObject(ID_FILE, 0, &file,
-            FID_Path|TSTR,   path,
-            FID_Flags|TLONG, FL_READ,
-            TAGEND))) {
-
+      if (!(error = CreateObject(ID_FILE, 0, &file, FID_Path|TSTR, path, FID_Flags|TLONG, FL_READ, TAGEND))) {
          APTR buffer;
          if (!AllocMemory(SIZE_READ, MEM_NO_CLEAR, &buffer, NULL)) {
             struct code_reader_handle handle = { file, buffer };
             if (!lua_load(Lua, &code_reader, &handle, module)) {
                prv->RequireCounter++; // Used by getExecutionState()
-               if (!lua_pcall(Lua, 0, 0, 0)) {
-                  // Success, mark the module as loaded.
-
+               if (!lua_pcall(Lua, 0, 0, 0)) { // Success, mark the module as loaded.
                   lua_pushboolean(prv->Lua, 1);
                   lua_setfield(prv->Lua, LUA_REGISTRYINDEX, req);
                }
@@ -638,14 +633,11 @@ int fcmd_require(lua_State *Lua)
 
 int fcmd_get_execution_state(lua_State *Lua)
 {
-   struct prvFluid *prv = Lua->Script->Head.ChildPrivate;
-
+   auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
    lua_newtable(Lua);
-
    lua_pushstring(Lua, "inRequire");
    lua_pushboolean(Lua, prv->RequireCounter ? TRUE : FALSE);
    lua_settable(Lua, -3);
-
    return 1;
 }
 
@@ -657,17 +649,18 @@ int fcmd_get_execution_state(lua_State *Lua)
 
 int fcmd_loadfile(lua_State *Lua)
 {
-   struct prvFluid *prv = Lua->Script->Head.ChildPrivate;
+   auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
 
    CSTRING error_msg = NULL;
    LONG results = 0;
    ERROR error = ERR_Okay;
 
-   CSTRING path, name;
+   CSTRING path;
    if ((path = lua_tostring(Lua, 1))) {
-      UBYTE fbpath[StrLength(path)+6];
+      parasol::Log log("loadfile");
+      char fbpath[StrLength(path)+6];
 
-      LogF("loadfile()","%s", path);
+      log.branch("%s", path);
 
       BYTE recompile = FALSE;
       CSTRING src = path;
@@ -682,78 +675,61 @@ int fcmd_loadfile(lua_State *Lua)
          StrCopy(path, fbpath, pathlen - 5);
          StrCopy(".fb", fbpath + pathlen - 6, COPY_ALL);
 
-         LogF("loadfile","Checking for a compiled Fluid file: %s", fbpath);
+         log.msg("Checking for a compiled Fluid file: %s", fbpath);
 
-         objFile *fb_file, *src_file;
-         if (!CreateObject(ID_FILE, NF_INTEGRAL, &fb_file,
-               FID_Path|TSTR, fbpath,
-               TAGEND)) {
+         parasol::ScopedObject<objFile> fb_file, src_file;
+         if (!CreateObject(ID_FILE, NF_INTEGRAL, &fb_file.obj, FID_Path|TSTR, fbpath, TAGEND)) {
             // A compiled version exists.  Compare datestamps
 
-            if (!(error = CreateObject(ID_FILE, NF_INTEGRAL, &src_file,
-                  FID_Path|TSTR, path,
-                  TAGEND))) {
+            if (!(error = CreateObject(ID_FILE, NF_INTEGRAL, &src_file.obj, FID_Path|TSTR, path, TAGEND))) {
                LARGE fb_ts, src_ts;
-               GetLarge(fb_file, FID_TimeStamp, &fb_ts);
-               GetLarge(src_file, FID_TimeStamp, &src_ts);
+               GetLarge(fb_file.obj, FID_TimeStamp, &fb_ts);
+               GetLarge(src_file.obj, FID_TimeStamp, &src_ts);
 
                if (fb_ts != src_ts) {
-                  LogMsg("Timestamp mismatch, will recompile the cached version.");
+                  log.msg("Timestamp mismatch, will recompile the cached version.");
                   recompile = TRUE;
                   error = ERR_Failed;
                }
                else src = fbpath;
-
-               acFree(src_file);
             }
             else if (error IS ERR_FileNotFound) {
                src = fbpath; // Use the .fb if the developer removed the .fluid (typically done for production releases)
             }
-
-            acFree(fb_file);
          }
       }
 
-      objFile *file;
-      if (!(error = CreateObject(ID_FILE, 0, &file,
-            FID_Path|TSTR,   src,
-            FID_Flags|TLONG, FL_READ,
-            TAGEND))) {
-
+      parasol::ScopedObject<objFile> file;
+      if (!(error = CreateObject(ID_FILE, 0, &file.obj, FID_Path|TSTR, src, FID_Flags|TLONG, FL_READ, TAGEND))) {
          APTR buffer;
          if (!AllocMemory(SIZE_READ, MEM_NO_CLEAR, &buffer, NULL)) {
-            struct code_reader_handle handle = { file, buffer };
+            struct code_reader_handle handle = { file.obj, buffer };
 
-            // Check for the presence of a compiled header and skip it if present **
+            // Check for the presence of a compiled header and skip it if present
 
-            LONG len, i;
-            UBYTE header[256];
-
-            if (!acRead(file, header, sizeof(header), &len)) {
-               if (!StrCompare(LUA_COMPILED, header, 0, 0)) {
-                  recompile = FALSE; // Do not recompile that which is already compiled
-                  for (i=sizeof(LUA_COMPILED)-1; (i < len) AND (header[i]); i++);
-                  if (!header[i]) {
-                     i++;
+            {
+               LONG len, i;
+               char header[256];
+               if (!acRead(file.obj, header, sizeof(header), &len)) {
+                  if (!StrCompare(LUA_COMPILED, header, 0, 0)) {
+                     recompile = FALSE; // Do not recompile that which is already compiled
+                     for (i=sizeof(LUA_COMPILED)-1; (i < len) and (header[i]); i++);
+                     if (!header[i]) i++;
+                     else i = 0;
                   }
                   else i = 0;
                }
                else i = 0;
-            }
-            else i = 0;
 
-            SetLong(file, FID_Position, i);
-
-            // Get the file name from the path
-
-            name = path;
-            for (i=0; name[i]; i++);
-            while (i > 0) {
-               if ((name[i-1] IS '\\') OR (name[i-1] IS '/') OR (name[i-1] IS ':')) break;
-               i--;
+               SetLong(file.obj, FID_Position, i);
             }
 
-            if (!lua_load(Lua, &code_reader, &handle, name+i)) {
+            LONG i;
+            for (i=StrLength(path); i > 0; i--) { // Get the file name from the path
+               if ((path[i-1] IS '\\') or (path[i-1] IS '/') or (path[i-1] IS ':')) break;
+            }
+
+            if (!lua_load(Lua, &code_reader, &handle, path+i)) {
 #warning Code compilation not currently supported
             /*
                if (recompile) {
@@ -767,7 +743,7 @@ int fcmd_loadfile(lua_State *Lua)
                      struct DateTime *date;
                      f = clvalue(prv->Lua->top + (-1))->l.p;
                      luaU_dump(prv->Lua, f, &code_writer, cachefile, (Self->Flags & SCF_DEBUG) ? 0 : 1);
-                     if (!GetPointer(file, FID_Date, &date)) {
+                     if (!GetPointer(file.obj, FID_Date, &date)) {
                         SetPointer(cachefile, FID_Date, date);
                      }
                      acFree(cachefile);
@@ -787,16 +763,12 @@ int fcmd_loadfile(lua_State *Lua)
             FreeResource(buffer);
          }
          else error = ERR_AllocMemory;
-
-         acFree(file);
       }
       else error = ERR_DoesNotExist;
    }
-   else {
-      luaL_argerror(Lua, 1, "File path required.");
-   }
+   else luaL_argerror(Lua, 1, "File path required.");
 
-   if ((!error_msg) AND (error)) error_msg = GetErrorMsg(error);
+   if ((!error_msg) and (error)) error_msg = GetErrorMsg(error);
    if (error_msg) luaL_error(Lua, "Failed to load/parse file '%s', error: %s", path, error_msg);
 
    return results;
@@ -815,35 +787,37 @@ static const char * code_reader_buffer(lua_State *, void *, size_t *);
 
 int fcmd_exec(lua_State *Lua)
 {
-   struct prvFluid *prv = Lua->Script->Head.ChildPrivate;
+   auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
 
    LONG results = 0;
 
    CSTRING statement;
    if ((statement = lua_tostring(Lua, 1))) {
-      LogF("~exec()","");
+      CSTRING error_msg = NULL;
+
+      {
+         parasol::Log log("exec");
+         log.branch("");
 
          // Check for the presence of a compiled header and skip it if present
 
          if (!StrCompare(LUA_COMPILED, statement, 0, 0)) {
-            LONG i;
+            size_t i;
             for (i=sizeof(LUA_COMPILED)-1; statement[i]; i++);
             if (!statement[i]) statement += i + 1;
          }
 
          struct luaReader lr = { statement, 0, StrLength(statement) };
-         CSTRING error_msg;
          if (!lua_load(Lua, &code_reader_buffer, &lr, "exec")) {
             LONG result_top = lua_gettop(prv->Lua);
             if (!lua_pcall(Lua, 0, LUA_MULTRET, 0)) {
                results = lua_gettop(prv->Lua) - result_top + 1;
-               error_msg = NULL;
             }
             else error_msg = lua_tostring(prv->Lua, -1);
          }
          else error_msg = lua_tostring(prv->Lua, -1);
+      }
 
-      LogReturn();
       if (error_msg) luaL_error(Lua, error_msg);
    }
    else luaL_argerror(Lua, 1, "Fluid statement required.");
@@ -853,7 +827,7 @@ int fcmd_exec(lua_State *Lua)
 
 //****************************************************************************
 
-static const char * code_reader_buffer(lua_State *Lua, void *Source, size_t *ResultSize)
+const char * code_reader_buffer(lua_State *Lua, void *Source, size_t *ResultSize)
 {
    struct luaReader *lr = (struct luaReader *)Source;
    *ResultSize = lr->Size - lr->Index;
@@ -871,15 +845,13 @@ int fcmd_arg(lua_State *Lua)
    LONG args = lua_gettop(Lua);
    CSTRING str;
    if ((str = VarGetString(Self->Vars, lua_tostring(Lua, 1)))) {
-      if ((str) AND (str[0])) {
+      if ((str) and (str[0])) {
          lua_pushstring(Lua, str);
          return 1;
       }
    }
 
-   if (args IS 2) {
-      return 1; // Return value 2 (top of the stack)
-   }
+   if (args IS 2) return 1; // Return value 2 (top of the stack)
    else {
       lua_pushnil(Lua);
       return 1;
@@ -902,7 +874,7 @@ int fcmd_arg(lua_State *Lua)
 int fcmd_nz(lua_State *Lua)
 {
    LONG args = lua_gettop(Lua);
-   if ((args != 2) AND (args != 1)) {
+   if ((args != 2) and (args != 1)) {
       luaL_error(Lua, "Expected 1 or 2 arguments, not %d.", args);
       return 0;
    }
@@ -910,9 +882,7 @@ int fcmd_nz(lua_State *Lua)
    BYTE isnull = FALSE;
    LONG type = lua_type(Lua, 1);
    if (type IS LUA_TNUMBER) {
-      if (lua_tonumber(Lua, 1)) {
-         isnull = FALSE;
-      }
+      if (lua_tonumber(Lua, 1)) isnull = FALSE;
       else isnull = TRUE;
    }
    else if (type IS LUA_TSTRING) {
@@ -923,10 +893,10 @@ int fcmd_nz(lua_State *Lua)
       }
       else isnull = TRUE;
    }
-   else if ((type IS LUA_TNIL) OR (type IS LUA_TNONE)) {
+   else if ((type IS LUA_TNIL) or (type IS LUA_TNONE)) {
       isnull = TRUE;
    }
-   else if ((type IS LUA_TLIGHTUSERDATA) OR (type IS LUA_TUSERDATA)) {
+   else if ((type IS LUA_TLIGHTUSERDATA) or (type IS LUA_TUSERDATA)) {
       if (lua_touserdata(Lua, 1)) isnull = FALSE;
       else isnull = TRUE;
    }
@@ -943,18 +913,14 @@ int fcmd_nz(lua_State *Lua)
    }
 
    if (args IS 2) {
-      if (isnull) {
-         // Return value 2 (top of the stack)
+      if (isnull) { // Return value 2 (top of the stack)
       }
-      else {
-         // Return value 1
+      else { // Return value 1
          lua_pop(Lua, 1);
       }
    }
-   else {
-      if (isnull) return 0;
-      else lua_pushinteger(Lua, 1);
-   }
+   else if (isnull) return 0;
+   else lua_pushinteger(Lua, 1);
 
    return 1;
 }

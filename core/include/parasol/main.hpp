@@ -32,7 +32,7 @@ class ScopedAccessMemory { // C++ wrapper for automatically releasing shared mem
 //****************************************************************************
 
 template <class T>
-class ScopedObject { // C++ wrapper for automatically releasing an object
+class ScopedObject { // C++ wrapper for automatically freeing an object
    public:
       T *obj;
 

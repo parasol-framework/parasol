@@ -15,7 +15,7 @@ static int object_newindex(lua_State *Lua)
             ERROR error = set_object_field(Lua, obj, fieldname, 3);
             release_object(object);
             if (error >= ERR_ExceptionThreshold) {
-               struct prvFluid *prv = Lua->Script->Head.ChildPrivate;
+               auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
                prv->CaughtError = error;
                luaL_error(Lua, GetErrorMsg(error));
             }
@@ -33,21 +33,23 @@ static int object_newindex(lua_State *Lua)
 
 static int object_get(lua_State *Lua)
 {
+   parasol::Log log;
    struct object *object;
-   if (!(object = get_meta(Lua, lua_upvalueindex(1), "Fluid.obj"))) {
+
+   if (!(object = (struct object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj"))) {
       luaL_argerror(Lua, 1, "Expected object.");
       return 0;
    }
 
    CSTRING fieldname;
    if ((fieldname = luaL_checkstring(Lua, 1))) {
-      MSG("obj.get('%s')", fieldname);
+      log.trace("obj.get('%s')", fieldname);
       ERROR error = getfield(Lua, object, fieldname);
       if (!error) return 1;
       lua_pushvalue(Lua, 2);
       return 1;
    }
-   else MSG("obj.get(NIL)");
+   else log.trace("obj.get(NIL)");
 
    return 0;
 }
@@ -59,15 +61,17 @@ static int object_get(lua_State *Lua)
 
 static int object_getvar(lua_State *Lua)
 {
+   parasol::Log log;
    struct object *object;
-   if (!(object = get_meta(Lua, lua_upvalueindex(1), "Fluid.obj"))) {
+
+   if (!(object = (struct object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj"))) {
       luaL_argerror(Lua, 1, "Expected object.");
       return 0;
    }
 
    CSTRING fieldname;
    if ((fieldname = luaL_checkstring(Lua, 1))) {
-      MSG("obj.getVar('%s')", fieldname);
+      log.trace("obj.getVar('%s')", fieldname);
 
       OBJECTPTR obj;
       ERROR error;
@@ -87,7 +91,7 @@ static int object_getvar(lua_State *Lua)
 
       return 1;
    }
-   else MSG("obj.var(NIL)");
+   else log.trace("obj.var(NIL)");
 
    return 0;
 }
@@ -97,10 +101,12 @@ static int object_getvar(lua_State *Lua)
 
 static int object_set(lua_State *Lua)
 {
-   MSG("obj.set()");
+   parasol::Log log;
+
+   log.trace("obj.set()");
 
    struct object *object;
-   if (!(object = get_meta(Lua, lua_upvalueindex(1), "Fluid.obj"))) {
+   if (!(object = (struct object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj"))) {
       luaL_argerror(Lua, 1, "Expected object.");
       return 0;
    }
@@ -121,7 +127,7 @@ static int object_set(lua_State *Lua)
       lua_pushinteger(Lua, error);
 
       if (error >= ERR_ExceptionThreshold) {
-         struct prvFluid *prv = Lua->Script->Head.ChildPrivate;
+         auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
          prv->CaughtError = error;
          luaL_error(prv->Lua, GetErrorMsg(error));
       }
@@ -137,10 +143,12 @@ static int object_set(lua_State *Lua)
 
 static int object_setvar(lua_State *Lua)
 {
-   MSG("obj.setVar()");
+   parasol::Log log;
+
+   log.msg("obj.setVar()");
 
    struct object *object;
-   if (!(object = get_meta(Lua, lua_upvalueindex(1), "Fluid.obj"))) {
+   if (!(object = (struct object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj"))) {
       luaL_argerror(Lua, 1, "Expected object.");
       return 0;
    }
@@ -156,7 +164,7 @@ static int object_setvar(lua_State *Lua)
          lua_pushinteger(Lua, error);
 
          if (error >= ERR_ExceptionThreshold) {
-            struct prvFluid *prv = Lua->Script->Head.ChildPrivate;
+            auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
             if (prv->Catch) {
                prv->CaughtError = error;
                luaL_error(prv->Lua, GetErrorMsg(error));
@@ -176,16 +184,15 @@ static int object_setvar(lua_State *Lua)
 
 static ERROR getfield(lua_State *Lua, struct object *object, CSTRING FName)
 {
-   FMSG("~getfield","#%d, Field: %s", object->ObjectID, FName);
+   parasol::Log log("obj.get");
+
+   log.traceBranch("#%d, Field: %s", object->ObjectID, FName);
 
    OBJECTPTR obj;
-   if (!(obj = access_object(object))) {
-      LOGRETURN();
-      return PostError(ERR_AccessObject);
-   }
+   if (!(obj = access_object(object))) return log.warning(ERR_AccessObject);
 
    OBJECTPTR src;
-   struct Field *field;
+   Field *field;
    ERROR error = ERR_Okay;
    if (FName[0] IS '$') {
       char buffer[1024];
@@ -218,7 +225,7 @@ static ERROR getfield(lua_State *Lua, struct object *object, CSTRING FName)
                   make_any_table(Lua, field->Flags, (CSTRING)field->Arg, total, list);
                }
                else {
-                  LogF("@obj.get","Invalid array type for '%s', flags: $%.8x", FName, field->Flags);
+                  log.warning("Invalid array type for '%s', flags: $%.8x", FName, field->Flags);
                   error = ERR_FieldTypeMismatch;
                }
             }
@@ -232,7 +239,7 @@ static ERROR getfield(lua_State *Lua, struct object *object, CSTRING FName)
             }
          }
          else {
-            LogErrorMsg("No struct name reference for field %s in class %s.", field->Name, src->Class->ClassName);
+            log.warning("No struct name reference for field %s in class %s.", field->Name, src->Class->ClassName);
             error = ERR_Failed;
          }
       }
@@ -264,7 +271,7 @@ static ERROR getfield(lua_State *Lua, struct object *object, CSTRING FName)
       else if (field->Flags & FD_LONG) {
          if (field->Flags & FD_UNSIGNED) {
             ULONG result;
-            if (!(error = GetLong(src, field->FieldID, &result))) {
+            if (!(error = GetLong(src, field->FieldID, (LONG *)&result))) {
                lua_pushnumber(Lua, result);
             }
          }
@@ -286,12 +293,11 @@ static ERROR getfield(lua_State *Lua, struct object *object, CSTRING FName)
          lua_pushstring(Lua, buffer);
       }
       else if (error IS ERR_NoSupport) {
-         LogMsg("Field %s does not exist.", FName); // Not fatal, as testing for fields is legitimate
+         log.msg("Field %s does not exist.", FName); // Not fatal, as testing for fields is legitimate
       }
    }
 
    release_object(object);
-   LOGRETURN();
    return error;
 }
 
@@ -301,11 +307,13 @@ static ERROR getfield(lua_State *Lua, struct object *object, CSTRING FName)
 
 static ERROR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, LONG ValueIndex)
 {
+   parasol::Log log("obj.setfield");
+
    if (FName[0] IS '_') {
       char bufname[80];
       WORD i;
       bufname[0] = '@';
-      for (i=1; (i < sizeof(bufname)) AND (FName[i]); i++) bufname[i] = FName[i];
+      for (i=1; ((size_t)i < sizeof(bufname)) AND (FName[i]); i++) bufname[i] = FName[i];
       bufname[i] = 0;
       return SetFieldEval(obj, bufname, lua_tostring(Lua, ValueIndex));
    }
@@ -313,9 +321,9 @@ static ERROR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, LONG
    LONG type = lua_type(Lua, ValueIndex);
 
    OBJECTPTR src;
-   struct Field *field;
+   Field *field;
    if ((field = FindField(obj, StrHash(FName, FALSE), &src))) {
-      FMSG("obj.setfield()","Field: %s, Flags: $%.8x, (type: %s)", FName, field->Flags, lua_typename(Lua, type));
+      log.traceBranch("Field: %s, Flags: $%.8x, (type: %s)", FName, field->Flags, lua_typename(Lua, type));
 
       if (field->Flags & FD_ARRAY) {
          struct array *farray;
@@ -354,7 +362,7 @@ static ERROR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, LONG
                else if (field->Flags & FD_STRUCT) {
                   // Array structs can be set if the Lua table consists of Fluid.struct types.
 
-                  struct prvFluid *prv = Lua->Script->Head.ChildPrivate;
+                  auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
                   struct structentry *def;
                   if (!VarGet(prv->Structs, (CSTRING)field->Arg, &def, NULL)) {
                      LONG aligned_size = ALIGN64(def->Size);
@@ -371,7 +379,7 @@ static ERROR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, LONG
                            }
                            else if (type IS LUA_TUSERDATA) {
                               struct fstruct *fstruct;
-                              if ((fstruct = get_meta(Lua, ValueIndex, "Fluid.struct"))) {
+                              if ((fstruct = (struct fstruct *)get_meta(Lua, ValueIndex, "Fluid.struct"))) {
                                  CopyMemory(fstruct->Data, sti, fstruct->StructSize);
                               }
                            }
@@ -390,7 +398,7 @@ static ERROR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, LONG
             }
             else return ERR_BufferOverflow;
          }
-         else if ((farray = get_meta(Lua, ValueIndex, "Fluid.array"))) {
+         else if ((farray = (struct array *)get_meta(Lua, ValueIndex, "Fluid.array"))) {
             return SetArray(src, ((LARGE)field->FieldID)|((LARGE)farray->Type<<32), farray->ptrPointer, farray->Total);
          }
          else return ERR_FieldTypeMismatch;
@@ -416,12 +424,12 @@ static ERROR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, LONG
 
          if (field->Flags & (FD_OBJECT|FD_INTEGRAL)) { // Writing to an integral is permitted if marked as writeable.
             struct object *object;
-            if ((object = get_meta(Lua, ValueIndex, "Fluid.obj"))) {
+            if ((object = (struct object *)get_meta(Lua, ValueIndex, "Fluid.obj"))) {
                OBJECTPTR ptr_obj;
                if (object->prvObject) {
                   return SetPointer(src, field->FieldID, object->prvObject);
                }
-               else if ((ptr_obj = access_object(object))) {
+               else if ((ptr_obj = (OBJECTPTR)access_object(object))) {
                   ERROR error = SetPointer(src, field->FieldID, object->prvObject);
                   release_object(object);
                   return error;
@@ -443,10 +451,10 @@ static ERROR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, LONG
             }
             else return ERR_FieldTypeMismatch;
          }
-         else if ((memory = get_meta(Lua, ValueIndex, "Fluid.mem"))) {
+         else if ((memory = (struct memory *)get_meta(Lua, ValueIndex, "Fluid.mem"))) {
             return SetPointer(obj, field->FieldID, memory->Memory);
          }
-         else if ((fstruct = get_meta(Lua, ValueIndex, "Fluid.struct"))) {
+         else if ((fstruct = (struct fstruct *)get_meta(Lua, ValueIndex, "Fluid.struct"))) {
             return SetPointer(obj, field->FieldID, fstruct->Data);
          }
          else if (type IS LUA_TNIL) {
@@ -466,7 +474,7 @@ static ERROR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, LONG
 
          case LUA_TUSERDATA: {
             struct object *object;
-            if ((object = get_meta(Lua, ValueIndex, "Fluid.obj"))) {
+            if ((object = (struct object *)get_meta(Lua, ValueIndex, "Fluid.obj"))) {
                return SetLong(src, field->FieldID, object->ObjectID);
             }
             return ERR_FieldTypeMismatch;
@@ -487,7 +495,7 @@ static ERROR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, LONG
       // Default to setting a custom variable rather than throwing an error - primarily for legacy reasons.
       CSTRING vstr = lua_tostring(Lua, ValueIndex);
       if (vstr) {
-         LogF("obj.setfield","Field '%s' is not in class '%s' - defaulting to custom variable. [DEPRECATED]", FName, src->Class->ClassName);
+         log.msg("Field '%s' is not in class '%s' - defaulting to custom variable. [DEPRECATED]", FName, src->Class->ClassName);
          return SetFieldEval(obj, FName, vstr);
       }
       else return ERR_UnsupportedField;
