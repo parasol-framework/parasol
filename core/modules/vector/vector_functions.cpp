@@ -221,11 +221,13 @@ NullArgs
 static ERROR vecDrawPath(objBitmap *Bitmap, class SimpleVector *Path, DOUBLE StrokeWidth, OBJECTPTR StrokeStyle,
    OBJECTPTR FillStyle)
 {
-   if ((!Bitmap) or (!Path)) return LogError(ERH_Function, ERR_NullArgs);
+   parasol::Log log(__FUNCTION__);
+
+   if ((!Bitmap) or (!Path)) return log.warning(ERR_NullArgs);
    if (StrokeWidth < 0.001) StrokeStyle = NULL;
 
    if ((!StrokeStyle) and (!FillStyle)) {
-      FMSG("@DrawPath()","No Stroke or Fill parameter provided.");
+      log.traceWarning("No Stroke or Fill parameter provided.");
       return ERR_Okay;
    }
 
@@ -435,7 +437,7 @@ static ERROR vecGeneratePath(CSTRING Sequence, APTR *Path)
    if (!Path) return ERR_NullArgs;
 
    ERROR error;
-   struct PathCommand *paths;
+   PathCommand *paths;
    LONG total;
 
    if (!Sequence) {
@@ -505,6 +507,7 @@ struct(*DRGB) RGB: A colour will be returned here if specified in the IRI.
 static void vecReadPainter(OBJECTPTR Vector, CSTRING IRI, struct DRGB *RGB, objVectorGradient **Gradient,
    objVectorImage **Image, objVectorPattern **Pattern)
 {
+   parasol::Log log(__FUNCTION__);
    ULONG i;
 
    if (!IRI) return;
@@ -547,7 +550,7 @@ next:
             else if (def->Object->ClassID IS ID_VECTORPATTERN) {
                if (Pattern) *Pattern = (objVectorPattern *)def->Object;
             }
-            else LogErrorMsg("Vector definition '%s' (class $%.8x) not supported.", name, def->Object->ClassID);
+            else log.warning("Vector definition '%s' (class $%.8x) not supported.", name, def->Object->ClassID);
 
             // Check for combinations
             if (IRI[i++] IS ')') {
@@ -561,9 +564,9 @@ next:
             return;
          }
 
-         LogErrorMsg("Failed to lookup IRI: %s", IRI);
+         log.warning("Failed to lookup IRI: %s", IRI);
       }
-      else LogErrorMsg("Invalid IRI: %s", IRI);
+      else log.warning("Invalid IRI: %s", IRI);
    }
    else if (!StrCompare("rgb(", IRI, 4, 0)) {
       // Note that in some rare cases, RGB values are expressed in percentage terms, e.g. rgb(34.38%,0.23%,52%)
@@ -626,7 +629,7 @@ next:
          }
       }
 
-      LogErrorMsg("Failed to interpret colour: %s", IRI);
+      log.warning("Failed to interpret colour: %s", IRI);
    }
 }
 

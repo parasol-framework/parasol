@@ -12,7 +12,7 @@
     <idstring>ID_HTTP</idstring>
     <category>Network</category>
     <include>modules/http.h</include>
-    <copyright>Paul Manias © 2005-2017</copyright>
+    <copyright>Paul Manias © 2005-2020</copyright>
     <description>
 <p>The HTTP class provides a way of interacting with servers that support the HTTP protocol.  Supported HTTP methods include GET, POST, PUT, DELETE, COPY, MOVE, MKCOL and more.  The following features are included:</p>
 <list type="unsorted">
@@ -42,7 +42,7 @@
 <header>SSL Support (HTTPS)</header>
 <p>Secure sockets are supported and can be enabled by setting the <field>Port</field> to 443 prior to connection, or by using https:// in URI strings.  Methods of communication remain unchanged when using SSL, as encrypted communication is handled transparently.</p></description>
     <source>
-      <file>http.c</file>
+      <file>http.cpp</file>
     </source>
   </info>
 

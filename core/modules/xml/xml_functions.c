@@ -845,7 +845,7 @@ struct XMLTag * build_xml_string(struct XMLTag *Tag, STRING Buffer, LONG Flags, 
          Buffer[offset] = 0;
          *Offset = offset;
       }
-      STEP();
+      LOGRETURN();
       return Tag->Next;
    }
 
@@ -899,7 +899,7 @@ struct XMLTag * build_xml_string(struct XMLTag *Tag, STRING Buffer, LONG Flags, 
 
    Buffer[offset] = 0;
    *Offset = offset;
-   STEP();
+   LOGRETURN();
    return Tag->Next;
 }
 
@@ -924,7 +924,7 @@ struct XMLTag * len_xml_str(struct XMLTag *Tag, LONG Flags, LONG *Length)
          else length += content_len(Tag->Attrib->Value);
          *Length = length;
       }
-      STEP();
+      LOGRETURN();
       return Tag->Next;
    }
 
@@ -981,7 +981,7 @@ struct XMLTag * len_xml_str(struct XMLTag *Tag, LONG Flags, LONG *Length)
 
    *Length = length;
 
-   STEP();
+   LOGRETURN();
    return Tag->Next;
 }
 
@@ -1422,14 +1422,14 @@ matched_attrib:
 
             if (error IS ERR_Terminate) {
                *Tag = current;
-               if (Self->Flags & XMF_DEBUG) LogBack();
+               if (Self->Flags & XMF_DEBUG) LogReturn();
                return ERR_Terminate;
             }
             if (((subscript IS -2) OR (subscript IS -1)) AND ((current = current->Next))) goto next_sibling;
          }
          else {
             *Tag = current;
-            if (Self->Flags & XMF_DEBUG) LogBack();
+            if (Self->Flags & XMF_DEBUG) LogReturn();
             return ERR_Okay; // End of query reached, successfully found tag
          }
       }
@@ -1460,14 +1460,14 @@ matched_attrib:
 
             if (error IS ERR_Terminate) {
                *Tag = current;
-               if (Self->Flags & XMF_DEBUG) LogBack();
+               if (Self->Flags & XMF_DEBUG) LogReturn();
                return ERR_Terminate;
             }
             if (((subscript IS -2) OR (subscript IS -1)) AND ((current = current->Next))) goto next_sibling;
          }
          else {
             *Tag = current;
-            if (Self->Flags & XMF_DEBUG) LogBack();
+            if (Self->Flags & XMF_DEBUG) LogReturn();
             return ERR_Okay;
          }
       }
@@ -1478,7 +1478,7 @@ matched_attrib:
 
          if (error IS ERR_Terminate) {
             *Tag = current;
-            if (Self->Flags & XMF_DEBUG) LogBack();
+            if (Self->Flags & XMF_DEBUG) LogReturn();
             return ERR_Terminate;
          }
          else if ((error) OR (Callback)) {
@@ -1498,12 +1498,12 @@ matched_attrib:
       error = ERR_Search;
    }
 
-   if (Self->Flags & XMF_DEBUG) LogBack();
+   if (Self->Flags & XMF_DEBUG) LogReturn();
    return error;
 
 parse_error:
    LogMsg("XPath unresolved: %s", XPath);
-   if (Self->Flags & XMF_DEBUG) LogBack();
+   if (Self->Flags & XMF_DEBUG) LogReturn();
    return ERR_Search;
 }
 
@@ -1558,7 +1558,7 @@ static ERROR parse_source(objXML *Self)
    }
    else Self->ParseError = ERR_File;
 
-   STEP();
+   LOGRETURN();
    return Self->ParseError;
 }
 

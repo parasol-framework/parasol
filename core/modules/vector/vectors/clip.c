@@ -38,6 +38,8 @@ static void draw_clips(objVectorClip *Self, objVector *Branch,
 
 static ERROR CLIP_Draw(objVectorClip *Self, struct acDraw *Args)
 {
+   parasol::Log log;
+
    // Calculate the bounds of all the paths defined and contained by the clip object
 
    std::array<DOUBLE, 4> bounds = { 1000000, 1000000, -1000000, -1000000 };
@@ -69,7 +71,7 @@ static ERROR CLIP_Draw(objVectorClip *Self, struct acDraw *Args)
    }
 
    #ifdef DBG_DRAW
-      MSG("Drawing clipping mask with bounds %.2f %.2f %.2f %.2f (%dx%d)", bounds[0], bounds[1], bounds[2], bounds[3], width, height);
+      log.trace("Drawing clipping mask with bounds %.2f %.2f %.2f %.2f (%dx%d)", bounds[0], bounds[1], bounds[2], bounds[3], width, height);
    #endif
 
    LONG size = width * height;
@@ -118,7 +120,7 @@ static ERROR CLIP_Draw(objVectorClip *Self, struct acDraw *Args)
 
 static ERROR CLIP_Free(objVectorClip *Self, APTR Void)
 {
-   struct VectorTransform *scan, *next;
+   VectorTransform *scan, *next;
    for (scan=Self->Transforms; scan; scan=next) {
       next = scan->Next;
       FreeResource(scan);
@@ -135,13 +137,15 @@ static ERROR CLIP_Free(objVectorClip *Self, APTR Void)
 
 static ERROR CLIP_Init(objVectorClip *Self, APTR Void)
 {
+   parasol::Log log;
+
    if ((Self->ClipUnits <= 0) or (Self->ClipUnits >= VUNIT_END)) {
-      FMSG("@","Invalid Units value of %d", Self->ClipUnits);
+      log.traceWarning("Invalid Units value of %d", Self->ClipUnits);
       return PostError(ERR_OutOfRange);
    }
 
    if ((!Self->Parent) OR ((Self->Parent->ClassID != ID_VECTORSCENE) AND (Self->Parent->SubID != ID_VECTORVIEWPORT))) {
-      LogErrorMsg("This VectorClip object must be a child of a Scene or Viewport object.");
+      log.warning("This VectorClip object must be a child of a Scene or Viewport object.");
       return ERR_Failed;
    }
 
@@ -174,14 +178,14 @@ static ERROR CLIP_SET_Transform(objVectorClip *Self, CSTRING Value)
 
    // Clear any existing transforms.
 
-   struct VectorTransform *scan, *next;
+   VectorTransform *scan, *next;
    for (scan=Self->Transforms; scan; scan=next) {
       next = scan->Next;
       FreeResource(scan);
    }
    Self->Transforms = NULL;
 
-   struct VectorTransform *transform;
+   VectorTransform *transform;
 
    CSTRING str = Value;
    while (*str) {
@@ -256,7 +260,7 @@ static ERROR CLIP_SET_Units(objVectorClip *Self, LONG Value)
 
 //****************************************************************************
 
-static const struct ActionArray clClipActions[] = {
+static const ActionArray clClipActions[] = {
    { AC_Draw,      (APTR)CLIP_Draw },
    { AC_Free,      (APTR)CLIP_Free },
    { AC_Init,      (APTR)CLIP_Init },
@@ -264,13 +268,13 @@ static const struct ActionArray clClipActions[] = {
    { 0, NULL }
 };
 
-static const struct FieldDef clClipUnits[] = {
+static const FieldDef clClipUnits[] = {
    { "BoundingBox", VUNIT_BOUNDING_BOX },  // Coordinates are relative to the object's bounding box
    { "UserSpace",   VUNIT_USERSPACE },    // Coordinates are relative to the current viewport
    { NULL, 0 }
 };
 
-static const struct FieldArray clClipFields[] = {
+static const FieldArray clClipFields[] = {
    { "Units",     FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clClipUnits, (APTR)CLIP_GET_Units, (APTR)CLIP_SET_Units },
    { "Transform", FDF_VIRTUAL|FDF_STRING|FDF_W, 0, NULL, (APTR)CLIP_SET_Transform },
    END_FIELD

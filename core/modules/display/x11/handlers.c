@@ -149,7 +149,7 @@ static void handle_button_press(XEvent *xevent)
       feed.Buffer   = &input;
       feed.Size     = sizeof(input);
       ActionMsg(AC_DataFeed, glPointerID, &feed);
-      STEP();
+      LOGRETURN();
       return;
    }
 
@@ -185,7 +185,7 @@ static void handle_button_press(XEvent *xevent)
    }
 
    XFlush(XDisplay);
-   STEP();
+   LOGRETURN();
 }
 
 //****************************************************************************
@@ -234,7 +234,7 @@ static void handle_button_release(XEvent *xevent)
 
    XSetInputFocus(XDisplay, xevent->xany.window, RevertToNone, CurrentTime);
 
-   STEP();
+   LOGRETURN();
 }
 
 //****************************************************************************
@@ -574,7 +574,7 @@ static void handle_key_press(XEvent *xevent)
       BroadcastEvent(&key, sizeof(key));
    }
 
-   STEP();
+   LOGRETURN();
 }
 
 //****************************************************************************

@@ -54,7 +54,7 @@ static CSTRING get_effect_name(UBYTE Effect)
 
 //****************************************************************************
 
-static const struct FieldDef clAspectRatio[] = {
+static const FieldDef clAspectRatio[] = {
    { "XMin",  ARF_X_MIN },
    { "XMid",  ARF_X_MID },
    { "XMax",  ARF_X_MAX },
@@ -143,6 +143,8 @@ static void calc_alignment(CSTRING Caller, LONG AspectRatio,
    DOUBLE SourceWidth, DOUBLE SourceHeight,
    DOUBLE *X, DOUBLE *Y, DOUBLE *XScale, DOUBLE *YScale)
 {
+   parasol::Log log(Caller);
+
    if (SourceWidth <= 0.000001) SourceWidth = TargetWidth; // Prevent division by zero errors.
    if (SourceHeight <= 0.000001) SourceHeight = TargetHeight;
 
@@ -192,7 +194,7 @@ static void calc_alignment(CSTRING Caller, LONG AspectRatio,
       else *YScale = 1.0;
    }
 
-   FMSG(Caller,"Aspect: $%.8x, Target: %.0fx%.0f, View: %.0fx%.0f, AlignXY: %.2fx%.2f, Scale: %.2fx%.2f",
+   log.trace("Aspect: $%.8x, Target: %.0fx%.0f, View: %.0fx%.0f, AlignXY: %.2fx%.2f, Scale: %.2fx%.2f",
       AspectRatio, TargetWidth, TargetHeight, SourceWidth, SourceHeight, *X, *Y, *XScale, *YScale);
 }
 
@@ -230,6 +232,7 @@ static void debug_branch(CSTRING Header, OBJECTPTR Vector, LONG *Level) __attrib
 
 static void debug_branch(CSTRING Header, OBJECTPTR Vector, LONG *Level)
 {
+   parasol::Log log(Header);
    UBYTE spacing[*Level + 1];
    LONG i;
 
@@ -239,13 +242,13 @@ static void debug_branch(CSTRING Header, OBJECTPTR Vector, LONG *Level)
 
    while (Vector) {
       if (Vector->ClassID IS ID_VECTORSCENE) {
-         LogF(Header, "Scene: %p", Vector);
+         log.msg("Scene: %p", Vector);
          if (((objVectorScene *)Vector)->Viewport) debug_branch(Header, &(((objVectorScene *)Vector)->Viewport->Head), Level);
          break;
       }
       else if (Vector->ClassID IS ID_VECTOR) {
          objVector *shape = (objVector *)Vector;
-         LogF(Header,"%p<-%p->%p Child %p %s%s", shape->Prev, shape, shape->Next, shape->Child, spacing, get_name(shape));
+         log.msg("%p<-%p->%p Child %p %s%s", shape->Prev, shape, shape->Next, shape->Child, spacing, get_name(shape));
          if (shape->Child) debug_branch(Header, &shape->Child->Head, Level);
          Vector = &shape->Next->Head;
       }
@@ -272,10 +275,10 @@ INLINE OBJECTPTR get_parent(objVector *Vector)
 //****************************************************************************
 // Creates a VectorTransform entry and attaches it to the target vector.
 
-template <class T> static struct VectorTransform * add_transform(T *Self, LONG Type)
+template <class T> static VectorTransform * add_transform(T *Self, LONG Type)
 {
-   struct VectorTransform *transform;
-   if (!AllocMemory(sizeof(struct VectorTransform), MEM_DATA, &transform, NULL)) {
+   VectorTransform *transform;
+   if (!AllocMemory(sizeof(VectorTransform), MEM_DATA, &transform, NULL)) {
       transform->Prev = NULL;
       transform->Next = Self->Transforms;
       if (Self->Transforms) Self->Transforms->Prev = transform;

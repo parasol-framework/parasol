@@ -78,7 +78,7 @@ static ERROR SPIRAL_NewObject(objVectorSpiral *Self, APTR Void)
    Self->Step   = 0.1;
    Self->Offset = 1;
    Self->Scale  = 1;
-   Self->GeneratePath = (void (*)(struct rkVector *))&generate_spiral;
+   Self->GeneratePath = (void (*)(rkVector *))&generate_spiral;
    return ERR_Okay;
 }
 
@@ -90,7 +90,7 @@ The horizontal center of the spiral is defined here as either a fixed or relativ
 -END-
 *****************************************************************************/
 
-static ERROR SPIRAL_GET_CenterX(objVectorSpiral *Self, struct Variable *Value)
+static ERROR SPIRAL_GET_CenterX(objVectorSpiral *Self, Variable *Value)
 {
    DOUBLE val = Self->CX;
    if ((Value->Type & FD_PERCENTAGE) and (Self->Dimensions & DMF_RELATIVE_CENTER_X)) val = val * 100.0;
@@ -99,12 +99,14 @@ static ERROR SPIRAL_GET_CenterX(objVectorSpiral *Self, struct Variable *Value)
    return ERR_Okay;
 }
 
-static ERROR SPIRAL_SET_CenterX(objVectorSpiral *Self, struct Variable *Value)
+static ERROR SPIRAL_SET_CenterX(objVectorSpiral *Self, Variable *Value)
 {
+   parasol::Log log;
    DOUBLE val;
+
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return PostError(ERR_FieldTypeMismatch);
+   else return log.warning(ERR_FieldTypeMismatch);
 
    if (Value->Type & FD_PERCENTAGE) {
       val = val * 0.01;
@@ -126,7 +128,7 @@ The vertical center of the spiral is defined here as either a fixed or relative 
 
 *****************************************************************************/
 
-static ERROR SPIRAL_GET_CenterY(objVectorSpiral *Self, struct Variable *Value)
+static ERROR SPIRAL_GET_CenterY(objVectorSpiral *Self, Variable *Value)
 {
    DOUBLE val = Self->CY;
    if ((Value->Type & FD_PERCENTAGE) and (Self->Dimensions & DMF_RELATIVE_CENTER_Y)) val = val * 100.0;
@@ -135,12 +137,14 @@ static ERROR SPIRAL_GET_CenterY(objVectorSpiral *Self, struct Variable *Value)
    return ERR_Okay;
 }
 
-static ERROR SPIRAL_SET_CenterY(objVectorSpiral *Self, struct Variable *Value)
+static ERROR SPIRAL_SET_CenterY(objVectorSpiral *Self, Variable *Value)
 {
+   parasol::Log log;
    DOUBLE val;
+
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return PostError(ERR_FieldTypeMismatch);
+   else return log.warning(ERR_FieldTypeMismatch);
 
    if (Value->Type & FD_PERCENTAGE) {
       val = val * 0.01;
@@ -161,7 +165,7 @@ The height of the spiral is expressed as '#Radius * 2.0'.
 
 *****************************************************************************/
 
-static ERROR SPIRAL_GET_Height(objVectorSpiral *Self, struct Variable *Value)
+static ERROR SPIRAL_GET_Height(objVectorSpiral *Self, Variable *Value)
 {
    DOUBLE val = Self->Radius * 2.0;
    if (Value->Type & FD_PERCENTAGE) val = val * 100.0;
@@ -170,12 +174,14 @@ static ERROR SPIRAL_GET_Height(objVectorSpiral *Self, struct Variable *Value)
    return ERR_Okay;
 }
 
-static ERROR SPIRAL_SET_Height(objVectorSpiral *Self, struct Variable *Value)
+static ERROR SPIRAL_SET_Height(objVectorSpiral *Self, Variable *Value)
 {
+   parasol::Log log;
    DOUBLE val;
+
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return PostError(ERR_FieldTypeMismatch);
+   else return log.warning(ERR_FieldTypeMismatch);
    Self->Radius = val * 0.5;
    reset_path(Self);
    return ERR_Okay;
@@ -240,7 +246,7 @@ The radius of the spiral is defined here as either a fixed or relative value.
 
 *****************************************************************************/
 
-static ERROR SPIRAL_GET_Radius(objVectorSpiral *Self, struct Variable *Value)
+static ERROR SPIRAL_GET_Radius(objVectorSpiral *Self, Variable *Value)
 {
    DOUBLE val = Self->Radius;
    if ((Value->Type & FD_PERCENTAGE) and (Self->Dimensions & DMF_RELATIVE_RADIUS)) val = val * 100.0;
@@ -249,12 +255,14 @@ static ERROR SPIRAL_GET_Radius(objVectorSpiral *Self, struct Variable *Value)
    return ERR_Okay;
 }
 
-static ERROR SPIRAL_SET_Radius(objVectorSpiral *Self, struct Variable *Value)
+static ERROR SPIRAL_SET_Radius(objVectorSpiral *Self, Variable *Value)
 {
+   parasol::Log log;
    DOUBLE val;
+
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return PostError(ERR_FieldTypeMismatch);
+   else return log.warning(ERR_FieldTypeMismatch);
 
    if (Value->Type & FD_PERCENTAGE) {
       val = val * 0.01;
@@ -327,7 +335,7 @@ The width of the spiral is expressed as '#Radius * 2.0'.
 
 *****************************************************************************/
 
-static ERROR SPIRAL_GET_Width(objVectorSpiral *Self, struct Variable *Value)
+static ERROR SPIRAL_GET_Width(objVectorSpiral *Self, Variable *Value)
 {
    DOUBLE val = Self->Radius * 2.0;
    if (Value->Type & FD_PERCENTAGE) val = val * 100.0;
@@ -336,12 +344,14 @@ static ERROR SPIRAL_GET_Width(objVectorSpiral *Self, struct Variable *Value)
    return ERR_Okay;
 }
 
-static ERROR SPIRAL_SET_Width(objVectorSpiral *Self, struct Variable *Value)
+static ERROR SPIRAL_SET_Width(objVectorSpiral *Self, Variable *Value)
 {
+   parasol::Log log;
    DOUBLE val;
+
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return PostError(ERR_FieldTypeMismatch);
+   else return log.warning(ERR_FieldTypeMismatch);
    Self->Radius = val * 0.5;
    reset_path(Self);
    return ERR_Okay;
@@ -349,12 +359,12 @@ static ERROR SPIRAL_SET_Width(objVectorSpiral *Self, struct Variable *Value)
 
 //****************************************************************************
 
-static const struct ActionArray clVectorSpiralActions[] = {
+static const ActionArray clVectorSpiralActions[] = {
    { AC_NewObject, (APTR)SPIRAL_NewObject },
    { 0, NULL }
 };
 
-static const struct FieldArray clVectorSpiralFields[] = {
+static const FieldArray clVectorSpiralFields[] = {
    { "PathLength", FDF_VIRTUAL|FDF_LONG|FDF_RW,   0, (APTR)SPIRAL_GET_PathLength, (APTR)SPIRAL_SET_PathLength },
    { "Width",      FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)SPIRAL_GET_Width,   (APTR)SPIRAL_SET_Width },
    { "Height",     FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)SPIRAL_GET_Height,  (APTR)SPIRAL_SET_Height },

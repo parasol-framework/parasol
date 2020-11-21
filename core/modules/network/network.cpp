@@ -136,21 +136,12 @@ typedef ULONG SOCKET_HANDLE; // NOTE: declared as ULONG instead of SOCKET for no
 #endif
 
 //****************************************************************************
-// Ares Includes
-
-extern const char * net_init_ares(void);
-extern void net_free_ares(void);
-extern int net_ares_error(int Code, const char **Message);
-
-//****************************************************************************
 
 enum {
    SSL_NOT_BUSY=0,
    SSL_HANDSHAKE_READ,
    SSL_HANDSHAKE_WRITE
 };
-
-static void client_server_incoming(SOCKET_HANDLE, struct rkNetSocket *);
 
 #ifdef _WIN32
    #include "win32/winsockwrappers.h"
@@ -161,25 +152,9 @@ static void client_server_incoming(SOCKET_HANDLE, struct rkNetSocket *);
 struct CoreBase *CoreBase;
 static OBJECTPTR glModule = NULL;
 
-struct dns_resolver {
-   LARGE time;
-   LARGE client_data;
-   FUNCTION callback;
-   struct dns_resolver *next;
-   #ifdef __linux__
-      int tcp, udp; // For Ares
-   #endif
-   #ifdef _WIN32
-      union { // For win_async_resolvename()
-         struct hostent Host;
-         UBYTE MaxGetHostStruct[1024]; // MAXGETHOSTSTRUCT == 1024
-      } WinHost;
-   #endif
-};
-
 struct dns_cache {
    CSTRING HostName;
-   struct IPAddress *Addresses;
+   IPAddress *Addresses;
    LONG   AddressCount;
 };
 
@@ -196,30 +171,83 @@ static ERROR sslSetup(objNetSocket *);
 static OBJECTPTR clProxy = NULL;
 static OBJECTPTR clNetSocket = NULL;
 static OBJECTPTR clClientSocket = NULL;
-struct ares_channeldata *glAres = NULL; // All access must be bound to a VarLock on glDNS.  Defined by ares_init()
-static struct KeyStore *glDNS = NULL;
-static struct dns_resolver *glResolvers = NULL;
+static KeyStore *glDNS = NULL;
+static LONG glResolveNameMsgID = 0;
+static LONG glResolveAddrMsgID = 0;
 
-static void resolve_callback(LARGE, FUNCTION *, ERROR, CSTRING, struct IPAddress *, LONG);
+static void client_server_incoming(SOCKET_HANDLE, rkNetSocket *);
+static void resolve_callback(LARGE, FUNCTION *, ERROR, CSTRING, IPAddress *, LONG);
 static BYTE check_machine_name(CSTRING HostName) __attribute__((unused));
 static ERROR cache_host(CSTRING, struct hostent *, struct dns_cache **);
+#ifdef __linux__
 static ERROR cache_host(CSTRING, struct addrinfo *, struct dns_cache **);
-static void free_resolver(struct dns_resolver *);
-static struct dns_resolver * new_resolver(LARGE ClientData, FUNCTION *Callback);
+#endif
 static ERROR add_netsocket(void);
 static ERROR add_clientsocket(void);
 static ERROR init_proxy(void);
 
-#if defined(USE_ARES) && defined(__linux__)
-void ares_response(void *Arg, int Status, int Timeouts, struct hostent *);
-extern void net_resolve_name(const char *HostName, struct dns_resolver *Resolver);
-extern void net_ares_resolveaddr(int, void *Data, struct dns_resolver *);
-#endif
+struct resolve_name_buffer {
+   LARGE client_data;
+   FUNCTION callback;
+}; // Host name is appended
+
+struct resolve_addr_buffer {
+   LARGE client_data;
+   FUNCTION callback;
+}; // Address is appended
+
+static MsgHandler *glResolveNameHandler = NULL;
+static MsgHandler *glResolveAddrHandler = NULL;
+
+//***************************************************************************
+// Used for receiving asynchronous execution results (sent as a message) from netResolveName() and netResolveAddress().
+// These routines execute in the main process.
+
+static ERROR resolve_name_receiver(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
+{
+   auto rnb = (resolve_name_buffer *)Message;
+   // This call will cause the cached DNS result to be pulled and forwarded to the user's callback.
+   netResolveName((CSTRING)(rnb + 1), NSF_SYNCHRONOUS, &rnb->callback, rnb->client_data);
+   return ERR_Okay;
+}
+
+static ERROR resolve_addr_receiver(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
+{
+   auto rab = (resolve_addr_buffer *)Message;
+   netResolveAddress((CSTRING)(rab + 1), NSF_SYNCHRONOUS, &rab->callback, rab->client_data);
+   return ERR_Okay;
+}
+
+//***************************************************************************
+// Thread routine for asynchronous calls to netResolveName() and netResolveAddress()
+
+static ERROR thread_resolve_name(objThread *Thread)
+{
+   auto rnb = (resolve_name_buffer *)Thread->Data;
+   netResolveName((CSTRING)(rnb + 1), NSF_SYNCHRONOUS, NULL, 0); // Blocking
+
+   // Signal back to the main thread so that the callback is executed in the correct context.
+   // Part of the trick to this process is that netResolveName() will have cached the IP results, so they
+   // will be retrievable when the main thread gets the message.
+
+   SendMessage(0, glResolveNameMsgID, 0, rnb, Thread->DataSize);
+   return ERR_Okay;
+}
+
+static ERROR thread_resolve_addr(objThread *Thread)
+{
+   auto rab = (resolve_addr_buffer *)Thread->Data;
+   netResolveAddress((CSTRING)(rab + 1), NSF_SYNCHRONOUS, NULL, 0); // Blocking
+   SendMessage(0, glResolveAddrMsgID, 0, rab, Thread->DataSize);
+   return ERR_Okay;
+}
 
 //***************************************************************************
 
 ERROR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
+   parasol::Log log;
+
    CoreBase = argCoreBase;
 
    GetPointer(argModule, FID_Master, &glModule);
@@ -230,27 +258,31 @@ ERROR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    if (add_clientsocket()) return ERR_AddClass;
    if (init_proxy()) return ERR_AddClass;
 
+   glResolveNameMsgID = AllocateID(IDTYPE_MESSAGE);
+   glResolveAddrMsgID = AllocateID(IDTYPE_MESSAGE);
+
 #ifdef _WIN32
    // Configure Winsock
    {
       CSTRING msg;
       if ((msg = StartupWinsock()) != 0) {
-         LogErrorMsg("Winsock initialisation failed: %s", msg);
+         log.warning("Winsock initialisation failed: %s", msg);
          return ERR_SystemCall;
       }
       SetResourcePtr(RES_NET_PROCESSING, reinterpret_cast<APTR>(win_net_processing)); // Hooks into ProcessMessages()
    }
 #endif
 
-#ifdef USE_ARES
-   {
-      CSTRING msg;
-      if ((msg = net_init_ares())) {
-         LogErrorMsg("Ares network library failed to initialise: %s", msg);
-         return ERR_Failed;
-      }
+   FUNCTION recv_function;
+   SET_FUNCTION_STDC(recv_function, (APTR)&resolve_name_receiver);
+   if (AddMsgHandler(NULL, glResolveNameMsgID, &recv_function, &glResolveNameHandler)) {
+      return ERR_Failed;
    }
-#endif
+
+   SET_FUNCTION_STDC(recv_function, (APTR)&resolve_addr_receiver);
+   if (AddMsgHandler(NULL, glResolveAddrMsgID, &recv_function, &glResolveAddrHandler)) {
+      return ERR_Failed;
+   }
 
    return ERR_Okay;
 }
@@ -269,16 +301,20 @@ ERROR MODOpen(OBJECTPTR Module)
 
 static ERROR MODExpunge(void)
 {
+   parasol::Log log;
+
 #ifdef _WIN32
    SetResourcePtr(RES_NET_PROCESSING, NULL);
 #endif
 
+   if (glResolveNameHandler) { FreeResource(glResolveNameHandler); glResolveNameHandler = NULL; }
+   if (glResolveAddrHandler) { FreeResource(glResolveAddrHandler); glResolveAddrHandler = NULL; }
    if (glDNS) { FreeResource(glDNS); glDNS = NULL; }
 
 #ifdef _WIN32
-   LogMsg("Closing winsock.");
+   log.msg("Closing winsock.");
 
-   if (ShutdownWinsock() != 0) LogErrorMsg("Warning: Winsock DLL Cleanup failed.");
+   if (ShutdownWinsock() != 0) log.warning("Warning: Winsock DLL Cleanup failed.");
 #endif
 
    if (clNetSocket)    { acFree(clNetSocket); clNetSocket = NULL; }
@@ -292,12 +328,6 @@ static ERROR MODExpunge(void)
       CRYPTO_cleanup_all_ex_data();
    }
 #endif
-
-#ifdef USE_ARES
-   net_free_ares();
-#endif
-
-   while (glResolvers) free_resolver(glResolvers);
 
    return ERR_Okay;
 }
@@ -318,12 +348,14 @@ struct(IPAddress) IPAddress: A pointer to the IPAddress structure.
 
 *****************************************************************************/
 
-static CSTRING netAddressToStr(struct IPAddress *Address)
+static CSTRING netAddressToStr(IPAddress *Address)
 {
+   parasol::Log log(__FUNCTION__);
+
    if (!Address) return NULL;
 
    if (Address->Type != IPADDR_V4) {
-      LogF("@netAddressToStr()","Only IPv4 Addresses are supported currently");
+      log.warning("Only IPv4 Addresses are supported currently");
       return NULL;
    }
 
@@ -367,7 +399,7 @@ Failed:  The String was not a valid IP Address.
 
 *****************************************************************************/
 
-static ERROR netStrToAddress(CSTRING Str, struct IPAddress *Address)
+static ERROR netStrToAddress(CSTRING Str, IPAddress *Address)
 {
    if ((!Str) OR (!Address)) return ERR_NullArgs;
 
@@ -476,7 +508,8 @@ ResolveAddress: Resolves an IP address to a host name.
 ResolveAddress() performs a IP address resolution, converting an address to an official host name and list of
 IP addresses.  The resolution process involves contacting a DNS server.  As this can potentially cause a significant
 delay, the ResolveAddress() function supports asynchronous communication by default in order to avoid lengthy waiting
-periods.  If asynchronous operation is desired, the NSF_ASYNC_RESOLVE flag should be set prior to calling this method.
+periods.  If synchronous (blocking) operation is desired then the NSF_SYNCHRONOUS flag must be set prior to calling
+this method.
 
 The function referenced in the Callback parameter will receive the results of the lookup.  Its C/C++ prototype is
 `Function(LARGE ClientData, ERROR Error, CSTRING HostName, IPAddress *Addresses, LONG TotalAddresses)`.
@@ -500,50 +533,36 @@ Failed: The address could not be resolved
 
 static ERROR netResolveAddress(CSTRING Address, LONG Flags, FUNCTION *Callback, LARGE ClientData)
 {
-   if ((!Address) OR (!Callback)) return PostError(ERR_NullArgs);
+   parasol::Log log(__FUNCTION__);
 
-   struct IPAddress ip;
+   if (!Address) return log.error(ERR_NullArgs);
+
+   IPAddress ip;
    if (netStrToAddress(Address, &ip) != ERR_Okay) return ERR_Args;
 
-   if (Flags & NSF_ASYNC_RESOLVE) goto async_resolve;
-
-   // Attempt synchronous resolution.
-
-   if (!VarLock(glDNS, 0x7fffffff)) {
-      struct dns_resolver *resolve = new_resolver(ClientData, Callback);
-      if (!resolve) {
-         VarUnlock(glDNS);
-         return ERR_AllocMemory;
-      }
-
-      #ifdef USE_ARES
-         if (glAres) {
-         #ifdef __linux__
-            net_ares_resolveaddr(ip.Type == IPADDR_V4, ip.Data, resolve);
-            VarUnlock(glDNS);
+   if (!(Flags & NSF_SYNCHRONOUS)) { // Attempt asynchronous resolution in the background, return immediately.
+      OBJECTPTR thread;
+      LONG pkg_size = sizeof(resolve_addr_buffer) + StrLength(Address) + 1;
+      if (!CreateObject(ID_THREAD, NF_INTEGRAL, &thread,
+            FID_Routine|TPTR, &thread_resolve_addr,
+            FID_Flags|TLONG,  THF_AUTO_FREE,
+            TAGEND)) {
+         char buffer[pkg_size];
+         resolve_addr_buffer *rab = (resolve_addr_buffer *)&buffer;
+         rab->callback = *Callback;
+         rab->client_data = ClientData;
+         StrCopy(Address, (STRING)(rab + 1), COPY_ALL);
+         if ((!thSetData(thread, rab, pkg_size)) AND (!acActivate(thread))) {
             return ERR_Okay;
-         #elif _WIN32
-            if (!win_ares_resolveaddr(&ip, glAres, resolve)) {
-               VarUnlock(glDNS);
-               return ERR_Okay;
-            }
-         #endif
          }
-      #elif __linux__
-         #warning TODO: getaddrinfo_a()
-
-      #endif
-
-      free_resolver(resolve); // Remove the resolver if background resolution failed.
-      VarUnlock(glDNS);
+      }
    }
 
-async_resolve:
    {
       #ifdef _WIN32
          struct dns_cache *dns;
          struct hostent *host = win_gethostbyaddr(&ip);
-         if (!host) return LogError(ERH_Function, ERR_Failed);
+         if (!host) return log.error(ERH_Function, ERR_Failed);
 
          ERROR error = cache_host(NULL, host, &dns);
          if (!error) {
@@ -611,9 +630,9 @@ ResolveName: Resolves a domain name to an official host name and a list of IP ad
 
 ResolveName() performs a domain name resolution, converting a domain name to an official host name and
 IP addresses.  The resolution process involves contacting a DNS server.  As this can potentially cause a significant
-delay, the ResolveName() function attempts to use synchronous communication by default so that the function can return
-immediately.  If asynchronous operation is desired, the NSF_ASYNC_RESOLVE flag should be set prior to calling this method
-and the routine will not return until it has a response.
+delay, the ResolveName() function attempts to use asynchronous communication by default so that the function can return
+immediately.  If a synchronous (blocking) operation is desired then the NSF_SYNCHRONOUS flag must be set prior to
+calling this method and the routine will not return until it has a response.
 
 The function referenced in the Callback parameter will receive the results of the lookup.  Its C/C++ prototype is
 `Function(LARGE ClientData, ERROR Error, CSTRING HostName, IPAddress *Addresses, LONG TotalAddresses)`.
@@ -633,19 +652,23 @@ large ClientData: Client data value to be passed to the Callback.
 -ERRORS-
 Okay:
 NullArgs:
+AllocMemory:
+Failed:
 
 *****************************************************************************/
 
 static ERROR netResolveName(CSTRING HostName, LONG Flags, FUNCTION *Callback, LARGE ClientData)
 {
-   if ((!HostName) OR (!Callback)) return PostError(ERR_NullArgs);
+   parasol::Log log(__FUNCTION__);
 
-   FMSG("ResolveName()","Host: %s, Flags: $%.8x", HostName, Flags);
+   if (!HostName) return log.error(ERR_NullArgs);
+
+   log.branch("Host: %s, Flags: $%.8x, Callback: %p", HostName, Flags, Callback);
 
    { // Use the cache if available.
       struct dns_cache *dns;
       if (!VarGet(glDNS, HostName, &dns, NULL)) {
-         FMSG("ResolveName","Cache hit for host %s", dns->HostName);
+         log.trace("Cache hit for host %s", dns->HostName);
          resolve_callback(ClientData, Callback, ERR_Okay, dns->HostName, dns->Addresses, dns->AddressCount);
          return ERR_Okay;
       }
@@ -654,46 +677,27 @@ static ERROR netResolveName(CSTRING HostName, LONG Flags, FUNCTION *Callback, LA
    // Resolve 'localhost' immediately
 
    if (!StrMatch("localhost", HostName)) {
-      struct IPAddress ip = { { 0x7f, 0x00, 0x00, 0x01 }, IPADDR_V4 };
-      struct IPAddress list[] = { ip };
+      IPAddress ip = { { 0x7f, 0x00, 0x00, 0x01 }, IPADDR_V4 };
+      IPAddress list[] = { ip };
       resolve_callback(ClientData, Callback, ERR_Okay, "localhost", list, 1);
    }
 
-   if (!(Flags & NSF_ASYNC_RESOLVE)) { // Attempt synchronous resolution in the background, return immediately.
-      VarLock(glDNS, 0x7fffffff);
-
-      struct dns_resolver *resolver = new_resolver(ClientData, Callback);
-      if (!resolver) {
-         VarUnlock(glDNS);
-         return ERR_AllocMemory;
+   if (!(Flags & NSF_SYNCHRONOUS)) { // Attempt asynchronous resolution in the background, return immediately.
+      OBJECTPTR thread;
+      LONG pkg_size = sizeof(resolve_name_buffer) + StrLength(HostName) + 1;
+      if (!CreateObject(ID_THREAD, NF_INTEGRAL, &thread,
+            FID_Routine|TPTR, &thread_resolve_name,
+            FID_Flags|TLONG,  THF_AUTO_FREE,
+            TAGEND)) {
+         char buffer[pkg_size];
+         auto rnb = (resolve_name_buffer *)&buffer;
+         rnb->callback = *Callback;
+         rnb->client_data = ClientData;
+         StrCopy(HostName, (STRING)(rnb + 1), COPY_ALL);
+         if ((!thSetData(thread, buffer, pkg_size)) AND (!acActivate(thread))) {
+            return ERR_Okay;
+         }
       }
-
-#ifdef USE_ARES
-   #ifdef __linux__
-      if (glAres) {
-         net_resolve_name(HostName, resolver);
-         VarUnlock(glDNS);
-         return ERR_Okay;
-      }
-   #elif _WIN32
-      if ((glAres) AND (!check_machine_name(HostName))) {
-         FMSG("ResolveName","Resolving '%s' using Ares callbacks.", HostName);
-         ERROR error = win_ares_resolvename(HostName, glAres, resolver);
-         VarUnlock(glDNS);
-         if (error) PostError(error);
-         return error;
-      }
-
-      FMSG("ResolveName","Resolving machine name '%s' using WSAASync callbacks.", HostName);
-      if (!win_async_resolvename(HostName, resolver, &resolver->WinHost.Host, sizeof(resolver->WinHost.MaxGetHostStruct))) {
-         VarUnlock(glDNS);
-         return ERR_Okay;
-      }
-   #endif
-#endif
-
-      free_resolver(resolver); // Remove the resolver if background resolution failed.
-      VarUnlock(glDNS);
    }
 
    {
@@ -731,7 +735,7 @@ static ERROR netResolveName(CSTRING HostName, LONG Flags, FUNCTION *Callback, LA
       #elif _WIN32
          ERROR error;
          struct hostent *host = win_gethostbyname(HostName);
-         if (!host) return LogError(ERH_Function, ERR_Failed);
+         if (!host) return log.error(ERH_Function, ERR_Failed);
 
          struct dns_cache *dns;
          if (!(error = cache_host(HostName, host, &dns))) {
@@ -779,18 +783,17 @@ static ERROR netSetSSL(objNetSocket *Socket, ...)
    ERROR error;
    va_list list;
 
-   if (!Socket) return PostError(ERR_NullArgs);
+   if (!Socket) return ERR_NullArgs;
 
    va_start(list, Socket);
    while ((tagid = va_arg(list, LONG))) {
-      FMSG("~SetSSL","Command: %d", tagid);
+      parasol::Log log(__FUNCTION__);
+      log.traceBranch("Command: %d", tagid);
 
       switch(tagid) {
          case NSL_CONNECT:
             value = va_arg(list, LONG);
-            if (value) {
-               // Initiate an SSL connection on this socket
-
+            if (value) { // Initiate an SSL connection on this socket
                if ((error = sslSetup(Socket)) IS ERR_Okay) {
                   sslLinkSocket(Socket);
                   error = sslConnect(Socket);
@@ -798,19 +801,14 @@ static ERROR netSetSSL(objNetSocket *Socket, ...)
 
                if (error) {
                   va_end(list);
-                  STEP();
                   return error;
                }
             }
-            else {
-               // Disconnect SSL (i.e. go back to unencrypted mode)
-
+            else { // Disconnect SSL (i.e. go back to unencrypted mode)
                sslDisconnect(Socket);
             }
             break;
       }
-
-      STEP();
    }
 
    va_end(list);
@@ -842,7 +840,9 @@ static void client_server_pending(SOCKET_HANDLE FD, APTR Self)
 
 static ERROR RECEIVE(objNetSocket *Self, SOCKET_HANDLE Socket, APTR Buffer, LONG BufferSize, LONG Flags, LONG *Result)
 {
-   FMSG("~RECEIVE()","Socket: %d, BufSize: %d, Flags: $%.8x, SSLBusy: %d", Socket, BufferSize, Flags, Self->SSLBusy);
+   parasol::Log log(__FUNCTION__);
+
+   log.traceBranch("Socket: %d, BufSize: %d, Flags: $%.8x, SSLBusy: %d", Socket, BufferSize, Flags, Self->SSLBusy);
 
    *Result = 0;
 
@@ -850,13 +850,10 @@ static ERROR RECEIVE(objNetSocket *Self, SOCKET_HANDLE Socket, APTR Buffer, LONG
    if (Self->SSLBusy IS SSL_HANDSHAKE_WRITE) ssl_handshake_write(Socket, Self);
    else if (Self->SSLBusy IS SSL_HANDSHAKE_READ) ssl_handshake_read(Socket, Self);
 
-   if (Self->SSLBusy != SSL_NOT_BUSY) {
-      STEP();
-      return ERR_Okay;
-   }
+   if (Self->SSLBusy != SSL_NOT_BUSY) return ERR_Okay;
 #endif
 
-   if (!BufferSize) { STEP(); return ERR_Okay; }
+   if (!BufferSize) return ERR_Okay;
 
 #ifdef ENABLE_SSL
    BYTE read_blocked;
@@ -871,7 +868,6 @@ static ERROR RECEIVE(objNetSocket *Self, SOCKET_HANDLE Socket, APTR Buffer, LONG
          if (result <= 0) {
             switch (SSL_get_error(Self->SSL, result)) {
                case SSL_ERROR_ZERO_RETURN:
-                  STEP();
                   return ERR_Disconnected;
 
                case SSL_ERROR_WANT_READ:
@@ -882,7 +878,7 @@ static ERROR RECEIVE(objNetSocket *Self, SOCKET_HANDLE Socket, APTR Buffer, LONG
                   // WANT_WRITE is returned if we're trying to rehandshake and the write operation would block.  We
                   // need to wait on the socket to be writeable, then restart the read when it is.
 
-                   LogF("RECEIVE()","SSL socket handshake requested by server.");
+                   log.msg("SSL socket handshake requested by server.");
                    Self->SSLBusy = SSL_HANDSHAKE_WRITE;
                    #ifdef __linux__
                       RegisterFD((HOSTHANDLE)Socket, RFD_WRITE|RFD_SOCKET, &ssl_handshake_write, Self);
@@ -890,14 +886,12 @@ static ERROR RECEIVE(objNetSocket *Self, SOCKET_HANDLE Socket, APTR Buffer, LONG
                       win_socketstate(Socket, -1, TRUE);
                    #endif
 
-                   STEP();
                    return ERR_Okay;
 
                 case SSL_ERROR_SYSCALL:
 
                 default:
-                   LogErrorMsg("SSL read problem");
-                   STEP();
+                   log.warning("SSL read problem");
                    return ERR_Okay; // Non-fatal
             }
          }
@@ -908,7 +902,7 @@ static ERROR RECEIVE(objNetSocket *Self, SOCKET_HANDLE Socket, APTR Buffer, LONG
          }
       } while ((pending = SSL_pending(Self->SSL)) AND (!read_blocked) AND (BufferSize > 0));
 
-      FMSG("RECEIVE","Pending: %d, BufSize: %d, Blocked: %d", pending, BufferSize, read_blocked);
+      log.trace("Pending: %d, BufSize: %d, Blocked: %d", pending, BufferSize, read_blocked);
 
       if (pending) {
          // With regards to non-blocking SSL sockets, be aware that a socket can be empty in terms of incoming data,
@@ -929,7 +923,6 @@ static ERROR RECEIVE(objNetSocket *Self, SOCKET_HANDLE Socket, APTR Buffer, LONG
          #endif
       }
 
-      STEP();
       return ERR_Okay;
    }
 #endif
@@ -940,25 +933,20 @@ static ERROR RECEIVE(objNetSocket *Self, SOCKET_HANDLE Socket, APTR Buffer, LONG
 
       if (result > 0) {
          *Result = result;
-         STEP();
          return ERR_Okay;
       }
       else if (result IS 0) { // man recv() says: The return value is 0 when the peer has performed an orderly shutdown.
-         STEP();
          return ERR_Disconnected;
       }
       else if ((errno IS EAGAIN) OR (errno IS EINTR)) {
-         STEP();
          return ERR_Okay;
       }
       else {
-         LogErrorMsg("recv() failed: %s", strerror(errno));
-         STEP();
+         log.warning("recv() failed: %s", strerror(errno));
          return ERR_Failed;
       }
    }
 #elif _WIN32
-   STEP();
    return WIN_RECEIVE(Socket, Buffer, BufferSize, Flags, Result);
 #else
    #error No support for RECEIVE()
@@ -969,18 +957,19 @@ static ERROR RECEIVE(objNetSocket *Self, SOCKET_HANDLE Socket, APTR Buffer, LONG
 
 static ERROR SEND(objNetSocket *Self, SOCKET_HANDLE Socket, CPTR Buffer, LONG *Length, LONG Flags)
 {
+   parasol::Log log(__FUNCTION__);
+
    if (!*Length) return ERR_Okay;
 
 #ifdef ENABLE_SSL
 
    if (Self->SSL) {
-      FMSG("~SEND()","SSLBusy: %d, Length: %d", Self->SSLBusy, *Length);
+      log.traceBranch("SSLBusy: %d, Length: %d", Self->SSLBusy, *Length);
 
       if (Self->SSLBusy IS SSL_HANDSHAKE_WRITE) ssl_handshake_write(Socket, Self);
       else if (Self->SSLBusy IS SSL_HANDSHAKE_READ) ssl_handshake_read(Socket, Self);
 
       if (Self->SSLBusy != SSL_NOT_BUSY) {
-         STEP();
          return ERR_Okay;
       }
 
@@ -992,8 +981,7 @@ static ERROR SEND(objNetSocket *Self, SOCKET_HANDLE Socket, CPTR Buffer, LONG *L
 
          switch(ssl_error){
             case SSL_ERROR_WANT_WRITE:
-               FMSG("@SEND()","Buffer overflow (SSL want write)");
-               STEP();
+               log.traceWarning("Buffer overflow (SSL want write)");
                return ERR_BufferOverflow;
 
             // We get a WANT_READ if we're trying to rehandshake and we block on write during the current connection.
@@ -1001,39 +989,35 @@ static ERROR SEND(objNetSocket *Self, SOCKET_HANDLE Socket, CPTR Buffer, LONG *L
             // We need to wait on the socket to be readable but reinitiate our write when it is
 
             case SSL_ERROR_WANT_READ:
-               MSG("SEND() Handshake requested by server.");
+               log.trace("Handshake requested by server.");
                Self->SSLBusy = SSL_HANDSHAKE_READ;
                #ifdef __linux__
                   RegisterFD((HOSTHANDLE)Socket, RFD_READ|RFD_SOCKET, &ssl_handshake_read, Self);
                #elif _WIN32
                   win_socketstate(Socket, TRUE, -1);
                #endif
-               STEP();
                return ERR_Okay;
 
             case SSL_ERROR_SYSCALL:
-               LogErrorMsg("SSL_write() SysError %d: %s", errno, strerror(errno));
-               STEP();
+               log.warning("SSL_write() SysError %d: %s", errno, strerror(errno));
                return ERR_Failed;
 
             default:
                while (ssl_error) {
-                  LogErrorMsg("SSL_write() error %d, %s", ssl_error, ERR_error_string(ssl_error, NULL));
+                  log.warning("SSL_write() error %d, %s", ssl_error, ERR_error_string(ssl_error, NULL));
                   ssl_error = ERR_get_error();
                }
 
-               STEP();
                return ERR_Failed;
          }
       }
       else {
          if (*Length != bytes_sent) {
-            FMSG("@SEND:","Sent %d of requested %d bytes.", bytes_sent, *Length);
+            log.traceWarning("Sent %d of requested %d bytes.", bytes_sent, *Length);
          }
          *Length = bytes_sent;
       }
 
-      STEP();
       return ERR_Okay;
    }
 #endif
@@ -1047,7 +1031,7 @@ static ERROR SEND(objNetSocket *Self, SOCKET_HANDLE Socket, CPTR Buffer, LONG *L
       if (errno IS EAGAIN) return ERR_BufferOverflow;
       else if (errno IS EMSGSIZE) return ERR_DataSize;
       else {
-         LogErrorMsg("send() failed: %s", strerror(errno));
+         log.warning("send() failed: %s", strerror(errno));
          return ERR_Failed;
       }
    }
@@ -1060,68 +1044,18 @@ static ERROR SEND(objNetSocket *Self, SOCKET_HANDLE Socket, CPTR Buffer, LONG *L
 
 //***************************************************************************
 
-static struct dns_resolver * new_resolver(LARGE ClientData, FUNCTION *Callback)
+static void resolve_callback(LARGE ClientData, FUNCTION *Callback, ERROR Error, CSTRING HostName, IPAddress *Addresses, LONG TotalAddresses)
 {
-   struct dns_resolver *resolve;
-
-   OBJECTPTR context = SetContext(glModule);
-   ERROR error = AllocMemory(sizeof(struct dns_resolver), MEM_DATA, &resolve, NULL);
-   SetContext(context);
-   if (error) return NULL;
-
-   resolve->next = glResolvers;
-   resolve->time = PreciseTime();
-   resolve->client_data = ClientData;
-   resolve->callback = *Callback;
-   #if defined(USE_ARES) && defined(__linux__)
-      resolve->tcp = 0;
-      resolve->udp = 0;
-   #endif
-   glResolvers = resolve;
-
-   return resolve;
-}
-
-//***************************************************************************
-// Acquire a lock on glDNS before calling this function.
-
-static void free_resolver(struct dns_resolver *Resolver)
-{
-#if defined(USE_ARES) && defined(__linux__)
-   if (Resolver->tcp) DeregisterFD((HOSTHANDLE)Resolver->tcp);
-   if (Resolver->udp) DeregisterFD((HOSTHANDLE)Resolver->udp);
-#endif
-
-   if (glResolvers IS Resolver) {
-      glResolvers = Resolver->next;
-   }
-   else {
-      struct dns_resolver *scan;
-      for (scan=glResolvers; scan; scan=scan->next) {
-         if (scan->next IS Resolver) { scan->next = Resolver->next; break; }
-      }
-   }
-
-   OBJECTPTR context = SetContext(glModule);
-   FreeResource(Resolver);
-   SetContext(context);
-}
-
-//***************************************************************************
-
-static void resolve_callback(LARGE ClientData, FUNCTION *Callback, ERROR Error, CSTRING HostName, struct IPAddress *Addresses, LONG TotalAddresses)
-{
+   if (!Callback) return;
    if (Callback->Type IS CALL_STDC) {
-      ERROR (*routine)(LARGE, ERROR, CSTRING, struct IPAddress *, LONG);
-      OBJECTPTR context = SetContext(Callback->StdC.Context);
-         routine = reinterpret_cast<ERROR (*)(LARGE, ERROR, CSTRING, struct IPAddress *, LONG)>(Callback->StdC.Routine);
-         routine(ClientData, Error, HostName, Addresses, TotalAddresses);
-      SetContext(context);
+      parasol::SwitchContext context(Callback->StdC.Context);
+      auto routine = (ERROR (*)(LARGE, ERROR, CSTRING, IPAddress *, LONG))(Callback->StdC.Routine);
+      routine(ClientData, Error, HostName, Addresses, TotalAddresses);
    }
    else if (Callback->Type IS CALL_SCRIPT) {
       OBJECTPTR script;
       if ((script = Callback->Script.Script)) {
-         const struct ScriptArg args[] = {
+         const ScriptArg args[] = {
             { "ClientData",   FD_LARGE, { .Large   = ClientData } },
             { "Error",        FD_LONG,  { .Long    = Error } },
             { "HostName",     FD_STR,   { .Address = (STRING)HostName } },
@@ -1143,7 +1077,9 @@ static ERROR cache_host(CSTRING HostName, struct hostent *Host, struct dns_cache
       if (!(HostName = Host->h_name)) return ERR_Args;
    }
 
-   LogF("7cache_host()","Host: %s, Addresses: %p (IPV6: %d)", HostName, Host->h_addr_list, (Host->h_addrtype == AF_INET6));
+   parasol::Log log(__FUNCTION__);
+
+   log.debug("Host: %s, Addresses: %p (IPV6: %d)", HostName, Host->h_addr_list, (Host->h_addrtype == AF_INET6));
 
    CSTRING real_name = Host->h_name;
    if (!real_name) real_name = HostName;
@@ -1161,7 +1097,7 @@ static ERROR cache_host(CSTRING HostName, struct hostent *Host, struct dns_cache
       for (address_count=0; (address_count < MAX_ADDRESSES) AND (Host->h_addr_list[address_count]); address_count++);
    }
 
-   size += address_count * sizeof(struct IPAddress);
+   size += address_count * sizeof(IPAddress);
 
    // Allocate an empty key-pair and fill it.
 
@@ -1172,8 +1108,8 @@ static ERROR cache_host(CSTRING HostName, struct hostent *Host, struct dns_cache
    LONG offset = sizeof(struct dns_cache);
 
    if (address_count > 0) {
-      cache->Addresses = (struct IPAddress *)(buffer + offset);
-      offset += address_count * sizeof(struct IPAddress);
+      cache->Addresses = (IPAddress *)(buffer + offset);
+      offset += address_count * sizeof(IPAddress);
 
       if (Host->h_addrtype IS AF_INET) {
          LONG i;
@@ -1208,6 +1144,7 @@ static ERROR cache_host(CSTRING HostName, struct hostent *Host, struct dns_cache
    return ERR_Okay;
 }
 
+#ifdef __linux__
 static ERROR cache_host(CSTRING HostName, struct addrinfo *Host, struct dns_cache **Cache)
 {
    if ((!Host) OR (!Cache)) return ERR_NullArgs;
@@ -1216,7 +1153,9 @@ static ERROR cache_host(CSTRING HostName, struct addrinfo *Host, struct dns_cach
       if (!(HostName = Host->ai_canonname)) return ERR_Args;
    }
 
-   LogF("7cache_host()","Host: %s, Addresses: %p (IPV6: %d)", HostName, Host->ai_addr, (Host->ai_family == AF_INET6));
+   parasol::Log log(__FUNCTION__);
+
+   log.debug("Host: %s, Addresses: %p (IPV6: %d)", HostName, Host->ai_addr, (Host->ai_family == AF_INET6));
 
    CSTRING real_name = Host->ai_canonname;
    if (!real_name) real_name = HostName;
@@ -1233,7 +1172,7 @@ static ERROR cache_host(CSTRING HostName, struct addrinfo *Host, struct dns_cach
       if (scan->ai_addr) address_count++;
    }
 
-   size += address_count * sizeof(struct IPAddress);
+   size += address_count * sizeof(IPAddress);
 
    // Allocate an empty key-pair and fill it.
 
@@ -1244,8 +1183,8 @@ static ERROR cache_host(CSTRING HostName, struct addrinfo *Host, struct dns_cach
    LONG offset = sizeof(struct dns_cache);
 
    if (address_count > 0) {
-      cache->Addresses = (struct IPAddress *)(buffer + offset);
-      offset += address_count * sizeof(struct IPAddress);
+      cache->Addresses = (IPAddress *)(buffer + offset);
+      offset += address_count * sizeof(IPAddress);
 
       LONG i = 0;
       for (struct addrinfo *scan=Host; scan; scan=scan->ai_next) {
@@ -1279,108 +1218,17 @@ static ERROR cache_host(CSTRING HostName, struct addrinfo *Host, struct dns_cach
    *Cache = cache;
    return ERR_Okay;
 }
+#endif
 
 //***************************************************************************
 
 static BYTE check_machine_name(CSTRING HostName)
 {
-   WORD i;
-   for (i=0; HostName[i]; i++) { // Check if it's a machine name
+   for (LONG i=0; HostName[i]; i++) { // Check if it's a machine name
       if (HostName[i] IS '.') return FALSE;
    }
    return TRUE;
 }
-
-//****************************************************************************
-// Non-Ares DNS callback.
-
-#if defined(_WIN32)
-
-void win_dns_callback(struct dns_resolver *Resolver, ERROR Error, struct hostent *Host)
-{
-   if (Host) {
-      LogF("~win_dns_callback()","Resolved: '%s', Time: %.4fs", Host->h_name, (DOUBLE)(PreciseTime() - Resolver->time) * 0.000001);
-   }
-   else LogF("~win_dns_callback()","Failed to resolve host.  Time: %.4fs", (DOUBLE)(PreciseTime() - Resolver->time) * 0.000001);
-
-   if (!VarLock(glDNS, 0x7fffffff)) {
-      if (Error != ERR_Okay) {
-         LogF("@rk_callback:","Name resolution failure: %s", GetErrorMsg(Error));
-         resolve_callback(Resolver->client_data, &Resolver->callback, Error, (Host) ? Host->h_name : NULL, NULL, 0);
-      }
-      else if (Host) {
-         struct dns_cache *dns;
-         ERROR error = cache_host(NULL, Host, &dns);
-         if (!error) resolve_callback(Resolver->client_data, &Resolver->callback, ERR_Okay, dns->HostName, dns->Addresses, dns->AddressCount);
-         else resolve_callback(Resolver->client_data, &Resolver->callback, error, Host->h_name, NULL, 0);
-      }
-
-      free_resolver(Resolver);
-      VarUnlock(glDNS);
-   }
-
-   LogBack();
-}
-
-#endif
-
-//****************************************************************************
-
-#ifdef USE_ARES
-
-void ares_response(void *Arg, int Status, int Timeouts, struct hostent *Host)
-{
-   struct dns_resolver *Resolver = reinterpret_cast<struct dns_resolver *>(Arg);
-
-   if (Host) {
-      LogF("~ares_response()","Resolved: '%s', Time: %.2fs", Host->h_name, (DOUBLE)(PreciseTime() - Resolver->time) * 0.000001);
-   }
-   else LogF("~ares_response()","Failed to resolve host.  Time: %.2fs", (DOUBLE)(PreciseTime() - Resolver->time) * 0.000001);
-
-   if (!VarLock(glDNS, 0x7fffffff)) {
-      if (Status) {
-         const char *msg;
-         ERROR error = net_ares_error(Status, &msg);
-         LogF("@ares_response","Name resolution failure: %s", msg);
-         resolve_callback(Resolver->client_data, &Resolver->callback, error, (Host) ? Host->h_name : NULL, NULL, 0);
-      }
-      else if (Host) {
-         struct dns_cache *dns;
-         ERROR error = cache_host(NULL, Host, &dns);
-         if (!error) resolve_callback(Resolver->client_data, &Resolver->callback, ERR_Okay, dns->HostName, dns->Addresses, dns->AddressCount);
-      }
-
-      free_resolver(Resolver);
-      VarUnlock(glDNS);
-   }
-
-   LogBack();
-}
-
-#ifdef __linux__
-void register_read_socket(int Socket, void (*Callback)(int, void *), struct dns_resolver *Resolve)
-{
-   RegisterFD(Socket, RFD_READ|RFD_SOCKET, Callback, Resolve);
-}
-
-void register_write_socket(int Socket, void (*Callback)(int, void *), struct dns_resolver *Resolve)
-{
-   RegisterFD(Socket, RFD_WRITE|RFD_SOCKET, Callback, Resolve);
-}
-
-void deregister_fd(int FD)
-{
-   DeregisterFD(FD);
-}
-
-void set_resolver_socket(struct dns_resolver *Resolver, int UDP, int SocketHandle)
-{
-   if (UDP) Resolver->udp = SocketHandle;
-   else Resolver->tcp = SocketHandle;
-}
-#endif
-
-#endif // USE_ARES
 
 //****************************************************************************
 

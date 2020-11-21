@@ -313,48 +313,48 @@ struct sndSetVolume { LONG Index; CSTRING Name; LONG Flags; DOUBLE Volume;  };
 
 INLINE ERROR sndOpenChannels(APTR Ob, LONG Total, LONG Key, LONG Commands, LONG * Result) {
    struct sndOpenChannels args = { Total, Key, Commands, 0 };
-   ERROR error = Action(MT_SndOpenChannels, Ob, &args);
+   ERROR error = Action(MT_SndOpenChannels, (OBJECTPTR)Ob, &args);
    if (Result) *Result = args.Result;
    return(error);
 }
 
 INLINE ERROR sndCloseChannels(APTR Ob, LONG Handle) {
    struct sndCloseChannels args = { Handle };
-   return(Action(MT_SndCloseChannels, Ob, &args));
+   return(Action(MT_SndCloseChannels, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR sndAddSample(APTR Ob, LONG SampleFormat, APTR Data, LONG DataSize, struct AudioLoop * Loop, LONG LoopSize, LONG * Result) {
    struct sndAddSample args = { SampleFormat, Data, DataSize, Loop, LoopSize, 0 };
-   ERROR error = Action(MT_SndAddSample, Ob, &args);
+   ERROR error = Action(MT_SndAddSample, (OBJECTPTR)Ob, &args);
    if (Result) *Result = args.Result;
    return(error);
 }
 
 INLINE ERROR sndRemoveSample(APTR Ob, LONG Handle) {
    struct sndRemoveSample args = { Handle };
-   return(Action(MT_SndRemoveSample, Ob, &args));
+   return(Action(MT_SndRemoveSample, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR sndBufferCommand(APTR Ob, LONG Command, LONG Handle, LONG Data) {
    struct sndBufferCommand args = { Command, Handle, Data };
-   return(Action(MT_SndBufferCommand, Ob, &args));
+   return(Action(MT_SndBufferCommand, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR sndAddStream(APTR Ob, CSTRING Path, OBJECTID ObjectID, LONG SeekStart, LONG SampleFormat, LONG SampleLength, LONG BufferLength, struct AudioLoop * Loop, LONG LoopSize, LONG * Result) {
    struct sndAddStream args = { Path, ObjectID, SeekStart, SampleFormat, SampleLength, BufferLength, Loop, LoopSize, 0 };
-   ERROR error = Action(MT_SndAddStream, Ob, &args);
+   ERROR error = Action(MT_SndAddStream, (OBJECTPTR)Ob, &args);
    if (Result) *Result = args.Result;
    return(error);
 }
 
 INLINE ERROR sndBeep(APTR Ob, LONG Pitch, LONG Duration, LONG Volume) {
    struct sndBeep args = { Pitch, Duration, Volume };
-   return(Action(MT_SndBeep, Ob, &args));
+   return(Action(MT_SndBeep, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR sndSetVolume(APTR Ob, LONG Index, CSTRING Name, LONG Flags, DOUBLE Volume) {
    struct sndSetVolume args = { Index, Name, Flags, Volume };
-   return(Action(MT_SndSetVolume, Ob, &args));
+   return(Action(MT_SndSetVolume, (OBJECTPTR)Ob, &args));
 }
 
 

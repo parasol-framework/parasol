@@ -24,11 +24,13 @@ definition.  This will ensure that the VectorGradient is de-allocated when the s
 
 GRADIENT_TABLE * get_fill_gradient_table(objVector &Vector, DOUBLE Opacity)
 {
+   parasol::Log log(__FUNCTION__);
+
    GradientColours *cols = Vector.FillGradient->Colours;
    if (!cols) {
       if (Vector.FillGradient->Inherit) cols = Vector.FillGradient->Inherit->Colours;
       if (!cols) {
-         LogF("@get_fill_gradient_table","No colour table referenced in gradient %p for vector #%d.", Vector.FillGradient, Vector.Head.UniqueID);
+         log.warning("No colour table referenced in gradient %p for vector #%d.", Vector.FillGradient, Vector.Head.UniqueID);
          return NULL;
       }
    }
@@ -89,10 +91,10 @@ GRADIENT_TABLE * get_stroke_gradient_table(objVector &Vector)
 ** Stops array.
 */
 
-GradientColours::GradientColours(struct rkVectorGradient *Gradient, DOUBLE Alpha)
+GradientColours::GradientColours(rkVectorGradient *Gradient, DOUBLE Alpha)
 {
    LONG stop, i1, i2, i;
-   struct GradientStop *stops = Gradient->Stops;
+   GradientStop *stops = Gradient->Stops;
 
    for (stop=0; stop < Gradient->TotalStops-1; stop++) {
       i1 = F2T(255.0 * stops[stop].Offset);
@@ -131,8 +133,8 @@ static ERROR VECTORGRADIENT_Free(objVectorGradient *Self, APTR Void)
    if (Self->Stops) { FreeResource(Self->Stops); Self->Stops = NULL; }
    if (Self->Colours) { delete Self->Colours; Self->Colours = NULL; }
 
-   struct VectorTransform *scan, *next;
-   for (scan=Self->Transforms; scan; scan=next) {
+   VectorTransform *next;
+   for (auto scan=Self->Transforms; scan; scan=next) {
       next = scan->Next;
       FreeResource(scan);
    }
@@ -145,14 +147,16 @@ static ERROR VECTORGRADIENT_Free(objVectorGradient *Self, APTR Void)
 
 static ERROR VECTORGRADIENT_Init(objVectorGradient *Self, APTR Void)
 {
+   parasol::Log log;
+
    if ((Self->SpreadMethod <= 0) or (Self->SpreadMethod >= VSPREAD_END)) {
-      FMSG("@","Invalid SpreadMethod value of %d", Self->SpreadMethod);
-      return PostError(ERR_OutOfRange);
+      log.traceWarning("Invalid SpreadMethod value of %d", Self->SpreadMethod);
+      return ERR_OutOfRange;
    }
 
    if ((Self->Units <= 0) or (Self->Units >= VUNIT_END)) {
-      FMSG("@","Invalid Units value of %d", Self->Units);
-      return PostError(ERR_OutOfRange);
+      log.traceWarning("Invalid Units value of %d", Self->Units);
+      return ERR_OutOfRange;
    }
 
    return ERR_Okay;
@@ -185,7 +189,7 @@ the gradient type requires it (such as the radial type).  By default, the center
 
 *****************************************************************************/
 
-static ERROR VECTORGRADIENT_GET_CenterX(objVectorGradient *Self, struct Variable *Value)
+static ERROR VECTORGRADIENT_GET_CenterX(objVectorGradient *Self, Variable *Value)
 {
    DOUBLE val = Self->CenterX;
    if ((Value->Type & FD_PERCENTAGE) and (Self->Flags & VGF_RELATIVE_CX)) val = val * 100.0;
@@ -194,12 +198,12 @@ static ERROR VECTORGRADIENT_GET_CenterX(objVectorGradient *Self, struct Variable
    return ERR_Okay;
 }
 
-static ERROR VECTORGRADIENT_SET_CenterX(objVectorGradient *Self, struct Variable *Value)
+static ERROR VECTORGRADIENT_SET_CenterX(objVectorGradient *Self, Variable *Value)
 {
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return PostError(ERR_FieldTypeMismatch);
+   else return ERR_FieldTypeMismatch;
 
    if (Value->Type & FD_PERCENTAGE) {
       val = val * 0.01;
@@ -221,7 +225,7 @@ the gradient type requires it (such as the radial type).  By default, the center
 
 *****************************************************************************/
 
-static ERROR VECTORGRADIENT_GET_CenterY(objVectorGradient *Self, struct Variable *Value)
+static ERROR VECTORGRADIENT_GET_CenterY(objVectorGradient *Self, Variable *Value)
 {
    DOUBLE val = Self->CenterY;
    if ((Value->Type & FD_PERCENTAGE) and (Self->Flags & VGF_RELATIVE_CY)) val = val * 100.0;
@@ -230,12 +234,12 @@ static ERROR VECTORGRADIENT_GET_CenterY(objVectorGradient *Self, struct Variable
    return ERR_Okay;
 }
 
-static ERROR VECTORGRADIENT_SET_CenterY(objVectorGradient *Self, struct Variable *Value)
+static ERROR VECTORGRADIENT_SET_CenterY(objVectorGradient *Self, Variable *Value)
 {
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return PostError(ERR_FieldTypeMismatch);
+   else return ERR_FieldTypeMismatch;
 
    if (Value->Type & FD_PERCENTAGE) {
       val = val * 0.01;
@@ -262,7 +266,7 @@ center of the gradient.
 
 *****************************************************************************/
 
-static ERROR VECTORGRADIENT_GET_FX(objVectorGradient *Self, struct Variable *Value)
+static ERROR VECTORGRADIENT_GET_FX(objVectorGradient *Self, Variable *Value)
 {
    DOUBLE val = Self->FX;
    if ((Value->Type & FD_PERCENTAGE) and (Self->Flags & VGF_RELATIVE_FX)) val = val * 100.0;
@@ -271,12 +275,12 @@ static ERROR VECTORGRADIENT_GET_FX(objVectorGradient *Self, struct Variable *Val
    return ERR_Okay;
 }
 
-static ERROR VECTORGRADIENT_SET_FX(objVectorGradient *Self, struct Variable *Value)
+static ERROR VECTORGRADIENT_SET_FX(objVectorGradient *Self, Variable *Value)
 {
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return PostError(ERR_FieldTypeMismatch);
+   else return ERR_FieldTypeMismatch;
 
    if (Value->Type & FD_PERCENTAGE) {
       val = val * 0.01;
@@ -298,7 +302,7 @@ center of the gradient.
 
 *****************************************************************************/
 
-static ERROR VECTORGRADIENT_GET_FY(objVectorGradient *Self, struct Variable *Value)
+static ERROR VECTORGRADIENT_GET_FY(objVectorGradient *Self, Variable *Value)
 {
    DOUBLE val = Self->FY;
    if ((Value->Type & FD_PERCENTAGE) and (Self->Flags & VGF_RELATIVE_FY)) val = val * 100.0;
@@ -307,12 +311,12 @@ static ERROR VECTORGRADIENT_GET_FY(objVectorGradient *Self, struct Variable *Val
    return ERR_Okay;
 }
 
-static ERROR VECTORGRADIENT_SET_FY(objVectorGradient *Self, struct Variable *Value)
+static ERROR VECTORGRADIENT_SET_FY(objVectorGradient *Self, Variable *Value)
 {
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return PostError(ERR_FieldTypeMismatch);
+   else return ERR_FieldTypeMismatch;
 
    if (Value->Type & FD_PERCENTAGE) {
       val = val * 0.01;
@@ -368,7 +372,7 @@ static ERROR VECTORGRADIENT_SET_Inherit(objVectorGradient *Self, objVectorGradie
 {
    if (Value) {
       if (Value->Head.ClassID IS ID_VECTORGRADIENT) Self->Inherit = Value;
-      else return PostError(ERR_InvalidValue);
+      else return ERR_InvalidValue;
    }
    else Self->Inherit = NULL;
    return ERR_Okay;
@@ -410,7 +414,7 @@ The Radius value has no effect if the gradient is linear.
 
 *****************************************************************************/
 
-static ERROR VECTORGRADIENT_GET_Radius(objVectorGradient *Self, struct Variable *Value)
+static ERROR VECTORGRADIENT_GET_Radius(objVectorGradient *Self, Variable *Value)
 {
    DOUBLE val = Self->Radius;
    if ((Value->Type & FD_PERCENTAGE) and (Self->Flags & VGF_RELATIVE_RADIUS)) val = val * 100.0;
@@ -419,12 +423,12 @@ static ERROR VECTORGRADIENT_GET_Radius(objVectorGradient *Self, struct Variable 
    return ERR_Okay;
 }
 
-static ERROR VECTORGRADIENT_SET_Radius(objVectorGradient *Self, struct Variable *Value)
+static ERROR VECTORGRADIENT_SET_Radius(objVectorGradient *Self, Variable *Value)
 {
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return PostError(ERR_FieldTypeMismatch);
+   else return ERR_FieldTypeMismatch;
 
    if (val >= 0) {
       if (Value->Type & FD_PERCENTAGE) {
@@ -436,7 +440,7 @@ static ERROR VECTORGRADIENT_SET_Radius(objVectorGradient *Self, struct Variable 
       Self->Radius = val;
       return ERR_Okay;
    }
-   else return PostError(ERR_OutOfRange);
+   else return ERR_OutOfRange;
 }
 
 /*****************************************************************************
@@ -455,31 +459,32 @@ to define a start and end point for interpolating the gradient colours.
 
 *****************************************************************************/
 
-static ERROR VECTORGRADIENT_GET_Stops(objVectorGradient *Self, struct GradientStop **Value, LONG *Elements)
+static ERROR VECTORGRADIENT_GET_Stops(objVectorGradient *Self, GradientStop **Value, LONG *Elements)
 {
    *Value = Self->Stops;
    *Elements = Self->TotalStops;
    return ERR_Okay;
 }
 
-static ERROR VECTORGRADIENT_SET_Stops(objVectorGradient *Self, struct GradientStop *Value, LONG Elements)
+static ERROR VECTORGRADIENT_SET_Stops(objVectorGradient *Self, GradientStop *Value, LONG Elements)
 {
    if (Self->Stops) { FreeResource(Self->Stops); Self->Stops = NULL; }
 
    if (Elements >= 2) {
-      if (!AllocMemory(sizeof(struct GradientStop) * Elements, MEM_DATA|MEM_NO_CLEAR, &Self->Stops, NULL)) {
+      if (!AllocMemory(sizeof(GradientStop) * Elements, MEM_DATA|MEM_NO_CLEAR, &Self->Stops, NULL)) {
          Self->TotalStops = Elements;
-         CopyMemory(Value, Self->Stops, Elements * sizeof(struct GradientStop));
+         CopyMemory(Value, Self->Stops, Elements * sizeof(GradientStop));
          if (Self->Colours) delete Self->Colours;
          Self->Colours = new (std::nothrow) GradientColours(Self, 1.0);
-         if (!Self->Colours) return PostError(ERR_AllocMemory);
+         if (!Self->Colours) return ERR_AllocMemory;
          Self->ChangeCounter++;
          return ERR_Okay;
       }
       else return ERR_AllocMemory;
    }
    else {
-      LogErrorMsg("Array size %d < 2", Elements);
+      parasol::Log log;
+      log.warning("Array size %d < 2", Elements);
       return ERR_InvalidValue;
    }
 }
@@ -500,18 +505,18 @@ A transform can be applied to the gradient by setting this field with an SVG com
 
 static ERROR VECTORGRADIENT_SET_Transform(objVectorGradient *Self, CSTRING Value)
 {
-   if (!Value) return PostError(ERR_NullArgs);
+   if (!Value) return ERR_NullArgs;
 
    // Clear any existing transforms.
 
-   struct VectorTransform *scan, *next;
+   VectorTransform *scan, *next;
    for (scan=Self->Transforms; scan; scan=next) {
       next = scan->Next;
       FreeResource(scan);
    }
    Self->Transforms = NULL;
 
-   struct VectorTransform *transform;
+   VectorTransform *transform;
 
    CSTRING str = Value;
    while (*str) {
@@ -573,7 +578,7 @@ represented by the VECTOR_TRANSFORM structure, and are linked in the order in wh
 &VectorTransform
 *****************************************************************************/
 
-static ERROR VECTORGRADIENT_GET_Transforms(objVectorGradient *Self, struct VectorTransform **Value)
+static ERROR VECTORGRADIENT_GET_Transforms(objVectorGradient *Self, VectorTransform **Value)
 {
    *Value = Self->Transforms;
    return ERR_Okay;
@@ -602,7 +607,7 @@ Coordinate values can be expressed as percentages that are relative to the targe
 
 *****************************************************************************/
 
-static ERROR VECTORGRADIENT_GET_X1(objVectorGradient *Self, struct Variable *Value)
+static ERROR VECTORGRADIENT_GET_X1(objVectorGradient *Self, Variable *Value)
 {
    DOUBLE val = Self->X1;
    if ((Value->Type & FD_PERCENTAGE) and (Self->Flags & VGF_RELATIVE_X1)) val = val * 100.0;
@@ -611,12 +616,12 @@ static ERROR VECTORGRADIENT_GET_X1(objVectorGradient *Self, struct Variable *Val
    return ERR_Okay;
 }
 
-static ERROR VECTORGRADIENT_SET_X1(objVectorGradient *Self, struct Variable *Value)
+static ERROR VECTORGRADIENT_SET_X1(objVectorGradient *Self, Variable *Value)
 {
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return PostError(ERR_FieldTypeMismatch);
+   else return ERR_FieldTypeMismatch;
 
    if (Value->Type & FD_PERCENTAGE) {
       val = val * 0.01;
@@ -639,7 +644,7 @@ Coordinate values can be expressed as percentages that are relative to the targe
 
 *****************************************************************************/
 
-static ERROR VECTORGRADIENT_GET_X2(objVectorGradient *Self, struct Variable *Value)
+static ERROR VECTORGRADIENT_GET_X2(objVectorGradient *Self, Variable *Value)
 {
    DOUBLE val = Self->X2;
    if ((Value->Type & FD_PERCENTAGE) and (Self->Flags & VGF_RELATIVE_X2)) val = val * 100.0;
@@ -648,12 +653,12 @@ static ERROR VECTORGRADIENT_GET_X2(objVectorGradient *Self, struct Variable *Val
    return ERR_Okay;
 }
 
-static ERROR VECTORGRADIENT_SET_X2(objVectorGradient *Self, struct Variable *Value)
+static ERROR VECTORGRADIENT_SET_X2(objVectorGradient *Self, Variable *Value)
 {
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return PostError(ERR_FieldTypeMismatch);
+   else return ERR_FieldTypeMismatch;
 
    if (Value->Type & FD_PERCENTAGE) {
       val = val * 0.01;
@@ -674,7 +679,7 @@ these values.
 
 *****************************************************************************/
 
-static ERROR VECTORGRADIENT_GET_Y1(objVectorGradient *Self, struct Variable *Value)
+static ERROR VECTORGRADIENT_GET_Y1(objVectorGradient *Self, Variable *Value)
 {
    DOUBLE val = Self->Y1;
    if ((Value->Type & FD_PERCENTAGE) and (Self->Flags & VGF_RELATIVE_Y1)) val = val * 100.0;
@@ -683,12 +688,12 @@ static ERROR VECTORGRADIENT_GET_Y1(objVectorGradient *Self, struct Variable *Val
    return ERR_Okay;
 }
 
-static ERROR VECTORGRADIENT_SET_Y1(objVectorGradient *Self, struct Variable *Value)
+static ERROR VECTORGRADIENT_SET_Y1(objVectorGradient *Self, Variable *Value)
 {
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return PostError(ERR_FieldTypeMismatch);
+   else return ERR_FieldTypeMismatch;
 
    if (Value->Type & FD_PERCENTAGE) {
       val = val * 0.01;
@@ -711,7 +716,7 @@ Coordinate values can be expressed as percentages that are relative to the targe
 -END-
 *****************************************************************************/
 
-static ERROR VECTORGRADIENT_GET_Y2(objVectorGradient *Self, struct Variable *Value)
+static ERROR VECTORGRADIENT_GET_Y2(objVectorGradient *Self, Variable *Value)
 {
    DOUBLE val = Self->Y2;
    if ((Value->Type & FD_PERCENTAGE) and (Self->Flags & VGF_RELATIVE_Y2)) val = val * 100.0;
@@ -720,12 +725,12 @@ static ERROR VECTORGRADIENT_GET_Y2(objVectorGradient *Self, struct Variable *Val
    return ERR_Okay;
 }
 
-static ERROR VECTORGRADIENT_SET_Y2(objVectorGradient *Self, struct Variable *Value)
+static ERROR VECTORGRADIENT_SET_Y2(objVectorGradient *Self, Variable *Value)
 {
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return PostError(ERR_FieldTypeMismatch);
+   else return ERR_FieldTypeMismatch;
 
    if (Value->Type & FD_PERCENTAGE) {
       val = val * 0.01;
@@ -741,7 +746,7 @@ static ERROR VECTORGRADIENT_SET_Y2(objVectorGradient *Self, struct Variable *Val
 
 #include "gradient_def.c"
 
-static const struct FieldArray clGradientFields[] = {
+static const FieldArray clGradientFields[] = {
    { "X1",           FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)VECTORGRADIENT_GET_X1, (APTR)VECTORGRADIENT_SET_X1 },
    { "Y1",           FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)VECTORGRADIENT_GET_Y1, (APTR)VECTORGRADIENT_SET_Y1 },
    { "X2",           FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)VECTORGRADIENT_GET_X2, (APTR)VECTORGRADIENT_SET_X2 },

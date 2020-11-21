@@ -2,7 +2,11 @@
 
 set (MOD scintilla)
 
-idl_all ("${MOD}.fdl" NAME ${MOD}_defs OUTPUT "${INCLUDE_OUTPUT}/modules/${MOD}.h" APPEND_IDL "module_def.c")
+idl_all ("${MOD}.fdl"
+   NAME ${MOD}_defs
+   OUTPUT "${INCLUDE_OUTPUT}/modules/${MOD}.h"
+   ARGS "--output-defs=module_def.c" "--output-proto=module_def.c" "--prototypes=static"
+   APPEND_IDL "module_def.c")
 
 set (SOURCE
    "scintilla/lexlib/Accessor.cxx"

@@ -34,7 +34,7 @@ typedef LONG SOCKET_HANDLE;
     "SERVER: Puts the socket into server mode.  In this state the netsocket object will wait for incoming connections from clients.",
     "SSL: Use Secure Sockets Layer for all communication.",
     "MULTI_CONNECT: Allow multiple connections from the same IP when in server mode.",
-    "ASYNC_RESOLVE: Use asynchronous (non-parallel) DNS resolutions in ResolveAddress() and ResolveName().",
+    "SYNCHRONOUS: Use synchronous (blocking) network calls.",
     "DEBUG: Print extra log messages.")
 
   enum("NTC", { start=0, comment="NetSocket states" },
@@ -148,7 +148,6 @@ typedef LONG SOCKET_HANDLE;
 
   class("NetSocket", { src="netsocket/netsocket.cpp", output="netsocket/netsocket_def.c" }, [[
     ptr(struct(rkNetClient)) Clients # ServerMode - Attached clients
-    obj(ClientSocket) CurrentSocket  # ServerMode - The current client being operated on (e.g. for Read/Write activity)
     ptr UserData      # Pointer to user data that can be used during events
     str Address       # Connect the socket to this remote address (if client)
     int(NTC) State    # Connection state

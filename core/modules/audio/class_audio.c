@@ -138,7 +138,7 @@ static ERROR AUDIO_Activate(objAudio *Self, APTR Void)
    ERROR error;
    if ((error = init_audio(Self)) != ERR_Okay) {
       Self->Initialising = FALSE;
-      LogBack();
+      LogReturn();
       return error;
    }
 
@@ -186,24 +186,24 @@ static ERROR AUDIO_Activate(objAudio *Self, APTR Void)
             if (Self->MixRoutines->routines[n].mainLoopReloc) {
                if (RelocateMixingRoutine(&Self->MixRoutines->routines[n]) != ERR_Okay) {
                   Self->Initialising = FALSE;
-                  LogBack();
+                  LogReturn();
                   return ERR_Failed;
                }
             }
          }
 
          Self->Initialising = FALSE;
-         LogBack();
+         LogReturn();
          return ERR_Okay;
       }
       else {
          Self->Initialising = FALSE;
-         return LogBackError(0, ERR_AllocMemory);
+         return LogReturnError(0, ERR_AllocMemory);
       }
    }
    else {
       Self->Initialising = FALSE;
-      return LogBackError(0, ERR_AllocMemory);
+      return LogReturnError(0, ERR_AllocMemory);
    }
 }
 
@@ -711,7 +711,7 @@ static ERROR AUDIO_Clear(objAudio *Self, APTR Void)
 
 #endif
 
-   LogBack();
+   LogReturn();
    return ERR_Okay;
 }
 
@@ -771,7 +771,7 @@ static ERROR AUDIO_CloseChannels(objAudio *Self, struct sndCloseChannels *Args)
    }
    else LogMsg("Channel retains an open count of %d.", Self->Channels[index].OpenCount);
 
-   LogBack();
+   LogReturn();
    return ERR_Okay;
 }
 
@@ -790,7 +790,7 @@ static ERROR AUDIO_Deactivate(objAudio *Self, APTR Void)
 
    if (Self->Initialising) {
       LogMsg("Audio is still in the process of initialisation.");
-      LogBack();
+      LogReturn();
       return ERR_Okay;
    }
 
@@ -802,7 +802,7 @@ static ERROR AUDIO_Deactivate(objAudio *Self, APTR Void)
    //if (Self->Handle) { snd_pcm_close(Self->Handle); Self->Handle = 0; }
 #endif
 
-   LogBack();
+   LogReturn();
    return ERR_Okay;
 }
 
@@ -865,7 +865,7 @@ static void user_login(APTR Reference, APTR Info, LONG InfoSize)
 
             acActivate(Self);
 
-         LogBack();
+         LogReturn();
       }
 
       ReleaseObject(Self);
@@ -1085,7 +1085,7 @@ static ERROR AUDIO_OpenChannels(objAudio *Self, struct sndOpenChannels *Args)
 
    Args->Result = 0;
    if ((Args->Total < 0) OR (Args->Total > 64) OR (Args->Commands < 0) OR (Args->Commands > 1024)) {
-      return LogBackError(0, ERR_OutOfRange);
+      return LogReturnError(0, ERR_OutOfRange);
    }
 
    // If a key is provided, scan the existing set of channels to see if that key is in use, then return the channel
@@ -1097,7 +1097,7 @@ static ERROR AUDIO_OpenChannels(objAudio *Self, struct sndOpenChannels *Args)
             Self->Channels[index].OpenCount++;
             Args->Result = index<<16;
             LogMsg("Found channels for key %d at handle $%.8x.", Args->Key, Args->Result);
-            LogBack();
+            LogReturn();
             return ERR_Okay;
          }
       }
@@ -1109,7 +1109,7 @@ static ERROR AUDIO_OpenChannels(objAudio *Self, struct sndOpenChannels *Args)
       if (!Self->Channels[index].Channel) break;
    }
 
-   if (index >= ARRAYSIZE(Self->Channels)) return LogBackError(0, ERR_ArrayFull);
+   if (index >= ARRAYSIZE(Self->Channels)) return LogReturnError(0, ERR_ArrayFull);
 
    // Channels are tracked back to the task responsible for the allocation - this ensures that the channels are
    // deallocated properly in the event that a task crashes or forgets to deallocate its channels.
@@ -1146,10 +1146,10 @@ static ERROR AUDIO_OpenChannels(objAudio *Self, struct sndOpenChannels *Args)
 
       Self->TotalChannels += Args->Total;
       Args->Result = index<<16;
-      LogBack();
+      LogReturn();
       return ERR_Okay;
    }
-   else return LogBackError(0, ERR_AllocMemory);
+   else return LogReturnError(0, ERR_AllocMemory);
 }
 
 /*****************************************************************************
@@ -1482,7 +1482,7 @@ static ERROR AUDIO_SetVolume(objAudio *Self, struct sndSetVolume *Args)
    snd_mixer_selem_id_set_name(sid, Self->VolumeCtl[index].Name);
    if (!(elem = snd_mixer_find_selem(Self->MixHandle, sid))) {
       LogErrorMsg("Mixer %s not found.", Self->VolumeCtl[index].Name);
-      LogBack();
+      LogReturn();
       return ERR_Search;
    }
 
@@ -1547,7 +1547,7 @@ static ERROR AUDIO_SetVolume(objAudio *Self, struct sndSetVolume *Args)
    evVolume event_volume = { evid, Args->Volume, (Self->VolumeCtl[index].Flags & VCF_MUTE) ? TRUE : FALSE };
    BroadcastEvent(&event_volume, sizeof(event_volume));
 
-   LogBack();
+   LogReturn();
    return ERR_Okay;
 
 #else
@@ -1618,7 +1618,7 @@ static ERROR AUDIO_SetVolume(objAudio *Self, struct sndSetVolume *Args)
       evVolume event_volume = { evid, Args->Volume, (Self->VolumeCtl[index].Flags & VCF_MUTE) ? TRUE : FALSE };
       BroadcastEvent(&event_volume, sizeof(event_volume));
 
-   LogBack();
+   LogReturn();
    return ERR_Okay;
 
 #endif

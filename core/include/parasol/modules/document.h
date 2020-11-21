@@ -342,22 +342,22 @@ struct docReadContent { LONG Format; LONG Start; LONG End; STRING Result;  };
 
 INLINE ERROR docFeedParser(APTR Ob, CSTRING String) {
    struct docFeedParser args = { String };
-   return(Action(MT_docFeedParser, Ob, &args));
+   return(Action(MT_docFeedParser, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR docSelectLink(APTR Ob, LONG Index, CSTRING Name) {
    struct docSelectLink args = { Index, Name };
-   return(Action(MT_docSelectLink, Ob, &args));
+   return(Action(MT_docSelectLink, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR docApplyFontStyle(APTR Ob, struct DocStyleV1 * Style, struct rkFont * Font) {
    struct docApplyFontStyle args = { Style, Font };
-   return(Action(MT_docApplyFontStyle, Ob, &args));
+   return(Action(MT_docApplyFontStyle, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR docFindIndex(APTR Ob, CSTRING Name, LONG * Start, LONG * End) {
    struct docFindIndex args = { Name, 0, 0 };
-   ERROR error = Action(MT_docFindIndex, Ob, &args);
+   ERROR error = Action(MT_docFindIndex, (OBJECTPTR)Ob, &args);
    if (Start) *Start = args.Start;
    if (End) *End = args.End;
    return(error);
@@ -365,52 +365,52 @@ INLINE ERROR docFindIndex(APTR Ob, CSTRING Name, LONG * Start, LONG * End) {
 
 INLINE ERROR docInsertXML(APTR Ob, CSTRING XML, LONG Index) {
    struct docInsertXML args = { XML, Index };
-   return(Action(MT_docInsertXML, Ob, &args));
+   return(Action(MT_docInsertXML, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR docRemoveContent(APTR Ob, LONG Start, LONG End) {
    struct docRemoveContent args = { Start, End };
-   return(Action(MT_docRemoveContent, Ob, &args));
+   return(Action(MT_docRemoveContent, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR docInsertText(APTR Ob, CSTRING Text, LONG Index, LONG Preformat) {
    struct docInsertText args = { Text, Index, Preformat };
-   return(Action(MT_docInsertText, Ob, &args));
+   return(Action(MT_docInsertText, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR docCallFunction(APTR Ob, CSTRING Function, struct ScriptArg * Args, LONG TotalArgs) {
    struct docCallFunction args = { Function, Args, TotalArgs };
-   return(Action(MT_docCallFunction, Ob, &args));
+   return(Action(MT_docCallFunction, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR docAddListener(APTR Ob, LONG Trigger, FUNCTION * Function) {
    struct docAddListener args = { Trigger, Function };
-   return(Action(MT_docAddListener, Ob, &args));
+   return(Action(MT_docAddListener, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR docRemoveListener(APTR Ob, LONG Trigger, FUNCTION * Function) {
    struct docRemoveListener args = { Trigger, Function };
-   return(Action(MT_docRemoveListener, Ob, &args));
+   return(Action(MT_docRemoveListener, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR docShowIndex(APTR Ob, CSTRING Name) {
    struct docShowIndex args = { Name };
-   return(Action(MT_docShowIndex, Ob, &args));
+   return(Action(MT_docShowIndex, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR docHideIndex(APTR Ob, CSTRING Name) {
    struct docHideIndex args = { Name };
-   return(Action(MT_docHideIndex, Ob, &args));
+   return(Action(MT_docHideIndex, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR docEdit(APTR Ob, CSTRING Name, LONG Flags) {
    struct docEdit args = { Name, Flags };
-   return(Action(MT_docEdit, Ob, &args));
+   return(Action(MT_docEdit, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR docReadContent(APTR Ob, LONG Format, LONG Start, LONG End, STRING * Result) {
    struct docReadContent args = { Format, Start, End, 0 };
-   ERROR error = Action(MT_docReadContent, Ob, &args);
+   ERROR error = Action(MT_docReadContent, (OBJECTPTR)Ob, &args);
    if (Result) *Result = args.Result;
    return(error);
 }

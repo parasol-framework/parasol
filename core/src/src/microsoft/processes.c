@@ -1,4 +1,4 @@
-﻿
+
 void deregister_process_pipes(APTR Self, HANDLE ProcessHandle);
 void register_process_pipes(APTR Self, HANDLE ProcessHandle);
 static void assign_group(HANDLE Process);

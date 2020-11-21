@@ -1,4 +1,4 @@
-﻿-- $FLUID:persistent
+-- $FLUID:persistent
 
 // These tests are for: x, y, width, height, insidewidth, insideheight, margins, resize(), redimension()
 // Run it in the native desktop and on host operating systems to check that window positioning behaves as expected.

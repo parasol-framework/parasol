@@ -419,12 +419,12 @@ static ERROR TEXT_Clipboard(objText *Self, struct acClipboard *Args)
          }
         else {
             PostError(ERR_AllocMemory);
-            LogBack();
+            LogReturn();
             return ERR_AllocMemory;
          }
       }
 
-      LogBack();
+      LogReturn();
       return ERR_Okay;
    }
    else if (Args->Mode IS CLIPMODE_PASTE) {
@@ -467,7 +467,7 @@ static ERROR TEXT_Clipboard(objText *Self, struct acClipboard *Args)
          acFree(clipboard);
       }
 
-      LogBack();
+      LogReturn();
       return ERR_Okay;
    }
    else return PostError(ERR_Args);
@@ -671,7 +671,7 @@ static ERROR TEXT_DataFeed(objText *Self, struct acDataFeed *Args)
          view_cursor(Self);
       }
 
-      LogBack();
+      LogReturn();
    }
    else if (Args->DataType IS DATA_XML) {
       struct XMLTag *tag;
@@ -799,7 +799,7 @@ static ERROR TEXT_DataFeed(objText *Self, struct acDataFeed *Args)
                // Return if we are NOT in edit mode and the position of the click was out of bounds
 
                if ((outofbounds) AND (!(Self->Flags & TXF_EDIT))) {
-                  LogBack();
+                  LogReturn();
                   continue;
                }
 
@@ -809,7 +809,7 @@ static ERROR TEXT_DataFeed(objText *Self, struct acDataFeed *Args)
                    (Self->AmtLines < 1)) {
                   if (!(input->Flags & JTYPE_DBL_CLICK)) {
                      redraw_cursor(Self, TRUE);
-                     LogBack();
+                     LogReturn();
                      continue;
                   }
                }
@@ -855,7 +855,7 @@ static ERROR TEXT_DataFeed(objText *Self, struct acDataFeed *Args)
 
                view_cursor(Self);
 
-               LogBack();
+               LogReturn();
             }
             else {
                if (!(Self->Flags & (TXF_EDIT|TXF_SINGLE_SELECT|TXF_MULTI_SELECT))) continue;

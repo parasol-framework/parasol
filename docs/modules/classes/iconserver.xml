@@ -22,7 +22,7 @@ icons:category/filename(size)
 </pre>
 <p>The second format, where the category and filename is specified is recommended for normal usage.  The size of the icon can be requested by entering a numeral in brackets at the end of the location.  For instance 'icons:programs/filemanager(64)' will generate a 64x64 pixel version of the filemanager icon.  The minimum size for an icon is 12 pixels and the maximum size is 256 pixels.</p></description>
     <source>
-      <file>iconserver_class.c</file>
+      <file>iconserver_class.cpp</file>
     </source>
   </info>
 

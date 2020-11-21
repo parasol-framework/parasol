@@ -54,7 +54,9 @@ NullArgs
 
 static ERROR VECTORSCENE_AddDef(objVectorScene *Self, struct scAddDef *Args)
 {
-   if ((!Args) or (!Args->Name) or (!Args->Def)) return PostError(ERR_NullArgs);
+   parasol::Log log;
+
+   if ((!Args) or (!Args->Name) or (!Args->Def)) return log.warning(ERR_NullArgs);
 
    OBJECTPTR def = (OBJECTPTR)Args->Def;
 
@@ -69,27 +71,27 @@ static ERROR VECTORSCENE_AddDef(objVectorScene *Self, struct scAddDef *Args)
        (def->SubID IS ID_VECTORCLIP)) {
       // The use of this object as a definition is valid.
    }
-   else return PostError(ERR_InvalidObject);
+   else return log.warning(ERR_InvalidObject);
 
    // If the resource does not belong to the Scene object, this can lead to invalid pointer references
 
    if (def->OwnerID != Self->Head.UniqueID) {
-      LogF("@","The %s must belong to VectorScene #%d, but is owned by object #%d.", def->Class->ClassName, Self->Head.UniqueID, def->OwnerID);
+      log.warning("The %s must belong to VectorScene #%d, but is owned by object #%d.", def->Class->ClassName, Self->Head.UniqueID, def->OwnerID);
       return ERR_UnsupportedOwner;
    }
 
    // TO DO: Subscribe to the Free() action of the definition object so that we can avoid invalid pointer references.
 
-   MSG("Adding definition '%s' for object #%d", Args->Name, def->UniqueID);
+   log.trace("Adding definition '%s' for object #%d", Args->Name, def->UniqueID);
 
    APTR data;
    if (!Self->Defs) {
       if (!(Self->Defs = VarNew(64, KSF_CASE))) {
-         return PostError(ERR_AllocMemory);
+         return log.warning(ERR_AllocMemory);
       }
    }
    else if (!VarGet(Self->Defs, Args->Name, &data, NULL)) { // Check that the definition name is unique.
-      LogErrorMsg("The vector definition name '%s' is already in use.", Args->Name);
+      log.warning("The vector definition name '%s' is already in use.", Args->Name);
       return ERR_InvalidValue;
    }
 
@@ -117,9 +119,10 @@ FieldNotSet: The Bitmap field is NULL.
 
 static ERROR VECTORSCENE_Draw(objVectorScene *Self, struct acDraw *Args)
 {
+   parasol::Log log;
    objBitmap *bmp;
 
-   if (!(bmp = Self->Bitmap)) return PostError(ERR_FieldNotSet);
+   if (!(bmp = Self->Bitmap)) return log.warning(ERR_FieldNotSet);
 
    // Allocate the adaptor, or if the existing adaptor doesn't match the Bitmap pixel type, reallocate it.
 
@@ -133,7 +136,7 @@ static ERROR VECTORSCENE_Draw(objVectorScene *Self, struct acDraw *Args)
       }
 
       adaptor = new (std::nothrow) VMAdaptor;
-      if (!adaptor) return PostError(ERR_AllocMemory);
+      if (!adaptor) return log.warning(ERR_AllocMemory);
       adaptor->Scene = Self;
       Self->Adaptor = adaptor;
       Self->AdaptorType = type;
@@ -174,7 +177,9 @@ Search: A definition with the given Name was not found.
 
 static ERROR VECTORSCENE_FindDef(objVectorScene *Self, struct scFindDef *Args)
 {
-   if ((!Args) or (!Args->Name)) return PostError(ERR_NullArgs);
+   parasol::Log log;
+
+   if ((!Args) or (!Args->Name)) return log.warning(ERR_NullArgs);
 
    CSTRING name = Args->Name;
 
@@ -237,7 +242,7 @@ Redimension: Redefines the size of the page.
 
 static ERROR VECTORSCENE_Redimension(objVectorScene *Self, struct acRedimension *Args)
 {
-   if (!Args) return PostError(ERR_NullArgs);
+   if (!Args) return ERR_NullArgs;
 
    if (Args->Width >= 1.0)  Self->PageWidth  = F2T(Args->Width);
    if (Args->Height >= 1.0) Self->PageHeight = F2T(Args->Height);
@@ -272,11 +277,9 @@ Resize: Redefines the size of the page.
 
 static ERROR VECTORSCENE_Resize(objVectorScene *Self, struct acResize *Args)
 {
-   if (!Args) return PostError(ERR_NullArgs);
-
+   if (!Args) return ERR_NullArgs;
    if (Args->Width >= 1.0)  Self->PageWidth  = F2T(Args->Width);
    if (Args->Height >= 1.0) Self->PageHeight = F2T(Args->Height);
-
    return ERR_Okay;
 }
 
@@ -311,7 +314,7 @@ static ERROR VECTORSCENE_SearchByID(objVectorScene *Self, struct scSearchByID *A
 
    objVector *vector = Self->Viewport;
    while (vector) {
-      //LogF("Search","%.3d: %p <- #%d -> %p Child %p", vector->Index, vector->Prev, vector->Head.UniqueID, vector->Next, vector->Child);
+      //log.msg("Search","%.3d: %p <- #%d -> %p Child %p", vector->Index, vector->Prev, vector->Head.UniqueID, vector->Next, vector->Child);
 cont:
       if (vector->NumericID IS Args->ID) {
          Args->Result = (OBJECTPTR)vector;
@@ -358,7 +361,7 @@ static ERROR SET_Bitmap(objVectorScene *Self, objBitmap *Value)
             Self->PageHeight = Value->Height;
          }
       }
-      else return PostError(ERR_Failed);
+      else return ERR_Memory;
    }
    else Self->Buffer = NULL;
 
@@ -456,7 +459,7 @@ VectorViewport object is initialised.
 
 #include "scene_def.c"
 
-static const struct FieldArray clSceneFields[] = {
+static const FieldArray clSceneFields[] = {
    { "RenderTime",   FDF_LARGE|FDF_R,            0, (APTR)GET_RenderTime, NULL },
    { "Gamma",        FDF_DOUBLE|FDF_RW,          0, NULL, NULL },
    { "Viewport",     FDF_OBJECT|FD_R,            ID_VECTORVIEWPORT, NULL, NULL },

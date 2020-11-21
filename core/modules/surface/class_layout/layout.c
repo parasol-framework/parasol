@@ -23,10 +23,10 @@ Other Layout classes can be used as a drop-in replacement for this default class
 /*
 #undef MSG
 #undef FMSG
-#undef STEP
+#undef LOGRETURN
 #define MSG(...)  LogF(0,__VA_ARGS__)
 #define FMSG(...) LogF(__VA_ARGS__)
-#define STEP()    LogBack()
+#define LOGRETURN()    LogReturn()
 */
 
 static ERROR GET_Layout_X(objLayout *, struct Variable *);
@@ -96,7 +96,7 @@ static ERROR init_surface(objLayout *Self, OBJECTID SurfaceID)
 
          if ((!Self->Document) OR (Self->Document->ClassID != ID_DOCUMENT)) {
             LogErrorMsg("Expected a Document object to control this surface.");
-            LogBack();
+            LogReturn();
             return ERR_Failed;
          }
 
@@ -129,10 +129,10 @@ static ERROR init_surface(objLayout *Self, OBJECTID SurfaceID)
 
       ReleaseObject(surface);
 
-      LogBack();
+      LogReturn();
       return ERR_Okay;
    }
-   else return LogBackError(0, ERR_AccessObject);
+   else return LogReturnError(0, ERR_AccessObject);
 }
 
 /*****************************************************************************
@@ -1685,7 +1685,7 @@ static ERROR SET_Layout_Width(objLayout *Self, struct Variable *Value)
       GET_Layout_Width(Self, &var);
       Self->BoundWidth = var.Large;
 
-      STEP();
+      LOGRETURN();
    }
 
    return ERR_Okay;
@@ -1749,7 +1749,7 @@ static ERROR SET_Layout_X(objLayout *Self, struct Variable *Value)
       GET_Layout_Width(Self, &var);
       Self->BoundWidth = var.Large;
 
-      STEP();
+      LOGRETURN();
    }
 
    return ERR_Okay;
@@ -1821,7 +1821,7 @@ static ERROR SET_Layout_XOffset(objLayout *Self, struct Variable *Value)
       GET_Layout_Width(Self, &var);
       Self->BoundWidth = var.Large;
 
-      STEP();
+      LOGRETURN();
    }
 
    return ERR_Okay;

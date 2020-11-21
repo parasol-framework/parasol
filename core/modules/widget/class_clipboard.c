@@ -113,7 +113,7 @@ ERROR init_clipboard(void)
          }
          else PostError(ERR_SystemCall);
 
-         LogBack();
+         LogReturn();
       }
       ReleaseMemory(clipboard);
    }
@@ -241,7 +241,7 @@ static ERROR CLIPBOARD_AddFile(objClipboard *Self, struct clipAddFile *Args)
    }
 #endif
 
-   LogBack();
+   LogReturn();
    return error;
 }
 
@@ -362,7 +362,7 @@ static ERROR CLIPBOARD_AddObjects(objClipboard *Self, struct clipAddObjects *Arg
       }
    }
 
-   LogBack();
+   LogReturn();
    return ERR_Okay;
 }
 
@@ -434,7 +434,7 @@ static ERROR CLIPBOARD_AddText(objClipboard *Self, struct clipAddText *Args)
          acWrite(file, Args->String, StrLength(Args->String), 0);
 
          acFree(file);
-         LogBack();
+         LogReturn();
          return ERR_Okay;
       }
       else return StepError(0, ERR_CreateFile);
@@ -580,7 +580,7 @@ static ERROR CLIPBOARD_DataFeed(objClipboard *Self, struct acDataFeed *Args)
 
          if (error IS ERR_Terminate) Self->RequestHandler.Type = 0;
 
-         LogBack();
+         LogReturn();
          return ERR_Okay;
       }
       else return ERR_NoSupport;
@@ -632,7 +632,7 @@ static ERROR CLIPBOARD_Remove(objClipboard *Self, struct clipRemove *Args)
       }
 
       ReleaseMemory(header);
-      LogBack();
+      LogReturn();
       return ERR_Okay;
    }
    else return StepError(0, ERR_AccessMemory);
@@ -701,7 +701,7 @@ static ERROR CLIPBOARD_GetFiles(objClipboard *Self, struct clipGetFiles *Args)
       if (!Args->Datatype) { // Retrieve the most recent clip item, or the one indicated in the Index parameter.
          if ((Args->Index < 0) OR (Args->Index >= MAX_CLIPS)) {
             ReleaseMemory(header);
-            LogBack();
+            LogReturn();
             return ERR_OutOfRange;
          }
 
@@ -716,13 +716,13 @@ static ERROR CLIPBOARD_GetFiles(objClipboard *Self, struct clipGetFiles *Args)
       if (index >= MAX_CLIPS) {
          LogErrorMsg("No clips available for datatype $%x", Args->Datatype);
          ReleaseMemory(header);
-         LogBack();
+         LogReturn();
          return ERR_NoData;
       }
       else if (clips[index].TotalItems < 1) {
          LogErrorMsg("No items are allocated to datatype $%x at clip index %d", clips[index].Datatype, index);
          ReleaseMemory(header);
-         LogBack();
+         LogReturn();
          return ERR_NoData;
       }
 
@@ -739,7 +739,7 @@ static ERROR CLIPBOARD_GetFiles(objClipboard *Self, struct clipGetFiles *Args)
                else {
                   ReleaseMemory(files);
                   ReleaseMemory(header);
-                  LogBack();
+                  LogReturn();
                   return ERR_AllocMemory;
                }
             }
@@ -749,7 +749,7 @@ static ERROR CLIPBOARD_GetFiles(objClipboard *Self, struct clipGetFiles *Args)
             LogErrorMsg("Failed to access file string #%d, error %d.", clips[index].Files, error);
             if (error IS ERR_MemoryDoesNotExist) clips[index].Files = 0;
             ReleaseMemory(header);
-            LogBack();
+            LogReturn();
             return ERR_AccessMemory;
          }
       }
@@ -757,7 +757,7 @@ static ERROR CLIPBOARD_GetFiles(objClipboard *Self, struct clipGetFiles *Args)
          if (clips[index].Datatype IS CLIPTYPE_FILE) {
             LogErrorMsg("File datatype detected, but no file list has been set.");
             ReleaseMemory(header);
-            LogBack();
+            LogReturn();
             return ERR_Failed;
          }
 
@@ -780,7 +780,7 @@ static ERROR CLIPBOARD_GetFiles(objClipboard *Self, struct clipGetFiles *Args)
          }
          else {
             ReleaseMemory(header);
-            LogBack();
+            LogReturn();
             return ERR_AllocMemory;
          }
       }
@@ -803,11 +803,11 @@ static ERROR CLIPBOARD_GetFiles(objClipboard *Self, struct clipGetFiles *Args)
       Args->Flags    = clips[index].Flags;
 
       ReleaseMemory(header);
-      LogBack();
+      LogReturn();
       return ERR_Okay;
    }
    else {
-      LogBack();
+      LogReturn();
       return ERR_AccessMemory;
    }
 }
@@ -1069,7 +1069,7 @@ static void free_clip(struct ClipEntry *Clip)
 
    ClearMemory(Clip, sizeof(struct ClipEntry));
 
-   LogBack();
+   LogReturn();
 }
 
 //****************************************************************************
@@ -1084,7 +1084,7 @@ static ERROR add_clip(MEMORYID ClusterID, LONG Datatype, CSTRING File, LONG Flag
 
    if (!TotalItems) {
       LogMsg("TotalItems parameter not specified.");
-      LogBack();
+      LogReturn();
       return ERR_NullArgs;
    }
 
@@ -1139,7 +1139,7 @@ static ERROR add_clip(MEMORYID ClusterID, LONG Datatype, CSTRING File, LONG Flag
                if (Counter) *Counter = clips->ID;
 
                ReleaseMemory(header);
-               LogBack();
+               LogReturn();
                return error;
             }
          }
@@ -1156,7 +1156,7 @@ static ERROR add_clip(MEMORYID ClusterID, LONG Datatype, CSTRING File, LONG Flag
          }
          else {
             ReleaseMemory(header);
-            LogBack();
+            LogReturn();
             return ERR_AllocMemory;
          }
       }
@@ -1189,11 +1189,11 @@ static ERROR add_clip(MEMORYID ClusterID, LONG Datatype, CSTRING File, LONG Flag
       CopyMemory(&clip, clips, sizeof(clip));
 
       ReleaseMemory(header);
-      LogBack();
+      LogReturn();
       return ERR_Okay;
    }
    else {
-      LogBack();
+      LogReturn();
       return ERR_AccessMemory;
    }
 }
@@ -1220,7 +1220,7 @@ void report_windows_clip_text(CSTRING String)
    }
    else PostError(ERR_CreateObject);
 
-   LogBack();
+   LogReturn();
 }
 #endif
 
@@ -1246,7 +1246,7 @@ void report_windows_files(APTR Data, LONG CutOperation)
       ReleaseMemory(lock);
    }
 
-   LogBack();
+   LogReturn();
 }
 #endif
 
@@ -1272,7 +1272,7 @@ void report_windows_hdrop(STRING Data, LONG CutOperation)
       ReleaseMemory(lock);
    }
 
-   LogBack();
+   LogReturn();
 }
 #endif
 
@@ -1334,7 +1334,7 @@ void report_windows_clip_utf16(UWORD *String)
    }
    else PostError(ERR_CreateObject);
 
-   LogBack();
+   LogReturn();
 }
 #endif
 

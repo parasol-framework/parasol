@@ -31,7 +31,7 @@ if (!CreateObject(ID_THREAD, 0, &amp;thread,
 </pre>
 <p>To initialise the thread with data, call <method>SetData</method> prior to execution and read the <field>Data</field> field from within the thread routine.</p></description>
     <source>
-      <file path="src/classes/">class_thread.c</file>
+      <file path="src/classes/">class_thread.cpp</file>
     </source>
   </info>
 
@@ -53,7 +53,7 @@ if (!CreateObject(ID_THREAD, 0, &amp;thread,
       <name>Free</name>
       <comment>Remove the object and its resources.</comment>
       <description>
-<p>Terminating a thread object will destroy the object unless the thread is currently active.  If an attempt to free an active thread is made, it will be marked for termination so as to avoid the risk of system corruption.</p>
+<p>Terminating a thread object will destroy the object unless the thread is currently active.  If an attempt to free an active thread is made then it will be marked for termination so as to avoid the risk of system corruption.</p>
       </description>
     </action>
 
@@ -70,7 +70,7 @@ if (!CreateObject(ID_THREAD, 0, &amp;thread,
       </input>
       <description>
 <p>Use the SetData method prior to activating a thread so that it can be initialised with user data.  The thread will be able to read the data from the <field>Data</field> field.</p>
-<p>A copy of the provided data buffer will be stored with the thread object, so there is no need to retain the original data after this method has returned.  In some cases it may be desirable to store a direct pointer value with no data copy operation.  To do this, set the Size parameter to zero.</p>
+<p>A copy of the provided data buffer will be stored with the thread object, so there is no need to retain the original data after this method has returned.  In some cases it may be desirable to store a direct pointer value and bypass the copy operation.  To do this, set the Size parameter to zero.</p>
       </description>
       <result>
         <error code="NullArgs">Function call missing argument value(s)</error>
@@ -117,7 +117,7 @@ if (!CreateObject(ID_THREAD, 0, &amp;thread,
     <field>
       <name>Data</name>
       <comment>Pointer to initialisation data for the thread.</comment>
-      <access read="G" write="S">Get/Set</access>
+      <access read="G">Get</access>
       <type>APTR</type>
       <description>
 <p>The Data field will point to a data buffer if the <method>SetData</method> method has previously been called to store data in the thread object.  It is paired with the <field>DataSize</field> field, which reflects the size of the data buffer.</p>
@@ -166,7 +166,7 @@ if (!CreateObject(ID_THREAD, 0, &amp;thread,
       <type>INT</type>
       <description>
 <p>The initial size of the thread's stack can be modified by setting this field.  It may also be read prior to activation in order to check the default stack size.  Changes to the stack size when the thread is active will have no effect.</p>
-<p>Note that on some platforms it may not be possible to preset the stack size, in which case the provided value will be ignored.</p>
+<p>On some platforms it may not be possible to preset the stack size and the provided value will be ignored.</p>
       </description>
     </field>
 
@@ -177,6 +177,19 @@ if (!CreateObject(ID_THREAD, 0, &amp;thread,
       <const name="COMPRESS_FILE"/>
       <const name="REMOVE_FILE"/>
       <const name="DECOMPRESS_OBJECT"/>
+    </constants>
+
+    <constants lookup="VLF" comment="VlogF flags">
+      <const name="ERROR"/>
+      <const name="WARNING"/>
+      <const name="DEBUG"/>
+      <const name="EXTAPI"/>
+      <const name="BRANCH"/>
+      <const name="INFO"/>
+      <const name="API"/>
+      <const name="TRACE"/>
+      <const name="CRITICAL"/>
+      <const name="FUNCTION"/>
     </constants>
 
     <constants lookup="MOF" comment="Module flags">
@@ -676,7 +689,7 @@ if (!CreateObject(ID_THREAD, 0, &amp;thread,
       <field name="FieldID" type="ULONG">Provides a fast way of finding fields, e.g. FID_WIDTH</field>
       <field name="Offset" type="UWORD">Field offset within the object</field>
       <field name="Index" type="UWORD">Field array index</field>
-      <field name="Flags" type="LONG">Special flags that describe the field</field>
+      <field name="Flags" type="ULONG">Special flags that describe the field</field>
     </struct>
 
     <struct name="Function" comment="Function list array structure">
@@ -779,7 +792,7 @@ if (!CreateObject(ID_THREAD, 0, &amp;thread,
 
     <struct name="FunctionField" comment="Used by ActionTable and Function structures to declare lists of parameters.">
       <field name="Name" type="CSTRING">Name of the field</field>
-      <field name="Type" type="LONG">Type of the field</field>
+      <field name="Type" type="ULONG">Type of the field</field>
     </struct>
 
     <struct name="KeyStore" comment="Key-pair storage created by VarNew()">
@@ -816,7 +829,7 @@ if (!CreateObject(ID_THREAD, 0, &amp;thread,
 
     <struct name="FieldArray" comment="Used to construct class blueprints for the MetaClass.">
       <field name="Name" type="CSTRING">The name of the field, e.g. "Width"</field>
-      <field name="Flags" type="LONG">Special flags that describe the field</field>
+      <field name="Flags" type="ULONG">Special flags that describe the field</field>
       <field name="Arg" type="MAXINT">Can be a pointer or an integer value</field>
       <field name="GetField" type="APTR">void GetField(*Object, APTR Result);</field>
       <field name="SetField" type="APTR">ERROR SetField(*Object, APTR Value);</field>

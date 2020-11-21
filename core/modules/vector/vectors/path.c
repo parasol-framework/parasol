@@ -22,12 +22,12 @@ static void generate_path(objVectorPath *Vector)
 
 //****************************************************************************
 
-static void convert_to_aggpath(struct PathCommand *Paths, LONG TotalCommands, agg::path_storage *BasePath)
+static void convert_to_aggpath(PathCommand *Paths, LONG TotalCommands, agg::path_storage *BasePath)
 {
    if (!Paths) return;
 
-   struct PathCommand dummy = { 0, 0, 0, 0, 0, 0 };
-   struct PathCommand &lp = dummy;
+   PathCommand dummy = { 0, 0, 0, 0, 0, 0 };
+   PathCommand &lp = dummy;
 
    auto bp = BasePath;
    for (LONG i=0; i < TotalCommands; i++) {
@@ -155,9 +155,10 @@ static void convert_to_aggpath(struct PathCommand *Paths, LONG TotalCommands, ag
 
 //****************************************************************************
 
-static ERROR read_path(struct PathCommand **Path, LONG *Count, CSTRING Value)
+static ERROR read_path(PathCommand **Path, LONG *Count, CSTRING Value)
 {
-   struct PathCommand *path;
+   parasol::Log log(__FUNCTION__);
+   PathCommand *path;
 
    // Get a rough estimate on how many array entries there will be (this sub-routine will over-estimate and then
    // we'll reduce the array size at the end).
@@ -174,7 +175,7 @@ static ERROR read_path(struct PathCommand **Path, LONG *Count, CSTRING Value)
 
    //FMSG("read_path()","%d path points detected.", guess);
 
-   if (AllocMemory(sizeof(struct PathCommand) * guess, MEM_DATA, &path, NULL)) return ERR_AllocMemory;
+   if (AllocMemory(sizeof(PathCommand) * guess, MEM_DATA, &path, NULL)) return ERR_AllocMemory;
 
    if (Count) *Count = 0;
    if (Path)  *Path = NULL;
@@ -275,7 +276,7 @@ static ERROR read_path(struct PathCommand **Path, LONG *Count, CSTRING Value)
          }
 
          default: {
-            LogErrorMsg("Invalid path command '%c'", *Value);
+            log.warning("Invalid path command '%c'", *Value);
             FreeResource(path);
             return ERR_Failed;
          }
@@ -287,7 +288,7 @@ static ERROR read_path(struct PathCommand **Path, LONG *Count, CSTRING Value)
    if (total >= 2) {
       if (total < guess-4) {
          // If our best guess was off by at least 4 entries, reduce the array size.
-         ReallocMemory(path, sizeof(struct PathCommand) * total, &path, NULL);
+         ReallocMemory(path, sizeof(PathCommand) * total, &path, NULL);
       }
 
       if (Path) *Path = path;
@@ -332,7 +333,9 @@ static ERROR VECTORPATH_Free(objVectorPath *Self, APTR Void)
 
 static ERROR VECTORPATH_Init(objVectorPath *Self, APTR Void)
 {
-   if (Self->Capacity < 1) return PostError(ERR_OutOfRange);
+   parasol::Log log;
+
+   if (Self->Capacity < 1) return log.warning(ERR_OutOfRange);
 
    return ERR_Okay;
 }
@@ -341,9 +344,9 @@ static ERROR VECTORPATH_Init(objVectorPath *Self, APTR Void)
 
 static ERROR VECTORPATH_NewObject(objVectorPath *Self, APTR Void)
 {
-   if (!AllocMemory(sizeof(struct PathCommand) * CAPACITY_CUSHION, MEM_DATA, &Self->Commands, NULL)) {
+   if (!AllocMemory(sizeof(PathCommand) * CAPACITY_CUSHION, MEM_DATA, &Self->Commands, NULL)) {
       Self->Capacity = CAPACITY_CUSHION;
-      Self->GeneratePath = (void (*)(struct rkVector *))&generate_path;
+      Self->GeneratePath = (void (*)(rkVector *))&generate_path;
       return ERR_Okay;
    }
    else return ERR_AllocMemory;
@@ -371,20 +374,22 @@ NullArgs
 
 static ERROR VECTORPATH_AddCommand(objVectorPath *Self, struct vpAddCommand *Args)
 {
-   if ((!Args) OR (!Args->Commands)) return PostError(ERR_NullArgs);
+   parasol::Log log;
 
-   LONG total_cmds = Args->Size / sizeof(struct PathCommand);
+   if ((!Args) OR (!Args->Commands)) return log.warning(ERR_NullArgs);
 
-   if ((total_cmds <= 0) OR (total_cmds > 1000000)) return PostError(ERR_Args);
+   LONG total_cmds = Args->Size / sizeof(PathCommand);
+
+   if ((total_cmds <= 0) OR (total_cmds > 1000000)) return log.warning(ERR_Args);
 
    if (Self->TotalCommands + total_cmds > Self->Capacity) {
-      struct PathCommand *new_list;
+      PathCommand *new_list;
       LONG new_capacity = Self->Capacity + total_cmds + CAPACITY_CUSHION;
-      if (AllocMemory(sizeof(struct PathCommand) * new_capacity, MEM_DATA|MEM_NO_CLEAR, &new_list, NULL)) {
+      if (AllocMemory(sizeof(PathCommand) * new_capacity, MEM_DATA|MEM_NO_CLEAR, &new_list, NULL)) {
          return ERR_AllocMemory;
       }
 
-      CopyMemory(Self->Commands, new_list, Self->TotalCommands * sizeof(struct PathCommand));
+      CopyMemory(Self->Commands, new_list, Self->TotalCommands * sizeof(PathCommand));
 
       if (Self->Commands) FreeResource(Self->Commands);
 
@@ -392,7 +397,7 @@ static ERROR VECTORPATH_AddCommand(objVectorPath *Self, struct vpAddCommand *Arg
       Self->Capacity = new_capacity;
    }
 
-   CopyMemory(Args->Commands, Self->Commands + Self->TotalCommands, total_cmds * sizeof(struct PathCommand));
+   CopyMemory(Args->Commands, Self->Commands + Self->TotalCommands, total_cmds * sizeof(PathCommand));
    Self->TotalCommands += total_cmds;
 
    VECTORPATH_Flush(Self, NULL);
@@ -420,8 +425,10 @@ OutOfRange
 
 static ERROR VECTORPATH_GetCommand(objVectorPath *Self, struct vpGetCommand *Args)
 {
-   if (!Args) return PostError(ERR_NullArgs);
-   if ((Args->Index < 0) OR (Args->Index >= Self->TotalCommands)) return PostError(ERR_OutOfRange);
+   parasol::Log log;
+
+   if (!Args) return log.warning(ERR_NullArgs);
+   if ((Args->Index < 0) OR (Args->Index >= Self->TotalCommands)) return log.warning(ERR_OutOfRange);
 
    Args->Command = &Self->Commands[Args->Index];
    return ERR_Okay;
@@ -449,8 +456,10 @@ NothingDone
 
 static ERROR VECTORPATH_RemoveCommand(objVectorPath *Self, struct vpRemoveCommand *Args)
 {
+   parasol::Log log;
+
    if (!Args) return ERR_NullArgs;
-   if ((Args->Index < 0) OR (Args->Index > Self->TotalCommands-1)) return PostError(ERR_OutOfRange);
+   if ((Args->Index < 0) OR (Args->Index > Self->TotalCommands-1)) return log.warning(ERR_OutOfRange);
    if (Self->TotalCommands < 1) return ERR_NothingDone;
 
    LONG total = Args->Total;
@@ -458,7 +467,7 @@ static ERROR VECTORPATH_RemoveCommand(objVectorPath *Self, struct vpRemoveComman
       total = Self->TotalCommands - Args->Index;
    }
 
-   CopyMemory(Self->Commands + Args->Index + total, Self->Commands + Args->Index, total * sizeof(struct PathCommand));
+   CopyMemory(Self->Commands + Args->Index + total, Self->Commands + Args->Index, total * sizeof(PathCommand));
    Self->TotalCommands -= total;
 
    VECTORPATH_Flush(Self, NULL);
@@ -488,11 +497,13 @@ BufferOverflow
 
 static ERROR VECTORPATH_SetCommand(objVectorPath *Self, struct vpSetCommand *Args)
 {
-   if ((!Args) OR (!Args->Command)) return ERR_NullArgs;
-   if ((Args->Index < 0) OR (Args->Index > Self->Capacity-1)) return PostError(ERR_OutOfRange);
+   parasol::Log log;
 
-   LONG total_cmds = Args->Size / sizeof(struct PathCommand);
-   if (Args->Index + total_cmds >= Self->Capacity) return PostError(ERR_BufferOverflow);
+   if ((!Args) OR (!Args->Command)) return ERR_NullArgs;
+   if ((Args->Index < 0) OR (Args->Index > Self->Capacity-1)) return log.warning(ERR_OutOfRange);
+
+   LONG total_cmds = Args->Size / sizeof(PathCommand);
+   if (Args->Index + total_cmds >= Self->Capacity) return log.warning(ERR_BufferOverflow);
    if (Args->Index + total_cmds > Self->TotalCommands) Self->TotalCommands = Args->Index + total_cmds;
 
    CopyMemory(Args->Command, Self->Commands + Args->Index, Args->Size);
@@ -523,17 +534,19 @@ AllocMemory
 
 static ERROR VECTORPATH_SetCommandList(objVectorPath *Self, struct vpSetCommandList *Args)
 {
-   if ((!Args) OR (!Args->Size)) return PostError(ERR_NullArgs);
+   parasol::Log log;
 
-   if (!(Self->Head.Flags & NF_INITIALISED)) return PostError(ERR_NotInitialised);
+   if ((!Args) OR (!Args->Size)) return log.warning(ERR_NullArgs);
 
-   LONG total_cmds = Args->Size / sizeof(struct PathCommand);
-   if ((total_cmds < 0) OR (total_cmds > 1000000)) return PostError(ERR_Args);
+   if (!(Self->Head.Flags & NF_INITIALISED)) return log.warning(ERR_NotInitialised);
+
+   LONG total_cmds = Args->Size / sizeof(PathCommand);
+   if ((total_cmds < 0) OR (total_cmds > 1000000)) return log.warning(ERR_Args);
 
    if (total_cmds > Self->Capacity) {
-      struct PathCommand *new_list;
+      PathCommand *new_list;
       LONG new_capacity = total_cmds + CAPACITY_CUSHION;
-      if (AllocMemory(sizeof(struct PathCommand) * new_capacity, MEM_DATA|MEM_NO_CLEAR, &new_list, NULL)) {
+      if (AllocMemory(sizeof(PathCommand) * new_capacity, MEM_DATA|MEM_NO_CLEAR, &new_list, NULL)) {
          return ERR_AllocMemory;
       }
 
@@ -543,7 +556,7 @@ static ERROR VECTORPATH_SetCommandList(objVectorPath *Self, struct vpSetCommandL
       Self->Capacity = new_capacity;
    }
 
-   CopyMemory(Args->Commands, Self->Commands, total_cmds * sizeof(struct PathCommand));
+   CopyMemory(Args->Commands, Self->Commands, total_cmds * sizeof(PathCommand));
    Self->TotalCommands = total_cmds;
 
    VECTORPATH_Flush(Self, NULL);
@@ -566,20 +579,22 @@ static ERROR VECTORPATH_GET_Capacity(objVectorPath *Self, LONG *Value)
 
 static ERROR VECTORPATH_SET_Capacity(objVectorPath *Self, LONG Value)
 {
-   if (Value < 1) return PostError(ERR_InvalidValue);
+   parasol::Log log;
+
+   if (Value < 1) return log.warning(ERR_InvalidValue);
 
    if (Value > Self->Capacity) {
       LONG new_capacity = Value + CAPACITY_CUSHION;
       if (Self->TotalCommands > 0) { // Preserve existing commands?
-         if (!ReallocMemory(Self->Commands, sizeof(struct PathCommand) * new_capacity, &Self->Commands, NULL)) {
+         if (!ReallocMemory(Self->Commands, sizeof(PathCommand) * new_capacity, &Self->Commands, NULL)) {
             Self->Capacity = new_capacity;
             return ERR_Okay;
          }
          else return ERR_AllocMemory;
       }
       else {
-         struct PathCommand *new_list;
-         if (!AllocMemory(sizeof(struct PathCommand) * new_capacity, MEM_DATA|MEM_NO_CLEAR, &new_list, NULL)) {
+         PathCommand *new_list;
+         if (!AllocMemory(sizeof(PathCommand) * new_capacity, MEM_DATA|MEM_NO_CLEAR, &new_list, NULL)) {
             if (Self->Commands) FreeResource(Self->Commands);
             Self->Commands = new_list;
             Self->Capacity = new_capacity;
@@ -600,7 +615,7 @@ directly.  After making changes to the path, call #Flush() to register the chang
 
 *****************************************************************************/
 
-static ERROR VECTORPATH_GET_Commands(objVectorPath *Self, struct PathCommand **Value, LONG *Elements)
+static ERROR VECTORPATH_GET_Commands(objVectorPath *Self, PathCommand **Value, LONG *Elements)
 {
    *Value = Self->Commands;
    *Elements = Self->TotalCommands;
@@ -697,14 +712,15 @@ static ERROR VECTORPATH_GET_TotalCommands(objVectorPath *Self, LONG *Value)
 
 static ERROR VECTORPATH_SET_TotalCommands(objVectorPath *Self, LONG Value)
 {
-   if ((Value < 0) OR (Value > Self->Capacity)) return PostError(ERR_OutOfRange);
+   parasol::Log log;
+   if ((Value < 0) OR (Value > Self->Capacity)) return log.warning(ERR_OutOfRange);
    Self->TotalCommands = Value;
    return ERR_Okay;
 }
 
 //****************************************************************************
 
-static const struct FieldArray clPathFields[] = {
+static const FieldArray clPathFields[] = {
    { "Sequence",      FDF_VIRTUAL|FDF_STRING|FDF_RW, 0, (APTR)VECTOR_GET_Sequence, (APTR)VECTORPATH_SET_Sequence },
    { "TotalCommands", FDF_VIRTUAL|FDF_LONG|FDF_RW,   0, (APTR)VECTORPATH_GET_TotalCommands, (APTR)VECTORPATH_SET_TotalCommands },
    { "PathLength",    FDF_VIRTUAL|FDF_LONG|FDF_RW,   0, (APTR)VECTORPATH_GET_PathLength, (APTR)VECTORPATH_SET_PathLength },

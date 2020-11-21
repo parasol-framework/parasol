@@ -18,9 +18,17 @@
 <p>Please note that the Time class uses strict metric interpretations of "millisecond" and "microsecond" terminology. That is, a millisecond is 1/1000th (one thousandth) of a second, a microsecond is 1/1000000th (one millionth) of a second.</p>
 <p>To get the current system time, use the <action>Query</action> action.</p></description>
     <source>
-      <file path="src/classes/">class_time.c</file>
+      <file path="src/classes/">class_time.cpp</file>
     </source>
   </info>
+
+  <actions>
+    <action>
+      <name>Query</name>
+      <comment>Updates the values in a time object with the current system date and time.</comment>
+    </action>
+
+  </actions>
 
   <methods>
     <method>
@@ -126,6 +134,19 @@
       <const name="COMPRESS_FILE"/>
       <const name="REMOVE_FILE"/>
       <const name="DECOMPRESS_OBJECT"/>
+    </constants>
+
+    <constants lookup="VLF" comment="VlogF flags">
+      <const name="ERROR"/>
+      <const name="WARNING"/>
+      <const name="DEBUG"/>
+      <const name="EXTAPI"/>
+      <const name="BRANCH"/>
+      <const name="INFO"/>
+      <const name="API"/>
+      <const name="TRACE"/>
+      <const name="CRITICAL"/>
+      <const name="FUNCTION"/>
     </constants>
 
     <constants lookup="MOF" comment="Module flags">
@@ -625,7 +646,7 @@
       <field name="FieldID" type="ULONG">Provides a fast way of finding fields, e.g. FID_WIDTH</field>
       <field name="Offset" type="UWORD">Field offset within the object</field>
       <field name="Index" type="UWORD">Field array index</field>
-      <field name="Flags" type="LONG">Special flags that describe the field</field>
+      <field name="Flags" type="ULONG">Special flags that describe the field</field>
     </struct>
 
     <struct name="Function" comment="Function list array structure">
@@ -728,7 +749,7 @@
 
     <struct name="FunctionField" comment="Used by ActionTable and Function structures to declare lists of parameters.">
       <field name="Name" type="CSTRING">Name of the field</field>
-      <field name="Type" type="LONG">Type of the field</field>
+      <field name="Type" type="ULONG">Type of the field</field>
     </struct>
 
     <struct name="KeyStore" comment="Key-pair storage created by VarNew()">
@@ -765,7 +786,7 @@
 
     <struct name="FieldArray" comment="Used to construct class blueprints for the MetaClass.">
       <field name="Name" type="CSTRING">The name of the field, e.g. "Width"</field>
-      <field name="Flags" type="LONG">Special flags that describe the field</field>
+      <field name="Flags" type="ULONG">Special flags that describe the field</field>
       <field name="Arg" type="MAXINT">Can be a pointer or an integer value</field>
       <field name="GetField" type="APTR">void GetField(*Object, APTR Result);</field>
       <field name="SetField" type="APTR">ERROR SetField(*Object, APTR Value);</field>

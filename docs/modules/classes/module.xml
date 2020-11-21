@@ -30,7 +30,7 @@ if (!CreateObject(ID_MODULE, 0, &amp;modDisplay,
 <p>Post-initialisation there is very little that you need to do with the object besides reading its function base from the <field>ModBase</field> field.  Keep in mind that you must not free the module object until you are finished with the functions that it provides.</p>
 <p>A list of officially recognised modules that export function tables can be found in the Module Index manual. If you would like to learn more about modules in general, refer to the Module Interfaces manual.  If you would like to write a new module, please read the Module Development Guide.</p></description>
     <source>
-      <file path="src/classes/">class_module.c</file>
+      <file path="src/classes/">class_module.cpp</file>
     </source>
   </info>
 
@@ -167,6 +167,19 @@ actions[AC_ActionNotify] = MODULE_ActionNotify;
       <const name="COMPRESS_FILE"/>
       <const name="REMOVE_FILE"/>
       <const name="DECOMPRESS_OBJECT"/>
+    </constants>
+
+    <constants lookup="VLF" comment="VlogF flags">
+      <const name="ERROR"/>
+      <const name="WARNING"/>
+      <const name="DEBUG"/>
+      <const name="EXTAPI"/>
+      <const name="BRANCH"/>
+      <const name="INFO"/>
+      <const name="API"/>
+      <const name="TRACE"/>
+      <const name="CRITICAL"/>
+      <const name="FUNCTION"/>
     </constants>
 
     <constants lookup="MOF" comment="Module flags">
@@ -666,7 +679,7 @@ actions[AC_ActionNotify] = MODULE_ActionNotify;
       <field name="FieldID" type="ULONG">Provides a fast way of finding fields, e.g. FID_WIDTH</field>
       <field name="Offset" type="UWORD">Field offset within the object</field>
       <field name="Index" type="UWORD">Field array index</field>
-      <field name="Flags" type="LONG">Special flags that describe the field</field>
+      <field name="Flags" type="ULONG">Special flags that describe the field</field>
     </struct>
 
     <struct name="Function" comment="Function list array structure">
@@ -769,7 +782,7 @@ actions[AC_ActionNotify] = MODULE_ActionNotify;
 
     <struct name="FunctionField" comment="Used by ActionTable and Function structures to declare lists of parameters.">
       <field name="Name" type="CSTRING">Name of the field</field>
-      <field name="Type" type="LONG">Type of the field</field>
+      <field name="Type" type="ULONG">Type of the field</field>
     </struct>
 
     <struct name="KeyStore" comment="Key-pair storage created by VarNew()">
@@ -806,7 +819,7 @@ actions[AC_ActionNotify] = MODULE_ActionNotify;
 
     <struct name="FieldArray" comment="Used to construct class blueprints for the MetaClass.">
       <field name="Name" type="CSTRING">The name of the field, e.g. "Width"</field>
-      <field name="Flags" type="LONG">Special flags that describe the field</field>
+      <field name="Flags" type="ULONG">Special flags that describe the field</field>
       <field name="Arg" type="MAXINT">Can be a pointer or an integer value</field>
       <field name="GetField" type="APTR">void GetField(*Object, APTR Result);</field>
       <field name="SetField" type="APTR">ERROR SetField(*Object, APTR Value);</field>

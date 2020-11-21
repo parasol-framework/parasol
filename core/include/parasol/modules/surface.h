@@ -287,34 +287,34 @@ struct drwRemoveCallback { FUNCTION * Callback;  };
 
 INLINE ERROR drwInheritedFocus(APTR Ob, OBJECTID FocusID, LONG Flags) {
    struct drwInheritedFocus args = { FocusID, Flags };
-   return(Action(MT_DrwInheritedFocus, Ob, &args));
+   return(Action(MT_DrwInheritedFocus, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR drwExpose(APTR Ob, LONG X, LONG Y, LONG Width, LONG Height, LONG Flags) {
    struct drwExpose args = { X, Y, Width, Height, Flags };
-   return(Action(MT_DrwExpose, Ob, &args));
+   return(Action(MT_DrwExpose, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR drwInvalidateRegion(APTR Ob, LONG X, LONG Y, LONG Width, LONG Height) {
    struct drwInvalidateRegion args = { X, Y, Width, Height };
-   return(Action(MT_DrwInvalidateRegion, Ob, &args));
+   return(Action(MT_DrwInvalidateRegion, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR drwSetDisplay(APTR Ob, LONG X, LONG Y, LONG Width, LONG Height, LONG InsideWidth, LONG InsideHeight, LONG BitsPerPixel, DOUBLE RefreshRate, LONG Flags) {
    struct drwSetDisplay args = { X, Y, Width, Height, InsideWidth, InsideHeight, BitsPerPixel, RefreshRate, Flags };
-   return(Action(MT_DrwSetDisplay, Ob, &args));
+   return(Action(MT_DrwSetDisplay, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR drwSetOpacity(APTR Ob, DOUBLE Value, DOUBLE Adjustment) {
    struct drwSetOpacity args = { Value, Adjustment };
-   return(Action(MT_DrwSetOpacity, Ob, &args));
+   return(Action(MT_DrwSetOpacity, (OBJECTPTR)Ob, &args));
 }
 
 #define drwMinimise(obj) Action(MT_DrwMinimise,(obj),0)
 
 INLINE ERROR drwResetDimensions(APTR Ob, DOUBLE X, DOUBLE Y, DOUBLE XOffset, DOUBLE YOffset, DOUBLE Width, DOUBLE Height, LONG Dimensions) {
    struct drwResetDimensions args = { X, Y, XOffset, YOffset, Width, Height, Dimensions };
-   return(Action(MT_DrwResetDimensions, Ob, &args));
+   return(Action(MT_DrwResetDimensions, (OBJECTPTR)Ob, &args));
 }
 
 

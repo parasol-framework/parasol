@@ -420,7 +420,7 @@ static ERROR SET_Path(objDocument *Self, CSTRING Value)
 
    report_event(Self, DEF_PATH, NULL, NULL);
 
-   LogBack();
+   LogReturn();
    return Self->Error;
 }
 

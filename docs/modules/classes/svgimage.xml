@@ -39,7 +39,7 @@
 <p>Please refer to the W3C documentation on SVG for a complete reference to the attributes that can be applied to SVG elements.  Unfortunately we do not support all SVG capabilities at this time, but support will improve in future.</p>
 <p>Please refer to the <class name="Layout">Layout</class> class for information on how to set the coordinates for a SVG object.  In cases where no coordinates or dimensions have been specified, the vector will take up the entire graphical area of its related surface.</p></description>
     <source>
-      <file>class_svgimage.c</file>
+      <file>class_svgimage.cpp</file>
     </source>
   </info>
 

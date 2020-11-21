@@ -30,8 +30,10 @@
 
 #ifdef _WIN32
 typedef void * HOSTHANDLE; // Windows defines a pointer type for native handles
+#define PTR_TO_HOST(a) (a)
 #else
 typedef int HOSTHANDLE;    // Unix systems use FD descriptors for handles
+#define PTR_TO_HOST(a) ((int)(intptr_t)(a))
 #endif
 
 #ifndef XMD_H

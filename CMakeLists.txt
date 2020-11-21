@@ -118,9 +118,9 @@ else ()
    find_program (PARASOL_CMD "parasol" NO_DEFAULT_PATH PATHS "${CMAKE_INSTALL_PREFIX}/bin")
    find_program (FLUID_CMD "fluid" NO_DEFAULT_PATH PATHS "${CMAKE_INSTALL_PREFIX}/bin")
 endif ()
-find_program (IDL_C_SCRIPT "idl-c.fluid" PATHS "${PROJECT_SOURCE_DIR}/data/scripts/dev/idl")
-find_program (IDL_DEF_SCRIPT "idl-def.fluid" PATHS "${PROJECT_SOURCE_DIR}/data/scripts/dev/idl")
-find_program (FLUTE_SCRIPT "flute.fluid" PATHS "${PROJECT_SOURCE_DIR}/data/scripts/dev")
+find_program (IDL_C_SCRIPT "idl-c.fluid" PATHS "${PROJECT_SOURCE_DIR}/scripts/dev/idl")
+find_program (IDL_DEF_SCRIPT "idl-def.fluid" PATHS "${PROJECT_SOURCE_DIR}/scripts/dev/idl")
+find_program (FLUTE_SCRIPT "flute.fluid" PATHS "${PROJECT_SOURCE_DIR}/scripts/dev")
 
 if (FLUID_CMD STREQUAL "FLUID_CMD-NOTFOUND")
    message (STATUS "Definitions will not be built and tests are disabled.")
@@ -137,11 +137,11 @@ if (BUILD_TESTS)
 endif ()
 
 if (IDL_C_SCRIPT STREQUAL "IDL_C_SCRIPT-NOTFOUND")
-   message (FATAL_ERROR "The idl-c.fluid script was not found in ${PROJECT_SOURCE_DIR}/data/scripts/dev/idl")
+   message (FATAL_ERROR "The idl-c.fluid script was not found in ${PROJECT_SOURCE_DIR}/scripts/dev/idl")
 endif ()
 
 if (IDL_DEF_SCRIPT STREQUAL "IDL_DEF_SCRIPT-NOTFOUND")
-   message (FATAL_ERROR "The idl-def.fluid script was not found in ${PROJECT_SOURCE_DIR}/data/scripts/dev/idl")
+   message (FATAL_ERROR "The idl-def.fluid script was not found in ${PROJECT_SOURCE_DIR}/scripts/dev/idl")
 endif ()
 
 if (FLUTE_SCRIPT STREQUAL "FLUTE_SCRIPT-NOTFOUND")
@@ -163,7 +163,7 @@ function (flute_test name path)
       endif ()
       get_filename_component(FLUTE_FULL_PATH "${path}" ABSOLUTE)
       add_test (NAME ${name}
-         COMMAND "${FLUTE_EXE}" "--log-error" "--gfx-driver=headless" "${FLUTE_SCRIPT}" "file=${FLUTE_FULL_PATH}"
+         COMMAND "${FLUTE_EXE}" "--log-warning" "--gfx-driver=headless" "${FLUTE_SCRIPT}" "file=${FLUTE_FULL_PATH}"
          WORKING_DIRECTORY "${CMAKE_INSTALL_PREFIX}")
    endif ()
 endfunction ()
@@ -185,11 +185,11 @@ function (idl_all)
          list (APPEND IDLC_ARGS "--files={" ${IDLC_FILES} "}")
       endif ()
 
-      list (APPEND COMMAND_LIST COMMAND ${FLUID_CMD} ${IDL_C_SCRIPT} "--log-error" "--src=${ARGV0}"
+      list (APPEND COMMAND_LIST COMMAND ${FLUID_CMD} ${IDL_C_SCRIPT} "--log-warning" "--src=${ARGV0}"
          "--output=${IDLC_OUTPUT}" "--sdk=${PROJECT_SOURCE_DIR}" ${IDLC_ARGS})
 
       if (DEFINED IDLC_APPEND_IDL)
-         list (APPEND COMMAND_LIST COMMAND ${FLUID_CMD} ${IDL_DEF_SCRIPT} "--log-error" "--src=${ARGV0}"
+         list (APPEND COMMAND_LIST COMMAND ${FLUID_CMD} ${IDL_DEF_SCRIPT} "--log-warning" "--src=${ARGV0}"
             "--output=${IDLC_APPEND_IDL}" "--sdk=${PROJECT_SOURCE_DIR}" "--format=c" "--append")
       endif ()
 
@@ -230,7 +230,7 @@ function (idl_c)
 
       add_custom_command (OUTPUT ${IDLC_OUTPUT}
          PRE_BUILD
-         COMMAND ${FLUID_CMD} ${IDL_C_SCRIPT} "--log-error" "--src=${ARGV0}" "--output=${IDLC_OUTPUT}" "--sdk=${PROJECT_SOURCE_DIR}" ${IDLC_ARGS}
+         COMMAND ${FLUID_CMD} ${IDL_C_SCRIPT} "--log-warning" "--src=${ARGV0}" "--output=${IDLC_OUTPUT}" "--sdk=${PROJECT_SOURCE_DIR}" ${IDLC_ARGS}
          WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
          DEPENDS ${ARGV0}
          COMMENT "Producing C header file ${IDLC_OUTPUT} from ${ARGV0}"
@@ -264,7 +264,7 @@ function (idl_def)
 
       add_custom_command (OUTPUT ${IDLC_OUTPUT}
          PRE_BUILD
-         COMMAND ${FLUID_CMD} ${IDL_DEF_SCRIPT} "--log-error" "--src=${ARGV0}" "--output=${IDLC_OUTPUT}" "--sdk=${PROJECT_SOURCE_DIR}" "--format=c" ${IDLC_ARGS}
+         COMMAND ${FLUID_CMD} ${IDL_DEF_SCRIPT} "--log-warning" "--src=${ARGV0}" "--output=${IDLC_OUTPUT}" "--sdk=${PROJECT_SOURCE_DIR}" "--format=c" ${IDLC_ARGS}
          WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
          DEPENDS ${ARGV0}
          COMMENT "Producing definition file ${IDLC_OUTPUT} from ${ARGV0}"
@@ -428,10 +428,10 @@ target_include_directories (fluid_cmd PRIVATE "${PROJECT_SOURCE_DIR}/core/link")
 
 if (CMAKE_BUILD_TYPE MATCHES "Release")
    message (STATUS "Symbols will be stripped from this build (no debugging).")
-   set_target_properties (parasol fluid_cmd PROPERTIES LINK_FLAGS_RELEASE "-s" RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/release")
+   set_target_properties (parasol fluid_cmd PROPERTIES CXX_STANDARD 20 LINK_FLAGS_RELEASE "-s" RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/release")
 else ()
    message (STATUS "Symbols will be left intact in this build (debug enabled).")
-   set_target_properties (parasol fluid_cmd PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/release")
+   set_target_properties (parasol fluid_cmd PROPERTIES CXX_STANDARD 20 RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/release")
 endif ()
 
 set_target_properties (fluid_cmd PROPERTIES OUTPUT_NAME "fluid")
@@ -469,7 +469,7 @@ if (WIN32)
    install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/users/" DESTINATION "config/users")
    install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/fonts/" DESTINATION "fonts")
    install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/icons/" DESTINATION "icons")
-   install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/scripts/" DESTINATION "scripts")
+   install (DIRECTORY "${PROJECT_SOURCE_DIR}/scripts/" DESTINATION "scripts")
    if (INSTALL_EXAMPLES)
       install (DIRECTORY "${PROJECT_SOURCE_DIR}/examples/" DESTINATION "examples")
    endif ()
@@ -480,7 +480,7 @@ else ()
    install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/users" DESTINATION "${SHARE_TARGET}/config")
    install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/fonts" DESTINATION "${SHARE_TARGET}")
    install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/icons" DESTINATION "${SHARE_TARGET}")
-   install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/scripts" DESTINATION "${SHARE_TARGET}")
+   install (DIRECTORY "${PROJECT_SOURCE_DIR}/scripts" DESTINATION "${SHARE_TARGET}")
    if (INSTALL_EXAMPLES)
       install (DIRECTORY "${PROJECT_SOURCE_DIR}/examples" DESTINATION "${SHARE_TARGET}")
    endif ()
@@ -504,7 +504,7 @@ if (WIN32) # MSYS2/MinGW builds have library dependencies that we need to take a
 endif ()
 
    install (CODE "file(REMOVE \"${PARASOL_ROOT}/config/classes.bin\" \"${PARASOL_ROOT}/config/modules.bin\")")
-   install (CODE "execute_process(COMMAND \"${PARASOL_CMD_TARGET}\" --log-error --gfx-driver=headless \"${PARASOL_ROOT}/scripts/dev/verify-modules.fluid\" WORKING_DIRECTORY \"${CMAKE_INSTALL_PREFIX}\")")
+   install (CODE "execute_process(COMMAND \"${PARASOL_CMD_TARGET}\" --log-warning --gfx-driver=headless \"${PARASOL_ROOT}/scripts/dev/verify-modules.fluid\" WORKING_DIRECTORY \"${CMAKE_INSTALL_PREFIX}\")")
 
 if (RUN_ANYWHERE)
    install (CODE "MESSAGE(STATUS \"\nParasol has been installed to '${CMAKE_INSTALL_PREFIX}'.  You may need to add this folder to your PATH variable in order to run parasol.exe and fluid.exe from the command-line.\")")

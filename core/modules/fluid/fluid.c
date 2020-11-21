@@ -33,17 +33,15 @@ For more information on the Fluid syntax, please refer to the official Fluid Ref
 
 *****************************************************************************/
 
-//#define DEBUG
-
-#define RMSG(a...) //MSG(a) // Enable if you want to debug results returned from functions, actions etc
+#ifdef DEBUG
+#undef DEBUG
+#endif
 
 #define PRV_SCRIPT
 #define PRV_FLUID
 #define PRV_FLUID_MODULE
 #include <parasol/main.h>
-#include <parasol/modules/document.h>
 #include <parasol/modules/xml.h>
-#include <parasol/modules/window.h>
 #include <parasol/modules/display.h>
 #include <parasol/modules/fluid.h>
 
@@ -56,25 +54,22 @@ For more information on the Fluid syntax, please refer to the official Fluid Ref
 
 #include "hashes.h"
 
-#define SIZE_READ 1024
-
-#define VER_FLUID 1.0
-
 MODULE_COREBASE;
-static struct DisplayBase *DisplayBase;
+struct DisplayBase *DisplayBase;
 //static struct SurfaceBase *SurfaceBase;
-static OBJECTPTR modDisplay = NULL; // Required by fluid_input.c
-static OBJECTPTR modFluid = NULL;
+OBJECTPTR modDisplay = NULL; // Required by fluid_input.c
+OBJECTPTR modFluid = NULL;
 //static OBJECTPTR modSurface = NULL; // Required by fluid_widget.c
-static OBJECTPTR clFluid = NULL;
-static struct ActionTable *glActions = NULL;
+OBJECTPTR clFluid = NULL;
+struct ActionTable *glActions = NULL;
 static UBYTE glLocale[4] = "eng";
-static struct KeyStore *glActionLookup = NULL;
+struct KeyStore *glActionLookup = NULL;
 
 #include "defs.h"
 
 static CSTRING load_include_struct(lua_State *, CSTRING, CSTRING);
 static CSTRING load_include_constant(lua_State *, CSTRING, CSTRING);
+static ERROR flSetVariable(objScript *, CSTRING, LONG, ...);
 
 //****************************************************************************
 
@@ -163,7 +158,7 @@ static void flTestCall7(STRING a, STRING b, STRING c)
 
 //****************************************************************************
 
-static struct references * alloc_references(void)
+struct references * alloc_references(void)
 {
    struct references *list;
    if (!AllocMemory(sizeof(struct references), MEM_DATA|MEM_NO_CLEAR, &list, NULL)) {
@@ -173,25 +168,7 @@ static struct references * alloc_references(void)
    else return NULL;
 }
 
-static LONG get_ptr_ref(struct references *Ref, CPTR Address)
-{
-   LONG i;
-   for (i=0; i < Ref->Index; i++) {
-      if (Address IS Ref->List[i].Address) return Ref->List[i].Ref;
-   }
-   return 0;
-}
-
-static void set_ptr_ref(struct references *Ref, CPTR Address, LONG Resource)
-{
-   if (Ref->Index < ARRAYSIZE(Ref->List)-1) {
-      LONG i = Ref->Index++;
-      Ref->List[i].Address = Address;
-      Ref->List[i].Ref = Resource;
-   }
-}
-
-static void free_references(lua_State *Lua, struct references *Ref)
+void free_references(lua_State *Lua, struct references *Ref)
 {
    LONG i;
    for (i=0; i < Ref->Index; i++) {
@@ -202,7 +179,7 @@ static void free_references(lua_State *Lua, struct references *Ref)
 
 //****************************************************************************
 
-static APTR get_meta(lua_State *Lua, LONG Arg, STRING MetaTable)
+APTR get_meta(lua_State *Lua, LONG Arg, CSTRING MetaTable)
 {
    APTR address;
    if ((address = (struct object *)lua_touserdata(Lua, Arg))) {
@@ -219,19 +196,11 @@ static APTR get_meta(lua_State *Lua, LONG Arg, STRING MetaTable)
    return NULL;
 }
 
-INLINE CSTRING check_bom(CSTRING Value)
-{
-   if (((UBYTE)Value[0] IS 0xef) AND ((UBYTE)Value[1] IS 0xbb) AND ((UBYTE)Value[2] IS 0xbf)) Value += 3; // UTF-8 BOM
-   else if (((UBYTE)Value[0] IS 0xfe) AND ((UBYTE)Value[1] IS 0xff)) Value += 2; // UTF-16 BOM big endian
-   else if (((UBYTE)Value[0] IS 0xff) AND ((UBYTE)Value[1] IS 0xfe)) Value += 2; // UTF-16 BOM little endian
-   return Value;
-}
-
 /*****************************************************************************
 ** Returns a pointer to an object (if the object exists).
 */
 
-static APTR access_object(struct object *Object)
+OBJECTPTR access_object(struct object *Object)
 {
    if (Object->AccessCount) {
       Object->AccessCount++;
@@ -262,7 +231,7 @@ static APTR access_object(struct object *Object)
    return Object->prvObject;
 }
 
-static void release_object(struct object *Object)
+void release_object(struct object *Object)
 {
    FMSG("release_obj()","#%d Current Locked: %d, Accesses: %d", Object->ObjectID, Object->Locked, Object->AccessCount);
 
@@ -291,7 +260,7 @@ INLINE struct KeyStore * GET_INCLUDES(objScript *Script)
 //****************************************************************************
 // Automatically load the include file for the given metaclass, if it has not been loaded already.
 
-static void auto_load_include(lua_State *Lua, objMetaClass *MetaClass)
+void auto_load_include(lua_State *Lua, objMetaClass *MetaClass)
 {
    CSTRING module_name;
    ERROR error;
@@ -421,7 +390,7 @@ static ERROR flSetVariable(objScript *Script, CSTRING Name, LONG Type, ...)
 
 //****************************************************************************
 
-static void hook_debug(lua_State *Lua, lua_Debug *Info)
+void hook_debug(lua_State *Lua, lua_Debug *Info)
 {
    if (Info->event IS LUA_HOOKCALL) {
       if (lua_getinfo(Lua, "nSl", Info)) {
@@ -430,10 +399,10 @@ static void hook_debug(lua_State *Lua, lua_Debug *Info)
       else LogErrorMsg("lua_getinfo() failed.");
    }
    else if (Info->event IS LUA_HOOKRET) {
-      //LogBack();
+      //LogReturn();
    }
    else if (Info->event IS LUA_HOOKTAILRET) {
-      //LogBack();
+      //LogReturn();
    }
    else if (Info->event IS LUA_HOOKLINE) {
       Lua->Script->CurrentLine = Info->currentline - 1; // Our line numbers start from zero
@@ -452,7 +421,7 @@ static void hook_debug(lua_State *Lua, lua_Debug *Info)
 // Works with primitives only, for structs please use make_struct_[ptr|serial]_table() because the struct name
 // will be required.
 
-static void make_table(lua_State *Lua, LONG Type, LONG Elements, CPTR Data)
+void make_table(lua_State *Lua, LONG Type, LONG Elements, CPTR Data)
 {
    FMSG("make_table()","Type: $%.8x, Elements: %d, Data: %p", Type, Elements, Data);
 
@@ -495,7 +464,7 @@ static void make_table(lua_State *Lua, LONG Type, LONG Elements, CPTR Data)
 //****************************************************************************
 // Create a Lua array from a list of structure pointers.
 
-static void make_struct_ptr_table(lua_State *Lua, CSTRING StructName, LONG Elements, CPTR *Values)
+void make_struct_ptr_table(lua_State *Lua, CSTRING StructName, LONG Elements, CPTR *Values)
 {
    FMSG("make_struct_ptr_table()","%s, Elements: %d, Values: %p", StructName, Elements, Values);
 
@@ -529,7 +498,7 @@ static void make_struct_ptr_table(lua_State *Lua, CSTRING StructName, LONG Eleme
 //****************************************************************************
 // Create a Lua array from a serialised list of structures.
 
-static void make_struct_serial_table(lua_State *Lua, CSTRING StructName, LONG Elements, CPTR Data)
+void make_struct_serial_table(lua_State *Lua, CSTRING StructName, LONG Elements, CPTR Data)
 {
    if (Elements < 0) Elements = 0; // The total number of structs is a hard requirement.
 
@@ -573,7 +542,7 @@ static void make_struct_serial_table(lua_State *Lua, CSTRING StructName, LONG El
 //****************************************************************************
 // The TypeName can be in the format 'Struct:Arg' without causing any issues.
 
-static void make_any_table(lua_State *Lua, LONG Type, CSTRING TypeName, LONG Elements, CPTR Values)
+void make_any_table(lua_State *Lua, LONG Type, CSTRING TypeName, LONG Elements, CPTR Values)
 {
    if (Type & FD_STRUCT) {
       if (Type & FD_POINTER) make_struct_ptr_table(Lua, TypeName, Elements, (CPTR *)Values);
@@ -584,7 +553,7 @@ static void make_any_table(lua_State *Lua, LONG Type, CSTRING TypeName, LONG Ele
 
 //****************************************************************************
 
-static void get_line(objScript *Self, LONG Line, STRING Buffer, LONG Size)
+void get_line(objScript *Self, LONG Line, STRING Buffer, LONG Size)
 {
    CSTRING str;
 
@@ -610,7 +579,7 @@ static void get_line(objScript *Self, LONG Line, STRING Buffer, LONG Size)
 
 //****************************************************************************
 
-static ERROR load_include(objScript *Script, CSTRING IncName)
+ERROR load_include(objScript *Script, CSTRING IncName)
 {
    LogF("~load_include()","Definition: %s", IncName);
 
@@ -628,7 +597,7 @@ static ERROR load_include(objScript *Script, CSTRING IncName)
 
    if ((IncName[i]) OR (i >= 32)) {
       LogF("load_include","Invalid module name; only alpha-numeric names are permitted with max 32 chars.");
-      LogBack();
+      LogReturn();
       return ERR_Syntax;
    }
 
@@ -640,7 +609,7 @@ static ERROR load_include(objScript *Script, CSTRING IncName)
       LONG *state;
       if ((!VarGet(inc, IncName, &state, NULL)) AND (state[0] == 1)) {
          FMSG("load_include","Include file '%s' has already been loaded.", IncName);
-         LogBack();
+         LogReturn();
          return ERR_Okay;
       }
    }
@@ -686,7 +655,7 @@ static ERROR load_include(objScript *Script, CSTRING IncName)
 
    AdjustLogLevel(-1);
 
-   LogBack();
+   LogReturn();
    return error;
 }
 
@@ -795,7 +764,7 @@ static CSTRING load_include_constant(lua_State *Lua, CSTRING Line, CSTRING Sourc
 ** Bytecode read & write callbacks.  Returning 1 will stop processing.
 */
 
-static int code_writer_id(lua_State *Lua, CPTR Data, size_t Size, void *FileID)
+int code_writer_id(lua_State *Lua, CPTR Data, size_t Size, void *FileID)
 {
    if (Size <= 0) return 0; // Ignore bad size requests
 
@@ -808,7 +777,7 @@ static int code_writer_id(lua_State *Lua, CPTR Data, size_t Size, void *FileID)
    }
 }
 
-static int code_writer(lua_State *Lua, CPTR Data, size_t Size, void *File)
+int code_writer(lua_State *Lua, CPTR Data, size_t Size, void *File)
 {
    if (Size <= 0) return 0; // Ignore bad size requests
 
@@ -829,7 +798,7 @@ static int code_writer(lua_State *Lua, CPTR Data, size_t Size, void *File)
 //****************************************************************************
 // Callback for lua_load() to read data from File objects.
 
-static const char * code_reader(lua_State *Lua, void *Handle, size_t *Size)
+const char * code_reader(lua_State *Lua, void *Handle, size_t *Size)
 {
    struct code_reader_handle *handle = Handle;
    LONG result;
@@ -864,19 +833,6 @@ static void stack_dump(lua_State *L)
 }
 
 #endif
-
-//****************************************************************************
-
-#include "fluid_array.c"
-#include "fluid_class.c"
-#include "fluid_input.c"
-#include "fluid_objects.c"
-#include "fluid_number.c"
-#include "fluid_struct.c"
-#include "fluid_thread.c"
-#include "fluid_module.c"
-#include "fluid_functions.c"
-//#include "fluid_widget.c"
 
 //****************************************************************************
 

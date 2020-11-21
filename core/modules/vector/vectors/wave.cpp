@@ -184,7 +184,9 @@ Move: Moves the vector to a new position.
 
 static ERROR WAVE_Move(objVectorWave *Self, struct acMove *Args)
 {
-   if (!Args) return PostError(ERR_NullArgs);
+   parasol::Log log;
+
+   if (!Args) return log.warning(ERR_NullArgs);
 
    Self->wX += Args->XChange;
    Self->wY += Args->YChange;
@@ -200,7 +202,9 @@ MoveToPoint: Moves the vector to a new fixed position.
 
 static ERROR WAVE_MoveToPoint(objVectorWave *Self, struct acMoveToPoint *Args)
 {
-   if (!Args) return PostError(ERR_NullArgs);
+   parasol::Log log;
+
+   if (!Args) return log.warning(ERR_NullArgs);
 
    if (Args->Flags & MTF_X) Self->wX = Args->X;
    if (Args->Flags & MTF_Y) Self->wY = Args->Y;
@@ -214,7 +218,7 @@ static ERROR WAVE_MoveToPoint(objVectorWave *Self, struct acMoveToPoint *Args)
 
 static ERROR WAVE_NewObject(objVectorWave *Self, APTR Void)
 {
-   Self->GeneratePath = (void (*)(struct rkVector *))&generate_wave;
+   Self->GeneratePath = (void (*)(rkVector *))&generate_wave;
    Self->wFrequency = 1.0;
    Self->wAmplitude = 1.0;
    Self->wDecay = 1.0;
@@ -229,7 +233,7 @@ Resize: Changes the vector's area.
 
 static ERROR WAVE_Resize(objVectorWave *Self, struct acResize *Args)
 {
-   if (!Args) return PostError(ERR_NullArgs);
+   if (!Args) return ERR_NullArgs;
 
    Self->wWidth = Args->Width;
    Self->wHeight = Args->Height;
@@ -259,7 +263,7 @@ static ERROR WAVE_SET_Amplitude(objVectorWave *Self, DOUBLE Value)
       reset_path(Self);
       return ERR_Okay;
    }
-   else return PostError(ERR_InvalidValue);
+   else return ERR_InvalidValue;
 }
 
 /*****************************************************************************
@@ -364,7 +368,7 @@ static ERROR WAVE_SET_Frequency(objVectorWave *Self, DOUBLE Value)
       reset_path(Self);
       return ERR_Okay;
    }
-   else return PostError(ERR_InvalidValue);
+   else return ERR_InvalidValue;
 }
 
 /*****************************************************************************
@@ -375,7 +379,7 @@ The height of the area containing the wave is defined here as a fixed or relativ
 
 *****************************************************************************/
 
-static ERROR WAVE_GET_Height(objVectorWave *Self, struct Variable *Value)
+static ERROR WAVE_GET_Height(objVectorWave *Self, Variable *Value)
 {
    DOUBLE val = Self->wHeight;
    if (Value->Type & FD_PERCENTAGE) val = val * 100.0;
@@ -384,12 +388,12 @@ static ERROR WAVE_GET_Height(objVectorWave *Self, struct Variable *Value)
    return ERR_Okay;
 }
 
-static ERROR WAVE_SET_Height(objVectorWave *Self, struct Variable *Value)
+static ERROR WAVE_SET_Height(objVectorWave *Self, Variable *Value)
 {
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return PostError(ERR_FieldTypeMismatch);
+   else return ERR_FieldTypeMismatch;
 
    if (Value->Type & FD_PERCENTAGE) {
       val = val * 0.01;
@@ -432,7 +436,7 @@ The width of the area containing the wave is defined here as a fixed or relative
 
 *****************************************************************************/
 
-static ERROR WAVE_GET_Width(objVectorWave *Self, struct Variable *Value)
+static ERROR WAVE_GET_Width(objVectorWave *Self, Variable *Value)
 {
    DOUBLE val = Self->wWidth;
    if (Value->Type & FD_PERCENTAGE) val = val * 100.0;
@@ -441,12 +445,12 @@ static ERROR WAVE_GET_Width(objVectorWave *Self, struct Variable *Value)
    return ERR_Okay;
 }
 
-static ERROR WAVE_SET_Width(objVectorWave *Self, struct Variable *Value)
+static ERROR WAVE_SET_Width(objVectorWave *Self, Variable *Value)
 {
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return PostError(ERR_FieldTypeMismatch);
+   else return ERR_FieldTypeMismatch;
 
    if (Value->Type & FD_PERCENTAGE) {
       val = val * 0.01;
@@ -467,7 +471,7 @@ The x coordinate of the wave is defined here as either a fixed or relative value
 
 *****************************************************************************/
 
-static ERROR WAVE_GET_X(objVectorWave *Self, struct Variable *Value)
+static ERROR WAVE_GET_X(objVectorWave *Self, Variable *Value)
 {
    DOUBLE val = Self->wX;
    if (Value->Type & FD_PERCENTAGE) val = val * 100.0;
@@ -476,12 +480,12 @@ static ERROR WAVE_GET_X(objVectorWave *Self, struct Variable *Value)
    return ERR_Okay;
 }
 
-static ERROR WAVE_SET_X(objVectorWave *Self, struct Variable *Value)
+static ERROR WAVE_SET_X(objVectorWave *Self, Variable *Value)
 {
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return PostError(ERR_FieldTypeMismatch);
+   else return ERR_FieldTypeMismatch;
 
    if (Value->Type & FD_PERCENTAGE) {
       val = val * 0.01;
@@ -502,7 +506,7 @@ The y coordinate of the wave is defined here as either a fixed or relative value
 
 *****************************************************************************/
 
-static ERROR WAVE_GET_Y(objVectorWave *Self, struct Variable *Value)
+static ERROR WAVE_GET_Y(objVectorWave *Self, Variable *Value)
 {
    DOUBLE val = Self->wY;
    if (Value->Type & FD_PERCENTAGE) val = val * 100.0;
@@ -511,12 +515,12 @@ static ERROR WAVE_GET_Y(objVectorWave *Self, struct Variable *Value)
    return ERR_Okay;
 }
 
-static ERROR WAVE_SET_Y(objVectorWave *Self, struct Variable *Value)
+static ERROR WAVE_SET_Y(objVectorWave *Self, Variable *Value)
 {
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return PostError(ERR_FieldTypeMismatch);
+   else return ERR_FieldTypeMismatch;
 
    if (Value->Type & FD_PERCENTAGE) {
       val = val * 0.01;
@@ -553,14 +557,14 @@ static ERROR WAVE_SET_Close(objVectorWave *Self, LONG Value)
 
 //****************************************************************************
 
-static const struct FieldDef clWaveClose[] = {
+static const FieldDef clWaveClose[] = {
    { "None",   WVC_NONE },
    { "Top",    WVC_TOP },
    { "Bottom", WVC_BOTTOM },
    { NULL, 0 }
 };
 
-static const struct FieldDef clWaveDimensions[] = {
+static const FieldDef clWaveDimensions[] = {
    { "FixedHeight",     DMF_FIXED_HEIGHT },
    { "FixedWidth",      DMF_FIXED_WIDTH },
    { "FixedX",          DMF_FIXED_X },
@@ -572,7 +576,7 @@ static const struct FieldDef clWaveDimensions[] = {
    { NULL, 0 }
 };
 
-static const struct FieldArray clWaveFields[] = {
+static const FieldArray clWaveFields[] = {
    { "X",         FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)WAVE_GET_X, (APTR)WAVE_SET_X },
    { "Y",         FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)WAVE_GET_Y, (APTR)WAVE_SET_Y },
    { "Width",     FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)WAVE_GET_Width,   (APTR)WAVE_SET_Width },
@@ -587,7 +591,7 @@ static const struct FieldArray clWaveFields[] = {
    END_FIELD
 };
 
-static const struct ActionArray clWaveActions[] = {
+static const ActionArray clWaveActions[] = {
    { AC_NewObject,     (APTR)WAVE_NewObject },
    { AC_Move,          (APTR)WAVE_Move },
    { AC_MoveToPoint,   (APTR)WAVE_MoveToPoint },

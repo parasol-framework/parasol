@@ -157,7 +157,7 @@ static ERROR SURFACE_ActionNotify(objSurface *Self, struct acActionNotify *Notif
             Action(MT_DrwExpose, Self, &expose);
          }
 
-         STEP();
+         LOGRETURN();
       }
    }
    else if ((NotifyArgs->ActionID IS AC_Redimension) AND (NotifyArgs->Error IS ERR_Okay)) {
@@ -179,7 +179,7 @@ static ERROR SURFACE_ActionNotify(objSurface *Self, struct acActionNotify *Notif
             for (i=0; (i < ctl->Total) AND (list[i].SurfaceID != Self->ParentID); i++);
             if (i >= ctl->Total) {
                drwReleaseList(ARF_READ);
-               STEP();
+               LOGRETURN();
                return PostError(ERR_Search);
             }
             parentwidth  = list[i].Width;
@@ -187,7 +187,7 @@ static ERROR SURFACE_ActionNotify(objSurface *Self, struct acActionNotify *Notif
             drwReleaseList(ARF_READ);
          }
          else {
-            STEP();
+            LOGRETURN();
             return PostError(ERR_AccessMemory);
          }
       }
@@ -198,7 +198,7 @@ static ERROR SURFACE_ActionNotify(objSurface *Self, struct acActionNotify *Notif
             parentheight = display->Height;
          }
          else {
-            STEP();
+            LOGRETURN();
             return ERR_Okay;
          }
       }
@@ -272,7 +272,7 @@ static ERROR SURFACE_ActionNotify(objSurface *Self, struct acActionNotify *Notif
          acRedimension(Self, x, y, 0, width, height, resize->Depth);
       }
 
-      STEP();
+      LOGRETURN();
    }
 
    return ERR_Okay;
@@ -987,7 +987,7 @@ static ERROR SURFACE_Hide(objSurface *Self, APTR Void)
    FMSG("~",NULL);
 
    if (!(Self->Flags & RNF_VISIBLE)) {
-      STEP();
+      LOGRETURN();
       return ERR_Okay|ERF_Notified;
    }
 
@@ -996,7 +996,7 @@ static ERROR SURFACE_Hide(objSurface *Self, APTR Void)
       UpdateSurfaceField(Self, Flags);
 
       if (acHideID(Self->DisplayID) != ERR_Okay) {
-         STEP();
+         LOGRETURN();
          return ERR_Failed;
       }
    }
@@ -1034,7 +1034,7 @@ static ERROR SURFACE_Hide(objSurface *Self, APTR Void)
 
    refresh_pointer(Self);
 
-   STEP();
+   LOGRETURN();
    return ERR_Okay;
 }
 
@@ -1729,7 +1729,7 @@ static ERROR SURFACE_Move(objSurface *Self, struct acMove *Args)
 
          if ((!move.XChange) AND (!move.YChange)) {
             drwReleaseList(ARF_READ);
-            STEP();
+            LOGRETURN();
             return ERR_Failed|ERF_Notified;
          }
       }
@@ -1741,7 +1741,7 @@ static ERROR SURFACE_Move(objSurface *Self, struct acMove *Args)
       move_layer(Self, Self->X + move.XChange, Self->Y + move.YChange);
    }
    else {
-      STEP();
+      LOGRETURN();
       return PostError(ERR_LockFailed)|ERF_Notified;
    }
 
@@ -1755,9 +1755,9 @@ static ERROR SURFACE_Move(objSurface *Self, struct acMove *Args)
    FMSG("~","Sending redimension notifications");
       struct acRedimension redimension = { Self->X, Self->Y, 0, Self->Width, Self->Height, 0 };
       NotifySubscribers(Self, AC_Redimension, &redimension, NULL, ERR_Okay);
-   STEP();
+   LOGRETURN();
 
-   STEP();
+   LOGRETURN();
    return ERR_Okay|ERF_Notified;
 }
 
@@ -1783,7 +1783,7 @@ static ERROR SURFACE_MoveToBack(objSurface *Self, APTR Void)
       WORD index; // Get our position within the chain
       if ((index = find_surface_list(list, ctl->Total, Self->Head.UniqueID)) IS -1) {
          drwReleaseList(ARF_WRITE);
-         LogBack();
+         LogReturn();
          return PostError(ERR_Search)|ERF_Notified;
       }
 
@@ -1809,7 +1809,7 @@ static ERROR SURFACE_MoveToBack(objSurface *Self, APTR Void)
 
       if (pos >= index) {  // If the position is unchanged, return immediately
          drwReleaseList(ARF_READ);
-         LogBack();
+         LogReturn();
          return ERR_Okay|ERF_Notified;
       }
 
@@ -1832,7 +1832,7 @@ static ERROR SURFACE_MoveToBack(objSurface *Self, APTR Void)
 
    refresh_pointer(Self);
 
-   LogBack();
+   LogReturn();
    return ERR_Okay;
 }
 
@@ -1851,13 +1851,13 @@ static ERROR SURFACE_MoveToFront(objSurface *Self, APTR Void)
 
    if (!Self->ParentID) {
       acMoveToFrontID(Self->DisplayID);
-      LogBack();
+      LogReturn();
       return ERR_Okay|ERF_Notified;
    }
 
    struct SurfaceControl *ctl;
    if (!(ctl = drwAccessList(ARF_WRITE))) {
-      LogBack();
+      LogReturn();
       return PostError(ERR_AccessMemory)|ERF_Notified;
    }
 
@@ -1865,7 +1865,7 @@ static ERROR SURFACE_MoveToFront(objSurface *Self, APTR Void)
 
    if ((currentindex = find_own_index(ctl, Self)) IS -1) {
       drwReleaseList(ARF_WRITE);
-      return LogBackError(0, ERR_Search)|ERF_Notified;
+      return LogReturnError(0, ERR_Search)|ERF_Notified;
    }
 
    // Find the object in the list that our surface object will displace
@@ -1904,7 +1904,7 @@ static ERROR SURFACE_MoveToFront(objSurface *Self, APTR Void)
                if (list[i].SurfaceID != Self->PopOverID) {
                   drwReleaseList(ARF_WRITE);
                   acMoveToFrontID(Self->PopOverID);
-                  LogBack();
+                  LogReturn();
                   return ERR_Okay|ERF_Notified;
                }
                break;
@@ -1914,7 +1914,7 @@ static ERROR SURFACE_MoveToFront(objSurface *Self, APTR Void)
 
       drwReleaseList(ARF_WRITE);
 
-      LogBack();
+      LogReturn();
       return ERR_Okay|ERF_Notified;
    }
 
@@ -1978,7 +1978,7 @@ static ERROR SURFACE_MoveToFront(objSurface *Self, APTR Void)
          if (cplist[i].Level IS level) {
             if (cplist[i].SurfaceID != Self->PopOverID) {
                acMoveToFrontID(Self->PopOverID);
-               LogBack();
+               LogReturn();
                return ERR_Okay;
             }
             break;
@@ -1988,7 +1988,7 @@ static ERROR SURFACE_MoveToFront(objSurface *Self, APTR Void)
 
    refresh_pointer(Self);
 
-   LogBack();
+   LogReturn();
    return ERR_Okay;
 }
 
@@ -2198,7 +2198,7 @@ static ERROR SURFACE_ResetDimensions(objSurface *Self, struct drwResetDimensions
    LogF("~ResetDimensions()","%.0f,%.0f %.0fx%.0f %.0fx%.0f, Flags: $%.8x", Args->X, Args->Y, Args->XOffset, Args->YOffset, Args->Width, Args->Height, Args->Dimensions);
 
    if (!Args->Dimensions) {
-      LogBack();
+      LogReturn();
       return PostError(ERR_NullArgs);
    }
 
@@ -2257,11 +2257,11 @@ static ERROR SURFACE_ResetDimensions(objSurface *Self, struct drwResetDimensions
 
        drwReleaseList(ARF_READ);
 
-      LogBack();
+      LogReturn();
       return ERR_Okay;
    }
    else {
-      LogBack();
+      LogReturn();
       return PostError(ERR_AccessMemory);
    }
 }
@@ -2346,16 +2346,16 @@ static ERROR SURFACE_SaveImage(objSurface *Self, struct acSaveImage *Args)
 
             if (!Action(AC_SaveImage, picture, Args)) { // Save the picture to disk
                acFree(picture);
-               LogBack();
+               LogReturn();
                return ERR_Okay;
             }
          }
       }
 
       acFree(picture);
-      return LogBackError(0, ERR_Failed);
+      return LogReturnError(0, ERR_Failed);
    }
-   else return LogBackError(0, ERR_NewObject);
+   else return LogReturnError(0, ERR_NewObject);
 }
 
 /*****************************************************************************
@@ -2509,7 +2509,7 @@ static ERROR SURFACE_Show(objSurface *Self, APTR Void)
          if (Self->Flags & RNF_HAS_FOCUS) acFocusID(Self->DisplayID);
       }
       else {
-         STEP();
+         LOGRETURN();
          return PostError(ERR_Failed);
       }
    }
@@ -2532,7 +2532,7 @@ static ERROR SURFACE_Show(objSurface *Self, APTR Void)
 
    refresh_pointer(Self);
 
-   STEP();
+   LOGRETURN();
    return ERR_Okay|notified;
 }
 
@@ -2651,7 +2651,7 @@ static void invalidate_overlap(objSurface *Self, struct SurfaceList *list, WORD 
    FMSG("~invalidate_overlap()","%dx%d %dx%d, Between %d to %d", Left, Top, Right-Left, Bottom-Top, OldIndex, Index);
 
    if ((list[Index].Flags & (RNF_REGION|RNF_TRANSPARENT)) OR (!(list[Index].Flags & RNF_VISIBLE))) {
-      STEP();
+      LOGRETURN();
       return;
    }
 
@@ -2703,7 +2703,7 @@ skipcontent:
       i = j - 1;
    }
 
-   STEP();
+   LOGRETURN();
 }
 
 //****************************************************************************

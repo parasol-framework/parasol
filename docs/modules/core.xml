@@ -1592,32 +1592,6 @@ end
   </function>
 
   <function>
-    <name>LogBack</name>
-    <category>Logging</category>
-    <comment>Revert to the previous branch in the application logging tree.</comment>
-    <prototype>void LogBack()</prototype>
-    <description>
-<p>Use LogBack() to reverse any previous log message that created a new branch.  Consider the following example:</p>
-<pre>LogF("~Hello:","World.");
-   LogF("Goodbye:","World.");
-LogBack();
-LogF("Log:","Back to normal.");
-</pre>
-<p>This will produce the following output:</p>
-<pre>Hello         World.
- Goodbye      World.
-Log           Back to normal.
-</pre>
-<p>If the call to LogBack() was eliminated, the log would be permanently out of step, as follows:</p>
-<pre>Hello         World.
- Goodbye      World.
- Log          Back to normal.
-</pre>
-<p>As demonstrated, the creation of any branch must be matched with a call to LogBack() or the log tree will be meaningless.  Please ensure that when writing log code for complex functions, a call to LogBack() is used at each exit point of the function.</p>
-    </description>
-  </function>
-
-  <function>
     <name>LogError</name>
     <category>Logging</category>
     <comment>Sends basic error messages to the active logger.</comment>
@@ -1639,7 +1613,7 @@ Log           Back to normal.
     <prototype>void LogF(CSTRING Header, CSTRING Message, ...)</prototype>
     <input>
       <param type="CSTRING" name="Header">A short name for the first column. Typically function names are placed here, so that the origin of the message is obvious.</param>
-      <param type="CSTRING" name="Message">The first member of the array must be a string.</param>
+      <param type="CSTRING" name="Message">A formatted message to print.</param>
       <param type="..." name="Tags">As per printf() rules, one parameter for every % symbol that has been used in the Message string is required.</param>
     </input>
     <description>
@@ -1652,6 +1626,32 @@ Log           Back to normal.
    acFree(display);
 }
 </pre>
+    </description>
+  </function>
+
+  <function>
+    <name>LogReturn</name>
+    <category>Logging</category>
+    <comment>Revert to the previous branch in the application logging tree.</comment>
+    <prototype>void LogReturn()</prototype>
+    <description>
+<p>Use LogReturn() to reverse any previous log message that created a new branch.  Consider the following example:</p>
+<pre>LogF("~Hello:","World.");
+   LogF("Goodbye:","World.");
+LogReturn();
+LogF("Log:","Back to normal.");
+</pre>
+<p>This will produce the following output:</p>
+<pre>Hello         World.
+ Goodbye      World.
+Log           Back to normal.
+</pre>
+<p>If the call to LogReturn() was eliminated, the log would be permanently out of step, as follows:</p>
+<pre>Hello         World.
+ Goodbye      World.
+ Log          Back to normal.
+</pre>
+<p>As demonstrated, the creation of any branch must be matched with a call to LogReturn() or the log tree will be meaningless.  Please ensure that when writing log code for complex functions, a call to LogReturn() is used at each exit point of the function.</p>
     </description>
   </function>
 
@@ -2460,10 +2460,10 @@ SetField(Object, FID_Statement|TSTR, "string");
 <p>If this function fails, it should be assumed that all of the field settings failed and we recommend that your routine aborts.  This function makes no attempt to 'salvage' any other fields that may be left in the list or undo any previously successful field settings.</p>
     </description>
     <result type="ERROR">
-      <error code="Okay">Operation successful.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
       <error code="Failed">General failure.</error>
       <error code="UnsupportedField">The specified field is not supported by the object's class.</error>
-      <error code="Args">Invalid arguments passed to function.</error>
+      <error code="Okay">Operation successful.</error>
     </result>
   </function>
 
@@ -2500,7 +2500,7 @@ SetField(Object, FID_Statement|TSTR, "string");
       <param type="CSTRING" name="Name">The name that you want to set for the object.</param>
     </input>
     <description>
-<p>To set the name of an object, use this function.  Please note that the length of the Name will be limited to the value indicated in the "main.h" include file, under the MAX_NAME_LEN definition.  If the Name is longer than the allowed length, it will be trimmed to fit.</p>
+<p>To set the name of an object, use this function.  Please note that the length of the Name will be limited to the value indicated in the <code>main.h</code> include file, under the <code>MAX_NAME_LEN</code> definition.  If the Name is longer than the allowed length, it will be trimmed to fit.</p>
 <p>Object names are limited to alpha-numeric characters and the underscore symbol.  Invalid characters will be skipped while setting the object name.</p>
     </description>
     <result type="ERROR">
@@ -2864,11 +2864,11 @@ SetField(Object, FID_Statement|TSTR, "string");
     <name>StrFormatDate</name>
     <category>Strings</category>
     <comment>Formats the content of a Time object into a date string.</comment>
-    <prototype>ERROR StrFormatDate(STRING Buffer, LONG Size, STRING Format, struct DateTime * Time)</prototype>
+    <prototype>ERROR StrFormatDate(STRING Buffer, LONG Size, CSTRING Format, struct DateTime * Time)</prototype>
     <input>
       <param type="STRING" name="Buffer">Pointer to a buffer large enough to receive the formatted data.</param>
       <param type="LONG" name="Size">The length of the Buffer, in bytes.</param>
-      <param type="STRING" name="Format">String specifying the required date format.</param>
+      <param type="CSTRING" name="Format">String specifying the required date format.</param>
       <param type="struct DateTime *" name="Time">Pointer to a DateTime structure that contains the date to be formatted.  If NULL, the current system time will be used.</param>
     </input>
     <description>
@@ -3063,11 +3063,11 @@ SetField(Object, FID_Statement|TSTR, "string");
     <name>StrReplace</name>
     <category>Strings</category>
     <comment>Replaces all occurrences of a keyword or phrase within a given string.</comment>
-    <prototype>ERROR StrReplace(CSTRING Src, STRING Keyword, STRING Replacement, STRING * Result, LONG Flags)</prototype>
+    <prototype>ERROR StrReplace(CSTRING Src, CSTRING Keyword, CSTRING Replacement, STRING * Result, LONG Flags)</prototype>
     <input>
       <param type="CSTRING" name="Src">Points to the source string that contains occurrences of the Keyword that you are searching for.</param>
-      <param type="STRING" name="Keyword">Identifies the keyword or phrase that you want to replace.</param>
-      <param type="STRING" name="Replacement">Identifies the string that will replace all occurrences of the Keyword.</param>
+      <param type="CSTRING" name="Keyword">Identifies the keyword or phrase that you want to replace.</param>
+      <param type="CSTRING" name="Replacement">Identifies the string that will replace all occurrences of the Keyword.</param>
       <param type="STRING *" name="Result">Must refer to a STRING variable that will store the resulting memory block.</param>
       <param type="LONG" name="Flags" lookup="STR">Set to STR_CASE if the keyword search should be case-sensitive.</param>
     </input>
@@ -3720,6 +3720,22 @@ SetField(Object, FID_Statement|TSTR, "string");
   </function>
 
   <function>
+    <name>VLogF</name>
+    <category>Logging</category>
+    <comment>Sends formatted messages to the standard log.</comment>
+    <prototype>void VLogF(LONG Flags, CSTRING Header, CSTRING Message, va_list Args)</prototype>
+    <input>
+      <param type="LONG" name="Flags" lookup="VLF">Optional flags</param>
+      <param type="CSTRING" name="Header">A short name for the first column. Typically function names are placed here, so that the origin of the message is obvious.</param>
+      <param type="CSTRING" name="Message">A formatted message to print.</param>
+      <param type="va_list" name="Args">A va_list corresponding to the arguments referenced in Message.</param>
+    </input>
+    <description>
+<p>Please refer to LogF().  This function is not intended for external use.</p>
+    </description>
+  </function>
+
+  <function>
     <name>VarCopy</name>
     <category>KeyStore</category>
     <comment>Copies all keys in a KeyStore source to a destination KeyStore.</comment>
@@ -3947,6 +3963,19 @@ end
       <const name="COMPRESS_FILE"/>
       <const name="REMOVE_FILE"/>
       <const name="DECOMPRESS_OBJECT"/>
+    </constants>
+
+    <constants lookup="VLF" comment="VlogF flags">
+      <const name="ERROR"/>
+      <const name="WARNING"/>
+      <const name="DEBUG"/>
+      <const name="EXTAPI"/>
+      <const name="BRANCH"/>
+      <const name="INFO"/>
+      <const name="API"/>
+      <const name="TRACE"/>
+      <const name="CRITICAL"/>
+      <const name="FUNCTION"/>
     </constants>
 
     <constants lookup="MOF" comment="Module flags">
@@ -4446,7 +4475,7 @@ end
       <field name="FieldID" type="ULONG">Provides a fast way of finding fields, e.g. FID_WIDTH</field>
       <field name="Offset" type="UWORD">Field offset within the object</field>
       <field name="Index" type="UWORD">Field array index</field>
-      <field name="Flags" type="LONG">Special flags that describe the field</field>
+      <field name="Flags" type="ULONG">Special flags that describe the field</field>
     </struct>
 
     <struct name="Function" comment="Function list array structure">
@@ -4533,7 +4562,7 @@ end
 
     <struct name="FunctionField" comment="Used by ActionTable and Function structures to declare lists of parameters.">
       <field name="Name" type="CSTRING">Name of the field</field>
-      <field name="Type" type="LONG">Type of the field</field>
+      <field name="Type" type="ULONG">Type of the field</field>
     </struct>
 
     <struct name="KeyStore" comment="Key-pair storage created by VarNew()">
@@ -4570,7 +4599,7 @@ end
 
     <struct name="FieldArray" comment="Used to construct class blueprints for the MetaClass.">
       <field name="Name" type="CSTRING">The name of the field, e.g. "Width"</field>
-      <field name="Flags" type="LONG">Special flags that describe the field</field>
+      <field name="Flags" type="ULONG">Special flags that describe the field</field>
       <field name="Arg" type="MAXINT">Can be a pointer or an integer value</field>
       <field name="GetField" type="APTR">void GetField(*Object, APTR Result);</field>
       <field name="SetField" type="APTR">ERROR SetField(*Object, APTR Value);</field>

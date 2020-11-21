@@ -60,7 +60,7 @@ static ERROR TABFOCUS_Activate(objTabFocus *Self, APTR Args)
          }
       }
 
-      LogBack();
+      LogReturn();
    }
    else {
       LogBranch("Current: #%d", Self->CurrentFocus);
@@ -123,7 +123,7 @@ static ERROR TABFOCUS_Activate(objTabFocus *Self, APTR Args)
 
       Self->Index = focusindex;
 
-      LogBack();
+      LogReturn();
    }
 
    return ERR_Okay;
@@ -431,7 +431,7 @@ static void focus_object(objTabFocus *Self, UBYTE Index)
    else ActionMsg(AC_Focus, Self->TabList[Index].ObjectID, NULL);
 */
 
-   LogBack();
+   LogReturn();
 }
 
 //****************************************************************************

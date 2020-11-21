@@ -9,20 +9,19 @@ Please refer to it for further information on licensing.
 -CLASS-
 NetSocket: Manages network connections via TCP/IP sockets.
 
-The NetSocket class provides a simple way of managing TCP/IP socket communication at a high programming tier.
-Connections from a single client to the server and from the server to multiple clients are supported.  SSL
-functionality is also integrated.
+The NetSocket class provides a simple way of managing TCP/IP socket communications.  Connections from a single client
+to the server and from the server to multiple clients are supported.  SSL functionality is also integrated.
 
-The NetSocket class is designed to cater to asynchronous (non-blocking) communication.  This functionality is
-achieved primarily through callback fields - connection alerts are managed by #Feedback, incoming data is
-received through #Incoming and readiness for outgoing data is supported by #Outgoing.
+The design of the NetSocket class caters to asynchronous (non-blocking) communication.  This is achieved primarily
+through callback fields - connection alerts are managed by #Feedback, incoming data is received through #Incoming
+and readiness for outgoing data is supported by #Outgoing.
 
 <header>Client-Server Connections</>
 
-After a connection has been established to a server socket, data may be written using any of the following methods:
+After a connection has been established, data may be written using any of the following methods:
 
 <list type="unsorted">
-<li>Write directly to the server with either the #Write() action or #WriteMsg() method.</li>
+<li>Write directly to the socket with either the #Write() action or #WriteMsg() method.</li>
 <li>Subscribe to the socket by referring to a routine in the #Outgoing field.  The routine will be called to
 initially fill the internal write buffer, thereafter it will be called whenever the buffer is empty.</li>
 </ul>
@@ -33,9 +32,9 @@ immediately sent.
 
 <header>Server-Client Connections</>
 
-To accept incoming client connections, create a NetSocket object with the SERVER flag set and define the
-#Port value on which to listen for new clients.  If you wish to allow multiple connections from a single
-client IP address, you should also set the MULTICONNECT flag.
+To accept incoming client connections, create a NetSocket object with the SERVER flag set and define the #Port value
+on which to listen for new clients.  If multiple connections from a single client IP address are allowed, you should
+also set the MULTICONNECT flag.
 
 When a new connection is detected, the #Feedback function will be called as `Feedback(*NetSocket, *ClientSocket, OBJECTPTR Context, LONG Operation)`
 
@@ -66,16 +65,15 @@ static LONG glMaxWriteLen = 16 * 1024;
 static void client_connect(HOSTHANDLE, APTR);
 #endif
 
-static void client_server_incoming(SOCKET_HANDLE, struct rkNetSocket *);
-static void client_server_outgoing(SOCKET_HANDLE, struct rkNetSocket *);
+static void client_server_incoming(SOCKET_HANDLE, rkNetSocket *);
+static void client_server_outgoing(SOCKET_HANDLE, rkNetSocket *);
 static void clientsocket_incoming(HOSTHANDLE, APTR);
 static void clientsocket_outgoing(HOSTHANDLE, APTR);
-static void free_client(objNetSocket *, struct rkNetClient *);
+static void free_client(objNetSocket *, rkNetClient *);
 static void free_client_socket(objNetSocket *, objClientSocket *, BYTE);
-static void server_client_outgoing(SOCKET_HANDLE, objClientSocket *);
 static void server_client_connect(SOCKET_HANDLE, objNetSocket *);
 static void free_socket(objNetSocket *);
-static ERROR write_queue(objNetSocket *, struct NetQueue *, CPTR, LONG);
+static ERROR write_queue(objNetSocket *, NetQueue *, CPTR, LONG);
 
 //****************************************************************************
 
@@ -101,14 +99,14 @@ static ERROR NETSOCKET_ActionNotify(objNetSocket *Self, struct acActionNotify *A
 /*****************************************************************************
 
 -METHOD-
-Connect: Connects a NetSocket to an address
+Connect: Connects a NetSocket to an address.
 
-This method initiates the connection process with a target Address.  The address to connect to can be specified either
+This method initiates the connection process with a target IP address.  The address to connect to can be specified either
 as a domain name, in which case the domain name is first resolved to an IP address, or the address can be specified in
 standard IP notation.
 
 This method is non-blocking.  It will return immediately and the connection will be resolved once the server responds
-to the connection request or an error occurs.  Client code should subscribe to the State field to respond to changes to
+to the connection request or an error occurs.  Client code should subscribe to the #State field to respond to changes to
 the connection state.
 
 Pre-Condition: Must be in a connection state of NTC_DISCONNECTED
@@ -129,24 +127,24 @@ Failed: The connect failed for some other reason.
 
 *****************************************************************************/
 
-static void connect_name_resolved(LARGE, ERROR, CSTRING HostName, struct IPAddress *IPs, LONG TotalIPs);
+static void connect_name_resolved(LARGE, ERROR, CSTRING HostName, IPAddress *IPs, LONG TotalIPs);
 
 static ERROR NETSOCKET_Connect(objNetSocket *Self, struct nsConnect *Args)
 {
-   struct IPAddress server_ip;
+   parasol::Log log;
 
-   if ((!Args) OR (!Args->Address) OR (Args->Port <= 0) OR (Args->Port >= 65536)) return PostError(ERR_Args);
+   if ((!Args) OR (!Args->Address) OR (Args->Port <= 0) OR (Args->Port >= 65536)) return log.error(ERR_Args);
 
    if (Self->Flags & NSF_SERVER) return ERR_Failed;
 
-   if (!Self->SocketHandle) return PostError(ERR_NotInitialised);
+   if (!Self->SocketHandle) return log.error(ERR_NotInitialised);
 
    if (Self->State != NTC_DISCONNECTED) {
-      LogErrorMsg("Attempt to connect when socket is not in disconnected state");
-      return PostError(ERR_BadState);
+      log.error("Attempt to connect when socket is not in disconnected state");
+      return ERR_BadState;
    }
 
-   LogBranch("Address: %s, Port: %d", Args->Address, Args->Port);
+   log.branch("Address: %s, Port: %d", Args->Address, Args->Port);
 
    if (Args->Address != Self->Address) {
       if (Self->Address) FreeResource(Self->Address);
@@ -154,37 +152,38 @@ static ERROR NETSOCKET_Connect(objNetSocket *Self, struct nsConnect *Args)
    }
    Self->Port = Args->Port;
 
+   IPAddress server_ip;
    if (!netStrToAddress(Self->Address, &server_ip)) { // The address is an IP string, no resolution is necessary
       connect_name_resolved((MAXINT)Self, ERR_Okay, NULL, &server_ip, 1);
    }
    else { // Assume address is a domain name, so try and do a DNS resolution
-      LogMsg("Attempting to resolve domain name '%s'...", Self->Address);
+      log.msg("Attempting to resolve domain name '%s'...", Self->Address);
 
       FUNCTION callback;
       SET_FUNCTION_STDC(callback, (APTR)connect_name_resolved);
       if (netResolveName(Self->Address, 0, &callback, (MAXINT)Self) != ERR_Okay) {
-         return LogBackError(0, Self->Error = ERR_HostNotFound);
+         return log.error(Self->Error = ERR_HostNotFound);
       }
    }
 
-   LogBack();
    return ERR_Okay;
 }
 
 //****************************************************************************
 // This function is called on completion of nsResolveName().
 
-static void connect_name_resolved(LARGE ClientData, ERROR Error, CSTRING HostName, struct IPAddress *IPs, LONG TotalIPs)
+static void connect_name_resolved(LARGE ClientData, ERROR Error, CSTRING HostName, IPAddress *IPs, LONG TotalIPs)
 {
-   objNetSocket *Self = (objNetSocket *)(MAXINT)ClientData;
+   parasol::Log log(__FUNCTION__);
+   auto Self = (objNetSocket *)(MAXINT)ClientData;
    struct sockaddr_in server_address;
 
    if (Error != ERR_Okay) {
-      LogF("@connect_name_resolved()","DNS resolution failed: %s", GetErrorMsg(Error));
+      log.warning("DNS resolution failed: %s", GetErrorMsg(Error));
       return;
    }
 
-   LogF("connect_name_resolved()","Received callback on DNS resolution.  Handle: %d", Self->SocketHandle);
+   log.msg("Received callback on DNS resolution.  Handle: %d", Self->SocketHandle);
 
    // Start connect()
 
@@ -198,35 +197,35 @@ static void connect_name_resolved(LARGE ClientData, ERROR Error, CSTRING HostNam
 
    if (result IS -1) {
       if (errno IS EINPROGRESS) {
-         FMSG("connect_name_resolved","Connection in progress...");
+         log.trace("Connection in progress...");
       }
       else if ((errno IS EWOULDBLOCK) OR (errno IS EAGAIN)) {
-         FMSG("connect_name_resolved","connect() attempt would block or need to try again.");
+         log.trace("connect() attempt would block or need to try again.");
       }
       else {
-         LogF("@connect_name_resolved","Connect() failed: %s", strerror(errno));
+         log.warning("Connect() failed: %s", strerror(errno));
          Self->Error = ERR_Failed;
          SetLong(Self, FID_State, NTC_DISCONNECTED);
          return;
       }
 
       SetLong(Self, FID_State,  NTC_CONNECTING);
-      RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD_READ|RFD_SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&client_server_incoming), Self);
+      RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD_READ|RFD_SOCKET, (void (*)(HOSTHANDLE, APTR))&client_server_incoming, Self);
 
       // The write queue will be signalled once the connection process is completed.
 
       RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD_WRITE|RFD_SOCKET, &client_connect, Self);
    }
    else {
-      FMSG("connect_name_resolved","connect() successful.");
+      log.trace("connect() successful.");
 
       SetLong(Self, FID_State, NTC_CONNECTED);
-      RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD_READ|RFD_SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&client_server_incoming), Self);
+      RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD_READ|RFD_SOCKET, (void (*)(HOSTHANDLE, APTR))&client_server_incoming, Self);
    }
 
 #elif _WIN32
    if ((Self->Error = win_connect(Self->SocketHandle, (struct sockaddr *)&server_address, sizeof(server_address)))) {
-      LogErrorMsg("connect() failed: %s", GetErrorMsg(Self->Error));
+      log.warning("connect() failed: %s", GetErrorMsg(Self->Error));
       return;
    }
 
@@ -239,7 +238,9 @@ static void connect_name_resolved(LARGE ClientData, ERROR Error, CSTRING HostNam
 
 static ERROR NETSOCKET_DataFeed(objNetSocket *Self, struct acDataFeed *Args)
 {
-   if (!Args) return PostError(ERR_NullArgs);
+   parasol::Log log;
+
+   if (!Args) return log.error(ERR_NullArgs);
 
    return ERR_Okay;
 }
@@ -249,7 +250,7 @@ static ERROR NETSOCKET_DataFeed(objNetSocket *Self, struct acDataFeed *Args)
 -ACTION-
 Disable: Disables sending and receiving on the socket.
 
-This method will stop all sending and receiving of data over the socket.
+This method will stop all sending and receiving of data over the socket.  This is irreversible.
 
 -ERRORS-
 Okay
@@ -259,7 +260,9 @@ Failed: Shutdown operation failed.
 
 static ERROR NETSOCKET_Disable(objNetSocket *Self, APTR Void)
 {
-   MSG(NULL);
+   parasol::Log log;
+
+   log.trace("");
 
 #ifdef __linux__
    LONG result = shutdown(Self->SocketHandle, 2);
@@ -268,8 +271,8 @@ static ERROR NETSOCKET_Disable(objNetSocket *Self, APTR Void)
 #endif
 
    if (result) { // Zero is success on both platforms
-      LogErrorMsg("shutdown() failed.");
-      return ERR_Failed;
+      log.warning("shutdown() failed.");
+      return ERR_SystemCall;
    }
 
    return ERR_Okay;
@@ -280,9 +283,9 @@ static ERROR NETSOCKET_Disable(objNetSocket *Self, APTR Void)
 -METHOD-
 DisconnectClient: Disconnects all sockets connected to a specific client IP.
 
-For server sockets with a client connection, this method will terminate all socket connections made to a client and
-frees any resources allocated to it.  If #Feedback is defined, a DISCONNECTED state message will also be issued
-for each socket connection.
+For server sockets with client IP connections, this method will terminate all socket connections made to a specific
+client IP and free the resources allocated to it.  If #Feedback is defined, a DISCONNECTED state message will also
+be issued for each socket connection.
 
 If only one socket connection needs to be disconnected, please use #DisconnectSocket().
 
@@ -298,17 +301,15 @@ NullArgs
 
 static ERROR NETSOCKET_DisconnectClient(objNetSocket *Self, struct nsDisconnectClient *Args)
 {
-   if ((!Args) OR (!Args->Client)) return PostError(ERR_NullArgs);
-
+   if ((!Args) OR (!Args->Client)) return ERR_NullArgs;
    free_client(Self, Args->Client);
-
    return ERR_Okay;
 }
 
 /*****************************************************************************
 
 -METHOD-
-DisconnectSocket: Disconnects a socket that is connected to a specific client IP.
+DisconnectSocket: Disconnects a single socket that is connected to a client IP address.
 
 This method will disconnect a socket connection for a given client.  If #Feedback is defined, a DISCONNECTED
 state message will also be issued.
@@ -325,10 +326,8 @@ NullArgs
 
 static ERROR NETSOCKET_DisconnectSocket(objNetSocket *Self, struct nsDisconnectSocket *Args)
 {
-   if ((!Args) OR (!Args->Socket)) return PostError(ERR_NullArgs);
-
+   if ((!Args) OR (!Args->Socket)) return ERR_NullArgs;
    free_client_socket(Self, Args->Socket, TRUE);
-
    return ERR_Okay;
 }
 
@@ -360,9 +359,11 @@ static ERROR NETSOCKET_Free(objNetSocket *Self, APTR Void)
 
 static ERROR NETSOCKET_FreeWarning(objNetSocket *Self, APTR Void)
 {
+   parasol::Log log;
+
    if (Self->InUse) {
       if (!Self->Terminating) { // Check terminating state to prevent flooding of the message queue
-         LogMsg("NetSocket in use, cannot free yet (request delayed).");
+         log.msg("NetSocket in use, cannot free yet (request delayed).");
          Self->Terminating = TRUE;
          DelayMsg(AC_Free, Self->Head.UniqueID, NULL);
       }
@@ -392,9 +393,11 @@ Failed
 
 static ERROR NETSOCKET_GetLocalIPAddress(objNetSocket *Self, struct nsGetLocalIPAddress *Args)
 {
-   MSG(NULL);
+   parasol::Log log;
 
-   if ((!Args) OR (!Args->Address)) return PostError(ERR_NullArgs);
+   log.traceBranch("");
+
+   if ((!Args) OR (!Args->Address)) return log.error(ERR_NullArgs);
 
    struct sockaddr_in addr;
    LONG result;
@@ -415,7 +418,7 @@ static ERROR NETSOCKET_GetLocalIPAddress(objNetSocket *Self, struct nsGetLocalIP
       Args->Address->Type = IPADDR_V4;
       return ERR_Okay;
    }
-   else return PostError(ERR_Failed);
+   else return log.error(ERR_Failed);
 }
 
 //****************************************************************************
@@ -423,6 +426,7 @@ static ERROR NETSOCKET_GetLocalIPAddress(objNetSocket *Self, struct nsGetLocalIP
 
 static ERROR NETSOCKET_Init(objNetSocket *Self, APTR Void)
 {
+   parasol::Log log;
    ERROR error;
 
    if (Self->SocketHandle != (SOCKET_HANDLE)-1) return ERR_Okay; // The socket has been pre-configured by the developer
@@ -444,7 +448,7 @@ static ERROR NETSOCKET_Init(objNetSocket *Self, APTR Void)
 
    //if ((Self->SocketHandle = socket(PF_INET6, SOCK_STREAM, 0)) IS NOHANDLE) {
       if ((Self->SocketHandle = socket(PF_INET, SOCK_STREAM, 0)) IS NOHANDLE) {
-         LogErrorMsg("socket() %s", strerror(errno));
+         log.warning("socket() %s", strerror(errno));
          return ERR_Failed;
       }
    //}
@@ -457,9 +461,9 @@ static ERROR NETSOCKET_Init(objNetSocket *Self, APTR Void)
       // Was there any reason to use ioctl() when we have fcntl()???
       ULONG non_blocking = 1;
       LONG result = ioctl(Self->SocketHandle, FIONBIO, &non_blocking);
-      if (result) return PostError(ERR_Failed);
+      if (result) return log.error(ERR_Failed);
    #else
-      if (fcntl(Self->SocketHandle, F_SETFL, fcntl(Self->SocketHandle, F_GETFL) | O_NONBLOCK)) return PostError(ERR_Failed);
+      if (fcntl(Self->SocketHandle, F_SETFL, fcntl(Self->SocketHandle, F_GETFL) | O_NONBLOCK)) return log.error(ERR_Failed);
    #endif
 
    // Set the send timeout so that connect() will timeout after a reasonable time
@@ -482,7 +486,7 @@ static ERROR NETSOCKET_Init(objNetSocket *Self, APTR Void)
 #endif
 
    if (Self->Flags & NSF_SERVER) {
-      if (!Self->Port) return PostError(ERR_FieldNotSet);
+      if (!Self->Port) return log.error(ERR_FieldNotSet);
 
       if (Self->IPV6) {
          #ifdef __linux__
@@ -504,8 +508,8 @@ static ERROR NETSOCKET_Init(objNetSocket *Self, APTR Void)
                RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD_READ|RFD_SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&server_client_connect), Self);
                return ERR_Okay;
             }
-            else if (result IS EADDRINUSE) return PostError(ERR_InUse);
-            else return PostError(ERR_Failed);
+            else if (result IS EADDRINUSE) return log.error(ERR_InUse);
+            else return log.error(ERR_Failed);
          #else
             return ERR_NoSupport;
          #endif
@@ -528,9 +532,9 @@ static ERROR NETSOCKET_Init(objNetSocket *Self, APTR Void)
                RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD_READ|RFD_SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&server_client_connect), Self);
                return ERR_Okay;
             }
-            else if (result IS EADDRINUSE) return PostError(ERR_InUse);
+            else if (result IS EADDRINUSE) return log.error(ERR_InUse);
             else {
-               LogF("@","bind() failed with error: %s", strerror(errno));
+               log.warning("bind() failed with error: %s", strerror(errno));
                return ERR_Failed;
             }
          #elif _WIN32
@@ -538,9 +542,9 @@ static ERROR NETSOCKET_Init(objNetSocket *Self, APTR Void)
                if (!(error = win_listen(Self->SocketHandle, Self->Backlog))) {
                   return ERR_Okay;
                }
-               else return PostError(error);
+               else return log.error(error);
             }
-            else return PostError(error);
+            else return log.error(error);
          #endif
       }
    }
@@ -578,7 +582,7 @@ Read: Read information from the socket.
 
 The Read action will read incoming data from the socket and write it to the provided buffer.  If the socket connection
 is safe, success will always be returned by this action regardless of whether or not data was available.  Almost all
-other return codes indicate permanent failure, and the socket connection will be closed when the action returns.
+other return codes indicate permanent failure and the socket connection will be closed when the action returns.
 
 -ERRORS-
 Okay: Read successful (if no data was on the socket, success is still indicated).
@@ -590,14 +594,16 @@ Failed: A permanent failure has occurred and socket has been closed.
 
 static ERROR NETSOCKET_Read(objNetSocket *Self, struct acRead *Args)
 {
-   if ((!Args) OR (!Args->Buffer)) return PostError(ERR_NullArgs);
+   parasol::Log log;
+
+   if ((!Args) OR (!Args->Buffer)) return log.error(ERR_NullArgs);
 
    if (Self->Flags & NSF_SERVER) {
-      LogF("!","DEPRECATED: Read from the ClientSocket instead.");
+      log.error("DEPRECATED: Read from the ClientSocket instead.");
       return ERR_NoSupport;
    }
    else { // Read from the server that we're connected to
-      if (Self->SocketHandle IS NOHANDLE) return PostError(ERR_Disconnected);
+      if (Self->SocketHandle IS NOHANDLE) return log.error(ERR_Disconnected);
 
       Self->ReadCalled = TRUE;
 
@@ -606,9 +612,8 @@ static ERROR NETSOCKET_Read(objNetSocket *Self, struct acRead *Args)
       ERROR error = RECEIVE(Self, Self->SocketHandle, Args->Buffer, Args->Length, 0, &Args->Result);
 
       if (error != ERR_Okay) {
-         LogBranch("Freeing socket, error '%s'", GetErrorMsg(error));
+         log.branch("Freeing socket, error '%s'", GetErrorMsg(error));
          free_socket(Self);
-         LogBack();
       }
 
       return error;
@@ -645,20 +650,20 @@ AllocMemory: A message buffer could not be allocated.
 
 static ERROR NETSOCKET_ReadMsg(objNetSocket *Self, struct nsReadMsg *Args)
 {
-   if (!Args) return PostError(ERR_NullArgs);
+   parasol::Log log;
 
-   FMSG("~","Reading message.");
+   if (!Args) return log.error(ERR_NullArgs);
+
+   log.traceBranch("Reading message.");
 
    Args->Message = NULL;
    Args->Length  = 0;
    Args->CRC     = 0;
    Args->Progress = 0;
 
-   struct NetQueue *queue;
+   NetQueue *queue;
    if (Self->Flags & NSF_SERVER) {
-      PostError(ERR_NoSupport);
-      STEP();
-      return ERR_NoSupport;
+      return log.error(ERR_NoSupport);
    }
 
    queue = &Self->ReadQueue;
@@ -666,7 +671,6 @@ static ERROR NETSOCKET_ReadMsg(objNetSocket *Self, struct nsReadMsg *Args)
    if (!queue->Buffer) {
       queue->Length = 2048;
       if (AllocMemory(queue->Length, MEM_NO_CLEAR, &queue->Buffer, NULL) != ERR_Okay) {
-         STEP();
          return ERR_AllocMemory;
       }
    }
@@ -675,38 +679,36 @@ static ERROR NETSOCKET_ReadMsg(objNetSocket *Self, struct nsReadMsg *Args)
    ULONG total_length;
    ERROR error;
 
-   if (queue->Index >= sizeof(struct NetMsg)) { // The complete message header has been received
-      msglen = be32_cpu(((struct NetMsg *)queue->Buffer)->Length);
-      total_length = sizeof(struct NetMsg) + msglen + 1 + sizeof(struct NetMsgEnd);
+   if (queue->Index >= sizeof(NetMsg)) { // The complete message header has been received
+      msglen = be32_cpu(((NetMsg *)queue->Buffer)->Length);
+      total_length = sizeof(NetMsg) + msglen + 1 + sizeof(NetMsgEnd);
    }
    else { // The message header has not been read yet
-      if (!(error = acRead(Self, (BYTE *)queue->Buffer + queue->Index, sizeof(struct NetMsg) - queue->Index, &result))) {
+      if (!(error = acRead(Self, (BYTE *)queue->Buffer + queue->Index, sizeof(NetMsg) - queue->Index, &result))) {
          queue->Index += result;
 
-         if (queue->Index >= sizeof(struct NetMsg)) {
+         if (queue->Index >= sizeof(NetMsg)) {
             // We have the message header
-            magic  = be32_cpu(((struct NetMsg *)queue->Buffer)->Magic);
-            msglen = be32_cpu(((struct NetMsg *)queue->Buffer)->Length);
+            magic  = be32_cpu(((NetMsg *)queue->Buffer)->Magic);
+            msglen = be32_cpu(((NetMsg *)queue->Buffer)->Length);
 
             if (magic != NETMSG_MAGIC) {
-               LogErrorMsg("Incoming message does not have the magic header (received $%.8x).", magic);
+               log.error("Incoming message does not have the magic header (received $%.8x).", magic);
                queue->Index = 0;
-               STEP();
                return ERR_InvalidData;
             }
             else if (msglen > NETMSG_SIZE_LIMIT) {
-               LogErrorMsg("Incoming message of %d ($%.8x) bytes exceeds message limit.", msglen, msglen);
+               log.error("Incoming message of %d ($%.8x) bytes exceeds message limit.", msglen, msglen);
                queue->Index = 0;
-               STEP();
                return ERR_InvalidData;
             }
 
-            total_length = sizeof(struct NetMsg) + msglen + 1 + sizeof(struct NetMsgEnd);
+            total_length = sizeof(NetMsg) + msglen + 1 + sizeof(NetMsgEnd);
 
             // Check if the queue buffer needs to be extended
 
             if (total_length > queue->Length) {
-               MSG("Extending queue length from %d to %d", queue->Length, total_length);
+               log.trace("Extending queue length from %d to %d", queue->Length, total_length);
                APTR buffer;
                if (!AllocMemory(total_length, MEM_NO_CLEAR, &buffer, NULL)) {
                   if (queue->Buffer) {
@@ -716,65 +718,54 @@ static ERROR NETSOCKET_ReadMsg(objNetSocket *Self, struct nsReadMsg *Args)
                   queue->Buffer = buffer;
                   queue->Length = total_length;
                }
-               else {
-                  STEP();
-                  return PostError(ERR_AllocMemory);
-               }
+               else return log.error(ERR_AllocMemory);
             }
          }
          else {
-            MSG("Succeeded in reading partial message header only (%d bytes).", result);
-            STEP();
+            log.trace("Succeeded in reading partial message header only (%d bytes).", result);
             return ERR_LimitedSuccess;
          }
       }
       else {
-         MSG("Read() failed, error '%s'", GetErrorMsg(error));
-         STEP();
+         log.trace("Read() failed, error '%s'", GetErrorMsg(error));
          return ERR_LimitedSuccess;
       }
    }
 
-   struct NetMsgEnd *msgend;
-   Args->Message = (BYTE *)queue->Buffer + sizeof(struct NetMsg);
+   NetMsgEnd *msgend;
+   Args->Message = (BYTE *)queue->Buffer + sizeof(NetMsg);
    Args->Length = msglen;
 
-   //MSG("Current message is %d bytes long (raw len: %d), progress is %d bytes.", msglen, total_length, queue->Index);
+   //log.trace("Current message is %d bytes long (raw len: %d), progress is %d bytes.", msglen, total_length, queue->Index);
 
    if (!(error = acRead(Self, (char *)queue->Buffer + queue->Index, total_length - queue->Index, &result))) {
       queue->Index += result;
-      Args->Progress = queue->Index - sizeof(struct NetMsg) - sizeof(struct NetMsgEnd);
+      Args->Progress = queue->Index - sizeof(NetMsg) - sizeof(NetMsgEnd);
       if (Args->Progress < 0) Args->Progress = 0;
 
       // If the entire message has been read, we can report success to the user
 
       if (queue->Index >= total_length) {
-         msgend = (struct NetMsgEnd *)((BYTE *)queue->Buffer + sizeof(struct NetMsg) + msglen + 1);
+         msgend = (NetMsgEnd *)((BYTE *)queue->Buffer + sizeof(NetMsg) + msglen + 1);
          magic = be32_cpu(msgend->Magic);
          queue->Index   = 0;
          Args->Progress = Args->Length;
          Args->CRC      = be32_cpu(msgend->CRC);
 
-         MSG("The entire message of %d bytes has been received.", msglen);
+         log.trace("The entire message of %d bytes has been received.", msglen);
 
          if (NETMSG_MAGIC_TAIL != magic) {
-            LogErrorMsg("Incoming message has an invalid tail of $%.8x, CRC $%.8x.", magic, Args->CRC);
-            STEP();
+            log.error("Incoming message has an invalid tail of $%.8x, CRC $%.8x.", magic, Args->CRC);
             return ERR_InvalidData;
          }
 
-         STEP();
          return ERR_Okay;
       }
-      else {
-         STEP();
-         return ERR_LimitedSuccess;
-      }
+      else return ERR_LimitedSuccess;
    }
    else {
-      LogErrorMsg("Failed to read %d bytes off the socket, error %d.", total_length - queue->Index, error);
+      log.error("Failed to read %d bytes off the socket, error %d.", total_length - queue->Index, error);
       queue->Index = 0;
-      STEP();
       return error;
    }
 }
@@ -788,7 +779,7 @@ Writing data to a socket will send raw data to the remote client or server.  Wri
 data overflow generated in a call to this action will be buffered into a software queue.  Resource limits placed on the
 software queue are governed by the #MsgLimit field setting.
 
-In server mode, do not use this action.  Instead write to the @ClientSocket object that will receive the data.
+Do not use this action if in server mode.  Instead, write to the @ClientSocket object that will receive the data.
 
 It is possible to write to a socket in advance of any connection being made. The netsocket will queue the data
 and automatically send it once the first connection has been made.
@@ -797,17 +788,19 @@ and automatically send it once the first connection has been made.
 
 static ERROR NETSOCKET_Write(objNetSocket *Self, struct acWrite *Args)
 {
+   parasol::Log log;
+
    if (!Args) return ERR_NullArgs;
 
    Args->Result = 0;
 
    if (Self->Flags & NSF_SERVER) {
-      LogF("!","DEPRECATED: Write to the target ClientSocket object rather than the NetSocket");
+      log.error("DEPRECATED: Write to the target ClientSocket object rather than the NetSocket");
       return ERR_NoSupport;
    }
 
    if ((Self->SocketHandle IS NOHANDLE) OR (Self->State != NTC_CONNECTED)) { // Queue the write prior to server connection
-      MSG("Writing %d bytes to server (queued for connection).", Args->Length);
+      log.trace("Writing %d bytes to server (queued for connection).", Args->Length);
       write_queue(Self, &Self->WriteQueue, Args->Buffer, Args->Length);
       return ERR_Okay;
    }
@@ -827,8 +820,8 @@ static ERROR NETSOCKET_Write(objNetSocket *Self, struct acWrite *Args)
    }
 
    if ((error) OR (len < Args->Length)) {
-      if (error) MSG("SEND() Error: '%s', queuing %d/%d bytes for transfer...", GetErrorMsg(error), Args->Length - len, Args->Length);
-      else MSG("Queuing %d of %d remaining bytes for transfer...", Args->Length - len, Args->Length);
+      if (error) log.trace("Error: '%s', queuing %d/%d bytes for transfer...", GetErrorMsg(error), Args->Length - len, Args->Length);
+      else log.trace("Queuing %d of %d remaining bytes for transfer...", Args->Length - len, Args->Length);
       if ((error IS ERR_DataSize) OR (error IS ERR_BufferOverflow) OR (len > 0))  {
          write_queue(Self, &Self->WriteQueue, (BYTE *)Args->Buffer + len, Args->Length - len);
          #ifdef __linux__
@@ -839,10 +832,9 @@ static ERROR NETSOCKET_Write(objNetSocket *Self, struct acWrite *Args)
          #endif
       }
    }
-   else MSG("Successfully wrote all %d bytes to the server.", Args->Length);
+   else log.trace("Successfully wrote all %d bytes to the server.", Args->Length);
 
    Args->Result = Args->Length;
-
    return ERR_Okay;
 }
 
@@ -868,26 +860,26 @@ OutOfRange
 
 static ERROR NETSOCKET_WriteMsg(objNetSocket *Self, struct nsWriteMsg *Args)
 {
-   if ((!Args) OR (!Args->Message) OR (Args->Length < 1)) return PostError(ERR_Args);
-   if ((Args->Length < 1) OR (Args->Length > NETMSG_SIZE_LIMIT)) return PostError(ERR_OutOfRange);
+   parasol::Log log;
 
-   FMSG("~","Message: %p, Length: %d", Args->Message, Args->Length);
+   if ((!Args) OR (!Args->Message) OR (Args->Length < 1)) return log.error(ERR_Args);
+   if ((Args->Length < 1) OR (Args->Length > NETMSG_SIZE_LIMIT)) return log.error(ERR_OutOfRange);
 
-   struct NetMsg msg;
-   msg.Magic = cpu_be32(NETMSG_MAGIC);
+   log.traceBranch("Message: %p, Length: %d", Args->Message, Args->Length);
+
+   NetMsg msg;
+   msg.Magic  = cpu_be32(NETMSG_MAGIC);
    msg.Length = cpu_be32(Args->Length);
    acWrite(Self, &msg, sizeof(msg), NULL);
 
    acWrite(Self, Args->Message, Args->Length, NULL);
 
-   UBYTE endbuffer[sizeof(struct NetMsgEnd) + 1];
-   struct NetMsgEnd *end = (struct NetMsgEnd *)(endbuffer + 1);
+   UBYTE endbuffer[sizeof(NetMsgEnd) + 1];
+   NetMsgEnd *end = (NetMsgEnd *)(endbuffer + 1);
    endbuffer[0] = 0; // This null terminator helps with message parsing
    end->Magic = cpu_be32((ULONG)NETMSG_MAGIC_TAIL);
    end->CRC   = cpu_be32(GenCRC32(0, Args->Message, Args->Length));
    acWrite(Self, &endbuffer, sizeof(endbuffer), NULL);
-
-   STEP();
    return ERR_Okay;
 }
 
@@ -981,6 +973,7 @@ static ERROR SET_Feedback(objNetSocket *Self, FUNCTION *Value)
       if (Self->Feedback.Type IS CALL_SCRIPT) SubscribeAction(Self->Feedback.Script.Script, AC_Free);
    }
    else Self->Feedback.Type = CALL_NONE;
+
    return ERR_Okay;
 }
 
@@ -997,9 +990,9 @@ function must follow this definition: `ERROR Incoming(*NetSocket, OBJECTPTR Cont
 
 The NetSocket parameter refers to the NetSocket object.  The Context refers to the object that set the Incoming field.
 
-To get the data from the socket, call the #Read() action. Reading at least some of the data from the socket is
-compulsory - if the function does not do this, then the data will be cleared from the socket when the function returns.
-If your callback function returns ERR_Terminate, then the Incoming field will be cleared so that your function will no
+Retrieve data from the socket with the #Read() action. Reading at least some of the data from the socket is
+compulsory - if the function does not do this then the data will be cleared from the socket when the function returns.
+If the callback function returns ERR_Terminate then the Incoming field will be cleared and the function will no
 longer be called.  All other error codes are ignored.
 
 *****************************************************************************/
@@ -1027,67 +1020,36 @@ static ERROR SET_Incoming(objNetSocket *Self, FUNCTION *Value)
 /*****************************************************************************
 
 -FIELD-
-Outgoing: Callback that is triggered when the socket is ready to send data.
+Outgoing: Callback that is triggered when a socket is ready to send data.
 
 The Outgoing field can be set with a custom function that will be called whenever the socket is ready to send data.
 The function must be in the format `ERROR Outgoing(*NetSocket, OBJECTPTR Context)`
 
 The NetSocket parameter refers to the NetSocket object.  The Context refers to the object that set the Outgoing field.
 
-To send data to the NetSocket object, call the #Write() action.  If your callback function returns
-ERR_Terminate, then the Outgoing field will be cleared so that your function will no longer be called.  All other error
+To send data to the NetSocket object, call the #Write() action.  If the callback function returns
+ERR_Terminate then the Outgoing field will be cleared and the function will no longer be called.  All other error
 codes are ignored.
+
+The Outgoing field is ineffective if the NetSocket is in server mode (target a connected client socket instead).
 
 *****************************************************************************/
 
 static ERROR GET_Outgoing(objNetSocket *Self, FUNCTION **Value)
 {
-   if (Self->Flags & NSF_SERVER) {
-      objClientSocket *csocket;
-
-      if (!(csocket = Self->CurrentSocket)) return PostError(ERR_Disconnected);
-
-      if (csocket->Outgoing.Type != CALL_NONE) {
-         *Value = &csocket->Outgoing;
-         return ERR_Okay;
-      }
-      else return ERR_FieldNotSet;
+   if (Self->Incoming.Type != CALL_NONE) {
+      *Value = &Self->Incoming;
+      return ERR_Okay;
    }
-   else {
-      if (Self->Outgoing.Type != CALL_NONE) {
-         *Value = &Self->Outgoing;
-         return ERR_Okay;
-      }
-      else return ERR_FieldNotSet;
-   }
+   else return ERR_FieldNotSet;
 }
 
 static ERROR SET_Outgoing(objNetSocket *Self, FUNCTION *Value)
 {
+   parasol::Log log;
+
    if (Self->Flags & NSF_SERVER) {
-      objClientSocket *csocket;
-
-      if (!(csocket = Self->CurrentSocket)) return PostError(ERR_Disconnected);
-
-      if (Value) {
-         if (csocket->Outgoing.Type IS CALL_SCRIPT) UnsubscribeAction(csocket->Outgoing.Script.Script, AC_Free);
-         csocket->Outgoing = *Value;
-         if (csocket->Outgoing.Type IS CALL_SCRIPT) SubscribeAction(csocket->Outgoing.Script.Script, AC_Free);
-
-         if (Self->Head.Flags & NF_INITIALISED) {
-            if (csocket->Handle != NOHANDLE) {
-               #ifdef __linux__
-                  RegisterFD((HOSTHANDLE)csocket->Handle, RFD_WRITE|RFD_SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&server_client_outgoing), csocket);
-               #elif _WIN32
-                  win_socketstate(csocket->Handle, -1, TRUE);
-                  Self->WriteClientSocket = &server_client_outgoing;
-               #endif
-            }
-            else LogErrorMsg("Will not listen for socket-writes (no socket handle on client).");
-         }
-         else return PostError(ERR_Disconnected);
-      }
-      else csocket->Outgoing.Type = CALL_NONE;
+      return log.error(ERR_NoSupport);
    }
    else {
       if (Self->Outgoing.Type IS CALL_SCRIPT) UnsubscribeAction(Self->Outgoing.Script.Script, AC_Free);
@@ -1105,7 +1067,7 @@ static ERROR SET_Outgoing(objNetSocket *Self, FUNCTION *Value)
                Self->WriteSocket = &client_server_outgoing;
             #endif
          }
-         else MSG("Will not listen for socket-writes (no socket handle, or state %d != NTC_CONNECTED).", Self->State);
+         else log.trace("Will not listen for socket-writes (no socket handle, or state %d != NTC_CONNECTED).", Self->State);
       }
    }
 
@@ -1169,37 +1131,36 @@ State: The current connection state of the netsocket object.
 
 static ERROR SET_State(objNetSocket *Self, LONG Value)
 {
+   parasol::Log log;
+
    if (Value != Self->State) {
-      if (Self->Flags & NSF_DEBUG) LogMsg("State changed from %d to %d", Self->State, Value);
+      if (Self->Flags & NSF_DEBUG) log.msg("State changed from %d to %d", Self->State, Value);
 
       #ifdef ENABLE_SSL
       if ((Self->State IS NTC_CONNECTING_SSL) AND (Value IS NTC_CONNECTED)) {
          // SSL connection has just been established
 
-         if (SSL_get_verify_result(Self->SSL) != X509_V_OK) {
-             // Handle the failed verification
-             MSG("SSL certification was not validated.");
+         if (SSL_get_verify_result(Self->SSL) != X509_V_OK) { // Handle the failed verification
+             log.trace("SSL certification was not validated.");
          }
-         else MSG("SSL certification is valid.");
+         else log.trace("SSL certification is valid.");
       }
       #endif
 
       Self->State = Value;
 
       if (Self->Feedback.Type) {
-         FMSG("~","Reporting state change to subscriber, operation %d.", Self->State);
+         log.traceBranch("Reporting state change to subscriber, operation %d, context %p.", Self->State, Self->Feedback.StdC.Context);
 
          if (Self->Feedback.Type IS CALL_STDC) {
-            void (*routine)(objNetSocket *, objClientSocket *, LONG);
-            OBJECTPTR context = SetContext(Self->Feedback.StdC.Context);
-               routine = reinterpret_cast<void (*)(objNetSocket *, objClientSocket *, LONG)>(Self->Feedback.StdC.Routine);
-               routine(Self, NULL, Self->State);
-            SetContext(context);
+            parasol::SwitchContext context(Self->Feedback.StdC.Context);
+            auto routine = (void (*)(objNetSocket *, objClientSocket *, LONG))Self->Feedback.StdC.Routine;
+            if (routine) routine(Self, NULL, Self->State);
          }
          else if (Self->Feedback.Type IS CALL_SCRIPT) {
             OBJECTPTR script;
             if ((script = Self->Feedback.Script.Script)) {
-               const struct ScriptArg args[] = {
+               const ScriptArg args[] = {
                   { "NetSocket",    FD_OBJECTPTR, { .Address = Self } },
                   { "ClientSocket", FD_OBJECTPTR, { .Address = NULL } },
                   { "State",        FD_LONG,      { .Long = Self->State } }
@@ -1207,12 +1168,10 @@ static ERROR SET_State(objNetSocket *Self, LONG Value)
                scCallback(script, Self->Feedback.Script.ProcedureID, args, ARRAYSIZE(args));
             }
          }
-
-         STEP();
       }
 
       if ((Self->State IS NTC_CONNECTED) AND ((Self->WriteQueue.Buffer) OR (Self->Outgoing.Type != CALL_NONE))) {
-         MSG("Sending queued data to server on connection.");
+         log.msg("Sending queued data to server on connection.");
          #ifdef __linux__
             RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD_WRITE|RFD_SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&client_server_outgoing), Self);
          #elif _WIN32
@@ -1240,10 +1199,7 @@ In client mode, this field is always set to zero.
 -FIELD-
 UserData: A user-defined pointer that can be useful in action notify events.
 
-When some client code has subscribed to a method, such as MT_NsOConnect, and when the client code receives a
-MT_NsOConnect event through ActionNotify, it can be helpful to have a user data pointer in order to retrieve some
-application defined data structure.  Typically this field is set at object creation to point to some user data
-structure.  For them on it can be used in ActionNotify to retrieve the structure.
+This is a free-entry field value that can store user data for future reference.
 
 -FIELD-
 ValidCert: Indicates certificate validity if the socket is encrypted with a certificate.
@@ -1275,10 +1231,12 @@ static ERROR GET_ValidCert(objNetSocket *Self, LONG *Value)
 
 static void free_socket(objNetSocket *Self)
 {
-   LogF("~free_socket()","Handle: %d", Self->SocketHandle);
+   parasol::Log log(__FUNCTION__);
+
+   log.branch("Handle: %d", Self->SocketHandle);
 
    if (Self->SocketHandle != NOHANDLE) {
-      FMSG("free_socket","Deregistering socket.");
+      log.trace("Deregistering socket.");
 #pragma GCC diagnostic ignored "-Wint-to-pointer-cast"
       DeregisterFD((HOSTHANDLE)Self->SocketHandle);
 #pragma GCC diagnostic warning "-Wint-to-pointer-cast"
@@ -1291,53 +1249,49 @@ static void free_socket(objNetSocket *Self)
       Self->ReadSocket  = NULL;
    #endif
 
-   FMSG("free_socket","Freeing I/O buffer queues.");
+   log.trace("Freeing I/O buffer queues.");
 
    if (Self->WriteQueue.Buffer) { FreeResource(Self->WriteQueue.Buffer); Self->WriteQueue.Buffer = NULL; }
    if (Self->ReadQueue.Buffer) { FreeResource(Self->ReadQueue.Buffer); Self->ReadQueue.Buffer = NULL; }
 
    if (!(Self->Head.Flags & NF_FREE)) {
       if (Self->State != NTC_DISCONNECTED) {
-         FMSG("~free_socket:","Changing state to disconnected.");
+         log.traceBranch("Changing state to disconnected.");
          SetLong(Self, FID_State, NTC_DISCONNECTED);
-         STEP();
       }
    }
 
-   FMSG("free_socket","Resetting exception handler.");
+   log.trace("Resetting exception handler.");
 
    SetResourcePtr(RES_EXCEPTION_HANDLER, NULL); // Stop winsock from fooling with our exception handler
 
-   LogBack();
 }
 
 //****************************************************************************
 
-static ERROR write_queue(objNetSocket *Self, struct NetQueue *Queue, CPTR Message, LONG Length)
+static ERROR write_queue(objNetSocket *Self, NetQueue *Queue, CPTR Message, LONG Length)
 {
-   FMSG("~write_queue()","Queuing a socket message of %d bytes.", Length);
+   parasol::Log log(__FUNCTION__);
+
+   log.traceBranch("Queuing a socket message of %d bytes.", Length);
 
    if (Queue->Buffer) {
       if (Queue->Index >= (ULONG)Queue->Length) {
-         FMSG("write_queue","Terminating the current buffer (emptied).");
+         log.trace("Terminating the current buffer (emptied).");
          FreeResource(Queue->Buffer);
          Queue->Buffer = NULL;
       }
    }
 
-   if (Queue->Buffer) {
-      // Add more information to an existing queue
-
+   if (Queue->Buffer) { // Add more information to an existing queue
       if (Queue->Length + Length > (ULONG)Self->MsgLimit) {
-         FMSG("write_queue","Cannot buffer message of %d bytes - it will overflow the MsgLimit.", Length);
-         STEP();
+         log.trace("Cannot buffer message of %d bytes - it will overflow the MsgLimit.", Length);
          return ERR_BufferOverflow;
       }
 
-      FMSG("write_queue","Extending current buffer to %d bytes.", Queue->Length + Length);
+      log.trace("Extending current buffer to %d bytes.", Queue->Length + Length);
 
-      if (Queue->Index) {
-         // Compact the existing data if some of it has been sent
+      if (Queue->Index) { // Compact the existing data if some of it has been sent
          CopyMemory((BYTE *)Queue->Buffer + Queue->Index, Queue->Buffer, Queue->Length - Queue->Index);
          Queue->Length -= Queue->Index;
          Queue->Index = 0;
@@ -1349,23 +1303,16 @@ static ERROR write_queue(objNetSocket *Self, struct NetQueue *Queue, CPTR Messag
          CopyMemory(Message, (BYTE *)Queue->Buffer + Queue->Length, Length);
          Queue->Length += Length;
       }
-      else {
-         STEP();
-         return ERR_ReallocMemory;
-      }
+      else return ERR_ReallocMemory;
    }
    else if (!AllocMemory(Length, MEM_NO_CLEAR, &Queue->Buffer, NULL)) {
-      FMSG("write_queue","Allocated new buffer of %d bytes.", Length);
+      log.trace("Allocated new buffer of %d bytes.", Length);
       Queue->Index = 0;
       Queue->Length = Length;
       CopyMemory(Message, Queue->Buffer, Length);
    }
-   else {
-      STEP();
-      return PostError(ERR_AllocMemory);
-   }
+   else return log.error(ERR_AllocMemory);
 
-   STEP();
    return ERR_Okay;
 }
 
@@ -1378,11 +1325,9 @@ static ERROR write_queue(objNetSocket *Self, struct NetQueue *Queue, CPTR Messag
 // reliable method of managing recursion problems, but burdens the message queue.
 
 #ifdef _WIN32
-void win32_netresponse(struct Head *SocketObject, SOCKET_HANDLE SocketHandle, LONG Message, ERROR Error)
+void win32_netresponse(Head *SocketObject, SOCKET_HANDLE SocketHandle, LONG Message, ERROR Error)
 {
-   #ifdef DEBUG
-   static const CSTRING msg[] = { "None", "Write", "Read", "Accept", "Connect", "Close" };
-   #endif
+   parasol::Log log(__FUNCTION__);
 
    objNetSocket *Socket;
    objClientSocket *ClientSocket;
@@ -1396,21 +1341,22 @@ void win32_netresponse(struct Head *SocketObject, SOCKET_HANDLE SocketHandle, LO
       ClientSocket = NULL;
    }
 
-   FMSG("~win32_netresponse()","[%d:%d:%p], %s, Error %d, InUse: %d, WinRecursion: %d", Socket->Head.UniqueID, SocketHandle, ClientSocket, msg[Message], Error, Socket->InUse, Socket->WinRecursion);
+   #ifdef DEBUG
+   static const CSTRING msg[] = { "None", "Write", "Read", "Accept", "Connect", "Close" };
+   log.traceBranch("[%d:%d:%p], %s, Error %d, InUse: %d, WinRecursion: %d", Socket->Head.UniqueID, SocketHandle, ClientSocket, msg[Message], Error, Socket->InUse, Socket->WinRecursion);
+   #endif
 
-   OBJECTPTR context = SetContext(Socket);
+   parasol::SwitchContext context(Socket);
 
    Socket->InUse++;
 
    if (Message IS NTE_READ) {
-      if (Error) LogErrorMsg("Socket failed on incoming data, error %d.", Error);
+      if (Error) log.error("Socket failed on incoming data, error %d.", Error);
 
       #ifdef NO_NETRECURSION
          if (Socket->WinRecursion) {
-            FMSG("win32_netsponse","Recursion detected (read request)");
+            log.trace("Recursion detected (read request)");
             Socket->InUse--;
-            SetContext(context);
-            STEP();
             return;
          }
          else {
@@ -1428,14 +1374,12 @@ void win32_netresponse(struct Head *SocketObject, SOCKET_HANDLE SocketHandle, LO
       #endif
    }
    else if (Message IS NTE_WRITE) {
-      if (Error) LogErrorMsg("Socket failed on outgoing data, error %d.", Error);
+      if (Error) log.error("Socket failed on outgoing data, error %d.", Error);
 
       #ifdef NO_NETRECURSION
          if (Socket->WinRecursion) {
-            FMSG("win32_netsponse","Recursion detected (write request)");
+            log.trace("Recursion detected (write request)");
             Socket->InUse--;
-            SetContext(context);
-            STEP();
             return;
          }
          else {
@@ -1453,24 +1397,22 @@ void win32_netresponse(struct Head *SocketObject, SOCKET_HANDLE SocketHandle, LO
       #endif
    }
    else if (Message IS NTE_CLOSE) {
-      LogF("win32_netresponse","Socket closed by server, error %d.", Error);
+      log.msg("Socket closed by server, error %d.", Error);
       if (Socket->State != NTC_DISCONNECTED) SetLong(Socket, FID_State, NTC_DISCONNECTED);
       free_socket(Socket);
    }
    else if (Message IS NTE_ACCEPT) {
-      FMSG("~win32_netresponse","Accept message received for new client %d.", SocketHandle);
+      log.traceBranch("Accept message received for new client %d.", SocketHandle);
       server_client_connect(Socket->SocketHandle, Socket);
-      STEP();
    }
    else if (Message IS NTE_CONNECT) {
       if (Error IS ERR_Okay) {
-         LogF("win32_netresponse","Connection to server granted.");
+         log.msg("Connection to server granted.");
 
          #ifdef ENABLE_SSL
             if (Socket->SSL) {
-               FMSG("~server_connect","Attempting SSL handshake.");
-                  sslConnect(Socket);
-               STEP();
+               log.traceBranch("Attempting SSL handshake.");
+               sslConnect(Socket);
 
                if (Socket->State IS NTC_CONNECTING_SSL) {
                   //RegisterFD((HOSTHANDLE)Socket->SocketHandle, RFD_READ|RFD_SOCKET, &client_server_incoming, Socket);
@@ -1482,21 +1424,19 @@ void win32_netresponse(struct Head *SocketObject, SOCKET_HANDLE SocketHandle, LO
          #endif
       }
       else {
-         LogF("win32_netresponse","Connection state changed, error: %s", GetErrorMsg(Error));
+         log.msg("Connection state changed, error: %s", GetErrorMsg(Error));
          Socket->Error = Error;
          SetLong(Socket, FID_State, NTC_DISCONNECTED);
       }
    }
 
    Socket->InUse--;
-   SetContext(context);
-   STEP();
 }
 #endif
 
 //****************************************************************************
 
-static const struct FieldDef clValidCert[] = {
+static const FieldDef clValidCert[] = {
    { "Okay",                          SCV_OK },                                 // The operation was successful.
    { "UnableToGetIssuerCert",         SCV_UNABLE_TO_GET_ISSUER_CERT },          // unable to get issuer certificate the issuer certificate could not be found: this occurs if the issuer certificate of an untrusted certificate cannot be found.
    { "UnableToGetCRL",                SCV_UNABLE_TO_GET_CRL },                  // unable to get certificate CRL the CRL of a certificate could not be found. Unused.
@@ -1535,9 +1475,8 @@ static const struct FieldDef clValidCert[] = {
 
 #include "netsocket_def.c"
 
-static const struct FieldArray clSocketFields[] = {
+static const FieldArray clSocketFields[] = {
    { "Clients",          FDF_POINTER|FDF_STRUCT|FDF_R, (MAXINT)&"NetClient", NULL, NULL },
-   { "CurrentClient",    FDF_OBJECT|FDF_RW,    ID_CLIENTSOCKET, NULL, NULL },
    { "UserData",         FDF_POINTER|FDF_RW,   0, NULL, NULL },
    { "Address",          FDF_STRING|FDF_RI,    0, NULL, (APTR)SET_Address },
    { "State",            FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clNetSocketState, NULL, (APTR)SET_State },
@@ -1552,7 +1491,7 @@ static const struct FieldArray clSocketFields[] = {
    { "SocketHandle",     FDF_POINTER|FDF_RI,     0, (APTR)GET_SocketHandle, (APTR)SET_SocketHandle },
    { "Feedback",         FDF_FUNCTIONPTR|FDF_RW, 0, (APTR)GET_Feedback, (APTR)SET_Feedback },
    { "Incoming",         FDF_FUNCTIONPTR|FDF_RW, 0, (APTR)GET_Incoming, (APTR)SET_Incoming },
-   { "Outgoing",         FDF_FUNCTIONPTR|FDF_W,  0, NULL, (APTR)SET_Outgoing },
+   { "Outgoing",         FDF_FUNCTIONPTR|FDF_W,  0, (APTR)GET_Outgoing, (APTR)SET_Outgoing },
    { "OutQueueSize",     FDF_LONG|FDF_R,         0, (APTR)GET_OutQueueSize },
    { "ValidCert",        FDF_LONG|FDF_LOOKUP,    (MAXINT)&clValidCert, (APTR)GET_ValidCert, NULL },
    END_FIELD

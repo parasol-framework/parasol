@@ -58,9 +58,11 @@ Okay: Proxy deleted.
 
 static ERROR PROXY_Delete(objProxy *Self, APTR Void)
 {
-   if ((!Self->Section[0]) OR (!Self->Record)) return PostError(ERR_Failed);
+   parasol::Log log;
 
-   LogBranch(NULL);
+   if ((!Self->Section[0]) OR (!Self->Record)) return log.error(ERR_Failed);
+
+   log.branch("");
 
    if (Self->Host) {
       #ifdef _WIN32
@@ -77,7 +79,6 @@ static ERROR PROXY_Delete(objProxy *Self, APTR Void)
       acSaveSettings(glConfig);
    }
 
-   LogBack();
    return ERR_Okay;
 }
 
@@ -147,7 +148,9 @@ NoSearchResult: No matching proxy was discovered.
 
 static ERROR PROXY_Find(objProxy *Self, struct prxFind *Args)
 {
-   MSG("Port: %d, Enabled: %d", (Args) ? Args->Port : 0, (Args) ? Args->Enabled : -1);
+   parasol::Log log;
+
+   log.trace("Port: %d, Enabled: %d", (Args) ? Args->Port : 0, (Args) ? Args->Enabled : -1);
 
    // Remove the previous cache of the proxy database
 
@@ -202,7 +205,7 @@ static ERROR PROXY_Find(objProxy *Self, struct prxFind *Args)
                }
 
                if ((!taskGetEnv(task, HKEY_PROXY "ProxyServer", &servers)) AND (servers[0])) {
-                  LogMsg("Host has defined default proxies: %s", servers);
+                  log.msg("Host has defined default proxies: %s", servers);
 
                   total = 0;
                   port  = 0;
@@ -262,7 +265,7 @@ static ERROR PROXY_Find(objProxy *Self, struct prxFind *Args)
                         if (servers[index+s] IS ':') {
                            serverport = StrToInt(servers + index + s + 1);
 
-                           MSG("Discovered proxy server %s, port %d", server, serverport);
+                           log.trace("Discovered proxy server %s, port %d", server, serverport);
 
                            cfgWriteValue(glConfig, section, "Name", name);
                            cfgWriteValue(glConfig, section, "Server", server);
@@ -287,7 +290,7 @@ static ERROR PROXY_Find(objProxy *Self, struct prxFind *Args)
                   }
                }
          }
-         else LogMsg("Host does not have proxies enabled (registry setting: %s)", HKEY_PROXY);
+         else log.msg("Host does not have proxies enabled (registry setting: %s)", HKEY_PROXY);
 
       #endif
 
@@ -335,6 +338,7 @@ static ERROR PROXY_FindNext(objProxy *Self, APTR Void)
 
 static ERROR find_proxy(objProxy *Self)
 {
+   parasol::Log log(__FUNCTION__);
    LONG i, j, num, id;
    CSTRING str;
    UBYTE match;
@@ -342,7 +346,7 @@ static ERROR find_proxy(objProxy *Self)
    clear_values(Self);
 
    if (!glConfig) {
-      MSG("Global config not loaded.");
+      log.trace("Global config not loaded.");
       return ERR_NoSearchResult;
    }
 
@@ -351,7 +355,7 @@ static ERROR find_proxy(objProxy *Self)
    }
 
    if (Self->Section[0]) { // Find the current section/record
-      MSG("Finding current record.");
+      log.trace("Finding current record.");
 
       for (i=0; i < glConfig->AmtEntries; i++) {
          if (!StrMatch(Self->Section, glConfig->Entries[i].Section)) break;
@@ -359,7 +363,7 @@ static ERROR find_proxy(objProxy *Self)
 
       // Move to the next section/record
 
-      MSG("Moving to next record.");
+      log.trace("Moving to next record.");
 
       for (; i < glConfig->AmtEntries; i++) {
          if (StrMatch(Self->Section, glConfig->Entries[i].Section) != ERR_Okay) break;
@@ -367,12 +371,12 @@ static ERROR find_proxy(objProxy *Self)
    }
    else i = 0;
 
-   MSG("Finding next proxy in %d config entries.  Port: '%s', Enabled: %d", glConfig->AmtEntries, Self->FindPort, Self->FindEnabled);
+   log.trace("Finding next proxy in %d config entries.  Port: '%s', Enabled: %d", glConfig->AmtEntries, Self->FindPort, Self->FindEnabled);
 
    while (i < glConfig->AmtEntries) {
       match = TRUE;
 
-      MSG("Section: %s", glConfig->Entries[i].Section);
+      log.trace("Section: %s", glConfig->Entries[i].Section);
 
       id = StrToInt(glConfig->Entries[i].Section);
       if (id > 0) {
@@ -385,7 +389,7 @@ static ERROR find_proxy(objProxy *Self)
                }
                else {
                   if (StrCompare(str, Self->FindPort, 0, STR_WILDCARD) != ERR_Okay) {
-                     MSG("Port '%s' doesn't match requested port '%s'", str, Self->FindPort);
+                     log.trace("Port '%s' doesn't match requested port '%s'", str, Self->FindPort);
                      match = FALSE;
                   }
                }
@@ -397,7 +401,7 @@ static ERROR find_proxy(objProxy *Self)
 
             if (!cfgReadInt(glConfig, glConfig->Entries[i].Section, "Enabled", &num)) {
                if (Self->FindEnabled != num) {
-                  MSG("Enabled state of %d does not match requested state %d.", num, Self->FindEnabled);
+                  log.trace("Enabled state of %d does not match requested state %d.", num, Self->FindEnabled);
                   match = FALSE;
                }
             }
@@ -406,20 +410,18 @@ static ERROR find_proxy(objProxy *Self)
          if ((match) AND (!cfgReadValue(glConfig, glConfig->Entries[i].Section, "NetworkFilter", &str))) {
             // Do any of the currently connected networks match with the filter?
 
-            LogErrorMsg("Network filters not supported yet.");
+            log.error("Network filters not supported yet.");
 
          }
 
          if ((match) AND (!cfgReadValue(glConfig, glConfig->Entries[i].Section, "GatewayFilter", &str))) {
             // Do any connected gateways match with the filter?
 
-            LogErrorMsg("Gateway filters not supported yet.");
-
+            log.error("Gateway filters not supported yet.");
          }
 
          if (match) {
-            MSG("Found a matching proxy.");
-
+            log.trace("Found a matching proxy.");
             StrCopy(glConfig->Entries[i].Section, Self->Section, sizeof(Self->Section));
             return get_record(Self);
          }
@@ -434,7 +436,7 @@ static ERROR find_proxy(objProxy *Self)
       }
    }
 
-   MSG("No proxy matched.");
+   log.trace("No proxy matched.");
 
    Self->Find = FALSE;
    return ERR_NoSearchResult;
@@ -482,50 +484,42 @@ administrator to define proxy settings as the default for all users by copying t
 
 static ERROR PROXY_SaveSettings(objProxy *Self, APTR Void)
 {
+   parasol::Log log;
    objConfig *config;
    objFile *file;
    ERROR error;
 
-   if ((!Self->Server) OR (!Self->ServerPort)) return PostError(ERR_FieldNotSet);
+   if ((!Self->Server) OR (!Self->ServerPort)) return log.error(ERR_FieldNotSet);
 
-   LogBranch("Host: %d", Self->Host);
+   log.branch("Host: %d", Self->Host);
 
    if (Self->Host) {
-      // Proxy is hosted
-
       #ifdef _WIN32
-         OBJECTPTR task;
+         OBJECTPTR task = CurrentTask();
 
-         task = CurrentTask();
-
-         if (Self->Enabled) {
-            taskSetEnv(task, HKEY_PROXY "ProxyEnable", "1");
-         }
+         if (Self->Enabled) taskSetEnv(task, HKEY_PROXY "ProxyEnable", "1");
          else taskSetEnv(task, HKEY_PROXY "ProxyEnable", "0");
 
          if ((!Self->Server) OR (!Self->Server[0])) {
-            MSG("Clearing proxy server value.");
-
+            log.trace("Clearing proxy server value.");
             taskSetEnv(task, HKEY_PROXY "ProxyServer", "");
          }
          else if (Self->Port IS 0) {
             // Proxy is for all ports
 
             char buffer[120];
-
             StrFormat(buffer, sizeof(buffer), "%s:%d", Self->Server, Self->ServerPort);
 
-            MSG("Changing all-port proxy to: %s", buffer);
+            log.trace("Changing all-port proxy to: %s", buffer);
 
             taskSetEnv(task, HKEY_PROXY "ProxyServer", buffer);
          }
          else {
             char buffer[120];
-            CSTRING portname;
             STRING newlist;
             LONG index, end, len;
 
-            portname = NULL;
+            CSTRING portname = NULL;
             switch(Self->Port) {
                case 21: portname = "ftp"; break;
                case 80: portname = "http"; break;
@@ -566,32 +560,21 @@ static ERROR PROXY_SaveSettings(objProxy *Self, APTR Void)
                   // Save the new proxy list
 
                   taskSetEnv(task, HKEY_PROXY "ProxyServer", newlist);
-
                   FreeResource(newlist);
                }
             }
-            else LogErrorMsg("Windows' host proxy settings do not support port %d", Self->Port);
+            else log.error("Windows' host proxy settings do not support port %d", Self->Port);
          }
 
       #endif
 
-      LogBack();
       return ERR_Okay;
    }
 
-   if (!CreateObject(ID_CONFIG, 0, &config,
-         FID_Path|TSTR,  "user:config/network/proxies.cfg",
-         TAGEND)) {
-
-      if (Self->Section[0]) {
-         cfgDeleteSection(config, Self->Section);
-      }
-      else {
-         // This is a new proxy
-
-         LONG id;
-
-         id = 0;
+   if (!CreateObject(ID_CONFIG, 0, &config, FID_Path|TSTR,  "user:config/network/proxies.cfg", TAGEND)) {
+      if (Self->Section[0]) cfgDeleteSection(config, Self->Section);
+      else { // This is a new proxy
+         LONG id = 0;
          cfgReadInt(config, "ID", "Value", &id);
          id = id + 1;
          cfgWriteInt(config, "ID", "Value", id);
@@ -625,7 +608,6 @@ static ERROR PROXY_SaveSettings(objProxy *Self, APTR Void)
    }
    else error = ERR_CreateObject;
 
-   LogBack();
    return error;
 }
 
@@ -795,11 +777,12 @@ The port used to communicate with the proxy server must be defined here.
 
 static ERROR SET_ServerPort(objProxy *Self, LONG Value)
 {
+   parasol::Log log;
    if ((Value > 0) AND (Value <= 65536)) {
       Self->ServerPort = Value;
       return ERR_Okay;
    }
-   else return PostError(ERR_OutOfRange);
+   else return log.error(ERR_OutOfRange);
 }
 
 /****************************************************************************
@@ -848,12 +831,13 @@ static ERROR SET_Record(objProxy *Self, LONG Value)
 
 static ERROR get_record(objProxy *Self)
 {
-   CSTRING str;
+   parasol::Log log(__FUNCTION__);
 
-   FMSG("get_record()","Section: %s", Self->Section);
+   log.trace("Section: %s", Self->Section);
 
    Self->Record = StrToInt(Self->Section);
 
+   CSTRING str;
    if (!cfgReadValue(glConfig, Self->Section, "Server", &str))   {
       Self->Server = StrClone(str);
       if (!cfgReadValue(glConfig, Self->Section, "NetworkFilter", &str)) Self->NetworkFilter = StrClone(str);
@@ -867,14 +851,16 @@ static ERROR get_record(objProxy *Self)
       if (!cfgReadInt(glConfig, Self->Section, "Host", &Self->Host));
       return ERR_Okay;
    }
-   else return PostError(ERR_NotFound);
+   else return log.error(ERR_NotFound);
 }
 
 /***************************************************************************/
 
 static void clear_values(objProxy *Self)
 {
-   FMSG("clear_values()","");
+   parasol::Log log(__FUNCTION__);
+
+   log.trace("");
 
    Self->Record     = 0;
    Self->Port       = 0;
@@ -891,7 +877,7 @@ static void clear_values(objProxy *Self)
 
 //***************************************************************************
 
-static const struct FieldDef clPorts[] = {
+static const FieldDef clPorts[] = {
    { "FTP-Data",  20 },
    { "FTP",       21 },
    { "SSH",       22 },
@@ -910,7 +896,7 @@ static const struct FieldDef clPorts[] = {
    { NULL, 0 }
 };
 
-static const struct FieldArray clFields[] = {
+static const FieldArray clFields[] = {
    { "NetworkFilter", FDF_STRING|FDF_RW, 0, NULL, (APTR)SET_NetworkFilter },
    { "GatewayFilter", FDF_STRING|FDF_RW, 0, NULL, (APTR)SET_GatewayFilter },
    { "Username",      FDF_STRING|FDF_RW, 0, NULL, (APTR)SET_Username },
@@ -924,7 +910,7 @@ static const struct FieldArray clFields[] = {
    END_FIELD
 };
 
-static const struct ActionArray clActions[] = {
+static const ActionArray clActions[] = {
    { AC_Disable,      (APTR)PROXY_Disable },
    { AC_Enable,       (APTR)PROXY_Enable },
    { AC_Free,         (APTR)PROXY_Free },
@@ -934,9 +920,9 @@ static const struct ActionArray clActions[] = {
    { 0, 0 }
 };
 
-static const struct FunctionField argsFind[] = { { "Port", FD_LONG }, { "Enabled", FD_LONG }, { NULL, 0 } };
+static const FunctionField argsFind[] = { { "Port", FD_LONG }, { "Enabled", FD_LONG }, { NULL, 0 } };
 
-static const struct MethodArray clMethods[] = {
+static const MethodArray clMethods[] = {
    { MT_PrxDelete,    (APTR)PROXY_Delete,   "Delete",   NULL, 0 },
    { MT_PrxFind,      (APTR)PROXY_Find,     "Find",     argsFind, sizeof(struct prxFind) },
    { MT_PrxFindNext,  (APTR)PROXY_FindNext, "FindNext", NULL, 0 },

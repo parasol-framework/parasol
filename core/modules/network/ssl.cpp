@@ -5,9 +5,11 @@
 
 static ERROR sslInit(void)
 {
+   parasol::Log log(__FUNCTION__);
+
    if (ssl_init) return ERR_Okay;
 
-   FMSG("~sslInit()","");
+   log.traceBranch("");
 
    SSL_load_error_strings();
    ERR_load_BIO_strings();
@@ -16,8 +18,6 @@ static ERROR sslInit(void)
    OPENSSL_add_all_algorithms_noconf(); // Is this call a significant resource expense?
 
    ssl_init = TRUE;
-
-   STEP();
    return ERR_Okay;
 }
 
@@ -25,56 +25,56 @@ static ERROR sslInit(void)
 
 static void sslDisconnect(objNetSocket *Self)
 {
+   parasol::Log log(__FUNCTION__);
+
    if (Self->SSL) {
-      FMSG("~sslDisconnect()","Closing SSL connection.");
+      log.traceBranch("Closing SSL connection.");
 
-         SSL_set_info_callback(Self->SSL, NULL);
-         SSL_shutdown(Self->SSL);
-         SSL_free(Self->SSL);
-         Self->SSL = NULL;
-
-      STEP();
+      SSL_set_info_callback(Self->SSL, NULL);
+      SSL_shutdown(Self->SSL);
+      SSL_free(Self->SSL);
+      Self->SSL = NULL;
    }
 
    if (Self->CTX) {
       SSL_CTX_free(Self->CTX);
       Self->CTX = NULL;
    }
-
-   STEP();
 }
 
 //****************************************************************************
 
 static void sslMsgCallback(const ssl_st *s, int where, int ret)
 {
-   const char *str;
+   const char *state;
+   parasol::Log log(__FUNCTION__);
+
    LONG w = where & (~SSL_ST_MASK);
 
-   if (w & SSL_ST_CONNECT) str = "SSL_Connect";
-   else if (w & SSL_ST_ACCEPT) str = "SSL_Accept";
-   else if (w & TLS_ST_BEFORE) str = "TLS_Before";
-   else if (w & TLS_ST_OK) str = "TLS_OK";
-   else if (w IS SSL_F_SSL_RENEGOTIATE) str = "SSL_Renegotiate";
-   else str = "SSL_Undefined";
+   if (w & SSL_ST_CONNECT) state = "SSL_Connect";
+   else if (w & SSL_ST_ACCEPT) state = "SSL_Accept";
+   else if (w & TLS_ST_BEFORE) state = "TLS_Before";
+   else if (w & TLS_ST_OK) state = "TLS_OK";
+   else if (w IS SSL_F_SSL_RENEGOTIATE) state = "SSL_Renegotiate";
+   else state = "SSL_Undefined";
 
    if (where & SSL_CB_LOOP) {
-      LogF(str, "Loop: %s", SSL_state_string_long(s));
+      log.msg("%s: Loop: %s", state, SSL_state_string_long(s));
    }
    else if (where & SSL_CB_ALERT) {
-      LogF(str, "%s Alert: %s : %s", (where & SSL_CB_READ) ? "Read" : "Write", SSL_alert_type_string_long(ret), SSL_alert_desc_string_long(ret));
+      log.msg("%s: %s Alert: %s : %s", state, (where & SSL_CB_READ) ? "Read" : "Write", SSL_alert_type_string_long(ret), SSL_alert_desc_string_long(ret));
    }
    else if (where & SSL_CB_EXIT) {
-      if (ret == 0) LogF(str,"Failed in %s", SSL_state_string_long(s));
-      else if (ret < 0) LogF(str, "Error in %s", SSL_state_string_long(s));
+      if (ret == 0) log.msg("%s: Failed in %s", state, SSL_state_string_long(s));
+      else if (ret < 0) log.msg("%s: Error in %s", state, SSL_state_string_long(s));
    }
    else if (where & SSL_CB_HANDSHAKE_START) {
-      LogF(str, "Handshake Start: %s", SSL_state_string_long(s));
+      log.msg("%s: Handshake Start: %s", state, SSL_state_string_long(s));
    }
    else if (where & SSL_CB_HANDSHAKE_DONE) {
-      LogF(str, "Handshake Done: %s", SSL_state_string_long(s));
+      log.msg("%s: Handshake Done: %s", state, SSL_state_string_long(s));
    }
-   else LogF(str, "Unknown: %s", SSL_state_string_long(s));
+   else log.msg("%s: Unknown: %s", state, SSL_state_string_long(s));
 }
 
 //****************************************************************************
@@ -94,6 +94,7 @@ static ERROR sslSetup(objNetSocket *Self)
 {
    STRING path;
    ERROR error;
+   parasol::Log log(__FUNCTION__);
 
    if (!ssl_init) {
       error = sslInit();
@@ -102,7 +103,7 @@ static ERROR sslSetup(objNetSocket *Self)
 
    if (Self->CTX) return ERR_Okay;
 
-   FMSG("~sslSetup()", "");
+   log.traceBranch("");
 
    if ((Self->CTX = SSL_CTX_new(SSLv23_client_method()))) {
       //if (GetResource(RES_LOG_LEVEL > 3)) SSL_CTX_set_info_callback(Self->CTX, (void *)&sslCtxMsgCallback);
@@ -112,18 +113,17 @@ static ERROR sslSetup(objNetSocket *Self)
             FreeResource(path);
 
             if ((Self->SSL = SSL_new(Self->CTX))) {
-               LogMsg("SSL connectivity has been configured successfully.");
+               log.msg("SSL connectivity has been configured successfully.");
 
                if (GetResource(RES_LOG_LEVEL > 3)) SSL_set_info_callback(Self->SSL, &sslMsgCallback);
 
-               STEP();
                return ERR_Okay;
             }
-            else { LogErrorMsg("Failed to initialise new SSL object."); error = ERR_Failed; }
+            else { log.warning("Failed to initialise new SSL object."); error = ERR_Failed; }
          }
          else {
             FreeResource(path);
-            LogErrorMsg("Failed to define certificate folder: %s", path);
+            log.warning("Failed to define certificate folder: %s", path);
             error = ERR_Failed;
          }
       }
@@ -133,11 +133,10 @@ static ERROR sslSetup(objNetSocket *Self)
       Self->CTX = NULL;
    }
    else {
-      LogErrorMsg("SSL_CTX_new: %s", ERR_error_string(ERR_get_error(), NULL));
+      log.warning("SSL_CTX_new: %s", ERR_error_string(ERR_get_error(), NULL));
       error = ERR_Failed;
    }
 
-   STEP();
    return error;
 }
 
@@ -145,7 +144,9 @@ static ERROR sslSetup(objNetSocket *Self)
 
 static ERROR sslLinkSocket(objNetSocket *Self)
 {
-   FMSG("~sslLinkSocket()","");
+   parasol::Log log(__FUNCTION__);
+
+   log.traceBranch("");
 
    if ((Self->BIO = BIO_new_socket(Self->SocketHandle, BIO_NOCLOSE))) {
       SSL_set_bio(Self->SSL, Self->BIO, Self->BIO);
@@ -153,9 +154,8 @@ static ERROR sslLinkSocket(objNetSocket *Self)
       SSL_ctrl(Self->SSL, SSL_CTRL_MODE,(SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER), NULL);
       SSL_ctrl(Self->SSL, SSL_CTRL_MODE,(SSL_MODE_ENABLE_PARTIAL_WRITE), NULL);
    }
-   else LogErrorMsg("Failed to create a SSL BIO object.");
+   else log.warning("Failed to create a SSL BIO object.");
 
-   STEP();
    return ERR_Okay;
 }
 
@@ -170,9 +170,11 @@ static ERROR sslLinkSocket(objNetSocket *Self)
 
 static ERROR sslConnect(objNetSocket *Self)
 {
-   FMSG("~sslConnect()","");
+   parasol::Log log(__FUNCTION__);
 
-   if (!Self->SSL) { STEP(); return ERR_Failed; }
+   log.traceBranch("");
+
+   if (!Self->SSL) return ERR_FieldNotSet;
 
    LONG result = SSL_connect(Self->SSL);
 
@@ -184,17 +186,14 @@ static ERROR sslConnect(objNetSocket *Self)
 
       switch(result) {
          case SSL_ERROR_NONE:             Self->Error = ERR_Okay;
-                                          STEP();
                                           return ERR_Okay;
 
          case SSL_ERROR_ZERO_RETURN:      Self->Error = ERR_Disconnected; break;
 
          case SSL_ERROR_WANT_READ:        SetLong(Self, FID_State, NTC_CONNECTING_SSL);
-                                          STEP();
                                           return ERR_Okay;
 
          case SSL_ERROR_WANT_WRITE:       SetLong(Self, FID_State, NTC_CONNECTING_SSL);
-                                          STEP();
                                           return ERR_Okay;
 
          case SSL_ERROR_WANT_CONNECT:     Self->Error = ERR_WouldBlock; break;
@@ -209,17 +208,13 @@ static ERROR sslConnect(objNetSocket *Self)
          default:                         Self->Error = ERR_Failed;
       }
 
-      LogErrorMsg("SSL_connect: %s (%s)", ERR_error_string(result, NULL), GetErrorMsg(Self->Error));
-
+      log.warning("SSL_connect: %s (%s)", ERR_error_string(result, NULL), GetErrorMsg(Self->Error));
       SetLong(Self, FID_State, NTC_DISCONNECTED);
-
-      STEP();
       return Self->Error;
    }
    else {
-      FMSG("sslConnect:","SSL server connection successful.");
+      log.trace("sslConnect:","SSL server connection successful.");
       SetLong(Self, FID_State, NTC_CONNECTED);
-      STEP();
       return ERR_Okay;
    }
 }
@@ -232,14 +227,13 @@ static ERROR sslConnect(objNetSocket *Self)
 
 static void ssl_handshake_write(SOCKET_HANDLE Socket, APTR Data)
 {
+   parasol::Log log(__FUNCTION__);
    objNetSocket *Self = reinterpret_cast<objNetSocket *>(Data);
    LONG result;
 
-   LogF("ssl_handshake_write()","Socket: " PF64(), (MAXINT)Socket);
+   log.msg("Socket: " PF64(), (MAXINT)Socket);
 
-   if ((result = SSL_do_handshake(Self->SSL)) == 1) {
-      // Handshake successful, connection established
-
+   if ((result = SSL_do_handshake(Self->SSL)) == 1) { // Handshake successful, connection established
       #ifdef __linux__
          RegisterFD((HOSTHANDLE)Socket, RFD_WRITE|RFD_REMOVE|RFD_SOCKET, &ssl_handshake_write, Self);
       #elif _WIN32
@@ -275,14 +269,13 @@ static void ssl_handshake_write(SOCKET_HANDLE Socket, APTR Data)
 
 static void ssl_handshake_read(SOCKET_HANDLE Socket, APTR Data)
 {
+   parasol::Log log(__FUNCTION__);
    objNetSocket *Self = reinterpret_cast<objNetSocket *>(Data);
    LONG result;
 
-   LogF("ssl_handshake_read()","Socket: " PF64(), (MAXINT)Socket);
+   log.msg("Socket: " PF64(), (MAXINT)Socket);
 
-   if ((result = SSL_do_handshake(Self->SSL)) == 1) {
-      // Handshake successful, connection established
-
+   if ((result = SSL_do_handshake(Self->SSL)) == 1) { // Handshake successful, connection established
       #ifdef __linux__
          RegisterFD((HOSTHANDLE)Socket, RFD_READ|RFD_REMOVE|RFD_SOCKET, &ssl_handshake_read, Self);
       #elif _WIN32

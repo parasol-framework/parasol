@@ -164,49 +164,49 @@ struct sciGetPos { LONG Line; LONG Column; LONG Pos;  };
 
 INLINE ERROR sciSetFont(APTR Ob, CSTRING Face) {
    struct sciSetFont args = { Face };
-   return(Action(MT_SciSetFont, Ob, &args));
+   return(Action(MT_SciSetFont, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR sciReplaceText(APTR Ob, CSTRING Find, CSTRING Replace, LONG Flags, LONG Start, LONG End) {
    struct sciReplaceText args = { Find, Replace, Flags, Start, End };
-   return(Action(MT_SciReplaceText, Ob, &args));
+   return(Action(MT_SciReplaceText, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR sciDeleteLine(APTR Ob, LONG Line) {
    struct sciDeleteLine args = { Line };
-   return(Action(MT_SciDeleteLine, Ob, &args));
+   return(Action(MT_SciDeleteLine, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR sciSelectRange(APTR Ob, LONG Start, LONG End) {
    struct sciSelectRange args = { Start, End };
-   return(Action(MT_SciSelectRange, Ob, &args));
+   return(Action(MT_SciSelectRange, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR sciInsertText(APTR Ob, CSTRING String, LONG Pos) {
    struct sciInsertText args = { String, Pos };
-   return(Action(MT_SciInsertText, Ob, &args));
+   return(Action(MT_SciInsertText, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR sciGetLine(APTR Ob, LONG Line, STRING Buffer, LONG Length) {
    struct sciGetLine args = { Line, Buffer, Length };
-   return(Action(MT_SciGetLine, Ob, &args));
+   return(Action(MT_SciGetLine, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR sciReplaceLine(APTR Ob, LONG Line, CSTRING String, LONG Length) {
    struct sciReplaceLine args = { Line, String, Length };
-   return(Action(MT_SciReplaceLine, Ob, &args));
+   return(Action(MT_SciReplaceLine, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR sciGotoLine(APTR Ob, LONG Line) {
    struct sciGotoLine args = { Line };
-   return(Action(MT_SciGotoLine, Ob, &args));
+   return(Action(MT_SciGotoLine, (OBJECTPTR)Ob, &args));
 }
 
 #define sciTrimWhitespace(obj) Action(MT_SciTrimWhitespace,(obj),0)
 
 INLINE ERROR sciGetPos(APTR Ob, LONG Line, LONG Column, LONG * Pos) {
    struct sciGetPos args = { Line, Column, 0 };
-   ERROR error = Action(MT_SciGetPos, Ob, &args);
+   ERROR error = Action(MT_SciGetPos, (OBJECTPTR)Ob, &args);
    if (Pos) *Pos = args.Pos;
    return(error);
 }
@@ -239,21 +239,21 @@ struct ssFind { LONG Pos; LONG Flags;  };
 
 INLINE ERROR ssNext(APTR Ob, LONG * Pos) {
    struct ssNext args = { 0 };
-   ERROR error = Action(MT_SsNext, Ob, &args);
+   ERROR error = Action(MT_SsNext, (OBJECTPTR)Ob, &args);
    if (Pos) *Pos = args.Pos;
    return(error);
 }
 
 INLINE ERROR ssPrev(APTR Ob, LONG * Pos) {
    struct ssPrev args = { 0 };
-   ERROR error = Action(MT_SsPrev, Ob, &args);
+   ERROR error = Action(MT_SsPrev, (OBJECTPTR)Ob, &args);
    if (Pos) *Pos = args.Pos;
    return(error);
 }
 
 INLINE ERROR ssFind(APTR Ob, LONG * Pos, LONG Flags) {
    struct ssFind args = { 0, Flags };
-   ERROR error = Action(MT_SsFind, Ob, &args);
+   ERROR error = Action(MT_SsFind, (OBJECTPTR)Ob, &args);
    if (Pos) *Pos = args.Pos;
    return(error);
 }

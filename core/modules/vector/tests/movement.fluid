@@ -1,4 +1,4 @@
-﻿-- $FLUID:persistent
+-- $FLUID:persistent
 --
 -- This test moves vector shapes to random locations every second.  Use it to confirm that the MoveToPoint()
 -- action and the setting of coordinate fields directly are working as anticipated.  If any shapes sit idle, then

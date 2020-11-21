@@ -261,7 +261,7 @@ static ERROR WINDOW_ActionNotify(objWindow *Self, struct acActionNotify *Args)
 
       NotifySubscribers(Self, AC_Focus, NULL, NULL, ERR_Okay);
 
-      STEP();
+      LOGRETURN();
    }
    else if ((Args->ActionID IS MT_DrwInheritedFocus) AND (Args->ObjectID IS Self->Surface->Head.UniqueID)) {
       // InheritedFocus is reported if one of the children in the window has received the focus.
@@ -515,7 +515,7 @@ static ERROR WINDOW_Hide(objWindow *Self, APTR Void)
 
       }
 
-      LogBack();
+      LogReturn();
    }
    else acHide(Self->Surface);
 
@@ -966,7 +966,7 @@ static ERROR WINDOW_Minimise(objWindow *Self, APTR Void)
       }
    }
 
-   LogBack();
+   LogReturn();
    return ERR_Okay;
 }
 
@@ -1163,7 +1163,7 @@ static ERROR WINDOW_Show(objWindow *Self, APTR Void)
 
    Self->Shown = TRUE;
 
-   LogBack();
+   LogReturn();
    return ERR_Okay;
 }
 

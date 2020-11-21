@@ -1,4 +1,4 @@
-﻿--[[
+--[[
 Flute tests for module calls.
 Testing all aspects of module function calls for a series of C prototypes.  Note that this is only possible if the
 Fluid module is compiled in DEBUG mode.

@@ -79,7 +79,7 @@
       <param type="LARGE" name="ClientData">Client data value to be passed to the Callback.</param>
     </input>
     <description>
-<p>ResolveAddress() performs a IP address resolution, converting an address to an official host name and list of IP addresses.  The resolution process involves contacting a DNS server.  As this can potentially cause a significant delay, the ResolveAddress() function supports asynchronous communication by default in order to avoid lengthy waiting periods.  If asynchronous operation is desired, the NSF_ASYNC_RESOLVE flag should be set prior to calling this method.</p>
+<p>ResolveAddress() performs a IP address resolution, converting an address to an official host name and list of IP addresses.  The resolution process involves contacting a DNS server.  As this can potentially cause a significant delay, the ResolveAddress() function supports asynchronous communication by default in order to avoid lengthy waiting periods.  If synchronous (blocking) operation is desired then the NSF_SYNCHRONOUS flag must be set prior to calling this method.</p>
 <p>The function referenced in the Callback parameter will receive the results of the lookup.  Its C/C++ prototype is <code>Function(LARGE ClientData, ERROR Error, CSTRING HostName, IPAddress *Addresses, LONG TotalAddresses)</code>.</p>
 <p>The Fluid prototype is as follows, with Addresses being passed as external arrays accessible via the array interface: <code>function Callback(ClientData, Error, HostName, Addresses)</code>.</p>
     </description>
@@ -102,13 +102,15 @@
       <param type="LARGE" name="ClientData">Client data value to be passed to the Callback.</param>
     </input>
     <description>
-<p>ResolveName() performs a domain name resolution, converting a domain name to an official host name and IP addresses.  The resolution process involves contacting a DNS server.  As this can potentially cause a significant delay, the ResolveName() function attempts to use synchronous communication by default so that the function can return immediately.  If asynchronous operation is desired, the NSF_ASYNC_RESOLVE flag should be set prior to calling this method and the routine will not return until it has a response.</p>
+<p>ResolveName() performs a domain name resolution, converting a domain name to an official host name and IP addresses.  The resolution process involves contacting a DNS server.  As this can potentially cause a significant delay, the ResolveName() function attempts to use asynchronous communication by default so that the function can return immediately.  If a synchronous (blocking) operation is desired then the NSF_SYNCHRONOUS flag must be set prior to calling this method and the routine will not return until it has a response.</p>
 <p>The function referenced in the Callback parameter will receive the results of the lookup.  Its C/C++ prototype is <code>Function(LARGE ClientData, ERROR Error, CSTRING HostName, IPAddress *Addresses, LONG TotalAddresses)</code>.</p>
 <p>The Fluid prototype is as follows, with Addresses being passed as external arrays accessible via the array interface: <code>function Callback(ClientData, Error, HostName, Addresses)</code>.</p>
 <p>If the Error received by the callback is anything other than ERR_Okay, the HostName and Addresses shall be set to NULL.  It is recommended that ClientData is used as the unique identifier for the original request in this situation.</p>
     </description>
     <result type="ERROR">
       <error code="NullArgs">Function call missing argument value(s)</error>
+      <error code="Failed">General failure.</error>
+      <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
       <error code="Okay">Operation successful.</error>
     </result>
   </function>
@@ -178,7 +180,7 @@ if (!StrToAddress("127.0.0.1", &amp;addr)) {
       <const name="SSL">Use Secure Sockets Layer for all communication.</const>
       <const name="MULTI_CONNECT">Allow multiple connections from the same IP when in server mode.</const>
       <const name="DEBUG">Print extra log messages.</const>
-      <const name="ASYNC_RESOLVE">Use asynchronous (non-parallel) DNS resolutions in ResolveAddress() and ResolveName().</const>
+      <const name="SYNCHRONOUS">Use synchronous (blocking) network calls.</const>
     </constants>
 
     <constants lookup="NTC" comment="NetSocket states">

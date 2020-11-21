@@ -1,4 +1,4 @@
-﻿-- Test the use of action threading (asynchronous callbacks) by loading multiple pictures simultaneously.
+-- Test the use of action threading (asynchronous callbacks) by loading multiple pictures simultaneously.
 --
 -- The  testParallel() function executes the threads and then waits for them to complete by calling processInput()
 -- until picLoaded() sends a MSGID_QUIT message.
@@ -75,7 +75,7 @@ end
       init = function()
          glPictures = { }
 
-         local folder = obj.new("file", { src="parasol:icons/Default/programs/" } )
+         local folder = obj.new("file", { src="system:icons/Default/programs/" } )
          local err, file = folder.mtNext()
          while (err == ERR_Okay) do
             if (string.find(file.path, ".+%.svg")) then

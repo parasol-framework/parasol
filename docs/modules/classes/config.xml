@@ -37,14 +37,13 @@ local err, str = cfg.mtReadValue('Action', 'Location')
 print('The Action class is located at ' .. str)
 </pre>
 <p>You can also search through config data using your own array iterator.  The following example illustrates:</p>
-<pre>LONG i;
-for (i=0; i &lt; cfg-&gt;Entries; i++) {
+<pre>for (LONG i=0; i &lt; cfg-&gt;Entries; i++) {
    LogMsg("Section: %s, Key: %s, Data: %s", cfg-&gt;Entries[i].Section,
       cfg-&gt;Entries[i].Key, cfg-&gt;Entries[i].Data);
 }
 </pre></description>
     <source>
-      <file path="src/classes/">class_config.c</file>
+      <file path="src/classes/">class_config.cpp</file>
     </source>
   </info>
 
@@ -404,6 +403,19 @@ for (i=0; i &lt; cfg-&gt;Entries; i++) {
       <const name="COMPRESS_FILE"/>
       <const name="REMOVE_FILE"/>
       <const name="DECOMPRESS_OBJECT"/>
+    </constants>
+
+    <constants lookup="VLF" comment="VlogF flags">
+      <const name="ERROR"/>
+      <const name="WARNING"/>
+      <const name="DEBUG"/>
+      <const name="EXTAPI"/>
+      <const name="BRANCH"/>
+      <const name="INFO"/>
+      <const name="API"/>
+      <const name="TRACE"/>
+      <const name="CRITICAL"/>
+      <const name="FUNCTION"/>
     </constants>
 
     <constants lookup="MOF" comment="Module flags">
@@ -903,7 +915,7 @@ for (i=0; i &lt; cfg-&gt;Entries; i++) {
       <field name="FieldID" type="ULONG">Provides a fast way of finding fields, e.g. FID_WIDTH</field>
       <field name="Offset" type="UWORD">Field offset within the object</field>
       <field name="Index" type="UWORD">Field array index</field>
-      <field name="Flags" type="LONG">Special flags that describe the field</field>
+      <field name="Flags" type="ULONG">Special flags that describe the field</field>
     </struct>
 
     <struct name="Function" comment="Function list array structure">
@@ -1006,7 +1018,7 @@ for (i=0; i &lt; cfg-&gt;Entries; i++) {
 
     <struct name="FunctionField" comment="Used by ActionTable and Function structures to declare lists of parameters.">
       <field name="Name" type="CSTRING">Name of the field</field>
-      <field name="Type" type="LONG">Type of the field</field>
+      <field name="Type" type="ULONG">Type of the field</field>
     </struct>
 
     <struct name="KeyStore" comment="Key-pair storage created by VarNew()">
@@ -1043,7 +1055,7 @@ for (i=0; i &lt; cfg-&gt;Entries; i++) {
 
     <struct name="FieldArray" comment="Used to construct class blueprints for the MetaClass.">
       <field name="Name" type="CSTRING">The name of the field, e.g. "Width"</field>
-      <field name="Flags" type="LONG">Special flags that describe the field</field>
+      <field name="Flags" type="ULONG">Special flags that describe the field</field>
       <field name="Arg" type="MAXINT">Can be a pointer or an integer value</field>
       <field name="GetField" type="APTR">void GetField(*Object, APTR Result);</field>
       <field name="SetField" type="APTR">ERROR SetField(*Object, APTR Value);</field>

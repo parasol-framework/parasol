@@ -3,27 +3,27 @@
 # IDL processing for headers and documentation
 
 set (FUNCTIONS  # Full paths are required for add_custom_command() dependencies to work correctly
-   "${CMAKE_CURRENT_SOURCE_DIR}/src/lib_fields_read.c"
-   "${CMAKE_CURRENT_SOURCE_DIR}/src/lib_fields_write.c"
-   "${CMAKE_CURRENT_SOURCE_DIR}/src/lib_functions.c"
-   "${CMAKE_CURRENT_SOURCE_DIR}/src/lib_messages.c"
-   "${CMAKE_CURRENT_SOURCE_DIR}/src/lib_locking.c"
-   "${CMAKE_CURRENT_SOURCE_DIR}/src/lib_newobject.c"
-   "${CMAKE_CURRENT_SOURCE_DIR}/src/lib_events.c"
-   "${CMAKE_CURRENT_SOURCE_DIR}/src/lib_actions.c"
-   "${CMAKE_CURRENT_SOURCE_DIR}/src/lib_memory.c"
-   "${CMAKE_CURRENT_SOURCE_DIR}/src/lib_log.c"
-   "${CMAKE_CURRENT_SOURCE_DIR}/src/core.c"
-   "${CMAKE_CURRENT_SOURCE_DIR}/src/lib_keystore.c"
-   "${CMAKE_CURRENT_SOURCE_DIR}/src/lib_base64.c"
-   "${CMAKE_CURRENT_SOURCE_DIR}/src/lib_conversion.c"
-   "${CMAKE_CURRENT_SOURCE_DIR}/src/lib_unicode.c"
-   "${CMAKE_CURRENT_SOURCE_DIR}/src/lib_strings.c"
-   "${CMAKE_CURRENT_SOURCE_DIR}/src/lib_filesystem.c"
-   "${CMAKE_CURRENT_SOURCE_DIR}/src/fs_folders.c"
-   "${CMAKE_CURRENT_SOURCE_DIR}/src/fs_identify.c"
-   "${CMAKE_CURRENT_SOURCE_DIR}/src/fs_resolution.c"
-   "${CMAKE_CURRENT_SOURCE_DIR}/src/fs_volumes.c")
+   "${CMAKE_CURRENT_SOURCE_DIR}/src/core.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/src/lib_actions.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/src/lib_base64.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/src/lib_conversion.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/src/lib_events.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/src/lib_fields_read.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/src/lib_fields_write.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/src/lib_filesystem.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/src/lib_functions.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/src/lib_keystore.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/src/lib_locking.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/src/lib_log.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/src/lib_messages.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/src/lib_memory.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/src/lib_newobject.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/src/lib_strings.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/src/lib_unicode.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/src/fs_folders.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/src/fs_identify.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/src/fs_resolution.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/src/fs_volumes.cpp")
 
 SET (CORE_DEFS
    "${CMAKE_CURRENT_SOURCE_DIR}/src/classes/class_compressed_stream_def.c"
@@ -54,7 +54,12 @@ if (BUILD_DEFS)
       COMMAND ${FLUID_CMD} ${IDL_C_SCRIPT} "--log-error" "--src=fields.fdl" "--output=${INCLUDE_OUTPUT}/system/fields.h" "--sdk=${PROJECT_SOURCE_DIR}"
       COMMAND ${FLUID_CMD} ${IDL_C_SCRIPT} "--log-error" "--src=core.fdl" "--sdk=${PROJECT_SOURCE_DIR}" "--output-proto=src/prototypes.h" "--output-defs=src/data_functions.c" "--files={" ${FUNCTIONS} "}"
       COMMAND ${FLUID_CMD} ${IDL_DEF_SCRIPT} "--log-error" "--src=core.fdl" "--output=${CMAKE_CURRENT_SOURCE_DIR}/src/idl.h" "--sdk=${PROJECT_SOURCE_DIR}" "--format=c"
-      DEPENDS "core.fdl" "errors.fdl" "registry.fdl" "fields.fdl" ${FUNCTIONS}
+      DEPENDS
+         "${CMAKE_CURRENT_SOURCE_DIR}/core.fdl"
+         "${CMAKE_CURRENT_SOURCE_DIR}/errors.fdl"
+         "${CMAKE_CURRENT_SOURCE_DIR}/registry.fdl"
+         "${CMAKE_CURRENT_SOURCE_DIR}/fields.fdl"
+         ${FUNCTIONS}
       WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
       COMMENT "Producing definition files for the Core library"
       VERBATIM)
@@ -64,7 +69,11 @@ if (BUILD_DEFS)
       "${INCLUDE_OUTPUT}/system/errors.h"
       "${INCLUDE_OUTPUT}/system/registry.h"
       "${INCLUDE_OUTPUT}/system/fields.h"
-      "${CMAKE_CURRENT_SOURCE_DIR}/src/idl.h")
+      "${CMAKE_CURRENT_SOURCE_DIR}/src/idl.h"
+      "${CMAKE_CURRENT_SOURCE_DIR}/core.fdl"
+      "${CMAKE_CURRENT_SOURCE_DIR}/errors.fdl"
+      "${CMAKE_CURRENT_SOURCE_DIR}/registry.fdl"
+      "${CMAKE_CURRENT_SOURCE_DIR}/fields.fdl")
 
    add_dependencies (build_headers core_defs)
 endif ()
@@ -74,36 +83,36 @@ add_library (core SHARED)
 set_module_defaults (core)
 
 target_sources (core PRIVATE
-   "src/core.c"
+   "src/core.cpp"
    "src/data.c"
    "src/data_actionlist.c"
-   "src/lib_log.c"
-   "src/lib_filesystem.c"
-   "src/lib_functions.c"
-   "src/lib_memory.c"
-   "src/lib_newobject.c"
-   "src/lib_actions.c"
-   "src/lib_fields_read.c"
-   "src/lib_fields_write.c"
-   "src/lib_messages.c"
-   "src/lib_locking.c"
-   "src/internal.c"
-   "src/lib_semaphores.c"
-   "src/lib_events.c"
-   "src/lib_keystore.c"
-   "src/lib_strings.c"
-   "src/classes/class_module.c"
-   "src/classes/class_task.c"
-   "src/classes/class_thread.c"
-   "src/classes/class_time.c"
-   "src/classes/class_config.c"
-   "src/classes/class_metaclass.c"
-   "src/classes/class_script.c"
-   "src/classes/class_file.c"
-   "src/classes/class_storagedevice.c"
-   "src/classes/class_archive.c"
-   "src/classes/class_compressed_stream.c"
-   "src/compression/class_compression.c")
+   "src/internal.cpp"
+   "src/lib_actions.cpp"
+   "src/lib_events.cpp"
+   "src/lib_keystore.cpp"
+   "src/lib_log.cpp"
+   "src/lib_fields_read.cpp"
+   "src/lib_fields_write.cpp"
+   "src/lib_filesystem.cpp"
+   "src/lib_functions.cpp"
+   "src/lib_locking.cpp"
+   "src/lib_memory.cpp"
+   "src/lib_messages.cpp"
+   "src/lib_newobject.cpp"
+   "src/lib_semaphores.cpp"
+   "src/lib_strings.cpp"
+   "src/classes/class_archive.cpp"
+   "src/classes/class_compressed_stream.cpp"
+   "src/classes/class_config.cpp"
+   "src/classes/class_file.cpp"
+   "src/classes/class_metaclass.cpp"
+   "src/classes/class_module.cpp"
+   "src/classes/class_script.cpp"
+   "src/classes/class_storagedevice.cpp"
+   "src/classes/class_task.cpp"
+   "src/classes/class_thread.cpp"
+   "src/classes/class_time.cpp"
+   "src/compression/class_compression.cpp")
 
 target_include_directories (core PRIVATE
    ${ZLIB_HEADERS})

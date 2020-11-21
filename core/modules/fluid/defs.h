@@ -1,5 +1,11 @@
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define LUA_COMPILED "-- $FLUID:compiled"
+#define VER_FLUID 1.0
+#define SIZE_READ 1024
 
 struct code_reader_handle {
    objFile *File;
@@ -205,55 +211,66 @@ struct references {
    } List[16384];
 };
 
-static void clear_subscriptions(objScript *);
-static const char * code_reader(lua_State *, void *, size_t *);
-static int code_writer_id(lua_State *, CPTR, size_t, void *) __attribute__((unused));
-static int code_writer(lua_State *, CPTR, size_t, void *) __attribute__((unused));
-static ERROR create_fluid(void);
-static void get_line(objScript *, LONG, STRING, LONG);
-static void hook_debug(lua_State *, lua_Debug *) __attribute__ ((unused));
-static void focus_event(lua_State *, evFocus *, LONG);
-static void key_event(struct finput *, evKey *, LONG);
-static ERROR load_include(objScript *, CSTRING);
-static int MAKESTRUCT(lua_State *);
-static void make_any_table(lua_State *, LONG Type, CSTRING, LONG Elements, CPTR ) __attribute__((unused));
-static void make_table(lua_State *, LONG Type, LONG Elements, CPTR ) __attribute__((unused));
-static int make_struct(lua_State *, CSTRING, CSTRING) __attribute__((unused));
-static ERROR named_struct_to_table(lua_State *, CSTRING, APTR);
-static void make_struct_ptr_table(lua_State *, CSTRING, LONG, CPTR *);
-static void make_struct_serial_table(lua_State *, CSTRING, LONG, CPTR);
-static int module_load(lua_State *);
-static struct object * push_object(lua_State *, OBJECTPTR Object);
-static ERROR push_object_id(lua_State *, OBJECTID ObjectID);
-static struct fstruct * push_struct(objScript *, APTR, CSTRING, BYTE);
-static struct fstruct * push_struct_def(lua_State *, APTR, struct structentry *, BYTE);
-static void register_array_class(lua_State *);
-static void register_input_class(lua_State *);
-static void register_object_class(lua_State *);
-static void register_module_class(lua_State *);
-static void register_number_class(lua_State *);
-static void register_struct_class(lua_State *);
-static void register_thread_class(lua_State *);
-//static void register_widget_class(lua_State *);
-static ERROR run_script(objScript *Self);
-static ERROR save_binary(objScript *Self, OBJECTID FileID);
-static ERROR stack_args(lua_State *, OBJECTID, const struct FunctionField *, APTR Buffer);
-static ERROR struct_to_table(lua_State *, struct references *, struct structentry *, CPTR);
+extern struct KeyStore *glActionLookup;
+extern struct ActionTable *glActions;
+extern OBJECTPTR modDisplay; // Required by fluid_input.c
+extern OBJECTPTR modFluid;
+extern struct DisplayBase *DisplayBase;
+extern OBJECTPTR clFluid;
 
-static int fcmd_arg(lua_State *);
-static int fcmd_catch(lua_State *);
-static int fcmd_check(lua_State *);
-static int fcmd_get_execution_state(lua_State *);
-static int fcmd_msg(lua_State *);
-static int fcmd_print(lua_State *);
-static int fcmd_include(lua_State *);
-static int fcmd_loadfile(lua_State *);
-static int fcmd_exec(lua_State *);
-static int fcmd_nz(lua_State *);
-static int fcmd_require(lua_State *);
-static int fcmd_subscribe_event(lua_State *);
-static int fcmd_unsubscribe_event(lua_State *);
-static int fcmd_processMessages(lua_State *);
+OBJECTPTR access_object(struct object *);
+struct references * alloc_references(void);
+void auto_load_include(lua_State *Lua, objMetaClass *MetaClass);
+ERROR build_args(lua_State *, const struct FunctionField *, LONG, BYTE *, LONG *);
+void clear_subscriptions(objScript *);
+const char * code_reader(lua_State *, void *, size_t *);
+int code_writer_id(lua_State *, CPTR, size_t, void *) __attribute__((unused));
+int code_writer(lua_State *, CPTR, size_t, void *) __attribute__((unused));
+ERROR create_fluid(void);
+void free_references(lua_State *, struct references *);
+void get_line(objScript *, LONG, STRING, LONG);
+APTR get_meta(lua_State *Lua, LONG Arg, CSTRING);
+void hook_debug(lua_State *, lua_Debug *) __attribute__ ((unused));
+ERROR load_include(objScript *, CSTRING);
+int MAKESTRUCT(lua_State *);
+void make_any_table(lua_State *, LONG Type, CSTRING, LONG Elements, CPTR ) __attribute__((unused));
+void make_array(lua_State *Lua, LONG FieldType, CSTRING StructName, APTR *List, LONG Total, BYTE Cache);
+void make_table(lua_State *, LONG Type, LONG Elements, CPTR ) __attribute__((unused));
+int make_struct(lua_State *, CSTRING, CSTRING) __attribute__((unused));
+ERROR named_struct_to_table(lua_State *, CSTRING, APTR);
+void make_struct_ptr_table(lua_State *, CSTRING, LONG, CPTR *);
+void make_struct_serial_table(lua_State *, CSTRING, LONG, CPTR);
+void process_error(objScript *Self, CSTRING Procedure);
+struct object * push_object(lua_State *, OBJECTPTR Object);
+ERROR push_object_id(lua_State *, OBJECTID ObjectID);
+struct fstruct * push_struct(objScript *, APTR, CSTRING, BYTE, BYTE);
+struct fstruct * push_struct_def(lua_State *, APTR, struct structentry *, BYTE);
+extern void register_array_class(lua_State *);
+extern void register_input_class(lua_State *);
+extern void register_object_class(lua_State *);
+extern void register_module_class(lua_State *);
+extern void register_number_class(lua_State *);
+extern void register_struct_class(lua_State *);
+extern void register_thread_class(lua_State *);
+//static void register_widget_class(lua_State *);
+void release_object(struct object *);
+ERROR struct_to_table(lua_State *, struct references *, struct structentry *, CPTR);
+
+int fcmd_arg(lua_State *);
+int fcmd_catch(lua_State *);
+int fcmd_check(lua_State *);
+int fcmd_get_execution_state(lua_State *);
+int fcmd_msg(lua_State *);
+int fcmd_print(lua_State *);
+int fcmd_include(lua_State *);
+int fcmd_loadfile(lua_State *);
+int fcmd_exec(lua_State *);
+int fcmd_nz(lua_State *);
+int fcmd_require(lua_State *);
+int fcmd_subscribe_event(lua_State *);
+int fcmd_unsubscribe_event(lua_State *);
+int fcmd_processMessages(lua_State *);
+
 #ifdef __arm__
 extern void armExecFunction(APTR, APTR, LONG);
 #elif _LP64
@@ -261,8 +278,6 @@ extern void x64ExecFunction(APTR, LONG, LARGE *, LONG);
 #else
 extern void x86ExecFunction(APTR, APTR, LONG);
 #endif
-
-static ERROR flSetVariable(objScript *, CSTRING, LONG, ...);
 
 //****************************************************************************
 // Standard hash computation, but stops when it encounters a character outside of A-Za-z0-9 range
@@ -281,3 +296,7 @@ INLINE ULONG STRUCTHASH(CSTRING String)
    }
    return hash;
 }
+
+#ifdef __cplusplus
+}
+#endif

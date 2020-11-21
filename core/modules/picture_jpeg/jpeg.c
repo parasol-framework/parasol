@@ -329,7 +329,7 @@ static ERROR JPEG_SaveImage(objPicture *Self, struct acSaveImage *Args)
    else {
       if (GetFields(Self, FID_Location|TSTRING, &location, TAGEND) != ERR_Okay) {
          PostError(ERR_MissingPath);
-         LogBack();
+         LogReturn();
          return ERR_GetField;
       }
 
@@ -338,7 +338,7 @@ static ERROR JPEG_SaveImage(objPicture *Self, struct acSaveImage *Args)
             FID_Flags|TLONG,      FL_NEW|FL_WRITE,
             TAGEND) != ERR_Okay) {
          PostError(ERR_CreateObject);
-         LogBack();
+         LogReturn();
          return ERR_CreateObject;
       }
    }
@@ -383,7 +383,7 @@ static ERROR JPEG_SaveImage(objPicture *Self, struct acSaveImage *Args)
       else acFree(file);
    }
 
-   LogBack();
+   LogReturn();
    return ERR_Okay;
 }
 

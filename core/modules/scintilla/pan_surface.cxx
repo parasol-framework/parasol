@@ -122,7 +122,7 @@ void SurfacePan::InitPixMap(int width, int height, Scintilla::Surface *surface_,
       TAGEND);
    //DebugOn();
 
-   STEP();
+   LOGRETURN();
 
    if (error != ERR_Okay) {
       LogF("@panInitPixMap","Failed to create offscreen surface object.");
@@ -138,7 +138,7 @@ void SurfacePan::InitPixMap(int width, int height, Scintilla::Surface *surface_,
    cliprect.right  = bitmap->Width;
    cliprect.bottom = bitmap->Height;
 
-   STEP();
+   LOGRETURN();
 }
 
 /****************************************************************************/

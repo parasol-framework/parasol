@@ -2,7 +2,7 @@
 #define MODULES_HTTP 1
 
 // Name:      http.h
-// Copyright: Paul Manias © 2005-2017
+// Copyright: Paul Manias © 2005-2020
 // Generator: idl-c
 
 #ifndef MAIN_H
@@ -151,12 +151,12 @@ typedef struct rkHTTP {
    LONG     BufferSize;      // Preferred buffer size for things like outgoing operations (sending data)
 
 #ifdef PRV_HTTP
-   FUNCTION Incoming;      // ERROR Incoming(struct rkHTTP *, APTR, LONG)
-   FUNCTION Outgoing;      // ERROR Outgoing(struct rkHTTP *, APTR, LONG, LONG *)
-   FUNCTION AuthCallback;  // ERROR AuthCallback(struct rkHTTP *, STRING *, STRING *)
-   FUNCTION StateChanged;  // ERROR StateChanged(struct rkHTTP *, LONG)
-   struct KeyStore *Args;
-   struct KeyStore *Headers;
+   FUNCTION Incoming;
+   FUNCTION Outgoing;
+   FUNCTION AuthCallback;
+   FUNCTION StateChanged;
+   std::unordered_map<std::string, std::string> *Args;
+   std::unordered_map<std::string, std::string> *Headers;
    STRING Response;         // Response header buffer
    STRING URI;              // Temporary string, used only when the user reads the URI
    STRING Username;
@@ -165,7 +165,7 @@ typedef struct rkHTTP {
    STRING AuthOpaque;
    STRING AuthPath;
    STRING ContentType;
-   UBYTE *RecvBuffer;     // Receive buffer - aids downloading if HTF_RECVBUFFER is defined
+   UBYTE  *RecvBuffer;      // Receive buffer - aids downloading if HTF_RECVBUFFER is defined
    UBYTE  *WriteBuffer;
    LONG   WriteSize;
    LONG   WriteOffset;

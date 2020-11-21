@@ -114,7 +114,7 @@ static ERROR MENU_ActionNotify(objMenu *Self, struct acActionNotify *NotifyArgs)
       Self->TimeHide = PreciseTime();
       Self->Visible = FALSE;
 
-      STEP();
+      LOGRETURN();
    }
    else if (action IS AC_Focus) {
       if ((Self->KeyMonitorID IS NotifyArgs->ObjectID) AND (!Self->prvKeyEvent)) {
@@ -131,12 +131,12 @@ static ERROR MENU_ActionNotify(objMenu *Self, struct acActionNotify *NotifyArgs)
       if (NotifyArgs->ObjectID IS Self->RelativeID) {
          FMSG("~","Hiding because my relative surface (%d) lost the focus.", Self->RelativeID);
          acHide(Self);
-         STEP();
+         LOGRETURN();
       }
       else if ((NotifyArgs->ObjectID IS Self->MenuSurfaceID) AND (!Self->ParentID)) {
          FMSG("~","Hiding because my surface (%d) lost the focus and I am without a parent menu.", Self->MenuSurfaceID);
          acHide(Self);
-         STEP();
+         LOGRETURN();
       }
       else MSG("Surface %d has lost its focus, no action taken.", NotifyArgs->ObjectID);
    }
@@ -186,7 +186,7 @@ static ERROR MENU_Activate(objMenu *Self, APTR Void)
 
    LogBranch(NULL);
    Action(MT_MnSwitch, Self, NULL);
-   LogBack();
+   LogReturn();
    return ERR_Okay|ERF_Notified;
 }
 
@@ -229,9 +229,9 @@ static ERROR MENU_Clear(objMenu *Self, APTR Void)
       }
    }
 
-   LogBack();
+   LogReturn();
 
-   LogBack();
+   LogReturn();
    return ERR_Okay;
 }
 
@@ -268,11 +268,11 @@ static ERROR MENU_DataFeed(objMenu *Self, struct acDataFeed *Args)
          }
       }
       else {
-         LogBack();
+         LogReturn();
          return PostError(ERR_CreateObject);
       }
 
-      LogBack();
+      LogReturn();
       return ERR_Okay;
    }
    else if (Args->DataType IS DATA_INPUT_READY) {
@@ -350,7 +350,7 @@ static ERROR MENU_DataFeed(objMenu *Self, struct acDataFeed *Args)
                      else acShow(Self);
                   }
 
-                  STEP();
+                  LOGRETURN();
                }
                else if ((input->RecipientID IS Self->MenuSurfaceID) AND (input->Type IS JET_LMB)) {
                   // The menu surface has been clicked
@@ -369,7 +369,7 @@ static ERROR MENU_DataFeed(objMenu *Self, struct acDataFeed *Args)
                      y += item->Height;
                   }
 
-                  STEP();
+                  LOGRETURN();
                }
                else {
                   // A surface outside of the menu's area has been clicked
@@ -588,7 +588,7 @@ static ERROR MENU_Hide(objMenu *Self, APTR Void)
       Self->CurrentMenu = NULL;
    }
 
-   LogBack();
+   LogReturn();
    return ERR_Okay;
 }
 
@@ -855,16 +855,16 @@ static ERROR MENU_SelectItem(objMenu *Self, struct mnSelectItem *Args)
             else item->Flags |= MIF_SELECTED;
          }
          else {
-            STEP();
+            LOGRETURN();
             return PostError(ERR_Args);
          }
 
-         STEP();
+         LOGRETURN();
          return ERR_Okay;
       }
    }
 
-   STEP();
+   LOGRETURN();
    return PostError(ERR_DoesNotExist);
 }
 
@@ -1039,7 +1039,7 @@ static ERROR MENU_Show(objMenu *Self, APTR Void)
 
       ReleaseObject(surface);
 
-      LogBack();
+      LogReturn();
       return ERR_Okay;
    }
    else return PostError(ERR_AccessObject);
@@ -1080,12 +1080,12 @@ static ERROR MENU_Switch(objMenu *Self, struct mnSwitch *Args)
    if (Self->TimeShow > Self->TimeHide) { // Hide the menu
       FMSG("~","Hiding the menu if time-lapse is met: " PF64() " / " PF64(), time - Self->TimeShow, timelapse);
       if (time - Self->TimeShow >= timelapse) acHide(Self);
-      STEP();
+      LOGRETURN();
    }
    else {
       FMSG("~","Showing the menu if time-lapse is met: " PF64() " / " PF64(), time - Self->TimeHide, timelapse);
       if (time - Self->TimeHide >= timelapse) acShow(Self);
-      STEP();
+      LOGRETURN();
    }
 
    return ERR_Okay;
@@ -1098,7 +1098,7 @@ static ERROR motion_timer(objMenu *Self, LARGE Elapsed, LARGE CurrentTime)
    FMSG("~","Motion timer activated.");
    acShow(Self);
    Self->MotionTimer = 0;
-   STEP();
+   LOGRETURN();
    return ERR_Terminate;
 }
 
@@ -1110,7 +1110,7 @@ static ERROR item_motion_timer(objMenu *Self, LARGE Elapsed, LARGE CurrentTime)
       if ((Self->HighlightItem->Flags & MIF_EXTENSION) AND (!(Self->HighlightItem->Flags & MIF_DISABLED))) {
          FMSG("~","Auto-exec activated.");
          acActivate(Self->HighlightItem);
-         STEP();
+         LOGRETURN();
       }
    }
 

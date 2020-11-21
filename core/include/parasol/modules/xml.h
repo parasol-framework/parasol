@@ -147,110 +147,110 @@ struct xmlGetTag { LONG Index; struct XMLTag * Result;  };
 
 INLINE ERROR xmlSetAttrib(APTR Ob, LONG Index, LONG Attrib, CSTRING Name, CSTRING Value) {
    struct xmlSetAttrib args = { Index, Attrib, Name, Value };
-   return(Action(MT_XMLSetAttrib, Ob, &args));
+   return(Action(MT_XMLSetAttrib, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR xmlGetString(APTR Ob, LONG Index, LONG Flags, STRING * Result) {
    struct xmlGetString args = { Index, Flags, 0 };
-   ERROR error = Action(MT_XMLGetString, Ob, &args);
+   ERROR error = Action(MT_XMLGetString, (OBJECTPTR)Ob, &args);
    if (Result) *Result = args.Result;
    return(error);
 }
 
 INLINE ERROR xmlInsertXML(APTR Ob, LONG Index, LONG Where, CSTRING XML, LONG * Result) {
    struct xmlInsertXML args = { Index, Where, XML, 0 };
-   ERROR error = Action(MT_XMLInsertXML, Ob, &args);
+   ERROR error = Action(MT_XMLInsertXML, (OBJECTPTR)Ob, &args);
    if (Result) *Result = args.Result;
    return(error);
 }
 
 INLINE ERROR xmlGetContent(APTR Ob, LONG Index, STRING Buffer, LONG Length) {
    struct xmlGetContent args = { Index, Buffer, Length };
-   return(Action(MT_XMLGetContent, Ob, &args));
+   return(Action(MT_XMLGetContent, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR xmlSort(APTR Ob, CSTRING XPath, CSTRING Sort, LONG Flags) {
    struct xmlSort args = { XPath, Sort, Flags };
-   return(Action(MT_XMLSort, Ob, &args));
+   return(Action(MT_XMLSort, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR xmlRemoveTag(APTR Ob, LONG Index, LONG Total) {
    struct xmlRemoveTag args = { Index, Total };
-   return(Action(MT_XMLRemoveTag, Ob, &args));
+   return(Action(MT_XMLRemoveTag, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR xmlMoveTags(APTR Ob, LONG Index, LONG Total, LONG DestIndex, LONG Where) {
    struct xmlMoveTags args = { Index, Total, DestIndex, Where };
-   return(Action(MT_XMLMoveTags, Ob, &args));
+   return(Action(MT_XMLMoveTags, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR xmlGetAttrib(APTR Ob, LONG Index, CSTRING Attrib, CSTRING * Value) {
    struct xmlGetAttrib args = { Index, Attrib, 0 };
-   ERROR error = Action(MT_XMLGetAttrib, Ob, &args);
+   ERROR error = Action(MT_XMLGetAttrib, (OBJECTPTR)Ob, &args);
    if (Value) *Value = args.Value;
    return(error);
 }
 
 INLINE ERROR xmlInsertXPath(APTR Ob, CSTRING XPath, LONG Where, CSTRING XML, LONG * Result) {
    struct xmlInsertXPath args = { XPath, Where, XML, 0 };
-   ERROR error = Action(MT_XMLInsertXPath, Ob, &args);
+   ERROR error = Action(MT_XMLInsertXPath, (OBJECTPTR)Ob, &args);
    if (Result) *Result = args.Result;
    return(error);
 }
 
 INLINE ERROR xmlFindTag(APTR Ob, CSTRING XPath, FUNCTION * Callback, LONG * Result) {
    struct xmlFindTag args = { XPath, Callback, 0 };
-   ERROR error = Action(MT_XMLFindTag, Ob, &args);
+   ERROR error = Action(MT_XMLFindTag, (OBJECTPTR)Ob, &args);
    if (Result) *Result = args.Result;
    return(error);
 }
 
 INLINE ERROR xmlFilter(APTR Ob, CSTRING XPath) {
    struct xmlFilter args = { XPath };
-   return(Action(MT_XMLFilter, Ob, &args));
+   return(Action(MT_XMLFilter, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR xmlSetRoot(APTR Ob, CSTRING XPath) {
    struct xmlSetRoot args = { XPath };
-   return(Action(MT_XMLSetRoot, Ob, &args));
+   return(Action(MT_XMLSetRoot, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR xmlCount(APTR Ob, CSTRING XPath, LONG * Result) {
    struct xmlCount args = { XPath, 0 };
-   ERROR error = Action(MT_XMLCount, Ob, &args);
+   ERROR error = Action(MT_XMLCount, (OBJECTPTR)Ob, &args);
    if (Result) *Result = args.Result;
    return(error);
 }
 
 INLINE ERROR xmlInsertContent(APTR Ob, LONG Index, LONG Where, CSTRING Content, LONG * Result) {
    struct xmlInsertContent args = { Index, Where, Content, 0 };
-   ERROR error = Action(MT_XMLInsertContent, Ob, &args);
+   ERROR error = Action(MT_XMLInsertContent, (OBJECTPTR)Ob, &args);
    if (Result) *Result = args.Result;
    return(error);
 }
 
 INLINE ERROR xmlRemoveXPath(APTR Ob, CSTRING XPath, LONG Total) {
    struct xmlRemoveXPath args = { XPath, Total };
-   return(Action(MT_XMLRemoveXPath, Ob, &args));
+   return(Action(MT_XMLRemoveXPath, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR xmlGetXPath(APTR Ob, LONG Index, STRING * Result) {
    struct xmlGetXPath args = { Index, 0 };
-   ERROR error = Action(MT_XMLGetXPath, Ob, &args);
+   ERROR error = Action(MT_XMLGetXPath, (OBJECTPTR)Ob, &args);
    if (Result) *Result = args.Result;
    return(error);
 }
 
 INLINE ERROR xmlFindTagFromIndex(APTR Ob, CSTRING XPath, LONG Start, FUNCTION * Callback, LONG * Result) {
    struct xmlFindTagFromIndex args = { XPath, Start, Callback, 0 };
-   ERROR error = Action(MT_XMLFindTagFromIndex, Ob, &args);
+   ERROR error = Action(MT_XMLFindTagFromIndex, (OBJECTPTR)Ob, &args);
    if (Result) *Result = args.Result;
    return(error);
 }
 
 INLINE ERROR xmlGetTag(APTR Ob, LONG Index, struct XMLTag ** Result) {
    struct xmlGetTag args = { Index, 0 };
-   ERROR error = Action(MT_XMLGetTag, Ob, &args);
+   ERROR error = Action(MT_XMLGetTag, (OBJECTPTR)Ob, &args);
    if (Result) *Result = args.Result;
    return(error);
 }

@@ -427,7 +427,7 @@ static ERROR SET_Hide(objScrollbar *Self, LONG Value)
       FMSG("~","Scrollbar invisible.");
       Self->Scroll->Flags |= SCF_INVISIBLE;
       if (Self->Head.Flags & NF_INITIALISED) acHide(Self);
-      STEP();
+      LOGRETURN();
    }
    else {
       MSG("Scrollbar now visible.");

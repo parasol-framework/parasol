@@ -329,14 +329,14 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    LONG type;
    UBYTE refresh;
 
-   if ((AnalysePath("parasol:fonts/fonts.cfg", &type) != ERR_Okay) OR (type != LOC_FILE)) refresh = TRUE;
+   if ((AnalysePath("system:fonts/fonts.cfg", &type) != ERR_Okay) OR (type != LOC_FILE)) refresh = TRUE;
    else refresh = FALSE;
 
    OBJECTPTR config;
    if (!NewLockedObject(ID_CONFIG, 0, &config, &glConfigID)) {
       SetFields(config,
          FID_Name|TSTR, "cfgSystemFonts",
-         FID_Path|TSTR, "parasol:fonts/fonts.cfg",
+         FID_Path|TSTR, "system:fonts/fonts.cfg",
          TAGEND);
       if (!acInit(config)) {
          if (refresh) fntRefreshFonts();
@@ -1011,7 +1011,7 @@ static ERROR fntInstallFont(CSTRING Files)
 
    fntRefreshFonts();
 
-   LogBack();
+   LogReturn();
    return ERR_Okay;
 }
 
@@ -1049,7 +1049,7 @@ static ERROR fntRemoveFont(CSTRING Name)
    LogBranch("%s", Name);
 
    if (AccessObject(glConfigID, 3000, &config) != ERR_Okay) {
-      return LogBackError(0, ERR_AccessObject);
+      return LogReturnError(0, ERR_AccessObject);
    }
 
    // Delete all files related to this font
@@ -1067,7 +1067,7 @@ static ERROR fntRemoveFont(CSTRING Name)
 
    if (i >= amtentries) {
       ReleaseObject(config);
-      return LogBackError(0, ERR_Search);
+      return LogReturnError(0, ERR_Search);
    }
 
    CSTRING str;
@@ -1101,7 +1101,7 @@ static ERROR fntRemoveFont(CSTRING Name)
    ReleaseObject(config);
 
    MSG("Font removed successfully.");
-   LogBack();
+   LogReturn();
    return error;
 }
 
@@ -1147,7 +1147,7 @@ static ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, LONG Flags, 
 
    objConfig *config;
    if (AccessObject(glConfigID, 5000, &config) != ERR_Okay) {
-      return LogBackError(0, ERR_AccessObject);
+      return LogReturnError(0, ERR_AccessObject);
    }
 
    struct ConfigEntry *entries;
@@ -1252,7 +1252,7 @@ static ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, LONG Flags, 
 
       if ((!fixed_section) AND (!scale_section)) {
          ReleaseObject(config);
-         LogBack();
+         LogReturn();
          return ERR_Search;
       }
    }
@@ -1290,7 +1290,7 @@ static ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, LONG Flags, 
          if (!cfgReadValue(config, fixed_section, buffer, &str)) {
             *Path = StrClone(str);
             ReleaseObject(config);
-            LogBack();
+            LogReturn();
             return ERR_Okay;
          }
 
@@ -1301,7 +1301,7 @@ static ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, LONG Flags, 
             if (!cfgReadValue(config, fixed_section, "Fixed:Regular", &str)) {
                *Path = StrClone(str);
                ReleaseObject(config);
-               LogBack();
+               LogReturn();
                return ERR_Okay;
             }
          }
@@ -1315,7 +1315,7 @@ static ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, LONG Flags, 
          if (!cfgReadValue(config, scale_section, buffer, &str)) {
             *Path = StrClone(str);
             ReleaseObject(config);
-            LogBack();
+            LogReturn();
             return ERR_Okay;
          }
 
@@ -1323,7 +1323,7 @@ static ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, LONG Flags, 
             if (!cfgReadValue(config, scale_section, "Scale:Regular", &str)) {
                *Path = StrClone(str);
                ReleaseObject(config);
-               LogBack();
+               LogReturn();
                return ERR_Okay;
             }
          }
@@ -1342,7 +1342,7 @@ static ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, LONG Flags, 
          if (!cfgReadValue(config, fixed_section, buffer, &str)) {
             *Path = StrClone(str);
             ReleaseObject(config);
-            LogBack();
+            LogReturn();
             return ERR_Okay;
          }
 
@@ -1352,7 +1352,7 @@ static ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, LONG Flags, 
             if (!cfgReadValue(config, scale_section, buffer, &str)) {
                *Path = StrClone(str);
                ReleaseObject(config);
-               LogBack();
+               LogReturn();
                return ERR_Okay;
             }
          }
@@ -1368,7 +1368,7 @@ static ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, LONG Flags, 
          if (!cfgReadValue(config, scale_section, buffer, &str)) {
             *Path = StrClone(str);
             ReleaseObject(config);
-            LogBack();
+            LogReturn();
             return ERR_Okay;
          }
 
@@ -1376,7 +1376,7 @@ static ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, LONG Flags, 
             if (!cfgReadValue(config, scale_section, "Scale:Regular", &str)) {
                *Path = StrClone(str);
                ReleaseObject(config);
-               LogBack();
+               LogReturn();
                return ERR_Okay;
             }
          }
@@ -1388,7 +1388,7 @@ static ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, LONG Flags, 
          if (!cfgReadValue(config, fixed_section, buffer, &str)) {
             *Path = StrClone(str);
             ReleaseObject(config);
-            LogBack();
+            LogReturn();
             return ERR_Okay;
          }
 
@@ -1397,7 +1397,7 @@ static ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, LONG Flags, 
             if (!cfgReadValue(config, fixed_section, "Fixed:Regular", &str)) {
                *Path = StrClone(str);
                ReleaseObject(config);
-               LogBack();
+               LogReturn();
                return ERR_Okay;
             }
          }
@@ -1417,7 +1417,7 @@ static ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, LONG Flags, 
          if (!cfgReadValue(config, scale_section, buffer, &str)) {
             *Path = StrClone(str);
             ReleaseObject(config);
-            LogBack();
+            LogReturn();
             return ERR_Okay;
          }
 
@@ -1426,7 +1426,7 @@ static ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, LONG Flags, 
             if (!cfgReadValue(config, fixed_section, buffer, &str)) {
                *Path = StrClone(str);
                ReleaseObject(config);
-               LogBack();
+               LogReturn();
                return ERR_Okay;
             }
          }
@@ -1435,7 +1435,7 @@ static ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, LONG Flags, 
    }
 
    ReleaseObject(config);
-   LogBack();
+   LogReturn();
    return ERR_Search;
 }
 
@@ -1469,7 +1469,7 @@ static ERROR fntRefreshFonts(void)
 
    objConfig *config;
    if (AccessObject(glConfigID, 3000, &config) != ERR_Okay) {
-      return LogBackError(0, ERR_AccessObject);
+      return LogReturnError(0, ERR_AccessObject);
    }
 
    acClear(config); // Clear out existing font information
@@ -1549,7 +1549,7 @@ static ERROR fntRefreshFonts(void)
 
    OBJECTPTR file;
    if (!CreateObject(ID_FILE, 0, &file,
-         FID_Path|TSTR,   "parasol:fonts/fonts.cfg",
+         FID_Path|TSTR,   "system:fonts/fonts.cfg",
          FID_Flags|TLONG, FL_NEW|FL_WRITE,
          TAGEND)) {
       acSaveToObject(config, file->UniqueID, 0);
@@ -1557,7 +1557,7 @@ static ERROR fntRefreshFonts(void)
    }
 
    ReleaseObject(config);
-   LogBack();
+   LogReturn();
    return ERR_Okay;
 }
 
@@ -1649,7 +1649,7 @@ static void scan_truetype_folder(objConfig *Config)
    }
    else LogErrorMsg("Failed to open the fonts:truetype/ directory.");
 
-   LogBack();
+   LogReturn();
 }
 
 //****************************************************************************
@@ -1739,7 +1739,7 @@ static void scan_fixed_folder(objConfig *Config)
    }
    else LogErrorMsg("Failed to scan directory fonts:fixed/");
 
-   LogBack();
+   LogReturn();
 }
 
 //****************************************************************************

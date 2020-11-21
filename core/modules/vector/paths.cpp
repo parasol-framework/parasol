@@ -6,11 +6,13 @@
 
 static void gen_vector_path(objVector *Vector)
 {
+   parasol::Log log(__FUNCTION__);
+
    if ((!Vector->GeneratePath) and (Vector->Head.SubID != ID_VECTORVIEWPORT)) return;
 
-   OBJECTPTR context = SetContext(Vector);
+   parasol::SwitchContext context(Vector);
 
-   FMSG("~gen_vector_path()","%s: %d, Dirty: $%.2x, ParentView: %p", Vector->Head.Class->ClassName, Vector->Head.UniqueID, Vector->Dirty, Vector->ParentView);
+   log.traceBranch("%s: %d, Dirty: $%.2x, ParentView: %p", Vector->Head.Class->ClassName, Vector->Head.UniqueID, Vector->Dirty, Vector->ParentView);
 
    if (!Vector->ParentView) { // Find the nearest parent viewport if we don't have it already
       auto scan = get_parent(Vector);
@@ -73,14 +75,14 @@ static void gen_vector_path(objVector *Vector)
       // The client can force the top-level viewport to be resized by using VPF_RESIZE and defining PageWidth/PageHeight
 
       if ((!Vector->ParentView) and (Vector->Scene->Flags & VPF_RESIZE)) {
-         FMSG("gen_viewport_path","VPF_RESIZE enabled, using target size (%.2f %.2f)", parent_width, parent_height);
+         log.trace("VPF_RESIZE enabled, using target size (%.2f %.2f)", parent_width, parent_height);
          target_width  = parent_width;
          target_height = parent_height;
          view->vpFixedWidth  = parent_width;
          view->vpFixedHeight = parent_height;
       }
 
-      FMSG("~gen_viewport_path()","Vector: #%d, Dimensions: $%.8x, Parent: #%d %.2fw %.2fh, Target: %.2fw %.2fh, Viewbox: %.2f %.2f %.2f %.2f", Vector->Head.UniqueID, view->vpDimensions, parent_id, parent_width, parent_height, target_width, target_height, view->vpViewX, view->vpViewY, view->vpViewWidth, view->vpViewHeight);
+      log.trace("Vector: #%d, Dimensions: $%.8x, Parent: #%d %.2fw %.2fh, Target: %.2fw %.2fh, Viewbox: %.2f %.2f %.2f %.2f", Vector->Head.UniqueID, view->vpDimensions, parent_id, parent_width, parent_height, target_width, target_height, view->vpViewX, view->vpViewY, view->vpViewWidth, view->vpViewHeight);
 
       // This part computes the alignment of the viewbox (source) within the viewport's target area.
       // AspectRatio choices affect this, e.g. "xMinYMin slice".  Note that alignment specifically impacts
@@ -90,14 +92,12 @@ static void gen_vector_path(objVector *Vector)
          view->vpViewWidth, view->vpViewHeight, &view->vpAlignX, &view->vpAlignY,
          &view->vpXScale, &view->vpYScale);
 
-      STEP();
-
       // FinalX/Y values have no current use with respect to viewports.
 
       Vector->FinalX = 0;
       Vector->FinalY = 0;
 
-      MSG("AlignXY: %.2f %.2f, ScaleXY: %.2f %.2f", view->vpAlignX, view->vpAlignY, view->vpXScale, view->vpYScale);
+      log.trace("AlignXY: %.2f %.2f, ScaleXY: %.2f %.2f", view->vpAlignX, view->vpAlignY, view->vpXScale, view->vpYScale);
 
       // Compute the clipping boundary of the viewport and store it in the BX/Y fields.
 
@@ -113,16 +113,16 @@ static void gen_vector_path(objVector *Vector)
       path.line_to(x+view->vpFixedWidth, y+view->vpFixedHeight); // Bottom right
       path.line_to(x, y+view->vpFixedHeight); // Bottom left
       path.close_polygon();
-     
+
       path.transform(transform);
-     
+
       bounding_rect_single(path, 0, &view->vpBX1, &view->vpBY1, &view->vpBX2, &view->vpBY2);
-     
+
       // If the viewport is transformed, a clipping mask will need to be generated based on its path.  The path is
       // pre-transformed and drawn in order to speed things up.
-     
+
       if (applied_transforms & (VTF_MATRIX|VTF_ROTATE|VTF_SKEW)) {
-         MSG("A clip path will be assigned to viewport #%d.", Vector->Head.UniqueID);
+         log.trace("A clip path will be assigned to viewport #%d.", Vector->Head.UniqueID);
          if (!view->vpClipMask) {
             CreateObject(ID_VECTORCLIP, NF_INTEGRAL, &view->vpClipMask,
                FID_Owner|TLONG, Vector->Head.UniqueID,
@@ -136,7 +136,7 @@ static void gen_vector_path(objVector *Vector)
       }
       else if (view->vpClipMask) { acFree(view->vpClipMask); view->vpClipMask = NULL; }
 
-      FMSG("gen_viewport_path","Clipping boundary for #%d is %.2f %.2f %.2f %.2f (transforms: %d)", Vector->Head.UniqueID, view->vpBX1, view->vpBY1, view->vpBX2, view->vpBY2, applied_transforms);
+      log.trace("Clipping boundary for #%d is %.2f %.2f %.2f %.2f (transforms: %d)", Vector->Head.UniqueID, view->vpBX1, view->vpBY1, view->vpBX2, view->vpBY2, applied_transforms);
 
       Vector->Dirty &= ~(RC_TRANSFORM | RC_FINAL_PATH | RC_BASE_PATH);
    }
@@ -168,7 +168,7 @@ static void gen_vector_path(objVector *Vector)
 
       if (!Vector->BasePath) {
          Vector->BasePath = new (std::nothrow) agg::path_storage;
-         if (!Vector->BasePath) { STEP(); SetContext(context); return; }
+         if (!Vector->BasePath) return;
          Vector->Dirty |= RC_BASE_PATH; // Since BasePath is brand new, ensure that the path is generated.
       }
 
@@ -228,7 +228,7 @@ static void gen_vector_path(objVector *Vector)
       // aligned, for which the width and height of the base-path must be known.
 
       if ((Vector->Dirty & RC_TRANSFORM) AND (Vector->Head.SubID IS ID_VECTORTEXT)) {
-         get_text_xy((struct rkVectorText *)Vector);
+         get_text_xy((rkVectorText *)Vector);
 
          if (!Vector->Transform) Vector->Transform = new (std::nothrow) agg::trans_affine;
          else Vector->Transform->reset();
@@ -250,7 +250,7 @@ static void gen_vector_path(objVector *Vector)
       if ((Vector->FillColour.Alpha > 0) or (Vector->FillGradient) or (Vector->FillImage) or (Vector->FillPattern)) {
          if (!Vector->FillRaster) {
             Vector->FillRaster = new (std::nothrow) agg::rasterizer_scanline_aa<>;
-            if (!Vector->FillRaster) { STEP(); SetContext(context); return; }
+            if (!Vector->FillRaster) return;
          }
          else Vector->FillRaster->reset();
 
@@ -271,7 +271,7 @@ static void gen_vector_path(objVector *Vector)
 
          if (!Vector->StrokeRaster) {
             Vector->StrokeRaster = new (std::nothrow) agg::rasterizer_scanline_aa<>;
-            if (!Vector->StrokeRaster) { STEP(); SetContext(context); return; }
+            if (!Vector->StrokeRaster) return;
          }
          else Vector->StrokeRaster->reset();
 
@@ -311,10 +311,8 @@ static void gen_vector_path(objVector *Vector)
 
       Vector->Dirty &= ~RC_FINAL_PATH;
    }
-   else LogF("@gen_vector_path()","Target vector is not a shape.");
+   else log.warning("Target vector is not a shape.");
 
-   STEP();
-   SetContext(context);
 }
 
 //****************************************************************************
@@ -323,13 +321,15 @@ static void gen_vector_path(objVector *Vector)
 
 static void apply_parent_transforms(objVector *Self, objVector *Start, agg::trans_affine &transform, WORD *Applied)
 {
+   parasol::Log log(__FUNCTION__);
+
    for (auto scan=Start; scan; scan=(objVector *)get_parent(scan)) {
       if (scan->Head.ClassID != ID_VECTOR) continue;
 
       if (scan->Head.SubID IS ID_VECTORVIEWPORT) {
-         objVectorViewport *view = (objVectorViewport *)scan;
+         auto view = (objVectorViewport *)scan;
 
-         FMSG("apply_parent_transforms","Parent view #%d x/y: %.2f %.2f", scan->Head.UniqueID, view->vpFixedRelX, view->vpFixedRelY);
+         log.trace("Parent view #%d x/y: %.2f %.2f", scan->Head.UniqueID, view->vpFixedRelX, view->vpFixedRelY);
 
          if (Self IS scan) {
             // Do not apply align values.  Alignment applies to content of the viewport, not the viewport itself.
@@ -353,7 +353,7 @@ static void apply_parent_transforms(objVector *Self, objVector *Start, agg::tran
          }
       }
       else {
-         FMSG("apply_parent_transforms","Parent vector #%d x/y: %.2f %.2f", scan->Head.UniqueID, scan->FinalX, scan->FinalY);
+         log.trace("Parent vector #%d x/y: %.2f %.2f", scan->Head.UniqueID, scan->FinalX, scan->FinalY);
          apply_transforms(scan->Transforms, scan->FinalX, scan->FinalY, transform, Applied);
       }
    }
@@ -362,8 +362,10 @@ static void apply_parent_transforms(objVector *Self, objVector *Start, agg::tran
 //****************************************************************************
 // Applies a vector's transformations to a trans_affine object, using the order in which they are listed.
 
-static void apply_transforms(struct VectorTransform *t, DOUBLE X, DOUBLE Y, agg::trans_affine &Transform, WORD *Applied = NULL)
+static void apply_transforms(VectorTransform *t, DOUBLE X, DOUBLE Y, agg::trans_affine &Transform, WORD *Applied = NULL)
 {
+   parasol::Log log(__FUNCTION__);
+
    if ((X) or (Y)) {
       DBG_TRANSFORM("Initial translate to vector position %.2f %.2f", X, Y);
       Transform.translate(X, Y);
@@ -417,7 +419,7 @@ static void apply_transforms(struct VectorTransform *t, DOUBLE X, DOUBLE Y, agg:
             type |= VTF_TRANSLATE;
             break;
 
-         default: LogErrorMsg("Transform instruction $%.8x not recognised.", t->Type);
+         default: log.warning("Transform instruction $%.8x not recognised.", t->Type);
       }
 
       t = t->Next;
@@ -434,9 +436,10 @@ static void apply_transforms(struct VectorTransform *t, DOUBLE X, DOUBLE Y, agg:
 ** ordering of transformations.
 */
 
-static struct VectorTransform * add_transform(objVector *Self, LONG Type, LONG Create = TRUE)
+static VectorTransform * add_transform(objVector *Self, LONG Type, LONG Create = TRUE)
 {
-   struct VectorTransform *transform;
+   parasol::Log log(__FUNCTION__);
+   VectorTransform *transform;
 
    DBG_TRANSFORM("Type: $%.8x, Create: %d", Type, Create);
 
@@ -449,7 +452,7 @@ static struct VectorTransform * add_transform(objVector *Self, LONG Type, LONG C
       }
    }
 
-   if (!AllocMemory(sizeof(struct VectorTransform), MEM_DATA, &transform, NULL)) {
+   if (!AllocMemory(sizeof(VectorTransform), MEM_DATA, &transform, NULL)) {
       // Insert transform at the start of the list.
 
       transform->Prev = NULL;

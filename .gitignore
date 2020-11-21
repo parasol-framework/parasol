@@ -67,3 +67,4 @@
 /core/modules/fluid/luajit-2.0.*/src/jit/vmdef.lua
 /svg/
 core/modules/fluid/libffi-3.3/
+debug-install/
