@@ -48,7 +48,7 @@ set (CMAKE_POSITION_INDEPENDENT_CODE ON) # Enables -fPIC and -fPIE in gcc
 
 set(BUILD_RPATH_USE_ORIGIN TRUE)
 
-set (INCLUDE_OUTPUT "${PROJECT_SOURCE_DIR}/core/include/parasol")
+set (INCLUDE_OUTPUT "${PROJECT_SOURCE_DIR}/include/parasol")
 set (DOCS "${PROJECT_SOURCE_DIR}/docs")
 
 if (RUN_ANYWHERE)
@@ -81,8 +81,8 @@ if (MINGW) # Undo the use of 'lib' as the default prefix set by MinGW
    set(CMAKE_STATIC_LIBRARY_PREFIX "")
 endif ()
 
-include_directories("${PROJECT_SOURCE_DIR}/core/include"
-   "${PROJECT_SOURCE_DIR}/core/include/parasol/3rdparty"
+include_directories("${PROJECT_SOURCE_DIR}/include"
+   "${PROJECT_SOURCE_DIR}/include/parasol/3rdparty"
    "${CMAKE_CURRENT_BINARY_DIR}")
 
 	CHECK_C_SOURCE_COMPILES ("
@@ -284,7 +284,7 @@ endfunction ()
 function (set_module_defaults ARG_TARGET)
    target_link_options (${ARG_TARGET} PRIVATE "$<${GCC_COMPAT}:$<LINK_ONLY:LINKER:--gc-sections>>")
 
-   target_include_directories (${ARG_TARGET} PRIVATE "${PROJECT_SOURCE_DIR}/core/include")
+   target_include_directories (${ARG_TARGET} PRIVATE "${PROJECT_SOURCE_DIR}/include")
 
    add_definitions ("-DMOD_NAME=${ARG_TARGET}")
 
