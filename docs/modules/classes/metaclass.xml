@@ -18,7 +18,7 @@
 <p>A number of functions are available in the Core for the purpose of class management.  The Core maintains its own list of MetaClass objects, which you can search by calling the <function module="Core">FindClass</function> function.  The <function module="Core">CheckAction</function> function provides a way of checking if a particular pre-defined action is supported by a class.</p>
 <p>Classes are almost always encapsulated by shared modules, although it is possible to create private classes inside executable programs.  For information on the creation of classes, refer to the Class Development Guide for a complete run-down on class development.</p></description>
     <source>
-      <file path="src/classes/">class_metaclass.cpp</file>
+      <file path="classes/">class_metaclass.cpp</file>
     </source>
   </info>
 

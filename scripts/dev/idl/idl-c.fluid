@@ -2053,7 +2053,7 @@ function saveOutput()
    local outPath = glOutputPath
    if (outPath == nil) then
       if nz(glModule.name) then
-         outPath = "sdk:core/include/parasol/modules/" .. glModule.name:lower() .. ".h"
+         outPath = "sdk:include/parasol/modules/" .. glModule.name:lower() .. ".h"
       else
          error("No output path specified in command-line.")
       end

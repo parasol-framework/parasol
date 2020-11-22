@@ -370,7 +370,7 @@ endif (MINGW)
 set(CMAKE_INSTALL_RPATH "$ORIGIN/lib")
 add_subdirectory (3rdparty/zlib-1.2.11) # Note that when upgrading, the CMakeLists.txt is customised
 add_subdirectory (src/link)
-add_subdirectory (src/src)
+add_subdirectory (src/core)
 add_subdirectory (src/modules/audio)
 add_subdirectory (src/modules/display)
 add_subdirectory (src/modules/document)

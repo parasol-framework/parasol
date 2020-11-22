@@ -17,7 +17,7 @@
 <p>The StorageDevice class returns the meta data of file system volumes.  A reference to an existing volume is required in the <field>Volume</field> field in order to make a successful analysis.  If the volume name cannot be resolved, initialisation will fail.</p>
 <p>Following initialisation, all meta fields describing the volume are readable for further information.</p></description>
     <source>
-      <file path="src/classes/">class_storagedevice.cpp</file>
+      <file path="classes/">class_storagedevice.cpp</file>
     </source>
   </info>
 

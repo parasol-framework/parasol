@@ -947,7 +947,7 @@ struct ScriptArg { // For use with scExec
 };
   ]])
 
-  class("StorageDevice", { src="src/classes/class_storagedevice.cpp" }, [[
+  class("StorageDevice", { src="classes/class_storagedevice.cpp" }, [[
     large(DEVICE) DeviceFlags  # Flags identifying the type of media
     large DeviceSize           # Size of the device
     large BytesFree            # Bytes available to the user
@@ -1233,7 +1233,7 @@ INLINE OBJECTID GetUniqueID(APTR Object) { return ((OBJECTPTR)Object)->UniqueID;
     { id=10, name="Watch" }
   })
 
-  class("File", { version=1.2, src="src/classes/class_file.cpp", output="src/classes/class_file_def.c" }, [[
+  class("File", { version=1.2, src="classes/class_file.cpp", output="classes/class_file_def.c" }, [[
     large Position   # The current read/write byte position in a file.
     int(FL) Flags    # File flags and options.
     int   Static     # Set to TRUE if a file object should be static.
@@ -1278,7 +1278,7 @@ INLINE OBJECTID GetUniqueID(APTR Object) { return ((OBJECTPTR)Object)->UniqueID;
     { id=11, name="Set" }
   })
 
-  class("Config", { src="src/classes/class_config.cpp", output="src/classes/class_config_def.c" }, [[
+  class("Config", { src="classes/class_config.cpp", output="classes/class_config_def.c" }, [[
     struct(*ConfigEntry) Entries # Pointer to the array of configuration entries
     str Path            # The location pointer
     str KeyFilter       # Enables key filtering, removing any unwanted keys on load.
@@ -1343,7 +1343,7 @@ INLINE ERROR cfgWriteInt(APTR Self, CSTRING Section, CSTRING Key, LONG Integer)
     { id=4, name="GetProcedureID" }
   })
 
-  class("Script", { src={ "src/classes/class_script.cpp" }, output="src/classes/class_script_def.c" }, [[
+  class("Script", { src={ "classes/class_script.cpp" }, output="classes/class_script_def.c" }, [[
     oid Target           # The object that script objects must be initialised to, e.g. for obj.new()
     int(SCF) Flags       # Optional flags
     error Error          # If an error occurred, this field will indicate the error number
@@ -1373,7 +1373,7 @@ INLINE ERROR cfgWriteInt(APTR Self, CSTRING Section, CSTRING Key, LONG Integer)
     { id=1, name="FindField" },
   })
 
-  class("MetaClass", { src="src/classes/class_metaclass.cpp" }, [[
+  class("MetaClass", { src="classes/class_metaclass.cpp" }, [[
     double ClassVersion    # Version of the class
     struct(*MethodArray) Methods # Original method array supplied by the module.
     cstruct(*FieldArray) Fields  # Original field array supplied by the module.
@@ -1411,7 +1411,7 @@ INLINE ERROR cfgWriteInt(APTR Self, CSTRING Section, CSTRING Key, LONG Integer)
     { id=6, name="CloseInstance" }
   })
 
-  class("Task", { src="src/classes/class_task.cpp", output="src/classes/class_task_def.c" }, [[
+  class("Task", { src="classes/class_task.cpp", output="classes/class_task_def.c" }, [[
     double TimeOut
     int Flags
     int ReturnCode
@@ -1469,7 +1469,7 @@ INLINE ERROR cfgWriteInt(APTR Self, CSTRING Section, CSTRING Key, LONG Integer)
     { id=2, name="Wait" }
   })
 
-  class("Thread", { src="src/classes/class_thread.cpp", output="src/classes/class_thread_def.c" }, [[
+  class("Thread", { src="classes/class_thread.cpp", output="classes/class_thread_def.c" }, [[
    ptr   Data         # User data pointer.
    int   DataSize     # Size of user data.
    int   StackSize    # Pre-set stack size
@@ -1510,7 +1510,7 @@ struct TaskList {
     { id=1,  name="ResolveSymbol" },
   })
 
-  class("Module", { src="src/classes/class_module.cpp" }, [[
+  class("Module", { src="classes/class_module.cpp" }, [[
     double Version                  # Minimum required version of the module
     cstruct(*Function) FunctionList # Array of functions
     ptr ModBase                     # Ptr to function jump table
@@ -1530,7 +1530,7 @@ struct TaskList {
     { id=1, name="SetTime" },
   })
 
-  class("Time", { src="src/classes/class_time.cpp" }, [[
+  class("Time", { src="classes/class_time.cpp" }, [[
     large SystemTime  # Total number of microseconds passed since the system base time
     int Year          # Year   (-ve for BC, +ve for AD)
     int Month         # Month  (1 - 12)
@@ -1561,7 +1561,7 @@ struct TaskList {
     { id=14, name="Find" }
   })
 
-  class("Compression", { src={ "src/compression/class_compression.cpp", "src/compression/compression_fields.cpp" }, output="src/compression/class_compression_def.c" }, [[
+  class("Compression", { src={ "compression/class_compression.cpp", "compression/compression_fields.cpp" }, output="compression/class_compression_def.c" }, [[
     large TotalOutput       # Total number of bytes output (e.g. during compression of a stream)
     oid Output              # Reference to output object for user messages
     int CompressionLevel    # Compression level (percentage - 0% none, 100% high)
@@ -1597,7 +1597,7 @@ struct TaskList {
    UBYTE  Inflating;
   ]])
 
-  class("CompressedStream", { src="src/classes/class_compressed_stream.cpp", output="src/classes/class_compressed_stream_def.c" }, [[
+  class("CompressedStream", { src="classes/class_compressed_stream.cpp", output="classes/class_compressed_stream_def.c" }, [[
     large TotalOutput  # Count of the total bytes that have been output.
     obj Input          # The object that is the source of the compressed data.
     obj Output         # The object that is the destination for the compressed data.
