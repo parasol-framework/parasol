@@ -4,7 +4,7 @@ static const struct FieldDef clFontFlags[] = {
    { "Antialias", 0x00000004 },
    { "Scalable", 0x10000000 },
    { "Bold", 0x20000000 },
-   { "Kerning", 0x80000000 },
+   { "Kerning", (LONG)0x80000000 },
    { "Italic", 0x40000000 },
    { "AllowScale", 0x00000080 },
    { "HeavyLine", 0x00000008 },

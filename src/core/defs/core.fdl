@@ -2371,6 +2371,6 @@ INLINE ERROR flReadLE8(APTR Object, LARGE *Result)
   ]])
 
   if (glProgram == "idl-def") then
-     loadFile("errors.fdl")
+     loadFile("defs/errors.fdl")
   end
 end)

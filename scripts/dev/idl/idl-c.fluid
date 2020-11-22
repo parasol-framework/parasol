@@ -1030,8 +1030,9 @@ function processClassFields(class, Blueprint, Private)
             for _, v in pairs(f.ref.list) do
                if (v.name:upper() != "PRIVATE") and (v.name:upper() != "END") then
                   -- Note: This unusual formatting solution helps to resolve output problems on 64-bit Linux
-                  local hash_id = string.format("%08x", v.value):sub(-8)
-                  cdef = cdef .. string.format("   { \"%s\", 0x%s },\n", shortName(v.name), hash_id)
+                  local hash_id = '0x' .. string.format("%08x", v.value):sub(-8)
+                  if (hash_id == '0x80000000') then hash_id = '(LONG)0x' .. hash_id end
+                  cdef = cdef .. string.format("   { \"%s\", %s },\n", shortName(v.name), hash_id)
                end
             end
             cdef = cdef .. "   { NULL, 0 }\n};\n\n"

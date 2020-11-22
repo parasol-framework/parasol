@@ -92,11 +92,11 @@ module({ name="Font", copyright="Paul Manias © 1998-2020", version=1.0 }, funct
    #else
       LONG FTFace;
    #endif
-   UBYTE prvEscape[2];
-   UBYTE prvFace[32];
-   UBYTE prvBuffer[80];
-   UBYTE prvStyle[20];
-   UBYTE prvDefaultChar;
+   char prvEscape[2];
+   char prvFace[32];
+   char prvBuffer[80];
+   char prvStyle[20];
+   char prvDefaultChar;
    UBYTE prvTotalTabs;
   ]])
 

@@ -39,7 +39,7 @@ struct winne_header_fields {
 struct winfnt_header_fields {
    UWORD version;
    ULONG file_size;
-   UBYTE copyright[60];
+   char copyright[60];
    UWORD file_type;
    UWORD nominal_point_size;     // Point size
    UWORD vertical_resolution;
@@ -84,7 +84,7 @@ struct winfnt_header_fields {
 
 struct BitmapCache {
    struct BitmapCache *Next;
-   APTR Data;
+   UBYTE *Data;
    UBYTE *Outline;
    struct winfnt_header_fields Header;
    struct FontCharacter Chars[256];
