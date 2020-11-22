@@ -3130,7 +3130,7 @@ SetField(Object, FID_Statement|TSTR, "string");
     </input>
     <description>
 <p>This function is used to sort string arrays into alphabetical order.  You will need to provide the list of unsorted strings in a block of string pointers, terminated with a NULL entry.  For example:</p>
-<pre>STRING List[] = {
+<pre>CSTRING List[] = {
    "banana",
    "apple",
    "orange",

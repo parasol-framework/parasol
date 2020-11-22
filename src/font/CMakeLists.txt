@@ -12,7 +12,7 @@ set (MOD "font")
 idl_all ("${MOD}.fdl"
    NAME ${MOD}_defs
    OUTPUT "${INCLUDE_OUTPUT}/modules/font.h"
-   FILES "font.c"
+   FILES "font.cpp"
    ARGS "--output-defs=font_def.c" "--output-proto=font_def.c" "--prototypes=static"
    APPEND_IDL "font_def.c")
 
@@ -42,7 +42,7 @@ add_library (${MOD} SHARED)
 
 set_module_defaults (${MOD})
 
-target_sources (${MOD} PRIVATE "font.c" ${FT_SOURCE})
+target_sources (${MOD} PRIVATE "font.cpp" ${FT_SOURCE})
 
 target_include_directories (${MOD} PRIVATE
    "freetype-2.10.2/include"
