@@ -3123,9 +3123,9 @@ SetField(Object, FID_Statement|TSTR, "string");
     <name>StrSort</name>
     <category>Strings</category>
     <comment>Used to sort string arrays.</comment>
-    <prototype>ERROR StrSort(STRING * List, LONG Flags)</prototype>
+    <prototype>ERROR StrSort(CSTRING * List, LONG Flags)</prototype>
     <input>
-      <param type="STRING *" name="List">Must point to an array of string pointers, terminated with a NULL entry.</param>
+      <param type="CSTRING *" name="List">Must point to an array of string pointers, terminated with a NULL entry.</param>
       <param type="LONG" name="Flags" lookup="SBF">Optional flags may be set here.</param>
     </input>
     <description>

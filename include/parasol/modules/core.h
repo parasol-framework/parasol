@@ -1826,7 +1826,7 @@ struct CoreBase {
    STRING (*_StrClone)(CSTRING);
    LONG (*_StrLength)(CSTRING);
    LARGE (*_StrToInt)(CSTRING);
-   ERROR (*_StrSort)(STRING *, LONG);
+   ERROR (*_StrSort)(CSTRING *, LONG);
    STRING * (*_StrBuildArray)(STRING, LONG, LONG, LONG);
    LONG (*_UTF8CharOffset)(CSTRING, LONG);
    LONG (*_UTF8Length)(CSTRING);

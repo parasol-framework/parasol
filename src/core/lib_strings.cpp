@@ -199,7 +199,7 @@ STRING * StrBuildArray(STRING List, LONG Size, LONG Total, LONG Flags)
    }
 
    if ((Size) AND (Total > 0)) {
-      STRING *array;
+      CSTRING *array;
       if (!AllocMemory(Size + 1 + ((Total + 1) * sizeof(STRING)), MEM_DATA, (APTR *)&array, NULL)) {
          // Build the array
 
@@ -234,7 +234,7 @@ STRING * StrBuildArray(STRING List, LONG Size, LONG Total, LONG Flags)
          else if (Flags & SBF_SORT) StrSort(array, 0);
 
          if (csvbuffer_alloc) free(csvbuffer_alloc);
-         return array;
+         return (STRING *)array;
       }
    }
 
@@ -1427,7 +1427,7 @@ Optional flags include SBF_NO_DUPLICATES, which strips duplicated strings out of
 differences when determining string duplication and SBF_DESC to sort in descending order.
 
 -INPUT-
-array(str) List: Must point to an array of string pointers, terminated with a NULL entry.
+array(cstr) List: Must point to an array of string pointers, terminated with a NULL entry.
 int(SBF) Flags: Optional flags may be set here.
 
 -ERRORS-
@@ -1437,14 +1437,13 @@ NullArgs
 
 *****************************************************************************/
 
-ERROR StrSort(STRING *List, LONG Flags)
+ERROR StrSort(CSTRING *List, LONG Flags)
 {
    if (!List) return ERR_NullArgs;
 
    // Shell sort.  Similar to bubble sort but much faster because it can copy records over larger distances.
 
    LONG h, total, i, j;
-   STRING temp;
 
    for (total=0; List[total]; total++);
 
@@ -1454,7 +1453,7 @@ ERROR StrSort(STRING *List, LONG Flags)
    if (Flags & SBF_DESC) {
       for (; h > 0; h /= 3) {
          for (i=h; i < total; i++) {
-            temp = List[i];
+            auto temp = List[i];
             for (j=i; (j >= h) AND (StrSortCompare(List[j - h], temp) < 0); j -= h) {
                List[j] = List[j - h];
             }
@@ -1465,7 +1464,7 @@ ERROR StrSort(STRING *List, LONG Flags)
    else {
       for (; h > 0; h /= 3) {
          for (i=h; i < total; i++) {
-            temp = List[i];
+            auto temp = List[i];
             for (j=i; (j >= h) AND (StrSortCompare(List[j - h], temp) > 0); j -= h) {
                List[j] = List[j - h];
             }

@@ -127,7 +127,7 @@ LONG StrCopy(CSTRING Src, STRING Dest, LONG Length);
 STRING StrClone(CSTRING String);
 LONG StrLength(CSTRING String);
 LARGE StrToInt(CSTRING String);
-ERROR StrSort(STRING * List, LONG Flags);
+ERROR StrSort(CSTRING * List, LONG Flags);
 STRING * StrBuildArray(STRING List, LONG Size, LONG Total, LONG Flags);
 LONG UTF8CharOffset(CSTRING String, LONG Offset);
 LONG UTF8Length(CSTRING String);

@@ -1356,7 +1356,7 @@ static ERROR CONFIG_Sort(objConfig *Self, APTR Void)
 {
    parasol::Log log;
    ConfigEntry *entries;
-   STRING array[Self->TotalSections+1];
+   CSTRING array[Self->TotalSections+1];
    ConfigEntry entrybuffer[Self->AmtEntries];
 
    log.branch("Sorting by section name.");
