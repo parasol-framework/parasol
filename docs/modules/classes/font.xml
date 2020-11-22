@@ -31,7 +31,7 @@
 </list>
 <p>Please note that if special effects and transforms are desired then use the <class name="VectorText">VectorText</class> class for this purpose.</p></description>
     <source>
-      <file>class_font.c</file>
+      <file>class_font.cpp</file>
     </source>
   </info>
 

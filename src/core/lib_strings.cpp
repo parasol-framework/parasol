@@ -111,8 +111,8 @@ LONG CharCopy(CSTRING String, STRING Dest, LONG Length)
 {
    LONG i;
 
-   if ((String) AND (Dest)) {
-      for (i=0; (i < Length) AND (String[i]); i++) Dest[i] = String[i];
+   if ((String) and (Dest)) {
+      for (i=0; (i < Length) and (String[i]); i++) Dest[i] = String[i];
       return i;
    }
    else return 0;
@@ -177,28 +177,28 @@ STRING * StrBuildArray(STRING List, LONG Size, LONG Total, LONG Flags)
       Size = 0;
       Total = 0;
       for (i=0; List[i];) {
-         while ((List[i]) AND (List[i] <= 0x20)) i++; // Skip leading whitespace
+         while ((List[i]) and (List[i] <= 0x20)) i++; // Skip leading whitespace
          if (!List[i]) break;
          Total++;
 
          if (List[i] IS '"') {
             i++;
-            while ((List[i]) AND (List[i] != '"')) i++;
+            while ((List[i]) and (List[i] != '"')) i++;
             if (List[i] IS '"') i++;
          }
          else if (List[i] IS '\'') {
             i++;
-            while ((List[i]) AND (List[i] != '\'')) i++;
+            while ((List[i]) and (List[i] != '\'')) i++;
             if (List[i] IS '\'') i++;
          }
-         else while ((List[i]) AND (List[i] != ',') AND (List[i] != '\n')) i++;
+         else while ((List[i]) and (List[i] != ',') and (List[i] != '\n')) i++;
 
-         if ((List[i] IS ',') OR (List[i] IS '\n')) List[i++] = 0;
+         if ((List[i] IS ',') or (List[i] IS '\n')) List[i++] = 0;
       }
       Size = i;
    }
 
-   if ((Size) AND (Total > 0)) {
+   if ((Size) and (Total > 0)) {
       CSTRING *array;
       if (!AllocMemory(Size + 1 + ((Total + 1) * sizeof(STRING)), MEM_DATA, (APTR *)&array, NULL)) {
          // Build the array
@@ -208,7 +208,7 @@ STRING * StrBuildArray(STRING List, LONG Size, LONG Total, LONG Flags)
          LONG pos = 0;
          for (i=0; i < Total; i++) {
             array[i] = str+pos;
-            while ((str[pos]) AND (pos < Size)) pos++;
+            while ((str[pos]) and (pos < Size)) pos++;
             if (str[pos]) {
                log.warning("The string buffer exceeds its specified length of %d bytes.", Size);
                break;
@@ -303,7 +303,7 @@ static WORD write_calc(STRING Buffer, LONG BufferSize, DOUBLE Value, WORD Precis
 
    // Sign the value if it is less than 0
 
-   if ((Value < 0) AND (index < BufferSize - 1)) Buffer[index++] = '-';
+   if ((Value < 0) and (index < BufferSize - 1)) Buffer[index++] = '-';
 
    if (!Precision) {
       index += IntToStr(wholepart, Buffer+index, BufferSize);
@@ -315,12 +315,12 @@ static WORD write_calc(STRING Buffer, LONG BufferSize, DOUBLE Value, WORD Precis
 
    index += IntToStr(wholepart, Buffer+index, BufferSize);
 
-   if ((index < BufferSize-1) AND ((fraction > 0) OR (Precision < 0))) {
+   if ((index < BufferSize-1) and ((fraction > 0) or (Precision < 0))) {
       Buffer[index++] = '.';
       fraction = fraction * 10;
       px = Precision;
       if (px < 0) px = -px;
-      while ((fraction > 0.00001) AND (index < BufferSize-1) AND (px > 0)) {
+      while ((fraction > 0.00001) and (index < BufferSize-1) and (px > 0)) {
          ival = F2T(fraction);
          Buffer[index++] = ival + '0';
          fraction = (fraction - ival) * 10;
@@ -339,7 +339,7 @@ ERROR StrCalculate(CSTRING String, DOUBLE *Result, STRING Buffer, LONG BufferSiz
 {
    parasol::Log log(__FUNCTION__);
 
-   if ((!String) OR ((!Result) AND (!Buffer))) {
+   if ((!String) or ((!Result) and (!Buffer))) {
       log.warning("Missing arguments.");
       return ERR_Args;
    }
@@ -351,7 +351,7 @@ ERROR StrCalculate(CSTRING String, DOUBLE *Result, STRING Buffer, LONG BufferSiz
       Buffer[0] = 0;
    }
 
-   if ((String >= Buffer) AND (String < Buffer+BufferSize)) {
+   if ((String >= Buffer) and (String < Buffer+BufferSize)) {
       log.warning("Input (%p) == Output (%p)", String, Buffer);
       return ERR_Args;
    }
@@ -388,7 +388,7 @@ ERROR StrCalculate(CSTRING String, DOUBLE *Result, STRING Buffer, LONG BufferSiz
       if (bracketpos > 0) {
          buffer[0] = ' ';
          LONG j = 1;
-         for (LONG i=bracketpos+1; (String[i] != 0) AND (String[i] != ')'); i++) {
+         for (LONG i=bracketpos+1; (String[i] != 0) and (String[i] != ')'); i++) {
             buffer[j++] = String[i];
             if ((size_t)j > sizeof(buffer)-3) break;
          }
@@ -453,16 +453,16 @@ ERROR StrCalculate(CSTRING String, DOUBLE *Result, STRING Buffer, LONG BufferSiz
       else if (*String IS 'f') { // Fixed floating point precision adjustment
          String++;
          precision = -StrToInt(String);
-         while ((*String >= '0') AND (*String <= '9')) String++;
+         while ((*String >= '0') and (*String <= '9')) String++;
          continue;
       }
       else if (*String IS 'p') { // Floating point precision adjustment
          String++;
          precision = StrToInt(String);
-         while ((*String >= '0') AND (*String <= '9')) String++;
+         while ((*String >= '0') and (*String <= '9')) String++;
          continue;
       }
-      else if ((*String >= '0') AND (*String <= '9')) {
+      else if ((*String >= '0') and (*String <= '9')) {
          number = TRUE;
          DOUBLE fvalue = StrToFloat(String);
          if (sign IS SIGN_MINUS)         total = total - fvalue;
@@ -472,7 +472,7 @@ ERROR StrCalculate(CSTRING String, DOUBLE *Result, STRING Buffer, LONG BufferSiz
             if (fvalue) total = total / fvalue; // NB: Avoid division by zero errors
          }
          else total += fvalue;
-         while (((*String >= '0') AND (*String <= '9')) OR (*String IS '.')) String++;
+         while (((*String >= '0') and (*String <= '9')) or (*String IS '.')) String++;
 
          sign = SIGN_PLUS; // The mathematical sign is reset whenever a number is encountered
          continue;
@@ -522,12 +522,12 @@ str String: Points to the string that is to be capitalised.
 void StrCapitalise(STRING String)
 {
   while (*String) {
-     while ((*String) AND (*String <= 0x20)) String++; // Skip whitespace
+     while ((*String) and (*String <= 0x20)) String++; // Skip whitespace
      if (!*String) return;
 
      // Capitalise the first character
 
-     if ((*String >= 'a') AND (*String <= 'z')) {
+     if ((*String >= 'a') and (*String <= 'z')) {
         *String = *String - 'a' + 'A';
      }
 
@@ -535,8 +535,8 @@ void StrCapitalise(STRING String)
 
      // Lower-case all following characters
 
-     while ((*String) AND (*String > 0x20)) {
-        if ((*String >= 'A') AND (*String <= 'Z')) *String = *String - 'A' + 'a';
+     while ((*String) and (*String > 0x20)) {
+        if ((*String >= 'A') and (*String <= 'Z')) *String = *String - 'A' + 'a';
         String++;
      }
   }
@@ -620,7 +620,7 @@ ERROR StrCompare(CSTRING String1, CSTRING String2, LONG Length, LONG Flags)
    CSTRING Original;
    #define Wildcard String1
 
-   if ((!String1) OR (!String2)) return ERR_Args;
+   if ((!String1) or (!String2)) return ERR_Args;
 
    if (String1 IS String2) return ERR_Okay; // Return a match if both addresses are equal
 
@@ -632,16 +632,16 @@ ERROR StrCompare(CSTRING String1, CSTRING String2, LONG Length, LONG Flags)
    if (Flags & STR_WILDCARD) {
       if (!Wildcard[0]) return ERR_Okay;
 
-      while ((*Wildcard) AND (*String2)) {
+      while ((*Wildcard) and (*String2)) {
          fail = FALSE;
          if (*Wildcard IS '*') {
             while (*Wildcard IS '*') Wildcard++;
 
-            for (i=0; (Wildcard[i]) AND (Wildcard[i] != '*') AND (Wildcard[i] != '|'); i++); // Count the number of printable characters after the '*'
+            for (i=0; (Wildcard[i]) and (Wildcard[i] != '*') and (Wildcard[i] != '|'); i++); // Count the number of printable characters after the '*'
 
             if (i IS 0) return ERR_Okay; // Nothing left to compare as wildcard string terminates with a *, so return match
 
-            if ((!Wildcard[i]) OR (Wildcard[i] IS '|')) {
+            if ((!Wildcard[i]) or (Wildcard[i] IS '|')) {
                // Scan to the end of the string for wildcard situation like "*.txt"
 
                for (j=0; String2[j]; j++); // Get the number of characters left in the second string
@@ -656,8 +656,8 @@ ERROR StrCompare(CSTRING String1, CSTRING String2, LONG Length, LONG Flags)
                      if (*Wildcard IS *String2) break;
                   }
                   else {
-                     char1 = *String1; if ((char1 >= 'A') AND (char1 <= 'Z')) char1 = char1 - 'A' + 'a';
-                     char2 = *String2; if ((char2 >= 'A') AND (char2 <= 'Z')) char2 = char2 - 'A' + 'a';
+                     char1 = *String1; if ((char1 >= 'A') and (char1 <= 'Z')) char1 = char1 - 'A' + 'a';
+                     char2 = *String2; if ((char2 >= 'A') and (char2 <= 'Z')) char2 = char2 - 'A' + 'a';
                      if (char1 IS char2) break;
                   }
                   String2++;
@@ -669,18 +669,18 @@ ERROR StrCompare(CSTRING String1, CSTRING String2, LONG Length, LONG Flags)
             Wildcard++;
             String2++;
          }
-         else if ((*Wildcard IS '\\') AND (Wildcard[1])) {
+         else if ((*Wildcard IS '\\') and (Wildcard[1])) {
             Wildcard++;
             if (Flags & STR_CASE) {
                if (*Wildcard++ != *String2++) fail = TRUE;
             }
             else {
-               char1 = *String1++; if ((char1 >= 'A') AND (char1 <= 'Z')) char1 = char1 - 'A' + 'a';
-               char2 = *String2++; if ((char2 >= 'A') AND (char2 <= 'Z')) char2 = char2 - 'A' + 'a';
+               char1 = *String1++; if ((char1 >= 'A') and (char1 <= 'Z')) char1 = char1 - 'A' + 'a';
+               char2 = *String2++; if ((char2 >= 'A') and (char2 <= 'Z')) char2 = char2 - 'A' + 'a';
                if (char1 != char2) fail = TRUE;
             }
          }
-         else if ((*Wildcard IS '|') AND (Wildcard[1])) {
+         else if ((*Wildcard IS '|') and (Wildcard[1])) {
             Wildcard++;
             String2 = Original; // Restart the comparison
          }
@@ -689,16 +689,16 @@ ERROR StrCompare(CSTRING String1, CSTRING String2, LONG Length, LONG Flags)
                if (*Wildcard++ != *String2++) fail = TRUE;
             }
             else {
-               char1 = *String1++; if ((char1 >= 'A') AND (char1 <= 'Z')) char1 = char1 - 'A' + 'a';
-               char2 = *String2++; if ((char2 >= 'A') AND (char2 <= 'Z')) char2 = char2 - 'A' + 'a';
+               char1 = *String1++; if ((char1 >= 'A') and (char1 <= 'Z')) char1 = char1 - 'A' + 'a';
+               char2 = *String2++; if ((char2 >= 'A') and (char2 <= 'Z')) char2 = char2 - 'A' + 'a';
                if (char1 != char2) fail = TRUE;
             }
          }
 
          if (fail) {
-            // Check for an OR character, if we find one, we can restart the comparison process.
+            // Check for an or character, if we find one, we can restart the comparison process.
 
-            while ((*Wildcard) AND (*Wildcard != '|')) Wildcard++;
+            while ((*Wildcard) and (*Wildcard != '|')) Wildcard++;
 
             if (*Wildcard IS '|') {
                Wildcard++;
@@ -713,22 +713,22 @@ ERROR StrCompare(CSTRING String1, CSTRING String2, LONG Length, LONG Flags)
          else if (Wildcard[0] IS '|') return ERR_Okay;
       }
 
-      if ((Wildcard[0] IS '*') AND (Wildcard[1] IS 0)) return ERR_Okay;
+      if ((Wildcard[0] IS '*') and (Wildcard[1] IS 0)) return ERR_Okay;
 
       return ERR_False;
    }
    else if (Flags & STR_CASE) {
-      while ((len) AND (*String1) AND (*String2)) {
+      while ((len) and (*String1) and (*String2)) {
          if (*String1++ != *String2++) return ERR_False;
          len--;
       }
    }
    else  {
-      while ((len) AND (*String1) AND (*String2)) {
+      while ((len) and (*String1) and (*String2)) {
          char1 = *String1;
          char2 = *String2;
-         if ((char1 >= 'A') AND (char1 <= 'Z')) char1 = char1 - 'A' + 'a';
-         if ((char2 >= 'A') AND (char2 <= 'Z')) char2 = char2 - 'A' + 'a';
+         if ((char1 >= 'A') and (char1 <= 'Z')) char1 = char1 - 'A' + 'a';
+         if ((char2 >= 'A') and (char2 <= 'Z')) char2 = char2 - 'A' + 'a';
          if (char1 != char2) return ERR_False;
 
          String1++; String2++;
@@ -740,10 +740,10 @@ ERROR StrCompare(CSTRING String1, CSTRING String2, LONG Length, LONG Flags)
    // requested to check.
 
    if (Flags & (STR_MATCH_LEN|STR_WILDCARD)) {
-      if ((*String1 IS 0) AND (*String2 IS 0)) return ERR_Okay;
+      if ((*String1 IS 0) and (*String2 IS 0)) return ERR_Okay;
       else return ERR_False;
    }
-   else if ((Length) AND (len > 0)) return ERR_False;
+   else if ((Length) and (len > 0)) return ERR_False;
    else return ERR_Okay;
 }
 
@@ -778,17 +778,17 @@ LONG StrCopy(CSTRING String, STRING Dest, LONG Length)
    if (Length < 0) return 0;
 
    LONG i = 0;
-   if ((String) AND (Dest)) {
+   if ((String) and (Dest)) {
       if (!Length) {
          log.warning("Warning - zero length given for copying string \"%s\".", String);
          ((UBYTE *)0)[0] = 0;
       }
 
-      while ((i < Length) AND (*String)) {
+      while ((i < Length) and (*String)) {
          Dest[i++] = *String++;
       }
 
-      if ((*String) AND (i >= Length)) {
+      if ((*String) and (i >= Length)) {
          //log.warning("Overflow: %d/%d \"%.20s\"", i, Length, Dest);
          Dest[i-1] = 0; // If we ran out of buffer space, we have to terminate from one character back
       }
@@ -822,14 +822,14 @@ LONG StrDatatype(CSTRING String)
 {
    if (!String) return 0;
 
-   while ((*String) AND (*String <= 0x20)) String++; // Skip white-space
+   while ((*String) and (*String <= 0x20)) String++; // Skip white-space
 
    LONG i;
-   if ((String[0] IS '0') AND (String[1] IS 'x')) {
+   if ((String[0] IS '0') and (String[1] IS 'x')) {
       for (i=2; String[i]; i++) {
-         if (((String[i] >= '0') AND (String[i] <= '9')) OR
-             ((String[i] >= 'A') AND (String[i] <= 'F')) OR
-             ((String[i] >= 'a') AND (String[i] <= 'f')));
+         if (((String[i] >= '0') and (String[i] <= '9')) OR
+             ((String[i] >= 'A') and (String[i] <= 'F')) OR
+             ((String[i] >= 'a') and (String[i] <= 'f')));
          else return STT_STRING;
       }
       return STT_HEX;
@@ -838,13 +838,12 @@ LONG StrDatatype(CSTRING String)
    BYTE is_number = TRUE;
    BYTE is_float  = FALSE;
 
-   for (i=0; (String[i]) AND (is_number); i++) {
-      if (((String[i] < '0') OR (String[i] > '9')) AND
-          (String[i] != '.') AND (String[i] != '-')) is_number = FALSE;
+   for (i=0; (String[i]) and (is_number); i++) {
+      if (((String[i] < '0') or (String[i] > '9')) and (String[i] != '.') and (String[i] != '-')) is_number = FALSE;
       if (String[i] IS '.') is_float = TRUE;
    }
 
-   if ((is_float) AND (is_number)) return STT_FLOAT;
+   if ((is_float) and (is_number)) return STT_FLOAT;
    else if (is_number) return STT_NUMBER;
    else return STT_STRING;
 }
@@ -872,7 +871,7 @@ LONG StrExpand(STRING String, LONG Pos, LONG AmtChars)
 {
    parasol::Log log(__FUNCTION__);
 
-   if ((String) AND (AmtChars)) {
+   if ((String) and (AmtChars)) {
       LONG len, i;
       if ((len = StrLength(String)) > 0) {
          if (Pos < 0) Pos = 0;
@@ -930,7 +929,7 @@ LONG StrEvalConditional(CSTRING String)
    };
 
    if (!String) return FALSE;
-   while ((*String) AND (*String <= 0x20)) String++;
+   while ((*String) and (*String <= 0x20)) String++;
 
    BYTE reverse = FALSE;
 
@@ -938,7 +937,7 @@ LONG StrEvalConditional(CSTRING String)
 
    LONG i;
    for (i=0; String[i]; i++) {
-      if ((String[i] IS '!') AND (String[i+1] IS '=')) break;
+      if ((String[i] IS '!') and (String[i+1] IS '=')) break;
       if (String[i] IS '>') break;
       if (String[i] IS '<') break;
       if (String[i] IS '=') break;
@@ -955,7 +954,7 @@ LONG StrEvalConditional(CSTRING String)
 
    // Test field
 
-   while ((i > 0) AND (String[i-1] IS ' ')) i--;
+   while ((i > 0) and (String[i-1] IS ' ')) i--;
    char test[i+1];
    CopyMemory(String, test, i);
    test[i] = 0;
@@ -966,7 +965,7 @@ LONG StrEvalConditional(CSTRING String)
    {
       char cond[3];
       UBYTE c;
-      for (i=cpos,c=0; (c < 2) AND ((String[i] IS '!') OR (String[i] IS '=') OR (String[i] IS '>') OR (String[i] IS '<')); i++) {
+      for (i=cpos,c=0; (c < 2) and ((String[i] IS '!') or (String[i] IS '=') or (String[i] IS '>') or (String[i] IS '<')); i++) {
          cond[c++] = String[i];
       }
       cond[c] = 0;
@@ -980,7 +979,7 @@ LONG StrEvalConditional(CSTRING String)
       }
    }
 
-   while ((String[i]) AND (String[i] <= 0x20)) i++; // skip white-space
+   while ((String[i]) and (String[i] <= 0x20)) i++; // skip white-space
 
    LONG truth = FALSE;
    if (test[0]) {
@@ -1060,7 +1059,7 @@ ULONG StrHash(CSTRING String, LONG CaseSensitive)
    }
    else {
       while ((c = *String++)) {
-         if ((c >= 'A') AND (c <= 'Z')) hash = (hash<<5) + hash + c - 'A' + 'a';
+         if ((c >= 'A') and (c <= 'Z')) hash = (hash<<5) + hash + c - 'A' + 'a';
          else hash = (hash<<5) + hash + c;
       }
       return hash;
@@ -1179,7 +1178,7 @@ LONG StrLineLength(CSTRING String)
 {
    if (String) {
       LONG i = 0;
-      while ((String[i]) AND (String[i] != '\n') AND (String[i] != '\r')) i++;
+      while ((String[i]) and (String[i] != '\n') and (String[i] != '\r')) i++;
       return i;
    }
    else return 0;
@@ -1205,7 +1204,7 @@ void StrLower(STRING String)
    if (!String) return;
 
    while (*String) {
-      if ((*String >= 'A') AND (*String <= 'Z')) *String += 0x20;
+      if ((*String >= 'A') and (*String <= 'Z')) *String += 0x20;
       String++;
    }
 }
@@ -1232,7 +1231,7 @@ CSTRING StrNextLine(CSTRING String)
 {
    if (!String) return NULL;
 
-   while ((*String) AND (*String != '\n') AND (*String != '\r')) String++;
+   while ((*String) and (*String != '\n') and (*String != '\r')) String++;
    while (*String IS '\r') String++;
    if (*String IS '\n') String++;
    while (*String IS '\r') String++;
@@ -1274,7 +1273,7 @@ ERROR StrReplace(CSTRING Source, CSTRING Keyword, CSTRING Replacement, STRING *R
 {
    *Result = NULL;
 
-   if ((!Source) OR (!Keyword) OR (!Result)) return LogError(ERH_StrReplace, ERR_NullArgs);
+   if ((!Source) or (!Keyword) or (!Result)) return LogError(ERH_StrReplace, ERR_NullArgs);
 
    if (!Replacement) Replacement = "";
 
@@ -1287,10 +1286,9 @@ ERROR StrReplace(CSTRING Source, CSTRING Keyword, CSTRING Replacement, STRING *R
 
    // Calculate string lengths
 
-   LONG keylen, replen, offset;
-   for (keylen=0; Keyword[keylen]; keylen++);
-   for (replen=0; Replacement[replen]; replen++);
-
+   LONG keylen = StrLength(Keyword);
+   LONG replen = StrLength(Replacement);
+   LONG offset;
    CSTRING orig = Source;
    STRING newstr = NULL;
    BYTE alloc  = FALSE;
@@ -1341,7 +1339,7 @@ int: Returns the byte position of the first occurrence of the Keyword within the
 
 LONG StrSearch(CSTRING Keyword, CSTRING String, LONG Flags)
 {
-   if ((!String) OR (!Keyword)) {
+   if ((!String) or (!Keyword)) {
       LogError(ERH_StrSearch, ERR_NullArgs);
       return -1;
    }
@@ -1391,7 +1389,7 @@ int: Returns the new length of the shrunken string, not including the null byte.
 
 LONG StrShrink(STRING String, LONG Offset, LONG TotalBytes)
 {
-   if ((String) AND (Offset >= 0) AND (TotalBytes > 0)) {
+   if ((String) and (Offset >= 0) and (TotalBytes > 0)) {
       STRING orig = String;
       String += Offset;
       const LONG skip = TotalBytes;
@@ -1399,7 +1397,7 @@ LONG StrShrink(STRING String, LONG Offset, LONG TotalBytes)
       *String = 0;
       return (LONG)(String - orig);
    }
-   else { LogError(ERH_Strings, ERR_Args); return 0; }
+   else return 0;
 }
 
 /*****************************************************************************
@@ -1411,7 +1409,7 @@ This function is used to sort string arrays into alphabetical order.  You will n
 strings in a block of string pointers, terminated with a NULL entry.  For example:
 
 <pre>
-STRING List[] = {
+CSTRING List[] = {
    "banana",
    "apple",
    "orange",
@@ -1443,18 +1441,18 @@ ERROR StrSort(CSTRING *List, LONG Flags)
 
    // Shell sort.  Similar to bubble sort but much faster because it can copy records over larger distances.
 
-   LONG h, total, i, j;
+   LONG total, i, j;
 
    for (total=0; List[total]; total++);
 
-   h = 1;
+   LONG h = 1;
    while (h < total / 9) h = 3 * h + 1;
 
    if (Flags & SBF_DESC) {
       for (; h > 0; h /= 3) {
          for (i=h; i < total; i++) {
             auto temp = List[i];
-            for (j=i; (j >= h) AND (StrSortCompare(List[j - h], temp) < 0); j -= h) {
+            for (j=i; (j >= h) and (StrSortCompare(List[j - h], temp) < 0); j -= h) {
                List[j] = List[j - h];
             }
             List[j] = temp;
@@ -1465,7 +1463,7 @@ ERROR StrSort(CSTRING *List, LONG Flags)
       for (; h > 0; h /= 3) {
          for (i=h; i < total; i++) {
             auto temp = List[i];
-            for (j=i; (j >= h) AND (StrSortCompare(List[j - h], temp) > 0); j -= h) {
+            for (j=i; (j >= h) and (StrSortCompare(List[j - h], temp) > 0); j -= h) {
                List[j] = List[j - h];
             }
             List[j] = temp;
@@ -1509,24 +1507,24 @@ int: If both strings are equal, 0 is returned.  If Name1 is greater than Name2, 
 
 LONG StrSortCompare(CSTRING Name1, CSTRING Name2)
 {
-   if ((!Name1) OR (!Name2)) return 0;
+   if ((!Name1) or (!Name2)) return 0;
 
-   while ((*Name1) AND (*Name2)) {
+   while ((*Name1) and (*Name2)) {
       UBYTE char1 = *Name1;
       UBYTE char2 = *Name2;
 
-      if ((char1 >= '0') AND (char1 <= '9') AND (char2 >= '0') AND (char2 <= '9')) {
+      if ((char1 >= '0') and (char1 <= '9') and (char2 >= '0') and (char2 <= '9')) {
          // This integer comparison is for human readable sorting
          ULONG val1 = 0;
          while (*Name1 IS '0') Name1++;
-         while ((*Name1) AND (*Name1 >= '0') AND (*Name1 <= '9')) {
+         while ((*Name1) and (*Name1 >= '0') and (*Name1 <= '9')) {
             val1 = (val1 * 10) + (*Name1 - '0');
             Name1++;
          }
 
          ULONG val2 = 0;
          while (*Name2 IS '0') Name2++;
-         while ((*Name2) AND (*Name2 >= '0') AND (*Name2 <= '9')) {
+         while ((*Name2) and (*Name2 >= '0') and (*Name2 <= '9')) {
             val2 = (val2 * 10) + (*Name2 - '0');
             Name2++;
          }
@@ -1534,14 +1532,14 @@ LONG StrSortCompare(CSTRING Name1, CSTRING Name2)
          if (val1 > val2) return 1; // Name1 is greater
          else if (val1 < val2) return -1; // Name1 is lesser
          else {
-            while ((*Name1 >= '0') AND (*Name1 <= '9')) Name1++;
-            while ((*Name2 >= '0') AND (*Name2 <= '9')) Name2++;
+            while ((*Name1 >= '0') and (*Name1 <= '9')) Name1++;
+            while ((*Name2 >= '0') and (*Name2 <= '9')) Name2++;
             continue;
          }
       }
 
-      if ((char1 >= 'A') AND (char1 <= 'Z')) char1 = char1 - 'A' + 'a';
-      if ((char2 >= 'A') AND (char2 <= 'Z')) char2 = char2 - 'A' + 'a';
+      if ((char1 >= 'A') and (char1 <= 'Z')) char1 = char1 - 'A' + 'a';
+      if ((char2 >= 'A') and (char2 <= 'Z')) char2 = char2 - 'A' + 'a';
 
       if (char1 > char2) return 1; // Name1 is greater
       else if (char1 < char2) return -1; // Name1 is lesser
@@ -1550,7 +1548,7 @@ LONG StrSortCompare(CSTRING Name1, CSTRING Name2)
       Name2++;
    }
 
-   if ((!*Name1) AND (!*Name2)) return 0;
+   if ((!*Name1) and (!*Name2)) return 0;
    else if (!*Name1) return -1;
    else return 1;
 }
@@ -1628,7 +1626,7 @@ ERROR StrEvaluate(STRING Buffer, LONG BufferLength, LONG Flags, OBJECTID OwnerID
    parasol::Log log(__FUNCTION__);
    LONG pos, i, j;
 
-   if ((!Buffer) OR (BufferLength < 3)) return LogError(ERH_Strings, ERR_Args);
+   if ((!Buffer) or (BufferLength < 3)) return LogError(ERH_Strings, ERR_Args);
 
    // Quick check for translation symbols
 
@@ -1651,9 +1649,9 @@ ERROR StrEvaluate(STRING Buffer, LONG BufferLength, LONG Flags, OBJECTID OwnerID
    while (pos >= 0) {
       // Do not translate quoted areas
 
-      if ((Buffer[pos] IS '"') AND (!(Flags & SEF_IGNORE_QUOTES))) {
+      if ((Buffer[pos] IS '"') and (!(Flags & SEF_IGNORE_QUOTES))) {
          pos--;
-         while ((pos >= 0) AND (Buffer[pos] != '"')) pos--;
+         while ((pos >= 0) and (Buffer[pos] != '"')) pos--;
          if (pos < 0) {
             log.warning("Badly defined string: %.80s", Buffer);
             if (calcbuffer) free(calcbuffer);
@@ -1661,7 +1659,7 @@ ERROR StrEvaluate(STRING Buffer, LONG BufferLength, LONG Flags, OBJECTID OwnerID
          }
       }
 
-      if ((Buffer[pos] IS '[') AND ((Buffer[pos+1] IS '@') OR (Buffer[pos+1] IS '%'))) {
+      if ((Buffer[pos] IS '[') and ((Buffer[pos+1] IS '@') or (Buffer[pos+1] IS '%'))) {
          // Ignore arguments, e.g. [@id] or [%id].  It's also useful for ignoring [@attrib] in xpath.
          pos--;
       }
@@ -1691,7 +1689,7 @@ ERROR StrEvaluate(STRING Buffer, LONG BufferLength, LONG Flags, OBJECTID OwnerID
             CopyMemory(Buffer+pos+2, calc, endbracket-(pos+2));
             calc[endbracket-(pos+2)] = 0;
 
-            if ((calcbuffer) OR (BufferLength > 2048)) {
+            if ((calcbuffer) or (BufferLength > 2048)) {
                if (!calcbuffer) {
                   if (!(calcbuffer = (char *)malloc(BufferLength))) {
                      return ERR_AllocMemory;
@@ -1726,7 +1724,7 @@ ERROR StrEvaluate(STRING Buffer, LONG BufferLength, LONG Flags, OBJECTID OwnerID
             char name[MAX_NAME_LEN];
 
             LONG j = 0;
-            for (i=pos+1; (Buffer[i] != '.') AND (i < endbracket); i++) {
+            for (i=pos+1; (Buffer[i] != '.') and (i < endbracket); i++) {
                if ((size_t)j < sizeof(name)-1) name[j++] = LCASE(Buffer[i]);
             }
             name[j] = 0;
@@ -1735,8 +1733,8 @@ ERROR StrEvaluate(STRING Buffer, LONG BufferLength, LONG Flags, OBJECTID OwnerID
 
             char code = 0;
             if (j IS 2) {
-               if ((name[0] IS 'r') AND (name[1] IS 'b')) code = ']';
-               else if ((name[0] IS 'l') AND (name[1] IS 'b')) code = '[';
+               if ((name[0] IS 'r') and (name[1] IS 'b')) code = ']';
+               else if ((name[0] IS 'l') and (name[1] IS 'b')) code = '[';
             }
 
             if (code) {
@@ -1755,7 +1753,7 @@ ERROR StrEvaluate(STRING Buffer, LONG BufferLength, LONG Flags, OBJECTID OwnerID
                   if (!StrMatch(name, "self")) {
                      objectid = GetUniqueID(CurrentContext());
                   }
-                  else if ((!StrMatch(name, "container")) OR (!StrMatch(name, "owner"))) {
+                  else if ((!StrMatch(name, "container")) or (!StrMatch(name, "owner"))) {
                      if (!OwnerID) OwnerID = GetOwner(CurrentContext());
                      objectid = OwnerID;
                   }
@@ -1773,13 +1771,13 @@ ERROR StrEvaluate(STRING Buffer, LONG BufferLength, LONG Flags, OBJECTID OwnerID
 
                      LONG j = 0;
                      char field[60];
-                     while ((i < endbracket) AND ((size_t)j < sizeof(field)-1)) {
+                     while ((i < endbracket) and ((size_t)j < sizeof(field)-1)) {
                         field[j++] = Buffer[i++];
                      }
                      field[j] = 0;
                      if (!AccessObject(objectid, 2000, &object)) {
                         OBJECTPTR target;
-                        if (((classfield = find_field(object, field, &target))) AND (classfield->Flags & FD_STRING)) {
+                        if (((classfield = find_field(object, field, &target))) and (classfield->Flags & FD_STRING)) {
                            error = GetField(object, (FIELD)classfield->FieldID|TSTR, &str);
                         }
                         else {
@@ -1878,7 +1876,7 @@ LONG StrTranslateRefresh(void)
    MEMORYID memoryid;
    STRING str;
    CSTRING language;
-   LONG size, amtentries, heapsize, total, *array, temp;
+   LONG size, amtentries, total, *array, temp;
    MAXINT strbuf;
    WORD j, len;
 
@@ -1897,8 +1895,8 @@ LONG StrTranslateRefresh(void)
 
       char path[80];
       LONG i = StrCopy("config:translations/", path, sizeof(path));
-      for (j=0; (language[j]) AND ((size_t)i < sizeof(path)-1); j++) {
-         if ((language[j] >= 'A') AND (language[j] <= 'Z')) path[i++] = language[j] - 'A' + 'a';
+      for (j=0; (language[j]) and ((size_t)i < sizeof(path)-1); j++) {
+         if ((language[j] >= 'A') and (language[j] <= 'Z')) path[i++] = language[j] - 'A' + 'a';
          else path[i++] = language[j];
       }
       StrCopy(".cfg", path+i, sizeof(path)-i);
@@ -1954,9 +1952,9 @@ LONG StrTranslateRefresh(void)
                array = (LONG *)(translate + 1);
                for (i=total/2; i >= 0; i--) sift((STRING)(array+total), array, i, total);
 
-               heapsize = total;
+               LONG heapsize = total;
                for (i=heapsize; i > 0; i--) {
-                  temp = array[0];
+                  auto temp = array[0];
                   array[0] = array[i-1];
                   array[i-1] = temp;
                   sift((STRING)(array+total), array, 0, --heapsize);
@@ -2047,7 +2045,7 @@ CSTRING StrTranslateText(CSTRING Text)
 
    SharedControl *sharectl = (SharedControl *)GetResourcePtr(RES_SHARED_CONTROL);
 
-   if ((!glTranslate) AND (!sharectl->TranslationMID)) {
+   if ((!glTranslate) and (!sharectl->TranslationMID)) {
       if (glTranslateLoad IS FALSE) {
          glTranslateLoad = TRUE;
          if (StrTranslateRefresh() IS FALSE) return Text;
@@ -2057,7 +2055,7 @@ CSTRING StrTranslateText(CSTRING Text)
 
    // Reload the translation table if it has been replaced with a new one
 
-   if ((!glTranslate) OR (glTranslate->Replaced)) {
+   if ((!glTranslate) or (glTranslate->Replaced)) {
       log.msg("Reloading the translation table.");
       if (glTranslate) {
          ReleaseMemoryID(glTranslateMID); // Memory is already marked for deletion, so should free itself on the final release
@@ -2101,13 +2099,13 @@ restart:
 
    if ((APTR)txt IS (APTR)Text) {
       for (pos=0; (Text[pos]) AND
-                  (((Text[pos] >= 'a') AND (Text[pos] <= 'z')) OR
-                   ((Text[pos] >= 'A') AND (Text[pos] <= 'Z')) OR
+                  (((Text[pos] >= 'a') and (Text[pos] <= 'z')) OR
+                   ((Text[pos] >= 'A') and (Text[pos] <= 'Z')) OR
                    (Text[pos] IS ' ')); pos++);
 
       if (Text[pos]) {
          LONG j;
-         for (j=0; (j < pos) AND ((size_t)j < sizeof(glTranslateBuffer)-1); j++) glTranslateBuffer[j] = Text[j];
+         for (j=0; (j < pos) and ((size_t)j < sizeof(glTranslateBuffer)-1); j++) glTranslateBuffer[j] = Text[j];
          glTranslateBuffer[j] = 0;
          txt = glTranslateBuffer;
          goto restart;
@@ -2122,25 +2120,25 @@ found:
    str++;
 
    LONG j;
-   for (j=0; (str[j]) AND ((size_t)j < sizeof(glTranslateBuffer)-1); j++) glTranslateBuffer[j] = str[j];
+   for (j=0; (str[j]) and ((size_t)j < sizeof(glTranslateBuffer)-1); j++) glTranslateBuffer[j] = str[j];
 
    if (txt IS glTranslateBuffer) { // Copy trailing non-alphabetic symbols
-      while ((Text[pos]) AND ((size_t)j < sizeof(glTranslateBuffer)-1)) glTranslateBuffer[j++] = Text[pos++];
+      while ((Text[pos]) and ((size_t)j < sizeof(glTranslateBuffer)-1)) glTranslateBuffer[j++] = Text[pos++];
    }
 
    glTranslateBuffer[j] = 0;
 
    // Check the capitalisation of the text
 
-   if ((Text[0] >= 'a') AND (Text[0] <= 'z')) { // All lower case
+   if ((Text[0] >= 'a') and (Text[0] <= 'z')) { // All lower case
       for (i=0; glTranslateBuffer[i]; i++) {
-         if ((glTranslateBuffer[i] >= 'A') AND (glTranslateBuffer[i] <= 'Z')) glTranslateBuffer[i] = glTranslateBuffer[i] - 'A' + 'a';
+         if ((glTranslateBuffer[i] >= 'A') and (glTranslateBuffer[i] <= 'Z')) glTranslateBuffer[i] = glTranslateBuffer[i] - 'A' + 'a';
       }
    }
-   else if (((Text[0] >= 'A') AND (Text[0] <= 'Z')) AND ((Text[1] >= 'A') AND (Text[1] <= 'A'))) {
+   else if (((Text[0] >= 'A') and (Text[0] <= 'Z')) and ((Text[1] >= 'A') and (Text[1] <= 'A'))) {
       // All upper case
       for (i=0; glTranslateBuffer[i]; i++) {
-         if ((glTranslateBuffer[i] >= 'a') AND (glTranslateBuffer[i] <= 'z')) glTranslateBuffer[i] = glTranslateBuffer[i] - 'a' + 'A';
+         if ((glTranslateBuffer[i] >= 'a') and (glTranslateBuffer[i] <= 'z')) glTranslateBuffer[i] = glTranslateBuffer[i] - 'a' + 'A';
       }
    }
 
@@ -2169,7 +2167,7 @@ void StrUpper(STRING String)
    if (!String) return;
 
    while (*String) {
-      if ((*String >= 'a') AND (*String <= 'z')) *String -= 0x20;
+      if ((*String >= 'a') and (*String <= 'z')) *String -= 0x20;
       String++;
    }
 }
@@ -2249,7 +2247,7 @@ static void sift(STRING Buffer, LONG *lookup, LONG i, LONG heapsize)
       }
 
       if (largest != i) {
-         LONG temp = lookup[i];
+         auto temp = lookup[i];
          lookup[i] = lookup[largest];
          lookup[largest] = temp;
       }
@@ -2270,7 +2268,7 @@ static LONG test_statement(CSTRING TestString, CSTRING CompareString, LONG Condi
    LONG test_type = StrDatatype(TestString);
 
    UBYTE result = FALSE;
-   if (((test_type IS STT_NUMBER) OR (test_type IS STT_FLOAT)) AND ((cmp_type IS STT_NUMBER) OR (cmp_type IS STT_FLOAT))) {
+   if (((test_type IS STT_NUMBER) or (test_type IS STT_FLOAT)) and ((cmp_type IS STT_NUMBER) or (cmp_type IS STT_FLOAT))) {
       DOUBLE cmp_float  = StrToFloat(CompareString);
       DOUBLE test_float = StrToFloat(TestString);
       switch(Condition) {

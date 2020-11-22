@@ -55,7 +55,7 @@ if (BUILD_DEFS)
       "${DOCS}/modules/classes/image.xml"
       "${DOCS}/modules/classes/tabfocus.xml"
       PRE_BUILD
-      COMMAND ${FLUID_CMD} ${IDL_C_SCRIPT} "--log-error" "--src=${MOD}.fdl" "--sdk=${PROJECT_SOURCE_DIR}"
+      COMMAND ${FLUID_CMD} ${IDL_C_SCRIPT} "--log-warning" "--src=${MOD}.fdl" "--sdk=${PROJECT_SOURCE_DIR}"
       DEPENDS "${MOD}.fdl" ${WIDGET_SOURCES}
       WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
       COMMENT "Producing C definition files for the ${MOD} module"

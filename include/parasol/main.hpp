@@ -43,6 +43,31 @@ class ScopedObject { // C++ wrapper for automatically freeing an object
 
 //****************************************************************************
 
+template <class T>
+class ScopedObjectLock { // C++ wrapper for automatically freeing an o  `bject
+   private:
+      LONG locks;
+      ERROR error;
+
+   public:
+      T *obj;
+
+      ScopedObjectLock(OBJECTPTR Object) { // Lock already provided
+         obj = Object;
+         error = ERR_Okay;
+      }
+
+      ScopedObjectLock(OBJECTID ObjectID, LONG Milliseconds = 3000) {
+         error = AccessObject(ObjectID, Milliseconds, &obj);
+      }
+
+      ScopedObjectLock() { obj = NULL; error = ERR_NotLocked; }
+      ~ScopedObjectLock() { if (!error) ReleaseObject(obj); }
+      bool granted() { return error == ERR_Okay; }
+};
+
+//****************************************************************************
+
 class ScopedSysLock { // C++ wrapper for terminating a system lock when scope is lost
    private:
       LONG index;

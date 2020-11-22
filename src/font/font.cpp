@@ -65,7 +65,7 @@ OR
 #include <math.h>
 #include <wchar.h>
 
-static struct KeyStore *glCache = NULL;
+static KeyStore *glCache = NULL;
 
 /*****************************************************************************
 ** This table determines what ASCII characters are treated as white-space for word-wrapping purposes.  You'll need to
@@ -105,13 +105,13 @@ static LONG glDisplayVDPI = FIXED_DPI; // Initially matches the fixed DPI value,
 static LONG glDisplayHDPI = FIXED_DPI;
 
 static ERROR add_font_class(void);
-static LONG getutf8(CSTRING, LONG *);
+static LONG getutf8(CSTRING, ULONG *);
 static LONG get_kerning(FT_Face, LONG Glyph, LONG PrevGlyph);
-static struct font_glyph * get_glyph(objFont *, ULONG, UBYTE);
+static font_glyph * get_glyph(objFont *, ULONG, UBYTE);
 static void free_glyph(objFont *);
 static void scan_truetype_folder(objConfig *);
 static void scan_fixed_folder(objConfig *);
-static ERROR analyse_bmp_font(STRING, struct winfnt_header_fields *, STRING *, UBYTE *, UBYTE);
+static ERROR analyse_bmp_font(STRING, winfnt_header_fields *, STRING *, UBYTE *, UBYTE);
 static ERROR  fntRefreshFonts(void);
 
 #include "font_def.c"
@@ -137,7 +137,7 @@ INLINE LONG ReadLongLE(OBJECTPTR File)
 //****************************************************************************
 // Return the first unicode value from a given string address.
 
-static LONG getutf8(CSTRING Value, LONG *Unicode)
+static LONG getutf8(CSTRING Value, ULONG *Unicode)
 {
    LONG i, len, code;
 
@@ -197,6 +197,7 @@ static BYTE glPointSet = FALSE;
 static DOUBLE global_point_size(void)
 {
    if (!glPointSet) {
+      parasol::Log log(__FUNCTION__);
       OBJECTID style_id;
       if (!FastFindObject("glStyle", ID_XML, &style_id, 1, NULL)) {
          objXML *style;
@@ -207,12 +208,12 @@ static DOUBLE global_point_size(void)
                glDefaultPoint = StrToFloat(fontsize);
                if (glDefaultPoint < 6) glDefaultPoint = 6;
                else if (glDefaultPoint > 80) glDefaultPoint = 80;
-               LogMsg("Global font size is %.1f.", glDefaultPoint);
+               log.msg("Global font size is %.1f.", glDefaultPoint);
             }
             ReleaseObject(style);
          }
       }
-      else LogErrorMsg("glStyle XML object is not available");
+      else log.warning("glStyle XML object is not available");
    }
 
    return glDefaultPoint;
@@ -223,10 +224,10 @@ static DOUBLE global_point_size(void)
 
 static ERROR name_matches(CSTRING Name, CSTRING Entry)
 {
-   while ((*Name) AND (*Name <= 0x20)) Name++;
+   while ((*Name) and (*Name <= 0x20)) Name++;
 
    UWORD e = 0;
-   while ((*Name) AND (Entry[e])) {
+   while ((*Name) and (Entry[e])) {
       while (*Name IS '\'') Name++; // Ignore the use of encapsulating quotes.
       if (!*Name) break;
 
@@ -238,7 +239,7 @@ static ERROR name_matches(CSTRING Name, CSTRING Entry)
    }
 
    if (!Entry[e]) { // End of Entry reached.  Check if Name is also ended for a match.
-      if ((*Name IS ',') OR (*Name IS ':') OR (!*Name)) return ERR_Okay;
+      if ((*Name IS ',') or (*Name IS ':') or (!*Name)) return ERR_Okay;
    }
 
    return ERR_Failed;
@@ -257,7 +258,7 @@ static void update_dpi(void)
       DISPLAYINFO *display;
       if (!gfxGetDisplayInfo(0, &display)) {
          last_update = PreciseTime();
-         if ((display->VDensity >= 96) AND (display->HDensity >= 96)) {
+         if ((display->VDensity >= 96) and (display->HDensity >= 96)) {
             glDisplayVDPI = display->VDensity;
             glDisplayHDPI = display->HDensity;
             //glDisplayDPI = (glDisplayVDPI + glDisplayHDPI) / 2; // Get the average DPI in case the pixels aren't square.  Note: Average DPI beats diagonal DPI every time.
@@ -282,7 +283,7 @@ INLINE void get_kerning_xy(FT_Face Face, LONG Glyph, LONG PrevGlyph, LONG *X, LO
 
 INLINE LONG get_kerning(FT_Face Face, LONG Glyph, LONG PrevGlyph)
 {
-   if ((!Glyph) OR (!PrevGlyph)) return 0;
+   if ((!Glyph) or (!PrevGlyph)) return 0;
 
    FT_Vector delta;
    FT_Get_Kerning(Face, PrevGlyph, Glyph, FT_KERNING_DEFAULT, &delta);
@@ -322,14 +323,15 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    // Initialise the FreeType library
 
    if (FT_Init_FreeType(&glFTLibrary)) {
-      LogErrorMsg("Failed to initialise the FreeType font library.");
+      parasol::Log log;
+      log.warning("Failed to initialise the FreeType font library.");
       return ERR_Failed;
    }
 
    LONG type;
    UBYTE refresh;
 
-   if ((AnalysePath("system:fonts/fonts.cfg", &type) != ERR_Okay) OR (type != LOC_FILE)) refresh = TRUE;
+   if ((AnalysePath("system:fonts/fonts.cfg", &type) != ERR_Okay) or (type != LOC_FILE)) refresh = TRUE;
    else refresh = FALSE;
 
    OBJECTPTR config;
@@ -357,8 +359,8 @@ static ERROR CMDOpen(OBJECTPTR Module)
 static ERROR CMDExpunge(void)
 {
    if (glFTLibrary) { FT_Done_FreeType(glFTLibrary); glFTLibrary = NULL; }
-   if (glConfigID) { acFreeID(glConfigID); glConfigID = 0; }
-   if (glCache) { FreeResource(glCache); glCache = NULL; }
+   if (glConfigID)  { acFreeID(glConfigID); glConfigID = 0; }
+   if (glCache)     { FreeResource(glCache); glCache = NULL; }
 
    // Free allocated class and modules
 
@@ -368,9 +370,9 @@ static ERROR CMDExpunge(void)
    // NB: Cached font files are not removed during expunge, because the task's shutdown procedure will have automatically destroy any cached fonts our CMDExpunge() routine is called.
 
    if (glBitmapCache) {
-      struct BitmapCache *scan = glBitmapCache;
+      auto scan = glBitmapCache;
       while (scan) {
-         struct BitmapCache *next = scan->Next;
+         auto next = scan->Next;
          if (scan->Data) FreeResource(scan->Data);
          if (scan->Outline) FreeResource(scan->Outline);
          FreeResource(scan);
@@ -409,24 +411,26 @@ static LONG fntCharWidth(objFont *Font, ULONG Char, ULONG KChar, LONG *Kerning)
 
    if (Font->FixedWidth > 0) return Font->FixedWidth;
    else if (Font->Flags & FTF_SCALABLE) {
-      struct font_glyph *cache;
+      font_glyph *cache;
       if ((cache = get_glyph(Font, Char, FALSE))) {
-         if ((Font->Flags & FTF_KERNING) AND (KChar) AND (Kerning)) {
+         if ((Font->Flags & FTF_KERNING) and (KChar) and (Kerning)) {
             LONG kglyph = FT_Get_Char_Index(Font->FTFace, KChar);
             *Kerning = get_kerning(Font->FTFace, cache->GlyphIndex, kglyph);
          }
          return cache->Char.AdvanceX + Font->GlyphSpacing;
       }
       else {
-         FMSG("fntCharWidth()","No glyph for character %u", Char);
-         if (Font->prvChar) return Font->prvChar[Font->prvDefaultChar].Advance;
+         parasol::Log log(__FUNCTION__);
+         log.trace("No glyph for character %u", Char);
+         if (Font->prvChar) return Font->prvChar[(LONG)Font->prvDefaultChar].Advance;
          else return 0;
       }
    }
    else if (Char < 256) return Font->prvChar[Char].Advance;
    else {
-      FMSG("@fntCharWidth:","Character %u out of range.", Char);
-      return Font->prvChar[Font->prvDefaultChar].Advance;
+      parasol::Log log(__FUNCTION__);
+      log.traceWarning("Character %u out of range.", Char);
+      return Font->prvChar[(LONG)Font->prvDefaultChar].Advance;
    }
 }
 
@@ -447,7 +451,7 @@ AccessObject: The SystemFonts object could not be accessed.
 
 *****************************************************************************/
 
-static ERROR fntGetList(struct FontList **Result)
+static ERROR fntGetList(FontList **Result)
 {
    if (!Result) return ERR_NullArgs;
 
@@ -457,10 +461,10 @@ static ERROR fntGetList(struct FontList **Result)
    CSTRING section;
    ERROR error = ERR_Okay;
    if (!AccessObject(glConfigID, 3000, &config)) {
-      LONG size = 0, totalfonts, i;
+      LONG size = 0, totalfonts;
 
-      if ((!GetLong(config, FID_TotalSections, &totalfonts)) AND (totalfonts > 0)) {
-         for (i=0; i < totalfonts; i++) {
+      if ((!GetLong(config, FID_TotalSections, &totalfonts)) and (totalfonts > 0)) {
+         for (LONG i=0; i < totalfonts; i++) {
             if (cfgGetSectionFromIndex(config, i, &section) != ERR_Okay) break;
 
             CSTRING fontname = NULL;
@@ -470,18 +474,18 @@ static ERROR fntGetList(struct FontList **Result)
             cfgReadValue(config, section, "Styles", &fontstyles);
             cfgReadValue(config, section, "Points", &fontpoints);
 
-            size += sizeof(struct FontList);
+            size += (LONG)sizeof(FontList);
             size += StrLength(fontname) + 1;
             size += StrLength(fontstyles) + 1;
             size += StrLength(fontpoints) + 1;
          }
 
-         struct FontList *list;
+         FontList *list;
          if (!AllocMemory(size, MEM_DATA, &list, NULL)) {
             STRING buffer = (STRING)(list + totalfonts);
             *Result = list;
 
-            for (i=0; i < totalfonts; i++) {
+            for (LONG i=0; i < totalfonts; i++) {
                if (i < totalfonts-1) list->Next = list + 1;
                else list->Next = NULL;
 
@@ -506,12 +510,12 @@ static ERROR fntGetList(struct FontList **Result)
 
                CSTRING fontpoints;
                if (!cfgReadValue(config, section, "Points", &fontpoints)) {
-                  list->Points = buffer;
+                  list->Points = (UBYTE *)buffer;
 
                   WORD j;
                   for (j=0; *fontpoints; j++) {
                       *buffer++ = StrToInt(fontpoints);
-                     while ((*fontpoints) AND (*fontpoints != ',')) fontpoints++;
+                     while ((*fontpoints) and (*fontpoints != ',')) fontpoints++;
                      if (*fontpoints IS ',') fontpoints++;
                   }
                   *buffer++ = 0;
@@ -557,12 +561,12 @@ int Wrap:   The pixel position at which word wrapping occurs.  If zero or less, 
 
 static void fntStringSize(objFont *Font, CSTRING String, LONG Chars, LONG Wrap, LONG *Width, LONG *Rows)
 {
-   struct font_glyph *cache;
-   LONG unicode;
-   WORD rowcount, wordwidth, lastword, tabwidth, charwidth, charlen;
+   font_glyph *cache;
+   ULONG unicode;
+   WORD rowcount, wordwidth, lastword, tabwidth, charwidth;
    UBYTE line_abort, pchar;
 
-   if ((!Font) OR (!String)) return;
+   if ((!Font) or (!String)) return;
    if (!(Font->Head.Flags & NF_INITIALISED)) return;
 
    if (Chars IS FSS_LINE) {
@@ -574,9 +578,9 @@ static void fntStringSize(objFont *Font, CSTRING String, LONG Chars, LONG Wrap, 
       if (Chars < 0) Chars = 0x7fffffff;
    }
 
-   if ((Wrap <= 0) OR (Font->Flags & FTF_CHAR_CLIP)) Wrap = 0x7fffffff;
+   if ((Wrap <= 0) or (Font->Flags & FTF_CHAR_CLIP)) Wrap = 0x7fffffff;
 
-   //LogMsg("StringSize: %.10s, Wrap %d, Chars %d, Abort: %d", String, Wrap, Chars, line_abort);
+   //log.msg("StringSize: %.10s, Wrap %d, Chars %d, Abort: %d", String, Wrap, Chars, line_abort);
 
    CSTRING start  = String;
    LONG x         = 0;
@@ -586,12 +590,12 @@ static void fntStringSize(objFont *Font, CSTRING String, LONG Chars, LONG Wrap, 
    LONG longest   = 0;
    LONG charcount = 0;
    LONG wordindex = 0;
-   while ((*String) AND (charcount < Chars)) {
+   while ((*String) and (charcount < Chars)) {
       lastword = x;
 
       // Skip whitespace
 
-      while ((*String) AND (*String <= 0x20)) {
+      while ((*String) and (*String <= 0x20)) {
          if (*String IS ' ') x += Font->prvChar[' '].Advance + Font->GlyphSpacing;
          else if (*String IS '\t') {
             tabwidth = (Font->prvChar[' '].Advance + Font->GlyphSpacing) * Font->TabSize;
@@ -612,7 +616,7 @@ static void fntStringSize(objFont *Font, CSTRING String, LONG Chars, LONG Wrap, 
          prevglyph = 0;
       }
 
-      if ((!*String) OR (line_abort IS 2)) break;
+      if ((!*String) or (line_abort IS 2)) break;
 
       // Calculate the width of the discovered word
 
@@ -621,7 +625,7 @@ static void fntStringSize(objFont *Font, CSTRING String, LONG Chars, LONG Wrap, 
       charwidth = 0;
 
       while (charcount < Chars) {
-         charlen = getutf8(String, &unicode);
+         LONG charlen = getutf8(String, &unicode);
 
          if (Font->FixedWidth > 0) charwidth = Font->FixedWidth;
          else if (Font->Flags & FTF_SCALABLE) {
@@ -635,9 +639,9 @@ static void fntStringSize(objFont *Font, CSTRING String, LONG Chars, LONG Wrap, 
             }
          }
          else if (unicode < 256) charwidth = Font->prvChar[unicode].Advance + Font->GlyphSpacing;
-         else charwidth = Font->prvChar[Font->prvDefaultChar].Advance + Font->GlyphSpacing;
+         else charwidth = Font->prvChar[(LONG)Font->prvDefaultChar].Advance + Font->GlyphSpacing;
 
-         if ((!x) AND (!(Font->Flags & FTF_CHAR_CLIP)) AND (x+wordwidth+charwidth >= Wrap)) {
+         if ((!x) and (!(Font->Flags & FTF_CHAR_CLIP)) and (x+wordwidth+charwidth >= Wrap)) {
             // This is the first word of the line and it exceeds the boundary, so we have to split it.
 
             lastword = wordwidth;
@@ -653,7 +657,7 @@ static void fntStringSize(objFont *Font, CSTRING String, LONG Chars, LONG Wrap, 
 
             // Break if the previous char was a wrap character or current char is whitespace.
 
-            if ((pchar) OR (*String <= 0x20)) break;
+            if ((pchar) or (*String <= 0x20)) break;
          }
       }
 
@@ -726,11 +730,11 @@ int: The pixel width of the string is returned - this will be zero if there was 
 
 static LONG fntStringWidth(objFont *Font, CSTRING String, LONG Chars)
 {
-   if ((!Font) OR (!String)) return 0;
+   if ((!Font) or (!String)) return 0;
 
    if (!(Font->Head.Flags & NF_INITIALISED)) return 0;
 
-   struct font_glyph *cache;
+   font_glyph *cache;
 
    CSTRING str = String;
    if (Chars < 0) Chars = 0x7fffffff;
@@ -738,7 +742,7 @@ static LONG fntStringWidth(objFont *Font, CSTRING String, LONG Chars)
    LONG len     = 0;
    LONG lastlen = 0;
    LONG prevglyph = 0;
-   while ((*str) AND (Chars > 0)) {
+   while ((*str) and (Chars > 0)) {
       if (*str IS '\n') {
          if (lastlen < len) lastlen = len; // Compare lengths
          len  = 0; // Reset
@@ -758,7 +762,7 @@ static LONG fntStringWidth(objFont *Font, CSTRING String, LONG Chars)
 
          if (Font->FixedWidth > 0) len += Font->FixedWidth + Font->GlyphSpacing;
          else if (Font->Flags & FTF_SCALABLE) {
-            if ((unicode < 256) AND (Font->prvChar[unicode].Advance) AND (!(Font->Flags & FTF_KERNING))) {
+            if ((unicode < 256) and (Font->prvChar[unicode].Advance) and (!(Font->Flags & FTF_KERNING))) {
                len += Font->prvChar[unicode].Advance + Font->GlyphSpacing;
             }
             else if (unicode IS ' ') {
@@ -770,10 +774,10 @@ static LONG fntStringWidth(objFont *Font, CSTRING String, LONG Chars)
                prevglyph = cache->GlyphIndex;
             }
          }
-         else if ((unicode < 256) AND (Font->prvChar[unicode].Advance)) {
+         else if ((unicode < 256) and (Font->prvChar[unicode].Advance)) {
             len += Font->prvChar[unicode].Advance + Font->GlyphSpacing;
          }
-         else len += Font->prvChar[Font->prvDefaultChar].Advance + Font->GlyphSpacing;
+         else len += Font->prvChar[(LONG)Font->prvDefaultChar].Advance + Font->GlyphSpacing;
       }
    }
 
@@ -815,7 +819,7 @@ FieldNotSet: The String field has not been set.
 static ERROR fntConvertCoords(objFont *Font, CSTRING String, LONG X, LONG Y, LONG *Column, LONG *Row,
    LONG *ByteColumn, LONG *BytePos, LONG *CharX)
 {
-   struct font_glyph *cache;
+   font_glyph *cache;
    LONG i;
 
    LONG row     = 0;
@@ -837,7 +841,7 @@ static ERROR fntConvertCoords(objFont *Font, CSTRING String, LONG X, LONG Y, LON
    while (y > Font->LineSpacing) {
       // Search for line feeds
       i = 0;
-      while ((str[i]) AND (str[i] != '\n')) for (++i; ((str[i] & 0xc0) IS 0x80); i++);
+      while ((str[i]) and (str[i] != '\n')) for (++i; ((str[i] & 0xc0) IS 0x80); i++);
       if (str[i] IS '\n') {
          y -= Font->LineSpacing;
          Row++;
@@ -852,7 +856,7 @@ static ERROR fntConvertCoords(objFont *Font, CSTRING String, LONG X, LONG Y, LON
    LONG xpos = 0;
    LONG width = 0;
    ULONG prevglyph = 0;
-   while ((*str) AND (*str != '\n')) {
+   while ((*str) and (*str != '\n')) {
       if (Font->FixedWidth > 0) {
          str += getutf8(str, NULL);
          width = Font->FixedWidth + Font->GlyphSpacing;
@@ -870,7 +874,7 @@ static ERROR fntConvertCoords(objFont *Font, CSTRING String, LONG X, LONG Y, LON
             if (unicode IS ' ') {
                width = Font->prvChar[' '].Advance + Font->GlyphSpacing;
             }
-            else if ((!(Font->Flags & FTF_KERNING)) AND (unicode < 256) AND (Font->prvChar[unicode].Advance)) {
+            else if ((!(Font->Flags & FTF_KERNING)) and (unicode < 256) and (Font->prvChar[unicode].Advance)) {
                width = Font->prvChar[unicode].Advance + Font->GlyphSpacing;
             }
             else if ((cache = get_glyph(Font, unicode, FALSE))) {
@@ -879,8 +883,8 @@ static ERROR fntConvertCoords(objFont *Font, CSTRING String, LONG X, LONG Y, LON
                prevglyph = cache->GlyphIndex;
             }
          }
-         else if ((unicode < 256) AND (Font->prvChar[unicode].Advance)) width = Font->prvChar[unicode].Advance + Font->GlyphSpacing;
-         else width = Font->prvChar[Font->prvDefaultChar].Advance + Font->GlyphSpacing;
+         else if ((unicode < 256) and (Font->prvChar[unicode].Advance)) width = Font->prvChar[unicode].Advance + Font->GlyphSpacing;
+         else width = Font->prvChar[(LONG)Font->prvDefaultChar].Advance + Font->GlyphSpacing;
       }
 
       // Subtract the width of the current character and keep processing.  Note that the purpose of dividing the width
@@ -894,7 +898,7 @@ static ERROR fntConvertCoords(objFont *Font, CSTRING String, LONG X, LONG Y, LON
       bytepos += 1;
    }
 
-   //LogF("fntConvertCoords:","Row: %d, Col: %d, BCol: %d, BPos: %d", row, column, bytecol, bytepos);
+   //log.msg("fntConvertCoords:","Row: %d, Col: %d, BCol: %d, BPos: %d", row, column, bytecol, bytepos);
 
    if (Row)        *Row        = row;
    if (Column)     *Column     = column;
@@ -930,7 +934,7 @@ double: The previous font size is returned.
 static DOUBLE fntSetDefaultSize(DOUBLE Size)
 {
    DOUBLE previous;
-   if ((Size < 6) OR (Size > 100)) return glDefaultPoint;
+   if ((Size < 6) or (Size > 100)) return glDefaultPoint;
 
    previous = glDefaultPoint;
    glDefaultPoint = Size;
@@ -968,30 +972,28 @@ NoSupport: One of the font files is in an unsupported file format.
 
 static ERROR fntInstallFont(CSTRING Files)
 {
-   if (!Files) return PostError(ERR_NullArgs);
+   parasol::Log log(__FUNCTION__);
 
-   LogBranch("Files: %s", Files);
+   if (!Files) return log.warning(ERR_NullArgs);
+
+   log.branch("Files: %s", Files);
 
    // Copy all files to the destination directory
 
-   BYTE buffer[512];
+   char buffer[512];
    LONG i = 0;
    while (Files[i]) {
       LONG j;
-      for (j=0; (Files[i]) AND (Files[i] != ';'); j++) buffer[j] = Files[i++];
+      for (j=0; (Files[i]) and (Files[i] != ';'); j++) buffer[j] = Files[i++];
       buffer[j++] = 0;
 
       // Read the file header to figure out whether the file belongs in the fixed or truetype directory.
 
       OBJECTPTR file;
-      if (CreateObject(ID_FILE, 0, &file,
-            FID_Flags|TLONG, FL_READ,
-            FID_Path|TSTR,   buffer,
-            TAGEND) IS ERR_Okay) {
-
+      if (!CreateObject(ID_FILE, 0, &file, FID_Flags|TLONG, FL_READ, FID_Path|TSTR, buffer, TAGEND)) {
          CSTRING directory = "fixed";
          if (!acRead(file, buffer, 256, NULL)) {
-            if ((buffer[0] IS 'M') AND (buffer[1] IS 'Z')) directory = "fixed";
+            if ((buffer[0] IS 'M') and (buffer[1] IS 'Z')) directory = "fixed";
             else directory = "truetype";
 
             StrFormat(buffer, sizeof(buffer), "fonts:%s/", directory);
@@ -1003,15 +1005,13 @@ static ERROR fntInstallFont(CSTRING Files)
 
       if (Files[i]) {
          i++;
-         while ((Files[i]) AND (Files[i] <= 0x20)) i++;
+         while ((Files[i]) and (Files[i] <= 0x20)) i++;
       }
    }
 
    // Refresh the font server so that the installed files will show up in the font list
 
    fntRefreshFonts();
-
-   LogReturn();
    return ERR_Okay;
 }
 
@@ -1039,69 +1039,58 @@ DeleteFile: Removal aborted due to a file deletion failure.
 
 static ERROR fntRemoveFont(CSTRING Name)
 {
-   objConfig *config;
+   parasol::Log log(__FUNCTION__);
    LONG i, n;
-   UBYTE buffer[200], style[200];
+   char buffer[200], style[200];
 
-   if (!Name) return PostError(ERR_NullArgs);
-   if (!Name[0]) return PostError(ERR_EmptyString);
+   if (!Name) return log.warning(ERR_NullArgs);
+   if (!Name[0]) return log.warning(ERR_EmptyString);
 
-   LogBranch("%s", Name);
+   log.branch("%s", Name);
 
-   if (AccessObject(glConfigID, 3000, &config) != ERR_Okay) {
-      return LogReturnError(0, ERR_AccessObject);
-   }
+   parasol::ScopedObjectLock<objConfig> config(glConfigID);
+   if (!config.granted()) return log.warning(ERR_AccessObject);
 
    // Delete all files related to this font
 
-   LONG amtentries = config->AmtEntries;
-   struct ConfigEntry *entries = config->Entries;
+   LONG amtentries = config.obj->AmtEntries;
+   ConfigEntry *entries = config.obj->Entries;
 
    for (i=0; i < amtentries; i++) {
-      if (!StrMatch("Name", entries[i].Key)) {
-         if (!StrMatch(Name, entries[i].Data)) {
-            break;
-         }
-      }
+      if ((!StrMatch("Name", entries[i].Key)) AND (!StrMatch(Name, entries[i].Data))) break;
    }
 
-   if (i >= amtentries) {
-      ReleaseObject(config);
-      return LogReturnError(0, ERR_Search);
-   }
+   if (i >= amtentries) return log.warning(ERR_Search);
 
    CSTRING str;
    ERROR error = ERR_Okay;
-   if (!cfgReadValue(config, entries[i].Section, "Styles", &str)) {
-      MSG("Scanning styles: %s", str);
+   if (!cfgReadValue(config.obj, entries[i].Section, "Styles", &str)) {
+      log.trace("Scanning styles: %s", str);
 
       while (*str) {
-         for (n=0; ((*str) AND (*str != ',')); n++) style[n] = *str++;
+         for (n=0; ((*str) and (*str != ',')); n++) style[n] = *str++;
          style[n] = 0;
 
          if (*str IS ',') str++;
 
          StrFormat(buffer, sizeof(buffer), "Fixed:%s", style);
          CSTRING value;
-         if (!cfgReadValue(config, entries[i].Section, buffer, &value)) {
+         if (!cfgReadValue(config.obj, entries[i].Section, buffer, &value)) {
             if (DeleteFile(value, NULL)) error = ERR_DeleteFile;
          }
 
          StrFormat(buffer, sizeof(buffer), "Scale:%s", style);
-         if (!cfgReadValue(config, entries[i].Section, buffer, &value)) {
+         if (!cfgReadValue(config.obj, entries[i].Section, buffer, &value)) {
             if (DeleteFile(value, NULL)) error = ERR_DeleteFile;
          }
       }
    }
-   else LogErrorMsg("There is no Styles entry for the %s font.", Name);
+   else log.warning("There is no Styles entry for the %s font.", Name);
 
    StrCopy(entries[i].Section, buffer, sizeof(buffer));
-   cfgDeleteSection(config, buffer);
+   cfgDeleteSection(config.obj, buffer);
 
-   ReleaseObject(config);
-
-   MSG("Font removed successfully.");
-   LogReturn();
+   log.trace("Font removed successfully.");
    return error;
 }
 
@@ -1139,19 +1128,17 @@ Search: Unable to find a suitable font.
 
 static ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, LONG Flags, CSTRING *Path)
 {
+   parasol::Log log(__FUNCTION__);
    CSTRING str;
-   LONG i, j;
-   UBYTE buffer[120], style[60];
+   LONG i;
+   char buffer[120], style[60];
 
-   LogBranch("%s:%d:%s, Flags: $%.8x", Name, Point, Style, Flags);
+   log.branch("%s:%d:%s, Flags: $%.8x", Name, Point, Style, Flags);
 
-   objConfig *config;
-   if (AccessObject(glConfigID, 5000, &config) != ERR_Okay) {
-      return LogReturnError(0, ERR_AccessObject);
-   }
+   parasol::ScopedObjectLock<objConfig> config(glConfigID, 5000);
+   if (!config.granted()) return log.warning(ERR_AccessObject);
 
-   struct ConfigEntry *entries;
-   entries = config->Entries;
+   auto entries = config.obj->Entries;
 
    // Find the config section that we should be interested in.  If multiple faces are specified, then
    // up to two fonts can be detected - a fixed bitmap font and a scalable font.
@@ -1161,7 +1148,7 @@ static ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, LONG Flags, 
    CSTRING fixed_section = NULL;
    CSTRING scale_section = NULL;
    CSTRING name = Name;
-   while ((name) AND (*name)) {
+   while ((name) and (*name)) {
       if (name[0] IS '*') {
          // Use of the '*' wildcard indicates that the default scalable font can be used.  This is is usually
          // accompanied with a fixed font, e.g. "Sans Serif,*"
@@ -1169,15 +1156,14 @@ static ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, LONG Flags, 
          break;
       }
 
-      UWORD pos;
-      for (pos=0; pos < config->AmtEntries; pos++) {
+      for (LONG pos=0; pos < config.obj->AmtEntries; pos++) {
          if (!StrMatch(entries[pos].Key, "Name")) {
             if (!name_matches(name, entries[pos].Data)) {
                // Determine if this is a fixed and/or scalable font.  Note that if the font supports
                // both fixed and scalable, fixed_section and scale_section will point to the same font.
 
                CSTRING section = entries[pos++].Section;
-               while ((pos < config->AmtEntries) AND (!StrMatch(section, entries[pos].Section))) {
+               while ((pos < config.obj->AmtEntries) and (!StrMatch(section, entries[pos].Section))) {
                   if (!StrCompare("Fixed:", entries[pos].Key, 6, 0)) {
                      if (!fixed_section) {
                         fixed_section = entries[pos].Section;
@@ -1197,32 +1183,32 @@ static ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, LONG Flags, 
             }
             else {
                // Not the font that we're looking for.  Skip to the next section.
-               while ((pos < config->AmtEntries-1) AND (!StrMatch(entries[pos].Section, entries[pos+1].Section))) pos++;
+               while ((pos < config.obj->AmtEntries-1) and (!StrMatch(entries[pos].Section, entries[pos+1].Section))) pos++;
             }
          }
       }
 
-      if ((fixed_section) OR (scale_section)) break; // Break now if suitable fixed and scalable font settings have been discovered.
+      if ((fixed_section) or (scale_section)) break; // Break now if suitable fixed and scalable font settings have been discovered.
 
       while (*name) { // Try the next name, if any
          if (*name IS ',') {
             multi = TRUE;
             name++;
-            while ((*name) AND (*name <= 0x20)) name++;
+            while ((*name) and (*name <= 0x20)) name++;
             break;
          }
          name++;
       }
    }
 
-   if ((!scale_section) AND (!fixed_section)) LogErrorMsg("The font \"%s\" is not installed on this system.", Name);
+   if ((!scale_section) and (!fixed_section)) log.warning("The font \"%s\" is not installed on this system.", Name);
 
-   //LogErrorMsg("Name: %s, Multi: %d, Fixed: %s, Scale: %s", Name, multi, fixed_section, scale_section);
+   //log.warning("Name: %s, Multi: %d, Fixed: %s, Scale: %s", Name, multi, fixed_section, scale_section);
 
    if (!scale_section) {
       // Allow use of scalable Source Sans Pro only if multi-face font search was enabled.  Otherwise we presume that
       // auto-upgrading the fixed font is undesirable.
-      if ((fixed_section) AND (multi)) {
+      if ((fixed_section) and (multi)) {
          static char default_font[60] = "";
          if (!default_font[0]) {
             StrCopy("[glStyle./fonts/font(@name='scalable')/@face]", default_font, sizeof(default_font));
@@ -1231,9 +1217,8 @@ static ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, LONG Flags, 
             }
          }
 
-         UWORD pos;
-         for (pos=0; pos < config->AmtEntries; pos++) {
-            if ((!StrMatch(entries[pos].Key, "Name")) AND (!StrMatch(entries[pos].Data, default_font))) {
+         for (LONG pos=0; pos < config.obj->AmtEntries; pos++) {
+            if ((!StrMatch(entries[pos].Key, "Name")) and (!StrMatch(entries[pos].Data, default_font))) {
                scale_section = entries[pos].Section;
                break;
             }
@@ -1241,33 +1226,30 @@ static ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, LONG Flags, 
       }
 
       if (!fixed_section) { // Sans Serif is a good default for a fixed font.
-         UWORD pos;
-         for (pos=0; pos < config->AmtEntries; pos++) {
-            if ((!StrMatch(entries[pos].Key, "Name")) AND (!StrMatch(entries[pos].Data, "Sans Serif"))) {
+         for (LONG pos=0; pos < config.obj->AmtEntries; pos++) {
+            if ((!StrMatch(entries[pos].Key, "Name")) and (!StrMatch(entries[pos].Data, "Sans Serif"))) {
                fixed_section = entries[pos].Section;
                break;
             }
          }
       }
 
-      if ((!fixed_section) AND (!scale_section)) {
-         ReleaseObject(config);
-         LogReturn();
+      if ((!fixed_section) and (!scale_section)) {
          return ERR_Search;
       }
    }
 
-   if ((fixed_section) AND (scale_section) AND (Point)) {
+   if ((fixed_section) and (scale_section) and (Point)) {
       // Read the point sizes for the fixed section and determine if the requested point size is within 2 units of one
       // of those values.  If not, we'll have to use the scaled font option.
 
-      if (!cfgReadValue(config, fixed_section, "Points", &str)) {
-         i = 0;
+      if (!cfgReadValue(config.obj, fixed_section, "Points", &str)) {
+         LONG i = 0;
          BYTE acceptable = FALSE;
          while (str[i]) {
             LONG point = StrToInt(str+i);
             point -= Point;
-            if ((point >= -1) AND (point <= 1)) { acceptable = TRUE; break; }
+            if ((point >= -1) and (point <= 1)) { acceptable = TRUE; break; }
             while (str[i]) {
                if (str[i] IS ',') { i++; break; }
                else i++;
@@ -1275,33 +1257,29 @@ static ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, LONG Flags, 
          }
 
          if (!acceptable) {
-            LogMsg("Fixed point font is not a good match, will use scalable font.");
+            log.msg("Fixed point font is not a good match, will use scalable font.");
             fixed_section = NULL;
          }
       }
    }
 
-   if (((Point < 12) OR (Flags & FTF_PREFER_FIXED)) AND (!(Flags & FTF_PREFER_SCALED))) {
+   if (((Point < 12) or (Flags & FTF_PREFER_FIXED)) and (!(Flags & FTF_PREFER_SCALED))) {
       if (fixed_section) {
          // Try to find a fixed font first.
 
          StrFormat(buffer, sizeof(buffer), "Fixed:%s", Style);
-         MSG("Looking for a fixed font (%s)...", buffer);
-         if (!cfgReadValue(config, fixed_section, buffer, &str)) {
+         log.trace("Looking for a fixed font (%s)...", buffer);
+         if (!cfgReadValue(config.obj, fixed_section, buffer, &str)) {
             *Path = StrClone(str);
-            ReleaseObject(config);
-            LogReturn();
             return ERR_Okay;
          }
 
          // If a stylized version of the font was requested, look for the regular version.
 
          if (StrMatch("Regular", Style) != ERR_Okay) {
-            MSG("Looking for regular version of the font...");
-            if (!cfgReadValue(config, fixed_section, "Fixed:Regular", &str)) {
+            log.trace("Looking for regular version of the font...");
+            if (!cfgReadValue(config.obj, fixed_section, "Fixed:Regular", &str)) {
                *Path = StrClone(str);
-               ReleaseObject(config);
-               LogReturn();
                return ERR_Okay;
             }
          }
@@ -1309,21 +1287,17 @@ static ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, LONG Flags, 
 
       // Try for a scaled font
 
-      if ((scale_section) AND (!(Flags & FTF_PREFER_FIXED))) {
-         MSG("Looking for a scalable version of the font...");
+      if ((scale_section) and (!(Flags & FTF_PREFER_FIXED))) {
+         log.trace("Looking for a scalable version of the font...");
          StrFormat(buffer, sizeof(buffer), "Scale:%s", Style);
-         if (!cfgReadValue(config, scale_section, buffer, &str)) {
+         if (!cfgReadValue(config.obj, scale_section, buffer, &str)) {
             *Path = StrClone(str);
-            ReleaseObject(config);
-            LogReturn();
             return ERR_Okay;
          }
 
          if (StrMatch("Regular", Style) != ERR_Okay) {
-            if (!cfgReadValue(config, scale_section, "Scale:Regular", &str)) {
+            if (!cfgReadValue(config.obj, scale_section, "Scale:Regular", &str)) {
                *Path = StrClone(str);
-               ReleaseObject(config);
-               LogReturn();
                return ERR_Okay;
             }
          }
@@ -1331,111 +1305,91 @@ static ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, LONG Flags, 
 
       // A regular font style in either format does not exist, so choose the first style that is listed
 
-      MSG("Requested style not supported, choosing first style.");
+      log.trace("Requested style not supported, choosing first style.");
 
-      if (!cfgReadValue(config, (fixed_section != NULL) ? fixed_section : scale_section, "Styles", &str)) {
-         j = 0;
-         for (i=0; (str[i]) AND (str[i] != ',') AND (j < sizeof(style)-1); i++) style[j++] = str[i];
+      if (!cfgReadValue(config.obj, (fixed_section != NULL) ? fixed_section : scale_section, "Styles", &str)) {
+         LONG j = 0;
+         for (i=0; (str[i]) and (str[i] != ',') and ((size_t)j < sizeof(style)-1); i++) style[j++] = str[i];
          style[j] = 0;
 
          StrFormat(buffer, sizeof(buffer), "Fixed:%s", style);
-         if (!cfgReadValue(config, fixed_section, buffer, &str)) {
+         if (!cfgReadValue(config.obj, fixed_section, buffer, &str)) {
             *Path = StrClone(str);
-            ReleaseObject(config);
-            LogReturn();
             return ERR_Okay;
          }
 
          if (!(Flags & FTF_PREFER_FIXED)) {
             StrFormat(buffer, sizeof(buffer), "Scale:%s", style);
-            MSG("Checking for scalable version (%s)", buffer);
-            if (!cfgReadValue(config, scale_section, buffer, &str)) {
+            log.trace("Checking for scalable version (%s)", buffer);
+            if (!cfgReadValue(config.obj, scale_section, buffer, &str)) {
                *Path = StrClone(str);
-               ReleaseObject(config);
-               LogReturn();
                return ERR_Okay;
             }
          }
       }
    }
    else {
-      // Try to find a scalable font first
-
-      MSG("Looking for a scalable font at size %d...", Point);
+      log.trace("Looking for a scalable font at size %d...", Point);
 
       if (scale_section) {
          StrFormat(buffer, sizeof(buffer), "Scale:%s", Style);
-         if (!cfgReadValue(config, scale_section, buffer, &str)) {
+         if (!cfgReadValue(config.obj, scale_section, buffer, &str)) {
             *Path = StrClone(str);
-            ReleaseObject(config);
-            LogReturn();
             return ERR_Okay;
          }
 
          if (StrMatch("Regular", Style) != ERR_Okay) {
-            if (!cfgReadValue(config, scale_section, "Scale:Regular", &str)) {
+            if (!cfgReadValue(config.obj, scale_section, "Scale:Regular", &str)) {
                *Path = StrClone(str);
-               ReleaseObject(config);
-               LogReturn();
                return ERR_Okay;
             }
          }
       }
 
-      if ((fixed_section) AND (!(Flags & FTF_PREFER_SCALED))) {
+      if ((fixed_section) and (!(Flags & FTF_PREFER_SCALED))) {
          StrFormat(buffer, sizeof(buffer), "Fixed:%s", Style);
-         MSG("Checking for a fixed version of the font '%s'.", buffer);
-         if (!cfgReadValue(config, fixed_section, buffer, &str)) {
+         log.trace("Checking for a fixed version of the font '%s'.", buffer);
+         if (!cfgReadValue(config.obj, fixed_section, buffer, &str)) {
             *Path = StrClone(str);
-            ReleaseObject(config);
-            LogReturn();
             return ERR_Okay;
          }
 
          if (StrMatch("Regular", Style) != ERR_Okay) {
-            MSG("Checking for a regular style fixed font.");
-            if (!cfgReadValue(config, fixed_section, "Fixed:Regular", &str)) {
+            log.trace("Checking for a regular style fixed font.");
+            if (!cfgReadValue(config.obj, fixed_section, "Fixed:Regular", &str)) {
                *Path = StrClone(str);
-               ReleaseObject(config);
-               LogReturn();
                return ERR_Okay;
             }
          }
       }
-      else MSG("User prefers scaled fonts only.");
+      else log.trace("User prefers scaled fonts only.");
 
       // A regular font style in either format does not exist, so choose the first style that is listed
 
-      if (!cfgReadValue(config, (scale_section != NULL) ? scale_section : fixed_section, "Styles", &str)) {
-         j = 0;
-         for (i=0; (str[i]) AND (str[i] != ',') AND (j < sizeof(style)-1); i++) style[j++] = str[i];
+      if (!cfgReadValue(config.obj, (scale_section != NULL) ? scale_section : fixed_section, "Styles", &str)) {
+         LONG j = 0;
+         for (i=0; (str[i]) and (str[i] != ',') and ((size_t)j < sizeof(style)-1); i++) style[j++] = str[i];
          style[j] = 0;
 
-         MSG("Requested style not supported, using style '%s'", style);
+         log.trace("Requested style not supported, using style '%s'", style);
 
          StrFormat(buffer, sizeof(buffer), "Scale:%s", style);
-         if (!cfgReadValue(config, scale_section, buffer, &str)) {
+         if (!cfgReadValue(config.obj, scale_section, buffer, &str)) {
             *Path = StrClone(str);
-            ReleaseObject(config);
-            LogReturn();
             return ERR_Okay;
          }
 
          if (!(Flags & FTF_PREFER_SCALED)) {
             StrFormat(buffer, sizeof(buffer), "Fixed:%s", style);
-            if (!cfgReadValue(config, fixed_section, buffer, &str)) {
+            if (!cfgReadValue(config.obj, fixed_section, buffer, &str)) {
                *Path = StrClone(str);
-               ReleaseObject(config);
-               LogReturn();
                return ERR_Okay;
             }
          }
       }
-      else MSG("Styles not listed for font '%s'", Name);
+      else log.trace("Styles not listed for font '%s'", Name);
    }
 
-   ReleaseObject(config);
-   LogReturn();
    return ERR_Search;
 }
 
@@ -1462,36 +1416,34 @@ AccessObject: Access to the SytsemFonts object was denied, or the object does no
 static ERROR fntRefreshFonts(void)
 {
    #define MAX_STYLES 20
-   STRING section, styles[MAX_STYLES];
-   LONG i, pos, stylecount, j;
+   parasol::Log log(__FUNCTION__);
+   CSTRING styles[MAX_STYLES];
 
-   LogBranch("Refreshing the fonts: directory.");
+   log.branch("Refreshing the fonts: directory.");
 
-   objConfig *config;
-   if (AccessObject(glConfigID, 3000, &config) != ERR_Okay) {
-      return LogReturnError(0, ERR_AccessObject);
-   }
+   parasol::ScopedObjectLock<objConfig> config(glConfigID, 3000);
+   if (!config.granted()) return log.warning(ERR_AccessObject);
 
-   acClear(config); // Clear out existing font information
+   acClear(config.obj); // Clear out existing font information
 
-   scan_fixed_folder(config);
-   scan_truetype_folder(config);
+   scan_fixed_folder(config.obj);
+   scan_truetype_folder(config.obj);
 
-   MSG("Sorting the font names.");
+   log.trace("Sorting the font names.");
 
-   cfgSortByKey(config, NULL, FALSE); // Sort the font names into alphabetical order
+   cfgSortByKey(config.obj, NULL, FALSE); // Sort the font names into alphabetical order
 
    // Create a style list for each font
 
-   MSG("Generating style lists for each font.");
+   log.trace("Generating style lists for each font.");
 
-   struct ConfigEntry *entries;
-   if ((!GetPointer(config, FID_Entries, &entries)) AND (entries)) {
-      section = entries[0].Section;
-      stylecount = 0;
-      i = 0;
-      while (i <= config->AmtEntries) { // Use of <= is important in order to write out the style for the last font
-         if ((i < config->AmtEntries) AND (!StrCompare(entries[i].Section, section, 0, STR_MATCH_LEN|STR_CASE))) {
+   ConfigEntry *entries;
+   if ((!GetPointer(config.obj, FID_Entries, &entries)) and (entries)) {
+      CSTRING section = entries[0].Section;
+      LONG stylecount = 0;
+      LONG i = 0;
+      while (i <= config.obj->AmtEntries) { // Use of <= is important in order to write out the style for the last font
+         if ((i < config.obj->AmtEntries) and (!StrCompare(entries[i].Section, section, 0, STR_MATCH_LEN|STR_CASE))) {
             // If this is a style item, add it to our style list
             if (!StrCompare("Fixed:", entries[i].Key, 6, 0)) {
                if (stylecount < MAX_STYLES-1) styles[stylecount++] = entries[i].Key + 6;
@@ -1502,40 +1454,40 @@ static ERROR fntRefreshFonts(void)
             i++;
          }
          else if (stylecount > 0) {
-               UBYTE buffer[300];
-               UBYTE sectionstr[80];
+            char buffer[300];
+            char sectionstr[80];
 
-               // Write the style list to the font configuration
+            // Write the style list to the font configuration
 
-               styles[stylecount] = NULL;
-               StrSort(styles, SBF_NO_DUPLICATES);
+            styles[stylecount] = NULL;
+            StrSort(styles, SBF_NO_DUPLICATES);
 
-               pos = 0;
-               for (j=0; styles[j]; j++) {
-                  if ((pos > 0) AND (pos < sizeof(buffer)-1)) buffer[pos++] = ',';
-                  pos += StrCopy(styles[j], buffer+pos, sizeof(buffer)-pos);
+            LONG pos = 0;
+            for (LONG j=0; styles[j]; j++) {
+               if ((pos > 0) and ((size_t)pos < sizeof(buffer)-1)) buffer[pos++] = ',';
+               pos += StrCopy(styles[j], buffer+pos, sizeof(buffer)-pos);
+            }
+
+            StrCopy(section, sectionstr, sizeof(sectionstr));
+
+            cfgWriteValue(config.obj, sectionstr, "Styles", buffer);
+
+            // Reset the config index since we added a new entry to the object
+
+            if (GetPointer(config.obj, FID_Entries, &entries)) break;
+
+            for (LONG i=0; i < config.obj->AmtEntries; i++) {
+               if (!StrCompare(entries[i].Section, sectionstr, 0, STR_MATCH_LEN|STR_CASE)) {
+                  while ((i < config.obj->AmtEntries) and (!StrCompare(entries[i].Section, sectionstr, 0, STR_MATCH_LEN|STR_CASE))) i++;
+                  if (i < config.obj->AmtEntries) section = entries[i].Section;
+                  break;
                }
+            }
 
-               StrCopy(section, sectionstr, sizeof(sectionstr));
-
-               cfgWriteValue(config, sectionstr, "Styles", buffer);
-
-               // Reset the config index since we added a new entry to the object
-
-               if (GetPointer(config, FID_Entries, &entries)) break;
-
-               for (i=0; i < config->AmtEntries; i++) {
-                  if (StrCompare(entries[i].Section, sectionstr, 0, STR_MATCH_LEN|STR_CASE) IS ERR_Okay) {
-                     while ((i < config->AmtEntries) AND (StrCompare(entries[i].Section, sectionstr, 0, STR_MATCH_LEN|STR_CASE) IS ERR_Okay)) i++;
-                     if (i < config->AmtEntries) section = entries[i].Section;
-                     break;
-                  }
-               }
-
-               stylecount = 0;
+            stylecount = 0;
          }
-         else if (i < config->AmtEntries) {
-            LogErrorMsg("No styles listed for font %s", section);
+         else if (i < config.obj->AmtEntries) {
+            log.warning("No styles listed for font %s", section);
             section = entries[i].Section;
             i++;
          }
@@ -1545,19 +1497,14 @@ static ERROR fntRefreshFonts(void)
 
    // Save the font configuration file
 
-   MSG("Saving the font configuration file.");
+   log.trace("Saving the font configuration file.");
 
    OBJECTPTR file;
-   if (!CreateObject(ID_FILE, 0, &file,
-         FID_Path|TSTR,   "system:fonts/fonts.cfg",
-         FID_Flags|TLONG, FL_NEW|FL_WRITE,
-         TAGEND)) {
-      acSaveToObject(config, file->UniqueID, 0);
+   if (!CreateObject(ID_FILE, 0, &file, FID_Path|TSTR, "system:fonts/fonts.cfg", FID_Flags|TLONG, FL_NEW|FL_WRITE, TAGEND)) {
+      acSaveToObject(config.obj, file->UniqueID, 0);
       acFree(file);
    }
 
-   ReleaseObject(config);
-   LogReturn();
    return ERR_Okay;
 }
 
@@ -1565,35 +1512,36 @@ static ERROR fntRefreshFonts(void)
 
 static void scan_truetype_folder(objConfig *Config)
 {
-   struct DirInfo *dir;
+   parasol::Log log(__FUNCTION__);
+   DirInfo *dir;
    LONG j;
    char location[100];
    char section[200];
    FT_Face ftface;
    FT_Open_Args open;
 
-   LogBranch("Scanning for truetype fonts.");
+   log.branch("Scanning for truetype fonts.");
 
    if (!OpenDir("fonts:truetype/", RDF_FILE, &dir)) {
       while (!ScanDir(dir)) {
          StrFormat(location, sizeof(location), "fonts:truetype/%s", dir->Info->Name);
 
          for (j=0; location[j]; j++);
-         while ((j > 0) AND (location[j-1] != '.') AND (location[j-1] != ':') AND (location[j-1] != '/') AND (location[j-1] != '\\')) j--;
+         while ((j > 0) and (location[j-1] != '.') and (location[j-1] != ':') and (location[j-1] != '/') and (location[j-1] != '\\')) j--;
 
          ResolvePath(location, 0, (STRING *)&open.pathname);
          open.flags    = FT_OPEN_PATHNAME;
          if (!FT_Open_Face(glFTLibrary, &open, 0, &ftface)) {
             FreeResource(open.pathname);
 
-            LogMsg("Detected font file \"%s\", name: %s, style: %s", location, ftface->family_name, ftface->style_name);
+            log.msg("Detected font file \"%s\", name: %s, style: %s", location, ftface->family_name, ftface->style_name);
 
             LONG n;
             if (ftface->family_name) n = StrCopy(ftface->family_name, section, sizeof(section));
             else {
                n = 0;
-               while ((j > 0) AND (location[j-1] != ':') AND (location[j-1] != '/') AND (location[j-1] != '\\')) j--;
-               while ((location[j]) AND (location[j] != '.')) section[n++] = location[j++];
+               while ((j > 0) and (location[j-1] != ':') and (location[j-1] != '/') and (location[j-1] != '\\')) j--;
+               while ((location[j]) and (location[j] != '.')) section[n++] = location[j++];
             }
             section[n] = 0;
 
@@ -1613,7 +1561,7 @@ static void scan_truetype_folder(objConfig *Config)
             }
 
             for (n=0; section[n]; n++);
-            while ((n > 0) AND (section[n-1] <= 0x20)) n--;
+            while ((n > 0) and (section[n-1] <= 0x20)) n--;
             section[n] = 0;
 
             cfgWriteValue(Config, section, "Name", section);
@@ -1623,7 +1571,7 @@ static void scan_truetype_folder(objConfig *Config)
             // Add the style with a link to the font file location
 
             if (FT_IS_SCALABLE(ftface)) {
-               if ((ftface->style_name) AND (StrMatch("regular", ftface->style_name) != ERR_Okay)) {
+               if ((ftface->style_name) and (StrMatch("regular", ftface->style_name) != ERR_Okay)) {
                   char buffer[200];
                   CharCopy("Scale:", buffer, sizeof(buffer));
                   StrCopy(ftface->style_name, buffer+6, sizeof(buffer)-6);
@@ -1641,40 +1589,40 @@ static void scan_truetype_folder(objConfig *Config)
          }
          else {
             FreeResource(open.pathname);
-            LogErrorMsg("Failed to analyse scalable font file \"%s\".", location);
+            log.warning("Failed to analyse scalable font file \"%s\".", location);
          }
       }
 
       FreeResource(dir);
    }
-   else LogErrorMsg("Failed to open the fonts:truetype/ directory.");
-
-   LogReturn();
+   else log.warning("Failed to open the fonts:truetype/ directory.");
 }
 
 //****************************************************************************
 
 static void scan_fixed_folder(objConfig *Config)
 {
+   parasol::Log log(__FUNCTION__);
    LONG j, n, style;
    WORD i;
-   UBYTE location[100], section[200], points[20], pntbuffer[80];
+   char location[100], section[200], pntbuffer[80];
    STRING facename;
 
-   LogBranch("Scanning for fixed fonts.");
+   log.branch("Scanning for fixed fonts.");
 
    UBYTE bold = FALSE;
    UBYTE bolditalic = FALSE;
    UBYTE italic = FALSE;
 
-   struct DirInfo *dir;
+   DirInfo *dir;
    if (!OpenDir("fonts:fixed/", RDF_FILE, &dir)) {
       while (!ScanDir(dir)) {
          StrFormat(location, sizeof(location), "fonts:fixed/%s", dir->Info->Name);
 
-         struct winfnt_header_fields header;
+         winfnt_header_fields header;
+         UBYTE points[20];
          if (!analyse_bmp_font(location, &header, &facename, points, ARRAYSIZE(points))) {
-            LogF("6Font:","Detected font file \"%s\", name: %s", location, facename);
+            log.extmsg("Detected font file \"%s\", name: %s", location, facename);
 
             if (!facename) continue;
             StrCopy(facename, section, sizeof(section));
@@ -1696,7 +1644,7 @@ static void scan_fixed_folder(objConfig *Config)
             if (header.weight >= 600) style |= FTF_BOLD;
 
             for (n=0; section[n]; n++);
-            while ((n > 0) AND (section[n-1] <= 0x20)) n--;
+            while ((n > 0) and (section[n-1] <= 0x20)) n--;
             section[n] = 0;
 
             cfgWriteValue(Config, section, "Name", section);
@@ -1733,84 +1681,78 @@ static void scan_fixed_folder(objConfig *Config)
 
             FreeResource(facename);
          }
-         else LogErrorMsg("Failed to analyse %s", location);
+         else log.warning("Failed to analyse %s", location);
       }
       FreeResource(dir);
    }
-   else LogErrorMsg("Failed to scan directory fonts:fixed/");
-
-   LogReturn();
+   else log.warning("Failed to scan directory fonts:fixed/");
 }
 
 //****************************************************************************
 
-static ERROR analyse_bmp_font(STRING Path, struct winfnt_header_fields *Header, STRING *FaceName, UBYTE *Points, UBYTE MaxPoints)
+static ERROR analyse_bmp_font(STRING Path, winfnt_header_fields *Header, STRING *FaceName, UBYTE *Points, UBYTE MaxPoints)
 {
-   struct winmz_header_fields mz_header;
-   struct winne_header_fields ne_header;
-   OBJECTPTR file;
+   parasol::Log log(__FUNCTION__);
+   winmz_header_fields mz_header;
+   winne_header_fields ne_header;
    LONG i, res_offset, font_offset;
    UWORD size_shift, font_count, type_id, count;
-   UBYTE face[50];
+   char face[50];
 
-   if ((!Path) OR (!Header) OR (!FaceName)) return ERR_NullArgs;
+   if ((!Path) or (!Header) or (!FaceName)) return ERR_NullArgs;
 
    *FaceName = NULL;
-   if (!CreateObject(ID_FILE, 0, &file,
-         FID_Path|TSTR,   Path,
-         FID_Flags|TLONG, FL_READ,
-         TAGEND)) {
-
-      acRead(file, &mz_header, sizeof(mz_header), NULL);
+   parasol::ScopedObject<objFile> file;
+   if (!CreateObject(ID_FILE, 0, &file.obj, FID_Path|TSTR, Path, FID_Flags|TLONG, FL_READ, TAGEND)) {
+      acRead(file.obj, &mz_header, sizeof(mz_header), NULL);
 
       if (mz_header.magic IS ID_WINMZ) {
-         acSeekStart(file, mz_header.lfanew);
+         acSeekStart(file.obj, mz_header.lfanew);
 
-         if ((!acRead(file, &ne_header, sizeof(ne_header), NULL)) AND (ne_header.magic IS ID_WINNE)) {
+         if ((!acRead(file.obj, &ne_header, sizeof(ne_header), NULL)) and (ne_header.magic IS ID_WINNE)) {
             res_offset = mz_header.lfanew + ne_header.resource_tab_offset;
-            acSeekStart(file, res_offset);
+            acSeekStart(file.obj, res_offset);
 
             font_count  = 0;
             font_offset = 0;
-            size_shift  = ReadWordLE(file);
+            size_shift  = ReadWordLE(&file.obj->Head);
 
-            for (type_id=ReadWordLE(file); type_id; type_id=ReadWordLE(file)) {
-               count = ReadWordLE(file);
+            for (type_id=ReadWordLE(&file.obj->Head); type_id; type_id=ReadWordLE(&file.obj->Head)) {
+               count = ReadWordLE(&file.obj->Head);
 
                if (type_id IS 0x8008) {
                   font_count  = count;
-                  GetLong(file, FID_Position, &font_offset);
+                  GetLong(file.obj, FID_Position, &font_offset);
                   font_offset = font_offset + 4;
                   break;
                }
 
-               acSeekCurrent(file, 4 + count * 12);
+               acSeekCurrent(file.obj, 4 + count * 12);
             }
 
-            if ((!font_count) OR (!font_offset)) {
-               LogErrorMsg("There are no fonts in file \"%s\"", Path);
-               acFree(file);
+            if ((!font_count) or (!font_offset)) {
+               log.warning("There are no fonts in file \"%s\"", Path);
                return ERR_Failed;
             }
 
-            acSeekStart(file, font_offset);
+            acSeekStart(file.obj, font_offset);
 
             {
-               struct winFontList fonts[font_count];
+               winFontList fonts[font_count];
 
                // Get the offset and size of each font entry
 
-               for (i=0; i < font_count; i++) {
-                  fonts[i].Offset = ReadWordLE(file)<<size_shift;
-                  fonts[i].Size   = ReadWordLE(file)<<size_shift;
-                  acSeekCurrent(file, 8);
+               for (LONG i=0; i < font_count; i++) {
+                  fonts[i].Offset = ReadWordLE(&file.obj->Head)<<size_shift;
+                  fonts[i].Size   = ReadWordLE(&file.obj->Head)<<size_shift;
+                  acSeekCurrent(file.obj, 8);
                }
 
                // Read font point sizes
 
-               for (i=0; (i < font_count) AND (i < MaxPoints-1); i++) {
-                  acSeekStart(file, fonts[i].Offset);
-                  if (acRead(file, Header, sizeof(struct winfnt_header_fields), NULL) IS ERR_Okay) {
+               for (i=0; (i < font_count) and (i < MaxPoints-1); i++) {
+                  acSeekStart(file.obj, fonts[i].Offset);
+                  if (!acRead(file.obj, Header, sizeof(winfnt_header_fields), NULL)) {
                      Points[i] = Header->nominal_point_size;
                   }
                }
@@ -1818,57 +1760,47 @@ static ERROR analyse_bmp_font(STRING Path, struct winfnt_header_fields *Header, 
 
                // Go to the first font in the file and read the font header
 
-               acSeekStart(file, fonts[0].Offset);
+               acSeekStart(file.obj, fonts[0].Offset);
 
-               if (acRead(file, Header, sizeof(struct winfnt_header_fields), NULL) != ERR_Okay) {
-                  acFree(file);
+               if (acRead(file.obj, Header, sizeof(winfnt_header_fields), NULL)) {
                   return ERR_Read;
                }
 
                 // NOTE: 0x100 indicates the Microsoft vector font format, which we do not support.
 
-               if ((Header->version != 0x200) AND (Header->version != 0x300)) {
-                  LogErrorMsg("Font \"%s\" is written in unsupported version %d / $%x.", Path, Header->version, Header->version);
-                  acFree(file);
+               if ((Header->version != 0x200) and (Header->version != 0x300)) {
+                  log.warning("Font \"%s\" is written in unsupported version %d / $%x.", Path, Header->version, Header->version);
                   return ERR_NoSupport;
                }
 
                if (Header->file_type & 1) {
-                  LogErrorMsg("Font \"%s\" is in the non-supported vector font format.", Path);
-                  acFree(file);
+                  log.warning("Font \"%s\" is in the non-supported vector font format.", Path);
                   return ERR_NoSupport;
                }
 
                // Extract the name of the font
 
-               acSeekStart(file, fonts[0].Offset + Header->face_name_offset);
+               acSeekStart(file.obj, fonts[0].Offset + Header->face_name_offset);
 
-               for (i=0; i < sizeof(face)-1; i++) {
-                  if ((acRead(file, face+i, 1, NULL) != ERR_Okay) OR (!face[i])) {
-                     break;
-                  }
+               for (i=0; (size_t)i < sizeof(face)-1; i++) {
+                  if ((acRead(file.obj, face+i, 1, NULL)) or (!face[i])) break;
                }
                face[i] = 0;
                *FaceName = StrClone(face);
             }
 
-            acFree(file);
             return ERR_Okay;
          }
-
-         acFree(file);
-         return ERR_NoSupport;
+         else return ERR_NoSupport;
       }
-
-      acFree(file); // File is not a windows fixed font
-      return ERR_NoSupport;
+      else return ERR_NoSupport;
    }
    else return ERR_File;
 }
 
 //****************************************************************************
 
-#include "class_font.c"
+#include "class_font.cpp"
 
 //****************************************************************************
 
