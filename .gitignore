@@ -69,3 +69,6 @@
 core/modules/fluid/libffi-3.3/
 debug-install/
 local/
+src/android/
+src/fluid/libffi-3.3/
+src/fluid/luajit-2.0.5/doc/

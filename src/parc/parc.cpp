@@ -52,9 +52,7 @@ typedef struct rkParc {
 
 static ERROR GET_Args(objParc *, CSTRING *);
 
-static const struct ActionArray clActions[];
-static const struct FieldArray clFields[];
-static const struct FieldDef clFlags[];
+static ERROR add_parc_class(void);
 
 //****************************************************************************
 
@@ -62,19 +60,7 @@ ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
    CoreBase = argCoreBase;
 
-   return(CreateObject(ID_METACLASS, 0, &clParc,
-      FID_ClassVersion|TFLOAT,  VER_PARC,
-      FID_Name|TSTRING,         "Parc",
-      FID_FileExtension|TSTR,   "*.parc",
-      FID_FileDescription|TSTR, "Parasol Archive",
-      FID_FileHeader|TSTR,      "[0:$504b0304]",
-      FID_Category|TLONG,       CCF_SYSTEM,
-      FID_Flags|TLONG,          CLF_PRIVATE_ONLY,
-      FID_Actions|TPTR,         clActions,
-      FID_Fields|TARRAY,        clFields,
-      FID_Size|TLONG,           sizeof(objParc),
-      FID_Path|TSTR,            MOD_PATH,
-      TAGEND));
+   return add_parc_class();
 }
 
 ERROR CMDExpunge(void)
@@ -99,14 +85,15 @@ sand-boxing of the application and protecting the host system.
 
 static ERROR PARC_Activate(objParc *Self, APTR Void)
 {
+   parasol::Log log;
+
    if (Self->Script) { acFree(Self->Script); Self->Script = NULL; }
 
-   if (!Self->Info) return PostError(ERR_NotInitialised);
+   if (!Self->Info) return log.warning(ERR_NotInitialised);
 
-   LogF("~","Launching PARC file.");
+   log.branch("Launching PARC file.");
 
-   UBYTE path[256] = "parc:";
-   ERROR error;
+   char path[256] = "parc:";
    if (!acGetVar(Self->Info, "content:/info/run", path + 5, sizeof(path)-5)) {
       // Create a "parc:" volume that refers to the "parc" archive created during initialisation.  All file system
       // queries must be routed through parc: by default.  Accessing files outside of that volume must fail unless the
@@ -114,6 +101,7 @@ static ERROR PARC_Activate(objParc *Self, APTR Void)
 
       if (!SetVolume(AST_NAME, "parc", AST_PATH, "archive:parc/", AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, TAGEND)) {
          CLASSID class_id, subclass_id;
+         ERROR error;
          if (!(error = IdentifyFile(path, "Open", IDF_IGNORE_HOST, &class_id, &subclass_id, NULL))) {
             // Run the default script as specified in "parc.xml".
 
@@ -127,19 +115,17 @@ static ERROR PARC_Activate(objParc *Self, APTR Void)
                else error = ERR_CreateObject;
             }
             else {
-               LogErrorMsg("The file '%s' referenced by /info/run is not recognised as a script.", path);
+               log.warning("The file '%s' referenced by /info/run is not recognised as a script.", path);
                error = ERR_InvalidObject;
             }
          }
 
          DeleteVolume("parc");
+         return error;
       }
-      else error = ERR_SetVolume;
+      else return ERR_SetVolume;
    }
-   else error = ERR_NothingDone;
-
-   LogReturn();
-   return error;
+   else return ERR_NothingDone;
 }
 
 //****************************************************************************
@@ -159,7 +145,9 @@ static const char glOutputScript[] = "\n\
 
 static ERROR PARC_DataFeed(objParc *Self, struct acDataFeed *Args)
 {
-   if (!Args) return PostError(ERR_NullArgs);
+   parasol::Log log;
+
+   if (!Args) return log.warning(ERR_NullArgs);
 
    if (Args->DataType IS DATA_TEXT) {
       if (!Args->Size) return ERR_Okay;
@@ -194,10 +182,9 @@ static ERROR PARC_DataFeed(objParc *Self, struct acDataFeed *Args)
       // Send the text through to the text object in the output script
 
       if (Self->OutputID) ActionMsg(AC_DataFeed, Self->OutputID, Args);
+      return ERR_Okay;
    }
    else return ERR_NoSupport;
-
-   return ERR_Okay;
 }
 
 //****************************************************************************
@@ -226,7 +213,7 @@ field after this action returns.
 
 static ERROR PARC_Init(objParc *Self, APTR Void)
 {
-   objFile *info_file;
+   parasol::Log log;
    ERROR error;
 
    if (!CreateObject(ID_COMPRESSION, NF_INTEGRAL, &Self->Archive,
@@ -237,6 +224,7 @@ static ERROR PARC_Init(objParc *Self, APTR Void)
 
       // Read the parc.xml file into the Info field.
 
+      objFile *info_file;
       if (!CreateObject(ID_FILE, NF_INTEGRAL, &info_file,
             FID_Flags|TLONG, FL_NEW|FL_BUFFER|FL_WRITE|FL_READ,
             TAGEND)) {
@@ -252,7 +240,7 @@ static ERROR PARC_Init(objParc *Self, APTR Void)
                // Verify the parc.xml file.
                // TODO
 
-               LogMsg("Verifying the parc.xml file.");
+               log.msg("Verifying the parc.xml file.");
 
 
 
@@ -304,7 +292,7 @@ static ERROR SET_Allow(objParc *Self, CSTRING Value)
 
    if ((Value) AND (*Value)) {
       if (!(Self->Allow = StrClone(Value))) return ERR_Okay;
-      else return PostError(ERR_AllocMemory);
+      else return ERR_AllocMemory;
    }
    return ERR_Okay;
 }
@@ -343,7 +331,7 @@ static ERROR SET_Args(objParc *Self, CSTRING Value)
          for (i=0; Value[i]; i++) Self->Args[i] = Value[i];
          Self->Args[i] = 0;
       }
-      else return PostError(ERR_AllocMemory);
+      else return ERR_AllocMemory;
    }
    return ERR_Okay;
 }
@@ -369,7 +357,7 @@ static ERROR SET_Path(objParc *Self, CSTRING Value)
    if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
 
    if ((Value) AND (*Value)) {
-      if (!(Self->Path = StrClone(Value))) return PostError(ERR_AllocMemory);
+      if (!(Self->Path = StrClone(Value))) return ERR_AllocMemory;
    }
    return ERR_Okay;
 }
@@ -386,30 +374,47 @@ If an Output object is not provided, all data from the program will be directed 
 
 *****************************************************************************/
 
-static const struct FieldDef clFlags[] = {
+static const FieldDef clFlags[] = {
    { NULL, 0 }
 };
 
-static const struct FieldArray clFields[] = {
-   { "Message",  FDF_STRING|FDF_R,      0, NULL,    NULL },
-   { "Output",   FDF_OBJECTID|FDF_RI,   0, NULL, NULL },
-   { "Flags",    FDF_LONGFLAGS|FDF_RI,  (MAXINT)&clFlags, NULL, NULL },
+static const FieldArray clFields[] = {
+   { "Message",  FDF_STRING|FDF_R,     0, NULL, NULL },
+   { "Output",   FDF_OBJECTID|FDF_RI,  0, NULL, NULL },
+   { "Flags",    FDF_LONGFLAGS|FDF_RI, (MAXINT)&clFlags, NULL, NULL },
    // Virtual fields
-   { "Allow",    FDF_STRING|FDF_W,    0, GET_Allow, SET_Allow },
-   { "Args",     FDF_STRING|FDF_RW,   0, GET_Args,  SET_Args },
-   { "Path",     FDF_STRING|FDF_RW,   0, GET_Path,  SET_Path },
-   { "Src",      FDF_SYNONYM|FDF_STRING|FDF_SYNONYM|FDF_RW, 0, GET_Path, SET_Path },
+   { "Allow",    FDF_STRING|FDF_W,    0, (APTR)GET_Allow, (APTR)SET_Allow },
+   { "Args",     FDF_STRING|FDF_RW,   0, (APTR)GET_Args,  (APTR)SET_Args },
+   { "Path",     FDF_STRING|FDF_RW,   0, (APTR)GET_Path,  (APTR)SET_Path },
+   { "Src",      FDF_SYNONYM|FDF_STRING|FDF_SYNONYM|FDF_RW, 0, (APTR)GET_Path, (APTR)SET_Path },
    END_FIELD
 };
 
-static const struct ActionArray clActions[] = {
-   { AC_Activate,   PARC_Activate },
-   { AC_DataFeed,   PARC_DataFeed },
-   { AC_Free,       PARC_Free },
-   { AC_Init,       PARC_Init },
-   { AC_NewObject,  PARC_NewObject },
+static const ActionArray clActions[] = {
+   { AC_Activate,   (APTR)PARC_Activate },
+   { AC_DataFeed,   (APTR)PARC_DataFeed },
+   { AC_Free,       (APTR)PARC_Free },
+   { AC_Init,       (APTR)PARC_Init },
+   { AC_NewObject,  (APTR)PARC_NewObject },
    { 0, NULL }
 };
+
+static ERROR add_parc_class(void)
+{
+   return(CreateObject(ID_METACLASS, 0, &clParc,
+      FID_ClassVersion|TFLOAT,  VER_PARC,
+      FID_Name|TSTRING,         "Parc",
+      FID_FileExtension|TSTR,   "*.parc",
+      FID_FileDescription|TSTR, "Parasol Archive",
+      FID_FileHeader|TSTR,      "[0:$504b0304]",
+      FID_Category|TLONG,       CCF_SYSTEM,
+      FID_Flags|TLONG,          CLF_PRIVATE_ONLY,
+      FID_Actions|TPTR,         clActions,
+      FID_Fields|TARRAY,        clFields,
+      FID_Size|TLONG,           sizeof(objParc),
+      FID_Path|TSTR,            MOD_PATH,
+      TAGEND));
+}
 
 //****************************************************************************
 
