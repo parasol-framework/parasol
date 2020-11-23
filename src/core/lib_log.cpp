@@ -120,7 +120,6 @@ void LogF(CSTRING Header, CSTRING Format, ...)
    CSTRING name, action;
    BYTE msglevel, new_branch, msgstate, adjust = 0;
 
-   if (glLogLevel <= 0) return;
    if (tlLogStatus <= 0) return;
 
    ThreadLock lock(TL_PRINT, -1);
@@ -398,7 +397,7 @@ void VLogF(LONG Flags, CSTRING Header, CSTRING Message, va_list Args)
 
    LONG level = glLogLevel - tlBaseLine;
    if (level > 9) level = 9;
-   else if (level < 0) { if (Flags & VLF_BRANCH) tlDepth++; return; }
+   else if (level < 0) level = 0;
 
    if (((log_levels[level] & Flags) != 0) or
        ((glLogLevel <= 2) and (Flags & (VLF_WARNING|VLF_ERROR|VLF_CRITICAL))))  {

@@ -132,7 +132,7 @@ WORD glCodeIndex     = CP_FINISHED;
 WORD glLastCodeIndex = 0;
 WORD glFunctionIndex = 0;
 #ifdef DEBUG
-   WORD glLogLevel = 6; // Thread global
+   WORD glLogLevel = 8; // Thread global
 #else
    WORD glLogLevel  = 0;
 #endif
