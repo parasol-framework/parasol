@@ -16,7 +16,7 @@
     <description>
 <p>The Window class provides a simple API for the creation and management of application windows within the host's UI. Windows are designed to act as containers that are physically represented by a <class name="Surface">Surface</class>.  The characteristics of the Surface class are inherited by the window, thereby allowing the client to read and manipulate surface fields (such as x, y, width and height) through the window object.</p></description>
     <source>
-      <file>window.c</file>
+      <file>window.cpp</file>
     </source>
   </info>
 
@@ -428,7 +428,7 @@
       <access write="I">Init</access>
       <type>INT</type>
       <description>
-<p>This field defines what sides of the window are resizeable.  It can only be set from the style script that is defined for the window.  The string format is defined as a series of flags separated with the OR character.</p>
+<p>This field defines what sides of the window are resizeable.  It can only be set from the style script that is defined for the window.  The string format is defined as a series of flags separated with the or character.</p>
       </description>
     </field>
 

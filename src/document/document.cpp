@@ -190,7 +190,7 @@ static struct FontBase    *FontBase;
 static struct DisplayBase *DisplayBase;
 static OBJECTPTR clDocument = NULL;
 static OBJECTPTR modDisplay = NULL, modSurface = NULL, modFont = NULL, modDocument = NULL;
-static struct RGB8 glHighlight = { 220, 220, 255, 255 };
+static RGB8 glHighlight = { 220, 220, 255, 255 };
 static LONG glTranslateBufferSize = 0;
 static STRING glTranslateBuffer = NULL;
 
@@ -221,8 +221,8 @@ struct docresource {
 
 struct tagroutine {
    ULONG TagHash;
-   void (*Routine)(objDocument *, objXML *, struct XMLTag *, struct XMLTag *, LONG *, LONG);
-   LONG Flags;
+   void (*Routine)(objDocument *, objXML *, XMLTag *, XMLTag *, LONG *, LONG);
+   ULONG Flags;
 };
 
 struct DocSegment {
@@ -304,7 +304,7 @@ enum {
 #define TAG_PARAGRAPH    0x00000020 // Tag results in paragraph formatting (will force some type of line break)
 #define TAG_OBJECTOK     0x00000040 // It is OK for this tag to be used within any object
 
-// These flag values are in the upper word so that we can OR them with IPF and TAG constants.
+// These flag values are in the upper word so that we can or them with IPF and TAG constants.
 
 #define FILTER_TABLE 0x80000000 // FILTER: Table
 #define FILTER_ROW   0x40000000 // FILTER: Row
@@ -317,6 +317,28 @@ enum {
 
 #define TRF_BREAK    0x00000001
 #define TRF_CONTINUE 0x00000002
+
+#define PXF_ARGS      0x0001
+#define PXF_TRANSLATE 0x0002
+
+// This PTR macros are used in tags.cpp
+
+#define PTR_SAVE_ARGS(tag) \
+   *b_revert = Self->BufferIndex; \
+   *s_revert = Self->ArgIndex; \
+   *e_revert = 0; \
+   if (convert_xml_args(Self, (tag)->Attrib, (tag)->TotalAttrib) != ERR_Okay) goto next; \
+   *e_revert = Self->ArgIndex;
+
+#define PTR_RESTORE_ARGS() \
+   if (*e_revert > *s_revert) { \
+      while (*e_revert > *s_revert) { \
+         *e_revert -= 1; \
+         Self->VArg[*e_revert].Attrib[0] = Self->VArg[*e_revert].String; \
+      } \
+   } \
+   Self->BufferIndex = *b_revert; \
+   Self->ArgIndex = *s_revert;
 
 enum {
    LINK_HREF=1,
@@ -354,7 +376,7 @@ typedef struct escLink {
 
 typedef struct escList {
    struct escList *Stack; // Stack management pointer during layout
-   struct RGB8 Colour;    // Colour to use for bullet points (valid for LT_BULLET only).
+   RGB8 Colour;    // Colour to use for bullet points (valid for LT_BULLET only).
    STRING Buffer;         // Temp buffer, used for ordered lists
    LONG  Start;           // Starting value for ordered lists (default: 1)
    LONG  ItemIndent;      // Minimum indentation for text printed for each item
@@ -379,9 +401,9 @@ typedef struct escObject {
 typedef struct escTable {
    struct escTable *Stack;
    struct tablecol *Columns; // Table column management, allocated as an independent memory array
-   struct RGB8 Colour;       // Background colour
-   struct RGB8 Highlight;    // Border highlight
-   struct RGB8 Shadow;       // Border shadow
+   RGB8 Colour;       // Background colour
+   RGB8 Highlight;    // Border highlight
+   RGB8 Shadow;       // Border shadow
    WORD CellVSpacing;        // Spacing between each cell, vertically
    WORD CellHSpacing;        // Spacing between each cell, horizontally
    WORD CellPadding;         // Spacing inside each cell (margins)
@@ -426,9 +448,9 @@ typedef struct escRow {
    LONG  Y;
    LONG  RowHeight; // Height of all cells on this row, used when drawing the cells
    LONG  MinHeight;
-   struct RGB8 Highlight;
-   struct RGB8 Shadow;
-   struct RGB8 Colour;
+   RGB8 Highlight;
+   RGB8 Shadow;
+   RGB8 Colour;
    UBYTE  VerticalRepass:1;
 } escRow;
 
@@ -445,9 +467,9 @@ typedef struct escCell {
    LONG Args;           // Offset to the argument list, if any are specified.  Otherwise zero
    ULONG EditHash;      // Hash-name of the edit definition that this cell is linked to (if any, otherwise zero)
    WORD TotalArgs;      // Total number of arguments for function execution
-   struct RGB8 Highlight;
-   struct RGB8 Shadow;
-   struct RGB8 Colour;
+   RGB8 Highlight;
+   RGB8 Shadow;
+   RGB8 Colour;
 } escCell;
 
 typedef struct escCellEnd {
@@ -539,19 +561,21 @@ static const CSTRING strCodes[] = {
 struct layout; // Pre-def
 
 static ERROR  activate_edit(objDocument *, LONG CellIndex, LONG CursorIndex);
-static ERROR  add_clip(objDocument *, struct SurfaceClip *, LONG, CSTRING Name, BYTE);
-static LONG   add_drawsegment(objDocument *, LONG, LONG Stop, struct layout *, LONG, LONG, LONG, CSTRING);
+static ERROR  add_clip(objDocument *, SurfaceClip *, LONG, CSTRING Name, BYTE);
+static ERROR  add_document_class(void);
+static LONG   add_drawsegment(objDocument *, LONG, LONG Stop, layout *, LONG, LONG, LONG, CSTRING);
 static void   add_link(objDocument *, UBYTE EscapeCode, APTR, LONG, LONG, LONG, LONG, CSTRING);
-static struct docresource * add_resource_id(objDocument *, LONG, LONG);
+static docresource * add_resource_id(objDocument *, LONG, LONG);
+static docresource * add_resource_ptr(objDocument *, APTR Address, LONG Type);
 static LONG   add_tabfocus(objDocument *, UBYTE, LONG);
-static void   add_template(objDocument *, objXML *, struct XMLTag *);
+static void   add_template(objDocument *, objXML *, XMLTag *);
 static void   advance_tabfocus(objDocument *, BYTE);
 static LONG   calc_page_height(objDocument *, LONG, LONG, LONG);
 static void   calc_scroll(objDocument *);
 static void   check_mouse_click(objDocument *, LONG X, LONG Y);
 static void   check_mouse_pos(objDocument *, LONG, LONG);
 static void   check_mouse_release(objDocument *, LONG X, LONG Y);
-static ERROR  convert_xml_args(objDocument *, struct XMLAttrib *, LONG);
+static ERROR  convert_xml_args(objDocument *, XMLAttrib *, LONG);
 static LONG   create_font(CSTRING, CSTRING, LONG);
 static void   deactivate_edit(objDocument *, BYTE);
 static void   deselect_text(objDocument *);
@@ -566,7 +590,7 @@ static LONG   find_tabfocus(objDocument *, UBYTE Type, LONG Reference);
 static void   fix_command(STRING, STRING *);
 static ERROR  flash_cursor(objDocument *, LARGE, LARGE);
 static void   free_links(objDocument *);
-static STRING get_font_style(LONG);
+static CSTRING get_font_style(LONG);
 //static LONG   get_line_from_index(objDocument *, LONG Index);
 static LONG   getutf8(CSTRING, LONG *);
 static ERROR  insert_escape(objDocument *, LONG *, WORD, APTR, LONG);
@@ -574,16 +598,16 @@ static void   insert_paragraph_end(objDocument *, LONG *);
 static void   insert_paragraph_start(objDocument *, LONG *, escParagraph *);
 static ERROR  insert_string(CSTRING, STRING, LONG, LONG, LONG);
 static ERROR  insert_text(objDocument *, LONG *, CSTRING, LONG, BYTE);
-static ERROR  insert_xml(objDocument *, objXML *, struct XMLTag *, LONG, UBYTE);
+static ERROR  insert_xml(objDocument *, objXML *, XMLTag *, LONG, UBYTE);
 static void   key_event(objDocument *, evKey *, LONG);
 static ERROR  keypress(objDocument *, LONG, LONG, LONG);
 static void   layout_doc(objDocument *);
 static LONG   layout_section(objDocument *, LONG, objFont **, LONG, LONG, LONG *, LONG *, LONG, LONG, LONG, LONG, BYTE *);
 static ERROR  load_doc(objDocument *, CSTRING, BYTE, BYTE);
 static objFont * lookup_font(LONG, CSTRING);
-static LONG   parse_tag(objDocument *, objXML *, struct XMLTag *, LONG *, LONG);
+static LONG   parse_tag(objDocument *, objXML *, XMLTag *, LONG *, LONG);
 #ifdef DEBUG
-static void   print_xmltree(struct XMLTag *, LONG *) __attribute__ ((unused));
+static void   print_xmltree(XMLTag *, LONG *) __attribute__ ((unused));
 #endif
 #ifdef DBG_LINES
 static void print_sorted_lines(objDocument *) __attribute__ ((unused));
@@ -595,18 +619,20 @@ static ERROR  report_event(objDocument *, LARGE Event, APTR EventData, CSTRING S
 static void   reset_cursor(objDocument *);
 static ERROR  resolve_fontx_by_index(objDocument *, LONG Index, LONG *CharX);
 static ERROR  resolve_font_pos(objDocument *, LONG Segment, LONG X, LONG *, LONG *BytePos);
+static LONG   safe_file_path(objDocument *, CSTRING Path);
 static ERROR  safe_translate(STRING, LONG, LONG);
-static void   set_focus(objDocument *, LONG, STRING);
-static void   show_bookmark(objDocument *, STRING Bookmark);
+static void   set_focus(objDocument *, LONG, CSTRING);
+static void   set_object_style(objDocument *, OBJECTPTR);
+static void   show_bookmark(objDocument *, CSTRING);
 static void   style_check(objDocument *, LONG *Index);
-static void   tag_object(objDocument *, CSTRING, LONG class_id, struct XMLTag *, objXML *XML, struct XMLTag *Tag, struct XMLTag *Child, LONG *Index, LONG Flags, UBYTE *, UBYTE *, LONG *);
-static void   tag_xml_content(objDocument *, objXML *, struct XMLTag *, WORD);
+static void   tag_object(objDocument *, CSTRING, CLASSID, XMLTag *, objXML *, XMLTag *, XMLTag *, LONG *Index, LONG Flags, UBYTE *, UBYTE *, LONG *);
+static void   tag_xml_content(objDocument *, objXML *, XMLTag *, WORD);
 static ERROR  unload_doc(objDocument *, BYTE);
 static BYTE   valid_object(objDocument *, OBJECTPTR);
 static BYTE   valid_objectid(objDocument *, OBJECTID);
 static BYTE   view_area(objDocument *, LONG Left, LONG Top, LONG Right, LONG Bottom);
-static LONG   xml_content_len(struct XMLTag *) __attribute__ ((unused));
-static void   xml_extract_content(struct XMLTag *, UBYTE *, LONG *, BYTE) __attribute__ ((unused));
+static LONG   xml_content_len(XMLTag *) __attribute__ ((unused));
+static void   xml_extract_content(XMLTag *, char *, LONG *, BYTE) __attribute__ ((unused));
 
 #ifdef DBG_STREAM
 static void print_stream(objDocument *Self, STRING Stream) __attribute__ ((unused));
@@ -619,10 +645,9 @@ struct FontEntry {
 
 static STRING exsbuffer = NULL;
 static LONG exsbuffer_size = 0;
-static struct FontEntry *glFonts = NULL;
+static FontEntry *glFonts = NULL;
 static LONG glTotalFonts = 0;
 static LONG glMaxFonts = 0;
-static struct tagroutine glTags[];
 
 // Control code format: ESC,Code,Length[2],ElementID[4]...Data...,Length[2],ESC
 
@@ -630,18 +655,27 @@ static struct tagroutine glTags[];
 #define ESC_LEN_END   3
 #define ESC_LEN (ESC_LEN_START + ESC_LEN_END)
 
+template <class T>
+T * escape_data(BYTE *Stream, LONG Index) {
+   return (T *)(Stream + Index + ESC_LEN_START);
+}
+
+template <class T>
+T * escape_data(UBYTE *Stream, LONG Index) {
+   return (T *)(Stream + Index + ESC_LEN_START);
+}
+
 #define remove_cursor(a)           draw_cursor((a),FALSE)
 // Calculate the length of an escape sequence
 #define ESC_ELEMENTID(a)        (((LONG *)(a))[1])
 #define ESCAPE_CODE(stream, index) ((stream)[(index)+1]) // Escape codes are only 1 byte long
 #define ESCAPE_LEN(a)              ((((a)[2])<<8) | ((a)[3]))
-#define ESCAPE_DATA(stream, index) ((APTR)(stream) + (index) + ESC_LEN_START)
 // Move to the next character - handles UTF8 only, no escape sequence handling
 #define NEXT_CHAR(s,i) { if ((s)[(i)] IS CTRL_CODE) i += ESCAPE_LEN(s+i); else { i++; while (((s)[(i)] & 0xc0) IS 0x80) (i)++; } }
 #define PREV_CHAR(s,i) { if ((s)[(i)-1] IS CTRL_CODE) (i) -= ((s)[(i)-3]<<8) | ((s)[(i)-2]); else i--; }
 
 #define START_TEMPLATE(TAG,XML,ARGS) \
-   struct XMLTag *savetag; \
+   XMLTag *savetag; \
    objXML *savexml; \
    savetag = Self->InjectTag; \
    savexml = Self->InjectXML; \
@@ -653,10 +687,6 @@ static struct tagroutine glTags[];
    Self->InTemplate--; \
    Self->InjectTag = savetag; \
    Self->InjectXML = savexml;
-
-static const struct FieldArray clFields[];
-static const struct ActionArray clDocumentActions[];
-static const struct MethodArray clDocumentMethods[];
 
 static FIELD FID_LayoutSurface;
 
@@ -682,27 +712,15 @@ ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
       }
    }
 
-   return CreateObject(ID_METACLASS, 0, &clDocument,
-      FID_BaseClassID|TLONG,   ID_DOCUMENT,
-      FID_ClassVersion|TFLOAT, VER_DOCUMENT,
-      FID_Name|TSTR,           "Document",
-      FID_Category|TLONG,      CCF_GUI,
-      FID_Flags|TLONG,         CLF_PROMOTE_INTEGRAL|CLF_PRIVATE_ONLY,
-      FID_Actions|TPTR,        clDocumentActions,
-      FID_Methods|TARRAY,      clDocumentMethods,
-      FID_Fields|TARRAY,       clFields,
-      FID_Size|TLONG,          sizeof(objDocument),
-      FID_Path|TSTR,           MOD_PATH,
-      FID_FileExtension|TSTR,  "*.rpl|*.ripple|*.rple",
-      TAGEND);
+   return add_document_class();
 }
 
 ERROR CMDExpunge(void)
 {
    {
-      LogMsg("Freeing %d internally allocated fonts.", glTotalFonts);
-      WORD i;
-      for (i=0; i < glTotalFonts; i++) acFree(glFonts[i].Font);
+      parasol::Log log;
+      log.msg("Freeing %d internally allocated fonts.", glTotalFonts);
+      for (WORD i=0; i < glTotalFonts; i++) acFree(glFonts[i].Font);
    }
 
    if (exsbuffer)         { FreeResource(exsbuffer); exsbuffer = NULL; }
@@ -749,8 +767,7 @@ static LONG docCharLength(objDocument *Self, LONG Index)
       return ESCAPE_LEN(Self->Stream + Index);
    }
    else {
-      LONG len;
-      len = 1;
+      LONG len = 1;
       while (((Self->Stream)[len] & 0xc0) IS 0x80) len++;
       return len;
    }
@@ -761,19 +778,15 @@ static LONG docCharLength(objDocument *Self, LONG Index)
 INLINE LONG find_cell(objDocument *Self, LONG ID, ULONG EditHash)
 {
    UBYTE *stream;
-   if (!(stream = Self->Stream)) return -1;
+   if (!(stream = (UBYTE *)Self->Stream)) return -1;
 
    LONG i = 0;
    while (stream[i]) {
       if (stream[i] IS CTRL_CODE) {
          if (ESCAPE_CODE(stream, i) IS ESC_CELL) {
-            escCell *cell = ESCAPE_DATA(stream, i);
-            if ((ID) AND (ID IS cell->CellID)) {
-               return i;
-            }
-            else if ((EditHash) AND (EditHash IS cell->EditHash)) {
-               return i;
-            }
+            auto cell = escape_data<escCell>(stream, i);
+            if ((ID) and (ID IS cell->CellID)) return i;
+            else if ((EditHash) and (EditHash IS cell->EditHash)) return i;
          }
       }
       NEXT_CHAR(stream, i);
@@ -784,11 +797,9 @@ INLINE LONG find_cell(objDocument *Self, LONG ID, ULONG EditHash)
 
 //****************************************************************************
 
-INLINE struct DocEdit * find_editdef(objDocument *Self, ULONG Hash)
+INLINE DocEdit * find_editdef(objDocument *Self, ULONG Hash)
 {
-   struct DocEdit *edit;
-
-   for (edit=Self->EditDefs; edit; edit=edit->Next) {
+   for (auto edit=Self->EditDefs; edit; edit=edit->Next) {
       if (edit->NameHash IS Hash) return edit;
    }
 
@@ -806,10 +817,29 @@ INLINE void layout_doc_fast(objDocument *Self)
    drwPermitDrawing();
 }
 
-#include "class/fields.c"
-#include "class/document_class.c"
-#include "functions.c"
-#include "tags.c"
+#include "tags.cpp"
+#include "class/fields.cpp"
+#include "class/document_class.cpp"
+#include "functions.cpp"
+
+//****************************************************************************
+
+static ERROR add_document_class(void)
+{
+   return CreateObject(ID_METACLASS, 0, &clDocument,
+      FID_BaseClassID|TLONG,   ID_DOCUMENT,
+      FID_ClassVersion|TFLOAT, VER_DOCUMENT,
+      FID_Name|TSTR,           "Document",
+      FID_Category|TLONG,      CCF_GUI,
+      FID_Flags|TLONG,         CLF_PROMOTE_INTEGRAL|CLF_PRIVATE_ONLY,
+      FID_Actions|TPTR,        clDocumentActions,
+      FID_Methods|TARRAY,      clDocumentMethods,
+      FID_Fields|TARRAY,       clFields,
+      FID_Size|TLONG,          sizeof(objDocument),
+      FID_Path|TSTR,           MOD_PATH,
+      FID_FileExtension|TSTR,  "*.rpl|*.ripple|*.rple",
+      TAGEND);
+}
 
 //****************************************************************************
 

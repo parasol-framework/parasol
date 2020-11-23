@@ -12,7 +12,7 @@ This field is always NULL if a document does not declare an author string.
 static ERROR SET_Author(objDocument *Self, CSTRING Value)
 {
    if (Self->Author) { FreeResource(Self->Author); Self->Author = NULL; }
-   if ((Value) AND (*Value)) Self->Author = StrClone(Value);
+   if ((Value) and (*Value)) Self->Author = StrClone(Value);
    return ERR_Okay;
 }
 
@@ -55,7 +55,7 @@ This field is always NULL if a document does not declare a copyright string.
 static ERROR SET_Copyright(objDocument *Self, CSTRING Value)
 {
    if (Self->Copyright) { FreeResource(Self->Copyright); Self->Copyright = NULL; }
-   if ((Value) AND (*Value)) Self->Copyright = StrClone(Value);
+   if ((Value) and (*Value)) Self->Copyright = StrClone(Value);
    return ERR_Okay;
 }
 
@@ -189,7 +189,7 @@ static ERROR SET_FontFace(objDocument *Self, CSTRING Value)
 
       // Check for facename:point usage
 
-      STRING str = Self->FontFace;
+      auto str = Self->FontFace;
       while (*str) {
          if (*str IS ':') {
             *str = 0;
@@ -241,7 +241,7 @@ separation.
 static ERROR SET_Keywords(objDocument *Self, STRING Value)
 {
    if (Self->Keywords) FreeResource(Self->Keywords);
-   if ((Value) AND (*Value)) Self->Keywords = StrClone(Value);
+   if ((Value) and (*Value)) Self->Keywords = StrClone(Value);
    else Self->Keywords = NULL;
    return ERR_Okay;
 }
@@ -305,25 +305,26 @@ static ERROR GET_Path(objDocument *Self, STRING *Value)
 
 static ERROR SET_Path(objDocument *Self, CSTRING Value)
 {
+   parasol::Log log;
    static BYTE recursion = 0;
    LONG i, len;
 
-   if (recursion) return PostError(ERR_Recursion);
+   if (recursion) return log.warning(ERR_Recursion);
 
-   if ((!Value) OR (!*Value)) return ERR_NoData;
+   if ((!Value) or (!*Value)) return ERR_NoData;
 
    Self->Error = ERR_Okay;
 
    STRING newpath = NULL;
    UBYTE reload = TRUE;
-   if ((Value[0] IS '#') OR (Value[0] IS '?')) {
+   if ((Value[0] IS '#') or (Value[0] IS '?')) {
       reload = FALSE;
 
       if (Self->Path) {
-         if (Value[0] IS '?') for (i=0; (Self->Path[i]) AND (Self->Path[i] != '?'); i++);
-         else for (i=0; (Self->Path[i]) AND (Self->Path[i] != '#'); i++);
+         if (Value[0] IS '?') for (i=0; (Self->Path[i]) and (Self->Path[i] != '?'); i++);
+         else for (i=0; (Self->Path[i]) and (Self->Path[i] != '#'); i++);
 
-         for (len=0; Value[len]; len++);
+         len = StrLength(Value);
 
          if (!AllocMemory(i + len + 1, MEM_STRING|MEM_NO_CLEAR, &newpath, NULL)) {
             CopyMemory(Self->Path, newpath, i);
@@ -336,15 +337,15 @@ static ERROR SET_Path(objDocument *Self, CSTRING Value)
    else if (Self->Path) {
       // Work out if the location has actually been changed
 
-      for (len=0; (Value[len]) AND (Value[len] != '#') AND (Value[len] != '?'); len++);
+      for (len=0; (Value[len]) and (Value[len] != '#') and (Value[len] != '?'); len++);
 
-      for (i=0; (Self->Path[i]) AND (Self->Path[i] != '#') AND (Self->Path[i] != '?'); i++);
+      for (i=0; (Self->Path[i]) and (Self->Path[i] != '#') and (Self->Path[i] != '?'); i++);
 
-      if ((i IS len) AND ((!i) OR (!StrCompare(Value, Self->Path, len, 0)))) {
+      if ((i IS len) and ((!i) or (!StrCompare(Value, Self->Path, len, 0)))) {
          // The location remains unchanged.  A complete reload shouldn't be necessary.
 
          reload = FALSE;
-         //if ((Self->Path[i] IS '?') OR (Value[len] IS '?')) {
+         //if ((Self->Path[i] IS '?') or (Value[len] IS '?')) {
          //   reload = TRUE;
          //}
       }
@@ -353,17 +354,16 @@ static ERROR SET_Path(objDocument *Self, CSTRING Value)
    }
    else newpath = StrClone(Value);
 
-   LogBranch("%s (vs %s) Reload: %d", newpath, Self->Path, reload);
+   log.branch("%s (vs %s) Reload: %d", newpath, Self->Path, reload);
 
    // Signal that we are leaving the current page
 
    recursion++;
-   struct DocTrigger *trigger;
-   for (trigger=Self->Triggers[DRT_LEAVING_PAGE]; trigger; trigger=trigger->Next) {
+   for (auto trigger=Self->Triggers[DRT_LEAVING_PAGE]; trigger; trigger=trigger->Next) {
       if (trigger->Function.Type IS CALL_SCRIPT) {
          OBJECTPTR script;
          if ((script = trigger->Function.Script.Script)) {
-            struct ScriptArg args[] = {
+            ScriptArg args[] = {
                { "OldURI", FD_STR, { .Address = Self->Path } },
                { "NewURI", FD_STR, { .Address = newpath } },
             };
@@ -371,11 +371,10 @@ static ERROR SET_Path(objDocument *Self, CSTRING Value)
          }
       }
       else if (trigger->Function.Type IS CALL_STDC) {
-         void (*routine)(APTR, objDocument *, STRING, STRING);
-         if ((routine = (void (*)(APTR, objDocument *, STRING, STRING))trigger->Function.StdC.Routine)) {
-            OBJECTPTR context = SetContext(trigger->Function.StdC.Context);
-               routine(trigger->Function.StdC.Context, Self, Self->Path, newpath);
-            SetContext(context);
+         auto routine = (void (*)(APTR, objDocument *, STRING, STRING))trigger->Function.StdC.Routine;
+         if (routine) {
+            parasol::SwitchContext context(trigger->Function.StdC.Context);
+            routine(trigger->Function.StdC.Context, Self, Self->Path, newpath);
          }
       }
    }
@@ -392,7 +391,7 @@ static ERROR SET_Path(objDocument *Self, CSTRING Value)
       unload_doc(Self, (reload IS FALSE) ? ULD_REFRESH : 0);
 
       if (Self->Head.Flags & NF_INITIALISED) {
-         if ((Self->XML) AND (reload IS FALSE)) {
+         if ((Self->XML) and (reload IS FALSE)) {
             process_parameters(Self, Self->Path);
             process_page(Self, Self->XML);
          }
@@ -420,7 +419,6 @@ static ERROR SET_Path(objDocument *Self, CSTRING Value)
 
    report_event(Self, DEF_PATH, NULL, NULL);
 
-   LogReturn();
    return Self->Error;
 }
 
@@ -439,10 +437,10 @@ static ERROR SET_Origin(objDocument *Self, STRING Value)
 {
    if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
 
-   if ((Value) AND (*Value)) {
+   if ((Value) and (*Value)) {
       LONG i;
       for (i=0; Value[i]; i++);
-      if (AllocMemory(i+1, MEM_STRING|MEM_NO_CLEAR, &Self->Path, NULL) IS ERR_Okay) {
+      if (!AllocMemory(i+1, MEM_STRING|MEM_NO_CLEAR, &Self->Path, NULL)) {
          for (i=0; Value[i]; i++) Self->Path[i] = Value[i];
          Self->Path[i] = 0;
       }
@@ -468,7 +466,7 @@ margins.
 
 *****************************************************************************/
 
-static ERROR GET_PageWidth(objDocument *Self, struct Variable *Value)
+static ERROR GET_PageWidth(objDocument *Self, Variable *Value)
 {
    DOUBLE value;
 
@@ -478,7 +476,7 @@ static ERROR GET_PageWidth(objDocument *Self, struct Variable *Value)
       value = Self->CalcWidth;
 
       if (Value->Type & FD_PERCENTAGE) {
-         if (Self->SurfaceWidth <= 0) return PostError(ERR_GetField);
+         if (Self->SurfaceWidth <= 0) return ERR_GetField;
          value = (DOUBLE)(value * Self->SurfaceWidth) * (1.0 / 100.0);
       }
    }
@@ -486,22 +484,24 @@ static ERROR GET_PageWidth(objDocument *Self, struct Variable *Value)
 
    if (Value->Type & FD_DOUBLE) Value->Double = value;
    else if (Value->Type & FD_LARGE) Value->Large = value;
-   else return PostError(ERR_FieldTypeMismatch);
+   else return ERR_FieldTypeMismatch;
    return ERR_Okay;
 }
 
-static ERROR SET_PageWidth(objDocument *Self, struct Variable *Value)
+static ERROR SET_PageWidth(objDocument *Self, Variable *Value)
 {
+   parasol::Log log;
+
    if (Value->Type & FD_DOUBLE) {
       if (Value->Double <= 0) {
-         LogErrorMsg("A page width of %.2f is illegal.", Value->Double);
+         log.warning("A page width of %.2f is illegal.", Value->Double);
          return ERR_OutOfRange;
       }
       Self->PageWidth = Value->Double;
    }
    else if (Value->Type & FD_LARGE) {
       if (Value->Large <= 0) {
-         LogErrorMsg("A page width of " PF64() " is illegal.", Value->Large);
+         log.warning("A page width of " PF64() " is illegal.", Value->Large);
          return ERR_OutOfRange;
       }
       Self->PageWidth = Value->Large;
@@ -544,7 +544,7 @@ static ERROR SET_Surface(objDocument *Self, OBJECTID Value)
 {
    if (Self->Head.Flags & NF_INITIALISED) {
       if (Self->SurfaceID IS Value) return ERR_Okay;
-      return PostError(ERR_NoSupport);
+      return ERR_NoSupport;
    }
    else Self->SurfaceID = Value;
 
@@ -570,7 +570,7 @@ always NULL if a document does not declare a title.
 static ERROR SET_Title(objDocument *Self, STRING Value)
 {
    if (Self->Title) { FreeResource(Self->Title); Self->Title = NULL; }
-   if ((Value) AND (*Value)) Self->Title = StrClone(Value);
+   if ((Value) and (*Value)) Self->Title = StrClone(Value);
    return ERR_Okay;
 }
 
@@ -618,7 +618,7 @@ colour for visited links if the author desires.
 PRIVATE: Variables
 *****************************************************************************/
 
-static ERROR GET_Variables(objDocument *Self, struct KeyStore **Value)
+static ERROR GET_Variables(objDocument *Self, KeyStore **Value)
 {
    *Value = Self->Vars;
    return ERR_Okay;
@@ -641,13 +641,12 @@ You can manually change the working path by setting the #Origin field without af
 
 *****************************************************************************/
 
-static ERROR GET_WorkingPath(objDocument *Self, STRING *Value)
+static ERROR GET_WorkingPath(objDocument *Self, CSTRING *Value)
 {
-   UBYTE save;
-   LONG j, k;
+   parasol::Log log;
 
    if (!Self->Path) {
-      LogErrorMsg("Document has no defined Path.");
+      log.warning("Document has no defined Path.");
       return ERR_FieldNotSet;
    }
 
@@ -658,7 +657,7 @@ static ERROR GET_WorkingPath(objDocument *Self, STRING *Value)
    BYTE path = FALSE;
    if (Self->Path[0] IS '/') path = TRUE;
    else {
-     for (j=0; (Self->Path[j]) AND (Self->Path[j] != '/') AND (Self->Path[j] != '\\'); j++) {
+     for (LONG j=0; (Self->Path[j]) and (Self->Path[j] != '/') and (Self->Path[j] != '\\'); j++) {
          if (Self->Path[j] IS ':') {
             path = TRUE;
             break;
@@ -666,42 +665,38 @@ static ERROR GET_WorkingPath(objDocument *Self, STRING *Value)
       }
    }
 
-   j = 0;
-   for (k=0; Self->Path[k]; k++) {
-      if ((Self->Path[k] IS ':') OR (Self->Path[k] IS '/') OR (Self->Path[k] IS '\\')) j = k+1;
+   LONG j = 0;
+   for (LONG k=0; Self->Path[k]; k++) {
+      if ((Self->Path[k] IS ':') or (Self->Path[k] IS '/') or (Self->Path[k] IS '\\')) j = k+1;
    }
 
-   OBJECTPTR context = SetContext(Self);
+   parasol::SwitchContext context(Self);
 
-      STRING workingpath;
-      if (path) {
-         // Extract absolute path
+   STRING workingpath;
+   if (path) { // Extract absolute path
+      auto save = Self->Path[j];
+      Self->Path[j] = 0;
+      Self->WorkingPath = StrClone(Self->Path);
+      Self->Path[j] = save;
+   }
+   else if ((!GetString(CurrentTask(), FID_Path, &workingpath)) and (workingpath)) {
+      char buf[1024];
 
-         save = Self->Path[j];
+      // Using ResolvePath() can help to determine relative paths such as "../path/file"
+
+      if (j > 0) {
+         auto save = Self->Path[j];
          Self->Path[j] = 0;
-         Self->WorkingPath = StrClone(Self->Path);
+         StrFormat(buf, sizeof(buf), "%s%s", workingpath, Self->Path);
          Self->Path[j] = save;
       }
-      else if ((!GetString(CurrentTask(), FID_Path, &workingpath)) AND (workingpath)) {
-         UBYTE buf[1024];
+      else StrFormat(buf, sizeof(buf), "%s", workingpath);
 
-         // Using ResolvePath() can help to determine relative paths such as "../path/file"
-
-         if (j > 0) {
-            save = Self->Path[j];
-            Self->Path[j] = 0;
-            StrFormat(buf, sizeof(buf), "%s%s", workingpath, Self->Path);
-            Self->Path[j] = save;
-         }
-         else StrFormat(buf, sizeof(buf), "%s", workingpath);
-
-         if (ResolvePath(buf, RSF_APPROXIMATE, &Self->WorkingPath) != ERR_Okay) {
-            Self->WorkingPath = StrClone(workingpath);
-         }
+      if (ResolvePath(buf, RSF_APPROXIMATE, &Self->WorkingPath) != ERR_Okay) {
+         Self->WorkingPath = StrClone(workingpath);
       }
-      else LogErrorMsg("No working path.");
-
-   SetContext(context);
+   }
+   else log.warning("No working path.");
 
    *Value = Self->WorkingPath;
    return ERR_Okay;

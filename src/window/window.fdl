@@ -27,7 +27,7 @@ module({ name="Window", copyright="Paul Manias © 2003-2020", version=1.0 }, fun
     { id=3, name="Close" }
   })
 
-  class("Window", { src="window.c", output="window_def.c" }, [[
+  class("Window", { src="window.cpp", output="window_def.c" }, [[
    obj(Surface) Surface # The window surface
    int(WNF) Flags       # Special options
    int InsideBorder     # Set to TRUE to draw a border at the edges of the window

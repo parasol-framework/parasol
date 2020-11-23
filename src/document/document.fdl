@@ -68,7 +68,7 @@ module({ name="Document", copyright="Paul Manias © 2005-2020", version=1.0 }, f
   ]])
 
   struct ("deLinkActivated", { }, [[
-    ptr Parameters   # All key-values associated with the link.
+    struct(*KeyStore) Parameters   # All key-values associated with the link.
   ]])
 
   struct("escFont", { }, [[
@@ -127,7 +127,7 @@ typedef struct escFont escFont;
     { id=14, name="ReadContent" }
   })
 
-  class("Document", { src={ "class/document_class.c", "class/fields.c" }, output="class/document_def.c" }, [[
+  class("Document", { src={ "class/document_class.cpp", "class/fields.cpp" }, output="class/document_def.c" }, [[
     large(DEF) EventMask # Event mask for selectively receiving events from the Document object.
     str Description      # A description assigned by the author of the document
     str FontFace         # The user's default font face
@@ -174,7 +174,7 @@ typedef struct escFont escFont;
    STRING Path;              // Optional file to load on Init()
    STRING PageName;          // Page name to load from the Path
    STRING Bookmark;          // Bookmark name processed from the Path
-   STRING Stream;            // Internal stream buffer
+   UBYTE  *Stream;           // Internal stream buffer
    STRING WorkingPath;       // String storage for the WorkingPath field
    APTR   prvKeyEvent;
    OBJECTPTR CurrentObject;

@@ -1,7 +1,7 @@
 --$FLUID:Include
 
 header({ copyright="Paul Manias © 1996-2017" }, function()
-  hash("HASH", "0x%s",
+  hash("HASH", "0x%sUL",
     "AfterLayout",
     "BeforeLayout",
     "UserClick",

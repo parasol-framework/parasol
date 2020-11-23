@@ -6,7 +6,7 @@
 // object could have the potential to run any program that the user has access to, or if it could gain access to local
 // information and use it for nefarious purposes, then it's not secure enough for document usage.
 //
-// TODO: NEEDS TO BE REPLACED WITH AN XML DEFINITION AND PARSED INTO A KEY VALUE STORE.
+// TODO: NEEDS TO BE REPLACED WITH AN XML DEFINITION and PARSED INTO A KEY VALUE STORE.
 
 static const struct {
    CSTRING ClassName;
@@ -42,7 +42,7 @@ static const char glDefaultStyles[] =
 <template name=\"h6\"><p leading=\"1.25\"><font face=\"Open Sans\" size=\"10\" colour=\"0,0,0\"><inject/></font></p></template>\n";
 
 #if defined(DEBUG) || defined(DBG_LAYOUT)
-static UBYTE glPrintable[80];
+static char glPrintable[80];
 
 static STRING printable(CSTRING String, LONG Length) __attribute__ ((unused));
 
@@ -51,7 +51,7 @@ static STRING printable(CSTRING String, LONG Length)
    LONG i, j;
    i = 0;
    j = 0;
-   while ((String[i]) AND (i < Length) AND (j < ARRAYSIZE(glPrintable)-1)) {
+   while ((String[i]) and (i < Length) and (j < ARRAYSIZE(glPrintable)-1)) {
       if (String[i] IS CTRL_CODE) {
          glPrintable[j++] = '%';
          i += ESCAPE_LEN(String+i);
@@ -75,7 +75,7 @@ static STRING printable2(CSTRING String, LONG Length)
    LONG i, j;
    i = 0;
    j = 0;
-   while ((String[i]) AND (i < Length) AND (j < ARRAYSIZE(glPrintable2)-1)) {
+   while ((String[i]) and (i < Length) and (j < ARRAYSIZE(glPrintable2)-1)) {
       if (String[i] IS CTRL_CODE) {
          glPrintable2[j++] = '%';
          i += ESCAPE_LEN(String+i);
@@ -90,11 +90,12 @@ static STRING printable2(CSTRING String, LONG Length)
    return glPrintable2;
 }
 
-static void print_xmltree(struct XMLTag *Tag, LONG *Indent)
+static void print_xmltree(XMLTag *Tag, LONG *Indent)
 {
-   struct XMLTag *child;
+   parasol::Log log(__FUNCTION__);
+   XMLTag *child;
    LONG i, j;
-   UBYTE buffer[1000];
+   char buffer[1000];
 
    if (!Indent) {
       i = 0;
@@ -106,7 +107,7 @@ static void print_xmltree(struct XMLTag *Tag, LONG *Indent)
    }
 
    if (!Tag->Attrib) {
-      LogErrorMsg("Error - no Attrib in tag %d", Tag->Index);
+      log.warning("Error - no Attrib in tag %d", Tag->Index);
       return;
    }
 
@@ -118,12 +119,12 @@ static void print_xmltree(struct XMLTag *Tag, LONG *Indent)
    else {
       // Extract up to 20 characters of content
       buffer[i++] = '[';
-      for (j=0; (Tag->Attrib->Value[j]) AND (j < 20); j++) buffer[i++] = Tag->Attrib->Value[j];
+      for (j=0; (Tag->Attrib->Value[j]) and (j < 20); j++) buffer[i++] = Tag->Attrib->Value[j];
       buffer[i++] = ']';
    }
    buffer[i] = 0;
 
-   LogMsg("%s", buffer);
+   log.msg("%s", buffer);
 
    Indent[0]++;
    for (child=Tag->Child; child; child=child->Next) {
@@ -143,11 +144,11 @@ static void print_xmltree(struct XMLTag *Tag, LONG *Indent)
 static void print_stream(objDocument *Self, STRING Stream)
 {
    STRING str;
-   struct escFont *style;
+   escFont *style;
    LONG i, len, code;
    BYTE printpos;
 
-   if ((!(str = Stream)) OR (!str[0])) return;
+   if ((!(str = Stream)) or (!str[0])) return;
 
    fprintf(stderr, "\nSTREAM: %d bytes\n------\n", Self->StreamLen);
    i = 0;
@@ -162,7 +163,7 @@ static void print_stream(objDocument *Self, STRING Stream)
             break;
          }
          if (code IS ESC_FONT) {
-            style = ESCAPE_DATA(str, i);
+            style = escape_data<escFont>(str, i);
             fprintf(stderr, "[E:Font:%d:%d", len, style->Index);
             if (style->Options & FSO_ALIGN_RIGHT) fprintf(stderr, ":A/R");
             if (style->Options & FSO_ALIGN_CENTER) fprintf(stderr, ":A/C");
@@ -171,8 +172,7 @@ static void print_stream(objDocument *Self, STRING Stream)
             fprintf(stderr, "]");
          }
          else if (code IS ESC_PARAGRAPH_START) {
-            escParagraph *para;
-            para = ESCAPE_DATA(str, i);
+            auto para = escape_data<escParagraph>(str, i);
             if (para->ListItem) fprintf(stderr, "[E:LI]");
             else fprintf(stderr, "[E:PS]");
          }
@@ -181,8 +181,7 @@ static void print_stream(objDocument *Self, STRING Stream)
          }
 /*
          else if (ESCAPE_CODE(str, i) IS ESC_LIST_ITEM) {
-            struct escItem *item;
-            item = ESCAPE_DATA(str, i);
+            auto item = escape_data<escItem>(str, i);
             fprintf(stderr, "[I:X(%d):Width(%d):Custom(%d)]", item->X, item->Width, item->CustomWidth);
          }
 */
@@ -198,7 +197,7 @@ static void print_stream(objDocument *Self, STRING Stream)
             printpos = FALSE;
             fprintf(stderr, "(%d)", i);
          }
-         if ((str[i] <= 0x20) OR (str[i] > 127)) fprintf(stderr, ".");
+         if ((str[i] <= 0x20) or (str[i] > 127)) fprintf(stderr, ".");
          else fprintf(stderr, "%c", str[i]);
          i++;
       }
@@ -218,17 +217,12 @@ static void print_stream(objDocument *Self, STRING Stream)
 
 static void print_lines(objDocument *Self)
 {
-   struct DocSegment *line;
-   struct escFont *style;
-   STRING str;
-   LONG i, row;
-
    fprintf(stderr, "\nSEGMENTS\n--------\n");
 
-   str = Self->Stream;
-   for (row=0; row < Self->SegCount; row++) {
-      line = Self->Segments + row;
-      i    = line->Index;
+   STRING str = Self->Stream;
+   for (LONG row=0; row < Self->SegCount; row++) {
+      DocSegment *line = Self->Segments + row;
+      LONG i = line->Index;
 
       fprintf(stderr, "Seg %d, Bytes %d-%d: %dx%d,%dx%d: ", row, line->Index, line->Stop, line->X, line->Y, line->Width, line->Height);
       if (line->Edit) fprintf(stderr, "{ ");
@@ -236,13 +230,12 @@ static void print_lines(objDocument *Self)
       while (i < line->Stop) {
          if (str[i] IS CTRL_CODE) {
             if (ESCAPE_CODE(str, i) IS ESC_FONT) {
-               style = ESCAPE_DATA(str, i);
+               auto style = escape_data<escFont>(str, i);
                fprintf(stderr, "[E:Font:%d:%d:$%.2x%.2x%.2x", ESCAPE_LEN(str+i), style->Index, style->Colour.Red, style->Colour.Green, style->Colour.Blue);
                fprintf(stderr, "]");
             }
             else if (ESCAPE_CODE(str, i) IS ESC_PARAGRAPH_START) {
-               escParagraph *para;
-               para = ESCAPE_DATA(str, i);
+               para = escape_data<escParagraph>(str, i);
                if (para->ListItem) fprintf(stderr, "[E:LI]");
                else fprintf(stderr, "[E:PS]");
             }
@@ -250,8 +243,7 @@ static void print_lines(objDocument *Self)
                fprintf(stderr, "[E:PE]\n");
             }
             else if (ESCAPE_CODE(str, i) IS ESC_OBJECT) {
-               struct escObject *obj;
-               obj = ESCAPE_DATA(str, i);
+               auto obj = escape_data<escObject>(str, i);
                fprintf(stderr, "[E:OBJ:%d]", obj->ObjectID);
             }
             else if (ESCAPE_CODE(str, i) < ARRAYSIZE(strCodes)) {
@@ -261,7 +253,7 @@ static void print_lines(objDocument *Self)
             i += ESCAPE_LEN(str+i);
          }
          else {
-            if ((str[i] <= 0x20) OR (str[i] > 127)) fprintf(stderr, ".");
+            if ((str[i] <= 0x20) or (str[i] > 127)) fprintf(stderr, ".");
             else fprintf(stderr, "%c", str[i]);
             i++;
          }
@@ -275,29 +267,23 @@ static void print_lines(objDocument *Self)
 
 static void print_sorted_lines(objDocument *Self)
 {
-   struct DocSegment *line;
-   struct escFont *style;
-   STRING str;
-   LONG i, row;
-
    fprintf(stderr, "\nSORTED SEGMENTS\n---------------\n");
 
-   str = Self->Stream;
-   for (row=0; row < Self->SortCount; row++) {
-      line = Self->Segments + Self->SortSegments[row].Segment;
+   STRING str = Self->Stream;
+   for (LONG row=0; row < Self->SortCount; row++) {
+      DocSegment *line = Self->Segments + Self->SortSegments[row].Segment;
       fprintf(stderr, "%d: Y: %d-%d, Seg: %d \"", row, Self->SortSegments[row].Y, Self->Segments[Self->SortSegments[row].Segment].X, Self->SortSegments[row].Segment);
 
-      i    = line->Index;
+      LONG i = line->Index;
       while (i < line->Stop) {
          if (str[i] IS CTRL_CODE) {
             if (ESCAPE_CODE(str, i) IS ESC_FONT) {
-               style = ESCAPE_DATA(str, i);
+               auto style = escape_data<escFont>(str, i);
                fprintf(stderr, "[E:Font:%d:%d:$%.2x%.2x%.2x", ESCAPE_LEN(str+i), style->Index, style->Colour.Red, style->Colour.Green, style->Colour.Blue);
                fprintf(stderr, "]");
             }
             else if (ESCAPE_CODE(str, i) IS ESC_PARAGRAPH_START) {
-               escParagraph *para;
-               para = ESCAPE_DATA(str, i);
+               para = escape_data<escParagraph>(str, i);
                if (para->ListItem) fprintf(stderr, "[E:LI]");
                else fprintf(stderr, "[E:PS]");
             }
@@ -305,8 +291,7 @@ static void print_sorted_lines(objDocument *Self)
                fprintf(stderr, "[E:PE]\n");
             }
             else if (ESCAPE_CODE(str, i) IS ESC_OBJECT) {
-               struct escObject *obj;
-               obj = ESCAPE_DATA(str, i);
+               obj = escape_data<escObject>(str, i);
                fprintf(stderr, "[E:OBJ:%d]", obj->ObjectID);
             }
             else if (ESCAPE_CODE(str, i) < ARRAYSIZE(strCodes)) {
@@ -316,7 +301,7 @@ static void print_sorted_lines(objDocument *Self)
             i += ESCAPE_LEN(str+i);
          }
          else {
-            if ((str[i] <= 0x20) OR (str[i] > 127)) fprintf(stderr, ".");
+            if ((str[i] <= 0x20) or (str[i] > 127)) fprintf(stderr, ".");
             else fprintf(stderr, "%c", str[i]);
             i++;
          }
@@ -342,9 +327,6 @@ static void print_tabfocus(objDocument *Self)
 #endif
 
 //static BYTE glWhitespace = TRUE;  // Setting this to TRUE tells the parser to ignore whitespace (prevents whitespace being used as content)
-
-#define PXF_ARGS      0x0001
-#define PXF_TRANSLATE 0x0002
 
 // RESET_SEGMENT: Resets the string management variables, usually done when a string
 // has been broken up on the current line due to an object or table graphic for example.
@@ -402,12 +384,12 @@ enum {
    WRAP_WRAPPED
 };
 
-static void check_clips(objDocument *Self, LONG Index, struct layout *l,
+static void check_clips(objDocument *Self, LONG Index, layout *l,
    LONG ObjectIndex, LONG *ObjectX, LONG *ObjectY, LONG ObjectWidth, LONG ObjectHeight);
 
 //****************************************************************************
 
-INLINE BYTE sortseg_compare(objDocument *Self, struct SortSegment *Left, struct SortSegment *Right)
+INLINE BYTE sortseg_compare(objDocument *Self, SortSegment *Left, SortSegment *Right)
 {
    if (Left->Y < Right->Y) return 1;
    else if (Left->Y > Right->Y) return -1;
@@ -429,7 +411,7 @@ INLINE LONG uri_char(CSTRING *Source, STRING Dest, LONG Size)
    CSTRING src;
 
    src = Source[0];
-   if ((src[0] IS '%') AND (src[1] >= '0') AND (src[1] <= '9') AND (src[2] >= '0') AND (src[2] <= '9')) {
+   if ((src[0] IS '%') and (src[1] >= '0') and (src[1] <= '9') and (src[2] >= '0') and (src[2] <= '9')) {
       Dest[0] = ((src[1] - '0') * 10) | (src[2] - '0');
       src += 3;
       Source[0] = src;
@@ -449,7 +431,7 @@ INLINE LONG uri_char(CSTRING *Source, STRING Dest, LONG Size)
 ** Checks if the file path is safe, i.e. does not refer to an absolute file location.
 */
 
-static LONG safe_file_path(objDocument *Self, STRING Path)
+static LONG safe_file_path(objDocument *Self, CSTRING Path)
 {
    if (Self->Flags & DCF_UNRESTRICTED) return TRUE;
 
@@ -466,8 +448,9 @@ static LONG safe_file_path(objDocument *Self, STRING Path)
 ** Used by if, elseif, while statements to check the satisfaction of conditions.
 */
 
-static BYTE check_tag_conditions(objDocument *Self, struct XMLTag *Tag)
+static BYTE check_tag_conditions(objDocument *Self, XMLTag *Tag)
 {
+   parasol::Log log("eval");
    BYTE satisfied, reverse;
    LONG count, i;
    OBJECTID object_id;
@@ -477,7 +460,7 @@ static BYTE check_tag_conditions(objDocument *Self, struct XMLTag *Tag)
    for (i=0; i < Tag->TotalAttrib; i++) {
       if (!StrMatch("statement", Tag->Attrib[i].Name)) {
          satisfied = StrEvalConditional(Tag->Attrib[i].Value);
-         FMSG("eval:","Statement: %s", Tag->Attrib[i].Value);
+         log.trace("Statement: %s", Tag->Attrib[i].Value);
          break;
       }
       else if (!StrMatch("exists", Tag->Attrib[i].Name)) {
@@ -489,25 +472,25 @@ static BYTE check_tag_conditions(objDocument *Self, struct XMLTag *Tag)
          break;
       }
       else if (!StrMatch("notnull", Tag->Attrib[i].Name)) {
-         FMSG("eval:","NotNull: %s", Tag->Attrib[i].Value);
+         log.trace("NotNull: %s", Tag->Attrib[i].Value);
          if (Tag->Attrib[i].Value) {
             if (!Tag->Attrib[i].Value[0]) {
                satisfied = FALSE;
             }
-            else if ((Tag->Attrib[i].Value[0] IS '0') AND (!Tag->Attrib[i].Value[1])) {
+            else if ((Tag->Attrib[i].Value[0] IS '0') and (!Tag->Attrib[i].Value[1])) {
                satisfied = FALSE;
             }
             else satisfied = TRUE;
          }
          else satisfied = FALSE;
       }
-      else if ((!StrMatch("isnull", Tag->Attrib[i].Name)) OR (!StrMatch("null", Tag->Attrib[i].Name))) {
-         FMSG("eval:","IsNull: %s", Tag->Attrib[i].Value);
+      else if ((!StrMatch("isnull", Tag->Attrib[i].Name)) or (!StrMatch("null", Tag->Attrib[i].Name))) {
+         log.trace("IsNull: %s", Tag->Attrib[i].Value);
          if (Tag->Attrib[i].Value) {
             if (!Tag->Attrib[i].Value[0]) {
                satisfied = TRUE;
             }
-            else if ((Tag->Attrib[i].Value[0] IS '0') AND (!Tag->Attrib[i].Value[1])) {
+            else if ((Tag->Attrib[i].Value[0] IS '0') and (!Tag->Attrib[i].Value[1])) {
                satisfied = TRUE;
             }
             else satisfied = FALSE;
@@ -536,17 +519,17 @@ static BYTE check_tag_conditions(objDocument *Self, struct XMLTag *Tag)
 ** IXF_SIBLINGS:   If set, sibling tags that follow the root will be parsed.
 */
 
-static ERROR insert_xml(objDocument *Self, objXML *XML, struct XMLTag *Tag, LONG Index, UBYTE Flags)
+static ERROR insert_xml(objDocument *Self, objXML *XML, XMLTag *Tag, LONG Index, UBYTE Flags)
 {
+   parasol::Log log(__FUNCTION__);
    objFont *font;
-   STRING str;
-   LONG i, insert_index, length, start;
+   LONG insert_index, start;
 
    if (!Tag) return ERR_Okay;
 
    if (Index < 0) Index = Self->StreamLen;
 
-   FMSG("~insert_xml()","Index: %d, Flags: $%.2x, Tag: %s", Index, Flags, Tag->Attrib->Name);
+   log.traceBranch("Index: %d, Flags: $%.2x, Tag: %s", Index, Flags, Tag->Attrib->Name);
 
    // Retrieve the most recent font definition and use that as the style that we're going to start with.
 
@@ -563,13 +546,13 @@ static ERROR insert_xml(objDocument *Self, objXML *XML, struct XMLTag *Tag, LONG
          // Do not search for the most recent font style
       }
       else {
-         str = Self->Stream;
-         i   = Index;
+         auto str = Self->Stream;
+         LONG i   = Index;
          PREV_CHAR(str, i);
          while (i > 0) {
-            if ((str[i] IS CTRL_CODE) AND (ESCAPE_CODE(str, i) IS ESC_FONT)) {
-               CopyMemory(ESCAPE_DATA(str, i), &Self->Style.FontStyle, sizeof(struct escFont));
-               FMSG("insert_xml:","Found existing font style, font index %d, flags $%.8x.", Self->Style.FontStyle.Index, Self->Style.FontStyle.Options);
+            if ((str[i] IS CTRL_CODE) and (ESCAPE_CODE(str, i) IS ESC_FONT)) {
+               CopyMemory(escape_data<BYTE>(str, i), &Self->Style.FontStyle, sizeof(escFont));
+               log.trace("Found existing font style, font index %d, flags $%.8x.", Self->Style.FontStyle.Index, Self->Style.FontStyle.Options);
                break;
             }
             PREV_CHAR(str, i);
@@ -581,7 +564,6 @@ static ERROR insert_xml(objDocument *Self, objXML *XML, struct XMLTag *Tag, LONG
       if (Self->Style.FontStyle.Index IS -1) {
          if ((Self->Style.FontStyle.Index = create_font(Self->FontFace, "Regular", Self->FontSize)) IS -1) {
             if ((Self->Style.FontStyle.Index = create_font("Open Sans", "Regular", 10)) IS -1) {
-               LOGRETURN();
                return ERR_Failed;
             }
          }
@@ -604,8 +586,7 @@ static ERROR insert_xml(objDocument *Self, objXML *XML, struct XMLTag *Tag, LONG
       parse_tag(Self, XML, Tag, &insert_index, 0);
    }
    else {
-      struct XMLTag *save;
-      save = Tag->Next;
+      auto save = Tag->Next;
       Tag->Next = NULL;
       parse_tag(Self, XML, Tag, &insert_index, 0);
       Tag->Next = save;
@@ -618,13 +599,12 @@ static ERROR insert_xml(objDocument *Self, objXML *XML, struct XMLTag *Tag, LONG
    // Sanity checks
 
    if (insert_index != Self->StreamLen) {
-      LogErrorMsg("Index %d does not match stream length %d", Index, Self->StreamLen);
+      log.warning("Index %d does not match stream length %d", Index, Self->StreamLen);
       Self->StreamLen = insert_index;
    }
 
    if (Self->StreamLen <= start) {
-      FMSG("insert_xml","parse_tag() did not insert any content into the stream.");
-      LOGRETURN();
+      log.trace("parse_tag() did not insert any content into the stream.");
       return ERR_NothingDone;
    }
 
@@ -632,11 +612,8 @@ static ERROR insert_xml(objDocument *Self, objXML *XML, struct XMLTag *Tag, LONG
 
    if (Index < start) {
       STRING content;
-
-      length = Self->StreamLen - start;
-
-      FMSG("insert_xml","Moving new content of %d bytes to the insertion point at index %d", Index, length);
-
+      LONG length = Self->StreamLen - start;
+      log.trace("Moving new content of %d bytes to the insertion point at index %d", Index, length);
       if (!AllocMemory(length, MEM_DATA|MEM_NO_CLEAR, &content, NULL)) {
          CopyMemory(Self->Stream + start, content, length); // Take a copy of the inserted data
          CopyMemory(Self->Stream + Index, Self->Stream + Index + length, start - Index); // Make room for the data at the insertion point
@@ -650,7 +627,6 @@ static ERROR insert_xml(objDocument *Self, objXML *XML, struct XMLTag *Tag, LONG
 
    if (Self->FocusIndex >= Self->TabIndex) Self->FocusIndex = -1;
 
-   LOGRETURN();
    return ERR_Okay;
 }
 
@@ -679,50 +655,32 @@ static ERROR insert_xml(objDocument *Self, objXML *XML, struct XMLTag *Tag, LONG
    Self->BufferIndex = b_revert; \
    Self->ArgIndex = s_revert;
 
-// This PTR macros are used in tags.c
-
-#define PTR_SAVE_ARGS(tag) \
-   *b_revert = Self->BufferIndex; \
-   *s_revert = Self->ArgIndex; \
-   *e_revert = 0; \
-   if (convert_xml_args(Self, (tag)->Attrib, (tag)->TotalAttrib) != ERR_Okay) goto next; \
-   *e_revert = Self->ArgIndex;
-
-#define PTR_RESTORE_ARGS() \
-   if (*e_revert > *s_revert) { \
-      while (*e_revert > *s_revert) { \
-         *e_revert -= 1; \
-         Self->VArg[*e_revert].Attrib[0] = Self->VArg[*e_revert].String; \
-      } \
-   } \
-   Self->BufferIndex = *b_revert; \
-   Self->ArgIndex = *s_revert;
-
-static LONG parse_tag(objDocument *Self, objXML *XML, struct XMLTag *Tag, LONG *Index, LONG Flags)
+static LONG parse_tag(objDocument *Self, objXML *XML, XMLTag *Tag, LONG *Index, LONG Flags)
 {
-   struct XMLTag *child, *scan, *object_template;
-   STRING tagname, content;
+   parasol::Log log(__FUNCTION__);
+   XMLTag *child, *object_template;
+   CSTRING content;
    LONG i, b_revert, result, filter;
    UBYTE s_revert, e_revert, template_match;
 
    if (!Tag) {
-      FMSG("@parse_tag()","Tag parameter not specified.");
+      log.traceWarning("Tag parameter not specified.");
       return 0;
    }
 
    if (Self->Error) {
-      FMSG("@parse_tag()","Error field is set, returning immediately.");
+      log.traceWarning("Error field is set, returning immediately.");
       return 0;
    }
 
    #ifdef DEBUG
-      UBYTE tagarg[30];
+      char tagarg[30];
 
       if (Tag->Attrib->Name) {
-         for (i=0; (i < sizeof(tagarg)-1) AND (Tag->Attrib->Name[i]); i++) tagarg[i] = Tag->Attrib->Name[i];
+         for (i=0; ((size_t)i < sizeof(tagarg)-1) and (Tag->Attrib->Name[i]); i++) tagarg[i] = Tag->Attrib->Name[i];
       }
       else if (Tag->Attrib->Value) {
-         for (i=0; (i < sizeof(tagarg)-1) AND (Tag->Attrib->Value[i]); i++) {
+         for (i=0; ((size_t)i < sizeof(tagarg)-1) and (Tag->Attrib->Value[i]); i++) {
             if (Tag->Attrib->Value[i] < 0x20) tagarg[i] = '.';
             else tagarg[i] = Tag->Attrib->Value[i];
          }
@@ -731,11 +689,11 @@ static LONG parse_tag(objDocument *Self, objXML *XML, struct XMLTag *Tag, LONG *
 
       tagarg[i] = 0;
 
-      FMSG("~parse_tag()","XML: %d, First-Tag: '%.30s', Face: %.20s, Tag: %p, Flags: $%.8x", XML->Head.UniqueID, tagarg, Self->Style.Face, Tag, Flags);
+      log.traceBranch("XML: %d, First-Tag: '%.30s', Face: %.20s, Tag: %p, Flags: $%.8x", XML->Head.UniqueID, tagarg, Self->Style.Face, Tag, Flags);
 
    #endif
 
-   tagname = NULL;
+   CSTRING tagname = NULL;
    filter = Flags & 0xffff0000;
    result = 0;
 
@@ -743,14 +701,14 @@ static LONG parse_tag(objDocument *Self, objXML *XML, struct XMLTag *Tag, LONG *
       SAVE_ARGS(Tag);
 
       #ifdef DEBUG
-          if (Tag->Attrib->Name) FMSG("parse_tag","Tag: %s", Tag->Attrib->Name);
+          if (Tag->Attrib->Name) log.trace("Tag: %s", Tag->Attrib->Name);
           else if (Tag->Attrib->Value) {
-             for (i=0; (i < sizeof(tagarg)-1) AND (Tag->Attrib->Value[i]); i++) {
+             for (i=0; ((size_t)i < sizeof(tagarg)-1) and (Tag->Attrib->Value[i]); i++) {
                 if (Tag->Attrib->Value[i] < 0x20) tagarg[i] = '.';
                 else tagarg[i] = Tag->Attrib->Value[i];
              }
              tagarg[i] = 0;
-             FMSG("parse_tag","Content: %s", tagarg);
+             log.trace("Content: %s", tagarg);
           }
       #endif
 
@@ -762,7 +720,7 @@ static LONG parse_tag(objDocument *Self, objXML *XML, struct XMLTag *Tag, LONG *
          if (!(Flags & IPF_NOCONTENT)) {
             if ((content = Tag->Attrib->Value)) {
                if (Flags & IPF_STRIPFEEDS) {
-                  while ((*content IS '\n') OR (*content IS '\r')) content++;
+                  while ((*content IS '\n') or (*content IS '\r')) content++;
                   Flags &= ~IPF_STRIPFEEDS;
                }
 
@@ -779,7 +737,7 @@ static LONG parse_tag(objDocument *Self, objXML *XML, struct XMLTag *Tag, LONG *
                      (Self->Style.FontStyle.Options & FSO_PREFORMAT) ? TRUE : FALSE);
                }
             }
-            else FMSG("@parse_tag","Content tag contains no content string.");
+            else log.traceWarning("Content tag contains no content string.");
          }
 
          goto next;
@@ -792,14 +750,14 @@ static LONG parse_tag(objDocument *Self, objXML *XML, struct XMLTag *Tag, LONG *
       object_template = NULL;
       template_match = FALSE;
       if (Self->Templates) {
-         for (scan=Self->Templates->Tags[0]; scan; scan=scan->Next) {
-            for (i=0; i < scan->TotalAttrib; i++) {
-               if ((!StrMatch("class", scan->Attrib[i].Name)) AND
+         for (auto scan=Self->Templates->Tags[0]; scan; scan=scan->Next) {
+            for (LONG i=0; i < scan->TotalAttrib; i++) {
+               if ((!StrMatch("class", scan->Attrib[i].Name)) and
                    (!StrMatch(tagname, scan->Attrib[i].Value))) {
                   object_template = scan;
                   template_match = TRUE;
                }
-               else if ((!StrMatch("Name", scan->Attrib[i].Name)) AND
+               else if ((!StrMatch("Name", scan->Attrib[i].Name)) and
                    (!StrMatch(tagname, scan->Attrib[i].Value))) {
                   template_match = TRUE;
                }
@@ -814,10 +772,11 @@ static LONG parse_tag(objDocument *Self, objXML *XML, struct XMLTag *Tag, LONG *
                   // list that will be processed in reverse by convert_xml_args().
 
                   if (Self->ArgNestIndex < ARRAYSIZE(Self->ArgNest)) {
+                     parasol::Log log(__FUNCTION__);
 
                      START_TEMPLATE(Tag->Child, XML, Tag); // Required for the <inject/> feature to work inside the template
 
-                        FMSG("~parse_tag()","Executing template '%s'.", tagname);
+                        log.traceBranch("Executing template '%s'.", tagname);
 
                         Self->ArgNest[Self->ArgNestIndex++] = Tag;
 
@@ -825,11 +784,9 @@ static LONG parse_tag(objDocument *Self, objXML *XML, struct XMLTag *Tag, LONG *
 
                         Self->ArgNestIndex--;
 
-                        LOGRETURN();
-
                      END_TEMPLATE();
                   }
-                  else LogErrorMsg("Template nesting limit of %d exceeded - cannot continue.", ARRAYSIZE(Self->ArgNest));
+                  else log.warning("Template nesting limit of %d exceeded - cannot continue.", ARRAYSIZE(Self->ArgNest));
 
                   goto next;
                }
@@ -839,49 +796,43 @@ static LONG parse_tag(objDocument *Self, objXML *XML, struct XMLTag *Tag, LONG *
 
       // Check if the instruction refers to a reserved tag name listed in glTags.
       // If a match is found, a routine specific to that instruction is executed.
+      {
+         ULONG taghash = StrHash(tagname, 0);
 
-      ULONG taghash = StrHash(tagname, 0);
-
-      for (i=0; glTags[i].TagHash; i++) {
-         if (glTags[i].TagHash IS taghash) {
-
-            if ((glTags[i].Flags & FILTER_ALL) AND (!(glTags[i].Flags & filter))) {
-               // A filter applies to this tag and the filter flags do not match
-               LogErrorMsg("Invalid use of tag '%s' - Not applied to the correct tag parent.", tagname);
-               Self->Error = ERR_InvalidData;
-            }
-            else if (glTags[i].Routine) {
-
-               //FMSG("~ExecTag:","%s", tagname);
-
-               if ((Self->CurrentObject) AND (!(glTags[i].Flags & (TAG_OBJECTOK|TAG_CONDITIONAL)))) {
-                  LogErrorMsg("Illegal use of tag %s within object of class '%s'.", tagname, Self->CurrentObject->Class->ClassName);
-                  continue;
+         for (LONG i=0; glTags[i].TagHash; i++) {
+            if (glTags[i].TagHash IS taghash) {
+               if ((glTags[i].Flags & FILTER_ALL) and (!(glTags[i].Flags & filter))) {
+                  // A filter applies to this tag and the filter flags do not match
+                  log.warning("Invalid use of tag '%s' - Not applied to the correct tag parent.", tagname);
+                  Self->Error = ERR_InvalidData;
                }
+               else if (glTags[i].Routine) {
+                  //log.traceBranch("%s", tagname);
 
-               if (glTags[i].Flags & TAG_PARAGRAPH) Self->ParagraphDepth++;
-
-               if ((Flags & IPF_NOCONTENT) AND (glTags[i].Flags & TAG_CONTENT)) {
-                  // Do nothing when content is not allowed
-                  FMSG("parse_tag:","Content disabled on '%s', tag not processed.", tagname);
-               }
-               else if (glTags[i].Flags & TAG_CHILDREN) {
-                  // Child content is compulsory or tag has no effect
-                  if (child) {
-                     glTags[i].Routine(Self, XML, Tag, child, Index, Flags);
+                  if ((Self->CurrentObject) and (!(glTags[i].Flags & (TAG_OBJECTOK|TAG_CONDITIONAL)))) {
+                     log.warning("Illegal use of tag %s within object of class '%s'.", tagname, Self->CurrentObject->Class->ClassName);
+                     continue;
                   }
-                  else FMSG("parse_tag:","No content found in tag '%s'", tagname);
+
+                  if (glTags[i].Flags & TAG_PARAGRAPH) Self->ParagraphDepth++;
+
+                  if ((Flags & IPF_NOCONTENT) and (glTags[i].Flags & TAG_CONTENT)) {
+                     // Do nothing when content is not allowed
+                     log.trace("Content disabled on '%s', tag not processed.", tagname);
+                  }
+                  else if (glTags[i].Flags & TAG_CHILDREN) {
+                     // Child content is compulsory or tag has no effect
+                     if (child) glTags[i].Routine(Self, XML, Tag, child, Index, Flags);
+                     else log.trace("No content found in tag '%s'", tagname);
+                  }
+                  else glTags[i].Routine(Self, XML, Tag, child, Index, Flags);
+
+                  if (glTags[i].Flags & TAG_PARAGRAPH) Self->ParagraphDepth--;
                }
-               else glTags[i].Routine(Self, XML, Tag, child, Index, Flags);
-
-               if (glTags[i].Flags & TAG_PARAGRAPH) Self->ParagraphDepth--;
-
-               LOGRETURN();
+               goto next;
             }
-            goto next;
          }
       }
-
       // Some reserved tag names are not listed in glTags as they affect the flow of the parser and are dealt with here.
 
       if (!StrMatch("break", tagname)) {
@@ -909,8 +860,8 @@ static LONG parse_tag(objDocument *Self, objXML *XML, struct XMLTag *Tag, LONG *
 
             RESTORE_ARGS();
 
-            scan = Tag->Next; // Skip content tags
-            while ((scan) AND (!scan->Attrib->Name)) scan = scan->Next;
+            auto scan = Tag->Next; // Skip content tags
+            while ((scan) and (!scan->Attrib->Name)) scan = scan->Next;
 
             while (scan) {
                if (!StrMatch("elseif", scan->Attrib->Name)) {
@@ -945,7 +896,7 @@ static LONG parse_tag(objDocument *Self, objXML *XML, struct XMLTag *Tag, LONG *
          }
       }
       else if (!StrMatch("while", tagname)) {
-         if ((Tag->Child) AND (check_tag_conditions(Self, Tag))) {
+         if ((Tag->Child) and (check_tag_conditions(Self, Tag))) {
             // Save/restore the statement string on each cycle to fully evaluate the condition each time.
 
             LONG saveindex = Self->LoopIndex;
@@ -959,9 +910,8 @@ static LONG parse_tag(objDocument *Self, objXML *XML, struct XMLTag *Tag, LONG *
                i = check_tag_conditions(Self, Tag);
                RESTORE_ARGS();
 
-               if (i) {
-                  if (parse_tag(Self, XML, Tag->Child, Index, Flags) & TRF_BREAK) break;
-               }
+               if ((i) AND (parse_tag(Self, XML, Tag->Child, Index, Flags) & TRF_BREAK)) break;
+
                Self->LoopIndex++;
             }
 
@@ -973,18 +923,13 @@ static LONG parse_tag(objDocument *Self, objXML *XML, struct XMLTag *Tag, LONG *
       else {
 process_object:
          if (!(Flags & IPF_NOCONTENT)) {
-            CSTRING pagetarget;
-            OBJECTPTR object;
-            LONG class_id;
-
             // Check if the tagname refers to a class.  For security reasons, we limit the classes that can be embedded
             // in functional pages.
 
             if (!StrCompare("obj:", tagname, 4, 0)) tagname += 4;
 
-            object = NULL;
-            pagetarget = NULL;
-            class_id = 0;
+            CSTRING pagetarget = NULL;
+            CLASSID class_id = 0;
             for (i=0; i < ARRAYSIZE(glDocClasses); i++) {
                if (!StrMatch(tagname, glDocClasses[i].ClassName)) {
                   pagetarget = glDocClasses[i].PageTarget;
@@ -993,16 +938,16 @@ process_object:
                }
             }
 
-            if ((i >= ARRAYSIZE(glDocClasses)) AND (Self->Flags & DCF_UNRESTRICTED)) {
+            if ((i >= ARRAYSIZE(glDocClasses)) and (Self->Flags & DCF_UNRESTRICTED)) {
                class_id = ResolveClassName(tagname);
             }
 
             if (class_id) {
                tag_object(Self, pagetarget, class_id, object_template, XML, Tag, child, Index, 0, &s_revert, &e_revert, &b_revert);
             }
-            else LogErrorMsg("Tag '%s' unsupported as an instruction, template or class.", tagname);
+            else log.warning("Tag '%s' unsupported as an instruction, template or class.", tagname);
          }
-         else LogErrorMsg("Unrecognised tag '%s' used in a content-restricted area.", tagname);
+         else log.warning("Unrecognised tag '%s' used in a content-restricted area.", tagname);
       }
 
 next:
@@ -1015,31 +960,26 @@ next_skiprestore:
       Tag = Tag->Next;
    }
 
-   LOGRETURN();
    return result;
 }
 
-/*****************************************************************************
-** Internal: style_check()
-*/
+//****************************************************************************
 
 static void style_check(objDocument *Self, LONG *Index)
 {
-   STRING style_name;
-
    if (Self->Style.FontChange) {
       // Create a new font object for the current style
 
-      style_name = get_font_style(Self->Style.FontStyle.Options);
+      CSTRING style_name = get_font_style(Self->Style.FontStyle.Options);
       Self->Style.FontStyle.Index = create_font(Self->Style.Face, style_name, Self->Style.Point);
-      //FMSG("parse_tag:","Changed font to index %d, face %s, style %s, size %d.", Self->Style.FontStyle.Index, Self->Style.Face, style_name, Self->Style.Point);
+      //log.trace("Changed font to index %d, face %s, style %s, size %d.", Self->Style.FontStyle.Index, Self->Style.Face, style_name, Self->Style.Point);
       Self->Style.FontChange  = FALSE;
       Self->Style.StyleChange = TRUE;
    }
 
    if (Self->Style.StyleChange) {
       // Insert a font change into the text stream
-      //FMSG("parse_tag:","Style change detected.");
+      //log.trace("Style change detected.");
       insert_escape(Self, Index, ESC_FONT, &Self->Style.FontStyle, sizeof(Self->Style.FontStyle));
       Self->Style.StyleChange = FALSE;
    }
@@ -1058,24 +998,25 @@ static void style_check(objDocument *Self, LONG *Index)
 static ERROR insert_text(objDocument *Self, LONG *Index, CSTRING Text, LONG Length, BYTE Preformat)
 {
    UBYTE *stream;
-   LONG size, pos, i;
+   LONG pos, i;
 
 #ifdef DBG_STREAM
-   FMSG("insert_text:","Index: %d, WSpace: %d", *Index, Self->NoWhitespace);
+   parasol::Log log(__FUNCTION__);
+   log.trace("Index: %d, WSpace: %d", *Index, Self->NoWhitespace);
 #endif
 
    if (!Length) return ERR_Okay;
 
    // Check if there is content to be processed
 
-   if ((Preformat IS FALSE) AND (Self->NoWhitespace)) {
+   if ((Preformat IS FALSE) and (Self->NoWhitespace)) {
       for (i=0; i < Length; i++) if (Text[i] > 0x20) break;
       if (i IS Length) return ERR_Okay;
    }
 
    style_check(Self, Index);
 
-   size = Self->StreamLen + Length + 1;
+   LONG size = Self->StreamLen + Length + 1;
    if (size >= Self->StreamSize) {
       // The size of the text extends past the stream buffer, so allocate more space.
 
@@ -1095,7 +1036,7 @@ static ERROR insert_text(objDocument *Self, LONG *Index, CSTRING Text, LONG Leng
          else {
             for (i=0; i < Length; ) {
                if (Text[i] <= 0x20) { // Whitespace eliminator, also handles any unwanted presence of ESC_CODE which is < 0x20
-                  while ((Text[i] <= 0x20) AND (i < Length)) i++;
+                  while ((Text[i] <= 0x20) and (i < Length)) i++;
                   if (!Self->NoWhitespace) {
                      stream[pos++] = ' ';
                   }
@@ -1129,23 +1070,21 @@ static ERROR insert_text(objDocument *Self, LONG *Index, CSTRING Text, LONG Leng
             Self->StreamLen - *Index);
       }
 
-      stream = Self->Stream;
+      auto stream = Self->Stream;
       pos = *Index;
 
       if (Preformat) {
-         for (i=0; i < Length; i++) {
+         for (LONG i=0; i < Length; i++) {
             if (Text[i] IS CTRL_CODE) stream[pos+i] = ' ';
             else stream[pos+i] = Text[i];
          }
          pos += Length;
       }
       else {
-         for (i=0; i < Length; ) {
+         for (LONG i=0; i < Length; ) {
             if (Text[i] <= 0x20) { // Whitespace eliminator, also handles any unwanted presence of ESC_CODE which is < 0x20
-               while ((Text[i] <= 0x20) AND (i < Length)) i++;
-               if (!Self->NoWhitespace) {
-                  stream[pos++] = ' ';
-               }
+               while ((Text[i] <= 0x20) and (i < Length)) i++;
+               if (!Self->NoWhitespace) stream[pos++] = ' ';
                Self->NoWhitespace = TRUE;
             }
             else {
@@ -1172,37 +1111,36 @@ static ERROR insert_text(objDocument *Self, LONG *Index, CSTRING Text, LONG Leng
 
 static ERROR insert_escape(objDocument *Self, LONG *Index, WORD EscapeCode, APTR Data, LONG Length)
 {
-   LONG size, pos, total_length, element_id;
+   parasol::Log log(__FUNCTION__);
    UBYTE *stream;
 
 #ifdef DBG_STREAM
-   FMSG("insert_escape()","Index: %d, Code: %s (%d), Length: %d", *Index, strCodes[EscapeCode], EscapeCode, Length);
+   log.trace("Index: %d, Code: %s (%d), Length: %d", *Index, strCodes[EscapeCode], EscapeCode, Length);
 #else
-   //FMSG("insert_escape()","Index: %d, Code: %d, Length: %d", *Index, EscapeCode, Length);
+   //log.trace("Index: %d, Code: %d, Length: %d", *Index, EscapeCode, Length);
 #endif
 
    if (Length > 0xffff - ESC_LEN) {
-      LogErrorMsg("Escape code length of %d exceeds %d bytes.", Length, 0xffff - ESC_LEN);
+      log.warning("Escape code length of %d exceeds %d bytes.", Length, 0xffff - ESC_LEN);
       return ERR_BufferOverflow;
    }
 
-   element_id = ++Self->ElementCounter;
-
-   size = Self->StreamLen + Length + ESC_LEN + 1;
-   total_length = Length + ESC_LEN;
+   LONG element_id = ++Self->ElementCounter;
+   LONG size = Self->StreamLen + Length + ESC_LEN + 1;
+   LONG total_length = Length + ESC_LEN;
    if (size >= Self->StreamSize) {
       size += BUFFER_BLOCK;
       if (!AllocMemory(size, MEM_NO_CLEAR, &stream, NULL)) {
          if (*Index > 0) CopyMemory(Self->Stream, stream, *Index);
 
-         pos = *Index;
+         LONG pos = *Index;
          stream[pos++] = CTRL_CODE;
          stream[pos++] = EscapeCode;
          stream[pos++] = total_length>>8;
          stream[pos++] = total_length & 0xff;
          ((LONG *)(stream + pos))[0] = element_id;
          pos += sizeof(LONG);
-         if ((Data) AND (Length > 0)) {
+         if ((Data) and (Length > 0)) {
             CopyMemory(Data, stream + pos, Length);
             pos += Length;
          }
@@ -1229,14 +1167,14 @@ static ERROR insert_escape(objDocument *Self, LONG *Index, WORD EscapeCode, APTR
       }
 
       stream = Self->Stream;
-      pos = *Index;
+      LONG pos = *Index;
       stream[pos++] = CTRL_CODE;
       stream[pos++] = EscapeCode;
       stream[pos++] = total_length>>8;
       stream[pos++] = total_length & 0xff;
       ((LONG *)(stream + pos))[0] = element_id;
       pos += sizeof(LONG);
-      if ((Data) AND (Length > 0)) {
+      if ((Data) and (Length > 0)) {
          CopyMemory(Data, stream + pos, Length);
          pos += Length;
       }
@@ -1257,22 +1195,22 @@ static ERROR insert_escape(objDocument *Self, LONG *Index, WORD EscapeCode, APTR
 ** This function is called only when a paragraph or explicit line-break (\n) is encountered.
 */
 
-static void end_line(objDocument *Self, struct layout *l, LONG NewLine, LONG Index, DOUBLE Spacing, LONG RestartIndex, STRING Caller)
+static void end_line(objDocument *Self, layout *l, LONG NewLine, LONG Index, DOUBLE Spacing, LONG RestartIndex, CSTRING Caller)
 {
    LONG i, bottomline, new_y;
 
-   if ((!l->line_height) AND (l->wordwidth)) {
+   if ((!l->line_height) and (l->wordwidth)) {
       // If this is a one-word line, the line height will not have been defined yet
-      //FMSG("end_line:","Line Height being set to font (currently %d/%d)", l->line_height, l->base_line);
+      //log.trace("Line Height being set to font (currently %d/%d)", l->line_height, l->base_line);
       l->line_height = l->font->LineSpacing;
       l->base_line   = l->font->Ascent;
    }
 
    LAYOUT("~end_line()","%s: CursorY: %d, ParaY: %d, ParaEnd: %d, Line Height: %d * %.2f, Index: %d/%d, Restart: %d", Caller, l->cursory, l->paragraph_y, l->paragraph_end, l->line_height, Spacing, l->line_index, Index, RestartIndex);
 
-   for (i=l->start_clips; i < Self->TotalClips; i++) {
+   for (LONG i=l->start_clips; i < Self->TotalClips; i++) {
       if (Self->Clips[i].Transparent) continue;
-      if ((l->cursory + l->line_height >= Self->Clips[i].Clip.Top) AND (l->cursory < Self->Clips[i].Clip.Bottom)) {
+      if ((l->cursory + l->line_height >= Self->Clips[i].Clip.Top) and (l->cursory < Self->Clips[i].Clip.Bottom)) {
          if (l->cursorx + l->wordwidth < Self->Clips[i].Clip.Left) {
             if (Self->Clips[i].Clip.Left < l->alignwidth) l->alignwidth = Self->Clips[i].Clip.Left;
          }
@@ -1297,22 +1235,21 @@ static void end_line(objDocument *Self, struct layout *l, LONG NewLine, LONG Ind
          PREV_CHAR(Self->Stream, i);
          while (i > 0) {
             if (Self->Stream[i] IS CTRL_CODE) {
-               if ((ESCAPE_CODE(Self->Stream, i) IS ESC_PARAGRAPH_END) OR
+               if ((ESCAPE_CODE(Self->Stream, i) IS ESC_PARAGRAPH_END) or
                    (ESCAPE_CODE(Self->Stream, i) IS ESC_PARAGRAPH_START)) {
 
                   if (ESCAPE_CODE(Self->Stream, i) IS ESC_PARAGRAPH_START) {
                      // Check if a custom string is specified in the paragraph, in which case the paragraph counts
                      // as content.
 
-                     escParagraph *para;
-                     para = ESCAPE_DATA(Self->Stream, i);
+                     auto para = escape_data<escParagraph>(Self->Stream, i);
                      if (para->CustomString) break;
                   }
 
                   bottomline = l->paragraph_y;
                   break;
                }
-               else if ((ESCAPE_CODE(Self->Stream, i) IS ESC_OBJECT) OR (ESCAPE_CODE(Self->Stream, i) IS ESC_TABLE_END)) break; // Content encountered
+               else if ((ESCAPE_CODE(Self->Stream, i) IS ESC_OBJECT) or (ESCAPE_CODE(Self->Stream, i) IS ESC_TABLE_END)) break; // Content encountered
 
                PREV_CHAR(Self->Stream, i);
             }
@@ -1356,9 +1293,10 @@ static void end_line(objDocument *Self, struct layout *l, LONG NewLine, LONG Ind
 ** ObjectIndex - The index that indicates the start of the word.
 */
 
-static UBYTE check_wordwrap(STRING Type, objDocument *Self, LONG Index, struct layout *l, LONG X, LONG *Width,
+static UBYTE check_wordwrap(CSTRING Type, objDocument *Self, LONG Index, layout *l, LONG X, LONG *Width,
    LONG ObjectIndex, LONG *GraphicX, LONG *GraphicY, LONG GraphicWidth, LONG GraphicHeight)
 {
+   parasol::Log log(__FUNCTION__);
    LONG minwidth;
    UBYTE result;
    LONG breakloop;
@@ -1387,7 +1325,7 @@ restart:
    if (Self->TotalClips > 0) check_clips(Self, Index, l, ObjectIndex, GraphicX, GraphicY, GraphicWidth, GraphicHeight);
 
    if (*GraphicX + GraphicWidth > l->wrapedge) {
-      if ((*Width < WIDTH_LIMIT) AND ((*GraphicX IS l->left_margin) OR (l->nowrap))) {
+      if ((*Width < WIDTH_LIMIT) and ((*GraphicX IS l->left_margin) or (l->nowrap))) {
          // Force an extension of the page width and recalculate from scratch
          minwidth = *GraphicX + GraphicWidth + l->right_margin - X;
          if (minwidth > *Width) {
@@ -1437,7 +1375,7 @@ restart:
          result = WRAP_WRAPPED;
          if (--breakloop > 0) goto restart; // Go back and check the clip boundaries again
          else {
-            FMSG("@check_wrap:","Breaking out of continuous loop.");
+            log.traceWarning("Breaking out of continuous loop.");
             Self->Error = ERR_Loop;
          }
       }
@@ -1445,7 +1383,7 @@ restart:
 
    // No wrap has occurred
 
-   if ((l->link) AND (l->link_open IS FALSE)) {
+   if ((l->link) and (l->link_open IS FALSE)) {
       // A link is due to be closed
       add_link(Self, ESC_LINK, l->link, l->link_x, *GraphicY, *GraphicX + GraphicWidth - l->link_x, l->line_height ? l->line_height : l->font->LineSpacing, "check_wrap");
       l->link = NULL;
@@ -1459,7 +1397,7 @@ restart:
    return result;
 }
 
-static void check_clips(objDocument *Self, LONG Index, struct layout *l,
+static void check_clips(objDocument *Self, LONG Index, layout *l,
    LONG ObjectIndex, LONG *GraphicX, LONG *GraphicY, LONG GraphicWidth, LONG GraphicHeight)
 {
    LONG clip, i, height;
@@ -1483,7 +1421,7 @@ static void check_clips(objDocument *Self, LONG Index, struct layout *l,
       // Set the line segment up to the encountered boundary and continue checking the object position against the
       // clipping boundaries.
 
-      if ((l->link) AND (Self->Clips[clip].Index < l->link_index)) {
+      if ((l->link) and (Self->Clips[clip].Index < l->link_index)) {
          // An open link intersects with a clipping region that was created prior to the opening of the link.  We do
          // not want to include this object as a clickable part of the link - we will wrap over or around it, so
          // set a partial link now and ensure the link is reopened after the clipping region.
@@ -1511,7 +1449,7 @@ static void check_clips(objDocument *Self, LONG Index, struct layout *l,
          break;
       }
 
-      if ((GraphicWidth) AND (ObjectIndex >= 0)) i = ObjectIndex;
+      if ((GraphicWidth) and (ObjectIndex >= 0)) i = ObjectIndex;
       else i = Index;
 
       if (l->line_index < i) {
@@ -1525,7 +1463,7 @@ static void check_clips(objDocument *Self, LONG Index, struct layout *l,
 
       l->line_index = i;
       l->line_x = *GraphicX;
-      if ((reset_link) AND (l->link)) l->link_x = *GraphicX;
+      if ((reset_link) and (l->link)) l->link_x = *GraphicX;
 
       clip = l->start_clips-1; // Check all the clips from the beginning
    }
@@ -1546,7 +1484,7 @@ static void check_clips(objDocument *Self, LONG Index, struct layout *l,
 */
 
 typedef struct {
-   struct layout Layout;
+   layout Layout;
    LONG Index;
    LONG TotalClips;
    LONG TotalLinks;
@@ -1583,14 +1521,15 @@ static LONG layout_section(objDocument *Self, LONG Offset, objFont **Font,
    LONG AbsX, LONG AbsY, LONG *Width, LONG *Height,
    LONG LeftMargin, LONG TopMargin, LONG RightMargin, LONG BottomMargin, BYTE *VerticalRepass)
 {
-   struct layout l;
+   parasol::Log log(__FUNCTION__);
+   layout l;
    escFont *style;
    escAdvance *advance;
    escObject *escobj;
    escList *esclist;
    escCell *esccell;
    escRow *escrow, *lastrow;
-   struct DocEdit *edit;
+   DocEdit *edit;
    escTable *esctable;
    escParagraph *escpara;
    LAYOUT_STATE tablestate, rowstate, liststate;
@@ -1599,13 +1538,13 @@ static LONG layout_section(objDocument *Self, LONG Offset, objFont **Font,
    UBYTE checkwrap;
    BYTE object_vertical_repass;
 
-   if ((!Self->Stream) OR (!Self->Stream[Offset]) OR (!Font)) {
-      FMSG("layout_section:","No document stream to be processed.");
+   if ((!Self->Stream) or (!Self->Stream[Offset]) or (!Font)) {
+      log.trace("No document stream to be processed.");
       return 0;
    }
 
    if (Self->Depth >= MAX_DEPTH) {
-      FMSG("layout_section:","Depth limit exceeded (too many tables-within-tables).");
+      log.trace("Depth limit exceeded (too many tables-within-tables).");
       return 0;
    }
 
@@ -1714,19 +1653,19 @@ extend_page:
 
                case ESC_FONT:
                   if (l.textcontent) {
-                     style = ESCAPE_DATA(Self->Stream, i);
+                     style = escape_data<escFont>(Self->Stream, i);
                      objFont *font = lookup_font(style->Index, "ESC_FONT");
                      if (l.font != font) breaksegment = 1;
                   }
                   break;
 
                case ESC_OBJECT:
-                  escobj = ESCAPE_DATA(Self->Stream, i);
+                  escobj = escape_data<escObject>(Self->Stream, i);
                   if (escobj->Graphical) breaksegment = 1;
                   break;
 
                case ESC_INDEX_START: {
-                  escIndex *index = ESCAPE_DATA(Self->Stream, i);
+                  auto index = escape_data<escIndex>(Self->Stream, i);
                   if (!index->Visible) breaksegment = 1;
                   break;
                }
@@ -1785,7 +1724,7 @@ extend_page:
                LAYOUT("layout_section:","Expanding page width on wordwrap request.");
                goto extend_page;
             }
-            else if ((Self->Stream[i] IS '\n') AND (wrap_result IS WRAP_WRAPPED)) {
+            else if ((Self->Stream[i] IS '\n') and (wrap_result IS WRAP_WRAPPED)) {
                // The presence of the line-break must be ignored, due to word-wrap having already made the new line for us
                i++;
                l.line_index = i;
@@ -1809,7 +1748,7 @@ extend_page:
          l.len = ESCAPE_LEN(Self->Stream+i);
          switch (ESCAPE_CODE(Self->Stream, i)) {
             case ESC_ADVANCE:
-               advance = ESCAPE_DATA(Self->Stream, i);
+               advance = escape_data<escAdvance>(Self->Stream, i);
                l.cursorx += advance->X;
                l.cursory += advance->Y;
                if (advance->X) {
@@ -1818,7 +1757,7 @@ extend_page:
                break;
 
             case ESC_FONT:
-               style = ESCAPE_DATA(Self->Stream, i);
+               style = escape_data<escFont>(Self->Stream, i);
                l.font = lookup_font(style->Index, "ESC_FONT");
 
                if (l.font) {
@@ -1851,8 +1790,7 @@ extend_page:
                // makes it really easy to scroll to a bookmark when requested (show_bookmark()).
 
                LONG end;
-               escIndex *escindex;
-               escindex = ESCAPE_DATA(Self->Stream, i);
+               auto escindex = escape_data<escIndex>(Self->Stream, i);
                escindex->Y = l.cursory;
 
                if (!escindex->Visible) {
@@ -1862,7 +1800,7 @@ extend_page:
                   while (Self->Stream[end]) {
                      if (Self->Stream[end] IS CTRL_CODE) {
                         if (ESCAPE_CODE(Self->Stream, end) IS ESC_INDEX_END) {
-                           escIndexEnd *iend = ESCAPE_DATA(Self->Stream, end);
+                           escIndexEnd *iend = escape_data<escIndexEnd>(Self->Stream, end);
                            if (iend->ID IS escindex->ID) break;
                         }
                      }
@@ -1871,7 +1809,7 @@ extend_page:
                   }
 
                   if (Self->Stream[end] IS 0) {
-                     LogErrorMsg("Failed to find matching index-end.  Document stream is corrupt.");
+                     log.warning("Failed to find matching index-end.  Document stream is corrupt.");
                      goto exit;
                   }
 
@@ -1889,8 +1827,7 @@ extend_page:
             }
 
             case ESC_SETMARGINS: {
-               escSetMargins *escmargins;
-               escmargins = ESCAPE_DATA(Self->Stream, i);
+               auto escmargins = escape_data<escSetMargins>(Self->Stream, i);
 
                if (escmargins->Left != 0x7fff) {
                   l.cursorx     += escmargins->Left;
@@ -1926,7 +1863,7 @@ extend_page:
                   }
                }
 
-               l.link       = ESCAPE_DATA(Self->Stream, i);
+               l.link       = escape_data<escLink>(Self->Stream, i);
                l.link_x     = l.cursorx + l.wordwidth;
                l.link_index = i;
                l.link_open  = TRUE;
@@ -1959,13 +1896,12 @@ extend_page:
                SAVE_STATE(liststate);
 
                if (esclist) {
-                  APTR ptr;
-                  ptr = esclist;
-                  esclist = ESCAPE_DATA(Self->Stream, i);
+                  auto ptr = esclist;
+                  esclist = escape_data<escList>(Self->Stream, i);
                   esclist->Stack = ptr;
                }
                else {
-                  esclist = ESCAPE_DATA(Self->Stream, i);
+                  esclist = escape_data<escList>(Self->Stream, i);
                   esclist->Stack = NULL;
                }
 list_repass:
@@ -1973,10 +1909,9 @@ list_repass:
                break;
 
             case ESC_LIST_END:
-
                // If it is a custom list, a repass is required
 
-               if ((esclist) AND (esclist->Type IS LT_CUSTOM) AND (esclist->Repass)) {
+               if ((esclist) and (esclist->Type IS LT_CUSTOM) and (esclist->Repass)) {
                   LAYOUT("esc_list","Repass for list required, commencing...");
                   RESTORE_STATE(&liststate);
                   goto list_repass;
@@ -1986,9 +1921,7 @@ list_repass:
                   esclist = esclist->Stack;
                }
 
-               /* At the end of a list, increase the whitespace to that of a standard
-               ** paragraph.
-               */
+               // At the end of a list, increase the whitespace to that of a standard paragraph.
 
                if (!esclist) {
                   if (escpara) end_line(Self, &l, NL_PARAGRAPH, i, escpara->VSpacing, i, "Esc:ListEnd");
@@ -2000,16 +1933,16 @@ list_repass:
             // EMBEDDED OBJECT MANAGEMENT
 
             case ESC_OBJECT: {
-               struct SurfaceClip cell;
+               SurfaceClip cell;
                OBJECTID object_id;
-               LONG objheight, dimensions, width_check, layoutflags;
+               LONG objheight;
                OBJECTPTR object;
                objLayout *layout;
 
                // Tell the object our CursorX and CursorY positions so that it can position itself within the stream
                // layout.  The object will tell us its clipping boundary when it returns (if it has a clipping boundary).
 
-               escobj = ESCAPE_DATA(Self->Stream, i);
+               auto escobj = escape_data<escObject>(Self->Stream, i);
                if (!(object_id = escobj->ObjectID)) break;
                if (!escobj->Graphical) break; // Do not bother with objects that do not draw anything
                if (escobj->Owned) break; // Do not manipulate objects that have owners
@@ -2022,7 +1955,7 @@ wrap_object:
                cell.Left   = AbsX;
                cell.Top    = AbsY;
                cell.Right  = cell.Left + *Width;
-               if ((!Offset) AND (page_height < Self->AreaHeight)) cell.Bottom = AbsY + Self->AreaHeight; // The reported page height cannot be shorter than the document's surface area
+               if ((!Offset) and (page_height < Self->AreaHeight)) cell.Bottom = AbsY + Self->AreaHeight; // The reported page height cannot be shorter than the document's surface area
                else cell.Bottom = AbsY + page_height;
 
                if (l.line_height) {
@@ -2030,9 +1963,9 @@ wrap_object:
                }
                else if (cell.Bottom < l.cursory + 1) cell.Bottom = l.cursory + 1;
 
-               width_check = 0;
-               dimensions = 0;
-               layoutflags = 0;
+               LONG width_check = 0;
+               LONG dimensions = 0;
+               LONG layoutflags = 0;
 
                if (!(error = AccessObject(object_id, 5000, &object))) {
                   LAYOUT("layout_object:","[Idx:%d] The %s's available page area is %d-%d,%d-%d, margins %dx%d,%d, cursor %dx%d", i, object->Class->ClassName, cell.Left, cell.Right, cell.Top, cell.Bottom, l.left_margin-AbsX, l.right_margin, TopMargin, l.cursorx, l.cursory);
@@ -2040,7 +1973,7 @@ wrap_object:
                   LONG cellwidth, cellheight, align, leftmargin, lineheight, zone_height;
                   OBJECTID layout_surface_id;
 
-                  if ((FindField(object, FID_LayoutSurface, NULL)) AND (!GetLong(object, FID_LayoutSurface, &layout_surface_id))) {
+                  if ((FindField(object, FID_LayoutSurface, NULL)) and (!GetLong(object, FID_LayoutSurface, &layout_surface_id))) {
                      objSurface *surface;
                      LONG new_x, new_y, new_width, new_height, calc_x;
 
@@ -2070,9 +2003,7 @@ wrap_object:
                            else if (new_width > cellwidth) new_width = cellwidth;
                         }
                         else if (surface->Dimensions & DMF_FIXED_WIDTH) new_width = surface->Width;
-                        else if ((surface->Dimensions & DMF_X) AND
-                                 (surface->Dimensions & DMF_X_OFFSET)) {
-
+                        else if ((surface->Dimensions & DMF_X) and (surface->Dimensions & DMF_X_OFFSET)) {
                            // Calculate X boundary
 
                            calc_x = new_x;
@@ -2101,17 +2032,16 @@ wrap_object:
 
                         // X COORD
 
-                        if ((align & ALIGN_HORIZONTAL) AND (surface->Dimensions & DMF_WIDTH)) {
+                        if ((align & ALIGN_HORIZONTAL) and (surface->Dimensions & DMF_WIDTH)) {
                            new_x = new_x + ((cellwidth - new_width)/2);
                         }
-                        else if ((align & ALIGN_RIGHT) AND (surface->Dimensions & DMF_WIDTH)) {
+                        else if ((align & ALIGN_RIGHT) and (surface->Dimensions & DMF_WIDTH)) {
                            new_x = (AbsX + *Width) - l.right_margin - new_width;
                         }
                         else if (surface->Dimensions & DMF_RELATIVE_X) {
                            new_x += F2T(surface->XPercent * cellwidth * 0.01);
                         }
-                        else if ((surface->Dimensions & DMF_WIDTH) AND
-                                 (surface->Dimensions & DMF_X_OFFSET)) {
+                        else if ((surface->Dimensions & DMF_WIDTH) and (surface->Dimensions & DMF_X_OFFSET)) {
                            if (surface->Dimensions & DMF_FIXED_X_OFFSET) {
                               new_x += (cellwidth - new_width - surface->XOffset);
                            }
@@ -2134,7 +2064,7 @@ wrap_object:
                         else if (surface->Dimensions & DMF_FIXED_HEIGHT) {
                            new_height = surface->Height;
                         }
-                        else if ((surface->Dimensions & DMF_Y) AND
+                        else if ((surface->Dimensions & DMF_Y) and
                                  (surface->Dimensions & DMF_Y_OFFSET)) {
                            if (surface->Dimensions & DMF_FIXED_Y) new_y = surface->Y;
                            else if (surface->Dimensions & DMF_RELATIVE_Y) new_y = F2T((DOUBLE)zone_height * (DOUBLE)surface->YPercent * 0.01);
@@ -2157,7 +2087,7 @@ wrap_object:
                         if (surface->Dimensions & DMF_RELATIVE_Y) {
                            new_y += F2T(surface->YPercent * lineheight * 0.01);
                         }
-                        else if ((surface->Dimensions & DMF_HEIGHT) AND
+                        else if ((surface->Dimensions & DMF_HEIGHT) and
                                  (surface->Dimensions & DMF_Y_OFFSET)) {
                            if (surface->Dimensions & DMF_FIXED_Y_OFFSET) new_y = cell.Top + F2T(zone_height - surface->Height - surface->YOffset);
                            else new_y += F2T((DOUBLE)zone_height - (DOUBLE)surface->Height - ((DOUBLE)zone_height * (DOUBLE)surface->YOffsetPercent * 0.01));
@@ -2220,7 +2150,7 @@ wrap_object:
                         dimensions = 0;
                      }
                   }
-                  else if ((FindField(object, FID_Layout, NULL)) AND (!GetPointer(object, FID_Layout, &layout))) {
+                  else if ((FindField(object, FID_Layout, NULL)) and (!GetPointer(object, FID_Layout, &layout))) {
                      leftmargin = l.left_margin - AbsX;
                      lineheight = (l.base_line) ? l.base_line : l.font->Ascent;
 
@@ -2241,7 +2171,7 @@ wrap_object:
                         ** Gaps are automatically worked into the calculated X/Y value.
                         */
 
-                        if ((layout->GraphicWidth) AND (layout->GraphicHeight) AND (!(layoutflags & LAYOUT_TILE))) {
+                        if ((layout->GraphicWidth) and (layout->GraphicHeight) and (!(layoutflags & LAYOUT_TILE))) {
                            layout->BoundX = cell.Left;
                            layout->BoundY = cell.Top;
 
@@ -2350,7 +2280,7 @@ wrap_object:
 
                         layout->BoundWidth = 1; // Just a default in case no width in the Dimension flags is defined
 
-                        if ((align & ALIGN_HORIZONTAL) AND (layout->GraphicWidth)) {
+                        if ((align & ALIGN_HORIZONTAL) and (layout->GraphicWidth)) {
                            // In horizontal mode where a GraphicWidth is preset, we force the BoundX and BoundWidth to their
                            // exact settings and override any attempt by the user to have preset the X and Width fields.
                            // The object will attempt a horizontal alignment within the bounds, this will be to no effect as the
@@ -2366,7 +2296,7 @@ wrap_object:
                            extclip_left = layout->LeftMargin;
                            extclip_right = layout->RightMargin;
                         }
-                        else if ((align & ALIGN_RIGHT) AND (layout->GraphicWidth)) {
+                        else if ((align & ALIGN_RIGHT) and (layout->GraphicWidth)) {
                            LONG new_x = ((AbsX + *Width) - l.right_margin) - (layout->GraphicWidth + layout->RightMargin);
                            if (new_x > layout->BoundX) layout->BoundX = new_x;
                            layout->BoundWidth = layout->GraphicWidth;
@@ -2409,20 +2339,18 @@ wrap_object:
                            // NOTE: If the object supports GraphicWidth and GraphicHeight, it must keep
                            // them up to date if they are based on relative values.
 
-                           if ((layout->GraphicWidth > 0) AND (!(layout->Dimensions & DMF_WIDTH))) {
+                           if ((layout->GraphicWidth > 0) and (!(layout->Dimensions & DMF_WIDTH))) {
                               LAYOUT("layout_object","Setting BoundWidth from %d to preset GraphicWidth of %d", layout->BoundWidth, layout->GraphicWidth);
                               layout->BoundWidth = layout->GraphicWidth;
                            }
-                           else if ((layout->Dimensions & DMF_X) AND
-                                    (layout->Dimensions & DMF_X_OFFSET)) {
-
+                           else if ((layout->Dimensions & DMF_X) and (layout->Dimensions & DMF_X_OFFSET)) {
                               if (layout->Dimensions & DMF_FIXED_X_OFFSET) layout->BoundWidth = cellwidth - xoffset - (layout->BoundX - cell.Left);
                               else layout->BoundWidth = cellwidth - (layout->BoundX - cell.Left) - xoffset;
 
                               if (layout->BoundWidth < 1) layout->BoundWidth = 1;
                               else if (layout->BoundWidth > cellwidth) layout->BoundWidth = cellwidth;
                            }
-                           else if ((layout->Dimensions & DMF_WIDTH) AND
+                           else if ((layout->Dimensions & DMF_WIDTH) and
                                     (layout->Dimensions & DMF_X_OFFSET)) {
                               if (layout->Dimensions & DMF_FIXED_X_OFFSET) {
                                  LONG new_x = layout->BoundX + cellwidth - layout->BoundWidth - xoffset - layout->RightMargin;
@@ -2435,14 +2363,14 @@ wrap_object:
                               }
                            }
                            else {
-                              if ((align & ALIGN_HORIZONTAL) AND (layout->Dimensions & DMF_WIDTH)) {
+                              if ((align & ALIGN_HORIZONTAL) and (layout->Dimensions & DMF_WIDTH)) {
                                  LONG new_x = layout->BoundX + ((cellwidth - (layout->BoundWidth + layout->LeftMargin + layout->RightMargin))/2);
                                  if (new_x > layout->BoundX) layout->BoundX = new_x;
                                  layout->BoundX += layout->LeftMargin;
                                  extclip_left = layout->LeftMargin;
                                  extclip_right = layout->RightMargin;
                               }
-                              else if ((align & ALIGN_RIGHT) AND (layout->Dimensions & DMF_WIDTH)) {
+                              else if ((align & ALIGN_RIGHT) and (layout->Dimensions & DMF_WIDTH)) {
                                  /* Note that it is possible the BoundX may end up behind the cursor, or the cell's left margin.
                                  ** A check for this is made later, so don't worry about it here.
                                  */
@@ -2471,7 +2399,7 @@ wrap_object:
 
                         LONG zone_height;
 
-                        if ((escpara) OR (page_height < 1)) zone_height = lineheight;
+                        if ((escpara) or (page_height < 1)) zone_height = lineheight;
                         else zone_height = page_height;
 
                         // HEIGHT
@@ -2488,7 +2416,7 @@ wrap_object:
                            layout->BoundHeight = layout->Height;
                         }
 
-                        if ((layout->GraphicHeight > layout->BoundHeight) AND (!(layout->Dimensions & DMF_HEIGHT))) {
+                        if ((layout->GraphicHeight > layout->BoundHeight) and (!(layout->Dimensions & DMF_HEIGHT))) {
                            LAYOUT("layout_object","Expanding BoundHeight from %d to preset GraphicHeight of %d", layout->BoundHeight, layout->GraphicHeight);
                            layout->BoundHeight = layout->GraphicHeight;
                         }
@@ -2563,7 +2491,7 @@ wrap_object:
                   if (error IS ERR_DoesNotExist) escobj->ObjectID = 0;
                }
 
-               if ((!error) AND (width_check)) {
+               if ((!error) and (width_check)) {
                   // The cursor must advance past the clipping region so that the segment positions will be
                   // correct when set.
 
@@ -2572,10 +2500,10 @@ wrap_object:
                   // Check if the clipping region is invalid.  Invalid clipping regions are not added to the clip
                   // region list (i.e. layout of document text will ignore the presence of the object).
 
-                  if ((cell.Bottom <= cell.Top) OR (cell.Right <= cell.Left)) {
+                  if ((cell.Bottom <= cell.Top) or (cell.Right <= cell.Left)) {
                      CSTRING name;
-                     if ((name = GetName(object))) LogF("@layout_object:","%s object %s returned an invalid clip region of %dx%d,%dx%d", object->Class->ClassName, name, cell.Left, cell.Top, cell.Right, cell.Bottom);
-                     else LogF("@layout_object:","%s object #%d returned an invalid clip region of %dx%d,%dx%d", object->Class->ClassName, object->UniqueID, cell.Left, cell.Top, cell.Right, cell.Bottom);
+                     if ((name = GetName(object))) log.warning("%s object %s returned an invalid clip region of %dx%d,%dx%d", object->Class->ClassName, name, cell.Left, cell.Top, cell.Right, cell.Bottom);
+                     else log.warning("%s object #%d returned an invalid clip region of %dx%d,%dx%d", object->Class->ClassName, object->UniqueID, cell.Left, cell.Top, cell.Right, cell.Bottom);
                      break;
                   }
 
@@ -2588,7 +2516,7 @@ wrap_object:
                   else left_check = l.left_margin; //l.cursorx;
 
                   if (*Width >= WIDTH_LIMIT);
-                  else if ((cell.Left < left_check) OR (layoutflags & LAYOUT_IGNORE_CURSOR)) {
+                  else if ((cell.Left < left_check) or (layoutflags & LAYOUT_IGNORE_CURSOR)) {
                      /* The object is < left-hand side of the page/cell, this means
                      ** that we may have to force a page/cell width increase.
                      **
@@ -2638,7 +2566,7 @@ wrap_object:
                   if (!(layoutflags & (LAYOUT_BACKGROUND|LAYOUT_FOREGROUND))) {
                      if (cell.Bottom > l.cursory) {
                         objheight = cell.Bottom - l.cursory;
-                        if ((l.anchor) OR (escobj->Embedded)) {
+                        if ((l.anchor) or (escobj->Embedded)) {
                            // If all objects in the current section need to be anchored to the text, each
                            // object becomes part of the current line (e.g. treat the object as if it were
                            // a text character).  This requires us to adjust the line height.
@@ -2667,7 +2595,7 @@ wrap_object:
                      }
                   }
                }
-               else if ((error != ERR_NothingDone) AND (error != ERR_NoAction)) {
+               else if ((error != ERR_NothingDone) and (error != ERR_NoAction)) {
                   LAYOUT("layout_object","Error code #%d during object layout: %s", error, GetErrorMsg(error));
                }
 
@@ -2676,7 +2604,7 @@ wrap_object:
                // If the object uses a relative height or vertical offset, a repass will be required if the page height
                // increases.
 
-               if ((dimensions & (DMF_RELATIVE_HEIGHT|DMF_FIXED_Y_OFFSET|DMF_RELATIVE_Y_OFFSET)) AND (layoutflags & (LAYOUT_BACKGROUND|LAYOUT_IGNORE_CURSOR))) {
+               if ((dimensions & (DMF_RELATIVE_HEIGHT|DMF_FIXED_Y_OFFSET|DMF_RELATIVE_Y_OFFSET)) and (layoutflags & (LAYOUT_BACKGROUND|LAYOUT_IGNORE_CURSOR))) {
                   LAYOUT("layout_object","Vertical repass may be required.");
                   object_vertical_repass = TRUE;
                }
@@ -2698,18 +2626,17 @@ wrap_object:
                // 5. Restart the page layout using the correct width and height settings
                //    for the cells.
 
-               LONG min, width;
+               LONG width;
 
                SAVE_STATE(tablestate);
 
                if (esctable) {
-                  APTR ptr;
-                  ptr = esctable;
-                  esctable = ESCAPE_DATA(Self->Stream, i);
+                  auto ptr = esctable;
+                  esctable = escape_data<escTable>(Self->Stream, i);
                   esctable->Stack = ptr;
                }
                else {
-                  esctable = ESCAPE_DATA(Self->Stream, i);
+                  esctable = escape_data<escTable>(Self->Stream, i);
                   esctable->Stack = NULL;
                }
 
@@ -2730,20 +2657,20 @@ wrap_table_start:
 
                if (width < 0) width = 0;
 
-               min = (esctable->Thickness * 2) + (esctable->CellHSpacing * (esctable->TotalColumns-1)) + (esctable->CellPadding * 2 * esctable->TotalColumns);
-               if (esctable->Thin) min -= esctable->CellHSpacing * 2; // Thin tables do not have spacing on the left and right borders
-               if (width < min) width = min;
+               {
+                  LONG min = (esctable->Thickness * 2) + (esctable->CellHSpacing * (esctable->TotalColumns-1)) + (esctable->CellPadding * 2 * esctable->TotalColumns);
+                  if (esctable->Thin) min -= esctable->CellHSpacing * 2; // Thin tables do not have spacing on the left and right borders
+                  if (width < min) width = min;
+               }
 
                if (width > WIDTH_LIMIT - l.cursorx - l.right_margin) {
-                  FMSG("@layout_table:","Table width in excess of allowable limits.");
+                  log.traceWarning("Table width in excess of allowable limits.");
                   width = WIDTH_LIMIT - l.cursorx - l.right_margin;
                   if (Self->BreakLoop > 4) Self->BreakLoop = 4;
                }
 
                if (esctable->ComputeColumns) {
-                  if (esctable->Width >= width) {
-                     esctable->ComputeColumns = 0;
-                  }
+                  if (esctable->Width >= width) esctable->ComputeColumns = 0;
                }
 
                esctable->Width = width;
@@ -2790,7 +2717,7 @@ wrap_table_cell:
                      }
                   }
                   else {
-                     LogF("@layout_table:","No columns array defined for table.");
+                     log.warning("No columns array defined for table.");
                      esctable->TotalColumns = 0;
                   }
                }
@@ -2804,9 +2731,9 @@ wrap_table_cell:
                   goto extend_page;
                }
                else if (j IS WRAP_WRAPPED) {
-                  /* The width of the table and positioning information needs
-                  ** to be recalculated in the event of a table wrap.
-                  */
+                  // The width of the table and positioning information needs
+                  // to be recalculated in the event of a table wrap.
+
                   LAYOUT("layout_table:","Restarting table calculation due to page wrap to position %dx%d.", l.cursorx, l.cursory);
                   esctable->ComputeColumns = 1;
                   LAYOUT_LOGRETURN();
@@ -2824,17 +2751,16 @@ wrap_table_cell:
             }
 
             case ESC_TABLE_END: {
-               struct SurfaceClip clip;
+               SurfaceClip clip;
                LONG minheight, totalclips;
 
                if (esctable->CellsExpanded IS FALSE) {
                   DOUBLE cellwidth;
                   LONG unfixed, colwidth;
 
-                  /* Table cells need to match the available width inside the table.
-                  ** This routine checks for that - if the cells are short then the
-                  ** table processing is restarted.
-                  */
+                  // Table cells need to match the available width inside the table.
+                  // This routine checks for that - if the cells are short then the
+                  // table processing is restarted.
 
                   LAYOUT("layout_table_end:","Checking table @ index %d for cell/table widening.  Table width: %d", i, esctable->Width);
 
@@ -2871,21 +2797,19 @@ wrap_table_cell:
 
                         if (unfixed > 0) {
                            cellwidth = avail_width / unfixed;
-                           for (j=0; j < esctable->TotalColumns; j++) {
-                              if ((esctable->Columns[j].MinWidth) AND (esctable->Columns[j].MinWidth > cellwidth)) {
+                           for (LONG j=0; j < esctable->TotalColumns; j++) {
+                              if ((esctable->Columns[j].MinWidth) and (esctable->Columns[j].MinWidth > cellwidth)) {
                                  avail_width -= esctable->Columns[j].MinWidth;
                                  unfixed--;
                               }
                            }
 
                            if (unfixed > 0) {
-                              BYTE expanded;
-
                               cellwidth = avail_width / unfixed;
-                              expanded = FALSE;
+                              bool expanded = FALSE;
 
                               //total = 0;
-                              for (j=0; j < esctable->TotalColumns; j++) {
+                              for (LONG j=0; j < esctable->TotalColumns; j++) {
                                  if (esctable->Columns[j].PresetWidth) continue; // Columns with preset-widths are never auto-expanded
                                  if (esctable->Columns[j].MinWidth > cellwidth) continue;
 
@@ -2922,9 +2846,8 @@ wrap_table_cell:
                   if (!Offset) {
                      minheight = ((Self->AreaHeight - BottomMargin - esctable->Y) * esctable->MinHeight) / 100;
                   }
-                  else {
-                     minheight = ((*Height - BottomMargin - TopMargin) * esctable->MinHeight) / 100;
-                  }
+                  else minheight = ((*Height - BottomMargin - TopMargin) * esctable->MinHeight) / 100;
+
                   if (minheight < 0) minheight = 0;
                }
                else minheight = esctable->MinHeight;
@@ -2940,7 +2863,7 @@ wrap_table_cell:
                      escrow = lastrow;
                      goto repass_row_height_ext;
                   }
-                  else LogErrorMsg("No last row defined for table height extension.");
+                  else log.warning("No last row defined for table height extension.");
                }
 
                // Adjust for cellspacing at the bottom
@@ -2950,7 +2873,7 @@ wrap_table_cell:
                // Restart if the width of the table will force an extension of the page.
 
                j = esctable->X + esctable->Width - AbsX + l.right_margin;
-               if ((j > *Width) AND (*Width < WIDTH_LIMIT)) {
+               if ((j > *Width) and (*Width < WIDTH_LIMIT)) {
                   LAYOUT("layout_table:","Table width (%d+%d) increases page width to %d, layout restart forced.", esctable->X, esctable->Width, j);
                   *Width = j;
                   LAYOUT_LOGRETURN();
@@ -2961,7 +2884,7 @@ wrap_table_cell:
                // technique typically applied to objects).  We also extend the line height if the table covers the
                // entire width of the page (this is a valuable optimisation for the layout routine).
 
-               if ((l.anchor) OR ((esctable->X <= l.left_margin) AND (esctable->X + esctable->Width >= l.wrapedge))) {
+               if ((l.anchor) or ((esctable->X <= l.left_margin) and (esctable->X + esctable->Width >= l.wrapedge))) {
                   if (esctable->Height > l.line_height) {
                      l.line_height = esctable->Height;
                      l.base_line   = l.font->Ascent;
@@ -3034,21 +2957,18 @@ wrap_table_cell:
 
             case ESC_ROW:
                if (escrow) {
-                  APTR ptr;
-                  ptr = escrow;
-                  escrow = ESCAPE_DATA(Self->Stream, i);
+                  auto ptr = escrow;
+                  escrow = escape_data<escRow>(Self->Stream, i);
                   escrow->Stack = ptr;
                }
                else {
-                  escrow = ESCAPE_DATA(Self->Stream, i);
+                  escrow = escape_data<escRow>(Self->Stream, i);
                   escrow->Stack = NULL;
                }
 
                SAVE_STATE(rowstate);
 
-               if (esctable->ResetRowHeight) {
-                  escrow->RowHeight = escrow->MinHeight;
-               }
+               if (esctable->ResetRowHeight) escrow->RowHeight = escrow->MinHeight;
 
 repass_row_height_ext:
                escrow->VerticalRepass = FALSE;
@@ -3096,10 +3016,10 @@ repass_row_height_ext:
 
                BYTE savechar, vertical_repass;
 
-               esccell = ESCAPE_DATA(Self->Stream, i);
+               esccell = escape_data<escCell>(Self->Stream, i);
 
                if (!esctable) {
-                  LogErrorMsg("escTable variable not defined for cell @ index %d - document byte code is corrupt.", i);
+                  log.warning("escTable variable not defined for cell @ index %d - document byte code is corrupt.", i);
                   goto exit;
                }
 
@@ -3139,7 +3059,7 @@ repass_row_height_ext:
                while (Self->Stream[cell_end]) {
                   if (Self->Stream[cell_end] IS CTRL_CODE) {
                      if (ESCAPE_CODE(Self->Stream, cell_end) IS ESC_CELL_END) {
-                        escCellEnd *end = ESCAPE_DATA(Self->Stream, cell_end);
+                        escCellEnd *end = escape_data<escCellEnd>(Self->Stream, cell_end);
                         if (end->CellID IS esccell->CellID) break;
                      }
                   }
@@ -3148,7 +3068,7 @@ repass_row_height_ext:
                }
 
                if (Self->Stream[cell_end] IS 0) {
-                  LogErrorMsg("Failed to find matching cell-end.  Document stream is corrupt.");
+                  log.warning("Failed to find matching cell-end.  Document stream is corrupt.");
                   goto exit;
                }
 
@@ -3205,11 +3125,8 @@ repass_row_height_ext:
 
                LAYOUT("layout_cell","Cell (%d:%d) is size %dx%d (min width %d)", esctable->RowIndex, esccell->Column, esccell->Width, esccell->Height, esctable->Columns[esccell->Column].Width);
 
-               /* Increase the overall width for the entire column
-               ** if this cell has increased the column width.  This
-               ** will affect the entire table, so a restart from TABLE_START
-               ** is required.
-               */
+               // Increase the overall width for the entire column if this cell has increased the column width.
+               // This will affect the entire table, so a restart from TABLE_START is required.
 
                if (esctable->Columns[esccell->Column].Width < esccell->Width) {
                   LAYOUT("layout_cell","Increasing column width of cell (%d:%d) from %d to %d (table_start repass required).", esctable->RowIndex, esccell->Column, esctable->Columns[esccell->Column].Width, esccell->Width);
@@ -3236,7 +3153,7 @@ repass_row_height_ext:
                if (!esctable->Thin) esctable->RowWidth += esctable->CellHSpacing;
                else if ((esccell->Column + esccell->ColSpan) < esctable->TotalColumns-1) esctable->RowWidth += esctable->CellHSpacing;
 
-               if ((esccell->Height > escrow->RowHeight) OR (escrow->VerticalRepass)) {
+               if ((esccell->Height > escrow->RowHeight) or (escrow->VerticalRepass)) {
                   // A repass will be required if the row height has increased
                   // and objects or tables have been used in earlier cells, because
                   // objects need to know the final dimensions of their table cell.
@@ -3272,16 +3189,16 @@ repass_row_height_ext:
 
                l.setsegment = TRUE;
 
-               if ((esccell) AND (esccell->OnClick)) {
+               if ((esccell) and (esccell->OnClick)) {
                   add_link(Self, ESC_CELL, esccell, esccell->AbsX, esccell->AbsY, esccell->Width, esccell->Height, "esc_cell_end");
                }
 
-               if ((esccell) AND (esccell->EditHash)) {
+               if ((esccell) and (esccell->EditHash)) {
                   // The area of each edit cell is logged in an array, which is used for assisting interaction between
                   // the mouse pointer and the edit cells.
 
                   if (Self->ECIndex >= Self->ECMax) {
-                     struct EditCell *cells;
+                     EditCell *cells;
                      if (!AllocMemory(sizeof(Self->EditCells[0]) * (Self->ECMax + 10), MEM_NO_CLEAR, &cells, NULL)) {
                         if (Self->EditCells) {
                            CopyMemory(Self->EditCells, cells, sizeof(Self->EditCells[0]) * Self->ECMax);
@@ -3307,10 +3224,9 @@ repass_row_height_ext:
             }
 
             case ESC_PARAGRAPH_START: {
-               struct escParagraph *parent;
+               escParagraph *parent;
 
                if ((parent = escpara)) {
-                  APTR ptr;
                   DOUBLE ratio;
 
                   // If a paragraph is embedded within a paragraph, insert a newline before the new paragraph starts.
@@ -3325,20 +3241,19 @@ repass_row_height_ext:
 
                   end_line(Self, &l, NL_PARAGRAPH, i, ratio, i, "Esc:PStart");
 
-                  ptr = escpara;
-                  escpara = ESCAPE_DATA(Self->Stream, i);
+                  auto ptr = escpara;
+                  escpara = escape_data<escParagraph>(Self->Stream, i);
                   escpara->Stack = ptr;
                }
                else {
-                  escpara = ESCAPE_DATA(Self->Stream, i);
+                  escpara = escape_data<escParagraph>(Self->Stream, i);
                   escpara->Stack = NULL;
 
-                  /* Leading ratio is only used if the paragraph is preceeded by content.
-                  ** This check ensures that the first paragraph is always flush against
-                  ** the top of the page.
-                  */
+                  // Leading ratio is only used if the paragraph is preceeded by content.
+                  // This check ensures that the first paragraph is always flush against
+                  // the top of the page.
 
-                  if ((escpara->LeadingRatio > 0) AND (l.paragraph_y > 0)) {
+                  if ((escpara->LeadingRatio > 0) and (l.paragraph_y > 0)) {
                      end_line(Self, &l, NL_PARAGRAPH, i, escpara->LeadingRatio, i, "Esc:PStart");
                   }
                }
@@ -3390,9 +3305,8 @@ repass_row_height_ext:
 
             case ESC_PARAGRAPH_END: {
                if (escpara) {
-                  /* The paragraph height reflects the true size of the paragraph after we take into account
-                  ** any objects and tables within the paragraph.
-                  */
+                  // The paragraph height reflects the true size of the paragraph after we take into account
+                  // any objects and tables within the paragraph.
 
                   l.paragraph_end = escpara->Y + escpara->Height;
 
@@ -3439,7 +3353,7 @@ repass_row_height_ext:
             //   <a href="">blah blah <br/> blah </a>
             // But we haven't tested it in a rpl document yet.
 
-            if ((l.link) AND (l.link_open IS FALSE)) {
+            if ((l.link) and (l.link_open IS FALSE)) {
                // A link is due to be closed
                add_link(Self, ESC_LINK, l.link, l.link_x, l.cursory, l.cursorx + l.wordwidth - l.link_x, l.line_height, "<br/>");
                l.link = NULL;
@@ -3449,10 +3363,8 @@ repass_row_height_ext:
            i++;
          }
          else if (Self->Stream[i] <= 0x20) {
-            LONG tabwidth;
-
             if (Self->Stream[i] IS '\t') {
-               tabwidth = (l.spacewidth + l.font->GlyphSpacing) * l.font->TabSize;
+               LONG tabwidth = (l.spacewidth + l.font->GlyphSpacing) * l.font->TabSize;
                if (tabwidth) l.cursorx += ROUNDUP(l.cursorx, tabwidth);
                i++;
             }
@@ -3470,7 +3382,7 @@ repass_row_height_ext:
 
             if (!l.wordwidth) l.wordindex = i;   // Record the index of the new word (if this is one)
 
-            i += getutf8(Self->Stream+i, &unicode);
+            i += getutf8((CSTRING)Self->Stream+i, &unicode);
             l.wordwidth += fntCharWidth(l.font, unicode, l.kernchar, &kerning);
             l.wordwidth += kerning;
             l.kernchar = unicode;
@@ -3481,7 +3393,7 @@ repass_row_height_ext:
 
    // Check if the cursor + any remaining text requires closure
 
-   if ((l.cursorx + l.wordwidth > l.left_margin) OR (l.wordindex != -1)) {
+   if ((l.cursorx + l.wordwidth > l.left_margin) or (l.wordindex != -1)) {
       end_line(Self, &l, NL_NONE, i, 0, i, "SectionEnd");
    }
 
@@ -3496,7 +3408,7 @@ exit:
    // This feature is also handled in ESC_CELL, so we only perform it here
    // if processing is occurring within the root page area (Offset of 0).
 
-   if ((!Offset) AND (object_vertical_repass) AND (lastheight < page_height)) {
+   if ((!Offset) and (object_vertical_repass) and (lastheight < page_height)) {
       LAYOUT("layout_section:","============================================================");
       LAYOUT("layout_section:","SECOND PASS [%d]: Root page height increased from %d to %d", Offset, lastheight, page_height);
       goto extend_page;
@@ -3520,14 +3432,12 @@ exit:
 
 static LONG calc_page_height(objDocument *Self, LONG FirstClip, LONG Y, LONG BottomMargin)
 {
-   LONG page_height, j, last, height, y;
-
    // Find the last segment that had text and use that to determine the bottom of the page
 
-   height = 0;
-   y = 0;
-   last = Self->SegCount-1;
-   while ((last > 0) AND (!height) AND (!y)) {
+   LONG height = 0;
+   LONG y = 0;
+   LONG last = Self->SegCount-1;
+   while ((last > 0) and (!height) and (!y)) {
       if (Self->Segments[last].TextContent) {
          height = Self->Segments[last].Height;
          y = Self->Segments[last].Y;
@@ -3536,11 +3446,11 @@ static LONG calc_page_height(objDocument *Self, LONG FirstClip, LONG Y, LONG Bot
       last--;
    }
 
-   page_height = (y + height);
+   LONG page_height = (y + height);
 
    // Check clipping regions to see if they extend past the last line of text - if so, we extend the height.
 
-   for (j=FirstClip; j < Self->TotalClips; j++) {
+   for (LONG j=FirstClip; j < Self->TotalClips; j++) {
       if (Self->Clips[j].Transparent) continue;
       if (Self->Clips[j].Clip.Bottom > page_height) page_height = Self->Clips[j].Clip.Bottom;
    }
@@ -3550,7 +3460,7 @@ static LONG calc_page_height(objDocument *Self, LONG FirstClip, LONG Y, LONG Bot
    page_height = page_height + BottomMargin - Y;
 
 /*
-   FMSG("calc_page_height()","Page Height: %d + %d -> %d, Bottom: %d, Y: %d",
+   log.trace("Page Height: %d + %d -> %d, Bottom: %d, Y: %d",
       Self->Segments[last].Y, Self->Segments[last].Height, page_height, BottomMargin, Y);
 */
    return page_height;
@@ -3581,26 +3491,26 @@ static void free_links(objDocument *Self)
 
 static void add_link(objDocument *Self, UBYTE EscapeCode, APTR Escape, LONG X, LONG Y, LONG Width, LONG Height, CSTRING Caller)
 {
-   LONG index;
+   parasol::Log log(__FUNCTION__);
 
-   if ((!Self) OR (!Escape)) return;
+   if ((!Self) or (!Escape)) return;
 
-   if ((Width < 1) OR (Height < 1)) {
-      FMSG("@add_link()","Illegal width/height for link @ %dx%d, W/H %dx%d [%s]", X, Y, Width, Height, Caller);
+   if ((Width < 1) or (Height < 1)) {
+      log.traceWarning("Illegal width/height for link @ %dx%d, W/H %dx%d [%s]", X, Y, Width, Height, Caller);
       return;
    }
 
    if (!Self->Links) {
       Self->TotalLinks = 0;
       Self->MaxLinks = 20;
-      if (!AllocMemory(sizeof(struct DocLink) * Self->MaxLinks, MEM_DATA|MEM_NO_CLEAR, &Self->Links, NULL)) {
+      if (!AllocMemory(sizeof(DocLink) * Self->MaxLinks, MEM_DATA|MEM_NO_CLEAR, &Self->Links, NULL)) {
 
       }
       else return;
    }
    else if (Self->TotalLinks+1 >= Self->MaxLinks) {
       #define LINK_INC 40
-      if (!ReallocMemory(Self->Links, sizeof(struct DocLink) * (Self->MaxLinks + LINK_INC), &Self->Links, NULL)) {
+      if (!ReallocMemory(Self->Links, sizeof(DocLink) * (Self->MaxLinks + LINK_INC), &Self->Links, NULL)) {
          Self->MaxLinks += LINK_INC;
       }
       else return;
@@ -3608,7 +3518,7 @@ static void add_link(objDocument *Self, UBYTE EscapeCode, APTR Escape, LONG X, L
 
    LAYOUT("add_link()","%dx%d,%dx%d, %s", X, Y, Width, Height, Caller);
 
-   index = Self->TotalLinks;
+   LONG index = Self->TotalLinks;
    Self->Links[index].EscapeCode = EscapeCode;
    Self->Links[index].Escape = Escape;
    Self->Links[index].X = X;
@@ -3632,8 +3542,7 @@ static void draw_background(objDocument *Self, objSurface *Surface, objBitmap *B
 
 static void draw_document(objDocument *Self, objSurface *Surface, objBitmap *Bitmap)
 {
-   objFont *font;
-   escFont *style;
+   parasol::Log log(__FUNCTION__);
    escList *esclist;
    escLink *esclink;
    escParagraph *escpara;
@@ -3641,10 +3550,10 @@ static void draw_document(objDocument *Self, objSurface *Surface, objBitmap *Bit
    escCell *esccell;
    escRow *escrow;
    escObject *escobject;
-   struct DocSegment *segment;
-   struct RGB8 link_save_rgb;
-   UBYTE alpha, tabfocus, oob, cursor_drawn;
-   LONG seg, fx, si, i;
+   DocSegment *segment;
+   RGB8 link_save_rgb;
+   UBYTE tabfocus, oob, cursor_drawn;
+   LONG fx, si, i;
 
    if (Self->UpdateLayout) {
       // Drawing is disabled if the layout needs to be updated (this likely indicates that the document stream has been
@@ -3653,15 +3562,15 @@ static void draw_document(objDocument *Self, objSurface *Surface, objBitmap *Bit
       return;
    }
 
-   font = lookup_font(0, "draw_document");
+   auto font = lookup_font(0, "draw_document");
    if (!font) {
-      FMSG("@draw_document:","No default font defined.");
+      log.traceWarning("No default font defined.");
       return;
    }
 
    #ifdef DEBUG
-   if ((!Self->Stream[0]) OR (!Self->SegCount)) {
-      //FMSG("@draw_document:","No content in stream or no segments.");
+   if ((!Self->Stream[0]) or (!Self->SegCount)) {
+      //log.traceWarning("No content in stream or no segments.");
       return;
    }
    #endif
@@ -3691,20 +3600,18 @@ static void draw_document(objDocument *Self, objSurface *Surface, objBitmap *Bit
       }
    #endif
 
-   LONG select_start, select_end, select_startx, select_endx;
+   LONG select_start  = -1;
+   LONG select_end    = -1;
+   LONG select_startx = 0;
+   LONG select_endx   = 0;
 
-   select_start  = -1;
-   select_end    = -1;
-   select_startx = 0;
-   select_endx   = 0;
-
-   if ((Self->ActiveEditDef) AND (Self->SelectIndex IS -1)) {
+   if ((Self->ActiveEditDef) and (Self->SelectIndex IS -1)) {
       select_start  = Self->CursorIndex;
       select_end    = Self->CursorIndex;
       select_startx = Self->CursorCharX;
       select_endx   = Self->CursorCharX;
    }
-   else if ((Self->CursorIndex != -1) AND (Self->SelectIndex != -1)) {
+   else if ((Self->CursorIndex != -1) and (Self->SelectIndex != -1)) {
       if (Self->SelectIndex < Self->CursorIndex) {
          select_start  = Self->SelectIndex;
          select_end    = Self->CursorIndex;
@@ -3719,8 +3626,8 @@ static void draw_document(objDocument *Self, objSurface *Surface, objBitmap *Bit
       }
    }
 
-   alpha = Bitmap->Opacity;
-   for (seg=0; seg < Self->SegCount; seg++) {
+   UBYTE alpha = Bitmap->Opacity;
+   for (LONG seg=0; seg < Self->SegCount; seg++) {
       segment = Self->Segments + seg;
 
       // Don't process segments that are out of bounds.  This can't be applied to objects, as they can draw anywhere.
@@ -3735,10 +3642,10 @@ static void draw_document(objDocument *Self, objSurface *Surface, objBitmap *Bit
 
       // Highlighting of selected text
 
-      if ((select_start <= segment->Stop) AND (select_end > segment->Index)) {
+      if ((select_start <= segment->Stop) and (select_end > segment->Index)) {
          if (select_start != select_end) {
             Bitmap->Opacity = 80;
-            if ((select_start > segment->Index) AND (select_start < segment->Stop)) {
+            if ((select_start > segment->Index) and (select_start < segment->Stop)) {
                if (select_end < segment->Stop) {
                   gfxDrawRectangle(Bitmap, segment->X + select_startx, segment->Y,
                      select_endx - select_startx, segment->Height, PackPixel(Bitmap, 0, 128, 0), BAF_FILL);
@@ -3760,9 +3667,9 @@ static void draw_document(objDocument *Self, objSurface *Surface, objBitmap *Bit
          }
       }
 
-      if ((Self->ActiveEditDef) AND (Self->CursorState) AND (!cursor_drawn)) {
-         if ((Self->CursorIndex >= segment->Index) AND (Self->CursorIndex <= segment->Stop)) {
-            if ((Self->CursorIndex IS segment->Stop) AND (Self->Stream[Self->CursorIndex-1] IS '\n')); // The -1 looks naughty, but it works as CTRL_CODE != \n, so use of PREV_CHAR() is unnecessary
+      if ((Self->ActiveEditDef) and (Self->CursorState) and (!cursor_drawn)) {
+         if ((Self->CursorIndex >= segment->Index) and (Self->CursorIndex <= segment->Stop)) {
+            if ((Self->CursorIndex IS segment->Stop) and (Self->Stream[Self->CursorIndex-1] IS '\n')); // The -1 looks naughty, but it works as CTRL_CODE != \n, so use of PREV_CHAR() is unnecessary
             else {
                if (drwGetUserFocus() IS Self->PageID) { // Standard text cursor
                   gfxDrawRectangle(Bitmap, segment->X + Self->CursorCharX, segment->Y, 2, segment->BaseLine,
@@ -3782,11 +3689,11 @@ static void draw_document(objDocument *Self, objSurface *Surface, objBitmap *Bit
          }
       #endif
 
-      UBYTE strbuffer[segment->Stop - segment->Index + 1];
+      char strbuffer[segment->Stop - segment->Index + 1];
 
-      fx   = segment->X;
-      i    = segment->Index;
-      si   = 0;
+      fx = segment->X;
+      i  = segment->Index;
+      si = 0;
 
       while (i < segment->TrimStop) {
          if (Self->Stream[i] IS CTRL_CODE) {
@@ -3794,9 +3701,9 @@ static void draw_document(objDocument *Self, objSurface *Surface, objBitmap *Bit
                case ESC_OBJECT: {
                   OBJECTPTR object;
 
-                  escobject = ESCAPE_DATA(Self->Stream, i);
+                  escobject = escape_data<escObject>(Self->Stream, i);
 
-                  if ((escobject->Graphical) AND (!escobject->Owned)) {
+                  if ((escobject->Graphical) and (!escobject->Owned)) {
                      if (escobject->ObjectID < 0) {
                         object = NULL;
                         AccessObject(escobject->ObjectID, 3000, &object);
@@ -3805,9 +3712,8 @@ static void draw_document(objDocument *Self, objSurface *Surface, objBitmap *Bit
 
                      if (object) {
                         objLayout *layout;
-                        LONG opacity;
 
-                        if ((FindField(object, FID_Layout, NULL)) AND (!GetPointer(object, FID_Layout, &layout))) {
+                        if ((FindField(object, FID_Layout, NULL)) and (!GetPointer(object, FID_Layout, &layout))) {
                            if (layout->DrawCallback.Type) {
                               // If the graphic is within a cell, ensure that the graphic does not exceed
                               // the dimensions of the cell.
@@ -3822,9 +3728,9 @@ static void draw_document(objDocument *Self, objSurface *Surface, objBitmap *Bit
                                  }
                               }
 
-                              opacity = Bitmap->Opacity;
+                              auto opacity = Bitmap->Opacity;
                               Bitmap->Opacity = 255;
-                              void (*routine)(OBJECTPTR, struct rkSurface *, struct rkBitmap *) = layout->DrawCallback.StdC.Routine;
+                              auto routine = (void (*)(OBJECTPTR, rkSurface *, rkBitmap *))layout->DrawCallback.StdC.Routine;
                               routine(object, Surface, Bitmap);
                               Bitmap->Opacity = opacity;
                            }
@@ -3837,36 +3743,30 @@ static void draw_document(objDocument *Self, objSurface *Surface, objBitmap *Bit
                   break;
                }
 
-               case ESC_FONT:
-                  style = ESCAPE_DATA(Self->Stream, i);
+               case ESC_FONT: {
+                  auto style = escape_data<escFont>(Self->Stream, i);
                   if ((font = lookup_font(style->Index, "draw_document"))) {
                      font->Bitmap = Bitmap;
                      if (tabfocus IS FALSE) font->Colour = style->Colour;
                      else font->Colour = Self->SelectColour;
 
-                     if (style->Options & FSO_ALIGN_RIGHT) {
-                        font->Align = ALIGN_RIGHT;
-                     }
-                     else if (style->Options & FSO_ALIGN_CENTER) {
-                        font->Align = ALIGN_HORIZONTAL;
-                     }
+                     if (style->Options & FSO_ALIGN_RIGHT) font->Align = ALIGN_RIGHT;
+                     else if (style->Options & FSO_ALIGN_CENTER) font->Align = ALIGN_HORIZONTAL;
                      else font->Align = 0;
 
-                     if (style->Options & FSO_UNDERLINE) {
-                        font->Underline = font->Colour;
-                     }
+                     if (style->Options & FSO_UNDERLINE) font->Underline = font->Colour;
                      else font->Underline.Alpha = 0;
                   }
                   break;
+               }
 
                case ESC_LIST_START:
                   if (esclist) {
-                     APTR ptr;
-                     ptr = esclist;
-                     esclist = ESCAPE_DATA(Self->Stream, i);
+                     auto ptr = esclist;
+                     esclist = escape_data<escList>(Self->Stream, i);
                      esclist->Stack = ptr;
                   }
-                  else esclist = ESCAPE_DATA(Self->Stream, i);
+                  else esclist = escape_data<escList>(Self->Stream, i);
                   break;
 
                case ESC_LIST_END:
@@ -3875,17 +3775,16 @@ static void draw_document(objDocument *Self, objSurface *Surface, objBitmap *Bit
 
                case ESC_PARAGRAPH_START:
                   if (escpara) {
-                     APTR ptr;
-                     ptr = escpara;
-                     escpara = ESCAPE_DATA(Self->Stream, i);
+                     auto ptr = escpara;
+                     escpara = escape_data<escParagraph>(Self->Stream, i);
                      escpara->Stack = ptr;
                   }
-                  else escpara = ESCAPE_DATA(Self->Stream, i);
+                  else escpara = escape_data<escParagraph>(Self->Stream, i);
 
-                  if ((esclist) AND (escpara->ListItem)) {
+                  if ((esclist) and (escpara->ListItem)) {
                      // Handling for paragraphs that form part of a list
 
-                     if ((esclist->Type IS LT_CUSTOM) OR (esclist->Type IS LT_ORDERED)) {
+                     if ((esclist->Type IS LT_CUSTOM) or (esclist->Type IS LT_ORDERED)) {
                         if (escpara->CustomString) {
                            font->X = fx - escpara->ItemIndent;
                            font->Y = segment->Y + font->Leading + (segment->BaseLine - font->Ascent);
@@ -3908,16 +3807,14 @@ static void draw_document(objDocument *Self, objSurface *Surface, objBitmap *Bit
                   break;
 
                case ESC_TABLE_START: {
-                  LONG j;
-
                   if (esctable) {
-                     APTR ptr = esctable;
-                     esctable = ESCAPE_DATA(Self->Stream, i);
+                     auto ptr = esctable;
+                     esctable = escape_data<escTable>(Self->Stream, i);
                      esctable->Stack = ptr;
                   }
-                  else esctable = ESCAPE_DATA(Self->Stream, i);
+                  else esctable = escape_data<escTable>(Self->Stream, i);
 
-                  //MSG("Draw Table: %dx%d,%dx%d", esctable->X, esctable->Y, esctable->Width, esctable->Height);
+                  //log.trace("Draw Table: %dx%d,%dx%d", esctable->X, esctable->Y, esctable->Width, esctable->Height);
 
                   if (esctable->Colour.Alpha > 0) {
                      gfxDrawRectangle(Bitmap,
@@ -3928,7 +3825,7 @@ static void draw_document(objDocument *Self, objSurface *Surface, objBitmap *Bit
 
                   if (esctable->Shadow.Alpha > 0) {
                      Bitmap->Opacity = esctable->Shadow.Alpha;
-                     for (j=0; j < esctable->Thickness; j++) {
+                     for (LONG j=0; j < esctable->Thickness; j++) {
                         gfxDrawRectangle(Bitmap,
                            esctable->X+j, esctable->Y+j,
                            esctable->Width-(j<<1), esctable->Height-(j<<1),
@@ -3945,11 +3842,11 @@ static void draw_document(objDocument *Self, objSurface *Surface, objBitmap *Bit
 
                case ESC_ROW: {
                   if (escrow) {
-                     APTR ptr = escrow;
-                     escrow = ESCAPE_DATA(Self->Stream, i);
+                     auto ptr = escrow;
+                     escrow = escape_data<escRow>(Self->Stream, i);
                      escrow->Stack = ptr;
                   }
-                  else escrow = ESCAPE_DATA(Self->Stream, i);
+                  else escrow = escape_data<escRow>(Self->Stream, i);
 
                   if (escrow->Colour.Alpha) {
                      gfxDrawRectangle(Bitmap, esctable->X, escrow->Y, esctable->Width, escrow->RowHeight,
@@ -3964,11 +3861,11 @@ static void draw_document(objDocument *Self, objSurface *Surface, objBitmap *Bit
 
                case ESC_CELL: {
                   if (esccell) {
-                     APTR ptr = esccell;
-                     esccell = ESCAPE_DATA(Self->Stream, i);
+                     auto ptr = esccell;
+                     esccell = escape_data<escCell>(Self->Stream, i);
                      esccell->Stack = ptr;
                   }
-                  else esccell = ESCAPE_DATA(Self->Stream, i);
+                  else esccell = escape_data<escCell>(Self->Stream, i);
 
                   Self->CurrentCell = esccell;
 
@@ -3995,9 +3892,9 @@ static void draw_document(objDocument *Self, objSurface *Surface, objBitmap *Bit
                   break;
 
                case ESC_LINK: {
-                  esclink = ESCAPE_DATA(Self->Stream, i);
+                  esclink = escape_data<escLink>(Self->Stream, i);
                   if (Self->HasFocus) {
-                     if ((Self->Tabs[Self->FocusIndex].Type IS TT_LINK) AND (Self->Tabs[Self->FocusIndex].Ref IS esclink->ID) AND (Self->Tabs[Self->FocusIndex].Active)) {
+                     if ((Self->Tabs[Self->FocusIndex].Type IS TT_LINK) and (Self->Tabs[Self->FocusIndex].Ref IS esclink->ID) and (Self->Tabs[Self->FocusIndex].Active)) {
                         link_save_rgb = font->Colour;
                         font->Colour = Self->SelectColour;
                         tabfocus = TRUE;
@@ -4039,7 +3936,7 @@ static void draw_document(objDocument *Self, objSurface *Surface, objBitmap *Bit
 
       strbuffer[si] = 0;
 
-      if ((si > 0) AND (!oob)) {
+      if ((si > 0) and (!oob)) {
          font->X = fx;
          font->Y = segment->Y + font->Leading + (segment->BaseLine - font->Ascent);
          font->AlignWidth = segment->AlignWidth;
@@ -4054,7 +3951,7 @@ static void draw_document(objDocument *Self, objSurface *Surface, objBitmap *Bit
 
 static void draw_border(objDocument *Self, objSurface *Surface, objBitmap *Bitmap)
 {
-   if ((!Self->BorderEdge) OR (Self->BorderEdge IS (DBE_TOP|DBE_BOTTOM|DBE_LEFT|DBE_RIGHT))) {
+   if ((!Self->BorderEdge) or (Self->BorderEdge IS (DBE_TOP|DBE_BOTTOM|DBE_LEFT|DBE_RIGHT))) {
       gfxDrawRectangle(Bitmap, 0, 0, Surface->Width, Surface->Height, PackPixelRGBA(Bitmap, &Self->Border), 0);
    }
    else {
@@ -4075,7 +3972,7 @@ static void draw_border(objDocument *Self, objSurface *Surface, objBitmap *Bitma
 
 //****************************************************************************
 
-static LONG xml_content_len(struct XMLTag *Tag)
+static LONG xml_content_len(XMLTag *Tag)
 {
    LONG len;
 
@@ -4096,20 +3993,17 @@ static LONG xml_content_len(struct XMLTag *Tag)
 
 //****************************************************************************
 
-static void xml_extract_content(struct XMLTag *Tag, UBYTE *Buffer, LONG *Index, BYTE Whitespace)
+static void xml_extract_content(XMLTag *Tag, char *Buffer, LONG *Index, BYTE Whitespace)
 {
-   STRING content;
-   LONG i, pos;
-
    if (!Tag->Attrib->Name) {
-      pos = *Index;
+      CSTRING content;
+      LONG pos = *Index;
       if ((content = Tag->Attrib->Value)) {
          if (Whitespace) {
-            for (i=0; content[i]; i++) Buffer[pos++] = content[i];
+            for (LONG i=0; content[i]; i++) Buffer[pos++] = content[i];
          }
-         else for (i=0; content[i]; i++) {
-            // Skip whitespace
-            if (content[i] <= 0x20) while ((content[i+1]) AND (content[i+1] <= 0x20)) i++;
+         else for (LONG i=0; content[i]; i++) { // Skip whitespace
+            if (content[i] <= 0x20) while ((content[i+1]) and (content[i+1] <= 0x20)) i++;
             Buffer[pos++] = content[i];
          }
       }
@@ -4128,11 +4022,12 @@ static void xml_extract_content(struct XMLTag *Tag, UBYTE *Buffer, LONG *Index, 
 
 static ERROR keypress(objDocument *Self, LONG Flags, LONG Value, LONG Unicode)
 {
+   parasol::Log log(__FUNCTION__);
    struct acScroll scroll;
 
-   LogF("keypress()","Value: %d, Flags: $%.8x, ActiveEdit: %p", Value, Flags, Self->ActiveEditDef);
+   log.function("Value: %d, Flags: $%.8x, ActiveEdit: %p", Value, Flags, Self->ActiveEditDef);
 
-   if ((Self->ActiveEditDef) AND (drwGetUserFocus() != Self->PageID)) {
+   if ((Self->ActiveEditDef) and (drwGetUserFocus() != Self->PageID)) {
       deactivate_edit(Self, TRUE);
    }
 
@@ -4146,7 +4041,7 @@ static ERROR keypress(objDocument *Self, LONG Flags, LONG Value, LONG Unicode)
       if (Unicode) {
          // Delete any text that is selected
 
-         if ((Self->SelectIndex != -1) AND (Self->SelectIndex != Self->CursorIndex)) {
+         if ((Self->SelectIndex != -1) and (Self->SelectIndex != Self->CursorIndex)) {
             LONG start, end;
             if (Self->SelectIndex < Self->CursorIndex) { start = Self->SelectIndex; end = Self->CursorIndex; }
             else { start = Self->CursorIndex; end = Self->SelectIndex; }
@@ -4175,20 +4070,19 @@ static ERROR keypress(objDocument *Self, LONG Flags, LONG Value, LONG Unicode)
 
       switch(Value) {
          case K_TAB: {
-            LogF("~keypress:","Key: Tab");
+            log.branch("Key: Tab");
             if (Self->TabFocusID) acFocusID(Self->TabFocusID);
             else {
                if (Flags & KQ_SHIFT) advance_tabfocus(Self, -1);
                else advance_tabfocus(Self, 1);
             }
-            LogReturn();
             break;
          }
 
          case K_ENTER: {
             // Delete any text that is selected
 
-            if ((Self->SelectIndex != -1) AND (Self->SelectIndex != Self->CursorIndex)) {
+            if ((Self->SelectIndex != -1) and (Self->SelectIndex != Self->CursorIndex)) {
                LONG start, end;
                if (Self->SelectIndex < Self->CursorIndex) { start = Self->SelectIndex; end = Self->CursorIndex; }
                else { start = Self->CursorIndex; end = Self->SelectIndex; }
@@ -4213,7 +4107,7 @@ static ERROR keypress(objDocument *Self, LONG Flags, LONG Value, LONG Unicode)
             Self->SelectIndex = -1;
 
             LONG index = Self->CursorIndex;
-            if ((stream[index] IS CTRL_CODE) AND (ESCAPE_CODE(stream, index) IS ESC_CELL)) {
+            if ((stream[index] IS CTRL_CODE) and (ESCAPE_CODE(stream, index) IS ESC_CELL)) {
                // Cursor cannot be moved any further left.  The cursor index should never end up here, but
                // better to be safe than sorry.
 
@@ -4223,7 +4117,7 @@ static ERROR keypress(objDocument *Self, LONG Flags, LONG Value, LONG Unicode)
                   PREV_CHAR(stream, index);
                   if (stream[index] IS CTRL_CODE) {
                      if (ESCAPE_CODE(stream, index) IS ESC_CELL) {
-                        escCell *cell = ESCAPE_DATA(stream, index);
+                        auto cell = escape_data<escCell>(stream, index);
                         if (cell->CellID IS Self->ActiveEditCellID) break;
                      }
                      else if (ESCAPE_CODE(stream, index) IS ESC_OBJECT);
@@ -4233,7 +4127,7 @@ static ERROR keypress(objDocument *Self, LONG Flags, LONG Value, LONG Unicode)
                   if (!resolve_fontx_by_index(Self, index, &Self->CursorCharX)) {
                      Self->CursorIndex = index;
                      DRAW_PAGE(Self);
-                     LogErrorMsg("LeftCursor: %d, X: %d", Self->CursorIndex, Self->CursorCharX);
+                     log.warning("LeftCursor: %d, X: %d", Self->CursorIndex, Self->CursorCharX);
                   }
                   break;
                }
@@ -4251,7 +4145,7 @@ static ERROR keypress(objDocument *Self, LONG Flags, LONG Value, LONG Unicode)
                if (stream[index] IS CTRL_CODE) {
                   code = ESCAPE_CODE(stream, index);
                   if (code IS ESC_CELL_END) {
-                     escCellEnd *cell_end = ESCAPE_DATA(stream, index);
+                     auto cell_end = escape_data<escCellEnd>(stream, index);
                      if (cell_end->CellID IS Self->ActiveEditCellID) {
                         // End of editing zone - cursor cannot be moved any further right
                         break;
@@ -4270,7 +4164,7 @@ static ERROR keypress(objDocument *Self, LONG Flags, LONG Value, LONG Unicode)
                if (!resolve_fontx_by_index(Self, index, &Self->CursorCharX)) {
                   Self->CursorIndex = index;
                   DRAW_PAGE(Self);
-                  LogErrorMsg("RightCursor: %d, X: %d", Self->CursorIndex, Self->CursorCharX);
+                  log.warning("RightCursor: %d, X: %d", Self->CursorIndex, Self->CursorCharX);
                }
                break;
             }
@@ -4293,17 +4187,17 @@ static ERROR keypress(objDocument *Self, LONG Flags, LONG Value, LONG Unicode)
 
          case K_BACKSPACE: {
             LONG index = Self->CursorIndex;
-            if ((stream[index] IS CTRL_CODE) AND (ESCAPE_CODE(stream, index) IS ESC_CELL)) {
+            if ((stream[index] IS CTRL_CODE) and (ESCAPE_CODE(stream, index) IS ESC_CELL)) {
                // Cursor cannot be moved any further left
             }
             else {
                PREV_CHAR(stream, index);
 
-               if ((stream[index] IS CTRL_CODE) AND (ESCAPE_CODE(stream, index) IS ESC_CELL));
+               if ((stream[index] IS CTRL_CODE) and (ESCAPE_CODE(stream, index) IS ESC_CELL));
                else {
                   // Delete the character/escape code
 
-                  if ((Self->SelectIndex != -1) AND (Self->SelectIndex != Self->CursorIndex)) {
+                  if ((Self->SelectIndex != -1) and (Self->SelectIndex != Self->CursorIndex)) {
                      LONG start, end;
                      if (Self->SelectIndex < Self->CursorIndex) { start = Self->SelectIndex; end = Self->CursorIndex; }
                      else { start = index; end = Self->SelectIndex; }
@@ -4337,11 +4231,11 @@ static ERROR keypress(objDocument *Self, LONG Flags, LONG Value, LONG Unicode)
             LONG end;
 
             LONG index = Self->CursorIndex;
-            if ((stream[index] IS CTRL_CODE) AND (ESCAPE_CODE(stream, index) IS ESC_CELL_END)) {
+            if ((stream[index] IS CTRL_CODE) and (ESCAPE_CODE(stream, index) IS ESC_CELL_END)) {
                // Not allowed to delete the end point
             }
             else {
-               if ((Self->SelectIndex != -1) AND (Self->SelectIndex != Self->CursorIndex)) {
+               if ((Self->SelectIndex != -1) and (Self->SelectIndex != Self->CursorIndex)) {
                   LONG start;
                   if (Self->SelectIndex < Self->CursorIndex) { start = Self->SelectIndex; end = Self->CursorIndex; }
                   else { start = Self->CursorIndex; end = Self->SelectIndex; }
@@ -4382,29 +4276,26 @@ static ERROR keypress(objDocument *Self, LONG Flags, LONG Value, LONG Unicode)
    else switch (Value) {
       // NB: When not in edit mode, only the navigation keys are enabled
       case K_TAB:
-         LogF("~keypress:","Key: Tab");
+         log.branch("Key: Tab");
          if (Self->TabFocusID) acFocusID(Self->TabFocusID);
          else if (Flags & KQ_SHIFT) advance_tabfocus(Self, -1);
          else advance_tabfocus(Self, 1);
-         LogReturn();
          break;
 
       case K_ENTER: {
          LONG j;
          LONG tab = Self->FocusIndex;
-         if ((tab >= 0) AND (tab < Self->TabIndex)) {
-            LogF("~keypress:","Key: Enter, Tab: %d/%d, Type: %d", tab, Self->TabIndex, Self->Tabs[tab].Type);
+         if ((tab >= 0) and (tab < Self->TabIndex)) {
+            log.branch("Key: Enter, Tab: %d/%d, Type: %d", tab, Self->TabIndex, Self->Tabs[tab].Type);
 
-            if ((Self->Tabs[tab].Type IS TT_LINK) AND (Self->Tabs[tab].Active)) {
+            if ((Self->Tabs[tab].Type IS TT_LINK) and (Self->Tabs[tab].Active)) {
                for (j=0; j < Self->TotalLinks; j++) {
-                  if ((Self->Links[j].EscapeCode IS ESC_LINK) AND (Self->Links[j].Link->ID IS Self->Tabs[tab].Ref)) {
+                  if ((Self->Links[j].EscapeCode IS ESC_LINK) and (Self->Links[j].Link->ID IS Self->Tabs[tab].Ref)) {
                      exec_link(Self, j);
                      break;
                   }
                }
             }
-
-            LogReturn();
          }
          break;
       }
@@ -4461,8 +4352,9 @@ static ERROR keypress(objDocument *Self, LONG Flags, LONG Value, LONG Unicode)
 
 static ERROR load_doc(objDocument *Self, CSTRING Path, BYTE Unload, BYTE UnloadFlags)
 {
+   parasol::Log log(__FUNCTION__);
 
-   LogF("~load_doc()","Loading file '%s', page '%s'", Path, Self->PageName);
+   log.branch("Loading file '%s', page '%s'", Path, Self->PageName);
 
    if (Unload) unload_doc(Self, UnloadFlags);
 
@@ -4472,7 +4364,7 @@ static ERROR load_doc(objDocument *Self, CSTRING Path, BYTE Unload, BYTE UnloadF
 
    LONG i;
    for (i=0; Path[i]; i++) {
-      if ((Path[i] IS '&') OR (Path[i] IS '#') OR (Path[i] IS '?')) break;
+      if ((Path[i] IS '&') or (Path[i] IS '#') or (Path[i] IS '?')) break;
    }
    char path[i+1];
    CopyMemory(Path, path, i);
@@ -4493,26 +4385,19 @@ static ERROR load_doc(objDocument *Self, CSTRING Path, BYTE Unload, BYTE UnloadF
          Self->XML = xml;
 
          AdjustLogLevel(3);
-
          Self->Error = process_page(Self, xml);
-
          AdjustLogLevel(-3);
 
-         LogReturn();
          return Self->Error;
       }
       else {
          char msg[300];
          StrFormat(msg, sizeof(msg), "Failed to load document file '%s'", path);
          error_dialog("Document Load Error", msg, Self->Error);
-         LogReturn();
-         return PostError(ERR_OpenFile);
+         return log.warning(ERR_OpenFile);
       }
    }
-   else {
-      LogReturn();
-      return PostError(ERR_FileNotFound);
-   }
+   else return log.warning(ERR_FileNotFound);
 }
 
 /*****************************************************************************
@@ -4522,12 +4407,13 @@ static ERROR load_doc(objDocument *Self, CSTRING Path, BYTE Unload, BYTE UnloadF
 
 static void layout_doc(objDocument *Self)
 {
+   parasol::Log log(__FUNCTION__);
    objFont *font;
    LONG pagewidth, pageheight, hscroll_offset;
    BYTE vertical_repass;
 
    if (Self->UpdateLayout IS FALSE) return;
-   if ((!Self->Stream) OR (!Self->Stream[0])) return;
+   if ((!Self->Stream) or (!Self->Stream[0])) return;
 
    // Initial height is 1, not the surface height because we want to accurately report the final height of the page.
 
@@ -4586,7 +4472,7 @@ restart:
    // the number of passes required for the next time we do a layout.
 
 
-   if ((pagewidth > Self->AreaWidth) AND (Self->MinPageWidth < pagewidth)) Self->MinPageWidth = pagewidth;
+   if ((pagewidth > Self->AreaWidth) and (Self->MinPageWidth < pagewidth)) Self->MinPageWidth = pagewidth;
 
    Self->PageHeight = pageheight;
 //   if (Self->PageHeight < Self->AreaHeight) Self->PageHeight = Self->AreaHeight;
@@ -4594,7 +4480,7 @@ restart:
 
    // Recalculation may be required if visibility of the scrollbar needs to change.
 
-   if ((Self->BreakLoop > 0) AND (!Self->Error)) {
+   if ((Self->BreakLoop > 0) and (!Self->Error)) {
       if (Self->PageHeight > Self->AreaHeight) {
          // Page height is bigger than the surface, so the scrollbar needs to be visible.
 
@@ -4621,8 +4507,8 @@ restart:
    // width of their line is known, hence it's easier to make a final adjustment for all links post-layout).
 
    if (!Self->Error) {
-      struct DocLink *link;
-      struct DocSegment *segment;
+      DocLink *link;
+      DocSegment *segment;
       escLink *esclink;
       LONG i;
 
@@ -4646,7 +4532,6 @@ restart:
    // Build the sorted segment array
 
    if (!Self->Error) {
-
       if (Self->SortSegments) {
          FreeResource(Self->SortSegments);
          Self->SortSegments = NULL;
@@ -4654,10 +4539,10 @@ restart:
 
       if (Self->SegCount) {
          if (!AllocMemory(sizeof(Self->SortSegments[0]) * Self->SegCount, MEM_NO_CLEAR, &Self->SortSegments, NULL)) {
-            LONG seg, i, j, h;
+            LONG seg, i, j;
 
             for (i=0, seg=0; seg < Self->SegCount; seg++) {
-               if ((Self->Segments[seg].Height > 0) AND (Self->Segments[seg].Width > 0)) {
+               if ((Self->Segments[seg].Height > 0) and (Self->Segments[seg].Width > 0)) {
                   Self->SortSegments[i].Segment = seg;
                   Self->SortSegments[i].Y       = Self->Segments[seg].Y;
                   i++;
@@ -4667,13 +4552,13 @@ restart:
 
             // Shell sort
 
-            h = 1;
+            LONG h = 1;
             while (h < Self->SortCount / 9) h = 3 * h + 1;
 
             for (; h > 0; h /= 3) {
                for (i=h; i < Self->SortCount; i++) {
-                  struct SortSegment temp = Self->SortSegments[i];
-                  for (j=i; (j >= h) AND (sortseg_compare(Self, Self->SortSegments + j - h, &temp) < 0); j -= h) {
+                  SortSegment temp = Self->SortSegments[i];
+                  for (j=i; (j >= h) and (sortseg_compare(Self, Self->SortSegments + j - h, &temp) < 0); j -= h) {
                      Self->SortSegments[j] = Self->SortSegments[j - h];
                   }
                   Self->SortSegments[j] = temp;
@@ -4705,20 +4590,18 @@ restart:
       if (Self->Error IS ERR_Loop) errstr = "This page cannot be rendered correctly due to its design.";
       else errstr = GetErrorMsg(Self->Error);
 
-      UBYTE msg[200];
+      char msg[200];
       LONG i = StrCopy("A failure occurred during the layout of this document - it cannot be displayed.\n\nDetails: ", msg, sizeof(msg));
       StrCopy(errstr, msg+i, sizeof(msg)-i);
 
       error_dialog("Document Layout Error", msg, 0);
    }
    else {
-      struct DocTrigger *trigger;
-
-      for (trigger=Self->Triggers[DRT_AFTER_LAYOUT]; trigger; trigger=trigger->Next) {
+      for (auto trigger=Self->Triggers[DRT_AFTER_LAYOUT]; trigger; trigger=trigger->Next) {
          if (trigger->Function.Type IS CALL_SCRIPT) {
             OBJECTPTR script;
             if ((script = trigger->Function.Script.Script)) {
-               const struct ScriptArg args[] = {
+               const ScriptArg args[] = {
                   { "ViewWidth",  FD_LONG, { .Long = Self->AreaWidth } },
                   { "ViewHeight", FD_LONG, { .Long = Self->AreaHeight } },
                   { "PageWidth",  FD_LONG, { .Long = Self->CalcWidth } },
@@ -4728,16 +4611,13 @@ restart:
             }
          }
          else if (trigger->Function.Type IS CALL_STDC) {
-            void (*routine)(APTR, objDocument *, LONG, LONG, LONG, LONG);
-            if ((routine = (void (*)(APTR, objDocument *, LONG, LONG, LONG, LONG))trigger->Function.StdC.Routine)) {
-               OBJECTPTR context = SetContext(trigger->Function.StdC.Context);
-                  routine(trigger->Function.StdC.Context, Self, Self->AreaWidth, Self->AreaHeight, Self->CalcWidth, Self->PageHeight);
-               SetContext(context);
+            auto routine = (void (*)(APTR, objDocument *, LONG, LONG, LONG, LONG))trigger->Function.StdC.Routine;
+            if (routine) {
+               parasol::SwitchContext context(trigger->Function.StdC.Context);
+               routine(trigger->Function.StdC.Context, Self, Self->AreaWidth, Self->AreaHeight, Self->CalcWidth, Self->PageHeight);
             }
          }
       }
-
-      LogReturn();
    }
 
    LAYOUT_LOGRETURN();
@@ -4753,26 +4633,24 @@ restart:
 
 static ERROR process_page(objDocument *Self, objXML *xml)
 {
-   LONG i, x, y;
+   LONG x, y;
 
-   if (!xml) {
-      return ERR_NoData;
-   }
+   if (!xml) return ERR_NoData;
 
-   LogF("~process_page()","Page: %s, XML: %d, Tags: %d", Self->PageName, xml->Head.UniqueID, xml->TagCount);
+   parasol::Log log(__FUNCTION__);
+
+   log.branch("Page: %s, XML: %d, Tags: %d", Self->PageName, xml->Head.UniqueID, xml->TagCount);
 
    // Look for the first page that matches the requested page name (if a name is specified).  Pages can be located anywhere
    // within the XML source - they don't have to be at the root.
 
-   struct XMLTag **firstpage = NULL;
-   struct XMLTag **page;
+   XMLTag **firstpage = NULL;
+   XMLTag **page;
    if ((page = xml->Tags)) {
       while (*page) {
          if (!StrMatch("page", page[0]->Attrib->Name)) {
             if (!firstpage) firstpage = page;
-
             CSTRING name = XMLATTRIB(page[0], "name");
-
             if (!name) {
                if (!Self->PageName) break;
             }
@@ -4781,11 +4659,11 @@ static ERROR process_page(objDocument *Self, objXML *xml)
          page++;
       }
 
-      if ((!Self->PageName) AND (firstpage)) page = firstpage;
+      if ((!Self->PageName) and (firstpage)) page = firstpage;
    }
 
    Self->Error = ERR_Okay;
-   if ((page) AND (*page) AND (page[0]->Child)) {
+   if ((page) and (*page) and (page[0]->Child)) {
       Self->PageTag = *page;
 
       UBYTE noheader = FALSE;
@@ -4797,23 +4675,20 @@ static ERROR process_page(objDocument *Self, objXML *xml)
 
       if (!Self->Buffer) {
          Self->BufferSize = 65536;
-         if (AllocMemory(Self->BufferSize, MEM_NO_CLEAR, &Self->Buffer, NULL) != ERR_Okay) {
-            LogReturn();
+         if (AllocMemory(Self->BufferSize, MEM_NO_CLEAR, &Self->Buffer, NULL)) {
             return ERR_AllocMemory;
          }
       }
 
       if (!Self->Temp) {
          Self->TempSize = 65536;
-         if (AllocMemory(Self->TempSize, MEM_NO_CLEAR, &Self->Temp, NULL) != ERR_Okay) {
-            LogReturn();
+         if (AllocMemory(Self->TempSize, MEM_NO_CLEAR, &Self->Temp, NULL)) {
             return ERR_AllocMemory;
          }
       }
 
       if (!Self->VArg) {
-         if (AllocMemory(sizeof(Self->VArg[0]) * MAX_ARGS, MEM_NO_CLEAR, &Self->VArg, NULL) != ERR_Okay) {
-            LogReturn();
+         if (AllocMemory(sizeof(Self->VArg[0]) * MAX_ARGS, MEM_NO_CLEAR, &Self->VArg, NULL)) {
             return ERR_AllocMemory;
          }
       }
@@ -4835,103 +4710,100 @@ static ERROR process_page(objDocument *Self, objXML *xml)
 
       // Process tags at the root level, but only those that we allow up to the first <page> entry.
 
-      FMSG("~process_page:","Processing root level tags.");
+      {
+         parasol::Log log(__FUNCTION__);
 
-      Self->BodyTag = NULL;
-      Self->HeaderTag = NULL;
-      Self->FooterTag = NULL;
-      for (i=0; xml->Tags[i]; i++) {
-         if (!xml->Tags[i]->Attrib->Name) continue; // Ignore content
+         log.traceBranch("Processing root level tags.");
 
-         ULONG tag_hash = StrHash(xml->Tags[i]->Attrib->Name, 0);
+         Self->BodyTag = NULL;
+         Self->HeaderTag = NULL;
+         Self->FooterTag = NULL;
+         for (LONG i=0; xml->Tags[i]; i++) {
+            if (!xml->Tags[i]->Attrib->Name) continue; // Ignore content
 
-         if (tag_hash IS HASH_page) {
-            break;
-         }
-         else if (tag_hash IS HASH_body) {
-            // If a <body> tag contains any children, it is treated as a template and must contain an <inject/> tag so
-            // that the XML insertion point is known.
+            ULONG tag_hash = StrHash(xml->Tags[i]->Attrib->Name, 0);
 
-            Self->BodyTag = xml->Tags[i]->Child;
-            insert_xml(Self, xml, xml->Tags[i], Self->StreamLen, 0);
-            i = xml->Tags[i]->Next->Index - 1;
+            if (tag_hash IS HASH_page) {
+               break;
+            }
+            else if (tag_hash IS HASH_body) {
+               // If a <body> tag contains any children, it is treated as a template and must contain an <inject/> tag so
+               // that the XML insertion point is known.
+
+               Self->BodyTag = xml->Tags[i]->Child;
+               insert_xml(Self, xml, xml->Tags[i], Self->StreamLen, 0);
+               i = xml->Tags[i]->Next->Index - 1;
+            }
+            else if (tag_hash IS HASH_background) {
+               insert_xml(Self, xml, xml->Tags[i], Self->StreamLen, 0);
+               i = xml->Tags[i]->Next->Index - 1;
+            }
+            else if (tag_hash IS HASH_editdef) {
+               insert_xml(Self, xml, xml->Tags[i], Self->StreamLen, 0);
+               i = xml->Tags[i]->Next->Index - 1;
+            }
+            else if (tag_hash IS HASH_template) {
+               insert_xml(Self, xml, xml->Tags[i], Self->StreamLen, 0);
+               i = xml->Tags[i]->Next->Index - 1;
+            }
+            else if (tag_hash IS HASH_head) {
+               insert_xml(Self, xml, xml->Tags[i], Self->StreamLen, 0);
+               i = xml->Tags[i]->Next->Index - 1;
+            }
+            else if (tag_hash IS HASH_info) {
+               insert_xml(Self, xml, xml->Tags[i], Self->StreamLen, 0);
+               i = xml->Tags[i]->Next->Index - 1;
+            }
+            else if (tag_hash IS HASH_include) {
+               insert_xml(Self, xml, xml->Tags[i], Self->StreamLen, 0);
+               i = xml->Tags[i]->Next->Index - 1;
+            }
+            else if (tag_hash IS HASH_parse) {
+               insert_xml(Self, xml, xml->Tags[i], Self->StreamLen, 0);
+               i = xml->Tags[i]->Next->Index - 1;
+            }
+            else if (tag_hash IS HASH_script) {
+               insert_xml(Self, xml, xml->Tags[i], Self->StreamLen, 0);
+               i = xml->Tags[i]->Next->Index - 1;
+            }
+            else if (tag_hash IS HASH_header) {
+               Self->HeaderTag = xml->Tags[i]->Child;
+               i = xml->Tags[i]->Next->Index - 1;
+            }
+            else if (tag_hash IS HASH_footer) {
+               Self->FooterTag = xml->Tags[i]->Child;
+               i = xml->Tags[i]->Next->Index - 1;
+            }
+            else log.warning("Tag '%s' Not supported at the root level.", xml->Tags[i]->Attrib->Name);
          }
-         else if (tag_hash IS HASH_background) {
-            insert_xml(Self, xml, xml->Tags[i], Self->StreamLen, 0);
-            i = xml->Tags[i]->Next->Index - 1;
-         }
-         else if (tag_hash IS HASH_editdef) {
-            insert_xml(Self, xml, xml->Tags[i], Self->StreamLen, 0);
-            i = xml->Tags[i]->Next->Index - 1;
-         }
-         else if (tag_hash IS HASH_template) {
-            insert_xml(Self, xml, xml->Tags[i], Self->StreamLen, 0);
-            i = xml->Tags[i]->Next->Index - 1;
-         }
-         else if (tag_hash IS HASH_head) {
-            insert_xml(Self, xml, xml->Tags[i], Self->StreamLen, 0);
-            i = xml->Tags[i]->Next->Index - 1;
-         }
-         else if (tag_hash IS HASH_info) {
-            insert_xml(Self, xml, xml->Tags[i], Self->StreamLen, 0);
-            i = xml->Tags[i]->Next->Index - 1;
-         }
-         else if (tag_hash IS HASH_include) {
-            insert_xml(Self, xml, xml->Tags[i], Self->StreamLen, 0);
-            i = xml->Tags[i]->Next->Index - 1;
-         }
-         else if (tag_hash IS HASH_parse) {
-            insert_xml(Self, xml, xml->Tags[i], Self->StreamLen, 0);
-            i = xml->Tags[i]->Next->Index - 1;
-         }
-         else if (tag_hash IS HASH_script) {
-            insert_xml(Self, xml, xml->Tags[i], Self->StreamLen, 0);
-            i = xml->Tags[i]->Next->Index - 1;
-         }
-         else if (tag_hash IS HASH_header) {
-            Self->HeaderTag = xml->Tags[i]->Child;
-            i = xml->Tags[i]->Next->Index - 1;
-         }
-         else if (tag_hash IS HASH_footer) {
-            Self->FooterTag = xml->Tags[i]->Child;
-            i = xml->Tags[i]->Next->Index - 1;
-         }
-         else LogF("@process_page:","Tag '%s' Not supported at the root level.", xml->Tags[i]->Attrib->Name);
       }
 
-      LOGRETURN();
-
-      if ((Self->HeaderTag) AND (noheader IS FALSE)) {
-         FMSG("~process_page:","Processing header.");
+      if ((Self->HeaderTag) and (noheader IS FALSE)) {
+         parasol::Log log(__FUNCTION__);
+         log.traceBranch("Processing header.");
          insert_xml(Self, xml, Self->HeaderTag, Self->StreamLen, IXF_SIBLINGS|IXF_RESETSTYLE);
-         LOGRETURN();
       }
 
       if (Self->BodyTag) {
-         FMSG("~process_page:","Processing this page through the body tag.");
+         parasol::Log log(__FUNCTION__);
+         log.traceBranch("Processing this page through the body tag.");
 
          START_TEMPLATE(page[0]->Child, xml, NULL)
 
             insert_xml(Self, xml, Self->BodyTag, Self->StreamLen, IXF_SIBLINGS|IXF_RESETSTYLE);
 
          END_TEMPLATE()
-
-         LOGRETURN();
       }
       else {
-         FMSG("~process_page:","Processing page '%s'.", XMLATTRIB(page[0], "name"));
-
-            insert_xml(Self, xml, page[0]->Child, Self->StreamLen, IXF_SIBLINGS|IXF_RESETSTYLE);
-
-         LOGRETURN();
+         parasol::Log log(__FUNCTION__);
+         log.traceBranch("Processing page '%s'.", XMLATTRIB(page[0], "name"));
+         insert_xml(Self, xml, page[0]->Child, Self->StreamLen, IXF_SIBLINGS|IXF_RESETSTYLE);
       }
 
-      if ((Self->FooterTag) AND (!nofooter)) {
-         FMSG("~process_page:","Processing footer.");
-
-            insert_xml(Self, xml, Self->FooterTag, Self->StreamLen, IXF_SIBLINGS|IXF_RESETSTYLE);
-
-         LOGRETURN();
+      if ((Self->FooterTag) and (!nofooter)) {
+         parasol::Log log(__FUNCTION__);
+         log.traceBranch("Processing footer.");
+         insert_xml(Self, xml, Self->FooterTag, Self->StreamLen, IXF_SIBLINGS|IXF_RESETSTYLE);
       }
 
       drwPermitDrawing();
@@ -4948,7 +4820,6 @@ static ERROR process_page(objDocument *Self, objXML *xml)
       Self->UpdateLayout = TRUE;
       if (Self->Head.Flags & NF_INITIALISED) redraw(Self, TRUE);
 
-      if (glTranslateBuffer) { FreeResource(glTranslateBuffer); glTranslateBuffer = NULL; }
       if (Self->Buffer) { FreeResource(Self->Buffer); Self->Buffer = NULL; }
       if (Self->Temp)   { FreeResource(Self->Temp); Self->Temp = NULL; }
       if (Self->VArg)   { FreeResource(Self->VArg); Self->VArg = NULL; }
@@ -4966,27 +4837,26 @@ static ERROR process_page(objDocument *Self, objXML *xml)
    }
    else {
       if (Self->PageName) {
-         UBYTE buffer[200];
+         char buffer[200];
          StrFormat(buffer, sizeof(buffer), "Failed to find page '%s' in document '%s'.", Self->PageName, Self->Path);
          error_dialog("Load Failed", buffer, 0);
       }
       else {
-         UBYTE buffer[200];
+         char buffer[200];
          StrFormat(buffer, sizeof(buffer), "Failed to find a valid page in document '%s'.", Self->Path);
          error_dialog("Load Failed", buffer, 0);
       }
       Self->Error = ERR_Search;
    }
 
-   if ((!Self->Error) AND (Self->MouseOver)) {
+   if ((!Self->Error) and (Self->MouseOver)) {
       if (!gfxGetRelativeCursorPos(Self->PageID, &x, &y)) {
          check_mouse_pos(Self, x, y);
       }
    }
 
    if (!Self->PageProcessed) {
-      struct DocTrigger *trigger;
-      for (trigger=Self->Triggers[DRT_PAGE_PROCESSED]; trigger; trigger=trigger->Next) {
+      for (auto trigger=Self->Triggers[DRT_PAGE_PROCESSED]; trigger; trigger=trigger->Next) {
          if (trigger->Function.Type IS CALL_SCRIPT) {
             OBJECTPTR script;
             if ((script = trigger->Function.Script.Script)) {
@@ -4994,28 +4864,25 @@ static ERROR process_page(objDocument *Self, objXML *xml)
             }
          }
          else if (trigger->Function.Type IS CALL_STDC) {
-            void (*routine)(APTR, objDocument *);
-            if ((routine = (void (*)(APTR, objDocument *))trigger->Function.StdC.Routine)) {
-               OBJECTPTR context = SetContext(trigger->Function.StdC.Context);
-                  routine(trigger->Function.StdC.Context, Self);
-               SetContext(context);
+            auto routine = (void (*)(APTR, objDocument *))trigger->Function.StdC.Routine;
+            if (routine) {
+               parasol::SwitchContext context(trigger->Function.StdC.Context);
+               routine(trigger->Function.StdC.Context, Self);
             }
          }
       }
    }
 
    Self->PageProcessed = TRUE;
-
-   LogReturn();
    return Self->Error;
 }
 
 //****************************************************************************
 
-static struct docresource * add_resource_id(objDocument *Self, LONG ID, LONG Type)
+static docresource * add_resource_id(objDocument *Self, LONG ID, LONG Type)
 {
-   struct docresource *r;
-   if (!AllocMemory(sizeof(struct docresource), MEM_NO_CLEAR, &r, NULL)) {
+   docresource *r;
+   if (!AllocMemory(sizeof(docresource), MEM_NO_CLEAR, &r, NULL)) {
       r->ObjectID = ID;
       r->Type     = Type;
       r->ClassID  = 0;
@@ -5030,10 +4897,10 @@ static struct docresource * add_resource_id(objDocument *Self, LONG ID, LONG Typ
 
 //****************************************************************************
 
-static struct docresource * add_resource_ptr(objDocument *Self, APTR Address, LONG Type)
+static docresource * add_resource_ptr(objDocument *Self, APTR Address, LONG Type)
 {
-   struct docresource *r;
-   if (!AllocMemory(sizeof(struct docresource), MEM_NO_CLEAR, &r, NULL)) {
+   docresource *r;
+   if (!AllocMemory(sizeof(docresource), MEM_NO_CLEAR, &r, NULL)) {
       r->Address = Address;
       r->Type    = Type;
       r->Prev    = NULL;
@@ -5057,10 +4924,9 @@ static struct docresource * add_resource_ptr(objDocument *Self, APTR Address, LO
 
 static ERROR unload_doc(objDocument *Self, BYTE Flags)
 {
-   struct docresource *resource, *next;
-   LONG i;
+   parasol::Log log(__FUNCTION__);
 
-   LogF("~unload_doc()", "Flags: $%.2x", Flags);
+   log.branch("Flags: $%.2x", Flags);
 
    #ifdef DBG_STREAM
       print_stream(Self, Self->Stream);
@@ -5068,7 +4934,7 @@ static ERROR unload_doc(objDocument *Self, BYTE Flags)
 
    drwForbidDrawing();
 
-   FMSG("unload_doc:","Resetting variables.");
+   log.trace("Resetting variables.");
 
    Self->FontColour.Red   = 0;
    Self->FontColour.Green = 0;
@@ -5149,7 +5015,7 @@ static ERROR unload_doc(objDocument *Self, BYTE Flags)
 
    if (Self->Stream) FreeResource(Self->Stream);
    if (Flags & ULD_TERMINATE) Self->Stream = NULL;
-   else Self->Stream = StrClone("");
+   else Self->Stream = (UBYTE *)StrClone("");
 
    Self->StreamLen = 0;
    Self->StreamSize = 0;
@@ -5170,11 +5036,11 @@ static ERROR unload_doc(objDocument *Self, BYTE Flags)
       }
    }
 
-   for (i=0; i < ARRAYSIZE(Self->Triggers); i++) {
-      struct DocTrigger *trigger, *next;
+   for (LONG i=0; i < ARRAYSIZE(Self->Triggers); i++) {
+      DocTrigger *trigger;
       if ((trigger = Self->Triggers[i])) {
          while (trigger) {
-            next = trigger->Next;
+            auto next = trigger->Next;
             FreeResource(trigger);
             trigger = next;
          }
@@ -5195,20 +5061,18 @@ static ERROR unload_doc(objDocument *Self, BYTE Flags)
    if (Self->Title)       { FreeResource(Self->Title); Self->Title = NULL; }
 
    if (Self->EditDefs) {
-      struct DocEdit *edit, *next;
-      edit = Self->EditDefs;
+      auto edit = Self->EditDefs;
       while (edit) {
-         next = edit->Next;
+         auto next = edit->Next;
          FreeResource(edit);
          edit = next;
       }
       Self->EditDefs = NULL;
    }
 
-   struct MouseOver *mouseover, *mousenext;
-   mouseover = Self->MouseOverChain;
+   auto mouseover = Self->MouseOverChain;
    while (mouseover) {
-      mousenext = mouseover->Next;
+      auto mousenext = mouseover->Next;
       FreeResource(mouseover);
       mouseover = mousenext;
    }
@@ -5232,38 +5096,39 @@ static ERROR unload_doc(objDocument *Self, BYTE Flags)
 
    // Remove all page related resources
 
-   FMSG("~unload_doc","Freeing page-allocated resources.");
+   {
+      parasol::Log log(__FUNCTION__);
+      log.traceBranch("Freeing page-allocated resources.");
 
-   resource = Self->Resources;
-   while (resource) {
-      if (resource->Type IS RT_MEMORY) {
-         FreeResource(resource->Memory);
-      }
-      else if ((resource->Type IS RT_PERSISTENT_SCRIPT) OR (resource->Type IS RT_PERSISTENT_OBJECT)) {
-         if (Flags & ULD_REFRESH) {
-            // Persistent objects and scripts will survive refreshes
-            resource = resource->Next;
-            continue;
+      auto resource = Self->Resources;
+      while (resource) {
+         if (resource->Type IS RT_MEMORY) {
+            FreeResource(resource->Memory);
          }
-         else if (Flags & ULD_TERMINATE) acFreeID(resource->ObjectID);
-         else DelayMsg(AC_Free, resource->ObjectID, NULL);
-      }
-      else if (resource->Type IS RT_OBJECT_UNLOAD_DELAY) {
-         if (Flags & ULD_TERMINATE) acFreeID(resource->ObjectID);
-         else DelayMsg(AC_Free, resource->ObjectID, NULL);
-      }
-      else acFreeID(resource->ObjectID);
+         else if ((resource->Type IS RT_PERSISTENT_SCRIPT) or (resource->Type IS RT_PERSISTENT_OBJECT)) {
+            if (Flags & ULD_REFRESH) {
+               // Persistent objects and scripts will survive refreshes
+               resource = resource->Next;
+               continue;
+            }
+            else if (Flags & ULD_TERMINATE) acFreeID(resource->ObjectID);
+            else DelayMsg(AC_Free, resource->ObjectID, NULL);
+         }
+         else if (resource->Type IS RT_OBJECT_UNLOAD_DELAY) {
+            if (Flags & ULD_TERMINATE) acFreeID(resource->ObjectID);
+            else DelayMsg(AC_Free, resource->ObjectID, NULL);
+         }
+         else acFreeID(resource->ObjectID);
 
-      if (resource IS Self->Resources) Self->Resources = resource->Next;
-      if (resource->Prev) resource->Prev->Next = resource->Next;
-      if (resource->Next) resource->Next->Prev = resource->Prev;
+         if (resource IS Self->Resources) Self->Resources = resource->Next;
+         if (resource->Prev) resource->Prev->Next = resource->Next;
+         if (resource->Next) resource->Next->Prev = resource->Prev;
 
-      next = resource->Next;
-      FreeResource(resource);
-      resource = next;
+         auto next = resource->Next;
+         FreeResource(resource);
+         resource = next;
+      }
    }
-
-   LOGRETURN();
 
    if (!Self->Templates) {
       CreateObject(ID_XML, NF_INTEGRAL, &Self->Templates,
@@ -5287,7 +5152,6 @@ static ERROR unload_doc(objDocument *Self, BYTE Flags)
       DRAW_PAGE(Self);
    }
 
-   LogReturn();
    return ERR_Okay;
 }
 
@@ -5297,7 +5161,9 @@ static ERROR unload_doc(objDocument *Self, BYTE Flags)
 
 static void redraw(objDocument *Self, BYTE Focus)
 {
-   FMSG("~redraw()","");
+   parasol::Log log(__FUNCTION__);
+
+   log.traceBranch("");
 
    drwForbidDrawing();
 
@@ -5309,9 +5175,7 @@ static void redraw(objDocument *Self, BYTE Focus)
 
    DRAW_PAGE(Self);
 
-   if ((Focus) AND (Self->FocusIndex != -1)) set_focus(Self, -1, "redraw()");
-
-   LOGRETURN();
+   if ((Focus) and (Self->FocusIndex != -1)) set_focus(Self, -1, "redraw()");
 }
 
 //****************************************************************************
@@ -5333,9 +5197,10 @@ static LONG get_line_from_index(objDocument *Self, LONG Index)
 
 static void error_dialog(CSTRING Title, CSTRING Message, ERROR Error)
 {
+   parasol::Log log(__FUNCTION__);
    static OBJECTID dialog_id = 0;
 
-   LogErrorMsg("%s", Message);
+   log.warning("%s", Message);
 
    if (dialog_id) {
       if (CheckObjectExists(dialog_id, NULL) IS ERR_True) return;
@@ -5355,7 +5220,7 @@ static void error_dialog(CSTRING Title, CSTRING Message, ERROR Error)
       acSetVar(dialog, "type", "error");
 
       CSTRING errstr;
-      if ((Error) AND (errstr = GetErrorMsg(Error))) {
+      if ((Error) and (errstr = GetErrorMsg(Error))) {
          LONG len = StrLength(Message);
          char buffer[len+120];
          if (Message) {
@@ -5369,10 +5234,10 @@ static void error_dialog(CSTRING Title, CSTRING Message, ERROR Error)
       }
       else acSetVar(dialog, "message", Message);
 
-      if ((!acInit(dialog)) AND (!acActivate(dialog))) {
+      if ((!acInit(dialog)) and (!acActivate(dialog))) {
          CSTRING *results;
          LONG size;
-         if ((!GetFieldArray(dialog, FID_Results, (APTR *)&results, &size)) AND (size > 0)) {
+         if ((!GetFieldArray(dialog, FID_Results, (APTR *)&results, &size)) and (size > 0)) {
             dialog_id = StrToInt(results[0]);
          }
       }
@@ -5381,20 +5246,20 @@ static void error_dialog(CSTRING Title, CSTRING Message, ERROR Error)
 
 //****************************************************************************
 
-static void add_template(objDocument *Self, objXML *XML, struct XMLTag *Tag)
+static void add_template(objDocument *Self, objXML *XML, XMLTag *Tag)
 {
-   STRING strxml;
+   parasol::Log log(__FUNCTION__);
    LONG i;
 
    // Validate the template (must have a name)
 
    for (i=1; i < Tag->TotalAttrib; i++) {
-      if ((!StrMatch("name", Tag->Attrib[i].Name)) AND (Tag->Attrib[i].Value[0])) break;
-      if ((!StrMatch("class", Tag->Attrib[i].Name)) AND (Tag->Attrib[i].Value[0])) break;
+      if ((!StrMatch("name", Tag->Attrib[i].Name)) and (Tag->Attrib[i].Value[0])) break;
+      if ((!StrMatch("class", Tag->Attrib[i].Name)) and (Tag->Attrib[i].Value[0])) break;
    }
 
    if (i >= Tag->TotalAttrib) {
-      LogErrorMsg("A <template> is missing a name or class attribute.");
+      log.warning("A <template> is missing a name or class attribute.");
       return;
    }
 
@@ -5402,16 +5267,17 @@ static void add_template(objDocument *Self, objXML *XML, struct XMLTag *Tag)
    // replaced them correctly, however we're going to be lazy and override
    // styles by placing updated definitions at the end of the style list.
 
+   STRING strxml;
    if (!xmlGetString(XML, Tag->Index, 0, &strxml)) {
       xmlInsertXML(Self->Templates, 0, XMI_PREV, strxml, 0);
       FreeResource(strxml);
    }
-   else LogErrorMsg("Failed to convert template %d to an XML string.", Tag->Index);
+   else log.warning("Failed to convert template %d to an XML string.", Tag->Index);
 }
 
 //****************************************************************************
 
-static STRING get_font_style(LONG Options)
+static CSTRING get_font_style(LONG Options)
 {
    if ((Options & (FSO_BOLD|FSO_ITALIC)) IS (FSO_BOLD|FSO_ITALIC)) return "Bold Italic";
    else if (Options & FSO_BOLD) return "Bold";
@@ -5424,9 +5290,10 @@ static STRING get_font_style(LONG Options)
 
 static objFont * lookup_font(LONG Index, CSTRING Caller)
 {
-   if ((glFonts) AND (Index < glTotalFonts) AND (Index >= 0)) return glFonts[Index].Font;
+   if ((glFonts) and (Index < glTotalFonts) and (Index >= 0)) return glFonts[Index].Font;
    else {
-      LogF("@lookup_font()","Bad font index %d.  Max: %d.  Caller: %s", Index, glTotalFonts, Caller);
+      parasol::Log log(__FUNCTION__);
+      log.warning("Bad font index %d.  Max: %d.  Caller: %s", Index, glTotalFonts, Caller);
       if (glFonts) return glFonts[0].Font; // Always try to return a font rather than NULL
       else return NULL;
    }
@@ -5440,8 +5307,7 @@ static objFont * lookup_font(LONG Index, CSTRING Caller)
 
 static LONG create_font(CSTRING Face, CSTRING Style, LONG Point)
 {
-   struct FontEntry *array;
-   objFont *font;
+   parasol::Log log(__FUNCTION__);
    LONG i;
    #define FONT_BLOCK_SIZE 20
 
@@ -5451,16 +5317,17 @@ static LONG create_font(CSTRING Face, CSTRING Style, LONG Point)
    // If we already have loaded this font, return it.
 
    for (i=0; i < glTotalFonts; i++) {
-      if ((!StrMatch(Face, glFonts[i].Font->Face)) AND (!StrMatch(Style, glFonts[i].Font->Style)) AND (Point IS glFonts[i].Point)) {
-         FMSG("create_font()","Match %d = %s(%s,%d)", i, Face, Style, Point);
+      if ((!StrMatch(Face, glFonts[i].Font->Face)) and (!StrMatch(Style, glFonts[i].Font->Style)) and (Point IS glFonts[i].Point)) {
+         log.trace("Match %d = %s(%s,%d)", i, Face, Style, Point);
          return i;
       }
    }
 
-   LogF("~create_font()","Index: %d, %s, %s, %d.  Cached: %d", glTotalFonts, Face, Style, Point, glTotalFonts);
+   log.branch("Index: %d, %s, %s, %d.  Cached: %d", glTotalFonts, Face, Style, Point, glTotalFonts);
 
-   AdjustLogLevel(3);
+   AdjustLogLevel(2);
 
+   objFont *font;
    if (!CreateObject(ID_FONT, NF_INTEGRAL, &font,
          FID_Owner|TLONG, modDocument->UniqueID,
          FID_Face|TSTR,   Face,
@@ -5473,21 +5340,21 @@ static LONG create_font(CSTRING Face, CSTRING Style, LONG Point)
       // is a little different to what we requested (e.g. scalable instead of fixed, or a different face).
 
       for (i=0; i < glTotalFonts; i++) {
-         if ((!StrMatch(font->Face, glFonts[i].Font->Face)) AND (!StrMatch(font->Style, glFonts[i].Font->Style)) AND (font->Point IS glFonts[i].Point)) {
-            FMSG("create_font()","Match %d = %s(%s,%d)", i, Face, Style, Point);
+         if ((!StrMatch(font->Face, glFonts[i].Font->Face)) and (!StrMatch(font->Style, glFonts[i].Font->Style)) and (font->Point IS glFonts[i].Point)) {
+            log.trace("Match %d = %s(%s,%d)", i, Face, Style, Point);
             acFree(font);
-            AdjustLogLevel(-3);
-            LogReturn();
+            AdjustLogLevel(-2);
             return i;
          }
       }
 
       if (glTotalFonts IS glMaxFonts) {
-         LogF("create_font","Extending font array.");
-         if (!AllocMemory((glMaxFonts + FONT_BLOCK_SIZE) * sizeof(struct FontEntry), MEM_UNTRACKED, &array, NULL)) {
+         log.msg("Extending font array.");
+         FontEntry *array;
+         if (!AllocMemory((glMaxFonts + FONT_BLOCK_SIZE) * sizeof(FontEntry), MEM_UNTRACKED, &array, NULL)) {
             glMaxFonts += FONT_BLOCK_SIZE;
             if (glFonts) {
-               CopyMemory(glFonts, array, sizeof(struct FontEntry) * glTotalFonts);
+               CopyMemory(glFonts, array, sizeof(FontEntry) * glTotalFonts);
                FreeResource(glFonts);
             }
             glFonts = array;
@@ -5504,8 +5371,7 @@ static LONG create_font(CSTRING Face, CSTRING Style, LONG Point)
    else i = -1;
 
 exit:
-   AdjustLogLevel(-3);
-   LogReturn();
+   AdjustLogLevel(-2);
    return i;
 }
 
@@ -5517,19 +5383,18 @@ exit:
 // Offset: The start of the line within the stream.
 // Stop:   The stream index at which the line stops.
 
-static LONG add_drawsegment(objDocument *Self, LONG Offset, LONG Stop, struct layout *Layout,
+static LONG add_drawsegment(objDocument *Self, LONG Offset, LONG Stop, layout *Layout,
    LONG Y, LONG Width, LONG AlignWidth, CSTRING Debug)
 {
-   struct DocSegment *lines;
-   LONG i, Height, BaseLine, trimstop;
-   UBYTE text_content, control_content, allow_merge, object_content;
+   parasol::Log log(__FUNCTION__);
+   LONG i;
 
    // Determine trailing whitespace at the end of the line.  This helps
    // to prevent situations such as underlining occurring in whitespace
    // at the end of the line during word-wrapping.
 
-   trimstop = Stop;
-   while ((Self->Stream[trimstop-1] <= 0x20) AND (trimstop > Offset)) {
+   LONG trimstop = Stop;
+   while ((Self->Stream[trimstop-1] <= 0x20) and (trimstop > Offset)) {
       if (Self->Stream[trimstop-1] IS CTRL_CODE) break;
       trimstop--;
    }
@@ -5541,16 +5406,16 @@ static LONG add_drawsegment(objDocument *Self, LONG Offset, LONG Stop, struct la
 
    // Check the new segment to see if there are any text characters or escape codes relevant to drawing
 
-   text_content = FALSE;
-   control_content = FALSE;
-   object_content = FALSE;
-   allow_merge = TRUE;
+   bool text_content = FALSE;
+   bool control_content = FALSE;
+   bool object_content = FALSE;
+   bool allow_merge = TRUE;
    for (i=Offset; i < Stop;) {
       if (Self->Stream[i] IS CTRL_CODE) {
          LONG code = ESCAPE_CODE(Self->Stream, i);
          control_content = TRUE;
          if (code IS ESC_OBJECT) object_content = TRUE;
-         if ((code IS ESC_OBJECT) OR (code IS ESC_TABLE_START) OR (code IS ESC_TABLE_END) OR (code IS ESC_FONT)) {
+         if ((code IS ESC_OBJECT) or (code IS ESC_TABLE_START) or (code IS ESC_TABLE_END) or (code IS ESC_FONT)) {
             allow_merge = FALSE;
          }
       }
@@ -5562,8 +5427,8 @@ static LONG add_drawsegment(objDocument *Self, LONG Offset, LONG Stop, struct la
       NEXT_CHAR(Self->Stream, i);
    }
 
-   Height = Layout->line_height;
-   BaseLine = Layout->base_line;
+   LONG Height = Layout->line_height;
+   LONG BaseLine = Layout->base_line;
    if (text_content) {
       if (Height <= 0) {
          // No line-height given and there is text content - use the most recent font to determine the line height
@@ -5590,7 +5455,7 @@ static LONG add_drawsegment(objDocument *Self, LONG Offset, LONG Stop, struct la
    LONG x = Layout->line_x;
    BYTE patched = FALSE;
 
-   if ((segment > 0) AND (Offset < Self->Segments[segment-1].Stop)) {
+   if ((segment > 0) and (Offset < Self->Segments[segment-1].Stop)) {
       // Patching: If the start of the new segment is < the end of the previous segment,
       // adjust the previous segment so that it stops at the beginning of our new segment.
       // This prevents overlapping between segments and the two segments will be patched
@@ -5600,7 +5465,7 @@ static LONG add_drawsegment(objDocument *Self, LONG Offset, LONG Stop, struct la
          // If the start of the new segment retraces to an index that has already been configured,
          // then we have actually encountered a coding flaw and the caller should be investigated.
 
-         LogF("@add_drawsegment","(%s) New segment #%d retraces to index %d, which has been configured by previous segments.", Debug, segment, Offset);
+         log.warning("(%s) New segment #%d retraces to index %d, which has been configured by previous segments.", Debug, segment, Offset);
          return -1;
       }
       else {
@@ -5610,7 +5475,7 @@ static LONG add_drawsegment(objDocument *Self, LONG Offset, LONG Stop, struct la
    }
 
    // Is the new segment a continuation of the previous one, and does the previous segment contain content?
-   if ((allow_merge) AND (segment > 0) AND (Self->Segments[segment-1].Stop IS Offset) AND
+   if ((allow_merge) and (segment > 0) and (Self->Segments[segment-1].Stop IS Offset) and
        (Self->Segments[segment-1].AllowMerge IS TRUE)) {
       // We are going to extend the previous line rather than add a new one, as the two
       // segments only contain control codes.
@@ -5630,6 +5495,7 @@ static LONG add_drawsegment(objDocument *Self, LONG Offset, LONG Stop, struct la
    }
 
    if (segment >= Self->MaxSegments) {
+      DocSegment *lines;
       if (!AllocMemory(sizeof(Self->Segments[0]) * (Self->MaxSegments + 100), MEM_NO_CLEAR, &lines, NULL)) {
          CopyMemory(Self->Segments, lines, sizeof(Self->Segments[0]) * Self->MaxSegments);
          FreeResource(Self->Segments);
@@ -5643,11 +5509,11 @@ static LONG add_drawsegment(objDocument *Self, LONG Offset, LONG Stop, struct la
    // If this is a segmented line, check if any previous entries have greater
    // heights.  If so, this is considered an internal programming error.
 
-   if ((Layout->split_start != NOTSPLIT) AND (Height > 0)) {
+   if ((Layout->split_start != NOTSPLIT) and (Height > 0)) {
       for (i=Layout->split_start; i < segment; i++) {
          if (Self->Segments[i].Depth != Self->Depth) continue;
          if (Self->Segments[i].Height > Height) {
-            LogF("@set_line:","A previous entry in segment %d has a height larger than the new one (%d > %d)", i, Self->Segments[i].Height, Height);
+            log.warning("A previous entry in segment %d has a height larger than the new one (%d > %d)", i, Self->Segments[i].Height, Height);
             BaseLine = Self->Segments[i].BaseLine;
             Height = Self->Segments[i].Height;
          }
@@ -5674,7 +5540,7 @@ static LONG add_drawsegment(objDocument *Self, LONG Offset, LONG Stop, struct la
    // If a line is segmented, we need to backtrack for earlier line segments and ensure that their height and baseline
    // is matched to that of the last line (which always contains the maximum height and baseline values).
 
-   if ((Layout->split_start != NOTSPLIT) AND (Height)) {
+   if ((Layout->split_start != NOTSPLIT) and (Height)) {
       if (segment != Layout->split_start) {
          LAYOUT("add_drawsegment:","Resetting height (%d) & base (%d) of segments index %d-%d.  Array: %p", Height, BaseLine, segment, Layout->split_start, Self->Segments);
          for (i=Layout->split_start; i < segment; i++) {
@@ -5745,38 +5611,37 @@ static LONG add_drawsegment(objDocument *Self, LONG Offset, LONG Stop, struct la
 **    %viewwidth   Width of the the document's available viewing area.
 */
 
-static ERROR convert_xml_args(objDocument *Self, struct XMLAttrib *Attrib, LONG Total)
+static ERROR convert_xml_args(objDocument *Self, XMLAttrib *Attrib, LONG Total)
 {
-   struct Field *classfield;
+   parasol::Log log(__FUNCTION__);
+   Field *classfield;
    STRING src, Buffer;
    CSTRING str;
    LONG attrib, pos, arg, buf_end, i, j, end;
    OBJECTID objectid;
-   OBJECTPTR object, context;
+   OBJECTPTR object;
    WORD balance;
-   UBYTE name[120];
+   char name[120];
    ERROR error;
    BYTE mod, save;
 
-   if (!Attrib->Name) {
-      // Do not translate content tags
+   if (!Attrib->Name) { // Do not translate content tags
       return ERR_Okay;
    }
 
-   FMSG("convert_xml_args()","Attrib: %p, Total: %d", Attrib, Total);
+   log.trace("Attrib: %p, Total: %d", Attrib, Total);
 
    if (!glTranslateBuffer) {
       glTranslateBufferSize = 0xffff;
-      context = SetContext(modDocument);
-         error = AllocMemory(glTranslateBufferSize, MEM_STRING|MEM_NO_CLEAR, &glTranslateBuffer, NULL);
-      SetContext(context);
+      parasol::SwitchContext context(modDocument);
+      error = AllocMemory(glTranslateBufferSize, MEM_STRING|MEM_NO_CLEAR, &glTranslateBuffer, NULL);
       if (error != ERR_Okay) return (Self->Error = ERR_AllocMemory);
       glTranslateBuffer[0] = 0;
    }
 
    Buffer = Self->Buffer;
    error = ERR_Okay;
-   for (attrib=1; (attrib < Total) AND (Self->ArgIndex < MAX_ARGS) AND (!error); attrib++) {
+   for (attrib=1; (attrib < Total) and (Self->ArgIndex < MAX_ARGS) and (!error); attrib++) {
       if (Attrib[attrib].Name[0] IS '$') continue;
 
       if (!(src = Attrib[attrib].Value)) continue;
@@ -5785,7 +5650,7 @@ static ERROR convert_xml_args(objDocument *Self, struct XMLAttrib *Attrib, LONG 
 
       for (i=0; src[i]; i++) {
          if (src[i] IS '[') break;
-         if ((src[i] IS '&') AND ((!StrCompare("&lsqr;", src+i, 0, 0)) OR (!StrCompare("&rsqr;", src+i, 0, 0)))) break;
+         if ((src[i] IS '&') and ((!StrCompare("&lsqr;", src+i, 0, 0)) or (!StrCompare("&rsqr;", src+i, 0, 0)))) break;
       }
       if (!src[i]) continue;
 
@@ -5800,7 +5665,7 @@ static ERROR convert_xml_args(objDocument *Self, struct XMLAttrib *Attrib, LONG 
       buf_end = pos;
       mod = FALSE;
 
-      while ((pos >= Self->BufferIndex) AND (!error)) {
+      while ((pos >= Self->BufferIndex) and (!error)) {
          if (Buffer[pos] IS '&') {
             if (!StrCompare("&lsqr;", Buffer+pos, 0, 0)) {
                Buffer[pos] = '[';
@@ -5826,12 +5691,12 @@ static ERROR convert_xml_args(objDocument *Self, struct XMLAttrib *Attrib, LONG 
                   if (Buffer[end] IS ']') break;
                   if (Buffer[end] IS '\'') {
                      Self->Temp[j++] = '\'';
-                     for (++end; (Buffer[end]) AND (Buffer[end] != '\''); end++) Self->Temp[j++] = Buffer[end];
+                     for (++end; (Buffer[end]) and (Buffer[end] != '\''); end++) Self->Temp[j++] = Buffer[end];
                      if (Buffer[end]) Self->Temp[j++] = Buffer[end++];
                   }
                   else if (Buffer[end] IS '"') {
                      Self->Temp[j++] = '"';
-                     for (++end; (Buffer[end]) AND (Buffer[end] != '"'); end++);
+                     for (++end; (Buffer[end]) and (Buffer[end] != '"'); end++);
                      if (Buffer[end]) Self->Temp[j++] = Buffer[end++];
                   }
                   else Self->Temp[j++] = Buffer[end++];
@@ -5842,11 +5707,9 @@ static ERROR convert_xml_args(objDocument *Self, struct XMLAttrib *Attrib, LONG 
                error = insert_string(Self->Temp+j+1, Buffer, Self->BufferSize, pos, end-pos);
             }
             else if (Buffer[pos+1] IS '%') {
-               BYTE savemod;
-
                // Check against reserved keywords
 
-               savemod = mod;
+               BYTE savemod = mod;
                mod = TRUE;
                str = Buffer + pos + 2;
                if (!StrCompare("index]", str, 0, 0)) {
@@ -5862,36 +5725,31 @@ static ERROR convert_xml_args(objDocument *Self, struct XMLAttrib *Attrib, LONG 
                   error = insert_string(name, Buffer, Self->BufferSize, pos, sizeof("[%self]")-1);
                }
                else if (!StrCompare("platform]", str, 0, 0)) {
-                  const struct SystemState *state = GetSystemState();
+                  const SystemState *state = GetSystemState();
                   insert_string(state->Platform, Buffer, Self->BufferSize, pos, sizeof("[%platform]")-1);
                }
                else if (!StrCompare("random]", str, 0, 0)) {
                   // Generate a random string of digits
-                  UBYTE random[10];
-                  for (j=0; j < sizeof(random)-1; j++) random[j] = '0' + RandomNumber(10);
+                  char random[10];
+                  for (j=0; (size_t)j < sizeof(random)-1; j++) random[j] = '0' + RandomNumber(10);
                   random[j] = 0;
                   insert_string(random, Buffer, Self->BufferSize, i, sizeof("[%random]")-1);
                }
                else if (!StrCompare("currentpage]", str, 0, 0)) {
                   str = "";
-                  if (Self->PageTag) {
-                     str = XMLATTRIB(Self->PageTag, "name");
-                  }
+                  if (Self->PageTag) str = XMLATTRIB(Self->PageTag, "name");
                   insert_string(str, Buffer, Self->BufferSize, pos, sizeof("[%currentpage]")-1);
                }
                else if (!StrCompare("nextpage]", str, 0, 0)) {
                   str = "";
                   if (Self->PageTag) {
-                     struct XMLTag *tag;
-                     tag = Self->PageTag->Next;
-                     while (tag) {
+                     for (auto tag=Self->PageTag->Next; tag; tag=tag->Next) {
                         if (!StrMatch("page", tag->Attrib->Name)) {
                            if (!XMLATTRIB(tag, "hidden")) { // Ignore hidden pages
-                              if (((str = XMLATTRIB(tag, "name"))) AND (*str)) break;
+                              if (((str = XMLATTRIB(tag, "name"))) and (*str)) break;
                               else str = "";
                            }
                         }
-                        tag = tag->Next;
                      }
                   }
 
@@ -5900,24 +5758,20 @@ static ERROR convert_xml_args(objDocument *Self, struct XMLAttrib *Attrib, LONG 
                else if (!StrCompare("prevpage]", str, 0, 0)) {
                   str = "";
                   if (Self->PageTag) {
-                     struct XMLTag *tag;
-                     tag = Self->PageTag->Prev;
-                     while (tag) {
+                     for (auto tag=Self->PageTag->Prev; tag; tag=tag->Prev) {
                         if (!StrMatch("page", tag->Attrib->Name)) {
                            if (!XMLATTRIB(tag, "hidden")) { // Ignore hidden pages
-                              if (((str = XMLATTRIB(tag, "name"))) AND (*str)) break;
+                              if (((str = XMLATTRIB(tag, "name"))) and (*str)) break;
                               else str = "";
                            }
                         }
-                        tag = tag->Prev;
                      }
                   }
 
                   insert_string(str, Buffer, Self->BufferSize, pos, sizeof("[%prevpage]")-1);
                }
                else if (!StrCompare("path]", str, 0, 0)) {
-                  STRING workingpath;
-                  workingpath = "";
+                  CSTRING workingpath = "";
                   GET_WorkingPath(Self, &workingpath);
                   if (!workingpath) workingpath = "";
                   error = insert_string(workingpath, Buffer, Self->BufferSize, pos, sizeof("[%path]")-1);
@@ -5939,7 +5793,7 @@ static ERROR convert_xml_args(objDocument *Self, struct XMLAttrib *Attrib, LONG 
                }
                else if (!StrCompare("font]", str, 0, 0)) {
                   objFont *font;
-                  UBYTE fullfont[256];
+                  char fullfont[256];
                   if ((font = lookup_font(Self->Style.FontStyle.Index, "convert_xml"))) {
                      StrFormat(fullfont, sizeof(fullfont), "%s:%.4f:%s", font->Face, font->Point, font->Style);
                      error = insert_string(fullfont, Buffer, Self->BufferSize, pos, sizeof("[%font]")-1);
@@ -5953,7 +5807,7 @@ static ERROR convert_xml_args(objDocument *Self, struct XMLAttrib *Attrib, LONG 
                }
                else if (!StrCompare("fontcolour]", str, 0, 0)) {
                   objFont *font;
-                  UBYTE colour[28];
+                  char colour[28];
                   if ((font = lookup_font(Self->Style.FontStyle.Index, "convert_xml"))) {
                      StrFormat(colour, sizeof(colour), "#%.2x%.2x%.2x%.2x", font->Colour.Red, font->Colour.Green, font->Colour.Blue, font->Colour.Alpha);
                      error = insert_string(colour, Buffer, Self->BufferSize, pos, sizeof("[%fontcolour]")-1);
@@ -5962,18 +5816,18 @@ static ERROR convert_xml_args(objDocument *Self, struct XMLAttrib *Attrib, LONG 
                else if (!StrCompare("fontsize]", str, 0, 0)) {
                   objFont *font;
                   if ((font = lookup_font(Self->Style.FontStyle.Index, "convert_xml"))) {
-                     UBYTE num[28];
+                     char num[28];
                      IntToStr(font->Point, num, sizeof(num));
                      error = insert_string(num, Buffer, Self->BufferSize, pos, sizeof("[%fontsize]")-1);
                   }
                }
                else if (!StrCompare("lineno]", str, 0, 0)) {
-                  UBYTE num[28];
+                  char num[28];
                   IntToStr(Self->SegCount, num, sizeof(num));
                   error = insert_string(num, Buffer, Self->BufferSize, pos, sizeof("[%lineno]")-1);
                }
                else if (!StrCompare("content]", str, 0, 0)) {
-                  if ((Self->InTemplate) AND (Self->InjectTag)) {
+                  if ((Self->InTemplate) and (Self->InjectTag)) {
                      if (!xmlGetContent(Self->InjectXML, Self->InjectTag->Index, Self->Temp, Self->TempSize)) {
                         STRING tmp;
                         if (!xmlGetString(Self->InjectXML, Self->InjectTag->Index, XMF_INCLUDE_SIBLINGS, &tmp)) {
@@ -6005,40 +5859,32 @@ static ERROR convert_xml_args(objDocument *Self, struct XMLAttrib *Attrib, LONG 
                   error = insert_string(RIPPLE_VERSION, Buffer, Self->BufferSize, pos, sizeof("[%version]")-1);
                }
                else if (!StrCompare("viewheight]", str, 0, 0)) {
-                  UBYTE num[28];
+                  char num[28];
                   IntToStr(Self->AreaHeight, num, sizeof(num));
                   error = insert_string(num, Buffer, Self->BufferSize, pos, sizeof("[%viewheight]")-1);
                }
                else if (!StrCompare("viewwidth]", str, 0, 0)) {
-                  UBYTE num[28];
+                  char num[28];
                   IntToStr(Self->AreaWidth, num, sizeof(num));
                   error = insert_string(num, Buffer, Self->BufferSize, pos, sizeof("[%viewwidth]")-1);
                }
                else mod = savemod;
             }
-            else if (Buffer[pos+1] IS '@') {
-               // Translate argument reference
-
-               struct XMLTag *args;
-               WORD ni;
-               BYTE processed;
-
+            else if (Buffer[pos+1] IS '@') { // Translate argument reference
                mod = TRUE; // Indicate that the buffer will be used, even if the argument is not found, it will be replaced with an empty string
-
-               processed = FALSE;
-               for (ni=Self->ArgNestIndex-1; (ni >= 0) AND (!processed); ni--) {
-                  args = Self->ArgNest[ni];
-
+               BYTE processed = FALSE;
+               for (WORD ni=Self->ArgNestIndex-1; (ni >= 0) and (!processed); ni--) {
+                  XMLTag *args = Self->ArgNest[ni];
                   for (arg=1; arg < args->TotalAttrib; arg++) {
                      if (!StrCompare(args->Attrib[arg].Name, Buffer+pos+2, 0, 0)) {
                         end = pos + 2 + StrLength(args->Attrib[arg].Name);
-                        if ((Buffer[end] IS ']') OR (Buffer[end] IS ':')) {
+                        if ((Buffer[end] IS ']') or (Buffer[end] IS ':')) {
 
                            if (Buffer[end] IS ':') {
                               end++;
-                              if (Buffer[end] IS '\'') for (++end; (Buffer[end]) AND (Buffer[end] != '\''); end++);
-                              else if (Buffer[end] IS '"') for (++end; (Buffer[end]) AND (Buffer[end] != '"'); end++);
-                              while ((Buffer[end]) AND (Buffer[end] != ']')) end++;
+                              if (Buffer[end] IS '\'') for (++end; (Buffer[end]) and (Buffer[end] != '\''); end++);
+                              else if (Buffer[end] IS '"') for (++end; (Buffer[end]) and (Buffer[end] != '"'); end++);
+                              while ((Buffer[end]) and (Buffer[end] != ']')) end++;
                               if (Buffer[end] IS ']') end++;
                            }
                            else end++;
@@ -6056,7 +5902,7 @@ static ERROR convert_xml_args(objDocument *Self, struct XMLAttrib *Attrib, LONG 
 
                // Check against global arguments / variables
 
-               for (j=pos+2; Buffer[j] AND (Buffer[j] != ']') AND (Buffer[j] != ':') AND (Buffer[j] != '('); j++);
+               for (j=pos+2; Buffer[j] and (Buffer[j] != ']') and (Buffer[j] != ':') and (Buffer[j] != '('); j++);
                save = Buffer[j];
                Buffer[j] = 0;
                if (!(str = VarGetString(Self->Vars, Buffer+pos+2))) {
@@ -6066,12 +5912,12 @@ static ERROR convert_xml_args(objDocument *Self, struct XMLAttrib *Attrib, LONG 
 
                if (str) {
                   end = pos + 2;
-                  while ((Buffer[end]) AND (Buffer[end] != ':') AND (Buffer[end] != ']')) end++;
+                  while ((Buffer[end]) and (Buffer[end] != ':') and (Buffer[end] != ']')) end++;
                   if (Buffer[end] IS ':') {
                      end++;
-                     if (Buffer[end] IS '\'') for (++end; (Buffer[end]) AND (Buffer[end] != '\''); end++);
-                     else if (Buffer[end] IS '"') for (++end; (Buffer[end]) AND (Buffer[end] != '"'); end++);
-                     while ((Buffer[end]) AND (Buffer[end] != ']')) end++;
+                     if (Buffer[end] IS '\'') for (++end; (Buffer[end]) and (Buffer[end] != '\''); end++);
+                     else if (Buffer[end] IS '"') for (++end; (Buffer[end]) and (Buffer[end] != '"'); end++);
+                     while ((Buffer[end]) and (Buffer[end] != ']')) end++;
                      if (Buffer[end] IS ']') end++;
                   }
                   else if (Buffer[end] IS ']') end++;
@@ -6084,19 +5930,19 @@ static ERROR convert_xml_args(objDocument *Self, struct XMLAttrib *Attrib, LONG 
 
                UBYTE terminator;
 
-               for (end=pos; Buffer[end] AND (Buffer[end] != ']') AND (Buffer[end] != ':'); end++);
+               for (end=pos; Buffer[end] and (Buffer[end] != ']') and (Buffer[end] != ':'); end++);
                if (Buffer[end] IS ':') {
                   end++;
                   if (Buffer[end] IS '\'') { terminator = '\''; end++; }
                   else if (Buffer[end] IS '"') { terminator = '"'; end++; }
                   else terminator = ']';
 
-                  for (i=0; (Buffer[end]) AND (Buffer[end] != terminator) AND (i < sizeof(name)-1); i++,end++) {
+                  for (i=0; (Buffer[end]) and (Buffer[end] != terminator) and ((size_t)i < sizeof(name)-1); i++,end++) {
                      name[i] = Buffer[end];
                   }
                   name[i] = 0;
 
-                  while ((Buffer[end]) AND (Buffer[end] != ']')) end++;
+                  while ((Buffer[end]) and (Buffer[end] != ']')) end++;
                   if (Buffer[end] IS ']') end++;
 
                   insert_string(name, Buffer, Self->BufferSize, pos, end-pos);
@@ -6120,7 +5966,7 @@ static ERROR convert_xml_args(objDocument *Self, struct XMLAttrib *Attrib, LONG 
                }
 
                if (Buffer[end] != ']') {
-                  LogErrorMsg("Imbalanced object/argument reference detected.");
+                  log.warning("Imbalanced object/argument reference detected.");
                   break;
                }
                end++;
@@ -6129,7 +5975,7 @@ static ERROR convert_xml_args(objDocument *Self, struct XMLAttrib *Attrib, LONG 
 
                // Retrieve the name of the object
 
-               for (j=0,i=pos+1; (Buffer[i] != '.') AND (Buffer[i] != ']') AND (j < sizeof(name)-1); i++,j++) {
+               for (j=0,i=pos+1; (Buffer[i] != '.') and (Buffer[i] != ']') and ((size_t)j < sizeof(name)-1); i++,j++) {
                   name[j] = Buffer[i];
                }
                name[j] = 0;
@@ -6143,7 +5989,7 @@ static ERROR convert_xml_args(objDocument *Self, struct XMLAttrib *Attrib, LONG 
                      // creation.  We print a message to remind the developer of this rather than
                      // failing quietly.
 
-                     LogErrorMsg("It is not possible for an object to reference itself via [self] in RIPPLE.");
+                     log.warning("It is not possible for an object to reference itself via [self] in RIPPLE.");
                   }
                   else if (!StrMatch(name, "owner")) {
                      if (Self->CurrentObject) objectid = Self->CurrentObject->UniqueID;
@@ -6159,7 +6005,7 @@ static ERROR convert_xml_args(objDocument *Self, struct XMLAttrib *Attrib, LONG 
 
                      if (!FindObject(name, 0, &list, &count)) {
                         // Pass 1: Only consider objects that are children of the document
-                        for (j=0; (j < count) AND (!objectid); j++) {
+                        for (j=0; (j < count) and (!objectid); j++) {
                            parent_id = list[j];
                            while (parent_id) {
                               parent_id = GetOwnerID(parent_id);
@@ -6172,7 +6018,7 @@ static ERROR convert_xml_args(objDocument *Self, struct XMLAttrib *Attrib, LONG 
 
                         // Pass 2: Accept the first object that is outside of the document's name space
 
-                        if ((!objectid) AND (Self->Flags & DCF_UNRESTRICTED)) {
+                        if ((!objectid) and (Self->Flags & DCF_UNRESTRICTED)) {
                            objectid = list[0];
                         }
 
@@ -6191,31 +6037,27 @@ static ERROR convert_xml_args(objDocument *Self, struct XMLAttrib *Attrib, LONG 
                            // Get the field from the object
                            i++;
 
-                           j = 0;
-                           while ((i < end-1) AND (j < sizeof(name)-1)) {
-                              name[j++] = Buffer[i++];
-                           }
+                           LONG j = 0;
+                           while ((i < end-1) and ((size_t)j < sizeof(name)-1)) name[j++] = Buffer[i++];
                            name[j] = 0;
                            if (!AccessObject(objectid, 2000, &object)) {
-                              if (((classfield = FindField(object, StrHash(name, FALSE), &target))) AND (classfield->Flags & FD_STRING)) {
+                              if (((classfield = FindField(object, StrHash(name, FALSE), &target))) and (classfield->Flags & FD_STRING)) {
                                  error = GetString(object, classfield->FieldID, &strbuf);
                               }
                               else {
-                                 // Get field as an unlisted type and manage any buffer overflow
+                                 // Get field as a variable type and manage any buffer overflow
 repeat:
                                  glTranslateBuffer[glTranslateBufferSize-1] = 0;
                                  GetFieldVariable(object, name, glTranslateBuffer, glTranslateBufferSize);
                                  if (glTranslateBuffer[glTranslateBufferSize-1]) {
-                                    APTR newbuf;
-                                    context = SetContext(modDocument);
+                                    STRING newbuf;
+                                    parasol::SwitchContext context(modDocument);
                                     if (!AllocMemory(glTranslateBufferSize + 1024, MEM_STRING|MEM_NO_CLEAR, &newbuf, NULL)) {
                                        FreeResource(glTranslateBuffer);
                                        glTranslateBuffer = newbuf;
                                        glTranslateBufferSize = glTranslateBufferSize + 1024;
-                                       SetContext(context);
                                        goto repeat;
                                     }
-                                    SetContext(context);
                                  }
                               }
                               error = ERR_Okay; // For fields, error code is always Okay so that the reference evaluates to NULL
@@ -6234,9 +6076,9 @@ repeat:
 
                         if (object) ReleaseObject(object);
                      }
-                     else LogErrorMsg("Access denied to object '%s' #%d (tag %s, %s=%s)", name, objectid, Attrib->Name, Attrib[attrib].Name, Attrib[attrib].Value);
+                     else log.warning("Access denied to object '%s' #%d (tag %s, %s=%s)", name, objectid, Attrib->Name, Attrib[attrib].Name, Attrib[attrib].Value);
                   }
-                  else LogErrorMsg("Object '%s' does not exist.", name);
+                  else log.warning("Object '%s' does not exist.", name);
                }
             }
          }
@@ -6245,7 +6087,7 @@ repeat:
       } // while pos > BufferIndex
 
       if (mod) {
-         //LogErrorMsg("Check: %s", Buffer+Self->BufferIndex);
+         //log.warning("Check: %s", Buffer+Self->BufferIndex);
          // Remember the changes that are being made to the XML tag values
          Self->VArg[Self->ArgIndex].Attrib = &Attrib[attrib].Value;
          Self->VArg[Self->ArgIndex].String = Attrib[attrib].Value;
@@ -6258,7 +6100,7 @@ repeat:
       }
    } // for (attrib...)
 
-   if (error) Self->Error = PostError(error);
+   if (error) Self->Error = log.warning(error);
    return error;
 }
 
@@ -6420,33 +6262,30 @@ static ERROR safe_translate(STRING Buffer, LONG Size, LONG Flags)
 
 static ERROR activate_edit(objDocument *Self, LONG CellIndex, LONG CursorIndex)
 {
+   parasol::Log log(__FUNCTION__);
    escCell *cell;
-   struct DocEdit *edit;
+   DocEdit *edit;
    UBYTE *stream;
 
-   if (!(stream = Self->Stream)) return FuncError(ERR_NoData);
+   if (!(stream = Self->Stream)) return log.warning(ERR_NoData);
+   if ((CellIndex < 0) or (CellIndex >= Self->StreamLen)) return log.warning(ERR_OutOfRange);
 
-   if ((CellIndex < 0) OR (CellIndex >= Self->StreamLen)) return FuncError(ERR_OutOfRange);
-
-   LogF("~activate_edit()","Cell Index: %d, Cursor Index: %d", CellIndex, CursorIndex);
+   log.branch("Cell Index: %d, Cursor Index: %d", CellIndex, CursorIndex);
 
    // Check the validity of the index
 
-   if ((stream[CellIndex] != CTRL_CODE) OR (ESCAPE_CODE(stream, CellIndex) != ESC_CELL)) {
-      LogReturn();
-      return FuncError(ERR_Failed);
+   if ((stream[CellIndex] != CTRL_CODE) or (ESCAPE_CODE(stream, CellIndex) != ESC_CELL)) {
+      return log.warning(ERR_Failed);
    }
 
-   cell = ESCAPE_DATA(stream, CellIndex);
-   if (CursorIndex <= 0) {
-      // Go to the start of the cell content
+   cell = escape_data<escCell>(stream, CellIndex);
+   if (CursorIndex <= 0) { // Go to the start of the cell content
       CursorIndex = CellIndex;
       NEXT_CHAR(stream, CursorIndex);
    }
 
-   /* Skip any non-content control codes - it's always best to place the cursor ahead of things like
-   ** font styles, paragraph formatting etc.
-   */
+   // Skip any non-content control codes - it's always best to place the cursor ahead of things like
+   // font styles, paragraph formatting etc.
 
    while (CursorIndex < Self->StreamLen) {
       if (stream[CursorIndex] IS CTRL_CODE) {
@@ -6461,20 +6300,15 @@ static ERROR activate_edit(objDocument *Self, LONG CellIndex, LONG CursorIndex)
       NEXT_CHAR(stream, CursorIndex);
    }
 
-   if (!(edit = find_editdef(Self, cell->EditHash))) {
-      LogReturn();
-      return FuncError(ERR_Search);
-   }
+   if (!(edit = find_editdef(Self, cell->EditHash))) return log.warning(ERR_Search);
 
    deactivate_edit(Self, FALSE);
 
-   if (edit->OnChange) {
-      // Calculate a CRC for the cell content
+   if (edit->OnChange) { // Calculate a CRC for the cell content
       LONG i = CellIndex;
       while (i < Self->StreamLen) {
-         if ((stream[i] IS CTRL_CODE) AND (ESCAPE_CODE(stream, i) IS ESC_CELL_END)) {
-            escCellEnd *end;
-            end = ESCAPE_DATA(stream, i);
+         if ((stream[i] IS CTRL_CODE) and (ESCAPE_CODE(stream, i) IS ESC_CELL_END)) {
+            auto end = escape_data<escCellEnd>(stream, i);
             if (end->CellID IS cell->CellID) {
                Self->ActiveEditCRC = GenCRC32(0, stream + CellIndex, i - CellIndex);
                break;
@@ -6489,13 +6323,13 @@ static ERROR activate_edit(objDocument *Self, LONG CellIndex, LONG CursorIndex)
    Self->CursorIndex  = CursorIndex;
    Self->SelectIndex  = -1;
 
-   LogF("activate_edit","Activated cell %d, cursor index %d, EditDef: %p, CRC: $%.8x", Self->ActiveEditCellID, Self->CursorIndex, Self->ActiveEditDef, Self->ActiveEditCRC);
+   log.msg("Activated cell %d, cursor index %d, EditDef: %p, CRC: $%.8x", Self->ActiveEditCellID, Self->CursorIndex, Self->ActiveEditDef, Self->ActiveEditCRC);
 
    // Set the focus index to the relevant TT_EDIT entry
 
    LONG tab;
    for (tab=0; tab < Self->TabIndex; tab++) {
-      if ((Self->Tabs[tab].Type IS TT_EDIT) AND (Self->Tabs[tab].Ref IS cell->CellID)) {
+      if ((Self->Tabs[tab].Type IS TT_EDIT) and (Self->Tabs[tab].Ref IS cell->CellID)) {
          Self->FocusIndex = tab;
          break;
       }
@@ -6511,17 +6345,15 @@ static ERROR activate_edit(objDocument *Self, LONG CellIndex, LONG CursorIndex)
       OBJECTPTR script;
       CSTRING function_name, argstring;
 
-      LogF("activate_edit","Calling onenter callback function.");
+      log.msg("Calling onenter callback function.");
 
       if (!extract_script(Self, ((STRING)edit) + edit->OnEnter, &script, &function_name, &argstring)) {
-         struct ScriptArg args[] = { { "ID", FD_LONG, { .Long = edit->NameHash } } };
+         ScriptArg args[] = { { "ID", FD_LONG, { .Long = (LONG)edit->NameHash } } };
          scExec(script, function_name, args, ARRAYSIZE(args));
       }
    }
 
    DRAW_PAGE(Self);
-
-   LogReturn();
    return ERR_Okay;
 }
 
@@ -6529,12 +6361,13 @@ static ERROR activate_edit(objDocument *Self, LONG CellIndex, LONG CursorIndex)
 
 static void deactivate_edit(objDocument *Self, BYTE Redraw)
 {
+   parasol::Log log(__FUNCTION__);
    UBYTE *stream;
 
    if (!(stream = Self->Stream)) return;
    if (!Self->ActiveEditDef) return;
 
-   LogF("~deactivate_edit()","Redraw: %d, CellID: %d", Redraw, Self->ActiveEditCellID);
+   log.branch("Redraw: %d, CellID: %d", Redraw, Self->ActiveEditCellID);
 
    if (Self->FlashTimer) {
       UpdateTimer(Self->FlashTimer, 0); // Turn off the timer
@@ -6543,7 +6376,7 @@ static void deactivate_edit(objDocument *Self, BYTE Redraw)
 
    // The edit tag needs to be found so that we can determine if OnExit needs to be called or not.
 
-   struct DocEdit *edit = Self->ActiveEditDef;
+   DocEdit *edit = Self->ActiveEditDef;
    LONG cell_index = find_cell(Self, Self->ActiveEditCellID, 0);
 
    Self->ActiveEditCellID = 0;
@@ -6555,45 +6388,42 @@ static void deactivate_edit(objDocument *Self, BYTE Redraw)
 
    if (cell_index >= 0) {
       if (edit->OnChange) {
-         escCell *cell = ESCAPE_DATA(Self->Stream, cell_index);
+         auto cell = escape_data<escCell>(Self->Stream, cell_index);
 
          // CRC comparison - has the cell content changed?
 
          LONG i = cell_index;
          while (i < Self->StreamLen) {
-            if ((stream[i] IS CTRL_CODE) AND (ESCAPE_CODE(stream, i) IS ESC_CELL_END)) {
-               escCellEnd *end;
-               end = ESCAPE_DATA(stream, i);
+            if ((stream[i] IS CTRL_CODE) and (ESCAPE_CODE(stream, i) IS ESC_CELL_END)) {
+               auto end = escape_data<escCellEnd>(stream, i);
                if (end->CellID IS cell->CellID) {
                   ULONG crc = GenCRC32(0, stream + cell_index, i - cell_index);
                   if (crc != Self->ActiveEditCRC) {
                      OBJECTPTR script;
                      CSTRING function_name, argstring;
 
-                     MSG("Change detected in editable cell %d", cell->CellID);
+                     log.trace("Change detected in editable cell %d", cell->CellID);
 
                      if (!extract_script(Self, ((STRING)edit) + edit->OnChange, &script, &function_name, &argstring)) {
                         LONG cell_content = cell_index;
                         NEXT_CHAR(stream, cell_content);
 
-                        struct ScriptArg args[40] = {
-                           { "CellID", FD_LONG, { .Long = edit->NameHash } },
+                        ScriptArg args[40] = {
+                           { "CellID", FD_LONG, { .Long = (LONG)edit->NameHash } },
                            { "Start", FD_LONG,  { .Long = cell_content } },
                            { "End", FD_LONG,    { .Long = i } }
                         };
 
                         LONG argindex = 3;
                         if (cell->Args > 0) {
-                           STRING arg, value;
-
-                           arg = ((STRING)cell) + cell->Args;
-                           for (i=0; (i < cell->Args) AND (argindex < ARRAYSIZE(args)); i++) {
-                              value = arg + StrLength(arg) + 1;
+                           CSTRING arg = ((STRING)cell) + cell->Args;
+                           for (LONG i=0; (i < cell->Args) and (argindex < ARRAYSIZE(args)); i++) {
+                              CSTRING value = arg + StrLength(arg) + 1;
 
                               if (argindex < ARRAYSIZE(args)) {
                                  args[argindex].Name    = NULL;
                                  args[argindex].Type    = FD_STRING;
-                                 args[argindex].Address = value;
+                                 args[argindex].Address = (APTR)value;
                                  argindex++;
                               }
                               arg = value + StrLength(value) + 1;
@@ -6617,9 +6447,7 @@ static void deactivate_edit(objDocument *Self, BYTE Redraw)
 
       }
    }
-   else LogF("@deactivate_edit", "Failed to find cell ID %d", Self->ActiveEditCellID);
-
-   LogReturn();
+   else log.warning("Failed to find cell ID %d", Self->ActiveEditCellID);
 }
 
 //****************************************************************************
@@ -6627,23 +6455,21 @@ static void deactivate_edit(objDocument *Self, BYTE Redraw)
 // Index: The stream index of the object/table/item that is creating the clip.
 // Transparent: If TRUE, wrapping will not be performed around the clip region.
 
-static ERROR add_clip(objDocument *Self, struct SurfaceClip *Clip, LONG Index, CSTRING Name, BYTE Transparent)
+static ERROR add_clip(objDocument *Self, SurfaceClip *Clip, LONG Index, CSTRING Name, BYTE Transparent)
 {
    LAYOUT("add_clip()","%d: %dx%d,%dx%d, Transparent: %d", Self->TotalClips, Clip->Left, Clip->Top, Clip->Right, Clip->Bottom, Transparent);
 
    if (!Self->Clips) {
       Self->MaxClips = CLIP_BLOCK;
-      if (AllocMemory(sizeof(struct DocClip) * Self->MaxClips, MEM_NO_CLEAR, &Self->Clips, NULL) != ERR_Okay) return ERR_AllocMemory;
+      if (AllocMemory(sizeof(DocClip) * Self->MaxClips, MEM_NO_CLEAR, &Self->Clips, NULL) != ERR_Okay) return ERR_AllocMemory;
    }
    else if (Self->TotalClips >= Self->MaxClips) {
-      struct DocClip *clip;
+      DocClip *clip;
 
-      /* Extend the size of the clip array if we're out
-      ** of space.
-      */
+      // Extend the size of the clip array if we're out of space.
 
-      if (!AllocMemory(sizeof(struct DocClip) * (Self->MaxClips + CLIP_BLOCK), MEM_NO_CLEAR, &clip, NULL)) {
-         CopyMemory(Self->Clips, clip, sizeof(struct DocClip) * Self->MaxClips);
+      if (!AllocMemory(sizeof(DocClip) * (Self->MaxClips + CLIP_BLOCK), MEM_NO_CLEAR, &clip, NULL)) {
+         CopyMemory(Self->Clips, clip, sizeof(DocClip) * Self->MaxClips);
          FreeResource(Self->Clips);
          Self->Clips = clip;
          Self->MaxClips += CLIP_BLOCK;
@@ -6651,7 +6477,7 @@ static ERROR add_clip(objDocument *Self, struct SurfaceClip *Clip, LONG Index, C
       else return ERR_AllocMemory;
    }
 
-   CopyMemory(Clip, &Self->Clips[Self->TotalClips].Clip, sizeof(struct SurfaceClip));
+   CopyMemory(Clip, &Self->Clips[Self->TotalClips].Clip, sizeof(SurfaceClip));
    Self->Clips[Self->TotalClips].Index = Index;
    Self->Clips[Self->TotalClips].Transparent = Transparent;
 
@@ -6669,17 +6495,15 @@ static ERROR add_clip(objDocument *Self, struct SurfaceClip *Clip, LONG Index, C
 
 static void check_pointer_exit(objDocument *Self, LONG X, LONG Y)
 {
-   struct MouseOver *scan, *next, *prev;
-
-   prev = NULL;
-   for (scan=Self->MouseOverChain; scan;) {
-      if ((X < scan->Left) OR (Y < scan->Top) OR (X >= scan->Right) OR (Y >= scan->Bottom)) {
+   MouseOver *prev = NULL;
+   for (auto scan=Self->MouseOverChain; scan;) {
+      if ((X < scan->Left) or (Y < scan->Top) or (X >= scan->Right) or (Y >= scan->Bottom)) {
          // Pointer has left this zone
 
          CSTRING function_name, argstring;
          OBJECTPTR script;
          if (!extract_script(Self, (STRING)(scan + 1), &script, &function_name, &argstring)) {
-            struct ScriptArg args[] = {
+            ScriptArg args[] = {
                { "Element", FD_LONG, { .Long = scan->ElementID } },
                { "Status",  FD_LONG, { .Long = 0 } },
                { "Args",    FD_STR,  { .Address = (STRING)argstring } }
@@ -6688,7 +6512,7 @@ static void check_pointer_exit(objDocument *Self, LONG X, LONG Y)
             scExec(script, function_name, args, ARRAYSIZE(args));
          }
 
-         next = scan->Next;
+         auto next = scan->Next;
          FreeResource(scan);
          if (scan IS Self->MouseOverChain) Self->MouseOverChain = next;
          if (prev) prev->Next = next;
@@ -6703,12 +6527,13 @@ static void check_pointer_exit(objDocument *Self, LONG X, LONG Y)
 
 //****************************************************************************
 
-static void pointer_enter(objDocument *Self, LONG Index, STRING Function, LONG Left, LONG Top, LONG Right, LONG Bottom)
+static void pointer_enter(objDocument *Self, LONG Index, CSTRING Function, LONG Left, LONG Top, LONG Right, LONG Bottom)
 {
-   struct MouseOver *mouseover;
+   parasol::Log log(__FUNCTION__);
+   MouseOver *mouseover;
    CSTRING function_name, argstring;
 
-   FMSG("~pointer_enter()","%s, %dx%d to %dx%d", Function, Left, Top, Right, Bottom);
+   log.traceBranch("%s, %dx%d to %dx%d", Function, Left, Top, Right, Bottom);
 
    if (!AllocMemory(sizeof(*mouseover) + StrLength(Function) + 1, MEM_DATA, &mouseover, NULL)) {
       mouseover->Left      = Left;
@@ -6727,7 +6552,7 @@ static void pointer_enter(objDocument *Self, LONG Index, STRING Function, LONG L
 
       OBJECTPTR script;
       if (!extract_script(Self, Function, &script, &function_name, &argstring)) {
-         struct ScriptArg args[] = {
+         ScriptArg args[] = {
             { "Element", FD_LONG, { .Long = mouseover->ElementID } },
             { "Status",  FD_LONG, { .Long = 1 } },
             { "Args",    FD_STR,  { .Address = (STRING)argstring } }
@@ -6736,14 +6561,13 @@ static void pointer_enter(objDocument *Self, LONG Index, STRING Function, LONG L
          scExec(script, function_name, args, ARRAYSIZE(args));
       }
    }
-
-   LOGRETURN();
 }
 
 //****************************************************************************
 
 static void check_mouse_click(objDocument *Self, LONG X, LONG Y)
 {
+   parasol::Log log(__FUNCTION__);
    LONG segment, bytepos;
 
    Self->ClickX = X;
@@ -6759,11 +6583,11 @@ static void check_mouse_click(objDocument *Self, LONG X, LONG Y)
 
       LONG i, sortseg;
 
-      LogErrorMsg("%d", Self->ECIndex);
+      log.warning("%d", Self->ECIndex);
 
       for (i=0; i < Self->ECIndex; i++) {
-         if ((X >= Self->EditCells[i].X) AND (X < Self->EditCells[i].X + Self->EditCells[i].Width) AND
-             (Y >= Self->EditCells[i].Y) AND (Y < Self->EditCells[i].Y + Self->EditCells[i].Height)) {
+         if ((X >= Self->EditCells[i].X) and (X < Self->EditCells[i].X + Self->EditCells[i].Width) and
+             (Y >= Self->EditCells[i].Y) and (Y < Self->EditCells[i].Y + Self->EditCells[i].Height)) {
             break;
          }
       }
@@ -6778,7 +6602,7 @@ static void check_mouse_click(objDocument *Self, LONG X, LONG Y)
          while (Self->Stream[cell_end]) {
             if (Self->Stream[cell_end] IS CTRL_CODE) {
                if (ESCAPE_CODE(Self->Stream, cell_end) IS ESC_CELL_END) {
-                  escCellEnd *end = ESCAPE_DATA(Self->Stream, cell_end);
+                  auto end = escape_data<escCellEnd>(Self->Stream, cell_end);
                   if (end->CellID IS Self->EditCells[i].CellID) break;
                }
             }
@@ -6788,22 +6612,22 @@ static void check_mouse_click(objDocument *Self, LONG X, LONG Y)
 
          if (!Self->Stream[cell_end]) return; // No matching cell end - document stream is corrupt
 
-         LogErrorMsg("Analysing cell area %d - %d", cell_start, cell_end);
+         log.warning("Analysing cell area %d - %d", cell_start, cell_end);
 
          last_segment = -1;
          for (sortseg=0; sortseg < Self->SortCount; sortseg++) {
             LONG seg = Self->SortSegments[sortseg].Segment;
-            if ((Self->Segments[seg].Index >= cell_start) AND (Self->Segments[seg].Stop <= cell_end)) {
+            if ((Self->Segments[seg].Index >= cell_start) and (Self->Segments[seg].Stop <= cell_end)) {
                last_segment = seg;
                // Segment found.  Break if the segment's vertical position is past the mouse pointer
                if (Y < Self->Segments[seg].Y) break;
-               if ((Y >= Self->Segments[seg].Y) AND (X < Self->Segments[seg].X)) break;
+               if ((Y >= Self->Segments[seg].Y) and (X < Self->Segments[seg].X)) break;
             }
          }
 
          if (last_segment != -1) {
             // Set the cursor to the end of the nearest segment
-            LogErrorMsg("Last seg: %d", last_segment);
+            log.warning("Last seg: %d", last_segment);
             Self->CursorCharX = Self->Segments[last_segment].X + Self->Segments[last_segment].Width;
             Self->SelectCharX = Self->CursorCharX;
 
@@ -6819,7 +6643,7 @@ static void check_mouse_click(objDocument *Self, LONG X, LONG Y)
 
          return;
       }
-      else LogErrorMsg("Mouse not within an editable cell.");
+      else log.warning("Mouse not within an editable cell.");
    }
 
    if (segment != -1) {
@@ -6834,7 +6658,7 @@ static void check_mouse_click(objDocument *Self, LONG X, LONG Y)
          Self->SelectIndex = -1; //Self->Segments[segment].Index + bytepos; // SelectIndex is for text selections where the user holds the LMB and drags the mouse
          Self->SelectCharX = Self->CursorCharX;
 
-         LogMsg("User clicked on point %dx%d in segment %d, cursor index: %d, char x: %d", X, Y, segment, Self->CursorIndex, Self->CursorCharX);
+         log.msg("User clicked on point %dx%d in segment %d, cursor index: %d, char x: %d", X, Y, segment, Self->CursorIndex, Self->CursorCharX);
 
          if (Self->Segments[segment].Edit) {
             // If the segment is editable, we'll have to turn on edit mode so
@@ -6842,9 +6666,8 @@ static void check_mouse_click(objDocument *Self, LONG X, LONG Y)
 
             LONG cellindex = Self->Segments[segment].Index;
             while (cellindex > 0) {
-               if ((Self->Stream[cellindex] IS CTRL_CODE) AND (ESCAPE_CODE(Self->Stream, cellindex) IS ESC_CELL)) {
-                  escCell *cell;
-                  cell = ESCAPE_DATA(Self->Stream, cellindex);
+               if ((Self->Stream[cellindex] IS CTRL_CODE) and (ESCAPE_CODE(Self->Stream, cellindex) IS ESC_CELL)) {
+                  auto cell = escape_data<escCell>(Self->Stream, cellindex);
                   if (cell->EditHash) {
                      activate_edit(Self, cellindex, Self->CursorIndex);
                      break;
@@ -6867,8 +6690,9 @@ static void check_mouse_click(objDocument *Self, LONG X, LONG Y)
 
 static void check_mouse_release(objDocument *Self, LONG X, LONG Y)
 {
-   if ((ABS(X - Self->ClickX) > 3) OR (ABS(Y - Self->ClickY) > 3)) {
-      MSG("User click cancelled due to mouse shift.");
+   if ((ABS(X - Self->ClickX) > 3) or (ABS(Y - Self->ClickY) > 3)) {
+      parasol::Log log(__FUNCTION__);
+      log.trace("User click cancelled due to mouse shift.");
       return;
    }
 
@@ -6879,9 +6703,8 @@ static void check_mouse_release(objDocument *Self, LONG X, LONG Y)
 
 static void check_mouse_pos(objDocument *Self, LONG X, LONG Y)
 {
-   struct DocEdit *edit;
+   DocEdit *edit;
    UBYTE found;
-   LONG i;
 
    Self->MouseOverSegment = -1;
    Self->PointerX = X;
@@ -6891,11 +6714,11 @@ static void check_mouse_pos(objDocument *Self, LONG X, LONG Y)
 
    if (Self->MouseOver) {
       LONG row;
-      for (row=0; (row < Self->SortCount) AND (Y < Self->SortSegments[row].Y); row++);
+      for (row=0; (row < Self->SortCount) and (Y < Self->SortSegments[row].Y); row++);
 
       for (; row < Self->SortCount; row++) {
-         if ((Y >= Self->SortSegments[row].Y) AND (Y < Self->SortSegments[row].Y + Self->Segments[Self->SortSegments[row].Segment].Height)) {
-            if ((X >= Self->Segments[Self->SortSegments[row].Segment].X) AND (X < Self->Segments[Self->SortSegments[row].Segment].X + Self->Segments[Self->SortSegments[row].Segment].Width)) {
+         if ((Y >= Self->SortSegments[row].Y) and (Y < Self->SortSegments[row].Y + Self->Segments[Self->SortSegments[row].Segment].Height)) {
+            if ((X >= Self->Segments[Self->SortSegments[row].Segment].X) and (X < Self->Segments[Self->SortSegments[row].Segment].X + Self->Segments[Self->SortSegments[row].Segment].Width)) {
                Self->MouseOverSegment = Self->SortSegments[row].Segment;
                break;
             }
@@ -6905,7 +6728,7 @@ static void check_mouse_pos(objDocument *Self, LONG X, LONG Y)
 
    // If the user is holding the mouse button and moving it around, we need to highlight the selected text.
 
-   if ((Self->LMB) AND (Self->CursorIndex != -1)) {
+   if ((Self->LMB) and (Self->CursorIndex != -1)) {
       if (Self->SelectIndex IS -1) Self->SelectIndex = Self->CursorIndex;
 
       if (Self->MouseOverSegment != -1) {
@@ -6929,8 +6752,8 @@ static void check_mouse_pos(objDocument *Self, LONG X, LONG Y)
                      // If the cursor index exceeds the end of the editing area, reset it
 
                      while (i < Self->StreamLen) {
-                        if ((Self->Stream[i] IS CTRL_CODE) AND (ESCAPE_CODE(Self->Stream, i) IS ESC_CELL_END)) {
-                           escCellEnd *cell_end = ESCAPE_DATA(Self->Stream, i);
+                        if ((Self->Stream[i] IS CTRL_CODE) and (ESCAPE_CODE(Self->Stream, i) IS ESC_CELL_END)) {
+                           auto cell_end = escape_data<escCellEnd>(Self->Stream, i);
                            if (cell_end->CellID IS Self->ActiveEditCellID) {
                               LONG seg;
                               if ((seg = find_segment(Self, i, FALSE)) > 0) {
@@ -6967,11 +6790,10 @@ static void check_mouse_pos(objDocument *Self, LONG X, LONG Y)
    // Check if the user moved onto a link
 
    found = FALSE;
-   if ((Self->MouseOver) AND (!Self->LMB)) {
-
-      for (i=Self->TotalLinks-1; i >= 0; i--) { // Search from front to back
-         if ((X >= Self->Links[i].X) AND (Y >= Self->Links[i].Y) AND
-             (X < Self->Links[i].X + Self->Links[i].Width) AND
+   if ((Self->MouseOver) and (!Self->LMB)) {
+      for (LONG i=Self->TotalLinks-1; i >= 0; i--) { // Search from front to back
+         if ((X >= Self->Links[i].X) and (Y >= Self->Links[i].Y) and
+             (X < Self->Links[i].X + Self->Links[i].Width) and
              (Y < Self->Links[i].Y + Self->Links[i].Height)) {
             // The mouse pointer is inside a link
 
@@ -6980,9 +6802,9 @@ static void check_mouse_pos(objDocument *Self, LONG X, LONG Y)
                Self->CursorSet = TRUE;
             }
 
-            if ((Self->Links[i].EscapeCode IS ESC_LINK) AND (Self->Links[i].Link->PointerMotion)) {
+            if ((Self->Links[i].EscapeCode IS ESC_LINK) and (Self->Links[i].Link->PointerMotion)) {
                pointer_enter(Self, (MAXINT)Self->Links[i].Link - ESC_LEN_START - (MAXINT)Self->Stream,
-                  ((STRING)Self->Links[i].Link) + Self->Links[i].Link->PointerMotion,
+                  ((CSTRING)Self->Links[i].Link) + Self->Links[i].Link->PointerMotion,
                   Self->Links[i].X, Self->Links[i].Y, Self->Links[i].X + Self->Links[i].Width, Self->Links[i].Y + Self->Links[i].Height);
             }
 
@@ -6999,16 +6821,16 @@ static void check_mouse_pos(objDocument *Self, LONG X, LONG Y)
    // Check if the user moved onto text content
 
    if (Self->MouseOverSegment != -1) {
-      if ((Self->Segments[Self->MouseOverSegment].TextContent) OR (Self->Segments[Self->MouseOverSegment].Edit)) {
+      if ((Self->Segments[Self->MouseOverSegment].TextContent) or (Self->Segments[Self->MouseOverSegment].Edit)) {
          gfxSetCursor(0, CRF_BUFFER, PTR_TEXT, 0, Self->Head.UniqueID);
          Self->CursorSet = TRUE;
       }
       return;
    }
 
-   for (i=0; i < Self->ECIndex; i++) {
-      if ((X >= Self->EditCells[i].X) AND (X < Self->EditCells[i].X + Self->EditCells[i].Width) AND
-          (Y >= Self->EditCells[i].Y) AND (Y < Self->EditCells[i].Y + Self->EditCells[i].Height)) {
+   for (LONG i=0; i < Self->ECIndex; i++) {
+      if ((X >= Self->EditCells[i].X) and (X < Self->EditCells[i].X + Self->EditCells[i].Width) and
+          (Y >= Self->EditCells[i].Y) and (Y < Self->EditCells[i].Y + Self->EditCells[i].Height)) {
          gfxSetCursor(0, CRF_BUFFER, PTR_TEXT, 0, Self->Head.UniqueID);
          Self->CursorSet = TRUE;
          return;
@@ -7027,23 +6849,21 @@ static void check_mouse_pos(objDocument *Self, LONG X, LONG Y)
 
 static ERROR resolve_font_pos(objDocument *Self, LONG Segment, LONG X, LONG *CharX, LONG *BytePos)
 {
-   escFont *style;
-   objFont *font;
-   LONG fi, i, index;
-   UBYTE *str;
+   parasol::Log log(__FUNCTION__);
+   LONG i, index;
 
-   if ((Segment >= 0) AND (Segment < Self->SegCount)) {
+   if ((Segment >= 0) and (Segment < Self->SegCount)) {
       // Find the font that represents the start of the stream
 
-      str = Self->Stream;
-      style = NULL;
+      auto str = Self->Stream;
+      escFont *style = NULL;
 
       // First, go forwards to try and find the correct font
 
-      fi = Self->Segments[Segment].Index;
+      LONG fi = Self->Segments[Segment].Index;
       while (fi < Self->Segments[Segment].Stop) {
-         if ((str[fi] IS CTRL_CODE) AND (ESCAPE_CODE(str, fi) IS ESC_FONT)) {
-            style = ESCAPE_DATA(str, fi);
+         if ((str[fi] IS CTRL_CODE) and (ESCAPE_CODE(str, fi) IS ESC_FONT)) {
+            style = escape_data<escFont>(str, fi);
          }
          else if (str[fi] != CTRL_CODE) break;
          NEXT_CHAR(str, fi);
@@ -7054,14 +6874,15 @@ static ERROR resolve_font_pos(objDocument *Self, LONG Segment, LONG X, LONG *Cha
       if (!style) {
          fi = Self->Segments[Segment].Index;
          while (fi >= 0) {
-            if ((str[fi] IS CTRL_CODE) AND (ESCAPE_CODE(str, fi) IS ESC_FONT)) {
-               style = ESCAPE_DATA(str, fi);
+            if ((str[fi] IS CTRL_CODE) and (ESCAPE_CODE(str, fi) IS ESC_FONT)) {
+               style = escape_data<escFont>(str, fi);
                break;
             }
             PREV_CHAR(str, fi);
          }
       }
 
+      objFont *font;
       if (!style) font = lookup_font(0, "check_mouse_click");
       else font = lookup_font(style->Index, "check_mouse_click");
 
@@ -7084,7 +6905,7 @@ static ERROR resolve_font_pos(objDocument *Self, LONG Segment, LONG X, LONG *Cha
       }
       buffer[pos] = 0;
 
-      if (!fntConvertCoords(font, buffer, X - Self->Segments[Segment].X, 0, NULL, NULL, NULL, &index, CharX)) {
+      if (!fntConvertCoords(font, (CSTRING)buffer, X - Self->Segments[Segment].X, 0, NULL, NULL, NULL, &index, CharX)) {
          // Convert the character position to the correct byte position - i.e. take control codes into account.
 
          for (i=Self->Segments[Segment].Index; (index > 0); ) {
@@ -7093,16 +6914,15 @@ static ERROR resolve_font_pos(objDocument *Self, LONG Segment, LONG X, LONG *Cha
          }
 
          *BytePos = i - Self->Segments[Segment].Index;
-
          return ERR_Okay;
       }
       else {
-         MSG("Failed to convert coordinate %d to a font-relative cursor position.", X);
+         log.trace("Failed to convert coordinate %d to a font-relative cursor position.", X);
          return ERR_Failed;
       }
    }
    else {
-      MSG("Current segment value is invalid.");
+      log.trace("Current segment value is invalid.");
       return ERR_OutOfRange;
    }
 }
@@ -7113,20 +6933,19 @@ static ERROR resolve_font_pos(objDocument *Self, LONG Segment, LONG X, LONG *Cha
 
 static ERROR resolve_fontx_by_index(objDocument *Self, LONG Index, LONG *CharX)
 {
-   escFont *style;
-   objFont *font;
-   LONG fi, segment;
+   parasol::Log log("resolve_fontx");
+   LONG segment;
 
-   LogF("resolve_fontx()","Index: %d", Index);
+   log.branch("Index: %d", Index);
 
-   style = NULL;
+   escFont *style = NULL;
 
    // First, go forwards to try and find the correct font
 
-   fi = Index;
-   while ((Self->Stream[fi] != CTRL_CODE) AND (fi < Self->StreamLen)) {
-      if ((Self->Stream[fi] IS CTRL_CODE) AND (ESCAPE_CODE(Self->Stream, fi) IS ESC_FONT)) {
-         style = ESCAPE_DATA(Self->Stream, fi);
+   LONG fi = Index;
+   while ((Self->Stream[fi] != CTRL_CODE) and (fi < Self->StreamLen)) {
+      if ((Self->Stream[fi] IS CTRL_CODE) and (ESCAPE_CODE(Self->Stream, fi) IS ESC_FONT)) {
+         style = escape_data<escFont>(Self->Stream, fi);
       }
       else if (Self->Stream[fi] != CTRL_CODE) break;
       NEXT_CHAR(Self->Stream, fi);
@@ -7137,18 +6956,17 @@ static ERROR resolve_fontx_by_index(objDocument *Self, LONG Index, LONG *CharX)
    if (!style) {
       fi = Index;
       while (fi >= 0) {
-         if ((Self->Stream[fi] IS CTRL_CODE) AND (ESCAPE_CODE(Self->Stream, fi) IS ESC_FONT)) {
-            style = ESCAPE_DATA(Self->Stream, fi);
+         if ((Self->Stream[fi] IS CTRL_CODE) and (ESCAPE_CODE(Self->Stream, fi) IS ESC_FONT)) {
+            style = escape_data<escFont>(Self->Stream, fi);
             break;
          }
          PREV_CHAR(Self->Stream, fi);
       }
    }
 
-   if (!style) font = lookup_font(0, "check_mouse_click");
-   else font = lookup_font(style->Index, "check_mouse_click");
+   auto font = lookup_font(style ? style->Index : 0, "check_mouse_click");
 
-   if (!font) return FuncError(ERR_Search);
+   if (!font) return log.warning(ERR_Search);
 
    // Find the segment associated with this index.  This is so that we can derive an X coordinate for the character
    // string.
@@ -7159,18 +6977,18 @@ static ERROR resolve_fontx_by_index(objDocument *Self, LONG Index, LONG *CharX)
       UBYTE buffer[(Self->Segments[segment].Stop+1) - Self->Segments[segment].Index + 1];
       LONG pos = 0;
       LONG i = Self->Segments[segment].Index;
-      while ((i <= Self->Segments[segment].Stop) AND (i < Index)) {
+      while ((i <= Self->Segments[segment].Stop) and (i < Index)) {
          if (Self->Stream[i] != CTRL_CODE) buffer[pos++] = Self->Stream[i++];
          else i += ESCAPE_LEN(Self->Stream+i);
       }
       buffer[pos] = 0;
 
-      if (pos > 0) *CharX = fntStringWidth(font, buffer, -1);
+      if (pos > 0) *CharX = fntStringWidth(font, (CSTRING)buffer, -1);
       else *CharX = 0;
 
       return ERR_Okay;
    }
-   else LogErrorMsg("Failed to find a segment for index %d.", Index);
+   else log.warning("Failed to find a segment for index %d.", Index);
 
    return ERR_Search;
 }
@@ -7183,15 +7001,15 @@ static LONG find_segment(objDocument *Self, LONG Index, LONG InclusiveStop)
 
    if (InclusiveStop) {
       for (segment=0; segment < Self->SegCount; segment++) {
-         if ((Index >= Self->Segments[segment].Index) AND (Index <= Self->Segments[segment].Stop)) {
-            if ((Index IS Self->Segments[segment].Stop) AND (Self->Stream[Index-1] IS '\n'));
+         if ((Index >= Self->Segments[segment].Index) and (Index <= Self->Segments[segment].Stop)) {
+            if ((Index IS Self->Segments[segment].Stop) and (Self->Stream[Index-1] IS '\n'));
             else return segment;
          }
       }
    }
    else {
       for (segment=0; segment < Self->SegCount; segment++) {
-         if ((Index >= Self->Segments[segment].Index) AND (Index < Self->Segments[segment].Stop)) {
+         if ((Index >= Self->Segments[segment].Index) and (Index < Self->Segments[segment].Stop)) {
             return segment;
          }
       }
@@ -7205,19 +7023,19 @@ static LONG find_segment(objDocument *Self, LONG Index, LONG InclusiveStop)
 
 static void deselect_text(objDocument *Self)
 {
-   LONG start, end, tmp;
+   parasol::Log log(__FUNCTION__);
 
    // Return immediately if there is nothing to deselect
 
    if (Self->CursorIndex IS Self->SelectIndex) return;
 
-   FMSG("~deselect_text()","");
+   log.traceBranch("");
 
-   start = Self->CursorIndex;
-   end = Self->SelectIndex;
+   LONG start = Self->CursorIndex;
+   LONG end = Self->SelectIndex;
 
    if (end < start) {
-      tmp = start;
+      auto tmp = start;
       start = end;
       end = tmp;
    }
@@ -7227,11 +7045,10 @@ static void deselect_text(objDocument *Self)
 
    // Find the start
 
-   LONG last, top, bottom, mid, startseg, endseg;
-
-   top = 0;
-   bottom = Self->SegCount-1;
-   last = -1;
+   LONG mid;
+   LONG top = 0;
+   LONG bottom = Self->SegCount-1;
+   LONG last = -1;
    while ((mid = (bottom-top)>>1) != last) {
       last = mid;
       mid += top;
@@ -7240,7 +7057,7 @@ static void deselect_text(objDocument *Self)
       else break;
    }
 
-   startseg = mid; // Start is now set to the segment rather than stream index
+   LONG startseg = mid; // Start is now set to the segment rather than stream index
 
    // Find the end
 
@@ -7255,34 +7072,30 @@ static void deselect_text(objDocument *Self)
       else break;
    }
 
-   endseg = mid; // End is now set to the segment rather than stream index
+   LONG endseg = mid; // End is now set to the segment rather than stream index
 
    Self->SelectIndex = -1;
 
    DRAW_PAGE(Self);  // TODO: Draw only the area that we've identified as relevant.
-
-   LOGRETURN();
 }
 
 //****************************************************************************
 
 static void fix_command(STRING Command, STRING *Args)
 {
-   WORD i;
-
-   i = 0;
+   WORD i = 0;
    if (Command[0] IS '"') {
       i++;
-      while ((Command[i]) AND (Command[i] != '"')) { Command[i-1] = Command[i]; i++; }
+      while ((Command[i]) and (Command[i] != '"')) { Command[i-1] = Command[i]; i++; }
       Command[i-1] = 0;
       if (Command[i] IS '"') i++;
    }
    else {
-      while ((Command[i]) AND (Command[i] > 0x20)) i++;
+      while ((Command[i]) and (Command[i] > 0x20)) i++;
       if (Command[i]) Command[i++] = 0;
    }
 
-   while ((Command[i]) AND (Command[i] <= 0x20)) i++;
+   while ((Command[i]) and (Command[i] <= 0x20)) i++;
 
    *Args = Command + i;
 }
@@ -7291,9 +7104,8 @@ static void fix_command(STRING Command, STRING *Args)
 
 static LONG find_tabfocus(objDocument *Self, UBYTE Type, LONG Reference)
 {
-   LONG i;
-   for (i=0; i < Self->TabIndex; i++) {
-      if ((Self->Tabs[i].Type IS Type) AND (Reference IS Self->Tabs[i].Ref)) return i;
+   for (LONG i=0; i < Self->TabIndex; i++) {
+      if ((Self->Tabs[i].Type IS Type) and (Reference IS Self->Tabs[i].Ref)) return i;
    }
    return -1;
 }
@@ -7303,9 +7115,9 @@ static LONG find_tabfocus(objDocument *Self, UBYTE Type, LONG Reference)
 
 static LONG add_tabfocus(objDocument *Self, UBYTE Type, LONG Reference)
 {
-   LONG index;
+   parasol::Log log(__FUNCTION__);
 
-   //LogF("add_tabfocus()","Type: %d, Ref: %d", Type, Reference);
+   //log.function("Type: %d, Ref: %d", Type, Reference);
 
    // Allocate tab management array
 
@@ -7330,7 +7142,7 @@ static LONG add_tabfocus(objDocument *Self, UBYTE Type, LONG Reference)
    if (Type IS TT_LINK) {
       LONG i;
       for (i=0; i < Self->TabIndex; i++) {
-         if ((Self->Tabs[i].Type IS TT_LINK) AND (Self->Tabs[i].Ref IS Reference)) {
+         if ((Self->Tabs[i].Type IS TT_LINK) and (Self->Tabs[i].Ref IS Reference)) {
             return i;
          }
       }
@@ -7338,7 +7150,7 @@ static LONG add_tabfocus(objDocument *Self, UBYTE Type, LONG Reference)
 
    // Add the tab entry
 
-   index = Self->TabIndex;
+   LONG index = Self->TabIndex;
    Self->Tabs[index].Type = Type;
    Self->Tabs[index].Ref  = Reference;
    Self->Tabs[index].XRef = 0;
@@ -7383,19 +7195,21 @@ static LONG add_tabfocus(objDocument *Self, UBYTE Type, LONG Reference)
 // Changes the focus to an object or link in the document.  The new index is stored in the FocusIndex field.  If the
 // Index is set to -1, set_focus() will focus on the first element, but only if it is an object.
 
-static void set_focus(objDocument *Self, LONG Index, STRING Caller)
+static void set_focus(objDocument *Self, LONG Index, CSTRING Caller)
 {
-   if ((!Self->Tabs) OR (Self->TabIndex < 1)) {
-      FMSG("set_focus()","No tab markers in document.");
+   parasol::Log log(__FUNCTION__);
+
+   if ((!Self->Tabs) or (Self->TabIndex < 1)) {
+      log.trace("No tab markers in document.");
       return;
    }
 
-   if ((Index < -1) OR (Index >= Self->TabIndex)) {
-      FMSG("@set_focus()","Index %d out of bounds.", Index);
+   if ((Index < -1) or (Index >= Self->TabIndex)) {
+      log.traceWarning("Index %d out of bounds.", Index);
       return;
    }
 
-   LogF("~set_focus()","Index: %d/%d, Type: %d, Ref: %d, HaveFocus: %d, Caller: %s", Index, Self->TabIndex, Index != -1 ? Self->Tabs[Index].Type : -1, Index != -1 ? Self->Tabs[Index].Ref : -1, Self->HasFocus, Caller);
+   log.branch("Index: %d/%d, Type: %d, Ref: %d, HaveFocus: %d, Caller: %s", Index, Self->TabIndex, Index != -1 ? Self->Tabs[Index].Type : -1, Index != -1 ? Self->Tabs[Index].Ref : -1, Self->HasFocus, Caller);
 
    if (Self->ActiveEditDef) deactivate_edit(Self, TRUE);
 
@@ -7403,43 +7217,37 @@ static void set_focus(objDocument *Self, LONG Index, STRING Caller)
       Index = 0;
       Self->FocusIndex = 0;
       if (Self->Tabs[0].Type IS TT_LINK) {
-         LogF("set_focus","First focusable element is a link - focus unchanged.");
-         LogReturn();
+         log.msg("First focusable element is a link - focus unchanged.");
          return;
       }
    }
 
    if (!Self->Tabs[Index].Active) {
-      LogF("@set_focus","Tab marker %d is not active.", Index);
-      LogReturn();
+      log.warning("Tab marker %d is not active.", Index);
       return;
    }
 
    Self->FocusIndex = Index;
 
    if (Self->Tabs[Index].Type IS TT_EDIT) {
-      LONG cell_index;
-
       acFocusID(Self->PageID);
 
+      LONG cell_index;
       if ((cell_index = find_cell(Self, Self->Tabs[Self->FocusIndex].Ref, 0)) >= 0) {
          activate_edit(Self, cell_index, -1);
       }
    }
    else if (Self->Tabs[Index].Type IS TT_OBJECT) {
-      OBJECTPTR text, input;
-      LONG class_id;
-
       if (Self->HasFocus) {
-         class_id = GetClassID(Self->Tabs[Index].Ref);
-
+         CLASSID class_id = GetClassID(Self->Tabs[Index].Ref);
+         OBJECTPTR text, input;
          if (class_id IS ID_INPUT) {
             if (!AccessObject(Self->Tabs[Index].Ref, 1000, &input)) {
                acFocus(input);
 
                // If the object has a textinput field, select the text
 
-               if ((GetPointer(input, FID_UserInput, &text) IS ERR_Okay) AND (text)) {
+               if ((GetPointer(input, FID_UserInput, &text) IS ERR_Okay) and (text)) {
                   txtSelectArea(text, 0,0, 200000, 200000);
                }
 
@@ -7453,20 +7261,17 @@ static void set_focus(objDocument *Self, LONG Index, STRING Caller)
       }
    }
    else if (Self->Tabs[Index].Type IS TT_LINK) {
-      LONG i, link_x, link_y, link_right, link_bottom;
-
-      if (Self->HasFocus) {
-         // Scroll to the link if it is out of view, or redraw the display if it is not.
-
+      if (Self->HasFocus) { // Scroll to the link if it is out of view, or redraw the display if it is not.
+         LONG i;
          for (i=0; i < Self->TotalLinks; i++) {
-            if ((Self->Links[i].EscapeCode IS ESC_LINK) AND (Self->Links[i].Link->ID IS Self->Tabs[Index].Ref)) break;
+            if ((Self->Links[i].EscapeCode IS ESC_LINK) and (Self->Links[i].Link->ID IS Self->Tabs[Index].Ref)) break;
          }
 
          if (i < Self->TotalLinks) {
-            link_x = Self->Links[i].X;
-            link_y = Self->Links[i].Y;
-            link_bottom = link_y + Self->Links[i].Height;
-            link_right = link_x + Self->Links[i].Width;
+            LONG link_x = Self->Links[i].X;
+            LONG link_y = Self->Links[i].Y;
+            LONG link_bottom = link_y + Self->Links[i].Height;
+            LONG link_right = link_x + Self->Links[i].Width;
 
             for (++i; i < Self->TotalLinks; i++) {
                if (Self->Links[i].Link->ID IS Self->Tabs[Index].Ref) {
@@ -7484,8 +7289,6 @@ static void set_focus(objDocument *Self, LONG Index, STRING Caller)
          acFocusID(Self->PageID);
       }
    }
-
-   LogReturn();
 }
 
 //****************************************************************************
@@ -7493,6 +7296,8 @@ static void set_focus(objDocument *Self, LONG Index, STRING Caller)
 
 static BYTE view_area(objDocument *Self, LONG Left, LONG Top, LONG Right, LONG Bottom)
 {
+   parasol::Log log(__FUNCTION__);
+
    LONG hgap = Self->AreaWidth * 0.1;
    LONG vgap = Self->AreaHeight * 0.1;
    LONG view_x = -Self->XPosition;
@@ -7500,7 +7305,7 @@ static BYTE view_area(objDocument *Self, LONG Left, LONG Top, LONG Right, LONG B
    LONG view_height = Self->AreaHeight;
    LONG view_width  = Self->AreaWidth;
 
-   FMSG("view_area()","View: %dx%d,%dx%d Link: %dx%d,%dx%d", view_x, view_y, view_width, view_height, Left, Top, Right, Bottom);
+   log.trace("View: %dx%d,%dx%d Link: %dx%d,%dx%d", view_x, view_y, view_width, view_height, Left, Top, Right, Bottom);
 
    // Vertical
 
@@ -7509,7 +7314,7 @@ static BYTE view_area(objDocument *Self, LONG Left, LONG Top, LONG Right, LONG B
          view_y = Top - vgap;
          if (view_y < view_height>>2) view_y = 0;
 
-         if ((Bottom < view_height - vgap) AND (-Self->YPosition > view_height)) {
+         if ((Bottom < view_height - vgap) and (-Self->YPosition > view_height)) {
             view_y = 0;
          }
       }
@@ -7534,7 +7339,7 @@ static BYTE view_area(objDocument *Self, LONG Left, LONG Top, LONG Right, LONG B
    }
    else view_x = 0;
 
-   if ((-view_x != Self->XPosition) OR (-view_y != Self->YPosition)) {
+   if ((-view_x != Self->XPosition) or (-view_y != Self->YPosition)) {
       acScrollToPoint(Self, view_x, view_y, 0, STP_X|STP_Y);
       return TRUE;
    }
@@ -7545,9 +7350,10 @@ static BYTE view_area(objDocument *Self, LONG Left, LONG Top, LONG Right, LONG B
 
 static void advance_tabfocus(objDocument *Self, BYTE Direction)
 {
+   parasol::Log log(__FUNCTION__);
    LONG i;
 
-   if ((!Self->Tabs) OR (Self->TabIndex < 1)) return;
+   if ((!Self->Tabs) or (Self->TabIndex < 1)) return;
 
    // Check that the FocusIndex is accurate (it may have changed if the user clicked on a gadget).
 
@@ -7559,7 +7365,7 @@ static void advance_tabfocus(objDocument *Self, BYTE Direction)
       }
    }
 
-   LogF("adv_tabfocus()","Direction: %d, Current Surface: %d, Current Index: %d", Direction, currentfocus, Self->FocusIndex);
+   log.function("Direction: %d, Current Surface: %d, Current Index: %d", Direction, currentfocus, Self->FocusIndex);
 
    if (Self->FocusIndex < 0) {
       // FocusIndex may be -1 to indicate nothing is selected, so we'll have to start from the first focusable index in that case.
@@ -7585,7 +7391,7 @@ static void advance_tabfocus(objDocument *Self, BYTE Direction)
 
       if (!Self->Tabs[Self->FocusIndex].Active) continue;
 
-      if ((Self->Tabs[Self->FocusIndex].Type IS TT_OBJECT) AND (Self->Tabs[Self->FocusIndex].XRef)) {
+      if ((Self->Tabs[Self->FocusIndex].Type IS TT_OBJECT) and (Self->Tabs[Self->FocusIndex].XRef)) {
          SURFACEINFO *info;
          if (!drwGetSurfaceInfo(Self->Tabs[Self->FocusIndex].XRef, &info)) {
             if (info->Flags & RNF_DISABLED) continue;
@@ -7602,16 +7408,17 @@ static void advance_tabfocus(objDocument *Self, BYTE Direction)
 
 static void process_parameters(objDocument *Self, CSTRING String)
 {
+   parasol::Log log(__FUNCTION__);
    LONG i, setsize;
    STRING set;
 
-   LogF("~process_params()","%s", String);
+   log.branch("%s", String);
 
    if (Self->Params) { FreeResource(Self->Params); Self->Params = NULL; }
 
    BYTE pagename_processed = FALSE;
    while (*String) {
-      if ((*String IS '#') AND (!pagename_processed)) {
+      if ((*String IS '#') and (!pagename_processed)) {
          // Reference is '#fragment:bookmark' where 'fragment' refers to a page in the loaded XML file and 'bookmark' is an optional bookmark reference within that page.
 
          pagename_processed = TRUE;
@@ -7623,14 +7430,14 @@ static void process_parameters(objDocument *Self, CSTRING String)
 
          Self->PageName = StrClone(String + 1);
 
-         for (i=0; Self->PageName[i]; i++) {
+         for (LONG i=0; Self->PageName[i]; i++) {
             if (Self->PageName[i] IS ':') { // Check for bookmark separator
                Self->PageName[i++] = 0;
 
                if (Self->PageName[i]) {
                   Self->Bookmark = StrClone(Self->PageName + i);
 
-                  for (i=0; Self->Bookmark[i]; i++) { // Remove parameter separator
+                  for (LONG i=0; Self->Bookmark[i]; i++) { // Remove parameter separator
                      if (Self->Bookmark[i] IS '?') {
                         Self->Bookmark[i] = 0;
                         break;
@@ -7654,12 +7461,12 @@ static void process_parameters(objDocument *Self, CSTRING String)
          String++;
          setsize = 0xffff;
          if (!AllocMemory(setsize, MEM_STRING|MEM_NO_CLEAR, &set, NULL)) { // Allocation is temporary
-            UBYTE arg[80];
+            char arg[80];
 
             while (*String) {
                // Extract the parameter name into arg
 
-               for (i=0; (*String) AND (*String != '#') AND (*String != '&') AND (*String != ';') AND (*String != '=') AND (i < sizeof(arg)-1);) {
+               for (i=0; (*String) and (*String != '#') and (*String != '&') and (*String != ';') and (*String != '=') and ((size_t)i < sizeof(arg)-1);) {
                   i += uri_char(&String, arg+i, sizeof(arg)-i);
                }
                arg[i] = 0;
@@ -7668,7 +7475,7 @@ static void process_parameters(objDocument *Self, CSTRING String)
 
                if (*String IS '=') {
                   String++;
-                  for (i=0; (*String) AND (*String != '#') AND (*String != '&') AND (*String != ';') AND (i < setsize-1);) {
+                  for (i=0; (*String) and (*String != '#') and (*String != '&') and (*String != ';') and (i < setsize-1);) {
                      i += uri_char(&String, set+i, setsize-i);
                   }
                   set[i] = 0;
@@ -7682,8 +7489,8 @@ static void process_parameters(objDocument *Self, CSTRING String)
 
                VarSetString(Self->Params, arg, set);
 
-               while ((*String) AND (*String != '#') AND (*String != '&') AND (*String != ';')) String++;
-               if ((*String != '&') AND (*String != ';')) break;
+               while ((*String) and (*String != '#') and (*String != '&') and (*String != ';')) String++;
+               if ((*String != '&') and (*String != ';')) break;
                String++;
             }
 
@@ -7693,20 +7500,19 @@ static void process_parameters(objDocument *Self, CSTRING String)
       else String++;
    }
 
-   LogF("process_params:","Reset page name to '%s', bookmark '%s'", Self->PageName, Self->Bookmark);
-
-   LogReturn();
+   log.msg("Reset page name to '%s', bookmark '%s'", Self->PageName, Self->Bookmark);
 }
 
 //****************************************************************************
 
 static void calc_scroll(objDocument *Self)
 {
+   parasol::Log log(__FUNCTION__);
    struct scUpdateScroll scroll;
 
-   if ((!Self->VScroll) OR (!Self->HScroll)) return;
+   if ((!Self->VScroll) or (!Self->HScroll)) return;
 
-   FMSG("~calc_scroll","PageHeight: %d/%d, PageWidth: %d/%d, XPos: %d, YPos: %d", Self->PageHeight, Self->AreaHeight, Self->CalcWidth, Self->AreaWidth, Self->XPosition, Self->YPosition);
+   log.traceBranch("PageHeight: %d/%d, PageWidth: %d/%d, XPos: %d, YPos: %d", Self->PageHeight, Self->AreaHeight, Self->CalcWidth, Self->AreaWidth, Self->XPosition, Self->YPosition);
 
    // VERTICAL
 
@@ -7736,8 +7542,6 @@ static void calc_scroll(objDocument *Self)
       Self->XPosition = -Self->HScroll->Scroll->Position;
       acMoveToPointID(Self->PageID, Self->XPosition, 0, 0, MTF_X);
    }
-
-   LOGRETURN();
 }
 
 /*****************************************************************************
@@ -7746,21 +7550,22 @@ static void calc_scroll(objDocument *Self)
 
 static ERROR extract_script(objDocument *Self, CSTRING Link, OBJECTPTR *Script, CSTRING *Function, CSTRING *Args)
 {
+   parasol::Log log(__FUNCTION__);
    LONG len, pos;
    STRING scriptref;
 
-   if ((!Link) OR (!*Link)) return ERR_NoData;
+   if ((!Link) or (!*Link)) return ERR_NoData;
 
    LONG dot = -1;
    LONG bracket = -1;
    for (len=0; Link[len]; len++) {
-      if ((Link[len] IS '.') AND (dot IS -1)) dot = len;
-      if ((Link[len] IS '(') AND (bracket IS -1)) bracket = len;
+      if ((Link[len] IS '.') and (dot IS -1)) dot = len;
+      if ((Link[len] IS '(') and (bracket IS -1)) bracket = len;
    }
    len += 2;
 
-   if ((bracket != -1) AND (bracket < dot)) {
-      LogErrorMsg("Malformed function reference: %s", Link);
+   if ((bracket != -1) and (bracket < dot)) {
+      log.warning("Malformed function reference: %s", Link);
       return ERR_InvalidData;
    }
 
@@ -7795,20 +7600,20 @@ static ERROR extract_script(objDocument *Self, CSTRING Link, OBJECTPTR *Script, 
 
       if (Args) { // Copy args
          bracket++;
-         while ((len > bracket) AND (Link[len] != ')')) len--;
+         while ((len > bracket) and (Link[len] != ')')) len--;
          if (Link[len] IS ')') {
             *Args = exsbuffer + pos;
             pos += CharCopy(Link+bracket, exsbuffer+pos, len-bracket);
             exsbuffer[pos++] = 0;
          }
-         else LogErrorMsg("Malformed function args: %s", Link);
+         else log.warning("Malformed function args: %s", Link);
       }
    }
    else pos += StrCopy(Link+dot, exsbuffer+pos, COPY_ALL);
 
    #ifdef DEBUG
    if (pos > len) {
-      LogErrorMsg("Buffer overflow (%d > %d) translating: %s", pos, len, Link);
+      log.warning("Buffer overflow (%d > %d) translating: %s", pos, len, Link);
    }
    #endif
 
@@ -7820,23 +7625,23 @@ static ERROR extract_script(objDocument *Self, CSTRING Link, OBJECTPTR *Script, 
             // Security checks
 
             if (Script[0]->ClassID != ID_SCRIPT) {
-               LogErrorMsg("Function reference to object '%s' is not a Script object.", scriptref);
+               log.warning("Function reference to object '%s' is not a Script object.", scriptref);
                return ERR_WrongClass;
             }
-            else if ((Script[0]->OwnerID != Self->Head.UniqueID) AND (!(Self->Flags & DCF_UNRESTRICTED))) {
-               LogErrorMsg("Script '%s' does not belong to this document.  Action ignored due to security restrictions.", scriptref);
+            else if ((Script[0]->OwnerID != Self->Head.UniqueID) and (!(Self->Flags & DCF_UNRESTRICTED))) {
+               log.warning("Script '%s' does not belong to this document.  Action ignored due to security restrictions.", scriptref);
                return ERR_NoPermission;
             }
          }
 
          if (!*Script) {
-            LogErrorMsg("Unable to find '%s'", scriptref);
+            log.warning("Unable to find '%s'", scriptref);
             return ERR_Search;
          }
       }
       else if (!(*Script = Self->DefaultScript)) {
          if (!(*Script = Self->UserDefaultScript)) {
-            LogF("@extract_script","Cannot call function '%s', no default script in document.", Link);
+            log.warning("Cannot call function '%s', no default script in document.", Link);
             return ERR_Search;
          }
       }
@@ -7849,17 +7654,19 @@ static ERROR extract_script(objDocument *Self, CSTRING Link, OBJECTPTR *Script, 
 
 static void exec_link(objDocument *Self, LONG Index)
 {
-   if ((Index IS -1) OR (Index >= Self->TotalLinks)) {
-      FMSG("exec_link()","No links in document or %d >= %d.", Index, Self->TotalLinks);
+   parasol::Log log(__FUNCTION__);
+
+   if ((Index IS -1) or (Index >= Self->TotalLinks)) {
+      log.trace("No links in document or %d >= %d.", Index, Self->TotalLinks);
       return;
    }
 
-   LogF("~exec_link()","Link: %d", Index);
+   log.branch("Link: %d", Index);
 
    Self->Processing++;
 
-   if ((Self->Links[Index].EscapeCode IS ESC_LINK) AND (Self->EventMask & DEF_LINK_ACTIVATED)) {
-      struct deLinkActivated params;
+   if ((Self->Links[Index].EscapeCode IS ESC_LINK) and (Self->EventMask & DEF_LINK_ACTIVATED)) {
+      deLinkActivated params;
       if ((params.Parameters = VarNew(0, 0L))) {
          escLink *link = Self->Links[Index].Link;
          CSTRING strlink = (CSTRING)(link + 1);
@@ -7876,8 +7683,7 @@ static void exec_link(objDocument *Self, LONG Index)
 
          if (link->Args > 0) {
             CSTRING arg = strlink + StrLength(strlink) + 1;
-            LONG i;
-            for (i=0; i < link->Args; i++) {
+            for (LONG i=0; i < link->Args; i++) {
                CSTRING value = arg + StrLength(arg) + 1;
                VarSetString(params.Parameters, arg, value);
                arg = value + StrLength(value) + 1;
@@ -7891,22 +7697,22 @@ static void exec_link(objDocument *Self, LONG Index)
    }
 
    if (Self->Links[Index].EscapeCode IS ESC_LINK) {
-      UBYTE buffer[400];
+      char buffer[400];
       OBJECTPTR script;
       CSTRING function_name;
-      LONG class_id, subclass_id;
-      WORD i, j;
+      CLASSID class_id, subclass_id;
+      WORD i;
 
       escLink *link = Self->Links[Index].Link;
       CSTRING strlink = (STRING)(link + 1);
       if (link->Type IS LINK_FUNCTION) { // Function is in the format 'function()' or 'script.function()'
          if (!extract_script(Self, strlink, &script, &function_name, NULL)) {
-            struct ScriptArg args[40];
+            ScriptArg args[40];
 
             LONG index = 0;
             if (link->Args > 0) {
                CSTRING arg = strlink + StrLength(strlink) + 1;
-               for (i=0; (i < link->Args) AND (index < ARRAYSIZE(args)); i++) {
+               for (LONG i=0; (i < link->Args) and (index < ARRAYSIZE(args)); i++) {
                   CSTRING value = arg + StrLength(arg) + 1;
 
                   if (arg[0] IS '_') { // Global variable setting
@@ -7929,7 +7735,7 @@ static void exec_link(objDocument *Self, LONG Index)
          if (Self->Path) {
             StrCopy(Self->Path, buffer, sizeof(buffer));
             for (i=0; buffer[i]; i++) {
-               if ((buffer[i] IS '&') OR (buffer[i] IS '#') OR (buffer[i] IS '?')) { buffer[i] = 0; break; }
+               if ((buffer[i] IS '&') or (buffer[i] IS '#') or (buffer[i] IS '?')) { buffer[i] = 0; break; }
             }
          }
          else i = 0;
@@ -7939,8 +7745,8 @@ static void exec_link(objDocument *Self, LONG Index)
             Self->Bookmark = StrClone(strlink+1);
             show_bookmark(Self, Self->Bookmark);
          }
-         else if ((strlink[0] IS '#') OR (strlink[0] IS '?')) {
-            MSG("Switching to page '%s'", strlink);
+         else if ((strlink[0] IS '#') or (strlink[0] IS '?')) {
+            log.trace("Switching to page '%s'", strlink);
 
             StrCopy(strlink, buffer+i, sizeof(buffer)-i);
             SetString(Self, FID_Path, buffer);
@@ -7948,13 +7754,13 @@ static void exec_link(objDocument *Self, LONG Index)
             if (Self->Bookmark) show_bookmark(Self, Self->Bookmark);
          }
          else {
-            MSG("Link is a file reference.");
+            log.trace("Link is a file reference.");
 
             // Figure out if the link is an absolute path
 
             BYTE abspath = FALSE;
-            for (j=0; strlink[j]; j++) {
-               if ((strlink[j] IS '/') OR (strlink[j] IS '\\')) break;
+            for (LONG j=0; strlink[j]; j++) {
+               if ((strlink[j] IS '/') or (strlink[j] IS '\\')) break;
                if (strlink[j] IS ':') { abspath = TRUE; break; }
             }
 
@@ -7962,14 +7768,14 @@ static void exec_link(objDocument *Self, LONG Index)
                StrCopy(strlink, buffer, sizeof(buffer));
             }
             else {
-               while ((i > 0) AND (buffer[i-1] != '/') AND (buffer[i-1] != '\\') AND (buffer[i-1] != ':')) i--;
+               while ((i > 0) and (buffer[i-1] != '/') and (buffer[i-1] != '\\') and (buffer[i-1] != ':')) i--;
                buffer[i] = 0;
                StrCopy(strlink, buffer+i, sizeof(buffer)-i);
             }
 
             char save = 0;
             for (i=0; buffer[i]; i++) {
-               if ((buffer[i] IS '?') OR (buffer[i] IS '#') OR (buffer[i] IS '&')) {
+               if ((buffer[i] IS '?') or (buffer[i] IS '#') or (buffer[i] IS '&')) {
                   save = buffer[i];
                   buffer[i] = 0;
                   break;
@@ -7984,11 +7790,12 @@ static void exec_link(objDocument *Self, LONG Index)
                   SetString(Self, FID_Path, buffer);
 
                   if (Self->Bookmark) show_bookmark(Self, Self->Bookmark);
-                  else LogMsg("No bookmark was preset.");
+                  else log.msg("No bookmark was preset.");
                }
                else if (cmd) {
                   // If the link is supported by a program, run that program and pass it the link.
 
+                  LONG i;
                   StrCopy(cmd, buffer, sizeof(buffer));
                   if ((i = StrSearch("[@file]", buffer, 0)) != -1) {
                      StrInsert(strlink, buffer, sizeof(buffer), i, sizeof("[@file]")-1);
@@ -8025,11 +7832,10 @@ static void exec_link(objDocument *Self, LONG Index)
 
       if (!extract_script(Self, str, &script, &function_name, NULL)) {
          LONG index = 0;
-         struct ScriptArg args[40];
+         ScriptArg args[40];
          if (cell->TotalArgs > 0) {
             CSTRING arg = ((CSTRING)cell) + cell->Args;
-            WORD i;
-            for (i=0; (i < cell->Args) AND (index < ARRAYSIZE(args)); i++) {
+            for (LONG i=0; (i < cell->Args) and (index < ARRAYSIZE(args)); i++) {
                CSTRING value = arg + StrLength(arg) + 1;
 
                if (arg[0] IS '_') { // Global variable setting
@@ -8048,11 +7854,10 @@ static void exec_link(objDocument *Self, LONG Index)
          scExec(script, function_name, args, index);
       }
    }
-   else FMSG("exec_link()","Link index does not refer to a supported link type.");
+   else log.trace("Link index does not refer to a supported link type.");
 
 end:
    Self->Processing--;
-   LogReturn();
 }
 
 /*****************************************************************************
@@ -8084,24 +7889,22 @@ static void set_object_style(objDocument *Self, OBJECTPTR Object)
 
 //****************************************************************************
 
-static void show_bookmark(objDocument *Self, STRING Bookmark)
+static void show_bookmark(objDocument *Self, CSTRING Bookmark)
 {
-   LONG start, end;
-   escIndex *escindex;
+   parasol::Log log(__FUNCTION__);
 
-   LogF("~show_bookmark()","%s", Bookmark);
+   log.branch("%s", Bookmark);
 
    // Find the indexes for the bookmark name
 
+   LONG start, end;
    if (!docFindIndex(Self, Bookmark, &start, &end)) {
       // Get the vertical position of the index and scroll to it
 
-      escindex = ESCAPE_DATA(Self->Stream, start);
-      acScrollToPoint(Self,  0, escindex->Y - 4, 0, MTF_Y);
+      auto esc_index = escape_data<escIndex>(Self->Stream, start);
+      acScrollToPoint(Self,  0, esc_index->Y - 4, 0, MTF_Y);
    }
-   else LogErrorMsg("Failed to find bookmark '%s'", Bookmark);
-
-   LogReturn();
+   else log.warning("Failed to find bookmark '%s'", Bookmark);
 }
 
 //****************************************************************************
@@ -8127,14 +7930,16 @@ static ERROR flash_cursor(objDocument *Self, LARGE TimeElapsed, LARGE CurrentTim
 
 static void reset_cursor(objDocument *Self)
 {
-   LogF("reset_cursor()","");
+   parasol::Log log(__FUNCTION__);
+
+   log.function("");
 
    Self->CursorState = 1;
    if (Self->FlashTimer) UpdateTimer(Self->FlashTimer, 0.5);
    else {
       FUNCTION function;
-      SET_FUNCTION_STDC(function, &flash_cursor);
-      SubscribeTimer(0.5, &function, &Self->FlashTimer);
+      SET_FUNCTION_STDC(function, (APTR)&flash_cursor);
+      SubscribeTimer(0.5, &function, (APTR)&Self->FlashTimer);
    }
 }
 
@@ -8142,23 +7947,21 @@ static void reset_cursor(objDocument *Self)
 
 static ERROR report_event(objDocument *Self, LARGE Event, APTR EventData, CSTRING StructName)
 {
+   parasol::Log log(__FUNCTION__);
    ERROR result = ERR_Okay;
 
    if (Event & Self->EventMask) {
-      LogF("~report_event()","Reporting event $%.8x", (LONG)Event);
+      log.branch("Reporting event $%.8x", (LONG)Event);
 
       if (Self->EventCallback.Type IS CALL_STDC) {
-         ERROR (*routine)(objDocument *, LARGE, APTR);
-
-         OBJECTPTR context = SetContext(Self->EventCallback.StdC.Context);
-            routine = (ERROR (*)(objDocument *, LARGE, APTR)) Self->EventCallback.StdC.Routine;
-            result = routine(Self, Event, EventData);
-         SetContext(context);
+         auto routine = (ERROR (*)(objDocument *, LARGE, APTR))Self->EventCallback.StdC.Routine;
+         parasol::SwitchContext context(Self->EventCallback.StdC.Context);
+         result = routine(Self, Event, EventData);
       }
       else if (Self->EventCallback.Type IS CALL_SCRIPT) {
          OBJECTPTR script;
          if ((script = Self->EventCallback.Script.Script)) {
-            struct ScriptArg args[3];
+            ScriptArg args[3];
             args[0].Name    = "Document";
             args[0].Type    = FD_OBJECTPTR;
             args[0].Address = Self;
@@ -8168,7 +7971,7 @@ static ERROR report_event(objDocument *Self, LARGE Event, APTR EventData, CSTRIN
             args[1].Large = Event;
 
             LONG argsize;
-            if ((EventData) AND (StructName)) {
+            if ((EventData) and (StructName)) {
                args[2].Name    = StructName;
                args[2].Type    = FD_STRUCT;
                args[2].Address = EventData;
@@ -8180,10 +7983,8 @@ static ERROR report_event(objDocument *Self, LARGE Event, APTR EventData, CSTRIN
             if (!error) GetLong(script, FID_Error, &result);
          }
       }
-
-      LogReturn();
    }
-   else FMSG("report_event()","No subscriber for event $%.8x", (LONG)Event);
+   else log.trace("No subscriber for event $%.8x", (LONG)Event);
 
    return result;
 }
