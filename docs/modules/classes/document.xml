@@ -188,6 +188,7 @@
       </description>
       <result>
         <error code="NullArgs">Function call missing argument value(s)</error>
+        <error code="Search">The cell was not found.</error>
         <error code="Okay">Operation successful.</error>
       </result>
     </method>

@@ -1871,13 +1871,9 @@ LONG StrTranslateRefresh(void)
    parasol::Log log(__FUNCTION__);
    struct translate *translate;
    objConfig *config;
-   ConfigEntry *entries;
    SharedControl *sharectl;
    MEMORYID memoryid;
-   STRING str;
    CSTRING language;
-   LONG size, amtentries, total, *array, temp;
-   MAXINT strbuf;
    WORD j, len;
 
    log.branch("");
@@ -1908,14 +1904,14 @@ LONG StrTranslateRefresh(void)
             FID_Flags|TLONG, CNF_FILE_EXISTS,
             TAGEND)) {
 
-         amtentries = config->AmtEntries;
-         entries = config->Entries;
+         auto amtentries = config->AmtEntries;
+         auto entries = config->Entries;
          if (amtentries) {
             // Count the string lengths to figure out how much memory we need
 
-            size = sizeof(struct translate) + (sizeof(STRING) * amtentries);
+            LONG size = sizeof(struct translate) + (sizeof(STRING) * amtentries);
 
-            total = 0;
+            LONG total = 0;
             for (i=0; i < amtentries; i++) {
                if (entries[i].Data[0]) {
                   for (len=0; entries[i].Key[len]; len++);
@@ -1931,9 +1927,9 @@ LONG StrTranslateRefresh(void)
                translate->Replaced = FALSE;
                translate->Total = total;
                StrCopy(language, translate->Language, sizeof(translate->Language));
-               array = (LONG *)(translate + 1);
-               str = (STRING)(array + total);
-               strbuf = (MAXINT)(array + total);
+               auto array = (LONG *)(translate + 1);
+               auto str = (STRING)(array + total);
+               auto strbuf = (MAXINT)(array + total);
 
                for (i=0; i < amtentries; i++) {
                   if (entries[i].Data[0]) {
@@ -2098,7 +2094,7 @@ restart:
    // Do a second search, this time cut off any non-alphabetic characters from the string being translated.
 
    if ((APTR)txt IS (APTR)Text) {
-      for (pos=0; (Text[pos]) AND
+      for (pos=0; (Text[pos]) and
                   (((Text[pos] >= 'a') and (Text[pos] <= 'z')) OR
                    ((Text[pos] >= 'A') and (Text[pos] <= 'Z')) OR
                    (Text[pos] IS ' ')); pos++);
