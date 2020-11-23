@@ -396,11 +396,12 @@ void VLogF(LONG Flags, CSTRING Header, CSTRING Message, va_list Args)
       return;
    }
 
-   LONG level = glLogLevel + tlBaseLine;
+   LONG level = glLogLevel - tlBaseLine;
    if (level > 9) level = 9;
    else if (level < 0) { if (Flags & VLF_BRANCH) tlDepth++; return; }
 
-   if ((log_levels[level] & Flags) != 0) {
+   if (((log_levels[level] & Flags) != 0) or
+       ((glLogLevel <= 2) and (Flags & (VLF_WARNING|VLF_ERROR|VLF_CRITICAL))))  {
       CSTRING name, action;
       BYTE msgstate;
       BYTE adjust = 0;
