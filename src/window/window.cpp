@@ -84,9 +84,9 @@ will be executed when certain actions occur to the window.  The following table 
    LONG      InsideHeight;      /* Internal window dimension.  For initialisation purposes only. */ \
    UBYTE     KeyboardChannel:1; /* TRUE if the keyboard is active */ \
    UBYTE     Shown:1;           /* TRUE if window is on display */ \
-   UBYTE     Title[120];        /* Window title */ \
-   UBYTE     Icon[60];          /* Window icon */ \
-   UBYTE     Menu[180];         /* Location of an XML menu file */
+   char      Title[120];        /* Window title */ \
+   char      Icon[60];          /* Window icon */ \
+   char      Menu[180];         /* Location of an XML menu file */
 
 //#define DEBUG
 
@@ -106,16 +106,12 @@ static OBJECTPTR modSurface = NULL, modDisplay = NULL;
 static OBJECTID glDefaultDisplay = NULL;
 static LONG glDisplayType = 0;
 
-static const struct FieldDef clWindowFlags[];
-static const struct FieldArray clWindowFields[];
-static const struct MethodArray clWindowMethods[];
-static const struct ActionArray clWindowActions[];
-
 struct VarString {
    STRING Field;
    STRING Value;
 };
 
+static ERROR add_window_class(void);
 static void calc_surface_center(objWindow *, LONG *, LONG *);
 static ERROR check_overlap(objWindow *, LONG *, LONG *, LONG *, LONG *);
 static void smart_limits(objWindow *);
@@ -130,13 +126,6 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    if (LoadModule("surface", MODVERSION_SURFACE, &modSurface, &SurfaceBase) != ERR_Okay) return ERR_InitModule;
    if (LoadModule("display", MODVERSION_DISPLAY, &modDisplay, &DisplayBase) != ERR_Okay) return ERR_InitModule;
 
-   LONG class_flags;
-
-   if (GetResource(RES_GLOBAL_INSTANCE)) {
-      class_flags = CLF_SHARED_ONLY|CLF_PUBLIC_OBJECTS;
-   }
-   else class_flags = 0; // When operating stand-alone, do not share surfaces by default.
-
    OBJECTPTR object;
    OBJECTID object_id;
    if (!NewNamedObject(ID_ICONSERVER, NF_NO_TRACK|NF_PUBLIC|NF_UNIQUE, &object, &object_id, "SystemIcons")) {
@@ -147,17 +136,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    glDisplayType = gfxGetDisplayType();
 
-   return(CreateObject(ID_METACLASS, NULL, &clWindow,
-      FID_ClassVersion|TFLOAT, VER_WINDOW,
-      FID_Name|TSTRING,   "Window",
-      FID_Category|TLONG, CCF_GUI,
-      FID_Flags|TLONG,    CLF_PROMOTE_INTEGRAL|class_flags,
-      FID_Actions|TPTR,   clWindowActions,
-      FID_Methods|TARRAY, clWindowMethods,
-      FID_Fields|TARRAY,  clWindowFields,
-      FID_Size|TLONG,     sizeof(objWindow),
-      FID_Path|TSTR,      MOD_PATH,
-      TAGEND));
+   return add_window_class();
 }
 
 //****************************************************************************
@@ -176,7 +155,8 @@ static ERROR WINDOW_AccessObject(objWindow *Self, APTR Void)
 {
    if (Self->SurfaceID) {
       if (AccessObject(Self->SurfaceID, 4000, &Self->Surface) != ERR_Okay) {
-         LogMsg("Failed to access surface #%d.", Self->SurfaceID);
+         parasol::Log log;
+         log.msg("Failed to access surface #%d.", Self->SurfaceID);
          Self->Surface = NULL;
       }
    }
@@ -187,7 +167,7 @@ static ERROR WINDOW_AccessObject(objWindow *Self, APTR Void)
 
 static ERROR WINDOW_ActionNotify(objWindow *Self, struct acActionNotify *Args)
 {
-   if (!Args) return PostError(ERR_NullArgs);
+   if (!Args) return ERR_NullArgs;
    if (Args->Error != ERR_Okay) return ERR_Okay;
 
    if (Args->ActionID IS AC_Disable) {
@@ -202,30 +182,31 @@ static ERROR WINDOW_ActionNotify(objWindow *Self, struct acActionNotify *Args)
       if (Args->ObjectID IS Self->SurfaceID) {
          acFree(Self);
       }
-      else if ((Self->MaximiseCallback.Type IS CALL_SCRIPT) AND
+      else if ((Self->MaximiseCallback.Type IS CALL_SCRIPT) and
                (Self->MaximiseCallback.Script.Script->UniqueID IS Args->ObjectID)) {
          Self->MaximiseCallback.Type = CALL_NONE;
       }
-      else if ((Self->MinimiseCallback.Type IS CALL_SCRIPT) AND
+      else if ((Self->MinimiseCallback.Type IS CALL_SCRIPT) and
                (Self->MinimiseCallback.Script.Script->UniqueID IS Args->ObjectID)) {
          Self->MinimiseCallback.Type = CALL_NONE;
       }
    }
-   else if ((Args->ActionID IS AC_Focus) AND (Args->ObjectID IS Self->Surface->Head.UniqueID)) {
+   else if ((Args->ActionID IS AC_Focus) and (Args->ObjectID IS Self->Surface->Head.UniqueID)) {
       if (!(Self->Head.Flags & NF_INITIALISED)) return ERR_Okay;
 
-      FMSG("~","Responding to window surface receiving the focus.");
+      parasol::Log log;
+      log.traceBranch("Responding to window surface receiving the focus.");
 
       // Move the window to the front when the focus is received
 
-      MSG("Moving window to the front due to focus.");
+      log.trace("Moving window to the front due to focus.");
       acMoveToFront(Self);
 
       // Ensure that the window is visible when the focus is received.  This only occurs if the surface is hidden
       // directly (surface.acHide was used and not window.acHide).
 
-      if ((!(Self->Surface->Flags & RNF_VISIBLE)) AND (Self->Shown)) {
-         MSG("Received focus, window hidden, will show.");
+      if ((!(Self->Surface->Flags & RNF_VISIBLE)) and (Self->Shown)) {
+         log.trace("Received focus, window hidden, will show.");
          acShow(Self);
       }
 
@@ -240,46 +221,45 @@ static ERROR WINDOW_ActionNotify(objWindow *Self, struct acActionNotify *Args)
             LONG flags;
             if (!drwGetSurfaceFlags(userfocus_id, &flags)) {
                if (flags & RNF_GRAB_FOCUS) {
-                  MSG("Current focus surface #%d has GRAB flag set.", userfocus_id);
+                  log.trace("Current focus surface #%d has GRAB flag set.", userfocus_id);
                   grab = FALSE;
                }
             }
          }
 
          if (grab) {
-            MSG("Passing primary focus through to #%d.", Self->UserFocusID);
+            log.trace("Passing primary focus through to #%d.", Self->UserFocusID);
             DelayMsg(AC_Focus, Self->UserFocusID, NULL);
          }
          else if (userfocus_id IS Self->UserFocusID) {
             // Reinstate the current focus in order to prevent it from being lost when the user clicks on a surface
             // that isn't defined with GRABFOCUS.
 
-            MSG("Passing primary focus through to #%d.", Self->UserFocusID);
+            log.trace("Passing primary focus through to #%d.", Self->UserFocusID);
             DelayMsg(AC_Focus, Self->UserFocusID, NULL);
          }
       }
 
       NotifySubscribers(Self, AC_Focus, NULL, NULL, ERR_Okay);
-
-      LOGRETURN();
    }
-   else if ((Args->ActionID IS MT_DrwInheritedFocus) AND (Args->ObjectID IS Self->Surface->Head.UniqueID)) {
+   else if ((Args->ActionID IS MT_DrwInheritedFocus) and (Args->ObjectID IS Self->Surface->Head.UniqueID)) {
       // InheritedFocus is reported if one of the children in the window has received the focus.
 
       // If Inheritance->Flags has RNF_GRAB_FOCUS, the window updates its UserFocus field.  If it doesn't have
       // RNF_GRAB_FOCUS then the window calls DelayMsg(AC_Focus, Self->UserFocusID) to forcibly put the current
       // UserFocus back.
 
+      parasol::Log log;
       struct drwInheritedFocus *inherit;
       if ((inherit = (struct drwInheritedFocus *)Args->Args)) {
          if (inherit->Flags & RNF_GRAB_FOCUS) {
             if (Self->UserFocusID != inherit->FocusID) {
-               MSG("(InheritedFocus) User focus switched to #%d from #%d.", inherit->FocusID, Self->UserFocusID);
+               log.trace("(InheritedFocus) User focus switched to #%d from #%d.", inherit->FocusID, Self->UserFocusID);
                Self->UserFocusID = inherit->FocusID;
             }
          }
-         else if ((Self->UserFocusID) AND (Self->UserFocusID != inherit->FocusID)) {
-            MSG("(InheritedFocus) Focus reverting from requested #%d to #%d", inherit->FocusID, Self->UserFocusID);
+         else if ((Self->UserFocusID) and (Self->UserFocusID != inherit->FocusID)) {
+            log.trace("(InheritedFocus) Focus reverting from requested #%d to #%d", inherit->FocusID, Self->UserFocusID);
             //DelayMsg(AC_Focus, Self->UserFocusID, NULL);
             SetField(Self, FID_RevertFocus, Self->UserFocusID);
          }
@@ -331,42 +311,39 @@ Okay
 
 static ERROR WINDOW_Close(objWindow *Self, APTR Void)
 {
+   parasol::Log log;
+
    if (!Self->Close) {
-      LogMsg("Window.Close is disabled.");
+      log.msg("Window.Close is disabled.");
       return ERR_Okay; // Developer has requested that closing the window not be possible
    }
 
    if (Self->CloseFeedback.Type) {
       if (Self->CloseFeedback.Type IS CALL_STDC) {
-         void (*routine)(objWindow *);
-         OBJECTPTR context = SetContext(Self->CloseFeedback.StdC.Context);
-            routine = Self->CloseFeedback.StdC.Routine;
-            routine(Self);
-         SetContext(context);
+         auto routine = (void (*)(objWindow *))Self->CloseFeedback.StdC.Routine;
+         parasol::SwitchContext context(Self->CloseFeedback.StdC.Context);
+         routine(Self);
       }
       else if (Self->CloseFeedback.Type IS CALL_SCRIPT) {
          OBJECTPTR script;
          if ((script = Self->CloseFeedback.Script.Script)) {
-            const struct ScriptArg args[] = {
-               { "Window", FD_OBJECTPTR, { .Address = Self } }
-            };
+            const ScriptArg args[] = { { "Window", FD_OBJECTPTR, { .Address = Self } } };
             scCallback(script, Self->CloseFeedback.Script.ProcedureID, args, ARRAYSIZE(args));
          }
       }
    }
 
    if (Self->Quit) {
-      LogMsg("Sending the application a quit message.");
+      log.msg("Sending the application a quit message.");
 
       if (Self->Head.TaskID IS CurrentTaskID()) {
          SendMessage(NULL, MSGID_QUIT, NULL, NULL, NULL);
       }
       else {
-         struct ListTasks *list;
+         ListTasks *list;
          if (!ListTasks(NULL, &list)) {
-            WORD i;
             OBJECTID task_id = CurrentTaskID();
-            for (i=0; list[i].TaskID; i++) {
+            for (LONG i=0; list[i].TaskID; i++) {
                if (list[i].TaskID IS task_id) {
                   SendMessage(list[i].MessageID, MSGID_QUIT, NULL, NULL, NULL);
                   break;
@@ -390,7 +367,6 @@ static ERROR WINDOW_Disable(objWindow *Self, APTR Void)
 {
    // See the ActionNotify routine to see what happens when the surface is disabled.
 
-   LogMsg(NULL);
    acDisable(Self->Surface);
    return ERR_Okay;
 }
@@ -405,7 +381,6 @@ static ERROR WINDOW_Enable(objWindow *Self, APTR Void)
 {
    // See the ActionNotify routine to see what happens when the surface is enabled.
 
-   LogMsg(NULL);
    acEnable(Self->Surface);
    return ERR_Okay;
 }
@@ -426,6 +401,8 @@ static ERROR WINDOW_Focus(objWindow *Self, APTR Void)
 
 static ERROR WINDOW_Free(objWindow *Self, APTR Void)
 {
+   parasol::Log log;
+
    acHide(Self);
 
    if (Self->Surface) UnsubscribeAction(Self->Surface, NULL);
@@ -441,21 +418,18 @@ static ERROR WINDOW_Free(objWindow *Self, APTR Void)
    }
 
    if (Self->Quit) {
-      LogMsg("Sending the application a quit message.");
+      log.msg("Sending the application a quit message.");
 
       if (Self->Head.TaskID IS CurrentTaskID()) {
          SendMessage(0, MSGID_QUIT, 0, 0, 0);
       }
       else {
          OBJECTID task_id = CurrentTaskID();
-         UBYTE message = FALSE;
-         struct ListTasks *list;
+         ListTasks *list;
          if (!ListTasks(0, &list)) {
-            LONG i;
-            for (i=0; list[i].TaskID; i++) {
+            for (LONG i=0; list[i].TaskID; i++) {
                if (list[i].TaskID IS task_id) {
                   SendMessage(list[i].MessageID, MSGID_QUIT, 0, 0, 0);
-                  message = TRUE;
                   break;
                }
             }
@@ -478,7 +452,9 @@ static ERROR WINDOW_Hide(objWindow *Self, APTR Void)
    if (!Self->Surface) return ERR_Okay; // Sometimes there is no surface if this routine is called from Free()
 
    if (Self->Surface->Flags & RNF_HAS_FOCUS) {
-      LogBranch(NULL);
+      parasol::Log log;
+
+      log.branch("");
 
       acHide(Self->Surface);
 
@@ -486,13 +462,12 @@ static ERROR WINDOW_Hide(objWindow *Self, APTR Void)
 
       OBJECTID parent_id, window_id;
       if ((parent_id = Self->Surface->ParentID)) {
-         struct SurfaceControl *ctl;
+         SurfaceControl *ctl;
          if ((ctl = drwAccessList(ARF_READ))) {
-            struct SurfaceList *list = (APTR)ctl + ctl->ArrayIndex + ((ctl->Total-1) * ctl->EntrySize);
+            auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex + ((ctl->Total-1) * ctl->EntrySize));
             if (list->ParentID) {
-               LONG i;
-               for (i=ctl->Total-1; i >= 0; i--, list=(APTR)list - ctl->EntrySize) {
-                  if ((list->ParentID IS parent_id) AND (list->SurfaceID != Self->Surface->Head.UniqueID)) {
+               for (auto i=ctl->Total-1; i >= 0; i--, list=(SurfaceList *)((BYTE *)list - ctl->EntrySize)) {
+                  if ((list->ParentID IS parent_id) and (list->SurfaceID != Self->Surface->Head.UniqueID)) {
                      if (list->Flags & RNF_VISIBLE) {
                         if ((window_id = GetOwnerID(list->SurfaceID))) {
                            if (GetClassID(window_id) IS ID_WINDOW) {
@@ -507,20 +482,16 @@ static ERROR WINDOW_Hide(objWindow *Self, APTR Void)
 
             drwReleaseList(ARF_READ);
          }
-         else PostError(ERR_AccessMemory);
+         else log.warning(ERR_AccessMemory);
       }
       else {
          // There are no other windows in our container - it's highly likely that we're in a hosted environment.
 
-
       }
-
-      LogReturn();
    }
    else acHide(Self->Surface);
 
    Self->Shown = FALSE;
-
    return ERR_Okay;
 }
 
@@ -528,11 +499,13 @@ static ERROR WINDOW_Hide(objWindow *Self, APTR Void)
 
 static ERROR WINDOW_Init(objWindow *Self, APTR Void)
 {
+   parasol::Log log;
+
    if (Self->Surface->PopOverID) {
       // If the surface that we're popping over has the stick-to-front flag set, then we also need to be stick-to-front
       // or else we'll end up being situated behind the window.
 
-      MSG("Checking if popover surface is stick-to-front");
+      log.trace("Checking if popover surface is stick-to-front");
 
       SURFACEINFO *info;
       if (!drwGetSurfaceInfo(Self->Surface->PopOverID, &info)) {
@@ -553,7 +526,7 @@ static ERROR WINDOW_Init(objWindow *Self, APTR Void)
          if (!acGetVar(style, "/interface/@matchdpi", strdpi, sizeof(strdpi))) {
             char dummy[2];
             if (!acGetVar(style, "/interface/@dpi", dummy, sizeof(dummy))) {
-               LogErrorMsg("/interface/@matchdpi and /interface/@dpi cannot be set together.  @matchdpi will be ignored.");
+               log.warning("/interface/@matchdpi and /interface/@dpi cannot be set together.  @matchdpi will be ignored.");
             }
             else {
                DISPLAYINFO *display;
@@ -602,7 +575,7 @@ static ERROR WINDOW_Init(objWindow *Self, APTR Void)
       Self->Surface->Type |= RT_ROOT;
    }
 
-   LogMsg("Dimensions: %dx%d,%dx%d, Margins: %d,%d,%d,%d, Parent: %d", Self->Surface->X, Self->Surface->Y, Self->Surface->Width, Self->Surface->Height, Self->Surface->LeftMargin, Self->Surface->TopMargin, Self->Surface->RightMargin, Self->Surface->BottomMargin, Self->Surface->ParentID);
+   log.msg("Dimensions: %dx%d,%dx%d, Margins: %d,%d,%d,%d, Parent: %d", Self->Surface->X, Self->Surface->Y, Self->Surface->Width, Self->Surface->Height, Self->Surface->LeftMargin, Self->Surface->TopMargin, Self->Surface->RightMargin, Self->Surface->BottomMargin, Self->Surface->ParentID);
 
    if (!acInit(Self->Surface)) {
       SubscribeActionTags(Self->Surface,
@@ -616,7 +589,7 @@ static ERROR WINDOW_Init(objWindow *Self, APTR Void)
          TAGEND);
    }
 
-   if ((!Self->Surface->ParentID) AND (Self->Surface->DisplayID)) { // On X11 and Windows, we need to retrieve the client border information from the host window.
+   if ((!Self->Surface->ParentID) and (Self->Surface->DisplayID)) { // On X11 and Windows, we need to retrieve the client border information from the host window.
       objDisplay *display;
       if (!AccessObject(Self->Surface->DisplayID, 3000, &display)) {
          Self->ClientLeft   = display->LeftMargin;
@@ -637,7 +610,7 @@ static ERROR WINDOW_Init(objWindow *Self, APTR Void)
 
    // Turn off the maximise gadget if the maximium and minimum values are equal
 
-   if ((Self->Surface->MaxHeight IS Self->Surface->MinHeight) AND (Self->Surface->MaxWidth IS Self->Surface->MinWidth)) {
+   if ((Self->Surface->MaxHeight IS Self->Surface->MinHeight) and (Self->Surface->MaxWidth IS Self->Surface->MinWidth)) {
       Self->Maximise = FALSE;
    }
 
@@ -646,9 +619,9 @@ static ERROR WINDOW_Init(objWindow *Self, APTR Void)
 
       if (!error) {
          error = drwApplyStyleGraphics(Self, Self->SurfaceID, "window", "titlebar");
-         if (error) LogErrorMsg("Failed to process window titlebar graphics.");
+         if (error) log.warning("Failed to process window titlebar graphics.");
       }
-      else LogErrorMsg("Failed to process window style graphics.");
+      else log.warning("Failed to process window style graphics.");
 
       if (error) return error;
    }
@@ -658,25 +631,25 @@ static ERROR WINDOW_Init(objWindow *Self, APTR Void)
 
       if (Self->Flags & WNF_BACKGROUND) {
          char colour[80] = "[glStyle./colours/@colour]";
-         if ((!StrEvaluate(colour, sizeof(colour), 0, 0)) AND (colour[0])) {
+         if ((!StrEvaluate(colour, sizeof(colour), 0, 0)) and (colour[0])) {
             SetString(Self->Surface, FID_Colour, colour);
          }
          else SetString(Self->Surface, FID_Colour, "230,230,230");
       }
    }
-   else if ((!(Self->Flags & WNF_BORDERLESS)) OR (Self->Flags & WNF_BACKGROUND)) {
+   else if ((!(Self->Flags & WNF_BORDERLESS)) or (Self->Flags & WNF_BACKGROUND)) {
       // This is the standard code for when a window has no parent (i.e. is not in the native desktop).
 
       char colour[80] = "[glStyle./colours/@colour]";
-      if ((!StrEvaluate(colour, sizeof(colour), 0, 0)) AND (colour[0])) {
+      if ((!StrEvaluate(colour, sizeof(colour), 0, 0)) and (colour[0])) {
          SetString(Self->Surface, FID_Colour, colour);
       }
       else SetString(Self->Surface, FID_Colour, "230,230,230");
 
-      if (Self->InsideBorder) drwAddCallback(Self->Surface, &draw_border);
+      if (Self->InsideBorder) drwAddCallback(Self->Surface, (APTR)&draw_border);
    }
 
-   if ((Self->ResizeFlags) AND (Self->ResizeBorder > 0) AND (Self->Surface->ParentID)) {
+   if ((Self->ResizeFlags) and (Self->ResizeBorder > 0) and (Self->Surface->ParentID)) {
       CreateObject(ID_RESIZE, 0, &Self->Resize,
          FID_Object|TLONG,     Self->SurfaceID,
          FID_Surface|TLONG,    Self->SurfaceID,
@@ -701,17 +674,17 @@ static ERROR WINDOW_Init(objWindow *Self, APTR Void)
    // If InsideWidth or InsideHeight were defined for initialisation, we need to correct the window size by taking
    // into account the client border values.
 
-   if ((Self->InsideWidth) OR (Self->InsideHeight)) {
+   if ((Self->InsideWidth) or (Self->InsideHeight)) {
       LONG width, height;
 
       if (Self->InsideWidth) {
-         if ((!Self->Surface->ParentID) AND (Self->Surface->DisplayID)) width = Self->InsideWidth;
+         if ((!Self->Surface->ParentID) and (Self->Surface->DisplayID)) width = Self->InsideWidth;
          else width = Self->InsideWidth + Self->ClientLeft + Self->ClientRight;
       }
       else width = Self->Surface->Width;
 
       if (Self->InsideHeight) {
-         if ((!Self->Surface->ParentID) AND (Self->Surface->DisplayID)) height = Self->InsideHeight;
+         if ((!Self->Surface->ParentID) and (Self->Surface->DisplayID)) height = Self->InsideHeight;
          else height = Self->InsideHeight + Self->ClientTop + Self->ClientBottom;
       }
       else height = Self->Surface->Height;
@@ -723,7 +696,7 @@ static ERROR WINDOW_Init(objWindow *Self, APTR Void)
       // Move the window to the center of the display if centering is turned on
       LONG x, y;
       calc_surface_center(Self, &x, &y);
-      if ((x != Self->Surface->X) OR (y != Self->Surface->Y)) {
+      if ((x != Self->Surface->X) or (y != Self->Surface->Y)) {
          acMoveToPoint(Self->Surface, x, y, 0, MTF_X|MTF_Y);
       }
    }
@@ -785,7 +758,7 @@ static ERROR WINDOW_Init(objWindow *Self, APTR Void)
    if (Self->Center) {
       LONG x, y;
       calc_surface_center(Self, &x, &y);
-      if ((x != Self->Surface->X) OR (y != Self->Surface->Y)) {
+      if ((x != Self->Surface->X) or (y != Self->Surface->Y)) {
          acMoveToPoint(Self->Surface, x, y, 0, MTF_X|MTF_Y);
       }
    }
@@ -818,28 +791,26 @@ AccessObject: Failed to access the window's parent surface.
 
 static ERROR WINDOW_Maximise(objWindow *Self, struct winMaximise *Args)
 {
-   struct ClipRectangle margins;
+   parasol::Log log;
 
    if (!Self->Maximise) {
-      LogErrorMsg("Maximisation for this window is turned off.");
+      log.warning("Maximisation for this window is turned off.");
       return ERR_Okay;
    }
 
    if (Self->MaximiseCallback.Type) {
       if (Self->MaximiseCallback.Type IS CALL_STDC) {
-         void (*routine)(objWindow *) = Self->MaximiseCallback.StdC.Routine;
-
+         auto routine = (void (*)(objWindow *))Self->MaximiseCallback.StdC.Routine;
          if (Self->MaximiseCallback.StdC.Context) {
-            OBJECTPTR context = SetContext(Self->MaximiseCallback.StdC.Context);
+            parasol::SwitchContext context(Self->MaximiseCallback.StdC.Context);
             routine(Self);
-            SetContext(context);
          }
          else routine(Self);
       }
       else if (Self->MaximiseCallback.Type IS CALL_SCRIPT) {
          OBJECTPTR script;
          if ((script = Self->MaximiseCallback.Script.Script)) {
-            const struct ScriptArg args[] = {
+            const ScriptArg args[] = {
                { "Window", FD_OBJECTPTR, { .Address = Self } }
             };
             scCallback(script, Self->MaximiseCallback.Script.ProcedureID, args, ARRAYSIZE(args));
@@ -851,7 +822,6 @@ static ERROR WINDOW_Maximise(objWindow *Self, struct winMaximise *Args)
       // If the window is hosted, send the maximisation request to the display
 
       objDisplay *display;
-
       if (!AccessObject(Self->Surface->DisplayID, 3000, &display)) {
          SetLong(display, FID_Flags, display->Flags | SCR_MAXIMISE);
          ReleaseObject(display);
@@ -859,6 +829,7 @@ static ERROR WINDOW_Maximise(objWindow *Self, struct winMaximise *Args)
       return ERR_Okay;
    }
 
+   ClipRectangle margins;
    objSurface *parent;
    if (!AccessObject(Self->Surface->ParentID, 5000, &parent)) {
       if ((margins.Left = parent->LeftMargin) < 0) margins.Left = 0;
@@ -881,25 +852,22 @@ static ERROR WINDOW_Maximise(objWindow *Self, struct winMaximise *Args)
       if (margins.Right < x2)  x2 = margins.Right;
       if (margins.Bottom < y2) y2 = margins.Bottom;
 
-      if ((Args) AND (Args->Toggle IS TRUE)) {
-         MSG("Toggle-check.");
+      if ((Args) and (Args->Toggle IS TRUE)) {
+         log.msg("Toggle-check.");
 
          // If the window is already maximised, restore it
 
-         if ((Self->RestoreWidth) AND (Self->RestoreHeight)) {
-            if ((Self->Surface->X IS x) AND (Self->Surface->Y IS y) AND
-                (Self->Surface->Width IS (x2-x)) AND (Self->Surface->Height IS (y2-y))) {
-
-               MSG("Restoring the window area.");
-
+         if ((Self->RestoreWidth) and (Self->RestoreHeight)) {
+            if ((Self->Surface->X IS x) and (Self->Surface->Y IS y) and
+                (Self->Surface->Width IS (x2-x)) and (Self->Surface->Height IS (y2-y))) {
+               log.msg("Restoring the window area.");
                acRedimension(Self->Surface, Self->RestoreX, Self->RestoreY, 0.0, Self->RestoreWidth, Self->RestoreHeight, 0.0);
-
                return ERR_Okay;
             }
          }
       }
 
-      if (((x2-x) IS Self->Surface->Width) AND ((y2-y) IS Self->Surface->Height)) {
+      if (((x2-x) IS Self->Surface->Width) and ((y2-y) IS Self->Surface->Height)) {
          // If the window is already at the required width and height, simply move the window rather than going through
          // with the maximise process.
 
@@ -913,7 +881,7 @@ static ERROR WINDOW_Maximise(objWindow *Self, struct winMaximise *Args)
          Self->RestoreWidth  = Self->Surface->Width;
          Self->RestoreHeight = Self->Surface->Height;
 
-         MSG("Maximising the window area.");
+         log.trace("Maximising the window area.");
 
          acRedimension(Self->Surface, x, y, 0.0, x2-x, y2-y, 0.0);
       }
@@ -939,26 +907,25 @@ Okay
 
 static ERROR WINDOW_Minimise(objWindow *Self, APTR Void)
 {
+   parasol::Log log;
+
    if (Self->Minimise IS FALSE) return ERR_Okay;
 
-   LogBranch(NULL);
+   log.branch("");
 
    if (Self->MinimiseCallback.Type) {
       if (Self->MinimiseCallback.Type IS CALL_STDC) {
-         void (*routine)(objWindow *);
-         routine = Self->MinimiseCallback.StdC.Routine;
-
+         auto routine = (void (*)(objWindow *))Self->MinimiseCallback.StdC.Routine;
          if (Self->MinimiseCallback.StdC.Context) {
-            OBJECTPTR context = SetContext(Self->MinimiseCallback.StdC.Context);
+            parasol::SwitchContext context(Self->MinimiseCallback.StdC.Context);
             routine(Self);
-            SetContext(context);
          }
          else routine(Self);
       }
       else if (Self->MinimiseCallback.Type IS CALL_SCRIPT) {
          OBJECTPTR script;
          if ((script = Self->MinimiseCallback.Script.Script)) {
-            const struct ScriptArg args[] = {
+            const ScriptArg args[] = {
                { "Window", FD_OBJECTPTR, { .Address = Self } }
             };
             scCallback(script, Self->MinimiseCallback.Script.ProcedureID, args, ARRAYSIZE(args));
@@ -966,7 +933,6 @@ static ERROR WINDOW_Minimise(objWindow *Self, APTR Void)
       }
    }
 
-   LogReturn();
    return ERR_Okay;
 }
 
@@ -1012,7 +978,7 @@ MoveToPoint: Moves the window to preset coordinates.
 
 static ERROR WINDOW_MoveToPoint(objWindow *Self, struct acMoveToPoint *Args)
 {
-   if ((Self->Surface->DisplayID) AND (!Self->Surface->ParentID)) {
+   if ((Self->Surface->DisplayID) and (!Self->Surface->ParentID)) {
       return ActionMsg(AC_MoveToPoint, Self->Surface->DisplayID, Args);
    }
    else return Action(AC_MoveToPoint, Self->Surface, Args);
@@ -1031,14 +997,14 @@ static ERROR WINDOW_NewChild(objWindow *Self, struct acNewChild *Args)
       ReleaseObject(newchild);
       return ERR_OwnerPassThrough;
    }
-   else return PostError(ERR_AccessObject);
+   else return ERR_AccessObject;
 }
 
 //****************************************************************************
 
 static ERROR WINDOW_NewObject(objWindow *Self, APTR Void)
 {
-   if ((!glDefaultDisplay) OR (CheckObjectExists(glDefaultDisplay, NULL) != ERR_Okay)) {
+   if ((!glDefaultDisplay) or (CheckObjectExists(glDefaultDisplay, NULL) != ERR_Okay)) {
       FastFindObject("Desktop", ID_SURFACE, &glDefaultDisplay, 1, NULL);
    }
 
@@ -1111,7 +1077,7 @@ static ERROR WINDOW_Redimension(objWindow *Self, struct acRedimension *Args)
       struct acRedimension redim = *Args;
       redim.X += Self->ClientLeft;
       redim.Y += Self->ClientTop;
-      redim.Width = redim.Width - Self->ClientLeft - Self->ClientRight;
+      redim.Width  = redim.Width - Self->ClientLeft - Self->ClientRight;
       redim.Height = redim.Height - Self->ClientTop - Self->ClientBottom;
       return Action(AC_Redimension, Self->Surface, &redim);
    }
@@ -1151,7 +1117,9 @@ Show: Puts the window on display.
 
 static ERROR WINDOW_Show(objWindow *Self, APTR Void)
 {
-   LogBranch("%dx%d,%dx%d", Self->Surface->X, Self->Surface->Y, Self->Surface->Width, Self->Surface->Height);
+   parasol::Log log;
+
+   log.branch("%dx%d,%dx%d", Self->Surface->X, Self->Surface->Y, Self->Surface->Width, Self->Surface->Height);
 
    if (Self->Focus) {
       if (!(Self->Surface->Flags & RNF_HAS_FOCUS)) {
@@ -1160,10 +1128,7 @@ static ERROR WINDOW_Show(objWindow *Self, APTR Void)
    }
 
    acShow(Self->Surface);
-
    Self->Shown = TRUE;
-
-   LogReturn();
    return ERR_Okay;
 }
 
@@ -1187,9 +1152,11 @@ field is read.
 
 static ERROR GET_Canvas(objWindow *Self, OBJECTID *Value)
 {
-   if (!(Self->Head.Flags & NF_INITIALISED)) return PostError(ERR_NotInitialised);
+   parasol::Log log;
 
-   if ((Self->CanvasID) OR (Self->Shown)) {
+   if (!(Self->Head.Flags & NF_INITIALISED)) return log.warning(ERR_NotInitialised);
+
+   if ((Self->CanvasID) or (Self->Shown)) {
       *Value = Self->CanvasID;
       return ERR_Okay;
    }
@@ -1258,13 +1225,13 @@ static ERROR SET_Close(objWindow *Self, LONG Value)
 {
    if (Value) {
       Self->Close = TRUE;
-      if ((Self->Head.Flags & NF_INITIALISED) AND (Self->CloseID)) {
+      if ((Self->Head.Flags & NF_INITIALISED) and (Self->CloseID)) {
          acEnableID(Self->CloseID);
       }
    }
    else {
       Self->Close = FALSE;
-      if ((Self->Head.Flags & NF_INITIALISED) AND (Self->CloseID)) {
+      if ((Self->Head.Flags & NF_INITIALISED) and (Self->CloseID)) {
          acDisableID(Self->CloseID);
       }
    }
@@ -1365,7 +1332,7 @@ static ERROR GET_Icon(objWindow *Self, STRING *Value)
 
 static ERROR SET_Icon(objWindow *Self, CSTRING Value)
 {
-   if ((!Value) OR (!Value[0])) return ERR_Okay;
+   if ((!Value) or (!Value[0])) return ERR_Okay;
 
    if (!StrCompare("icons:", Value, 0, NULL)) {
       StrCopy(Value, Self->Icon, sizeof(Self->Icon));
@@ -1463,13 +1430,13 @@ static ERROR SET_Maximise(objWindow *Self, LONG Value)
 {
    if (Value) {
       Self->Maximise = TRUE;
-      if ((Self->Head.Flags & NF_INITIALISED) AND (Self->MaximiseID)) {
+      if ((Self->Head.Flags & NF_INITIALISED) and (Self->MaximiseID)) {
          acEnableID(Self->MaximiseID);
       }
    }
    else {
       Self->Maximise = FALSE;
-      if ((Self->Head.Flags & NF_INITIALISED) AND (Self->MaximiseID)) {
+      if ((Self->Head.Flags & NF_INITIALISED) and (Self->MaximiseID)) {
          acDisableID(Self->MaximiseID);
       }
    }
@@ -1530,13 +1497,13 @@ static ERROR SET_Minimise(objWindow *Self, LONG Value)
 {
    if (Value) {
       Self->Minimise = TRUE;
-      if ((Self->Head.Flags & NF_INITIALISED) AND (Self->MinimiseID)) {
+      if ((Self->Head.Flags & NF_INITIALISED) and (Self->MinimiseID)) {
          acEnableID(Self->MinimiseID);
       }
    }
    else {
       Self->Minimise = FALSE;
-      if ((Self->Head.Flags & NF_INITIALISED) AND (Self->MinimiseID)) {
+      if ((Self->Head.Flags & NF_INITIALISED) and (Self->MinimiseID)) {
          acDisableID(Self->MinimiseID);
       }
    }
@@ -1602,13 +1569,13 @@ static ERROR SET_MoveToBack(objWindow *Self, LONG Value)
 {
    if (Value) {
       Self->MoveToBack = TRUE;
-      if ((Self->Head.Flags & NF_INITIALISED) AND (Self->MoveToBackID)) {
+      if ((Self->Head.Flags & NF_INITIALISED) and (Self->MoveToBackID)) {
          acEnableID(Self->MoveToBackID);
       }
    }
    else {
       Self->MoveToBack = FALSE;
-      if ((Self->Head.Flags & NF_INITIALISED) AND (Self->MoveToBackID)) {
+      if ((Self->Head.Flags & NF_INITIALISED) and (Self->MoveToBackID)) {
          acDisableID(Self->MoveToBackID);
       }
    }
@@ -1638,7 +1605,7 @@ the device is held).
 
 static ERROR SET_Orientation(objWindow *Self, LONG Value)
 {
-   if ((Value >= 0) AND (Value <= 2)) {
+   if ((Value >= 0) and (Value <= 2)) {
       Self->Orientation = Value;
       return ERR_Okay;
    }
@@ -1716,7 +1683,7 @@ by subscribing to the #Close() method.
 Resize: Determines what sides of the window are resizeable.
 
 This field defines what sides of the window are resizeable.  It can only be set from the style script that is
-defined for the window.  The string format is defined as a series of flags separated with the OR character.
+defined for the window.  The string format is defined as a series of flags separated with the or character.
 
 -FIELD-
 ResizeBorder: Defines the extent of the resize area at the sides of the window.
@@ -1809,7 +1776,9 @@ static ERROR GET_Title(objWindow *Self, STRING *Value)
 
 static ERROR SET_Title(objWindow *Self, CSTRING Value)
 {
-   LogMsg("%s", Value);
+   parasol::Log log;
+
+   log.msg("%s", Value);
 
    if (Value) StrCopy(StrTranslateText(Value), Self->Title, sizeof(Self->Title));
    else Self->Title[0] = 0;
@@ -1918,54 +1887,55 @@ static ERROR SET_Y(objWindow *Self, LONG Value)
 
 static ERROR check_overlap(objWindow *Self, LONG *X, LONG *Y, LONG *Width, LONG *Height)
 {
-   struct SurfaceControl *ctl;
-   struct SurfaceList *list, *surfacelist;
-   LONG x, y, i;
-
    if (Self->Flags & WNF_FORCE_POS) return ERR_False;
    if (!Self->Surface->ParentID) return ERR_False;
 
-   x = *X;
-   y = *Y;
+   LONG x = *X;
+   LONG y = *Y;
 
    if (x < 0) x = 0;
    if (y < 0) y = 0;
 
+   SurfaceControl *ctl;
    if ((ctl = drwAccessList(ARF_READ))) {
 restart:
-      surfacelist = (APTR)ctl + ctl->ArrayIndex;
-      for (i=0, list=surfacelist; i < ctl->Total; i++, list=(APTR)list+ctl->EntrySize) {
-         if (list->ParentID IS Self->Surface->ParentID) {
-            if ((list->X IS x) AND (list->Y IS y)) {
-               x += 20;
-               y += 20;
-               goto restart;
+      {
+         auto surfacelist = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
+         auto list = surfacelist;
+         for (LONG i=0; i < ctl->Total; i++, list=(SurfaceList *)((BYTE *)list + ctl->EntrySize)) {
+            if (list->ParentID IS Self->Surface->ParentID) {
+               if ((list->X IS x) and (list->Y IS y)) {
+                  x += 20;
+                  y += 20;
+                  goto restart;
+               }
             }
          }
-      }
 
-      if ((x != Self->Surface->X) OR (y != Self->Surface->Y)) {
-         for (i=0, list=surfacelist; i < ctl->Total; i++, list=(APTR)list+ctl->EntrySize) {
-            if (list->SurfaceID IS Self->Surface->ParentID) break;
+         if ((x != Self->Surface->X) or (y != Self->Surface->Y)) {
+            list = surfacelist;
+            for (LONG i=0; i < ctl->Total; i++, list=(SurfaceList *)((BYTE *)list + ctl->EntrySize)) {
+               if (list->SurfaceID IS Self->Surface->ParentID) break;
+            }
+
+            LONG list_width = list->Width;
+            LONG list_height = list->Height;
+            drwReleaseList(ARF_READ);
+
+            if ((x + Self->Surface->Width < list_width) and (y + Self->Surface->Height < list_height)) {
+               acMoveToPoint(Self->Surface, x, y, 0, MTF_X|MTF_Y);
+            }
          }
-
-         LONG list_width = list->Width;
-         LONG list_height = list->Height;
-         drwReleaseList(ARF_READ);
-
-         if ((x + Self->Surface->Width < list_width) AND (y + Self->Surface->Height < list_height)) {
-            acMoveToPoint(Self->Surface, x, y, 0, MTF_X|MTF_Y);
-         }
+         else drwReleaseList(ARF_READ);
       }
-      else drwReleaseList(ARF_READ);
    }
 
    // Check the bounds of the window - this is mainly for applications that simply can't behave themselves when it
    // comes to window positioning.
 
-   if ((Width) AND (Height)) {
-      if ((x < 0) AND (x + *Width > 0)) x = 0; // The window is partially outside the parent surface
-      if ((y < 0) AND (y + *Height > 0)) y = 0;
+   if ((Width) and (Height)) {
+      if ((x < 0) and (x + *Width > 0)) x = 0; // The window is partially outside the parent surface
+      if ((y < 0) and (y + *Height > 0)) y = 0;
 
       LONG vx, vy, vwidth, vheight;
       if (!drwGetVisibleArea(Self->Surface->ParentID, &vx, &vy, NULL, NULL, &vwidth, &vheight)) {
@@ -1980,19 +1950,19 @@ restart:
             y = vy + vheight - *Height;
          }
 
-         if ((x >= 0) AND (x < vx)) {  // Window is within the desktop zone, but is partially outside of the visible frame.
+         if ((x >= 0) and (x < vx)) {  // Window is within the desktop zone, but is partially outside of the visible frame.
             if (x <= 100) x = vx + x;
             else x = vx;
          }
 
-         if ((y >= 0) AND (y < vy)) {
+         if ((y >= 0) and (y < vy)) {
             if (y <= 100) y = vy + y;
             else y = vy;
          }
       }
    }
 
-   if ((x != *X) OR (y != *Y)) {
+   if ((x != *X) or (y != *Y)) {
       *X = x;
       *Y = y;
       return ERR_True;
@@ -2004,8 +1974,10 @@ restart:
 
 static void calc_surface_center(objWindow *Self, LONG *X, LONG *Y)
 {
+   parasol::Log log(__FUNCTION__);
+
    if (Self->Surface->PopOverID) {
-      LogF("calc_center()","Centering the window [PopOver]");
+      log.msg("Centering the window [PopOver]");
 
       LONG x, y, width, height;
       if (!drwGetSurfaceCoords(Self->Surface->PopOverID, NULL, NULL, &x, &y, &width, &height)) {
@@ -2019,7 +1991,7 @@ static void calc_surface_center(objWindow *Self, LONG *X, LONG *Y)
       }
    }
    else if (Self->Surface->ParentID) {
-      LogF("calc_center()","Centering the window [Within Parent]");
+      log.msg("Centering the window [Within Parent]");
       LONG vx, vy, vwidth, vheight;
       if (!drwGetVisibleArea(Self->Surface->ParentID, &vx, &vy, NULL, NULL, &vwidth, &vheight)) {
          *X = vx + ((vwidth - Self->Surface->Width)>>1);
@@ -2029,7 +2001,7 @@ static void calc_surface_center(objWindow *Self, LONG *X, LONG *Y)
    }
    else {
       DISPLAYINFO *display;
-      LogF("calc_center()","Centering the window [Within Host]");
+      log.msg("Centering the window [Within Host]");
       if (!gfxGetDisplayInfo(0, &display)) {
          *X = (display->Width - Self->Surface->Width) / 2;
          *Y = (display->Height - Self->Surface->Height) / 2;
@@ -2043,9 +2015,8 @@ static void calc_surface_center(objWindow *Self, LONG *X, LONG *Y)
 
 static void smart_limits(objWindow *Self)
 {
-   SURFACEINFO *info;
-
-   if ((Self->Flags & WNF_SMART_LIMITS) AND (Self->Surface->ParentID)) {
+   if ((Self->Flags & WNF_SMART_LIMITS) and (Self->Surface->ParentID)) {
+      SURFACEINFO *info;
       if (!drwGetSurfaceInfo(Self->Surface->ParentID, &info)) {
          Self->Surface->TopLimit    = 0;
          Self->Surface->BottomLimit = -Self->Surface->Height + Self->Surface->TopMargin;
@@ -2064,10 +2035,10 @@ static void draw_border(objWindow *Self, objSurface *Surface, objBitmap *Bitmap)
    LONG rm = Surface->Width - Surface->RightMargin + 1;
    LONG bm = Surface->Height - Surface->BottomMargin + 1;
 
-   static struct RGB8 highlightA = { .Red = 255, .Green = 255, .Blue = 255, .Alpha = 0x70 };
-   static struct RGB8 highlightB = { .Red = 255, .Green = 255, .Blue = 255, .Alpha = 0xa0 };
-   static struct RGB8 shadowA    = { .Red = 0, .Green = 0, .Blue = 0, .Alpha = 0x80 };
-   static struct RGB8 shadowB    = { .Red = 0, .Green = 0, .Blue = 0, .Alpha = 0x40 };
+   static RGB8 highlightA = { .Red = 255, .Green = 255, .Blue = 255, .Alpha = 0x70 };
+   static RGB8 highlightB = { .Red = 255, .Green = 255, .Blue = 255, .Alpha = 0xa0 };
+   static RGB8 shadowA    = { .Red = 0, .Green = 0, .Blue = 0, .Alpha = 0x80 };
+   static RGB8 shadowB    = { .Red = 0, .Green = 0, .Blue = 0, .Alpha = 0x40 };
 
    // Top, Bottom, Left, Right
    ULONG shadow    = PackPixelRGBA(Bitmap, &shadowA);
@@ -2092,15 +2063,15 @@ static void draw_border(objWindow *Self, objSurface *Surface, objBitmap *Bitmap)
 
 #include "window_def.c"
 
-static const struct FieldArray clWindowFields[] = {
+static const FieldArray clWindowFields[] = {
    { "Surface",          FDF_INTEGRAL|FDF_R,   ID_SURFACE,NULL, NULL },
    { "Flags",            FDF_LONGFLAGS|FDF_RW, (MAXINT)&clWindowFlags,NULL, NULL },
    { "InsideBorder",     FDF_LONG|FDF_RI,      0, NULL, NULL },
    { "Center",           FDF_LONG|FDF_RI,      0, NULL, NULL },
-   { "Minimise",         FDF_LONG|FDF_RW,      0, NULL, SET_Minimise },
-   { "Maximise",         FDF_LONG|FDF_RW,      0, NULL, SET_Maximise },
-   { "MoveToBack",       FDF_LONG|FDF_RW,      0, NULL, SET_MoveToBack },
-   { "Close",            FDF_LONG|FDF_RW,      0, NULL, SET_Close },
+   { "Minimise",         FDF_LONG|FDF_RW,      0, NULL, (APTR)SET_Minimise },
+   { "Maximise",         FDF_LONG|FDF_RW,      0, NULL, (APTR)SET_Maximise },
+   { "MoveToBack",       FDF_LONG|FDF_RW,      0, NULL, (APTR)SET_MoveToBack },
+   { "Close",            FDF_LONG|FDF_RW,      0, NULL, (APTR)SET_Close },
    { "Quit",             FDF_LONG|FDF_RW,      0, NULL, NULL },
    { "RestoreX",         FDF_LONG|FDF_RW,      0, NULL, NULL },
    { "RestoreY",         FDF_LONG|FDF_RW,      0, NULL, NULL },
@@ -2114,31 +2085,51 @@ static const struct FieldArray clWindowFields[] = {
    { "CloseObject",      FDF_OBJECTID|FDF_RI,  0, NULL, NULL },
    { "Resize",           FDF_LONGFLAGS|FDF_I,  (MAXINT)&clWindowResizeFlags, NULL, NULL },
    { "ResizeBorder",     FDF_LONG|FDF_RI,      0, NULL, NULL },
-   { "Canvas",           FDF_OBJECTID|FDF_R,   0, GET_Canvas, NULL },
+   { "Canvas",           FDF_OBJECTID|FDF_R,   0, (APTR)GET_Canvas, NULL },
    { "UserFocus",        FDF_OBJECTID|FDF_RW,  0, NULL, NULL },
-   { "Orientation",      FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clWindowOrientation, NULL, SET_Orientation },
+   { "Orientation",      FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clWindowOrientation, NULL, (APTR)SET_Orientation },
    { "ClientLeft",       FDF_LONG|FDF_RI,      0, NULL, NULL },
    { "ClientRight",      FDF_LONG|FDF_RI,      0, NULL, NULL },
    { "ClientTop",        FDF_LONG|FDF_RI,      0, NULL, NULL },
    { "ClientBottom",     FDF_LONG|FDF_RI,      0, NULL, NULL },
    // Virtual fields
-   { "CloseFeedback", FDF_FUNCTIONPTR|FDF_RW, 0, GET_CloseFeedback, SET_CloseFeedback },
-   { "MinimiseCallback", FDF_FUNCTIONPTR|FDF_I, 0, NULL, SET_MinimiseCallback },
-   { "MaximiseCallback", FDF_FUNCTIONPTR|FDF_I, 0, NULL, SET_MaximiseCallback },
-   { "Icon",          FDF_STRING|FDF_RW, 0, GET_Icon,         SET_Icon },
-   { "Menu",          FDF_STRING|FDF_RW, 0, GET_Menu,         SET_Menu },
-   { "InsideWidth",   FDF_LONG|FDF_RW,   0, GET_InsideWidth,  SET_InsideWidth },
-   { "InsideHeight",  FDF_LONG|FDF_RW,   0, GET_InsideHeight, SET_InsideHeight },
-   { "ParentWidth",   FDF_LONG|FDF_R,    0, GET_ParentWidth,  NULL },
-   { "ParentHeight",  FDF_LONG|FDF_R,    0, GET_ParentHeight, NULL },
-   { "StickToFront",  FDF_LONG|FDF_RW,   0, GET_StickToFront, SET_StickToFront },
-   { "Title",         FDF_STRING|FDF_RW, 0, GET_Title,        SET_Title },
-   { "X",             FDF_LONG|FDF_RW,   0, GET_X,            SET_X },
-   { "Y",             FDF_LONG|FDF_RW,   0, GET_Y,            SET_Y },
-   { "Width",         FDF_LONG|FDF_RW,   0, GET_Width,        SET_Width },
-   { "Height",        FDF_LONG|FDF_RW,   0, GET_Height,       SET_Height },
+   { "CloseFeedback", FDF_FUNCTIONPTR|FDF_RW, 0, (APTR)GET_CloseFeedback, (APTR)SET_CloseFeedback },
+   { "MinimiseCallback", FDF_FUNCTIONPTR|FDF_I, 0, NULL, (APTR)SET_MinimiseCallback },
+   { "MaximiseCallback", FDF_FUNCTIONPTR|FDF_I, 0, NULL, (APTR)SET_MaximiseCallback },
+   { "Icon",          FDF_STRING|FDF_RW, 0, (APTR)GET_Icon,         (APTR)SET_Icon },
+   { "Menu",          FDF_STRING|FDF_RW, 0, (APTR)GET_Menu,         (APTR)SET_Menu },
+   { "InsideWidth",   FDF_LONG|FDF_RW,   0, (APTR)GET_InsideWidth,  (APTR)SET_InsideWidth },
+   { "InsideHeight",  FDF_LONG|FDF_RW,   0, (APTR)GET_InsideHeight, (APTR)SET_InsideHeight },
+   { "ParentWidth",   FDF_LONG|FDF_R,    0, (APTR)GET_ParentWidth,  NULL },
+   { "ParentHeight",  FDF_LONG|FDF_R,    0, (APTR)GET_ParentHeight, NULL },
+   { "StickToFront",  FDF_LONG|FDF_RW,   0, (APTR)GET_StickToFront, (APTR)SET_StickToFront },
+   { "Title",         FDF_STRING|FDF_RW, 0, (APTR)GET_Title,        (APTR)SET_Title },
+   { "X",             FDF_LONG|FDF_RW,   0, (APTR)GET_X,            (APTR)SET_X },
+   { "Y",             FDF_LONG|FDF_RW,   0, (APTR)GET_Y,            (APTR)SET_Y },
+   { "Width",         FDF_LONG|FDF_RW,   0, (APTR)GET_Width,        (APTR)SET_Width },
+   { "Height",        FDF_LONG|FDF_RW,   0, (APTR)GET_Height,       (APTR)SET_Height },
    END_FIELD
 };
+
+static ERROR add_window_class(void)
+{
+   LONG class_flags;
+
+   if (GetResource(RES_GLOBAL_INSTANCE)) class_flags = CLF_SHARED_ONLY|CLF_PUBLIC_OBJECTS;
+   else class_flags = 0; // When operating stand-alone, do not share surfaces by default.
+
+   return(CreateObject(ID_METACLASS, NULL, &clWindow,
+      FID_ClassVersion|TFLOAT, VER_WINDOW,
+      FID_Name|TSTRING,   "Window",
+      FID_Category|TLONG, CCF_GUI,
+      FID_Flags|TLONG,    CLF_PROMOTE_INTEGRAL|class_flags,
+      FID_Actions|TPTR,   clWindowActions,
+      FID_Methods|TARRAY, clWindowMethods,
+      FID_Fields|TARRAY,  clWindowFields,
+      FID_Size|TLONG,     sizeof(objWindow),
+      FID_Path|TSTR,      MOD_PATH,
+      TAGEND));
+}
 
 //****************************************************************************
 
