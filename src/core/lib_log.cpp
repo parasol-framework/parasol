@@ -400,7 +400,7 @@ void VLogF(LONG Flags, CSTRING Header, CSTRING Message, va_list Args)
    else if (level < 0) level = 0;
 
    if (((log_levels[level] & Flags) != 0) or
-       ((glLogLevel <= 2) and (Flags & (VLF_WARNING|VLF_ERROR|VLF_CRITICAL))))  {
+       ((glLogLevel > 1) and (Flags & (VLF_WARNING|VLF_ERROR|VLF_CRITICAL))))  {
       CSTRING name, action;
       BYTE msgstate;
       BYTE adjust = 0;
