@@ -4820,7 +4820,6 @@ static ERROR process_page(objDocument *Self, objXML *xml)
       Self->UpdateLayout = TRUE;
       if (Self->Head.Flags & NF_INITIALISED) redraw(Self, TRUE);
 
-      if (glTranslateBuffer) { FreeResource(glTranslateBuffer); glTranslateBuffer = NULL; }
       if (Self->Buffer) { FreeResource(Self->Buffer); Self->Buffer = NULL; }
       if (Self->Temp)   { FreeResource(Self->Temp); Self->Temp = NULL; }
       if (Self->VArg)   { FreeResource(Self->VArg); Self->VArg = NULL; }
