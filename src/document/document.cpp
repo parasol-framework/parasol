@@ -477,7 +477,7 @@ typedef struct escCellEnd {
 } escCellEnd;
 
 struct process_table {
-   escTable *escTable;
+   struct escTable *escTable;
    LONG RowCol;
 };
 
