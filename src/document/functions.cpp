@@ -92,6 +92,7 @@ static STRING printable2(CSTRING String, LONG Length)
 
 static void print_xmltree(XMLTag *Tag, LONG *Indent)
 {
+   parasol::Log log(__FUNCTION__);
    XMLTag *child;
    LONG i, j;
    char buffer[1000];
@@ -522,7 +523,7 @@ static ERROR insert_xml(objDocument *Self, objXML *XML, XMLTag *Tag, LONG Index,
 {
    parasol::Log log(__FUNCTION__);
    objFont *font;
-   LONG insert_index, length, start;
+   LONG insert_index, start;
 
    if (!Tag) return ERR_Okay;
 
@@ -585,8 +586,7 @@ static ERROR insert_xml(objDocument *Self, objXML *XML, XMLTag *Tag, LONG Index,
       parse_tag(Self, XML, Tag, &insert_index, 0);
    }
    else {
-      XMLTag *save;
-      save = Tag->Next;
+      auto save = Tag->Next;
       Tag->Next = NULL;
       parse_tag(Self, XML, Tag, &insert_index, 0);
       Tag->Next = save;
@@ -612,7 +612,7 @@ static ERROR insert_xml(objDocument *Self, objXML *XML, XMLTag *Tag, LONG Index,
 
    if (Index < start) {
       STRING content;
-      length = Self->StreamLen - start;
+      LONG length = Self->StreamLen - start;
       log.trace("Moving new content of %d bytes to the insertion point at index %d", Index, length);
       if (!AllocMemory(length, MEM_DATA|MEM_NO_CLEAR, &content, NULL)) {
          CopyMemory(Self->Stream + start, content, length); // Take a copy of the inserted data
@@ -677,10 +677,10 @@ static LONG parse_tag(objDocument *Self, objXML *XML, XMLTag *Tag, LONG *Index, 
       char tagarg[30];
 
       if (Tag->Attrib->Name) {
-         for (i=0; (i < sizeof(tagarg)-1) and (Tag->Attrib->Name[i]); i++) tagarg[i] = Tag->Attrib->Name[i];
+         for (i=0; ((size_t)i < sizeof(tagarg)-1) and (Tag->Attrib->Name[i]); i++) tagarg[i] = Tag->Attrib->Name[i];
       }
       else if (Tag->Attrib->Value) {
-         for (i=0; (i < sizeof(tagarg)-1) and (Tag->Attrib->Value[i]); i++) {
+         for (i=0; ((size_t)i < sizeof(tagarg)-1) and (Tag->Attrib->Value[i]); i++) {
             if (Tag->Attrib->Value[i] < 0x20) tagarg[i] = '.';
             else tagarg[i] = Tag->Attrib->Value[i];
          }
@@ -703,7 +703,7 @@ static LONG parse_tag(objDocument *Self, objXML *XML, XMLTag *Tag, LONG *Index, 
       #ifdef DEBUG
           if (Tag->Attrib->Name) log.trace("Tag: %s", Tag->Attrib->Name);
           else if (Tag->Attrib->Value) {
-             for (i=0; (i < sizeof(tagarg)-1) and (Tag->Attrib->Value[i]); i++) {
+             for (i=0; ((size_t)i < sizeof(tagarg)-1) and (Tag->Attrib->Value[i]); i++) {
                 if (Tag->Attrib->Value[i] < 0x20) tagarg[i] = '.';
                 else tagarg[i] = Tag->Attrib->Value[i];
              }
@@ -910,9 +910,8 @@ static LONG parse_tag(objDocument *Self, objXML *XML, XMLTag *Tag, LONG *Index, 
                i = check_tag_conditions(Self, Tag);
                RESTORE_ARGS();
 
-               if (i) {
-                  if (parse_tag(Self, XML, Tag->Child, Index, Flags) & TRF_BREAK) break;
-               }
+               if ((i) AND (parse_tag(Self, XML, Tag->Child, Index, Flags) & TRF_BREAK)) break;
+
                Self->LoopIndex++;
             }
 
@@ -5310,8 +5309,6 @@ static objFont * lookup_font(LONG Index, CSTRING Caller)
 static LONG create_font(CSTRING Face, CSTRING Style, LONG Point)
 {
    parasol::Log log(__FUNCTION__);
-   FontEntry *array;
-   objFont *font;
    LONG i;
    #define FONT_BLOCK_SIZE 20
 
@@ -5329,8 +5326,9 @@ static LONG create_font(CSTRING Face, CSTRING Style, LONG Point)
 
    log.branch("Index: %d, %s, %s, %d.  Cached: %d", glTotalFonts, Face, Style, Point, glTotalFonts);
 
-   AdjustLogLevel(3);
+   AdjustLogLevel(2);
 
+   objFont *font;
    if (!CreateObject(ID_FONT, NF_INTEGRAL, &font,
          FID_Owner|TLONG, modDocument->UniqueID,
          FID_Face|TSTR,   Face,
@@ -5346,13 +5344,14 @@ static LONG create_font(CSTRING Face, CSTRING Style, LONG Point)
          if ((!StrMatch(font->Face, glFonts[i].Font->Face)) and (!StrMatch(font->Style, glFonts[i].Font->Style)) and (font->Point IS glFonts[i].Point)) {
             log.trace("Match %d = %s(%s,%d)", i, Face, Style, Point);
             acFree(font);
-            AdjustLogLevel(-3);
+            AdjustLogLevel(-2);
             return i;
          }
       }
 
       if (glTotalFonts IS glMaxFonts) {
          log.msg("Extending font array.");
+         FontEntry *array;
          if (!AllocMemory((glMaxFonts + FONT_BLOCK_SIZE) * sizeof(FontEntry), MEM_UNTRACKED, &array, NULL)) {
             glMaxFonts += FONT_BLOCK_SIZE;
             if (glFonts) {
@@ -5373,7 +5372,7 @@ static LONG create_font(CSTRING Face, CSTRING Style, LONG Point)
    else i = -1;
 
 exit:
-   AdjustLogLevel(-3);
+   AdjustLogLevel(-2);
    return i;
 }
 
@@ -5388,15 +5387,14 @@ exit:
 static LONG add_drawsegment(objDocument *Self, LONG Offset, LONG Stop, layout *Layout,
    LONG Y, LONG Width, LONG AlignWidth, CSTRING Debug)
 {
-   DocSegment *lines;
-   LONG i, Height, BaseLine, trimstop;
-   UBYTE text_content, control_content, allow_merge, object_content;
+   parasol::Log log(__FUNCTION__);
+   LONG i;
 
    // Determine trailing whitespace at the end of the line.  This helps
    // to prevent situations such as underlining occurring in whitespace
    // at the end of the line during word-wrapping.
 
-   trimstop = Stop;
+   LONG trimstop = Stop;
    while ((Self->Stream[trimstop-1] <= 0x20) and (trimstop > Offset)) {
       if (Self->Stream[trimstop-1] IS CTRL_CODE) break;
       trimstop--;
@@ -5409,10 +5407,10 @@ static LONG add_drawsegment(objDocument *Self, LONG Offset, LONG Stop, layout *L
 
    // Check the new segment to see if there are any text characters or escape codes relevant to drawing
 
-   text_content = FALSE;
-   control_content = FALSE;
-   object_content = FALSE;
-   allow_merge = TRUE;
+   bool text_content = FALSE;
+   bool control_content = FALSE;
+   bool object_content = FALSE;
+   bool allow_merge = TRUE;
    for (i=Offset; i < Stop;) {
       if (Self->Stream[i] IS CTRL_CODE) {
          LONG code = ESCAPE_CODE(Self->Stream, i);
@@ -5430,8 +5428,8 @@ static LONG add_drawsegment(objDocument *Self, LONG Offset, LONG Stop, layout *L
       NEXT_CHAR(Self->Stream, i);
    }
 
-   Height = Layout->line_height;
-   BaseLine = Layout->base_line;
+   LONG Height = Layout->line_height;
+   LONG BaseLine = Layout->base_line;
    if (text_content) {
       if (Height <= 0) {
          // No line-height given and there is text content - use the most recent font to determine the line height
@@ -5468,7 +5466,7 @@ static LONG add_drawsegment(objDocument *Self, LONG Offset, LONG Stop, layout *L
          // If the start of the new segment retraces to an index that has already been configured,
          // then we have actually encountered a coding flaw and the caller should be investigated.
 
-         LogF("@add_drawsegment","(%s) New segment #%d retraces to index %d, which has been configured by previous segments.", Debug, segment, Offset);
+         log.warning("(%s) New segment #%d retraces to index %d, which has been configured by previous segments.", Debug, segment, Offset);
          return -1;
       }
       else {
@@ -5498,6 +5496,7 @@ static LONG add_drawsegment(objDocument *Self, LONG Offset, LONG Stop, layout *L
    }
 
    if (segment >= Self->MaxSegments) {
+      DocSegment *lines;
       if (!AllocMemory(sizeof(Self->Segments[0]) * (Self->MaxSegments + 100), MEM_NO_CLEAR, &lines, NULL)) {
          CopyMemory(Self->Segments, lines, sizeof(Self->Segments[0]) * Self->MaxSegments);
          FreeResource(Self->Segments);
@@ -5515,7 +5514,7 @@ static LONG add_drawsegment(objDocument *Self, LONG Offset, LONG Stop, layout *L
       for (i=Layout->split_start; i < segment; i++) {
          if (Self->Segments[i].Depth != Self->Depth) continue;
          if (Self->Segments[i].Height > Height) {
-            LogF("@set_line:","A previous entry in segment %d has a height larger than the new one (%d > %d)", i, Self->Segments[i].Height, Height);
+            log.warning("A previous entry in segment %d has a height larger than the new one (%d > %d)", i, Self->Segments[i].Height, Height);
             BaseLine = Self->Segments[i].BaseLine;
             Height = Self->Segments[i].Height;
          }
@@ -6047,7 +6046,7 @@ static ERROR convert_xml_args(objDocument *Self, XMLAttrib *Attrib, LONG Total)
                                  error = GetString(object, classfield->FieldID, &strbuf);
                               }
                               else {
-                                 // Get field as an unlisted type and manage any buffer overflow
+                                 // Get field as a variable type and manage any buffer overflow
 repeat:
                                  glTranslateBuffer[glTranslateBufferSize-1] = 0;
                                  GetFieldVariable(object, name, glTranslateBuffer, glTranslateBufferSize);
@@ -7367,7 +7366,7 @@ static void advance_tabfocus(objDocument *Self, BYTE Direction)
       }
    }
 
-   LogF("adv_tabfocus()","Direction: %d, Current Surface: %d, Current Index: %d", Direction, currentfocus, Self->FocusIndex);
+   log.function("Direction: %d, Current Surface: %d, Current Index: %d", Direction, currentfocus, Self->FocusIndex);
 
    if (Self->FocusIndex < 0) {
       // FocusIndex may be -1 to indicate nothing is selected, so we'll have to start from the first focusable index in that case.
