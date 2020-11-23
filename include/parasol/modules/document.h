@@ -100,7 +100,7 @@ typedef struct DocStyleV1 {
 } DOCSTYLE;
 
 struct deLinkActivated {
-   APTR Parameters;    // All key-values associated with the link.
+   struct KeyStore * Parameters;    // All key-values associated with the link.
 };
 
 struct escFont {
@@ -192,7 +192,7 @@ typedef struct rkDocument {
    STRING Path;              // Optional file to load on Init()
    STRING PageName;          // Page name to load from the Path
    STRING Bookmark;          // Bookmark name processed from the Path
-   STRING Stream;            // Internal stream buffer
+   UBYTE  *Stream;           // Internal stream buffer
    STRING WorkingPath;       // String storage for the WorkingPath field
    APTR   prvKeyEvent;
    OBJECTPTR CurrentObject;
