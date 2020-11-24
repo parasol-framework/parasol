@@ -16,7 +16,6 @@ static ERROR GET_BitsPerPixel(objSurface *Self, LONG *Value)
       *Value = info->BitsPerPixel;
    }
    else *Value = 0;
-
    return ERR_Okay;
 }
 
@@ -106,7 +105,7 @@ static ERROR SET_Drag(objSurface *Self, OBJECTID Value)
          Self->DragID = Value;
          return ERR_Okay;
       }
-      else return PostError(ERR_Failed);
+      else return ERR_Failed;
    }
    else {
       if (Self->DragID) gfxUnsubscribeInput(Self->Head.UniqueID);
@@ -199,13 +198,13 @@ with normally.
 
 static ERROR SET_Modal(objSurface *Self, LONG Modal)
 {
-   if ((!Modal) AND (Self-Modal)) {
-      struct TaskList *task;
+   if ((!Modal) and (Self-Modal)) {
+      TaskList *task;
       if (Self->PrevModalID) {
          drwSetModalSurface(Self->PrevModalID);
          Self->PrevModalID = 0;
       }
-      else if ((task = GetResourcePtr(RES_TASK_CONTROL))) {
+      else if ((task = (TaskList *)GetResourcePtr(RES_TASK_CONTROL))) {
          if (task->ModalID IS Self->Head.UniqueID) task->ModalID = 0;
       }
    }
@@ -301,10 +300,6 @@ a surface object.  This behaviour can be switched off by setting a Parent of zer
 
 static ERROR SET_Parent(objSurface *Self, LONG Value)
 {
-   struct SurfaceControl *ctl;
-   struct SurfaceList *list;
-   LONG index, parent;
-
    // To change the parent post-initialisation, we have to re-track the surface so that it is correctly repositioned
    // within the surface lists.
 
@@ -317,17 +312,17 @@ static ERROR SET_Parent(objSurface *Self, LONG Value)
       Self->ParentID = Value;
       Self->ParentDefined = TRUE;
 
+      SurfaceControl *ctl;
       if ((ctl = drwAccessList(ARF_WRITE))) {
-         list = (struct SurfaceList *)((APTR)ctl + ctl->ArrayIndex);
+         auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
+         LONG index, parent;
          if ((index = find_own_index(ctl, Self)) != -1) {
             if (!Value) parent = 0;
-            else for (parent=0; (list[parent].SurfaceID) AND (list[parent].SurfaceID != Self->ParentID); parent++);
+            else for (parent=0; (list[parent].SurfaceID) and (list[parent].SurfaceID != Self->ParentID); parent++);
 
             if (list[parent].SurfaceID) move_layer_pos(ctl, index, parent + 1);
 
             // Reset bitmap and buffer information in the list
-
-
 
 
          }
@@ -361,9 +356,11 @@ Surface field, if available.  If this does not yield a valid surface then ERR_In
 
 static ERROR SET_PopOver(objSurface *Self, OBJECTID Value)
 {
+   parasol::Log log;
+
    if (Value IS Self->Head.UniqueID) return ERR_Okay;
 
-   if (Self->Head.Flags & NF_INITIALISED) return PostError(ERR_Immutable);
+   if (Self->Head.Flags & NF_INITIALISED) return log.warning(ERR_Immutable);
 
    if (Value) {
       CLASSID class_id = GetClassID(Value);
@@ -375,7 +372,7 @@ static ERROR SET_PopOver(objSurface *Self, OBJECTID Value)
          }
          else return ERR_AccessObject;
 
-         if (class_id != ID_SURFACE) return PostError(ERR_InvalidObject);
+         if (class_id != ID_SURFACE) return log.warning(ERR_InvalidObject);
       }
    }
 
@@ -408,30 +405,32 @@ This example uses percentages to create two regions: `(0%,0%,20%,20%) (5%,5%,10%
 
 static ERROR SET_PrecopyRegion(objSurface *Self, STRING Value)
 {
-   LogMsg("%s", Value);
+   parasol::Log log;
+
+   log.branch("%s", Value);
 
    if (Self->PrecopyMID) { FreeResourceID(Self->PrecopyMID); Self->PrecopyMID = 0; }
 
-   if ((!Value) OR (!*Value)) return ERR_Okay;
+   if ((!Value) or (!*Value)) return ERR_Okay;
 
-   struct PrecopyRegion regions[20];
+   PrecopyRegion regions[20];
    ClearMemory(regions, sizeof(regions));
 
    LONG i;
    LONG total = 0;
-   for (i=0; (*Value) AND (i < ARRAYSIZE(regions)); i++) {
+   for (i=0; (*Value) and (i < ARRAYSIZE(regions)); i++) {
       // X Coordinate / X Offset
 
       BYTE offset   = FALSE;
       BYTE relative = FALSE;
-      while ((*Value) AND ((*Value < '0') OR (*Value > '9'))) {
+      while ((*Value) and ((*Value < '0') or (*Value > '9'))) {
          if (*Value IS '!') offset = TRUE;
          Value++;
       }
       if (!*Value) break;
 
       CSTRING str = Value;
-      while ((*Value >= '0') AND (*Value <= '9')) Value++;
+      while ((*Value >= '0') and (*Value <= '9')) Value++;
       if (*Value IS '%') relative = TRUE;
 
       if (offset) {
@@ -451,14 +450,14 @@ static ERROR SET_PrecopyRegion(objSurface *Self, STRING Value)
 
       offset = FALSE;
       relative = FALSE;
-      while ((*Value) AND ((*Value < '0') OR (*Value > '9'))) {
+      while ((*Value) and ((*Value < '0') or (*Value > '9'))) {
          if (*Value IS '!') offset = TRUE;
          Value++;
       }
       if (!*Value) break;
 
       str = Value;
-      while ((*Value >= '0') AND (*Value <= '9')) Value++;
+      while ((*Value >= '0') and (*Value <= '9')) Value++;
       if (*Value IS '%') relative = TRUE;
 
       if (offset) {
@@ -478,14 +477,14 @@ static ERROR SET_PrecopyRegion(objSurface *Self, STRING Value)
 
       offset   = FALSE;
       relative = FALSE;
-      while ((*Value) AND ((*Value < '0') OR (*Value > '9'))) {
+      while ((*Value) and ((*Value < '0') or (*Value > '9'))) {
          if (*Value IS '!') offset = TRUE;
          Value++;
       }
       if (!*Value) break;
 
       str = Value;
-      while ((*Value >= '0') AND (*Value <= '9')) Value++;
+      while ((*Value >= '0') and (*Value <= '9')) Value++;
       if (*Value IS '%') relative = TRUE;
 
       if (offset) {
@@ -505,14 +504,14 @@ static ERROR SET_PrecopyRegion(objSurface *Self, STRING Value)
 
       offset   = FALSE;
       relative = FALSE;
-      while ((*Value) AND ((*Value < '0') OR (*Value > '9'))) {
+      while ((*Value) and ((*Value < '0') or (*Value > '9'))) {
          if (*Value IS '!') offset = TRUE;
          Value++;
       }
       if (!*Value) break;
 
       str = Value;
-      while ((*Value >= '0') AND (*Value <= '9')) Value++;
+      while ((*Value >= '0') and (*Value <= '9')) Value++;
       if (*Value IS '%') relative = TRUE;
 
       if (offset) {
@@ -529,12 +528,12 @@ static ERROR SET_PrecopyRegion(objSurface *Self, STRING Value)
       total++;
    }
 
-   LogMsg("%d regions were processed.", total);
+   log.msg("%d regions were processed.", total);
 
    if (total > 0) {
-      struct PrecopyRegion *precopy;
-      if (!AllocMemory(sizeof(struct PrecopyRegion) * total, MEM_DATA|MEM_NO_CLEAR, &precopy, &Self->PrecopyMID)) {
-         CopyMemory(regions, precopy, sizeof(struct PrecopyRegion) * total);
+      PrecopyRegion *precopy;
+      if (!AllocMemory(sizeof(PrecopyRegion) * total, MEM_DATA|MEM_NO_CLEAR, &precopy, &Self->PrecopyMID)) {
+         CopyMemory(regions, precopy, sizeof(PrecopyRegion) * total);
          Self->PrecopyTotal = total;
          if (!(Self->Head.Flags & NF_INITIALISED)) {
             Self->Flags |= RNF_PRECOPY;
@@ -544,7 +543,7 @@ static ERROR SET_PrecopyRegion(objSurface *Self, STRING Value)
          ReleaseMemoryID(Self->PrecopyMID);
          return ERR_Okay;
       }
-      else return PostError(ERR_AllocMemory);
+      else return log.warning(ERR_AllocMemory);
    }
    else return ERR_Okay;
 }
@@ -621,14 +620,15 @@ hierarchy).  If no object has the user's focus, this field will return a value o
 
 static ERROR GET_UserFocus(objSurface *Self, OBJECTID *Value)
 {
+   parasol::Log log;
    OBJECTID *focuslist;
 
-   if (AccessMemory(RPM_FocusList, MEM_READ, 1000, &focuslist) IS ERR_Okay) {
+   if (!AccessMemory(RPM_FocusList, MEM_READ, 1000, &focuslist)) {
       *Value = focuslist[0];
       ReleaseMemoryID(RPM_FocusList);
       return ERR_Okay;
    }
-   else return PostError(ERR_AccessMemory);
+   else return log.warning(ERR_AccessMemory);
 }
 
 /*****************************************************************************
@@ -684,18 +684,19 @@ static ERROR GET_WindowType(objSurface *Self, LONG *Value)
 static ERROR SET_WindowType(objSurface *Self, LONG Value)
 {
    if (Self->Head.Flags & NF_INITIALISED) {
+      parasol::Log log;
       BYTE border;
       LONG flags;
       objDisplay *display;
 
       if (Self->WindowType IS Value) {
-         MSG("WindowType == %d", Value);
+         log.trace("WindowType == %d", Value);
          return ERR_Okay;
       }
 
       if (Self->DisplayID) {
          if (!AccessObject(Self->DisplayID, 2000, &display)) {
-            MSG("Changing window type to %d.", Value);
+            log.trace("Changing window type to %d.", Value);
 
             switch(Value) {
                case SWIN_TASKBAR:
@@ -714,11 +715,9 @@ static ERROR SET_WindowType(objSurface *Self, LONG Value)
                   SetLong(display, FID_Flags, flags);
                }
             }
-            else {
-               if (!(display->Flags & SCR_BORDERLESS)) {
-                  flags = display->Flags | SCR_BORDERLESS;
-                  SetLong(display, FID_Flags, flags);
-               }
+            else if (!(display->Flags & SCR_BORDERLESS)) {
+               flags = display->Flags | SCR_BORDERLESS;
+               SetLong(display, FID_Flags, flags);
             }
 
             Self->WindowType = Value;
@@ -726,7 +725,7 @@ static ERROR SET_WindowType(objSurface *Self, LONG Value)
          }
          else return ERR_AccessObject;
       }
-      else return PostError(ERR_NoSupport);
+      else return log.warning(ERR_NoSupport);
    }
    else Self->WindowType = Value;
 
