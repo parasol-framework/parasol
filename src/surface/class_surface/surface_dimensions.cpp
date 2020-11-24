@@ -13,12 +13,12 @@ It is possible to set this field, but only after initialisation of the surface o
 
 static ERROR GET_AbsX(objSurface *Self, LONG *Value)
 {
-   struct SurfaceControl *ctl;
-   struct SurfaceList *list;
+   parasol::Log log;
+   SurfaceControl *ctl;
    LONG i;
 
    if ((ctl = drwAccessList(ARF_READ))) {
-      list = (struct SurfaceList *)((APTR)ctl + ctl->ArrayIndex);
+      auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
       if ((i = find_own_index(ctl, Self)) != -1) {
          *Value = list[i].Left;
          drwReleaseList(ARF_READ);
@@ -26,21 +26,21 @@ static ERROR GET_AbsX(objSurface *Self, LONG *Value)
       }
       else {
          drwReleaseList(ARF_READ);
-         return PostError(ERR_Search);
+         return log.warning(ERR_Search);
       }
    }
-   else return PostError(ERR_AccessMemory);
+   else return log.warning(ERR_AccessMemory);
 }
 
 static ERROR SET_AbsX(objSurface *Self, LONG Value)
 {
-   struct SurfaceControl *ctl;
-   struct SurfaceList *list;
+   parasol::Log log;
    LONG parent, x;
 
    if (Self->Head.Flags & NF_INITIALISED) {
+      SurfaceControl *ctl;
       if ((ctl = drwAccessList(ARF_READ))) {
-         list = (struct SurfaceList *)((APTR)ctl + ctl->ArrayIndex);
+         auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
          if ((parent = find_parent_index(ctl, Self)) != -1) {
             x = Value - list[parent].Left;
             drwReleaseList(ARF_READ);
@@ -49,12 +49,12 @@ static ERROR SET_AbsX(objSurface *Self, LONG Value)
          }
          else {
             drwReleaseList(ARF_READ);
-            return PostError(ERR_Search);
+            return log.warning(ERR_Search);
          }
       }
-      else return PostError(ERR_AccessMemory);
+      else return log.warning(ERR_AccessMemory);
    }
-   else return PostError(ERR_NotInitialised);
+   else return log.warning(ERR_NotInitialised);
 }
 
 /****************************************************************************
@@ -71,12 +71,12 @@ It is possible to set this field, but only after initialisation of the surface o
 
 static ERROR GET_AbsY(objSurface *Self, LONG *Value)
 {
-   struct SurfaceControl *ctl;
-   struct SurfaceList *list;
+   parasol::Log log;
+   SurfaceControl *ctl;
    LONG i;
 
    if ((ctl = drwAccessList(ARF_READ))) {
-      list = (struct SurfaceList *)((APTR)ctl + ctl->ArrayIndex);
+      auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
       if ((i = find_own_index(ctl, Self)) != -1) {
          *Value = list[i].Top;
          drwReleaseList(ARF_READ);
@@ -84,21 +84,21 @@ static ERROR GET_AbsY(objSurface *Self, LONG *Value)
       }
       else {
          drwReleaseList(ARF_READ);
-         return PostError(ERR_Search);
+         return log.warning(ERR_Search);
       }
    }
-   else return PostError(ERR_AccessMemory);
+   else return log.warning(ERR_AccessMemory);
 }
 
 static ERROR SET_AbsY(objSurface *Self, LONG Value)
 {
-   struct SurfaceControl *ctl;
-   struct SurfaceList *list;
+   parasol::Log log;
    LONG parent, y;
 
    if (Self->Head.Flags & NF_INITIALISED) {
+      SurfaceControl *ctl;
       if ((ctl = drwAccessList(ARF_READ))) {
-         list = (struct SurfaceList *)((APTR)ctl + ctl->ArrayIndex);
+         auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
          if ((parent = find_parent_index(ctl, Self)) != -1) {
             y = Value - list[parent].Top;
             drwReleaseList(ARF_READ);
@@ -107,11 +107,11 @@ static ERROR SET_AbsY(objSurface *Self, LONG Value)
          }
 
          drwReleaseList(ARF_READ);
-         return PostError(ERR_Search);
+         return log.warning(ERR_Search);
       }
-      else return PostError(ERR_AccessMemory);
+      else return log.warning(ERR_AccessMemory);
    }
-   else return PostError(ERR_NotInitialised);
+   else return log.warning(ERR_NotInitialised);
 }
 
 /*****************************************************************************
@@ -194,26 +194,28 @@ FIXED_X, FIXED_XOFFSET and FIXED_WIDTH simultaneously.
 
 static ERROR SET_Dimensions(objSurface *Self, LONG Value)
 {
+   parasol::Log log;
    SURFACEINFO *parent;
+
    if (!drwGetSurfaceInfo(Self->ParentID, &parent)) {
       if (Value & DMF_Y) {
-         if ((Value & DMF_HEIGHT) OR (Value & DMF_Y_OFFSET)) {
+         if ((Value & DMF_HEIGHT) or (Value & DMF_Y_OFFSET)) {
             Self->Dimensions &= ~DMF_VERTICAL_FLAGS;
             Self->Dimensions |= Value & DMF_VERTICAL_FLAGS;
          }
       }
-      else if ((Value & DMF_HEIGHT) AND (Value & DMF_Y_OFFSET)) {
+      else if ((Value & DMF_HEIGHT) and (Value & DMF_Y_OFFSET)) {
          Self->Dimensions &= ~DMF_VERTICAL_FLAGS;
          Self->Dimensions |= Value & DMF_VERTICAL_FLAGS;
       }
 
       if (Value & DMF_X) {
-         if ((Value & DMF_WIDTH) OR (Value & DMF_X_OFFSET)) {
+         if ((Value & DMF_WIDTH) or (Value & DMF_X_OFFSET)) {
             Self->Dimensions &= ~DMF_HORIZONTAL_FLAGS;
             Self->Dimensions |= Value & DMF_HORIZONTAL_FLAGS;
          }
       }
-      else if ((Value & DMF_WIDTH) AND (Value & DMF_X_OFFSET)) {
+      else if ((Value & DMF_WIDTH) and (Value & DMF_X_OFFSET)) {
          Self->Dimensions &= ~DMF_HORIZONTAL_FLAGS;
          Self->Dimensions |= Value & DMF_HORIZONTAL_FLAGS;
       }
@@ -253,7 +255,7 @@ static ERROR SET_Dimensions(objSurface *Self, LONG Value)
 
       resize.Z = 0;
       resize.Depth  = 0;
-      //LogMsg("$%.8x, Pos: %dx%d, Size: %dx%d", Self->Head.ID, Self->Dimensions, (LONG)resize.X, (LONG)resize.YCoord, (LONG)resize.Width, (LONG)resize.Height);
+      //log.msg("$%.8x, Pos: %dx%d, Size: %dx%d", Self->Head.ID, Self->Dimensions, (LONG)resize.X, (LONG)resize.YCoord, (LONG)resize.Width, (LONG)resize.Height);
       Action(AC_Redimension, Self, &resize);
 
       return ERR_Okay;
@@ -280,7 +282,7 @@ pairing the Y and YOffset fields together for dynamic height adjustment.
 
 ****************************************************************************/
 
-static ERROR GET_Height(objSurface *Self, struct Variable *Value)
+static ERROR GET_Height(objSurface *Self, Variable *Value)
 {
    if (Value->Type & FD_PERCENTAGE) {
       if (Self->Dimensions & DMF_RELATIVE_HEIGHT) {
@@ -297,16 +299,17 @@ static ERROR GET_Height(objSurface *Self, struct Variable *Value)
    }
 }
 
-static ERROR SET_Height(objSurface *Self, struct Variable *Variable)
+static ERROR SET_Height(objSurface *Self, Variable *Value)
 {
+   parasol::Log log;
    objSurface *parent;
-   struct Variable var;
+   Variable var;
    DOUBLE value;
 
-   if (Variable->Type & FD_DOUBLE)      value = Variable->Double;
-   else if (Variable->Type & FD_LARGE)  value = Variable->Large;
-   else if (Variable->Type & FD_STRING) value = StrToInt(Variable->Pointer);
-   else return PostError(ERR_FieldTypeMismatch);
+   if (Value->Type & FD_DOUBLE)      value = Value->Double;
+   else if (Value->Type & FD_LARGE)  value = Value->Large;
+   else if (Value->Type & FD_STRING) value = StrToInt((CSTRING)Value->Pointer);
+   else return log.warning(ERR_FieldTypeMismatch);
 
    if (value <= 0) {
       if (Self->Head.Flags & NF_INITIALISED) return ERR_InvalidDimension;
@@ -317,7 +320,7 @@ static ERROR SET_Height(objSurface *Self, struct Variable *Variable)
    }
    if (value > 0x7fffffff) value = 0x7fffffff;
 
-   if (Variable->Type & FD_PERCENTAGE) {
+   if (Value->Type & FD_PERCENTAGE) {
       if (Self->ParentID) {
          if (!AccessObject(Self->ParentID, 500, &parent)) {
             Self->HeightPercent = value;
@@ -325,7 +328,7 @@ static ERROR SET_Height(objSurface *Self, struct Variable *Variable)
             resize_layer(Self, Self->X, Self->Y, 0, parent->Height * value / 100.0, 0, 0, 0, 0, NULL);
             ReleaseObject(parent);
          }
-         else return PostError(ERR_AccessObject);
+         else return log.warning(ERR_AccessObject);
       }
       else {
          Self->HeightPercent = value;
@@ -457,7 +460,7 @@ static ERROR SET_MaxHeight(objSurface *Self, LONG Value)
 {
    Self->MaxHeight = Value;
 
-   if ((!Self->ParentID) AND (Self->DisplayID)) {
+   if ((!Self->ParentID) and (Self->DisplayID)) {
       struct gfxSizeHints hints;
       hints.MinWidth  = -1;
       hints.MinHeight = -1;
@@ -487,7 +490,7 @@ static ERROR SET_MaxWidth(objSurface *Self, LONG Value)
 {
    Self->MaxWidth = Value;
 
-   if ((!Self->ParentID) AND (Self->DisplayID)) {
+   if ((!Self->ParentID) and (Self->DisplayID)) {
       struct gfxSizeHints hints;
       hints.MinWidth  = -1;
       hints.MinHeight = -1;
@@ -517,7 +520,7 @@ static ERROR SET_MinHeight(objSurface *Self, LONG Value)
    Self->MinHeight = Value;
    if (Self->MinHeight < 1) Self->MinHeight = 1;
 
-   if ((!Self->ParentID) AND (Self->DisplayID)) {
+   if ((!Self->ParentID) and (Self->DisplayID)) {
       struct gfxSizeHints hints;
       hints.MinWidth  = Self->MinWidth + Self->LeftMargin + Self->RightMargin;
       hints.MinHeight = Self->MinHeight + Self->TopMargin + Self->BottomMargin;
@@ -547,7 +550,7 @@ static ERROR SET_MinWidth(objSurface *Self, LONG Value)
    Self->MinWidth = Value;
    if (Self->MinWidth < 1) Self->MinWidth = 1;
 
-   if ((!Self->ParentID) AND (Self->DisplayID)) {
+   if ((!Self->ParentID) and (Self->DisplayID)) {
       struct gfxSizeHints hints;
       hints.MinWidth  = Self->MinWidth + Self->LeftMargin + Self->RightMargin;
       hints.MinHeight = Self->MinHeight + Self->TopMargin + Self->BottomMargin;
@@ -660,8 +663,8 @@ If none of the surface area is visible then zero is returned.  The result is nev
 
 static ERROR GET_VisibleHeight(objSurface *Self, LONG *Value)
 {
-   struct SurfaceControl *ctl;
-   struct SurfaceList *list;
+   parasol::Log log;
+   SurfaceControl *ctl;
    struct ClipRectangle clip;
    WORD i;
 
@@ -670,7 +673,7 @@ static ERROR GET_VisibleHeight(objSurface *Self, LONG *Value)
       return ERR_Okay;
    }
    else if ((ctl = drwAccessList(ARF_READ))) {
-      list = (struct SurfaceList *)((APTR)ctl + ctl->ArrayIndex);
+      auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
       if ((i = find_own_index(ctl, Self)) IS -1) {
          drwReleaseList(ARF_READ);
          return ERR_Search;
@@ -687,7 +690,7 @@ static ERROR GET_VisibleHeight(objSurface *Self, LONG *Value)
       drwReleaseList(ARF_READ);
       return ERR_Okay;
    }
-   else return PostError(ERR_AccessMemory);
+   else return log.warning(ERR_AccessMemory);
 }
 
 /*****************************************************************************
@@ -707,8 +710,8 @@ If none of the surface area is visible then zero is returned.  The result is nev
 
 static ERROR GET_VisibleWidth(objSurface *Self, LONG *Value)
 {
-   struct SurfaceControl *ctl;
-   struct SurfaceList *list;
+   parasol::Log log;
+   SurfaceControl *ctl;
    struct ClipRectangle clip;
    WORD i;
 
@@ -717,7 +720,7 @@ static ERROR GET_VisibleWidth(objSurface *Self, LONG *Value)
       return ERR_Okay;
    }
    else if ((ctl = drwAccessList(ARF_READ))) {
-      list = (struct SurfaceList *)((APTR)ctl + ctl->ArrayIndex);
+      auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
       if ((i = find_own_index(ctl, Self)) IS -1) {
          drwReleaseList(ARF_READ);
          return ERR_Search;
@@ -734,7 +737,7 @@ static ERROR GET_VisibleWidth(objSurface *Self, LONG *Value)
       drwReleaseList(ARF_READ);
       return ERR_Okay;
    }
-   else return PostError(ERR_AccessMemory);
+   else return log.warning(ERR_AccessMemory);
 }
 
 /*****************************************************************************
@@ -754,8 +757,8 @@ If none of the surface area is visible then zero is returned.  The result is nev
 
 static ERROR GET_VisibleX(objSurface *Self, LONG *Value)
 {
-   struct SurfaceControl *ctl;
-   struct SurfaceList *list;
+   parasol::Log log;
+   SurfaceControl *ctl;
    struct ClipRectangle clip;
    WORD i;
 
@@ -764,7 +767,7 @@ static ERROR GET_VisibleX(objSurface *Self, LONG *Value)
       return ERR_Okay;
    }
    else if ((ctl = drwAccessList(ARF_READ))) {
-      list = (struct SurfaceList *)((APTR)ctl + ctl->ArrayIndex);
+      auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
       if ((i = find_own_index(ctl, Self)) IS -1) {
          drwReleaseList(ARF_READ);
          return ERR_Search;
@@ -781,7 +784,7 @@ static ERROR GET_VisibleX(objSurface *Self, LONG *Value)
       drwReleaseList(ARF_READ);
       return ERR_Okay;
    }
-   else return PostError(ERR_AccessMemory);
+   else return log.warning(ERR_AccessMemory);
 }
 
 /*****************************************************************************
@@ -801,14 +804,15 @@ If none of the surface area is visible then zero is returned.  The result is nev
 
 static ERROR GET_VisibleY(objSurface *Self, LONG *Value)
 {
-   struct SurfaceControl *ctl;
+   parasol::Log log;
+   SurfaceControl *ctl;
 
    if (!Self->ParentID) {
       *Value = Self->Height;
       return ERR_Okay;
    }
    else if ((ctl = drwAccessList(ARF_READ))) {
-      struct SurfaceList *list = (struct SurfaceList *)((APTR)ctl + ctl->ArrayIndex);
+      auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
       WORD i;
       if ((i = find_own_index(ctl, Self)) IS -1) {
          drwReleaseList(ARF_READ);
@@ -827,7 +831,7 @@ static ERROR GET_VisibleY(objSurface *Self, LONG *Value)
       drwReleaseList(ARF_READ);
       return ERR_Okay;
    }
-   else return PostError(ERR_AccessMemory);
+   else return log.warning(ERR_AccessMemory);
 }
 
 /*****************************************************************************
@@ -848,7 +852,7 @@ Width values of 0 or less are illegal, and will result in an ERR_OutOfRange erro
 
 *****************************************************************************/
 
-static ERROR GET_Width(objSurface *Self, struct Variable *Value)
+static ERROR GET_Width(objSurface *Self, Variable *Value)
 {
    if (Value->Type & FD_DOUBLE) {
       if (Value->Type & FD_PERCENTAGE) {
@@ -863,16 +867,17 @@ static ERROR GET_Width(objSurface *Self, struct Variable *Value)
    return ERR_Okay;
 }
 
-static ERROR SET_Width(objSurface *Self, struct Variable *Variable)
+static ERROR SET_Width(objSurface *Self, Variable *Value)
 {
-   struct Variable var;
+   parasol::Log log;
+   Variable var;
    objSurface *parent;
    DOUBLE value;
 
-   if (Variable->Type & FD_DOUBLE)      value = Variable->Double;
-   else if (Variable->Type & FD_LARGE)  value = Variable->Large;
-   else if (Variable->Type & FD_STRING) value = StrToInt(Variable->Pointer);
-   else return PostError(ERR_FieldTypeMismatch);
+   if (Value->Type & FD_DOUBLE)      value = Value->Double;
+   else if (Value->Type & FD_LARGE)  value = Value->Large;
+   else if (Value->Type & FD_STRING) value = StrToInt((CSTRING)Value->Pointer);
+   else return log.warning(ERR_FieldTypeMismatch);
 
    if (value <= 0) {
       if (Self->Head.Flags & NF_INITIALISED) return ERR_InvalidDimension;
@@ -883,7 +888,7 @@ static ERROR SET_Width(objSurface *Self, struct Variable *Variable)
    }
    if (value > 0x7fffffff) value = 0x7fffffff;
 
-   if (Variable->Type & FD_PERCENTAGE) {
+   if (Value->Type & FD_PERCENTAGE) {
       if (Self->ParentID) {
          if (!AccessObject(Self->ParentID, 500, &parent)) {
             Self->WidthPercent = value;
@@ -931,7 +936,7 @@ immediately.
 
 *****************************************************************************/
 
-static ERROR GET_XCoord(objSurface *Self, struct Variable *Value)
+static ERROR GET_XCoord(objSurface *Self, Variable *Value)
 {
    if (Value->Type & FD_DOUBLE) {
       if (Value->Type & FD_PERCENTAGE) Value->Double = Self->XPercent;
@@ -941,21 +946,25 @@ static ERROR GET_XCoord(objSurface *Self, struct Variable *Value)
       if (Value->Type & FD_PERCENTAGE) Value->Large = F2I(Self->XPercent);
       else Value->Large = Self->X;
    }
-   else return PostError(ERR_FieldTypeMismatch);
+   else {
+      parasol::Log log;
+      return log.warning(ERR_FieldTypeMismatch);
+   }
    return ERR_Okay;
 }
 
-static ERROR SET_XCoord(objSurface *Self, struct Variable *Variable)
+static ERROR SET_XCoord(objSurface *Self, Variable *Value)
 {
+   parasol::Log log;
    objSurface *parent;
    DOUBLE value;
 
-   if (Variable->Type & FD_DOUBLE)      value = Variable->Double;
-   else if (Variable->Type & FD_LARGE)  value = Variable->Large;
-   else if (Variable->Type & FD_STRING) value = StrToInt(Variable->Pointer);
-   else return PostError(ERR_FieldTypeMismatch);
+   if (Value->Type & FD_DOUBLE)      value = Value->Double;
+   else if (Value->Type & FD_LARGE)  value = Value->Large;
+   else if (Value->Type & FD_STRING) value = StrToInt((CSTRING)Value->Pointer);
+   else return log.warning(ERR_FieldTypeMismatch);
 
-   if (Variable->Type & FD_PERCENTAGE) {
+   if (Value->Type & FD_PERCENTAGE) {
       Self->Dimensions = (Self->Dimensions & ~DMF_FIXED_X) | DMF_RELATIVE_X;
       Self->XPercent   = value;
       if (Self->ParentID) {
@@ -963,7 +972,7 @@ static ERROR SET_XCoord(objSurface *Self, struct Variable *Variable)
             move_layer(Self, (parent->Width * value) / 100, Self->Y);
             ReleaseObject(parent);
          }
-         else return PostError(ERR_AccessObject);
+         else return log.warning(ERR_AccessObject);
       }
    }
    else {
@@ -972,12 +981,12 @@ static ERROR SET_XCoord(objSurface *Self, struct Variable *Variable)
 
       // If our right-hand side is relative, we need to resize our surface to counteract the movement.
 
-      if ((Self->ParentID) AND (Self->Dimensions & (DMF_RELATIVE_X_OFFSET|DMF_FIXED_X_OFFSET))) {
+      if ((Self->ParentID) and (Self->Dimensions & (DMF_RELATIVE_X_OFFSET|DMF_FIXED_X_OFFSET))) {
          if (!AccessObject(Self->ParentID, 1000, &parent)) {
             resize_layer(Self, Self->X, Self->Y, parent->Width - Self->X - Self->XOffset, 0, 0, 0, 0, 0, NULL);
             ReleaseObject(parent);
          }
-         else return PostError(ERR_AccessObject);
+         else return log.warning(ERR_AccessObject);
       }
    }
 
@@ -1001,13 +1010,14 @@ an X coordinate calculated from the formula `X = ContainerWidth - SurfaceWidth -
 
 *****************************************************************************/
 
-static ERROR GET_XOffset(objSurface *Self, struct Variable *Variable)
+static ERROR GET_XOffset(objSurface *Self, Variable *Value)
 {
-   struct Variable xoffset;
+   parasol::Log log;
+   Variable xoffset;
    objSurface *parent;
    DOUBLE value;
 
-   if (Variable->Type & FD_PERCENTAGE) {
+   if (Value->Type & FD_PERCENTAGE) {
       xoffset.Type = FD_DOUBLE;
       xoffset.Double = 0;
       if (GET_XOffset(Self, &xoffset) IS ERR_Okay) {
@@ -1019,43 +1029,44 @@ static ERROR GET_XOffset(objSurface *Self, struct Variable *Variable)
       if (Self->Dimensions & DMF_X_OFFSET) {
          value = Self->XOffset;
       }
-      else if ((Self->Dimensions & DMF_WIDTH) AND
-               (Self->Dimensions & DMF_X) AND
+      else if ((Self->Dimensions & DMF_WIDTH) and
+               (Self->Dimensions & DMF_X) and
                (Self->ParentID)) {
          if (AccessObject(Self->ParentID, 1000, &parent) IS ERR_Okay) {
             value = parent->Width - Self->X - Self->Width;
             ReleaseObject(parent);
          }
-         else return PostError(ERR_AccessObject);
+         else return log.warning(ERR_AccessObject);
       }
       else value = 0;
    }
 
-   if (Variable->Type & FD_DOUBLE)     Variable->Double = value;
-   else if (Variable->Type & FD_LARGE) Variable->Large  = value;
-   else return PostError(ERR_FieldTypeMismatch);
+   if (Value->Type & FD_DOUBLE)     Value->Double = value;
+   else if (Value->Type & FD_LARGE) Value->Large  = value;
+   else return log.warning(ERR_FieldTypeMismatch);
 
    return ERR_Okay;
 }
 
-static ERROR SET_XOffset(objSurface *Self, struct Variable *Variable)
+static ERROR SET_XOffset(objSurface *Self, Variable *Value)
 {
+   parasol::Log log;
    objSurface *parent;
    DOUBLE value;
 
-   if (Variable->Type & FD_DOUBLE)      value = Variable->Double;
-   else if (Variable->Type & FD_LARGE)  value = Variable->Large;
-   else if (Variable->Type & FD_STRING) value = StrToInt(Variable->Pointer);
-   else return PostError(ERR_FieldTypeMismatch);
+   if (Value->Type & FD_DOUBLE)      value = Value->Double;
+   else if (Value->Type & FD_LARGE)  value = Value->Large;
+   else if (Value->Type & FD_STRING) value = StrToInt((CSTRING)Value->Pointer);
+   else return log.warning(ERR_FieldTypeMismatch);
 
    if (value < 0) value = -value;
 
-   if (Variable->Type & FD_PERCENTAGE) {
+   if (Value->Type & FD_PERCENTAGE) {
       Self->Dimensions = (Self->Dimensions & ~DMF_FIXED_X_OFFSET) | DMF_RELATIVE_X_OFFSET;
       Self->XOffsetPercent = value;
 
       if (Self->ParentID) {
-         if (AccessObject(Self->ParentID, 500, &parent) IS ERR_Okay) {
+         if (!AccessObject(Self->ParentID, 500, &parent)) {
             Self->XOffset = (parent->Width * F2I(Self->XOffsetPercent)) / 100;
             if (!(Self->Dimensions & DMF_X)) Self->X = parent->Width - Self->XOffset - Self->Width;
             if (!(Self->Dimensions & DMF_WIDTH)) {
@@ -1063,26 +1074,26 @@ static ERROR SET_XOffset(objSurface *Self, struct Variable *Variable)
             }
             ReleaseObject(parent);
          }
-         else return PostError(ERR_AccessObject);
+         else return log.warning(ERR_AccessObject);
       }
    }
    else {
       Self->Dimensions = (Self->Dimensions & ~DMF_RELATIVE_X_OFFSET) | DMF_FIXED_X_OFFSET;
       Self->XOffset = value;
 
-      if ((Self->Dimensions & DMF_WIDTH) AND (Self->ParentID)) {
-         if (AccessObject(Self->ParentID, 1000, &parent) IS ERR_Okay) {
+      if ((Self->Dimensions & DMF_WIDTH) and (Self->ParentID)) {
+         if (!AccessObject(Self->ParentID, 1000, &parent)) {
             move_layer(Self, parent->Width - Self->XOffset - Self->Width, Self->Y);
             ReleaseObject(parent);
          }
-         else return PostError(ERR_AccessObject);
+         else return log.warning(ERR_AccessObject);
       }
-      else if ((Self->Dimensions & DMF_X) AND (Self->ParentID)) {
+      else if ((Self->Dimensions & DMF_X) and (Self->ParentID)) {
          if (AccessObject(Self->ParentID, 1000, &parent) IS ERR_Okay) {
             resize_layer(Self, Self->X, Self->Y, parent->Width - Self->X - Self->XOffset, 0, 0, 0, 0, 0, NULL);
             ReleaseObject(parent);
          }
-         else return PostError(ERR_AccessObject);
+         else return log.warning(ERR_AccessObject);
       }
    }
 
@@ -1101,7 +1112,7 @@ If the value is changed while the surface is on display, its position will be up
 
 *****************************************************************************/
 
-static ERROR GET_YCoord(objSurface *Self, struct Variable *Value)
+static ERROR GET_YCoord(objSurface *Self, Variable *Value)
 {
    if (Value->Type & FD_DOUBLE) {
       if (Value->Type & FD_PERCENTAGE) Value->Double = Self->YPercent;
@@ -1111,21 +1122,25 @@ static ERROR GET_YCoord(objSurface *Self, struct Variable *Value)
       if (Value->Type & FD_PERCENTAGE) Value->Large = F2I(Self->YPercent);
       else Value->Large = Self->Y;
    }
-   else return PostError(ERR_FieldTypeMismatch);
+   else {
+      parasol::Log log;
+      return log.warning(ERR_FieldTypeMismatch);
+   }
    return ERR_Okay;
 }
 
-static ERROR SET_YCoord(objSurface *Self, struct Variable *Variable)
+static ERROR SET_YCoord(objSurface *Self, Variable *Value)
 {
+   parasol::Log log;
    objSurface *parent;
    DOUBLE value;
 
-   if (Variable->Type & FD_DOUBLE)     value = Variable->Double;
-   else if (Variable->Type & FD_LARGE) value = Variable->Large;
-   else if (Variable->Type & FD_STRING) value = StrToInt(Variable->Pointer);
-   else return PostError(ERR_FieldTypeMismatch);
+   if (Value->Type & FD_DOUBLE)     value = Value->Double;
+   else if (Value->Type & FD_LARGE) value = Value->Large;
+   else if (Value->Type & FD_STRING) value = StrToInt((CSTRING)Value->Pointer);
+   else return log.warning(ERR_FieldTypeMismatch);
 
-   if (Variable->Type & FD_PERCENTAGE) {
+   if (Value->Type & FD_PERCENTAGE) {
       Self->Dimensions = (Self->Dimensions & ~DMF_FIXED_Y) | DMF_RELATIVE_Y;
       Self->YPercent = value;
       if (Self->ParentID) {
@@ -1133,7 +1148,7 @@ static ERROR SET_YCoord(objSurface *Self, struct Variable *Variable)
             move_layer(Self, Self->X, (parent->Height * value) / 100);
             ReleaseObject(parent);
          }
-         else return PostError(ERR_AccessObject);
+         else return log.warning(ERR_AccessObject);
       }
    }
    else {
@@ -1161,13 +1176,14 @@ at a Y coordinate calculated from the formula "Y = ContainerHeight - SurfaceHeig
 
 *****************************************************************************/
 
-static ERROR GET_YOffset(objSurface *Self, struct Variable *Variable)
+static ERROR GET_YOffset(objSurface *Self, Variable *Value)
 {
-   struct Variable yoffset;
+   parasol::Log log;
+   Variable yoffset;
    objSurface *parent;
    DOUBLE value;
 
-   if (Variable->Type & FD_PERCENTAGE) {
+   if (Value->Type & FD_PERCENTAGE) {
       yoffset.Type = FD_DOUBLE;
       yoffset.Double = 0;
       if (!GET_YOffset(Self, &yoffset)) {
@@ -1179,41 +1195,42 @@ static ERROR GET_YOffset(objSurface *Self, struct Variable *Variable)
       if (Self->Dimensions & DMF_Y_OFFSET) {
          value = Self->YOffset;
       }
-      else if ((Self->Dimensions & DMF_HEIGHT) AND (Self->Dimensions & DMF_Y) AND (Self->ParentID)) {
+      else if ((Self->Dimensions & DMF_HEIGHT) and (Self->Dimensions & DMF_Y) and (Self->ParentID)) {
          if (!AccessObject(Self->ParentID, 1000, &parent)) {
             value = parent->Height - Self->Y - Self->Height;
             ReleaseObject(parent);
          }
-         else return PostError(ERR_AccessObject);
+         else return log.warning(ERR_AccessObject);
       }
       else value = 0;
    }
 
-   if (Variable->Type & FD_DOUBLE)     Variable->Double = value;
-   else if (Variable->Type & FD_LARGE) Variable->Large  = value;
-   else return PostError(ERR_FieldTypeMismatch);
+   if (Value->Type & FD_DOUBLE)     Value->Double = value;
+   else if (Value->Type & FD_LARGE) Value->Large  = value;
+   else return log.warning(ERR_FieldTypeMismatch);
 
    return ERR_Okay;
 }
 
-static ERROR SET_YOffset(objSurface *Self, struct Variable *Variable)
+static ERROR SET_YOffset(objSurface *Self, Variable *Value)
 {
+   parasol::Log log;
    objSurface *parent;
    DOUBLE value;
 
-   if (Variable->Type & FD_DOUBLE)      value = Variable->Double;
-   else if (Variable->Type & FD_LARGE)  value = Variable->Large;
-   else if (Variable->Type & FD_STRING) value = StrToInt(Variable->Pointer);
-   else return PostError(ERR_FieldTypeMismatch);
+   if (Value->Type & FD_DOUBLE)      value = Value->Double;
+   else if (Value->Type & FD_LARGE)  value = Value->Large;
+   else if (Value->Type & FD_STRING) value = StrToInt((CSTRING)Value->Pointer);
+   else return log.warning(ERR_FieldTypeMismatch);
 
    if (value < 0) value = -value;
 
-   if (Variable->Type & FD_PERCENTAGE) {
+   if (Value->Type & FD_PERCENTAGE) {
       Self->Dimensions = (Self->Dimensions & ~DMF_FIXED_Y_OFFSET) | DMF_RELATIVE_Y_OFFSET;
       Self->YOffsetPercent = value;
 
       if (Self->ParentID) {
-         if (AccessObject(Self->ParentID, 500, &parent) IS ERR_Okay) {
+         if (!AccessObject(Self->ParentID, 500, &parent)) {
             Self->YOffset = (parent->Height * F2I(Self->YOffsetPercent)) / 100;
             if (!(Self->Dimensions & DMF_Y))Self->Y = parent->Height - Self->YOffset - Self->Height;
             if (!(Self->Dimensions & DMF_HEIGHT)) {
@@ -1222,29 +1239,29 @@ static ERROR SET_YOffset(objSurface *Self, struct Variable *Variable)
             else move_layer(Self, Self->X, parent->Height - Self->YOffset - Self->Height);
             ReleaseObject(parent);
          }
-         else return PostError(ERR_AccessObject);
+         else return log.warning(ERR_AccessObject);
       }
    }
    else {
       Self->Dimensions = (Self->Dimensions & ~DMF_RELATIVE_Y_OFFSET) | DMF_FIXED_Y_OFFSET;
       Self->YOffset = value;
 
-      if ((Self->Dimensions & DMF_HEIGHT) AND (Self->ParentID)) {
-         if (AccessObject(Self->ParentID, 1000, &parent) IS ERR_Okay) {
+      if ((Self->Dimensions & DMF_HEIGHT) and (Self->ParentID)) {
+         if (!AccessObject(Self->ParentID, 1000, &parent)) {
             if (!(Self->Dimensions & DMF_HEIGHT)) {
                resize_layer(Self, Self->X, Self->Y, 0, parent->Height - Self->Y - Self->YOffset, 0, 0, 0, 0, NULL);
             }
             else move_layer(Self, Self->X, parent->Height - Self->YOffset - Self->Height);
             ReleaseObject(parent);
          }
-         else return PostError(ERR_AccessObject);
+         else return log.warning(ERR_AccessObject);
       }
-      else if ((Self->Dimensions & DMF_Y) AND (Self->ParentID)) {
-         if (AccessObject(Self->ParentID, 1000, &parent) IS ERR_Okay) {
+      else if ((Self->Dimensions & DMF_Y) and (Self->ParentID)) {
+         if (!AccessObject(Self->ParentID, 1000, &parent)) {
             resize_layer(Self, Self->X, Self->Y, 0, parent->Height - Self->Y - Self->YOffset, 0, 0, 0, 0, NULL);
             ReleaseObject(parent);
          }
-         else return PostError(ERR_AccessObject);
+         else return log.warning(ERR_AccessObject);
       }
    }
    return ERR_Okay;

@@ -181,11 +181,11 @@ module({ name="Surface", copyright="Paul Manias © 2000-2020", version=1.0 }, fu
   })
 
   class("Surface", { src={
-      "class_surface/surface_class.c",
-      "class_surface/surface_dimensions.c",
-      "class_surface/surface_drawing.c",
-      "class_surface/surface_fields.c",
-      "class_surface/surface_resize.c"
+      "class_surface/surface_class.cpp",
+      "class_surface/surface_dimensions.cpp",
+      "class_surface/surface_drawing.cpp",
+      "class_surface/surface_fields.cpp",
+      "class_surface/surface_resize.cpp"
     }, output="class_surface/surface_def.c" }, [[
     oid Drag              # Drag the object that this field points to
     oid Buffer            # Buffer bitmap (backing store)
@@ -264,7 +264,7 @@ module({ name="Surface", copyright="Paul Manias © 2000-2020", version=1.0 }, fu
    BYTE     Anchored;
   ]])
 
-  class("Layout", { comment="Layout management class", src="class_layout/layout.c" }, [[
+  class("Layout", { comment="Layout management class", src="class_layout/layout.cpp" }, [[
     double X
     double Y
     double Width

@@ -20,45 +20,33 @@ Other Layout classes can be used as a drop-in replacement for this default class
 
 *****************************************************************************/
 
-/*
-#undef MSG
-#undef FMSG
-#undef LOGRETURN
-#define MSG(...)  LogF(0,__VA_ARGS__)
-#define FMSG(...) LogF(__VA_ARGS__)
-#define LOGRETURN()    LogReturn()
-*/
+static ERROR GET_Layout_X(objLayout *, Variable *);
+static ERROR GET_Layout_Y(objLayout *, Variable *);
+static ERROR GET_Layout_Width(objLayout *, Variable *);
+static ERROR GET_Layout_Height(objLayout *, Variable *);
 
-static ERROR GET_Layout_X(objLayout *, struct Variable *);
-static ERROR GET_Layout_Y(objLayout *, struct Variable *);
-static ERROR GET_Layout_Width(objLayout *, struct Variable *);
-static ERROR GET_Layout_Height(objLayout *, struct Variable *);
-
-static ERROR SET_Layout_X(objLayout *, struct Variable *);
-static ERROR SET_Layout_Y(objLayout *, struct Variable *);
-static ERROR SET_Layout_XOffset(objLayout *, struct Variable *);
-static ERROR SET_Layout_YOffset(objLayout *, struct Variable *);
-static ERROR SET_Layout_Width(objLayout *, struct Variable *);
-static ERROR SET_Layout_Height(objLayout *, struct Variable *);
+static ERROR SET_Layout_X(objLayout *, Variable *);
+static ERROR SET_Layout_Y(objLayout *, Variable *);
+static ERROR SET_Layout_XOffset(objLayout *, Variable *);
+static ERROR SET_Layout_YOffset(objLayout *, Variable *);
+static ERROR SET_Layout_Width(objLayout *, Variable *);
+static ERROR SET_Layout_Height(objLayout *, Variable *);
 
 static ERROR SET_Layout_Surface(objLayout *, OBJECTID);
 
-static ERROR LAYOUT_Focus(objLayout *Self, APTR);
-static ERROR LAYOUT_Free(objLayout *Self, APTR);
-static ERROR LAYOUT_Hide(objLayout *Self, APTR);
-static ERROR LAYOUT_Init(objLayout *Self, APTR);
-static ERROR LAYOUT_LostFocus(objLayout *Self, APTR);
-static ERROR LAYOUT_Move(objLayout *Self, struct acMove *);
-static ERROR LAYOUT_MoveToBack(objLayout *Self, APTR);
-static ERROR LAYOUT_MoveToFront(objLayout *Self, APTR);
-static ERROR LAYOUT_MoveToPoint(objLayout *Self, struct acMoveToPoint *);
-static ERROR LAYOUT_NewObject(objLayout *Self, APTR);
-static ERROR LAYOUT_Redimension(objLayout *Self, struct acRedimension *);
-static ERROR LAYOUT_Resize(objLayout *Self, struct acResize *);
-static ERROR LAYOUT_Show(objLayout *Self, APTR);
-
-static const struct FieldArray clLayoutFields[];
-static const struct ActionArray clLayoutActions[];
+static ERROR LAYOUT_Focus(objLayout *, APTR);
+static ERROR LAYOUT_Free(objLayout *, APTR);
+static ERROR LAYOUT_Hide(objLayout *, APTR);
+static ERROR LAYOUT_Init(objLayout *, APTR);
+static ERROR LAYOUT_LostFocus(objLayout *, APTR);
+static ERROR LAYOUT_Move(objLayout *, struct acMove *);
+static ERROR LAYOUT_MoveToBack(objLayout *, APTR);
+static ERROR LAYOUT_MoveToFront(objLayout *, APTR);
+static ERROR LAYOUT_MoveToPoint(objLayout *, struct acMoveToPoint *);
+static ERROR LAYOUT_NewObject(objLayout *, APTR);
+static ERROR LAYOUT_Redimension(objLayout *, struct acRedimension *);
+static ERROR LAYOUT_Resize(objLayout *, struct acResize *);
+static ERROR LAYOUT_Show(objLayout *, APTR);
 
 //****************************************************************************
 // Class methods.
@@ -67,7 +55,7 @@ static const struct ActionArray clLayoutActions[];
 
 //static const struct FunctionField argsSetOpacity[] = { { "Value", FD_DOUBLE }, { "Adjustment", FD_DOUBLE }, { NULL, NULL } };
 
-static const struct MethodArray clLayoutMethods[] = {
+static const MethodArray clLayoutMethods[] = {
 //   { MT_DrwSetOpacity, LAYOUT_SetOpacity, "SetOpacity", argsSetOpacity, sizeof(struct mtSetLayoutOpacity) },
    { 0, NULL, NULL, NULL }
 };
@@ -76,14 +64,15 @@ static const struct MethodArray clLayoutMethods[] = {
 
 static ERROR init_surface(objLayout *Self, OBJECTID SurfaceID)
 {
+   parasol::Log log(__FUNCTION__);
    objSurface *surface;
 
    if ((Self->SurfaceID) AND (SurfaceID != Self->SurfaceID)) {
-      LogErrorMsg("Attempt to change surface from #%d to #%d - switching surfaces is not allowed.", Self->SurfaceID, SurfaceID);
+      log.warning("Attempt to change surface from #%d to #%d - switching surfaces is not allowed.", Self->SurfaceID, SurfaceID);
       return ERR_Failed;
    }
 
-   LogF("~init_surface()","Surface: %d", SurfaceID);
+   log.branch("Surface: %d", SurfaceID);
 
    if (!AccessObject(SurfaceID, 3000, &surface)) {
       // In the case of documents, the bounds need to be taken from the parent and not the containing surface, as the
@@ -95,8 +84,7 @@ static ERROR init_surface(objLayout *Self, OBJECTID SurfaceID)
          Self->Document = GetObjectPtr(GetOwnerID(Self->PageID));
 
          if ((!Self->Document) OR (Self->Document->ClassID != ID_DOCUMENT)) {
-            LogErrorMsg("Expected a Document object to control this surface.");
-            LogReturn();
+            log.warning("Expected a Document object to control this surface.");
             return ERR_Failed;
          }
 
@@ -128,29 +116,9 @@ static ERROR init_surface(objLayout *Self, OBJECTID SurfaceID)
       }
 
       ReleaseObject(surface);
-
-      LogReturn();
       return ERR_Okay;
    }
-   else return LogReturnError(0, ERR_AccessObject);
-}
-
-/*****************************************************************************
-** Internal: create_layout_class()
-*/
-
-static ERROR create_layout_class(void)
-{
-   return(CreateObject(ID_METACLASS, 0, &LayoutClass,
-      FID_Name|TSTR,           "Layout",
-      FID_ClassVersion|TFLOAT, 1.0,
-      FID_Category|TLONG, CCF_GUI,
-      FID_Actions|TPTR,   clLayoutActions,
-      FID_Methods|TARRAY, clLayoutMethods,
-      FID_Fields|TARRAY,  clLayoutFields,
-      FID_Size|TLONG,     sizeof(objLayout),
-      FID_Path|TSTR,      MOD_PATH,
-      TAGEND));
+   else return log.warning(ERR_AccessObject);
 }
 
 //****************************************************************************
@@ -163,7 +131,7 @@ static ERROR LAYOUT_ActionNotify(objLayout *Self, struct acActionNotify *Args)
       }
    }
    else if (Args->ActionID IS AC_Redimension) {
-      struct acRedimension *resize = (struct acRedimension *)Args->Args;
+      auto resize = (struct acRedimension *)Args->Args;
 
       // PLEASE NOTE: If the layout is part of a document, then the page surface is monitored as that
       // contains the true width/height of the page as opposed to the containing surface.
@@ -177,7 +145,7 @@ static ERROR LAYOUT_ActionNotify(objLayout *Self, struct acActionNotify *Args)
       Self->ParentSurface.Width  = resize->Width;
       Self->ParentSurface.Height = resize->Height;
 
-      struct Variable var;
+      Variable var;
       var.Type = FD_LARGE;
       GET_Layout_X(Self, &var); Self->BoundX = var.Large;
       GET_Layout_Y(Self, &var); Self->BoundY = var.Large;
@@ -186,16 +154,14 @@ static ERROR LAYOUT_ActionNotify(objLayout *Self, struct acActionNotify *Args)
 
       if (Self->ResizeCallback.Type) {
           if (Self->ResizeCallback.Type IS CALL_STDC) {
-            void (*routine)(OBJECTPTR);
-            OBJECTPTR context = SetContext(Self->ResizeCallback.StdC.Context);
-               routine = Self->ResizeCallback.StdC.Routine;
-               routine(Self->Owner);
-            SetContext(context);
+            auto routine = (void (*)(OBJECTPTR))Self->ResizeCallback.StdC.Routine;
+            parasol::SwitchContext context(Self->ResizeCallback.StdC.Context);
+            routine(Self->Owner);
          }
          else if (Self->ResizeCallback.Type IS CALL_SCRIPT) {
             OBJECTPTR script;
             if ((script = Self->ResizeCallback.Script.Script)) {
-               const struct ScriptArg args[] = {
+               const ScriptArg args[] = {
                   { "Owner", FD_OBJECTID, { .Long = Self->Owner ? Self->Owner->UniqueID : 0 } },
                };
                scCallback(script, Self->ResizeCallback.Script.ProcedureID, args, ARRAYSIZE(args));
@@ -267,12 +233,13 @@ static ERROR LAYOUT_Hide(objLayout *Self, APTR Void)
 
 static ERROR LAYOUT_Init(objLayout *Self, APTR Void)
 {
-   struct Variable var;
+   parasol::Log log;
+   Variable var;
    objSurface *surface;
 
    Self->Owner = GetObjectPtr(GetOwner(Self));
    if (!Self->Owner) {
-      LogErrorMsg("Failed to get owner address.");
+      log.warning("Failed to get owner address.");
       return ERR_Failed;
    }
 
@@ -284,7 +251,7 @@ static ERROR LAYOUT_Init(objLayout *Self, APTR Void)
          owner_id = GetOwnerID(owner_id);
       }
 
-      if (!owner_id) return PostError(ERR_UnsupportedOwner);
+      if (!owner_id) return log.warning(ERR_UnsupportedOwner);
       else {
          init_surface(Self, owner_id);
          Self->SurfaceID = owner_id;
@@ -481,7 +448,10 @@ static ERROR GET_Layout_AbsX(objLayout *Self, LONG *Value)
       *Value = absx + Self->X;
       return ERR_Okay;
    }
-   else return PostError(ERR_Failed);
+   else {
+      parasol::Log log;
+      return log.warning(ERR_Failed);
+   }
 }
 
 static ERROR SET_Layout_AbsX(objLayout *Self, LONG Value)
@@ -491,7 +461,10 @@ static ERROR SET_Layout_AbsX(objLayout *Self, LONG Value)
       Self->X = Value - absx;
       return ERR_Okay;
    }
-   else return PostError(ERR_Failed);
+   else {
+      parasol::Log log;
+      return log.warning(ERR_Failed);
+   }
 }
 
 /*****************************************************************************
@@ -512,7 +485,10 @@ static ERROR GET_Layout_AbsY(objLayout *Self, LONG *Value)
       *Value = absy + Self->Y;
       return ERR_Okay;
    }
-   else return PostError(ERR_Failed);
+   else {
+      parasol::Log log;
+      return log.warning(ERR_Failed);
+   }
 }
 
 static ERROR SET_Layout_AbsY(objLayout *Self, LONG Value)
@@ -522,7 +498,10 @@ static ERROR SET_Layout_AbsY(objLayout *Self, LONG Value)
       Self->Y = Value - absy;
       return ERR_Okay;
    }
-   else return PostError(ERR_Failed);
+   else {
+      parasol::Log log;
+      return log.warning(ERR_Failed);
+   }
 }
 
 /*****************************************************************************
@@ -713,7 +692,10 @@ static ERROR GET_Layout_DrawCallback(objLayout *Self, FUNCTION **Value)
 
 static ERROR SET_Layout_DrawCallback(objLayout *Self, FUNCTION *Value)
 {
-   if (Self->Head.Flags & NF_INITIALISED) return PostError(ERR_Immutable);
+   if (Self->Head.Flags & NF_INITIALISED) {
+      parasol::Log log;
+      return log.warning(ERR_Immutable);
+   }
 
    if (Value) Self->DrawCallback = *Value;
    else Self->DrawCallback.Type = CALL_NONE;
@@ -766,18 +748,20 @@ Reading this field will always return a fixed height value.
 
 *****************************************************************************/
 
-static ERROR GET_Layout_GraphicHeight(objLayout *Self, struct Variable *Value)
+static ERROR GET_Layout_GraphicHeight(objLayout *Self, Variable *Value)
 {
    Value->Double = Self->GraphicHeight;
    Value->Large = Self->GraphicHeight;
    return ERR_Okay;
 }
 
-static ERROR SET_Layout_GraphicHeight(objLayout *Self, struct Variable *Value)
+static ERROR SET_Layout_GraphicHeight(objLayout *Self, Variable *Value)
 {
+   parasol::Log log;
+
    if (Value->Type & FD_DOUBLE) {
       if (Value->Double <= 0) {
-         LogErrorMsg("A GraphicHeight of %.2f is illegal.", Value->Double);
+         log.warning("A GraphicHeight of %.2f is illegal.", Value->Double);
          return ERR_OutOfRange;
       }
       if (Value->Type & FD_PERCENTAGE) Self->GraphicRelHeight = Value->Double;
@@ -788,7 +772,7 @@ static ERROR SET_Layout_GraphicHeight(objLayout *Self, struct Variable *Value)
    }
    else if (Value->Type & FD_LARGE) {
       if (Value->Large <= 0) {
-         LogErrorMsg("A GraphicHeight of " PF64() " is illegal.", Value->Large);
+         log.warning("A GraphicHeight of " PF64() " is illegal.", Value->Large);
          return ERR_OutOfRange;
       }
 
@@ -798,7 +782,7 @@ static ERROR SET_Layout_GraphicHeight(objLayout *Self, struct Variable *Value)
          Self->GraphicRelHeight = 0;
       }
    }
-   else return PostError(ERR_FieldTypeMismatch);
+   else return log.warning(ERR_FieldTypeMismatch);
 
    return ERR_Okay;
 }
@@ -816,18 +800,20 @@ Reading this field will always return a fixed width value.
 
 *****************************************************************************/
 
-static ERROR GET_Layout_GraphicWidth(objLayout *Self, struct Variable *Value)
+static ERROR GET_Layout_GraphicWidth(objLayout *Self, Variable *Value)
 {
    Value->Double = Self->GraphicWidth;
    Value->Large = Self->GraphicWidth;
    return ERR_Okay;
 }
 
-static ERROR SET_Layout_GraphicWidth(objLayout *Self, struct Variable *Value)
+static ERROR SET_Layout_GraphicWidth(objLayout *Self, Variable *Value)
 {
+   parasol::Log log;
+
    if (Value->Type & FD_DOUBLE) {
       if (Value->Double <= 0) {
-         LogErrorMsg("A GraphicWidth of %.2f is illegal.", Value->Double);
+         log.warning("A GraphicWidth of %.2f is illegal.", Value->Double);
          return ERR_OutOfRange;
       }
       if (Value->Type & FD_PERCENTAGE) Self->GraphicRelWidth = Value->Double / 100.0;
@@ -838,7 +824,7 @@ static ERROR SET_Layout_GraphicWidth(objLayout *Self, struct Variable *Value)
    }
    else if (Value->Type & FD_LARGE) {
       if (Value->Large <= 0) {
-         LogErrorMsg("A GraphicWidth of " PF64() " is illegal.", Value->Large);
+         log.warning("A GraphicWidth of " PF64() " is illegal.", Value->Large);
          return ERR_OutOfRange;
       }
       if (Value->Type & FD_PERCENTAGE) Self->GraphicRelWidth = (DOUBLE)Value->Large / 100.0;
@@ -847,7 +833,7 @@ static ERROR SET_Layout_GraphicWidth(objLayout *Self, struct Variable *Value)
          Self->GraphicRelWidth = 0;
       }
    }
-   else return PostError(ERR_FieldTypeMismatch);
+   else return log.warning(ERR_FieldTypeMismatch);
 
    return ERR_Okay;
 }
@@ -863,14 +849,14 @@ GraphicX value.  Any parts of the graphic that fall outside the boundaries of th
 
 *****************************************************************************/
 
-static ERROR GET_Layout_GraphicX(objLayout *Self, struct Variable *Value)
+static ERROR GET_Layout_GraphicX(objLayout *Self, Variable *Value)
 {
    Value->Double = Self->GraphicX;
    Value->Large = Self->GraphicX;
    return ERR_Okay;
 }
 
-static ERROR SET_Layout_GraphicX(objLayout *Self, struct Variable *Value)
+static ERROR SET_Layout_GraphicX(objLayout *Self, Variable *Value)
 {
    if (Value->Type & FD_DOUBLE) {
       if (Value->Type & FD_PERCENTAGE) {
@@ -890,7 +876,10 @@ static ERROR SET_Layout_GraphicX(objLayout *Self, struct Variable *Value)
          Self->GraphicRelX = 0;
       }
    }
-   else return PostError(ERR_FieldTypeMismatch);
+   else {
+      parasol::Log log;
+      return log.warning(ERR_FieldTypeMismatch);
+   }
 
    return ERR_Okay;
 }
@@ -906,14 +895,14 @@ graphic that fall outside the boundaries of the target area will be clipped.
 
 *****************************************************************************/
 
-static ERROR GET_Layout_GraphicY(objLayout *Self, struct Variable *Value)
+static ERROR GET_Layout_GraphicY(objLayout *Self, Variable *Value)
 {
    Value->Double = Self->GraphicY;
    Value->Large = Self->GraphicY;
    return ERR_Okay;
 }
 
-static ERROR SET_Layout_GraphicY(objLayout *Self, struct Variable *Value)
+static ERROR SET_Layout_GraphicY(objLayout *Self, Variable *Value)
 {
    if (Value->Type & FD_DOUBLE) {
       if (Value->Type & FD_PERCENTAGE) Self->GraphicRelY = Value->Double / 100.0;
@@ -929,7 +918,10 @@ static ERROR SET_Layout_GraphicY(objLayout *Self, struct Variable *Value)
          Self->GraphicRelY = 0;
       }
    }
-   else return PostError(ERR_FieldTypeMismatch);
+   else {
+      parasol::Log log;
+      return log.warning(ERR_FieldTypeMismatch);
+   }
 
    return ERR_Okay;
 }
@@ -944,8 +936,9 @@ percentage may be specified if the FD_PERCENT flag is used when setting the fiel
 
 *****************************************************************************/
 
-static ERROR GET_Layout_Height(objLayout *Self, struct Variable *Value)
+static ERROR GET_Layout_Height(objLayout *Self, Variable *Value)
 {
+   parasol::Log log;
    DOUBLE ycoord, value;
 
    if (Self->Dimensions & DMF_FIXED_HEIGHT) value = Self->Height;
@@ -965,28 +958,30 @@ static ERROR GET_Layout_Height(objLayout *Self, struct Variable *Value)
 
    if (Value->Type & FD_DOUBLE) Value->Double = value;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(value);
-   else return PostError(ERR_FieldTypeMismatch);
+   else return log.warning(ERR_FieldTypeMismatch);
 
    return ERR_Okay;
 }
 
-static ERROR SET_Layout_Height(objLayout *Self, struct Variable *Value)
+static ERROR SET_Layout_Height(objLayout *Self, Variable *Value)
 {
+   parasol::Log log;
+
    if (Value->Type & FD_DOUBLE) {
       if (Value->Double < 0) {
-         LogErrorMsg("A height of %.2f is illegal.", Value->Double);
+         log.warning("A height of %.2f is illegal.", Value->Double);
          return ERR_OutOfRange;
       }
       Self->Height = Value->Double;
    }
    else if (Value->Type & FD_LARGE) {
       if (Value->Large < 0) {
-         LogErrorMsg("A height of " PF64() " is illegal.", Value->Large);
+         log.warning("A height of " PF64() " is illegal.", Value->Large);
          return ERR_OutOfRange;
       }
       Self->Height = Value->Large;
    }
-   else return PostError(ERR_FieldTypeMismatch);
+   else return log.warning(ERR_FieldTypeMismatch);
 
    if (Value->Type & FD_PERCENTAGE) Self->Dimensions = (Self->Dimensions & ~DMF_FIXED_HEIGHT) | DMF_RELATIVE_HEIGHT;
    else Self->Dimensions = (Self->Dimensions & ~DMF_RELATIVE_HEIGHT) | DMF_FIXED_HEIGHT;
@@ -994,7 +989,7 @@ static ERROR SET_Layout_Height(objLayout *Self, struct Variable *Value)
    if ((Self->Dimensions & (DMF_RELATIVE_Y|DMF_FIXED_Y)) AND (Self->Dimensions & (DMF_RELATIVE_Y_OFFSET|DMF_RELATIVE_Y))) Self->Dimensions &= ~(DMF_RELATIVE_Y_OFFSET|DMF_FIXED_Y_OFFSET);
 
    if (Self->Head.Flags & NF_INITIALISED) {
-      struct Variable var;
+      Variable var;
       var.Type = FD_LARGE;
       GET_Layout_Y(Self, &var);
       Self->BoundY = var.Large;
@@ -1415,7 +1410,8 @@ static ERROR SET_Layout_Surface(objLayout *Self, OBJECTID Value)
    if (Value IS Self->SurfaceID) return ERR_Okay;
 
    if (Self->Head.Flags & NF_INITIALISED) {
-      LogErrorMsg("The target surface cannot be changed post-initialisation.");
+      parasol::Log log;
+      log.warning("The target surface cannot be changed post-initialisation.");
       return ERR_Failed;
    }
    else Self->SurfaceID = Value;
@@ -1625,7 +1621,7 @@ percentage may be specified if the FD_PERCENT flag is used when setting the fiel
 
 *****************************************************************************/
 
-static ERROR GET_Layout_Width(objLayout *Self, struct Variable *Value)
+static ERROR GET_Layout_Width(objLayout *Self, Variable *Value)
 {
    DOUBLE xcoord, value;
 
@@ -1646,28 +1642,33 @@ static ERROR GET_Layout_Width(objLayout *Self, struct Variable *Value)
 
    if (Value->Type & FD_DOUBLE) Value->Double = value;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(value);
-   else return PostError(ERR_FieldTypeMismatch);
+   else {
+      parasol::Log log;
+      return log.warning(ERR_FieldTypeMismatch);
+   }
 
    return ERR_Okay;
 }
 
-static ERROR SET_Layout_Width(objLayout *Self, struct Variable *Value)
+static ERROR SET_Layout_Width(objLayout *Self, Variable *Value)
 {
+   parasol::Log log;
+
    if (Value->Type & FD_DOUBLE) {
       if (Value->Double < 0) {
-         LogErrorMsg("A width of %.2f is illegal.", Value->Double);
+         log.warning("A width of %.2f is illegal.", Value->Double);
          return ERR_OutOfRange;
       }
       Self->Width = Value->Double;
    }
    else if (Value->Type & FD_LARGE) {
       if (Value->Large < 0) {
-         LogErrorMsg("A width of " PF64() " is illegal.", Value->Large);
+         log.warning("A width of " PF64() " is illegal.", Value->Large);
          return ERR_OutOfRange;
       }
       Self->Width = Value->Large;
    }
-   else return PostError(ERR_FieldTypeMismatch);
+   else return log.warning(ERR_FieldTypeMismatch);
 
    if (Value->Type & FD_PERCENTAGE) Self->Dimensions = (Self->Dimensions & ~DMF_FIXED_WIDTH) | DMF_RELATIVE_WIDTH;
    else Self->Dimensions = (Self->Dimensions & ~DMF_RELATIVE_WIDTH) | DMF_FIXED_WIDTH;
@@ -1675,8 +1676,8 @@ static ERROR SET_Layout_Width(objLayout *Self, struct Variable *Value)
    if ((Self->Dimensions & (DMF_RELATIVE_X|DMF_FIXED_X)) AND (Self->Dimensions & (DMF_RELATIVE_X_OFFSET|DMF_RELATIVE_X))) Self->Dimensions &= ~(DMF_RELATIVE_X_OFFSET|DMF_FIXED_X_OFFSET);
 
    if (Self->Head.Flags & NF_INITIALISED) {
-      struct Variable var;
-      FMSG("~","Resetting BoundX and BoundWidth");
+      Variable var;
+      log.traceBranch("Resetting BoundX and BoundWidth");
 
       var.Type = FD_LARGE;
       GET_Layout_X(Self, &var);
@@ -1684,8 +1685,6 @@ static ERROR SET_Layout_Width(objLayout *Self, struct Variable *Value)
 
       GET_Layout_Width(Self, &var);
       Self->BoundWidth = var.Large;
-
-      LOGRETURN();
    }
 
    return ERR_Okay;
@@ -1702,8 +1701,9 @@ fixed.  Negative values are permitted.
 
 *****************************************************************************/
 
-static ERROR GET_Layout_X(objLayout *Self, struct Variable *Value)
+static ERROR GET_Layout_X(objLayout *Self, Variable *Value)
 {
+   parasol::Log log;
    DOUBLE width, value;
 
    if (Self->Dimensions & DMF_FIXED_X) value = Self->X;
@@ -1723,24 +1723,26 @@ static ERROR GET_Layout_X(objLayout *Self, struct Variable *Value)
 
    if (Value->Type & FD_DOUBLE) Value->Double = value;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(value);
-   else return PostError(ERR_FieldTypeMismatch);
+   else return log.warning(ERR_FieldTypeMismatch);
 
    return ERR_Okay;
 }
 
-static ERROR SET_Layout_X(objLayout *Self, struct Variable *Value)
+static ERROR SET_Layout_X(objLayout *Self, Variable *Value)
 {
+   parasol::Log log;
+
    if (Value->Type & FD_DOUBLE) Self->X = Value->Double;
    else if (Value->Type & FD_LARGE) Self->X = Value->Large;
-   else return PostError(ERR_FieldTypeMismatch);
+   else return log.warning(ERR_FieldTypeMismatch);
 
    if (Value->Type & FD_PERCENTAGE) Self->Dimensions = (Self->Dimensions & ~DMF_FIXED_X) | DMF_RELATIVE_X;
    else Self->Dimensions = (Self->Dimensions & ~DMF_RELATIVE_X) | DMF_FIXED_X;
 
    if (Self->Head.Flags & NF_INITIALISED) {
-      struct Variable var;
+      Variable var;
 
-      FMSG("~","Resetting BoundX and BoundWidth");
+      log.traceBranch("Resetting BoundX and BoundWidth");
 
       var.Type = FD_LARGE;
       GET_Layout_X(Self, &var);
@@ -1748,8 +1750,6 @@ static ERROR SET_Layout_X(objLayout *Self, struct Variable *Value)
 
       GET_Layout_Width(Self, &var);
       Self->BoundWidth = var.Large;
-
-      LOGRETURN();
    }
 
    return ERR_Okay;
@@ -1772,8 +1772,9 @@ coordinate calculated from the formula `X = ContainerWidth - ImageWidth - XOffse
 
 *****************************************************************************/
 
-static ERROR GET_Layout_XOffset(objLayout *Self, struct Variable *Value)
+static ERROR GET_Layout_XOffset(objLayout *Self, Variable *Value)
 {
+   parasol::Log log;
    DOUBLE width, value;
 
    if (Self->Dimensions & DMF_FIXED_X_OFFSET) value = Self->XOffset;
@@ -1795,24 +1796,26 @@ static ERROR GET_Layout_XOffset(objLayout *Self, struct Variable *Value)
 
    if (Value->Type & FD_DOUBLE) Value->Double = value;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(value);
-   else return PostError(ERR_FieldTypeMismatch);
+   else return log.warning(ERR_FieldTypeMismatch);
 
    return ERR_Okay;
 }
 
-static ERROR SET_Layout_XOffset(objLayout *Self, struct Variable *Value)
+static ERROR SET_Layout_XOffset(objLayout *Self, Variable *Value)
 {
+   parasol::Log log;
+
    if (Value->Type & FD_DOUBLE) Self->XOffset = Value->Double;
    else if (Value->Type & FD_LARGE) Self->XOffset = Value->Large;
-   else return PostError(ERR_FieldTypeMismatch);
+   else return log.warning(ERR_FieldTypeMismatch);
 
    if (Value->Type & FD_PERCENTAGE) Self->Dimensions = (Self->Dimensions & ~DMF_FIXED_X_OFFSET) | DMF_RELATIVE_X_OFFSET;
    else Self->Dimensions = (Self->Dimensions & ~DMF_RELATIVE_X_OFFSET) | DMF_FIXED_X_OFFSET;
 
    if (Self->Head.Flags & NF_INITIALISED) {
-      struct Variable var;
+      Variable var;
 
-      FMSG("~","Resetting BoundX and BoundWidth");
+      log.traceBranch("Resetting BoundX and BoundWidth");
 
       var.Type = FD_LARGE;
       GET_Layout_X(Self, &var);
@@ -1820,8 +1823,6 @@ static ERROR SET_Layout_XOffset(objLayout *Self, struct Variable *Value)
 
       GET_Layout_Width(Self, &var);
       Self->BoundWidth = var.Large;
-
-      LOGRETURN();
    }
 
    return ERR_Okay;
@@ -1838,7 +1839,7 @@ fixed.  Negative values are permitted.
 
 *****************************************************************************/
 
-static ERROR GET_Layout_Y(objLayout *Self, struct Variable *Value)
+static ERROR GET_Layout_Y(objLayout *Self, Variable *Value)
 {
    DOUBLE value, height;
 
@@ -1859,22 +1860,28 @@ static ERROR GET_Layout_Y(objLayout *Self, struct Variable *Value)
    if (Value->Type & FD_PERCENTAGE) value = (value * 100.0) / (DOUBLE)Self->ParentSurface.Height;
    if (Value->Type & FD_DOUBLE) Value->Double = value;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(value);
-   else return PostError(ERR_FieldTypeMismatch);
+   else {
+      parasol::Log log;
+      return log.warning(ERR_FieldTypeMismatch);
+   }
 
    return ERR_Okay;
 }
 
-static ERROR SET_Layout_Y(objLayout *Self, struct Variable *Value)
+static ERROR SET_Layout_Y(objLayout *Self, Variable *Value)
 {
    if (Value->Type & FD_DOUBLE) Self->Y = Value->Double;
    else if (Value->Type & FD_LARGE) Self->Y = Value->Large;
-   else return PostError(ERR_FieldTypeMismatch);
+   else {
+      parasol::Log log;
+      return log.warning(ERR_FieldTypeMismatch);
+   }
 
    if (Value->Type & FD_PERCENTAGE) Self->Dimensions = (Self->Dimensions & ~DMF_FIXED_Y) | DMF_RELATIVE_Y;
    else Self->Dimensions = (Self->Dimensions & ~DMF_RELATIVE_Y) | DMF_FIXED_Y;
 
    if (Self->Head.Flags & NF_INITIALISED) {
-      struct Variable var;
+      Variable var;
       var.Type = FD_LARGE;
       GET_Layout_Y(Self, &var);
       Self->BoundY = var.Large;
@@ -1903,7 +1910,7 @@ coordinate calculated from the formula `Y = ContainerHeight - ImageHeight - YOff
 
 *****************************************************************************/
 
-static ERROR GET_Layout_YOffset(objLayout *Self, struct Variable *Value)
+static ERROR GET_Layout_YOffset(objLayout *Self, Variable *Value)
 {
    DOUBLE height;
    DOUBLE value = 0;
@@ -1924,22 +1931,28 @@ static ERROR GET_Layout_YOffset(objLayout *Self, struct Variable *Value)
 
    if (Value->Type & FD_DOUBLE) Value->Double = value;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(value);
-   else return PostError(ERR_FieldTypeMismatch);
+   else {
+      parasol::Log log;
+      return log.warning(ERR_FieldTypeMismatch);
+   }
 
    return ERR_Okay;
 }
 
-static ERROR SET_Layout_YOffset(objLayout *Self, struct Variable *Value)
+static ERROR SET_Layout_YOffset(objLayout *Self, Variable *Value)
 {
    if (Value->Type & FD_DOUBLE) Self->YOffset = Value->Double;
    else if (Value->Type & FD_LARGE) Self->YOffset = Value->Large;
-   else return PostError(ERR_FieldTypeMismatch);
+   else {
+      parasol::Log log;
+      return log.warning(ERR_FieldTypeMismatch);
+   }
 
    if (Value->Type & FD_PERCENTAGE) Self->Dimensions = (Self->Dimensions & ~DMF_FIXED_Y_OFFSET) | DMF_RELATIVE_Y_OFFSET;
    else Self->Dimensions = (Self->Dimensions & ~DMF_RELATIVE_Y_OFFSET) | DMF_FIXED_Y_OFFSET;
 
    if (Self->Head.Flags & NF_INITIALISED) {
-      struct Variable var;
+      Variable var;
       var.Type = FD_LARGE;
       GET_Layout_Y(Self, &var);
       Self->BoundY = var.Large;
@@ -1952,7 +1965,7 @@ static ERROR SET_Layout_YOffset(objLayout *Self, struct Variable *Value)
 
 //****************************************************************************
 
-static const struct FieldDef clLayoutFlags[] = {
+static const FieldDef clLayoutFlags[] = {
    { "Square",       LAYOUT_SQUARE },
    { "Wide",         LAYOUT_WIDE },
    { "Right",        LAYOUT_RIGHT },
@@ -1967,82 +1980,98 @@ static const struct FieldDef clLayoutFlags[] = {
    { NULL, 0 }
 };
 
-static const struct ActionArray clLayoutActions[] = {
-   { AC_ActionNotify, LAYOUT_ActionNotify },
-   { AC_Focus,       LAYOUT_Focus },
-   { AC_Free,        LAYOUT_Free },
-   { AC_Hide,        LAYOUT_Hide },
-   { AC_Init,        LAYOUT_Init },
-   { AC_LostFocus,   LAYOUT_LostFocus },
-   { AC_Move,        LAYOUT_Move },
-   { AC_MoveToBack,  LAYOUT_MoveToBack },
-   { AC_MoveToFront, LAYOUT_MoveToFront },
-   { AC_MoveToPoint, LAYOUT_MoveToPoint },
-   { AC_NewObject,   LAYOUT_NewObject },
-   { AC_Redimension, LAYOUT_Redimension },
-   { AC_Resize,      LAYOUT_Resize },
-   { AC_Show,        LAYOUT_Show },
+static const ActionArray clLayoutActions[] = {
+   { AC_ActionNotify, (APTR)LAYOUT_ActionNotify },
+   { AC_Focus,        (APTR)LAYOUT_Focus },
+   { AC_Free,         (APTR)LAYOUT_Free },
+   { AC_Hide,         (APTR)LAYOUT_Hide },
+   { AC_Init,         (APTR)LAYOUT_Init },
+   { AC_LostFocus,    (APTR)LAYOUT_LostFocus },
+   { AC_Move,         (APTR)LAYOUT_Move },
+   { AC_MoveToBack,   (APTR)LAYOUT_MoveToBack },
+   { AC_MoveToFront,  (APTR)LAYOUT_MoveToFront },
+   { AC_MoveToPoint,  (APTR)LAYOUT_MoveToPoint },
+   { AC_NewObject,    (APTR)LAYOUT_NewObject },
+   { AC_Redimension,  (APTR)LAYOUT_Redimension },
+   { AC_Resize,       (APTR)LAYOUT_Resize },
+   { AC_Show,         (APTR)LAYOUT_Show },
    { 0, NULL }
 };
 
 // NOTE: All Layout fields are backed by virtual functions, so the order of the field descriptions is irrelevant
 // for the class blueprint.
 
-static const struct FieldArray clLayoutFields[] = {
+static const FieldArray clLayoutFields[] = {
 #if 0
-   { "BoundHeight",  FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, GET_Layout_BoundHeight,  SET_Layout_BoundHeight },
-   { "BoundWidth",   FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, GET_Layout_BoundWidth,   SET_Layout_BoundWidth },
-   { "BoundX",       FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, GET_Layout_BoundX,       SET_Layout_BoundX },
-   { "BoundXOffset", FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, GET_Layout_BoundXOffset, SET_Layout_BoundXOffset },
-   { "BoundY",       FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, GET_Layout_BoundY,       SET_Layout_BoundY },
-   { "BoundYOffset", FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, GET_Layout_BoundYOffset, SET_Layout_BoundYOffset },
+   { "BoundHeight",  FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)GET_Layout_BoundHeight,  (APTR)SET_Layout_BoundHeight },
+   { "BoundWidth",   FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)GET_Layout_BoundWidth,   (APTR)SET_Layout_BoundWidth },
+   { "BoundX",       FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)GET_Layout_BoundX,       (APTR)SET_Layout_BoundX },
+   { "BoundXOffset", FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)GET_Layout_BoundXOffset, (APTR)SET_Layout_BoundXOffset },
+   { "BoundY",       FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)GET_Layout_BoundY,       (APTR)SET_Layout_BoundY },
+   { "BoundYOffset", FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)GET_Layout_BoundYOffset, (APTR)SET_Layout_BoundYOffset },
 #endif
-   { "AbsX",          FDF_LONG|FDF_RW,      0, GET_Layout_AbsX,            SET_Layout_AbsX },
-   { "AbsY",          FDF_LONG|FDF_RW,      0, GET_Layout_AbsY,            SET_Layout_AbsY },
-   { "Align",         FDF_LONGFLAGS|FDF_RW, (MAXINT)&clSurfaceAlign,       GET_Layout_Align, SET_Layout_Align },
-   { "Bottom",        FDF_LONG|FDF_R,       0, GET_Layout_Bottom,          NULL },
-   { "BottomLimit",   FDF_LONG|FDF_RW,      0, GET_Layout_BottomLimit,     SET_Layout_BottomLimit },
-   { "BottomMargin",  FDF_LONG|FDF_RW,      0, GET_Layout_BottomMargin,    SET_Layout_BottomMargin },
-   { "Cursor",        FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clSurfaceCursor, GET_Layout_Cursor,     SET_Layout_Cursor },
-   { "Dimensions",    FDF_LONGFLAGS|FDF_RW, (MAXINT)&clSurfaceDimensions,  GET_Layout_Dimensions, SET_Layout_Dimensions },
-   { "DisableDrawing",FDF_LONG|FDF_RW,      0, GET_Layout_DisableDrawing,  SET_Layout_DisableDrawing },
-   { "DrawCallback",  FDF_FUNCTIONPTR|FDF_RI, 0, GET_Layout_DrawCallback,  SET_Layout_DrawCallback },
-   { "EastGap",       FDF_LONG|FDF_RW,      0, GET_Layout_RightMargin,     SET_Layout_RightMargin },
-   { "Layout",        FDF_LONGFLAGS|FDF_RW, (MAXINT)&clLayoutFlags,        GET_Layout_Layout,  SET_Layout_Layout },
-   { "Gap",           FDF_LONG|FDF_RW,      0, GET_Layout_Gap,             SET_Layout_Gap },
-   { "GraphicX",      FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0,    GET_Layout_GraphicX, SET_Layout_GraphicX },
-   { "GraphicY",      FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0,    GET_Layout_GraphicY, SET_Layout_GraphicY },
-   { "GraphicWidth",  FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0,    GET_Layout_GraphicWidth, SET_Layout_GraphicWidth },
-   { "GraphicHeight", FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0,    GET_Layout_GraphicHeight, SET_Layout_GraphicHeight },
-   { "Hide",          FDF_LONG|FDF_RI,      0, GET_Layout_Hide,            SET_Layout_Hide },
-   { "InsideHeight",  FDF_LONG|FDF_RW,      0, GET_Layout_InsideHeight,    SET_Layout_InsideHeight },
-   { "InsideWidth",   FDF_LONG|FDF_RW,      0, GET_Layout_InsideWidth,     SET_Layout_InsideWidth },
-   { "LeftLimit",     FDF_LONG|FDF_RW,      0, GET_Layout_LeftLimit,      SET_Layout_LeftLimit },
-   { "LeftMargin",    FDF_LONG|FDF_RW,      0, GET_Layout_LeftMargin,     SET_Layout_LeftMargin },
-   { "MaxHeight",     FDF_LONG|FDF_RW,      0, GET_Layout_MaxHeight,      SET_Layout_MaxHeight },
-   { "MaxWidth",      FDF_LONG|FDF_RW,      0, GET_Layout_MaxWidth,       SET_Layout_MaxWidth },
-   { "MinHeight",     FDF_LONG|FDF_RW,      0, GET_Layout_MinHeight,      SET_Layout_MinHeight },
-   { "MinWidth",      FDF_LONG|FDF_RW,      0, GET_Layout_MinWidth,       SET_Layout_MinWidth },
-   { "NorthGap",      FDF_LONG|FDF_RW,      0, GET_Layout_TopMargin,      SET_Layout_TopMargin },
-   { "ResizeCallback",FDF_FUNCTIONPTR|FDF_RI,   0, GET_Layout_ResizeCallback, SET_Layout_ResizeCallback },
-   { "Right",         FDF_LONG|FDF_R,       0, GET_Layout_Right,          NULL },
-   { "RightLimit",    FDF_LONG|FDF_RW,      0, GET_Layout_RightLimit,     SET_Layout_RightLimit },
-   { "RightMargin",   FDF_LONG|FDF_RW,      0, GET_Layout_RightMargin,    SET_Layout_RightMargin },
-   { "SouthGap",      FDF_LONG|FDF_RW,      0, GET_Layout_BottomMargin,   SET_Layout_BottomMargin },
-   { "Surface",       FDF_OBJECTID|FDF_RI,  0, GET_Layout_Surface,        SET_Layout_Surface },
-   { "TopMargin",     FDF_LONG|FDF_RW,      0, GET_Layout_TopMargin,      SET_Layout_TopMargin },
-   { "TopLimit",      FDF_LONG|FDF_RW,      0, GET_Layout_TopLimit,       SET_Layout_TopLimit },
-   { "Visible",       FDF_LONG|FDF_RW,      0, GET_Layout_Visible,        SET_Layout_Visible },
-   { "VisibleHeight", FDF_LONG|FDF_R,       0, GET_Layout_VisibleHeight,  NULL },
-   { "VisibleWidth",  FDF_LONG|FDF_R,       0, GET_Layout_VisibleWidth,   NULL },
-   { "VisibleX",      FDF_LONG|FDF_R,       0, GET_Layout_VisibleX,       NULL },
-   { "VisibleY",      FDF_LONG|FDF_R,       0, GET_Layout_VisibleY,       NULL },
-   { "WestGap",       FDF_LONG|FDF_RW,      0, GET_Layout_LeftMargin,     SET_Layout_LeftMargin },
-   { "Width",         FD_VARIABLE|FDF_LONG|FDF_PERCENTAGE|FDF_RW, 0, GET_Layout_Width, SET_Layout_Width },
-   { "Height",        FD_VARIABLE|FDF_LONG|FDF_PERCENTAGE|FDF_RW, 0, GET_Layout_Height, SET_Layout_Height },
-   { "X",             FD_VARIABLE|FDF_LONG|FDF_PERCENTAGE|FDF_RW, 0, GET_Layout_X,  SET_Layout_X },
-   { "XOffset",       FD_VARIABLE|FDF_LONG|FDF_PERCENTAGE|FDF_RW, 0, GET_Layout_XOffset, SET_Layout_XOffset },
-   { "Y",             FD_VARIABLE|FDF_LONG|FDF_PERCENTAGE|FDF_RW, 0, GET_Layout_Y,  SET_Layout_Y },
-   { "YOffset",       FD_VARIABLE|FDF_LONG|FDF_PERCENTAGE|FDF_RW, 0, GET_Layout_YOffset, SET_Layout_YOffset },
+   { "AbsX",          FDF_LONG|FDF_RW,      0, (APTR)GET_Layout_AbsX,            (APTR)SET_Layout_AbsX },
+   { "AbsY",          FDF_LONG|FDF_RW,      0, (APTR)GET_Layout_AbsY,            (APTR)SET_Layout_AbsY },
+   { "Align",         FDF_LONGFLAGS|FDF_RW, (MAXINT)&clSurfaceAlign,             (APTR)GET_Layout_Align, (APTR)SET_Layout_Align },
+   { "Bottom",        FDF_LONG|FDF_R,       0, (APTR)GET_Layout_Bottom,          NULL },
+   { "BottomLimit",   FDF_LONG|FDF_RW,      0, (APTR)GET_Layout_BottomLimit,     (APTR)SET_Layout_BottomLimit },
+   { "BottomMargin",  FDF_LONG|FDF_RW,      0, (APTR)GET_Layout_BottomMargin,    (APTR)SET_Layout_BottomMargin },
+   { "Cursor",        FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clSurfaceCursor,      (APTR)GET_Layout_Cursor,     (APTR)SET_Layout_Cursor },
+   { "Dimensions",    FDF_LONGFLAGS|FDF_RW, (MAXINT)&clSurfaceDimensions,        (APTR)GET_Layout_Dimensions, (APTR)SET_Layout_Dimensions },
+   { "DisableDrawing",FDF_LONG|FDF_RW,      0, (APTR)GET_Layout_DisableDrawing,  (APTR)SET_Layout_DisableDrawing },
+   { "DrawCallback",  FDF_FUNCTIONPTR|FDF_RI, 0, (APTR)GET_Layout_DrawCallback,  (APTR)SET_Layout_DrawCallback },
+   { "EastGap",       FDF_LONG|FDF_RW,      0, (APTR)GET_Layout_RightMargin,     (APTR)SET_Layout_RightMargin },
+   { "Layout",        FDF_LONGFLAGS|FDF_RW, (MAXINT)&clLayoutFlags,              (APTR)GET_Layout_Layout,  (APTR)SET_Layout_Layout },
+   { "Gap",           FDF_LONG|FDF_RW,      0, (APTR)GET_Layout_Gap,             (APTR)SET_Layout_Gap },
+   { "GraphicX",      FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0,          (APTR)GET_Layout_GraphicX, (APTR)SET_Layout_GraphicX },
+   { "GraphicY",      FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0,          (APTR)GET_Layout_GraphicY, (APTR)SET_Layout_GraphicY },
+   { "GraphicWidth",  FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0,          (APTR)GET_Layout_GraphicWidth, (APTR)SET_Layout_GraphicWidth },
+   { "GraphicHeight", FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0,          (APTR)GET_Layout_GraphicHeight, (APTR)SET_Layout_GraphicHeight },
+   { "Hide",          FDF_LONG|FDF_RI,      0, (APTR)GET_Layout_Hide,            (APTR)SET_Layout_Hide },
+   { "InsideHeight",  FDF_LONG|FDF_RW,      0, (APTR)GET_Layout_InsideHeight,    (APTR)SET_Layout_InsideHeight },
+   { "InsideWidth",   FDF_LONG|FDF_RW,      0, (APTR)GET_Layout_InsideWidth,     (APTR)SET_Layout_InsideWidth },
+   { "LeftLimit",     FDF_LONG|FDF_RW,      0, (APTR)GET_Layout_LeftLimit,      (APTR)SET_Layout_LeftLimit },
+   { "LeftMargin",    FDF_LONG|FDF_RW,      0, (APTR)GET_Layout_LeftMargin,     (APTR)SET_Layout_LeftMargin },
+   { "MaxHeight",     FDF_LONG|FDF_RW,      0, (APTR)GET_Layout_MaxHeight,      (APTR)SET_Layout_MaxHeight },
+   { "MaxWidth",      FDF_LONG|FDF_RW,      0, (APTR)GET_Layout_MaxWidth,       (APTR)SET_Layout_MaxWidth },
+   { "MinHeight",     FDF_LONG|FDF_RW,      0, (APTR)GET_Layout_MinHeight,      (APTR)SET_Layout_MinHeight },
+   { "MinWidth",      FDF_LONG|FDF_RW,      0, (APTR)GET_Layout_MinWidth,       (APTR)SET_Layout_MinWidth },
+   { "NorthGap",      FDF_LONG|FDF_RW,      0, (APTR)GET_Layout_TopMargin,      (APTR)SET_Layout_TopMargin },
+   { "ResizeCallback",FDF_FUNCTIONPTR|FDF_RI,   0, (APTR)GET_Layout_ResizeCallback, (APTR)SET_Layout_ResizeCallback },
+   { "Right",         FDF_LONG|FDF_R,       0, (APTR)GET_Layout_Right,          NULL },
+   { "RightLimit",    FDF_LONG|FDF_RW,      0, (APTR)GET_Layout_RightLimit,     (APTR)SET_Layout_RightLimit },
+   { "RightMargin",   FDF_LONG|FDF_RW,      0, (APTR)GET_Layout_RightMargin,    (APTR)SET_Layout_RightMargin },
+   { "SouthGap",      FDF_LONG|FDF_RW,      0, (APTR)GET_Layout_BottomMargin,   (APTR)SET_Layout_BottomMargin },
+   { "Surface",       FDF_OBJECTID|FDF_RI,  0, (APTR)GET_Layout_Surface,        (APTR)SET_Layout_Surface },
+   { "TopMargin",     FDF_LONG|FDF_RW,      0, (APTR)GET_Layout_TopMargin,      (APTR)SET_Layout_TopMargin },
+   { "TopLimit",      FDF_LONG|FDF_RW,      0, (APTR)GET_Layout_TopLimit,       (APTR)SET_Layout_TopLimit },
+   { "Visible",       FDF_LONG|FDF_RW,      0, (APTR)GET_Layout_Visible,        (APTR)SET_Layout_Visible },
+   { "VisibleHeight", FDF_LONG|FDF_R,       0, (APTR)GET_Layout_VisibleHeight,  NULL },
+   { "VisibleWidth",  FDF_LONG|FDF_R,       0, (APTR)GET_Layout_VisibleWidth,   NULL },
+   { "VisibleX",      FDF_LONG|FDF_R,       0, (APTR)GET_Layout_VisibleX,       NULL },
+   { "VisibleY",      FDF_LONG|FDF_R,       0, (APTR)GET_Layout_VisibleY,       NULL },
+   { "WestGap",       FDF_LONG|FDF_RW,      0, (APTR)GET_Layout_LeftMargin,     (APTR)SET_Layout_LeftMargin },
+   { "Width",         FD_VARIABLE|FDF_LONG|FDF_PERCENTAGE|FDF_RW, 0, (APTR)GET_Layout_Width,   (APTR)SET_Layout_Width },
+   { "Height",        FD_VARIABLE|FDF_LONG|FDF_PERCENTAGE|FDF_RW, 0, (APTR)GET_Layout_Height,  (APTR)SET_Layout_Height },
+   { "X",             FD_VARIABLE|FDF_LONG|FDF_PERCENTAGE|FDF_RW, 0, (APTR)GET_Layout_X,       (APTR)SET_Layout_X },
+   { "XOffset",       FD_VARIABLE|FDF_LONG|FDF_PERCENTAGE|FDF_RW, 0, (APTR)GET_Layout_XOffset, (APTR)SET_Layout_XOffset },
+   { "Y",             FD_VARIABLE|FDF_LONG|FDF_PERCENTAGE|FDF_RW, 0, (APTR)GET_Layout_Y,       (APTR)SET_Layout_Y },
+   { "YOffset",       FD_VARIABLE|FDF_LONG|FDF_PERCENTAGE|FDF_RW, 0, (APTR)GET_Layout_YOffset, (APTR)SET_Layout_YOffset },
    END_FIELD
 };
+
+//****************************************************************************
+
+static ERROR create_layout_class(void)
+{
+   return(CreateObject(ID_METACLASS, 0, &LayoutClass,
+      FID_Name|TSTR,           "Layout",
+      FID_ClassVersion|TFLOAT, 1.0,
+      FID_Category|TLONG, CCF_GUI,
+      FID_Actions|TPTR,   clLayoutActions,
+      FID_Methods|TARRAY, clLayoutMethods,
+      FID_Fields|TARRAY,  clLayoutFields,
+      FID_Size|TLONG,     sizeof(objLayout),
+      FID_Path|TSTR,      MOD_PATH,
+      TAGEND));
+}

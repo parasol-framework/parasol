@@ -93,10 +93,10 @@
 <p>In the event that the owner of the surface is drawing to the graphics buffer at the time that you call this function, the results could be out of sync.  If this could be a problem, set the BDF_SYNC option in the Flags parameter.  Keep in mind that syncing has the negative side effect of having to wait for the other task to complete its draw process, which can potentially result in time lags.</p>
     </description>
     <result type="ERROR">
-      <error code="Okay">Operation successful.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
       <error code="Search">A search routine in this function failed.</error>
       <error code="AccessMemory">Access to a shared memory block was denied.</error>
-      <error code="Args">Invalid arguments passed to function.</error>
+      <error code="Okay">Operation successful.</error>
     </result>
   </function>
 

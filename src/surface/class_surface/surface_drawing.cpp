@@ -1,55 +1,55 @@
 
-static void  copy_bkgd(struct SurfaceList *, WORD, WORD, WORD, WORD, WORD, WORD, WORD, objBitmap *, objBitmap *, WORD, BYTE);
+static void  copy_bkgd(SurfaceList *, WORD, WORD, WORD, WORD, WORD, WORD, WORD, objBitmap *, objBitmap *, WORD, BYTE);
 
 /*****************************************************************************
 ** Redraw everything in RegionB that does not intersect with RegionA.
 */
 
-static void redraw_nonintersect(OBJECTID SurfaceID, struct SurfaceList *List, WORD Index, WORD Total,
+static void redraw_nonintersect(OBJECTID SurfaceID, SurfaceList *List, WORD Index, WORD Total,
    struct ClipRectangle *Region, struct ClipRectangle *RegionB, LONG RedrawFlags, LONG ExposeFlags)
 {
+   parasol::Log log(__FUNCTION__);
+
    if (!SurfaceID) { // Implemented this check because an invalid SurfaceID has happened before.
-      LogF("@redraw_nonintersect","SurfaceID == 0");
+      log.warning("SurfaceID == 0");
       return;
    }
 
-   FMSG("~","redraw_nonintersect: (A) %dx%d,%dx%d Vs (B) %dx%d,%dx%d", Region->Left, Region->Top, Region->Right, Region->Bottom, RegionB->Left, RegionB->Top, RegionB->Right, RegionB->Bottom);
+   log.traceBranch("redraw_nonintersect: (A) %dx%d,%dx%d Vs (B) %dx%d,%dx%d", Region->Left, Region->Top, Region->Right, Region->Bottom, RegionB->Left, RegionB->Top, RegionB->Right, RegionB->Bottom);
 
    ExposeFlags |= EXF_ABSOLUTE;
 
    struct { LONG left, top, right, bottom; } rect = { RegionB->Left, RegionB->Top, RegionB->Right, RegionB->Bottom };
 
    if (rect.right > Region->Right) { // Right
-      FMSG(NULL, "redraw_nonrect: Right exposure");
+      log.trace("redraw_nonrect: Right exposure");
 
       if (RedrawFlags != -1) _redraw_surface(SurfaceID, List, Index, Total, (rect.left > Region->Right) ? rect.left : Region->Right, rect.top, rect.right, rect.bottom, RedrawFlags);
       if (ExposeFlags != -1) _expose_surface(SurfaceID, List, Index, Total, (rect.left > Region->Right) ? rect.left : Region->Right, rect.top, rect.right, rect.bottom, ExposeFlags);
       rect.right = Region->Right;
-      if (rect.left >= rect.right) { LOGRETURN(); return; }
+      if (rect.left >= rect.right) return;
    }
 
    if (rect.bottom > Region->Bottom) { // Bottom
-      FMSG(NULL, "redraw_nonrect: Bottom exposure");
+      log.trace("redraw_nonrect: Bottom exposure");
       if (RedrawFlags != -1) _redraw_surface(SurfaceID, List, Index, Total, rect.left, (rect.top > Region->Bottom) ? rect.top : Region->Bottom, rect.right, rect.bottom, RedrawFlags);
       if (ExposeFlags != -1) _expose_surface(SurfaceID, List, Index, Total, rect.left, (rect.top > Region->Bottom) ? rect.top : Region->Bottom, rect.right, rect.bottom, ExposeFlags);
       rect.bottom = Region->Bottom;
-      if (rect.top >= rect.bottom) { LOGRETURN(); return; }
+      if (rect.top >= rect.bottom) return;
    }
 
    if (rect.top < Region->Top) { // Top
-      FMSG(NULL, "redraw_nonrect: Top exposure");
+      log.trace("redraw_nonrect: Top exposure");
       if (RedrawFlags != -1) _redraw_surface(SurfaceID, List, Index, Total, rect.left, rect.top, rect.right, (rect.bottom < Region->Top) ? rect.bottom : Region->Top, RedrawFlags);
       if (ExposeFlags != -1) _expose_surface(SurfaceID, List, Index, Total, rect.left, rect.top, rect.right, (rect.bottom < Region->Top) ? rect.bottom : Region->Top, ExposeFlags);
       rect.top = Region->Top;
    }
 
    if (rect.left < Region->Left) { // Left
-      FMSG(NULL, "redraw_nonrect: Left exposure");
+      log.trace("redraw_nonrect: Left exposure");
       if (RedrawFlags != -1) _redraw_surface(SurfaceID, List, Index, Total, rect.left, rect.top, (rect.right < Region->Left) ? rect.right : Region->Left, rect.bottom, RedrawFlags);
       if (ExposeFlags != -1) _expose_surface(SurfaceID, List, Index, Total, rect.left, rect.top, (rect.right < Region->Left) ? rect.right : Region->Left, rect.bottom, ExposeFlags);
    }
-
-   LOGRETURN();
 }
 
 /*****************************************************************************
@@ -84,10 +84,12 @@ the surface area first).</li>
 
 ERROR SURFACE_Draw(objSurface *Self, struct acDraw *Args)
 {
+   parasol::Log log;
+
    // If the Surface object is invisible, return immediately
 
-   if ((!(Self->Flags & RNF_VISIBLE)) OR (tlNoDrawing) OR (Self->Width < 1) OR (Self->Height < 1)) {
-      FMSG(NULL, "Not drawing (invisible or tlNoDrawing set).");
+   if ((!(Self->Flags & RNF_VISIBLE)) or (tlNoDrawing) or (Self->Width < 1) or (Self->Height < 1)) {
+      log.trace("Not drawing (invisible or tlNoDrawing set).");
       return ERR_Okay|ERF_Notified;
    }
 
@@ -112,19 +114,18 @@ ERROR SURFACE_Draw(objSurface *Self, struct acDraw *Args)
    MEMORYID msgqueue = GetResource(RES_MESSAGE_QUEUE);
    APTR queue;
    if (!AccessMemory(msgqueue, MEM_READ, 3000, &queue)) {
-      UBYTE msgbuffer[sizeof(struct Message) + sizeof(struct ActionMessage) + sizeof(struct acDraw)];
+      UBYTE msgbuffer[sizeof(Message) + sizeof(ActionMessage) + sizeof(struct acDraw)];
       LONG msgindex = 0;
       while (!ScanMessages(queue, &msgindex, MSGID_ACTION, msgbuffer, sizeof(msgbuffer))) {
-         struct ActionMessage *action = (struct ActionMessage *)(msgbuffer + sizeof(struct Message));
+         auto action = (ActionMessage *)(msgbuffer + sizeof(Message));
 
-         if ((action->ActionID IS MT_DrwInvalidateRegion) AND (action->ObjectID IS Self->Head.UniqueID)) {
+         if ((action->ActionID IS MT_DrwInvalidateRegion) and (action->ObjectID IS Self->Head.UniqueID)) {
             if (action->SendArgs IS FALSE) {
                ReleaseMemoryID(msgqueue);
                return ERR_Okay|ERF_Notified;
             }
          }
-         else if ((action->ActionID IS AC_Draw) AND (action->ObjectID IS Self->Head.UniqueID)) {
-
+         else if ((action->ActionID IS AC_Draw) and (action->ObjectID IS Self->Head.UniqueID)) {
             if (action->SendArgs IS TRUE) {
                struct acDraw *msgdraw = (struct acDraw *)(action + 1);
 
@@ -144,7 +145,7 @@ ERROR SURFACE_Draw(objSurface *Self, struct acDraw *Args)
                   msgdraw->Height = bottom - msgdraw->Y;
                }
 
-               UpdateMessage(queue, ((struct Message *)msgbuffer)->UniqueID, NULL, action, sizeof(struct ActionMessage) + sizeof(struct acDraw));
+               UpdateMessage(queue, ((Message *)msgbuffer)->UniqueID, NULL, action, sizeof(ActionMessage) + sizeof(struct acDraw));
             }
             else {
                // We do nothing here because the next draw message will draw everything.
@@ -157,12 +158,9 @@ ERROR SURFACE_Draw(objSurface *Self, struct acDraw *Args)
       ReleaseMemoryID(msgqueue);
    }
 
-   FMSG("~","%dx%d,%dx%d", x, y, width, height);
-
+   log.traceBranch("%dx%d,%dx%d", x, y, width, height);
    drwRedrawSurface(Self->Head.UniqueID, x, y, width, height, IRF_RELATIVE|IRF_IGNORE_CHILDREN);
    drwExposeSurface(Self->Head.UniqueID, x, y, width, height, EXF_REDRAW_VOLATILE);
-
-   LOGRETURN();
    return ERR_Okay|ERF_Notified;
 }
 
@@ -196,12 +194,12 @@ static ERROR SURFACE_Expose(objSurface *Self, struct drwExpose *Args)
    APTR queue;
    MEMORYID msgqueue = GetResource(RES_MESSAGE_QUEUE);
    if (!AccessMemory(msgqueue, MEM_READ_WRITE, 3000, &queue)) {
-      UBYTE msgbuffer[sizeof(struct Message) + sizeof(struct ActionMessage) + sizeof(struct drwExpose)];
+      UBYTE msgbuffer[sizeof(Message) + sizeof(ActionMessage) + sizeof(struct drwExpose)];
       LONG msgindex = 0;
       while (!ScanMessages(queue, &msgindex, MSGID_ACTION, msgbuffer, sizeof(msgbuffer))) {
-         struct ActionMessage *action = (struct ActionMessage *)(msgbuffer + sizeof(struct Message));
+         auto action = (ActionMessage *)(msgbuffer + sizeof(Message));
 
-         if ((action->ActionID IS MT_DrwExpose) AND (action->ObjectID IS Self->Head.UniqueID)) {
+         if ((action->ActionID IS MT_DrwExpose) and (action->ObjectID IS Self->Head.UniqueID)) {
             if (action->SendArgs) {
                struct drwExpose *msgexpose = (struct drwExpose *)(action + 1);
 
@@ -220,7 +218,7 @@ static ERROR SURFACE_Expose(objSurface *Self, struct drwExpose *Args)
 
                   if ((Args->X+Args->Width < msgexpose->X) OR
                       (Args->Y+Args->Height < msgexpose->Y) OR
-                      (Args->X > right) OR (Args->Y > bottom)) continue;
+                      (Args->X > right) or (Args->Y > bottom)) continue;
 
                   if (Args->X < msgexpose->X) msgexpose->X = Args->X;
                   if (Args->Y < msgexpose->Y) msgexpose->Y = Args->Y;
@@ -232,7 +230,7 @@ static ERROR SURFACE_Expose(objSurface *Self, struct drwExpose *Args)
                   msgexpose->Flags  |= Args->Flags;
                }
 
-               UpdateMessage(queue, ((struct Message *)msgbuffer)->UniqueID, NULL, action, sizeof(struct ActionMessage) + sizeof(struct drwExpose));
+               UpdateMessage(queue, ((Message *)msgbuffer)->UniqueID, NULL, action, sizeof(ActionMessage) + sizeof(struct drwExpose));
             }
             else {
                // We do nothing here because the next expose message will draw everything.
@@ -283,7 +281,7 @@ AccessMemory: Failed to access the internal surface list.
 
 static ERROR SURFACE_InvalidateRegion(objSurface *Self, struct drwInvalidateRegion *Args)
 {
-   if ((!(Self->Flags & RNF_VISIBLE)) OR (tlNoDrawing) OR (Self->Width < 1) OR (Self->Height < 1)) {
+   if ((!(Self->Flags & RNF_VISIBLE)) or (tlNoDrawing) or (Self->Width < 1) or (Self->Height < 1)) {
       return ERR_Okay|ERF_Notified;
    }
 
@@ -293,17 +291,14 @@ static ERROR SURFACE_InvalidateRegion(objSurface *Self, struct drwInvalidateRegi
    MEMORYID msgqueue = GetResource(RES_MESSAGE_QUEUE);
    if (!AccessMemory(msgqueue, MEM_READ_WRITE, 3000, &queue)) {
       LONG msgindex = 0;
-      UBYTE msgbuffer[sizeof(struct Message) + sizeof(struct ActionMessage) + sizeof(struct drwInvalidateRegion)];
+      UBYTE msgbuffer[sizeof(Message) + sizeof(ActionMessage) + sizeof(struct drwInvalidateRegion)];
       while (!ScanMessages(queue, &msgindex, MSGID_ACTION, msgbuffer, sizeof(msgbuffer))) {
-         struct ActionMessage *action = (struct ActionMessage *)(msgbuffer + sizeof(struct Message));
-
-         if ((action->ActionID IS MT_DrwInvalidateRegion) AND (action->ObjectID IS Self->Head.UniqueID)) {
-
+         auto action = (ActionMessage *)(msgbuffer + sizeof(Message));
+         if ((action->ActionID IS MT_DrwInvalidateRegion) and (action->ObjectID IS Self->Head.UniqueID)) {
             if (action->SendArgs IS TRUE) {
-               struct drwInvalidateRegion *msginvalid = (struct drwInvalidateRegion *)(action + 1);
+               auto msginvalid = (struct drwInvalidateRegion *)(action + 1);
 
-               if (!Args) {
-                  // Invalidate everything
+               if (!Args) { // Invalidate everything
                   action->SendArgs = FALSE;
                }
                else {
@@ -319,11 +314,9 @@ static ERROR SURFACE_InvalidateRegion(objSurface *Self, struct drwInvalidateRegi
                   msginvalid->Height = bottom - msginvalid->Y;
                }
 
-               UpdateMessage(queue, ((struct Message *)msgbuffer)->UniqueID, NULL, action, sizeof(struct ActionMessage) + sizeof(struct drwInvalidateRegion));
+               UpdateMessage(queue, ((Message *)msgbuffer)->UniqueID, NULL, action, sizeof(ActionMessage) + sizeof(struct drwInvalidateRegion));
             }
-            else {
-               // We do nothing here because the next invalidation message will draw everything.
-            }
+            else { } // We do nothing here because the next invalidation message will draw everything.
 
             ReleaseMemoryID(msgqueue);
             return ERR_Okay|ERF_Notified;
@@ -350,9 +343,11 @@ static ERROR SURFACE_InvalidateRegion(objSurface *Self, struct drwInvalidateRegi
 
 static void move_layer(objSurface *Self, LONG X, LONG Y)
 {
+   parasol::Log log(__FUNCTION__);
+
    // If the coordinates are unchanged, do nothing
 
-   if ((X IS Self->X) AND (Y IS Self->Y)) return;
+   if ((X IS Self->X) and (Y IS Self->Y)) return;
 
    if (!(Self->Head.Flags & NF_INITIALISED)) {
       Self->X = X;
@@ -364,7 +359,6 @@ static void move_layer(objSurface *Self, LONG X, LONG Y)
 
    if (!Self->ParentID) {
       objDisplay *display;
-
       if (!AccessObject(Self->DisplayID, 2000, &display)) {
          // Subtract the host window's LeftMargin and TopMargin as MoveToPoint() is based on the coordinates of the window frame.
 
@@ -378,7 +372,7 @@ static void move_layer(objSurface *Self, LONG X, LONG Y)
             UpdateSurfaceList(Self);
          }
       }
-      else FuncError(ERR_AccessObject);
+      else log.warning(ERR_AccessObject);
 
       return;
    }
@@ -392,12 +386,12 @@ static void move_layer(objSurface *Self, LONG X, LONG Y)
       return;
    }
 
-   struct SurfaceControl *ctl;
+   SurfaceControl *ctl;
    if (!(ctl = drwAccessList(ARF_READ))) return;
 
    LONG total = ctl->Total;
-   struct SurfaceList list[total];
-   CopyMemory((APTR)ctl + ctl->ArrayIndex, list, sizeof(list[0]) * ctl->Total);
+   SurfaceList list[total];
+   CopyMemory((BYTE *)ctl + ctl->ArrayIndex, list, sizeof(list[0]) * ctl->Total);
 
    LONG vindex, index;
    if ((index = find_own_index(ctl, Self)) IS -1) {
@@ -421,7 +415,7 @@ static void move_layer(objSurface *Self, LONG X, LONG Y)
    if (Self->Flags & RNF_REGION) {
       // Drawing code for region based surface objects.  This is achieved by redrawing the parent
 
-      FMSG("~","MoveLayer: Using region redraw technique.");
+      log.traceBranch("MoveLayer: Using region redraw technique.");
 
       Self->X = X;
       Self->Y = Y;
@@ -450,8 +444,6 @@ static void move_layer(objSurface *Self, LONG X, LONG Y)
          _redraw_surface(Self->ParentID, list, parent_index, total, abs.Left, abs.Top, abs.Right, abs.Bottom, NULL);
          _expose_surface(Self->ParentID, list, parent_index, total, abs.Left, abs.Top, abs.Right, abs.Bottom, EXF_ABSOLUTE|EXF_REDRAW_VOLATILE_OVERLAP);
       }
-
-      LOGRETURN();
    }
    else {
       // Since we do not own our graphics buffer, we need to shift the content in the buffer first, then send an
@@ -463,7 +455,7 @@ static void move_layer(objSurface *Self, LONG X, LONG Y)
 
       UBYTE redraw;
 
-      FMSG("~","MoveLayer: Using simple expose technique [%s]", (volatilegfx ? "Volatile" : "Not Volatile"));
+      log.traceBranch("MoveLayer: Using simple expose technique [%s]", (volatilegfx ? "Volatile" : "Not Volatile"));
 
       Self->X = X;
       Self->Y = Y;
@@ -475,7 +467,7 @@ static void move_layer(objSurface *Self, LONG X, LONG Y)
          if (Self->CallbackCount > 0) redraw = TRUE;
          else redraw = FALSE;
       }
-      else if ((volatilegfx) AND (!(Self->Flags & RNF_COMPOSITE))) redraw = TRUE;
+      else if ((volatilegfx) and (!(Self->Flags & RNF_COMPOSITE))) redraw = TRUE;
       else if (list[index].BitmapID IS list[parent_index].BitmapID) redraw = TRUE;
       else redraw = FALSE;
 
@@ -490,8 +482,6 @@ static void move_layer(objSurface *Self, LONG X, LONG Y)
          (list[index].BitmapID IS list[parent_index].BitmapID) ? IRF_SINGLE_BITMAP : -1,
          EXF_CHILDREN|EXF_REDRAW_VOLATILE);
       tlVolatileIndex = 0;
-
-      LOGRETURN();
    }
 
    refresh_pointer(Self);
@@ -507,9 +497,11 @@ static void move_layer(objSurface *Self, LONG X, LONG Y)
 ** Stage:      Either STAGE_PRECOPY or STAGE_AFTERCOPY.
 */
 
-static void prepare_background(objSurface *Self, struct SurfaceList *list, WORD Total, WORD Index, objBitmap *DestBitmap, struct ClipRectangle *clip, BYTE Stage)
+static void prepare_background(objSurface *Self, SurfaceList *list, WORD Total, WORD Index, objBitmap *DestBitmap, struct ClipRectangle *clip, BYTE Stage)
 {
-   FMSG("~prepare_bkgd:","%d Position: %dx%d,%dx%d", list[Index].SurfaceID, clip->Left, clip->Top, clip->Right-clip->Left, clip->Bottom-clip->Top);
+   parasol::Log log("prepare_bkgd");
+
+   log.traceBranch("%d Position: %dx%d,%dx%d", list[Index].SurfaceID, clip->Left, clip->Top, clip->Right-clip->Left, clip->Bottom-clip->Top);
 
    LONG end = Index;
    LONG master = Index;
@@ -519,7 +511,7 @@ static void prepare_background(objSurface *Self, struct SurfaceList *list, WORD 
    // that window need to share the opacity and the background graphics of that window.
 
    LONG i, j;
-   if ((Self) AND (list[Index].SurfaceID != Self->RootID)) {
+   if ((Self) and (list[Index].SurfaceID != Self->RootID)) {
       for (j=0; j < Total; j++) {
          if (list[j].SurfaceID IS Self->RootID) {
             // Root layers are only considered when they are volatile (otherwise we want the current surface
@@ -542,7 +534,7 @@ static void prepare_background(objSurface *Self, struct SurfaceList *list, WORD 
 
    if (!list[end].ParentID) { LOGRETURN(); return; }
    LONG parentindex = end;
-   while ((parentindex > 0) AND (list[parentindex].SurfaceID != list[end].ParentID)) parentindex--;
+   while ((parentindex > 0) and (list[parentindex].SurfaceID != list[end].ParentID)) parentindex--;
 
    // If the parent object is invisible, we need to scan back to a visible parent
 
@@ -563,9 +555,9 @@ static void prepare_background(objSurface *Self, struct SurfaceList *list, WORD 
 
       struct ClipRectangle expose = {
          .Left   = clip->Left, // Take a copy of the expose coordinates
-         .Top    = clip->Top,
          .Right  = clip->Right,
-         .Bottom = clip->Bottom
+         .Bottom = clip->Bottom,
+         .Top    = clip->Top
       };
 
       // Check the visibility of this layer and its parents
@@ -580,7 +572,7 @@ static void prepare_background(objSurface *Self, struct SurfaceList *list, WORD 
       else opaque = 255;
 
       BYTE pervasive;
-      if ((list[Index].Flags & RNF_PERVASIVE_COPY) AND (Stage IS STAGE_AFTERCOPY)) pervasive = TRUE;
+      if ((list[Index].Flags & RNF_PERVASIVE_COPY) and (Stage IS STAGE_AFTERCOPY)) pervasive = TRUE;
       else pervasive = FALSE;
 
       objBitmap *bitmap;
@@ -590,62 +582,56 @@ static void prepare_background(objSurface *Self, struct SurfaceList *list, WORD 
          ReleaseObject(bitmap);
       }
       else {
-         LogErrorMsg("prepare_bkgd: %d failed to access bitmap #%d of surface #%d (error %d).", list[Index].SurfaceID, list[i].BitmapID, list[i].SurfaceID, error);
+         log.warning("prepare_bkgd: %d failed to access bitmap #%d of surface #%d (error %d).", list[Index].SurfaceID, list[i].BitmapID, list[i].SurfaceID, error);
          break;
       }
    }
-
-   LOGRETURN();
 }
 
 /*****************************************************************************
 ** Coordinates are absolute.
 */
 
-static void copy_bkgd(struct SurfaceList *list, WORD Index, WORD End, WORD Master, WORD Left, WORD Top, WORD Right, WORD Bottom,
+static void copy_bkgd(SurfaceList *list, WORD Index, WORD End, WORD Master, WORD Left, WORD Top, WORD Right, WORD Bottom,
    objBitmap *DestBitmap, objBitmap *SrcBitmap, WORD Opacity, BYTE Pervasive)
 {
-   LONG i, j;
+   parasol::Log log(__FUNCTION__);
 
    // Scan for overlapping parent/sibling regions and avoid them
 
-   for (i=Index+1; (i < End) AND (list[i].Level > 1); i++) {
-      if (list[i].Flags & (RNF_REGION|RNF_CURSOR|RNF_COMPOSITE)) goto skip; // Ignore regions
-      if (!(list[i].Flags & RNF_VISIBLE)) goto skip; // Skip hidden surfaces and their content
+   for (LONG i=Index+1; (i < End) and (list[i].Level > 1); i++) {
+      if (list[i].Flags & (RNF_REGION|RNF_CURSOR|RNF_COMPOSITE)); // Ignore regions
+      else if (!(list[i].Flags & RNF_VISIBLE)); // Skip hidden surfaces and their content
+      else if (list[i].Flags & RNF_TRANSPARENT) continue; // Invisibles may contain important regions we have to block
+      else if ((Pervasive) and (list[i].Level > list[Index].Level)); // If the copy is pervasive then all children must be ignored (so that we can copy translucent graphics over them)
+      else {
+         struct ClipRectangle listclip = {
+            .Left   = list[i].Left,
+            .Right  = list[i].Right,
+            .Bottom = list[i].Bottom,
+            .Top    = list[i].Top
+         };
 
-      if (list[i].Flags & RNF_TRANSPARENT) continue; // Invisibles may contain important regions we have to block
+         if ((listclip.Left < Right) and (listclip.Top < Bottom) and (listclip.Right > Left) and (listclip.Bottom > Top)) {
+            if (listclip.Left <= Left) listclip.Left = Left;
+            else copy_bkgd(list, Index, End, Master, Left, Top, listclip.Left, Bottom, DestBitmap, SrcBitmap, Opacity, Pervasive); // left
 
-      // If the copy is pervasive then all children must be ignored (so that we can copy translucent graphics over them)
+            if (listclip.Right >= Right) listclip.Right = Right;
+            else copy_bkgd(list, Index, End, Master, listclip.Right, Top, Right, Bottom, DestBitmap, SrcBitmap, Opacity, Pervasive); // right
 
-      if ((Pervasive IS TRUE) AND (list[i].Level > list[Index].Level)) goto skip;
+            if (listclip.Top <= Top) listclip.Top = Top;
+            else copy_bkgd(list, Index, End, Master, listclip.Left, Top, listclip.Right, listclip.Top, DestBitmap, SrcBitmap, Opacity, Pervasive); // top
 
-      struct ClipRectangle listclip = {
-         .Left   = list[i].Left,
-         .Top    = list[i].Top,
-         .Right  = list[i].Right,
-         .Bottom = list[i].Bottom
-      };
+            if (listclip.Bottom < Bottom) copy_bkgd(list, Index, End, Master, listclip.Left, listclip.Bottom, listclip.Right, Bottom, DestBitmap, SrcBitmap, Opacity, Pervasive); // bottom
 
-      if ((listclip.Left < Right) AND (listclip.Top < Bottom) AND (listclip.Right > Left) AND (listclip.Bottom > Top)) {
-         if (listclip.Left <= Left) listclip.Left = Left;
-         else copy_bkgd(list, Index, End, Master, Left, Top, listclip.Left, Bottom, DestBitmap, SrcBitmap, Opacity, Pervasive); // left
-
-         if (listclip.Right >= Right) listclip.Right = Right;
-         else copy_bkgd(list, Index, End, Master, listclip.Right, Top, Right, Bottom, DestBitmap, SrcBitmap, Opacity, Pervasive); // right
-
-         if (listclip.Top <= Top) listclip.Top = Top;
-         else copy_bkgd(list, Index, End, Master, listclip.Left, Top, listclip.Right, listclip.Top, DestBitmap, SrcBitmap, Opacity, Pervasive); // top
-
-         if (listclip.Bottom < Bottom) copy_bkgd(list, Index, End, Master, listclip.Left, listclip.Bottom, listclip.Right, Bottom, DestBitmap, SrcBitmap, Opacity, Pervasive); // bottom
-
-         return;
+            return;
+         }
       }
 
       // Skip past any children of the overlapping object.  This ensures that we only look at immediate parents and
       // siblings that are in our way.
 
-skip:
-      j = i + 1;
+      LONG j = i + 1;
       while (list[j].Level > list[i].Level) j++;
       i = j - 1;
    }
@@ -655,13 +641,13 @@ skip:
 
    struct ClipRectangle expose = {
       .Left   = Left,
-      .Top    = Top,
       .Right  = Right,
-      .Bottom = Bottom
+      .Bottom = Bottom,
+      .Top    = Top
    };
    if (restrict_region_to_parents(list, Index, &expose, FALSE) IS -1) return;
 
-   FMSG("~copy_bkgd()","[%d] Pos: %dx%d,%dx%d Bitmap: %d, Index: %d/%d", list[Index].SurfaceID, expose.Left, expose.Top, expose.Right - expose.Left, Bottom - expose.Top, list[Index].BitmapID, Index, End);
+   log.traceBranch("[%d] Pos: %dx%d,%dx%d Bitmap: %d, Index: %d/%d", list[Index].SurfaceID, expose.Left, expose.Top, expose.Right - expose.Left, Bottom - expose.Top, list[Index].BitmapID, Index, End);
 
    // The region is not obscured, so perform the redraw
 
@@ -680,6 +666,4 @@ skip:
       expose.Right - expose.Left, expose.Bottom - expose.Top, expose.Left - list[Master].Left, expose.Top - list[Master].Top);
 
    SrcBitmap->Opacity = 255;
-
-   LOGRETURN();
 }
