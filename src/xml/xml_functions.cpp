@@ -1192,16 +1192,11 @@ static ERROR find_tag2(objXML *Self, XMLTag **Tag, CSTRING XPath, CSTRING *Attri
 
       while ((XPath[pos]) and (XPath[pos] <= 0x20)) pos++;
 
-      if ((XPath[pos] >= '0') and (XPath[pos] <= '9')) {
-         // Parse index
-
+      if ((XPath[pos] >= '0') and (XPath[pos] <= '9')) { // Parse index
          subscript = StrToInt(XPath+pos);
-
          while ((XPath[pos] >= '0') and (XPath[pos] <= '9')) pos++;
       }
-      else if (XPath[pos] IS '#') {
-         // Direct lookup into the tag array
-
+      else if (XPath[pos] IS '#') { // Direct lookup into the tag array
          subscript = StrToInt(XPath+pos+1) + current->Index;
          if (subscript < Self->TagCount) {
             current = Self->Tags[subscript];
@@ -1232,9 +1227,7 @@ static ERROR find_tag2(objXML *Self, XMLTag **Tag, CSTRING XPath, CSTRING *Attri
             if (XPath[pos] != '=') goto parse_error;
             pos++;
          }
-         else {
-            // Skip '=' (indicates matching on content) The filter_attrib_name will be empty to indicate a content match is required.
-
+         else { // Skip '=' (indicates matching on content) The filter_attrib_name will be empty to indicate a content match is required.
             pos++;
          }
 
