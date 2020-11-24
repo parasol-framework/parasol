@@ -13,7 +13,7 @@
 #define ESCAPE(a,b) { (a), (b), sizeof((a))-1 }
 
 static const struct {
-   STRING Escape; // Escape code
+   CSTRING Escape; // Escape code
    UWORD Value;   // Unicode value
    UWORD Length;
 } glHTML[] = {
@@ -273,7 +273,7 @@ static const struct {
 
 INLINE BYTE strmatch(CSTRING Name1, CSTRING Name2)
 {
-   while ((*Name1) AND (*Name2)) {
+   while ((*Name1) and (*Name2)) {
       if (*Name1 < *Name2) return -1;
       else if (*Name1 > *Name2) return 1;
       Name1++;
@@ -289,13 +289,12 @@ INLINE BYTE strmatch(CSTRING Name1, CSTRING Name2)
 
 static void xml_unescape(objXML *Self, STRING String)
 {
-   STRING src;
-   STRING dest;
+   parasol::Log log(__FUNCTION__);
    LONG len, i;
    ULONG val;
 
-   src = String;
-   dest = String;
+   STRING src = String;
+   STRING dest = String;
    while (*src) {
       if (*src != '&') {
          *dest++ = *src++;
@@ -311,11 +310,11 @@ static void xml_unescape(objXML *Self, STRING String)
 
                // Hexadecimal literal
 
-               while ((src[len]) AND (src[len] != ';')) {
+               while ((src[len]) and (src[len] != ';')) {
                   val <<= 4;
-                  if ((src[len] >= '0') AND (src[len] <= '9')) val += src[len] - '0';
-                  else if ((src[len] >= 'a') AND (src[len] <= 'f')) val += src[len] - 'a' + 10;
-                  else if ((src[len] >= 'A') AND (src[len] <= 'F')) val += src[len] - 'A' + 10;
+                  if ((src[len] >= '0') and (src[len] <= '9')) val += src[len] - '0';
+                  else if ((src[len] >= 'a') and (src[len] <= 'f')) val += src[len] - 'a' + 10;
+                  else if ((src[len] >= 'A') and (src[len] <= 'F')) val += src[len] - 'A' + 10;
                   else break;
                   len++;
                }
@@ -323,9 +322,9 @@ static void xml_unescape(objXML *Self, STRING String)
             else {
                // Decimal literal
 
-               while ((src[len]) AND (src[len] != ';')) {
+               while ((src[len]) and (src[len] != ';')) {
                   val *= 10;
-                  if ((src[len] >= '0') AND (src[len] <= '9')) val += src[len] - '0';
+                  if ((src[len] >= '0') and (src[len] <= '9')) val += src[len] - '0';
                   else break;
                   len++;
                }
@@ -340,7 +339,7 @@ static void xml_unescape(objXML *Self, STRING String)
          else {
             STRING restore;
             BYTE valid = FALSE;
-            for (i=0; src[i] AND (i < 6); i++) {
+            for (i=0; src[i] and (i < 6); i++) {
                if (src[i] IS ';') {
                   src[i] = 0;
                   valid = TRUE;
@@ -363,24 +362,19 @@ static void xml_unescape(objXML *Self, STRING String)
                else if (Self->Flags & XMF_PARSE_ENTITY) {
 
                }
-               else if (Self->Flags & XMF_PARSE_HTML) {
-                  // Process HTML escape codes
+               else if (Self->Flags & XMF_PARSE_HTML) { // Process HTML escape codes
+                  log.trace("Checking escape code '%s'", src);
 
-                  LONG ceiling, floor, mid;
-                  BYTE result;
-
-                  MSG("Checking escape code '%s'", src);
-
-                  floor   = 0;
-                  ceiling = ARRAYSIZE(glHTML);
+                  LONG floor   = 0;
+                  LONG ceiling = ARRAYSIZE(glHTML);
                   while (TRUE) {
-                     mid = ((ceiling + floor)>>1);
+                     LONG mid = ((ceiling + floor)>>1);
 
-                     MSG("Index: %d (from %d - %d) Compare: %s - %s", mid, floor, ceiling, src, glHTML[mid].Escape);
+                     log.trace("Index: %d (from %d - %d) Compare: %s - %s", mid, floor, ceiling, src, glHTML[mid].Escape);
 
-                     result = strmatch(src, glHTML[mid].Escape);
+                     BYTE result = strmatch(src, glHTML[mid].Escape);
                      if (!result) {
-                        MSG("Escape code %s recognised.", src);
+                        log.trace("Escape code %s recognised.", src);
                         if (glHTML[mid].Value < 128) *dest++ = glHTML[mid].Value;
                         else dest += UTF8WriteValue(glHTML[mid].Value, dest, glHTML[mid].Length);
                         src += glHTML[mid].Length + 1;
@@ -388,7 +382,7 @@ static void xml_unescape(objXML *Self, STRING String)
                      }
                      else {
                         if (ceiling - floor <= 1) {
-                           MSG("Escape code %s unrecognised.", src);
+                           log.trace("Escape code %s unrecognised.", src);
                            *dest++ = '&';
                            break;
                         }

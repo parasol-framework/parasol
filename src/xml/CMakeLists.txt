@@ -10,6 +10,6 @@ add_library (${MOD} SHARED)
 
 set_module_defaults (${MOD})
 
-target_sources (${MOD} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/${MOD}.c")
+target_sources (${MOD} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/${MOD}.cpp")
 
 flute_test (${MOD}_tests "${CMAKE_CURRENT_SOURCE_DIR}/tests/test.fluid")
