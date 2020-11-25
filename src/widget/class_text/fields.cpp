@@ -145,7 +145,7 @@ static ERROR GET_Height(objText *Self, struct Variable *Value)
 
       if (Value->Type & FD_DOUBLE) Value->Double = lval;
       else if (Value->Type & FD_LARGE) Value->Large = lval;
-      else return PostError(ERR_FieldTypeMismatch);
+      else return ERR_FieldTypeMismatch;
       return ERR_Okay;
    }
    else return GetField(Self->Layout, FID_Height|TVAR, Value);
@@ -180,6 +180,8 @@ text display along the horizontal axis.
 
 static ERROR SET_HScroll(objText *Self, OBJECTID Value)
 {
+   parasol::Log log;
+
    OBJECTID objectid = Value;
 
    if (GetClassID(objectid) IS ID_SCROLLBAR) {
@@ -200,10 +202,10 @@ static ERROR SET_HScroll(objText *Self, OBJECTID Value)
          ReleaseObject(object);
          return ERR_Okay;
       }
-      else return PostError(ERR_AccessObject);
+      else return log.warning(ERR_AccessObject);
    }
    else {
-      LogErrorMsg("Attempt to set the HScroll field with an invalid object.");
+      log.warning("Attempt to set the HScroll field with an invalid object.");
       return ERR_Failed;
    }
 }
@@ -259,7 +261,7 @@ static ERROR SET_Location(objText *Self, CSTRING Value)
 {
    if (Self->Location) { FreeResource(Self->Location); Self->Location = NULL; }
    if ((Value) AND (*Value)) {
-      if (!(Self->Location = StrClone(Value))) return PostError(ERR_AllocMemory);
+      if (!(Self->Location = StrClone(Value))) return ERR_AllocMemory;
       if (Self->Head.Flags & NF_INITIALISED) {
          load_file(Self, Self->Location);
       }
@@ -284,7 +286,7 @@ static ERROR SET_Origin(objText *Self, CSTRING Value)
    if (Self->Location) { FreeResource(Self->Location); Self->Location = NULL; }
 
    if ((Value) AND (*Value)) {
-      if (!(Self->Location = StrClone(Value))) return PostError(ERR_AllocMemory);
+      if (!(Self->Location = StrClone(Value))) return ERR_AllocMemory;
    }
 
    return ERR_Okay;
@@ -623,6 +625,7 @@ display along the vertical axis.
 
 static ERROR SET_VScroll(objText *Self, OBJECTID Value)
 {
+   parasol::Log log;
    OBJECTID objectid = Value;
 
    if (GetClassID(objectid) IS ID_SCROLLBAR) {
@@ -643,10 +646,10 @@ static ERROR SET_VScroll(objText *Self, OBJECTID Value)
          ReleaseObject(object);
          return ERR_Okay;
       }
-      else return PostError(ERR_AccessObject);
+      else return log.warning(ERR_AccessObject);
    }
    else {
-      LogErrorMsg("Attempt to set the VScroll field with an invalid object.");
+      log.warning("Attempt to set the VScroll field with an invalid object.");
       return ERR_Failed;
    }
 }
@@ -665,7 +668,7 @@ static ERROR GET_Width(objText *Self, struct Variable *Value)
       GET_TextWidth(Self, &width);
       if (Value->Type & FD_DOUBLE) Value->Double = width;
       else if (Value->Type & FD_LARGE) Value->Large = width;
-      else return PostError(ERR_FieldTypeMismatch);
+      else return ERR_FieldTypeMismatch;
       return ERR_Okay;
    }
    else return GetField(Self->Layout, FID_Width|TVAR, Value);

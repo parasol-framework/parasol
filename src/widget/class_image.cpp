@@ -494,6 +494,8 @@ static ERROR SET_Tile(objImage *Self, LONG Value)
 
 static void get_image_size(objBitmap *Bitmap, LONG Flags, LONG Width, LONG Height, LONG *ImageWidth, LONG *ImageHeight)
 {
+   parasol::Log log(__FUNCTION__);
+
    *ImageWidth = Bitmap->Width;
    *ImageHeight = Bitmap->Height;
 
@@ -556,16 +558,18 @@ static void get_image_size(objBitmap *Bitmap, LONG Flags, LONG Width, LONG Heigh
       }
    }
 
-   FMSG("get_size()","Bitmap: %d $%.8x, Req: %dx%d, Bmp: %dx%d, Result: %dx%d", Bitmap->Head.UniqueID, Flags, Width, Height, Bitmap->Width, Bitmap->Height, *ImageWidth, *ImageHeight);
+   log.trace("Bitmap: %d $%.8x, Req: %dx%d, Bmp: %dx%d, Result: %dx%d", Bitmap->Head.UniqueID, Flags, Width, Height, Bitmap->Width, Bitmap->Height, *ImageWidth, *ImageHeight);
 }
 
 //****************************************************************************
 
 static void draw_image(objImage *Self, objSurface *Surface, objBitmap *Bitmap)
 {
+   parasol::Log log(__FUNCTION__);
+
    if (Self->Layout->Visible IS FALSE) return;
 
-   FMSG("draw_image()","Pos: %dx%d, Area: %dx%d,%dx%d", Self->Layout->GraphicX, Self->Layout->GraphicY, Self->Layout->BoundX, Self->Layout->BoundY, Self->Layout->BoundWidth, Self->Layout->BoundHeight);
+   log.trace("Pos: %dx%d, Area: %dx%d,%dx%d", Self->Layout->GraphicX, Self->Layout->GraphicY, Self->Layout->BoundX, Self->Layout->BoundY, Self->Layout->BoundWidth, Self->Layout->BoundHeight);
 
    if ((Bitmap->Clip.Right <= Self->Layout->BoundX) OR (Bitmap->Clip.Top >= Self->Layout->BoundY+Self->Layout->BoundHeight) OR
        (Bitmap->Clip.Bottom <= Self->Layout->BoundY) OR (Bitmap->Clip.Left >= Self->Layout->BoundX+Self->Layout->BoundWidth)) return;

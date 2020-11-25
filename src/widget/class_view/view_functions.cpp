@@ -498,7 +498,7 @@ static ERROR calc_vscroll(objView *Self)
 {
    parasol::Log log(__FUNCTION__);
 
-   MSG("calc_vscroll: Page: %d, View: %d", Self->Layout->BoundY + Self->PageHeight, Self->Layout->BoundHeight);
+   log.trace("calc_vscroll: Page: %d, View: %d", Self->Layout->BoundY + Self->PageHeight, Self->Layout->BoundHeight);
 
    if (!Self->VScroll) return ERR_Okay;
    if (Self->PageHeight < 0) Self->PageHeight = 0;
@@ -611,7 +611,7 @@ static void arrange_items(objView *Self)
 {
    parasol::Log log(__FUNCTION__);
 
-   FMSG("~arrange_items()", NULL);
+   log.traceBranch("");
 
    Self->PageWidth  = Self->Layout->BoundWidth;
    Self->PageHeight = 0;
@@ -651,7 +651,7 @@ static void arrange_items(objView *Self)
 
    if (Self->XML->TagCount < 1) goto exit;
 
-   XMLTag *tag, *scan;
+   XMLTag *tag;
    view_node *node, *scan_node;
    view_col *col;
    LONG x, y, strwidth;
@@ -758,14 +758,14 @@ static void arrange_items(objView *Self)
             if ((!tag->Next) and (columncount < 1)) {
                // If there are no more tags and we know there is only one column, all nodes will use the entire width of view.
 
-               for (scan=tag; scan; scan=scan->Prev) {
+               for (auto scan=tag; scan; scan=scan->Prev) {
                   scan_node = (view_node *)scan->Private;
                   if (scan_node->Width) break;
                   scan_node->Width = Self->Layout->BoundWidth;
                }
             }
             else {
-               for (scan=tag; scan; scan=scan->Prev) {
+               for (auto scan=tag; scan; scan=scan->Prev) {
                   scan_node = (view_node *)scan->Private;
                   if (scan_node->Width) break;
                   scan_node->Width = linewidth;
@@ -853,7 +853,7 @@ static void arrange_items(objView *Self)
       if (node) Self->PageHeight = node->Y + node->Height + Self->Layout->BottomMargin;
       else Self->PageHeight = 0;
    }
-   else LogF("@arrange_items:","No style specified.");
+   else log.warning("No style specified.");
 
    // Adjust node coordinates if a border is enabled
 /*
@@ -900,7 +900,7 @@ static ERROR sort_items(objView *Self)
       Self->Sort[0] = 1;
    }
 
-   LogF("6sort_items","Column: %d (%s)", Self->Sort[0], col->Name);
+   log.extmsg("Column: %d (%s)", Self->Sort[0], col->Name);
 
    // Ask the XML object to re-sort the XML.  This will sort on tag content by default, although the developer can override this by passing the 'sort' attribute amongst the tags to affect/improve sorting behaviour.
 
@@ -1042,7 +1042,7 @@ static LONG draw_tree(objView *Self, objSurface *Surface, objBitmap *Bitmap, XML
 
    clipright = Bitmap->Clip.Right;
 
-   //MSG("draw_tree() Area: %dx%d,%dx%d Index: %d, Highlight: %d", Self->Layout->BoundX, Self->Layout->BoundY, Self->Layout->BoundWidth, Self->Layout->BoundHeight, Self->TreeIndex, Self->HighlightTag);
+   //log.trace("draw_tree() Area: %dx%d,%dx%d Index: %d, Highlight: %d", Self->Layout->BoundX, Self->Layout->BoundY, Self->Layout->BoundWidth, Self->Layout->BoundHeight, Self->TreeIndex, Self->HighlightTag);
 
    linebreak = 0;
    for (auto tag=Root; tag; tag=tag->Next) {
@@ -2149,7 +2149,7 @@ static void draw_item(objView *Self, XMLTag *Tag)
 
    auto node = (view_node *)Tag->Private;
 
-   //MSG("draw_item: %dx%d,%dx%d", node->X, node->Y, node->Width, node->Height);
+   //log.trace("draw_item: %dx%d,%dx%d", node->X, node->Y, node->Width, node->Height);
 
    if ((Self->Style IS VIEW_TREE) or (Self->Style IS VIEW_GROUP_TREE) or (Self->Style IS VIEW_COLUMN_TREE)) {
       // Draw using the full width of the view

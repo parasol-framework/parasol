@@ -790,10 +790,11 @@ static void key_event(objText *Self, evKey *Event, LONG Size)
 {
    if (!(Event->Qualifiers & KQ_PRESSED)) return;
 
+   parasol::Log log(__FUNCTION__);
    STRING str;
    LONG i, j, row, len, offset;
 
-   FMSG("edit_keypress()","$%.8x, Value: %d", Event->Qualifiers, Event->Code);
+   log.trace("$%.8x, Value: %d", Event->Qualifiers, Event->Code);
 
    Self->CursorFlash = 0; // Reset the flashing cursor to make it visible
 
@@ -832,7 +833,7 @@ static void key_event(objText *Self, evKey *Event, LONG Size)
       // Printable character handling
 
       if (!(Self->Flags & TXF_EDIT)) {
-         FMSG("edit_keypress","Object does not have the EDIT flag set.");
+         log.trace("Object does not have the EDIT flag set.");
          return;
       }
 

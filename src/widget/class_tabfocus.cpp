@@ -143,7 +143,7 @@ Failed
 
 static ERROR TABFOCUS_AddObject(objTabFocus *Self, struct tabAddObject *Args)
 {
-   if ((!Args) OR (!Args->ObjectID)) return PostError(ERR_NullArgs);
+   if ((!Args) OR (!Args->ObjectID)) return ERR_NullArgs;
 
    OBJECTID objectid = Args->ObjectID;
    OBJECTID regionid = object_surface(objectid);
@@ -151,7 +151,8 @@ static ERROR TABFOCUS_AddObject(objTabFocus *Self, struct tabAddObject *Args)
    // Do not allow references to our monitored surface
 
    if (objectid IS Self->SurfaceID) {
-      LogMsg("Cannot add object #%d because it is the surface I monitor for keystrokes.", Args->ObjectID);
+      parasol::Log log;
+      log.msg("Cannot add object #%d because it is the surface I monitor for keystrokes.", Args->ObjectID);
       return ERR_Failed;
    }
 
@@ -186,13 +187,15 @@ static ERROR TABFOCUS_Free(objTabFocus *Self, APTR Void)
 
 static ERROR TABFOCUS_Init(objTabFocus *Self, APTR Void)
 {
+   parasol::Log log;
+
    if (!Self->SurfaceID) { // Find our parent surface
       OBJECTID owner_id = GetOwner(Self);
       while ((owner_id) AND (GetClassID(owner_id) != ID_SURFACE)) {
          owner_id = GetOwnerID(owner_id);
       }
       if (owner_id) Self->SurfaceID = owner_id;
-      else return PostError(ERR_UnsupportedOwner);
+      else return log.warning(ERR_UnsupportedOwner);
    }
 
    FUNCTION callback;
@@ -225,13 +228,15 @@ OutOfRange: The index is out of range.
 
 static ERROR TABFOCUS_InsertObject(objTabFocus *Self, struct tabInsertObject *Args)
 {
-   if (!Args) return PostError(ERR_NullArgs);
+   parasol::Log log;
+
+   if (!Args) return log.warning(ERR_NullArgs);
 
    WORD index = Args->Index;
    if (index < 0) index = 0;
    if (index >= ARRAYSIZE(Self->TabList)) return ERR_OutOfRange;
 
-   if (!Args->ObjectID) return PostError(ERR_NullArgs);
+   if (!Args->ObjectID) return log.warning(ERR_NullArgs);
 
    OBJECTID objectid = Args->ObjectID;
    OBJECTID regionid = object_surface(objectid);
@@ -269,7 +274,7 @@ Args:
 
 static ERROR TABFOCUS_RemoveObject(objTabFocus *Self, struct tabRemoveObject *Args)
 {
-   if ((!Args) OR (!Args->ObjectID)) return PostError(ERR_NullArgs);
+   if ((!Args) OR (!Args->ObjectID)) return ERR_NullArgs;
 
    WORD i;
    for (i=Self->Total-1; i > 0; i--) {
@@ -305,7 +310,7 @@ OutOfRange: The specified Index was out of range.
 
 static ERROR TABFOCUS_SetObject(objTabFocus *Self, struct tabSetObject *Args)
 {
-   if ((!Args) OR (!Args->ObjectID)) return PostError(ERR_NullArgs);
+   if ((!Args) OR (!Args->ObjectID)) return ERR_NullArgs;
 
    WORD index = Args->Index;
    if (index < 0) index = 0;
@@ -396,7 +401,9 @@ Total: Indicates the total number of objects in the focus list.
 
 static void focus_object(objTabFocus *Self, UBYTE Index)
 {
-   LogF("~focus_object()","Index: %d, Object: %d", Index, Self->TabList[Index].ObjectID);
+   parasol::Log log(__FUNCTION__);
+
+   log.branch("Index: %d, Object: %d", Index, Self->TabList[Index].ObjectID);
 
    CLASSID class_id = GetClassID(Self->TabList[Index].ObjectID);
 
@@ -423,8 +430,6 @@ static void focus_object(objTabFocus *Self, UBYTE Index)
    else if (Self->TabList[Index].SurfaceID) ActionMsg(AC_Focus, Self->TabList[Index].SurfaceID, NULL);
    else ActionMsg(AC_Focus, Self->TabList[Index].ObjectID, NULL);
 */
-
-   LogReturn();
 }
 
 //****************************************************************************

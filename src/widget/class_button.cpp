@@ -93,7 +93,7 @@ static ERROR BUTTON_Activate(objButton *Self, APTR Void)
    log.branch(NULL);
 
    if (Self->Active) {
-      LogErrorMsg("Warning - recursion detected");
+      log.warning("Warning - recursion detected");
       return ERR_Failed;
    }
 
@@ -128,7 +128,7 @@ static ERROR BUTTON_Activate(objButton *Self, APTR Void)
 
 static ERROR BUTTON_DataFeed(objButton *Self, struct acDataFeed *Args)
 {
-   if (!Args) return PostError(ERR_NullArgs);
+   if (!Args) return ERR_NullArgs;
 
    if (Args->DataType IS DATA_INPUT_READY) {
       InputMsg *input;
@@ -199,7 +199,6 @@ static ERROR BUTTON_Disable(objButton *Self, APTR Void)
 {
    // See the ActionNotify routine to see what happens when the surface is disabled.
 
-   LogAction(NULL);
    acDisableID(Self->RegionID);
    return ERR_Okay;
 }
@@ -214,7 +213,6 @@ static ERROR BUTTON_Enable(objButton *Self, APTR Void)
 {
    // See the ActionNotify routine to see what happens when the surface is enabled.
 
-   LogAction(NULL);
    acEnableID(Self->RegionID);
    return ERR_Okay;
 }
@@ -428,7 +426,7 @@ static ERROR GET_Bottom(objButton *Self, LONG *Value)
       ReleaseObject(surface);
       return ERR_Okay;
    }
-   else return PostError(ERR_AccessObject);
+   else return ERR_AccessObject;
 }
 
 /*****************************************************************************
@@ -511,7 +509,7 @@ static ERROR GET_Height(objButton *Self, Variable *Value)
       else if (Value->Type & FD_LARGE) Value->Large = value;
       return ERR_Okay;
    }
-   else return PostError(ERR_AccessObject);
+   else return ERR_AccessObject;
 }
 
 static ERROR SET_Height(objButton *Self, Variable *Value)
@@ -632,7 +630,7 @@ static ERROR GET_Right(objButton *Self, LONG *Value)
       ReleaseObject(surface);
       return ERR_Okay;
    }
-   else return PostError(ERR_AccessObject);
+   else return ERR_AccessObject;
 }
 
 /*****************************************************************************
@@ -717,7 +715,7 @@ static ERROR GET_Width(objButton *Self, Variable *Value)
       else if (Value->Type & FD_LARGE) Value->Large = value;
       return ERR_Okay;
    }
-   else return PostError(ERR_AccessObject);
+   else return ERR_AccessObject;
 }
 
 static ERROR SET_Width(objButton *Self, Variable *Value)
@@ -758,7 +756,7 @@ static ERROR GET_X(objButton *Self, Variable *Value)
       else if (Value->Type & FD_LARGE) Value->Large = value;
       return ERR_Okay;
    }
-   else return PostError(ERR_AccessObject);
+   else return ERR_AccessObject;
 }
 
 static ERROR SET_X(objButton *Self, Variable *Value)
@@ -801,7 +799,7 @@ static ERROR GET_XOffset(objButton *Self, Variable *Value)
       else if (Value->Type & FD_LARGE) Value->Large = value;
       return ERR_Okay;
    }
-   else return PostError(ERR_AccessObject);
+   else return ERR_AccessObject;
 }
 
 static ERROR SET_XOffset(objButton *Self, Variable *Value)
@@ -838,7 +836,7 @@ static ERROR GET_Y(objButton *Self, Variable *Value)
       else if (Value->Type & FD_LARGE) Value->Large = value;
       return ERR_Okay;
    }
-   else return PostError(ERR_AccessObject);
+   else return ERR_AccessObject;
 
 }
 
@@ -883,7 +881,7 @@ static ERROR GET_YOffset(objButton *Self, Variable *Value)
       else if (Value->Type & FD_LARGE) Value->Large = value;
       return ERR_Okay;
    }
-   else return PostError(ERR_AccessObject);
+   else return ERR_AccessObject;
 }
 
 static ERROR SET_YOffset(objButton *Self, Variable *Value)

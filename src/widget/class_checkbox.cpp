@@ -193,13 +193,15 @@ static ERROR CHECKBOX_Hide(objCheckBox *Self, APTR Void)
 
 static ERROR CHECKBOX_Init(objCheckBox *Self, APTR Void)
 {
+   parasol::Log log;
+
    if (!Self->SurfaceID) { // Find the parent surface
       OBJECTID owner_id = GetOwner(Self);
       while ((owner_id) and (GetClassID(owner_id) != ID_SURFACE)) {
          owner_id = GetOwnerID(owner_id);
       }
       if (owner_id) Self->SurfaceID = owner_id;
-      else return PostError(ERR_UnsupportedOwner);
+      else return log.warning(ERR_UnsupportedOwner);
    }
 
    if (drwApplyStyleGraphics(Self, Self->RegionID, NULL, NULL)) {

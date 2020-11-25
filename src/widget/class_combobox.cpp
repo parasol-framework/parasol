@@ -776,7 +776,7 @@ static ERROR GET_Y(objComboBox *Self, Variable *Value)
       else if (Value->Type & FD_LARGE) Value->Large = value;
       return ERR_Okay;
    }
-   else return PostError(ERR_AccessObject);
+   else return ERR_AccessObject;
 
 }
 
@@ -821,7 +821,7 @@ static ERROR GET_YOffset(objComboBox *Self, Variable *Value)
       else if (Value->Type & FD_LARGE) Value->Large = value;
       return ERR_Okay;
    }
-   else return PostError(ERR_AccessObject);
+   else return ERR_AccessObject;
 }
 
 static ERROR SET_YOffset(objComboBox *Self, Variable *Value)

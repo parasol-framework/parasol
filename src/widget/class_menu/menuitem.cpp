@@ -178,7 +178,9 @@ static ERROR ITEM_Free(objMenuItem *Self, APTR Void)
 
 static ERROR ITEM_Init(objMenuItem *Self, APTR Void)
 {
-   if (!Self->Menu) return PostError(ERR_UnsupportedOwner);
+   parasol::Log log;
+
+   if (!Self->Menu) return log.warning(ERR_UnsupportedOwner);
 
    objMenu *menu = Self->Menu;
 
@@ -212,7 +214,8 @@ static ERROR ITEM_NewObject(objMenuItem *Self, APTR Void)
 
 static ERROR ITEM_NewOwner(objMenuItem *Self, struct acNewOwner *Args)
 {
-   if (Self->Menu) return PostError(ERR_UnsupportedOwner); // Re-modification is not supported.
+   parasol::Log log;
+   if (Self->Menu) return log.warning(ERR_UnsupportedOwner); // Re-modification is not supported.
    if (GetClassID(Args->NewOwnerID) != ID_MENU) return ERR_UnsupportedOwner;
    Self->Menu = (objMenu *)GetObjectPtr(Args->NewOwnerID);
    return ERR_Okay;
