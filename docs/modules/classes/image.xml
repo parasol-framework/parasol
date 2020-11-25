@@ -18,7 +18,7 @@
 <p>There are no restrictions on the data format of the picture file, but it must be supported by one of the <class name="Picture">Picture</class> classes in the system.  If for example the file format is JPEG, but the system does not have a JPEG Picture class installed, it will not be possible to load the file.  To obtain a list of supported file formats, you need to scan the list of <class name="Picture">Picture</class> classes in the Graphics category.</p>
 <p>All pictures that are loaded via the Image class are cached into a shared memory pool.  If an image file is loaded multiple times by a program, the data will be stored only once to save on memory and load times. Image files are automatically unloaded when their reference count reaches zero.</p></description>
     <source>
-      <file>class_image.c</file>
+      <file>class_image.cpp</file>
     </source>
   </info>
 

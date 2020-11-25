@@ -48,9 +48,6 @@ scale or page and view sizes.
 #define ScrollMsg ActionMsg
 
 static OBJECTPTR clScroll = NULL;
-static const struct FieldArray clFields[];
-static const struct ActionArray clScrollActions[];
-static const struct MethodArray clScrollMethods[];
 
 static ERROR process_click(objScroll *, OBJECTID, LONG, LONG);
 static void update_scroll(objScroll *, LONG, LONG, DOUBLE, LONG);
@@ -71,7 +68,10 @@ INLINE DOUBLE check_position(objScroll *Self, DOUBLE Position)
       result = Self->PageSize - (Self->ViewSize - Self->ObscuredView);
    }
 
-   if (result != Position) FMSG("check_position()","Requested %.2f, allowing %.2f.  (Page: %d, View: %d, Obscured: %d", Position, result, Self->PageSize, Self->ViewSize, Self->ObscuredView);
+   if (result != Position) {
+      parasol::Log log(__FUNCTION__);
+      log.trace("Requested %.2f, allowing %.2f.  (Page: %d, View: %d, Obscured: %d", Position, result, Self->PageSize, Self->ViewSize, Self->ObscuredView);
+   }
 
    return result;
 }
@@ -82,7 +82,8 @@ static void set_position(objScroll *Self, DOUBLE Position)
 {
    if (Position IS Self->Position) return;
 
-   FMSG("~set_position()","%.2f, Current: %.2f", Position, Self->Position);
+   parasol::Log log(__FUNCTION__);
+   log.traceBranch("%.2f, Current: %.2f", Position, Self->Position);
 
    SetDouble(Self, FID_Position, Position); //Self->Position = Position;
 
@@ -93,31 +94,30 @@ static void set_position(objScroll *Self, DOUBLE Position)
    if ((Self->Field[0]) AND (Self->ObjectID)) {
       OBJECTPTR object;
       if (!AccessObject(Self->ObjectID, 5000, &object)) {
-         UBYTE buffer[32];
+         char buffer[32];
          IntToStr(Position, buffer, sizeof(buffer));
          SetFieldEval(object, Self->Field, buffer);
          ReleaseObject(object);
       }
    }
-
-   LOGRETURN();
 }
 
 //****************************************************************************
 
 static ERROR SCROLL_ActionNotify(objScroll *Self, struct acActionNotify *Notify)
 {
+   parasol::Log log;
+
    if (Notify->Error != ERR_Okay) return ERR_Okay;
 
    if (Notify->ActionID IS AC_Redimension) {
-      struct acRedimension *resize = (struct acRedimension *)Notify->Args;
+      auto resize = (struct acRedimension *)Notify->Args;
 
-      FMSG("~","Redimension notification received by Scroll object.  Size: %.0fx%.0f,%.0fx%.0f", resize->X, resize->Y, resize->Width, resize->Height);
+      log.traceBranch("Redimension notification received by Scroll object.  Size: %.0fx%.0f,%.0fx%.0f", resize->X, resize->Y, resize->Width, resize->Height);
 
       if (Notify->ObjectID IS Self->SliderID) { // The slider has moved
          if (Self->RecursionBlock) {
-            MSG("Recursive block protection.");
-            LOGRETURN();
+            log.trace("Recursive block protection.");
             return ERR_Okay;
          }
 
@@ -136,19 +136,19 @@ static ERROR SCROLL_ActionNotify(objScroll *Self, struct acActionNotify *Notify)
          }
          else if (Self->Flags & SCF_SLIDER) {
             position = Self->PageSize * ((DOUBLE)(slidepos - Self->StartMargin) / (DOUBLE)(Self->BarSize - Self->SliderSize));
-            MSG("Move detected in slider (slide mode).  %.2f = (slidepos %d - startmargin %d) / (barsize %d - slidersize %d)", position, slidepos, Self->StartMargin, Self->BarSize, Self->SliderSize);
+            log.trace("Move detected in slider (slide mode).  %.2f = (slidepos %d - startmargin %d) / (barsize %d - slidersize %d)", position, slidepos, Self->StartMargin, Self->BarSize, Self->SliderSize);
          }
          else {
             DOUBLE pct;
             pct = ((DOUBLE)(slidepos - Self->StartMargin) / (DOUBLE)(Self->BarSize - Self->SliderSize));
             position = ((DOUBLE)(Self->PageSize - (Self->ViewSize - Self->ObscuredView))) * pct;
-            MSG("Percentage: %.2f = (%d slidepos - %d startmargin) / (%d barsize - %d slidersize)", pct, slidepos, Self->StartMargin, Self->BarSize, Self->SliderSize);
-            MSG("Move detected in scroll slider.  %.2f = (pagesize %d - (viewsize %d - obscured %d) * %.2f%%", position, Self->PageSize, Self->ViewSize, Self->ObscuredView, pct);
+            log.trace("Percentage: %.2f = (%d slidepos - %d startmargin) / (%d barsize - %d slidersize)", pct, slidepos, Self->StartMargin, Self->BarSize, Self->SliderSize);
+            log.trace("Move detected in scroll slider.  %.2f = (pagesize %d - (viewsize %d - obscured %d) * %.2f%%", position, Self->PageSize, Self->ViewSize, Self->ObscuredView, pct);
          }
 
          position = check_position(Self, position);
 
-         if (position IS Self->Position) { LOGRETURN(); return ERR_Okay; }
+         if (position IS Self->Position) return ERR_Okay;
 
          // NB: Delays are used because drawing whilst inside of Redimension notifications is disabled by the Surface class.
 
@@ -183,7 +183,7 @@ static ERROR SCROLL_ActionNotify(objScroll *Self, struct acActionNotify *Notify)
                struct acScrollToPoint scrollto = { 0, 0, position, STP_Z };
                ScrollMsg(AC_ScrollToPoint, Self->ObjectID, &scrollto);
             }
-            else LogErrorMsg("Invalid Axis setting of %d.", Self->Axis);
+            else log.warning("Invalid Axis setting of %d.", Self->Axis);
          }
 
          if (Self->Feedback.Type) {
@@ -230,7 +230,7 @@ static ERROR SCROLL_ActionNotify(objScroll *Self, struct acActionNotify *Notify)
 
          // The size of the view has changed
 
-         if (Self->PageSize <= 0) { LOGRETURN(); return ERR_Okay; }
+         if (Self->PageSize <= 0) return ERR_Okay;
 
          if (Self->Flags & SCF_VERTICAL) viewlength = resize->Height;
          else viewlength = resize->Width;
@@ -240,7 +240,9 @@ static ERROR SCROLL_ActionNotify(objScroll *Self, struct acActionNotify *Notify)
          }
          else viewsize = viewlength;
 
-         FMSG("~","Size of the view has changed to %d, obscured: %d, pos %.2f, barsize: %d (%d+%d margins)", viewlength, Self->ObscuredView, Self->Position, Self->BarSize, Self->StartMargin, Self->EndMargin);
+         {
+            parasol::Log log;
+            log.traceBranch("Size of the view has changed to %d, obscured: %d, pos %.2f, barsize: %d (%d+%d margins)", viewlength, Self->ObscuredView, Self->Position, Self->BarSize, Self->StartMargin, Self->EndMargin);
 
             DOUBLE pos = Self->Position;
 
@@ -268,11 +270,8 @@ static ERROR SCROLL_ActionNotify(objScroll *Self, struct acActionNotify *Notify)
             }
 
             update_scroll(Self, -1, viewsize, pos, Self->Unit);
-
-         LOGRETURN();
+         }
       }
-
-      LOGRETURN();
    }
    else if (Notify->ActionID IS AC_Free) {
       if ((Self->Feedback.Type IS CALL_SCRIPT) AND (Self->Feedback.Script.Script->UniqueID IS Notify->ObjectID)) {
@@ -285,7 +284,7 @@ static ERROR SCROLL_ActionNotify(objScroll *Self, struct acActionNotify *Notify)
       // The Hide action is received when an -intersecting- scrollbar is hidden.  This code will adjust our position
       // to deal with the intersection point.
 
-      FMSG("~","Intersecting scrollbar hidden.");
+      log.traceBranch("Intersecting scrollbar hidden.");
 
       if (Self->PostIntersect) { // Recompute the viewable area
          Self->ObscuredView = 0;
@@ -306,19 +305,17 @@ static ERROR SCROLL_ActionNotify(objScroll *Self, struct acActionNotify *Notify)
          }
          ReleaseObject(bar);
       }
-
-      LOGRETURN();
    }
    else if (Notify->ActionID IS AC_Scroll) {
       if (Self->RecursionBlock) return ERR_Okay;
 
-      struct acScroll *scroll = (struct acScroll *)Notify->Args;
+      auto scroll = (struct acScroll *)Notify->Args;
 
       if (Notify->ObjectID IS Self->ObjectID) {
          // If the message came from the object maintained by the scrollbar, we need to adjust our slider rather than
          // send another scroll signal.
 
-         MSG("Scroll action received from #%d - moving the slider.", Notify->ObjectID);
+         log.trace("Scroll action received from #%d - moving the slider.", Notify->ObjectID);
 
          Self->RecursionBlock++;
 
@@ -333,7 +330,7 @@ static ERROR SCROLL_ActionNotify(objScroll *Self, struct acActionNotify *Notify)
       else if (Notify->ObjectID IS Self->MonitorID) {
          DOUBLE position;
 
-         FMSG("~","Scroll action received from monitored #%d - sending scroll signal.", Notify->ObjectID);
+         log.traceBranch("Scroll action received from monitored #%d - sending scroll signal.", Notify->ObjectID);
 
          // A scroll request has come from the monitored object.  We have to send a scroll message to the object that
          // our scrollbar is controlling, then update our slider so that it reflects the new position.
@@ -379,15 +376,13 @@ static ERROR SCROLL_ActionNotify(objScroll *Self, struct acActionNotify *Notify)
             if (Self->Feedback.Type) send_feedback(Self, -1, -1, position);
          }
          else {
-            LogErrorMsg("Invalid Axis setting of %d.", Self->Axis);
+            log.warning("Invalid Axis setting of %d.", Self->Axis);
             return ERR_Okay;
          }
 
-         MSG("Updating slider position.");
+         log.trace("Updating slider position.");
 
          update_scroll(Self, -1, -1, position, Self->Unit);
-
-         LOGRETURN();
       }
    }
    else if (Notify->ActionID IS AC_Show) {
@@ -396,7 +391,7 @@ static ERROR SCROLL_ActionNotify(objScroll *Self, struct acActionNotify *Notify)
       // The Show action is received when an intersecting scrollbar is shown.  This code will adjust our position to
       // deal with the intersection point.
 
-      FMSG("~","Intersecting scrollbar has been shown.  PostIntersect: %d", Self->PostIntersect);
+      log.traceBranch("Intersecting scrollbar has been shown.  PostIntersect: %d", Self->PostIntersect);
 
       if (Self->PostIntersect) {
          // Recompute the viewable area.  The vertical bar is usually 'post intersect' because
@@ -423,7 +418,7 @@ static ERROR SCROLL_ActionNotify(objScroll *Self, struct acActionNotify *Notify)
             }
 
             if (Self->ViewSize > 0) update_scroll(Self, -1, -1, Self->Position, Self->Unit);
-            else MSG("ViewSize undefined.");
+            else log.trace("ViewSize undefined.");
          }
       }
       else if (!AccessObject(Self->ScrollbarID, 5000, &bar)) {
@@ -446,8 +441,6 @@ static ERROR SCROLL_ActionNotify(objScroll *Self, struct acActionNotify *Notify)
          }
          ReleaseObject(bar);
       }
-
-      LOGRETURN();
    }
 
    return ERR_Okay;
@@ -461,7 +454,7 @@ Activate: Calls the Activate action on all children of the scroll object.
 
 static ERROR SCROLL_Activate(objScroll *Self, APTR Void)
 {
-   struct ChildEntry list[16];
+   ChildEntry list[16];
    LONG count = ARRAYSIZE(list);
    if (!ListChildren(GetUniqueID(Self), list, &count)) {
       WORD i;
@@ -485,11 +478,12 @@ enum {
 
 static ERROR process_click(objScroll *Self, OBJECTID NotifyID, LONG X, LONG Y)
 {
+   parasol::Log log(__FUNCTION__);
    SURFACEINFO *slider;
 
    if (drwGetSurfaceInfo(Self->SliderID, &slider) != ERR_Okay) return ERR_Failed;
 
-   FMSG("~process_click()","Surface: %d, XY: %dx%d, Slider: %dx%d,%dx%d, Margins: %d,%d, Unit: %d", NotifyID, X, Y, slider->X, slider->Y, slider->Width, slider->Height, Self->StartMargin, Self->EndMargin, Self->Unit);
+   log.traceBranch("Surface: %d, XY: %dx%d, Slider: %dx%d,%dx%d, Margins: %d,%d, Unit: %d", NotifyID, X, Y, slider->X, slider->Y, slider->Width, slider->Height, Self->StartMargin, Self->EndMargin, Self->Unit);
 
    struct acMove move = { 0, 0, 0 };
 
@@ -500,8 +494,7 @@ static ERROR process_click(objScroll *Self, OBJECTID NotifyID, LONG X, LONG Y)
          move.XChange = slider->Width;
 
          if ((Y >= slider->Y) AND (Y <= slider->Y + slider->Height)) {
-            if (X < slider->X) {
-               // Slide left
+            if (X < slider->X) { // Slide left
                if (X >= Self->StartMargin) {
                   move.XChange = -move.XChange;
                   ActionMsg(AC_Move, Self->SliderID, &move);
@@ -544,7 +537,7 @@ static ERROR process_click(objScroll *Self, OBJECTID NotifyID, LONG X, LONG Y)
                   send_feedback(Self, 0, scroll.YChange, 0);
                }
                else {
-                  struct acScrollToPoint scrollto = { .X = 0, .Y = F2T(pos), .Z = 0, .Flags = STP_Y };
+                  struct acScrollToPoint scrollto = { .X = 0, .Y = pos, .Z = 0, .Flags = STP_Y };
                   ActionMsg(AC_ScrollToPoint, Self->ObjectID, &scrollto);
 
                   send_feedback(Self, -1, scrollto.Y, -1);
@@ -563,7 +556,7 @@ static ERROR process_click(objScroll *Self, OBJECTID NotifyID, LONG X, LONG Y)
                   send_feedback(Self, 0, scroll.YChange, 0);
                }
                else {
-                  struct acScrollToPoint scrollto = { .X = 0, .Y = F2T(pos), .Z = 0, .Flags = STP_Y };
+                  struct acScrollToPoint scrollto = { .X = 0, .Y = pos, .Z = 0, .Flags = STP_Y };
                   ActionMsg(AC_ScrollToPoint, Self->ObjectID, &scrollto);
 
                   send_feedback(Self, -1, scrollto.Y, -1);
@@ -607,7 +600,7 @@ static ERROR process_click(objScroll *Self, OBJECTID NotifyID, LONG X, LONG Y)
             }
             else pos = check_position(Self, Self->Position + Self->Unit);
 
-            FMSG("process_click:","Position change to %.2f from %.2f", pos, Self->Position);
+            log.trace("Position change to %.2f from %.2f", pos, Self->Position);
 
             if (F2T(pos) != Self->Position) {
                update_scroll(Self, Self->PageSize, Self->ViewSize, pos, Self->Unit);
@@ -641,7 +634,6 @@ static ERROR process_click(objScroll *Self, OBJECTID NotifyID, LONG X, LONG Y)
       }
    }
 
-   LOGRETURN();
    return ERR_Okay;
 }
 
@@ -669,9 +661,11 @@ NullArgs
 
 static ERROR SCROLL_AddScrollButton(objScroll *Self, struct scAddScrollButton *Args)
 {
-   if ((!Args) OR (!Args->SurfaceID) OR (!Args->Direction)) return PostError(ERR_NullArgs);
+   parasol::Log log;
 
-   LogBranch("%d", Args->SurfaceID);
+   if ((!Args) OR (!Args->SurfaceID) OR (!Args->Direction)) return log.warning(ERR_NullArgs);
+
+   log.branch("%d", Args->SurfaceID);
 
    WORD i;
    for (i=0; i < ARRAYSIZE(Self->Buttons); i++) {
@@ -679,7 +673,7 @@ static ERROR SCROLL_AddScrollButton(objScroll *Self, struct scAddScrollButton *A
       if (!Self->Buttons[i].ButtonID) break;
    }
 
-   if (i >= ARRAYSIZE(Self->Buttons)) return PostError(ERR_ArrayFull);
+   if (i >= ARRAYSIZE(Self->Buttons)) return log.warning(ERR_ArrayFull);
 
    if (!gfxSubscribeInput(Args->SurfaceID, JTYPE_BUTTON|JTYPE_REPEATED, 0)) {
       if (Self->Buttons[i].ButtonID) gfxUnsubscribeInput(Self->Buttons[i].ButtonID);
@@ -690,12 +684,8 @@ static ERROR SCROLL_AddScrollButton(objScroll *Self, struct scAddScrollButton *A
       else if (Args->Direction IS 4) Self->Buttons[i].Direction = SD_POSITIVE; // Backwards compatible with SD_RIGHT
       else Self->Buttons[i].Direction = Args->Direction;
    }
-   else {
-      LogReturn();
-      return PostError(ERR_Failed);
-   }
+   else return log.warning(ERR_Failed);
 
-   LogReturn();
    return ERR_Okay;
 }
 
@@ -706,7 +696,7 @@ static ERROR SCROLL_DataFeed(objScroll *Self, struct acDataFeed *Args)
    if (!Args) return ERR_NullArgs;
 
    if (Args->DataType IS DATA_INPUT_READY) {
-      struct InputMsg *input;
+      InputMsg *input;
 
       while (!gfxGetInputMsg((struct dcInputReady *)Args->Buffer, 0, &input)) {
          if (input->Flags & JTYPE_BUTTON) {
@@ -769,14 +759,14 @@ Hide: Hides the scrollbar.
 
 static ERROR SCROLL_Hide(objScroll *Self, APTR Void)
 {
-   FMSG("~","Passing to surface %d", Self->ScrollbarID);
+   parasol::Log log;
+   log.traceBranch("Passing to surface %d", Self->ScrollbarID);
 
    LONG flags;
    if (!drwGetSurfaceFlags(Self->ScrollbarID, &flags)) {
       if (flags & RNF_VISIBLE) acHideID(Self->ScrollbarID);
    }
 
-   LOGRETURN();
    return ERR_Okay;
 }
 
@@ -784,6 +774,8 @@ static ERROR SCROLL_Hide(objScroll *Self, APTR Void)
 
 static ERROR SCROLL_Init(objScroll *Self, APTR Void)
 {
+   parasol::Log log;
+
    if (!(Self->Flags & (SCF_HORIZONTAL|SCF_VERTICAL))) { // Is the scrollbar horizontal or vertical?
       Self->Flags |= SCF_VERTICAL;
    }
@@ -798,7 +790,7 @@ static ERROR SCROLL_Init(objScroll *Self, APTR Void)
       while ((owner_id) AND (GetClassID(owner_id) != ID_SURFACE)) {
          owner_id = GetOwnerID(owner_id);
       }
-      if (!owner_id) return PostError(ERR_UnsupportedOwner);
+      if (!owner_id) return log.warning(ERR_UnsupportedOwner);
       else Self->SliderID = owner_id;
    }
 
@@ -813,7 +805,7 @@ static ERROR SCROLL_Init(objScroll *Self, APTR Void)
    }
 
    if (!Self->ObjectID) {
-      if (!Self->ObjectID) LogMsg("Warning: The Object field is not set."); // Minor warning, do not abort
+      if (!Self->ObjectID) log.msg("Warning: The Object field is not set."); // Minor warning, do not abort
    }
 
    // Monitor the scroll container for movement, and the Slider's surface container for Resize actions.
@@ -930,7 +922,7 @@ static ERROR SCROLL_Init(objScroll *Self, APTR Void)
                      SetLong(bar, FID_YOffset, offset + size);
                   }
 
-                  MSG("Intersection bar is visible, shrunk to offset %d.", offset - size);
+                  log.trace("Intersection bar is visible, shrunk to offset %d.", offset - size);
                }
                else {
                   if (Self->Flags & SCF_HORIZONTAL) {
@@ -941,7 +933,7 @@ static ERROR SCROLL_Init(objScroll *Self, APTR Void)
                      GetLong(surface, FID_YOffset, &offset);
                      SetLong(bar, FID_YOffset, offset);
                   }
-                  MSG("Intersection bar is invisible, expanded to offset %d.", offset);
+                  log.trace("Intersection bar is invisible, expanded to offset %d.", offset);
                }
                ReleaseObject(bar);
             }
@@ -957,12 +949,12 @@ static ERROR SCROLL_Init(objScroll *Self, APTR Void)
    // If both the PageSize and ViewSize values have been specified, set up the scrolling area to reflect the settings.
 
    if ((Self->PageSize) AND (Self->ViewSize)) {
-      LogMsg("Preset PageSize %d, ViewSize %d and Position %.2f", Self->PageSize, Self->ViewSize, Self->Position);
+      log.msg("Preset PageSize %d, ViewSize %d and Position %.2f", Self->PageSize, Self->ViewSize, Self->Position);
 
       update_scroll(Self, -1, -1, Self->Position, Self->Unit);
    }
 
-   LogMsg("Object: %d, Slider: %d, Scrollbar: %d", Self->ObjectID, Self->SliderID, Self->ScrollbarID);
+   log.msg("Object: %d, Slider: %d, Scrollbar: %d", Self->ObjectID, Self->SliderID, Self->ScrollbarID);
 
    return ERR_Okay;
 }
@@ -986,6 +978,8 @@ Shows: Shows the #Scrollbar
 
 static ERROR SCROLL_Show(objScroll *Self, APTR Args)
 {
+   parasol::Log log;
+
    // This code decides whether it is necessary to see the scrollbar or not, according to its values.  In auto-hide
    // mode, it may actually hide the scrollbar if it shouldn't be visible.
 
@@ -996,7 +990,7 @@ static ERROR SCROLL_Show(objScroll *Self, APTR Args)
       LONG flags;
       if (!drwGetSurfaceFlags(Self->ScrollbarID, &flags)) {
          if (Self->Flags & SCF_AUTO_HIDE) {
-            MSG("Checking autohide, pagesize: %d/%d, offset: %d, Slider: %d, Bar: %d", Self->PageSize, Self->ViewSize, Self->Offset, Self->SliderSize, Self->BarSize);
+            log.trace("Checking autohide, pagesize: %d/%d, offset: %d, Slider: %d, Bar: %d", Self->PageSize, Self->ViewSize, Self->Offset, Self->SliderSize, Self->BarSize);
             if ((Self->PageSize <= 1) OR (Self->ViewSize < 1)) {
                if (flags & RNF_VISIBLE) acHideID(Self->ScrollbarID);
             }
@@ -1008,7 +1002,7 @@ static ERROR SCROLL_Show(objScroll *Self, APTR Args)
          else acShowID(Self->ScrollbarID);
       }
    }
-   else MSG("Surface marked as invisible.");
+   else log.trace("Surface marked as invisible.");
 
    return ERR_Okay;
 }
@@ -1037,7 +1031,7 @@ NullArgs
 
 static ERROR SCROLL_UpdateScroll(objScroll *Self, struct scUpdateScroll *Args)
 {
-   if (!Args) return PostError(ERR_NullArgs);
+   if (!Args) return ERR_NullArgs;
 
    update_scroll(Self, Args->PageSize, Args->ViewSize, Args->Position, Args->Unit);
    return ERR_Okay;
@@ -1047,17 +1041,18 @@ static ERROR SCROLL_UpdateScroll(objScroll *Self, struct scUpdateScroll *Args)
 
 static void update_scroll(objScroll *Self, LONG PageSize, LONG ViewSize, DOUBLE Position, LONG Unit)
 {
+   parasol::Log log(__FUNCTION__);
+
    Self->Position = Position;
 
    if (PageSize > 0) Self->PageSize = PageSize;
    if (ViewSize > 0) Self->ViewSize = ViewSize;
    if (Unit) Self->Unit = Unit;
 
-   FMSG("~","Pos: %.2f, Page: %d, View: %d (Req: %d), Obscured: %d, Unit: %d, %s [Start]", Self->Position, Self->PageSize, Self->ViewSize, ViewSize, Self->ObscuredView, Self->Unit, (Self->Flags & SCF_HORIZONTAL) ? "Horizontal" : "Vertical");
+   log.traceBranch("Pos: %.2f, Page: %d, View: %d (Req: %d), Obscured: %d, Unit: %d, %s [Start]", Self->Position, Self->PageSize, Self->ViewSize, ViewSize, Self->ObscuredView, Self->Unit, (Self->Flags & SCF_HORIZONTAL) ? "Horizontal" : "Vertical");
 
    if ((Self->PageSize < 0) OR (Self->ViewSize <= 0)) {
-      LogErrorMsg("Illegal pagesize (%d) and/or viewsize (%d)", Self->PageSize, Self->ViewSize);
-      LOGRETURN();
+      log.warning("Illegal pagesize (%d) and/or viewsize (%d)", Self->PageSize, Self->ViewSize);
       return;
    }
 
@@ -1124,7 +1119,7 @@ static void update_scroll(objScroll *Self, LONG PageSize, LONG ViewSize, DOUBLE 
 
    if (offset < 0) {
       #ifdef DEBUG
-         LogErrorMsg("Calculated illegal slider offset of %d.", offset);
+         log.warning("Calculated illegal slider offset of %d.", offset);
       #endif
       offset = -offset;
    }
@@ -1147,19 +1142,18 @@ static void update_scroll(objScroll *Self, LONG PageSize, LONG ViewSize, DOUBLE 
    if ((Self->Field[0]) AND (Self->ObjectID)) {
       OBJECTPTR object;
       if (!AccessObject(Self->ObjectID, 5000, &object)) {
-         UBYTE buffer[32];
+         char buffer[32];
          IntToStr(F2T(Self->Position), buffer, sizeof(buffer));
          SetFieldEval(object, Self->Field, buffer);
          ReleaseObject(object);
       }
    }
 
-   MSG("Final Pos: %.2f, Page: %d, View: %d (%d), SliderSize: %d, BarSize: %d [End]", Self->Position, Self->PageSize, Self->ViewSize, view_size, Self->SliderSize, Self->BarSize);
+   log.trace("Final Pos: %.2f, Page: %d, View: %d (%d), SliderSize: %d, BarSize: %d [End]", Self->Position, Self->PageSize, Self->ViewSize, view_size, Self->SliderSize, Self->BarSize);
 
    set_position(Self, Self->Position);
 
    Self->RecursionBlock--;
-   LOGRETURN();
 }
 
 /*****************************************************************************
@@ -1261,10 +1255,12 @@ If you use the ScrollBar class, intersections are managed automatically.
 
 static ERROR SET_Intersect(objScroll *Self, OBJECTID ObjectID)
 {
+   parasol::Log log;
+
    if ((Self->IntersectID = ObjectID)) {
       if (GetClassID(Self->IntersectID) != ID_SCROLL) {
          Self->IntersectID = 0;
-         LogErrorMsg("The Intersect field can only be set with valid Scroll objects.");
+         log.warning("The Intersect field can only be set with valid Scroll objects.");
          return ERR_Failed;
       }
 
@@ -1331,7 +1327,7 @@ static ERROR SET_Monitor(objScroll *Self, OBJECTID Value)
             Self->MonitorID = Value;
             ReleaseObject(object);
          }
-         else return PostError(ERR_AccessObject);
+         else return ERR_AccessObject;
       }
    }
    else Self->MonitorID = Value;
@@ -1479,21 +1475,18 @@ static ERROR SET_ViewSize(objScroll *Self, LONG Value)
 static void send_feedback(objScroll *Self, DOUBLE X, DOUBLE Y, DOUBLE Z)
 {
    if (Self->Feedback.Type IS CALL_STDC) {
-      void (*routine)(OBJECTPTR Context, objScroll *, DOUBLE X, DOUBLE Y, DOUBLE Z);
-
-      routine = Self->Feedback.StdC.Routine;
+      auto routine = (void (*)(APTR, objScroll *, DOUBLE X, DOUBLE Y, DOUBLE Z))Self->Feedback.StdC.Routine;
 
       if (Self->Feedback.StdC.Context) {
-         OBJECTPTR context = SetContext(Self->Feedback.StdC.Context);
+         parasol::SwitchContext context(Self->Feedback.StdC.Context);
          routine(Self->Feedback.StdC.Context, Self, X, Y, Z);
-         SetContext(context);
       }
       else routine(Self->Feedback.StdC.Context, Self, X, Y, Z);
    }
    else if (Self->Feedback.Type IS CALL_SCRIPT) {
       OBJECTPTR script;
       if ((script = Self->Feedback.Script.Script)) {
-         const struct ScriptArg args[] = {
+         const ScriptArg args[] = {
             { "Scroll", FD_OBJECTPTR, { .Address = Self } },
             { "X",      FD_DOUBLE,    { .Double = X } },
             { "Y",      FD_DOUBLE,    { .Double = Y } },
@@ -1508,25 +1501,25 @@ static void send_feedback(objScroll *Self, DOUBLE X, DOUBLE Y, DOUBLE Z)
 
 #include "class_scroll_def.c"
 
-static const struct FieldArray clFields[] = {
-   { "Position",    FDF_DOUBLE|FDF_RW,    0, NULL, SET_Position },
+static const FieldArray clFields[] = {
+   { "Position",    FDF_DOUBLE|FDF_RW,    0, NULL, (APTR)SET_Position },
    { "Object",      FDF_OBJECTID|FDF_RW,  0, NULL, NULL },
    { "Slider",      FDF_OBJECTID|FDF_RW,  ID_SURFACE, NULL, NULL },
-   { "Intersect",   FDF_OBJECTID|FDF_RW,  ID_SCROLL, NULL, SET_Intersect },
-   { "Monitor",     FDF_OBJECTID|FDF_RW,  ID_SURFACE, NULL, SET_Monitor },
+   { "Intersect",   FDF_OBJECTID|FDF_RW,  ID_SCROLL, NULL, (APTR)SET_Intersect },
+   { "Monitor",     FDF_OBJECTID|FDF_RW,  ID_SURFACE, NULL, (APTR)SET_Monitor },
    { "View",        FDF_OBJECTID|FDF_RI,  ID_SURFACE, NULL, NULL },
    { "Page",        FDF_OBJECTID|FDF_RI,  ID_SURFACE, NULL, NULL },
    { "Unit",        FDF_LONG|FDF_RW,      0, NULL, NULL },
    { "Flags",       FDF_LONGFLAGS|FDF_RW, (MAXINT)&clScrollFlags, NULL, NULL },
-   { "PageSize",    FDF_LONG|FDF_RW,      0, NULL, SET_PageSize },
-   { "ViewSize",    FDF_LONG|FDF_RW,      0, NULL, SET_ViewSize },
+   { "PageSize",    FDF_LONG|FDF_RW,      0, NULL, (APTR)SET_PageSize },
+   { "ViewSize",    FDF_LONG|FDF_RW,      0, NULL, (APTR)SET_ViewSize },
    { "StartMargin", FDF_LONG|FDF_RW,      0, NULL, NULL },
    { "EndMargin",   FDF_LONG|FDF_RW,      0, NULL, NULL },
-   { "SliderSize",  FDF_LONG|FDF_RI,      0, NULL, SET_SliderSize },
-   { "Axis",        FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clScrollAxis, NULL, SET_Axis },
+   { "SliderSize",  FDF_LONG|FDF_RI,      0, NULL, (APTR)SET_SliderSize },
+   { "Axis",        FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clScrollAxis, NULL, (APTR)SET_Axis },
    // Virtual Fields
-   { "Field",       FDF_STRING|FDF_W,     0, NULL, SET_Field },
-   { "Feedback",    FDF_FUNCTIONPTR|FDF_RW, 0, GET_Feedback, SET_Feedback },
+   { "Field",       FDF_STRING|FDF_W,       0, NULL, (APTR)SET_Field },
+   { "Feedback",    FDF_FUNCTIONPTR|FDF_RW, 0, (APTR)GET_Feedback, (APTR)SET_Feedback },
    END_FIELD
 };
 

@@ -3,20 +3,20 @@
 set (MOD widget)
 
 set (WIDGET_SOURCES # Full paths are required for add_custom_command() dependencies to work correctly
-   "${CMAKE_CURRENT_SOURCE_DIR}/widget.c"
-   "${CMAKE_CURRENT_SOURCE_DIR}/class_button.c"
-   "${CMAKE_CURRENT_SOURCE_DIR}/class_checkbox.c"
-   "${CMAKE_CURRENT_SOURCE_DIR}/class_resize.c"
-   "${CMAKE_CURRENT_SOURCE_DIR}/class_scrollbar.c"
-   "${CMAKE_CURRENT_SOURCE_DIR}/class_combobox.c"
-   "${CMAKE_CURRENT_SOURCE_DIR}/class_tabfocus.c"
-   "${CMAKE_CURRENT_SOURCE_DIR}/class_input.c"
-   "${CMAKE_CURRENT_SOURCE_DIR}/class_scroll.c"
-   "${CMAKE_CURRENT_SOURCE_DIR}/class_image.c"
-   "${CMAKE_CURRENT_SOURCE_DIR}/class_text/text.c"
-   "${CMAKE_CURRENT_SOURCE_DIR}/class_menu/menu.c"
-   "${CMAKE_CURRENT_SOURCE_DIR}/class_view/view.c"
-   "${CMAKE_CURRENT_SOURCE_DIR}/class_clipboard.c")
+   "${CMAKE_CURRENT_SOURCE_DIR}/widget.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/class_button.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/class_checkbox.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/class_resize.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/class_scrollbar.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/class_combobox.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/class_tabfocus.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/class_input.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/class_scroll.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/class_image.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/class_text/text.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/class_menu/menu.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/class_view/view.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/class_clipboard.cpp")
 
 set (WIDGET_DEFS # Full paths are required for add_custom_command() dependencies to work correctly
    "${CMAKE_CURRENT_SOURCE_DIR}/class_button_def.c"

@@ -40,7 +40,7 @@ automatically unloaded when their reference count reaches zero.
 static OBJECTPTR clImage = NULL;
 static UBYTE glSixBit = FALSE;
 
-static void draw_image(objImage *Self, objSurface *Surface, objBitmap *Bitmap);
+static void draw_image(objImage *, objSurface *, objBitmap *);
 static void get_image_size(objBitmap *, LONG, LONG, LONG, LONG *, LONG *);
 static ERROR load_picture(objImage *);
 static void resample_image(objImage *, OBJECTID, LONG, LONG, LONG);
@@ -79,7 +79,7 @@ static ERROR IMAGE_DataFeed(objImage *Self, struct acDataFeed *Args)
 
    if (Args->DataType IS DATA_XML) {
       if (Self->RenderString) FreeResource(Self->RenderString);
-      Self->RenderString = StrClone(Args->Buffer);
+      Self->RenderString = StrClone((CSTRING)Args->Buffer);
 
       render_script(Self, Self->RenderString);
    }
@@ -126,27 +126,27 @@ static ERROR IMAGE_Hide(objImage *Self, APTR Void)
 
 static ERROR IMAGE_Init(objImage *Self, APTR Void)
 {
-   SetFunctionPtr(Self->Layout, FID_DrawCallback, &draw_image);
-   SetFunctionPtr(Self->Layout, FID_ResizeCallback, &resize_surface);
-   if (acInit(Self->Layout) != ERR_Okay) {
-      return ERR_Init;
-   }
+   parasol::Log log;
 
-   if ((!Self->Path) AND (!(Self->Flags & IMF_NO_FAIL))) return PostError(ERR_MissingPath);
+   SetFunctionPtr(Self->Layout, FID_DrawCallback, (APTR)&draw_image);
+   SetFunctionPtr(Self->Layout, FID_ResizeCallback, (APTR)&resize_surface);
+   if (acInit(Self->Layout) != ERR_Okay) return ERR_Init;
+
+   if ((!Self->Path) AND (!(Self->Flags & IMF_NO_FAIL))) return log.warning(ERR_MissingPath);
 
    if (!Self->Path) {
-      if (!(Self->Flags & IMF_NO_FAIL)) return PostError(ERR_GetField);
+      if (!(Self->Flags & IMF_NO_FAIL)) return log.warning(ERR_GetField);
    }
 
    ERROR error = load_picture(Self);
 
    if (!error) {
       if ((Self->Picture) AND (Self->Picture->FrameRate > 0)) {
-         LogMsg("Picture frame rate: %dfps", Self->Picture->FrameRate);
+         log.msg("Picture frame rate: %dfps", Self->Picture->FrameRate);
          Self->FrameRate = Self->Picture->FrameRate;
 
          FUNCTION callback;
-         SET_FUNCTION_STDC(callback, &frame_timer);
+         SET_FUNCTION_STDC(callback, (APTR)&frame_timer);
          SubscribeTimer(1.0/(DOUBLE)Self->FrameRate, &callback, &Self->FrameTimer);
       }
    }
@@ -238,7 +238,7 @@ ScrollToPoint: Scrolls an image within its allocated drawing space.
 
 static ERROR IMAGE_ScrollToPoint(objImage *Self, struct acScrollToPoint *Args)
 {
-   if (!Args) return PostError(ERR_NullArgs);
+   if (!Args) return ERR_NullArgs;
 
    if ((Args->X IS Self->Layout->GraphicX) AND (Args->Y IS Self->Layout->GraphicY)) return ERR_Okay;
 
@@ -617,7 +617,7 @@ static void draw_image(objImage *Self, objSurface *Surface, objBitmap *Bitmap)
       }
    }
 
-   struct ClipRectangle clip = Bitmap->Clip; // Save current clipping boundary
+   ClipRectangle clip = Bitmap->Clip; // Save current clipping boundary
 
    if (Bitmap->Clip.Left < Self->Layout->BoundX) Bitmap->Clip.Left = Self->Layout->BoundX;
    if (Bitmap->Clip.Top  < Self->Layout->BoundY) Bitmap->Clip.Top  = Self->Layout->BoundY;
@@ -717,10 +717,11 @@ static void draw_image(objImage *Self, objSurface *Surface, objBitmap *Bitmap)
 
 static void resample_image(objImage *Self, OBJECTID BufferID, LONG Width, LONG Height, LONG BitsPerPixel)
 {
+   parasol::Log log(__FUNCTION__);
    objBitmap *bitmap, *srcbitmap;
    LONG new_width, new_height;
 
-   FMSG("resample_image()","Width: %d, Height: %d, BPP: %d", Width, Height, BitsPerPixel);
+   log.trace("resample_image()","Width: %d, Height: %d, BPP: %d", Width, Height, BitsPerPixel);
 
    if (Self->RenderString) {
       render_script(Self, Self->RenderString);
@@ -758,7 +759,7 @@ static void resample_image(objImage *Self, OBJECTID BufferID, LONG Width, LONG H
       // Bitmap already loaded), so we need to move the vanilla Bitmap to the RawBitmap pointer and then we can
       // dither it.
 
-      LogMsg("Surface depth changed - switching Bitmap to RawBitmap.");
+      log.msg("Surface depth changed - switching Bitmap to RawBitmap.");
       Self->RawBitmap = srcbitmap;
       Self->Bitmap = NULL;
    }
@@ -773,7 +774,7 @@ static void resample_image(objImage *Self, OBJECTID BufferID, LONG Width, LONG H
       if ((new_width IS bitmap->Width) AND (new_height IS bitmap->Height)) return;
    }
 
-   LogF("~resample_image()","Resizing bitmap %dx%d / %dx%d", Width, Height, new_width, new_height);
+   log.branch("Resizing bitmap %dx%d / %dx%d", Width, Height, new_width, new_height);
 
    // Decompress the original raw image bitmap
 
@@ -785,7 +786,7 @@ static void resample_image(objImage *Self, OBJECTID BufferID, LONG Width, LONG H
                FID_BitsPerPixel|TLONG, srcbitmap->BitsPerPixel,
                FID_Flags|TLONG,        srcbitmap->Flags,
                TAGEND) != ERR_Okay) {
-            LogReturnError(0, ERR_CreateObject);
+            log.warning(ERR_CreateObject);
             return;
          }
       }
@@ -810,7 +811,7 @@ static void resample_image(objImage *Self, OBJECTID BufferID, LONG Width, LONG H
          if (BitsPerPixel != Self->Bitmap->BitsPerPixel) {
             if (Self->Bitmap->Flags & BMF_ALPHA_CHANNEL) {
                if (BitsPerPixel <= 16) {
-                  struct ColourFormat format;
+                  ColourFormat format;
                   if ((BufferID) AND (!AccessObject(BufferID, 1000, &bitmap))) {
                      CopyMemory(bitmap->ColourFormat, &format, sizeof(format));
                      ReleaseObject(bitmap);
@@ -834,19 +835,17 @@ static void resample_image(objImage *Self, OBJECTID BufferID, LONG Width, LONG H
             }
          }
          else if ((glSixBit) AND (BitsPerPixel >= 24)) {
-            struct ColourFormat format;
+            ColourFormat format;
             gfxGetColourFormat(&format, 0, 0x3f, 0x3f, 0x3f, 0);
             gfxResample(Self->Bitmap, &format);
          }
       }
-      else LogErrorMsg("Failed to resize bitmap for resampling.");
+      else log.warning("Failed to resize bitmap for resampling.");
 
       // Recompress the original bitmap - since we didn't change anything, this will simply get rid of the raw data.
 
       gfxCompress(srcbitmap, 0);
    }
-
-   LogReturn();
 }
 
 //****************************************************************************
@@ -869,11 +868,12 @@ static ERROR frame_timer(objImage *Self, LARGE Elapsed, LARGE CurrentTime)
 
 static ERROR load_picture(objImage *Self)
 {
+   parasol::Log log(__FUNCTION__);
    objPicture *picture;
    objBitmap *bitmap;
    ERROR error;
 
-   LogF("~load_picture()", "%s", Self->Path);
+   log.branch("%s", Self->Path);
 
    LONG cwidth, cheight; // Dimensions of the Image's container
    GetFields(Self, FID_Width|TLONG,  &cwidth,
@@ -885,18 +885,13 @@ static ERROR load_picture(objImage *Self)
    SURFACEINFO *info;
    if (drwGetSurfaceInfo(Self->Layout->SurfaceID, &info) != ERR_Okay) {
       if (!(Self->Flags & IMF_NO_FAIL)) {
-         PostError(ERR_GetSurfaceInfo);
-         LogReturn();
+         log.warning(ERR_GetSurfaceInfo);
          return ERR_GetSurfaceInfo;
       }
-      else {
-         LogReturn();
-         return ERR_Okay;
-      }
+      else return ERR_Okay;
    }
 
-   if (!StrCompare("icons:", Self->Path, 6, 0)) {
-      // Icons are handled via the icon server.
+   if (!StrCompare("icons:", Self->Path, 6, 0)) { // Icons are handled via the icon server.
       if (!(error = iconCreateIcon(Self->Path+6, "Image", Self->IconTheme, Self->IconFilter, Self->Layout->GraphicWidth, &bitmap))) {
          if (!(error = NewObject(ID_PICTURE, 0, &Self->Picture))) {
             SetFields(Self->Picture,
@@ -922,7 +917,6 @@ static ERROR load_picture(objImage *Self)
       acFree(bitmap);
 
       if ((error != ERR_Okay) AND (!(Self->Flags & IMF_NO_FAIL))) {
-         LogReturn();
          return error;
       }
 
@@ -942,9 +936,7 @@ static ERROR load_picture(objImage *Self)
 
          // If mask colour is defined, force our preset mask colour on the picture
 
-         if (Self->Mask.Alpha > 0) {
-            SetPointer(picture->Bitmap, FID_Bkgd, &Self->Mask);
-         }
+         if (Self->Mask.Alpha > 0) SetPointer(picture->Bitmap, FID_Bkgd, &Self->Mask);
 
          if (!acInit(picture)) {
             acQuery(picture);
@@ -952,21 +944,19 @@ static ERROR load_picture(objImage *Self)
             Self->Bitmap = picture->Bitmap;
          }
          else {
-            LogErrorMsg("Failed to read picture \"%s\".", Self->Path);
+            log.warning("Failed to read picture \"%s\".", Self->Path);
             error = ERR_Init;
          }
 
          if (error != ERR_Okay) acFree(picture);
       }
-      else if (!(Self->Flags & IMF_NO_FAIL)) return LogReturnError(0, ERR_NewObject);
+      else if (!(Self->Flags & IMF_NO_FAIL)) return log.warning(ERR_NewObject);
 
       if ((error != ERR_Okay) AND (!(Self->Flags & IMF_NO_FAIL))) {
-         LogReturn();
          return error;
       }
 
       if (!Self->Picture) {
-         LogReturn();
          if (!(Self->Flags & IMF_NO_FAIL)) return ERR_Failed;
          else return ERR_Okay;
       }
@@ -980,7 +970,7 @@ static ERROR load_picture(objImage *Self)
          // NB: SVG's can also be defined with fixed viewport sizes in some cases.
 
          if ((picture->Bitmap->Width IS picture->DisplayWidth) AND (picture->Bitmap->Height IS picture->DisplayHeight)) {
-            LogMsg("Managing the image as a scalable picture.");
+            log.msg("Managing the image as a scalable picture.");
 
             if (Self->Flags & (IMF_ENLARGE|IMF_SHRINK)) {
                Self->Layout->GraphicWidth  = cwidth;
@@ -1003,12 +993,10 @@ static ERROR load_picture(objImage *Self)
                acFree(Self->Picture);
                Self->Picture = NULL;
 
-               LogReturn();
                if (Self->Flags & IMF_NO_FAIL) return ERR_Okay;
                else return ERR_Activate;
             }
 
-            LogReturn();
             return ERR_Okay;
          }
       }
@@ -1018,7 +1006,6 @@ static ERROR load_picture(objImage *Self)
          acFree(Self->Picture);
          Self->Picture = NULL;
 
-         LogReturn();
          if (Self->Flags & IMF_NO_FAIL) return ERR_Okay;
          else return ERR_Activate;
       }
@@ -1047,7 +1034,7 @@ static ERROR load_picture(objImage *Self)
               ((info->BitsPerPixel < Self->Bitmap->BitsPerPixel) OR
               ((Self->Bitmap->BitsPerPixel <= 8) AND (info->BitsPerPixel > 8))))) {
 
-            LogMsg("Original image will be retained for dithering.");
+            log.msg("Original image will be retained for dithering.");
 
             if (!CreateObject(ID_BITMAP, NF_INTEGRAL, &Self->RawBitmap,
                   FID_Width|TLONG,        Self->Bitmap->Width,
@@ -1081,7 +1068,7 @@ static ERROR load_picture(objImage *Self)
                }
             }
          }
-         else LogMsg("Original image will not be retained for dithering.");
+         else log.msg("Original image will not be retained for dithering.");
       }
    }
    else {
@@ -1115,7 +1102,7 @@ static ERROR load_picture(objImage *Self)
       // the fixed size.  All of this saves memory and speed when redrawing.
 
       if ((Self->Bitmap->Width != Self->Layout->GraphicWidth) OR (Self->Bitmap->Height != Self->Layout->GraphicHeight)) {
-         MSG("Commencing fixed size stretching.");
+         log.trace("Commencing fixed size stretching.");
          if (!CreateObject(ID_BITMAP, NF_INTEGRAL, &bitmap,
                FID_Width|TLONG,        Self->Layout->GraphicWidth,
                FID_Height|TLONG,       Self->Layout->GraphicHeight,
@@ -1140,13 +1127,13 @@ static ERROR load_picture(objImage *Self)
    // If the target display uses a different bit depth, use dithering to convert to it.
 
    if ((Self->Bitmap) AND (Self->Bitmap->BitsPerPixel != info->BitsPerPixel)) {
-      MSG("Image requires depth conversion.");
+      log.trace("Image requires depth conversion.");
 
       if (Self->Bitmap->BitsPerPixel IS 8); // 8 bit image sources don't need to be dithered or resampled
       else if (Self->Bitmap->Flags & BMF_ALPHA_CHANNEL) {
          if (info->BitsPerPixel <= 16) {
-            struct ColourFormat format;
-            MSG("Resampling the image.");
+            ColourFormat format;
+            log.trace("Resampling the image.");
             if ((info->BitmapID) AND (!AccessObject(info->BitmapID, 1000, &bitmap))) {
                CopyMemory(bitmap->ColourFormat, &format, sizeof(format));
                ReleaseObject(bitmap);
@@ -1156,7 +1143,7 @@ static ERROR load_picture(objImage *Self)
          }
       }
       else {
-         MSG("Dithering the image to a new bitmap.");
+         log.trace("Dithering the image to a new bitmap.");
 
          if (!CreateObject(ID_BITMAP, NF_INTEGRAL, &bitmap,
                FID_Width|TLONG,        Self->Bitmap->Width,
@@ -1183,30 +1170,31 @@ static ERROR load_picture(objImage *Self)
    }
 
    if ((Self->Bitmap) AND (glSixBit) AND (Self->Bitmap->BitsPerPixel >= 24)) {
-      struct ColourFormat format;
-      MSG("Resampling to 6 bit graphics.");
+      ColourFormat format;
+      log.trace("Resampling to 6 bit graphics.");
       gfxGetColourFormat(&format, 0, 0x3f, 0x3f, 0x3f, 0);
       gfxResample(Self->Bitmap, &format);
    }
 
    if (!Self->RawBitmap) {
-      MSG("The bitmap will be referenced only in the RawBitmap field.");
+      log.trace("The bitmap will be referenced only in the RawBitmap field.");
       Self->RawBitmap = Self->Bitmap;
       Self->Bitmap = NULL;
    }
 
-   LogReturn();
    return ERR_Okay;
 }
 
 static void calc_pic_size(objImage *Self, LONG SurfaceWidth, LONG SurfaceHeight)
 {
+   parasol::Log log(__FUNCTION__);
+
    if ((Self->Layout->GraphicRelWidth) OR (Self->Layout->GraphicRelHeight)) {
-      LogErrorMsg("Relative image width/height has been set in conjunction with stretch flags (stretching takes precedence).");
+      log.warning("Relative image width/height has been set in conjunction with stretch flags (stretching takes precedence).");
       Self->Layout->GraphicRelWidth = 0;
       Self->Layout->GraphicRelHeight = 0;
    }
-   else LogMsg("Stretching image to fit the container #%d.", Self->Layout->SurfaceID);
+   else log.msg("Stretching image to fit the container #%d.", Self->Layout->SurfaceID);
 
    if (Self->Flags & IMF_ENLARGE) {
       if (Self->Layout->GraphicWidth < SurfaceWidth)   Self->Layout->GraphicWidth  = SurfaceWidth;
@@ -1228,7 +1216,9 @@ static void calc_pic_size(objImage *Self, LONG SurfaceWidth, LONG SurfaceHeight)
 
 static void render_script(objImage *Self, STRING Statement)
 {
-   LogF("~render_script()", NULL);
+   parasol::Log log(__FUNCTION__);
+
+   log.branch("");
 
    if ((!Self->Layout->GraphicWidth) AND (!Self->Layout->GraphicHeight)) Self->Flags |= IMF_STRETCH;
 
@@ -1280,31 +1270,29 @@ static void render_script(objImage *Self, STRING Statement)
       }
       else error = ERR_NewObject;
    }
-
-   LogReturn();
 }
 
 //****************************************************************************
 
 #include "class_image_def.c"
 
-static const struct FieldArray clFields[] = {
+static const FieldArray clFields[] = {
    { "Layout",     FDF_INTEGRAL|FDF_SYSTEM|FDF_R, 0, NULL, NULL },
-   { "Hint",       FDF_STRING|FDF_RW,          0, NULL, SET_Hint },
-   { "Frame",      FDF_LONG|FDF_RW,            0, NULL, NULL },
-   { "Flags",      FDF_LONGFLAGS|FDF_RW,       (MAXINT)&clImageFlags, NULL, SET_Flags },
-   { "Mask",       FDF_RGB|FDF_RW,             0, NULL, NULL },
-   { "Background", FDF_RGB|FDF_RW,             0, NULL, NULL },
-   { "FrameRate",  FDF_LONG|FDF_RW,            0, NULL, SET_FrameRate },
+   { "Hint",       FDF_STRING|FDF_RW,             0, NULL, (APTR)SET_Hint },
+   { "Frame",      FDF_LONG|FDF_RW,               0, NULL, NULL },
+   { "Flags",      FDF_LONGFLAGS|FDF_RW,          (MAXINT)&clImageFlags, NULL, (APTR)SET_Flags },
+   { "Mask",       FDF_RGB|FDF_RW,                0, NULL, NULL },
+   { "Background", FDF_RGB|FDF_RW,                0, NULL, NULL },
+   { "FrameRate",  FDF_LONG|FDF_RW,               0, NULL, (APTR)SET_FrameRate },
    // Virtual Fields
-   { "IconFilter", FDF_STRING|FDF_RW,  0, GET_IconFilter, SET_IconFilter },
-   { "IconTheme",  FDF_STRING|FDF_RW,  0, GET_IconTheme, SET_IconTheme },
-   { "Path",       FDF_STRING|FDF_RW,  0, GET_Path, SET_Path },
-   { "Opacity",    FDF_DOUBLE|FDF_RW,  0, GET_Opacity, SET_Opacity },
-   { "PixelSize",  FDF_LONG|FDF_R,     0, GET_PixelSize, NULL },
-   { "Src",        FDF_SYNONYM|FDF_STRING|FDF_RW, 0, GET_Path,  SET_Path },
-   { "Location",   FDF_SYNONYM|FDF_STRING|FDF_RW, 0, GET_Path,  SET_Path },
-   { "Tile",       FDF_LONG|FDF_RI,    0, GET_Tile, SET_Tile },
+   { "IconFilter", FDF_STRING|FDF_RW,  0, (APTR)GET_IconFilter, (APTR)SET_IconFilter },
+   { "IconTheme",  FDF_STRING|FDF_RW,  0, (APTR)GET_IconTheme, (APTR)SET_IconTheme },
+   { "Path",       FDF_STRING|FDF_RW,  0, (APTR)GET_Path, (APTR)SET_Path },
+   { "Opacity",    FDF_DOUBLE|FDF_RW,  0, (APTR)GET_Opacity, (APTR)SET_Opacity },
+   { "PixelSize",  FDF_LONG|FDF_R,     0, (APTR)GET_PixelSize, NULL },
+   { "Src",        FDF_SYNONYM|FDF_STRING|FDF_RW, 0, (APTR)GET_Path, (APTR)SET_Path },
+   { "Location",   FDF_SYNONYM|FDF_STRING|FDF_RW, 0, (APTR)GET_Path, (APTR)SET_Path },
+   { "Tile",       FDF_LONG|FDF_RI,    0, (APTR)GET_Tile, (APTR)SET_Tile },
    END_FIELD
 };
 
@@ -1312,12 +1300,13 @@ static const struct FieldArray clFields[] = {
 
 ERROR init_image(void)
 {
+   parasol::Log log;
    objDisplay *display;
    OBJECTID display_id;
    if (!FastFindObject("SystemDisplay", ID_DISPLAY, &display_id, 1, 0)) {
       if (!AccessObject(display_id, 3000, &display)) {
          if (display->Flags & SCR_BIT_6) {
-            LogMsg("Images will be downsampled to 6-bits per channel.");
+            log.msg("Images will be downsampled to 6-bits per channel.");
             glSixBit = TRUE;
          }
          ReleaseObject(display);

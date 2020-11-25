@@ -68,14 +68,14 @@ system keypresses such as CTRL-C, CTRL-V and CTRL-X.
 //#define DBG_TEXT TRUE
 
 static OBJECTPTR clText = NULL;
-static struct RGB8 glHighlight = { 220, 220, 255, 255 };
+static RGB8 glHighlight = { 220, 220, 255, 255 };
 
 #define COLOUR_LENGTH 16
 #define CURSOR_RATE 1400
 
 struct TextHistory {
    LONG  Number;
-   UBYTE Buffer[120];
+   char Buffer[120];
 };
 
 struct TextLine {
@@ -90,13 +90,9 @@ enum {
    STATE_EXITED
 };
 
-static const struct FieldArray clFields[];
-static const struct ActionArray clTextActions[];
-static const struct MethodArray clTextMethods[];
-
 static void  add_history(objText *, CSTRING);
 static ERROR add_line(objText *, CSTRING, LONG, LONG, LONG);
-static ERROR add_xml(objText *, struct XMLTag *, WORD, LONG);
+static ERROR add_xml(objText *, XMLTag *, WORD, LONG);
 static ERROR calc_hscroll(objText *);
 static ERROR calc_vscroll(objText *);
 static LONG  calc_width(objText *, CSTRING, LONG);
@@ -121,8 +117,8 @@ static void  stretch_text(objText *);
 static void  validate_cursorpos(objText *, LONG);
 static LONG  view_cursor(objText *);
 static LONG  view_selection(objText *);
-static LONG  xml_content_len(struct XMLTag *);
-static void  xml_extract_content(struct XMLTag *, UBYTE *, LONG *, WORD);
+static LONG  xml_content_len(XMLTag *);
+static void  xml_extract_content(XMLTag *, char *, LONG *, WORD);
 
 #define AXF_NEWLINE   0x0002
 
@@ -145,36 +141,6 @@ INLINE void set_point(objText *Self, DOUBLE Value)
 
 //****************************************************************************
 
-ERROR init_text(void)
-{
-   OBJECTPTR style;
-   if (!FindPrivateObject("glStyle", &style)) {
-      UBYTE buffer[32];
-      if (!acGetVar(style, "/colours/@texthighlight", buffer, sizeof(buffer))) {
-         StrToColour(buffer, &glHighlight);
-      }
-   }
-
-   return(CreateObject(ID_METACLASS, 0, &clText,
-      FID_ClassVersion|TFLOAT, VER_TEXT,
-      FID_Name|TSTRING,   "Text",
-      FID_Category|TLONG, CCF_GUI,
-      FID_Flags|TLONG,    CLF_PROMOTE_INTEGRAL|CLF_PRIVATE_ONLY,
-      FID_Actions|TPTR,   clTextActions,
-      FID_Methods|TARRAY, clTextMethods,
-      FID_Fields|TARRAY,  clFields,
-      FID_Size|TLONG,     sizeof(objText),
-      FID_Path|TSTR,      MOD_PATH,
-      TAGEND));
-}
-
-void free_text(void)
-{
-   if (clText) { acFree(clText); clText = NULL; }
-}
-
-//****************************************************************************
-
 static void resize_text(objText *Self)
 {
    if (Self->Flags & TXF_STRETCH) stretch_text(Self);
@@ -190,6 +156,8 @@ static void resize_text(objText *Self)
 
 static ERROR TEXT_ActionNotify(objText *Self, struct acActionNotify *Args)
 {
+   parasol::Log log;
+
    if (!Args) return ERR_NullArgs;
 
    if (Args->Error != ERR_Okay) {
@@ -211,20 +179,20 @@ static ERROR TEXT_ActionNotify(objText *Self, struct acActionNotify *Args)
       if (Self->CursorTimer) UpdateTimer(Self->CursorTimer, 0.1);
       else {
          FUNCTION callback;
-         SET_FUNCTION_STDC(callback, &cursor_timer);
+         SET_FUNCTION_STDC(callback, (APTR)&cursor_timer);
          SubscribeTimer(0.1, &callback, &Self->CursorTimer);
 
          if (!Self->prvKeyEvent) {
-            SET_FUNCTION_STDC(callback, &key_event);
+            SET_FUNCTION_STDC(callback, (APTR)&key_event);
             SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, &callback, Self, &Self->prvKeyEvent);
          }
       }
    }
    else if (Args->ActionID IS AC_Free) {
-      if ((Self->ValidateInput.Type IS CALL_SCRIPT) AND (Self->ValidateInput.Script.Script->UniqueID IS Args->ObjectID)) {
+      if ((Self->ValidateInput.Type IS CALL_SCRIPT) and (Self->ValidateInput.Script.Script->UniqueID IS Args->ObjectID)) {
          Self->ValidateInput.Type = CALL_NONE;
       }
-      else if ((Self->Activated.Type IS CALL_SCRIPT) AND (Self->Activated.Script.Script->UniqueID IS Args->ObjectID)) {
+      else if ((Self->Activated.Type IS CALL_SCRIPT) and (Self->Activated.Script.Script->UniqueID IS Args->ObjectID)) {
          Self->Activated.Type = CALL_NONE;
       }
    }
@@ -250,7 +218,7 @@ static ERROR TEXT_ActionNotify(objText *Self, struct acActionNotify *Args)
       struct acWrite *write;
       if (!(write = (struct acWrite *)Args->Args)) return ERR_Okay;
 
-      LogMsg("%d bytes incoming from file stream.", write->Result);
+      log.msg("%d bytes incoming from file stream.", write->Result);
 
       if (write->Buffer) {
          acDataFeed(Self, Self->Head.UniqueID, DATA_TEXT, write->Buffer, write->Result);
@@ -289,7 +257,7 @@ AllocMemory
 
 static ERROR TEXT_AddLine(objText *Self, struct txtAddLine *Args)
 {
-   if (!Args) return PostError(ERR_NullArgs);
+   if (!Args) return ERR_NullArgs;
 
    return add_line(Self, Args->String, Args->Line, Args->Length, FALSE);
 }
@@ -305,18 +273,16 @@ be deleted from the object and the graphics will be automatically updated as a r
 
 static ERROR TEXT_Clear(objText *Self, APTR Void)
 {
-   LONG i;
-   APTR newarray;
-
    // Reallocate the line array
 
    Self->MaxLines = 50;
-   if (AllocMemory(sizeof(struct TextLine) * Self->MaxLines, MEM_DATA, &newarray, NULL) != ERR_Okay) {
-      return PostError(ERR_AllocMemory);
+   TextLine *newarray;
+   if (AllocMemory(sizeof(TextLine) * Self->MaxLines, MEM_DATA, &newarray, NULL) != ERR_Okay) {
+      return ERR_AllocMemory;
    }
 
    if (Self->Array) {
-      for (i=0; i < Self->AmtLines; i++) {
+      for (LONG i=0; i < Self->AmtLines; i++) {
          if (Self->Array[i].String) FreeResource(Self->Array[i].String);
       }
       FreeResource(Self->Array);
@@ -350,18 +316,19 @@ Clipboard: Full support for clipboard activity is provided through this action.
 
 static ERROR TEXT_Clipboard(objText *Self, struct acClipboard *Args)
 {
+   parasol::Log log;
    STRING buffer;
    LONG size, i, row, column, endrow, endcolumn, pos, start;
 
-   if ((!Args) OR (!Args->Mode)) return PostError(ERR_NullArgs);
+   if ((!Args) or (!Args->Mode)) return log.warning(ERR_NullArgs);
 
-   if ((Args->Mode IS CLIPMODE_CUT) OR (Args->Mode IS CLIPMODE_COPY)) {
-      if (Args->Mode IS CLIPMODE_CUT) LogBranch("Operation: Cut");
-      else LogBranch("Operation: Copy");
+   if ((Args->Mode IS CLIPMODE_CUT) or (Args->Mode IS CLIPMODE_COPY)) {
+      if (Args->Mode IS CLIPMODE_CUT) log.branch("Operation: Cut");
+      else log.branch("Operation: Copy");
 
       // Calculate the length of the highlighted text
 
-      if ((Self->Flags & TXF_AREA_SELECTED) AND ((Self->SelectRow != Self->CursorRow) OR
+      if ((Self->Flags & TXF_AREA_SELECTED) and ((Self->SelectRow != Self->CursorRow) or
           (Self->SelectColumn != Self->CursorColumn))) {
 
          GetSelectedArea(Self, &row, &column, &endrow, &endcolumn);
@@ -411,27 +378,25 @@ static ERROR TEXT_Clipboard(objText *Self, struct acClipboard *Args)
                      //draw_lines(Self, start, endrow - start + 1);
                   }
                }
-               else LogErrorMsg("Failed to add text to the system clipboard.");
+               else log.warning("Failed to add text to the system clipboard.");
                acFree(clipboard);
             }
 
             FreeResource(buffer);
          }
         else {
-            PostError(ERR_AllocMemory);
-            LogReturn();
+            log.warning(ERR_AllocMemory);
             return ERR_AllocMemory;
          }
       }
 
-      LogReturn();
       return ERR_Okay;
    }
    else if (Args->Mode IS CLIPMODE_PASTE) {
-      LogBranch("Operation: Paste");
+      log.branch("Operation: Paste");
 
       if (!(Self->Flags & TXF_EDIT)) {
-         LogErrorMsg("Edit mode is not enabled, paste operation aborted.");
+         log.warning("Edit mode is not enabled, paste operation aborted.");
          return ERR_Failed;
       }
 
@@ -447,30 +412,29 @@ static ERROR TEXT_Clipboard(objText *Self, struct acClipboard *Args)
                   FID_Flags|TLONG, FL_READ,
                   TAGEND)) {
 
-               if ((!GetLong(file, FID_Size, &size)) AND (size > 0)) {
+               if ((!GetLong(file, FID_Size, &size)) and (size > 0)) {
                   if (!AllocMemory(size+1, MEM_STRING, &buffer, NULL)) {
                      LONG result;
                      if (!acRead(file, buffer, size, &result)) {
                         buffer[result] = 0;
                         acDataText(Self, buffer);
                      }
-                     else LogErrorMsg("Failed to read data from the clipboard file.");
+                     else log.warning("Failed to read data from the clipboard file.");
                      FreeResource(buffer);
                   }
-                  else LogErrorMsg("Out of memory.");
+                  else log.warning("Out of memory.");
                }
 
                acFree(file);
             }
-            else LogF("@", "Failed to load clipboard file \"%s\"", get.Files[0]);
+            else log.warning("Failed to load clipboard file \"%s\"", get.Files[0]);
          }
          acFree(clipboard);
       }
 
-      LogReturn();
       return ERR_Okay;
    }
-   else return PostError(ERR_Args);
+   else return log.warning(ERR_Args);
 }
 
 /*****************************************************************************
@@ -495,37 +459,37 @@ Mismatch:    The data type that was passed to the action is not supported by the
 
 static ERROR TEXT_DataFeed(objText *Self, struct acDataFeed *Args)
 {
+   parasol::Log log;
    CSTRING line;
    STRING str, buffer;
    LONG i, j, len, linestart, pos, end, size, bufsize;
 
-   if ((!Args) OR (!Args->Buffer)) return PostError(ERR_NullArgs);
+   if ((!Args) or (!Args->Buffer)) return log.warning(ERR_NullArgs);
 
-   if ((Args->DataType IS DATA_TEXT) OR (Args->DataType IS DATA_CONTENT)) {
+   if ((Args->DataType IS DATA_TEXT) or (Args->DataType IS DATA_CONTENT)) {
       if ((bufsize = Args->Size) <= 0) {
-         bufsize = StrLength(Args->Buffer);
+         bufsize = StrLength((CSTRING)Args->Buffer);
          if (!bufsize) return ERR_Okay;
       }
 
-      LogF("~6DataFeed()","Inserting text data of size %d.", bufsize);
+      log.branch("Inserting text data of size %d.", bufsize);
 
       Self->NoUpdate++;
       linestart = Self->CursorRow;
-      line = Args->Buffer;
+      line = (CSTRING)Args->Buffer;
 
-      if ((Self->Flags & TXF_EDIT) AND (Self->Flags & TXF_AREA_SELECTED)) {
+      if ((Self->Flags & TXF_EDIT) and (Self->Flags & TXF_AREA_SELECTED)) {
          DeleteSelectedArea(Self);
       }
 
-      if ((Self->Flags & TXF_EDIT) AND (Self->AmtLines > 0)) {
+      if ((Self->Flags & TXF_EDIT) and (Self->AmtLines > 0)) {
          if ((linestart = Self->CursorRow) < 0) linestart = 0;
-         for (len=0; (line[len] != '\n') AND (line[len] != '\r') AND (len < bufsize); len++); // Length of the first line
+         for (len=0; (line[len] != '\n') and (line[len] != '\r') and (len < bufsize); len++); // Length of the first line
 
-         if (AllocMemory(Self->Array[Self->CursorRow].Length + len + 1, MEM_STRING|MEM_NO_CLEAR, &str, NULL) IS ERR_Okay) {
-
-            if ((len >= bufsize) OR (Self->LineLimit IS 1)) {
-               j = 0;
-               for (i=0; (i < Self->CursorColumn) AND (i < Self->Array[Self->CursorRow].Length); i++) str[i] = Self->Array[Self->CursorRow].String[j++];
+         if (!AllocMemory(Self->Array[Self->CursorRow].Length + len + 1, MEM_STRING|MEM_NO_CLEAR, &str, NULL)) {
+            if ((len >= bufsize) or (Self->LineLimit IS 1)) {
+               LONG j = 0;
+               for (i=0; (i < Self->CursorColumn) and (i < Self->Array[Self->CursorRow].Length); i++) str[i] = Self->Array[Self->CursorRow].String[j++];
                for (pos=0; pos < len; pos++) str[i++] = line[pos];
                Self->CursorColumn = i;
                while (j < Self->Array[Self->CursorRow].Length) str[i++] = Self->Array[Self->CursorRow].String[j++];
@@ -534,8 +498,8 @@ static ERROR TEXT_DataFeed(objText *Self, struct acDataFeed *Args)
             else {
                // Replace the first line
 
-               j = 0;
-               for (i=0; (i < Self->CursorColumn) AND (i < Self->Array[Self->CursorRow].Length); i++) str[i] = Self->Array[Self->CursorRow].String[j++];
+               LONG j = 0;
+               for (i=0; (i < Self->CursorColumn) and (i < Self->Array[Self->CursorRow].Length); i++) str[i] = Self->Array[Self->CursorRow].String[j++];
                for (pos=0; pos < len; pos++) str[i++] = line[pos];
                end = i;
                while (j < Self->Array[Self->CursorRow].Length) str[i++] = Self->Array[Self->CursorRow].String[j++];
@@ -546,14 +510,14 @@ static ERROR TEXT_DataFeed(objText *Self, struct acDataFeed *Args)
 
                Self->CursorRow++;
                pos++;
-               if ((pos < bufsize) AND (line[pos] IS '\r')) pos++;
+               if ((pos < bufsize) and (line[pos] IS '\r')) pos++;
 
                if (pos < bufsize) {
                   while (pos < bufsize) {
-                     for (len=0; (line[pos+len] != '\n') AND (line[pos+len] != '\r') AND (pos+len < bufsize); len++);
+                     for (len=0; (line[pos+len] != '\n') and (line[pos+len] != '\r') and (pos+len < bufsize); len++);
                      add_line(Self, line+pos, Self->CursorRow++, len, FALSE);
 
-                     if ((pos+len < bufsize) AND (line[pos+len] IS '\r')) len++;
+                     if ((pos+len < bufsize) and (line[pos+len] IS '\r')) len++;
 
                      if (pos+len < bufsize) {
                         len++;
@@ -573,7 +537,7 @@ static ERROR TEXT_DataFeed(objText *Self, struct acDataFeed *Args)
                   if (AllocMemory(Self->Array[Self->CursorRow].Length + len, MEM_STRING|MEM_NO_CLEAR, &buffer, NULL) IS ERR_Okay) {
                      for (i=0; i < Self->Array[Self->CursorRow].Length; i++) buffer[i] = Self->Array[Self->CursorRow].String[i];
                      Self->CursorColumn = i;
-                     for (j=0; j < len; j++) buffer[i++] = str[end+j];
+                     for (LONG j=0; j < len; j++) buffer[i++] = str[end+j];
                      txtReplaceLine(Self, Self->CursorRow, buffer, i);
                      FreeResource(buffer);
                   }
@@ -585,17 +549,16 @@ static ERROR TEXT_DataFeed(objText *Self, struct acDataFeed *Args)
       }
       else {
          STRING str;
-         WORD linefeed, trailing_line;
 
          if ((linestart = Self->AmtLines - 1) < 1) linestart = 0;
 
-         trailing_line = FALSE;
-         for (pos=0; pos < bufsize; ) {
+         WORD trailing_line = FALSE;
+         for (LONG pos=0; pos < bufsize; ) {
             // If we have run out of lines, expand the line list
 
-            line = Args->Buffer + pos;
+            line = (CSTRING)Args->Buffer + pos;
             size = bufsize - pos;
-            linefeed = 1; // Normally a linefeed will consist of just the return character
+            WORD linefeed = 1; // Normally a linefeed will consist of just the return character
 
             if (Self->Tag) {
                // NOTE: When text is encapsulated inside <text>...</text> tags, ALL whitespace is converted into spaces in this processing routine.  If the user wishes to
@@ -604,20 +567,20 @@ static ERROR TEXT_DataFeed(objText *Self, struct acDataFeed *Args)
                for (len=0; len < size; len++) {
                   if (Self->Flags & TXF_WORDWRAP) {
                      // Two returns indicate a line break when wordwrap is enabled
-                     if ((line[len] IS '\n') AND (len < size-1) AND (line[len+1] IS '\n')) break;
+                     if ((line[len] IS '\n') and (len < size-1) and (line[len+1] IS '\n')) break;
                   }
 
-                  if ((line[len] IS '\\') AND (len+1 < size) AND (line[len+1] IS 'n')) {
+                  if ((line[len] IS '\\') and (len+1 < size) and (line[len+1] IS 'n')) {
                      linefeed = 2;
                      break;
                   }
                }
             }
             else {
-               for (len=0; (line[len] != '\n') AND (len < size); len++);
+               for (len=0; (line[len] != '\n') and (len < size); len++);
                // Check for a trailing line (a return code at the very end of the data feed)
 
-               if ((len IS size-1) AND (line[len] IS '\n')) trailing_line = TRUE;
+               if ((len IS size-1) and (line[len] IS '\n')) trailing_line = TRUE;
             }
 
             if (len > 0) {
@@ -625,14 +588,14 @@ static ERROR TEXT_DataFeed(objText *Self, struct acDataFeed *Args)
                   j = 0;
                   if (Self->Tag) {
                      for (i=0; i < len; i++) {
-                        if ((line[i] IS '\\') AND (i+1 < len)) {
+                        if ((line[i] IS '\\') and (i+1 < len)) {
                            if (line[i+1] IS '\\') { str[j++] = '\\'; i++; }
                            else if (line[i+1] IS 'n') i++; // Skip "\n" character strings
                         }
                         else if (line[i] IS '\r'); // Ignore carriage returns
                         else if (line[i] IS '\t') str[j++] = '\t'; // Accept tabs, don't convert to ' '
                         else if (line[i] <= 0x20) {
-                           if ((j > 0) AND (str[j-1] IS ' ')); // Do nothing if the last character was a space
+                           if ((j > 0) and (str[j-1] IS ' ')); // Do nothing if the last character was a space
                            else str[j++] = ' ';  // Turn all other whitespace into spaces
                         }
                         else str[j++] = line[i]; // Accept standard character
@@ -670,14 +633,11 @@ static ERROR TEXT_DataFeed(objText *Self, struct acDataFeed *Args)
          draw_lines(Self, linestart, Self->AmtLines - linestart);
          view_cursor(Self);
       }
-
-      LogReturn();
    }
    else if (Args->DataType IS DATA_XML) {
-      struct XMLTag *tag;
       LONG linestart, itemcount;
 
-      LogF("6","Received an XML statement of %d bytes.", Args->Size);
+      log.extmsg("Received an XML statement of %d bytes.", Args->Size);
 
       // Accepted XML tags are:
       //
@@ -689,20 +649,18 @@ static ERROR TEXT_DataFeed(objText *Self, struct acDataFeed *Args)
       if ((linestart = Self->AmtLines - 1) < 1) linestart = 0;  //linestart = Self->AmtLines;
 
       if (!Self->XML) {
-         if (CreateObject(ID_XML, NF_INTEGRAL, &Self->XML,
-               FID_Statement|TSTR, Args->Buffer,
-               TAGEND) != ERR_Okay) {
-            return PostError(ERR_CreateObject);
+         if (CreateObject(ID_XML, NF_INTEGRAL, &Self->XML, FID_Statement|TSTR, Args->Buffer, TAGEND) != ERR_Okay) {
+            return log.warning(ERR_CreateObject);
          }
       }
-      else if (SetString(Self->XML, FID_Statement, Args->Buffer) != ERR_Okay) {
+      else if (SetString(Self->XML, FID_Statement, (CSTRING)Args->Buffer) != ERR_Okay) {
          return ERR_SetField;
       }
 
       // Search for <item> tags and add them as individual lines
 
       itemcount = 0;
-      for (tag=Self->XML->Tags[0]; tag; tag=tag->Next) {
+      for (auto tag=Self->XML->Tags[0]; tag; tag=tag->Next) {
          if (!StrMatch("item", tag->Attrib[0].Name)) {
             add_xml(Self, tag, 0, -1);
             itemcount++;
@@ -718,7 +676,7 @@ static ERROR TEXT_DataFeed(objText *Self, struct acDataFeed *Args)
       if (!itemcount) add_xml(Self, Self->XML->Tags[0], FALSE, -1);
    }
    else if (Args->DataType IS DATA_INPUT_READY) {
-      struct InputMsg *input;
+      InputMsg *input;
 
       while (!gfxGetInputMsg((struct dcInputReady *)Args->Buffer, 0, &input)) {
          if (input->Type IS JET_LMB) {
@@ -730,7 +688,8 @@ static ERROR TEXT_DataFeed(objText *Self, struct acDataFeed *Args)
 
                if (!(Self->Flags & (TXF_EDIT|TXF_SINGLE_SELECT|TXF_MULTI_SELECT))) continue;
 
-               LogBranch(NULL);
+               parasol::Log log;
+               log.branch("");
 
                Self->CursorFlash = 0;
                outofbounds = FALSE;
@@ -752,7 +711,7 @@ static ERROR TEXT_DataFeed(objText *Self, struct acDataFeed *Args)
                if (clickrow < Self->AmtLines) {
                   if (Self->Array[clickrow].String) {
                      if (Self->Flags & TXF_SECRET) {
-                        BYTE buffer[Self->Array[clickrow].Length+1];
+                        char buffer[Self->Array[clickrow].Length+1];
                         for (i=0; i < Self->Array[clickrow].Length; i++) buffer[i] = '*';
                         buffer[i+1] = 0;
 
@@ -798,18 +757,14 @@ static ERROR TEXT_DataFeed(objText *Self, struct acDataFeed *Args)
 
                // Return if we are NOT in edit mode and the position of the click was out of bounds
 
-               if ((outofbounds) AND (!(Self->Flags & TXF_EDIT))) {
-                  LogReturn();
-                  continue;
-               }
+               if ((outofbounds) and (!(Self->Flags & TXF_EDIT))) continue;
 
                // Return if the row and column values will remain unchanged
 
-               if (((clickcol IS Self->CursorColumn) AND (clickrow IS Self->CursorRow)) OR
+               if (((clickcol IS Self->CursorColumn) and (clickrow IS Self->CursorRow)) or
                    (Self->AmtLines < 1)) {
                   if (!(input->Flags & JTYPE_DBL_CLICK)) {
                      redraw_cursor(Self, TRUE);
-                     LogReturn();
                      continue;
                   }
                }
@@ -819,15 +774,15 @@ static ERROR TEXT_DataFeed(objText *Self, struct acDataFeed *Args)
 
                // For double-clicks, highlight the word next to the cursor
 
-               if ((input->Flags & JTYPE_DBL_CLICK) AND (!(Self->Flags & TXF_SECRET))) {
+               if ((input->Flags & JTYPE_DBL_CLICK) and (!(Self->Flags & TXF_SECRET))) {
                   // Scan back to find the start of the word
 
                   str = Self->Array[Self->CursorRow].String;
                   for (i=Self->CursorColumn; i > 0; i--) {
                      if (str[i-1] <= 47) break;
-                     if ((str[i-1] >= 58) AND (str[i-1] <= 64)) break;
-                     if ((str[i-1] >= 91) AND (str[i-1] <= 96)) break;
-                     if ((str[i-1] >= 123) AND (str[i-1] <= 127)) break;
+                     if ((str[i-1] >= 58) and (str[i-1] <= 64)) break;
+                     if ((str[i-1] >= 91) and (str[i-1] <= 96)) break;
+                     if ((str[i-1] >= 123) and (str[i-1] <= 127)) break;
                   }
 
                   Self->SelectColumn = i;
@@ -836,9 +791,9 @@ static ERROR TEXT_DataFeed(objText *Self, struct acDataFeed *Args)
 
                   for (i=Self->CursorColumn; i < Self->Array[Self->CursorRow].Length; i++) {
                      if (str[i] <= 47) break;
-                     if ((str[i] >= 58) AND (str[i] <= 64)) break;
-                     if ((str[i] >= 91) AND (str[i] <= 96)) break;
-                     if ((str[i] >= 123) AND (str[i] <= 127)) break;
+                     if ((str[i] >= 58) and (str[i] <= 64)) break;
+                     if ((str[i] >= 91) and (str[i] <= 96)) break;
+                     if ((str[i] >= 123) and (str[i] <= 127)) break;
                   }
 
                   Self->CursorColumn = i;
@@ -854,29 +809,26 @@ static ERROR TEXT_DataFeed(objText *Self, struct acDataFeed *Args)
                else redraw_cursor(Self, TRUE);
 
                view_cursor(Self);
-
-               LogReturn();
             }
             else {
                if (!(Self->Flags & (TXF_EDIT|TXF_SINGLE_SELECT|TXF_MULTI_SELECT))) continue;
 
                Self->ClickHeld = FALSE;
-               if ((Self->SelectRow != Self->CursorRow) OR (Self->SelectColumn != Self->CursorColumn)) {
+               if ((Self->SelectRow != Self->CursorRow) or (Self->SelectColumn != Self->CursorColumn)) {
                   Self->Flags |= TXF_AREA_SELECTED;
                }
             }
          }
          else if (input->Flags & JTYPE_MOVEMENT) {
             LONG oldrow, oldcolumn, x;
-            UBYTE inside;
 
             // Determine the current movement state (exit, enter, inside)
 
             if (Self->Flags & TXF_EDIT) {
-               inside = TRUE;
+               bool inside = TRUE;
                if (input->OverID IS Self->Layout->SurfaceID) {
-                  if ((input->X < Self->Layout->BoundX) OR (input->Y < Self->Layout->BoundY) OR
-                      (input->X >= Self->Layout->BoundX + Self->Layout->BoundWidth) OR (input->Y >= Self->Layout->BoundY + Self->Layout->BoundHeight)) {
+                  if ((input->X < Self->Layout->BoundX) or (input->Y < Self->Layout->BoundY) or
+                      (input->X >= Self->Layout->BoundX + Self->Layout->BoundWidth) or (input->Y >= Self->Layout->BoundY + Self->Layout->BoundHeight)) {
                      inside = FALSE;
                   }
                }
@@ -927,10 +879,10 @@ static ERROR TEXT_DataFeed(objText *Self, struct acDataFeed *Args)
                   0, 0, &Self->CursorColumn, 0, 0);
             }
 
-            if ((Self->CursorRow != oldrow) OR (Self->CursorColumn != oldcolumn)) {
+            if ((Self->CursorRow != oldrow) or (Self->CursorColumn != oldcolumn)) {
                // Set the AREASELECTED flag if an area has been highlighted by the user
 
-               if ((Self->SelectRow != Self->CursorRow) OR (Self->SelectColumn != Self->CursorColumn)) {
+               if ((Self->SelectRow != Self->CursorRow) or (Self->SelectColumn != Self->CursorColumn)) {
                   Self->Flags |= TXF_AREA_SELECTED;
                }
 
@@ -943,7 +895,7 @@ static ERROR TEXT_DataFeed(objText *Self, struct acDataFeed *Args)
       }
    }
    else {
-      LogMsg("Datatype %d not supported.", Args->DataType);
+      log.msg("Datatype %d not supported.", Args->DataType);
       return ERR_Mismatch;
    }
 
@@ -971,11 +923,13 @@ Args: The Line value was out of the valid range.
 
 static ERROR TEXT_DeleteLine(objText *Self, struct txtDeleteLine *Args)
 {
+   parasol::Log log;
+
    if (Self->AmtLines < 1) return ERR_Okay;
 
    if (Self->CursorRow IS Args->Line) move_cursor(Self, Self->CursorRow, 0);
 
-   if ((!Args) OR (Args->Line < 0)) {
+   if ((!Args) or (Args->Line < 0)) {
       // Delete the line at the very end of the list
       if (Self->Array[Self->AmtLines-1].String) FreeResource(Self->Array[Self->AmtLines-1].String);
       ClearMemory(Self->Array + Self->AmtLines - 1, sizeof(Self->Array[0]));
@@ -990,7 +944,7 @@ static ERROR TEXT_DeleteLine(objText *Self, struct txtDeleteLine *Args)
       if (Self->CursorRow >= Self->AmtLines) move_cursor(Self, Self->AmtLines-1, Self->CursorColumn);
    }
    else {
-      if (Args->Line >= Self->AmtLines) return PostError(ERR_Args);
+      if (Args->Line >= Self->AmtLines) return log.warning(ERR_Args);
 
       if (Self->Array[Args->Line].String) FreeResource(Self->Array[Args->Line].String);
       ClearMemory(Self->Array + Args->Line, sizeof(Self->Array[0]));
@@ -1065,10 +1019,12 @@ static ERROR TEXT_Focus(objText *Self, APTR Void)
 
 static ERROR TEXT_Free(objText *Self, APTR Void)
 {
+   parasol::Log log;
+
    if (Self->CursorTimer) { UpdateTimer(Self->CursorTimer, 0); Self->CursorTimer = 0; }
    if (Self->prvKeyEvent) { UnsubscribeEvent(Self->prvKeyEvent); Self->prvKeyEvent = NULL; }
 
-   if ((Self->FocusID) AND (Self->FocusID != Self->Layout->SurfaceID)) {
+   if ((Self->FocusID) and (Self->FocusID != Self->Layout->SurfaceID)) {
       OBJECTPTR object;
       if (!AccessObject(Self->FocusID, 5000, &object)) {
          UnsubscribeAction(object, 0);
@@ -1084,8 +1040,7 @@ static ERROR TEXT_Free(objText *Self, APTR Void)
    }
 
    if (Self->Array) {
-      LONG i;
-      for (i=0; i < Self->AmtLines; i++) {
+      for (LONG i=0; i < Self->AmtLines; i++) {
          if (Self->Array[i].String) FreeResource(Self->Array[i].String);
       }
       FreeResource(Self->Array);
@@ -1096,10 +1051,10 @@ static ERROR TEXT_Free(objText *Self, APTR Void)
 
    if (Self->FileStream)   { acFree(Self->FileStream); Self->FileStream = NULL; }
    if (Self->StringBuffer) { FreeResource(Self->StringBuffer); Self->StringBuffer = NULL; }
-   if (Self->Location) { FreeResource(Self->Location); Self->Location = NULL; }
-   if (Self->History)  { FreeResource(Self->History); Self->History = NULL; }
-   if (Self->XML)      { acFree(Self->XML);  Self->XML = NULL; }
-   if (Self->Font)     { acFree(Self->Font); Self->Font = NULL; }
+   if (Self->Location)     { FreeResource(Self->Location); Self->Location = NULL; }
+   if (Self->History)      { FreeResource(Self->History); Self->History = NULL; }
+   if (Self->XML)          { acFree(Self->XML);  Self->XML = NULL; }
+   if (Self->Font)         { acFree(Self->Font); Self->Font = NULL; }
 
    gfxUnsubscribeInput(0);
 
@@ -1133,10 +1088,12 @@ AllocMemory: The necessary amount of buffer space could not be allocated.
 
 static ERROR TEXT_GetLine(objText *Self, struct txtGetLine *Args)
 {
-   if (!Args) return PostError(ERR_NullArgs);
+   parasol::Log log;
+
+   if (!Args) return log.warning(ERR_NullArgs);
 
    if (Args->Line >= Self->AmtLines) {
-      LogErrorMsg("Cannot retrieve line %d (%d lines available).", Args->Line, Self->AmtLines);
+      log.warning("Cannot retrieve line %d (%d lines available).", Args->Line, Self->AmtLines);
       return ERR_OutOfRange;
    }
 
@@ -1162,13 +1119,14 @@ static ERROR TEXT_Hide(objText *Self, APTR Void)
 
 static ERROR TEXT_Init(objText *Self, APTR Void)
 {
+   parasol::Log log;
    objSurface *surface;
    OBJECTPTR object;
    ERROR error;
    LONG i;
 
-   SetFunctionPtr(Self->Layout, FID_DrawCallback, &draw_text);
-   SetFunctionPtr(Self->Layout, FID_ResizeCallback, &resize_text);
+   SetFunctionPtr(Self->Layout, FID_DrawCallback, (APTR)&draw_text);
+   SetFunctionPtr(Self->Layout, FID_ResizeCallback, (APTR)&resize_text);
    if (acInit(Self->Layout) != ERR_Okay) return ERR_Init;
 
    if (!Self->FocusID) Self->FocusID = Self->Layout->SurfaceID;
@@ -1182,7 +1140,7 @@ static ERROR TEXT_Init(objText *Self, APTR Void)
          TAGEND);
       ReleaseObject(surface);
    }
-   else return PostError(ERR_AccessObject);
+   else return log.warning(ERR_AccessObject);
 
    if (Self->Flags & (TXF_EDIT|TXF_SINGLE_SELECT|TXF_MULTI_SELECT)) {
       gfxSubscribeInput(Self->Layout->SurfaceID, JTYPE_MOVEMENT|JTYPE_BUTTON, 0);
@@ -1193,11 +1151,11 @@ static ERROR TEXT_Init(objText *Self, APTR Void)
    if (Self->RelSize > 0) {
       Self->Font->Point = (DOUBLE)Self->Layout->ParentSurface.Height * Self->RelSize / 100.0;
       Self->Font->Flags |= FTF_PREFER_SCALED;
-      MSG("Font Size = %.2f (%d * %.2f%% / 100.0)", Self->Font->Point, Self->Layout->ParentSurface.Height, Self->RelSize);
+      log.trace("Font Size = %.2f (%d * %.2f%% / 100.0)", Self->Font->Point, Self->Layout->ParentSurface.Height, Self->RelSize);
    }
    else if (Self->Flags & TXF_STRETCH) Self->Font->Flags |= FTF_PREFER_SCALED;
 
-   if (acInit(Self->Font) != ERR_Okay) return PostError(ERR_Init);
+   if (acInit(Self->Font) != ERR_Okay) return log.warning(ERR_Init);
 
    // Now that we have a font, we can calculate the pixel widths of each existing text line
 
@@ -1210,20 +1168,20 @@ static ERROR TEXT_Init(objText *Self, APTR Void)
    // Load a text file into the line array if required
 
    if (Self->Location) {
-      if ((error = load_file(Self, Self->Location))) return PostError(error);
+      if ((error = load_file(Self, Self->Location))) return log.warning(error);
    }
 
    // Allocate a history buffer if TXF_HISTORY is enabled
 
    if (Self->Flags & TXF_HISTORY) {
-      if (Self->HistorySize < 1) return PostError(ERR_InvalidValue);
-      if (AllocMemory(Self->HistorySize * sizeof(struct TextHistory), MEM_DATA, &Self->History, NULL) != ERR_Okay) {
+      if (Self->HistorySize < 1) return log.warning(ERR_InvalidValue);
+      if (AllocMemory(Self->HistorySize * sizeof(TextHistory), MEM_DATA, &Self->History, NULL) != ERR_Okay) {
          Self->Flags &= ~TXF_HISTORY;
       }
    }
 
    if (Self->Flags & TXF_GLOBAL_EDITING) {
-      LogMsg("Using global editing mode.");
+      log.msg("Using global editing mode.");
 
       struct acActionNotify notify;
       notify.ActionID = AC_Focus;
@@ -1236,12 +1194,12 @@ static ERROR TEXT_Init(objText *Self, APTR Void)
          AC_LostFocus,
          TAGEND);
 
-      if ((Self->Flags & TXF_EDIT) AND (((objSurface *)object)->Flags & RNF_HAS_FOCUS)) {
+      if ((Self->Flags & TXF_EDIT) and (((objSurface *)object)->Flags & RNF_HAS_FOCUS)) {
          FUNCTION callback;
-         SET_FUNCTION_STDC(callback, &cursor_timer);
+         SET_FUNCTION_STDC(callback, (APTR)&cursor_timer);
          SubscribeTimer(0.1, &callback, &Self->CursorTimer); // Flash the cursor via the timer
 
-         SET_FUNCTION_STDC(callback, &key_event);
+         SET_FUNCTION_STDC(callback, (APTR)&key_event);
          SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, &callback, Self, &Self->prvKeyEvent);
       }
 
@@ -1264,6 +1222,8 @@ static ERROR TEXT_Init(objText *Self, APTR Void)
 
 static ERROR TEXT_NewObject(objText *Self, APTR Void)
 {
+   parasol::Log log;
+
    if (!NewObject(ID_FONT, NF_INTEGRAL, &Self->Font)) {
       SetString(Self->Font, FID_Face, glDefaultFace);
 
@@ -1280,15 +1240,15 @@ static ERROR TEXT_NewObject(objText *Self, APTR Void)
       Self->CursorWidth     = 1;
       Self->CharLimit       = 4096; // Maximum number of characters per line
       Self->LineLimit       = 0x7fffffff;
-      if (!AllocMemory(sizeof(struct TextLine) * Self->MaxLines, MEM_DATA, &Self->Array, NULL)) {
+      if (!AllocMemory(sizeof(TextLine) * Self->MaxLines, MEM_DATA, &Self->Array, NULL)) {
          if (!NewObject(ID_LAYOUT, NF_INTEGRAL, &Self->Layout)) {
             return ERR_Okay;
          }
          else return ERR_NewObject;
       }
-      else return PostError(ERR_AllocMemory);
+      else return log.warning(ERR_AllocMemory);
    }
-   else return PostError(ERR_NewObject);
+   else return log.warning(ERR_NewObject);
 }
 
 /*****************************************************************************
@@ -1321,7 +1281,7 @@ AllocMemory: The memory required to add the text string to the list was unavaila
 
 static ERROR TEXT_ReplaceLine(objText *Self, struct txtReplaceLine *Args)
 {
-   if (!Args) return PostError(ERR_NullArgs);
+   if (!Args) return ERR_NullArgs;
    return replace_line(Self, Args->String, Args->Line, Args->Length);
 }
 
@@ -1333,18 +1293,18 @@ SaveToObject: Use this action to save edited information as a text file.
 
 static ERROR TEXT_SaveToObject(objText *Self, struct acSaveToObject *Args)
 {
-   if ((!Args) OR (!Args->DestID)) return PostError(ERR_NullArgs);
+   parasol::Log log;
 
-   LogAction("Destination: %d, Lines: %d", Args->DestID, Self->AmtLines);
+   if ((!Args) or (!Args->DestID)) return log.warning(ERR_NullArgs);
 
-   if ((Self->Array) AND (Self->AmtLines > 0)) {
-      if ((Self->AmtLines IS 1) AND (Self->Array[0].Length < 1)) return ERR_Okay;
+   log.branch("Destination: %d, Lines: %d", Args->DestID, Self->AmtLines);
+
+   if ((Self->Array) and (Self->AmtLines > 0)) {
+      if ((Self->AmtLines IS 1) and (Self->Array[0].Length < 1)) return ERR_Okay;
 
       OBJECTPTR Object;
-      LONG i;
-
       if (!AccessObject(Args->DestID, 5000, &Object)) {
-         for (i=0; i < Self->AmtLines; i++) {
+         for (LONG i=0; i < Self->AmtLines; i++) {
             // Output line
             if (Self->Array[i].Length > 0) {
                acWrite(Object, Self->Array[i].String, Self->Array[i].Length, NULL);
@@ -1369,9 +1329,8 @@ ScrollToPoint: Scrolls a text object's graphical content.
 
 static ERROR TEXT_ScrollToPoint(objText *Self, struct acScrollToPoint *Args)
 {
-   if (!Args) return PostError(ERR_NullArgs);
-
-   if ((Args->X IS Self->XPosition) AND (Args->Y IS Self->YPosition)) return ERR_Okay;
+   if (!Args) return ERR_NullArgs;
+   if ((Args->X IS Self->XPosition) and (Args->Y IS Self->YPosition)) return ERR_Okay;
 
    OBJECTPTR surface;
    if (!AccessObject(Self->Layout->SurfaceID, 5000, &surface)) {
@@ -1384,9 +1343,7 @@ static ERROR TEXT_ScrollToPoint(objText *Self, struct acScrollToPoint *Args)
 
       Self->XPosition = x;
       Self->YPosition = y;
-
       Redraw(Self);
-
       ReleaseObject(surface);
    }
 
@@ -1420,15 +1377,17 @@ Args
 
 static ERROR TEXT_SelectAreaText(objText *Self, struct txtSelectArea *Args)
 {
-   if ((!Args) OR (Args->Row < 0) OR (Args->Column < 0) OR
-       (Args->EndRow < 0) OR (Args->EndColumn < 0)) {
-      return PostError(ERR_Args);
+   parasol::Log log;
+
+   if ((!Args) or (Args->Row < 0) or (Args->Column < 0) or
+       (Args->EndRow < 0) or (Args->EndColumn < 0)) {
+      return log.warning(ERR_Args);
    }
 
-   LogMethod("%dx%d TO %dx%d", Args->Column, Args->Row, Args->EndColumn, Args->EndRow);
+   log.branch("%dx%d TO %dx%d", Args->Column, Args->Row, Args->EndColumn, Args->EndRow);
 
    if (Self->AmtLines < 1) {
-      LogMsg("There is no selectable data present.");
+      log.msg("There is no selectable data present.");
       return ERR_Okay;
    }
 
@@ -1444,11 +1403,11 @@ static ERROR TEXT_SelectAreaText(objText *Self, struct txtSelectArea *Args)
    if (Args->EndColumn < Self->Array[Self->CursorRow].Length) Self->CursorColumn = Args->EndColumn;
    else Self->CursorColumn = Self->Array[Self->CursorRow].Length;
 
-   if ((Self->SelectRow != Self->CursorRow) OR (Self->SelectColumn != Self->CursorColumn)) {
+   if ((Self->SelectRow != Self->CursorRow) or (Self->SelectColumn != Self->CursorColumn)) {
       Self->Flags |= TXF_AREA_SELECTED;
    }
    else {
-      LogMsg("No text was selected.");
+      log.msg("No text was selected.");
       Self->Flags &= ~TXF_AREA_SELECTED;
    }
 
@@ -1481,21 +1440,16 @@ CreateObject
 
 static ERROR TEXT_SetFont(objText *Self, struct txtSetFont *Args)
 {
-   if ((!Args) OR (!Args->Face)) return PostError(ERR_NullArgs);
+   if ((!Args) or (!Args->Face)) return ERR_NullArgs;
 
    objFont *font;
-   if (!CreateObject(ID_FONT, NF_INTEGRAL, &font,
-         FID_Face|TSTR, Args->Face,
-         TAGEND)) {
-
+   if (!CreateObject(ID_FONT, NF_INTEGRAL, &font, FID_Face|TSTR, Args->Face, TAGEND)) {
       if (Self->Font) acFree(Self->Font);
-
       Self->Font = font;
 
       // Recalculate the pixel width of each line
 
-      LONG i;
-      for (i=0; i < Self->AmtLines; i++) {
+      for (LONG i=0; i < Self->AmtLines; i++) {
          Self->Array[i].PixelLength = calc_width(Self, Self->Array[i].String, Self->Array[i].Length);
       }
 
@@ -1510,7 +1464,6 @@ static ERROR TEXT_SetFont(objText *Self, struct txtSetFont *Args)
       Redraw(Self);
       calc_hscroll(Self);
       calc_vscroll(Self);
-
       return ERR_Okay;
    }
    else return ERR_CreateObject;
@@ -1541,19 +1494,19 @@ static ERROR cursor_timer(objText *Self, LARGE Elapsed, LARGE CurrentTime)
 
 //****************************************************************************
 
-#include "fields.c"
-#include "functions.c"
+#include "fields.cpp"
+#include "functions.cpp"
 #include "def.c"
 
-static const struct FieldArray clFields[] = {
+static const FieldArray clFields[] = {
    { "Layout",          FDF_INTEGRAL|FDF_SYSTEM|FDF_R, 0,   NULL, NULL },
    { "Font",            FDF_INTEGRAL|FDF_R,   ID_FONT,   NULL, NULL },
-   { "VScroll",         FDF_OBJECTID|FDF_RW,  ID_SCROLL, NULL, SET_VScroll },
-   { "HScroll",         FDF_OBJECTID|FDF_RW,  ID_SCROLL, NULL, SET_HScroll },
+   { "VScroll",         FDF_OBJECTID|FDF_RW,  ID_SCROLL, NULL, (APTR)SET_VScroll },
+   { "HScroll",         FDF_OBJECTID|FDF_RW,  ID_SCROLL, NULL, (APTR)SET_HScroll },
    { "TabFocus",        FDF_OBJECTID|FDF_RW,  0,         NULL, NULL },
    { "Focus",           FDF_OBJECTID|FDF_RI,  0,         NULL, NULL },
-   { "CursorColumn",    FDF_LONG|FDF_RW,      0,         NULL, SET_CursorColumn },
-   { "CursorRow",       FDF_LONG|FDF_RW,      0,         NULL, SET_CursorRow },
+   { "CursorColumn",    FDF_LONG|FDF_RW,      0,         NULL, (APTR)SET_CursorColumn },
+   { "CursorRow",       FDF_LONG|FDF_RW,      0,         NULL, (APTR)SET_CursorRow },
    { "Flags",           FDF_LONGFLAGS|FDF_RI, (MAXINT)&clTextFlags, NULL, NULL },
    { "AmtLines",        FDF_LONG|FDF_R,       0,         NULL, NULL },
    { "SelectRow",       FDF_LONG|FDF_R,       0,         NULL, NULL },
@@ -1561,24 +1514,54 @@ static const struct FieldArray clFields[] = {
    { "Frame",           FDF_LONG|FDF_RW,      0,         NULL, NULL },
    { "HistorySize",     FDF_LONG|FDF_RI,      0,         NULL, NULL },
    { "LineLimit",       FDF_LONG|FDF_RW,      0,         NULL, NULL },
-   { "CharLimit",       FDF_LONG|FDF_RW,      0,         NULL, SET_CharLimit },
+   { "CharLimit",       FDF_LONG|FDF_RW,      0,         NULL, (APTR)SET_CharLimit },
    { "Highlight",       FDF_RGB|FDF_RW,       0,         NULL, NULL },
    { "Background",      FDF_RGB|FDF_RW,       0,         NULL, NULL },
    { "CursorColour",    FDF_RGB|FDF_RW,       0,         NULL, NULL },
    // Virtual fields
-   { "Activated",       FDF_FUNCTIONPTR|FDF_RW, 0, GET_Activated, SET_Activated },
-   { "LayoutStyle",     FDF_POINTER|FDF_SYSTEM|FDF_W, 0, NULL, SET_LayoutStyle },
-   { "Location",        FDF_STRING|FDF_RW,  0, GET_Location,   SET_Location },
-   { "Origin",          FDF_STRING|FDF_RW,  0, GET_Location,   SET_Origin },
-   { "Src",             FDF_SYNONYM|FDF_STRING|FDF_RW,  0, GET_Location,   SET_Location },
-   { "String",          FDF_STRING|FDF_RW,  0, GET_String,     SET_String },
-   { "TextHeight",      FDF_LONG|FDF_R,     0, GET_TextHeight, NULL },
-   { "TextWidth",       FDF_LONG|FDF_R,     0, GET_TextWidth,  NULL },
-   { "TextX",           FDF_LONG|FDF_RW,    0, GET_TextX,      SET_TextX },
-   { "TextY",           FDF_LONG|FDF_RW,    0, GET_TextY,      SET_TextY },
-   { "ValidateInput",   FDF_FUNCTIONPTR|FDF_RW,  0, GET_ValidateInput, SET_ValidateInput },
-   { "Height",          FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, GET_Height,  SET_Height },
-   { "Point",           FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, GET_Point,   SET_Point },
-   { "Width",           FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, GET_Width,   SET_Width },
+   { "Activated",       FDF_FUNCTIONPTR|FDF_RW, 0, (APTR)GET_Activated, (APTR)SET_Activated },
+   { "LayoutStyle",     FDF_POINTER|FDF_SYSTEM|FDF_W, 0, NULL, (APTR)SET_LayoutStyle },
+   { "Location",        FDF_STRING|FDF_RW,  0, (APTR)GET_Location,   (APTR)SET_Location },
+   { "Origin",          FDF_STRING|FDF_RW,  0, (APTR)GET_Location,   (APTR)SET_Origin },
+   { "Src",             FDF_SYNONYM|FDF_STRING|FDF_RW,  0, (APTR)GET_Location,   (APTR)SET_Location },
+   { "String",          FDF_STRING|FDF_RW,  0, (APTR)GET_String,     (APTR)SET_String },
+   { "TextHeight",      FDF_LONG|FDF_R,     0, (APTR)GET_TextHeight, NULL },
+   { "TextWidth",       FDF_LONG|FDF_R,     0, (APTR)GET_TextWidth,  NULL },
+   { "TextX",           FDF_LONG|FDF_RW,    0, (APTR)GET_TextX,      (APTR)SET_TextX },
+   { "TextY",           FDF_LONG|FDF_RW,    0, (APTR)GET_TextY,      (APTR)SET_TextY },
+   { "ValidateInput",   FDF_FUNCTIONPTR|FDF_RW,  0, (APTR)GET_ValidateInput, (APTR)SET_ValidateInput },
+   { "Height",          FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)GET_Height, (APTR)SET_Height },
+   { "Point",           FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)GET_Point,  (APTR)SET_Point },
+   { "Width",           FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)GET_Width,  (APTR)SET_Width },
    END_FIELD
 };
+
+//****************************************************************************
+
+ERROR init_text(void)
+{
+   OBJECTPTR style;
+   if (!FindPrivateObject("glStyle", &style)) {
+      char buffer[32];
+      if (!acGetVar(style, "/colours/@texthighlight", buffer, sizeof(buffer))) {
+         StrToColour(buffer, &glHighlight);
+      }
+   }
+
+   return(CreateObject(ID_METACLASS, 0, &clText,
+      FID_ClassVersion|TFLOAT, VER_TEXT,
+      FID_Name|TSTRING,   "Text",
+      FID_Category|TLONG, CCF_GUI,
+      FID_Flags|TLONG,    CLF_PROMOTE_INTEGRAL|CLF_PRIVATE_ONLY,
+      FID_Actions|TPTR,   clTextActions,
+      FID_Methods|TARRAY, clTextMethods,
+      FID_Fields|TARRAY,  clFields,
+      FID_Size|TLONG,     sizeof(objText),
+      FID_Path|TSTR,      MOD_PATH,
+      TAGEND));
+}
+
+void free_text(void)
+{
+   if (clText) { acFree(clText); clText = NULL; }
+}

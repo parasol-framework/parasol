@@ -42,13 +42,7 @@ through the XML data feed.
 static OBJECTPTR clMenu = NULL, clMenuItem = NULL;
 struct Translation { LONG Code; CSTRING Name; };
 
-// Class definition at the end of this source file.
-static const struct FieldDef clMenuFlags[];
-static const struct FieldArray clMenuFields[];
-static const struct ActionArray clMenuActions[];
-static const struct MethodArray clMenuMethods[];
-
-static ERROR add_xml_item(objMenu *, objXML *, struct XMLTag *);
+static ERROR add_xml_item(objMenu *, objXML *, XMLTag *);
 static ERROR calc_menu_size(objMenu *);
 static void calc_scrollbar(objMenu *);
 static ERROR create_menu(objMenu *);
@@ -62,7 +56,7 @@ static ERROR load_icon(objMenu *, CSTRING, objBitmap **);
 static ERROR process_menu_content(objMenu *);
 static ERROR write_string(OBJECTPTR, CSTRING);
 static ERROR highlight_item(objMenu *, objMenuItem *);
-static void parse_xmltag(objMenu *, objXML *, struct XMLTag *);
+static void parse_xmltag(objMenu *, objXML *, XMLTag *);
 static UBYTE scan_keys(objMenu *, LONG, LONG);
 static ERROR fade_timer(objMenu *, LARGE, LARGE);
 static ERROR item_motion_timer(objMenu *, LARGE, LARGE);
@@ -70,37 +64,17 @@ static ERROR motion_timer(objMenu *, LARGE, LARGE);
 
 //****************************************************************************
 
-ERROR init_menu(void)
-{
-   return CreateObject(ID_METACLASS, 0, &clMenu,
-      FID_ClassVersion|TFLOAT, VER_MENU,
-      FID_Name|TSTR,      "Menu",
-      FID_Category|TLONG, CCF_GUI,
-      FID_Flags|TLONG,    CLF_PROMOTE_INTEGRAL,
-      FID_Actions|TPTR,   clMenuActions,
-      FID_Methods|TARRAY, clMenuMethods,
-      FID_Fields|TARRAY,  clMenuFields,
-      FID_Size|TLONG,     sizeof(objMenu),
-      FID_Path|TSTR,      MOD_PATH,
-      TAGEND);
-}
-
-void free_menu(void)
-{
-   if (clMenu) { acFree(clMenu); clMenu = NULL; }
-}
-
-//****************************************************************************
-
 static ERROR MENU_ActionNotify(objMenu *Self, struct acActionNotify *NotifyArgs)
 {
+   parasol::Log log;
+
    if (!NotifyArgs) return ERR_NullArgs;
    if (NotifyArgs->Error != ERR_Okay) return ERR_Okay;
 
    LONG action = NotifyArgs->ActionID;
 
    if (action IS AC_Hide) {
-      FMSG("~","My menu surface has been hidden.");
+      log.traceBranch("My menu surface has been hidden.");
 
       Self->HighlightItem = NULL;
 
@@ -113,13 +87,11 @@ static ERROR MENU_ActionNotify(objMenu *Self, struct acActionNotify *NotifyArgs)
 
       Self->TimeHide = PreciseTime();
       Self->Visible = FALSE;
-
-      LOGRETURN();
    }
    else if (action IS AC_Focus) {
-      if ((Self->KeyMonitorID IS NotifyArgs->ObjectID) AND (!Self->prvKeyEvent)) {
+      if ((Self->KeyMonitorID IS NotifyArgs->ObjectID) and (!Self->prvKeyEvent)) {
          FUNCTION callback;
-         SET_FUNCTION_STDC(callback, &key_event);
+         SET_FUNCTION_STDC(callback, (APTR)&key_event);
          SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, &callback, Self, &Self->prvKeyEvent);
       }
    }
@@ -129,41 +101,39 @@ static ERROR MENU_ActionNotify(objMenu *Self, struct acActionNotify *NotifyArgs)
       }
 
       if (NotifyArgs->ObjectID IS Self->RelativeID) {
-         FMSG("~","Hiding because my relative surface (%d) lost the focus.", Self->RelativeID);
+         log.traceBranch("Hiding because my relative surface (%d) lost the focus.", Self->RelativeID);
          acHide(Self);
-         LOGRETURN();
       }
-      else if ((NotifyArgs->ObjectID IS Self->MenuSurfaceID) AND (!Self->ParentID)) {
-         FMSG("~","Hiding because my surface (%d) lost the focus and I am without a parent menu.", Self->MenuSurfaceID);
+      else if ((NotifyArgs->ObjectID IS Self->MenuSurfaceID) and (!Self->ParentID)) {
+         log.traceBranch("Hiding because my surface (%d) lost the focus and I am without a parent menu.", Self->MenuSurfaceID);
          acHide(Self);
-         LOGRETURN();
       }
-      else MSG("Surface %d has lost its focus, no action taken.", NotifyArgs->ObjectID);
+      else log.trace("Surface %d has lost its focus, no action taken.", NotifyArgs->ObjectID);
    }
    else if (action IS AC_Show) {
-      if ((Self->FadeDelay > 0) AND (!Self->Scrollbar)) {
-         MSG("(Show) Starting fade-in.");
+      if ((Self->FadeDelay > 0) and (!Self->Scrollbar)) {
+         log.trace("(Show) Starting fade-in.");
          Self->prvFade = MENUFADE_FADE_IN;
          Self->FadeTime = PreciseTime();
 
          if (Self->TimerID) UpdateTimer(Self->TimerID, 0.02);
          else {
             FUNCTION callback;
-            SET_FUNCTION_STDC(callback, &fade_timer);
+            SET_FUNCTION_STDC(callback, (APTR)&fade_timer);
             SubscribeTimer(0.02, &callback, &Self->TimerID);
          }
       }
       else {
-         MSG("(Show) Raising opacity to maximum.");
+         log.trace("(Show) Raising opacity to maximum.");
          Self->prvFade = 0;
 
          drwSetOpacityID(Self->MenuSurfaceID, 100, 0);
       }
 
-      if ((Self->Flags & MNF_POPUP) AND (Self->RootMenu IS Self)) {
+      if ((Self->Flags & MNF_POPUP) and (Self->RootMenu IS Self)) {
          // Give the focus to popup menus at the root level.  This allows the menu to hide itself if the user clicks away from it.
 
-         MSG("Giving focus to the popup menu.");
+         log.trace("Giving focus to the popup menu.");
          acFocusID(Self->MenuSurfaceID);
       }
 
@@ -182,11 +152,12 @@ Activate: Switches the visibility state of the menu.
 
 static ERROR MENU_Activate(objMenu *Self, APTR Void)
 {
+   parasol::Log log;
+
    // This routine returns ERF_Notified because Activate notification is manually generated on MenuItem.acActivate()
 
-   LogBranch(NULL);
+   log.branch("");
    Action(MT_MnSwitch, Self, NULL);
-   LogReturn();
    return ERR_Okay|ERF_Notified;
 }
 
@@ -198,7 +169,8 @@ Clears: Clears the content of the menu list.
 
 static ERROR MENU_Clear(objMenu *Self, APTR Void)
 {
-   LogBranch(NULL);
+   parasol::Log log;
+   log.branch("");
 
    while (Self->Items) acFree(Self->Items);
 
@@ -218,20 +190,19 @@ static ERROR MENU_Clear(objMenu *Self, APTR Void)
       Self->MenuSurfaceID = 0;
    }
 
-   LogBranch("Destroying all child menus.");
+   {
+      parasol::Log log;
+      log.branch("Destroying all child menus.");
 
-   struct ChildEntry list[16];
-   LONG count = ARRAYSIZE(list);
-   if (!ListChildren(Self->Head.UniqueID, list, &count)) {
-      LONG i;
-      for (i=0; i < count; i++) {
-         if (list[i].ClassID IS ID_MENU) acFreeID(list[i].ObjectID);
+      ChildEntry list[16];
+      LONG count = ARRAYSIZE(list);
+      if (!ListChildren(Self->Head.UniqueID, list, &count)) {
+         for (LONG i=0; i < count; i++) {
+            if (list[i].ClassID IS ID_MENU) acFreeID(list[i].ObjectID);
+         }
       }
    }
 
-   LogReturn();
-
-   LogReturn();
    return ERR_Okay;
 }
 
@@ -239,20 +210,16 @@ static ERROR MENU_Clear(objMenu *Self, APTR Void)
 
 static ERROR MENU_DataFeed(objMenu *Self, struct acDataFeed *Args)
 {
+   parasol::Log log;
+
    if (!Args) return ERR_NullArgs;
 
-   if (Args->DataType IS DATA_XML) {
-      // Incoming XML is treated as being part of the menu content definition
-
-      LogBranch(NULL);
+   if (Args->DataType IS DATA_XML) { // Incoming XML is treated as being part of the menu content definition
+      log.branch("");
 
       objXML *xml;
-      if (!CreateObject(ID_XML, NF_INTEGRAL, &xml,
-            FID_Statement|TSTR, Args->Buffer,
-            TAGEND)) {
-
-         struct XMLTag *tag;
-         for (tag=xml->Tags[0]; tag; tag=tag->Next) {
+      if (!CreateObject(ID_XML, NF_INTEGRAL, &xml, FID_Statement|TSTR, Args->Buffer, TAGEND)) {
+         for (auto tag=xml->Tags[0]; tag; tag=tag->Next) {
             parse_xmltag(Self, xml, tag);
          }
 
@@ -266,17 +233,13 @@ static ERROR MENU_DataFeed(objMenu *Self, struct acDataFeed *Args)
             calc_scrollbar(Self);
             ensure_on_display(Self);
          }
-      }
-      else {
-         LogReturn();
-         return PostError(ERR_CreateObject);
-      }
 
-      LogReturn();
-      return ERR_Okay;
+         return ERR_Okay;
+      }
+      else return log.warning(ERR_CreateObject);
    }
    else if (Args->DataType IS DATA_INPUT_READY) {
-      struct InputMsg *input;
+      InputMsg *input;
 
       while (!gfxGetInputMsg((struct dcInputReady *)Args->Buffer, 0, &input)) {
          if (input->Flags & JTYPE_MOVEMENT) {
@@ -286,7 +249,7 @@ static ERROR MENU_DataFeed(objMenu *Self, struct acDataFeed *Args)
             if (input->RecipientID IS Self->MonitorID) {
                // Mouse movement over the monitored area for mouse clicks / hovering
                FUNCTION callback;
-               SET_FUNCTION_STDC(callback, &motion_timer);
+               SET_FUNCTION_STDC(callback, (APTR)&motion_timer);
                SubscribeTimer(Self->HoverDelay, &callback, &Self->MotionTimer);
             }
             else if (input->RecipientID IS Self->MenuSurfaceID) {
@@ -295,12 +258,10 @@ static ERROR MENU_DataFeed(objMenu *Self, struct acDataFeed *Args)
                UBYTE highlight_found = FALSE;
 
                if (input->OverID IS Self->MenuSurfaceID) {
-
-                  objMenuItem *item;
                   LONG y = Self->TopMargin + Self->YPosition;
-                  for (item=Self->Items; item; item=item->Next) {
+                  for (auto item=Self->Items; item; item=item->Next) {
                      if (!(item->Flags & MIF_BREAK)) {
-                        if ((input->Y >= y) AND (input->Y < y + item->Height)) {
+                        if ((input->Y >= y) and (input->Y < y + item->Height)) {
                            if (Self->HighlightItem != item) {
                               highlight_item(Self, item);
                            }
@@ -315,13 +276,13 @@ static ERROR MENU_DataFeed(objMenu *Self, struct acDataFeed *Args)
 
                // Remove existing menu highlighting if the cursor is no longer positioned over a highlight-able item.
 
-               if ((!highlight_found) AND (Self->HighlightItem)) {
+               if ((!highlight_found) and (Self->HighlightItem)) {
                   highlight_item(Self, NULL);
                }
 
                if (highlight_found) {
                   FUNCTION callback;
-                  SET_FUNCTION_STDC(callback, &item_motion_timer);
+                  SET_FUNCTION_STDC(callback, (APTR)&item_motion_timer);
                   SubscribeTimer(Self->AutoExpand, &callback, &Self->ItemMotionTimer);
                }
             }
@@ -335,32 +296,31 @@ static ERROR MENU_DataFeed(objMenu *Self, struct acDataFeed *Args)
                if (input->RecipientID IS Self->MonitorID) {
                   // The monitored surface has received a mouse click (this is normally used for popup menus or clickable zones that show the menu).
 
-                  FMSG("~","Menu clicked (monitored area)");
+                  parasol::Log log;
+                  log.traceBranch("Menu clicked (monitored area)");
 
-                  if ((input->Type IS JET_LMB) OR (input->Type IS JET_RMB)) {
+                  if ((input->Type IS JET_LMB) or (input->Type IS JET_RMB)) {
                      SURFACEINFO *info;
-                     if ((Self->MenuSurfaceID) AND (((!drwGetSurfaceInfo(Self->MenuSurfaceID, &info))) AND (info->Flags & RNF_VISIBLE))) {
-                        MSG("Menu is visible.");
-                        if (Self->HoverDelay > 0) {
-                           // Do nothing (menu stays visible)
-                           MSG("Menu staying active as hoverdelay > 0");
+                     if ((Self->MenuSurfaceID) and (((!drwGetSurfaceInfo(Self->MenuSurfaceID, &info))) and (info->Flags & RNF_VISIBLE))) {
+                        log.trace("Menu is visible.");
+                        if (Self->HoverDelay > 0) { // Do nothing (menu stays visible)
+                           log.trace("Menu staying active as hoverdelay > 0");
                         }
                         else acHide(Self);
                      }
                      else acShow(Self);
                   }
-
-                  LOGRETURN();
                }
-               else if ((input->RecipientID IS Self->MenuSurfaceID) AND (input->Type IS JET_LMB)) {
+               else if ((input->RecipientID IS Self->MenuSurfaceID) and (input->Type IS JET_LMB)) {
                   // The menu surface has been clicked
-                  FMSG("~","Menu clicked (menu surface)");
+
+                  parasol::Log log;
+                  log.traceBranch("Menu clicked (menu surface)");
 
                   LONG y = Self->TopMargin + Self->YPosition;
-                  objMenuItem *item;
-                  for (item=Self->Items; item; item=item->Next) {
+                  for (auto item=Self->Items; item; item=item->Next) {
                      if (!(item->Flags & MIF_BREAK)) {
-                        if ((input->Y >= y) AND (input->Y < y + item->Height)) {
+                        if ((input->Y >= y) and (input->Y < y + item->Height)) {
                            acActivate(item);
                            break;
                         }
@@ -368,12 +328,9 @@ static ERROR MENU_DataFeed(objMenu *Self, struct acDataFeed *Args)
 
                      y += item->Height;
                   }
-
-                  LOGRETURN();
                }
-               else {
-                  // A surface outside of the menu's area has been clicked
-                  MSG("Clicked away from menu - hiding.");
+               else { // A surface outside of the menu's area has been clicked
+                  log.trace("Clicked away from menu - hiding.");
                   acHide(Self);
                }
             }
@@ -415,12 +372,11 @@ static ERROR MENU_Free(objMenu *Self, APTR Void)
    }
 
    if (Self->MenuSurfaceID) {
-      OBJECTPTR object;
-      if (!AccessObject(Self->MenuSurfaceID, 4000, &object)) {
-         UnsubscribeAction(object, 0);
-         drwRemoveCallback(object, &draw_menu);
-         acFree(object);
-         ReleaseObject(object);
+      parasol::ScopedObjectLock<OBJECTPTR> ms(Self->MenuSurfaceID, 4000);
+      if (ms.granted()) {
+         UnsubscribeAction(ms.obj, 0);
+         drwRemoveCallback(ms.obj, (APTR)&draw_menu);
+         acFree(ms.obj);
       }
       Self->MenuSurfaceID = 0;
    }
@@ -452,10 +408,9 @@ DoesNotExist
 
 static ERROR MENU_GetItem(objMenu *Self, struct mnGetItem *Args)
 {
-   if ((!Args) OR (!Args->ID) OR (!Args->Item)) return PostError(ERR_NullArgs);
+   if ((!Args) or (!Args->ID) or (!Args->Item)) return ERR_NullArgs;
 
-   objMenuItem *item;
-   for (item=Self->Items; item; item=item->Next) {
+   for (auto item=Self->Items; item; item=item->Next) {
       if (item->ID IS Args->ID) {
          Args->Item = item;
          return ERR_Okay;
@@ -463,7 +418,7 @@ static ERROR MENU_GetItem(objMenu *Self, struct mnGetItem *Args)
    }
 
    Args->Item = NULL;
-   return PostError(ERR_DoesNotExist);
+   return ERR_DoesNotExist;
 }
 
 /*****************************************************************************
@@ -488,13 +443,15 @@ Background, Index, Group, ID.
 
 static ERROR MENU_GetVar(objMenu *Self, struct acGetVar *Args)
 {
-   if (!Args) return PostError(ERR_NullArgs);
+   parasol::Log log;
 
-   if ((!Args->Field) OR (!Args->Buffer) OR (Args->Size < 1)) {
-      return PostError(ERR_Args);
+   if (!Args) return log.warning(ERR_NullArgs);
+
+   if ((!Args->Field) or (!Args->Buffer) or (Args->Size < 1)) {
+      return log.warning(ERR_Args);
    }
 
-   if (!(Self->Head.Flags & NF_INITIALISED)) return PostError(ERR_Failed);
+   if (!(Self->Head.Flags & NF_INITIALISED)) return log.warning(ERR_Failed);
 
    CSTRING field = Args->Field;
    Args->Buffer[0] = 0;
@@ -519,13 +476,13 @@ static ERROR MENU_GetVar(objMenu *Self, struct acGetVar *Args)
       }
 
       if (!item) {
-         LogErrorMsg("Failed to lookup '%s'", field);
+         log.warning("Failed to lookup '%s'", field);
          return ERR_Search;
       }
 
       field += 5;
-      while ((*field) AND (*field != ')')) field++;
-      while ((*field) AND (*field != '.')) field++;
+      while ((*field) and (*field != ')')) field++;
+      while ((*field) and (*field != '.')) field++;
       if (*field IS '.') {
          field++;
          ULONG hash = StrHash(field, 0);
@@ -542,12 +499,12 @@ static ERROR MENU_GetVar(objMenu *Self, struct acGetVar *Args)
             case HASH_ID:         IntToStr(item->ID, Args->Buffer, Args->Size); break;
             case HASH_Background: StrFormat(Args->Buffer, Args->Size, "%d,%d,%d,%d", item->Background.Red, item->Background.Green, item->Background.Blue, item->Background.Alpha); break;
             case HASH_Qualifiers: IntToStr(item->Flags, Args->Buffer, Args->Size); break;
-            default: LogErrorMsg("Field name '%s' not recognised.", field); return ERR_Failed;
+            default: log.warning("Field name '%s' not recognised.", field); return ERR_Failed;
          }
          return ERR_Okay;
       }
       else {
-         LogErrorMsg("Malformed item reference '%s'", Args->Field);
+         log.warning("Malformed item reference '%s'", Args->Field);
          return ERR_Failed;
       }
    }
@@ -562,9 +519,11 @@ Hide: Hides the menu and open sub-menus.
 
 static ERROR MENU_Hide(objMenu *Self, APTR Void)
 {
-   LogBranch(NULL);
+   parasol::Log log;
 
-   if ((Self->FadeDelay > 0) AND (!Self->Scrollbar)) {
+   log.branch("");
+
+   if ((Self->FadeDelay > 0) and (!Self->Scrollbar)) {
       // NB: We must always use the timer to delay the hide, otherwise we get problems with the Activate()
       // support not switching menus on and off correctly.
 
@@ -574,7 +533,7 @@ static ERROR MENU_Hide(objMenu *Self, APTR Void)
       if (Self->TimerID) UpdateTimer(Self->TimerID, 0.02);
       else {
          FUNCTION callback;
-         SET_FUNCTION_STDC(callback, &fade_timer);
+         SET_FUNCTION_STDC(callback, (APTR)&fade_timer);
          SubscribeTimer(0.02, &callback, &Self->TimerID);
       }
    }
@@ -588,7 +547,6 @@ static ERROR MENU_Hide(objMenu *Self, APTR Void)
       Self->CurrentMenu = NULL;
    }
 
-   LogReturn();
    return ERR_Okay;
 }
 
@@ -596,6 +554,8 @@ static ERROR MENU_Hide(objMenu *Self, APTR Void)
 
 static ERROR MENU_Init(objMenu *Self, APTR Void)
 {
+   parasol::Log log;
+
    if (Self->HighlightLM IS -1) Self->HighlightLM = Self->LeftMargin;
    if (Self->HighlightRM IS -1) Self->HighlightRM = Self->RightMargin;
 
@@ -650,9 +610,9 @@ static ERROR MENU_Init(objMenu *Self, APTR Void)
          }
          else ownerid = GetOwnerID(ownerid);
       }
-      if (!Self->TargetID) return PostError(ERR_UnsupportedOwner);
+      if (!Self->TargetID) return log.warning(ERR_UnsupportedOwner);
 
-      MSG("Target search found surface #%d.", Self->TargetID);
+      log.trace("Target search found surface #%d.", Self->TargetID);
    }
 
    if (!Self->TargetID) Self->FadeDelay = 0;
@@ -666,7 +626,7 @@ static ERROR MENU_Init(objMenu *Self, APTR Void)
       }
 
       objSurface *surface;
-      if ((Self->KeyMonitorID) AND (!AccessObject(Self->KeyMonitorID, 4000, &surface))) {
+      if ((Self->KeyMonitorID) and (!AccessObject(Self->KeyMonitorID, 4000, &surface))) {
          if (surface->Head.ClassID IS ID_SURFACE) {
             SubscribeActionTags(surface, AC_Focus, AC_LostFocus, TAGEND);
          }
@@ -759,11 +719,13 @@ Refresh: Refreshes a menu from its source file.
 
 static ERROR MENU_Refresh(objMenu *Self, APTR Void)
 {
+   parasol::Log log;
+
    drwApplyStyleValues(Self, NULL);
 
    acClear(Self);
 
-   MSG("Generating the new menu set.");
+   log.trace("Generating the new menu set.");
 
    AdjustLogLevel(1);
    ERROR error = process_menu_content(Self);
@@ -774,14 +736,16 @@ static ERROR MENU_Refresh(objMenu *Self, APTR Void)
    if (!(error = create_menu(Self))) {
       return ERR_Okay;
    }
-   else return PostError(error);
+   else return log.warning(error);
 }
 
 //****************************************************************************
 
 static ERROR MENU_ScrollToPoint(objMenu *Self, struct acScrollToPoint *Args)
 {
-   if (!Args) return PostError(ERR_NullArgs);
+   parasol::Log log;
+
+   if (!Args) return log.warning(ERR_NullArgs);
 
    if (Args->Y IS Self->YPosition) return ERR_Okay;
 
@@ -828,12 +792,13 @@ DoesNotExist: The ID does not refer to a known menu item.
 
 static ERROR MENU_SelectItem(objMenu *Self, struct mnSelectItem *Args)
 {
-   if (!Args) return PostError(ERR_NullArgs);
+   parasol::Log log;
 
-   FMSG("~","ID: %d, State: %d", Args->ID, Args->State);
+   if (!Args) return log.warning(ERR_NullArgs);
 
-   objMenuItem *item;
-   for (item=Self->Items; item; item=item->Next) {
+   log.traceBranch("ID: %d, State: %d", Args->ID, Args->State);
+
+   for (auto item=Self->Items; item; item=item->Next) {
       if (item->ID IS Args->ID) {
          if (Args->State IS 0) {
             // Turn the selection off
@@ -854,18 +819,13 @@ static ERROR MENU_SelectItem(objMenu *Self, struct mnSelectItem *Args)
             if (item->Flags & MIF_SELECTED) item->Flags &= ~MIF_SELECTED;
             else item->Flags |= MIF_SELECTED;
          }
-         else {
-            LOGRETURN();
-            return PostError(ERR_Args);
-         }
+         else return log.warning(ERR_Args);
 
-         LOGRETURN();
          return ERR_Okay;
       }
    }
 
-   LOGRETURN();
-   return PostError(ERR_DoesNotExist);
+   return log.warning(ERR_DoesNotExist);
 }
 
 /*****************************************************************************
@@ -876,7 +836,7 @@ SetVar: Parameters to be passed on to item scripts are stored as variables.
 
 static ERROR MENU_SetVar(objMenu *Self, struct acSetVar *Args)
 {
-   if ((!Args) OR (!Args->Field) OR (!Args->Field[0])) return ERR_NullArgs;
+   if ((!Args) or (!Args->Field) or (!Args->Field[0])) return ERR_NullArgs;
 
    return VarSetString(Self->LocalArgs, Args->Field, Args->Value);
 }
@@ -889,6 +849,8 @@ Show: Shows the menu.
 
 static ERROR MENU_Show(objMenu *Self, APTR Void)
 {
+   parasol::Log log;
+
    if (!Self->MenuSurfaceID) {
       ERROR error;
       if ((error = create_menu(Self)) != ERR_Okay) return error;
@@ -901,7 +863,7 @@ static ERROR MENU_Show(objMenu *Self, APTR Void)
          return ERR_Okay;
       }
 
-      LogBranch("Parent: %d, Surface: %d, Relative: %d %s", Self->ParentID, Self->MenuSurfaceID, Self->RelativeID, (Self->Flags & MNF_POPUP) ? "POPUP" : "");
+      log.branch("Parent: %d, Surface: %d, Relative: %d %s", Self->ParentID, Self->MenuSurfaceID, Self->RelativeID, (Self->Flags & MNF_POPUP) ? "POPUP" : "");
 
       Self->prvReverseX = (Self->Flags & MNF_REVERSE_X) ? TRUE : FALSE;
 
@@ -931,7 +893,7 @@ static ERROR MENU_Show(objMenu *Self, APTR Void)
             }
             else {
                SURFACEINFO *target;
-               if ((Self->TargetID) AND (!drwGetSurfaceInfo(Self->TargetID, &target))) {
+               if ((Self->TargetID) and (!drwGetSurfaceInfo(Self->TargetID, &target))) {
                   // A specific target surface is hosting the menu layer; adjust the coordinate if necessary to keep
                   // it from being partially hidden.
                   if (x + surface->Width >= target->Width) {
@@ -945,7 +907,7 @@ static ERROR MENU_Show(objMenu *Self, APTR Void)
 
             ensure_on_display(Self);
          }
-         else PostError(ERR_AccessObject);
+         else log.warning(ERR_AccessObject);
       }
       else if (Self->Flags & MNF_POINTER_PLACEMENT) {
          LONG cursor_x, cursor_y;
@@ -953,7 +915,7 @@ static ERROR MENU_Show(objMenu *Self, APTR Void)
             LONG x, p_width, p_height, p_absx, p_absy;
             SURFACEINFO *parentinfo;
             DISPLAYINFO *scrinfo;
-            if ((surface->ParentID) AND (!drwGetSurfaceInfo(surface->ParentID, &parentinfo))) {
+            if ((surface->ParentID) and (!drwGetSurfaceInfo(surface->ParentID, &parentinfo))) {
                p_width  = parentinfo->Width;
                p_height = parentinfo->Height;
                p_absx   = parentinfo->AbsX;
@@ -967,7 +929,7 @@ static ERROR MENU_Show(objMenu *Self, APTR Void)
             }
             else p_absx = p_absy = p_width = p_height = 0;
 
-            if ((p_width) AND (p_height)) {
+            if ((p_width) and (p_height)) {
                // Determine the position at which the pop-up menu will open at, relative to the parent surface.  Notice that we don't want the menu to appear off the edge of the parent if we can help it.
 
                if (Self->prvReverseX) {
@@ -1030,7 +992,7 @@ static ERROR MENU_Show(objMenu *Self, APTR Void)
 
             acMoveToPoint(surface, x, y, 0, MTF_X|MTF_Y);
          }
-         else PostError(ERR_Failed);
+         else log.warning(ERR_Failed);
       }
 
       acMoveToFront(surface);
@@ -1038,11 +1000,9 @@ static ERROR MENU_Show(objMenu *Self, APTR Void)
       acShow(surface);
 
       ReleaseObject(surface);
-
-      LogReturn();
       return ERR_Okay;
    }
-   else return PostError(ERR_AccessObject);
+   else return log.warning(ERR_AccessObject);
 }
 
 /*****************************************************************************
@@ -1066,26 +1026,26 @@ Okay
 
 static ERROR MENU_Switch(objMenu *Self, struct mnSwitch *Args)
 {
-   if ((Self->prvFade) AND (Self->FadeDelay > 0)) {
+   parasol::Log log;
+
+   if ((Self->prvFade) and (Self->FadeDelay > 0)) {
       // Do not interfere with fading menus
-      MSG("Menu is currently fading.");
+      log.trace("Menu is currently fading.");
       return ERR_Okay;
    }
 
    LARGE timelapse;
-   if ((Args) AND (Args->TimeLapse >= 0)) timelapse = Args->TimeLapse * 1000LL;
+   if ((Args) and (Args->TimeLapse >= 0)) timelapse = Args->TimeLapse * 1000LL;
    else timelapse = 5000LL;
 
    LARGE time = PreciseTime();
    if (Self->TimeShow > Self->TimeHide) { // Hide the menu
-      FMSG("~","Hiding the menu if time-lapse is met: " PF64() " / " PF64(), time - Self->TimeShow, timelapse);
+      log.traceBranch("Hiding the menu if time-lapse is met: " PF64() " / " PF64(), time - Self->TimeShow, timelapse);
       if (time - Self->TimeShow >= timelapse) acHide(Self);
-      LOGRETURN();
    }
    else {
-      FMSG("~","Showing the menu if time-lapse is met: " PF64() " / " PF64(), time - Self->TimeHide, timelapse);
+      log.traceBranch("Showing the menu if time-lapse is met: " PF64() " / " PF64(), time - Self->TimeHide, timelapse);
       if (time - Self->TimeHide >= timelapse) acShow(Self);
-      LOGRETURN();
    }
 
    return ERR_Okay;
@@ -1095,10 +1055,10 @@ static ERROR MENU_Switch(objMenu *Self, struct mnSwitch *Args)
 
 static ERROR motion_timer(objMenu *Self, LARGE Elapsed, LARGE CurrentTime)
 {
-   FMSG("~","Motion timer activated.");
+   parasol::Log log(__FUNCTION__);
+   log.traceBranch("Motion timer activated.");
    acShow(Self);
    Self->MotionTimer = 0;
-   LOGRETURN();
    return ERR_Terminate;
 }
 
@@ -1107,10 +1067,10 @@ static ERROR motion_timer(objMenu *Self, LARGE Elapsed, LARGE CurrentTime)
 static ERROR item_motion_timer(objMenu *Self, LARGE Elapsed, LARGE CurrentTime)
 {
    if (Self->HighlightItem) {
-      if ((Self->HighlightItem->Flags & MIF_EXTENSION) AND (!(Self->HighlightItem->Flags & MIF_DISABLED))) {
-         FMSG("~","Auto-exec activated.");
+      if ((Self->HighlightItem->Flags & MIF_EXTENSION) and (!(Self->HighlightItem->Flags & MIF_DISABLED))) {
+         parasol::Log log(__FUNCTION__);
+         log.traceBranch("Auto-exec activated.");
          acActivate(Self->HighlightItem);
-         LOGRETURN();
       }
    }
 
@@ -1128,11 +1088,11 @@ static ERROR fade_timer(objMenu *Self, LARGE Elapsed, LARGE CurrentTime)
    if (opacity >= 100) opacity = 100;
 
    UBYTE unsubscribe = TRUE;
-   if ((Self->prvFade IS MENUFADE_FADE_IN) AND (Self->FadeDelay > 0)) {
+   if ((Self->prvFade IS MENUFADE_FADE_IN) and (Self->FadeDelay > 0)) {
       struct drwSetOpacity setopacity;
       setopacity.Value      = opacity;
       setopacity.Adjustment = 0;
-      if ((ActionMsg(MT_DrwSetOpacity, Self->MenuSurfaceID, &setopacity) != ERR_Okay) OR (opacity >= 100)) {
+      if ((ActionMsg(MT_DrwSetOpacity, Self->MenuSurfaceID, &setopacity) != ERR_Okay) or (opacity >= 100)) {
          Self->prvFade = 0;
       }
       else unsubscribe = FALSE;
@@ -1142,7 +1102,7 @@ static ERROR fade_timer(objMenu *Self, LARGE Elapsed, LARGE CurrentTime)
          struct drwSetOpacity setopacity;
          setopacity.Value      = 100.0 - opacity;
          setopacity.Adjustment = 0;
-         if ((ActionMsg(MT_DrwSetOpacity, Self->MenuSurfaceID, &setopacity) != ERR_Okay) OR (opacity < 1)) {
+         if ((ActionMsg(MT_DrwSetOpacity, Self->MenuSurfaceID, &setopacity) != ERR_Okay) or (opacity < 1)) {
             Self->prvFade = 0;
             if (Self->MenuSurfaceID) acHideID(Self->MenuSurfaceID);
          }
@@ -1188,7 +1148,7 @@ image that is in a recognised picture format (PNG is strongly recommended).
 
 *****************************************************************************/
 
-static ERROR SET_Checkmark(objMenu *Self, STRING Value)
+static ERROR SET_Checkmark(objMenu *Self, CSTRING Value)
 {
    if (Self->Checkmark) { acFree(Self->Checkmark); Self->Checkmark = NULL; }
 
@@ -1215,7 +1175,7 @@ static ERROR SET_Config(objMenu *Self, CSTRING Value)
 {
    if (Self->Config) { FreeResource(Self->Config); Self->Config = NULL; }
 
-   if ((Value) AND (*Value)) {
+   if ((Value) and (*Value)) {
       Self->Config = StrClone(Value);
       if (!Self->Config) return ERR_AllocMemory;
    }
@@ -1413,7 +1373,7 @@ static ERROR SET_Path(objMenu *Self, CSTRING Value)
 {
    if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
 
-   if ((Value) AND (*Value)) {
+   if ((Value) and (*Value)) {
       Self->Path = StrClone(Value);
       if (!Self->Path) return ERR_AllocMemory;
    }
@@ -1574,7 +1534,7 @@ static ERROR GET_Width(objMenu *Self, LONG *Value)
 {
    if (Self->FixedWidth) *Value = Self->FixedWidth;
    else {
-      if ((Self->Head.Flags & NF_INITIALISED) AND (!Self->Width)) {
+      if ((Self->Head.Flags & NF_INITIALISED) and (!Self->Width)) {
          calc_menu_size(Self);
       }
       *Value = Self->Width;
@@ -1596,6 +1556,8 @@ static ERROR SET_Width(objMenu *Self, LONG Value)
 
 static void key_event(objMenu *Self, evKey *Event, LONG Size)
 {
+   parasol::Log log(__FUNCTION__);
+
    if (Self->Visible) {
       if (Self->CurrentMenu) {
          key_event(Self->CurrentMenu, Event, Size);
@@ -1604,21 +1566,21 @@ static void key_event(objMenu *Self, evKey *Event, LONG Size)
 
       if (!(Event->Qualifiers & KQ_PRESSED)) return;
 
-      MSG("Keypress detected.  Highlight: %p", Self->HighlightItem);
+      log.trace("Keypress detected.  Highlight: %p", Self->HighlightItem);
 
       objMenuItem *item;
       if (Event->Code IS K_DOWN) {
          if ((item = Self->HighlightItem)) item = item->Next;
          else item = Self->Items;
 
-         while ((item) AND (item->Flags & MIF_BREAK)) item = item->Next;
+         while ((item) and (item->Flags & MIF_BREAK)) item = item->Next;
 
          if (item) highlight_item(Self, item);
       }
       else if (Event->Code IS K_UP) {
          if ((item = Self->HighlightItem)) item = item->Prev;
          else item = Self->Items;
-         while ((item) AND (item->Flags & MIF_BREAK)) item = item->Prev;
+         while ((item) and (item->Flags & MIF_BREAK)) item = item->Prev;
          if (item) highlight_item(Self, item);
       }
       else if (Event->Code IS K_LEFT) {
@@ -1637,7 +1599,7 @@ static void key_event(objMenu *Self, evKey *Event, LONG Size)
       }
       else if (Event->Code IS K_RIGHT) {
          if (Self->HighlightItem) {
-            if ((Self->HighlightItem->Flags & MIF_EXTENSION) AND (!(Self->HighlightItem->Flags & MIF_DISABLED))) {
+            if ((Self->HighlightItem->Flags & MIF_EXTENSION) and (!(Self->HighlightItem->Flags & MIF_DISABLED))) {
                if (Self->HighlightItem->SubMenu) {
                   Self->HighlightItem->SubMenu->HighlightItem = NULL;
                }
@@ -1652,14 +1614,14 @@ static void key_event(objMenu *Self, evKey *Event, LONG Size)
          }
          else {
             item = Self->Items;
-            while ((item) AND (item->Flags & MIF_BREAK)) item = item->Next;
+            while ((item) and (item->Flags & MIF_BREAK)) item = item->Next;
             if (item) highlight_item(Self, item);
          }
       }
       else if (Event->Code IS K_ESCAPE) {
          if (Self->RootMenu) acHide(Self->RootMenu);
       }
-      else if ((Event->Code IS K_ENTER) OR (Event->Code IS K_SPACE)) {
+      else if ((Event->Code IS K_ENTER) or (Event->Code IS K_SPACE)) {
          if (Self->HighlightItem) {
             if (Self->HighlightItem->SubMenu) {
                Self->HighlightItem->SubMenu->HighlightItem = NULL;
@@ -1729,7 +1691,7 @@ static UBYTE scan_keys(objMenu *Self, LONG Flags, LONG Value)
 
 //****************************************************************************
 
-#include "functions.c"
+#include "functions.cpp"
 
 #include "menu_def.c"
 
@@ -1739,7 +1701,7 @@ static const struct FieldArray clMenuFields[] = {
    { "FadeDelay",       FDF_DOUBLE|FDF_RW,    0, NULL, NULL },
    { "Items",           FDF_POINTER|FDF_R,    0, NULL, NULL },
    { "Font",            FDF_INTEGRAL|FDF_R,   0, NULL, NULL },
-   { "Style",           FDF_STRING|FDF_RI,    0, NULL, SET_Style },
+   { "Style",           FDF_STRING|FDF_RI,    0, NULL, (APTR)SET_Style },
    { "Target",          FDF_OBJECTID|FDF_RI,  0, NULL, NULL },
    { "Parent",          FDF_OBJECTID|FDF_RI,  0, NULL, NULL },
    { "Relative",        FDF_OBJECTID|FDF_RW,  0, NULL, NULL },
@@ -1749,7 +1711,7 @@ static const struct FieldArray clMenuFields[] = {
    { "Flags",           FDF_LONGFLAGS|FDF_RW, (MAXINT)&clMenuFlags, NULL, NULL },
    { "VSpacing",        FDF_LONG|FDF_RI,      0, NULL, NULL },
    { "BreakHeight",     FDF_LONG|FDF_R,       0, NULL, NULL },
-   { "Width",           FDF_LONG|FDF_RW,      0, GET_Width, SET_Width },
+   { "Width",           FDF_LONG|FDF_RW,      0, (APTR)GET_Width, (APTR)SET_Width },
    { "LeftMargin",      FDF_LONG|FDF_RW,      0, NULL, NULL },
    { "RightMargin",     FDF_LONG|FDF_RW,      0, NULL, NULL },
    { "TopMargin",       FDF_LONG|FDF_RW,      0, NULL, NULL },
@@ -1770,18 +1732,40 @@ static const struct FieldArray clMenuFields[] = {
    { "ExtensionGap",    FDF_LONG|FDF_RI,      0, NULL, NULL },
 
    // Virtual fields
-   { "Checkmark",       FDF_STRING|FDF_W,    0, NULL, SET_Checkmark },
-   { "IconFilter",      FDF_STRING|FDF_RW,   0, GET_IconFilter, SET_IconFilter },
-   { "ItemFeedback",    FDF_FUNCTIONPTR|FDF_RW, 0, GET_ItemFeedback, SET_ItemFeedback },
-   { "Path",            FDF_STRING|FDF_RW,   0, GET_Path, SET_Path },
-   { "Node",            FDF_STRING|FDF_RW,   0, GET_Node, SET_Node },
-   { "Selection",       FDF_POINTER|FDF_R,   0, GET_Selection, NULL },
-   { "Config",          FDF_STRING|FDF_W,    0, NULL, SET_Config },
-   { "X",               FDF_LONG|FDF_RW,     0, NULL, SET_X },
-   { "Y",               FDF_LONG|FDF_RW,     0, NULL, SET_Y },
+   { "Checkmark",       FDF_STRING|FDF_W,    0, NULL, (APTR)SET_Checkmark },
+   { "IconFilter",      FDF_STRING|FDF_RW,   0, (APTR)GET_IconFilter, (APTR)SET_IconFilter },
+   { "ItemFeedback",    FDF_FUNCTIONPTR|FDF_RW, 0, (APTR)GET_ItemFeedback, (APTR)SET_ItemFeedback },
+   { "Path",            FDF_STRING|FDF_RW,   0, (APTR)GET_Path, (APTR)SET_Path },
+   { "Node",            FDF_STRING|FDF_RW,   0, (APTR)GET_Node, (APTR)SET_Node },
+   { "Selection",       FDF_POINTER|FDF_R,   0, (APTR)GET_Selection, NULL },
+   { "Config",          FDF_STRING|FDF_W,    0, NULL, (APTR)SET_Config },
+   { "X",               FDF_LONG|FDF_RW,     0, NULL, (APTR)SET_X },
+   { "Y",               FDF_LONG|FDF_RW,     0, NULL, (APTR)SET_Y },
    END_FIELD
 };
 
 //****************************************************************************
 
-#include "menuitem.c"
+#include "menuitem.cpp"
+
+//****************************************************************************
+
+ERROR init_menu(void)
+{
+   return CreateObject(ID_METACLASS, 0, &clMenu,
+      FID_ClassVersion|TFLOAT, VER_MENU,
+      FID_Name|TSTR,      "Menu",
+      FID_Category|TLONG, CCF_GUI,
+      FID_Flags|TLONG,    CLF_PROMOTE_INTEGRAL,
+      FID_Actions|TPTR,   clMenuActions,
+      FID_Methods|TARRAY, clMenuMethods,
+      FID_Fields|TARRAY,  clMenuFields,
+      FID_Size|TLONG,     sizeof(objMenu),
+      FID_Path|TSTR,      MOD_PATH,
+      TAGEND);
+}
+
+void free_menu(void)
+{
+   if (clMenu) { acFree(clMenu); clMenu = NULL; }
+}

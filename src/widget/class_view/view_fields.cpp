@@ -219,29 +219,30 @@ question.  Alternatively, use the WIDTH_RESET flag to always reset column sizes.
 
 static ERROR SET_Columns(objView *Self, CSTRING Value)
 {
-   struct view_col col, *newcol, *column, *prevcol, *scan;
+   parasol::Log log;
+   view_col col, *newcol, *column, *prevcol, *scan;
    CSTRING str;
    CSTRING translate;
-   UBYTE arg[20], buffer[120];
-   LONG i, index, colindex;
+   char arg[20], buffer[120];
+   LONG i;
    BYTE reset;
 
-   LogBranch("%s", Value);
+   log.branch("%s", Value);
 
    // Mark all existing columns for deletion
 
-   for (column=Self->Columns; column; column=column->Next) column->Flags |= CF_DELETE;
+   for (auto column=Self->Columns; column; column=column->Next) column->Flags |= CF_DELETE;
 
-   index = 0;
+   LONG index = 0;
    if (!(str = Value)) str = "";
    while (*str) {
       ClearMemory(&col, sizeof(col));
 
-      while ((*str) AND (*str <= 0x20)) str++; // Skip whitespace
+      while ((*str) and (*str <= 0x20)) str++; // Skip whitespace
 
       // Extract the name
 
-      for (i=0; (*str) AND (*str != '(') AND (*str != ';') AND (i < sizeof(col.Name)-1); i++) {
+      for (i=0; (*str) and (*str != '(') and (*str != ';') and ((size_t)i < sizeof(col.Name)-1); i++) {
          col.Name[i] = *str;
          str++;
       }
@@ -254,10 +255,10 @@ static ERROR SET_Columns(objView *Self, CSTRING Value)
       if (*str IS '(') {
          str++;
 
-         while ((*str) AND (*str != ')')) {
-            while ((*str) AND (*str <= 0x20)) str++; // Skip whitespace
+         while ((*str) and (*str != ')')) {
+            while ((*str) and (*str <= 0x20)) str++; // Skip whitespace
 
-            for (i=0; (*str) AND (i < sizeof(arg)-1) AND (*str != ':') AND (*str != ',') AND (*str != ')'); i++) arg[i] = *str++;
+            for (i=0; (*str) and ((size_t)i < sizeof(arg)-1) and (*str != ':') and (*str != ',') and (*str != ')'); i++) arg[i] = *str++;
             arg[i] = 0;
 
             buffer[0] = 0;
@@ -266,7 +267,7 @@ static ERROR SET_Columns(objView *Self, CSTRING Value)
 
                if (*str IS '"') {
                   str++;
-                  for (i=0; (*str) AND (*str != '"') AND (i < sizeof(buffer)-1); i++) {
+                  for (i=0; (*str) and (*str != '"') and ((size_t)i < sizeof(buffer)-1); i++) {
                      buffer[i] = *str;
                      str++;
                   }
@@ -276,7 +277,7 @@ static ERROR SET_Columns(objView *Self, CSTRING Value)
                }
                else if (*str IS '\'') {
                   str++;
-                  for (i=0; (*str) AND (*str != '\'') AND (i < sizeof(buffer)-1); i++) {
+                  for (i=0; (*str) and (*str != '\'') and ((size_t)i < sizeof(buffer)-1); i++) {
                      buffer[i] = *str;
                      str++;
                   }
@@ -285,7 +286,7 @@ static ERROR SET_Columns(objView *Self, CSTRING Value)
                   if (*str IS '\'') str++;
                }
                else {
-                  for (i=0; (*str) AND (*str != ')') AND (*str != ',') AND (i < sizeof(buffer)-1); i++) {
+                  for (i=0; (*str) and (*str != ')') and (*str != ',') and ((size_t)i < sizeof(buffer)-1); i++) {
                      buffer[i] = *str;
                      str++;
                   }
@@ -293,18 +294,18 @@ static ERROR SET_Columns(objView *Self, CSTRING Value)
                }
             }
 
-            while ((*str) AND (*str != ',') AND (*str != ';') AND (*str != ')')) str++;
-            if ((*str IS ',') OR (*str IS ';')) str++;
+            while ((*str) and (*str != ',') and (*str != ';') and (*str != ')')) str++;
+            if ((*str IS ',') or (*str IS ';')) str++;
 
             if (arg[0]) {
                if (!StrMatch("text", arg)) {
                   // Translate the column name
-                  if ((translate = StrTranslateText(buffer)) AND ((APTR)translate != (APTR)buffer)) {
+                  if ((translate = StrTranslateText(buffer)) and ((APTR)translate != (APTR)buffer)) {
                      StrCopy(translate, col.Text, sizeof(col.Text));
                   }
                   else StrCopy(buffer, col.Text, sizeof(col.Text));
                }
-               else if ((!StrMatch("len", arg)) OR (!StrMatch("width", arg))) {
+               else if ((!StrMatch("len", arg)) or (!StrMatch("width", arg))) {
                   col.Width = StrToInt(buffer);
                }
                else if (!StrMatch("reset", arg)) {
@@ -319,7 +320,7 @@ static ERROR SET_Columns(objView *Self, CSTRING Value)
                   else if (!StrMatch("seconds", buffer))  col.Type = CT_SECONDS;
                   else if (!StrMatch("checkbox", buffer)) col.Type = CT_CHECKBOX;
                }
-               else if ((!StrMatch("colour", arg)) OR (!StrMatch("col", arg))) {
+               else if ((!StrMatch("colour", arg)) or (!StrMatch("col", arg))) {
                   col.Flags |= CF_COLOUR;
                   StrToColour(buffer, &col.Colour);
                }
@@ -329,17 +330,17 @@ static ERROR SET_Columns(objView *Self, CSTRING Value)
                else if (!StrMatch("rightalign", arg)) {
                   col.Flags |= CF_RIGHTALIGN;
                }
-               else LogErrorMsg("Unsupported column argument '%s'", arg);
+               else log.warning("Unsupported column argument '%s'", arg);
             }
          }
       }
 
       // Scan up to the next entry
 
-      while ((*str) AND (*str <= 0x20)) str++; // Skip whitespace
-      while ((*str) AND (*str != ';')) str++; // Look for a semi-colon
+      while ((*str) and (*str <= 0x20)) str++; // Skip whitespace
+      while ((*str) and (*str != ';')) str++; // Look for a semi-colon
       if (*str IS ';') str++;
-      while ((*str) AND (*str <= 0x20)) str++; // Skip whitespace
+      while ((*str) and (*str <= 0x20)) str++; // Skip whitespace
 
       if (!col.Text[0]) StrCopy(col.Name, col.Text, sizeof(col.Text));
       if (!col.Width) col.Width = 100;
@@ -349,12 +350,13 @@ static ERROR SET_Columns(objView *Self, CSTRING Value)
       // Check if the column already exists in our array.  If it does, update its details.  Otherwise we will create a new column and add it to the column table.
 
       prevcol = NULL;
-      for (column=Self->Columns, colindex=0; column; column=column->Next, colindex++) {
+      LONG colindex = 0;
+      for (auto column=Self->Columns; column; column=column->Next, colindex++) {
          if (!StrMatch(column->Name, col.Name)) {
-            MSG("Updating column '%s'", col.Name);
+            log.trace("Updating column '%s'", col.Name);
 
             StrCopy(col.Text, column->Text, sizeof(column->Text));
-            if ((reset) OR (!(Self->Head.Flags & NF_INITIALISED))) {
+            if ((reset) or (!(Self->Head.Flags & NF_INITIALISED))) {
                column->Width = col.Width;  // Allow the user to retain his defined width unless the reset option has been forced
             }
             if (col.Type)  column->Type  = col.Type;
@@ -372,7 +374,7 @@ static ERROR SET_Columns(objView *Self, CSTRING Value)
                // Now re-insert the column at the required position
 
                prevcol = NULL;
-               for (colindex=0, scan=Self->Columns; (scan) AND (colindex < index); scan=scan->Next, colindex++) prevcol = scan;
+               for (colindex=0, scan=Self->Columns; (scan) and (colindex < index); scan=scan->Next, colindex++) prevcol = scan;
                column->Next = scan;
                if (prevcol) prevcol->Next = column;
                else Self->Columns = column;
@@ -386,8 +388,8 @@ static ERROR SET_Columns(objView *Self, CSTRING Value)
       // Add the column if an existing match wasn't found
 
       if (!column) {
-         MSG("Adding new column '%s', type %d", col.Name, col.Type);
-         if (AllocMemory(sizeof(col), MEM_DATA|MEM_NO_CLEAR, &newcol, NULL) IS ERR_Okay) {
+         log.trace("Adding new column '%s', type %d", col.Name, col.Type);
+         if (!AllocMemory(sizeof(col), MEM_DATA|MEM_NO_CLEAR, &newcol, NULL)) {
             CopyMemory(&col, newcol, sizeof(col));
             if (!Self->Columns) Self->Columns = newcol;
             else {
@@ -402,19 +404,21 @@ static ERROR SET_Columns(objView *Self, CSTRING Value)
 
    // Remove columns marked for deletion
 
-   scan = NULL;
-   prevcol = NULL;
-   column = Self->Columns;
-   while (column) {
-      scan = column;
-      column = column->Next;
-      if (scan->Flags & CF_DELETE) {
-         MSG("Deleting column '%s'", scan->Name);
-         if (scan IS Self->Columns) Self->Columns = scan->Next;
-         else if (prevcol) prevcol->Next = scan->Next;
-         FreeResource(scan);
+   {
+      scan = NULL;
+      prevcol = NULL;
+      auto column = Self->Columns;
+      while (column) {
+         scan = column;
+         column = column->Next;
+         if (scan->Flags & CF_DELETE) {
+            log.trace("Deleting column '%s'", scan->Name);
+            if (scan IS Self->Columns) Self->Columns = scan->Next;
+            else if (prevcol) prevcol->Next = scan->Next;
+            FreeResource(scan);
+         }
+         else prevcol = scan;
       }
-      else prevcol = scan;
    }
 
    // Clear sort settings
@@ -428,12 +432,11 @@ static ERROR SET_Columns(objView *Self, CSTRING Value)
 
    // Redraw the view if we are in column mode
 
-   if ((Self->Style IS VIEW_COLUMN) OR (Self->Style IS VIEW_COLUMN_TREE)) {
+   if ((Self->Style IS VIEW_COLUMN) or (Self->Style IS VIEW_COLUMN_TREE)) {
       arrange_items(Self);
       acDrawID(Self->Layout->SurfaceID);
    }
 
-   LogReturn();
    return ERR_Okay;
 }
 
@@ -464,7 +467,7 @@ static ERROR GET_DateFormat(objView *Self, STRING *Value)
 
 static ERROR SET_DateFormat(objView *Self, CSTRING Value)
 {
-   if ((Value) AND (Value[0])) StrCopy(Value, Self->DateFormat, sizeof(Self->DateFormat));
+   if ((Value) and (Value[0])) StrCopy(Value, Self->DateFormat, sizeof(Self->DateFormat));
    return ERR_Okay;
 }
 
@@ -486,15 +489,15 @@ so.
 
 static ERROR SET_Document(objView *Self, objDocument *Value)
 {
-   UBYTE buffer[32];
+   parasol::Log log;
+   char buffer[32];
 
    if (Value) {
-      if (Value->Head.ClassID != ID_DOCUMENT) return PostError(ERR_InvalidObject);
-      if ((Value->Head.Flags & NF_INITIALISED)) {
-         LogF("@","Warning: Document should not be pre-initialised.");
-      }
+      if (Value->Head.ClassID != ID_DOCUMENT) return log.warning(ERR_InvalidObject);
+      if ((Value->Head.Flags & NF_INITIALISED)) log.warning("Warning: Document should not be pre-initialised.");
+
       if (Value->SurfaceID != Self->Layout->SurfaceID) {
-         LogErrorMsg("Document surface ID %d != %d", Value->SurfaceID, Self->Layout->SurfaceID);
+         log.warning("Document surface ID %d != %d", Value->SurfaceID, Self->Layout->SurfaceID);
          return ERR_Failed;
       }
 
@@ -565,12 +568,10 @@ array by setting the DragItemCount field with a zero value.
 
 static ERROR SET_DragItemCount(objView *Self, LONG Value)
 {
-   if (Value IS 0) {
-      if (Self->DragItems) {
-         FreeResource(Self->DragItems);
-         Self->DragItems = NULL;
-         Self->DragItemCount = 0;
-      }
+   if ((Value IS 0) and (Self->DragItems)) {
+      FreeResource(Self->DragItems);
+      Self->DragItems = NULL;
+      Self->DragItemCount = 0;
    }
 
    return ERR_Okay;
@@ -634,9 +635,7 @@ static ERROR SET_Flags(objView *Self, LONG Value)
          else Self->Flags &= ~VWF_DRAG_DROP;
       }
    }
-   else {
-      Self->Flags = Value;
-   }
+   else Self->Flags = Value;
 
    return ERR_Okay;
 }
@@ -679,9 +678,7 @@ static ERROR SET_GroupFace(objView *Self, CSTRING Value)
 {
    if (Self->GroupFace) FreeResource(Self->GroupFace);
 
-   if ((Self->GroupFace = StrClone(Value))) {
-      return ERR_Okay;
-   }
+   if ((Self->GroupFace = StrClone(Value))) return ERR_Okay;
    else return ERR_AllocMemory;
 }
 
@@ -712,10 +709,8 @@ scroll the text display along the horizontal axis.
 static ERROR SET_HScroll(objView *Self, OBJECTPTR Value)
 {
    if (Value) {
-      if (Value->ClassID != ID_SCROLL) {
-         return PostError(ERR_InvalidObject);
-      }
-
+      parasol::Log log;
+      if (Value->ClassID != ID_SCROLL) return log.warning(ERR_InvalidObject);
       SetLong(Value, FID_Object, Self->Head.UniqueID);
    }
 
@@ -803,7 +798,7 @@ static ERROR SET_ItemNames(objView *Self, CSTRING Value)
 {
    if (Self->ItemNames) { FreeResource(Self->ItemNames); Self->ItemNames = NULL; }
 
-   if ((!Value) OR (!*Value)) Value = "item";
+   if ((!Value) or (!*Value)) Value = "item";
 
    if ((Self->ItemNames = StrClone(Value))) return ERR_Okay;
    else return ERR_AllocMemory;
@@ -819,9 +814,7 @@ static ERROR SET_LayoutStyle(objView *Self, DOCSTYLE *Value)
    if (Self->Head.Flags & NF_INITIALISED) {
       docApplyFontStyle(Value->Document, Value, Self->Font);
    }
-   else {
-      docApplyFontStyle(Value->Document, Value, Self->Font);
-   }
+   else docApplyFontStyle(Value->Document, Value, Self->Font);
 
    return ERR_Okay;
 }
@@ -893,12 +886,9 @@ static ERROR GET_SelectedTags(objView *Self, LONG **Array, LONG *Elements)
 {
    *Array = NULL;
 
-   OBJECTPTR context = SetContext(Self);
-
-      if (Self->SelectedTags) { FreeResource(Self->SelectedTags); Self->SelectedTags = NULL; }
-      ERROR error = get_selected_tags(Self, &Self->SelectedTags, Elements);
-
-   SetContext(context);
+   parasol::SwitchContext ctx(Self);
+   if (Self->SelectedTags) { FreeResource(Self->SelectedTags); Self->SelectedTags = NULL; }
+   ERROR error = get_selected_tags(Self, &Self->SelectedTags, Elements);
 
    if (!error) {
       *Array = Self->SelectedTags;
@@ -920,11 +910,11 @@ item in the default column of the view.
 
 *****************************************************************************/
 
-static ERROR GET_Selection(objView *Self, STRING *Value)
+static ERROR GET_Selection(objView *Self, CSTRING *Value)
 {
    if (Self->SelectedTag != -1) {
       if (Self->XML->Tags) {
-         *Value = get_nodestring(Self, (struct view_node *)Self->XML->Tags[Self->SelectedTag]->Private);
+         *Value = get_nodestring(Self, (view_node *)Self->XML->Tags[Self->SelectedTag]->Private);
          return ERR_Okay;
       }
    }
@@ -935,23 +925,19 @@ static ERROR GET_Selection(objView *Self, STRING *Value)
 
 static ERROR SET_Selection(objView *Self, CSTRING Value)
 {
-   LogBranch("Selection = %s", Value);
+   parasol::Log log;
+   log.branch("Selection = %s", Value);
 
-   LONG index;
-   for (index=0; Self->XML->Tags[index]; index++) {
-      struct view_node *node = Self->XML->Tags[index]->Private;
-      STRING str = get_nodestring(Self, node);
-      if (str) {
-         if (!StrMatch(Value, str)) {
-            select_item(Self, Self->XML->Tags[index], SLF_MANUAL, TRUE, FALSE);
-            LogReturn();
-            return ERR_Okay;
-         }
+   for (LONG index=0; Self->XML->Tags[index]; index++) {
+      auto node = (view_node *)Self->XML->Tags[index]->Private;
+      auto str = get_nodestring(Self, node);
+      if ((str) and (!StrMatch(Value, str))) {
+         select_item(Self, Self->XML->Tags[index], SLF_MANUAL, TRUE, FALSE);
+         return ERR_Okay;
       }
    }
 
-   LogErrorMsg("Unable to find item \"%s\"", Value);
-   LogReturn();
+   log.warning("Unable to find item \"%s\"", Value);
    return ERR_Search;
 }
 
@@ -976,8 +962,7 @@ static ERROR GET_SelectionIndex(objView *Self, LONG *Value)
 {
    if (Self->SelectedTag != -1) {
       LONG index = 0;
-      struct XMLTag *tag;
-      for (tag=Self->XML->Tags[0]; (tag) AND (tag->Index != Self->SelectedTag); tag=tag->Next) index++;
+      for (auto tag=Self->XML->Tags[0]; (tag) and (tag->Index != Self->SelectedTag); tag=tag->Next) index++;
       *Value = index;
       return ERR_Okay;
    }
@@ -988,36 +973,31 @@ static ERROR GET_SelectionIndex(objView *Self, LONG *Value)
 
 static ERROR SET_SelectionIndex(objView *Self, LONG Value)
 {
-   LONG i;
+   parasol::Log log;
 
-   if (Value IS -1) {
-      // Deselect all items
-      LogMsg("SelectionIndex = %d (deselect-all)", Value);
+   if (Value IS -1) { // Deselect all items
+      log.msg("SelectionIndex = %d (deselect-all)", Value);
       select_item(Self, 0, SLF_MANUAL, FALSE, FALSE);
       return ERR_Okay;
    }
    else if (Self->Head.Flags & NF_INITIALISED) {
-      LogBranch("SelectionIndex = %d", Value);
+      log.branch("SelectionIndex = %d", Value);
 
-         LONG index = Value;
-         LONG count = 0;
-
-         for (i=0; Self->XML->Tags[i]; i++) {
-            if (((struct view_node *)Self->XML->Tags[i]->Private)->Flags & NODE_ITEM) {
-               if (!index) {
-                  select_item(Self, Self->XML->Tags[i], SLF_MANUAL, TRUE, FALSE);
-                  acActivate(Self);
-                  LogReturn();
-                  return ERR_Okay;
-               }
-               index--;
-               count++;
+      LONG index = Value;
+      LONG count = 0;
+      for (LONG i=0; Self->XML->Tags[i]; i++) {
+         if (((view_node *)Self->XML->Tags[i]->Private)->Flags & NODE_ITEM) {
+            if (!index) {
+               select_item(Self, Self->XML->Tags[i], SLF_MANUAL, TRUE, FALSE);
+               acActivate(Self);
+               return ERR_Okay;
             }
+            index--;
+            count++;
          }
+      }
 
-         LogErrorMsg("Index %d out of range (max %d).", Value, count);
-
-      LogReturn();
+      log.warning("Index %d out of range (max %d).", Value, count);
       return ERR_OutOfRange;
    }
    else {
@@ -1042,7 +1022,8 @@ static ERROR SET_Style(objView *Self, LONG Value)
       Self->Style = Value;
 
       if (Self->Head.Flags & NF_INITIALISED) {
-         LogBranch("The view style has changed.");
+         parasol::Log log;
+         log.branch("The view style has changed.");
 
          if (Self->Style IS VIEW_GROUP_TREE) {
             // Regenerate the group bitmap
@@ -1063,8 +1044,6 @@ static ERROR SET_Style(objView *Self, LONG Value)
             Self->RedrawDue = TRUE;
             DelayMsg(AC_Draw, Self->Layout->SurfaceID, NULL);
          }
-
-         LogReturn();
       }
    }
 
@@ -1106,7 +1085,7 @@ static ERROR SET_TextAttrib(objView *Self, CSTRING Value)
 {
    if (Self->TextAttrib) { FreeResource(Self->TextAttrib); Self->TextAttrib = NULL; }
 
-   if ((!Value) OR (!*Value)) return ERR_Okay;
+   if ((!Value) or (!*Value)) return ERR_Okay;
 
    if ((Self->TextAttrib = StrClone(Value))) return ERR_Okay;
    else return ERR_AllocMemory;
@@ -1125,14 +1104,12 @@ static ERROR GET_TotalSelected(objView *Self, LONG *Value)
 {
    *Value = 0;
 
-   LONG index;
    LONG count = 0;
-   for (index=0; Self->XML->Tags[index]; index++) {
-      if (((struct view_node *)Self->XML->Tags[index]->Private)->Flags & NODE_SELECTED) count++;
+   for (LONG index=0; Self->XML->Tags[index]; index++) {
+      if (((view_node *)Self->XML->Tags[index]->Private)->Flags & NODE_SELECTED) count++;
    }
 
    *Value = count;
-   FMSG("Get:TotalSelected","%d", count);
    return ERR_Okay;
 }
 
@@ -1172,7 +1149,8 @@ text display along the vertical axis.
 static ERROR SET_VScroll(objView *Self, OBJECTPTR Value)
 {
    if (Value) {
-      if (Value->ClassID != ID_SCROLL) return PostError(ERR_InvalidObject);
+      parasol::Log log;
+      if (Value->ClassID != ID_SCROLL) return log.warning(ERR_InvalidObject);
       SetLong(Value, FID_Object, Self->Head.UniqueID);
    }
 

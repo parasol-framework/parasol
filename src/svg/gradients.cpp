@@ -190,7 +190,7 @@ static ERROR xtag_radialgradient(objSVG *Self, XMLTag *Tag)
                LONG j;
                for (j=0; Tag->Attrib[a].Name[j] AND (Tag->Attrib[a].Name[j] != ':'); j++);
                if (Tag->Attrib[a].Name[j] IS ':') break;
-               LogErrorMsg("%s attribute '%s' unrecognised @ line %d", Tag->Attrib->Name, Tag->Attrib[a].Name, Tag->LineNo);
+               log.warning("%s attribute '%s' unrecognised @ line %d", Tag->Attrib->Name, Tag->Attrib[a].Name, Tag->LineNo);
                break;
             }
          }
@@ -336,7 +336,7 @@ static ERROR xtag_contourgradient(objSVG *Self, XMLTag *Tag)
                LONG j;
                for (j=0; Tag->Attrib[a].Name[j] AND (Tag->Attrib[a].Name[j] != ':'); j++);
                if (Tag->Attrib[a].Name[j] IS ':') break;
-               LogErrorMsg("%s attribute '%s' unrecognised @ line %d", Tag->Attrib->Name, Tag->Attrib[a].Name, Tag->LineNo);
+               log.warning("%s attribute '%s' unrecognised @ line %d", Tag->Attrib->Name, Tag->Attrib[a].Name, Tag->LineNo);
                break;
             }
          }

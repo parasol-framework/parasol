@@ -48,7 +48,7 @@ static ERROR INPUT_ActionNotify(objInput *Self, struct acActionNotify *Args)
       DelayMsg(AC_Draw, Self->RegionID, NULL);
    }
    else if (Args->ActionID IS AC_Free) {
-      if ((Self->prvFeedback.Type IS CALL_SCRIPT) AND (Self->prvFeedback.Script.Script->UniqueID IS Args->ObjectID)) {
+      if ((Self->prvFeedback.Type IS CALL_SCRIPT) and (Self->prvFeedback.Script.Script->UniqueID IS Args->ObjectID)) {
          Self->prvFeedback.Type = CALL_NONE;
       }
    }
@@ -133,11 +133,11 @@ static ERROR INPUT_Init(objInput *Self, APTR Void)
 {
    if (!Self->SurfaceID) { // Find our parent surface
       OBJECTID owner_id = GetOwner(Self);
-      while ((owner_id) AND (GetClassID(owner_id) != ID_SURFACE)) {
+      while ((owner_id) and (GetClassID(owner_id) != ID_SURFACE)) {
          owner_id = GetOwnerID(owner_id);
       }
       if (owner_id) Self->SurfaceID = owner_id;
-      else return PostError(ERR_UnsupportedOwner);
+      else return ERR_UnsupportedOwner;
    }
 
    objSurface *region;
@@ -157,10 +157,10 @@ static ERROR INPUT_Init(objInput *Self, APTR Void)
 
       ReleaseObject(region);
    }
-   else return PostError(ERR_AccessObject);
+   else return ERR_AccessObject;
 
-   SetFunctionPtr(Self->TextInput, FID_ValidateInput, &text_validation);
-   SetFunctionPtr(Self->TextInput, FID_Activated, &text_activated);
+   SetFunctionPtr(Self->TextInput, FID_ValidateInput, (APTR)&text_validation);
+   SetFunctionPtr(Self->TextInput, FID_Activated, (APTR)&text_activated);
 
    return ERR_Okay;
 }
@@ -330,7 +330,7 @@ height, use the FD_PERCENT flag when setting the field.
 
 *****************************************************************************/
 
-static ERROR GET_Height(objInput *Self, struct Variable *Value)
+static ERROR GET_Height(objInput *Self, Variable *Value)
 {
    OBJECTPTR surface;
 
@@ -346,9 +346,9 @@ static ERROR GET_Height(objInput *Self, struct Variable *Value)
    else return ERR_AccessObject;
 }
 
-static ERROR SET_Height(objInput *Self, struct Variable *Value)
+static ERROR SET_Height(objInput *Self, Variable *Value)
 {
-   if (((Value->Type & FD_DOUBLE) AND (!Value->Double)) OR ((Value->Type & FD_LARGE) AND (!Value->Large))) {
+   if (((Value->Type & FD_DOUBLE) and (!Value->Double)) or ((Value->Type & FD_LARGE) and (!Value->Large))) {
       return ERR_Okay;
    }
 
@@ -487,7 +487,7 @@ static ERROR SET_Region(objInput *Self, LONG Value)
    // NOTE: For backwards compatibility with the Surface class, the region can be set to a value of TRUE
    // to define the input as a simple surface region.
 
-   if ((Value IS FALSE) OR (Value IS TRUE)) {
+   if ((Value IS FALSE) or (Value IS TRUE)) {
       OBJECTPTR surface;
       if (!AccessObject(Self->RegionID, 4000, &surface)) {
          SetLong(surface, FID_Region, Value);
@@ -513,7 +513,7 @@ static ERROR GET_Right(objInput *Self, LONG *Value)
       *Value = info->X + info->Width;
       return ERR_Okay;
    }
-   else return PostError(ERR_GetSurfaceInfo);
+   else return ERR_GetSurfaceInfo;
 }
 
 /*****************************************************************************
@@ -593,7 +593,7 @@ width, use the FD_PERCENT flag when setting the field.
 
 *****************************************************************************/
 
-static ERROR GET_Width(objInput *Self, struct Variable *Value)
+static ERROR GET_Width(objInput *Self, Variable *Value)
 {
    OBJECTPTR surface;
    if (!AccessObject(Self->RegionID, 4000, &surface)) {
@@ -608,10 +608,10 @@ static ERROR GET_Width(objInput *Self, struct Variable *Value)
    else return ERR_AccessObject;
 }
 
-static ERROR SET_Width(objInput *Self, struct Variable *Value)
+static ERROR SET_Width(objInput *Self, Variable *Value)
 {
-   if (((Value->Type & FD_DOUBLE) AND (!Value->Double)) OR
-       ((Value->Type & FD_LARGE) AND (!Value->Large))) {
+   if (((Value->Type & FD_DOUBLE) and (!Value->Double)) or
+       ((Value->Type & FD_LARGE) and (!Value->Large))) {
       return ERR_Okay;
    }
 
@@ -635,7 +635,7 @@ interpreted as fixed.  Negative values are permitted.
 
 *****************************************************************************/
 
-static ERROR GET_X(objInput *Self, struct Variable *Value)
+static ERROR GET_X(objInput *Self, Variable *Value)
 {
    OBJECTPTR surface;
    if (!AccessObject(Self->RegionID, 4000, &surface)) {
@@ -650,7 +650,7 @@ static ERROR GET_X(objInput *Self, struct Variable *Value)
    else return ERR_AccessObject;
 }
 
-static ERROR SET_X(objInput *Self, struct Variable *Value)
+static ERROR SET_X(objInput *Self, Variable *Value)
 {
    OBJECTPTR surface;
    if (!AccessObject(Self->RegionID, 4000, &surface)) {
@@ -678,7 +678,7 @@ coordinate calculated from the formula `X = ContainerWidth - InputWidth - XOffse
 
 *****************************************************************************/
 
-static ERROR GET_XOffset(objInput *Self, struct Variable *Value)
+static ERROR GET_XOffset(objInput *Self, Variable *Value)
 {
    OBJECTPTR surface;
    if (!AccessObject(Self->RegionID, 4000, &surface)) {
@@ -693,7 +693,7 @@ static ERROR GET_XOffset(objInput *Self, struct Variable *Value)
    else return ERR_AccessObject;
 }
 
-static ERROR SET_XOffset(objInput *Self, struct Variable *Value)
+static ERROR SET_XOffset(objInput *Self, Variable *Value)
 {
    OBJECTPTR surface;
    if (!AccessObject(Self->RegionID, 4000, &surface)) {
@@ -715,7 +715,7 @@ fixed.  Negative values are permitted.
 
 *****************************************************************************/
 
-static ERROR GET_Y(objInput *Self, struct Variable *Value)
+static ERROR GET_Y(objInput *Self, Variable *Value)
 {
    OBJECTPTR surface;
    if (!AccessObject(Self->RegionID, 4000, &surface)) {
@@ -731,7 +731,7 @@ static ERROR GET_Y(objInput *Self, struct Variable *Value)
 
 }
 
-static ERROR SET_Y(objInput *Self, struct Variable *Value)
+static ERROR SET_Y(objInput *Self, Variable *Value)
 {
    OBJECTPTR surface;
    if (!AccessObject(Self->RegionID, 4000, &surface)) {
@@ -760,7 +760,7 @@ coordinate calculated from the formula `Y = ContainerHeight - InputHeight - YOff
 
 *****************************************************************************/
 
-static ERROR GET_YOffset(objInput *Self, struct Variable *Value)
+static ERROR GET_YOffset(objInput *Self, Variable *Value)
 {
    OBJECTPTR surface;
    if (!AccessObject(Self->RegionID, 4000, &surface)) {
@@ -775,7 +775,7 @@ static ERROR GET_YOffset(objInput *Self, struct Variable *Value)
    else return ERR_AccessObject;
 }
 
-static ERROR SET_YOffset(objInput *Self, struct Variable *Value)
+static ERROR SET_YOffset(objInput *Self, Variable *Value)
 {
    OBJECTPTR surface;
    if (!AccessObject(Self->RegionID, 4000, &surface)) {
@@ -791,14 +791,15 @@ static ERROR SET_YOffset(objInput *Self, struct Variable *Value)
 
 static void text_validation(objText *Text)
 {
-   objInput *Self = (objInput *)CurrentContext();
+   parasol::Log log(__FUNCTION__);
+   auto Self = (objInput *)CurrentContext();
 
    if (Self->prvActive) {
-      LogErrorMsg("Warning - recursion detected");
+      log.warning("Warning - recursion detected");
       return;
    }
 
-   LogBranch(NULL);
+   log.branch(NULL);
 
    Self->prvActive = TRUE;
 
@@ -806,7 +807,7 @@ static void text_validation(objText *Text)
 
    /* 2017-03: Not sure what this code is meant for
    if (Self->prvStringReset) {
-      LogMsg("String reset requested.");
+      log.msg("String reset requested.");
       Self->prvStringReset = FALSE;
       str = "";
    }
@@ -814,33 +815,31 @@ static void text_validation(objText *Text)
 
    ULONG hash = 0; // Do nothing if the string hasn't changed.
    if (!GetString(Text, FID_String, (STRING *)&str)) hash = StrHash(str, TRUE);
-   if (hash IS Self->prvLastStringHash) goto exit;
-   Self->prvLastStringHash = hash;
+   if (hash != Self->prvLastStringHash) {
+      Self->prvLastStringHash = hash;
 
-   if (Self->prvFeedback.Type IS CALL_STDC) {
-      void (*routine)(OBJECTPTR Context, objInput *, CSTRING, LONG) = Self->prvFeedback.StdC.Routine;
-      if (Self->prvFeedback.StdC.Context) {
-         OBJECTPTR context = SetContext(Self->prvFeedback.StdC.Context);
-         routine(Self->prvFeedback.StdC.Context, Self, str, FALSE);
-         SetContext(context);
+      if (Self->prvFeedback.Type IS CALL_STDC) {
+         auto routine = (void (*)(APTR, objInput *, CSTRING, LONG))Self->prvFeedback.StdC.Routine;
+         if (Self->prvFeedback.StdC.Context) {
+            parasol::SwitchContext ctx(Self->prvFeedback.StdC.Context);
+            routine(Self->prvFeedback.StdC.Context, Self, str, FALSE);
+         }
+         else routine(Self->prvFeedback.StdC.Context, Self, str, FALSE);
       }
-      else routine(Self->prvFeedback.StdC.Context, Self, str, FALSE);
-   }
-   else if (Self->prvFeedback.Type IS CALL_SCRIPT) {
-      OBJECTPTR script;
-      if ((script = Self->prvFeedback.Script.Script)) {
-         const struct ScriptArg args[] = {
-            { "Input", FD_OBJECTPTR, { .Address = Self } },
-            { "Value", FD_STRING,    { .Address = (STRING)str } },
-            { "Activated", FD_LONG,  { .Long = FALSE } }
-         };
-         scCallback(script, Self->prvFeedback.Script.ProcedureID, args, ARRAYSIZE(args));
+      else if (Self->prvFeedback.Type IS CALL_SCRIPT) {
+         OBJECTPTR script;
+         if ((script = Self->prvFeedback.Script.Script)) {
+            const ScriptArg args[] = {
+               { "Input", FD_OBJECTPTR, { .Address = Self } },
+               { "Value", FD_STRING,    { .Address = (STRING)str } },
+               { "Activated", FD_LONG,  { .Long = FALSE } }
+            };
+            scCallback(script, Self->prvFeedback.Script.ProcedureID, args, ARRAYSIZE(args));
+         }
       }
    }
 
-exit:
    Self->prvActive = FALSE;
-   LogReturn();
 }
 
 //**********************************************************************
@@ -848,14 +847,15 @@ exit:
 
 static void text_activated(objText *Text)
 {
-   objInput *Self = (objInput *)CurrentContext();
+   parasol::Log log(__FUNCTION__);
+   auto Self = (objInput *)CurrentContext();
 
    if (Self->prvActive) {
-      LogErrorMsg("Warning - recursion detected");
+      log.warning("Warning - recursion detected");
       return;
    }
 
-   LogBranch(NULL);
+   log.branch("");
 
    Self->prvActive = TRUE;
 
@@ -863,7 +863,7 @@ static void text_activated(objText *Text)
 
    /* 2017-03: Not sure what this code is meant for
    if (Self->prvStringReset) {
-      LogMsg("String reset requested.");
+      log.msg("String reset requested.");
       Self->prvStringReset = FALSE;
       str = "";
    }
@@ -873,66 +873,65 @@ static void text_activated(objText *Text)
    if (!GetString(Text, FID_String, (STRING *)&str)) {
       hash = StrHash(str, FALSE);
    }
-   if (hash IS Self->prvLastStringHash) goto exit;
-   Self->prvLastStringHash = hash;
 
-   if (Self->prvFeedback.Type IS CALL_STDC) {
-      void (*routine)(OBJECTPTR Context, objInput *, CSTRING, LONG) = Self->prvFeedback.StdC.Routine;
-      if (Self->prvFeedback.StdC.Context) {
-         OBJECTPTR context = SetContext(Self->prvFeedback.StdC.Context);
-         routine(Self->prvFeedback.StdC.Context, Self, str, TRUE);
-         SetContext(context);
+   if (hash != Self->prvLastStringHash) {
+      Self->prvLastStringHash = hash;
+
+      if (Self->prvFeedback.Type IS CALL_STDC) {
+         auto routine = (void (*)(APTR, objInput *, CSTRING, LONG))Self->prvFeedback.StdC.Routine;
+         if (Self->prvFeedback.StdC.Context) {
+            parasol::SwitchContext ctx(Self->prvFeedback.StdC.Context);
+            routine(Self->prvFeedback.StdC.Context, Self, str, TRUE);
+         }
+         else routine(Self->prvFeedback.StdC.Context, Self, str, TRUE);
       }
-      else routine(Self->prvFeedback.StdC.Context, Self, str, TRUE);
-   }
-   else if (Self->prvFeedback.Type IS CALL_SCRIPT) {
-      OBJECTPTR script;
-      if ((script = Self->prvFeedback.Script.Script)) {
-         const struct ScriptArg args[] = {
-            { "Input", FD_OBJECTPTR, { .Address = Self } },
-            { "Value", FD_STRING,    { .Address = (STRING)str } },
-            { "Activated", FD_LONG,  { .Long = TRUE } }
-         };
-         scCallback(script, Self->prvFeedback.Script.ProcedureID, args, ARRAYSIZE(args));
+      else if (Self->prvFeedback.Type IS CALL_SCRIPT) {
+         OBJECTPTR script;
+         if ((script = Self->prvFeedback.Script.Script)) {
+            const ScriptArg args[] = {
+               { "Input", FD_OBJECTPTR, { .Address = Self } },
+               { "Value", FD_STRING,    { .Address = (STRING)str } },
+               { "Activated", FD_LONG,  { .Long = TRUE } }
+            };
+            scCallback(script, Self->prvFeedback.Script.ProcedureID, args, ARRAYSIZE(args));
+         }
       }
    }
 
-exit:
    Self->prvActive = FALSE;
-   LogReturn();
 }
 
 //**********************************************************************
 
 #include "class_input_def.c"
 
-static const struct FieldArray clFields[] = {
+static const FieldArray clFields[] = {
    { "TextInput",    FDF_INTEGRAL|FDF_R,      ID_TEXT, NULL, NULL },
    { "LayoutSurface",FDF_VIRTUAL|FDF_OBJECTID|FDF_SYSTEM|FDF_R, ID_SURFACE, NULL, NULL }, // VIRTUAL: This is a synonym for the Region field
-   { "Region",       FDF_OBJECTID|FDF_RW,  ID_SURFACE, NULL, SET_Region },
+   { "Region",       FDF_OBJECTID|FDF_RW,  ID_SURFACE, NULL, (APTR)SET_Region },
    { "Surface",      FDF_OBJECTID|FDF_RW,  ID_SURFACE, NULL, NULL },
    { "Flags",        FDF_LONGFLAGS|FDF_RW, (MAXINT)&clInputFlags, NULL, NULL },
-   { "LabelWidth",   FDF_LONG|FDF_RW,      0, NULL, SET_LabelWidth },
+   { "LabelWidth",   FDF_LONG|FDF_RW,      0, NULL, (APTR)SET_LabelWidth },
    { "InputWidth",   FDF_LONG|FDF_RI,      0, NULL, NULL },
    // Virtual fields
-   { "Bottom",       FDF_VIRTUAL|FDF_LONG|FDF_R,         0, GET_Bottom,        NULL },
-   { "Disable",      FDF_VIRTUAL|FDF_LONG|FDF_RW,        0, GET_Disable,       SET_Disable },
-   { "Feedback",     FDF_VIRTUAL|FDF_FUNCTIONPTR|FDF_RW, 0, GET_Feedback,      SET_Feedback },
-   { "Label",        FDF_VIRTUAL|FDF_STRING|FDF_RW,      0, GET_Label,         SET_Label },
-   { "LayoutStyle",  FDF_VIRTUAL|FDF_POINTER|FDF_SYSTEM|FDF_W, 0, NULL,        SET_LayoutStyle },
-   { "PostLabel",    FDF_VIRTUAL|FDF_STRING|FDF_RW,      0, GET_PostLabel,     SET_PostLabel },
-   { "Right",        FDF_VIRTUAL|FDF_LONG|FDF_R,         0, GET_Right,         NULL },
-   { "String",       FDF_VIRTUAL|FDF_STRING|FDF_RW,      0, GET_String,        SET_String },
-   { "TabFocus",     FDF_VIRTUAL|FDF_OBJECTID|FDF_W,     ID_TABFOCUS, NULL,    SET_TabFocus },
-   { "Text",         FDF_SYNONYM|FDF_VIRTUAL|FDF_STRING|FDF_RW, 0, GET_String, SET_String },
-   { "Layout",       FDF_SYSTEM|FDF_VIRTUAL|FDF_OBJECT|FDF_R,   0, GET_Layout, NULL },  // Dummy field.  Prevents the Layout in the TextInput child from being used
+   { "Bottom",       FDF_VIRTUAL|FDF_LONG|FDF_R,         0, (APTR)GET_Bottom,        NULL },
+   { "Disable",      FDF_VIRTUAL|FDF_LONG|FDF_RW,        0, (APTR)GET_Disable,       (APTR)SET_Disable },
+   { "Feedback",     FDF_VIRTUAL|FDF_FUNCTIONPTR|FDF_RW, 0, (APTR)GET_Feedback,      (APTR)SET_Feedback },
+   { "Label",        FDF_VIRTUAL|FDF_STRING|FDF_RW,      0, (APTR)GET_Label,         (APTR)SET_Label },
+   { "LayoutStyle",  FDF_VIRTUAL|FDF_POINTER|FDF_SYSTEM|FDF_W, 0, NULL,        (APTR)SET_LayoutStyle },
+   { "PostLabel",    FDF_VIRTUAL|FDF_STRING|FDF_RW,      0, (APTR)GET_PostLabel,     (APTR)SET_PostLabel },
+   { "Right",        FDF_VIRTUAL|FDF_LONG|FDF_R,         0, (APTR)GET_Right,         NULL },
+   { "String",       FDF_VIRTUAL|FDF_STRING|FDF_RW,      0, (APTR)GET_String,        (APTR)SET_String },
+   { "TabFocus",     FDF_VIRTUAL|FDF_OBJECTID|FDF_W,     ID_TABFOCUS, NULL,    (APTR)SET_TabFocus },
+   { "Text",         FDF_SYNONYM|FDF_VIRTUAL|FDF_STRING|FDF_RW, 0, (APTR)GET_String, (APTR)SET_String },
+   { "Layout",       FDF_SYSTEM|FDF_VIRTUAL|FDF_OBJECT|FDF_R,   0, (APTR)GET_Layout, NULL },  // Dummy field.  Prevents the Layout in the TextInput child from being used
    // Variable Fields
-   { "Height",  FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, GET_Height, SET_Height },
-   { "Width",   FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, GET_Width, SET_Width },
-   { "X",       FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, GET_X, SET_X },
-   { "XOffset", FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, GET_XOffset, SET_XOffset },
-   { "Y",       FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, GET_Y, SET_Y },
-   { "YOffset", FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, GET_YOffset, SET_YOffset },
+   { "Height",  FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)GET_Height, (APTR)SET_Height },
+   { "Width",   FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)GET_Width, (APTR)SET_Width },
+   { "X",       FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)GET_X, (APTR)SET_X },
+   { "XOffset", FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)GET_XOffset, (APTR)SET_XOffset },
+   { "Y",       FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)GET_Y, (APTR)SET_Y },
+   { "YOffset", FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)GET_YOffset, (APTR)SET_YOffset },
    END_FIELD
 };
 

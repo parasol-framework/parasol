@@ -50,7 +50,7 @@ static ERROR COMBOBOX_ActionNotify(objComboBox *Self, struct acActionNotify *Arg
    if (Args->Error != ERR_Okay) return ERR_Okay;
 
    if (Args->ActionID IS AC_Redimension) {
-      struct acRedimension *redimension = (struct acRedimension *)Args->Args;
+      auto redimension = (struct acRedimension *)Args->Args;
       SetLong(Self->Menu, FID_Width, F2T(redimension->Width) - Self->LabelWidth);
    }
    else if (Args->ActionID IS AC_Disable) {
@@ -65,7 +65,7 @@ static ERROR COMBOBOX_ActionNotify(objComboBox *Self, struct acActionNotify *Arg
       acHide(Self->Menu);
    }
    else if (Args->ActionID IS AC_Free) {
-      if ((Self->Feedback.Type IS CALL_SCRIPT) AND (Self->Feedback.Script.Script->UniqueID IS Args->ObjectID)) {
+      if ((Self->Feedback.Type IS CALL_SCRIPT) and (Self->Feedback.Script.Script->UniqueID IS Args->ObjectID)) {
          Self->Feedback.Type = CALL_NONE;
       }
    }
@@ -94,7 +94,8 @@ Disable: Turns the combobox off.
 static ERROR COMBOBOX_Disable(objComboBox *Self, APTR Void)
 {
    // See the ActionNotify routine to see what happens when the surface is disabled.
-   LogAction(NULL);
+   parasol::Log log;
+   log.branch("");
    return acDisableID(Self->RegionID);
 }
 
@@ -107,7 +108,8 @@ Enable: Turns the combobox back on if it has previously been disabled.
 static ERROR COMBOBOX_Enable(objComboBox *Self, APTR Void)
 {
    // See the ActionNotify routine to see what happens when the surface is enabled.
-   LogAction(NULL);
+   parasol::Log log;
+   log.branch("");
    return acEnableID(Self->RegionID);
 }
 
@@ -148,13 +150,15 @@ static ERROR COMBOBOX_Hide(objComboBox *Self, APTR Void)
 
 static ERROR COMBOBOX_Init(objComboBox *Self, APTR Void)
 {
+   parasol::Log log;
+
    if (!Self->SurfaceID) { // Find our parent surface
       OBJECTID owner_id = GetOwner(Self);
-      while ((owner_id) AND (GetClassID(owner_id) != ID_SURFACE)) {
+      while ((owner_id) and (GetClassID(owner_id) != ID_SURFACE)) {
          owner_id = GetOwnerID(owner_id);
       }
       if (owner_id) Self->SurfaceID = owner_id;
-      else return PostError(ERR_UnsupportedOwner);
+      else return log.warning(ERR_UnsupportedOwner);
    }
 
    objSurface *region;
@@ -179,12 +183,12 @@ static ERROR COMBOBOX_Init(objComboBox *Self, APTR Void)
          TAGEND);
       ReleaseObject(region);
    }
-   else return PostError(ERR_AccessObject);
+   else return log.warning(ERR_AccessObject);
 
    if (!(Self->Flags & CMF_HIDE)) acShow(Self);
 
-   SetFunctionPtr(Self->TextInput, FID_ValidateInput, &text_validation);
-   SetFunctionPtr(Self->TextInput, FID_Activated, &text_activated);
+   SetFunctionPtr(Self->TextInput, FID_ValidateInput, (APTR)&text_validation);
+   SetFunctionPtr(Self->TextInput, FID_Activated, (APTR)&text_activated);
 
    return ERR_Okay;
 }
@@ -320,7 +324,7 @@ static ERROR GET_Bottom(objComboBox *Self, LONG *Value)
       ReleaseObject(surface);
       return ERR_Okay;
    }
-   else return PostError(ERR_AccessObject);
+   else return ERR_AccessObject;
 }
 
 /*****************************************************************************
@@ -391,7 +395,7 @@ height, use the FD_PERCENT flag when setting the field.
 
 *****************************************************************************/
 
-static ERROR GET_Height(objComboBox *Self, struct Variable *Value)
+static ERROR GET_Height(objComboBox *Self, Variable *Value)
 {
    OBJECTPTR surface;
    if (!AccessObject(Self->RegionID, 4000, &surface)) {
@@ -403,13 +407,13 @@ static ERROR GET_Height(objComboBox *Self, struct Variable *Value)
       else if (Value->Type & FD_LARGE) Value->Large = value;
       return ERR_Okay;
    }
-   else return PostError(ERR_AccessObject);
+   else return ERR_AccessObject;
 }
 
-static ERROR SET_Height(objComboBox *Self, struct Variable *Value)
+static ERROR SET_Height(objComboBox *Self, Variable *Value)
 {
-   if (((Value->Type & FD_DOUBLE) AND (!Value->Double)) OR
-       ((Value->Type & FD_LARGE) AND (!Value->Large))) {
+   if (((Value->Type & FD_DOUBLE) and (!Value->Double)) or
+       ((Value->Type & FD_LARGE) and (!Value->Large))) {
       return ERR_Okay;
    }
 
@@ -483,7 +487,7 @@ static ERROR SET_Region(objComboBox *Self, LONG Value)
    // NOTE: For backwards compatibility with the Surface class, the region can be set to a value of TRUE to define the
    // combobox as a simple surface region.
 
-   if ((Value IS FALSE) OR (Value IS TRUE)) {
+   if ((Value IS FALSE) or (Value IS TRUE)) {
       OBJECTPTR surface;
       if (!AccessObject(Self->RegionID, 4000, &surface)) {
          SetLong(surface, FID_Region, Value);
@@ -492,7 +496,7 @@ static ERROR SET_Region(objComboBox *Self, LONG Value)
       }
       else return ERR_AccessObject;
    }
-   else return PostError(ERR_InvalidValue);
+   else return ERR_InvalidValue;
 }
 
 /*****************************************************************************
@@ -516,7 +520,7 @@ static ERROR GET_Right(objComboBox *Self, LONG *Value)
       ReleaseObject(surface);
       return ERR_Okay;
    }
-   else return PostError(ERR_AccessObject);
+   else return ERR_AccessObject;
 }
 
 /*****************************************************************************
@@ -541,8 +545,7 @@ static ERROR GET_SelectedID(objComboBox *Self, LONG *Value)
 
    STRING str;
    if (!GetString(Self->TextInput, FID_String, &str)) {
-      objMenuItem *item;
-      for (item=Self->Menu->Items; item; item=item->Next) {
+      for (auto item=Self->Menu->Items; item; item=item->Next) {
          if (!StrMatch(str, item->Text)) {
             *Value = item->ID;
             return ERR_Okay;
@@ -582,7 +585,7 @@ static ERROR SET_String(objComboBox *Self, CSTRING Value)
    // Do nothing if the string will remain unchanged
 
    STRING original;
-   if ((!GetString(Self->TextInput, FID_String, &original)) AND (original)) {
+   if ((!GetString(Self->TextInput, FID_String, &original)) and (original)) {
       if (!StrMatch(original, Value)) return ERR_Okay;
    }
 
@@ -615,10 +618,9 @@ static ERROR SET_TabFocus(objComboBox *Self, OBJECTID Value)
          tabAddObject(tabfocus, Self->Head.UniqueID);
       }
       ReleaseObject(tabfocus);
+      return ERR_Okay;
    }
    else return ERR_AccessObject;
-
-   return ERR_Okay;
 }
 
 /*****************************************************************************
@@ -641,7 +643,7 @@ use the FD_PERCENT flag when setting the field.
 
 *****************************************************************************/
 
-static ERROR GET_Width(objComboBox *Self, struct Variable *Value)
+static ERROR GET_Width(objComboBox *Self, Variable *Value)
 {
    OBJECTPTR surface;
    if (!AccessObject(Self->RegionID, 4000, &surface)) {
@@ -653,12 +655,12 @@ static ERROR GET_Width(objComboBox *Self, struct Variable *Value)
       else if (Value->Type & FD_LARGE) Value->Large = value;
       return ERR_Okay;
    }
-   else return PostError(ERR_AccessObject);
+   else return ERR_AccessObject;
 }
 
-static ERROR SET_Width(objComboBox *Self, struct Variable *Value)
+static ERROR SET_Width(objComboBox *Self, Variable *Value)
 {
-   if (((Value->Type & FD_DOUBLE) AND (!Value->Double)) OR ((Value->Type & FD_LARGE) AND (!Value->Large))) {
+   if (((Value->Type & FD_DOUBLE) and (!Value->Double)) or ((Value->Type & FD_LARGE) and (!Value->Large))) {
       return ERR_Okay;
    }
 
@@ -682,7 +684,7 @@ fixed.  Negative values are permitted.
 
 *****************************************************************************/
 
-static ERROR GET_X(objComboBox *Self, struct Variable *Value)
+static ERROR GET_X(objComboBox *Self, Variable *Value)
 {
    OBJECTPTR surface;
    if (!AccessObject(Self->RegionID, 4000, &surface)) {
@@ -694,10 +696,10 @@ static ERROR GET_X(objComboBox *Self, struct Variable *Value)
       else if (Value->Type & FD_LARGE) Value->Large = value;
       return ERR_Okay;
    }
-   else return PostError(ERR_AccessObject);
+   else return ERR_AccessObject;
 }
 
-static ERROR SET_X(objComboBox *Self, struct Variable *Value)
+static ERROR SET_X(objComboBox *Self, Variable *Value)
 {
    OBJECTPTR surface;
    if (!AccessObject(Self->RegionID, 4000, &surface)) {
@@ -725,7 +727,7 @@ coordinate calculated from the formula `X = ContainerWidth - ComboBoxWidth - XOf
 
 *****************************************************************************/
 
-static ERROR GET_XOffset(objComboBox *Self, struct Variable *Value)
+static ERROR GET_XOffset(objComboBox *Self, Variable *Value)
 {
    OBJECTPTR surface;
    if (!AccessObject(Self->RegionID, 4000, &surface)) {
@@ -737,10 +739,10 @@ static ERROR GET_XOffset(objComboBox *Self, struct Variable *Value)
       else if (Value->Type & FD_LARGE) Value->Large = value;
       return ERR_Okay;
    }
-   else return PostError(ERR_AccessObject);
+   else return ERR_AccessObject;
 }
 
-static ERROR SET_XOffset(objComboBox *Self, struct Variable *Value)
+static ERROR SET_XOffset(objComboBox *Self, Variable *Value)
 {
    OBJECTPTR surface;
    if (!AccessObject(Self->RegionID, 4000, &surface)) {
@@ -762,7 +764,7 @@ fixed.  Negative values are permitted.
 
 *****************************************************************************/
 
-static ERROR GET_Y(objComboBox *Self, struct Variable *Value)
+static ERROR GET_Y(objComboBox *Self, Variable *Value)
 {
    OBJECTPTR surface;
    if (!AccessObject(Self->RegionID, 4000, &surface)) {
@@ -778,7 +780,7 @@ static ERROR GET_Y(objComboBox *Self, struct Variable *Value)
 
 }
 
-static ERROR SET_Y(objComboBox *Self, struct Variable *Value)
+static ERROR SET_Y(objComboBox *Self, Variable *Value)
 {
    OBJECTPTR surface;
    if (!AccessObject(Self->RegionID, 4000, &surface)) {
@@ -807,7 +809,7 @@ coordinate calculated from the formula `Y = ContainerHeight - ComboBoxHeight - Y
 
 *****************************************************************************/
 
-static ERROR GET_YOffset(objComboBox *Self, struct Variable *Value)
+static ERROR GET_YOffset(objComboBox *Self, Variable *Value)
 {
    OBJECTPTR surface;
    if (!AccessObject(Self->RegionID, 4000, &surface)) {
@@ -822,7 +824,7 @@ static ERROR GET_YOffset(objComboBox *Self, struct Variable *Value)
    else return PostError(ERR_AccessObject);
 }
 
-static ERROR SET_YOffset(objComboBox *Self, struct Variable *Value)
+static ERROR SET_YOffset(objComboBox *Self, Variable *Value)
 {
    OBJECTPTR surface;
    if (!AccessObject(Self->RegionID, 4000, &surface)) {
@@ -838,7 +840,7 @@ static ERROR SET_YOffset(objComboBox *Self, struct Variable *Value)
 
 static void text_validation(objText *Text)
 {
-   objInput *Self = (objInput *)CurrentContext();
+   auto Self = (objInput *)CurrentContext();
 
    if (Self->Flags & CMF_LIMIT_TO_LIST) {
 
@@ -850,14 +852,15 @@ static void text_validation(objText *Text)
 
 static void text_activated(objText *Text)
 {
-   objComboBox *Self = (objComboBox *)CurrentContext();
+   parasol::Log log(__FUNCTION__);
+   auto Self = (objComboBox *)CurrentContext();
 
    if (Self->Active) {
-      LogErrorMsg("Warning - recursion detected");
+      log.warning("Warning - recursion detected");
       return;
    }
 
-   LogBranch(NULL);
+   log.branch("");
 
    Self->Active = TRUE;
 
@@ -865,18 +868,17 @@ static void text_activated(objText *Text)
    GetString(Self->TextInput, FID_String, &value);
 
    if (Self->Feedback.Type IS CALL_STDC) {
-      void (*routine)(objComboBox *, CSTRING) = Self->Feedback.StdC.Routine;
+      auto routine = (void (*)(objComboBox *, CSTRING))Self->Feedback.StdC.Routine;
       if (Self->Feedback.StdC.Context) {
-         OBJECTPTR context = SetContext(Self->Feedback.StdC.Context);
+         parasol::SwitchContext context(Self->Feedback.StdC.Context);
          routine(Self, value);
-         SetContext(context);
       }
       else routine(Self, value);
    }
    else if (Self->Feedback.Type IS CALL_SCRIPT) {
       OBJECTPTR script;
       if ((script = Self->Feedback.Script.Script)) {
-         const struct ScriptArg args[] = {
+         const ScriptArg args[] = {
             { "ComboBox", FD_OBJECTPTR, { .Address = Self } },
             { "Value",    FD_STRING, { .Address = value } }
          };
@@ -885,15 +887,13 @@ static void text_activated(objText *Text)
    }
 
    Self->Active = FALSE;
-
-   LogReturn();
 }
 
 //****************************************************************************
 
 #include "class_combobox_def.c"
 
-static const struct FieldDef Align[] = {
+static const FieldDef Align[] = {
    { "Right",    ALIGN_RIGHT    }, { "Left",       ALIGN_LEFT    },
    { "Bottom",   ALIGN_BOTTOM   }, { "Top",        ALIGN_TOP     },
    { "Center",   ALIGN_CENTER   }, { "Middle",     ALIGN_MIDDLE  },
@@ -901,33 +901,33 @@ static const struct FieldDef Align[] = {
    { NULL, 0 }
 };
 
-static const struct FieldArray clFields[] = {
-   { "TextInput",    FDF_INTEGRAL|FDF_R,      0, NULL, NULL },
-   { "Menu",         FDF_INTEGRAL|FDF_R,      0, NULL, NULL },
+static const FieldArray clFields[] = {
+   { "TextInput",    FDF_INTEGRAL|FDF_R,   0, NULL, NULL },
+   { "Menu",         FDF_INTEGRAL|FDF_R,   0, NULL, NULL },
    { "LayoutSurface",FDF_VIRTUAL|FDF_OBJECTID|FDF_SYSTEM|FDF_R, ID_SURFACE, NULL, NULL }, // VIRTUAL: This is a synonym for the Region field
-   { "Region",       FDF_OBJECTID|FDF_RW,  ID_SURFACE, NULL, SET_Region },
+   { "Region",       FDF_OBJECTID|FDF_RW,  ID_SURFACE, NULL, (APTR)SET_Region },
    { "Surface",      FDF_OBJECTID|FDF_RW,  ID_SURFACE, NULL, NULL },
    { "Flags",        FDF_LONGFLAGS|FDF_RW, (MAXINT)&clComboBoxFlags, NULL, NULL },
    { "LabelWidth",   FDF_LONG|FDF_RI,      0, NULL, NULL },
    // Virtual fields
-   { "Align",         FDF_VIRTUAL|FDF_LONGFLAGS|FDF_I, (MAXINT)&Align,  NULL, SET_Align },
-   { "Bottom",        FDF_VIRTUAL|FDF_LONG|FDF_R,      0, GET_Bottom, NULL },
-   { "Disable",       FDF_VIRTUAL|FDF_LONG|FDF_RW,     0, GET_Disable, SET_Disable },
-   { "Feedback",      FDF_VIRTUAL|FDF_FUNCTIONPTR|FDF_RW, 0, GET_Feedback, SET_Feedback },
-   { "Label",         FDF_VIRTUAL|FDF_STRING|FDF_RW,   0, GET_Label, SET_Label },
-   { "LayoutStyle",   FDF_VIRTUAL|FDF_POINTER|FDF_SYSTEM|FDF_W, 0, NULL, SET_LayoutStyle },
-   { "Right",         FDF_VIRTUAL|FDF_LONG|FDF_R,      0, GET_Right, NULL },
-   { "SelectedID",    FDF_VIRTUAL|FDF_LONG|FDF_R,      0, GET_SelectedID, NULL },
-   { "String",        FDF_VIRTUAL|FDF_STRING|FDF_RW,   0, GET_String, SET_String },
-   { "TabFocus",      FDF_VIRTUAL|FDF_OBJECTID|FDF_I,  ID_TABFOCUS, NULL, SET_TabFocus },
-   { "Text",          FDF_SYNONYM|FDF_VIRTUAL|FDF_STRING|FDF_RW, 0, GET_String, SET_String },
+   { "Align",         FDF_VIRTUAL|FDF_LONGFLAGS|FDF_I, (MAXINT)&Align,  NULL, (APTR)SET_Align },
+   { "Bottom",        FDF_VIRTUAL|FDF_LONG|FDF_R,      0, (APTR)GET_Bottom, NULL },
+   { "Disable",       FDF_VIRTUAL|FDF_LONG|FDF_RW,     0, (APTR)GET_Disable, (APTR)SET_Disable },
+   { "Feedback",      FDF_VIRTUAL|FDF_FUNCTIONPTR|FDF_RW, 0, (APTR)GET_Feedback, (APTR)SET_Feedback },
+   { "Label",         FDF_VIRTUAL|FDF_STRING|FDF_RW,   0, (APTR)GET_Label, (APTR)SET_Label },
+   { "LayoutStyle",   FDF_VIRTUAL|FDF_POINTER|FDF_SYSTEM|FDF_W, 0, NULL, (APTR)SET_LayoutStyle },
+   { "Right",         FDF_VIRTUAL|FDF_LONG|FDF_R,      0, (APTR)GET_Right, NULL },
+   { "SelectedID",    FDF_VIRTUAL|FDF_LONG|FDF_R,      0, (APTR)GET_SelectedID, NULL },
+   { "String",        FDF_VIRTUAL|FDF_STRING|FDF_RW,   0, (APTR)GET_String, (APTR)SET_String },
+   { "TabFocus",      FDF_VIRTUAL|FDF_OBJECTID|FDF_I,  ID_TABFOCUS, NULL, (APTR)SET_TabFocus },
+   { "Text",          FDF_SYNONYM|FDF_VIRTUAL|FDF_STRING|FDF_RW, 0, (APTR)GET_String, (APTR)SET_String },
    // Variable Fields
-   { "Height",  FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, GET_Height,  SET_Height },
-   { "Width",   FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, GET_Width,   SET_Width },
-   { "X",       FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, GET_X,       SET_X },
-   { "XOffset", FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, GET_XOffset, SET_XOffset },
-   { "Y",       FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, GET_Y,       SET_Y },
-   { "YOffset", FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, GET_YOffset, SET_YOffset },
+   { "Height",  FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)GET_Height,  (APTR)SET_Height },
+   { "Width",   FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)GET_Width,   (APTR)SET_Width },
+   { "X",       FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)GET_X,       (APTR)SET_X },
+   { "XOffset", FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)GET_XOffset, (APTR)SET_XOffset },
+   { "Y",       FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)GET_Y,       (APTR)SET_Y },
+   { "YOffset", FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)GET_YOffset, (APTR)SET_YOffset },
    END_FIELD
 };
 

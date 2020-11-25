@@ -2,66 +2,62 @@
 
 static void feedback_validate_input(objText *Self)
 {
-   LogF("~validate_input()","");
+   parasol::Log log("validate_input");
+
+   log.branch("");
 
    if (Self->ValidateInput.Type IS CALL_STDC) {
-      void (*routine)(objText *);
-      if ((routine = Self->ValidateInput.StdC.Routine)) {
-         OBJECTPTR context = SetContext(Self->ValidateInput.StdC.Context);
-            routine(Self);
-         SetContext(context);
+      auto routine = (void (*)(objText *))Self->ValidateInput.StdC.Routine;
+      if (routine) {
+         parasol::SwitchContext ctx(Self->ValidateInput.StdC.Context);
+         routine(Self);
       }
    }
    else if (Self->ValidateInput.Type IS CALL_SCRIPT) {
       OBJECTPTR script;
       if ((script = Self->ValidateInput.Script.Script)) {
-         const struct ScriptArg args[] = { { "Text", FD_OBJECTPTR, { .Address = Self } } };
+         const ScriptArg args[] = { { "Text", FD_OBJECTPTR, { .Address = Self } } };
          scCallback(script, Self->ValidateInput.Script.ProcedureID, args, ARRAYSIZE(args));
       }
    }
-
-   LogReturn();
 }
 
 //****************************************************************************
 
 static void feedback_activated(objText *Self)
 {
-   LogF("~feedback_activated()","");
+   parasol::Log log(__FUNCTION__);
+
+   log.branch("");
 
    if (Self->Activated.Type IS CALL_STDC) {
-      void (*routine)(objText *);
-      if ((routine = Self->Activated.StdC.Routine)) {
-         OBJECTPTR context = SetContext(Self->Activated.StdC.Context);
-            routine(Self);
-         SetContext(context);
+      auto routine = (void (*)(objText *))Self->Activated.StdC.Routine;
+      if (routine) {
+         parasol::SwitchContext ctx(Self->Activated.StdC.Context);
+         routine(Self);
       }
    }
    else if (Self->Activated.Type IS CALL_SCRIPT) {
       OBJECTPTR script;
       if ((script = Self->Activated.Script.Script)) {
-         const struct ScriptArg args[] = { { "Text", FD_OBJECTPTR, { .Address = Self } } };
+         const ScriptArg args[] = { { "Text", FD_OBJECTPTR, { .Address = Self } } };
          scCallback(script, Self->Activated.Script.ProcedureID, args, ARRAYSIZE(args));
       }
    }
-
-   LogReturn();
 }
 
 //****************************************************************************
 
 static void add_history(objText *Self, CSTRING History)
 {
-   LONG i;
-
    // Increment all history indexes
-   for (i=0; i < Self->HistorySize; i++) {
+   for (LONG i=0; i < Self->HistorySize; i++) {
       if (Self->History[i].Number > 0) Self->History[i].Number++;
       if (Self->History[i].Number > Self->HistorySize) Self->History[i].Number = 0;
    }
 
    // Find an empty buffer and add the history text to it
-   for (i=0; i < Self->HistorySize; i++) {
+   for (LONG i=0; i < Self->HistorySize; i++) {
       if (Self->History[i].Number IS 0) {
          Self->History[i].Number = 1; // New entries have an index of 1
          StrCopy(History, Self->History[i].Buffer, sizeof(Self->History[0].Buffer));
@@ -102,8 +98,8 @@ static ERROR add_line(objText *Self, CSTRING String, LONG Line, LONG Length, LON
    // If the line array is at capacity, expand it
 
    if (Self->AmtLines >= Self->MaxLines) {
-      struct TextLine *newlines;
-      if (!AllocMemory(sizeof(struct TextLine) * (Self->MaxLines + 100), MEM_DATA, &newlines, NULL)) {
+      TextLine *newlines;
+      if (!AllocMemory(sizeof(TextLine) * (Self->MaxLines + 100), MEM_DATA, &newlines, NULL)) {
          Self->MaxLines += 100;
          if (Self->Array) {
             CopyMemory(Self->Array, newlines, sizeof(Self->Array[0]) * Self->AmtLines);
@@ -156,7 +152,7 @@ static ERROR add_line(objText *Self, CSTRING String, LONG Line, LONG Length, LON
 
 //****************************************************************************
 
-static ERROR add_xml(objText *Self, struct XMLTag *XMLList, WORD Flags, LONG Line)
+static ERROR add_xml(objText *Self, XMLTag *XMLList, WORD Flags, LONG Line)
 {
    LONG j, i;
 
@@ -166,14 +162,14 @@ static ERROR add_xml(objText *Self, struct XMLTag *XMLList, WORD Flags, LONG Lin
    // Count the amount of bytes in the XML statement's content
 
    LONG len = 0;
-   struct XMLTag *tag = XMLList->Child;
+   XMLTag *tag = XMLList->Child;
    while (tag) {
       len += xml_content_len(tag);
       tag = tag->Next;
    }
 
    if (len > 0) {
-      UBYTE str[len+1];
+      char str[len+1];
 
       // Copy the content into a string buffer
 
@@ -207,8 +203,8 @@ static ERROR add_xml(objText *Self, struct XMLTag *XMLList, WORD Flags, LONG Lin
          // If the line array is at capacity, expand it
 
          if (Self->AmtLines >= Self->MaxLines) {
-            struct TextLine *newlines;
-            if (!AllocMemory(sizeof(struct TextLine) * (Self->MaxLines + 100), MEM_DATA, &newlines, NULL)) {
+            TextLine *newlines;
+            if (!AllocMemory(sizeof(TextLine) * (Self->MaxLines + 100), MEM_DATA, &newlines, NULL)) {
                Self->MaxLines += 100;
                if (Self->Array) {
                   CopyMemory(Self->Array, newlines, sizeof(Self->Array[0]) * Self->AmtLines);
@@ -262,8 +258,8 @@ static ERROR add_xml(objText *Self, struct XMLTag *XMLList, WORD Flags, LONG Lin
 static void draw_text(objText *Self, objSurface *Surface, objBitmap *Bitmap)
 {
    objFont *font, *currentfont;
-   struct ClipRectangle clipsave;
-   struct RGB8 basergb;
+   ClipRectangle clipsave;
+   RGB8 basergb;
    STRING str;
    LONG i, x, sx, row, column, endrow, endcolumn, width;
    LONG selectrow, selectcolumn, textheight;
@@ -388,13 +384,13 @@ static void draw_text(objText *Self, objSurface *Surface, objBitmap *Bitmap)
       // Set the font string
 
       if (Self->Flags & TXF_SECRET) {
-         UBYTE buffer[Self->Array[row].Length+1];
+         char buffer[Self->Array[row].Length+1];
          for (i=0; i < Self->Array[row].Length; i++) buffer[i] = '*';
          buffer[i] = 0;
          SetString(currentfont, FID_String, buffer);
       }
       else if (Self->Flags & TXF_VARIABLE) {
-         UBYTE buffer[Self->Array[row].Length+100];
+         char buffer[Self->Array[row].Length+100];
          for (i=0; i < Self->Array[row].Length; i++) buffer[i] = Self->Array[row].String[i];
          buffer[i] = 0;
          StrEvaluate(buffer, Self->Array[row].Length+100, 0, 0);
@@ -499,7 +495,7 @@ static void draw_text(objText *Self, objSurface *Surface, objBitmap *Bitmap)
 
 //****************************************************************************
 
-static LONG xml_content_len(struct XMLTag *XMLTag)
+static LONG xml_content_len(XMLTag *XMLTag)
 {
    LONG len;
 
@@ -520,7 +516,7 @@ static LONG xml_content_len(struct XMLTag *XMLTag)
 
 //****************************************************************************
 
-static void xml_extract_content(struct XMLTag *XMLTag, UBYTE *Buffer, LONG *Index, WORD Flags)
+static void xml_extract_content(XMLTag *XMLTag, char *Buffer, LONG *Index, WORD Flags)
 {
    if (!XMLTag->Attrib[0].Name) {
       STRING content;
@@ -1258,7 +1254,7 @@ static void insert_char(objText *Self, LONG Unicode, LONG Column)
 {
    STRING str;
    LONG i, j, k, charlen, offset, unicodelen;
-   UBYTE buffer[6];
+   char buffer[6];
 
    if ((!Self) OR (!Unicode)) return;
 
@@ -1346,7 +1342,9 @@ static void insert_char(objText *Self, LONG Unicode, LONG Column)
 
 static ERROR load_file(objText *Self, CSTRING Location)
 {
-   LogBranch("Loading file '%s'", Location);
+   parasol::Log log(__FUNCTION__);
+
+   log.branch("Loading file '%s'", Location);
 
    objFile *file;
    if (!CreateObject(ID_FILE, NF_INTEGRAL, &file,
@@ -1356,7 +1354,7 @@ static ERROR load_file(objText *Self, CSTRING Location)
 
       LARGE size;
       if (file->Flags & FL_STREAM) {
-         LogMsg("File is streamed.");
+         log.msg("File is streamed.");
 
          if (!flStartStream(file, Self->Head.UniqueID, FL_READ, 0)) {
             acClear(Self);
@@ -1366,7 +1364,6 @@ static ERROR load_file(objText *Self, CSTRING Location)
          }
          else {
             acFree(file);
-            LogReturn();
             return ERR_Read;
          }
       }
@@ -1386,7 +1383,6 @@ static ERROR load_file(objText *Self, CSTRING Location)
          }
          else {
             acFree(file);
-            LogReturn();
             return ERR_AllocMemory;
          }
       }
@@ -1399,13 +1395,9 @@ static ERROR load_file(objText *Self, CSTRING Location)
       }
 
       if (file) acFree(file);
-      LogReturn();
       return ERR_Okay;
    }
-   else {
-      LogReturn();
-      return ERR_OpenFile;
-   }
+   else return ERR_OpenFile;
 }
 
 //****************************************************************************
@@ -1459,7 +1451,7 @@ static ERROR replace_line(objText *Self, CSTRING String, LONG Line, LONG ByteLen
       Self->Array[Line].Length      = i;
       Self->Array[Line].PixelLength = calc_width(Self, String, i);
    }
-   else if (AllocMemory(len+1, MEM_STRING|MEM_NO_CLEAR, &str, NULL) IS ERR_Okay) {
+   else if (!AllocMemory(len+1, MEM_STRING|MEM_NO_CLEAR, &str, NULL)) {
       if (Self->Array[Line].String) FreeResource(Self->Array[Line].String);
       for (i=0; (i < len) AND (String[i]); i++) str[i] = String[i];
       str[i] = 0;
@@ -1516,11 +1508,12 @@ static LONG row_coord(objText *Self, LONG Row)
 
 static void stretch_text(objText *Self)
 {
-   struct Variable targetwidth, targetheight;
+   parasol::Log log(__FUNCTION__);
+   Variable targetwidth, targetheight;
    LONG textwidth, textheight;
 
    if (!(Self->Font->Flags & FTF_SCALABLE)) {
-      LogMsg("Cannot stretch non-scalable text.");
+      log.msg("Cannot stretch non-scalable text.");
       return;
    }
 
@@ -1611,7 +1604,7 @@ static LONG view_cursor(objText *Self)
    LONG ycoord, height, xcoord, width, scrolly, scrollx, xpos, ypos;
    BYTE scroll;
 
-   //LogF("view_cursor()","[%d] Row: %d, Column: %d", Self->Head.UniqueID, Self->CursorRow, Self->CursorColumn);
+   //log.function("[%d] Row: %d, Column: %d", Self->Head.UniqueID, Self->CursorRow, Self->CursorColumn);
 
    if (!(Self->Flags & (TXF_EDIT|TXF_SINGLE_SELECT|TXF_MULTI_SELECT|TXF_AREA_SELECTED))) return FALSE;
 

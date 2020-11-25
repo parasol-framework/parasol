@@ -19,8 +19,8 @@
 <p>When the user double-clicks on a view item, the object will activate itself.  Once activated, the view object will send Activate actions on to any children that have been initialised to the view.  This allows you to develop a response for user interaction with the view.  If the sensitive option has been enabled as one of the <field>Flags</field> attributes, activation will occur whenever the user selects an item (thus single clicks will be enough to cause object activation).</p>
 <p>To respond to the user's selection of view items at run time, it is recommended that you monitor the <field>SelectedTag</field> field for changes.</p></description>
     <source>
-      <file path="class_view/">view.c</file>
-      <file path="class_view/">view_fields.c</file>
+      <file path="class_view/">view.cpp</file>
+      <file path="class_view/">view_fields.cpp</file>
     </source>
   </info>
 

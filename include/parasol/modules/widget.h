@@ -226,8 +226,8 @@ typedef struct rkImage {
    struct SurfaceCoords Surface;
    TIMER  FrameTimer;
    WORD   Opacity;
-   UBYTE  IconFilter[24];
-   UBYTE  IconTheme[24];
+   char   IconFilter[24];
+   char   IconTheme[24];
   
 #endif
 } objImage;
@@ -250,7 +250,7 @@ typedef struct rkScrollbar {
 
 #ifdef PRV_SCROLLBAR
    OBJECTID  ScrollID;
-   UBYTE     Template[120];
+   char      Template[120];
    OBJECTPTR Script;
   
 #endif
@@ -293,7 +293,7 @@ typedef struct rkScroll {
    LONG     ObscuredView;
    LONG     SurfaceWidth, SurfaceHeight;
    LONG     Offset;
-   UBYTE    Field[32];
+   char     Field[32];
    UBYTE    RecursionBlock;
    BYTE     PostIntersect;     // Set to TRUE if the Intersect field was set post-initialisation (we are not expected to adjust our scrollbar size)
    struct ScrollButton Buttons[8];
@@ -501,7 +501,7 @@ typedef struct rkCheckBox {
    FUNCTION Feedback;
    APTR   prvKeyEvent;
    BYTE   Active;
-   UBYTE  Label[48];       // Label to display alongside the checkbox
+   char   Label[48];       // Label to display alongside the checkbox
   
 #endif
 } objCheckBox;
@@ -841,11 +841,11 @@ typedef struct rkView {
    WORD   TreeIndex;
    WORD   HBarHeight;
    BYTE   DateFormat[28];    // Preferred date format
-   UBYTE  Selection[120];    // Currently selected item
-   UBYTE  IconFilter[32];    // Preferred icon filter.
-   UBYTE  IconTheme[32];     // Preferred icon theme.  If not defined, the default is used.
+   char   Selection[120];    // Currently selected item
+   char   IconFilter[32];    // Preferred icon filter.
+   char   IconTheme[32];     // Preferred icon theme.  If not defined, the default is used.
    BYTE   Sort[4];           // Sort indexes to each column (4 max) from most to least important.  A negative index means that the sort is descending
-   UBYTE  VarDefault[16];
+   char   VarDefault[16];
    BYTE   PointerLocked;     // Set to a cursor value if the pointer is locked
    UWORD  HBarVisible:1;
    UWORD  VBarVisible:1;

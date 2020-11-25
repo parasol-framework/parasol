@@ -1675,7 +1675,7 @@ struct Field {
 
 struct ScriptArg { // For use with scExec
    CSTRING Name;
-   LONG Type;
+   ULONG Type;
    union {
       APTR   Address;
       LONG   Long;

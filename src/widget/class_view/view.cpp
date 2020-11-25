@@ -48,9 +48,9 @@ field for changes.
 
 #include "../defs.h"
 
-static APTR glCache = NULL;
+static KeyStore *glCache = NULL;
 static OBJECTPTR clView = NULL;
-static UBYTE glDateFormat[28] = "dd-mm-yy hh:nn";
+static char glDateFormat[28] = "dd-mm-yy hh:nn";
 static UBYTE glPreferDragDrop = TRUE;
 static objPicture *glTick = NULL;
 static const LONG KEY_TICK = 1;
@@ -63,11 +63,11 @@ static const LONG KEY_TICK = 1;
 struct view_node {
    objBitmap *Icon, *IconOpen;
    ULONG IconKey, IconOpenKey;
-   struct RGB8 FontRGB;
+   RGB8 FontRGB;
    LONG String;           // This is an offset into Self->NodeStrings
    LONG X;
    LONG Y;
-   UBYTE Datatype[4];
+   char Datatype[4];
    LONG Width, Height;
    WORD Flags;
    WORD Indent;
@@ -89,13 +89,13 @@ struct view_node {
 
 struct view_col {
    struct view_col *Next;
-   UBYTE Name[20];
-   UBYTE Text[32];
+   char  Name[20];
+   char  Text[32];
    BYTE  Type;         // The type of data displayed in the column
    BYTE  Sort;         // Sort order
    WORD  Flags;        // Column flags
    LONG  Width;        // Pixel width
-   struct RGB8 Colour;  // Background colour
+   RGB8 Colour;  // Background colour
 };
 
 struct CachedIcon {
@@ -123,43 +123,40 @@ enum {
    CT_CHECKBOX
 };
 
-static const struct FieldArray clFields[];
-static const struct MethodArray clViewMethods[];
-static const struct ActionArray clViewActions[];
-
 //****************************************************************************
 
 static void   arrange_items(objView *);
 static ERROR  calc_hscroll(objView *);
 static ERROR  calc_vscroll(objView *);
-static void   check_selected_items(objView *, struct XMLTag *);
+static void   check_selected_items(objView *, XMLTag *);
 static void   check_pointer_cursor(objView *, LONG, LONG);
-static BYTE   check_item_visible(objView *, struct XMLTag *);
+static BYTE   check_item_visible(objView *, XMLTag *);
+static ERROR  create_view_class(void);
 static BYTE   deselect_item(objView *);
 static void   drag_items(objView *);
-static void   draw_columns(objView *, objSurface *, objBitmap *, struct ClipRectangle *, LONG ax, LONG ay, LONG awidth, LONG aheight);
+static void   draw_columns(objView *, objSurface *, objBitmap *, ClipRectangle *, LONG ax, LONG ay, LONG awidth, LONG aheight);
 static void   draw_shadow(objView *, objBitmap *, LONG);
-static void   draw_item(objView *, struct XMLTag *);
+static void   draw_item(objView *, XMLTag *);
 static void   draw_view(objView *, objSurface *, objBitmap *);
 static void   gen_group_bkgd(objView *, CSTRING, objBitmap **, CSTRING);
-static void   get_col_value(objView *, struct XMLTag *, struct view_col *, STRING, LONG, struct XMLTag **);
+static void   get_col_value(objView *, XMLTag *, view_col *, STRING, LONG, XMLTag **);
 static objBitmap * get_collapse_bitmap(objView *, LONG BPP);
 static objBitmap * get_expand_bitmap(objView *, LONG BPP);
-static struct XMLTag * get_item_xy(objView *, struct XMLTag **, LONG, LONG);
+static XMLTag * get_item_xy(objView *, XMLTag **, LONG, LONG);
 static ERROR  get_selected_tags(objView *, LONG **, LONG *);
 static void   key_event(objView *, evKey *, LONG);
 static ERROR  load_icon(objView *, CSTRING, objBitmap **, ULONG *);
-static BYTE   open_branch_callback(objView *, struct XMLTag *);
-static LONG   prepare_xml(objView *, struct XMLTag *, CSTRING, LONG);
-static void   process_style(objView *, objXML *, struct XMLTag *);
+static BYTE   open_branch_callback(objView *, XMLTag *);
+static LONG   prepare_xml(objView *, XMLTag *, CSTRING, LONG);
+static void   process_style(objView *, objXML *, XMLTag *);
 static ERROR  report_cellclick(objView *, LONG TagIndex, LONG Column, LONG Input, LONG X, LONG Y);
 static void   report_selection(objView *, LONG Type, LONG TagIndex);
-static BYTE   select_item(objView *, struct XMLTag *, LONG, BYTE, BYTE);
+static BYTE   select_item(objView *, XMLTag *, LONG, BYTE, BYTE);
 static ERROR  sort_items(objView *);
 static ERROR  unload_icon(objView *, ULONG *);
-static void   vwUserClick(objView *, struct InputMsg *);
-static void   vwUserClickRelease(objView *, struct InputMsg *);
-static void   vwUserMovement(objView *, struct InputMsg *);
+static void   vwUserClick(objView *, InputMsg *);
+static void   vwUserClickRelease(objView *, InputMsg *);
+static void   vwUserMovement(objView *, InputMsg *);
 
 static ERROR VIEW_SortColumnIndex(objView *, struct viewSortColumnIndex *Args);
 static ERROR SET_HScroll(objView *, OBJECTPTR Value);
@@ -168,7 +165,7 @@ static ERROR SET_SelectionIndex(objView *, LONG Value);
 
 //****************************************************************************
 
-static STRING get_nodestring(objView *Self, struct view_node *Node)
+static CSTRING get_nodestring(objView *Self, view_node *Node)
 {
    if (Node->String IS -1) return "";
    return Self->NodeStrings + Node->String;
@@ -177,10 +174,10 @@ static STRING get_nodestring(objView *Self, struct view_node *Node)
 //****************************************************************************
 // Strings are defined as offsets within the string buffer referred to by NodeStrings.
 
-static void set_nodestring(objView *Self, struct view_node *Node, CSTRING String)
+static void set_nodestring(objView *Self, view_node *Node, CSTRING String)
 {
    Node->String = -1;
-   if ((!String) OR (!String[0])) return;
+   if ((!String) or (!String[0])) return;
 
    LONG len;
    for (len=0; (String[len] >= 0x20); len++); // Only printable characters are allowed
@@ -238,17 +235,7 @@ ERROR init_view(void)
 
    glCache = VarNew(0, KSF_THREAD_SAFE);
 
-   return CreateObject(ID_METACLASS, 0, &clView,
-      FID_ClassVersion|TFLOAT, VER_VIEW,
-      FID_Name|TSTR,      "View",
-      FID_Category|TLONG, CCF_GUI,
-      FID_Flags|TLONG,    CLF_PROMOTE_INTEGRAL|CLF_PRIVATE_ONLY,
-      FID_Actions|TPTR,   clViewActions,
-      FID_Methods|TARRAY, clViewMethods,
-      FID_Fields|TARRAY,  clFields,
-      FID_Size|TLONG,     sizeof(objView),
-      FID_Path|TSTR,      MOD_PATH,
-      TAGEND);
+   return create_view_class();
 }
 
 void free_view(void)
@@ -262,11 +249,11 @@ void free_view(void)
 
 static void resize_view(objView *Self)
 {
-   if ((Self->Style IS VIEW_DOCUMENT) OR (Self->Document)) return;  // Documents manage themselves, do not reprocess
+   if ((Self->Style IS VIEW_DOCUMENT) or (Self->Document)) return;  // Documents manage themselves, do not reprocess
 
    arrange_items(Self); // Rearrange/recalculate dimensions for all view items
 
-   if ((Self->GroupBitmap) AND (Self->GroupBitmap->Width != Self->PageWidth)) {
+   if ((Self->GroupBitmap) and (Self->GroupBitmap->Width != Self->PageWidth)) {
       if (Self->GroupHeaderXML) {
          gen_group_bkgd(Self, Self->GroupHeaderXML, &Self->GroupBitmap, "redimension-width");
       }
@@ -281,20 +268,21 @@ static void resize_view(objView *Self)
 
 static ERROR VIEW_ActionNotify(objView *Self, struct acActionNotify *Args)
 {
+   parasol::Log log;
+
    if (Args->Error != ERR_Okay) return ERR_Okay;
 
    if (Args->ActionID IS AC_DragDrop) { // Something has been dropped onto the view (acting as destination)
       struct acDragDrop *drag;
       if ((drag = (struct acDragDrop *)Args->Args)) {
-         LogBranch("Drag and drop source: %d, Item: %d", drag->SourceID, drag->Item);
-         if ((drag->SourceID IS Self->Head.UniqueID) OR (drag->SourceID IS Self->DragSourceID)) {
+         log.branch("Drag and drop source: %d, Item: %d", drag->SourceID, drag->Item);
+         if ((drag->SourceID IS Self->Head.UniqueID) or (drag->SourceID IS Self->DragSourceID)) {
             // If the items belong to our own view, we must check that the items aren't being dropped onto themselves.
 
-            if ((Self->HighlightTag != -1)  AND (Self->DragItems)) {
-               LONG i;
-               for (i=0; i < Self->DragItemCount; i++) {
+            if ((Self->HighlightTag != -1)  and (Self->DragItems)) {
+               for (LONG i=0; i < Self->DragItemCount; i++) {
                   if (Self->DragItems[i] IS Self->HighlightTag) {
-                     MSG("Drag & drop items cannot be dragged onto themselves.");
+                     log.trace("Drag & drop items cannot be dragged onto themselves.");
                      return ERR_Okay;
                   }
                }
@@ -302,7 +290,6 @@ static ERROR VIEW_ActionNotify(objView *Self, struct acActionNotify *Args)
          }
 
          NotifySubscribers(Self, AC_DragDrop, drag, 0, ERR_Okay);
-         LogReturn();
       }
    }
    else if (Args->ActionID IS AC_Disable) {
@@ -320,7 +307,7 @@ static ERROR VIEW_ActionNotify(objView *Self, struct acActionNotify *Args)
    else if (Args->ActionID IS AC_Focus) {
       if (!Self->prvKeyEvent) {
          FUNCTION callback;
-         SET_FUNCTION_STDC(callback, &key_event);
+         SET_FUNCTION_STDC(callback, (APTR)&key_event);
          SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, &callback, Self, &Self->prvKeyEvent);
       }
    }
@@ -328,29 +315,29 @@ static ERROR VIEW_ActionNotify(objView *Self, struct acActionNotify *Args)
       if (Self->prvKeyEvent) { UnsubscribeEvent(Self->prvKeyEvent); Self->prvKeyEvent = NULL; }
    }
    else if (Args->ActionID IS AC_Free) {
-      if ((Self->CellClick.Type IS CALL_SCRIPT) AND (Self->CellClick.Script.Script->UniqueID IS Args->ObjectID)) {
+      if ((Self->CellClick.Type IS CALL_SCRIPT) and (Self->CellClick.Script.Script->UniqueID IS Args->ObjectID)) {
          Self->CellClick.Type = CALL_NONE;
       }
-      else if ((Self->SelectCallback.Type IS CALL_SCRIPT) AND (Self->SelectCallback.Script.Script->UniqueID IS Args->ObjectID)) {
+      else if ((Self->SelectCallback.Type IS CALL_SCRIPT) and (Self->SelectCallback.Script.Script->UniqueID IS Args->ObjectID)) {
          Self->SelectCallback.Type = CALL_NONE;
       }
-      else if ((Self->ExpandCallback.Type IS CALL_SCRIPT) AND (Self->ExpandCallback.Script.Script->UniqueID IS Args->ObjectID)) {
+      else if ((Self->ExpandCallback.Type IS CALL_SCRIPT) and (Self->ExpandCallback.Script.Script->UniqueID IS Args->ObjectID)) {
          Self->ExpandCallback.Type = CALL_NONE;
       }
    }
    else if (Args->ActionID IS AC_Hide) {
-      if ((Self->HScrollbar) AND (Self->HScrollbar->RegionID IS Args->ObjectID)) {
+      if ((Self->HScrollbar) and (Self->HScrollbar->RegionID IS Args->ObjectID)) {
          Self->HBarVisible = FALSE;
       }
-      else if ((Self->VScrollbar) AND (Self->VScrollbar->RegionID IS Args->ObjectID)) {
+      else if ((Self->VScrollbar) and (Self->VScrollbar->RegionID IS Args->ObjectID)) {
          Self->VBarVisible = FALSE;
       }
    }
    else if (Args->ActionID IS AC_Show) {
-      if ((Self->HScrollbar) AND (Self->HScrollbar->RegionID IS Args->ObjectID)) {
+      if ((Self->HScrollbar) and (Self->HScrollbar->RegionID IS Args->ObjectID)) {
          Self->HBarVisible = TRUE;
       }
-      else if ((Self->VScrollbar) AND (Self->VScrollbar->RegionID IS Args->ObjectID)) {
+      else if ((Self->VScrollbar) and (Self->VScrollbar->RegionID IS Args->ObjectID)) {
          Self->VBarVisible = TRUE;
       }
    }
@@ -362,24 +349,23 @@ static ERROR VIEW_ActionNotify(objView *Self, struct acActionNotify *Args)
 
 static ERROR VIEW_Activate(objView *Self, APTR Void)
 {
-   //if ((Self->SelectedTag IS -1) AND (Self->ActiveTag IS -1)) return ERR_Okay;
+   //if ((Self->SelectedTag IS -1) and (Self->ActiveTag IS -1)) return ERR_Okay;
 
-   struct ChildEntry list[20];
+   parasol::Log log;
+   ChildEntry list[20];
    LONG count = ARRAYSIZE(list);
    if (!ListChildren(Self->Head.UniqueID, list, &count)) {
-      LogBranch("%d children to activate.", count);
+      log.branch("%d children to activate.", count);
 
-      LONG i;
-      for (i=0; i < count; i++) {
+      for (LONG i=0; i < count; i++) {
          //DelayMsg(AC_Activate, list[i].ObjectID, NULL);
          acActivateID(list[i].ObjectID);
       }
 
-      LogReturn();
       return ERR_Okay;
    }
    else {
-      MSG("No children in the view to activate.");
+      log.trace("No children in the view to activate.");
       return ERR_ListChildren;
    }
 }
@@ -392,7 +378,9 @@ Clear: Clears a view of all internal content and updates the display.
 
 static ERROR VIEW_Clear(objView *Self, APTR Void)
 {
-   LogBranch(NULL);
+   parasol::Log log;
+
+   log.branch(NULL);
 
    BYTE activate = (Self->SelectedTag != -1) ? TRUE : FALSE;
 
@@ -407,9 +395,8 @@ static ERROR VIEW_Clear(objView *Self, APTR Void)
 
    AdjustLogLevel(3);
 
-   LONG index;
-   for (index=0; Self->XML->Tags[index]; index++) {
-      struct view_node *node = Self->XML->Tags[index]->Private;
+   for (LONG index=0; Self->XML->Tags[index]; index++) {
+      auto node = (view_node *)Self->XML->Tags[index]->Private;
       unload_icon(Self, &node->IconKey);
       unload_icon(Self, &node->IconOpenKey);
    }
@@ -432,9 +419,8 @@ static ERROR VIEW_Clear(objView *Self, APTR Void)
       DelayMsg(AC_Draw, Self->Layout->SurfaceID, NULL);
    }
 
-   if ((activate) AND (Self->Flags & (VWF_NOTIFY_ON_CLEAR|VWF_SENSITIVE))) acActivate(Self);
+   if ((activate) and (Self->Flags & (VWF_NOTIFY_ON_CLEAR|VWF_SENSITIVE))) acActivate(Self);
 
-   LogReturn();
    return ERR_Okay;
 }
 
@@ -462,27 +448,27 @@ Search
 
 static ERROR VIEW_CloseBranch(objView *Self, struct viewCloseBranch *Args)
 {
-   struct XMLTag *tag;
+   parasol::Log log;
+   XMLTag *tag;
    LONG tagindex;
-   if ((Args) AND (Args->XPath) AND (Args->XPath[0])) {
-      if (xmlFindTag(Self->XML, Args->XPath, 0, &tagindex)) return PostError(ERR_Search);
+
+   if ((Args) and (Args->XPath) and (Args->XPath[0])) {
+      if (xmlFindTag(Self->XML, Args->XPath, 0, &tagindex)) return log.warning(ERR_Search);
    }
-   else if ((Args) AND (Args->TagIndex >= 0) AND (Args->TagIndex < Self->XML->TagCount)) {
+   else if ((Args) and (Args->TagIndex >= 0) and (Args->TagIndex < Self->XML->TagCount)) {
       tagindex = Args->TagIndex;
    }
    else {
-      for (tag=Self->XML->Tags[0]; (tag) AND (tag->Index != Self->SelectedTag); tag=tag->Next);
-      if (!tag) return PostError(ERR_Search);
+      for (tag=Self->XML->Tags[0]; (tag) and (tag->Index != Self->SelectedTag); tag=tag->Next);
+      if (!tag) return log.warning(ERR_Search);
       tagindex = tag->Index;
    }
 
    if ((tag = Self->XML->Tags[tagindex])) {
-      struct view_node *node = tag->Private;
+      auto node = (view_node *)tag->Private;
       if (node->Flags & NODE_OPEN) {
          node->Flags &= ~NODE_OPEN;
-
          arrange_items(Self);
-
          if (!Self->RedrawDue) {
             Self->RedrawDue = TRUE;
             DelayMsg(AC_Draw, Self->Layout->SurfaceID, NULL);
@@ -539,21 +525,22 @@ set the #ItemNames field to declare your own valid item names.
 
 static ERROR VIEW_DataFeed(objView *Self, struct acDataFeed *Args)
 {
-   struct XMLTag *tag;
+   parasol::Log log;
+   XMLTag *tag;
    ERROR error;
-   UBYTE buffer[300];
+   char buffer[300];
 
-   if (!Args) return PostError(ERR_NullArgs);
+   if (!Args) return log.warning(ERR_NullArgs);
 
    if (Args->DataType IS DATA_XML) {
       if (!Self->XML) return ERR_Failed;
 
-      MSG("Received XML:\n%s", (CSTRING)Args->Buffer);
+      log.trace("Received XML:\n%s", (CSTRING)Args->Buffer);
 
       LONG tagcount = Self->XML->TagCount;
 
       if (Action(AC_DataFeed, Self->XML, Args) != ERR_Okay) { // Convert the data to XML
-         return PostError(ERR_Failed);
+         return log.warning(ERR_Failed);
       }
 
       if (!StrMatch("style", Self->XML->Tags[tagcount]->Attrib->Name)) {
@@ -570,7 +557,7 @@ static ERROR VIEW_DataFeed(objView *Self, struct acDataFeed *Args)
 
       // Refresh the display
 
-      if ((Self->Style IS VIEW_TREE) OR (Self->Style IS VIEW_GROUP_TREE) OR (Self->Style IS VIEW_COLUMN_TREE)) {
+      if ((Self->Style IS VIEW_TREE) or (Self->Style IS VIEW_GROUP_TREE) or (Self->Style IS VIEW_COLUMN_TREE)) {
          arrange_items(Self);
          acDrawID(Self->Layout->SurfaceID);
       }
@@ -588,7 +575,7 @@ static ERROR VIEW_DataFeed(objView *Self, struct acDataFeed *Args)
             // will need to redraw the entire view though.
 
             for (tag=Self->XML->Tags[tagcount]; tag; tag=tag->Next) {
-               struct view_node *node = tag->Private;
+               auto node = (view_node *)tag->Private;
                if (node->Flags & NODE_NEWCOLUMN) {
                   acDrawID(Self->Layout->SurfaceID);
                   break;
@@ -608,7 +595,7 @@ static ERROR VIEW_DataFeed(objView *Self, struct acDataFeed *Args)
    else if (Args->DataType IS DATA_TEXT) {
       // Pass the data through to XML
 
-      MSG("Received text: %s", (STRING)Args->Buffer);
+      log.trace("Received text: %s", (STRING)Args->Buffer);
 
       LONG tagcount;
       GetLong(Self->XML, FID_TagCount, &tagcount);
@@ -619,14 +606,14 @@ static ERROR VIEW_DataFeed(objView *Self, struct acDataFeed *Args)
 
       // Set default colour for new items
 
-      for (tag=Self->XML->Tags[tagcount]; tag; tag=tag->Next) {
-         struct view_node *node = tag->Private;
+      for (auto tag=Self->XML->Tags[tagcount]; tag; tag=tag->Next) {
+         auto node = (view_node *)tag->Private;
          node->FontRGB = Self->ColItem;
       }
 
       // Refresh the display
 
-      if ((Self->Style IS VIEW_TREE) OR (Self->Style IS VIEW_GROUP_TREE) OR (Self->Style IS VIEW_COLUMN_TREE)) {
+      if ((Self->Style IS VIEW_TREE) or (Self->Style IS VIEW_GROUP_TREE) or (Self->Style IS VIEW_COLUMN_TREE)) {
          acDrawID(Self->Layout->SurfaceID);
       }
       else {
@@ -635,13 +622,10 @@ static ERROR VIEW_DataFeed(objView *Self, struct acDataFeed *Args)
 
          arrange_items(Self);
 
-         if (error IS ERR_Okay) {
-            acDrawID(Self->Layout->SurfaceID);
-         }
-         else {
-            // The list didn't need to be sorted, so just draw the new items
-            for (tag=Self->XML->Tags[tagcount]; tag; tag=tag->Next) {
-               struct view_node *node = tag->Private;
+         if (!error) acDrawID(Self->Layout->SurfaceID);
+         else { // The list didn't need to be sorted, so just draw the new items
+            for (auto tag=Self->XML->Tags[tagcount]; tag; tag=tag->Next) {
+               auto node = (view_node *)tag->Private;
                acDrawAreaID(Self->Layout->SurfaceID, Self->Layout->BoundX + node->X, Self->Layout->BoundY + node->Y,
                   node->Width, (node->Flags & NODE_NEWCOLUMN) ? 16000 : node->Height);
             }
@@ -652,17 +636,16 @@ static ERROR VIEW_DataFeed(objView *Self, struct acDataFeed *Args)
    }
    else if (Args->DataType IS DATA_REQUEST) {
       if (Self->DragSourceID) {
-         LogBranch("Data request received for #%d", Self->DragSourceID);
+         log.branch("Data request received for #%d", Self->DragSourceID);
          ERROR error = ActionMsg(AC_DataFeed, Self->DragSourceID, Args);
-         LogReturn();
          if (error IS ERR_NotFound) Self->DragSourceID = 0;
-         if (error) PostError(error);
+         if (error) log.warning(error);
          return error;
       }
       else return ERR_NoSupport;
    }
    else if (Args->DataType IS DATA_INPUT_READY) {
-      struct InputMsg *input, *scan;
+      InputMsg *input, *scan;
 
       while (!gfxGetInputMsg((struct dcInputReady *)Args->Buffer, 0, &input)) {
          ERROR inputerror;
@@ -684,7 +667,7 @@ static ERROR VIEW_DataFeed(objView *Self, struct acDataFeed *Args)
             if (input->Value > 0) vwUserClick(Self, input);
             else vwUserClickRelease(Self, input);
          }
-         else MSG("Unrecognised input message type $%.8x", input->Flags);
+         else log.trace("Unrecognised input message type $%.8x", input->Flags);
       }
 
       return ERR_Okay;
@@ -752,34 +735,31 @@ Search
 
 static ERROR VIEW_OpenBranch(objView *Self, struct viewOpenBranch *Args)
 {
+   parasol::Log log;
+
    if (!Args) return ERR_NullArgs;
 
-   LogBranch("Path: %s, Index: %d, TagCount: %d", Args->XPath, Args->TagIndex, Self->XML->TagCount);
+   log.branch("Path: %s, Index: %d, TagCount: %d", Args->XPath, Args->TagIndex, Self->XML->TagCount);
 
-   struct XMLTag *tag = NULL;
-   if ((Args->XPath) AND (Args->XPath[0])) {
+   XMLTag *tag = NULL;
+   if ((Args->XPath) and (Args->XPath[0])) {
       LONG i;
       if (xmlFindTag(Self->XML, Args->XPath, 0, &i)) {
-         LogReturn();
-         return PostError(ERR_Search);
+         return log.warning(ERR_Search);
       }
       tag = Self->XML->Tags[i];
    }
-   else if ((Args->TagIndex >= 0) AND (Args->TagIndex < Self->XML->TagCount)) {
+   else if ((Args->TagIndex >= 0) and (Args->TagIndex < Self->XML->TagCount)) {
       tag = Self->XML->Tags[Args->TagIndex];
    }
-   else {
-      // Find the most recently selected tag
-      for (tag=Self->XML->Tags[0]; (tag) AND (tag->Index != Self->SelectedTag); tag=tag->Next);
+   else { // Find the most recently selected tag
+      for (tag=Self->XML->Tags[0]; (tag) and (tag->Index != Self->SelectedTag); tag=tag->Next);
    }
 
-   if (!tag) {
-      LogReturn();
-      return PostError(ERR_Search);
-   }
+   if (!tag) return log.warning(ERR_Search);
 
    if (open_branch_callback(Self, tag) IS FALSE) {
-      struct view_node *node = tag->Private;
+      auto node = (view_node *)tag->Private;
       if (node->Flags & NODE_CHILDREN) {
          if (!(node->Flags & NODE_OPEN)) {
             node->Flags |= NODE_OPEN;
@@ -788,14 +768,14 @@ static ERROR VIEW_OpenBranch(objView *Self, struct viewOpenBranch *Args)
             // Expand parent nodes if requested to do so
 
             if (Args->Parents) {
-               MSG("Expanding parent branches.");
+               log.trace("Expanding parent branches.");
 
                LONG i = tag->Index;
                while (i >= 0) {
                   if (Self->XML->Tags[i]->Branch < tag->Branch) {
-                     MSG("Find parent @ index %d, name: %s", i, Self->XML->Tags[i]->Attrib->Name);
+                     log.trace("Find parent @ index %d, name: %s", i, Self->XML->Tags[i]->Attrib->Name);
                      tag = Self->XML->Tags[i];
-                     node = tag->Private;
+                     node = (view_node *)tag->Private;
                      if (node->Flags & NODE_CHILDREN) {
                         node->Flags |= NODE_OPEN;
                      }
@@ -812,11 +792,10 @@ static ERROR VIEW_OpenBranch(objView *Self, struct viewOpenBranch *Args)
             }
          }
       }
-      else MSG("There are no children for this branch.");
+      else log.trace("There are no children for this branch.");
    }
-   else MSG("Callback routine manually expanded the tree branch.");
+   else log.trace("Callback routine manually expanded the tree branch.");
 
-   LogReturn();
    return ERR_Okay;
 }
 
@@ -825,25 +804,23 @@ static ERROR VIEW_OpenBranch(objView *Self, struct viewOpenBranch *Args)
 static ERROR VIEW_Free(objView *Self, APTR Void)
 {
    if (Self->XML) { // Unload all icons from the cache first
-      LONG index;
-      for (index=0; index < Self->XML->TagCount; index++) {
-         struct view_node *node = Self->XML->Tags[index]->Private;
+      for (LONG index=0; index < Self->XML->TagCount; index++) {
+         auto node = (view_node *)Self->XML->Tags[index]->Private;
          unload_icon(Self, &node->IconKey);
          unload_icon(Self, &node->IconOpenKey);
       }
    }
 
    OBJECTPTR object;
-   if ((Self->FocusID) AND (!AccessObject(Self->FocusID, 3000, &object))) {
-
+   if ((Self->FocusID) and (!AccessObject(Self->FocusID, 3000, &object))) {
       ReleaseObject(object);
    }
 
    // Free column allocations
 
-   struct view_col *col = Self->Columns;
+   auto col = Self->Columns;
    while (col) {
-      struct view_col *next = col->Next;
+      auto next = col->Next;
       FreeResource(col);
       col = next;
    }
@@ -902,15 +879,13 @@ through the GetVar action.
 
 static ERROR VIEW_GetVar(objView *Self, struct acGetVar *Args)
 {
-   struct XMLTag *tag;
-   struct view_node *node;
+   parasol::Log log;
+   XMLTag *tag;
    char attrib[60];
 
-   if (!Args) return PostError(ERR_NullArgs);
+   if (!Args) return log.warning(ERR_NullArgs);
 
-   if ((!Args->Field) OR (!Args->Buffer) OR (Args->Size < 1)) {
-      return PostError(ERR_Args);
-   }
+   if ((!Args->Field) or (!Args->Buffer) or (Args->Size < 1)) return log.warning(ERR_Args);
 
    StrCopy(Self->VarDefault, Args->Buffer, Args->Size);
 
@@ -922,7 +897,7 @@ static ERROR VIEW_GetVar(objView *Self, struct acGetVar *Args)
       if (!(tag = Self->XML->Tags[Self->ActiveTag])) return ERR_NoData;
 
       if (Args->Field[6] IS '(') {
-         for (j=0,i=7; (j < sizeof(attrib)-1) AND (Args->Field[i]) AND (Args->Field[i] != ')'); j++) attrib[j] = Args->Field[i++];
+         for (j=0,i=7; ((size_t)j < sizeof(attrib)-1) and (Args->Field[i]) and (Args->Field[i] != ')'); j++) attrib[j] = Args->Field[i++];
          attrib[j] = 0;
       }
       else attrib[0] = 0;
@@ -931,10 +906,10 @@ static ERROR VIEW_GetVar(objView *Self, struct acGetVar *Args)
       LONG index = StrToInt(Args->Field) + 1;
       if (index < 1) return ERR_Okay;
 
-      for (i=0; Args->Field[i] AND (Args->Field[i] != ','); i++);
+      for (i=0; Args->Field[i] and (Args->Field[i] != ','); i++);
       if (Args->Field[i] IS ',') {
          i++;
-         for (j=0; (j < sizeof(attrib)-1) AND (Args->Field[i]) AND (Args->Field[i] != ')'); j++) attrib[j] = Args->Field[i++];
+         for (j=0; ((size_t)j < sizeof(attrib)-1) and (Args->Field[i]) and (Args->Field[i] != ')'); j++) attrib[j] = Args->Field[i++];
          attrib[j] = 0;
       }
       else attrib[0] = 0;
@@ -943,7 +918,7 @@ static ERROR VIEW_GetVar(objView *Self, struct acGetVar *Args)
 
       tag = NULL;
       for (i=0; Self->XML->Tags[i]; i++) {
-         node = Self->XML->Tags[i]->Private;
+         auto node = (view_node *)Self->XML->Tags[i]->Private;
          if (node->Flags & NODE_SELECTED) {
             if (--index < 1) {
                tag = Self->XML->Tags[i];
@@ -953,7 +928,7 @@ static ERROR VIEW_GetVar(objView *Self, struct acGetVar *Args)
       }
    }
    else {
-      LogErrorMsg("Field %s not supported.", Args->Field);
+      log.warning("Field %s not supported.", Args->Field);
       return ERR_NoSupport;
    }
 
@@ -987,7 +962,7 @@ static ERROR VIEW_GetVar(objView *Self, struct acGetVar *Args)
       }
    }
    else {
-      node = tag->Private;
+      auto node = (view_node *)tag->Private;
       StrCopy(get_nodestring(Self, node), Args->Buffer, Args->Size);
    }
 
@@ -1009,8 +984,10 @@ static ERROR VIEW_Hide(objView *Self, APTR Void)
 
 static ERROR VIEW_Init(objView *Self, APTR Void)
 {
-   SetFunctionPtr(Self->Layout, FID_DrawCallback, &draw_view);
-   SetFunctionPtr(Self->Layout, FID_ResizeCallback, &resize_view);
+   parasol::Log log;
+
+   SetFunctionPtr(Self->Layout, FID_DrawCallback, (APTR)&draw_view);
+   SetFunctionPtr(Self->Layout, FID_ResizeCallback, (APTR)&resize_view);
    if (acInit(Self->Layout) != ERR_Okay) {
       return ERR_Init;
    }
@@ -1062,12 +1039,12 @@ static ERROR VIEW_Init(objView *Self, APTR Void)
 
       ReleaseObject(surface);
    }
-   else return PostError(ERR_AccessObject);
+   else return log.warning(ERR_AccessObject);
 
    // Scan for scrollbars
 
-   if ((!Self->VScroll) OR (!Self->HScroll)) {
-      struct ChildEntry list[16];
+   if ((!Self->VScroll) or (!Self->HScroll)) {
+      ChildEntry list[16];
       LONG count = ARRAYSIZE(list);
 
       if (!ListChildren(Self->Layout->SurfaceID, list, &count)) {
@@ -1075,11 +1052,11 @@ static ERROR VIEW_Init(objView *Self, APTR Void)
             if (list[count].ClassID IS ID_SCROLLBAR) {
                objScrollbar *bar;
                if ((bar = (objScrollbar *)GetObjectPtr(list[count].ObjectID))) {
-                  if ((bar->Direction IS SO_HORIZONTAL) AND (!Self->HScroll)) {
+                  if ((bar->Direction IS SO_HORIZONTAL) and (!Self->HScroll)) {
                      SET_HScroll(Self, (OBJECTPTR)bar->Scroll);
                      Self->HScrollbar = bar;
                   }
-                  else if ((bar->Direction IS SO_VERTICAL) AND (!Self->VScroll)) {
+                  else if ((bar->Direction IS SO_VERTICAL) and (!Self->VScroll)) {
                      SET_VScroll(Self, (OBJECTPTR)bar->Scroll);
                      Self->VScrollbar = bar;
                   }
@@ -1129,14 +1106,14 @@ static ERROR VIEW_Init(objView *Self, APTR Void)
       }
    }
 
-   MSG("Focus notification based on object #%d.", Self->FocusID);
+   log.trace("Focus notification based on object #%d.", Self->FocusID);
 
    if (!AccessObject(Self->FocusID, 5000, &surface)) {
       if (surface->Head.ClassID IS ID_SURFACE) {
          SubscribeActionTags(surface, AC_Focus, AC_LostFocus, TAGEND);
          if (surface->Flags & RNF_HAS_FOCUS) {
             FUNCTION callback;
-            SET_FUNCTION_STDC(callback, &key_event);
+            SET_FUNCTION_STDC(callback, (APTR)&key_event);
             SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, &callback, Self, &Self->prvKeyEvent);
          }
       }
@@ -1150,16 +1127,11 @@ static ERROR VIEW_Init(objView *Self, APTR Void)
 
    arrange_items(Self);
 
-   if (Self->GroupHeaderXML) {
-      gen_group_bkgd(Self, Self->GroupHeaderXML, &Self->GroupBitmap, "init");
-   }
-
-   if (Self->GroupSelectXML) {
-      gen_group_bkgd(Self, Self->GroupSelectXML, &Self->SelectBitmap, "init");
-   }
+   if (Self->GroupHeaderXML) gen_group_bkgd(Self, Self->GroupHeaderXML, &Self->GroupBitmap, "init");
+   if (Self->GroupSelectXML) gen_group_bkgd(Self, Self->GroupSelectXML, &Self->SelectBitmap, "init");
 
    if (Self->SelectionIndex != -1) {
-      LogMsg("Selecting pre-selected item %d", Self->SelectionIndex);
+      log.msg("Selecting pre-selected item %d", Self->SelectionIndex);
       SET_SelectionIndex(Self, Self->SelectionIndex);
       Self->SelectionIndex = -1;
    }
@@ -1171,6 +1143,8 @@ static ERROR VIEW_Init(objView *Self, APTR Void)
 
 static void gen_group_bkgd(objView *Self, CSTRING Script, objBitmap **Bitmap, CSTRING Caller)
 {
+   parasol::Log log(__FUNCTION__);
+
    if (Self->Style != VIEW_GROUP_TREE) return;
 
    LONG width  = Self->Layout->BoundWidth;
@@ -1180,12 +1154,12 @@ static void gen_group_bkgd(objView *Self, CSTRING Script, objBitmap **Bitmap, CS
    LONG height;
    if ((height = Self->GroupHeight) < 1) {
       if ((height = Self->LineHeight) < 1) {
-         LogF("gen_group_bkgd()","Warning: GroupHeight or LineHeight not preset.");
+         log.msg("Warning: GroupHeight or LineHeight not preset.");
          height = Self->IconSize + 6;
       }
    }
 
-   LogF("~gen_group_bkgd()","Generating group background %dx%d, Caller: %s", width, height, Caller);
+   log.branch("Generating group background %dx%d, Caller: %s", width, height, Caller);
 
    if (Self->GroupSurfaceID) {
       objSurface *surface;
@@ -1233,7 +1207,7 @@ static void gen_group_bkgd(objView *Self, CSTRING Script, objBitmap **Bitmap, CS
                         FID_Height|TLONG, height,
                         TAGEND)) {
                      drwCopySurface(Self->GroupSurfaceID, bmp, BDF_REDRAW, 0, 0, width, height, 0, 0);
-                     if ((bmp) AND (*Bitmap)) acFree(*Bitmap);
+                     if ((bmp) and (*Bitmap)) acFree(*Bitmap);
                      *Bitmap = bmp;
                   }
                   else error = ERR_CreateObject;
@@ -1251,8 +1225,6 @@ static void gen_group_bkgd(objView *Self, CSTRING Script, objBitmap **Bitmap, CS
          ReleaseObject(surface);
       }
    }
-
-   LogReturn();
 }
 
 /*****************************************************************************
@@ -1286,12 +1258,12 @@ InvalidReference: The XPath was matched to a tag that was not a valid item.
 
 static ERROR VIEW_InsertItem(objView *Self, struct viewInsertItem *Args)
 {
-   if ((!Args) OR (!Args->XML)) return PostError(ERR_NullArgs);
+   parasol::Log log;
 
-   if (Self->XML->TagCount <= 0) {
-      // There is no data in the view's XML
+   if ((!Args) or (!Args->XML)) return log.warning(ERR_NullArgs);
 
-      if ((Args->XPath) AND (Args->XPath[0])) return ERR_Search;
+   if (Self->XML->TagCount <= 0) { // There is no data in the view's XML
+      if ((Args->XPath) and (Args->XPath[0])) return ERR_Search;
       if (Args->TagIndex > 0) return ERR_OutOfRange;
 
       ERROR error;
@@ -1310,49 +1282,44 @@ static ERROR VIEW_InsertItem(objView *Self, struct viewInsertItem *Args)
       else return error;
    }
    else {
-      struct XMLTag *tag = NULL;
-      if ((Args->XPath) AND (Args->XPath != (STRING)-1) AND (Args->XPath[0])) {
-         FMSG("~","Path: %s, Insert Mode: %d", Args->XPath, Args->Insert);
+      XMLTag *tag = NULL;
+      if ((Args->XPath) and (Args->XPath != (STRING)-1) and (Args->XPath[0])) {
+         log.traceBranch("Path: %s, Insert Mode: %d", Args->XPath, Args->Insert);
          LONG tagindex;
          if (xmlFindTag(Self->XML, Args->XPath, 0, &tagindex)) {
-            LOGRETURN();
-            return PostError(ERR_Search);
+            return log.warning(ERR_Search);
          }
          tag = Self->XML->Tags[tagindex];
       }
-      else if ((Args->TagIndex >= 0) AND (Args->TagIndex < Self->XML->TagCount)) {
-         FMSG("~","TagIndex: %d, Insert Mode: %d", Args->TagIndex, Args->Insert);
+      else if ((Args->TagIndex >= 0) and (Args->TagIndex < Self->XML->TagCount)) {
+         log.traceBranch("TagIndex: %d, Insert Mode: %d", Args->TagIndex, Args->Insert);
          tag = Self->XML->Tags[Args->TagIndex];
       }
       else if (Args->TagIndex IS -1) {
-         FMSG("~","SelectedTag: %d, Insert Point: %d", Self->SelectedTag, Args->Insert);
+         log.traceBranch("SelectedTag: %d, Insert Point: %d", Self->SelectedTag, Args->Insert);
          // Insertion point is the currently selected tag
-         for (tag=Self->XML->Tags[0]; (tag) AND (tag->Index != Self->SelectedTag); tag=tag->Next);
+         for (tag=Self->XML->Tags[0]; (tag) and (tag->Index != Self->SelectedTag); tag=tag->Next);
       }
       else if (Args->TagIndex IS -2) {
-         LONG i;
-         FMSG("~","End: %d, Insert Point: %d", Self->XML->TagCount-1, Args->Insert);
-         for (i=Self->XML->TagCount-1; i >= 0; i--) {
+         log.traceBranch("End: %d, Insert Point: %d", Self->XML->TagCount-1, Args->Insert);
+         for (LONG i=Self->XML->TagCount-1; i >= 0; i--) {
             tag = Self->XML->Tags[i];
-            if (((struct view_node *)(tag->Private))->Flags & NODE_ITEM) break;
+            if (((view_node *)(tag->Private))->Flags & NODE_ITEM) break;
          }
       }
       else return ERR_Search;
 
       if (!tag) {
-         LogErrorMsg("Failed to find '%s' / %d from %d tags.", Args->XPath, Args->TagIndex, Self->XML->TagCount);
-         LOGRETURN();
+         log.warning("Failed to find '%s' / %d from %d tags.", Args->XPath, Args->TagIndex, Self->XML->TagCount);
          return ERR_Search;
       }
 
-      if (!(((struct view_node *)(tag->Private))->Flags & NODE_ITEM)) {
-         LOGRETURN();
-         return PostError(ERR_InvalidReference);
+      if (!(((view_node *)(tag->Private))->Flags & NODE_ITEM)) {
+         return log.warning(ERR_InvalidReference);
       }
 
       ERROR error;
       if (!(error = xmlInsertXML(Self->XML, tag->Index, Args->Insert, Args->XML, NULL))) {
-
          //prepare_xml(Self, newtag, NULL, 1); // Note: You also need to re-prepare the parent tag.
          prepare_xml(Self, Self->XML->Tags[0], NULL, 0);
 
@@ -1365,13 +1332,9 @@ static ERROR VIEW_InsertItem(objView *Self, struct viewInsertItem *Args)
             DelayMsg(AC_Draw, Self->Layout->SurfaceID, NULL);
          }
 
-         LOGRETURN();
          return ERR_Okay;
       }
-      else {
-         LOGRETURN();
-         return error;
-      }
+      else return error;
    }
 }
 
@@ -1394,10 +1357,10 @@ static ERROR VIEW_InvertSelection(objView *Self, APTR Void)
 {
    if (Self->Flags & VWF_SENSITIVE) return ERR_Failed;
 
-   struct view_node *node;
+   view_node *node;
    LONG index;
    for (index=0; Self->XML->Tags[index]; index++) {
-      node = Self->XML->Tags[index]->Private;
+      node = (view_node *)Self->XML->Tags[index]->Private;
       if (node->Flags & NODE_ITEM) node->Flags ^= NODE_SELECTED;
    }
 
@@ -1408,7 +1371,7 @@ static ERROR VIEW_InvertSelection(objView *Self, APTR Void)
    // Select the first tag in the list
 
    for (index=0; Self->XML->Tags[index]; index++) {
-      node = Self->XML->Tags[index]->Private;
+      node = (view_node *)Self->XML->Tags[index]->Private;
       if (node->Flags & NODE_ITEM) {
          if (node->Flags & NODE_SELECTED) {
             Self->SelectedTag = index;
@@ -1451,12 +1414,14 @@ NullArgs
 
 static ERROR VIEW_ItemDimensions(objView *Self, struct viewItemDimensions *Args)
 {
-   if (!Args) return PostError(ERR_NullArgs);
+   parasol::Log log;
 
-   struct XMLTag *tag = NULL;
+   if (!Args) return log.warning(ERR_NullArgs);
+
+   XMLTag *tag = NULL;
    if (Args->TagIndex IS -1) {
       // Target the currently selected tag
-      if ((Self->SelectedTag >= 0) AND (Self->SelectedTag < Self->XML->TagCount)) {
+      if ((Self->SelectedTag >= 0) and (Self->SelectedTag < Self->XML->TagCount)) {
          tag = Self->XML->Tags[Self->SelectedTag];
       }
       else return ERR_Okay; // No tag is selected
@@ -1466,18 +1431,18 @@ static ERROR VIEW_ItemDimensions(objView *Self, struct viewItemDimensions *Args)
       // Target the last item in the list
       for (i=Self->XML->TagCount-1; i >= 0; i--) {
          tag = Self->XML->Tags[i];
-         if (((struct view_node *)(tag->Private))->Flags & NODE_ITEM) break;
+         if (((view_node *)(tag->Private))->Flags & NODE_ITEM) break;
       }
    }
    else {
-      if ((Args->TagIndex < 0) OR (Args->TagIndex >= Self->XML->TagCount)) return PostError(ERR_OutOfRange);
+      if ((Args->TagIndex < 0) or (Args->TagIndex >= Self->XML->TagCount)) return log.warning(ERR_OutOfRange);
       tag = Self->XML->Tags[Args->TagIndex];
    }
 
-   if (!tag) return PostError(ERR_SystemCorrupt); // A NULL tag indicates corrupt data
+   if (!tag) return log.warning(ERR_SystemCorrupt); // A NULL tag indicates corrupt data
 
-   struct view_node *node;
-   if ((node = tag->Private)) {
+   view_node *node;
+   if ((node = (view_node *)tag->Private)) {
       Args->X = node->X + Self->XPos;
       Args->Y = node->Y + Self->YPos;
       Args->Width  = node->Width;
@@ -1513,22 +1478,24 @@ Search
 
 static ERROR VIEW_LowerItem(objView *Self, struct viewLowerItem *Args)
 {
-   struct XMLTag *tag = NULL;
-   if ((Args) AND (Args->XPath) AND (Args->XPath[0])) {
+   parasol::Log log;
+
+   XMLTag *tag = NULL;
+   if ((Args) and (Args->XPath) and (Args->XPath[0])) {
       LONG tagindex;
       if (xmlFindTag(Self->XML, Args->XPath, NULL, &tagindex)) {
-         return PostError(ERR_Search);
+         return log.warning(ERR_Search);
       }
       tag = Self->XML->Tags[tagindex];
    }
-   else if ((Args) AND (Args->TagIndex >= 0) AND (Args->TagIndex < Self->XML->TagCount)) {
+   else if ((Args) and (Args->TagIndex >= 0) and (Args->TagIndex < Self->XML->TagCount)) {
       tag = Self->XML->Tags[Args->TagIndex];
    }
    else {
-      for (tag=Self->XML->Tags[0]; (tag) AND (tag->Index != Self->SelectedTag); tag=tag->Next);
+      for (tag=Self->XML->Tags[0]; (tag) and (tag->Index != Self->SelectedTag); tag=tag->Next);
    }
 
-   if (!tag) return PostError(ERR_Search);
+   if (!tag) return log.warning(ERR_Search);
 
    // Move the tag down
 
@@ -1565,7 +1532,7 @@ static ERROR VIEW_NewObject(objView *Self, APTR Void)
    else return ERR_NewObject;
 
    if (!NewObject(ID_XML, NF_INTEGRAL, &Self->XML)) {
-      SetFields(Self->XML, FID_PrivateDataSize|TLONG, sizeof(struct view_node),
+      SetFields(Self->XML, FID_PrivateDataSize|TLONG, sizeof(view_node),
                            FID_Flags|TLONG,           XMF_STRIP_HEADERS,
                            TAGEND);
 
@@ -1573,7 +1540,7 @@ static ERROR VIEW_NewObject(objView *Self, APTR Void)
          SetName(Self->Font, "ViewFont");
          SetString(Self->Font, FID_Face, glDefaultFace);
 
-         if (!AllocMemory(sizeof(struct view_col), MEM_DATA, &Self->Columns, NULL)) {
+         if (!AllocMemory(sizeof(view_col), MEM_DATA, &Self->Columns, NULL)) {
             StrCopy("Default", Self->Columns->Name, sizeof(Self->Columns->Name));
             StrCopy("Default", Self->Columns->Text, sizeof(Self->Columns->Text));
             Self->ItemNames = StrClone("item");
@@ -1695,25 +1662,23 @@ Search
 
 static ERROR VIEW_RaiseItem(objView *Self, struct viewRaiseItem *Args)
 {
-   LogBranch(NULL);
+   parasol::Log log;
 
-   struct XMLTag *tag = NULL;
-   if ((Args) AND (Args->XPath) AND (Args->XPath != (STRING)-1) AND (Args->XPath[0])) {
+   log.branch("");
+
+   XMLTag *tag = NULL;
+   if ((Args) and (Args->XPath) and (Args->XPath != (STRING)-1) and (Args->XPath[0])) {
       LONG tagindex;
       if (xmlFindTag(Self->XML, Args->XPath, 0, &tagindex)) {
-         LogReturn();
-         return PostError(ERR_Search);
+         return log.warning(ERR_Search);
       }
    }
-   else if ((Args) AND (Args->TagIndex >= 0) AND (Args->TagIndex < Self->XML->TagCount)) {
+   else if ((Args) and (Args->TagIndex >= 0) and (Args->TagIndex < Self->XML->TagCount)) {
       tag = Self->XML->Tags[Args->TagIndex];
    }
-   else for (tag=Self->XML->Tags[0]; (tag) AND (tag->Index != Self->SelectedTag); tag=tag->Next);
+   else for (tag=Self->XML->Tags[0]; (tag) and (tag->Index != Self->SelectedTag); tag=tag->Next);
 
-   if (!tag) {
-      LogReturn();
-      return PostError(ERR_Search);
-   }
+   if (!tag) return log.warning(ERR_Search);
 
    // Move the tag up
 
@@ -1735,7 +1700,6 @@ static ERROR VIEW_RaiseItem(objView *Self, struct viewRaiseItem *Args)
       }
    }
 
-   LogReturn();
    return ERR_Okay;
 }
 
@@ -1754,6 +1718,8 @@ The Refresh action is typically called following manual changes to #XML content.
 
 static ERROR VIEW_Refresh(objView *Self, APTR Void)
 {
+   parasol::Log log;
+
    LONG active   = Self->ActiveTag;
    LONG selected = Self->SelectedTag;
    Self->HighlightTag = -1;
@@ -1769,18 +1735,19 @@ static ERROR VIEW_Refresh(objView *Self, APTR Void)
 
    prepare_xml(Self, Self->XML->Tags[0], 0, 0); // Will reset ActiveTag and SelectedTag
 
-   FMSG("~","Resetting selected and active tags.");
+   {
+      parasol::Log log;
+      log.traceBranch("Resetting selected and active tags.");
 
       LONG flags = 0;
       if (active != Self->ActiveTag) flags |= SLF_ACTIVE;
       if (selected != Self->SelectedTag) flags |= SLF_SELECTED;
       if (flags) report_selection(Self, flags, Self->SelectedTag);
-
-   LOGRETURN();
+   }
 
    arrange_items(Self); // Expected to set HighlightTag
 
-   MSG("Redrawing surface.");
+   log.trace("Redrawing surface.");
 
    if (!Self->RedrawDue) {
       Self->RedrawDue = TRUE;
@@ -1811,22 +1778,24 @@ NullArgs
 
 static ERROR VIEW_RemoveItem(objView *Self, struct viewRemoveItem *Args)
 {
+   parasol::Log log;
+
    if (!Args) return ERR_NullArgs;
 
    LONG tagindex;
-   struct XMLTag *tag = NULL;
-   if ((Args->XPath) AND (Args->XPath != (STRING)-1) AND (Args->XPath[0])) {
-      MSG("Path: %s", Args->XPath);
-      if (xmlFindTag(Self->XML, Args->XPath, NULL, &tagindex)) return PostError(ERR_Search);
+   XMLTag *tag = NULL;
+   if ((Args->XPath) and (Args->XPath != (STRING)-1) and (Args->XPath[0])) {
+      log.trace("Path: %s", Args->XPath);
+      if (xmlFindTag(Self->XML, Args->XPath, NULL, &tagindex)) return log.warning(ERR_Search);
       tag = Self->XML->Tags[tagindex];
    }
-   else if ((Args->TagIndex >= 0) AND (Args->TagIndex < Self->XML->TagCount)) {
-      MSG("TagIndex: %d", Args->TagIndex);
+   else if ((Args->TagIndex >= 0) and (Args->TagIndex < Self->XML->TagCount)) {
+      log.trace("TagIndex: %d", Args->TagIndex);
       tag = Self->XML->Tags[Args->TagIndex];
    }
    else {
-      MSG("SelectedTag: %d", Self->SelectedTag);
-      for (tag=Self->XML->Tags[0]; (tag) AND (tag->Index != Self->SelectedTag); tag=tag->Next);
+      log.trace("SelectedTag: %d", Self->SelectedTag);
+      for (tag=Self->XML->Tags[0]; (tag) and (tag->Index != Self->SelectedTag); tag=tag->Next);
    }
 
    if (tag) {
@@ -1836,8 +1805,8 @@ static ERROR VIEW_RemoveItem(objView *Self, struct viewRemoveItem *Args)
 
       // Check if the tag is currently selected.  If so, we'll need to send a reactivation message to children monitoring the view.
 
-      struct view_node *node;
-      if ((node = tag->Private)) {
+      view_node *node;
+      if ((node = (view_node *)tag->Private)) {
          activate = node->Flags & NODE_SELECTED;
          unload_icon(Self, &node->IconKey);
          unload_icon(Self, &node->IconOpenKey);
@@ -1857,8 +1826,8 @@ static ERROR VIEW_RemoveItem(objView *Self, struct viewRemoveItem *Args)
 
       // Send an Activate notification if necessary
 
-      if ((activate) AND (Self->Flags & (VWF_SENSITIVE|VWF_NOTIFY_ON_CLEAR))) {
-         LogMsg("Reactivating due to deleted selected item.");
+      if ((activate) and (Self->Flags & (VWF_SENSITIVE|VWF_NOTIFY_ON_CLEAR))) {
+         log.msg("Reactivating due to deleted selected item.");
          acActivate(Self);
       }
 
@@ -1890,22 +1859,24 @@ NullArgs:
 
 static ERROR VIEW_RemoveTag(objView *Self, struct viewRemoveTag *Args)
 {
-   if (!Args) return PostError(ERR_NullArgs);
+   parasol::Log log;
 
-   FMSG("~","Index: %d", Args->TagIndex);
+   if (!Args) return log.warning(ERR_NullArgs);
 
-   struct XMLTag *tag;
-   if ((Args->TagIndex >= 0) AND (Args->TagIndex < Self->XML->TagCount)) {
+   log.traceBranch("Index: %d", Args->TagIndex);
+
+   XMLTag *tag;
+   if ((Args->TagIndex >= 0) and (Args->TagIndex < Self->XML->TagCount)) {
       tag = Self->XML->Tags[Args->TagIndex];
    }
-   else { LOGRETURN(); return PostError(ERR_OutOfRange); }
+   else return log.warning(ERR_OutOfRange);
 
    LONG tagindex = tag->Index;
 
    // Remove the tag and associated resources from the system
 
-   struct view_node *node;
-   if ((node = tag->Private)) {
+   view_node *node;
+   if ((node = (view_node *)tag->Private)) {
       unload_icon(Self, &node->IconKey);
       unload_icon(Self, &node->IconOpenKey);
    }
@@ -1923,7 +1894,6 @@ static ERROR VIEW_RemoveTag(objView *Self, struct viewRemoveTag *Args)
 
    // Note that this is a technical routine that does not run a cleanup sub-routine for item rearrangement and notifications.
 
-   LOGRETURN();
    return ERR_Okay;
 }
 
@@ -1935,9 +1905,8 @@ ScrollToPoint: Scrolls the graphical content of a view.
 
 static ERROR VIEW_ScrollToPoint(objView *Self, struct acScrollToPoint *Args)
 {
-   if (!Args) return PostError(ERR_NullArgs);
-
-   if ((Args->X IS Self->XPos) AND (Args->Y IS Self->YPos)) return ERR_Okay;
+   if (!Args) return ERR_NullArgs;
+   if ((Args->X IS Self->XPos) and (Args->Y IS Self->YPos)) return ERR_Okay;
 
    OBJECTPTR surface;
    if (!AccessObject(Self->Layout->SurfaceID, 5000, &surface)) {
@@ -1960,7 +1929,7 @@ static ERROR VIEW_ScrollToPoint(objView *Self, struct acScrollToPoint *Args)
          if (!(Self->GfxFlags & VGF_DRAW_TABLE)) {
             ax++;
             awidth -= 2;
-            if ((Self->Style IS VIEW_COLUMN) OR (Self->Style IS VIEW_COLUMN_TREE)) {
+            if ((Self->Style IS VIEW_COLUMN) or (Self->Style IS VIEW_COLUMN_TREE)) {
                aheight--;
             }
             else {
@@ -1994,9 +1963,8 @@ Okay
 
 static ERROR VIEW_SelectAll(objView *Self, APTR Void)
 {
-   LONG index;
-   for (index=0; Self->XML->Tags[index]; index++) {
-      struct view_node *node = Self->XML->Tags[index]->Private;
+   for (LONG index=0; Self->XML->Tags[index]; index++) {
+      auto node = (view_node *)Self->XML->Tags[index]->Private;
       if (node->Flags & NODE_ITEM) node->Flags |= NODE_SELECTED;
    }
 
@@ -2037,19 +2005,20 @@ Args
 
 static ERROR VIEW_SelectItem(objView *Self, struct viewSelectItem *Args)
 {
-   LONG tagindex;
+   parasol::Log log;
 
-   if ((Args) AND (Args->XPath) AND (Args->XPath[0] IS '/')) {
+   if ((Args) and (Args->XPath) and (Args->XPath[0] IS '/')) {
+      LONG tagindex;
       if (!xmlFindTag(Self->XML, Args->XPath, 0, &tagindex)) {
          select_item(Self, Self->XML->Tags[tagindex], SLF_MANUAL, TRUE, FALSE);
          return ERR_Okay;
       }
       else {
-         LogErrorMsg("Unable to resolve xpath \"%s\"", Args->XPath);
+         log.warning("Unable to resolve xpath \"%s\"", Args->XPath);
          return ERR_Search;
       }
    }
-   else return PostError(ERR_Args);
+   else return log.warning(ERR_Args);
 }
 
 /*****************************************************************************
@@ -2070,9 +2039,8 @@ Okay
 
 static ERROR VIEW_SelectNone(objView *Self, APTR Void)
 {
-   LONG index;
-   for (index=0; Self->XML->Tags[index]; index++) {
-      struct view_node *node = Self->XML->Tags[index]->Private;
+   for (LONG index=0; Self->XML->Tags[index]; index++) {
+      auto node = (view_node *)Self->XML->Tags[index]->Private;
       if (node->Flags & NODE_ITEM) node->Flags &= ~NODE_SELECTED;
    }
 
@@ -2121,66 +2089,58 @@ Search: The index, tag and/or attrib values did not lead to a match.
 
 static ERROR VIEW_SetItem(objView *Self, struct viewSetItem *Args)
 {
-   FMSG("~","XPath: %s, Index: %d, Tag: %s, Attrib: %s, Value: %s", Args->XPath, Args->TagIndex, Args->Tag, Args->Attrib, Args->Value);
+   parasol::Log log;
+
+   log.traceBranch("XPath: %s, Index: %d, Tag: %s, Attrib: %s, Value: %s", Args->XPath, Args->TagIndex, Args->Tag, Args->Attrib, Args->Value);
 
    // Find the root tag that we need to set
 
    LONG tagindex;
-   struct XMLTag *tag = NULL;
-   if ((Args) AND (Args->XPath) AND (Args->XPath != (STRING)-1) AND (Args->XPath[0])) {
+   XMLTag *tag = NULL;
+   if ((Args) and (Args->XPath) and (Args->XPath != (STRING)-1) and (Args->XPath[0])) {
       if (xmlFindTag(Self->XML, Args->XPath, 0, &tagindex)) {
-         LOGRETURN();
-         return PostError(ERR_Search);
+         return log.warning(ERR_Search);
       }
       tag = Self->XML->Tags[tagindex];
    }
-   else if ((Args) AND (Args->TagIndex >= 0) AND (Args->TagIndex < Self->XML->TagCount)) {
+   else if ((Args) and (Args->TagIndex >= 0) and (Args->TagIndex < Self->XML->TagCount)) {
       tag = Self->XML->Tags[Args->TagIndex];
    }
-   else {
-      LOGRETURN();
-      return PostError(ERR_OutOfRange);
-   }
+   else return log.warning(ERR_OutOfRange);
 
    if (!tag) {
-      LogErrorMsg("Failed to find the root tag for path/tag '%s' / %d", Args->XPath, Args->TagIndex);
-      LOGRETURN();
+      log.warning("Failed to find the root tag for path/tag '%s' / %d", Args->XPath, Args->TagIndex);
       return ERR_Search;
    }
 
-   if (!(((struct view_node *)(tag->Private))->Flags & NODE_ITEM)) {
-      LOGRETURN();
-      return PostError(ERR_InvalidReference);
+   if (!(((view_node *)(tag->Private))->Flags & NODE_ITEM)) {
+      return log.warning(ERR_InvalidReference);
    }
 
    // Scan for the correct tag within the discovered area
 
-   if ((Args->Tag) AND (Args->Tag[0])) {
+   if ((Args->Tag) and (Args->Tag[0])) {
       if (StrMatch(Args->Tag, tag->Attrib->Name) != ERR_Okay) {
          if (tag->Child) {
             for (tag=tag->Child; tag; tag=tag->Next) {
                if (!StrMatch(Args->Tag, tag->Attrib->Name)) break;
             }
          }
-         else LogErrorMsg("There are no children under tag '%s'.", tag->Attrib->Name);
+         else log.warning("There are no children under tag '%s'.", tag->Attrib->Name);
       }
 
       if (!tag) {
-         LogErrorMsg("Failed to find child tag '%s'", Args->Tag);
-         LOGRETURN();
+         log.warning("Failed to find child tag '%s'", Args->Tag);
          return ERR_Search;
       }
    }
 
-   if ((Args->Attrib) AND (Args->Attrib[0])) { // Update an attribute.  There is no need to preform a redraw in this case
+   if ((Args->Attrib) and (Args->Attrib[0])) { // Update an attribute.  There is no need to preform a redraw in this case
       LONG tagindex = tag->Index;
-      struct view_node *node = Self->XML->Tags[tagindex]->Private;
-
-      LONG index;
-      for (index=0; index < tag->TotalAttrib; index++) {
+      auto node = (view_node *)Self->XML->Tags[tagindex]->Private;
+      for (LONG index=0; index < tag->TotalAttrib; index++) {
          if (!StrMatch(Args->Attrib, tag->Attrib[index].Name)) {
             if (!StrMatch(Args->Value, tag->Attrib[index].Value)) { // The new value is the same as the current value
-               LOGRETURN();
                return ERR_Okay;
             }
 
@@ -2197,12 +2157,11 @@ static ERROR VIEW_SetItem(objView *Self, struct viewSetItem *Args)
 
             xmlSetAttrib(Self->XML, tagindex, index, 0, Args->Value);
 
-            if ((Self->TextAttrib) AND (!StrMatch(Self->TextAttrib, Args->Attrib))) {
-               set_nodestring(Self, Self->XML->Tags[tagindex]->Private, Args->Value);
-               ((struct view_node *)Self->XML->Tags[tagindex]->Private)->ChildString = FALSE;
+            if ((Self->TextAttrib) and (!StrMatch(Self->TextAttrib, Args->Attrib))) {
+               set_nodestring(Self, (view_node *)Self->XML->Tags[tagindex]->Private, Args->Value);
+               ((view_node *)Self->XML->Tags[tagindex]->Private)->ChildString = FALSE;
             }
 
-            LOGRETURN();
             return ERR_Okay;
          }
       }
@@ -2212,8 +2171,8 @@ static ERROR VIEW_SetItem(objView *Self, struct viewSetItem *Args)
          LONG tagindex = tag->Index;
          xmlSetAttrib(Self->XML, tag->Child->Index, 0, 0, Args->Value);
 
-         struct view_node *node = Self->XML->Tags[tagindex]->Private;
-         if ((node->ChildString) OR (!Self->TextAttrib)) {
+         auto node = (view_node *)Self->XML->Tags[tagindex]->Private;
+         if ((node->ChildString) or (!Self->TextAttrib)) {
             set_nodestring(Self, node, Args->Value);
             node->ChildString = TRUE;
          }
@@ -2228,12 +2187,10 @@ static ERROR VIEW_SetItem(objView *Self, struct viewSetItem *Args)
          }
       }
 
-      LOGRETURN();
       return ERR_Okay;
    }
 
-   LOGRETURN();
-   return PostError(ERR_Search);
+   return log.warning(ERR_Search);
 }
 
 /*****************************************************************************
@@ -2276,7 +2233,7 @@ Search: The referenced column could not be found.
 
 static ERROR VIEW_SortColumn(objView *Self, struct viewSortColumn *Args)
 {
-   if (!Args) return PostError(ERR_NullArgs);
+   if (!Args) return ERR_NullArgs;
 
    if (Self->Flags & VWF_NO_SORTING) return ERR_Okay;
 
@@ -2289,9 +2246,8 @@ static ERROR VIEW_SortColumn(objView *Self, struct viewSortColumn *Args)
 
    // Find the column that has been referenced
 
-   struct view_col *col;
-   LONG colindex;
-   for (col=Self->Columns, colindex=0; col; col=col->Next, colindex++) {
+   LONG colindex = 0;
+   for (auto col=Self->Columns; col; col=col->Next, colindex++) {
       if (!StrMatch(Args->Column, col->Name)) {
          struct viewSortColumnIndex sort;
          sort.Column     = colindex;
@@ -2328,9 +2284,11 @@ Args
 
 static ERROR VIEW_SortColumnIndex(objView *Self, struct viewSortColumnIndex *Args)
 {
-   if ((!Args) OR (Args->Column < 0)) return ERR_Args;
+   parasol::Log log;
 
-   LogMsg("Column: %d, Descending: %d", Args->Column, Args->Descending);
+   if ((!Args) or (Args->Column < 0)) return ERR_Args;
+
+   log.msg("Column: %d, Descending: %d", Args->Column, Args->Descending);
 
    if (Self->Flags & VWF_NO_SORTING) return ERR_Okay;
 
@@ -2395,11 +2353,13 @@ InvalidReference: The TagIndex does not refer to a valid XML item.
 
 static ERROR VIEW_RevealItem(objView *Self, struct viewRevealItem *Args)
 {
-   if (!Args) return PostError(ERR_NullArgs);
+   parasol::Log log;
 
-   struct XMLTag *tag = NULL;
+   if (!Args) return log.warning(ERR_NullArgs);
+
+   XMLTag *tag = NULL;
    if (Args->TagIndex IS -1) { // Reveal the currently selected tag
-      if ((Self->SelectedTag >= 0) AND (Self->SelectedTag < Self->XML->TagCount)) {
+      if ((Self->SelectedTag >= 0) and (Self->SelectedTag < Self->XML->TagCount)) {
          tag = Self->XML->Tags[Self->SelectedTag];
       }
       else return ERR_Okay; // No tag is selected
@@ -2408,46 +2368,46 @@ static ERROR VIEW_RevealItem(objView *Self, struct viewRevealItem *Args)
       LONG i;
       for (i=Self->XML->TagCount-1; i >= 0; i--) {
          tag = Self->XML->Tags[i];
-         if (((struct view_node *)(tag->Private))->Flags & NODE_ITEM) break;
+         if (((view_node *)(tag->Private))->Flags & NODE_ITEM) break;
       }
    }
    else {
-      if ((Args->TagIndex < 0) OR (Args->TagIndex >= Self->XML->TagCount)) return PostError(ERR_OutOfRange);
+      if ((Args->TagIndex < 0) or (Args->TagIndex >= Self->XML->TagCount)) return log.warning(ERR_OutOfRange);
       tag = Self->XML->Tags[Args->TagIndex];
    }
 
    if (!tag) return ERR_InvalidReference;
 
-   if (((struct view_node *)tag->Private)->Flags & NODE_ITEM) {
+   if (((view_node *)tag->Private)->Flags & NODE_ITEM) {
       check_item_visible(Self, tag);
 
       return ERR_Okay;
    }
-   else return PostError(ERR_InvalidReference);
+   else return log.warning(ERR_InvalidReference);
 }
 
 //****************************************************************************
 
-#include "view_fields.c"
-#include "view_functions.c"
+#include "view_fields.cpp"
+#include "view_functions.cpp"
 #include "view_def.c"
 
-static const struct FieldArray clFields[] = {
+static const FieldArray clFields[] = {
    { "Layout",            FDF_INTEGRAL|FDF_SYSTEM|FDF_R, 0, NULL, NULL },
    { "XML",               FDF_INTEGRAL|FDF_R,      ID_XML, NULL, NULL },
    { "Font",              FDF_INTEGRAL|FDF_R,      ID_FONT, NULL, NULL },
-   { "Columns",           FDF_STRING|FDF_RW,    0, NULL, SET_Columns },
+   { "Columns",           FDF_STRING|FDF_RW,    0, NULL, (APTR)SET_Columns },
    { "ContextMenu",       FDF_OBJECT|FDF_RW,    ID_MENU, NULL, NULL },
-   { "VScroll",           FDF_OBJECT|FDF_RW,    ID_SCROLL, NULL, SET_VScroll },
-   { "HScroll",           FDF_OBJECT|FDF_RW,    ID_SCROLL, NULL, SET_HScroll },
-   { "Document",          FDF_OBJECT|FDF_RW,    0, NULL, SET_Document },
-   { "GroupFace",         FDF_STRING|FDF_RW,    0, NULL, SET_GroupFace },
-   { "ItemNames",         FDF_STRING|FDF_RW,    0, NULL, SET_ItemNames },
-   { "TextAttrib",        FDF_STRING|FDF_RW,    0, NULL, SET_TextAttrib },
+   { "VScroll",           FDF_OBJECT|FDF_RW,    ID_SCROLL, NULL, (APTR)SET_VScroll },
+   { "HScroll",           FDF_OBJECT|FDF_RW,    ID_SCROLL, NULL, (APTR)SET_HScroll },
+   { "Document",          FDF_OBJECT|FDF_RW,    0, NULL, (APTR)SET_Document },
+   { "GroupFace",         FDF_STRING|FDF_RW,    0, NULL, (APTR)SET_GroupFace },
+   { "ItemNames",         FDF_STRING|FDF_RW,    0, NULL, (APTR)SET_ItemNames },
+   { "TextAttrib",        FDF_STRING|FDF_RW,    0, NULL, (APTR)SET_TextAttrib },
    { "Focus",             FDF_OBJECTID|FDF_RI,  0, NULL, NULL },
    { "DragSource",        FDF_OBJECTID|FDF_RW,  0, NULL, NULL },
-   { "Flags",             FDF_LONGFLAGS|FDF_RW, (MAXINT)&clViewFlags, NULL, SET_Flags },
-   { "Style",             FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clViewStyle, NULL, SET_Style },
+   { "Flags",             FDF_LONGFLAGS|FDF_RW, (MAXINT)&clViewFlags, NULL, (APTR)SET_Flags },
+   { "Style",             FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clViewStyle, NULL, (APTR)SET_Style },
    { "HSpacing",          FDF_LONG|FDF_RW,      0, NULL, NULL },
    { "VSpacing",          FDF_LONG|FDF_RW,      0, NULL, NULL },
    { "SelectedTag",       FDF_LONG|FDF_RW,      0, NULL, NULL },
@@ -2457,7 +2417,7 @@ static const struct FieldArray clFields[] = {
    { "ButtonThickness",   FDF_LONG|FDF_RW,      0, NULL, NULL },
    { "IconSize",          FDF_LONG|FDF_RI,      0, NULL, NULL },
    { "GfxFlags",          FDF_LONGFLAGS|FDF_RW, (MAXINT)&clViewGfxFlags, NULL, NULL },
-   { "DragItemCount",     FDF_LONG|FDF_RW,      0, NULL, SET_DragItemCount },
+   { "DragItemCount",     FDF_LONG|FDF_RW,      0, NULL, (APTR)SET_DragItemCount },
    { "TotalItems",        FDF_LONG|FDF_R,       0, NULL, NULL },
    { "GroupHeight",       FDF_LONG|FDF_RI,      0, NULL, NULL },
    { "ButtonBackground",  FDF_RGB|FDF_RW,       0, NULL, NULL },
@@ -2479,20 +2439,37 @@ static const struct FieldArray clFields[] = {
    { "ColBranch",         FDF_RGB|FDF_RW,       0, NULL, NULL },
 
    // Virtual fields
-   { "BorderOffset",    FDF_LONG|FDF_W,            0, NULL, SET_BorderOffset },
-   { "DateFormat",      FDF_STRING|FDF_RW,         0, GET_DateFormat, SET_DateFormat },
-   { "DragItems",       FDF_ARRAY|FDF_LONG|FDF_RW, 0, GET_DragItems, SET_DragItems },
-   { "IconFilter",      FDF_STRING|FDF_RW,         0, GET_IconFilter, SET_IconFilter },
-   { "IconTheme",       FDF_STRING|FDF_RW,         0, GET_IconTheme, SET_IconTheme },
-   { "LayoutStyle",     FDF_VIRTUAL|FDF_POINTER|FDF_SYSTEM|FDF_W, 0, NULL, SET_LayoutStyle },
-   { "Selection",       FDF_STRING|FDF_RW,         0, GET_Selection, SET_Selection },
-   { "SelectionIndex",  FDF_LONG|FDF_RW,           0, GET_SelectionIndex, SET_SelectionIndex },
-   { "SelectedTags",    FDF_LONG|FDF_ARRAY|FDF_R,  0, GET_SelectedTags, NULL },
-   { "Template",        FDF_STRING|FDF_RI,         0, NULL, SET_Template },
-   { "TotalSelected",   FDF_LONG|FDF_R,            0, GET_TotalSelected, NULL },
-   { "VarDefault",      FDF_STRING|FDF_W,          0, NULL, SET_VarDefault },
-   { "ExpandCallback",  FDF_FUNCTIONPTR|FDF_RW,    0, GET_ExpandCallback, SET_ExpandCallback },
-   { "SelectCallback",  FDF_FUNCTIONPTR|FDF_RW,    0, GET_SelectCallback, SET_SelectCallback },
-   { "CellClick",       FDF_FUNCTIONPTR|FDF_RW,    0, GET_CellClick, SET_CellClick },
+   { "BorderOffset",    FDF_LONG|FDF_W,            0, NULL, (APTR)SET_BorderOffset },
+   { "DateFormat",      FDF_STRING|FDF_RW,         0, (APTR)GET_DateFormat, (APTR)SET_DateFormat },
+   { "DragItems",       FDF_ARRAY|FDF_LONG|FDF_RW, 0, (APTR)GET_DragItems, (APTR)SET_DragItems },
+   { "IconFilter",      FDF_STRING|FDF_RW,         0, (APTR)GET_IconFilter, (APTR)SET_IconFilter },
+   { "IconTheme",       FDF_STRING|FDF_RW,         0, (APTR)GET_IconTheme, (APTR)SET_IconTheme },
+   { "LayoutStyle",     FDF_VIRTUAL|FDF_POINTER|FDF_SYSTEM|FDF_W, 0, NULL, (APTR)SET_LayoutStyle },
+   { "Selection",       FDF_STRING|FDF_RW,         0, (APTR)GET_Selection, (APTR)SET_Selection },
+   { "SelectionIndex",  FDF_LONG|FDF_RW,           0, (APTR)GET_SelectionIndex, (APTR)SET_SelectionIndex },
+   { "SelectedTags",    FDF_LONG|FDF_ARRAY|FDF_R,  0, (APTR)GET_SelectedTags, NULL },
+   { "Template",        FDF_STRING|FDF_RI,         0, NULL, (APTR)SET_Template },
+   { "TotalSelected",   FDF_LONG|FDF_R,            0, (APTR)GET_TotalSelected, NULL },
+   { "VarDefault",      FDF_STRING|FDF_W,          0, NULL, (APTR)SET_VarDefault },
+   { "ExpandCallback",  FDF_FUNCTIONPTR|FDF_RW,    0, (APTR)GET_ExpandCallback, (APTR)SET_ExpandCallback },
+   { "SelectCallback",  FDF_FUNCTIONPTR|FDF_RW,    0, (APTR)GET_SelectCallback, (APTR)SET_SelectCallback },
+   { "CellClick",       FDF_FUNCTIONPTR|FDF_RW,    0, (APTR)GET_CellClick, (APTR)SET_CellClick },
    END_FIELD
 };
+
+//****************************************************************************
+
+static ERROR create_view_class(void)
+{
+   return CreateObject(ID_METACLASS, 0, &clView,
+      FID_ClassVersion|TFLOAT, VER_VIEW,
+      FID_Name|TSTR,      "View",
+      FID_Category|TLONG, CCF_GUI,
+      FID_Flags|TLONG,    CLF_PROMOTE_INTEGRAL|CLF_PRIVATE_ONLY,
+      FID_Actions|TPTR,   clViewActions,
+      FID_Methods|TARRAY, clViewMethods,
+      FID_Fields|TARRAY,  clFields,
+      FID_Size|TLONG,     sizeof(objView),
+      FID_Path|TSTR,      MOD_PATH,
+      TAGEND);
+}

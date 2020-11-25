@@ -74,17 +74,17 @@ static ERROR SCROLLBAR_Hide(objScrollbar *Self, APTR Void)
 
 static ERROR SCROLLBAR_Init(objScrollbar *Self, APTR Void)
 {
+   parasol::Log log;
    objScrollbar *intersect;
    OBJECTID monitorid, objectid;
-   LONG i;
 
    if (!Self->SurfaceID) { // Find parent surface
       OBJECTID owner_id = GetOwner(Self);
-      while ((owner_id) AND (GetClassID(owner_id) != ID_SURFACE)) {
+      while ((owner_id) and (GetClassID(owner_id) != ID_SURFACE)) {
          owner_id = GetOwnerID(owner_id);
       }
       if (owner_id) Self->SurfaceID = owner_id;
-      else return PostError(ERR_UnsupportedOwner);
+      else return log.warning(ERR_UnsupportedOwner);
    }
 
    if (!Self->Scroll->ViewID) Self->Scroll->ViewID = Self->SurfaceID;
@@ -123,11 +123,11 @@ static ERROR SCROLLBAR_Init(objScrollbar *Self, APTR Void)
       if (Self->Direction IS SO_HORIZONTAL) {
          if (!(region->Dimensions & DMF_X)) SetLong(region, FID_X, 0);
 
-         if ((!(region->Dimensions & DMF_WIDTH)) AND (!(region->Dimensions & DMF_X_OFFSET))) {
+         if ((!(region->Dimensions & DMF_WIDTH)) and (!(region->Dimensions & DMF_X_OFFSET))) {
             SetLong(region, FID_XOffset, 0);
          }
 
-         if ((!(region->Dimensions & DMF_Y)) AND (!(region->Dimensions & DMF_Y_OFFSET))) {
+         if ((!(region->Dimensions & DMF_Y)) and (!(region->Dimensions & DMF_Y_OFFSET))) {
             SetLong(region, FID_YOffset, 0);
          }
 
@@ -137,11 +137,11 @@ static ERROR SCROLLBAR_Init(objScrollbar *Self, APTR Void)
       if (Self->Direction IS SO_VERTICAL) {
          if (!(region->Dimensions & DMF_Y)) SetLong(region, FID_Y, 0);
 
-         if ((!(region->Dimensions & DMF_HEIGHT)) AND (!(region->Dimensions & DMF_Y_OFFSET))) {
+         if ((!(region->Dimensions & DMF_HEIGHT)) and (!(region->Dimensions & DMF_Y_OFFSET))) {
             SetLong(region, FID_YOffset, 0);
          }
 
-         if ((!(region->Dimensions & DMF_X)) AND (!(region->Dimensions & DMF_X_OFFSET))) {
+         if ((!(region->Dimensions & DMF_X)) and (!(region->Dimensions & DMF_X_OFFSET))) {
             SetLong(region, FID_XOffset, 0);
          }
 
@@ -204,24 +204,24 @@ static ERROR SCROLLBAR_Init(objScrollbar *Self, APTR Void)
 
    // If no intersecting scrollbar has been specified, check our parent surface to see if an opposed scrollbar exists.
 
-   if ((!Self->IntersectID) AND (!(Self->Flags & SBF_NO_INTERSECT))) {
-      MSG("Looking for an intersecting scrollbar in surface %d...", Self->SurfaceID);
-      struct ChildEntry list[16];
+   if ((!Self->IntersectID) and (!(Self->Flags & SBF_NO_INTERSECT))) {
+      log.trace("Looking for an intersecting scrollbar in surface %d...", Self->SurfaceID);
+      ChildEntry list[16];
       LONG count = ARRAYSIZE(list);
       if (!ListChildren(Self->SurfaceID, list, &count)) {
-         for (i=0; i < count; i++) {
-            if ((list[i].ClassID IS ID_SCROLLBAR) AND (list[i].ObjectID != Self->Head.UniqueID)) {
+         for (LONG i=0; i < count; i++) {
+            if ((list[i].ClassID IS ID_SCROLLBAR) and (list[i].ObjectID != Self->Head.UniqueID)) {
                if (!AccessObject(list[i].ObjectID, 5000, &intersect)) {
-                  MSG("Found scrollbar #%d.", list[i].ObjectID);
-                  if ((intersect->Direction IS SO_HORIZONTAL) AND (Self->Direction IS SO_VERTICAL)) Self->IntersectID = list[i].ObjectID;
-                  else if ((intersect->Direction IS SO_VERTICAL) AND (Self->Direction IS SO_HORIZONTAL)) Self->IntersectID = list[i].ObjectID;
+                  log.trace("Found scrollbar #%d.", list[i].ObjectID);
+                  if ((intersect->Direction IS SO_HORIZONTAL) and (Self->Direction IS SO_VERTICAL)) Self->IntersectID = list[i].ObjectID;
+                  else if ((intersect->Direction IS SO_VERTICAL) and (Self->Direction IS SO_HORIZONTAL)) Self->IntersectID = list[i].ObjectID;
                   ReleaseObject(intersect);
                }
                break;
             }
          }
       }
-      if (!Self->IntersectID) MSG("Unable to find an intersecting scrollbar.");
+      if (!Self->IntersectID) log.trace("Unable to find an intersecting scrollbar.");
    }
 
    // Initialise the scroll management object
@@ -244,14 +244,14 @@ static ERROR SCROLLBAR_Init(objScrollbar *Self, APTR Void)
 
    // If the Scroll.Object field has not been set, set it to our parent surface
 
-   if ((GetLong(Self->Scroll, FID_Object, &objectid) != ERR_Okay) OR (!objectid)) {
+   if ((GetLong(Self->Scroll, FID_Object, &objectid) != ERR_Okay) or (!objectid)) {
       SetLong(Self->Scroll, FID_Object, Self->SurfaceID);
       objectid = Self->SurfaceID;
    }
 
    // If the Scroll.Monitor field is not set, set it to the parent surface
 
-   if ((GetLong(Self->Scroll, FID_Monitor, &monitorid) != ERR_Okay) OR (!monitorid)) {
+   if ((GetLong(Self->Scroll, FID_Monitor, &monitorid) != ERR_Okay) or (!monitorid)) {
       if (GetClassID(objectid) IS ID_SURFACE) SetLong(Self->Scroll, FID_Monitor, objectid);
       else SetLong(Self->Scroll, FID_Monitor, Self->SurfaceID);
    }
@@ -273,7 +273,7 @@ static ERROR SCROLLBAR_Init(objScrollbar *Self, APTR Void)
    if (Self->Direction IS SO_HORIZONTAL) drwApplyStyleGraphics(Self, Self->RegionID, "hscroll", "buttons");
    else drwApplyStyleGraphics(Self, Self->RegionID, "vscroll", "buttons");
 
-   if ((Self->Flags & SBF_CONSTANT) AND (!(Self->Scroll->Flags & SCF_INVISIBLE))) acShow(Self);
+   if ((Self->Flags & SBF_CONSTANT) and (!(Self->Scroll->Flags & SCF_INVISIBLE))) acShow(Self);
 
    return ERR_Okay;
 }
@@ -292,9 +292,7 @@ static ERROR SCROLLBAR_NewObject(objScrollbar *Self, APTR Void)
 
             Self->Breadth = 16;
             Self->Opacity = 100;
-
             drwApplyStyleValues(Self, NULL);
-
             return ERR_Okay;
          }
          else {
@@ -387,7 +385,7 @@ height, use the FD_PERCENT flag when setting the field.
 
 *****************************************************************************/
 
-static ERROR GET_Height(objScrollbar *Self, struct Variable *Value)
+static ERROR GET_Height(objScrollbar *Self, Variable *Value)
 {
    LONG height;
    if (!drwGetSurfaceCoords(Self->RegionID, NULL, NULL, NULL, NULL, NULL, &height)) {
@@ -398,10 +396,10 @@ static ERROR GET_Height(objScrollbar *Self, struct Variable *Value)
    else return ERR_AccessObject;
 }
 
-static ERROR SET_Height(objScrollbar *Self, struct Variable *Value)
+static ERROR SET_Height(objScrollbar *Self, Variable *Value)
 {
-   if (((Value->Type & FD_DOUBLE) AND (!Value->Double)) OR
-       ((Value->Type & FD_LARGE) AND (!Value->Large))) {
+   if (((Value->Type & FD_DOUBLE) and (!Value->Double)) or
+       ((Value->Type & FD_LARGE) and (!Value->Large))) {
       return ERR_Okay;
    }
 
@@ -423,14 +421,14 @@ Hide: Hides the scrollbar when set to TRUE.
 
 static ERROR SET_Hide(objScrollbar *Self, LONG Value)
 {
+   parasol::Log log;
    if (Value IS TRUE) {
-      FMSG("~","Scrollbar invisible.");
+      log.traceBranch("Scrollbar invisible.");
       Self->Scroll->Flags |= SCF_INVISIBLE;
       if (Self->Head.Flags & NF_INITIALISED) acHide(Self);
-      LOGRETURN();
    }
    else {
-      MSG("Scrollbar now visible.");
+      log.trace("Scrollbar now visible.");
       Self->Scroll->Flags &= ~SCF_INVISIBLE;
    }
    return ERR_Okay;
@@ -499,7 +497,7 @@ width, use the FD_PERCENT flag when setting the field.
 
 *****************************************************************************/
 
-static ERROR GET_Width(objScrollbar *Self, struct Variable *Value)
+static ERROR GET_Width(objScrollbar *Self, Variable *Value)
 {
    LONG width;
    if (!drwGetSurfaceCoords(Self->RegionID, NULL, NULL, NULL, NULL, &width, NULL)) {
@@ -510,9 +508,9 @@ static ERROR GET_Width(objScrollbar *Self, struct Variable *Value)
    else return ERR_Failed;
 }
 
-static ERROR SET_Width(objScrollbar *Self, struct Variable *Value)
+static ERROR SET_Width(objScrollbar *Self, Variable *Value)
 {
-   if (((Value->Type & FD_DOUBLE) AND (!Value->Double)) OR ((Value->Type & FD_LARGE) AND (!Value->Large))) {
+   if (((Value->Type & FD_DOUBLE) and (!Value->Double)) or ((Value->Type & FD_LARGE) and (!Value->Large))) {
       return ERR_Okay;
    }
 
@@ -536,7 +534,7 @@ interpreted as fixed.  Negative values are permitted.
 
 *****************************************************************************/
 
-static ERROR GET_X(objScrollbar *Self, struct Variable *Value)
+static ERROR GET_X(objScrollbar *Self, Variable *Value)
 {
    LONG x;
    if (!drwGetSurfaceCoords(Self->RegionID, &x, NULL, NULL, NULL, NULL, NULL)) {
@@ -547,7 +545,7 @@ static ERROR GET_X(objScrollbar *Self, struct Variable *Value)
    else return ERR_Failed;
 }
 
-static ERROR SET_X(objScrollbar *Self, struct Variable *Value)
+static ERROR SET_X(objScrollbar *Self, Variable *Value)
 {
    OBJECTPTR surface;
    if (!AccessObject(Self->RegionID, 4000, &surface)) {
@@ -575,7 +573,7 @@ coordinate calculated from the formula `X = ContainerWidth - ScrollBarWidth - XO
 
 *****************************************************************************/
 
-static ERROR GET_XOffset(objScrollbar *Self, struct Variable *Value)
+static ERROR GET_XOffset(objScrollbar *Self, Variable *Value)
 {
    OBJECTPTR surface;
    if (!AccessObject(Self->RegionID, 4000, &surface)) {
@@ -590,7 +588,7 @@ static ERROR GET_XOffset(objScrollbar *Self, struct Variable *Value)
    else return ERR_AccessObject;
 }
 
-static ERROR SET_XOffset(objScrollbar *Self, struct Variable *Value)
+static ERROR SET_XOffset(objScrollbar *Self, Variable *Value)
 {
    OBJECTPTR surface;
    if (!AccessObject(Self->RegionID, 4000, &surface)) {
@@ -612,7 +610,7 @@ fixed.  Negative values are permitted.
 
 *****************************************************************************/
 
-static ERROR GET_Y(objScrollbar *Self, struct Variable *Value)
+static ERROR GET_Y(objScrollbar *Self, Variable *Value)
 {
    LONG y;
    if (!drwGetSurfaceCoords(Self->RegionID, NULL, &y, NULL, NULL, NULL, NULL)) {
@@ -624,7 +622,7 @@ static ERROR GET_Y(objScrollbar *Self, struct Variable *Value)
 
 }
 
-static ERROR SET_Y(objScrollbar *Self, struct Variable *Value)
+static ERROR SET_Y(objScrollbar *Self, Variable *Value)
 {
    OBJECTPTR surface;
    if (!AccessObject(Self->RegionID, 4000, &surface)) {
@@ -653,7 +651,7 @@ coordinate calculated from the formula `Y = ContainerHeight - ScrollBarHeight - 
 
 *****************************************************************************/
 
-static ERROR GET_YOffset(objScrollbar *Self, struct Variable *Value)
+static ERROR GET_YOffset(objScrollbar *Self, Variable *Value)
 {
    OBJECTPTR surface;
 
@@ -669,7 +667,7 @@ static ERROR GET_YOffset(objScrollbar *Self, struct Variable *Value)
    else return ERR_AccessObject;
 }
 
-static ERROR SET_YOffset(objScrollbar *Self, struct Variable *Value)
+static ERROR SET_YOffset(objScrollbar *Self, Variable *Value)
 {
    OBJECTPTR surface;
 
@@ -685,27 +683,27 @@ static ERROR SET_YOffset(objScrollbar *Self, struct Variable *Value)
 
 #include "class_scrollbar_def.c"
 
-static const struct FieldArray clFields[] = {
-   { "Opacity",   FDF_DOUBLE|FDF_RI,     0, NULL, NULL },
-   { "Region",    FDF_OBJECTID|FDF_RW,  ID_SURFACE, NULL, NULL },
-   { "Surface",   FDF_OBJECTID|FDF_RW,  ID_SURFACE, NULL, NULL },
-   { "Slider",    FDF_OBJECTID|FDF_RW,  ID_SURFACE, NULL, NULL },
-   { "Flags",     FDF_LONGFLAGS|FDF_RW, (MAXINT)&clScrollbarFlags, NULL, NULL },
-   { "Scroll",    FDF_INTEGRAL|FDF_R,   ID_SCROLL, NULL, NULL },
+static const FieldArray clFields[] = {
+   { "Opacity",   FDF_DOUBLE|FDF_RI,          0, NULL, NULL },
+   { "Region",    FDF_OBJECTID|FDF_RW,        ID_SURFACE, NULL, NULL },
+   { "Surface",   FDF_OBJECTID|FDF_RW,        ID_SURFACE, NULL, NULL },
+   { "Slider",    FDF_OBJECTID|FDF_RW,        ID_SURFACE, NULL, NULL },
+   { "Flags",     FDF_LONGFLAGS|FDF_RW,       (MAXINT)&clScrollbarFlags, NULL, NULL },
+   { "Scroll",    FDF_INTEGRAL|FDF_R,         ID_SCROLL, NULL, NULL },
    { "Direction", FDF_LONG|FDF_LOOKUP|FDF_RI, (MAXINT)&clScrollbarDirection, NULL, NULL },
-   { "Breadth",   FDF_LONG|FDF_RI,      0, NULL, NULL },
-   { "Intersect", FDF_OBJECTID|FDF_RI,  ID_SCROLLBAR, NULL, NULL },
+   { "Breadth",   FDF_LONG|FDF_RI,            0, NULL, NULL },
+   { "Intersect", FDF_OBJECTID|FDF_RI,        ID_SCROLLBAR, NULL, NULL },
    // Virtual fields
-   { "Bottom",   FDF_VIRTUAL|FDF_LONG|FDF_R, 0, GET_Bottom,   NULL },
-   { "Right",    FDF_VIRTUAL|FDF_LONG|FDF_R, 0, GET_Right,    NULL },
-   { "Hide",     FDF_VIRTUAL|FDF_LONG|FDF_W, 0, NULL, SET_Hide },
+   { "Bottom",   FDF_VIRTUAL|FDF_LONG|FDF_R, 0, (APTR)GET_Bottom,   NULL },
+   { "Right",    FDF_VIRTUAL|FDF_LONG|FDF_R, 0, (APTR)GET_Right,    NULL },
+   { "Hide",     FDF_VIRTUAL|FDF_LONG|FDF_W, 0, NULL, (APTR)SET_Hide },
    // Variable Fields
-   { "Height",   FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, GET_Height,  SET_Height },
-   { "Width",    FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, GET_Width,   SET_Width },
-   { "X",        FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, GET_X,       SET_X },
-   { "XOffset",  FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, GET_XOffset, SET_XOffset },
-   { "Y",        FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, GET_Y,       SET_Y },
-   { "YOffset",  FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, GET_YOffset, SET_YOffset },
+   { "Height",   FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)GET_Height,  (APTR)SET_Height },
+   { "Width",    FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)GET_Width,   (APTR)SET_Width },
+   { "X",        FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)GET_X,       (APTR)SET_X },
+   { "XOffset",  FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)GET_XOffset, (APTR)SET_XOffset },
+   { "Y",        FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)GET_Y,       (APTR)SET_Y },
+   { "YOffset",  FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)GET_YOffset, (APTR)SET_YOffset },
    END_FIELD
 };
 

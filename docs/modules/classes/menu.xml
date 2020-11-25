@@ -17,7 +17,7 @@
 <p>The Menu class provides a means to create and maintain menus in the graphical user interface.</p>
 <p>This class is still in development.</p></description>
     <source>
-      <file path="class_menu/">menu.c</file>
+      <file path="class_menu/">menu.cpp</file>
     </source>
   </info>
 

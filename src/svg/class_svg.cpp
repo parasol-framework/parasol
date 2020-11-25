@@ -80,7 +80,7 @@ static ERROR SVG_Free(objSVG *Self, APTR Void)
 
    svgAnimation *anim = Self->Animations;
    while (anim) {
-      svgAnimation *next = anim->Next;
+      auto next = anim->Next;
       for (LONG i=0; i < anim->ValueCount; i++) { FreeResource(anim->Values[i]); anim->Values[i] = NULL; }
       FreeResource(anim);
       anim = next;
@@ -89,7 +89,7 @@ static ERROR SVG_Free(objSVG *Self, APTR Void)
 
    svgID *symbol = Self->IDs;
    while (symbol) {
-      svgID *next = symbol->Next;
+      auto next = symbol->Next;
       if (symbol->ID) { FreeResource(symbol->ID); symbol->ID = NULL; }
       FreeResource(symbol);
       symbol = next;
@@ -98,7 +98,7 @@ static ERROR SVG_Free(objSVG *Self, APTR Void)
 
    svgInherit *inherit = Self->Inherit;
    while (inherit) {
-      svgInherit *next = inherit->Next;
+      auto next = inherit->Next;
       FreeResource(inherit);
       inherit = next;
    }
@@ -248,12 +248,13 @@ SaveToObject: Saves the SVG document to a data object.
 
 static ERROR SVG_SaveToObject(objSVG *Self, struct acSaveToObject *Args)
 {
+   parasol::Log log;
    static char header[] =
 "<?xml version=\"1.0\" standalone=\"no\"?>\n\
 <!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\" \"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\">\n";
    ERROR (**routine)(OBJECTPTR, APTR);
 
-   if (!Self->Viewport) return PostError(ERR_NoData);
+   if (!Self->Viewport) return log.warning(ERR_NoData);
 
    if ((Args->ClassID) AND (Args->ClassID != ID_SVG)) {
       auto mc = (rkMetaClass *)FindClass(Args->ClassID);
@@ -265,9 +266,9 @@ static ERROR SVG_SaveToObject(objSVG *Self, struct acSaveToObject *Args)
             struct acSaveImage saveimage = { .DestID = Args->DestID };
             return routine[AC_SaveImage]((OBJECTPTR)Self, &saveimage);
          }
-         else return PostError(ERR_NoSupport);
+         else return log.warning(ERR_NoSupport);
       }
-      else return PostError(ERR_GetField);
+      else return log.warning(ERR_GetField);
    }
    else {
       objXML *xml;
@@ -315,7 +316,7 @@ static ERROR SVG_SaveToObject(objSVG *Self, struct acSaveToObject *Args)
 
                if (!error) {
                   if (!(error = save_svg_defs(Self, xml, Self->Scene, index))) {
-                     for (objVector *scan=((objVector *)Self->Viewport)->Child; scan; scan=scan->Next) {
+                     for (auto scan=((objVector *)Self->Viewport)->Child; scan; scan=scan->Next) {
                         save_svg_scan(Self, xml, scan, index);
                      }
 
@@ -538,7 +539,8 @@ static const FieldArray clSVGFields[] = {
    END_FIELD
 };
 
-static ERROR init_svg(void) {
+static ERROR init_svg(void)
+{
    return CreateObject(ID_METACLASS, 0, &clSVG,
       FID_ClassVersion|TFLOAT, VER_SVG,
       FID_Name|TSTR,      "SVG",

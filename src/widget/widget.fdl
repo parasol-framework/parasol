@@ -70,7 +70,7 @@ function def_view()
     { id=18, name="ItemDimensions" }
   })
 
-  class("View", { src={ "class_view/view.c", "class_view/view_fields.c" }, output="class_view/view_def.c" }, [[
+  class("View", { src={ "class_view/view.cpp", "class_view/view_fields.cpp" }, output="class_view/view_def.c" }, [[
    obj(Layout) Layout        # Layout manager
    obj(XML) XML              # The XML object contains all view information
    obj(Font) Font            # Font object
@@ -152,11 +152,11 @@ function def_view()
    WORD   TreeIndex;
    WORD   HBarHeight;
    BYTE   DateFormat[28];    // Preferred date format
-   UBYTE  Selection[120];    // Currently selected item
-   UBYTE  IconFilter[32];    // Preferred icon filter.
-   UBYTE  IconTheme[32];     // Preferred icon theme.  If not defined, the default is used.
+   char   Selection[120];    // Currently selected item
+   char   IconFilter[32];    // Preferred icon filter.
+   char   IconTheme[32];     // Preferred icon theme.  If not defined, the default is used.
    BYTE   Sort[4];           // Sort indexes to each column (4 max) from most to least important.  A negative index means that the sort is descending
-   UBYTE  VarDefault[16];
+   char   VarDefault[16];
    BYTE   PointerLocked;     // Set to a cursor value if the pointer is locked
    UWORD  HBarVisible:1;
    UWORD  VBarVisible:1;
@@ -201,7 +201,7 @@ function def_clipboard()
     { id=6, name="Remove" }
   })
 
-  class("Clipboard", { src="class_clipboard.c", output="class_clipboard_def.c" }, [[
+  class("Clipboard", { src="class_clipboard.cpp", output="class_clipboard_def.c" }, [[
     int(CLF) Flags      # Optional flags
     mem Cluster         # Identifies the data cluster (item grouping) that the clipboard will work with
   ]],
@@ -368,7 +368,7 @@ module({ name="Widget", copyright="Paul Manias 2003-2020", version=1.0 }, functi
      "HORIZONTAL",
      "VERTICAL")
 
-  class("Image", { src="class_image.c", output="class_image_def.c" }, [[
+  class("Image", { src="class_image.cpp", output="class_image_def.c" }, [[
     obj(Layout) Layout
     str Hint                 # Display this hint during user hover.
     int Frame
@@ -386,11 +386,11 @@ module({ name="Widget", copyright="Paul Manias 2003-2020", version=1.0 }, functi
    struct SurfaceCoords Surface;
    TIMER  FrameTimer;
    WORD   Opacity;
-   UBYTE  IconFilter[24];
-   UBYTE  IconTheme[24];
+   char   IconFilter[24];
+   char   IconTheme[24];
   ]])
 
-  class("Scrollbar", { src="class_scrollbar.c", output="class_scrollbar_def.c" }, [[
+  class("Scrollbar", { src="class_scrollbar.cpp", output="class_scrollbar_def.c" }, [[
     double Opacity      # Opacity setting
     oid Region          # Surface representing the scrollbar
     oid Surface         # The surface target for the scrollbar graphic
@@ -403,7 +403,7 @@ module({ name="Widget", copyright="Paul Manias 2003-2020", version=1.0 }, functi
   ]],
   [[
    OBJECTID  ScrollID;
-   UBYTE     Template[120];
+   char      Template[120];
    OBJECTPTR Script;
   ]])
 
@@ -417,7 +417,7 @@ module({ name="Widget", copyright="Paul Manias 2003-2020", version=1.0 }, functi
     { id=2, name="AddScrollButton" }
   })
 
-  class("Scroll", { src="class_scroll.c", output="class_scroll_def.c" }, [[
+  class("Scroll", { src="class_scroll.cpp", output="class_scroll_def.c" }, [[
     double Position   # Page offset.  For internal scroll management issues this field is in floating point, but should only be set by the user as an integer
     oid Object        # Object to receive the scroll action
     oid Slider        # Surface that represents the slider within the scrollbar gadget
@@ -444,7 +444,7 @@ module({ name="Widget", copyright="Paul Manias 2003-2020", version=1.0 }, functi
    LONG     ObscuredView;
    LONG     SurfaceWidth, SurfaceHeight;
    LONG     Offset;
-   UBYTE    Field[32];
+   char     Field[32];
    UBYTE    RecursionBlock;
    BYTE     PostIntersect;     // Set to TRUE if the Intersect field was set post-initialisation (we are not expected to adjust our scrollbar size)
    struct ScrollButton Buttons[8];
@@ -460,7 +460,7 @@ module({ name="Widget", copyright="Paul Manias 2003-2020", version=1.0 }, functi
     { id=6, name="SetFont" }
   })
 
-  class("Text", { src={ "class_text/fields.c", "class_text/text.c" }, output="class_text/def.c" }, [[
+  class("Text", { src={ "class_text/fields.cpp", "class_text/text.cpp" }, output="class_text/def.c" }, [[
     obj(Layout) Layout    # Layout manager
     obj(Font) Font        # Font to use for the text
     oid VScroll           # Reference to a vertical scroll bar
@@ -520,7 +520,7 @@ module({ name="Widget", copyright="Paul Manias 2003-2020", version=1.0 }, functi
     { id=4, name="SetObject" }
   })
 
-  class("TabFocus", { comment="Manages the 'user focus' via the tab key.", src="class_tabfocus.c", output="class_tabfocus_def.c" }, [[
+  class("TabFocus", { comment="Manages the 'user focus' via the tab key.", src="class_tabfocus.cpp", output="class_tabfocus_def.c" }, [[
     oid Surface     # The surface to monitor for the primary focus when managing the tab key
     int Total       # Total number of objects on the tab list
     int(TF) Flags   # Optional flags
@@ -536,7 +536,7 @@ module({ name="Widget", copyright="Paul Manias 2003-2020", version=1.0 }, functi
    BYTE Reverse:1;
   ]])
 
-  class("CheckBox", { src="class_checkbox.c", output="class_checkbox_def.c" }, [[
+  class("CheckBox", { src="class_checkbox.cpp", output="class_checkbox_def.c" }, [[
    oid Region        # Surface region created by the checkbox object
    oid Surface       # The surface target for the checkbox widget
    int(CBF) Flags    # Special options
@@ -548,10 +548,10 @@ module({ name="Widget", copyright="Paul Manias 2003-2020", version=1.0 }, functi
    FUNCTION Feedback;
    APTR   prvKeyEvent;
    BYTE   Active;
-   UBYTE  Label[48];       // Label to display alongside the checkbox
+   char   Label[48];       // Label to display alongside the checkbox
   ]])
 
-  class("Button", { src="class_button.c", output="class_button_def.c" }, [[
+  class("Button", { src="class_button.cpp", output="class_button_def.c" }, [[
     str Hint               # Applies a hint to a button, which can be displayed as a tool-tip.
     str Icon               # Name of an icon to display in the button.
     oid Region             # Surface region created by the button object
@@ -570,7 +570,7 @@ module({ name="Widget", copyright="Paul Manias 2003-2020", version=1.0 }, functi
    LONG   ClickX, ClickY;   // X/Y coordinate most recently clicked
   ]])
 
-  class("Resize", { src="class_resize.c", output="class_resize_def.c" }, [[
+  class("Resize", { src="class_resize.cpp", output="class_resize_def.c" }, [[
     obj(Layout) Layout    # Layout manager
     oid Object            # Object that is to be resized
     int(JET) Button       # Determines what button is used for resizing
@@ -588,7 +588,7 @@ module({ name="Widget", copyright="Paul Manias 2003-2020", version=1.0 }, functi
    BYTE  prvAnchored;
   ]])
 
-  class("Input", { src="class_input.c", output="class_input_def.c" }, [[
+  class("Input", { src="class_input.cpp", output="class_input_def.c" }, [[
    obj(Text) TextInput     # Text control object - for the input area
    oid Region              # Surface region created by the input object
    oid Surface             # The surface target for the input graphic
@@ -605,7 +605,7 @@ module({ name="Widget", copyright="Paul Manias 2003-2020", version=1.0 }, functi
    UBYTE    prvStringReset:1;
   ]])
 
-  class("ComboBox", { src="class_combobox.c", output="class_combobox_def.c" }, [[
+  class("ComboBox", { src="class_combobox.cpp", output="class_combobox_def.c" }, [[
     obj(Text) TextInput     # Text control object - for the combobox area
     obj(Menu) Menu          # Menu control object
     oid Region              # Surface region created by the combobox object
@@ -625,7 +625,7 @@ module({ name="Widget", copyright="Paul Manias 2003-2020", version=1.0 }, functi
     { id=3, name="GetItem" }
   })
 
-  class("Menu", { src="class_menu/menu.c", output="class_menu/menu_def.c" }, [[
+  class("Menu", { src="class_menu/menu.cpp", output="class_menu/menu_def.c" }, [[
     double HoverDelay   # Optional hover feature for the Monitor field.
     double AutoExpand   # Auto-expand delay, measured in seconds.
     double FadeDelay    # The length of time allocated to special effects like fading.  Value in seconds
@@ -665,7 +665,7 @@ module({ name="Widget", copyright="Paul Manias 2003-2020", version=1.0 }, functi
   ]],
   [[ PRV_MENU_FIELDS ]])
 
-  class("MenuItem", { src="class_menu/menuitem.c" }, [[
+  class("MenuItem", { src="class_menu/menuitem.cpp" }, [[
    obj(MenuItem) Prev     # Previous menu item in chain
    obj(MenuItem) Next     # Next menu item in chain
    obj(Bitmap) Bitmap     # Icon to display in the menu item

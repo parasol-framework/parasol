@@ -17,7 +17,7 @@
 <p>The Input class simplifies the creation and management of input boxes as part of the user interface.  New input areas can be created by specifying as little as the graphical dimensions for the box area.  The Input class allows for the specifics of the graphics to be altered, such as the colours and the font used.</p>
 <p>It is likely that when when the user clicks or tabs away from the input box, you will need it to perform an action. Set the <field>Feedback</field> field in order to receive this notification and respond with your own custom functionality.</p></description>
     <source>
-      <file>class_input.c</file>
+      <file>class_input.cpp</file>
     </source>
   </info>
 

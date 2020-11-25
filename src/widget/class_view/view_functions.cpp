@@ -1,20 +1,21 @@
 
 //****************************************************************************
 
-static void vwUserClick(objView *Self, struct InputMsg *Input)
+static void vwUserClick(objView *Self, InputMsg *Input)
 {
-   struct view_col *col;
+   parasol::Log log(__FUNCTION__);
+   view_col *col;
    LONG i;
    LONG x;
 
-   FMSG("~vwUserClick","Style: %d, %dx%d, Selected: %d, Type: %d, Flags: $%.8x", Self->Style, Input->X, Input->Y, Self->SelectedTag, Input->Type, Input->Flags);
+   log.traceBranch("Style: %d, %dx%d, Selected: %d, Type: %d, Flags: $%.8x", Self->Style, Input->X, Input->Y, Self->SelectedTag, Input->Type, Input->Flags);
 
    Self->ClickX      = Input->X;
    Self->ClickY      = Input->Y;
    Self->ClickIndex  = -1;
    Self->ActiveTag   = -1;
    Self->SelectingItems = FALSE;
-   struct XMLTag *tag = NULL;
+   XMLTag *tag = NULL;
    BYTE active = FALSE;
 
    // Reset the drag and drop state
@@ -25,16 +26,16 @@ static void vwUserClick(objView *Self, struct InputMsg *Input)
       Self->DragItemCount = 0;
    }
 
-   if (((Self->Style IS VIEW_COLUMN) OR (Self->Style IS VIEW_COLUMN_TREE)) AND
-       (Input->Type IS JET_LMB) AND
-       (Input->Y >= Self->Layout->BoundY) AND (Input->Y < Self->Layout->BoundY + Self->Layout->BoundHeight)) {
+   if (((Self->Style IS VIEW_COLUMN) or (Self->Style IS VIEW_COLUMN_TREE)) and
+       (Input->Type IS JET_LMB) and
+       (Input->Y >= Self->Layout->BoundY) and (Input->Y < Self->Layout->BoundY + Self->Layout->BoundHeight)) {
 
       if (Input->Y < Self->Layout->BoundY + Self->ColumnHeight) {
          // Check if the click was over one of the column buttons.  This will affect sorting, or it can indicate a column resize.
 
          x = Self->Layout->BoundX + Self->XPos;
          for (col=Self->Columns, i=0; col; col=col->Next, i++) {
-            if ((x+col->Width >= Self->ClickX-4) AND (x+col->Width < Self->ClickX+4)) {
+            if ((x+col->Width >= Self->ClickX-4) and (x+col->Width < Self->ClickX+4)) {
                // The user has opted to resize the column
 
                Self->ColumnResize = col;
@@ -42,17 +43,16 @@ static void vwUserClick(objView *Self, struct InputMsg *Input)
                   Self->PointerLocked = PTR_SPLIT_HORIZONTAL;
                }
 
-               LOGRETURN();
                return;
             }
-            else if ((Self->ClickX >= x) AND (Self->ClickX < x + col->Width)) {
+            else if ((Self->ClickX >= x) and (Self->ClickX < x + col->Width)) {
                if (Self->Style IS VIEW_COLUMN) {
                   if (!(Self->Flags & VWF_NO_SORTING)) {
                      if (Self->Sort[0] IS i+1) viewSortColumnIndex(Self, i, TRUE);
                      else viewSortColumnIndex(Self, i, FALSE);
                   }
                }
-               LOGRETURN();
+
                return;
             }
             x += col->Width;
@@ -60,12 +60,9 @@ static void vwUserClick(objView *Self, struct InputMsg *Input)
       }
    }
 
-   struct view_node *node;
+   view_node *node;
 
-   if (Self->Flags & VWF_NO_SELECT) {
-      LOGRETURN();
-      return;
-   }
+   if (Self->Flags & VWF_NO_SELECT) return;
 
    if (Input->Type IS JET_RMB) {
       if (Self->ContextMenu) {
@@ -82,11 +79,10 @@ static void vwUserClick(objView *Self, struct InputMsg *Input)
       if ((tag = get_item_xy(Self, Self->XML->Tags,
             Input->X - Self->Layout->BoundX - Self->XPos,
             Input->Y - Self->Layout->BoundY - Self->YPos))) {
-         node = tag->Private;
+         node = (view_node *)tag->Private;
          Self->ClickHeld = TRUE;
-         if ((Self->Style IS VIEW_TREE) OR (Self->Style IS VIEW_COLUMN_TREE) OR (Self->Style IS VIEW_GROUP_TREE)) {
-
-            if (((Self->Style IS VIEW_GROUP_TREE) AND (!node->Indent)) OR
+         if ((Self->Style IS VIEW_TREE) or (Self->Style IS VIEW_COLUMN_TREE) or (Self->Style IS VIEW_GROUP_TREE)) {
+            if (((Self->Style IS VIEW_GROUP_TREE) and (!node->Indent)) or
                 (Input->X < node->X + Self->XPos + SWITCH_SIZE + Self->Layout->LeftMargin)) {
                // The user is expanding or collapsing a tree branch
 
@@ -105,18 +101,17 @@ static void vwUserClick(objView *Self, struct InputMsg *Input)
                   }
                }
 
-               LOGRETURN();
                return;
             }
          }
 
-         if ((Self->Style IS VIEW_COLUMN_TREE) OR (Self->Style IS VIEW_COLUMN)) {
+         if ((Self->Style IS VIEW_COLUMN_TREE) or (Self->Style IS VIEW_COLUMN)) {
             // Check if a cell has been clicked, e.g. checkbox
             LONG index;
 
             x = Self->Layout->BoundX + Self->XPos;
             for (col=Self->Columns, i=0; col; col=col->Next, i++) {
-               if ((Self->ClickX >= x) AND (Self->ClickX < x + col->Width)) {
+               if ((Self->ClickX >= x) and (Self->ClickX < x + col->Width)) {
 
                   index = tag->Index; // Save the current index in case it gets modified
                   LONG modstamp = Self->XML->Modified;
@@ -126,7 +121,6 @@ static void vwUserClick(objView *Self, struct InputMsg *Input)
                      if (Self->XML->Modified != modstamp) {
                         tag = Self->XML->Tags[index];
                         draw_item(Self, tag);
-                        LOGRETURN();
                         return;
                      }
                   }
@@ -135,8 +129,8 @@ static void vwUserClick(objView *Self, struct InputMsg *Input)
                      if (col->Type IS CT_CHECKBOX) {
                         // Get the checkmark value and flip it
 
-                        UBYTE buffer[32];
-                        struct XMLTag *vtag;
+                        char buffer[32];
+                        XMLTag *vtag;
 
                         get_col_value(Self, tag, col, buffer, sizeof(buffer), &vtag);
 
@@ -144,7 +138,7 @@ static void vwUserClick(objView *Self, struct InputMsg *Input)
                            LONG checked;
                            if (buffer[0]) {
                               checked = StrToInt(buffer);
-                              if ((!checked) AND ((buffer[0] IS 'y') OR (buffer[0] IS 'Y'))) {
+                              if ((!checked) and ((buffer[0] IS 'y') or (buffer[0] IS 'Y'))) {
                                  checked = 1;
                               }
                            }
@@ -166,7 +160,6 @@ static void vwUserClick(objView *Self, struct InputMsg *Input)
                            draw_item(Self, tag);
                         }
 
-                        LOGRETURN();
                         return;
                      }
                   }
@@ -181,19 +174,19 @@ static void vwUserClick(objView *Self, struct InputMsg *Input)
          if (node->Flags & NODE_SELECTED) node->Flags |= NODE_CAN_DESELECT;
          else node->Flags &= ~NODE_CAN_DESELECT;
 
-         if ((node->Flags & NODE_SELECTED) AND (!(Self->Flags & VWF_DRAG_DROP))) {
+         if ((node->Flags & NODE_SELECTED) and (!(Self->Flags & VWF_DRAG_DROP))) {
             // In multi-select mode, when the item is already selected we will deselect it.
 
             if (!(Input->Flags & JTYPE_DBL_CLICK)) {
                if (Self->Flags & VWF_MULTI_SELECT) {
-                  FMSG("vwUserClick","Deselecting clicked node.");
+                  log.trace("Deselecting clicked node.");
                   node->Flags &= ~NODE_SELECTED;
                   draw_item(Self, tag);
                   Self->Deselect = TRUE;
                }
             }
 
-            Self->ActiveTag = tag->Index; // The ActiveTag refers to the most recently selected OR -deselected- item
+            Self->ActiveTag = tag->Index; // The ActiveTag refers to the most recently selected or -deselected- item
             report_selection(Self, SLF_ACTIVE|SLF_CLICK, tag->Index);
          }
          else {
@@ -209,29 +202,22 @@ static void vwUserClick(objView *Self, struct InputMsg *Input)
 
    // Double clicking will activate an item, if not already activated by select_item().
 
-   if ((Self->ActiveTag != -1) AND
-       (Input->Type IS JET_LMB) AND
-       (Input->Flags & JTYPE_DBL_CLICK) AND
-       (active IS FALSE)) {
+   if ((Self->ActiveTag != -1) and (Input->Type IS JET_LMB) and (Input->Flags & JTYPE_DBL_CLICK) and (active IS FALSE)) {
       // Turn off LMB, this is required to prevent highlight-dragging if the user accidentally moves the mouse shortly
       // before the button is released after a double-click.
 
-      FMSG("~vwUserClick","Activating...");
-
+      parasol::Log log(__FUNCTION__);
+      log.traceBranch("Activating...");
       Self->ClickHeld = FALSE;
-
       acActivate(Self);
-
-      LOGRETURN();
    }
 
-   LOGRETURN();
    return;
 }
 
 //*****************************************************************************
 
-static void vwUserClickRelease(objView *Self, struct InputMsg *Input)
+static void vwUserClickRelease(objView *Self, InputMsg *Input)
 {
    Self->ClickIndex = -1;
    if (Input->Type IS JET_LMB) {
@@ -247,13 +233,11 @@ static void vwUserClickRelease(objView *Self, struct InputMsg *Input)
       // mouse must not have moved between the click and the release, otherwise it counts as an item drag.
 
       if (Self->Flags & VWF_DRAG_DROP) {
-         if ((Self->ActiveTag != -1) AND (Self->ActiveTag < Self->XML->TagCount)) {
-            if ((ABS(Input->X - Self->ClickX) <= 1) AND (ABS(Input->Y - Self->ClickY) <= 1)) {
-               struct XMLTag *tag;
-               struct view_node *node;
-               tag = Self->XML->Tags[Self->ActiveTag];
-               node = tag->Private;
-               if ((node->Flags & NODE_SELECTED) AND (node->Flags & NODE_CAN_DESELECT)) {
+         if ((Self->ActiveTag != -1) and (Self->ActiveTag < Self->XML->TagCount)) {
+            if ((ABS(Input->X - Self->ClickX) <= 1) and (ABS(Input->Y - Self->ClickY) <= 1)) {
+               auto tag = Self->XML->Tags[Self->ActiveTag];
+               auto node = (view_node *)tag->Private;
+               if ((node->Flags & NODE_SELECTED) and (node->Flags & NODE_CAN_DESELECT)) {
                   node->Flags &= ~NODE_SELECTED;
                   draw_item(Self, tag);
                   report_selection(Self, SLF_ACTIVE, Self->ActiveTag); // The status of the tag has changed, so we need to report it even though the index being the same value.
@@ -262,39 +246,35 @@ static void vwUserClickRelease(objView *Self, struct InputMsg *Input)
          }
       }
 
-      if (Self->Flags & VWF_AUTO_DESELECT) {
-         deselect_item(Self);
-      }
+      if (Self->Flags & VWF_AUTO_DESELECT) deselect_item(Self);
    }
 }
 
 //*****************************************************************************
 
-static void vwUserMovement(objView *Self, struct InputMsg *Input)
+static void vwUserMovement(objView *Self, InputMsg *Input)
 {
-   struct XMLTag *tag;
-   struct view_node *node;
-   struct view_col *col;
-   LONG cx, x, y, width, index, checktag;
+   parasol::Log log(__FUNCTION__);
+   XMLTag *tag;
+   view_col *col;
+   LONG cx, width, index, checktag;
    LONG i, lastindex, pagey;
-   BYTE highlighted, cursor, drag, highlighting;
+   BYTE highlighted, drag, highlighting;
 
-   FMSG("~7vwUserMovement()","X: %d, Y: %d", Input->X, Input->Y);
+   log.traceBranch("X: %d, Y: %d", Input->X, Input->Y);
 
    // Check the ClickIndex field to make sure it's not lying outside of the XML tag array
 
    if (Self->ClickIndex > Self->XML->TagCount) Self->ClickIndex = -1;
 
-   cursor = FALSE;
-
    check_pointer_cursor(Self, Input->X, Input->Y);
 
    // Handle column resizing
 
-   x = Input->X;
-   y = Input->Y;
+   LONG x = Input->X;
+   LONG y = Input->Y;
 
-   if (((Self->Style IS VIEW_COLUMN) OR (Self->Style IS VIEW_COLUMN_TREE)) AND (Self->ColumnResize)) {
+   if (((Self->Style IS VIEW_COLUMN) or (Self->Style IS VIEW_COLUMN_TREE)) and (Self->ColumnResize)) {
       // Calculate the horizontal position of the column being resized.
 
       cx = 0;
@@ -317,7 +297,6 @@ static void vwUserMovement(objView *Self, struct InputMsg *Input)
 
             acDrawID(Self->Layout->SurfaceID);
          }
-         LOGRETURN();
          return;
       }
       else Self->ColumnResize = NULL;
@@ -348,9 +327,9 @@ static void vwUserMovement(objView *Self, struct InputMsg *Input)
    Self->ActiveDrag = FALSE;
 
    if ((tag = get_item_xy(Self, Self->XML->Tags, x-Self->Layout->BoundX, pagey-Self->Layout->BoundY))) {
-      node = tag->Private;
+      auto node = (view_node *)tag->Private;
       checktag = tag->Index;
-      if ((Self->ClickHeld) AND (Self->SelectingItems)) {
+      if ((Self->ClickHeld) and (Self->SelectingItems)) {
          // Click-dragging, multi-select support etc
 
          if (Self->ClickIndex IS -1) Self->ClickIndex = tag->Index;
@@ -366,26 +345,26 @@ static void vwUserMovement(objView *Self, struct InputMsg *Input)
                absy = Input->Y - Self->ClickY;
                if (absx < 0) absx = -absx;
                if (absy < 0) absy = -absy;
-               if ((absx > 4) OR (absy > 4)) {
+               if ((absx > 4) or (absy > 4)) {
                   drag_items(Self);
                }
                else Self->ActiveDrag = TRUE; // Keep the ActiveDrag set to TRUE
             }
          }
-         else if ((Self->Flags & VWF_SENSITIVE) OR (!(Self->Flags & VWF_MULTI_SELECT))) {
+         else if ((Self->Flags & VWF_SENSITIVE) or (!(Self->Flags & VWF_MULTI_SELECT))) {
             if (!(node->Flags & NODE_SELECTED)) {
                // Scan for any existing selections and turn them off.
 
-               FMSG("vwUserMovement","Selecting tag %d.", tag->Index);
+               log.trace("Selecting tag %d.", tag->Index);
 
                for (index=0; Self->XML->Tags[index]; index++) {
-                  node = Self->XML->Tags[index]->Private;
+                  auto node = (view_node *)Self->XML->Tags[index]->Private;
                   if (node->Flags & NODE_SELECTED) {
                      node->Flags &= ~NODE_SELECTED;
                      draw_item(Self, Self->XML->Tags[index]);
                   }
                }
-               node = tag->Private;
+               node = (view_node *)tag->Private;
 
                node->Flags |= NODE_SELECTED;
                draw_item(Self, tag);
@@ -416,23 +395,20 @@ static void vwUserMovement(objView *Self, struct InputMsg *Input)
          else {
             // Select or deselect everything between the item at which the LMB was held and the item where we are at now.
 
-            FMSG("vwUserMovement","Single-select for tag %d", tag->Index);
+            log.trace("Single-select for tag %d", tag->Index);
 
             i = Self->ClickIndex; // ClickIndex is the item at which the LMB was held
             lastindex = tag->Index; // LastIndex is the item at which we are now
 
-            for (tag=Self->XML->Tags[Self->ClickIndex]; tag; ) {
-               node = tag->Private;
-
-               if (node->Flags & NODE_SELECTED) {
-                  // The node is currently selected
+            for (auto tag=Self->XML->Tags[Self->ClickIndex]; tag; ) {
+               auto node = (view_node *)tag->Private;
+               if (node->Flags & NODE_SELECTED) { // The node is currently selected
                   if (Self->Deselect IS TRUE) {
                      node->Flags &= ~NODE_SELECTED;
                      draw_item(Self, tag);
                   }
                }
-               else {
-                  // The node is not yet selected
+               else { // The node is not yet selected
                   if (Self->Deselect IS FALSE) {
                      node->Flags |= NODE_SELECTED;
                      draw_item(Self, tag);
@@ -453,7 +429,7 @@ static void vwUserMovement(objView *Self, struct InputMsg *Input)
       if (highlighting) {
          // Highlight the underlying item due to mouse-over (do not select it)
 
-         node = Self->XML->Tags[checktag]->Private;
+         auto node = (view_node *)Self->XML->Tags[checktag]->Private;
          if (y <= node->Y + node->Height) {
             if (Self->HighlightTag != Self->XML->Tags[checktag]->Index) {
                if ((i = Self->HighlightTag) != -1) {
@@ -471,38 +447,33 @@ static void vwUserMovement(objView *Self, struct InputMsg *Input)
 
    // If no item is to be highlighted, check if there is a current highlighted item and deselect it.
 
-   if ((highlighted IS FALSE) AND (Self->HighlightTag != -1)) {
-      tag = Self->XML->Tags[Self->HighlightTag];
+   if ((highlighted IS FALSE) and (Self->HighlightTag != -1)) {
+      auto tag = Self->XML->Tags[Self->HighlightTag];
       Self->HighlightTag = -1;
       draw_item(Self, tag);
    }
 
    if (Self->ClickHeld) {
-      if ((x > Self->Layout->BoundX) AND (x < Self->Layout->BoundX + Self->Layout->BoundWidth)) {
+      if ((x > Self->Layout->BoundX) and (x < Self->Layout->BoundX + Self->Layout->BoundWidth)) {
          //check_selected_items(Self, Self->XML->Tags[0]); Seems like overkill to call this since our routine doesn't change or use the SelectedTag.
 
          if (checktag != -1) check_item_visible(Self, Self->XML->Tags[checktag]);
       }
    }
-
-   LOGRETURN();
 }
 
 //****************************************************************************
 
 static ERROR calc_hscroll(objView *Self)
 {
-   ERROR error;
+   parasol::Log log(__FUNCTION__);
 
-   FMSG("~","calc_hscroll: Page: %d, View: %d", Self->Layout->BoundX + Self->PageWidth, Self->Layout->BoundWidth);
+   log.traceBranch("calc_hscroll: Page: %d, View: %d", Self->Layout->BoundX + Self->PageWidth, Self->Layout->BoundWidth);
 
-   if (!Self->HScroll) {
-      LOGRETURN();
-      return ERR_Okay;
-   }
+   if (!Self->HScroll) return ERR_Okay;
 
-   if ((Self->GroupBitmap) AND (Self->GroupBitmap->Width != Self->PageWidth)) {
-      LogF("calc_hscroll","GroupBitmap->Width %d != Self->PageWidth %d", Self->GroupBitmap->Width, Self->PageWidth);
+   if ((Self->GroupBitmap) and (Self->GroupBitmap->Width != Self->PageWidth)) {
+      log.msg("GroupBitmap->Width %d != Self->PageWidth %d", Self->GroupBitmap->Width, Self->PageWidth);
       if (Self->GroupHeaderXML) {
          gen_group_bkgd(Self, Self->GroupHeaderXML, &Self->GroupBitmap, "calc_hscroll");
       }
@@ -518,16 +489,15 @@ static ERROR calc_hscroll(objView *Self)
    else scroll.PageSize = Self->Layout->BoundX + Self->PageWidth;
    scroll.Position = -Self->XPos;
    scroll.Unit     = 16;
-   error = Action(MT_ScUpdateScroll, Self->HScroll, &scroll);
-
-   LOGRETURN();
-   return error;
+   return Action(MT_ScUpdateScroll, Self->HScroll, &scroll);
 }
 
 //****************************************************************************
 
 static ERROR calc_vscroll(objView *Self)
 {
+   parasol::Log log(__FUNCTION__);
+
    MSG("calc_vscroll: Page: %d, View: %d", Self->Layout->BoundY + Self->PageHeight, Self->Layout->BoundHeight);
 
    if (!Self->VScroll) return ERR_Okay;
@@ -546,14 +516,14 @@ static ERROR calc_vscroll(objView *Self)
 
 static void check_pointer_cursor(objView *Self, LONG X, LONG Y)
 {
-   if ((Self->Style IS VIEW_COLUMN) OR (Self->Style IS VIEW_COLUMN_TREE)) {
-      if ((Y >= Self->Layout->BoundY) AND (Y < Self->Layout->BoundY + Self->ColumnHeight)) {
+   if ((Self->Style IS VIEW_COLUMN) or (Self->Style IS VIEW_COLUMN_TREE)) {
+      if ((Y >= Self->Layout->BoundY) and (Y < Self->Layout->BoundY + Self->ColumnHeight)) {
          LONG cx = 0;
-         struct view_col *col;
+         view_col *col;
          for (col=Self->Columns; col; col=col->Next) {
             cx += col->Width;
 
-            if ((X - Self->XPos >= cx-3) AND (X - Self->XPos < cx+3)) {
+            if ((X - Self->XPos >= cx-3) and (X - Self->XPos < cx+3)) {
                if (!Self->PointerLocked) {
                   if (gfxSetCursor(Self->Layout->SurfaceID, 0, PTR_SPLIT_HORIZONTAL, 0, Self->Head.UniqueID) IS ERR_Okay) {
                      Self->PointerLocked = PTR_SPLIT_HORIZONTAL;
@@ -565,7 +535,7 @@ static void check_pointer_cursor(objView *Self, LONG X, LONG Y)
       }
    }
 
-   if ((Self->PointerLocked) AND (!Self->ColumnResize)) {
+   if ((Self->PointerLocked) and (!Self->ColumnResize)) {
       // We have the pointer locked and the cursor is out of bounds.  Assuming that the user is not performing a column
       // resize, restore the cursor back to its normal state.
       gfxRestoreCursor(PTR_DEFAULT, Self->Head.UniqueID);
@@ -575,23 +545,25 @@ static void check_pointer_cursor(objView *Self, LONG X, LONG Y)
 
 //****************************************************************************
 
-static LONG arrange_tree(objView *Self, struct XMLTag *Root, LONG X)
+static LONG arrange_tree(objView *Self, XMLTag *Root, LONG X)
 {
-   FMSG("~arrange_tree()","Index %d, X %d, Y %d", Self->TreeIndex, X, Self->PageHeight);
+   parasol::Log log(__FUNCTION__);
+
+   log.traceBranch("Index %d, X %d, Y %d", Self->TreeIndex, X, Self->PageHeight);
 
    Self->TreeIndex++;
    objBitmap *expand, *collapse;
-   if (!(expand = get_expand_bitmap(Self, 0))) { LOGRETURN(); return 0; }
-   if (!(collapse = get_collapse_bitmap(Self, 0))) { LOGRETURN(); return 0; }
+   if (!(expand = get_expand_bitmap(Self, 0))) return 0;
+   if (!(collapse = get_collapse_bitmap(Self, 0))) return 0;
    LONG itemcount = 0;
 
-   struct XMLTag *tag, *child;
-   for (tag=Root; tag; tag=tag->Next) {
-      struct view_node *node;
-      if (!(node = tag->Private)) continue;
+   XMLTag *child;
+   for (auto tag=Root; tag; tag=tag->Next) {
+      view_node *node;
+      if (!(node = (view_node *)tag->Private)) continue;
       if (!(node->Flags & NODE_ITEM)) continue;
 
-      if (((Self->TreeIndex IS 1) AND (Self->Style IS VIEW_TREE)) OR (node->Flags & NODE_CHILDREN)) {
+      if (((Self->TreeIndex IS 1) and (Self->Style IS VIEW_TREE)) or (node->Flags & NODE_CHILDREN)) {
          node->Flags |= NODE_TREEBOX;
       }
       else node->Flags &= ~NODE_TREEBOX;
@@ -628,7 +600,6 @@ static LONG arrange_tree(objView *Self, struct XMLTag *Root, LONG X)
    }
 
    Self->TreeIndex--;
-   LOGRETURN();
    return itemcount;
 }
 
@@ -638,6 +609,8 @@ static LONG arrange_tree(objView *Self, struct XMLTag *Root, LONG X)
 
 static void arrange_items(objView *Self)
 {
+   parasol::Log log(__FUNCTION__);
+
    FMSG("~arrange_items()", NULL);
 
    Self->PageWidth  = Self->Layout->BoundWidth;
@@ -646,13 +619,13 @@ static void arrange_items(objView *Self)
    Self->LineHeight = 0;
    Self->TotalItems = 0;
 
-   if ((Self->Style IS VIEW_COLUMN) OR (Self->Style IS VIEW_COLUMN_TREE)) Self->ColumnHeight = Self->Font->MaxHeight + 6;
+   if ((Self->Style IS VIEW_COLUMN) or (Self->Style IS VIEW_COLUMN_TREE)) Self->ColumnHeight = Self->Font->MaxHeight + 6;
    else Self->ColumnHeight = 0;
 
    if (!(Self->Flags & VWF_NO_ICONS)) {
       Self->IconWidth  = Self->IconSize + GAP_ICON_TEXT;
 
-      if ((Self->Style IS VIEW_COLUMN) OR (Self->Style IS VIEW_COLUMN_TREE)) {
+      if ((Self->Style IS VIEW_COLUMN) or (Self->Style IS VIEW_COLUMN_TREE)) {
          Self->LineHeight = Self->IconSize + 1;
       }
       else if (Self->Style IS VIEW_LIST) {
@@ -678,22 +651,22 @@ static void arrange_items(objView *Self)
 
    if (Self->XML->TagCount < 1) goto exit;
 
-   struct XMLTag *tag, *scan;
-   struct view_node *node, *scan_node;
-   struct view_col *col;
+   XMLTag *tag, *scan;
+   view_node *node, *scan_node;
+   view_col *col;
    LONG x, y, strwidth;
    LONG index, columngap, columncount, hbar;
 
-   if ((Self->Style IS VIEW_DOCUMENT) OR (Self->Document)) {
+   if ((Self->Style IS VIEW_DOCUMENT) or (Self->Document)) {
       // Note with respect to the above - setting the Document field overrides the default view style.  If the
       // developer wishes to switch back to a standard style then the Document field needs to be set to NULL.
 
       if (Self->Document) {
          // Get an item count
 
-         tag = Self->XML->Tags[0];
+         auto tag = Self->XML->Tags[0];
          for (index=0; tag; index++) {
-            if (!(node = tag->Private)) break;
+            if (!(node = (view_node *)tag->Private)) break;
             Self->TotalItems++;
             tag = tag->Next;
          }
@@ -716,8 +689,8 @@ static void arrange_items(objView *Self)
       }
    }
    else if (Self->Style IS VIEW_GROUP_TREE) {
-      for (tag=Self->XML->Tags[0]; tag; tag=tag->Next) {
-         if (!(node = tag->Private)) continue;
+      for (auto tag=Self->XML->Tags[0]; tag; tag=tag->Next) {
+         if (!(node = (view_node *)tag->Private)) continue;
          if (!(node->Flags & NODE_ITEM)) continue;
 
          node->X = 0;
@@ -728,7 +701,7 @@ static void arrange_items(objView *Self)
          node->Indent = 0;
 
          Self->TreeIndex = 0;
-         if ((node->Flags & NODE_OPEN) AND (tag->Child)) {
+         if ((node->Flags & NODE_OPEN) and (tag->Child)) {
             Self->PageHeight += node->Height;
             arrange_tree(Self, tag->Child, 0);
          }
@@ -741,13 +714,13 @@ static void arrange_items(objView *Self)
          arrange_tree(Self, Self->XML->Tags[0], 0);
       }
    }
-   else if ((Self->Style IS VIEW_LIST) OR (Self->Style IS VIEW_LONG_LIST)) {
+   else if ((Self->Style IS VIEW_LIST) or (Self->Style IS VIEW_LONG_LIST)) {
       LONG linewidth;
 
       columncount = 0;
       columngap = 20;
 
-      if ((Self->Style IS VIEW_LIST) AND (Self->HScroll)) {
+      if ((Self->Style IS VIEW_LIST) and (Self->HScroll)) {
          // Horizontal scrollbar height compensation, helps avoid the vertical scrollbar from having to be used in list mode.
          hbar = 20;
       }
@@ -756,9 +729,9 @@ static void arrange_items(objView *Self)
       x = 0;
       y = Self->Layout->TopMargin;
       linewidth = 0;
-      tag = Self->XML->Tags[0];
+      auto tag = Self->XML->Tags[0];
       for (index=0; tag; index++) {
-         if (!(node = tag->Private)) break;
+         if (!(node = (view_node *)tag->Private)) break;
 
          CSTRING text = get_nodestring(Self, node);
 
@@ -779,21 +752,21 @@ static void arrange_items(objView *Self)
 
          y += Self->LineHeight;
 
-         if ((!tag->Next) OR ((Self->Style IS VIEW_LIST) AND (y > Self->Layout->BoundY) AND (y + Self->LineHeight > Self->Layout->BoundHeight - hbar))) {
+         if ((!tag->Next) or ((Self->Style IS VIEW_LIST) and (y > Self->Layout->BoundY) and (y + Self->LineHeight > Self->Layout->BoundHeight - hbar))) {
             // We are about to go to a new column, or this is the end of all columns
 
-            if ((!tag->Next) AND (columncount < 1)) {
+            if ((!tag->Next) and (columncount < 1)) {
                // If there are no more tags and we know there is only one column, all nodes will use the entire width of view.
 
                for (scan=tag; scan; scan=scan->Prev) {
-                  scan_node = (struct view_node *)scan->Private;
+                  scan_node = (view_node *)scan->Private;
                   if (scan_node->Width) break;
                   scan_node->Width = Self->Layout->BoundWidth;
                }
             }
             else {
                for (scan=tag; scan; scan=scan->Prev) {
-                  scan_node = (struct view_node *)scan->Private;
+                  scan_node = (view_node *)scan->Private;
                   if (scan_node->Width) break;
                   scan_node->Width = linewidth;
                }
@@ -851,11 +824,11 @@ static void arrange_items(objView *Self)
       node = 0;
       tag = Self->XML->Tags[0];
       for (index=0; tag; index++) {
-         if (!(node = tag->Private)) break;
+         if (!(node = (view_node *)tag->Private)) break;
 
          CSTRING text = get_nodestring(Self, node);
 
-         if ((text) AND (text[0])) {
+         if ((text) and (text[0])) {
             strwidth = fntStringWidth(Self->Font, text, -1);
 
             node->X = 0;
@@ -867,7 +840,7 @@ static void arrange_items(objView *Self)
             y += Self->LineHeight;
          }
          else {
-            LogErrorMsg("Empty item found in XML tags, index %d", index);
+            log.warning("Empty item found in XML tags, index %d", index);
             node->Width  = 0;
          }
 
@@ -887,7 +860,7 @@ static void arrange_items(objView *Self)
    if (Self->ColBorder.Alpha) {
       if (!(Self->GfxFlags & VGF_DRAW_TABLE)) {
          for (tag = Self->XML->Tags[0]; tag; tag=tag->Next) {
-            if (!(node = tag->Private)) continue;
+            if (!(node = (view_node *)tag->Private)) continue;
             node->X++;
             node->Y++;
          }
@@ -902,7 +875,6 @@ exit:
 
    calc_vscroll(Self);
    calc_hscroll(Self);
-   LOGRETURN();
 }
 
 /*****************************************************************************
@@ -911,7 +883,8 @@ exit:
 
 static ERROR sort_items(objView *Self)
 {
-   struct view_col *col;
+   parasol::Log log(__FUNCTION__);
+   view_col *col;
    LONG colindex, i;
    LONG flags;
 
@@ -920,7 +893,7 @@ static ERROR sort_items(objView *Self)
    if (colindex < 0) { colindex = -colindex; flags |= XSF_DESC; }
    colindex--;
 
-   for (i=0, col=Self->Columns; (col) AND (i < colindex); col=col->Next, i++);
+   for (i=0, col=Self->Columns; (col) and (i < colindex); col=col->Next, i++);
 
    if (!col) {
       col = Self->Columns;
@@ -985,33 +958,31 @@ static objBitmap * get_collapse_bitmap(objView *Self, LONG BPP)
 
 static void format_value(objView *Self, STRING buffer, LONG Size, LONG Type)
 {
-   LONG j, i;
-
    if (Type IS CT_DATE) {
-      struct DateTime time;
-      UBYTE str[6];
+      DateTime time;
+      char str[6];
 
-      j = 0;
-      i = 0;
-      for (i=0; (buffer[j]) AND (i < 4); i++) str[i] = buffer[j++];
+      LONG j = 0;
+      LONG i = 0;
+      for (i=0; (buffer[j]) and (i < 4); i++) str[i] = buffer[j++];
       str[i] = 0;
       if ((time.Year = StrToInt(str))) {
-         for (i=0; (buffer[j]) AND (i < 2); i++) str[i] = buffer[j++];
+         for (i=0; (buffer[j]) and (i < 2); i++) str[i] = buffer[j++];
          str[i] = 0;
          time.Month = StrToInt(str);
-         for (i=0; (buffer[j]) AND (i < 2); i++) str[i] = buffer[j++];
+         for (i=0; (buffer[j]) and (i < 2); i++) str[i] = buffer[j++];
          str[i] = 0;
          time.Day = StrToInt(str);
-         while ((buffer[j]) AND (buffer[j] <= 0x20)) j++;
-         for (i=0; (buffer[j]) AND (i < 2); i++) str[i] = buffer[j++];
+         while ((buffer[j]) and (buffer[j] <= 0x20)) j++;
+         for (i=0; (buffer[j]) and (i < 2); i++) str[i] = buffer[j++];
          str[i] = 0;
          time.Hour = StrToInt(str);
          if (buffer[j] IS ':') j++;
-         for (i=0; (buffer[j]) AND (i < 2); i++) str[i] = buffer[j++];
+         for (i=0; (buffer[j]) and (i < 2); i++) str[i] = buffer[j++];
          str[i] = 0;
          time.Minute = StrToInt(str);
          if (buffer[j] IS ':') j++;
-         for (i=0; (buffer[j]) AND (i < 2); i++) str[i] = buffer[j++];
+         for (i=0; (buffer[j]) and (i < 2); i++) str[i] = buffer[j++];
          str[i] = 0;
          time.Second = StrToInt(str);
 
@@ -1044,10 +1015,10 @@ static void format_value(objView *Self, STRING buffer, LONG Size, LONG Type)
 
 static LONG glSaveClipRight = 0;
 
-static LONG draw_tree(objView *Self, objSurface *Surface, objBitmap *Bitmap, struct XMLTag *Root, LONG *Y)
+static LONG draw_tree(objView *Self, objSurface *Surface, objBitmap *Bitmap, XMLTag *Root, LONG *Y)
 {
    objFont *font;
-   struct XMLTag *tag, *child;
+   XMLTag *child;
    objBitmap *expand, *collapse;
    LONG nx, ny, strwidth, col_branch, col_selectbar, col_select, linebreak, clipright;
    BYTE clip;
@@ -1060,8 +1031,8 @@ static LONG draw_tree(objView *Self, objSurface *Surface, objBitmap *Bitmap, str
    if (!(expand = get_expand_bitmap(Self, Bitmap->BitsPerPixel))) return 0;
    if (!(collapse = get_collapse_bitmap(Self, Bitmap->BitsPerPixel))) return 0;
 
-   struct view_node *node = NULL;
-   struct view_node *firstnode = NULL;
+   view_node *node = NULL;
+   view_node *firstnode = NULL;
    LONG itemcount = 0;
    font = Self->Font;
    font->Bitmap = Bitmap;
@@ -1074,14 +1045,14 @@ static LONG draw_tree(objView *Self, objSurface *Surface, objBitmap *Bitmap, str
    //MSG("draw_tree() Area: %dx%d,%dx%d Index: %d, Highlight: %d", Self->Layout->BoundX, Self->Layout->BoundY, Self->Layout->BoundWidth, Self->Layout->BoundHeight, Self->TreeIndex, Self->HighlightTag);
 
    linebreak = 0;
-   for (tag=Root; tag; tag=tag->Next) {
-      if ((!tag->Private) OR (!(((struct view_node *)tag->Private)->Flags & NODE_ITEM))) continue;
+   for (auto tag=Root; tag; tag=tag->Next) {
+      if ((!tag->Private) or (!(((view_node *)tag->Private)->Flags & NODE_ITEM))) continue;
 
-      node = tag->Private;
+      auto node = (view_node *)tag->Private;
       if (!firstnode) firstnode = node;
 
       if (Self->Style != VIEW_COLUMN_TREE) {
-         if ((linebreak) AND (Self->GfxFlags & VGF_LINE_BREAKS)) {
+         if ((linebreak) and (Self->GfxFlags & VGF_LINE_BREAKS)) {
             Bitmap->Opacity = 255;
             gfxDrawRectangle(Bitmap, Self->Layout->BoundX, linebreak+Self->LineHeight-1, Self->Layout->BoundWidth, 1,
                PackPixel(Bitmap,240,240,240), TRUE);
@@ -1091,16 +1062,16 @@ static LONG draw_tree(objView *Self, objSurface *Surface, objBitmap *Bitmap, str
       nx = node->X + Self->XPos + Self->Layout->BoundX + Self->Layout->LeftMargin;
       ny = node->Y + Self->YPos + Self->Layout->BoundY;
 
-      clip = (ny + Self->LineHeight > Bitmap->Clip.Top) AND (ny < Bitmap->Clip.Bottom);
+      clip = (ny + Self->LineHeight > Bitmap->Clip.Top) and (ny < Bitmap->Clip.Bottom);
       linebreak = ny;
 
       if (clip) {
-         struct RGB8 rgbBkgd;
+         RGB8 rgbBkgd;
 
          rgbBkgd.Alpha = 0;
          font->Colour = node->FontRGB;
 
-         if ((tag->Index IS Self->HighlightTag) AND (!(Surface->Flags & RNF_DISABLED))) {
+         if ((tag->Index IS Self->HighlightTag) and (!(Surface->Flags & RNF_DISABLED))) {
             if (Self->ColBkgdHighlight.Alpha) {
                rgbBkgd = Self->ColBkgdHighlight;
 
@@ -1123,9 +1094,9 @@ static LONG draw_tree(objView *Self, objSurface *Surface, objBitmap *Bitmap, str
 //            linebreak = FALSE;
          }
 #if 0
-         else if ((Self->Style IS VIEW_GROUP_TREE) AND (Self->TreeIndex IS 1)) { // In group-tree mode, top-level tree folders have slightly darker backgrounds which vary according to whether they are open or closed.
+         else if ((Self->Style IS VIEW_GROUP_TREE) and (Self->TreeIndex IS 1)) { // In group-tree mode, top-level tree folders have slightly darker backgrounds which vary according to whether they are open or closed.
             if (node->Flags & NODE_CHILDREN) {
-               if ((Self->Style IS VIEW_GROUP_TREE) AND (node->Flags & NODE_OPEN)) {
+               if ((Self->Style IS VIEW_GROUP_TREE) and (node->Flags & NODE_OPEN)) {
                   rgbBkgd.Alpha = 10;
                }
                else rgbBkgd.Alpha = 5;
@@ -1163,8 +1134,8 @@ static LONG draw_tree(objView *Self, objSurface *Surface, objBitmap *Bitmap, str
 
          // Draw the text
 
-         UBYTE buffer[400];
-         struct XMLTag *vtag;
+         char buffer[400];
+         XMLTag *vtag;
 
          get_col_value(Self, tag, Self->Columns, buffer, sizeof(buffer), &vtag);
 
@@ -1183,7 +1154,7 @@ static LONG draw_tree(objView *Self, objSurface *Surface, objBitmap *Bitmap, str
                }
             }
 #if 0
-            if ((tag->Index IS Self->HighlightTag) AND (!Self->ClickHeld) AND (!(Surface->Flags & RNF_DISABLED))) {
+            if ((tag->Index IS Self->HighlightTag) and (!Self->ClickHeld) and (!(Surface->Flags & RNF_DISABLED))) {
                font->Colour = Self->ColHighlight;
             }
             else font->Colour = node->FontRGB;
@@ -1212,7 +1183,7 @@ static LONG draw_tree(objView *Self, objSurface *Surface, objBitmap *Bitmap, str
          }
          else if (node->Icon) {
             objBitmap *iconbmp;
-            if ((node->Flags & (NODE_OPEN|NODE_SELECTED)) AND (node->IconOpen)) iconbmp = node->IconOpen;
+            if ((node->Flags & (NODE_OPEN|NODE_SELECTED)) and (node->IconOpen)) iconbmp = node->IconOpen;
             else iconbmp = node->Icon;
 
             if (Surface->Flags & RNF_DISABLED) iconbmp->Opacity = 128;
@@ -1238,7 +1209,7 @@ static LONG draw_tree(objView *Self, objSurface *Surface, objBitmap *Bitmap, str
 
    // Draw a vertical branch from the top to the bottom of the --child-- items
 
-   if ((Self->GfxFlags & VGF_BRANCHES) AND (firstnode)) {
+   if ((Self->GfxFlags & VGF_BRANCHES) and (firstnode)) {
       if ((node->Indent > 1) /*OR (Self->Style IS VIEW_GROUP_TREE)*/) {
          ny = firstnode->Y - (Self->LineHeight>>1) + Self->Layout->BoundY + Self->YPos;
          Bitmap->Opacity = Self->ColBranch.Alpha;
@@ -1250,8 +1221,8 @@ static LONG draw_tree(objView *Self, objSurface *Surface, objBitmap *Bitmap, str
 
    // Draw the open/close boxes for each item
 
-   for (tag=Root; tag; tag=tag->Next) {
-      if (!(node = tag->Private)) continue;
+   for (auto tag=Root; tag; tag=tag->Next) {
+      if (!(node = (view_node *)tag->Private)) continue;
       if (!(node->Flags & NODE_ITEM)) continue;
 
       nx = node->X + Self->XPos + Self->Layout->BoundX + Self->Layout->LeftMargin;
@@ -1279,7 +1250,7 @@ static LONG draw_tree(objView *Self, objSurface *Surface, objBitmap *Bitmap, str
       }
    }
 
-   if ((node) AND (Y)) *Y = node->Y + node->Height;
+   if ((node) and (Y)) *Y = node->Y + node->Height;
 
    return itemcount;
 }
@@ -1307,7 +1278,7 @@ static void draw_button(objView *Self, objBitmap *Bitmap, LONG X, LONG Y, LONG W
       Y++;
       Width  -= 2;
       Height -= 2;
-      struct RGB8 bkgd = Self->ButtonHighlight;
+      RGB8 bkgd = Self->ButtonHighlight;
       bkgd.Alpha = bkgd.Alpha / 2;
       gfxDrawRectangle(Bitmap, X, Y, Width-2, 1, PackPixelRGBA(Bitmap, &bkgd), BAF_FILL|BAF_BLEND); // Highlight (Inner-Top)
       gfxDrawRectangle(Bitmap, X, Y, 1, Height, PackPixelRGBA(Bitmap, &bkgd), BAF_FILL|BAF_BLEND); // Highlight (Inner-Left)
@@ -1321,11 +1292,11 @@ static void draw_button(objView *Self, objBitmap *Bitmap, LONG X, LONG Y, LONG W
 
 //****************************************************************************
 
-static void draw_column_header(objView *Self, objBitmap *Bitmap, struct ClipRectangle *Clip, LONG AreaX, LONG AreaY,
+static void draw_column_header(objView *Self, objBitmap *Bitmap, ClipRectangle *Clip, LONG AreaX, LONG AreaY,
    LONG AreaWidth, LONG AreaHeight)
 {
-   struct view_col *col;
-   struct RGB8 *rgb;
+   view_col *col;
+   RGB8 *rgb;
    LONG cx, cy, ah, i;
 
    objFont *font;
@@ -1432,7 +1403,7 @@ static void draw_column_header(objView *Self, objBitmap *Bitmap, struct ClipRect
       // Draw hairlines between each column if this option is on
 
       if (Self->GfxFlags & (VGF_HAIRLINES|VGF_DRAW_TABLE)) {
-         if ((col->Next) OR (x+col->Width < AreaWidth)) {
+         if ((col->Next) or (x+col->Width < AreaWidth)) {
             gfxDrawRectangle(Bitmap, x+col->Width-1, AreaY + Self->ColumnHeight, 1, AreaHeight - Self->ColumnHeight,
                PackPixelRGBA(Bitmap, &Self->ColHairline), BAF_BLEND|BAF_FILL);
          }
@@ -1448,7 +1419,7 @@ static void draw_column_header(objView *Self, objBitmap *Bitmap, struct ClipRect
 
    // Draw an empty button to fill any left-over space to the right of the columns
 
-   if ((x < AreaWidth) AND (!(Self->GfxFlags & VGF_DRAW_TABLE))) {
+   if ((x < AreaWidth) and (!(Self->GfxFlags & VGF_DRAW_TABLE))) {
       draw_button(Self, Bitmap, x, AreaY, 16000, Self->ColumnHeight);
    }
 }
@@ -1457,27 +1428,24 @@ static void draw_column_header(objView *Self, objBitmap *Bitmap, struct ClipRect
 
 static void draw_view(objView *Self, objSurface *Surface, objBitmap *Bitmap)
 {
-   struct XMLTag *tag;
-   struct view_node *node;
+   view_node *node;
    objBitmap *expand, *collapse, *groupbmp;
-   struct ClipRectangle clip;
+   ClipRectangle clip;
    CSTRING str;
-   LONG ax, ay, aheight, awidth;
-   LONG offset;
 
    Self->RedrawDue = FALSE;
 
    if (!Self->Layout->Visible) return;
 
-   objFont *font = Self->Font;
+   auto font = Self->Font;
 
-   struct ClipRectangle save = Bitmap->Clip;
+   ClipRectangle save = Bitmap->Clip;
 
-   ax = Self->Layout->BoundX;
-   ay = Self->Layout->BoundY;
-   awidth = Self->Layout->BoundWidth;
-   aheight = Self->Layout->BoundHeight;
-   offset = 0; // Border offset
+   LONG ax = Self->Layout->BoundX;
+   LONG ay = Self->Layout->BoundY;
+   LONG awidth = Self->Layout->BoundWidth;
+   LONG aheight = Self->Layout->BoundHeight;
+   LONG offset = 0; // Border offset
 
    if (Self->ColBorder.Alpha) {
       if (!(Self->GfxFlags & VGF_DRAW_TABLE)) {
@@ -1513,7 +1481,7 @@ static void draw_view(objView *Self, objSurface *Surface, objBitmap *Bitmap)
 
       if (Self->XML->TagCount < 1) goto exit;
 
-      font = Self->Font;
+      auto font = Self->Font;
 
       if (!Self->GroupFace) {
          font = Self->Font;
@@ -1545,16 +1513,16 @@ static void draw_view(objView *Self, objSurface *Surface, objBitmap *Bitmap)
       ny = ay;
       ey = ay;
       alt = 0;
-      for (tag=Self->XML->Tags[0]; tag; tag=tag->Next) {
-         if ((!tag->Private) OR (!(((struct view_node *)tag->Private)->Flags & NODE_ITEM))) continue;
+      for (auto tag=Self->XML->Tags[0]; tag; tag=tag->Next) {
+         if ((!tag->Private) or (!(((view_node *)tag->Private)->Flags & NODE_ITEM))) continue;
 
-         node = tag->Private;
+         node = (view_node *)tag->Private;
          ny = ay + node->Y + Self->YPos;
          ey = node->Y + node->Height;
 
          if (node->Flags & NODE_OPEN) {
             draw_tree(Self, Surface, Bitmap, tag->Child, &ey);
-            if ((node->Flags & NODE_OPEN) AND (Self->GfxFlags & VGF_GROUP_SHADOW)) {
+            if ((node->Flags & NODE_OPEN) and (Self->GfxFlags & VGF_GROUP_SHADOW)) {
                draw_shadow(Self, Bitmap, ny+node->Height);
             }
          }
@@ -1613,7 +1581,7 @@ static void draw_view(objView *Self, objSurface *Surface, objBitmap *Bitmap)
          }
 #endif
          if (node->Icon) {
-            if ((node->Flags & (NODE_OPEN|NODE_SELECTED)) AND (node->IconOpen)) iconbmp = node->IconOpen;
+            if ((node->Flags & (NODE_OPEN|NODE_SELECTED)) and (node->IconOpen)) iconbmp = node->IconOpen;
             else iconbmp = node->Icon;
 
             if (Surface->Flags & RNF_DISABLED) iconbmp->Opacity = 128;
@@ -1654,13 +1622,13 @@ static void draw_view(objView *Self, objSurface *Surface, objBitmap *Bitmap)
 
       draw_tree(Self, Surface, Bitmap, Self->XML->Tags[0], NULL);
    }
-   else if ((Self->Style IS VIEW_LIST) OR (Self->Style IS VIEW_LONG_LIST)) {
-      struct RGB8 rgbBkgd;
+   else if ((Self->Style IS VIEW_LIST) or (Self->Style IS VIEW_LONG_LIST)) {
+      RGB8 rgbBkgd;
       LONG x, y, index, end_y;
       BYTE alt = FALSE;
-      if ((Self->Style IS VIEW_LONG_LIST) AND (Self->ColAltBackground.Alpha)) alt = TRUE;
+      if ((Self->Style IS VIEW_LONG_LIST) and (Self->ColAltBackground.Alpha)) alt = TRUE;
 
-      if ((alt IS FALSE) AND (Self->ColBackground.Alpha)) {
+      if ((alt IS FALSE) and (Self->ColBackground.Alpha)) {
          gfxDrawRectangle(Bitmap, ax, ay, awidth, aheight, PackPixelRGBA(Bitmap, &Self->ColBackground), BAF_BLEND|BAF_FILL);
       }
 
@@ -1670,8 +1638,8 @@ static void draw_view(objView *Self, objSurface *Surface, objBitmap *Bitmap)
 
       end_y = ay;
       index = 0;
-      for (tag=Self->XML->Tags[0]; tag; tag = tag->Next) {
-         if (!(node = tag->Private)) continue;
+      for (auto tag=Self->XML->Tags[0]; tag; tag = tag->Next) {
+         if (!(node = (view_node *)tag->Private)) continue;
 
          index++;
 
@@ -1717,7 +1685,7 @@ static void draw_view(objView *Self, objSurface *Surface, objBitmap *Bitmap)
             if (Self->ColSelectFont.Alpha) font->Colour = Self->ColSelectFont;
          }
 
-         if ((alt) AND (rgbBkgd.Alpha < 255)) {  // Draw line background if alternate line colours are enabled
+         if ((alt) and (rgbBkgd.Alpha < 255)) {  // Draw line background if alternate line colours are enabled
             if (index & 1) {
                gfxDrawRectangle(Bitmap, x, y, node->Width, Self->LineHeight, PackPixelRGBA(Bitmap, &Self->ColAltBackground), BAF_BLEND|BAF_FILL);
             }
@@ -1761,7 +1729,7 @@ static void draw_view(objView *Self, objSurface *Surface, objBitmap *Bitmap)
          }
       }
 
-      if ((alt) AND (Self->ColBackground.Alpha)) {
+      if ((alt) and (Self->ColBackground.Alpha)) {
          gfxDrawRectangle(Bitmap, ax, end_y, awidth, aheight - end_y, PackPixelRGBA(Bitmap, &Self->ColBackground), BAF_BLEND|BAF_FILL);
       }
    }
@@ -1780,7 +1748,7 @@ static void draw_view(objView *Self, objSurface *Surface, objBitmap *Bitmap)
          if (Bitmap->Clip.Top >= Bitmap->Clip.Bottom) goto exit;
       }
 
-      if ((Self->ColBackground.Alpha) AND (!Self->ColAltBackground.Alpha)) {
+      if ((Self->ColBackground.Alpha) and (!Self->ColAltBackground.Alpha)) {
          gfxDrawRectangle(Bitmap, ax, ay+Self->ColumnHeight, awidth, aheight - Self->ColumnHeight,
             PackPixelRGBA(Bitmap, &Self->ColBackground), BAF_BLEND|BAF_FILL);
       }
@@ -1802,7 +1770,7 @@ static void draw_view(objView *Self, objSurface *Surface, objBitmap *Bitmap)
    else if (Self->Style IS VIEW_COLUMN) {
       draw_column_header(Self, Bitmap, &clip, ax, ay, awidth, aheight);
 
-      if ((Self->ColBackground.Alpha) AND (!Self->ColAltBackground.Alpha)) { // Background
+      if ((Self->ColBackground.Alpha) and (!Self->ColAltBackground.Alpha)) { // Background
          gfxDrawRectangle(Bitmap, ax, ay+Self->ColumnHeight, awidth, aheight - Self->ColumnHeight,
             PackPixelRGBA(Bitmap, &Self->ColBackground), BAF_BLEND|BAF_FILL);
       }
@@ -1819,23 +1787,22 @@ exit:
 static LONG glRowIndex = 0, glRowEnd = 0;
 
 static void draw_column_branch(objView *Self, objSurface *Surface, objBitmap *Bitmap,
-   struct ClipRectangle *Clip, struct XMLTag *Tag, LONG ax, LONG ay, LONG awidth, LONG aheight)
+   ClipRectangle *Clip, XMLTag *Tag, LONG ax, LONG ay, LONG awidth, LONG aheight)
 {
-   struct view_col *col;
-   struct view_node *node, *tagnode;
-   struct XMLTag *vtag;
-   UBYTE hairline;
+   parasol::Log log(__FUNCTION__);
+   view_node *node, *tagnode;
+   XMLTag *vtag;
    LONG x, y;
-   UBYTE buffer[400];
+   char buffer[400];
 
    if (!Tag) return;
 
-   //FMSG("~draw_branch()","Tag: %d", Tag->Index);
+   //log.traceBranch("Tag: %d", Tag->Index);
 
-   objFont *font = Self->Font;
+   auto font = Self->Font;
    while (Tag) {
-      if (!(node = Tag->Private)) {
-         LogF("@draw_column_branch","No private node for tag #%d", Tag->Index);
+      if (!(node = (view_node *)Tag->Private)) {
+         log.warning("No private node for tag #%d", Tag->Index);
          break;
       }
 
@@ -1859,10 +1826,9 @@ static void draw_column_branch(objView *Self, objSurface *Surface, objBitmap *Bi
 
       // If the item is selected, draw a highlight for it
 
-      hairline = FALSE;
-      struct RGB8 rgbBkgd = { 0, 0, 0, 0 };
-      if (Self->Style != VIEW_COLUMN_TREE) {
-         if (!(Surface->Flags & RNF_DISABLED)) {
+      {
+         RGB8 rgbBkgd = { 0, 0, 0, 0 };
+         if ((Self->Style != VIEW_COLUMN_TREE) AND (!(Surface->Flags & RNF_DISABLED))) {
             if (Tag->Index IS Self->HighlightTag) {
                if (Self->ColBkgdHighlight.Alpha) {
                   if (node->Flags & NODE_SELECTED) {
@@ -1881,32 +1847,30 @@ static void draw_column_branch(objView *Self, objSurface *Surface, objBitmap *Bi
                if (Self->ColSelectFont.Alpha) font->Colour = Self->ColSelectFont;
             }
          }
-      }
 
-      // Draw line background if alternate line colours are enabled
+         // Draw line background if alternate line colours are enabled
 
-      if ((Self->ColAltBackground.Alpha > 0) AND (rgbBkgd.Alpha < 255)) {
-         if (glRowIndex & 1) {
-            gfxDrawRectangle(Bitmap, x, y, node->Width, Self->LineHeight, PackPixelRGBA(Bitmap, &Self->ColAltBackground), BAF_BLEND|BAF_FILL);
+         if ((Self->ColAltBackground.Alpha > 0) and (rgbBkgd.Alpha < 255)) {
+            if (glRowIndex & 1) {
+               gfxDrawRectangle(Bitmap, x, y, node->Width, Self->LineHeight, PackPixelRGBA(Bitmap, &Self->ColAltBackground), BAF_BLEND|BAF_FILL);
+            }
+            else gfxDrawRectangle(Bitmap, x, y, node->Width, Self->LineHeight, PackPixelRGBA(Bitmap, &Self->ColBackground), BAF_BLEND|BAF_FILL);
          }
-         else gfxDrawRectangle(Bitmap, x, y, node->Width, Self->LineHeight, PackPixelRGBA(Bitmap, &Self->ColBackground), BAF_BLEND|BAF_FILL);
+
+         if (rgbBkgd.Alpha) {
+            gfxDrawRectangle(Bitmap, x, y, node->Width, Self->LineHeight, PackPixelRGBA(Bitmap, &rgbBkgd), BAF_BLEND|BAF_FILL);
+         }
       }
 
-      if (rgbBkgd.Alpha) {
-         gfxDrawRectangle(Bitmap, x, y, node->Width, Self->LineHeight, PackPixelRGBA(Bitmap, &rgbBkgd), BAF_BLEND|BAF_FILL);
-      }
-
-      if (hairline) {
-         // Draw hairlines for selected items
-
+      if (FALSE) { // Draw hairlines for selected items
          if (Self->GfxFlags & (VGF_HAIRLINES|VGF_DRAW_TABLE)) {
-            struct RGB8 *rgb;
+            RGB8 *rgb;
             if (((LONG *)&Self->ColSelectHairline)[0]) rgb = &Self->ColSelectHairline;
             else rgb = &Self->ColHairline;
 
             LONG hx = x;
-            for (col=Self->Columns; col; col=col->Next) {
-               if ((col->Next) OR (hx+col->Width < awidth)) {
+            for (auto col=Self->Columns; col; col=col->Next) {
+               if ((col->Next) or (hx+col->Width < awidth)) {
                   gfxDrawRectangle(Bitmap, hx+col->Width-1, y, 1, Self->LineHeight, PackPixelRGBA(Bitmap, rgb), BAF_BLEND|BAF_FILL);
                }
                hx += col->Width;
@@ -1914,8 +1878,8 @@ static void draw_column_branch(objView *Self, objSurface *Surface, objBitmap *Bi
          }
       }
 
-      for (col=Self->Columns; col; x += col->Width, col=col->Next) {
-         if ((Self->Style IS VIEW_COLUMN_TREE) AND (col IS Self->Columns)) {
+      for (auto col=Self->Columns; col; x += col->Width, col=col->Next) {
+         if ((Self->Style IS VIEW_COLUMN_TREE) and (col IS Self->Columns)) {
             // In COLUMNTREE mode, the first column is ignored because the tree is drawn in column 1.
             continue;
          }
@@ -1931,23 +1895,20 @@ static void draw_column_branch(objView *Self, objSurface *Surface, objBitmap *Bi
          get_col_value(Self, Tag, col, buffer, sizeof(buffer), &vtag);
          if (!vtag) continue;
 
-         tagnode = vtag->Private;
+         tagnode = (view_node *)vtag->Private;
          if (!tagnode) continue;
 
          if (col->Type IS CT_CHECKBOX) {
             static BYTE tick_error = ERR_Okay;
-            LONG csize, cx, cy, tx, ty, tx2, ty2;
             LONG checked;
 
             if (buffer[0]) {
                checked = StrToInt(buffer);
-               if ((!checked) AND ((buffer[0] IS 'y') OR (buffer[0] IS 'Y'))) {
-                  checked = 1;
-               }
+               if ((!checked) and ((buffer[0] IS 'y') or (buffer[0] IS 'Y'))) checked = 1;
             }
             else checked = 0;
 
-            if ((!glTick) AND (!tick_error)) {
+            if ((!glTick) and (!tick_error)) {
                objPicture **ptr;
                if (KeyGet(glCache, KEY_TICK, &ptr, NULL) != ERR_Okay) {
                   if (!(tick_error = CreateObject(ID_PICTURE, 0, &glTick,
@@ -1961,16 +1922,17 @@ static void draw_column_branch(objView *Self, objSurface *Surface, objBitmap *Bi
                else glTick = ptr[0];
             }
 
-            if ((!glTick) OR (Self->LineHeight < glTick->Bitmap->Height+2)) {
+            if ((!glTick) or (Self->LineHeight < glTick->Bitmap->Height+2)) {
+               LONG csize;
                if ((csize = Self->LineHeight - 2) >= 6) {
                   ULONG colour;
                   if (checked) colour = bmpGetColour(Bitmap, 0, 0, 0, 255);
                   else  colour = bmpGetColour(Bitmap, 0, 0, 0, 128);
 
-                  tx = 0;
-                  ty = csize * 0.75;
-                  tx2 = csize * 0.25;
-                  ty2 = csize;
+                  LONG tx = 0;
+                  LONG ty = csize * 0.75;
+                  LONG tx2 = csize * 0.25;
+                  LONG ty2 = csize;
                   gfxDrawLine(Bitmap, tx, ty, tx2, ty2, colour);
                   gfxDrawLine(Bitmap, tx, ty-1, tx2, ty2-1, colour);
 
@@ -1986,8 +1948,8 @@ static void draw_column_branch(objView *Self, objSurface *Surface, objBitmap *Bi
                if (checked) glTick->Bitmap->Opacity = 255;
                else glTick->Bitmap->Opacity = 40;
 
-               cx = x + ((col->Width - glTick->Bitmap->Width)/2);
-               cy = y + ((Self->LineHeight - glTick->Bitmap->Height)/2);
+               LONG cx = x + ((col->Width - glTick->Bitmap->Width)/2);
+               LONG cy = y + ((Self->LineHeight - glTick->Bitmap->Height)/2);
                gfxCopyArea(glTick->Bitmap, Bitmap, BAF_BLEND, 0, 0, glTick->Bitmap->Width, glTick->Bitmap->Height, cx, cy);
             }
 
@@ -1996,7 +1958,7 @@ static void draw_column_branch(objView *Self, objSurface *Surface, objBitmap *Bi
 
          // Draw the icon for this column
 
-         if ((col->Flags & CF_SHOWICONS) AND (tagnode->Icon)) {
+         if ((col->Flags & CF_SHOWICONS) and (tagnode->Icon)) {
             objBitmap *iconbmp = tagnode->Icon;
             if (Surface->Flags & RNF_DISABLED) iconbmp->Opacity = 128;
 
@@ -2016,10 +1978,10 @@ static void draw_column_branch(objView *Self, objSurface *Surface, objBitmap *Bi
                font->AlignWidth = col->Width - 8;
             }
 
-            if ((tagnode->Icon) AND (col->Flags & CF_SHOWICONS)) font->X = x + Self->IconWidth + 4;
+            if ((tagnode->Icon) and (col->Flags & CF_SHOWICONS)) font->X = x + Self->IconWidth + 4;
             else font->X = x + 4;
 
-            font->Y = ay + Self->YPos + ((struct view_node *)(Tag->Private))->Y;
+            font->Y = ay + Self->YPos + ((view_node *)(Tag->Private))->Y;
             font->WrapEdge = x + col->Width;
 
             SetString(font, FID_String, buffer);
@@ -2031,20 +1993,18 @@ static void draw_column_branch(objView *Self, objSurface *Surface, objBitmap *Bi
 
 next:
       if (Self->Style IS VIEW_COLUMN_TREE) {
-         if ((node->Flags & NODE_OPEN) AND (node->Flags & NODE_CHILDREN)) {
+         if ((node->Flags & NODE_OPEN) and (node->Flags & NODE_CHILDREN)) {
             draw_column_branch(Self, Surface, Bitmap, Clip, Tag->Child, ax, ay, awidth, aheight);
          }
       }
 
       Tag = Tag->Next;
    }
-
-   //LOGRETURN();
 }
 
 //****************************************************************************
 
-static void draw_columns(objView *Self, objSurface *Surface, objBitmap *Bitmap, struct ClipRectangle *Clip,
+static void draw_columns(objView *Self, objSurface *Surface, objBitmap *Bitmap, ClipRectangle *Clip,
    LONG ax, LONG ay, LONG awidth, LONG aheight)
 {
    if (ay + Self->ColumnHeight > Clip->Top) {
@@ -2066,7 +2026,7 @@ static void draw_columns(objView *Self, objSurface *Surface, objBitmap *Bitmap, 
 
    // Clear the end of the list if alternate line colours are being used
 
-   if ((Self->ColAltBackground.Alpha > 0) AND (Self->ColBackground.Alpha)) {
+   if ((Self->ColAltBackground.Alpha > 0) and (Self->ColBackground.Alpha)) {
       gfxDrawRectangle(Bitmap, ax, glRowEnd, awidth, aheight, PackPixelRGBA(Bitmap, &Self->ColBackground), BAF_FILL|BAF_BLEND);
    }
 
@@ -2084,29 +2044,27 @@ static void draw_columns(objView *Self, objSurface *Surface, objBitmap *Bitmap, 
 //****************************************************************************
 // Scrolls any given area of the document into view.
 
-static BYTE check_item_visible(objView *Self, struct XMLTag *Tag)
+static BYTE check_item_visible(objView *Self, XMLTag *Tag)
 {
-   struct view_node *node;
-   LONG view_x, view_y, view_height, view_width;
-   LONG left, top, right, bottom;
+   parasol::Log log(__FUNCTION__);
 
    if (Self->Flags & VWF_NO_SELECT_JMP) return FALSE;
 
    if (!Tag) return FALSE;
-   node = Tag->Private;
+   auto node = (view_node *)Tag->Private;
 
-   left   = node->X;
-   top    = node->Y - Self->ColumnHeight;
-   bottom = top + node->Height;
-   right  = left + node->Width;
+   LONG left   = node->X;
+   LONG top    = node->Y - Self->ColumnHeight;
+   LONG bottom = top + node->Height;
+   LONG right  = left + node->Width;
 
-   view_x = -Self->XPos;
-   view_y = -Self->YPos;
-   view_height = Self->Layout->BoundHeight - Self->ColumnHeight;
+   LONG view_x = -Self->XPos;
+   LONG view_y = -Self->YPos;
+   LONG view_height = Self->Layout->BoundHeight - Self->ColumnHeight;
    if (Self->HBarVisible) view_height -= Self->HBarHeight;
-   view_width  = Self->Layout->BoundWidth;
+   LONG view_width  = Self->Layout->BoundWidth;
 
-   FMSG("view_area()","View: %dx%d, Item: %dx%d,%dx%d, Area: %dx%d,%dx%d", view_x, view_y, left, top, right, bottom, Self->Layout->BoundX, Self->Layout->BoundY, Self->Layout->BoundWidth, Self->Layout->BoundHeight);
+   log.traceBranch("View: %dx%d, Item: %dx%d,%dx%d, Area: %dx%d,%dx%d", view_x, view_y, left, top, right, bottom, Self->Layout->BoundX, Self->Layout->BoundY, Self->Layout->BoundWidth, Self->Layout->BoundHeight);
 
    // Vertical
 
@@ -2121,7 +2079,7 @@ static BYTE check_item_visible(objView *Self, struct XMLTag *Tag)
 
    // Horizontal
 
-   if ((Self->Style != VIEW_TREE) AND (Self->Style != VIEW_GROUP_TREE) AND (Self->Style != VIEW_COLUMN) AND (Self->Style != VIEW_COLUMN_TREE)) {
+   if ((Self->Style != VIEW_TREE) and (Self->Style != VIEW_GROUP_TREE) and (Self->Style != VIEW_COLUMN) and (Self->Style != VIEW_COLUMN_TREE)) {
       if (left < view_x) {
          view_x = left;
          if (view_x < 0) view_x = 0;
@@ -2132,7 +2090,7 @@ static BYTE check_item_visible(objView *Self, struct XMLTag *Tag)
       }
    }
 
-   if ((-view_x != Self->XPos) OR (-view_y != Self->YPos)) {
+   if ((-view_x != Self->XPos) or (-view_y != Self->YPos)) {
       acScrollToPoint(Self, view_x, view_y, 0, STP_X|STP_Y);
       calc_hscroll(Self);
       calc_vscroll(Self);
@@ -2146,54 +2104,54 @@ static BYTE check_item_visible(objView *Self, struct XMLTag *Tag)
 ** recalculated.
 */
 
-static void check_selected_items(objView *Self, struct XMLTag *Tags)
+static void check_selected_items(objView *Self, XMLTag *Tags)
 {
-   struct XMLTag *scan;
-   struct view_node *node;
+   parasol::Log log(__FUNCTION__);
 
-   MSG("check_selected_items(SelectedTag:%d/%d)", Self->SelectedTag, Self->XML->TagCount);
+   log.traceBranch("check_selected_items(SelectedTag:%d/%d)", Self->SelectedTag, Self->XML->TagCount);
 
    if (Self->SelectedTag IS -1) return;
 
    if (Self->SelectedTag < Self->XML->TagCount) {
-      if (!(node = Self->XML->Tags[Self->SelectedTag]->Private)) {
-         MSG("Private node is missing.");
+      view_node *node;
+      if (!(node = (view_node *)Self->XML->Tags[Self->SelectedTag]->Private)) {
+         log.trace("Private node is missing.");
          return;
       }
 
       if (node->Flags & NODE_SELECTED) {
-         MSG("Tag is already selected.");
+         log.trace("Tag is already selected.");
          return;
       }
    }
-   else FMSG("@","SelectedTag is invalid.");
+   else log.traceWarning("SelectedTag is invalid.");
 
-   for (scan=Tags; scan; scan=scan->Next) {
-      node = scan->Private;
+   for (auto scan=Tags; scan; scan=scan->Next) {
+      auto node = (view_node *)scan->Private;
       if (node->Flags & NODE_SELECTED) {
          Self->SelectedTag = scan->Index;
-         MSG("Selected tag reset to %d", scan->Index);
+         log.trace("Selected tag reset to %d", scan->Index);
          report_selection(Self, SLF_SELECTED, scan->Index);
          return;
       }
    }
 
-   MSG("Selected tag reset to nothing.");
+   log.trace("Selected tag reset to nothing.");
    Self->SelectedTag = -1;
    report_selection(Self, SLF_SELECTED, -1);
 }
 
 //*****************************************************************************
 
-static void draw_item(objView *Self, struct XMLTag *Tag)
+static void draw_item(objView *Self, XMLTag *Tag)
 {
    if (!Tag) return;
 
-   struct view_node *node = Tag->Private;
+   auto node = (view_node *)Tag->Private;
 
    //MSG("draw_item: %dx%d,%dx%d", node->X, node->Y, node->Width, node->Height);
 
-   if ((Self->Style IS VIEW_TREE) OR (Self->Style IS VIEW_GROUP_TREE) OR (Self->Style IS VIEW_COLUMN_TREE)) {
+   if ((Self->Style IS VIEW_TREE) or (Self->Style IS VIEW_GROUP_TREE) or (Self->Style IS VIEW_COLUMN_TREE)) {
       // Draw using the full width of the view
       acDrawAreaID(Self->Layout->SurfaceID, Self->Layout->BoundX,
          Self->Layout->BoundY + node->Y + Self->YPos, Self->Layout->BoundWidth, node->Height);
@@ -2210,24 +2168,22 @@ static void draw_item(objView *Self, struct XMLTag *Tag)
 ** You can also use this function to deselect all tags, by passing a NULL pointer in the Tag argument.
 */
 
-static BYTE select_item(objView *Self, struct XMLTag *Tag, LONG Flags, BYTE MultiSelect, BYTE Draggable)
+static BYTE select_item(objView *Self, XMLTag *Tag, LONG Flags, BYTE MultiSelect, BYTE Draggable)
 {
-   struct XMLTag *scan;
-   struct view_node *node;
-   LONG i, index;
-   BYTE new_selection, shiftkey, ctrlkey, deselect_all;
+   parasol::Log log(__FUNCTION__);
+   LONG i;
+   BYTE new_selection;
 
-   FMSG("~select_item()","Index: %d, MultiSelect: %d, Draggable: %d", (Tag) ? Tag->Index : -1, MultiSelect, Draggable);
+   log.traceBranch("Index: %d, MultiSelect: %d, Draggable: %d", (Tag) ? Tag->Index : -1, MultiSelect, Draggable);
 
-   shiftkey = FALSE;
-   ctrlkey = FALSE;
-   deselect_all = -1;
-   if ((Self->Flags & VWF_MULTI_SELECT) AND (Self->Flags & VWF_DRAG_DROP)) {
-      struct XMLTag *scan;
+   BYTE shiftkey = FALSE;
+   BYTE ctrlkey = FALSE;
+   BYTE deselect_all = -1;
+   if ((Self->Flags & VWF_MULTI_SELECT) and (Self->Flags & VWF_DRAG_DROP)) {
       LONG lastindex, firstindex;
 
       LONG keystate = GetResource(RES_KEY_STATE);
-      FMSG("select_item:","Key state: $%.8x", keystate);
+      log.trace("Key state: $%.8x", keystate);
       if (keystate & KQ_SHIFT) shiftkey = TRUE;
       else if (keystate & KQ_CTRL) ctrlkey = TRUE;
 
@@ -2244,19 +2200,20 @@ static BYTE select_item(objView *Self, struct XMLTag *Tag, LONG Flags, BYTE Mult
             lastindex  = Self->SelectedTag;
          }
 
-         FMSG("select_item","The shift key is held, highlight from tag %d to %d", Self->SelectedTag, Tag->Index);
+         log.trace("The shift key is held, highlight from tag %d to %d", Self->SelectedTag, Tag->Index);
 
+         XMLTag *scan;
          for (scan=Self->XML->Tags[0]; scan; scan=scan->Next) {
             if (scan->Index IS firstindex) break;
-            node = scan->Private;
+            auto node = (view_node *)scan->Private;
             if (node->Flags & NODE_SELECTED) {
                node->Flags &= ~NODE_SELECTED;
                draw_item(Self, scan);
             }
          }
 
-         while ((scan) AND (scan->Index <= lastindex)) {
-            node = scan->Private;
+         while ((scan) and (scan->Index <= lastindex)) {
+            auto node = (view_node *)scan->Private;
             if (!(node->Flags & NODE_SELECTED)) {
                node->Flags |= NODE_SELECTED;
                draw_item(Self, scan);
@@ -2265,7 +2222,7 @@ static BYTE select_item(objView *Self, struct XMLTag *Tag, LONG Flags, BYTE Mult
          }
 
          while (scan) {
-            node = scan->Private;
+            auto node = (view_node *)scan->Private;
             if (node->Flags & NODE_SELECTED) {
                node->Flags &= ~NODE_SELECTED;
                draw_item(Self, scan);
@@ -2274,32 +2231,28 @@ static BYTE select_item(objView *Self, struct XMLTag *Tag, LONG Flags, BYTE Mult
          }
 
          check_item_visible(Self, Tag);
-
          report_selection(Self, SLF_ACTIVE|SLF_SELECTED|SLF_MULTIPLE, Tag->Index);
-
-         LOGRETURN();
          return FALSE;
       }
       else if (ctrlkey) {
-         FMSG("select_item","The ctrl key is held.");
+         log.trace("The ctrl key is held.");
          if (Self->Flags & VWF_MULTI_SELECT) MultiSelect = TRUE;
       }
       else {
          // No key is held.  If the tag is already selected, do nothing
-         if ((Tag) AND (((struct view_node *)Tag->Private)->Flags & NODE_SELECTED)) {
-            FMSG("select_item","No key is held and the tag is already marked as selected.  DragActive: %d", Self->ActiveDrag);
+         if ((Tag) and (((view_node *)Tag->Private)->Flags & NODE_SELECTED)) {
+            log.trace("No key is held and the tag is already marked as selected.  DragActive: %d", Self->ActiveDrag);
             Self->ActiveDrag  = (Self->Flags & VWF_DRAG_DROP) ? Draggable : FALSE;
             Self->ActiveTag   = Tag->Index;
             Self->SelectedTag = Tag->Index;
             report_selection(Self, SLF_ACTIVE|SLF_SELECTED|SLF_MULTIPLE|Flags, Tag->Index);
-            LOGRETURN();
             return FALSE;
          }
       }
    }
 
    if (deselect_all IS -1) {
-      if ((!Tag) OR (MultiSelect IS FALSE) OR (!(Self->Flags & VWF_MULTI_SELECT))) {
+      if ((!Tag) or (MultiSelect IS FALSE) or (!(Self->Flags & VWF_MULTI_SELECT))) {
          deselect_all = TRUE;
       }
       else deselect_all = FALSE;
@@ -2308,24 +2261,21 @@ static BYTE select_item(objView *Self, struct XMLTag *Tag, LONG Flags, BYTE Mult
    // If we're in single-select mode or we are deselecting everything, scan for any existing selections and turn them off.
 
    if (deselect_all) {
-      for (index=0; Self->XML->Tags[index]; index++) {
-         scan = Self->XML->Tags[index];
-         node = scan->Private;
-         if ((node->Flags & NODE_ITEM) AND (node->Flags & NODE_SELECTED)) {
+      for (LONG index=0; Self->XML->Tags[index]; index++) {
+         auto scan = Self->XML->Tags[index];
+         auto node = (view_node *)scan->Private;
+         if ((node->Flags & NODE_ITEM) and (node->Flags & NODE_SELECTED)) {
             node->Flags &= ~NODE_SELECTED;
             draw_item(Self, scan);
          }
       }
    }
 
-   if (Tag) {
-      // Select the new item
+   if (Tag) { // Select the new item
+      auto node = (view_node *)Tag->Private;
 
-      node = Tag->Private;
-
-      if ((!node->Width) AND (Self->Style != VIEW_TREE)) {
+      if ((!node->Width) and (Self->Style != VIEW_TREE)) {
          // Redundant nodes cannot be selected
-         LOGRETURN();
          return FALSE;
       }
 
@@ -2340,15 +2290,15 @@ static BYTE select_item(objView *Self, struct XMLTag *Tag, LONG Flags, BYTE Mult
          node->Flags |= NODE_SELECTED;
 
          redraw_tree = FALSE;
-         if ((Self->Style IS VIEW_TREE) OR (Self->Style IS VIEW_COLUMN_TREE) OR (Self->Style IS VIEW_GROUP_TREE)) {
+         if ((Self->Style IS VIEW_TREE) or (Self->Style IS VIEW_COLUMN_TREE) or (Self->Style IS VIEW_GROUP_TREE)) {
             // Open up parent nodes in the tree
             i = Tag->Index - 1;
-            scan = Tag;
+            auto scan = Tag;
             while (scan->Prev) scan = scan->Prev;
 
             while (i >= 0) {
                if (Self->XML->Tags[i]->Child IS scan) {
-                  node = Self->XML->Tags[i]->Private;
+                  node = (view_node *)Self->XML->Tags[i]->Private;
                   if (node->Flags & NODE_CHILDREN) {
                      if (!(node->Flags & NODE_OPEN)) {
                         node->Flags |= NODE_OPEN;
@@ -2370,9 +2320,8 @@ static BYTE select_item(objView *Self, struct XMLTag *Tag, LONG Flags, BYTE Mult
                DelayMsg(AC_Draw, Self->Layout->SurfaceID, NULL);
             }
          }
-         else {
-            draw_item(Self, Tag);
-         }
+         else draw_item(Self, Tag);
+
          new_selection = TRUE;
       }
 
@@ -2387,27 +2336,25 @@ static BYTE select_item(objView *Self, struct XMLTag *Tag, LONG Flags, BYTE Mult
 
       // Respond to the selection
 
-      if ((new_selection) AND (Self->Flags & VWF_SENSITIVE)) {
+      if ((new_selection) and (Self->Flags & VWF_SENSITIVE)) {
          // Sensitive mode means that we have to activate whenver a new item is selected
          for (i=0; i < Tag->TotalAttrib; i++) {
             if (!StrMatch(Tag->Attrib[i].Name, "insensitive"))  break;
          }
          if (i >= Tag->TotalAttrib) {
             acActivate(Self);
-            LOGRETURN();
             return TRUE;
          }
       }
    }
    else {
-      FMSG("select_item","No tag will be selected.");
+      log.trace("No tag will be selected.");
       Self->ActiveDrag  = FALSE;
       Self->ActiveTag   = -1;
       Self->SelectedTag = -1;
       report_selection(Self, SLF_ACTIVE|SLF_SELECTED|Flags, -1);
    }
 
-   LOGRETURN();
    return FALSE;
 }
 
@@ -2454,19 +2401,20 @@ static void key_event(objView *Self, evKey *Event, LONG Size)
 
 static ERROR unload_icon(objView *Self, ULONG *Key)
 {
-   if ((Key) AND (Key[0])) {
-      struct CachedIcon *ci;
+   parasol::Log log(__FUNCTION__);
+   if ((Key) and (Key[0])) {
+      CachedIcon *ci;
       ERROR error;
       if (!(error = KeyGet(glCache, Key[0], &ci, NULL))) {
          ci->Counter--;
          if (ci->Counter IS 0) {
-            FMSG("unload_icon()","Key: $%x, Counter: %d, Removing bitmap %p", Key[0], ci->Counter, ci->Icon);
+            log.trace("Key: $%x, Counter: %d, Removing bitmap %p", Key[0], ci->Counter, ci->Icon);
             acFree(ci->Icon);
             KeySet(glCache, Key[0], NULL, 0); // Remove the key
          }
-         else FMSG("unload_icon()","Key: $%x, Counter: %d", Key[0], ci->Counter);
+         else log.trace("Key: $%x, Counter: %d", Key[0], ci->Counter);
       }
-      else LogF("@unload_icon","Failed to find key $%x", Key[0]);
+      else log.warning("Failed to find key $%x", Key[0]);
       Key[0] = 0;
       return error;
    }
@@ -2477,11 +2425,13 @@ static ERROR unload_icon(objView *Self, ULONG *Key)
 
 static ERROR load_icon(objView *Self, CSTRING IconFile, objBitmap **Icon, ULONG *Key)
 {
+   parasol::Log log(__FUNCTION__);
+
    if (!StrCompare("icons:", IconFile, 6, 0)) IconFile += 6;
 
-   FMSG("load_icon()","%s", IconFile);
+   log.traceBranch("%s", IconFile);
 
-   struct CachedIcon *ci;
+   CachedIcon *ci;
    ULONG key_hash = StrHash(IconFile, FALSE);
    *Icon = NULL;
    if (KeyGet(glCache, key_hash, &ci, NULL) != ERR_Okay) {
@@ -2489,10 +2439,10 @@ static ERROR load_icon(objView *Self, CSTRING IconFile, objBitmap **Icon, ULONG 
       if (drwGetSurfaceInfo(Self->Layout->SurfaceID, &info) != ERR_Okay) info->BitsPerPixel = 32;
 
       if (!iconCreateIcon(IconFile, "View", Self->IconTheme, Self->IconFilter, Self->IconSize, Icon)) {
-         LogF("load_icon()","Caching new icon: '%s', Object: #%d", IconFile, Icon[0]->Head.UniqueID);
+         log.msg("Caching new icon: '%s', Object: #%d", IconFile, Icon[0]->Head.UniqueID);
          SetOwner(Icon[0], modWidget);
 
-         struct CachedIcon ci = { &Icon[0]->Head, 1 };
+         CachedIcon ci = { &Icon[0]->Head, 1 };
          KeySet(glCache, key_hash, &ci, sizeof(ci));
       }
    }
@@ -2502,7 +2452,7 @@ static ERROR load_icon(objView *Self, CSTRING IconFile, objBitmap **Icon, ULONG 
    }
 
    if (!Icon[0]) {
-      LogErrorMsg("load_icon() failed to load '%s'", IconFile);
+      log.warning("load_icon() failed to load '%s'", IconFile);
       return ERR_Failed;
    }
    else {
@@ -2515,14 +2465,14 @@ static ERROR load_icon(objView *Self, CSTRING IconFile, objBitmap **Icon, ULONG 
 
 static BYTE deselect_item(objView *Self)
 {
+   parasol::Log log(__FUNCTION__);
 
-   MSG("deselect_item(%d)", Self->SelectedTag);
+   log.trace("deselect_item(%d)", Self->SelectedTag);
 
    if (Self->SelectedTag IS -1) return FALSE;
 
    if (Self->SelectedTag < Self->XML->TagCount) {
-      struct view_node *node;
-      node = Self->XML->Tags[Self->SelectedTag]->Private;
+      auto node = (view_node *)Self->XML->Tags[Self->SelectedTag]->Private;
       if (node->Flags & NODE_SELECTED) {
          node->Flags &= ~NODE_SELECTED;
          draw_item(Self, Self->XML->Tags[Self->SelectedTag]);
@@ -2540,7 +2490,7 @@ static BYTE deselect_item(objView *Self)
 static void draw_shadow(objView *Self, objBitmap *Bitmap, LONG Y)
 {
    if (!Self->Shadow) {
-      struct GradientStop stops[2];
+      GradientStop stops[2];
 
       stops[0].RGB.Red   = 0;
       stops[0].RGB.Green = 0;
@@ -2572,20 +2522,19 @@ static void draw_shadow(objView *Self, objBitmap *Bitmap, LONG Y)
 ** information etc.
 */
 
-static LONG prepare_xml(objView *Self, struct XMLTag *Root, CSTRING ItemName, LONG Limit)
+static LONG prepare_xml(objView *Self, XMLTag *Root, CSTRING ItemName, LONG Limit)
 {
-   LONG j, count;
-   STRING str, iconfile;
-   struct view_node *node;
-   struct XMLTag *tag;
+   parasol::Log log(__FUNCTION__);
+   LONG j;
+   STRING str;
 
-   //FMSG("~prepare_xml()","");
+   //log.traceBranch("");
 
-   count = 0;
+   LONG count = 0;
    if (Limit <= 0) Limit = 0x7fffffff;
 
-   for (tag=Root; (tag) AND (count < Limit); tag=tag->Next) {
-      node = tag->Private;
+   for (auto tag=Root; (tag) and (count < Limit); tag=tag->Next) {
+      auto node = (view_node *)tag->Private;
 
       if (node->Flags & NODE_SELECTED) {
          if (Self->SelectedTag IS -1) {
@@ -2606,7 +2555,7 @@ static LONG prepare_xml(objView *Self, struct XMLTag *Root, CSTRING ItemName, LO
                for (j=0; str[j]; j++) {
                   if (str[j] IS '\n') str[j] = ' ';
                }
-               while ((j > 0) AND (str[j-1] <= 0x20)) j--;
+               while ((j > 0) and (str[j-1] <= 0x20)) j--;
                str[j] = 0;
             }
             node->Flags |= NODE_STRIPPED;
@@ -2615,13 +2564,11 @@ static LONG prepare_xml(objView *Self, struct XMLTag *Root, CSTRING ItemName, LO
 
          // Determine whether this is an actual item or just a column value
 
-         if ((!ItemName) OR (!StrMatch(tag->Attrib->Name, ItemName)) OR
+         if ((!ItemName) or (!StrMatch(tag->Attrib->Name, ItemName)) or
              (!StrCompare(Self->ItemNames, tag->Attrib->Name, 0, STR_WILDCARD))) {
             node->Flags |= NODE_ITEM;
          }
-         else {
-            continue;
-         }
+         else continue;
 
          // Set default colour for new items
 
@@ -2632,7 +2579,8 @@ static LONG prepare_xml(objView *Self, struct XMLTag *Root, CSTRING ItemName, LO
 
          // Load newly referenced icons.  Icons must be referenced in the format "group/iconname".
 
-         if ((!(Self->Flags & VWF_NO_ICONS)) AND ((!node->Icon) OR (!node->IconOpen))) {
+         if ((!(Self->Flags & VWF_NO_ICONS)) and ((!node->Icon) or (!node->IconOpen))) {
+            CSTRING iconfile;
             if ((iconfile = XMLATTRIB(tag, "icon"))) {
                load_icon(Self, iconfile, &node->Icon, &node->IconKey);
             }
@@ -2643,10 +2591,10 @@ static LONG prepare_xml(objView *Self, struct XMLTag *Root, CSTRING ItemName, LO
       }
 
       node->ChildString = FALSE;
-      if ((Self->TextAttrib) AND ((str = XMLATTRIB(tag, Self->TextAttrib)))) {
+      if ((Self->TextAttrib) and ((str = XMLATTRIB(tag, Self->TextAttrib)))) {
          set_nodestring(Self, node, str);
       }
-      else if ((tag->Child) AND (!tag->Child->Attrib->Name)) {
+      else if ((tag->Child) and (!tag->Child->Attrib->Name)) {
          node->ChildString = TRUE;
          set_nodestring(Self, node, tag->Child->Attrib->Value);
       }
@@ -2666,7 +2614,7 @@ static LONG prepare_xml(objView *Self, struct XMLTag *Root, CSTRING ItemName, LO
       if (XMLATTRIB(tag, "custom")) node->Flags |= NODE_CHILDREN;
 
       if ((str = XMLATTRIB(tag, "datatype"))) {
-         for (j=0; (j < sizeof(node->Datatype)-1) AND (str[j]); j++) {
+         for (j=0; ((size_t)j < sizeof(node->Datatype)-1) and (str[j]); j++) {
             node->Datatype[j] = str[j];
          }
          node->Datatype[j] = 0;
@@ -2676,29 +2624,27 @@ static LONG prepare_xml(objView *Self, struct XMLTag *Root, CSTRING ItemName, LO
       count++;
    }
 
-   //LOGRETURN();
    return count;
 }
 
 //****************************************************************************
 
-static struct XMLTag * get_item_xy(objView *Self, struct XMLTag **Array, LONG X, LONG Y)
+static XMLTag * get_item_xy(objView *Self, XMLTag **Array, LONG X, LONG Y)
 {
-   struct XMLTag *tag, *child;
-   struct view_node *node;
-   LONG index;
+   view_node *node;
 
-   if ((Self->Style IS VIEW_TREE) OR (Self->Style IS VIEW_GROUP_TREE) OR (Self->Style IS VIEW_COLUMN_TREE)) {
-      for (tag=*Array; tag; tag=tag->Next) {
-         if (!(node = tag->Private)) continue;
+   if ((Self->Style IS VIEW_TREE) or (Self->Style IS VIEW_GROUP_TREE) or (Self->Style IS VIEW_COLUMN_TREE)) {
+      for (auto tag=*Array; tag; tag=tag->Next) {
+         if (!(node = (view_node *)tag->Private)) continue;
          if (!(node->Flags & NODE_ITEM)) continue;
 
-         if ((X >= Self->Layout->BoundX) AND (X < Self->Layout->BoundX+Self->Layout->BoundWidth) AND
-             (Y >= node->Y) AND (Y < node->Y + node->Height)) {
+         if ((X >= Self->Layout->BoundX) and (X < Self->Layout->BoundX+Self->Layout->BoundWidth) and
+             (Y >= node->Y) and (Y < node->Y + node->Height)) {
             return tag;
          }
 
-         if ((node->Flags & NODE_CHILDREN) AND (node->Flags & NODE_OPEN)) {
+         if ((node->Flags & NODE_CHILDREN) and (node->Flags & NODE_OPEN)) {
+            XMLTag *child;
             if ((child = get_item_xy(Self, &tag->Child, X, Y))) {
                return child;
             }
@@ -2706,20 +2652,20 @@ static struct XMLTag * get_item_xy(objView *Self, struct XMLTag **Array, LONG X,
       }
    }
    else if (Self->Style IS VIEW_COLUMN) {
-      for (index=0; Array[index]; index++) {
-         if (!(node = Array[index]->Private)) continue;
+      for (LONG index=0; Array[index]; index++) {
+         if (!(node = (view_node *)Array[index]->Private)) continue;
          if (!(node->Flags & NODE_ITEM)) continue;
-         if ((X >= node->X) AND (X < node->X + node->Width) AND
-             (Y >= node->Y) AND (Y < node->Y + node->Height)) {
+         if ((X >= node->X) and (X < node->X + node->Width) and
+             (Y >= node->Y) and (Y < node->Y + node->Height)) {
              return Array[index];
          }
       }
    }
-   else for (index=0; Array[index]; index++) {
-      if (!(node = Array[index]->Private)) continue;
+   else for (LONG index=0; Array[index]; index++) {
+      if (!(node = (view_node *)Array[index]->Private)) continue;
       if (!(node->Flags & NODE_ITEM)) continue;
-      if ((X >= node->X) AND (X < node->X + node->Width) AND
-          (Y >= node->Y) AND (Y < node->Y + node->Height)) {
+      if ((X >= node->X) and (X < node->X + node->Width) and
+          (Y >= node->Y) and (Y < node->Y + node->Height)) {
           return Array[index];
       }
    }
@@ -2732,14 +2678,7 @@ static struct XMLTag * get_item_xy(objView *Self, struct XMLTag **Array, LONG X,
 
 static void draw_dragitem(objView *Self, objSurface *Surface, objBitmap *Bitmap)
 {
-   LONG x, y, i, lineheight, width;
-   objFont *font;
-   struct view_node *node;
-   struct XMLTag *tag;
-   STRING str;
-   UBYTE buffer[80];
-
-   font = Self->Font;
+   auto font = Self->Font;
    font->Bitmap = Bitmap;
    font->Align = 0;
    font->WrapEdge = Surface->Width - 3;
@@ -2747,14 +2686,15 @@ static void draw_dragitem(objView *Self, objSurface *Surface, objBitmap *Bitmap)
    gfxDrawRectangle(Bitmap, 0, 0, Surface->Width, Surface->Height, bmpGetColour(Bitmap, 255, 255, 255, 160), TRUE);
    gfxDrawRectangle(Bitmap, 0, 0, Bitmap->Width, Bitmap->Height, bmpGetColour(Bitmap, 80, 80, 180, 60), FALSE);
 
-   x = 0;
-   y = 0;
-   lineheight = Self->LineHeight + 4;
-   for (i=0; i < Self->DragItemCount; i++) {
-      tag = Self->XML->Tags[Self->DragItems[i]];
-      if (!(node = tag->Private)) continue;
+   LONG x = 0;
+   LONG y = 0;
+   LONG lineheight = Self->LineHeight + 4;
+   for (LONG i=0; i < Self->DragItemCount; i++) {
+      view_node *node;
+      auto tag = Self->XML->Tags[Self->DragItems[i]];
+      if (!(node = (view_node *)tag->Private)) continue;
 
-      if ((i IS MAX_DRAGITEMS-1) AND (Self->DragItemCount - i - 1 > 0)) {
+      if ((i IS MAX_DRAGITEMS-1) and (Self->DragItemCount - i - 1 > 0)) {
          font->X   = x + 2;
          font->Y   = y + ((lineheight - font->Height)/2);
 
@@ -2766,6 +2706,7 @@ static void draw_dragitem(objView *Self, objSurface *Surface, objBitmap *Bitmap)
          font->Colour.Alpha = 32;
          font->X++;
          font->Y++;
+         char buffer[80];
          StrFormat(buffer, sizeof(buffer), "[ +%d ]", Self->DragItemCount - i - 1);
          SetString(font, FID_String, buffer);
          acDraw(font);
@@ -2775,6 +2716,7 @@ static void draw_dragitem(objView *Self, objSurface *Surface, objBitmap *Bitmap)
          font->Y--;
          acDraw(font);
          font->Align = 0;
+         LONG width;
          GetLong(font, FID_Width, &width);
          font->WrapEdge -= width + 3;
       }
@@ -2790,8 +2732,8 @@ static void draw_dragitem(objView *Self, objSurface *Surface, objBitmap *Bitmap)
 
       // Draw the text alongside the icon
 
-      str = get_nodestring(Self, node);
-      if ((tag) AND (str)) {
+      auto str = get_nodestring(Self, node);
+      if ((tag) and (str)) {
          font->X = x + Self->IconWidth + 2;
          font->Y = y + ((lineheight - font->Height)/2);
 
@@ -2817,11 +2759,6 @@ static void draw_dragitem(objView *Self, objSurface *Surface, objBitmap *Bitmap)
 
 void drag_items(objView *Self)
 {
-   struct XMLTag *tag;
-   struct view_node *node;
-   objSurface *surface;
-   UBYTE *datatype;
-
    // Record the items that have been selected for the drag
 
    if (Self->DragItems) {
@@ -2839,6 +2776,7 @@ void drag_items(objView *Self)
       LONG width  = 128;
       LONG height = (Self->LineHeight + 4) * itemcount;
       if (!Self->DragSurface) {
+         objSurface *surface;
          ERROR error;
          if (!NewLockedObject(ID_SURFACE, NF_INTEGRAL, &surface, &Self->DragSurface)) {
             SetFields(surface,
@@ -2849,7 +2787,7 @@ void drag_items(objView *Self)
                FID_Flags|TLONG,     RNF_COMPOSITE|RNF_STICK_TO_FRONT,
                TAGEND);
             if (!acInit(surface)) {
-               drwAddCallback(surface, &draw_dragitem);
+               drwAddCallback(surface, (APTR)&draw_dragitem);
                error = ERR_Okay;
             }
             else error = ERR_Init;
@@ -2864,9 +2802,10 @@ void drag_items(objView *Self)
       }
       else acResizeID(Self->DragSurface, width, height, 0);
 
+      char *datatype;
       if (Self->DragItemCount IS 1) {
-         tag = Self->XML->Tags[Self->DragItems[0]];
-         node = tag->Private;
+         XMLTag *tag = Self->XML->Tags[Self->DragItems[0]];
+         auto node = (view_node *)tag->Private;
          datatype = node->Datatype;
       }
       else datatype = NULL;
@@ -2879,25 +2818,24 @@ void drag_items(objView *Self)
 
 static ERROR get_selected_tags(objView *Self, LONG **Result, LONG *Count)
 {
-   LONG index, *array;
-
    if (Count) *Count = 0;
 
    // Count the total number of selected items
 
    LONG count = 0;
-   for (index=0; Self->XML->Tags[index]; index++) {
-      struct view_node *node = Self->XML->Tags[index]->Private;
+   for (LONG index=0; Self->XML->Tags[index]; index++) {
+      auto node = (view_node *)Self->XML->Tags[index]->Private;
       if (node->Flags & NODE_SELECTED) count++;
    }
 
    if (count < 1) return ERR_NoData;
 
    ERROR error;
+   LONG *array;
    if (!(error = AllocMemory(sizeof(LONG) * (count + 1), MEM_DATA|MEM_NO_CLEAR, &array, NULL))) {
       LONG i = 0;
-      for (index=0; Self->XML->Tags[index]; index++) {
-         struct view_node *node = Self->XML->Tags[index]->Private;
+      for (LONG index=0; Self->XML->Tags[index]; index++) {
+         auto node = (view_node *)Self->XML->Tags[index]->Private;
          if (node->Flags & NODE_SELECTED) {
             array[i] = index;
             i++;
@@ -2909,23 +2847,21 @@ static ERROR get_selected_tags(objView *Self, LONG **Result, LONG *Count)
       if (Count) *Count = count;
       return ERR_Okay;
    }
-   else return PostError(ERR_AllocMemory);
+   else return ERR_AllocMemory;
 }
 
 //****************************************************************************
 
-static void get_col_value(objView *Self, struct XMLTag *Tag, struct view_col *col, STRING buffer, LONG BufferSize, struct XMLTag **Value)
+static void get_col_value(objView *Self, XMLTag *Tag, view_col *col, STRING buffer, LONG BufferSize, XMLTag **Value)
 {
-   struct XMLTag *child;
    STRING str;
-   LONG i;
 
    if (Value) *Value = NULL;
    if (buffer) buffer[0] = 0;
 
    if (!StrMatch("Default", col->Name)) {
       if (buffer) {
-         if ((Self->TextAttrib) AND ((str = XMLATTRIB(Tag, Self->TextAttrib)))) {
+         if ((Self->TextAttrib) and ((str = XMLATTRIB(Tag, Self->TextAttrib)))) {
             StrCopy(str, buffer, BufferSize);
          }
          else xmlGetContent(Self->XML, Tag->Index, buffer, BufferSize);
@@ -2936,10 +2872,10 @@ static void get_col_value(objView *Self, struct XMLTag *Tag, struct view_col *co
       // Scan for the tag that matches that set against the column.  If it doesn't exist then we'll print nothing in this column.
       // Column data can either exist in a child tag first, or a tag attribute if no matching child tags are available.
 
-      for (child=Tag->Child; child; child=child->Next) {
+      for (auto child=Tag->Child; child; child=child->Next) {
          if (!StrMatch(child->Attrib->Name, col->Name)) {
             if (buffer) {
-               if ((Self->TextAttrib) AND ((str = XMLATTRIB(child, Self->TextAttrib)))) {
+               if ((Self->TextAttrib) and ((str = XMLATTRIB(child, Self->TextAttrib)))) {
                   StrCopy(str, buffer, BufferSize);
                }
                else xmlGetContent(Self->XML, child->Index, buffer, BufferSize);
@@ -2949,11 +2885,9 @@ static void get_col_value(objView *Self, struct XMLTag *Tag, struct view_col *co
          }
       }
 
-      for (i=0; i < Tag->TotalAttrib; i++) {
+      for (LONG i=0; i < Tag->TotalAttrib; i++) {
          if (!StrMatch(Tag->Attrib[i].Name, col->Name)) {
-            if (buffer) {
-               StrCopy(Tag->Attrib[i].Value, buffer, BufferSize);
-            }
+            if (buffer) StrCopy(Tag->Attrib[i].Value, buffer, BufferSize);
             if (Value) *Value = Tag;
             return;
          }
@@ -2966,18 +2900,17 @@ static void get_col_value(objView *Self, struct XMLTag *Tag, struct view_col *co
 static ERROR report_cellclick(objView *Self, LONG TagIndex, LONG Column, LONG Input, LONG X, LONG Y)
 {
    if (Self->CellClick.Type) {
-      FMSG("~CellClick()","Tag: %d, Column: %d, XY: (%d,%d)", TagIndex, Column, X, Y);
+      parasol::Log log(__FUNCTION__);
+      log.traceBranch("Tag: %d, Column: %d, XY: (%d,%d)", TagIndex, Column, X, Y);
       if (Self->CellClick.Type IS CALL_STDC) {
-         void (*routine)(objView *, LONG, LONG, LONG, LONG, LONG);
-         OBJECTPTR context = SetContext(Self->CellClick.StdC.Context);
-            routine = Self->CellClick.StdC.Routine;
-            routine(Self, TagIndex, Column, Input, X, Y);
-         SetContext(context);
+         auto routine = (void (*)(objView *, LONG, LONG, LONG, LONG, LONG))Self->CellClick.StdC.Routine;
+         parasol::SwitchContext ctx(Self->CellClick.StdC.Context);
+         routine(Self, TagIndex, Column, Input, X, Y);
       }
       else if (Self->CellClick.Type IS CALL_SCRIPT) {
          OBJECTPTR script;
          if ((script = Self->CellClick.Script.Script)) {
-            const struct ScriptArg args[] = {
+            const ScriptArg args[] = {
                { "View",     FD_OBJECTPTR, { .Address = Self } },
                { "Tag",      FD_LONG, { .Long = TagIndex } },
                { "Column",   FD_LONG, { .Long = Column } },
@@ -2988,7 +2921,7 @@ static ERROR report_cellclick(objView *Self, LONG TagIndex, LONG Column, LONG In
             scCallback(script, Self->CellClick.Script.ProcedureID, args, ARRAYSIZE(args));
          }
       }
-      LOGRETURN();
+
       return ERR_Okay;
    }
    else return ERR_NothingDone;
@@ -2999,18 +2932,17 @@ static ERROR report_cellclick(objView *Self, LONG TagIndex, LONG Column, LONG In
 static void report_selection(objView *Self, LONG Flags, LONG TagIndex)
 {
    if (Self->SelectCallback.Type) {
-      FMSG("~SelectCallback()","Flags: $%.8x, Tag: %d", Flags, TagIndex);
+      parasol::Log log(__FUNCTION__);
+      log.traceBranch("Flags: $%.8x, Tag: %d", Flags, TagIndex);
       if (Self->SelectCallback.Type IS CALL_STDC) {
-         void (*routine)(objView *, LONG, LONG);
-         OBJECTPTR context = SetContext(Self->SelectCallback.StdC.Context);
-            routine = Self->SelectCallback.StdC.Routine;
-            routine(Self, Flags, TagIndex);
-         SetContext(context);
+         auto routine = (void (*)(objView *, LONG, LONG))Self->SelectCallback.StdC.Routine;
+         parasol::SwitchContext ctx(Self->SelectCallback.StdC.Context);
+         routine(Self, Flags, TagIndex);
       }
       else if (Self->SelectCallback.Type IS CALL_SCRIPT) {
          OBJECTPTR script;
          if ((script = Self->SelectCallback.Script.Script)) {
-            const struct ScriptArg args[] = {
+            const ScriptArg args[] = {
                { "View",  FD_OBJECTPTR, { .Address = Self } },
                { "Flags", FD_LONG, { .Long = Flags } },
                { "Tag",   FD_LONG, { .Long = TagIndex } }
@@ -3018,82 +2950,76 @@ static void report_selection(objView *Self, LONG Flags, LONG TagIndex)
             scCallback(script, Self->SelectCallback.Script.ProcedureID, args, ARRAYSIZE(args));
          }
       }
-      LOGRETURN();
    }
 }
 
 //****************************************************************************
 
-static void process_style(objView *Self, objXML *xml, struct XMLTag *tag)
+static void process_style(objView *Self, objXML *XML, XMLTag *tag)
 {
-   tag = tag->Child;
-   while (tag) {
+   for (tag=tag->Child; tag; tag=tag->Next) {
       if (!StrMatch("defaults", tag->Attrib->Name)) {
-         struct XMLTag *defaults = tag->Child;
-         while (defaults) {
+         for (auto defaults=tag->Child; defaults; defaults=defaults->Next) {
             if (!StrMatch("values", defaults->Attrib->Name)) {
-               LONG a;
-               for (a=1; a < defaults->TotalAttrib; a++) {
+               for (LONG a=1; a < defaults->TotalAttrib; a++) {
                   char value[300];
                   StrCopy(defaults->Attrib[a].Value, value, sizeof(value));
                   StrEvaluate(value, sizeof(value), 0, 0);
                   SetFieldEval(Self, defaults->Attrib[a].Name, value);
                }
             }
-            defaults = defaults->Next;
          }
       }
       else if (!StrMatch("graphics", tag->Attrib->Name)) {
          CSTRING name = XMLATTRIB(tag, "name");
          STRING str;
          if (!StrMatch("groupheader", name)) {
-            if (!xmlGetString(xml, tag->Child->Index, XMF_INCLUDE_SIBLINGS, &str)) {
+            if (!xmlGetString(XML, tag->Child->Index, XMF_INCLUDE_SIBLINGS, &str)) {
                if (Self->GroupHeaderXML) FreeResource(Self->GroupHeaderXML);
                Self->GroupHeaderXML = str;
             }
          }
          else if (!StrMatch("groupselect", name)) {
-            if (!xmlGetString(xml, tag->Child->Index, XMF_INCLUDE_SIBLINGS, &str)) {
+            if (!xmlGetString(XML, tag->Child->Index, XMF_INCLUDE_SIBLINGS, &str)) {
                if (Self->GroupSelectXML) FreeResource(Self->GroupSelectXML);
                Self->GroupSelectXML = str;
             }
          }
          else if (!StrMatch("background", name)) {
-            if (!xmlGetString(xml, tag->Child->Index, XMF_INCLUDE_SIBLINGS, &str)) {
+            if (!xmlGetString(XML, tag->Child->Index, XMF_INCLUDE_SIBLINGS, &str)) {
                if (Self->BkgdXML) FreeResource(Self->BkgdXML);
                Self->BkgdXML = str;
             }
          }
       }
-      tag = tag->Next;
    }
 }
 
 //****************************************************************************
 
-static BYTE open_branch_callback(objView *Self, struct XMLTag *Tag)
+static BYTE open_branch_callback(objView *Self, XMLTag *Tag)
 {
-   LogF("~expand_branch","Index: %d", Tag->Index);
+   parasol::Log log("open_branch");
 
-   struct view_node *node = Tag->Private;
+   log.branch("Index: %d", Tag->Index);
+
+   auto node = (view_node *)Tag->Private;
    if (!(node->Flags & NODE_OPEN)) {
       // Whenever a branch is opened, we call ExpandCallback to update the XML tag's children.
 
-      LONG i = Tag->Index;
-      LONG modstamp = Self->XML->Modified;
+      auto i = Tag->Index;
+      auto modstamp = Self->XML->Modified;
 
       if (Self->ExpandCallback.Type) {
           if (Self->ExpandCallback.Type IS CALL_STDC) {
-            void (*routine)(objView *, LONG);
-            OBJECTPTR context = SetContext(Self->ExpandCallback.StdC.Context);
-               routine = Self->ExpandCallback.StdC.Routine;
-               routine(Self, Tag->Index);
-            SetContext(context);
+            auto routine = (void (*)(objView *, LONG))Self->ExpandCallback.StdC.Routine;
+            parasol::SwitchContext ctx(Self->ExpandCallback.StdC.Context);
+            routine(Self, Tag->Index);
          }
          else if (Self->ExpandCallback.Type IS CALL_SCRIPT) {
             OBJECTPTR script;
             if ((script = Self->ExpandCallback.Script.Script)) {
-               const struct ScriptArg args[] = {
+               const ScriptArg args[] = {
                   { "View",     FD_OBJECTPTR, { .Address = Self } },
                   { "TagIndex", FD_LONG, { .Long = Tag->Index } }
                };
@@ -3103,19 +3029,17 @@ static BYTE open_branch_callback(objView *Self, struct XMLTag *Tag)
       }
 
       if (Self->XML->Modified != modstamp) {
-         FMSG("open_branch:","A subscriber modified the XML tree structure.");
+         log.trace("A subscriber modified the XML tree structure.");
 
          Tag = Self->XML->Tags[i]; // Re-grab the tag pointer if the tree structure was modified
-         node = Tag->Private;
+         node = (view_node *)Tag->Private;
          node->Flags |= NODE_OPEN;
          Self->Deselect = FALSE;
          acRefresh(Self);
-         LogReturn();
          return TRUE;
       }
-      else FMSG("open_branch:","No modifications were made to the view XML (%d == %d).", Self->XML->Modified, modstamp);
+      else log.trace("No modifications were made to the view XML (%d == %d).", Self->XML->Modified, modstamp);
    }
 
-   LogReturn();
    return FALSE;
 }
