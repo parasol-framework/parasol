@@ -85,7 +85,7 @@ module({ name="XML", copyright="Paul Manias © 2001-2020", version=1.0 }, functi
     { id=18, name="GetTag" }
   })
 
-  class("XML", { src="xml.c", output="xml_def.c" }, [[
+  class("XML", { src="xml.cpp", output="xml_def.c" }, [[
     str Path              # Location of the XML data file
     ptr(struct(*XMLTag)) Tags # Array of tag pointers, in linear order.  Useful for looking up indexes.  NULL-terminated.
     obj Source            # Alternative data source to specifying a Path

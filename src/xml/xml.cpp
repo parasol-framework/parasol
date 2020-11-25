@@ -11,19 +11,17 @@ XML: Provides XML data management services.
 
 The XML class provides the necessary functionality to create and maintain XML data files.  It is capable of interpreting
 and validating XML files with or without correct structure and can perform various data manipulations while doing so.
-The XML class is also designed to minimise the amount of resources used in storing XML information and exhibits
-excellent performance in its processing.
 
-Data can be loaded into an XML object either by specifying a file #Path or by giving it an XML #Statement.  If you have
-multiple XML statements to process, you can reset the Path or Statement fields after initialisation and the XML object
-will rebuild itself.  This saves you from having to allocate multiple XML objects for batch processing.
+Data can be loaded into an XML object either by specifying a file #Path or by giving it an XML #Statement.  If multiple
+XML statements need to be processed then reset the Path or Statement field after initialisation and the XML object
+will rebuild itself.  This saves on allocating multiple XML objects for batch processing.
 
-Once an XML object has interpreted a statement, you can read the information by scanning the array stored in the
-#Tags field.  This array contains an XMLTag structure for each tag found in the original XML statement.  For
-more information on how to scan this information, refer to the #Tags field.
+Successfully processed data can be read back by scanning the array referenced in the #Tags field.  The array contains an
+XMLTag structure for each tag parsed from the original XML statement.  For more information on how to scan this
+information, refer to the #Tags field.
 
 Please note that all tag address pointers that are listed in the #Tags field are volatile.  Any write
-operation to an XML object's tree structure will result in changes to the tag address list.
+operation to an XML object's tree structure will invalidate the pointers.
 -END-
 
 ENTITY       <!ENTITY % textgizmo "fontgizmo">
@@ -49,8 +47,8 @@ static UWORD glTagID = 1;
 #define XMF_MODFLAGS (XMF_INCLUDE_COMMENTS|XMF_STRIP_CONTENT|XMF_LOWER_CASE|XMF_UPPER_CASE|XMF_STRIP_HEADERS|XMF_NO_ESCAPE|XMF_ALL_CONTENT|XMF_PARSE_HTML|XMF_PARSE_ENTITY)
 
 struct ListSort {
-   struct XMLTag *Tag;  // Pointer to the XML tag
-   UBYTE String[80];    // Sort data
+   XMLTag *Tag;     // Pointer to the XML tag
+   char String[80]; // Sort data
 };
 
 struct exttag {
@@ -60,28 +58,25 @@ struct exttag {
    LONG   Branch;
 };
 
-static struct XMLTag * build_xml_string(struct XMLTag *, STRING Buffer, LONG, LONG *);
+static ERROR add_xml_class(void);
+static XMLTag * build_xml_string(XMLTag *, STRING Buffer, LONG, LONG *);
 static void clear_tags(objXML *XML);
 static ERROR txt_to_xml(objXML *, CSTRING);
-static ERROR extract_tag(objXML *, struct exttag *);
-static ERROR extract_content(objXML *, struct exttag *);
-static struct XMLTag * find_tag(objXML *, struct XMLTag *, CSTRING, CSTRING *, FUNCTION *);
+static ERROR extract_tag(objXML *, exttag *);
+static ERROR extract_content(objXML *, exttag *);
+static XMLTag * find_tag(objXML *, XMLTag *, CSTRING, CSTRING *, FUNCTION *);
 static void free_xml(objXML *);
-static ERROR get_content(objXML *, struct XMLTag *, STRING Buffer, LONG Size);
-static struct XMLTag * len_xml_str(struct XMLTag *, LONG, LONG *);
+static ERROR get_content(objXML *, XMLTag *, STRING Buffer, LONG Size);
+static XMLTag * len_xml_str(XMLTag *, LONG, LONG *);
 static ERROR parse_source(objXML *);
 static void parse_doctype(objXML *, CSTRING Input);
-static void tag_count(struct XMLTag *, LONG *);
-static void sift_down(struct ListSort **, LONG, LONG);
-static void sift_up(struct ListSort **, LONG, LONG);
-static struct XMLTag * next_sibling(objXML *, struct XMLTag *, LONG, STRING, LONG);
+static void tag_count(XMLTag *, LONG *);
+static void sift_down(ListSort **, LONG, LONG);
+static void sift_up(ListSort **, LONG, LONG);
+static XMLTag * next_sibling(objXML *, XMLTag *, LONG, STRING, LONG);
 static void xml_unescape(objXML *, STRING);
 static ERROR SET_Statement(objXML *, CSTRING Value);
 static ERROR SET_Source(objXML *Self, OBJECTPTR Value);
-
-static const struct MethodArray clXMLMethods[];
-static const struct ActionArray clXMLActions[];
-static const struct FieldArray clFields[];
 
 /*****************************************************************************
 ** Debug routines
@@ -92,12 +87,12 @@ static const struct FieldArray clFields[];
 static void debug_tree(STRING Header, objXML *Self) __attribute__ ((unused));
 static void debug_tree(STRING Header, objXML *Self)
 {
-   struct XMLTag *tag;
-   LONG i, j, index;
-   UBYTE buffer[1000];
+   parasol::Log log(Header);
+   LONG i, j;
+   char buffer[1000];
 
-   for (index=0; index < Self->TagCount; index++) {
-      tag = Self->Tags[index];
+   for (LONG index=0; index < Self->TagCount; index++) {
+      auto tag = Self->Tags[index];
 
       // Indenting
 
@@ -106,20 +101,20 @@ static void debug_tree(STRING Header, objXML *Self)
 
       if (tag->Attrib) {
          if (tag->Attrib->Name) {
-            LogF(Header,"%.3d/%.3d: %p<-%p->%p Child %p %s%s {%d}", index, tag->Index, tag->Prev, tag, tag->Next, tag->Child, buffer, tag->Attrib->Name, tag->TotalAttrib);
+            log.msg("%.3d/%.3d: %p<-%p->%p Child %p %s%s {%d}", index, tag->Index, tag->Prev, tag, tag->Next, tag->Child, buffer, tag->Attrib->Name, tag->TotalAttrib);
          }
          else {
             // Extract a limited amount of content
-            for (j=0; (tag->Attrib->Value[j]) AND (j < 16) AND (i < sizeof(buffer)); j++) {
+            for (j=0; (tag->Attrib->Value[j]) and (j < 16) and ((size_t)i < sizeof(buffer)); j++) {
                if (tag->Attrib->Value[j] IS '\n') buffer[i++] = '.';
                else buffer[i++] = tag->Attrib->Value[j];
             }
             buffer[i] = 0;
-            LogF(Header,"%.3d/%.3d: %p<-%p->%p Child %p %s", index, tag->Index, tag->Prev, tag, tag->Next, tag->Child, buffer);
-            //LogMsg("%.3d: %s", index, buffer);
+            log.msg("%.3d/%.3d: %p<-%p->%p Child %p %s", index, tag->Index, tag->Prev, tag, tag->Next, tag->Child, buffer);
+            //log.msg("%.3d: %s", index, buffer);
          }
       }
-      else LogF(Header, "%.3d/%.3d: %p<-%p->%p Child %p Special", index, tag->Index, tag->Prev, tag, tag->Next, tag->Child);
+      else log.msg( "%.3d/%.3d: %p<-%p->%p Child %p Special", index, tag->Index, tag->Prev, tag, tag->Next, tag->Child);
    }
 }
 
@@ -131,20 +126,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
    CoreBase = argCoreBase;
 
-   return CreateObject(ID_METACLASS, 0, &clXML,
-      FID_BaseClassID|TLONG,    ID_XML,
-      FID_ClassVersion|TFLOAT,  VER_XML,
-      FID_Name|TSTR,            "XML",
-      FID_FileExtension|TSTR,   "*.xml",
-      FID_FileDescription|TSTR, "XML File",
-      FID_Category|TLONG,       CCF_DATA,
-      FID_Flags|TLONG,          CLF_PROMOTE_INTEGRAL,
-      FID_Actions|TPTR,         clXMLActions,
-      FID_Methods|TARRAY,       clXMLMethods,
-      FID_Fields|TARRAY,        clFields,
-      FID_Size|TLONG,           sizeof(objXML),
-      FID_Path|TSTR,            MOD_PATH,
-      TAGEND);
+   return add_xml_class();
 }
 
 ERROR CMDExpunge(void)
@@ -188,22 +170,25 @@ NullArgs
 
 static THREADVAR LONG tlXMLCounter;
 
-static ERROR xml_count(objXML *Self, struct XMLTag *Tag, CSTRING Attrib)
+static ERROR xml_count(objXML *Self, XMLTag *Tag, CSTRING Attrib)
 {
+   parasol::Log log;
    tlXMLCounter++;
-   MSG("IncCount: %d, Tag: %d: %s", tlXMLCounter, Tag->Index, Tag->Attrib->Name);
+   log.trace("IncCount: %d, Tag: %d: %s", tlXMLCounter, Tag->Index, Tag->Attrib->Name);
    return ERR_Okay;
 }
 
 static ERROR XML_Count(objXML *Self, struct xmlCount *Args)
 {
-   if ((!Args) OR (!Args->XPath)) return PostError(ERR_NullArgs);
+   parasol::Log log;
+
+   if ((!Args) or (!Args->XPath)) return log.warning(ERR_NullArgs);
 
    tlXMLCounter = 0;
-   struct XMLTag *tags = Self->Tags[Self->RootIndex];
+   XMLTag *tags = Self->Tags[Self->RootIndex];
 
    FUNCTION callback;
-   SET_FUNCTION_STDC(callback, &xml_count);
+   SET_FUNCTION_STDC(callback, (APTR)&xml_count);
    find_tag(Self, tags, Args->XPath, NULL, &callback);
 
    Args->Result = tlXMLCounter;
@@ -218,35 +203,36 @@ DataFeed: XML data can be added to an XML object through this action.
 
 static ERROR XML_DataFeed(objXML *Self, struct acDataFeed *Args)
 {
-   if (!Args) return PostError(ERR_NullArgs);
+   parasol::Log log;
 
-   if ((Args->DataType IS DATA_XML) OR (Args->DataType IS DATA_TEXT)) {
+   if (!Args) return log.warning(ERR_NullArgs);
+
+   if ((Args->DataType IS DATA_XML) or (Args->DataType IS DATA_TEXT)) {
       objXML xml;
-      struct XMLTag *tag;
-      LONG i, index;
+      XMLTag *tag;
       ERROR error;
 
-      if (Self->ReadOnly) return PostError(ERR_ReadOnly);
+      if (Self->ReadOnly) return log.warning(ERR_ReadOnly);
 
       // If there is no existing data in our object, just add the XML from scratch
 
-      if (Self->TagCount < 1) return txt_to_xml(Self, Args->Buffer);
+      if (Self->TagCount < 1) return txt_to_xml(Self, (CSTRING)Args->Buffer);
 
       ClearMemory(&xml, sizeof(xml));
       AllocMemory(sizeof(APTR), MEM_DATA, &xml.Tags, NULL);
       xml.PrivateDataSize = Self->PrivateDataSize;
       xml.Flags = Self->Flags;
 
-      if ((error = txt_to_xml(&xml, Args->Buffer))) {
+      if ((error = txt_to_xml(&xml, (CSTRING)Args->Buffer))) {
          free_xml(&xml);
-         return PostError(error);
+         return log.warning(error);
       }
 
       // Increase the size of our XML tag array.  The tag array is a list of all the XML tags so that the developer can
       // look up using indexes.
 
       if (ReallocMemory(Self->Tags, sizeof(APTR) * (Self->TagCount + xml.TagCount + 1), &Self->Tags, NULL) != ERR_Okay) {
-         LogErrorMsg("Failed to reallocate tag array.");
+         log.warning("Failed to reallocate tag array.");
          free_xml(&xml);
          return ERH_ReallocMemory;
       }
@@ -262,8 +248,8 @@ static ERROR XML_DataFeed(objXML *Self, struct acDataFeed *Args)
 
       // Copy the new tags into the array and set the tag index numbers
 
-      index = Self->TagCount;
-      for (i=0; i < xml.TagCount; i++, index++) {
+      auto index = Self->TagCount;
+      for (LONG i=0; i < xml.TagCount; i++, index++) {
          Self->Tags[index] = xml.Tags[i];
          Self->Tags[index]->Index = index;
       }
@@ -295,7 +281,7 @@ The Filter method is used to reduce the amount of data in an XML tree, filtering
 tag and its children.  This is useful for speeding up XPath queries where interest is limited to only one area of the
 XML tree, or for reducing the memory footprint of large trees.
 
-It is not possible to retrieve data once it has been filtered out by this method.
+Data that has been filtered out by this method is permanently removed.
 
 -INPUT-
 cstr XPath: Refers to a valid XPath string.
@@ -309,11 +295,11 @@ Search: A matching tag could not be found.
 
 static ERROR XML_Filter(objXML *Self, struct xmlFilter *Args)
 {
-   if ((!Args) OR (!Args->XPath)) return PostError(ERR_NullArgs);
+   if ((!Args) or (!Args->XPath)) return ERR_NullArgs;
 
    // Find the target tag
 
-   struct XMLTag *tag;
+   XMLTag *tag;
    if ((tag = find_tag(Self, Self->Tags[0], Args->XPath, NULL, NULL))) {
       xmlMoveTags(Self, tag->Index, 1, 0, XMI_PREV);
       xmlRemoveTag(Self, tag->Next->Index, 0x7fffffff);
@@ -329,8 +315,8 @@ static ERROR XML_Filter(objXML *Self, struct xmlFilter *Args)
 FindTag: Searches for a tag via XPath.
 
 This method will return the first tag that matches the search string specified in XPath.  Optionally, if the XPath uses
-wild cards or would match multiple tags, a Callback function may be passed that will be called for each matching tag
-that  is discovered.  The synopsis for the callback function is `ERROR Function(*XML, struct XMLTag *Tag, STRING Attrib)`.
+wildcards or would match multiple tags, a Callback function may be passed that will be called for each matching tag
+that  is discovered.  The prototype for the callback function is `ERROR Function(*XML, XMLTag *Tag, STRING Attrib)`.
 
 The callback routine can terminate the search early by returning ERR_Terminate.  All other error codes are ignored.
 
@@ -351,25 +337,23 @@ Search: A matching tag could not be found.
 
 static ERROR XML_FindTag(objXML *Self, struct xmlFindTag *Args)
 {
-   if (!Args) return PostError(ERR_NullArgs);
+   parasol::Log log;
 
-   if (Self->Flags & XMF_DEBUG) LogMsg("XPath: %s", Args->XPath);
-
+   if (!Args) return ERR_NullArgs;
+   if (Self->Flags & XMF_DEBUG) log.msg("XPath: %s", Args->XPath);
    if (!Self->Tags[0]) return ERR_NoData;
 
-   struct XMLTag *tag;
+   XMLTag *tag;
    CSTRING attrib;
    if ((tag = find_tag(Self, Self->Tags[0], Args->XPath, &attrib, Args->Callback))) {
-      if (Self->Flags & XMF_DEBUG) LogMsg("Found tag %d, Attrib: %s", tag->Index, attrib);
+      if (Self->Flags & XMF_DEBUG) log.msg("Found tag %d, Attrib: %s", tag->Index, attrib);
       Args->Result = tag->Index;
       return ERR_Okay;
    }
+   else if (Args->Callback) return ERR_Okay;
    else {
-      if (Args->Callback) return ERR_Okay;
-      else {
-         if (Self->Flags & XMF_DEBUG) LogMsg("Failed to find tag through XPath.");
-         return ERR_Search;
-      }
+      if (Self->Flags & XMF_DEBUG) log.msg("Failed to find tag through XPath.");
+      return ERR_Search;
    }
 }
 
@@ -381,9 +365,9 @@ FindTagFromIndex: Searches for a tag via XPath, starting from a specific tag ind
 This method will return the first tag that matches the search string specified in XPath.  The search begins at the tag
 indicated by the Start value.  This should be set to zero if searching from the top of the XML tree.
 
-Optionally, if the XPath uses wild-cards or would match multiple tags, a Callback function may be passed that will be
-called for each matching tag that is discovered.  The synopsis for the callback function in C is
-`ERROR Function(*XML, struct XMLTag *Tag, STRING Attrib)`.
+Optionally, if the XPath uses wildcards or would match multiple tags, a Callback function may be passed that will be
+called for each matching tag that is discovered.  The C prototype for the callback function is
+`ERROR Function(*XML, XMLTag *Tag, CSTRING Attrib)`.
 
 For Fluid: `function Callback(XML {ID}, TagIndex {Long}, Attrib {String})`.
 
@@ -403,29 +387,29 @@ OutOfRange: The Index is invalid.
 
 static ERROR XML_FindTagFromIndex(objXML *Self, struct xmlFindTagFromIndex *Args)
 {
-   if (!Args) return PostError(ERR_NullArgs);
-   if (Self->Flags & XMF_DEBUG) LogMsg("XPath: %s", Args->XPath);
-   if (!Self->Tags[0]) return ERR_NoData;
-   if ((Args->Start < 0) OR (Args->Start >= Self->TagCount)) return PostError(ERR_OutOfRange);
+   parasol::Log log;
 
-   if ((!Args->XPath) OR (!Args->XPath[0])) {
+   if (!Args) return log.warning(ERR_NullArgs);
+   if (Self->Flags & XMF_DEBUG) log.msg("XPath: %s", Args->XPath);
+   if (!Self->Tags[0]) return ERR_NoData;
+   if ((Args->Start < 0) or (Args->Start >= Self->TagCount)) return log.warning(ERR_OutOfRange);
+
+   if ((!Args->XPath) or (!Args->XPath[0])) {
       Args->Result = Args->Start;
       return ERR_Okay;
    }
 
-   struct XMLTag *tag;
+   XMLTag *tag;
    CSTRING attrib;
    if ((tag = find_tag(Self, Self->Tags[Args->Start], Args->XPath, &attrib, Args->Callback))) {
-      if (Self->Flags & XMF_DEBUG) LogMsg("Found tag %d, Attrib: %s", tag->Index, attrib);
+      if (Self->Flags & XMF_DEBUG) log.msg("Found tag %d, Attrib: %s", tag->Index, attrib);
       Args->Result = tag->Index;
       return ERR_Okay;
    }
+   else if (Args->Callback) return ERR_Okay;
    else {
-      if (Args->Callback) return ERR_Okay;
-      else {
-         if (Self->Flags & XMF_DEBUG) LogMsg("Failed to find tag through XPath.");
-         return ERR_Search;
-      }
+      if (Self->Flags & XMF_DEBUG) log.msg("Failed to find tag through XPath.");
+      return ERR_Search;
    }
 }
 
@@ -454,28 +438,29 @@ NotFound: The attribute name was not found.
 
 static ERROR XML_GetAttrib(objXML *Self, struct xmlGetAttrib *Args)
 {
-   if (!Args) return PostError(ERR_NullArgs);
+   parasol::Log log;
+
+   if (!Args) return log.warning(ERR_NullArgs);
 
    LONG tagindex = Args->Index;
-   if ((tagindex < 0) OR (tagindex >= Self->TagCount)) return PostError(ERR_OutOfRange);
+   if ((tagindex < 0) or (tagindex >= Self->TagCount)) return log.warning(ERR_OutOfRange);
 
-   struct XMLTag *tag = Self->Tags[tagindex];
+   auto tag = Self->Tags[tagindex];
 
-   if ((!Args->Attrib) OR (!Args->Attrib[0])) {
+   if ((!Args->Attrib) or (!Args->Attrib[0])) {
       Args->Value = tag->Attrib->Name;
       return ERR_Okay;
    }
 
-   LONG i;
-   for (i=0; i < tag->TotalAttrib; i++) {
+   for (LONG i=0; i < tag->TotalAttrib; i++) {
       if (!StrMatch(Args->Attrib, tag->Attrib[i].Name)) {
          Args->Value = tag->Attrib[i].Value;
-         MSG("Attrib %s = %s", Args->Attrib, Args->Value);
+         log.trace("Attrib %s = %s", Args->Attrib, Args->Value);
          return ERR_Okay;
       }
    }
 
-   if (Self->Flags & XMF_DEBUG) LogMsg("Attrib %s not found in tag %p", Args->Attrib, tag);
+   if (Self->Flags & XMF_DEBUG) log.msg("Attrib %s not found in tag %p", Args->Attrib, tag);
    return ERR_NotFound;
 }
 
@@ -484,7 +469,7 @@ static ERROR XML_GetAttrib(objXML *Self, struct xmlGetAttrib *Args)
 -ACTION-
 GetVar: Retrieves data from an xml object.
 
-The XML class supports variable fields for the execution of XPath queries.  Documentation of the XPath standard is out
+The XML class uses variable fields for the execution of XPath queries.  Documentation of the XPath standard is out
 of the scope for this document, however the following examples illustrate the majority of uses for this query language
 and a number of special instructions that we support:
 
@@ -501,17 +486,17 @@ and a number of special instructions that we support:
 <type name="//window">Return content of the first window discovered at any branch of the XML tree (double-slash enables flat scanning of the XML tree).</>
 </types>
 
-The 'xpath', 'xml' and '/' prefixes are all identical in identifying the start of an xpath.  The 'content' prefix is
+The `xpath`, `xml` and `/` prefixes are all identical in identifying the start of an xpath.  The `content` prefix is
 used to specifically extract the content of the tag that matches the xpath.  Square brackets and round brackets may be
 used interchangeably for lookups and filtering clauses.
 
 Direct tag lookups are also supported through variable fields (this is not normally possible using XPath).  You can
-retrieve an attribute or the content of any tag so long as you know its index number, using this field name format:
+retrieve an attribute or the content of any tag if you know its index number, using this format:
 `Tag(Name, Index, Attrib)`.
 
-The Name indicates the name of the tag that you will be matching to.  If omitted, all tags are included in the lookup.
-The Index is used to match to the nth tag name that you are comparing against if a Name is specified, otherwise the
-Index is a direct lookup into the #Tags array.  If an Attrib name is specified, then the value for that
+The `Name` indicates the name of the tag that you will be matching to.  If omitted, all tags are included in the lookup.
+The `Index` is used to match to the nth tag name that you are comparing against if a Name is specified, otherwise the
+Index is a direct lookup into the #Tags array.  If an `Attrib` name is specified, then the value for that
 attribute will be returned.  If the Attrib name is omitted, the content of the matching tag will be returned.
 -END-
 
@@ -519,22 +504,19 @@ attribute will be returned.  If the Attrib name is omitted, the content of the m
 
 static ERROR XML_GetVar(objXML *Self, struct acGetVar *Args)
 {
-   struct XMLTag *tags;
+   parasol::Log log;
+   XMLTag *tags;
    LONG i, j, count;
 
-   if (!Args) return PostError(ERR_NullArgs);
-
-   if ((!Args->Field) OR (!Args->Buffer) OR (Args->Size < 1)) {
-      return PostError(ERR_NullArgs);
-   }
-
-   if (!(Self->Head.Flags & NF_INITIALISED)) return PostError(ERR_Failed);
+   if (!Args) return log.warning(ERR_NullArgs);
+   if ((!Args->Field) or (!Args->Buffer) or (Args->Size < 1)) return log.warning(ERR_NullArgs);
+   if (!(Self->Head.Flags & NF_INITIALISED)) return log.warning(ERR_Failed);
 
    CSTRING field = Args->Field;
    Args->Buffer[0] = 0;
 
    if (!StrCompare("TagCount", field, 0, 0)) {
-      return PostError(ERR_Obsolete); // Replaced with 'count:' and the existing TagCount field.
+      return log.warning(ERR_Obsolete); // Replaced with 'count:' and the existing TagCount field.
    }
    else if (!StrCompare("count:", field, 6, 0)) {
       if (!xmlCount(Self, field+6, &count)) {
@@ -546,7 +528,7 @@ static ERROR XML_GetVar(objXML *Self, struct acGetVar *Args)
    else if (!StrCompare("exists:", field, 7, 0)) {
       CSTRING attrib;
 
-      struct XMLTag *tag = find_tag(Self,  Self->Tags[Self->RootIndex], field+7, &attrib, 0);
+      XMLTag *tag = find_tag(Self,  Self->Tags[Self->RootIndex], field+7, &attrib, 0);
 
       Args->Buffer[0] = '0';
       Args->Buffer[1] = 0;
@@ -568,7 +550,7 @@ static ERROR XML_GetVar(objXML *Self, struct acGetVar *Args)
    else if (!StrCompare("contentexists:", field, 14, 0)) {
       CSTRING str, attrib;
 
-      struct XMLTag *tag = find_tag(Self,  Self->Tags[Self->RootIndex], field+14, &attrib, NULL);
+      XMLTag *tag = find_tag(Self,  Self->Tags[Self->RootIndex], field+14, &attrib, NULL);
 
       Args->Buffer[0] = '0';
       Args->Buffer[1] = 0;
@@ -577,7 +559,7 @@ static ERROR XML_GetVar(objXML *Self, struct acGetVar *Args)
 
       tag = tag->Child;
       while (tag) {
-         if ((!tag->Attrib->Name) AND (tag->Attrib->Value)) {
+         if ((!tag->Attrib->Name) and (tag->Attrib->Value)) {
             str = tag->Attrib->Value;
             while (*str) {
                if (*str > 0x20) {
@@ -593,7 +575,7 @@ static ERROR XML_GetVar(objXML *Self, struct acGetVar *Args)
       return ERR_Okay;
    }
    else if (!StrCompare("Tag(", field, 0, 0)) {
-      UBYTE tagname[40], attribute[40];
+      char tagname[40], attribute[40];
       LONG index, pos;
 
       // The tag field allows specific XML tags/attributes to be read.
@@ -603,29 +585,29 @@ static ERROR XML_GetVar(objXML *Self, struct acGetVar *Args)
       // tags based on their true index number (including content tags).
 
       i = 0;
-      for (pos=4; (i < sizeof(tagname)-1) AND (field[pos]) AND (field[pos] != ')') AND (field[pos] != ','); pos++) {
+      for (pos=4; ((size_t)i < sizeof(tagname)-1) and (field[pos]) and (field[pos] != ')') and (field[pos] != ','); pos++) {
          tagname[i++] = field[pos];
       }
       tagname[i] = 0;
 
       if (field[pos] IS ',') pos++;
-      while ((field[pos] > 0) AND (field[pos] <= 0x20)) pos++;
+      while ((field[pos] > 0) and (field[pos] <= 0x20)) pos++;
 
       // Get the index number
 
-      if ((field[pos] >= '0') AND (field[pos] <= '9')) {
+      if ((field[pos] >= '0') and (field[pos] <= '9')) {
          index = StrToInt(field+pos);
       }
       else index = 0;
 
-      while ((field[pos]) AND (field[pos] != ')') AND (field[pos] != ',')) pos++;
+      while ((field[pos]) and (field[pos] != ')') and (field[pos] != ',')) pos++;
       if (field[pos] IS ',') pos++;
-      while ((field[pos] > 0) AND (field[pos] <= 0x20)) pos++;
+      while ((field[pos] > 0) and (field[pos] <= 0x20)) pos++;
 
       // Get the name of the requested attribute
 
       i = 0;
-      while ((i < sizeof(attribute)) AND (field[pos]) AND (field[pos] != ')') AND (field[pos] != ',')) {
+      while (((size_t)i < sizeof(attribute)) and (field[pos]) and (field[pos] != ')') and (field[pos] != ',')) {
          attribute[i++] = field[pos++];
       }
       attribute[i] = 0;
@@ -656,7 +638,7 @@ static ERROR XML_GetVar(objXML *Self, struct acGetVar *Args)
             // Extract tag attribute value
             for (j=0; j < tags->TotalAttrib; j++) {
                if (!StrMatch(attribute, tags->Attrib[j].Name)) {
-                  if ((tags->Attrib[j].Value) AND (tags->Attrib[j].Value[0])) StrCopy(tags->Attrib[j].Value, Args->Buffer, Args->Size);
+                  if ((tags->Attrib[j].Value) and (tags->Attrib[j].Value[0])) StrCopy(tags->Attrib[j].Value, Args->Buffer, Args->Size);
                   return ERR_Okay;
                }
             }
@@ -669,7 +651,7 @@ static ERROR XML_GetVar(objXML *Self, struct acGetVar *Args)
             if ((tags = tags->Child)) {
                for (i=0; i < tags->TotalAttrib; i++) {
                   if (!tags->Attrib[i].Name) {
-                     while ((j < Args->Size) AND (tags->Attrib[i].Value[j])) {
+                     while ((j < Args->Size) and (tags->Attrib[i].Value[j])) {
                         j += StrCopy(tags->Attrib[i].Value, Args->Buffer+j, Args->Size-j);
                      }
                   }
@@ -679,28 +661,26 @@ static ERROR XML_GetVar(objXML *Self, struct acGetVar *Args)
          return ERR_Okay;
       }
 
-      LogMsg("Search failed: %s", field);
+      log.msg("Search failed: %s", field);
       return ERR_Search;
    }
-   else if ((!StrCompare("xpath:", field, 6, 0)) OR
-            (!StrCompare("xml:", field, 4, 0)) OR
-            (!StrCompare("content:", field, 8, 0)) OR
-            (!StrCompare("extract:", field, 8, 0)) OR
+   else if ((!StrCompare("xpath:", field, 6, 0)) or
+            (!StrCompare("xml:", field, 4, 0)) or
+            (!StrCompare("content:", field, 8, 0)) or
+            (!StrCompare("extract:", field, 8, 0)) or
             (field[0] IS '/')) {
       LONG j;
-      for (j=0; field[j] AND (field[j] != '/'); j++) j++;
+      for (j=0; field[j] and (field[j] != '/'); j++) j++;
 
       CSTRING attrib;
-      struct XMLTag *current = find_tag(Self,  Self->Tags[Self->RootIndex], field+j, &attrib, NULL);
+      XMLTag *current = find_tag(Self,  Self->Tags[Self->RootIndex], field+j, &attrib, NULL);
 
       if (!current) {
-         LogMsg("Failed to lookup tag '%s'", field+j);
+         log.msg("Failed to lookup tag '%s'", field+j);
          return ERR_Search;
       }
 
-      if (attrib) {
-         // Extract attribute value
-
+      if (attrib) { // Extract attribute value
          for (i=0; i < current->TotalAttrib; i++) {
             if (!StrMatch(current->Attrib[i].Name, attrib)) {
                StrCopy(current->Attrib[i].Value, Args->Buffer, Args->Size);
@@ -739,14 +719,14 @@ static ERROR XML_GetVar(objXML *Self, struct acGetVar *Args)
                if (!tags->Attrib->Name) j += StrCopy(tags->Attrib->Value, Args->Buffer+j, Args->Size-j);
                tags = tags->Next;
             }
-            if (j >= Args->Size-1) PostError(ERR_BufferOverflow);
+            if (j >= Args->Size-1) log.warning(ERR_BufferOverflow);
          }
       }
 
       return ERR_Okay;
    }
    else {
-      LogMsg("Unsupported field \"%s\".", field);
+      log.msg("Unsupported field \"%s\".", field);
       return ERR_UnsupportedField;
    }
 }
@@ -784,9 +764,11 @@ BufferOverflow: The buffer was not large enough to hold the content (the resulti
 
 static ERROR XML_GetContent(objXML *Self, struct xmlGetContent *Args)
 {
-   if ((!Args) OR (!Args->Buffer)) return PostError(ERR_NullArgs);
-   if (Args->Length < 1) return PostError(ERR_Args);
-   if ((Args->Index < 0) OR (Args->Index >= Self->TagCount)) return PostError(ERR_OutOfRange);
+   parasol::Log log;
+
+   if ((!Args) or (!Args->Buffer)) return log.warning(ERR_NullArgs);
+   if (Args->Length < 1) return log.warning(ERR_Args);
+   if ((Args->Index < 0) or (Args->Index >= Self->TagCount)) return log.warning(ERR_OutOfRange);
 
    return get_content(Self, Self->Tags[Args->Index], Args->Buffer, Args->Length);
 }
@@ -817,24 +799,24 @@ AllocMemory: Failed to allocate an XML string for the result.
 
 static ERROR XML_GetString(objXML *Self, struct xmlGetString *Args)
 {
-   if (Self->TagCount <= 0) return PostError(ERR_NoData);
-   if (!Args) return PostError(ERR_NullArgs);
-   if ((Args->Index < 0) OR (Args->Index >= Self->TagCount)) return PostError(ERR_OutOfRange);
+   parasol::Log log;
 
-   FMSG("~","Tag: %d", Args->Index);
+   if (Self->TagCount <= 0) return log.warning(ERR_NoData);
+   if (!Args) return log.warning(ERR_NullArgs);
+   if ((Args->Index < 0) or (Args->Index >= Self->TagCount)) return log.warning(ERR_OutOfRange);
+
+   log.traceBranch("Tag: %d", Args->Index);
 
    // Calculate the size of the buffer required to save the XML information
 
-   struct XMLTag *tag, *scan;
-   if (!(tag = Self->Tags[Args->Index])) return PostError(ERR_InvalidData);
+   XMLTag *tag;
+   if (!(tag = Self->Tags[Args->Index])) return log.warning(ERR_InvalidData);
 
    LONG size;
    if (Args->Flags & XMF_INCLUDE_SIBLINGS) {
       size = 0;
-      scan = tag;
-      while (scan) {
+      for (auto scan=tag; scan; scan=scan->Next) {
          len_xml_str(scan, Args->Flags, &size);
-         scan = scan->Next;
       }
    }
    else {
@@ -851,10 +833,8 @@ static ERROR XML_GetString(objXML *Self, struct xmlGetString *Args)
       LONG offset;
       if (Args->Flags & XMF_INCLUDE_SIBLINGS) {
          offset = 0;
-         scan = tag;
-         while (scan) {
+         for (auto scan=tag; scan; scan=scan->Next) {
             build_xml_string(scan, buffer, Args->Flags, &offset);
-            scan = scan->Next;
          }
       }
       else {
@@ -862,19 +842,15 @@ static ERROR XML_GetString(objXML *Self, struct xmlGetString *Args)
          build_xml_string(tag, buffer, Args->Flags, &offset);
       }
 
-      if ((offset != size) AND (!(Args->Flags & XMF_STRIP_CDATA))) {
-         LogErrorMsg("Wrote %d bytes instead of the expected %d", offset, size);
+      if ((offset != size) and (!(Args->Flags & XMF_STRIP_CDATA))) {
+         log.warning("Wrote %d bytes instead of the expected %d", offset, size);
       }
-      else MSG("Finished writing %d bytes.", size);
+      else log.trace("Finished writing %d bytes.", size);
 
       Args->Result = buffer;
-      LOGRETURN();
       return ERR_Okay;
    }
-   else {
-      LOGRETURN();
-      return PostError(ERR_AllocMemory);
-   }
+   else return log.warning(ERR_AllocMemory);
 }
 
 /*****************************************************************************
@@ -898,8 +874,10 @@ OutOfRange: The Index parameter is invalid.
 
 static ERROR XML_GetTag(objXML *Self, struct xmlGetTag *Args)
 {
-   if (!Args) return PostError(ERR_NullArgs);
-   if ((Args->Index < 0) OR (Args->Index >= Self->TagCount)) return PostError(ERR_OutOfRange);
+   parasol::Log log;
+
+   if (!Args) return log.warning(ERR_NullArgs);
+   if ((Args->Index < 0) or (Args->Index >= Self->TagCount)) return log.warning(ERR_OutOfRange);
 
    Args->Result = Self->Tags[Args->Index];
    return ERR_Okay;
@@ -931,15 +909,17 @@ AllocMemory: Failed to allocate an XML string for the result.
 
 static ERROR XML_GetXPath(objXML *Self, struct xmlGetXPath *Args)
 {
-   if (!Args) return PostError(ERR_NullArgs);
-   if ((Args->Index < 0) OR (Args->Index >= Self->TagCount)) return PostError(ERR_OutOfRange);
+   parasol::Log log;
+
+   if (!Args) return log.warning(ERR_NullArgs);
+   if ((Args->Index < 0) or (Args->Index >= Self->TagCount)) return log.warning(ERR_OutOfRange);
 
    // Backtrack through siblings with matching names to determine the index.
 
-   struct XMLTag *tag, *scan;
+   XMLTag *tag;
    LONG childindex = 0;
-   if (!(tag = Self->Tags[Args->Index])) return PostError(ERR_InvalidData);
-   for (scan=tag->Prev; scan->Prev; scan=scan->Prev) {
+   if (!(tag = Self->Tags[Args->Index])) return log.warning(ERR_InvalidData);
+   for (auto scan=tag->Prev; scan->Prev; scan=scan->Prev) {
       if (!StrMatch(tag->Attrib->Name, scan->Attrib->Name)) {
          childindex++;
       }
@@ -947,21 +927,24 @@ static ERROR XML_GetXPath(objXML *Self, struct xmlGetXPath *Args)
 
    // Calculate the length of the buffer that we're going to need.
 
-   UBYTE strindex[20];
+   char strindex[20];
    LONG endlen = IntToStr(childindex, strindex, sizeof(strindex));
    endlen += 2; // []
    endlen += StrLength(tag->Attrib->Name);
 
-   LONG nest = tag->Branch;
    LONG bodylen = 0;
-   if ((scan = tag->Prev)) {
-      do {
-         if (scan->Branch < nest) {
-            bodylen += StrLength(scan->Attrib->Name) + 1; // The +1 is for the leading '/'
-            nest = scan->Branch;
-         }
-         scan = scan->Prev;
-      } while (scan);
+   {
+      LONG nest = tag->Branch;
+      auto scan = tag->Prev;
+      if (scan) {
+         do {
+            if (scan->Branch < nest) {
+               bodylen += StrLength(scan->Attrib->Name) + 1; // The +1 is for the leading '/'
+               nest = scan->Branch;
+            }
+            scan = scan->Prev;
+         } while (scan);
+      }
    }
 
    STRING result;
@@ -974,8 +957,8 @@ static ERROR XML_GetXPath(objXML *Self, struct xmlGetXPath *Args)
       result[pos] = 0;
 
       pos = bodylen;
-      nest = tag->Branch;
-      scan = tag->Prev;
+      auto nest = tag->Branch;
+      auto scan = tag->Prev;
       do {
          if (scan->Branch < nest) {
             pos -= StrLength(scan->Attrib->Name) + 1;
@@ -987,27 +970,29 @@ static ERROR XML_GetXPath(objXML *Self, struct xmlGetXPath *Args)
       } while (scan);
 
       if (pos) {
-         LogErrorMsg("Internal seek position evaluated to %d instead of zero - error in algorithm.", pos);
+         log.warning("Internal seek position evaluated to %d instead of zero - error in algorithm.", pos);
          return ERR_Failed;
       }
 
       Args->Result = result;
       return ERR_Okay;
    }
-   else return PostError(ERR_AllocMemory);
+   else return log.warning(ERR_AllocMemory);
 }
 
 //****************************************************************************
 
 static ERROR XML_Init(objXML *Self, APTR Void)
 {
+   parasol::Log log;
+
    if (Self->Head.SubID) return ERR_Okay; // Break here for sub-classes to perform initialisation
 
    if (Self->Statement) {
       if ((Self->ParseError = txt_to_xml(Self, Self->Statement))) {
-         if ((Self->ParseError IS ERR_InvalidData) OR (Self->ParseError IS ERR_NoData)) return ERR_NoSupport;
+         if ((Self->ParseError IS ERR_InvalidData) or (Self->ParseError IS ERR_NoData)) return ERR_NoSupport;
 
-         LogErrorMsg("XML parsing error #%d: %s", Self->ParseError, GetErrorMsg(Self->ParseError));
+         log.warning("XML parsing error #%d: %s", Self->ParseError, GetErrorMsg(Self->ParseError));
       }
 
       FreeResource(Self->Statement);
@@ -1015,12 +1000,12 @@ static ERROR XML_Init(objXML *Self, APTR Void)
 
       return Self->ParseError;
    }
-   else if ((Self->Path) OR (Self->Source)) {
+   else if ((Self->Path) or (Self->Source)) {
       if (Self->Flags & XMF_NEW) {
          return ERR_Okay;
       }
       else if (parse_source(Self)) {
-         LogErrorMsg("XML parsing error: %s [File: %s]", GetErrorMsg(Self->ParseError), Self->Path ? Self->Path : "Object");
+         log.warning("XML parsing error: %s [File: %s]", GetErrorMsg(Self->ParseError), Self->Path ? Self->Path : "Object");
          return Self->ParseError;
       }
       else {
@@ -1034,7 +1019,7 @@ static ERROR XML_Init(objXML *Self, APTR Void)
       // NOTE: We do not fail if no data has been loaded into the XML object, the developer may be creating an XML data
       // structure from scratch, or could intend to send us information later.
 
-      if (!(Self->Flags & XMF_NEW)) LogMsg("Warning: No content given.");
+      if (!(Self->Flags & XMF_NEW)) log.msg("Warning: No content given.");
       return ERR_Okay;
    }
 }
@@ -1067,11 +1052,11 @@ ReadOnly
 
 static ERROR XML_InsertContent(objXML *Self, struct xmlInsertContent *Args)
 {
-   if (!Args) return PostError(ERR_NullArgs);
+   parasol::Log log;
 
-   if (Self->ReadOnly) return PostError(ERR_ReadOnly);
-
-   if (Self->Flags & XMF_DEBUG) LogBranch("Index: %d, Insert: %d", Args->Index, Args->Where);
+   if (!Args) return log.warning(ERR_NullArgs);
+   if (Self->ReadOnly) return log.warning(ERR_ReadOnly);
+   if (Self->Flags & XMF_DEBUG) log.branch("Index: %d, Insert: %d", Args->Index, Args->Where);
 
    // The insertion method is simple: Add the XML statement to the end
    // of the XML tags, then move the new XML tags to the insertion point.
@@ -1079,14 +1064,13 @@ static ERROR XML_InsertContent(objXML *Self, struct xmlInsertContent *Args)
    ERROR error;
    LONG srcindex = Self->TagCount; // Store the tag count before we add our new tag to the tree
    if (!(error = acDataXML(Self, "<x/>"))) { // Add a dummy tag - this will be converted to a content tag
-      struct XMLTag *tag;
       LONG total = 0;
-      for (tag=Self->Tags[srcindex]; tag; tag=tag->Next) total++;
+      for (auto tag=Self->Tags[srcindex]; tag; tag=tag->Next) total++;
 
       xmlSetAttrib(Self, Self->Tags[srcindex]->Index, 0, NULL, Args->Content); // Convert the tag to content
 
       if (!(error = xmlMoveTags(Self, srcindex, total, Args->Index, Args->Where))) {
-         struct XMLTag *result;
+         XMLTag *result;
 
          if (!srcindex) result = Self->Tags[0];
          else if (Args->Where IS XMI_NEXT)  result = Self->Tags[Args->Index]->Next;
@@ -1100,18 +1084,11 @@ static ERROR XML_InsertContent(objXML *Self, struct xmlInsertContent *Args)
          if (result) Args->Result = result->Index;
          else Args->Result = 0;
 
-         if (Self->Flags & XMF_DEBUG) LogReturn();
          return ERR_Okay;
       }
-      else {
-         if (Self->Flags & XMF_DEBUG) LogReturn();
-         return error;
-      }
+      else return error;
    }
-   else {
-      if (Self->Flags & XMF_DEBUG) LogReturn();
-      return error;
-   }
+   else return error;
 }
 
 /*****************************************************************************
@@ -1144,17 +1121,19 @@ ReadOnly: Changes to the XML data are not permitted.
 
 static ERROR XML_InsertXML(objXML *Self, struct xmlInsertXML *Args)
 {
-   if (!Args) return PostError(ERR_NullArgs);
-   if ((Args->Index < 0) OR (Args->Index > Self->TagCount)) return PostError(ERR_OutOfRange);
-   if ((Args->Where < 0) OR (Args->Where >= XMI_END)) return PostError(ERR_Args);
+   parasol::Log log;
 
-   if (Self->ReadOnly) return PostError(ERR_ReadOnly);
+   if (!Args) return log.warning(ERR_NullArgs);
+   if ((Args->Index < 0) or (Args->Index > Self->TagCount)) return log.warning(ERR_OutOfRange);
+   if ((Args->Where < 0) or (Args->Where >= XMI_END)) return log.warning(ERR_Args);
 
-   FMSG("~","Index: %d, Where: %d, XML: %.40s", Args->Index, Args->Where, Args->XML);
+   if (Self->ReadOnly) return log.warning(ERR_ReadOnly);
+
+   log.traceBranch("Index: %d, Where: %d, XML: %.40s", Args->Index, Args->Where, Args->XML);
 
    LONG srcindex = Self->TagCount;
-   LONG index = Args->Index;
-   LONG insert = Args->Where;
+   LONG index    = Args->Index;
+   LONG insert   = Args->Where;
 
    // The insertion method is simple: Add the XML statement to the end of the XML tags, then move the new XML tags to
    // the insertion point.
@@ -1162,8 +1141,7 @@ static ERROR XML_InsertXML(objXML *Self, struct xmlInsertXML *Args)
    ERROR error;
    if (!(error = acDataXML(Self, Args->XML))) {
       LONG total = 0;
-      struct XMLTag *tag;
-      for (tag=Self->Tags[srcindex]; tag; tag=tag->Next) total++;
+      for (auto tag=Self->Tags[srcindex]; tag; tag=tag->Next) total++;
 
       #ifdef DEBUG_TREE_INSERT
          debug_tree("Insert-Before", Self);
@@ -1173,9 +1151,9 @@ static ERROR XML_InsertXML(objXML *Self, struct xmlInsertXML *Args)
          // If we're doing a child insert, check if a content tag already exists under the target.  If so, change the
          // insertion so that the XML comes after the content.
 
-         tag = Self->Tags[index]->Child;
-         if ((tag) AND (!tag->Attrib[0].Name)) {
-            MSG("Target tag %d has content - switching from XMI_CHILD to XMI_NEXT.", index);
+         auto tag = Self->Tags[index]->Child;
+         if ((tag) and (!tag->Attrib[0].Name)) {
+            log.trace("Target tag %d has content - switching from XMI_CHILD to XMI_NEXT.", index);
             insert = XMI_NEXT;
             index = tag->Index;
          }
@@ -1184,7 +1162,8 @@ static ERROR XML_InsertXML(objXML *Self, struct xmlInsertXML *Args)
          // We modify CHILD_END because MoveTags() doesn't support it and we need to calculate the insertion point in
          // advance anyway.
 
-         if (!(tag = Self->Tags[index]->Child)) insert = XMI_CHILD;
+         auto tag = Self->Tags[index]->Child;
+         if (!tag) insert = XMI_CHILD;
          else {
             while (tag->Next) tag = tag->Next;
             index = tag->Index;
@@ -1195,7 +1174,7 @@ static ERROR XML_InsertXML(objXML *Self, struct xmlInsertXML *Args)
       // Move the tags
 
       if (!(error = xmlMoveTags(Self, srcindex, total, index, insert))) {
-         struct XMLTag *result;
+         XMLTag *result;
 
          #ifdef DEBUG_TREE_INSERT
             debug_tree("Insert-After", Self);
@@ -1213,18 +1192,11 @@ static ERROR XML_InsertXML(objXML *Self, struct xmlInsertXML *Args)
          if (result) Args->Result = result->Index;
          else Args->Result = 0;
 
-         LOGRETURN();
          return ERR_Okay;
       }
-      else {
-         LOGRETURN();
-         return error;
-      }
+      else return error;
    }
-   else {
-      LOGRETURN();
-      return error;
-   }
+   else return error;
 }
 
 /*****************************************************************************
@@ -1253,13 +1225,15 @@ Search: The XPath could not be resolved.
 
 ERROR XML_InsertXPath(objXML *Self, struct xmlInsertXPath *Args)
 {
-   if ((!Args) OR (!Args->XPath) OR (!Args->XML)) return PostError(ERR_NullArgs);
+   parasol::Log log;
 
-   if (Self->ReadOnly) return PostError(ERR_ReadOnly);
+   if ((!Args) or (!Args->XPath) or (!Args->XML)) return log.warning(ERR_NullArgs);
 
-   LogMethod("Insert: %d, XPath: %s", Args->Where, Args->XPath);
+   if (Self->ReadOnly) return log.warning(ERR_ReadOnly);
 
-   struct XMLTag *tag;
+   log.branch("Insert: %d, XPath: %s", Args->Where, Args->XPath);
+
+   XMLTag *tag;
    CSTRING attrib;
    if ((tag = find_tag(Self, Self->Tags[0], Args->XPath, &attrib, NULL))) {
       ERROR error;
@@ -1278,10 +1252,9 @@ ERROR XML_InsertXPath(objXML *Self, struct xmlInsertXPath *Args)
 -METHOD-
 MoveTags: Move an XML tag group to a new position in the XML tree.
 
-This method is used to move XML tags within the XML tree structure.  This routine is designed to support the movement
-of a single tag, or a group of tags from one index to another using one function call.  You are required to supply the
-index of the tag that will be moved, and the index of the target tag.  All child tags of the source will be included in
-the move.
+This method is used to move XML tags within the XML tree structure.  It supports the movement of single and groups of
+tags from one index to another.  The client must supply the index of the tag that will be moved and the index of the
+target tag.  All child tags of the source will be included in the move.
 
 An insertion point relative to the target index must be specified in the Where parameter.  The source tag can be
 inserted as a child of the destination by using a Where of XMI_CHILD.  To insert behind or after the target, use
@@ -1301,26 +1274,25 @@ ReadOnly
 
 *****************************************************************************/
 
-static void recalc_indexes(objXML *Self, struct XMLTag *Tag, LONG *Index, LONG *);
+static void recalc_indexes(objXML *Self, XMLTag *Tag, LONG *Index, LONG *);
 
 static ERROR XML_MoveTags(objXML *Self, struct xmlMoveTags *Args)
 {
-   struct XMLTag *tag, *src, *dest, *last;
-   LONG i, nest, total, total_tags, srcindex, destindex, min_index, max_index, last_tag;
+   parasol::Log log;
+   LONG min_index, max_index;
 
-   if (!Args) return PostError(ERR_NullArgs);
+   if (!Args) return log.warning(ERR_NullArgs);
+   if (Self->ReadOnly) return log.warning(ERR_ReadOnly);
 
-   if (Self->ReadOnly) return PostError(ERR_ReadOnly);
-
-   srcindex  = Args->Index;
-   destindex = Args->DestIndex;
-   total     = Args->Total;
+   LONG srcindex  = Args->Index;
+   LONG destindex = Args->DestIndex;
+   LONG total     = Args->Total;
 
    if (srcindex IS destindex) return ERR_Okay;
 
    // Check the index ranges
 
-   if ((srcindex < 0) OR (srcindex > Self->TagCount)) srcindex = 0;
+   if ((srcindex < 0) or (srcindex > Self->TagCount)) srcindex = 0;
    if (destindex < 0) destindex = 0;
    if (destindex >= Self->TagCount) destindex = Self->TagCount - 1;
 
@@ -1329,22 +1301,24 @@ static ERROR XML_MoveTags(objXML *Self, struct xmlMoveTags *Args)
 
    // Get the true total by counting child tags in the range to be moved
 
-   MSG("Validating total tags and calculating true total.");
+   log.trace("Validating total tags and calculating true total.");
 
-   total_tags = 0;
-   last_tag = srcindex;
-   tag = Self->Tags[srcindex];
-   for (i=0; (i < total) AND (tag); i++) {
-      if (tag->Child) {
-         tag_count(tag->Child, &total_tags);
+   LONG total_tags = 0;
+   LONG last_tag = srcindex;
+
+   {
+      auto tag = Self->Tags[srcindex];
+      LONG i;
+      for (i=0; (i < total) and (tag); i++) {
+         if (tag->Child) tag_count(tag->Child, &total_tags);
+         last_tag = tag->Index; // The last top-level tag in the source set
+         tag = tag->Next;
+         total_tags++;
       }
-      last_tag = tag->Index; // The last top-level tag in the source set
-      tag = tag->Next;
-      total_tags++;
+      total = i;
    }
-   total = i;
 
-   if ((destindex >= srcindex) AND (destindex < srcindex+total_tags)) return PostError(ERR_Args);
+   if ((destindex >= srcindex) and (destindex < srcindex + total_tags)) return log.warning(ERR_Args);
 
    if (srcindex < destindex) {
       min_index = srcindex;
@@ -1353,20 +1327,20 @@ static ERROR XML_MoveTags(objXML *Self, struct xmlMoveTags *Args)
    else {
       min_index = destindex;
       max_index = srcindex;
-      if ((Args->Where IS XMI_CHILD) OR (Args->Where IS XMI_CHILD_END)) min_index++;
+      if ((Args->Where IS XMI_CHILD) or (Args->Where IS XMI_CHILD_END)) min_index++;
    }
 
-   src = Self->Tags[srcindex];
-   dest = Self->Tags[destindex];
-   last = Self->Tags[last_tag];
+   auto src = Self->Tags[srcindex];
+   auto dest = Self->Tags[destindex];
+   auto last = Self->Tags[last_tag];
 
-   MSG("%d (%p) to %d (%p), Total: %d, TotalTags: %d, Last: %d (%p), Mode: %d", srcindex, src, destindex, dest, total, total_tags, last_tag, last, Args->Where);
+   log.trace("%d (%p) to %d (%p), Total: %d, TotalTags: %d, Last: %d (%p), Mode: %d", srcindex, src, destindex, dest, total, total_tags, last_tag, last, Args->Where);
 
    // This set of checks prevents us from going any further if the new position is the same as the current position.
 
-   if ((Args->Where IS XMI_NEXT) AND (dest->Next IS src)) return ERR_Okay;
-   else if ((Args->Where IS XMI_PREV) AND (dest->Prev IS src)) return ERR_Okay;
-   else if ((Args->Where IS XMI_CHILD) AND (dest->Child IS src)) return ERR_Okay;
+   if ((Args->Where IS XMI_NEXT) and (dest->Next IS src)) return ERR_Okay;
+   else if ((Args->Where IS XMI_PREV) and (dest->Prev IS src)) return ERR_Okay;
+   else if ((Args->Where IS XMI_CHILD) and (dest->Child IS src)) return ERR_Okay;
 
    #ifdef DEBUG_TREE_MOVE
       debug_tree("Move-Before", Self);
@@ -1377,23 +1351,16 @@ static ERROR XML_MoveTags(objXML *Self, struct xmlMoveTags *Args)
 
    if (src->Prev)  src->Prev->Next = last->Next;
    if (last->Next) last->Next->Prev = src->Prev;
-   if ((srcindex > 0) AND (Self->Tags[srcindex-1]->Child IS Self->Tags[srcindex])) {
+   if ((srcindex > 0) and (Self->Tags[srcindex-1]->Child IS Self->Tags[srcindex])) {
       Self->Tags[srcindex-1]->Child = last->Next;
    }
    src->Prev = NULL;
    last->Next = NULL;
 
-   if (Args->Where IS XMI_PREVIOUS) {
-      // Insert behind the target
+   if (Args->Where IS XMI_PREVIOUS) { // Insert behind the target
       if (dest->Prev) dest->Prev->Next = src;
-      else {
-         if (!destindex) Self->Tags[0] = src;
-         else {
-            if (Self->Tags[destindex-1]->Child IS dest) {
-               Self->Tags[destindex-1]->Child = src;
-            }
-         }
-      }
+      else if (!destindex) Self->Tags[0] = src;
+      else if (Self->Tags[destindex-1]->Child IS dest) Self->Tags[destindex-1]->Child = src;
       src->Prev  = dest->Prev;
       last->Next = dest;
       dest->Prev = last;
@@ -1406,19 +1373,18 @@ static ERROR XML_MoveTags(objXML *Self, struct xmlMoveTags *Args)
       if (last->Next) last->Next->Prev = src;
       dest->Child = src;
    }
-   else if (Args->Where IS XMI_NEXT) {
-      // Next insert
+   else if (Args->Where IS XMI_NEXT) { // Next insert
       if (dest->Next) dest->Next->Prev = last;
       if (destindex) src->Prev  = dest;
       last->Next = dest->Next;
       dest->Next = src;
    }
-   else return PostError(ERR_Args);
+   else return log.warning(ERR_Args);
 
    // Rebuild the tag array
 
-   i = 0;
-   nest = 0;
+   LONG i = 0;
+   LONG nest = 0;
    recalc_indexes(Self, Self->Tags[0], &i, &nest);
 
    #ifdef DEBUG_TREE_MOVE
@@ -1429,7 +1395,7 @@ static ERROR XML_MoveTags(objXML *Self, struct xmlMoveTags *Args)
    return ERR_Okay;
 }
 
-static void recalc_indexes(objXML *Self, struct XMLTag *Tag, LONG *Index, LONG *Level)
+static void recalc_indexes(objXML *Self, XMLTag *Tag, LONG *Index, LONG *Level)
 {
    while (Tag) {
       Self->Tags[*Index] = Tag;
@@ -1453,7 +1419,7 @@ static ERROR XML_NewObject(objXML *Self, APTR Void)
       Self->ParseError = ERR_Okay;
       return ERR_Okay;
    }
-   else return PostError(ERR_AllocMemory);
+   else return ERR_AllocMemory;
 }
 
 /*****************************************************************************
@@ -1487,20 +1453,20 @@ ReadOnly
 
 static ERROR XML_RemoveTag(objXML *Self, struct xmlRemoveTag *Args)
 {
+   parasol::Log log;
    LONG i;
 
-   if (!Args) return PostError(ERR_NullArgs);
-   if ((Args->Index < 0) OR (Args->Index >= Self->TagCount)) return PostError(ERR_OutOfRange);
-
-   if (Self->ReadOnly) return PostError(ERR_ReadOnly);
-   if (Self->Flags & XMF_LOCK_REMOVE) return PostError(ERR_ReadOnly);
+   if (!Args) return log.warning(ERR_NullArgs);
+   if ((Args->Index < 0) or (Args->Index >= Self->TagCount)) return log.warning(ERR_OutOfRange);
+   if (Self->ReadOnly) return log.warning(ERR_ReadOnly);
+   if (Self->Flags & XMF_LOCK_REMOVE) return log.warning(ERR_ReadOnly);
 
    LONG index = Args->Index;
    LONG count = Args->Total;
    if (count < 1) count = 1;
 
    #if defined(DEBUG) || defined(DEBUG_TREE_REMOVE)
-      LogMsg("Tag: %d, Total: %d", index, count);
+      log.msg("Tag: %d, Total: %d", index, count);
    #endif
 
    #ifdef DEBUG_TREE_REMOVE
@@ -1510,9 +1476,8 @@ static ERROR XML_RemoveTag(objXML *Self, struct xmlRemoveTag *Args)
    // Determine what the last valid tag would be when the tags are removed (may be NULL if there would be no further
    // tags in this section of the XML hierarchy).
 
-   struct XMLTag *last_tag, *tag;
-   last_tag = Self->Tags[index];
-   for (i=0; (i < count) AND (last_tag); i++) {
+   auto last_tag = Self->Tags[index];
+   for (i=0; (i < count) and (last_tag); i++) {
       last_tag = last_tag->Next;
    }
 
@@ -1524,8 +1489,8 @@ static ERROR XML_RemoveTag(objXML *Self, struct xmlRemoveTag *Args)
    // Calculate the total number of tags that we are going to remove, including child tags.
 
    LONG actual_count = 0;
-   tag = Self->Tags[index];
-   for (i=0; (i < count) AND (tag); i++) {
+   auto tag = Self->Tags[index];
+   for (i=0; (i < count) and (tag); i++) {
       actual_count++;
       if (tag->Child) tag_count(tag->Child, &actual_count);
       tag = tag->Next;
@@ -1552,7 +1517,7 @@ static ERROR XML_RemoveTag(objXML *Self, struct xmlRemoveTag *Args)
 
    // Remove the tags from the array
 
-   for (i=index; (i < index + actual_count); i++) {
+   for (LONG i=index; (i < index + actual_count); i++) {
       if (Self->Tags[i]) { FreeResource(Self->Tags[i]); Self->Tags[i] = NULL; }
    }
 
@@ -1565,7 +1530,7 @@ static ERROR XML_RemoveTag(objXML *Self, struct xmlRemoveTag *Args)
    Self->TagCount -= actual_count; // Subtract the total number of tags that were removed
    Self->Tags[Self->TagCount] = NULL; // Terminate the array
 
-   for (i=0; i < Self->TagCount; i++) {  // Repair index numbers
+   for (LONG i=0; i < Self->TagCount; i++) {  // Repair index numbers
       Self->Tags[i]->Index = i;
    }
 
@@ -1607,33 +1572,31 @@ ReadOnly
 
 static ERROR XML_RemoveXPath(objXML *Self, struct xmlRemoveXPath *Args)
 {
-   if ((!Args) OR (!Args->XPath)) return ERR_NullArgs;
+   parasol::Log log;
 
-   if (Self->ReadOnly) return PostError(ERR_ReadOnly);
-   if (Self->Flags & XMF_LOCK_REMOVE) return PostError(ERR_ReadOnly);
+   if ((!Args) or (!Args->XPath)) return ERR_NullArgs;
+
+   if (Self->ReadOnly) return log.warning(ERR_ReadOnly);
+   if (Self->Flags & XMF_LOCK_REMOVE) return log.warning(ERR_ReadOnly);
 
    LONG count = Args->Total;
    if (count < 0) count = 0x7fffffff;
-   struct XMLTag *tag = Self->Tags[Self->RootIndex];
-   while ((tag) AND (count > 0)) {
+   auto tag = Self->Tags[Self->RootIndex];
+   while ((tag) and (count > 0)) {
       CSTRING attrib;
       ERROR error;
       if ((tag = find_tag(Self, tag, Args->XPath, &attrib, NULL))) {
          LONG i = tag->Index;
 
-         if (attrib) {
-            // Remove an attribute
-            LONG index;
-            for (index=0; index < tag->TotalAttrib; index++) {
+         if (attrib) { // Remove an attribute
+            for (LONG index=0; index < tag->TotalAttrib; index++) {
                if (!StrMatch(attrib, tag->Attrib[index].Name)) {
                   xmlSetAttrib(Self, i, index, NULL, NULL);
                   break;
                }
             }
          }
-         else if ((error = xmlRemoveTag(Self, i, 1))) {
-            return error;
-         }
+         else if ((error = xmlRemoveTag(Self, i, 1))) return error;
 
          count--;
 
@@ -1665,26 +1628,22 @@ SaveToObject: Saves XML data to a storage object (e.g. file).
 
 static ERROR XML_SaveToObject(objXML *Self, struct acSaveToObject *Args)
 {
-   if ((!Args) OR (!Args->DestID)) return PostError(ERR_NullArgs);
+   parasol::Log log;
 
+   if ((!Args) or (!Args->DestID)) return log.warning(ERR_NullArgs);
    if (Self->TagCount <= 0) return ERR_Okay;
 
-   FMSG("~","To: %d", Args->DestID);
+   log.traceBranch("To: %d", Args->DestID);
 
    ERROR error;
    STRING str;
    if (!(error = xmlGetString(Self, 0, XMF_READABLE|XMF_INCLUDE_SIBLINGS, &str))) {
       struct acWrite write = { str, StrLength(str) };
       if (ActionMsg(AC_Write, Args->DestID, &write) != ERR_Okay) error = ERR_Write;
-
       FreeResource(str);
-      LOGRETURN();
       return error;
    }
-   else {
-      LOGRETURN();
-      return error;
-   }
+   else return error;
 }
 
 /*****************************************************************************
@@ -1733,26 +1692,25 @@ ReadOnly: The XML object is read-only.
 
 static ERROR XML_SetAttrib(objXML *Self, struct xmlSetAttrib *Args)
 {
-   struct XMLTag *newtag;
+   parasol::Log log;
+   XMLTag *newtag;
    STRING buffer;
    CSTRING name, value;
    LONG i, j, n, namelen, valuelen, pos;
 
-   if (!Args) return PostError(ERR_NullArgs);
+   if (!Args) return log.warning(ERR_NullArgs);
+   if ((Args->Index < 0) or (Args->Index >= Self->TagCount)) return log.warning(ERR_OutOfRange);
+   if (Self->ReadOnly) return log.warning(ERR_ReadOnly);
 
-   if ((Args->Index < 0) OR (Args->Index >= Self->TagCount)) return PostError(ERR_OutOfRange);
-
-   if (Self->ReadOnly) return PostError(ERR_ReadOnly);
-
-   MSG("Tag: %d, Attrib: $%.8x, %s = '%s'", Args->Index, Args->Attrib, Args->Name, Args->Value);
+   log.trace("Tag: %d, Attrib: $%.8x, %s = '%s'", Args->Index, Args->Attrib, Args->Name, Args->Value);
 
    LONG tagindex = Args->Index;
-   struct XMLTag *tag = Self->Tags[tagindex];
+   XMLTag *tag = Self->Tags[tagindex];
    LONG attribindex = Args->Attrib;
 
    // If Attrib is XMS_UPDATE, we need to search for the attribute by name
 
-   if ((attribindex IS XMS_UPDATE) OR (attribindex IS XMS_UPDATE_ONLY)) {
+   if ((attribindex IS XMS_UPDATE) or (attribindex IS XMS_UPDATE_ONLY)) {
       for (attribindex=0; attribindex < tag->TotalAttrib; attribindex++) {
          if (!StrMatch(Args->Name, tag->Attrib[attribindex].Name)) {
             break;
@@ -1761,7 +1719,7 @@ static ERROR XML_SetAttrib(objXML *Self, struct xmlSetAttrib *Args)
 
       if (attribindex >= tag->TotalAttrib) {
          if (Args->Attrib IS XMS_UPDATE) {
-            if ((!Args->Value) OR (!Args->Value[0])) return ERR_Okay; // User wants to remove a non-existing attribute, so return ERR_Okay
+            if ((!Args->Value) or (!Args->Value[0])) return ERR_Okay; // User wants to remove a non-existing attribute, so return ERR_Okay
             else { // Create a new attribute if the named attribute wasn't found
                attribindex = XMS_NEW;
             }
@@ -1773,41 +1731,35 @@ static ERROR XML_SetAttrib(objXML *Self, struct xmlSetAttrib *Args)
    if (attribindex IS XMS_NEW) {
       // Add a new attribute
 
-      struct XMLAttrib *attrib = tag->Attrib;
+      XMLAttrib *attrib = tag->Attrib;
       LONG attribsize = tag->AttribSize;
 
-      if ((name = Args->Name)) {
-         for (i=0; name[i]; i++);
-         attribsize += i + 1;
-      }
-      else return PostError(ERR_NullArgs);
+      if ((name = Args->Name)) attribsize += StrLength(name) + 1;
+      else return log.warning(ERR_NullArgs);
 
-      if ((value = Args->Value)) {
-         for (i=0; value[i]; i++);
-         attribsize += i + 1;
-      }
+      if ((value = Args->Value)) attribsize += StrLength(value) + 1;
 
-      if (AllocMemory(sizeof(struct XMLTag) + Self->PrivateDataSize + (sizeof(struct XMLAttrib) * (tag->TotalAttrib + 1)) + attribsize,
+      if (AllocMemory(sizeof(XMLTag) + Self->PrivateDataSize + (sizeof(XMLAttrib) * (tag->TotalAttrib + 1)) + attribsize,
             MEM_UNTRACKED, &newtag, NULL) != ERR_Okay) {
-         return PostError(ERR_AllocMemory);
+         return log.warning(ERR_AllocMemory);
       }
 
       // Copy the old tag details to the new tag
 
-      CopyMemory(tag, newtag, sizeof(struct XMLTag) + Self->PrivateDataSize);
+      CopyMemory(tag, newtag, sizeof(XMLTag) + Self->PrivateDataSize);
 
       // Fix up address pointers on either side of the tag, as well as the parent's child tag, if there is an immediate parent.
 
       if (newtag->Prev) newtag->Prev->Next = newtag;
       if (newtag->Next) newtag->Next->Prev = newtag;
-      if ((tagindex > 0) AND (Self->Tags[tagindex-1]->Child IS tag)) {
+      if ((tagindex > 0) and (Self->Tags[tagindex-1]->Child IS tag)) {
          Self->Tags[tagindex-1]->Child = newtag;
       }
 
-      newtag->Private = ((APTR)newtag) + sizeof(struct XMLTag);
-      newtag->Attrib  = ((APTR)newtag) + sizeof(struct XMLTag) + Self->PrivateDataSize;
+      newtag->Private = (BYTE *)newtag + sizeof(XMLTag);
+      newtag->Attrib  = (XMLAttrib *)((BYTE *)newtag + sizeof(XMLTag) + Self->PrivateDataSize);
       buffer          = (STRING)(newtag->Attrib + tag->TotalAttrib + 1);
-      pos = 0;
+      LONG pos = 0;
       for (i=0; i < tag->TotalAttrib; i++) {
          if (attrib[i].Name) {
             newtag->Attrib[i].Name = buffer+pos;
@@ -1854,13 +1806,13 @@ static ERROR XML_SetAttrib(objXML *Self, struct xmlSetAttrib *Args)
    if (attribindex >= 0) {
       // This subroutine deals with situations where the developer is setting an existing attribute.
 
-      if (attribindex >= tag->TotalAttrib) return PostError(ERR_OutOfRange);
+      if (attribindex >= tag->TotalAttrib) return log.warning(ERR_OutOfRange);
 
       // Get the lengths of the name and value strings
 
       name  = Args->Name;
       value = Args->Value;
-      if ((!name) OR (!name[0])) {
+      if ((!name) or (!name[0])) {
          if (attribindex > 0) name = tag->Attrib[attribindex].Name;
          else name = NULL;
       }
@@ -1873,7 +1825,7 @@ static ERROR XML_SetAttrib(objXML *Self, struct xmlSetAttrib *Args)
 
       // Calculate the new size of our buffer
 
-      struct XMLAttrib *attrib = tag->Attrib;
+      XMLAttrib *attrib = tag->Attrib;
       LONG attribsize = tag->AttribSize;
 
       // Remove the existing name and value sizes for the indexed attribute from the total.
@@ -1901,9 +1853,9 @@ static ERROR XML_SetAttrib(objXML *Self, struct xmlSetAttrib *Args)
       // Print a warning if an attempt is made to change a normal tag into a content tag - this is almost certainly an
       // error on the developer's part although we will allow it.
 
-      if ((attribindex IS 0) AND (!name) AND (attrib->Name)) {
-         if ((attrib->Name[0] IS 'x') AND (!attrib->Name[1])); // We've probably been legally called from InsertContent() if the tag is <x/>
-         else LogErrorMsg("Warning - You are changing a tag @ %d with name '%s' into a content tag.", tagindex, attrib->Name);
+      if ((attribindex IS 0) and (!name) and (attrib->Name)) {
+         if ((attrib->Name[0] IS 'x') and (!attrib->Name[1])); // We've probably been legally called from InsertContent() if the tag is <x/>
+         else log.warning("Warning - You are changing a tag @ %d with name '%s' into a content tag.", tagindex, attrib->Name);
       }
 
       // If the new buffer size is less or equal to the existing buffer's size, we can simply overwrite the existing
@@ -1913,7 +1865,7 @@ static ERROR XML_SetAttrib(objXML *Self, struct xmlSetAttrib *Args)
          if (value) {
             if (attrib[attribindex].Name) buffer = attrib[attribindex].Name;
             else if (attrib[attribindex].Value) buffer = attrib[attribindex].Value;
-            else return PostError(ERR_ObjectCorrupt);
+            else return log.warning(ERR_ObjectCorrupt);
 
             if (name) {
                for (i=0; i < namelen; i++) *buffer++ = name[i];
@@ -1929,8 +1881,7 @@ static ERROR XML_SetAttrib(objXML *Self, struct xmlSetAttrib *Args)
             else attrib[attribindex].Value = NULL;
          }
          else {
-            if (attribindex IS 0) {
-               // Content is being eliminated
+            if (attribindex IS 0) { // Content is being eliminated
                attrib[0].Value = NULL;
             }
             else {
@@ -1939,7 +1890,7 @@ static ERROR XML_SetAttrib(objXML *Self, struct xmlSetAttrib *Args)
                if (attribindex < tag->TotalAttrib-1) {
                   CopyMemory(attrib + attribindex + 1,
                      attrib + attribindex,
-                     sizeof(struct XMLAttrib) * (tag->TotalAttrib - attribindex));
+                     sizeof(XMLAttrib) * (tag->TotalAttrib - attribindex));
                }
                tag->TotalAttrib--;
             }
@@ -1948,33 +1899,32 @@ static ERROR XML_SetAttrib(objXML *Self, struct xmlSetAttrib *Args)
          Self->Modified++;
          return ERR_Okay;
       }
-      else if (!AllocMemory(sizeof(struct XMLTag) + Self->PrivateDataSize + (sizeof(struct XMLAttrib) * tag->TotalAttrib) + attribsize,
+      else if (!AllocMemory(sizeof(XMLTag) + Self->PrivateDataSize + (sizeof(XMLAttrib) * tag->TotalAttrib) + attribsize,
          MEM_UNTRACKED, &newtag, NULL)) {
 
          // Copy the old tag details to the new tag
 
-         CopyMemory(tag, newtag, sizeof(struct XMLTag) + Self->PrivateDataSize);
+         CopyMemory(tag, newtag, sizeof(XMLTag) + Self->PrivateDataSize);
 
          // Clean up the new tag and neighbouring tags
 
-         newtag->Private = ((APTR)newtag) + sizeof(struct XMLTag);
-         newtag->Attrib  = ((APTR)newtag) + sizeof(struct XMLTag) + Self->PrivateDataSize;
+         newtag->Private = (BYTE *)newtag + sizeof(XMLTag);
+         newtag->Attrib  = (XMLAttrib *)((BYTE *)newtag + sizeof(XMLTag) + Self->PrivateDataSize);
          newtag->AttribSize = attribsize;
          if (newtag->Prev) newtag->Prev->Next = newtag;
          if (newtag->Next) newtag->Next->Prev = newtag;
-         if ((newtag->Index > 0) AND (Self->Tags[newtag->Index-1]->Child IS tag)) {
+         if ((newtag->Index > 0) and (Self->Tags[newtag->Index-1]->Child IS tag)) {
             Self->Tags[newtag->Index-1]->Child = newtag;
          }
 
          // Recreate attribute names and values
 
-         buffer = ((APTR)newtag->Attrib) + (sizeof(struct XMLAttrib) * newtag->TotalAttrib);
+         buffer = (char *)newtag->Attrib + (sizeof(XMLAttrib) * newtag->TotalAttrib);
          pos = 0;
          n = 0;
          for (i=0; i < tag->TotalAttrib; i++) {
             if (i IS attribindex) {
-               if (value) {
-                  // Use the new name/value strings
+               if (value) { // Use the new name/value strings
                   if (name) {
                      newtag->Attrib[n].Name = buffer+pos;
                      for (j=0; j < namelen; j++) buffer[pos++] = name[j];
@@ -1990,8 +1940,7 @@ static ERROR XML_SetAttrib(objXML *Self, struct xmlSetAttrib *Args)
                }
                else; // Attribute is being removed
             }
-            else {
-               // Use the old name/value strings
+            else { // Use the old name/value strings
                if (attrib[i].Name) {
                   newtag->Attrib[n].Name = buffer+pos;
                   for (j=0; attrib[i].Name[j]; j++) buffer[pos++] = attrib[i].Name[j];
@@ -2011,7 +1960,7 @@ static ERROR XML_SetAttrib(objXML *Self, struct xmlSetAttrib *Args)
 
          #ifdef DEBUG
             // Clearing the tag may pickup on re-use errors after the memory block is destroyed
-            for (i=sizeof(struct XMLTag) + Self->PrivateDataSize + (sizeof(struct XMLAttrib) * tag->TotalAttrib) + tag->AttribSize-1; i >= 0; i--) {
+            for (i=sizeof(XMLTag) + Self->PrivateDataSize + (sizeof(XMLAttrib) * tag->TotalAttrib) + tag->AttribSize-1; i >= 0; i--) {
                ((UBYTE *)tag)[i] = 0xee;
             }
          #endif
@@ -2021,9 +1970,9 @@ static ERROR XML_SetAttrib(objXML *Self, struct xmlSetAttrib *Args)
          Self->Modified++;
          return ERR_Okay;
       }
-      else return PostError(ERR_AllocMemory);
+      else return log.warning(ERR_AllocMemory);
    }
-   else return PostError(ERR_Args);
+   else return log.warning(ERR_Args);
 }
 
 /*****************************************************************************
@@ -2060,18 +2009,20 @@ OutOfRange: The Index parameter is invalid.
 
 static ERROR XML_SetRoot(objXML *Self, struct xmlSetRoot *Args)
 {
+   parasol::Log log;
+
    if (!Args) {
       Self->RootIndex = 0;
       return ERR_Okay;
    }
 
-   if ((Args->XPath) AND (Args->XPath[0])) {
-      struct XMLTag *tag;
+   if ((Args->XPath) and (Args->XPath[0])) {
+      XMLTag *tag;
       if ((tag = find_tag(Self, Self->Tags[0], Args->XPath, NULL, NULL))) {
          Self->RootIndex = tag->Index;
       }
       else {
-         LogErrorMsg("Failed to find %s", Args->XPath);
+         log.warning("Failed to find %s", Args->XPath);
          return ERR_Search;
       }
    }
@@ -2102,16 +2053,15 @@ Search: Failed to find the tag referenced by the XPath.
 
 static ERROR XML_SetVar(objXML *Self, struct acSetVar *Args)
 {
-   if ((!Args) OR (!Args->Field)) return PostError(ERR_NullArgs);
+   parasol::Log log;
 
-   if (Self->ReadOnly) return PostError(ERR_ReadOnly);
+   if ((!Args) or (!Args->Field)) return log.warning(ERR_NullArgs);
+   if (Self->ReadOnly) return log.warning(ERR_ReadOnly);
 
-   struct XMLTag *tag;
+   XMLTag *tag;
    CSTRING attrib;
    if ((tag = find_tag(Self, Self->Tags[Self->RootIndex], Args->Field, &attrib, NULL))) {
-      if (attrib) {
-         // Updating or adding an attribute
-
+      if (attrib) { // Updating or adding an attribute
          LONG i;
          for (i=0; i < tag->TotalAttrib; i++) {
             if (!StrMatch(attrib, tag->Attrib[i].Name)) break;
@@ -2122,7 +2072,7 @@ static ERROR XML_SetVar(objXML *Self, struct acSetVar *Args)
          }
          else xmlSetAttrib(Self, tag->Index, -1, attrib, Args->Value); // Add the attribute.
       }
-      else if ((tag->Child) AND (!tag->Child->Attrib[0].Name)) { // Update content
+      else if ((tag->Child) and (!tag->Child->Attrib[0].Name)) { // Update content
          xmlSetAttrib(Self, tag->Child->Index, 0, NULL, Args->Value);
       }
       else { // Add content
@@ -2132,7 +2082,7 @@ static ERROR XML_SetVar(objXML *Self, struct acSetVar *Args)
       return ERR_Okay;
    }
    else {
-      LogMsg("Failed to find '%s'", Args->Field);
+      log.msg("Failed to find '%s'", Args->Field);
       return ERR_Search;
    }
 }
@@ -2169,19 +2119,20 @@ NothingDone: The XML array was already sorted to your specifications.   Dependen
 
 static ERROR XML_SortXML(objXML *Self, struct xmlSort *Args)
 {
-   if ((!Args) OR (!Args->Sort)) return PostError(ERR_NullArgs);
+   parasol::Log log;
 
-   if (Self->ReadOnly) return PostError(ERR_ReadOnly);
+   if ((!Args) or (!Args->Sort)) return log.warning(ERR_NullArgs);
+   if (Self->ReadOnly) return log.warning(ERR_ReadOnly);
 
-   struct XMLTag *tag, *tmp;
-   if ((!Args->XPath) OR (!Args->XPath[0])) {
+   XMLTag *tag, *tmp;
+   if ((!Args->XPath) or (!Args->XPath[0])) {
       tag = Self->Tags[0];
       if (!tag) return ERR_Okay;
    }
    else {
       CSTRING attrib;
       tag = find_tag(Self, Self->Tags[0], Args->XPath, &attrib, NULL);
-      if (!tag) return PostError(ERR_Search);
+      if (!tag) return log.warning(ERR_Search);
    }
 
    LONG insert_index = tag->Index;
@@ -2196,19 +2147,19 @@ static ERROR XML_SortXML(objXML *Self, struct xmlSort *Args)
    LONG sort_total = 0;
    tag_count(Self->Tags[insert_index], &sort_total);
 
-   MSG("Index: %d, Tag: %s, Root-Total: %d, Sort-Total: %d of %d",
+   log.trace("Index: %d, Tag: %s, Root-Total: %d, Sort-Total: %d of %d",
       insert_index, Args->Sort, root_total, sort_total, Self->TagCount);
 
    // Allocate an array to store the sort results
 
-   struct ListSort *list, *temp;
-   if (AllocMemory(sizeof(struct ListSort) * root_total, MEM_NO_CLEAR, &list, NULL) != ERR_Okay) {
+   ListSort *list;
+   if (AllocMemory(sizeof(ListSort) * root_total, MEM_NO_CLEAR, &list, NULL) != ERR_Okay) {
       return ERR_AllocMemory;
    }
 
    // Tag address list
 
-   struct ListSort **lookup;
+   ListSort **lookup;
    if (AllocMemory(sizeof(APTR) * root_total, MEM_NO_CLEAR, &lookup, NULL) != ERR_Okay) {
       FreeResource(list);
       return ERR_AllocMemory;
@@ -2219,26 +2170,25 @@ static ERROR XML_SortXML(objXML *Self, struct xmlSort *Args)
    // Copy the matching tags into the sorting array (we just need to extract the data string for each tag and a pointer
    // to the tag represented by the data).
 
-   LONG index;
-   for (index=0; (tag) AND (index < root_total); index++) {
+   for (LONG index=0; (tag) and (index < root_total); index++) {
       LONG pos = 0;
       list[index].String[0] = 0;
       list[index].Tag = 0;
-      for (i=0; (Args->Sort[i]) AND (pos < sizeof(list[0].String));) {
-         UBYTE tagname[80], attrib[80];
+      for (i=0; (Args->Sort[i]) and ((size_t)pos < sizeof(list[0].String));) {
+         char tagname[80], attrib[80];
 
          // Format is CSV: Tag:Attrib,...
 
          UBYTE found = FALSE;
 
-         for (j=0; (Args->Sort[i]) AND (Args->Sort[i] != ':') AND (j < sizeof(tagname)-1); j++) tagname[j] = Args->Sort[i++];
+         for (j=0; (Args->Sort[i]) and (Args->Sort[i] != ':') and ((size_t)j < sizeof(tagname)-1); j++) tagname[j] = Args->Sort[i++];
          tagname[j] = 0;
-         while ((Args->Sort[i]) AND (Args->Sort[i] != ':') AND (Args->Sort[i] != '/') AND (Args->Sort[i] != ',')) i++;
+         while ((Args->Sort[i]) and (Args->Sort[i] != ':') and (Args->Sort[i] != '/') and (Args->Sort[i] != ',')) i++;
          if (Args->Sort[i] IS ':') i++;
 
-         for (j=0; (Args->Sort[i]) AND (Args->Sort[i] != '/') AND (Args->Sort[i] != ',') AND (j < sizeof(attrib)-1); j++) attrib[j] = Args->Sort[i++];
+         for (j=0; (Args->Sort[i]) and (Args->Sort[i] != '/') and (Args->Sort[i] != ',') and ((size_t)j < sizeof(attrib)-1); j++) attrib[j] = Args->Sort[i++];
          attrib[j] = 0;
-         while ((Args->Sort[i]) AND (Args->Sort[i] != '/') AND (Args->Sort[i] != ',')) i++;
+         while ((Args->Sort[i]) and (Args->Sort[i] != '/') and (Args->Sort[i] != ',')) i++;
          if (Args->Sort[i]) i++; // Skip separator
 
          if (!StrMatch("Default", tagname)) {
@@ -2251,7 +2201,7 @@ static ERROR XML_SortXML(objXML *Self, struct xmlSort *Args)
             if (tag->Next) j = tag->Next->Index;
             else j = Self->TagCount;
 
-            for (tmp=tag; (tmp) AND (tmp->Index < j); tmp=Self->Tags[tmp->Index+1]) {
+            for (tmp=tag; (tmp) and (tmp->Index < j); tmp=Self->Tags[tmp->Index+1]) {
                if (!StrMatch(tagname, tmp->Attrib->Name)) {
                   found = TRUE;
                   break;
@@ -2261,7 +2211,7 @@ static ERROR XML_SortXML(objXML *Self, struct xmlSort *Args)
 
          if (found) {
             if (Args->Flags & XSF_CHECK_SORT) { // Scan for a 'sort' attribute in the XML tag
-               for (j=0; j < tmp->TotalAttrib; j++) {
+               for (LONG j=0; j < tmp->TotalAttrib; j++) {
                   if (!StrMatch("sort", tmp->Attrib[j].Name)) {
                      pos += StrCopy(tmp->Attrib[j].Value, list[index].String+pos, sizeof(list[index].String)-pos);
                      found = FALSE; // Turning off this flag will skip normal attribute extraction
@@ -2272,15 +2222,15 @@ static ERROR XML_SortXML(objXML *Self, struct xmlSort *Args)
 
             if (found) {
                if (!attrib[0]) { // Use content as the sort data
-                  struct XMLTag *child;
-                  for (child=tmp->Child; (child) AND (pos < sizeof(list[index].String)); child=child->Next) {
+                  XMLTag *child;
+                  for (child=tmp->Child; (child) and ((size_t)pos < sizeof(list[index].String)); child=child->Next) {
                      if (!child->Attrib->Name) {
                         pos += StrCopy(child->Attrib->Value, list[index].String+pos, sizeof(list[index].String)-pos);
                      }
                   }
                }
                else { // Extract the sort data from the specified tag attribute
-                  for (j=0; j < tmp->TotalAttrib; j++) {
+                  for (LONG j=0; j < tmp->TotalAttrib; j++) {
                      if (!StrMatch(tmp->Attrib[j].Name, attrib)) {
                         pos += StrCopy(tmp->Attrib[j].Value, list[index].String+pos, sizeof(list[index].String)-pos);
                         break;
@@ -2292,10 +2242,10 @@ static ERROR XML_SortXML(objXML *Self, struct xmlSort *Args)
 
          // Each string in the sort list is separated with a byte value of 0x01
 
-         if (pos < sizeof(list[0].String)-1) list[index].String[pos++] = 0x01;
+         if ((size_t)pos < sizeof(list[0].String)-1) list[index].String[pos++] = 0x01;
       }
 
-      if (pos >= sizeof(list[0].String)) pos = sizeof(list[0].String) - 1;
+      if ((size_t)pos >= sizeof(list[0].String)) pos = sizeof(list[0].String) - 1;
       list[index].String[pos] = 0;
       list[index].Tag = tag;
 
@@ -2316,8 +2266,8 @@ static ERROR XML_SortXML(objXML *Self, struct xmlSort *Args)
    if (Args->List[0].Flags & XSF_DESC) {
       for (; h > 0; h /= 3) {
          for (i=h; i < root_total; i++) {
-            temp = lookup[i];
-            for (j=i; (j >= h) AND (StrSortCompare(lookup[j - h]->String, temp->String) < 0); j -= h) {
+            auto temp = lookup[i];
+            for (j=i; (j >= h) and (StrSortCompare(lookup[j - h]->String, temp->String) < 0); j -= h) {
                lookup[j] = lookup[j - h];
                rearranged = TRUE;
             }
@@ -2328,8 +2278,8 @@ static ERROR XML_SortXML(objXML *Self, struct xmlSort *Args)
    else {
       for (; h > 0; h /= 3) {
          for (i=h; i < root_total; i++) {
-            temp = lookup[i];
-            for (j=i; (j >= h) AND (StrSortCompare(lookup[j - h]->String, temp->String) > 0); j -= h) {
+            auto temp = lookup[i];
+            for (j=i; (j >= h) and (StrSortCompare(lookup[j - h]->String, temp->String) > 0); j -= h) {
                lookup[j] = lookup[j - h];
                rearranged = TRUE;
             }
@@ -2341,14 +2291,12 @@ static ERROR XML_SortXML(objXML *Self, struct xmlSort *Args)
 #else
    // Binary heap sort.  An extremely fast sorting algorithm, but assumes that the list has been rearranged on completion.
 
-   LONG heapsize;
-
    if (Args->Flags & XSF_DESC) {
       for (i=root_total>>1; i >= 0; i--) sift_down(lookup, i, root_total);
 
-      heapsize = root_total;
+      LONG heapsize = root_total;
       for (i=heapsize; i > 0; i--) {
-         temp = lookup[0];
+         auto temp = lookup[0];
          lookup[0] = lookup[i-1];
          lookup[i-1] = temp;
          sift_down(lookup, 0, --heapsize);
@@ -2357,9 +2305,9 @@ static ERROR XML_SortXML(objXML *Self, struct xmlSort *Args)
    else {
       for (i=root_total>>1; i >= 0; i--) sift_up(lookup, i, root_total);
 
-      heapsize = root_total;
+      LONG heapsize = root_total;
       for (i=heapsize; i > 0; i--) {
-         temp = lookup[0];
+         auto temp = lookup[0];
          lookup[0] = lookup[i-1];
          lookup[i-1] = temp;
          sift_up(lookup, 0, --heapsize);
@@ -2381,17 +2329,17 @@ static ERROR XML_SortXML(objXML *Self, struct xmlSort *Args)
 
    // Clone the original tag array which will act as the target
 
-   struct XMLTag **clone_array;
+   XMLTag **clone_array;
    if (AllocMemory(sizeof(APTR) * (Self->TagCount + 1), MEM_UNTRACKED|MEM_NO_CLEAR, &clone_array, NULL) != ERR_Okay) {
       FreeResource(list);
       FreeResource(lookup);
-      return PostError(ERR_Memory);
+      return log.warning(ERR_Memory);
    }
 
    CopyMemory(Self->Tags, clone_array, sizeof(APTR) * (Self->TagCount + 1));
 
-   index = insert_index;
-   for (i=0; i < root_total; i++) {
+   LONG index = insert_index;
+   for (LONG i=0; i < root_total; i++) {
       // Determine the total number of tags in the block to be copied
       LONG tagcount = 1;
       if (lookup[i]->Tag->Child) tag_count(lookup[i]->Tag->Child, &tagcount);
@@ -2409,7 +2357,7 @@ static ERROR XML_SortXML(objXML *Self, struct xmlSort *Args)
 
    // Reset index numbers within the sorted range
 
-   for (i=insert_index; i < insert_index + sort_total; i++) {
+   for (LONG i=insert_index; i < insert_index + sort_total; i++) {
       Self->Tags[i]->Index = i;
    }
 
@@ -2471,7 +2419,7 @@ static ERROR SET_Path(objXML *Self, CSTRING Value)
 
       return SET_Statement(Self, Value+7);
    }
-   else if ((Value) AND (*Value)) {
+   else if ((Value) and (*Value)) {
       if ((Self->Path = StrClone(Value))) {
          if (Self->Head.Flags & NF_INITIALISED) {
             parse_source(Self);
@@ -2479,7 +2427,7 @@ static ERROR SET_Path(objXML *Self, CSTRING Value)
             return Self->ParseError;
          }
       }
-      else return PostError(ERR_AllocMemory);
+      else return ERR_AllocMemory;
    }
 
    return ERR_Okay;
@@ -2509,7 +2457,7 @@ static ERROR SET_PrivateDataSize(objXML *Self, LONG Value)
       Self->PrivateDataSize = Value;
       return ERR_Okay;
    }
-   else return PostError(ERR_OutOfRange);
+   else return ERR_OutOfRange;
 }
 
 /*****************************************************************************
@@ -2547,11 +2495,14 @@ queries start from the top of the tree.  The index cannot exceed the value in th
 
 static ERROR SET_RootIndex(objXML *Self, LONG Value)
 {
-   if ((Value >= 0) AND (Value < Self->TagCount)) {
+   if ((Value >= 0) and (Value < Self->TagCount)) {
       Self->RootIndex = Value;
       return ERR_Okay;
    }
-   else return PostError(ERR_OutOfRange);
+   else {
+      parasol::Log log;
+      return log.warning(ERR_OutOfRange);
+   }
 }
 
 /*****************************************************************************
@@ -2574,7 +2525,6 @@ static ERROR SET_Source(objXML *Self, OBJECTPTR Value)
 
    if (Value) {
       Self->Source = Value;
-
       if (Self->Head.Flags & NF_INITIALISED) {
          parse_source(Self);
          Self->Modified++;
@@ -2619,28 +2569,23 @@ static ERROR GET_Statement(objXML *Self, STRING *Value)
    // Calculate the size of the buffer required to save the XML information
 
    LONG size = 0;
-   struct XMLTag *tag = Self->Tags[Self->CurrentTag];
-   while (tag) {
+   for (auto tag=Self->Tags[Self->CurrentTag]; tag; tag=tag->Next) {
       len_xml_str(tag, Self->Flags, &size);
-      tag = tag->Next;
    }
 
    // Allocate a buffer large enough to hold the XML information
 
    STRING buffer;
-   size++;
-   if (!AllocMemory(size, MEM_STRING|MEM_NO_CLEAR, &buffer, NULL)) {
+   if (!AllocMemory(size+1, MEM_STRING|MEM_NO_CLEAR, &buffer, NULL)) {
       LONG offset = 0;
-      tag = Self->Tags[Self->CurrentTag];
-      while (tag) {
+      for (auto tag=Self->Tags[Self->CurrentTag]; tag; tag=tag->Next) {
          build_xml_string(tag, buffer, Self->Flags, &offset);
-         tag = tag->Next;
       }
 
       *Value = buffer;
       return ERR_Okay;
    }
-   else return PostError(ERR_AllocMemory);
+   else return ERR_AllocMemory;
 }
 
 static ERROR SET_Statement(objXML *Self, CSTRING Value)
@@ -2648,25 +2593,21 @@ static ERROR SET_Statement(objXML *Self, CSTRING Value)
    if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
    if (Self->Statement) { FreeResource(Self->Statement); Self->Statement = NULL; }
 
-   if ((Value) AND (*Value)) {
+   if ((Value) and (*Value)) {
       if (Self->Head.Flags & NF_INITIALISED) {
          Self->ParseError = txt_to_xml(Self, Value);
          Self->Modified++;
          return Self->ParseError;
       }
-      else {
-         if ((Self->Statement = StrClone(Value))) return ERR_Okay;
-         else return ERR_AllocMemory;
-      }
+      else if ((Self->Statement = StrClone(Value))) return ERR_Okay;
+      else return ERR_AllocMemory;
    }
    else {
       if (Self->Head.Flags & NF_INITIALISED) {
-         UBYTE readonly = Self->ReadOnly;
+         auto temp = Self->ReadOnly;
          Self->ReadOnly = FALSE;
-
          acClear(Self);
-
-         Self->ReadOnly = readonly;
+         Self->ReadOnly = temp;
       }
       return ERR_Okay;
    }
@@ -2696,7 +2637,7 @@ The Tags field is still defined in the event that it is empty (the array will co
 
 *****************************************************************************/
 
-static ERROR GET_Tags(objXML *Self, struct XMLTag ***Values, LONG *Elements)
+static ERROR GET_Tags(objXML *Self, XMLTag ***Values, LONG *Elements)
 {
    *Values = Self->Tags;
    *Elements = Self->TagCount;
@@ -2705,28 +2646,48 @@ static ERROR GET_Tags(objXML *Self, struct XMLTag ***Values, LONG *Elements)
 
 #include "xml_def.c"
 
-static const struct FieldArray clFields[] = {
-   { "Path",            FDF_STRING|FDF_RW,    0, NULL, SET_Path },
-   { "Tags",            FDF_ARRAY|FDF_POINTER|FDF_STRUCT|FDF_R, (MAXINT)"XMLTag", GET_Tags, NULL },
+static const FieldArray clFields[] = {
+   { "Path",            FDF_STRING|FDF_RW,    0, NULL, (APTR)SET_Path },
+   { "Tags",            FDF_ARRAY|FDF_POINTER|FDF_STRUCT|FDF_R, (MAXINT)"XMLTag", (APTR)GET_Tags, NULL },
    { "Source",          FDF_OBJECT|FDF_RI,    0, NULL, NULL },
    { "TagCount",        FDF_LONG|FDF_R,       0, NULL, NULL },
    { "Flags",           FDF_LONGFLAGS|FDF_RW, (MAXINT)&clXMLFlags, NULL, NULL },
    { "CurrentTag",      FDF_LONG|FDF_RW,      0, NULL, NULL },
-   { "PrivateDataSize", FDF_LONG|FDF_RI,      0, NULL, SET_PrivateDataSize },
-   { "RootIndex",       FDF_LONG|FDF_RW,      0, NULL, SET_RootIndex },
+   { "PrivateDataSize", FDF_LONG|FDF_RI,      0, NULL, (APTR)SET_PrivateDataSize },
+   { "RootIndex",       FDF_LONG|FDF_RW,      0, NULL, (APTR)SET_RootIndex },
    { "Modified",        FDF_LONG|FDF_R,       0, NULL, NULL },
    // Virtual fields
-   { "Location",        FDF_SYNONYM|FDF_STRING|FDF_RW, 0, GET_Path, SET_Path },
-   { "ReadOnly",        FDF_LONG|FDF_RI, 0, GET_ReadOnly, SET_ReadOnly },
-   { "Src",             FDF_STRING|FDF_SYNONYM|FDF_RW, 0, GET_Path, SET_Path },
-   { "Statement",       FDF_STRING|FDF_ALLOC|FDF_RW, 0, GET_Statement, SET_Statement },
+   { "Location",        FDF_SYNONYM|FDF_STRING|FDF_RW, 0, (APTR)GET_Path, (APTR)SET_Path },
+   { "ReadOnly",        FDF_LONG|FDF_RI,               0, (APTR)GET_ReadOnly, (APTR)SET_ReadOnly },
+   { "Src",             FDF_STRING|FDF_SYNONYM|FDF_RW, 0, (APTR)GET_Path, (APTR)SET_Path },
+   { "Statement",       FDF_STRING|FDF_ALLOC|FDF_RW,   0, (APTR)GET_Statement, (APTR)SET_Statement },
    END_FIELD
 };
 
 //****************************************************************************
 
-#include "xml_functions.c"
-#include "unescape.c"
+#include "xml_functions.cpp"
+#include "unescape.cpp"
+
+//****************************************************************************
+
+static ERROR add_xml_class(void)
+{
+   return CreateObject(ID_METACLASS, 0, &clXML,
+      FID_BaseClassID|TLONG,    ID_XML,
+      FID_ClassVersion|TFLOAT,  VER_XML,
+      FID_Name|TSTR,            "XML",
+      FID_FileExtension|TSTR,   "*.xml",
+      FID_FileDescription|TSTR, "XML File",
+      FID_Category|TLONG,       CCF_DATA,
+      FID_Flags|TLONG,          CLF_PROMOTE_INTEGRAL,
+      FID_Actions|TPTR,         clXMLActions,
+      FID_Methods|TARRAY,       clXMLMethods,
+      FID_Fields|TARRAY,        clFields,
+      FID_Size|TLONG,           sizeof(objXML),
+      FID_Path|TSTR,            MOD_PATH,
+      TAGEND);
+}
 
 //****************************************************************************
 

@@ -8,7 +8,7 @@ static const struct FieldDef clXMLFlags[] = {
    { "StripCDATA", 0x00001000 },
    { "Readable", 0x00000020 },
    { "StripContent", 0x00000004 },
-   { "IncludeSiblings", 0x80000000 },
+   { "IncludeSiblings", (LONG)0x80000000 },
    { "StripHeaders", 0x00000080 },
    { "Debug", 0x00002000 },
    { "WellFormed", 0x00000001 },

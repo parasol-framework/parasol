@@ -1,8 +1,10 @@
 
 static ERROR count_tags(objXML *Self, CSTRING Text, CSTRING *Result)
 {
+   parasol::Log log(__FUNCTION__);
+
    if (*Text != '<') {
-      LogF("@CountTags:","Malformed XML statement detected.");
+      log.warning("Malformed XML statement detected.");
       return ERR_InvalidData;
    }
    else Text++;
@@ -13,7 +15,7 @@ static ERROR count_tags(objXML *Self, CSTRING Text, CSTRING *Result)
    if (!StrCompare("![CDATA[", Text, 8, STR_MATCH_CASE)) {
       Text += 8;
       while (*Text) {
-         if ((Text[0] IS ']') AND (Text[1] IS ']') AND (Text[2] IS '>')) {
+         if ((Text[0] IS ']') and (Text[1] IS ']') and (Text[2] IS '>')) {
             Text += 3;
             break;
          }
@@ -32,11 +34,11 @@ static ERROR count_tags(objXML *Self, CSTRING Text, CSTRING *Result)
       UWORD nest = 1;
       Text += 8;
       while (*Text) {
-         if ((Text[0] IS '<') AND (Text[1] IS '!') AND (Text[2] IS '[') AND ((Text[3] IS 'N') OR (Text[3] IS 'C')) AND (Text[4] IS 'D') AND (Text[5] IS 'A') AND (Text[6] IS 'T') AND (Text[7] IS 'A') AND (Text[8] IS '[')) {
+         if ((Text[0] IS '<') and (Text[1] IS '!') and (Text[2] IS '[') and ((Text[3] IS 'N') or (Text[3] IS 'C')) and (Text[4] IS 'D') and (Text[5] IS 'A') and (Text[6] IS 'T') and (Text[7] IS 'A') and (Text[8] IS '[')) {
             nest++;
             Text += 8;
          }
-         else if ((Text[0] IS ']') AND (Text[1] IS ']') AND (Text[2] IS '>')) {
+         else if ((Text[0] IS ']') and (Text[1] IS ']') and (Text[2] IS '>')) {
             Text += 3;
             nest--;
             if (!nest) break;
@@ -52,10 +54,10 @@ static ERROR count_tags(objXML *Self, CSTRING Text, CSTRING *Result)
 
    // Comment handling
 
-   if ((Text[0] IS '!') AND (Text[1] IS '-') AND (Text[2] IS '-')) {
+   if ((Text[0] IS '!') and (Text[1] IS '-') and (Text[2] IS '-')) {
       Text += 3;
       while (*Text) {
-         if ((Text[0] IS '-') AND (Text[1] IS '-') AND (Text[2] IS '>')) {
+         if ((Text[0] IS '-') and (Text[1] IS '-') and (Text[2] IS '>')) {
             Text += 3;
             if (Self->Flags & XMF_INCLUDE_COMMENTS) Self->TagCount++;
             *Result = Text;
@@ -64,22 +66,22 @@ static ERROR count_tags(objXML *Self, CSTRING Text, CSTRING *Result)
          Text++;
       }
 
-      LogF("@count_tags","Unterminated comment detected.");
+      log.warning("Unterminated comment detected.");
       return ERR_InvalidData;
    }
 
    // Skip past the tag's attributes
 
    CSTRING str = Text;
-   while ((*str) AND (*str != '>')) {
-      if ((str[0] IS '/') AND (str[1] IS '>')) break;
+   while ((*str) and (*str != '>')) {
+      if ((str[0] IS '/') and (str[1] IS '>')) break;
 
       skipwhitespace(str);
 
-      if ((!*str) OR (*str IS '>') OR ((*str IS '/') AND (str[1] IS '>')) OR (*str IS '=')) break;
+      if ((!*str) or (*str IS '>') or ((*str IS '/') and (str[1] IS '>')) or (*str IS '=')) break;
 
-      while ((*str > 0x20) AND (*str != '>') AND (*str != '=')) { // Tag name
-         if ((str[0] IS '/') AND (str[1] IS '>')) break;
+      while ((*str > 0x20) and (*str != '>') and (*str != '=')) { // Tag name
+         if ((str[0] IS '/') and (str[1] IS '>')) break;
          str++;
       }
 
@@ -90,42 +92,42 @@ static ERROR count_tags(objXML *Self, CSTRING Text, CSTRING *Result)
          skipwhitespace(str);
          if (*str IS '"') {
             str++;
-            while ((*str) AND (*str != '"')) str++;
+            while ((*str) and (*str != '"')) str++;
             if (*str IS '"') str++;
          }
          else if (*str IS '\'') {
             str++;
-            while ((*str) AND (*str != '\'')) str++;
+            while ((*str) and (*str != '\'')) str++;
             if (*str IS '\'') str++;
          }
-         else while ((*str > 0x20) AND (*str != '>')) {
-            if ((str[0] IS '/') AND (str[1] IS '>')) break;
+         else while ((*str > 0x20) and (*str != '>')) {
+            if ((str[0] IS '/') and (str[1] IS '>')) break;
             str++;
          }
       }
       else if (*str IS '"') { // Notation attributes don't have names
          str++;
-         while ((*str) AND (*str != '"')) str++;
+         while ((*str) and (*str != '"')) str++;
          if (*str IS '"') str++;
       }
    }
 
-   if ((*str IS '>') AND (*Text != '!') AND (*Text != '?')) {
+   if ((*str IS '>') and (*Text != '!') and (*Text != '?')) {
       // The tag is open.  Scan the content within it and handle any child tags.
 
       str++;
       if (!(Self->Flags & XMF_ALL_CONTENT)) skipwhitespace(str);
       if (*str != '<') {
-         while ((*str) AND (*str != '<')) str++;
+         while ((*str) and (*str != '<')) str++;
          if (!(Self->Flags & XMF_STRIP_CONTENT)) Self->TagCount++; // A content tag will be required
       }
 
-      while ((str[0] IS '<') AND (str[1] != '/')) {
+      while ((str[0] IS '<') and (str[1] != '/')) {
          ERROR error;
          if (!(error = count_tags(Self, str, &str))) {
             if (!(Self->Flags & XMF_ALL_CONTENT)) skipwhitespace(str);
             if (*str != '<') {
-               while ((*str) AND (*str != '<')) str++;
+               while ((*str) and (*str != '<')) str++;
                if (!(Self->Flags & XMF_STRIP_CONTENT)) Self->TagCount++; // An embedded content tag will be required
             }
          }
@@ -134,15 +136,15 @@ static ERROR count_tags(objXML *Self, CSTRING Text, CSTRING *Result)
 
       // There should be a closing tag - skip past it
 
-      if ((str[0] IS '<') AND (str[1] IS '/')) {
-         while ((*str) AND (*str != '>')) str++;
+      if ((str[0] IS '<') and (str[1] IS '/')) {
+         while ((*str) and (*str != '>')) str++;
       }
 
       if (*str IS '>') str++;
    }
-   else if ((str[0] IS '/') AND (str[1] IS '>')) str += 2;
+   else if ((str[0] IS '/') and (str[1] IS '>')) str += 2;
 
-   if ((Self->Flags & XMF_STRIP_HEADERS) AND ((*Text IS '?') OR (*Text IS '!'))); // Ignore headers (no tag count increase)
+   if ((Self->Flags & XMF_STRIP_HEADERS) and ((*Text IS '?') or (*Text IS '!'))); // Ignore headers (no tag count increase)
    else Self->TagCount++;
 
    *Result = str;
@@ -155,7 +157,9 @@ static ERROR count_tags(objXML *Self, CSTRING Text, CSTRING *Result)
 
 static ERROR txt_to_xml(objXML *Self, CSTRING Text)
 {
-   if ((!Self) OR (!Text)) return ERR_NullArgs;
+   parasol::Log log(__FUNCTION__);
+
+   if ((!Self) or (!Text)) return ERR_NullArgs;
 
    Self->Balance = 0;
    Self->LineNo = 1;
@@ -165,25 +169,25 @@ static ERROR txt_to_xml(objXML *Self, CSTRING Text)
    // Perform a count of the total amount of tags specified (closing tags excluded)
 
    CSTRING str;
-   for (str=Text; (*str) AND (*str != '<'); str++);
-   while ((str[0] IS '<') AND (str[1] != '/')) {
+   for (str=Text; (*str) and (*str != '<'); str++);
+   while ((str[0] IS '<') and (str[1] != '/')) {
       if (count_tags(Self, str, &str) != ERR_Okay) {
-         LogErrorMsg("Aborting XML interpretation process.");
+         log.warning("Aborting XML interpretation process.");
          return ERR_InvalidData;
       }
-      while ((*str) AND (*str != '<')) str++;
+      while ((*str) and (*str != '<')) str++;
    }
 
    if (Self->TagCount < 1) {
-      LogErrorMsg("There are no valid tags in the XML statement.");
+      log.warning("There are no valid tags in the XML statement.");
       return ERR_NoData;
    }
 
-   MSG("Detected %d raw and content based tags, options $%.8x.", Self->TagCount, Self->Flags);
+   log.trace("Detected %d raw and content based tags, options $%.8x.", Self->TagCount, Self->Flags);
 
    // Allocate an array to hold all of the XML tags
 
-   struct XMLTag **tag;
+   XMLTag **tag;
    if (AllocMemory(sizeof(APTR) * (Self->TagCount + 1), MEM_DATA|MEM_UNTRACKED, &tag, NULL) != ERR_Okay) {
       return ERR_AllocMemory;
    }
@@ -194,25 +198,25 @@ static ERROR txt_to_xml(objXML *Self, CSTRING Text)
    // Extract the tag information.  This loop will extract the top-level tags.  The extract_tag() function is recursive
    // to extract the child tags.
 
-   MSG("Extracting tag information with extract_tag()");
+   log.trace("Extracting tag information with extract_tag()");
 
-   struct exttag ext = { .Start = Text, .TagIndex = 0, .Branch = 0 };
-   struct XMLTag *prevtag = NULL;
-   for (str=Text; (*str) AND (*str != '<'); str++) if (*str IS '\n') Self->LineNo++;
+   exttag ext = { .Start = Text, .TagIndex = 0, .Branch = 0 };
+   XMLTag *prevtag = NULL;
+   for (str=Text; (*str) and (*str != '<'); str++) if (*str IS '\n') Self->LineNo++;
    ext.Pos = str;
-   while ((ext.Pos[0] IS '<') AND (ext.Pos[1] != '/')) {
+   while ((ext.Pos[0] IS '<') and (ext.Pos[1] != '/')) {
       LONG i = ext.TagIndex; // Remember the current tag index before extract_tag() changes it
 
       ERROR error = extract_tag(Self, &ext);
 
-      if ((error != ERR_Okay) AND (error != ERR_NothingDone)) {
-         LogErrorMsg("Aborting XML interpretation process.");
+      if ((error != ERR_Okay) and (error != ERR_NothingDone)) {
+         log.warning("Aborting XML interpretation process.");
          return ERR_InvalidData;
       }
 
       // Skip content/whitespace to get to the next tag
       str = ext.Pos;
-      while ((*str) AND (*str != '<')) { if (*str IS '\n') Self->LineNo++; str++; }
+      while ((*str) and (*str != '<')) { if (*str IS '\n') Self->LineNo++; str++; }
       ext.Pos = str;
 
       if (error IS ERR_NothingDone) continue;
@@ -224,18 +228,17 @@ static ERROR txt_to_xml(objXML *Self, CSTRING Text)
    // If the XML statement contained errors such as unclosed tags, the tag count may be greater than the actual number of tags
    // loaded.  This routine checks that the expected tag count matches what was extracted.
 
-   LONG tagindex;
-   for (tagindex=0; tagindex < Self->TagCount; tagindex++) {
-      if (!Self->Tags[tagindex]) {
-         if (Self->Flags & XMF_WELL_FORMED) return PostError(ERR_UnbalancedXML);
+   for (LONG ti=0; ti < Self->TagCount; ti++) {
+      if (!Self->Tags[ti]) {
+         if (Self->Flags & XMF_WELL_FORMED) return log.warning(ERR_UnbalancedXML);
 
-         LogErrorMsg("Non-fatal error - %d tags expected, loaded %d.", Self->TagCount, tagindex);
-         if (tagindex > 0) {
-            Self->Tags[tagindex-1]->Next = NULL;
-            Self->Tags[tagindex-1]->Child = NULL;
+         log.warning("Non-fatal error - %d tags expected, loaded %d.", Self->TagCount, ti);
+         if (ti > 0) {
+            Self->Tags[ti-1]->Next = NULL;
+            Self->Tags[ti-1]->Child = NULL;
          }
-         Self->Tags[tagindex] = 0;
-         Self->TagCount = tagindex;
+         Self->Tags[ti] = 0;
+         Self->TagCount = ti;
          break;
       }
    }
@@ -243,15 +246,12 @@ static ERROR txt_to_xml(objXML *Self, CSTRING Text)
    // If the WELL_FORMED flag has been used, check that the tags balance.  If they don't then return ERR_InvalidData.
 
    if (Self->Flags & XMF_WELL_FORMED) {
-      if (Self->Balance != 0) {
-         return PostError(ERR_UnbalancedXML);
-      }
+      if (Self->Balance != 0) return log.warning(ERR_UnbalancedXML);
    }
 
    // Set the Prev and Index fields
 
-   LONG i;
-   for (i=0; i < Self->TagCount; i++) {
+   for (LONG i=0; i < Self->TagCount; i++) {
       Self->Tags[i]->Index = i;
       if (Self->Tags[i]->Next) Self->Tags[i]->Next->Prev = Self->Tags[i];
    }
@@ -259,41 +259,38 @@ static ERROR txt_to_xml(objXML *Self, CSTRING Text)
    // Upper/lowercase transformations
 
    if (Self->Flags & XMF_UPPER_CASE) {
-      MSG("Performing uppercase translations.");
+      log.trace("Performing uppercase translations.");
       STRING str;
-      for (i=0; i < Self->TagCount; i++) {
-         LONG j;
-         for (j=0; j < Self->Tags[i]->TotalAttrib; j++) {
+      for (LONG i=0; i < Self->TagCount; i++) {
+         for (LONG j=0; j < Self->Tags[i]->TotalAttrib; j++) {
             if ((str = Self->Tags[i]->Attrib[j].Name)) {
-               while (*str) { if ((*str >= 'a') AND (*str <= 'z')) *str = *str - 'a' + 'A'; str++; }
+               while (*str) { if ((*str >= 'a') and (*str <= 'z')) *str = *str - 'a' + 'A'; str++; }
             }
             if ((str = Self->Tags[i]->Attrib[j].Value)) {
-               while (*str) { if ((*str >= 'a') AND (*str <= 'z')) *str = *str - 'a' + 'A'; str++; }
+               while (*str) { if ((*str >= 'a') and (*str <= 'z')) *str = *str - 'a' + 'A'; str++; }
             }
          }
       }
    }
    else if (Self->Flags & XMF_LOWER_CASE) {
-      MSG("Performing lowercase translations.");
-      for (i=0; i < Self->TagCount; i++) {
-         LONG j;
-         for (j=0; j < Self->Tags[i]->TotalAttrib; j++) {
+      log.trace("Performing lowercase translations.");
+      for (LONG i=0; i < Self->TagCount; i++) {
+         for (LONG j=0; j < Self->Tags[i]->TotalAttrib; j++) {
             STRING str;
             if ((str = Self->Tags[i]->Attrib[j].Name)) {
-               while (*str) { if ((*str >= 'A') AND (*str <= 'Z')) *str = *str - 'A' + 'a'; str++; }
+               while (*str) { if ((*str >= 'A') and (*str <= 'Z')) *str = *str - 'A' + 'a'; str++; }
             }
             if ((str = Self->Tags[i]->Attrib[j].Value)) {
-               while (*str) { if ((*str >= 'A') AND (*str <= 'Z')) *str = *str - 'A' + 'a'; str++; }
+               while (*str) { if ((*str >= 'A') and (*str <= 'Z')) *str = *str - 'A' + 'a'; str++; }
             }
          }
       }
    }
 
    if (!(Self->Flags & XMF_NO_ESCAPE)) {
-      MSG("Unescaping XML.");
-      LONG i, j;
-      for (i=0; i < Self->TagCount; i++) {
-         for (j=0; j < Self->Tags[i]->TotalAttrib; j++) {
+      log.trace("Unescaping XML.");
+      for (LONG i=0; i < Self->TagCount; i++) {
+         for (LONG j=0; j < Self->Tags[i]->TotalAttrib; j++) {
             if (!Self->Tags[i]->Attrib[j].Value) continue;
             if (Self->Tags[i]->CData) continue;
             xml_unescape(Self, Self->Tags[i]->Attrib[j].Value);
@@ -301,7 +298,7 @@ static ERROR txt_to_xml(objXML *Self, CSTRING Text)
       }
    }
 
-   MSG("XML parsing complete.");
+   log.trace("XML parsing complete.");
    return ERR_Okay;
 }
 
@@ -312,47 +309,47 @@ static CSTRING extract_tag_attrib(objXML *Self, CSTRING Str, LONG *AttribSize, W
 {
    CSTRING str = Str;
    LONG size = 0;
-   while ((*str) AND (*str != '>')) {
-      if ((str[0] IS '/') AND (str[1] IS '>')) break; // Termination checks
-      if ((str[0] IS '?') AND (str[1] IS '>')) break;
+   while ((*str) and (*str != '>')) {
+      if ((str[0] IS '/') and (str[1] IS '>')) break; // Termination checks
+      if ((str[0] IS '?') and (str[1] IS '>')) break;
 
-      while ((*str) AND (*str <= 0x20)) { if (*str IS '\n') Self->LineNo++; str++; }
-      if ((*str IS 0) OR (*str IS '>') OR (((*str IS '/') OR (*str IS '?')) AND (str[1] IS '>'))) break;
+      while ((*str) and (*str <= 0x20)) { if (*str IS '\n') Self->LineNo++; str++; }
+      if ((*str IS 0) or (*str IS '>') or (((*str IS '/') or (*str IS '?')) and (str[1] IS '>'))) break;
 
       if (*str IS '=') return NULL; // Check for invalid XML
 
       if (*str IS '"') { // Notation values can start with double quotes and have no name.
          str++;
-         while ((*str) AND (*str != '"')) { size++; str++; }
+         while ((*str) and (*str != '"')) { size++; str++; }
          if (*str IS '"') str++;
          size++; // String termination byte
       }
       else {
-         while ((*str > 0x20) AND (*str != '>') AND (*str != '=')) {
-            if ((str[0] IS '/') AND (str[1] IS '>')) break;
-            if ((str[0] IS '?') AND (str[1] IS '>')) break;
+         while ((*str > 0x20) and (*str != '>') and (*str != '=')) {
+            if ((str[0] IS '/') and (str[1] IS '>')) break;
+            if ((str[0] IS '?') and (str[1] IS '>')) break;
             str++; size++;
          }
          size++; // String termination byte
 
-         while ((*str) AND (*str <= 0x20)) { if (*str IS '\n') Self->LineNo++; str++; }
+         while ((*str) and (*str <= 0x20)) { if (*str IS '\n') Self->LineNo++; str++; }
 
          if (*str IS '=') {
             str++;
-            while ((*str) AND (*str <= 0x20)) { if (*str IS '\n') Self->LineNo++; str++; }
+            while ((*str) and (*str <= 0x20)) { if (*str IS '\n') Self->LineNo++; str++; }
             if (*str IS '"') {
                str++;
-               while ((*str) AND (*str != '"')) { if (*str IS '\n') Self->LineNo++; str++; size++; }
+               while ((*str) and (*str != '"')) { if (*str IS '\n') Self->LineNo++; str++; size++; }
                if (*str IS '"') str++;
             }
             else if (*str IS '\'') {
                str++;
-               while ((*str) AND (*str != '\'')) { if (*str IS '\n') Self->LineNo++; str++; size++; }
+               while ((*str) and (*str != '\'')) { if (*str IS '\n') Self->LineNo++; str++; size++; }
                if (*str IS '\'') str++;
             }
-            else while ((*str > 0x20) AND (*str != '>')) {
-               if ((str[0] IS '/') AND (str[1] IS '>')) break;
-               if ((str[0] IS '?') AND (str[1] IS '>')) break;
+            else while ((*str > 0x20) and (*str != '>')) {
+               if ((str[0] IS '/') and (str[1] IS '>')) break;
+               if ((str[0] IS '?') and (str[1] IS '>')) break;
                str++; size++;
             }
 
@@ -370,12 +367,14 @@ static CSTRING extract_tag_attrib(objXML *Self, CSTRING Str, LONG *AttribSize, W
 //****************************************************************************
 // Called by txt_to_xml() to extract the next tag from an XML string.  This function also recurses into itself.
 
-static ERROR extract_tag(objXML *Self, struct exttag *Status)
+static ERROR extract_tag(objXML *Self, exttag *Status)
 {
-   FMSG("extract_tag()","Index: %d, Level: %d, %.30s", Status->TagIndex, Status->Branch, Status->Pos);
+   parasol::Log log(__FUNCTION__);
+
+   log.traceBranch("Index: %d, Level: %d, %.30s", Status->TagIndex, Status->Branch, Status->Pos);
 
    if (Status->Pos[0] != '<') {
-      LogErrorMsg("Malformed XML statement detected.");
+      log.warning("Malformed XML statement detected.");
       return ERR_InvalidData;
    }
 
@@ -390,7 +389,7 @@ static ERROR extract_tag(objXML *Self, struct exttag *Status)
             return ERR_NothingDone;
          }
          else {
-            LogErrorMsg("Detected malformed comment (missing --> terminator).");
+            log.warning("Detected malformed comment (missing --> terminator).");
             return ERR_InvalidData;
          }
       }
@@ -399,7 +398,7 @@ static ERROR extract_tag(objXML *Self, struct exttag *Status)
    // Check that the tag index does not exceed the total number of calculated tags
 
    if (Status->TagIndex >= Self->TagCount) {
-      LogErrorMsg("Ran out of array space for tag extraction (expected %d tags).", Status->TagIndex);
+      log.warning("Ran out of array space for tag extraction (expected %d tags).", Status->TagIndex);
       return ERR_ArrayFull;
    }
 
@@ -419,7 +418,7 @@ static ERROR extract_tag(objXML *Self, struct exttag *Status)
 
       if (raw_content IS 1) {
          for (len=0; str[len]; len++) {
-            if ((str[len] IS ']') AND (str[len+1] IS ']') AND (str[len+2] IS '>')) {
+            if ((str[len] IS ']') and (str[len+1] IS ']') and (str[len+2] IS '>')) {
                break;
             }
             else if (str[len] IS '\n') Self->LineNo++;
@@ -428,12 +427,12 @@ static ERROR extract_tag(objXML *Self, struct exttag *Status)
       else if (raw_content IS 2) {
          UWORD nest = 1;
          for (len=0; str[len]; len++) {
-            if ((str[len] IS '<') AND (str[len+1] IS '!') AND (str[len+2] IS '[') AND
-                ((str[len+3] IS 'N') OR (str[len+3] IS 'C')) AND (str[len+4] IS 'D') AND (str[len+5] IS 'A') AND (str[len+6] IS 'T') AND (str[len+7] IS 'A')  AND (str[len+8] IS '[')) {
+            if ((str[len] IS '<') and (str[len+1] IS '!') and (str[len+2] IS '[') and
+                ((str[len+3] IS 'N') or (str[len+3] IS 'C')) and (str[len+4] IS 'D') and (str[len+5] IS 'A') and (str[len+6] IS 'T') and (str[len+7] IS 'A')  and (str[len+8] IS '[')) {
                nest++;
                len += 7;
             }
-            else if ((str[len] IS ']') AND (str[len+1] IS ']') AND (str[len+2] IS '>')) {
+            else if ((str[len] IS ']') and (str[len+1] IS ']') and (str[len+2] IS '>')) {
                nest--;
                if (!nest) break;
             }
@@ -443,27 +442,27 @@ static ERROR extract_tag(objXML *Self, struct exttag *Status)
 
       // CDATA counts as content and therefore can be stripped out
 
-      if ((Self->Flags & XMF_STRIP_CONTENT) OR (!len)) {
+      if ((Self->Flags & XMF_STRIP_CONTENT) or (!len)) {
          Status->Pos = str + len + 3;
          return ERR_NothingDone;
       }
 
       if (!str[len]) {
-         LogErrorMsg("Malformed XML:  A CDATA section is missing its closing string.");
+         log.warning("Malformed XML:  A CDATA section is missing its closing string.");
          return ERR_InvalidData;
       }
 
       // CDATA sections are assimilated into the parent tag as content
 
-      struct XMLTag *tag;
-      if (!AllocMemory(sizeof(struct XMLTag) + Self->PrivateDataSize + sizeof(struct XMLAttrib) + len + 1,
+      XMLTag *tag;
+      if (!AllocMemory(sizeof(XMLTag) + Self->PrivateDataSize + sizeof(XMLAttrib) + len + 1,
             MEM_UNTRACKED|MEM_NO_CLEAR, &tag, NULL)) {
 
-         ClearMemory(tag, sizeof(struct XMLTag) + Self->PrivateDataSize + sizeof(struct XMLAttrib));
+         ClearMemory(tag, sizeof(XMLTag) + Self->PrivateDataSize + sizeof(XMLAttrib));
 
          Self->Tags[Status->TagIndex] = tag;
-         tag->Private     = ((APTR)tag) + sizeof(struct XMLTag);
-         tag->Attrib      = ((APTR)tag) + sizeof(struct XMLTag) + Self->PrivateDataSize;
+         tag->Private     = (BYTE *)tag + sizeof(XMLTag);
+         tag->Attrib      = (XMLAttrib *)((BYTE *)tag + sizeof(XMLTag) + Self->PrivateDataSize);
          tag->TotalAttrib = 1;
          tag->ID          = glTagID++;
          tag->AttribSize  = len + 1;
@@ -471,7 +470,7 @@ static ERROR extract_tag(objXML *Self, struct exttag *Status)
          tag->Branch      = Status->Branch;
          tag->LineNo      = line_no;
 
-         STRING buffer = ((APTR)tag->Attrib) + sizeof(struct XMLAttrib);
+         STRING buffer = (char *)tag->Attrib + sizeof(XMLAttrib);
 
          tag->Attrib->Name  = NULL;
          tag->Attrib->Value = buffer;
@@ -491,9 +490,9 @@ static ERROR extract_tag(objXML *Self, struct exttag *Status)
    LONG attribsize = 0;
    WORD totalattrib = 0;
    str = extract_tag_attrib(Self, str, &attribsize, &totalattrib);
-   if (!str) return PostError(ERR_InvalidData);
+   if (!str) return log.warning(ERR_InvalidData);
 
-   if ((Status->Pos[1] IS '?') OR (Status->Pos[1] IS '!')) {
+   if ((Status->Pos[1] IS '?') or (Status->Pos[1] IS '!')) {
       if (Self->Flags & XMF_PARSE_ENTITY) {
          if (!StrCompare("!DOCTYPE", Status->Pos+1, 7, 0)) {
             parse_doctype(Self, Status->Pos+7);
@@ -508,17 +507,17 @@ static ERROR extract_tag(objXML *Self, struct exttag *Status)
    }
 
    if (totalattrib <= 0) {
-      LogErrorMsg("Failed to extract a tag from \"%.10s\" (offset %d), index %d, nest %d.", Status->Pos, (LONG)(Status->Pos - Status->Start), Status->TagIndex, Status->Branch);
+      log.warning("Failed to extract a tag from \"%.10s\" (offset %d), index %d, nest %d.", Status->Pos, (LONG)(Status->Pos - Status->Start), Status->TagIndex, Status->Branch);
       return ERR_InvalidData;
    }
 
-   struct XMLTag *tag;
-   if (AllocMemory(sizeof(struct XMLTag) + Self->PrivateDataSize + (sizeof(struct XMLAttrib) * totalattrib) + attribsize, MEM_UNTRACKED, &tag, NULL) != ERR_Okay) {
-      return PostError(ERR_AllocMemory);
+   XMLTag *tag;
+   if (AllocMemory(sizeof(XMLTag) + Self->PrivateDataSize + (sizeof(XMLAttrib) * totalattrib) + attribsize, MEM_UNTRACKED, &tag, NULL) != ERR_Okay) {
+      return log.warning(ERR_AllocMemory);
    }
 
-   tag->Private     = ((APTR)tag) + sizeof(struct XMLTag);
-   tag->Attrib      = ((APTR)tag) + sizeof(struct XMLTag) + Self->PrivateDataSize;
+   tag->Private     = ((BYTE *)tag) + sizeof(XMLTag);
+   tag->Attrib      = (XMLAttrib *)(((BYTE *)tag) + sizeof(XMLTag) + Self->PrivateDataSize);
    tag->TotalAttrib = totalattrib;
    tag->AttribSize  = attribsize;
    tag->ID          = glTagID++;
@@ -531,20 +530,20 @@ static ERROR extract_tag(objXML *Self, struct exttag *Status)
 
    // Extract all attributes within the tag
 
-   STRING buffer = ((APTR)tag->Attrib) + (sizeof(struct XMLAttrib) * tag->TotalAttrib);
+   STRING buffer = ((char *)tag->Attrib) + (sizeof(XMLAttrib) * tag->TotalAttrib);
    str    = Status->Pos+1;
    if (*str IS '?') tag->Instruction = TRUE; // Detect <?xml ?> style instruction elements.
-   else if ((*str IS '!') AND (str[1] >= 'A') AND (str[1] <= 'Z')) tag->Notation = TRUE;
+   else if ((*str IS '!') and (str[1] >= 'A') and (str[1] <= 'Z')) tag->Notation = TRUE;
 
    LONG a = 0;
-   while ((*str) AND (*str <= 0x20)) { if (*str IS '\n') Self->LineNo++; str++; }
-   while ((*str) AND (*str != '>')) {
-      if ((str[0] IS '/') AND (str[1] IS '>')) break; // Termination checks
-      if ((str[0] IS '?') AND (str[1] IS '>')) break;
+   while ((*str) and (*str <= 0x20)) { if (*str IS '\n') Self->LineNo++; str++; }
+   while ((*str) and (*str != '>')) {
+      if ((str[0] IS '/') and (str[1] IS '>')) break; // Termination checks
+      if ((str[0] IS '?') and (str[1] IS '>')) break;
 
-      if (*str IS '=') return PostError(ERR_InvalidData);
+      if (*str IS '=') return log.warning(ERR_InvalidData);
 
-      if (a >= tag->TotalAttrib) return PostError(ERR_BufferOverflow);
+      if (a >= tag->TotalAttrib) return log.warning(ERR_BufferOverflow);
 
       // Extract the name of the attribute
 
@@ -553,9 +552,9 @@ static ERROR extract_tag(objXML *Self, struct exttag *Status)
       }
       else {
          tag->Attrib[a].Name = buffer;
-         while ((*str > 0x20) AND (*str != '>') AND (*str != '=')) {
-            if ((str[0] IS '/') AND (str[1] IS '>')) break;
-            if ((str[0] IS '?') AND (str[1] IS '>')) break;
+         while ((*str > 0x20) and (*str != '>') and (*str != '=')) {
+            if ((str[0] IS '/') and (str[1] IS '>')) break;
+            if ((str[0] IS '?') and (str[1] IS '>')) break;
             *buffer++ = *str++;
          }
          *buffer++ = 0;
@@ -563,46 +562,46 @@ static ERROR extract_tag(objXML *Self, struct exttag *Status)
 
       // Extract the attributes value
 
-      while ((*str) AND (*str <= 0x20)) { if (*str IS '\n') Self->LineNo++; str++; }
+      while ((*str) and (*str <= 0x20)) { if (*str IS '\n') Self->LineNo++; str++; }
 
       if (*str IS '=') {
          str++;
-         while ((*str) AND (*str <= 0x20)) { if (*str IS '\n') Self->LineNo++; str++; }
+         while ((*str) and (*str <= 0x20)) { if (*str IS '\n') Self->LineNo++; str++; }
          tag->Attrib[a].Value = buffer;
          if (*str IS '"') {
             str++;
-            while ((*str) AND (*str != '"')) { if (*str IS '\n') Self->LineNo++; *buffer++ = *str++; }
+            while ((*str) and (*str != '"')) { if (*str IS '\n') Self->LineNo++; *buffer++ = *str++; }
             if (*str IS '"') str++;
          }
          else if (*str IS '\'') {
             str++;
-            while ((*str) AND (*str != '\'')) { if (*str IS '\n') Self->LineNo++; *buffer++ = *str++; }
+            while ((*str) and (*str != '\'')) { if (*str IS '\n') Self->LineNo++; *buffer++ = *str++; }
             if (*str IS '\'') str++;
          }
          else {
-            while ((*str > 0x20) AND (*str != '>')) {
-               if ((str[0] IS '/') AND (str[1] IS '>')) break;
+            while ((*str > 0x20) and (*str != '>')) {
+               if ((str[0] IS '/') and (str[1] IS '>')) break;
                *buffer++ = *str++;
             }
          }
 
          *buffer++ = 0;
       }
-      else if ((!tag->Attrib[a].Name) AND (*str IS '"')) { // Detect notation value with no name
+      else if ((!tag->Attrib[a].Name) and (*str IS '"')) { // Detect notation value with no name
          tag->Attrib[a].Value = buffer;
          str++;
-         while ((*str) AND (*str != '"')) { if (*str IS '\n') Self->LineNo++; *buffer++ = *str++; }
+         while ((*str) and (*str != '"')) { if (*str IS '\n') Self->LineNo++; *buffer++ = *str++; }
          if (*str IS '"') str++;
          *buffer++ = 0;
       }
 
       a++;
-      while ((*str) AND (*str <= 0x20)) { if (*str IS '\n') Self->LineNo++; str++; }
+      while ((*str) and (*str <= 0x20)) { if (*str IS '\n') Self->LineNo++; str++; }
    }
 
    Status->Pos = str;
 
-   if ((*Status->Pos IS '>') AND (tag->Attrib->Name[0] != '!') AND (tag->Attrib->Name[0] != '?')) {
+   if ((*Status->Pos IS '>') and (tag->Attrib->Name[0] != '!') and (tag->Attrib->Name[0] != '?')) {
       // We reached the end of an unclosed tag.  Extract the content within it and handle any child tags.
 
       LONG index = Status->TagIndex; // Remember the current tag position
@@ -614,8 +613,8 @@ static ERROR extract_tag(objXML *Self, struct exttag *Status)
       if (!error) tag->Child = Self->Tags[index]; // Point our tag to the extract content
       else if (error != ERR_NoData) return error;
 
-      struct XMLTag *child_content = tag->Child;
-      while ((Status->Pos[0] IS '<') AND (Status->Pos[1] != '/')) {
+      XMLTag *child_content = tag->Child;
+      while ((Status->Pos[0] IS '<') and (Status->Pos[1] != '/')) {
          index = Status->TagIndex; // Remember the current tag index before extract_tag() changes it
 
          Status->Branch++;
@@ -658,15 +657,15 @@ static ERROR extract_tag(objXML *Self, struct exttag *Status)
 
       // There should be a closing tag - skip past it
 
-      if ((Status->Pos[0] IS '<') AND (Status->Pos[1] IS '/')) {
+      if ((Status->Pos[0] IS '<') and (Status->Pos[1] IS '/')) {
          Self->Balance--;
-         while ((*Status->Pos) AND (*Status->Pos != '>')) { if (*Status->Pos IS '\n') Self->LineNo++; Status->Pos++; }
+         while ((*Status->Pos) and (*Status->Pos != '>')) { if (*Status->Pos IS '\n') Self->LineNo++; Status->Pos++; }
       }
 
       if (*Status->Pos IS '>') Status->Pos++;
    }
    else {
-      if ((Status->Pos[0] IS '/') AND (Status->Pos[1] IS '>')) Status->Pos += 2;
+      if ((Status->Pos[0] IS '/') and (Status->Pos[1] IS '>')) Status->Pos += 2;
       Self->Balance--;
    }
 
@@ -675,9 +674,10 @@ static ERROR extract_tag(objXML *Self, struct exttag *Status)
 
 //****************************************************************************
 
-static ERROR extract_content(objXML *Self, struct exttag *Status)
+static ERROR extract_content(objXML *Self, exttag *Status)
 {
-   struct XMLTag *tag;
+   parasol::Log log(__FUNCTION__);
+   XMLTag *tag;
    STRING buffer;
    LONG i, len;
 
@@ -686,43 +686,43 @@ static ERROR extract_content(objXML *Self, struct exttag *Status)
 
    CSTRING str = Status->Pos;
    if (!(Self->Flags & XMF_ALL_CONTENT)) {
-      while ((*str) AND (*str <= 0x20)) { if (*str IS '\n') Self->LineNo++; str++; }
+      while ((*str) and (*str <= 0x20)) { if (*str IS '\n') Self->LineNo++; str++; }
       if (*str != '<') str = Status->Pos;
    }
 
    // If the STRIP_CONTENT flag is set, we simply skip over the content and return a NODATA error code.
 
    if (Self->Flags & XMF_STRIP_CONTENT) {
-      while ((*str) AND (*str != '<')) { if (*str IS '\n') Self->LineNo++; str++; }
+      while ((*str) and (*str != '<')) { if (*str IS '\n') Self->LineNo++; str++; }
       Status->Pos = str;
       return ERR_NoData;
    }
 
    // Count size of the content and skip carriage returns (^M)
 
-   for (i=0, len=0; (str[i]) AND (str[i] != '<'); i++) {
+   for (i=0, len=0; (str[i]) and (str[i] != '<'); i++) {
       if (str[i] != '\r') len++;
    }
 
    if (len > 0) {
-      if (!AllocMemory(sizeof(struct XMLTag) + Self->PrivateDataSize + sizeof(struct XMLAttrib) + len + 1,
+      if (!AllocMemory(sizeof(XMLTag) + Self->PrivateDataSize + sizeof(XMLAttrib) + len + 1,
             MEM_UNTRACKED|MEM_NO_CLEAR, &tag, NULL)) {
 
-         ClearMemory(tag, sizeof(struct XMLTag) + Self->PrivateDataSize + sizeof(struct XMLAttrib));
+         ClearMemory(tag, sizeof(XMLTag) + Self->PrivateDataSize + sizeof(XMLAttrib));
 
          Self->Tags[Status->TagIndex] = tag;
-         tag->Private     = ((APTR)tag) + sizeof(struct XMLTag);
-         tag->Attrib      = ((APTR)tag) + sizeof(struct XMLTag) + Self->PrivateDataSize;
+         tag->Private     = (BYTE *)tag + sizeof(XMLTag);
+         tag->Attrib      = (XMLAttrib *)((BYTE *)tag + sizeof(XMLTag) + Self->PrivateDataSize);
          tag->TotalAttrib = 1;
          tag->AttribSize  = len + 1;
          tag->Branch        = Status->Branch;
 
-         buffer = ((APTR)tag->Attrib) + sizeof(struct XMLAttrib);
+         buffer = (BYTE *)tag->Attrib + sizeof(XMLAttrib);
 
          tag->Attrib->Name  = NULL;
          tag->Attrib->Value = buffer;
 
-         while ((*str) AND (*str != '<')) {
+         while ((*str) and (*str != '<')) {
             if (*str IS '\n') Self->LineNo++;
             if (*str != '\r') *buffer++ = *str++;
             else str++;
@@ -734,7 +734,7 @@ static ERROR extract_content(objXML *Self, struct exttag *Status)
          return ERR_Okay;
       }
       else {
-         while ((*str) AND (*str != '<')) { if (*str IS '\n') Self->LineNo++; str++; } // Skip content
+         while ((*str) and (*str != '<')) { if (*str IS '\n') Self->LineNo++; str++; } // Skip content
          Status->Pos = str;
          return ERR_AllocMemory;
       }
@@ -752,8 +752,7 @@ static LONG attrib_len(CSTRING String)
 {
    LONG len = 0;
    if (String) {
-      LONG j;
-      for (j=0; String[j]; j++) {
+      for (LONG j=0; String[j]; j++) {
          switch (String[j]) {
             case '&':  len += 5; break;
             case '<':  len += 4; break;
@@ -770,9 +769,8 @@ static LONG attrib_len(CSTRING String)
 static LONG output_attribvalue(CSTRING String, STRING Output)
 {
    LONG i = 0;
-   if ((String) AND (Output)) {
-      LONG j;
-      for (j=0; String[j]; j++) {
+   if ((String) and (Output)) {
+      for (LONG j=0; String[j]; j++) {
          switch (String[j]) {
             case '&':  Output[i++] = '&'; Output[i++] = 'a'; Output[i++] = 'm'; Output[i++] = 'p'; Output[i++] = ';'; break;
             case '<':  Output[i++] = '&'; Output[i++] = 'l'; Output[i++] = 't'; Output[i++] = ';'; break;
@@ -790,8 +788,7 @@ static LONG content_len(CSTRING String)
 {
    LONG len = 0;
    if (String) {
-      LONG j;
-      for (j=0; String[j]; j++) {
+      for (LONG j=0; String[j]; j++) {
          switch (String[j]) {
             case '&':  len += 5; break;
             case '<':  len += 4; break;
@@ -806,9 +803,8 @@ static LONG content_len(CSTRING String)
 static LONG content_output(CSTRING String, STRING Output)
 {
    LONG i = 0;
-   if ((String) AND (Output)) {
-      LONG j;
-      for (j=0; String[j]; j++) {
+   if ((String) and (Output)) {
+      for (LONG j=0; String[j]; j++) {
          switch (String[j]) {
             case '&':  Output[i++] = '&'; Output[i++] = 'a'; Output[i++] = 'm'; Output[i++] = 'p'; Output[i++] = ';'; break;
             case '<':  Output[i++] = '&'; Output[i++] = 'l'; Output[i++] = 't'; Output[i++] = ';'; break;
@@ -824,11 +820,12 @@ static LONG content_output(CSTRING String, STRING Output)
 //****************************************************************************
 // Converts XML data into its equivalent string.
 
-struct XMLTag * build_xml_string(struct XMLTag *Tag, STRING Buffer, LONG Flags, LONG *Offset)
+XMLTag * build_xml_string(XMLTag *Tag, STRING Buffer, LONG Flags, LONG *Offset)
 {
-   struct XMLTag *xmltag;
+   parasol::Log log("build_xml");
+   XMLTag *xmltag;
 
-   FMSG("~build_xml()","Index: %d, CurrentLength: %d", Tag->Index, *Offset);
+   log.traceBranch("Index: %d, CurrentLength: %d", Tag->Index, *Offset);
 
    LONG offset = *Offset;
 
@@ -845,7 +842,6 @@ struct XMLTag * build_xml_string(struct XMLTag *Tag, STRING Buffer, LONG Flags, 
          Buffer[offset] = 0;
          *Offset = offset;
       }
-      LOGRETURN();
       return Tag->Next;
    }
 
@@ -857,7 +853,7 @@ struct XMLTag * build_xml_string(struct XMLTag *Tag, STRING Buffer, LONG Flags, 
    for (i=0; i < Tag->TotalAttrib; i++) {
       if (Tag->Attrib[i].Name) offset += output_attribvalue(Tag->Attrib[i].Name, Buffer+offset);
 
-      if ((Tag->Attrib[i].Value) AND (Tag->Attrib[i].Value[0])) {
+      if ((Tag->Attrib[i].Value) and (Tag->Attrib[i].Value[0])) {
          if (Tag->Attrib[i].Name) Buffer[offset++] = '=';
          Buffer[offset++] = '"';
          offset += output_attribvalue(Tag->Attrib[i].Value, Buffer+offset);
@@ -899,16 +895,17 @@ struct XMLTag * build_xml_string(struct XMLTag *Tag, STRING Buffer, LONG Flags, 
 
    Buffer[offset] = 0;
    *Offset = offset;
-   LOGRETURN();
    return Tag->Next;
 }
 
 //****************************************************************************
 // Determines the amount of bytes that would be required to write out an XML string.
 
-struct XMLTag * len_xml_str(struct XMLTag *Tag, LONG Flags, LONG *Length)
+XMLTag * len_xml_str(XMLTag *Tag, LONG Flags, LONG *Length)
 {
-   FMSG("~len_xml_str()","Index: %d, CurrentLength: %d", Tag->Index, *Length);
+   parasol::Log log(__FUNCTION__);
+
+   log.traceBranch("Index: %d, CurrentLength: %d", Tag->Index, *Length);
 
    LONG length = *Length;
 
@@ -924,7 +921,6 @@ struct XMLTag * len_xml_str(struct XMLTag *Tag, LONG Flags, LONG *Length)
          else length += content_len(Tag->Attrib->Value);
          *Length = length;
       }
-      LOGRETURN();
       return Tag->Next;
    }
 
@@ -937,13 +933,13 @@ struct XMLTag * len_xml_str(struct XMLTag *Tag, LONG Flags, LONG *Length)
       LONG namelen = attrib_len(Tag->Attrib[i].Name);
 
       // Do a check just to ensure the integrity of the XML data.  Only notations can have nameless attributes
-      if ((!namelen) AND (!Tag->Notation)) {
-         LogErrorMsg("Attribute %d in the tag at index %d is missing a defined name.", i, Tag->Index);
+      if ((!namelen) and (!Tag->Notation)) {
+         log.warning("Attribute %d in the tag at index %d is missing a defined name.", i, Tag->Index);
       }
 
       length += namelen;
 
-      if ((Tag->Attrib[i].Value) AND (Tag->Attrib[i].Value[0])) {
+      if ((Tag->Attrib[i].Value) and (Tag->Attrib[i].Value[0])) {
          if (namelen) length++; // =
          length++; // "
          length += attrib_len(Tag->Attrib[i].Value);
@@ -953,9 +949,9 @@ struct XMLTag * len_xml_str(struct XMLTag *Tag, LONG Flags, LONG *Length)
       if (i + 1 < Tag->TotalAttrib) length++; // Space
    }
 
-   struct XMLTag *xmltag;
+   XMLTag *xmltag;
 
-   if ((Tag->Attrib->Name[0] IS '?') OR (Tag->Instruction)) {
+   if ((Tag->Attrib->Name[0] IS '?') or (Tag->Instruction)) {
       length += 2; // ?>
       if (Flags & XMF_READABLE) length++; // \n
    }
@@ -981,7 +977,6 @@ struct XMLTag * len_xml_str(struct XMLTag *Tag, LONG Flags, LONG *Length)
 
    *Length = length;
 
-   LOGRETURN();
    return Tag->Next;
 }
 
@@ -990,7 +985,7 @@ struct XMLTag * len_xml_str(struct XMLTag *Tag, LONG Flags, LONG *Length)
 ** are also included.
 */
 
-static void tag_count(struct XMLTag *Tag, LONG *Count)
+static void tag_count(XMLTag *Tag, LONG *Count)
 {
    while (Tag) {
       if (Tag->Child) tag_count(Tag->Child, Count);
@@ -1001,7 +996,7 @@ static void tag_count(struct XMLTag *Tag, LONG *Count)
 
 //****************************************************************************
 
-static void sift_down(struct ListSort **lookup, LONG Index, LONG heapsize)
+static void sift_down(ListSort **lookup, LONG Index, LONG heapsize)
 {
    LONG largest = Index;
    do {
@@ -1018,7 +1013,7 @@ static void sift_down(struct ListSort **lookup, LONG Index, LONG heapsize)
       }
 
       if (largest != Index) {
-         struct ListSort *temp = lookup[Index];
+         ListSort *temp = lookup[Index];
          lookup[Index] = lookup[largest];
          lookup[largest] = temp;
       }
@@ -1027,7 +1022,7 @@ static void sift_down(struct ListSort **lookup, LONG Index, LONG heapsize)
 
 //****************************************************************************
 
-static void sift_up(struct ListSort **lookup, LONG i, LONG heapsize)
+static void sift_up(ListSort **lookup, LONG i, LONG heapsize)
 {
    LONG largest = i;
    do {
@@ -1044,7 +1039,7 @@ static void sift_up(struct ListSort **lookup, LONG i, LONG heapsize)
       }
 
       if (largest != i) {
-         struct ListSort *temp = lookup[i];
+         ListSort *temp = lookup[i];
          lookup[i] = lookup[largest];
          lookup[largest] = temp;
       }
@@ -1054,13 +1049,12 @@ static void sift_up(struct ListSort **lookup, LONG i, LONG heapsize)
 //****************************************************************************
 // Gets the nth sibling with the given name.
 
-static struct XMLTag * next_sibling(objXML *Self, struct XMLTag *Tag, LONG Index, STRING Name, LONG FlatScan)
+static XMLTag * next_sibling(objXML *Self, XMLTag *Tag, LONG Index, STRING Name, LONG FlatScan)
 {
    //FMSG("next_sibling","Index: %d, Name: %s, Flat: %d", Index, Name, FlatScan);
 
-   LONG i;
    LONG flags = STR_MATCH_LEN;
-   for (i=0; Name[i]; i++) {
+   for (LONG i=0; Name[i]; i++) {
       if (Name[i] IS '*') {
          flags = STR_WILDCARD;
          break;
@@ -1068,9 +1062,9 @@ static struct XMLTag * next_sibling(objXML *Self, struct XMLTag *Tag, LONG Index
    }
 
    while (Tag) {
-      if ((FlatScan != -1) AND (Tag->Branch < FlatScan)) return NULL;
+      if ((FlatScan != -1) and (Tag->Branch < FlatScan)) return NULL;
 
-      if ((Tag->Attrib->Name) AND (!StrCompare(Name, Tag->Attrib->Name, 0, flags))) {
+      if ((Tag->Attrib->Name) and (!StrCompare(Name, Tag->Attrib->Name, 0, flags))) {
          if (!Index) return Tag;
          Index--;
       }
@@ -1109,39 +1103,42 @@ static struct XMLTag * next_sibling(objXML *Self, struct XMLTag *Tag, LONG Index
 //   /menu/window/* (First child of the window tag)
 //   /menu/*[@id='5']
 
-static ERROR find_tag2(objXML *Self, struct XMLTag **Tag, CSTRING XPath, CSTRING *Attrib, FUNCTION *Callback);
+static ERROR find_tag2(objXML *Self, XMLTag **Tag, CSTRING XPath, CSTRING *Attrib, FUNCTION *Callback);
 
-static struct XMLTag * find_tag(objXML *Self, struct XMLTag *Tag, CSTRING XPath, CSTRING *Attrib, FUNCTION *Callback)
+static XMLTag * find_tag(objXML *Self, XMLTag *Tag, CSTRING XPath, CSTRING *Attrib, FUNCTION *Callback)
 {
+   parasol::Log log(__FUNCTION__);
+
    if (Attrib) *Attrib = NULL;
 
    // NB: If a callback is specified, the entire tree is scanned to the end.  The callback is called for each match
    // that is discovered.
 
-   struct XMLTag *scan = Tag;
+   XMLTag *scan = Tag;
    ERROR error = find_tag2(Self, &scan, XPath, Attrib, Callback);
 
    if (Callback) return NULL;
    else if (!error) {
-      if (Self->Flags & XMF_DEBUG) LogF("find_tag:","Found tag %p #%d", scan, scan->Index);
+      if (Self->Flags & XMF_DEBUG) log.msg("Found tag %p #%d", scan, scan->Index);
       return scan;
    }
    else return NULL;
 }
 
-static ERROR find_tag2(objXML *Self, struct XMLTag **Tag, CSTRING XPath, CSTRING *Attrib, FUNCTION *Callback)
+static ERROR find_tag2(objXML *Self, XMLTag **Tag, CSTRING XPath, CSTRING *Attrib, FUNCTION *Callback)
 {
+   parasol::Log log("find_tag");
    char tagname[120];
    CSTRING filter_attrib_name;
    LONG pos, subscript, i, filter_attrib_name_len, filter_attrib_value_len, filter_attrib_svalue, attribwild, j;
-   struct XMLTag *current;
+   XMLTag *current;
    ERROR error;
-   UBYTE endchar;
+   char endchar;
 
-   if (!(current = *Tag)) return PostError(ERR_Args);
+   if (!(current = *Tag)) return log.warning(ERR_Args);
 
-   if ((!XPath[0]) OR (XPath[0] != '/')) {
-      LogErrorMsg("Missing '/' prefix in '%s'.", XPath);
+   if ((!XPath[0]) or (XPath[0] != '/')) {
+      log.warning("Missing '/' prefix in '%s'.", XPath);
       return ERR_StringFormat;
    }
 
@@ -1163,16 +1160,16 @@ static ERROR find_tag2(objXML *Self, struct XMLTag **Tag, CSTRING XPath, CSTRING
 
    // Parse the tag name
 
-   if ((Attrib) AND (XPath[pos] IS '@')) *Attrib = XPath + pos + 1;
+   if ((Attrib) and (XPath[pos] IS '@')) *Attrib = XPath + pos + 1;
 
-   for (i=0; ((i < sizeof(tagname)-1) AND (XPath[pos]) AND
-              (XPath[pos] != '/') AND (XPath[pos] != '[') AND (XPath[pos] != '(')); pos++) {
+   for (i=0; (((size_t)i < sizeof(tagname)-1) and (XPath[pos]) and
+              (XPath[pos] != '/') and (XPath[pos] != '[') and (XPath[pos] != '(')); pos++) {
       tagname[i++] = XPath[pos];
    }
    tagname[i] = 0;
 
-   if (i >= sizeof(tagname)-1) {
-      LogErrorMsg("Tag name in path > %d bytes: %s...", (LONG)sizeof(tagname), tagname);
+   if ((size_t)i >= sizeof(tagname)-1) {
+      log.warning("Tag name in path > %d bytes: %s...", (LONG)sizeof(tagname), tagname);
       return ERR_BufferOverflow;
    }
 
@@ -1185,34 +1182,29 @@ static ERROR find_tag2(objXML *Self, struct XMLTag **Tag, CSTRING XPath, CSTRING
    attribwild              = STR_MATCH_LEN;
    LONG escattrib          = 0;
 
-   if (Self->Flags & XMF_DEBUG) LogF("~find_tag()","%p, %s, XPath: %s, TagName: %s, Range: %d to %d", current, current->Attrib->Name, XPath, tagname, current->Index, flatscan);
+   if (Self->Flags & XMF_DEBUG) log.branch("%p, %s, XPath: %s, TagName: %s, Range: %d to %d", current, current->Attrib->Name, XPath, tagname, current->Index, flatscan);
 
-   if ((XPath[pos] IS '[') OR (XPath[pos] IS '(')) {
+   if ((XPath[pos] IS '[') or (XPath[pos] IS '(')) {
       if (XPath[pos] IS '[') endchar = ']';
       else endchar = ')';
 
       pos++;
 
-      while ((XPath[pos]) AND (XPath[pos] <= 0x20)) pos++;
+      while ((XPath[pos]) and (XPath[pos] <= 0x20)) pos++;
 
-      if ((XPath[pos] >= '0') AND (XPath[pos] <= '9')) {
-         // Parse index
-
+      if ((XPath[pos] >= '0') and (XPath[pos] <= '9')) { // Parse index
          subscript = StrToInt(XPath+pos);
-
-         while ((XPath[pos] >= '0') AND (XPath[pos] <= '9')) pos++;
+         while ((XPath[pos] >= '0') and (XPath[pos] <= '9')) pos++;
       }
-      else if (XPath[pos] IS '#') {
-         // Direct lookup into the tag array
-
+      else if (XPath[pos] IS '#') { // Direct lookup into the tag array
          subscript = StrToInt(XPath+pos+1) + current->Index;
          if (subscript < Self->TagCount) {
             current = Self->Tags[subscript];
             subscript = -1;
          }
-         else return PostError(ERR_OutOfBounds);
+         else return log.warning(ERR_OutOfBounds);
       }
-      else if ((XPath[pos] IS '@') OR (XPath[pos] IS '=')) {
+      else if ((XPath[pos] IS '@') or (XPath[pos] IS '=')) {
          subscript = -1;
          if (XPath[pos] IS '@') {
             pos++;
@@ -1220,43 +1212,40 @@ static ERROR find_tag2(objXML *Self, struct XMLTag **Tag, CSTRING XPath, CSTRING
             // Parse filter attribute name
 
             filter_attrib_name = XPath + pos;
-            while (((XPath[pos] >= 'a') AND (XPath[pos] <= 'z')) OR
-                   ((XPath[pos] >= 'A') AND (XPath[pos] <= 'Z')) OR
+            while (((XPath[pos] >= 'a') and (XPath[pos] <= 'z')) or
+                   ((XPath[pos] >= 'A') and (XPath[pos] <= 'Z')) or
                    (XPath[pos] IS '_')) pos++;
 
             filter_attrib_name_len = (XPath + pos) - filter_attrib_name;
 
             if (filter_attrib_name IS (XPath + pos)) goto parse_error; // Zero length string
 
-            while ((XPath[pos]) AND (XPath[pos] <= 0x20)) pos++; // Skip whitespace
+            while ((XPath[pos]) and (XPath[pos] <= 0x20)) pos++; // Skip whitespace
 
             // Parse '='
 
             if (XPath[pos] != '=') goto parse_error;
             pos++;
          }
-         else {
-            // Skip '=' (indicates matching on content) The filter_attrib_name will be empty to indicate a content match is required.
-
+         else { // Skip '=' (indicates matching on content) The filter_attrib_name will be empty to indicate a content match is required.
             pos++;
          }
 
-         while ((XPath[pos]) AND (XPath[pos] <= 0x20)) pos++; // Skip whitespace
+         while ((XPath[pos]) and (XPath[pos] <= 0x20)) pos++; // Skip whitespace
 
          // Parse value
 
-         if ((XPath[pos] IS '\'') OR (XPath[pos] IS '"')) {
-            UBYTE quote, tchar;
-
-            quote = XPath[pos++];
+         if ((XPath[pos] IS '\'') or (XPath[pos] IS '"')) {
+            char quote = XPath[pos++];
 
             // Parse filter attribute value
 
             filter_attrib_svalue = pos;
-            while ((XPath[pos]) AND (XPath[pos] != quote)) {
+            while ((XPath[pos]) and (XPath[pos] != quote)) {
                if (XPath[pos] IS '\\') {
+                  char tchar;
                   if ((tchar = XPath[pos+1])) {
-                     if ((tchar IS '*') OR (tchar IS '\'')) {
+                     if ((tchar IS '*') or (tchar IS '\'')) {
                         pos++; // Escape character used - skip following character
                         escattrib++;
                      }
@@ -1272,7 +1261,7 @@ static ERROR find_tag2(objXML *Self, struct XMLTag **Tag, CSTRING XPath, CSTRING
          }
          else {
             filter_attrib_svalue = pos;
-            while ((XPath[pos]) AND (XPath[pos] != endchar)) {
+            while ((XPath[pos]) and (XPath[pos] != endchar)) {
                if (XPath[pos] IS '*') attribwild = STR_WILDCARD;
                pos++;
             }
@@ -1281,7 +1270,7 @@ static ERROR find_tag2(objXML *Self, struct XMLTag **Tag, CSTRING XPath, CSTRING
       }
       else goto parse_error;
 
-      while ((XPath[pos]) AND (XPath[pos] <= 0x20)) pos++; // Skip whitespace
+      while ((XPath[pos]) and (XPath[pos] <= 0x20)) pos++; // Skip whitespace
       if (XPath[pos] != endchar) goto parse_error;
       pos++;
    }
@@ -1289,7 +1278,7 @@ static ERROR find_tag2(objXML *Self, struct XMLTag **Tag, CSTRING XPath, CSTRING
 
 next_sibling: // Start of loop - yes, we are using gotos for this
 
-   if ((filter_attrib_name) OR (filter_attrib_svalue)) {
+   if ((filter_attrib_name) or (filter_attrib_svalue)) {
       // Advance to the sibling that matches the filtered attribute or content string
 
       LONG tagwild = STR_MATCH_LEN;
@@ -1300,7 +1289,7 @@ next_sibling: // Start of loop - yes, we are using gotos for this
          }
       }
 
-      UBYTE attribvalue[filter_attrib_value_len + 1];
+      char attribvalue[filter_attrib_value_len + 1];
       CopyMemory((APTR)(XPath+filter_attrib_svalue), attribvalue, filter_attrib_value_len);
       attribvalue[filter_attrib_value_len] = 0;
 
@@ -1309,13 +1298,13 @@ next_sibling: // Start of loop - yes, we are using gotos for this
       if (escattrib) i = filter_attrib_svalue - escattrib + 1;
       else i = 1;
 
-      UBYTE attrib_buffer[i];
+      char attrib_buffer[i];
 
       STRING attribval;
       if (escattrib) {
          attribval = attrib_buffer;
          for (i=0,j=0; attribvalue[i]; i++) {
-            if ((attribvalue[i] IS '\\') AND (attribvalue[i+1])) {
+            if ((attribvalue[i] IS '\\') and (attribvalue[i+1])) {
                i++;
                if (attribvalue[i] IS '*') attribval[j++] = '*';
                else if (attribvalue[i] IS '\'') attribval[j++] = '\'';
@@ -1330,9 +1319,9 @@ next_sibling: // Start of loop - yes, we are using gotos for this
 
       if (filter_attrib_name) {
          while (current) {
-            if ((current->Attrib->Name) AND (!StrCompare(tagname, current->Attrib->Name, 0, tagwild))) {
+            if ((current->Attrib->Name) and (!StrCompare(tagname, current->Attrib->Name, 0, tagwild))) {
                for (i=1; i < current->TotalAttrib; ++i) { // ignore name attribute, so start from index 1
-                  if ((!StrCompare(current->Attrib[i].Name, filter_attrib_name, filter_attrib_name_len, 0)) AND
+                  if ((!StrCompare(current->Attrib[i].Name, filter_attrib_name, filter_attrib_name_len, 0)) and
                       (!StrCompare(current->Attrib[i].Value, attribval, 0, attribwild))) {
                      goto matched_attrib;
                   }
@@ -1344,15 +1333,14 @@ next_sibling: // Start of loop - yes, we are using gotos for this
                // tag indexes (if an index is wrong, it means we get stuck in a loop).
 
                LONG index = current->Index + 1;
-
                current = Self->Tags[index];
-               if ((current) AND (current->Branch < flatscan)) {
+               if ((current) and (current->Branch < flatscan)) {
                   current = NULL;
                   break;
                }
 
-               if ((current) AND (current->Index != index)) {
-                  LogErrorMsg("Corrupt tag or incorrect reference in Tags array at index %d (tag has index of %d).", index, current->Index);
+               if ((current) and (current->Index != index)) {
+                  log.warning("Corrupt tag or incorrect reference in Tags array at index %d (tag has index of %d).", index, current->Index);
                   break;
                }
             }
@@ -1360,9 +1348,9 @@ next_sibling: // Start of loop - yes, we are using gotos for this
          }
       }
       else while (current) {
-         if ((current->Attrib->Name) AND (!StrCompare(tagname, current->Attrib->Name, 0, tagwild))) {
+         if ((current->Attrib->Name) and (!StrCompare(tagname, current->Attrib->Name, 0, tagwild))) {
             // Match on content
-            if ((current->Child) AND (!current->Child->Attrib->Name)) {
+            if ((current->Child) and (!current->Child->Attrib->Name)) {
                if (!StrCompare(current->Child->Attrib->Value, attribval, 0, attribwild)) {
                   goto matched_attrib;
                }
@@ -1376,13 +1364,13 @@ next_sibling: // Start of loop - yes, we are using gotos for this
             LONG index = current->Index + 1;
             current = Self->Tags[index];
 
-            if ((current) AND (current->Branch < flatscan)) {
+            if ((current) and (current->Branch < flatscan)) {
                current = NULL;
                break;
             }
 
-            if ((current) AND (current->Index != index)) {
-               LogErrorMsg("Corrupt tag or incorrect reference in Tags array at index %d (tag has index of %d).", index, current->Index);
+            if ((current) and (current->Index != index)) {
+               log.warning("Corrupt tag or incorrect reference in Tags array at index %d (tag has index of %d).", index, current->Index);
                break;
             }
          }
@@ -1394,21 +1382,18 @@ next_sibling: // Start of loop - yes, we are using gotos for this
 matched_attrib:
 
    if (current) {
-      struct XMLTag *scan;
+      XMLTag *scan;
 
-      if (!XPath[pos]) {
-         // Matching tag found and there is nothing left to process
-
+      if (!XPath[pos]) { // Matching tag found and there is nothing left to process
          if (Callback) {
             if (Callback->Type IS CALL_STDC) {
-               ERROR (*routine)(objXML *, struct XMLTag *, CSTRING);
-               routine = Callback->StdC.Routine;
+               auto routine = (ERROR (*)(objXML *, XMLTag *, CSTRING))Callback->StdC.Routine;
                error = routine(Self, current, NULL);
             }
             else if (Callback->Type IS CALL_SCRIPT) {
                OBJECTPTR script;
                if ((script = Callback->Script.Script)) {
-                  const struct ScriptArg args[] = {
+                  const ScriptArg args[] = {
                      { "XML",  FD_OBJECTPTR, { .Address = Self } },
                      { "Tag",  FD_LONG,      { .Long = current->Index } },
                      { "Attrib", FD_STRING,  { .Address = NULL } }
@@ -1422,30 +1407,27 @@ matched_attrib:
 
             if (error IS ERR_Terminate) {
                *Tag = current;
-               if (Self->Flags & XMF_DEBUG) LogReturn();
                return ERR_Terminate;
             }
-            if (((subscript IS -2) OR (subscript IS -1)) AND ((current = current->Next))) goto next_sibling;
+            if (((subscript IS -2) or (subscript IS -1)) and ((current = current->Next))) goto next_sibling;
          }
          else {
             *Tag = current;
-            if (Self->Flags & XMF_DEBUG) LogReturn();
             return ERR_Okay; // End of query reached, successfully found tag
          }
       }
-      else if ((XPath[pos] IS '/') AND (XPath[pos+1] IS '@')) {
+      else if ((XPath[pos] IS '/') and (XPath[pos+1] IS '@')) {
          if (Attrib) *Attrib = XPath + pos + 2;
 
          if (Callback) {
             if (Callback->Type IS CALL_STDC) {
-               ERROR (*routine)(objXML *, struct XMLTag *, CSTRING);
-               routine = Callback->StdC.Routine;
+               auto routine = (ERROR (*)(objXML *, XMLTag *, CSTRING))Callback->StdC.Routine;
                error = routine(Self, current, NULL);
             }
             else if (Callback->Type IS CALL_SCRIPT) {
                OBJECTPTR script;
                if ((script = Callback->Script.Script)) {
-                  const struct ScriptArg args[] = {
+                  const ScriptArg args[] = {
                      { "XML",  FD_OBJECTPTR, { .Address = Self } },
                      { "Tag",  FD_LONG,      { .Long = current->Index } },
                      { "Attrib", FD_STRING,  { .Address = (STRING)(Attrib ? Attrib[0] : NULL) } }
@@ -1460,28 +1442,23 @@ matched_attrib:
 
             if (error IS ERR_Terminate) {
                *Tag = current;
-               if (Self->Flags & XMF_DEBUG) LogReturn();
                return ERR_Terminate;
             }
-            if (((subscript IS -2) OR (subscript IS -1)) AND ((current = current->Next))) goto next_sibling;
+            if (((subscript IS -2) or (subscript IS -1)) and ((current = current->Next))) goto next_sibling;
          }
          else {
             *Tag = current;
-            if (Self->Flags & XMF_DEBUG) LogReturn();
             return ERR_Okay;
          }
       }
-      else if ((scan = current->Child)) {
-         // Move to next position in the XPath and scan child node
-
+      else if ((scan = current->Child)) { // Move to next position in the XPath and scan child node
          error = find_tag2(Self, &scan, XPath+pos, Attrib, Callback);
 
          if (error IS ERR_Terminate) {
             *Tag = current;
-            if (Self->Flags & XMF_DEBUG) LogReturn();
             return ERR_Terminate;
          }
-         else if ((error) OR (Callback)) {
+         else if ((error) or (Callback)) {
             // Nothing matches in this subset of tags, or callbacks are in use.  Move to the next sibling if subscripts
             // are not being used.
 
@@ -1494,16 +1471,12 @@ matched_attrib:
       }
       else error = ERR_Search;
    }
-   else {
-      error = ERR_Search;
-   }
+   else error = ERR_Search;
 
-   if (Self->Flags & XMF_DEBUG) LogReturn();
    return error;
 
 parse_error:
-   LogMsg("XPath unresolved: %s", XPath);
-   if (Self->Flags & XMF_DEBUG) LogReturn();
+   log.msg("XPath unresolved: %s", XPath);
    return ERR_Search;
 }
 
@@ -1511,15 +1484,16 @@ parse_error:
 
 static ERROR parse_source(objXML *Self)
 {
-   struct CacheFile *filecache;
+   parasol::Log log(__FUNCTION__);
+   CacheFile *filecache;
 
-   FMSG("~parse_source()","");
+   log.traceBranch("");
 
    // Although the file will be uncached as soon it is loaded, the developer can pre-cache XML files with his own
    // call to LoadFile(), which can lead our use of LoadFile() to being quite effective.
 
    if (Self->Source) {
-      UBYTE *buffer;
+      char *buffer;
       LARGE size = 64 * 1024;
       if (!AllocMemory(size+1, MEM_STRING|MEM_NO_CLEAR, &buffer, NULL)) {
          LONG pos = 0;
@@ -1553,32 +1527,34 @@ static ERROR parse_source(objXML *Self)
       else Self->ParseError = ERR_AllocMemory;
    }
    else if (!LoadFile(Self->Path, 0, &filecache)) {
-      Self->ParseError = txt_to_xml(Self, filecache->Data);
+      Self->ParseError = txt_to_xml(Self, (CSTRING)filecache->Data);
       UnloadFile(filecache);
    }
    else Self->ParseError = ERR_File;
 
-   LOGRETURN();
    return Self->ParseError;
 }
 
 //****************************************************************************
 // Extracts immediate content, does not recurse into child tags.
 
-static ERROR get_content(objXML *Self, struct XMLTag *Tag, STRING Buffer, LONG Size)
+static ERROR get_content(objXML *Self, XMLTag *Tag, STRING Buffer, LONG Size)
 {
    Buffer[0] = 0;
    if ((Tag = Tag->Child)) {
       LONG j = 0;
       while (Tag) {
-         if ((!Tag->Attrib->Name) AND (Tag->Attrib->Value)) {
+         if ((!Tag->Attrib->Name) and (Tag->Attrib->Value)) {
             j += StrCopy(Tag->Attrib->Value, Buffer+j, Size-j);
             if (j >= Size) break;
          }
          Tag = Tag->Next;
       }
 
-      if (j >= Size) return PostError(ERR_BufferOverflow);
+      if (j >= Size) {
+         parasol::Log log(__FUNCTION__);
+         return log.warning(ERR_BufferOverflow);
+      }
    }
 
    return ERR_Okay;
@@ -1598,8 +1574,7 @@ static void free_xml(objXML *Self)
 
 static void clear_tags(objXML *XML)
 {
-   LONG i;
-   for (i=0; i < XML->TagCount; i++) {
+   for (LONG i=0; i < XML->TagCount; i++) {
       if (XML->Tags[i]) FreeResource(XML->Tags[i]);
    }
    if (XML->Tags) XML->Tags[0] = NULL; // Don't free the array, just null terminate it
