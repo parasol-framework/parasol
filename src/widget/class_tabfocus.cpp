@@ -33,7 +33,6 @@ static void focus_object(objTabFocus *, UBYTE);
 static OBJECTID object_surface(OBJECTID);
 static LONG have_focus(objTabFocus *);
 static void key_event(objTabFocus *, evKey *, LONG);
-static const struct FieldArray clFields[];
 
 /*****************************************************************************
 -ACTION-
@@ -44,30 +43,26 @@ Activate: Moves the focus to the next object in the focus list.
 static ERROR TABFOCUS_Activate(objTabFocus *Self, APTR Args)
 {
    if (Self->Total < 1) return ERR_Okay;
-
    if (!(Self->CurrentFocus = drwGetUserFocus())) return ERR_Okay;
 
+   parasol::Log log;
    if (Self->CurrentFocus IS Self->SurfaceID) {
       // Focus on the first object in the tab list
 
-      LogBranch("Current: #%d == Monitored Surface", Self->CurrentFocus);
+      log.branch("Current: #%d == Monitored Surface", Self->CurrentFocus);
 
-      LONG i;
-      for (i=0; i < Self->Total; i++) {
+      for (LONG i=0; i < Self->Total; i++) {
          if (Self->TabList[i].ObjectID) {
             focus_object(Self, i);
             break;
          }
       }
-
-      LogReturn();
    }
    else {
-      LogBranch("Current: #%d", Self->CurrentFocus);
+      log.branch("Current: #%d", Self->CurrentFocus);
 
       LONG focusindex = -1;
-      LONG i;
-      for (i=0; i < Self->Total; i++) {
+      for (LONG i=0; i < Self->Total; i++) {
          if (Self->TabList[i].SurfaceID IS Self->CurrentFocus) {
             if (Self->Reverse) {
                // Go to the previous object in the tag list
@@ -101,7 +96,7 @@ static ERROR TABFOCUS_Activate(objTabFocus *Self, APTR Args)
       // This loop ensures that the object receiving the focus is enabled.  If there are disabled objects, we skip past
       // them to find the first active surface.
 
-      i = Self->Total;
+      LONG i = Self->Total;
       while (i > 0) {
          if (Self->TabList[focusindex].SurfaceID) {
             SURFACEINFO *info;
@@ -122,8 +117,6 @@ static ERROR TABFOCUS_Activate(objTabFocus *Self, APTR Args)
       }
 
       Self->Index = focusindex;
-
-      LogReturn();
    }
 
    return ERR_Okay;
@@ -203,7 +196,7 @@ static ERROR TABFOCUS_Init(objTabFocus *Self, APTR Void)
    }
 
    FUNCTION callback;
-   SET_FUNCTION_STDC(callback, &key_event);
+   SET_FUNCTION_STDC(callback, (APTR)&key_event);
    SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, &callback, Self, &Self->prvKeyEvent);
 
    return ERR_Okay;
@@ -542,8 +535,8 @@ static const struct FieldArray clFields[] = {
    { "Total",   FDF_LONG|FDF_R,       0, NULL, NULL },
    { "Flags",   FDF_LONGFLAGS|FDF_RW, (MAXINT)&clTabFocusFlags, NULL, NULL },
    // Virtual fields
-   { "Objects", FDF_STRING|FDF_W,     0, NULL, SET_Objects },
-   { "Object",  FDF_STRING|FDF_W,     0, NULL, SET_Object },
+   { "Objects", FDF_STRING|FDF_W,     0, NULL, (APTR)SET_Objects },
+   { "Object",  FDF_STRING|FDF_W,     0, NULL, (APTR)SET_Object },
    END_FIELD
 };
 

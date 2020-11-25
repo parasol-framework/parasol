@@ -33,7 +33,7 @@ are: Initialise child objects to the button for execution on activation; Listen 
 
 #include "defs.h"
 
-static const struct FieldDef clAlign[] = {
+static const FieldDef clAlign[] = {
    { "Right",    ALIGN_RIGHT    }, { "Left",       ALIGN_LEFT    },
    { "Bottom",   ALIGN_BOTTOM   }, { "Top",        ALIGN_TOP     },
    { "Center",   ALIGN_CENTER   }, { "Middle",     ALIGN_MIDDLE  },
@@ -41,8 +41,6 @@ static const struct FieldDef clAlign[] = {
    { NULL, 0 }
 };
 
-static const struct FieldArray clFields[];
-static const struct FieldDef clButtonHoverState[];
 static OBJECTPTR clButton = NULL;
 
 static void key_event(objButton *, evKey *, LONG);
@@ -54,7 +52,7 @@ static ERROR BUTTON_ActionNotify(objButton *Self, struct acActionNotify *Args)
    if (Args->ActionID IS AC_Focus) {
       if (!Self->prvKeyEvent) {
          FUNCTION callback;
-         SET_FUNCTION_STDC(callback, &key_event);
+         SET_FUNCTION_STDC(callback, (APTR)&key_event);
          SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, &callback, Self, &Self->prvKeyEvent);
       }
 
@@ -74,7 +72,7 @@ static ERROR BUTTON_ActionNotify(objButton *Self, struct acActionNotify *Args)
       DelayMsg(AC_Draw, Self->RegionID, NULL);
    }
    else if (Args->ActionID IS AC_Free) {
-      if ((Self->Feedback.Type IS CALL_SCRIPT) AND (Self->Feedback.Script.Script->UniqueID IS Args->ObjectID)) {
+      if ((Self->Feedback.Type IS CALL_SCRIPT) and (Self->Feedback.Script.Script->UniqueID IS Args->ObjectID)) {
          Self->Feedback.Type = CALL_NONE;
       }
    }
@@ -91,44 +89,38 @@ Activate: Activates the button.
 
 static ERROR BUTTON_Activate(objButton *Self, APTR Void)
 {
-   LogBranch(NULL);
+   parasol::Log log;
+   log.branch(NULL);
 
    if (Self->Active) {
       LogErrorMsg("Warning - recursion detected");
-      LogReturn();
       return ERR_Failed;
    }
 
    Self->Active = TRUE;
 
    if (Self->Feedback.Type IS CALL_STDC) {
-      void (*routine)(objButton *);
-      routine = Self->Feedback.StdC.Routine;
+      auto routine = (void (*)(objButton *))Self->Feedback.StdC.Routine;
 
       if (Self->Feedback.StdC.Context) {
-         OBJECTPTR context = SetContext(Self->Feedback.StdC.Context);
+         parasol::SwitchContext context(Self->Feedback.StdC.Context);
          routine(Self);
-         SetContext(context);
       }
       else routine(Self);
    }
    else if (Self->Feedback.Type IS CALL_SCRIPT) {
       OBJECTPTR script;
       if ((script = Self->Feedback.Script.Script)) {
-         const struct ScriptArg args[] = {
-            { "Button", FD_OBJECTPTR, { .Address = Self } }
-         };
+         const ScriptArg args[] = { { "Button", FD_OBJECTPTR, { .Address = Self } } };
          scCallback(script, Self->Feedback.Script.ProcedureID, args, ARRAYSIZE(args));
       }
    }
 
-   if ((Self->Onclick) AND (Self->Document)) {
+   if ((Self->Onclick) and (Self->Document)) {
       docCallFunction(Self->Document, Self->Onclick, NULL, 0);
    }
 
    Self->Active = FALSE;
-
-   LogReturn();
    return ERR_Okay;
 }
 
@@ -139,7 +131,7 @@ static ERROR BUTTON_DataFeed(objButton *Self, struct acDataFeed *Args)
    if (!Args) return PostError(ERR_NullArgs);
 
    if (Args->DataType IS DATA_INPUT_READY) {
-      struct InputMsg *input;
+      InputMsg *input;
       objSurface *surface;
 
       while (!gfxGetInputMsg((struct dcInputReady *)Args->Buffer, 0, &input)) {
@@ -188,7 +180,7 @@ static ERROR BUTTON_DataFeed(objButton *Self, struct acDataFeed *Args)
 
                acDrawID(Self->RegionID);
 
-               if (((clickx < 4) AND (clicky < 4)) OR (Self->Flags & BTF_PULSE)) acActivate(Self);
+               if (((clickx < 4) and (clicky < 4)) OR (Self->Flags & BTF_PULSE)) acActivate(Self);
             }
          }
       }
@@ -266,7 +258,7 @@ static ERROR BUTTON_Init(objButton *Self, APTR Void)
 {
    if (!Self->SurfaceID) { // Find our parent surface
       OBJECTID owner_id = GetOwner(Self);
-      while ((owner_id) AND (GetClassID(owner_id) != ID_SURFACE)) {
+      while ((owner_id) and (GetClassID(owner_id) != ID_SURFACE)) {
          owner_id = GetOwnerID(owner_id);
       }
       if (owner_id) Self->SurfaceID = owner_id;
@@ -507,7 +499,7 @@ height, use the FD_PERCENT flag when setting the field.
 
 *****************************************************************************/
 
-static ERROR GET_Height(objButton *Self, struct Variable *Value)
+static ERROR GET_Height(objButton *Self, Variable *Value)
 {
    OBJECTPTR surface;
    if (!AccessObject(Self->RegionID, 4000, &surface)) {
@@ -522,10 +514,10 @@ static ERROR GET_Height(objButton *Self, struct Variable *Value)
    else return PostError(ERR_AccessObject);
 }
 
-static ERROR SET_Height(objButton *Self, struct Variable *Value)
+static ERROR SET_Height(objButton *Self, Variable *Value)
 {
-   if (((Value->Type & FD_DOUBLE) AND (!Value->Double)) OR
-       ((Value->Type & FD_LARGE) AND (!Value->Large))) {
+   if (((Value->Type & FD_DOUBLE) and (!Value->Double)) OR
+       ((Value->Type & FD_LARGE) and (!Value->Large))) {
       return ERR_Okay;
    }
 
@@ -696,7 +688,7 @@ tab-list for the application window.
 
 static ERROR SET_TabFocus(objButton *Self, OBJECTPTR Value)
 {
-   if ((Value) AND (Value->ClassID IS ID_TABFOCUS)) {
+   if ((Value) and (Value->ClassID IS ID_TABFOCUS)) {
       tabAddObject(Value, Self->RegionID);
    }
 
@@ -713,7 +705,7 @@ use the FD_PERCENT flag when setting the field.
 
 *****************************************************************************/
 
-static ERROR GET_Width(objButton *Self, struct Variable *Value)
+static ERROR GET_Width(objButton *Self, Variable *Value)
 {
    OBJECTPTR surface;
    if (!AccessObject(Self->RegionID, 4000, &surface)) {
@@ -728,9 +720,9 @@ static ERROR GET_Width(objButton *Self, struct Variable *Value)
    else return PostError(ERR_AccessObject);
 }
 
-static ERROR SET_Width(objButton *Self, struct Variable *Value)
+static ERROR SET_Width(objButton *Self, Variable *Value)
 {
-   if (((Value->Type & FD_DOUBLE) AND (!Value->Double)) OR ((Value->Type & FD_LARGE) AND (!Value->Large))) {
+   if (((Value->Type & FD_DOUBLE) and (!Value->Double)) OR ((Value->Type & FD_LARGE) and (!Value->Large))) {
       return ERR_Okay;
    }
 
@@ -754,7 +746,7 @@ as fixed.  Negative values are permitted.
 
 *****************************************************************************/
 
-static ERROR GET_X(objButton *Self, struct Variable *Value)
+static ERROR GET_X(objButton *Self, Variable *Value)
 {
    OBJECTPTR surface;
    if (!AccessObject(Self->RegionID, 4000, &surface)) {
@@ -769,7 +761,7 @@ static ERROR GET_X(objButton *Self, struct Variable *Value)
    else return PostError(ERR_AccessObject);
 }
 
-static ERROR SET_X(objButton *Self, struct Variable *Value)
+static ERROR SET_X(objButton *Self, Variable *Value)
 {
    OBJECTPTR surface;
    if (!AccessObject(Self->RegionID, 4000, &surface)) {
@@ -797,7 +789,7 @@ coordinate calculated from the formula `X = ContainerWidth - ButtonWidth - XOffs
 
 *****************************************************************************/
 
-static ERROR GET_XOffset(objButton *Self, struct Variable *Value)
+static ERROR GET_XOffset(objButton *Self, Variable *Value)
 {
    OBJECTPTR surface;
    if (!AccessObject(Self->RegionID, 4000, &surface)) {
@@ -812,7 +804,7 @@ static ERROR GET_XOffset(objButton *Self, struct Variable *Value)
    else return PostError(ERR_AccessObject);
 }
 
-static ERROR SET_XOffset(objButton *Self, struct Variable *Value)
+static ERROR SET_XOffset(objButton *Self, Variable *Value)
 {
    OBJECTPTR surface;
    if (!AccessObject(Self->RegionID, 4000, &surface)) {
@@ -834,7 +826,7 @@ as fixed.  Negative values are permitted.
 
 *****************************************************************************/
 
-static ERROR GET_Y(objButton *Self, struct Variable *Value)
+static ERROR GET_Y(objButton *Self, Variable *Value)
 {
    OBJECTPTR surface;
    if (!AccessObject(Self->RegionID, 4000, &surface)) {
@@ -850,7 +842,7 @@ static ERROR GET_Y(objButton *Self, struct Variable *Value)
 
 }
 
-static ERROR SET_Y(objButton *Self, struct Variable *Value)
+static ERROR SET_Y(objButton *Self, Variable *Value)
 {
    OBJECTPTR surface;
    if (!AccessObject(Self->RegionID, 4000, &surface)) {
@@ -879,7 +871,7 @@ coordinate calculated from the formula `Y = ContainerHeight - ButtonHeight - YOf
 
 *****************************************************************************/
 
-static ERROR GET_YOffset(objButton *Self, struct Variable *Value)
+static ERROR GET_YOffset(objButton *Self, Variable *Value)
 {
    OBJECTPTR surface;
    if (!AccessObject(Self->RegionID, 4000, &surface)) {
@@ -894,7 +886,7 @@ static ERROR GET_YOffset(objButton *Self, struct Variable *Value)
    else return PostError(ERR_AccessObject);
 }
 
-static ERROR SET_YOffset(objButton *Self, struct Variable *Value)
+static ERROR SET_YOffset(objButton *Self, Variable *Value)
 {
    OBJECTPTR surface;
    if (!AccessObject(Self->RegionID, 4000, &surface)) {
@@ -912,9 +904,9 @@ static void key_event(objButton *Self, evKey *Event, LONG Size)
    if (!(Event->Qualifiers & KQ_PRESSED)) return;
 
    if ((Event->Code IS K_ENTER) OR (Event->Code IS K_NP_ENTER) OR (Event->Code IS K_SPACE)) {
-      LogBranch("Enter or Space key detected.");
-         acActivate(Self);
-      LogReturn();
+      parasol::Log log;
+      log.branch("Enter or Space key detected.");
+      acActivate(Self);
    }
 }
 
@@ -922,9 +914,9 @@ static void key_event(objButton *Self, evKey *Event, LONG Size)
 
 #include "class_button_def.c"
 
-static const struct FieldArray clFields[] = {
-   { "Hint",         FDF_STRING|FDF_RW,    0, NULL, SET_Hint },
-   { "Icon",         FDF_STRING|FDF_RW,    0, NULL, SET_Icon },
+static const FieldArray clFields[] = {
+   { "Hint",         FDF_STRING|FDF_RW,    0, NULL, (APTR)SET_Hint },
+   { "Icon",         FDF_STRING|FDF_RW,    0, NULL, (APTR)SET_Icon },
    { "LayoutSurface",FDF_VIRTUAL|FDF_OBJECTID|FDF_SYSTEM|FDF_R, ID_SURFACE, NULL, NULL }, // VIRTUAL: This is a synonym for the Region field
    { "Region",       FDF_OBJECTID|FDF_R,   ID_SURFACE, NULL, NULL },
    { "Surface",      FDF_OBJECTID|FDF_RW,  ID_SURFACE, NULL, NULL },
@@ -932,23 +924,23 @@ static const struct FieldArray clFields[] = {
    { "Clicked",      FDF_LONG|FDF_R,       0, NULL, NULL },
    { "HoverState",   FDF_LONG|FDF_LOOKUP|FDF_R, (MAXINT)&clButtonHoverState, NULL, NULL },
    // Virtual fields
-   { "Align",        FDF_VIRTUAL|FDF_LONGFLAGS|FDF_I, (MAXINT)&clAlign, NULL, SET_Align },
-   { "Bottom",       FDF_VIRTUAL|FDF_LONG|FDF_R,      0, GET_Bottom, NULL },
-   { "Disabled",     FDF_VIRTUAL|FDF_LONG|FDF_RW,     0, GET_Disabled, SET_Disabled },
-   { "Feedback",     FDF_VIRTUAL|FDF_FUNCTIONPTR|FDF_RW, 0, GET_Feedback, SET_Feedback },
-   { "LayoutStyle",  FDF_VIRTUAL|FDF_POINTER|FDF_SYSTEM|FDF_W, 0, NULL, SET_LayoutStyle },
-   { "Onclick",      FDF_VIRTUAL|FDF_STRING|FDF_RW,   0, GET_Onclick, SET_Onclick },
-   { "Right",        FDF_VIRTUAL|FDF_LONG|FDF_R,      0, GET_Right, NULL },
-   { "String",       FDF_VIRTUAL|FDF_STRING|FDF_RW,   0, GET_String, SET_String },
-   { "TabFocus",     FDF_VIRTUAL|FDF_OBJECT|FDF_W,    ID_TABFOCUS, NULL, SET_TabFocus },
-   { "Text",         FDF_SYNONYM|FDF_VIRTUAL|FDF_STRING|FDF_RW, 0, GET_String, SET_String },
+   { "Align",        FDF_VIRTUAL|FDF_LONGFLAGS|FDF_I, (MAXINT)&clAlign, NULL, (APTR)SET_Align },
+   { "Bottom",       FDF_VIRTUAL|FDF_LONG|FDF_R,      0, (APTR)GET_Bottom, NULL },
+   { "Disabled",     FDF_VIRTUAL|FDF_LONG|FDF_RW,     0, (APTR)GET_Disabled, (APTR)SET_Disabled },
+   { "Feedback",     FDF_VIRTUAL|FDF_FUNCTIONPTR|FDF_RW, 0, (APTR)GET_Feedback, (APTR)SET_Feedback },
+   { "LayoutStyle",  FDF_VIRTUAL|FDF_POINTER|FDF_SYSTEM|FDF_W, 0, NULL, (APTR)SET_LayoutStyle },
+   { "Onclick",      FDF_VIRTUAL|FDF_STRING|FDF_RW,   0, (APTR)GET_Onclick, (APTR)SET_Onclick },
+   { "Right",        FDF_VIRTUAL|FDF_LONG|FDF_R,      0, (APTR)GET_Right, NULL },
+   { "String",       FDF_VIRTUAL|FDF_STRING|FDF_RW,   0, (APTR)GET_String, (APTR)SET_String },
+   { "TabFocus",     FDF_VIRTUAL|FDF_OBJECT|FDF_W,    ID_TABFOCUS, NULL, (APTR)SET_TabFocus },
+   { "Text",         FDF_SYNONYM|FDF_VIRTUAL|FDF_STRING|FDF_RW, 0, (APTR)GET_String, (APTR)SET_String },
    // Variable Fields
-   { "Height",       FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, GET_Height,  SET_Height },
-   { "Width",        FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, GET_Width,   SET_Width },
-   { "X",            FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, GET_X,       SET_X },
-   { "XOffset",      FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, GET_XOffset, SET_XOffset },
-   { "Y",            FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, GET_Y,       SET_Y },
-   { "YOffset",      FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, GET_YOffset, SET_YOffset },
+   { "Height",       FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)GET_Height,  (APTR)SET_Height },
+   { "Width",        FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)GET_Width,   (APTR)SET_Width },
+   { "X",            FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)GET_X,       (APTR)SET_X },
+   { "XOffset",      FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)GET_XOffset, (APTR)SET_XOffset },
+   { "Y",            FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)GET_Y,       (APTR)SET_Y },
+   { "YOffset",      FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)GET_YOffset, (APTR)SET_YOffset },
    END_FIELD
 };
 

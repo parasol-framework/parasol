@@ -157,13 +157,13 @@ static LONG within_area(objResize *Self, LONG AreaX, LONG AreaY)
 
 static ERROR RESIZE_DataFeed(objResize *Self, struct acDataFeed *Args)
 {
-   if (!Args) return PostError(ERR_NullArgs);
+   if (!Args) return ERR_NullArgs;
 
    // The display will send us DATA_INPUT_READY messages when our target surface has input messages in its log.  We
    // consume these messages using GetInputMsg().
 
    if (Args->DataType IS DATA_INPUT_READY) {
-      struct InputMsg *input, *scan;
+      InputMsg *input, *scan;
       ERROR inputerror;
 
       while (!gfxGetInputMsg((struct dcInputReady *)Args->Buffer, 0, &input)) {
@@ -559,7 +559,7 @@ static ERROR SET_BorderSize(objResize *Self, LONG Value)
       Self->BorderSize = Value;
       return ERR_Okay;
    }
-   else return PostError(ERR_OutOfRange);
+   else return ERR_OutOfRange;
 }
 
 /*****************************************************************************
@@ -593,14 +593,14 @@ default the Resize object's container will receive the messages.
 
 #include "class_resize_def.c"
 
-static const struct FieldDef DirectionFlags[] = {
+static const FieldDef DirectionFlags[] = {
    { "Down",  MOVE_DOWN }, { "Up",    MOVE_UP    },
    { "Left",  MOVE_LEFT }, { "Right", MOVE_RIGHT },
    { "All",   MOVE_ALL  },
    { 0, 0 }
 };
 
-static const struct FieldDef Border[] = {
+static const FieldDef Border[] = {
    { "Top",         EDGE_TOP },
    { "Left",        EDGE_LEFT },
    { "Right",       EDGE_RIGHT },
@@ -613,20 +613,20 @@ static const struct FieldDef Border[] = {
    { 0, 0 }
 };
 
-static const struct FieldDef clButton[] = {
+static const FieldDef clButton[] = {
    { "LMB", JET_LMB },
    { "RMB", JET_RMB },
    { "MMB", JET_MMB },
    { 0, 0 }
 };
 
-static const struct FieldArray clFields[] = {
+static const FieldArray clFields[] = {
    { "Layout",     FDF_INTEGRAL|FDF_SYSTEM|FDF_R, 0, NULL, NULL },
    { "Object",     FDF_OBJECTID|FDF_RW,  ID_SURFACE, NULL, NULL },
    { "Button",     FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clButton, NULL, NULL },
    { "Direction",  FDF_LONGFLAGS|FDF_RW, (MAXINT)&DirectionFlags, NULL, NULL },
    { "Border",     FDF_LONGFLAGS|FDF_RW, (MAXINT)&Border, NULL, NULL },
-   { "BorderSize", FDF_LONG|FDF_RW,      0, NULL, SET_BorderSize },
+   { "BorderSize", FDF_LONG|FDF_RW,      0, NULL, (APTR)SET_BorderSize },
    END_FIELD
 };
 

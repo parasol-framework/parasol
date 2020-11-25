@@ -6,15 +6,16 @@ namespace parasol {
 
 //****************************************************************************
 
+template <class T>
 class ScopedAccessMemory { // C++ wrapper for automatically releasing shared memory
    public:
       LONG id;
-      APTR ptr;
+      T *ptr;
       ERROR error;
 
       ScopedAccessMemory(LONG ID, LONG Flags, LONG Milliseconds) {
          id = ID;
-         error = AccessMemory(ID, Flags, Milliseconds, &ptr);
+         error = AccessMemory(ID, Flags, Milliseconds, (T *)&ptr);
       }
 
       ~ScopedAccessMemory() { if (!error) ReleaseMemory(ptr); }
@@ -121,8 +122,11 @@ class SwitchContext { // C++ wrapper for changing the current context with a res
    private:
       OBJECTPTR old_context;
    public:
-      SwitchContext(T NewContext) { old_context = SetContext((OBJECTPTR)NewContext); }
-      ~SwitchContext() { SetContext(old_context); }
+      SwitchContext(T NewContext) {
+         if (NewContext) old_context = SetContext((OBJECTPTR)NewContext);
+         else old_context = NULL;
+      }
+      ~SwitchContext() { if (old_context) SetContext(old_context); }
 };
 
 //****************************************************************************

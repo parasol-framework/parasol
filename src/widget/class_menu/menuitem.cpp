@@ -23,52 +23,23 @@ static ERROR load_submenu(objMenu *, objMenu **, objMenuItem *);
 static ERROR set_qualifier(objMenuItem *, CSTRING);
 static ERROR set_key(objMenuItem *, CSTRING);
 
-static const struct ActionArray clItemActions[];
-static const struct MethodArray clItemMethods[];
-static const struct FieldArray clItemFields[];
-static const struct FieldDef clQualifiers[];
-
-//****************************************************************************
-
-ERROR init_menuitem(void)
-{
-   return(CreateObject(ID_METACLASS, 0, &clMenuItem,
-      FID_ClassVersion|TFLOAT, VER_MENUITEM,
-      FID_Name|TSTRING,   "MenuItem",
-      FID_Category|TLONG, CCF_GUI,
-      FID_Flags|TLONG,    CLF_PROMOTE_INTEGRAL|CLF_PRIVATE_ONLY,
-      FID_Actions|TPTR,   clItemActions,
-      FID_Methods|TARRAY, clItemMethods,
-      FID_Fields|TARRAY,  clItemFields,
-      FID_Size|TLONG,     sizeof(objMenuItem),
-      FID_Path|TSTR,      MOD_PATH,
-      TAGEND));
-}
-
-void free_menuitem(void)
-{
-   if (clMenuItem) { acFree(clMenuItem); clMenuItem = NULL; }
-}
-
 //****************************************************************************
 
 static ERROR ITEM_Activate(objMenuItem *Item, APTR Void)
 {
-   FMSG("~","Executing item \"%s\".", Item->Text);
+   parasol::Log log;
+   log.traceBranch("Executing item \"%s\".", Item->Text);
 
    if (Item->Flags & MIF_EXTENSION) {
-      if (Item->Flags & MIF_DISABLED) {
-         LOGRETURN();
-         return ERR_Okay;
-      }
+      if (Item->Flags & MIF_DISABLED) return ERR_Okay;
 
       select_item(Item->Menu, Item, TRUE);
 
-      MSG("exec_item: Item is an extension (%d).  Hiding %d", (Item->Menu) ? Item->Menu->Head.UniqueID : 0, (Item->Menu->CurrentMenu) ? Item->Menu->CurrentMenu->Head.UniqueID : 0);
+      log.trace("exec_item: Item is an extension (%d).  Hiding %d", (Item->Menu) ? Item->Menu->Head.UniqueID : 0, (Item->Menu->CurrentMenu) ? Item->Menu->CurrentMenu->Head.UniqueID : 0);
 
       // Hide any currently open sub-menu
 
-      if ((Item->Menu->CurrentMenu) AND (Item->Menu->CurrentMenu != Item->SubMenu)) {
+      if ((Item->Menu->CurrentMenu) and (Item->Menu->CurrentMenu != Item->SubMenu)) {
          acHide(Item->Menu->CurrentMenu);
       }
 
@@ -76,7 +47,7 @@ static ERROR ITEM_Activate(objMenuItem *Item, APTR Void)
 
       objMenu *menu;
       if ((menu = Item->SubMenu)) {
-         MSG("exec_item: Activating existing child menu #%d.", menu->Head.UniqueID);
+         log.trace("exec_item: Activating existing child menu #%d.", menu->Head.UniqueID);
 
          // Hide any active sub menus that belong to the child
 
@@ -93,7 +64,7 @@ static ERROR ITEM_Activate(objMenuItem *Item, APTR Void)
          Item->SubMenu = menu;
          if (!acShow(Item->SubMenu)) Item->Menu->CurrentMenu = Item->SubMenu;
       }
-      else return LogReturnError(0, ERR_NewObject);
+      else return log.warning(ERR_NewObject);
 
       menu->ParentItem = Item;
    }
@@ -101,7 +72,7 @@ static ERROR ITEM_Activate(objMenuItem *Item, APTR Void)
       // Instantly hide the root menu surface (no fading).  We also switch the focus to the object that we are relative to.
 
       LONG flags;
-      if ((!drwGetSurfaceFlags(Item->Menu->MenuSurfaceID, &flags)) AND (flags & RNF_VISIBLE)) {
+      if ((!drwGetSurfaceFlags(Item->Menu->MenuSurfaceID, &flags)) and (flags & RNF_VISIBLE)) {
          if (Item->Menu->RootMenu IS Item->Menu) {
             if (Item->Menu->MenuSurfaceID) acHideID(Item->Menu->MenuSurfaceID);
             if (Item->Menu->RelativeID) acFocusID(Item->Menu->RelativeID);
@@ -114,30 +85,21 @@ static ERROR ITEM_Activate(objMenuItem *Item, APTR Void)
          }
       }
 
-      if (Item->Flags & MIF_DISABLED) {
-         LOGRETURN();
-         return ERR_Okay;
-      }
+      if (Item->Flags & MIF_DISABLED) return ERR_Okay;
 
       select_item(Item->Menu, Item, TRUE);
 
       if (Item->Menu->RootMenu->ItemFeedback.Type) {
          FUNCTION *fb = &Item->Menu->RootMenu->ItemFeedback;
          if (fb->Type IS CALL_STDC) {
-            void (*routine)(objMenu *, objMenuItem *);
-            routine = fb->StdC.Routine;
-
-            if (fb->StdC.Context) {
-               OBJECTPTR context = SetContext(fb->StdC.Context);
-               routine(Item->Menu, Item);
-               SetContext(context);
-            }
-            else routine(fb->StdC.Context, Item);
+            auto routine = (void (*)(objMenu *, objMenuItem *))fb->StdC.Routine;
+            parasol::SwitchContext ctx(fb->StdC.Context);
+            routine(Item->Menu, Item);
          }
          else if (fb->Type IS CALL_SCRIPT) {
             OBJECTPTR script;
             if ((script = fb->Script.Script)) {
-               const struct ScriptArg args[] = {
+               const ScriptArg args[] = {
                   { "Menu", FD_OBJECTPTR, { .Address = Item->Menu } },
                   { "Item", FD_OBJECTPTR, { .Address = Item } }
                };
@@ -151,7 +113,6 @@ static ERROR ITEM_Activate(objMenuItem *Item, APTR Void)
       NotifySubscribers(Item->Menu, AC_Activate, 0, 0, ERR_Okay);
    }
 
-   LOGRETURN();
    return ERR_Okay;
 }
 
@@ -161,7 +122,7 @@ static ERROR ITEM_DataFeed(objMenuItem *Self, struct acDataFeed *Args)
 {
    if (Args->DataType IS DATA_XML) { // For menu items that open sub-menus
       if (Self->ChildXML) { FreeResource(Self->ChildXML); Self->ChildXML = NULL; }
-      Self->ChildXML = StrClone(Args->Buffer);
+      Self->ChildXML = StrClone((CSTRING)Args->Buffer);
       return ERR_Okay;
    }
    else return ERR_NoSupport;
@@ -197,11 +158,11 @@ static ERROR ITEM_Free(objMenuItem *Self, APTR Void)
 {
    if (Self->Bitmap)       { acFree(Self->Bitmap);           Self->Bitmap = NULL; }
    if (Self->SubMenu)      { acFree(Self->SubMenu);          Self->SubMenu = NULL; }
-   if (Self->Name)         { FreeResource(Self->Name);         Self->Name = NULL; }
-   if (Self->Text)         { FreeResource(Self->Text);         Self->Text = NULL; }
-   if (Self->Path)         { FreeResource(Self->Path);         Self->Path = NULL; }
-   if (Self->ChildXML)     { FreeResource(Self->ChildXML);     Self->ChildXML = NULL; }
-   if (Self->ObjectName)   { FreeResource(Self->ObjectName);   Self->ObjectName = NULL; }
+   if (Self->Name)         { FreeResource(Self->Name);       Self->Name = NULL; }
+   if (Self->Text)         { FreeResource(Self->Text);       Self->Text = NULL; }
+   if (Self->Path)         { FreeResource(Self->Path);       Self->Path = NULL; }
+   if (Self->ChildXML)     { FreeResource(Self->ChildXML);   Self->ChildXML = NULL; }
+   if (Self->ObjectName)   { FreeResource(Self->ObjectName); Self->ObjectName = NULL; }
 
    if (Self->Prev) Self->Prev->Next = Self->Next;
    if (Self->Next) Self->Next->Prev = Self->Prev;
@@ -324,7 +285,7 @@ file is undesirable, consider passing the configuration through the XML #DataFee
 static ERROR ITEM_SET_Path(objMenuItem *Self, CSTRING Value)
 {
    if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
-   if ((Value) AND (*Value)) Self->Path = StrClone(Value);
+   if ((Value) and (*Value)) Self->Path = StrClone(Value);
    return ERR_Okay;
 }
 
@@ -339,7 +300,7 @@ This field allows non-unique names to be assigned to menu items.
 static ERROR ITEM_SET_Name(objMenuItem *Self, CSTRING Value)
 {
    if (Self->Name) { FreeResource(Self->Name); Self->Name = NULL; }
-   if ((Value) AND (*Value)) Self->Name = StrClone(Value);
+   if ((Value) and (*Value)) Self->Name = StrClone(Value);
    return ERR_Okay;
 }
 
@@ -374,7 +335,7 @@ static ERROR ITEM_GET_SubMenu(objMenuItem *Self, objMenu **Value)
 {
    if (Self->SubMenu) { *Value = Self->SubMenu; return ERR_Okay; }
 
-   if ((Self->Head.Flags & NF_INITIALISED) AND (Self->Flags & MIF_EXTENSION)) {
+   if ((Self->Head.Flags & NF_INITIALISED) and (Self->Flags & MIF_EXTENSION)) {
       ERROR error = load_submenu(Self->Menu, &Self->SubMenu, Self);
       *Value = Self->SubMenu;
       return error;
@@ -393,7 +354,7 @@ The text string that is rendered in the item is declared here.
 static ERROR ITEM_SET_Text(objMenuItem *Self, CSTRING Value)
 {
    if (Self->Text) { FreeResource(Self->Text); Self->Text = NULL; }
-   if ((Value) AND (*Value)) Self->Text = StrClone(Value);
+   if ((Value) and (*Value)) Self->Text = StrClone(Value);
    return ERR_Okay;
 }
 
@@ -407,11 +368,13 @@ static ERROR ITEM_GET_Y(objMenuItem *Self, LONG *Value)
 
 static ERROR load_submenu(objMenu *ParentMenu, objMenu **SubMenu, objMenuItem *Item)
 {
-   LogF("~load_submenu()","");
+   parasol::Log log(__FUNCTION__);
+
+   log.branch("");
 
    SURFACEINFO *info;
    if (drwGetSurfaceInfo(ParentMenu->MenuSurfaceID, &info) != ERR_Okay) {
-      return LogReturnError(0, ERR_GetSurfaceInfo);
+      return log.warning(ERR_GetSurfaceInfo);
    }
 
    objMenu *menu;
@@ -465,7 +428,7 @@ static ERROR load_submenu(objMenu *ParentMenu, objMenu **SubMenu, objMenuItem *I
          if ((error = create_menu_file(ParentMenu, menu, Item)) != ERR_Okay) {
             acFree(menu);
             ReleaseObject(menu);
-            return LogReturnError(0, error);
+            return log.warning(error);
          }
       }
       else {
@@ -474,7 +437,7 @@ static ERROR load_submenu(objMenu *ParentMenu, objMenu **SubMenu, objMenuItem *I
          if (acInit(menu) != ERR_Okay) {
             acFree(menu);
             ReleaseObject(menu);
-            return LogReturnError(0, ERR_Init);
+            return log.warning(ERR_Init);
          }
       }
 
@@ -486,23 +449,18 @@ static ERROR load_submenu(objMenu *ParentMenu, objMenu **SubMenu, objMenuItem *I
       if (Item->ChildXML) {
          SetString(ParentMenu->prvXML, FID_Statement, Item->ChildXML);
 
-         OBJECTPTR context = SetContext(menu); // Ensure that any allocations are against the sub-menu, not us
-
-            struct XMLTag *tag;
-            for (tag=ParentMenu->prvXML->Tags[0]; tag; tag=tag->Next) {
-               add_xml_item(menu, ParentMenu->prvXML, tag);
-            }
-            calc_menu_size(menu);
-            acResizeID(menu->MenuSurfaceID, menu->Width, menu->Height, 0);
-            calc_scrollbar(menu);
-            ensure_on_display(menu);
-
-         SetContext(context);
+         parasol::SwitchContext ctx(menu); // Ensure that any allocations are against the sub-menu
+         for (auto tag=ParentMenu->prvXML->Tags[0]; tag; tag=tag->Next) {
+            add_xml_item(menu, ParentMenu->prvXML, tag);
+         }
+         calc_menu_size(menu);
+         acResizeID(menu->MenuSurfaceID, menu->Width, menu->Height, 0);
+         calc_scrollbar(menu);
+         ensure_on_display(menu);
       }
    }
 
    *SubMenu = menu;
-   LogReturn();
    return ERR_Okay;
 }
 
@@ -514,15 +472,14 @@ static ERROR load_submenu(objMenu *ParentMenu, objMenu **SubMenu, objMenuItem *I
 
 #define SIZE_MENU_BUFFER 4000 // Must be big enough to hold all category names
 
-static void write_menu_items(objMenu *, objConfig *, OBJECTPTR, STRING, STRING *, LONG *, struct ConfigEntry *);
+static void write_menu_items(objMenu *, objConfig *, OBJECTPTR, STRING, STRING *, LONG *, ConfigEntry *);
 
 static void add_string(CSTRING String, STRING Buffer, LONG *Index, LONG *Total)
 {
    // Check if the string is already in the buffer
 
    LONG i = 0;
-   LONG j;
-   for (j=0; j < Total[0]; j++) {
+   for (LONG j=0; j < Total[0]; j++) {
       if (!StrCompare(String, Buffer+i, 0, STR_MATCH_LEN|STR_MATCH_CASE)) return;
       while (Buffer[i]) i++;
       i++;
@@ -530,29 +487,29 @@ static void add_string(CSTRING String, STRING Buffer, LONG *Index, LONG *Total)
 
    // Add the string to the end of the sequential string list
 
-   for (j=0; (String[j]) AND (Index[0] < SIZE_MENU_BUFFER-1); j++) Buffer[Index[0]++] = String[j];
+   for (LONG j=0; (String[j]) and (Index[0] < SIZE_MENU_BUFFER-1); j++) Buffer[Index[0]++] = String[j];
    Buffer[Index[0]++] = 0;
    Total[0] += 1;
 }
 
 static ERROR create_menu_file(objMenu *Self, objMenu *Menu, objMenuItem *item)
 {
-   LONG j, i;
-   UBYTE buffer[SIZE_MENU_BUFFER], category[256];
+   parasol::Log log(__FUNCTION__);
+   char buffer[SIZE_MENU_BUFFER], category[256];
 
-   LogF("create_menu_file()", 0);
+   log.branch("");
 
    ERROR error = ERR_Failed;
 
    objConfig *config;
    if (CreateObject(ID_CONFIG, NF_INTEGRAL, &config,
-         FID_Path|TSTRING, item->Path,
+         FID_Path|TSTR, item->Path,
          TAGEND) != ERR_Okay) return ERR_CreateObject;
 
    // Sort the configuration file immediately after loading.  Note that sorting occurs on the Text item, which
    // represents the text for each menu item.
 
-   if ((Self->Flags & MNF_SORT) OR (item->Flags & MIF_SORT)) {
+   if ((Self->Flags & MNF_SORT) or (item->Flags & MIF_SORT)) {
       cfgSortByKey(config, "Text", FALSE);
    }
 
@@ -561,12 +518,12 @@ static ERROR create_menu_file(objMenu *Self, objMenu *Menu, objMenuItem *item)
 
    LONG pos   = 0;
    LONG total = 0;
-   struct ConfigEntry *entries = config->Entries;
-   for (i=0; i < config->AmtEntries; i++) {
+   ConfigEntry *entries = config->Entries;
+   for (LONG i=0; i < config->AmtEntries; i++) {
       if (!StrMatch("category", entries[i].Key)) {
-         j = 0;
+         LONG j = 0;
          while (entries[i].Data[j]) {
-            while ((entries[i].Data[j]) AND (entries[i].Data[j] != '/')) {
+            while ((entries[i].Data[j]) and (entries[i].Data[j] != '/')) {
                category[j] = entries[i].Data[j];
                j++;
             }
@@ -616,12 +573,12 @@ static ERROR create_menu_file(objMenu *Self, objMenu *Menu, objMenuItem *item)
 }
 
 static void write_menu_items(objMenu *Self, objConfig *config, OBJECTPTR file, STRING Buffer, STRING *List,
-   LONG *Index, struct ConfigEntry *entries)
+   LONG *Index, ConfigEntry *entries)
 {
    CSTRING category = List[*Index];
    LONG i;
    for (i=0; category[i]; i++);
-   while ((i > 0) AND (category[i-1] != '/')) i--;
+   while ((i > 0) and (category[i-1] != '/')) i--;
 
    StrFormat(Buffer, SIZE_MENU_BUFFER, "  <menu text=\"%s\" icon=\"folders/programfolder\">\n", category+i);
    write_string(file, Buffer);
@@ -631,8 +588,8 @@ static void write_menu_items(objMenu *Self, objConfig *config, OBJECTPTR file, S
    CSTRING path = List[Index[0]];
    while (List[Index[0]+1]) {
       CSTRING str = List[Index[0]+1];
-      for (i=0; (path[i]) AND (path[i] IS str[i]); i++);
-      if ((!path[i]) AND (str[i] IS '/')) {
+      for (i=0; (path[i]) and (path[i] IS str[i]); i++);
+      if ((!path[i]) and (str[i] IS '/')) {
          // We've found a sub-category
          Index[0] = Index[0] + 1;
          write_menu_items(Self, config, file, Buffer, List, Index, entries);
@@ -644,12 +601,12 @@ static void write_menu_items(objMenu *Self, objConfig *config, OBJECTPTR file, S
    // Write out all items in the current category
 
    LONG section = 0;
-   for (i=0; i < config->AmtEntries; i++) {
+   for (LONG i=0; i < config->AmtEntries; i++) {
       if (StrMatch(entries[i].Section, entries[section].Section) != ERR_Okay) {
          section = i;
       }
 
-      if ((!StrMatch("category", entries[i].Key)) AND (!StrMatch(category, entries[i].Data))) {
+      if ((!StrMatch("category", entries[i].Key)) and (!StrMatch(category, entries[i].Data))) {
          write_string(file, "    <item");
 
          CSTRING str;
@@ -683,20 +640,19 @@ static void write_menu_items(objMenu *Self, objConfig *config, OBJECTPTR file, S
 
 //****************************************************************************
 
-static ERROR add_xml_item(objMenu *Self, objXML *XML, struct XMLTag *Tag)
+static ERROR add_xml_item(objMenu *Self, objXML *XML, XMLTag *Tag)
 {
-   if (!Tag) return ERR_NullArgs;
+   parasol::Log log(__FUNCTION__);
 
+   if (!Tag) return ERR_NullArgs;
    if (!Tag->Attrib->Name) return ERR_Okay;
 
    ULONG hash_element = StrHash(Tag->Attrib->Name, 0);
 
    if (hash_element IS HASH_If) {
       if (if_satisfied(Self, Tag)) {
-         struct XMLTag *tag = Tag->Child;
-         while (tag) {
+         for (XMLTag *tag=Tag->Child; tag; tag=tag->Next) {
             add_xml_item(Self, XML, tag);
-            tag = tag->Next;
          }
       }
       return ERR_Okay;
@@ -704,10 +660,8 @@ static ERROR add_xml_item(objMenu *Self, objXML *XML, struct XMLTag *Tag)
    else if (hash_element IS HASH_Else) {
       // Execute the contents of the <else> tag if the last <if> statement was not satisfied
       if (tlSatisfied IS FALSE) {
-         struct XMLTag *tag = Tag->Child;
-         while (tag) {
+         for (XMLTag *tag=Tag->Child; tag; tag=tag->Next) {
             add_xml_item(Self, XML, tag);
-            tag = tag->Next;
          }
       }
       return ERR_Okay;
@@ -715,8 +669,7 @@ static ERROR add_xml_item(objMenu *Self, objXML *XML, struct XMLTag *Tag)
    else if (hash_element IS HASH_Menu) {
       objMenuItem *item;
       if (!NewObject(ID_MENUITEM, NF_INTEGRAL, &item)) {
-         LONG i;
-         for (i=1; i < Tag->TotalAttrib; i++) {
+         for (LONG i=1; i < Tag->TotalAttrib; i++) {
             ULONG hash = StrHash(Tag->Attrib[i].Name, 0);
             CSTRING value = Tag->Attrib[i].Value;
 
@@ -730,14 +683,14 @@ static ERROR add_xml_item(objMenu *Self, objXML *XML, struct XMLTag *Tag)
                case HASH_ObjectName: SetString(item, FID_ObjectName, value); break;
                case HASH_Path:
                case HASH_Src:        SetString(item, FID_Path, value); break;
-               default: LogErrorMsg("Unsupported menu attribute \"%s\".", Tag->Attrib[i].Name);
+               default: log.warning("Unsupported menu attribute \"%s\".", Tag->Attrib[i].Name);
             }
          }
 
          item->Flags |= MIF_EXTENSION;
          item->Height = get_item_height(Self);
 
-         if ((XML) AND (Tag->Child)) {
+         if ((XML) and (Tag->Child)) {
             STRING childxml;
             if (!xmlGetString(XML, Tag->Child->Index, XMF_INCLUDE_SIBLINGS, &childxml)) {
                acDataXML(item, childxml);
@@ -760,8 +713,7 @@ static ERROR add_xml_item(objMenu *Self, objXML *XML, struct XMLTag *Tag)
       STRING key = NULL;
 
       if (!NewObject(ID_MENUITEM, NF_INTEGRAL, &item)) {
-         LONG i;
-         for (i=1; i < Tag->TotalAttrib; i++) {
+         for (LONG i=1; i < Tag->TotalAttrib; i++) {
             ULONG hash = StrHash(Tag->Attrib[i].Name, 0);
             STRING value = Tag->Attrib[i].Value;
 
@@ -780,7 +732,7 @@ static ERROR add_xml_item(objMenu *Self, objXML *XML, struct XMLTag *Tag)
                case HASH_NoKeyResponse: item->Flags |= MIF_NO_KEY_RESPONSE; break;
                case HASH_Group:
                   item->Group = StrToInt(value);
-                  if ((!Self->Checkmark) AND (item->CheckmarkFailed IS FALSE)) {
+                  if ((!Self->Checkmark) and (item->CheckmarkFailed IS FALSE)) {
                      Self->ShowCheckmarks = TRUE;
                      if (SET_Checkmark(Self, "icons:items/checkmark(16)") != ERR_Okay) {
                         item->CheckmarkFailed = TRUE;
@@ -789,7 +741,7 @@ static ERROR add_xml_item(objMenu *Self, objXML *XML, struct XMLTag *Tag)
                   break;
                case HASH_Toggle:
                   item->Flags |= MIF_TOGGLE;
-                  if ((!Self->Checkmark) AND (item->CheckmarkFailed IS FALSE)) {
+                  if ((!Self->Checkmark) and (item->CheckmarkFailed IS FALSE)) {
                      Self->ShowCheckmarks = TRUE;
                      if (SET_Checkmark(Self, "icons:items/checkmark(16)") != ERR_Okay) {
                         item->CheckmarkFailed = TRUE;
@@ -802,16 +754,16 @@ static ERROR add_xml_item(objMenu *Self, objXML *XML, struct XMLTag *Tag)
          if (key) {
             LONG pos = 0;
             if (qualifier) {
-               for (pos=0; (qualifier[pos]) AND (pos < sizeof(item->KeyString)-2); pos++) item->KeyString[pos] = qualifier[pos];
+               for (pos=0; (qualifier[pos]) and ((size_t)pos < sizeof(item->KeyString)-2); pos++) item->KeyString[pos] = qualifier[pos];
                item->KeyString[pos++] = '+';
             }
-            for (i=0; (key[i]) AND (pos < sizeof(item->KeyString)-1); i++) item->KeyString[pos++] = key[i];
+            for (LONG i=0; (key[i]) and ((size_t)pos < sizeof(item->KeyString)-1); i++) item->KeyString[pos++] = key[i];
             item->KeyString[pos] = 0;
          }
 
          item->Height = get_item_height(Self);
 
-         if ((XML) AND (Tag->Child)) {
+         if ((XML) and (Tag->Child)) {
             STRING childxml;
             if (!xmlGetString(XML, Tag->Child->Index, XMF_INCLUDE_SIBLINGS, &childxml)) {
                acDataXML(item, childxml);
@@ -834,7 +786,7 @@ static ERROR add_xml_item(objMenu *Self, objXML *XML, struct XMLTag *Tag)
          TAGEND));
    }
    else {
-      LogErrorMsg("Unsupported tag <%s>.", Tag->Attrib->Name);
+      log.warning("Unsupported tag <%s>.", Tag->Attrib->Name);
       return ERR_Okay;
    }
 
@@ -845,10 +797,11 @@ static ERROR add_xml_item(objMenu *Self, objXML *XML, struct XMLTag *Tag)
 
 static ERROR set_key(objMenuItem *Item, CSTRING Value)
 {
+   parasol::Log log(__FUNCTION__);
+
    Item->Key = 0;
-   if ((Value) AND (*Value)) {
-      LONG i;
-      for (i=0; i < K_LIST_END; i++) {
+   if ((Value) and (*Value)) {
+      for (LONG i=0; i < K_LIST_END; i++) {
          if (!StrMatch(Value, glKeymapTable[i])) {
             Item->Key = i;
             return ERR_Okay;
@@ -856,29 +809,13 @@ static ERROR set_key(objMenuItem *Item, CSTRING Value)
       }
    }
 
-   LogErrorMsg("Unable to find a key symbol for '%s'.", Value);
+   log.warning("Unable to find a key symbol for '%s'.", Value);
    return ERR_Search;
 }
 
 //****************************************************************************
 
-static ERROR set_qualifier(objMenuItem *Item, CSTRING Value)
-{
-   Item->Qualifiers = 0;
-
-   LONG i;
-   for (i=0; clQualifiers[i].Value != 0; i++) {
-      if (!StrMatch(Value, clQualifiers[i].Name)) {
-         Item->Qualifiers |= clQualifiers[i].Value;
-         return ERR_Okay;
-      }
-   }
-   return ERR_Search;
-}
-
-//****************************************************************************
-
-static const struct FieldDef clItemFlags[] = {
+static const FieldDef clItemFlags[] = {
    { "Disabled",      MIF_DISABLED },
    { "Break",         MIF_BREAK },
    { "Extension",     MIF_EXTENSION },
@@ -892,7 +829,7 @@ static const struct FieldDef clItemFlags[] = {
    { NULL, 0 }
 };
 
-static const struct FieldDef clQualifiers[] = {
+static const FieldDef clQualifiers[] = {
    { "LShift",   KQ_L_SHIFT   },
    { "RShift",   KQ_R_SHIFT   },
    { "CapsLock", KQ_CAPS_LOCK },
@@ -912,32 +849,32 @@ static const struct FieldDef clQualifiers[] = {
    { NULL, 0 }
 };
 
-static const struct ActionArray clItemActions[] = {
-   { AC_Activate,    ITEM_Activate },
-   { AC_DataFeed,    ITEM_DataFeed },
-   { AC_Disable,     ITEM_Disable },
-   { AC_Enable,      ITEM_Enable },
-   { AC_Free,        ITEM_Free },
-   { AC_Init,        ITEM_Init },
-   { AC_NewObject,   ITEM_NewObject },
-   { AC_NewOwner,    ITEM_NewOwner },
+static const ActionArray clItemActions[] = {
+   { AC_Activate,    (APTR)ITEM_Activate },
+   { AC_DataFeed,    (APTR)ITEM_DataFeed },
+   { AC_Disable,     (APTR)ITEM_Disable },
+   { AC_Enable,      (APTR)ITEM_Enable },
+   { AC_Free,        (APTR)ITEM_Free },
+   { AC_Init,        (APTR)ITEM_Init },
+   { AC_NewObject,   (APTR)ITEM_NewObject },
+   { AC_NewOwner,    (APTR)ITEM_NewOwner },
    { 0, NULL }
 };
 
-//static const struct FunctionField argsSelect[] = { { "Toggle", FD_LONG }, { NULL, 0 } };
+//static const FunctionField argsSelect[] = { { "Toggle", FD_LONG }, { NULL, 0 } };
 
-static const struct MethodArray clItemMethods[] = {
+static const MethodArray clItemMethods[] = {
    { 0, NULL, NULL, 0 }
 };
 
-static const struct FieldArray clItemFields[] = {
+static const FieldArray clItemFields[] = {
    { "Prev",         FDF_OBJECT|FDF_R,     ID_MENUITEM, NULL, NULL },
    { "Next",         FDF_OBJECT|FDF_R,     ID_MENUITEM, NULL, NULL },
    { "Bitmap",       FDF_OBJECT|FDF_RW,    ID_BITMAP, NULL, NULL },
-   { "SubMenu",      FDF_INTEGRAL|FDF_RW,  ID_MENU, ITEM_GET_SubMenu, NULL },
-   { "Path",         FDF_STRING|FDF_RW,    0, NULL, ITEM_SET_Path },
-   { "Name",         FDF_STRING|FDF_RW,    0, NULL, ITEM_SET_Name },
-   { "Text",         FDF_STRING|FDF_RW,    0, NULL, ITEM_SET_Text },
+   { "SubMenu",      FDF_INTEGRAL|FDF_RW,  ID_MENU, (APTR)ITEM_GET_SubMenu, NULL },
+   { "Path",         FDF_STRING|FDF_RW,    0, NULL, (APTR)ITEM_SET_Path },
+   { "Name",         FDF_STRING|FDF_RW,    0, NULL, (APTR)ITEM_SET_Name },
+   { "Text",         FDF_STRING|FDF_RW,    0, NULL, (APTR)ITEM_SET_Text },
    { "Flags",        FDF_LONGFLAGS|FDF_RW, (MAXINT)&clItemFlags, NULL, NULL },
    { "Key",          FDF_LONG|FDF_RW,      0, NULL, NULL },
    { "Qualifiers",   FDF_LONG|FDF_RW,      (MAXINT)&clQualifiers, NULL, NULL },
@@ -947,7 +884,42 @@ static const struct FieldArray clItemFields[] = {
    { "Height",       FD_LONG|FDF_R,        0, NULL, NULL },
    { "Colour",       FDF_RGB|FDF_RW,       0, NULL, NULL },
    { "Background",   FDF_RGB|FDF_RW,       0, NULL, NULL },
-   { "Y",            FDF_LONG|FDF_R,       0, ITEM_GET_Y, NULL },
+   { "Y",            FDF_LONG|FDF_R,       0, (APTR)ITEM_GET_Y, NULL },
    END_FIELD
 };
 
+//****************************************************************************
+
+static ERROR set_qualifier(objMenuItem *Item, CSTRING Value)
+{
+   Item->Qualifiers = 0;
+   for (LONG i=0; clQualifiers[i].Value != 0; i++) {
+      if (!StrMatch(Value, clQualifiers[i].Name)) {
+         Item->Qualifiers |= clQualifiers[i].Value;
+         return ERR_Okay;
+      }
+   }
+   return ERR_Search;
+}
+
+//****************************************************************************
+
+ERROR init_menuitem(void)
+{
+   return(CreateObject(ID_METACLASS, 0, &clMenuItem,
+      FID_ClassVersion|TFLOAT, VER_MENUITEM,
+      FID_Name|TSTRING,   "MenuItem",
+      FID_Category|TLONG, CCF_GUI,
+      FID_Flags|TLONG,    CLF_PROMOTE_INTEGRAL|CLF_PRIVATE_ONLY,
+      FID_Actions|TPTR,   clItemActions,
+      FID_Methods|TARRAY, clItemMethods,
+      FID_Fields|TARRAY,  clItemFields,
+      FID_Size|TLONG,     sizeof(objMenuItem),
+      FID_Path|TSTR,      MOD_PATH,
+      TAGEND));
+}
+
+void free_menuitem(void)
+{
+   if (clMenuItem) { acFree(clMenuItem); clMenuItem = NULL; }
+}

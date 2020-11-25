@@ -12,7 +12,7 @@
 // configuration files.  Because this is a lookup table, it must be arranged in the same order as that specified in
 // the system/keyboard.h file.
 
-const static STRING glKeymapTable[K_LIST_END+1] = {
+static const char * const glKeymapTable[K_LIST_END+1] = {
    "",
    "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M",
    "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z",
@@ -37,7 +37,7 @@ const static STRING glKeymapTable[K_LIST_END+1] = {
    0
 };
 
-const static UBYTE glCharTable[K_LIST_END+1] = {
+const static char glCharTable[K_LIST_END+1] = {
    0,
    'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M',
    'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',

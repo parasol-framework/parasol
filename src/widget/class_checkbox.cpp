@@ -27,15 +27,13 @@ with a callback function.
 
 static OBJECTPTR clCheckBox = NULL;
 
-static const struct FieldDef Align[] = {
+static const FieldDef Align[] = {
    { "Right",      ALIGN_RIGHT      }, { "Left",     ALIGN_LEFT },
    { "Bottom",     ALIGN_BOTTOM     }, { "Top",      ALIGN_TOP },
    { "Horizontal", ALIGN_HORIZONTAL }, { "Vertical", ALIGN_VERTICAL },
    { "Center",     ALIGN_CENTER     }, { "Middle",   ALIGN_MIDDLE },
    { NULL, 0 }
 };
-
-static const struct FieldArray clFields[];
 
 static void key_event(objCheckBox *, evKey *, LONG);
 
@@ -46,7 +44,7 @@ static ERROR CHECKBOX_ActionNotify(objCheckBox *Self, struct acActionNotify *Arg
    if (Args->ActionID IS AC_Focus) {
       if (!Self->prvKeyEvent) {
          FUNCTION callback;
-         SET_FUNCTION_STDC(callback, &key_event);
+         SET_FUNCTION_STDC(callback, (APTR)&key_event);
          SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, &callback, Self, &Self->prvKeyEvent);
       }
 
@@ -66,7 +64,7 @@ static ERROR CHECKBOX_ActionNotify(objCheckBox *Self, struct acActionNotify *Arg
       DelayMsg(AC_Draw, Self->RegionID, NULL);
    }
    else if (Args->ActionID IS AC_Free) {
-      if ((Self->Feedback.Type IS CALL_SCRIPT) AND (Self->Feedback.Script.Script->UniqueID IS Args->ObjectID)) {
+      if ((Self->Feedback.Type IS CALL_SCRIPT) and (Self->Feedback.Script.Script->UniqueID IS Args->ObjectID)) {
          Self->Feedback.Type = CALL_NONE;
       }
    }
@@ -83,11 +81,11 @@ Activate: Activates the checkbox.
 
 static ERROR CHECKBOX_Activate(objCheckBox *Self, APTR Void)
 {
-   LogBranch(NULL);
+   parasol::Log log;
+   log.branch(NULL);
 
    if (Self->Active) {
-      LogErrorMsg("Warning - recursion detected");
-      LogReturn();
+      log.warning("Warning - recursion detected");
       return ERR_Failed;
    }
 
@@ -100,20 +98,18 @@ static ERROR CHECKBOX_Activate(objCheckBox *Self, APTR Void)
          acDrawID(Self->RegionID);
 
          if (Self->Feedback.Type IS CALL_STDC) {
-            void (*routine)(OBJECTPTR Context, objCheckBox *, LONG);
-            routine = Self->Feedback.StdC.Routine;
+            auto routine = (void (*)(APTR, objCheckBox *, LONG))Self->Feedback.StdC.Routine;
 
             if (Self->Feedback.StdC.Context) {
-               OBJECTPTR context = SetContext(Self->Feedback.StdC.Context);
+               parasol::SwitchContext context(Self->Feedback.StdC.Context);
                routine(Self->Feedback.StdC.Context, Self, Self->Value);
-               SetContext(context);
             }
             else routine(Self->Feedback.StdC.Context, Self, Self->Value);
          }
          else if (Self->Feedback.Type IS CALL_SCRIPT) {
             OBJECTPTR script;
             if ((script = Self->Feedback.Script.Script)) {
-               const struct ScriptArg args[] = {
+               const ScriptArg args[] = {
                   { "CheckBox", FD_OBJECTPTR, { .Address = Self } },
                   { "State", FD_LONG, { .Long = Self->Value } }
                };
@@ -121,18 +117,15 @@ static ERROR CHECKBOX_Activate(objCheckBox *Self, APTR Void)
             }
          }
 
-         struct ChildEntry list[16];
+         ChildEntry list[16];
          LONG count = ARRAYSIZE(list);
          if (!ListChildren(Self->Head.UniqueID, list, &count)) {
-            WORD i;
-            for (i=0; i < count; i++) DelayMsg(AC_Activate, list[i].ObjectID, NULL);
+            for (WORD i=0; i < count; i++) DelayMsg(AC_Activate, list[i].ObjectID, NULL);
          }
       }
    }
 
    Self->Active = FALSE;
-
-   LogReturn();
    return ERR_Okay;
 }
 
@@ -146,7 +139,6 @@ static ERROR CHECKBOX_Disable(objCheckBox *Self, APTR Void)
 {
    // See the ActionNotify routine to see what happens when the surface is disabled.
 
-   LogAction(NULL);
    acDisableID(Self->RegionID);
    return ERR_Okay;
 }
@@ -161,7 +153,6 @@ static ERROR CHECKBOX_Enable(objCheckBox *Self, APTR Void)
 {
    // See the ActionNotify routine to see what happens when the surface is enabled.
 
-   LogAction(NULL);
    acEnableID(Self->RegionID);
    return ERR_Okay;
 }
@@ -204,7 +195,7 @@ static ERROR CHECKBOX_Init(objCheckBox *Self, APTR Void)
 {
    if (!Self->SurfaceID) { // Find the parent surface
       OBJECTID owner_id = GetOwner(Self);
-      while ((owner_id) AND (GetClassID(owner_id) != ID_SURFACE)) {
+      while ((owner_id) and (GetClassID(owner_id) != ID_SURFACE)) {
          owner_id = GetOwnerID(owner_id);
       }
       if (owner_id) Self->SurfaceID = owner_id;
@@ -405,7 +396,7 @@ height, use the FD_PERCENT flag when setting the field.
 
 *****************************************************************************/
 
-static ERROR GET_Height(objCheckBox *Self, struct Variable *Value)
+static ERROR GET_Height(objCheckBox *Self, Variable *Value)
 {
    OBJECTPTR surface;
    if (!AccessObject(Self->RegionID, 4000, &surface)) {
@@ -420,9 +411,9 @@ static ERROR GET_Height(objCheckBox *Self, struct Variable *Value)
    else return ERR_AccessObject;
 }
 
-static ERROR SET_Height(objCheckBox *Self, struct Variable *Value)
+static ERROR SET_Height(objCheckBox *Self, Variable *Value)
 {
-   if (((Value->Type & FD_DOUBLE) AND (!Value->Double)) OR ((Value->Type & FD_LARGE) AND (!Value->Large))) {
+   if (((Value->Type & FD_DOUBLE) and (!Value->Double)) OR ((Value->Type & FD_LARGE) and (!Value->Large))) {
       return ERR_Okay;
    }
 
@@ -555,11 +546,11 @@ static ERROR GET_Value(objCheckBox *Self, LONG *Value)
 static ERROR SET_Value(objCheckBox *Self, LONG Value)
 {
    if (Self->Head.Flags & NF_INITIALISED) {
-      if ((Value IS TRUE) AND (Self->Value != TRUE)) {
+      if ((Value IS TRUE) and (Self->Value != TRUE)) {
          Self->Value = TRUE;
          acDrawID(Self->RegionID);
       }
-      else if ((Value IS FALSE) AND (Self->Value != FALSE)) {
+      else if ((Value IS FALSE) and (Self->Value != FALSE)) {
          Self->Value = FALSE;
          acDrawID(Self->RegionID);
       }
@@ -579,7 +570,7 @@ use the FD_PERCENT flag when setting the field.
 
 *****************************************************************************/
 
-static ERROR GET_Width(objCheckBox *Self, struct Variable *Value)
+static ERROR GET_Width(objCheckBox *Self, Variable *Value)
 {
    OBJECTPTR surface;
 
@@ -592,12 +583,12 @@ static ERROR GET_Width(objCheckBox *Self, struct Variable *Value)
       else if (Value->Type & FD_LARGE) Value->Large = value;
       return ERR_Okay;
    }
-   else return PostError(ERR_AccessObject);
+   else return ERR_AccessObject;
 }
 
-static ERROR SET_Width(objCheckBox *Self, struct Variable *Value)
+static ERROR SET_Width(objCheckBox *Self, Variable *Value)
 {
-   if (((Value->Type & FD_DOUBLE) AND (!Value->Double)) OR ((Value->Type & FD_LARGE) AND (!Value->Large))) {
+   if (((Value->Type & FD_DOUBLE) and (!Value->Double)) OR ((Value->Type & FD_LARGE) and (!Value->Large))) {
       return ERR_Okay;
    }
 
@@ -621,7 +612,7 @@ fixed.  Negative values are permitted.
 
 *****************************************************************************/
 
-static ERROR GET_X(objCheckBox *Self, struct Variable *Value)
+static ERROR GET_X(objCheckBox *Self, Variable *Value)
 {
    OBJECTPTR surface;
 
@@ -634,10 +625,10 @@ static ERROR GET_X(objCheckBox *Self, struct Variable *Value)
       else if (Value->Type & FD_LARGE) Value->Large = value;
       return ERR_Okay;
    }
-   else return PostError(ERR_AccessObject);
+   else return ERR_AccessObject;
 }
 
-static ERROR SET_X(objCheckBox *Self, struct Variable *Value)
+static ERROR SET_X(objCheckBox *Self, Variable *Value)
 {
    OBJECTPTR surface;
    if (!AccessObject(Self->RegionID, 4000, &surface)) {
@@ -665,7 +656,7 @@ coordinate calculated from the formula `X = ContainerWidth - CheckBoxWidth - XOf
 
 *****************************************************************************/
 
-static ERROR GET_XOffset(objCheckBox *Self, struct Variable *Value)
+static ERROR GET_XOffset(objCheckBox *Self, Variable *Value)
 {
    OBJECTPTR surface;
    if (!AccessObject(Self->RegionID, 4000, &surface)) {
@@ -677,10 +668,10 @@ static ERROR GET_XOffset(objCheckBox *Self, struct Variable *Value)
       else if (Value->Type & FD_LARGE) Value->Large = value;
       return ERR_Okay;
    }
-   else return PostError(ERR_AccessObject);
+   else return ERR_AccessObject;
 }
 
-static ERROR SET_XOffset(objCheckBox *Self, struct Variable *Value)
+static ERROR SET_XOffset(objCheckBox *Self, Variable *Value)
 {
    OBJECTPTR surface;
    if (!AccessObject(Self->RegionID, 4000, &surface)) {
@@ -702,7 +693,7 @@ as fixed.  Negative values are permitted.
 
 *****************************************************************************/
 
-static ERROR GET_Y(objCheckBox *Self, struct Variable *Value)
+static ERROR GET_Y(objCheckBox *Self, Variable *Value)
 {
    OBJECTPTR surface;
    if (!AccessObject(Self->RegionID, 4000, &surface)) {
@@ -714,11 +705,11 @@ static ERROR GET_Y(objCheckBox *Self, struct Variable *Value)
       else if (Value->Type & FD_LARGE) Value->Large = value;
       return ERR_Okay;
    }
-   else return PostError(ERR_AccessObject);
+   else return ERR_AccessObject;
 
 }
 
-static ERROR SET_Y(objCheckBox *Self, struct Variable *Value)
+static ERROR SET_Y(objCheckBox *Self, Variable *Value)
 {
    OBJECTPTR surface;
    if (!AccessObject(Self->RegionID, 4000, &surface)) {
@@ -747,7 +738,7 @@ coordinate calculated from the formula `Y = ContainerHeight - CheckBoxHeight - Y
 
 *****************************************************************************/
 
-static ERROR GET_YOffset(objCheckBox *Self, struct Variable *Value)
+static ERROR GET_YOffset(objCheckBox *Self, Variable *Value)
 {
    OBJECTPTR surface;
    if (!AccessObject(Self->RegionID, 4000, &surface)) {
@@ -759,10 +750,10 @@ static ERROR GET_YOffset(objCheckBox *Self, struct Variable *Value)
       else if (Value->Type & FD_LARGE) Value->Large = value;
       return ERR_Okay;
    }
-   else return PostError(ERR_AccessObject);
+   else return ERR_AccessObject;
 }
 
-static ERROR SET_YOffset(objCheckBox *Self, struct Variable *Value)
+static ERROR SET_YOffset(objCheckBox *Self, Variable *Value)
 {
    OBJECTPTR surface;
 
@@ -789,30 +780,30 @@ static void key_event(objCheckBox *Self, evKey *Event, LONG Size)
 
 #include "class_checkbox_def.c"
 
-static const struct FieldArray clFields[] = {
+static const FieldArray clFields[] = {
    { "LayoutSurface",FDF_VIRTUAL|FDF_OBJECTID|FDF_SYSTEM|FDF_R, ID_SURFACE, NULL, NULL }, // VIRTUAL: This is a synonym for the Region field
    { "Region",       FDF_OBJECTID|FDF_RW,  ID_SURFACE, NULL, NULL },
    { "Surface",      FDF_OBJECTID|FDF_RW,  ID_SURFACE, NULL, NULL },
    { "Flags",        FDF_LONGFLAGS|FDF_RW, (MAXINT)&clCheckBoxFlags, NULL, NULL },
    { "LabelWidth",   FDF_LONG|FDF_RW,      0, NULL, NULL },
-   { "Value",        FDF_LONG|FDF_RW,      0, NULL, SET_Value },
+   { "Value",        FDF_LONG|FDF_RW,      0, NULL, (APTR)SET_Value },
    { "Align",        FDF_LONGFLAGS|FDF_RW, (MAXINT)&Align, NULL, NULL },
    // Virtual fields
-   { "Bottom",       FDF_VIRTUAL|FDF_LONG|FDF_R,               0, GET_Bottom, NULL },
-   { "Disable",      FDF_VIRTUAL|FDF_LONG|FDF_RW,              0, GET_Disable, SET_Disable },
-   { "Feedback",     FDF_VIRTUAL|FDF_FUNCTIONPTR|FDF_RW,       0, GET_Feedback, SET_Feedback },
-   { "Label",        FDF_VIRTUAL|FDF_STRING|FDF_RW,            0, GET_Label, SET_Label },
-   { "LayoutStyle",  FDF_VIRTUAL|FDF_POINTER|FDF_SYSTEM|FDF_W, 0, NULL, SET_LayoutStyle },
-   { "Right",        FDF_VIRTUAL|FDF_LONG|FDF_R,               0, GET_Right, NULL },
-   { "Selected",     FDF_SYNONYM|FDF_VIRTUAL|FDF_LONG|FDF_RW,  0, GET_Value, SET_Value },
-   { "TabFocus",     FDF_VIRTUAL|FDF_OBJECTID|FDF_W,           ID_TABFOCUS, NULL,   SET_TabFocus },
+   { "Bottom",       FDF_VIRTUAL|FDF_LONG|FDF_R,               0, (APTR)GET_Bottom, NULL },
+   { "Disable",      FDF_VIRTUAL|FDF_LONG|FDF_RW,              0, (APTR)GET_Disable, (APTR)SET_Disable },
+   { "Feedback",     FDF_VIRTUAL|FDF_FUNCTIONPTR|FDF_RW,       0, (APTR)GET_Feedback, (APTR)SET_Feedback },
+   { "Label",        FDF_VIRTUAL|FDF_STRING|FDF_RW,            0, (APTR)GET_Label, (APTR)SET_Label },
+   { "LayoutStyle",  FDF_VIRTUAL|FDF_POINTER|FDF_SYSTEM|FDF_W, 0, NULL, (APTR)SET_LayoutStyle },
+   { "Right",        FDF_VIRTUAL|FDF_LONG|FDF_R,               0, (APTR)GET_Right, NULL },
+   { "Selected",     FDF_SYNONYM|FDF_VIRTUAL|FDF_LONG|FDF_RW,  0, (APTR)GET_Value, (APTR)SET_Value },
+   { "TabFocus",     FDF_VIRTUAL|FDF_OBJECTID|FDF_W,           ID_TABFOCUS, NULL,   (APTR)SET_TabFocus },
    // Variable Fields
-   { "Height",       FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, GET_Height,  SET_Height },
-   { "Width",        FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, GET_Width,   SET_Width },
-   { "X",            FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, GET_X,       SET_X },
-   { "XOffset",      FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, GET_XOffset, SET_XOffset },
-   { "Y",            FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, GET_Y,       SET_Y },
-   { "YOffset",      FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, GET_YOffset, SET_YOffset },
+   { "Height",       FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)GET_Height,  (APTR)SET_Height },
+   { "Width",        FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)GET_Width,   (APTR)SET_Width },
+   { "X",            FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)GET_X,       (APTR)SET_X },
+   { "XOffset",      FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)GET_XOffset, (APTR)SET_XOffset },
+   { "Y",            FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)GET_Y,       (APTR)SET_Y },
+   { "YOffset",      FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)GET_YOffset, (APTR)SET_YOffset },
    END_FIELD
 };
 

@@ -9,7 +9,9 @@ static THREADVAR BYTE tlSatisfied = FALSE;
 
 static void translate_value(objMenu *Self, STRING Source, STRING Buffer, LONG BufferSize)
 {
-   if ((Source) AND (Source != Buffer)) StrCopy(Source, Buffer, BufferSize);
+   parasol::Log log(__FUNCTION__);
+
+   if ((Source) and (Source != Buffer)) StrCopy(Source, Buffer, BufferSize);
 
    // Search for an argument.  If there are no arguments in the string, return immediately.
 
@@ -17,10 +19,10 @@ static void translate_value(objMenu *Self, STRING Source, STRING Buffer, LONG Bu
    if ((i = StrSearch("[@", Buffer, 0)) >= 0) {
       LONG count = 0;
       for (; (Buffer[i]); i++) {
-         if ((Buffer[i] IS '[') AND (Buffer[i+1] IS '@')) {
+         if ((Buffer[i] IS '[') and (Buffer[i+1] IS '@')) {
             char compare[60];
             STRING str = Buffer + i + 2;
-            for (j=0; (j < sizeof(compare)) AND (*str) AND (*str != ']'); j++) compare[j] = *str++;
+            for (j=0; ((size_t)j < sizeof(compare)) and (*str) and (*str != ']'); j++) compare[j] = *str++;
             compare[j] = 0;
 
             CSTRING val;
@@ -31,7 +33,7 @@ static void translate_value(objMenu *Self, STRING Source, STRING Buffer, LONG Bu
             }
 
             if (++count > 30) {
-               LogErrorMsg("Recursion in line %.20s", Buffer);
+               log.warning("Recursion in line %.20s", Buffer);
                break;
             }
          }
@@ -43,7 +45,7 @@ static void translate_value(objMenu *Self, STRING Source, STRING Buffer, LONG Bu
 
 //****************************************************************************
 
-static LONG if_satisfied(objMenu *Self, struct XMLTag *Tag)
+static LONG if_satisfied(objMenu *Self, XMLTag *Tag)
 {
    UBYTE reverse = FALSE;
    tlSatisfied = FALSE; // Reset the satisfied variable
@@ -87,7 +89,7 @@ static LONG if_satisfied(objMenu *Self, struct XMLTag *Tag)
          acFree(file);
       }
    }
-   else if ((!StrMatch("directory", Tag->Attrib[index].Name)) OR
+   else if ((!StrMatch("directory", Tag->Attrib[index].Name)) or
             (!StrMatch("isdirectory", Tag->Attrib[index].Name))) {
       // This option checks if a path explicitly refers to a directory
       translate_value(Self, Tag->Attrib[index].Value, buffer, sizeof(buffer));
@@ -103,13 +105,13 @@ static LONG if_satisfied(objMenu *Self, struct XMLTag *Tag)
    else if (!StrMatch("isnull", Tag->Attrib[index].Name)) {
       translate_value(Self, Tag->Attrib[index].Value, buffer, sizeof(buffer));
 
-      if ((!buffer[0]) OR (buffer[0] IS '0')) tlSatisfied = TRUE;
+      if ((!buffer[0]) or (buffer[0] IS '0')) tlSatisfied = TRUE;
       else tlSatisfied = FALSE;
    }
    else if (!StrMatch("notnull", Tag->Attrib[index].Name)) {
       translate_value(Self, Tag->Attrib[index].Value, buffer, sizeof(buffer));
 
-      if ((!buffer[0]) OR (buffer[0] IS '0')) tlSatisfied = FALSE;
+      if ((!buffer[0]) or (buffer[0] IS '0')) tlSatisfied = FALSE;
       else tlSatisfied = TRUE;
    }
    else if (!StrMatch("statement", Tag->Attrib[index].Name)) {
@@ -126,8 +128,10 @@ static LONG if_satisfied(objMenu *Self, struct XMLTag *Tag)
 // MenuBase, MenuItem and MenuBreak XML tags can be used to specify the look and feel of the menu.
 // Menu, Item and Break XML tags can be used to specify elements to be placed within the menu.
 
-static void parse_xmltag(objMenu *Self, objXML *XML, struct XMLTag *Tag)
+static void parse_xmltag(objMenu *Self, objXML *XML, XMLTag *Tag)
 {
+   parasol::Log log(__FUNCTION__);
+
    if (!StrMatch("if", Tag->Attrib->Name)) {
       if (if_satisfied(Self, Tag)) {
          Tag = Tag->Child;
@@ -154,8 +158,7 @@ static void parse_xmltag(objMenu *Self, objXML *XML, struct XMLTag *Tag)
       }
    }
    else if (!StrMatch("values", Tag->Attrib->Name)) {
-      LONG a;
-      for (a=1; a < Tag->TotalAttrib; a++) {
+      for (LONG a=1; a < Tag->TotalAttrib; a++) {
          char value[500];
          translate_value(Self, Tag->Attrib[a].Value, value, sizeof(value));
          SetFieldEval(Self, Tag->Attrib[a].Name, value);
@@ -173,15 +176,11 @@ static void parse_xmltag(objMenu *Self, objXML *XML, struct XMLTag *Tag)
    else if (!StrMatch("break", Tag->Attrib->Name)) {
       add_xml_item(Self, XML, Tag);
    }
-   else if (!StrMatch("cache", Tag->Attrib->Name)) {
-      // Force caching of the menu
+   else if (!StrMatch("cache", Tag->Attrib->Name)) { // Force caching of the menu
       Self->Flags |= MNF_CACHE;
    }
    else if (!StrMatch("translation", Tag->Attrib->Name)) {
-      char filename[300];
-      LONG j, i;
-
-      for (j=1; j < Tag->TotalAttrib; j++) {
+      for (LONG j=1; j < Tag->TotalAttrib; j++) {
       	if (!StrMatch("language", Tag->Attrib[j].Name)) {
             StrCopy(Tag->Attrib[j].Value, Self->Language, sizeof(Self->Language));
          }
@@ -200,10 +199,12 @@ static void parse_xmltag(objMenu *Self, objXML *XML, struct XMLTag *Tag)
       StrReadLocale("Language", &locale);
 
       if (StrCompare(locale, Self->Language, 0, 0) != ERR_Okay) {
+         char filename[300];
+         LONG i;
          for (i=0; Self->Path[i]; i++);
-         while ((i > 0) AND (Self->Path[i-1] != ':') AND (Self->Path[i-1] != '/') AND (Self->Path[i-1] != '\\')) i--;
+         while ((i > 0) and (Self->Path[i-1] != ':') and (Self->Path[i-1] != '/') and (Self->Path[i-1] != '\\')) i--;
 
-         j = StrCopy(Self->Path, filename, i); // script dir
+         LONG j = StrCopy(Self->Path, filename, i); // script dir
          StrFormat(filename+j, sizeof(filename)-j, "%s/%s.%s", Self->LanguageDir, Self->Path + i, locale);
 
          CreateObject(ID_CONFIG, NF_INTEGRAL, &Self->Translation,
@@ -211,7 +212,7 @@ static void parse_xmltag(objMenu *Self, objXML *XML, struct XMLTag *Tag)
             TAGEND);
       }
    }
-   else LogErrorMsg("Unsupported menu element '%s'", Tag->Attrib->Name);
+   else log.warning("Unsupported menu element '%s'", Tag->Attrib->Name);
 }
 
 //****************************************************************************
@@ -229,10 +230,9 @@ static ERROR set_translation(objMenu *Self, OBJECTPTR Target, FIELD Field, CSTRI
 
    // Custom translation
    if (Self->Translation) {
-      struct ConfigEntry *entries = Self->Translation->Entries;
-      LONG i;
-      for (i=0; i < Self->Translation->AmtEntries; i++) {
-         if ((!StrMatch("MENU", entries[i].Section)) AND (!StrMatch(Text, entries[i].Key))) {
+      ConfigEntry *entries = Self->Translation->Entries;
+      for (LONG i=0; i < Self->Translation->AmtEntries; i++) {
+         if ((!StrMatch("MENU", entries[i].Section)) and (!StrMatch(Text, entries[i].Key))) {
             return SetString(Target, Field, entries[i].Data);
          }
       }
@@ -245,20 +245,19 @@ static ERROR set_translation(objMenu *Self, OBJECTPTR Target, FIELD Field, CSTRI
 
 static void draw_menu(objMenu *Self, objSurface *Surface, objBitmap *Bitmap)
 {
-   objFont *font = Self->Font;
+   auto font = Self->Font;
    font->Bitmap = Bitmap;
 
    LONG x = Self->LeftMargin;
    LONG y = Self->TopMargin + Self->YPosition;
 
-   struct ClipRectangle clip = Bitmap->Clip;
+   ClipRectangle clip = Bitmap->Clip;
    if (Self->BorderSize > Bitmap->Clip.Left) Bitmap->Clip.Left = Self->BorderSize;
    if (Self->BorderSize > Bitmap->Clip.Top)  Bitmap->Clip.Top  = Self->BorderSize;
    if (Bitmap->Width - (Self->BorderSize) < Bitmap->Clip.Right)   Bitmap->Clip.Right  = Bitmap->Width - (Self->BorderSize);
    if (Bitmap->Height - (Self->BorderSize) < Bitmap->Clip.Bottom) Bitmap->Clip.Bottom = Bitmap->Height - (Self->BorderSize);
 
-   objMenuItem *item;
-   for (item=Self->Items; item; item=item->Next) {
+   for (auto item=Self->Items; item; item=item->Next) {
       if (Self->HighlightItem IS item) { // Draw highlighting rectangle in the background
          if (Self->Highlight.Alpha > 0) {
             gfxDrawRectangle(Bitmap, Self->HighlightLM, item->Y + Self->YPosition,
@@ -291,7 +290,7 @@ static void draw_menu(objMenu *Self, objSurface *Surface, objBitmap *Bitmap)
                x + ((Self->ImageSize - picture->Bitmap->Width)>>1), y + ((item->Height - picture->Bitmap->Height)>>1));
          }
       }
-      else if ((item->Bitmap) AND (Self->Flags & MNF_SHOW_IMAGES)) {
+      else if ((item->Bitmap) and (Self->Flags & MNF_SHOW_IMAGES)) {
          objBitmap *imgbmp = item->Bitmap;
          gfxCopyArea(imgbmp, Bitmap, BAF_BLEND, 0, 0, imgbmp->Width, imgbmp->Height,
             x + ((Self->ImageSize - imgbmp->Width)>>1), y + ((item->Height - imgbmp->Height)>>1));
@@ -307,8 +306,8 @@ static void draw_menu(objMenu *Self, objSurface *Surface, objBitmap *Bitmap)
 
       // Draw control key text
 
-      if ((Self->Flags & MNF_SHOW_KEYS) AND (item->KeyString[0])) {
-         if (((Self->Flags & MNF_SHOW_IMAGES) AND (Self->ImageSize)) OR (Self->ShowCheckmarks)) {
+      if ((Self->Flags & MNF_SHOW_KEYS) and (item->KeyString[0])) {
+         if (((Self->Flags & MNF_SHOW_IMAGES) and (Self->ImageSize)) or (Self->ShowCheckmarks)) {
             font->X = x + Self->ImageSize + Self->ImageGap + Self->TextWidth + Self->KeyGap;
          }
          else font->X = x + Self->TextWidth + Self->KeyGap;
@@ -322,7 +321,7 @@ static void draw_menu(objMenu *Self, objSurface *Surface, objBitmap *Bitmap)
       }
 
       if (item->Text) { // Draw menu item text
-         if (((Self->Flags & MNF_SHOW_IMAGES) AND (Self->ImageSize)) OR (Self->ShowCheckmarks)) font->X = x + Self->ImageSize + Self->ImageGap;
+         if (((Self->Flags & MNF_SHOW_IMAGES) and (Self->ImageSize)) or (Self->ShowCheckmarks)) font->X = x + Self->ImageSize + Self->ImageGap;
          else font->X = x;
 
          font->Y = y + ((get_item_height(Self) - font->MaxHeight)>>1) + font->Leading;
@@ -372,8 +371,8 @@ static void draw_menu(objMenu *Self, objSurface *Surface, objBitmap *Bitmap)
 
 static void draw_default_bkgd(objMenu *Self, objSurface *Surface, objBitmap *Bitmap)
 {
-   static struct RGB8 rgbColour = { .Red = 250, .Green = 250, .Blue = 250, .Alpha = 255 };
-   static struct RGB8 rgbBorder = { .Red = 50, .Green = 50, .Blue = 50, .Alpha = 255 };
+   static RGB8 rgbColour = { .Red = 250, .Green = 250, .Blue = 250, .Alpha = 255 };
+   static RGB8 rgbBorder = { .Red = 50, .Green = 50, .Blue = 50, .Alpha = 255 };
    ULONG colour = PackPixelRGBA(Bitmap, &rgbColour);
    ULONG border = PackPixelRGBA(Bitmap, &rgbBorder);
    gfxDrawRectangle(Bitmap, 0, 0, Surface->Width, Surface->Height, colour, BAF_FILL);
@@ -386,7 +385,7 @@ static void draw_default_bkgd(objMenu *Self, objSurface *Surface, objBitmap *Bit
 static LONG get_item_height(objMenu *Self)
 {
    LONG itemheight = Self->Font->MaxHeight + Self->VSpacing;
-   if (((Self->Flags & MNF_SHOW_IMAGES) OR (Self->ShowCheckmarks)) AND (itemheight < 16 + Self->VSpacing)) {
+   if (((Self->Flags & MNF_SHOW_IMAGES) or (Self->ShowCheckmarks)) and (itemheight < 16 + Self->VSpacing)) {
       itemheight = 16 + Self->VSpacing;
    }
 
@@ -412,8 +411,7 @@ static ERROR calc_menu_size(objMenu *Self)
       Self->TextWidth = 0;
       Self->KeyWidth = 0;
 
-      objMenuItem *scan;
-      for (scan=Self->Items; scan; scan=scan->Next) {
+      for (auto scan=Self->Items; scan; scan=scan->Next) {
          if (scan->Text) {
             LONG strwidth;
             SetString(Self->Font, FID_String, scan->Text);
@@ -423,7 +421,7 @@ static ERROR calc_menu_size(objMenu *Self)
 
             if (strwidth > Self->TextWidth) Self->TextWidth = strwidth;
 
-            if ((scan->KeyString[0]) AND (Self->Flags & MNF_SHOW_KEYS)) {
+            if ((scan->KeyString[0]) and (Self->Flags & MNF_SHOW_KEYS)) {
                SetString(Self->Font, FID_String, scan->KeyString);
                GetLong(Self->Font, FID_Width, &strwidth);
                if (strwidth > Self->KeyWidth) Self->KeyWidth = strwidth;
@@ -434,7 +432,7 @@ static ERROR calc_menu_size(objMenu *Self)
       if (Self->KeyWidth > 0) Self->Width = Self->TextWidth + Self->KeyGap + Self->KeyWidth;
       else Self->Width = Self->TextWidth;
 
-      if ((Self->Flags & MNF_SHOW_IMAGES) OR (Self->ShowCheckmarks)) {
+      if ((Self->Flags & MNF_SHOW_IMAGES) or (Self->ShowCheckmarks)) {
          Self->Width += Self->ImageSize + Self->ImageGap;
       }
 
@@ -442,7 +440,7 @@ static ERROR calc_menu_size(objMenu *Self)
 
       // If extension menu items are present then add some extra space for arrow graphics
 
-      for (scan=Self->Items; scan; scan=scan->Next) {
+      for (auto scan=Self->Items; scan; scan=scan->Next) {
          if (scan->Flags & MIF_EXTENSION) {
             Self->Width += Self->ExtensionGap;
             break;
@@ -454,9 +452,8 @@ static ERROR calc_menu_size(objMenu *Self)
    else Self->PageHeight = Self->TopMargin + get_item_height(Self) + Self->BottomMargin;
    Self->Height = Self->PageHeight;
 
-   objMenuItem *scan;
-   LONG total;
-   for (scan=Self->Items, total=1; scan; scan=scan->Next, total++) {
+   LONG total = 1;
+   for (auto scan=Self->Items; scan; scan=scan->Next, total++) {
       if (total >= Self->LineLimit) {
          Self->Height = scan->Y + scan->Height + Self->BottomMargin;
          break;
@@ -472,9 +469,8 @@ static void calc_scrollbar(objMenu *Menu)
 {
    if (!Menu->MenuSurfaceID) return;
 
-   objMenuItem *scan;
-   LONG total;
-   for (scan=Menu->Items, total=1; scan; scan=scan->Next, total++) {
+   LONG total = 1;
+   for (auto scan=Menu->Items; scan; scan=scan->Next, total++) {
       if (total >= Menu->LineLimit) {
          if (!Menu->Scrollbar) {
             if (!CreateObject(ID_SCROLLBAR, 0, &Menu->Scrollbar,
@@ -490,8 +486,8 @@ static void calc_scrollbar(objMenu *Menu)
          }
 
          struct scUpdateScroll scroll = {
-            .ViewSize = Menu->Height,
             .PageSize = Menu->PageHeight,
+            .ViewSize = Menu->Height,
             .Position = -Menu->YPosition,
             .Unit     = get_item_height(Menu)
          };
@@ -511,7 +507,9 @@ static void calc_scrollbar(objMenu *Menu)
 
 static void ensure_on_display(objMenu *Self)
 {
-   if ((Self->TargetID) AND (Self->MenuSurfaceID)) {
+   parasol::Log log(__FUNCTION__);
+
+   if ((Self->TargetID) and (Self->MenuSurfaceID)) {
       SURFACEINFO *target;
       if (!drwGetSurfaceInfo(Self->TargetID, &target)) {
          LONG target_width = target->Width; // Take a copy before the next call.
@@ -550,9 +548,9 @@ static void ensure_on_display(objMenu *Self)
 
             acMoveToPointID(Self->MenuSurfaceID, x, y, 0, flags);
          }
-         else PostError(ERR_Failed);
+         else log.warning(ERR_Failed);
       }
-      else PostError(ERR_Failed);
+      else log.warning(ERR_Failed);
    }
 }
 
@@ -560,9 +558,11 @@ static void ensure_on_display(objMenu *Self)
 
 static ERROR create_menu(objMenu *Self)
 {
-   LogF("~create_menu()", NULL);
+   parasol::Log log(__FUNCTION__);
 
-   if ((Self->MenuSurfaceID) AND (!(Self->Flags & MNF_CACHE))) {
+   log.branch("");
+
+   if ((Self->MenuSurfaceID) and (!(Self->Flags & MNF_CACHE))) {
       acFreeID(Self->MenuSurfaceID);
       Self->MenuSurfaceID = 0;
    }
@@ -587,9 +587,9 @@ static ERROR create_menu(objMenu *Self)
 
       // If the fade-in feature has been enabled, set the surface's opacity to zero
 
-      if ((Self->FadeDelay > 0) AND (!Self->Scrollbar)) SetLong(surface, FID_Opacity, 0);
+      if ((Self->FadeDelay > 0) and (!Self->Scrollbar)) SetLong(surface, FID_Opacity, 0);
 
-      if ((Self->Flags & MNF_POPUP) AND (!Self->ParentID)) {
+      if ((Self->Flags & MNF_POPUP) and (!Self->ParentID)) {
          // Root popup menus are allowed to gain the focus
       }
       else SetLong(surface, FID_Flags, surface->Flags|RNF_NO_FOCUS);
@@ -598,13 +598,13 @@ static ERROR create_menu(objMenu *Self)
 
       if (!(error = acInit(surface))) {
          if (drwApplyStyleGraphics(Self, Self->MenuSurfaceID, "menu", NULL)) {
-            drwAddCallback(surface, &draw_default_bkgd);
+            drwAddCallback(surface, (APTR)&draw_default_bkgd);
          }
 
          // If a modal surface is active for the task, then the menu surface must be modal in order for it to function
          // correctly.
 
-         drwAddCallback(surface, &draw_menu);
+         drwAddCallback(surface, (APTR)&draw_menu);
 
          SubscribeActionTags(surface, AC_Show, AC_Hide, AC_LostFocus, TAGEND);
 
@@ -637,10 +637,9 @@ static ERROR create_menu(objMenu *Self)
    }
    else error = ERR_NewObject;
 
-   if (error) { LogReturn(); return error; }
+   if (error) return error;
 
-   objMenuItem *item;
-   for (item=Self->Items; item; item=item->Next) { // Regenerate item breaks and custom item graphics
+   for (auto item=Self->Items; item; item=item->Next) { // Regenerate item breaks and custom item graphics
       if (item->Flags & MIF_BREAK) {
          if (drwApplyStyleGraphics(item, Self->MenuSurfaceID, "menu", "brk")) {
 
@@ -651,7 +650,6 @@ static ERROR create_menu(objMenu *Self)
    calc_scrollbar(Self);
    ensure_on_display(Self);
 
-   LogReturn();
    return ERR_Okay;
 }
 
@@ -659,17 +657,19 @@ static ERROR create_menu(objMenu *Self)
 
 static ERROR process_menu_content(objMenu *Self)
 {
+   parasol::Log log(__FUNCTION__);
+
    if (Self->Config) {
       objXML *xml;
       if (!CreateObject(ID_XML, NF_INTEGRAL, &xml,
             FID_Statement|TSTR, Self->Config,
             TAGEND)) {
-         struct XMLTag *tag;
+         XMLTag *tag;
          for (tag=xml->Tags[0]; tag; tag=tag->Next) parse_xmltag(Self, xml, tag);
          acFree(xml);
          return ERR_Okay;
       }
-      else return PostError(ERR_CreateObject);
+      else return log.warning(ERR_CreateObject);
    }
 
    // Identify the type of data that has been set in the path field.  XML files are supported, but the developer can
@@ -710,16 +710,16 @@ static ERROR process_menu_content(objMenu *Self)
       }
 
       if (!Self->prvXML->Tags[i]) {
-         LogErrorMsg("No <menu> tag was found in file \"%s\".", Self->Path);
+         log.warning("No <menu> tag was found in file \"%s\".", Self->Path);
          return ERR_InvalidData;
       }
 
-      struct XMLTag *tag;
+      XMLTag *tag;
       for (tag=Self->prvXML->Tags[i]->Child; tag; tag=tag->Next) {
          add_xml_item(Self, Self->prvXML, tag);
       }
    }
-   else if (classid) LogErrorMsg("File \"%s\" belongs to unsupported class #%d.", Self->Path, classid);
+   else if (classid) log.warning("File \"%s\" belongs to unsupported class #%d.", Self->Path, classid);
 
    return ERR_Okay;
 }
@@ -764,26 +764,25 @@ void select_item(objMenu *Self, objMenuItem *Item, BYTE Toggle)
 
 static ERROR load_icon(objMenu *Self, CSTRING Path, objBitmap **Bitmap)
 {
-   LogF("~load_icon()","Path: %s", Path);
+   parasol::Log log(__FUNCTION__);
+
+   log.branch("Path: %s", Path);
 
    // Load the icon graphic for this menu.  Failure should not be considered terminal if the image cannot be loaded -
    // the image should simply not appear in the menu bar.
 
    if (StrCompare("icons:", Path, 6, 0)) Path += 6;
    char buffer[120];
-   StrCopy(Path, buffer, sizeof(buffer));
+   LONG i = StrCopy(Path, buffer, sizeof(buffer));
 
    // Strip out any existing size references
 
-   LONG i;
-   for (i=0; buffer[i]; i++);
    if (buffer[i-1] IS ')') {
-      while ((i > 0) AND (buffer[i] != '(')) i--;
+      while ((i > 0) and (buffer[i] != '(')) i--;
       if (buffer[i] IS '(') buffer[i] = 0;
    }
 
    ERROR error = iconCreateIcon(buffer, "Menu", NULL, Self->IconFilter, 16, Bitmap);
-   LogReturn();
    return error;
 }
 
@@ -793,7 +792,7 @@ static ERROR write_string(OBJECTPTR File, CSTRING String)
 {
    struct acWrite write;
    write.Buffer = String;
-   for (write.Length=0; String[write.Length]; write.Length++);
+   write.Length = StrLength(String);
    return Action(AC_Write, File, &write);
 }
 
@@ -801,17 +800,13 @@ static ERROR write_string(OBJECTPTR File, CSTRING String)
 
 static ERROR highlight_item(objMenu *Self, objMenuItem *Item)
 {
-   FMSG("~highlight_item()","Item %p, Existing %p)", Item, Self->HighlightItem);
+   parasol::Log log(__FUNCTION__);
 
-   if (Item IS Self->HighlightItem) {
-      LOGRETURN();
-      return ERR_Okay;
-   }
+   log.traceBranch("Item %p, Existing %p)", Item, Self->HighlightItem);
 
-   if ((Item) AND (Item->Flags & (MIF_BREAK|MIF_DISABLED))) {
-      LOGRETURN();
-      return ERR_Okay;
-   }
+   if (Item IS Self->HighlightItem) return ERR_Okay;
+
+   if ((Item) and (Item->Flags & (MIF_BREAK|MIF_DISABLED))) return ERR_Okay;
 
    objSurface *surface;
    if (!AccessObject(Self->MenuSurfaceID, 3000, &surface)) {
@@ -837,8 +832,7 @@ static ERROR highlight_item(objMenu *Self, objMenuItem *Item)
 
       ReleaseObject(surface);
    }
-   else PostError(ERR_AccessObject);
+   else log.warning(ERR_AccessObject);
 
-   LOGRETURN();
    return ERR_Okay;
 }

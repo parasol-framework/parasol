@@ -30,7 +30,7 @@ surface.new('resize', {
 <p>The first Resize object monitors all four sides of the surface, within an area that does not exceed 10 units on either edge.  The second Resize object monitors an area that is 20x20 units in size at an offset of 10 units from the bottom right edge.  The <field>Direction</field> field has been set to a value of <code>all</code>, which means that the user can resize the surface area in any direction by interacting with the Resize object.</p>
 <p>When using Resize objects to manage the dimensions of a surface, it is recommended that the MinWidth, MinHeight, MaxWidth and MaxHeight fields are used to prevent excessive shrinkage or expansion.  These values must be set in the <class name="Surface">Surface</class> object that the resize functionality is being applied to.</p></description>
     <source>
-      <file>class_resize.c</file>
+      <file>class_resize.cpp</file>
     </source>
   </info>
 

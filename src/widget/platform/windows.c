@@ -3,6 +3,9 @@
 //#define DEBUG
 
 #ifdef WINDOWS_WINDOWS_H
+#ifdef __cplusplus
+extern "C" {
+#endif
 extern int winAddClip(int Datatype, void * Data, int Size, int Cut);
 extern void winClearClipboard(void);
 extern void winCopyClipboard(void);
@@ -10,6 +13,9 @@ extern int winExtractFile(void *pida, int Index, char *Result, int Size);
 extern void winGetClip(int Datatype);
 extern int winInit(void);
 extern void winTerminate(void);
+#ifdef __cplusplus
+}
+#endif
 #else
 
 #include <windows.h>

@@ -22,7 +22,7 @@ obj.new("text", { vscroll=vsb.scroll, ... })
 </pre>
 <p>If a new scrollbar is created without being hooked into another object, it will send scroll messages to its parent surface.</p></description>
     <source>
-      <file>class_scrollbar.c</file>
+      <file>class_scrollbar.cpp</file>
     </source>
   </info>
 
