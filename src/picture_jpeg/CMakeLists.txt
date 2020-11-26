@@ -7,7 +7,7 @@ add_library (${MOD} SHARED)
 set_module_defaults (${MOD})
 
 target_sources (${MOD} PRIVATE
-   "jpeg.c"
+   "jpeg.cpp"
    "lib/jfdctfst.c"
    "lib/jfdctflt.c"
    "lib/jfdctint.c"
