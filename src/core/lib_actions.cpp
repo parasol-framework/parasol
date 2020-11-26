@@ -310,17 +310,16 @@ ERROR Action(LONG ActionID, OBJECTPTR argObject, APTR Parameters)
       else error = ERR_NoAction;
    }
    else { // Method call
-      ERROR (*routine)(OBJECTPTR, APTR);
       if ((cl->Methods) AND (cl->Methods[-ActionID].Routine)) {
          // Note that sub-classes may return ERR_NoAction if propagation to the base class is desirable.
-         routine = (ERROR (*)(OBJECTPTR, APTR))cl->Methods[-ActionID].Routine;
+         auto routine = (ERROR (*)(OBJECTPTR, APTR))cl->Methods[-ActionID].Routine;
          error = routine(obj, Parameters);
       }
       else error = ERR_NoAction;
 
       if ((error IS ERR_NoAction) AND (cl->Base)) {  // If this is a child, check the base class
          if ((cl->Base->Methods) AND (cl->Base->Methods[-ActionID].Routine)) {
-            routine = (ERROR (*)(OBJECTPTR, APTR))cl->Base->Methods[-ActionID].Routine;
+            auto routine = (ERROR (*)(OBJECTPTR, APTR))cl->Base->Methods[-ActionID].Routine;
             error = routine(obj, Parameters);
          }
       }
@@ -383,7 +382,12 @@ ERROR Action(LONG ActionID, OBJECTPTR argObject, APTR Parameters)
    prv_release(obj);
    tlContext = tlContext->Stack;
 
-   if (log_depth != tlDepth) log.warning("Call to #%d.%s() failed to debranch the log correctly (%d <> %d).", object_id, ActionTable[ActionID].Name, log_depth, tlDepth);
+   if (log_depth != tlDepth) {
+      if (ActionID >= 0) {
+         log.warning("Call to #%d.%s() failed to debranch the log correctly (%d <> %d).", object_id, ActionTable[ActionID].Name, log_depth, tlDepth);
+      }
+      else log.warning("Call to #%d.%s() failed to debranch the log correctly (%d <> %d).", object_id, cl->Base->Methods[-ActionID].Name, log_depth, tlDepth);
+   }
 
    return error;
 }

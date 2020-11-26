@@ -4,11 +4,11 @@
 */
 
 int sndCheckActivity(struct PlatformData *);
-unsigned char * sndCreateBuffer(struct rkSound *, void *, int, int, struct PlatformData *, int);
+const char * sndCreateBuffer(struct rkSound *, void *, int, int, struct PlatformData *, int);
 void sndFree(struct PlatformData *);
 void sndFrequency(struct PlatformData *, int);
 LONG sndGetPosition(struct PlatformData *);
-unsigned char * sndInitialiseAudio(void);
+const char * sndInitialiseAudio(void);
 void sndPan(struct PlatformData *, float);
 void sndPlay(struct PlatformData *, int, int);
 void sndReleaseAudio(void);

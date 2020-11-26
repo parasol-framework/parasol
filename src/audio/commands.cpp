@@ -4,11 +4,13 @@
 
 static ERROR COMMAND_Continue(objAudio *Self, LONG Handle)
 {
-   FMSG("AudioCommand","Continue($%.8x)", Handle);
+   parasol::Log log("AudioCommand");
+
+   log.trace("Continue($%.8x)", Handle);
 
    if (!Handle) return ERR_NullArgs;
 
-   struct AudioChannel *channel = GetChannel(Handle);
+   auto channel = GetChannel(Handle);
 
    // Do nothing if the channel is already active
 
@@ -16,10 +18,10 @@ static ERROR COMMAND_Continue(objAudio *Self, LONG Handle)
 
    // Check if the read position is already at the end of the sample
 
-   if ((channel->Sample.StreamID) AND (channel->Sample.StreamPos >= channel->Sample.StreamLength)) {
+   if ((channel->Sample.StreamID) and (channel->Sample.StreamPos >= channel->Sample.StreamLength)) {
       return ERR_Okay;
    }
-   else if (channel->Position >= channel->Sample.SampleLength) return ERR_Okay;
+   else if (channel->Position >= (ULONG)channel->Sample.SampleLength) return ERR_Okay;
 
    if (Self->Flags & ADF_OVER_SAMPLING) COMMAND_FadeOut(Self, Handle);
 
@@ -31,7 +33,7 @@ static ERROR COMMAND_Continue(objAudio *Self, LONG Handle)
    }
 
    FUNCTION callback;
-   SET_FUNCTION_STDC(callback, &audio_timer);
+   SET_FUNCTION_STDC(callback, (APTR)&audio_timer);
    SubscribeTimer(MIX_INTERVAL, &callback, &Self->Timer);
 
    return ERR_Okay;
@@ -43,14 +45,16 @@ static ERROR COMMAND_Continue(objAudio *Self, LONG Handle)
 
 static ERROR COMMAND_FadeIn(objAudio *Self, LONG Handle)
 {
-   FMSG("AudioCommand","FadeIn($%.8x)", Handle);
+   parasol::Log log("AudioCommand");
+
+   log.trace("FadeIn($%.8x)", Handle);
 
    if (Handle) {
-      if ((!(Self->Flags & ADF_VOL_RAMPING)) OR (!(Self->Flags & ADF_OVER_SAMPLING))) return ERR_Okay;
+      if ((!(Self->Flags & ADF_VOL_RAMPING)) or (!(Self->Flags & ADF_OVER_SAMPLING))) return ERR_Okay;
 
       // Ramp back up from zero
 
-      struct AudioChannel *channel = GetChannel(Handle);
+      AudioChannel *channel = GetChannel(Handle);
       channel->LVolume = 0;
       channel->RVolume = 0;
       return SetInternalVolume(Self, channel);
@@ -64,15 +68,17 @@ static ERROR COMMAND_FadeIn(objAudio *Self, LONG Handle)
 
 static ERROR COMMAND_FadeOut(objAudio *Self, LONG Handle)
 {
-   FMSG("AudioCommand","FadeOut($%.8x)", Handle);
+   parasol::Log log("AudioCommand");
+
+   log.trace("FadeOut($%.8x)", Handle);
 
    if (!Handle) return ERR_NullArgs;
    if (!(Self->Flags & ADF_OVER_SAMPLING)) return ERR_Okay;
 
-   struct AudioChannel *channel = GetChannel(Handle);
-   struct AudioChannel *destchannel = channel + (Self->Channels[Handle>>16].Total);
+   auto channel = GetChannel(Handle);
+   auto destchannel = channel + (Self->Channels[Handle>>16].Total);
 
-   if ((channel->State IS CHS_STOPPED) OR (channel->State IS CHS_FINISHED) OR ((channel->LVolume IS 0) AND (channel->RVolume IS 0))) return ERR_Okay;
+   if ((channel->State IS CHS_STOPPED) or (channel->State IS CHS_FINISHED) or ((channel->LVolume IS 0) and (channel->RVolume IS 0))) return ERR_Okay;
    if (destchannel->State IS CHS_FADE_OUT) return ERR_Okay;
 
    destchannel->State = CHS_FADE_OUT;
@@ -81,7 +87,7 @@ static ERROR COMMAND_FadeOut(objAudio *Self, LONG Handle)
 
    LONG oldstatus = channel->State;
    channel->State = CHS_STOPPED;
-   CopyMemory(channel, destchannel, sizeof(struct AudioChannel));
+   CopyMemory(channel, destchannel, sizeof(AudioChannel));
    channel->State = oldstatus;
 
    // Start ramping
@@ -99,11 +105,13 @@ static ERROR COMMAND_FadeOut(objAudio *Self, LONG Handle)
 
 static ERROR COMMAND_Mute(objAudio *Self, LONG Handle, LONG Mute)
 {
-   FMSG("AudioCommand","Mute($%.8x, %d)", Handle, Mute);
+   parasol::Log log("AudioCommand");
+
+   log.trace("Mute($%.8x, %d)", Handle, Mute);
 
    if (!Handle) return ERR_NullArgs;
 
-   struct AudioChannel *channel = GetChannel(Handle);
+   auto channel = GetChannel(Handle);
    if (Mute IS TRUE) channel->Flags |= CHF_MUTE;
    else channel->Flags &= ~CHF_MUTE;
    SetInternalVolume(Self, channel);
@@ -116,21 +124,23 @@ static ERROR COMMAND_Mute(objAudio *Self, LONG Handle, LONG Mute)
 
 static ERROR COMMAND_Play(objAudio *Self, LONG Handle, LONG Frequency)
 {
-   FMSG("AudioCommand","Play($%.8x, %d)", Handle, Frequency);
-   if (!Frequency) FMSG("@AudioCommand","[Play] You should specify a sample frequency.");
+   parasol::Log log("AudioCommand");
+
+   log.trace("Play($%.8x, %d)", Handle, Frequency);
+   if (!Frequency) log.traceWarning("[Play] You should specify a sample frequency.");
 
    if (!Handle) return ERR_NullArgs;
 
    if (Self->Flags & ADF_OVER_SAMPLING) COMMAND_FadeOut(Self, Handle);
 
-   struct AudioChannel *channel = GetChannel(Handle);
+   auto channel = GetChannel(Handle);
    channel->State     = CHS_FINISHED;    // Turn off previous sound
    channel->Frequency = Frequency;
    COMMAND_SetPosition(Self, Handle, 0); // Set playing position to the beginning of the sample
 
    if (channel->State IS CHS_PLAYING) {
       FUNCTION callback;
-      SET_FUNCTION_STDC(callback, &audio_timer);
+      SET_FUNCTION_STDC(callback, (APTR)&audio_timer);
       SubscribeTimer(MIX_INTERVAL, &callback, &Self->Timer);
    }
 
@@ -143,11 +153,13 @@ static ERROR COMMAND_Play(objAudio *Self, LONG Handle, LONG Frequency)
 
 static ERROR COMMAND_SetFrequency(objAudio *Self, LONG Handle, ULONG Frequency)
 {
-   FMSG("AudioCommand","SetFrequency($%.8x, %d)", Handle, Frequency);
+   parasol::Log log("AudioCommand");
+
+   log.trace("SetFrequency($%.8x, %d)", Handle, Frequency);
 
    if (!Handle) return ERR_NullArgs;
 
-   struct AudioChannel *channel = GetChannel(Handle);
+   auto channel = GetChannel(Handle);
    channel->Frequency = Frequency;
    return ERR_Okay;
 }
@@ -158,11 +170,13 @@ static ERROR COMMAND_SetFrequency(objAudio *Self, LONG Handle, ULONG Frequency)
 
 static ERROR COMMAND_SetPan(objAudio *Self, LONG Handle, LONG Pan)
 {
-   FMSG("AudioCommand","SetPan($%.8x, %d)", Handle, Pan);
+   parasol::Log log("AudioCommand");
+
+   log.trace("SetPan($%.8x, %d)", Handle, Pan);
 
    if (!Handle) return ERR_NullArgs;
 
-   struct AudioChannel *channel = GetChannel(Handle);
+   auto channel = GetChannel(Handle);
 
    if (Pan < -100) channel->Pan = -100;
    else if (Pan > 100) channel->Pan = 100;
@@ -180,24 +194,25 @@ static ERROR COMMAND_SetPan(objAudio *Self, LONG Handle, LONG Pan)
 
 static ERROR COMMAND_SetPosition(objAudio *Self, LONG Handle, LONG Position)
 {
+   parasol::Log log("SetPosition");
    OBJECTPTR stream;
-   struct AudioSample *sample;
+   AudioSample *sample;
    LONG bitpos;
 
-   FMSG("AudioCommand","SetPosition($%.8x, %d)", Handle, Position);
+   log.trace("SetPosition($%.8x, %d)", Handle, Position);
 
    if (CurrentTaskID() != Self->Head.TaskID) {
-      LogF("@AudioCommand","Illegal attempt to use SetPosition directly (please use command messaging).");
+      log.warning("Illegal attempt to use SetPosition directly (please use command messaging).");
    }
 
    if (!Handle) return ERR_NullArgs;
 
-   struct AudioChannel *channel = GetChannel(Handle);
+   AudioChannel *channel = GetChannel(Handle);
 
    // Check that sample and playing rate have been set on the channel
 
    if (!channel->SampleHandle) {
-      LogF("@SetAudioPosition","Sample handle not set on channel.");
+      log.warning("Sample handle not set on channel.");
       return ERR_Failed;
    }
 
@@ -231,12 +246,12 @@ static ERROR COMMAND_SetPosition(objAudio *Self, LONG Handle, LONG Position)
 
    if (channel->Flags & CHF_CHANGED) {
       sample = &Self->Samples[channel->SampleHandle];
-      CopyMemory(sample, channel, sizeof(struct AudioSample));
+      CopyMemory(sample, channel, sizeof(AudioSample));
       channel->Flags &= ~CHF_CHANGED;
 
       // If channel status is released and the new sample does not have two loops, end the sample
 
-      if ((channel->Sample.LoopMode != LOOP_SINGLE_RELEASE) AND (channel->Sample.LoopMode != LOOP_DOUBLE) AND (channel->State IS CHS_RELEASED)) {
+      if ((channel->Sample.LoopMode != LOOP_SINGLE_RELEASE) and (channel->Sample.LoopMode != LOOP_DOUBLE) and (channel->State IS CHS_RELEASED)) {
          channel->State = CHS_FINISHED;
          return ERR_Okay;
       }
@@ -338,7 +353,7 @@ static ERROR COMMAND_SetPosition(objAudio *Self, LONG Handle, LONG Position)
 
    if (channel->State IS CHS_PLAYING) {
       FUNCTION callback;
-      SET_FUNCTION_STDC(callback, &audio_timer);
+      SET_FUNCTION_STDC(callback, (APTR)&audio_timer);
       SubscribeTimer(MIX_INTERVAL, &callback, &Self->Timer);
    }
 
@@ -351,10 +366,10 @@ static ERROR COMMAND_SetPosition(objAudio *Self, LONG Handle, LONG Position)
 
 static ERROR COMMAND_SetRate(objAudio *Self, LONG Handle, LONG Rate)
 {
-   FMSG("AudioCommand","SetRate($%.8x, %d)", Handle, Rate);
+   parasol::Log log("AudioCommand");
 
+   log.trace("SetRate($%.8x, %d)", Handle, Rate);
    if (!Handle) return ERR_NullArgs;
-
    WORD index = Handle>>16;
    Self->Channels[index].UpdateRate = Rate;
    return ERR_Okay;
@@ -366,29 +381,31 @@ static ERROR COMMAND_SetRate(objAudio *Self, LONG Handle, LONG Rate)
 
 ERROR COMMAND_SetSample(objAudio *Self, LONG Handle, LONG SampleHandle)
 {
-   FMSG("AudioCommand","SetSample($%.8x, %d)", Handle, SampleHandle);
+   parasol::Log log("AudioCommand");
+
+   log.trace("SetSample($%.8x, %d)", Handle, SampleHandle);
 
    if (!Handle) {
-      LogF("@AudioCommand","[SetSample] No Handle specified.");
+      log.warning("[SetSample] No Handle specified.");
       return ERR_NullArgs;
    }
 
    if (!SampleHandle) {
-      LogF("@AudioCommand","[SetSample] No SampleHandle specified.");
+      log.warning("[SetSample] No SampleHandle specified.");
       return ERR_NullArgs;
    }
 
    if (SampleHandle > Self->TotalSamples) {
-      LogF("@AudioCommand","[SetSample] Sample handle %d is out of range ($%.8x max).", SampleHandle, Self->TotalSamples);
+      log.warning("[SetSample] Sample handle %d is out of range ($%.8x max).", SampleHandle, Self->TotalSamples);
       return ERR_Args;
    }
 
    if (Self->Samples[SampleHandle].Used IS FALSE) {
-      LogF("@AudioCommand","[SetSample] Sample handle %d refers to a dead sample.", SampleHandle);
+      log.warning("[SetSample] Sample handle %d refers to a dead sample.", SampleHandle);
       return ERR_Failed;
    }
 
-   struct AudioChannel *channel = GetChannel(Handle);
+   auto channel = GetChannel(Handle);
 
    if (channel->SampleHandle IS SampleHandle) return ERR_Okay;
 
@@ -398,8 +415,8 @@ ERROR COMMAND_SetSample(objAudio *Self, LONG Handle, LONG SampleHandle)
    // If the new sample has one Amiga-compatible loop and playing has ended (not released or stopped), set the new
    // sample and start playing from loop start.
 
-   struct AudioSample *sample = &Self->Samples[SampleHandle];
-   if ((sample->LoopMode IS LOOP_AMIGA) AND (channel->State IS CHS_FINISHED)) {
+   AudioSample *sample = &Self->Samples[SampleHandle];
+   if ((sample->LoopMode IS LOOP_AMIGA) and (channel->State IS CHS_FINISHED)) {
       // Set Amiga sample and start playing.  We won't do this with interpolated mixing, as this tends to cause clicks.
 
       if (!(Self->Flags & ADF_OVER_SAMPLING)) {
@@ -417,11 +434,13 @@ ERROR COMMAND_SetSample(objAudio *Self, LONG Handle, LONG SampleHandle)
 
 static ERROR COMMAND_SetLength(objAudio *Self, LONG Handle, LONG Length)
 {
-   FMSG("AudioCommand","SetLength($%.8x, %d)", Handle, Length);
+   parasol::Log log("AudioCommand");
+
+   log.trace("SetLength($%.8x, %d)", Handle, Length);
 
    if (!Handle) return ERR_NullArgs;
 
-   struct AudioChannel *channel = GetChannel(Handle);
+   auto channel = GetChannel(Handle);
    if (channel->Sample.StreamID) channel->Sample.StreamLength = Length;
    else channel->Sample.SampleLength = Length;
    return ERR_Okay;
@@ -433,11 +452,13 @@ static ERROR COMMAND_SetLength(objAudio *Self, LONG Handle, LONG Length)
 
 static ERROR COMMAND_SetVolume(objAudio *Self, LONG Handle, LONG Volume)
 {
-   FMSG("AudioCommand","SetVolume($%.8x, %d)", Handle, Volume);
+   parasol::Log log("AudioCommand");
+
+   log.trace("SetVolume($%.8x, %d)", Handle, Volume);
 
    if (!Handle) return ERR_NullArgs;
 
-   struct AudioChannel *channel = GetChannel(Handle);
+   auto channel = GetChannel(Handle);
    if (Volume > 1000) channel->Volume = 1000;
    else if (Volume < 0) channel->Volume = 0;
    else channel->Volume = Volume;
@@ -451,11 +472,13 @@ static ERROR COMMAND_SetVolume(objAudio *Self, LONG Handle, LONG Volume)
 
 ERROR COMMAND_Stop(objAudio *Self, LONG Handle)
 {
-   FMSG("AudioCommand","Stop($%.8x)", Handle);
+   parasol::Log log("AudioCommand");
+
+   log.trace("Stop($%.8x)", Handle);
 
    if (!Handle) return ERR_NullArgs;
 
-   struct AudioChannel *channel = GetChannel(Handle);
+   auto channel = GetChannel(Handle);
    channel->State = CHS_STOPPED;
 
    if (Self->Flags & ADF_OVER_SAMPLING) {
@@ -472,14 +495,16 @@ ERROR COMMAND_Stop(objAudio *Self, LONG Handle)
 
 static ERROR COMMAND_StopLooping(objAudio *Self, LONG Handle)
 {
-   FMSG("AudioCommand","StopLooping($%.8x)", Handle);
+   parasol::Log log("AudioCommand");
+
+   log.trace("StopLooping($%.8x)", Handle);
 
    if (!Handle) return ERR_NullArgs;
 
-   struct AudioChannel *channel = GetChannel(Handle);
+   auto channel = GetChannel(Handle);
    if (channel->State != CHS_PLAYING) return ERR_Okay;
 
-   if ((channel->Sample.LoopMode IS LOOP_SINGLE_RELEASE) OR (channel->Sample.LoopMode IS LOOP_DOUBLE)) {
+   if ((channel->Sample.LoopMode IS LOOP_SINGLE_RELEASE) or (channel->Sample.LoopMode IS LOOP_DOUBLE)) {
       channel->State = CHS_RELEASED;
    }
 

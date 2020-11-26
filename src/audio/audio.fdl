@@ -110,7 +110,6 @@ typedef struct {
    ULONG mainLoopRepeat;
    void (*mixLoop)(ULONG numSamples, LONG nextSampleOffset);
    void (*mainMixLoop)(ULONG numSamples, LONG nextSampleOffset);
-   MixLoopRelocInfo *mainLoopReloc;
 } MixRoutine;
 
 typedef struct {
@@ -184,10 +183,10 @@ typedef struct {
   ]])
 
   struct("VolumeCtl", { }, [[
-    short     Size      # The size of the Channels array.
-    uchar(32) Name      # Name of the mixer
-    int(VCF)  Flags     # Special flags identifying the mixer's attributes.
-    float(1)  Channels  # A variable length array of channel volumes.
+    short    Size      # The size of the Channels array.
+    char(32) Name      # Name of the mixer
+    int(VCF) Flags     # Special flags identifying the mixer's attributes.
+    float(1) Channels  # A variable length array of channel volumes.
   ]])
 
   struct("AudioLoop", { comment="Loop settings for the AddSample() method." }, [[
@@ -221,7 +220,7 @@ typedef struct {
     { id=8, name="SetVolume" },
   })
 
-  class("Audio", { src="class_audio.c", output="audio_def.c" }, [[
+  class("Audio", { src="class_audio.cpp", output="audio_def.c" }, [[
     double Bass
     double Treble
     int OutputRate
@@ -264,10 +263,10 @@ typedef struct {
 #endif
    MEMORYID VolumeCtlMID;
    LONG VolumeCtlTotal;
-   UBYTE prvDevice[28];
+   char prvDevice[28];
   ]])
 
-  class("Sound", { src="class_sound.c" }, [[
+  class("Sound", { src="class_sound.cpp" }, [[
     double Volume      # Volume of sample (0 - 100%)
     double Pan         # Horizontal positioning for playback on stereo speakers (-100 to +100)
     int Priority       # Priority over other sounds
@@ -300,7 +299,7 @@ typedef struct {
     STRING   prvDescription;
     STRING   prvDisclaimer;
     LONG     prvNote;               // Note to play back (e.g. C, C#, G...)
-    UBYTE    prvNoteString[4];
+    char     prvNoteString[4];
     struct WAVEFormat *prvWAVE;
     UBYTE    prvPlatformData[128];  // Data area for holding platform/hardware specific information
     LONG     prvAlignment;          // Byte alignment value

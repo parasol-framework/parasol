@@ -12,7 +12,7 @@ static ERROR MixChannel(objAudio *, struct ChannelSet *, struct AudioChannel *, 
 
 static void convert_float8(ULONG numSamples, UBYTE *dest)
 {
-   FLOAT *buf = (FLOAT *)MixBuffer;
+   FLOAT *buf = (FLOAT *)glMixBuffer;
    while (numSamples) {
       LONG n = ((LONG)(*(buf++)))>>8;
       if (n < -128) n = -128;
@@ -24,7 +24,7 @@ static void convert_float8(ULONG numSamples, UBYTE *dest)
 
 static void convert_float16(ULONG numSamples, WORD *dest)
 {
-   FLOAT *buf = (FLOAT *)MixBuffer;
+   FLOAT *buf = (FLOAT *)glMixBuffer;
    while (numSamples) {
       LONG n = (int)(*(buf++));
       if (n < -32768) n = -32768;
@@ -64,7 +64,7 @@ static ULONG samples_until_end(objAudio *Self, struct AudioChannel *Channel, LON
    switch (lpType) {
       default:
          if (Self->Flags & ADF_OVER_SAMPLING) {
-            if ((Channel->Position + 1) < Channel->Sample.SampleLength) {
+            if ((Channel->Position + 1) < (ULONG)Channel->Sample.SampleLength) {
                num = (Channel->Sample.SampleLength - 1) - Channel->Position;
             }
             else {
@@ -153,6 +153,7 @@ static LONG AmigaChange(objAudio *Self, struct AudioChannel *Channel)
 
 static LONG HandleSampleEnd(objAudio *Self, struct AudioChannel *Channel)
 {
+   parasol::Log log("Audio");
    struct acRead read;
    OBJECTPTR stream;
    ULONG lpStart, lpEnd;
@@ -172,10 +173,10 @@ static LONG HandleSampleEnd(objAudio *Self, struct AudioChannel *Channel)
    }
 
    if (!lpType) { // No loop - did we reach sample end?
-      if (Channel->Position >= Channel->Sample.SampleLength) {
-         if ((Channel->Flags & CHF_CHANGED) AND
-             ((Channel->Sample.LoopMode IS LOOP_AMIGA) OR (Channel->Sample.LoopMode IS LOOP_AMIGA_NONE)) AND
-             ((Self->Samples[Channel->SampleHandle-1].LoopMode IS LOOP_AMIGA) OR (Self->Samples[Channel->SampleHandle-1].LoopMode IS LOOP_AMIGA_NONE))) {
+      if (Channel->Position >= (ULONG)Channel->Sample.SampleLength) {
+         if ((Channel->Flags & CHF_CHANGED) and
+             ((Channel->Sample.LoopMode IS LOOP_AMIGA) or (Channel->Sample.LoopMode IS LOOP_AMIGA_NONE)) and
+             ((Self->Samples[Channel->SampleHandle-1].LoopMode IS LOOP_AMIGA) or (Self->Samples[Channel->SampleHandle-1].LoopMode IS LOOP_AMIGA_NONE))) {
             return AmigaChange(Self, Channel);
          }
 
@@ -188,7 +189,7 @@ static LONG HandleSampleEnd(objAudio *Self, struct AudioChannel *Channel)
 
    if (Channel->Flags & CHF_BACKWARD) {
       // Going backwards - did we reach loop start? (signed comparison takes care of possible wraparound)
-      if (((LONG)Channel->Position < (LONG)lpStart) OR ((Channel->Position IS lpStart) AND (Channel->PositionLow IS 0)) ) {
+      if (((LONG)Channel->Position < (LONG)lpStart) or ((Channel->Position IS lpStart) and (Channel->PositionLow IS 0)) ) {
          Channel->Flags &= ~CHF_BACKWARD;
          n = ((((LONG)lpStart) - ((LONG) Channel->Position)) << 16) - Channel->PositionLow - 1;
          // -1 is compensation for the fudge factor at loop end, see below
@@ -232,7 +233,7 @@ static LONG HandleSampleEnd(objAudio *Self, struct AudioChannel *Channel)
                                     FID_Size|TLONG,  &buffersize,
                                     TAGEND);
 
-                  if ((Channel->Sample.SampleType IS SFM_U8_BIT_STEREO) OR (Channel->Sample.SampleType IS SFM_U8_BIT_MONO)) {
+                  if ((Channel->Sample.SampleType IS SFM_U8_BIT_STEREO) or (Channel->Sample.SampleType IS SFM_U8_BIT_MONO)) {
                      for (i=0; i < buffersize; i++) buffer[i] = 0x80;
                   }
                   else ClearMemory(buffer, buffersize);
@@ -241,7 +242,7 @@ static LONG HandleSampleEnd(objAudio *Self, struct AudioChannel *Channel)
 
                // Loop back to the beginning of the stream if necessary
 
-               if ((read.Result <= 0) OR (Channel->Sample.StreamPos >= Channel->Sample.StreamLength)) {
+               if ((read.Result <= 0) or (Channel->Sample.StreamPos >= Channel->Sample.StreamLength)) {
                   if (Channel->Sample.Loop2Type) {
                      ActionTags(AC_Seek, stream, (DOUBLE)(Channel->Sample.SeekStart + Channel->Sample.Loop2Start), SEEK_START);
                      Channel->Sample.StreamPos = 0;
@@ -250,29 +251,29 @@ static LONG HandleSampleEnd(objAudio *Self, struct AudioChannel *Channel)
                }
             }
             else {
-               LogF("@Audio","Failed to stream data from object #%d.", stream->UniqueID);
+               log.warning("Failed to stream data from object #%d.", stream->UniqueID);
                Channel->State = CHS_FINISHED;
             }
 
             ReleaseObject(stream);
          }
          else {
-            LogF("Timer","Stream object %d has been lost.", Channel->Sample.StreamID);
+            log.msg("Stream object %d has been lost.", Channel->Sample.StreamID);
             Channel->Sample.StreamID = 0;
          }
       }
 
       // Check for ALE sample change
 
-      if ((Channel->Flags & CHF_CHANGED) AND
-          ((Channel->Sample.LoopMode IS LOOP_AMIGA) OR (Channel->Sample.LoopMode IS LOOP_AMIGA_NONE)) AND
-         ((Self->Samples[Channel->SampleHandle-1].LoopMode IS LOOP_AMIGA) OR (Self->Samples[Channel->SampleHandle-1].LoopMode IS LOOP_AMIGA_NONE))) {
+      if ((Channel->Flags & CHF_CHANGED) and
+          ((Channel->Sample.LoopMode IS LOOP_AMIGA) or (Channel->Sample.LoopMode IS LOOP_AMIGA_NONE)) and
+         ((Self->Samples[Channel->SampleHandle-1].LoopMode IS LOOP_AMIGA) or (Self->Samples[Channel->SampleHandle-1].LoopMode IS LOOP_AMIGA_NONE))) {
          return AmigaChange(Self, Channel);
       }
 
       // Go to the second loop if the sound has been released
 
-      if ((Channel->LoopIndex IS 1) AND (Channel->State IS CHS_RELEASED)) {
+      if ((Channel->LoopIndex IS 1) and (Channel->State IS CHS_RELEASED)) {
          Channel->LoopIndex = 2;
          return FALSE;
       }
@@ -334,7 +335,7 @@ static void CalcVolumes(objAudio *Self, struct ChannelSet *MasterChannel, struct
 #endif
 
    if (Self->Stereo IS FALSE) {
-      if ((Channel->Sample.SampleType IS SFM_U8_BIT_STEREO) OR (Channel->Sample.SampleType IS SFM_S16_BIT_STEREO)) {
+      if ((Channel->Sample.SampleType IS SFM_U8_BIT_STEREO) or (Channel->Sample.SampleType IS SFM_S16_BIT_STEREO)) {
          MixLeftVolFloat *= (1.0 / 2.0);
          MixRightVolFloat *= (1.0 / 2.0);
       }
@@ -377,37 +378,30 @@ static void RampVolume(struct AudioChannel *Channel)
 //****************************************************************************
 // Mixes sound data to destination
 
-static APTR MixBuffer = NULL;
-
 ERROR MixData(objAudio *Self, ULONG Elements, APTR Destination)
 {
-   ULONG mixnow, i, n;
+   parasol::Log log("Audio");
+   ULONG mixnow;
    UBYTE *glMixDest;
 
-   MixBuffer = Self->MixBuffer;
-   FLOAT *buf = Self->MixBuffer;
+   glMixBuffer = Self->MixBuffer;
 
-   glMixDest = Destination;
+   glMixDest = (UBYTE *)Destination;
    while (Elements) {
       // Mix only as much as we can fit in our mixing buffer
 
-      if (Elements > Self->MixElements) mixnow = Self->MixElements;
+      if (Elements > (ULONG)Self->MixElements) mixnow = Self->MixElements;
       else mixnow = Elements;
 
-      // Clear the mix buffer
+      // Clear the mix buffer, then mix all channels to the buffer
 
-      if (Self->Stereo) n = mixnow<<1;
-      else n = mixnow;
+      ClearMemory(Self->MixBuffer, sizeof(FLOAT) * (Self->Stereo ? (mixnow<<1) : mixnow));
 
-      for (i=0; i < n; i++) buf[i] = 0;
-
-      // Mix all channels to buffer
-
-      for (n=0; n < ARRAYSIZE(Self->Channels); n++) {
+      for (auto n=0; n < ARRAYSIZE(Self->Channels); n++) {
          if (Self->Channels[n].Channel) {
-            for (i=0; i < Self->Channels[n].Actual; i++) {
-               if (MixChannel(Self, Self->Channels+n, Self->Channels[n].Channel + i, Self->MixRoutines, mixnow, MixBuffer) != ERR_Okay) {
-                  LogErrorMsg("Failed to mix channel %d.", i);
+            for (auto i=0; i < Self->Channels[n].Actual; i++) {
+               if (MixChannel(Self, Self->Channels+n, Self->Channels[n].Channel + i, Self->MixRoutines, mixnow, Self->MixBuffer) != ERR_Okay) {
+                  log.warning("Failed to mix channel %d.", i);
                }
             }
          }
@@ -416,8 +410,8 @@ ERROR MixData(objAudio *Self, ULONG Elements, APTR Destination)
       // Do post-processing
 
       if (Self->Flags & (ADF_FILTER_LOW|ADF_FILTER_HIGH)) {
-         if (Self->Stereo) FilterFloatStereo(Self, MixBuffer, mixnow, NULL);
-         else FilterFloatMono(Self, MixBuffer, mixnow, NULL);
+         if (Self->Stereo) FilterFloatStereo(Self, Self->MixBuffer, mixnow, NULL);
+         else FilterFloatMono(Self, Self->MixBuffer, mixnow, NULL);
       }
 
       // Convert the floating point data to the correct output format
@@ -452,30 +446,22 @@ static ERROR MixChannel(objAudio *Self, struct ChannelSet *MasterChannel, struct
 
    // Check that we have something to mix
 
-   if ((!Channel->Frequency) OR (!Channel->Sample.Data) OR (Channel->Sample.SampleLength <= 0)) return ERR_Okay;
+   if ((!Channel->Frequency) or (!Channel->Sample.Data) or (Channel->Sample.SampleLength <= 0)) return ERR_Okay;
 
    // Calculate resampling step (16.16 fixed point)
 
    step = (((Channel->Frequency / Self->OutputRate) << 16) + ((Channel->Frequency % Self->OutputRate) << 16) / Self->OutputRate);
 
-   glMixDest = dest;
+   glMixDest = (UBYTE *)dest;
    while (numSamples) {
       if (Channel->State IS CHS_STOPPED) return ERR_Okay;
       if (Channel->State IS CHS_FINISHED) return ERR_Okay;
 
       switch (Channel->Sample.SampleType) {
          case SFM_U8_BIT_STEREO:
-         case SFM_S16_BIT_MONO:
-             sampleSize = 2;
-             break;
-
-         case SFM_S16_BIT_STEREO:
-             sampleSize = 4;
-             break;
-
-         default:
-             sampleSize = 1;
-             break;
+         case SFM_S16_BIT_MONO: sampleSize = 2; break;
+         case SFM_S16_BIT_STEREO: sampleSize = 4; break;
+         default: sampleSize = 1; break;
       }
 
       sue = samples_until_end(Self, Channel, &nextoffset);
@@ -485,13 +471,13 @@ static ERROR MixChannel(objAudio *Self, struct ChannelSet *MasterChannel, struct
       mixUntilEnd = sue / step;
       if (sue % step) mixUntilEnd++;
 
-      if (mixUntilEnd > numSamples ) mixNow = numSamples;
+      if (mixUntilEnd > (ULONG)numSamples ) mixNow = numSamples;
       else mixNow = mixUntilEnd;
       numSamples -= mixNow;
 
       // This should NEVER happen, but better be safe than sorry, otherwise we might end up in an infinite loop.
 
-      if ((mixNow IS 0) AND (prevMix IS 0)) return ERR_Okay;
+      if ((mixNow IS 0) and (prevMix IS 0)) return ERR_Okay;
 
       prevMix = mixNow;
 
@@ -506,14 +492,14 @@ static ERROR MixChannel(objAudio *Self, struct ChannelSet *MasterChannel, struct
 
          // Do possible volume ramping
 
-         while ((Channel->Flags & CHF_VOL_RAMP) AND (mixNow)) {
+         while ((Channel->Flags & CHF_VOL_RAMP) and (mixNow)) {
              CalcVolumes(Self, MasterChannel, Channel);
              mixRoutine->mixLoop(1, nextoffset);
              mixNow--;
              RampVolume(Channel);
          }
 
-         if ((Channel->LVolume IS 0) AND (Channel->RVolume IS 0)) {
+         if ((Channel->LVolume IS 0) and (Channel->RVolume IS 0)) {
             // If the volume is zero we can just increment the position and not mix anything
             MixSrcPos += mixNow * MixStep;
             if (Channel->State IS CHS_FADE_OUT) {
@@ -526,7 +512,7 @@ static ERROR MixChannel(objAudio *Self, struct ChannelSet *MasterChannel, struct
 
             // Ensure proper alignment and do all mixing if nextoffset != 1
 
-            if ((mixNow) AND ((nextoffset != 1) OR ((((MAXINT)glMixDest) % mixRoutine->mainLoopAlign) != 0))) {
+            if ((mixNow) and ((nextoffset != 1) or ((((MAXINT)glMixDest) % mixRoutine->mainLoopAlign) != 0))) {
                if (nextoffset != 1) num = mixNow;
                else {
                   num = mixRoutine->mainLoopAlign - (((MAXINT)glMixDest) % mixRoutine->mainLoopAlign);
@@ -575,37 +561,6 @@ static LONG SampleShift(LONG sampleType)
          return 2;
    }
    return 0;
-}
-
-/*****************************************************************************
-** Relocates a mixing routine in writable data area
-*/
-
-static ERROR RelocateMixingRoutine(MixRoutine *routine)
-{
-   MixLoopRelocInfo *reloc = routine->mainLoopReloc;
-   APTR data;
-   ULONG i, offset, *relocData;
-
-   if (!AllocMemory(reloc->numCopyBytes, MEM_DATA, &data, NULL)) {
-      CopyMemory(routine->mainMixLoop, data, reloc->numCopyBytes);
-
-      MAXINT orgStart = (MAXINT)routine->mainMixLoop;
-      MAXINT start    = (MAXINT)data;
-
-      // Relocate all absolute addresses in the code
-
-      for (i=0; i < reloc->numRelocEntries; i++) {
-         offset     = reloc->relocTable[i] - orgStart;
-         relocData  = (ULONG *)(((UBYTE *)data) + offset);
-         *relocData = ((*relocData) - orgStart) + start;
-      }
-
-      routine->mainMixLoop = data;
-      routine->mainLoopReloc = NULL;
-      return ERR_Okay;
-   }
-   else return ERR_AllocMemory;
 }
 
 /*****************************************************************************
@@ -748,12 +703,12 @@ static void mixmf16Stereo(unsigned numSamples, LONG nextSampleOffset)
    glMixDest = (UBYTE*) dest;
 }
 
-static MixRoutineSet MixMonoFloat = {
-   { { 0, 0, NULL, NULL, NULL },                     // no sample
-     { 1, 1, &mixmf8Mono, &mixmf8Mono, NULL },        // 8-bit mono
-     { 1, 1, &mixmf16Mono, &mixmf16Mono, NULL },      // 16-bit mono
-     { 1, 1, &mixmf8Stereo, &mixmf8Stereo, NULL },    // 8-bit stereo
-     { 1, 1, &mixmf16Stereo, &mixmf16Stereo, NULL },  // 16-bit stereo
+MixRoutineSet MixMonoFloat = {
+   { { 0, 0, NULL, NULL },                     // no sample
+     { 1, 1, &mixmf8Mono, &mixmf8Mono },        // 8-bit mono
+     { 1, 1, &mixmf16Mono, &mixmf16Mono },      // 16-bit mono
+     { 1, 1, &mixmf8Stereo, &mixmf8Stereo },    // 8-bit stereo
+     { 1, 1, &mixmf16Stereo, &mixmf16Stereo },  // 16-bit stereo
    },
 };
 
@@ -845,12 +800,12 @@ static void mixsf16Stereo(unsigned numSamples, int nextSampleOffset)
    glMixDest = (UBYTE*) dest;
 }
 
-static MixRoutineSet MixStereoFloat = {
-  { { 0, 0, NULL, NULL, NULL },                             // no sample
-    { 1, 1, &mixsf8Mono, &mixsf8Mono, NULL },               // 8-bit mono
-    { 1, 1, &mixsf16Mono, &mixsf16Mono, NULL },             // 16-bit mono
-    { 1, 1, &mixsf8Stereo, &mixsf8Stereo, NULL },           // 8-bit stereo
-    { 1, 1, &mixsf16Stereo, &mixsf16Stereo, NULL },         // 16-bit stereo
+MixRoutineSet MixStereoFloat = {
+  { { 0, 0, NULL, NULL },                             // no sample
+    { 1, 1, &mixsf8Mono, &mixsf8Mono },               // 8-bit mono
+    { 1, 1, &mixsf16Mono, &mixsf16Mono },             // 16-bit mono
+    { 1, 1, &mixsf8Stereo, &mixsf8Stereo },           // 8-bit stereo
+    { 1, 1, &mixsf16Stereo, &mixsf16Stereo },         // 16-bit stereo
   },
 };
 
@@ -996,12 +951,12 @@ static void mixmi16Stereo(unsigned numSamples, LONG nextSampleOffset)
    glMixDest = (UBYTE *)dest;
 }
 
-static MixRoutineSet MixMonoFloatInterp = {
-  { { 0, 0, NULL, NULL, NULL },                    // no sample
-    { 1, 1, &mixmi8Mono, &mixmi8Mono, NULL },       // 8-bit mono
-    { 1, 1, &mixmi16Mono, &mixmi16Mono, NULL },     // 16-bit mono
-    { 1, 1, &mixmi8Stereo, &mixmi8Stereo, NULL },   // 8-bit stereo
-    { 1, 1, &mixmi16Stereo, &mixmi16Stereo, NULL }, // 16-bit stereo
+MixRoutineSet MixMonoFloatInterp = {
+  { { 0, 0, NULL, NULL },                    // no sample
+    { 1, 1, &mixmi8Mono, &mixmi8Mono },       // 8-bit mono
+    { 1, 1, &mixmi16Mono, &mixmi16Mono },     // 16-bit mono
+    { 1, 1, &mixmi8Stereo, &mixmi8Stereo },   // 8-bit stereo
+    { 1, 1, &mixmi16Stereo, &mixmi16Stereo }, // 16-bit stereo
   },
 };
 
@@ -1172,11 +1127,11 @@ static void mixsi16Stereo(unsigned numSamples, LONG nextSampleOffset)
    glMixDest = (UBYTE*) dest;
 }
 
-static MixRoutineSet MixStereoFloatInterp = {
-   { { 0, 0, NULL, NULL, NULL },                     // no sample
-     { 1, 1, &mixsi8Mono, &mixsi8Mono, NULL },        // 8-bit mono
-     { 1, 1, &mixsi16Mono, &mixsi16Mono, NULL },      // 16-bit mono
-     { 1, 1, &mixsi8Stereo, &mixsi8Stereo, NULL },    // 8-bit stereo
-     { 1, 1, &mixsi16Stereo, &mixsi16Stereo, NULL },  // 16-bit stereo
+MixRoutineSet MixStereoFloatInterp = {
+   { { 0, 0, NULL, NULL },                     // no sample
+     { 1, 1, &mixsi8Mono, &mixsi8Mono },        // 8-bit mono
+     { 1, 1, &mixsi16Mono, &mixsi16Mono },      // 16-bit mono
+     { 1, 1, &mixsi8Stereo, &mixsi8Stereo },    // 8-bit stereo
+     { 1, 1, &mixsi16Stereo, &mixsi16Stereo },  // 16-bit stereo
    },
 };

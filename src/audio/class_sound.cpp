@@ -62,42 +62,15 @@ static const DOUBLE glScale[NOTE_B+1] = {
    1.887704009  // B
 };
 
-static const struct ActionArray clActions[];
-static const struct FieldArray clFields[];
-static const struct FieldDef clStream[];
-static const struct FieldDef clFlags[];
-
 static OBJECTPTR clSound = NULL;
 
 static ERROR find_chunk(objSound *, OBJECTPTR, CSTRING);
-static ERROR playback_timer(objSound *Self, LARGE Elapsed, LARGE CurrentTime);
+static ERROR playback_timer(objSound *, LARGE Elapsed, LARGE CurrentTime);
 
 #undef GetChannel
 #define GetChannel(a,b) &(a)->Channels[(b)>>16].Channel[(b) & 0xffff];
 
 #define KEY_SOUNDCHANNELS 0x3389f93
-
-ERROR add_sound_class(void)
-{
-   return CreateObject(ID_METACLASS, 0, &clSound,
-      FID_BaseClassID|TLONG,    ID_SOUND,
-      FID_ClassVersion|TDOUBLE, VER_SOUND,
-      FID_FileExtension|TSTR,   "*.wav|*.wave|*.snd",
-      FID_FileDescription|TSTR, "Sound Sample",
-      FID_FileHeader|TSTR,      "[0:$52494646][8:$57415645]",
-      FID_Name|TSTRING,         "Sound",
-      FID_Category|TLONG,       CCF_AUDIO,
-      FID_Actions|TPTR,         clActions,
-      FID_Fields|TARRAY,        clFields,
-      FID_Size|TLONG,           sizeof(objSound),
-      FID_Path|TSTR,            MOD_PATH,
-      TAGEND);
-}
-
-void free_sound_class(void)
-{
-   if (clSound) { acFree(clSound); clSound = 0; }
-}
 
 //****************************************************************************
 // Stubs.
@@ -131,6 +104,8 @@ static LONG SampleFormat(objSound *Self)
 
 static ERROR SOUND_ActionNotify(objSound *Self, struct acActionNotify *Args)
 {
+   parasol::Log log;
+
    if (Args->ActionID IS AC_Read) {
       // Streams: When the Audio system calls the Read action, we need to decode more audio information to the stream
       // buffer.
@@ -143,7 +118,7 @@ static ERROR SOUND_ActionNotify(objSound *Self, struct acActionNotify *Args)
 
       NotifySubscribers(Self, AC_Seek, Args->Args, 0, ERR_Okay);
    }
-   else LogMsg("Unrecognised action #%d.", Args->ActionID);
+   else log.msg("Unrecognised action #%d.", Args->ActionID);
 
    return ERR_Okay;
 }
@@ -156,7 +131,9 @@ Activate: Plays the audio sample.
 
 static ERROR SOUND_Activate(objSound *Self, APTR Void)
 {
-   FMSG("~","");
+   parasol::Log log;
+
+   log.traceBranch("");
 
 #ifdef _WIN32
 
@@ -174,18 +151,17 @@ static ERROR SOUND_Activate(objSound *Self, APTR Void)
       // We also need the subscription to fulfil the Deactivate contract.
 
       FUNCTION callback;
-      SET_FUNCTION_STDC(callback, &playback_timer);
+      SET_FUNCTION_STDC(callback, (APTR)&playback_timer);
       SubscribeTimer(0.25, &callback, &Self->Timer);
 
       // Play the audio buffer
 
-      if (Self->Flags & SDF_LOOP) sndPlay((struct PlatformData *)Self->prvPlatformData, TRUE, Self->Position);
-      else sndPlay((struct PlatformData *)Self->prvPlatformData, FALSE, Self->Position);
+      if (Self->Flags & SDF_LOOP) sndPlay((PlatformData *)Self->prvPlatformData, TRUE, Self->Position);
+      else sndPlay((PlatformData *)Self->prvPlatformData, FALSE, Self->Position);
 
-      LOGRETURN();
       return ERR_Okay;
    }
-   else LogMsg("A independent win32 waveform will not be used for this sample.");
+   else log.msg("A independent win32 waveform will not be used for this sample.");
 
 #endif
 
@@ -195,12 +171,12 @@ static ERROR SOUND_Activate(objSound *Self, APTR Void)
       // Restricted and streaming audio can only be played on one channel at any given time.  This search will check
       // if the sound object is already active on one of our channels.
 
-      struct AudioChannel *channel = NULL;
+      AudioChannel *channel = NULL;
       if (Self->Flags & (SDF_RESTRICT_PLAY|SDF_STREAM)) {
          Self->ChannelIndex &= 0xffff0000;
          for (i=0; i < glMaxSoundChannels; i++) {
             channel = GetChannel(audio, Self->ChannelIndex);
-            if ((channel) AND (channel->SoundID IS Self->Head.UniqueID)) break;
+            if ((channel) and (channel->SoundID IS Self->Head.UniqueID)) break;
             Self->ChannelIndex++;
          }
          if (i >= glMaxSoundChannels) channel = NULL;
@@ -208,12 +184,12 @@ static ERROR SOUND_Activate(objSound *Self, APTR Void)
 
       if (!channel) {
          // Find an available channel.  If all channels are in use, check the priorities to see if we can push anyone out.
-         struct AudioChannel *priority = NULL;
+         AudioChannel *priority = NULL;
          Self->ChannelIndex &= 0xffff0000;
          for (i=0; i < glMaxSoundChannels; i++) {
             channel = GetChannel(audio, Self->ChannelIndex);
             if (channel) {
-               if ((channel->State IS CHS_STOPPED) OR (channel->State IS CHS_FINISHED)) break;
+               if ((channel->State IS CHS_STOPPED) or (channel->State IS CHS_FINISHED)) break;
                else if (channel->Priority < Self->Priority) priority = channel;
             }
             Self->ChannelIndex++;
@@ -221,9 +197,8 @@ static ERROR SOUND_Activate(objSound *Self, APTR Void)
 
          if (i >= glMaxSoundChannels) {
             if (!(channel = priority)) {
-               LogMsg("Audio channel not available for playback.");
+               log.msg("Audio channel not available for playback.");
                ReleaseObject(audio);
-               LOGRETURN();
                return ERR_Failed;
             }
          }
@@ -232,7 +207,7 @@ static ERROR SOUND_Activate(objSound *Self, APTR Void)
       COMMAND_Stop(audio, Self->ChannelIndex);
 
       if (!COMMAND_SetSample(audio, Self->ChannelIndex, Self->Handle)) {
-         struct AudioChannel *channel = GetChannel(audio, Self->ChannelIndex);
+         auto channel = GetChannel(audio, Self->ChannelIndex);
          channel->SoundID = Self->Head.UniqueID; // Record our object ID against the channel
 
          COMMAND_SetVolume(audio, Self->ChannelIndex, Self->Volume * 3.0);
@@ -255,31 +230,20 @@ static ERROR SOUND_Activate(objSound *Self, APTR Void)
             // We also need the subscription to fulfil the Deactivate contract.
 
             FUNCTION callback;
-            SET_FUNCTION_STDC(callback, &playback_timer);
+            SET_FUNCTION_STDC(callback, (APTR)&playback_timer);
             SubscribeTimer(0.25, NULL, &Self->Timer);
-
-            LOGRETURN();
             return ERR_Okay;
          }
-         else {
-            PostError(ERR_Failed);
-            LOGRETURN();
-            return ERR_Failed;
-         }
+         else return log.warning(ERR_Failed);
+
       }
       else {
-         LogErrorMsg("Failed to set sample %d to channel $%.8x", Self->Handle, Self->ChannelIndex);
+         log.warning("Failed to set sample %d to channel $%.8x", Self->Handle, Self->ChannelIndex);
          ReleaseObject(audio);
-         PostError(ERR_Failed);
-         LOGRETURN();
-         return ERR_Failed;
+         return log.warning(ERR_Failed);
       }
    }
-   else {
-      PostError(ERR_AccessObject);
-      LOGRETURN();
-      return ERR_AccessObject;
-   }
+   else return log.warning(ERR_AccessObject);
 }
 
 /*****************************************************************************
@@ -290,7 +254,9 @@ Deactivate: Stops the audio sample and resets the playback position.
 
 static ERROR SOUND_Deactivate(objSound *Self, APTR Void)
 {
-   LogAction(NULL);
+   parasol::Log log;
+
+   log.branch("");
 
    if (Self->Timer) { UpdateTimer(Self->Timer, 0); Self->Timer = 0; }
 
@@ -298,7 +264,7 @@ static ERROR SOUND_Deactivate(objSound *Self, APTR Void)
 
 #ifdef _WIN32
    if (!Self->Handle) {
-      sndStop((struct PlatformData *)Self->prvPlatformData);
+      sndStop((PlatformData *)Self->prvPlatformData);
       return ERR_Okay;
    }
 #endif
@@ -308,17 +274,14 @@ static ERROR SOUND_Deactivate(objSound *Self, APTR Void)
       // Get a reference to our sound channel, then check if our unique ID is set against it.  If so, our sound is
       // currently playing and we must send a stop signal to the audio system.
 
-      struct AudioChannel *channel = GetChannel(audio, Self->ChannelIndex);
-
-      if (channel) {
-         if (channel->SoundID IS Self->Head.UniqueID) {
-            COMMAND_Stop(audio, Self->ChannelIndex);
-         }
+      auto channel = GetChannel(audio, Self->ChannelIndex);
+      if ((channel) and (channel->SoundID IS Self->Head.UniqueID)) {
+         COMMAND_Stop(audio, Self->ChannelIndex);
       }
 
       ReleaseObject(audio);
    }
-   else return PostError(ERR_AccessObject);
+   else return log.warning(ERR_AccessObject);
 
    return ERR_Okay;
 }
@@ -331,35 +294,31 @@ Disable: Disable playback of an active audio sample.
 
 static ERROR SOUND_Disable(objSound *Self, APTR Void)
 {
-   LogBranch(NULL);
+   parasol::Log log;
+
+   log.branch("");
 
 #ifdef _WIN32
-
    if (!Self->Handle) {
-      Self->Position = sndGetPosition((struct PlatformData *)Self->prvPlatformData);
-      LogMsg("Position: %d", Self->Position);
-      sndStop((struct PlatformData *)Self->prvPlatformData);
+      Self->Position = sndGetPosition((PlatformData *)Self->prvPlatformData);
+      log.msg("Position: %d", Self->Position);
+      sndStop((PlatformData *)Self->prvPlatformData);
       return ERR_Okay;
    }
-
 #endif
 
-   if (!Self->ChannelIndex) {
-      LogReturn();
-      return ERR_Okay;
-   }
+   if (!Self->ChannelIndex) return ERR_Okay;
 
    objAudio *audio;
    if (!AccessObject(Self->AudioID, 5000, &audio)) {
-      struct AudioChannel *channel = GetChannel(audio, Self->ChannelIndex);
-      if ((channel) AND (channel->SoundID IS Self->Head.UniqueID)) {
+      auto channel = GetChannel(audio, Self->ChannelIndex);
+      if ((channel) and (channel->SoundID IS Self->Head.UniqueID)) {
          COMMAND_Stop(audio, Self->ChannelIndex);
       }
       ReleaseObject(audio);
-      LogReturn();
       return ERR_Okay;
    }
-   else return LogReturnError(0, ERR_AccessObject);
+   else return log.warning(ERR_AccessObject);
 }
 
 /*****************************************************************************
@@ -370,35 +329,32 @@ Enable: Continues playing a sound if it has been disabled.
 
 static ERROR SOUND_Enable(objSound *Self, APTR Void)
 {
-   LogBranch(NULL);
+   parasol::Log log;
+   log.branch("");
 
 #ifdef _WIN32
 
    if (!Self->Handle) {
-      LogMsg("Playing back from position %d.", Self->Position);
-      if (Self->Flags & SDF_LOOP) sndPlay((struct PlatformData *)Self->prvPlatformData, TRUE, Self->Position);
-      else sndPlay((struct PlatformData *)Self->prvPlatformData, FALSE, Self->Position);
+      log.msg("Playing back from position %d.", Self->Position);
+      if (Self->Flags & SDF_LOOP) sndPlay((PlatformData *)Self->prvPlatformData, TRUE, Self->Position);
+      else sndPlay((PlatformData *)Self->prvPlatformData, FALSE, Self->Position);
       return ERR_Okay;
    }
 
 #endif
 
-   if (!Self->ChannelIndex) {
-      LogReturn();
-      return ERR_Okay;
-   }
+   if (!Self->ChannelIndex) return ERR_Okay;
 
    objAudio *audio;
    if (!AccessObject(Self->AudioID, 5000, &audio)) {
-      struct AudioChannel *channel = GetChannel(audio, Self->ChannelIndex);
-      if ((channel) AND (channel->SoundID IS Self->Head.UniqueID)) {
+      AudioChannel *channel = GetChannel(audio, Self->ChannelIndex);
+      if ((channel) and (channel->SoundID IS Self->Head.UniqueID)) {
          COMMAND_Continue(audio, Self->ChannelIndex);
       }
       ReleaseObject(audio);
-      LogReturn();
       return ERR_Okay;
    }
-   else return LogReturnError(0, ERR_AccessObject);
+   else return log.warning(ERR_AccessObject);
 }
 
 //****************************************************************************
@@ -412,7 +368,7 @@ static ERROR SOUND_Free(objSound *Self, APTR Void)
    }
 
 #ifdef _WIN32
-   if (!Self->Handle) sndFree((struct PlatformData *)Self->prvPlatformData);
+   if (!Self->Handle) sndFree((PlatformData *)Self->prvPlatformData);
 #endif
 
    acDeactivate(Self);
@@ -453,7 +409,7 @@ The following custom tag values are formally recognised and may be defined autom
 
 static ERROR SOUND_GetVar(objSound *Self, struct acGetVar *Args)
 {
-   if ((!Args) OR (!Args->Field)) return ERR_NullArgs;
+   if ((!Args) or (!Args->Field)) return ERR_NullArgs;
 
    CSTRING val;
    if ((val = VarGetString(Self->Fields, Args->Field))) {
@@ -480,9 +436,11 @@ Init: Prepares a sound object for usage.
 
 static ERROR SOUND_Init(objSound *Self, APTR Void)
 {
+   parasol::Log log;
    struct acRead read;
    LONG id, len;
-   STRING path, strerr;
+   STRING path;
+   CSTRING strerr;
    OBJECTPTR audio;
    ERROR error;
 
@@ -497,7 +455,7 @@ static ERROR SOUND_Init(objSound *Self, APTR Void)
                acFree(audio);
                ReleaseObject(audio);
                if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->Head.UniqueID, NULL);
-               return PostError(ERR_Init);
+               return log.warning(ERR_Init);
             }
 
             acActivate(audio);
@@ -506,7 +464,7 @@ static ERROR SOUND_Init(objSound *Self, APTR Void)
          }
          else if (error != ERR_ObjectExists) {
             if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->Head.UniqueID, NULL);
-            return PostError(ERR_NewObject);
+            return log.warning(ERR_NewObject);
          }
       }
    }
@@ -515,13 +473,12 @@ static ERROR SOUND_Init(objSound *Self, APTR Void)
    // can be tracked back to our task.
 
    if (sndOpenChannelsID(Self->AudioID, glMaxSoundChannels, KEY_SOUNDCHANNELS + CurrentTaskID(), 0, &Self->ChannelIndex) != ERR_Okay) {
-      LogErrorMsg("Failed to open channels from Audio device.");
+      log.warning("Failed to open channels from Audio device.");
       if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->Head.UniqueID, NULL);
       return ERR_Failed;
    }
 
-   if ((Self->Flags & SDF_NEW) OR (GetString(Self, FID_Path, &path) != ERR_Okay) OR (!path)) {
-
+   if ((Self->Flags & SDF_NEW) or (GetString(Self, FID_Path, &path) != ERR_Okay) or (!path)) {
       // If the sample is new or no path has been specified, create an audio sample from scratch (e.g. to record
       // audio to disk).
 
@@ -539,15 +496,15 @@ static ERROR SOUND_Init(objSound *Self, APTR Void)
       read.Length = sizeof(Self->prvHeader);
       Action(AC_Read, Self->File, &read);
 
-      if ((StrCompare(Self->prvHeader, "RIFF", 4, STR_CASE) != ERR_Okay) OR
-          (StrCompare(Self->prvHeader + 8, "WAVE", 4, STR_CASE) != ERR_Okay)) {
+      if ((StrCompare((CSTRING)Self->prvHeader, "RIFF", 4, STR_CASE) != ERR_Okay) or
+          (StrCompare((CSTRING)Self->prvHeader + 8, "WAVE", 4, STR_CASE) != ERR_Okay)) {
          if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->Head.UniqueID, NULL);
          return ERR_NoSupport;
       }
    }
    else {
       if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->Head.UniqueID, NULL);
-      return PostError(ERR_File);
+      return log.warning(ERR_File);
    }
 
    // Read the RIFF header
@@ -559,9 +516,9 @@ static ERROR SOUND_Init(objSound *Self, APTR Void)
    if (!AllocMemory(len, MEM_DATA, &Self->prvWAVE, NULL)) {
       read.Buffer = (BYTE *)Self->prvWAVE;
       read.Length = len;
-      if ((Action(AC_Read, Self->File, &read) != ERR_Okay) OR (read.Result < len)) {
+      if ((Action(AC_Read, Self->File, &read) != ERR_Okay) or (read.Result < len)) {
          if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->Head.UniqueID, NULL);
-         return PostError(ERR_Read);
+         return log.warning(ERR_Read);
       }
    }
    else {
@@ -571,8 +528,8 @@ static ERROR SOUND_Init(objSound *Self, APTR Void)
 
    // Check the format of the sound file's data
 
-   if ((Self->prvWAVE->Format != WAVE_ADPCM) AND (Self->prvWAVE->Format != WAVE_RAW)) {
-      LogMsg("This file's WAVE data format is not supported (type %d).", Self->prvWAVE->Format);
+   if ((Self->prvWAVE->Format != WAVE_ADPCM) and (Self->prvWAVE->Format != WAVE_RAW)) {
+      log.msg("This file's WAVE data format is not supported (type %d).", Self->prvWAVE->Format);
       if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->Head.UniqueID, NULL);
       return ERR_InvalidData;
    }
@@ -581,7 +538,7 @@ static ERROR SOUND_Init(objSound *Self, APTR Void)
 
    if (find_chunk(Self, Self->File, "data") != ERR_Okay) {
       if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->Head.UniqueID, NULL);
-      return PostError(ERR_Read);
+      return log.warning(ERR_Read);
    }
 
    Self->Length = ReadLong(Self->File); // Length of audio data in this chunk
@@ -612,10 +569,10 @@ static ERROR SOUND_Init(objSound *Self, APTR Void)
    // Determine if we are going to use streaming to play this sample
 
    if (!Self->BufferLength) {
-      if ((Self->Stream IS STREAM_ALWAYS) AND (Self->Length >= 65536)) {
+      if ((Self->Stream IS STREAM_ALWAYS) and (Self->Length >= 65536)) {
          Self->BufferLength = Self->BytesPerSecond * SECONDS_STREAM_BUFFER;
       }
-      else if ((Self->Stream IS STREAM_SMART) AND (Self->Length > 524288)) {
+      else if ((Self->Stream IS STREAM_SMART) and (Self->Length > 524288)) {
          Self->BufferLength = Self->BytesPerSecond * SECONDS_STREAM_BUFFER;
       }
       else Self->BufferLength = Self->Length;
@@ -623,22 +580,22 @@ static ERROR SOUND_Init(objSound *Self, APTR Void)
 
    if (Self->BufferLength > Self->Length) Self->BufferLength = Self->Length;
 
-   MSG("Bits: %d, Freq: %d, KBPS: %d, BufLen: %d, SmpLen: %d", Self->BitsPerSample, Self->Frequency, Self->BytesPerSecond, Self->BufferLength, Self->Length);
+   log.trace("Bits: %d, Freq: %d, KBPS: %d, BufLen: %d, SmpLen: %d", Self->BitsPerSample, Self->Frequency, Self->BytesPerSecond, Self->BufferLength, Self->Length);
 
    // Create the audio buffer and fill it with sample data
 
    if (Self->Length > Self->BufferLength) {
-      LogMsg("Streaming enabled for playback.");
+      log.msg("Streaming enabled for playback.");
       Self->Flags |= SDF_STREAM;
-      strerr = sndCreateBuffer(Self, Self->prvWAVE, Self->BufferLength, Self->Length, (struct PlatformData *)Self->prvPlatformData, TRUE);
+      strerr = sndCreateBuffer(Self, Self->prvWAVE, Self->BufferLength, Self->Length, (PlatformData *)Self->prvPlatformData, TRUE);
    }
    else {
       Self->BufferLength = Self->Length;
-      strerr = sndCreateBuffer(Self, Self->prvWAVE, Self->BufferLength, Self->Length, (struct PlatformData *)Self->prvPlatformData, FALSE);
+      strerr = sndCreateBuffer(Self, Self->prvWAVE, Self->BufferLength, Self->Length, (PlatformData *)Self->prvPlatformData, FALSE);
    }
 
    if (strerr) {
-      LogErrorMsg("Failed to create audio buffer, reason: %s (buffer length %d, sample length %d)", strerr, Self->BufferLength, Self->Length);
+      log.warning("Failed to create audio buffer, reason: %s (buffer length %d, sample length %d)", strerr, Self->BufferLength, Self->Length);
       if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->Head.UniqueID, NULL);
       return ERR_Failed;
    }
@@ -650,8 +607,9 @@ static ERROR SOUND_Init(objSound *Self, APTR Void)
 
 static ERROR SOUND_Init(objSound *Self, APTR Void)
 {
+   parasol::Log log;
    struct sndAddSample add;
-   struct AudioLoop loop;
+   AudioLoop loop;
    OBJECTPTR audio, filestream;
    LONG id, len, sampleformat, result, pos;
    BYTE *buffer;
@@ -666,16 +624,15 @@ static ERROR SOUND_Init(objSound *Self, APTR Void)
                acFree(audio);
                ReleaseObject(audio);
                if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->Head.UniqueID, NULL);
-               return PostError(ERR_Init);
+               return log.warning(ERR_Init);
             }
 
             acActivate(audio);
-
             ReleaseObject(audio);
          }
          else if (error != ERR_ObjectExists) {
             if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->Head.UniqueID, NULL);
-            return PostError(ERR_NewObject);
+            return log.warning(ERR_NewObject);
          }
       }
    }
@@ -690,7 +647,7 @@ static ERROR SOUND_Init(objSound *Self, APTR Void)
    else error = ERR_AccessObject;
 
    if (error) {
-      LogErrorMsg("Failed to open channels from Audio device.");
+      log.warning("Failed to open channels from Audio device.");
       if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->Head.UniqueID, NULL);
       return ERR_Failed;
    }
@@ -701,15 +658,15 @@ static ERROR SOUND_Init(objSound *Self, APTR Void)
    // Set the initial sound title
 
    if (path) {
-      for (len=0; path[len]; len++);
-      while ((len > 0) AND (path[len-1] != '/') AND (path[len-1] != ':')) len--;
+      len = StrLength(path);
+      while ((len > 0) and (path[len-1] != '/') and (path[len-1] != ':')) len--;
       acSetVar(Self, "Title", path+len);
    }
 
    if (Self->Length IS -1) {
       // Enable continuous audio streaming mode
 
-      LogMsg("Enabling continuous audio streaming mode.");
+      log.msg("Enabling continuous audio streaming mode.");
 
       Self->Stream = STREAM_ALWAYS;
       if (Self->BufferLength <= 0) Self->BufferLength = 32768;
@@ -741,7 +698,7 @@ static ERROR SOUND_Init(objSound *Self, APTR Void)
       }
       else error = ERR_NewObject;
 
-      if ((error) AND (Self->Flags & SDF_TERMINATE)) {
+      if ((error) and (Self->Flags & SDF_TERMINATE)) {
          DelayMsg(AC_Free, Self->Head.UniqueID, NULL);
          return error;
       }
@@ -749,18 +706,18 @@ static ERROR SOUND_Init(objSound *Self, APTR Void)
       // Create the audio stream and activate it
 
       struct sndAddStream stream = {
-         .Loop         = 0,
-         .LoopSize     = 0,
          .Path         = NULL,
          .ObjectID     = Self->StreamFileID,
          .SeekStart    = 0,
          .SampleFormat = SampleFormat(Self),
          .SampleLength = -1,
-         .BufferLength = Self->BufferLength
+         .BufferLength = Self->BufferLength,
+         .Loop         = 0,
+         .LoopSize     = 0
       };
 
       if (WaitMsg(MT_SndAddStream, Self->AudioID, &stream) != ERR_Okay) {
-         LogErrorMsg("Failed to add sample to the Audio device.");
+         log.warning("Failed to add sample to the Audio device.");
          if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->Head.UniqueID, NULL);
          return ERR_Failed;
       }
@@ -770,9 +727,8 @@ static ERROR SOUND_Init(objSound *Self, APTR Void)
       return ERR_Okay;
    }
    else {
-
-      if ((Self->Flags & SDF_NEW) OR (!path)) {
-         LogMsg("Sample created as new (without sample data).");
+      if ((Self->Flags & SDF_NEW) or (!path)) {
+         log.msg("Sample created as new (without sample data).");
 
          // If the sample is new or no path has been specified, create an audio sample from scratch (e.g. to
          // record audio to disk).
@@ -788,20 +744,20 @@ static ERROR SOUND_Init(objSound *Self, APTR Void)
             TAGEND)) {
 
          if (!acRead(Self->File, Self->prvHeader, sizeof(Self->prvHeader), NULL)) {
-            if ((StrCompare(Self->prvHeader, "RIFF", 4, STR_CASE) != ERR_Okay) OR
-                (StrCompare(Self->prvHeader + 8, "WAVE", 4, STR_CASE) != ERR_Okay)) {
+            if ((StrCompare((CSTRING)Self->prvHeader, "RIFF", 4, STR_CASE) != ERR_Okay) or
+                (StrCompare((CSTRING)Self->prvHeader + 8, "WAVE", 4, STR_CASE) != ERR_Okay)) {
                if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->Head.UniqueID, NULL);
                return ERR_NoSupport;
             }
          }
          else {
-            LogErrorMsg("Failed to read file header.");
+            log.warning("Failed to read file header.");
             return ERR_Read;
          }
       }
       else {
          if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->Head.UniqueID, NULL);
-         return PostError(ERR_File);
+         return log.warning(ERR_File);
       }
 
       // Read the FMT header
@@ -811,21 +767,21 @@ static ERROR SOUND_Init(objSound *Self, APTR Void)
       len = ReadLong(Self->File); // Length of data in this chunk
 
       if (!AllocMemory(len, MEM_DATA, &Self->prvWAVE, NULL)) {
-         if ((acRead(Self->File, Self->prvWAVE, len, &result) != ERR_Okay) OR (result < len)) {
+         if ((acRead(Self->File, Self->prvWAVE, len, &result) != ERR_Okay) or (result < len)) {
             if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->Head.UniqueID, NULL);
-            LogErrorMsg("Failed to read WAVE format header (got %d, expected %d)", result, len);
+            log.warning("Failed to read WAVE format header (got %d, expected %d)", result, len);
             return ERR_Read;
          }
       }
       else {
          if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->Head.UniqueID, NULL);
-         return PostError(ERR_AllocMemory);
+         return log.warning(ERR_AllocMemory);
       }
 
       // Check the format of the sound file's data
 
-      if ((Self->prvWAVE->Format != WAVE_ADPCM) AND (Self->prvWAVE->Format != WAVE_RAW)) {
-         LogErrorMsg("This file's WAVE data format is not supported (type %d).", Self->prvWAVE->Format);
+      if ((Self->prvWAVE->Format != WAVE_ADPCM) and (Self->prvWAVE->Format != WAVE_RAW)) {
+         log.warning("This file's WAVE data format is not supported (type %d).", Self->prvWAVE->Format);
          if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->Head.UniqueID, NULL);
          return ERR_InvalidData;
       }
@@ -853,7 +809,7 @@ static ERROR SOUND_Init(objSound *Self, APTR Void)
 
       if (find_chunk(Self, Self->File, "data") != ERR_Okay) {
          if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->Head.UniqueID, NULL);
-         return PostError(ERR_Read);
+         return log.warning(ERR_Read);
       }
 
       // Setup the sound structure
@@ -875,8 +831,8 @@ static ERROR SOUND_Init(objSound *Self, APTR Void)
          Self->Flags &= ~SDF_NOTE;
       }
 
-      if ((Self->BitsPerSample != 8) AND (Self->BitsPerSample != 16)) {
-         LogErrorMsg("Bits-Per-Sample of %d not supported.", Self->BitsPerSample);
+      if ((Self->BitsPerSample != 8) and (Self->BitsPerSample != 16)) {
+         log.warning("Bits-Per-Sample of %d not supported.", Self->BitsPerSample);
          if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->Head.UniqueID, NULL);
          return ERR_InvalidData;
       }
@@ -888,23 +844,23 @@ static ERROR SOUND_Init(objSound *Self, APTR Void)
       // Determine the sample type
 
       sampleformat = 0;
-      if ((Self->prvWAVE->Channels IS 1) AND (Self->BitsPerSample IS 8)) sampleformat = SFM_U8_BIT_MONO;
-      else if ((Self->prvWAVE->Channels IS 2) AND (Self->BitsPerSample IS 8))  sampleformat = SFM_U8_BIT_STEREO;
-      else if ((Self->prvWAVE->Channels IS 1) AND (Self->BitsPerSample IS 16)) sampleformat = SFM_S16_BIT_MONO;
-      else if ((Self->prvWAVE->Channels IS 2) AND (Self->BitsPerSample IS 16)) sampleformat = SFM_S16_BIT_STEREO;
+      if ((Self->prvWAVE->Channels IS 1) and (Self->BitsPerSample IS 8)) sampleformat = SFM_U8_BIT_MONO;
+      else if ((Self->prvWAVE->Channels IS 2) and (Self->BitsPerSample IS 8))  sampleformat = SFM_U8_BIT_STEREO;
+      else if ((Self->prvWAVE->Channels IS 1) and (Self->BitsPerSample IS 16)) sampleformat = SFM_S16_BIT_MONO;
+      else if ((Self->prvWAVE->Channels IS 2) and (Self->BitsPerSample IS 16)) sampleformat = SFM_S16_BIT_STEREO;
 
       if (!sampleformat) {
          if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->Head.UniqueID, NULL);
-         return PostError(ERR_InvalidData);
+         return log.warning(ERR_InvalidData);
       }
 
       // Determine if we are going to use streaming to play this sample
 
       if (!Self->BufferLength) {
-         if ((Self->Stream IS STREAM_ALWAYS) AND (Self->Length > 32768)) {
+         if ((Self->Stream IS STREAM_ALWAYS) and (Self->Length > 32768)) {
             Self->BufferLength = Self->BytesPerSecond * SECONDS_STREAM_BUFFER;
          }
-         else if ((Self->Stream IS STREAM_SMART) AND (Self->Length > 524288)) {
+         else if ((Self->Stream IS STREAM_SMART) and (Self->Length > 524288)) {
             Self->BufferLength = Self->BytesPerSecond * SECONDS_STREAM_BUFFER;
          }
          else Self->BufferLength = Self->Length;
@@ -914,13 +870,13 @@ static ERROR SOUND_Init(objSound *Self, APTR Void)
 
       // Create the audio buffer and fill it with sample data
 
-      if ((Self->Length > Self->BufferLength) OR (Self->Flags & SDF_STREAM)) {
-         LogMsg("Streaming enabled for playback.");
+      if ((Self->Length > Self->BufferLength) or (Self->Flags & SDF_STREAM)) {
+         log.msg("Streaming enabled for playback.");
          Self->Flags |= SDF_STREAM;
 
          struct sndAddStream stream;
          if (Self->Flags & SDF_LOOP) {
-            ClearMemory(&loop, sizeof(struct AudioSample));
+            ClearMemory(&loop, sizeof(AudioSample));
             loop.LoopMode   = LOOP_SINGLE;
             loop.Loop1Type  = LTYPE_UNIDIRECTIONAL;
             loop.Loop1Start = Self->LoopStart;
@@ -928,7 +884,7 @@ static ERROR SOUND_Init(objSound *Self, APTR Void)
             else loop.Loop1End = Self->Length;
 
             stream.Loop     = &loop;
-            stream.LoopSize = sizeof(struct AudioLoop);
+            stream.LoopSize = sizeof(AudioLoop);
          }
          else {
             stream.Loop     = NULL;
@@ -946,7 +902,7 @@ static ERROR SOUND_Init(objSound *Self, APTR Void)
             return ERR_Okay;
          }
          else {
-            LogErrorMsg("Failed to add sample to the Audio device.");
+            log.warning("Failed to add sample to the Audio device.");
             if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->Head.UniqueID, NULL);
             return ERR_Failed;
          }
@@ -956,7 +912,7 @@ static ERROR SOUND_Init(objSound *Self, APTR Void)
 
          if (!acRead(Self->File, buffer, Self->Length, &result)) {
             if (Self->Flags & SDF_LOOP) {
-               ClearMemory(&loop, sizeof(struct AudioSample));
+               ClearMemory(&loop, sizeof(AudioSample));
                loop.LoopMode   = LOOP_SINGLE;
                loop.Loop1Type  = LTYPE_UNIDIRECTIONAL;
                loop.Loop1Start = Self->LoopStart;
@@ -964,7 +920,7 @@ static ERROR SOUND_Init(objSound *Self, APTR Void)
                else loop.Loop1End = Self->Length;
 
                add.Loop     = &loop;
-               add.LoopSize = sizeof(struct AudioLoop);
+               add.LoopSize = sizeof(AudioLoop);
             }
             else {
                add.Loop     = NULL;
@@ -982,7 +938,7 @@ static ERROR SOUND_Init(objSound *Self, APTR Void)
             }
             else {
                FreeResource(buffer);
-               LogErrorMsg("Failed to add sample to the Audio device.");
+               log.warning("Failed to add sample to the Audio device.");
                if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->Head.UniqueID, NULL);
                return ERR_Failed;
             }
@@ -990,12 +946,12 @@ static ERROR SOUND_Init(objSound *Self, APTR Void)
          else {
             FreeResource(buffer);
             if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->Head.UniqueID, NULL);
-            return PostError(ERR_Read);
+            return log.warning(ERR_Read);
          }
       }
       else {
          if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->Head.UniqueID, NULL);
-         return PostError(ERR_AllocMemory);
+         return log.warning(ERR_AllocMemory);
       }
    }
 }
@@ -1033,7 +989,9 @@ Reset: Stops audio playback, resets configuration details and restores the playb
 
 static ERROR SOUND_Reset(objSound *Self, APTR Void)
 {
-   LogAction(NULL);
+   parasol::Log log;
+
+   log.branch("");
 
    if (!Self->ChannelIndex) return ERR_Okay;
 
@@ -1041,9 +999,9 @@ static ERROR SOUND_Reset(objSound *Self, APTR Void)
    if (!AccessObject(Self->AudioID, 2000, &audio)) {
       Self->Position = 0;
 
-      struct AudioChannel *channel = GetChannel(audio, Self->ChannelIndex);
+      auto channel = GetChannel(audio, Self->ChannelIndex);
 
-      if ((channel->SoundID != Self->Head.UniqueID) OR (channel->State IS CHS_STOPPED) OR
+      if ((channel->SoundID != Self->Head.UniqueID) or (channel->State IS CHS_STOPPED) or
           (channel->State IS CHS_FINISHED)) {
          ReleaseObject(audio);
          return ERR_Okay;
@@ -1063,12 +1021,10 @@ static ERROR SOUND_Reset(objSound *Self, APTR Void)
       }
       else {
          ReleaseObject(audio);
-         return PostError(ERR_Failed);
+         return log.warning(ERR_Failed);
       }
    }
-   else return PostError(ERR_AccessObject);
-
-   return ERR_Okay;
+   else return log.warning(ERR_AccessObject);
 }
 
 /*****************************************************************************
@@ -1079,19 +1035,21 @@ SaveToObject: Saves audio sample data to an object.
 
 static ERROR SOUND_SaveToObject(objSound *Self, struct acSaveToObject *Args)
 {
+   parasol::Log log;
+
    // This routine is used if the developer is trying to save the sound data as a specific subclass type.
 
-   if ((Args->ClassID) AND (Args->ClassID != ID_SOUND)) {
-      struct rkMetaClass *mclass = (struct rkMetaClass *)FindClass(Args->ClassID);
+   if ((Args->ClassID) and (Args->ClassID != ID_SOUND)) {
+      auto mclass = (rkMetaClass *)FindClass(Args->ClassID);
 
       ERROR (**routine)(OBJECTPTR, APTR);
-      if ((!GetPointer(mclass, FID_ActionTable, (APTR *)&routine)) AND (routine)) {
+      if ((!GetPointer(mclass, FID_ActionTable, (APTR *)&routine)) and (routine)) {
          if (routine[AC_SaveToObject]) {
             return routine[AC_SaveToObject]((OBJECTPTR)Self, Args);
          }
-         else return PostError(ERR_NoSupport);
+         else return log.warning(ERR_NoSupport);
       }
-      else return PostError(ERR_GetField);
+      else return log.warning(ERR_GetField);
    }
 
    // Save the sound data as a wave file
@@ -1113,7 +1071,7 @@ static ERROR SOUND_Seek(objSound *Self, struct acSeek *Args)
    // Switch off the audio playback if active
 
    LONG active;
-   if ((!SOUND_GET_Active(Self, &active)) AND (active)) {
+   if ((!SOUND_GET_Active(Self, &active)) and (active)) {
       acDeactivate(Self);
    }
    else active = FALSE;
@@ -1148,7 +1106,7 @@ SetVar: Define custom tags that will be saved with the sample data.
 
 static ERROR SOUND_SetVar(objSound *Self, struct acSetVar *Args)
 {
-   if ((!Args) OR (!Args->Field) OR (!Args->Field[0])) return ERR_NullArgs;
+   if ((!Args) or (!Args->Field) or (!Args->Field[0])) return ERR_NullArgs;
 
    if (!Self->Fields) {
       if (!(Self->Fields = VarNew(0, 0))) return ERR_AllocMemory;
@@ -1165,17 +1123,17 @@ Active: Returns TRUE if the sound sample is being played back.
 
 static ERROR SOUND_GET_Active(objSound *Self, LONG *Value)
 {
+   parasol::Log log;
+
 #ifdef _WIN32
 
    if (!Self->Handle) {
-      WORD status;
-
-      status = sndCheckActivity((struct PlatformData *)Self->prvPlatformData);
+      WORD status = sndCheckActivity((PlatformData *)Self->prvPlatformData);
 
       if (status IS 0) *Value = FALSE;
       else if (status > 0) *Value = TRUE;
       else {
-         LogErrorMsg("Error retrieving active status.");
+         log.warning("Error retrieving active status.");
          *Value = FALSE;
       }
 
@@ -1189,10 +1147,9 @@ static ERROR SOUND_GET_Active(objSound *Self, LONG *Value)
    if (Self->ChannelIndex) {
       objAudio *audio;
       if (!AccessObject(Self->AudioID, 5000, &audio)) {
-         struct AudioChannel *channel;
-         channel = GetChannel(audio, Self->ChannelIndex);
+         auto channel = GetChannel(audio, Self->ChannelIndex);
          if (channel) {
-            if (!((channel->State IS CHS_STOPPED) OR (channel->State IS CHS_FINISHED))) {
+            if (!((channel->State IS CHS_STOPPED) or (channel->State IS CHS_FINISHED))) {
                *Value = TRUE;
             }
          }
@@ -1282,7 +1239,7 @@ The buffer that is referred to by the Header field is not populated until the In
 
 static ERROR SOUND_GET_Header(objSound *Self, BYTE **Value, LONG *Elements)
 {
-   *Value = Self->prvHeader;
+   *Value = (BYTE *)Self->prvHeader;
    *Elements = ARRAYSIZE(Self->prvHeader);
    return ERR_Okay;
 }
@@ -1304,16 +1261,17 @@ static ERROR SOUND_GET_Path(objSound *Self, STRING *Value)
 
 static ERROR SOUND_SET_Path(objSound *Self, CSTRING Value)
 {
+   parasol::Log log;
+
    if (Self->prvPath) { FreeResource(Self->prvPath); Self->prvPath = NULL; }
 
-   if ((Value) AND (*Value)) {
-      LONG i;
-      for (i=0; Value[i]; i++);
+   if ((Value) and (*Value)) {
+      LONG i = StrLength(Value);
       if (!AllocMemory(i+1, MEM_STRING|MEM_NO_CLEAR, (void **)&Self->prvPath, NULL)) {
          for (i=0; Value[i]; i++) Self->prvPath[i] = Value[i];
          Self->prvPath[i] = 0;
       }
-      else return PostError(ERR_AllocMemory);
+      else return log.warning(ERR_AllocMemory);
    }
    return ERR_Okay;
 }
@@ -1357,7 +1315,7 @@ and the lowest is 0.  Use either the `S` character or the `#` character for refe
 
 *****************************************************************************/
 
-static ERROR SOUND_GET_Note(objSound *Self, STRING *Value)
+static ERROR SOUND_GET_Note(objSound *Self, CSTRING *Value)
 {
    switch(Self->prvNote) {
       case NOTE_C:  Self->prvNoteString[0] = 'C';
@@ -1422,14 +1380,16 @@ static ERROR SOUND_GET_Note(objSound *Self, STRING *Value)
 
 static ERROR SOUND_SET_Note(objSound *Self, CSTRING Value)
 {
+   parasol::Log log;
+
    if (!*Value) return ERR_Okay;
 
    LONG i, note;
-   for (i=0; (Value[i]) AND (i < 3); i++) Self->prvNoteString[i] = Value[i];
+   for (i=0; (Value[i]) and (i < 3); i++) Self->prvNoteString[i] = Value[i];
    Self->prvNoteString[i] = 0;
 
    CSTRING str = Value;
-   if (((*Value >= '0') AND (*Value <= '9')) OR (*Value IS '-')) {
+   if (((*Value >= '0') and (*Value <= '9')) or (*Value IS '-')) {
       note = StrToInt(Value);
    }
    else {
@@ -1445,14 +1405,14 @@ static ERROR SOUND_SET_Note(objSound *Self, CSTRING Value)
          default:  note = NOTE_C;
       }
       str++;
-      if ((*str >= '0') AND (*str <= '9')) {
+      if ((*str >= '0') and (*str <= '9')) {
          note += NOTE_OCTAVE * (*str - '5');
          str++;
       }
-      if ((*str IS 'S') OR (*str IS 's') OR (*str IS '#')) note++; // Sharp note
+      if ((*str IS 'S') or (*str IS 's') or (*str IS '#')) note++; // Sharp note
    }
 
-   if ((note > NOTE_OCTAVE * 5) OR (note < -(NOTE_OCTAVE * 5))) return PostError(ERR_OutOfRange);
+   if ((note > NOTE_OCTAVE * 5) or (note < -(NOTE_OCTAVE * 5))) return log.warning(ERR_OutOfRange);
 
    Self->Flags |= SDF_NOTE;
 
@@ -1490,8 +1450,8 @@ static ERROR SOUND_SET_Note(objSound *Self, CSTRING Value)
    // If the sound is playing, set the new playback frequency immediately
 
 #ifdef _WIN32
-   if ((!Self->Handle) AND (Self->Head.Flags & NF_INITIALISED)) {
-      sndFrequency((struct PlatformData *)Self->prvPlatformData, Self->Playback);
+   if ((!Self->Handle) and (Self->Head.Flags & NF_INITIALISED)) {
+      sndFrequency((PlatformData *)Self->prvPlatformData, Self->Playback);
       return ERR_Okay;
    }
 #endif
@@ -1523,7 +1483,7 @@ you need to quickly double or halve the playback rate.
 
 static ERROR SOUND_SET_Octave(objSound *Self, LONG Value)
 {
-   if ((Value < -10) OR (Value > 10))
+   if ((Value < -10) or (Value > 10))
    Self->Octave = Value;
    return SetLong(Self, FID_Note, Self->prvNote);
 }
@@ -1541,14 +1501,16 @@ right speaker.
 
 static ERROR SOUND_SET_Pan(objSound *Self, DOUBLE Value)
 {
+   parasol::Log log;
+
    Self->Pan = Value;
 
    if (Self->Pan < -100) Self->Pan = -100;
    else if (Self->Pan > 100) Self->Pan = 100;
 
 #ifdef _WIN32
-   if ((!Self->Handle) AND (Self->Head.Flags & NF_INITIALISED)) {
-      sndPan((struct PlatformData *)Self->prvPlatformData, Self->Pan);
+   if ((!Self->Handle) and (Self->Head.Flags & NF_INITIALISED)) {
+      sndPan((PlatformData *)Self->prvPlatformData, Self->Pan);
       return ERR_Okay;
    }
 #endif
@@ -1583,14 +1545,16 @@ any time, including during audio playback if real-time adjustments to a sample's
 
 static ERROR SOUND_SET_Playback(objSound *Self, LONG Value)
 {
-   if ((Value < 0) OR (Value > 500000)) return ERR_OutOfRange;
+   parasol::Log log;
+
+   if ((Value < 0) or (Value > 500000)) return ERR_OutOfRange;
 
    Self->Playback = Value;
    Self->Flags &= ~SDF_NOTE;
 
 #ifdef _WIN32
-   if ((!Self->Handle) AND (Self->Head.Flags & NF_INITIALISED)) {
-      sndFrequency((struct PlatformData *)Self->prvPlatformData, Self->Playback);
+   if ((!Self->Handle) and (Self->Head.Flags & NF_INITIALISED)) {
+      sndFrequency((PlatformData *)Self->prvPlatformData, Self->Playback);
       return ERR_Okay;
    }
 #endif
@@ -1601,7 +1565,7 @@ static ERROR SOUND_SET_Playback(objSound *Self, LONG Value)
          COMMAND_SetFrequency(audio, Self->ChannelIndex, Self->Playback);
          ReleaseObject(audio);
       }
-      else return PostError(ERR_AccessObject);
+      else return log.warning(ERR_AccessObject);
    }
 
    return ERR_Okay;
@@ -1621,7 +1585,7 @@ static ERROR SOUND_GET_Position(objSound *Self, LONG *Value)
 #ifdef _WIN32
 
    if (!Self->Handle) {
-      Self->Position = sndGetPosition((struct PlatformData *)Self->prvPlatformData);
+      Self->Position = sndGetPosition((PlatformData *)Self->prvPlatformData);
       *Value = Self->Position;
       return ERR_Okay;
    }
@@ -1636,7 +1600,8 @@ static ERROR SOUND_SET_Position(objSound *Self, LONG Value)
 {
    if (!acSeek(Self, Value, SEEK_START)) return ERR_Okay;
    else {
-      LogMsg("Failed to seek to byte position %d.", Value);
+      parasol::Log log;
+      log.msg("Failed to seek to byte position %d.", Value);
       return ERR_Seek;
    }
 }
@@ -1688,8 +1653,8 @@ static ERROR SOUND_SET_Volume(objSound *Self, DOUBLE Value)
    else if (Self->Volume > 100) Self->Volume = 100;
 
 #ifdef _WIN32
-   if ((!Self->Handle) AND (Self->Head.Flags & NF_INITIALISED)) {
-      sndVolume((struct PlatformData *)Self->prvPlatformData, glAudio->Volume * Self->Volume * (1.0 / 100.0));
+   if ((!Self->Handle) and (Self->Head.Flags & NF_INITIALISED)) {
+      sndVolume((PlatformData *)Self->prvPlatformData, glAudio->Volume * Self->Volume * (1.0 / 100.0));
       return ERR_Okay;
    }
 #endif
@@ -1711,9 +1676,9 @@ static ERROR SOUND_SET_Volume(objSound *Self, DOUBLE Value)
 static ERROR find_chunk(objSound *Self, OBJECTPTR File, CSTRING ChunkName)
 {
    while (1) {
-      UBYTE chunk[4];
+      char chunk[4];
       LONG len;
-      if ((acRead(File, chunk, sizeof(chunk), &len) != ERR_Okay) OR (len != sizeof(chunk))) {
+      if ((acRead(File, chunk, sizeof(chunk), &len) != ERR_Okay) or (len != sizeof(chunk))) {
          return ERR_Read;
       }
 
@@ -1728,17 +1693,18 @@ static ERROR find_chunk(objSound *Self, OBJECTPTR File, CSTRING ChunkName)
 
 static ERROR playback_timer(objSound *Self, LARGE Elapsed, LARGE CurrentTime)
 {
+   parasol::Log log;
    LONG active;
 
 #ifdef _WIN32
-   if ((Self->Flags & SDF_STREAM) AND (!Self->Handle)) {
+   if ((Self->Flags & SDF_STREAM) and (!Self->Handle)) {
       // See sndStreamAudio() for further information on streaming in Win32
 
-      if (sndStreamAudio((struct PlatformData *)Self->prvPlatformData)) {
+      if (sndStreamAudio((PlatformData *)Self->prvPlatformData)) {
          // We have reached the end of the sample.  If looping is turned off, terminate the timer subscription.
 
          if (!(Self->Flags & SDF_LOOP)) {
-            LogF("6","Sound playback completed.");
+            log.extmsg("Sound playback completed.");
             if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->Head.UniqueID, NULL);
             else DelayMsg(AC_Deactivate, Self->Head.UniqueID, NULL);
             Self->Timer = 0;
@@ -1756,8 +1722,8 @@ static ERROR playback_timer(objSound *Self, LARGE Elapsed, LARGE CurrentTime)
    // We used delayed messages here because we don't want to disturb the System Audio object.
 
    if (!(Self->Flags & SDF_LOOP)) {
-      if ((!GetLong(Self, FID_Active, &active)) AND (active IS FALSE)) {
-         LogF("6","Sound playback completed.");
+      if ((!GetLong(Self, FID_Active, &active)) and (active IS FALSE)) {
+         log.extmsg("Sound playback completed.");
          if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->Head.UniqueID, NULL);
          else DelayMsg(AC_Deactivate, Self->Head.UniqueID, NULL);
          Self->Timer = 0;
@@ -1770,7 +1736,7 @@ static ERROR playback_timer(objSound *Self, LARGE Elapsed, LARGE CurrentTime)
 
 //****************************************************************************
 
-static const struct FieldDef clFlags[] = {
+static const FieldDef clFlags[] = {
    { "Loop",         SDF_LOOP },
    { "New",          SDF_NEW },
    { "Query",        SDF_QUERY },
@@ -1780,22 +1746,22 @@ static const struct FieldDef clFlags[] = {
    { NULL, 0 }
 };
 
-static const struct FieldDef clStream[] = {
+static const FieldDef clStream[] = {
    { "Always", STREAM_ALWAYS },
    { "Smart",  STREAM_SMART },
    { "Never",  STREAM_NEVER },
    { NULL, 0 }
 };
 
-static const struct FieldArray clFields[] = {
-   { "Volume",         FDF_DOUBLE|FDF_RW,    0, NULL, SOUND_SET_Volume },
-   { "Pan",            FDF_DOUBLE|FDF_RW,    0, NULL, SOUND_SET_Pan },
-   { "Priority",       FDF_LONG|FDF_RW,      0, NULL, SOUND_SET_Priority },
+static const FieldArray clFields[] = {
+   { "Volume",         FDF_DOUBLE|FDF_RW,    0, NULL, (APTR)SOUND_SET_Volume },
+   { "Pan",            FDF_DOUBLE|FDF_RW,    0, NULL, (APTR)SOUND_SET_Pan },
+   { "Priority",       FDF_LONG|FDF_RW,      0, NULL, (APTR)SOUND_SET_Priority },
    { "Length",         FDF_LONG|FDF_RW,      0, NULL, NULL },
-   { "Octave",         FDF_LONG|FDF_RW,      0, NULL, SOUND_SET_Octave },
-   { "Flags",          FDF_LONGFLAGS|FDF_RW, (MAXINT)&clFlags, NULL, SOUND_SET_Flags },
+   { "Octave",         FDF_LONG|FDF_RW,      0, NULL, (APTR)SOUND_SET_Octave },
+   { "Flags",          FDF_LONGFLAGS|FDF_RW, (MAXINT)&clFlags, NULL, (APTR)SOUND_SET_Flags },
    { "Frequency",      FDF_LONG|FDF_RI,      0, NULL, NULL },
-   { "Playback",       FDF_LONG|FDF_RW,      0, NULL, SOUND_SET_Playback },
+   { "Playback",       FDF_LONG|FDF_RW,      0, NULL, (APTR)SOUND_SET_Playback },
    { "Compression",    FDF_LONG|FDF_RW,      0, NULL, NULL },
    { "BytesPerSecond", FDF_LONG|FDF_RW,      0, NULL, NULL },
    { "BitsPerSample",  FDF_LONG|FDF_RW,      0, NULL, NULL },
@@ -1805,32 +1771,54 @@ static const struct FieldArray clFields[] = {
    { "Stream",         FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clStream, NULL, NULL },
    { "BufferLength",   FDF_LONG|FDF_RI,      0, NULL, NULL },
    { "StreamFile",     FDF_OBJECTID|FDF_RI,  0, NULL, NULL },
-   { "Position",       FDF_LONG|FDF_RW,      0, SOUND_GET_Position, SOUND_SET_Position },
+   { "Position",       FDF_LONG|FDF_RW,      0, (APTR)SOUND_GET_Position, (APTR)SOUND_SET_Position },
    { "Handle",         FDF_LONG|FDF_SYSTEM|FDF_R, 0, NULL, NULL },
    { "ChannelIndex",   FDF_LONG|FDF_R,       0, NULL, NULL },
    { "File",           FDF_OBJECT|FDF_SYSTEM|FDF_R, ID_FILE, NULL, NULL },
    // Virtual fields
-   { "Active",   FDF_LONG|FDF_R,     0, SOUND_GET_Active, NULL },
-   { "Header",   FDF_POINTER|FDF_ARRAY|FDF_R, 0, SOUND_GET_Header, NULL },
-   { "Path",     FDF_STRING|FDF_RI,  0, SOUND_GET_Path, SOUND_SET_Path },
-   { "Note",     FDF_STRING|FDF_RW,  0, SOUND_GET_Note, SOUND_SET_Note },
+   { "Active",   FDF_LONG|FDF_R,     0, (APTR)SOUND_GET_Active, NULL },
+   { "Header",   FDF_POINTER|FDF_ARRAY|FDF_R, 0, (APTR)SOUND_GET_Header, NULL },
+   { "Path",     FDF_STRING|FDF_RI,  0, (APTR)SOUND_GET_Path, (APTR)SOUND_SET_Path },
+   { "Note",     FDF_STRING|FDF_RW,  0, (APTR)SOUND_GET_Note, (APTR)SOUND_SET_Note },
    END_FIELD
 };
 
-static const struct ActionArray clActions[] = {
-   { AC_ActionNotify,  SOUND_ActionNotify },
-   { AC_Activate,      SOUND_Activate },
-   { AC_Deactivate,    SOUND_Deactivate },
-   { AC_Disable,       SOUND_Disable },
-   { AC_Enable,        SOUND_Enable },
-   { AC_Free,          SOUND_Free },
-   { AC_GetVar,        SOUND_GetVar },
-   { AC_Init,          SOUND_Init },
-   { AC_NewObject,     SOUND_NewObject },
-   { AC_ReleaseObject, SOUND_ReleaseObject },
-   { AC_Reset,         SOUND_Reset },
-   { AC_SaveToObject,  SOUND_SaveToObject },
-   { AC_Seek,          SOUND_Seek },
-   { AC_SetVar,        SOUND_SetVar },
+static const ActionArray clActions[] = {
+   { AC_ActionNotify,  (APTR)SOUND_ActionNotify },
+   { AC_Activate,      (APTR)SOUND_Activate },
+   { AC_Deactivate,    (APTR)SOUND_Deactivate },
+   { AC_Disable,       (APTR)SOUND_Disable },
+   { AC_Enable,        (APTR)SOUND_Enable },
+   { AC_Free,          (APTR)SOUND_Free },
+   { AC_GetVar,        (APTR)SOUND_GetVar },
+   { AC_Init,          (APTR)SOUND_Init },
+   { AC_NewObject,     (APTR)SOUND_NewObject },
+   { AC_ReleaseObject, (APTR)SOUND_ReleaseObject },
+   { AC_Reset,         (APTR)SOUND_Reset },
+   { AC_SaveToObject,  (APTR)SOUND_SaveToObject },
+   { AC_Seek,          (APTR)SOUND_Seek },
+   { AC_SetVar,        (APTR)SOUND_SetVar },
    { 0, NULL }
 };
+
+ERROR add_sound_class(void)
+{
+   return CreateObject(ID_METACLASS, 0, &clSound,
+      FID_BaseClassID|TLONG,    ID_SOUND,
+      FID_ClassVersion|TDOUBLE, VER_SOUND,
+      FID_FileExtension|TSTR,   "*.wav|*.wave|*.snd",
+      FID_FileDescription|TSTR, "Sound Sample",
+      FID_FileHeader|TSTR,      "[0:$52494646][8:$57415645]",
+      FID_Name|TSTRING,         "Sound",
+      FID_Category|TLONG,       CCF_AUDIO,
+      FID_Actions|TPTR,         clActions,
+      FID_Fields|TARRAY,        clFields,
+      FID_Size|TLONG,           sizeof(objSound),
+      FID_Path|TSTR,            MOD_PATH,
+      TAGEND);
+}
+
+void free_sound_class(void)
+{
+   if (clSound) { acFree(clSound); clSound = 0; }
+}

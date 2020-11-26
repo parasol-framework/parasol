@@ -139,7 +139,6 @@ typedef struct {
    ULONG mainLoopRepeat;
    void (*mixLoop)(ULONG numSamples, LONG nextSampleOffset);
    void (*mainMixLoop)(ULONG numSamples, LONG nextSampleOffset);
-   MixLoopRelocInfo *mainLoopReloc;
 } MixRoutine;
 
 typedef struct {
@@ -212,10 +211,10 @@ struct ChannelSet {
 };
 
 struct VolumeCtl {
-   WORD  Size;                // The size of the Channels array.
-   unsigned char Name[32];    // Name of the mixer
-   LONG  Flags;               // Special flags identifying the mixer's attributes.
-   FLOAT Channels[1];         // A variable length array of channel volumes.
+   WORD  Size;           // The size of the Channels array.
+   char  Name[32];       // Name of the mixer
+   LONG  Flags;          // Special flags identifying the mixer's attributes.
+   FLOAT Channels[1];    // A variable length array of channel volumes.
 };
 
 struct AudioLoop {
@@ -286,7 +285,7 @@ typedef struct rkAudio {
 #endif
    MEMORYID VolumeCtlMID;
    LONG VolumeCtlTotal;
-   UBYTE prvDevice[28];
+   char prvDevice[28];
   
 #endif
 } objAudio;
@@ -396,7 +395,7 @@ typedef struct rkSound {
     STRING   prvDescription;
     STRING   prvDisclaimer;
     LONG     prvNote;               // Note to play back (e.g. C, C#, G...)
-    UBYTE    prvNoteString[4];
+    char     prvNoteString[4];
     struct WAVEFormat *prvWAVE;
     UBYTE    prvPlatformData[128];  // Data area for holding platform/hardware specific information
     LONG     prvAlignment;          // Byte alignment value

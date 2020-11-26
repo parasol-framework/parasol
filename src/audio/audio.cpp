@@ -58,15 +58,15 @@ static LONG  MixSrcPos, MixStep;
 static UBYTE *glMixDest = NULL;
 static UBYTE *MixSample = NULL;
 static FLOAT *ByteFloatTable = NULL;
-static APTR MixBuffer;          // DSM mixing buffer. Play() writes the mixed data here. Post-processing is usually necessary.
-static MixRoutineSet MixMonoFloat;
-static MixRoutineSet MixStereoFloat;
-static MixRoutineSet MixMonoFloatInterp;
-static MixRoutineSet MixStereoFloatInterp;
+static APTR glMixBuffer = NULL;    // DSM mixing buffer. Play() writes the mixed data here. Post-processing is usually necessary.
+extern MixRoutineSet MixMonoFloat;
+extern MixRoutineSet MixStereoFloat;
+extern MixRoutineSet MixMonoFloatInterp;
+extern MixRoutineSet MixStereoFloatInterp;
 static LONG glMaxSoundChannels = 8;
 
 #ifdef _WIN32
-unsigned char * dsInitDevice(int);
+char * dsInitDevice(int);
 void dsCloseDevice(void);
 void dsClear(void);
 LONG dsPlay(objAudio *);
@@ -76,7 +76,6 @@ void dsSetVolume(float);
 LONG MixData(objAudio *, ULONG, void *);
 ERROR GetMixAmount(objAudio *, LONG *);
 static LONG SampleShift(LONG);
-static ERROR RelocateMixingRoutine(MixRoutine *);
 static LONG HandleSampleEnd(objAudio *, struct AudioChannel *);
 ERROR add_audio_class(void);
 ERROR add_sound_class(void);
@@ -126,21 +125,21 @@ static ERROR COMMAND_StopLooping(objAudio *, LONG);
 
 const struct BufferCommand glCommands[] = {
    { CMD_END_SEQUENCE,   NULL },
-   { CMD_CONTINUE,       (APTR)COMMAND_Continue },
-   { CMD_FADE_IN,        (APTR)COMMAND_FadeIn },
-   { CMD_FADE_OUT,       (APTR)COMMAND_FadeOut },
-   { CMD_PLAY,           (APTR)COMMAND_Play },
-   { CMD_SET_FREQUENCY,  (APTR)COMMAND_SetFrequency },
-   { CMD_MUTE,           (APTR)COMMAND_Mute },
-   { CMD_SET_LENGTH,     (APTR)COMMAND_SetLength },
-   { CMD_SET_PAN,        (APTR)COMMAND_SetPan },
-   { CMD_SET_POSITION,   (APTR)COMMAND_SetPosition },
-   { CMD_SET_RATE,       (APTR)COMMAND_SetRate },
-   { CMD_SET_SAMPLE,     (APTR)COMMAND_SetSample },
-   { CMD_SET_VOLUME,     (APTR)COMMAND_SetVolume },
+   { CMD_CONTINUE,       (ERROR (*)(objAudio*, APTR))COMMAND_Continue },
+   { CMD_FADE_IN,        (ERROR (*)(objAudio*, APTR))COMMAND_FadeIn },
+   { CMD_FADE_OUT,       (ERROR (*)(objAudio*, APTR))COMMAND_FadeOut },
+   { CMD_PLAY,           (ERROR (*)(objAudio*, APTR))COMMAND_Play },
+   { CMD_SET_FREQUENCY,  (ERROR (*)(objAudio*, APTR))COMMAND_SetFrequency },
+   { CMD_MUTE,           (ERROR (*)(objAudio*, APTR))COMMAND_Mute },
+   { CMD_SET_LENGTH,     (ERROR (*)(objAudio*, APTR))COMMAND_SetLength },
+   { CMD_SET_PAN,        (ERROR (*)(objAudio*, APTR))COMMAND_SetPan },
+   { CMD_SET_POSITION,   (ERROR (*)(objAudio*, APTR))COMMAND_SetPosition },
+   { CMD_SET_RATE,       (ERROR (*)(objAudio*, APTR))COMMAND_SetRate },
+   { CMD_SET_SAMPLE,     (ERROR (*)(objAudio*, APTR))COMMAND_SetSample },
+   { CMD_SET_VOLUME,     (ERROR (*)(objAudio*, APTR))COMMAND_SetVolume },
    { CMD_START_SEQUENCE, NULL },
-   { CMD_STOP,           (APTR)COMMAND_Stop },
-   { CMD_STOP_LOOPING,   (APTR)COMMAND_StopLooping },
+   { CMD_STOP,           (ERROR (*)(objAudio*, APTR))COMMAND_Stop },
+   { CMD_STOP_LOOPING,   (ERROR (*)(objAudio*, APTR))COMMAND_StopLooping },
    { 0, NULL }
 };
 
@@ -153,13 +152,13 @@ int ReadData(objSound *Self, void *Buffer, int Length) {
    return 0;
 }
 
-void SeekData(objSound *Self, int Offset) {
+void SeekData(objSound *Self, DOUBLE Offset) {
    struct acSeek seek = { Offset, SEEK_START };
    Action(AC_Seek, Self->File, &seek);
 }
 
 void SeekZero(objSound *Self) {
-   struct acSeek seek = { Self->prvDataOffset, SEEK_START };
+   struct acSeek seek = { (DOUBLE)Self->prvDataOffset, SEEK_START };
    Action(AC_Seek, Self->File, &seek);
 }
 #endif
@@ -168,13 +167,15 @@ void SeekZero(objSound *Self) {
 
 static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
+   parasol::Log log;
+
    CoreBase = argCoreBase;
 
 #ifdef _WIN32
    {
-      STRING errstr;
+      CSTRING errstr;
       if ((errstr = dsInitDevice(44100))) {
-         LogErrorMsg("DirectSound Failed: %s", errstr);
+         log.warning("DirectSound Failed: %s", errstr);
          return ERR_NoSupport;
       }
    }
@@ -293,8 +294,7 @@ static DOUBLE sndSetTaskVolume(DOUBLE Volume)
          objAudio *audio;
          if (!AccessObject(glAudioID, 3000, &audio)) {
             OBJECTID taskid = CurrentTaskID();
-            LONG i;
-            for (i=0; i < ARRAYSIZE(audio->Channels); i++) {
+            for (LONG i=0; i < ARRAYSIZE(audio->Channels); i++) {
                if (audio->Channels[i].TaskID IS taskid) {
                   audio->Channels[i].TaskVolume = glTaskVolume;
                }
@@ -327,17 +327,18 @@ Okay
 static ERROR sndWaitDrivers(LONG TimeOut)
 {
 #ifdef __linux__
+   parasol::Log log(__FUNCTION__);
    snd_ctl_t *ctlhandle;
    snd_ctl_card_info_t *info;
    LONG err;
-   UBYTE name[32];
+   char name[32];
    STRING cardid;
 
-   LogBranch("Waiting for audio drivers to start...");
+   log.branch("Waiting for audio drivers to start...");
 
    snd_ctl_card_info_alloca(&info);
 
-   BYTE genuine = FALSE;
+   bool genuine = FALSE;
    LONG card = -1;
    LARGE time = PreciseTime();
    while (PreciseTime() - time < (LARGE)TimeOut * 1000LL) {
@@ -353,7 +354,7 @@ static ERROR sndWaitDrivers(LONG TimeOut)
             if ((err = snd_ctl_open(&ctlhandle, name, 0)) >= 0) {
                if ((err = snd_ctl_card_info(ctlhandle, info)) >= 0) {
                   cardid = (STRING)snd_ctl_card_info_get_id(info);
-                  LogMsg("Detected %s", cardid);
+                  log.msg("Detected %s", cardid);
 
                   if (StrMatch("modem", cardid) != ERR_Okay) genuine = TRUE;
                }
@@ -369,12 +370,10 @@ static ERROR sndWaitDrivers(LONG TimeOut)
    }
 
    if (!genuine) {
-      LogMsg("No sound drivers were started in the allotted time period.");
-      LogReturn();
+      log.msg("No sound drivers were started in the allotted time period.");
       return ERR_Failed;
    }
 
-   LogReturn();
    return ERR_Okay;
 #else
    return ERR_Okay;
@@ -383,10 +382,10 @@ static ERROR sndWaitDrivers(LONG TimeOut)
 
 //****************************************************************************
 
-#include "class_audio.c"
-#include "commands.c"
-#include "functions.c"
-#include "class_sound.c"
+#include "class_audio.cpp"
+#include "commands.cpp"
+#include "functions.cpp"
+#include "class_sound.cpp"
 
 //****************************************************************************
 
