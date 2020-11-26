@@ -18,7 +18,7 @@
 <p>A pointer object should usually be created at boot-up unless you don't want a pointer in your system (e.g. for keyboard-only input).  Not creating a pointer will also mean that the system will not support user-click and user-movement management, unless you have some other means of achieving this. It is recommended that when creating a pointer at boot-up you give it a name of "SystemPointer".  This is a system-wide standard that makes it easier for other objects to find the pointing device.  If you give it a different name then the pointer will effectively be hidden from other objects.</p>
 <p>The Pointer class manages action-events such as UserMovement, UserClick and UserClickRelease.  These actions are called and passed to other objects on the desktop as appropriate.</p></description>
     <source>
-      <file>class_pointer.c</file>
+      <file>class_pointer.cpp</file>
     </source>
   </info>
 

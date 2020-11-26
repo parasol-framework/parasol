@@ -48,7 +48,7 @@ HWND winCreateChild(HWND, int, int, int, int);
 HWND winCreateScreen(HWND, int *, int *, int *, int *, char, char, char *, char, unsigned char, char);
 int winCreateScreenClass(void);
 void winDisableBatching(void);
-void winRemoveWindowClass(char *);
+void winRemoveWindowClass(const char *);
 int winProcessMessage(void *);
 int winDestroyWindow(HWND);
 int winDetermineWindow(int, int, int *, int *, int *);
@@ -76,7 +76,7 @@ void winShowCursor(int);
 void winSetCursor(HCURSOR);
 void winSetSurfaceID(HWND, int);
 int winSettings(int);
-void winSetWindowTitle(HWND, unsigned char *);
+void winSetWindowTitle(HWND, const char *);
 int winShowWindow(HWND, int);
 void winUpdateWindow(HWND);
 

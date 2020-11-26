@@ -39,11 +39,12 @@ static objModule *modDriver = NULL;
 
 static LONG scrUnsupported(void)
 {
-   LogErrorMsg("Unhandled display function called - driver is not complete.");
+   parasol::Log log("Display");
+   log.warning("Unhandled display function called - driver is not complete.");
    return 0;
 }
 
-#define FDEF static const struct FunctionField
+#define FDEF static const FunctionField
 
 FDEF argsAccessPointer[] = { { "Object", FD_OBJECTPTR }, { 0, 0 } };
 FDEF argsCompress[] = { { "Error", FD_ERROR }, { "Bitmap", FD_OBJECTPTR }, { "Level", FD_LONG }, { 0, 0 } };
@@ -84,7 +85,7 @@ FDEF argsSync[] = { { "Void", FD_VOID }, { "Bitmap", FD_OBJECTPTR }, { 0, 0 } };
 FDEF argsUnlockCursor[] = { { "Error", FD_ERROR }, { "Surface", FD_OBJECTID }, { 0, 0 } };
 FDEF argsUnsubscribeInput[] = { { "Void", FD_VOID }, { "Surface", FD_OBJECTID }, { 0, 0 } };
 
-struct Function JumpTable[] = {
+Function JumpTable[] = {
    { scrUnsupported, "GetDisplayInfo", argsGetDisplayInfo },
    { scrUnsupported, "GetDisplayType", argsGetDisplayType },
    { scrUnsupported, "SetCursor", argsSetCursor },
@@ -126,6 +127,8 @@ struct Function JumpTable[] = {
    { NULL, NULL, NULL }
 };
 
+//****************************************************************************
+
 /*****************************************************************************
 ** Internal: test_x11()
 */
@@ -133,6 +136,7 @@ struct Function JumpTable[] = {
 #if defined(__linux__) && !defined(__ANDROID__)
 static LONG test_x11(STRING Path)
 {
+   parasol::Log log("test_x11_socket");
    struct sockaddr_un sockname;
    LONG namelen, fd, err;
    WORD i;
@@ -146,7 +150,7 @@ static LONG test_x11(STRING Path)
       namelen = i + sizeof(sockname.sun_family);
 
       if (connect(fd, (struct sockaddr *)&sockname, namelen) < 0) {
-         LogF("TestX11Socket:","Socket %s failed: %s", Path, strerror(errno));
+         log.msg("Socket %s failed: %s", Path, strerror(errno));
          err = errno;
          close(fd);
 
@@ -157,17 +161,17 @@ static LONG test_x11(STRING Path)
          if ((err IS EINTR)) return ERR_Okay;
          else if ((err IS EWOULDBLOCK) OR (err IS EINPROGRESS)) return ERR_Okay;
          else {
-            LogF("TestX11:","Connect Error: %s", strerror(err));
+            log.msg("Connect Error: %s", strerror(err));
             return ERR_Failed;
          }
       }
-      else LogF("TestX11Socket:","Connected to %s", Path);
+      else log.msg("Connected to %s", Path);
 
       close(fd);
 
       return ERR_Okay;
    }
-   else LogF("TestSocket:","Failed to open a socket.");
+   else log.msg("Failed to open a socket.");
 
    return ERR_Failed;
 }
@@ -215,15 +219,15 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 #if defined(__linux__) && !defined(__ANDROID__)
       // Check if X11 is running by scanning /tmp/.X11-unix
 
-      WORD i, j;
-      UBYTE buffer[] = "/tmp/.X11-unix/X10";
+      WORD j;
+      char buffer[] = "/tmp/.X11-unix/X10";
       STRING x11[] = { "X", "X0", "X1", "X2", "X3", "X5", "X6", "X7", "X8", "X9", "X10" };
 
-      for (i=0; (i < ARRAYSIZE(x11)); i++) {
+      for (WORD i=0; (i < ARRAYSIZE(x11)); i++) {
          for (j=0; x11[i][j]; j++) buffer[15+j] = x11[i][j];
          buffer[15+j] = 0;
          if (test_x11(buffer) IS ERR_Okay) {
-            LogMsg("X11 server detected in /tmp");
+            log.msg("X11 server detected in /tmp");
             display = DISPLAY_X11;
             break;
          }
@@ -233,9 +237,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 #endif
    }
 
-   if (display IS DISPLAY_AUTO) {
-      display = DISPLAY_NATIVE;
-   }
+   if (display IS DISPLAY_AUTO) display = DISPLAY_NATIVE;
 
    #ifdef _WIN32
       displaymod = "display-windows";
@@ -248,7 +250,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
       displaymod = "display-x11";
    #endif
 
-   LogMsg("Using display driver '%s'", displaymod);
+   log.msg("Using display driver '%s'", displaymod);
 
    APTR driver_base;
    if (LoadModule(displaymod, 1.0, (OBJECTPTR *)&modDriver, &driver_base) != ERR_Okay) {
@@ -270,9 +272,9 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    // All function addresses specified in the driver can overload our local generic functions
 
-   struct Function * drivertable;
+   Function * drivertable;
    if (!GetPointer(modDriver, FID_FunctionList, &drivertable)) {
-      for (i=0; drivertable[i].Name; i++) {
+      for (LONG i=0; drivertable[i].Name; i++) {
          if (drivertable[i].Address) JumpTable[i].Address = drivertable[i].Address;
       }
    }

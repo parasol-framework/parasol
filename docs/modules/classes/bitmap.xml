@@ -20,7 +20,7 @@
 <p>If you require complex drawing functionality that is not available in the Bitmap class, please use the functionality provided by the Vector module.</p>
 <p>To save the image of a bitmap, you can either copy its image to a <class name="Picture">Picture</class> object, or you can use the SaveImage action to save the data in PCX format.  Raw data can also be processed through a bitmap by using the Read and Write actions.</p></description>
     <source>
-      <file>class_bitmap.c</file>
+      <file>class_bitmap.cpp</file>
     </source>
   </info>
 
@@ -536,7 +536,7 @@ UnpackAlpha(Bitmap, Colour)
       <type prototype="void (*DrawUCRIndex)(struct rkBitmap *, UBYTE *, struct RGB8 *)">FUNCTION *</type>
       <description>
 <p>This field points to an internal C function that can be used for drawing pixels to the bitmap.  It is intended that the function is only ever called by C programs and that caution is exercised by the programmer, as no clipping checks will be performed (meaning it is possible to supply an invalid address that would result in a segfault).</p>
-<p>The prototype of the DrawUCRIndex function is <code>Function(*Bitmap, UBYTE *Data, struct RGB8 *RGB)</code>.</p>
+<p>The prototype of the DrawUCRIndex function is <code>Function(*Bitmap, UBYTE *Data, RGB8 *RGB)</code>.</p>
 <p>The Data parameter must point to a location within the Bitmap's graphical address space. The new pixel value must be defined in the RGB parameter.</p>
 <p>Note that a colour indexing equivalent of this function is not available in the Bitmap class - this is because it is more efficient to index the Bitmap's <field>Data</field> field directly.</p>
       </description>
@@ -549,7 +549,7 @@ UnpackAlpha(Bitmap, Colour)
       <type prototype="void (*DrawUCRPixel)(struct rkBitmap *, LONG, LONG, struct RGB8 *)">FUNCTION *</type>
       <description>
 <p>This field points to an internal C function that can be used for drawing pixels to the bitmap.  It is intended that the function is only ever called by C programs and that caution is exercised by the programmer, as no clipping checks will be performed (meaning it is possible to supply invalid coordinates that would result in a segfault).</p>
-<p>The prototype of the DrawUCRPixel function is <code>Function(*Bitmap, LONG X, LONG Y, struct RGB8 *RGB)</code>.</p>
+<p>The prototype of the DrawUCRPixel function is <code>Function(*Bitmap, LONG X, LONG Y, RGB8 *RGB)</code>.</p>
 <p>The new pixel value must be defined in the RGB parameter.</p>
       </description>
     </field>
@@ -604,7 +604,7 @@ UnpackAlpha(Bitmap, Colour)
       <description>
 <p>A palette is an array of containing colour values in standard RGB format ($RRGGBB).  The first value must have a header ID of ID_PALETTE, followed by the amount of values in the array. Following this is the actual list itself - colour 0, then colour 1 and so on. There is no termination signal at the end of the list.</p>
 <p>The following example is for a 32 colour palette:</p>
-<pre>struct RGBPalette Palette = {
+<pre>RGBPalette Palette = {
   ID_PALETTE, VER_PALETTE, 32,
   {{ 0x00,0x00,0x00 }, { 0x10,0x10,0x10 }, { 0x17,0x17,0x17 }, { 0x20,0x20,0x20 },
    { 0x27,0x27,0x27 }, { 0x30,0x30,0x30 }, { 0x37,0x37,0x37 }, { 0x40,0x40,0x40 },
@@ -661,7 +661,7 @@ UnpackAlpha(Bitmap, Colour)
       <type prototype="void (*ReadUCRIndex)(struct rkBitmap *, UBYTE *, struct RGB8 *)">FUNCTION *</type>
       <description>
 <p>This field points to an internal C function that can be used for reading pixels from the bitmap.  It is intended that the function is only ever called by C programs and that caution is exercised by the programmer, as no clipping checks will be performed (meaning it is possible to supply an invalid address that would result in a segfault).</p>
-<p>The prototype of the ReadUCRIndex function is <code>Function(*Bitmap, UBYTE *Data, struct RGB8 *RGB)</code>.</p>
+<p>The prototype of the ReadUCRIndex function is <code>Function(*Bitmap, UBYTE *Data, RGB8 *RGB)</code>.</p>
 <p>The Data parameter must point to a location within the Bitmap's graphical address space. The pixel value will be returned in the RGB parameter.</p>
 <p>Note that a colour indexing equivalent of this function is not available in the Bitmap class - this is because it is more efficient to index the Bitmap's <field>Data</field> field directly.</p>
       </description>
@@ -674,7 +674,7 @@ UnpackAlpha(Bitmap, Colour)
       <type prototype="void (*ReadUCRPixel)(struct rkBitmap *, LONG, LONG, struct RGB8 *)">FUNCTION *</type>
       <description>
 <p>This field points to an internal C function that can be used for reading pixels from the bitmap.  It is intended that the function is only ever called by C programs and that caution is exercised by the programmer, as no clipping checks will be performed (meaning it is possible to supply invalid X/Y coordinates that would result in a segfault).</p>
-<p>The prototype of the ReadUCRPixel function is <code>Function(*Bitmap, LONG X, LONG Y, struct RGB8 *RGB)</code>.</p>
+<p>The prototype of the ReadUCRPixel function is <code>Function(*Bitmap, LONG X, LONG Y, RGB8 *RGB)</code>.</p>
 <p>The pixel value will be returned in the RGB parameter.  It should be noted that as this function converts the pixel value into RGB format, <field>ReadUCPixel</field> or <field>ReadUCRIndex</field> should be used as faster alternatives if the pixel value does not need to be de-constructed into its RGB components.</p>
       </description>
     </field>

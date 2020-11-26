@@ -11,7 +11,7 @@ static inline OBJECTID get_display(Window Window)
    if (!XDisplay) return 0;
 
    if (XGetWindowProperty(XDisplay, Window, atomSurfaceID, 0, 1,
-         False, AnyPropertyType, &atom, &format, &nitems, &nbytes, (APTR)&data) IS Success) {
+         False, AnyPropertyType, &atom, &format, &nitems, &nbytes, (UBYTE **)&data) IS Success) {
       display_id = data[0];
       XFree(data);
       return display_id;
@@ -64,7 +64,7 @@ static void X11ManagerLoop(HOSTHANDLE FD, APTR Data)
             break;
 
          case ClientMessage:
-            if (xevent.xclient.data.l[0] IS XWADeleteWindow) {
+            if ((Atom)xevent.xclient.data.l[0] == XWADeleteWindow) {
                if ((display_id = get_display(xevent.xany.window))) {
                   surface_id = GetOwnerID(display_id);
                   if ((owner_id = GetOwnerID(surface_id))) {
@@ -519,7 +519,7 @@ static LONG xkeysym_to_pkey(KeySym KSym)
 
 static void handle_key_press(XEvent *xevent)
 {
-   LONG unicode = 0;
+   ULONG unicode = 0;
    KeySym mod_sym; // A KeySym is an encoding of a symbol on the cap of a key.  See X11/keysym.h
    static XComposeStatus glXComposeStatus = { 0, 0 };
    char buffer[12];
@@ -563,13 +563,13 @@ static void handle_key_press(XEvent *xevent)
       else if (value IS K_R_ALT)     glKeyFlags |= KQ_R_ALT;
    }
 
-   if ((value) OR (unicode != 0xffffffff)) {
+   if ((value) or (unicode != 0xffffffff)) {
      if ((unicode < 0x20) OR (unicode IS 127)) flags |= KQ_NOT_PRINTABLE;
       evKey key = {
          .EventID    = EVID_IO_KEYBOARD_KEYPRESS,
          .Qualifiers = glKeyFlags|flags,
          .Code       = value,
-         .Unicode    = unicode
+         .Unicode    = (LONG)unicode
       };
       BroadcastEvent(&key, sizeof(key));
    }
@@ -638,7 +638,7 @@ static void handle_key_release(XEvent *xevent)
          .EventID    = EVID_IO_KEYBOARD_KEYPRESS,
          .Qualifiers = glKeyFlags|flags,
          .Code       = value,
-         .Unicode    = unicode
+         .Unicode    = (LONG)unicode
       };
       BroadcastEvent(&key, sizeof(key));
    }

@@ -2381,7 +2381,7 @@ INLINE ERROR cfgSet(APTR Ob, CSTRING Section, CSTRING Key, CSTRING Data) {
 
 INLINE ERROR cfgWriteInt(APTR Self, CSTRING Section, CSTRING Key, LONG Integer)
 {
-   BYTE buffer[32];
+   char buffer[32];
    if (!Self) return ERR_NullArgs;
    STRING str = buffer;
    LONG digits = 0;
@@ -2399,7 +2399,7 @@ INLINE ERROR cfgWriteInt(APTR Self, CSTRING Section, CSTRING Key, LONG Integer)
             Integer -= count;
             build++;
          }
-         *str++ = (BYTE)(build + '0');
+         *str++ = (char)(build + '0');
          count = count/10;
          digits++;
       }
@@ -3559,8 +3559,8 @@ typedef struct rkEvent {
 
 // Event structures.
 
-typedef struct { EVENTID EventID; UBYTE Name[1]; } evVolumeCreated;
-typedef struct { EVENTID EventID; UBYTE Name[1]; } evVolumeDeleted;
+typedef struct { EVENTID EventID; char Name[1]; } evVolumeCreated;
+typedef struct { EVENTID EventID; char Name[1]; } evVolumeDeleted;
 typedef struct { EVENTID EventID; OBJECTID TaskID; } evTaskCreated;
 typedef struct { EVENTID EventID; OBJECTID TaskID; OBJECTID ProcessID; } evTaskRemoved;
 typedef struct { EVENTID EventID; } evPowerSuspending;
@@ -3584,9 +3584,9 @@ struct evHotplug {
       LONG ProductID;    // USB product or device ID
       LONG DeviceID;
    };
-   UBYTE ID[20];         // Typically the PCI bus ID or USB bus ID, serial number or unique identifier
-   UBYTE Section[32];    // Section name in the config file
-   UBYTE Class[32];      // Class identifier (USB)
+   char  ID[20];         // Typically the PCI bus ID or USB bus ID, serial number or unique identifier
+   char  Section[32];    // Section name in the config file
+   char  Class[32];      // Class identifier (USB)
    union {
       char Product[40]; // Name of product or the hardware device
       char Device[40];

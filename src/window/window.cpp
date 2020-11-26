@@ -801,11 +801,8 @@ static ERROR WINDOW_Maximise(objWindow *Self, struct winMaximise *Args)
    if (Self->MaximiseCallback.Type) {
       if (Self->MaximiseCallback.Type IS CALL_STDC) {
          auto routine = (void (*)(objWindow *))Self->MaximiseCallback.StdC.Routine;
-         if (Self->MaximiseCallback.StdC.Context) {
-            parasol::SwitchContext context(Self->MaximiseCallback.StdC.Context);
-            routine(Self);
-         }
-         else routine(Self);
+         parasol::SwitchContext context(Self->MaximiseCallback.StdC.Context);
+         routine(Self);
       }
       else if (Self->MaximiseCallback.Type IS CALL_SCRIPT) {
          OBJECTPTR script;
@@ -916,18 +913,13 @@ static ERROR WINDOW_Minimise(objWindow *Self, APTR Void)
    if (Self->MinimiseCallback.Type) {
       if (Self->MinimiseCallback.Type IS CALL_STDC) {
          auto routine = (void (*)(objWindow *))Self->MinimiseCallback.StdC.Routine;
-         if (Self->MinimiseCallback.StdC.Context) {
-            parasol::SwitchContext context(Self->MinimiseCallback.StdC.Context);
-            routine(Self);
-         }
-         else routine(Self);
+         parasol::SwitchContext context(Self->MinimiseCallback.StdC.Context);
+         routine(Self);
       }
       else if (Self->MinimiseCallback.Type IS CALL_SCRIPT) {
          OBJECTPTR script;
          if ((script = Self->MinimiseCallback.Script.Script)) {
-            const ScriptArg args[] = {
-               { "Window", FD_OBJECTPTR, { .Address = Self } }
-            };
+            const ScriptArg args[] = { { "Window", FD_OBJECTPTR, { .Address = Self } } };
             scCallback(script, Self->MinimiseCallback.Script.ProcedureID, args, ARRAYSIZE(args));
          }
       }
@@ -1778,7 +1770,7 @@ static ERROR SET_Title(objWindow *Self, CSTRING Value)
 {
    parasol::Log log;
 
-   log.msg("%s", Value);
+   log.branch("%s", Value);
 
    if (Value) StrCopy(StrTranslateText(Value), Self->Title, sizeof(Self->Title));
    else Self->Title[0] = 0;

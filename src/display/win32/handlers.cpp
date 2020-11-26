@@ -182,7 +182,8 @@ void MsgButtonPress(LONG button, LONG State)
 void MsgResizedWindow(OBJECTID SurfaceID, LONG WinX, LONG WinY, LONG WinWidth, LONG WinHeight,
    LONG ClientX, LONG ClientY, LONG ClientWidth, LONG ClientHeight)
 {
-   //LogF("winMsgResize()","#%d, Window: %dx%d,%dx%d, Client: %dx%d,%dx%d", SurfaceID, WinX, WinY, WinWidth, WinHeight, ClientX, ClientY, ClientWidth, ClientHeight);
+   parasol::Log log("ResizedWindow");
+   //log.branch("#%d, Window: %dx%d,%dx%d, Client: %dx%d,%dx%d", SurfaceID, WinX, WinY, WinWidth, WinHeight, ClientX, ClientY, ClientWidth, ClientHeight);
 
    if ((!SurfaceID) OR (WinWidth < 1) OR (WinHeight < 1)) return;
 
@@ -219,13 +220,14 @@ void MsgResizedWindow(OBJECTID SurfaceID, LONG WinX, LONG WinY, LONG WinWidth, L
 
 void MsgSetFocus(OBJECTID SurfaceID)
 {
+   parasol::Log log;
    objSurface *surface;
    if (!AccessObject(SurfaceID, 3000, &surface)) {
       if ((!(surface->Flags & RNF_HAS_FOCUS)) AND (surface->Flags & RNF_VISIBLE)) {
-         LogMsg("WM_SETFOCUS: Sending focus to surface #%d.", SurfaceID);
+         log.msg("WM_SETFOCUS: Sending focus to surface #%d.", SurfaceID);
          DelayMsg(AC_Focus, SurfaceID, 0);
       }
-      else MSG("WM_SETFOCUS: Surface #%d already has the focus, or is hidden.", SurfaceID);
+      else log.trace("WM_SETFOCUS: Surface #%d already has the focus, or is hidden.", SurfaceID);
       ReleaseObject(surface);
    }
 }
@@ -262,15 +264,13 @@ void CheckWindowSize(OBJECTID SurfaceID, LONG *Width, LONG *Height)
 
 //****************************************************************************
 
-void RepaintWindow(OBJECTID SurfaceID, LONG X, LONG Y, LONG Width, LONG Height)
+extern "C" void RepaintWindow(OBJECTID SurfaceID, LONG X, LONG Y, LONG Width, LONG Height)
 {
    if ((Width) AND (Height)) {
       struct drwExpose expose = { X, Y, Width, Height, EXF_CHILDREN };
       ActionMsg(MT_DrwExpose, SurfaceID, &expose);
    }
-   else {
-      ActionMsg(MT_DrwExpose, SurfaceID, NULL);
-   }
+   else ActionMsg(MT_DrwExpose, SurfaceID, NULL);
 }
 
 //****************************************************************************
@@ -293,11 +293,9 @@ void MsgWindowClose(OBJECTID SurfaceID)
          }
       }
 
-      LogF("~WinMgr:","Freeing window surface #%d.", SurfaceID);
-
-         acFreeID(SurfaceID);
-
-      LogReturn();
+      parasol::Log log("WinMgr");
+      log.branch("Freeing window surface #%d.", SurfaceID);
+      acFreeID(SurfaceID);
    }
 }
 
@@ -306,9 +304,9 @@ void MsgWindowClose(OBJECTID SurfaceID)
 void MsgWindowDestroyed(OBJECTID SurfaceID)
 {
    if (SurfaceID) {
-      LogF("~WinMgr:","Freeing window surface #%d.", SurfaceID);
-         acFreeID(SurfaceID);
-      LogReturn();
+      parasol::Log log("WinMgr");
+      log.branch("Freeing window surface #%d.", SurfaceID);
+      acFreeID(SurfaceID);
    }
 }
 

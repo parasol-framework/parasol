@@ -107,15 +107,46 @@ struct resolution {
    WORD bpp;
 };
 
-static struct resolution * get_resolutions(objDisplay *);
+static resolution * get_resolutions(objDisplay *);
 static ERROR create_bitmap_class(void);
-static ERROR dither(objBitmap *, objBitmap *, struct ColourFormat *, LONG, LONG, LONG, LONG, LONG, LONG);
+static ERROR dither(objBitmap *, objBitmap *, ColourFormat *, LONG, LONG, LONG, LONG, LONG, LONG);
 
-static struct SharedControl *glSharedControl = NULL;
+static SharedControl *glSharedControl = NULL;
 static LONG glSixBitDisplay = FALSE;
 
 static ERROR GET_HDensity(objDisplay *Self, LONG *Value);
 static ERROR GET_VDensity(objDisplay *Self, LONG *Value);
+
+//****************************************************************************
+
+FieldDef CursorLookup[] = {
+   { "None",            0 },
+   { "Default",         PTR_DEFAULT },             // Values start from 1 and go up
+   { "SizeBottomLeft",  PTR_SIZE_BOTTOM_LEFT },
+   { "SizeBottomRight", PTR_SIZE_BOTTOM_RIGHT },
+   { "SizeTopLeft",     PTR_SIZE_TOP_LEFT },
+   { "SizeTopRight",    PTR_SIZE_TOP_RIGHT },
+   { "SizeLeft",        PTR_SIZE_LEFT },
+   { "SizeRight",       PTR_SIZE_RIGHT },
+   { "SizeTop",         PTR_SIZE_TOP },
+   { "SizeBottom",      PTR_SIZE_BOTTOM },
+   { "Crosshair",       PTR_CROSSHAIR },
+   { "Sleep",           PTR_SLEEP },
+   { "Sizing",          PTR_SIZING },
+   { "SplitVertical",   PTR_SPLIT_VERTICAL },
+   { "SplitHorizontal", PTR_SPLIT_HORIZONTAL },
+   { "Magnifier",       PTR_MAGNIFIER },
+   { "Hand",            PTR_HAND },
+   { "HandLeft",        PTR_HAND_LEFT },
+   { "HandRight",       PTR_HAND_RIGHT },
+   { "Text",            PTR_TEXT },
+   { "Paintbrush",      PTR_PAINTBRUSH },
+   { "Stop",            PTR_STOP },
+   { "Invisible",       PTR_INVISIBLE },
+   { "Custom",          PTR_CUSTOM },
+   { "Dragable",        PTR_DRAGGABLE },
+   { NULL, 0 }
+};
 
 //****************************************************************************
 
@@ -130,7 +161,7 @@ struct XCursor {
    LONG XCursorID;
 };
 
-static struct XCursor XCursors[] = {
+static XCursor XCursors[] = {
    { 0, PTR_DEFAULT,           XC_left_ptr },
    { 0, PTR_SIZE_BOTTOM_LEFT,  XC_bottom_left_corner },
    { 0, PTR_SIZE_BOTTOM_RIGHT, XC_bottom_right_corner },
@@ -169,14 +200,13 @@ static void handle_key_release(XEvent *);
 static void handle_motion_notify(XMotionEvent *);
 static void handle_stack_change(XCirculateEvent *);
 
-static struct X11Globals *glX11 = 0;
-static struct _XDisplay *XDisplay = 0;
-static struct XRandRBase *XRandRBase = 0;
+static X11Globals *glX11 = 0;
+static _XDisplay *XDisplay = 0;
+static XRandRBase *XRandRBase = 0;
 static UBYTE glX11ShmImage = FALSE;
 static UBYTE KeyHeld[K_LIST_END];
-static UBYTE glX11ShmImage;
 static UBYTE glTrayIcon = 0, glTaskBar = 1, glStickToFront = 0;
-static LONG glKeyFlags = 0, glXFD = -1, glDGAPixelsPerLine = 0, glDGABankSize = 0, glDGAPixelsPerLine, glDGABankSize;
+static LONG glKeyFlags = 0, glXFD = -1, glDGAPixelsPerLine = 0, glDGABankSize = 0;
 static Atom atomSurfaceID = 0, XWADeleteWindow = 0;
 static GC glXGC = 0, glClipXGC = 0;
 static XWindowAttributes glRootWindow;
@@ -194,6 +224,7 @@ static APTR glDGAVideo = NULL;
 
 extern BYTE glTrayIcon, glTaskBar, glStickToFront;
 
+extern "C" {
 DLLCALL LONG WINAPI SetPixelV(APTR, LONG, LONG, LONG);
 DLLCALL LONG WINAPI SetPixel(APTR, LONG, LONG, LONG);
 DLLCALL LONG WINAPI GetPixel(APTR, LONG, LONG);
@@ -212,6 +243,7 @@ LONG winGetPixelFormat(LONG *, LONG *, LONG *, LONG *);
 APTR winSelectObject(APTR, APTR);
 APTR winSetClipping(APTR, LONG, LONG, LONG, LONG);
 void winSetDIBitsToDevice(APTR, LONG, LONG, LONG, LONG, LONG, LONG, LONG, LONG, LONG, APTR, LONG, LONG, LONG);
+}
 
 #include "win32/windows.h"
 
@@ -219,7 +251,7 @@ HINSTANCE glInstance = 0;
 
 static APTR GetWinCursor(LONG);
 
-static struct WinCursor winCursors[] = {
+static WinCursor winCursors[] = {
    { 0, PTR_DEFAULT,           },  // NOTE: Refer to the microsoft.c file if you change anything here
    { 0, PTR_SIZE_BOTTOM_LEFT,  },
    { 0, PTR_SIZE_BOTTOM_RIGHT, },
@@ -356,13 +388,13 @@ struct CoreBase *CoreBase;
 struct KeyboardBase *KeyboardBase;
 #endif
 static struct SurfaceBase *SurfaceBase;
-static struct ColourFormat glColourFormat;
+static ColourFormat glColourFormat;
 static BYTE glHeadless = FALSE;
 
 static struct {
    //LARGE TotalMsgs;     // Total number of messages that have been recorded
    LARGE  IndexCounter;   // Counter for message ID's
-   struct InputMsg Msgs[MAX_INPUTMSG];
+   InputMsg Msgs[MAX_INPUTMSG];
 } *glInput = NULL;
 
 struct InputSubscription {
@@ -396,7 +428,6 @@ static OBJECTID glPointerID = 0;
 static DISPLAYINFO *glDisplayInfo;
 static APTR glDither = NULL;
 static LONG glDitherSize = 0;
-static const struct FieldDef CursorLookup[];
 
 #define BLEND_MAX_THRESHOLD 255
 #define BLEND_MIN_THRESHOLD 1
@@ -408,7 +439,7 @@ static const struct FieldDef CursorLookup[];
 static ERROR create_pointer_class(void);
 static ERROR create_display_class(void);
 static ERROR GetSurfaceAbs(OBJECTID, LONG *, LONG *, LONG *, LONG *);
-static ULONG ConvertRGBToPackedPixel(objBitmap *, struct RGB8 *) __attribute__ ((unused));
+static ULONG ConvertRGBToPackedPixel(objBitmap *, RGB8 *) __attribute__ ((unused));
 static ERROR LockSurface(objBitmap *, WORD);
 static ERROR UnlockSurface(objBitmap *);
 
@@ -482,7 +513,9 @@ int pthread_mutex_timedlock (pthread_mutex_t *mutex, int Timeout)
 #ifdef _GLES_
 static ERROR lock_graphics_active(CSTRING Caller)
 {
-   //FMSG("~lock_graphics()","%s, Count: %d, State: %d, Display: $%x, Context: $%x", Caller, glLockCount, glEGLState, (LONG)glEGLDisplay, (LONG)glEGLContext); // See unlock_graphics() for the matching step.
+   parasol::Log log(__FUNCTION__);
+
+   //log.traceBranch("%s, Count: %d, State: %d, Display: $%x, Context: $%x", Caller, glLockCount, glEGLState, (LONG)glEGLDisplay, (LONG)glEGLContext); // See unlock_graphics() for the matching step.
    if (!pthread_mutex_lock(&glGraphicsMutex)) {
    //if (!(errno = pthread_mutex_timedlock(&glGraphicsMutex, 7000))) {
       glLastLock = Caller;
@@ -491,14 +524,13 @@ static ERROR lock_graphics_active(CSTRING Caller)
          init_egl();
       }
 
-      if ((glEGLState != EGL_INITIALISED) OR (glEGLDisplay IS EGL_NO_DISPLAY)) {
+      if ((glEGLState != EGL_INITIALISED) or (glEGLDisplay IS EGL_NO_DISPLAY)) {
          pthread_mutex_unlock(&glGraphicsMutex);
-         //FMSG("lock_graphics","EGL not initialised.");
-         //LOGRETURN();
+         //log.trace("EGL not initialised.");
          return ERR_NotInitialised;
       }
 
-      if ((glEGLContext != EGL_NO_CONTEXT) AND (!glLockCount)) {
+      if ((glEGLContext != EGL_NO_CONTEXT) and (!glLockCount)) {
          // eglMakeCurrent() allows our thread to use OpenGL.
          if (eglMakeCurrent(glEGLDisplay, glEGLSurface, glEGLSurface, glEGLContext) == EGL_FALSE) { // Failure probably indicates that a power management event has occurred (requires re-initialisation).
             pthread_mutex_unlock(&glGraphicsMutex);
@@ -510,8 +542,7 @@ static ERROR lock_graphics_active(CSTRING Caller)
       return ERR_Okay;
    }
    else {
-      LogF("@lock_graphics","Failed to get lock for %s.  Locked by %s.  Error: %s", Caller, glLastLock, strerror(errno));
-      //LOGRETURN();
+      log.warning("Failed to get lock for %s.  Locked by %s.  Error: %s", Caller, glLastLock, strerror(errno));
       return ERR_TimeOut;
    }
 }
@@ -526,7 +557,6 @@ static void unlock_graphics(void)
       }
    }
    pthread_mutex_unlock(&glGraphicsMutex);
-   //LOGRETURN();
 }
 
 #endif
@@ -535,12 +565,12 @@ static void unlock_graphics(void)
 
 static ERROR GetSurfaceAbs(OBJECTID SurfaceID, LONG *AbsX, LONG *AbsY, LONG *Width, LONG *Height)
 {
-   struct SurfaceControl *ctl;
+   SurfaceControl *ctl;
 
    if (!AccessMemory(glSharedControl->SurfacesMID, MEM_READ, 500, &ctl)) {
-      struct SurfaceList *list = (struct SurfaceList *)((APTR)ctl + ctl->ArrayIndex);
+      auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
       LONG i;
-      for (i=0; (list[i].SurfaceID) AND (list[i].SurfaceID != SurfaceID); i++);
+      for (i=0; (list[i].SurfaceID) and (list[i].SurfaceID != SurfaceID); i++);
 
       if (!list[i].SurfaceID) {
          ReleaseMemory(ctl);
@@ -565,12 +595,13 @@ static APTR glDGAMemory = NULL;
 
 static LONG x11DGAAvailable(APTR *VideoAddress, LONG *PixelsPerLine, LONG *BankSize)
 {
+   parasol::Log log(__FUNCTION__);
    STRING displayname;
 
    glX11->DGACount++;
    *VideoAddress = NULL;
 
-   if ((glX11->Manager IS FALSE) AND (glX11->DGAInitialised IS FALSE)) {
+   if ((glX11->Manager IS FALSE) and (glX11->DGAInitialised IS FALSE)) {
       //if (glX11->DGACount <= 1) printf("Fast video access is not enabled (must be in full screen mode)\n");
       return FALSE;
    }
@@ -582,18 +613,18 @@ static LONG x11DGAAvailable(APTR *VideoAddress, LONG *PixelsPerLine, LONG *BankS
       glDGAAvailable = FALSE;
 
       displayname = XDisplayName(NULL);
-      if ((!StrCompare(displayname, ":", 1, NULL)) OR
+      if ((!StrCompare(displayname, ":", 1, NULL)) or
           (!StrCompare(displayname, "unix:", 5, NULL)) ) {
          LONG events, errors, major, minor, screen;
 
-         if (XDGAQueryExtension(XDisplay, &events, &errors) AND XDGAQueryVersion(XDisplay, &major, &minor)) {
+         if (XDGAQueryExtension(XDisplay, &events, &errors) and XDGAQueryVersion(XDisplay, &major, &minor)) {
             screen = DefaultScreen(XDisplay);
 
             // This part will map the video buffer memory into our process.  Access to /dev/mem is required in order
             // for this to work.  After doing this, superuser privileges are dropped immediately.
 
             if (!SetResource(RES_PRIVILEGED_USER, TRUE)) {
-               if ((major >= 2) AND (XDGAOpenFramebuffer(XDisplay, screen))) { // Success, DGA is enabled
+               if ((major >= 2) and (XDGAOpenFramebuffer(XDisplay, screen))) { // Success, DGA is enabled
                   LONG ram;
 
                   // Get RAM address, pixels-per-line, bank-size and total amount of video memory
@@ -619,7 +650,7 @@ static LONG x11DGAAvailable(APTR *VideoAddress, LONG *PixelsPerLine, LONG *BankS
          }
          else if (glX11->DGACount <= 1) printf("Fast video access is not available (DGA extension failure).\n");
       }
-      else LogF("@X11","DGA is not available (display %s).", displayname);
+      else log.warning("DGA is not available (display %s).", displayname);
    }
 
    if (VideoAddress)  *VideoAddress = glDGAMemory;
@@ -633,7 +664,8 @@ static LONG x11DGAAvailable(APTR *VideoAddress, LONG *PixelsPerLine, LONG *BankS
 
 static XErrorHandler CatchRedirectError(Display *XDisplay, XErrorEvent *event)
 {
-   LogF("X11","A window manager has been detected on this X11 server.");
+   parasol::Log log("X11");
+   log.msg("A window manager has been detected on this X11 server.");
    glX11->Manager = FALSE;
    return 0;
 }
@@ -660,14 +692,15 @@ const CSTRING glXProtoList[] = { NULL,
 
 static XErrorHandler CatchXError(Display *XDisplay, XErrorEvent *XEvent)
 {
-   UBYTE buffer[80];
+   parasol::Log log("X11");
+   char buffer[80];
 
    if (XDisplay) {
       XGetErrorText(XDisplay, XEvent->error_code, buffer, sizeof(buffer)-1);
-      if ((XEvent->request_code > 0) AND (XEvent->request_code < ARRAYSIZE(glXProtoList))) {
-         LogF("@X11","Function: %s, XError: %s", glXProtoList[XEvent->request_code], buffer);
+      if ((XEvent->request_code > 0) and (XEvent->request_code < ARRAYSIZE(glXProtoList))) {
+         log.warning("Function: %s, XError: %s", glXProtoList[XEvent->request_code], buffer);
       }
-      else LogF("@X11","Function: Unknown, XError: %s", buffer);
+      else log.warning("Function: Unknown, XError: %s", buffer);
    }
    return 0;
 }
@@ -676,7 +709,8 @@ static XErrorHandler CatchXError(Display *XDisplay, XErrorEvent *XEvent)
 
 static int CatchXIOError(Display *XDisplay)
 {
-   LogF("!X11","A fatal XIO error occurred in relation to display \"%s\".", XDisplayName(NULL));
+   parasol::Log log("X11");
+   log.error("A fatal XIO error occurred in relation to display \"%s\".", XDisplayName(NULL));
    return 0;
 }
 
@@ -696,13 +730,15 @@ static LONG x11WindowManager(void)
 
 static ERROR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, LONG InfoSize)
 {
-  //FMSG("GetDisplayInfo()","Display: %d, Info: %p, Size: %d", DisplayID, Info, InfoSize);
+   parasol::Log log(__FUNCTION__);
 
-   if (!Info) return FuncError(ERR_NullArgs);
+  //log.traceBranch("Display: %d, Info: %p, Size: %d", DisplayID, Info, InfoSize);
 
-   if (InfoSize != sizeof(struct DisplayInfoV3)) {
-      LogF("!GetDisplayInfo()","Invalid InfoSize of %d (V3: %d)", InfoSize, (LONG)sizeof(struct DisplayInfoV3));
-      return FuncError(ERR_Args);
+   if (!Info) return log.warning(ERR_NullArgs);
+
+   if (InfoSize != sizeof(DisplayInfoV3)) {
+      log.error("Invalid InfoSize of %d (V3: %d)", InfoSize, (LONG)sizeof(DisplayInfoV3));
+      return log.warning(ERR_Args);
    }
 
    objDisplay *display;
@@ -747,7 +783,7 @@ static ERROR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, LONG InfoSi
          ReleaseObject(display);
          return ERR_Okay;
       }
-      else return FuncError(ERR_AccessObject);
+      else return log.warning(ERR_AccessObject);
    }
    else {
       // If no display is specified, return default display settings for the main monitor and availability flags.
@@ -814,7 +850,7 @@ static ERROR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, LONG InfoSi
 #elif __ANDROID__
       // On Android the current display information is always returned.
 
-      FMSG("GetDisplayInfo","Refresh");
+      log.trace("Refresh");
       if (!adLockAndroid(3000)) {
          ANativeWindow *window;
          if (!adGetWindow(&window)) {
@@ -839,7 +875,7 @@ static ERROR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, LONG InfoSi
             glDisplayInfo->VDensity = glDisplayInfo->HDensity;
 
             LONG pixel_format = ANativeWindow_getFormat(window);
-            if ((pixel_format IS WINDOW_FORMAT_RGBA_8888) OR (pixel_format IS WINDOW_FORMAT_RGBX_8888)) {
+            if ((pixel_format IS WINDOW_FORMAT_RGBA_8888) or (pixel_format IS WINDOW_FORMAT_RGBX_8888)) {
                glDisplayInfo->BytesPerPixel = 32;
                if (pixel_format IS WINDOW_FORMAT_RGBA_8888) glDisplayInfo->BitsPerPixel = 32;
                else glDisplayInfo->BitsPerPixel = 24;
@@ -847,7 +883,7 @@ static ERROR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, LONG InfoSi
 
             CopyMemory(&glColourFormat, &glDisplayInfo->PixelFormat, sizeof(glDisplayInfo->PixelFormat));
 
-            if ((glDisplayInfo->BitsPerPixel < 8) OR (glDisplayInfo->BitsPerPixel > 32)) {
+            if ((glDisplayInfo->BitsPerPixel < 8) or (glDisplayInfo->BitsPerPixel > 32)) {
                if (glDisplayInfo->BitsPerPixel > 32) glDisplayInfo->BitsPerPixel = 32;
                else if (glDisplayInfo->BitsPerPixel < 15) glDisplayInfo->BitsPerPixel = 16;
             }
@@ -855,16 +891,16 @@ static ERROR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, LONG InfoSi
             if (glDisplayInfo->BitsPerPixel > 24) glDisplayInfo->AmtColours = 1<<24;
             else glDisplayInfo->AmtColours = 1<<glDisplayInfo->BitsPerPixel;
 
-            FMSG("GetDisplayInfo","%dx%dx%d", glDisplayInfo->Width, glDisplayInfo->Height, glDisplayInfo->BitsPerPixel);
+            log.trace("%dx%dx%d", glDisplayInfo->Width, glDisplayInfo->Height, glDisplayInfo->BitsPerPixel);
          }
          else {
             adUnlockAndroid();
-            return FuncError(ERR_SystemCall);
+            return log.warning(ERR_SystemCall);
          }
 
          adUnlockAndroid();
       }
-      else return FuncError(ERR_TimeOut);
+      else return log.warning(ERR_TimeOut);
 
       CopyMemory(glDisplayInfo, Info, InfoSize);
       return ERR_Okay;
@@ -898,8 +934,8 @@ static ERROR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, LONG InfoSi
       Info->PixelFormat.BluePos    = glColourFormat.BluePos;
       Info->PixelFormat.AlphaPos   = glColourFormat.AlphaPos;
 
-      if ((Info->BitsPerPixel < 8) OR (Info->BitsPerPixel > 32)) {
-         LogErrorMsg("Invalid bpp of %d.", Info->BitsPerPixel);
+      if ((Info->BitsPerPixel < 8) or (Info->BitsPerPixel > 32)) {
+         log.warning("Invalid bpp of %d.", Info->BitsPerPixel);
          if (Info->BitsPerPixel > 32) Info->BitsPerPixel = 32;
          else if (Info->BitsPerPixel < 8) Info->BitsPerPixel = 8;
       }
@@ -907,7 +943,7 @@ static ERROR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, LONG InfoSi
       if (Info->BitsPerPixel > 24) Info->AmtColours = 1<<24;
       else Info->AmtColours = 1<<Info->BitsPerPixel;
 
-      FMSG("GetDisplayInfo","%dx%dx%d", Info->Width, Info->Height, Info->BitsPerPixel);
+      log.trace("%dx%dx%d", Info->Width, Info->Height, Info->BitsPerPixel);
       return ERR_Okay;
    }
 }
@@ -918,6 +954,7 @@ static ERROR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, LONG InfoSi
 
 static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
+   parasol::Log log(__FUNCTION__);
    DOUBLE fAlpha;
    WORD iValue, iAlpha;
    LONG i;
@@ -932,16 +969,16 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    GetPointer(argModule, FID_Master, &glModule);
 
    CSTRING driver_name;
-   if ((driver_name = GetResourcePtr(RES_DISPLAY_DRIVER))) {
-      LogMsg("User requested display driver '%s'", driver_name);
-      if ((!StrMatch(driver_name, "none")) OR (!StrMatch(driver_name, "headless"))) {
+   if ((driver_name = (CSTRING)GetResourcePtr(RES_DISPLAY_DRIVER))) {
+      log.msg("User requested display driver '%s'", driver_name);
+      if ((!StrMatch(driver_name, "none")) or (!StrMatch(driver_name, "headless"))) {
          glHeadless = TRUE;
       }
    }
 
    // NB: The display module cannot load the Surface module during initialisation due to recursive dependency.
 
-   glSharedControl = GetResourcePtr(RES_SHARED_CONTROL);
+   glSharedControl = (SharedControl *)GetResourcePtr(RES_SHARED_CONTROL);
 
    #ifdef _GLES_
       pthread_mutexattr_t attr;
@@ -972,7 +1009,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    if (error IS ERR_ResourceExists) {
       if (!glDisplayInfo) {
          if (AccessMemory(RPM_DisplayInfo, MEM_READ_WRITE|MEM_NO_BLOCKING, 1000, &glDisplayInfo) != ERR_Okay) {
-            return PostError(ERR_AccessMemory);
+            return log.warning(ERR_AccessMemory);
          }
       }
    }
@@ -986,7 +1023,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    if (error IS ERR_ResourceExists) {
       if (!glInput) {
          if (AccessMemory(RPM_InputMsgs, MEM_READ_WRITE|MEM_NO_BLOCKING, 1000, &glInput) != ERR_Okay) {
-            return PostError(ERR_AccessMemory);
+            return log.warning(ERR_AccessMemory);
          }
       }
    }
@@ -994,24 +1031,24 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
 #ifdef __xwindows__
    if (!glHeadless) {
-      MSG("Allocating global memory structure.");
+      log.trace("Allocating global memory structure.");
 
       memoryid = RPM_X11;
-      if (!(error = AllocMemory(sizeof(struct X11Globals), MEM_UNTRACKED|MEM_PUBLIC|MEM_RESERVED|MEM_NO_BLOCKING, (APTR)&glX11, &memoryid))) {
+      if (!(error = AllocMemory(sizeof(X11Globals), MEM_UNTRACKED|MEM_PUBLIC|MEM_RESERVED|MEM_NO_BLOCKING, (APTR)&glX11, &memoryid))) {
          glX11->Manager = TRUE; // Assume that we are the window manager
       }
       else if (error IS ERR_ResourceExists) {
          if (!glX11) {
             if (AccessMemory(RPM_X11, MEM_READ_WRITE, 1000, &glX11) != ERR_Okay) {
-               return PostError(ERR_AccessMemory);
+               return log.warning(ERR_AccessMemory);
             }
          }
       }
-      else return PostError(ERR_AllocMemory);
+      else return log.warning(ERR_AllocMemory);
 
       // Attempt to open X11.  Use PARASOL_XDISPLAY if set, otherwise use the DISPLAY variable.
 
-      LogMsg("Attempting to open X11...");
+      log.msg("Attempting to open X11...");
 
       CSTRING strdisplay = getenv("PARASOL_XDISPLAY");
       if (!strdisplay) strdisplay = getenv("DISPLAY");
@@ -1043,7 +1080,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
       // Try to load XRandR, but it's okay if it's not available
 
       if (!NewObject(ID_MODULE, NULL, &modXRR)) {
-         UBYTE buffer[32];
+         char buffer[32];
          IntToStr((MAXINT)XDisplay, buffer, sizeof(buffer));
          acSetVar(modXRR, "XDisplay", buffer);
          SetString(modXRR, FID_Name, "xrandr");
@@ -1064,7 +1101,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
       glDGAAvailable = x11DGAAvailable(&glDGAVideo, &glDGAPixelsPerLine, &glDGABankSize);
 
-      LogMsg("DGA Enabled: %d", glDGAAvailable);
+      log.msg("DGA Enabled: %d", glDGAAvailable);
 
       // Create the graphics contexts for drawing directly to X11 windows
 
@@ -1078,7 +1115,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
       #ifdef USE_XIMAGE
          if (XShmQueryVersion(XDisplay, &shmmajor, &shmminor, &pixmaps)) {
-            LogMsg("X11 shared image extension is active.");
+            log.msg("X11 shared image extension is active.");
             glX11ShmImage = TRUE;
          }
       #endif
@@ -1103,7 +1140,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
       seteuid(getuid());
 
-      MSG("Loading X11 cursor graphics.");
+      log.trace("Loading X11 cursor graphics.");
 
       for (i=0; i < ARRAYSIZE(XCursors); i++) {
          if (XCursors[i].CursorID IS PTR_INVISIBLE) XCursors[i].XCursor = create_blank_cursor();
@@ -1120,12 +1157,12 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    // Load cursor graphics
 
-   LogMsg("Loading cursor graphics.");
+   log.msg("Loading cursor graphics.");
 
    if ((glInstance = winGetModuleHandle())) {
-      if (!winCreateScreenClass()) return PostError(ERR_SystemCall);
+      if (!winCreateScreenClass()) return log.warning(ERR_SystemCall);
    }
-   else return PostError(ERR_SystemCall);
+   else return log.warning(ERR_SystemCall);
 
    winDisableBatching();
 
@@ -1136,24 +1173,24 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    // Initialise our classes
 
    if (create_pointer_class() != ERR_Okay) {
-      LogErrorMsg("Failed to create Pointer class.");
+      log.warning("Failed to create Pointer class.");
       return ERR_AddClass;
    }
 
    if (create_display_class() != ERR_Okay) {
-      LogErrorMsg("Failed to create Display class.");
+      log.warning("Failed to create Display class.");
       return ERR_AddClass;
    }
 
    if (create_bitmap_class() != ERR_Okay) {
-      LogErrorMsg("Failed to create Bitmap class.");
+      log.warning("Failed to create Bitmap class.");
       return ERR_AddClass;
    }
 
    // Initialise 64K alpha blending table, for cutting down on multiplications.  This memory block is shared, so one
    // table serves all processes.
 
-   LogMsg("Initialise blending table.");
+   log.msg("Initialise blending table.");
 
    memoryid = RPM_AlphaBlend;
    if (!(error = AllocMemory(256 * 256, MEM_UNTRACKED|MEM_PUBLIC|MEM_RESERVED|MEM_NO_BLOCKING, &glAlphaLookup, &memoryid))) {
@@ -1323,15 +1360,17 @@ InUse: A drag and drop operation has already been started.
 
 static ERROR gfxStartCursorDrag(OBJECTID Source, LONG Item, CSTRING Datatypes, OBJECTID Surface)
 {
-   LogF("StartCursorDrag()","Source: %d, Item: %d, Surface: %d", Source, Item, Surface);
+   parasol::Log log(__FUNCTION__);
 
-   if (!Source) return FuncError(ERR_NullArgs);
+   log.branch("Source: %d, Item: %d, Surface: %d", Source, Item, Surface);
+
+   if (!Source) return log.warning(ERR_NullArgs);
 
    objPointer *pointer;
    if ((pointer = gfxAccessPointer())) {
       if (!pointer->Buttons[0].LastClicked) {
          gfxReleasePointer(pointer);
-         return FuncError(ERR_Failed);
+         return log.warning(ERR_Failed);
       }
 
       if (pointer->DragSourceID) {
@@ -1347,11 +1386,10 @@ static ERROR gfxStartCursorDrag(OBJECTID Source, LONG Item, CSTRING Datatypes, O
       // Refer to PTR_Init() on why the surface module is opened dynamically
 
       if (!modSurface) {
-         OBJECTPTR context = SetContext(CurrentTask());
-            if (LoadModule("surface", MODVERSION_SURFACE, &modSurface, &SurfaceBase) != ERR_Okay) {
-               return ERR_InitModule;
-            }
-         SetContext(context);
+         parasol::SwitchContext ctx(CurrentTask());
+         if (LoadModule("surface", MODVERSION_SURFACE, &modSurface, &SurfaceBase) != ERR_Okay) {
+            return ERR_InitModule;
+         }
       }
 
       SURFACEINFO *info;
@@ -1360,7 +1398,7 @@ static ERROR gfxStartCursorDrag(OBJECTID Source, LONG Item, CSTRING Datatypes, O
       }
 
       if (Surface) {
-         MSG("Moving draggable surface %d to %dx%d", Surface, pointer->X, pointer->Y);
+         log.trace("Moving draggable surface %d to %dx%d", Surface, pointer->X, pointer->Y);
          acMoveToPointID(Surface, pointer->X+DRAG_XOFFSET, pointer->Y+DRAG_YOFFSET, 0, MTF_X|MTF_Y);
          acShowID(Surface);
          acMoveToFrontID(Surface);
@@ -1369,7 +1407,7 @@ static ERROR gfxStartCursorDrag(OBJECTID Source, LONG Item, CSTRING Datatypes, O
       gfxReleasePointer(pointer);
       return ERR_Okay;
    }
-   else return FuncError(ERR_AccessObject);
+   else return log.warning(ERR_AccessObject);
 }
 
 /*****************************************************************************
@@ -1508,13 +1546,13 @@ NoSupport: The device does not support a cursor (common for touch screen display
 
 ******************************************************************************/
 
-static ERROR gfxGetCursorInfo(struct CursorInfo *Info, LONG Size)
+static ERROR gfxGetCursorInfo(CursorInfo *Info, LONG Size)
 {
    if (!Info) return ERR_NullArgs;
 
 #ifdef __ANDROID__
    // TODO: Some Android devices probably do support a mouse or similar input device.
-   ClearMemory(Info, sizeof(struct CursorInfo));
+   ClearMemory(Info, sizeof(CursorInfo));
    return ERR_NoSupport;
 #else
    Info->Width  = 32;
@@ -1554,7 +1592,8 @@ ERROR gfxGetCursorPos(LONG *X, LONG *Y)
       return ERR_Okay;
    }
    else {
-      LogF("@GetCursorPos()","Failed to grab the mouse pointer.");
+      parasol::Log log(__FUNCTION__);
+      log.warning("Failed to grab the mouse pointer.");
       return ERR_Failed;
    }
 }
@@ -1612,11 +1651,12 @@ Finished: There are no input messages left to read from the queue.
 
 static ERROR gfxGetInputMsg(struct dcInputReady *Input, LONG Flags, struct InputMsg **Msg)
 {
-   struct InputSubscription *list;
+   parasol::Log log(__FUNCTION__);
+   InputSubscription *list;
    LONG i, subindex;
    BYTE msgfound;
 
-   if ((!Input) OR (!Msg)) return ERR_NullArgs;
+   if ((!Input) or (!Msg)) return ERR_NullArgs;
 /*
    if (Flags & IMF_CONSOLIDATE) {
       ERROR error;
@@ -1628,9 +1668,9 @@ static ERROR gfxGetInputMsg(struct dcInputReady *Input, LONG Flags, struct Input
 
    if (!glSharedControl->InputMID) return ERR_Finished;
 
-   struct dcDisplayInputReady *in = (struct dcDisplayInputReady *)Input;
+   auto in = (struct dcDisplayInputReady *)Input;
    subindex = in->SubIndex;
-   if ((subindex < 0) OR (subindex >= glSharedControl->InputTotal)) return FuncError(ERR_OutOfRange);
+   if ((subindex < 0) or (subindex >= glSharedControl->InputTotal)) return log.warning(ERR_OutOfRange);
 
    if (!AccessMemory(glSharedControl->InputMID, MEM_READ, 2000, &list)) {
       list[subindex].MsgSent = FALSE;
@@ -1640,10 +1680,10 @@ static ERROR gfxGetInputMsg(struct dcInputReady *Input, LONG Flags, struct Input
          return ERR_Finished;
       }
 
-      //FMSG("~GetInputMsg()","ID: " PF64() "/" PF64() ", Subscriber: %d", in->NextIndex, glInput->IndexCounter, list[subindex].SubscriberID);
+      //log.traceBranch("ID: " PF64() "/" PF64() ", Subscriber: %d", in->NextIndex, glInput->IndexCounter, list[subindex].SubscriberID);
 
       if (in->NextIndex < glInput->IndexCounter - MAX_INPUTMSG) {
-         LogF("GetInputMsg","Input messages have wrapped (subscriber %d unresponsive).", list[subindex].SubscriberID);
+         log.msg("Input messages have wrapped (subscriber %d unresponsive).", list[subindex].SubscriberID);
          in->NextIndex = glInput->IndexCounter - MAX_INPUTMSG + 1;
       }
 
@@ -1654,7 +1694,7 @@ static ERROR gfxGetInputMsg(struct dcInputReady *Input, LONG Flags, struct Input
       while (in->NextIndex < glInput->IndexCounter) {
          i = in->NextIndex & INPUT_MASK;
          if ((list[subindex].Mask & glInput->Msgs[i].Mask) IS glInput->Msgs[i].Mask) {
-            if ((!list[subindex].SurfaceID) OR (list[subindex].SurfaceID IS glInput->Msgs[i].RecipientID)) {
+            if ((!list[subindex].SurfaceID) or (list[subindex].SurfaceID IS glInput->Msgs[i].RecipientID)) {
                msgfound = TRUE;
                break;
             }
@@ -1667,7 +1707,6 @@ static ERROR gfxGetInputMsg(struct dcInputReady *Input, LONG Flags, struct Input
          // Subscriber is up to date with its messages
          in->NextIndex = glInput->IndexCounter;
          ReleaseMemory(list);
-         //LOGRETURN();
          return ERR_Finished;
       }
 
@@ -1682,10 +1721,9 @@ static ERROR gfxGetInputMsg(struct dcInputReady *Input, LONG Flags, struct Input
       *Msg = glInput->Msgs + i;
 
       ReleaseMemory(list);
-      //LOGRETURN();
       return ERR_Okay;
    }
-   else return FuncError(ERR_AccessMemory);
+   else return log.warning(ERR_AccessMemory);
 }
 
 /******************************************************************************
@@ -1711,11 +1749,12 @@ AccessObject: Failed to access the SystemPointer object.
 
 static ERROR gfxGetRelativeCursorPos(OBJECTID SurfaceID, LONG *X, LONG *Y)
 {
+   parasol::Log log(__FUNCTION__);
    objPointer *pointer;
    LONG absx, absy;
 
    if (GetSurfaceAbs(SurfaceID, &absx, &absy, 0, 0) != ERR_Okay) {
-      LogF("@GetRelativeCursor()","Failed to get info for surface #%d.", SurfaceID);
+      log.warning("Failed to get info for surface #%d.", SurfaceID);
       return ERR_Failed;
    }
 
@@ -1727,7 +1766,7 @@ static ERROR gfxGetRelativeCursorPos(OBJECTID SurfaceID, LONG *X, LONG *Y)
       return ERR_Okay;
    }
    else {
-      LogF("@GetRelativeCursor()","Failed to grab the mouse pointer.");
+      log.warning("Failed to grab the mouse pointer.");
       return ERR_AccessObject;
    }
 }
@@ -1759,17 +1798,17 @@ AccessObject: Failed to access the pointer object.
 static ERROR gfxLockCursor(OBJECTID SurfaceID)
 {
 #ifdef __snap__
+   parasol::Log log(__FUNCTION__);
    objPointer *pointer;
 
-   if (!SurfaceID) return LogError(ERH_LockSurface, ERR_NullArgs);
+   if (!SurfaceID) return log.warning(ERR_NullArgs);
 
    if ((pointer = gfxAccessPointer())) {
-
       // Return if the cursor is currently locked by someone else
 
-      if ((pointer->AnchorID) AND (pointer->AnchorID != SurfaceID)) {
+      if ((pointer->AnchorID) and (pointer->AnchorID != SurfaceID)) {
          if (CheckObjectExists(pointer->AnchorID, NULL) != ERR_True);
-         else if ((pointer->AnchorMsgQueue < 0) AND (CheckMemoryExists(pointer->AnchorMsgQueue) != ERR_True));
+         else if ((pointer->AnchorMsgQueue < 0) and (CheckMemoryExists(pointer->AnchorMsgQueue) != ERR_True));
          else {
             ReleaseObject(pointer);
             return ERR_LockFailed; // The pointer is locked by someone else
@@ -1784,7 +1823,7 @@ static ERROR gfxLockCursor(OBJECTID SurfaceID)
       return ERR_Okay;
    }
    else {
-      LogF("@LockCursor()","Failed to access the mouse pointer.");
+      log.warning("Failed to access the mouse pointer.");
       return ERR_AccessObject;
    }
 #else
@@ -1815,15 +1854,16 @@ Args
 
 static ERROR gfxRestoreCursor(LONG Cursor, OBJECTID OwnerID)
 {
+   parasol::Log log(__FUNCTION__);
    objPointer *pointer;
 
    if ((pointer = gfxAccessPointer())) {
 /*
       OBJECTPTR caller;
       caller = CurrentContext();
-      LogF("RestoreCursor()","Cursor: %d, Owner: %d, Current-Owner: %d (Caller: %d / Class %d)", Cursor, OwnerID, pointer->CursorOwnerID, caller->UniqueID, caller->ClassID);
+      log.function("Cursor: %d, Owner: %d, Current-Owner: %d (Caller: %d / Class %d)", Cursor, OwnerID, pointer->CursorOwnerID, caller->UniqueID, caller->ClassID);
 */
-      if ((!OwnerID) OR (OwnerID IS pointer->CursorOwnerID)) {
+      if ((!OwnerID) or (OwnerID IS pointer->CursorOwnerID)) {
          // Restore the pointer to the given cursor image
          if (!OwnerID) gfxSetCursor(NULL, CRF_RESTRICT, Cursor, NULL, pointer->CursorOwnerID);
          else gfxSetCursor(NULL, CRF_RESTRICT, Cursor, NULL, OwnerID);
@@ -1846,7 +1886,7 @@ static ERROR gfxRestoreCursor(LONG Cursor, OBJECTID OwnerID)
       return ERR_Okay;
    }
    else {
-      LogF("@RestoreCursor()","Failed to access the mouse pointer.");
+      log.warning("Failed to access the mouse pointer.");
       return ERR_AccessObject;
    }
 }
@@ -1894,7 +1934,7 @@ static ERROR gfxScanDisplayModes(CSTRING Filter, DISPLAYINFO *Info, LONG Size)
    WORD f_maxrefresh, c_maxrefresh;
    BYTE interlace, matched;
 
-   if ((!Info) OR (Size < sizeof(struct DisplayInfoV3))) return ERR_Args;
+   if ((!Info) or (Size < sizeof(DisplayInfoV3))) return ERR_Args;
 
    // Reset all filters
 
@@ -1908,9 +1948,9 @@ static ERROR gfxScanDisplayModes(CSTRING Filter, DISPLAYINFO *Info, LONG Size)
 
    if (Filter) {
       while (*Filter) {
-         while ((*Filter) AND (*Filter <= 0x20)) Filter++;
+         while ((*Filter) and (*Filter <= 0x20)) Filter++;
          while (*Filter IS ',') Filter++;
-         while ((*Filter) AND (*Filter <= 0x20)) Filter++;
+         while ((*Filter) and (*Filter <= 0x20)) Filter++;
 
          if (!StrCompare("depth", Filter, 5, 0))   extract_value(Filter, &f_depth, &c_depth);
          if (!StrCompare("bytes", Filter, 5, 0))   extract_value(Filter, &f_bytes, &c_bytes);
@@ -1920,7 +1960,7 @@ static ERROR gfxScanDisplayModes(CSTRING Filter, DISPLAYINFO *Info, LONG Size)
          if (!StrCompare("minrefresh", Filter, 10, 0)) extract_value(Filter, &f_minrefresh, &c_minrefresh);
          if (!StrCompare("maxrefresh", Filter, 10, 0)) extract_value(Filter, &f_maxrefresh, &c_maxrefresh);
 
-         while ((*Filter) AND (*Filter != ',')) Filter++;
+         while ((*Filter) and (*Filter != ',')) Filter++;
       }
    }
 
@@ -1963,13 +2003,13 @@ static ERROR gfxScanDisplayModes(CSTRING Filter, DISPLAYINFO *Info, LONG Size)
 
       if (Filter) {
          matched = TRUE;
-         if ((f_depth)   AND (!compare_values(f_depth,   c_depth,   modeinfo.BitsPerPixel))) matched = FALSE;
-         if ((f_bytes)   AND (!compare_values(f_bytes,   c_bytes,   bytes))) matched = FALSE;
-         if ((f_width)   AND (!compare_values(f_width,   c_width,   modeinfo.XResolution)))  matched = FALSE;
-         if ((f_height)  AND (!compare_values(f_height,  c_height,  modeinfo.YResolution)))  matched = FALSE;
-         if ((f_refresh) AND (!compare_values(f_refresh, c_refresh, modeinfo.BitsPerPixel))) matched = FALSE;
-         if ((f_minrefresh) AND (!compare_values(f_minrefresh, c_minrefresh, minrefresh)))   matched = FALSE;
-         if ((f_maxrefresh) AND (!compare_values(f_maxrefresh, c_maxrefresh, maxrefresh)))   matched = FALSE;
+         if ((f_depth)   and (!compare_values(f_depth,   c_depth,   modeinfo.BitsPerPixel))) matched = FALSE;
+         if ((f_bytes)   and (!compare_values(f_bytes,   c_bytes,   bytes))) matched = FALSE;
+         if ((f_width)   and (!compare_values(f_width,   c_width,   modeinfo.XResolution)))  matched = FALSE;
+         if ((f_height)  and (!compare_values(f_height,  c_height,  modeinfo.YResolution)))  matched = FALSE;
+         if ((f_refresh) and (!compare_values(f_refresh, c_refresh, modeinfo.BitsPerPixel))) matched = FALSE;
+         if ((f_minrefresh) and (!compare_values(f_minrefresh, c_minrefresh, minrefresh)))   matched = FALSE;
+         if ((f_maxrefresh) and (!compare_values(f_maxrefresh, c_maxrefresh, maxrefresh)))   matched = FALSE;
 
          if (matched IS FALSE) continue;
       }
@@ -2035,32 +2075,33 @@ AccessObject: Failed to access the internally maintained image object.
 
 static ERROR gfxSetCursor(OBJECTID ObjectID, LONG Flags, LONG CursorID, CSTRING Name, OBJECTID OwnerID)
 {
+   parasol::Log log(__FUNCTION__);
    objPointer *pointer;
    LONG flags;
-   WORD i;
+
 /*
    if (!OwnerID) {
-      LogF("@SetCursor()","An Owner must be provided to this function.");
+      log.warning("An Owner must be provided to this function.");
       return ERR_Args;
    }
 */
    // Validate the cursor ID
 
-   if ((CursorID < 0) OR (CursorID >= PTR_END)) return LogError(ERH_SetCursor, ERR_OutOfRange);
+   if ((CursorID < 0) or (CursorID >= PTR_END)) return log.warning(ERR_OutOfRange);
 
    if (!(pointer = gfxAccessPointer())) {
-      LogF("@SetCursor()","Failed to access the mouse pointer.");
+      log.warning("Failed to access the mouse pointer.");
       return ERR_AccessObject;
    }
 
-   if (Name) FMSG("~SetCursor()","Object: %d, Flags: $%.8x, Owner: %d (Current %d), Cursor: %s", ObjectID, Flags, OwnerID, pointer->CursorOwnerID, Name);
-   else FMSG("~SetCursor()","Object: %d, Flags: $%.8x, Owner: %d (Current %d), Cursor: %s", ObjectID, Flags, OwnerID, pointer->CursorOwnerID, CursorLookup[CursorID].Name);
+   if (Name) log.traceBranch("Object: %d, Flags: $%.8x, Owner: %d (Current %d), Cursor: %s", ObjectID, Flags, OwnerID, pointer->CursorOwnerID, Name);
+   else log.traceBranch("Object: %d, Flags: $%.8x, Owner: %d (Current %d), Cursor: %s", ObjectID, Flags, OwnerID, pointer->CursorOwnerID, CursorLookup[CursorID].Name);
 
    // Extract the cursor ID from the cursor name if no ID was given
 
    if (!CursorID) {
       if (Name) {
-         for (i=0; CursorLookup[i].Name; i++) {
+         for (LONG i=0; CursorLookup[i].Name; i++) {
             if (!StrMatch(CursorLookup[i].Name, Name)) {
                CursorID = CursorLookup[i].Value;
                break;
@@ -2072,14 +2113,14 @@ static ERROR gfxSetCursor(OBJECTID ObjectID, LONG Flags, LONG CursorID, CSTRING 
 
    // Return if the cursor is currently pwn3d by someone
 
-   if ((pointer->CursorOwnerID) AND (pointer->CursorOwnerID != OwnerID)) {
-      if ((pointer->CursorOwnerID < 0) AND (CheckObjectExists(pointer->CursorOwnerID, NULL) != ERR_True)) pointer->CursorOwnerID = NULL;
-      else if ((pointer->MessageQueue < 0) AND (CheckMemoryExists(pointer->MessageQueue) != ERR_True)) pointer->CursorOwnerID = NULL;
+   if ((pointer->CursorOwnerID) and (pointer->CursorOwnerID != OwnerID)) {
+      if ((pointer->CursorOwnerID < 0) and (CheckObjectExists(pointer->CursorOwnerID, NULL) != ERR_True)) pointer->CursorOwnerID = NULL;
+      else if ((pointer->MessageQueue < 0) and (CheckMemoryExists(pointer->MessageQueue) != ERR_True)) pointer->CursorOwnerID = NULL;
       else if (Flags & CRF_BUFFER) {
          // If the BUFFER option is used, then we can buffer the change so that it
          // will be activated as soon as the current holder releases the cursor.
 
-         LogF("7SetCursor","Request buffered, pointer owned by #%d.", pointer->CursorOwnerID);
+         log.extmsg("Request buffered, pointer owned by #%d.", pointer->CursorOwnerID);
 
          pointer->BufferCursor = CursorID;
          pointer->BufferOwner  = OwnerID;
@@ -2087,32 +2128,28 @@ static ERROR gfxSetCursor(OBJECTID ObjectID, LONG Flags, LONG CursorID, CSTRING 
          pointer->BufferObject = ObjectID;
          pointer->BufferQueue  = GetResource(RES_MESSAGE_QUEUE);
          ReleaseObject(pointer);
-         LOGRETURN();
          return ERR_Okay;
       }
       else {
          ReleaseObject(pointer);
-         LOGRETURN();
          return ERR_LockFailed; // The pointer is locked by someone else
       }
    }
 
-   FMSG("SetCursor","Anchor: %d, Owner: %d, Release: $%x, Cursor: %d", ObjectID, OwnerID, Flags, CursorID);
+   log.trace("Anchor: %d, Owner: %d, Release: $%x, Cursor: %d", ObjectID, OwnerID, Flags, CursorID);
 
    // If CRF_NOBUTTONS is used, the cursor can only be set if no mouse buttons are held down at the current time.
 
-
    if (Flags & CRF_NO_BUTTONS) {
-      if ((pointer->Buttons[0].LastClicked) OR (pointer->Buttons[1].LastClicked) OR (pointer->Buttons[2].LastClicked)) {
+      if ((pointer->Buttons[0].LastClicked) or (pointer->Buttons[1].LastClicked) or (pointer->Buttons[2].LastClicked)) {
          ReleaseObject(pointer);
-         LOGRETURN();
          return ERR_NothingDone;
       }
    }
 
    // Reset restrictions/anchoring if the correct flags are set, or if the cursor is having a change of ownership.
 
-   if ((Flags & CRF_RESTRICT) OR (OwnerID != pointer->CursorOwnerID)) pointer->RestrictID  = NULL;
+   if ((Flags & CRF_RESTRICT) or (OwnerID != pointer->CursorOwnerID)) pointer->RestrictID = NULL;
 
    if (OwnerID IS pointer->BufferOwner) pointer->BufferOwner = NULL;
 
@@ -2122,13 +2159,13 @@ static ERROR gfxSetCursor(OBJECTID ObjectID, LONG Flags, LONG CursorID, CSTRING 
    pointer->MessageQueue    = NULL;
 
    if (CursorID) {
-      if ((CursorID IS pointer->CursorID) AND (CursorID != PTR_CUSTOM)) {
+      if ((CursorID IS pointer->CursorID) and (CursorID != PTR_CUSTOM)) {
          // Do nothing
       }
       else {
          // Use this routine if our cursor is hardware based
 
-         FMSG("SetCursor","Adjusting hardware/hosted cursor image.");
+         log.trace("Adjusting hardware/hosted cursor image.");
 
          #ifdef __xwindows__
 
@@ -2137,21 +2174,21 @@ static ERROR gfxSetCursor(OBJECTID ObjectID, LONG Flags, LONG CursorID, CSTRING 
             objDisplay *display;
             Cursor xcursor;
 
-            if ((pointer->SurfaceID) AND (!AccessObject(pointer->SurfaceID, 1000, &surface))) {
-               if ((surface->DisplayID) AND (!AccessObject(surface->DisplayID, 1000, &display))) {
-                  if ((GetPointer(display, FID_WindowHandle, &xwin) IS ERR_Okay) AND (xwin)) {
+            if ((pointer->SurfaceID) and (!AccessObject(pointer->SurfaceID, 1000, &surface))) {
+               if ((surface->DisplayID) and (!AccessObject(surface->DisplayID, 1000, &display))) {
+                  if ((GetPointer(display, FID_WindowHandle, &xwin) IS ERR_Okay) and (xwin)) {
                      xcursor = get_x11_cursor(CursorID);
                      XDefineCursor(XDisplay, (Window)xwin, xcursor);
                      XFlush(XDisplay);
                      pointer->CursorID = CursorID;
                   }
-                  else LogF("SetCursor","Failed to acquire window handle for surface #%d.", pointer->SurfaceID);
+                  else log.warning("Failed to acquire window handle for surface #%d.", pointer->SurfaceID);
                   ReleaseObject(display);
                }
-               else LogF("@SetCursor","Display of surface #%d undefined or inaccessible.", pointer->SurfaceID);
+               else log.warning("Display of surface #%d undefined or inaccessible.", pointer->SurfaceID);
                ReleaseObject(surface);
             }
-            else LogF("@SetCursor","Pointer surface undefined or inaccessible.");
+            else log.warning("Pointer surface undefined or inaccessible.");
 
          #elif _WIN32
 
@@ -2168,7 +2205,7 @@ static ERROR gfxSetCursor(OBJECTID ObjectID, LONG Flags, LONG CursorID, CSTRING 
          #endif
       }
 
-      if ((ObjectID < 0) AND (GetClassID(ObjectID) IS ID_SURFACE) AND (!(Flags & CRF_RESTRICT))) {
+      if ((ObjectID < 0) and (GetClassID(ObjectID) IS ID_SURFACE) and (!(Flags & CRF_RESTRICT))) {
          pointer->CursorReleaseID = ObjectID; // Release the cursor image if it goes outside of the given surface object
       }
    }
@@ -2193,8 +2230,8 @@ static ERROR gfxSetCursor(OBJECTID ObjectID, LONG Flags, LONG CursorID, CSTRING 
       }
    }
 
-   if ((flags & CRF_RESTRICT) AND (ObjectID)) {
-      if ((ObjectID < 0) AND (GetClassID(ObjectID) IS ID_SURFACE)) { // Must be a public surface object
+   if ((flags & CRF_RESTRICT) and (ObjectID)) {
+      if ((ObjectID < 0) and (GetClassID(ObjectID) IS ID_SURFACE)) { // Must be a public surface object
          // Restrict the pointer to the specified surface
          pointer->RestrictID = ObjectID;
 
@@ -2207,13 +2244,12 @@ static ERROR gfxSetCursor(OBJECTID ObjectID, LONG Flags, LONG CursorID, CSTRING 
             //DelayMsg(MT_GrabX11Pointer, pointer->Head.UniqueID, NULL);
          #endif
       }
-      else LogF("@SetCursor()","The pointer may only be restricted to public surfaces.");
+      else log.warning("The pointer may only be restricted to public surfaces.");
    }
 
    pointer->MessageQueue = GetResource(RES_MESSAGE_QUEUE);
 
    ReleaseObject(pointer);
-   LOGRETURN();
    return ERR_Okay;
 }
 
@@ -2276,12 +2312,13 @@ AccessObject: Failed to access the internally maintained image object.
 static ERROR gfxSetCustomCursor(OBJECTID ObjectID, LONG Flags, objBitmap *Bitmap, LONG HotX, LONG HotY, OBJECTID OwnerID)
 {
 #ifdef __snap__
+   parasol::Log log(__FUNCTION__);
    objPointer *pointer;
    objBitmap *buffer;
    ERROR error;
 
-   if (Bitmap) LogF("6SetCustomCursor()","Object: %d, Bitmap: %p, Size: %dx%d, BPP: %d", ObjectID, Bitmap, Bitmap->Width, Bitmap->Height, Bitmap->BitsPerPixel);
-   else LogF("6SetCustomCursor()","Object: %d, Bitmap Preset", ObjectID);
+   if (Bitmap) log.extmsg("Object: %d, Bitmap: %p, Size: %dx%d, BPP: %d", ObjectID, Bitmap, Bitmap->Width, Bitmap->Height, Bitmap->BitsPerPixel);
+   else log.extmsg("Object: %d, Bitmap Preset", ObjectID);
 
    if ((pointer = gfxAccessPointer())) {
       if (!AccessObject(pointer->BitmapID, 0, &buffer)) {
@@ -2294,18 +2331,17 @@ static ERROR gfxSetCustomCursor(OBJECTID ObjectID, LONG Flags, objBitmap *Bitmap
             if (buffer->Clip.Bottom > buffer->Height) buffer->Clip.Bottom = buffer->Height;
 
             if (Bitmap->BitsPerPixel IS 2) {
-               ULONG mask, foreground, background;
-               LONG x, y;
+               ULONG mask;
 
                // Monochrome: 0 = mask, 1 = black (fg), 2 = white (bg), 3 = XOR
 
                if (buffer->Flags & BMF_INVERSEALPHA) mask = PackPixelA(buffer, 0, 0, 0, 255);
                else mask = PackPixelA(buffer, 0, 0, 0, 0);
 
-               foreground = PackPixel(buffer, Bitmap->Palette->Col[1].Red, Bitmap->Palette->Col[1].Green, Bitmap->Palette->Col[1].Blue);
-               background = PackPixel(buffer, Bitmap->Palette->Col[2].Red, Bitmap->Palette->Col[2].Green, Bitmap->Palette->Col[2].Blue);
-               for (y=0; y < Bitmap->Clip.Bottom; y++) {
-                  for (x=0; x < Bitmap->Clip.Right; x++) {
+               ULONG foreground = PackPixel(buffer, Bitmap->Palette->Col[1].Red, Bitmap->Palette->Col[1].Green, Bitmap->Palette->Col[1].Blue);
+               ULONG background = PackPixel(buffer, Bitmap->Palette->Col[2].Red, Bitmap->Palette->Col[2].Green, Bitmap->Palette->Col[2].Blue);
+               for (LONG y=0; y < Bitmap->Clip.Bottom; y++) {
+                  for (LONG x=0; x < Bitmap->Clip.Right; x++) {
                      switch (Bitmap->ReadUCPixel(Bitmap, x, y)) {
                         case 0: buffer->DrawUCPixel(buffer, x, y, mask); break;
                         case 1: buffer->DrawUCPixel(buffer, x, y, foreground); break;
@@ -2329,7 +2365,7 @@ static ERROR gfxSetCustomCursor(OBJECTID ObjectID, LONG Flags, objBitmap *Bitmap
       return error;
    }
    else {
-      LogF("@SetCustomCursor()","Failed to access the mouse pointer.");
+      log.warning("Failed to access the mouse pointer.");
       return ERR_AccessObject;
    }
 #else
@@ -2358,7 +2394,7 @@ static ERROR gfxSetCursorPos(LONG X, LONG Y)
 {
    objPointer *pointer;
 
-   struct acMoveToPoint move = { X, Y, 0, MTF_X|MTF_Y };
+   struct acMoveToPoint move = { (DOUBLE)X, (DOUBLE)Y, 0, MTF_X|MTF_Y };
    if ((pointer = gfxAccessPointer())) {
       Action(AC_MoveToPoint, pointer, &move);
       ReleaseObject(pointer);
@@ -2387,6 +2423,8 @@ Okay
 static ERROR gfxSetHostOption(LONG Option, LARGE Value)
 {
 #if defined(_WIN32) || defined(__xwindows__)
+   parasol::Log log(__FUNCTION__);
+
    switch (Option) {
       case HOST_TRAY_ICON:
          glTrayIcon += Value;
@@ -2403,7 +2441,7 @@ static ERROR gfxSetHostOption(LONG Option, LARGE Value)
          break;
 
       default:
-         LogF("@scrSetHostOption()","Invalid option %d, Data " PF64(), Option, Value);
+         log.warning("Invalid option %d, Data " PF64(), Option, Value);
    }
 #endif
 
@@ -2431,7 +2469,9 @@ NotLocked: A lock is not present, or the lock belongs to another surface.
 
 static ERROR gfxUnlockCursor(OBJECTID SurfaceID)
 {
-   if (!SurfaceID) return LogError(ERH_UnlockCursor, ERR_NullArgs);
+   parasol::Log log(__FUNCTION__);
+
+   if (!SurfaceID) return log.warning(ERR_NullArgs);
 
    objPointer *pointer;
    if ((pointer = gfxAccessPointer())) {
@@ -2447,7 +2487,7 @@ static ERROR gfxUnlockCursor(OBJECTID SurfaceID)
       }
    }
    else {
-      LogF("@UnlockCursor()","Failed to access the mouse pointer.");
+      log.warning("Failed to access the mouse pointer.");
       return ERR_AccessObject;
    }
 }
@@ -2457,12 +2497,13 @@ static ERROR gfxUnlockCursor(OBJECTID SurfaceID)
 #ifdef __xwindows__
 static Cursor create_blank_cursor(void)
 {
+   parasol::Log log(__FUNCTION__);
    Pixmap data_pixmap, mask_pixmap;
    XColor black = { 0, 0, 0, 0 };
    Window rootwindow;
    Cursor cursor;
 
-   LogF("create_blank_cursor()","Creating blank cursor for X11.");
+   log.function("Creating blank cursor for X11.");
 
    rootwindow = DefaultRootWindow(XDisplay);
 
@@ -2490,13 +2531,13 @@ static Cursor create_blank_cursor(void)
 
 static Cursor get_x11_cursor(LONG CursorID)
 {
-   WORD i;
+   parasol::Log log(__FUNCTION__);
 
-   for (i=0; i < ARRAYSIZE(XCursors); i++) {
+   for (WORD i=0; i < ARRAYSIZE(XCursors); i++) {
       if (XCursors[i].CursorID IS CursorID) return XCursors[i].XCursor;
    }
 
-   LogF("@get_x11_cursor","Cursor #%d is not a recognised cursor ID.", CursorID);
+   log.warning("Cursor #%d is not a recognised cursor ID.", CursorID);
    return XCursors[0].XCursor;
 }
 #endif
@@ -2505,13 +2546,12 @@ static Cursor get_x11_cursor(LONG CursorID)
 
 static APTR GetWinCursor(LONG CursorID)
 {
-   WORD i;
-
-   for (i=0; i < ARRAYSIZE(winCursors); i++) {
+   for (WORD i=0; i < ARRAYSIZE(winCursors); i++) {
       if (winCursors[i].CursorID IS CursorID) return winCursors[i].WinCursor;
    }
 
-   LogF("@GetWinCursor","Cursor #%d is not a recognised cursor ID.", CursorID);
+   parasol::Log log;
+   log.warning("Cursor #%d is not a recognised cursor ID.", CursorID);
    return winCursors[0].WinCursor;
 }
 #endif
@@ -2541,7 +2581,8 @@ static void update_displayinfo(objDisplay *Self)
 static ERROR LockSurface(objBitmap *Bitmap, WORD Access)
 {
    if (!Bitmap->Data) {
-      LogF("@LockSurface()","[Bitmap:%d] Bitmap is missing the Data field.", Bitmap->Head.UniqueID);
+      parasol::Log log(__FUNCTION__);
+      log.warning("[Bitmap:%d] Bitmap is missing the Data field.", Bitmap->Head.UniqueID);
       return ERR_FieldNotSet;
    }
 
@@ -2560,22 +2601,22 @@ static ERROR LockSurface(objBitmap *Bitmap, WORD Access)
    LONG size;
    WORD alignment;
 
-   if ((Bitmap->Flags & BMF_X11_DGA) AND (glDGAAvailable)) {
+   if ((Bitmap->Flags & BMF_X11_DGA) and (glDGAAvailable)) {
       return ERR_Okay;
    }
-   else if ((Bitmap->x11.Drawable) AND (Access & SURFACE_READ)) {
+   else if ((Bitmap->x11.drawable) and (Access & SURFACE_READ)) {
       // If there is an existing readable area, try to reuse it if possible
-      if (Bitmap->x11.Readable) {
-         if ((Bitmap->x11.Readable->width >= Bitmap->Width) AND (Bitmap->x11.Readable->height >= Bitmap->Height)) {
+      if (Bitmap->x11.readable) {
+         if ((Bitmap->x11.readable->width >= Bitmap->Width) and (Bitmap->x11.readable->height >= Bitmap->Height)) {
             if (Access & SURFACE_READ) {
-               XGetSubImage(XDisplay, Bitmap->x11.Drawable, Bitmap->XOffset + Bitmap->Clip.Left,
+               XGetSubImage(XDisplay, Bitmap->x11.drawable, Bitmap->XOffset + Bitmap->Clip.Left,
                   Bitmap->YOffset + Bitmap->Clip.Top, Bitmap->Clip.Right - Bitmap->Clip.Left,
-                  Bitmap->Clip.Bottom - Bitmap->Clip.Top, 0xffffffff, ZPixmap, Bitmap->x11.Readable,
+                  Bitmap->Clip.Bottom - Bitmap->Clip.Top, 0xffffffff, ZPixmap, Bitmap->x11.readable,
                   Bitmap->XOffset + Bitmap->Clip.Left, Bitmap->YOffset + Bitmap->Clip.Top);
             }
             return ERR_Okay;
          }
-         else XDestroyImage(Bitmap->x11.Readable);
+         else XDestroyImage(Bitmap->x11.readable);
       }
 
       // Generate a fresh XImage from the current drawable
@@ -2589,14 +2630,14 @@ static ERROR LockSurface(objBitmap *Bitmap, WORD Access)
       }
       else size = Bitmap->LineWidth * Bitmap->Height;
 
-      Bitmap->Data = malloc(size);
+      Bitmap->Data = (UBYTE *)malloc(size);
 
-      if ((Bitmap->x11.Readable = XCreateImage(XDisplay, CopyFromParent, Bitmap->BitsPerPixel,
-           ZPixmap, 0, Bitmap->Data, Bitmap->Width, Bitmap->Height, alignment, Bitmap->LineWidth))) {
+      if ((Bitmap->x11.readable = XCreateImage(XDisplay, CopyFromParent, Bitmap->BitsPerPixel,
+           ZPixmap, 0, (char *)Bitmap->Data, Bitmap->Width, Bitmap->Height, alignment, Bitmap->LineWidth))) {
          if (Access & SURFACE_READ) {
-            XGetSubImage(XDisplay, Bitmap->x11.Drawable, Bitmap->XOffset + Bitmap->Clip.Left,
+            XGetSubImage(XDisplay, Bitmap->x11.drawable, Bitmap->XOffset + Bitmap->Clip.Left,
                Bitmap->YOffset + Bitmap->Clip.Top, Bitmap->Clip.Right - Bitmap->Clip.Left,
-               Bitmap->Clip.Bottom - Bitmap->Clip.Top, 0xffffffff, ZPixmap, Bitmap->x11.Readable,
+               Bitmap->Clip.Bottom - Bitmap->Clip.Top, 0xffffffff, ZPixmap, Bitmap->x11.readable,
                Bitmap->XOffset + Bitmap->Clip.Left, Bitmap->YOffset + Bitmap->Clip.Top);
          }
          return ERR_Okay;
@@ -2615,6 +2656,8 @@ ERROR UnlockSurface(objBitmap *Bitmap)
 
 static ERROR LockSurface(objBitmap *Bitmap, WORD Access)
 {
+   parasol::Log log(__FUNCTION__);
+
    if (Bitmap->DataFlags & MEM_VIDEO) {
       // MEM_VIDEO represents the video display in OpenGL.  Read/write CPU access is not available to this area but
       // we can use glReadPixels() to get a copy of the framebuffer and then write changes back.  Because this is
@@ -2622,11 +2665,11 @@ static ERROR LockSurface(objBitmap *Bitmap, WORD Access)
       //
       // Practically the only reason why we allow this is for unusual measures like taking screenshots, grabbing the display for debugging, development testing etc.
 
-      LogF("@LockSurface()","Warning: Locking of OpenGL video surfaces for CPU access is bad practice (bitmap: #%d, mem: $%.8x)", Bitmap->Head.UniqueID, Bitmap->DataFlags);
+      log.warning("Warning: Locking of OpenGL video surfaces for CPU access is bad practice (bitmap: #%d, mem: $%.8x)", Bitmap->Head.UniqueID, Bitmap->DataFlags);
 
       if (!Bitmap->Data) {
          if (AllocMemory(Bitmap->Size, MEM_NO_BLOCKING|MEM_NO_POOL|MEM_NO_CLEAR|Bitmap->Head.MemFlags|Bitmap->DataFlags, &Bitmap->Data, &Bitmap->DataMID) != ERR_Okay) {
-            return LogError(ERH_LockSurface, ERR_AllocMemory);
+            return log.warning(ERR_AllocMemory);
          }
          Bitmap->prvAFlags |= BF_DATA;
       }
@@ -2649,11 +2692,11 @@ static ERROR LockSurface(objBitmap *Bitmap, WORD Access)
       // Using the CPU on BLIT bitmaps is banned - it is considered to be poor programming.  Instead,
       // MEM_DATA bitmaps should be used when R/W CPU access is desired to a bitmap.
 
-      return FuncError(ERR_NoSupport);
+      return log.warning(ERR_NoSupport);
    }
 
    if (!Bitmap->Data) {
-      LogF("@LockSurface()","[Bitmap:%d] Bitmap is missing the Data field.  Memory flags: $%.8x", Bitmap->Head.UniqueID, Bitmap->DataFlags);
+      log.warning("[Bitmap:%d] Bitmap is missing the Data field.  Memory flags: $%.8x", Bitmap->Head.UniqueID, Bitmap->DataFlags);
       return ERR_FieldNotSet;
    }
 
@@ -2662,7 +2705,7 @@ static ERROR LockSurface(objBitmap *Bitmap, WORD Access)
 
 static ERROR UnlockSurface(objBitmap *Bitmap)
 {
-   if ((Bitmap->DataFlags & MEM_VIDEO) AND (Bitmap->prvWriteBackBuffer)) {
+   if ((Bitmap->DataFlags & MEM_VIDEO) and (Bitmap->prvWriteBackBuffer)) {
       if (!lock_graphics_active(__func__)) {
          #ifdef GL_DRAW_PIXELS
             glDrawPixels(Bitmap->Width, Bitmap->Height, pixel_type, format, Bitmap->Data);
@@ -2682,11 +2725,11 @@ static ERROR UnlockSurface(objBitmap *Bitmap)
                   glBindTexture(GL_TEXTURE_2D, 0);
                   eglSwapBuffers(glEGLDisplay, glEGLSurface);
                }
-               else LogError(ERH_UnlockSurface, ERR_OpenGL);
+               else log.warning(ERR_OpenGL);
 
                glDeleteTextures(1, &texture_id);
             }
-            else LogError(ERH_UnlockSurface, ERR_OpenGL);
+            else log.warning(ERR_OpenGL);
          #endif
 
          unlock_graphics();
@@ -2732,9 +2775,9 @@ static GLenum alloc_texture(LONG Width, LONG Height, GLuint *TextureID)
       glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_CROP_RECT_OES, crop); // This is for glDrawTex*OES
 
       glerror = glGetError();
-      if (glerror != GL_NO_ERROR) LogErrorMsg("glTexParameteriv() error: %d", glerror);
+      if (glerror != GL_NO_ERROR) log.warning("glTexParameteriv() error: %d", glerror);
    }
-   else LogErrorMsg("glTexEnvf() error: %d", glerror);
+   else log.warning("glTexEnvf() error: %d", glerror);
 
    return glerror;
 }
@@ -2775,8 +2818,10 @@ Mismatch: The destination bitmap is not a close enough match to the source bitma
 
 *****************************************************************************/
 
-static UBYTE validate_clip(CSTRING Error, CSTRING Name, objBitmap *Bitmap)
+static UBYTE validate_clip(CSTRING Header, CSTRING Name, objBitmap *Bitmap)
 {
+   parasol::Log log(Header);
+
 #ifdef DEBUG // Force crash if clipping is wrong (use gdb)
    if ((Bitmap->XOffset + Bitmap->Clip.Right) > Bitmap->Width) ((UBYTE *)0)[0] = 0;
    if ((Bitmap->YOffset + Bitmap->Clip.Bottom) > Bitmap->Height) ((UBYTE *)0)[0] = 0;
@@ -2785,34 +2830,34 @@ static UBYTE validate_clip(CSTRING Error, CSTRING Name, objBitmap *Bitmap)
    if (Bitmap->Clip.Top >= Bitmap->Clip.Bottom) ((UBYTE *)0)[0] = 0;
 #else
    if ((Bitmap->XOffset + Bitmap->Clip.Right) > Bitmap->Width) {
-      LogF(Error, "#%d %s: Invalid right-clip of %d (offset %d), limited to width of %d.", Bitmap->Head.UniqueID, Name, Bitmap->Clip.Right, Bitmap->XOffset, Bitmap->Width);
+      log.warning("#%d %s: Invalid right-clip of %d (offset %d), limited to width of %d.", Bitmap->Head.UniqueID, Name, Bitmap->Clip.Right, Bitmap->XOffset, Bitmap->Width);
       Bitmap->Clip.Right = Bitmap->Width - Bitmap->XOffset;
    }
 
    if ((Bitmap->YOffset + Bitmap->Clip.Bottom) > Bitmap->Height) {
-      LogF(Error, "#%d %s: Invalid bottom-clip of %d (offset %d), limited to height of %d.", Bitmap->Head.UniqueID, Name, Bitmap->Clip.Bottom, Bitmap->YOffset, Bitmap->Height);
+      log.warning("#%d %s: Invalid bottom-clip of %d (offset %d), limited to height of %d.", Bitmap->Head.UniqueID, Name, Bitmap->Clip.Bottom, Bitmap->YOffset, Bitmap->Height);
       Bitmap->Clip.Bottom = Bitmap->Height - Bitmap->YOffset;
    }
 
    if ((Bitmap->XOffset + Bitmap->Clip.Left) < 0) {
-      LogF(Error, "#%d %s: Invalid left-clip of %d (offset %d).", Bitmap->Head.UniqueID, Name, Bitmap->Clip.Left, Bitmap->XOffset);
+      log.warning("#%d %s: Invalid left-clip of %d (offset %d).", Bitmap->Head.UniqueID, Name, Bitmap->Clip.Left, Bitmap->XOffset);
       Bitmap->XOffset = 0;
       Bitmap->Clip.Left = 0;
    }
 
    if ((Bitmap->YOffset + Bitmap->Clip.Top) < 0) {
-      LogF(Error, "#%d %s: Invalid top-clip of %d (offset %d).", Bitmap->Head.UniqueID, Name, Bitmap->Clip.Top, Bitmap->YOffset);
+      log.warning("#%d %s: Invalid top-clip of %d (offset %d).", Bitmap->Head.UniqueID, Name, Bitmap->Clip.Top, Bitmap->YOffset);
       Bitmap->YOffset = 0;
       Bitmap->Clip.Top = 0;
    }
 
    if (Bitmap->Clip.Left >= Bitmap->Clip.Right) {
-      LogF(Error, "#%d %s: Left clip >= Right clip (%d >= %d)", Bitmap->Head.UniqueID, Name, Bitmap->Clip.Left, Bitmap->Clip.Right);
+      log.warning("#%d %s: Left clip >= Right clip (%d >= %d)", Bitmap->Head.UniqueID, Name, Bitmap->Clip.Left, Bitmap->Clip.Right);
       return 1;
    }
 
    if (Bitmap->Clip.Top >= Bitmap->Clip.Bottom) {
-      LogF(Error, "#%d %s: Top clip >= Bottom clip (%d >= %d)", Bitmap->Head.UniqueID, Name, Bitmap->Clip.Top, Bitmap->Clip.Bottom);
+      log.warning("#%d %s: Top clip >= Bottom clip (%d >= %d)", Bitmap->Head.UniqueID, Name, Bitmap->Clip.Top, Bitmap->Clip.Bottom);
       return 1;
    }
 #endif
@@ -2820,10 +2865,10 @@ static UBYTE validate_clip(CSTRING Error, CSTRING Name, objBitmap *Bitmap)
    return 0;
 }
 
-static ERROR gfxCopyArea(objBitmap *Bitmap, objBitmap *dest, LONG Flags, LONG X, LONG Y,
-   LONG Width, LONG Height, LONG DestX, LONG DestY)
+static ERROR gfxCopyArea(objBitmap *Bitmap, objBitmap *dest, LONG Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG DestX, LONG DestY)
 {
-   struct RGB8 pixel, src;
+   parasol::Log log(__FUNCTION__);
+   RGB8 pixel, src;
    UBYTE *srctable, *desttable;
    LONG i;
    ULONG colour;
@@ -2831,22 +2876,18 @@ static ERROR gfxCopyArea(objBitmap *Bitmap, objBitmap *dest, LONG Flags, LONG X,
 
    if (!dest) return ERR_NullArgs;
    if (dest->Head.ClassID != ID_BITMAP) {
-      LogF("@CopyArea","Destination #%d is not a Bitmap.", dest->Head.UniqueID);
-      return LogError(ERH_CopyArea, ERR_InvalidObject);
+      log.warning("Destination #%d is not a Bitmap.", dest->Head.UniqueID);
+      return ERR_InvalidObject;
    }
 
-   if (!(Bitmap->Head.Flags & NF_INITIALISED)) return LogError(ERH_CopyArea, ERR_NotInitialised);
+   if (!(Bitmap->Head.Flags & NF_INITIALISED)) return log.warning(ERR_NotInitialised);
 
-   //FMSG("CopyArea()","%dx%d,%dx%d to %dx%d, Offset: %dx%d to %dx%d", X, Y, Width, Height, DestX, DestY, Bitmap->XOffset, Bitmap->YOffset, dest->XOffset, dest->YOffset);
+   //log.trace("%dx%d,%dx%d to %dx%d, Offset: %dx%d to %dx%d", X, Y, Width, Height, DestX, DestY, Bitmap->XOffset, Bitmap->YOffset, dest->XOffset, dest->YOffset);
 
-   if (validate_clip("@CopyArea:", "Source", Bitmap)) {
-      return ERR_Okay;
-   }
+   if (validate_clip(__FUNCTION__, "Source", Bitmap)) return ERR_Okay;
 
    if (Bitmap != dest) { // Validate the clipping region of the destination
-      if (validate_clip("@CopyArea:", "Dest", dest)) {
-         return ERR_Okay;
-      }
+      if (validate_clip(__FUNCTION__, "Dest", dest)) return ERR_Okay;
    }
 
    if (Bitmap IS dest) { // Use this clipping routine only if we are copying within the same bitmap
@@ -2856,7 +2897,7 @@ static ERROR gfxCopyArea(objBitmap *Bitmap, objBitmap *dest, LONG Flags, LONG X,
          X = Bitmap->Clip.Left;
       }
       else if (X >= Bitmap->Clip.Right) {
-         MSG("Clipped: X >= Bitmap->ClipRight (%d >= %d)", X, Bitmap->Clip.Right);
+         log.trace("Clipped: X >= Bitmap->ClipRight (%d >= %d)", X, Bitmap->Clip.Right);
          return ERR_Okay;
       }
 
@@ -2866,7 +2907,7 @@ static ERROR gfxCopyArea(objBitmap *Bitmap, objBitmap *dest, LONG Flags, LONG X,
          Y = Bitmap->Clip.Top;
       }
       else if (Y >= Bitmap->Clip.Bottom) {
-         MSG("Clipped: Y >= Bitmap->ClipBottom (%d >= %d)", Y, Bitmap->Clip.Bottom);
+         log.trace("Clipped: Y >= Bitmap->ClipBottom (%d >= %d)", Y, Bitmap->Clip.Bottom);
          return ERR_Okay;
       }
 
@@ -2879,7 +2920,7 @@ static ERROR gfxCopyArea(objBitmap *Bitmap, objBitmap *dest, LONG Flags, LONG X,
          DestX = dest->Clip.Left;
       }
       else if (DestX >= dest->Clip.Right) {
-         MSG("Clipped: DestX >= RightClip (%d >= %d)", DestX, dest->Clip.Right);
+         log.trace("Clipped: DestX >= RightClip (%d >= %d)", DestX, dest->Clip.Right);
          return ERR_Okay;
       }
 
@@ -2890,7 +2931,7 @@ static ERROR gfxCopyArea(objBitmap *Bitmap, objBitmap *dest, LONG Flags, LONG X,
          DestY = dest->Clip.Top;
       }
       else if (DestY >= dest->Clip.Bottom) {
-         MSG("Clipped: DestY >= BottomClip (%d >= %d)", DestY, dest->Clip.Bottom);
+         log.trace("Clipped: DestY >= BottomClip (%d >= %d)", DestY, dest->Clip.Bottom);
          return ERR_Okay;
       }
 
@@ -2963,14 +3004,14 @@ static ERROR gfxCopyArea(objBitmap *Bitmap, objBitmap *dest, LONG Flags, LONG X,
       if (Bitmap->win.Drawable) { // Both the source and destination are window areas
          LONG error;
          if ((error = winBlit(dest->win.Drawable, DestX, DestY, Width, Height, Bitmap->win.Drawable, X, Y))) {
-            UBYTE buffer[80];
+            char buffer[80];
             buffer[0] = 0;
             winGetError(error, buffer, sizeof(buffer));
-            LogErrorMsg("BitBlt(): %s", buffer);
+            log.warning("BitBlt(): %s", buffer);
          }
       }
       else { // The source is a software image
-         if ((Flags & BAF_BLEND) AND (Bitmap->BitsPerPixel IS 32) AND (Bitmap->Flags & BMF_ALPHA_CHANNEL)) {
+         if ((Flags & BAF_BLEND) and (Bitmap->BitsPerPixel IS 32) and (Bitmap->Flags & BMF_ALPHA_CHANNEL)) {
             ULONG *srcdata;
             UBYTE destred, destgreen, destblue, red, green, blue, alpha;
 
@@ -3012,7 +3053,7 @@ static ERROR gfxCopyArea(objBitmap *Bitmap, objBitmap *dest, LONG Flags, LONG X,
             while (Height > 0) {
                for (i=0; i < Width; i++) {
                   colour = Bitmap->ReadUCPixel(Bitmap, X + i, Y);
-                  if (colour != Bitmap->TransIndex) {
+                  if (colour != (ULONG)Bitmap->TransIndex) {
                      wincolour = UnpackRed(Bitmap, colour);
                      wincolour |= UnpackGreen(Bitmap, colour)<<8;
                      wincolour |= UnpackBlue(Bitmap, colour)<<16;
@@ -3039,13 +3080,13 @@ static ERROR gfxCopyArea(objBitmap *Bitmap, objBitmap *dest, LONG Flags, LONG X,
 
    // Use this routine if the destination is a pixmap (write only memory).  X11 windows are always represented as pixmaps.
 
-   if ((dest->Flags & BMF_X11_DGA) AND (glDGAAvailable) AND (dest != Bitmap)) {
+   if ((dest->Flags & BMF_X11_DGA) and (glDGAAvailable) and (dest != Bitmap)) {
       // We have direct access to the graphics address, so drop through to the software routine
-      dest->Data = glDGAVideo;
+      dest->Data = (UBYTE *)glDGAVideo;
    }
-   else if (dest->x11.Drawable) {
-      if (!Bitmap->x11.Drawable) {
-         if ((Flags & BAF_BLEND) AND (Bitmap->BitsPerPixel IS 32) AND (Bitmap->Flags & BMF_ALPHA_CHANNEL)) {
+   else if (dest->x11.drawable) {
+      if (!Bitmap->x11.drawable) {
+         if ((Flags & BAF_BLEND) and (Bitmap->BitsPerPixel IS 32) and (Bitmap->Flags & BMF_ALPHA_CHANNEL)) {
             ULONG *srcdata;
             UBYTE alpha;
             WORD cl, cr, ct, cb;
@@ -3094,7 +3135,7 @@ static ERROR gfxCopyArea(objBitmap *Bitmap, objBitmap *dest, LONG Flags, LONG X,
             while (Height > 0) {
                for (i = 0; i < Width; i++) {
                   colour = Bitmap->ReadUCPixel(Bitmap, X + i, Y);
-                  if (colour != Bitmap->TransIndex) dest->DrawUCPixel(dest, DestX + i, DestY, colour);
+                  if (colour != (ULONG)Bitmap->TransIndex) dest->DrawUCPixel(dest, DestX + i, DestY, colour);
                }
                Y++; DestY++;
                Height--;
@@ -3104,21 +3145,21 @@ static ERROR gfxCopyArea(objBitmap *Bitmap, objBitmap *dest, LONG Flags, LONG X,
             // Source is an ximage, destination is a pixmap
 
             if (Bitmap->x11.XShmImage IS TRUE)  {
-               if (XShmPutImage(XDisplay, dest->x11.Drawable, glXGC, &Bitmap->x11.XImage, X, Y, DestX, DestY, Width, Height, False)) {
+               if (XShmPutImage(XDisplay, dest->x11.drawable, glXGC, &Bitmap->x11.ximage, X, Y, DestX, DestY, Width, Height, False)) {
 
                }
-               else LogErrorMsg("XShmPutImage() failed.");
+               else log.warning("XShmPutImage() failed.");
             }
             else {
-               XPutImage(XDisplay, dest->x11.Drawable, glXGC,
-                  &Bitmap->x11.XImage, X, Y, DestX, DestY, Width, Height);
+               XPutImage(XDisplay, dest->x11.drawable, glXGC,
+                  &Bitmap->x11.ximage, X, Y, DestX, DestY, Width, Height);
             }
          }
       }
       else {
          // Both the source and the destination are pixmaps
 
-         XCopyArea(XDisplay, Bitmap->x11.Drawable, dest->x11.Drawable,
+         XCopyArea(XDisplay, Bitmap->x11.drawable, dest->x11.drawable,
             glXGC, X, Y, Width, Height, DestX, DestY);
       }
 
@@ -3144,7 +3185,7 @@ static ERROR gfxCopyArea(objBitmap *Bitmap, objBitmap *dest, LONG Flags, LONG X,
                glDeleteTextures(1, &texture);
                error = ERR_Okay;
             }
-            else error = FuncError(ERR_OpenGL);
+            else error = log.warning(ERR_OpenGL);
 
             unlock_graphics();
          }
@@ -3175,7 +3216,7 @@ static ERROR gfxCopyArea(objBitmap *Bitmap, objBitmap *dest, LONG Flags, LONG X,
                glDeleteTextures(1, &texture);
                error = ERR_Okay;
             }
-            else error = FuncError(ERR_OpenGL);
+            else error = log.warning(ERR_OpenGL);
 
             unlock_graphics();
          }
@@ -3189,7 +3230,7 @@ static ERROR gfxCopyArea(objBitmap *Bitmap, objBitmap *dest, LONG Flags, LONG X,
 
    // GENERIC SOFTWARE BLITTING ROUTINES
 
-   if ((Flags & BAF_BLEND) AND (Bitmap->BitsPerPixel IS 32) AND (Bitmap->Flags & BMF_ALPHA_CHANNEL)) {
+   if ((Flags & BAF_BLEND) and (Bitmap->BitsPerPixel IS 32) and (Bitmap->Flags & BMF_ALPHA_CHANNEL)) {
       // 32-bit alpha blending support
 
       if (!LockSurface(Bitmap, SURFACE_READ)) {
@@ -3213,10 +3254,9 @@ static ERROR gfxCopyArea(objBitmap *Bitmap, objBitmap *dest, LONG Flags, LONG X,
                UBYTE *ddata = dest->Data + (DestY * dest->LineWidth) + (DestX<<2);
 
                if (Flags & BAF_COPY) { // Avoids blending in cases where the destination pixel is empty.
-                  LONG x, y;
-                  for (y=0; y < Height; y++) {
+                  for (LONG y=0; y < Height; y++) {
                      UBYTE *sp = sdata, *dp = ddata;
-                     for (x=0; x < Width; x++) {
+                     for (LONG x=0; x < Width; x++) {
                         if (dp[dA]) {
                            if (sp[sA] IS 0xff) ((ULONG *)dp)[0] = ((ULONG *)sp)[0];
                            else if (sp[sA]) {
@@ -3355,9 +3395,9 @@ static ERROR gfxCopyArea(objBitmap *Bitmap, objBitmap *dest, LONG Flags, LONG X,
                srctable  = glAlphaLookup + (Bitmap->Opacity<<8);
                desttable = glAlphaLookup + ((255-Bitmap->Opacity)<<8);
                while (Height > 0) {
-                  for (i = 0; i < Width; i++) {
+                  for (i=0; i < Width; i++) {
                      colour = Bitmap->ReadUCPixel(Bitmap, X + i, Y);
-                     if (colour != Bitmap->TransIndex) {
+                     if (colour != (ULONG)Bitmap->TransIndex) {
                         dest->ReadUCRPixel(dest, DestX + i, DestY, &pixel);
 
                         pixel.Red   = srctable[UnpackRed(Bitmap, colour)]   + desttable[pixel.Red];
@@ -3375,34 +3415,34 @@ static ERROR gfxCopyArea(objBitmap *Bitmap, objBitmap *dest, LONG Flags, LONG X,
                if (Bitmap->BytesPerPixel IS 4) {
                   ULONG *ddata, *sdata;
 
-                  sdata = (LONG *)(Bitmap->Data + (Y * Bitmap->LineWidth) + (X<<2));
-                  ddata = (LONG *)(dest->Data + (DestY * dest->LineWidth) + (DestX<<2));
+                  sdata = (ULONG *)(Bitmap->Data + (Y * Bitmap->LineWidth) + (X<<2));
+                  ddata = (ULONG *)(dest->Data + (DestY * dest->LineWidth) + (DestX<<2));
                   colour = Bitmap->TransIndex;
                   while (Height > 0) {
                      for (i=0; i < Width; i++) if (sdata[i] != colour) ddata[i] = sdata[i];
-                     ddata = (LONG *)(((BYTE *)ddata) + dest->LineWidth);
-                     sdata = (LONG *)(((BYTE *)sdata) + Bitmap->LineWidth);
+                     ddata = (ULONG *)(((BYTE *)ddata) + dest->LineWidth);
+                     sdata = (ULONG *)(((BYTE *)sdata) + Bitmap->LineWidth);
                      Height--;
                   }
                }
                else if (Bitmap->BytesPerPixel IS 2) {
                   UWORD *ddata, *sdata;
 
-                  sdata = (WORD *)(Bitmap->Data + (Y * Bitmap->LineWidth) + (X<<1));
-                  ddata = (WORD *)(dest->Data + (DestY * dest->LineWidth) + (DestX<<1));
+                  sdata = (UWORD *)(Bitmap->Data + (Y * Bitmap->LineWidth) + (X<<1));
+                  ddata = (UWORD *)(dest->Data + (DestY * dest->LineWidth) + (DestX<<1));
                   colour = Bitmap->TransIndex;
                   while (Height > 0) {
                      for (i=0; i < Width; i++) if (sdata[i] != colour) ddata[i] = sdata[i];
-                     ddata = (WORD *)(((BYTE *)ddata) + dest->LineWidth);
-                     sdata = (WORD *)(((BYTE *)sdata) + Bitmap->LineWidth);
+                     ddata = (UWORD *)(((BYTE *)ddata) + dest->LineWidth);
+                     sdata = (UWORD *)(((BYTE *)sdata) + Bitmap->LineWidth);
                      Height--;
                   }
                }
                else {
                   while (Height > 0) {
-                     for (i = 0; i < Width; i++) {
+                     for (LONG i=0; i < Width; i++) {
                         colour = Bitmap->ReadUCPixel(Bitmap, X + i, Y);
-                        if (colour != Bitmap->TransIndex) dest->DrawUCPixel(dest, DestX + i, DestY, colour);
+                        if (colour != (ULONG)Bitmap->TransIndex) dest->DrawUCPixel(dest, DestX + i, DestY, colour);
                      }
                      Y++; DestY++;
                      Height--;
@@ -3411,9 +3451,9 @@ static ERROR gfxCopyArea(objBitmap *Bitmap, objBitmap *dest, LONG Flags, LONG X,
             }
             else if (Bitmap->BitsPerPixel IS 8) {
                while (Height > 0) {
-                  for (i = 0; i < Width; i++) {
+                  for (LONG i=0; i < Width; i++) {
                      colour = Bitmap->ReadUCPixel(Bitmap, X + i, Y);
-                     if (colour != Bitmap->TransIndex) {
+                     if (colour != (ULONG)Bitmap->TransIndex) {
                         dest->DrawUCRPixel(dest, DestX + i, DestY, &Bitmap->Palette->Col[colour]);
                      }
                   }
@@ -3422,9 +3462,9 @@ static ERROR gfxCopyArea(objBitmap *Bitmap, objBitmap *dest, LONG Flags, LONG X,
                }
             }
             else while (Height > 0) {
-               for (i = 0; i < Width; i++) {
+               for (LONG i=0; i < Width; i++) {
                   Bitmap->ReadUCRPixel(Bitmap, X + i, Y, &pixel);
-                  if ((pixel.Red != Bitmap->TransRGB.Red) OR (pixel.Green != Bitmap->TransRGB.Green) OR (pixel.Blue != Bitmap->TransRGB.Blue)) {
+                  if ((pixel.Red != Bitmap->TransRGB.Red) or (pixel.Green != Bitmap->TransRGB.Green) or (pixel.Blue != Bitmap->TransRGB.Blue)) {
                      dest->DrawUCRPixel(dest, DestX + i, DestY, &pixel);
                   }
                }
@@ -3446,7 +3486,7 @@ static ERROR gfxCopyArea(objBitmap *Bitmap, objBitmap *dest, LONG Flags, LONG X,
                srctable  = glAlphaLookup + (Bitmap->Opacity<<8);
                desttable = glAlphaLookup + ((255-Bitmap->Opacity)<<8);
 
-               if ((Bitmap->BytesPerPixel IS 4) AND (dest->BytesPerPixel IS 4)) {
+               if ((Bitmap->BytesPerPixel IS 4) and (dest->BytesPerPixel IS 4)) {
                   ULONG *ddata, *sdata;
                   ULONG cmp_alpha;
 
@@ -3465,7 +3505,7 @@ static ERROR gfxCopyArea(objBitmap *Bitmap, objBitmap *dest, LONG Flags, LONG X,
                      Height--;
                   }
                }
-               else if ((Bitmap->BytesPerPixel IS 2) AND (dest->BytesPerPixel IS 2)) {
+               else if ((Bitmap->BytesPerPixel IS 2) and (dest->BytesPerPixel IS 2)) {
                   UWORD *ddata, *sdata;
 
                   sdata = (UWORD *)(Bitmap->Data + (Y * Bitmap->LineWidth) + (X<<1));
@@ -3503,7 +3543,7 @@ static ERROR gfxCopyArea(objBitmap *Bitmap, objBitmap *dest, LONG Flags, LONG X,
                data    = dest->Data + (DestX  * dest->BytesPerPixel) + (DestY * dest->LineWidth);
                Width   = Width * Bitmap->BytesPerPixel;
 
-               if ((Bitmap IS dest) AND (DestY >= Y) AND (DestY < Y+Height)) {
+               if ((Bitmap IS dest) and (DestY >= Y) and (DestY < Y+Height)) {
                   // Copy backwards when we are copying within the same bitmap and there is an overlap.
 
                   srcdata += Bitmap->LineWidth * (Height-1);
@@ -3518,7 +3558,7 @@ static ERROR gfxCopyArea(objBitmap *Bitmap, objBitmap *dest, LONG Flags, LONG X,
                }
                else {
                   while (Height > 0) {
-                     for (i=0; i > sizeof(LONG); i += sizeof(LONG)) {
+                     for (i=0; (size_t)i > sizeof(LONG); i += sizeof(LONG)) {
                         ((LONG *)(data+i))[0] = ((LONG *)(srcdata+i))[0];
                      }
                      while (i < Width) { data[i] = srcdata[i]; i++; }
@@ -3531,13 +3571,11 @@ static ERROR gfxCopyArea(objBitmap *Bitmap, objBitmap *dest, LONG Flags, LONG X,
             else {
                // If the bitmaps do not match then we need to use this slower RGB translation subroutine.
 
-               UBYTE dithered;
-
-               dithered = FALSE;
+               bool dithered = FALSE;
                if (Flags & BAF_DITHER) {
-                  if ((dest->BitsPerPixel < 24) AND
-                      ((Bitmap->BitsPerPixel > dest->BitsPerPixel) OR
-                       ((Bitmap->BitsPerPixel <= 8) AND (dest->BitsPerPixel > 8)))) {
+                  if ((dest->BitsPerPixel < 24) and
+                      ((Bitmap->BitsPerPixel > dest->BitsPerPixel) or
+                       ((Bitmap->BitsPerPixel <= 8) and (dest->BitsPerPixel > 8)))) {
                      if (Bitmap->Flags & BMF_TRANSPARENT);
                      else {
                         dither(Bitmap, dest, NULL, Width, Height, X, Y, DestX, DestY);
@@ -3547,11 +3585,11 @@ static ERROR gfxCopyArea(objBitmap *Bitmap, objBitmap *dest, LONG Flags, LONG X,
                }
 
                if (dithered IS FALSE) {
-                  if ((Bitmap IS dest) AND (DestY >= Y) AND (DestY < Y+Height)) {
+                  if ((Bitmap IS dest) and (DestY >= Y) and (DestY < Y+Height)) {
                      while (Height > 0) {
                         Y += Height - 1;
                         DestY  += Height - 1;
-                        for (i = 0; i < Width; i++) {
+                        for (i=0; i < Width; i++) {
                            Bitmap->ReadUCRPixel(Bitmap, X + i, Y, &pixel);
                            dest->DrawUCRPixel(dest, DestX + i, DestY, &pixel);
                         }
@@ -3561,7 +3599,7 @@ static ERROR gfxCopyArea(objBitmap *Bitmap, objBitmap *dest, LONG Flags, LONG X,
                   }
                   else {
                      while (Height > 0) {
-                        for (i = 0; i < Width; i++) {
+                        for (i=0; i < Width; i++) {
                            Bitmap->ReadUCRPixel(Bitmap, X + i, Y, &pixel);
                            dest->DrawUCRPixel(dest, DestX + i, DestY, &pixel);
                         }
@@ -3624,27 +3662,28 @@ Mismatch: The destination bitmap is not a close enough match to the source bitma
 static ERROR gfxCopyStretch(objBitmap *Bitmap, objBitmap *Dest, LONG Flags, LONG X,
    LONG Y, LONG Width, LONG Height, LONG DestX, LONG DestY, LONG DestWidth, LONG DestHeight)
 {
+   parasol::Log log(__FUNCTION__);
    UBYTE *diffytable, *ytable, *diffxtable, *xtable, *destdata, *srcdata;
    LONG x, y, isrcx, isrcy, endx, endy, bytex;
 
    if (!Dest) return ERR_NullArgs;
-   if (Dest->Head.ClassID != ID_BITMAP) return LogError(ERH_CopyStretch, ERR_InvalidObject);
+   if (Dest->Head.ClassID != ID_BITMAP) return log.warning(ERR_InvalidObject);
 
-   if (Bitmap IS Dest) return LogError(ERH_CopyStretch, ERR_Args);
+   if (Bitmap IS Dest) return log.warning(ERR_Args);
 
-   if ((Width IS DestWidth) AND (Height IS DestHeight)) {
+   if ((Width IS DestWidth) and (Height IS DestHeight)) {
       gfxCopyArea(Bitmap, Dest, 0, X, Y, Width, Height, DestX, DestY);
    }
 
-   if ((Width < 1) OR (Height < 1) OR (DestWidth < 1) OR (DestHeight < 1)) return ERR_Okay;
+   if ((Width < 1) or (Height < 1) or (DestWidth < 1) or (DestHeight < 1)) return ERR_Okay;
 
    // Check the clipping regions before committing to the blit
 
-   if ((Dest->Clip.Right <= DestX) OR (Dest->Clip.Top >= DestY+DestHeight) OR
-       (Dest->Clip.Bottom <= DestY) OR (Dest->Clip.Left >= DestX+DestWidth)) return ERR_Okay;
+   if ((Dest->Clip.Right <= DestX) or (Dest->Clip.Top >= DestY+DestHeight) or
+       (Dest->Clip.Bottom <= DestY) or (Dest->Clip.Left >= DestX+DestWidth)) return ERR_Okay;
 
-   if ((Bitmap->Clip.Right <= X) OR (Bitmap->Clip.Top >= Y+Height) OR
-       (Bitmap->Clip.Bottom <= Y) OR (Bitmap->Clip.Left >= X+Width)) return ERR_Okay;
+   if ((Bitmap->Clip.Right <= X) or (Bitmap->Clip.Top >= Y+Height) or
+       (Bitmap->Clip.Bottom <= Y) or (Bitmap->Clip.Left >= X+Width)) return ERR_Okay;
 
    // Figure out a good resampling routine if none is specified.  At a minimum, bresenham is fast and better than nearest-neighbour.
 
@@ -3652,7 +3691,7 @@ static ERROR gfxCopyStretch(objBitmap *Bitmap, objBitmap *Dest, LONG Flags, LONG
       Flags |= CSTF_BRESENHAM;
    }
 
-   FMSG("CopyStretch()","#%d (%dx%d,%dx%d) TO #%d (%dx%d)", Bitmap->Head.UniqueID,  X, Y, Width, Height, Dest->Head.UniqueID, DestWidth, DestHeight);
+   log.traceBranch("#%d (%dx%d,%dx%d) TO #%d (%dx%d)", Bitmap->Head.UniqueID,  X, Y, Width, Height, Dest->Head.UniqueID, DestWidth, DestHeight);
 
    if (!LockSurface(Bitmap, SURFACE_READ)) {
       if (!LockSurface(Dest, SURFACE_WRITE)) {
@@ -3662,10 +3701,10 @@ static ERROR gfxCopyStretch(objBitmap *Bitmap, objBitmap *Dest, LONG Flags, LONG
          //
          // The first part of the process that cuts the image in half, this helps us retain graphics quality when reducing large images to very small areas.
 
-         FMSG("CopyStretch","%dx%d TO %dx%d", Width, Height, DestWidth, DestHeight);
+         log.trace("%dx%d TO %dx%d", Width, Height, DestWidth, DestHeight);
 
          if (Flags & CSTF_FILTER_SOURCE) {
-            struct RGB8 rgb1, rgb2, rgb3, rgb4, rgb;
+            RGB8 rgb1, rgb2, rgb3, rgb4, rgb;
 
             #define CUTHALF      0.30  // The ratio required for the image to be cut in half (cannot be more than 0.5)
             #define FILTER_RATIO 0.60  // The ratio required for the image to be filtered for the last pass
@@ -3764,10 +3803,10 @@ static ERROR gfxCopyStretch(objBitmap *Bitmap, objBitmap *Dest, LONG Flags, LONG
                Width = Width>>1;
             }
 
-            if ((((DOUBLE)DestHeight / (DOUBLE)Height >= CUTHALF) AND ((DOUBLE)DestHeight / (DOUBLE)Height <= FILTER_RATIO)) OR
-                (((DOUBLE)DestWidth / (DOUBLE)Width >= CUTHALF) AND ((DOUBLE)DestWidth / (DOUBLE)Width <= FILTER_RATIO))) {
+            if ((((DOUBLE)DestHeight / (DOUBLE)Height >= CUTHALF) and ((DOUBLE)DestHeight / (DOUBLE)Height <= FILTER_RATIO)) or
+                (((DOUBLE)DestWidth / (DOUBLE)Width >= CUTHALF) and ((DOUBLE)DestWidth / (DOUBLE)Width <= FILTER_RATIO))) {
 
-               FMSG("CopyStretch","Image will be filtered for last step (%dx%d TO %dx%d)", Width, Height, DestWidth, DestHeight);
+               log.trace("Image will be filtered for last step (%dx%d TO %dx%d)", Width, Height, DestWidth, DestHeight);
 
                for (y=Bitmap->Clip.Top; y < Bitmap->Clip.Bottom-1; y++) {
                   destdata = Bitmap->Data + ((y+Bitmap->YOffset) * Bitmap->LineWidth) + ((Bitmap->Clip.Left+Bitmap->XOffset) * Bitmap->BytesPerPixel);
@@ -3811,10 +3850,10 @@ static ERROR gfxCopyStretch(objBitmap *Bitmap, objBitmap *Dest, LONG Flags, LONG
          if (Flags & CSTF_BRESENHAM) {
             // Fast bresenham scaling from Dr Dobbs Journal by Thiadmer Riemersma.  Provides fast resampling of OK quality between 0.67 and 2.0 scaling factors.
 
-            struct ClipRectangle clip;
+            ClipRectangle clip;
             DOUBLE fx, fy, xScale, yScale;
             LONG numpixels, mid, e;
-            struct RGB8 p, p2;
+            RGB8 p, p2;
 
             xScale = (DOUBLE)Width / (DOUBLE)DestWidth;
             yScale = (DOUBLE)Height / (DOUBLE)DestHeight;
@@ -3837,17 +3876,17 @@ static ERROR gfxCopyStretch(objBitmap *Bitmap, objBitmap *Dest, LONG Flags, LONG
                numpixels = DestWidth;
                //if (DestWidth > Width) numpixels--;
 
-               for (x=DestX; (x < DestX+DestWidth) AND (numpixels-- > 0); x++, fx += xScale) {
+               for (x=DestX; (x < DestX+DestWidth) and (numpixels-- > 0); x++, fx += xScale) {
                   if (x < Dest->Clip.Left) continue;
                   if (x >= Dest->Clip.Right) break;
 
                   isrcx = F2I(fx) + Bitmap->XOffset;
-                  if ((isrcx >= clip.Left) AND (isrcy >= clip.Top) AND
-                      (isrcx < clip.Right) AND (isrcy < clip.Bottom)) {
+                  if ((isrcx >= clip.Left) and (isrcy >= clip.Top) and
+                      (isrcx < clip.Right) and (isrcy < clip.Bottom)) {
 
                      Bitmap->ReadUCRPixel(Bitmap, isrcx, isrcy, &p);
 
-                     if ((e >= mid) AND (isrcx+1 < clip.Left)) {
+                     if ((e >= mid) and (isrcx+1 < clip.Left)) {
                         Bitmap->ReadUCRPixel(Bitmap, isrcx + 1, isrcy, &p2);
                         p.Red   = (p.Red + p2.Red)>>1;
                         p.Green = (p.Green + p2.Green)>>1;
@@ -3865,8 +3904,8 @@ static ERROR gfxCopyStretch(objBitmap *Bitmap, objBitmap *Dest, LONG Flags, LONG
             }
          }
          else if (Flags & CSTF_BILINEAR) {
-            struct RGB8  background, rgb[4];
-            struct ClipRectangle srcclip;
+            RGB8  background, rgb[4];
+            ClipRectangle srcclip;
             LONG xScale, startsrcx, calcx, calcy, srcx, dx, isrcy2;
             DOUBLE yScale, srcy;
 
@@ -3933,18 +3972,18 @@ static ERROR gfxCopyStretch(objBitmap *Bitmap, objBitmap *Dest, LONG Flags, LONG
                   isrcx = (srcx>>8) + Bitmap->XOffset;
                   bytex = isrcx * Bitmap->BytesPerPixel;
 
-                  if ((isrcy >= srcclip.Top) AND (isrcy < srcclip.Bottom)) {
-                     if ((isrcx >= srcclip.Left) AND (isrcx < srcclip.Right)) Bitmap->ReadUCRIndex(Bitmap, srcdata + bytex, &rgb[0]);
+                  if ((isrcy >= srcclip.Top) and (isrcy < srcclip.Bottom)) {
+                     if ((isrcx >= srcclip.Left) and (isrcx < srcclip.Right)) Bitmap->ReadUCRIndex(Bitmap, srcdata + bytex, &rgb[0]);
                      else rgb[0] = background;
 
                      if (x < endx-(DestWidth)) {
-                        if ((isrcx-1 >= srcclip.Left) AND (isrcx-1 < srcclip.Right)) {
+                        if ((isrcx-1 >= srcclip.Left) and (isrcx-1 < srcclip.Right)) {
                            Bitmap->ReadUCRIndex(Bitmap, srcdata + bytex - Bitmap->BytesPerPixel, &rgb[1]);
                         }
                         else { rgb[1] = rgb[0]; if (!(Flags & CSTF_CLAMP)) rgb[1].Alpha = 0; }
                      }
                      else {
-                        if ((isrcx+1 >= srcclip.Left) AND (isrcx+1 < srcclip.Right)) {
+                        if ((isrcx+1 >= srcclip.Left) and (isrcx+1 < srcclip.Right)) {
                            Bitmap->ReadUCRIndex(Bitmap, srcdata + bytex + Bitmap->BytesPerPixel, &rgb[1]);
                         }
                         else { rgb[1] = rgb[0]; if (!(Flags & CSTF_CLAMP)) rgb[1].Alpha = 0; }
@@ -3952,20 +3991,20 @@ static ERROR gfxCopyStretch(objBitmap *Bitmap, objBitmap *Dest, LONG Flags, LONG
                   }
                   else rgb[0] = rgb[1] = background;
 
-                  if ((isrcy2 >= srcclip.Top) AND (isrcy2 < srcclip.Bottom)) {
-                     if ((isrcx >= srcclip.Left) AND (isrcx < srcclip.Right)) {
+                  if ((isrcy2 >= srcclip.Top) and (isrcy2 < srcclip.Bottom)) {
+                     if ((isrcx >= srcclip.Left) and (isrcx < srcclip.Right)) {
                         Bitmap->ReadUCRIndex(Bitmap, srcdata + Bitmap->LineWidth + bytex, &rgb[2]);
                      }
                      else rgb[2] = background;
 
                      if (x < endx-(DestWidth)) {
-                        if ((isrcx-1 >= srcclip.Left) AND (isrcx-1 < srcclip.Right)) {
+                        if ((isrcx-1 >= srcclip.Left) and (isrcx-1 < srcclip.Right)) {
                            Bitmap->ReadUCRIndex(Bitmap, srcdata + Bitmap->LineWidth + bytex - Bitmap->BytesPerPixel, &rgb[3]);
                         }
                         else { rgb[3] = rgb[2]; if (!(Flags & CSTF_CLAMP)) rgb[3].Alpha = 0; }
                      }
                      else {
-                        if ((isrcx+1 >= srcclip.Left) AND (isrcx+1 < srcclip.Right)) {
+                        if ((isrcx+1 >= srcclip.Left) and (isrcx+1 < srcclip.Right)) {
                            Bitmap->ReadUCRIndex(Bitmap, srcdata + Bitmap->LineWidth + bytex + Bitmap->BytesPerPixel, &rgb[3]);
                         }
                         else { rgb[3] = rgb[2]; if (!(Flags & CSTF_CLAMP)) rgb[3].Alpha = 0; }
@@ -3981,7 +4020,7 @@ static ERROR gfxCopyStretch(objBitmap *Bitmap, objBitmap *Dest, LONG Flags, LONG
 
                   // Interpolate the 4 values using our lookup tables (to avoid slow multiplications)
 
-                  struct RGB8 drgb;
+                  RGB8 drgb;
                   drgb.Red   = diffxtable[diffytable[rgb[0].Red]   + ytable[rgb[2].Red]]   + xtable[diffytable[rgb[1].Red]   + ytable[rgb[3].Red]];
                   drgb.Green = diffxtable[diffytable[rgb[0].Green] + ytable[rgb[2].Green]] + xtable[diffytable[rgb[1].Green] + ytable[rgb[3].Green]];
                   drgb.Blue  = diffxtable[diffytable[rgb[0].Blue]  + ytable[rgb[2].Blue]]  + xtable[diffytable[rgb[1].Blue]  + ytable[rgb[3].Blue]];
@@ -3994,7 +4033,7 @@ static ERROR gfxCopyStretch(objBitmap *Bitmap, objBitmap *Dest, LONG Flags, LONG
          }
          else {
             DOUBLE fx, fy, xScale, yScale;
-            struct ClipRectangle clip;
+            ClipRectangle clip;
             ULONG pixel;
 
             // Nearest neighbour: Fast resize, poor quality
@@ -4019,8 +4058,8 @@ static ERROR gfxCopyStretch(objBitmap *Bitmap, objBitmap *Dest, LONG Flags, LONG
                   if (x >= Dest->Clip.Right) break;
 
                   isrcx = Bitmap->XOffset + F2I(fx);
-                  if ((isrcx >= clip.Left) AND (isrcy >= clip.Top) AND
-                      (isrcx < clip.Right) AND (isrcy < clip.Bottom)) {
+                  if ((isrcx >= clip.Left) and (isrcy >= clip.Top) and
+                      (isrcx < clip.Right) and (isrcy < clip.Bottom)) {
                      pixel = Bitmap->ReadUCPixel(Bitmap, isrcx, isrcy);
                      Dest->DrawUCPixel(Dest, Dest->XOffset + x, Dest->YOffset + y, pixel);
                   }
@@ -4080,7 +4119,7 @@ static ULONG read_surface8(BITMAPSURFACE *Surface, WORD X, WORD Y)
 
 static ULONG read_surface16(BITMAPSURFACE *Surface, WORD X, WORD Y)
 {
-   return ((UWORD *)(Surface->Data + (Y * Surface->LineWidth) + X + X))[0];
+   return ((UWORD *)((BYTE *)Surface->Data + (Y * Surface->LineWidth) + X + X))[0];
 }
 
 static ULONG read_surface_lsb24(BITMAPSURFACE *Surface, WORD X, WORD Y)
@@ -4106,7 +4145,8 @@ static ERROR gfxCopySurface(BITMAPSURFACE *Surface, objBitmap *Bitmap,
           LONG Flags, LONG X, LONG Y, LONG Width, LONG Height,
           LONG XDest, LONG YDest)
 {
-   struct RGB8 pixel, src;
+   parasol::Log log(__FUNCTION__);
+   RGB8 pixel, src;
    UBYTE *srctable, *desttable;
    LONG i;
    WORD srcwidth;
@@ -4114,10 +4154,10 @@ static ERROR gfxCopySurface(BITMAPSURFACE *Surface, objBitmap *Bitmap,
    UBYTE *data, *srcdata;
    ULONG (*read_surface)(BITMAPSURFACE *, WORD, WORD);
 
-   if ((!Surface) OR (!Bitmap)) return LogError(ERH_Display, ERR_NullArgs);
+   if ((!Surface) or (!Bitmap)) return log.warning(ERR_NullArgs);
 
-   if ((!Surface->Data) OR (Surface->LineWidth < 1) OR (!Surface->BitsPerPixel)) {
-      return LogError(ERH_Display, ERR_Args);
+   if ((!Surface->Data) or (Surface->LineWidth < 1) or (!Surface->BitsPerPixel)) {
+      return log.warning(ERR_Args);
    }
 
    srcwidth = Surface->LineWidth / Surface->BytesPerPixel;
@@ -4188,14 +4228,14 @@ static ERROR gfxCopySurface(BITMAPSURFACE *Surface, objBitmap *Bitmap,
               else read_surface = read_surface_msb24;
               break;
       case 4: read_surface = read_surface32; break;
-      default: return LogError(ERH_Display, ERR_Args);
+      default: return log.warning(ERR_Args);
    }
 
 #ifdef __xwindows__
 
    // Use this routine if the destination is a pixmap (write only memory).  X11 windows are always represented as pixmaps.
 
-   if (Bitmap->x11.Drawable) {
+   if (Bitmap->x11.drawable) {
       // Source is an ximage, destination is a pixmap.  NB: If DGA is enabled, we will avoid using these routines because mem-copying from software
       // straight to video RAM is a lot faster.
 
@@ -4210,7 +4250,7 @@ static ERROR gfxCopySurface(BITMAPSURFACE *Surface, objBitmap *Bitmap,
       ximage.height           = Surface->Height; // Image height
       ximage.xoffset          = 0;               // Number of pixels offset in X direction
       ximage.format           = ZPixmap;         // XYBitmap, XYPixmap, ZPixmap
-      ximage.data             = Surface->Data;   // Pointer to image data
+      ximage.data             = (char *)Surface->Data;   // Pointer to image data
       ximage.byte_order       = 0;               // LSBFirst / MSBFirst
       ximage.bitmap_unit      = alignment;       // Quant. of scanline - 8, 16, 32
       ximage.bitmap_bit_order = 0;               // LSBFirst / MSBFirst
@@ -4224,7 +4264,7 @@ static ERROR gfxCopySurface(BITMAPSURFACE *Surface, objBitmap *Bitmap,
       ximage.blue_mask        = 0;
       XInitImage(&ximage);
 
-      XPutImage(XDisplay, Bitmap->x11.Drawable, glXGC,
+      XPutImage(XDisplay, Bitmap->x11.drawable, glXGC,
          &ximage, X, Y, XDest, YDest, Width, Height);
 
       return ERR_Okay;
@@ -4233,15 +4273,13 @@ static ERROR gfxCopySurface(BITMAPSURFACE *Surface, objBitmap *Bitmap,
 #endif // __xwindows__
 
    if (LockSurface(Bitmap, SURFACE_WRITE) IS ERR_Okay) {
-      if ((Flags & CSRF_ALPHA) AND (Surface->BitsPerPixel IS 32)) {
-         // 32-bit alpha blending support
-
-         ULONG *sdata = (ULONG *)(Surface->Data + (Y * Surface->LineWidth) + (X<<2));
+      if ((Flags & CSRF_ALPHA) and (Surface->BitsPerPixel IS 32)) { // 32-bit alpha blending support
+         ULONG *sdata = (ULONG *)((BYTE *)Surface->Data + (Y * Surface->LineWidth) + (X<<2));
 
          if (Bitmap->BitsPerPixel IS 32) {
             ULONG *ddata = (ULONG *)(Bitmap->Data + (YDest * Bitmap->LineWidth) + (XDest<<2));
             while (Height > 0) {
-               for (i=0; i < Width; i++) {
+               for (LONG i=0; i < Width; i++) {
                   colour = sdata[i];
 
                   UBYTE alpha = ((UBYTE)(colour >> Surface->Format.AlphaPos));
@@ -4273,7 +4311,7 @@ static ERROR gfxCopySurface(BITMAPSURFACE *Surface, objBitmap *Bitmap,
             }
          }
          else while (Height > 0) {
-            for (i=0; i < Width; i++) {
+            for (LONG i=0; i < Width; i++) {
                colour = sdata[i];
                UBYTE alpha = ((UBYTE)(colour >> Surface->Format.AlphaPos));
                alpha = (glAlphaLookup + (alpha<<8))[Surface->Opacity]; // Multiply the source pixel by overall translucency level
@@ -4307,16 +4345,16 @@ static ERROR gfxCopySurface(BITMAPSURFACE *Surface, objBitmap *Bitmap,
       else if (Flags & CSRF_TRANSPARENT) {
          // Transparent colour blitting
 
-         if ((Flags & CSRF_TRANSLUCENT) AND (Surface->Opacity < 255)) {
+         if ((Flags & CSRF_TRANSLUCENT) and (Surface->Opacity < 255)) {
             // Transparent mask with translucent pixels
 
             srctable  = glAlphaLookup + (Surface->Opacity<<8);
             desttable = glAlphaLookup + ((255-Surface->Opacity)<<8);
 
             while (Height > 0) {
-               for (i = 0; i < Width; i++) {
+               for (LONG i=0; i < Width; i++) {
                   colour = read_surface(Surface, X + i, Y);
-                  if (colour != Surface->Colour) {
+                  if (colour != (ULONG)Surface->Colour) {
                      Bitmap->ReadUCRPixel(Bitmap, XDest + i, YDest, &pixel);
 
                      pixel.Red   = srctable[UnpackSRed(Surface, colour)]   + desttable[pixel.Red];
@@ -4332,34 +4370,34 @@ static ERROR gfxCopySurface(BITMAPSURFACE *Surface, objBitmap *Bitmap,
          }
          else if (Surface->BitsPerPixel IS Bitmap->BitsPerPixel) {
             if (Surface->BytesPerPixel IS 4) {
-               ULONG *sdata = (ULONG *)(Surface->Data + (Y * Surface->LineWidth) + (X<<2));
+               ULONG *sdata = (ULONG *)((BYTE *)Surface->Data + (Y * Surface->LineWidth) + (X<<2));
                ULONG *ddata = (ULONG *)(Bitmap->Data + (YDest * Bitmap->LineWidth) + (XDest<<2));
                colour = Surface->Colour;
                while (Height > 0) {
                   for (i=0; i < Width; i++) if (sdata[i] != colour) ddata[i] = sdata[i];
-                  ddata = (LONG *)(((BYTE *)ddata) + Bitmap->LineWidth);
-                  sdata = (LONG *)(((BYTE *)sdata) + Surface->LineWidth);
+                  ddata = (ULONG *)(((BYTE *)ddata) + Bitmap->LineWidth);
+                  sdata = (ULONG *)(((BYTE *)sdata) + Surface->LineWidth);
                   Height--;
                }
             }
             else if (Surface->BytesPerPixel IS 2) {
                UWORD *ddata, *sdata;
 
-               sdata = (WORD *)(Surface->Data + (Y * Surface->LineWidth) + (X<<1));
-               ddata = (WORD *)(Bitmap->Data + (YDest * Bitmap->LineWidth) + (XDest<<1));
+               sdata = (UWORD *)((BYTE *)Surface->Data + (Y * Surface->LineWidth) + (X<<1));
+               ddata = (UWORD *)(Bitmap->Data + (YDest * Bitmap->LineWidth) + (XDest<<1));
                colour = Surface->Colour;
                while (Height > 0) {
                   for (i=0; i < Width; i++) if (sdata[i] != colour) ddata[i] = sdata[i];
-                  ddata = (WORD *)(((BYTE *)ddata) + Bitmap->LineWidth);
-                  sdata = (WORD *)(((BYTE *)sdata) + Surface->LineWidth);
+                  ddata = (UWORD *)(((BYTE *)ddata) + Bitmap->LineWidth);
+                  sdata = (UWORD *)(((BYTE *)sdata) + Surface->LineWidth);
                   Height--;
                }
             }
             else {
                while (Height > 0) {
-                  for (i = 0; i < Width; i++) {
+                  for (i=0; i < Width; i++) {
                      colour = read_surface(Surface, X + i, Y);
-                     if (colour != Surface->Colour) Bitmap->DrawUCPixel(Bitmap, XDest + i, YDest, colour);
+                     if (colour != (ULONG)Surface->Colour) Bitmap->DrawUCPixel(Bitmap, XDest + i, YDest, colour);
                   }
                   Y++; YDest++;
                   Height--;
@@ -4368,9 +4406,9 @@ static ERROR gfxCopySurface(BITMAPSURFACE *Surface, objBitmap *Bitmap,
          }
          else {
             while (Height > 0) {
-               for (i = 0; i < Width; i++) {
+               for (i=0; i < Width; i++) {
                   colour = read_surface(Surface, X + i, Y);
-                  if (colour != Surface->Colour) {
+                  if (colour != (ULONG)Surface->Colour) {
                      pixel.Red   = UnpackSRed(Surface, colour);
                      pixel.Green = UnpackSGreen(Surface, colour);
                      pixel.Blue  = UnpackSBlue(Surface, colour);
@@ -4382,22 +4420,18 @@ static ERROR gfxCopySurface(BITMAPSURFACE *Surface, objBitmap *Bitmap,
             }
          }
       }
-      else {
-         // Straight copy operation
-
-         if ((Flags & CSRF_TRANSLUCENT) AND (Surface->Opacity < 255)) {
-            // Straight translucent blit
-
+      else { // Straight copy operation
+         if ((Flags & CSRF_TRANSLUCENT) and (Surface->Opacity < 255)) { // Straight translucent blit
             srctable  = glAlphaLookup + (Surface->Opacity<<8);
             desttable = glAlphaLookup + ((255-Surface->Opacity)<<8);
 
-            if ((Surface->BytesPerPixel IS 4) AND (Bitmap->BytesPerPixel IS 4)) {
+            if ((Surface->BytesPerPixel IS 4) and (Bitmap->BytesPerPixel IS 4)) {
                ULONG *ddata, *sdata;
 
-               sdata = (ULONG *)(Surface->Data + (Y * Surface->LineWidth) + (X<<2));
+               sdata = (ULONG *)((BYTE *)Surface->Data + (Y * Surface->LineWidth) + (X<<2));
                ddata = (ULONG *)(Bitmap->Data + (YDest * Bitmap->LineWidth) + (XDest<<2));
                while (Height > 0) {
-                  for (i=0; i < Width; i++) {
+                  for (LONG i=0; i < Width; i++) {
                      ddata[i] = ((srctable[(UBYTE)(sdata[i]>>Surface->Format.RedPos)]   + desttable[(UBYTE)(ddata[i]>>Bitmap->prvColourFormat.RedPos)]) << Bitmap->prvColourFormat.RedPos) |
                                 ((srctable[(UBYTE)(sdata[i]>>Surface->Format.GreenPos)] + desttable[(UBYTE)(ddata[i]>>Bitmap->prvColourFormat.GreenPos)]) << Bitmap->prvColourFormat.GreenPos) |
                                 ((srctable[(UBYTE)(sdata[i]>>Surface->Format.BluePos)]  + desttable[(UBYTE)(ddata[i]>>Bitmap->prvColourFormat.BluePos)]) << Bitmap->prvColourFormat.BluePos);
@@ -4407,10 +4441,10 @@ static ERROR gfxCopySurface(BITMAPSURFACE *Surface, objBitmap *Bitmap,
                   Height--;
                }
             }
-            else if ((Surface->BytesPerPixel IS 2) AND (Bitmap->BytesPerPixel IS 2)) {
+            else if ((Surface->BytesPerPixel IS 2) and (Bitmap->BytesPerPixel IS 2)) {
                UWORD *ddata, *sdata;
 
-               sdata = (UWORD *)(Surface->Data + (Y * Surface->LineWidth) + (X<<1));
+               sdata = (UWORD *)((BYTE *)Surface->Data + (Y * Surface->LineWidth) + (X<<1));
                ddata = (UWORD *)(Bitmap->Data + (YDest * Bitmap->LineWidth) + (XDest<<1));
                while (Height > 0) {
                   for (i=0; i < Width; i++) {
@@ -4424,7 +4458,7 @@ static ERROR gfxCopySurface(BITMAPSURFACE *Surface, objBitmap *Bitmap,
                }
             }
             else while (Height > 0) {
-               for (i=0; i < Width; i++) {
+               for (LONG i=0; i < Width; i++) {
                   colour = read_surface(Surface, X + i, Y);
                   src.Red   = UnpackSRed(Surface, colour);
                   src.Green = UnpackSGreen(Surface, colour);
@@ -4445,12 +4479,12 @@ static ERROR gfxCopySurface(BITMAPSURFACE *Surface, objBitmap *Bitmap,
          else if (Surface->BitsPerPixel IS Bitmap->BitsPerPixel) {
             // Use this fast routine for identical bitmaps
 
-            srcdata = Surface->Data + (X * Surface->BytesPerPixel) + (Y * Surface->LineWidth);
+            srcdata = (UBYTE *)Surface->Data + (X * Surface->BytesPerPixel) + (Y * Surface->LineWidth);
             data    = Bitmap->Data + (XDest  * Bitmap->BytesPerPixel) + (YDest * Bitmap->LineWidth);
             Width   = Width * Surface->BytesPerPixel;
 
             while (Height > 0) {
-               for (i=0; i > sizeof(LONG); i += sizeof(LONG)) {
+               for (i=0; (size_t)i > sizeof(LONG); i += sizeof(LONG)) {
                   ((LONG *)(data+i))[0] = ((LONG *)(srcdata+i))[0];
                }
                while (i < Width) { data[i] = srcdata[i]; i++; }
@@ -4463,7 +4497,7 @@ static ERROR gfxCopySurface(BITMAPSURFACE *Surface, objBitmap *Bitmap,
             // If the bitmaps do not match then we need to use this slower RGB translation subroutine.
 
             while (Height > 0) {
-               for (i=0; i < Width; i++) {
+               for (LONG i=0; i < Width; i++) {
                   colour = read_surface(Surface, X + i, Y);
                   src.Red   = UnpackSRed(Surface, colour);
                   src.Green = UnpackSGreen(Surface, colour);
@@ -4564,7 +4598,7 @@ int Fill:    Set to TRUE to fill the ellipse.
 *****************************************************************************/
 
 #define DRAWPIXEL(bmp,x,y,col) \
-   if ((x >= clipleft) AND (y >= cliptop) AND (x < clipright) AND (y < clipbottom)) { \
+   if ((x >= clipleft) and (y >= cliptop) and (x < clipright) and (y < clipbottom)) { \
       if (bmp->Opacity < 255) { \
          bmp->ReadUCRPixel(bmp, x, y, &rgb); \
          bmp->DrawUCPixel(bmp, x, y, PackPixel(bmp, srctable[red] + desttable[rgb.Red], srctable[green] + desttable[rgb.Green], srctable[blue]  + desttable[rgb.Blue])); \
@@ -4575,16 +4609,16 @@ int Fill:    Set to TRUE to fill the ellipse.
 static void gfxDrawEllipse(objBitmap *Bitmap, LONG X, LONG Y, LONG Width, LONG Height, ULONG Colour, LONG Fill)
 {
    UBYTE *srctable, *desttable;
-   struct RGB8 rgb;
+   RGB8 rgb;
    LONG rx, ry, cx, cy, clipleft, clipright, cliptop, clipbottom;
    UBYTE red, green, blue;
 
    if (!Bitmap) return;
 
-   if ((Width < 1) OR (Height < 1)) return;
+   if ((Width < 1) or (Height < 1)) return;
 
-   if ((Bitmap->Clip.Right <= X) OR (Bitmap->Clip.Top >= Y+Height) OR
-       (Bitmap->Clip.Bottom <= Y) OR (Bitmap->Clip.Left >= X+Width)) return;
+   if ((Bitmap->Clip.Right <= X) or (Bitmap->Clip.Top >= Y+Height) or
+       (Bitmap->Clip.Bottom <= Y) or (Bitmap->Clip.Left >= X+Width)) return;
 
    if (!LockSurface(Bitmap, SURFACE_WRITE)) {
 
@@ -4748,11 +4782,11 @@ int AlphaMask:    Alpha component bit mask value.
 
 *****************************************************************************/
 
-static void gfxGetColourFormat(struct ColourFormat *Format, LONG BPP, LONG RedMask, LONG GreenMask, LONG BlueMask, LONG AlphaMask)
+static void gfxGetColourFormat(ColourFormat *Format, LONG BPP, LONG RedMask, LONG GreenMask, LONG BlueMask, LONG AlphaMask)
 {
    LONG mask;
 
-   //LogF("GetColourFormat()","R: $%.8x G: $%.8x, B: $%.8x, A: $%.8x", RedMask, GreenMask, BlueMask, AlphaMask);
+   //log.function("R: $%.8x G: $%.8x, B: $%.8x, A: $%.8x", RedMask, GreenMask, BlueMask, AlphaMask);
 
    if (!RedMask) {
       if (BPP IS 15) {
@@ -4781,30 +4815,30 @@ static void gfxGetColourFormat(struct ColourFormat *Format, LONG BPP, LONG RedMa
    mask = RedMask;
    Format->RedPos = 0;
    Format->RedShift = 0;
-   while ((mask) AND (!(mask & 1))) { mask = mask>>1; Format->RedPos++; }
+   while ((mask) and (!(mask & 1))) { mask = mask>>1; Format->RedPos++; }
    Format->RedMask = mask;
-   for (mask=0x80; (mask) AND (!(mask & Format->RedMask)); mask=mask>>1) Format->RedShift++;
+   for (mask=0x80; (mask) and (!(mask & Format->RedMask)); mask=mask>>1) Format->RedShift++;
 
    mask = BlueMask;
    Format->BluePos = 0;
    Format->BlueShift = 0;
-   while ((mask) AND (!(mask & 1))) { mask = mask>>1; Format->BluePos++; }
+   while ((mask) and (!(mask & 1))) { mask = mask>>1; Format->BluePos++; }
    Format->BlueMask = mask;
-   for (mask=0x80; (mask) AND (!(mask & Format->BlueMask)); mask=mask>>1) Format->BlueShift++;
+   for (mask=0x80; (mask) and (!(mask & Format->BlueMask)); mask=mask>>1) Format->BlueShift++;
 
    mask = GreenMask;
    Format->GreenPos = 0;
    Format->GreenShift = 0;
-   while ((mask) AND (!(mask & 1))) { mask = mask>>1; Format->GreenPos++; }
+   while ((mask) and (!(mask & 1))) { mask = mask>>1; Format->GreenPos++; }
    Format->GreenMask = mask;
-   for (mask=0x80; (mask) AND (!(mask & Format->GreenMask)); mask=mask>>1) Format->GreenShift++;
+   for (mask=0x80; (mask) and (!(mask & Format->GreenMask)); mask=mask>>1) Format->GreenShift++;
 
    mask = AlphaMask;
    Format->AlphaPos = 0;
    Format->AlphaShift = 0;
-   while ((mask) AND (!(mask & 1))) { mask = mask>>1; Format->AlphaPos++; }
+   while ((mask) and (!(mask & 1))) { mask = mask>>1; Format->AlphaPos++; }
    Format->AlphaMask = mask;
-   for (mask=0x80; (mask) AND (!(mask & Format->AlphaMask)); mask=mask>>1) Format->AlphaShift++;
+   for (mask=0x80; (mask) and (!(mask & Format->AlphaMask)); mask=mask>>1) Format->AlphaShift++;
 
    Format->BitsPerPixel = BPP;
 }
@@ -4831,7 +4865,7 @@ uint Colour: The pixel colour for drawing the line.
 
 static void gfxDrawLine(objBitmap *Bitmap, LONG X, LONG Y, LONG EndX, LONG EndY, ULONG Colour)
 {
-   struct RGB8 pixel, rgb;
+   RGB8 pixel, rgb;
    LONG i, dx, dy, l, m, x_inc, y_inc;
    LONG err_1, dx2, dy2;
    LONG drawx, drawy, clipleft, clipright, clipbottom, cliptop;
@@ -4840,7 +4874,7 @@ static void gfxDrawLine(objBitmap *Bitmap, LONG X, LONG Y, LONG EndX, LONG EndY,
    if (Bitmap->Opacity < 1) return;
 
    #ifdef __xwindows__
-      if ((Bitmap->DataFlags & (MEM_VIDEO|MEM_TEXTURE)) AND (Bitmap->Opacity >= 255)) {
+      if ((Bitmap->DataFlags & (MEM_VIDEO|MEM_TEXTURE)) and (Bitmap->Opacity >= 255)) {
          XRectangle rectangles;
          rectangles.x      = Bitmap->Clip.Left + Bitmap->XOffset;
          rectangles.y      = Bitmap->Clip.Top + Bitmap->YOffset;
@@ -4849,7 +4883,7 @@ static void gfxDrawLine(objBitmap *Bitmap, LONG X, LONG Y, LONG EndX, LONG EndY,
          XSetClipRectangles(XDisplay, glClipXGC, 0, 0, &rectangles, 1, YXSorted);
 
          XSetForeground(XDisplay, glClipXGC, Colour);
-         XDrawLine(XDisplay, Bitmap->x11.Drawable, glClipXGC, X + Bitmap->XOffset, Y + Bitmap->YOffset, EndX + Bitmap->XOffset, EndY + Bitmap->YOffset);
+         XDrawLine(XDisplay, Bitmap->x11.drawable, glClipXGC, X + Bitmap->XOffset, Y + Bitmap->YOffset, EndX + Bitmap->XOffset, EndY + Bitmap->YOffset);
          return;
       }
    #endif
@@ -4860,7 +4894,7 @@ static void gfxDrawLine(objBitmap *Bitmap, LONG X, LONG Y, LONG EndX, LONG EndY,
 
    #ifdef _WIN32
 
-      if ((Bitmap->prvAFlags & BF_WINVIDEO) AND (Bitmap->Opacity >= 255)) {
+      if ((Bitmap->prvAFlags & BF_WINVIDEO) and (Bitmap->Opacity >= 255)) {
          winSetClipping(Bitmap->win.Drawable, Bitmap->Clip.Left + Bitmap->XOffset, Bitmap->Clip.Top + Bitmap->YOffset,
             Bitmap->Clip.Right + Bitmap->XOffset, Bitmap->Clip.Bottom + Bitmap->YOffset);
          winDrawLine(Bitmap->win.Drawable, X + Bitmap->XOffset, Y + Bitmap->YOffset,
@@ -4898,7 +4932,7 @@ static void gfxDrawLine(objBitmap *Bitmap, LONG X, LONG Y, LONG EndX, LONG EndY,
       if ((l >= m)) {
          err_1 = dy2 - l;
          for (i = 0; i < l; i++) {
-            if ((drawx >= clipleft) AND (drawx < clipright) AND (drawy >= cliptop) AND (drawy < clipbottom))  {
+            if ((drawx >= clipleft) and (drawx < clipright) and (drawy >= cliptop) and (drawy < clipbottom))  {
                Bitmap->ReadUCRPixel(Bitmap, drawx, drawy, &pixel);
                pixel.Red   = rgb.Red   + (((pixel.Red   - rgb.Red)   * (255 - Bitmap->Opacity))>>8);
                pixel.Green = rgb.Green + (((pixel.Green - rgb.Green) * (255 - Bitmap->Opacity))>>8);
@@ -4914,7 +4948,7 @@ static void gfxDrawLine(objBitmap *Bitmap, LONG X, LONG Y, LONG EndX, LONG EndY,
       else {
          err_1 = dx2 - m;
          for (i = 0; i < m; i++) {
-            if ((drawx >= clipleft) AND (drawx < clipright) AND (drawy >= cliptop) AND (drawy < clipbottom))  {
+            if ((drawx >= clipleft) and (drawx < clipright) and (drawy >= cliptop) and (drawy < clipbottom))  {
                Bitmap->ReadUCRPixel(Bitmap, drawx, drawy, &pixel);
                pixel.Red   = rgb.Red   + (((pixel.Red   - rgb.Red)   * (255 - Bitmap->Opacity))>>8);
                pixel.Green = rgb.Green + (((pixel.Green - rgb.Green) * (255 - Bitmap->Opacity))>>8);
@@ -4928,7 +4962,7 @@ static void gfxDrawLine(objBitmap *Bitmap, LONG X, LONG Y, LONG EndX, LONG EndY,
          }
       }
 
-      if ((drawx >= clipleft) AND (drawx < clipright) AND (drawy >= cliptop) AND (drawy < clipbottom))  {
+      if ((drawx >= clipleft) and (drawx < clipright) and (drawy >= cliptop) and (drawy < clipbottom))  {
          Bitmap->ReadUCRPixel(Bitmap, drawx, drawy, &pixel);
          pixel.Red   = rgb.Red   + (((pixel.Red   - rgb.Red) * (255 - Bitmap->Opacity))>>8);
          pixel.Green = rgb.Green + (((pixel.Green - rgb.Green) * (255 - Bitmap->Opacity))>>8);
@@ -4943,7 +4977,7 @@ static void gfxDrawLine(objBitmap *Bitmap, LONG X, LONG Y, LONG EndX, LONG EndY,
       if (l >= m) {
          err_1 = dy2 - l;
          for (i = 0; i < l; i++) {
-            if ((drawx >= clipleft) AND (drawx < clipright) AND (drawy >= cliptop) AND (drawy < clipbottom))  {
+            if ((drawx >= clipleft) and (drawx < clipright) and (drawy >= cliptop) and (drawy < clipbottom))  {
                Bitmap->DrawUCPixel(Bitmap, drawx, drawy, colour);
             }
             if (err_1 > 0) { drawy += y_inc; err_1 -= dx2; }
@@ -4954,7 +4988,7 @@ static void gfxDrawLine(objBitmap *Bitmap, LONG X, LONG Y, LONG EndX, LONG EndY,
       else {
          err_1 = dx2 - m;
          for (i = 0; i < m; i++) {
-            if ((drawx >= clipleft) AND (drawx < clipright) AND (drawy >= cliptop) AND (drawy < clipbottom))  {
+            if ((drawx >= clipleft) and (drawx < clipright) and (drawy >= cliptop) and (drawy < clipbottom))  {
                Bitmap->DrawUCPixel(Bitmap, drawx, drawy, colour);
             }
             if (err_1 > 0) { drawx += x_inc; err_1 -= dy2; }
@@ -4963,7 +4997,7 @@ static void gfxDrawLine(objBitmap *Bitmap, LONG X, LONG Y, LONG EndX, LONG EndY,
          }
       }
 
-      if ((drawx >= clipleft) AND (drawx < clipright) AND (drawy >= cliptop) AND (drawy < clipbottom))  {
+      if ((drawx >= clipleft) and (drawx < clipright) and (drawy >= cliptop) and (drawy < clipbottom))  {
          Bitmap->DrawUCPixel(Bitmap, drawx, drawy, colour);
       }
    }
@@ -4987,10 +5021,10 @@ struct(*RGB8) RGB: The colour to be drawn, in RGB format.
 
 *****************************************************************************/
 
-void gfxDrawRGBPixel(objBitmap *Bitmap, LONG X, LONG Y, struct RGB8 *Pixel)
+void gfxDrawRGBPixel(objBitmap *Bitmap, LONG X, LONG Y, RGB8 *Pixel)
 {
-   if ((X >= Bitmap->Clip.Right) OR (X < Bitmap->Clip.Left)) return;
-   if ((Y >= Bitmap->Clip.Bottom) OR (Y < Bitmap->Clip.Top)) return;
+   if ((X >= Bitmap->Clip.Right) or (X < Bitmap->Clip.Left)) return;
+   if ((Y >= Bitmap->Clip.Bottom) or (Y < Bitmap->Clip.Top)) return;
    Bitmap->DrawUCRPixel(Bitmap, X + Bitmap->XOffset, Y + Bitmap->YOffset, Pixel);
 }
 
@@ -5012,8 +5046,8 @@ uint Colour: The colour value to use for the pixel.
 
 static void gfxDrawPixel(objBitmap *Bitmap, LONG X, LONG Y, ULONG Colour)
 {
-   if ((X >= Bitmap->Clip.Right) OR (X < Bitmap->Clip.Left)) return;
-   if ((Y >= Bitmap->Clip.Bottom) OR (Y < Bitmap->Clip.Top)) return;
+   if ((X >= Bitmap->Clip.Right) or (X < Bitmap->Clip.Left)) return;
+   if ((Y >= Bitmap->Clip.Bottom) or (Y < Bitmap->Clip.Top)) return;
    Bitmap->DrawUCPixel(Bitmap, X + Bitmap->XOffset, Y + Bitmap->YOffset, Colour);
 }
 
@@ -5041,7 +5075,8 @@ int(BAF) Flags: Use BAF_FILL to fill the rectangle.  Use of BAF_BLEND will enabl
 
 static void gfxDrawRectangle(objBitmap *Bitmap, LONG X, LONG Y, LONG Width, LONG Height, ULONG Colour, LONG Flags)
 {
-   struct RGB8 pixel;
+   parasol::Log log(__FUNCTION__);
+   RGB8 pixel;
    UBYTE *data;
    UWORD *word;
    ULONG *longdata;
@@ -5051,7 +5086,7 @@ static void gfxDrawRectangle(objBitmap *Bitmap, LONG X, LONG Y, LONG Width, LONG
 
    // If we are not going to fill the rectangle, use this routine to draw an outline.
 
-   if ((!(Flags & BAF_FILL)) AND (Width > 1) AND (Height > 1)) {
+   if ((!(Flags & BAF_FILL)) and (Width > 1) and (Height > 1)) {
       EX = X + Width - 1;
       EY = Y + Height - 1;
       if (X >= Bitmap->Clip.Left) gfxDrawRectangle(Bitmap, X, Y, 1, Height, Colour, Flags|BAF_FILL); // Left
@@ -5061,7 +5096,7 @@ static void gfxDrawRectangle(objBitmap *Bitmap, LONG X, LONG Y, LONG Width, LONG
       return;
    }
 
-   if (!(Bitmap->Head.Flags & NF_INITIALISED)) { LogError(ERH_DrawRectangle, ERR_NotInitialised); return; }
+   if (!(Bitmap->Head.Flags & NF_INITIALISED)) { log.warning(ERR_NotInitialised); return; }
 
    X += Bitmap->XOffset;
    Y += Bitmap->YOffset;
@@ -5102,7 +5137,7 @@ static void gfxDrawRectangle(objBitmap *Bitmap, LONG X, LONG Y, LONG Width, LONG
 
          if (Bitmap->BitsPerPixel IS 32) {
             ULONG cmb_alpha;
-            longdata = (LONG *)(Bitmap->Data + (Bitmap->LineWidth * Y));
+            longdata = (ULONG *)(Bitmap->Data + (Bitmap->LineWidth * Y));
             xend = X + Width;
             cmb_alpha = 255 << Bitmap->prvColourFormat.AlphaPos;
             while (Height > 0) {
@@ -5118,7 +5153,7 @@ static void gfxDrawRectangle(objBitmap *Bitmap, LONG X, LONG Y, LONG Width, LONG
                                 cmb_alpha;
                   i++;
                }
-               longdata = (LONG *)(((BYTE *)longdata) + Bitmap->LineWidth);
+               longdata = (ULONG *)(((BYTE *)longdata) + Bitmap->LineWidth);
                Height--;
             }
          }
@@ -5206,7 +5241,7 @@ static void gfxDrawRectangle(objBitmap *Bitmap, LONG X, LONG Y, LONG Width, LONG
 
    #ifdef _GLES_
       if (Bitmap->DataFlags & MEM_VIDEO) {
-      LogErrorMsg("TODO: Draw rectangles to opengl");
+      log.warning("TODO: Draw rectangles to opengl");
          glClearColor(0.5, 0.5, 0.5, 1.0);
          glClear(GL_COLOR_BUFFER_BIT);
          return;
@@ -5223,7 +5258,7 @@ static void gfxDrawRectangle(objBitmap *Bitmap, LONG X, LONG Y, LONG Width, LONG
    #ifdef __xwindows__
       if (Bitmap->DataFlags & (MEM_VIDEO|MEM_TEXTURE)) {
          XSetForeground(XDisplay, glXGC, Colour);
-         XFillRectangle(XDisplay, Bitmap->x11.Drawable, glXGC, X, Y, Width, Height);
+         XFillRectangle(XDisplay, Bitmap->x11.drawable, glXGC, X, Y, Width, Height);
          return;
       }
    #endif
@@ -5257,12 +5292,12 @@ static void gfxDrawRectangle(objBitmap *Bitmap, LONG X, LONG Y, LONG Width, LONG
                Height--;
             }
          }
-         else if ((Bitmap->BitsPerPixel IS 16) OR (Bitmap->BitsPerPixel IS 15)) {
+         else if ((Bitmap->BitsPerPixel IS 16) or (Bitmap->BitsPerPixel IS 15)) {
             word = (UWORD *)(Bitmap->Data + (Bitmap->LineWidth * Y));
             xend = X + Width;
             while (Height > 0) {
                for (x=X; x < xend; x++) word[x] = (UWORD)Colour;
-               word = (WORD *)(((BYTE *)word) + Bitmap->LineWidth);
+               word = (UWORD *)(((BYTE *)word) + Bitmap->LineWidth);
                Height--;
             }
          }
@@ -5356,11 +5391,11 @@ int Y: The vertical coordinate of the pixel.
 
 *****************************************************************************/
 
-static void gfxReadRGBPixel(objBitmap *Bitmap, LONG X, LONG Y, struct RGB8 **Pixel)
+static void gfxReadRGBPixel(objBitmap *Bitmap, LONG X, LONG Y, RGB8 **Pixel)
 {
-   static THREADVAR struct RGB8 pixel;
-   if ((X >= Bitmap->Clip.Right) OR (X < Bitmap->Clip.Left) OR
-       (Y >= Bitmap->Clip.Bottom) OR (Y < Bitmap->Clip.Top)) {
+   static THREADVAR RGB8 pixel;
+   if ((X >= Bitmap->Clip.Right) or (X < Bitmap->Clip.Left) or
+       (Y >= Bitmap->Clip.Bottom) or (Y < Bitmap->Clip.Top)) {
       pixel.Red = 0; pixel.Green = 0; pixel.Blue = 0; pixel.Alpha = 0;
    }
    else {
@@ -5390,8 +5425,8 @@ uint: The colour value of the pixel will be returned.  Zero is returned if the p
 
 static ULONG gfxReadPixel(objBitmap *Bitmap, LONG X, LONG Y)
 {
-   if ((X >= Bitmap->Clip.Right) OR (X < Bitmap->Clip.Left) OR
-       (Y >= Bitmap->Clip.Bottom) OR (Y < Bitmap->Clip.Top)) return 0;
+   if ((X >= Bitmap->Clip.Right) or (X < Bitmap->Clip.Left) or
+       (Y >= Bitmap->Clip.Bottom) or (Y < Bitmap->Clip.Top)) return 0;
    else return Bitmap->ReadUCPixel(Bitmap, X, Y);
 }
 
@@ -5417,7 +5452,7 @@ double: The scaled value is returned.
 
 static DOUBLE gfxScaleToDPI(DOUBLE Value)
 {
-   if ((!glDisplayInfo->HDensity) OR (!glDisplayInfo->VDensity)) return Value;
+   if ((!glDisplayInfo->HDensity) or (!glDisplayInfo->VDensity)) return Value;
    else return 96.0 / (((DOUBLE)glDisplayInfo->HDensity + (DOUBLE)glDisplayInfo->VDensity) * 0.5) * Value;
 }
 
@@ -5443,9 +5478,9 @@ NullArgs
 
 *****************************************************************************/
 
-static ERROR gfxResample(objBitmap *Bitmap, struct ColourFormat *Format)
+static ERROR gfxResample(objBitmap *Bitmap, ColourFormat *Format)
 {
-   if ((!Bitmap) OR (!Format)) return ERR_NullArgs;
+   if ((!Bitmap) or (!Format)) return ERR_NullArgs;
 
    dither(Bitmap, Bitmap, Format, Bitmap->Width, Bitmap->Height, 0, 0, 0, 0);
    return ERR_Okay;
@@ -5537,11 +5572,12 @@ static void gfxSync(objBitmap *Bitmap)
       }                                  \
    }
 
-static ERROR dither(objBitmap *Bitmap, objBitmap *Dest, struct ColourFormat *Format, LONG Width, LONG Height,
+static ERROR dither(objBitmap *Bitmap, objBitmap *Dest, ColourFormat *Format, LONG Width, LONG Height,
    LONG SrcX, LONG SrcY, LONG DestX, LONG DestY)
 {
-   struct RGB16 *buf1, *buf2, *buffer;
-   struct RGB8 brgb;
+   parasol::Log log(__FUNCTION__);
+   RGB16 *buf1, *buf2, *buffer;
+   RGB8 brgb;
    UBYTE *srcdata, *destdata, *data;
    LONG dif, val1, val2, val3;
    LONG x, y;
@@ -5549,18 +5585,18 @@ static ERROR dither(objBitmap *Bitmap, objBitmap *Dest, struct ColourFormat *For
    WORD index;
    UBYTE rmask, gmask, bmask;
 
-   if ((Width < 1) OR (Height < 1)) return ERR_Okay;
+   if ((Width < 1) or (Height < 1)) return ERR_Okay;
 
    // Punch the developer for making stupid mistakes
 
-   if ((Dest->BitsPerPixel >= 24) AND (!Format)) {
-      LogF("@dither()","Dithering attempted to a %dbpp bitmap.", Dest->BitsPerPixel);
+   if ((Dest->BitsPerPixel >= 24) and (!Format)) {
+      log.warning("Dithering attempted to a %dbpp bitmap.", Dest->BitsPerPixel);
       return ERR_Failed;
    }
 
    // Do a straight copy if the bitmap is too small for dithering
 
-   if ((Height < 2) OR (Width < 2)) {
+   if ((Height < 2) or (Width < 2)) {
       for (y=SrcY; y < SrcY+Height; y++) {
          for (x=SrcX; x < SrcX+Width; x++) {
             Bitmap->ReadUCRPixel(Bitmap, x, y, &brgb);
@@ -5572,15 +5608,15 @@ static ERROR dither(objBitmap *Bitmap, objBitmap *Dest, struct ColourFormat *For
 
    // Allocate buffer for dithering
 
-   if (Width * sizeof(struct RGB16) * 2 > glDitherSize) {
+   if (Width * (LONG)sizeof(RGB16) * 2 > glDitherSize) {
       if (glDither) { FreeResource(glDither); glDither = NULL; }
 
-      if (AllocMemory(Width * sizeof(struct RGB16) * 2, MEM_NO_CLEAR|MEM_UNTRACKED, &glDither, NULL) != ERR_Okay) {
+      if (AllocMemory(Width * sizeof(RGB16) * 2, MEM_NO_CLEAR|MEM_UNTRACKED, &glDither, NULL) != ERR_Okay) {
          return ERR_AllocMemory;
       }
    }
 
-   buf1 = glDither;
+   buf1 = (RGB16 *)glDither;
    buf2 = buf1 + Width;
 
    // Prime buf2, which will be copied to buf1 at the start of the loop.  We work with six binary "decimal places" to reduce roundoff errors.
@@ -5761,38 +5797,40 @@ NullArgs:
 
 static ERROR gfxSubscribeInput(OBJECTID SurfaceID, LONG Mask, OBJECTID DeviceID)
 {
+   parasol::Log log(__FUNCTION__);
+
    #define CHUNK_INPUT 20
 
-   OBJECTPTR sub = CurrentContext();
+   auto sub = CurrentContext();
 
-   FMSG("SubscribeInput()","Subscriber: #%d, Surface: #%d, MsgPort: " PF64() ", Mask: $%.8x, InputMID: %d", sub->UniqueID, SurfaceID, GetResource(RES_MESSAGE_QUEUE), Mask, glSharedControl->InputMID);
+   log.traceBranch("Subscriber: #%d, Surface: #%d, MsgPort: " PF64() ", Mask: $%.8x, InputMID: %d", sub->UniqueID, SurfaceID, GetResource(RES_MESSAGE_QUEUE), Mask, glSharedControl->InputMID);
 
    // Allocate the subscription array if it does not exist.  NB: The memory is untracked and will be removed by the
    // last task that cleans up the memory resource pool.
 
    if (!glSharedControl->InputMID) {
-      if (AllocMemory(sizeof(struct InputSubscription) * CHUNK_INPUT, MEM_PUBLIC|MEM_UNTRACKED, NULL, &glSharedControl->InputMID)) {
-         return LogError(ERH_Display, ERR_AllocMemory);
+      if (AllocMemory(sizeof(InputSubscription) * CHUNK_INPUT, MEM_PUBLIC|MEM_UNTRACKED, NULL, &glSharedControl->InputMID)) {
+         return log.warning(ERR_AllocMemory);
       }
       glSharedControl->InputSize = CHUNK_INPUT;
    }
 
    // Add the subscription to the list.  Note that granted access to InputMID acts as a lock for variables like InputTotal.
 
-   struct InputSubscription *list, *newlist;
+   InputSubscription *list, *newlist;
    if (!AccessMemory(glSharedControl->InputMID, MEM_READ_WRITE, 2000, &list)) {
       // If there is no space left in the subscription array, expand it
 
       if (glSharedControl->InputTotal >= glSharedControl->InputSize) {
-         LogF("SubscribeInput","Input array needs to be expanded from %d entries.", glSharedControl->InputSize);
+         log.msg("Input array needs to be expanded from %d entries.", glSharedControl->InputSize);
 
          MEMORYID newlistid;
-         if (AllocMemory(sizeof(struct InputSubscription) * (glSharedControl->InputSize+CHUNK_INPUT), MEM_PUBLIC|MEM_UNTRACKED, (APTR *)&newlist, &newlistid)) {
+         if (AllocMemory(sizeof(InputSubscription) * (glSharedControl->InputSize+CHUNK_INPUT), MEM_PUBLIC|MEM_UNTRACKED, (APTR *)&newlist, &newlistid)) {
             ReleaseMemory(list);
             return ERR_AllocMemory;
          }
 
-         CopyMemory(list, newlist, sizeof(struct InputSubscription) * glSharedControl->InputSize);
+         CopyMemory(list, newlist, sizeof(InputSubscription) * glSharedControl->InputSize);
 
          ReleaseMemory(list);
 
@@ -5815,7 +5853,7 @@ static ERROR gfxSubscribeInput(OBJECTID SurfaceID, LONG Mask, OBJECTID DeviceID)
       ReleaseMemory(list);
       return ERR_Okay;
    }
-   else return LogError(ERH_Display, ERR_AccessMemory);
+   else return log.warning(ERR_AccessMemory);
 }
 
 /******************************************************************************
@@ -5836,7 +5874,7 @@ cstr: A string describing the input type is returned or NULL if the Type is inva
 
 static CSTRING gfxGetInputTypeName(LONG Type)
 {
-   if ((Type < 1) OR (Type >= JET_END)) return NULL;
+   if ((Type < 1) or (Type >= JET_END)) return NULL;
    return glInputNames[Type];
 }
 
@@ -5862,22 +5900,23 @@ NotFound
 
 static ERROR gfxUnsubscribeInput(OBJECTID SurfaceID)
 {
+   parasol::Log log(__FUNCTION__);
+
    OBJECTPTR sub = CurrentContext();
 
-   FMSG("UnsubscribeInput()","Subscriber: %d, Surface: %d", sub->UniqueID, SurfaceID);
+   log.traceBranch("Subscriber: %d, Surface: %d", sub->UniqueID, SurfaceID);
 
    if (!glSharedControl->InputMID) return ERR_NotFound;
 
-   struct InputSubscription *list;
+   InputSubscription *list;
    if (!AccessMemory(glSharedControl->InputMID, MEM_READ_WRITE, 2000, &list)) {
-      LONG i;
-      BYTE removed = FALSE;
-      for (i=0; i < glSharedControl->InputTotal; i++) {
-         if ((list[i].SubscriberID IS sub->UniqueID) AND ((!SurfaceID) OR (SurfaceID IS list[i].SurfaceID))) {
+      bool removed = FALSE;
+      for (LONG i=0; i < glSharedControl->InputTotal; i++) {
+         if ((list[i].SubscriberID IS sub->UniqueID) and ((!SurfaceID) or (SurfaceID IS list[i].SurfaceID))) {
             removed = TRUE;
             if (i+1 < glSharedControl->InputTotal) {
                // Compact the list
-               CopyMemory(list+i+1, list+i, sizeof(struct InputSubscription) * (glSharedControl->InputTotal - i - 1));
+               CopyMemory(list+i+1, list+i, sizeof(InputSubscription) * (glSharedControl->InputTotal - i - 1));
             }
             else ClearMemory(list+i, sizeof(list[i]));
             i--; // Offset the subsequent i++ of the for loop
@@ -5886,7 +5925,7 @@ static ERROR gfxUnsubscribeInput(OBJECTID SurfaceID)
       }
 
       if (!glSharedControl->InputTotal) {
-         FMSG("UnsubscribeInput","Freeing subscriber memory (last subscription removed)");
+         log.trace("Freeing subscriber memory (last subscription removed)");
          ReleaseMemory(list);
          FreeResourceID(glSharedControl->InputMID);
          glSharedControl->InputMID   = 0;
@@ -5898,7 +5937,7 @@ static ERROR gfxUnsubscribeInput(OBJECTID SurfaceID)
       if (!removed) return ERR_NotFound;
       else return ERR_Okay;
    }
-   else return LogError(ERH_Display, ERR_AccessMemory);
+   else return log.warning(ERR_AccessMemory);
 }
 
 /******************************************************************************
@@ -5909,11 +5948,12 @@ static ERROR gfxUnsubscribeInput(OBJECTID SurfaceID)
 void winDragDropFromHost_Drop(int SurfaceID, char *Datatypes)
 {
 #ifdef WIN_DRAGDROP
+   parasol::Log log(__FUNCTION__);
    objPointer *pointer;
    OBJECTID modal_id;
    extern OBJECTID glOverTaskID;
 
-   LogF("~winDragDrop()","Surface: %d", SurfaceID);
+   log.branch("Surface: %d", SurfaceID);
 
    if ((pointer = gfxAccessPointer())) {
       // Pass AC_DragDrop to the surface underneath the mouse cursor.  If a surface subscriber accepts the data, it
@@ -5927,14 +5967,12 @@ void winDragDropFromHost_Drop(int SurfaceID, char *Datatypes)
          if (!drwGetSurfaceInfo(pointer->OverObjectID, &info)) {
             acDragDropID(pointer->OverObjectID, info->DisplayID, -1, Datatypes);
          }
-         else FuncError(ERR_GetSurfaceInfo);
+         else log.warning(ERR_GetSurfaceInfo);
       }
-      else LogF("winDragFromHost","Program is modal - drag/drop cancelled.");
+      else log.msg("Program is modal - drag/drop cancelled.");
 
       gfxReleasePointer(pointer);
    }
-
-   LogReturn();
 #endif
 }
 #endif
@@ -5949,14 +5987,14 @@ void winDragDropFromHost_Drop(int SurfaceID, char *Datatypes)
 
 static ERROR init_egl(void)
 {
+   parasol::Log log(__FUNCTION__);
    EGLint format;
    LONG depth;
 
-   LogF("~init_egl()","Requested Depth: %d", glEGLPreferredDepth);
+   log.branch("Requested Depth: %d", glEGLPreferredDepth);
 
    if (glEGLDisplay != EGL_NO_DISPLAY) {
-      LogF("init_egl","EGL display is already initialised.");
-      LogReturn();
+      log.msg("EGL display is already initialised.");
       return ERR_Okay;
    }
 
@@ -6003,21 +6041,19 @@ static ERROR init_egl(void)
       glEGLContext = eglCreateContext(glEGLDisplay, config, NULL, NULL);
    }
    else {
-      PostError(ERR_SystemCall);
-      LogReturn();
+      log.warning(ERR_SystemCall);
       return ERR_SystemCall;
    }
 
    if (eglMakeCurrent(glEGLDisplay, glEGLSurface, glEGLSurface, glEGLContext) == EGL_FALSE) {
-      PostError(ERR_SystemCall);
-      LogReturn();
+      log.warning(ERR_SystemCall);
       return ERR_SystemCall;
    }
 
    eglQuerySurface(glEGLDisplay, glEGLSurface, EGL_WIDTH, &glEGLWidth);
    eglQuerySurface(glEGLDisplay, glEGLSurface, EGL_HEIGHT, &glEGLHeight);
 
-   FMSG("init_egl","Actual width and height set by EGL: %dx%dx%d", glEGLWidth, glEGLHeight, glEGLDepth);
+   log.trace("Actual width and height set by EGL: %dx%dx%d", glEGLWidth, glEGLHeight, glEGLDepth);
 
    glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_FASTEST);
    //glEnable(GL_CULL_FACE);
@@ -6044,17 +6080,15 @@ static ERROR init_egl(void)
          DOUBLE dp_factor = 160.0 / AConfiguration_getDensity(config);
          if (!AccessObject(glPointerID, 3000, &pointer)) {
             pointer->ClickSlop = F2I(8.0 * dp_factor);
-            LogMsg("Click-slop calculated as %d.", pointer->ClickSlop);
+            log.msg("Click-slop calculated as %d.", pointer->ClickSlop);
             ReleaseObject(pointer);
          }
-         else PostError(ERH_AccessObject);
+         else log.warning(ERR_AccessObject);
       }
-      else LogErrorMsg("Failed to get Android Config object.");
+      else log.warning("Failed to get Android Config object.");
    }
 
    glEGLState = EGL_INITIALISED;
-
-   LogReturn();
    return ERR_Okay;
 }
 
@@ -6062,7 +6096,9 @@ static ERROR init_egl(void)
 
 static void refresh_display_from_egl(objDisplay *Self)
 {
-   FMSG("~refresh_display_egl()","%dx%dx%d", glEGLWidth, glEGLHeight, glEGLDepth);
+   parasol::Log log(__FUNCTION__);
+
+   log.traceBranch("%dx%dx%d", glEGLWidth, glEGLHeight, glEGLDepth);
 
    glEGLRefreshDisplay = FALSE;
 
@@ -6077,13 +6113,11 @@ static void refresh_display_from_egl(objDisplay *Self)
    // If the display's bitmap depth / size needs to change, resize it here.
 
    if (Self->Bitmap->Head.Flags & NF_INITIALISED) {
-      if ((Self->Width != Self->Bitmap->Width) OR (Self->Height != Self->Bitmap->Height)) {
-         MSG("Resizing OpenGL representative bitmap to match new dimensions.");
+      if ((Self->Width != Self->Bitmap->Width) or (Self->Height != Self->Bitmap->Height)) {
+         log.trace("Resizing OpenGL representative bitmap to match new dimensions.");
          acResize(Self->Bitmap, glEGLWidth, glEGLHeight, glEGLDepth);
       }
    }
-
-   LOGRETURN();
 }
 
 /*****************************************************************************
@@ -6093,12 +6127,14 @@ static void refresh_display_from_egl(objDisplay *Self)
 
 static void free_egl(void)
 {
-   LogF("~free_egl()","Current Display: $%x", (LONG)glEGLDisplay);
+   parasol::Log log(__FUNCTION__);
+
+   log.branch("Current Display: $%x", (LONG)glEGLDisplay);
 
    glEGLState = EGL_TERMINATED; // The sooner we set this, the better.  It stops other threads from thinking that it's OK to keep using OpenGL.
 
    if (!pthread_mutex_lock(&glGraphicsMutex)) {
-      LogF("free_egl","Lock granted - terminating EGL resources.");
+      log.msg("Lock granted - terminating EGL resources.");
 
       if (glEGLDisplay != EGL_NO_DISPLAY) {
          eglMakeCurrent(glEGLDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
@@ -6113,29 +6149,28 @@ static void free_egl(void)
 
       pthread_mutex_unlock(&glGraphicsMutex);
    }
-   else LogError(ERH_Display, ERR_LockFailed);
+   else log.warning(ERR_LockFailed);
 
-   LogF("free_egl","EGL successfully terminated.");
-   LogReturn();
+   log.msg("EGL successfully terminated.");
 }
 #endif
 
 //****************************************************************************
 
-#include "class_pointer.c"
-#include "class_display.c"
-#include "class_bitmap.c"
+#include "class_pointer.cpp"
+#include "class_display.cpp"
+#include "class_bitmap.cpp"
 
 #ifdef __xwindows__
-#include "x11/handlers.c"
+#include "x11/handlers.cpp"
 #endif
 
 #ifdef _WIN32
-#include "win32/handlers.c"
+#include "win32/handlers.cpp"
 #endif
 
 #ifdef __ANDROID__
-#include "android/android.c"
+#include "android/android.cpp"
 #endif
 
 //****************************************************************************

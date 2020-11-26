@@ -306,9 +306,9 @@ typedef struct rkBitmap {
    LONG   prvAFlags;                  // Private allocation flags
    #ifdef __xwindows__
       struct {
-         XImage   XImage;
-         Drawable Drawable;
-         XImage   *Readable;
+         XImage   ximage;
+         Drawable drawable;
+         XImage   *readable;
          XShmSegmentInfo ShmInfo;
          BYTE XShmImage;
       } x11;
@@ -469,16 +469,16 @@ typedef struct rkDisplay {
    WORD      Opacity;
    LONG      VDensity;          // Cached DPI value, if calculable.
    LONG      HDensity;
-   UBYTE     DriverVendor[60];
-   UBYTE     DriverCopyright[80];
-   UBYTE     Manufacturer[60];
-   UBYTE     Chipset[40];
-   UBYTE     DAC[32];
-   UBYTE     Clock[32];
-   UBYTE     DriverVersion[16];
-   UBYTE     CertificationDate[20];
-   UBYTE     Display[32];
-   UBYTE     DisplayManufacturer[60];
+   char      DriverVendor[60];
+   char      DriverCopyright[80];
+   char      Manufacturer[60];
+   char      Chipset[40];
+   char      DAC[32];
+   char      Clock[32];
+   char      DriverVersion[16];
+   char      CertificationDate[20];
+   char      Display[32];
+   char      DisplayManufacturer[60];
    #ifdef _WIN32
       APTR OldProcedure;
    #endif
@@ -588,7 +588,6 @@ typedef struct rkPointer {
    } Buttons[10];
    LARGE    ClickTime;
    LARGE    AnchorTime;
-   struct   Time *prvTime;
    APTR     UserLoginHandle;
    OBJECTID LastSurfaceID;      // Last object that the pointer was positioned over
    OBJECTID CursorReleaseID;
@@ -604,9 +603,9 @@ typedef struct rkPointer {
    MEMORYID BufferQueue;
    OBJECTID BufferOwner;
    OBJECTID BufferObject;
-   UBYTE    DragData[8];          // Data preferences for current drag & drop item
-   UBYTE    Device[32];
-   UBYTE    ButtonOrder[12];      // The order of the first 11 buttons can be changed here
+   char     DragData[8];          // Data preferences for current drag & drop item
+   char     Device[32];
+   char     ButtonOrder[12];      // The order of the first 11 buttons can be changed here
    WORD     ButtonOrderFlags[12]; // Button order represented as JD flags
    BYTE     PostComposite;        // Enable post-composite drawing (default)
    UBYTE    prvOverCursorID;

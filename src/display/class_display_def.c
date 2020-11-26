@@ -8,7 +8,7 @@ static const struct FieldDef clDisplayFlags[] = {
    { "NoAcceleration", 0x00000008 },
    { "Visible", 0x00000001 },
    { "Composite", 0x00000040 },
-   { "ReadOnly", 0xfe300019 },
+   { "ReadOnly", (LONG)0xfe300019 },
    { "Refresh", 0x00200000 },
    { "DPMSEnabled", 0x08000000 },
    { "GTFEnabled", 0x10000000 },
@@ -17,7 +17,7 @@ static const struct FieldDef clDisplayFlags[] = {
    { "Buffer", 0x00000004 },
    { "Powersave", 0x04000000 },
    { "AlphaBlend", 0x00000040 },
-   { "Maximise", 0x80000000 },
+   { "Maximise", (LONG)0x80000000 },
    { "Flippable", 0x20000000 },
    { NULL, 0 }
 };

@@ -41,7 +41,7 @@ static ULONG MemReadPixel32(objBitmap *Bitmap, LONG X, LONG Y)
 
 static void MemReadRGBPixel32(objBitmap *Bitmap, LONG X, LONG Y, struct RGB8 *RGB)
 {
-   register ULONG colour;
+   ULONG colour;
    colour = ((ULONG *)((UBYTE *)Bitmap->Data + (Y * Bitmap->LineWidth) + (X<<2)))[0];
    RGB->Red   = colour >> Bitmap->prvColourFormat.RedPos;
    RGB->Green = colour >> Bitmap->prvColourFormat.GreenPos;
@@ -198,7 +198,7 @@ static ULONG MemReadPixel16(objBitmap *Bitmap, LONG X, LONG Y)
 
 static void MemReadRGBPixel16(objBitmap *Bitmap, LONG X, LONG Y, struct RGB8 *RGB)
 {
-   register UWORD data;
+   UWORD data;
    data = ((UWORD *)(Bitmap->Data + (Y * Bitmap->LineWidth) + X + X))[0];
    RGB->Red   = UnpackRed(Bitmap, data);
    RGB->Green = UnpackGreen(Bitmap, data);
@@ -239,13 +239,11 @@ static ULONG MemReadPixel8(objBitmap *Bitmap, LONG X, LONG Y)
 
 static void MemReadRGBPixel8(objBitmap *Bitmap, LONG X, LONG Y, struct RGB8 *RGB)
 {
-   UBYTE Colour, *Data;
-
-   Data   = Bitmap->Data;
-   Colour = Data[(Bitmap->LineWidth * Y) + X];
-   RGB->Red   = Bitmap->Palette->Col[Colour].Red;
-   RGB->Green = Bitmap->Palette->Col[Colour].Green;
-   RGB->Blue  = Bitmap->Palette->Col[Colour].Blue;
+   UBYTE *data   = Bitmap->Data;
+   UBYTE colour = data[(Bitmap->LineWidth * Y) + X];
+   RGB->Red   = Bitmap->Palette->Col[colour].Red;
+   RGB->Green = Bitmap->Palette->Col[colour].Green;
+   RGB->Blue  = Bitmap->Palette->Col[colour].Blue;
    RGB->Alpha = 255;
 }
 
@@ -262,13 +260,12 @@ static void MemReadRGBIndex8(objBitmap *Bitmap, UBYTE *Data, struct RGB8 *RGB)
 
 static ULONG MemReadPixelPlanar(objBitmap *Bitmap, LONG X, LONG Y)
 {
-   WORD i;
    WORD XOffset = X % 8;
    UBYTE *Data = Bitmap->Data;
    Data += (Y * Bitmap->LineWidth) + (X>>3);
 
    ULONG Colour = 0;
-   for (i = 0; i < Bitmap->BitsPerPixel; i++) {
+   for (WORD i=0; i < Bitmap->BitsPerPixel; i++) {
       if (*Data & (0x80>>XOffset)) Colour |= 0x01<<i;
       Data += Bitmap->PlaneMod;
    }
@@ -283,12 +280,11 @@ static void MemDrawPixelPlanar(objBitmap *Bitmap, LONG X, LONG Y, ULONG Colour)
 
 static void MemReadRGBPixelPlanar(objBitmap *Bitmap, LONG X, LONG Y, struct RGB8 *RGB)
 {
-   WORD i;
    WORD XOffset = X % 8;
    UBYTE *Data = Bitmap->Data + (Y * Bitmap->LineWidth) + (X>>3);
 
    ULONG Colour = 0;
-   for (i = 0; i < Bitmap->BitsPerPixel; i++) {
+   for (WORD i = 0; i < Bitmap->BitsPerPixel; i++) {
       if (*Data & (0x80>>XOffset)) Colour |= 0x01<<i;
       Data += Bitmap->PlaneMod;
    }
@@ -301,10 +297,9 @@ static void MemReadRGBPixelPlanar(objBitmap *Bitmap, LONG X, LONG Y, struct RGB8
 
 static void MemReadRGBIndexPlanar(objBitmap *Bitmap, UBYTE *Data, struct RGB8 *RGB)
 {
-   WORD i;
    WORD XOffset = 0;
    ULONG Colour = 0;
-   for (i = 0; i < Bitmap->BitsPerPixel; i++) {
+   for (WORD i=0; i < Bitmap->BitsPerPixel; i++) {
       if (*Data & (0x80>>XOffset)) Colour |= 0x01<<i;
       Data += Bitmap->PlaneMod;
    }
@@ -317,7 +312,7 @@ static void MemReadRGBIndexPlanar(objBitmap *Bitmap, UBYTE *Data, struct RGB8 *R
 
 static void DrawRGBPixelPlanar(objBitmap *Bitmap, LONG X, LONG Y, struct RGB8 *RGB)
 {
-   register ULONG Colour;
+   ULONG Colour;
    Colour = RGBToValue(RGB, Bitmap->Palette);
    Bitmap->DrawUCPixel(Bitmap, X, Y, Colour);
 }

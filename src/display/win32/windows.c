@@ -1301,7 +1301,7 @@ void winGetWindowTitle(HWND Window, char *Buffer, int Size)
 
 //****************************************************************************
 
-void winSetWindowTitle(HWND window, unsigned char *title)
+void winSetWindowTitle(HWND window, const char *title)
 {
    SetWindowText(window, title);
 }
@@ -1363,7 +1363,7 @@ int winDestroyWindow(HWND window)
 
 //****************************************************************************
 
-void winRemoveWindowClass(char *ClassName)
+void winRemoveWindowClass(const char *ClassName)
 {
    UnregisterClass(ClassName, glInstance);
 }
