@@ -13,8 +13,6 @@ static void  xrSelectInput(Window);
 static LONG xrGetDisplayTotal(void);
 static struct xrMode * xrGetDisplayMode(LONG);
 
-const struct Function glFunctions[];
-
 MODULE_COREBASE;
 static struct X11Globals *glX11 = 0;
 static struct _XDisplay *XDisplay;
@@ -35,11 +33,12 @@ static void write_string(objFile *File, CSTRING String)
 
 ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
+   parasol::Log log("XRandR");
    WORD i;
    XRRScreenSize *sizes;
    XPixmapFormatValues *list;
    LONG errors, count;
-   UBYTE buffer[512];
+   char buffer[512];
 
    CoreBase = argCoreBase;
 
@@ -49,14 +48,14 @@ ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    if (!acGetVar(argModule, "XDisplay", buffer, sizeof(buffer))) {
       XDisplay = (struct _XDisplay *)(MAXINT)StrToInt(buffer);
-      if (!XDisplay) return PostError(ERR_FieldNotSet);
+      if (!XDisplay) return log.warning(ERR_FieldNotSet);
    }
-   else return PostError(ERR_FieldNotSet);
+   else return log.warning(ERR_FieldNotSet);
 
    // Access the global x11 variables
 
    if (AccessMemory(RPM_X11, MEM_READ_WRITE, 1000, &glX11) != ERR_Okay) {
-      return LogError(ERH_InitModule, ERR_AccessMemory);
+      return log.warning(ERR_AccessMemory);
    }
 
    glX11->RRInitialised++;
@@ -69,16 +68,16 @@ ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
       if (XRRQueryExtension(XDisplay, &events, &errors)) {
          avail = TRUE;
       }
-      else LogF("XRandR","XRRQueryExtension() failed.");
+      else log.msg("XRRQueryExtension() failed.");
    }
-   else LogF("XRandR","X11 display ownership is not enabled.");
+   else log.msg("X11 display ownership is not enabled.");
 
    if (avail) {
       if ((sizes = XRRSizes(XDisplay, screen, &count)) AND (count)) {
          glSizes = sizes;
          glSizeCount = count;
       }
-      else LogF("XRandR","XRRSizes() failed.");
+      else log.msg("XRRSizes() failed.");
    }
 
    if ((avail) AND (glX11->RRInitialised <= 1)) {
@@ -156,19 +155,6 @@ ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    else return ERR_ServiceUnavailable|ERF_Notified;
 }
 
-ERROR CMDOpen(OBJECTPTR Module)
-{
-   SetPointer(Module, FID_FunctionList, glFunctions);
-   return ERR_Okay;
-}
-
-static ERROR CMDExpunge(void)
-{
-   if (glX11) { ReleaseMemory(glX11); glX11 = NULL; }
-   return ERR_Okay;
-}
-
-
 /******************************************************************************
 
 -FUNCTION-
@@ -187,6 +173,7 @@ Okay
 
 static ERROR xrSetDisplayMode(LONG *Width, LONG *Height)
 {
+   parasol::Log log(__FUNCTION__);
    LONG count;
    WORD i;
 
@@ -207,8 +194,7 @@ static ERROR xrSetDisplayMode(LONG *Width, LONG *Height)
       }
 
       if (index IS -1) {
-         LogF("@SetX11DisplayMode:","No support for requested screen mode %dx%d", width, height);
-         LogReturn();
+         log.warning("No support for requested screen mode %dx%d", width, height);
          return ERR_NoSupport;
       }
 
@@ -219,13 +205,13 @@ static ERROR xrSetDisplayMode(LONG *Width, LONG *Height)
             *Width = sizes[index].width;
             *Height = sizes[index].height;
 
-            LogF("SetX11DisplayMode:","New mode: %dx%d (index %d/%d) from request %dx%d", sizes[index].width, sizes[index].height, index, count, width, height);
+            log.msg("New mode: %dx%d (index %d/%d) from request %dx%d", sizes[index].width, sizes[index].height, index, count, width, height);
 
             XRRFreeScreenConfigInfo(scrconfig);
             return ERR_Okay;
          }
          else {
-            LogF("@SetX11DisplayMode:","SetScreenConfig() failed.");
+            log.warning("SetScreenConfig() failed.");
             XRRFreeScreenConfigInfo(scrconfig);
             return ERR_Failed;
          }
@@ -233,7 +219,7 @@ static ERROR xrSetDisplayMode(LONG *Width, LONG *Height)
       else return ERR_Failed;
    }
    else {
-      LogF("@SetX11DisplayMode:","RandR not initialised.");
+      log.warning("RandR not initialised.");
       return ERR_Failed;
    }
 }
@@ -290,17 +276,17 @@ int: Returns the total number of known display modes.
 
 static LONG xrGetDisplayTotal(void)
 {
-   LONG i;
+   parasol::Log log(__FUNCTION__);
 
    if (!glActualCount) {
-      for (i=0; i < glSizeCount; i++) {
+      for (LONG i=0; i < glSizeCount; i++) {
          if ((glSizes[i].width >= 640) AND (glSizes[i].height >= 480)) {
             glActualCount++;
          }
       }
    }
 
-   LogF("xrGetDisplayTotal()","%d Resolutions", glActualCount);
+   log.msg("%d Resolutions", glActualCount);
    return glActualCount;
 }
 
@@ -321,11 +307,12 @@ ptr: An xrMode structure is returned or NULL on failure.
 
 static struct xrMode * xrGetDisplayMode(LONG Index)
 {
+   parasol::Log log(__FUNCTION__);
    static struct xrMode mode;
    LONG i, j;
 
    if ((Index < 0) OR (Index >= glActualCount)) {
-      LogF("@xrGetDisplayMode:","Index %d not within range 0 - %d", Index, glActualCount);
+      log.warning("Index %d not within range 0 - %d", Index, glActualCount);
       return NULL;
    }
 
@@ -338,18 +325,36 @@ static struct xrMode * xrGetDisplayMode(LONG Index)
             mode.Width  = glSizes[i].width;
             mode.Height = glSizes[i].height;
             mode.Depth  = DefaultDepth(XDisplay, DefaultScreen(XDisplay));
-            LogF("xrGetDisplayMode:","Mode %d: %dx%d", Index, mode.Width, mode.Height);
+            log.msg("Mode %d: %dx%d", Index, mode.Width, mode.Height);
             return &mode;
          }
          j--;
       }
    }
 
-   LogF("@xrGetDisplayMode:","Failed to get mode index %d", Index);
+   log.warning("Failed to get mode index %d", Index);
    return NULL;
 }
 
+//****************************************************************************
+
 #include "module_def.c"
+
+//****************************************************************************
+
+ERROR CMDOpen(OBJECTPTR Module)
+{
+   SetPointer(Module, FID_FunctionList, glFunctions);
+   return ERR_Okay;
+}
+
+//****************************************************************************
+
+static ERROR CMDExpunge(void)
+{
+   if (glX11) { ReleaseMemory(glX11); glX11 = NULL; }
+   return ERR_Okay;
+}
 
 //****************************************************************************
 
