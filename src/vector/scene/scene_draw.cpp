@@ -849,7 +849,7 @@ private:
    {
       parasol::Log log;
 
-      for (objVector *shape=CurrentVector; shape; shape=(objVector *)shape->Next) {
+      for (auto shape=CurrentVector; shape; shape=(objVector *)shape->Next) {
          VectorState state = VectorState(ParentState);
 
          if (shape->Head.ClassID != ID_VECTOR) {

@@ -103,7 +103,7 @@ Move: Moves the center of the ellipse by a relative distance.
 
 static ERROR ELLIPSE_Move(objVectorEllipse *Self, struct acMove *Args)
 {
-   if (!Args) return PostError(ERR_NullArgs);
+   if (!Args) return ERR_NullArgs;
 
    Self->CX += Args->XChange;
    Self->CY += Args->YChange;
@@ -119,7 +119,7 @@ MoveToPoint: Moves the center of the ellipse to a new position.
 
 static ERROR ELLIPSE_MoveToPoint(objVectorEllipse *Self, struct acMoveToPoint *Args)
 {
-   if (!Args) return PostError(ERR_NullArgs);
+   if (!Args) return ERR_NullArgs;
 
    if (Args->Flags & MTF_X) Self->CX = Args->X;
    if (Args->Flags & MTF_Y) Self->CY = Args->Y;
@@ -192,7 +192,7 @@ static ERROR ELLIPSE_SET_Height(objVectorEllipse *Self, Variable *Value)
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return PostError(ERR_FieldTypeMismatch);
+   else return ERR_FieldTypeMismatch;
    Self->RadiusY = val * 0.5;
    reset_path(Self);
    return ERR_Okay;
@@ -220,7 +220,7 @@ static ERROR ELLIPSE_SET_CenterX(objVectorEllipse *Self, Variable *Value)
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return PostError(ERR_FieldTypeMismatch);
+   else return ERR_FieldTypeMismatch;
 
    if (Value->Type & FD_PERCENTAGE) {
       val = val * 0.01;
@@ -256,7 +256,7 @@ static ERROR ELLIPSE_SET_CenterY(objVectorEllipse *Self, Variable *Value)
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return PostError(ERR_FieldTypeMismatch);
+   else return ERR_FieldTypeMismatch;
 
    if (Value->Type & FD_PERCENTAGE) {
       val = val * 0.01;
@@ -292,7 +292,7 @@ static ERROR ELLIPSE_SET_Radius(objVectorEllipse *Self, Variable *Value)
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return PostError(ERR_FieldTypeMismatch);
+   else return ERR_FieldTypeMismatch;
 
    if (Value->Type & FD_PERCENTAGE) {
       val = val * 0.01;
@@ -327,7 +327,7 @@ static ERROR ELLIPSE_SET_RadiusX(objVectorEllipse *Self, Variable *Value)
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return PostError(ERR_FieldTypeMismatch);
+   else return ERR_FieldTypeMismatch;
 
    if (Value->Type & FD_PERCENTAGE) {
       val = val * 0.01;
@@ -362,7 +362,7 @@ static ERROR ELLIPSE_SET_RadiusY(objVectorEllipse *Self, Variable *Value)
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return PostError(ERR_FieldTypeMismatch);
+   else return ERR_FieldTypeMismatch;
 
    if (Value->Type & FD_PERCENTAGE) {
       val = val * 0.01;
@@ -400,7 +400,7 @@ static ERROR ELLIPSE_SET_Vertices(objVectorEllipse *Self, LONG Value)
       reset_path(Self);
       return ERR_Okay;
    }
-   else return PostError(ERR_InvalidValue);
+   else return ERR_InvalidValue;
 }
 
 /*****************************************************************************
@@ -425,7 +425,7 @@ static ERROR ELLIPSE_SET_Width(objVectorEllipse *Self, Variable *Value)
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return PostError(ERR_FieldTypeMismatch);
+   else return ERR_FieldTypeMismatch;
    Self->RadiusX = val * 0.5;
    reset_path(Self);
    return ERR_Okay;

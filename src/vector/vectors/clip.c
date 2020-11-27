@@ -20,7 +20,7 @@ static void draw_clips(objVectorClip *Self, objVector *Branch,
    agg::renderer_scanline_aa_solid<agg::renderer_base<agg::pixfmt_gray8>> &solid)
 {
    agg::scanline_p8 sl;
-   for (objVector *scan=Branch; scan; scan=(objVector *)scan->Next) {
+   for (auto scan=Branch; scan; scan=(objVector *)scan->Next) {
       if (scan->Head.ClassID IS ID_VECTOR) {
          if (scan->BasePath) {
             agg::conv_transform<agg::path_storage, agg::trans_affine> final_path(*scan->BasePath, *scan->Transform);

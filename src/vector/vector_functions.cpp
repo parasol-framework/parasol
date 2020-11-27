@@ -96,7 +96,6 @@ static ERROR vecApplyPath(class SimpleVector *Vector, objVectorPath *VectorPath)
 
    if (VectorPath->CustomPath) { delete VectorPath->CustomPath; VectorPath->CustomPath = NULL; }
    VectorPath->CustomPath = new (std::nothrow) agg::path_storage(Vector->mPath);
-
    return ERR_Okay;
 }
 
@@ -512,10 +511,10 @@ static void vecReadPainter(OBJECTPTR Vector, CSTRING IRI, struct DRGB *RGB, objV
 
    if (!IRI) return;
 
-   if (RGB) RGB->Alpha = 0; // Nullify the colour
+   if (RGB)      RGB->Alpha = 0; // Nullify the colour
    if (Gradient) *Gradient = NULL;
-   if (Image) *Image = NULL;
-   if (Pattern) *Pattern = NULL;
+   if (Image)    *Image = NULL;
+   if (Pattern)  *Pattern = NULL;
 
    //FMSG("vecReadPainter()","%s", IRI);
 
@@ -610,7 +609,7 @@ next:
       else if (RGB->Blue < 0) RGB->Blue = 0;
    }
    else if (*IRI IS '#') {
-      struct RGB8 rgb;
+      RGB8 rgb;
       StrToColour(IRI, &rgb);
       RGB->Red   = (DOUBLE)rgb.Red   * (1.0 / 255.0);
       RGB->Green = (DOUBLE)rgb.Green * (1.0 / 255.0);

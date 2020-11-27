@@ -124,7 +124,7 @@ static ERROR VECTOR_Free(objVector *Self, APTR Args)
    // Patch the nearest vectors that are linked to ours.
    if (Self->Next) Self->Next->Prev = Self->Prev;
    if (Self->Prev) Self->Prev->Next = Self->Next;
-   if ((Self->Parent) AND (!Self->Prev)) {
+   if ((Self->Parent) and (!Self->Prev)) {
       if (Self->Parent->ClassID IS ID_VECTORSCENE) ((objVectorScene *)Self->Parent)->Viewport = Self->Next;
       else ((objVector *)Self->Parent)->Child = Self->Next;
    }
@@ -186,38 +186,36 @@ static ERROR VECTOR_GetBoundary(objVector *Self, struct vecGetBoundary *Args)
       Args->Height = bounds[3] - bounds[1];
       return ERR_Okay;
    }
-   else {
-      if (Self->GeneratePath) { // Path generation must be supported by the vector.
-         if ((!Self->BasePath) OR (Self->Dirty)) {
-            gen_vector_path(Self);
-            Self->Dirty = 0;
-         }
-
-         if (Self->BasePath) {
-            DOUBLE bx1, by1, bx2, by2;
-
-            if (Args->Flags & VBF_NO_TRANSFORM) {
-               bounding_rect_single(*Self->BasePath, 0, &bx1, &by1, &bx2, &by2);
-               bx1 += Self->FinalX;
-               bx2 += Self->FinalX;
-               by1 += Self->FinalY;
-               by2 += Self->FinalY;
-            }
-            else {
-               agg::conv_transform<agg::path_storage, agg::trans_affine> path(*Self->BasePath, *Self->Transform);
-               bounding_rect_single(path, 0, &bx1, &by1, &bx2, &by2);
-            }
-
-            Args->X = bx1;
-            Args->Y = by1;
-            Args->Width  = bx2 - bx1;
-            Args->Height = by2 - by1;
-            return ERR_Okay;
-         }
-         else return ERR_NoData;
+   else if (Self->GeneratePath) { // Path generation must be supported by the vector.
+      if ((!Self->BasePath) or (Self->Dirty)) {
+         gen_vector_path(Self);
+         Self->Dirty = 0;
       }
-      else return ERR_NotPossible;
+
+      if (Self->BasePath) {
+         DOUBLE bx1, by1, bx2, by2;
+
+         if (Args->Flags & VBF_NO_TRANSFORM) {
+            bounding_rect_single(*Self->BasePath, 0, &bx1, &by1, &bx2, &by2);
+            bx1 += Self->FinalX;
+            bx2 += Self->FinalX;
+            by1 += Self->FinalY;
+            by2 += Self->FinalY;
+         }
+         else {
+            agg::conv_transform<agg::path_storage, agg::trans_affine> path(*Self->BasePath, *Self->Transform);
+            bounding_rect_single(path, 0, &bx1, &by1, &bx2, &by2);
+         }
+
+         Args->X = bx1;
+         Args->Y = by1;
+         Args->Width  = bx2 - bx1;
+         Args->Height = by2 - by1;
+         return ERR_Okay;
+      }
+      else return ERR_NoData;
    }
+   else return ERR_NotPossible;
 }
 
 /*****************************************************************************
@@ -272,7 +270,7 @@ static ERROR VECTOR_Init(objVector *Self, APTR Void)
 {
    parasol::Log log;
 
-   if ((!Self->Head.SubID) OR (Self->Head.SubID IS ID_VECTOR)) {
+   if ((!Self->Head.SubID) or (Self->Head.SubID IS ID_VECTOR)) {
       log.warning("Vector cannot be instantiated directly (use a sub-class).");
       return ERR_Failed;
    }
@@ -283,11 +281,11 @@ static ERROR VECTOR_Init(objVector *Self, APTR Void)
    OBJECTPTR parent;
    if ((parent = Self->Parent)) {
       if (parent->ClassID IS ID_VECTOR) {
-         objVector *parent_shape = (objVector *)parent;
+         auto parent_shape = (objVector *)parent;
          Self->Scene = parent_shape->Scene;
 
          // Check if this object is already present in the parent's branch.
-         objVector *scan = parent_shape->Child;
+         auto scan = parent_shape->Child;
          while (scan) {
             if (scan IS Self) break;
             scan = (objVector *)scan->Next;
@@ -378,7 +376,7 @@ static ERROR VECTOR_NewOwner(objVector *Self, struct acNewOwner *Args)
    if (Self->Parent->ClassID IS ID_VECTOR) {
       if ((!Self->Prev) and (!Self->Next)) {
          if (((objVector *)Self->Parent)->Child) { // Insert at the end
-            objVector *end = ((objVector *)Self->Parent)->Child;
+            auto end = ((objVector *)Self->Parent)->Child;
             while (end->Next) end = end->Next;
             end->Next = Self;
             Self->Prev = end;
@@ -391,7 +389,7 @@ static ERROR VECTOR_NewOwner(objVector *Self, struct acNewOwner *Args)
    else if (Self->Parent->ClassID IS ID_VECTORSCENE) {
       if ((!Self->Prev) and (!Self->Next)) {
          if (((objVectorScene *)Self->Parent)->Viewport) { // Insert at the end
-            objVector *end = ((objVectorScene *)Self->Parent)->Viewport;
+            auto end = ((objVectorScene *)Self->Parent)->Viewport;
             while (end->Next) end = end->Next;
             end->Next = Self;
             Self->Prev = end;
@@ -434,7 +432,7 @@ static ERROR VECTOR_PointInPath(objVector *Self, struct vecPointInPath *Args)
    if (!Args) return log.warning(ERR_NullArgs);
 
    if (Self->GeneratePath) {
-      if ((!Self->BasePath) OR (Self->Dirty)) {
+      if ((!Self->BasePath) or (Self->Dirty)) {
          gen_vector_path(Self);
          Self->Dirty = 0;
       }
@@ -494,7 +492,7 @@ static ERROR VECTOR_Push(objVector *Self, struct vecPush *Args)
       LONG i = -Args->Position;
       Self->Prev->Next = Self->Next;
       if (Self->Next) Self->Next->Prev = Self->Prev;
-      objVector *scan = Self;
+      auto scan = Self;
       while ((i > 0) and (scan->Prev)) {
          scan = scan->Prev;
          i--;
@@ -518,7 +516,7 @@ static ERROR VECTOR_Push(objVector *Self, struct vecPush *Args)
          scan = scan->Next;
          i--;
       }
-      if ((!Self->Prev) AND (scan != Self)) {
+      if ((!Self->Prev) and (scan != Self)) {
          if (Self->Parent->ClassID IS ID_VECTOR) ((objVector *)Self->Parent)->Child = Self->Next;
          else if (Self->Parent->ClassID IS ID_VECTORSCENE) ((objVectorScene *)Self->Parent)->Viewport = Self->Next;
       }
@@ -569,15 +567,13 @@ AllocMemory:
 
 static ERROR VECTOR_Rotate(objVector *Self, struct vecRotate *Args)
 {
-   parasol::Log log;
+   if (!Args) return ERR_NullArgs;
 
-   if (!Args) return log.warning(ERR_NullArgs);
-
-   VectorTransform *transform;
-   if ((transform = add_transform(Self, VTF_ROTATE, FALSE))) {
-      transform->Angle = Args->Angle;
-      transform->X = Args->CenterX;
-      transform->Y = Args->CenterY;
+   VectorTransform *t;
+   if ((t = add_transform(Self, VTF_ROTATE, FALSE))) {
+      t->Angle = Args->Angle;
+      t->X = Args->CenterX;
+      t->Y = Args->CenterY;
       return ERR_Okay;
    }
    else return ERR_AllocMemory;
@@ -631,9 +627,7 @@ static ERROR VECTOR_TracePath(objVector *Self, struct vecTracePath *Args)
          LONG index = 0;
          do {
            cmd = Self->BasePath->vertex(&x, &y);
-           if (agg::is_vertex(cmd)) {
-              routine(Self, index++, cmd, x, y);
-           }
+           if (agg::is_vertex(cmd)) routine(Self, index++, cmd, x, y);
          } while (cmd != agg::path_cmd_stop);
       }
       else if (Args->Callback->Type IS CALL_SCRIPT) {
@@ -696,9 +690,7 @@ AllocMemory:
 
 static ERROR VECTOR_Transform(objVector *Self, struct vecTransform *Args)
 {
-   parasol::Log log;
-
-   if ((!Args) or (!Args->Transform)) return log.warning(ERR_NullArgs);
+   if ((!Args) or (!Args->Transform)) return ERR_NullArgs;
 
    VECTOR_ClearTransforms(Self, NULL);
 
@@ -775,9 +767,7 @@ AllocMemory:
 
 static ERROR VECTOR_Translate(objVector *Self, struct vecTranslate *Args)
 {
-   parasol::Log log;
-
-   if (!Args) return log.warning(ERR_NullArgs);
+   if (!Args) return ERR_NullArgs;
 
    VectorTransform *transform;
    if ((transform = add_transform(Self, VTF_TRANSLATE, FALSE))) {
@@ -859,14 +849,12 @@ AllocMemory
 
 static ERROR VECTOR_Scale(objVector *Self, struct vecScale *Args)
 {
-   parasol::Log log;
+   if (!Args) return ERR_NullArgs;
 
-   if (!Args) return log.warning(ERR_NullArgs);
-
-   VectorTransform *transform;
-   if ((transform = add_transform(Self, VTF_SKEW, FALSE))) {
-      transform->X = Args->X;
-      transform->Y = Args->Y;
+   VectorTransform *t;
+   if ((t = add_transform(Self, VTF_SKEW, FALSE))) {
+      t->X = Args->X;
+      t->Y = Args->Y;
       return ERR_Okay;
    }
    else return ERR_AllocMemory;
@@ -1091,7 +1079,7 @@ static ERROR VECTOR_SET_Filter(objVector *Self, CSTRING Value)
 {
    parasol::Log log;
 
-   if ((!Value) OR (!Value[0])) {
+   if ((!Value) or (!Value[0])) {
       if (Self->FilterString) { FreeResource(Self->FilterString); Self->FilterString = NULL; }
       Self->Filter = NULL;
       return ERR_Okay;
@@ -1108,7 +1096,7 @@ static ERROR VECTOR_SET_Filter(objVector *Self, CSTRING Value)
       CSTRING str = Value + 5;
       char name[80];
       LONG i;
-      for (i=0; (str[i] != ')') and (str[i]) and (i < (LONG)sizeof(name)-1); i++) name[i] = str[i];
+      for (i=0; (str[i] != ')') and (str[i]) and ((size_t)i < sizeof(name)-1); i++) name[i] = str[i];
       name[i] = 0;
       VarGet(Self->Scene->Defs, name, &def, NULL);
    }
@@ -1452,9 +1440,9 @@ static ERROR VECTOR_SET_Next(objVector *Self, objVector *Value)
    if (Self->Next) Self->Next->Prev = NULL; // Detach from the current Next object.
    if (Self->Prev) Self->Prev->Next = NULL; // Detach from the current Prev object.
 
-   Self->Next = Value; // Patch the chain
+   Self->Next  = Value; // Patch the chain
    Value->Prev = Self;
-   Self->Prev = Value->Prev;
+   Self->Prev  = Value->Prev;
    if (Value->Prev) Value->Prev->Next = Self;
 
    if (Value->Parent) { // Patch into the parent if we are at the start of the branch
@@ -1609,7 +1597,7 @@ static ERROR VECTOR_GET_Sequence(objVector *Self, STRING *Value)
 
    if (!Self->GeneratePath) return log.warning(ERR_Mismatch); // Path generation must be supported by the vector.
 
-   if ((!Self->BasePath) OR (Self->Dirty)) {
+   if ((!Self->BasePath) or (Self->Dirty)) {
       gen_vector_path(Self);
       Self->Dirty = 0;
    }
@@ -1632,9 +1620,8 @@ static ERROR VECTOR_GET_Sequence(objVector *Self, STRING *Value)
    by2 += Self->FinalY;
 
    DOUBLE x, y, x2, y2, x3, y3, last_x = 0, last_y = 0;
-   unsigned i;
    LONG p = 0;
-   for (i=0; i < base->total_vertices(); i++) {
+   for (ULONG i=0; i < base->total_vertices(); i++) {
       LONG cmd = base->command(i);
       //LONG cmd_flags = cmd & (~agg::path_cmd_mask);
       cmd &= agg::path_cmd_mask;
@@ -1685,7 +1672,7 @@ static ERROR VECTOR_GET_Sequence(objVector *Self, STRING *Value)
             break;
 
          default:
-            LogErrorMsg("Unrecognised vertice, path command %d", cmd);
+            log.warning("Unrecognised vertice, path command %d", cmd);
             break;
       }
    }

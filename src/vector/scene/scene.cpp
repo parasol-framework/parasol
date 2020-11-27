@@ -95,7 +95,7 @@ static ERROR VECTORSCENE_AddDef(objVectorScene *Self, struct scAddDef *Args)
       return ERR_InvalidValue;
    }
 
-   struct VectorDef vd;
+   VectorDef vd;
    vd.Object = def;
    VarSet(Self->Defs, Args->Name, &vd, sizeof(vd));
    return ERR_Okay;
@@ -191,7 +191,7 @@ static ERROR VECTORSCENE_FindDef(objVectorScene *Self, struct scFindDef *Args)
       for (i=0; (name[i] != ')') AND (name[i]) AND (i < sizeof(newname)-1); i++) newname[i] = name[i];
       newname[i] = 0;
 
-      struct VectorDef *vd;
+      VectorDef *vd;
       if (!VarGet(Self->Defs, newname, &vd, NULL)) {
          Args->Def = vd->Object;
          return ERR_Okay;
@@ -199,7 +199,7 @@ static ERROR VECTORSCENE_FindDef(objVectorScene *Self, struct scFindDef *Args)
       else return ERR_Search;
    }
 
-   struct VectorDef *vd;
+   VectorDef *vd;
    if (!VarGet(Self->Defs, name, &vd, NULL)) {
       Args->Def = vd->Object;
       return ERR_Okay;

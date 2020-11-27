@@ -173,7 +173,7 @@ static ERROR read_path(PathCommand **Path, LONG *Count, CSTRING Value)
       }
    }
 
-   //FMSG("read_path()","%d path points detected.", guess);
+   //log.traceBranch("%d path points detected.", guess);
 
    if (AllocMemory(sizeof(PathCommand) * guess, MEM_DATA, &path, NULL)) return ERR_AllocMemory;
 

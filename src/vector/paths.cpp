@@ -27,7 +27,7 @@ static void gen_vector_path(objVector *Vector)
    }
 
    if (Vector->Head.SubID IS ID_VECTORVIEWPORT) {
-      objVectorViewport *view = (objVectorViewport *)Vector;
+      auto view = (objVectorViewport *)Vector;
       agg::path_storage path;
 
       DOUBLE parent_width, parent_height;
@@ -182,7 +182,7 @@ static void gen_vector_path(objVector *Vector)
                // Do nothing for VectorText because it applies morph and transition effects during base path generation.
             }
             else {
-               objVector *morph = (objVector *)Vector->Morph;
+               auto morph = (objVector *)Vector->Morph;
 
                if (morph->Dirty) { // Regenerate the target path if necessary
                   gen_vector_path((objVector *)morph);
@@ -439,12 +439,11 @@ static void apply_transforms(VectorTransform *t, DOUBLE X, DOUBLE Y, agg::trans_
 static VectorTransform * add_transform(objVector *Self, LONG Type, LONG Create = TRUE)
 {
    parasol::Log log(__FUNCTION__);
-   VectorTransform *transform;
 
    DBG_TRANSFORM("Type: $%.8x, Create: %d", Type, Create);
 
    if ((!Create) and (Self->ActiveTransforms & Type)) { // Attempt to use an existing transform with matching type.
-      for (transform=Self->Transforms; transform; transform=transform->Next) {
+      for (auto transform=Self->Transforms; transform; transform=transform->Next) {
          if (transform->Type IS Type) {
             mark_dirty(Self, RC_TRANSFORM); // Transforms affect the final path of the vector.
             return transform;
@@ -452,6 +451,7 @@ static VectorTransform * add_transform(objVector *Self, LONG Type, LONG Create =
       }
    }
 
+   VectorTransform *transform;
    if (!AllocMemory(sizeof(VectorTransform), MEM_DATA, &transform, NULL)) {
       // Insert transform at the start of the list.
 

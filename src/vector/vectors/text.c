@@ -70,10 +70,9 @@ ERROR decompose_ft_outline(const FT_Outline &outline, bool flip_y, agg::path_sto
    FT_Vector *point, *limit;
    char *tags;
    LONG n;         // index of contour in outline
-   LONG first;     // index of first point in contour
    char tag;       // current point's state
 
-   first = 0;
+   LONG first = 0; // index of first point in contour
    for (n=0; n < outline.n_contours; n++) {
       LONG last = outline.contours[n];  // index of last point in contour
       limit = outline.points + last;
@@ -226,6 +225,8 @@ Close:
 
 static void generate_text(objVectorText *Vector)
 {
+   parasol::Log log(__FUNCTION__);
+
    if (!Vector->txFont) {
       reset_font(Vector);
       if (!Vector->txFont) return;
@@ -310,12 +311,8 @@ static void generate_text(objVectorText *Vector)
    scale_char.scale(1.0 / upscale); // Downscale the generated character to the correct size.
 
    while (*str) {
-      if (*str IS '\n') {
-         str++;
-      }
-      else if (*str IS '\t') {
-         str++;
-      }
+      if (*str IS '\n') str++;
+      else if (*str IS '\t') str++;
       else {
          LONG charlen;
          unicode = UTF8ReadValue(str, &charlen);
@@ -357,7 +354,7 @@ static void generate_text(objVectorText *Vector)
                            const DOUBLE vertex_dist = sqrt((x * x) + (y * y));
                            dist += vertex_dist;
 
-                           //MSG("%c char_width: %.2f, VXY: %.2f %.2f, next: %.2f %.2f, dist: %.2f", unicode, char_width, start_x, start_y, end_vx, end_vy, dist);
+                           //log.trace("%c char_width: %.2f, VXY: %.2f %.2f, next: %.2f %.2f, dist: %.2f", unicode, char_width, start_x, start_y, end_vx, end_vy, dist);
 
                            end_vx = current_x;
                            end_vy = current_y;
@@ -387,7 +384,7 @@ static void generate_text(objVectorText *Vector)
                      start_y += (char_width) * sin(angle);
                   }
 
-                  //MSG("Char '%c' is at (%.2f %.2f) to (%.2f %.2f), angle: %.2f, remaining dist: %.2f", unicode, tx, ty, start_x, start_y, angle / DEG2RAD, dist);
+                  //log.trace("Char '%c' is at (%.2f %.2f) to (%.2f %.2f), angle: %.2f, remaining dist: %.2f", unicode, tx, ty, start_x, start_y, angle / DEG2RAD, dist);
 
                   if (unicode > 0x20) {
                      transform.rotate(angle); // Rotate the character in accordance with its position on the path angle.
@@ -407,7 +404,7 @@ static void generate_text(objVectorText *Vector)
                }
 
             }
-            else MSG("Failed to get outline of character.");
+            else log.trace("Failed to get outline of character.");
          }
          prevglyph = glyph;
       }
@@ -505,7 +502,7 @@ static ERROR TEXT_Free(objVectorText *Self, APTR Void)
 
 static ERROR TEXT_NewObject(objVectorText *Self, APTR Void)
 {
-   Self->GeneratePath = (void (*)(struct rkVector *))&generate_text;
+   Self->GeneratePath = (void (*)(rkVector *))&generate_text;
    Self->StrokeWidth = 0.0;
    Self->txWeight   = 400;
    Self->txFontSize = 10 * 4.0 / 3.0;
@@ -775,7 +772,7 @@ The x-axis coordinate of the text is specified here as a fixed value.  Relative 
 
 *****************************************************************************/
 
-static ERROR TEXT_GET_X(objVectorText *Self, struct Variable *Value)
+static ERROR TEXT_GET_X(objVectorText *Self, Variable *Value)
 {
    DOUBLE val = Self->txX;
    if (Value->Type & FD_PERCENTAGE) val = val * 100.0;
@@ -784,7 +781,7 @@ static ERROR TEXT_GET_X(objVectorText *Self, struct Variable *Value)
    return ERR_Okay;
 }
 
-static ERROR TEXT_SET_X(objVectorText *Self, struct Variable *Value)
+static ERROR TEXT_SET_X(objVectorText *Self, Variable *Value)
 {
    if (Value->Type & FD_DOUBLE) Self->txX = Value->Double;
    else if (Value->Type & FD_LARGE) Self->txX = Value->Large;
@@ -803,7 +800,7 @@ Unlike other vector shapes, the Y coordinate positions the text from its base li
 
 *****************************************************************************/
 
-static ERROR TEXT_GET_Y(objVectorText *Self, struct Variable *Value)
+static ERROR TEXT_GET_Y(objVectorText *Self, Variable *Value)
 {
    DOUBLE val = Self->txY;
    if (Value->Type & FD_PERCENTAGE) val = val * 100.0;
@@ -812,7 +809,7 @@ static ERROR TEXT_GET_Y(objVectorText *Self, struct Variable *Value)
    return ERR_Okay;
 }
 
-static ERROR TEXT_SET_Y(objVectorText *Self, struct Variable *Value)
+static ERROR TEXT_SET_Y(objVectorText *Self, Variable *Value)
 {
    if (Value->Type & FD_DOUBLE) Self->txY = Value->Double;
    else if (Value->Type & FD_LARGE) Self->txY = Value->Large;
@@ -942,7 +939,7 @@ static ERROR TEXT_SET_Weight(objVectorText *Self, LONG Value)
 
 //****************************************************************************
 
-static const struct ActionArray clTextActions[] = {
+static const ActionArray clTextActions[] = {
    { AC_Free,      (APTR)TEXT_Free },
    { AC_NewObject, (APTR)TEXT_NewObject },
    //{ AC_Move,        (APTR)TEXT_Move },
@@ -954,7 +951,7 @@ static const struct ActionArray clTextActions[] = {
 
 //****************************************************************************
 
-static const struct FieldDef clTextFlags[] = {
+static const FieldDef clTextFlags[] = {
    { "Underline",   VTXF_UNDERLINE },
    { "Overline",    VTXF_OVERLINE },
    { "LineThrough", VTXF_LINE_THROUGH },
@@ -962,7 +959,7 @@ static const struct FieldDef clTextFlags[] = {
    { NULL, 0 }
 };
 
-static const struct FieldDef clTextAlign[] = {
+static const FieldDef clTextAlign[] = {
    { "Left",       ALIGN_LEFT },
    { "Horizontal", ALIGN_HORIZONTAL },
    { "Right",      ALIGN_RIGHT },
@@ -973,7 +970,7 @@ static const struct FieldDef clTextAlign[] = {
    { NULL, 0 }
 };
 
-static const struct FieldDef clTextStretch[] = {
+static const FieldDef clTextStretch[] = {
    { "Normal",         VTS_NORMAL },
    { "Wider",          VTS_WIDER },
    { "Narrower",       VTS_NARROWER },
@@ -988,7 +985,7 @@ static const struct FieldDef clTextStretch[] = {
    { NULL, 0 }
 };
 
-static const struct FieldArray clTextFields[] = {
+static const FieldArray clTextFields[] = {
    { "X",             FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)TEXT_GET_X, (APTR)TEXT_SET_X },
    { "Y",             FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)TEXT_GET_Y, (APTR)TEXT_SET_Y },
    { "Weight",        FDF_VIRTUAL|FDF_LONG|FDF_RW,             0, (APTR)TEXT_GET_Weight, (APTR)TEXT_SET_Weight },
