@@ -47,10 +47,12 @@ For more information on the Fluid syntax, please refer to the official Fluid Ref
 
 #include <inttypes.h>
 
+extern "C" {
 #include "lua.h"
 #include "lualib.h"
 #include "lauxlib.h"
 #include "lj_obj.h"
+}
 
 #include "hashes.h"
 
@@ -62,8 +64,8 @@ OBJECTPTR modFluid = NULL;
 //static OBJECTPTR modSurface = NULL; // Required by fluid_widget.c
 OBJECTPTR clFluid = NULL;
 struct ActionTable *glActions = NULL;
-static UBYTE glLocale[4] = "eng";
-struct KeyStore *glActionLookup = NULL;
+static char glLocale[4] = "eng";
+KeyStore *glActionLookup = NULL;
 
 #include "defs.h"
 
@@ -96,15 +98,15 @@ FDEF argsTestCall7[]   = { { "Void", FD_VOID }, { "StringA", FD_STRING }, { "Str
 #endif
 
 static const struct Function JumpTableV1[] = {
-   { flSetVariable, "SetVariable", argsSetVariable },
+   { (APTR)flSetVariable, "SetVariable", argsSetVariable },
    #ifdef DEBUG
-   { flTestCall1,   "TestCall1", argsTestCall1 },
-   { flTestCall2,   "TestCall2", argsTestCall2 },
-   { flTestCall3,   "TestCall3", argsTestCall3 },
-   { flTestCall4,   "TestCall4", argsTestCall4 },
-   { flTestCall5,   "TestCall5", argsTestCall5 },
-   { flTestCall6,   "TestCall6", argsTestCall6 },
-   { flTestCall7,   "TestCall7", argsTestCall7 },
+   { (APTR)flTestCall1,   "TestCall1", argsTestCall1 },
+   { (APTR)flTestCall2,   "TestCall2", argsTestCall2 },
+   { (APTR)flTestCall3,   "TestCall3", argsTestCall3 },
+   { (APTR)flTestCall4,   "TestCall4", argsTestCall4 },
+   { (APTR)flTestCall5,   "TestCall5", argsTestCall5 },
+   { (APTR)flTestCall6,   "TestCall6", argsTestCall6 },
+   { (APTR)flTestCall7,   "TestCall7", argsTestCall7 },
    #endif
    { NULL, NULL, NULL }
 };
@@ -202,6 +204,8 @@ APTR get_meta(lua_State *Lua, LONG Arg, CSTRING MetaTable)
 
 OBJECTPTR access_object(struct object *Object)
 {
+   parasol::Log log(__FUNCTION__);
+
    if (Object->AccessCount) {
       Object->AccessCount++;
       return Object->prvObject;
@@ -211,18 +215,18 @@ OBJECTPTR access_object(struct object *Object)
 
    if (!Object->prvObject) {
       ERROR error;
-      FMSG("access_obj()","Locking object #%d.", Object->ObjectID);
+      log.trace("Locking object #%d.", Object->ObjectID);
       if (!(error = AccessObject(Object->ObjectID, 5000, &Object->prvObject))) {
          Object->Locked = TRUE;
       }
       else if (error IS ERR_DoesNotExist) {
-         FMSG("access_obj","Object #%d has been terminated.", Object->ObjectID);
+         log.trace("Object #%d has been terminated.", Object->ObjectID);
          Object->prvObject = NULL;
          Object->ObjectID = 0;
       }
    }
    else if (CheckObjectExists(Object->ObjectID, NULL) != ERR_True) {
-      FMSG("access_obj()","Object #%d has been terminated.", Object->ObjectID);
+      log.trace("Object #%d has been terminated.", Object->ObjectID);
       Object->prvObject = NULL;
       Object->ObjectID = 0;
    }
@@ -233,7 +237,9 @@ OBJECTPTR access_object(struct object *Object)
 
 void release_object(struct object *Object)
 {
-   FMSG("release_obj()","#%d Current Locked: %d, Accesses: %d", Object->ObjectID, Object->Locked, Object->AccessCount);
+   parasol::Log log(__FUNCTION__);
+
+   log.trace("#%d Current Locked: %d, Accesses: %d", Object->ObjectID, Object->Locked, Object->AccessCount);
 
    if (Object->AccessCount > 0) {
       Object->AccessCount--;
@@ -252,7 +258,7 @@ void release_object(struct object *Object)
 
 INLINE struct KeyStore * GET_INCLUDES(objScript *Script)
 {
-   struct prvFluid *prv = Script->Head.ChildPrivate;
+   auto prv = (prvFluid *)Script->Head.ChildPrivate;
    if (!prv->Includes) prv->Includes = VarNew(64, 0);
    return prv->Includes;
 }
@@ -262,32 +268,34 @@ INLINE struct KeyStore * GET_INCLUDES(objScript *Script)
 
 void auto_load_include(lua_State *Lua, objMetaClass *MetaClass)
 {
+   parasol::Log log(__FUNCTION__);
+
    CSTRING module_name;
    ERROR error;
    if (!(error = GetString(MetaClass, FID_Module, (STRING *)&module_name))) {
-      FMSG("auto_load_include()","Class: %s, Module: %s", MetaClass->ClassName, module_name);
+      log.trace("Class: %s, Module: %s", MetaClass->ClassName, module_name);
 
       LONG *current_state;
       struct KeyStore *inc = GET_INCLUDES(Lua->Script);
-      if ((VarGet(inc, module_name, &current_state, NULL) != ERR_Okay) OR (current_state[0] != 1)) {
+      if ((VarGet(inc, module_name, &current_state, NULL) != ERR_Okay) or (current_state[0] != 1)) {
          LONG new_state = 1;
          VarSet(inc, module_name, &new_state, sizeof(new_state)); // Mark the module as processed.
 
          CSTRING idl;
-         if ((!(error = GetString(MetaClass, FID_IDL, (STRING *)&idl))) AND (idl)) {
-            MSG("Parsing IDL for module %s", module_name);
+         if ((!(error = GetString(MetaClass, FID_IDL, (STRING *)&idl))) and (idl)) {
+            log.trace("Parsing IDL for module %s", module_name);
 
-            while ((idl) AND (*idl)) {
-               if ((idl[0] IS 's') AND (idl[1] IS '.')) idl = load_include_struct(Lua, idl+2, module_name);
-               else if ((idl[0] IS 'c') AND (idl[1] IS '.')) idl = load_include_constant(Lua, idl+2, module_name);
+            while ((idl) and (*idl)) {
+               if ((idl[0] IS 's') and (idl[1] IS '.')) idl = load_include_struct(Lua, idl+2, module_name);
+               else if ((idl[0] IS 'c') and (idl[1] IS '.')) idl = load_include_constant(Lua, idl+2, module_name);
                else idl = StrNextLine(idl);
             }
          }
-         else FMSG("auto_load_include","No IDL defined for %s", module_name);
+         else log.trace("No IDL defined for %s", module_name);
       }
-      else FMSG("auto_load_include","Module %s is marked as loaded.", module_name);
+      else log.trace("Module %s is marked as loaded.", module_name);
    }
-   else LogF("@auto_load_include","Failed to get module name from class '%s', \"%s\"", MetaClass->ClassName, GetErrorMsg(error));
+   else log.traceWarning("Failed to get module name from class '%s', \"%s\"", MetaClass->ClassName, GetErrorMsg(error));
 }
 
 //****************************************************************************
@@ -361,14 +369,15 @@ ObjectCorrupt: Privately maintained memory has become inaccessible.
 
 static ERROR flSetVariable(objScript *Script, CSTRING Name, LONG Type, ...)
 {
-   struct prvFluid *prv;
+   parasol::Log log(__FUNCTION__);
+   prvFluid *prv;
    va_list list;
 
-   if ((!Script) OR (Script->Head.ClassID != ID_FLUID) OR (!Name) OR (!*Name)) return LogError(ERH_Function, ERR_Args);
+   if ((!Script) or (Script->Head.ClassID != ID_FLUID) or (!Name) or (!*Name)) return log.warning(ERR_Args);
 
-   LogF("SetVariable","Script: %d, Name: %s, Type: $%.8x", Script->Head.UniqueID, Name, Type);
+   log.branch("Script: %d, Name: %s, Type: $%.8x", Script->Head.UniqueID, Name, Type);
 
-   if (!(prv = Script->Head.ChildPrivate)) return LogError(ERH_Function, ERR_ObjectCorrupt);
+   if (!(prv = (prvFluid *)Script->Head.ChildPrivate)) return log.warning(ERR_ObjectCorrupt);
 
    va_start(list, Type);
 
@@ -379,7 +388,7 @@ static ERROR flSetVariable(objScript *Script, CSTRING Name, LONG Type, ...)
    else if (Type & FD_DOUBLE)  lua_pushnumber(prv->Lua, va_arg(list, DOUBLE));
    else {
       va_end(list);
-      return LogError(ERH_Function, ERR_FieldTypeMismatch);
+      return log.warning(ERR_FieldTypeMismatch);
    }
 
    lua_setglobal(prv->Lua, Name);
@@ -392,26 +401,24 @@ static ERROR flSetVariable(objScript *Script, CSTRING Name, LONG Type, ...)
 
 void hook_debug(lua_State *Lua, lua_Debug *Info)
 {
+   parasol::Log log("Lua");
+
    if (Info->event IS LUA_HOOKCALL) {
       if (lua_getinfo(Lua, "nSl", Info)) {
-         if (Info->name) LogF("LuaCall","%s: %s.%s(), Line: %d", Info->what, Info->namewhat, Info->name, Lua->Script->CurrentLine + Lua->Script->LineOffset);
+         if (Info->name) log.msg("%s: %s.%s(), Line: %d", Info->what, Info->namewhat, Info->name, Lua->Script->CurrentLine + Lua->Script->LineOffset);
       }
-      else LogErrorMsg("lua_getinfo() failed.");
+      else log.warning("lua_getinfo() failed.");
    }
-   else if (Info->event IS LUA_HOOKRET) {
-      //LogReturn();
-   }
-   else if (Info->event IS LUA_HOOKTAILRET) {
-      //LogReturn();
-   }
+   else if (Info->event IS LUA_HOOKRET) { }
+   else if (Info->event IS LUA_HOOKTAILRET) { }
    else if (Info->event IS LUA_HOOKLINE) {
       Lua->Script->CurrentLine = Info->currentline - 1; // Our line numbers start from zero
       if (Lua->Script->CurrentLine < 0) Lua->Script->CurrentLine = 0; // Just to be certain :-)
 /*
       if (lua_getinfo(Lua, "nSl", Info)) {
-         LogF("LuaLine","Line %d: %s: %s", Info->currentline, Info->what, Info->name);
+         log.msg("Line %d: %s: %s", Info->currentline, Info->what, Info->name);
       }
-      else LogErrorMsg("lua_getinfo() failed.");
+      else log.warning("lua_getinfo() failed.");
 */
    }
 }
@@ -423,7 +430,9 @@ void hook_debug(lua_State *Lua, lua_Debug *Info)
 
 void make_table(lua_State *Lua, LONG Type, LONG Elements, CPTR Data)
 {
-   FMSG("make_table()","Type: $%.8x, Elements: %d, Data: %p", Type, Elements, Data);
+   parasol::Log log(__FUNCTION__);
+
+   log.traceBranch("Type: $%.8x, Elements: %d, Data: %p", Type, Elements, Data);
 
    if (Elements < 0) {
       if (!Data) Elements = 0;
@@ -450,7 +459,7 @@ void make_table(lua_State *Lua, LONG Type, LONG Elements, CPTR Data)
 
    switch(Type & (FD_DOUBLE|FD_LARGE|FD_FLOAT|FD_POINTER|FD_OBJECT|FD_STRING|FD_LONG|FD_WORD|FD_BYTE)) {
       case FD_STRING:  for (LONG i=0; i < Elements; i++) { lua_pushinteger(Lua, i+1); lua_pushstring(Lua, ((CSTRING *)Data)[i]); lua_settable(Lua, -3); } break;
-      case FD_OBJECT:  for (LONG i=0; i < Elements; i++) { lua_pushinteger(Lua, i+1); push_object(Lua, ((APTR *)Data)[i]); lua_settable(Lua, -3); } break;
+      case FD_OBJECT:  for (LONG i=0; i < Elements; i++) { lua_pushinteger(Lua, i+1); push_object(Lua, ((OBJECTPTR *)Data)[i]); lua_settable(Lua, -3); } break;
       case FD_POINTER: for (LONG i=0; i < Elements; i++) { lua_pushinteger(Lua, i+1); lua_pushlightuserdata(Lua, ((APTR *)Data)[i]); lua_settable(Lua, -3); } break;
       case FD_FLOAT:   for (LONG i=0; i < Elements; i++) { lua_pushinteger(Lua, i+1); lua_pushnumber(Lua, ((FLOAT *)Data)[i]); lua_settable(Lua, -3); } break;
       case FD_DOUBLE:  for (LONG i=0; i < Elements; i++) { lua_pushinteger(Lua, i+1); lua_pushnumber(Lua, ((DOUBLE *)Data)[i]); lua_settable(Lua, -3); } break;
@@ -466,7 +475,9 @@ void make_table(lua_State *Lua, LONG Type, LONG Elements, CPTR Data)
 
 void make_struct_ptr_table(lua_State *Lua, CSTRING StructName, LONG Elements, CPTR *Values)
 {
-   FMSG("make_struct_ptr_table()","%s, Elements: %d, Values: %p", StructName, Elements, Values);
+   parasol::Log log(__FUNCTION__);
+
+   log.trace("%s, Elements: %d, Values: %p", StructName, Elements, Values);
 
    if (Elements < 0) {
       LONG i;
@@ -477,14 +488,13 @@ void make_struct_ptr_table(lua_State *Lua, CSTRING StructName, LONG Elements, CP
    lua_createtable(Lua, Elements, 0); // Create a new table on the stack.
    if (!Values) return;
 
-   struct prvFluid *prv = Lua->Script->Head.ChildPrivate;
-   struct structentry *def;
+   auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
+   structentry *def;
 
    if (!KeyGet(prv->Structs, STRUCTHASH(StructName), &def, NULL)) {
-      LONG i;
-      struct references *ref;
+      references *ref;
       if ((ref = alloc_references())) {
-         for (i=0; i < Elements; i++) {
+         for (LONG i=0; i < Elements; i++) {
             lua_pushinteger(Lua, i+1);
             if (struct_to_table(Lua, ref, def, Values[i]) != ERR_Okay) lua_pushnil(Lua);
             lua_settable(Lua, -3);
@@ -492,7 +502,7 @@ void make_struct_ptr_table(lua_State *Lua, CSTRING StructName, LONG Elements, CP
          free_references(Lua, ref);
       }
    }
-   else LogErrorMsg("Failed to find struct '%s'", StructName);
+   else log.warning("Failed to find struct '%s'", StructName);
 }
 
 //****************************************************************************
@@ -500,16 +510,18 @@ void make_struct_ptr_table(lua_State *Lua, CSTRING StructName, LONG Elements, CP
 
 void make_struct_serial_table(lua_State *Lua, CSTRING StructName, LONG Elements, CPTR Data)
 {
+   parasol::Log log(__FUNCTION__);
+
    if (Elements < 0) Elements = 0; // The total number of structs is a hard requirement.
 
    lua_createtable(Lua, Elements, 0); // Create a new table on the stack.
    if (!Data) return;
 
-   struct prvFluid *prv = Lua->Script->Head.ChildPrivate;
-   struct structentry *def;
+   auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
+   structentry *def;
 
    if (!KeyGet(prv->Structs, STRUCTHASH(StructName), &def, NULL)) {
-      struct references *ref;
+      references *ref;
 
       // 64-bit compilers don't always align structures to 64-bit, and it's difficult to compute alignment with
       // certainty.  It is essential that structures that are intended to be serialised into arrays are manually
@@ -523,20 +535,20 @@ void make_struct_serial_table(lua_State *Lua, CSTRING StructName, LONG Elements,
 
       char aligned = ((def->Size & 0x7) != 0) ? 'N': 'Y';
       if (aligned IS 'N') {
-         LogF("make_struct_serial_table()","%s, Elements: %d, Values: %p, StructSize: %d, Aligned: %c", StructName, Elements, Data, def_size, aligned);
+         log.msg("%s, Elements: %d, Values: %p, StructSize: %d, Aligned: %c", StructName, Elements, Data, def_size, aligned);
       }
 
       if ((ref = alloc_references())) {
          for (LONG i=0; i < Elements; i++) {
             lua_pushinteger(Lua, i+1);
             if (struct_to_table(Lua, ref, def, Data) != ERR_Okay) lua_pushnil(Lua);
-            Data += def_size;
+            Data = (BYTE *)Data + def_size;
             lua_settable(Lua, -3);
          }
          free_references(Lua, ref);
       }
    }
-   else LogErrorMsg("Failed to find struct '%s'", StructName);
+   else log.warning("Failed to find struct '%s'", StructName);
 }
 
 //****************************************************************************
@@ -566,10 +578,10 @@ void get_line(objScript *Self, LONG Line, STRING Buffer, LONG Size)
          }
       }
 
-      while ((*str IS ' ') OR (*str IS '\t')) str++;
+      while ((*str IS ' ') or (*str IS '\t')) str++;
 
       for (i=0; i < Size-1; i++) {
-         if ((*str IS '\n') OR (*str IS '\r') OR (!*str)) break;
+         if ((*str IS '\n') or (*str IS '\r') or (!*str)) break;
          Buffer[i] = *str++;
       }
       Buffer[i] = 0;
@@ -581,23 +593,24 @@ void get_line(objScript *Self, LONG Line, STRING Buffer, LONG Size)
 
 ERROR load_include(objScript *Script, CSTRING IncName)
 {
-   LogF("~load_include()","Definition: %s", IncName);
+   parasol::Log log(__FUNCTION__);
 
-   struct prvFluid *prv = Script->Head.ChildPrivate;
+   log.branch("Definition: %s", IncName);
+
+   auto prv = (prvFluid *)Script->Head.ChildPrivate;
 
    // For security purposes, check the validity of the include name.
 
    LONG i;
    for (i=0; IncName[i]; i++) {
-      if ((IncName[i] >= 'a') AND (IncName[i] <= 'z')) continue;
-      if ((IncName[i] >= 'A') AND (IncName[i] <= 'Z')) continue;
-      if ((IncName[i] >= '0') AND (IncName[i] <= '9')) continue;
+      if ((IncName[i] >= 'a') and (IncName[i] <= 'z')) continue;
+      if ((IncName[i] >= 'A') and (IncName[i] <= 'Z')) continue;
+      if ((IncName[i] >= '0') and (IncName[i] <= '9')) continue;
       break;
    }
 
-   if ((IncName[i]) OR (i >= 32)) {
-      LogF("load_include","Invalid module name; only alpha-numeric names are permitted with max 32 chars.");
-      LogReturn();
+   if ((IncName[i]) or (i >= 32)) {
+      log.msg("Invalid module name; only alpha-numeric names are permitted with max 32 chars.");
       return ERR_Syntax;
    }
 
@@ -607,9 +620,8 @@ ERROR load_include(objScript *Script, CSTRING IncName)
 
    {
       LONG *state;
-      if ((!VarGet(inc, IncName, &state, NULL)) AND (state[0] == 1)) {
-         FMSG("load_include","Include file '%s' has already been loaded.", IncName);
-         LogReturn();
+      if ((!VarGet(inc, IncName, &state, NULL)) and (state[0] == 1)) {
+         log.trace("Include file '%s' has already been loaded.", IncName);
          return ERR_Okay;
       }
    }
@@ -620,10 +632,10 @@ ERROR load_include(objScript *Script, CSTRING IncName)
 
       if (!StrMatch("core", IncName)) { // The Core module's IDL is accessible from the RES_CORE_IDL resource.
          CSTRING idl;
-         if ((idl = GetResourcePtr(RES_CORE_IDL))) {
-            while ((idl) AND (*idl)) {
-               if ((idl[0] IS 's') AND (idl[1] IS '.')) idl = load_include_struct(prv->Lua, idl+2, IncName);
-               else if ((idl[0] IS 'c') AND (idl[1] IS '.')) idl = load_include_constant(prv->Lua, idl+2, IncName);
+         if ((idl = (CSTRING)GetResourcePtr(RES_CORE_IDL))) {
+            while ((idl) and (*idl)) {
+               if ((idl[0] IS 's') and (idl[1] IS '.')) idl = load_include_struct(prv->Lua, idl+2, IncName);
+               else if ((idl[0] IS 'c') and (idl[1] IS '.')) idl = load_include_constant(prv->Lua, idl+2, IncName);
                else idl = StrNextLine(idl);
             }
 
@@ -636,17 +648,17 @@ ERROR load_include(objScript *Script, CSTRING IncName)
          OBJECTPTR module;
          if (!CreateObject(ID_MODULE, NF_INTEGRAL, &module, FID_Name|TSTR, IncName, TAGEND)) {
             CSTRING idl;
-            if ((!(error = GetString(module, FID_IDL, (STRING *)&idl))) AND (idl)) {
-               while ((idl) AND (*idl)) {
-                  if ((idl[0] IS 's') AND (idl[1] IS '.')) idl = load_include_struct(prv->Lua, idl+2, IncName);
-                  else if ((idl[0] IS 'c') AND (idl[1] IS '.')) idl = load_include_constant(prv->Lua, idl+2, IncName);
+            if ((!(error = GetString(module, FID_IDL, (STRING *)&idl))) and (idl)) {
+               while ((idl) and (*idl)) {
+                  if ((idl[0] IS 's') and (idl[1] IS '.')) idl = load_include_struct(prv->Lua, idl+2, IncName);
+                  else if ((idl[0] IS 'c') and (idl[1] IS '.')) idl = load_include_constant(prv->Lua, idl+2, IncName);
                   else idl = StrNextLine(idl);
                }
 
                LONG state = 1;
                VarSet(inc, IncName, &state, sizeof(state)); // Mark the file as loaded.
             }
-            else LogErrorMsg("No IDL for module %s", IncName);
+            else log.warning("No IDL for module %s", IncName);
 
             acFree(module);
          }
@@ -654,8 +666,6 @@ ERROR load_include(objScript *Script, CSTRING IncName)
       }
 
    AdjustLogLevel(-1);
-
-   LogReturn();
    return error;
 }
 
@@ -664,23 +674,24 @@ ERROR load_include(objScript *Script, CSTRING IncName)
 
 static CSTRING load_include_struct(lua_State *Lua, CSTRING Line, CSTRING Source)
 {
+   parasol::Log log("load_include");
    char name[80];
    LONG i;
-   for (i=0; (Line[i] >= 0x20) AND (Line[i] != ':') AND (i < sizeof(name)-1); i++) name[i] = Line[i];
+   for (i=0; (Line[i] >= 0x20) and (Line[i] != ':') and ((size_t)i < sizeof(name)-1); i++) name[i] = Line[i];
    name[i] = 0;
 
    if (Line[i] IS ':') {
       Line += i + 1;
 
       LONG j;
-      for (j=0; (Line[j] != '\n') AND (Line[j] != '\r') AND (Line[j]); j++);
+      for (j=0; (Line[j] != '\n') and (Line[j] != '\r') and (Line[j]); j++);
 
-      if ((Line[j] IS '\n') OR (Line[j] IS '\r')) {
+      if ((Line[j] IS '\n') or (Line[j] IS '\r')) {
          char linebuf[j + 1];
          CopyMemory(Line, linebuf, j);
          linebuf[j] = 0;
          make_struct(Lua, name, linebuf);
-         while ((Line[j] IS '\n') OR (Line[j] IS '\r')) j++;
+         while ((Line[j] IS '\n') or (Line[j] IS '\r')) j++;
          return Line + j;
       }
       else {
@@ -689,7 +700,7 @@ static CSTRING load_include_struct(lua_State *Lua, CSTRING Line, CSTRING Source)
       }
    }
    else {
-      LogErrorMsg("Malformed struct name in %s.", Source);
+      log.warning("Malformed struct name in %s.", Source);
       return StrNextLine(Line);
    }
 }
@@ -698,12 +709,13 @@ static CSTRING load_include_struct(lua_State *Lua, CSTRING Line, CSTRING Source)
 
 static CSTRING load_include_constant(lua_State *Lua, CSTRING Line, CSTRING Source)
 {
+   parasol::Log log("load_include");
    char name[80];
    LONG i;
-   for (i=0; (*Line > 0x20) AND (*Line != ':') AND (i < sizeof(name)-1); i++) name[i] = *Line++;
+   for (i=0; (*Line > 0x20) and (*Line != ':') and ((size_t)i < sizeof(name)-1); i++) name[i] = *Line++;
 
    if (*Line != ':') {
-      LogErrorMsg("Malformed const name in %s.", Source);
+      log.warning("Malformed const name in %s.", Source);
       return StrNextLine(Line);
    }
    else Line++;
@@ -717,21 +729,21 @@ static CSTRING load_include_constant(lua_State *Lua, CSTRING Line, CSTRING Sourc
 
    while (*Line > 0x20) {
       LONG n;
-      for (n=0; (*Line > 0x20) AND (*Line != '=') AND (p+n < sizeof(name)-1); n++) name[p+n] = *Line++;
-      if (p+n >= sizeof(name)-1) {
-         LogErrorMsg("The constant name '%s' in '%s' is too long.", name, Source);
+      for (n=0; (*Line > 0x20) and (*Line != '=') and ((size_t)p+n < sizeof(name)-1); n++) name[p+n] = *Line++;
+      if ((size_t)p+n >= sizeof(name)-1) {
+         log.warning("The constant name '%s' in '%s' is too long.", name, Source);
          break;
       }
       name[p+n] = 0;
 
       if (Line[0] != '=') {
-         LogErrorMsg("Malformed const definition, expected '=' after name '%s'", name);
+         log.warning("Malformed const definition, expected '=' after name '%s'", name);
          break;
       }
       Line++;
 
       char value[200];
-      for (n=0; (n < sizeof(value)-1) AND (*Line > 0x20) AND (*Line != ','); n++) value[n] = *Line++;
+      for (n=0; ((size_t)n < sizeof(value)-1) and (*Line > 0x20) and (*Line != ','); n++) value[n] = *Line++;
       value[n] = 0;
 
       if (n > 0) {
@@ -766,31 +778,35 @@ static CSTRING load_include_constant(lua_State *Lua, CSTRING Line, CSTRING Sourc
 
 int code_writer_id(lua_State *Lua, CPTR Data, size_t Size, void *FileID)
 {
+   parasol::Log log("code_writer");
+
    if (Size <= 0) return 0; // Ignore bad size requests
 
    if (!acWriteID((OBJECTID)(MAXINT)FileID, (APTR)Data, Size)) {
       return 0;
    }
    else {
-      LogErrorMsg("Failed writing %d bytes.", (int)Size);
+      log.warning("Failed writing %d bytes.", (LONG)Size);
       return 1;
    }
 }
 
 int code_writer(lua_State *Lua, CPTR Data, size_t Size, void *File)
 {
+   parasol::Log log(__FUNCTION__);
+
    if (Size <= 0) return 0; // Ignore bad size requests
 
    LONG result;
    if (!acWrite(File, (APTR)Data, Size, &result)) {
-      if (result != Size) {
-         LogErrorMsg("Wrote %d bytes instead of %d.", result, (int)Size);
+      if ((size_t)result != Size) {
+         log.warning("Wrote %d bytes instead of %d.", result, (int)Size);
          return 1;
       }
       else return 0;
    }
    else {
-      LogErrorMsg("Failed writing %d bytes.", (int)Size);
+      log.warning("Failed writing %d bytes.", (int)Size);
       return 1;
    }
 }
@@ -798,13 +814,13 @@ int code_writer(lua_State *Lua, CPTR Data, size_t Size, void *File)
 //****************************************************************************
 // Callback for lua_load() to read data from File objects.
 
-const char * code_reader(lua_State *Lua, void *Handle, size_t *Size)
+CSTRING code_reader(lua_State *Lua, void *Handle, size_t *Size)
 {
-   struct code_reader_handle *handle = Handle;
+   auto handle = (code_reader_handle *)Handle;
    LONG result;
    if (!acRead(handle->File, handle->Buffer, SIZE_READ, &result)) {
       *Size = result;
-      return handle->Buffer;
+      return (CSTRING)handle->Buffer;
    }
    else return NULL;
 }

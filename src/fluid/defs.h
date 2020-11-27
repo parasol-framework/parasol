@@ -1,8 +1,4 @@
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #define LUA_COMPILED "-- $FLUID:compiled"
 #define VER_FLUID 1.0
 #define SIZE_READ 1024
@@ -296,7 +292,3 @@ INLINE ULONG STRUCTHASH(CSTRING String)
    }
    return hash;
 }
-
-#ifdef __cplusplus
-}
-#endif

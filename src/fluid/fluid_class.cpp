@@ -141,7 +141,7 @@ void process_error(objScript *Self, CSTRING Procedure)
    LONG flags = VLF_WARNING;
    if (prv->CaughtError) {
       Self->Error = prv->CaughtError;
-      if (Self->Error <= ERR_Terminate) flags |= VLF_EXTAPI; // Non-critical errors are kept silent to prevent noise.
+      if (Self->Error <= ERR_Terminate) flags = VLF_EXTAPI; // Non-critical errors are muted to prevent log noise.
    }
 
    parasol::Log log;

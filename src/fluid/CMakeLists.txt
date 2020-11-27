@@ -5,7 +5,7 @@ set (MOD "fluid")
 # IDL processing for headers and documentation
 
 idl_c ("hashes.fdl" NAME ${MOD}_hashes OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/hashes.h")
-idl_c ("${MOD}.fdl" NAME ${MOD}_defs OUTPUT "${INCLUDE_OUTPUT}/modules/${MOD}.h" FILES "${MOD}.c")
+idl_c ("${MOD}.fdl" NAME ${MOD}_defs OUTPUT "${INCLUDE_OUTPUT}/modules/${MOD}.h" FILES "${MOD}.cpp")
 
 link_directories("${CMAKE_BINARY_DIR}/libffi-3.3/lib" "${CMAKE_CURRENT_SOURCE_DIR}/luajit-2.0.5/src")
 
@@ -47,7 +47,7 @@ set_module_defaults (${MOD})
 
 add_dependencies (${MOD} libffi luajit)
 
-target_sources (${MOD} PRIVATE "${MOD}.c" "fluid_module.cpp" "fluid_thread.cpp" "fluid_struct.cpp"
+target_sources (${MOD} PRIVATE "${MOD}.cpp" "fluid_module.cpp" "fluid_thread.cpp" "fluid_struct.cpp"
    "fluid_number.cpp" "fluid_input.cpp" "fluid_functions.cpp" "fluid_objects.cpp" "fluid_array.cpp"
    "fluid_class.cpp")
 
