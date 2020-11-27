@@ -1271,9 +1271,11 @@ AllocMemory: Memory for the resulting string could not be allocated.
 
 ERROR StrReplace(CSTRING Source, CSTRING Keyword, CSTRING Replacement, STRING *Result, LONG CaseSensitive)
 {
+   parasol::Log log(__FUNCTION__);
+
    *Result = NULL;
 
-   if ((!Source) or (!Keyword) or (!Result)) return LogError(ERH_StrReplace, ERR_NullArgs);
+   if ((!Source) or (!Keyword) or (!Result)) return log.warning(ERR_NullArgs);
 
    if (!Replacement) Replacement = "";
 
@@ -1340,7 +1342,8 @@ int: Returns the byte position of the first occurrence of the Keyword within the
 LONG StrSearch(CSTRING Keyword, CSTRING String, LONG Flags)
 {
    if ((!String) or (!Keyword)) {
-      LogError(ERH_StrSearch, ERR_NullArgs);
+      parasol::Log log(__FUNCTION__);
+      log.warning(ERR_NullArgs);
       return -1;
    }
 
@@ -1626,7 +1629,7 @@ ERROR StrEvaluate(STRING Buffer, LONG BufferLength, LONG Flags, OBJECTID OwnerID
    parasol::Log log(__FUNCTION__);
    LONG pos, i, j;
 
-   if ((!Buffer) or (BufferLength < 3)) return LogError(ERH_Strings, ERR_Args);
+   if ((!Buffer) or (BufferLength < 3)) return log.warning(ERR_Args);
 
    // Quick check for translation symbols
 

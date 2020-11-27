@@ -562,7 +562,7 @@ static ERROR netResolveAddress(CSTRING Address, LONG Flags, FUNCTION *Callback, 
       #ifdef _WIN32
          struct dns_cache *dns;
          struct hostent *host = win_gethostbyaddr(&ip);
-         if (!host) return log.error(ERH_Function, ERR_Failed);
+         if (!host) return log.error(ERR_Failed);
 
          ERROR error = cache_host(NULL, host, &dns);
          if (!error) {
@@ -735,7 +735,7 @@ static ERROR netResolveName(CSTRING HostName, LONG Flags, FUNCTION *Callback, LA
       #elif _WIN32
          ERROR error;
          struct hostent *host = win_gethostbyname(HostName);
-         if (!host) return log.error(ERH_Function, ERR_Failed);
+         if (!host) return log.error(ERR_Failed);
 
          struct dns_cache *dns;
          if (!(error = cache_host(HostName, host, &dns))) {

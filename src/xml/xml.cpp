@@ -234,7 +234,7 @@ static ERROR XML_DataFeed(objXML *Self, struct acDataFeed *Args)
       if (ReallocMemory(Self->Tags, sizeof(APTR) * (Self->TagCount + xml.TagCount + 1), &Self->Tags, NULL) != ERR_Okay) {
          log.warning("Failed to reallocate tag array.");
          free_xml(&xml);
-         return ERH_ReallocMemory;
+         return ERR_ReallocMemory;
       }
 
       // Correct the end of the chain to correctly link up.  Note that we append to the last root tag, which is not

@@ -327,7 +327,7 @@ ActionTags(MT_Rename, Object, "user:documents.txt");
       <param type="LONG" name="Adjust">The level of adjustment to make to new log messages.  Zero is the default (no change).  The maximum level is 6.</param>
     </input>
     <description>
-<p>This function adjusts the detail level of all messages that are sent to the program log via <function module="Core">LogF</function> and <function module="Core">LogError</function>.  To illustrate by example, setting the Adjust value to 1 would result in level 5 log messages being raised to level 6.  If the user's maximum log level output is 5, such messages would no longer appear in the log until the base-line is reduced to normal.</p>
+<p>This function adjusts the detail level of all messages that are sent to the program log via <function module="Core">LogF</function>.  To illustrate by example, setting the Adjust value to 1 would result in level 5 log messages being raised to level 6.  If the user's maximum log level output is 5, such messages would no longer appear in the log until the base-line is reduced to normal.</p>
 <p>The main purpose of AdjustLogLevel() is to reduce log noise.  For instance, creating a new desktop window will result in a large number of new log messages.  Raising the base-line by 2 before creating the window would be a reasonable means of eliminating that noise if the user has the log level set to 5 (debug).  If there is a need to see the mesages, re-running the program with a deeper log level of 7 or more would make them visible.</p>
 <p>Adjustments to the base-line are accumulative, so small increments of 1 or 2 are encouraged.  To revert logging to the previous base-line, call this function again with a negation of the previously passed value.</p>
     </description>
@@ -1594,14 +1594,14 @@ end
   <function>
     <name>LogError</name>
     <category>Logging</category>
-    <comment>Sends basic error messages to the active logger.</comment>
+    <comment>OBSOLETE</comment>
     <prototype>ERROR LogError(LONG Header, ERROR Error)</prototype>
     <input>
       <param type="LONG" name="Header">A valid header code must be specified, as listed in the "system/errors.h" include file.  Valid examples of existing codes are ERH_Core, ERH_Message, ERH_Error.</param>
       <param type="ERROR" name="Error">Pre-defined error strings are provided in the "system/errors.h" include file.  Search the file for the desired message to log (e.g. use a basic keyword such as "module" for module related messages).</param>
     </input>
     <description>
-<p>This function is used to send simple, pre-defined error messages to the application log.  It uses the codes listed in the system/errors.h file to display the correct string to the user.  Consider the following example: <code>LogError(ERH_Error, ERR_Write)</code>; the log message would be "An error occurred while writing data to a file.".</p>
+<p>OBSOLETE</p>
     </description>
     <result type="ERROR">Returns the value specified in the Error parameter.</result>
   </function>
@@ -4537,7 +4537,6 @@ end
 
     <struct name="SystemState" comment="Returned by the GetSystemState() function.">
       <field name="ErrorMessages" type="CSTRING *">A sorted array of all error codes, translated into human readable strings.</field>
-      <field name="ErrorHeaders" type="CSTRING *">A sorted array of all error header codes, translated into human readable strings.</field>
       <field name="RootPath" type="CSTRING">The current root path, which defaults to the location of the installation folder.</field>
       <field name="SystemPath" type="CSTRING">The current path of the 'system:' volume.</field>
       <field name="ModulePath" type="CSTRING">The current path to the system modules, normally 'system:modules/'</field>
@@ -4547,7 +4546,6 @@ end
       <field name="CoreRevision" type="LONG">Reflects the Core revision number.</field>
       <field name="InstanceID" type="LONG">This is the ID of the instance that the calling process resides in.</field>
       <field name="TotalErrorMessages" type="LONG">The total number of error codes listed in the ErrorMessages array.</field>
-      <field name="TotalErrorHeaders" type="LONG">The total number of error headers listed in the ErrorHeaders array.</field>
       <field name="Stage" type="LONG">The current operating stage.  -1 = Initialising, 0 indicates normal operating status; 1 means that the program is shutting down; 2 indicates a program restart; 3 is for mode switches.</field>
     </struct>
 

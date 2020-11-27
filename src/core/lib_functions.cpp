@@ -1503,9 +1503,7 @@ const SystemState * GetSystemState(void)
       state.CoreRevision  = REV_CORE;
       state.InstanceID    = glInstanceID;
       state.ErrorMessages = glMessages;
-      state.ErrorHeaders  = glHeaders;
       state.TotalErrorMessages = ARRAYSIZE(glMessages);
-      state.TotalErrorHeaders  = ARRAYSIZE(glHeaders);
       state.RootPath   = glRootPath;
       state.SystemPath = glSystemPath;
       state.ModulePath = glModulePath;

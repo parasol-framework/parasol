@@ -69,11 +69,12 @@ INLINE void prv_release(OBJECTPTR Object)
 
 static void * thread_entry(struct thread_info *info)
 {
+   parasol::Log log(__FUNCTION__);
    LONG i;
    ERROR error;
 
    info->index = GetResource(RES_THREAD_ID);
-   LogMsg("----- Thread %d is starting now.", info->index);
+   log.msg("----- Thread %d is starting now.", info->index);
 
    for (i=0; i < glLockAttempts; i++) {
       if (!glConfig) break;
@@ -84,9 +85,9 @@ static void * thread_entry(struct thread_info *info)
       if (!(error = AccessPrivateObject(glConfig, 30000))) {
       #endif
          glConfig->ActionDepth++;
-         LogMsg("%d.%d: Object acquired.", info->index, i);
+         log.msg("%d.%d: Object acquired.", info->index, i);
          WaitTime(0, 2000);
-         if (glConfig->ActionDepth > 1) LogErrorMsg("--- MAJOR ERROR: More than one thread has access to this object!");
+         if (glConfig->ActionDepth > 1) log.warning("--- MAJOR ERROR: More than one thread has access to this object!");
          glConfig->ActionDepth--;
 
          // Test that object removal works in ReleasePrivateObject() and that waiting threads fail peacefully.
@@ -116,11 +117,11 @@ static void * thread_entry(struct thread_info *info)
          #endif
          if (glAccessGap > 0) WaitTime(0, glAccessGap);
       }
-      else LogMsg("Attempt %d.%d: Failed to acquire a lock, error: %s", info->index, i, GetErrorMsg(error));
+      else log.msg("Attempt %d.%d: Failed to acquire a lock, error: %s", info->index, i, GetErrorMsg(error));
       //LogReturn();
    }
 
-   LogMsg("----- Thread %d is finished.", info->index);
+   log.msg("----- Thread %d is finished.", info->index);
    return NULL;
 }
 
@@ -159,10 +160,10 @@ void program(void)
       TAGEND);
 
    #ifdef QUICKLOCK
-      LogMsg("Quick-locking will be tested.");
+      log.msg("Quick-locking will be tested.");
    #endif
 
-   LogMsg("Spawning %d threads...", glTotalThreads);
+   log.msg("Spawning %d threads...", glTotalThreads);
 
    struct thread_info glThreads[glTotalThreads];
 
@@ -175,7 +176,7 @@ void program(void)
    // If main block exits, both threads exit, even if the threads have not
    // finished their work
 
-   LogMsg("Waiting for thread completion.");
+   log.msg("Waiting for thread completion.");
 
    for (i=0; i < glTotalThreads; i++) {
       pthread_join(glThreads[i].thread, NULL);

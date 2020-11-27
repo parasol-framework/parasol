@@ -1432,7 +1432,6 @@ struct FieldDef {
 
 struct SystemState {
    CSTRING * ErrorMessages;    // A sorted array of all error codes, translated into human readable strings.
-   CSTRING * ErrorHeaders;     // A sorted array of all error header codes, translated into human readable strings.
    CSTRING   RootPath;         // The current root path, which defaults to the location of the installation folder.
    CSTRING   SystemPath;       // The current path of the 'system:' volume.
    CSTRING   ModulePath;       // The current path to the system modules, normally 'system:modules/'
@@ -1442,7 +1441,6 @@ struct SystemState {
    LONG      CoreRevision;     // Reflects the Core revision number.
    LONG      InstanceID;       // This is the ID of the instance that the calling process resides in.
    LONG      TotalErrorMessages; // The total number of error codes listed in the ErrorMessages array.
-   LONG      TotalErrorHeaders; // The total number of error headers listed in the ErrorHeaders array.
    LONG      Stage;            // The current operating stage.  -1 = Initialising, 0 indicates normal operating status; 1 means that the program is shutting down; 2 indicates a program restart; 3 is for mode switches.
 };
 
@@ -3326,12 +3324,6 @@ INLINE FIELD ResolveField(CSTRING Field) {
 }
 
 #endif // PRV_CORE
-
-INLINE ERROR LogReturnError(LONG Header, ERROR Code) {
-   LogError(Header, Code);
-   LogReturn();
-   return Code;
-}
 
 #ifdef __unix__
 #include <pthread.h>

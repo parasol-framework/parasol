@@ -245,7 +245,7 @@ ERROR ScanDir(DirInfo *Dir)
          if (file->Name[0]) return ERR_Okay;
          else return ERR_DirEmpty;
       }
-      else return LogError(ERH_ScanDir, ERR_AccessObject);
+      else return log.warning(ERR_AccessObject);
    }
 
    // In all other cases, pass functionality to the filesystem driver.

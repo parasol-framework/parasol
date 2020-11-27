@@ -464,8 +464,7 @@ extern struct ModuleHeader *glModules;          // Read-only.  Module database.
 extern struct OpenInfo *glOpenInfo;             // Read-only.  The OpenInfo structure initially passed to OpenCore()
 extern struct rkTask *glCurrentTask;            // Threads should use glCurrentTaskID to manage access.
 extern CSTRING glMessages[ERR_END];       // Read-only table of error messages.
-extern CSTRING glHeaders[ERH_END];        // Read-only table of error headers.
-extern const LONG glTotalMessages, glTotalHeaders;
+extern const LONG glTotalMessages;
 extern LONG glTotalPages; // Read-only
 extern MEMORYID glTaskMessageMID;        // Read-only
 extern LONG glActionCount, glMemRegSize; // Read-only

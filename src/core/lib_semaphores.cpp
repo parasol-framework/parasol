@@ -106,7 +106,7 @@ void remove_semaphores(void)
 
    log.debug("Removing semaphores.");
 
-   if ((!glSharedControl) OR (!glSharedControl->SemaphoreOffset)) return;
+   if ((!glSharedControl) or (!glSharedControl->SemaphoreOffset)) return;
 
    ScopedSysLock lock(PL_SEMAPHORES, 4000);
    if (lock.granted()) {
@@ -147,7 +147,7 @@ static LONG DeadSemaphoreProcesses(SemaphoreEntry *Semaphore)
 
          BYTE exists = TRUE;
          #ifdef __unix__
-            if ((kill(Semaphore->Processes[i].ProcessID, 0) IS -1) AND (errno IS ESRCH)) {
+            if ((kill(Semaphore->Processes[i].ProcessID, 0) IS -1) and (errno IS ESRCH)) {
                exists = FALSE;
             }
          #elif _WIN32
@@ -205,7 +205,7 @@ ERROR AccessSemaphore(LONG SemaphoreID, LONG Timeout, LONG Flags)
 {
    parasol::Log log(__FUNCTION__);
 
-   if ((SemaphoreID < 1) OR (SemaphoreID > MAX_SEMAPHORES)) return LogError(ERH_AccessSemaphore, ERR_Args);
+   if ((SemaphoreID < 1) or (SemaphoreID > MAX_SEMAPHORES)) return log.warning(ERR_Args);
 
    LARGE end_time = (PreciseTime()/1000LL) + Timeout;
 
@@ -218,7 +218,7 @@ ERROR AccessSemaphore(LONG SemaphoreID, LONG Timeout, LONG Flags)
       // use, or perhaps use an existing entry if we already have access.
 
       WORD pi;
-      for (pi=0; (pi < ARRAYSIZE(semaphore->Processes)) AND (semaphore->Processes[pi].ProcessID != glProcessID); pi++);
+      for (pi=0; (pi < ARRAYSIZE(semaphore->Processes)) and (semaphore->Processes[pi].ProcessID != glProcessID); pi++);
       if (pi >= ARRAYSIZE(semaphore->Processes)) return ERR_Okay;
 
       SemaphoreEntry::SemProcess *process = &semaphore->Processes[pi];
@@ -248,14 +248,14 @@ ERROR AccessSemaphore(LONG SemaphoreID, LONG Timeout, LONG Flags)
             }
          }
 
-         if ((Flags & SMF_NON_BLOCKING) AND (semaphore->Counter > 0)) {
+         if ((Flags & SMF_NON_BLOCKING) and (semaphore->Counter > 0)) {
             // We have requested a non-blocking lock and the counter will allow us to grab it
             break;
          }
 
          // Return immediately if there is no timeout left
 
-         if ((PreciseTime()/1000LL) >= end_time) {
+         if ((PreciseTime() / 1000LL) >= end_time) {
             lock.release();
             log.warning("Timeout occurred in attempting to access semaphore #%d.", SemaphoreID);
             if (glLogLevel > 2) PrintDiagnosis(glProcessID, 0);
@@ -326,7 +326,7 @@ ERROR AccessSemaphore(LONG SemaphoreID, LONG Timeout, LONG Flags)
       if (Flags & SMF_NON_BLOCKING) {
          // For non-blocking locks, decrement the counter by 1 and record our lock internally.
 
-         if ((process->BufferCount) OR (process->BlockCount)) process->BufferCount++;
+         if ((process->BufferCount) or (process->BlockCount)) process->BufferCount++;
          else {
             if (!process->AccessCount) {
                if (semaphore->Counter <= 0) log.warning("Semaphore counter is already at %d!", semaphore->Counter);
@@ -414,7 +414,7 @@ ERROR AllocSemaphore(CSTRING Name, LONG Value, LONG Flags, LONG *SemaphoreID)
    if (!SemaphoreID) return log.warning(ERR_NullArgs);
 
    if (Value <= 0) Value = 1;
-   if (Value > 255) Value = 255;
+   else if (Value > 255) Value = 255;
 
    if (Flags & SMF_EXISTS) index = *SemaphoreID;
    else {
@@ -429,20 +429,20 @@ ERROR AllocSemaphore(CSTRING Name, LONG Value, LONG Flags, LONG *SemaphoreID)
       // If a name is given, look for the existing semaphore.  Otherwise, find an empty space in the semaphore list.
 
       if (!index) {
-         if ((Name) AND (*Name)) {
+         if ((Name) and (*Name)) {
             ULONG name_id = StrHash(Name, TRUE);
             for (index=1; index < MAX_SEMAPHORES; index++) {
-               if ((semlist[index].InstanceID IS glInstanceID) AND (semlist[index].NameID IS name_id)) break;
+               if ((semlist[index].InstanceID IS glInstanceID) and (semlist[index].NameID IS name_id)) break;
             }
 
             if (index IS MAX_SEMAPHORES) {
-               for (index=1; (index < MAX_SEMAPHORES) AND (semlist[index].MaxValue); index++);
+               for (index=1; (index < MAX_SEMAPHORES) and (semlist[index].MaxValue); index++);
             }
          }
-         else for (index=1; (index < MAX_SEMAPHORES) AND (semlist[index].MaxValue); index++);
+         else for (index=1; (index < MAX_SEMAPHORES) and (semlist[index].MaxValue); index++);
       }
 
-      if ((index < 1) OR (index >= MAX_SEMAPHORES)) {
+      if ((index < 1) or (index >= MAX_SEMAPHORES)) {
          log.warning("All of the available semaphore slots are in use.");
          return ERR_ArrayFull;
       }
@@ -533,7 +533,7 @@ ERROR FreeSemaphore(LONG SemaphoreID)
       SemaphoreEntry *semaphore = semlist + SemaphoreID;
 
       LONG pi;
-      for (pi=0; (pi < ARRAYSIZE(semaphore->Processes)) AND (semaphore->Processes[pi].ProcessID != glProcessID); pi++);
+      for (pi=0; (pi < ARRAYSIZE(semaphore->Processes)) and (semaphore->Processes[pi].ProcessID != glProcessID); pi++);
       if (pi >= ARRAYSIZE(semaphore->Processes)) return ERR_Okay;
       SemaphoreEntry::SemProcess *process = &semaphore->Processes[pi];
 
@@ -547,7 +547,7 @@ ERROR FreeSemaphore(LONG SemaphoreID)
 
       // If we still have locks on this block, we cannot free it yet. The ReleaseSemaphore() function will take care of this later, as it includes a check to test the AllocCount variable.
 
-      if ((process->AccessCount > 0) OR (process->BlockCount > 0)) {
+      if ((process->AccessCount > 0) or (process->BlockCount > 0)) {
          log.warning("ID: %d - Remaining Non-Blocking Locks: %d, Blocking Locks: %d", SemaphoreID, process->AccessCount, process->BlockCount);
          return ERR_Okay;
       }
@@ -600,7 +600,7 @@ ERROR pReleaseSemaphore(LONG SemaphoreID, LONG Flags)
 {
    parasol::Log log(__FUNCTION__);
 
-   if ((SemaphoreID < 1) OR (SemaphoreID > MAX_SEMAPHORES)) return log.warning(ERR_Args);
+   if ((SemaphoreID < 1) or (SemaphoreID > MAX_SEMAPHORES)) return log.warning(ERR_Args);
 
    ScopedSysLock lock(PL_SEMAPHORES, 4000);
    if (lock.granted()) {
@@ -608,7 +608,7 @@ ERROR pReleaseSemaphore(LONG SemaphoreID, LONG Flags)
       SemaphoreEntry *semaphore = semaphores + SemaphoreID;
 
       WORD pi;
-      for (pi=0; (pi < ARRAYSIZE(semaphore->Processes)) AND (semaphore->Processes[pi].ProcessID != glProcessID); pi++);
+      for (pi=0; (pi < ARRAYSIZE(semaphore->Processes)) and (semaphore->Processes[pi].ProcessID != glProcessID); pi++);
       if (pi >= ARRAYSIZE(semaphore->Processes)) {
          return ERR_Okay;
       }
@@ -714,7 +714,7 @@ ERROR SemaphoreCtrl(LONG SemaphoreID, LONG Command, ...)
    parasol::Log log(__FUNCTION__);
    va_list list;
 
-   if ((SemaphoreID < 1) OR (SemaphoreID > MAX_SEMAPHORES)) return log.warning(ERR_Args);
+   if ((SemaphoreID < 1) or (SemaphoreID > MAX_SEMAPHORES)) return log.warning(ERR_Args);
 
    ScopedSysLock lock(PL_SEMAPHORES, 4000);
    if (lock.granted()) {

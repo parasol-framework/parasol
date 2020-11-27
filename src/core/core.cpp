@@ -193,11 +193,6 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
       fprintf(stderr, "Core module has already been initialised (OpenCore() called more than once.)\n");
    }
 
-   if (glTotalHeaders != ERH_END) {
-      fprintf(stderr, "ERH_END != glTotalHeaders\n");
-      return NULL;
-   }
-
    if (alloc_private_lock(TL_GENERIC, 0)) return NULL; // A misc. internal mutex, strictly not recursive.
    if (alloc_private_lock(TL_TIMER, 0)) return NULL; // For timer subscriptions.
    if (alloc_private_lock(TL_MSGHANDLER, ALF_RECURSIVE)) return NULL;
@@ -1889,7 +1884,7 @@ static ERROR load_modules(void)
       if (!AccessMemory(glSharedControl->ModulesMID, MEM_READ, 2000, (APTR *)&glModules)) {
          return ERR_Okay;
       }
-      else return log.warning(ERH_LoadModules, ERR_AccessMemory);
+      else return log.warning(ERR_AccessMemory);
    }
    else if (!CreateObject(ID_FILE, 0, &file,
          FID_Path|TSTR,   glModuleBinPath,

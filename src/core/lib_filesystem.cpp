@@ -1569,7 +1569,7 @@ ERROR SaveImageToFile(OBJECTPTR Object, CSTRING Path, CLASSID ClassID, LONG Perm
       acFree(file);
       return error;
    }
-   else return log.warning(ERH_Function, ERR_CreateFile);
+   else return log.warning(ERR_CreateFile);
 }
 
 /*****************************************************************************

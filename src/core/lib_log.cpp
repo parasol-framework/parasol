@@ -58,10 +58,9 @@ static THREADVAR LONG tlBaseLine = 0;
 -FUNCTION-
 AdjustLogLevel: Adjusts the base-line of all log messages.
 
-This function adjusts the detail level of all messages that are sent to the program log via ~LogF() and
-~LogError().  To illustrate by example, setting the Adjust value to 1 would result in level 5 log messages
-being raised to level 6.  If the user's maximum log level output is 5, such messages would no longer appear in the log
-until the base-line is reduced to normal.
+This function adjusts the detail level of all messages that are sent to the program log via ~LogF().  To illustrate by
+example, setting the Adjust value to 1 would result in level 5 log messages being raised to level 6.  If the user's
+maximum log level output is 5, such messages would no longer appear in the log until the base-line is reduced to normal.
 
 The main purpose of AdjustLogLevel() is to reduce log noise.  For instance, creating a new desktop window will result
 in a large number of new log messages.  Raising the base-line by 2 before creating the window would be a reasonable
@@ -646,11 +645,9 @@ ERROR FuncError(CSTRING Header, ERROR Code)
 /*****************************************************************************
 
 -FUNCTION-
-LogError: Sends basic error messages to the active logger.
+LogError: OBSOLETE
 
-This function is used to send simple, pre-defined error messages to the application log.  It uses the codes listed in
-the system/errors.h file to display the correct string to the user.  Consider the following example:
-`LogError(ERH_Error, ERR_Write)`; the log message would be "An error occurred while writing data to a file.".
+OBSOLETE
 
 -INPUT-
 int Header: A valid header code must be specified, as listed in the "system/errors.h" include file.  Valid examples of existing codes are ERH_Core, ERH_Message, ERH_Error.
@@ -663,103 +660,6 @@ error: Returns the value specified in the Error parameter.
 
 ERROR LogError(LONG HeaderCode, ERROR Code)
 {
-   if (tlLogStatus <= 0) return Code;
-
-   // Issue a LogReturn() call if the error code is negative
-
-   BYTE step = FALSE;
-   if (Code < 0) {
-      Code = -Code;
-      step = TRUE;
-   }
-
-   if (glLogLevel < 2) {
-      if (step) LogReturn();
-      return Code;
-   }
-
-   if ((tlDepth >= glMaxDepth) OR (tlLogStatus <= 0)) {
-      if (step) LogReturn();
-      return Code;
-   }
-   if ((Code < glTotalMessages) AND (Code > 0)) {
-      if ((HeaderCode < glTotalHeaders) AND (HeaderCode >= 0)) {
-         // Print the header
-
-         ThreadLock lock(TL_PRINT, -1);
-
-         CSTRING header;
-         if (!HeaderCode) {
-            if (tlContext->Action) {
-               if (tlContext->Action < 0) {
-                  rkMetaClass *mc = (rkMetaClass *)tlContext->Object->Class;
-                  if ((mc) AND (mc->Methods) AND (-tlContext->Action < mc->TotalMethods)) {
-                     header = mc->Methods[-tlContext->Action].Name;
-                  }
-                  else header = "Method";
-               }
-               else header = ActionTable[tlContext->Action].Name;
-            }
-            else header = "Function";
-         }
-         else if (HeaderCode < 0) {
-            rkMetaClass *mc = (rkMetaClass *)tlContext->Object->Class;
-            if ((mc) AND (mc->Methods) AND (-HeaderCode < mc->TotalMethods)) header = mc->Methods[-HeaderCode].Name;
-            else header = "Method";
-         }
-         else header = glHeaders[HeaderCode];
-
-         #ifdef __ANDROID__
-            if (tlContext->Object->Class) {
-               STRING name;
-
-               if (tlContext->Object->Stats->Name[0]) name = tlContext->Object->Stats->Name;
-               else name = ((rkMetaClass *)tlContext->Object->Class)->Name;
-
-               if (tlContext->Field) {
-                  __android_log_print(ANDROID_LOG_ERROR, header, "[%s:%d:%s] %s", name, tlContext->Object->UniqueID, tlContext->Field->Name, glMessages[Code]);
-               }
-               else __android_log_print(ANDROID_LOG_ERROR, header, "[%s:%d] %s", name, tlContext->Object->UniqueID, glMessages[Code]);
-            }
-            else __android_log_print(ANDROID_LOG_ERROR, header, "%s", glMessages[Code]);
-         #else
-            char msgheader[COLUMN1+1];
-            CSTRING hiend = "", histart = "", name;
-
-            fmsg(header, msgheader, MS_MSG, 2);
-
-            #ifdef ESC_OUTPUT
-               if (glLogLevel > 2) {
-                  #ifdef _WIN32
-                     histart = "!";
-                  #else
-                     histart = "\033[1m";
-                     hiend = "\033[0m";
-                  #endif
-               }
-            #endif
-
-            if (tlContext->Object->Class) {
-               if (tlContext->Object->Stats->Name[0]) name = tlContext->Object->Stats->Name;
-               else name = ((rkMetaClass *)tlContext->Object->Class)->ClassName;
-
-               if (tlContext->Field) {
-                  fprintf(stderr, "%s%s[%s:%d:%s] %s%s\n", histart, msgheader, name, tlContext->Object->UniqueID, tlContext->Field->Name, glMessages[Code], hiend);
-               }
-               else fprintf(stderr, "%s%s[%s:%d] %s%s\n", histart, msgheader, name, tlContext->Object->UniqueID, glMessages[Code], hiend);
-            }
-            else fprintf(stderr, "%s%s%s%s\n", histart, msgheader, glMessages[Code], hiend);
-
-            #ifdef __unix__
-               if (glSync) { fflush(0); fsync(STDERR_FILENO); }
-            #endif
-         #endif
-      }
-      else LogF("@LogError:","Header: %d, Code: %d", HeaderCode, Code);
-   }
-   else LogF("@LogError:","Header: %d, Code: %d", HeaderCode, Code);
-
-   if (step) LogReturn();
    return Code;
 }
 

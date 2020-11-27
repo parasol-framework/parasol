@@ -767,7 +767,6 @@ if (!CreateObject(ID_THREAD, 0, &amp;thread,
 
     <struct name="SystemState" comment="Returned by the GetSystemState() function.">
       <field name="ErrorMessages" type="CSTRING *">A sorted array of all error codes, translated into human readable strings.</field>
-      <field name="ErrorHeaders" type="CSTRING *">A sorted array of all error header codes, translated into human readable strings.</field>
       <field name="RootPath" type="CSTRING">The current root path, which defaults to the location of the installation folder.</field>
       <field name="SystemPath" type="CSTRING">The current path of the 'system:' volume.</field>
       <field name="ModulePath" type="CSTRING">The current path to the system modules, normally 'system:modules/'</field>
@@ -777,7 +776,6 @@ if (!CreateObject(ID_THREAD, 0, &amp;thread,
       <field name="CoreRevision" type="LONG">Reflects the Core revision number.</field>
       <field name="InstanceID" type="LONG">This is the ID of the instance that the calling process resides in.</field>
       <field name="TotalErrorMessages" type="LONG">The total number of error codes listed in the ErrorMessages array.</field>
-      <field name="TotalErrorHeaders" type="LONG">The total number of error headers listed in the ErrorHeaders array.</field>
       <field name="Stage" type="LONG">The current operating stage.  -1 = Initialising, 0 indicates normal operating status; 1 means that the program is shutting down; 2 indicates a program restart; 3 is for mode switches.</field>
     </struct>
 

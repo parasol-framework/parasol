@@ -43,12 +43,13 @@ struct thread_info{
 
 static void * test_locking(struct thread_info *info)
 {
+   parasol::Log log(__FUNCTION__);
    LONG i;
    ERROR error;
    BYTE *memory;
 
    info->index = GetResource(RES_THREAD_ID);
-   LogMsg("----- Thread %d is starting now.", info->index);
+   log.msg("----- Thread %d is starting now.", info->index);
 
    for (i=0; i < glLockAttempts; i++) {
       if (!glMemoryID) break;
@@ -56,9 +57,9 @@ static void * test_locking(struct thread_info *info)
 
       if (!(error = AccessMemory(glMemoryID, MEM_READ_WRITE, 30000, &memory))) {
          memory[0]++;
-         LogMsg("%d.%d: Memory acquired.", info->index, i);
+         log.msg("%d.%d: Memory acquired.", info->index, i);
          WaitTime(0, 2000);
-         if (memory[0] > 1) LogErrorMsg("--- MAJOR ERROR %d: More than one thread has access to this memory!", info->index);
+         if (memory[0] > 1) log.warning("--- MAJOR ERROR %d: More than one thread has access to this memory!", info->index);
          memory[0]--;
 
          // Test that object removal works in ReleasePrivateObject() and that waiting threads fail peacefully.
@@ -74,17 +75,17 @@ static void * test_locking(struct thread_info *info)
 
          ReleaseMemoryID(glMemoryID);
 
-         LogMsg("%d: Memory released.", info->index);
+         log.msg("%d: Memory released.", info->index);
 
          #ifdef __unix__
             pthread_yield();
          #endif
          if (glAccessGap > 0) WaitTime(0, glAccessGap);
       }
-      else LogMsg("Attempt %d.%d: Failed to acquire a lock, error: %s", info->index, i, GetErrorMsg(error));
+      else log.msg("Attempt %d.%d: Failed to acquire a lock, error: %s", info->index, i, GetErrorMsg(error));
    }
 
-   LogMsg("----- Thread %d is finished.", info->index);
+   log.msg("----- Thread %d is finished.", info->index);
    return NULL;
 }
 
