@@ -19,11 +19,11 @@
 <p>In order to actually draw graphics onto the display, classes that have been specifically created for drawing graphics must be used to create a meaningful interface.  Classes such as Box, Image, Text and Gradient help to create an assemblage of imagery that has meaning to the user. The interface is then enhanced through the use of UI functionality that enables user feedback such as mouse and keyboard I/O.  With a little effort and imagination, a customised interface can thus be assembled and presented to the user without much difficulty on the part of the developer.</p>
 <p>While this is a simple concept, the Surface class is its foundation and forms one of the largest and most sophisticated class in our system. It provides a great deal of functionality which cannot be summarised in this introduction, but you will find a lot of technical detail on each individual field in this manual.  It is also recommended that you refer to the demo scripts that come with the core distribution if you require a real-world view of how the class is typically used.</p></description>
     <source>
-      <file path="class_surface/">surface_class.c</file>
-      <file path="class_surface/">surface_dimensions.c</file>
-      <file path="class_surface/">surface_drawing.c</file>
-      <file path="class_surface/">surface_fields.c</file>
-      <file path="class_surface/">surface_resize.c</file>
+      <file path="class_surface/">surface_class.cpp</file>
+      <file path="class_surface/">surface_dimensions.cpp</file>
+      <file path="class_surface/">surface_drawing.cpp</file>
+      <file path="class_surface/">surface_fields.cpp</file>
+      <file path="class_surface/">surface_resize.cpp</file>
     </source>
   </info>
 

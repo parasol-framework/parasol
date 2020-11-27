@@ -20,7 +20,7 @@
 <p>The id of the most recently selected menu item can be retrieved from the <field>SelectedID</field> field.</p>
 <p>To make modifications to the menu after initialisation, read the <field>Menu</field> field and manipulate it directly.</p></description>
     <source>
-      <file>class_combobox.c</file>
+      <file>class_combobox.cpp</file>
     </source>
   </info>
 

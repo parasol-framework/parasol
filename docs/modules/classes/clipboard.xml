@@ -18,7 +18,7 @@
 <p>Multiple clipboard objects can be created, but they all control the same group of clipped data for the logged-in user. All items that are passed to the clipboard object are stored in the 'clipboard:' assignment, which defaults to <code>temp:clipboard/</code>.</p>
 <p>There is a limit on the amount of clipped items that can be stored in the clipboard.  Only 1 group of each datatype is permitted (for example, only one group of image clips may exist at any time) and there is a preset limit on the total number of clips that can be stored in the history cache.</p></description>
     <source>
-      <file>class_clipboard.c</file>
+      <file>class_clipboard.cpp</file>
     </source>
   </info>
 

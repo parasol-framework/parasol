@@ -50,7 +50,7 @@
 
 /core/android
 /core/3rdparty/openssl-*/
-/core/3rdparty/zlib-*/
+/3rdparty/zlib-*/
 /examples/test.fluid
 .idea/
 /core/modules/fluid/luajit-*/doc
@@ -68,3 +68,17 @@
 /svg/
 core/modules/fluid/libffi-3.3/
 debug-install/
+local/
+src/android/
+src/fluid/libffi-3.3/
+src/fluid/luajit-2.0.5/doc/
+src/fluid/luajit-2.0.5/src/lj_bcdef.h
+src/fluid/luajit-2.0.5/src/lj_ffdef.h
+src/fluid/luajit-2.0.5/src/lj_folddef.h
+src/fluid/luajit-2.0.5/src/lj_libdef.h
+src/fluid/luajit-2.0.5/src/lj_recdef.h
+src/fluid/luajit-2.0.5/src/luajit
+src/fluid/luajit-2.0.5/src/host/buildvm
+src/fluid/luajit-2.0.5/src/host/buildvm_arch.h
+src/fluid/luajit-2.0.5/src/host/minilua
+src/fluid/luajit-2.0.5/src/jit/vmdef.lua

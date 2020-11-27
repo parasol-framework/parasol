@@ -29,8 +29,8 @@
 <p>For long text lists, scrollbars can be attached via the HScroll and VScroll fields.  For hints on how to use a text object to build a full featured text editing application, refer to the script file located at <code>programs:apps/textviewer/main.dml</code>.</p>
 <p>By default the Text class supports text highlighting for cut, copy and paste operations.  This support is backed by system keypresses such as CTRL-C, CTRL-V and CTRL-X.</p></description>
     <source>
-      <file path="class_text/">fields.c</file>
-      <file path="class_text/">text.c</file>
+      <file path="class_text/">fields.cpp</file>
+      <file path="class_text/">text.cpp</file>
     </source>
   </info>
 

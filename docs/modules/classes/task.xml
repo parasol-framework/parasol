@@ -21,7 +21,7 @@
 <p>To find the task object that represents the active process, use the <function module="Core">CurrentTask</function> function to quickly retrieve it.</p>
 <p>To send messages to another task, you need to know its <field>MessageQueue</field> ID so that <function module="Core">SendMessage</function> can be used.  A simple way to initiate interprocess communication is to pass your MessageQueue ID to the other task as a parameter.</p></description>
     <source>
-      <file path="src/classes/">class_task.cpp</file>
+      <file path="classes/">class_task.cpp</file>
     </source>
   </info>
 

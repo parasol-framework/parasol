@@ -19,7 +19,7 @@
 <p>You can use the Scroll class to create fixed or proportional scrollbars depending on what the situation dictates. Where possible you should use proportional scrolling as it is the easier of the two to set up.  All you need to do is specify the page size (which represents the width or height of the graphical content) and the view size (the 'window' into the information).  To create a fixed scrollbar, set the <field>SliderSize</field> manually.</p>
 <p>Some objects are supportive of scrolling - for example, the <class name="Text">Text</class> class supports horizontal and vertical scrolling through its HScroll and VScroll fields.  Objects that support scrollbars expect to be connected directly to an appropriate scroll object.  Once that connection is established, they will take over the scroll object so that the page size and positioning is always managed correctly.  In such cases it is not necessary for you to pre-calculate the scale or page and view sizes.</p></description>
     <source>
-      <file>class_scroll.c</file>
+      <file>class_scroll.cpp</file>
     </source>
   </info>
 

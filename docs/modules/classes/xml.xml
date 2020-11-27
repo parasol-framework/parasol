@@ -21,7 +21,7 @@
 <p>Once an XML object has interpreted a statement, you can read the information by scanning the array stored in the <field>Tags</field> field.  This array contains an XMLTag structure for each tag found in the original XML statement.  For more information on how to scan this information, refer to the <field>Tags</field> field.</p>
 <p>Please note that all tag address pointers that are listed in the <field>Tags</field> field are volatile.  Any write operation to an XML object's tree structure will result in changes to the tag address list.</p></description>
     <source>
-      <file>xml.c</file>
+      <file>xml.cpp</file>
     </source>
   </info>
 
@@ -127,7 +127,7 @@
         <param type="LONG *" name="Result">The index of the first matching tag is returned in this parameter (not valid if a Callback is defined).</param>
       </input>
       <description>
-<p>This method will return the first tag that matches the search string specified in XPath.  Optionally, if the XPath uses wild cards or would match multiple tags, a Callback function may be passed that will be called for each matching tag that  is discovered.  The synopsis for the callback function is <code>ERROR Function(*XML, struct XMLTag *Tag, STRING Attrib)</code>.</p>
+<p>This method will return the first tag that matches the search string specified in XPath.  Optionally, if the XPath uses wild cards or would match multiple tags, a Callback function may be passed that will be called for each matching tag that  is discovered.  The synopsis for the callback function is <code>ERROR Function(*XML, XMLTag *Tag, STRING Attrib)</code>.</p>
 <p>The callback routine can terminate the search early by returning ERR_Terminate.  All other error codes are ignored.</p>
 <p>The <field>RootIndex</field> value has no effect on this method.  Use <method>FindTagFromIndex</method> to make restricted searches.</p>
       </description>
@@ -151,7 +151,7 @@
       </input>
       <description>
 <p>This method will return the first tag that matches the search string specified in XPath.  The search begins at the tag indicated by the Start value.  This should be set to zero if searching from the top of the XML tree.</p>
-<p>Optionally, if the XPath uses wild-cards or would match multiple tags, a Callback function may be passed that will be called for each matching tag that is discovered.  The synopsis for the callback function in C is <code>ERROR Function(*XML, struct XMLTag *Tag, STRING Attrib)</code>.</p>
+<p>Optionally, if the XPath uses wild-cards or would match multiple tags, a Callback function may be passed that will be called for each matching tag that is discovered.  The synopsis for the callback function in C is <code>ERROR Function(*XML, XMLTag *Tag, STRING Attrib)</code>.</p>
 <p>For Fluid: <code>function Callback(XML {ID}, TagIndex {Long}, Attrib {String})</code>.</p>
 <p>The callback routine can terminate the search early by returning ERR_Terminate.  All other error codes are ignored.</p>
       </description>

@@ -35,8 +35,8 @@ err = cmp.mtDecompressFile('*.def', 'temp:')
 <p>To adjust the level of compression used to pack each file, set the <field>CompressionLevel</field> field to a value between 0 and 100%.</p>
 <p>This code is based on the work of Jean-loup Gailly and Mark Adler.</p></description>
     <source>
-      <file path="src/compression/">class_compression.cpp</file>
-      <file path="src/compression/">compression_fields.cpp</file>
+      <file path="compression/">class_compression.cpp</file>
+      <file path="compression/">compression_fields.cpp</file>
     </source>
   </info>
 

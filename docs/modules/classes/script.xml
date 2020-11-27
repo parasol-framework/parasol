@@ -18,7 +18,7 @@
 <p>To execute a script, set the <field>Path</field> field and then <action>Activate</action> the Script object.  Global input parameters for the script can be defined via the <action>SetVar</action> action.</p>
 <p>Activating a script can result in the generation of objects that outlive the script after it is destroyed.</p></description>
     <source>
-      <file path="src/classes/">class_script.cpp</file>
+      <file path="classes/">class_script.cpp</file>
     </source>
   </info>
 

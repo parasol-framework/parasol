@@ -17,7 +17,7 @@
 <p>The MenuItem is an integral part of the <class name="Menu">Menu</class> class.  It is used to represent the individual items that are listed in a menu.  Following initialisation, any MenuItem can be modified at run-time to make simple changes to the menu.  For complex or extensive changes, it may be more efficient to recreate the menu from scratch.</p>
 <p>It is not possible for a MenuItem to be owned by any object other than a <class name="Menu">Menu</class>.</p></description>
     <source>
-      <file path="class_menu/">menuitem.c</file>
+      <file path="class_menu/">menuitem.cpp</file>
     </source>
   </info>
 

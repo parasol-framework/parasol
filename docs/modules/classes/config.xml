@@ -43,7 +43,7 @@ print('The Action class is located at ' .. str)
 }
 </pre></description>
     <source>
-      <file path="src/classes/">class_config.cpp</file>
+      <file path="classes/">class_config.cpp</file>
     </source>
   </info>
 

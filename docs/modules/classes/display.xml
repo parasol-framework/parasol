@@ -18,7 +18,7 @@
 <p>It is perfectly acceptable to initialise multiple display objects and add them to the viewport, but due to memory restrictions, chances of failure could be high when doing this in certain environments.  When programming for Parasol, it is recommended that the utilisation of display objects is avoided in favour of using the <class name="Surface">Surface</class> class. which is much lighter on memory usage.</p>
 <p>Displays that are created as shared objects are available for any application or object to draw graphics to, so bear in mind the implications of creating a shared display.</p></description>
     <source>
-      <file>class_display.c</file>
+      <file>class_display.cpp</file>
     </source>
   </info>
 

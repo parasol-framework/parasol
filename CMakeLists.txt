@@ -48,7 +48,7 @@ set (CMAKE_POSITION_INDEPENDENT_CODE ON) # Enables -fPIC and -fPIE in gcc
 
 set(BUILD_RPATH_USE_ORIGIN TRUE)
 
-set (INCLUDE_OUTPUT "${PROJECT_SOURCE_DIR}/core/include/parasol")
+set (INCLUDE_OUTPUT "${PROJECT_SOURCE_DIR}/include/parasol")
 set (DOCS "${PROJECT_SOURCE_DIR}/docs")
 
 if (RUN_ANYWHERE)
@@ -81,8 +81,8 @@ if (MINGW) # Undo the use of 'lib' as the default prefix set by MinGW
    set(CMAKE_STATIC_LIBRARY_PREFIX "")
 endif ()
 
-include_directories("${PROJECT_SOURCE_DIR}/core/include"
-   "${PROJECT_SOURCE_DIR}/core/include/parasol/3rdparty"
+include_directories("${PROJECT_SOURCE_DIR}/include"
+   "${PROJECT_SOURCE_DIR}/include/parasol/3rdparty"
    "${CMAKE_CURRENT_BINARY_DIR}")
 
 	CHECK_C_SOURCE_COMPILES ("
@@ -284,7 +284,7 @@ endfunction ()
 function (set_module_defaults ARG_TARGET)
    target_link_options (${ARG_TARGET} PRIVATE "$<${GCC_COMPAT}:$<LINK_ONLY:LINKER:--gc-sections>>")
 
-   target_include_directories (${ARG_TARGET} PRIVATE "${PROJECT_SOURCE_DIR}/core/include")
+   target_include_directories (${ARG_TARGET} PRIVATE "${PROJECT_SOURCE_DIR}/include")
 
    add_definitions ("-DMOD_NAME=${ARG_TARGET}")
 
@@ -368,30 +368,30 @@ if (MINGW)
 endif (MINGW)
 
 set(CMAKE_INSTALL_RPATH "$ORIGIN/lib")
-add_subdirectory (core/3rdparty/zlib-1.2.11) # Note that when upgrading, the CMakeLists.txt is customised
-add_subdirectory (core/link)
-add_subdirectory (core/src)
-add_subdirectory (core/modules/audio)
-add_subdirectory (core/modules/display)
-add_subdirectory (core/modules/document)
-add_subdirectory (core/modules/fluid)
-add_subdirectory (core/modules/font)
-add_subdirectory (core/modules/http)
-add_subdirectory (core/modules/iconserver)
-add_subdirectory (core/modules/json)
-add_subdirectory (core/modules/network)
-add_subdirectory (core/modules/parc)
-add_subdirectory (core/modules/picture)
-add_subdirectory (core/modules/picture_jpeg)
-add_subdirectory (core/modules/scintilla)
-add_subdirectory (core/modules/surface)
-add_subdirectory (core/modules/svg)
-add_subdirectory (core/modules/vector)
-add_subdirectory (core/modules/widget)
-add_subdirectory (core/modules/window)
-add_subdirectory (core/modules/xml)
+add_subdirectory (3rdparty/zlib-1.2.11) # Note that when upgrading, the CMakeLists.txt is customised
+add_subdirectory (src/link)
+add_subdirectory (src/core)
+add_subdirectory (src/audio)
+add_subdirectory (src/display)
+add_subdirectory (src/document)
+add_subdirectory (src/fluid)
+add_subdirectory (src/font)
+add_subdirectory (src/http)
+add_subdirectory (src/iconserver)
+add_subdirectory (src/json)
+add_subdirectory (src/network)
+add_subdirectory (src/parc)
+add_subdirectory (src/picture)
+add_subdirectory (src/picture_jpeg)
+add_subdirectory (src/scintilla)
+add_subdirectory (src/surface)
+add_subdirectory (src/svg)
+add_subdirectory (src/vector)
+add_subdirectory (src/widget)
+add_subdirectory (src/window)
+add_subdirectory (src/xml)
 if (X11_Xrandr_FOUND)
-   add_subdirectory (core/modules/xrandr)
+   add_subdirectory (src/xrandr)
 endif ()
 
 if (WIN32)
@@ -410,21 +410,21 @@ endif ()
 
 if (WIN32)
    # Specifying the WIN32 option will generate a Windows GUI application
-   add_executable (parasol WIN32 "core/launcher/parasol.cpp" "core/launcher/sandbox-win.cpp" "core/link/resource.rc")
+   add_executable (parasol WIN32 "src/launcher/parasol.cpp" "src/launcher/sandbox-win.cpp" "src/link/resource.rc")
    target_link_libraries (parasol PRIVATE init-win)
 
-   add_executable (fluid_cmd WIN32 "core/launcher/fluid.cpp" "core/launcher/sandbox-win.cpp" "core/link/resource.rc")
+   add_executable (fluid_cmd WIN32 "src/launcher/fluid.cpp" "src/launcher/sandbox-win.cpp" "src/link/resource.rc")
    target_link_libraries (fluid_cmd PRIVATE init-win)
 else ()
-   add_executable (parasol "core/launcher/parasol.cpp")
+   add_executable (parasol "src/launcher/parasol.cpp")
    target_link_libraries (parasol PRIVATE init-unix)
 
-   add_executable (fluid_cmd "core/launcher/fluid.cpp")
+   add_executable (fluid_cmd "src/launcher/fluid.cpp")
    target_link_libraries (fluid_cmd PRIVATE init-unix)
 endif ()
 
-target_include_directories (parasol PRIVATE "${PROJECT_SOURCE_DIR}/core/link")
-target_include_directories (fluid_cmd PRIVATE "${PROJECT_SOURCE_DIR}/core/link")
+target_include_directories (parasol PRIVATE "${PROJECT_SOURCE_DIR}/src/link")
+target_include_directories (fluid_cmd PRIVATE "${PROJECT_SOURCE_DIR}/src/link")
 
 if (CMAKE_BUILD_TYPE MATCHES "Release")
    message (STATUS "Symbols will be stripped from this build (no debugging).")
@@ -443,7 +443,7 @@ add_dependencies (fluid_cmd build_headers)
 # ----------------------------------------------------------------------------
 # Generate the platform configuration header
 
-configure_file ("core/config.h.in" "parasol/config.h" NEWLINE_STYLE UNIX)
+configure_file ("src/config.h.in" "parasol/config.h" NEWLINE_STYLE UNIX)
 
 # ----------------------------------------------------------------------------
 # Installation steps

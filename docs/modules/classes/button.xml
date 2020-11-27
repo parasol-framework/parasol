@@ -18,7 +18,7 @@
 <p>Default button values and the look and feel are applied using styles.</p>
 <p>You will need to configure the button so that when it is clicked, it performs an action.  The methods to achieve this are: Initialise child objects to the button for execution on activation; Listen to the Activate action by calling the <function module="Core">SubscribeAction</function> function on the button.</p></description>
     <source>
-      <file>class_button.c</file>
+      <file>class_button.cpp</file>
     </source>
   </info>
 
