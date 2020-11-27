@@ -106,7 +106,7 @@ module({ name="Scintilla", copyright="Paul Manias © 2005-2020", version=1.0 }, 
    objFont *BoldFont;        // Bold version of the current font
    objFont *ItalicFont;      // Italic version of the current font
    objFont *BIFont;          // Bold-Italic version of the current font
-   ScintillaPan *SciPan;
+   ScintillaParasol *API;
    objScrollbar *HScrollbar;
    objScrollbar *VScrollbar;
    APTR   prvKeyEvent;

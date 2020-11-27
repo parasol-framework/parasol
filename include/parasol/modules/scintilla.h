@@ -112,7 +112,7 @@ typedef struct rkScintilla {
    objFont *BoldFont;        // Bold version of the current font
    objFont *ItalicFont;      // Italic version of the current font
    objFont *BIFont;          // Bold-Italic version of the current font
-   ScintillaPan *SciPan;
+   ScintillaParasol *API;
    objScrollbar *HScrollbar;
    objScrollbar *VScrollbar;
    APTR   prvKeyEvent;

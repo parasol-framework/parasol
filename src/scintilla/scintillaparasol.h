@@ -1,15 +1,15 @@
 
 /*****************************************************************************
-** Class ScintillaPan
+** Class ScintillaParasol
 **
 ** This class inherits from ScintillaBase which inherits from Editor.
 ** This class is responsible for a lot of the editing stuff.
 */
 
-class ScintillaPan : public Scintilla::ScintillaBase {
+class ScintillaParasol : public Scintilla::ScintillaBase {
 public:
-   ScintillaPan(int SurfaceID, struct rkScintilla *Scintilla);
-   virtual ~ScintillaPan();
+   ScintillaParasol(int SurfaceID, struct rkScintilla *Scintilla);
+   virtual ~ScintillaParasol();
    virtual void Initialise() {};
    virtual void Finalise();
 //    virtual void RefreshColourPalette(Palette &pal, bool want);
@@ -37,7 +37,7 @@ public:
    virtual void SetMouseCapture(bool on);
    virtual bool HaveMouseCapture();
    virtual sptr_t DefWndProc(unsigned int iMessage, uptr_t wParam, sptr_t lParam);
-   static sptr_t DirectFunction(ScintillaPan *sci, unsigned int iMessage, uptr_t wParam, sptr_t lParam);
+   static sptr_t DirectFunction(ScintillaParasol *sci, unsigned int iMessage, uptr_t wParam, sptr_t lParam);
    // Non-abstract virtual methods from Editor
    virtual int KeyDefault(int key, int modifiers);
 
@@ -79,15 +79,15 @@ public:
    }
 
    long SendScintilla(unsigned int msg,unsigned long wParam, const char *lParam) {
-      return SendScintilla(msg,wParam,reinterpret_cast<long>(lParam));
+      return WndProc(msg,wParam,reinterpret_cast<sptr_t>(lParam));
    }
 
    long SendScintilla(unsigned int msg,const char *lParam) {
-      return SendScintilla(msg,0UL,reinterpret_cast<long>(lParam));
+      return WndProc(msg,0UL,reinterpret_cast<sptr_t>(lParam));
    }
 
    long SendScintilla(unsigned int msg,const char *wParam, const char *lParam) {
-       return SendScintilla(msg,reinterpret_cast<unsigned long>(wParam),reinterpret_cast<long>(lParam));
+       return WndProc(msg,reinterpret_cast<uptr_t>(wParam),reinterpret_cast<sptr_t>(lParam));
    }
 
 public:
