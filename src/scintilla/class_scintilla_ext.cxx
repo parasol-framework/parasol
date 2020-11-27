@@ -55,11 +55,12 @@ static const struct styledef c_styles[] = {
    { SCE_C_GLOBALCLASS,            COL_RED, 0 }
 };
 
-void ScintillaPan::SetStyles(const struct styledef *Def, LONG Total)
+void ScintillaParasol::SetStyles(const struct styledef *Def, LONG Total)
 {
+   parasol::Log log("SetStyles");
    LONG i, index;
 
-   LogF("~SetStyles:","%d", Total);
+   log.branch("%d", Total);
 
    for (i=0; i < Total; i++) {
       index = Def[i].Index;
@@ -67,7 +68,7 @@ void ScintillaPan::SetStyles(const struct styledef *Def, LONG Total)
       WndProc(SCI_STYLESETSIZE, index, 10); // Default Size
       WndProc(SCI_STYLESETFORE, index, SCICOLOUR((UBYTE)(Def[i].Colour>>16), (UBYTE)(Def[i].Colour>>8), Def[i].Colour));
 
-      if ((index IS STYLE_BRACELIGHT) OR (index IS STYLE_BRACEBAD)) {
+      if ((index IS STYLE_BRACELIGHT) or (index IS STYLE_BRACEBAD)) {
          WndProc(SCI_STYLESETBACK, index, SCICOLOUR(255, 255, 200));
       }
 
@@ -77,15 +78,13 @@ void ScintillaPan::SetStyles(const struct styledef *Def, LONG Total)
 
    WndProc(SCI_STYLESETBACK, STYLE_DEFAULT, (long int)SCICOLOUR(scintilla->BkgdColour.Red, scintilla->BkgdColour.Green, scintilla->BkgdColour.Blue));
    WndProc(SCI_STYLESETFORE, STYLE_DEFAULT, (long int)SCICOLOUR(scintilla->TextColour.Red, scintilla->TextColour.Green, scintilla->TextColour.Blue));
-
-   LogReturn();
 }
 
 /*****************************************************************************
 ** This is the main entry point, we're called from the Init action here.
 */
 
-ScintillaPan::ScintillaPan(int SurfaceID, struct rkScintilla *Scintilla)
+ScintillaParasol::ScintillaParasol(int SurfaceID, struct rkScintilla *Scintilla)
 :  scintilla(Scintilla), surfaceid(SurfaceID)
 {
    lastkeytrans[0] = 0;
@@ -112,16 +111,18 @@ ScintillaPan::ScintillaPan(int SurfaceID, struct rkScintilla *Scintilla)
    SetTicking(true);
 }
 
-ScintillaPan::~ScintillaPan()
+ScintillaParasol::~ScintillaParasol()
 {
 
 }
 
 //****************************************************************************
 
-void ScintillaPan::Finalise()
+void ScintillaParasol::Finalise()
 {
-   FMSG("panFinalise()","");
+   parasol::Log log(__FUNCTION__);
+
+   log.trace("");
 
    SetTicking(true);
    ScintillaBase::Finalise();
@@ -129,16 +130,18 @@ void ScintillaPan::Finalise()
 
 //****************************************************************************
 
-void ScintillaPan::CreateCallTipWindow(Scintilla::PRectangle rc)
+void ScintillaParasol::CreateCallTipWindow(Scintilla::PRectangle rc)
 {
-   FMSG("panCreateCallTipWindow()","");
+   parasol::Log log(__FUNCTION__);
+   log.trace("");
 }
 
 //****************************************************************************
 
-void ScintillaPan::AddToPopUp(const char *label, int cmD, bool enabled)
+void ScintillaParasol::AddToPopUp(const char *label, int cmD, bool enabled)
 {
-   FMSG("panAddToPopUp()","%s", label);
+   parasol::Log log(__FUNCTION__);
+   log.trace("%s", label);
 
    // The one and only Menu object is a member of ScintillaBase: Menu popup;
 
@@ -153,11 +156,12 @@ void ScintillaPan::AddToPopUp(const char *label, int cmD, bool enabled)
 
 //****************************************************************************
 
-void ScintillaPan::SetVerticalScrollPos()
+void ScintillaParasol::SetVerticalScrollPos()
 {
+   parasol::Log log(__FUNCTION__);
    struct scUpdateScroll scroll;
 
-   FMSG("~panSetVerticalScrollPos()","%d", topLine);
+   log.traceBranch("%d", topLine);
 
    DwellEnd(true); // Cancel any current mouse hover
 
@@ -169,17 +173,16 @@ void ScintillaPan::SetVerticalScrollPos()
       if (glBitmap) DelayMsg(MT_ScUpdateScroll, scintilla->VScrollID, &scroll);
       else ActionMsg(MT_ScUpdateScroll, scintilla->VScrollID, &scroll);
    }
-
-   LOGRETURN();
 }
 
 //****************************************************************************
 
-void ScintillaPan::SetHorizontalScrollPos()
+void ScintillaParasol::SetHorizontalScrollPos()
 {
+   parasol::Log log(__FUNCTION__);
    struct scUpdateScroll scroll;
 
-   FMSG("~panSetHorizontalScrollPos()","%d", xOffset);
+   log.traceBranch("%d", xOffset);
 
    DwellEnd(true); // Cancel any current mouse hover
 
@@ -189,8 +192,6 @@ void ScintillaPan::SetHorizontalScrollPos()
    scroll.Unit     = vs.lineHeight;
    if (glBitmap) DelayMsg(MT_ScUpdateScroll, scintilla->HScrollID, &scroll);
    else ActionMsg(MT_ScUpdateScroll, scintilla->HScrollID, &scroll);
-
-   LOGRETURN();
 }
 
 /*****************************************************************************
@@ -198,8 +199,9 @@ void ScintillaPan::SetHorizontalScrollPos()
 ** nPage: Number of lines per view.
 */
 
-bool ScintillaPan::ModifyScrollBars(int nMax, int nPage)
+bool ScintillaParasol::ModifyScrollBars(int nMax, int nPage)
 {
+   parasol::Log log(__FUNCTION__);
    struct scUpdateScroll scroll;
    LONG lines;
 
@@ -215,7 +217,7 @@ bool ScintillaPan::ModifyScrollBars(int nMax, int nPage)
    scroll.Position = xOffset;
    scroll.Unit     = vs.lineHeight;
 
-   FMSG("~ModifyScrollBars()","Lines: %d, PageWidth: %d/%d, Delay: %c", nMax, scroll.PageSize, scroll.ViewSize, (glBitmap ? 'Y' : 'N'));
+   log.traceBranch("Lines: %d, PageWidth: %d/%d, Delay: %c", nMax, scroll.PageSize, scroll.ViewSize, (glBitmap ? 'Y' : 'N'));
 
    if (glBitmap) DelayMsg(MT_ScUpdateScroll, scintilla->HScrollID, &scroll);
    else ActionMsg(MT_ScUpdateScroll, scintilla->HScrollID, &scroll);
@@ -233,7 +235,7 @@ bool ScintillaPan::ModifyScrollBars(int nMax, int nPage)
    else {
       scroll.ViewSize = -1;
       scroll.PageSize = (nMax+1) * vs.lineHeight;
-      if ((scroll.PageSize > scintilla->Surface.Height) AND (vs.lineHeight > 0)) {
+      if ((scroll.PageSize > scintilla->Surface.Height) and (vs.lineHeight > 0)) {
          scroll.PageSize -= (scintilla->Surface.Height / vs.lineHeight);
       }
    }
@@ -241,21 +243,21 @@ bool ScintillaPan::ModifyScrollBars(int nMax, int nPage)
    scroll.Position = topLine * vs.lineHeight;
    scroll.Unit     = vs.lineHeight;
 
-   FMSG("ModifyScrollBars:","PageLength: %d/%d (lines: %d/%d), Pos: %d", scroll.PageSize, scroll.ViewSize, lines, nMax, scroll.Position);
+   log.trace("PageLength: %d/%d (lines: %d/%d), Pos: %d", scroll.PageSize, scroll.ViewSize, lines, nMax, scroll.Position);
 
    if (glBitmap) DelayMsg(MT_ScUpdateScroll, scintilla->VScrollID, &scroll);
    else ActionMsg(MT_ScUpdateScroll, scintilla->VScrollID, &scroll);
 
-   LOGRETURN();
    return TRUE;
 }
 
 //****************************************************************************
 // Called after SCI_SETWRAPMODE and SCI_SETHSCROLLBAR.
 
-void ScintillaPan::ReconfigureScrollBars()
+void ScintillaParasol::ReconfigureScrollBars()
 {
-   FMSG("~panReconfigureScrollBars()","");
+   parasol::Log log(__FUNCTION__);
+   log.traceBranch("");
 
 /*
 	 if (horizontalScrollBarVisible) acShowID(scintilla->HScroll);
@@ -264,16 +266,16 @@ void ScintillaPan::ReconfigureScrollBars()
 	 if (verticalScrollBarVisible) acShowID(scintilla->VScroll);
 	 else acHideID(scintilla->VScroll);
 */
-   LOGRETURN();
 }
 
 /****************************************************************************
 ** Copies the selected text section to the Pandora clipboard.
 */
 
-void ScintillaPan::CopyToClipboard(const Scintilla::SelectionText &selectedText)
+void ScintillaParasol::CopyToClipboard(const Scintilla::SelectionText &selectedText)
 {
-   FMSG("~panCopyToClipboard()","");
+   parasol::Log log(__FUNCTION__);
+   log.traceBranch("");
 
    OBJECTPTR clipboard;
    if (!CreateObject(ID_CLIPBOARD, 0, &clipboard, TAGEND)) {
@@ -282,17 +284,16 @@ void ScintillaPan::CopyToClipboard(const Scintilla::SelectionText &selectedText)
       }
       acFree(clipboard);
    }
-
-   LOGRETURN();
 }
 
 /*****************************************************************************
 ** Cut the selected text to the clipboard.
 */
 
-void ScintillaPan::Cut()
+void ScintillaParasol::Cut()
 {
-   FMSG("~panCut()","");
+   parasol::Log log(__FUNCTION__);
+   log.traceBranch("");
 
    if (SendScintilla(SCI_GETSELECTIONSTART) != SendScintilla(SCI_GETSELECTIONEND)) {
       Scintilla::SelectionText text;
@@ -300,32 +301,31 @@ void ScintillaPan::Cut()
       CopyToClipboard(text);
       ClearSelection();
    }
-
-   LOGRETURN();
 }
 
 /*****************************************************************************
 ** Copy the selected text to the clipboard.
 */
 
-void ScintillaPan::Copy()
+void ScintillaParasol::Copy()
 {
-   FMSG("~panCopy()","");
+   parasol::Log log(__FUNCTION__);
+   log.traceBranch("");
 
    if (SendScintilla(SCI_GETSELECTIONSTART) != SendScintilla(SCI_GETSELECTIONEND)) {
       Scintilla::SelectionText text;
       CopySelectionRange(&text);
       CopyToClipboard(text);
    }
-
-   LOGRETURN();
 }
 
 //****************************************************************************
 
-void ScintillaPan::Paste()
+void ScintillaParasol::Paste()
 {
-   FMSG("~panPaste:","");
+   parasol::Log log(__FUNCTION__);
+
+   log.traceBranch("");
 
    OBJECTPTR clipboard;
    if (!CreateObject(ID_CLIPBOARD, 0, &clipboard, TAGEND)) {
@@ -338,7 +338,7 @@ void ScintillaPan::Paste()
                TAGEND)) {
 
             LONG len, size;
-            if ((!GetLong(file, FID_Size, &size)) AND (size > 0)) {
+            if ((!GetLong(file, FID_Size, &size)) and (size > 0)) {
                STRING buffer;
                if (!AllocMemory(size, MEM_STRING, &buffer, NULL)) {
                   if (!acRead(file, buffer, size, &len)) {
@@ -372,24 +372,22 @@ void ScintillaPan::Paste()
       }
       acFree(clipboard);
    }
-
-   LOGRETURN();
 }
 
 //****************************************************************************
 // This is used for the drag and drop of selected text.
 
-void ScintillaPan::ClaimSelection()
+void ScintillaParasol::ClaimSelection()
 {
-   FMSG("panClaimSelection()","");
-
+   parasol::Log log(__FUNCTION__);
+   log.traceBranch("");
    if (!SelectionEmpty()) primarySelection = true;
    else primarySelection = false;
 }
 
 //****************************************************************************
 
-void ScintillaPan::NotifyChange()
+void ScintillaParasol::NotifyChange()
 {
    // This method is useless because Scintilla immediately follows this
    // up with the SCN_MODIFIED message, which carries a lot more detail.
@@ -398,8 +396,9 @@ void ScintillaPan::NotifyChange()
 //****************************************************************************
 // Sometimes Scintilla will report events that have occurred in the text editor.
 
-void ScintillaPan::NotifyParent(Scintilla::SCNotification scn)
+void ScintillaParasol::NotifyParent(Scintilla::SCNotification scn)
 {
+   parasol::Log log("SciMsg");
    LONG code;
 
    if (!(code = scn.nmhdr.code)) return;
@@ -410,7 +409,7 @@ void ScintillaPan::NotifyParent(Scintilla::SCNotification scn)
       // SCN_CHECKBRACE because a common use is to check whether the caret is next to a brace and set highlights on
       // this brace and its corresponding matching brace.
 
-      FMSG("~SciMessage:","[UPDATEUI] $%x", scn.updated);
+      log.traceBranch("[UPDATEUI] $%x", scn.updated);
 
       // Update the cursor-row and cursor-column fields if they've changed.
 
@@ -425,8 +424,6 @@ void ScintillaPan::NotifyParent(Scintilla::SCNotification scn)
          scintilla->ReportEventFlags |= SEF_CURSOR_POS;
          DelayMsg(MT_SciReportEvent, scintilla->Head.UniqueID, NULL);
       }
-
-      LOGRETURN();
    }
    else if (code IS SCN_STYLENEEDED) {
       // If you used SCLEX_CONTAINER to make the container act as the lexer, you will receive this notification when
@@ -434,7 +431,7 @@ void ScintillaPan::NotifyParent(Scintilla::SCNotification scn)
       // line that contains the position returned by SCI_GETENDSTYLED up to the position passed in
       // SCNotification.position.
 
-      FMSG("SciMsg:","[STYLENEEDED]");
+      log.trace("[STYLENEEDED]");
 
       //MyStyleRoutine(start, scn.position);
 
@@ -442,12 +439,12 @@ void ScintillaPan::NotifyParent(Scintilla::SCNotification scn)
    else if (code IS SCN_DOUBLECLICK) {
       // Mouse buttons have been interpreted as a double click
 
-      FMSG("SciMsg:","[DOUBLECLICK]");
+      log.trace("[DOUBLECLICK]");
    }
    else if (code IS SCN_MODIFYATTEMPTRO) {
       // An attempt has been made to modify the document when in read-only mode
 
-      FMSG("SciMsg:","[MODIFYATTEMPTRO]");
+      log.trace("[MODIFYATTEMPTRO]");
 
       scintilla->ReportEventFlags |= SEF_FAIL_RO;
       DelayMsg(MT_SciReportEvent, scintilla->Head.UniqueID, NULL);
@@ -457,17 +454,14 @@ void ScintillaPan::NotifyParent(Scintilla::SCNotification scn)
       // entered into the text. The container can use this to decide to display a call tip or an auto completion list.
       // The character is in SCNotification.ch.
 
-      FMSG("~SciMsg:","[CHARADDED]");
+      log.traceBranch("[CHARADDED]");
 
       LONG pos = SendScintilla(SCI_GETSELECTIONSTART);
-      if (pos != SendScintilla(SCI_GETSELECTIONEND)) {
-         LOGRETURN();
-         return;
-      }
+      if (pos != SendScintilla(SCI_GETSELECTIONEND)) return;
 
       // Auto-indent management for the enter key
 
-      if ((scintilla->AutoIndent) AND ((scn.ch IS '\r') OR (scn.ch IS '\n'))) {
+      if ((scintilla->AutoIndent) and ((scn.ch IS '\r') or (scn.ch IS '\n'))) {
          LONG row, indent, col;
 
          pos = SendScintilla(SCI_GETCURRENTPOS);
@@ -492,18 +486,16 @@ void ScintillaPan::NotifyParent(Scintilla::SCNotification scn)
 
       scintilla->ReportEventFlags |= SEF_NEW_CHAR;
       DelayMsg(MT_SciReportEvent, scintilla->Head.UniqueID, NULL);
-
-      LOGRETURN();
    }
    else if (code IS SCN_SAVEPOINTREACHED) {
       // The document is unmodified (recently saved)
 
-      FMSG("SciMsg:","[SAVEPOINTREACHED]");
+      log.trace("[SAVEPOINTREACHED]");
    }
    else if (code IS SCN_SAVEPOINTLEFT) {
       // The document has just been modified
 
-      FMSG("SciMsg:","[SAVEPOINTLEFT]");
+      log.trace("[SAVEPOINTLEFT]");
 
       if (!scintilla->HoldModify) {
          SetLong(scintilla, FID_Modified, TRUE);
@@ -517,7 +509,7 @@ void ScintillaPan::NotifyParent(Scintilla::SCNotification scn)
    else if (code IS SCN_KEY) {
       // Reports all keys pressed but not consumed by Scintilla
 
-      FMSG("SciMsg:","[KEY]");
+      log.trace("[KEY]");
    }
    else if (code IS SCN_MODIFIED) {
       // This notification is sent when the text or styling of the document changes or is about to change. You can set
@@ -527,13 +519,13 @@ void ScintillaPan::NotifyParent(Scintilla::SCNotification scn)
       //
       // See HTML documentation for more information.
 
-      FMSG("SciMsg:","[MODIFIED] Type: %d, Length: %d, LinesAdded: %d, Line: %d", scn.modificationType, scn.length, scn.linesAdded, scn.line);
+      log.trace("[MODIFIED] Type: %d, Length: %d, LinesAdded: %d, Line: %d", scn.modificationType, scn.length, scn.linesAdded, scn.line);
    }
    else if (code IS SCEN_SETFOCUS) {
-      FMSG("SciMsg:","[SETFOCUS]");
+      log.trace("[SETFOCUS]");
    }
    else if (code IS SCEN_KILLFOCUS) {
-      FMSG("SciMsg:","[KILLFOCUS]");
+      log.trace("[KILLFOCUS]");
    }
    else if (code IS SCN_MACRORECORD) {
       // The SCI_STARTRECORD and SCI_STOPRECORD messages enable and disable macro recording. When enabled, each time a
@@ -545,7 +537,7 @@ void ScintillaPan::NotifyParent(Scintilla::SCNotification scn)
       // wParam   The value of wParam in the SCI_* message.
       // lParam   The value of lParam in the SCI_* message.
 
-      FMSG("SciMsg:","[MACRORECORD]");
+      log.trace("[MACRORECORD]");
    }
    else if (code IS SCN_MARGINCLICK) {
       // This notification tells the container that the mouse was clicked inside a margin that was marked as sensitive
@@ -557,7 +549,7 @@ void ScintillaPan::NotifyParent(Scintilla::SCNotification scn)
       // position  The position of the start of the line in the document that corresponds to the margin click.
       // margin    The margin number that was clicked.
 
-      FMSG("SciMsg:","[MARGINCLICK]");
+      log.trace("[MARGINCLICK]");
    }
    else if (code IS SCN_NEEDSHOWN) {
       // Scintilla has determined that a range of lines that is currently invisible should be made visible. An example of where this may be
@@ -571,7 +563,7 @@ void ScintillaPan::NotifyParent(Scintilla::SCNotification scn)
       first = SendScintilla(SCI_LINEFROMPOSITION, scn.position);
       last = SendScintilla(SCI_LINEFROMPOSITION, scn.position + scn.length - 1);
 
-      FMSG("SciMsg:","[NEEDSHOWN] First: %d, Last: %d", first, last);
+      log.trace("[NEEDSHOWN] First: %d, Last: %d", first, last);
 
       for (i=first; i < last; ++i) {
          SendScintilla(SCI_ENSUREVISIBLE, i);
@@ -581,7 +573,7 @@ void ScintillaPan::NotifyParent(Scintilla::SCNotification scn)
       // Painting has just been done. Useful when you want to update some other widgets based on a change in Scintilla,
       // but want to have the paint occur first to appear more responsive. There is no other information in SCNotification.
 
-      FMSG("SciMsg:","[PAINTED]");
+      log.trace("[PAINTED]");
    }
    else if (code IS SCN_USERLISTSELECTION) {
       // The user has selected an item in a user list. The SCNotification fields used are:
@@ -589,7 +581,7 @@ void ScintillaPan::NotifyParent(Scintilla::SCNotification scn)
       // wParam  This is set to the listType parameter from the SCI_USERLISTSHOW message that initiated the list.
       // text    The text of the selection.
 
-      FMSG("SciMsg:","[USERLISTSELECTION]");
+      log.trace("[USERLISTSELECTION]");
    }
    else if (code IS SCN_DWELLSTART) {
       // Generated when the user keeps the mouse in one position for the dwell period (see SCI_SETMOUSEDWELLTIME).
@@ -597,18 +589,18 @@ void ScintillaPan::NotifyParent(Scintilla::SCNotification scn)
       // position: This is the nearest position in the document to the position where the mouse pointer was lingering.
       // x, y: Where the pointer lingered. The position field is set to SCI_POSITIONFROMPOINTCLOSE(x, y).
 
-      FMSG("SciMsg:","[DWELLSTART]");
+      log.trace("[DWELLSTART]");
    }
    else if (code IS SCN_DWELLEND) {
       // Generated after a SCN_DWELLSTART and the mouse is moved or other activity such as key press indicates the dwell is over.
 
-      FMSG("SciMsg:","[DWELLEND]");
+      log.trace("[DWELLEND]");
    }
    else if (code IS SCN_ZOOM) {
       // Unsupported/Redundant Scintilla feature
    }
    else if (code IS SCN_HOTSPOTCLICK) {
-      FMSG("SciMsg:","[HOTSPOTCLICK]");
+      log.trace("[HOTSPOTCLICK]");
 
    }
    else if (code IS SCN_HOTSPOTDOUBLECLICK) {
@@ -616,14 +608,14 @@ void ScintillaPan::NotifyParent(Scintilla::SCNotification scn)
       // used to link to variable definitions or web pages. The position field is set the text position of the click or double click and
       // the modifiers field set to the key modifiers held down in a similar manner to SCN_KEY.
 
-      FMSG("SciMsg:","[HOTSPOTDOUBLECLICK]");
+      log.trace("[HOTSPOTDOUBLECLICK]");
    }
    else if (code IS SCN_CALLTIPCLICK) {
       // Generated when the user clicks on a calltip. This notification can be used to display the next function prototype when a function name
       // is overloaded with different arguments. The position field is set to 1 if the click is in an up arrow, 2 if in a down arrow, and 0 if
       // elsewhere.
 
-      FMSG("SciMsg:","[CALLTIPCLICK]");
+      log.trace("[CALLTIPCLICK]");
    }
    else if (code IS SCN_AUTOCSELECTION) {
       // The user has selected an item in an autocompletion list. The notification is sent before the selection is inserted. Automatic
@@ -633,21 +625,21 @@ void ScintillaPan::NotifyParent(Scintilla::SCNotification scn)
       // lParam: The start position of the word being completed.
       // text: The text of the selection.
 
-      FMSG("SciMsg:","[AUTOCSELECTION]");
+      log.trace("[AUTOCSELECTION]");
    }
    else if (code IS 2012) {
       // Deprecated
    }
-   else FMSG("@SciMsg:","Notification code %d unsupported.", code);
+   else log.traceWarning("Notification code %d unsupported.", code);
 }
 
 //****************************************************************************
 
-void ScintillaPan::ScrollText(int linesToMove)
+void ScintillaParasol::ScrollText(int linesToMove)
 {
    if (!surfaceid) return;
 /*
-   FMSG("~panScrollText:","linesToMove: %d", linesToMove);
+   log.traceBranch("linesToMove: %d", linesToMove);
 
    Scintilla::PRectangle rect = GetClientRectangle();
 
@@ -664,8 +656,6 @@ void ScintillaPan::ScrollText(int linesToMove)
    movecontent.ClipBottom = rect.top + rect.Height();
    movecontent.Flags = 0;
    ActionMsg(MT_MoveContent, surfaceid, &movecontent);
-
-   LOGRETURN();
 */
    Scintilla::PRectangle rect = GetClientRectangle();
    struct acDraw draw = { rect.left, rect.top, rect.Width(), rect.Height() };
@@ -674,18 +664,15 @@ void ScintillaPan::ScrollText(int linesToMove)
 
 //****************************************************************************
 
-void ScintillaPan::SetTicking(bool On)
+void ScintillaParasol::SetTicking(bool On)
 {
-   FMSG("panSetTicking()","State: %d", On);
+   parasol::Log log(__FUNCTION__);
+   log.traceBranch("State: %d", On);
 
-   if (!On) {
-      ticking_on = FALSE;
-   }
-   else {
-      if (!ticking_on) {
-         ticking_on = TRUE;
-         lastticktime = (PreciseTime()/1000LL);
-      }
+   if (!On) ticking_on = FALSE;
+   else if (!ticking_on) {
+      ticking_on = TRUE;
+      lastticktime = (PreciseTime() / 1000LL);
    }
 }
 
@@ -693,9 +680,10 @@ void ScintillaPan::SetTicking(bool On)
 // Grab or release the mouse and keyboard.  This is usually called when the user clicks a mouse button and holds it
 // while dragging the mouse (e.g. when highlighting text).
 
-void ScintillaPan::SetMouseCapture(bool On)
+void ScintillaParasol::SetMouseCapture(bool On)
 {
-   FMSG("panSetMouseCapture()","State: %d", On);
+   parasol::Log log(__FUNCTION__);
+   log.traceBranch("State: %d", On);
    captured_mouse = On;
 }
 
@@ -703,15 +691,15 @@ void ScintillaPan::SetMouseCapture(bool On)
 ** Simply returns the capture state.
 */
 
-bool ScintillaPan::HaveMouseCapture()
+bool ScintillaParasol::HaveMouseCapture()
 {
-   //MSG("HaveMouseCapture()");
+   //log.trace("HaveMouseCapture()");
    return captured_mouse;
 }
 
 //****************************************************************************
 
-sptr_t ScintillaPan::WndProc(unsigned int iMessage, uptr_t wParam, sptr_t lParam)
+sptr_t ScintillaParasol::WndProc(unsigned int iMessage, uptr_t wParam, sptr_t lParam)
 {
    switch(iMessage) {
 
@@ -729,7 +717,7 @@ sptr_t ScintillaPan::WndProc(unsigned int iMessage, uptr_t wParam, sptr_t lParam
 
 //****************************************************************************
 
-sptr_t ScintillaPan::DirectFunction(ScintillaPan *sci, unsigned int iMessage, uptr_t wParam, sptr_t lParam)
+sptr_t ScintillaParasol::DirectFunction(ScintillaParasol *sci, unsigned int iMessage, uptr_t wParam, sptr_t lParam)
 {
    return sci->WndProc(iMessage, wParam, lParam);
 }
@@ -738,7 +726,7 @@ sptr_t ScintillaPan::DirectFunction(ScintillaPan *sci, unsigned int iMessage, up
 ** Do nothing; this is a Win32 support function.
 */
 
-sptr_t ScintillaPan::DefWndProc(unsigned int iMessage, uptr_t wParam, sptr_t lParam)
+sptr_t ScintillaParasol::DefWndProc(unsigned int iMessage, uptr_t wParam, sptr_t lParam)
 {
    return NULL;
 }
@@ -747,8 +735,9 @@ sptr_t ScintillaPan::DefWndProc(unsigned int iMessage, uptr_t wParam, sptr_t lPa
 ** Refer to the pan_surface.cxx file for the drawing routines that are used when panDraw() is active.
 */
 
-void ScintillaPan::panDraw(objSurface *TargetSurface, objBitmap *Bitmap)
+void ScintillaParasol::panDraw(objSurface *TargetSurface, objBitmap *Bitmap)
 {
+   parasol::Log log(__FUNCTION__);
    Scintilla::PRectangle rcClient;
    Scintilla::Surface *surface;
 
@@ -761,7 +750,7 @@ void ScintillaPan::panDraw(objSurface *TargetSurface, objBitmap *Bitmap)
    rcClient         = GetClientRectangle();
    this->paintingAllText = rcPaint.Contains(rcClient);
 
-   FMSG("~panDraw()","Area: %dx%d - %dx%d", rcClient.left, rcClient.top, rcClient.Width(), rcClient.Height());
+   log.traceBranch("Area: %dx%d - %dx%d", rcClient.left, rcClient.top, rcClient.Width(), rcClient.Height());
 
    // Create a new surface object (SurfacePan)
 
@@ -781,18 +770,16 @@ void ScintillaPan::panDraw(objSurface *TargetSurface, objBitmap *Bitmap)
    }
 
    this->paintState = notPainting;
-
-   LOGRETURN();
 }
 
 /*****************************************************************************
 ** Called from the SetFont() method whenever the user opts to change the font.
 */
 
-void ScintillaPan::panFontChanged(void *Font, void *BoldFont, void *ItalicFont,
-   void *BIFont)
+void ScintillaParasol::panFontChanged(void *Font, void *BoldFont, void *ItalicFont, void *BIFont)
 {
-   FMSG("~panFontChanged()","");
+   parasol::Log log(__FUNCTION__);
+   log.traceBranch("");
 
    glFont       = (OBJECTPTR)Font;
    glBoldFont   = (OBJECTPTR)BoldFont;
@@ -801,24 +788,22 @@ void ScintillaPan::panFontChanged(void *Font, void *BoldFont, void *ItalicFont,
 
    this->InvalidateStyleRedraw();
    this->RefreshStyleData();
-
-   LOGRETURN();
 }
 
 //****************************************************************************
 
-void ScintillaPan::panWordwrap(int Value)
+void ScintillaParasol::panWordwrap(int Value)
 {
-   LogF("~panWordwrap:","%d", Value);
+   parasol::Log log(__FUNCTION__);
+   log.traceBranch("%d", Value);
 
 //   LONG bytepos = SendScintilla(SCI_POSITIONFROMLINE, topLine);
 
    SendScintilla(SCI_SETWRAPMODE, Value);
 
-   /* Scintilla likes to process wordwrapping in its timer, but this causes
-   ** issues with the scrollbar (and potentially other problems) so this
-   ** loop will force the wordwrap to be processed immediately.
-   */
+   // Scintilla likes to process wordwrapping in its timer, but this causes
+   // issues with the scrollbar (and potentially other problems) so this
+   // loop will force the wordwrap to be processed immediately.
 
    scintilla->ScrollLocked++;
    while (Idle());
@@ -832,13 +817,11 @@ void ScintillaPan::panWordwrap(int Value)
    }
 */
    //SendScintilla(SCI_ENSUREVISIBLE, SendScintilla(SCI_LINEFROMPOSITION, SendScintilla(SCI_GETCURRENTPOS)));
-
-   LogReturn();
 }
 
 //****************************************************************************
 
-void ScintillaPan::panIdleEvent()
+void ScintillaParasol::panIdleEvent()
 {
    if (idle_timer_on) {
       bool keepidling = Idle();
@@ -863,7 +846,7 @@ void ScintillaPan::panIdleEvent()
 
 //****************************************************************************
 
-void ScintillaPan::panKeyDown(int Key, LONG Flags)
+void ScintillaParasol::panKeyDown(int Key, LONG Flags)
 {
    bool consumed;
 
@@ -874,29 +857,26 @@ void ScintillaPan::panKeyDown(int Key, LONG Flags)
 
 //****************************************************************************
 
-int ScintillaPan::KeyDefault(int key, int modifiers)
+int ScintillaParasol::KeyDefault(int key, int modifiers)
 {
-   //LogF("KeyDefault","%d, $%.8x", key, modifiers);
+   //log.msg("%d, $%.8x", key, modifiers);
    AddCharUTF(lastkeytrans, StrLength(lastkeytrans), FALSE);
    return 1;
 }
 
 //****************************************************************************
 
-void ScintillaPan::panMousePress(int Button, double x, double y)
+void ScintillaParasol::panMousePress(int Button, double x, double y)
 {
-   FMSG("~panMousePress:","%.0fx%.0f", x, y);
+   parasol::Log log(__FUNCTION__);
+
+   log.traceBranch("%.0fx%.0f", x, y);
 
    if (Button IS JET_LMB) {
-
-      /* This disables the current selection (effectively eliminating
-      ** the potential for drag and drop).
-      */
+      // This disables the current selection (effectively eliminating the potential for drag and drop).
 
       SetEmptySelection(CurrentPosition());
-
       Scintilla::Point point((int)x, (int)y);
-
       ButtonDown(point, (PreciseTime()/1000LL), scintilla->KeyShift, scintilla->KeyCtrl, scintilla->KeyAlt);
    }
    else if (Button IS JET_RMB) {
@@ -905,26 +885,24 @@ void ScintillaPan::panMousePress(int Button, double x, double y)
 
 
    }
-
-   LOGRETURN();
 }
 
 //****************************************************************************
 
-void ScintillaPan::panMouseMove(double x, double y)
+void ScintillaParasol::panMouseMove(double x, double y)
 {
    Scintilla::Point point((int)x, (int)y);
-
    ButtonMove(point);
 }
 
 //****************************************************************************
 
-void ScintillaPan::panMouseRelease(int Button, double x, double y)
+void ScintillaParasol::panMouseRelease(int Button, double x, double y)
 {
+   parasol::Log log(__FUNCTION__);
    Scintilla::Point point((int)x, (int)y);
 
-   FMSG("panMouseRelease:","%.0fx%.0f", x, y);
+   log.trace("%.0fx%.0f", x, y);
 
    if (Button IS JET_LMB) {
       ButtonUp(point, (PreciseTime()/1000LL), scintilla->KeyCtrl);
@@ -933,54 +911,52 @@ void ScintillaPan::panMouseRelease(int Button, double x, double y)
 
 //****************************************************************************
 
-void ScintillaPan::panResized()
+void ScintillaParasol::panResized()
 {
-   FMSG("~panResized()","");
-
+   parasol::Log log(__FUNCTION__);
+   log.traceBranch("");
    ChangeSize();
-
-   LOGRETURN();
 }
 
 //****************************************************************************
 
-void ScintillaPan::panScrollToX(double x)
+void ScintillaParasol::panScrollToX(double x)
 {
-   FMSG("~panScrollToX()","%.2f", x);
+   parasol::Log log(__FUNCTION__);
+   log.traceBranch("%.2f", x);
    HorizontalScrollTo((int)(x));
-   LOGRETURN();
 }
 
 //****************************************************************************
 
-void ScintillaPan::panScrollToY(double y)
+void ScintillaParasol::panScrollToY(double y)
 {
-   FMSG("~panScrollToY()","%.2f", y);
+   parasol::Log log(__FUNCTION__);
+   log.traceBranch("%.2f", y);
    ScrollTo((int)(y / vs.lineHeight));
-   LOGRETURN();
 }
 
 //****************************************************************************
 #if 0
-void ScintillaPan::SetSelectedTextStyle(int style)
+void ScintillaParasol::SetSelectedTextStyle(int style)
 {
-   FMSG("~panSetSelectedTextStyle()","Style: %d", style);
+   parasol::Log log(__FUNCTION__);
+   log.traceBranch("Style: %d", style);
 
    WndProc(SCI_STARTSTYLING, SelectionStart(), 0x1f);//mask - only overwrite the 5 style bits
    WndProc(SCI_SETSTYLING, SelectionEnd() - SelectionStart(), style);//style
-   LOGRETURN();
 }
 #endif
 //****************************************************************************
 
-void ScintillaPan::panGotFocus()
+void ScintillaParasol::panGotFocus()
 {
    SetFocusState(TRUE);
 }
 
 //****************************************************************************
 
-void ScintillaPan::panLostFocus()
+void ScintillaParasol::panLostFocus()
 {
    SetFocusState(FALSE);
 }
@@ -989,7 +965,7 @@ void ScintillaPan::panLostFocus()
 ** Get the cursor position.
 */
 
-void ScintillaPan::panGetCursorPosition(int *line, int *index)
+void ScintillaParasol::panGetCursorPosition(int *line, int *index)
 {
    LONG pos, lin, linpos;
 
@@ -1005,11 +981,12 @@ void ScintillaPan::panGetCursorPosition(int *line, int *index)
 ** Set the cursor position.
 */
 
-void ScintillaPan::panSetCursorPosition(int line, int index)
+void ScintillaParasol::panSetCursorPosition(int line, int index)
 {
+   parasol::Log log(__FUNCTION__);
    LONG pos, eol;
 
-   FMSG("panSetCursorPosition()","Line: %d, Index: %d", line, index);
+   log.trace("Line: %d, Index: %d", line, index);
 
    pos = SendScintilla(SCI_POSITIONFROMLINE,line) + index;
    eol = SendScintilla(SCI_GETLINEENDPOSITION,line);
@@ -1023,7 +1000,7 @@ void ScintillaPan::panSetCursorPosition(int line, int index)
 ** Ensure a line is visible (expands folded zones).
 */
 
-void ScintillaPan::panEnsureLineVisible(int line)
+void ScintillaParasol::panEnsureLineVisible(int line)
 {
    SendScintilla(SCI_ENSUREVISIBLEENFORCEPOLICY,line);
 }
@@ -1032,9 +1009,10 @@ void ScintillaPan::panEnsureLineVisible(int line)
 ** Set the lexer.  To turn off the lexer, use SCLEX_NULL.
 */
 
-void ScintillaPan::SetLexer(uptr_t LexID)
+void ScintillaParasol::SetLexer(uptr_t LexID)
 {
-   LogMsg("Using lexer %d", (LONG)LexID);
+   parasol::Log log(__FUNCTION__);
+   log.branch("Using lexer %d", (LONG)LexID);
 
 //   SendScintilla(SCI_STYLERESETDEFAULT);
    SendScintilla(SCI_SETLEXER, LexID);
@@ -1044,7 +1022,7 @@ void ScintillaPan::SetLexer(uptr_t LexID)
    DelayMsg(AC_Draw, scintilla->SurfaceID, NULL);
 }
 
-void ScintillaPan::SetLexerLanguage(const char *languageName)
+void ScintillaParasol::SetLexerLanguage(const char *languageName)
 {
    SendScintilla(SCI_SETLEXERLANGUAGE, 0UL, languageName);
 }
@@ -1053,13 +1031,13 @@ void ScintillaPan::SetLexerLanguage(const char *languageName)
 ** Handle brace matching.
 */
 
-void ScintillaPan::braceMatch()
+void ScintillaParasol::braceMatch()
 {
    long braceAtCaret, braceOpposite;
 
    findMatchingBrace(braceAtCaret, braceOpposite, braceMode);
 
-   if (braceAtCaret >= 0 AND braceOpposite < 0) {
+   if (braceAtCaret >= 0 and braceOpposite < 0) {
       SendScintilla(SCI_BRACEBADLIGHT, braceAtCaret);
       SendScintilla(SCI_SETHIGHLIGHTGUIDE,0UL);
    }
@@ -1095,12 +1073,12 @@ void ScintillaPan::braceMatch()
 ** Check if the character at a position is a brace.
 */
 
-long ScintillaPan::checkBrace(long pos,int brace_style)
+long ScintillaParasol::checkBrace(long pos,int brace_style)
 {
    long brace_pos = -1;
    char ch = SendScintilla(SCI_GETCHARAT,pos);
 
-   if ((ch IS '{') OR (ch IS '}')) {
+   if ((ch IS '{') or (ch IS '}')) {
       if (brace_style < 0) brace_pos = pos;
       else {
          int style = SendScintilla(SCI_GETSTYLEAT,pos) & 0x1f;
@@ -1116,7 +1094,7 @@ long ScintillaPan::checkBrace(long pos,int brace_style)
 ** Find a brace and it's match.  Return TRUE if the current position is inside a pair of braces.
 */
 
-bool ScintillaPan::findMatchingBrace(long &brace,long &other,long mode)
+bool ScintillaParasol::findMatchingBrace(long &brace,long &other,long mode)
 {
    int brace_style;
 
@@ -1132,7 +1110,7 @@ bool ScintillaPan::findMatchingBrace(long &brace,long &other,long mode)
 
    bool isInside = FALSE;
 
-   if (brace < 0 AND mode) {
+   if (brace < 0 and mode) {
       brace = checkBrace(caretPos,brace_style);
       if (brace >= 0) isInside = TRUE;
    }
@@ -1146,19 +1124,19 @@ bool ScintillaPan::findMatchingBrace(long &brace,long &other,long mode)
 }
 
 // Move to the matching brace.
-void ScintillaPan::moveToMatchingBrace()
+void ScintillaParasol::moveToMatchingBrace()
 {
    gotoMatchingBrace(FALSE);
 }
 
 // Select to the matching brace.
-void ScintillaPan::selectToMatchingBrace()
+void ScintillaParasol::selectToMatchingBrace()
 {
    gotoMatchingBrace(TRUE);
 }
 
 // Move to the matching brace and optionally select the text.
-void ScintillaPan::gotoMatchingBrace(bool select)
+void ScintillaParasol::gotoMatchingBrace(bool select)
 {
    long braceAtCaret;
    long braceOpposite;
@@ -1223,7 +1201,7 @@ static const char *defaultWordChars = "_abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMN
 */
 
 #if 0
-void ScintillaPan::panCallTip()
+void ScintillaParasol::panCallTip()
 {
    if (!ctAPIs) return;
 
@@ -1254,11 +1232,11 @@ void ScintillaPan::panCallTip()
 
             if (ch IS ')')
                ++depth;
-            else if (ch IS '(' AND --depth IS 0)
+            else if (ch IS '(' and --depth IS 0)
                break;
          }
       }
-      else if (ch IS '(' AND loff > 0)
+      else if (ch IS '(' and loff > 0)
       {
          if (isWordChar(lbuf[loff - 1]))
          {
@@ -1266,7 +1244,7 @@ void ScintillaPan::panCallTip()
             // find the start of that word.
             lbuf[loff--] = '\0';
 
-            while (loff >= 0 AND isWordChar(lbuf[loff]))
+            while (loff >= 0 and isWordChar(lbuf[loff]))
                --loff;
 
             start = loff + 1;
@@ -1302,7 +1280,7 @@ void ScintillaPan::panCallTip()
 
    // Done if there is more than one line in the call tip or there isn't a
    // down arrow at the start.
-   if (ct[0] IS '\002' OR ct.find('\n') >= 0)
+   if (ct[0] IS '\002' or ct.find('\n') >= 0)
       return;
 
    // Highlight the current argument.
@@ -1316,12 +1294,12 @@ void ScintillaPan::panCallTip()
 
       do
          astart = ct.find(',',astart + 1);
-      while (astart >= 0 AND --commas > 0);
+      while (astart >= 0 and --commas > 0);
    }
 
    int len = ct.length();
 
-   if (astart < 0 OR ++astart IS len)
+   if (astart < 0 or ++astart IS len)
       return;
 
    // The end is at the next comma or unmatched closing parenthesis.
@@ -1331,7 +1309,7 @@ void ScintillaPan::panCallTip()
    {
       QChar ch = ct.at(aend);
 
-      if (ch IS ',' AND depth IS 0)
+      if (ch IS ',' and depth IS 0)
          break;
       else if (ch IS '(')
          ++depth;
@@ -1350,7 +1328,7 @@ void ScintillaPan::panCallTip()
 
 #if 0
 // Handle a call tip click.
-void ScintillaPan::handleCallTipClick(int dir)
+void ScintillaParasol::handleCallTipClick(int dir)
 {
    if (!ctAPIs)
       return;
@@ -1368,7 +1346,7 @@ void ScintillaPan::handleCallTipClick(int dir)
 ** Possibly start auto-completion.
 */
 
-void ScintillaPan::panStartAutoCompletion(AutoCompletionSource acs, bool checkThresh,bool emptyRoot, bool single)
+void ScintillaParasol::panStartAutoCompletion(AutoCompletionSource acs, bool checkThresh,bool emptyRoot, bool single)
 {
    long wend, wstart;
 
@@ -1381,7 +1359,7 @@ void ScintillaPan::panStartAutoCompletion(AutoCompletionSource acs, bool checkTh
 
    int wlen = wend - wstart;
 
-   if (checkThresh AND wlen < acThresh) return;
+   if (checkThresh and wlen < acThresh) return;
 
    // Get the word entered so far.
    char *word = new char[wlen + 1];
@@ -1463,9 +1441,9 @@ void ScintillaPan::panStartAutoCompletion(AutoCompletionSource acs, bool checkTh
 ** Maintain the indentation of the previous line.
 */
 
-void ScintillaPan::panMaintainIndentation(char ch,long pos)
+void ScintillaParasol::panMaintainIndentation(char ch,long pos)
 {
-   if (ch != '\r' AND ch != '\n') return;
+   if (ch != '\r' and ch != '\n') return;
 
    int curr_line = SendScintilla(SCI_LINEFROMPOSITION,pos);
 
@@ -1486,31 +1464,31 @@ void ScintillaPan::panMaintainIndentation(char ch,long pos)
 ** Implement auto-indentation.
 */
 
-void ScintillaPan::panAutoIndentation(char ch,long pos)
+void ScintillaParasol::panAutoIndentation(char ch,long pos)
 {
    int curr_line = SendScintilla(SCI_LINEFROMPOSITION,pos);
    int ind_width = indentationWidth();
    long curr_line_start = SendScintilla(SCI_POSITIONFROMLINE,curr_line);
 
    const char *block_start = lexer -> blockStart();
-   bool start_single = (block_start AND strlen(block_start) IS 1);
+   bool start_single = (block_start and strlen(block_start) IS 1);
 
    const char *block_end = lexer -> blockEnd();
-   bool end_single = (block_end AND strlen(block_end) IS 1);
+   bool end_single = (block_end and strlen(block_end) IS 1);
 
-   if (end_single AND block_end[0] IS ch)
+   if (end_single and block_end[0] IS ch)
    {
-      if (!(lexer -> autoIndentStyle() & AiClosing) AND rangeIsWhitespace(curr_line_start,pos - 1))
+      if (!(lexer -> autoIndentStyle() & AiClosing) and rangeIsWhitespace(curr_line_start,pos - 1))
          autoIndentLine(pos,curr_line,blockIndent(curr_line - 1) - indentationWidth());
    }
-   else if (start_single AND block_start[0] IS ch)
+   else if (start_single and block_start[0] IS ch)
    {
       // De-indent if we have already indented because the previous
       // line was a start of block keyword.
-      if (!(lexer -> autoIndentStyle() & AiOpening) AND getIndentState(curr_line - 1) IS isKeywordStart AND rangeIsWhitespace(curr_line_start,pos - 1))
+      if (!(lexer -> autoIndentStyle() & AiOpening) and getIndentState(curr_line - 1) IS isKeywordStart and rangeIsWhitespace(curr_line_start,pos - 1))
          autoIndentLine(pos,curr_line,blockIndent(curr_line - 1) - indentationWidth());
    }
-   else if (ch IS '\r' OR ch IS '\n')
+   else if (ch IS '\r' or ch IS '\n')
       autoIndentLine(pos,curr_line,blockIndent(curr_line - 1));
 }
 
@@ -1518,7 +1496,7 @@ void ScintillaPan::panAutoIndentation(char ch,long pos)
 ** Set the indentation for a line.
 */
 
-void ScintillaPan::panAutoIndentLine(long pos,int line,int indent)
+void ScintillaParasol::panAutoIndentLine(long pos,int line,int indent)
 {
    if (indent < 0) return;
 
@@ -1528,7 +1506,7 @@ void ScintillaPan::panAutoIndentLine(long pos,int line,int indent)
    long new_pos = -1;
 
    if (pos_after > pos_before) new_pos = pos + (pos_after - pos_before);
-   else if (pos_after < pos_before AND pos >= pos_after) {
+   else if (pos_after < pos_before and pos >= pos_after) {
       if (pos >= pos_before) new_pos = pos + (pos_after - pos_before);
       else new_pos = pos_after;
    }
@@ -1540,12 +1518,12 @@ void ScintillaPan::panAutoIndentLine(long pos,int line,int indent)
 ** Return the indentation of the block defined by the given line (or something significant before).
 */
 
-int ScintillaPan::panBlockIndent(int line)
+int ScintillaParasol::panBlockIndent(int line)
 {
    if (line < 0) return 0;
 
    // Handle the trvial case.
-   if (!lexer -> blockStartKeyword() AND !lexer -> blockStart() AND !lexer -> blockEnd()) return indentation(line);
+   if (!lexer -> blockStartKeyword() and !lexer -> blockStart() and !lexer -> blockEnd()) return indentation(line);
 
    int line_limit = line - lexer -> blockLookback();
 
@@ -1577,11 +1555,11 @@ int ScintillaPan::panBlockIndent(int line)
 ** Return TRUE if all characters starting at spos up to, but not including epos, are spaces or tabs.
 */
 
-bool ScintillaPan::panRangeIsWhitespace(long spos,long epos)
+bool ScintillaParasol::panRangeIsWhitespace(long spos,long epos)
 {
    while (spos < epos) {
       char ch = SendScintilla(SCI_GETCHARAT,spos);
-      if (ch != ' ' AND ch != '\t') return FALSE;
+      if (ch != ' ' and ch != '\t') return FALSE;
       ++spos;
    }
 
@@ -1592,7 +1570,7 @@ bool ScintillaPan::panRangeIsWhitespace(long spos,long epos)
 ** Returns the indentation state of a line.
 */
 
-ScintillaPan::IndentState ScintillaPan::panGetIndentState(int line)
+ScintillaParasol::IndentState ScintillaParasol::panGetIndentState(int line)
 {
    IndentState istate;
 
@@ -1639,7 +1617,7 @@ ScintillaPan::IndentState ScintillaPan::panGetIndentState(int line)
 // one is the most significant.
 */
 
-int ScintillaPan::panFindStyledWord(const char *text, int style, const char *words)
+int ScintillaParasol::panFindStyledWord(const char *text, int style, const char *words)
 {
    if (!words) return -1;
 
@@ -1652,44 +1630,36 @@ int ScintillaPan::panFindStyledWord(const char *text, int style, const char *wor
    // Move to the last character.
    const char *etext = text;
 
-   while (etext[2] != '\0')
-      etext += 2;
+   while (etext[2] != '\0') etext += 2;
 
    // Backtrack until we find the style.  There will be one.
-   while (etext[1] != style)
-      etext -= 2;
+   while (etext[1] != style) etext -= 2;
 
    // Look for each word in turn.
-   while (words[0] != '\0')
-   {
+   while (words[0] != '\0') {
       // Find the end of the word.
       const char *eword = words;
 
-      while (eword[1] != ' ' AND eword[1] != '\0')
-         ++eword;
+      while (eword[1] != ' ' and eword[1] != '\0') ++eword;
 
       // Now search the text backwards.
       const char *wp = eword;
 
-      for (const char *tp = etext; tp >= stext; tp -= 2)
-      {
-         if (tp[0] != wp[0] OR tp[1] != style)
-         {
+      for (const char *tp = etext; tp >= stext; tp -= 2) {
+         if (tp[0] != wp[0] or tp[1] != style) {
             // Reset the search.
             wp = eword;
             continue;
          }
 
          // See if all the word has matched.
-         if (wp-- IS words)
-            return (tp - text) / 2;
+         if (wp-- IS words) return (tp - text) / 2;
       }
 
       // Move to the start of the next word if there is one.
       words = eword + 1;
 
-      if (words[0] IS ' ')
-         ++words;
+      if (words[0] IS ' ') ++words;
    }
 
    return -1;
@@ -1700,28 +1670,24 @@ int ScintillaPan::panFindStyledWord(const char *text, int style, const char *wor
 */
 
 // Set the folding style.
-void ScintillaPan::setFolding(FoldStyle folding)
+void ScintillaParasol::setFolding(FoldStyle folding)
 {
    fold = folding;
 
-   if (folding IS NoFoldStyle)
-   {
+   if (folding IS NoFoldStyle) {
       SendScintilla(SCI_SETMARGINWIDTHN,2,0L);
       return;
    }
 
    int mask = SendScintilla(SCI_GETMODEVENTMASK);
    SendScintilla(SCI_SETMODEVENTMASK,mask | SC_MOD_CHANGEFOLD);
-
    SendScintilla(SCI_SETFOLDFLAGS,SC_FOLDFLAG_LINEAFTER_CONTRACTED);
-
    SendScintilla(SCI_SETMARGINTYPEN,2,(long)SC_MARGIN_SYMBOL);
    SendScintilla(SCI_SETMARGINMASKN,2,SC_MASK_FOLDERS);
    SendScintilla(SCI_SETMARGINSENSITIVEN,2,1);
 
    // Set the marker symbols to use.
-   switch (folding)
-   {
+   switch (folding) {
    case PlainFoldStyle:
       setFoldMarker(SC_MARKNUM_FOLDEROPEN,SC_MARK_MINUS);
       setFoldMarker(SC_MARKNUM_FOLDER,SC_MARK_PLUS);
@@ -1730,7 +1696,6 @@ void ScintillaPan::setFolding(FoldStyle folding)
       setFoldMarker(SC_MARKNUM_FOLDEREND);
       setFoldMarker(SC_MARKNUM_FOLDEROPENMID);
       setFoldMarker(SC_MARKNUM_FOLDERMIDTAIL);
-
       break;
 
    case CircledFoldStyle:
@@ -1741,7 +1706,6 @@ void ScintillaPan::setFolding(FoldStyle folding)
       setFoldMarker(SC_MARKNUM_FOLDEREND);
       setFoldMarker(SC_MARKNUM_FOLDEROPENMID);
       setFoldMarker(SC_MARKNUM_FOLDERMIDTAIL);
-
       break;
 
    case BoxedFoldStyle:
@@ -1752,7 +1716,6 @@ void ScintillaPan::setFolding(FoldStyle folding)
       setFoldMarker(SC_MARKNUM_FOLDEREND);
       setFoldMarker(SC_MARKNUM_FOLDEROPENMID);
       setFoldMarker(SC_MARKNUM_FOLDERMIDTAIL);
-
       break;
 
    case CircledTreeFoldStyle:
@@ -1763,7 +1726,6 @@ void ScintillaPan::setFolding(FoldStyle folding)
       setFoldMarker(SC_MARKNUM_FOLDEREND,SC_MARK_CIRCLEPLUSCONNECTED);
       setFoldMarker(SC_MARKNUM_FOLDEROPENMID,SC_MARK_CIRCLEMINUSCONNECTED);
       setFoldMarker(SC_MARKNUM_FOLDERMIDTAIL,SC_MARK_TCORNERCURVE);
-
       break;
 
    case BoxedTreeFoldStyle:
@@ -1774,7 +1736,6 @@ void ScintillaPan::setFolding(FoldStyle folding)
       setFoldMarker(SC_MARKNUM_FOLDEREND,SC_MARK_BOXPLUSCONNECTED);
       setFoldMarker(SC_MARKNUM_FOLDEROPENMID,SC_MARK_BOXMINUSCONNECTED);
       setFoldMarker(SC_MARKNUM_FOLDERMIDTAIL,SC_MARK_TCORNER);
-
       break;
    }
 
@@ -1783,12 +1744,11 @@ void ScintillaPan::setFolding(FoldStyle folding)
 
 
 // Set up a folder marker.
-void ScintillaPan::setFoldMarker(int marknr,int mark)
+void ScintillaParasol::setFoldMarker(int marknr,int mark)
 {
    SendScintilla(SCI_MARKERDEFINE,marknr,mark);
 
-   if (mark != SC_MARK_EMPTY)
-   {
+   if (mark != SC_MARK_EMPTY) {
       SendScintilla(SCI_MARKERSETFORE,marknr,white);
       SendScintilla(SCI_MARKERSETBACK,marknr,black);
    }
@@ -1796,140 +1756,103 @@ void ScintillaPan::setFoldMarker(int marknr,int mark)
 
 
 // Handle a click in the fold margin.  This is mostly taken from SciTE.
-void ScintillaPan::foldClick(int lineClick,int bstate)
+void ScintillaParasol::foldClick(int lineClick,int bstate)
 {
-   if ((bstate & ShiftButton) AND (bstate & ControlButton))
-   {
+   if ((bstate & ShiftButton) and (bstate & ControlButton)) {
       foldAll();
       return;
    }
 
    int levelClick = SendScintilla(SCI_GETFOLDLEVEL,lineClick);
 
-   if (levelClick & SC_FOLDLEVELHEADERFLAG)
-   {
-      if (bstate & ShiftButton)
-      {
+   if (levelClick & SC_FOLDLEVELHEADERFLAG) {
+      if (bstate & ShiftButton) {
          // Ensure all children are visible.
          SendScintilla(SCI_SETFOLDEXPANDED,lineClick,1);
          foldExpand(lineClick,TRUE,TRUE,100,levelClick);
       }
-      else if (bstate & ControlButton)
-      {
-         if (SendScintilla(SCI_GETFOLDEXPANDED,lineClick))
-         {
+      else if (bstate & ControlButton) {
+         if (SendScintilla(SCI_GETFOLDEXPANDED,lineClick)) {
             // Contract this line and all its children.
             SendScintilla(SCI_SETFOLDEXPANDED,lineClick,0L);
             foldExpand(lineClick,FALSE,TRUE,0,levelClick);
          }
-         else
-         {
-            // Expand this line and all its children.
+         else { // Expand this line and all its children.
             SendScintilla(SCI_SETFOLDEXPANDED,lineClick,1);
             foldExpand(lineClick,TRUE,TRUE,100,levelClick);
          }
       }
-      else
-      {
-         // Toggle this line.
+      else { // Toggle this line.
          SendScintilla(SCI_TOGGLEFOLD,lineClick);
       }
    }
 }
 
+// Do the hard work of hiding and showing  lines.  This is mostly taken from SciTE.
 
-// Do the hard work of hiding and showing  lines.  This is mostly taken from
-// SciTE.
-void ScintillaPan::foldExpand(int &line,bool doExpand,bool force,
-                int visLevels,int level)
+void ScintillaParasol::foldExpand(int &line,bool doExpand,bool force, int visLevels,int level)
 {
    int lineMaxSubord = SendScintilla(SCI_GETLASTCHILD,line,level & SC_FOLDLEVELNUMBERMASK);
 
    line++;
 
-   while (line <= lineMaxSubord)
-   {
-      if (force)
-      {
-         if (visLevels > 0)
-            SendScintilla(SCI_SHOWLINES,line,line);
-         else
-            SendScintilla(SCI_HIDELINES,line,line);
+   while (line <= lineMaxSubord) {
+      if (force) {
+         if (visLevels > 0) SendScintilla(SCI_SHOWLINES,line,line);
+         else SendScintilla(SCI_HIDELINES,line,line);
       }
-      else if (doExpand)
-         SendScintilla(SCI_SHOWLINES,line,line);
+      else if (doExpand) SendScintilla(SCI_SHOWLINES,line,line);
 
       int levelLine = level;
 
-      if (levelLine IS -1)
-         levelLine = SendScintilla(SCI_GETFOLDLEVEL,line);
+      if (levelLine IS -1) levelLine = SendScintilla(SCI_GETFOLDLEVEL,line);
 
-      if (levelLine & SC_FOLDLEVELHEADERFLAG)
-      {
-         if (force)
-         {
-            if (visLevels > 1)
-               SendScintilla(SCI_SETFOLDEXPANDED,line,1);
-            else
-               SendScintilla(SCI_SETFOLDEXPANDED,line,0L);
+      if (levelLine & SC_FOLDLEVELHEADERFLAG) {
+         if (force) {
+            if (visLevels > 1) SendScintilla(SCI_SETFOLDEXPANDED,line,1);
+            else SendScintilla(SCI_SETFOLDEXPANDED,line,0L);
 
             foldExpand(line,doExpand,force,visLevels - 1);
          }
-         else if (doExpand)
-         {
-            if (!SendScintilla(SCI_GETFOLDEXPANDED,line))
-               SendScintilla(SCI_SETFOLDEXPANDED,line,1);
-
+         else if (doExpand) {
+            if (!SendScintilla(SCI_GETFOLDEXPANDED,line)) SendScintilla(SCI_SETFOLDEXPANDED,line,1);
             foldExpand(line,TRUE,force,visLevels - 1);
          }
-         else
-            foldExpand(line,FALSE,force,visLevels - 1);
+         else foldExpand(line,FALSE,force,visLevels - 1);
       }
-      else
-         line++;
+      else line++;
    }
 }
 
-
 // Fully expand (if there is any line currently folded) all text.  Otherwise,
 // fold all text.  This is mostly taken from SciTE.
-void ScintillaPan::foldAll()
+void ScintillaParasol::foldAll()
 {
    recolor();
 
    int maxLine = SendScintilla(SCI_GETLINECOUNT);
    bool expanding = TRUE;
 
-   for (int lineSeek = 0; lineSeek < maxLine; lineSeek++)
-   {
-      if (SendScintilla(SCI_GETFOLDLEVEL,lineSeek) & SC_FOLDLEVELHEADERFLAG)
-      {
+   for (int lineSeek=0; lineSeek < maxLine; lineSeek++) {
+      if (SendScintilla(SCI_GETFOLDLEVEL,lineSeek) & SC_FOLDLEVELHEADERFLAG) {
          expanding = !SendScintilla(SCI_GETFOLDEXPANDED,lineSeek);
          break;
       }
    }
 
-   for (int line = 0; line < maxLine; line++)
-   {
+   for (int line=0; line < maxLine; line++) {
       int level = SendScintilla(SCI_GETFOLDLEVEL,line);
 
-      if ((level & SC_FOLDLEVELHEADERFLAG) AND
-          (SC_FOLDLEVELBASE IS (level & SC_FOLDLEVELNUMBERMASK)))
-      {
-         if (expanding)
-         {
+      if ((level & SC_FOLDLEVELHEADERFLAG) and (SC_FOLDLEVELBASE IS (level & SC_FOLDLEVELNUMBERMASK))) {
+         if (expanding) {
             SendScintilla(SCI_SETFOLDEXPANDED,line,1);
             foldExpand(line,TRUE,FALSE,0,level);
             line--;
          }
-         else
-         {
+         else {
             int lineMaxSubord = SendScintilla(SCI_GETLASTCHILD,line,-1);
-
             SendScintilla(SCI_SETFOLDEXPANDED,line,0L);
-
-            if (lineMaxSubord > line)
-               SendScintilla(SCI_HIDELINES,line + 1,lineMaxSubord);
+            if (lineMaxSubord > line) SendScintilla(SCI_HIDELINES,line + 1,lineMaxSubord);
          }
       }
    }
@@ -1937,35 +1860,31 @@ void ScintillaPan::foldAll()
 
 
 // Handle a fold change.  This is mostly taken from SciTE.
-void ScintillaPan::foldChanged(int line,int levelNow,int levelPrev)
+void ScintillaParasol::foldChanged(int line,int levelNow,int levelPrev)
 {
-        if (levelNow & SC_FOLDLEVELHEADERFLAG)
-   {
-                if (!(levelPrev & SC_FOLDLEVELHEADERFLAG))
-                        SendScintilla(SCI_SETFOLDEXPANDED,line,1);
-        }
-   else if (levelPrev & SC_FOLDLEVELHEADERFLAG)
-   {
-                if (!SendScintilla(SCI_GETFOLDEXPANDED,line))
-      {
-                        // Removing the fold from one that has been contracted
+   if (levelNow & SC_FOLDLEVELHEADERFLAG) {
+      if (!(levelPrev & SC_FOLDLEVELHEADERFLAG)) SendScintilla(SCI_SETFOLDEXPANDED,line,1);
+   }
+   else if (levelPrev & SC_FOLDLEVELHEADERFLAG) {
+      if (!SendScintilla(SCI_GETFOLDEXPANDED,line)) {
+         // Removing the fold from one that has been contracted
          // so should expand.  Otherwise lines are left
          // invisible with no way to make them visible.
-                        foldExpand(line,TRUE,FALSE,0,levelPrev);
-                }
-        }
+         foldExpand(line,TRUE,FALSE,0,levelPrev);
+      }
+   }
 }
 
 
 // Toggle the fold for a line if it contains a fold marker.
-void ScintillaPan::foldLine(int line)
+void ScintillaParasol::foldLine(int line)
 {
    SendScintilla(SCI_TOGGLEFOLD,line);
 }
 
 
 // Handle the SCN_MODIFIED notification.
-void ScintillaPan::handleModified(int pos,int mtype,const char *text,int len,
+void ScintillaParasol::handleModified(int pos,int mtype,const char *text,int len,
                int added,int line,int foldNow,int foldPrev)
 {
    if (mtype & SC_MOD_CHANGEFOLD)
@@ -1979,7 +1898,7 @@ void ScintillaPan::handleModified(int pos,int mtype,const char *text,int len,
 
 
 // Query the modified state.
-bool ScintillaPan::isModified()
+bool ScintillaParasol::isModified()
 {
    // We don't use SCI_GETMODIFY as it seems to be buggy in Scintilla
    // v1.61.
@@ -1990,7 +1909,7 @@ bool ScintillaPan::isModified()
 ** Handle the SCN_MARGINCLICK notification.
 */
 
-void ScintillaPan::handleMarginClick(int pos,int modifiers,int margin)
+void ScintillaParasol::handleMarginClick(int pos,int modifiers,int margin)
 {
    int state = 0;
 
@@ -2000,7 +1919,7 @@ void ScintillaPan::handleMarginClick(int pos,int modifiers,int margin)
 
    int line = SendScintilla(SCI_LINEFROMPOSITION,pos);
 
-   if (fold AND margin IS 2) foldClick(line,state);
+   if (fold and margin IS 2) foldClick(line,state);
    else emit marginClicked(margin,line,(ButtonState)state);
 }
 
@@ -2008,13 +1927,13 @@ void ScintillaPan::handleMarginClick(int pos,int modifiers,int margin)
 ** Return the state of indentation guides.
 */
 
-bool ScintillaPan::indentationGuides()
+bool ScintillaParasol::indentationGuides()
 {
    return SendScintilla(SCI_GETINDENTATIONGUIDES);
 }
 
 // Enable and disable indentation guides.
-void ScintillaPan::setIndentationGuides(bool enable)
+void ScintillaParasol::setIndentationGuides(bool enable)
 {
    SendScintilla(SCI_SETINDENTATIONGUIDES,enable);
 }
@@ -2023,7 +1942,7 @@ void ScintillaPan::setIndentationGuides(bool enable)
 ** Define a marker based on a character.
 */
 
-int ScintillaPan::panMarkerDefine(char ch,int mnr)
+int ScintillaParasol::panMarkerDefine(char ch,int mnr)
 {
    checkMarker(mnr);
    if (mnr >= 0) SendScintilla(SCI_MARKERDEFINE,mnr,static_cast<long>(SC_MARK_CHARACTER) + ch);
@@ -2034,9 +1953,9 @@ int ScintillaPan::panMarkerDefine(char ch,int mnr)
 ** Add a marker to a line.
 */
 
-int ScintillaPan::panMarkerAdd(int linenr,int mnr)
+int ScintillaParasol::panMarkerAdd(int linenr,int mnr)
 {
-   if (mnr < 0 OR mnr > MARKER_MAX OR (allocatedMarkers & (1 << mnr)) IS 0) return -1;
+   if (mnr < 0 or mnr > MARKER_MAX or (allocatedMarkers & (1 << mnr)) IS 0) return -1;
    return SendScintilla(SCI_MARKERADD,linenr,mnr);
 }
 
@@ -2044,7 +1963,7 @@ int ScintillaPan::panMarkerAdd(int linenr,int mnr)
 ** Get the marker mask for a line.
 */
 
-unsigned ScintillaPan::panMarkersAtLine(int linenr)
+unsigned ScintillaParasol::panMarkersAtLine(int linenr)
 {
    return SendScintilla(SCI_MARKERGET,linenr);
 }
@@ -2053,7 +1972,7 @@ unsigned ScintillaPan::panMarkersAtLine(int linenr)
 ** Delete a marker from a line.
 */
 
-void ScintillaPan::panMarkerDelete(int linenr,int mnr)
+void ScintillaParasol::panMarkerDelete(int linenr,int mnr)
 {
    if (mnr <= MARKER_MAX) {
       if (mnr < 0) {
@@ -2072,7 +1991,7 @@ void ScintillaPan::panMarkerDelete(int linenr,int mnr)
 ** Delete a marker from the text.
 */
 
-void ScintillaPan::panMarkerDeleteAll(int mnr)
+void ScintillaParasol::panMarkerDeleteAll(int mnr)
 {
    if (mnr <= MARKER_MAX) {
       if (mnr < 0) SendScintilla(SCI_MARKERDELETEALL,-1);
@@ -2084,7 +2003,7 @@ void ScintillaPan::panMarkerDeleteAll(int mnr)
 ** Delete a marker handle from the text.
 */
 
-void ScintillaPan::panMarkerDeleteHandle(int mhandle)
+void ScintillaParasol::panMarkerDeleteHandle(int mhandle)
 {
    SendScintilla(SCI_MARKERDELETEHANDLE,mhandle);
 }
@@ -2093,7 +2012,7 @@ void ScintillaPan::panMarkerDeleteHandle(int mhandle)
 ** Return the line containing a marker instance.
 */
 
-int ScintillaPan::panMarkerLine(int mhandle)
+int ScintillaParasol::panMarkerLine(int mhandle)
 {
    return SendScintilla(SCI_MARKERLINEFROMHANDLE,mhandle);
 }
@@ -2102,7 +2021,7 @@ int ScintillaPan::panMarkerLine(int mhandle)
 ** Search forwards for a marker.
 */
 
-int ScintillaPan::panMarkerFindNext(int linenr,unsigned mask)
+int ScintillaParasol::panMarkerFindNext(int linenr,unsigned mask)
 {
    return SendScintilla(SCI_MARKERNEXT,linenr,mask);
 }
@@ -2111,7 +2030,7 @@ int ScintillaPan::panMarkerFindNext(int linenr,unsigned mask)
 ** Search backwards for a marker.
 */
 
-int ScintillaPan::panMarkerFindPrevious(int linenr,unsigned mask)
+int ScintillaParasol::panMarkerFindPrevious(int linenr,unsigned mask)
 {
    return SendScintilla(SCI_MARKERPREVIOUS,linenr,mask);
 }
@@ -2120,7 +2039,7 @@ int ScintillaPan::panMarkerFindPrevious(int linenr,unsigned mask)
 ** Set the marker background colour.
 */
 
-void ScintillaPan::panSetMarkerBackgroundColor(const QColor &col,int mnr)
+void ScintillaParasol::panSetMarkerBackgroundColor(const QColor &col,int mnr)
 {
    if (mnr <= MARKER_MAX)
    {
@@ -2145,7 +2064,7 @@ void ScintillaPan::panSetMarkerBackgroundColor(const QColor &col,int mnr)
 ** Set the marker foreground colour.
 */
 
-void ScintillaPan::panSetMarkerForegroundColor(const QColor &col,int mnr)
+void ScintillaParasol::panSetMarkerForegroundColor(const QColor &col,int mnr)
 {
    if (mnr <= MARKER_MAX)
    {
@@ -2170,12 +2089,12 @@ void ScintillaPan::panSetMarkerForegroundColor(const QColor &col,int mnr)
 ** Check a marker, allocating a marker number if necessary.
 */
 
-void ScintillaPan::panCheckMarker(int &mnr)
+void ScintillaParasol::panCheckMarker(int &mnr)
 {
    if (mnr >= 0)
    {
       // Check the explicit marker number isn't already allocated.
-      if (mnr > MARKER_MAX OR allocatedMarkers & (1 << mnr))
+      if (mnr > MARKER_MAX or allocatedMarkers & (1 << mnr))
          mnr = -1;
    }
    else
@@ -2201,7 +2120,7 @@ void ScintillaPan::panCheckMarker(int &mnr)
 ** Reset the fold margin colours.
 */
 
-void ScintillaPan::resetFoldMarginColors()
+void ScintillaParasol::resetFoldMarginColors()
 {
    SendScintilla(SCI_SETFOLDMARGINHICOLOUR,0,0L);
    SendScintilla(SCI_SETFOLDMARGINCOLOUR,0,0L);
@@ -2211,7 +2130,7 @@ void ScintillaPan::resetFoldMarginColors()
 ** Set the fold margin colours.
 */
 
-void ScintillaPan::panSetFoldMarginColors(const QColor &fore,const QColor &back)
+void ScintillaParasol::panSetFoldMarginColors(const QColor &fore,const QColor &back)
 {
    SendScintilla(SCI_SETFOLDMARGINHICOLOUR,1,fore);
    SendScintilla(SCI_SETFOLDMARGINCOLOUR,1,back);
@@ -2222,7 +2141,7 @@ void ScintillaPan::panSetFoldMarginColors(const QColor &fore,const QColor &back)
 */
 
 // Return a position from a line number and an index within the line.
-long ScintillaPan::posFromLineIndex(int line,int index)
+long ScintillaParasol::posFromLineIndex(int line,int index)
 {
    long pos = SendScintilla(SCI_POSITIONFROMLINE,line) + index;
    long eol = SendScintilla(SCI_GETLINEENDPOSITION,line);
@@ -2235,7 +2154,7 @@ long ScintillaPan::posFromLineIndex(int line,int index)
 
 
 // Return a line number and an index within the line from a position.
-void ScintillaPan::lineIndexFromPos(long pos,int *line,int *index)
+void ScintillaParasol::lineIndexFromPos(long pos,int *line,int *index)
 {
    long lin = SendScintilla(SCI_LINEFROMPOSITION,pos);
    long linpos = SendScintilla(SCI_POSITIONFROMLINE,lin);
@@ -2246,7 +2165,7 @@ void ScintillaPan::lineIndexFromPos(long pos,int *line,int *index)
 
 
 // Convert a Scintilla string to a Qt Unicode string.
-QString ScintillaPan::convertText(const char *s)
+QString ScintillaParasol::convertText(const char *s)
 {
    if (isUtf8())
       return QString::fromUtf8(s);
@@ -2260,28 +2179,28 @@ QString ScintillaPan::convertText(const char *s)
 
 
 // Set the source of the auto-completion list.
-void ScintillaPan::setAutoCompletionSource(AutoCompletionSource source)
+void ScintillaParasol::setAutoCompletionSource(AutoCompletionSource source)
 {
    acSource = source;
 }
 
 
 // Set the threshold for automatic auto-completion.
-void ScintillaPan::setAutoCompletionThreshold(int thresh)
+void ScintillaParasol::setAutoCompletionThreshold(int thresh)
 {
    acThresh = thresh;
 }
 
 
 // Set the APIs for auto-completion.
-void ScintillaPan::setAutoCompletionAPIs(ScintillaPanAPIs *apis)
+void ScintillaParasol::setAutoCompletionAPIs(ScintillaParasolAPIs *apis)
 {
    acAPIs = apis;
 }
 
 
 // Explicitly auto-complete from the APIs.
-void ScintillaPan::autoCompleteFromAPIs()
+void ScintillaParasol::autoCompleteFromAPIs()
 {
    // If we are not in a word then display all APIs.
    startAutoCompletion(AcsAPIs,FALSE,!currentCharInWord(),showSingle);
@@ -2289,7 +2208,7 @@ void ScintillaPan::autoCompleteFromAPIs()
 
 
 // Explicitly auto-complete from the document.
-void ScintillaPan::autoCompleteFromDocument()
+void ScintillaParasol::autoCompleteFromDocument()
 {
    // If we are not in a word then ignore.
    if (currentCharInWord())
@@ -2301,7 +2220,7 @@ void ScintillaPan::autoCompleteFromDocument()
 ** of a word.
 */
 
-bool ScintillaPan::currentCharInWord()
+bool ScintillaParasol::currentCharInWord()
 {
    long pos = SendScintilla(SCI_GETCURRENTPOS);
    if (pos <= 0) return FALSE;
@@ -2312,7 +2231,7 @@ bool ScintillaPan::currentCharInWord()
 ** Registered an image.
 */
 
-void ScintillaPan::registerImage(int id,const QPixmap *pm)
+void ScintillaParasol::registerImage(int id,const QPixmap *pm)
 {
    SendScintilla(SCI_REGISTERIMAGE,id,pm);
 }
@@ -2321,7 +2240,7 @@ void ScintillaPan::registerImage(int id,const QPixmap *pm)
 ** Clear all registered images.
 */
 
-void ScintillaPan::clearRegisteredImages()
+void ScintillaParasol::clearRegisteredImages()
 {
    SendScintilla(SCI_CLEARREGISTEREDIMAGES);
 }
@@ -2330,7 +2249,7 @@ void ScintillaPan::clearRegisteredImages()
 ** Set the fill-up characters for auto-completion.
 */
 
-void ScintillaPan::setAutoCompletionFillups(const char *fillups)
+void ScintillaParasol::setAutoCompletionFillups(const char *fillups)
 {
    SendScintilla(SCI_AUTOCSETFILLUPS,fillups);
 }
@@ -2339,7 +2258,7 @@ void ScintillaPan::setAutoCompletionFillups(const char *fillups)
 ** Set the case sensitivity for auto-completion.
 */
 
-void ScintillaPan::setAutoCompletionCaseSensitivity(bool cs)
+void ScintillaParasol::setAutoCompletionCaseSensitivity(bool cs)
 {
    SendScintilla(SCI_AUTOCSETIGNORECASE,!cs);
 }
@@ -2348,7 +2267,7 @@ void ScintillaPan::setAutoCompletionCaseSensitivity(bool cs)
 ** Return the case sensitivity for auto-completion.
 */
 
-bool ScintillaPan::autoCompletionCaseSensitivity()
+bool ScintillaParasol::autoCompletionCaseSensitivity()
 {
    return !SendScintilla(SCI_AUTOCGETIGNORECASE);
 }
@@ -2357,7 +2276,7 @@ bool ScintillaPan::autoCompletionCaseSensitivity()
 ** Set the replace word mode for auto-completion.
 */
 
-void ScintillaPan::setAutoCompletionReplaceWord(bool replace)
+void ScintillaParasol::setAutoCompletionReplaceWord(bool replace)
 {
    SendScintilla(SCI_AUTOCSETDROPRESTOFWORD,replace);
 }
@@ -2366,7 +2285,7 @@ void ScintillaPan::setAutoCompletionReplaceWord(bool replace)
 ** Return the replace word mode for auto-completion.
 */
 
-bool ScintillaPan::autoCompletionReplaceWord()
+bool ScintillaParasol::autoCompletionReplaceWord()
 {
    return SendScintilla(SCI_AUTOCGETDROPRESTOFWORD);
 }
@@ -2375,7 +2294,7 @@ bool ScintillaPan::autoCompletionReplaceWord()
 ** Set the single item mode for auto-completion.
 */
 
-void ScintillaPan::setAutoCompletionShowSingle(bool single)
+void ScintillaParasol::setAutoCompletionShowSingle(bool single)
 {
    showSingle = single;
 }
@@ -2384,7 +2303,7 @@ void ScintillaPan::setAutoCompletionShowSingle(bool single)
 ** Return the single item mode for auto-completion.
 */
 
-bool ScintillaPan::autoCompletionShowSingle()
+bool ScintillaParasol::autoCompletionShowSingle()
 {
    return showSingle;
 }

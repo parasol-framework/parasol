@@ -48,10 +48,10 @@ ScintillaSearch: Provides search functionality for use on Scintilla objects.
 #include <parasol/main.h>
 #include <parasol/modules/surface.h>
 
-#include "scintillapan.h"
+#include "scintillaparasol.h"
 #include <parasol/modules/scintilla.h>
 
-#define SCICALL     Self->Scintilla->SciPan->SendScintilla
+#define SCICALL     Self->Scintilla->API->SendScintilla
 
 /*****************************************************************************
 
@@ -78,11 +78,12 @@ Search: The string sequence was not found.
 
 static ERROR SEARCH_Find(objScintillaSearch *Self, struct ssFind *Args)
 {
+   parasol::Log log;
    LONG start, end, flags, pos, startLine, endLine, i, targstart, targend;
 
-   if (!Self->Text) return PostError(ERR_FieldNotSet);
+   if (!Self->Text) return log.warning(ERR_FieldNotSet);
 
-   LogMsg("Text: '%.10s'... From: %d, Flags: $%.8x", Self->Text, Args->Pos, Self->Flags);
+   log.msg("Text: '%.10s'... From: %d, Flags: $%.8x", Self->Text, Args->Pos, Self->Flags);
 
    flags = ((Args->Flags & STF_CASE) ? SCFIND_MATCHCASE : 0) |
            ((Args->Flags & STF_EXPRESSION) ? SCFIND_REGEXP : 0);
@@ -171,16 +172,18 @@ static ERROR SEARCH_Free(objScintillaSearch *Self, APTR Void)
 
 static ERROR SEARCH_Init(objScintillaSearch *Self, APTR Void)
 {
+   parasol::Log log;
+
    if (!Self->Scintilla) { // Find our parent surface
       OBJECTID owner_id = GetOwner(Self);
       while ((owner_id) AND (GetClassID(owner_id) != ID_SCINTILLA)) {
          owner_id = GetOwnerID(owner_id);
       }
       if (owner_id) Self->Scintilla = (struct rkScintilla *)GetObjectPtr(owner_id);
-      else return PostError(ERR_UnsupportedOwner);
+      else return log.warning(ERR_UnsupportedOwner);
    }
 
-   if ((!Self->Text) OR (!Self->Scintilla)) return PostError(ERR_FieldNotSet);
+   if ((!Self->Text) OR (!Self->Scintilla)) return log.warning(ERR_FieldNotSet);
 
    return ERR_Okay;
 }
@@ -208,9 +211,11 @@ Search: The string could not be found.
 
 static ERROR SEARCH_Next(struct rkScintillaSearch *Self, struct ssNext *Args)
 {
-   if (!Args) return PostError(ERR_NullArgs);
+   parasol::Log log;
 
-   LogBranch("Text: '%.10s', Flags: $%.8x, Section %d to %d", Self->Text, Self->Flags, Self->Start, Self->End);
+   if (!Args) return log.warning(ERR_NullArgs);
+
+   log.branch("Text: '%.10s', Flags: $%.8x, Section %d to %d", Self->Text, Self->Flags, Self->Start, Self->End);
 
    LONG flags = ((Self->Flags & STF_CASE) ? SCFIND_MATCHCASE : 0) |
                 ((Self->Flags & STF_EXPRESSION) ? SCFIND_REGEXP : 0);
@@ -235,14 +240,11 @@ static ERROR SEARCH_Next(struct rkScintillaSearch *Self, struct ssNext *Args)
 
       if (start IS end) {
          if (Self->Flags & STF_WRAP) start = 0;
-         else {
-            LogReturn();
-            return ERR_Search;
-         }
+         else return ERR_Search;
       }
    }
 
-   MSG("Search from %d to %d", start, end);
+   log.trace("Search from %d to %d", start, end);
 
    SCICALL(SCI_SETTARGETSTART, start);
    SCICALL(SCI_SETTARGETEND, end);
@@ -251,7 +253,7 @@ static ERROR SEARCH_Next(struct rkScintillaSearch *Self, struct ssNext *Args)
    // If not found and wraparound is wanted, try again
 
    if ((pos IS -1) AND (Self->Flags & STF_WRAP)) {
-      MSG("Wrap-around");
+      log.trace("Wrap-around");
       if (Self->Flags & STF_SCAN_SELECTION) {
          start = Self->Start;
          end   = Self->End;
@@ -262,8 +264,7 @@ static ERROR SEARCH_Next(struct rkScintillaSearch *Self, struct ssNext *Args)
       }
 
       if (Self->Flags & STF_BACKWARDS) {
-         LONG tmp;
-         tmp   = start;
+         auto tmp = start;
          start = end;
          end   = tmp;
       }
@@ -273,10 +274,7 @@ static ERROR SEARCH_Next(struct rkScintillaSearch *Self, struct ssNext *Args)
       pos = SCICALL(SCI_SEARCHINTARGET, StrLength((STRING)Self->Text), (char *)Self->Text);
    }
 
-   if (pos IS -1) {
-      LogReturn();
-      return ERR_Search;
-   }
+   if (pos IS -1) return ERR_Search;
 
    LONG targstart = SCICALL(SCI_GETTARGETSTART);
    LONG targend   = SCICALL(SCI_GETTARGETEND);
@@ -295,8 +293,6 @@ static ERROR SEARCH_Next(struct rkScintillaSearch *Self, struct ssNext *Args)
    }
 
    Args->Pos = pos;
-
-   LogReturn();
    return ERR_Okay;
 }
 
@@ -321,7 +317,7 @@ Search: The string could not be found.
 
 static ERROR SEARCH_Prev(objScintillaSearch *Self, struct ssPrev *Args)
 {
-   if (!Args) return PostError(ERR_NullArgs);
+   if (!Args) return ERR_NullArgs;
 
    // Temporarily set the STF_BACKWARDS flag
 
@@ -366,7 +362,7 @@ static ERROR SET_Text(objScintillaSearch *Self, CSTRING Value)
 
 //****************************************************************************
 
-static const struct ActionArray clActions[] = {
+static const ActionArray clActions[] = {
    { AC_Free, (APTR)SEARCH_Free },
    { AC_Init, (APTR)SEARCH_Init },
    { 0, NULL }
@@ -374,11 +370,11 @@ static const struct ActionArray clActions[] = {
 
 //****************************************************************************
 
-static const struct FunctionField argsNext[] = { { "Pos", FD_LONG|FD_RESULT }, { NULL, 0 } };
-static const struct FunctionField argsPrev[] = { { "Pos", FD_LONG|FD_RESULT }, { NULL, 0 } };
-static const struct FunctionField argsFind[] = { { "Pos", FD_LONG|FD_RESULT }, { NULL, 0 } };
+static const FunctionField argsNext[] = { { "Pos", FD_LONG|FD_RESULT }, { NULL, 0 } };
+static const FunctionField argsPrev[] = { { "Pos", FD_LONG|FD_RESULT }, { NULL, 0 } };
+static const FunctionField argsFind[] = { { "Pos", FD_LONG|FD_RESULT }, { NULL, 0 } };
 
-static const struct MethodArray clMethods[] = {
+static const MethodArray clMethods[] = {
    { MT_SsNext, (APTR)SEARCH_Next, "Next", argsNext, sizeof(struct ssNext) },
    { MT_SsPrev, (APTR)SEARCH_Prev, "Prev", argsPrev, sizeof(struct ssPrev) },
    { MT_SsFind, (APTR)SEARCH_Find, "Find", argsFind, sizeof(struct ssFind) },
@@ -387,7 +383,7 @@ static const struct MethodArray clMethods[] = {
 
 //****************************************************************************
 
-static const struct FieldDef clFlags[] = {
+static const FieldDef clFlags[] = {
    { "Case",          STF_CASE },
    { "MoveCursor",    STF_MOVE_CURSOR },
    { "ScanSelection", STF_SCAN_SELECTION },
@@ -397,7 +393,7 @@ static const struct FieldDef clFlags[] = {
    { NULL, 0 }
 };
 
-static const struct FieldArray clFields[] = {
+static const FieldArray clFields[] = {
    { "Scintilla", FDF_OBJECT|FDF_RI, ID_SCINTILLA, NULL, NULL },
    { "Text",      FDF_STRING|FDF_RW, 0, NULL, (APTR)SET_Text },
    { "Flags",     FDF_LONGFLAGS|FDF_RW, (MAXINT)&clFlags, NULL, NULL },

@@ -1,19 +1,19 @@
 
 int GetFontHeight(void *TheFont)
 {
-   //MSG("GetFontHeight()");
+   //log.trace("GetFontHeight()");
    return static_cast<objFont *>(TheFont)->MaxHeight;
 }
 
 int GetFontLeading(void *TheFont)
 {
-   //MSG("GetFontLeading()");
+   //log.trace("GetFontLeading()");
    return static_cast<objFont *>(TheFont)->Leading;
 }
 
 int GetFontGutter(void *TheFont)
 {
-   //MSG("GetFontGutter()");
+   //log.trace("GetFontGutter()");
    return static_cast<objFont *>(TheFont)->Gutter;
 }
 
@@ -63,10 +63,12 @@ Scintilla::Font::~Font()
 
 void Scintilla::Font::Create(const char *faceName, int characterSet, int size, bool bold_, bool italic_, int)
 {
+   parasol::Log log(__FUNCTION__);
+
    bold = bold_;
    italic = italic_;
 
-   FMSG("Font::Create:","Face: %s, Style:%s%s", faceName, (bold) ? " Bold" : "", (italic) ? " Italic" : "");
+   log.trace("Face: %s, Style:%s%s", faceName, (bold) ? " Bold" : "", (italic) ? " Italic" : "");
 }
 
 void Scintilla::Font::Release()
@@ -84,28 +86,28 @@ class BitmapClipper
 public:
    BitmapClipper(struct rkBitmap *bitmap_, const Scintilla::PRectangle& cliprect) :  bitmap(bitmap_)
    {
-      /*** Save old clipping rectangle ***/
+      // Save old clipping rectangle
 
-      saved_cliprect.left = bitmap->Clip.Left;
-      saved_cliprect.top = bitmap->Clip.Top;
-      saved_cliprect.right = bitmap->Clip.Right;
+      saved_cliprect.left   = bitmap->Clip.Left;
+      saved_cliprect.top    = bitmap->Clip.Top;
+      saved_cliprect.right  = bitmap->Clip.Right;
       saved_cliprect.bottom = bitmap->Clip.Bottom;
 
-      /*** Apply new clipping rectangle ***/
+      // Apply new clipping rectangle
 
-      bitmap->Clip.Left = MAX(bitmap->Clip.Left, cliprect.left);
-      bitmap->Clip.Top = MAX(bitmap->Clip.Top, cliprect.top);
-      bitmap->Clip.Right = MIN(bitmap->Clip.Right, cliprect.right);
+      bitmap->Clip.Left   = MAX(bitmap->Clip.Left, cliprect.left);
+      bitmap->Clip.Top    = MAX(bitmap->Clip.Top, cliprect.top);
+      bitmap->Clip.Right  = MIN(bitmap->Clip.Right, cliprect.right);
       bitmap->Clip.Bottom = MIN(bitmap->Clip.Bottom, cliprect.bottom);
    }
 
    ~BitmapClipper()
    {
-      /*** Restore old clipping rectangle ***/
+      // Restore old clipping rectangle
 
-      bitmap->Clip.Left = saved_cliprect.left;
-      bitmap->Clip.Top = saved_cliprect.top;
-      bitmap->Clip.Right = saved_cliprect.right;
+      bitmap->Clip.Left   = saved_cliprect.left;
+      bitmap->Clip.Top    = saved_cliprect.top;
+      bitmap->Clip.Right  = saved_cliprect.right;
       bitmap->Clip.Bottom = saved_cliprect.bottom;
    }
 
@@ -123,33 +125,30 @@ class DynamicLibraryImpl : public Scintilla::DynamicLibrary
 protected:
 
 public:
-   DynamicLibraryImpl(const char *modulePath)
-   {
-      LogF("DynamicLibraryImpl::DynamicLibraryImpl():","path: %s", modulePath);
+   DynamicLibraryImpl(const char *modulePath) {
+      parasol::Log log(__FUNCTION__);
+      log.msg("Path: %s", modulePath);
    }
 
-   virtual ~DynamicLibraryImpl()
-   {
-
-   }
+   virtual ~DynamicLibraryImpl() { }
 
    // Use g_module_symbol to get a pointer to the relevant function.
-   virtual void * FindFunction(const char *name)
-   {
-      LogF("DynamicLibraryImpl::FindFunction():","name: %s", name);
-      return NULL;/* TEMP */
+   virtual void * FindFunction(const char *name) {
+      parasol::Log log(__FUNCTION__);
+      log.msg("Name: %s", name);
+      return NULL;
    }
 
-   virtual bool IsValid()
-   {
-      return TRUE;/* TEMP HACK */
+   virtual bool IsValid() {
+      return FALSE;
    }
 };
 
 Scintilla::DynamicLibrary * Scintilla::DynamicLibrary::Load(const char *modulePath)
 {
-   LogF("DynamicLibraryImpl::Load():","modulePath: %s", modulePath);
-   return static_cast<DynamicLibrary *>( new DynamicLibraryImpl(modulePath) );
+   parasol::Log log(__FUNCTION__);
+   log.msg("Path: %s", modulePath);
+   return static_cast<DynamicLibrary *>(new DynamicLibraryImpl(modulePath));
 }
 
 /*****************************************************************************
@@ -158,7 +157,7 @@ Scintilla::DynamicLibrary * Scintilla::DynamicLibrary::Load(const char *modulePa
 
 Scintilla::ElapsedTime::ElapsedTime()
 {
-   Duration(TRUE);//reset time
+   Duration(TRUE); // Reset time
 }
 
 double Scintilla::ElapsedTime::Duration(bool reset)
@@ -211,12 +210,14 @@ bool Scintilla::Platform::MouseButtonBounce()
 
 void Scintilla::Platform::DebugDisplay(const char *string)
 {
-   LogF("Scintilla:", "%s", string);
+   parasol::Log log("Scintilla");
+   log.msg("%s", string);
 }
 
 bool Scintilla::Platform::IsKeyDown(int)
 {
-   LogF("Platform::IsKeyDown","UNSUPPORTED");
+   parasol::Log log(__FUNCTION__);
+   log.msg("UNSUPPORTED");
 
    // TODO: discover state of keys in GTK+/X
    return false;
@@ -224,13 +225,15 @@ bool Scintilla::Platform::IsKeyDown(int)
 
 long Scintilla::Platform::SendScintilla(Scintilla::WindowID w, unsigned int msg, unsigned long wParam, long lParam)
 {
-   LogF("Platform::SendScintilla","UNSUPPORTED");
+   parasol::Log log(__FUNCTION__);
+   log.msg("UNSUPPORTED");
    return 0;
 }
 
 long Scintilla::Platform::SendScintillaPointer(Scintilla::WindowID w, unsigned int msg, unsigned long wParam, void *lParam)
 {
-   LogF("Platform::SendScintillaPointer","UNSUPPORTED");
+   parasol::Log log(__FUNCTION__);
+   log.msg("UNSUPPORTED");
 
    //return scintilla_send_message(SCINTILLA(w), msg, wParam,
    //   reinterpret_cast<sptr_t>(lParam));
@@ -265,10 +268,9 @@ int Scintilla::Platform::DBCSCharLength(int codePage, const char *s)
 
 int Scintilla::Platform::DBCSCharMaxLength()
 {
-//   return MB_CUR_MAX;
+   //return MB_CUR_MAX;
    //return 2;
-
-   return 1;/* TEMP HACK */
+   return 1; // TEMP HACK
 }
 
 // These are utility functions not really tied to a platform
@@ -285,26 +287,15 @@ int Scintilla::Platform::Maximum(int a, int b)
    else return b;
 }
 
-#ifdef DEBUG
 void Scintilla::Platform::DebugPrintf(const char *format, ...)
 {
-#if 1
-   LONG *Array;
-   Array = (LONG *)&format;
-   LogF("Scintilla:", (BYTE *)Array[0], Array[1], Array[2], Array[3], Array[4], Array[5], Array[6], Array[7], Array[8], Array[9], Array[10], Array[11]);
-#else
-   char buffer[2000];
+#ifdef DEBUG
    va_list pArguments;
    va_start(pArguments, format);
-   vsprintf(buffer, format, pArguments);
+   VLogF("Scintilla", pArguments);
    va_end(pArguments);
-   LogF("Scintilla:", buffer);
 #endif
 }
-#else
-void Scintilla::Platform::DebugPrintf(const char *, ...) {}
-
-#endif
 
 // Not supported for GTK+
 static bool assertionPopUps = true;
@@ -317,7 +308,8 @@ bool Scintilla::Platform::ShowAssertionPopUps(bool assertionPopUps_) {
 
 void Scintilla::Platform::Assert(const char *c, const char *file, int line)
 {
-   LogF("@Platform::Assert:","%s, File %s, Line %d", c, file, line);
+   parasol::Log log("Assert");
+   log.warning("%s, File %s, Line %d", c, file, line);
    SelfDestruct();
 }
 
