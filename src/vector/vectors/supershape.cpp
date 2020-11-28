@@ -170,7 +170,7 @@ static ERROR SUPER_NewObject(objVectorShape *Self, APTR Void)
    Self->Phi = 2;
    Self->Vertices = DEFAULT_VERTICES;
    Self->Close = TRUE;
-   Self->GeneratePath = (void (*)(struct rkVector *))&generate_supershape;
+   Self->GeneratePath = (void (*)(rkVector *))&generate_supershape;
    return ERR_Okay;
 }
 
@@ -224,7 +224,7 @@ The horizontal center of the shape is defined here as either a fixed or relative
 
 *****************************************************************************/
 
-static ERROR SUPER_GET_CenterX(objVectorShape *Self, struct Variable *Value)
+static ERROR SUPER_GET_CenterX(objVectorShape *Self, Variable *Value)
 {
    DOUBLE val = Self->CX;
    if ((Value->Type & FD_PERCENTAGE) and (Self->Dimensions & DMF_RELATIVE_CENTER_X)) val = val * 100.0;
@@ -233,12 +233,12 @@ static ERROR SUPER_GET_CenterX(objVectorShape *Self, struct Variable *Value)
    return ERR_Okay;
 }
 
-static ERROR SUPER_SET_CenterX(objVectorShape *Self, struct Variable *Value)
+static ERROR SUPER_SET_CenterX(objVectorShape *Self, Variable *Value)
 {
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return PostError(ERR_FieldTypeMismatch);
+   else return ERR_FieldTypeMismatch;
 
    if (Value->Type & FD_PERCENTAGE) {
       val = val * 0.01;
@@ -260,7 +260,7 @@ The vertical center of the shape is defined here as either a fixed or relative v
 
 *****************************************************************************/
 
-static ERROR SUPER_GET_CenterY(objVectorShape *Self, struct Variable *Value)
+static ERROR SUPER_GET_CenterY(objVectorShape *Self, Variable *Value)
 {
    DOUBLE val = Self->CY;
    if ((Value->Type & FD_PERCENTAGE) and (Self->Dimensions & DMF_RELATIVE_CENTER_Y)) val = val * 100.0;
@@ -269,12 +269,12 @@ static ERROR SUPER_GET_CenterY(objVectorShape *Self, struct Variable *Value)
    return ERR_Okay;
 }
 
-static ERROR SUPER_SET_CenterY(objVectorShape *Self, struct Variable *Value)
+static ERROR SUPER_SET_CenterY(objVectorShape *Self, Variable *Value)
 {
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return PostError(ERR_FieldTypeMismatch);
+   else return ERR_FieldTypeMismatch;
 
    if (Value->Type & FD_PERCENTAGE) {
       val = val * 0.01;
@@ -493,7 +493,7 @@ The Radius defines the final size of the generated shape.  It can be expressed i
 
 *****************************************************************************/
 
-static ERROR SUPER_GET_Radius(objVectorShape *Self, struct Variable *Value)
+static ERROR SUPER_GET_Radius(objVectorShape *Self, Variable *Value)
 {
    DOUBLE val = Self->Radius;
    if ((Value->Type & FD_PERCENTAGE) and (Self->Dimensions & DMF_RELATIVE_RADIUS)) val = val * 100.0;
@@ -502,12 +502,12 @@ static ERROR SUPER_GET_Radius(objVectorShape *Self, struct Variable *Value)
    return ERR_Okay;
 }
 
-static ERROR SUPER_SET_Radius(objVectorShape *Self, struct Variable *Value)
+static ERROR SUPER_SET_Radius(objVectorShape *Self, Variable *Value)
 {
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return PostError(ERR_FieldTypeMismatch);
+   else return ERR_FieldTypeMismatch;
 
    if (Value->Type & FD_PERCENTAGE) {
       val = val * 0.01;
@@ -544,7 +544,7 @@ static ERROR SUPER_SET_Repeat(objVectorShape *Self, LONG Value)
       reset_path(Self);
       return ERR_Okay;
    }
-   else return PostError(ERR_InvalidValue);
+   else return ERR_InvalidValue;
 }
 
 /*****************************************************************************
@@ -595,12 +595,12 @@ static ERROR SUPER_SET_Vertices(objVectorShape *Self, LONG Value)
       reset_path(Self);
       return ERR_Okay;
    }
-   else return PostError(ERR_InvalidValue);
+   else return ERR_InvalidValue;
 }
 
 //****************************************************************************
 
-static const struct FieldDef clSuperDimensions[] = {
+static const FieldDef clSuperDimensions[] = {
    { "FixedRadius",     DMF_FIXED_RADIUS },
    { "FixedCenterX",    DMF_FIXED_CENTER_X },
    { "FixedCenterY",    DMF_FIXED_CENTER_Y },
@@ -610,12 +610,12 @@ static const struct FieldDef clSuperDimensions[] = {
    { NULL, 0 }
 };
 
-static const struct ActionArray clVectorShapeActions[] = {
+static const ActionArray clVectorShapeActions[] = {
    { AC_NewObject, (APTR)SUPER_NewObject },
    { 0, NULL }
 };
 
-static const struct FieldArray clVectorShapeFields[] = {
+static const FieldArray clVectorShapeFields[] = {
    { "CenterX",    FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)SUPER_GET_CenterX, (APTR)SUPER_SET_CenterX },
    { "CenterY",    FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)SUPER_GET_CenterY, (APTR)SUPER_SET_CenterY },
    { "Radius",     FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)SUPER_GET_Radius,  (APTR)SUPER_SET_Radius },

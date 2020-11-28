@@ -1017,7 +1017,7 @@ ERROR KeySet(KeyStore *Store, ULONG Key, const void *Data, LONG Size)
    else { // Brand new key
       if ((Size > 64 * 1024) OR (Size < 0)) {
          if (Store->Flags & KSF_THREAD_SAFE) UnlockMutex(Store->Mutex);
-         return PostError(ERR_DataSize);
+         return ERR_DataSize;
       }
 
       KeyPair *kp = build_hashed_key_pair(Store, Key, Data, Size);

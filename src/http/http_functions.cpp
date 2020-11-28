@@ -206,21 +206,20 @@ redo_upload:
             };
             error = scCallback(script, Self->Outgoing.Script.ProcedureID, args, ARRAYSIZE(args));
             if (!error) GetLong(script, FID_Error, &error);
-            if (!error) len = Self->WriteOffset;
-            else {
+            if (error > ERR_ExceptionThreshold) {
                log.warning("Procedure " PF64() " failed, aborting HTTP call.", Self->Outgoing.Script.ProcedureID);
-               error = ERR_Failed; // Fatal error in attempting to execute the procedure
             }
+            else len = Self->WriteOffset;
          }
       }
-      else error = ERR_Failed;
+      else error = ERR_InvalidValue;
 
       if (len > Self->WriteSize) { // Sanity check, this should never happen if the client uses valid code.
          log.warning("Returned length exceeds buffer size!  %d > %d", len, Self->WriteSize);
          len = Self->WriteSize;
          error = ERR_BufferOverflow;
       }
-      else if ((error) and (error != ERR_Terminate)) log.warning("Outgoing callback error: %s", GetErrorMsg(error));
+      else if (error > ERR_ExceptionThreshold) log.warning("Outgoing callback error: %s", GetErrorMsg(error));
    }
    else if (Self->flInput) {
       if (Self->Flags & HTF_DEBUG) log.msg("Sending content from an Input file.");

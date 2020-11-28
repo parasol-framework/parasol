@@ -2,9 +2,10 @@
 //****************************************************************************
 // Create a new image effect.
 
-static ERROR create_image(objVectorFilter *Self, struct XMLTag *Tag)
+static ERROR create_image(objVectorFilter *Self, XMLTag *Tag)
 {
-   struct effect *effect;
+   parasol::Log log(__FUNCTION__);
+   effect *effect;
 
    if (!(effect = add_effect(Self, FE_IMAGE))) return ERR_AllocMemory;
 
@@ -99,10 +100,9 @@ static ERROR create_image(objVectorFilter *Self, struct XMLTag *Tag)
    if (path) {
       // Check for security risks in the path.
 
-      if ((path[0] IS '/') or
-          ((path[0] IS '.') and (path[1] IS '.') AND (path[2] IS '/'))) {
+      if ((path[0] IS '/') or ((path[0] IS '.') and (path[1] IS '.') AND (path[2] IS '/'))) {
          remove_effect(Self, effect);
-         return PostError(ERR_InvalidValue);
+         return log.warning(ERR_InvalidValue);
       }
 
       for (UWORD i=0; path[i]; i++) {
@@ -110,12 +110,12 @@ static ERROR create_image(objVectorFilter *Self, struct XMLTag *Tag)
             while (path[i+1] IS '.') i++;
             if (path[i+1] IS '/') {
                remove_effect(Self, effect);
-               return PostError(ERR_InvalidValue);
+               return log.warning(ERR_InvalidValue);
             }
          }
          else if (path[i] IS ':') {
             remove_effect(Self, effect);
-            return PostError(ERR_InvalidValue);
+            return log.warning(ERR_InvalidValue);
          }
       }
 
@@ -155,7 +155,7 @@ static ERROR create_image(objVectorFilter *Self, struct XMLTag *Tag)
 ** Internal: apply_image()
 */
 
-static void apply_image(objVectorFilter *Self, struct effect *Effect)
+static void apply_image(objVectorFilter *Self, effect *Effect)
 {
    objBitmap *bmp = Effect->Bitmap;
    if (bmp->BytesPerPixel != 4) return;

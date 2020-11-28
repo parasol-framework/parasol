@@ -2116,7 +2116,7 @@ static ERROR init_filesystem(void)
 
       if (acInit(&glVolumes->Head) != ERR_Okay) {
          acFree(&glVolumes->Head);
-         return PostError(ERR_CreateObject);
+         return log.warning(ERR_CreateObject);
       }
 
       // Add system volumes that require run-time determination.  For the avoidance of doubt, on Unix systems the
@@ -2408,11 +2408,11 @@ static ERROR init_filesystem(void)
                   }
                   FreeResource(buffer);
                }
-               else PostError(ERR_AllocMemory);
+               else log.warning(ERR_AllocMemory);
 
                close(file);
             }
-            else PostError(ERR_File);
+            else log.warning(ERR_File);
          }
          else log.msg("Not scanning for hard disks because user has defined drive1.");
 

@@ -113,7 +113,7 @@ typedef char HASHHEX[HASHHEXLEN+1];
 #define BUFFER_READ_SIZE 16384  // Dictates how many bytes are read from the network socket at a time.  Do not make this greater than 64k
 #define BUFFER_WRITE_SIZE 16384 // Dictates how many bytes are written to the network socket at a time.  Do not make this greater than 64k
 
-#define SET_ERROR(http, code) { (http)->Error = (code); log.warning("Set HTTP error code: %d, Msg: %s", code, GetErrorMsg(code)); }
+#define SET_ERROR(http, code) { (http)->Error = (code); log.msg("Set error code %d: %s", code, GetErrorMsg(code)); }
 
 static ERROR create_http_class(void);
 
@@ -1165,7 +1165,7 @@ static ERROR SET_Location(objHTTP *Self, CSTRING Value)
 
    // Parse host name
 
-   LONG len, i;
+   LONG len;
    for (len=0; (str[len]) and (str[len] != ':') and (str[len] != '/'); len++);
 
    if (AllocMemory(len+1, MEM_STRING|MEM_NO_CLEAR, &Self->Host, NULL) != ERR_Okay) {
@@ -1181,7 +1181,7 @@ static ERROR SET_Location(objHTTP *Self, CSTRING Value)
 
    if (*str IS ':') {
       str++;
-      i = StrToInt(str);
+      LONG i = StrToInt(str);
       if (i) {
          Self->Port = i;
          if (Self->Port IS 443) Self->Flags |= HTF_SSL;
@@ -1497,7 +1497,7 @@ static ERROR SET_State(objHTTP *Self, LONG Value)
          else error = ERR_Terminate;
       }
 
-      if (error) SET_ERROR(Self, error);
+      if (error > ERR_ExceptionThreshold) SET_ERROR(Self, error);
 
       if ((error IS ERR_Terminate) and (Self->State != HGS_TERMINATED) and (Self->State != HGS_COMPLETED)) {
          log.branch("State changing to HGS_TERMINATED (terminate message received).");

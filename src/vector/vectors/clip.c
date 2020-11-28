@@ -120,8 +120,8 @@ static ERROR CLIP_Draw(objVectorClip *Self, struct acDraw *Args)
 
 static ERROR CLIP_Free(objVectorClip *Self, APTR Void)
 {
-   VectorTransform *scan, *next;
-   for (scan=Self->Transforms; scan; scan=next) {
+   VectorTransform *next;
+   for (auto scan=Self->Transforms; scan; scan=next) {
       next = scan->Next;
       FreeResource(scan);
    }
@@ -141,7 +141,7 @@ static ERROR CLIP_Init(objVectorClip *Self, APTR Void)
 
    if ((Self->ClipUnits <= 0) or (Self->ClipUnits >= VUNIT_END)) {
       log.traceWarning("Invalid Units value of %d", Self->ClipUnits);
-      return PostError(ERR_OutOfRange);
+      return log.warning(ERR_OutOfRange);
    }
 
    if ((!Self->Parent) OR ((Self->Parent->ClassID != ID_VECTORSCENE) AND (Self->Parent->SubID != ID_VECTORVIEWPORT))) {
@@ -174,7 +174,9 @@ string.
 
 static ERROR CLIP_SET_Transform(objVectorClip *Self, CSTRING Value)
 {
-   if (!Value) return PostError(ERR_NullArgs);
+   parasol::Log log;
+
+   if (!Value) return log.warning(ERR_NullArgs);
 
    // Clear any existing transforms.
 

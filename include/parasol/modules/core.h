@@ -2144,9 +2144,6 @@ struct CoreBase {
 #define NewPrivateObject(a,b,c)   (NewObject(a,b,c))
 #define NewPublicObject(a,b,c)    (NewLockedObject(a,(b)|NF_PUBLIC,0,c))
 #define NewNamedObject(a,b,c,d,e) (CoreBase->_NewLockedObject(a,(b)|NF_NAME,c,d,e))
-#define PostError(a)              (LogError(0,a)) // Superseded by LogCode()
-#define LogCode(a)                (LogError(0,a))
-#define StepError(b,c)            (LogError(b,-c))
 #define StrMatch(a,b)             (StrCompare((a),(b),0,STR_MATCH_LEN))
 
 extern struct CoreBase *CoreBase;

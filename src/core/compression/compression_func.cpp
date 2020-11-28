@@ -29,10 +29,8 @@ static ERROR compress_folder(objCompression *Self, CSTRING Location, CSTRING Pat
    if (!Path) Path = "";
 
    objFile *file;
-   if (CreateObject(ID_FILE, NF_INTEGRAL, (OBJECTPTR *)&file,
-         FID_Path|TSTR, Location,
-         TAGEND) != ERR_Okay) {
-      return PostError(ERR_File);
+   if (CreateObject(ID_FILE, NF_INTEGRAL, (OBJECTPTR *)&file, FID_Path|TSTR, Location, TAGEND) != ERR_Okay) {
+      return log.warning(ERR_File);
    }
 
    if ((file->Flags & FL_LINK) AND (!(Self->Flags & CMF_NO_LINKS))) {

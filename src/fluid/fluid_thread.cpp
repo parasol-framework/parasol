@@ -320,7 +320,7 @@ static int thread_method(lua_State *Lua)
                      error = ActionThread(action_id, obj, NULL, &callback, key);
                      release_object(object);
                   }
-                  else error = PostError(ERR_AccessObject);
+                  else error = log.warning(ERR_AccessObject);
                }
 
                if ((error) AND (callback.Type)) luaL_unref(Lua, LUA_REGISTRYINDEX, callback.Script.ProcedureID);

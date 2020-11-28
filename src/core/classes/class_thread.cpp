@@ -209,7 +209,7 @@ ERROR msg_threadcallback(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LO
 
       ReleaseObject((OBJECTPTR)thread);
    }
-   else LogCode(ERR_AccessObject);
+   else return ERR_AccessObject;
 
    return ERR_Okay;
 }

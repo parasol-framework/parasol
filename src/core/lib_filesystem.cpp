@@ -89,7 +89,7 @@ typedef int HANDLE;
 static virtual_drive * get_virtual(CSTRING Path)
 {
    LONG len;
-   for (len=0; (Path[len]) AND (Path[len] != ':'); len++); // The Path may end with a NULL terminator or a colon
+   for (len=0; (Path[len]) and (Path[len] != ':'); len++); // The Path may end with a NULL terminator or a colon
    if ((size_t)len < sizeof(glVirtual[0].Name)) {
       for (LONG i=0; i < glVirtualTotal; i++) {
          if (glVirtual[i].Name[len] IS ':') {
@@ -104,7 +104,7 @@ static virtual_drive * get_virtual(CSTRING Path)
 
 extern "C" LONG CALL_FEEDBACK(FUNCTION *Callback, FileFeedback *Feedback)
 {
-   if ((!Callback) OR (!Feedback)) return FFR_OKAY;
+   if ((!Callback) or (!Feedback)) return FFR_OKAY;
 
    if (Callback->Type IS CALL_STDC) {
       auto routine = (LONG (*)(FileFeedback *))Callback->StdC.Routine;
@@ -125,7 +125,7 @@ extern "C" LONG CALL_FEEDBACK(FUNCTION *Callback, FileFeedback *Feedback)
          if (!error) {
             CSTRING *results;
             LONG size;
-            if ((!GetFieldArray(script, FID_Results, (APTR *)&results, &size)) AND (size > 0)) {
+            if ((!GetFieldArray(script, FID_Results, (APTR *)&results, &size)) and (size > 0)) {
                return StrToInt(results[0]);
             }
             else return FFR_OKAY;
@@ -182,10 +182,10 @@ const virtual_drive * get_fs(CSTRING Path)
 
    LONG len;
    ULONG hash = 5381;
-   for (len=0; (Path[len]) AND (Path[len] != ':'); len++) {
+   for (len=0; (Path[len]) and (Path[len] != ':'); len++) {
       char c = Path[len];
-      if ((c IS '/') OR (c IS '\\')) return (const virtual_drive *)&glVirtual[0]; // If a slash is encountered early, the path belongs to the local FS
-      if ((c >= 'A') AND (c <= 'Z')) hash = (hash<<5) + hash + c - 'A' + 'a';
+      if ((c IS '/') or (c IS '\\')) return (const virtual_drive *)&glVirtual[0]; // If a slash is encountered early, the path belongs to the local FS
+      if ((c >= 'A') and (c <= 'Z')) hash = (hash<<5) + hash + c - 'A' + 'a';
       else hash = (hash<<5) + hash + c;
    }
 
@@ -193,7 +193,7 @@ const virtual_drive * get_fs(CSTRING Path)
 
    if ((size_t)len < sizeof(glVirtual[0].Name)) {
       for (LONG i=0; i < glVirtualTotal; i++) {
-         if ((hash IS glVirtual[i].VirtualID) AND (glVirtual[i].Name[len] IS ':')) {
+         if ((hash IS glVirtual[i].VirtualID) and (glVirtual[i].Name[len] IS ':')) {
             if (!StrCompare(glVirtual[i].Name, Path, len, 0)) return glVirtual+i;
          }
       }
@@ -214,7 +214,7 @@ ERROR check_cache(OBJECTPTR Subscriber, LARGE Elapsed, LARGE CurrentTime)
    CacheFile **ptr;
    while (!VarIterate(glCache, key, &key, (APTR *)&ptr, NULL)) {
       CacheFile *cache = ptr[0];
-      if ((CurrentTime - cache->LastUse >= 60LL * 1000000LL) AND (cache->Locks <= 0)) {
+      if ((CurrentTime - cache->LastUse >= 60LL * 1000000LL) and (cache->Locks <= 0)) {
          log.msg("Removing expired cache file: %.80s", cache->Path);
          VarSet(glCache, key, NULL, 0);
          FreeResource(cache);
@@ -318,7 +318,7 @@ ERROR AnalysePath(CSTRING Path, LONG *PathType)
    if (Path[len-1] IS ':') {
       if (!AccessPrivateObject((OBJECTPTR)glVolumes, 8000)) {
          for (LONG i=0; i < glVolumes->AmtEntries; i++) {
-            if ((glVolumes->Entries[i].Key[0] IS 'N') AND (glVolumes->Entries[i].Key[1] IS 'a') AND (glVolumes->Entries[i].Key[2] IS 'm') AND (glVolumes->Entries[i].Key[3] IS 'e') AND (glVolumes->Entries[i].Key[4] IS 0)) {
+            if ((glVolumes->Entries[i].Key[0] IS 'N') and (glVolumes->Entries[i].Key[1] IS 'a') and (glVolumes->Entries[i].Key[2] IS 'm') and (glVolumes->Entries[i].Key[3] IS 'e') and (glVolumes->Entries[i].Key[4] IS 0)) {
                if (!StrCompare(Path, glVolumes->Entries[i].Data, len-1, 0)) {
                   if (!glVolumes->Entries[i].Data[len-1]) {
                      if (PathType) *PathType = LOC_VOLUME;
@@ -394,7 +394,7 @@ ERROR AssociateCmd(CSTRING Path, CSTRING Mode, LONG Flags, CSTRING Command)
    STRING section;
    ERROR error;
 
-   if ((!Path) OR (!Mode)) return ERR_NullArgs;
+   if ((!Path) or (!Mode)) return ERR_NullArgs;
 
    log.branch("Mode: %s, Path: %s, Command: %.30s", Mode, Path, Command);
 
@@ -509,7 +509,7 @@ NullArgs
 
 ERROR CompareFilePaths(CSTRING PathA, CSTRING PathB)
 {
-   if ((!PathA) OR (!PathB)) return ERR_NullArgs;
+   if ((!PathA) or (!PathB)) return ERR_NullArgs;
 
    STRING path1, path2;
    ERROR error;
@@ -526,7 +526,7 @@ ERROR CompareFilePaths(CSTRING PathA, CSTRING PathB)
    v1 = get_fs(path1);
    v2 = get_fs(path2);
 
-   if ((!v1->CaseSensitive) AND (!v2->CaseSensitive)) {
+   if ((!v1->CaseSensitive) and (!v2->CaseSensitive)) {
       error = StrCompare(path1, path2, 0, STR_MATCH_LEN);
    }
    else error = StrCompare(path1, path2, 0, STR_MATCH_LEN|STR_MATCH_CASE);
@@ -555,12 +555,12 @@ ERROR fs_samefile(CSTRING Path1, CSTRING Path2)
 #ifdef __unix__
    struct stat64 stat1, stat2;
 
-   if ((!stat64(Path1, &stat1)) AND (!stat64(Path2, &stat2))) {
+   if ((!stat64(Path1, &stat1)) and (!stat64(Path2, &stat2))) {
       if ((stat1.st_ino IS stat2.st_ino)
-            AND (stat1.st_dev IS stat2.st_dev)
-            AND (stat1.st_mode IS stat2.st_mode)
-            AND (stat1.st_uid IS stat2.st_uid)
-            AND (stat1.st_gid IS stat2.st_gid)) {
+            and (stat1.st_dev IS stat2.st_dev)
+            and (stat1.st_mode IS stat2.st_mode)
+            and (stat1.st_uid IS stat2.st_uid)
+            and (stat1.st_gid IS stat2.st_gid)) {
          return ERR_True;
       }
       else return ERR_False;
@@ -596,7 +596,7 @@ CSTRING ResolveGroupID(LONG GroupID)
    LONG i;
 
    if ((info = getgrgid(GroupID))) {
-      for (i=0; (info->gr_name[i]) AND ((size_t)i < sizeof(group)-1); i++) group[i] = info->gr_name[i];
+      for (i=0; (info->gr_name[i]) and ((size_t)i < sizeof(group)-1); i++) group[i] = info->gr_name[i];
       group[i] = 0;
       return group;
    }
@@ -634,7 +634,7 @@ CSTRING ResolveUserID(LONG UserID)
    LONG i;
 
    if ((info = getpwuid(UserID))) {
-      for (i=0; (info->pw_name[i]) AND ((size_t)i < sizeof(user)-1); i++) user[i] = info->pw_name[i];
+      for (i=0; (info->pw_name[i]) and ((size_t)i < sizeof(user)-1); i++) user[i] = info->pw_name[i];
       user[i] = 0;
       return user;
    }
@@ -746,7 +746,7 @@ ERROR CreateLink(CSTRING From, CSTRING To)
    STRING src, dest;
    LONG err;
 
-   if ((!From) OR (!To)) return ERR_NullArgs;
+   if ((!From) or (!To)) return ERR_NullArgs;
 
    log.branch("From: %.40s, To: %s", From, To);
 
@@ -903,21 +903,21 @@ ERROR get_file_info(CSTRING Path, FileInfo *Info, LONG InfoSize, STRING NameBuff
    LONG i, len;
    ERROR error;
 
-   if ((!Path) OR (!Path[0]) OR (!Info) OR (InfoSize <= 0)) return log.warning(ERR_Args);
+   if ((!Path) or (!Path[0]) or (!Info) or (InfoSize <= 0)) return log.warning(ERR_Args);
 
    ClearMemory(Info, InfoSize);
    Info->Name = NameBuffer;
 
    // Check if the location is a volume with no file reference
 
-   for (len=0; (Path[len]) AND (Path[len] != ':'); len++);
+   for (len=0; (Path[len]) and (Path[len] != ':'); len++);
 
-   if ((Path[len] IS ':') AND (!Path[len+1])) {
+   if ((Path[len] IS ':') and (!Path[len+1])) {
       const virtual_drive *vfs = get_fs(Path);
 
       Info->Flags = RDF_VOLUME;
 
-      for (i=0; (i < BufferSize-1) AND (Path[i]) AND (Path[i] != ':'); i++) NameBuffer[i] = Path[i];
+      for (i=0; (i < BufferSize-1) and (Path[i]) and (Path[i] != ':'); i++) NameBuffer[i] = Path[i];
       LONG pos = i;
       NameBuffer[i] = 0;
 
@@ -926,15 +926,15 @@ ERROR get_file_info(CSTRING Path, FileInfo *Info, LONG InfoSize, STRING NameBuff
          ConfigEntry *entries;
          if ((entries = glVolumes->Entries)) {
             for (LONG i=0; i < glVolumes->AmtEntries; i++) {
-               if ((!StrMatch("Name", entries[i].Key)) AND (!StrMatch(NameBuffer, entries[i].Data))) {
-                  while ((i > 0) AND (!StrMatch(entries[i].Section, entries[i-1].Section))) i--;
+               if ((!StrMatch("Name", entries[i].Key)) and (!StrMatch(NameBuffer, entries[i].Data))) {
+                  while ((i > 0) and (!StrMatch(entries[i].Section, entries[i-1].Section))) i--;
 
                   STRING section = entries[i].Section;
                   for (; i < glVolumes->AmtEntries; i++) {
                      if (StrMatch(entries[i].Section, section)) break; // Check if section has ended
 
                      if (!StrMatch("Hidden", entries[i].Key)) {
-                        if ((!StrMatch("Yes", entries[i].Data)) OR (!StrMatch("1", entries[i].Data))) Info->Flags |= RDF_HIDDEN;
+                        if ((!StrMatch("Yes", entries[i].Data)) or (!StrMatch("1", entries[i].Data))) Info->Flags |= RDF_HIDDEN;
                      }
                   }
 
@@ -1008,7 +1008,7 @@ ERROR TranslateCmdRef(CSTRING String, STRING *Command)
 {
    parasol::Log log(__FUNCTION__);
 
-   if ((!String) OR (!Command)) return ERR_NullArgs;
+   if ((!String) or (!Command)) return ERR_NullArgs;
 
    if (StrCompare("[PROG:", String, sizeof("[PROG:")-1, 0) != ERR_Okay) return ERR_StringFormat;
 
@@ -1017,13 +1017,13 @@ ERROR TranslateCmdRef(CSTRING String, STRING *Command)
    LONG i;
    char buffer[400];
    LONG cmdindex = sizeof("[PROG:") - 1;
-   for (i=0; String[cmdindex] AND (String[cmdindex] != ']'); i++) buffer[i] = String[cmdindex++];
+   for (i=0; String[cmdindex] and (String[cmdindex] != ']'); i++) buffer[i] = String[cmdindex++];
    buffer[i] = 0;
 
    log.traceBranch("Command references program '%s'", buffer);
 
    if (String[cmdindex] IS ']') cmdindex++;
-   while ((String[cmdindex]) AND (String[cmdindex] <= 0x20)) cmdindex++;
+   while ((String[cmdindex]) and (String[cmdindex] <= 0x20)) cmdindex++;
 
    objConfig *cfgprog;
    ERROR error;
@@ -1094,7 +1094,7 @@ ERROR LoadFile(CSTRING Path, LONG Flags, CacheFile **Cache)
 {
    parasol::Log log(__FUNCTION__);
 
-   if ((!Path) OR (!Cache)) return ERR_NullArgs;
+   if ((!Path) or (!Cache)) return ERR_NullArgs;
 
    if (!glCache) {
       if (!(glCache = VarNew(0, KSF_THREAD_SAFE|KSF_UNTRACKED|KSF_CASE|KSF_AUTO_REMOVE))) {
@@ -1124,7 +1124,7 @@ ERROR LoadFile(CSTRING Path, LONG Flags, CacheFile **Cache)
          return ERR_Okay;
       }
       else if (!get_file_info(path, &info, sizeof(info), filename, sizeof(filename))) {
-         if ((info.Size IS ptr[0]->Size) AND (info.TimeStamp IS ptr[0]->TimeStamp)) {
+         if ((info.Size IS ptr[0]->Size) and (info.TimeStamp IS ptr[0]->TimeStamp)) {
             *Cache = ptr[0];
             if (!(Flags & LDF_CHECK_EXISTS)) ptr[0]->Locks++;
             FreeResource(path);
@@ -1177,7 +1177,7 @@ ERROR LoadFile(CSTRING Path, LONG Flags, CacheFile **Cache)
          if (!file_size) error = ERR_Okay;
          else {
             LONG result;
-            if ((!acRead(file, cache->Data, file_size, &result)) AND (file_size IS result)) {
+            if ((!acRead(file, cache->Data, file_size, &result)) and (file_size IS result)) {
                if (VarSet(glCache, cache->Path, &cache, sizeof(APTR))) {
                   *Cache = cache;
                   acFree(file);
@@ -1191,7 +1191,7 @@ ERROR LoadFile(CSTRING Path, LONG Flags, CacheFile **Cache)
 
                   return ERR_Okay;
                }
-               else error = PostError(ERR_Failed);
+               else error = log.warning(ERR_Failed);
             }
             else error = ERR_Read;
          }
@@ -1237,10 +1237,10 @@ ERROR CreateFolder(CSTRING Path, LONG Permissions)
 {
    parasol::Log log(__FUNCTION__);
 
-   if ((!Path) OR (!*Path)) return log.warning(ERR_NullArgs);
+   if ((!Path) or (!*Path)) return log.warning(ERR_NullArgs);
 
    if (glDefaultPermissions) Permissions = glDefaultPermissions;
-   else if ((!Permissions) OR (Permissions & PERMIT_INHERIT)) {
+   else if ((!Permissions) or (Permissions & PERMIT_INHERIT)) {
       Permissions |= get_parent_permissions(Path, NULL, NULL);
       if (!Permissions) Permissions = PERMIT_READ|PERMIT_WRITE|PERMIT_EXEC|PERMIT_GROUP_READ|PERMIT_GROUP_WRITE|PERMIT_GROUP_EXEC; // If no permissions are set, give current user full access
    }
@@ -1310,7 +1310,7 @@ ERROR MoveFile(CSTRING Source, CSTRING Dest, FUNCTION *Callback)
 {
    parasol::Log log(__FUNCTION__);
 
-   if ((!Source) OR (!Dest)) return ERR_NullArgs;
+   if ((!Source) or (!Dest)) return ERR_NullArgs;
 
    log.branch("%s to %s", Source, Dest);
    return fs_copy(Source, Dest, Callback, TRUE);
@@ -1350,7 +1350,7 @@ ERROR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG *BytesRe
    parasol::Log log(__FUNCTION__);
 
 #if defined(__unix__) || defined(_WIN32)
-   if ((!Path) OR (BufferSize <= 0) OR (!Buffer)) return ERR_Args;
+   if ((!Path) or (BufferSize <= 0) or (!Buffer)) return ERR_Args;
 
    BYTE approx;
    if (*Path IS '~') {
@@ -1475,7 +1475,7 @@ ERROR test_path(STRING Path, LONG Flags)
 #endif
 
    for (len=0; Path[len]; len++);
-   if ((Path[len-1] IS '/') OR (Path[len-1] IS '\\')) {
+   if ((Path[len-1] IS '/') or (Path[len-1] IS '\\')) {
       // This code handles testing for folder locations
 
       #ifdef __unix__
@@ -1599,7 +1599,7 @@ ERROR SaveObjectToFile(OBJECTPTR Object, CSTRING Path, LONG Permissions)
 {
    parasol::Log log(__FUNCTION__);
 
-   if ((!Object) OR (!Path)) return log.warning(ERR_NullArgs);
+   if ((!Object) or (!Path)) return log.warning(ERR_NullArgs);
 
    log.branch("#%d to %s", Object->UniqueID, Path);
 
@@ -1648,7 +1648,7 @@ ERROR SetDocView(CSTRING Path, CSTRING Document)
 
    log.trace("Path: %s, Doc: %s", Path, Document);
 
-   if ((!Path) OR (!Path[0])) return log.warning(ERR_NullArgs);
+   if ((!Path) or (!Path[0])) return log.warning(ERR_NullArgs);
 
    // Allocate the array for path storage
 
@@ -1674,7 +1674,7 @@ ERROR SetDocView(CSTRING Path, CSTRING Document)
       FreeResource(glDocView[i].Path);
       glDocView[i].Path = NULL;
       glDocView[i].Doc  = NULL;
-      if ((!Document) OR (!Document[0])) return ERR_Okay;
+      if ((!Document) or (!Document[0])) return ERR_Okay;
    }
    else if (glTotalDocViews IS glMaxDocViews) {
       if (!ReallocMemory(glDocView, sizeof(glDocView[0]) * (glMaxDocViews + MAX_DOCVIEWS), (APTR *)&glDocView, NULL)) {
@@ -1779,7 +1779,7 @@ ERROR findfile(STRING Path)
    LONG namelen, len;
    char save;
 
-   if ((!Path) OR (Path[0] IS ':')) return ERR_Args;
+   if ((!Path) or (Path[0] IS ':')) return ERR_Args;
 
    // Return if the file exists at the specified Path and is not a folder
 
@@ -1788,7 +1788,7 @@ ERROR findfile(STRING Path)
    }
 
    for (len=0; Path[len]; len++);
-   while ((len > 0) AND (Path[len-1] != ':') AND (Path[len-1] != '/') AND (Path[len-1] != '\\')) len--;
+   while ((len > 0) and (Path[len-1] != ':') and (Path[len-1] != '/') and (Path[len-1] != '\\')) len--;
    for (namelen=0; Path[len+namelen]; namelen++);
 
    save = Path[len];
@@ -1810,11 +1810,11 @@ ERROR findfile(STRING Path)
       Path[len] = save;
 
       while ((entry = readdir(dir))) {
-         if ((entry->d_name[0] IS '.') AND (entry->d_name[1] IS 0)) continue;
-         if ((entry->d_name[0] IS '.') AND (entry->d_name[1] IS '.') AND (entry->d_name[2] IS 0)) continue;
+         if ((entry->d_name[0] IS '.') and (entry->d_name[1] IS 0)) continue;
+         if ((entry->d_name[0] IS '.') and (entry->d_name[1] IS '.') and (entry->d_name[2] IS 0)) continue;
 
          if ((!StrCompare(Path+len, entry->d_name, 0, 0)) AND
-             ((entry->d_name[namelen] IS '.') OR (!entry->d_name[namelen]))) {
+             ((entry->d_name[namelen] IS '.') or (!entry->d_name[namelen]))) {
             StrCopy(entry->d_name, Path+len, COPY_ALL);
 
             // If it turns out that the Path is a folder, ignore it
@@ -1846,11 +1846,11 @@ ERROR findfile(STRING Path)
 
          for (entry = (struct olddirent *)buffer; (size_t)entry < (size_t)(buffer + bytes); entry = (struct olddirent *)(((BYTE *)entry) + entry->d_reclen)) {
 
-            if ((entry->d_name[0] IS '.') AND (entry->d_name[1] IS 0)) continue;
-            if ((entry->d_name[0] IS '.') AND (entry->d_name[1] IS '.') AND (entry->d_name[2] IS 0)) continue;
+            if ((entry->d_name[0] IS '.') and (entry->d_name[1] IS 0)) continue;
+            if ((entry->d_name[0] IS '.') and (entry->d_name[1] IS '.') and (entry->d_name[2] IS 0)) continue;
 
             if ((!StrCompare(Path+len, entry->d_name, 0, NULL)) AND
-                ((entry->d_name[namelen] IS '.') OR (!entry->d_name[namelen]))) {
+                ((entry->d_name[namelen] IS '.') or (!entry->d_name[namelen]))) {
                StrCopy(entry->d_name, Path+len, COPY_ALL);
 
                // If it turns out that the Path is a folder, ignore it
@@ -1879,7 +1879,7 @@ ERROR findfile(STRING Path)
 
 ERROR findfile(STRING Path)
 {
-   if ((!Path) OR (Path[0] IS ':')) return ERR_Args;
+   if ((!Path) or (Path[0] IS ':')) return ERR_Args;
 
    // Find a file with the standard Path
 
@@ -1899,7 +1899,7 @@ ERROR findfile(STRING Path)
    char buffer[130];
    APTR handle = NULL;
    if ((handle = winFindFile(Path, &handle, buffer))) {
-      while ((len > 0) AND (Path[len-1] != ':') AND (Path[len-1] != '/') AND (Path[len-1] != '\\')) len--;
+      while ((len > 0) and (Path[len-1] != ':') and (Path[len-1] != '/') and (Path[len-1] != '\\')) len--;
       LONG i;
       for (i=0; buffer[i]; i++) Path[len+i] = buffer[i];
       Path[len+i] = 0;
@@ -1987,7 +1987,7 @@ ERROR check_paths(CSTRING Path, LONG Permissions)
       CopyMemory(Path, path, i);
 
       while (i > 0) {
-         if ((path[i-1] IS ':') OR (path[i-1] IS '/') OR (path[i-1] IS '\\')) {
+         if ((path[i-1] IS ':') or (path[i-1] IS '/') or (path[i-1] IS '\\')) {
             path[i] = 0;
             return CreateFolder(path, Permissions);
          }
@@ -2021,7 +2021,7 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
    BYTE srcdir;
    ERROR error;
 
-   if ((!Source) OR (!Source[0]) OR (!Dest) OR (!Dest[0])) return log.warning(ERR_NullArgs);
+   if ((!Source) or (!Source[0]) or (!Dest) or (!Dest[0])) return log.warning(ERR_NullArgs);
 
    log.traceBranch("\"%s\" to \"%s\"", Source, Dest);
 
@@ -2046,17 +2046,17 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
    // Check if the source is a folder
 
    for (srclen=0; src[srclen]; srclen++);
-   if ((src[srclen-1] IS '/') OR (src[srclen-1] IS '\\')) srcdir = TRUE;
+   if ((src[srclen-1] IS '/') or (src[srclen-1] IS '\\')) srcdir = TRUE;
    else srcdir = FALSE;
 
    // If the destination is a folder, we need to copy the name of the source to create the new file or dir.
 
-   if ((dest[destlen-1] IS '/') OR (dest[destlen-1] IS '\\') OR (dest[destlen-1] IS ':')) {
+   if ((dest[destlen-1] IS '/') or (dest[destlen-1] IS '\\') or (dest[destlen-1] IS ':')) {
       len = srclen;
-      if ((src[len-1] IS '/') OR (src[len-1] IS '\\') OR (src[len-1] IS ':')) len--;
-      while ((len > 0) AND (src[len-1] != '/') AND (src[len-1] != '\\') AND (src[len-1] != ':')) len--;
+      if ((src[len-1] IS '/') or (src[len-1] IS '\\') or (src[len-1] IS ':')) len--;
+      while ((len > 0) and (src[len-1] != '/') and (src[len-1] != '\\') and (src[len-1] != ':')) len--;
 
-      while (((size_t)destlen < sizeof(dest)-1) AND (src[len]) AND (src[len] != '/') AND (src[len] != '\\')) dest[destlen++] = src[len++];
+      while (((size_t)destlen < sizeof(dest)-1) and (src[len]) and (src[len] != '/') and (src[len] != '\\')) dest[destlen++] = src[len++];
       dest[destlen] = 0;
    }
 
@@ -2081,7 +2081,7 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
    feedback.Path = src;
    feedback.Dest = dest;
 
-   if ((srcvirtual->VirtualID != 0xffffffff) OR (destvirtual->VirtualID != 0xffffffff)) {
+   if ((srcvirtual->VirtualID != 0xffffffff) or (destvirtual->VirtualID != 0xffffffff)) {
       APTR data;
       LONG bufsize, result;
 
@@ -2094,7 +2094,7 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
             FID_Flags|TLONG, FL_READ,
             TAGEND)) {
 
-         if ((Move) AND (srcvirtual IS destvirtual)) {
+         if ((Move) and (srcvirtual IS destvirtual)) {
             // If the source and destination use the same virtual volume, execute the move method.
 
             error = flMove(srcfile, Dest, NULL);
@@ -2160,7 +2160,7 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
 
       // Use a reasonably small read buffer so that we can provide continuous feedback
 
-      bufsize = ((Callback) AND (Callback->Type)) ? 65536 : 65536 * 2;
+      bufsize = ((Callback) and (Callback->Type)) ? 65536 : 65536 * 2;
 
       // This routine is designed to handle streams - where either the source is a stream or the destination is a stream.
 
@@ -2221,7 +2221,7 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
 
             if (error) break;
 
-            if ((Callback) AND (Callback->Type)) {
+            if ((Callback) and (Callback->Type)) {
                if (feedback.Size < feedback.Position) feedback.Size = feedback.Position;
 
                result = CALL_FEEDBACK(Callback, &feedback);
@@ -2237,7 +2237,7 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
       }
       else error = log.warning(ERR_AllocMemory);
 
-      if ((Move) AND (!error)) {
+      if ((Move) and (!error)) {
          flDelete(srcfile, 0);
       }
 
@@ -2254,7 +2254,7 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
    }
    else result = lstat64(src, &stinfo);
 
-   if ((!result) AND (S_ISLNK(stinfo.st_mode))) {
+   if ((!result) and (S_ISLNK(stinfo.st_mode))) {
       BYTE linkto[512];
 
       if (srcdir) src[srclen-1] = 0;
@@ -2262,7 +2262,7 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
       if ((i = readlink(src, linkto, sizeof(linkto)-1)) != -1) {
          linkto[i] = 0;
 
-         if ((Callback) AND (Callback->Type)) {
+         if ((Callback) and (Callback->Type)) {
             result = CALL_FEEDBACK(Callback, &feedback);
             if (result IS FFR_ABORT) { error = ERR_Cancelled; goto exit; }
             else if (result IS FFR_SKIP) { error = ERR_Okay; goto exit; }
@@ -2289,7 +2289,7 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
         error = ERR_Read;
       }
 
-      if ((Move) AND (!error)) { // Delete the source
+      if ((Move) and (!error)) { // Delete the source
          error = DeleteFile(src, NULL);
       }
 
@@ -2305,7 +2305,7 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
 
       error = ERR_Okay;
 
-      if ((Callback) AND (Callback->Type)) {
+      if ((Callback) and (Callback->Type)) {
          result = CALL_FEEDBACK(Callback, &feedback);
          if (result IS FFR_ABORT) { error = ERR_Cancelled; goto exit; }
          else if (result IS FFR_SKIP) goto exit;
@@ -2336,7 +2336,7 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
          if (glForceGID != -1) gid = glForceGID;
          if (glForceUID != -1) uid = glForceUID;
 
-         if ((uid != -1) OR (gid != -1)) chown(dest, uid, gid);
+         if ((uid != -1) or (gid != -1)) chown(dest, uid, gid);
 
          goto exit; // success
       }
@@ -2405,7 +2405,7 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
    }
 
    if (!Move) { // (If Move is enabled, we would have already sent feedback during the earlier rename() attempt
-      if ((Callback) AND (Callback->Type)) {
+      if ((Callback) and (Callback->Type)) {
          result = CALL_FEEDBACK(Callback, &feedback);
          if (result IS FFR_ABORT) { error = ERR_Cancelled; goto exit; }
          else if (result IS FFR_SKIP) { error = ERR_Okay; goto exit; }
@@ -2493,7 +2493,7 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
       if (parentpermissions & PERMIT_GROUPID) gid = -1;
       if (parentpermissions & PERMIT_USERID) uid = -1;
 
-      if ((uid != -1) OR (gid != -1)) fchown(dhandle, uid, gid);
+      if ((uid != -1) or (gid != -1)) fchown(dhandle, uid, gid);
 
 #endif
 
@@ -2504,7 +2504,7 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
 
          // Use a reasonably small read buffer so that we can provide continuous feedback
 
-         LONG bufsize = ((Callback) AND (Callback->Type)) ? 65536 : 524288;
+         LONG bufsize = ((Callback) and (Callback->Type)) ? 65536 : 524288;
          error = ERR_Okay;
          if (!AllocMemory(bufsize, MEM_DATA|MEM_NO_CLEAR, (APTR *)&data, NULL)) {
             while ((len = read(handle, data, bufsize)) > 0) {
@@ -2521,7 +2521,7 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
                }
 
 
-               if ((Callback) AND (Callback->Type)) {
+               if ((Callback) and (Callback->Type)) {
                   feedback.Position += len;
                   if (feedback.Size < feedback.Position) feedback.Size = feedback.Position;
                   result = CALL_FEEDBACK(Callback, &feedback);
@@ -2543,7 +2543,7 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
          // If the sticky bits were set, we need to set them again because Linux sneakily turns off those bits when a
          // file is written (for security reasons).
 
-         if ((!error) AND (permissions & (S_ISUID|S_ISGID))) {
+         if ((!error) and (permissions & (S_ISUID|S_ISGID))) {
             fchmod(dhandle, permissions);
          }
 #endif
@@ -2556,7 +2556,7 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
    }
    else error = log.warning(ERR_FileNotFound);
 
-   if ((Move) AND (!error)) { // Delete the source
+   if ((Move) and (!error)) { // Delete the source
       error = DeleteFile(src, NULL);
    }
 
@@ -2583,12 +2583,12 @@ ERROR fs_copydir(STRING Source, STRING Dest, FileFeedback *Feedback, FUNCTION *C
    for (srclen=0; Source[srclen]; srclen++);
    for (destlen=0; Dest[destlen]; destlen++);
 
-   if ((Source[srclen-1] != '/') AND (Source[srclen-1] != '\\') AND (Source[srclen-1] != ':')) {
+   if ((Source[srclen-1] != '/') and (Source[srclen-1] != '\\') and (Source[srclen-1] != ':')) {
       Source[srclen++] = '/';
       Source[srclen] = 0;
    }
 
-   if ((Dest[destlen-1] != '/') AND (Dest[destlen-1] != '\\') AND (Dest[destlen-1] != ':')) {
+   if ((Dest[destlen-1] != '/') and (Dest[destlen-1] != '\\') and (Dest[destlen-1] != ':')) {
       Dest[destlen++] = '/';
       Dest[destlen] = 0;
    }
@@ -2599,11 +2599,11 @@ ERROR fs_copydir(STRING Source, STRING Dest, FileFeedback *Feedback, FUNCTION *C
       while (!(error = ScanDir(dir))) {
          FileInfo *file = dir->Info;
          if (file->Flags & RDF_LINK) {
-            if ((vsrc->ReadLink) AND (vdest->CreateLink)) {
+            if ((vsrc->ReadLink) and (vdest->CreateLink)) {
                StrCopy(file->Name, Source+srclen, COPY_ALL);
                StrCopy(file->Name, Dest+destlen, COPY_ALL);
 
-               if ((Callback) AND (Callback->Type)) {
+               if ((Callback) and (Callback->Type)) {
                   Feedback->Path = Source;
                   Feedback->Dest = Dest;
                   LONG result = CALL_FEEDBACK(Callback, Feedback);
@@ -2633,7 +2633,7 @@ ERROR fs_copydir(STRING Source, STRING Dest, FileFeedback *Feedback, FUNCTION *C
          else if (file->Flags & RDF_FOLDER) {
             StrCopy(file->Name, Dest+destlen, COPY_ALL);
 
-            if ((Callback) AND (Callback->Type)) {
+            if ((Callback) and (Callback->Type)) {
                Feedback->Path = Source;
                Feedback->Dest = Dest;
                LONG result = CALL_FEEDBACK(Callback, Feedback);
@@ -2686,19 +2686,19 @@ LONG get_parent_permissions(CSTRING Path, LONG *UserID, LONG *GroupID)
    // Make a copy of the location
 
    folder[0] = 0;
-   for (i=0; (Path[i]) AND ((size_t)i < sizeof(folder)); i++) folder[i] = Path[i];
+   for (i=0; (Path[i]) and ((size_t)i < sizeof(folder)); i++) folder[i] = Path[i];
    if (i > 0) {
       i--;
-      if ((folder[i] IS '/') OR (folder[i] IS '\\') OR (folder[i] IS ':')) i--;
+      if ((folder[i] IS '/') or (folder[i] IS '\\') or (folder[i] IS ':')) i--;
    }
 
    while (i > 0) {
-      while ((i > 0) AND (folder[i] != '/') AND (folder[i] != '\\') AND (folder[i] != ':')) i--;
+      while ((i > 0) and (folder[i] != '/') and (folder[i] != '\\') and (folder[i] != ':')) i--;
       folder[i+1] = 0;
 
       FileInfo info;
       char filename[MAX_FILENAME];
-      if ((i > 0) AND (!get_file_info(folder, &info, sizeof(info), filename, sizeof(filename)))) {
+      if ((i > 0) and (!get_file_info(folder, &info, sizeof(info), filename, sizeof(filename)))) {
          //log.msg("%s [$%.8x]", Path, info.Permissions);
          if (UserID) *UserID = info.UserID;
          if (GroupID) *GroupID = info.GroupID;
@@ -2719,7 +2719,7 @@ BYTE strip_folder(STRING Path)
    LONG i;
    for (i=0; Path[i]; i++);
    if (i > 1) {
-      if ((Path[i-1] IS '/') OR (Path[i-1] IS '\\')) {
+      if ((Path[i-1] IS '/') or (Path[i-1] IS '\\')) {
          Path[i-1] = 0;
          return TRUE;
       }
@@ -2769,7 +2769,7 @@ ERROR fs_delete(STRING Path, FUNCTION *Callback)
    LONG len;
 
    for (len=0; Path[len]; len++);
-   if ((Path[len-1] IS '/') OR (Path[len-1] IS '\\')) Path[len-1] = 0;
+   if ((Path[len-1] IS '/') or (Path[len-1] IS '\\')) Path[len-1] = 0;
 
    #ifdef _WIN32
       FileFeedback feedback;
@@ -2777,7 +2777,7 @@ ERROR fs_delete(STRING Path, FUNCTION *Callback)
 
       StrCopy(Path, buffer, sizeof(buffer));
 
-      if ((Callback) AND (Callback->Type)) {
+      if ((Callback) and (Callback->Type)) {
          ClearMemory(&feedback, sizeof(feedback));
          feedback.FeedbackID = FBK_DELETE_FILE;
          feedback.Path = buffer;
@@ -2794,7 +2794,7 @@ ERROR fs_delete(STRING Path, FUNCTION *Callback)
 
          StrCopy(Path, buffer, sizeof(buffer));
 
-         if ((Callback) AND (Callback->Type)) {
+         if ((Callback) and (Callback->Type)) {
             ClearMemory(&feedback, sizeof(feedback));
             feedback.FeedbackID = FBK_DELETE_FILE;
             feedback.Path = buffer;
@@ -2824,8 +2824,8 @@ ERROR fs_scandir(DirInfo *Dir)
    if (pathbuf[path_end-1] != '/') pathbuf[path_end++] = '/';
 
    while ((de = readdir((DIR *)Dir->prvHandle))) {
-      if ((de->d_name[0] IS '.') AND (de->d_name[1] IS 0)) continue;
-      if ((de->d_name[0] IS '.') AND (de->d_name[1] IS '.') AND (de->d_name[2] IS 0)) continue;
+      if ((de->d_name[0] IS '.') and (de->d_name[1] IS 0)) continue;
+      if ((de->d_name[0] IS '.') and (de->d_name[1] IS '.') and (de->d_name[2] IS 0)) continue;
 
       StrCopy(de->d_name, pathbuf + path_end, sizeof(pathbuf) - path_end);
 
@@ -2852,7 +2852,7 @@ ERROR fs_scandir(DirInfo *Dir)
 
       j = StrCopy(de->d_name, file->Name, MAX_FILENAME);
 
-      if ((file->Flags & RDF_FOLDER) AND (Dir->prvFlags & RDF_QUALIFY)) {
+      if ((file->Flags & RDF_FOLDER) and (Dir->prvFlags & RDF_QUALIFY)) {
          file->Name[j++] = '/';
          file->Name[j] = 0;
       }
@@ -2972,11 +2972,11 @@ ERROR fs_closedir(DirInfo *Dir)
 
    log.trace("Dir: %p, VirtualID: %d", Dir, Dir->prvVirtualID);
 
-   if ((!Dir->prvVirtualID) OR (Dir->prvVirtualID IS DEFAULT_VIRTUALID)) {
+   if ((!Dir->prvVirtualID) or (Dir->prvVirtualID IS DEFAULT_VIRTUALID)) {
       #ifdef __unix__
          if (Dir->prvHandle) closedir((DIR *)Dir->prvHandle);
       #elif _WIN32
-         if ((Dir->prvHandle != (WINHANDLE)-1) AND (Dir->prvHandle)) {
+         if ((Dir->prvHandle != (WINHANDLE)-1) and (Dir->prvHandle)) {
             winFindClose(Dir->prvHandle);
          }
       #else
@@ -3065,7 +3065,7 @@ ERROR fs_getinfo(CSTRING Path, struct FileInfo *Info, LONG InfoSize)
    char path_ref[256];
    LONG len = StrCopy(Path, path_ref, sizeof(path_ref));
    if ((size_t)len >= sizeof(path_ref)-1) return ERR_BufferOverflow;
-   if ((path_ref[len-1] IS '/') OR (path_ref[len-1] IS '\\')) path_ref[len-1] = 0;
+   if ((path_ref[len-1] IS '/') or (path_ref[len-1] IS '\\')) path_ref[len-1] = 0;
 
    // Get the file info.  Use lstat64() and if it turns out that the file is a symbolic link, set the RDF_LINK flag
    // and then switch to stat64().
@@ -3089,7 +3089,7 @@ ERROR fs_getinfo(CSTRING Path, struct FileInfo *Info, LONG InfoSize)
    // Extract file/folder name
 
    LONG i = len;
-   while ((i > 0) AND (path_ref[i-1] != '/') AND (path_ref[i-1] != '\\') AND (path_ref[i-1] != ':')) i--;
+   while ((i > 0) and (path_ref[i-1] != '/') and (path_ref[i-1] != '\\') and (path_ref[i-1] != ':')) i--;
    i = StrCopy(path_ref + i, Info->Name, MAX_FILENAME-2);
 
    if (Info->Flags & RDF_FOLDER) {
@@ -3156,16 +3156,16 @@ ERROR fs_getinfo(CSTRING Path, struct FileInfo *Info, LONG InfoSize)
 
    for (len=0; Path[len]; len++);
 
-   if ((Path[len-1] IS '/') OR (Path[len-1] IS '\\')) Info->Flags |= RDF_FOLDER|RDF_TIME;
+   if ((Path[len-1] IS '/') or (Path[len-1] IS '\\')) Info->Flags |= RDF_FOLDER|RDF_TIME;
    else if (dir) Info->Flags |= RDF_FOLDER|RDF_TIME;
    else Info->Flags |= RDF_FILE|RDF_SIZE|RDF_TIME;
 
    // Extract the file name
 
    i = len;
-   if ((Path[i-1] IS '/') OR (Path[i-1] IS '\\')) i--;
+   if ((Path[i-1] IS '/') or (Path[i-1] IS '\\')) i--;
 
-   while ((i > 0) AND (Path[i-1] != '/') AND (Path[i-1] != '\\') AND (Path[i-1] != ':')) i--;
+   while ((i > 0) and (Path[i-1] != '/') and (Path[i-1] != '\\') and (Path[i-1] != ':')) i--;
 
    i = StrCopy(Path + i, Info->Name, MAX_FILENAME-2);
 
@@ -3205,25 +3205,25 @@ ERROR fs_getdeviceinfo(CSTRING Path, objStorageDevice *Info)
       location = NULL;
 
 restart:
-      for (pathend=0; (Path[pathend]) AND (Path[pathend] != ':'); pathend++);
+      for (pathend=0; (Path[pathend]) and (Path[pathend] != ':'); pathend++);
 
       ConfigEntry *entries = glVolumes->Entries;
       for (LONG i=0; i < glVolumes->AmtEntries; i++) {
          if (StrMatch("Name", entries[i].Key) != ERR_Okay) continue;
 
          match = FALSE;
-         for (j=0; (entries[i].Data[j]) AND (j < pathend); j++) {
+         for (j=0; (entries[i].Data[j]) and (j < pathend); j++) {
             if (LCASE(Path[j]) != LCASE(entries[i].Data[j])) break;
          }
-         if ((j IS pathend) AND ((!entries[i].Data[j]) OR (entries[i].Data[j] IS ':'))) match = TRUE;
+         if ((j IS pathend) and ((!entries[i].Data[j]) or (entries[i].Data[j] IS ':'))) match = TRUE;
 
          if (match) {
             // We've got the volume, now look for a device entry to tell us what device this is.
 
-            while ((i > 0) AND (!StrMatch(entries[i].Section, entries[i-1].Section))) i--;
+            while ((i > 0) and (!StrMatch(entries[i].Section, entries[i-1].Section))) i--;
 
             STRING section = entries[i].Section;
-            while ((i < glVolumes->AmtEntries) AND (!StrMatch(section, entries[i].Section))) {
+            while ((i < glVolumes->AmtEntries) and (!StrMatch(section, entries[i].Section))) {
                if (!StrMatch("Path", entries[i].Key)) {
                   if (!StrCompare("CLASS:", entries[i].Data, 6, 0)) {
                      // Device is a virtual volume
@@ -3399,15 +3399,15 @@ ERROR fs_makedir(CSTRING Path, LONG Permissions)
 
       for (i=0; Path[i]; i++) {
          buffer[i] = Path[i];
-         if ((i > 0) AND (buffer[i] IS '/')) {
+         if ((i > 0) and (buffer[i] IS '/')) {
             buffer[i+1] = 0;
 
             log.msg("%s", buffer);
 
-            if (((err = mkdir(buffer, secureflags)) IS -1) AND (errno != EEXIST)) break;
+            if (((err = mkdir(buffer, secureflags)) IS -1) and (errno != EEXIST)) break;
 
             if (!err) {
-               if ((glForceUID != -1) OR (glForceGID != -1)) chown(buffer, glForceUID, glForceGID);
+               if ((glForceUID != -1) or (glForceGID != -1)) chown(buffer, glForceUID, glForceGID);
                if (secureflags & (S_ISUID|S_ISGID)) chmod(buffer, secureflags);
             }
          }
@@ -3421,18 +3421,18 @@ ERROR fs_makedir(CSTRING Path, LONG Permissions)
          // If the path did not end with a slash, there is still one last folder to create
          buffer[i] = 0;
          log.msg("%s", buffer);
-         if (((err = mkdir(buffer, secureflags)) IS -1) AND (errno != EEXIST)) {
+         if (((err = mkdir(buffer, secureflags)) IS -1) and (errno != EEXIST)) {
             log.warning("Failed to create folder \"%s\".", Path);
             return convert_errno(errno, ERR_SystemCall);
          }
          if (!err) {
-            if ((glForceUID != -1) OR (glForceGID != -1)) chown(buffer, glForceUID, glForceGID);
+            if ((glForceUID != -1) or (glForceGID != -1)) chown(buffer, glForceUID, glForceGID);
             if (secureflags & (S_ISUID|S_ISGID)) chmod(buffer, secureflags);
          }
       }
    }
    else {
-      if ((glForceUID != -1) OR (glForceGID != -1)) chown(Path, glForceUID, glForceGID);
+      if ((glForceUID != -1) or (glForceGID != -1)) chown(Path, glForceUID, glForceGID);
       if (secureflags & (S_ISUID|S_ISGID)) chmod(Path, secureflags);
    }
 
@@ -3454,7 +3454,7 @@ ERROR fs_makedir(CSTRING Path, LONG Permissions)
 
       for (i=0; Path[i]; i++) {
          buffer[i] = Path[i];
-         if ((i >= 3) AND (buffer[i] IS '\\')) {
+         if ((i >= 3) and (buffer[i] IS '\\')) {
             buffer[i+1] = 0;
             log.trace("%s", buffer);
             winCreateDir(buffer);
@@ -3592,8 +3592,8 @@ ERROR delete_tree(STRING Path, LONG Size, FUNCTION *Callback, FileFeedback *Feed
       error = ERR_Okay;
       rewinddir(stream);
       while ((direntry = readdir(stream))) {
-         if ((direntry->d_name[0] IS '.') AND (direntry->d_name[1] IS 0));
-         else if ((direntry->d_name[0] IS '.') AND (direntry->d_name[1] IS '.') AND (direntry->d_name[2] IS 0));
+         if ((direntry->d_name[0] IS '.') and (direntry->d_name[1] IS 0));
+         else if ((direntry->d_name[0] IS '.') and (direntry->d_name[1] IS '.') and (direntry->d_name[2] IS 0));
          else {
             StrCopy(direntry->d_name, Path+len+1, Size-len-1);
             if ((dummydir = opendir(Path))) {
@@ -3617,7 +3617,7 @@ ERROR delete_tree(STRING Path, LONG Size, FUNCTION *Callback, FileFeedback *Feed
 
       Path[len] = 0;
 
-      if ((!error) AND (rmdir(Path))) {
+      if ((!error) and (rmdir(Path))) {
          log.error("rmdir(%s) error: %s", Path, strerror(errno));
          return convert_errno(errno, ERR_SystemCall);
       }

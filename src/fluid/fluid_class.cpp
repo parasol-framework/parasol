@@ -277,15 +277,15 @@ static ERROR FLUID_Activate(objScript *Self, APTR Void)
 {
    parasol::Log log;
 
-   if (CurrentTaskID() != Self->Head.TaskID) return LogCode(ERR_IllegalActionAttempt);
-   if ((!Self->String) or (!Self->String[0])) return LogCode(ERR_FieldNotSet);
+   if (CurrentTaskID() != Self->Head.TaskID) return log.warning(ERR_IllegalActionAttempt);
+   if ((!Self->String) or (!Self->String[0])) return log.warning(ERR_FieldNotSet);
 
    log.msg(VLF_EXTAPI, "Target: %d, Procedure: %s / ID #" PF64(), Self->TargetID, Self->Procedure ? Self->Procedure : (STRING)".", Self->ProcedureID);
 
    ERROR error = ERR_Failed;
 
    auto prv = (prvFluid *)Self->Head.ChildPrivate;
-   if (!prv) return LogCode(ERR_ObjectCorrupt);
+   if (!prv) return log.warning(ERR_ObjectCorrupt);
 
    if (prv->Recurse) { // When performing a recursive call, we can assume that the code has already been loaded.
       error = run_script(Self);
