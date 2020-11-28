@@ -7,10 +7,10 @@
 function testCreateCompress()
    local cmp = obj.new("compression", { location="temp:cmp_test_json.zip", flags="!NEW" } )
 
-   err = cmp.mtCompressFile("config:defs/compression.def", "")
+   err = cmp.mtCompressFile("config:classes.bin", "")
    if (err != ERR_Okay) then error("CompressFile() failed: " .. mSys.GetErrorMsg(err)) end
 
-   err = cmp.mtCompressFile("config:defs/core.def", "")
+   err = cmp.mtCompressFile("config:modules.bin", "")
    if (err != ERR_Okay) then error("CompressFile() failed: " .. mSys.GetErrorMsg(err)) end
 
    cmp = null
@@ -20,7 +20,7 @@ end
 function testDecompressWild()
    local cmp = obj.new("compression", { location="temp:cmp_test_json.zip" } )
 
-   err = cmp.mtDecompressFile("*.def", "temp:")
+   err = cmp.mtDecompressFile("*.bin", "temp:")
    if (err != ERR_Okay) then error("DecompressFile() failed: " .. mSys.GetErrorMsg(err)) end
 end
 

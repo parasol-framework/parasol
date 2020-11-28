@@ -25,7 +25,7 @@ static ERROR compress_folder(objCompression *Self, CSTRING Location, CSTRING Pat
 
    log.branch("Compressing folder \"%s\" to \"%s\"", Location, Path);
 
-   if ((!Self) OR (!Location)) return ERR_NullArgs;
+   if ((!Self) or (!Location)) return ERR_NullArgs;
    if (!Path) Path = "";
 
    objFile *file;
@@ -33,7 +33,7 @@ static ERROR compress_folder(objCompression *Self, CSTRING Location, CSTRING Pat
       return log.warning(ERR_File);
    }
 
-   if ((file->Flags & FL_LINK) AND (!(Self->Flags & CMF_NO_LINKS))) {
+   if ((file->Flags & FL_LINK) and (!(Self->Flags & CMF_NO_LINKS))) {
       log.msg("Folder is a link.");
       acFree(&file->Head);
       return compress_file(Self, Location, Path, TRUE);
@@ -59,7 +59,7 @@ static ERROR compress_folder(objCompression *Self, CSTRING Location, CSTRING Pat
    ERROR error = send_feedback(Self, &feedback);
 
    Self->prvFileIndex++;
-   if ((error IS ERR_Terminate) OR (error IS ERR_Cancelled)) {
+   if ((error IS ERR_Terminate) or (error IS ERR_Cancelled)) {
       acFree(&file->Head);
       return ERR_Cancelled;
    }
@@ -167,7 +167,7 @@ static ERROR compress_folder(objCompression *Self, CSTRING Location, CSTRING Pat
       pathlen = StrLength(Path);
       while (!ScanDir(dir)) { // Recurse for each directory in the list
          FileInfo *scan = dir->Info;
-         if ((scan->Flags & RDF_FOLDER) AND (!(scan->Flags & RDF_LINK))) {
+         if ((scan->Flags & RDF_FOLDER) and (!(scan->Flags & RDF_LINK))) {
             j = StrLength(scan->Name);
             char location[len+j+1];
             char path[pathlen+j+1];
@@ -205,7 +205,7 @@ static ERROR compress_file(objCompression *Self, CSTRING Location, CSTRING Path,
 {
    parasol::Log log(__FUNCTION__);
 
-   if ((!Self) OR (!Location) OR (!Path)) return ERR_NullArgs;
+   if ((!Self) or (!Location) or (!Path)) return ERR_NullArgs;
 
    log.branch("Compressing file \"%s\" to \"%s\"", Location, Path);
 
@@ -237,7 +237,7 @@ static ERROR compress_file(objCompression *Self, CSTRING Location, CSTRING Path,
       goto exit;
    }
 
-   if ((Link) AND (!(file->Flags & FL_LINK))) {
+   if ((Link) and (!(file->Flags & FL_LINK))) {
       log.warning("Internal Error: Expected a link, but the file is not.");
       error = ERR_Failed;
       goto exit;
@@ -246,8 +246,8 @@ static ERROR compress_file(objCompression *Self, CSTRING Location, CSTRING Path,
    // Determine the name that will be used for storing this file
 
    for (i=0; Location[i]; i++);
-   if ((i > 0) AND ((Location[i-1] IS '/') OR (Location[i-1] IS '\\'))) i--; // Ignore trailing slashes for symbolically linked folders
-   while ((i > 0) AND (Location[i-1] != ':') AND (Location[i-1] != '/') AND (Location[i-1] != '\\')) i--;
+   if ((i > 0) and ((Location[i-1] IS '/') or (Location[i-1] IS '\\'))) i--; // Ignore trailing slashes for symbolically linked folders
+   while ((i > 0) and (Location[i-1] != ':') and (Location[i-1] != '/') and (Location[i-1] != '\\')) i--;
    if (Path) {
       len = StrCopy(Path, filename, sizeof(filename));
       len += StrCopy(Location+i, filename+len, sizeof(filename)-len);
@@ -270,7 +270,7 @@ static ERROR compress_file(objCompression *Self, CSTRING Location, CSTRING Path,
    fb.Progress       = 0;
    error = send_feedback(Self, &fb);
 
-   if ((error IS ERR_Terminate) OR (error IS ERR_Cancelled)) { error = ERR_Cancelled; goto exit; }
+   if ((error IS ERR_Terminate) or (error IS ERR_Cancelled)) { error = ERR_Cancelled; goto exit; }
    else if (error IS ERR_Skip) { error = ERR_Okay; goto exit; }
    else error = ERR_Okay;
 
@@ -333,7 +333,7 @@ static ERROR compress_file(objCompression *Self, CSTRING Location, CSTRING Path,
       entry->Comment    = 0;
       entry->CommentLen = 0;
 
-      if ((!(Self->Flags & CMF_NO_LINKS)) AND (file->Flags & FL_LINK)) {
+      if ((!(Self->Flags & CMF_NO_LINKS)) and (file->Flags & FL_LINK)) {
          if (!GetString(file, FID_Link, &symlink)) {
             log.msg("Note: File \"%s\" is a symbolic link to \"%s\"", filename, symlink);
             entry->Flags |= ZIP_LINK;
@@ -393,7 +393,7 @@ static ERROR compress_file(objCompression *Self, CSTRING Location, CSTRING Path,
    }
    else {
       struct acRead read = { .Buffer = Self->prvInput, .Length = SIZE_COMPRESSION_BUFFER };
-      while ((!Action(AC_Read, &file->Head, &read)) AND (read.Result > 0)) {
+      while ((!Action(AC_Read, &file->Head, &read)) and (read.Result > 0)) {
          Self->prvZip.next_in  = Self->prvInput;
          Self->prvZip.avail_in = read.Result;
 
@@ -514,7 +514,7 @@ ERROR remove_file(objCompression *Self, ZipFile **File)
    DOUBLE writepos = file->Offset;
 
    struct acRead read = { Self->prvInput, SIZE_COMPRESSION_BUFFER };
-   while ((!Action(AC_Read, Self->FileIO, &read)) AND (read.Result > 0)) {
+   while ((!Action(AC_Read, Self->FileIO, &read)) and (read.Result > 0)) {
       if (acSeekStart(Self->FileIO, writepos) != ERR_Okay) return log.warning(ERR_Seek);
       struct acWrite write = { Self->prvInput, read.Result };
       if (Action(AC_Write, Self->FileIO, &write) != ERR_Okay) return log.warning(ERR_Write);
@@ -873,7 +873,7 @@ static void write_eof(objCompression *Self)
 {
    ZipFile *chain;
 
-   if ((Self->FileIO) AND (!Self->Head.SubID) AND (Self->prvCompressionCount > 0)) {
+   if ((Self->FileIO) and (!Self->Head.SubID) and (Self->prvCompressionCount > 0)) {
       if ((chain = Self->prvFiles)) {
          // Determine the start of the list offset
 

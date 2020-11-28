@@ -12,7 +12,7 @@ module.  Please refer to the @FileArchive class for further information on this 
 
 static ERROR SET_ArchiveName(objCompression *Self, CSTRING Value)
 {
-   if ((Value) AND (*Value)) Self->ArchiveHash = StrHash(Value, 0);
+   if ((Value) and (*Value)) Self->ArchiveHash = StrHash(Value, 0);
    else Self->ArchiveHash = 0;
 
    if (Self->ArchiveHash) add_archive(Self);
@@ -142,7 +142,7 @@ static ERROR SET_Location(objCompression *Self, CSTRING Value)
 
    if (Self->Location) { FreeResource(Self->Location); Self->Location = NULL; }
 
-   if ((Value) AND (*Value)) {
+   if ((Value) and (*Value)) {
       if (!(Self->Location = StrClone(Value))) return log.warning(ERR_AllocMemory);
    }
    return ERR_Okay;
@@ -186,10 +186,8 @@ static ERROR GET_Password(objCompression *Self, CSTRING *Value)
 
 static ERROR SET_Password(objCompression *Self, CSTRING Value)
 {
-   if ((Value) AND (*Value)) {
-      LONG i;
-      for (i=0; ((size_t)i < sizeof(Self->Password)-1) AND (Value[i]); i++) Self->Password[i] = Value[i];
-      Self->Password[i] = 0;
+   if ((Value) and (*Value)) {
+      StrCopy(Value, Self->Password, sizeof(Self->Password));
       Self->Flags |= CMF_PASSWORD;
    }
    else Self->Password[0] = 0;
@@ -264,10 +262,8 @@ static ERROR SET_WindowBits(objCompression *Self, LONG Value)
 {
    parasol::Log log;
 
-   if (((Value >= 8) AND (Value <= 15)) OR
-       ((Value >= -15) AND (Value <= -8)) OR
-       (Value IS 15 + 32) OR
-       (Value IS 16 + 32)) {
+   if (((Value >= 8) and (Value <= 15)) or ((Value >= -15) and (Value <= -8)) or
+       (Value IS 15 + 32) or (Value IS 16 + 32)) {
       Self->WindowBits = Value;
       return ERR_Okay;
    }
