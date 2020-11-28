@@ -3560,7 +3560,7 @@ ERROR delete_tree(STRING Path, LONG Size, FUNCTION *Callback, FileFeedback *Feed
 
    log.trace("Path: %s", Path);
 
-   if (Callback->Type) {
+   if ((Callback) and (Callback->Type)) {
       Feedback->Path = Path;
       result = CALL_FEEDBACK(Callback, Feedback);
       if (result IS FFR_ABORT) {
