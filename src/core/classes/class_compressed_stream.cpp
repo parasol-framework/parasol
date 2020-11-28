@@ -56,9 +56,9 @@ static ERROR CSTREAM_Init(objCompressedStream *Self, APTR Void)
 {
    parasol::Log log(__FUNCTION__);
 
-   if ((!Self->Input) AND (!Self->Output)) return log.warning(ERR_FieldNotSet);
+   if ((!Self->Input) and (!Self->Output)) return log.warning(ERR_FieldNotSet);
 
-   if ((Self->Input) AND (Self->Output)) {
+   if ((Self->Input) and (Self->Output)) {
       log.warning("A CompressedStream can operate in either read or write mode, not both.");
       return ERR_Failed;
    }
@@ -85,7 +85,7 @@ static ERROR CSTREAM_Read(objCompressedStream *Self, struct acRead *Args)
 {
    parasol::Log log(__FUNCTION__);
 
-   if ((!Args) OR (!Args->Buffer)) return log.warning(ERR_NullArgs);
+   if ((!Args) or (!Args->Buffer)) return log.warning(ERR_NullArgs);
    if (!(Self->Head.Flags & NF_INITIALISED)) return log.warning(ERR_NotInitialised);
 
    Args->Result = 0;
@@ -138,12 +138,12 @@ static ERROR CSTREAM_Read(objCompressedStream *Self, struct acRead *Args)
 
    ERROR error = ERR_Okay;
    LONG result = Z_OK;
-   while ((result IS Z_OK) AND (Self->Stream.avail_in > 0) AND (outputsize > 0)) {
+   while ((result IS Z_OK) and (Self->Stream.avail_in > 0) and (outputsize > 0)) {
       Self->Stream.next_out  = (Bytef *)output;
       Self->Stream.avail_out = outputsize;
       result = inflate(&Self->Stream, Z_SYNC_FLUSH);
 
-      if ((result) AND (result != Z_STREAM_END)) {
+      if ((result) and (result != Z_STREAM_END)) {
          if (Self->Stream.msg) log.warning("%s", Self->Stream.msg);
          else log.warning("Zip error: %d", result);
 
@@ -253,7 +253,7 @@ static ERROR CSTREAM_Write(objCompressedStream *Self, struct acWrite *Args)
 {
    parasol::Log log(__FUNCTION__);
 
-   if ((!Args) OR (!Args->Buffer)) return log.warning(ERR_NullArgs);
+   if ((!Args) or (!Args->Buffer)) return log.warning(ERR_NullArgs);
    if (!(Self->Head.Flags & NF_INITIALISED)) return log.warning(ERR_NotInitialised);
 
    if (!Self->Deflating) {

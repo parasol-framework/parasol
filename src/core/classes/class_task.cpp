@@ -546,7 +546,7 @@ static ERROR msg_action(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LON
          }
          else {
             if (action->ActionID IS AC_ActionNotify) {
-               struct acActionNotify *notify = (struct acActionNotify *)(action + 1);
+               auto notify = (struct acActionNotify *)(action + 1);
 
                log.debug("ActionNotify(%d, %s) from object %d cancelled, object does not exist.", action->ObjectID, action_id_name(notify->ActionID), notify->ObjectID);
 
@@ -1299,10 +1299,8 @@ static ERROR TASK_AddArgument(objTask *Self, struct taskAddArgument *Args)
 
    // Calculate the new size of the argument block
 
-   LONG total, len;
-   for (len=0; Args->Argument[len]; len++);
-   len++;
-
+   LONG total;
+   LONG len = StrLength(Args->Argument) + 1;
    MEMORYID argsmid;
    CSTRING *args;
    if (!AllocMemory(Self->ParametersSize + sizeof(STRING) + len, Self->Head.MemFlags|MEM_NO_CLEAR, (void **)&args, &argsmid)) {
@@ -1653,15 +1651,9 @@ static ERROR TASK_SetEnv(objTask *Self, struct taskSetEnv *Args)
 
       for (ki=0; ki < ARRAYSIZE(keys); ki++) {
          if (!StrCompare(keys[ki].HKey, Args->Name, 0, 0)) {
-            for (len=0; keys[ki].HKey[len]; len++);
+            CSTRING str = Args->Name + StrLength(keys[ki].HKey); // str = Parasol\Something
 
-            CSTRING str = Args->Name + len;     // str = Parasol\Something
-            for (len=0; str[len]; len++); // End of string
-
-            while (len > 0) {
-               if (str[len] IS '\\') break;
-               len--;
-            }
+            for (len=StrLength(str); (len > 0) and (str[len] != '\\'); len--);
 
             if (len > 0) {
                char path[len];

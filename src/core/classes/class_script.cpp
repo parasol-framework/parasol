@@ -173,7 +173,7 @@ static ERROR SCRIPT_Exec(objScript *Self, struct scExec *Args)
    Self->ProcedureID = 0;
    Self->Procedure = Args->Procedure;
 
-   const struct ScriptArg *saveargs = Self->ProcArgs;
+   const ScriptArg *saveargs = Self->ProcArgs;
    Self->ProcArgs  = Args->Args;
 
    LONG savetotal = Self->TotalArgs;
@@ -221,7 +221,7 @@ static ERROR SCRIPT_Callback(objScript *Self, struct scCallback *Args)
    Self->ProcedureID = Args->ProcedureID;
    Self->Procedure = NULL;
 
-   const struct ScriptArg *saveargs = Self->ProcArgs;
+   const ScriptArg *saveargs = Self->ProcArgs;
    Self->ProcArgs  = Args->Args;
 
    LONG savetotal = Self->TotalArgs;
@@ -285,9 +285,7 @@ static ERROR SCRIPT_GetProcedureID(objScript *Self, struct scGetProcedureID *Arg
    parasol::Log log;
 
    if ((!Args) OR (!Args->Procedure) OR (!Args->Procedure[0])) return log.warning(ERR_NullArgs);
-
    Args->ProcedureID = StrHash(Args->Procedure, 0);
-
    return ERR_Okay;
 }
 
@@ -779,13 +777,11 @@ static ERROR GET_TotalArgs(objScript *Self, LONG *Value)
 PRIVATE: Variables
 *****************************************************************************/
 
-static ERROR GET_Variables(objScript *Self, struct KeyStore **Value)
+static ERROR GET_Variables(objScript *Self, KeyStore **Value)
 {
    if (!Self->Vars) {
-      OBJECTPTR context = SetContext(&Self->Head);
-         Self->Vars = VarNew(0, 0);
-      SetContext(context);
-
+      parasol::SwitchContext ctx(&Self->Head);
+      Self->Vars = VarNew(0, 0);
       if (!Self->Vars) return ERR_AllocMemory;
    }
 
@@ -824,12 +820,9 @@ static ERROR GET_WorkingPath(objScript *Self, STRING *Value)
       // Determine if an absolute path has been indicated
 
       UBYTE path = FALSE;
-      if (Self->Path[0] IS '/') {
-         path = TRUE;
-      }
+      if (Self->Path[0] IS '/') path = TRUE;
       else {
-        LONG j;
-        for (j=0; (Self->Path[j]) AND (Self->Path[j] != '/') AND (Self->Path[j] != '\\'); j++) {
+        for (LONG j=0; (Self->Path[j]) AND (Self->Path[j] != '/') AND (Self->Path[j] != '\\'); j++) {
             if (Self->Path[j] IS ':') {
                path = TRUE;
                break;
@@ -844,14 +837,11 @@ static ERROR GET_WorkingPath(objScript *Self, STRING *Value)
       }
 
       STRING workingpath;
-      if (path) {
-         // Extract absolute path
-
+      if (path) { // Extract absolute path
+         parasol::SwitchContext ctx(&Self->Head);
          char save = Self->Path[j];
          Self->Path[j] = 0;
-         OBJECTPTR context = SetContext(&Self->Head);
-            Self->WorkingPath = StrClone(Self->Path);
-         SetContext(context);
+         Self->WorkingPath = StrClone(Self->Path);
          Self->Path[j] = save;
       }
       else if ((!GetString(CurrentTask(), FID_Path, &workingpath)) AND (workingpath)) {
@@ -867,11 +857,10 @@ static ERROR GET_WorkingPath(objScript *Self, STRING *Value)
          }
          else StrFormat(buf, sizeof(buf), "%s", workingpath);
 
-         OBJECTPTR context = SetContext(&Self->Head);
+         parasol::SwitchContext ctx(&Self->Head);
          if (ResolvePath(buf, RSF_APPROXIMATE, &Self->WorkingPath) != ERR_Okay) {
             Self->WorkingPath = StrClone(workingpath);
          }
-         SetContext(context);
       }
       else log.warning("No working path.");
    }
@@ -891,7 +880,7 @@ static ERROR SET_WorkingPath(objScript *Self, STRING Value)
 
 #include "class_script_def.c"
 
-static const struct FieldArray clScriptFields[] = {
+static const FieldArray clScriptFields[] = {
    { "Target",        FDF_OBJECTID|FDF_RW,  0, NULL, NULL },
    { "Flags",         FDF_LONGFLAGS|FDF_RI, (MAXINT)&clScriptFlags, NULL, NULL },
    { "Error",         FDF_LONG|FDF_R,       0, NULL, NULL },

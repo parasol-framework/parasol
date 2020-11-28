@@ -213,10 +213,9 @@ static void sort_class_db(void)
 
    LONG *offsets = CL_OFFSETS(glClassDB);
    for (; h > 0; h /= 3) {
-      LONG i;
-      for (i=h; i < glClassDB->Total; i++) {
+      for (LONG i=h; i < glClassDB->Total; i++) {
          LONG j;
-         LONG temp = offsets[i];
+         auto temp = offsets[i];
          for (j=i; (j >= h) AND (((ClassItem *)((BYTE *)glClassDB + offsets[j-h]))->ClassID > ((ClassItem *)((BYTE *)glClassDB + temp))->ClassID); j -= h) {
             offsets[j] = offsets[j - h];
          }
@@ -267,9 +266,8 @@ ERROR CLASS_Free(rkMetaClass *Class, APTR Void)
    VarSet(glClassMap, Class->ClassName, NULL, 0); // Deregister the class.
 
    if (Class->prvFields) { FreeResource(Class->prvFields); Class->prvFields = NULL; }
-   if (Class->Methods) { FreeResource(Class->Methods); Class->Methods = NULL; }
-   if (Class->Location) { FreeResource(Class->Location); Class->Location = NULL; }
-
+   if (Class->Methods)   { FreeResource(Class->Methods); Class->Methods = NULL; }
+   if (Class->Location)  { FreeResource(Class->Location); Class->Location = NULL; }
    return ERR_Okay;
 }
 
@@ -279,7 +277,6 @@ ERROR CLASS_Init(rkMetaClass *Self, APTR Void)
 {
    parasol::Log log;
    rkMetaClass *base;
-   LONG i;
 
    if (!Self->ClassName) return log.warning(ERR_MissingClassName);
 
@@ -293,9 +290,7 @@ ERROR CLASS_Init(rkMetaClass *Self, APTR Void)
       //Self->SubClassID = Self->BaseClassID;
    }
    else if (!Self->BaseClassID) {
-      if (!Self->SubClassID) {
-         Self->SubClassID = StrHash(Self->ClassName, FALSE);
-      }
+      if (!Self->SubClassID) Self->SubClassID = StrHash(Self->ClassName, FALSE);
       Self->BaseClassID = Self->SubClassID;
    }
 
@@ -348,7 +343,7 @@ ERROR CLASS_Init(rkMetaClass *Self, APTR Void)
             // Copy over method information from the base-class (the sub-class' function pointers will
             // not be modified).
 
-            for (i=0; i < base->TotalMethods+1; i++) {
+            for (LONG i=0; i < base->TotalMethods+1; i++) {
                Self->Methods[i].MethodID = base->Methods[i].MethodID;
                Self->Methods[i].Name = base->Methods[i].Name;
                Self->Methods[i].Args = base->Methods[i].Args;
@@ -1095,7 +1090,7 @@ ERROR sort_class_fields(rkMetaClass *Class, Field *fields)
       while (h < Class->TotalFields / 9) h = 3 * h + 1;
       for (; h > 0; h /= 3) {
          for (i=h; i < Class->TotalFields; i++) {
-            Field *temp = sort[i];
+            auto temp = sort[i];
             for (j=i; (j >= h) AND (sort[j - h]->FieldID > temp->FieldID); j -= h) {
                sort[j] = sort[j - h];
             }
@@ -1109,7 +1104,7 @@ ERROR sort_class_fields(rkMetaClass *Class, Field *fields)
       LONG size = Class->TotalFields * sizeof(Field);
       if (size > 4096) {
          if (!AllocMemory(size, MEM_NO_CLEAR|MEM_UNTRACKED, (APTR *)&temp, NULL)) {
-            for (i=0; i < Class->TotalFields; i++) {
+            for (LONG i=0; i < Class->TotalFields; i++) {
                CopyMemory(sort[i], temp+i, sizeof(Field));
             }
             CopyMemory(temp, fields, (Class->TotalFields) * sizeof(Field));
@@ -1120,7 +1115,7 @@ ERROR sort_class_fields(rkMetaClass *Class, Field *fields)
       else {
          Field temp[Class->TotalFields];
 
-         for (i=0; i < Class->TotalFields; i++) {
+         for (LONG i=0; i < Class->TotalFields; i++) {
             CopyMemory(sort[i], temp+i, sizeof(Field));
          }
          CopyMemory(temp, fields, size);
@@ -1129,8 +1124,8 @@ ERROR sort_class_fields(rkMetaClass *Class, Field *fields)
 
    // Repair child indexes
 
-   for (i=0; i < childcount; i++) {
-      for (j=0; j < Class->TotalFields; j++) {
+   for (LONG i=0; i < childcount; i++) {
+      for (LONG j=0; j < Class->TotalFields; j++) {
          if (children[i] IS fields[j].FieldID) {
             Class->Children[i] = j;
             break;
@@ -1140,7 +1135,7 @@ ERROR sort_class_fields(rkMetaClass *Class, Field *fields)
 
    // Repair field indexes following the sort
 
-   for (i=0; i < Class->TotalFields; i++) fields[i].Index = i;
+   for (LONG i=0; i < Class->TotalFields; i++) fields[i].Index = i;
 
    return ERR_Okay;
 }
@@ -1285,7 +1280,6 @@ ERROR load_classes(void)
             log.msg("There are %d class records to process.", total);
             LONG memsize = sizeof(ClassHeader) + (sizeof(LONG) * total) + filesize - sizeof(LONG);
             if (!(error = AllocMemory(memsize, MEM_NO_CLEAR|MEM_PUBLIC|MEM_UNTRACKED|MEM_NO_BLOCK, (APTR *)&glClassDB, &glSharedControl->ClassesMID))) {
-
                // Configure the header
 
                glClassDB->Total = total;
@@ -1608,7 +1602,7 @@ static Field * lookup_id_byclass(rkMetaClass *Class, ULONG FieldID, rkMetaClass 
 
    if (Class->Flags & CLF_PROMOTE_INTEGRAL) {
       for (LONG i=0; Class->Children[i] != 0xff; i++) {
-         field = Class->prvFields + Class->Children[i];
+         auto field = Class->prvFields + Class->Children[i];
          if (field->Arg) {
             rkMetaClass *childclass = FindClass(field->Arg);
             if (childclass) {

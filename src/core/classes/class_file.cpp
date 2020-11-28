@@ -192,7 +192,7 @@ static ERROR FILE_Activate(objFile *Self, APTR Void)
             else return ERR_CreateFile;
          }
       }
-      else if ((errno IS EROFS) AND (Self->Flags & FL_READ)) {
+      else if ((errno IS EROFS) and (Self->Flags & FL_READ)) {
          // Drop requested access rights to read-only and try again
          log.warning("Reverting to read-only access for this read-only file.");
          openflags = O_RDONLY;
@@ -206,7 +206,7 @@ static ERROR FILE_Activate(objFile *Self, APTR Void)
          // about it.
       }
 
-      if ((Self->Handle IS -1) AND (!(Self->Flags & FL_LINK))) {
+      if ((Self->Handle IS -1) and (!(Self->Flags & FL_LINK))) {
          switch(errno) {
             case EACCES: return log.warning(ERR_NoPermission);
             case EEXIST: return log.warning(ERR_FileExists);
@@ -343,7 +343,7 @@ static ERROR FILE_DataFeed(objFile *Self, struct acDataFeed *Args)
 {
    parasol::Log log;
 
-   if ((!Args) OR (!Args->Buffer)) return log.warning(ERR_NullArgs);
+   if ((!Args) or (!Args->Buffer)) return log.warning(ERR_NullArgs);
 
    if (Args->Size) return acWrite(Self, Args->Buffer, Args->Size, NULL);
    else return acWrite(Self, Args->Buffer, StrLength((CSTRING)Args->Buffer), NULL);
@@ -416,9 +416,9 @@ static ERROR FILE_Delete(objFile *Self, struct flDelete *Args)
 {
    parasol::Log log;
 
-   if ((!Self->Path) OR (!*Self->Path)) return log.warning(ERR_MissingPath);
+   if ((!Self->Path) or (!*Self->Path)) return log.warning(ERR_MissingPath);
 
-   if ((Self->Stream) AND (!(Self->Flags & FL_LINK))) {
+   if ((Self->Stream) and (!(Self->Flags & FL_LINK))) {
       log.branch("Delete Folder: %s", Self->Path);
 
       // Check if the Path is a volume
@@ -447,11 +447,11 @@ static ERROR FILE_Delete(objFile *Self, struct flDelete *Args)
          Self->Stream = NULL;
 
          LONG len = StrCopy(path, buffer, sizeof(buffer));
-         if ((buffer[len-1] IS '/') OR (buffer[len-1] IS '\\')) buffer[len-1] = 0;
+         if ((buffer[len-1] IS '/') or (buffer[len-1] IS '\\')) buffer[len-1] = 0;
 
          FileFeedback fb;
          ClearMemory(&fb, sizeof(fb));
-         if ((Args->Callback) AND (Args->Callback->Type)) {
+         if ((Args->Callback) and (Args->Callback->Type)) {
             fb.FeedbackID = FBK_DELETE_FILE;
             fb.Path       = buffer;
          }
@@ -471,7 +471,7 @@ static ERROR FILE_Delete(objFile *Self, struct flDelete *Args)
       if (!GET_ResolvedPath(Self, &path)) {
          char buffer[512];
          LONG len = StrCopy(path, buffer, sizeof(buffer));
-         if ((buffer[len-1] IS '/') OR (buffer[len-1] IS '\\')) buffer[len-1] = 0;
+         if ((buffer[len-1] IS '/') or (buffer[len-1] IS '\\')) buffer[len-1] = 0;
 
          if (Self->Handle != -1) { close(Self->Handle); Self->Handle = -1; }
 
@@ -530,7 +530,7 @@ static ERROR FILE_Free(objFile *Self, APTR Void)
    }
 
 #ifdef _WIN32
-   if ((Self->Flags & FL_RESET_DATE) AND (path)) {
+   if ((Self->Flags & FL_RESET_DATE) and (path)) {
       winResetDate(path);
       FreeResource(path);
    }
@@ -583,7 +583,7 @@ static ERROR FILE_Init(objFile *Self, APTR Void)
    // If a path has been specified, we'll load the entire file into memory.  Please see the end of this
    // initialisation routine for more info.
 
-   if ((Self->Flags & FL_BUFFER) AND (!Self->Path)) {
+   if ((Self->Flags & FL_BUFFER) and (!Self->Path)) {
       if (Self->Size < 0) Self->Size = 0;
       Self->Flags |= FL_READ|FL_WRITE;
       if (!Self->Buffer) {
@@ -616,14 +616,14 @@ static ERROR FILE_Init(objFile *Self, APTR Void)
       else return log.warning(ERR_Failed);
    }
 
-   if ((!Self->Permissions) OR (Self->Permissions & PERMIT_INHERIT)) {
+   if ((!Self->Permissions) or (Self->Permissions & PERMIT_INHERIT)) {
       FileInfo info;
       char namebuf[MAX_FILENAME];
 
       // If the file already exists, pull the permissions from it.  Otherwise use a default set of permissions (if
       // possible, inherit permissions from the file's folder).
 
-      if ((Self->Flags & FL_NEW) AND (get_file_info(Self->Path, &info, sizeof(info), namebuf, sizeof(namebuf)) IS ERR_Okay)) {
+      if ((Self->Flags & FL_NEW) and (get_file_info(Self->Path, &info, sizeof(info), namebuf, sizeof(namebuf)) IS ERR_Okay)) {
          log.msg("Using permissions of the original file.");
          Self->Permissions |= info.Permissions;
       }
@@ -640,7 +640,7 @@ static ERROR FILE_Init(objFile *Self, APTR Void)
 
    // Do not do anything if the File is used as a static object in a script
 
-   if ((Self->Static) AND ((!Self->Path) OR (!Self->Path[0]))) return ERR_Okay;
+   if ((Self->Static) and ((!Self->Path) or (!Self->Path[0]))) return ERR_Okay;
 
    if (Self->Path[0] IS ':') {
       log.trace("Root folder initialised.");
@@ -655,7 +655,7 @@ retrydir:
       LONG len = StrLength(Self->Path);
       if (len > 512) return log.warning(ERR_BufferOverflow);
 
-      if ((Self->Path[len-1] != '/') AND (Self->Path[len-1] != '\\') AND (Self->Path[len-1] != ':')) {
+      if ((Self->Path[len-1] != '/') and (Self->Path[len-1] != '\\') and (Self->Path[len-1] != ':')) {
          char buffer[len+1];
          for (j=0; j < len; j++) buffer[j] = Self->Path[j];
          buffer[j] = 0;
@@ -704,7 +704,7 @@ retrydir:
 
    // Check if ResolvePath() resolved the path from a file string to a folder
 
-   if ((!(Self->prvType & STAT_FOLDER)) AND (Self->prvResolvedPath[len-1] IS '/') AND (!(Self->Flags & FL_FOLDER))) {
+   if ((!(Self->prvType & STAT_FOLDER)) and (Self->prvResolvedPath[len-1] IS '/') and (!(Self->Flags & FL_FOLDER))) {
       Self->Flags |= FL_FOLDER;
       goto retrydir;
    }
@@ -804,39 +804,37 @@ static ERROR FILE_MoveFile(objFile *Self, struct flMove *Args)
 {
    parasol::Log log;
 
-   if ((!Args) OR (!Args->Dest)) return log.warning(ERR_NullArgs);
+   if ((!Args) or (!Args->Dest)) return log.warning(ERR_NullArgs);
    if (!Self->Path) return log.warning(ERR_FieldNotSet);
 
    STRING src   = Self->Path;
    CSTRING dest = Args->Dest;
 
-   LONG len, i, j;
-   for (len=0; dest[len]; len++);
+   LONG len = StrLength(dest);
    if (len <= 1) return log.warning(ERR_Args);
 
    log.msg("%s to %s", src, dest);
 
-   if ((dest[len-1] IS '/') OR (dest[len-1] IS '\\') OR (dest[len-1] IS ':')) {
+   if ((dest[len-1] IS '/') or (dest[len-1] IS '\\') or (dest[len-1] IS ':')) {
       // If a trailing slash has been specified, we are moving the file into a folder, rather than to a direct path.
 
-      for (i=0; src[i]; i++);
-      i--;
+      LONG i = StrLength(src) - 1;
       if (src[i] IS ':') {
          log.warning("Moving volumes is illegal.");
          return ERR_Failed;
       }
-      else if ((src[i] IS '/') OR (src[i] IS '\\')) i--;
+      else if ((src[i] IS '/') or (src[i] IS '\\')) i--;
 
-      while ((i > 0) AND (src[i] != ':') AND (src[i] != '/') AND (src[i] != '\\')) {
+      while ((i > 0) and (src[i] != ':') and (src[i] != '/') and (src[i] != '\\')) {
          i--;
          len++;
       }
 
       STRING newpath;
       if (!AllocMemory(len + 1, MEM_STRING|MEM_NO_CLEAR|Self->Head.MemFlags, (APTR *)&newpath, NULL)) {
-         for (j=0; dest[j]; j++) newpath[j] = dest[j];
+         LONG j = StrCopy(dest, newpath, COPY_ALL);
          i++;
-         while ((src[i]) AND (src[i] != '/') AND (src[i] != '\\')) newpath[j++] = src[i++];
+         while ((src[i]) and (src[i] != '/') and (src[i] != '\\')) newpath[j++] = src[i++];
          newpath[j] = 0;
 
          #ifdef _WIN32
@@ -859,8 +857,7 @@ static ERROR FILE_MoveFile(objFile *Self, struct flMove *Args)
    else {
       STRING newpath;
       if (!AllocMemory(len+1, MEM_STRING|MEM_NO_CLEAR|Self->Head.MemFlags, (APTR *)&newpath, NULL)) {
-         for (i=0; dest[i]; i++) newpath[i] = dest[i];
-         newpath[i] = 0;
+         CopyMemory(dest, newpath, len+1);
 
          #ifdef _WIN32
             if (Self->Handle != -1) { close(Self->Handle); Self->Handle = -1; }
@@ -937,7 +934,6 @@ static ERROR FILE_NextFile(objFile *Self, struct flNext *Args)
 
    ERROR error;
    if (!(error = ScanDir(Self->prvList))) {
-      objFile *file;
       LONG folder_len = StrLength(Self->Path);
       LONG name_len = StrLength(Self->prvList->Info->Name);
 
@@ -947,10 +943,8 @@ static ERROR FILE_NextFile(objFile *Self, struct flNext *Args)
          CopyMemory(Self->prvList->Info->Name, path + folder_len, name_len);
          path[folder_len + name_len] = 0;
 
-         if (!CreateObject(ID_FILE, 0, (OBJECTPTR *)&file,
-               FID_Path|TSTR, path,
-               TAGEND)) {
-
+         objFile *file;
+         if (!CreateObject(ID_FILE, 0, (OBJECTPTR *)&file, FID_Path|TSTR, path, TAGEND)) {
             Args->File = file;
             return ERR_Okay;
          }
@@ -1008,7 +1002,7 @@ static ERROR FILE_Read(objFile *Self, struct acRead *Args)
 {
    parasol::Log log;
 
-   if ((!Args) OR (!Args->Buffer)) return log.warning(ERR_NullArgs);
+   if ((!Args) or (!Args->Buffer)) return log.warning(ERR_NullArgs);
    else if (Args->Length == 0) return ERR_Okay;
    else if (Args->Length < 0) return ERR_OutOfRange;
 
@@ -1019,9 +1013,9 @@ static ERROR FILE_Read(objFile *Self, struct acRead *Args)
          // In loop mode, we must make the file buffer appear to be of infinite length in terms of the read/write
          // position marker.
 
-         BYTE *dest = (BYTE *)Args->Buffer;
-         LONG len, readlen;
-         for (readlen=Args->Length; readlen > 0; readlen -= len) {
+         auto dest = (BYTE *)Args->Buffer;
+         LONG len;
+         for (LONG readlen=Args->Length; readlen > 0; readlen -= len) {
             len = Self->Size - (Self->Position % Self->Size); // Calculate amount of space ahead of us.
             if (len > readlen) len = readlen; // Restrict the length of the read operation to the length of the destination.
 
@@ -1105,20 +1099,17 @@ static ERROR FILE_ReadLine(objFile *Self, struct flReadLine *Args)
    parasol::Log log;
 
    if (!Args) return log.warning(ERR_NullArgs);
-
    if (!(Self->Flags & FL_READ)) return log.warning(ERR_FileReadFlag);
 
-   LONG i, len;
+   LONG len;
    char line[4096];
    LONG pos = Self->Position;
    if (Self->Buffer) {
       len = 0;
-      i = Self->Position;
-      while ((i < Self->Size) AND ((size_t)len < sizeof(line)-1)) {
+      LONG i = Self->Position;
+      while ((i < Self->Size) and ((size_t)len < sizeof(line)-1)) {
          line[len] = Self->Buffer[i++];
-         if (line[len] IS '\n') {
-            break; // Break once a line-feed is encountered
-         }
+         if (line[len] IS '\n') break;
          len++;
       }
       line[len] = 0;
@@ -1181,23 +1172,22 @@ Rename: Changes the name of a file.
 static ERROR FILE_Rename(objFile *Self, struct acRename *Args)
 {
    parasol::Log log;
-   LONG namelen, i, j;
+   LONG j;
    STRING n;
 
-   if ((!Args) OR (!Args->Name)) return log.warning(ERR_NullArgs);
-   for (namelen=0; Args->Name[namelen]; namelen++);
-   if (!namelen) return log.warning(ERR_Args);
-
+   if ((!Args) or (!Args->Name)) return log.warning(ERR_NullArgs);
+   LONG namelen = StrLength(Args->Name);
+   if (!namelen) return log.warning(ERR_NullArgs);
    if (!Self->Path) return log.warning(ERR_FieldNotSet);
 
    log.branch("%s to %s", Self->Path, Args->Name);
 
-   i = StrLength(Self->Path);
+   LONG i = StrLength(Self->Path);
 
-   if ((Self->prvType & STAT_FOLDER) OR (Self->Flags & FL_FOLDER)) {
+   if ((Self->prvType & STAT_FOLDER) or (Self->Flags & FL_FOLDER)) {
       if (Self->Path[i-1] IS ':') { // Renaming a volume
          if (!AllocMemory(namelen+2, MEM_STRING|Self->Head.MemFlags, (APTR *)&n, NULL)) {
-            for (i=0; (Args->Name[i]) AND (Args->Name[i] != ':') AND (Args->Name[i] != '/') AND (Args->Name[i] != '\\'); i++) n[i] = Args->Name[i];
+            for (i=0; (Args->Name[i]) and (Args->Name[i] != ':') and (Args->Name[i] != '/') and (Args->Name[i] != '\\'); i++) n[i] = Args->Name[i];
             n[i] = 0;
             if (!RenameVolume(Self->Path, n)) {
                n[i++] = ':';
@@ -1215,12 +1205,12 @@ static ERROR FILE_Rename(objFile *Self, struct acRename *Args)
       }
       else {
          // We are renaming a folder
-         for (--i; (i > 0) AND (Self->Path[i-1] != ':') AND (Self->Path[i-1] != '/') AND (Self->Path[i-1] != '\\'); i--);
+         for (--i; (i > 0) and (Self->Path[i-1] != ':') and (Self->Path[i-1] != '/') and (Self->Path[i-1] != '\\'); i--);
 
          if (!AllocMemory(i+namelen+2, MEM_STRING|Self->Head.MemFlags, (APTR *)&n, NULL)) {
             for (j=0; j < i; j++) n[j] = Self->Path[j];
 
-            for (i=0; (Args->Name[i]) AND (Args->Name[i] != '/') AND (Args->Name[i] != '\\') AND (Args->Name[i] != ':'); i++) {
+            for (i=0; (Args->Name[i]) and (Args->Name[i] != '/') and (Args->Name[i] != '\\') and (Args->Name[i] != ':'); i++) {
                n[j++] = Args->Name[i];
             }
 
@@ -1242,14 +1232,14 @@ static ERROR FILE_Rename(objFile *Self, struct acRename *Args)
       }
    }
    else { // We are renaming a file
-      while ((i > 0) AND (Self->Path[i-1] != ':') AND (Self->Path[i-1] != '/') AND (Self->Path[i-1] != '\\')) i--;
+      while ((i > 0) and (Self->Path[i-1] != ':') and (Self->Path[i-1] != '/') and (Self->Path[i-1] != '\\')) i--;
       if (!AllocMemory(i+namelen+1, MEM_STRING|Self->Head.MemFlags, (APTR *)&n, NULL)) {
          // Generate the new path, then rename the file
 
          for (j=0; j < i; j++) n[j] = Self->Path[j];
          for (i=0; Args->Name[i]; i++);
-         while ((i > 0) AND (Args->Name[i] != '/') AND (Args->Name[i] != '\\') AND (Args->Name[i] != ':')) i--;
-         if ((Args->Name[i] IS '/') OR (Args->Name[i] IS '\\') OR (Args->Name[i] IS ':')) i++;
+         while ((i > 0) and (Args->Name[i] != '/') and (Args->Name[i] != '\\') and (Args->Name[i] != ':')) i--;
+         if ((Args->Name[i] IS '/') or (Args->Name[i] IS '\\') or (Args->Name[i] IS ':')) i++;
          while (Args->Name[i]) n[j++] = Args->Name[i++];
          n[j] = 0;
 
@@ -1470,7 +1460,7 @@ static ERROR FILE_StartStream(objFile *Self, struct flStartStream *Args)
 {
    parasol::Log log;
 
-   if ((!Args) OR (!Args->SubscriberID)) return log.warning(ERR_NullArgs);
+   if ((!Args) or (!Args->SubscriberID)) return log.warning(ERR_NullArgs);
 
    // Streaming from standard files is pointless - it's the virtual drives that provide streaming features.
 
@@ -1555,7 +1545,7 @@ static ERROR FILE_Watch(objFile *Self, struct flWatch *Args)
       Self->prvWatch = NULL;
    }
 
-   if ((!Args) OR (!Args->Callback) OR (!Args->Flags)) return ERR_Okay;
+   if ((!Args) or (!Args->Callback) or (!Args->Flags)) return ERR_Okay;
 
 #ifdef __linux__ // Initialise inotify if not done already.
    if (glInotify IS -1) {
@@ -1624,7 +1614,6 @@ static ERROR FILE_Write(objFile *Self, struct acWrite *Args)
 
    if (!Args) return log.warning(ERR_NullArgs);
    if (Args->Length <= 0) return ERR_Args;
-
    if (!(Self->Flags & FL_WRITE)) return log.warning(ERR_FileWriteFlag);
 
    if (Self->Buffer) {
@@ -1675,18 +1664,16 @@ static ERROR FILE_Write(objFile *Self, struct acWrite *Args)
       }
    }
 
-   if ((Self->prvType & STAT_FOLDER) OR (Self->Flags & FL_FOLDER)) return log.warning(ERR_ExpectedFile);
+   if ((Self->prvType & STAT_FOLDER) or (Self->Flags & FL_FOLDER)) return log.warning(ERR_ExpectedFile);
 
    if (Self->Handle IS -1) return log.warning(ERR_ObjectCorrupt);
 
    // If no buffer was supplied then we will write out null values to a limit indicated by the Length field.
 
    if (!Args->Buffer) {
-      LONG i;
       UBYTE nullbyte = 0;
-
       Args->Result = 0;
-      for (i=0; i < Args->Length; i++) {
+      for (LONG i=0; i < Args->Length; i++) {
          LONG result = write(Self->Handle, &nullbyte, 1);
          if (result IS -1) break;
          else {
@@ -1779,7 +1766,7 @@ static ERROR GET_Created(objFile *Self, DateTime **Value)
       if (!GET_ResolvedPath(Self, &path)) {
          char buffer[512];
          LONG len = StrCopy(path, buffer, sizeof(buffer));
-         if ((buffer[len-1] IS '/') OR (buffer[len-1] IS '\\')) buffer[len-1] = 0;
+         if ((buffer[len-1] IS '/') or (buffer[len-1] IS '\\')) buffer[len-1] = 0;
 
          struct stat64 stats;
          if (!stat64(buffer, &stats)) {
@@ -1855,7 +1842,7 @@ static ERROR GET_Date(objFile *Self, DateTime **Value)
       if (!GET_ResolvedPath(Self, &path)) {
          char buffer[512];
          LONG len = StrCopy(path, buffer, sizeof(buffer));
-         if ((buffer[len-1] IS '/') OR (buffer[len-1] IS '\\')) buffer[len-1] = 0;
+         if ((buffer[len-1] IS '/') or (buffer[len-1] IS '\\')) buffer[len-1] = 0;
 
          struct stat64 stats;
          if (!stat64(buffer, &stats)) {
@@ -2016,7 +2003,7 @@ static ERROR GET_Icon(objFile *Self, CSTRING *Value)
 
    parasol::SwitchContext context(Self);
 
-   if ((!Self->Path) OR (!Self->Path[0])) {
+   if ((!Self->Path) or (!Self->Path[0])) {
       *Value = Self->prvIcon = StrClone("icons:filetypes/empty");
       return ERR_Okay;
    }
@@ -2024,9 +2011,9 @@ static ERROR GET_Icon(objFile *Self, CSTRING *Value)
    // If the location is a volume, look the icon up in the SystemVolumes object
 
    LONG i;
-   for (i=0; (Self->Path[i]) AND (Self->Path[i] != ':'); i++);
+   for (i=0; (Self->Path[i]) and (Self->Path[i] != ':'); i++);
 
-   if ((Self->Path[i] IS ':') AND (!Self->Path[i+1])) {
+   if ((Self->Path[i] IS ':') and (!Self->Path[i+1])) {
       char icon[40] = "icons:folders/folder";
 
       if (!AccessPrivateObject((OBJECTPTR)glVolumes, 8000)) {
@@ -2037,8 +2024,8 @@ static ERROR GET_Icon(objFile *Self, CSTRING *Value)
             volume[CharCopy(Self->Path, volume, i)] = 0;
 
             for (LONG i=0; i < glVolumes->AmtEntries; i++) {
-               if ((!StrMatch("Name", entries[i].Key)) AND (!StrMatch(volume, entries[i].Data))) {
-                  while ((i > 0) AND (!StrMatch(entries[i].Section, entries[i-1].Section))) i--;
+               if ((!StrMatch("Name", entries[i].Key)) and (!StrMatch(volume, entries[i].Data))) {
+                  while ((i > 0) and (!StrMatch(entries[i].Section, entries[i-1].Section))) i--;
 
                   STRING section = entries[i].Section;
                   for (; i < glVolumes->AmtEntries; i++) {
@@ -2081,7 +2068,7 @@ volume_found:
    }
 
    while (Self->Path[i]) i++;
-   if ((Self->Path[i-1] IS '/') OR (Self->Path[i-1] IS '\\')) {
+   if ((Self->Path[i-1] IS '/') or (Self->Path[i-1] IS '\\')) {
       if (link) *Value = Self->prvIcon = StrClone("icons:folders/folder+overlays/link");
       else *Value = Self->prvIcon = StrClone("icons:folders/folder");
       return ERR_Okay;
@@ -2104,7 +2091,7 @@ volume_found:
       // Scan file extensions first, because this saves us from having to open and read the file content.
 
       LONG k;
-      for (k=i; (k > 0) AND (Self->Path[k-1] != ':') AND (Self->Path[k-1] != '/') AND (Self->Path[k-1] != '\\'); k--);
+      for (k=i; (k > 0) and (Self->Path[k-1] != ':') and (Self->Path[k-1] != '/') and (Self->Path[k-1] != '\\'); k--);
 
       if (Self->Path[k]) {
          for (LONG j=0; j < glDatatypes->AmtEntries; j++) {
@@ -2147,7 +2134,7 @@ volume_found:
 
          // Scan class names
 
-         if ((classname[0]) OR (mastername[0])) {
+         if ((classname[0]) or (mastername[0])) {
             for (LONG j=0; j < glDatatypes->AmtEntries; j++) {
                if (!StrMatch(entries[j].Key, "Class")) {
                   CSTRING str;
@@ -2173,11 +2160,11 @@ volume_found:
 
    if (StrCompare("icons:", icon, 6, 0) != ERR_Okay) {
       CopyMemory(icon, icon+6, sizeof(icon) - 6);
-      for (i=0; i < 6; i++) icon[i] = "icons:"[i];
+      for (LONG i=0; i < 6; i++) icon[i] = "icons:"[i];
    }
 
    if (link) {
-      i = StrLength(icon);
+      LONG i = StrLength(icon);
       StrCopy("+overlays/link", icon + i, sizeof(icon)-i);
    }
 
@@ -2212,7 +2199,7 @@ static ERROR GET_Link(objFile *Self, STRING *Value)
       if (!ResolvePath(Self->Path, 0, &path)) {
          LONG i = StrLength(path);
          if (path[i-1] IS '/') path[i-1] = 0;
-         if (((i = readlink(path, buffer, sizeof(buffer)-1)) > 0) AND ((size_t)i < sizeof(buffer)-1)) {
+         if (((i = readlink(path, buffer, sizeof(buffer)-1)) > 0) and ((size_t)i < sizeof(buffer)-1)) {
             buffer[i] = 0;
             Self->prvLink = StrClone(buffer);
             *Value = Self->prvLink;
@@ -2290,22 +2277,22 @@ static ERROR SET_Path(objFile *Self, CSTRING Value)
    if (Self->prvResolvedPath) { FreeResource(Self->prvResolvedPath); Self->prvResolvedPath = NULL; }
 
    LONG i, j, len;
-   if ((Value) AND (*Value)) {
+   if ((Value) and (*Value)) {
       if (StrCompare("string:", Value, 7, 0) != ERR_Okay) {
-         for (len=0; (Value[len]) AND (Value[len] != '|'); len++) {
+         for (len=0; (Value[len]) and (Value[len] != '|'); len++) {
             if (Value[len] IS ';') {
                log.warning("Warning - use of ; is obsolete as a separator, use | in path %s", Value);
             }
          }
       }
-      else for (len=0; Value[len]; len++);
+      else len = StrLength(Value);
 
       // Note: An extra byte is allocated in case the FL_FOLDER flag is set
       if (!AllocMemory(len+2, MEM_STRING|MEM_NO_CLEAR|Self->Head.MemFlags, (APTR *)&Self->Path, NULL)) {
          // If the path is set to ':' then this is the equivalent of asking for a folder list of all volumes in
          // the system.  No further initialisation is necessary in such a case.
 
-         if ((Value[0] IS ':') AND (!Value[1])) {
+         if ((Value[0] IS ':') and (!Value[1])) {
             Self->Path[0] = ':';
             Self->Path[1] = 0;
             Self->prvType |= STAT_FOLDER;
@@ -2321,8 +2308,8 @@ static ERROR SET_Path(objFile *Self, CSTRING Value)
          }
          else {
             i = 0;
-            while ((Value[j]) AND (Value[j] != '|')) {
-               if ((Value[j] IS '\\') AND (Value[j+1] IS '\\')) {
+            while ((Value[j]) and (Value[j] != '|')) {
+               if ((Value[j] IS '\\') and (Value[j+1] IS '\\')) {
                   #ifdef _WIN32
                      // Double slash is okay for UNC paths
                      if (!j) Self->Path[i++] = Value[j++];
@@ -2331,7 +2318,7 @@ static ERROR SET_Path(objFile *Self, CSTRING Value)
                      j++;
                   #endif
                }
-               else if ((Value[j] IS '/') AND (Value[j+1] IS '/')) {
+               else if ((Value[j] IS '/') and (Value[j+1] IS '/')) {
                   #ifdef _WIN32
                      // Double slash is okay for UNC paths
                      if (!j) Self->Path[i++] = Value[j++];
@@ -2347,9 +2334,7 @@ static ERROR SET_Path(objFile *Self, CSTRING Value)
 
          // Check if the path is a folder/volume or a file
 
-         i = StrLength(Self->Path);
-
-         if ((Self->Path[i-1] IS ':') OR (Self->Path[i-1] IS '/') OR (Self->Path[i-1] IS '\\')) {
+         if ((Self->Path[i-1] IS ':') or (Self->Path[i-1] IS '/') or (Self->Path[i-1] IS '\\')) {
             Self->prvType |= STAT_FOLDER;
          }
          else if (Self->Flags & FL_FOLDER) {
@@ -2385,7 +2370,7 @@ static ERROR GET_Permissions(objFile *Self, LONG *Value)
    CSTRING path;
    if (!GET_ResolvedPath(Self, &path)) {
       LONG i = StrLength(path);
-      while ((i >= 0) AND (path[i] != '/') AND (path[i] != ':') AND (path[i] != '\\')) i--;
+      while ((i >= 0) and (path[i] != '/') and (path[i] != ':') and (path[i] != '\\')) i--;
       if (path[i+1] IS '.') Self->Permissions = PERMIT_HIDDEN;
       else Self->Permissions = 0;
 
@@ -2455,7 +2440,7 @@ static ERROR set_permissions(objFile *Self, LONG Permissions)
 
       // Note that you need to be root to set the UID/GID flags, so we do it in this subsequent fchmod() call.
 
-      if ((err != -1) AND (Permissions & (PERMIT_USERID|PERMIT_GROUPID))) {
+      if ((err != -1) and (Permissions & (PERMIT_USERID|PERMIT_GROUPID))) {
          if (Permissions & PERMIT_USERID)  flags |= S_ISUID;
          if (Permissions & PERMIT_GROUPID) flags |= S_ISGID;
          err = fchmod(Self->Handle, flags);

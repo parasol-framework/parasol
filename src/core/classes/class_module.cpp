@@ -1010,6 +1010,7 @@ APTR build_jump_table(LONG JumpType, const Function *FList, LONG MemFlags)
       LONG size = 0;
       LONG i;
       for (i=0; FList[i].Address; i++) size += sizeof(APTR);
+
       log.trace("%d functions have been detected in the function list.", i);
 
       void **functions;
