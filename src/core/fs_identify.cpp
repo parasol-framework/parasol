@@ -65,44 +65,27 @@ ERROR IdentifyFile(CSTRING Path, CSTRING Mode, LONG Flags, CLASSID *ClassID, CLA
    }
 
    // Scan for device associations.  A device association, e.g. http: can link to a class or provide the appropriate
-   // command in its datatype section.
+   // command in its datatype group.
 
-   ConfigEntry *entries;
-   if ((entries = glDatatypes->Entries)) {
-      for (LONG i=0; i < glDatatypes->AmtEntries; i++) {
-         if (!StrCompare("DEV:", entries[i].Section, 4, 0)) {
-            LONG j = StrLength(entries[i].Section + 4);
-            if (!StrCompare(entries[i].Section + 4, Path, j, 0)) {
-               CSTRING str = entries[i].Section;
-
+   ConfigGroups *groups;
+   if (!GetPointer(glDatatypes, FID_Data, &groups)) {
+      for (auto& [group, keys] : groups[0]) {
+         if (!group.compare(0, 4, "DEV:")) {
+            LONG j = group.size() - 4;
+            if (!StrCompare(group.c_str() + 4, Path, j, 0)) {
                if (Path[j] != ':') continue;
 
-               CSTRING datatype = NULL;
-               while ((i < glDatatypes->AmtEntries) AND (!StrMatch(entries[i].Section, str))) {
-                  if (!StrMatch("Datatype", entries[i].Key)) {
-                     datatype = entries[i].Data;
-                     break;
-                  }
-                  else if (!StrMatch(entries[i].Key, Mode)) {
-                     cmd = StrClone(entries[i].Data);
-                     break;
-                  }
-                  i++;
-               }
+               CSTRING datatype;
+               if (keys.contains("Datatype")) datatype = keys["Datatype"].c_str();
+               else if (keys.contains("Mode")) cmd = StrClone(keys["Mode"].c_str());
 
                // Found device association
 
-               if ((!cmd) AND (datatype)) {
-                  for (LONG i=0; i < glDatatypes->AmtEntries; i++) {
-                     if (!StrMatch(datatype, entries[i].Section)) {
-                        log.trace("Found datatype '%s'", datatype);
-                        while (!StrMatch(datatype, entries[i].Section)) {
-                           if (!StrMatch(Mode, entries[i].Key)) {
-                              if (Flags & IDF_SECTION) cmd = StrClone(entries[i].Section);
-                              else cmd = StrClone(entries[i].Data);
-                              break;
-                           }
-                           i++;
+               if ((!cmd) and (datatype)) {
+                  for (auto& [group, keys] : groups[0]) {
+                     if (!StrMatch(datatype, group.c_str())) {
+                        if (keys.contains(Mode)) {
+                           cmd = StrClone((Flags & IDF_SECTION) ? group.c_str() : keys[Mode].c_str());
                         }
                         break;
                      }
@@ -110,9 +93,9 @@ ERROR IdentifyFile(CSTRING Path, CSTRING Mode, LONG Flags, CLASSID *ClassID, CLA
 
                   if (!cmd) log.trace("Datatype '%s' missing mode '%s'", datatype, Mode);
                }
-               else log.warning("No datatype reference for section '%s'", str);
+               else log.warning("No datatype reference for group '%s'", group.c_str());
 
-               goto restart; // Jump to the restart label
+               goto restart;
             }
          }
       }
@@ -201,9 +184,9 @@ ERROR IdentifyFile(CSTRING Path, CSTRING Mode, LONG Flags, CLASSID *ClassID, CLA
       if (!*ClassID) {
          log.trace("Loading file header to identify '%s' against class registry", res_path);
 
-         if ((!ReadFileToBuffer(res_path, buffer, HEADER_SIZE, &bytes_read)) AND (bytes_read >= 4)) {
+         if ((!ReadFileToBuffer(res_path, buffer, HEADER_SIZE, &bytes_read)) and (bytes_read >= 4)) {
             log.trace("Checking file header data (%d bytes) against %d classes....", bytes_read, classes->Total);
-            for (LONG i=0; (i < classes->Total) AND (!*ClassID); i++) {
+            for (LONG i=0; (i < classes->Total) and (!*ClassID); i++) {
                ClassItem *item = (ClassItem *)((char *)classes + offsets[i]);
                if (!item->HeaderOffset) continue;
 
@@ -399,20 +382,15 @@ class_identified:
    if ((filename = get_filename(Path))) {
       log.msg("Scanning associations config to match: %s", filename);
 
-      if ((entries = glDatatypes->Entries)) {
-         CSTRING str;
-         for (LONG i=0; i < glDatatypes->AmtEntries; i++) {
-            if (StrMatch(entries[i].Key, "Match") != ERR_Okay) continue;
+      if (!GetPointer(glDatatypes, FID_Data, &groups)) {
+         for (auto& [group, keys] : groups[0]) {
+            if (not keys.contains("Match")) continue;
 
-            if (!StrCompare(entries[i].Data, filename, 0, STR_WILDCARD)) {
-               if (Flags & IDF_SECTION) cmd = StrClone(entries[i].Section);
-               else if (!cfgReadValue(glDatatypes, entries[i].Section, Mode, &str)) {
-                  cmd = StrClone(str);
-               }
+            if (!StrCompare(keys["Match"].c_str(), filename, 0, STR_WILDCARD)) {
+               if (Flags & IDF_SECTION) cmd = StrClone(group.c_str());
+               else if (keys.contains(Mode)) cmd = StrClone(keys[Mode].c_str());
                else if (StrMatch("Open", Mode) != ERR_Okay) {
-                  if (!cfgReadValue(glDatatypes, entries[i].Section, "Open", &str)) {
-                     cmd = StrClone(str);
-                  }
+                  if (keys.contains("Open")) cmd = StrClone(keys["Open"].c_str());
                }
                break;
             }
@@ -570,17 +548,16 @@ ERROR get_class_cmd(CSTRING Mode, objConfig *Associations, LONG Flags, CLASSID C
    auto item = find_class(ClassID);
 
    if (item) {
-      ConfigEntry *entries;
-      if ((entries = Associations->Entries)) {
-         for (LONG i=0; i < Associations->AmtEntries; i++) {
-            if (!StrMatch(entries[i].Key, "Class")) {
-               if (!StrMatch(entries[i].Data, item->Name)) {
-                  CSTRING str;
-                  if (Flags & IDF_SECTION) *Command = StrClone(entries[i].Section);
-                  else if (!cfgReadValue(Associations, entries[i].Section, Mode, &str)) *Command = StrClone(str);
-                  if (!*Command) return ERR_AllocMemory;
-                  else return ERR_Okay;
-               }
+      ConfigGroups *groups;
+      if (!GetPointer(Associations, FID_Data, &groups)) {
+         for (auto& [group, keys] : groups[0]) {
+            if ((keys.contains("Class")) and (!StrMatch(keys["Class"].c_str(), item->Name))) {
+               if (Flags & IDF_SECTION) *Command = StrClone(group.c_str());
+               else if (keys.contains(Mode)) *Command = StrClone(keys[Mode].c_str());
+               else return ERR_NoData;
+
+               if (!*Command) return ERR_AllocMemory;
+               else return ERR_Okay;
             }
          }
       }

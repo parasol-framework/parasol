@@ -26,19 +26,24 @@ Sort = 1
 
 glMerge = 'Ignore this\r\n[MergedGroup]\r\nHello=World\r\n'
 
---=====================================================================================================================
-
-function testKeyFilter()
+function newConfig()
    local cfg = obj.new('config', { })
    local err = cfg.acDataFeed(0, DATA_TEXT, glLegalData, 0)
    assert(err == ERR_Okay, 'DataFeed() returned ' .. mSys.GetErrorMsg(err))
+   return cfg
+end
+
+--=====================================================================================================================
+
+function testKeyFilter()
+   local cfg = newConfig()
 
    cfg.keyFilter = 'Name=Clean' -- Keep the clean font and filter out Courier Sans
 
    -- Expect success
-   local err, value = cfg.mtReadInt('Clean', 'Points')
+   local err, value = cfg.mtReadValue('Clean', 'Points')
    assert(err == ERR_Okay, 'ReadInt() returned ' .. mSys.GetErrorMsg(err))
-   assert(value == 8, 'Did not read the expected [Clean].Points key-value, got ' .. nz(value,'NIL'))
+   assert(value == '8', 'Did not read the expected [Clean].Points key-value, got ' .. nz(value,'NIL'))
 
    -- Expect failure
    local err, value = cfg.mtReadValue('Courier Sans', 'Scalable')
@@ -49,9 +54,7 @@ end
 --=====================================================================================================================
 
 function testGroupFilter()
-   local cfg = obj.new('config', { })
-   local err = cfg.acDataFeed(0, DATA_TEXT, glLegalData, 0)
-   assert(err == ERR_Okay, 'DataFeed() returned ' .. mSys.GetErrorMsg(err))
+   local cfg = newConfig()
 
    cfg.groupFilter = 'Courier Sans' -- Keep Courier Sans
 
@@ -61,17 +64,15 @@ function testGroupFilter()
    assert(value == 'Yes', 'Did not read the expected [Courier Sans].Scalable key-value, got ' .. nz(value,'NIL'))
 
    -- Expect failure
-   local err, value = cfg.mtReadFloat('Clean', 'Points')
-   assert(err != ERR_Okay, 'ReadFloat() returned ' .. mSys.GetErrorMsg(err))
-   assert(value != 8, 'The [Clean].Points value was not filtered out as expected.')
+   local err, value = cfg.mtReadValue('Clean', 'Points')
+   assert(err != ERR_Okay, 'ReadValue() returned ' .. mSys.GetErrorMsg(err))
+   assert(value != '8', 'The [Clean].Points value was not filtered out as expected.')
 end
 
 --=====================================================================================================================
 
 function testDeleteKeyAndGroup()
-   local cfg = obj.new('config', { })
-   local err = cfg.acDataFeed(0, DATA_TEXT, glLegalData, 0)
-   assert(err == ERR_Okay, 'DataFeed() returned ' .. mSys.GetErrorMsg(err))
+   local cfg = newConfig()
 
    local err, value = cfg.mtReadValue('Clean', 'Styles')
    assert(err == ERR_Okay, 'ReadValue() returned ' .. mSys.GetErrorMsg(err))
@@ -92,9 +93,7 @@ end
 --=====================================================================================================================
 
 function testMerge()
-   local cfg = obj.new('config', { })
-   local err = cfg.acDataFeed(0, DATA_TEXT, glLegalData, 0)
-   assert(err == ERR_Okay, 'DataFeed() returned ' .. mSys.GetErrorMsg(err))
+   local cfg = newConfig()
 
    local cfgMerge = obj.new('config', { })
    local err = cfg.acDataFeed(0, DATA_TEXT, glMerge, 0)
@@ -113,9 +112,7 @@ end
 --=====================================================================================================================
 
 function testWriteValues()
-   local cfg = obj.new('config', { })
-   local err = cfg.acDataFeed(0, DATA_TEXT, glLegalData, 0)
-   assert(err == ERR_Okay, 'DataFeed() returned ' .. mSys.GetErrorMsg(err))
+   local cfg = newConfig()
 
    local err = cfg.mtWriteValue('Clean', 'New', 'Value')
    assert(err == ERR_Okay, 'WriteValue() returned ' .. mSys.GetErrorMsg(err))
@@ -133,11 +130,25 @@ function testWriteValues()
 end
 
 --=====================================================================================================================
+-- Test case sensitivity
+
+function testReadValues()
+   local cfg = newConfig()
+
+   local err, value = cfg.mtReadValue('CLEAN', 'Styles')
+   assert(err != ERR_Okay, 'ReadValue() returned ' .. mSys.GetErrorMsg(err))
+
+   local err, value = cfg.mtReadValue('Clean', 'STYLES')
+   assert(err != ERR_Okay, 'ReadValue() returned ' .. mSys.GetErrorMsg(err))
+
+   local err, value = cfg.mtReadIValue('Clean', 'STYLES')
+   assert(err == ERR_Okay, 'ReadIValue() returned ' .. mSys.GetErrorMsg(err))
+end
+
+--=====================================================================================================================
 
 function testSorting()
-   local cfg = obj.new('config', { })
-   local err = cfg.acDataFeed(0, DATA_TEXT, glLegalData, 0)
-   assert(err == ERR_Okay, 'DataFeed() returned ' .. mSys.GetErrorMsg(err))
+   local cfg = newConfig()
 
    local err = cfg.acSort()
    assert(err == ERR_Okay, 'Sort() returned ' .. mSys.GetErrorMsg(err))
@@ -161,7 +172,7 @@ end
    return {
       tests = {
          'testKeyFilter', 'testGroupFilter', 'testDeleteKeyAndGroup',
-         'testMerge', 'testWriteValues', 'testSorting'
+         'testMerge', 'testWriteValues', 'testSorting', 'testReadValues'
       },
       init = function()
 

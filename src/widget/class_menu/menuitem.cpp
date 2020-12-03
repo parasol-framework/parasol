@@ -469,13 +469,13 @@ static ERROR load_submenu(objMenu *ParentMenu, objMenu **SubMenu, objMenuItem *I
 
 /*****************************************************************************
 ** This function turns configuration files into menu files.  The menu is sorted and organised according to the Category
-** item in each section.  Multiple categories are allowed to organise the menu structure into sub-trees, e.g.
+** item in each group.  Multiple categories are allowed to organise the menu structure into sub-trees, e.g.
 ** "Development/SDK/Documentation"
 */
 
 #define SIZE_MENU_BUFFER 4000 // Must be big enough to hold all category names
 
-static void write_menu_items(objMenu *, objConfig *, OBJECTPTR, STRING, STRING *, LONG *, ConfigEntry *);
+static void write_menu_items(objMenu *, objConfig *, OBJECTPTR, std::string &, std::vector<std::string> &, ULONG &, ConfigGroups &);
 
 static void add_string(CSTRING String, STRING Buffer, LONG *Index, LONG *Total)
 {
@@ -498,16 +498,14 @@ static void add_string(CSTRING String, STRING Buffer, LONG *Index, LONG *Total)
 static ERROR create_menu_file(objMenu *Self, objMenu *Menu, objMenuItem *item)
 {
    parasol::Log log(__FUNCTION__);
-   char buffer[SIZE_MENU_BUFFER], category[256];
+   char buffer[SIZE_MENU_BUFFER];
 
-   log.branch("");
+   log.branch();
 
    ERROR error = ERR_Failed;
 
    objConfig *config;
-   if (CreateObject(ID_CONFIG, NF_INTEGRAL, &config,
-         FID_Path|TSTR, item->Path,
-         TAGEND) != ERR_Okay) return ERR_CreateObject;
+   if (CreateObject(ID_CONFIG, NF_INTEGRAL, &config, FID_Path|TSTR, item->Path, TAGEND) != ERR_Okay) return ERR_CreateObject;
 
    // Sort the configuration file immediately after loading.  Note that sorting occurs on the Text item, which
    // represents the text for each menu item.
@@ -521,124 +519,106 @@ static ERROR create_menu_file(objMenu *Self, objMenu *Menu, objMenuItem *item)
 
    LONG pos   = 0;
    LONG total = 0;
-   ConfigEntry *entries = config->Entries;
-   for (LONG i=0; i < config->AmtEntries; i++) {
-      if (!StrMatch("category", entries[i].Key)) {
-         LONG j = 0;
-         while (entries[i].Data[j]) {
-            while ((entries[i].Data[j]) and (entries[i].Data[j] != '/')) {
-               category[j] = entries[i].Data[j];
-               j++;
+   ConfigGroups *groups;
+   if (!GetPointer(config, FID_Data, &groups)) {
+      for (auto& [group, keys] : groups[0]) {
+         if (keys.contains("Category")) {
+            std::string category;
+            auto catkey = keys["Category"];
+            size_t end = 0;
+            while (end < catkey.size()) {
+               end = catkey.find("/", end);
+               if (end IS std::string::npos) end = catkey.size();
+               add_string(catkey.substr(0, end).c_str(), buffer, &pos, &total);
+               end++;
             }
-            category[j] = 0;
-            add_string(category, buffer, &pos, &total);
-            if (entries[i].Data[j] IS '/') category[j++] = '/';
          }
       }
-   }
 
-   STRING *list;
-   if ((list = StrBuildArray(buffer, pos, total, SBF_SORT|SBF_NO_DUPLICATES))) {
-      OBJECTPTR file;
-      if (!CreateObject(ID_FILE, NF_INTEGRAL, &file,
-            FID_Path|TSTR,   "temp:menu.xml",
-            FID_Flags|TLONG, FL_NEW|FL_WRITE,
-            TAGEND)) {
+      STRING *strlist;
+      if ((strlist = StrBuildArray(buffer, pos, total, SBF_SORT|SBF_NO_DUPLICATES))) {
+         std::vector<std::string> list;
+         FreeResource(strlist);
 
-         write_string(file, "<?xml version=\"1.0\"?>\n\n");
-         write_string(file, "<menu>\n");
+         for (LONG i=0; strlist[i]; i++) list.push_back(strlist[i]);
 
-         LONG index = 0;
-         while (list[index]) write_menu_items(Self, config, file, buffer, list, &index, entries);
+         OBJECTPTR file;
+         if (!CreateObject(ID_FILE, NF_INTEGRAL, &file,
+               FID_Path|TSTR,   "temp:menu.xml",
+               FID_Flags|TLONG, FL_NEW|FL_WRITE,
+               TAGEND)) {
 
-         write_string(file, "</menu>\n");
+            std::string output;
+            output += "<?xml version=\"1.0\"?>\n\n";
+            output += "<menu>\n";
 
-         SetString(Menu, FID_Path, "temp:menu.xml");
+            ULONG index = 0;
+            while (index < list.size()) write_menu_items(Self, config, file, output, list, index, *groups);
+            output += "</menu>\n";
+            write_string(file, output.c_str());
 
-         if (acInit(Menu) != ERR_Okay) {
-            acFree(Menu);
-            ReleaseObject(Menu);
-            return ERR_Init;
+            SetString(Menu, FID_Path, "temp:menu.xml");
+
+            if (acInit(Menu) != ERR_Okay) {
+               acFree(Menu);
+               ReleaseObject(Menu);
+               return ERR_Init;
+            }
+
+            flDelete(file, 0);
+            acFree(file);
+
+            error = ERR_Okay;
          }
-
-         flDelete(file, 0);
-         acFree(file);
-
-         error = ERR_Okay;
+         else error = ERR_CreateObject;
       }
-      else error = ERR_CreateObject;
-
-      FreeResource(list);
+      else error = ERR_InvalidData;
    }
-   else error = ERR_InvalidData;
 
    return error;
 }
 
-static void write_menu_items(objMenu *Self, objConfig *config, OBJECTPTR file, STRING Buffer, STRING *List,
-   LONG *Index, ConfigEntry *entries)
+static void write_menu_items(objMenu *Self, objConfig *config, OBJECTPTR file, std::string &Output, std::vector<std::string> &List,
+   ULONG &Index, ConfigGroups &Groups)
 {
-   CSTRING category = List[*Index];
-   LONG i;
-   for (i=0; category[i]; i++);
+   auto &category = List[Index];
+   LONG i = category.size();
    while ((i > 0) and (category[i-1] != '/')) i--;
 
-   StrFormat(Buffer, SIZE_MENU_BUFFER, "  <menu text=\"%s\" icon=\"folders/programfolder\">\n", category+i);
-   write_string(file, Buffer);
+   Output += "  <menu text=\"" + category.substr(i) + "\" icon=\"folders/programfolder\">\n";
 
    // Test the next category in the list.  If it is a sub-category, recurse into it
 
-   CSTRING path = List[Index[0]];
-   while (List[Index[0]+1]) {
-      CSTRING str = List[Index[0]+1];
+   auto &path = List[Index];
+   while (Index+1 < List.size()) {
+      auto &str = List[Index+1];
       for (i=0; (path[i]) and (path[i] IS str[i]); i++);
       if ((!path[i]) and (str[i] IS '/')) {
          // We've found a sub-category
-         Index[0] = Index[0] + 1;
-         write_menu_items(Self, config, file, Buffer, List, Index, entries);
-         Index[0] = Index[0] - 1;
+         Index++;
+         write_menu_items(Self, config, file, Output, List, Index, Groups);
+         Index--;
       }
       else break;
    }
 
    // Write out all items in the current category
 
-   LONG section = 0;
-   for (LONG i=0; i < config->AmtEntries; i++) {
-      if (StrMatch(entries[i].Section, entries[section].Section) != ERR_Okay) {
-         section = i;
-      }
-
-      if ((!StrMatch("category", entries[i].Key)) and (!StrMatch(category, entries[i].Data))) {
-         write_string(file, "    <item");
-
-         CSTRING str;
-         if (!cfgReadValue(config, entries[i].Section, "Icon", &str)) {
-            StrFormat(Buffer, SIZE_MENU_BUFFER, " icon=\"%s\"", str);
-            write_string(file, Buffer);
-         }
-
-         if (!cfgReadValue(config, entries[i].Section, "Text", &str)) {
-            StrFormat(Buffer, SIZE_MENU_BUFFER, " text=\"%s\"", str);
-            write_string(file, Buffer);
-         }
-
-         write_string(file, ">\n");
-
-         if (!cfgReadValue(config, entries[i].Section, "Command", &str)) {
-            StrFormat(Buffer, SIZE_MENU_BUFFER, "      <%s/>\n", str);
-            write_string(file, Buffer);
-         }
-
-         write_string(file, "    </item>\n");
+   for (auto& [group, keys] : Groups) {
+      if (keys.contains("Category") and (!keys["Category"].compare(category))) {
+         Output += "    <item";
+         if (keys.contains("Icon")) Output += " icon=\"" + keys["Icon"] + "\"";
+         if (keys.contains("Text")) Output += " text=\"" + keys["Text"] + "\"";
+         Output += ">\n";
+         if (keys.contains("Command")) Output += "      <" + keys["Command"] + "/>\n";
+         Output += "    </item>\n";
       }
    }
-
-   write_string(file, "  </menu>\n\n");
+   Output += "  </menu>\n\n";
 
    // Increment the current list position before returning
 
-   Index[0] = Index[0] + 1;
+   Index++;
 }
 
 //****************************************************************************

@@ -20,28 +20,23 @@
 <p>The following segment of a config file illustrates:</p>
 <pre>[Action]
 ClassID  = 5800
-Location = modules:action
+Path = modules:action
 
 [Animation]
 ClassID  = 1000
-Location = modules:animation
+Path = modules:animation
 
 [Arrow]
 ClassID  = 3200
-Location = modules:arrow
+Path = modules:arrow
 </pre>
-<p>Notice the text enclosed in square brackets, such as <code>[Action]</code>. These are referred to as 'sections', which are responsible for holding groups of keys expressed as string values.  In the above example, keys are defined by the ClassID and Path identifiers.</p>
+<p>Notice the text enclosed in square brackets, such as <code>[Action]</code>. These are referred to as 'groups', which are responsible for holding groups of key values expressed as strings.  In the above example, keys are defined by the ClassID and Path identifiers.</p>
 <p>The following source code illustrates how to open the classes.cfg file and read a key from it:</p>
 <pre>local cfg = obj.new('config', { path='config:classes.cfg' })
-local err, str = cfg.mtReadValue('Action', 'Location')
+local err, str = cfg.mtReadValue('Action', 'Path')
 print('The Action class is located at ' .. str)
 </pre>
-<p>You can also search through config data using your own array iterator.  The following example illustrates:</p>
-<pre>for (LONG i=0; i &lt; cfg-&gt;Entries; i++) {
-   LogMsg("Section: %s, Key: %s, Data: %s", cfg-&gt;Entries[i].Section,
-      cfg-&gt;Entries[i].Key, cfg-&gt;Entries[i].Data);
-}
-</pre></description>
+<p>Please note that internal string comparisons of group and key names are case sensitive by default.  Use of camel-case is recommended as the default naming format.</p></description>
     <source>
       <file path="classes/">class_config.cpp</file>
     </source>
@@ -54,18 +49,16 @@ print('The Action class is located at ' .. str)
     </action>
 
     <action>
-      <name>Flush</name>
-      <comment>Diverts to <action>SaveSettings</action>.</comment>
+      <name>DataFeed</name>
+      <comment>Data can be added to a Config object through this action.</comment>
+      <description>
+<p>This action will accept configuration data in TEXT format.  Any existing data that matches to the new group keys will be overwritten with new values.</p>
+      </description>
     </action>
 
     <action>
-      <name>GetVar</name>
-      <comment>Retrieves data from a config object.</comment>
-      <description>
-<p>Variable fields are used to retrieve data from specific keys in config objects.  Retrieval can be achieved in a variety of ways. The simplest method is to refer to the key name when retrieving data, for instance <code>mykey</code>. To pull a key from a specific section, use the format <code>mykey(section)</code>, where the section is a number referring to a section index that you want to retrieve.</p>
-<p>You can reference any key in the config object using indexes, if you wish to treat the object as a one-dimensional array.  To do this, use the <code>index(section,key)</code> string format, where key refers to the index of the key that you wish to lookup.  To refer to a key by name, use quotes to indicate that the section and/or key is a named reference.</p>
-<p>To retrieve the name of a key rather than its data, use the string format <code>key(value)</code>.</p>
-      </description>
+      <name>Flush</name>
+      <comment>Diverts to <action>SaveSettings</action>.</comment>
     </action>
 
     <action>
@@ -82,73 +75,62 @@ print('The Action class is located at ' .. str)
     </action>
 
     <action>
-      <name>SetVar</name>
-      <comment>Allows new entries to be added to a config object with variable field names.</comment>
-      <description>
-<p>The variable field mechanism can be used to add new entries to a config object.  The field data will be added under the <code>Variables</code> section with a key name identified by the Field parameter and a data value determined by the Value parameter.  To determine the section under which the key was added (something other than <code>Variables</code>), combine the section and key names into the Field parameter by using a semicolon.  For example, <code>Internet;IPAddress</code>.</p>
-<p>Update existing keys using indexing, which follows the format <code>Index(SectionIndex;KeyIndex)</code> or <code>Index(ArrayIndex)</code>.  Named lookups can be made by enclosing a section or key name in quotes.</p>
-<p>It is recommended that where possible, the <action>Write</action> method is used for updating or writing new keys to a config object.</p>
-      </description>
-    </action>
-
-    <action>
       <name>Sort</name>
-      <comment>Sorts config sections into alphabetical order.</comment>
+      <comment>Sorts config groups into alphabetical order.</comment>
     </action>
 
   </actions>
 
   <methods>
     <method>
-      <name>DeleteIndex</name>
-      <comment>Deletes single configuration entries.</comment>
-      <prototype>ERROR cfgDeleteIndex(OBJECTPTR Object, LONG Index)</prototype>
+      <name>DeleteGroup</name>
+      <comment>Deletes entire groups of configuration data.</comment>
+      <prototype>ERROR cfgDeleteGroup(OBJECTPTR Object, CSTRING Group)</prototype>
       <input>
-        <param type="LONG" name="Index">The number of the entry that you want to delete.</param>
+        <param type="CSTRING" name="Group">The name of the group that will be deleted.</param>
       </input>
       <description>
-<p>This method deletes a single key from the config object.  The index number of the key that you want to delete is required.  If you don't know the index number, scan the <field>Entries</field> array.</p>
+<p>This method will delete an entire group of key-values from a config object if a matching group name is provided.</p>
       </description>
       <result>
         <error code="NullArgs">Function call missing argument value(s)</error>
-        <error code="GetField">The Entries field could not be retrieved.</error>
-        <error code="Okay">Operation successful.</error>
-        <error code="Args">Invalid arguments passed to function.</error>
+        <error code="Okay">The group was deleted or does not exist.</error>
       </result>
     </method>
 
     <method>
-      <name>DeleteSection</name>
-      <comment>Deletes entire sections of configuration data.</comment>
-      <prototype>ERROR cfgDeleteSection(OBJECTPTR Object, CSTRING Section)</prototype>
+      <name>DeleteKey</name>
+      <comment>Deletes single key entries.</comment>
+      <prototype>ERROR cfgDeleteKey(OBJECTPTR Object, CSTRING Group, CSTRING Key)</prototype>
       <input>
-        <param type="CSTRING" name="Section">The name of the section that you want to delete.</param>
+        <param type="CSTRING" name="Group">The name of the targeted group.</param>
+        <param type="CSTRING" name="Key">The name of the targeted key.</param>
       </input>
       <description>
-<p>This method is used to delete entire sections of information from config objects.  Simply specify the name of the section that you want to delete and it will be removed.</p>
+<p>This method deletes a single key from the config object.</p>
       </description>
       <result>
-        <error code="GetField">The Entries field could not be retrieved.</error>
-        <error code="Okay">The section was deleted.</error>
-        <error code="Args">Invalid arguments passed to function.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
+        <error code="Search">A search routine in this function failed.</error>
+        <error code="Okay">Operation successful.</error>
       </result>
     </method>
 
     <method>
-      <name>GetSectionFromIndex</name>
-      <comment>Converts an index number into its matching section string.</comment>
-      <prototype>ERROR cfgGetSectionFromIndex(OBJECTPTR Object, LONG Index, CSTRING * Section)</prototype>
+      <name>GetGroupFromIndex</name>
+      <comment>Converts an index number into its matching group string.</comment>
+      <prototype>ERROR cfgGetGroupFromIndex(OBJECTPTR Object, LONG Index, CSTRING * Group)</prototype>
       <input>
-        <param type="LONG" name="Index">The section index that you want to identify.</param>
-        <param type="CSTRING *" name="Section">Points to the section string that matches the index number.</param>
+        <param type="LONG" name="Index">The group index that you want to identify.</param>
+        <param type="CSTRING *" name="Group">Points to the group string that matches the index number.</param>
       </input>
       <description>
-<p>Use GetSectionFromIndex to convert a section index number to its matching name.</p>
+<p>Use GetGroupFromIndex to convert a group index number to its matching name.</p>
       </description>
       <result>
         <error code="NoData">There is no data loaded into the config object.</error>
         <error code="Okay">Operation successful.</error>
-        <error code="OutOfRange">The index number is out of range of the available sections.</error>
+        <error code="OutOfRange">The index number is out of range of the available groups.</error>
         <error code="Args">Invalid arguments passed to function.</error>
       </result>
     </method>
@@ -156,12 +138,12 @@ print('The Action class is located at ' .. str)
     <method>
       <name>Merge</name>
       <comment>Merges two config objects together.</comment>
-      <prototype>ERROR cfgMerge(OBJECTPTR Object, OBJECTID ConfigID)</prototype>
+      <prototype>ERROR cfgMerge(OBJECTPTR Object, OBJECTPTR Source)</prototype>
       <input>
-        <param type="OBJECTID" name="ConfigID">The ID of the config object to be merged.</param>
+        <param type="OBJECTPTR" name="Source">The ID of the config object to be merged.</param>
       </input>
       <description>
-<p>The Merge method is used to merge configuration data from one config object into the object that this method is called on.  You need to provide the unique object id of the config object providing the source data.  When performing the merge, existing data will be overwritten by the source in cases where there is a duplication of section and key lines.</p>
+<p>The Merge method is used to merge configuration data from one config object provided as a source, into the target object. Existing data in the target will be overwritten by the source in cases where there matching set of group keys.</p>
       </description>
       <result>
         <error code="NullArgs">Function call missing argument value(s)</error>
@@ -178,7 +160,7 @@ print('The Action class is located at ' .. str)
         <param type="CSTRING" name="Path">The location of the configuration file that you want to merge.</param>
       </input>
       <description>
-<p>The MergeFile method is used to pull configuration data from a file and merge it into the existing config object. You need to provide the location of the configuration file only.  When performing the merge, existing data will be overwritten by the source file in cases where there is a duplication of section and key lines.</p>
+<p>The MergeFile method is used to pull configuration data from a file and merge it into the target config object. The path to the configuration file is all that is required.  Existing data in the target will be overwritten by the source in cases where there matching set of group keys.</p>
       </description>
       <result>
         <error code="NullArgs">Function call missing argument value(s)</error>
@@ -188,55 +170,37 @@ print('The Action class is located at ' .. str)
     </method>
 
     <method>
-      <name>ReadFloat</name>
-      <comment>Reads keys in floating-point format.</comment>
-      <prototype>ERROR cfgReadFloat(OBJECTPTR Object, CSTRING Section, CSTRING Key, DOUBLE * Float)</prototype>
+      <name>ReadIValue</name>
+      <comment>Reads a key-value string (case insensitive lookup).</comment>
+      <prototype>ERROR cfgReadIValue(OBJECTPTR Object, CSTRING Group, CSTRING Key, CSTRING * Data)</prototype>
       <input>
-        <param type="CSTRING" name="Section">The name of the section that the integer will be retrieved from.</param>
-        <param type="CSTRING" name="Key">The specific key that contains the integer you want to retrieve.</param>
-        <param type="DOUBLE *" name="Float">This result parameter will be set to the floating point value read from the configuration data.</param>
+        <param type="CSTRING" name="Group">The name of a group to examine for a key.  If NULL, all groups are scanned.</param>
+        <param type="CSTRING" name="Key">The name of a key to retrieve (case insensitive).</param>
+        <param type="CSTRING *" name="Data">The key value will be stored in this parameter on returning.</param>
       </input>
       <description>
-<p>This method is identical to <method>ReadValue</method> but for converting the value to an integer before returning.  If the requested key cannot be found, a fail code will be returned and the Float result set to zero.  If the key is not convertible to a float then a success code will still be returned and the result will be zero.</p>
+<p>This function retrieves key values in their original string format.  On success, the resulting string remains valid only for as long as the client has exclusive access to the config object.  The pointer can also be invalidated if more information is written to the config object.  For this reason, consider copying the result if it will be used extensively.</p>
+<p>If the Group parameter is set to NULL, the scan routine will treat all of the config data as a one dimensional array. If the Key parameter is set to NULL then the first key in the requested group is returned.  If both parameters are NULL then the first known key value will be returned.</p>
       </description>
       <result>
         <error code="NullArgs">Function call missing argument value(s)</error>
-        <error code="Failed">The requested configuration entry could not be read.</error>
-        <error code="Okay">Operation successful.</error>
-      </result>
-    </method>
-
-    <method>
-      <name>ReadInt</name>
-      <comment>Reads keys in integer format.</comment>
-      <prototype>ERROR cfgReadInt(OBJECTPTR Object, CSTRING Section, CSTRING Key, LONG * Integer)</prototype>
-      <input>
-        <param type="CSTRING" name="Section">The name of the section that the integer will be retrieved from.</param>
-        <param type="CSTRING" name="Key">The specific key that contains the integer you want to retrieve.</param>
-        <param type="LONG *" name="Integer">This result argument will be set to the integer value read from the configuration data.</param>
-      </input>
-      <description>
-<p>This method is identical to <method>ReadValue</method> but for converting the value to an integer before returning.  If the requested key cannot be found, a fail code will be returned and the Integer result set to zero.  If the key is not convertible to an integer then a success code will still be returned and the result will be zero.</p>
-      </description>
-      <result>
-        <error code="NullArgs">Function call missing argument value(s)</error>
-        <error code="Failed">The requested configuration entry could not be read.</error>
+        <error code="Search">The requested configuration entry does not exist.</error>
         <error code="Okay">Operation successful.</error>
       </result>
     </method>
 
     <method>
       <name>ReadValue</name>
-      <comment>Reads one selected string from a configuration file.</comment>
-      <prototype>ERROR cfgReadValue(OBJECTPTR Object, CSTRING Section, CSTRING Key, CSTRING * Data)</prototype>
+      <comment>Reads a key-value string.</comment>
+      <prototype>ERROR cfgReadValue(OBJECTPTR Object, CSTRING Group, CSTRING Key, CSTRING * Data)</prototype>
       <input>
-        <param type="CSTRING" name="Section">The name of a section to examine for a key.  If NULL, all sections are scanned.</param>
-        <param type="CSTRING" name="Key">The name of a key to retrieve.</param>
+        <param type="CSTRING" name="Group">The name of a group to examine for a key.  If NULL, all groups are scanned.</param>
+        <param type="CSTRING" name="Key">The name of a key to retrieve (case sensitive).</param>
         <param type="CSTRING *" name="Data">The key value will be stored in this parameter on returning.</param>
       </input>
       <description>
-<p>This function retrieves key values in their original string format.  On success, the resulting string remains valid only for as long as the client has exclusive access to the config object.  The pointer can also be invalidated if more information is written to the config object.  For this reason, consider copying the Data string if it will be used extensively.</p>
-<p>If the Section parameter is set to NULL, the scan routine will treat all of the config data as a one dimensional array. If the Key parameter is set to NULL then the first key in the requested section is returned.  If both parameters are NULL then the first known key value will be returned.</p>
+<p>This function retrieves key values in their original string format.  On success, the resulting string remains valid only for as long as the client has exclusive access to the config object.  The pointer can also be invalidated if more information is written to the config object.  For this reason, consider copying the result if it will be used extensively.</p>
+<p>If the Group parameter is set to NULL, the scan routine will treat all of the config data as a one dimensional array. If the Key parameter is set to NULL then the first key in the requested group is returned.  If both parameters are NULL then the first known key value will be returned.</p>
       </description>
       <result>
         <error code="NullArgs">Function call missing argument value(s)</error>
@@ -247,22 +211,22 @@ print('The Action class is located at ' .. str)
 
     <method>
       <name>Set</name>
-      <comment>Sets keys in existing config sections (aborts if the section does not exist).</comment>
-      <prototype>ERROR cfgSet(OBJECTPTR Object, CSTRING Section, CSTRING Key, CSTRING Data)</prototype>
+      <comment>Sets keys in existing config groups (aborts if the group does not exist).</comment>
+      <prototype>ERROR cfgSet(OBJECTPTR Object, CSTRING Group, CSTRING Key, CSTRING Data)</prototype>
       <input>
-        <param type="CSTRING" name="Section">The name of the section.</param>
+        <param type="CSTRING" name="Group">The name of the group.  Wildcards are supported.</param>
         <param type="CSTRING" name="Key">The name of the key.</param>
-        <param type="CSTRING" name="Data">The data that will be added to the given section/key.</param>
+        <param type="CSTRING" name="Data">The data that will be added to the given group/key.</param>
       </input>
       <description>
-<p>This method is identical to <method>WriteValue</method> except it will abort if the name of the referred section does not exist in the config object.  The error code ERR_Search is returned if this is the case.  Please refer to <method>WriteValue</method> for further information on the behaviour of this function.</p>
+<p>This method is identical to <method>WriteValue</method> except it will abort if the name of the referred group does not exist in the config object.  The error code ERR_Search is returned if this is the case.  Please refer to <method>WriteValue</method> for further information on the behaviour of this function.</p>
       </description>
       <result>
         <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
         <error code="GetField">The Entries field could not be retrieved.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
         <error code="Okay">Operation successful.</error>
-        <error code="Search">The referred section does not exist.</error>
+        <error code="Search">The referred group does not exist.</error>
       </result>
     </method>
 
@@ -275,7 +239,7 @@ print('The Action class is located at ' .. str)
         <param type="LONG" name="Descending">Set to TRUE if a descending sort is required.</param>
       </input>
       <description>
-<p>The SortByKey method sorts a config object by section, using a common key for each section as the sort key.</p>
+<p>The SortByKey method sorts the groups of a config object by key values (the named key value should be present in every group).</p>
       </description>
       <result>
         <error code="NoData">No data is available for use.</error>
@@ -286,15 +250,15 @@ print('The Action class is located at ' .. str)
     <method>
       <name>WriteValue</name>
       <comment>Adds new entries to config objects.</comment>
-      <prototype>ERROR cfgWriteValue(OBJECTPTR Object, CSTRING Section, CSTRING Key, CSTRING Data)</prototype>
+      <prototype>ERROR cfgWriteValue(OBJECTPTR Object, CSTRING Group, CSTRING Key, CSTRING Data)</prototype>
       <input>
-        <param type="CSTRING" name="Section">The name of the section.</param>
+        <param type="CSTRING" name="Group">The name of the group.</param>
         <param type="CSTRING" name="Key">The name of the key.</param>
-        <param type="CSTRING" name="Data">The data that will be added to the given section/key.</param>
+        <param type="CSTRING" name="Data">The data that will be added to the given group/key.</param>
       </input>
       <description>
-<p>Use the WriteValue method to add or update information in a config object.  A Section name, Key name, and Data value are required.  If the Section and Key arguments match an existing entry in the config object, the data of that entry will be replaced with the new Data value.</p>
-<p>The Section string may refer to an index if the hash <code>#</code> character is used to precede a target index number.</p>
+<p>Use the WriteValue method to add or update information in a config object.  A Group name, Key name, and Data value are required.  If the Group and Key arguments match an existing entry in the config object, the data of that entry will be replaced with the new Data value.</p>
+<p>The Group string may refer to an index if the hash <code>#</code> character is used to precede a target index number.</p>
       </description>
       <result>
         <error code="AllocMemory">The additional memory required for the new entry could not be allocated.</error>
@@ -309,30 +273,44 @@ print('The Action class is located at ' .. str)
 
   <fields>
     <field>
-      <name>AmtEntries</name>
-      <comment>The total number of values loaded into the config object.</comment>
-      <access read="R">Read</access>
-      <type>INT</type>
-    </field>
-
-    <field>
-      <name>Entries</name>
-      <comment>References the raw data values.</comment>
+      <name>Data</name>
+      <comment>Reference to the raw data values.</comment>
       <access read="G">Get</access>
-      <type>struct ConfigEntry *</type>
+      <type>APTR</type>
       <description>
-<p>This field points to an array of @ConfigEntry keys. Each key represents a string of data parsed from the source configuration file.  Direct scanning of the list of keys is a viable alternative to using the <method>ReadValue</method> method.</p>
-<p>This field is not writeable.  New values should be set with the <method>WriteValue</method> method.</p>
+<p>This field points to C++ object that contains all key-values for the config object.  It is intended to be used only by system code that is included with the standard framework.</p>
       </description>
     </field>
 
     <field>
       <name>Flags</name>
-      <comment>Special flags may be set here.</comment>
+      <comment>Optional flags may be set here.</comment>
       <access read="R" write="W">Read/Write</access>
       <type lookup="CNF">INT</type>
       <description>
 <types lookup="CNF"/>
+      </description>
+    </field>
+
+    <field>
+      <name>GroupFilter</name>
+      <comment>Set this field to enable group filtering.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>STRING</type>
+      <description>
+<p>When dealing with large configuration files, filtering out unrelated data may be useful.  By setting the GroupFilter field, it is possible to filter out entire groups that don't match the criteria.</p>
+<p>Group filters are created using the format <code>[Group1], [Group2], [Group3], ...</code>.</p>
+<p>Here are some examples:</p>
+<list type="unsorted">
+<li>Program, Application, Game</li>
+<li>Apple, Banana</li>
+</list>
+<p>You can also reverse the filter so that only the groups matching your criteria are filtered out.  To do this, use the exclamation character, as in the following examples:</p>
+<list type="unsorted">
+<li>!Program, Application, Game</li>
+<li>!Apple, Banana</li>
+</list>
+<p>To create a filter based on key names, refer to the <field>KeyFilter</field> field.</p>
       </description>
     </field>
 
@@ -342,7 +320,7 @@ print('The Action class is located at ' .. str)
       <access read="G" write="S">Get/Set</access>
       <type>STRING</type>
       <description>
-<p>When dealing with large configuration files, filtering out unrelated data may be useful for speeding up operations on the config object.  By setting the KeyFilter field, you can filter out entire sections by setting criteria for each configuration entry.</p>
+<p>When dealing with large configuration files it may be useful to filter out groups of key-values that are not needed. The KeyFilter field allows simple filters to be defined that will perform this task for you.  It is recommended that it is set prior to parsing new data for best performance, but can be set or changed at any time to apply a new filter.</p>
 <p>Key filters are created in the format <code>[Key] = [Data1], [Data2], ...</code></p>
 <p>Here are some examples:</p>
 <list type="unsorted">
@@ -350,48 +328,33 @@ print('The Action class is located at ' .. str)
 <li>Path = documents:</li>
 <li>Name = Parasol</li>
 </list>
-<p>You can also 'reverse' the filter so that only the keys matching your specifications are filtered out.  To do this, use the exclamation character, as in the following examples:</p>
+<p>You can also 'reverse' the filter so that only the keys matching your specifications are filtered out.  To do this use the exclamation character as shown in these examples:</p>
 <list type="unsorted">
 <li>!Group = Sun, Light</li>
 <li>!Path = documents:</li>
 <li>!Name = Parasol</li>
 </list>
-<p>To create a filter based on section names, refer to the <field>SectionFilter</field> field.</p>
+<p>To create a filter based on group names, refer to the <field>GroupFilter</field> field.</p>
       </description>
     </field>
 
     <field>
       <name>Path</name>
       <comment>Set this field to the location of the source configuration file.</comment>
-      <access read="G" write="S">Get/Set</access>
+      <access read="R" write="S">Read/Set</access>
       <type>STRING</type>
     </field>
 
     <field>
-      <name>SectionFilter</name>
-      <comment>Set this field to enable section filtering.</comment>
-      <access read="G" write="S">Get/Set</access>
-      <type>STRING</type>
-      <description>
-<p>When dealing with large configuration files, filtering out unrelated data may be useful.  By setting the SectionFilter field, it is possible to filter out entire sections that don't match the criteria.</p>
-<p>Section filters are created using the format <code>[Section1], [Section2], [Section3], ...</code>.</p>
-<p>Here are some examples:</p>
-<list type="unsorted">
-<li>Program, Application, Game</li>
-<li>Apple, Banana</li>
-</list>
-<p>You can also reverse the filter so that only the sections matching your criteria are filtered out.  To do this, use the exclamation character, as in the following examples:</p>
-<list type="unsorted">
-<li>!Program, Application, Game</li>
-<li>!Apple, Banana</li>
-</list>
-<p>If you need to create a filter based on key names, refer to the <field>KeyFilter</field> field.</p>
-      </description>
+      <name>TotalGroups</name>
+      <comment>Returns the total number of groups in a config object.</comment>
+      <access read="G">Get</access>
+      <type>INT</type>
     </field>
 
     <field>
-      <name>TotalSections</name>
-      <comment>Returns the total number of sections in a config object.</comment>
+      <name>TotalKeys</name>
+      <comment>The total number of key values loaded into the config object.</comment>
       <access read="G">Get</access>
       <type>INT</type>
     </field>
@@ -426,9 +389,8 @@ print('The Action class is located at ' .. str)
 
     <constants lookup="CNF" comment="Flags for the Config class.">
       <const name="STRIP_QUOTES">Removes quotes from key values that are quote-encapsulated.</const>
-      <const name="LOCK_RECORDS">Locks existing keys so that they can't be overwritten.  It will still be possible to add new keys to the config object.</const>
+      <const name="OPTIONAL_FILES">Files are optional (do not fail if a requested file does not exist).</const>
       <const name="NEW">On initialisation, do not load any data from the referenced configuration file.</const>
-      <const name="FILE_EXISTS">Setting this flag will force the config class to fail if the source file defined in Path does not exist.</const>
       <const name="AUTO_SAVE">When the configuration object is freed, automatically save the configuration data back to the original file source.</const>
     </constants>
 
@@ -740,7 +702,7 @@ print('The Action class is located at ' .. str)
     </constants>
 
     <constants lookup="IDF" comment="IdentifyFile() values">
-      <const name="SECTION">Return the name of the Config section that supports the file association, rather than an executable command.</const>
+      <const name="SECTION">Return the name of the Config group that supports the file association, rather than an executable command.</const>
       <const name="IGNORE_HOST">Ignore the host platform's file assocations.</const>
       <const name="HOST">Query the host platform's file associations only.</const>
     </constants>
@@ -906,6 +868,17 @@ print('The Action class is located at ' .. str)
       <field name="ClassID" type="CLASSID">The class ID of the referenced object.</field>
     </struct>
 
+    <struct name="Function" comment="Function list array structure">
+      <field name="Address" type="APTR">Pointer to the function entry point</field>
+      <field name="Name" type="CSTRING">Name of the function</field>
+      <field name="Args" type="const struct FunctionField *">A list of parameters accepted by the function</field>
+    </struct>
+
+    <struct name="MemoryLocks" comment="A supplement structure for ListTasks.">
+      <field name="MemoryID" type="MEMORYID">Reference to a memory ID.</field>
+      <field name="Locks" type="WORD">The total number of locks on the memory block.</field>
+    </struct>
+
     <struct name="Field" comment="Used to describe the public fields of a class.">
       <field name="Arg" type="MAXINT">An option to complement the field type.  Can be a pointer or an integer value</field>
       <field name="GetValue" type="FUNCTION *" prototype="ERROR (*GetValue)(APTR, APTR)">A virtual function that will retrieve the value for this field.</field>
@@ -916,17 +889,6 @@ print('The Action class is located at ' .. str)
       <field name="Offset" type="UWORD">Field offset within the object</field>
       <field name="Index" type="UWORD">Field array index</field>
       <field name="Flags" type="ULONG">Special flags that describe the field</field>
-    </struct>
-
-    <struct name="Function" comment="Function list array structure">
-      <field name="Address" type="APTR">Pointer to the function entry point</field>
-      <field name="Name" type="CSTRING">Name of the function</field>
-      <field name="Args" type="const struct FunctionField *">A list of parameters accepted by the function</field>
-    </struct>
-
-    <struct name="MemoryLocks" comment="A supplement structure for ListTasks.">
-      <field name="MemoryID" type="MEMORYID">Reference to a memory ID.</field>
-      <field name="Locks" type="WORD">The total number of locks on the memory block.</field>
     </struct>
 
     <struct name="MemInfo" typeName="MEMINFO">

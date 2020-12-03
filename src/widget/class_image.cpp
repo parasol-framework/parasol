@@ -934,7 +934,7 @@ static ERROR load_picture(objImage *Self)
          // result (remember, dithering causes loss of image information).
 
          picture->Flags |= PCF_FORCE_ALPHA_32|PCF_NO_PALETTE|PCF_LAZY;
-         SetString(picture, FID_Location, Self->Path);
+         SetString(picture, FID_Path, Self->Path);
          picture->DisplayWidth = cwidth;   // Preset display sizes are used if the source is SVG.
          picture->DisplayHeight = cheight;
 

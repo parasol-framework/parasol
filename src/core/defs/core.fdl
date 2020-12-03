@@ -250,7 +250,7 @@ module({ name="Core", copyright="Paul Manias 1996-2020" }, function()
     "ALL_USERS: Apply the command link to all users for that file type.  This will cause an error if sufficient privileges are not available to the logged-in user.")
 
   flags("IDF", { comment="IdentifyFile() values" },
-    "SECTION: Return the name of the Config section that supports the file association, rather than an executable command.",
+    "SECTION: Return the name of the Config group that supports the file association, rather than an executable command.",
     "HOST: Query the host platform's file associations only.",
     "IGNORE_HOST: Ignore the host platform's file assocations.")
 
@@ -457,8 +457,7 @@ module({ name="Core", copyright="Paul Manias 1996-2020" }, function()
   flags("CNF", { comment="Flags for the Config class." },
      "STRIP_QUOTES: Removes quotes from key values that are quote-encapsulated.",
      "AUTO_SAVE: When the configuration object is freed, automatically save the configuration data back to the original file source.",
-     "LOCK_RECORDS: Locks existing keys so that they can't be overwritten.  It will still be possible to add new keys to the config object.",
-     "FILE_EXISTS: Setting this flag will force the config class to fail if the source file defined in Path does not exist.",
+     "OPTIONAL_FILES: Files are optional (do not fail if a requested file does not exist).",
      "NEW: On initialisation, do not load any data from the referenced configuration file.")
 
   flags("KSF", { comment="Flags for VarNew()" },
@@ -808,15 +807,6 @@ module({ name="Core", copyright="Paul Manias 1996-2020" }, function()
     oid  LockID        # Reference to the task that currently has a lock on the block.
     oid  TaskID        # The Task that owns the memory block
     int  Handle        # Native system handle (e.g. the shmid in Linux)
-  ]])
-
-  struct("ConfigEntry", { restrict="c", comment="Internal structure for the Config class." }, [[
-    str Section        # The name of the section.
-    str Key            # The name of the key.
-    str Data           # The string data for this configuration entry.
-    int SectionOffset  # Internal
-    int KeyOffset      # Internal
-    int DataOffset     # Internal
   ]])
 
   struct("ActionEntry", { restrict="c" }, [[ fptr(error obj ptr) PerformAction # Internal ]])
@@ -1214,6 +1204,12 @@ INLINE OBJECTID CurrentTaskID() { return ((OBJECTPTR)CurrentTask())->UniqueID; }
 INLINE APTR SetResourcePtr(LONG Res, APTR Value) { return (APTR)(MAXINT)(CoreBase->_SetResource(Res, (MAXINT)Value)); }
 INLINE OBJECTID GetOwner(APTR Object) { return ((OBJECTPTR)Object)->OwnerID; }
 INLINE OBJECTID GetUniqueID(APTR Object) { return ((OBJECTPTR)Object)->UniqueID; }
+
+#ifdef __cplusplus
+typedef std::map<std::string, std::string> ConfigKeys;
+typedef std::pair<std::string, ConfigKeys> ConfigGroup;
+typedef std::vector<ConfigGroup> ConfigGroups;
+#endif
   ]])
 
   methods("File", "Fl", {
@@ -1262,73 +1258,58 @@ INLINE OBJECTID GetUniqueID(APTR Object) { return ((OBJECTPTR)Object)->UniqueID;
 
   methods("config", "Cfg", {
     { id=1,  name="ReadValue" },
-    { id=2,  name="ReadInt" },
+    { id=2,  name="ReadIValue" },
     { id=3,  name="WriteValue" },
-    { id=4,  name="DeleteIndex" },
-    { id=5,  name="DeleteSection" },
-    { id=6,  name="GetSectionFromIndex" },
+    { id=4,  name="DeleteKey" },
+    { id=5,  name="DeleteGroup" },
+    { id=6,  name="GetGroupFromIndex" },
     { id=7,  name="SortByKey" },
-    { id=8,  name="ReadFloat" },
     { id=9,  name="MergeFile" },
     { id=10, name="Merge" },
     { id=11, name="Set" }
   })
 
   class("Config", { src="classes/class_config.cpp", output="classes/class_config_def.c" }, [[
-    struct(*ConfigEntry) Entries # Pointer to the array of configuration entries
-    str Path            # The location pointer
-    str KeyFilter       # Enables key filtering, removing any unwanted keys on load.
-    str SectionFilter   # Enables section filtering, removing any unwanted sections on load.
-    int AmtEntries      # Amount of configuration entries
-    int(CNF) Flags      # Not currently in use
-    int TotalSections   # The total number of loaded Config sections.
+    str Path          # The location pointer
+    str KeyFilter     # Enables key filtering, removing any unwanted keys on load.
+    str GroupFilter   # Enables group filtering, removing any unwanted groups on load.
+    int(CNF) Flags    # Not currently in use
   ]],
   [[
-   MEMORYID StringsMID;
-   MEMORYID EntriesMID;           // The configuration entries memory ID
-   MEMORYID PathMID;              // The location memory ID
-   MEMORYID KeyFilterMID;
-   MEMORYID SectionFilterMID;
-   STRING   Strings;
-   LONG     StringsPos;          // Insertion point / end of the strings data
-   LONG     StringsSize;         // Number of bytes allocated for the strings data
-   LONG     MaxEntries;          // Number of bytes allocated for the entries data
-   ULONG    CRC;                 // CRC32, for determining if config data has been altered
+   ConfigGroups *Groups;
+   ULONG    CRC;   // CRC32, for determining if config data has been altered
   ]])
 
   c_insert([[
-INLINE ERROR cfgWriteInt(APTR Self, CSTRING Section, CSTRING Key, LONG Integer)
+INLINE ERROR cfgWriteInt(APTR Self, CSTRING Group, CSTRING Key, LONG Integer)
 {
-   char buffer[32];
    if (!Self) return ERR_NullArgs;
-   STRING str = buffer;
-   LONG digits = 0;
-   if (Integer < 0) {
-      *str++ = '-';
-      Integer = -Integer;
-      digits++;
-   }
-   if (Integer) {
-      LONG count = 1000000000;
-      while (Integer < count) count = count/10;
-      while (count > 0) {
-         LONG build = 0;
-         while (Integer >= count) {
-            Integer -= count;
-            build++;
-         }
-         *str++ = (char)(build + '0');
-         count = count/10;
-         digits++;
-      }
-   }
-   else {
-      *str++ = '0';
-      digits++;
-   }
-   *str = 0;
-   struct cfgWriteValue write = { Section, Key, buffer };
+   char buffer[32];
+   StrFormat(buffer, sizeof(buffer), "%d", Integer);
+   struct cfgWriteValue write = { Group, Key, buffer };
    return Action(MT_CfgWriteValue, (OBJECTPTR)Self, &write);
+}
+
+INLINE ERROR cfgReadFloat(APTR Self, CSTRING Group, CSTRING Key, DOUBLE *Value)
+{
+   ERROR error;
+   struct cfgReadValue read = { .Group = Group, .Key = Key };
+   if (!(error = Action(MT_CfgReadValue, (OBJECTPTR)Self, &read))) {
+      *Value = StrToFloat(read.Data);
+      return ERR_Okay;
+   }
+   else { *Value = 0; return error; }
+}
+
+INLINE ERROR cfgReadInt(APTR Self, CSTRING Group, CSTRING Key, LONG *Value)
+{
+   ERROR error;
+   struct cfgReadValue read = { .Group = Group, .Key = Key };
+   if (!(error = Action(MT_CfgReadValue, (OBJECTPTR)Self, &read))) {
+      *Value = StrToInt(read.Data);
+      return ERR_Okay;
+   }
+   else { *Value = 0; return error; }
 }
   ]])
 
@@ -2272,7 +2253,7 @@ struct evHotplug {
       LONG DeviceID;
    };
    char  ID[20];         // Typically the PCI bus ID or USB bus ID, serial number or unique identifier
-   char  Section[32];    // Section name in the config file
+   char  Group[32];    // Group name in the config file
    char  Class[32];      // Class identifier (USB)
    union {
       char Product[40]; // Name of product or the hardware device

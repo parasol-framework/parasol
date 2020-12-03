@@ -2017,30 +2017,25 @@ static ERROR GET_Icon(objFile *Self, CSTRING *Value)
       char icon[40] = "icons:folders/folder";
 
       if (!AccessPrivateObject((OBJECTPTR)glVolumes, 8000)) {
-         ConfigEntry *entries;
-         if ((entries = glVolumes->Entries)) {
-            char volume[40];
-            if ((size_t)i >= sizeof(volume)) i = sizeof(volume) - 1;
-            volume[CharCopy(Self->Path, volume, i)] = 0;
+         ConfigGroups *groups;
+         if (!GetPointer(glVolumes, FID_Data, &groups)) {
+            if (groups->size() > 0) {
+               char volume[40];
+               if ((size_t)i >= sizeof(volume)) i = sizeof(volume) - 1;
+               volume[CharCopy(Self->Path, volume, i)] = 0;
 
-            for (LONG i=0; i < glVolumes->AmtEntries; i++) {
-               if ((!StrMatch("Name", entries[i].Key)) and (!StrMatch(volume, entries[i].Data))) {
-                  while ((i > 0) and (!StrMatch(entries[i].Section, entries[i-1].Section))) i--;
-
-                  STRING section = entries[i].Section;
-                  for (; i < glVolumes->AmtEntries; i++) {
-                     if (StrMatch(entries[i].Section, section)) break; // Check if section has ended
-                     if (!StrMatch("Icon", entries[i].Key)) {
+               for (auto& [group, keys] : groups[0]) {
+                  if (!StrMatch(volume, keys["Name"].c_str())) {
+                     if (keys.contains("Icon")) {
                         StrCopy("icons:", icon, sizeof(icon));
-                        StrCopy(entries[i].Data, icon+sizeof("icons:")-1, sizeof(icon)-(sizeof("icons:")-1));
-                        goto volume_found;
+                        StrCopy(keys["Icon"].c_str(), icon+6, sizeof(icon)-6-1);
+                        break;
                      }
                   }
                }
             }
-volume_found:
-            ReleasePrivateObject((OBJECTPTR)glVolumes);
          }
+         ReleasePrivateObject((OBJECTPTR)glVolumes);
       }
 
       *Value = Self->prvIcon = StrClone(icon);
@@ -2085,22 +2080,23 @@ volume_found:
       }
    }
 
-   ConfigEntry *entries;
+   ConfigGroups *groups;
    char icon[80] = "";
-   if ((entries = glDatatypes->Entries)) {
+   if (!GetPointer(glDatatypes, FID_Data, &groups)) {
       // Scan file extensions first, because this saves us from having to open and read the file content.
 
       LONG k;
       for (k=i; (k > 0) and (Self->Path[k-1] != ':') and (Self->Path[k-1] != '/') and (Self->Path[k-1] != '\\'); k--);
 
       if (Self->Path[k]) {
-         for (LONG j=0; j < glDatatypes->AmtEntries; j++) {
-            if (StrMatch(entries[j].Key, "Match") != ERR_Okay) continue;
-
-            if (!StrCompare(entries[j].Data, Self->Path+k, 0, STR_WILDCARD)) {
-               CSTRING str;
-               if (!cfgReadValue(glDatatypes, entries[j].Section, "Icon", &str)) StrCopy(str, icon, sizeof(icon));
-               break;
+         for (auto& [group, keys] : groups[0]) {
+            if (keys.contains("Match")) {
+               if (!StrCompare(keys["Match"].c_str(), Self->Path+k, 0, STR_WILDCARD)) {
+                  if (keys.contains("Icon")) {
+                     StrCopy(keys["Icon"].c_str(), icon, sizeof(icon));
+                     break;
+                  }
+               }
             }
          }
       }
@@ -2135,15 +2131,14 @@ volume_found:
          // Scan class names
 
          if ((classname[0]) or (mastername[0])) {
-            for (LONG j=0; j < glDatatypes->AmtEntries; j++) {
-               if (!StrMatch(entries[j].Key, "Class")) {
-                  CSTRING str;
-                  if (!StrMatch(entries[j].Data, classname)) {
-                     if (!cfgReadValue(glDatatypes, entries[j].Section, "Icon", &str)) StrCopy(str, icon, sizeof(icon));
+            for (auto& [group, keys] : groups[0]) {
+               if (keys.contains("Class")) {
+                  if (!StrMatch(keys["Class"].c_str(), classname)) {
+                     if (keys.contains("Icon")) StrCopy(keys["Icon"].c_str(), icon, sizeof(icon));
                      break;
                   }
-                  else if (!StrMatch(entries[j].Data, mastername)) {
-                     if (!cfgReadValue(glDatatypes, entries[j].Section, "Icon", &str)) StrCopy(str, icon, sizeof(icon));
+                  else if (!StrMatch(keys["Class"].c_str(), mastername)) {
+                     if (keys.contains("Icon")) StrCopy(keys["Icon"].c_str(), icon, sizeof(icon));
                      // Don't break - keep searching in case there is a sub-class reference
                   }
                }
@@ -2853,18 +2848,18 @@ static const FieldArray FileFields[] = {
    { "Target",   FDF_OBJECTID|FDF_RW,  ID_SURFACE, NULL, NULL },
    { "Buffer",   FDF_ARRAY|FDF_BYTE|FDF_R,  0, (APTR)GET_Buffer, NULL },
    // Virtual fields
-   { "Date",        FDF_POINTER|FDF_STRUCT|FDF_RW, (MAXINT)"DateTime", (APTR)GET_Date, (APTR)SET_Date },
-   { "Created",     FDF_POINTER|FDF_STRUCT|FDF_RW, (MAXINT)"DateTime", (APTR)GET_Created, NULL },
-   { "Handle",      FDF_LARGE|FDF_R,   0, (APTR)GET_Handle, NULL },
-   { "Icon",        FDF_STRING|FDF_R,  0, (APTR)GET_Icon, NULL },
-   { "Path",        FDF_STRING|FDF_RI, 0, (APTR)GET_Path, (APTR)SET_Path },
-   { "Permissions", FDF_LONGFLAGS|FDF_RW, (MAXINT)&PermissionFlags, (APTR)GET_Permissions, (APTR)SET_Permissions },
-   { "ResolvedPath", FDF_STRING|FDF_R, 0, (APTR)GET_ResolvedPath, NULL },
-   { "Size",        FDF_LARGE|FDF_RW,  0, (APTR)GET_Size, (APTR)SET_Size },
-   { "TimeStamp",   FDF_LARGE|FDF_R,   0, (APTR)GET_TimeStamp, NULL },
-   { "Link",        FDF_STRING|FDF_RW, 0, (APTR)GET_Link, (APTR)SET_Link },
-   { "User",        FDF_LONG|FDF_RW,   0, (APTR)GET_User, (APTR)SET_User },
-   { "Group",       FDF_LONG|FDF_RW,   0, (APTR)GET_Group, (APTR)SET_Group },
+   { "Date",         FDF_POINTER|FDF_STRUCT|FDF_RW, (MAXINT)"DateTime", (APTR)GET_Date, (APTR)SET_Date },
+   { "Created",      FDF_POINTER|FDF_STRUCT|FDF_RW, (MAXINT)"DateTime", (APTR)GET_Created, NULL },
+   { "Handle",       FDF_LARGE|FDF_R,   0, (APTR)GET_Handle, NULL },
+   { "Icon",         FDF_STRING|FDF_R,  0, (APTR)GET_Icon, NULL },
+   { "Path",         FDF_STRING|FDF_RI, 0, (APTR)GET_Path, (APTR)SET_Path },
+   { "Permissions",  FDF_LONGFLAGS|FDF_RW, (MAXINT)&PermissionFlags, (APTR)GET_Permissions, (APTR)SET_Permissions },
+   { "ResolvedPath", FDF_STRING|FDF_R,  0, (APTR)GET_ResolvedPath, NULL },
+   { "Size",         FDF_LARGE|FDF_RW,  0, (APTR)GET_Size, (APTR)SET_Size },
+   { "TimeStamp",    FDF_LARGE|FDF_R,   0, (APTR)GET_TimeStamp, NULL },
+   { "Link",         FDF_STRING|FDF_RW, 0, (APTR)GET_Link, (APTR)SET_Link },
+   { "User",         FDF_LONG|FDF_RW,   0, (APTR)GET_User, (APTR)SET_User },
+   { "Group",        FDF_LONG|FDF_RW,   0, (APTR)GET_Group, (APTR)SET_Group },
    // Synonyms
    { "Src",         FDF_STRING|FDF_SYNONYM|FDF_RI, 0, (APTR)GET_Path, (APTR)SET_Path },
    { "Location",    FDF_STRING|FDF_SYNONYM|FDF_RI, 0, (APTR)GET_Path, (APTR)SET_Path },

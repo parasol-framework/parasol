@@ -1207,9 +1207,8 @@ struct ClipRectangle {
 
 #define CNF_STRIP_QUOTES 0x00000001
 #define CNF_AUTO_SAVE 0x00000002
-#define CNF_LOCK_RECORDS 0x00000004
-#define CNF_FILE_EXISTS 0x00000008
-#define CNF_NEW 0x00000010
+#define CNF_OPTIONAL_FILES 0x00000004
+#define CNF_NEW 0x00000008
 
 // Flags for VarNew()
 
@@ -1554,15 +1553,6 @@ typedef struct MemInfo {
    OBJECTID TaskID;      // The Task that owns the memory block
    LONG     Handle;      // Native system handle (e.g. the shmid in Linux)
 } MEMINFO;
-
-struct ConfigEntry {
-   STRING Section;        // The name of the section.
-   STRING Key;            // The name of the key.
-   STRING Data;           // The string data for this configuration entry.
-   LONG   SectionOffset;  // Internal
-   LONG   KeyOffset;      // Internal
-   LONG   DataOffset;     // Internal
-};
 
 struct ActionEntry {
    ERROR (*PerformAction)(OBJECTPTR, APTR);     // Internal
@@ -2159,6 +2149,12 @@ INLINE OBJECTID CurrentTaskID() { return ((OBJECTPTR)CurrentTask())->UniqueID; }
 INLINE APTR SetResourcePtr(LONG Res, APTR Value) { return (APTR)(MAXINT)(CoreBase->_SetResource(Res, (MAXINT)Value)); }
 INLINE OBJECTID GetOwner(APTR Object) { return ((OBJECTPTR)Object)->OwnerID; }
 INLINE OBJECTID GetUniqueID(APTR Object) { return ((OBJECTPTR)Object)->UniqueID; }
+
+#ifdef __cplusplus
+typedef std::map<std::string, std::string> ConfigKeys;
+typedef std::pair<std::string, ConfigKeys> ConfigGroup;
+typedef std::vector<ConfigGroup> ConfigGroups;
+#endif
   
 // File class definition
 
@@ -2268,25 +2264,14 @@ INLINE ERROR flWatch(APTR Ob, FUNCTION * Callback, LARGE Custom, LONG Flags) {
 
 typedef struct rkConfig {
    OBJECT_HEADER
-   struct ConfigEntry * Entries;    // Pointer to the array of configuration entries
-   STRING Path;                     // The location pointer
-   STRING KeyFilter;                // Enables key filtering, removing any unwanted keys on load.
-   STRING SectionFilter;            // Enables section filtering, removing any unwanted sections on load.
-   LONG   AmtEntries;               // Amount of configuration entries
-   LONG   Flags;                    // Not currently in use
-   LONG   TotalSections;            // The total number of loaded Config sections.
+   STRING Path;         // The location pointer
+   STRING KeyFilter;    // Enables key filtering, removing any unwanted keys on load.
+   STRING GroupFilter;  // Enables group filtering, removing any unwanted groups on load.
+   LONG   Flags;        // Not currently in use
 
 #ifdef PRV_CONFIG
-   MEMORYID StringsMID;
-   MEMORYID EntriesMID;           // The configuration entries memory ID
-   MEMORYID PathMID;              // The location memory ID
-   MEMORYID KeyFilterMID;
-   MEMORYID SectionFilterMID;
-   STRING   Strings;
-   LONG     StringsPos;          // Insertion point / end of the strings data
-   LONG     StringsSize;         // Number of bytes allocated for the strings data
-   LONG     MaxEntries;          // Number of bytes allocated for the entries data
-   ULONG    CRC;                 // CRC32, for determining if config data has been altered
+   ConfigGroups *Groups;
+   ULONG    CRC;   // CRC32, for determining if config data has been altered
   
 #endif
 } objConfig;
@@ -2294,62 +2279,60 @@ typedef struct rkConfig {
 // Config methods
 
 #define MT_CfgReadValue -1
-#define MT_CfgReadInt -2
+#define MT_CfgReadIValue -2
 #define MT_CfgWriteValue -3
-#define MT_CfgDeleteIndex -4
-#define MT_CfgDeleteSection -5
-#define MT_CfgGetSectionFromIndex -6
+#define MT_CfgDeleteKey -4
+#define MT_CfgDeleteGroup -5
+#define MT_CfgGetGroupFromIndex -6
 #define MT_CfgSortByKey -7
-#define MT_CfgReadFloat -8
 #define MT_CfgMergeFile -9
 #define MT_CfgMerge -10
 #define MT_CfgSet -11
 
-struct cfgReadValue { CSTRING Section; CSTRING Key; CSTRING Data;  };
-struct cfgReadInt { CSTRING Section; CSTRING Key; LONG Integer;  };
-struct cfgWriteValue { CSTRING Section; CSTRING Key; CSTRING Data;  };
-struct cfgDeleteIndex { LONG Index;  };
-struct cfgDeleteSection { CSTRING Section;  };
-struct cfgGetSectionFromIndex { LONG Index; CSTRING Section;  };
+struct cfgReadValue { CSTRING Group; CSTRING Key; CSTRING Data;  };
+struct cfgReadIValue { CSTRING Group; CSTRING Key; CSTRING Data;  };
+struct cfgWriteValue { CSTRING Group; CSTRING Key; CSTRING Data;  };
+struct cfgDeleteKey { CSTRING Group; CSTRING Key;  };
+struct cfgDeleteGroup { CSTRING Group;  };
+struct cfgGetGroupFromIndex { LONG Index; CSTRING Group;  };
 struct cfgSortByKey { CSTRING Key; LONG Descending;  };
-struct cfgReadFloat { CSTRING Section; CSTRING Key; DOUBLE Float;  };
 struct cfgMergeFile { CSTRING Path;  };
-struct cfgMerge { OBJECTID ConfigID;  };
-struct cfgSet { CSTRING Section; CSTRING Key; CSTRING Data;  };
+struct cfgMerge { OBJECTPTR Source;  };
+struct cfgSet { CSTRING Group; CSTRING Key; CSTRING Data;  };
 
-INLINE ERROR cfgReadValue(APTR Ob, CSTRING Section, CSTRING Key, CSTRING * Data) {
-   struct cfgReadValue args = { Section, Key, 0 };
+INLINE ERROR cfgReadValue(APTR Ob, CSTRING Group, CSTRING Key, CSTRING * Data) {
+   struct cfgReadValue args = { Group, Key, 0 };
    ERROR error = Action(MT_CfgReadValue, (OBJECTPTR)Ob, &args);
    if (Data) *Data = args.Data;
    return(error);
 }
 
-INLINE ERROR cfgReadInt(APTR Ob, CSTRING Section, CSTRING Key, LONG * Integer) {
-   struct cfgReadInt args = { Section, Key, 0 };
-   ERROR error = Action(MT_CfgReadInt, (OBJECTPTR)Ob, &args);
-   if (Integer) *Integer = args.Integer;
+INLINE ERROR cfgReadIValue(APTR Ob, CSTRING Group, CSTRING Key, CSTRING * Data) {
+   struct cfgReadIValue args = { Group, Key, 0 };
+   ERROR error = Action(MT_CfgReadIValue, (OBJECTPTR)Ob, &args);
+   if (Data) *Data = args.Data;
    return(error);
 }
 
-INLINE ERROR cfgWriteValue(APTR Ob, CSTRING Section, CSTRING Key, CSTRING Data) {
-   struct cfgWriteValue args = { Section, Key, Data };
+INLINE ERROR cfgWriteValue(APTR Ob, CSTRING Group, CSTRING Key, CSTRING Data) {
+   struct cfgWriteValue args = { Group, Key, Data };
    return(Action(MT_CfgWriteValue, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR cfgDeleteIndex(APTR Ob, LONG Index) {
-   struct cfgDeleteIndex args = { Index };
-   return(Action(MT_CfgDeleteIndex, (OBJECTPTR)Ob, &args));
+INLINE ERROR cfgDeleteKey(APTR Ob, CSTRING Group, CSTRING Key) {
+   struct cfgDeleteKey args = { Group, Key };
+   return(Action(MT_CfgDeleteKey, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR cfgDeleteSection(APTR Ob, CSTRING Section) {
-   struct cfgDeleteSection args = { Section };
-   return(Action(MT_CfgDeleteSection, (OBJECTPTR)Ob, &args));
+INLINE ERROR cfgDeleteGroup(APTR Ob, CSTRING Group) {
+   struct cfgDeleteGroup args = { Group };
+   return(Action(MT_CfgDeleteGroup, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR cfgGetSectionFromIndex(APTR Ob, LONG Index, CSTRING * Section) {
-   struct cfgGetSectionFromIndex args = { Index, 0 };
-   ERROR error = Action(MT_CfgGetSectionFromIndex, (OBJECTPTR)Ob, &args);
-   if (Section) *Section = args.Section;
+INLINE ERROR cfgGetGroupFromIndex(APTR Ob, LONG Index, CSTRING * Group) {
+   struct cfgGetGroupFromIndex args = { Index, 0 };
+   ERROR error = Action(MT_CfgGetGroupFromIndex, (OBJECTPTR)Ob, &args);
+   if (Group) *Group = args.Group;
    return(error);
 }
 
@@ -2358,61 +2341,51 @@ INLINE ERROR cfgSortByKey(APTR Ob, CSTRING Key, LONG Descending) {
    return(Action(MT_CfgSortByKey, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR cfgReadFloat(APTR Ob, CSTRING Section, CSTRING Key, DOUBLE * Float) {
-   struct cfgReadFloat args = { Section, Key, 0 };
-   ERROR error = Action(MT_CfgReadFloat, (OBJECTPTR)Ob, &args);
-   if (Float) *Float = args.Float;
-   return(error);
-}
-
 INLINE ERROR cfgMergeFile(APTR Ob, CSTRING Path) {
    struct cfgMergeFile args = { Path };
    return(Action(MT_CfgMergeFile, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR cfgMerge(APTR Ob, OBJECTID ConfigID) {
-   struct cfgMerge args = { ConfigID };
+INLINE ERROR cfgMerge(APTR Ob, OBJECTPTR Source) {
+   struct cfgMerge args = { Source };
    return(Action(MT_CfgMerge, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR cfgSet(APTR Ob, CSTRING Section, CSTRING Key, CSTRING Data) {
-   struct cfgSet args = { Section, Key, Data };
+INLINE ERROR cfgSet(APTR Ob, CSTRING Group, CSTRING Key, CSTRING Data) {
+   struct cfgSet args = { Group, Key, Data };
    return(Action(MT_CfgSet, (OBJECTPTR)Ob, &args));
 }
 
 
-INLINE ERROR cfgWriteInt(APTR Self, CSTRING Section, CSTRING Key, LONG Integer)
+INLINE ERROR cfgWriteInt(APTR Self, CSTRING Group, CSTRING Key, LONG Integer)
 {
-   char buffer[32];
    if (!Self) return ERR_NullArgs;
-   STRING str = buffer;
-   LONG digits = 0;
-   if (Integer < 0) {
-      *str++ = '-';
-      Integer = -Integer;
-      digits++;
-   }
-   if (Integer) {
-      LONG count = 1000000000;
-      while (Integer < count) count = count/10;
-      while (count > 0) {
-         LONG build = 0;
-         while (Integer >= count) {
-            Integer -= count;
-            build++;
-         }
-         *str++ = (char)(build + '0');
-         count = count/10;
-         digits++;
-      }
-   }
-   else {
-      *str++ = '0';
-      digits++;
-   }
-   *str = 0;
-   struct cfgWriteValue write = { Section, Key, buffer };
+   char buffer[32];
+   StrFormat(buffer, sizeof(buffer), "%d", Integer);
+   struct cfgWriteValue write = { Group, Key, buffer };
    return Action(MT_CfgWriteValue, (OBJECTPTR)Self, &write);
+}
+
+INLINE ERROR cfgReadFloat(APTR Self, CSTRING Group, CSTRING Key, DOUBLE *Value)
+{
+   ERROR error;
+   struct cfgReadValue read = { .Group = Group, .Key = Key };
+   if (!(error = Action(MT_CfgReadValue, (OBJECTPTR)Self, &read))) {
+      *Value = StrToFloat(read.Data);
+      return ERR_Okay;
+   }
+   else { *Value = 0; return error; }
+}
+
+INLINE ERROR cfgReadInt(APTR Self, CSTRING Group, CSTRING Key, LONG *Value)
+{
+   ERROR error;
+   struct cfgReadValue read = { .Group = Group, .Key = Key };
+   if (!(error = Action(MT_CfgReadValue, (OBJECTPTR)Self, &read))) {
+      *Value = StrToInt(read.Data);
+      return ERR_Okay;
+   }
+   else { *Value = 0; return error; }
 }
   
 // Script class definition
@@ -3581,7 +3554,7 @@ struct evHotplug {
       LONG DeviceID;
    };
    char  ID[20];         // Typically the PCI bus ID or USB bus ID, serial number or unique identifier
-   char  Section[32];    // Section name in the config file
+   char  Group[32];    // Group name in the config file
    char  Class[32];      // Class identifier (USB)
    union {
       char Product[40]; // Name of product or the hardware device

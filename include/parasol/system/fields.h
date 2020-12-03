@@ -838,7 +838,7 @@
 #define FID_TotalSections 0x27bdd091LL
 #define FID_Entries 0x6b84747fLL
 #define FID_ItemFilter 0x9882e61aLL
-#define FID_AmtEntries 0xcc444741LL
+#define FID_TotalGroups 0xd97876a9LL
 #define FID_Execute 0x81c09678LL
 #define FID_ObjectName 0xaf41f9bdLL
 #define FID_Activate 0xdbaf4876LL
@@ -969,5 +969,6 @@
 #define FID_EffectXML 0xa7fe50e3LL
 #define FID_PrimitiveUnits 0xf4494b91LL
 #define FID_Degree 0xf880fbf1LL
+#define FID_TotalKeys 0xf691b9c5LL
 
 #endif

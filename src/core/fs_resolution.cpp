@@ -325,17 +325,13 @@ static ERROR resolve(objConfig *Config, STRING Source, STRING Dest, LONG Flags)
 
    Source[pos-1] = 0; // Remove the volume symbol for the string comparison
    fullpath[0] = 0;
-   for (LONG i=0; i < Config->AmtEntries; i++) {
-      if ((!StrMatch("Name", Config->Entries[i].Key)) AND (!StrMatch(Config->Entries[i].Data, Source))) {
-         while ((i > 0) AND (!StrMatch(Config->Entries[i].Section, Config->Entries[i-1].Section))) i--;
-
-         for (LONG j=i; j < Config->AmtEntries; j++) {
-            if (!StrMatch("Path", Config->Entries[j].Key)) {
-               StrCopy(Config->Entries[j].Data, fullpath, sizeof(fullpath));
-               break;
-            }
+   ConfigGroups *groups;
+   if (!GetPointer(Config, FID_Data, &groups)) {
+      for (auto& [group, keys] : groups[0]) {
+         if (!StrMatch(keys["Name"].c_str(), Source)) {
+            StrCopy(keys["Path"].c_str(), fullpath, sizeof(fullpath));
+            break;
          }
-         break;
       }
    }
 

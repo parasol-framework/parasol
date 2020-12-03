@@ -32,67 +32,60 @@ ERROR DeleteVolume(CSTRING Name)
 
    log.branch("Name: %s", Name);
 
-   LONG i;
-   if (!AccessPrivateObject((OBJECTPTR)glVolumes, 8000)) {
-      ConfigEntry *entries;
-      if ((entries = glVolumes->Entries)) {
-         char buffer[40+1];
-         for (i=0; (Name[i]) and (Name[i] != ':') and ((size_t)i < sizeof(buffer)-1); i++) buffer[i] = Name[i];
-         buffer[i] = 0;
+   parasol::ScopedObjectLock<objConfig> volumes((OBJECTPTR)glVolumes, 5000);
+   if (!volumes.granted()) return log.warning(ERR_AccessObject);
 
-         // Check that the name of the volume is not reserved by the system
+   ConfigGroups *groups;
+   if (!GetPointer(glVolumes, FID_Data, &groups)) {
+      std::string vol;
+      LONG i;
+      for (i=0; (Name[i]) and (Name[i] != ':'); i++);
+      vol.append(Name, i);
 
-         if ((!StrMatch("parasol", buffer)) or (!StrMatch("programs", buffer)) or
-             (!StrMatch("system", buffer)) or (!StrMatch("temp", buffer)) or
-             (!StrMatch("user", buffer))) {
-            ReleasePrivateObject((OBJECTPTR)glVolumes);
-            return ERR_NoPermission;
+      // Check that the name of the volume is not reserved by the system
+
+      if ((!StrMatch("parasol", vol.c_str())) or (!StrMatch("programs", vol.c_str())) or
+          (!StrMatch("system", vol.c_str())) or (!StrMatch("temp", vol.c_str())) or
+          (!StrMatch("user", vol.c_str()))) {
+         return ERR_NoPermission;
+      }
+
+      for (auto& [group, keys] : groups[0]) {
+         if (!StrMatch(vol.c_str(), keys["Name"].c_str())) {
+            cfgDeleteGroup(glVolumes, group.c_str());
+            break;
          }
+      }
 
-         for (LONG j=0; j < glVolumes->AmtEntries; j++) {
-            if (!StrMatch("Name", entries[j].Key)) {
-               if (!StrMatch(buffer, entries[j].Data)) {
-                  cfgDeleteSection(glVolumes, entries[j].Section);
+      // Delete the volume if it appears in the user:config/volumes.cfg file.
+
+      objConfig *userconfig;
+      if (!CreateObject(ID_CONFIG, 0, (OBJECTPTR *)&userconfig, FID_Path|TSTR, "user:config/volumes.cfg", TAGEND)) {
+         if (!GetPointer(userconfig, FID_Data, &groups)) {
+            for (auto& [group, keys] : groups[0]) {
+               if (!StrMatch(vol.c_str(), keys["Name"].c_str())) {
+                  cfgDeleteGroup(userconfig, group.c_str());
+                  SaveObjectToFile((OBJECTPTR)userconfig, "user:config/volumes.cfg", PERMIT_READ|PERMIT_WRITE);
+
+                  // Broadcast the change
+
+                  LONG strlen = vol.size() + 1;
+                  UBYTE evbuf[sizeof(EVENTID) + strlen];
+                  ((EVENTID *)evbuf)[0] = GetEventID(EVG_FILESYSTEM, "volume", "deleted");
+                  CopyMemory(vol.c_str(), evbuf + sizeof(EVENTID), strlen);
+                  BroadcastEvent(evbuf, sizeof(EVENTID) + strlen);
                   break;
                }
             }
          }
 
-         // Delete the volume if it appears in the user:config/volumes.cfg file.
-
-         objConfig *userconfig;
-         if (!CreateObject(ID_CONFIG, 0, (OBJECTPTR *)&userconfig, FID_Path|TSTR, "user:config/volumes.cfg", TAGEND)) {
-            if ((entries = userconfig->Entries)) {
-               for (LONG j=0; j < userconfig->AmtEntries; j++) {
-                  if (!StrMatch("Name", entries[j].Key)) {
-                     if (!StrMatch(buffer, entries[j].Data)) {
-                        cfgDeleteSection(userconfig, entries[j].Section);
-                        SaveObjectToFile((OBJECTPTR)userconfig, "user:config/volumes.cfg", PERMIT_READ|PERMIT_WRITE);
-
-                        // Broadcast the change
-
-                        LONG strlen = StrLength(buffer) + 1;
-                        UBYTE evbuf[sizeof(EVENTID) + strlen];
-                        ((EVENTID *)evbuf)[0] = GetEventID(EVG_FILESYSTEM, "volume", "deleted");
-                        CopyMemory(buffer, evbuf + sizeof(EVENTID), strlen);
-                        BroadcastEvent(evbuf, sizeof(EVENTID) + strlen);
-                        break;
-                     }
-                  }
-               }
-            }
-
-            acFree(&userconfig->Head);
-         }
-
-         ReleasePrivateObject((OBJECTPTR)glVolumes);
-         return ERR_Okay;
+         acFree(&userconfig->Head);
       }
 
-      ReleasePrivateObject((OBJECTPTR)glVolumes);
-      return log.warning(ERR_GetField);
+      return ERR_Okay;
    }
-   else return log.warning(ERR_ExclusiveDenied);
+
+   return log.warning(ERR_GetField);
 }
 
 /*****************************************************************************
@@ -105,37 +98,44 @@ RenameVolume: Renames a volume.
 
 ERROR RenameVolume(CSTRING Volume, CSTRING Name)
 {
-   if (!AccessPrivateObject((OBJECTPTR)glVolumes, 5000)) {
-      char buffer[200];
-      LONG i;
-      for (i=0; (Volume[i]) and (Volume[i] != ':') and ((size_t)i < sizeof(buffer)-1); i++) buffer[i] = Volume[i];
-      buffer[i] = 0;
+   parasol::Log log(__FUNCTION__);
 
-      for (const auto& [section_name, entry] : glVolumes->Sections[0]) {
-         if (entry["Name"] == buffer) {
-            entry["Name"] = Name;
+   parasol::ScopedObjectLock<objConfig> volumes((OBJECTPTR)glVolumes, 5000);
+   if (volumes.granted()) {
+      ConfigGroups *groups;
+      if (!GetPointer(glVolumes, FID_Data, &groups)) {
+         std::string vol;
+         LONG i;
 
-            // Broadcast the change
+         for (i=0; (Volume[i]) and (Volume[i] != ':'); i++);
+         vol.append(Volume, i);
 
-            LONG strlen = StrLength(buffer) + 1;
-            UBYTE evdeleted[sizeof(EVENTID) + strlen];
-            ((EVENTID *)evdeleted)[0] = GetEventID(EVG_FILESYSTEM, "volume", "deleted");
-            CopyMemory(buffer, evdeleted + sizeof(EVENTID), strlen);
-            BroadcastEvent(evdeleted, sizeof(EVENTID) + strlen);
+         for (auto& [group, keys] : groups[0]) {
+            if (!StrMatch(keys["Name"].c_str(), vol.c_str())) {
+               keys["Name"] = Name;
 
-            strlen = StrLength(Name) + 1;
-            UBYTE evcreated[sizeof(EVENTID) + strlen];
-            ((EVENTID *)evcreated)[0] = EVID_FILESYSTEM_VOLUME_CREATED;
-            CopyMemory(Name, evcreated + sizeof(EVENTID), strlen);
-            BroadcastEvent(evcreated, sizeof(EVENTID) + strlen);
-            break;
+               // Broadcast the change
+
+               LONG strlen = vol.size() + 1;
+               UBYTE evdeleted[sizeof(EVENTID) + strlen];
+               ((EVENTID *)evdeleted)[0] = GetEventID(EVG_FILESYSTEM, "volume", "deleted");
+               CopyMemory(vol.c_str(), evdeleted + sizeof(EVENTID), strlen);
+               BroadcastEvent(evdeleted, sizeof(EVENTID) + strlen);
+
+               strlen = StrLength(Name) + 1;
+               UBYTE evcreated[sizeof(EVENTID) + strlen];
+               ((EVENTID *)evcreated)[0] = EVID_FILESYSTEM_VOLUME_CREATED;
+               CopyMemory(Name, evcreated + sizeof(EVENTID), strlen);
+               BroadcastEvent(evcreated, sizeof(EVENTID) + strlen);
+               return ERR_Okay;
+            }
          }
-      }
 
-      ReleasePrivateObject((OBJECTPTR)glVolumes);
-      return ERR_Okay;
+         return ERR_Search;
+      }
+      else return log.warning(ERR_GetField);
    }
-   else return ERR_AccessObject;
+   else return log.warning(ERR_AccessObject);
 }
 
 /*****************************************************************************
@@ -179,13 +179,13 @@ AllocMemory:
 ERROR SetVolume(LARGE TagID, ...)
 {
    parasol::Log log(__FUNCTION__);
-   LONG i, j;
+   LONG i;
 
    va_list list;
    va_start(list, TagID);
 
    LONG flags = 0;
-   CSTRING path    = NULL;
+   std::string path;
    CSTRING comment = NULL;
    CSTRING icon    = NULL;
    CSTRING label   = NULL;
@@ -208,7 +208,7 @@ ERROR SetVolume(LARGE TagID, ...)
             }
 
             case AST_DEVICE_PATH: devpath = va_arg(list, CSTRING); goto next;
-            case AST_PATH:    path = va_arg(list, CSTRING); goto next;
+            case AST_PATH:    path = std::string(va_arg(list, CSTRING)); goto next;
             case AST_ICON:    icon = va_arg(list, CSTRING); goto next;
             case AST_COMMENT: comment = va_arg(list, CSTRING); goto next;
             case AST_DEVICE:  device = va_arg(list, CSTRING); goto next;
@@ -246,16 +246,15 @@ next:
 
    va_end(list);
 
-   if ((!name[0]) or (!path)) return log.warning(ERR_NullArgs);
+   if ((!name[0]) or (path.empty())) return log.warning(ERR_NullArgs);
 
-   if (label) log.branch("Name: %s (%s), Path: %s", name, label, path);
-   else log.branch("Name: %s, Path: %s", name, path);
+   if (label) log.branch("Name: %s (%s), Path: %s", name, label, path.c_str());
+   else log.branch("Name: %s, Path: %s", name, path.c_str());
 
-   if ((!glVolumes) or (AccessPrivateObject((OBJECTPTR)glVolumes, 8000) != ERR_Okay)) {
-      return log.warning(ERR_AccessObject);
-   }
+   parasol::ScopedObjectLock<objConfig> volumes((OBJECTPTR)glVolumes, 8000);
+   if (!volumes.granted()) return log.warning(ERR_AccessObject);
 
-   CSTRING savefile;
+   std::string savefile;
    LONG savepermissions;
    if (flags & VOLUME_SYSTEM) {
       savefile = "config:volumes.cfg";
@@ -266,106 +265,76 @@ next:
       savepermissions = PERMIT_READ|PERMIT_WRITE;
    }
 
+   ConfigGroups *groups;
+   if (GetPointer(glVolumes, FID_Data, &groups)) {
+      return log.warning(ERR_FieldNotSet);
+   }
+
    // If we are not in replace mode, check if the volume already exists with configured path.  If so, add the path as a complement
    // to the existing volume.  In this mode nothing else besides the path is changed, even if other tags are specified.
 
    if (!(flags & VOLUME_REPLACE)) {
-      ConfigEntry *entries;
-      if ((entries = glVolumes->Entries)) {
-         for (LONG i=0; i < glVolumes->AmtEntries; i++) {
-            if ((!StrMatch("Name", entries[i].Key)) and (!StrMatch(name, entries[i].Data))) {
-               while ((i > 0) and (!StrMatch(entries[i].Section, entries[i-1].Section))) i--;
+      for (auto& [group, keys] : groups[0]) {
+         if (keys.contains("Name") and (!StrMatch(name, keys["Name"].c_str()))) {
+            if (keys.contains("Path")) {
+               if (flags & VOLUME_PRIORITY) keys["Path"] = path + "|" + keys["Path"];
+               else keys["Path"] = keys["Path"] + "|" + path;
 
-               for (; i < glVolumes->AmtEntries; i++) {
-                  if (!StrMatch("Path", entries[i].Key)) {
-                     STRING str;
-                     if (!AllocMemory(StrLength(path) + 1 + StrLength(entries[i].Data) + 1, MEM_STRING, (APTR *)&str, NULL)) {
-                        if (flags & VOLUME_PRIORITY) {
-                           // Put the new path at the start of the list, followed by old paths
-                           j = StrCopy(path, str, COPY_ALL);
-                           str[j++] = '|';
-                           StrCopy(entries[i].Data, str + j, COPY_ALL);
-                        }
-                        else {
-                           // Retain original path order and add new path to the end of the list
-                           j = StrCopy(entries[i].Data, str, COPY_ALL);
-                           str[j++] = '|';
-                           StrCopy(path, str + j, COPY_ALL);
-                        }
-
-                        cfgWriteValue(glVolumes, entries[i].Section, entries[i].Key, str);
-
-                        if (flags & VOLUME_SAVE) {
-                           // Save the volume permanently
-                           objConfig *userconfig;
-                           if (!CreateObject(ID_CONFIG, 0, (OBJECTPTR *)&userconfig, FID_Path|TSTR, savefile, TAGEND)) {
-                              CSTRING result;
-                              if (!cfgReadValue(userconfig, entries[i].Section, entries[i].Key, &result)) {
-                                 cfgWriteValue(userconfig, entries[i].Section, entries[i].Key, str);
-                                 SaveObjectToFile((OBJECTPTR)userconfig, savefile, savepermissions);
-                              }
-                              acFree(&userconfig->Head);
-                           }
-                        }
-
-                        FreeResource(str);
-                        ReleasePrivateObject((OBJECTPTR)glVolumes);
-                        return ERR_Okay;
-                     }
-                     else {
-                        ReleasePrivateObject((OBJECTPTR)glVolumes);
-                        return log.warning(ERR_AllocMemory);
-                     }
+               if (flags & VOLUME_SAVE) { // Save the volume permanently
+                  objConfig *userconfig;
+                  if (!CreateObject(ID_CONFIG, 0, (OBJECTPTR *)&userconfig, FID_Path|TSTR, savefile.c_str(), TAGEND)) {
+                     cfgWriteValue(userconfig, group.c_str(), "Path", keys["Path"].c_str());
+                     SaveObjectToFile((OBJECTPTR)userconfig, savefile.c_str(), savepermissions);
+                     acFree(&userconfig->Head);
                   }
                }
+
+               return ERR_Okay;
             }
          }
       }
    }
 
-   // Write the volume out
+   cfgWriteValue(glVolumes, name, "Name", name); // Ensure that an entry for the volume exists before we search for it.
 
-   LONG configflags = 0;
-   if (!(flags & VOLUME_REPLACE)) {
-      GetLong(glVolumes, FID_Flags, &configflags);
-      configflags |= CNF_LOCK_RECORDS;
-      SetLong(glVolumes, FID_Flags, configflags);
-   }
+   for (auto& [group, keys] : groups[0]) {
+      if (!StrMatch(group.c_str(), name)) {
+         keys["Path"] = path;
 
-   cfgWriteValue(glVolumes, name, "Name", name);
-   cfgWriteValue(glVolumes, name, "Path", path);
-   if (icon)    cfgWriteValue(glVolumes, name, "Icon", icon);
-   if (comment) cfgWriteValue(glVolumes, name, "Comment", comment);
-   if (label)   cfgWriteValue(glVolumes, name, "Label", label);
-   if (device)  cfgWriteValue(glVolumes, name, "Device", device);
-   if (devpath) cfgWriteValue(glVolumes, name, "DevicePath", devpath);
-   if (devid)   cfgWriteValue(glVolumes, name, "ID", devid);
-   if (flags & VOLUME_HIDDEN) cfgWriteValue(glVolumes, name, "Hidden", "Yes");
+         if (icon)    keys["Icon"]       = icon;
+         if (comment) keys["Comment"]    = comment;
+         if (label)   keys["Label"]      = label;
+         if (device)  keys["Device"]     = device;
+         if (devpath) keys["DevicePath"] = devpath;
+         if (devid)   keys["ID"]         = devid;
 
-   if (flags & VOLUME_SAVE) {
-      // Save the volume permanently
+         if (flags & VOLUME_HIDDEN) keys["Hidden"] = "Yes";
 
-      objConfig *userconfig;
-      if (!CreateObject(ID_CONFIG, 0, (OBJECTPTR *)&userconfig, FID_Path|TSTR, savefile, TAGEND)) {
-         cfgWriteValue(userconfig, name, "Name", name);
-         cfgWriteValue(userconfig, name, "Path", path);
-         if (icon)    cfgWriteValue(userconfig, name, "Icon", icon);
-         if (comment) cfgWriteValue(userconfig, name, "Comment", comment);
-         if (devid)   cfgWriteValue(userconfig, name, "ID", devid);
-         if (flags & VOLUME_HIDDEN) cfgWriteValue(userconfig, name, "Hidden", "Yes");
+         if (flags & VOLUME_SAVE) { // Save the volume permanently
+            objConfig *userconfig;
+            if (!CreateObject(ID_CONFIG, 0, (OBJECTPTR *)&userconfig, FID_Path|TSTR, savefile.c_str(), TAGEND)) {
+               cfgWriteValue(userconfig, name, "Name", name); // Ensure that an entry for the volume exists before we search for it.
+               ConfigGroups *usergroups;
+               if (GetPointer(userconfig, FID_Data, &usergroups)) {
+                  for (auto& [group, ukeys] : usergroups[0]) {
+                     if (!StrMatch(group.c_str(), name)) {
+                        ukeys["Path"] = path;
+                        if (icon)    ukeys["Icon"]    = icon;
+                        if (comment) ukeys["Comment"] = comment;
+                        if (devid)   ukeys["ID"]     = devid;
+                        if (flags & VOLUME_HIDDEN) ukeys["Hidden"] = "Yes";
+                        break;
+                     }
+                  }
+               }
 
-         SaveObjectToFile((OBJECTPTR)userconfig, savefile, savepermissions);
-
-         acFree(&userconfig->Head);
+               SaveObjectToFile((OBJECTPTR)userconfig, savefile.c_str(), savepermissions);
+               acFree(&userconfig->Head);
+            }
+         }
+         break;
       }
    }
-
-   if (!(flags & VOLUME_REPLACE)) {
-      configflags &= ~CNF_LOCK_RECORDS;
-      SetLong(glVolumes, FID_Flags, configflags);
-   }
-
-   ReleasePrivateObject((OBJECTPTR)glVolumes);
 
    LONG strlen = StrLength(name) + 1;
    UBYTE evbuf[sizeof(EVENTID) + strlen];

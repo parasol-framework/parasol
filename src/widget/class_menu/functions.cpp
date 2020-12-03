@@ -218,10 +218,12 @@ static ERROR set_translation(objMenu *Self, OBJECTPTR Target, FIELD Field, CSTRI
 
    // Custom translation
    if (Self->Translation) {
-      ConfigEntry *entries = Self->Translation->Entries;
-      for (LONG i=0; i < Self->Translation->AmtEntries; i++) {
-         if ((!StrMatch("MENU", entries[i].Section)) and (!StrMatch(Text, entries[i].Key))) {
-            return SetString(Target, Field, entries[i].Data);
+      ConfigGroups *groups;
+      if (!GetPointer(Self->Translation, FID_Data, &groups)) {
+         for (auto& [group, keys] : groups[0]) {
+            if ((!group.compare("MENU")) and (keys.contains(Text))) {
+               return SetString(Target, Field, keys[Text].c_str());
+            }
          }
       }
    }

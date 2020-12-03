@@ -2102,22 +2102,22 @@ static ERROR init_filesystem(void)
    ERROR error;
    if (!(error = NewObject(ID_CONFIG, NF_NO_TRACK, (OBJECTPTR *)&glVolumes))) {
       SetName(&glVolumes->Head, "SystemVolumes");
-
-      #ifndef __ANDROID__ // For security reasons we do not use an external volume file for the Android build.
-         {
-            #ifdef _WIN32
-               StrFormat(buffer, sizeof(buffer), "%sconfig\\volumes.cfg", glSystemPath);
-            #else
-               StrFormat(buffer, sizeof(buffer), "%sconfig/volumes.cfg", glSystemPath);
-            #endif
-            SetString(glVolumes, FID_Path, buffer);
-         }
-      #endif
-
       if (acInit(&glVolumes->Head) != ERR_Okay) {
          acFree(&glVolumes->Head);
          return log.warning(ERR_CreateObject);
       }
+
+      #ifndef __ANDROID__ // For security reasons we do not use an external volume file for the Android build.
+         {
+            char volpath[120];
+            #ifdef _WIN32
+               StrFormat(volpath, sizeof(volpath), "%sconfig\\volumes.cfg", glSystemPath);
+            #else
+               StrFormat(volpath, sizeof(volpath), "%sconfig/volumes.cfg", glSystemPath);
+            #endif
+            cfgMergeFile(glVolumes, volpath);
+         }
+      #endif
 
       // Add system volumes that require run-time determination.  For the avoidance of doubt, on Unix systems the
       // default settings for a fixed installation are:

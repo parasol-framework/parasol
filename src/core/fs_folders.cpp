@@ -186,64 +186,37 @@ ERROR ScanDir(DirInfo *Dir)
 
    // Support for scanning of volume names
 
-   if ((Dir->prvPath[0] IS ':') OR (!Dir->prvPath[0])) {
-      LONG i;
-      if (!AccessPrivateObject((OBJECTPTR)glVolumes, 8000)) {
-         ConfigEntry *entries = glVolumes->Entries;
+   if ((Dir->prvPath[0] IS ':') or (!Dir->prvPath[0])) {
+      parasol::ScopedObjectLock<objConfig> volumes((OBJECTPTR)glVolumes, 8000);
+      if (!volumes.granted()) return log.warning(ERR_AccessObject);
 
-         if ((!entries) OR (glVolumes->AmtEntries <= 0)) {
-            ReleasePrivateObject((OBJECTPTR)glVolumes);
-            return ERR_DirEmpty;
+      ConfigGroups *groups;
+      if (!GetPointer(glVolumes, FID_Data, &groups)) {
+         LONG count = 0;
+         for (auto& [group, keys] : groups[0]) {
+            if (count IS Dir->prvIndex) {
+               Dir->prvIndex++;
+               if (keys.contains("Name")) {
+                  LONG j = StrCopy(keys["Name"].c_str(), file->Name, MAX_FILENAME-2);
+                  if (Dir->prvFlags & RDF_QUALIFY) {
+                     file->Name[j++] = ':';
+                     file->Name[j] = 0;
+                  }
+                  file->Flags |= RDF_VOLUME;
+               }
+               else if (keys.contains("Hidden") and (keys["Hidden"].compare("Yes"))) {
+                  file->Flags |= RDF_HIDDEN;
+               }
+               else if ((Dir->prvFlags & RDF_TAGS) AND (keys.contains("Label"))) {
+                  AddInfoTag(file, "Label", keys["Label"].c_str());
+               }
+
+               return ERR_Okay;
+            }
+            else count++;
          }
 
-         // Go to the volume that is indexed
-
-         if (Dir->prvIndex > 0) {
-            LONG count = 0;
-            CSTRING section = entries[0].Section;
-            for (i=0; i < glVolumes->AmtEntries; i++) {
-               if (StrMatch(entries[i].Section, section) != ERR_Okay) {
-                  if (++count >= Dir->prvIndex) break;
-                  section = entries[i].Section;
-               }
-            }
-
-            if (i >= glVolumes->AmtEntries) {
-               ReleasePrivateObject((OBJECTPTR)glVolumes);
-               return ERR_DirEmpty;
-            }
-         }
-         else i = 0;
-
-         CSTRING section = entries[i].Section;
-
-         while ((i < glVolumes->AmtEntries) AND (!StrMatch(section, entries[i].Section))) {
-            if (!StrMatch("Name", entries[i].Key)) {
-               LONG j = StrCopy(entries[i].Data, file->Name, MAX_FILENAME-2);
-               if (Dir->prvFlags & RDF_QUALIFY) {
-                  file->Name[j++] = ':';
-                  file->Name[j] = 0;
-               }
-               file->Flags |= RDF_VOLUME;
-            }
-            else if ((!StrMatch("Hidden", entries[i].Key)) AND (!StrMatch("Yes", entries[i].Data))) {
-               file->Flags |= RDF_HIDDEN;
-            }
-            else if (Dir->prvFlags & RDF_TAGS) {
-               if (!StrMatch("Label", entries[i].Key)) {
-                  if (entries[i].Data[0]) AddInfoTag(file, "Label", entries[i].Data);
-               }
-            }
-
-            i++;
-         }
-
-         Dir->prvIndex++;
-
-         ReleasePrivateObject((OBJECTPTR)glVolumes);
-
-         if (file->Name[0]) return ERR_Okay;
-         else return ERR_DirEmpty;
+         return ERR_DirEmpty;
       }
       else return log.warning(ERR_AccessObject);
    }
