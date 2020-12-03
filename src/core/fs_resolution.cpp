@@ -378,9 +378,7 @@ static ERROR resolve(objConfig *Config, STRING Source, STRING Dest, LONG Flags)
    while (*path) {
       // Copy the resolved volume path to the destination buffer
 
-      for (k=0; (*path) AND (*path != '|') AND (k < SIZE_RESBUFFER-1);) {
-         if (*path IS ';') log.warning("Use of ';' obsolete, use | in path %s", fullpath);
-
+      for (k=0; (*path) and (*path != '|') and (k < SIZE_RESBUFFER-1);) {
          if (k > 0) {
             if ((*path IS '\\') and (path[1] IS '\\')) path++; // Eliminate dual slashes - with an exception for UNC paths
             else if ((*path IS '/') and (path[1] IS '/')) path++;

@@ -2279,11 +2279,7 @@ static ERROR SET_Path(objFile *Self, CSTRING Value)
    LONG i, j, len;
    if ((Value) and (*Value)) {
       if (StrCompare("string:", Value, 7, 0) != ERR_Okay) {
-         for (len=0; (Value[len]) and (Value[len] != '|'); len++) {
-            if (Value[len] IS ';') {
-               log.warning("Warning - use of ; is obsolete as a separator, use | in path %s", Value);
-            }
-         }
+         for (len=0; (Value[len]) and (Value[len] != '|'); len++);
       }
       else len = StrLength(Value);
 
