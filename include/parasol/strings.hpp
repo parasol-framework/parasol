@@ -34,6 +34,18 @@ INLINE void rtrim(std::string &s, const std::string &match) {
    }).base(), s.end());
 }
 
+INLINE void camelcase(std::string &s) {
+   bool raise = true;
+   for (ULONG i=0; i < s.size(); i++) {
+      if (raise) {
+         s[i] = UCASE(s[i]);
+         raise = false;
+      }
+      else if (s[i] <= 0x20) raise = true;
+   }
+}
+
+
 }
 #endif
 #endif
