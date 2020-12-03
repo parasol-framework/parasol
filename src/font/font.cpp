@@ -407,64 +407,61 @@ static ERROR fntGetList(FontList **Result)
    log.branch();
 
    *Result = NULL;
-   ERROR error;
-   if (!AccessPrivateObject(glConfig, 3000)) {
-      ConfigGroups *groups;
-      size_t size = 0;
 
-      if (!GetPointer(glConfig, FID_Data, &groups)) {
+   parasol::ScopedObjectLock<objConfig> config(&glConfig->Head, 3000);
+   if (!config.granted()) return log.warning(ERR_AccessObject);
+
+   size_t size = 0;
+   ConfigGroups *groups;
+   if (!GetPointer(glConfig, FID_Data, &groups)) {
+      for (auto& [group, keys] : groups[0]) {
+         size += sizeof(FontList) + keys["Name"].size() + 1 + keys["Styles"].size() + 1 + keys["Points"].size() + 1;
+      }
+
+      FontList *list, *last_list = NULL;
+      if (!AllocMemory(size, MEM_DATA, &list, NULL)) {
+         STRING buffer = (STRING)(list + groups->size());
+         *Result = list;
+
          for (auto& [group, keys] : groups[0]) {
-            size += sizeof(FontList) + keys["Name"].size() + 1 + keys["Styles"].size() + 1 + keys["Points"].size() + 1;
-         }
+            last_list = list;
+            list->Next = list + 1;
 
-         FontList *list, *last_list = NULL;
-         if (!AllocMemory(size, MEM_DATA, &list, NULL)) {
-            STRING buffer = (STRING)(list + groups->size());
-            *Result = list;
-
-            for (auto& [group, keys] : groups[0]) {
-               last_list = list;
-               list->Next = list + 1;
-
-               if (keys.contains("Name")) {
-                  list->Name = buffer;
-                  buffer += StrCopy(keys["Name"].c_str(), buffer, COPY_ALL) + 1;
-               }
-
-               if (keys.contains("Styles")) {
-                  list->Styles = buffer;
-                  buffer += StrCopy(keys["Styles"].c_str(), buffer, COPY_ALL) + 1;
-               }
-
-               if (keys.contains("Scalable")) {
-                  if (!StrCompare("Yes", keys["Scalable"].c_str(), 0, STR_MATCH_LEN)) list->Scalable = TRUE;
-               }
-
-               if (!keys.contains("Points")) {
-                  list->Points = (UBYTE *)buffer;
-                  CSTRING fontpoints = keys["Points"].c_str();
-                  for (WORD j=0; *fontpoints; j++) {
-                     *buffer++ = StrToInt(fontpoints);
-                     while ((*fontpoints) and (*fontpoints != ',')) fontpoints++;
-                     if (*fontpoints IS ',') fontpoints++;
-                  }
-                  *buffer++ = 0;
-               }
-
-               list++;
+            if (keys.contains("Name")) {
+               list->Name = buffer;
+               buffer += StrCopy(keys["Name"].c_str(), buffer, COPY_ALL) + 1;
             }
 
-            if (last_list) last_list->Next = NULL;
+            if (keys.contains("Styles")) {
+               list->Styles = buffer;
+               buffer += StrCopy(keys["Styles"].c_str(), buffer, COPY_ALL) + 1;
+            }
 
-            error = ERR_Okay;
+            if (keys.contains("Scalable")) {
+               if (!StrCompare("Yes", keys["Scalable"].c_str(), 0, STR_MATCH_LEN)) list->Scalable = TRUE;
+            }
+
+            if (!keys.contains("Points")) {
+               list->Points = (UBYTE *)buffer;
+               CSTRING fontpoints = keys["Points"].c_str();
+               for (WORD j=0; *fontpoints; j++) {
+                  *buffer++ = StrToInt(fontpoints);
+                  while ((*fontpoints) and (*fontpoints != ',')) fontpoints++;
+                  if (*fontpoints IS ',') fontpoints++;
+               }
+               *buffer++ = 0;
+            }
+
+            list++;
          }
-         else error = ERR_AllocMemory;
-      }
-      else error = ERR_NoData;
-   }
-   else error = ERR_AccessObject;
 
-   return error;
+         if (last_list) last_list->Next = NULL;
+
+         return ERR_Okay;
+      }
+      else return ERR_AllocMemory;
+   }
+   else return ERR_NoData;
 }
 
 /*****************************************************************************
@@ -1082,6 +1079,9 @@ static ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, LONG Flags, 
 
    bool multi = (Flags & FTF_ALLOW_SCALE) ? true : false; // ALLOW_SCALE is equivalent to '*' for fixed fonts
 
+   std::string style_name(Style);
+   parasol::camelcase(style_name);
+
    std::string fixed_group_name, scale_group_name;
    ConfigKeys *fixed_group = NULL, *scale_group = NULL;
 
@@ -1098,8 +1098,6 @@ static ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, LONG Flags, 
 
       parasol::ltrim(name, "'\"");
       parasol::rtrim(name, "'\"");
-
-      log.extmsg("Searching for font '%s' from %d installed fonts.", name.c_str(), (LONG)groups[0].size());
 
       for (auto& [group, keys] : groups[0]) {
          if (!StrCompare(name.c_str(), keys["Name"].c_str(), 0, STR_WILDCARD)) {
@@ -1206,7 +1204,7 @@ static ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, LONG Flags, 
    }
 
    if (preferred_group) {
-      auto path = get_font_path(*preferred_group, preferred_type, std::string(Style));
+      auto path = get_font_path(*preferred_group, preferred_type, style_name);
       if (path.has_value()) {
          if ((*Path = StrClone(path.value().c_str()))) return ERR_Okay;
          else return ERR_AllocMemory;
@@ -1214,7 +1212,7 @@ static ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, LONG Flags, 
    }
 
    if (alt_group) {
-      auto path = get_font_path(*alt_group, alt_type, std::string(Style));
+      auto path = get_font_path(*alt_group, alt_type, style_name);
       if (path.has_value()) {
          if ((*Path = StrClone(path.value().c_str()))) return ERR_Okay;
          else return ERR_AllocMemory;
@@ -1223,7 +1221,7 @@ static ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, LONG Flags, 
 
    // A regular font style in either format does not exist, so choose the first style that is listed
 
-   log.extmsg("Requested style not supported, choosing first style.");
+   log.warning("Requested style '%s' not supported, choosing first style.", style_name.c_str());
 
    std::string styles = (preferred_group) ? preferred_group[0]["Styles"] : alt_group[0]["Styles"];
    auto end = styles.find(",");
