@@ -95,7 +95,7 @@ static ERROR COMBOBOX_Disable(objComboBox *Self, APTR Void)
 {
    // See the ActionNotify routine to see what happens when the surface is disabled.
    parasol::Log log;
-   log.branch("");
+   log.branch();
    return acDisableID(Self->RegionID);
 }
 
@@ -109,7 +109,7 @@ static ERROR COMBOBOX_Enable(objComboBox *Self, APTR Void)
 {
    // See the ActionNotify routine to see what happens when the surface is enabled.
    parasol::Log log;
-   log.branch("");
+   log.branch();
    return acEnableID(Self->RegionID);
 }
 
@@ -860,7 +860,7 @@ static void text_activated(objText *Text)
       return;
    }
 
-   log.branch("");
+   log.branch();
 
    Self->Active = TRUE;
 

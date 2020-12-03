@@ -44,7 +44,7 @@ static ERROR ICON_Clear(objIconServer *Self, APTR Void)
 {
    parasol::Log log;
 
-   log.branch("");
+   log.branch();
 
    char buffer[256];
    StrFormat(buffer, sizeof(buffer), "%s%s/", glIconPath, Self->prvTheme);
@@ -217,7 +217,7 @@ static ERROR GET_CacheSize(objIconServer *Self, LONG *Value)
 {
    parasol::Log log;
 
-   log.branch("");
+   log.branch();
 
    char buffer[256];
    StrFormat(buffer, sizeof(buffer), "%s%s/", glIconPath, Self->prvTheme);

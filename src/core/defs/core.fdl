@@ -2,6 +2,7 @@
 
 module({ name="Core", copyright="Paul Manias 1996-2020" }, function()
   c_include("<stdarg.h>")
+  cpp_include("<list>", "<map>", "<string>", "<vector>")
 
   platform("Windows", function()
      enum("NETMSG", {}, "START", "END")
@@ -80,14 +81,14 @@ module({ name="Core", copyright="Paul Manias 1996-2020" }, function()
     "PIPE: Enable the output pipe to the launched process so that it can read data.")
 
   hash("AHASH", "0x%s",
-    "ACTIONNOTIFY", "ACTIVATE",       "ACCESSOBJECT", "CLEAR",    "FREEWARNING",  "OWNERDESTROYED",   "COPYDATA",
-    "DATAFEED",     "DEACTIVATE",     "DRAW",         "FLUSH",    "FOCUS",        "FREE",         "RELEASEOBJECT",
-    "GETVAR",       "DRAGDROP",       "HIDE",         "INIT",     "LOCK",         "LOSTFOCUS",    "MOVE",
-    "MOVETOBACK",   "MOVETOFRONT",    "NEWCHILD",     "NEWOWNER", "NEWOBJECT",    "REDO",         "QUERY",
-    "READ",         "RENAME",         "RESET",        "RESIZE",   "SAVEIMAGE",    "SAVETOOBJECT", "SCROLL",
-    "SEEK",         "SETVAR",         "SHOW",         "TIMER",    "UNLOCK",       "NEXT",         "PREV",
-    "WRITE",        "SETFIELD",       "CLIPBOARD",    "REFRESH",  "DISABLE",      "ENABLE",       "REDIMENSION",
-    "MOVETOPOINT",  "SCROLLTOPOINT",  "CUSTOM",       "SORT",     "SAVESETTINGS", "SELECTAREA",   "UNDO")
+    "ACTIONNOTIFY", "ACTIVATE",      "ACCESSOBJECT", "CLEAR",    "FREEWARNING",  "OWNERDESTROYED", "COPYDATA",
+    "DATAFEED",     "DEACTIVATE",    "DRAW",         "FLUSH",    "FOCUS",        "FREE",         "RELEASEOBJECT",
+    "GETVAR",       "DRAGDROP",      "HIDE",         "INIT",     "LOCK",         "LOSTFOCUS",    "MOVE",
+    "MOVETOBACK",   "MOVETOFRONT",   "NEWCHILD",     "NEWOWNER", "NEWOBJECT",    "REDO",         "QUERY",
+    "READ",         "RENAME",        "RESET",        "RESIZE",   "SAVEIMAGE",    "SAVETOOBJECT", "SCROLL",
+    "SEEK",         "SETVAR",        "SHOW",         "TIMER",    "UNLOCK",       "NEXT",         "PREV",
+    "WRITE",        "SETFIELD",      "CLIPBOARD",    "REFRESH",  "DISABLE",      "ENABLE",       "REDIMENSION",
+    "MOVETOPOINT",  "SCROLLTOPOINT", "CUSTOM",       "SORT",     "SAVESETTINGS", "SELECTAREA",   "UNDO")
 
   flags("MHF", { comment="Internal options for requesting function tables from modules." },
     "NULL",

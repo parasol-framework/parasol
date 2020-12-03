@@ -12,7 +12,7 @@ static void folder_free(APTR Address)
    // Note: Virtual file systems should focus on destroying handles as fs_closedir() will take care of memory and list
    // deallocations.
 
-   if ((folder->prvVirtualID) AND (folder->prvVirtualID != DEFAULT_VIRTUALID)) {
+   if ((folder->prvVirtualID) and (folder->prvVirtualID != DEFAULT_VIRTUALID)) {
       for (auto v=0; v < glVirtualTotal; v++) {
          if (glVirtual[v].VirtualID IS folder->prvVirtualID) {
             log.trace("Virtual file driver function @ %p", glVirtual[v].CloseDir);
@@ -61,7 +61,7 @@ ERROR OpenDir(CSTRING Path, LONG Flags, DirInfo **Result)
 {
    parasol::Log log(__FUNCTION__);
 
-   if ((!Path) OR (!Result)) return log.warning(ERR_NullArgs);
+   if ((!Path) or (!Result)) return log.warning(ERR_NullArgs);
 
    log.traceBranch("Path: '%s'", Path);
 
@@ -100,7 +100,7 @@ ERROR OpenDir(CSTRING Path, LONG Flags, DirInfo **Result)
 
       FreeResource(resolved_path);
 
-      if ((Path[0] IS ':') OR (!Path[0])) {
+      if ((Path[0] IS ':') or (!Path[0])) {
          if (!(Flags & RDF_FOLDER)) {
             FreeResource(dir);
             return ERR_DirEmpty;
@@ -262,7 +262,7 @@ ERROR ScanDir(DirInfo *Dir)
       }
    }
 
-   if ((file->Name[0]) AND (Dir->prvFlags & RDF_DATE)) {
+   if ((file->Name[0]) and (Dir->prvFlags & RDF_DATE)) {
       file->TimeStamp = calc_timestamp(&file->Modified);
    }
 

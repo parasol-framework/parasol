@@ -2892,30 +2892,30 @@ static ERROR SET_Short(objTask *Self, CSTRING Value)
 //****************************************************************************
 
 static const FieldArray clFields[] = {
-   { "TimeOut",         FDF_DOUBLE|FDF_RW,     0, NULL, NULL },
+   { "TimeOut",         FDF_DOUBLE|FDF_RW,    0, NULL, NULL },
    { "Flags",           FDF_LONGFLAGS|FDF_RI, (MAXINT)&clFlags, NULL, NULL },
    { "ReturnCode",      FDF_LONG|FDF_RW,      0, (APTR)GET_ReturnCode, (APTR)SET_ReturnCode },
    { "ProcessID",       FDF_LONG|FDF_RI,      0, NULL, NULL },
    // Virtual fields
-   { "Actions",        FDF_POINTER|FDF_R,   0, (APTR)GET_Actions,          NULL },
-   { "Args",           FDF_STRING|FDF_W,    0, NULL,                       (APTR)SET_Args },
+   { "Actions",        FDF_POINTER|FDF_R,      0, (APTR)GET_Actions,          NULL },
+   { "Args",           FDF_STRING|FDF_W,       0, NULL,                       (APTR)SET_Args },
    { "Parameters",     FDF_ARRAY|FDF_STRING|FDF_RW, 0, (APTR)GET_Parameters, (APTR)SET_Parameters },
-   { "Author",         FDF_STRING|FDF_RW,   0, (APTR)GET_Author,           (APTR)SET_Author },
-   { "Copyright",      FDF_STRING|FDF_RW,   0, (APTR)GET_Copyright,        (APTR)SET_Copyright },
-   { "Date",           FDF_STRING|FDF_RW,   0, (APTR)GET_Date,             (APTR)SET_Date },
+   { "Author",         FDF_STRING|FDF_RW,      0, (APTR)GET_Author,           (APTR)SET_Author },
+   { "Copyright",      FDF_STRING|FDF_RW,      0, (APTR)GET_Copyright,        (APTR)SET_Copyright },
+   { "Date",           FDF_STRING|FDF_RW,      0, (APTR)GET_Date,             (APTR)SET_Date },
    { "ErrorCallback",  FDF_FUNCTIONPTR|FDF_RI, 0, (APTR)GET_ErrorCallback, (APTR)SET_ErrorCallback }, // STDERR
    { "ExitCallback",   FDF_FUNCTIONPTR|FDF_RW, 0, (APTR)GET_ExitCallback,  (APTR)SET_ExitCallback },
-   { "Instance",       FDF_LONG|FDF_R,      0, (APTR)GET_Instance,         NULL },
+   { "Instance",       FDF_LONG|FDF_R,         0, (APTR)GET_Instance,         NULL },
    { "InputCallback",  FDF_FUNCTIONPTR|FDF_RW, 0, (APTR)GET_InputCallback, (APTR)SET_InputCallback }, // STDIN
-   { "LaunchPath",     FDF_STRING|FDF_RW,   0, (APTR)GET_LaunchPath,       (APTR)SET_LaunchPath },
-   { "Location",       FDF_STRING|FDF_RW,   0, (APTR)GET_Location,         (APTR)SET_Location },
-   { "MessageQueue",   FDF_LONG|FDF_R,      0, (APTR)GET_MessageQueue,     NULL },
-   { "Name",           FDF_STRING|FDF_RW,   0, (APTR)GET_Name,             (APTR)SET_Name },
+   { "LaunchPath",     FDF_STRING|FDF_RW,      0, (APTR)GET_LaunchPath,       (APTR)SET_LaunchPath },
+   { "Location",       FDF_STRING|FDF_RW,      0, (APTR)GET_Location,         (APTR)SET_Location },
+   { "MessageQueue",   FDF_LONG|FDF_R,         0, (APTR)GET_MessageQueue,     NULL },
+   { "Name",           FDF_STRING|FDF_RW,      0, (APTR)GET_Name,             (APTR)SET_Name },
    { "OutputCallback", FDF_FUNCTIONPTR|FDF_RI, 0, (APTR)GET_OutputCallback, (APTR)SET_OutputCallback }, // STDOUT
-   { "Path",           FDF_STRING|FDF_RW,   0, (APTR)GET_Path,              (APTR)SET_Path },
-   { "ProcessPath",    FDF_STRING|FDF_R,    0, (APTR)GET_ProcessPath,       NULL },
-   { "Priority",       FDF_LONG|FDF_W,      0, NULL,                        (APTR)SET_Priority },
-   { "Short",          FDF_STRING|FDF_RW,   0, (APTR)GET_Short,             (APTR)SET_Short },
+   { "Path",           FDF_STRING|FDF_RW,      0, (APTR)GET_Path,              (APTR)SET_Path },
+   { "ProcessPath",    FDF_STRING|FDF_R,       0, (APTR)GET_ProcessPath,       NULL },
+   { "Priority",       FDF_LONG|FDF_W,         0, NULL,                        (APTR)SET_Priority },
+   { "Short",          FDF_STRING|FDF_RW,      0, (APTR)GET_Short,             (APTR)SET_Short },
    // Synonyms
    { "Src",            FDF_SYNONYM|FDF_STRING|FDF_RW, 0, (APTR)GET_Location, (APTR)SET_Location },
    { "ArgsList",       FDF_ARRAY|FDF_STRING|FDF_SYSTEM|FDF_RW, 0, (APTR)GET_Parameters, (APTR)SET_Parameters }, // OBSOLETE
@@ -2928,7 +2928,7 @@ extern "C" ERROR add_task_class(void)
 {
    parasol::Log log(__FUNCTION__);
 
-   log.branch("");
+   log.branch();
 
    if (!NewPrivateObject(ID_METACLASS, 0, (OBJECTPTR *)&TaskClass)) {
       if (!SetFields((OBJECTPTR)TaskClass,

@@ -205,9 +205,7 @@ exit:
       glDirectory[i] = 0;
 
       OBJECTPTR file;
-      if (!PrivateObject(ID_FILE, 0, &file,
-            FID_Location|TSTRING, glDirectory,
-            TAGEND)) {
+      if (!PrivateObject(ID_FILE, 0, &file, FID_Path|TSTR, glDirectory, TAGEND)) {
          flDelete(file, 0);
          acFree(file);
       }
@@ -249,7 +247,7 @@ ERROR prep_environment(LONG WindowHandle, LONG Width, LONG Height)
             if (!acInit(pointer)) {
                OBJECTPTR script;
                if (!PrivateObject(ID_SCRIPT, 0, &script,
-                     FID_Location|TSTR, "templates:defaultvariables.dml",
+                     FID_Path|TSTR, "templates:defaultvariables.dml",
                      FID_Target|TLONG,  TargetID,
                      TAGEND)) {
 
@@ -304,10 +302,7 @@ ERROR exec_script(STRING ScriptFile, OBJECTID *CoreObjectID, LONG ShowTime, STRI
 
          // The script is actually a reference to a data file, in which case we may be able to run it, if it has a file association.
 
-         if (!PrivateObject(ID_RUN, 0, &run,
-               FID_Location|TSTRING, ScriptFile,
-               TAGEND)) {
-
+         if (!PrivateObject(ID_RUN, 0, &run, FID_Location|TSTR, ScriptFile, TAGEND)) {
             if (glArgs) {
                argname = argbuffer+1; // Skip the first byte... reserved for '+'
                argbuffer[0] = '+'; // Append arg indicator
@@ -361,7 +356,7 @@ ERROR exec_script(STRING ScriptFile, OBJECTID *CoreObjectID, LONG ShowTime, STRI
    if (!NewPrivateObject(subclass ? subclass : class_id, 0, &glScript)) {
       if (!TargetID) TargetID = CurrentTaskID();
 
-      SetFields(glScript, FID_Location|TSTR,  ScriptFile,
+      SetFields(glScript, FID_Path|TSTR,      ScriptFile,
                           FID_Target|TLONG,   TargetID,
                           FID_Procedure|TSTR, Procedure,
                           TAGEND);
@@ -449,10 +444,7 @@ static ERROR decompress_archive(STRING Location)
 
    ERROR error = ERR_Okay;
    OBJECTPTR compress;
-   if (!(error = PrivateObject(ID_COMPRESSION, 0, &compress,
-         FID_Location|TSTRING, Location,
-         TAGEND))) {
-
+   if (!(error = PrivateObject(ID_COMPRESSION, 0, &compress, FID_Path|TSTR, Location, TAGEND))) {
       if (!(error = AllocMemory(sizeof(STR_UNPACK) + len + sizeof(STR_MAIN) + 2, MEM_STRING, &glDirectory, NULL))) {
          for (i=0; STR_UNPACK[i]; i++) glDirectory[i] = STR_UNPACK[i];
          for (j=len; (j > 1) AND (Location[j-1] != '/') AND (Location[j-1] != '\\') AND (Location[j-1] != ':'); j--);

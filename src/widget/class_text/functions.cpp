@@ -4,7 +4,7 @@ static void feedback_validate_input(objText *Self)
 {
    parasol::Log log("validate_input");
 
-   log.branch("");
+   log.branch();
 
    if (Self->ValidateInput.Type IS CALL_STDC) {
       auto routine = (void (*)(objText *))Self->ValidateInput.StdC.Routine;
@@ -28,7 +28,7 @@ static void feedback_activated(objText *Self)
 {
    parasol::Log log(__FUNCTION__);
 
-   log.branch("");
+   log.branch();
 
    if (Self->Activated.Type IS CALL_STDC) {
       auto routine = (void (*)(objText *))Self->Activated.StdC.Routine;

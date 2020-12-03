@@ -90,9 +90,9 @@ ERROR ResolvePath(CSTRING Path, LONG Flags, STRING *Result)
 
    UBYTE resolved = FALSE;
 #ifdef _WIN32
-   if ((LCASE(Path[0]) >= 'a') AND (LCASE(Path[0]) <= 'z') AND (Path[1] IS ':')) {
+   if ((LCASE(Path[0]) >= 'a') and (LCASE(Path[0]) <= 'z') and (Path[1] IS ':')) {
       resolved = TRUE; // Windows drive letter reference discovered
-      if ((Path[2] != '/') AND (Path[2] != '\\')) {
+      if ((Path[2] != '/') and (Path[2] != '\\')) {
          // Ensure that the path is correctly formed in order to pass test_path()
          src[0] = Path[0];
          src[1] = ':';
@@ -101,22 +101,22 @@ ERROR ResolvePath(CSTRING Path, LONG Flags, STRING *Result)
          Path = src;
       }
    }
-   else if ((Path[0] IS '/') AND (Path[1] IS '/')) resolved = TRUE; // UNC path discovered
-   else if ((Path[0] IS '\\') AND (Path[1] IS '\\')) resolved = TRUE; // UNC path discovered
+   else if ((Path[0] IS '/') and (Path[1] IS '/')) resolved = TRUE; // UNC path discovered
+   else if ((Path[0] IS '\\') and (Path[1] IS '\\')) resolved = TRUE; // UNC path discovered
 
 #elif __unix__
-   if ((Path[0] IS '/') OR (Path[0] IS '\\')) resolved = TRUE;
+   if ((Path[0] IS '/') or (Path[0] IS '\\')) resolved = TRUE;
 #endif
 
    // Use the PATH environment variable to resolve the filename.  This can only be done if the path is relative
    // (ideally with no leading folder references).
 
-   if ((!resolved) AND (Flags & RSF_PATH)) {
+   if ((!resolved) and (Flags & RSF_PATH)) {
       if (!resolve_path_env(Path, Result)) return ERR_Okay;
    }
 
    if (!resolved) {
-      for (i=0; (Path[i]) AND (Path[i] != ':') AND (Path[i] != '/') AND (Path[i] != '\\'); i++);
+      for (i=0; (Path[i]) and (Path[i] != ':') and (Path[i] != '/') and (Path[i] != '\\'); i++);
       if (Path[i] != ':') resolved = TRUE;
    }
 
@@ -164,17 +164,17 @@ ERROR ResolvePath(CSTRING Path, LONG Flags, STRING *Result)
          else if (error) break;
          else {
             #ifdef _WIN32 // UNC network path check
-               if (((dest[0] IS '\\') AND (dest[1] IS '\\')) OR ((dest[0] IS '/') AND (dest[1] IS '/'))) {
+               if (((dest[0] IS '\\') and (dest[1] IS '\\')) or ((dest[0] IS '/') and (dest[1] IS '/'))) {
                   goto resolved_path;
                }
             #endif
 
             // Check if the path has been resolved by looking for a ':' character
 
-            for (i=0; (dest[i]) AND (dest[i] != ':') AND (dest[i] != '/') AND (dest[i] != '\\'); i++);
+            for (i=0; (dest[i]) and (dest[i] != ':') and (dest[i] != '/') and (dest[i] != '\\'); i++);
 
             #ifdef _WIN32
-            if ((dest[i] IS ':') AND (i > 1)) {
+            if ((dest[i] IS ':') and (i > 1)) {
             #else
             if (dest[i] IS ':') {
             #endif
@@ -201,7 +201,7 @@ resolved_path:
       ReleasePrivateObject((OBJECTPTR)glVolumes);
 
       if (loop > 0) { // Note that loop starts at 10 and decrements to zero
-         if ((!error) AND (!dest[0])) error = ERR_Failed;
+         if ((!error) and (!dest[0])) error = ERR_Failed;
          return error;
       }
       else return ERR_Loop;
@@ -226,13 +226,13 @@ static ERROR resolve_path_env(CSTRING RelativePath, STRING *Result)
 
    // If a path to the file isn't available, scan the PATH environment variable. In Unix the separator is :
 
-   if ((path = getenv("PATH")) AND (path[0])) {
+   if ((path = getenv("PATH")) and (path[0])) {
       LONG j = 0, k;
       while (path[j]) {
-         for (k=0; (path[j+k]) AND (path[j+k] != ':') AND ((size_t)k < sizeof(src)-1); k++) {
+         for (k=0; (path[j+k]) and (path[j+k] != ':') and ((size_t)k < sizeof(src)-1); k++) {
             src[k] = path[j+k];
          }
-         if ((k > 0) AND (src[k-1] != '/')) src[k++] = '/';
+         if ((k > 0) and (src[k-1] != '/')) src[k++] = '/';
 
          StrCopy(RelativePath, src+k, sizeof(src)-k);
 
@@ -263,16 +263,16 @@ static ERROR resolve_path_env(CSTRING RelativePath, STRING *Result)
 
    // If a path to the file isn't available, scan the PATH environment variable. In Windows the separator is ;
 
-   if ((path = getenv("PATH")) AND (path[0])) {
+   if ((path = getenv("PATH")) and (path[0])) {
       log.trace("Got PATH: %s", path);
 
       LONG j = 0, k;
       while (path[j]) {
-         for (k=0; (path[j+k]) AND (path[j+k] != ';') AND ((size_t)k < sizeof(src)-1); k++) {
+         for (k=0; (path[j+k]) and (path[j+k] != ';') and ((size_t)k < sizeof(src)-1); k++) {
             src[k] = path[j+k];
          }
          j += k;
-         if ((k > 0) AND (src[k-1] != '/')) src[k++] = '/';
+         if ((k > 0) and (src[k-1] != '/')) src[k++] = '/';
 
          StrCopy(RelativePath, src+k, sizeof(src)-k);
 
@@ -382,36 +382,36 @@ static ERROR resolve(objConfig *Config, STRING Source, STRING Dest, LONG Flags)
          if (*path IS ';') log.warning("Use of ';' obsolete, use | in path %s", fullpath);
 
          if (k > 0) {
-            if ((*path IS '\\') AND (path[1] IS '\\')) path++; // Eliminate dual slashes - with an exception for UNC paths
-            else if ((*path IS '/') AND (path[1] IS '/')) path++;
+            if ((*path IS '\\') and (path[1] IS '\\')) path++; // Eliminate dual slashes - with an exception for UNC paths
+            else if ((*path IS '/') and (path[1] IS '/')) path++;
             else Dest[k++] = *path++;
          }
          else Dest[k++] = *path++;
       }
 
-      if ((Dest[k-1] != '/') AND (Dest[k-1] != '\\') AND (k < SIZE_RESBUFFER-1)) Dest[k++] = '/'; // Add a trailing slash if it is missing
+      if ((Dest[k-1] != '/') and (Dest[k-1] != '\\') and (k < SIZE_RESBUFFER-1)) Dest[k++] = '/'; // Add a trailing slash if it is missing
 
       // Copy the rest of the source to the destination buffer
 
       j = pos;
-      while ((Source[j] IS '/') OR (Source[j] IS '\\')) j++;
-      while ((Source[j]) AND (k < SIZE_RESBUFFER-1)) Dest[k++] = Source[j++];
+      while ((Source[j] IS '/') or (Source[j] IS '\\')) j++;
+      while ((Source[j]) and (k < SIZE_RESBUFFER-1)) Dest[k++] = Source[j++];
       Dest[k++] = 0;
 
       // Fully resolve the path to a system folder before testing it (e.g. "scripts:" to "parasol:scripts/" to "c:\parasol\scripts\" will be resolved through this recursion).
 
       #ifdef _WIN32
-         if ((Dest[1] IS ':') AND ((Dest[2] IS '/') OR (Dest[2] IS '\\'))) j = 0;
-         else if ((Dest[0] IS '/') AND (Dest[1] IS '/')) j = 0;
-         else if ((Dest[0] IS '\\') AND (Dest[1] IS '\\')) j = 0;
-         else for (j=0; (Dest[j]) AND (Dest[j] != ':') AND (Dest[j] != '/'); j++);
+         if ((Dest[1] IS ':') and ((Dest[2] IS '/') or (Dest[2] IS '\\'))) j = 0;
+         else if ((Dest[0] IS '/') and (Dest[1] IS '/')) j = 0;
+         else if ((Dest[0] IS '\\') and (Dest[1] IS '\\')) j = 0;
+         else for (j=0; (Dest[j]) and (Dest[j] != ':') and (Dest[j] != '/'); j++);
       #else
-         for (j=0; (Dest[j]) AND (Dest[j] != ':') AND (Dest[j] != '/'); j++);
+         for (j=0; (Dest[j]) and (Dest[j] != ':') and (Dest[j] != '/'); j++);
       #endif
 
       error = -1;
       for (loop=10; loop > 0; loop--) {
-         if ((Dest[j] IS ':') AND (j > 1)) { // Remaining ':' indicates more path resolution is required.
+         if ((Dest[j] IS ':') and (j > 1)) { // Remaining ':' indicates more path resolution is required.
             error = resolve(Config, Dest, buffer, Flags);
 
             if (!error) {
@@ -420,7 +420,7 @@ static ERROR resolve(objConfig *Config, STRING Source, STRING Dest, LONG Flags)
                Dest[j] = 0;
 
                // Reexamine the result for the presence of a colon.
-               for (LONG j=0; (Dest[j]) AND (Dest[j] != ':') AND (Dest[j] != '/'); j++);
+               for (LONG j=0; (Dest[j]) and (Dest[j] != ':') and (Dest[j] != '/'); j++);
             }
             else break; // Path not resolved or virtual volume detected.
          }
@@ -478,7 +478,7 @@ static ERROR resolve_object_path(STRING Path, STRING Source, STRING Dest, LONG P
       if (!FastFindObject(Path, 0, &volume_id, 1, NULL)) {
          OBJECTPTR object;
          if (!AccessObject(volume_id, 5000, &object)) {
-            if ((!GetPointer(object, FID_ResolvePath, &resolve_virtual)) AND (resolve_virtual)) {
+            if ((!GetPointer(object, FID_ResolvePath, &resolve_virtual)) and (resolve_virtual)) {
                error = resolve_virtual(object, Source, Dest, PathSize);
             }
             ReleaseObject(object);

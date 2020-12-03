@@ -125,13 +125,13 @@ static ERROR create_image(objVectorFilter *Self, XMLTag *Tag)
          LONG i = StrCopy(Self->Path, comp_path, sizeof(comp_path));
          StrCopy(path, comp_path + i, sizeof(comp_path)-i);
          error = CreateObject(ID_PICTURE, NF_INTEGRAL, &effect->Image.Picture,
-            FID_Location|TSTRING, comp_path,
+            FID_Path|TSTR,          comp_path,
             FID_BitsPerPixel|TLONG, 32,
             FID_Flags|TLONG,        PCF_FORCE_ALPHA_32,
             TAGEND);
       }
       else error = CreateObject(ID_PICTURE, NF_INTEGRAL, &effect->Image.Picture,
-            FID_Location|TSTRING,   path,
+            FID_Path|TSTR,          path,
             FID_BitsPerPixel|TLONG, 32,
             FID_Flags|TLONG,        PCF_FORCE_ALPHA_32,
             TAGEND);

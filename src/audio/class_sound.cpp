@@ -256,7 +256,7 @@ static ERROR SOUND_Deactivate(objSound *Self, APTR Void)
 {
    parasol::Log log;
 
-   log.branch("");
+   log.branch();
 
    if (Self->Timer) { UpdateTimer(Self->Timer, 0); Self->Timer = 0; }
 
@@ -296,7 +296,7 @@ static ERROR SOUND_Disable(objSound *Self, APTR Void)
 {
    parasol::Log log;
 
-   log.branch("");
+   log.branch();
 
 #ifdef _WIN32
    if (!Self->Handle) {
@@ -330,7 +330,7 @@ Enable: Continues playing a sound if it has been disabled.
 static ERROR SOUND_Enable(objSound *Self, APTR Void)
 {
    parasol::Log log;
-   log.branch("");
+   log.branch();
 
 #ifdef _WIN32
 
@@ -991,7 +991,7 @@ static ERROR SOUND_Reset(objSound *Self, APTR Void)
 {
    parasol::Log log;
 
-   log.branch("");
+   log.branch();
 
    if (!Self->ChannelIndex) return ERR_Okay;
 

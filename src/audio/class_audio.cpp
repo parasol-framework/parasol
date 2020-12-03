@@ -110,7 +110,7 @@ static ERROR AUDIO_Activate(objAudio *Self, APTR Void)
 
    if (Self->Initialising) return ERR_Okay;
 
-   log.branch("");
+   log.branch();
 
    Self->Initialising = TRUE;
 
@@ -671,7 +671,7 @@ static ERROR AUDIO_Clear(objAudio *Self, APTR Void)
 {
    parasol::Log log;
 
-   log.branch("");
+   log.branch();
 
 #ifdef _WIN32
    dsClear();
@@ -756,7 +756,7 @@ static ERROR AUDIO_Deactivate(objAudio *Self, APTR Void)
 {
    parasol::Log log;
 
-   log.branch("");
+   log.branch();
 
    if (Self->Initialising) {
       log.msg("Audio is still in the process of initialisation.");

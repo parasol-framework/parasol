@@ -115,7 +115,7 @@ static ERROR TIME_SetTime(objTime *Self, APTR Void)
    struct tm time;
    LONG fd;
 
-   log.branch("");
+   log.branch();
 
    // Set the BIOS clock
 

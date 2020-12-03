@@ -63,6 +63,33 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 -- FDL function
+
+function cpp_include(...)
+   output('#ifdef __cplusplus')
+   for k,v in ipairs({...}) do
+      if (v:find('^<(.+)>$') != nil) then
+         local inc = v:match('^<parasol/(.+)>$')
+
+         if (inc != nil) then inc = inc:gsub('[/%.]', '_') end
+
+         if (inc != nil) then
+            output('#ifndef ' .. inc:upper())
+            output('#include ' .. v)
+            output('#endif')
+            output()
+         else
+            output('#include ' .. v)
+         end
+      else
+         output('#include "' .. v .. '"')
+      end
+   end
+   output('#endif')
+   output()
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- FDL function
 -- Restricts the output of anything declared within the referenced function.
 
 function restrict(Function)

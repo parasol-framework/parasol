@@ -447,7 +447,7 @@ static void reset_font(objVectorText *Vector)
    if (!(Vector->Head.Flags & NF_INITIALISED)) return;
 
    parasol::Log log(__FUNCTION__);
-   log.branch("");
+   log.branch();
    parasol::SwitchContext context(Vector);
 
    objFont *font;

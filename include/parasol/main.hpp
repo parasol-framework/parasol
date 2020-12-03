@@ -45,25 +45,24 @@ class ScopedObject { // C++ wrapper for automatically freeing an object
 //****************************************************************************
 
 template <class T>
-class ScopedObjectLock { // C++ wrapper for automatically freeing an o  `bject
+class ScopedObjectLock { // C++ wrapper for automatically freeing an object
    private:
-      LONG locks;
       ERROR error;
 
    public:
       T *obj;
 
-      ScopedObjectLock(OBJECTPTR Object) { // Lock already provided
-         obj = Object;
-         error = ERR_Okay;
-      }
-
       ScopedObjectLock(OBJECTID ObjectID, LONG Milliseconds = 3000) {
          error = AccessObject(ObjectID, Milliseconds, &obj);
       }
 
+      ScopedObjectLock(OBJECTPTR Object, LONG Milliseconds = 3000) {
+         error = AccessPrivateObject(Object, Milliseconds);
+         obj = (T *)Object;
+      }
+
       ScopedObjectLock() { obj = NULL; error = ERR_NotLocked; }
-      ~ScopedObjectLock() { if (!error) ReleaseObject(obj); }
+      ~ScopedObjectLock() { if (!error) ReleaseObject((OBJECTPTR)obj); }
       bool granted() { return error == ERR_Okay; }
 };
 
@@ -150,7 +149,7 @@ class Log { // C++ wrapper for Parasol's log functionality
          while (branches > 0) { branches--; LogReturn(); }
       }
 
-      void branch(CSTRING Message, ...) __attribute__((format(printf, 2, 3))) {
+      void branch(CSTRING Message = "", ...) __attribute__((format(printf, 2, 3))) {
          va_list arg;
          va_start(arg, Message);
          VLogF(VLF_API|VLF_BRANCH, header, Message, arg);
@@ -159,7 +158,7 @@ class Log { // C++ wrapper for Parasol's log functionality
       }
 
       #ifdef DEBUG
-      void traceBranch(CSTRING Message, ...) __attribute__((format(printf, 2, 3))) {
+      void traceBranch(CSTRING Message = "", ...) __attribute__((format(printf, 2, 3))) {
          va_list arg;
          va_start(arg, Message);
          VLogF(VLF_DEBUG|VLF_BRANCH, header, Message, arg);

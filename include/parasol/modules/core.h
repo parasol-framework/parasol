@@ -11,6 +11,13 @@
 
 #include <stdarg.h>
 
+#ifdef __cplusplus
+#include <list>
+#include <map>
+#include <string>
+#include <vector>
+#endif
+
 #ifdef _WIN32
 
 #define NETMSG_START 0

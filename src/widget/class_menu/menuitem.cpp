@@ -373,7 +373,7 @@ static ERROR load_submenu(objMenu *ParentMenu, objMenu **SubMenu, objMenuItem *I
 {
    parasol::Log log(__FUNCTION__);
 
-   log.branch("");
+   log.branch();
 
    SURFACEINFO *info;
    if (drwGetSurfaceInfo(ParentMenu->MenuSurfaceID, &info) != ERR_Okay) {

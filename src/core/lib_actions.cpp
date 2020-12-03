@@ -2003,19 +2003,19 @@ ERROR MGR_Init(OBJECTPTR Object, APTR Void)
    Object->Class = baseclass;  // Put back the original to retain integrity
    Object->SubID = Object->Class->SubClassID;
 
-   // If the base class and its immediate sub-classes failed, check the object for a Location field and check the data
+   // If the base class and its immediate sub-classes failed, check the object for a Path field and check the data
    // against sub-classes that are not currently in memory.
    //
    // This is the only way we can support the automatic loading of sub-classes without causing undue load on CPU and
    // memory resources (loading each sub-class into memory just to check whether or not the data is supported is overkill).
 
-   CSTRING location;
+   CSTRING path;
    if (use_subclass) { // If ERR_UseSubClass was set and the sub-class was not registered, do not call IdentifyFile()
       log.warning("ERR_UseSubClass was used but no suitable sub-class was registered.");
    }
-   else if ((error IS ERR_NoSupport) AND (!GetField(Object, FID_Location|TSTR, &location)) AND (location)) {
+   else if ((error IS ERR_NoSupport) AND (!GetField(Object, FID_Path|TSTR, &path)) AND (path)) {
       CLASSID classid;
-      if (!IdentifyFile(location, NULL, 0, &classid, &Object->SubID, NULL)) {
+      if (!IdentifyFile(path, NULL, 0, &classid, &Object->SubID, NULL)) {
          if ((classid IS Object->ClassID) AND (Object->SubID)) {
             log.msg("Searching for subclass $%.8x", Object->SubID);
             if ((Object->Class = FindClass(Object->SubID))) {
@@ -2035,7 +2035,7 @@ ERROR MGR_Init(OBJECTPTR Object, APTR Void)
             else log.warning("Failed to load module for class #%d.", Object->SubID);
          }
       }
-      else log.warning("File '%s' does not belong to class '%s', got $%.8x.", location, Object->Class->ClassName, classid);
+      else log.warning("File '%s' does not belong to class '%s', got $%.8x.", path, Object->Class->ClassName, classid);
 
       Object->Class = baseclass;  // Put back the original to retain object integrity
       Object->SubID = baseclass->SubClassID;

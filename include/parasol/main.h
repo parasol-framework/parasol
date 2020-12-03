@@ -7,10 +7,6 @@
 //
 //   Copyright 1996-2020 © Paul Manias
 
-#ifdef  __cplusplus
-extern "C" {
-#endif
-
 #ifndef PLATFORM_CONFIG_H
 #include <parasol/config.h>
 #endif
@@ -37,6 +33,10 @@ extern "C" {
 
 #ifndef __GNUC__
 #define __attribute__(a)
+#endif
+
+#ifdef  __cplusplus
+extern "C" {
 #endif
 
 //****************************************************************************
@@ -360,6 +360,10 @@ struct Head { // Must be 64-bit aligned
 
 #define nextutf8(str) if (*(str)) for (++(str); (*(str) & 0xc0) IS 0x80; (str)++);
 
+#ifdef  __cplusplus
+}
+#endif
+
 #include <parasol/modules/core.h>
 
 INLINE LONG IntToStr(LARGE Integer, STRING String, LONG StringSize) {
@@ -367,10 +371,7 @@ INLINE LONG IntToStr(LARGE Integer, STRING String, LONG StringSize) {
 }
 
 #ifdef  __cplusplus
-}
-
 #include <parasol/main.hpp>
-
 #endif
 
 #endif // PARASOL_MAIN_H

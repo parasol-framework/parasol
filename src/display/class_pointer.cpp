@@ -646,7 +646,7 @@ static ERROR PTR_Hide(objPointer *Self, APTR Void)
 {
    parasol::Log log;
 
-   log.branch("");
+   log.branch();
 
    #ifdef __xwindows__
 /*
@@ -957,7 +957,7 @@ Reset: Resets the pointer settings back to the default.
 static ERROR PTR_Reset(objPointer *Self, APTR Void)
 {
    parasol::Log log;
-   log.branch("");
+   log.branch();
 
    Self->Speed        = 150;
    Self->Acceleration = 0.50;
@@ -1018,7 +1018,7 @@ static ERROR PTR_Show(objPointer *Self, APTR Void)
 {
    parasol::Log log;
 
-   log.branch("");
+   log.branch();
 
    #ifdef __xwindows__
 /*

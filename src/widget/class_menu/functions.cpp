@@ -47,7 +47,7 @@ static void translate_value(objMenu *Self, STRING Source, STRING Buffer, LONG Bu
 
 static LONG if_satisfied(objMenu *Self, XMLTag *Tag)
 {
-   UBYTE reverse = FALSE;
+   bool reverse = FALSE;
    tlSatisfied = FALSE; // Reset the satisfied variable
    LONG index = 1;
 
@@ -95,9 +95,7 @@ static LONG if_satisfied(objMenu *Self, XMLTag *Tag)
       translate_value(Self, Tag->Attrib[index].Value, buffer, sizeof(buffer));
 
       objFile *file;
-      if (!CreateObject(ID_FILE, 0, &file,
-            FID_Path|TSTR, buffer,
-            TAGEND)) {
+      if (!CreateObject(ID_FILE, 0, &file, FID_Path|TSTR, buffer, TAGEND)) {
          if (file->Flags & FL_FOLDER) tlSatisfied = TRUE;
          acFree(file);
       }
@@ -134,21 +132,13 @@ static void parse_xmltag(objMenu *Self, objXML *XML, XMLTag *Tag)
 
    if (!StrMatch("if", Tag->Attrib->Name)) {
       if (if_satisfied(Self, Tag)) {
-         Tag = Tag->Child;
-         while (Tag) {
-            parse_xmltag(Self, XML, Tag);
-            Tag = Tag->Next;
-         }
+         for (Tag=Tag->Child; Tag; Tag=Tag->Next) parse_xmltag(Self, XML, Tag);
       }
    }
    else if (!StrMatch("else", Tag->Attrib->Name)) {
       // Execute the contents of the <else> tag if the last <if> statement was not satisfied
-      if (tlSatisfied IS FALSE) {
-         Tag = Tag->Child;
-         while (Tag) {
-            parse_xmltag(Self, XML, Tag);
-            Tag = Tag->Next;
-         }
+      if (!tlSatisfied) {
+         for (Tag=Tag->Child; Tag; Tag=Tag->Next) parse_xmltag(Self, XML, Tag);
       }
    }
    else if (!StrMatch("style", Tag->Attrib->Name)) {
@@ -193,23 +183,21 @@ static void parse_xmltag(objMenu *Self, objXML *XML, XMLTag *Tag)
       //
       // The format is: [@scriptdir]/lang/[@filename].languagecode
       //
-      // The translation arguments will be expected to be in the MENU section of the config file.
+      // The translation arguments will be expected to be in the MENU group of the config file.
 
       CSTRING locale = "eng";
       StrReadLocale("Language", &locale);
 
       if (StrCompare(locale, Self->Language, 0, 0) != ERR_Okay) {
-         char filename[300];
          LONG i;
          for (i=0; Self->Path[i]; i++);
          while ((i > 0) and (Self->Path[i-1] != ':') and (Self->Path[i-1] != '/') and (Self->Path[i-1] != '\\')) i--;
 
+         char filename[300];
          LONG j = StrCopy(Self->Path, filename, i); // script dir
          StrFormat(filename+j, sizeof(filename)-j, "%s/%s.%s", Self->LanguageDir, Self->Path + i, locale);
 
-         CreateObject(ID_CONFIG, NF_INTEGRAL, &Self->Translation,
-            FID_Path|TSTR, filename,
-            TAGEND);
+         CreateObject(ID_CONFIG, NF_INTEGRAL, &Self->Translation, FID_Path|TSTR, filename, TAGEND);
       }
    }
    else log.warning("Unsupported menu element '%s'", Tag->Attrib->Name);
@@ -560,7 +548,7 @@ static ERROR create_menu(objMenu *Self)
 {
    parasol::Log log(__FUNCTION__);
 
-   log.branch("");
+   log.branch();
 
    if ((Self->MenuSurfaceID) and (!(Self->Flags & MNF_CACHE))) {
       acFreeID(Self->MenuSurfaceID);
@@ -577,11 +565,11 @@ static ERROR create_menu(objMenu *Self)
       else SetLong(surface, FID_Owner, CurrentTaskID()); // Menu will open on the host desktop with this option.
 
       SetFields(surface,
-         FID_X|TLONG,         Self->X,
-         FID_Y|TLONG,         Self->Y,
-         FID_Width|TLONG,     Self->Width,
-         FID_Height|TLONG,    Self->Height,
-         FID_Flags|TLONG,     surface->Flags | RNF_STICK_TO_FRONT,
+         FID_X|TLONG,      Self->X,
+         FID_Y|TLONG,      Self->Y,
+         FID_Width|TLONG,  Self->Width,
+         FID_Height|TLONG, Self->Height,
+         FID_Flags|TLONG,  surface->Flags | RNF_STICK_TO_FRONT,
          FID_WindowType|TLONG, SWIN_NONE,
          TAGEND);
 
@@ -661,11 +649,8 @@ static ERROR process_menu_content(objMenu *Self)
 
    if (Self->Config) {
       objXML *xml;
-      if (!CreateObject(ID_XML, NF_INTEGRAL, &xml,
-            FID_Statement|TSTR, Self->Config,
-            TAGEND)) {
-         XMLTag *tag;
-         for (tag=xml->Tags[0]; tag; tag=tag->Next) parse_xmltag(Self, xml, tag);
+      if (!CreateObject(ID_XML, NF_INTEGRAL, &xml, FID_Statement|TSTR, Self->Config, TAGEND)) {
+         for (auto tag=xml->Tags[0]; tag; tag=tag->Next) parse_xmltag(Self, xml, tag);
          acFree(xml);
          return ERR_Okay;
       }
@@ -714,8 +699,7 @@ static ERROR process_menu_content(objMenu *Self)
          return ERR_InvalidData;
       }
 
-      XMLTag *tag;
-      for (tag=Self->prvXML->Tags[i]->Child; tag; tag=tag->Next) {
+      for (auto tag=Self->prvXML->Tags[i]->Child; tag; tag=tag->Next) {
          add_xml_item(Self, Self->prvXML, tag);
       }
    }
@@ -736,8 +720,7 @@ void select_item(objMenu *Self, objMenuItem *Item, BYTE Toggle)
 
    if (Item->Group) {
       if (!(Item->Flags & MIF_SELECTED)) {
-         objMenuItem *scan;
-         for (scan=Self->Items; scan; scan=scan->Next) {
+         for (auto scan=Self->Items; scan; scan=scan->Next) {
             if (scan->Group IS Item->Group) {
                if (scan->Flags & MIF_SELECTED) {
                   scan->Flags &= ~MIF_SELECTED;

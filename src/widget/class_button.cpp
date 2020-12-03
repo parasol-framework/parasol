@@ -90,7 +90,7 @@ Activate: Activates the button.
 static ERROR BUTTON_Activate(objButton *Self, APTR Void)
 {
    parasol::Log log;
-   log.branch(NULL);
+   log.branch();
 
    if (Self->Active) {
       log.warning("Warning - recursion detected");

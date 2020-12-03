@@ -1222,7 +1222,7 @@ static void render_script(objImage *Self, STRING Statement)
 {
    parasol::Log log(__FUNCTION__);
 
-   log.branch("");
+   log.branch();
 
    if ((!Self->Layout->GraphicWidth) AND (!Self->Layout->GraphicHeight)) Self->Flags |= IMF_STRETCH;
 

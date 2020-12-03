@@ -62,7 +62,7 @@ static ERROR PROXY_Delete(objProxy *Self, APTR Void)
 
    if ((!Self->Section[0]) OR (!Self->Record)) return log.error(ERR_Failed);
 
-   log.branch("");
+   log.branch();
 
    if (Self->Host) {
       #ifdef _WIN32
@@ -150,7 +150,7 @@ static ERROR PROXY_Find(objProxy *Self, struct prxFind *Args)
 {
    parasol::Log log;
 
-   log.trace("Port: %d, Enabled: %d", (Args) ? Args->Port : 0, (Args) ? Args->Enabled : -1);
+   log.traceBranch("Port: %d, Enabled: %d", (Args) ? Args->Port : 0, (Args) ? Args->Enabled : -1);
 
    // Remove the previous cache of the proxy database
 
@@ -489,7 +489,7 @@ static ERROR PROXY_SaveSettings(objProxy *Self, APTR Void)
    objFile *file;
    ERROR error;
 
-   if ((!Self->Server) OR (!Self->ServerPort)) return log.error(ERR_FieldNotSet);
+   if ((!Self->Server) or (!Self->ServerPort)) return log.error(ERR_FieldNotSet);
 
    log.branch("Host: %d", Self->Host);
 
@@ -675,7 +675,7 @@ static ERROR SET_NetworkFilter(objProxy *Self, CSTRING Value)
 {
    if (Self->NetworkFilter) { FreeResource(Self->NetworkFilter); Self->NetworkFilter = NULL; }
 
-   if ((Value) AND (Value[0])) {
+   if ((Value) and (Value[0])) {
       if (!(Self->NetworkFilter = StrClone(Value))) return ERR_AllocMemory;
    }
 
@@ -697,7 +697,7 @@ static ERROR SET_Username(objProxy *Self, CSTRING Value)
 {
    if (Self->Username) { FreeResource(Self->Username); Self->Username = NULL; }
 
-   if ((Value) AND (Value[0])) {
+   if ((Value) and (Value[0])) {
       if (!(Self->Username = StrClone(Value))) return ERR_AllocMemory;
    }
 
@@ -719,7 +719,7 @@ static ERROR SET_Password(objProxy *Self, CSTRING Value)
 {
    if (Self->Password) { FreeResource(Self->Password); Self->Password = NULL; }
 
-   if ((Value) AND (Value[0])) {
+   if ((Value) and (Value[0])) {
       if (!(Self->Password = StrClone(Value))) return ERR_AllocMemory;
    }
 
@@ -739,7 +739,7 @@ static ERROR SET_ProxyName(objProxy *Self, CSTRING Value)
 {
    if (Self->ProxyName) { FreeResource(Self->ProxyName); Self->ProxyName = NULL; }
 
-   if ((Value) AND (Value[0])) {
+   if ((Value) and (Value[0])) {
       if (!(Self->ProxyName = StrClone(Value))) return ERR_AllocMemory;
    }
 
@@ -759,7 +759,7 @@ static ERROR SET_Server(objProxy *Self, CSTRING Value)
 {
    if (Self->Server) { FreeResource(Self->Server); Self->Server = NULL; }
 
-   if ((Value) AND (Value[0])) {
+   if ((Value) and (Value[0])) {
       if (!(Self->Server = StrClone(Value))) return ERR_AllocMemory;
    }
 
@@ -778,7 +778,7 @@ The port used to communicate with the proxy server must be defined here.
 static ERROR SET_ServerPort(objProxy *Self, LONG Value)
 {
    parasol::Log log;
-   if ((Value > 0) AND (Value <= 65536)) {
+   if ((Value > 0) and (Value <= 65536)) {
       Self->ServerPort = Value;
       return ERR_Okay;
    }

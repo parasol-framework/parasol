@@ -406,17 +406,14 @@ ERROR AssociateCmd(CSTRING Path, CSTRING Mode, LONG Flags, CSTRING Command)
    else assoc_path = "user:config/associations.cfg";
 
    if (!StrCompare("CLASS:", Path, sizeof("CLASS:")-1, 0)) {
-      if (!(error = CreateObject(ID_CONFIG, NF_UNTRACKED, (OBJECTPTR *)&config,
-            FID_Path|TSTR, assoc_path,
-            TAGEND))) {
+      if (!(error = CreateObject(ID_CONFIG, NF_UNTRACKED, (OBJECTPTR *)&config, FID_Path|TSTR, assoc_path, TAGEND))) {
          CSTRING str;
          if (!cfgReadValue(config, Path+6, "Class", &str)) {
             if (Command) {
                cfgWriteValue(config, Path+6, Mode, Command);
                error = acSaveSettings(&config->Head);
             }
-            else {
-               // If no command is provided, remove the command linked to this mode
+            else { // If no command is provided, remove the command linked to this mode
                LONG i;
                for (i=0; i < config->AmtEntries; i++) {
                   if (!StrMatch(Path+6, config->Entries[i].Section)) {
@@ -441,9 +438,7 @@ ERROR AssociateCmd(CSTRING Path, CSTRING Mode, LONG Flags, CSTRING Command)
    }
    else if (!(error = IdentifyFile(Path, Mode, IDF_SECTION, &class_id, NULL, &section))) {
       log.msg("Linking file under section '%s'", section);
-      if (!(error = CreateObject(ID_CONFIG, NF_UNTRACKED, (OBJECTPTR *)&config,
-            FID_Path|TSTR, assoc_path,
-            TAGEND))) {
+      if (!(error = CreateObject(ID_CONFIG, NF_UNTRACKED, (OBJECTPTR *)&config, FID_Path|TSTR, assoc_path, TAGEND))) {
          if (!(error = cfgWriteValue(config, section, Mode, Command))) {
             error = acSaveSettings(&config->Head);
          }
@@ -461,10 +456,7 @@ ERROR AssociateCmd(CSTRING Path, CSTRING Mode, LONG Flags, CSTRING Command)
       else extbuf[0] = 0;
 
       if (extbuf[0]) {
-         if (!(error = CreateObject(ID_CONFIG, NF_UNTRACKED, (OBJECTPTR *)&config,
-               FID_Path|TSTR, assoc_path,
-               TAGEND))) {
-
+         if (!(error = CreateObject(ID_CONFIG, NF_UNTRACKED, (OBJECTPTR *)&config, FID_Path|TSTR, assoc_path, TAGEND))) {
             if (!(error = cfgWriteValue(config, ext, "Match", extbuf))) {
                if (!(error = cfgWriteValue(config, ext, Mode, Command))) {
                   error = acSaveSettings(&config->Head);
@@ -1813,7 +1805,7 @@ ERROR findfile(STRING Path)
          if ((entry->d_name[0] IS '.') and (entry->d_name[1] IS 0)) continue;
          if ((entry->d_name[0] IS '.') and (entry->d_name[1] IS '.') and (entry->d_name[2] IS 0)) continue;
 
-         if ((!StrCompare(Path+len, entry->d_name, 0, 0)) AND
+         if ((!StrCompare(Path+len, entry->d_name, 0, 0)) and
              ((entry->d_name[namelen] IS '.') or (!entry->d_name[namelen]))) {
             StrCopy(entry->d_name, Path+len, COPY_ALL);
 
@@ -1843,13 +1835,11 @@ ERROR findfile(STRING Path)
       Path[len] = save;
 
       if ((bytes = syscall(SYS_getdents, dir, buffer, sizeof(buffer))) > 0) {
-
          for (entry = (struct olddirent *)buffer; (size_t)entry < (size_t)(buffer + bytes); entry = (struct olddirent *)(((BYTE *)entry) + entry->d_reclen)) {
-
             if ((entry->d_name[0] IS '.') and (entry->d_name[1] IS 0)) continue;
             if ((entry->d_name[0] IS '.') and (entry->d_name[1] IS '.') and (entry->d_name[2] IS 0)) continue;
 
-            if ((!StrCompare(Path+len, entry->d_name, 0, NULL)) AND
+            if ((!StrCompare(Path+len, entry->d_name, 0, NULL)) and
                 ((entry->d_name[namelen] IS '.') or (!entry->d_name[namelen]))) {
                StrCopy(entry->d_name, Path+len, COPY_ALL);
 
@@ -3479,8 +3469,7 @@ ERROR load_datatypes(void)
 {
    parasol::Log log(__FUNCTION__);
    if (!glDatatypes) {
-      if (CreateObject(ID_CONFIG, NF_UNTRACKED, (OBJECTPTR *)&glDatatypes,
-            TAGEND) != ERR_Okay) {
+      if (CreateObject(ID_CONFIG, NF_UNTRACKED, (OBJECTPTR *)&glDatatypes, TAGEND) != ERR_Okay) {
          return log.warning(ERR_CreateObject);
       }
    }

@@ -104,7 +104,7 @@ static ERROR PIC_Activate(objPicture *Self, APTR Void)
 
    if (Self->Bitmap->Head.Flags & NF_INITIALISED) return ERR_Okay;
 
-   log.branch("");
+   log.branch();
 
    ERROR error = ERR_Failed;
    glError = FALSE;
@@ -456,7 +456,7 @@ static ERROR PIC_Query(objPicture *Self, APTR Void)
    if (Self->Bitmap->Flags & BMF_QUERIED) return ERR_Okay;
    if (!Self->prvFile) return ERR_NotInitialised;
 
-   log.branch("");
+   log.branch();
 
    objBitmap *Bitmap = Self->Bitmap;
    ERROR error = ERR_Failed;
@@ -557,7 +557,7 @@ static ERROR PIC_SaveImage(objPicture *Self, struct acSaveImage *Args)
    LONG y, i;
    png_bytep row_pointers;
 
-   log.branch("");
+   log.branch();
 
    objBitmap *bmp        = Self->Bitmap;
    OBJECTPTR file        = NULL;

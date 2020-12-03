@@ -240,7 +240,7 @@ static int input_request_item(lua_State *Lua)
       {
          // The source will return a DATA_RECEIPT for the items that we've asked for (see the DataFeed action).
          parasol::Log log("input.request_item");
-         log.branch("");
+         log.branch();
          error = ActionMsg(AC_DataFeed, source_id, &dc);
       }
 

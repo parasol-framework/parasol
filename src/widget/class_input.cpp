@@ -799,7 +799,7 @@ static void text_validation(objText *Text)
       return;
    }
 
-   log.branch(NULL);
+   log.branch();
 
    Self->prvActive = TRUE;
 
@@ -855,7 +855,7 @@ static void text_activated(objText *Text)
       return;
    }
 
-   log.branch("");
+   log.branch();
 
    Self->prvActive = TRUE;
 

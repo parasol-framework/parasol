@@ -986,7 +986,7 @@ bytes read from the file data.  The FL_READ bit in the #Flags field must have be
 or the call will fail.
 
 It is possible for this call to report success even in the event that no data has been read from the file.  This is
-typical when reading from streamed file sources.
+a typical outcome when reading from streamed file sources.
 
 -ERRORS-
 Okay: The file information was read into the buffer.
@@ -1058,7 +1058,7 @@ static ERROR FILE_Read(objFile *Self, struct acRead *Args)
 
       // Return ERR_Okay because even though not all data was read, this was not due to a failure.
 
-      log.msg("%d of the intended %d bytes were read from the file.", Args->Result, Args->Length);
+      log.trace("%d of the requested %d bytes were read from the file.", Args->Result, Args->Length);
       Self->Position += Args->Result;
       return ERR_Okay;
    }

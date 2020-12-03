@@ -41,6 +41,8 @@ sockets and HTTP, please refer to the @NetSocket and @HTTP classes.
 #include <openssl/pem.h>
 #endif
 
+#include <stack>
+
 #ifdef __linux__
 typedef LONG SOCKET_HANDLE;
 #elif _WIN32
