@@ -433,6 +433,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
          else if (!StrMatch(Info->Args[i], "--log-api"))     glLogLevel = 5; // Default level for API messages
          else if (!StrMatch(Info->Args[i], "--log-extapi"))  glLogLevel = 6;
          else if (!StrMatch(Info->Args[i], "--log-debug"))   glLogLevel = 7;
+         else if (!StrMatch(Info->Args[i], "--log-trace"))   glLogLevel = 9;
          else if (!StrMatch(Info->Args[i], "--log-all"))     glLogLevel = 9; // 9 is the absolute maximum
          else if (!StrMatch(Info->Args[i], "--time"))        glTimeLog = PreciseTime();
          #if defined(__unix__) && !defined(__ANDROID__)

@@ -45,14 +45,14 @@ end
 
 function testSelectFont()
    local err, path = mFont.selectFont("Open Sans", "Regular", 12, nil)
-   print(err, ' ', path)
+   assert(err == ERR_Okay, "SelectFont() returned error " .. mSys.GetErrorMsg(err))
 
    -- This will fail because a fixed Open Sans isn't available and no wildcard was specified
    local err, path = mFont.selectFont("Open Sans", "Regular", 12, FTF_REQUIRE_FIXED)
    assert(err != ERR_Okay, "SelectFont() returned error " .. mSys.GetErrorMsg(err))
 
    local err, path = mFont.selectFont("Open Sans,*", "Regular", 12, FTF_PREFER_FIXED)
-   print(err, ' ', path)
+   assert(err == ERR_Okay, "SelectFont() returned error " .. mSys.GetErrorMsg(err))
 end
 
 //=====================================================================================================================

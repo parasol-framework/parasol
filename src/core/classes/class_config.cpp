@@ -47,9 +47,6 @@ is recommended as the default naming format.
 
 *****************************************************************************/
 
-#define STRBLOCKSIZE 2048
-#define ENTBLOCKSIZE 100
-
 #define PRV_CONFIG
 #include "../defs.h"
 #include <parasol/main.h>
