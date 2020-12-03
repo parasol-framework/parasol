@@ -797,7 +797,7 @@ int fcmd_exec(lua_State *Lua)
 
       {
          parasol::Log log("exec");
-         log.branch("");
+         log.branch();
 
          // Check for the presence of a compiled header and skip it if present
 

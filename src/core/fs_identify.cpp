@@ -42,7 +42,7 @@ ERROR IdentifyFile(CSTRING Path, CSTRING Mode, LONG Flags, CLASSID *ClassID, CLA
    LONG i, bytes_read;
    #define HEADER_SIZE 80
 
-   if ((!Path) OR (!ClassID)) return log.warning(ERR_NullArgs);
+   if ((!Path) or (!ClassID)) return log.warning(ERR_NullArgs);
 
    log.branch("File: %s, Mode: %s, Command: %s", Path, Mode, Command ? "Yes" : "No");
 
@@ -65,44 +65,27 @@ ERROR IdentifyFile(CSTRING Path, CSTRING Mode, LONG Flags, CLASSID *ClassID, CLA
    }
 
    // Scan for device associations.  A device association, e.g. http: can link to a class or provide the appropriate
-   // command in its datatype section.
+   // command in its datatype group.
 
-   ConfigEntry *entries;
-   if ((entries = glDatatypes->Entries)) {
-      for (LONG i=0; i < glDatatypes->AmtEntries; i++) {
-         if (!StrCompare("DEV:", entries[i].Section, 4, 0)) {
-            LONG j = StrLength(entries[i].Section + 4);
-            if (!StrCompare(entries[i].Section + 4, Path, j, 0)) {
-               CSTRING str = entries[i].Section;
-
+   ConfigGroups *groups;
+   if (!GetPointer(glDatatypes, FID_Data, &groups)) {
+      for (auto& [group, keys] : groups[0]) {
+         if (!group.compare(0, 4, "DEV:")) {
+            LONG j = group.size() - 4;
+            if (!StrCompare(group.c_str() + 4, Path, j, 0)) {
                if (Path[j] != ':') continue;
 
-               CSTRING datatype = NULL;
-               while ((i < glDatatypes->AmtEntries) AND (!StrMatch(entries[i].Section, str))) {
-                  if (!StrMatch("Datatype", entries[i].Key)) {
-                     datatype = entries[i].Data;
-                     break;
-                  }
-                  else if (!StrMatch(entries[i].Key, Mode)) {
-                     cmd = StrClone(entries[i].Data);
-                     break;
-                  }
-                  i++;
-               }
+               CSTRING datatype;
+               if (keys.contains("Datatype")) datatype = keys["Datatype"].c_str();
+               else if (keys.contains("Mode")) cmd = StrClone(keys["Mode"].c_str());
 
                // Found device association
 
-               if ((!cmd) AND (datatype)) {
-                  for (LONG i=0; i < glDatatypes->AmtEntries; i++) {
-                     if (!StrMatch(datatype, entries[i].Section)) {
-                        log.trace("Found datatype '%s'", datatype);
-                        while (!StrMatch(datatype, entries[i].Section)) {
-                           if (!StrMatch(Mode, entries[i].Key)) {
-                              if (Flags & IDF_SECTION) cmd = StrClone(entries[i].Section);
-                              else cmd = StrClone(entries[i].Data);
-                              break;
-                           }
-                           i++;
+               if ((!cmd) and (datatype)) {
+                  for (auto& [group, keys] : groups[0]) {
+                     if (!StrMatch(datatype, group.c_str())) {
+                        if (keys.contains(Mode)) {
+                           cmd = StrClone((Flags & IDF_SECTION) ? group.c_str() : keys[Mode].c_str());
                         }
                         break;
                      }
@@ -110,9 +93,9 @@ ERROR IdentifyFile(CSTRING Path, CSTRING Mode, LONG Flags, CLASSID *ClassID, CLA
 
                   if (!cmd) log.trace("Datatype '%s' missing mode '%s'", datatype, Mode);
                }
-               else log.warning("No datatype reference for section '%s'", str);
+               else log.warning("No datatype reference for group '%s'", group.c_str());
 
-               goto restart; // Jump to the restart label
+               goto restart;
             }
          }
       }
@@ -149,7 +132,7 @@ ERROR IdentifyFile(CSTRING Path, CSTRING Mode, LONG Flags, CLASSID *ClassID, CLA
             return ERR_FileNotFound;
          }
 
-         for (i=0; (Path[i]) AND (Path[i] != '|'); i++) {
+         for (i=0; (Path[i]) and (Path[i] != '|'); i++) {
             if (Path[i] IS ';') log.warning("Use of ';' obsolete, use '|' in path %s", Path);
          }
 
@@ -179,7 +162,7 @@ ERROR IdentifyFile(CSTRING Path, CSTRING Mode, LONG Flags, CLASSID *ClassID, CLA
 
       if (!*ClassID) {
          if ((filename = get_filename(res_path))) {
-            for (LONG i=0; (i < classes->Total) AND (!*ClassID); i++) {
+            for (LONG i=0; (i < classes->Total) and (!*ClassID); i++) {
                ClassItem *item = (ClassItem *)((char *)classes + offsets[i]);
                if (item->MatchOffset) {
                   if (!StrCompare((STRING)item + item->MatchOffset, filename, 0, STR_WILDCARD)) {
@@ -201,9 +184,9 @@ ERROR IdentifyFile(CSTRING Path, CSTRING Mode, LONG Flags, CLASSID *ClassID, CLA
       if (!*ClassID) {
          log.trace("Loading file header to identify '%s' against class registry", res_path);
 
-         if ((!ReadFileToBuffer(res_path, buffer, HEADER_SIZE, &bytes_read)) AND (bytes_read >= 4)) {
+         if ((!ReadFileToBuffer(res_path, buffer, HEADER_SIZE, &bytes_read)) and (bytes_read >= 4)) {
             log.trace("Checking file header data (%d bytes) against %d classes....", bytes_read, classes->Total);
-            for (LONG i=0; (i < classes->Total) AND (!*ClassID); i++) {
+            for (LONG i=0; (i < classes->Total) and (!*ClassID); i++) {
                ClassItem *item = (ClassItem *)((char *)classes + offsets[i]);
                if (!item->HeaderOffset) continue;
 
@@ -211,39 +194,39 @@ ERROR IdentifyFile(CSTRING Path, CSTRING Mode, LONG Flags, CLASSID *ClassID, CLA
                BYTE match = TRUE;  // Headers use an offset based hex format, for example: [8:$958a9b9f9301][24:$939a9fff]
                while (*header) {
                   if (*header != '[') {
-                     if ((*header IS '|') AND (match)) break;
+                     if ((*header IS '|') and (match)) break;
                      header++;
                      continue;
                   }
 
                   header++;
                   LONG offset = StrToInt(header);
-                  while ((*header) AND (*header != ':')) header++;
+                  while ((*header) and (*header != ':')) header++;
                   if (!header[0]) break;
 
                   header++; // Skip ':'
                   if (*header IS '$') { // Find and compare the data, one byte at a time
                      header++; // Skip '$'
                      while (*header) {
-                        if (((*header >= '0') AND (*header <= '9')) OR
-                            ((*header >= 'A') AND (*header <= 'F')) OR
-                            ((*header >= 'a') AND (*header <= 'f'))) break;
+                        if (((*header >= '0') and (*header <= '9')) or
+                            ((*header >= 'A') and (*header <= 'F')) or
+                            ((*header >= 'a') and (*header <= 'f'))) break;
                         header++;
                      }
 
                      UBYTE byte;
                      while (*header) {
                         // Nibble 1
-                        if ((*header >= '0') AND (*header <= '9')) byte = (*header - '0')<<4;
-                        else if ((*header >= 'A') AND (*header <= 'F')) byte = (*header - 'A' + 0x0a)<<4;
-                        else if ((*header >= 'a') AND (*header <= 'f')) byte = (*header - 'a' + 0x0a)<<4;
+                        if ((*header >= '0') and (*header <= '9')) byte = (*header - '0')<<4;
+                        else if ((*header >= 'A') and (*header <= 'F')) byte = (*header - 'A' + 0x0a)<<4;
+                        else if ((*header >= 'a') and (*header <= 'f')) byte = (*header - 'a' + 0x0a)<<4;
                         else break;
                         header++;
 
                         // Nibble 2
-                        if ((*header >= '0') AND (*header <= '9')) byte |= *header - '0';
-                        else if ((*header >= 'A') AND (*header <= 'F')) byte |= *header - 'A' + 0x0a;
-                        else if ((*header >= 'a') AND (*header <= 'f')) byte |= *header - 'a' + 0x0a;
+                        if ((*header >= '0') and (*header <= '9')) byte |= *header - '0';
+                        else if ((*header >= 'A') and (*header <= 'F')) byte |= *header - 'A' + 0x0a;
+                        else if ((*header >= 'a') and (*header <= 'f')) byte |= *header - 'a' + 0x0a;
                         else break;
                         header++;
 
@@ -259,7 +242,7 @@ ERROR IdentifyFile(CSTRING Path, CSTRING Mode, LONG Flags, CLASSID *ClassID, CLA
                      }
                   }
                   else {
-                     while ((*header) AND (*header != ']')) {
+                     while ((*header) and (*header != ']')) {
                         if (offset >= bytes_read) {
                            match = FALSE;
                            break;
@@ -274,7 +257,7 @@ ERROR IdentifyFile(CSTRING Path, CSTRING Mode, LONG Flags, CLASSID *ClassID, CLA
                   }
 
                   if (match IS FALSE) {
-                     while ((*header) AND (*header != '|')) header++; // Look for an OR operation
+                     while ((*header) and (*header != '|')) header++; // Look for an or operation
                      if (*header IS '|') {
                         match = TRUE; // Continue comparisons
                         header++;
@@ -319,7 +302,7 @@ class_identified:
    // Note that if class identification failed, it will be because the data does not belong to a specific class.
    // The associations.cfg file will help us load files that do not have class associations later in this subroutine.
 
-   if ((*ClassID != ID_TASK) AND (!StrMatch("Open", Mode))) {
+   if ((*ClassID != ID_TASK) and (!StrMatch("Open", Mode))) {
       // Testing the X file bit is only reliable in the commercial version of Parasol, as other Linux systems often
       // mount FAT partitions with +X on everything.
 
@@ -340,8 +323,8 @@ class_identified:
       else if (!StrMatch("Linux", state->Platform)) {
          STRING resolve;
          if (!ResolvePath(Path, RSF_NO_FILE_CHECK, &resolve)) {
-            if ((!StrCompare("/usr/", resolve, 5, 0)) OR
-                (!StrCompare("/opt/", resolve, 5, 0)) OR
+            if ((!StrCompare("/usr/", resolve, 5, 0)) or
+                (!StrCompare("/opt/", resolve, 5, 0)) or
                 (!StrCompare("/bin/", resolve, 5, 0))) {
                log.trace("Checking for +x permissions on file %s", resolve);
                char filename[MAX_FILENAME];
@@ -382,7 +365,7 @@ class_identified:
    if (*ClassID) {
       // Get the name of the class and sub-class so that we can search the datatypes object.
 
-      if ((!SubClassID) OR (!*SubClassID)) {
+      if ((!SubClassID) or (!*SubClassID)) {
          get_class_cmd(Mode, glDatatypes, Flags, *ClassID, &cmd);
       }
       else if (get_class_cmd(Mode, glDatatypes, Flags, *SubClassID, &cmd) != ERR_Okay) {
@@ -399,20 +382,15 @@ class_identified:
    if ((filename = get_filename(Path))) {
       log.msg("Scanning associations config to match: %s", filename);
 
-      if ((entries = glDatatypes->Entries)) {
-         CSTRING str;
-         for (LONG i=0; i < glDatatypes->AmtEntries; i++) {
-            if (StrMatch(entries[i].Key, "Match") != ERR_Okay) continue;
+      if (!GetPointer(glDatatypes, FID_Data, &groups)) {
+         for (auto& [group, keys] : groups[0]) {
+            if (not keys.contains("Match")) continue;
 
-            if (!StrCompare(entries[i].Data, filename, 0, STR_WILDCARD)) {
-               if (Flags & IDF_SECTION) cmd = StrClone(entries[i].Section);
-               else if (!cfgReadValue(glDatatypes, entries[i].Section, Mode, &str)) {
-                  cmd = StrClone(str);
-               }
+            if (!StrCompare(keys["Match"].c_str(), filename, 0, STR_WILDCARD)) {
+               if (Flags & IDF_SECTION) cmd = StrClone(group.c_str());
+               else if (keys.contains(Mode)) cmd = StrClone(keys[Mode].c_str());
                else if (StrMatch("Open", Mode) != ERR_Okay) {
-                  if (!cfgReadValue(glDatatypes, entries[i].Section, "Open", &str)) {
-                     cmd = StrClone(str);
-                  }
+                  if (keys.contains("Open")) cmd = StrClone(keys["Open"].c_str());
                }
                break;
             }
@@ -421,7 +399,7 @@ class_identified:
    }
 
 restart:
-   if ((!(Flags & IDF_SECTION)) AND (cmd) AND (!StrCompare("[PROG:", cmd, 6, 0))) { // Command is referencing a program
+   if ((!(Flags & IDF_SECTION)) and (cmd) and (!StrCompare("[PROG:", cmd, 6, 0))) { // Command is referencing a program
       STRING str;
       if (!(TranslateCmdRef(cmd, &str))) {
          FreeResource(cmd);
@@ -439,7 +417,7 @@ host_platform:
 #ifdef _WIN32
    log.trace("Windows execution process...");
 
-   if ((!cmd) AND (!(Flags & (IDF_SECTION|IDF_IGNORE_HOST)))) { // Check if Windows supports the file type
+   if ((!cmd) and (!(Flags & (IDF_SECTION|IDF_IGNORE_HOST)))) { // Check if Windows supports the file type
       if (!ResolvePath(Path, RSF_APPROXIMATE, &res_path)) {
          char buffer[300];
 
@@ -461,7 +439,7 @@ host_platform:
             char key[300];
             CSTRING ext = get_extension(res_path);
 
-            if ((ext) AND ((i = winReadRootKey(ext-1, NULL, key, sizeof(key))))) {
+            if ((ext) and ((i = winReadRootKey(ext-1, NULL, key, sizeof(key))))) {
                StrCopy("\\Shell\\Open\\Command", key+i, sizeof(key)-i);
 
                if (winReadRootKey(key, NULL, buffer, sizeof(buffer))) {
@@ -489,7 +467,7 @@ host_platform:
 
                   // Check if an absolute path was given.  If not, we need to resolve the .exe to its absolute path.
 
-                  if ((buffer[0]) AND (buffer[1] IS ':')); // Path is absolute
+                  if ((buffer[0]) and (buffer[1] IS ':')); // Path is absolute
                   else {
                      STRING abs;
                      LONG end, start;
@@ -498,7 +476,7 @@ host_platform:
 
                      if (*buffer IS '"') {
                         start = 1;
-                        for (end=0; (buffer[end]) AND (buffer[end] != '"'); end++);
+                        for (end=0; (buffer[end]) and (buffer[end] != '"'); end++);
                      }
                      else {
                         start = 0;
@@ -543,7 +521,7 @@ host_platform:
       CSTRING str;
       if (Flags & IDF_HOST); // Return NULL if the host platform has no association
       else if (Flags & IDF_SECTION); // Return NULL and not 'default' when this option is used
-      else if ((!cfgReadValue(glDatatypes, "default", Mode, &str)) AND (str)) {
+      else if ((!cfgReadValue(glDatatypes, "default", Mode, &str)) and (str)) {
          cmd = StrClone(str);
          goto restart;
       }
@@ -553,7 +531,7 @@ host_platform:
 
 exit:
    log.trace("File belongs to class $%.8x", *ClassID);
-   if ((!*ClassID) AND (!cmd)) return ERR_Search;
+   if ((!*ClassID) and (!cmd)) return ERR_Search;
    else return ERR_Okay;
 }
 
@@ -565,22 +543,21 @@ ERROR get_class_cmd(CSTRING Mode, objConfig *Associations, LONG Flags, CLASSID C
 {
    parasol::Log log("IdentifyFile");
 
-   if ((!ClassID) OR (!Command) OR (!Associations)) return log.warning(ERR_NullArgs);
+   if ((!ClassID) or (!Command) or (!Associations)) return log.warning(ERR_NullArgs);
 
-   ClassItem *item = find_class(ClassID);
+   auto item = find_class(ClassID);
 
    if (item) {
-      ConfigEntry *entries;
-      if ((entries = Associations->Entries)) {
-         for (LONG i=0; i < Associations->AmtEntries; i++) {
-            if (!StrMatch(entries[i].Key, "Class")) {
-               if (!StrMatch(entries[i].Data, item->Name)) {
-                  CSTRING str;
-                  if (Flags & IDF_SECTION) *Command = StrClone(entries[i].Section);
-                  else if (!cfgReadValue(Associations, entries[i].Section, Mode, &str)) *Command = StrClone(str);
-                  if (!*Command) return ERR_AllocMemory;
-                  else return ERR_Okay;
-               }
+      ConfigGroups *groups;
+      if (!GetPointer(Associations, FID_Data, &groups)) {
+         for (auto& [group, keys] : groups[0]) {
+            if ((keys.contains("Class")) and (!StrMatch(keys["Class"].c_str(), item->Name))) {
+               if (Flags & IDF_SECTION) *Command = StrClone(group.c_str());
+               else if (keys.contains(Mode)) *Command = StrClone(keys[Mode].c_str());
+               else return ERR_NoData;
+
+               if (!*Command) return ERR_AllocMemory;
+               else return ERR_Okay;
             }
          }
       }

@@ -80,6 +80,7 @@ int: Returns the absolute base-line value that was active prior to calling this 
 
 LONG AdjustLogLevel(LONG BaseLine)
 {
+   if (glLogLevel >= 9) return tlBaseLine; // Do nothing if trace logging is active.
    LONG old_level = tlBaseLine;
    if ((BaseLine >= -6) AND (BaseLine <= 6)) tlBaseLine += BaseLine;
    return old_level;

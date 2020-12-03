@@ -106,10 +106,7 @@ static ERROR PARC_Activate(objParc *Self, APTR Void)
             // Run the default script as specified in "parc.xml".
 
             if (class_id IS ID_SCRIPT) {
-               if (!CreateObject(subclass_id ? subclass_id : class_id, NF_INTEGRAL, &Self->Script,
-                     FID_Location|TSTRING,  path,
-                     TAGEND)) {
-
+               if (!CreateObject(subclass_id ? subclass_id : class_id, NF_INTEGRAL, &Self->Script, FID_Path|TSTR, path, TAGEND)) {
                   error = acActivate(Self->Script);
                }
                else error = ERR_CreateObject;
@@ -217,7 +214,7 @@ static ERROR PARC_Init(objParc *Self, APTR Void)
    ERROR error;
 
    if (!CreateObject(ID_COMPRESSION, NF_INTEGRAL, &Self->Archive,
-         FID_Location|TSTR,    Self->Path,
+         FID_Path|TSTR,        Self->Path,
          FID_ArchiveName|TSTR, "parc",
          FID_Flags|TLONG,      CMF_READ_ONLY,
          TAGEND)) {

@@ -136,7 +136,7 @@ belong to the document object.
 static ERROR DOCUMENT_Activate(objDocument *Self, APTR Void)
 {
    parasol::Log log;
-   log.branch("");
+   log.branch();
 
    ChildEntry list[16];
    LONG count = ARRAYSIZE(list);
@@ -303,7 +303,7 @@ static ERROR DOCUMENT_Clear(objDocument *Self, APTR Void)
 {
    parasol::Log log;
 
-   log.branch("");
+   log.branch();
    unload_doc(Self, 0);
    if (Self->XML) { acFree(Self->XML); Self->XML = NULL; }
    redraw(Self, FALSE);

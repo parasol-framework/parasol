@@ -881,9 +881,7 @@ ERROR StrReadLocale(CSTRING Key, CSTRING *Value)
    #endif
 
    if (!glLocale) {
-      if (!CreateObject(ID_CONFIG, NF_UNTRACKED, &glLocale,
-            FID_Location|TSTR, "user:config/locale.cfg",
-            TAGEND)) {
+      if (!CreateObject(ID_CONFIG, NF_UNTRACKED, &glLocale, FID_Path|TSTR, "user:config/locale.cfg", TAGEND)) {
       }
    }
 

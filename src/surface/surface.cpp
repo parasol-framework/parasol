@@ -3199,7 +3199,7 @@ static ERROR load_style_values(void)
 {
    parasol::Log log(__FUNCTION__);
 
-   log.branch("");
+   log.branch();
 
    CSTRING style_path = "style:values.xml";
    if (AnalysePath(style_path, NULL) != ERR_Okay) {

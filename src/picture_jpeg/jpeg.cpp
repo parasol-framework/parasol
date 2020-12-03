@@ -220,7 +220,7 @@ static ERROR JPEG_Query(objPicture *Self, APTR Void)
    struct jpeg_decompress_struct *cinfo;
    struct jpeg_error_mgr jerr;
 
-   log.branch("");
+   log.branch();
 
    if (!Self->prvFile) {
       STRING path;
@@ -265,7 +265,7 @@ static ERROR JPEG_SaveImage(objPicture *Self, struct acSaveImage *Args)
 {
    parasol::Log log;
 
-   log.branch("");
+   log.branch();
 
    objFile *file = NULL;
 

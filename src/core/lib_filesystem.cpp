@@ -314,21 +314,19 @@ ERROR AnalysePath(CSTRING Path, LONG *PathType)
    }
 
    LONG len = StrLength(Path);
-
    if (Path[len-1] IS ':') {
-      if (!AccessPrivateObject((OBJECTPTR)glVolumes, 8000)) {
-         for (LONG i=0; i < glVolumes->AmtEntries; i++) {
-            if ((glVolumes->Entries[i].Key[0] IS 'N') and (glVolumes->Entries[i].Key[1] IS 'a') and (glVolumes->Entries[i].Key[2] IS 'm') and (glVolumes->Entries[i].Key[3] IS 'e') and (glVolumes->Entries[i].Key[4] IS 0)) {
-               if (!StrCompare(Path, glVolumes->Entries[i].Data, len-1, 0)) {
-                  if (!glVolumes->Entries[i].Data[len-1]) {
-                     if (PathType) *PathType = LOC_VOLUME;
-                     ReleasePrivateObject((OBJECTPTR)glVolumes);
-                     return ERR_Okay;
-                  }
+      parasol::ScopedObjectLock<objConfig> volumes((OBJECTPTR)glVolumes, 8000);
+      if (volumes.granted()) {
+         ConfigGroups *groups;
+         if (!GetPointer(glVolumes, FID_Data, &groups)) {
+            for (auto& [group, keys] : groups[0]) {
+               if ((!StrCompare(Path, keys["Name"].c_str(), len-1, 0)) and
+                   (keys["Name"].size() IS (size_t)len-1)) {
+                  if (PathType) *PathType = LOC_VOLUME;
+                  return ERR_Okay;
                }
             }
          }
-         ReleasePrivateObject((OBJECTPTR)glVolumes);
       }
       return ERR_DoesNotExist;
    }
@@ -391,7 +389,7 @@ ERROR AssociateCmd(CSTRING Path, CSTRING Mode, LONG Flags, CSTRING Command)
    objConfig *config;
    CLASSID class_id;
    CSTRING assoc_path, ext;
-   STRING section;
+   STRING group;
    ERROR error;
 
    if ((!Path) or (!Mode)) return ERR_NullArgs;
@@ -406,32 +404,28 @@ ERROR AssociateCmd(CSTRING Path, CSTRING Mode, LONG Flags, CSTRING Command)
    else assoc_path = "user:config/associations.cfg";
 
    if (!StrCompare("CLASS:", Path, sizeof("CLASS:")-1, 0)) {
-      if (!(error = CreateObject(ID_CONFIG, NF_UNTRACKED, (OBJECTPTR *)&config,
-            FID_Path|TSTR, assoc_path,
-            TAGEND))) {
+      if (!(error = CreateObject(ID_CONFIG, NF_UNTRACKED, (OBJECTPTR *)&config, FID_Path|TSTR, assoc_path, TAGEND))) {
+         ConfigGroups *groups;
          CSTRING str;
          if (!cfgReadValue(config, Path+6, "Class", &str)) {
             if (Command) {
                cfgWriteValue(config, Path+6, Mode, Command);
                error = acSaveSettings(&config->Head);
             }
-            else {
-               // If no command is provided, remove the command linked to this mode
-               LONG i;
-               for (i=0; i < config->AmtEntries; i++) {
-                  if (!StrMatch(Path+6, config->Entries[i].Section)) {
-                     while (!StrMatch(Path+6, config->Entries[i].Section)) {
-                        if (!StrMatch(Mode, config->Entries[i].Key)) break;
-                        i++;
+            else { // If no command is provided, remove the command linked to this mode
+               if (!GetPointer(config, FID_Data, &groups)) {
+                  error = ERR_Okay;
+                  for (auto& [group, keys] : *groups) {
+                     if (!StrMatch(Path+6, group.c_str())) {
+                        if (keys.contains(Mode)) {
+                           cfgDeleteGroup(config, group.c_str());
+                           error = acSaveSettings(&config->Head);
+                           break;
+                        }
                      }
-                     break;
                   }
                }
-               if (i < config->AmtEntries) {
-                  cfgDeleteIndex(config, i);
-                  error = acSaveSettings(&config->Head);
-               }
-               else error = ERR_Okay;
+               else error = ERR_GetField;
             }
          }
          else error = ERR_Search; // Class is not registered
@@ -439,12 +433,10 @@ ERROR AssociateCmd(CSTRING Path, CSTRING Mode, LONG Flags, CSTRING Command)
          acFree(&config->Head);
       }
    }
-   else if (!(error = IdentifyFile(Path, Mode, IDF_SECTION, &class_id, NULL, &section))) {
-      log.msg("Linking file under section '%s'", section);
-      if (!(error = CreateObject(ID_CONFIG, NF_UNTRACKED, (OBJECTPTR *)&config,
-            FID_Path|TSTR, assoc_path,
-            TAGEND))) {
-         if (!(error = cfgWriteValue(config, section, Mode, Command))) {
+   else if (!(error = IdentifyFile(Path, Mode, IDF_SECTION, &class_id, NULL, &group))) {
+      log.msg("Linking file under group '%s'", group);
+      if (!(error = CreateObject(ID_CONFIG, NF_UNTRACKED, (OBJECTPTR *)&config, FID_Path|TSTR, assoc_path, TAGEND))) {
+         if (!(error = cfgWriteValue(config, group, Mode, Command))) {
             error = acSaveSettings(&config->Head);
          }
          acFree(&config->Head);
@@ -461,10 +453,7 @@ ERROR AssociateCmd(CSTRING Path, CSTRING Mode, LONG Flags, CSTRING Command)
       else extbuf[0] = 0;
 
       if (extbuf[0]) {
-         if (!(error = CreateObject(ID_CONFIG, NF_UNTRACKED, (OBJECTPTR *)&config,
-               FID_Path|TSTR, assoc_path,
-               TAGEND))) {
-
+         if (!(error = CreateObject(ID_CONFIG, NF_UNTRACKED, (OBJECTPTR *)&config, FID_Path|TSTR, assoc_path, TAGEND))) {
             if (!(error = cfgWriteValue(config, ext, "Match", extbuf))) {
                if (!(error = cfgWriteValue(config, ext, Mode, Command))) {
                   error = acSaveSettings(&config->Head);
@@ -922,20 +911,15 @@ ERROR get_file_info(CSTRING Path, FileInfo *Info, LONG InfoSize, STRING NameBuff
       NameBuffer[i] = 0;
 
       error = ERR_Okay;
-      if (!AccessPrivateObject((OBJECTPTR)glVolumes, 3000)) {
-         ConfigEntry *entries;
-         if ((entries = glVolumes->Entries)) {
-            for (LONG i=0; i < glVolumes->AmtEntries; i++) {
-               if ((!StrMatch("Name", entries[i].Key)) and (!StrMatch(NameBuffer, entries[i].Data))) {
-                  while ((i > 0) and (!StrMatch(entries[i].Section, entries[i-1].Section))) i--;
 
-                  STRING section = entries[i].Section;
-                  for (; i < glVolumes->AmtEntries; i++) {
-                     if (StrMatch(entries[i].Section, section)) break; // Check if section has ended
-
-                     if (!StrMatch("Hidden", entries[i].Key)) {
-                        if ((!StrMatch("Yes", entries[i].Data)) or (!StrMatch("1", entries[i].Data))) Info->Flags |= RDF_HIDDEN;
-                     }
+      parasol::ScopedObjectLock<objConfig> volumes((OBJECTPTR)glVolumes);
+      if (volumes.granted()) {
+         ConfigGroups *groups;
+         if (!GetPointer(glVolumes, FID_Data, &groups)) {
+            for (auto& [group, keys] : groups[0]) {
+               if (!StrMatch(NameBuffer, keys["Name"].c_str())) {
+                  if (keys.contains("Hidden")) {
+                     if ((!StrMatch("Yes", keys["Hidden"].c_str())) or (!keys["Hidden"].compare("1"))) Info->Flags |= RDF_HIDDEN;
                   }
 
                   break;
@@ -943,8 +927,6 @@ ERROR get_file_info(CSTRING Path, FileInfo *Info, LONG InfoSize, STRING NameBuff
             }
          }
          else error = ERR_FileNotFound;
-
-         ReleasePrivateObject((OBJECTPTR)glVolumes);
       }
       else error = ERR_AccessObject;
 
@@ -1027,24 +1009,21 @@ ERROR TranslateCmdRef(CSTRING String, STRING *Command)
 
    objConfig *cfgprog;
    ERROR error;
-   if (!(error = CreateObject(ID_CONFIG, 0, (OBJECTPTR *)&cfgprog,
-         FID_Path|TSTR, "config:software/programs.cfg",
-         TAGEND))) {
-
-      ConfigEntry *entries;
-      if ((entries = cfgprog->Entries)) {
+   if (!(error = CreateObject(ID_CONFIG, 0, (OBJECTPTR *)&cfgprog, FID_Path|TSTR, "config:software/programs.cfg", TAGEND))) {
+      ConfigGroups *groups;
+      if (!GetPointer(cfgprog, FID_Data, &groups)) {
          error = ERR_Failed;
-         for (LONG i=0; i < cfgprog->AmtEntries; i++) {
-            if (!StrMatch(buffer, entries[i].Section)) {
+         for (auto& [group, keys] : groups[0]) {
+            if (!StrMatch(buffer, group.c_str())) {
                CSTRING cmd, args;
-               if (!cfgReadValue(cfgprog, entries[i].Section, "CommandFile", &cmd)) {
-                  if (cfgReadValue(cfgprog, entries[i].Section, "Args", &args)) args = "";
+               if (!cfgReadValue(cfgprog, group.c_str(), "CommandFile", &cmd)) {
+                  if (cfgReadValue(cfgprog, group.c_str(), "Args", &args)) args = "";
                   StrFormat(buffer, sizeof(buffer), "\"%s\" %s %s", cmd, args, String + cmdindex);
 
                   *Command = StrClone(buffer);
                   error = ERR_Okay;
                }
-               else log.warning("CommandFile value not present for section %s", entries[i].Section);
+               else log.warning("CommandFile value not present for group %s", group.c_str());
                break;
             }
          }
@@ -1813,7 +1792,7 @@ ERROR findfile(STRING Path)
          if ((entry->d_name[0] IS '.') and (entry->d_name[1] IS 0)) continue;
          if ((entry->d_name[0] IS '.') and (entry->d_name[1] IS '.') and (entry->d_name[2] IS 0)) continue;
 
-         if ((!StrCompare(Path+len, entry->d_name, 0, 0)) AND
+         if ((!StrCompare(Path+len, entry->d_name, 0, 0)) and
              ((entry->d_name[namelen] IS '.') or (!entry->d_name[namelen]))) {
             StrCopy(entry->d_name, Path+len, COPY_ALL);
 
@@ -1843,13 +1822,11 @@ ERROR findfile(STRING Path)
       Path[len] = save;
 
       if ((bytes = syscall(SYS_getdents, dir, buffer, sizeof(buffer))) > 0) {
-
          for (entry = (struct olddirent *)buffer; (size_t)entry < (size_t)(buffer + bytes); entry = (struct olddirent *)(((BYTE *)entry) + entry->d_reclen)) {
-
             if ((entry->d_name[0] IS '.') and (entry->d_name[1] IS 0)) continue;
             if ((entry->d_name[0] IS '.') and (entry->d_name[1] IS '.') and (entry->d_name[2] IS 0)) continue;
 
-            if ((!StrCompare(Path+len, entry->d_name, 0, NULL)) AND
+            if ((!StrCompare(Path+len, entry->d_name, 0, NULL)) and
                 ((entry->d_name[namelen] IS '.') or (!entry->d_name[namelen]))) {
                StrCopy(entry->d_name, Path+len, COPY_ALL);
 
@@ -3195,93 +3172,78 @@ ERROR fs_getdeviceinfo(CSTRING Path, objStorageDevice *Info)
 
    STRING location;
    ERROR error;
-   LONG j, pathend;
-   BYTE match;
 
    // Device information is stored in the SystemVolumes object
 
-   if (!AccessPrivateObject((OBJECTPTR)glVolumes, 8000)) {
-      STRING resolve = NULL;
-      location = NULL;
+   {
+      parasol::ScopedObjectLock<objConfig> volumes((OBJECTPTR)glVolumes, 8000);
+      if (volumes.granted()) {
+         ULONG pathend;
+         STRING resolve = NULL;
+         location = NULL;
 
 restart:
-      for (pathend=0; (Path[pathend]) and (Path[pathend] != ':'); pathend++);
+         for (pathend=0; (Path[pathend]) and (Path[pathend] != ':'); pathend++);
 
-      ConfigEntry *entries = glVolumes->Entries;
-      for (LONG i=0; i < glVolumes->AmtEntries; i++) {
-         if (StrMatch("Name", entries[i].Key) != ERR_Okay) continue;
+         ConfigGroups *groups;
+         if (!GetPointer(glVolumes, FID_Data, &groups)) {
+            for (auto& [group, keys] : groups[0]) {
+               if (not keys.contains("Name")) continue;
+               auto& name = keys["Name"];
 
-         match = FALSE;
-         for (j=0; (entries[i].Data[j]) and (j < pathend); j++) {
-            if (LCASE(Path[j]) != LCASE(entries[i].Data[j])) break;
-         }
-         if ((j IS pathend) and ((!entries[i].Data[j]) or (entries[i].Data[j] IS ':'))) match = TRUE;
-
-         if (match) {
-            // We've got the volume, now look for a device entry to tell us what device this is.
-
-            while ((i > 0) and (!StrMatch(entries[i].Section, entries[i-1].Section))) i--;
-
-            STRING section = entries[i].Section;
-            while ((i < glVolumes->AmtEntries) and (!StrMatch(section, entries[i].Section))) {
-               if (!StrMatch("Path", entries[i].Key)) {
-                  if (!StrCompare("CLASS:", entries[i].Data, 6, 0)) {
-                     // Device is a virtual volume
-                     Info->DeviceFlags |= DEVICE_SOFTWARE;
-                  }
+               bool match = FALSE;
+               ULONG j;
+               for (j=0; (j < (ULONG)name.size()) and (j < pathend); j++) {
+                  if (LCASE(Path[j]) != LCASE(name[j])) break;
                }
-               else if (!StrMatch("Device", entries[i].Key)) {
-                  if (!StrMatch("disk", entries[i].Data)) {
-                     Info->DeviceFlags |= DEVICE_FLOPPY_DISK|DEVICE_REMOVABLE|DEVICE_READ|DEVICE_WRITE;
-                  }
-                  else if (!StrMatch("hd", entries[i].Data)) {
-                     Info->DeviceFlags |= DEVICE_HARD_DISK|DEVICE_READ|DEVICE_WRITE;
-                  }
-                  else if (!StrMatch("cd", entries[i].Data)) {
-                     Info->DeviceFlags |= DEVICE_COMPACT_DISC|DEVICE_REMOVABLE|DEVICE_READ;
-                  }
-                  else if (!StrMatch("usb", entries[i].Data)) {
-                     Info->DeviceFlags |= DEVICE_USB|DEVICE_REMOVABLE;
-                  }
-                  else log.msg("Device '%s' unknown.", entries[i].Data);
+               if ((j IS pathend) and ((j IS (ULONG)name.size()) or (name[j] IS ':'))) match = TRUE;
+
+               if (!match) continue;
+
+               if (!keys.contains("Path")) {
+                  if (!keys["Path"].compare(0, 6, "CLASS:")) Info->DeviceFlags |= DEVICE_SOFTWARE; // Virtual device
                }
-               i++;
+
+               if (!keys.contains("Device")) {
+                  auto& device = keys["Device"];
+                  if (!device.compare("disk"))     Info->DeviceFlags |= DEVICE_FLOPPY_DISK|DEVICE_REMOVABLE|DEVICE_READ|DEVICE_WRITE;
+                  else if (!device.compare("hd"))  Info->DeviceFlags |= DEVICE_HARD_DISK|DEVICE_READ|DEVICE_WRITE;
+                  else if (!device.compare("cd"))  Info->DeviceFlags |= DEVICE_COMPACT_DISC|DEVICE_REMOVABLE|DEVICE_READ;
+                  else if (!device.compare("usb")) Info->DeviceFlags |= DEVICE_USB|DEVICE_REMOVABLE;
+                  else log.warning("Device '%s' unknown.", device.c_str());
+               }
             }
-            break;
          }
-      }
 
-      if (!Info->DeviceFlags) {
-         // Unable to find a device reference for the volume, so try to resolve the path and try again.
+         if (!Info->DeviceFlags) {
+            // Unable to find a device reference for the volume, so try to resolve the path and try again.
 
-         if (resolve) {
-            // We've done what we can - drop through
+            if (resolve) {
+               // We've done what we can - drop through
 
-            #ifdef _WIN32
-             // On win32 we can get the drive information from the drive letter
-             #warning TODO: Write Win32 code to discover the drive type in GetDeviceInfo().
-            #endif
+               #ifdef _WIN32
+                // On win32 we can get the drive information from the drive letter
+                #warning TODO: Write Win32 code to discover the drive type in GetDeviceInfo().
+               #endif
 
-            location = resolve;
-            resolve = NULL;
-         }
-         else {
-            if (ResolvePath(Path, RSF_NO_FILE_CHECK, &resolve) != ERR_Okay) {
-               if (resolve) FreeResource(resolve);
-               ReleasePrivateObject((OBJECTPTR)glVolumes);
-               return ERR_ResolvePath;
+               location = resolve;
+               resolve = NULL;
             }
+            else {
+               if (ResolvePath(Path, RSF_NO_FILE_CHECK, &resolve) != ERR_Okay) {
+                  if (resolve) FreeResource(resolve);
+                  return ERR_ResolvePath;
+               }
 
-            Path = resolve;
-            goto restart;
+               Path = resolve;
+               goto restart;
+            }
          }
+
+         if (resolve) FreeResource(resolve);
       }
-
-      if (resolve) FreeResource(resolve);
-
-      ReleasePrivateObject((OBJECTPTR)glVolumes);
+      else return log.warning(ERR_AccessObject);
    }
-   else return log.warning(ERR_AccessObject);
 
    // Assume that the device is read/write if the device type cannot be assessed
 
@@ -3479,8 +3441,7 @@ ERROR load_datatypes(void)
 {
    parasol::Log log(__FUNCTION__);
    if (!glDatatypes) {
-      if (CreateObject(ID_CONFIG, NF_UNTRACKED, (OBJECTPTR *)&glDatatypes,
-            TAGEND) != ERR_Okay) {
+      if (CreateObject(ID_CONFIG, NF_UNTRACKED, (OBJECTPTR *)&glDatatypes, TAGEND) != ERR_Okay) {
          return log.warning(ERR_CreateObject);
       }
    }
@@ -3531,6 +3492,7 @@ ERROR load_datatypes(void)
 
       if (CreateObject(ID_CONFIG, NF_UNTRACKED, (OBJECTPTR *)&datatypes,
             FID_Path|TSTR, "config:software/associations.cfg|user:config/associations.cfg",
+            FID_Flags|TLONG, CNF_OPTIONAL_FILES,
             TAGEND) != ERR_Okay) {
          return log.warning(ERR_CreateObject);
       }

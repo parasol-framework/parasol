@@ -689,7 +689,7 @@ static ERROR TEXT_DataFeed(objText *Self, struct acDataFeed *Args)
                if (!(Self->Flags & (TXF_EDIT|TXF_SINGLE_SELECT|TXF_MULTI_SELECT))) continue;
 
                parasol::Log log;
-               log.branch("");
+               log.branch();
 
                Self->CursorFlash = 0;
                outofbounds = FALSE;

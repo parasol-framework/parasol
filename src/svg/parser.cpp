@@ -523,7 +523,7 @@ static ERROR load_pic(objSVG *Self, CSTRING Path, objPicture **Picture)
    if (!error) {
       error = CreateObject(ID_PICTURE, 0, Picture,
             FID_Owner|TLONG,        Self->Scene->Head.UniqueID,
-            FID_Location|TSTR,      Path,
+            FID_Path|TSTR,          Path,
             FID_BitsPerPixel|TLONG, 32,
             FID_Flags|TLONG,        PCF_FORCE_ALPHA_32,
             TAGEND);

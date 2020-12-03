@@ -842,7 +842,7 @@ header({ path="system/fields", copyright="Paul Manias © 1996-2020" }, function(
     "TotalSections",
     "Entries",
     "ItemFilter",
-    "AmtEntries",
+    "TotalGroups",
     "Execute",
     "ObjectName",
     "Activate",
@@ -973,5 +973,6 @@ header({ path="system/fields", copyright="Paul Manias © 1996-2020" }, function(
     "PointsArray",
     "EffectXML",
     "PrimitiveUnits",
-    "Degree")
+    "Degree",
+    "TotalKeys")
 end)

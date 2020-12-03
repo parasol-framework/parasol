@@ -157,9 +157,8 @@
 
     <constants lookup="CNF" comment="Flags for the Config class.">
       <const name="STRIP_QUOTES">Removes quotes from key values that are quote-encapsulated.</const>
-      <const name="LOCK_RECORDS">Locks existing keys so that they can't be overwritten.  It will still be possible to add new keys to the config object.</const>
+      <const name="OPTIONAL_FILES">Files are optional (do not fail if a requested file does not exist).</const>
       <const name="NEW">On initialisation, do not load any data from the referenced configuration file.</const>
-      <const name="FILE_EXISTS">Setting this flag will force the config class to fail if the source file defined in Path does not exist.</const>
       <const name="AUTO_SAVE">When the configuration object is freed, automatically save the configuration data back to the original file source.</const>
     </constants>
 
@@ -471,7 +470,7 @@
     </constants>
 
     <constants lookup="IDF" comment="IdentifyFile() values">
-      <const name="SECTION">Return the name of the Config section that supports the file association, rather than an executable command.</const>
+      <const name="SECTION">Return the name of the Config group that supports the file association, rather than an executable command.</const>
       <const name="IGNORE_HOST">Ignore the host platform's file assocations.</const>
       <const name="HOST">Query the host platform's file associations only.</const>
     </constants>
@@ -637,6 +636,17 @@
       <field name="ClassID" type="CLASSID">The class ID of the referenced object.</field>
     </struct>
 
+    <struct name="Function" comment="Function list array structure">
+      <field name="Address" type="APTR">Pointer to the function entry point</field>
+      <field name="Name" type="CSTRING">Name of the function</field>
+      <field name="Args" type="const struct FunctionField *">A list of parameters accepted by the function</field>
+    </struct>
+
+    <struct name="MemoryLocks" comment="A supplement structure for ListTasks.">
+      <field name="MemoryID" type="MEMORYID">Reference to a memory ID.</field>
+      <field name="Locks" type="WORD">The total number of locks on the memory block.</field>
+    </struct>
+
     <struct name="Field" comment="Used to describe the public fields of a class.">
       <field name="Arg" type="MAXINT">An option to complement the field type.  Can be a pointer or an integer value</field>
       <field name="GetValue" type="FUNCTION *" prototype="ERROR (*GetValue)(APTR, APTR)">A virtual function that will retrieve the value for this field.</field>
@@ -647,17 +657,6 @@
       <field name="Offset" type="UWORD">Field offset within the object</field>
       <field name="Index" type="UWORD">Field array index</field>
       <field name="Flags" type="ULONG">Special flags that describe the field</field>
-    </struct>
-
-    <struct name="Function" comment="Function list array structure">
-      <field name="Address" type="APTR">Pointer to the function entry point</field>
-      <field name="Name" type="CSTRING">Name of the function</field>
-      <field name="Args" type="const struct FunctionField *">A list of parameters accepted by the function</field>
-    </struct>
-
-    <struct name="MemoryLocks" comment="A supplement structure for ListTasks.">
-      <field name="MemoryID" type="MEMORYID">Reference to a memory ID.</field>
-      <field name="Locks" type="WORD">The total number of locks on the memory block.</field>
     </struct>
 
     <struct name="MemInfo" typeName="MEMINFO">

@@ -131,7 +131,7 @@ typedef LONG SOCKET_HANDLE;
     int Host
   ]], // If adding further fields, you must update get_record() and clear_values()
   [[
-   char Section[40];
+   char GroupName[40];
    char FindPort[16];
    BYTE  FindEnabled;
    UBYTE Find:1;

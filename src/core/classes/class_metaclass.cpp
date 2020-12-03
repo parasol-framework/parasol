@@ -1259,7 +1259,7 @@ ERROR load_classes(void)
 {
    parasol::Log log(__FUNCTION__);
 
-   log.branch("");
+   log.branch();
 
    if (glClassDB) { ReleaseMemoryID(glSharedControl->ClassesMID); glClassDB = NULL; }
    if (glSharedControl->ClassesMID) { FreeResourceID(glSharedControl->ClassesMID); glSharedControl->ClassesMID = 0; }

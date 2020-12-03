@@ -12,9 +12,7 @@ static ERROR exec_data_file(CSTRING TargetFile)
 
    if (!(error = IdentifyFile(TargetFile, "Open", 0, &class_id, NULL, &command))) {
       OBJECTPTR run;
-      if (!CreateObject(ID_TASK, 0, &run,
-            FID_Location|TSTR, command,
-            TAGEND)) {
+      if (!CreateObject(ID_TASK, 0, &run, FID_Location|TSTR, command, TAGEND)) {
          if (glArgs) {
             char argbuffer[100];
             STRING argname = argbuffer;

@@ -1196,7 +1196,7 @@ static ERROR COMPRESSION_DecompressFile(objCompression *Self, struct cmpDecompre
             else permissions = Self->Permissions;
 
             if ((error = CreateObject(ID_FILE, NF_INTEGRAL, (OBJECTPTR *)&file,
-                  FID_Location|TSTR,     destpath,
+                  FID_Path|TSTR,         destpath,
                   FID_Flags|TLONG,       FL_NEW|FL_WRITE,
                   FID_Permissions|TLONG, permissions,
                   TAGEND)) != ERR_Okay) {
@@ -1674,7 +1674,7 @@ static ERROR COMPRESSION_Init(objCompression *Self, APTR Void)
    parasol::Log log;
    STRING path;
 
-   GetString(Self, FID_Location, &path);
+   GetString(Self, FID_Path, &path);
 
    if (!path) {
       // If no location has been set, assume that the developer only wants to use the buffer or stream compression routines.
@@ -1685,8 +1685,8 @@ static ERROR COMPRESSION_Init(objCompression *Self, APTR Void)
       // If the NEW flag is set then create a new archive, destroying any file already at that location
 
       if (!CreateObject(ID_FILE, NF_INTEGRAL, (OBJECTPTR *)&Self->FileIO,
-            FID_Location|TSTR, path,
-            FID_Flags|TLONG,   FL_READ|FL_WRITE|FL_NEW,
+            FID_Path|TSTR,   path,
+            FID_Flags|TLONG, FL_READ|FL_WRITE|FL_NEW,
             TAGEND)) {
 
          return ERR_Okay;
@@ -1710,8 +1710,8 @@ static ERROR COMPRESSION_Init(objCompression *Self, APTR Void)
 
       if (exists) {
          error = CreateObject(ID_FILE, NF_INTEGRAL, (OBJECTPTR *)&Self->FileIO,
-            FID_Location|TSTR, path,
-            FID_Flags|TLONG,   FL_READ|FL_APPROXIMATE|((Self->Flags & CMF_READ_ONLY) ? 0 : FL_WRITE),
+            FID_Path|TSTR,   path,
+            FID_Flags|TLONG, FL_READ|FL_APPROXIMATE|((Self->Flags & CMF_READ_ONLY) ? 0 : FL_WRITE),
             TAGEND);
 
          // Try switching to read-only access if we were denied permission.
@@ -1719,8 +1719,8 @@ static ERROR COMPRESSION_Init(objCompression *Self, APTR Void)
          if ((error IS ERR_NoPermission) and (!(Self->Flags & CMF_READ_ONLY))) {
             log.trace("Trying read-only access...");
             if (!(error = CreateObject(ID_FILE, NF_INTEGRAL, (OBJECTPTR *)&Self->FileIO,
-                  FID_Location|TSTR, path,
-                  FID_Flags|TLONG,   FL_READ|FL_APPROXIMATE,
+                  FID_Path|TSTR,   path,
+                  FID_Flags|TLONG, FL_READ|FL_APPROXIMATE,
                   TAGEND))) {
                Self->Flags |= CMF_READ_ONLY;
             }
@@ -2000,7 +2000,8 @@ static const FieldArray clFields[] = {
    { "WindowBits",         FDF_LONG|FDF_RW,            0, NULL, (APTR)SET_WindowBits },
    // Virtual fields
    { "ArchiveName",      FDF_STRING|FDF_W,       0, NULL, (APTR)SET_ArchiveName },
-   { "Location",         FDF_STRING|FDF_RW,      0, (APTR)GET_Location, (APTR)SET_Location },
+   { "Location",         FDF_STRING|FDF_SYNONYM|FDF_RW, 0, (APTR)GET_Location, (APTR)SET_Location },
+   { "Path",             FDF_STRING|FDF_RW,      0, (APTR)GET_Location, (APTR)SET_Location },
    { "Feedback",         FDF_FUNCTIONPTR|FDF_RW, 0, (APTR)GET_Feedback, (APTR)SET_Feedback },
    { "FeedbackInfo",     FDF_POINTER|FDF_STRUCT|FDF_R, (MAXINT)"CompressionFeedback", (APTR)GET_FeedbackInfo, NULL },
    { "Header",           FDF_POINTER|FDF_R,      0, (APTR)GET_Header,   NULL },

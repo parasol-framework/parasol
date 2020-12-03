@@ -158,7 +158,7 @@ typedef struct rkProxy {
    LONG   Host;
 
 #ifdef PRV_PROXY
-   char Section[40];
+   char GroupName[40];
    char FindPort[16];
    BYTE  FindEnabled;
    UBYTE Find:1;

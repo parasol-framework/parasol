@@ -382,7 +382,7 @@ static ERROR SCINTILLA_Clear(objScintilla *Self, APTR Void)
 {
    parasol::Log log;
 
-   log.branch(NULL);
+   log.branch();
 
    SCICALL(SCI_BEGINUNDOACTION);
    SCICALL(SCI_CLEARALL);
@@ -772,7 +772,7 @@ static ERROR SCINTILLA_Hide(objScintilla *Self, APTR Void)
    if (Self->Visible) {
       parasol::Log log;
 
-      log.branch("");
+      log.branch();
 
       if (Self->VScrollbar) {
          SetLong(Self->VScrollbar, FID_Hide, TRUE);
@@ -1115,7 +1115,7 @@ static ERROR SCINTILLA_Redo(objScintilla *Self, struct acRedo *Args)
 {
    parasol::Log log;
 
-   log.branch("");
+   log.branch();
 
    SCICALL(SCI_REDO);
    return ERR_Okay;
@@ -1422,7 +1422,7 @@ static ERROR SCINTILLA_Show(objScintilla *Self, APTR Void)
    if (!Self->Visible) {
       parasol::Log log;
 
-      log.branch("");
+      log.branch();
 
       Self->Visible = TRUE;
 
@@ -1499,7 +1499,7 @@ static ERROR SCINTILLA_Undo(objScintilla *Self, struct acUndo *Args)
 {
    parasol::Log log;
 
-   log.branch(NULL);
+   log.branch();
 
    SCICALL(SCI_UNDO);
    return ERR_Okay;

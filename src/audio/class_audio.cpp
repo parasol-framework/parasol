@@ -110,7 +110,7 @@ static ERROR AUDIO_Activate(objAudio *Self, APTR Void)
 
    if (Self->Initialising) return ERR_Okay;
 
-   log.branch("");
+   log.branch();
 
    Self->Initialising = TRUE;
 
@@ -671,7 +671,7 @@ static ERROR AUDIO_Clear(objAudio *Self, APTR Void)
 {
    parasol::Log log;
 
-   log.branch("");
+   log.branch();
 
 #ifdef _WIN32
    dsClear();
@@ -756,7 +756,7 @@ static ERROR AUDIO_Deactivate(objAudio *Self, APTR Void)
 {
    parasol::Log log;
 
-   log.branch("");
+   log.branch();
 
    if (Self->Initialising) {
       log.msg("Audio is still in the process of initialisation.");
@@ -2184,8 +2184,8 @@ static void load_config(objAudio *Self)
    parasol::Log log(__FUNCTION__);
    CSTRING str;
    DOUBLE fvalue;
-   LONG amtentries, value;
-   WORD i, j, channel;
+   LONG value;
+   WORD i;
 
    // Attempt to get the user's preferred pointer settings from the user:config/pointer file.
 
@@ -2216,63 +2216,52 @@ static void load_config(objAudio *Self)
 
       // Find the mixer section, then load the mixer information
 
-      ConfigEntry *entries;
-      if (!GetFields(config, FID_Entries|TPTR, &entries, FID_AmtEntries|TLONG, &amtentries, TAGEND)) {
-         for (i=0; i < amtentries; i++) {
-            if (!StrMatch("MIXER", entries[i].Section)) break;
-         }
-
-         LONG total = 0;
-         if (i < amtentries) {
-            if (Self->VolumeCtlMID) {
-               if (Self->VolumeCtl) { ReleaseMemory(Self->VolumeCtl); Self->VolumeCtl = NULL; }
-               FreeResourceID(Self->VolumeCtlMID);
-               Self->VolumeCtlMID = 0;
-            }
-
-            total = i;
-            while ((total < amtentries) and (!StrMatch("MIXER", entries[total].Section))) {
-               total++;
-            }
-            total -= i;
-
-            if (!AllocMemory(sizeof(VolumeCtl) * (total + 1), Self->Head.MemFlags|MEM_NO_CLEAR, &Self->VolumeCtl, &Self->VolumeCtlMID)) {
-               Self->VolumeCtlTotal = total;
-
-               for (j=0; j < total; j++) {
-                  str = entries[i].Data;
-
-                  StrCopy(entries[i].Key, Self->VolumeCtl[j].Name, sizeof(Self->VolumeCtl[j].Name));
-
-                  if (StrToInt(str) IS 1) Self->VolumeCtl[j].Flags |= VCF_MUTE;
-                  while ((*str) and (*str != ',')) str++;
-                  if (*str IS ',') str++;
-
-                  channel = 0;
-                  if (*str IS '[') {
-                     // Read channel volumes
-                     str++;
-                     while ((*str) and (*str != ']')) {
-                        Self->VolumeCtl[j].Channels[channel] = StrToInt(str);
-                        while ((*str) and (*str != ',') and (*str != ']')) str++;
-                        if (*str IS ',') str++;
-                        channel++;
-                     }
-                  }
-
-                  while (channel < ARRAYSIZE(Self->VolumeCtl[j].Channels)) {
-                     Self->VolumeCtl[j].Channels[channel] = 75;
-                     channel++;
-                  }
-
-                  i++;
+      ConfigGroups *groups;
+      if (!GetPointer(config, FID_Data, &groups)) {
+         LONG j = 0;
+         for (auto& [group, keys] : groups[0]) {
+            if (!StrMatch("MIXER", group.c_str())) {
+               if (Self->VolumeCtlMID) {
+                  if (Self->VolumeCtl) { ReleaseMemory(Self->VolumeCtl); Self->VolumeCtl = NULL; }
+                  FreeResourceID(Self->VolumeCtlMID);
+                  Self->VolumeCtlMID = 0;
                }
 
-               Self->VolumeCtl[j].Name[0] = 0;
-            }
-         }
+               if (!AllocMemory(sizeof(VolumeCtl) * (keys.size() + 1), Self->Head.MemFlags|MEM_NO_CLEAR, &Self->VolumeCtl, &Self->VolumeCtlMID)) {
+                  Self->VolumeCtlTotal = keys.size();
 
-         log.msg("Loaded %d mixer entries from user audio configuration.", total);
+                  for (auto& [k, v] : keys) {
+                     StrCopy(k.c_str(), Self->VolumeCtl[j].Name, sizeof(Self->VolumeCtl[j].Name));
+
+                     CSTRING str = v.c_str();
+                     if (StrToInt(str) IS 1) Self->VolumeCtl[j].Flags |= VCF_MUTE;
+                     while ((*str) and (*str != ',')) str++;
+                     if (*str IS ',') str++;
+
+                     LONG channel = 0;
+                     if (*str IS '[') { // Read channel volumes
+                        str++;
+                        while ((*str) and (*str != ']')) {
+                           Self->VolumeCtl[j].Channels[channel] = StrToInt(str);
+                           while ((*str) and (*str != ',') and (*str != ']')) str++;
+                           if (*str IS ',') str++;
+                           channel++;
+                        }
+                     }
+
+                     while (channel < ARRAYSIZE(Self->VolumeCtl[j].Channels)) {
+                        Self->VolumeCtl[j].Channels[channel] = 75;
+                        channel++;
+                     }
+
+                     i++;
+                  }
+
+                  Self->VolumeCtl[j].Name[0] = 0;
+               }
+            }
+            break;
+         }
       }
 
       acFree(config);

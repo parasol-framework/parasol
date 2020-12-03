@@ -15,35 +15,6 @@ Font: Provides font management functionality and hosts the Font and FontServer c
 
 -END-
 
-TODO: Switching from fonts.cfg to fonts.json or fonts.xml would be a lot easier to process, e.g.
-
-  <fonts>
-    <font name="Helvete" points="7,8,9,11" scalable="1" styles="Bold,Bold Italic,Italic,Regular">
-      <fixed>
-        <fixed style="Regular" src="fonts:fixed/helvete.fon"/>
-        <fixed style="Bold" src="fonts:fixed/helvete.fon"/>
-        <fixed style="Bold Italic" src="fonts:fixed/helvete.fon"/>
-        <fixed style="Italic" src="fonts:fixed/helvete.fon"/>
-      </fixed>
-      <scaled>
-        <scaled style="Regular" src="fonts:truetype/Helvete.ttf"/>
-        <scaled style="Bold" src="fonts:truetype/HelveteBold.ttf"/>
-        <scaled style="Bold Italic" src="fonts:truetype/HelveteBoldItalic.ttf"/>
-        <scaled style="Italic" src="fonts:truetype/HelveteItalic.ttf"/>
-      </scaled>
-    </font>
-  </fonts>
-
-OR
-
-  { "fonts":[
-      { "font":"Helvete", points:"7", scalable:true, styles="Bold,Regular",
-        fixed:[ { "Style":"Regular", "Src":"fonts:fixed/helvete.fon" } ],
-        scaled:[ { } ]
-      }
-    ]
-  }
-
 *****************************************************************************/
 
 #define PRV_FONT
@@ -64,6 +35,7 @@ OR
 
 #include <math.h>
 #include <wchar.h>
+#include <parasol/strings.hpp>
 
 static KeyStore *glCache = NULL;
 
@@ -200,17 +172,16 @@ static DOUBLE global_point_size(void)
       parasol::Log log(__FUNCTION__);
       OBJECTID style_id;
       if (!FastFindObject("glStyle", ID_XML, &style_id, 1, NULL)) {
-         objXML *style;
-         if (!AccessObject(style_id, 3000, &style)) {
+         parasol::ScopedObjectLock<objXML> style(style_id, 3000);
+         if (style.granted()) {
             char fontsize[20];
             glPointSet = TRUE;
-            if (!acGetVar(style, "/interface/@fontsize", fontsize, sizeof(fontsize))) {
+            if (!acGetVar(style.obj, "/interface/@fontsize", fontsize, sizeof(fontsize))) {
                glDefaultPoint = StrToFloat(fontsize);
                if (glDefaultPoint < 6) glDefaultPoint = 6;
                else if (glDefaultPoint > 80) glDefaultPoint = 80;
                log.msg("Global font size is %.1f.", glDefaultPoint);
             }
-            ReleaseObject(style);
          }
       }
       else log.warning("glStyle XML object is not available");
@@ -220,34 +191,8 @@ static DOUBLE global_point_size(void)
 }
 
 //****************************************************************************
-// For use by fntSelectFont() only.
-
-static ERROR name_matches(CSTRING Name, CSTRING Entry)
-{
-   while ((*Name) and (*Name <= 0x20)) Name++;
-
-   UWORD e = 0;
-   while ((*Name) and (Entry[e])) {
-      while (*Name IS '\'') Name++; // Ignore the use of encapsulating quotes.
-      if (!*Name) break;
-
-      if (LCASE(Entry[e]) IS LCASE(*Name)) {
-         e++;
-         Name++;
-      }
-      else break;
-   }
-
-   if (!Entry[e]) { // End of Entry reached.  Check if Name is also ended for a match.
-      if ((*Name IS ',') or (*Name IS ':') or (!*Name)) return ERR_Okay;
-   }
-
-   return ERR_Failed;
-}
-
-/*****************************************************************************
-** Attempts to update globally held DPI values with the main display's real DPI.
-*/
+// Attempts to update globally held DPI values with the main display's real DPI.
+//
 
 static void update_dpi(void)
 {
@@ -308,10 +253,12 @@ INLINE void calc_lines(objFont *Self)
 
 //****************************************************************************
 
-static OBJECTID glConfigID = 0;
+static objConfig *glConfig = NULL;
 
 static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
+   parasol::Log log;
+
    CoreBase = argCoreBase;
 
    GetPointer(argModule, FID_Master, &modFont);
@@ -323,28 +270,28 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    // Initialise the FreeType library
 
    if (FT_Init_FreeType(&glFTLibrary)) {
-      parasol::Log log;
       log.warning("Failed to initialise the FreeType font library.");
       return ERR_Failed;
    }
 
    LONG type;
-   UBYTE refresh;
+   bool refresh;
 
-   if ((AnalysePath("system:fonts/fonts.cfg", &type) != ERR_Okay) or (type != LOC_FILE)) refresh = TRUE;
-   else refresh = FALSE;
+   if ((AnalysePath("fonts:fonts.cfg", &type) != ERR_Okay) or (type != LOC_FILE)) refresh = true;
+   else refresh = false;
 
-   OBJECTPTR config;
-   if (!NewLockedObject(ID_CONFIG, 0, &config, &glConfigID)) {
-      SetFields(config,
-         FID_Name|TSTR, "cfgSystemFonts",
-         FID_Path|TSTR, "system:fonts/fonts.cfg",
-         TAGEND);
-      if (!acInit(config)) {
-         if (refresh) fntRefreshFonts();
+   if (!CreateObject(ID_CONFIG, 0, &glConfig, FID_Name|TSTR, "cfgSystemFonts", FID_Path|TSTR, "fonts:fonts.cfg", TAGEND)) {
+      if (refresh) fntRefreshFonts();
+
+      ConfigGroups *groups;
+      if (not ((!GetPointer(glConfig, FID_Data, &groups)) and (groups->size() > 0))) {
+         log.error("No system fonts are available for use.");
+         return ERR_Failed;
       }
-      else { acFree(config); glConfigID = 0; }
-      ReleaseObject(config);
+   }
+   else {
+      log.error("Failed to load or prepare the font configuration file.");
+      return ERR_Failed;
    }
 
    return add_font_class();
@@ -359,7 +306,7 @@ static ERROR CMDOpen(OBJECTPTR Module)
 static ERROR CMDExpunge(void)
 {
    if (glFTLibrary) { FT_Done_FreeType(glFTLibrary); glFTLibrary = NULL; }
-   if (glConfigID)  { acFreeID(glConfigID); glConfigID = 0; }
+   if (glConfig)    { acFree(glConfig); glConfig = NULL; }
    if (glCache)     { FreeResource(glCache); glCache = NULL; }
 
    // Free allocated class and modules
@@ -453,86 +400,68 @@ AccessObject: The SystemFonts object could not be accessed.
 
 static ERROR fntGetList(FontList **Result)
 {
-   if (!Result) return ERR_NullArgs;
+   parasol::Log log(__FUNCTION__);
+
+   if (!Result) return log.warning(ERR_NullArgs);
+
+   log.branch();
 
    *Result = NULL;
 
-   objConfig *config;
-   CSTRING section;
-   ERROR error = ERR_Okay;
-   if (!AccessObject(glConfigID, 3000, &config)) {
-      LONG size = 0, totalfonts;
+   parasol::ScopedObjectLock<objConfig> config(&glConfig->Head, 3000);
+   if (!config.granted()) return log.warning(ERR_AccessObject);
 
-      if ((!GetLong(config, FID_TotalSections, &totalfonts)) and (totalfonts > 0)) {
-         for (LONG i=0; i < totalfonts; i++) {
-            if (cfgGetSectionFromIndex(config, i, &section) != ERR_Okay) break;
-
-            CSTRING fontname = NULL;
-            CSTRING fontstyles = NULL;
-            CSTRING fontpoints = NULL;
-            cfgReadValue(config, section, "Name", &fontname);
-            cfgReadValue(config, section, "Styles", &fontstyles);
-            cfgReadValue(config, section, "Points", &fontpoints);
-
-            size += (LONG)sizeof(FontList);
-            size += StrLength(fontname) + 1;
-            size += StrLength(fontstyles) + 1;
-            size += StrLength(fontpoints) + 1;
-         }
-
-         FontList *list;
-         if (!AllocMemory(size, MEM_DATA, &list, NULL)) {
-            STRING buffer = (STRING)(list + totalfonts);
-            *Result = list;
-
-            for (LONG i=0; i < totalfonts; i++) {
-               if (i < totalfonts-1) list->Next = list + 1;
-               else list->Next = NULL;
-
-               if (cfgGetSectionFromIndex(config, i, &section) != ERR_Okay) break;
-
-               CSTRING fontname;
-               if (!cfgReadValue(config, section, "Name", &fontname)) {
-                  list->Name = buffer;
-                  buffer += StrCopy(fontname, buffer, COPY_ALL) + 1;
-               }
-
-               CSTRING fontstyles;
-               if (!cfgReadValue(config, section, "Styles", &fontstyles)) {
-                  list->Styles = buffer;
-                  buffer += StrCopy(fontstyles, buffer, COPY_ALL) + 1;
-               }
-
-               CSTRING scalable;
-               if (!cfgReadValue(config, section, "Scalable", &scalable)) {
-                  if (!StrCompare("Yes", scalable, 0, STR_MATCH_LEN)) list->Scalable = TRUE;
-               }
-
-               CSTRING fontpoints;
-               if (!cfgReadValue(config, section, "Points", &fontpoints)) {
-                  list->Points = (UBYTE *)buffer;
-
-                  WORD j;
-                  for (j=0; *fontpoints; j++) {
-                      *buffer++ = StrToInt(fontpoints);
-                     while ((*fontpoints) and (*fontpoints != ',')) fontpoints++;
-                     if (*fontpoints IS ',') fontpoints++;
-                  }
-                  *buffer++ = 0;
-               }
-
-               list++;
-            }
-         }
-         else error = ERR_AllocMemory;
+   size_t size = 0;
+   ConfigGroups *groups;
+   if (!GetPointer(glConfig, FID_Data, &groups)) {
+      for (auto& [group, keys] : groups[0]) {
+         size += sizeof(FontList) + keys["Name"].size() + 1 + keys["Styles"].size() + 1 + keys["Points"].size() + 1;
       }
-      else error = ERR_NoData;
 
-      ReleaseObject(config);
+      FontList *list, *last_list = NULL;
+      if (!AllocMemory(size, MEM_DATA, &list, NULL)) {
+         STRING buffer = (STRING)(list + groups->size());
+         *Result = list;
+
+         for (auto& [group, keys] : groups[0]) {
+            last_list = list;
+            list->Next = list + 1;
+
+            if (keys.contains("Name")) {
+               list->Name = buffer;
+               buffer += StrCopy(keys["Name"].c_str(), buffer, COPY_ALL) + 1;
+            }
+
+            if (keys.contains("Styles")) {
+               list->Styles = buffer;
+               buffer += StrCopy(keys["Styles"].c_str(), buffer, COPY_ALL) + 1;
+            }
+
+            if (keys.contains("Scalable")) {
+               if (!StrCompare("Yes", keys["Scalable"].c_str(), 0, STR_MATCH_LEN)) list->Scalable = TRUE;
+            }
+
+            if (!keys.contains("Points")) {
+               list->Points = (UBYTE *)buffer;
+               CSTRING fontpoints = keys["Points"].c_str();
+               for (WORD j=0; *fontpoints; j++) {
+                  *buffer++ = StrToInt(fontpoints);
+                  while ((*fontpoints) and (*fontpoints != ',')) fontpoints++;
+                  if (*fontpoints IS ',') fontpoints++;
+               }
+               *buffer++ = 0;
+            }
+
+            list++;
+         }
+
+         if (last_list) last_list->Next = NULL;
+
+         return ERR_Okay;
+      }
+      else return ERR_AllocMemory;
    }
-   else error = ERR_AccessObject;
-
-   return error;
+   else return ERR_NoData;
 }
 
 /*****************************************************************************
@@ -1040,58 +969,52 @@ DeleteFile: Removal aborted due to a file deletion failure.
 static ERROR fntRemoveFont(CSTRING Name)
 {
    parasol::Log log(__FUNCTION__);
-   LONG i, n;
-   char buffer[200], style[200];
 
    if (!Name) return log.warning(ERR_NullArgs);
    if (!Name[0]) return log.warning(ERR_EmptyString);
 
    log.branch("%s", Name);
 
-   parasol::ScopedObjectLock<objConfig> config(glConfigID);
+   parasol::ScopedObjectLock<objConfig> config(&glConfig->Head);
    if (!config.granted()) return log.warning(ERR_AccessObject);
 
    // Delete all files related to this font
 
-   LONG amtentries = config.obj->AmtEntries;
-   ConfigEntry *entries = config.obj->Entries;
+   ConfigGroups *groups;
+   if (!GetPointer(glConfig, FID_Data, &groups)) {
+      for (auto& [group, keys] : *groups) {
+         if (StrMatch(Name, keys["Name"].c_str())) continue;
 
-   for (i=0; i < amtentries; i++) {
-      if ((!StrMatch("Name", entries[i].Key)) AND (!StrMatch(Name, entries[i].Data))) break;
-   }
+         ERROR error = ERR_Okay;
+         if (keys.contains("Styles")) {
+            auto styles = keys["Styles"];
+            log.trace("Scanning styles: %s", styles.c_str());
 
-   if (i >= amtentries) return log.warning(ERR_Search);
+            for (ULONG i=0; styles[i]; ) {
+               auto n = styles.find(",", i);
+               if (n IS std::string::npos) n = styles.size();
 
-   CSTRING str;
-   ERROR error = ERR_Okay;
-   if (!cfgReadValue(config.obj, entries[i].Section, "Styles", &str)) {
-      log.trace("Scanning styles: %s", str);
+               auto fixed_style = std::string("Fixed:") + styles.substr(i, n);
+               if (keys.contains(fixed_style)) {
+                  if (DeleteFile(keys[fixed_style].c_str(), NULL)) error = ERR_DeleteFile;
+               }
 
-      while (*str) {
-         for (n=0; ((*str) and (*str != ',')); n++) style[n] = *str++;
-         style[n] = 0;
+               auto scale_style = std::string("Scale:") + styles.substr(i, n);
+               if (keys.contains(scale_style)) {
+                  if (DeleteFile(keys[scale_style].c_str(), NULL)) error = ERR_DeleteFile;
+               }
 
-         if (*str IS ',') str++;
-
-         StrFormat(buffer, sizeof(buffer), "Fixed:%s", style);
-         CSTRING value;
-         if (!cfgReadValue(config.obj, entries[i].Section, buffer, &value)) {
-            if (DeleteFile(value, NULL)) error = ERR_DeleteFile;
+               i += n + 1;
+            }
          }
+         else log.warning("There is no Styles entry for the %s font.", Name);
 
-         StrFormat(buffer, sizeof(buffer), "Scale:%s", style);
-         if (!cfgReadValue(config.obj, entries[i].Section, buffer, &value)) {
-            if (DeleteFile(value, NULL)) error = ERR_DeleteFile;
-         }
+         cfgDeleteGroup(glConfig, group.c_str());
+         return error;
       }
    }
-   else log.warning("There is no Styles entry for the %s font.", Name);
 
-   StrCopy(entries[i].Section, buffer, sizeof(buffer));
-   cfgDeleteSection(config.obj, buffer);
-
-   log.trace("Font removed successfully.");
-   return error;
+   return log.warning(ERR_Search);
 }
 
 /*****************************************************************************
@@ -1111,8 +1034,8 @@ ERR_Search being returned in the event that neither of the preferred choices are
 Flags that alter the search behaviour are FTF_PREFER_SCALED, FTF_PREFER_FIXED and FTF_ALLOW_SCALE.
 
 -INPUT-
-cstr Name:  The name of a font face, or multiple faces in CSV format.
-cstr Style: The required style, e.g. bold or italic.
+cstr Name:  The name of a font face, or multiple faces in CSV format.  Using camel-case for each word is compulsory.
+cstr Style: The required style, e.g. Bold or Italic.  Using camel-case for each word is compulsory.
 int Point:  Preferred point size.
 int(FTF) Flags:  Optional flags.
 &!cstr Path: The location of the best-matching font file is returned in this parameter.
@@ -1126,268 +1049,192 @@ Search: Unable to find a suitable font.
 
 *****************************************************************************/
 
+static std::optional<std::string> get_font_path(ConfigKeys &Keys, const std::string& Type, const std::string& Style)
+{
+   parasol::Log log(__FUNCTION__);
+
+   std::string cfg_style(Type + ":" + Style);
+   log.trace("Looking for font style %s", cfg_style.c_str());
+   if (Keys.contains(cfg_style)) return make_optional(Keys[cfg_style]);
+   else if (StrMatch("Regular", Style.c_str()) != ERR_Okay) {
+      log.trace("Looking for regular version of the font...");
+      if (Keys.contains("Fixed:Regular")) return make_optional(Keys["Fixed:Regular"]);
+   }
+   return std::nullopt;
+}
+
 static ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, LONG Flags, CSTRING *Path)
 {
    parasol::Log log(__FUNCTION__);
-   CSTRING str;
-   LONG i;
-   char buffer[120], style[60];
 
    log.branch("%s:%d:%s, Flags: $%.8x", Name, Point, Style, Flags);
 
-   parasol::ScopedObjectLock<objConfig> config(glConfigID, 5000);
+   if (!Name) return log.warning(ERR_NullArgs);
+
+   parasol::ScopedObjectLock<objConfig> config(&glConfig->Head, 5000);
    if (!config.granted()) return log.warning(ERR_AccessObject);
 
-   auto entries = config.obj->Entries;
+   ConfigGroups *groups;
+   if (GetPointer(glConfig, FID_Data, &groups)) return ERR_Search;
 
-   // Find the config section that we should be interested in.  If multiple faces are specified, then
-   // up to two fonts can be detected - a fixed bitmap font and a scalable font.
+   bool multi = (Flags & FTF_ALLOW_SCALE) ? true : false; // ALLOW_SCALE is equivalent to '*' for fixed fonts
 
-   BYTE multi = FALSE;
-   if (Flags & FTF_ALLOW_SCALE) multi = TRUE;
-   CSTRING fixed_section = NULL;
-   CSTRING scale_section = NULL;
-   CSTRING name = Name;
-   while ((name) and (*name)) {
-      if (name[0] IS '*') {
-         // Use of the '*' wildcard indicates that the default scalable font can be used.  This is is usually
-         // accompanied with a fixed font, e.g. "Sans Serif,*"
-         multi = TRUE;
+   std::string style_name(Style);
+   parasol::camelcase(style_name);
+
+   std::string fixed_group_name, scale_group_name;
+   ConfigKeys *fixed_group = NULL, *scale_group = NULL;
+
+   std::vector<std::string> names;
+   parasol::split(std::string(Name), std::back_inserter(names));
+
+   for (auto& name : names) {
+      if (!name.compare("*")) {
+         // Use of the '*' wildcard indicates that the default scalable font can be used.  This feature is usually
+         // combined with a fixed font, e.g. "Sans Serif,*"
+         multi = true;
          break;
       }
 
-      for (LONG pos=0; pos < config.obj->AmtEntries; pos++) {
-         if (!StrMatch(entries[pos].Key, "Name")) {
-            if (!name_matches(name, entries[pos].Data)) {
-               // Determine if this is a fixed and/or scalable font.  Note that if the font supports
-               // both fixed and scalable, fixed_section and scale_section will point to the same font.
+      parasol::ltrim(name, "'\"");
+      parasol::rtrim(name, "'\"");
 
-               CSTRING section = entries[pos++].Section;
-               while ((pos < config.obj->AmtEntries) and (!StrMatch(section, entries[pos].Section))) {
-                  if (!StrCompare("Fixed:", entries[pos].Key, 6, 0)) {
-                     if (!fixed_section) {
-                        fixed_section = entries[pos].Section;
-                        if (scale_section) break;
-                     }
-                  }
-                  else if (!StrCompare("Scale:", entries[pos].Key, 6, 0)) {
-                     if (!scale_section) {
-                        scale_section = entries[pos].Section;
-                        if (fixed_section) break;
-                     }
-                  }
-                  pos++;
+      for (auto& [group, keys] : groups[0]) {
+         if (!StrCompare(name.c_str(), keys["Name"].c_str(), 0, STR_WILDCARD)) {
+            // Determine if this is a fixed and/or scalable font.  Note that if the font supports
+            // both fixed and scalable, fixed_group and scale_group will point to the same font.
+
+            for (auto& [k, v] : keys) {
+               if ((!fixed_group) and (!k.compare(0, 6, "Fixed:"))) {
+                  fixed_group_name = group;
+                  fixed_group = &keys;
+                  if (scale_group) break;
                }
-
-               break; // Desired font processed.  Break and process the next font if more than one was specified in the Name.
+               else if ((!scale_group) and (!k.compare(0, 6, "Scale:"))) {
+                  scale_group_name = group;
+                  scale_group = &keys;
+                  if (fixed_group) break;
+               }
             }
-            else {
-               // Not the font that we're looking for.  Skip to the next section.
-               while ((pos < config.obj->AmtEntries-1) and (!StrMatch(entries[pos].Section, entries[pos+1].Section))) pos++;
-            }
-         }
-      }
 
-      if ((fixed_section) or (scale_section)) break; // Break now if suitable fixed and scalable font settings have been discovered.
-
-      while (*name) { // Try the next name, if any
-         if (*name IS ',') {
-            multi = TRUE;
-            name++;
-            while ((*name) and (*name <= 0x20)) name++;
             break;
          }
-         name++;
       }
+
+      if ((fixed_group) or (scale_group)) break; // Break now if suitable fixed and/or scalable font settings have been discovered.
+
+      multi = true;
    }
 
-   if ((!scale_section) and (!fixed_section)) log.warning("The font \"%s\" is not installed on this system.", Name);
+   if ((!scale_group) and (!fixed_group)) log.warning("The font \"%s\" is not installed on this system.", Name);
+   if (Flags & FTF_REQUIRE_FIXED) scale_group = NULL;
+   if (Flags & FTF_REQUIRE_SCALED) fixed_group = NULL;
 
-   //log.warning("Name: %s, Multi: %d, Fixed: %s, Scale: %s", Name, multi, fixed_section, scale_section);
-
-   if (!scale_section) {
-      // Allow use of scalable Source Sans Pro only if multi-face font search was enabled.  Otherwise we presume that
-      // auto-upgrading the fixed font is undesirable.
-      if ((fixed_section) and (multi)) {
+   if ((!scale_group) and (!(FTF_REQUIRE_FIXED))) {
+      // Select a default scalable font if multi-face font search was enabled.  Otherwise we presume that
+      // auto-upgrading of the fixed font is undesirable.
+      if ((fixed_group) and (multi)) {
          static char default_font[60] = "";
-         if (!default_font[0]) {
+         if (!default_font[0]) { // Static value only needs to be calculated once
             StrCopy("[glStyle./fonts/font(@name='scalable')/@face]", default_font, sizeof(default_font));
             if (StrEvaluate(default_font, sizeof(default_font), SEF_STRICT, 0) != ERR_Okay) {
                StrCopy("Hera Sans", default_font, sizeof(default_font));
             }
          }
 
-         for (LONG pos=0; pos < config.obj->AmtEntries; pos++) {
-            if ((!StrMatch(entries[pos].Key, "Name")) and (!StrMatch(entries[pos].Data, default_font))) {
-               scale_section = entries[pos].Section;
+         for (auto& [group, keys] : *groups) {
+            if ((keys.contains("Name")) and (!keys["Name"].compare(default_font))) {
+               scale_group_name = group;
+               scale_group = &keys;
                break;
             }
          }
       }
 
-      if (!fixed_section) { // Sans Serif is a good default for a fixed font.
-         for (LONG pos=0; pos < config.obj->AmtEntries; pos++) {
-            if ((!StrMatch(entries[pos].Key, "Name")) and (!StrMatch(entries[pos].Data, "Sans Serif"))) {
-               fixed_section = entries[pos].Section;
+      if (!fixed_group) { // Sans Serif is a good default for a fixed font.
+         for (auto& [group, keys] : *groups) {
+            if ((keys.contains("Name")) and (!keys["Name"].compare("Sans Serif"))) {
+               fixed_group_name = group;
+               fixed_group = &keys;
                break;
             }
          }
       }
+   }
 
-      if ((!fixed_section) and (!scale_section)) {
-         return ERR_Search;
+   if ((!fixed_group) and (!scale_group)) return ERR_Search;
+
+   // Read the point sizes for the fixed group and determine if the requested point size is within 2 units of one
+   // of those values.  If not, we'll have to use the scaled font option.
+
+   if ((fixed_group) and (scale_group) and (Point)) {
+      bool acceptable = false;
+      std::vector<std::string> points;
+      parasol::split(fixed_group[0]["Points"], std::back_inserter(points));
+
+      for (auto& point : points) {
+         auto diff = StrToInt(point.c_str()) - Point;
+         if ((diff >= -1) and (diff <= 1)) { acceptable = true; break; }
+      }
+
+      if (!acceptable) {
+         log.extmsg("Fixed point font is not a good match, will use scalable font.");
+         fixed_group = NULL;
       }
    }
 
-   if ((fixed_section) and (scale_section) and (Point)) {
-      // Read the point sizes for the fixed section and determine if the requested point size is within 2 units of one
-      // of those values.  If not, we'll have to use the scaled font option.
+   ConfigKeys *preferred_group, *alt_group;
+   std::string preferred_type, alt_type;
 
-      if (!cfgReadValue(config.obj, fixed_section, "Points", &str)) {
-         LONG i = 0;
-         BYTE acceptable = FALSE;
-         while (str[i]) {
-            LONG point = StrToInt(str+i);
-            point -= Point;
-            if ((point >= -1) and (point <= 1)) { acceptable = TRUE; break; }
-            while (str[i]) {
-               if (str[i] IS ',') { i++; break; }
-               else i++;
-            }
-         }
-
-         if (!acceptable) {
-            log.msg("Fixed point font is not a good match, will use scalable font.");
-            fixed_section = NULL;
-         }
-      }
-   }
-
-   if (((Point < 12) or (Flags & FTF_PREFER_FIXED)) and (!(Flags & FTF_PREFER_SCALED))) {
-      if (fixed_section) {
-         // Try to find a fixed font first.
-
-         StrFormat(buffer, sizeof(buffer), "Fixed:%s", Style);
-         log.trace("Looking for a fixed font (%s)...", buffer);
-         if (!cfgReadValue(config.obj, fixed_section, buffer, &str)) {
-            *Path = StrClone(str);
-            return ERR_Okay;
-         }
-
-         // If a stylized version of the font was requested, look for the regular version.
-
-         if (StrMatch("Regular", Style) != ERR_Okay) {
-            log.trace("Looking for regular version of the font...");
-            if (!cfgReadValue(config.obj, fixed_section, "Fixed:Regular", &str)) {
-               *Path = StrClone(str);
-               return ERR_Okay;
-            }
-         }
-      }
-
-      // Try for a scaled font
-
-      if ((scale_section) and (!(Flags & FTF_PREFER_FIXED))) {
-         log.trace("Looking for a scalable version of the font...");
-         StrFormat(buffer, sizeof(buffer), "Scale:%s", Style);
-         if (!cfgReadValue(config.obj, scale_section, buffer, &str)) {
-            *Path = StrClone(str);
-            return ERR_Okay;
-         }
-
-         if (StrMatch("Regular", Style) != ERR_Okay) {
-            if (!cfgReadValue(config.obj, scale_section, "Scale:Regular", &str)) {
-               *Path = StrClone(str);
-               return ERR_Okay;
-            }
-         }
-      }
-
-      // A regular font style in either format does not exist, so choose the first style that is listed
-
-      log.trace("Requested style not supported, choosing first style.");
-
-      if (!cfgReadValue(config.obj, (fixed_section != NULL) ? fixed_section : scale_section, "Styles", &str)) {
-         LONG j = 0;
-         for (i=0; (str[i]) and (str[i] != ',') and ((size_t)j < sizeof(style)-1); i++) style[j++] = str[i];
-         style[j] = 0;
-
-         StrFormat(buffer, sizeof(buffer), "Fixed:%s", style);
-         if (!cfgReadValue(config.obj, fixed_section, buffer, &str)) {
-            *Path = StrClone(str);
-            return ERR_Okay;
-         }
-
-         if (!(Flags & FTF_PREFER_FIXED)) {
-            StrFormat(buffer, sizeof(buffer), "Scale:%s", style);
-            log.trace("Checking for scalable version (%s)", buffer);
-            if (!cfgReadValue(config.obj, scale_section, buffer, &str)) {
-               *Path = StrClone(str);
-               return ERR_Okay;
-            }
-         }
+   if (not ((Point < 12) or (Flags & (FTF_PREFER_FIXED|FTF_REQUIRE_FIXED)))) {
+      preferred_group = fixed_group;
+      preferred_type = "Fixed";
+      if (!(Flags & FTF_REQUIRE_FIXED)) {
+         alt_group = scale_group;
+         alt_type = "Scale";
       }
    }
    else {
-      log.trace("Looking for a scalable font at size %d...", Point);
-
-      if (scale_section) {
-         StrFormat(buffer, sizeof(buffer), "Scale:%s", Style);
-         if (!cfgReadValue(config.obj, scale_section, buffer, &str)) {
-            *Path = StrClone(str);
-            return ERR_Okay;
-         }
-
-         if (StrMatch("Regular", Style) != ERR_Okay) {
-            if (!cfgReadValue(config.obj, scale_section, "Scale:Regular", &str)) {
-               *Path = StrClone(str);
-               return ERR_Okay;
-            }
-         }
+      preferred_group = scale_group;
+      preferred_type = "Scale";
+      if (!(Flags & FTF_REQUIRE_SCALED)) {
+         alt_group = fixed_group;
+         alt_type = "Fixed";
       }
+   }
 
-      if ((fixed_section) and (!(Flags & FTF_PREFER_SCALED))) {
-         StrFormat(buffer, sizeof(buffer), "Fixed:%s", Style);
-         log.trace("Checking for a fixed version of the font '%s'.", buffer);
-         if (!cfgReadValue(config.obj, fixed_section, buffer, &str)) {
-            *Path = StrClone(str);
-            return ERR_Okay;
-         }
-
-         if (StrMatch("Regular", Style) != ERR_Okay) {
-            log.trace("Checking for a regular style fixed font.");
-            if (!cfgReadValue(config.obj, fixed_section, "Fixed:Regular", &str)) {
-               *Path = StrClone(str);
-               return ERR_Okay;
-            }
-         }
+   if (preferred_group) {
+      auto path = get_font_path(*preferred_group, preferred_type, style_name);
+      if (path.has_value()) {
+         if ((*Path = StrClone(path.value().c_str()))) return ERR_Okay;
+         else return ERR_AllocMemory;
       }
-      else log.trace("User prefers scaled fonts only.");
+   }
 
-      // A regular font style in either format does not exist, so choose the first style that is listed
-
-      if (!cfgReadValue(config.obj, (scale_section != NULL) ? scale_section : fixed_section, "Styles", &str)) {
-         LONG j = 0;
-         for (i=0; (str[i]) and (str[i] != ',') and ((size_t)j < sizeof(style)-1); i++) style[j++] = str[i];
-         style[j] = 0;
-
-         log.trace("Requested style not supported, using style '%s'", style);
-
-         StrFormat(buffer, sizeof(buffer), "Scale:%s", style);
-         if (!cfgReadValue(config.obj, scale_section, buffer, &str)) {
-            *Path = StrClone(str);
-            return ERR_Okay;
-         }
-
-         if (!(Flags & FTF_PREFER_SCALED)) {
-            StrFormat(buffer, sizeof(buffer), "Fixed:%s", style);
-            if (!cfgReadValue(config.obj, fixed_section, buffer, &str)) {
-               *Path = StrClone(str);
-               return ERR_Okay;
-            }
-         }
+   if (alt_group) {
+      auto path = get_font_path(*alt_group, alt_type, style_name);
+      if (path.has_value()) {
+         if ((*Path = StrClone(path.value().c_str()))) return ERR_Okay;
+         else return ERR_AllocMemory;
       }
-      else log.trace("Styles not listed for font '%s'", Name);
+   }
+
+   // A regular font style in either format does not exist, so choose the first style that is listed
+
+   log.warning("Requested style '%s' not supported, choosing first style.", style_name.c_str());
+
+   std::string styles = (preferred_group) ? preferred_group[0]["Styles"] : alt_group[0]["Styles"];
+   auto end = styles.find(",");
+   if (end IS std::string::npos) end = styles.size();
+   std::string first_style = styles.substr(0, end);
+
+   if ((preferred_group) and (preferred_group->contains(preferred_type + ":" + first_style))) {
+      *Path = StrClone(preferred_group[0][preferred_type + ":" + first_style].c_str());
+      return ERR_Okay;
+   }
+   else if ((alt_group) and (alt_group->contains(alt_type + ":" + first_style))) {
+      *Path = StrClone(alt_group[0][alt_type + ":" + first_style].c_str());
+      return ERR_Okay;
    }
 
    return ERR_Search;
@@ -1415,83 +1262,48 @@ AccessObject: Access to the SytsemFonts object was denied, or the object does no
 
 static ERROR fntRefreshFonts(void)
 {
-   #define MAX_STYLES 20
    parasol::Log log(__FUNCTION__);
-   CSTRING styles[MAX_STYLES];
 
    log.branch("Refreshing the fonts: directory.");
 
-   parasol::ScopedObjectLock<objConfig> config(glConfigID, 3000);
+   parasol::ScopedObjectLock<objConfig> config(&glConfig->Head, 3000);
    if (!config.granted()) return log.warning(ERR_AccessObject);
 
-   acClear(config.obj); // Clear out existing font information
+   acClear(glConfig); // Clear out existing font information
 
-   scan_fixed_folder(config.obj);
-   scan_truetype_folder(config.obj);
+   scan_fixed_folder(glConfig);
+   scan_truetype_folder(glConfig);
 
    log.trace("Sorting the font names.");
 
-   cfgSortByKey(config.obj, NULL, FALSE); // Sort the font names into alphabetical order
+   cfgSortByKey(glConfig, NULL, FALSE); // Sort the font names into alphabetical order
 
-   // Create a style list for each font
+   // Create a style list for each font, e.g.
+   //
+   //    Fixed:Bold Italic = fonts:fixed/courier.fon
+   //    Scale:Bold = fonts:truetype/Courier Prime Bold.ttf
+   //    Styles = Bold,Bold Italic,Italic,Regular
 
    log.trace("Generating style lists for each font.");
 
-   ConfigEntry *entries;
-   if ((!GetPointer(config.obj, FID_Entries, &entries)) and (entries)) {
-      CSTRING section = entries[0].Section;
-      LONG stylecount = 0;
-      LONG i = 0;
-      while (i <= config.obj->AmtEntries) { // Use of <= is important in order to write out the style for the last font
-         if ((i < config.obj->AmtEntries) and (!StrCompare(entries[i].Section, section, 0, STR_MATCH_LEN|STR_CASE))) {
-            // If this is a style item, add it to our style list
-            if (!StrCompare("Fixed:", entries[i].Key, 6, 0)) {
-               if (stylecount < MAX_STYLES-1) styles[stylecount++] = entries[i].Key + 6;
-            }
-            else if (!StrCompare("Scale:", entries[i].Key, 6, 0)) {
-               if (stylecount < MAX_STYLES-1) styles[stylecount++] = entries[i].Key + 6;
-            }
-            i++;
+   ConfigGroups *groups;
+   if (!GetPointer(glConfig, FID_Data, &groups)) {
+      for (auto& [group, keys] : *groups) {
+         std::list <std::string> styles;
+         for (auto& [k, v] : keys) {
+            if (!k.compare(0, 6, "Fixed:")) styles.push_front(k.substr(6, std::string::npos));
+            else if (!k.compare(0, 6, "Scale:")) styles.push_front(k.substr(6, std::string::npos));
          }
-         else if (stylecount > 0) {
-            char buffer[300];
-            char sectionstr[80];
 
-            // Write the style list to the font configuration
-
-            styles[stylecount] = NULL;
-            StrSort(styles, SBF_NO_DUPLICATES);
-
-            LONG pos = 0;
-            for (LONG j=0; styles[j]; j++) {
-               if ((pos > 0) and ((size_t)pos < sizeof(buffer)-1)) buffer[pos++] = ',';
-               pos += StrCopy(styles[j], buffer+pos, sizeof(buffer)-pos);
-            }
-
-            StrCopy(section, sectionstr, sizeof(sectionstr));
-
-            cfgWriteValue(config.obj, sectionstr, "Styles", buffer);
-
-            // Reset the config index since we added a new entry to the object
-
-            if (GetPointer(config.obj, FID_Entries, &entries)) break;
-
-            for (LONG i=0; i < config.obj->AmtEntries; i++) {
-               if (!StrCompare(entries[i].Section, sectionstr, 0, STR_MATCH_LEN|STR_CASE)) {
-                  while ((i < config.obj->AmtEntries) and (!StrCompare(entries[i].Section, sectionstr, 0, STR_MATCH_LEN|STR_CASE))) i++;
-                  if (i < config.obj->AmtEntries) section = entries[i].Section;
-                  break;
-               }
-            }
-
-            stylecount = 0;
+         styles.sort();
+         std::string style_list;
+         for (LONG i=0; not styles.empty(); i++) {
+            if (i) style_list.append(",");
+            style_list.append(styles.front());
+            styles.pop_front();
          }
-         else if (i < config.obj->AmtEntries) {
-            log.warning("No styles listed for font %s", section);
-            section = entries[i].Section;
-            i++;
-         }
-         else i++;
+
+         keys["Styles"] = style_list.c_str();
       }
    }
 
@@ -1500,8 +1312,8 @@ static ERROR fntRefreshFonts(void)
    log.trace("Saving the font configuration file.");
 
    OBJECTPTR file;
-   if (!CreateObject(ID_FILE, 0, &file, FID_Path|TSTR, "system:fonts/fonts.cfg", FID_Flags|TLONG, FL_NEW|FL_WRITE, TAGEND)) {
-      acSaveToObject(config.obj, file->UniqueID, 0);
+   if (!CreateObject(ID_FILE, 0, &file, FID_Path|TSTR, "fonts:fonts.cfg", FID_Flags|TLONG, FL_NEW|FL_WRITE, TAGEND)) {
+      acSaveToObject(glConfig, file->UniqueID, 0);
       acFree(file);
    }
 
@@ -1516,7 +1328,7 @@ static void scan_truetype_folder(objConfig *Config)
    DirInfo *dir;
    LONG j;
    char location[100];
-   char section[200];
+   char group[200];
    FT_Face ftface;
    FT_Open_Args open;
 
@@ -1537,36 +1349,36 @@ static void scan_truetype_folder(objConfig *Config)
             log.msg("Detected font file \"%s\", name: %s, style: %s", location, ftface->family_name, ftface->style_name);
 
             LONG n;
-            if (ftface->family_name) n = StrCopy(ftface->family_name, section, sizeof(section));
+            if (ftface->family_name) n = StrCopy(ftface->family_name, group, sizeof(group));
             else {
                n = 0;
                while ((j > 0) and (location[j-1] != ':') and (location[j-1] != '/') and (location[j-1] != '\\')) j--;
-               while ((location[j]) and (location[j] != '.')) section[n++] = location[j++];
+               while ((location[j]) and (location[j] != '.')) group[n++] = location[j++];
             }
-            section[n] = 0;
+            group[n] = 0;
 
             // Strip any style references out of the font name and keep them as style flags
 
             LONG style = 0;
             if (ftface->style_name) {
-               if ((n = StrSearch(" Bold", section, STR_MATCH_CASE)) != -1) {
-                  for (j=0; " Bold"[j]; j++) section[n++] = ' ';
+               if ((n = StrSearch(" Bold", group, STR_MATCH_CASE)) != -1) {
+                  for (j=0; " Bold"[j]; j++) group[n++] = ' ';
                   style |= FTF_BOLD;
                }
 
-               if ((n = StrSearch(" Italic", section, STR_MATCH_CASE)) != -1) {
-                  for (j=0; " Italic"[j]; j++) section[n++] = ' ';
+               if ((n = StrSearch(" Italic", group, STR_MATCH_CASE)) != -1) {
+                  for (j=0; " Italic"[j]; j++) group[n++] = ' ';
                   style |= FTF_ITALIC;
                }
             }
 
-            for (n=0; section[n]; n++);
-            while ((n > 0) and (section[n-1] <= 0x20)) n--;
-            section[n] = 0;
+            for (n=0; group[n]; n++);
+            while ((n > 0) and (group[n-1] <= 0x20)) n--;
+            group[n] = 0;
 
-            cfgWriteValue(Config, section, "Name", section);
+            cfgWriteValue(Config, group, "Name", group);
 
-            if (FT_IS_SCALABLE(ftface)) cfgWriteValue(Config, section, "Scalable", "Yes");
+            if (FT_IS_SCALABLE(ftface)) cfgWriteValue(Config, group, "Scalable", "Yes");
 
             // Add the style with a link to the font file location
 
@@ -1575,13 +1387,13 @@ static void scan_truetype_folder(objConfig *Config)
                   char buffer[200];
                   CharCopy("Scale:", buffer, sizeof(buffer));
                   StrCopy(ftface->style_name, buffer+6, sizeof(buffer)-6);
-                  cfgWriteValue(Config, section, buffer, location);
+                  cfgWriteValue(Config, group, buffer, location);
                }
                else {
-                  if (style IS FTF_BOLD) cfgWriteValue(Config, section, "Scale:Bold", location);
-                  else if (style IS FTF_ITALIC) cfgWriteValue(Config, section, "Scale:Italic", location);
-                  else if (style IS (FTF_BOLD|FTF_ITALIC)) cfgWriteValue(Config, section, "Scale:Bold Italic", location);
-                  else cfgWriteValue(Config, section, "Scale:Regular", location);
+                  if (style IS FTF_BOLD) cfgWriteValue(Config, group, "Scale:Bold", location);
+                  else if (style IS FTF_ITALIC) cfgWriteValue(Config, group, "Scale:Italic", location);
+                  else if (style IS (FTF_BOLD|FTF_ITALIC)) cfgWriteValue(Config, group, "Scale:Bold Italic", location);
+                  else cfgWriteValue(Config, group, "Scale:Regular", location);
                }
             }
 
@@ -1605,7 +1417,7 @@ static void scan_fixed_folder(objConfig *Config)
    parasol::Log log(__FUNCTION__);
    LONG j, n, style;
    WORD i;
-   char location[100], section[200], pntbuffer[80];
+   char location[100], group[200], pntbuffer[80];
    STRING facename;
 
    log.branch("Scanning for fixed fonts.");
@@ -1625,49 +1437,49 @@ static void scan_fixed_folder(objConfig *Config)
             log.extmsg("Detected font file \"%s\", name: %s", location, facename);
 
             if (!facename) continue;
-            StrCopy(facename, section, sizeof(section));
+            StrCopy(facename, group, sizeof(group));
 
             // Strip any style references out of the font name and keep them as style flags
 
             style = 0;
-            if ((n = StrSearch(" Bold", section, STR_MATCH_CASE)) != -1) {
-               for (j=0; " Bold"[j]; j++) section[n++] = ' ';
+            if ((n = StrSearch(" Bold", group, STR_MATCH_CASE)) != -1) {
+               for (j=0; " Bold"[j]; j++) group[n++] = ' ';
                style |= FTF_BOLD;
             }
 
-            if ((n = StrSearch(" Italic", section, STR_MATCH_CASE)) != -1) {
-               for (j=0; " Italic"[j]; j++) section[n++] = ' ';
+            if ((n = StrSearch(" Italic", group, STR_MATCH_CASE)) != -1) {
+               for (j=0; " Italic"[j]; j++) group[n++] = ' ';
                style |= FTF_ITALIC;
             }
 
             if (header.italic) style |= FTF_ITALIC;
             if (header.weight >= 600) style |= FTF_BOLD;
 
-            for (n=0; section[n]; n++);
-            while ((n > 0) and (section[n-1] <= 0x20)) n--;
-            section[n] = 0;
+            for (n=0; group[n]; n++);
+            while ((n > 0) and (group[n-1] <= 0x20)) n--;
+            group[n] = 0;
 
-            cfgWriteValue(Config, section, "Name", section);
+            cfgWriteValue(Config, group, "Name", group);
 
             // Add the style with a link to the font file location
 
             if (style IS FTF_BOLD) {
-               cfgWriteValue(Config, section, "Fixed:Bold", location);
+               cfgWriteValue(Config, group, "Fixed:Bold", location);
                bold = TRUE;
             }
             else if (style IS FTF_ITALIC) {
-               cfgWriteValue(Config, section, "Fixed:Italic", location);
+               cfgWriteValue(Config, group, "Fixed:Italic", location);
                italic = TRUE;
             }
             else if (style IS (FTF_BOLD|FTF_ITALIC)) {
-               cfgWriteValue(Config, section, "Fixed:Bold Italic", location);
+               cfgWriteValue(Config, group, "Fixed:Bold Italic", location);
                bolditalic = TRUE;
             }
             else {
-               cfgWriteValue(Config, section, "Fixed:Regular", location);
-               if (bold IS FALSE)       cfgWriteValue(Config, section, "Fixed:Bold", location);
-               if (bolditalic IS FALSE) cfgWriteValue(Config, section, "Fixed:Bold Italic", location);
-               if (italic IS FALSE)     cfgWriteValue(Config, section, "Fixed:Italic", location);
+               cfgWriteValue(Config, group, "Fixed:Regular", location);
+               if (bold IS FALSE)       cfgWriteValue(Config, group, "Fixed:Bold", location);
+               if (bolditalic IS FALSE) cfgWriteValue(Config, group, "Fixed:Bold Italic", location);
+               if (italic IS FALSE)     cfgWriteValue(Config, group, "Fixed:Italic", location);
             }
 
             j = 0;
@@ -1677,7 +1489,7 @@ static void scan_fixed_folder(objConfig *Config)
             }
 
             pntbuffer[j] = 0;
-            cfgWriteValue(Config, section, "Points", pntbuffer);
+            cfgWriteValue(Config, group, "Points", pntbuffer);
 
             FreeResource(facename);
          }

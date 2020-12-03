@@ -82,7 +82,7 @@ Activate: Activates the checkbox.
 static ERROR CHECKBOX_Activate(objCheckBox *Self, APTR Void)
 {
    parasol::Log log;
-   log.branch(NULL);
+   log.branch();
 
    if (Self->Active) {
       log.warning("Warning - recursion detected");

@@ -156,7 +156,7 @@ static ERROR MENU_Activate(objMenu *Self, APTR Void)
 
    // This routine returns ERF_Notified because Activate notification is manually generated on MenuItem.acActivate()
 
-   log.branch("");
+   log.branch();
    Action(MT_MnSwitch, Self, NULL);
    return ERR_Okay|ERF_Notified;
 }
@@ -170,7 +170,7 @@ Clears: Clears the content of the menu list.
 static ERROR MENU_Clear(objMenu *Self, APTR Void)
 {
    parasol::Log log;
-   log.branch("");
+   log.branch();
 
    while (Self->Items) acFree(Self->Items);
 
@@ -215,7 +215,7 @@ static ERROR MENU_DataFeed(objMenu *Self, struct acDataFeed *Args)
    if (!Args) return ERR_NullArgs;
 
    if (Args->DataType IS DATA_XML) { // Incoming XML is treated as being part of the menu content definition
-      log.branch("");
+      log.branch();
 
       objXML *xml;
       if (!CreateObject(ID_XML, NF_INTEGRAL, &xml, FID_Statement|TSTR, Args->Buffer, TAGEND)) {
@@ -521,7 +521,7 @@ static ERROR MENU_Hide(objMenu *Self, APTR Void)
 {
    parasol::Log log;
 
-   log.branch("");
+   log.branch();
 
    if ((Self->FadeDelay > 0) and (!Self->Scrollbar)) {
       // NB: We must always use the timer to delay the hide, otherwise we get problems with the Activate()

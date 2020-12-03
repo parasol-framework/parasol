@@ -380,7 +380,7 @@ static ERROR VIEW_Clear(objView *Self, APTR Void)
 {
    parasol::Log log;
 
-   log.branch(NULL);
+   log.branch();
 
    BYTE activate = (Self->SelectedTag != -1) ? TRUE : FALSE;
 
@@ -1664,7 +1664,7 @@ static ERROR VIEW_RaiseItem(objView *Self, struct viewRaiseItem *Args)
 {
    parasol::Log log;
 
-   log.branch("");
+   log.branch();
 
    XMLTag *tag = NULL;
    if ((Args) and (Args->XPath) and (Args->XPath != (STRING)-1) and (Args->XPath[0])) {

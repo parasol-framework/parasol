@@ -249,7 +249,7 @@ static ERROR CLIPBOARD_AddObjects(objClipboard *Self, struct clipAddObjects *Arg
 
    if ((!Args) OR (!Args->Objects) OR (!Args->Objects[0])) return log.warning(ERR_NullArgs);
 
-   log.branch("");
+   log.branch();
 
    // Use the SaveToObject action to save each object's data to the clipboard storage area.  The class ID for each
    // object is also recorded.
@@ -350,7 +350,7 @@ static ERROR CLIPBOARD_AddText(objClipboard *Self, struct clipAddText *Args)
    }
 #endif
 
-   log.branch("");
+   log.branch();
 
    ERROR error;
    LONG counter;
@@ -360,7 +360,7 @@ static ERROR CLIPBOARD_AddText(objClipboard *Self, struct clipAddText *Args)
 
       OBJECTPTR file;
       if (!CreateObject(ID_FILE, 0, &file,
-            FID_Location|TSTR,     buffer,
+            FID_Path|TSTR,         buffer,
             FID_Flags|TLONG,       FL_NEW|FL_WRITE,
             FID_Permissions|TLONG, PERMIT_READ|PERMIT_WRITE,
             TAGEND)) {
@@ -462,7 +462,7 @@ static ERROR CLIPBOARD_DataFeed(objClipboard *Self, struct acDataFeed *Args)
          StrFormat(buffer, sizeof(buffer), "clipboard:text%d.000", counter);
 
          if (!CreateObject(ID_FILE, 0, &file,
-               FID_Location|TSTR,     buffer,
+               FID_Path|TSTR,         buffer,
                FID_Flags|TLONG,       FL_NEW|FL_WRITE,
                FID_Permissions|TLONG, PERMIT_READ|PERMIT_WRITE,
                TAGEND)) {

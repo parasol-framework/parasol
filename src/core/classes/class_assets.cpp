@@ -92,7 +92,7 @@ ERROR add_asset_class(void)
    CSTRING classname;
    LONG i;
 
-   log.branch("");
+   log.branch();
 
    if (!(openinfo = GetResourcePtr(RES_OPENINFO))) {
       log.warning("No OpenInfo structure set during Core initialisation.");

@@ -454,7 +454,7 @@ static ERROR WINDOW_Hide(objWindow *Self, APTR Void)
    if (Self->Surface->Flags & RNF_HAS_FOCUS) {
       parasol::Log log;
 
-      log.branch("");
+      log.branch();
 
       acHide(Self->Surface);
 
@@ -908,7 +908,7 @@ static ERROR WINDOW_Minimise(objWindow *Self, APTR Void)
 
    if (Self->Minimise IS FALSE) return ERR_Okay;
 
-   log.branch("");
+   log.branch();
 
    if (Self->MinimiseCallback.Type) {
       if (Self->MinimiseCallback.Type IS CALL_STDC) {

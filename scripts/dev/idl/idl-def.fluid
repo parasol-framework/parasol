@@ -35,6 +35,7 @@ end
 ------------------------------------------------------------------------------
 
 function c_include(...) end
+function cpp_include(...) end
 function class(Name, Options, Def, Private) end
 function functionNames(Prefix, ...) end
 function methods(ClassName, Prefix, Methods) end

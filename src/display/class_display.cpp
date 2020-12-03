@@ -83,7 +83,7 @@ static void printConfig(EGLDisplay display, EGLConfig config) {
    parasol::Log log(__FUNCTION__);
    LONG value[1];
 
-   log.branch("");
+   log.branch();
 
    for (LONG i=0; i < ARRAYSIZE(attributes); i++) {
       int attribute = attributes[i];
@@ -363,7 +363,7 @@ static ERROR DISPLAY_Enable(objDisplay *Self, APTR Void)
 #ifdef __snap__
 
    parasol::Log log;
-   log.branch("");
+   log.branch();
 
    if (!glSNAP->gsDPMS.DPMSsetState) {
       log.msg("DPMS not available.");
@@ -587,7 +587,7 @@ static ERROR DISPLAY_Hide(objDisplay *Self, APTR Void)
 {
    parasol::Log log;
 
-   log.branch("");
+   log.branch();
 
 #ifdef _WIN32
    winHideWindow(Self->WindowHandle);
@@ -978,7 +978,7 @@ Okay
 static ERROR DISPLAY_Minimise(objDisplay *Self, APTR Void)
 {
    parasol::Log log;
-   log.branch(NULL);
+   log.branch();
 #ifdef _WIN32
    winMinimiseWindow(Self->WindowHandle);
 #elif __xwindows__
@@ -1268,7 +1268,7 @@ static ERROR DISPLAY_Resize(objDisplay *Self, struct acResize *Args)
 {
    parasol::Log log;
 
-   log.branch(NULL);
+   log.branch();
 
 #ifdef _WIN32
 
@@ -1386,7 +1386,7 @@ static ERROR DISPLAY_SaveSettings(objDisplay *Self, APTR Void)
 
 #ifdef __xwindows__
 
-   log.branch("");
+   log.branch();
 
    OBJECTPTR config;
    if (!CreateObject(ID_CONFIG, 0, &config, FID_Path|TSTR, "user:config/display.cfg", TAGEND)) {
@@ -1904,7 +1904,7 @@ ERROR DISPLAY_Show(objDisplay *Self, APTR Void)
 {
    parasol::Log log(__FUNCTION__);
 
-   log.branch("");
+   log.branch();
 
    #ifdef __xwindows__
       if (!XDisplay) {
@@ -3089,7 +3089,7 @@ static resolution * get_resolutions(objDisplay *Self)
 #ifdef __xwindows__
 
    parasol::Log log(__FUNCTION__);
-   
+
    if (XRandRBase) {
       static resolution resolutions[30];
       struct xrMode *mode;

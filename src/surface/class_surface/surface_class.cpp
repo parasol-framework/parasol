@@ -2229,7 +2229,7 @@ static ERROR SURFACE_SaveImage(objSurface *Self, struct acSaveImage *Args)
 
    if (!Args) return log.warning(ERR_NullArgs);
 
-   log.branch("");
+   log.branch();
 
    // Create a Bitmap that is the same size as the rendered area
 
