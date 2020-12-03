@@ -35,6 +35,7 @@ Font: Provides font management functionality and hosts the Font and FontServer c
 
 #include <math.h>
 #include <wchar.h>
+#include <parasol/strings.hpp>
 
 static KeyStore *glCache = NULL;
 
@@ -1085,7 +1086,8 @@ static ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, LONG Flags, 
    ConfigKeys *fixed_group = NULL, *scale_group = NULL;
 
    std::vector<std::string> names;
-   boost::split(names, Name, boost::is_any_of(","));
+   parasol::split(std::string(Name), std::back_inserter(names));
+
    for (auto& name : names) {
       if (!name.compare("*")) {
          // Use of the '*' wildcard indicates that the default scalable font can be used.  This feature is usually
@@ -1094,7 +1096,8 @@ static ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, LONG Flags, 
          break;
       }
 
-      boost::trim_if(name, boost::is_any_of("'\""));
+      parasol::ltrim(name, "'\"");
+      parasol::rtrim(name, "'\"");
 
       log.extmsg("Searching for font '%s' from %d installed fonts.", name.c_str(), (LONG)groups[0].size());
 
@@ -1169,7 +1172,8 @@ static ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, LONG Flags, 
    if ((fixed_group) and (scale_group) and (Point)) {
       bool acceptable = false;
       std::vector<std::string> points;
-      boost::split(points, fixed_group[0]["Points"], boost::is_any_of(","));
+      parasol::split(fixed_group[0]["Points"], std::back_inserter(points));
+
       for (auto& point : points) {
          auto diff = StrToInt(point.c_str()) - Point;
          if ((diff >= -1) and (diff <= 1)) { acceptable = true; break; }
