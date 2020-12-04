@@ -53,12 +53,10 @@ function testPostString()
          check(ERR_Terminate)
       end,
       stateChanged = function(HTTP, State)
-         print('HTTP object has changed its state to ' .. State)
          if (State == HGS_COMPLETED) then
             print(file.readAll(glOutFile))
          end
          if (State == HGS_COMPLETED) or (State == HGS_TERMINATED) then
-            print('Quitting application')
             mSys.SendMessage(0, MSGID_QUIT)
          end
       end
