@@ -69,11 +69,10 @@ default datatype is RAW (binary format), but the most commonly supported datatyp
 The third method is to use function callbacks.  Refer to the #Incoming field for further information on receiving
 data through callbacks.
 
-<header>Progress Reports</>
+<header>Progress Monitoring</>
 
-To receive progress reports when uploading or downloading data from a server, subscribe to the #Index field, which
-indicates the current read/write position within the overall data stream (indicated by the #ContentLength).
-Alternatively, use a timer and read the #Index periodically.
+Progress of a data transfer can be monitored through the #Index field.  If the callback features are not being used for
+a data transfer, consider using a timer to read from the #Index periodically.
 
 <header>SSL Support (HTTPS)</>
 
@@ -113,7 +112,7 @@ typedef char HASHHEX[HASHHEXLEN+1];
 #define BUFFER_READ_SIZE 16384  // Dictates how many bytes are read from the network socket at a time.  Do not make this greater than 64k
 #define BUFFER_WRITE_SIZE 16384 // Dictates how many bytes are written to the network socket at a time.  Do not make this greater than 64k
 
-#define SET_ERROR(http, code) { (http)->Error = (code); log.msg("Set error code %d: %s", code, GetErrorMsg(code)); }
+#define SET_ERROR(http, code) { (http)->Error = (code); log.debug("Set error code %d: %s", code, GetErrorMsg(code)); }
 
 static ERROR create_http_class(void);
 
@@ -462,8 +461,14 @@ static ERROR HTTP_Activate(objHTTP *Self, APTR Void)
 
                if (!error) {
                   Self->Index = 0;
-                  if (!Self->Size) GetLarge(Self->flInput, FID_Size, &Self->ContentLength);
-                  else Self->ContentLength = Self->Size;
+                  if (!Self->Size) {
+                     GetLarge(Self->flInput, FID_Size, &Self->ContentLength); // Use the file's size as ContentLength
+                     if (!Self->ContentLength) { // If the file is empty or size is indeterminate then assume nothing is being posted
+                        SET_ERROR(Self, ERR_NoData);
+                        return Self->Error;
+                     }
+                  }
+                  else Self->ContentLength = Self->Size; // Allow the developer to define the ContentLength
                }
                else {
                   SET_ERROR(Self, ERR_File);
@@ -916,8 +921,9 @@ HTTP servers will return a ContentLength value in their response headers when re
 defined here once the response header is processed.  The ContentLength may be set to -1 if the content is being
 streamed from the server.
 
-When posting data to a server, set the ContentLength to the amount of data that you intend to send to the server.  If
-streaming data of unknown length, set the ContentLength to -1.
+Note that if posting data to a server with an #InputFile or #InputObject as the source, the #Size field will have
+priority and override any existing value in ContentLength.  In all other cases the ContentLength can be set directly
+and a setting of -1 can be used for streaming.
 
 -FIELD-
 ContentType: Defines the content-type for PUT and POST methods.
@@ -1228,8 +1234,9 @@ object.
 -FIELD-
 Outgoing: Outgoing data can be managed using a function callback if this field is set.
 
-Outgoing data can be managed manually by providing the HTTP object with an outgoing callback routine.  The format for
-the callback routine is `ERROR Function(*HTTP, APTR Buffer, LONG BufferSize, LONG *Result)`
+Outgoing data can be managed manually by providing the HTTP object with an outgoing callback routine.  The C prototype
+for the callback routine is `ERROR Function(*HTTP, APTR Buffer, LONG BufferSize, LONG *Result)`.  For Fluid use
+`function(HTTP, Buffer, BufferSize)`.
 
 Outgoing content is placed in the Buffer address and must not exceed the indicated BufferSize.  The total number of
 bytes placed in the Buffer must be indicated in the Result parameter before the callback routine returns.
@@ -1446,7 +1453,7 @@ static ERROR GET_RecvBuffer(objHTTP *Self, UBYTE **Value, LONG *Elements)
 -FIELD-
 Size: Set this field to define the length of a data transfer when issuing a POST command.
 
-Prior to the execution of a POST command, it is recommended that you set the Size field to explicitly define the length
+Prior to the execution of a POST command it is recommended that you set the Size field to explicitly define the length
 of the data transfer.  If this field is not set, the HTTP object will attempt to determine the byte size of the
 transfer by reading the size from the source file or object.
 
