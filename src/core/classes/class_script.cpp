@@ -32,9 +32,9 @@ static ERROR SET_String(objScript *, CSTRING);
 
 INLINE CSTRING check_bom(CSTRING Value)
 {
-   if ((Value[0] IS 0xef) AND (Value[1] IS 0xbb) AND (Value[2] IS 0xbf)) Value += 3; // UTF-8 BOM
-   else if ((Value[0] IS 0xfe) AND (Value[1] IS 0xff)) Value += 2; // UTF-16 BOM big endian
-   else if ((Value[0] IS 0xff) AND (Value[1] IS 0xfe)) Value += 2; // UTF-16 BOM little endian
+   if ((Value[0] IS 0xef) and (Value[1] IS 0xbb) and (Value[2] IS 0xbf)) Value += 3; // UTF-8 BOM
+   else if ((Value[0] IS 0xfe) and (Value[1] IS 0xff)) Value += 2; // UTF-16 BOM big endian
+   else if ((Value[0] IS 0xff) and (Value[1] IS 0xfe)) Value += 2; // UTF-16 BOM little endian
    return Value;
 }
 
@@ -166,7 +166,7 @@ static ERROR SCRIPT_Exec(objScript *Self, struct scExec *Args)
    parasol::Log log;
 
    if (!Args) return log.warning(ERR_NullArgs);
-   if ((Args->TotalArgs < 0) OR (Args->TotalArgs > 32)) return log.warning(ERR_Args);
+   if ((Args->TotalArgs < 0) or (Args->TotalArgs > 32)) return log.warning(ERR_Args);
 
    LARGE save_id = Self->ProcedureID;
    CSTRING save_name = Self->Procedure;
@@ -214,7 +214,7 @@ static ERROR SCRIPT_Callback(objScript *Self, struct scCallback *Args)
    parasol::Log log;
 
    if (!Args) return log.warning(ERR_NullArgs);
-   if ((Args->TotalArgs < 0) OR (Args->TotalArgs > 1024)) return log.warning(ERR_Args);
+   if ((Args->TotalArgs < 0) or (Args->TotalArgs > 1024)) return log.warning(ERR_Args);
 
    LARGE save_id = Self->ProcedureID;
    CSTRING save_name = Self->Procedure;
@@ -284,7 +284,7 @@ static ERROR SCRIPT_GetProcedureID(objScript *Self, struct scGetProcedureID *Arg
 {
    parasol::Log log;
 
-   if ((!Args) OR (!Args->Procedure) OR (!Args->Procedure[0])) return log.warning(ERR_NullArgs);
+   if ((!Args) or (!Args->Procedure) or (!Args->Procedure[0])) return log.warning(ERR_NullArgs);
    Args->ProcedureID = StrHash(Args->Procedure, 0);
    return ERR_Okay;
 }
@@ -299,7 +299,7 @@ static ERROR SCRIPT_GetVar(objScript *Self, struct acGetVar *Args)
 {
    parasol::Log log;
 
-   if ((!Args) OR (!Args->Buffer) OR (!Args->Field)) return ERR_NullArgs;
+   if ((!Args) or (!Args->Buffer) or (!Args->Field)) return ERR_NullArgs;
    if (Args->Size < 2) return log.warning(ERR_Args);
 
    CSTRING arg = VarGetString(Self->Vars, Args->Field);
@@ -369,7 +369,7 @@ static ERROR SCRIPT_SetVar(objScript *Self, struct acSetVar *Args)
 
    // It is acceptable to set zero-length string values (this has its uses in some scripts).
 
-   if ((!Args) OR (!Args->Field) OR (!Args->Value)) return ERR_NullArgs;
+   if ((!Args) or (!Args->Field) or (!Args->Value)) return ERR_NullArgs;
    if (!Args->Field[0]) return ERR_NullArgs;
 
    log.trace("%s = %s", Args->Field, Args->Value);
@@ -505,7 +505,7 @@ static ERROR SET_Path(objScript *Self, CSTRING Value)
    if (Self->Path) {
       // If the location has already been set, throw the value to SetVar instead.
 
-      if ((Value) AND (*Value)) {
+      if ((Value) and (*Value)) {
          return acSetVar(Self, "Path", Value);
       }
    }
@@ -515,12 +515,12 @@ static ERROR SET_Path(objScript *Self, CSTRING Value)
       if (Self->WorkingPath) { FreeResource(Self->WorkingPath); Self->WorkingPath = NULL; }
 
       LONG i, j, len;
-      if ((Value) AND (*Value)) {
+      if ((Value) and (*Value)) {
          if (!StrCompare("STRING:", Value, 7, 0)) {
             return SET_String(Self, Value + 7);
          }
 
-         for (len=0; (Value[len]) AND (Value[len] != ';'); len++);
+         for (len=0; (Value[len]) and (Value[len] != ';'); len++);
 
          if (!AllocMemory(len+1, MEM_STRING|MEM_NO_CLEAR, (APTR *)&Self->Path, NULL)) {
             for (i=0; i < len; i++) Self->Path[i] = Value[i];
@@ -532,8 +532,8 @@ static ERROR SET_Path(objScript *Self, CSTRING Value)
                char buffer[800], arg[100], argval[400];
 
                i++;
-               while ((Value[i]) AND (Value[i] <= 0x20)) i++;
-               for (j=0; (Value[i]) AND (Value[i] > 0x20) AND (Value[i] != ';'); j++) buffer[j] = Value[i++];
+               while ((Value[i]) and (Value[i] <= 0x20)) i++;
+               for (j=0; (Value[i]) and (Value[i] > 0x20) and (Value[i] != ';'); j++) buffer[j] = Value[i++];
                buffer[j] = 0;
                if (buffer[0]) SET_Procedure(Self, buffer);
 
@@ -543,18 +543,18 @@ static ERROR SET_Path(objScript *Self, CSTRING Value)
                   i++;
 
                   while (Value[i]) {
-                     while ((Value[i]) AND (Value[i] <= 0x20)) i++;
+                     while ((Value[i]) and (Value[i] <= 0x20)) i++;
                      while (Value[i] IS ',') {
                         i++;
-                        while ((Value[i]) AND (Value[i] <= 0x20)) i++;
+                        while ((Value[i]) and (Value[i] <= 0x20)) i++;
                      }
 
                      // Extract arg name
 
-                     for (j=0; (Value[i] != ',') AND (Value[i] != '=') AND (Value[i] > 0x20); j++) arg[j] = Value[i++];
+                     for (j=0; (Value[i] != ',') and (Value[i] != '=') and (Value[i] > 0x20); j++) arg[j] = Value[i++];
                      arg[j] = 0;
 
-                     while ((Value[i]) AND (Value[i] <= 0x20)) i++;
+                     while ((Value[i]) and (Value[i] <= 0x20)) i++;
 
                      // Extract arg value
 
@@ -562,14 +562,14 @@ static ERROR SET_Path(objScript *Self, CSTRING Value)
                      argval[1] = 0;
                      if (Value[i] IS '=') {
                         i++;
-                        while ((Value[i]) AND (Value[i] <= 0x20)) i++;
+                        while ((Value[i]) and (Value[i] <= 0x20)) i++;
                         if (Value[i] IS '"') {
                            i++;
-                           for (j=0; (Value[i]) AND (Value[i] != '"'); j++) argval[j] = Value[i++];
+                           for (j=0; (Value[i]) and (Value[i] != '"'); j++) argval[j] = Value[i++];
                            argval[j] = 0;
                         }
                         else {
-                           for (j=0; (Value[i]) AND (Value[i] != ','); j++) argval[j] = Value[i++];
+                           for (j=0; (Value[i]) and (Value[i] != ','); j++) argval[j] = Value[i++];
                            argval[j] = 0;
                         }
                      }
@@ -822,7 +822,7 @@ static ERROR GET_WorkingPath(objScript *Self, STRING *Value)
       UBYTE path = FALSE;
       if (Self->Path[0] IS '/') path = TRUE;
       else {
-        for (LONG j=0; (Self->Path[j]) AND (Self->Path[j] != '/') AND (Self->Path[j] != '\\'); j++) {
+        for (LONG j=0; (Self->Path[j]) and (Self->Path[j] != '/') and (Self->Path[j] != '\\'); j++) {
             if (Self->Path[j] IS ':') {
                path = TRUE;
                break;
@@ -833,7 +833,7 @@ static ERROR GET_WorkingPath(objScript *Self, STRING *Value)
       LONG k;
       LONG j = 0;
       for (k=0; Self->Path[k]; k++) {
-         if ((Self->Path[k] IS ':') OR (Self->Path[k] IS '/') OR (Self->Path[k] IS '\\')) j = k+1;
+         if ((Self->Path[k] IS ':') or (Self->Path[k] IS '/') or (Self->Path[k] IS '\\')) j = k+1;
       }
 
       STRING workingpath;
@@ -844,7 +844,7 @@ static ERROR GET_WorkingPath(objScript *Self, STRING *Value)
          Self->WorkingPath = StrClone(Self->Path);
          Self->Path[j] = save;
       }
-      else if ((!GetString(CurrentTask(), FID_Path, &workingpath)) AND (workingpath)) {
+      else if ((!GetString(CurrentTask(), FID_Path, &workingpath)) and (workingpath)) {
          char buf[1024];
 
          // Using ResolvePath() can help to determine relative paths such as "../path/file"

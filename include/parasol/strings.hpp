@@ -45,7 +45,6 @@ INLINE void camelcase(std::string &s) {
    }
 }
 
-
-}
+} // namespace
 #endif
 #endif
