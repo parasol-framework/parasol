@@ -834,7 +834,7 @@ static void text_validation(objText *Text)
                { "Value", FD_STRING,    { .Address = (STRING)str } },
                { "Activated", FD_LONG,  { .Long = FALSE } }
             };
-            scCallback(script, Self->prvFeedback.Script.ProcedureID, args, ARRAYSIZE(args));
+            scCallback(script, Self->prvFeedback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
          }
       }
    }
@@ -893,7 +893,7 @@ static void text_activated(objText *Text)
                { "Value", FD_STRING,    { .Address = (STRING)str } },
                { "Activated", FD_LONG,  { .Long = TRUE } }
             };
-            scCallback(script, Self->prvFeedback.Script.ProcedureID, args, ARRAYSIZE(args));
+            scCallback(script, Self->prvFeedback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
          }
       }
    }

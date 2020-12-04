@@ -204,8 +204,7 @@ redo_upload:
                { "HTTP",       FD_OBJECTPTR, { .Address = Self } },
                { "BufferSize", FD_LONG,      { .Long = Self->WriteSize } }
             };
-            error = scCallback(script, Self->Outgoing.Script.ProcedureID, args, ARRAYSIZE(args));
-            if (!error) GetLong(script, FID_Error, &error);
+            if (scCallback(script, Self->Outgoing.Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Failed;
             if (error > ERR_ExceptionThreshold) {
                log.warning("Procedure " PF64() " failed, aborting HTTP call.", Self->Outgoing.Script.ProcedureID);
             }
@@ -1030,10 +1029,7 @@ static ERROR process_data(objHTTP *Self, APTR Buffer, LONG Length)
                { "Buffer",     FD_PTRBUFFER, { .Address = Buffer } },
                { "BufferSize", FD_LONG|FD_BUFSIZE, { .Long = Length } }
             };
-            if (!scCallback(script, Self->Incoming.Script.ProcedureID, args, ARRAYSIZE(args))) {
-               GetLong(script, FID_Error, &error);
-            }
-            else error = ERR_Terminate; // Fatal error in attempting to execute the procedure
+            if (scCallback(script, Self->Incoming.Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Terminate;
          }
          else error = ERR_Terminate;
       }

@@ -91,7 +91,7 @@ restart:
             const ScriptArg args[] = {
                { "SVG", FD_OBJECTPTR, { .Address = SVG } }
             };
-            scCallback(script, SVG->FrameCallback.Script.ProcedureID, args, ARRAYSIZE(args));
+            scCallback(script, SVG->FrameCallback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
          }
       }
    }

@@ -394,9 +394,7 @@ static ERROR COMPRESSION_CompressStream(objCompression *Self, struct cmpCompress
                   { "Output", FD_BUFFER, { .Address = output } },
                   { "OutputLength", FD_LONG|FD_BUFSIZE, { .Long = len } }
                };
-               error = scCallback(script, Args->Callback->Script.ProcedureID, args, ARRAYSIZE(args));
-               if (!error) GetLong(script, FID_Error, &error);
-               else error = ERR_Failed;
+               if (scCallback(script, Args->Callback->Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Failed;
             }
             else error = ERR_Terminate;
          }
@@ -490,9 +488,7 @@ static ERROR COMPRESSION_CompressStreamEnd(objCompression *Self, struct cmpCompr
             { "OutputLength", FD_LONG|FD_BUFSIZE, { .Long = (LONG)(outputsize - Self->Stream.avail_out) } }
          };
          if (script) {
-            error = scCallback(script, Args->Callback->Script.ProcedureID, args, ARRAYSIZE(args));
-            if (!error) GetLong(script, FID_Error, &error);
-            else error = ERR_Failed;
+            if (scCallback(script, Args->Callback->Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Failed;
          }
          else error = ERR_Terminate;
       }
@@ -661,9 +657,7 @@ static ERROR COMPRESSION_DecompressStream(objCompression *Self, struct cmpDecomp
                   { "Output",       FD_BUFFER, { .Address = output } },
                   { "OutputLength", FD_LONG|FD_BUFSIZE, { .Long = len } }
                };
-               error = scCallback(script, Args->Callback->Script.ProcedureID, args, ARRAYSIZE(args));
-               if (!error) GetLong(script, FID_Error, &error);
-               else error = ERR_Failed;
+               if (scCallback(script, Args->Callback->Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Failed;
             }
             else error = ERR_Terminate;
          }
@@ -1942,9 +1936,7 @@ static ERROR COMPRESSION_Scan(objCompression *Self, struct cmpScan *Args)
                   { "Compression", FD_OBJECTPTR, { .Address = Self } },
                   { "CompressedItem:Item", FD_STRUCT|FD_PTR, { .Address = &meta } }
                };
-               error = scCallback(script, Args->Callback->Script.ProcedureID, args, ARRAYSIZE(args));
-               if (!error) GetLong(script, FID_Error, &error);
-               else error = ERR_Failed;
+               if (scCallback(script, Args->Callback->Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Failed;
             }
             else error = ERR_Terminate;
          }

@@ -328,7 +328,7 @@ static ERROR WINDOW_Close(objWindow *Self, APTR Void)
          OBJECTPTR script;
          if ((script = Self->CloseFeedback.Script.Script)) {
             const ScriptArg args[] = { { "Window", FD_OBJECTPTR, { .Address = Self } } };
-            scCallback(script, Self->CloseFeedback.Script.ProcedureID, args, ARRAYSIZE(args));
+            scCallback(script, Self->CloseFeedback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
          }
       }
    }
@@ -810,7 +810,7 @@ static ERROR WINDOW_Maximise(objWindow *Self, struct winMaximise *Args)
             const ScriptArg args[] = {
                { "Window", FD_OBJECTPTR, { .Address = Self } }
             };
-            scCallback(script, Self->MaximiseCallback.Script.ProcedureID, args, ARRAYSIZE(args));
+            scCallback(script, Self->MaximiseCallback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
          }
       }
    }
@@ -920,7 +920,7 @@ static ERROR WINDOW_Minimise(objWindow *Self, APTR Void)
          OBJECTPTR script;
          if ((script = Self->MinimiseCallback.Script.Script)) {
             const ScriptArg args[] = { { "Window", FD_OBJECTPTR, { .Address = Self } } };
-            scCallback(script, Self->MinimiseCallback.Script.ProcedureID, args, ARRAYSIZE(args));
+            scCallback(script, Self->MinimiseCallback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
          }
       }
    }

@@ -849,9 +849,7 @@ static ERROR send_feedback(objCompression *Self, CompressionFeedback *Feedback)
                { "Compression", FD_OBJECTPTR, { .Address = Self } },
                { "Feedback",    FD_POINTER, { .Address = Feedback } }
             };
-            error = scCallback(script, Self->Feedback.Script.ProcedureID, args, ARRAYSIZE(args));
-            if (!error) GetLong(script, FID_Error, &error);
-            else error = ERR_Failed; // Fatal error in attempting to execute the procedure
+            if (scCallback(script, Self->Feedback.Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Failed;
          }
          else error = ERR_Failed;
       }

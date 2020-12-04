@@ -2918,7 +2918,7 @@ static ERROR report_cellclick(objView *Self, LONG TagIndex, LONG Column, LONG In
                { "X",        FD_LONG, { .Long = X } },
                { "Y",        FD_LONG, { .Long = Y } }
             };
-            scCallback(script, Self->CellClick.Script.ProcedureID, args, ARRAYSIZE(args));
+            scCallback(script, Self->CellClick.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
          }
       }
 
@@ -2947,7 +2947,7 @@ static void report_selection(objView *Self, LONG Flags, LONG TagIndex)
                { "Flags", FD_LONG, { .Long = Flags } },
                { "Tag",   FD_LONG, { .Long = TagIndex } }
             };
-            scCallback(script, Self->SelectCallback.Script.ProcedureID, args, ARRAYSIZE(args));
+            scCallback(script, Self->SelectCallback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
          }
       }
    }
@@ -3023,7 +3023,7 @@ static BYTE open_branch_callback(objView *Self, XMLTag *Tag)
                   { "View",     FD_OBJECTPTR, { .Address = Self } },
                   { "TagIndex", FD_LONG, { .Long = Tag->Index } }
                };
-               scCallback(script, Self->ExpandCallback.Script.ProcedureID, args, ARRAYSIZE(args));
+               scCallback(script, Self->ExpandCallback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
             }
          }
       }

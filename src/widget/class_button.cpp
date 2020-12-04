@@ -112,7 +112,7 @@ static ERROR BUTTON_Activate(objButton *Self, APTR Void)
       OBJECTPTR script;
       if ((script = Self->Feedback.Script.Script)) {
          const ScriptArg args[] = { { "Button", FD_OBJECTPTR, { .Address = Self } } };
-         scCallback(script, Self->Feedback.Script.ProcedureID, args, ARRAYSIZE(args));
+         scCallback(script, Self->Feedback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
       }
    }
 

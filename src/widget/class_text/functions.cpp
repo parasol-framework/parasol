@@ -17,7 +17,7 @@ static void feedback_validate_input(objText *Self)
       OBJECTPTR script;
       if ((script = Self->ValidateInput.Script.Script)) {
          const ScriptArg args[] = { { "Text", FD_OBJECTPTR, { .Address = Self } } };
-         scCallback(script, Self->ValidateInput.Script.ProcedureID, args, ARRAYSIZE(args));
+         scCallback(script, Self->ValidateInput.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
       }
    }
 }
@@ -41,7 +41,7 @@ static void feedback_activated(objText *Self)
       OBJECTPTR script;
       if ((script = Self->Activated.Script.Script)) {
          const ScriptArg args[] = { { "Text", FD_OBJECTPTR, { .Address = Self } } };
-         scCallback(script, Self->Activated.Script.ProcedureID, args, ARRAYSIZE(args));
+         scCallback(script, Self->Activated.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
       }
    }
 }

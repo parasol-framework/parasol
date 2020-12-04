@@ -1398,10 +1398,7 @@ matched_attrib:
                      { "Tag",  FD_LONG,      { .Long = current->Index } },
                      { "Attrib", FD_STRING,  { .Address = NULL } }
                   };
-                  if (!scCallback(script, Callback->Script.ProcedureID, args, ARRAYSIZE(args))) {
-                     GetLong(script, FID_Error, &error);
-                  }
-                  else error = ERR_Terminate; // Fatal error in attempting to execute the procedure
+                  if (scCallback(script, Callback->Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Terminate;
                }
             }
 
@@ -1432,10 +1429,7 @@ matched_attrib:
                      { "Tag",  FD_LONG,      { .Long = current->Index } },
                      { "Attrib", FD_STRING,  { .Address = (STRING)(Attrib ? Attrib[0] : NULL) } }
                   };
-                  if (!scCallback(script, Callback->Script.ProcedureID, args, ARRAYSIZE(args))) {
-                     GetLong(script, FID_Error, &error);
-                  }
-                  else error = ERR_Terminate; // Fatal error in attempting to execute the procedure
+                  if (scCallback(script, Callback->Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Terminate;
                   ReleaseObject(script);
                }
             }

@@ -120,10 +120,7 @@ restart:
          const ScriptArg args[] = { { "NetSocket", FD_OBJECTPTR, { .Address = Self } } };
 
          if ((script = Self->Incoming.Script.Script)) {
-            if (!scCallback(script, Self->Incoming.Script.ProcedureID, args, ARRAYSIZE(args))) {
-               GetLong(script, FID_Error, &error);
-            }
-            else error = ERR_Terminate; // Fatal error in attempting to execute the procedure
+            if (scCallback(script, Self->Incoming.Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Terminate;
          }
       }
 
@@ -243,10 +240,7 @@ static void client_server_outgoing(SOCKET_HANDLE Void, rkNetSocket *Data)
             OBJECTPTR script;
             const ScriptArg args[] = { { "NetSocket", FD_OBJECTPTR, { .Address = Self } } };
             if ((script = Self->Outgoing.Script.Script)) {
-               if (!scCallback(script, Self->Outgoing.Script.ProcedureID, args, ARRAYSIZE(args))) {
-                  GetLong(script, FID_Error, &error);
-               }
-               else error = ERR_Terminate; // Fatal error in attempting to execute the procedure
+               if (scCallback(script, Self->Outgoing.Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Terminate;
             }
          }
 

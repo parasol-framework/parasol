@@ -121,7 +121,9 @@ extern "C" LONG CALL_FEEDBACK(FUNCTION *Callback, FileFeedback *Feedback)
             { "FeedbackID", FD_LONG,  { .Long    = Feedback->FeedbackID } }
          };
 
-         ERROR error = scCallback(script, Callback->Script.ProcedureID, args, ARRAYSIZE(args));
+         ERROR error;
+         if (scCallback(script, Callback->Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Failed;
+
          if (!error) {
             CSTRING *results;
             LONG size;

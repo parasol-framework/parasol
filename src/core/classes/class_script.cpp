@@ -200,6 +200,7 @@ Private
 large ProcedureID: An identifier for the target procedure.
 cstruct(*ScriptArg) Args: Optional CSV string containing arguments to pass to the procedure.
 int TotalArgs: The total number of arguments in the Args parameter.
+&int Error: The error code returned from the script, if any.
 
 -ERRORS-
 Okay:
@@ -226,9 +227,13 @@ static ERROR SCRIPT_Callback(objScript *Self, struct scCallback *Args)
 
    LONG savetotal = Self->TotalArgs;
    Self->TotalArgs = Args->TotalArgs;
+   auto saved_error = Self->Error;
+   Self->Error = ERR_Okay;
 
    ERROR error = acActivate(&Self->Head);
 
+   Args->Error = Self->Error;
+   Self->Error = saved_error;
    Self->ProcedureID = save_id;
    Self->Procedure = save_name;
    Self->ProcArgs  = saveargs;
@@ -425,6 +430,10 @@ will be set to -1.
 
 -FIELD-
 Error: If a script fails during execution, an error code may be readable here.
+
+On execution of a script, the Error value is reset to ERR_Okay and will be updated if the script fails.  Be mindful
+that if a script is likely to be executed recursively then the first thrown error will have priority and be
+propagated through the call stack.
 
 -FIELD-
 ErrorString: A human readable error string may be declared here following a script execution failure.

@@ -164,7 +164,7 @@ static ERROR LAYOUT_ActionNotify(objLayout *Self, struct acActionNotify *Args)
                const ScriptArg args[] = {
                   { "Owner", FD_OBJECTID, { .Long = Self->Owner ? Self->Owner->UniqueID : 0 } },
                };
-               scCallback(script, Self->ResizeCallback.Script.ProcedureID, args, ARRAYSIZE(args));
+               scCallback(script, Self->ResizeCallback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
             }
          }
       }

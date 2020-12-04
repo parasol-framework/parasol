@@ -235,7 +235,7 @@ static void task_stdinput_callback(HOSTHANDLE FD, void *Task)
             { "BufferSize", FD_LONG|FD_BUFSIZE, { .Long = bytes_read } },
             { "Status",     FD_ERROR,           { .Long = error } }
          };
-         scCallback(script, Self->InputCallback.Script.ProcedureID, args, ARRAYSIZE(args));
+         scCallback(script, Self->InputCallback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
       }
    }
 }
@@ -294,7 +294,7 @@ static void task_stdout(HOSTHANDLE FD, APTR Task)
                { "Buffer",     FD_PTRBUFFER,       { .Address = buffer } },
                { "BufferSize", FD_LONG|FD_BUFSIZE, { .Long = len } }
             };
-            scCallback(script, task->OutputCallback.Script.ProcedureID, args, ARRAYSIZE(args));
+            scCallback(script, task->OutputCallback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
          }
       }
    }
@@ -327,7 +327,7 @@ static void task_stderr(HOSTHANDLE FD, APTR Task)
                   { "Data", FD_PTRBUFFER,       { .Address = buffer } },
                   { "Size", FD_LONG|FD_BUFSIZE, { .Long = len } }
                };
-               scCallback(script, task->ErrorCallback.Script.ProcedureID, args, ARRAYSIZE(args));
+               scCallback(script, task->ErrorCallback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
             }
          }
       }
@@ -355,7 +355,7 @@ static void output_callback(objTask *Task, FUNCTION *Callback, APTR Buffer, LONG
             { "Data", FD_PTRBUFFER,       { .Address = Buffer } },
             { "Size", FD_LONG|FD_BUFSIZE, { .Long = Size } }
          };
-         scCallback(script, Callback->Script.ProcedureID, args, ARRAYSIZE(args));
+         scCallback(script, Callback->Script.ProcedureID, args, ARRAYSIZE(args), NULL);
       }
    }
 }
@@ -673,7 +673,7 @@ static void task_process_end(WINHANDLE FD, objTask *Task)
       OBJECTPTR script;
       if ((script = Task->ExitCallback.Script.Script)) {
          const ScriptArg args[] = { { "Task", FD_OBJECTPTR, { .Address = Task } } };
-         scCallback(script, Task->ExitCallback.Script.ProcedureID, args, ARRAYSIZE(args));
+         scCallback(script, Task->ExitCallback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
       }
    }
 

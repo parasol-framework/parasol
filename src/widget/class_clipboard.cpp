@@ -500,10 +500,7 @@ static ERROR CLIPBOARD_DataFeed(objClipboard *Self, struct acDataFeed *Args)
                   { "Datatypes", FD_ARRAY|FD_BYTE, { .Address = request->Preference } },
                   { "Size",      FD_LONG|FD_ARRAYSIZE, { .Long = ARRAYSIZE(request->Preference) } }
                };
-               if (!scCallback(script, Self->RequestHandler.Script.ProcedureID, args, ARRAYSIZE(args))) {
-                  GetLong(script, FID_Error, &error);
-               }
-               else error = ERR_Terminate;
+               if (scCallback(script, Self->RequestHandler.Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Terminate;
             }
             else error = ERR_Terminate;
          }

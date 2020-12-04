@@ -44,10 +44,7 @@ static void clientsocket_incoming(HOSTHANDLE SocketHandle, APTR Data)
 
          OBJECTPTR script;
          if ((script = Socket->Incoming.Script.Script)) {
-            if (!scCallback(script, Socket->Incoming.Script.ProcedureID, args, ARRAYSIZE(args))) {
-               GetLong(script, FID_Error, &error);
-            }
-            else error = ERR_Terminate; // Fatal error in attempting to execute the procedure
+            if (scCallback(script, Socket->Incoming.Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Terminate;
          }
       }
       else log.warning("No Incoming callback configured (got %d).", Socket->Incoming.Type);
@@ -161,10 +158,7 @@ static void clientsocket_outgoing(HOSTHANDLE Void, APTR Data)
                { "ClientSocket", FD_OBJECTPTR, { .Address = ClientSocket } }
             };
             if ((script = ClientSocket->Outgoing.Script.Script)) {
-               if (!scCallback(script, ClientSocket->Outgoing.Script.ProcedureID, args, ARRAYSIZE(args))) {
-                  GetLong(script, FID_Error, &error);
-               }
-               else error = ERR_Terminate; // Fatal error in attempting to execute the procedure
+               if (scCallback(script, ClientSocket->Outgoing.Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Terminate;
             }
          }
 

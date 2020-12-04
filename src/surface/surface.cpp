@@ -3147,7 +3147,7 @@ static void process_surface_callbacks(objSurface *Self, objBitmap *Bitmap)
                { "Surface", FD_OBJECTPTR, { .Address = Self } },
                { "Bitmap",  FD_OBJECTPTR, { .Address = Bitmap } }
             };
-            scCallback(script, Self->Callback[i].Function.Script.ProcedureID, args, ARRAYSIZE(args));
+            scCallback(script, Self->Callback[i].Function.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
          }
       }
    }

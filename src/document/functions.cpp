@@ -4607,7 +4607,7 @@ restart:
                   { "PageWidth",  FD_LONG, { .Long = Self->CalcWidth } },
                   { "PageHeight", FD_LONG, { .Long = Self->PageHeight } }
                };
-               scCallback(script, trigger->Function.Script.ProcedureID, args, ARRAYSIZE(args));
+               scCallback(script, trigger->Function.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
             }
          }
          else if (trigger->Function.Type IS CALL_STDC) {
@@ -4860,7 +4860,7 @@ static ERROR process_page(objDocument *Self, objXML *xml)
          if (trigger->Function.Type IS CALL_SCRIPT) {
             OBJECTPTR script;
             if ((script = trigger->Function.Script.Script)) {
-               scCallback(script, trigger->Function.Script.ProcedureID, NULL, 0);
+               scCallback(script, trigger->Function.Script.ProcedureID, NULL, 0, NULL);
             }
          }
          else if (trigger->Function.Type IS CALL_STDC) {
@@ -7979,8 +7979,7 @@ static ERROR report_event(objDocument *Self, LARGE Event, APTR EventData, CSTRIN
             }
             else argsize = 2;
 
-            ERROR error = scCallback(script, Self->EventCallback.Script.ProcedureID, args, argsize);
-            if (!error) GetLong(script, FID_Error, &result);
+            scCallback(script, Self->EventCallback.Script.ProcedureID, args, argsize, &result);
          }
       }
    }

@@ -156,7 +156,7 @@ static void server_client_connect(SOCKET_HANDLE FD, objNetSocket *Self)
 
       OBJECTPTR script;
       if ((script = Self->Feedback.Script.Script)) {
-         scCallback(script, Self->Feedback.Script.ProcedureID, args, ARRAYSIZE(args));
+         scCallback(script, Self->Feedback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
       }
    }
 
@@ -233,7 +233,7 @@ static void free_client_socket(objNetSocket *Socket, objClientSocket *ClientSock
 
          OBJECTPTR script;
          if ((script = Socket->Feedback.Script.Script)) {
-            scCallback(script, Socket->Feedback.Script.ProcedureID, args, ARRAYSIZE(args));
+            scCallback(script, Socket->Feedback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
          }
       }
    }

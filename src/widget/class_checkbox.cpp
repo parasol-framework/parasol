@@ -113,7 +113,7 @@ static ERROR CHECKBOX_Activate(objCheckBox *Self, APTR Void)
                   { "CheckBox", FD_OBJECTPTR, { .Address = Self } },
                   { "State", FD_LONG, { .Long = Self->Value } }
                };
-               scCallback(script, Self->Feedback.Script.ProcedureID, args, ARRAYSIZE(args));
+               scCallback(script, Self->Feedback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
             }
          }
 

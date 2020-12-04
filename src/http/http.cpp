@@ -1327,52 +1327,51 @@ static ERROR SET_Path(objHTTP *Self, CSTRING Value)
 
    if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
 
-   if (Value) {
-      while (*Value IS '/') Value++; // Skip '/' prefix
+   if (!Value) return ERR_Okay;
 
+   while (*Value IS '/') Value++; // Skip '/' prefix
+
+   LONG len = 0;
+   for (LONG i=0; Value[i]; i++) { // Compute the length with consideration to escape codes
+      if (Value[i] IS ' ') len += 3; // '%20'
+      else len++;
+   }
+
+   if (!AllocMemory(len+1, MEM_STRING|MEM_NO_CLEAR, &Self->Path, NULL)) {
       LONG len = 0;
       for (LONG i=0; Value[i]; i++) {
-         if (Value[i] IS ' ') len += 3;
-         else len++;
-      }
-
-      if (!AllocMemory(len+1, MEM_STRING|MEM_NO_CLEAR, &Self->Path, NULL)) {
-         LONG len = 0;
-         for (LONG i=0; Value[i]; i++) {
-            if (Value[i] IS ' ') {
-               Self->Path[len++] = '%';
-               Self->Path[len++] = '2';
-               Self->Path[len++] = '0';
-            }
-            else Self->Path[len++] = Value[i];
+         if (Value[i] IS ' ') {
+            Self->Path[len++] = '%';
+            Self->Path[len++] = '2';
+            Self->Path[len++] = '0';
          }
-         Self->Path[len] = 0;
+         else Self->Path[len++] = Value[i];
+      }
+      Self->Path[len] = 0;
 
-         // Check if this path has been authenticated against the server yet by comparing it to AuthPath.  We need to
-         // do this if a PUT instruction is executed against the path and we're not authenticated yet.
+      // Check if this path has been authenticated against the server yet by comparing it to AuthPath.  We need to
+      // do this if a PUT instruction is executed against the path and we're not authenticated yet.
 
-         while ((len > 0) and (Self->Path[len-1] != '/')) len--;
+      while ((len > 0) and (Self->Path[len-1] != '/')) len--;
 
-         Self->SecurePath = TRUE;
-         if (Self->AuthPath) {
-            LONG i = StrLength(Self->AuthPath);
-            while ((i > 0) and (Self->AuthPath[i-1] != '/')) i--;
+      Self->SecurePath = TRUE;
+      if (Self->AuthPath) {
+         LONG i = StrLength(Self->AuthPath);
+         while ((i > 0) and (Self->AuthPath[i-1] != '/')) i--;
 
-            if (i IS len) {
-               if (!StrCompare(Self->Path, Self->AuthPath, len, 0)) {
-                  // No change to the current path
-                  Self->SecurePath = FALSE;
-               }
+         if (i IS len) {
+            if (!StrCompare(Self->Path, Self->AuthPath, len, 0)) {
+               // No change to the current path
+               Self->SecurePath = FALSE;
             }
          }
-
-         Self->AuthPath = StrClone(Self->Path);
-         Self->AuthPath[len] = 0;
-         return ERR_Okay;
       }
-      else return ERR_AllocMemory;
+
+      Self->AuthPath = StrClone(Self->Path);
+      Self->AuthPath[len] = 0;
+      return ERR_Okay;
    }
-   else return ERR_Okay;
+   else return ERR_AllocMemory;
 }
 
 /*****************************************************************************
@@ -1489,19 +1488,24 @@ static ERROR SET_State(objHTTP *Self, LONG Value)
                { "State", FD_LONG, { .Long = Self->State } }
             };
 
-            if (!scCallback(script, Self->StateChanged.Script.ProcedureID, args, ARRAYSIZE(args))) {
-               GetLong(script, FID_Error, &error);
-            }
-            else error = ERR_Terminate; // Fatal error in attempting to execute the procedure
+            if (scCallback(script, Self->StateChanged.Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Terminate;
          }
-         else error = ERR_Terminate;
+         else error = ERR_Terminate; // Error in function configuration
       }
+      else error = ERR_Okay;
 
       if (error > ERR_ExceptionThreshold) SET_ERROR(Self, error);
 
-      if ((error IS ERR_Terminate) and (Self->State != HGS_TERMINATED) and (Self->State != HGS_COMPLETED)) {
-         log.branch("State changing to HGS_TERMINATED (terminate message received).");
-         SET_State(Self, HGS_TERMINATED);
+      if (error IS ERR_Terminate) {
+         if (Self->State IS HGS_SENDING_CONTENT) {
+            // Stop sending and expect a response from the server.  If the client doesn't care about the response
+            // then a subsequent ERR_Terminate code can be returned on notification of this state change.
+            SET_State(Self, HGS_SEND_COMPLETE);
+         }
+         else if ((Self->State != HGS_TERMINATED) and (Self->State != HGS_COMPLETED)) {
+            log.branch("State changing to HGS_COMPLETED (ERR_Terminate received).");
+            SET_State(Self, HGS_COMPLETED);
+         }
       }
    }
 

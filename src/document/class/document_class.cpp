@@ -100,7 +100,7 @@ static ERROR DOCUMENT_ActionNotify(objDocument *Self, struct acActionNotify *Arg
                      { "ViewWidth",  FD_LONG, { .Long = Self->AreaWidth } },
                      { "ViewHeight", FD_LONG, { .Long = Self->AreaHeight } }
                   };
-                  scCallback(script, trigger->Function.Script.ProcedureID, args, ARRAYSIZE(args));
+                  scCallback(script, trigger->Function.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
                }
             }
             else if (trigger->Function.Type IS CALL_STDC) {
@@ -1387,9 +1387,8 @@ static ERROR DOCUMENT_Refresh(objDocument *Self, APTR Void)
 
          OBJECTPTR script;
          if ((script = trigger->Function.Script.Script)) {
-            ERROR error = scCallback(script, trigger->Function.Script.ProcedureID, NULL, 0);
-            if (!error) {
-               GetLong(script, FID_Error, &error);
+            ERROR error;
+            if (!scCallback(script, trigger->Function.Script.ProcedureID, NULL, 0, &error)) {
                if (error IS ERR_Skip) {
                   log.msg("The refresh request has been handled by an event trigger.");
                   return ERR_Okay;
