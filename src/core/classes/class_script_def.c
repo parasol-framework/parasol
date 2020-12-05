@@ -8,7 +8,7 @@ static const struct FieldDef clScriptFlags[] = {
 
 FDEF maExec[] = { { "Procedure", FD_STR }, { "ScriptArg:Args", FD_PTR|FD_STRUCT }, { "TotalArgs", FD_LONG }, { 0, 0 } };
 FDEF maDerefProcedure[] = { { "Procedure", FD_FUNCTIONPTR }, { 0, 0 } };
-FDEF maCallback[] = { { "ProcedureID", FD_LARGE }, { "ScriptArg:Args", FD_PTR|FD_STRUCT }, { "TotalArgs", FD_LONG }, { 0, 0 } };
+FDEF maCallback[] = { { "ProcedureID", FD_LARGE }, { "ScriptArg:Args", FD_PTR|FD_STRUCT }, { "TotalArgs", FD_LONG }, { "Error", FD_LONG|FD_RESULT }, { 0, 0 } };
 FDEF maGetProcedureID[] = { { "Procedure", FD_STR }, { "ProcedureID", FD_LARGE|FD_RESULT }, { 0, 0 } };
 
 static const struct MethodArray clScriptMethods[] = {

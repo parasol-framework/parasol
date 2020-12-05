@@ -49,11 +49,12 @@
     <method>
       <name>Callback</name>
       <comment>An internal method for managing callbacks.</comment>
-      <prototype>ERROR scCallback(OBJECTPTR Object, LARGE ProcedureID, const struct ScriptArg * Args, LONG TotalArgs)</prototype>
+      <prototype>ERROR scCallback(OBJECTPTR Object, LARGE ProcedureID, const struct ScriptArg * Args, LONG TotalArgs, LONG * Error)</prototype>
       <input>
         <param type="LARGE" name="ProcedureID">An identifier for the target procedure.</param>
         <param type="const struct ScriptArg *" name="Args">Optional CSV string containing arguments to pass to the procedure.</param>
         <param type="LONG" name="TotalArgs">The total number of arguments in the Args parameter.</param>
+        <param type="LONG *" name="Error">The error code returned from the script, if any.</param>
       </input>
       <description>
 <p>Private</p>
@@ -176,6 +177,9 @@ SET_FUNCTION_SCRIPT(callback, script, procedure_id);
       <comment>If a script fails during execution, an error code may be readable here.</comment>
       <access read="R">Read</access>
       <type>ERROR</type>
+      <description>
+<p>On execution of a script, the Error value is reset to ERR_Okay and will be updated if the script fails.  Be mindful that if a script is likely to be executed recursively then the first thrown error will have priority and be propagated through the call stack.</p>
+      </description>
     </field>
 
     <field>

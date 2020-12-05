@@ -2430,7 +2430,7 @@ typedef struct rkScript {
 
 struct scExec { CSTRING Procedure; const struct ScriptArg * Args; LONG TotalArgs;  };
 struct scDerefProcedure { FUNCTION * Procedure;  };
-struct scCallback { LARGE ProcedureID; const struct ScriptArg * Args; LONG TotalArgs;  };
+struct scCallback { LARGE ProcedureID; const struct ScriptArg * Args; LONG TotalArgs; LONG Error;  };
 struct scGetProcedureID { CSTRING Procedure; LARGE ProcedureID;  };
 
 INLINE ERROR scExec(APTR Ob, CSTRING Procedure, const struct ScriptArg * Args, LONG TotalArgs) {
@@ -2443,9 +2443,11 @@ INLINE ERROR scDerefProcedure(APTR Ob, FUNCTION * Procedure) {
    return(Action(MT_ScDerefProcedure, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR scCallback(APTR Ob, LARGE ProcedureID, const struct ScriptArg * Args, LONG TotalArgs) {
-   struct scCallback args = { ProcedureID, Args, TotalArgs };
-   return(Action(MT_ScCallback, (OBJECTPTR)Ob, &args));
+INLINE ERROR scCallback(APTR Ob, LARGE ProcedureID, const struct ScriptArg * Args, LONG TotalArgs, LONG * Error) {
+   struct scCallback args = { ProcedureID, Args, TotalArgs, 0 };
+   ERROR error = Action(MT_ScCallback, (OBJECTPTR)Ob, &args);
+   if (Error) *Error = args.Error;
+   return(error);
 }
 
 INLINE ERROR scGetProcedureID(APTR Ob, CSTRING Procedure, LARGE * ProcedureID) {

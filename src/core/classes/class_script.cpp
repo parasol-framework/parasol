@@ -99,6 +99,63 @@ static ERROR SCRIPT_DerefProcedure(objScript *Self, struct scDerefProcedure *Arg
 /*****************************************************************************
 
 -METHOD-
+Callback: An internal method for managing callbacks.
+
+Private
+
+-INPUT-
+large ProcedureID: An identifier for the target procedure.
+cstruct(*ScriptArg) Args: Optional CSV string containing arguments to pass to the procedure.
+int TotalArgs: The total number of arguments in the Args parameter.
+&int Error: The error code returned from the script, if any.
+
+-ERRORS-
+Okay:
+Args:
+
+-END-
+
+*****************************************************************************/
+
+static ERROR SCRIPT_Callback(objScript *Self, struct scCallback *Args)
+{
+   parasol::Log log;
+
+   if (!Args) return log.warning(ERR_NullArgs);
+   if ((Args->TotalArgs < 0) or (Args->TotalArgs > 1024)) return log.warning(ERR_Args);
+
+   LARGE save_id = Self->ProcedureID;
+   CSTRING save_name = Self->Procedure;
+   Self->ProcedureID = Args->ProcedureID;
+   Self->Procedure = NULL;
+
+   const ScriptArg *saveargs = Self->ProcArgs;
+   Self->ProcArgs  = Args->Args;
+
+   LONG savetotal = Self->TotalArgs;
+   Self->TotalArgs = Args->TotalArgs;
+   auto saved_error = Self->Error;
+   auto saved_error_msg = Self->ErrorString;
+   Self->ErrorString = NULL;
+   Self->Error = ERR_Okay;
+
+   ERROR error = acActivate(&Self->Head);
+
+   Args->Error = Self->Error;
+   Self->Error = saved_error;
+   Self->ProcedureID = save_id;
+   Self->Procedure = save_name;
+   Self->ProcArgs  = saveargs;
+   Self->TotalArgs = savetotal;
+   if (Self->ErrorString) FreeResource(Self->ErrorString);
+   Self->ErrorString = saved_error_msg;
+
+   return error;
+}
+
+/*****************************************************************************
+
+-METHOD-
 Exec: Executes a procedure in the script.
 
 Use the Exec method to execute a named procedure in a script, optionally passing that procedure a series of arguments.
@@ -172,54 +229,6 @@ static ERROR SCRIPT_Exec(objScript *Self, struct scExec *Args)
    CSTRING save_name = Self->Procedure;
    Self->ProcedureID = 0;
    Self->Procedure = Args->Procedure;
-
-   const ScriptArg *saveargs = Self->ProcArgs;
-   Self->ProcArgs  = Args->Args;
-
-   LONG savetotal = Self->TotalArgs;
-   Self->TotalArgs = Args->TotalArgs;
-
-   ERROR error = acActivate(&Self->Head);
-
-   Self->ProcedureID = save_id;
-   Self->Procedure = save_name;
-   Self->ProcArgs  = saveargs;
-   Self->TotalArgs = savetotal;
-
-   return error;
-}
-
-/*****************************************************************************
-
--METHOD-
-Callback: An internal method for managing callbacks.
-
-Private
-
--INPUT-
-large ProcedureID: An identifier for the target procedure.
-cstruct(*ScriptArg) Args: Optional CSV string containing arguments to pass to the procedure.
-int TotalArgs: The total number of arguments in the Args parameter.
-
--ERRORS-
-Okay:
-Args:
-
--END-
-
-*****************************************************************************/
-
-static ERROR SCRIPT_Callback(objScript *Self, struct scCallback *Args)
-{
-   parasol::Log log;
-
-   if (!Args) return log.warning(ERR_NullArgs);
-   if ((Args->TotalArgs < 0) or (Args->TotalArgs > 1024)) return log.warning(ERR_Args);
-
-   LARGE save_id = Self->ProcedureID;
-   CSTRING save_name = Self->Procedure;
-   Self->ProcedureID = Args->ProcedureID;
-   Self->Procedure = NULL;
 
    const ScriptArg *saveargs = Self->ProcArgs;
    Self->ProcArgs  = Args->Args;
@@ -425,6 +434,10 @@ will be set to -1.
 
 -FIELD-
 Error: If a script fails during execution, an error code may be readable here.
+
+On execution of a script, the Error value is reset to ERR_Okay and will be updated if the script fails.  Be mindful
+that if a script is likely to be executed recursively then the first thrown error will have priority and be
+propagated through the call stack.
 
 -FIELD-
 ErrorString: A human readable error string may be declared here following a script execution failure.

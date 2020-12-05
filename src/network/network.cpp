@@ -1064,7 +1064,7 @@ static void resolve_callback(LARGE ClientData, FUNCTION *Callback, ERROR Error, 
             { "IPAddress:Addresses", FD_ARRAY|FD_STRUCT,   { .Address = Addresses } },
             { "TotalAddresses",      FD_ARRAYSIZE|FD_LONG, { .Long    = TotalAddresses } }
          };
-         scCallback(script, Callback->Script.ProcedureID, args, ARRAYSIZE(args));
+         scCallback(script, Callback->Script.ProcedureID, args, ARRAYSIZE(args), NULL);
       }
    }
 }

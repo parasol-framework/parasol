@@ -103,7 +103,7 @@ static ERROR ITEM_Activate(objMenuItem *Item, APTR Void)
                   { "Menu", FD_OBJECTPTR, { .Address = Item->Menu } },
                   { "Item", FD_OBJECTPTR, { .Address = Item } }
                };
-               scCallback(script, fb->Script.ProcedureID, args, ARRAYSIZE(args));
+               scCallback(script, fb->Script.ProcedureID, args, ARRAYSIZE(args), NULL);
             }
          }
       }

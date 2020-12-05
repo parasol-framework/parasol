@@ -169,7 +169,7 @@ ERROR msg_threadaction(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG
                { "Error",    FD_LONG,      { .Long = msg->Error } },
                { "Key",      FD_LONG,      { .Long = msg->Key } }
             };
-            scCallback(script, msg->Callback.Script.ProcedureID, args, ARRAYSIZE(args));
+            scCallback(script, msg->Callback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
             ReleasePrivateObject(script);
          }
       }
@@ -199,7 +199,7 @@ ERROR msg_threadcallback(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LO
          if ((script = thread->prv.Callback.Script.Script)) {
             if (!AccessPrivateObject(script, 5000)) {
                const ScriptArg args[] = { { "Thread", FD_OBJECTPTR, { .Address = thread } } };
-               scCallback(script, thread->prv.Callback.Script.ProcedureID, args, ARRAYSIZE(args));
+               scCallback(script, thread->prv.Callback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
                ReleasePrivateObject(script);
             }
          }
@@ -246,7 +246,7 @@ static void * thread_entry(objThread *Self)
          if ((script = Self->prv.Routine.Script.Script)) {
             if (!AccessPrivateObject(script, 5000)) {
                const ScriptArg args[] = { { "Thread", FD_OBJECTPTR, { .Address = Self } } };
-               scCallback(script, Self->prv.Routine.Script.ProcedureID, args, ARRAYSIZE(args));
+               scCallback(script, Self->prv.Routine.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
                ReleasePrivateObject(script);
             }
          }

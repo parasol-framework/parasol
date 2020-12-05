@@ -2535,6 +2535,7 @@ static ERROR GET_ResolvedPath(objFile *Self, CSTRING *Value)
       else flags |= RSF_NO_FILE_CHECK;
 
       ERROR error;
+      parasol::SwitchContext ctx(Self);
       if ((error = ResolvePath(Self->Path, flags, &Self->prvResolvedPath)) != ERR_Okay) {
          return ERR_ResolvePath;
       }

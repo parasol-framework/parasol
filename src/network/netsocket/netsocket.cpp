@@ -1165,7 +1165,7 @@ static ERROR SET_State(objNetSocket *Self, LONG Value)
                   { "ClientSocket", FD_OBJECTPTR, { .Address = NULL } },
                   { "State",        FD_LONG,      { .Long = Self->State } }
                };
-               scCallback(script, Self->Feedback.Script.ProcedureID, args, ARRAYSIZE(args));
+               scCallback(script, Self->Feedback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
             }
          }
       }

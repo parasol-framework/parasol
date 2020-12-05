@@ -409,10 +409,7 @@ ERROR ProcessMessages(LONG Flags, LONG TimeOut)
                                  { "Data",     FD_PTR|FD_BUFFER,  { .Address  = msg + 1} },
                                  { "Size",     FD_LONG|FD_BUFSIZE, { .Long = msg->Size } }
                               };
-                              if (!scCallback(script, handler->Function.Script.ProcedureID, args, ARRAYSIZE(args))) {
-                                 GetLong(script, FID_Error, &result);
-                              }
-                              else result = ERR_Terminate; // Fatal error in attempting to execute the procedure
+                              if (scCallback(script, handler->Function.Script.ProcedureID, args, ARRAYSIZE(args), &result)) result = ERR_Terminate;
                            }
                         }
                         else log.warning("Handler uses function type %d, not understood.", handler->Function.Type);
@@ -500,10 +497,7 @@ timer_cycle:
                   thread_unlock(TL_TIMER);
                   relock = TRUE;
 
-                  if (!scCallback(script, timer->Routine.Script.ProcedureID, scargs, ARRAYSIZE(scargs))) {
-                     error = script->Error;
-                  }
-                  else error = ERR_Terminate; // Fatal error in attempting to execute the procedure
+                  if (scCallback(script, timer->Routine.Script.ProcedureID, scargs, ARRAYSIZE(scargs), &error)) error = ERR_Terminate;
                }
                else error = ERR_SystemCorrupt;
             }
@@ -625,10 +619,7 @@ timer_cycle:
                            { "Data",     FD_PTR|FD_BUFFER, { .Address = msg + 1} },
                            { "Size",     FD_LONG|FD_BUFSIZE, { .Long = msg->Size } }
                         };
-                        if (!scCallback(script, handler->Function.Script.ProcedureID, args, ARRAYSIZE(args))) {
-                           GetLong(script, FID_Error, &result);
-                        }
-                        else result = ERR_Terminate; // Fatal error in attempting to execute the procedure
+                        if (scCallback(script, handler->Function.Script.ProcedureID, args, ARRAYSIZE(args), &result)) result = ERR_Terminate;
                      }
                   }
                   else log.warning("Handler uses function type %d, not understood.", handler->Function.Type);

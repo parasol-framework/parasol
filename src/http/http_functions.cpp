@@ -161,10 +161,10 @@ static ERROR socket_outgoing(objNetSocket *Socket)
    #define CHUNK_LENGTH_OFFSET 16
    #define CHUNK_TAIL 2 // CRLF
 
-   log.traceBranch("Socket: %p, Object: %d", Socket, CurrentContext()->UniqueID);
-
    auto Self = (objHTTP *)Socket->UserData;
    if (Self->Head.ClassID != ID_HTTP) return log.warning(ERR_SystemCorrupt);
+
+   log.traceBranch("Socket: %p, Object: %d, State: %d", Socket, CurrentContext()->UniqueID, Self->State);
 
    LONG total_out = 0;
 
@@ -204,8 +204,7 @@ redo_upload:
                { "HTTP",       FD_OBJECTPTR, { .Address = Self } },
                { "BufferSize", FD_LONG,      { .Long = Self->WriteSize } }
             };
-            error = scCallback(script, Self->Outgoing.Script.ProcedureID, args, ARRAYSIZE(args));
-            if (!error) GetLong(script, FID_Error, &error);
+            if (scCallback(script, Self->Outgoing.Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Failed;
             if (error > ERR_ExceptionThreshold) {
                log.warning("Procedure " PF64() " failed, aborting HTTP call.", Self->Outgoing.Script.ProcedureID);
             }
@@ -231,7 +230,7 @@ redo_upload:
       LARGE size;
       GetLarge(Self->flInput, FID_Size, &size);
 
-      if (Self->flInput->Position IS size) {
+      if ((Self->flInput->Position IS size) or (len IS 0)) {
          log.trace("All file content read (%d bytes) - freeing file.", (LONG)size);
          acFree(Self->flInput);
          Self->flInput = NULL;
@@ -300,7 +299,7 @@ redo_upload:
 
       log.trace("Outgoing index now " PF64() " of " PF64(), Self->Index, Self->ContentLength);
    }
-   else log.trace("Finishing (an error occurred, or there is no more content to write to socket).");
+   else log.trace("Finishing (an error occurred (%d), or there is no more content to write to socket).", error);
 
    if ((error) and (error != ERR_Terminate)) {
       if (error != ERR_TimeOut) {
@@ -996,10 +995,7 @@ static ERROR process_data(objHTTP *Self, APTR Buffer, LONG Length)
       }
       else flags = FL_NEW;
 
-      if (!CreateObject(ID_FILE, NF_INTEGRAL, &Self->flOutput,
-            FID_Path|TSTR,   Self->OutputFile,
-            FID_Flags|TLONG, flags|FL_WRITE,
-            TAGEND)) {
+      if (!CreateObject(ID_FILE, NF_INTEGRAL, &Self->flOutput, FID_Path|TSTR, Self->OutputFile, FID_Flags|TLONG, flags|FL_WRITE, TAGEND)) {
          if (Self->Flags & HTF_RESUME) {
             acSeekEnd(Self->flOutput, 0);
             SetLarge(Self, FID_Index, 0);
@@ -1009,6 +1005,23 @@ static ERROR process_data(objHTTP *Self, APTR Buffer, LONG Length)
    }
 
    if (Self->flOutput) acWrite(Self->flOutput, Buffer, Length, NULL);
+
+   if (Self->Flags & HTF_RECV_BUFFER) {
+      if (!Self->RecvBuffer) {
+         Self->RecvSize = Length;
+         if (!AllocMemory(Length+1, MEM_DATA|MEM_NO_CLEAR, &Self->RecvBuffer, NULL)) {
+            CopyMemory(Buffer, Self->RecvBuffer, Self->RecvSize);
+            ((STRING)Self->RecvBuffer)[Self->RecvSize] = 0;
+         }
+         else SET_ERROR(Self, ERR_AllocMemory);
+      }
+      else if (!ReallocMemory(Self->RecvBuffer, Self->RecvSize + Length + 1, &Self->RecvBuffer, NULL)) {
+         CopyMemory(Buffer, Self->RecvBuffer + Self->RecvSize, Length);
+         Self->RecvSize += Length;
+         ((STRING)Self->RecvBuffer)[Self->RecvSize] = 0;
+      }
+      else SET_ERROR(Self, ERR_ReallocMemory);
+   }
 
    if (Self->Incoming.Type != CALL_NONE) {
       log.trace("Incoming callback is set.");
@@ -1030,10 +1043,7 @@ static ERROR process_data(objHTTP *Self, APTR Buffer, LONG Length)
                { "Buffer",     FD_PTRBUFFER, { .Address = Buffer } },
                { "BufferSize", FD_LONG|FD_BUFSIZE, { .Long = Length } }
             };
-            if (!scCallback(script, Self->Incoming.Script.ProcedureID, args, ARRAYSIZE(args))) {
-               GetLong(script, FID_Error, &error);
-            }
-            else error = ERR_Terminate; // Fatal error in attempting to execute the procedure
+            if (scCallback(script, Self->Incoming.Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Terminate;
          }
          else error = ERR_Terminate;
       }
@@ -1045,23 +1055,6 @@ static ERROR process_data(objHTTP *Self, APTR Buffer, LONG Length)
          log.branch("State changing to HGS_TERMINATED (terminate message received).");
          SetLong(Self, FID_State, HGS_TERMINATED);
       }
-   }
-
-   if (Self->Flags & HTF_RECV_BUFFER) {
-      if (!Self->RecvBuffer) {
-         Self->RecvSize = Length;
-         if (!AllocMemory(Length+1, MEM_DATA|MEM_NO_CLEAR, &Self->RecvBuffer, NULL)) {
-            CopyMemory(Buffer, Self->RecvBuffer, Self->RecvSize);
-            ((STRING)Self->RecvBuffer)[Self->RecvSize] = 0;
-         }
-         else SET_ERROR(Self, ERR_AllocMemory);
-      }
-      else if (!ReallocMemory(Self->RecvBuffer, Self->RecvSize + Length + 1, &Self->RecvBuffer, NULL)) {
-         CopyMemory(Buffer, Self->RecvBuffer + Self->RecvSize, Length);
-         Self->RecvSize += Length;
-         ((STRING)Self->RecvBuffer)[Self->RecvSize] = 0;
-      }
-      else SET_ERROR(Self, ERR_ReallocMemory);
    }
 
    if (Self->OutputObjectID) {

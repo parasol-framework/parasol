@@ -650,7 +650,7 @@ static ERROR VECTOR_TracePath(objVector *Self, struct vecTracePath *Args)
                  args[2].Long = cmd;
                  args[3].Double = x;
                  args[4].Double = y;
-                 scCallback(script, Args->Callback->Script.ProcedureID, args, ARRAYSIZE(args));
+                 scCallback(script, Args->Callback->Script.ProcedureID, args, ARRAYSIZE(args), NULL);
               }
             } while (cmd != agg::path_cmd_stop);
          }

@@ -109,7 +109,7 @@ static ERROR thread_script_callback(objThread *Thread)
       if (!AccessObject(cb->mainScriptID, 4000, &script)) {
          auto prv = (prvFluid *)script->Head.ChildPrivate;
          if (!prv) return log.warning(ERR_ObjectCorrupt);
-         scCallback(script, cb->callbackID, NULL, 0);
+         scCallback(script, cb->callbackID, NULL, 0, NULL);
          luaL_unref(prv->Lua, LUA_REGISTRYINDEX, cb->callbackID);
          ReleaseObject(script);
       }

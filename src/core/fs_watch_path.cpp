@@ -210,9 +210,7 @@ void path_monitor(HOSTHANDLE FD, objFile *File)
                      { "Custom", FD_LARGE,   { .Large = glFileMonitor[i].Custom } },
                      { "Flags",  FD_LONG,    { .Long = flags } }
                   };
-                  error = scCallback(script, tlFeedback.Script.ProcedureID, args, ARRAYSIZE(args));
-                  if (!error) GetLong(script, FID_Error, &error);
-                  else error = ERR_Failed;
+                  if (scCallback(script, tlFeedback.Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Failed;
                }
                else error = ERR_Terminate;
             }
@@ -287,9 +285,7 @@ void path_monitor(HOSTHANDLE Handle, objFile *File)
                      { "Custom", FD_LARGE,   { .Large = File->prvWatch->Custom } },
                      { "Flags",  FD_LONG,    { .Long = 0 } }
                   };
-                  error = scCallback(script, File->prvWatch->Routine.Script.ProcedureID, args, ARRAYSIZE(args));
-                  if (!error) GetLong(script, FID_Error, &error);
-                  else error = ERR_Failed;
+                  if (scCallback(script, File->prvWatch->Routine.Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Failed;
                }
             }
             else error = ERR_Terminate;

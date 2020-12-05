@@ -882,7 +882,7 @@ static void text_activated(objText *Text)
             { "ComboBox", FD_OBJECTPTR, { .Address = Self } },
             { "Value",    FD_STRING, { .Address = value } }
          };
-         scCallback(script, Self->Feedback.Script.ProcedureID, args, ARRAYSIZE(args));
+         scCallback(script, Self->Feedback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
       }
    }
 

@@ -122,7 +122,7 @@ static void resize_feedback(FUNCTION *Feedback, OBJECTID DisplayID, LONG X, LONG
             { "Width",   FD_LONG, { .Long = Width } },
             { "Height",  FD_LONG, { .Long = Height } }
          };
-         scCallback(script, Feedback->Script.ProcedureID, args, ARRAYSIZE(args));
+         scCallback(script, Feedback->Script.ProcedureID, args, ARRAYSIZE(args), NULL);
       }
    }
 }

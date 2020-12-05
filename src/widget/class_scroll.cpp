@@ -1492,7 +1492,7 @@ static void send_feedback(objScroll *Self, DOUBLE X, DOUBLE Y, DOUBLE Z)
             { "Y",      FD_DOUBLE,    { .Double = Y } },
             { "Z",      FD_DOUBLE,    { .Double = Z } }
          };
-         scCallback(script, Self->Feedback.Script.ProcedureID, args, ARRAYSIZE(args));
+         scCallback(script, Self->Feedback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
       }
    }
 }

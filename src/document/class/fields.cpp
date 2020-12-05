@@ -367,7 +367,7 @@ static ERROR SET_Path(objDocument *Self, CSTRING Value)
                { "OldURI", FD_STR, { .Address = Self->Path } },
                { "NewURI", FD_STR, { .Address = newpath } },
             };
-            scCallback(script, trigger->Function.Script.ProcedureID, args, ARRAYSIZE(args));
+            scCallback(script, trigger->Function.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
          }
       }
       else if (trigger->Function.Type IS CALL_STDC) {

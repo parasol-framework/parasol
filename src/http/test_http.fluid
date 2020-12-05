@@ -3,15 +3,13 @@ Various HTTP examples that demonstrate how to GET, POST, etc.
 
 Note: Network communications take place in the background once started.  In order to ensure that an HTTP operation
 fully completes, it is crucial that the HTTP object remains in memory for the entire procedure.  In Fluid we can do
-this by maintaining at least one reference to the object at all times, which will prevent it from being garbage
+this by maintaining at least one reference to the object at all times and this will prevent it from being garbage
 collected too early.
 --]]
 
    require 'common'
 
-   local glPath = obj.find('self').workingPath
    local glOutFile = 'temp:http-output.txt'
-   local glInFile  = glPath .. 'test_http.fluid'
 
 function testGet()
    local http = obj.new('http', {
@@ -30,19 +28,24 @@ function testGet()
       end
    })
 
-   http.acActivate()
+   local err = http.acActivate()
+   assert(err == ERR_Okay, "HTTP object failed to activate.")
+
    local elapsed, err = processMessages(5000)
    if (err == ERR_TimeOut) then error('Test timed-out.') end
    if (http.error != ERR_Okay) then error('HTTP object returned error: ' .. mSys.GetErrorMsg(http.error)) end
 end
 
 function testPostString()
+   -- curl -v -X POST http://ptsv2.com/t/bgef9-1605557717/post -d "fname=smith&amp;lname=jones"
+
    local http = obj.new('http', {
       src        = 'http://ptsv2.com/t/bgef9-1605557717/post', // See results at http://ptsv2.com/t/bgef9-1605557717
       method     = 'post',
-      flags      = '!debug',
+      flags      = '!debug|NoHead',
       outputFile = glOutFile,
-      outgoing   = function(HTTP, BufferSize)
+      contentLength = -1,
+      outgoing = function(HTTP, BufferSize)
          if (testPostStringCompleted) then error('This routine has been called a second time.') end
          print('Request for data received.')
          HTTP.acWrite('fname=smith&amp;lname=jones')
@@ -59,28 +62,37 @@ function testPostString()
       end
    })
 
-   http.acActivate()
+   local err = http.acActivate()
+   assert(err == ERR_Okay, "HTTP object failed to activate.")
+
    local elapsed, err = processMessages(5000)
    if (err == ERR_TimeOut) then error('Test timed-out.') end
    if (http.error != ERR_Okay) then error('HTTP object returned error: ' .. mSys.GetErrorMsg(http.error)) end
 end
 
-function testPostFile()
+function testPostStringFile()
+   local body = 'fname=joe&amp;lname=bloggs'
+
    local http = obj.new('http', {
       src        = 'http://ptsv2.com/t/bgef9-1605557717/post', // See results at http://ptsv2.com/t/bgef9-1605557717
       method     = 'post',
-      flags      = '!debug',
-      inputFile  = glInFile,
-      outputFile = glOutFile,
+      contentType = 'text/plain',
+      flags      = '!debug|NoHead',
+      inputFile  = 'string:' .. body,
+      size       = body:len(),
       stateChanged = function(HTTP, State)
          if (State == HGS_COMPLETED) or (State == HGS_TERMINATED) then
-            print(file.readAll(glOutFile))
             mSys.SendMessage(0, MSGID_QUIT)
          end
+      end,
+      incoming = function(HTTP, Buffer, BufferSize)
+         print(Buffer)
       end
    })
 
-   http.acActivate()
+   local err = http.acActivate()
+   assert(err == ERR_Okay, "HTTP object failed to activate.")
+
    local elapsed, err = processMessages(5000)
    if (err == ERR_TimeOut) then error('Test timed-out.') end
    if (http.error != ERR_Okay) then error('HTTP object returned error: ' .. mSys.GetErrorMsg(http.error)) end
@@ -145,7 +157,7 @@ function testUploadChunked()
       src        = 'http://parasol.ws/upload.php',
       method     = 'post',
       flags      = '!debug|debugoutgoing',
-      inputfile  = glInFile,
+      inputfile  = glPath .. 'test_http.fluid',
       outputFile = glOutFile
    })
 
@@ -257,9 +269,11 @@ end
 
    return {
       tests = {
-        'testGet' --, 'testPostString', 'testPostFile'
+        'testPostString', 'testGet', 'testPostStringFile'
       },
-      init = nil,
+      init = function(Path)
+         glPath = Path
+      end,
       cleanup = function()
       end
    }
