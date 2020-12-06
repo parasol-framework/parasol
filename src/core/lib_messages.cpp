@@ -295,6 +295,9 @@ ERROR ProcessMessages(LONG Flags, LONG TimeOut)
    // Message processing is only possible from the main thread (for system design and synchronisation reasons)
    if ((!tlMainThread) and (!tlThreadWriteMsg)) return log.warning(ERR_OutsideMainThread);
 
+   // Ensure that all resources allocated by sub-routines are assigned to the Task object by default.
+   parasol::SwitchContext ctx(glCurrentTask);
+
    // This recursion blocker prevents ProcessMessages() from being called to breaking point.  Excessive nesting can
    // occur on occasions where ProcessMessages() sends an action to an object that performs some activity before it
    // makes a nested call to ProcessMessages(), which in turn might result in more processing and then eventually
@@ -391,7 +394,8 @@ ERROR ProcessMessages(LONG Flags, LONG TimeOut)
 
                ThreadLock lock(TL_MSGHANDLER, 5000);
                if (lock.granted()) {
-                  for (MsgHandler *handler=glMsgHandlers; handler; handler=handler->Next) {
+                  // Message handlers will execute within the context of the main task and not the function's context
+                  for (auto handler=glMsgHandlers; handler; handler=handler->Next) {
                      if ((!handler->MsgType) or (handler->MsgType IS msg->Type)) {
                         ERROR result = ERR_NoSupport;
                         if (handler->Function.Type IS CALL_STDC) {
