@@ -1746,7 +1746,6 @@ struct CoreBase {
    MEMORYID (*_ReleaseMemory)(APTR);
    CLASSID (*_ResolveClassName)(CSTRING);
    void (*_SelfDestruct)(void);
-   ERROR (*_LogError)(LONG, ERROR);
    ERROR (*_SendMessage)(MEMORYID, LONG, LONG, APTR, LONG);
    ERROR (*_SetOwner)(APTR, APTR);
    OBJECTPTR (*_SetContext)(APTR);
@@ -1941,7 +1940,6 @@ struct CoreBase {
 #define ReleaseMemory(...) (CoreBase->_ReleaseMemory)(__VA_ARGS__)
 #define ResolveClassName(...) (CoreBase->_ResolveClassName)(__VA_ARGS__)
 #define SelfDestruct(...) (CoreBase->_SelfDestruct)(__VA_ARGS__)
-#define LogError(...) (CoreBase->_LogError)(__VA_ARGS__)
 #define SendMessage(...) (CoreBase->_SendMessage)(__VA_ARGS__)
 #define SetOwner(...) (CoreBase->_SetOwner)(__VA_ARGS__)
 #define SetContext(...) (CoreBase->_SetContext)(__VA_ARGS__)

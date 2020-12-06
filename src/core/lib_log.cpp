@@ -646,27 +646,6 @@ ERROR FuncError(CSTRING Header, ERROR Code)
 /*****************************************************************************
 
 -FUNCTION-
-LogError: OBSOLETE
-
-OBSOLETE
-
--INPUT-
-int Header: A valid header code must be specified, as listed in the "system/errors.h" include file.  Valid examples of existing codes are ERH_Core, ERH_Message, ERH_Error.
-error Error: Pre-defined error strings are provided in the "system/errors.h" include file.  Search the file for the desired message to log (e.g. use a basic keyword such as "module" for module related messages).
-
--RESULT-
-error: Returns the value specified in the Error parameter.
-
-*****************************************************************************/
-
-ERROR LogError(LONG HeaderCode, ERROR Code)
-{
-   return Code;
-}
-
-/*****************************************************************************
-
--FUNCTION-
 LogReturn: Revert to the previous branch in the application logging tree.
 
 Use LogReturn() to reverse any previous log message that created a new branch.  Consider the following example:

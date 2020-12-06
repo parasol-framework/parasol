@@ -78,7 +78,6 @@ FDEF argsListTasks[] = { { "Error", FD_LONG|FD_ERROR }, { "Flags", FD_LONG }, { 
 FDEF argsLoadFile[] = { { "Error", FD_LONG|FD_ERROR }, { "Path", FD_STR }, { "Flags", FD_LONG }, { "CacheFile:Cache", FD_PTR|FD_STRUCT|FD_RESOURCE|FD_RESULT }, { 0, 0 } };
 FDEF argsLockMutex[] = { { "Error", FD_LONG|FD_ERROR }, { "Mutex", FD_PTR }, { "MilliSeconds", FD_LONG }, { 0, 0 } };
 FDEF argsLockSharedMutex[] = { { "Error", FD_LONG|FD_ERROR }, { "Mutex", FD_PTR }, { "MilliSeconds", FD_LONG }, { 0, 0 } };
-FDEF argsLogError[] = { { "Error", FD_LONG|FD_ERROR }, { "Header", FD_LONG }, { "Error", FD_LONG|FD_ERROR }, { 0, 0 } };
 FDEF argsLogF[] = { { "Void", FD_VOID }, { "Header", FD_STR }, { "Message", FD_STR }, { "Tags", FD_TAGS }, { 0, 0 } };
 FDEF argsLogReturn[] = { { "Void", FD_VOID }, { 0, 0 } };
 FDEF argsManageAction[] = { { "Error", FD_LONG|FD_ERROR }, { "Action", FD_LONG }, { "Routine", FD_PTR }, { 0, 0 } };
@@ -246,7 +245,6 @@ const struct Function glFunctions[] = {
    { (APTR)ReleaseMemory, "ReleaseMemory", argsReleaseMemory },
    { (APTR)ResolveClassName, "ResolveClassName", argsResolveClassName },
    { (APTR)SelfDestruct, "SelfDestruct", argsSelfDestruct },
-   { (APTR)LogError, "LogError", argsLogError },
    { (APTR)SendMessage, "SendMessage", argsSendMessage },
    { (APTR)SetOwner, "SetOwner", argsSetOwner },
    { (APTR)SetContext, "SetContext", argsSetContext },

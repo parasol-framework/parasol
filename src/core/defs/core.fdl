@@ -996,7 +996,6 @@ struct ScriptArg { // For use with scExec
     "ReleaseMemory",
     "ResolveClassName",
     "SelfDestruct",
-    "LogError",
     "SendMessage",
     "SetOwner",
     "SetContext",

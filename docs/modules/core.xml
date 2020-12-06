@@ -1592,21 +1592,6 @@ end
   </function>
 
   <function>
-    <name>LogError</name>
-    <category>Logging</category>
-    <comment>OBSOLETE</comment>
-    <prototype>ERROR LogError(LONG Header, ERROR Error)</prototype>
-    <input>
-      <param type="LONG" name="Header">A valid header code must be specified, as listed in the "system/errors.h" include file.  Valid examples of existing codes are ERH_Core, ERH_Message, ERH_Error.</param>
-      <param type="ERROR" name="Error">Pre-defined error strings are provided in the "system/errors.h" include file.  Search the file for the desired message to log (e.g. use a basic keyword such as "module" for module related messages).</param>
-    </input>
-    <description>
-<p>OBSOLETE</p>
-    </description>
-    <result type="ERROR">Returns the value specified in the Error parameter.</result>
-  </function>
-
-  <function>
     <name>LogF</name>
     <category>Logging</category>
     <comment>Sends formatted messages to the standard log.</comment>
