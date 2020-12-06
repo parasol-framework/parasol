@@ -275,13 +275,12 @@ ERROR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    }
 #endif
 
-   FUNCTION recv_function;
-   SET_FUNCTION_STDC(recv_function, (APTR)&resolve_name_receiver);
+   auto recv_function = make_function_stdc(resolve_name_receiver, CurrentTask());
    if (AddMsgHandler(NULL, glResolveNameMsgID, &recv_function, &glResolveNameHandler)) {
       return ERR_Failed;
    }
 
-   SET_FUNCTION_STDC(recv_function, (APTR)&resolve_addr_receiver);
+   recv_function.StdC.Routine = (APTR)resolve_addr_receiver;
    if (AddMsgHandler(NULL, glResolveAddrMsgID, &recv_function, &glResolveAddrHandler)) {
       return ERR_Failed;
    }
@@ -665,7 +664,7 @@ static ERROR netResolveName(CSTRING HostName, LONG Flags, FUNCTION *Callback, LA
 
    if (!HostName) return log.error(ERR_NullArgs);
 
-   log.branch("Host: %s, Flags: $%.8x, Callback: %p", HostName, Flags, Callback);
+   log.branch("Host: %s, Flags: $%.8x, Callback: %p, ClientData: " PF64() "/%p", HostName, Flags, Callback, ClientData, (APTR)(MAXINT)ClientData);
 
    { // Use the cache if available.
       struct dns_cache *dns;

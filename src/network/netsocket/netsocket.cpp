@@ -127,7 +127,8 @@ Failed: The connect failed for some other reason.
 
 *****************************************************************************/
 
-static void connect_name_resolved(LARGE, ERROR, CSTRING HostName, IPAddress *IPs, LONG TotalIPs);
+static void connect_name_resolved_msg(LARGE, ERROR, CSTRING, IPAddress *, LONG);
+static void connect_name_resolved(objNetSocket *, ERROR, CSTRING, IPAddress *, LONG);
 
 static ERROR NETSOCKET_Connect(objNetSocket *Self, struct nsConnect *Args)
 {
@@ -154,14 +155,16 @@ static ERROR NETSOCKET_Connect(objNetSocket *Self, struct nsConnect *Args)
 
    IPAddress server_ip;
    if (!netStrToAddress(Self->Address, &server_ip)) { // The address is an IP string, no resolution is necessary
-      connect_name_resolved((MAXINT)Self, ERR_Okay, NULL, &server_ip, 1);
+      connect_name_resolved(Self, ERR_Okay, NULL, &server_ip, 1);
    }
-   else { // Assume address is a domain name, so try and do a DNS resolution
+   else {
+      // Assume address is a domain name, so try and do a DNS resolution.  The socket is referenced by ID because
+      // name resolution occurs in a background thread.
       log.msg("Attempting to resolve domain name '%s'...", Self->Address);
 
       FUNCTION callback;
-      SET_FUNCTION_STDC(callback, (APTR)connect_name_resolved);
-      if (netResolveName(Self->Address, 0, &callback, (MAXINT)Self) != ERR_Okay) {
+      SET_FUNCTION_STDC(callback, (APTR)connect_name_resolved_msg);
+      if (netResolveName(Self->Address, 0, &callback, Self->Head.UniqueID) != ERR_Okay) {
          return log.error(Self->Error = ERR_HostNotFound);
       }
    }
@@ -172,10 +175,22 @@ static ERROR NETSOCKET_Connect(objNetSocket *Self, struct nsConnect *Args)
 //****************************************************************************
 // This function is called on completion of nsResolveName().
 
-static void connect_name_resolved(LARGE ClientData, ERROR Error, CSTRING HostName, IPAddress *IPs, LONG TotalIPs)
+static void connect_name_resolved_msg(LARGE ClientData, ERROR Error, CSTRING HostName, IPAddress *IPs, LONG TotalIPs)
+{
+   parasol::ScopedObjectLock<objNetSocket> socket((OBJECTID)ClientData);
+   if (socket.granted()) {
+      parasol::SwitchContext(socket.obj);
+      connect_name_resolved(socket.obj, Error, HostName, IPs, TotalIPs);
+   }
+   else {
+      parasol::Log log(__FUNCTION__);
+      log.warning("Failed to lock NetSocket #%d: %s", (OBJECTID)ClientData, GetErrorMsg(socket.error));
+   }
+}
+
+static void connect_name_resolved(objNetSocket *Socket, ERROR Error, CSTRING HostName, IPAddress *IPs, LONG TotalIPs)
 {
    parasol::Log log(__FUNCTION__);
-   auto Self = (objNetSocket *)(MAXINT)ClientData;
    struct sockaddr_in server_address;
 
    if (Error != ERR_Okay) {
@@ -183,17 +198,17 @@ static void connect_name_resolved(LARGE ClientData, ERROR Error, CSTRING HostNam
       return;
    }
 
-   log.msg("Received callback on DNS resolution.  Handle: %d", Self->SocketHandle);
+   log.msg("Received callback on DNS resolution.  Handle: %d", Socket->SocketHandle);
 
    // Start connect()
 
    ClearMemory(&server_address, sizeof(struct sockaddr_in));
    server_address.sin_family = AF_INET;
-   server_address.sin_port = netHostToShort((UWORD)Self->Port);
+   server_address.sin_port = netHostToShort((UWORD)Socket->Port);
    server_address.sin_addr.s_addr = netHostToLong(IPs->Data[0]);
 
 #ifdef __linux__
-   LONG result = connect(Self->SocketHandle, (struct sockaddr *)&server_address, sizeof(server_address));
+   LONG result = connect(Socket->SocketHandle, (struct sockaddr *)&server_address, sizeof(server_address));
 
    if (result IS -1) {
       if (errno IS EINPROGRESS) {
@@ -204,32 +219,32 @@ static void connect_name_resolved(LARGE ClientData, ERROR Error, CSTRING HostNam
       }
       else {
          log.warning("Connect() failed: %s", strerror(errno));
-         Self->Error = ERR_Failed;
-         SetLong(Self, FID_State, NTC_DISCONNECTED);
+         Socket->Error = ERR_Failed;
+         SetLong(Socket, FID_State, NTC_DISCONNECTED);
          return;
       }
 
-      SetLong(Self, FID_State,  NTC_CONNECTING);
-      RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD_READ|RFD_SOCKET, (void (*)(HOSTHANDLE, APTR))&client_server_incoming, Self);
+      SetLong(Socket, FID_State,  NTC_CONNECTING);
+      RegisterFD((HOSTHANDLE)Socket->SocketHandle, RFD_READ|RFD_SOCKET, (void (*)(HOSTHANDLE, APTR))&client_server_incoming, Socket);
 
       // The write queue will be signalled once the connection process is completed.
 
-      RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD_WRITE|RFD_SOCKET, &client_connect, Self);
+      RegisterFD((HOSTHANDLE)Socket->SocketHandle, RFD_WRITE|RFD_SOCKET, &client_connect, Socket);
    }
    else {
       log.trace("connect() successful.");
 
-      SetLong(Self, FID_State, NTC_CONNECTED);
-      RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD_READ|RFD_SOCKET, (void (*)(HOSTHANDLE, APTR))&client_server_incoming, Self);
+      SetLong(Socket, FID_State, NTC_CONNECTED);
+      RegisterFD((HOSTHANDLE)Socket->SocketHandle, RFD_READ|RFD_SOCKET, (void (*)(HOSTHANDLE, APTR))&client_server_incoming, Socket);
    }
 
 #elif _WIN32
-   if ((Self->Error = win_connect(Self->SocketHandle, (struct sockaddr *)&server_address, sizeof(server_address)))) {
-      log.warning("connect() failed: %s", GetErrorMsg(Self->Error));
+   if ((Socket->Error = win_connect(Socket->SocketHandle, (struct sockaddr *)&server_address, sizeof(server_address)))) {
+      log.warning("connect() failed: %s", GetErrorMsg(Socket->Error));
       return;
    }
 
-   SetLong(Self, FID_State, NTC_CONNECTING); // Connection isn't complete yet - see win32_netresponse() code for NTE_CONNECT
+   SetLong(Socket, FID_State, NTC_CONNECTING); // Connection isn't complete yet - see win32_netresponse() code for NTE_CONNECT
 #endif
 }
 
