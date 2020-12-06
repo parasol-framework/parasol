@@ -181,7 +181,7 @@ static ERROR ARCHIVE_Activate(objFile *Self, APTR Void)
    ERROR error;
    if (!prv->FileStream) {
       if (!CreateObject(ID_FILE, NF_INTEGRAL, (OBJECTPTR *)&prv->FileStream,
-            FID_Path|TSTR,   cmp->Location,
+            FID_Path|TSTR,   cmp->Path,
             FID_Flags|TLONG, FL_READ,
             TAGEND)) {
 

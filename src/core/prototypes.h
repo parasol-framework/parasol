@@ -52,7 +52,6 @@ ERROR GetMessage(MEMORYID Queue, LONG Type, LONG Flags, APTR Buffer, LONG Size);
 MEMORYID ReleaseMemory(APTR Address);
 CLASSID ResolveClassName(CSTRING Name);
 void SelfDestruct();
-ERROR LogError(LONG Header, ERROR Error);
 ERROR SendMessage(MEMORYID Queue, LONG Type, LONG Flags, APTR Data, LONG Size);
 ERROR SetOwner(OBJECTPTR Object, OBJECTPTR Owner);
 OBJECTPTR SetContext(OBJECTPTR Object);

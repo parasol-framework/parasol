@@ -413,6 +413,7 @@ void VLogF(LONG Flags, CSTRING Header, CSTRING Message, va_list Args)
       else msgstate = MS_MSG;
 
       //fprintf(stderr, "%.8d. ", winGetCurrentThreadId());
+      //fprintf(stderr, "%p ", tlContext);
 
       #if defined(__unix__) AND !defined(__ANDROID__)
          BYTE flushdbg;
