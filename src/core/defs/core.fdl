@@ -2338,6 +2338,26 @@ INLINE ERROR flReadLE8(APTR Object, LARGE *Result)
    }
    else return ERR_Read;
 }
+
+#ifdef __cplusplus
+template <class R, class C>
+FUNCTION make_function_stdc(R Routine, C Context = CurrentContext()) {
+   FUNCTION func;
+   func.Type = CALL_STDC;
+   func.StdC.Routine = (APTR)Routine;
+   func.StdC.Context = Context;
+   return func;
+}
+
+INLINE FUNCTION make_function_script(OBJECTPTR Script, LARGE Procedure) {
+   FUNCTION func;
+   func.Type = CALL_SCRIPT;
+   func.Script.Script = (OBJECTPTR)Script;
+   func.Script.ProcedureID = Procedure;
+   return func;
+}
+#endif
+
   ]])
 
   if (glProgram == "idl-def") then
