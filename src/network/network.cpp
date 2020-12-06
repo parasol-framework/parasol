@@ -545,7 +545,7 @@ static ERROR netResolveAddress(CSTRING Address, LONG Flags, FUNCTION *Callback, 
    if (!(Flags & NSF_SYNCHRONOUS)) { // Attempt asynchronous resolution in the background, return immediately.
       OBJECTPTR thread;
       LONG pkg_size = sizeof(resolve_addr_buffer) + StrLength(Address) + 1;
-      if (!CreateObject(ID_THREAD, NF_INTEGRAL, &thread,
+      if (!CreateObject(ID_THREAD, NF_UNTRACKED, &thread,
             FID_Routine|TPTR, &thread_resolve_addr,
             FID_Flags|TLONG,  THF_AUTO_FREE,
             TAGEND)) {
@@ -687,7 +687,7 @@ static ERROR netResolveName(CSTRING HostName, LONG Flags, FUNCTION *Callback, LA
    if (!(Flags & NSF_SYNCHRONOUS)) { // Attempt asynchronous resolution in the background, return immediately.
       OBJECTPTR thread;
       LONG pkg_size = sizeof(resolve_name_buffer) + StrLength(HostName) + 1;
-      if (!CreateObject(ID_THREAD, NF_INTEGRAL, &thread,
+      if (!CreateObject(ID_THREAD, NF_UNTRACKED, &thread,
             FID_Routine|TPTR, &thread_resolve_name,
             FID_Flags|TLONG,  THF_AUTO_FREE,
             TAGEND)) {
