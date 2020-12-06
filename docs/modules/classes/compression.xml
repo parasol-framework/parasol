@@ -465,8 +465,12 @@ if (!error) {
 
     <field>
       <name>Path</name>
+      <comment>Set if the compressed data originates from, or is to be saved to a file source.</comment>
       <access read="G" write="S">Get/Set</access>
       <type>STRING</type>
+      <description>
+<p>To load or create a new file archive, set the Path field to the path of that file.</p>
+      </description>
     </field>
 
     <field>

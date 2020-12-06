@@ -2745,7 +2745,7 @@ typedef struct rkCompression {
 #ifdef PRV_COMPRESSION
    OBJECTPTR FileIO;             // File input/output
    STRING *  FileList;           // List of all files held in the compression object
-   STRING    Location;           // File location of the compressed data
+   STRING    Path;               // Location of the compressed data
    struct CompressionFeedback *FeedbackInfo;
    struct rkCompression *NextArchive;
    UBYTE     Header[32];         // The first 32 bytes of data from the compressed file (for sub-classes only)

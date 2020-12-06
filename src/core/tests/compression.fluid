@@ -5,7 +5,7 @@
 // Compress a few files and then decompress them.
 
 function testCreateCompress()
-   local cmp = obj.new("compression", { location="temp:cmp_test_json.zip", flags="!NEW" } )
+   local cmp = obj.new("compression", { path="temp:cmp_test_json.zip", flags="!NEW" } )
 
    err = cmp.mtCompressFile("config:classes.bin", "")
    if (err != ERR_Okay) then error("CompressFile() failed: " .. mSys.GetErrorMsg(err)) end
@@ -18,7 +18,7 @@ function testCreateCompress()
 end
 
 function testDecompressWild()
-   local cmp = obj.new("compression", { location="temp:cmp_test_json.zip" } )
+   local cmp = obj.new("compression", { path="temp:cmp_test_json.zip" } )
 
    err = cmp.mtDecompressFile("*.bin", "temp:")
    if (err != ERR_Okay) then error("DecompressFile() failed: " .. mSys.GetErrorMsg(err)) end
@@ -28,7 +28,7 @@ end
 // Compress an entire folder and then decompress it to a new location.
 
 function testCompressFolder()
-   local cmp = obj.new("compression", { location="temp:cmp_test_icons.zip", flags="!NEW" } )
+   local cmp = obj.new("compression", { path="temp:cmp_test_icons.zip", flags="!NEW" } )
 
    err = cmp.mtCompressFile("system:icons/Default/items/", "icons")
    if (err != ERR_Okay) then error("CompressFile() failed: " .. mSys.GetErrorMsg(err)) end
@@ -38,7 +38,7 @@ function testCompressFolder()
 end
 
 function testDecompressFolder()
-   local cmp = obj.new("compression", { location="temp:cmp_test_icons.zip" } )
+   local cmp = obj.new("compression", { path="temp:cmp_test_icons.zip" } )
 
    err = cmp.mtDecompressFile("*", "temp:cmp_test/")
    if (err != ERR_Okay) then error("DecompressFile() failed: " .. mSys.GetErrorMsg(err)) end
