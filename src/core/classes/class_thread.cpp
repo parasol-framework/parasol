@@ -394,11 +394,23 @@ static ERROR THREAD_Free(objThread *Self, APTR Void)
 
 static ERROR THREAD_FreeWarning(objThread *Self, APTR Void)
 {
+   parasol::Log log;
    if (Self->prv.Active) {
-      Self->Flags |= THF_AUTO_FREE;
-      return ERR_InUse;
+      log.warning("Attempt to free an active thread.  Process will wait for the thread to terminate.");
+      struct thWait wait = { 60 * 1000, 1000 };
+      Action(MT_ThWait, &Self->Head, &wait);
+
+      if (Self->prv.Active) {
+         log.warning("Thread still in use - marking it for automatic termination.");
+         Self->Flags |= THF_AUTO_FREE;
+         return ERR_InUse;
+      }
+      else return ERR_Okay;
    }
-   else return ERR_Okay;
+   else {
+      log.extmsg("Thread is inactive and may be terminated safely.");
+      return ERR_Okay;
+   }
 }
 
 //****************************************************************************
@@ -503,7 +515,7 @@ int TimeOut: A timeout value measured in milliseconds.
 int MsgInterval: Check for incoming messages every X milliseconds.
 
 -ERRORS-
-Okay
+Okay: The thread is no longer active.
 NullArgs
 Args: The TimeOut value is invalid.
 TimeOut: The timeout was reached before the thread completed.

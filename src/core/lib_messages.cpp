@@ -875,7 +875,7 @@ static void view_messages(MessageHeader *Header)
 
    log.warning("Count: %d, Next: %d", Header->Count, Header->NextEntry);
 
-   TaskMessage *msg = (TaskMessage *)Header->Buffer;
+   auto msg = (TaskMessage *)Header->Buffer;
    WORD count = 0;
    while (count < Header->Count) {
       if (msg->Type) {
@@ -1002,8 +1002,8 @@ ERROR SendMessage(MEMORYID MessageMID, LONG Type, LONG Flags, APTR Data, LONG Si
             #endif
             */
 
-            TaskMessage *srcmsg  = (TaskMessage *)header->Buffer;
-            TaskMessage *destmsg = (TaskMessage *)buffer->Buffer;
+            auto srcmsg  = (TaskMessage *)header->Buffer;
+            auto destmsg = (TaskMessage *)buffer->Buffer;
             for (buffer->Count=0; buffer->Count < header->Count;) {
                if (srcmsg->Type) {
                   CopyMemory(srcmsg, destmsg, sizeof(TaskMessage) + srcmsg->DataSize);

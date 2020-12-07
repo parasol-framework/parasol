@@ -3642,8 +3642,8 @@ INLINE ERROR flReadLE8(APTR Object, LARGE *Result)
 }
 
 #ifdef __cplusplus
-template <class R, class C>
-FUNCTION make_function_stdc(R Routine, C Context = CurrentContext()) {
+template <class R>
+constexpr FUNCTION make_function_stdc(R Routine, OBJECTPTR Context = CurrentContext()) {
    FUNCTION func;
    func.Type = CALL_STDC;
    func.StdC.Routine = (APTR)Routine;
