@@ -130,7 +130,8 @@
 #define AC_Sort 53
 #define AC_SaveSettings 54
 #define AC_SelectArea 55
-#define AC_END 56
+#define AC_Signal 56
+#define AC_END 57
 
 // Permission flags
 
@@ -773,6 +774,7 @@ struct ClipRectangle {
 #define AHASH_SORT 0x7c9e066d
 #define AHASH_SAVESETTINGS 0x475f7165
 #define AHASH_SELECTAREA 0xf55e615e
+#define AHASH_SIGNAL 0x1bc6ade3
 #define AHASH_UNDO 0x7c9f191b
 
 // Internal options for requesting function tables from modules.
