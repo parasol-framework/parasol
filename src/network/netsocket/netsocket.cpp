@@ -162,8 +162,7 @@ static ERROR NETSOCKET_Connect(objNetSocket *Self, struct nsConnect *Args)
       // name resolution occurs in a background thread.
       log.msg("Attempting to resolve domain name '%s'...", Self->Address);
 
-      FUNCTION callback;
-      SET_FUNCTION_STDC(callback, (APTR)connect_name_resolved_msg);
+      auto callback = make_function_stdc(connect_name_resolved_msg, NULL); // Context is undefined in case the NetSocket dies
       if (netResolveName(Self->Address, 0, &callback, Self->Head.UniqueID) != ERR_Okay) {
          return log.error(Self->Error = ERR_HostNotFound);
       }

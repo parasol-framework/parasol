@@ -208,6 +208,8 @@ static MsgHandler *glResolveAddrHandler = NULL;
 static ERROR resolve_name_receiver(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
 {
    auto rnb = (resolve_name_buffer *)Message;
+   parasol::Log log(__FUNCTION__);
+   log.traceBranch("MsgID: %d, MsgType: %d, Message: %p, Host: %s", MsgID, MsgType, Message, (CSTRING)(rnb + 1));
    // This call will cause the cached DNS result to be pulled and forwarded to the user's callback.
    netResolveName((CSTRING)(rnb + 1), NSF_SYNCHRONOUS, &rnb->callback, rnb->client_data);
    return ERR_Okay;
@@ -402,7 +404,7 @@ Failed:  The String was not a valid IP Address.
 
 static ERROR netStrToAddress(CSTRING Str, IPAddress *Address)
 {
-   if ((!Str) OR (!Address)) return ERR_NullArgs;
+   if ((!Str) or (!Address)) return ERR_NullArgs;
 
 #ifdef __linux__
    ULONG result = inet_addr(Str);
@@ -664,7 +666,7 @@ static ERROR netResolveName(CSTRING HostName, LONG Flags, FUNCTION *Callback, LA
 
    if (!HostName) return log.error(ERR_NullArgs);
 
-   log.branch("Host: %s, Flags: $%.8x, Callback: %p, ClientData: " PF64() "/%p", HostName, Flags, Callback, ClientData, (APTR)(MAXINT)ClientData);
+   log.branch("Host: %s, Synchronous: %c, Callback: %p, ClientData: " PF64() "/%p", HostName, (Flags & NSF_SYNCHRONOUS) ? 'Y' : 'N', Callback, ClientData, (APTR)(MAXINT)ClientData);
 
    { // Use the cache if available.
       struct dns_cache *dns;
@@ -901,7 +903,7 @@ static ERROR RECEIVE(objNetSocket *Self, SOCKET_HANDLE Socket, APTR Buffer, LONG
             Buffer = (APTR)((char *)Buffer + result);
             BufferSize -= result;
          }
-      } while ((pending = SSL_pending(Self->SSL)) AND (!read_blocked) AND (BufferSize > 0));
+      } while ((pending = SSL_pending(Self->SSL)) and (!read_blocked) and (BufferSize > 0));
 
       log.trace("Pending: %d, BufSize: %d, Blocked: %d", pending, BufferSize, read_blocked);
 
@@ -939,7 +941,7 @@ static ERROR RECEIVE(objNetSocket *Self, SOCKET_HANDLE Socket, APTR Buffer, LONG
       else if (result IS 0) { // man recv() says: The return value is 0 when the peer has performed an orderly shutdown.
          return ERR_Disconnected;
       }
-      else if ((errno IS EAGAIN) OR (errno IS EINTR)) {
+      else if ((errno IS EAGAIN) or (errno IS EINTR)) {
          return ERR_Okay;
       }
       else {
@@ -1072,7 +1074,7 @@ static void resolve_callback(LARGE ClientData, FUNCTION *Callback, ERROR Error, 
 
 static ERROR cache_host(CSTRING HostName, struct hostent *Host, struct dns_cache **Cache)
 {
-   if ((!Host) OR (!Cache)) return ERR_NullArgs;
+   if ((!Host) or (!Cache)) return ERR_NullArgs;
 
    if (!HostName) {
       if (!(HostName = Host->h_name)) return ERR_Args;
@@ -1086,7 +1088,7 @@ static ERROR cache_host(CSTRING HostName, struct hostent *Host, struct dns_cache
    if (!real_name) real_name = HostName;
 
    *Cache = NULL;
-   if ((Host->h_addrtype != AF_INET) AND (Host->h_addrtype != AF_INET6)) {
+   if ((Host->h_addrtype != AF_INET) and (Host->h_addrtype != AF_INET6)) {
       return ERR_Args;
    }
 
@@ -1095,7 +1097,7 @@ static ERROR cache_host(CSTRING HostName, struct hostent *Host, struct dns_cache
    LONG size = sizeof(struct dns_cache) + ALIGN64(StrLength(real_name) + 1);
    LONG address_count = 0;
    if (Host->h_addr_list) {
-      for (address_count=0; (address_count < MAX_ADDRESSES) AND (Host->h_addr_list[address_count]); address_count++);
+      for (address_count=0; (address_count < MAX_ADDRESSES) and (Host->h_addr_list[address_count]); address_count++);
    }
 
    size += address_count * sizeof(IPAddress);
@@ -1148,7 +1150,7 @@ static ERROR cache_host(CSTRING HostName, struct hostent *Host, struct dns_cache
 #ifdef __linux__
 static ERROR cache_host(CSTRING HostName, struct addrinfo *Host, struct dns_cache **Cache)
 {
-   if ((!Host) OR (!Cache)) return ERR_NullArgs;
+   if ((!Host) or (!Cache)) return ERR_NullArgs;
 
    if (!HostName) {
       if (!(HostName = Host->ai_canonname)) return ERR_Args;
@@ -1162,7 +1164,7 @@ static ERROR cache_host(CSTRING HostName, struct addrinfo *Host, struct dns_cach
    if (!real_name) real_name = HostName;
 
    *Cache = NULL;
-   if ((Host->ai_family != AF_INET) AND (Host->ai_family != AF_INET6)) return ERR_Args;
+   if ((Host->ai_family != AF_INET) and (Host->ai_family != AF_INET6)) return ERR_Args;
 
    // Calculate the size of the data structure.
 
