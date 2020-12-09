@@ -2351,18 +2351,12 @@ INLINE ERROR flReadLE8(APTR Object, LARGE *Result)
 #ifdef __cplusplus
 template <class R>
 constexpr FUNCTION make_function_stdc(R Routine, OBJECTPTR Context = CurrentContext()) {
-   FUNCTION func;
-   func.Type = CALL_STDC;
-   func.StdC.Routine = (APTR)Routine;
-   func.StdC.Context = Context;
+   FUNCTION func = { .Type = CALL_STDC, .StdC = { .Context = Context, .Routine = (APTR)Routine } };
    return func;
 }
 
 INLINE FUNCTION make_function_script(OBJECTPTR Script, LARGE Procedure) {
-   FUNCTION func;
-   func.Type = CALL_SCRIPT;
-   func.Script.Script = (OBJECTPTR)Script;
-   func.Script.ProcedureID = Procedure;
+   FUNCTION func = { .Type = CALL_SCRIPT, .Script = { .Script = (OBJECTPTR)Script, .ProcedureID = Procedure } };
    return func;
 }
 #endif
