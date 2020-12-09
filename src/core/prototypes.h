@@ -195,6 +195,7 @@ ERROR KeyIterate(struct KeyStore * Store, ULONG Index, ULONG * Key, APTR * Data,
 ERROR VarSetSized(struct KeyStore * Store, CSTRING Key, LONG Size, APTR * Data, LONG * DataSize);
 ERROR VarLock(struct KeyStore * Store, LONG Timeout);
 void VLogF(LONG Flags, CSTRING Header, CSTRING Message, va_list Args);
+ERROR WaitForObjects(LONG Flags, LONG TimeOut, struct ObjectSignal * ObjectSignals);
 
 #ifdef  __cplusplus
 }

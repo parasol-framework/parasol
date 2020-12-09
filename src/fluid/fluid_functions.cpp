@@ -274,10 +274,11 @@ int fcmd_catch(lua_State *Lua)
 }
 
 //****************************************************************************
-// Usage: processMessages(Timeout)
+// Usage: time_elapsed, error = processMessages(Timeout, [ObjectSignals])
 //
 // Processes incoming messages.  Returns the number of microseconds that elapsed, followed by the error from
-// ProcessMessages().  To process messages until a QUIT message is received, call processMessages(-1)
+// ProcessMessages().  To process messages until a break message or signal is received, call processMessages(-1).
+// To break processing when a collection of object signals have been received, define the ObjectSignals parameter.
 
 int fcmd_processMessages(lua_State *Lua)
 {
@@ -289,15 +290,77 @@ int fcmd_processMessages(lua_State *Lua)
       lua_gc(Lua, LUA_GCCOLLECT, 0);
    }
 
+   parasol::Log log;
+
    LONG timeout = lua_tointeger(Lua, 1);
+   LARGE time;
+   ERROR error;
+   if (lua_istable(Lua, 2)) { // { AC_Signal = { obj1, obj2, ... }, AC_Something = obj1 }
+      std::list<ObjectSignal> signal_list;
 
-   recursion.lock();
+      lua_pushnil(Lua);
+      while (lua_next(Lua, 2)) {
+         ACTIONID action = 0;
+         auto action_type = lua_type(Lua, -2);
+         if (action_type IS LUA_TNUMBER) {
+            action = lua_tointeger(Lua, -2);
+         }
+         else if (action_type IS LUA_TSTRING) {
+            ACTIONID *ptr;
+            if (!VarGet(glActionLookup, lua_tostring(Lua, -2), &ptr, NULL)) action = ptr[0];
+            else luaL_argerror(Lua, 2, "A provided action key was not recognised.");
+         }
+         else luaL_argerror(Lua, 2, "Expected an action key declared as a number or string.");
 
-      LARGE time = PreciseTime();
-      ERROR error = ProcessMessages(0, timeout);
-      time = PreciseTime() - time;
+         if (action) {
+            struct object *obj;
+            if ((obj = (struct object *)get_meta(Lua, -1, "Fluid.obj"))) {
+               ObjectSignal sig = { .Object = obj->prvObject, .ActionID = action };
+               signal_list.push_back(sig);
+            }
+            else if (lua_istable(Lua, -1)) { // { obj1, obj2, ... }
+               lua_pushnil(Lua);
+               while (lua_next(Lua, -2)) {
+                  if ((obj = (struct object *)get_meta(Lua, -1, "Fluid.obj"))) {
+                     ObjectSignal sig = { .Object = obj->prvObject, .ActionID = action };
+                     signal_list.push_back(sig);
+                  }
+                  else luaL_error(Lua, "Expected an object in list assigned to action %d, got %s.", action,lua_typename(Lua, lua_type(Lua, -1)) );
+                  lua_pop(Lua, 1); // Remove value, keep the key
+               }
+            }
+            else {
+               luaL_error(Lua, "Expected object or table paired with action %d, got type %s.", action, lua_typename(Lua, lua_type(Lua, -2)));
+               return 0;
+            }
+         }
 
-   recursion.unlock();
+         lua_pop(Lua, 1); // Remove value, keep the key
+      }
+
+      ObjectSignal signal_list_c[signal_list.size() + 1];
+      LONG i = 0;
+      for (auto &entry : signal_list) signal_list_c[i++] = entry;
+      signal_list_c[i].Object = NULL;
+      signal_list_c[i].ActionID = 0;
+
+      recursion.lock();
+
+         time = PreciseTime();
+         error = WaitForObjects(0, timeout, signal_list_c);
+         time = PreciseTime() - time;
+
+      recursion.unlock();
+   }
+   else {
+      recursion.lock();
+
+         time = PreciseTime();
+         error = ProcessMessages(0, timeout);
+         time = PreciseTime() - time;
+
+      recursion.unlock();
+   }
 
    lua_pushnumber(Lua, time);
    lua_pushinteger(Lua, error);

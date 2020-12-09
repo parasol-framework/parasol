@@ -466,6 +466,7 @@
       <const name="Sort"/>
       <const name="SaveSettings"/>
       <const name="SelectArea"/>
+      <const name="Signal"/>
       <const name="END"/>
     </constants>
 
@@ -776,9 +777,17 @@
       <field name="Modified" type="struct DateTime">The date/time of the last file modification.</field>
     </struct>
 
-    <struct name="ChildEntry" comment="Structure for ListChildren() function">
-      <field name="ObjectID" type="OBJECTID">Object ID</field>
-      <field name="ClassID" type="CLASSID">The class ID of the referenced object.</field>
+    <struct name="FieldArray" comment="Used to construct class blueprints for the MetaClass.">
+      <field name="Name" type="CSTRING">The name of the field, e.g. "Width"</field>
+      <field name="Flags" type="ULONG">Special flags that describe the field</field>
+      <field name="Arg" type="MAXINT">Can be a pointer or an integer value</field>
+      <field name="GetField" type="APTR">void GetField(*Object, APTR Result);</field>
+      <field name="SetField" type="APTR">ERROR SetField(*Object, APTR Value);</field>
+    </struct>
+
+    <struct name="ObjectSignal" comment="Required in calls to WaitForObjects().">
+      <field name="Object" type="OBJECTPTR"></field>
+      <field name="ActionID" type="LONG"></field>
     </struct>
 
     <struct name="Function" comment="Function list array structure">
@@ -880,6 +889,18 @@
       <field name="Stage" type="LONG">The current operating stage.  -1 = Initialising, 0 indicates normal operating status; 1 means that the program is shutting down; 2 indicates a program restart; 3 is for mode switches.</field>
     </struct>
 
+    <struct name="FunctionField" comment="Used by ActionTable and Function structures to declare lists of parameters.">
+      <field name="Name" type="CSTRING">Name of the field</field>
+      <field name="Type" type="ULONG">Type of the field</field>
+    </struct>
+
+    <struct name="RGB8" comment="8-bit RGB colour value." typeName="RGB8">
+      <field name="Red" type="UBYTE">Red component value</field>
+      <field name="Green" type="UBYTE">Green component value</field>
+      <field name="Blue" type="UBYTE">Blue component value</field>
+      <field name="Alpha" type="UBYTE">Alpha component value</field>
+    </struct>
+
     <struct name="FileFeedback">
       <field name="Size" type="LARGE">Size of the file</field>
       <field name="Position" type="LARGE">Current seek position within the file if moving or copying</field>
@@ -889,9 +910,9 @@
       <field name="Reserved" type="char" size="32">Reserved in case of future expansion</field>
     </struct>
 
-    <struct name="FunctionField" comment="Used by ActionTable and Function structures to declare lists of parameters.">
-      <field name="Name" type="CSTRING">Name of the field</field>
-      <field name="Type" type="ULONG">Type of the field</field>
+    <struct name="ChildEntry" comment="Structure for ListChildren() function">
+      <field name="ObjectID" type="OBJECTID">Object ID</field>
+      <field name="ClassID" type="CLASSID">The class ID of the referenced object.</field>
     </struct>
 
     <struct name="KeyStore" comment="Key-pair storage created by VarNew()">
@@ -909,13 +930,6 @@
       <field name="Size" type="LONG">The size of the message data, in bytes.  If there is no data associated with the message, the Size will be set to zero.&lt;/&gt;</field>
     </struct>
 
-    <struct name="RGB8" comment="8-bit RGB colour value." typeName="RGB8">
-      <field name="Red" type="UBYTE">Red component value</field>
-      <field name="Green" type="UBYTE">Green component value</field>
-      <field name="Blue" type="UBYTE">Blue component value</field>
-      <field name="Alpha" type="UBYTE">Alpha component value</field>
-    </struct>
-
     <struct name="DateTime" comment="Generic structure for date-time management.">
       <field name="Year" type="LONG">Year</field>
       <field name="Month" type="LONG">Month 1 to 12</field>
@@ -924,14 +938,6 @@
       <field name="Minute" type="LONG">Minute 0 to 59</field>
       <field name="Second" type="LONG">Second 0 to 59</field>
       <field name="TimeZone" type="LONG">TimeZone -13 to +13</field>
-    </struct>
-
-    <struct name="FieldArray" comment="Used to construct class blueprints for the MetaClass.">
-      <field name="Name" type="CSTRING">The name of the field, e.g. "Width"</field>
-      <field name="Flags" type="ULONG">Special flags that describe the field</field>
-      <field name="Arg" type="MAXINT">Can be a pointer or an integer value</field>
-      <field name="GetField" type="APTR">void GetField(*Object, APTR Result);</field>
-      <field name="SetField" type="APTR">ERROR SetField(*Object, APTR Value);</field>
     </struct>
 
     <struct name="ActionTable" comment="Structure for ActionList">

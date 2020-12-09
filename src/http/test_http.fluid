@@ -23,7 +23,7 @@ function testGet()
             print(string.format('%.80s [80 of %d bytes]', content, content:len()))
          end
          if (State == HGS_COMPLETED) or (State == HGS_TERMINATED) then
-            mSys.SendMessage(0, MSGID_QUIT)
+            HTTP.acSignal() // Breaks the processMessages() loop
          end
       end
    })
@@ -31,14 +31,16 @@ function testGet()
    local err = http.acActivate()
    assert(err == ERR_Okay, "HTTP object failed to activate.")
 
-   local elapsed, err = processMessages(5000)
+   local elapsed, err = processMessages(5000, { signal = http })
    if (err == ERR_TimeOut) then error('Test timed-out.') end
    if (http.error != ERR_Okay) then error('HTTP object returned error: ' .. mSys.GetErrorMsg(http.error)) end
+   if (http.state != HGS_COMPLETED) then error('Expected HTTP state of COMPLETED not reached, got ' .. http.state) end
 end
 
-function testPostString()
-   -- curl -v -X POST http://ptsv2.com/t/bgef9-1605557717/post -d "fname=smith&amp;lname=jones"
+--=====================================================================================================================
+-- curl -v -X POST http://ptsv2.com/t/bgef9-1605557717/post -d "fname=smith&amp;lname=jones"
 
+function testPostString()
    local http = obj.new('http', {
       src        = 'http://ptsv2.com/t/bgef9-1605557717/post', // See results at http://ptsv2.com/t/bgef9-1605557717
       method     = 'post',
@@ -57,7 +59,7 @@ function testPostString()
             print(file.readAll(glOutFile))
          end
          if (State == HGS_COMPLETED) or (State == HGS_TERMINATED) then
-            mSys.SendMessage(0, MSGID_QUIT)
+            HTTP.acSignal()
          end
       end
    })
@@ -65,10 +67,13 @@ function testPostString()
    local err = http.acActivate()
    assert(err == ERR_Okay, "HTTP object failed to activate.")
 
-   local elapsed, err = processMessages(5000)
+   local elapsed, err = processMessages(5000, { signal = { http } })
    if (err == ERR_TimeOut) then error('Test timed-out.') end
    if (http.error != ERR_Okay) then error('HTTP object returned error: ' .. mSys.GetErrorMsg(http.error)) end
+   if (http.state != HGS_COMPLETED) then error('Expected HTTP state of COMPLETED not reached, got ' .. http.state) end
 end
+
+--=====================================================================================================================
 
 function testPostStringFile()
    local body = 'fname=joe&amp;lname=bloggs'
@@ -82,7 +87,7 @@ function testPostStringFile()
       size       = body:len(),
       stateChanged = function(HTTP, State)
          if (State == HGS_COMPLETED) or (State == HGS_TERMINATED) then
-            mSys.SendMessage(0, MSGID_QUIT)
+            HTTP.acSignal()
          end
       end,
       incoming = function(HTTP, Buffer, BufferSize)
@@ -93,12 +98,13 @@ function testPostStringFile()
    local err = http.acActivate()
    assert(err == ERR_Okay, "HTTP object failed to activate.")
 
-   local elapsed, err = processMessages(5000)
+   local elapsed, err = processMessages(5000, { signal = http })
    if (err == ERR_TimeOut) then error('Test timed-out.') end
    if (http.error != ERR_Okay) then error('HTTP object returned error: ' .. mSys.GetErrorMsg(http.error)) end
+   if (http.state != HGS_COMPLETED) then error('Expected HTTP state of COMPLETED not reached, got ' .. http.state) end
 end
 
-//=====================================================================================================================
+--=====================================================================================================================
 
 function testSSLProxy()
    local http = obj.new('http', {
@@ -127,14 +133,14 @@ function testHTTPS()
             print(string.format('%.80s [%d bytes]', content, content:len()))
          end
          if (State == HGS_COMPLETED) or (State == HGS_TERMINATED) then
-            mSys.SendMessage(0, MSGID_QUIT)
+            HTTP.acSignal()
          end
          return ERR_Okay
       end
    })
 
    http.acActivate()
-   local elapsed, err = processMessages(5000)
+   local elapsed, err = processMessages(5000, { signal = http })
    if (err == ERR_TimeOut) then error('Test timed-out.') end
 end
 
@@ -162,7 +168,7 @@ function testUploadChunked()
    })
 
    http.acActivate()
-   local elapsed, err = processMessages(5000)
+   local elapsed, err = processMessages(5000, { signal = http })
    if (err == ERR_TimeOut) then error('Test timed-out.') end
 end
 

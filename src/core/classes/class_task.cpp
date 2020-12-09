@@ -103,6 +103,7 @@ static LONG glProcessBreak = 0;
 
 static ERROR GET_LaunchPath(objTask *, STRING *);
 
+static ERROR TASK_ActionNotify(objTask *, struct acActionNotify *);
 static ERROR TASK_Activate(objTask *, APTR);
 static ERROR TASK_Free(objTask *, APTR);
 static ERROR TASK_GetEnv(objTask *, struct taskGetEnv *);
@@ -135,6 +136,7 @@ static const FieldDef clFlags[] = {
 };
 
 static const ActionArray clActions[] = {
+   { AC_ActionNotify,  (APTR)TASK_ActionNotify },
    { AC_Activate,      (APTR)TASK_Activate },
    { AC_Free,          (APTR)TASK_Free },
    { AC_GetVar,        (APTR)TASK_GetVar },
@@ -144,7 +146,6 @@ static const ActionArray clActions[] = {
    { AC_Init,          (APTR)TASK_Init },
    { AC_Write,         (APTR)TASK_Write },
    // The following actions are program dependent
-   { AC_ActionNotify,  (APTR)InterceptedAction },
    { AC_Clear,         (APTR)InterceptedAction },
    { AC_Custom,        (APTR)InterceptedAction },
    { AC_DataFeed,      (APTR)InterceptedAction },
@@ -458,6 +459,13 @@ static ERROR msg_actionresult(APTR Custom, LONG MsgID, LONG MsgType, APTR Messag
 
 //****************************************************************************
 
+static ERROR msg_waitforobjects(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
+{
+   return ERR_Terminate;
+}
+
+//****************************************************************************
+
 static CSTRING action_id_name(LONG ActionID)
 {
    static char idname[20];
@@ -715,6 +723,33 @@ static ERROR InterceptedAction(objTask *Self, APTR Args)
       return Self->Actions[tlContext->Action].PerformAction((OBJECTPTR)Self, Args);
    }
    else return ERR_NoSupport;
+}
+
+//****************************************************************************
+
+static ERROR TASK_ActionNotify(objTask *Self, struct acActionNotify *Args)
+{
+   if (!Args) return ERR_NullArgs;
+
+   // Handler for WaitForObjects().  If an object on the list is signalled then it is removed from the list.  A
+   // message is sent once the list of objects that require signalling has been exhausted.
+
+   if (!glWFOList.empty()) {
+      auto action_ref = glWFOList.find(Args->Object);
+      if (action_ref != glWFOList.end()) {
+         if ((action_ref->second IS Args->ActionID) or (Args->ActionID IS AC_Free)) {
+            parasol::Log log;
+            log.trace("Object #%d has been signalled from action %d.", Args->Object, Args->ActionID);
+            glWFOList.erase(action_ref);
+            if (glWFOList.empty()) {
+               log.trace("All objects signalled.");
+               SendMessage(0, MSGID_WAIT_FOR_OBJECTS, MSF_WAIT, NULL, 0); // Will result in ProcessMessages() terminating
+            }
+         }
+      }
+   }
+
+   return InterceptedAction(Self, Args);
 }
 
 /*****************************************************************************
@@ -1455,6 +1490,7 @@ static ERROR TASK_Free(objTask *Self, APTR Void)
    if (Self->MsgActionResult)    { FreeResource(Self->MsgActionResult);    Self->MsgActionResult    = NULL; }
    if (Self->MsgDebug)           { FreeResource(Self->MsgDebug);           Self->MsgDebug           = NULL; }
    if (Self->MsgValidateProcess) { FreeResource(Self->MsgValidateProcess); Self->MsgValidateProcess = NULL; }
+   if (Self->MsgWaitForObjects)  { FreeResource(Self->MsgWaitForObjects);  Self->MsgWaitForObjects  = NULL; }
    if (Self->MsgQuit)            { FreeResource(Self->MsgQuit);            Self->MsgQuit            = NULL; }
    if (Self->MsgEvent)           { FreeResource(Self->MsgEvent);           Self->MsgEvent           = NULL; }
    if (Self->MsgThreadCallback)  { FreeResource(Self->MsgThreadCallback);  Self->MsgThreadCallback  = NULL; }
@@ -1872,6 +1908,9 @@ static ERROR TASK_Init(objTask *Self, APTR Void)
 
       call.StdC.Routine = (APTR)msg_quit;
       AddMsgHandler(NULL, MSGID_QUIT, &call, &Self->MsgQuit);
+
+      call.StdC.Routine = (APTR)msg_waitforobjects;
+      AddMsgHandler(NULL, MSGID_WAIT_FOR_OBJECTS, &call, &Self->MsgWaitForObjects);
 
       call.StdC.Routine = (APTR)msg_event; // lib_events.c
       AddMsgHandler(NULL, MSGID_EVENT, &call, &Self->MsgEvent);

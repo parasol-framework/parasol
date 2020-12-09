@@ -2,7 +2,7 @@
 
 module({ name="Core", copyright="Paul Manias 1996-2020" }, function()
   c_include("<stdarg.h>")
-  cpp_include("<list>", "<map>", "<string>", "<vector>")
+  cpp_include("<list>", "<map>", "<string>", "<vector>", "<unordered_map>")
 
   platform("Windows", function()
      enum("NETMSG", {}, "START", "END")
@@ -371,7 +371,8 @@ module({ name="Core", copyright="Paul Manias 1996-2020" }, function()
      EVENT = 94,
      VALIDATE_PROCESS = 93,
      THREAD_CALLBACK = 92,
-     THREAD_ACTION = 91
+     THREAD_ACTION = 91,
+     WAIT_FOR_OBJECTS = 90
   })
 
   const("LTF", { comment="Flags for ListTasks()" }, {
@@ -629,6 +630,11 @@ module({ name="Core", copyright="Paul Manias 1996-2020" }, function()
     -- End marker
     LIST_END    = 150
   })
+
+  struct("ObjectSignal", { comment="Required in calls to WaitForObjects()." }, [[
+     obj Object
+     int ActionID
+  ]])
 
   struct("ResourceManager", { comment="This structure must be placed at the start of any memory block allocated with the MEM_MANAGED flag.", restrict="c" }, [[
      cstr Name            # The name of the resource.
@@ -1139,7 +1145,8 @@ struct ScriptArg { // For use with scExec
     "KeyIterate",
     "VarSetSized",
     "VarLock",
-    "VLogF")
+    "VLogF",
+    "WaitForObjects")
 
   c_insert([[
 
@@ -1424,6 +1431,7 @@ INLINE ERROR cfgReadInt(APTR Self, CSTRING Group, CSTRING Key, LONG *Value)
    struct MsgHandler *MsgSetField;
    struct MsgHandler *MsgActionResult;
    struct MsgHandler *MsgDebug;
+   struct MsgHandler *MsgWaitForObjects;
    struct MsgHandler *MsgValidateProcess;
    struct MsgHandler *MsgQuit;
    struct MsgHandler *MsgEvent;

@@ -32,9 +32,9 @@
 
 char glProgName[32] = "Program";
 
-char glRootPath[SIZE_SYSTEM_PATH] = ""ROOT_PATH"";
-char glSystemPath[SIZE_SYSTEM_PATH] = ""SYSTEM_PATH"";
-char glModulePath[SIZE_SYSTEM_PATH] = ""MODULE_PATH"";
+char glRootPath[SIZE_SYSTEM_PATH] = "" ROOT_PATH "";
+char glSystemPath[SIZE_SYSTEM_PATH] = "" SYSTEM_PATH "";
+char glModulePath[SIZE_SYSTEM_PATH] = "" MODULE_PATH "";
 
 char glDisplayDriver[28] = "";
 
@@ -106,6 +106,7 @@ struct FDTable *glFDTable = NULL;
 WORD glTotalFDs = 0, glLastFD = 0;
 UBYTE glTimerCycle = 1;
 CSTRING glIDL = MOD_IDL;
+std::unordered_map<OBJECTID, ACTIONID> glWFOList;
 
 #ifdef __unix__
   THREADVAR LONG glSocket = -1; // Implemented as thread-local because we don't want threads other than main to utilise the messaging system.
@@ -155,7 +156,7 @@ LONG glInotify = -1;
 struct DocView *glDocView = NULL;
 
 const struct virtual_drive glFSDefault = {
-   -1, ":",
+   0xffffffff, ":",
 #ifdef _WIN32
    FALSE,     // Windows is not case sensitive by default
 #else
@@ -204,7 +205,7 @@ THREADVAR LONG tlThreadWriteMsg = 0;
 #endif
 
 static struct Head glDummyObject;
-struct ObjectContext glTopContext = { .Object = &glDummyObject, .Stack = NULL, .Field = NULL }; // Top-level context is a dummy and can be thread-shared
+struct ObjectContext glTopContext = { .Stack = NULL, .Object = &glDummyObject, .Field = NULL }; // Top-level context is a dummy and can be thread-shared
 THREADVAR struct ObjectContext *tlContext = &glTopContext;
 OBJECTPTR glLocale = NULL;
 objTime *glTime = NULL;

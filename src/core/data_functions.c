@@ -194,6 +194,7 @@ FDEF argsVarSetSized[] = { { "Error", FD_LONG|FD_ERROR }, { "KeyStore:Store", FD
 FDEF argsVarSetString[] = { { "Error", FD_LONG|FD_ERROR }, { "KeyStore:Store", FD_PTR|FD_STRUCT|FD_RESOURCE }, { "Key", FD_STR }, { "Value", FD_STR }, { 0, 0 } };
 FDEF argsVarUnlock[] = { { "Void", FD_VOID }, { "KeyStore:Store", FD_PTR|FD_STRUCT|FD_RESOURCE }, { 0, 0 } };
 FDEF argsVirtualVolume[] = { { "Error", FD_LONG|FD_ERROR }, { "Name", FD_STR }, { "Tags", FD_TAGS }, { 0, 0 } };
+FDEF argsWaitForObjects[] = { { "Error", FD_LONG|FD_ERROR }, { "Flags", FD_LONG }, { "TimeOut", FD_LONG }, { "ObjectSignal:ObjectSignals", FD_PTR|FD_STRUCT }, { 0, 0 } };
 FDEF argsWaitTime[] = { { "Void", FD_VOID }, { "Seconds", FD_LONG }, { "MicroSeconds", FD_LONG }, { 0, 0 } };
 
 const struct Function glFunctions[] = {
@@ -388,6 +389,7 @@ const struct Function glFunctions[] = {
    { (APTR)VarSetSized, "VarSetSized", argsVarSetSized },
    { (APTR)VarLock, "VarLock", argsVarLock },
    { (APTR)VLogF, "VLogF", argsVLogF },
+   { (APTR)WaitForObjects, "WaitForObjects", argsWaitForObjects },
    { NULL, NULL, NULL }
 };
 

@@ -493,6 +493,7 @@ extern struct KeyStore *glClassMap; // Register of all classes.
 extern struct KeyStore *glFields; // Reverse lookup for converting field hashes back to their respective names.
 extern OBJECTID glClassFileID;
 extern CSTRING glIDL;
+extern std::unordered_map<OBJECTID, ACTIONID> glWFOList;
 
 extern CSTRING glClassBinPath;
 extern CSTRING glModuleBinPath;

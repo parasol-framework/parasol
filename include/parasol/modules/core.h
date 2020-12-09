@@ -16,6 +16,7 @@
 #include <map>
 #include <string>
 #include <vector>
+#include <unordered_map>
 #endif
 
 #ifdef _WIN32
@@ -1113,6 +1114,7 @@ struct ClipRectangle {
 #define MSGID_DEBUG 95
 #define MSGID_GET_FIELD 97
 #define MSGID_ACTION 99
+#define MSGID_WAIT_FOR_OBJECTS 90
 #define MSGID_EXPOSE 100
 #define MSGID_THREAD_ACTION 91
 #define MSGID_QUIT 1000
@@ -1375,6 +1377,11 @@ struct ClipRectangle {
 #define K_F3 78
 #define K_EXECUTE 116
 #define K_NINE 35
+
+struct ObjectSignal {
+   OBJECTPTR Object;
+   LONG      ActionID;
+};
 
 struct ResourceManager {
    CSTRING Name;           // The name of the resource.
@@ -1891,6 +1898,7 @@ struct CoreBase {
    ERROR (*_VarSetSized)(struct KeyStore *, CSTRING, LONG, APTR, LONG *);
    ERROR (*_VarLock)(struct KeyStore *, LONG);
    void (*_VLogF)(int, const char *, const char *, va_list);
+   ERROR (*_WaitForObjects)(LONG, LONG, struct ObjectSignal *);
 };
 
 #ifndef PRV_CORE_MODULE
@@ -2085,6 +2093,7 @@ struct CoreBase {
 #define VarSetSized(...) (CoreBase->_VarSetSized)(__VA_ARGS__)
 #define VarLock(...) (CoreBase->_VarLock)(__VA_ARGS__)
 #define VLogF(...) (CoreBase->_VLogF)(__VA_ARGS__)
+#define WaitForObjects(...) (CoreBase->_WaitForObjects)(__VA_ARGS__)
 #endif
 
 
@@ -2550,6 +2559,7 @@ typedef struct rkTask {
    struct MsgHandler *MsgSetField;
    struct MsgHandler *MsgActionResult;
    struct MsgHandler *MsgDebug;
+   struct MsgHandler *MsgWaitForObjects;
    struct MsgHandler *MsgValidateProcess;
    struct MsgHandler *MsgQuit;
    struct MsgHandler *MsgEvent;
