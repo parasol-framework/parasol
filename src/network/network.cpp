@@ -43,6 +43,7 @@ sockets and HTTP, please refer to the @NetSocket and @HTTP classes.
 
 #include <unordered_set>
 #include <stack>
+#include <mutex>
 
 #ifdef __linux__
 typedef LONG SOCKET_HANDLE;
@@ -202,6 +203,7 @@ struct resolve_addr_buffer {
 static MsgHandler *glResolveNameHandler = NULL;
 static MsgHandler *glResolveAddrHandler = NULL;
 static std::unordered_set<OBJECTPTR> glThreads;
+static std::mutex glThreadLock;
 
 //***************************************************************************
 // Used for receiving asynchronous execution results (sent as a message) from netResolveName() and netResolveAddress().
@@ -238,6 +240,7 @@ static ERROR thread_resolve_name(objThread *Thread)
 
    SendMessage(0, glResolveNameMsgID, MSF_WAIT, rnb, Thread->DataSize);
 
+   std::lock_guard<std::mutex> lock(glThreadLock);
    glThreads.erase(&Thread->Head);
    return ERR_Okay;
 }
@@ -249,6 +252,7 @@ static ERROR thread_resolve_addr(objThread *Thread)
 
    SendMessage(0, glResolveAddrMsgID, MSF_WAIT, rab, Thread->DataSize);
 
+   std::lock_guard<std::mutex> lock(glThreadLock);
    glThreads.erase(&Thread->Head);
    return ERR_Okay;
 }
@@ -570,6 +574,7 @@ static ERROR netResolveAddress(CSTRING Address, LONG Flags, FUNCTION *Callback, 
          rab->client_data = ClientData;
          StrCopy(Address, (STRING)(rab + 1), COPY_ALL);
          if ((!thSetData(thread, rab, pkg_size)) and (!acActivate(thread))) {
+            std::lock_guard<std::mutex> lock(glThreadLock);
             glThreads.insert(thread);
             return ERR_Okay;
          }
@@ -714,6 +719,7 @@ static ERROR netResolveName(CSTRING HostName, LONG Flags, FUNCTION *Callback, LA
          rnb->client_data = ClientData;
          StrCopy(HostName, (STRING)(rnb + 1), COPY_ALL);
          if ((!thSetData(thread, buffer, pkg_size)) and (!acActivate(thread))) {
+            std::lock_guard<std::mutex> lock(glThreadLock);
             glThreads.insert(thread);
             return ERR_Okay;
          }
