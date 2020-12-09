@@ -41,6 +41,7 @@ sockets and HTTP, please refer to the @NetSocket and @HTTP classes.
 #include <openssl/pem.h>
 #endif
 
+#include <unordered_set>
 #include <stack>
 
 #ifdef __linux__
@@ -200,6 +201,7 @@ struct resolve_addr_buffer {
 
 static MsgHandler *glResolveNameHandler = NULL;
 static MsgHandler *glResolveAddrHandler = NULL;
+static std::unordered_set<OBJECTPTR> glThreads;
 
 //***************************************************************************
 // Used for receiving asynchronous execution results (sent as a message) from netResolveName() and netResolveAddress().
@@ -234,7 +236,9 @@ static ERROR thread_resolve_name(objThread *Thread)
    // Part of the trick to this process is that netResolveName() will have cached the IP results, so they
    // will be retrievable when the main thread gets the message.
 
-   SendMessage(0, glResolveNameMsgID, 0, rnb, Thread->DataSize);
+   SendMessage(0, glResolveNameMsgID, MSF_WAIT, rnb, Thread->DataSize);
+
+   glThreads.erase(&Thread->Head);
    return ERR_Okay;
 }
 
@@ -242,7 +246,10 @@ static ERROR thread_resolve_addr(objThread *Thread)
 {
    auto rab = (resolve_addr_buffer *)Thread->Data;
    netResolveAddress((CSTRING)(rab + 1), NSF_SYNCHRONOUS, NULL, 0); // Blocking
-   SendMessage(0, glResolveAddrMsgID, 0, rab, Thread->DataSize);
+
+   SendMessage(0, glResolveAddrMsgID, MSF_WAIT, rab, Thread->DataSize);
+
+   glThreads.erase(&Thread->Head);
    return ERR_Okay;
 }
 
@@ -305,6 +312,13 @@ ERROR MODOpen(OBJECTPTR Module)
 static ERROR MODExpunge(void)
 {
    parasol::Log log;
+
+   if (not glThreads.empty()) {
+      log.msg("Waiting on any Network threads (%d) that remain active...", (LONG)glThreads.size());
+      while (not glThreads.empty()) { // Threads will automatically remove themselves
+         WaitTime(1, 0);
+      }
+   }
 
 #ifdef _WIN32
    SetResourcePtr(RES_NET_PROCESSING, NULL);
@@ -555,9 +569,11 @@ static ERROR netResolveAddress(CSTRING Address, LONG Flags, FUNCTION *Callback, 
          rab->callback = *Callback;
          rab->client_data = ClientData;
          StrCopy(Address, (STRING)(rab + 1), COPY_ALL);
-         if ((!thSetData(thread, rab, pkg_size)) AND (!acActivate(thread))) {
+         if ((!thSetData(thread, rab, pkg_size)) and (!acActivate(thread))) {
+            glThreads.insert(thread);
             return ERR_Okay;
          }
+         else acFree(thread);
       }
    }
 
@@ -697,10 +713,13 @@ static ERROR netResolveName(CSTRING HostName, LONG Flags, FUNCTION *Callback, LA
          rnb->callback = *Callback;
          rnb->client_data = ClientData;
          StrCopy(HostName, (STRING)(rnb + 1), COPY_ALL);
-         if ((!thSetData(thread, buffer, pkg_size)) AND (!acActivate(thread))) {
+         if ((!thSetData(thread, buffer, pkg_size)) and (!acActivate(thread))) {
+            glThreads.insert(thread);
             return ERR_Okay;
          }
+         else acFree(thread);
       }
+      log.warning("Failed to resolve the name asynchronously.");
    }
 
    {
