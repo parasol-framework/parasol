@@ -49,6 +49,8 @@ within the thread routine.
 
 #define THREADPOOL_MAX 6
 
+static void thread_entry_cleanup(void *);
+
 static LONG glActionThreadsIndex = 0;
 static struct {
    objThread *Thread;
@@ -180,6 +182,7 @@ ERROR msg_threadaction(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG
 
 //****************************************************************************
 // Called whenever a MSGID_THREAD_CALLBACK message is caught by ProcessMessages().  See thread_entry() for usage.
+// This is NOT called if the developer did not define a Callback reference.
 
 ERROR msg_threadcallback(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
 {
@@ -217,12 +220,19 @@ ERROR msg_threadcallback(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LO
 //****************************************************************************
 // This is the entry point for all threads.
 
+THREADVAR BYTE tlThreadCrashed;
+THREADVAR objThread *tlThreadRef;
+
 #ifdef _WIN32
 static int thread_entry(objThread *Self)
 #elif __unix__
 static void * thread_entry(objThread *Self)
 #endif
 {
+   tlThreadCrashed = TRUE;
+   tlThreadRef = Self;
+   pthread_cleanup_push(&thread_entry_cleanup, Self);
+
    if (Self->Flags & THF_MSG_HANDLER) {
       tlThreadReadMsg  = Self->prv.Msgs[0];
       tlThreadWriteMsg = Self->prv.Msgs[1];
@@ -256,6 +266,9 @@ static void * thread_entry(objThread *Self)
          while (!ProcessMessages(0, -1));
       }
 
+      tlThreadRef = NULL;
+      NotifySubscribers(&Self->Head, AC_Signal, NULL, 0, ERR_Okay); // Required by THREAD_Wait()
+
       tlContext = &glTopContext; // Revert back to the dummy context
 
       if (Self->prv.Callback.Type) {
@@ -274,22 +287,32 @@ static void * thread_entry(objThread *Self)
             acFree(&Self->Head);
             ReleasePrivateObject((OBJECTPTR)Self);
          }
+         // Please note that the Thread object/memory is now terminated
       }
       else Self->prv.Active = FALSE;
    }
 
-   // EXIT
+   tlThreadCrashed = FALSE;
+   pthread_cleanup_pop(TRUE);
+   return 0;
+}
 
-   if (Self->Flags & THF_MSG_HANDLER) {
-      tlThreadReadMsg  = 0;
-      tlThreadWriteMsg = 0;
+//****************************************************************************
+// Cleanup on completion of a thread.  Note that this will also run in the event that the thread throws an exception.
+
+static void thread_entry_cleanup(void *Arg)
+{
+   if (tlThreadCrashed) {
+      LogF("!Parasol","A thread in this program has crashed.");
+      if (tlThreadRef) tlThreadRef->prv.Active = FALSE;
    }
+
+   tlThreadReadMsg  = 0;
+   tlThreadWriteMsg = 0;
 
    #ifdef _WIN32
       free_threadlock();
    #endif
-
-   return 0;
 }
 
 /*****************************************************************************
@@ -397,7 +420,7 @@ static ERROR THREAD_FreeWarning(objThread *Self, APTR Void)
    parasol::Log log;
    if (Self->prv.Active) {
       log.warning("Attempt to free an active thread.  Process will wait for the thread to terminate.");
-      struct thWait wait = { 60 * 1000, 1000 };
+      struct thWait wait = { 60 * 1000 };
       Action(MT_ThWait, &Self->Head, &wait);
 
       if (Self->prv.Active) {
@@ -504,21 +527,17 @@ static ERROR THREAD_SetData(objThread *Self, struct thSetData *Args)
 -METHOD-
 Wait: Waits for a thread to be completed.
 
-Call the Wait method to wait for a thread to complete its activity.  Because waiting for a thread will normally cause
-the caller to halt all processing, the MsgInterval parameter can be used to make periodic calls to ~ProcessMessages()
-every X milliseconds.  If the MsgInterval is set to -1 then no periodic message checks will be made.
-
-Limitations: Android and OSX implementations do not currently support the TimeOut or MsgInterval parameters.
+Call the Wait method to wait for a thread to complete its activity.  Incoming messages will continue to be processed
+by ~ProcessMessages() while waiting.
 
 -INPUT-
 int TimeOut: A timeout value measured in milliseconds.
-int MsgInterval: Check for incoming messages every X milliseconds.
 
 -ERRORS-
 Okay: The thread is no longer active.
 NullArgs
 Args: The TimeOut value is invalid.
-TimeOut: The timeout was reached before the thread completed.
+TimeOut: The timeout was reached before the thread was terminated.
 -END-
 
 *****************************************************************************/
@@ -528,52 +547,9 @@ static ERROR THREAD_Wait(objThread *Self, struct thWait *Args)
    parasol::Log log;
 
    if (!Args) return log.warning(ERR_NullArgs);
-   if (Args->TimeOut < 0) return log.warning(ERR_Args);
-   if (Args->MsgInterval < -1) return log.warning(ERR_Args);
 
-#ifdef __ANDROID__
-   pthread_join(Self->prv.PThread, NULL);
-   return ERR_Okay;
-#elif __APPLE__
-   // TODO: Simulation of pthread_timedjoin_np() is possible by creating locked semaphores for the threads, then
-   // wait on the semaphore here for the lock to be released.
-   pthread_join(Self->prv.PThread, NULL);
-   return ERR_Okay;
-#else
-   LARGE current_time = (PreciseTime()/1000LL);
-   LARGE end_time = current_time + Args->TimeOut;
-
-    __sync_add_and_fetch(&Self->prv.Waiting, 1);
-
-    do {
-      LONG time_left = end_time - current_time;
-
-      if (Args->MsgInterval != -1) { // -1 means do not use message intervals.
-         if (time_left > Args->MsgInterval) time_left = Args->MsgInterval;
-      }
-      #ifdef _WIN32
-      if (!winWaitThread(Self->prv.Handle, Args->TimeOut)) {
-      #else
-      APTR result;
-      struct timespec timeout = {
-         .tv_sec = time_left / 1000,
-         .tv_nsec = (time_left % 1000) * 1000000 // 1 in 1,000,000,000
-      };
-      if (!pthread_timedjoin_np(Self->prv.PThread, &result, &timeout)) {
-      #endif
-         __sync_sub_and_fetch(&Self->prv.Waiting, 1);
-         return ERR_Okay;
-      }
-      else break;
-
-      if (ProcessMessages(0, 0) IS ERR_Terminate) break;
-
-      current_time = (PreciseTime() / 1000LL);
-   } while (current_time < end_time);
-
-   __sync_sub_and_fetch(&Self->prv.Waiting, 1);
-   return ERR_TimeOut;
-#endif
+   ObjectSignal sig[2] = { { .Object = &Self->Head, .ActionID = AC_Signal }, { 0, 0 } };
+   return WaitForObjects(0, Args->TimeOut, sig);
 }
 
 /*****************************************************************************

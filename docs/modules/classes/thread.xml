@@ -83,19 +83,17 @@ if (!CreateObject(ID_THREAD, 0, &amp;thread,
     <method>
       <name>Wait</name>
       <comment>Waits for a thread to be completed.</comment>
-      <prototype>ERROR thWait(OBJECTPTR Object, LONG TimeOut, LONG MsgInterval)</prototype>
+      <prototype>ERROR thWait(OBJECTPTR Object, LONG TimeOut)</prototype>
       <input>
         <param type="LONG" name="TimeOut">A timeout value measured in milliseconds.</param>
-        <param type="LONG" name="MsgInterval">Check for incoming messages every X milliseconds.</param>
       </input>
       <description>
-<p>Call the Wait method to wait for a thread to complete its activity.  Because waiting for a thread will normally cause the caller to halt all processing, the MsgInterval parameter can be used to make periodic calls to <function module="Core">ProcessMessages</function> every X milliseconds.  If the MsgInterval is set to -1 then no periodic message checks will be made.</p>
-<p>Limitations: Android and OSX implementations do not currently support the TimeOut or MsgInterval parameters.</p>
+<p>Call the Wait method to wait for a thread to complete its activity.  Incoming messages will continue to be processed by <function module="Core">ProcessMessages</function> while waiting.</p>
       </description>
       <result>
         <error code="NullArgs">Function call missing argument value(s)</error>
         <error code="Args">The TimeOut value is invalid.</error>
-        <error code="TimeOut">The timeout was reached before the thread completed.</error>
+        <error code="TimeOut">The timeout was reached before the thread was terminated.</error>
         <error code="Okay">The thread is no longer active.</error>
       </result>
     </method>

@@ -2639,15 +2639,15 @@ typedef struct rkThread {
 #define MT_ThWait -2
 
 struct thSetData { APTR Data; LONG Size;  };
-struct thWait { LONG TimeOut; LONG MsgInterval;  };
+struct thWait { LONG TimeOut;  };
 
 INLINE ERROR thSetData(APTR Ob, APTR Data, LONG Size) {
    struct thSetData args = { Data, Size };
    return(Action(MT_ThSetData, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR thWait(APTR Ob, LONG TimeOut, LONG MsgInterval) {
-   struct thWait args = { TimeOut, MsgInterval };
+INLINE ERROR thWait(APTR Ob, LONG TimeOut) {
+   struct thWait args = { TimeOut };
    return(Action(MT_ThWait, (OBJECTPTR)Ob, &args));
 }
 

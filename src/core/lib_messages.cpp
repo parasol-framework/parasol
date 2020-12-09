@@ -778,7 +778,9 @@ ERROR WaitForObjects(LONG Flags, LONG TimeOut, ObjectSignal *ObjectSignals)
    for (LONG i=0; ((error IS ERR_Okay) and (ObjectSignals[i].Object)); i++) {
       // NB: Monitoring of public objects is not supported.
       if (!SubscribeAction(ObjectSignals[i].Object, AC_Free)) {
-         if (ObjectSignals[i].ActionID) error = SubscribeAction(ObjectSignals[i].Object, ObjectSignals[i].ActionID);
+         if ((ObjectSignals[i].ActionID) and (ObjectSignals[i].ActionID != AC_Free)) {
+            if (SubscribeAction(ObjectSignals[i].Object, ObjectSignals[i].ActionID)) error = ERR_Failed;
+         }
          glWFOList.insert(std::make_pair(ObjectSignals[i].Object->UniqueID, ObjectSignals[i].ActionID));
       }
       else error = ERR_Failed;
@@ -793,9 +795,11 @@ ERROR WaitForObjects(LONG Flags, LONG TimeOut, ObjectSignal *ObjectSignals)
          error = ProcessMessages(Flags, (end_time - current_time) / 1000LL);
          current_time = PreciseTime();
       }
+
+      if ((!error) and (not glWFOList.empty())) error = ERR_TimeOut;
+      if (error) log.warning(error);
    }
 
-   if (error) log.warning(error);
    return error;
 }
 
