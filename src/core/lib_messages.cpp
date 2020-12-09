@@ -1619,7 +1619,6 @@ ERROR sleep_task(LONG Timeout, BYTE SystemOnly)
 #ifdef __unix__ // TLS data for the wake_task() socket.
 static pthread_key_t keySocket;
 static pthread_once_t keySocketOnce = PTHREAD_ONCE_INIT;
-#pragma GCC diagnostic ignored "-Wpointer-to-int-cast"
 #pragma GCC diagnostic ignored "-Wint-to-pointer-cast"
 static void thread_socket_free(void *Socket) { close(PTR_TO_HOST(Socket)); }
 static void thread_socket_init(void) { pthread_key_create(&keySocket, thread_socket_free); }
@@ -1651,7 +1650,6 @@ void wake_task(LONG TaskIndex, CSTRING Caller)
    // discovered to cause problems.  The use of pthread keys also ensures that the socket FD is automatically closed
    // when the thread is removed.
 
-   #pragma GCC diagnostic ignored "-Wpointer-to-int-cast"
    #pragma GCC diagnostic ignored "-Wint-to-pointer-cast"
    HOSTHANDLE tlSendSocket;
    pthread_once(&keySocketOnce, thread_socket_init);
