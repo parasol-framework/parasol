@@ -22,13 +22,16 @@ module({ name="Core", copyright="Paul Manias 1996-2020" }, function()
      "MATCH_LEN: The strings must be of equal length to be matched.",
      "WILDCARD: Allow the use of wildcard characters '|', '?' and '*'.")
 
-  flags("MSF",  { comment="Message flags." },
+  flags("MSF", { comment="Message flags." },
      "WAIT: Wait before inserting the message if the queue is at maximum capacity.",
      "UPDATE: If the Type parameter matches a message already inside the queue, the data for that message will be deleted, then the new message will be added to the end of the queue.",
      "NO_DUPLICATE: If the Type parameter matches a message already inside the queue, the new message will not be added and the function will immediately return with ERR_Okay.",
      "ADD: The default behaviour - this will add the message to the end of the queue.",
      "ADDRESS: Internal flag that changes the behaviour of the input parameters so that queues can be processed by address rather than ID.",
      "MESSAGE_ID: The Type parameter refers to a unique message ID rather than a message type for this call.")
+
+  flags("PMF", { comment="Flags for ProcessMessages" },
+     "SYSTEM_NO_BREAK: Private.  For system calls that need to avoid early termination.")
 
   flags("ALF", { bits=16 },
      "SHARED: The lock will be shared between foreign processes.",

@@ -662,6 +662,10 @@ struct ClipRectangle {
 #define MSF_ADDRESS 0x00000010
 #define MSF_MESSAGE_ID 0x00000020
 
+// Flags for ProcessMessages
+
+#define PMF_SYSTEM_NO_BREAK 0x00000001
+
 #define ALF_SHARED 0x0001
 #define ALF_RECURSIVE 0x0002
 

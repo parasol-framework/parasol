@@ -274,10 +274,10 @@ message, then it is removed from the queue without being processed. Message hand
 will stop processing the queue and returns immediately with ERR_Okay.
 
 If a message with a MSGID_QUIT ID is found on the queue, then the function returns immediately with the error code
-ERR_Terminate.  This indicates that you must stop the program as soon as possible and exit gracefully.
+ERR_Terminate.  The program must respond to the terminate request by exiting immediately.
 
 -INPUT-
-int Flags:   Optional flags are specified here (currently no flags are provided).
+int(PMF) Flags:   Optional flags are specified here (currently no flags are provided).
 int TimeOut: A TimeOut value, measured in milliseconds.  If zero, the function will return as soon as all messages on the queue are processed.  If less than zero, the function does not return until a request for termination is received or a user message requires processing.
 
 -ERRORS-
@@ -435,7 +435,7 @@ ERROR ProcessMessages(LONG Flags, LONG TimeOut)
             }
          }
 
-         if ((glTaskState IS TSTATE_STOPPING) or (breaking)) {
+         if (((glTaskState IS TSTATE_STOPPING) and (!(Flags & PMF_SYSTEM_NO_BREAK))) or (breaking)) {
             log.trace("Breaking message loop.");
             break;
          }
@@ -456,7 +456,8 @@ ERROR ProcessMessages(LONG Flags, LONG TimeOut)
 
       glTimerCycle++;
 timer_cycle:
-      if ((glTaskState != TSTATE_STOPPING) and (!thread_lock(TL_TIMER, 200))) {
+      if ((glTaskState IS TSTATE_STOPPING) and (!(Flags & PMF_SYSTEM_NO_BREAK)));
+      else if (!thread_lock(TL_TIMER, 200)) {
          LARGE current_time = PreciseTime();
          for (CoreTimer *timer=glTimers; timer; timer=timer->Next) {
             if (current_time < timer->NextCall) continue;
@@ -517,7 +518,7 @@ timer_cycle:
          thread_unlock(TL_TIMER);
       }
 
-      // This routine pulls out all messages and processes them
+      // This sub-routine consumes all of the queued messages
 
       WORD msgcount = 0;
       BYTE repass = FALSE;
@@ -526,7 +527,7 @@ timer_cycle:
          BYTE msgfound = FALSE;
          if (!AccessMemory(glTaskMessageMID, MEM_READ_WRITE, 2000, (void **)&msgbuffer)) {
             if (msgbuffer->Count) {
-               TaskMessage *scanmsg = (TaskMessage *)msgbuffer->Buffer;
+               auto scanmsg = (TaskMessage *)msgbuffer->Buffer;
                TaskMessage *prevmsg = NULL;
 
                #ifdef DEBUG
@@ -605,7 +606,7 @@ timer_cycle:
 
          ThreadLock lock(TL_MSGHANDLER, 5000);
          if (lock.granted()) {
-            for (MsgHandler *handler=glMsgHandlers; handler; handler=handler->Next) {
+            for (auto handler=glMsgHandlers; handler; handler=handler->Next) {
                if ((!handler->MsgType) or (handler->MsgType IS msg->Type)) {
                   ERROR result = ERR_NoSupport;
                   if (handler->Function.Type IS CALL_STDC) {
@@ -670,7 +671,7 @@ timer_cycle:
       #endif
 
       LARGE wait = 0;
-      if ((repass) or (breaking) or (glTaskState IS TSTATE_STOPPING));
+      if ((repass) or (breaking) or ((glTaskState IS TSTATE_STOPPING) and (!(Flags & PMF_SYSTEM_NO_BREAK))));
       else if (timeout_end > 0) {
          // Wait for someone to communicate with us, or stall until an interrupt is due.
 
@@ -705,18 +706,17 @@ timer_cycle:
          else {
          }
       #else
-         sleep_task(wait/1000LL); // Event if wait is zero, we still need to clear FD's and call FD hooks
+         sleep_task(wait / 1000LL); // Event if wait is zero, we still need to clear FD's and call FD hooks
       #endif
 
       // Continue the loop?
 
       if (repass) continue; // There are messages left unprocessed
-      if ((glTaskState IS TSTATE_STOPPING) or (breaking)) {
+      else if (((glTaskState IS TSTATE_STOPPING) and (!(Flags & PMF_SYSTEM_NO_BREAK))) or (breaking)) {
          log.trace("Breaking message loop.");
          break;
       }
-
-      if (PreciseTime() >= timeout_end) {
+      else if (PreciseTime() >= timeout_end) {
          if (TimeOut) {
             log.trace("Breaking message loop - timeout of %dms.", TimeOut);
             if (timeout_end > 0) returncode = ERR_TimeOut;
@@ -726,7 +726,7 @@ timer_cycle:
 
    } while (1);
 
-   if (glTaskState IS TSTATE_STOPPING) returncode = ERR_Terminate;
+   if ((glTaskState IS TSTATE_STOPPING) and (!(Flags & PMF_SYSTEM_NO_BREAK))) returncode = ERR_Terminate;
 
    if (msg) FreeResource(msg);
 

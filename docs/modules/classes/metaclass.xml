@@ -410,64 +410,26 @@
       <const name="LOCAL_TASK">Only send messages to objects that are owned by the current process.</const>
     </constants>
 
-    <constants lookup="AC" comment="Action identifiers.">
-      <const name="ActionNotify"/>
-      <const name="Activate"/>
-      <const name="AccessObject"/>
-      <const name="Clear"/>
-      <const name="FreeWarning"/>
-      <const name="OwnerDestroyed"/>
-      <const name="CopyData"/>
-      <const name="DataFeed"/>
-      <const name="Deactivate"/>
-      <const name="Draw"/>
-      <const name="Flush"/>
-      <const name="Focus"/>
-      <const name="Free"/>
-      <const name="ReleaseObject"/>
-      <const name="GetVar"/>
-      <const name="DragDrop"/>
-      <const name="Hide"/>
-      <const name="Init"/>
-      <const name="Lock"/>
-      <const name="LostFocus"/>
-      <const name="Move"/>
-      <const name="MoveToBack"/>
-      <const name="MoveToFront"/>
-      <const name="NewChild"/>
-      <const name="NewOwner"/>
-      <const name="NewObject"/>
-      <const name="Redo"/>
-      <const name="Query"/>
-      <const name="Read"/>
-      <const name="Rename"/>
-      <const name="Reset"/>
-      <const name="Resize"/>
-      <const name="SaveImage"/>
-      <const name="SaveToObject"/>
-      <const name="Scroll"/>
-      <const name="Seek"/>
-      <const name="SetVar"/>
-      <const name="Show"/>
-      <const name="Undo"/>
-      <const name="Unlock"/>
-      <const name="Next"/>
-      <const name="Prev"/>
-      <const name="Write"/>
-      <const name="SetField"/>
-      <const name="Clipboard"/>
-      <const name="Refresh"/>
-      <const name="Disable"/>
-      <const name="Enable"/>
-      <const name="Redimension"/>
-      <const name="MoveToPoint"/>
-      <const name="ScrollToPoint"/>
-      <const name="Custom"/>
-      <const name="Sort"/>
-      <const name="SaveSettings"/>
-      <const name="SelectArea"/>
-      <const name="Signal"/>
-      <const name="END"/>
+    <constants lookup="RDF" comment="Flags for the OpenDir() function.">
+      <const name="LINK">Feedback only - file/folder is actually a link to another location.</const>
+      <const name="ARCHIVE">Feedback only - archive bit is set.</const>
+      <const name="QUALIFIED">Return fully qualified folder names (i.e. trailing slash or colon for each name).</const>
+      <const name="QUALIFY">Return fully qualified folder names (i.e. trailing slash or colon for each name).</const>
+      <const name="VIRTUAL">Path is to a virtual device.</const>
+      <const name="READ_ALL">Synonym for SIZE | DATE | PERMISSIONS | FILES | FOLDERS</const>
+      <const name="READ_ONLY">Read-only (not permissions related and might indicate read-only media).</const>
+      <const name="SIZE">Retrieve the byte size of each file.</const>
+      <const name="PERMISSIONS">Get permission/security information.</const>
+      <const name="FILES">Read all files in the folder.</const>
+      <const name="STREAM">Path is connected via a stream, e.g. network connection.</const>
+      <const name="DATE">Retrieve the date stamp of each file.</const>
+      <const name="FOLDER">Read all folders/volumes in the folder.</const>
+      <const name="VOLUME">Feedback only - indicates a volume.</const>
+      <const name="HIDDEN">Feedback only - file/folder is hidden.</const>
+      <const name="FILE">Read all files in the folder.</const>
+      <const name="TAGS">Receive additional information for each file, such as comments, author and copyright.  The results are stored in the Tags field of each file.</const>
+      <const name="TIME">Retrieve the date stamp of each file.</const>
+      <const name="FOLDERS">Read all folders/volumes in the folder.</const>
     </constants>
 
     <constants lookup="KSF" comment="Flags for VarNew()">
@@ -487,6 +449,12 @@
       <const name="PRIVATE_ONLY">Do not allow public-memory instances of the class (private-shared objects will still be possible).</const>
     </constants>
 
+    <constants lookup="RP" comment="Path types for SetResourcePath()">
+      <const name="MODULE_PATH">An alternative path leading to the system modules (normally 'system:modules/').  Introduced for platforms such as Android, where modules are stored in asset folders.</const>
+      <const name="SYSTEM_PATH">The path of the 'system:' volume, which otherwise defaults to '[root]:system/'.</const>
+      <const name="ROOT_PATH">Overrides the root path, which defaults to the location at which Parasol is installed.</const>
+    </constants>
+
     <constants lookup="RFD" comment="Flags for RegisterFD()">
       <const name="WRITE">Activate the callback if there is room to write to the FD's buffer.</const>
       <const name="REMOVE">Stop monitoring this file descriptor.</const>
@@ -494,12 +462,6 @@
       <const name="READ">Activate the callback if there is data available to read.</const>
       <const name="EXCEPT">Activate the callback if error conditions are pending.</const>
       <const name="RECALL">Set if the subscriber needs to manually check for incoming/outgoing data.  This is supported as a one-off check, so the flag will be disabled automatically when the subscriber is called.</const>
-    </constants>
-
-    <constants lookup="RP" comment="Path types for SetResourcePath()">
-      <const name="MODULE_PATH">An alternative path leading to the system modules (normally 'system:modules/').  Introduced for platforms such as Android, where modules are stored in asset folders.</const>
-      <const name="SYSTEM_PATH">The path of the 'system:' volume, which otherwise defaults to '[root]:system/'.</const>
-      <const name="ROOT_PATH">Overrides the root path, which defaults to the location at which Parasol is installed.</const>
     </constants>
 
     <constants lookup="RES">
@@ -615,10 +577,8 @@
       <const name="GRAPHICS">Graphics classes provide graphical manipulation and drawing services to developers.</const>
     </constants>
 
-    <constants lookup="IDF" comment="IdentifyFile() values">
-      <const name="SECTION">Return the name of the Config group that supports the file association, rather than an executable command.</const>
-      <const name="IGNORE_HOST">Ignore the host platform's file assocations.</const>
-      <const name="HOST">Query the host platform's file associations only.</const>
+    <constants lookup="ACF" comment="AssociateCmd() values">
+      <const name="ALL_USERS">Apply the command link to all users for that file type.  This will cause an error if sufficient privileges are not available to the logged-in user.</const>
     </constants>
 
     <constants lookup="MEM" comment="Memory types used by AllocMemory().  The lower 16 bits are stored with allocated blocks, the upper 16 bits are function-relative only.">
@@ -662,26 +622,7 @@
       <const name="NO_DEEP_SCAN">Do not perform more than one iteration when resolving the source file path.</const>
     </constants>
 
-    <constants lookup="RDF" comment="Flags for the OpenDir() function.">
-      <const name="LINK">Feedback only - file/folder is actually a link to another location.</const>
-      <const name="ARCHIVE">Feedback only - archive bit is set.</const>
-      <const name="QUALIFIED">Return fully qualified folder names (i.e. trailing slash or colon for each name).</const>
-      <const name="QUALIFY">Return fully qualified folder names (i.e. trailing slash or colon for each name).</const>
-      <const name="VIRTUAL">Path is to a virtual device.</const>
-      <const name="READ_ALL">Synonym for SIZE | DATE | PERMISSIONS | FILES | FOLDERS</const>
-      <const name="READ_ONLY">Read-only (not permissions related and might indicate read-only media).</const>
-      <const name="SIZE">Retrieve the byte size of each file.</const>
-      <const name="PERMISSIONS">Get permission/security information.</const>
-      <const name="FILES">Read all files in the folder.</const>
-      <const name="STREAM">Path is connected via a stream, e.g. network connection.</const>
-      <const name="DATE">Retrieve the date stamp of each file.</const>
-      <const name="FOLDER">Read all folders/volumes in the folder.</const>
-      <const name="VOLUME">Feedback only - indicates a volume.</const>
-      <const name="HIDDEN">Feedback only - file/folder is hidden.</const>
-      <const name="FILE">Read all files in the folder.</const>
-      <const name="TAGS">Receive additional information for each file, such as comments, author and copyright.  The results are stored in the Tags field of each file.</const>
-      <const name="TIME">Retrieve the date stamp of each file.</const>
-      <const name="FOLDERS">Read all folders/volumes in the folder.</const>
+    <constants lookup="PMF" comment="Flags for ProcessMessages">
     </constants>
 
     <constants lookup="MFF" comment="Flags for the File Watch() method.">
@@ -708,10 +649,6 @@
       <const name="FILE">The path refers to a file.</const>
     </constants>
 
-    <constants lookup="ACF" comment="AssociateCmd() values">
-      <const name="ALL_USERS">Apply the command link to all users for that file type.  This will cause an error if sufficient privileges are not available to the logged-in user.</const>
-    </constants>
-
     <constants lookup="TSF" comment="Task flags">
       <const name="PIPE">Enable the output pipe to the launched process so that it can read data.</const>
       <const name="SHELL">Enables shell mode.  On Unix systems, this means that a shell (usually BASH) will be used to launch the process.</const>
@@ -730,6 +667,12 @@
       <const name="CREATED">The date on which the file was created.  On some host platforms this datestamp may be read-only.</const>
       <const name="ACCESSED">The date on which the file was last accessed by a user or application.</const>
       <const name="ARCHIVED">The date on which the file was most recently archived.  Not supported by most filesystems.</const>
+    </constants>
+
+    <constants lookup="IDF" comment="IdentifyFile() values">
+      <const name="SECTION">Return the name of the Config group that supports the file association, rather than an executable command.</const>
+      <const name="IGNORE_HOST">Ignore the host platform's file assocations.</const>
+      <const name="HOST">Query the host platform's file associations only.</const>
     </constants>
 
     <constants lookup="LDF" comment="Flags for LoadFile()">
@@ -753,6 +696,66 @@
       <const name="BUFFER">Activates a special mode in which the file data is stored in a memory buffer rather than a disk file.  Set the Size field to a value of at least 1 so that the initial buffer size is configured.  In this mode many of the available file operations are meaningless except for the Read, Write and Seek actions.</const>
       <const name="FOLDER">The file object represents a folder.</const>
       <const name="LOOP">In loop mode, the file object's position marker for read/write operations is allowed to extend past the actual file size.  Any read/write operation beyond the file size will loop back to the file at a corrected offset - for example, reading position 330 of a 100 byte file will start the operation from the 30th byte.  Loop mode does not affect any other area besides the read, write and seek operations.  The loop feature is typically used to create multimedia data streams with minimal effort.</const>
+    </constants>
+
+    <constants lookup="AC" comment="Action identifiers.">
+      <const name="ActionNotify"/>
+      <const name="Activate"/>
+      <const name="AccessObject"/>
+      <const name="Clear"/>
+      <const name="FreeWarning"/>
+      <const name="OwnerDestroyed"/>
+      <const name="CopyData"/>
+      <const name="DataFeed"/>
+      <const name="Deactivate"/>
+      <const name="Draw"/>
+      <const name="Flush"/>
+      <const name="Focus"/>
+      <const name="Free"/>
+      <const name="ReleaseObject"/>
+      <const name="GetVar"/>
+      <const name="DragDrop"/>
+      <const name="Hide"/>
+      <const name="Init"/>
+      <const name="Lock"/>
+      <const name="LostFocus"/>
+      <const name="Move"/>
+      <const name="MoveToBack"/>
+      <const name="MoveToFront"/>
+      <const name="NewChild"/>
+      <const name="NewOwner"/>
+      <const name="NewObject"/>
+      <const name="Redo"/>
+      <const name="Query"/>
+      <const name="Read"/>
+      <const name="Rename"/>
+      <const name="Reset"/>
+      <const name="Resize"/>
+      <const name="SaveImage"/>
+      <const name="SaveToObject"/>
+      <const name="Scroll"/>
+      <const name="Seek"/>
+      <const name="SetVar"/>
+      <const name="Show"/>
+      <const name="Undo"/>
+      <const name="Unlock"/>
+      <const name="Next"/>
+      <const name="Prev"/>
+      <const name="Write"/>
+      <const name="SetField"/>
+      <const name="Clipboard"/>
+      <const name="Refresh"/>
+      <const name="Disable"/>
+      <const name="Enable"/>
+      <const name="Redimension"/>
+      <const name="MoveToPoint"/>
+      <const name="ScrollToPoint"/>
+      <const name="Custom"/>
+      <const name="Sort"/>
+      <const name="SaveSettings"/>
+      <const name="SelectArea"/>
+      <const name="Signal"/>
+      <const name="END"/>
     </constants>
 
   </types>

@@ -549,7 +549,7 @@ static ERROR THREAD_Wait(objThread *Self, struct thWait *Args)
    if (!Args) return log.warning(ERR_NullArgs);
 
    ObjectSignal sig[2] = { { .Object = &Self->Head, .ActionID = AC_Signal }, { 0, 0 } };
-   return WaitForObjects(0, Args->TimeOut, sig);
+   return WaitForObjects(PMF_SYSTEM_NO_BREAK, Args->TimeOut, sig);
 }
 
 /*****************************************************************************
