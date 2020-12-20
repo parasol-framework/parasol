@@ -177,7 +177,7 @@ static ERROR socket_outgoing(objNetSocket *Socket)
       }
    }
 
-   ERROR error;
+   ERROR error = ERR_Okay;
 redo_upload:
    Self->WriteBuffer = (UBYTE *)Self->Buffer;
    Self->WriteSize   = Self->BufferSize;
@@ -1047,6 +1047,7 @@ static ERROR process_data(objHTTP *Self, APTR Buffer, LONG Length)
          }
          else error = ERR_Terminate;
       }
+      else error = ERR_InvalidValue;
 
       if (error) SET_ERROR(Self, error);
 

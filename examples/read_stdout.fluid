@@ -23,7 +23,7 @@ Demonstrates how to launch a sub-process and intercept the data that it prints t
 
       print("Press CTRL-C to exit or wait for program to finish.  Received output is saved to '" .. file_out.path .. "' and '" .. file_err.path .. "'")
       task.acActivate()
-      processMessages(-1)
+      processing.sleep()
    end,
    function(Exception)
       error("Failed to launch process, " .. Exception.message)

@@ -67,6 +67,7 @@
 #define ID_USBDEVICE 0xb9041d5fUL
 #define ID_CRYPT 0x0f3f0ed7UL
 #define ID_LAYOUT 0x0aebb323UL
+#define ID_NETLOOKUP 0x1af615e6UL
 #define ID_VECTOR 0x227baf98UL
 #define ID_JSON 0x7c99279fUL
 #define ID_SVG 0x0b88abb5UL

@@ -2,7 +2,7 @@
 
 module({ name="Core", copyright="Paul Manias 1996-2020" }, function()
   c_include("<stdarg.h>")
-  cpp_include("<list>", "<map>", "<string>", "<vector>")
+  cpp_include("<list>", "<map>", "<string>", "<vector>", "<unordered_map>")
 
   platform("Windows", function()
      enum("NETMSG", {}, "START", "END")
@@ -22,13 +22,16 @@ module({ name="Core", copyright="Paul Manias 1996-2020" }, function()
      "MATCH_LEN: The strings must be of equal length to be matched.",
      "WILDCARD: Allow the use of wildcard characters '|', '?' and '*'.")
 
-  flags("MSF",  { comment="Message flags." },
+  flags("MSF", { comment="Message flags." },
      "WAIT: Wait before inserting the message if the queue is at maximum capacity.",
      "UPDATE: If the Type parameter matches a message already inside the queue, the data for that message will be deleted, then the new message will be added to the end of the queue.",
      "NO_DUPLICATE: If the Type parameter matches a message already inside the queue, the new message will not be added and the function will immediately return with ERR_Okay.",
      "ADD: The default behaviour - this will add the message to the end of the queue.",
      "ADDRESS: Internal flag that changes the behaviour of the input parameters so that queues can be processed by address rather than ID.",
      "MESSAGE_ID: The Type parameter refers to a unique message ID rather than a message type for this call.")
+
+  flags("PMF", { comment="Flags for ProcessMessages" },
+     "SYSTEM_NO_BREAK: Private.  For system calls that need to avoid early termination.")
 
   flags("ALF", { bits=16 },
      "SHARED: The lock will be shared between foreign processes.",
@@ -88,7 +91,8 @@ module({ name="Core", copyright="Paul Manias 1996-2020" }, function()
     "READ",         "RENAME",        "RESET",        "RESIZE",   "SAVEIMAGE",    "SAVETOOBJECT", "SCROLL",
     "SEEK",         "SETVAR",        "SHOW",         "TIMER",    "UNLOCK",       "NEXT",         "PREV",
     "WRITE",        "SETFIELD",      "CLIPBOARD",    "REFRESH",  "DISABLE",      "ENABLE",       "REDIMENSION",
-    "MOVETOPOINT",  "SCROLLTOPOINT", "CUSTOM",       "SORT",     "SAVESETTINGS", "SELECTAREA",   "UNDO")
+    "MOVETOPOINT",  "SCROLLTOPOINT", "CUSTOM",       "SORT",     "SAVESETTINGS", "SELECTAREA",   "SIGNAL",
+    "UNDO")
 
   flags("MHF", { comment="Internal options for requesting function tables from modules." },
     "NULL",
@@ -323,6 +327,7 @@ module({ name="Core", copyright="Paul Manias 1996-2020" }, function()
     "NEW_OBJECT: Private. The object is in the process of being created.",
     "RECLASSED: The object switched from the base-class to a sub-class during initialisation.",
     "MESSAGE: Action has been called against the object through the message system (managed by ProcessMessages()).",
+    "SIGNALLED: The object has been signalled and is awaiting processing.",
     { UNIQUE = "0x40000000: Use to allocate an object that has a guaranteed unique name.  This will prevent code from shadowing any object that exists with the same name, which can be imperative when creating public objects.  If it is discovered that an identically named object exists, NewObject() will return ERR_ObjectExists.  This flag works in conjunction with the Name argument.",
       NAME   = "0x80000000: Use the Name parameter to name the created object.  This flag is not required if using NF_UNIQUE.",
       PRIVATE = 0
@@ -370,7 +375,8 @@ module({ name="Core", copyright="Paul Manias 1996-2020" }, function()
      EVENT = 94,
      VALIDATE_PROCESS = 93,
      THREAD_CALLBACK = 92,
-     THREAD_ACTION = 91
+     THREAD_ACTION = 91,
+     WAIT_FOR_OBJECTS = 90
   })
 
   const("LTF", { comment="Flags for ListTasks()" }, {
@@ -628,6 +634,10 @@ module({ name="Core", copyright="Paul Manias 1996-2020" }, function()
     -- End marker
     LIST_END    = 150
   })
+
+  struct("ObjectSignal", { comment="Required in calls to WaitForObjects()." }, [[
+     obj Object
+  ]])
 
   struct("ResourceManager", { comment="This structure must be placed at the start of any memory block allocated with the MEM_MANAGED flag.", restrict="c" }, [[
      cstr Name            # The name of the resource.
@@ -996,7 +1006,6 @@ struct ScriptArg { // For use with scExec
     "ReleaseMemory",
     "ResolveClassName",
     "SelfDestruct",
-    "LogError",
     "SendMessage",
     "SetOwner",
     "SetContext",
@@ -1139,7 +1148,8 @@ struct ScriptArg { // For use with scExec
     "KeyIterate",
     "VarSetSized",
     "VarLock",
-    "VLogF")
+    "VLogF",
+    "WaitForObjects")
 
   c_insert([[
 
@@ -1424,6 +1434,7 @@ INLINE ERROR cfgReadInt(APTR Self, CSTRING Group, CSTRING Key, LONG *Value)
    struct MsgHandler *MsgSetField;
    struct MsgHandler *MsgActionResult;
    struct MsgHandler *MsgDebug;
+   struct MsgHandler *MsgWaitForObjects;
    struct MsgHandler *MsgValidateProcess;
    struct MsgHandler *MsgQuit;
    struct MsgHandler *MsgEvent;
@@ -1551,7 +1562,7 @@ struct TaskList {
   [[
    OBJECTPTR FileIO;             // File input/output
    STRING *  FileList;           // List of all files held in the compression object
-   STRING    Location;           // File location of the compressed data
+   STRING    Path;               // Location of the compressed data
    struct CompressionFeedback *FeedbackInfo;
    struct rkCompression *NextArchive;
    UBYTE     Header[32];         // The first 32 bytes of data from the compressed file (for sub-classes only)
@@ -2339,6 +2350,20 @@ INLINE ERROR flReadLE8(APTR Object, LARGE *Result)
    }
    else return ERR_Read;
 }
+
+#ifdef __cplusplus
+template <class R>
+constexpr FUNCTION make_function_stdc(R Routine, OBJECTPTR Context = CurrentContext()) {
+   FUNCTION func = { .Type = CALL_STDC, .StdC = { .Context = Context, .Routine = (APTR)Routine } };
+   return func;
+}
+
+INLINE FUNCTION make_function_script(OBJECTPTR Script, LARGE Procedure) {
+   FUNCTION func = { .Type = CALL_SCRIPT, .Script = { .Script = (OBJECTPTR)Script, .ProcedureID = Procedure } };
+   return func;
+}
+#endif
+
   ]])
 
   if (glProgram == "idl-def") then

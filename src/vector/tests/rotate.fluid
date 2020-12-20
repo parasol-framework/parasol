@@ -66,4 +66,4 @@ end
          glPage.acDraw()
       end)
 
-   processMessages(-1)
+   processing.sleep()

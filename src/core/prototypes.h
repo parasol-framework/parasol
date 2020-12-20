@@ -52,7 +52,6 @@ ERROR GetMessage(MEMORYID Queue, LONG Type, LONG Flags, APTR Buffer, LONG Size);
 MEMORYID ReleaseMemory(APTR Address);
 CLASSID ResolveClassName(CSTRING Name);
 void SelfDestruct();
-ERROR LogError(LONG Header, ERROR Error);
 ERROR SendMessage(MEMORYID Queue, LONG Type, LONG Flags, APTR Data, LONG Size);
 ERROR SetOwner(OBJECTPTR Object, OBJECTPTR Owner);
 OBJECTPTR SetContext(OBJECTPTR Object);
@@ -196,6 +195,7 @@ ERROR KeyIterate(struct KeyStore * Store, ULONG Index, ULONG * Key, APTR * Data,
 ERROR VarSetSized(struct KeyStore * Store, CSTRING Key, LONG Size, APTR * Data, LONG * DataSize);
 ERROR VarLock(struct KeyStore * Store, LONG Timeout);
 void VLogF(LONG Flags, CSTRING Header, CSTRING Message, va_list Args);
+ERROR WaitForObjects(LONG Flags, LONG TimeOut, struct ObjectSignal * ObjectSignals);
 
 #ifdef  __cplusplus
 }

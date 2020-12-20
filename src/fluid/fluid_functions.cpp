@@ -274,37 +274,6 @@ int fcmd_catch(lua_State *Lua)
 }
 
 //****************************************************************************
-// Usage: processMessages(Timeout)
-//
-// Processes incoming messages.  Returns the number of microseconds that elapsed, followed by the error from
-// ProcessMessages().  To process messages until a QUIT message is received, call processMessages(-1)
-
-int fcmd_processMessages(lua_State *Lua)
-{
-   static std::mutex recursion; // Intentionally accessible to all threads
-
-   {
-      parasol::Log log;
-      log.traceBranch("Collecting garbage.");
-      lua_gc(Lua, LUA_GCCOLLECT, 0);
-   }
-
-   LONG timeout = lua_tointeger(Lua, 1);
-
-   recursion.lock();
-
-      LARGE time = PreciseTime();
-      ERROR error = ProcessMessages(0, timeout);
-      time = PreciseTime() - time;
-
-   recursion.unlock();
-
-   lua_pushnumber(Lua, time);
-   lua_pushinteger(Lua, error);
-   return 2;
-}
-
-//****************************************************************************
 // The event callback will be called with the following synopsis:
 //
 // function callback(EventID, Args)

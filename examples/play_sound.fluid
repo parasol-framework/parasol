@@ -17,7 +17,7 @@
       snd.acActivate()
 
       print("Press CTRL-C to exit or wait for sound sample to finish.")
-      processMessages(-1)
+      processing.sleep()
    end,
    function(Exception)
       print("Failed to play sound, error: " .. Exception.message)

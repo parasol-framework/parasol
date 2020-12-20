@@ -10,8 +10,11 @@ collected too early.
    require 'common'
 
    local glOutFile = 'temp:http-output.txt'
+   local glSelf = obj.find('self')
 
 function testGet()
+   local proc = processing.new({ timeout = 5.0 })
+
    local http = obj.new('http', {
       src        = 'http://www.parasol.ws/index.html',
       method     = 'get',
@@ -23,7 +26,7 @@ function testGet()
             print(string.format('%.80s [80 of %d bytes]', content, content:len()))
          end
          if (State == HGS_COMPLETED) or (State == HGS_TERMINATED) then
-            mSys.SendMessage(0, MSGID_QUIT)
+            proc.signal()
          end
       end
    })
@@ -31,13 +34,17 @@ function testGet()
    local err = http.acActivate()
    assert(err == ERR_Okay, "HTTP object failed to activate.")
 
-   local elapsed, err = processMessages(5000)
-   if (err == ERR_TimeOut) then error('Test timed-out.') end
+   err = proc.sleep()
+   assert(err == ERR_Okay, 'Processing failed: ' .. mSys.GetErrorMsg(err))
    if (http.error != ERR_Okay) then error('HTTP object returned error: ' .. mSys.GetErrorMsg(http.error)) end
+   if (http.state != HGS_COMPLETED) then error('Expected HTTP state of COMPLETED not reached, got ' .. http.state) end
 end
 
+-----------------------------------------------------------------------------------------------------------------------
+-- curl -v -X POST http://ptsv2.com/t/bgef9-1605557717/post -d "fname=smith&amp;lname=jones"
+
 function testPostString()
-   -- curl -v -X POST http://ptsv2.com/t/bgef9-1605557717/post -d "fname=smith&amp;lname=jones"
+   local proc = processing.new({ timeout = 5.0 })
 
    local http = obj.new('http', {
       src        = 'http://ptsv2.com/t/bgef9-1605557717/post', // See results at http://ptsv2.com/t/bgef9-1605557717
@@ -57,7 +64,7 @@ function testPostString()
             print(file.readAll(glOutFile))
          end
          if (State == HGS_COMPLETED) or (State == HGS_TERMINATED) then
-            mSys.SendMessage(0, MSGID_QUIT)
+            proc.signal()
          end
       end
    })
@@ -65,12 +72,16 @@ function testPostString()
    local err = http.acActivate()
    assert(err == ERR_Okay, "HTTP object failed to activate.")
 
-   local elapsed, err = processMessages(5000)
-   if (err == ERR_TimeOut) then error('Test timed-out.') end
+   err = proc.sleep()
+   assert(err == ERR_Okay, 'Processing failed: ' .. mSys.GetErrorMsg(err))
    if (http.error != ERR_Okay) then error('HTTP object returned error: ' .. mSys.GetErrorMsg(http.error)) end
+   if (http.state != HGS_COMPLETED) then error('Expected HTTP state of COMPLETED not reached, got ' .. http.state) end
 end
 
+-----------------------------------------------------------------------------------------------------------------------
+
 function testPostStringFile()
+   local proc = processing.new({ timeout = 5.0 })
    local body = 'fname=joe&amp;lname=bloggs'
 
    local http = obj.new('http', {
@@ -82,7 +93,7 @@ function testPostStringFile()
       size       = body:len(),
       stateChanged = function(HTTP, State)
          if (State == HGS_COMPLETED) or (State == HGS_TERMINATED) then
-            mSys.SendMessage(0, MSGID_QUIT)
+            proc.signal()
          end
       end,
       incoming = function(HTTP, Buffer, BufferSize)
@@ -93,14 +104,17 @@ function testPostStringFile()
    local err = http.acActivate()
    assert(err == ERR_Okay, "HTTP object failed to activate.")
 
-   local elapsed, err = processMessages(5000)
-   if (err == ERR_TimeOut) then error('Test timed-out.') end
+   err = proc.sleep()
+   assert(err == ERR_Okay, 'Processing failed: ' .. mSys.GetErrorMsg(err))
    if (http.error != ERR_Okay) then error('HTTP object returned error: ' .. mSys.GetErrorMsg(http.error)) end
+   if (http.state != HGS_COMPLETED) then error('Expected HTTP state of COMPLETED not reached, got ' .. http.state) end
 end
 
-//=====================================================================================================================
+-----------------------------------------------------------------------------------------------------------------------
 
 function testSSLProxy()
+   local proc = processing.new({ timeout = 5.0 })
+
    local http = obj.new('http', {
       src         = 'https://www.google.co.uk/',
       method      = 'get',
@@ -110,12 +124,16 @@ function testSSLProxy()
       proxyport   = '8080'
    })
 
-   http.acActivate()
-   local elapsed, err = processMessages(5000)
-   if (err == ERR_TimeOut) then error('Test timed-out.') end
+   local err = http.acActivate()
+   assert(err == ERR_Okay, 'HTTP activation failed: ' .. mSys.GetErrorMsg(err))
+
+   err = proc.sleep(5.0)
+   assert(err == ERR_Okay, 'Processing failed: ' .. mSys.GetErrorMsg(err))
 end
 
 function testHTTPS()
+   local proc = processing.new({ timeout = 5.0 })
+
    local http = obj.new('http', {
       src        = 'https://www.google.co.uk',
       method     = 'get',
@@ -127,18 +145,22 @@ function testHTTPS()
             print(string.format('%.80s [%d bytes]', content, content:len()))
          end
          if (State == HGS_COMPLETED) or (State == HGS_TERMINATED) then
-            mSys.SendMessage(0, MSGID_QUIT)
+            HTTP.acSignal()
          end
          return ERR_Okay
       end
    })
 
-   http.acActivate()
-   local elapsed, err = processMessages(5000)
-   if (err == ERR_TimeOut) then error('Test timed-out.') end
+   local err = http.acActivate()
+   assert(err == ERR_Okay, 'HTTP activation failed: ' .. mSys.GetErrorMsg(err))
+
+   local err = proc.sleep(5.0)
+   assert(err == ERR_Okay, 'Processing failed: ' .. mSys.GetErrorMsg(err))
 end
 
 function testPHPPost()
+   local proc = processing.new({ timeout = 5.0 })
+
    local http = obj.new('http', {
       src        = 'http://parasol.ws/upload.php',
       method     = 'post',
@@ -148,11 +170,13 @@ function testPHPPost()
    })
 
    http.acActivate()
-   local elapsed, err = processMessages(5000)
+   local err = proc.sleep(5)
    if (err == ERR_TimeOut) then error('Test timed-out.') end
 end
 
 function testUploadChunked()
+   local proc = processing.new({ timeout = 5.0 })
+
    local http = obj.new('http', {
       src        = 'http://parasol.ws/upload.php',
       method     = 'post',
@@ -162,11 +186,13 @@ function testUploadChunked()
    })
 
    http.acActivate()
-   local elapsed, err = processMessages(5000)
+   local err = proc.sleep(5.0)
    if (err == ERR_TimeOut) then error('Test timed-out.') end
 end
 
 function testChunks()
+   local proc = processing.new({ timeout = 5.0 })
+
    // Test chunking
    local http = obj.new('http', {
       src        = 'http://news.bbc.co.uk',
@@ -176,11 +202,13 @@ function testChunks()
    })
 
    http.acActivate()
-   local elapsed, err = processMessages(5000)
+   local err = proc.sleep(5.0)
    if (err == ERR_TimeOut) then error('Test timed-out.') end
 end
 
 function testDownload()
+   local proc = processing.new({ timeout = 5.0 })
+
    // Test non-chunking
    local http = obj.new('http', {
       src        = 'http://www.parasol.ws/index.html',
@@ -190,11 +218,13 @@ function testDownload()
    })
 
    http.acActivate()
-   local elapsed, err = processMessages(5000)
+   local err = proc.sleep(5.0)
    if (err == ERR_TimeOut) then error('Test timed-out.') end
 end
 
 function testUpload()
+   local proc = processing.new({ timeout = 5.0 })
+
    // Test uploading
    local http = obj.new('http', {
       src       = 'http://www.parasol.ws/dav/boing.dml',
@@ -204,11 +234,13 @@ function testUpload()
    })
 
    http.acActivate()
-   local elapsed, err = processMessages(5000)
+   local err = proc.sleep(5.0)
    if (err == ERR_TimeOut) then error('Test timed-out.') end
 end
 
 function testMultiPart()
+   local proc = processing.new({ timeout = 5.0 })
+
    local boundary = '----------d6sXWGimDGTgb2GDuLZqbR'
 
    local http = obj.new('http', {
@@ -261,11 +293,11 @@ function testMultiPart()
    srcfile = nil
 
    http.detach()
-   local elapsed, err = processMessages(5000)
+   local err = proc.sleep(5.0)
    if (err == ERR_TimeOut) then error('Test timed-out.') end
 end
 
-//=====================================================================================================================
+-----------------------------------------------------------------------------------------------------------------------
 
    return {
       tests = {

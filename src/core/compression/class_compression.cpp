@@ -492,6 +492,7 @@ static ERROR COMPRESSION_CompressStreamEnd(objCompression *Self, struct cmpCompr
          }
          else error = ERR_Terminate;
       }
+      else error = ERR_Okay;
    }
 
    // Free the output buffer if it is quite large
@@ -754,7 +755,7 @@ static ERROR COMPRESSION_CompressFile(objCompression *Self, struct cmpCompressFi
    if (Self->Head.SubID) return log.warning(ERR_NoSupport);
 
    if (Self->OutputID) {
-      StrFormat((char *)Self->prvOutput, SIZE_COMPRESSION_BUFFER, "Compressing \"%s\" to \"%s\".\n", Args->Location, Self->Location);
+      StrFormat((char *)Self->prvOutput, SIZE_COMPRESSION_BUFFER, "Compressing \"%s\" to \"%s\".\n", Args->Location, Self->Path);
       print(Self, (CSTRING)Self->prvOutput);
    }
 
@@ -1013,7 +1014,7 @@ static ERROR COMPRESSION_DecompressFile(objCompression *Self, struct cmpDecompre
    // Tell the user what we are doing
 
    if (Self->OutputID) {
-      StrFormat((char *)Self->prvOutput, SIZE_COMPRESSION_BUFFER, "Decompressing archive \"%s\" with path \"%s\" to \"%s\".\n", Self->Location, Args->Path, Args->Dest);
+      StrFormat((char *)Self->prvOutput, SIZE_COMPRESSION_BUFFER, "Decompressing archive \"%s\" with path \"%s\" to \"%s\".\n", Self->Path, Args->Path, Args->Dest);
       print(Self, (CSTRING)Self->prvOutput);
    }
 
@@ -1656,7 +1657,7 @@ static ERROR COMPRESSION_Free(objCompression *Self, APTR Void)
    if (Self->prvInput)     { FreeResource(Self->prvInput); Self->prvInput = NULL; }
    if (Self->prvOutput)    { FreeResource(Self->prvOutput); Self->prvOutput = NULL; }
    if (Self->FileIO)       { acFree(Self->FileIO); Self->FileIO = NULL; }
-   if (Self->Location)     { FreeResource(Self->Location); Self->Location = NULL; }
+   if (Self->Path)         { FreeResource(Self->Path); Self->Path = NULL; }
 
    return ERR_Okay;
 }
@@ -1992,14 +1993,13 @@ static const FieldArray clFields[] = {
    { "WindowBits",         FDF_LONG|FDF_RW,            0, NULL, (APTR)SET_WindowBits },
    // Virtual fields
    { "ArchiveName",      FDF_STRING|FDF_W,       0, NULL, (APTR)SET_ArchiveName },
-   { "Location",         FDF_STRING|FDF_SYNONYM|FDF_RW, 0, (APTR)GET_Location, (APTR)SET_Location },
-   { "Path",             FDF_STRING|FDF_RW,      0, (APTR)GET_Location, (APTR)SET_Location },
+   { "Path",             FDF_STRING|FDF_RW,      0, (APTR)GET_Path, (APTR)SET_Path },
    { "Feedback",         FDF_FUNCTIONPTR|FDF_RW, 0, (APTR)GET_Feedback, (APTR)SET_Feedback },
    { "FeedbackInfo",     FDF_POINTER|FDF_STRUCT|FDF_R, (MAXINT)"CompressionFeedback", (APTR)GET_FeedbackInfo, NULL },
    { "Header",           FDF_POINTER|FDF_R,      0, (APTR)GET_Header,   NULL },
    { "Password",         FDF_STRING|FDF_RW,      0, (APTR)GET_Password, (APTR)SET_Password },
    { "Size",             FDF_LARGE|FDF_R,        0, (APTR)GET_Size, NULL },
-   { "Src",              FDF_SYNONYM|FDF_STRING|FDF_RW, 0, (APTR)GET_Location, (APTR)SET_Location },
+   { "Src",              FDF_SYNONYM|FDF_STRING|FDF_RW, 0, (APTR)GET_Path, (APTR)SET_Path },
    { "UncompressedSize", FDF_LARGE|FDF_R,        0, (APTR)GET_UncompressedSize, NULL },
    END_FIELD
 };

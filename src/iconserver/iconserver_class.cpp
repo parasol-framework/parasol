@@ -4,7 +4,7 @@
 IconServer: Manages the icon database.
 
 The IconServer class provides an icon management and image resizing service for all applications.  It provides this
-service through the icons: assignment.  Icons are requested from the server by accessing them through the virtual
+service through the `icons:` volume.  Icons are requested from the server by accessing them through the virtual
 filesystem, making access to the icon server 'invisible'.  Direct contact with the icon server only needs to be made
 when requesting a new theme, or to change the default icon size.
 
@@ -24,13 +24,13 @@ icon is 12 pixels and the maximum size is 256 pixels.
 
 *****************************************************************************/
 
-static ERROR resolve_icon_assign(objIconServer *, STRING, STRING, LONG);
+static ERROR resolve_icon_volume(objIconServer *, STRING, STRING, LONG);
 
 //****************************************************************************
 
 static ERROR ICON_AccessObject(objIconServer *Self, APTR Void)
 {
-   Self->ResolvePath = &resolve_icon_assign;
+   Self->ResolvePath = &resolve_icon_volume;
    return ERR_Okay;
 }
 
@@ -103,7 +103,7 @@ static ERROR ICON_NewObject(objIconServer *Self, APTR Void)
    StrCopy("Default", Self->prvTheme, sizeof(Self->prvTheme));
    Self->FixedSize = 0;
    Self->IconRatio = 7.0;
-   Self->ResolvePath = &resolve_icon_assign;
+   Self->ResolvePath = &resolve_icon_volume;
    return ERR_Okay;
 }
 
@@ -301,7 +301,7 @@ around 7%, which would generate icons at 7% of the shortest dimension of the cur
 
 The minimum ratio is 2% and the maximum is 15%.  When you write to this field, fixed icon sizes will no longer be
 the default.  You can switch back to fixed icon sizes if you write a value to the IconSize field.  Fixed size icons
-can also be requested at any time on an individual basis by passing a size to the icons: assignment when loading
+can also be requested at any time on an individual basis by passing a size to the `icons:` volume when loading
 icons.
 
 Regardless of the ratio setting, the maximum and minimum pixel size of any icon is always 12 and 256 pixels
@@ -451,7 +451,7 @@ static void write_icon_category(objIconServer *Self, OBJECTPTR Output, STRING Ca
 }
 
 /*****************************************************************************
-** This function is called by the file system when it needs to resolve the icons: assignment.  It is also used to
+** This function is called by the file system when it needs to resolve the icons: volume.  It is also used to
 ** check for the existence of files.
 **
 ** Icons can be accessed in the following formats:
@@ -467,7 +467,7 @@ static void write_icon_category(objIconServer *Self, OBJECTPTR Output, STRING Ca
 ** Only the first size will be accepted when overlaying a foreground onto an icon.
 */
 
-static ERROR resolve_icon_assign(objIconServer *Self, STRING Path, STRING Buffer, LONG BufferSize)
+static ERROR resolve_icon_volume(objIconServer *Self, STRING Path, STRING Buffer, LONG BufferSize)
 {
    parasol::Log log("resolve_icon");
    char category[BUFFERSIZE], icon[BUFFERSIZE], ovcategory[BUFFERSIZE], ovicon[BUFFERSIZE]; // NB: path extraction code assumes these are all the same array size
@@ -537,7 +537,7 @@ static ERROR resolve_icon_assign(objIconServer *Self, STRING Path, STRING Buffer
       }
    }
 
-   // Load the original icon, resize it to the requested size and write the resulting picture file to the cache.  Then resolve the assignment so that it points to the cached file.
+   // Load the original icon, resize it to the requested size and write the resulting picture file to the cache.  Then resolve the volume so that it points to the cached file.
 
    log.msg("Resizing icon to new pixel size: %d", size);
 

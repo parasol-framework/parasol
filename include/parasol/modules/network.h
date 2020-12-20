@@ -11,6 +11,12 @@
 
 #define MODVERSION_NETWORK (1)
 
+#ifdef __cplusplus
+#include <unordered_set>
+#include <map>
+#include <mutex>
+#endif
+
 
 #ifdef ENABLE_SSL
 #include "openssl/ssl.h"
@@ -37,11 +43,21 @@ struct IPAddress {
    LONG  Pad;        // Unused padding for 64-bit alignment
 };
 
+struct DNSEntry {
+   CSTRING HostName;
+   struct IPAddress * Addresses;    // IP address list
+   LONG    TotalAddresses;          // Total number of IP addresses
+};
+
 #define NSF_SERVER 0x00000001
 #define NSF_SSL 0x00000002
 #define NSF_MULTI_CONNECT 0x00000004
 #define NSF_SYNCHRONOUS 0x00000008
 #define NSF_DEBUG 0x00000010
+
+// Options for NetLookup
+
+#define NLF_NO_CACHE 0x00000001
 
 // NetSocket states
 
@@ -168,20 +184,71 @@ typedef struct rkProxy {
 
 // Proxy methods
 
-#define MT_PrxDelete -1
-#define MT_PrxFind -2
-#define MT_PrxFindNext -3
+#define MT_prxDelete -1
+#define MT_prxFind -2
+#define MT_prxFindNext -3
 
 struct prxFind { LONG Port; LONG Enabled;  };
 
-#define prxDelete(obj) Action(MT_PrxDelete,(obj),0)
+#define prxDelete(obj) Action(MT_prxDelete,(obj),0)
 
 INLINE ERROR prxFind(APTR Ob, LONG Port, LONG Enabled) {
    struct prxFind args = { Port, Enabled };
-   return(Action(MT_PrxFind, (OBJECTPTR)Ob, &args));
+   return(Action(MT_prxFind, (OBJECTPTR)Ob, &args));
 }
 
-#define prxFindNext(obj) Action(MT_PrxFindNext,(obj),0)
+#define prxFindNext(obj) Action(MT_prxFindNext,(obj),0)
+
+
+// NetLookup class definition
+
+#define VER_NETLOOKUP (1.000000)
+
+typedef struct rkNetLookup {
+   OBJECT_HEADER
+   LARGE UserData;    // Optional user data storage
+   LONG  Flags;       // Optional flags
+
+#ifdef PRV_NETLOOKUP
+   FUNCTION Callback;
+   struct DNSEntry Info;
+   std::unordered_set<OBJECTID> *Threads;
+   std::mutex *ThreadLock;
+  
+#endif
+} objNetLookup;
+
+// NetLookup methods
+
+#define MT_nlResolveName -1
+#define MT_nlResolveAddress -2
+#define MT_nlBlockingResolveName -3
+#define MT_nlBlockingResolveAddress -4
+
+struct nlResolveName { CSTRING HostName;  };
+struct nlResolveAddress { CSTRING Address;  };
+struct nlBlockingResolveName { CSTRING HostName;  };
+struct nlBlockingResolveAddress { CSTRING Address;  };
+
+INLINE ERROR nlResolveName(APTR Ob, CSTRING HostName) {
+   struct nlResolveName args = { HostName };
+   return(Action(MT_nlResolveName, (OBJECTPTR)Ob, &args));
+}
+
+INLINE ERROR nlResolveAddress(APTR Ob, CSTRING Address) {
+   struct nlResolveAddress args = { Address };
+   return(Action(MT_nlResolveAddress, (OBJECTPTR)Ob, &args));
+}
+
+INLINE ERROR nlBlockingResolveName(APTR Ob, CSTRING HostName) {
+   struct nlBlockingResolveName args = { HostName };
+   return(Action(MT_nlBlockingResolveName, (OBJECTPTR)Ob, &args));
+}
+
+INLINE ERROR nlBlockingResolveAddress(APTR Ob, CSTRING Address) {
+   struct nlBlockingResolveAddress args = { Address };
+   return(Action(MT_nlBlockingResolveAddress, (OBJECTPTR)Ob, &args));
+}
 
 
 // NetSocket class definition
@@ -207,6 +274,7 @@ typedef struct rkNetSocket {
    FUNCTION Outgoing;
    FUNCTION Incoming;
    FUNCTION Feedback;
+   struct rkNetLookup *NetLookup;
    struct rkNetClient *LastClient;
    struct NetQueue WriteQueue;
    struct NetQueue ReadQueue;
@@ -343,8 +411,6 @@ struct NetworkBase {
    ULONG (*_ShortToHost)(ULONG);
    ULONG (*_LongToHost)(ULONG);
    ERROR (*_SetSSL)(struct rkNetSocket *, ...);
-   ERROR (*_ResolveName)(CSTRING, LONG, FUNCTION *, LARGE);
-   ERROR (*_ResolveAddress)(CSTRING, LONG, FUNCTION *, LARGE);
 };
 
 #ifndef PRV_NETWORK_MODULE
@@ -355,8 +421,6 @@ struct NetworkBase {
 #define netShortToHost(...) (NetworkBase->_ShortToHost)(__VA_ARGS__)
 #define netLongToHost(...) (NetworkBase->_LongToHost)(__VA_ARGS__)
 #define netSetSSL(...) (NetworkBase->_SetSSL)(__VA_ARGS__)
-#define netResolveName(...) (NetworkBase->_ResolveName)(__VA_ARGS__)
-#define netResolveAddress(...) (NetworkBase->_ResolveAddress)(__VA_ARGS__)
 #endif
 
 #endif

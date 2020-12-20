@@ -1,13 +1,13 @@
 #ifndef SYSTEM_TYPES_H
 #define SYSTEM_TYPES_H
 
-#ifdef  __cplusplus
-extern "C" {
-#endif
-
 //  types.h
 //
 //  (C) Copyright 1996-2020 Paul Manias
+
+#ifdef  __cplusplus
+extern "C" {
+#endif
 
 struct CoreBase;
 

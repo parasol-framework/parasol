@@ -3,6 +3,8 @@
 -- The  testParallel() function executes the threads and then waits for them to complete by calling processInput()
 -- until picLoaded() sends a MSGID_QUIT message.
 
+   local proc = processing.new(5.0)
+
 -----------------------------------------------------------------------------------------------------------------------
 
 function initPictures()
@@ -33,7 +35,7 @@ function picLoaded(ActionID, pic, Error, Key)
 
    if (glPicsProcessed >= #glPictures) then
       //print("All pictures have been loaded, exiting now.")
-      mSys.SendMessage(0, MSGID_QUIT, 0, NULL, 0)
+      proc.signal()
    end
 end
 
@@ -52,10 +54,7 @@ function testParallel()
 
    // Wait for threads to complete
 
-   local err = ERR_Okay
-   while (err == ERR_Okay) do
-      time, err = processMessages(-1)
-   end
+   err = proc.sleep()
 end
 
 -----------------------------------------------------------------------------------------------------------------------

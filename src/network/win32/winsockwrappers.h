@@ -11,7 +11,7 @@ WSW_SOCKET win_accept(void *, WSW_SOCKET, struct sockaddr *, int *);
 int win_bind(WSW_SOCKET, const struct sockaddr *, int);
 int win_closesocket(WSW_SOCKET);
 int win_connect(WSW_SOCKET, const struct sockaddr *, int);
-struct hostent * win_gethostbyaddr(struct IPAddress *);
+struct hostent * win_gethostbyaddr(const struct IPAddress *);
 struct hostent * win_gethostbyname(const char *);
 int win_getpeername(WSW_SOCKET, struct sockaddr *, int *);
 int win_getsockname(WSW_SOCKET, struct sockaddr *, int *);

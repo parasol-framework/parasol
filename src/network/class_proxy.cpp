@@ -856,7 +856,7 @@ static const FieldDef clPorts[] = {
    { NULL, 0 }
 };
 
-static const FieldArray clFields[] = {
+static const FieldArray clProxyFields[] = {
    { "NetworkFilter", FDF_STRING|FDF_RW, 0, NULL, (APTR)SET_NetworkFilter },
    { "GatewayFilter", FDF_STRING|FDF_RW, 0, NULL, (APTR)SET_GatewayFilter },
    { "Username",      FDF_STRING|FDF_RW, 0, NULL, (APTR)SET_Username },
@@ -870,24 +870,7 @@ static const FieldArray clFields[] = {
    END_FIELD
 };
 
-static const ActionArray clActions[] = {
-   { AC_Disable,      (APTR)PROXY_Disable },
-   { AC_Enable,       (APTR)PROXY_Enable },
-   { AC_Free,         (APTR)PROXY_Free },
-   { AC_Init,         (APTR)PROXY_Init },
-   { AC_NewObject,    (APTR)PROXY_NewObject },
-   { AC_SaveSettings, (APTR)PROXY_SaveSettings },
-   { 0, 0 }
-};
-
-static const FunctionField argsFind[] = { { "Port", FD_LONG }, { "Enabled", FD_LONG }, { NULL, 0 } };
-
-static const MethodArray clMethods[] = {
-   { MT_PrxDelete,    (APTR)PROXY_Delete,   "Delete",   NULL, 0 },
-   { MT_PrxFind,      (APTR)PROXY_Find,     "Find",     argsFind, sizeof(struct prxFind) },
-   { MT_PrxFindNext,  (APTR)PROXY_FindNext, "FindNext", NULL, 0 },
-   { 0, NULL, NULL, NULL, 0 }
-};
+#include "class_proxy_def.c"
 
 //****************************************************************************
 
@@ -895,11 +878,11 @@ ERROR init_proxy(void)
 {
    return(CreateObject(ID_METACLASS, 0, &clProxy,
       FID_ClassVersion|TFLOAT, VER_PROXY,
-      FID_Name|TSTR,   "Proxy",
+      FID_Name|TSTR,      "Proxy",
       FID_Category|TLONG, CCF_NETWORK,
-      FID_Actions|TPTR,   clActions,
-      FID_Methods|TARRAY, clMethods,
-      FID_Fields|TARRAY,  clFields,
+      FID_Actions|TPTR,   clProxyActions,
+      FID_Methods|TARRAY, clProxyMethods,
+      FID_Fields|TARRAY,  clProxyFields,
       FID_Size|TLONG,     sizeof(objProxy),
       FID_Path|TSTR,      MOD_PATH,
       TAGEND));

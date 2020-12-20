@@ -87,5 +87,6 @@ const struct ActionTable ActionTable[] = { // Sorted by action ID.
    { AHASH_SORT,           0, "Sort", 0 },
    { AHASH_SAVESETTINGS,   0, "SaveSettings", 0 },
    { AHASH_SELECTAREA,     sizeof(struct acSelectArea), "SelectArea", argsSelectArea },
+   { AHASH_SIGNAL,         0, "Signal", 0 },
    { 0, 0, 0, 0 }
 };

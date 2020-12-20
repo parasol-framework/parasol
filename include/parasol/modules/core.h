@@ -16,6 +16,7 @@
 #include <map>
 #include <string>
 #include <vector>
+#include <unordered_map>
 #endif
 
 #ifdef _WIN32
@@ -130,7 +131,8 @@
 #define AC_Sort 53
 #define AC_SaveSettings 54
 #define AC_SelectArea 55
-#define AC_END 56
+#define AC_Signal 56
+#define AC_END 57
 
 // Permission flags
 
@@ -660,6 +662,10 @@ struct ClipRectangle {
 #define MSF_ADDRESS 0x00000010
 #define MSF_MESSAGE_ID 0x00000020
 
+// Flags for ProcessMessages
+
+#define PMF_SYSTEM_NO_BREAK 0x00000001
+
 #define ALF_SHARED 0x0001
 #define ALF_RECURSIVE 0x0002
 
@@ -773,6 +779,7 @@ struct ClipRectangle {
 #define AHASH_SORT 0x7c9e066d
 #define AHASH_SAVESETTINGS 0x475f7165
 #define AHASH_SELECTAREA 0xf55e615e
+#define AHASH_SIGNAL 0x1bc6ade3
 #define AHASH_UNDO 0x7c9f191b
 
 // Internal options for requesting function tables from modules.
@@ -1073,6 +1080,7 @@ struct ClipRectangle {
 #define NF_NEW_OBJECT 0x00000400
 #define NF_RECLASSED 0x00000800
 #define NF_MESSAGE 0x00001000
+#define NF_SIGNALLED 0x00002000
 #define NF_PRIVATE 0x00000000
 #define NF_NAME 0x80000000
 #define NF_UNIQUE 0x40000000
@@ -1111,6 +1119,7 @@ struct ClipRectangle {
 #define MSGID_DEBUG 95
 #define MSGID_GET_FIELD 97
 #define MSGID_ACTION 99
+#define MSGID_WAIT_FOR_OBJECTS 90
 #define MSGID_EXPOSE 100
 #define MSGID_THREAD_ACTION 91
 #define MSGID_QUIT 1000
@@ -1373,6 +1382,10 @@ struct ClipRectangle {
 #define K_F3 78
 #define K_EXECUTE 116
 #define K_NINE 35
+
+struct ObjectSignal {
+   OBJECTPTR Object;
+};
 
 struct ResourceManager {
    CSTRING Name;           // The name of the resource.
@@ -1746,7 +1759,6 @@ struct CoreBase {
    MEMORYID (*_ReleaseMemory)(APTR);
    CLASSID (*_ResolveClassName)(CSTRING);
    void (*_SelfDestruct)(void);
-   ERROR (*_LogError)(LONG, ERROR);
    ERROR (*_SendMessage)(MEMORYID, LONG, LONG, APTR, LONG);
    ERROR (*_SetOwner)(APTR, APTR);
    OBJECTPTR (*_SetContext)(APTR);
@@ -1890,6 +1902,7 @@ struct CoreBase {
    ERROR (*_VarSetSized)(struct KeyStore *, CSTRING, LONG, APTR, LONG *);
    ERROR (*_VarLock)(struct KeyStore *, LONG);
    void (*_VLogF)(int, const char *, const char *, va_list);
+   ERROR (*_WaitForObjects)(LONG, LONG, struct ObjectSignal *);
 };
 
 #ifndef PRV_CORE_MODULE
@@ -1941,7 +1954,6 @@ struct CoreBase {
 #define ReleaseMemory(...) (CoreBase->_ReleaseMemory)(__VA_ARGS__)
 #define ResolveClassName(...) (CoreBase->_ResolveClassName)(__VA_ARGS__)
 #define SelfDestruct(...) (CoreBase->_SelfDestruct)(__VA_ARGS__)
-#define LogError(...) (CoreBase->_LogError)(__VA_ARGS__)
 #define SendMessage(...) (CoreBase->_SendMessage)(__VA_ARGS__)
 #define SetOwner(...) (CoreBase->_SetOwner)(__VA_ARGS__)
 #define SetContext(...) (CoreBase->_SetContext)(__VA_ARGS__)
@@ -2085,6 +2097,7 @@ struct CoreBase {
 #define VarSetSized(...) (CoreBase->_VarSetSized)(__VA_ARGS__)
 #define VarLock(...) (CoreBase->_VarLock)(__VA_ARGS__)
 #define VLogF(...) (CoreBase->_VLogF)(__VA_ARGS__)
+#define WaitForObjects(...) (CoreBase->_WaitForObjects)(__VA_ARGS__)
 #endif
 
 
@@ -2550,6 +2563,7 @@ typedef struct rkTask {
    struct MsgHandler *MsgSetField;
    struct MsgHandler *MsgActionResult;
    struct MsgHandler *MsgDebug;
+   struct MsgHandler *MsgWaitForObjects;
    struct MsgHandler *MsgValidateProcess;
    struct MsgHandler *MsgQuit;
    struct MsgHandler *MsgEvent;
@@ -2629,15 +2643,15 @@ typedef struct rkThread {
 #define MT_ThWait -2
 
 struct thSetData { APTR Data; LONG Size;  };
-struct thWait { LONG TimeOut; LONG MsgInterval;  };
+struct thWait { LONG TimeOut;  };
 
 INLINE ERROR thSetData(APTR Ob, APTR Data, LONG Size) {
    struct thSetData args = { Data, Size };
    return(Action(MT_ThSetData, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR thWait(APTR Ob, LONG TimeOut, LONG MsgInterval) {
-   struct thWait args = { TimeOut, MsgInterval };
+INLINE ERROR thWait(APTR Ob, LONG TimeOut) {
+   struct thWait args = { TimeOut };
    return(Action(MT_ThWait, (OBJECTPTR)Ob, &args));
 }
 
@@ -2747,7 +2761,7 @@ typedef struct rkCompression {
 #ifdef PRV_COMPRESSION
    OBJECTPTR FileIO;             // File input/output
    STRING *  FileList;           // List of all files held in the compression object
-   STRING    Location;           // File location of the compressed data
+   STRING    Path;               // Location of the compressed data
    struct CompressionFeedback *FeedbackInfo;
    struct rkCompression *NextArchive;
    UBYTE     Header[32];         // The first 32 bytes of data from the compressed file (for sub-classes only)
@@ -3642,5 +3656,19 @@ INLINE ERROR flReadLE8(APTR Object, LARGE *Result)
    }
    else return ERR_Read;
 }
+
+#ifdef __cplusplus
+template <class R>
+constexpr FUNCTION make_function_stdc(R Routine, OBJECTPTR Context = CurrentContext()) {
+   FUNCTION func = { .Type = CALL_STDC, .StdC = { .Context = Context, .Routine = (APTR)Routine } };
+   return func;
+}
+
+INLINE FUNCTION make_function_script(OBJECTPTR Script, LARGE Procedure) {
+   FUNCTION func = { .Type = CALL_SCRIPT, .Script = { .Script = (OBJECTPTR)Script, .ProcedureID = Procedure } };
+   return func;
+}
+#endif
+
   
 #endif

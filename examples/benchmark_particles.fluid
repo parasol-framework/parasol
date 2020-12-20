@@ -274,6 +274,6 @@ end
 
    glWindow.acShow()
 
-   processMessages(-1)
+   processing.sleep()
 
    print('Best frame rate: ' .. math.round(glBestFPS))

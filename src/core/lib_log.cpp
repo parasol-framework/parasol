@@ -413,6 +413,7 @@ void VLogF(LONG Flags, CSTRING Header, CSTRING Message, va_list Args)
       else msgstate = MS_MSG;
 
       //fprintf(stderr, "%.8d. ", winGetCurrentThreadId());
+      //fprintf(stderr, "%p ", tlContext);
 
       #if defined(__unix__) AND !defined(__ANDROID__)
          BYTE flushdbg;
@@ -640,27 +641,6 @@ ERROR FuncError(CSTRING Header, ERROR Code)
    else LogF(Header,"Code: %d", Code);
 
    if (step) LogReturn();
-   return Code;
-}
-
-/*****************************************************************************
-
--FUNCTION-
-LogError: OBSOLETE
-
-OBSOLETE
-
--INPUT-
-int Header: A valid header code must be specified, as listed in the "system/errors.h" include file.  Valid examples of existing codes are ERH_Core, ERH_Message, ERH_Error.
-error Error: Pre-defined error strings are provided in the "system/errors.h" include file.  Search the file for the desired message to log (e.g. use a basic keyword such as "module" for module related messages).
-
--RESULT-
-error: Returns the value specified in the Error parameter.
-
-*****************************************************************************/
-
-ERROR LogError(LONG HeaderCode, ERROR Code)
-{
    return Code;
 }
 

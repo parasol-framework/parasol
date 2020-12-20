@@ -37,7 +37,7 @@ struct thread_callback {
 };
 
 //****************************************************************************
-// Usage: error = thread.script(Statement, Callback)
+// Usage: thread.script(Statement, Callback)
 
 static int thread_script(lua_State *Lua)
 {
@@ -62,7 +62,7 @@ static int thread_script(lua_State *Lua)
 
          if (lua_isfunction(Lua, 2)) {
             lua_pushvalue(Lua, 2);
-            struct thread_callback cb = {
+            thread_callback cb = {
                .callbackID   = luaL_ref(Lua, LUA_REGISTRYINDEX),
                .threadScript = script,
                .mainScriptID = Lua->Script->Head.UniqueID
@@ -88,7 +88,7 @@ static int thread_script(lua_State *Lua)
 
 static ERROR thread_script_entry(objThread *Thread)
 {
-   struct thread_callback *cb;
+   thread_callback *cb;
    if (!GetPointer(Thread, FID_Data, &cb)) {
       acActivate(cb->threadScript);
       acFree(cb->threadScript);
@@ -102,7 +102,7 @@ static ERROR thread_script_entry(objThread *Thread)
 static ERROR thread_script_callback(objThread *Thread)
 {
    parasol::Log log("thread");
-   struct thread_callback *cb;
+   thread_callback *cb;
 
    if ((!GetPointer(Thread, FID_Data, &cb)) AND (cb)) {
       objScript *script;
@@ -339,18 +339,17 @@ static int thread_method(lua_State *Lua)
    return 0;
 }
 
-/*****************************************************************************
-** Register the thread interface.
-*/
+//****************************************************************************
+// Register the thread interface.
 
-static const struct luaL_reg threadlib_functions[] = {
+static const luaL_reg threadlib_functions[] = {
    { "action", thread_action },
    { "method", thread_method },
    { "script", thread_script },
    { NULL, NULL }
 };
 
-static const struct luaL_reg threadlib_methods[] = {
+static const luaL_reg threadlib_methods[] = {
    //{ "__index",    thread_get },
    //{ "__newindex", thread_set },
    { NULL, NULL }

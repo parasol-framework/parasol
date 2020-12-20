@@ -61,4 +61,4 @@ Tests the positioning functionality of the box interface.
    collectgarbage()
 
    win.acShow()
-   processMessages(-1)
+   processing.sleep()

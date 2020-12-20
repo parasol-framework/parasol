@@ -274,10 +274,10 @@ message, then it is removed from the queue without being processed. Message hand
 will stop processing the queue and returns immediately with ERR_Okay.
 
 If a message with a MSGID_QUIT ID is found on the queue, then the function returns immediately with the error code
-ERR_Terminate.  This indicates that you must stop the program as soon as possible and exit gracefully.
+ERR_Terminate.  The program must respond to the terminate request by exiting immediately.
 
 -INPUT-
-int Flags:   Optional flags are specified here (currently no flags are provided).
+int(PMF) Flags:   Optional flags are specified here (currently no flags are provided).
 int TimeOut: A TimeOut value, measured in milliseconds.  If zero, the function will return as soon as all messages on the queue are processed.  If less than zero, the function does not return until a request for termination is received or a user message requires processing.
 
 -ERRORS-
@@ -294,6 +294,9 @@ ERROR ProcessMessages(LONG Flags, LONG TimeOut)
 
    // Message processing is only possible from the main thread (for system design and synchronisation reasons)
    if ((!tlMainThread) and (!tlThreadWriteMsg)) return log.warning(ERR_OutsideMainThread);
+
+   // Ensure that all resources allocated by sub-routines are assigned to the Task object by default.
+   parasol::SwitchContext ctx(glCurrentTask);
 
    // This recursion blocker prevents ProcessMessages() from being called to breaking point.  Excessive nesting can
    // occur on occasions where ProcessMessages() sends an action to an object that performs some activity before it
@@ -391,7 +394,8 @@ ERROR ProcessMessages(LONG Flags, LONG TimeOut)
 
                ThreadLock lock(TL_MSGHANDLER, 5000);
                if (lock.granted()) {
-                  for (MsgHandler *handler=glMsgHandlers; handler; handler=handler->Next) {
+                  // Message handlers will execute within the context of the main task and not the function's context
+                  for (auto handler=glMsgHandlers; handler; handler=handler->Next) {
                      if ((!handler->MsgType) or (handler->MsgType IS msg->Type)) {
                         ERROR result = ERR_NoSupport;
                         if (handler->Function.Type IS CALL_STDC) {
@@ -431,7 +435,7 @@ ERROR ProcessMessages(LONG Flags, LONG TimeOut)
             }
          }
 
-         if ((glTaskState IS TSTATE_STOPPING) or (breaking)) {
+         if (((glTaskState IS TSTATE_STOPPING) and (!(Flags & PMF_SYSTEM_NO_BREAK))) or (breaking)) {
             log.trace("Breaking message loop.");
             break;
          }
@@ -452,7 +456,8 @@ ERROR ProcessMessages(LONG Flags, LONG TimeOut)
 
       glTimerCycle++;
 timer_cycle:
-      if ((glTaskState != TSTATE_STOPPING) and (!thread_lock(TL_TIMER, 200))) {
+      if ((glTaskState IS TSTATE_STOPPING) and (!(Flags & PMF_SYSTEM_NO_BREAK)));
+      else if (!thread_lock(TL_TIMER, 200)) {
          LARGE current_time = PreciseTime();
          for (CoreTimer *timer=glTimers; timer; timer=timer->Next) {
             if (current_time < timer->NextCall) continue;
@@ -513,7 +518,7 @@ timer_cycle:
          thread_unlock(TL_TIMER);
       }
 
-      // This routine pulls out all messages and processes them
+      // This sub-routine consumes all of the queued messages
 
       WORD msgcount = 0;
       BYTE repass = FALSE;
@@ -522,7 +527,7 @@ timer_cycle:
          BYTE msgfound = FALSE;
          if (!AccessMemory(glTaskMessageMID, MEM_READ_WRITE, 2000, (void **)&msgbuffer)) {
             if (msgbuffer->Count) {
-               TaskMessage *scanmsg = (TaskMessage *)msgbuffer->Buffer;
+               auto scanmsg = (TaskMessage *)msgbuffer->Buffer;
                TaskMessage *prevmsg = NULL;
 
                #ifdef DEBUG
@@ -601,7 +606,7 @@ timer_cycle:
 
          ThreadLock lock(TL_MSGHANDLER, 5000);
          if (lock.granted()) {
-            for (MsgHandler *handler=glMsgHandlers; handler; handler=handler->Next) {
+            for (auto handler=glMsgHandlers; handler; handler=handler->Next) {
                if ((!handler->MsgType) or (handler->MsgType IS msg->Type)) {
                   ERROR result = ERR_NoSupport;
                   if (handler->Function.Type IS CALL_STDC) {
@@ -666,7 +671,7 @@ timer_cycle:
       #endif
 
       LARGE wait = 0;
-      if ((repass) or (breaking) or (glTaskState IS TSTATE_STOPPING));
+      if ((repass) or (breaking) or ((glTaskState IS TSTATE_STOPPING) and (!(Flags & PMF_SYSTEM_NO_BREAK))));
       else if (timeout_end > 0) {
          // Wait for someone to communicate with us, or stall until an interrupt is due.
 
@@ -701,18 +706,17 @@ timer_cycle:
          else {
          }
       #else
-         sleep_task(wait/1000LL); // Event if wait is zero, we still need to clear FD's and call FD hooks
+         sleep_task(wait / 1000LL); // Event if wait is zero, we still need to clear FD's and call FD hooks
       #endif
 
       // Continue the loop?
 
       if (repass) continue; // There are messages left unprocessed
-      if ((glTaskState IS TSTATE_STOPPING) or (breaking)) {
+      else if (((glTaskState IS TSTATE_STOPPING) and (!(Flags & PMF_SYSTEM_NO_BREAK))) or (breaking)) {
          log.trace("Breaking message loop.");
          break;
       }
-
-      if (PreciseTime() >= timeout_end) {
+      else if (PreciseTime() >= timeout_end) {
          if (TimeOut) {
             log.trace("Breaking message loop - timeout of %dms.", TimeOut);
             if (timeout_end > 0) returncode = ERR_TimeOut;
@@ -722,7 +726,7 @@ timer_cycle:
 
    } while (1);
 
-   if (glTaskState IS TSTATE_STOPPING) returncode = ERR_Terminate;
+   if ((glTaskState IS TSTATE_STOPPING) and (!(Flags & PMF_SYSTEM_NO_BREAK))) returncode = ERR_Terminate;
 
    if (msg) FreeResource(msg);
 
@@ -871,7 +875,7 @@ static void view_messages(MessageHeader *Header)
 
    log.warning("Count: %d, Next: %d", Header->Count, Header->NextEntry);
 
-   TaskMessage *msg = (TaskMessage *)Header->Buffer;
+   auto msg = (TaskMessage *)Header->Buffer;
    WORD count = 0;
    while (count < Header->Count) {
       if (msg->Type) {
@@ -998,8 +1002,8 @@ ERROR SendMessage(MEMORYID MessageMID, LONG Type, LONG Flags, APTR Data, LONG Si
             #endif
             */
 
-            TaskMessage *srcmsg  = (TaskMessage *)header->Buffer;
-            TaskMessage *destmsg = (TaskMessage *)buffer->Buffer;
+            auto srcmsg  = (TaskMessage *)header->Buffer;
+            auto destmsg = (TaskMessage *)buffer->Buffer;
             for (buffer->Count=0; buffer->Count < header->Count;) {
                if (srcmsg->Type) {
                   CopyMemory(srcmsg, destmsg, sizeof(TaskMessage) + srcmsg->DataSize);
@@ -1063,6 +1067,100 @@ ERROR SendMessage(MEMORYID MessageMID, LONG Type, LONG Flags, APTR Data, LONG Si
       log.warning("Could not gain access to message port #%d: %s", MessageMID, glMessages[error]);
       return error; // Important that the original AccessMemory() error is returned (some code depends on this for detailed clarification)
    }
+}
+
+/*****************************************************************************
+
+-FUNCTION-
+WaitForObjects: Process incoming messages while waiting on objects to complete their activities.
+
+The WaitForObjects() function acts as a front-end to ~ProcessMessages(), providing an additional feature of being
+able to wait for a series of objects that must signal an end to their activities.  An object can be signalled via
+the Signal() action.  Termination of a monitored object is also treated as a signal.  The function will return once
+ALL of the objects are signalled or a time-out occurs.
+
+Note that if an object has been signalled prior to entry to this function, its signal flag will be cleared and the
+object will not be monitored.
+
+-INPUT-
+int Flags:   Optional flags are specified here (currently no flags are provided).
+int TimeOut: A time-out value measured in milliseconds.  If this value is negative then the function will not return until an incoming message or signal breaks it.
+struct(*ObjectSignal) ObjectSignals: A null-terminated array of objects to monitor for signals.
+
+-ERRORS-
+Okay
+NullArgs
+Failed
+Recursion
+OutsideMainThread
+
+-END-
+
+*****************************************************************************/
+
+ERROR WaitForObjects(LONG Flags, LONG TimeOut, ObjectSignal *ObjectSignals)
+{
+   // Refer to the Task class for the message interception routines
+   parasol::Log log(__FUNCTION__);
+
+   if (!ObjectSignals) return log.warning(ERR_NullArgs);
+
+   if (!glWFOList.empty()) return log.warning(ERR_Recursion);
+
+   // Message processing is only possible from the main thread (for system design and synchronisation reasons)
+   if ((!tlMainThread) and (!tlThreadWriteMsg)) return log.warning(ERR_OutsideMainThread);
+
+   log.branch("Flags: $%.8x, Timeout: %d, Signals: %p", Flags, TimeOut, ObjectSignals);
+
+   parasol::SwitchContext ctx(glCurrentTask);
+
+   ERROR error = ERR_Okay;
+   glWFOList.clear();
+   for (LONG i=0; ((error IS ERR_Okay) and (ObjectSignals[i].Object)); i++) {
+      parasol::ScopedObjectLock<OBJECTPTR> lock(ObjectSignals[i].Object); // For thread safety
+
+      // Refer to TASK_ActionNotify() for notification handling and clearing of signals
+      if (ObjectSignals[i].Object->Flags & NF_SIGNALLED) {
+         // Objects that have already been signalled do not require monitoring
+         ObjectSignals[i].Object->Flags &= ~NF_SIGNALLED;
+      }
+      else if (!SubscribeAction(ObjectSignals[i].Object, AC_Free)) {
+         log.debug("Monitoring object #%d", ObjectSignals[i].Object->UniqueID);
+         if (SubscribeAction(ObjectSignals[i].Object, AC_Signal)) error = ERR_Failed;
+         glWFOList.insert(std::make_pair(ObjectSignals[i].Object->UniqueID, ObjectSignals[i]));
+      }
+      else error = ERR_Failed;
+   }
+
+   if (!error) {
+      if (TimeOut < 0) {
+         if (glWFOList.empty()) error = ProcessMessages(Flags, 0);
+         else error = ProcessMessages(Flags, -1);
+      }
+      else {
+         auto current_time = PreciseTime();
+         auto end_time = current_time + (TimeOut * 1000LL);
+         while ((not glWFOList.empty()) and (current_time < end_time) and (!error)) {
+            log.debug("Waiting on %d objects.", (LONG)glWFOList.size());
+            error = ProcessMessages(Flags, (end_time - current_time) / 1000LL);
+            current_time = PreciseTime();
+         }
+      }
+
+      if ((!error) and (not glWFOList.empty())) error = ERR_TimeOut;
+   }
+
+   if (not glWFOList.empty()) { // Clean up if there are dangling subscriptions
+      for (auto &ref : glWFOList) {
+         parasol::ScopedObjectLock<OBJECTPTR> lock(ref.second.Object); // For thread safety
+         UnsubscribeAction(ref.second.Object, AC_Free);
+         UnsubscribeAction(ref.second.Object, AC_Signal);
+      }
+      glWFOList.clear();
+   }
+
+   if (error) log.warning(error);
+   return error;
 }
 
 /*****************************************************************************
@@ -1550,7 +1648,6 @@ ERROR sleep_task(LONG Timeout, BYTE SystemOnly)
 #ifdef __unix__ // TLS data for the wake_task() socket.
 static pthread_key_t keySocket;
 static pthread_once_t keySocketOnce = PTHREAD_ONCE_INIT;
-#pragma GCC diagnostic ignored "-Wpointer-to-int-cast"
 #pragma GCC diagnostic ignored "-Wint-to-pointer-cast"
 static void thread_socket_free(void *Socket) { close(PTR_TO_HOST(Socket)); }
 static void thread_socket_init(void) { pthread_key_create(&keySocket, thread_socket_free); }
@@ -1582,7 +1679,6 @@ void wake_task(LONG TaskIndex, CSTRING Caller)
    // discovered to cause problems.  The use of pthread keys also ensures that the socket FD is automatically closed
    // when the thread is removed.
 
-   #pragma GCC diagnostic ignored "-Wpointer-to-int-cast"
    #pragma GCC diagnostic ignored "-Wint-to-pointer-cast"
    HOSTHANDLE tlSendSocket;
    pthread_once(&keySocketOnce, thread_socket_init);

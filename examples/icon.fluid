@@ -33,5 +33,5 @@ A basic demonstration of the icon interface.
 
    win.acShow()
 
-   processMessages(-1) // Will sleep until the window close widget sends MSGID_QUIT
+   processing.sleep() // Will sleep until the window close widget sends MSGID_QUIT
 

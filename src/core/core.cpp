@@ -838,6 +838,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
    ManageAction(AC_Free, (APTR)MGR_Free);
    ManageAction(AC_Rename, (APTR)MGR_Rename);
    ManageAction(AC_Seek, (APTR)MGR_Seek);
+   ManageAction(AC_Signal, (APTR)MGR_Signal);
 
    if (!(glClassMap = VarNew(0, KSF_THREAD_SAFE))) {
       fprintf(stderr, "Failed to allocate glClassMap.\n");

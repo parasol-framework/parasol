@@ -97,4 +97,4 @@ end
 
    surface.subscribe("Redimension", update_text, { text=text, window=win }) // Update the text every time that the surface is resized
 
-   processMessages(-1)
+   processing.sleep()

@@ -49,10 +49,8 @@ class ScopedObject { // C++ wrapper for automatically freeing an object
 
 template <class T>
 class ScopedObjectLock { // C++ wrapper for automatically freeing an object
-   private:
-      ERROR error;
-
    public:
+      ERROR error;
       T *obj;
 
       ScopedObjectLock(OBJECTID ObjectID, LONG Milliseconds = 3000) {

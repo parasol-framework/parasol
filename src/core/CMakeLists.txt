@@ -84,7 +84,7 @@ set_module_defaults (core)
 
 target_sources (core PRIVATE
    "core.cpp"
-   "data.c"
+   "data.cpp"
    "data_actionlist.c"
    "internal.cpp"
    "lib_actions.cpp"

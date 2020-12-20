@@ -124,26 +124,26 @@ static ERROR GET_Header(objCompression *Self, UBYTE **Header)
 /****************************************************************************
 
 -FIELD-
-Location: Set if the compressed data originates from, or is to be saved to a file source.
+Path: Set if the compressed data originates from, or is to be saved to a file source.
 
-To load or create a new file archive, set the Location field to the path of that file.
+To load or create a new file archive, set the Path field to the path of that file.
 
 ****************************************************************************/
 
-static ERROR GET_Location(objCompression *Self, CSTRING *Value)
+static ERROR GET_Path(objCompression *Self, CSTRING *Value)
 {
-   if (Self->Location) { *Value = Self->Location; return ERR_Okay; }
+   if (Self->Path) { *Value = Self->Path; return ERR_Okay; }
    else return ERR_FieldNotSet;
 }
 
-static ERROR SET_Location(objCompression *Self, CSTRING Value)
+static ERROR SET_Path(objCompression *Self, CSTRING Value)
 {
    parasol::Log log;
 
-   if (Self->Location) { FreeResource(Self->Location); Self->Location = NULL; }
+   if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
 
    if ((Value) and (*Value)) {
-      if (!(Self->Location = StrClone(Value))) return log.warning(ERR_AllocMemory);
+      if (!(Self->Path = StrClone(Value))) return log.warning(ERR_AllocMemory);
    }
    return ERR_Okay;
 }
