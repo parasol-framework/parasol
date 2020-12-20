@@ -356,6 +356,7 @@
       <const name="RECLASSED">The object switched from the base-class to a sub-class during initialisation.</const>
       <const name="INITIALISED">Read-only indicator if the object has been initialised.</const>
       <const name="UNIQUE">Use to allocate an object that has a guaranteed unique name.  This will prevent code from shadowing any object that exists with the same name, which can be imperative when creating public objects.  If it is discovered that an identically named object exists, NewObject() will return ERR_ObjectExists.  This flag works in conjunction with the Name argument.</const>
+      <const name="SIGNALLED">The object has been signalled and is awaiting processing.</const>
       <const name="UNLOCK_FREE">Read-only indicator for when the object is marked for deletion.</const>
       <const name="MESSAGE">Action has been called against the object through the message system (managed by ProcessMessages()).</const>
       <const name="FOREIGN_OWNER">Read-only indicator for when an object's parent is in a foreign process.</const>
@@ -592,7 +593,6 @@
 
     <struct name="ObjectSignal" comment="Required in calls to WaitForObjects().">
       <field name="Object" type="OBJECTPTR"></field>
-      <field name="ActionID" type="LONG"></field>
     </struct>
 
     <struct name="Function" comment="Function list array structure">

@@ -3935,10 +3935,11 @@ end
     <input>
       <param type="LONG" name="Flags">Optional flags are specified here (currently no flags are provided).</param>
       <param type="LONG" name="TimeOut">A time-out value measured in milliseconds.  If this value is negative then the function will not return until an incoming message or signal breaks it.</param>
-      <param type="struct ObjectSignal *" name="ObjectSignals">A null-terminated array of objects and action IDs to monitor for signals.</param>
+      <param type="struct ObjectSignal *" name="ObjectSignals">A null-terminated array of objects to monitor for signals.</param>
     </input>
     <description>
-<p>The WaitForObjects() function acts as a front-end to <function module="Core">ProcessMessages</function>, providing an additional feature of being able to wait for a series of objects that must signal an end to their activities.  You may specify one action or method to act as a signal for each object that will be monitored.  Objects will also be signalled if they are terminated at any time.  The function will return once all of the objects are signalled or a time-out occurs.</p>
+<p>The WaitForObjects() function acts as a front-end to <function module="Core">ProcessMessages</function>, providing an additional feature of being able to wait for a series of objects that must signal an end to their activities.  An object can be signalled via the Signal() action.  Termination of a monitored object is also treated as a signal.  The function will return once ALL of the objects are signalled or a time-out occurs.</p>
+<p>Note that if an object has been signalled prior to entry to this function, its signal flag will be cleared and the object will not be monitored.</p>
     </description>
     <result type="ERROR">
       <error code="OutsideMainThread">An operation has been attempted that is only possible from within the main thread.</error>
@@ -4245,6 +4246,7 @@ end
       <const name="RECLASSED">The object switched from the base-class to a sub-class during initialisation.</const>
       <const name="INITIALISED">Read-only indicator if the object has been initialised.</const>
       <const name="UNIQUE">Use to allocate an object that has a guaranteed unique name.  This will prevent code from shadowing any object that exists with the same name, which can be imperative when creating public objects.  If it is discovered that an identically named object exists, NewObject() will return ERR_ObjectExists.  This flag works in conjunction with the Name argument.</const>
+      <const name="SIGNALLED">The object has been signalled and is awaiting processing.</const>
       <const name="UNLOCK_FREE">Read-only indicator for when the object is marked for deletion.</const>
       <const name="MESSAGE">Action has been called against the object through the message system (managed by ProcessMessages()).</const>
       <const name="FOREIGN_OWNER">Read-only indicator for when an object's parent is in a foreign process.</const>
@@ -4481,7 +4483,6 @@ end
 
     <struct name="ObjectSignal" comment="Required in calls to WaitForObjects().">
       <field name="Object" type="OBJECTPTR"></field>
-      <field name="ActionID" type="LONG"></field>
     </struct>
 
     <struct name="Function" comment="Function list array structure">

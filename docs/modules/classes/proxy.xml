@@ -234,6 +234,10 @@
       <const name="SYNCHRONOUS">Use synchronous (blocking) network calls.</const>
     </constants>
 
+    <constants lookup="NLF" comment="Options for NetLookup">
+      <const name="NO_CACHE">Contact the name service and do not use the local DNS cache.</const>
+    </constants>
+
     <constants lookup="NTC" comment="NetSocket states">
       <const name="DISCONNECTED">There is no connection.</const>
       <const name="CONNECTING">A connection is being established.</const>

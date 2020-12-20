@@ -16,8 +16,7 @@
     <description>
 <p>The Thread class provides the means to execute and manage threads within an application.</p>
 <p>The following code illustrates how to create a temporary thread that is automatically destroyed after the thread_entry() function has completed:</p>
-<pre>static ERROR thread_entry(objThread *Thread)
-{
+<pre>static ERROR thread_entry(objThread *Thread) {
    return ERR_Okay;
 }
 
@@ -45,7 +44,7 @@ if (!CreateObject(ID_THREAD, 0, &amp;thread,
       <name>Deactivate</name>
       <comment>Stops a thread.</comment>
       <description>
-<p>Deactivating an active thread will cause it to stop immediately.  Stopping a thread in this manner is dangerous and should only be attempted if the circumstances require it.</p>
+<p>Deactivating an active thread will cause it to stop immediately.  Stopping a thread in this manner is dangerous and could result in an unstable application.</p>
       </description>
     </action>
 
@@ -450,6 +449,7 @@ if (!CreateObject(ID_THREAD, 0, &amp;thread,
       <const name="RECLASSED">The object switched from the base-class to a sub-class during initialisation.</const>
       <const name="INITIALISED">Read-only indicator if the object has been initialised.</const>
       <const name="UNIQUE">Use to allocate an object that has a guaranteed unique name.  This will prevent code from shadowing any object that exists with the same name, which can be imperative when creating public objects.  If it is discovered that an identically named object exists, NewObject() will return ERR_ObjectExists.  This flag works in conjunction with the Name argument.</const>
+      <const name="SIGNALLED">The object has been signalled and is awaiting processing.</const>
       <const name="UNLOCK_FREE">Read-only indicator for when the object is marked for deletion.</const>
       <const name="MESSAGE">Action has been called against the object through the message system (managed by ProcessMessages()).</const>
       <const name="FOREIGN_OWNER">Read-only indicator for when an object's parent is in a foreign process.</const>
@@ -686,7 +686,6 @@ if (!CreateObject(ID_THREAD, 0, &amp;thread,
 
     <struct name="ObjectSignal" comment="Required in calls to WaitForObjects().">
       <field name="Object" type="OBJECTPTR"></field>
-      <field name="ActionID" type="LONG"></field>
     </struct>
 
     <struct name="Function" comment="Function list array structure">
