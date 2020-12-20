@@ -15,8 +15,7 @@ The following code illustrates how to create a temporary thread that is automati
 thread_entry() function has completed:
 
 <pre>
-static ERROR thread_entry(objThread *Thread)
-{
+static ERROR thread_entry(objThread *Thread) {
    return ERR_Okay;
 }
 
@@ -191,7 +190,7 @@ ERROR msg_threadcallback(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LO
 
    objThread *thread;
    if (!AccessObject(msg->ThreadID, 5000, (OBJECTPTR *)&thread)) {
-      thread->prv.Active = FALSE;
+      thread->prv.Active = FALSE; // Because marking the thread as inactive is not done until the message is received by the core program
 
       if (thread->prv.Callback.Type IS CALL_STDC) {
          auto callback = (void (*)(objThread *))thread->prv.Callback.StdC.Routine;
@@ -229,6 +228,7 @@ static int thread_entry(objThread *Self)
 static void * thread_entry(objThread *Self)
 #endif
 {
+   // Note that the Active flag will have been set to true prior to entry.
    tlThreadCrashed = TRUE;
    tlThreadRef = Self;
    pthread_cleanup_push(&thread_entry_cleanup, Self);
@@ -244,8 +244,6 @@ static void * thread_entry(objThread *Self)
       // Replace the default dummy context with one that pertains to the thread
       ObjectContext thread_ctx = { .Stack = tlContext, .Object = &Self->Head, .Field = NULL, .Action = 0 };
       tlContext = &thread_ctx;
-
-      Self->prv.Active = TRUE;
 
       if (Self->prv.Routine.Type IS CALL_STDC) {
          auto routine = (ERROR (*)(objThread *))Self->prv.Routine.StdC.Routine;
@@ -267,29 +265,32 @@ static void * thread_entry(objThread *Self)
       }
 
       tlThreadRef = NULL;
-      NotifySubscribers(&Self->Head, AC_Signal, NULL, 0, ERR_Okay); // Required by THREAD_Wait()
+
+      if (!AccessPrivateObject((OBJECTPTR)Self, 10000)) {
+         NotifySubscribers(&Self->Head, AC_Signal, NULL, 0, ERR_Okay); // Signalling thread completion is required by THREAD_Wait()
+
+         if (Self->prv.Callback.Type) {
+            // A message needs to be placed on the process' message queue with a reference to the thread object
+            // so the callback can be processed by the main program thread.  See msg_threadcallback()
+
+            ThreadMessage msg;
+            msg.ThreadID = Self->Head.UniqueID;
+            SendMessage(0, MSGID_THREAD_CALLBACK, MSF_ADD|MSF_WAIT, &msg, sizeof(msg)); // See msg_threadcallback()
+
+            //Self->prv.Active = FALSE; // Commented out because we don't want the active flag to be disabled until the callback is processed (for safety reasons).
+         }
+         else if (Self->Flags & THF_AUTO_FREE) {
+            Self->prv.Active = FALSE;
+            acFree(&Self->Head);
+         }
+         else Self->prv.Active = FALSE;
+
+         ReleasePrivateObject((OBJECTPTR)Self);
+      }
+
+      // Please note that the Thread object/memory should be presumed terminated from this point
 
       tlContext = &glTopContext; // Revert back to the dummy context
-
-      if (Self->prv.Callback.Type) {
-         // A message needs to be placed on the process' message queue with a reference to the thread object
-         // so the callback can be processed by the main program thread.  See msg_threadcallback()
-
-         ThreadMessage msg;
-         msg.ThreadID = Self->Head.UniqueID;
-         SendMessage(0, MSGID_THREAD_CALLBACK, MSF_ADD, &msg, sizeof(msg));
-
-         //Self->prv.Active = FALSE; // Commented out because we don't want the active flag to be disabled until the callback is processed (for safety reasons).
-      }
-      else if (Self->Flags & THF_AUTO_FREE) {
-         Self->prv.Active = FALSE;
-         if (!AccessPrivateObject((OBJECTPTR)Self, 10000)) {
-            acFree(&Self->Head);
-            ReleasePrivateObject((OBJECTPTR)Self);
-         }
-         // Please note that the Thread object/memory is now terminated
-      }
-      else Self->prv.Active = FALSE;
    }
 
    tlThreadCrashed = FALSE;
@@ -327,6 +328,8 @@ static ERROR THREAD_Activate(objThread *Self, APTR Void)
 
    if (Self->prv.Active) return ERR_NothingDone;
 
+   Self->prv.Active = TRUE;
+
 #ifdef __unix__
    pthread_attr_t attr;
    pthread_attr_init(&attr);
@@ -341,7 +344,6 @@ static ERROR THREAD_Activate(objThread *Self, APTR Void)
       strerror_r(errno, errstr, sizeof(errstr));
       log.warning("pthread_create() failed with error: %s.", errstr);
       pthread_attr_destroy(&attr);
-      return ERR_Failed;
    }
 
 #elif _WIN32
@@ -349,12 +351,13 @@ static ERROR THREAD_Activate(objThread *Self, APTR Void)
    if ((Self->prv.Handle = winCreateThread((APTR)&thread_entry, Self, Self->StackSize, &Self->prv.ThreadID))) {
       return ERR_Okay;
    }
-   else return log.warning(ERR_Failed);
 
 #else
    #error Platform support for threads is required.
 #endif
 
+   Self->prv.Active = FALSE;
+   return log.warning(ERR_Failed);
 }
 
 /*****************************************************************************
