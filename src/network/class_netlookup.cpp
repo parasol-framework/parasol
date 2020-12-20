@@ -32,6 +32,7 @@ static void resolve_callback(objNetLookup *, ERROR, CSTRING, IPAddress *, LONG);
 #ifdef _WIN32
 static ERROR cache_host(KeyStore *, CSTRING, struct hostent *, DNSEntry **);
 #else
+static ERROR cache_host(KeyStore *, CSTRING, struct hostent *, DNSEntry **);
 static ERROR cache_host(KeyStore *, CSTRING, struct addrinfo *, DNSEntry **);
 #endif
 
@@ -502,8 +503,6 @@ static ERROR GET_HostName(objNetLookup *Self, CSTRING *Value)
 
 //***************************************************************************
 
-#ifdef _WIN32
-
 static ERROR cache_host(KeyStore *Store, CSTRING Key, struct hostent *Host, DNSEntry **Cache)
 {
    if ((!Host) or (!Cache)) return ERR_NullArgs;
@@ -577,7 +576,7 @@ static ERROR cache_host(KeyStore *Store, CSTRING Key, struct hostent *Host, DNSE
    return ERR_Okay;
 }
 
-#else
+#ifdef __linux__
 
 static ERROR cache_host(KeyStore *Store, CSTRING Key, struct addrinfo *Host, DNSEntry **Cache)
 {
@@ -667,11 +666,11 @@ static ERROR resolve_address(CSTRING Address, const IPAddress *IP, DNSEntry **In
    char host_name[256], service[128];
    int result;
 
-   if (IP.Type IS IPADDR_V4) {
+   if (IP->Type IS IPADDR_V4) {
       const struct sockaddr_in sa = {
          .sin_family = AF_INET,
          .sin_port = 0,
-         .sin_addr = { .s_addr = IP.Data[0] }
+         .sin_addr = { .s_addr = IP->Data[0] }
       };
       result = getnameinfo((struct sockaddr *)&sa, sizeof(sa), host_name, sizeof(host_name), service, sizeof(service), NI_NAMEREQD);
    }
@@ -682,7 +681,7 @@ static ERROR resolve_address(CSTRING Address, const IPAddress *IP, DNSEntry **In
          .sin6_flowinfo = 0,
          .sin6_scope_id = 0
       };
-      CopyMemory(IP.Data, (APTR)sa.sin6_addr.s6_addr, 16);
+      CopyMemory(IP->Data, (APTR)sa.sin6_addr.s6_addr, 16);
       result = getnameinfo((struct sockaddr *)&sa, sizeof(sa), host_name, sizeof(host_name), service, sizeof(service), NI_NAMEREQD);
    }
 
@@ -690,7 +689,7 @@ static ERROR resolve_address(CSTRING Address, const IPAddress *IP, DNSEntry **In
       case 0: {
          struct hostent host = {
             .h_name      = host_name,
-            .h_addrtype  = (IP.Type IS IPADDR_V4) ? AF_INET : AF_INET6,
+            .h_addrtype  = (IP->Type IS IPADDR_V4) ? AF_INET : AF_INET6,
             .h_length    = 0,
             .h_addr_list = NULL
          };
@@ -725,7 +724,7 @@ static ERROR resolve_name(CSTRING HostName, DNSEntry **Info)
 
    switch (result) {
       case 0: {
-         error = cache_host(glHosts, HostName, servinfo, Info);
+         ERROR error = cache_host(glHosts, HostName, servinfo, Info);
          freeaddrinfo(servinfo);
          return error;
       }
