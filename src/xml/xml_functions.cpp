@@ -1401,6 +1401,7 @@ matched_attrib:
                   if (scCallback(script, Callback->Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Terminate;
                }
             }
+            else error = ERR_Okay;
 
             if (error IS ERR_Terminate) {
                *Tag = current;
@@ -1433,6 +1434,7 @@ matched_attrib:
                   ReleaseObject(script);
                }
             }
+            else error = ERR_Okay;
 
             if (error IS ERR_Terminate) {
                *Tag = current;

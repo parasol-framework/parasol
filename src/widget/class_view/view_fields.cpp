@@ -231,7 +231,7 @@ static ERROR SET_Columns(objView *Self, CSTRING Value)
 
    // Mark all existing columns for deletion
 
-   for (auto column=Self->Columns; column; column=column->Next) column->Flags |= CF_DELETE;
+   for (column=Self->Columns; column; column=column->Next) column->Flags |= CF_DELETE;
 
    LONG index = 0;
    if (!(str = Value)) str = "";
@@ -351,7 +351,7 @@ static ERROR SET_Columns(objView *Self, CSTRING Value)
 
       prevcol = NULL;
       LONG colindex = 0;
-      for (auto column=Self->Columns; column; column=column->Next, colindex++) {
+      for (column=Self->Columns; column; column=column->Next, colindex++) {
          if (!StrMatch(column->Name, col.Name)) {
             log.trace("Updating column '%s'", col.Name);
 

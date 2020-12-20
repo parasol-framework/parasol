@@ -47,7 +47,10 @@ static void clientsocket_incoming(HOSTHANDLE SocketHandle, APTR Data)
             if (scCallback(script, Socket->Incoming.Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Terminate;
          }
       }
-      else log.warning("No Incoming callback configured (got %d).", Socket->Incoming.Type);
+      else {
+         log.warning("No Incoming callback configured (type %d).", Socket->Incoming.Type);
+         error = ERR_Okay;
+      }
 
       if (error) {
          log.msg("Received error %d, incoming callback will be terminated.", error);

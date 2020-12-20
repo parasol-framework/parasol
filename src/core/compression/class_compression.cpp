@@ -492,6 +492,7 @@ static ERROR COMPRESSION_CompressStreamEnd(objCompression *Self, struct cmpCompr
          }
          else error = ERR_Terminate;
       }
+      else error = ERR_Okay;
    }
 
    // Free the output buffer if it is quite large
