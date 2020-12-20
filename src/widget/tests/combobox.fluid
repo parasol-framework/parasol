@@ -24,4 +24,4 @@
    cmb.acDataFeed(0, DATA_XML, xml)
 
    win.acShow()
-   processMessages(-1)
+   processing.sleep()

@@ -75,4 +75,4 @@ end
 
    local err, timerID = mSys.SubscribeTimer(1.0/glFrameRate, timer)
 
-   processMessages(-1)
+   processing.sleep()

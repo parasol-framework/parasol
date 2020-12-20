@@ -57,4 +57,4 @@ Demonstrates the functionality provided by the divider interface.
    // Now show the window and enter the main loop.
 
    win.acShow()
-   processMessages(-1)
+   processing.sleep()
