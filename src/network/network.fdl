@@ -5,6 +5,8 @@ module({ name="Network", copyright="Paul Manias © 2005-2020", version=1.0, pref
     loadFile(glPath .. 'common.fdl')
   end)
 
+  cpp_include("<unordered_set>", "<map>", "<mutex>")
+
   c_insert([[
 
 #ifdef ENABLE_SSL
@@ -30,12 +32,21 @@ typedef LONG SOCKET_HANDLE;
     int Pad             # Unused padding for 64-bit alignment
   ]])
 
+  struct("DNSEntry", { }, [[
+    cstr HostName
+    ptr(struct(IPAddress)) Addresses # IP address list
+    int  TotalAddresses              # Total number of IP addresses
+  ]])
+
   flags("NSF", { },
     "SERVER: Puts the socket into server mode.  In this state the netsocket object will wait for incoming connections from clients.",
     "SSL: Use Secure Sockets Layer for all communication.",
     "MULTI_CONNECT: Allow multiple connections from the same IP when in server mode.",
     "SYNCHRONOUS: Use synchronous (blocking) network calls.",
     "DEBUG: Print extra log messages.")
+
+  flags("NLF", { comment="Options for NetLookup" },
+    "NO_CACHE: Contact the name service and do not use the local DNS cache.")
 
   enum("NTC", { start=0, comment="NetSocket states" },
     "DISCONNECTED: There is no connection.",
@@ -111,13 +122,13 @@ typedef LONG SOCKET_HANDLE;
     int TotalSockets               # Count of all created sockets
   ]])
 
-  methods("proxy", "Prx", {
+  methods("proxy", "prx", {
     { id=1, name="Delete" },
     { id=2, name="Find" },
     { id=3, name="FindNext" }
   })
 
-  class("Proxy", { src="class_proxy.cpp" }, [[
+  class("Proxy", { src="class_proxy.cpp", output="class_proxy_def.c" }, [[
     str NetworkFilter
     str GatewayFilter
     str Username
@@ -135,6 +146,24 @@ typedef LONG SOCKET_HANDLE;
    char FindPort[16];
    BYTE  FindEnabled;
    UBYTE Find:1;
+  ]])
+
+  methods("NetLookup", "nl", {
+    { id=1, name="ResolveName" },
+    { id=2, name="ResolveAddress" },
+    { id=3, name="BlockingResolveName" },
+    { id=4, name="BlockingResolveAddress" }
+  })
+
+  class("NetLookup", { src="class_netlookup.cpp", output="class_netlookup_def.c" }, [[
+    large UserData   # Optional user data storage
+    int(NLF) Flags   # Optional flags
+  ]],
+  [[
+   FUNCTION Callback;
+   struct DNSEntry Info;
+   std::unordered_set<OBJECTID> *Threads;
+   std::mutex *ThreadLock;
   ]])
 
   methods("NetSocket", "ns", {
@@ -164,6 +193,7 @@ typedef LONG SOCKET_HANDLE;
    FUNCTION Outgoing;
    FUNCTION Incoming;
    FUNCTION Feedback;
+   struct rkNetLookup *NetLookup;
    struct rkNetClient *LastClient;
    struct NetQueue WriteQueue;
    struct NetQueue ReadQueue;
@@ -247,7 +277,5 @@ INLINE ERROR nsCreate(objNetSocket **NewNetSocketOut, OBJECTID ListenerID, APTR 
     "HostToLong",
     "ShortToHost",
     "LongToHost",
-    "SetSSL",
-    "ResolveName",
-    "ResolveAddress")
+    "SetSSL")
 end)

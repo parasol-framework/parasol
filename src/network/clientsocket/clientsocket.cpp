@@ -522,7 +522,7 @@ static const FieldArray clClientSocketFields[] = {
 
 //****************************************************************************
 
-static ERROR add_clientsocket(void)
+static ERROR init_clientsocket(void)
 {
    if (CreateObject(ID_METACLASS, 0, &clClientSocket,
       FID_BaseClassID|TLONG,    ID_CLIENTSOCKET,

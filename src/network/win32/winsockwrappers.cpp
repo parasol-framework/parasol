@@ -140,7 +140,7 @@ void winCloseResolveHandle(void *Handle)
 
 //****************************************************************************
 
-struct hostent * win_gethostbyaddr(struct IPAddress *Address)
+struct hostent * win_gethostbyaddr(const struct IPAddress *Address)
 {
    if (Address->Type IS IPADDR_V4) return gethostbyaddr((const char *)&Address->Data, 4, AF_INET);
    else return gethostbyaddr((const char *)&Address->Data, 16, AF_INET6);
