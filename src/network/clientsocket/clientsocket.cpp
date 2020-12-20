@@ -29,7 +29,7 @@ static void clientsocket_incoming(HOSTHANDLE SocketHandle, APTR Data)
 
    log.traceBranch("Handle: " PF64() ", Socket: %d, Client: %d", (LARGE)(MAXINT)SocketHandle, Socket->Head.UniqueID, ClientSocket->Head.UniqueID);
 
-   ERROR error;
+   ERROR error = ERR_Okay;
    if (Socket->Incoming.Type) {
       if (Socket->Incoming.Type IS CALL_STDC) {
          parasol::SwitchContext context(Socket->Incoming.StdC.Context);
@@ -47,10 +47,7 @@ static void clientsocket_incoming(HOSTHANDLE SocketHandle, APTR Data)
             if (scCallback(script, Socket->Incoming.Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Terminate;
          }
       }
-      else {
-         log.warning("No Incoming callback configured (type %d).", Socket->Incoming.Type);
-         error = ERR_Okay;
-      }
+      else error = ERR_InvalidValue;
 
       if (error) {
          log.msg("Received error %d, incoming callback will be terminated.", error);
