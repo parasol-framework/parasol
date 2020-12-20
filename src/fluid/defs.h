@@ -3,6 +3,8 @@
 #define VER_FLUID 1.0
 #define SIZE_READ 1024
 
+#include <list>
+
 struct code_reader_handle {
    objFile *File;
    APTR Buffer;
@@ -113,6 +115,11 @@ struct fstruct {
    LONG AlignedSize;   // 64-bit alignment size of the structure.
    struct structentry *Def; // The structure definition
    UBYTE Deallocate:1;  // Deallocate the struct when Lua collects this resource.
+};
+
+struct fprocessing {
+   DOUBLE Timeout;
+   std::list<ObjectSignal> *Signals;
 };
 
 struct metafield {
@@ -246,6 +253,7 @@ extern void register_input_class(lua_State *);
 extern void register_object_class(lua_State *);
 extern void register_module_class(lua_State *);
 extern void register_number_class(lua_State *);
+extern void register_processing_class(lua_State *);
 extern void register_struct_class(lua_State *);
 extern void register_thread_class(lua_State *);
 //static void register_widget_class(lua_State *);
@@ -265,7 +273,6 @@ int fcmd_nz(lua_State *);
 int fcmd_require(lua_State *);
 int fcmd_subscribe_event(lua_State *);
 int fcmd_unsubscribe_event(lua_State *);
-int fcmd_processMessages(lua_State *);
 
 #ifdef __arm__
 extern void armExecFunction(APTR, APTR, LONG);

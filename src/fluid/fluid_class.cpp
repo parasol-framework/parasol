@@ -37,7 +37,7 @@ static void dump_global_table(objScript *, STRING Global) __attribute__ ((unused
 static void dump_global_table(objScript *Self, STRING Global)
 {
    parasol::Log log("print_env");
-   lua_State *lua = ((struct prvFluid *)Self->Head.ChildPrivate)->Lua;
+   lua_State *lua = ((prvFluid *)Self->Head.ChildPrivate)->Lua;
    lua_getglobal(lua, Global);
    if (lua_istable(lua, -1) ) {
       lua_pushnil(lua);
@@ -53,7 +53,7 @@ static void dump_global_table(objScript *Self, STRING Global)
 
 static ERROR GET_Procedures(objScript *, STRING **, LONG *);
 
-static const struct FieldArray clFields[] = {
+static const FieldArray clFields[] = {
    { "Procedures", FDF_VIRTUAL|FDF_ARRAY|FDF_STRING|FDF_ALLOC|FDF_R, 0, (APTR)GET_Procedures, NULL },
    END_FIELD
 };
@@ -67,7 +67,7 @@ static ERROR FLUID_Free(objScript *, APTR);
 static ERROR FLUID_Init(objScript *, APTR);
 static ERROR FLUID_SaveToObject(objScript *, struct acSaveToObject *);
 
-static const struct ActionArray clActions[] = {
+static const ActionArray clActions[] = {
    { AC_ActionNotify, (APTR)FLUID_ActionNotify },
    { AC_Activate,     (APTR)FLUID_Activate },
    { AC_DataFeed,     (APTR)FLUID_DataFeed },
@@ -82,7 +82,7 @@ static const struct ActionArray clActions[] = {
 static ERROR FLUID_GetProcedureID(objScript *, struct scGetProcedureID *);
 static ERROR FLUID_DerefProcedure(objScript *, struct scDerefProcedure *);
 
-static const struct MethodArray clMethods[] = {
+static const MethodArray clMethods[] = {
    { MT_ScGetProcedureID, (APTR)FLUID_GetProcedureID, "GetProcedureID", NULL, 0 },
    { MT_ScDerefProcedure, (APTR)FLUID_DerefProcedure, "DerefProcedure", NULL, 0 },
    { 0, NULL, NULL, NULL, 0 }
@@ -1151,6 +1151,7 @@ static ERROR register_interfaces(objScript *Self)
    register_thread_class(prv->Lua);
    register_input_class(prv->Lua);
    register_number_class(prv->Lua);
+   register_processing_class(prv->Lua);
 
    lua_register(prv->Lua, "arg", fcmd_arg);
    lua_register(prv->Lua, "catch", fcmd_catch);
@@ -1165,7 +1166,6 @@ static ERROR register_interfaces(objScript *Self)
    lua_register(prv->Lua, "nz", fcmd_nz);
    lua_register(prv->Lua, "subscribeEvent", fcmd_subscribe_event);
    lua_register(prv->Lua, "unsubscribeEvent", fcmd_unsubscribe_event);
-   lua_register(prv->Lua, "processMessages", fcmd_processMessages);
    lua_register(prv->Lua, "MAKESTRUCT", MAKESTRUCT);
 
    load_include(Self, "core");
