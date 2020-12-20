@@ -2100,3 +2100,13 @@ ERROR MGR_Seek(OBJECTPTR Object, struct acSeek *Args)
 
    return log.warning(error);
 }
+
+/*****************************************************************************
+** Action: Signal
+*/
+
+ERROR MGR_Signal(OBJECTPTR Object, APTR Void)
+{
+   Object->Flags |= NF_SIGNALLED;
+   return ERR_Okay;
+}

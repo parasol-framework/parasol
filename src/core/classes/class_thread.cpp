@@ -362,7 +362,7 @@ static ERROR THREAD_Activate(objThread *Self, APTR Void)
 Deactivate: Stops a thread.
 
 Deactivating an active thread will cause it to stop immediately.  Stopping a thread in this manner is dangerous and
-should only be attempted if the circumstances require it.
+could result in an unstable application.
 -END-
 *****************************************************************************/
 
@@ -430,10 +430,7 @@ static ERROR THREAD_FreeWarning(objThread *Self, APTR Void)
       }
       else return ERR_Okay;
    }
-   else {
-      log.extmsg("Thread is inactive and may be terminated safely.");
-      return ERR_Okay;
-   }
+   else return ERR_Okay;
 }
 
 //****************************************************************************
@@ -548,7 +545,7 @@ static ERROR THREAD_Wait(objThread *Self, struct thWait *Args)
 
    if (!Args) return log.warning(ERR_NullArgs);
 
-   ObjectSignal sig[2] = { { .Object = &Self->Head, .ActionID = AC_Signal }, { 0, 0 } };
+   ObjectSignal sig[2] = { { .Object = &Self->Head }, { 0 } };
    return WaitForObjects(PMF_SYSTEM_NO_BREAK, Args->TimeOut, sig);
 }
 

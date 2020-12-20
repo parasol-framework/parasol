@@ -734,13 +734,21 @@ static ERROR TASK_ActionNotify(objTask *Self, struct acActionNotify *Args)
    // Handler for WaitForObjects().  If an object on the list is signalled then it is removed from the list.  A
    // message is sent once the list of objects that require signalling has been exhausted.
 
-   if (!glWFOList.empty()) {
-      auto action_ref = glWFOList.find(Args->Object);
-      if (action_ref != glWFOList.end()) {
-         if ((action_ref->second IS Args->ActionID) or (Args->ActionID IS AC_Free)) {
-            parasol::Log log;
+   if ((Args->ActionID IS AC_Signal) or (Args->ActionID IS AC_Free)) {
+      if (!glWFOList.empty()) {
+         parasol::Log log;
+         auto lref = glWFOList.find(Args->Object);
+         if (lref != glWFOList.end()) {
+            auto &ref = lref->second;
             log.trace("Object #%d has been signalled from action %d.", Args->Object, Args->ActionID);
-            glWFOList.erase(action_ref);
+
+            // Clean up subscriptions and clear the signal
+
+            UnsubscribeAction(ref.Object, AC_Free);
+            UnsubscribeAction(ref.Object, AC_Signal);
+            ref.Object->Flags &= ~NF_SIGNALLED;
+
+            glWFOList.erase(lref);
             if (glWFOList.empty()) {
                log.trace("All objects signalled.");
                SendMessage(0, MSGID_WAIT_FOR_OBJECTS, MSF_WAIT, NULL, 0); // Will result in ProcessMessages() terminating

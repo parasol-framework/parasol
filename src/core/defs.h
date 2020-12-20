@@ -493,7 +493,7 @@ extern struct KeyStore *glClassMap; // Register of all classes.
 extern struct KeyStore *glFields; // Reverse lookup for converting field hashes back to their respective names.
 extern OBJECTID glClassFileID;
 extern CSTRING glIDL;
-extern std::unordered_map<OBJECTID, ACTIONID> glWFOList;
+extern std::unordered_map<OBJECTID, ObjectSignal> glWFOList;
 
 extern CSTRING glClassBinPath;
 extern CSTRING glModuleBinPath;
@@ -801,6 +801,7 @@ ERROR MGR_OwnerDestroyed(OBJECTPTR, APTR);
 ERROR MGR_Rename(OBJECTPTR, struct acRename *);
 ERROR MGR_Seek(OBJECTPTR, struct acSeek *);
 ERROR MGR_SetField(OBJECTPTR, struct acSetVar *);
+ERROR MGR_Signal(OBJECTPTR, APTR);
 
 //****************************************************************************
 

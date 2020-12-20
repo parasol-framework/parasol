@@ -106,7 +106,7 @@ struct FDTable *glFDTable = NULL;
 WORD glTotalFDs = 0, glLastFD = 0;
 UBYTE glTimerCycle = 1;
 CSTRING glIDL = MOD_IDL;
-std::unordered_map<OBJECTID, ACTIONID> glWFOList;
+std::unordered_map<OBJECTID, ObjectSignal> glWFOList;
 
 #ifdef __unix__
   THREADVAR LONG glSocket = -1; // Implemented as thread-local because we don't want threads other than main to utilise the messaging system.

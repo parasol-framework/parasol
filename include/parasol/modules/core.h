@@ -1080,6 +1080,7 @@ struct ClipRectangle {
 #define NF_NEW_OBJECT 0x00000400
 #define NF_RECLASSED 0x00000800
 #define NF_MESSAGE 0x00001000
+#define NF_SIGNALLED 0x00002000
 #define NF_PRIVATE 0x00000000
 #define NF_NAME 0x80000000
 #define NF_UNIQUE 0x40000000
@@ -1384,7 +1385,6 @@ struct ClipRectangle {
 
 struct ObjectSignal {
    OBJECTPTR Object;
-   LONG      ActionID;
 };
 
 struct ResourceManager {

@@ -733,75 +733,6 @@ timer_cycle:
    tlMsgRecursion--;
    return returncode;
 }
-/*****************************************************************************
-
--FUNCTION-
-WaitForObjects: Process incoming messages while waiting on objects to complete their activities.
-
-The WaitForObjects() function acts as a front-end to ~ProcessMessages(), providing an additional feature of being
-able to wait for a series of objects that must signal an end to their activities.  You may specify one action or
-method to act as a signal for each object that will be monitored.  Objects will also be signalled if they are
-terminated at any time.  The function will return once all of the objects are signalled or a time-out occurs.
-
--INPUT-
-int Flags:   Optional flags are specified here (currently no flags are provided).
-int TimeOut: A time-out value measured in milliseconds.  If this value is negative then the function will not return until an incoming message or signal breaks it.
-struct(*ObjectSignal) ObjectSignals: A null-terminated array of objects and action IDs to monitor for signals.
-
--ERRORS-
-Okay
-NullArgs
-Failed
-Recursion
-OutsideMainThread
-
--END-
-
-*****************************************************************************/
-
-ERROR WaitForObjects(LONG Flags, LONG TimeOut, ObjectSignal *ObjectSignals)
-{
-   // Refer to the Task class for the message interception routines
-   parasol::Log log(__FUNCTION__);
-
-   if (!ObjectSignals) return log.warning(ERR_NullArgs);
-
-   if (!glWFOList.empty()) return log.warning(ERR_Recursion);
-
-   // Message processing is only possible from the main thread (for system design and synchronisation reasons)
-   if ((!tlMainThread) and (!tlThreadWriteMsg)) return log.warning(ERR_OutsideMainThread);
-
-   parasol::SwitchContext ctx(glCurrentTask);
-
-   ERROR error = ERR_Okay;
-   glWFOList.clear();
-   for (LONG i=0; ((error IS ERR_Okay) and (ObjectSignals[i].Object)); i++) {
-      // NB: Monitoring of public objects is not supported.
-      if (!SubscribeAction(ObjectSignals[i].Object, AC_Free)) {
-         if ((ObjectSignals[i].ActionID) and (ObjectSignals[i].ActionID != AC_Free)) {
-            if (SubscribeAction(ObjectSignals[i].Object, ObjectSignals[i].ActionID)) error = ERR_Failed;
-         }
-         glWFOList.insert(std::make_pair(ObjectSignals[i].Object->UniqueID, ObjectSignals[i].ActionID));
-      }
-      else error = ERR_Failed;
-   }
-
-   if (!error) {
-      if (TimeOut < 0) TimeOut = 0x7fffffff;
-      auto current_time = PreciseTime();
-      auto end_time = current_time + (TimeOut * 1000LL);
-      while ((not glWFOList.empty()) and (current_time < end_time) and (!error)) {
-         log.trace("Waiting on %d objects.", glWFOList.size());
-         error = ProcessMessages(Flags, (end_time - current_time) / 1000LL);
-         current_time = PreciseTime();
-      }
-
-      if ((!error) and (not glWFOList.empty())) error = ERR_TimeOut;
-      if (error) log.warning(error);
-   }
-
-   return error;
-}
 
 /*****************************************************************************
 
@@ -1136,6 +1067,100 @@ ERROR SendMessage(MEMORYID MessageMID, LONG Type, LONG Flags, APTR Data, LONG Si
       log.warning("Could not gain access to message port #%d: %s", MessageMID, glMessages[error]);
       return error; // Important that the original AccessMemory() error is returned (some code depends on this for detailed clarification)
    }
+}
+
+/*****************************************************************************
+
+-FUNCTION-
+WaitForObjects: Process incoming messages while waiting on objects to complete their activities.
+
+The WaitForObjects() function acts as a front-end to ~ProcessMessages(), providing an additional feature of being
+able to wait for a series of objects that must signal an end to their activities.  An object can be signalled via
+the Signal() action.  Termination of a monitored object is also treated as a signal.  The function will return once
+ALL of the objects are signalled or a time-out occurs.
+
+Note that if an object has been signalled prior to entry to this function, its signal flag will be cleared and the
+object will not be monitored.
+
+-INPUT-
+int Flags:   Optional flags are specified here (currently no flags are provided).
+int TimeOut: A time-out value measured in milliseconds.  If this value is negative then the function will not return until an incoming message or signal breaks it.
+struct(*ObjectSignal) ObjectSignals: A null-terminated array of objects to monitor for signals.
+
+-ERRORS-
+Okay
+NullArgs
+Failed
+Recursion
+OutsideMainThread
+
+-END-
+
+*****************************************************************************/
+
+ERROR WaitForObjects(LONG Flags, LONG TimeOut, ObjectSignal *ObjectSignals)
+{
+   // Refer to the Task class for the message interception routines
+   parasol::Log log(__FUNCTION__);
+
+   if (!ObjectSignals) return log.warning(ERR_NullArgs);
+
+   if (!glWFOList.empty()) return log.warning(ERR_Recursion);
+
+   // Message processing is only possible from the main thread (for system design and synchronisation reasons)
+   if ((!tlMainThread) and (!tlThreadWriteMsg)) return log.warning(ERR_OutsideMainThread);
+
+   log.branch("Flags: $%.8x, Timeout: %d, Signals: %p", Flags, TimeOut, ObjectSignals);
+
+   parasol::SwitchContext ctx(glCurrentTask);
+
+   ERROR error = ERR_Okay;
+   glWFOList.clear();
+   for (LONG i=0; ((error IS ERR_Okay) and (ObjectSignals[i].Object)); i++) {
+      parasol::ScopedObjectLock<OBJECTPTR> lock(ObjectSignals[i].Object); // For thread safety
+
+      // Refer to TASK_ActionNotify() for notification handling and clearing of signals
+      if (ObjectSignals[i].Object->Flags & NF_SIGNALLED) {
+         // Objects that have already been signalled do not require monitoring
+         ObjectSignals[i].Object->Flags &= ~NF_SIGNALLED;
+      }
+      else if (!SubscribeAction(ObjectSignals[i].Object, AC_Free)) {
+         log.debug("Monitoring object #%d", ObjectSignals[i].Object->UniqueID);
+         if (SubscribeAction(ObjectSignals[i].Object, AC_Signal)) error = ERR_Failed;
+         glWFOList.insert(std::make_pair(ObjectSignals[i].Object->UniqueID, ObjectSignals[i]));
+      }
+      else error = ERR_Failed;
+   }
+
+   if (!error) {
+      if (TimeOut < 0) {
+         if (glWFOList.empty()) error = ProcessMessages(Flags, 0);
+         else error = ProcessMessages(Flags, -1);
+      }
+      else {
+         auto current_time = PreciseTime();
+         auto end_time = current_time + (TimeOut * 1000LL);
+         while ((not glWFOList.empty()) and (current_time < end_time) and (!error)) {
+            log.debug("Waiting on %d objects.", (LONG)glWFOList.size());
+            error = ProcessMessages(Flags, (end_time - current_time) / 1000LL);
+            current_time = PreciseTime();
+         }
+      }
+
+      if ((!error) and (not glWFOList.empty())) error = ERR_TimeOut;
+   }
+
+   if (not glWFOList.empty()) { // Clean up if there are dangling subscriptions
+      for (auto &ref : glWFOList) {
+         parasol::ScopedObjectLock<OBJECTPTR> lock(ref.second.Object); // For thread safety
+         UnsubscribeAction(ref.second.Object, AC_Free);
+         UnsubscribeAction(ref.second.Object, AC_Signal);
+      }
+      glWFOList.clear();
+   }
+
+   if (error) log.warning(error);
+   return error;
 }
 
 /*****************************************************************************
