@@ -95,7 +95,7 @@ static void send_inputmsg(InputMsg *input, InputSubscription *List)
    dc_inputready.Size     = sizeof(inputready);
 
    LONG msgindex = inputready.NextIndex & INPUT_MASK;
-   CopyMemory(input, glInput->Msgs+msgindex, sizeof(InputMsg));
+   CopyMemory(input, glInput->Msgs + msgindex, sizeof(InputMsg));
 
    for (LONG i=0; i < glSharedControl->InputTotal; i++) {
       if ((!List[i].SurfaceID) or (List[i].SurfaceID IS input->RecipientID)) {
@@ -121,7 +121,7 @@ static void send_inputmsg(InputMsg *input, InputSubscription *List)
                else ClearMemory(List+i, sizeof(List[i]));
 
                i--; // Offset the subsequent i++ of the for loop
-               glSharedControl->InputTotal--;
+               __sync_fetch_and_sub(&glSharedControl->InputTotal, 1);
             }
          }
       }

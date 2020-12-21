@@ -5848,7 +5848,7 @@ static ERROR gfxSubscribeInput(OBJECTID SurfaceID, LONG Mask, OBJECTID DeviceID)
       if (!Mask) list[i].Mask = 0xffffffff;
       else list[i].Mask = Mask;
 
-      glSharedControl->InputTotal++;
+      __sync_fetch_and_add(&glSharedControl->InputTotal, 1);
 
       ReleaseMemory(list);
       return ERR_Okay;
@@ -5920,7 +5920,7 @@ static ERROR gfxUnsubscribeInput(OBJECTID SurfaceID)
             }
             else ClearMemory(list+i, sizeof(list[i]));
             i--; // Offset the subsequent i++ of the for loop
-            glSharedControl->InputTotal--;
+            __sync_fetch_and_sub(&glSharedControl->InputTotal, 1);
          }
       }
 

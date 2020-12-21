@@ -91,7 +91,7 @@ struct sockaddr_un * get_socket_path(LONG ProcessID, socklen_t *Size)
 
 ERROR alloc_public_lock(UBYTE LockIndex, WORD Flags)
 {
-   if ((LockIndex < 1) OR (LockIndex >= PL_END)) return ERR_Args;
+   if ((LockIndex < 1) or (LockIndex >= PL_END)) return ERR_Args;
    if (!glSharedControl) return ERR_Failed;
    ERROR error;
    error = alloc_lock(&glSharedControl->PublicLocks[LockIndex].Mutex, Flags|ALF_SHARED);
@@ -208,7 +208,7 @@ retry:
             do {
                struct timespec ts = { .tv_sec = 0, .tv_nsec = 1000000 }; // Equates to 1000 checks per second
                nanosleep(&ts, &ts);
-            } while ((pthread_mutex_trylock(Lock) IS EBUSY) AND (PreciseTime() < end));
+            } while ((pthread_mutex_trylock(Lock) IS EBUSY) and (PreciseTime() < end));
          #else
              struct timespec timestamp;
              clock_gettime(CLOCK_REALTIME, &timestamp); // Slow!
@@ -231,7 +231,7 @@ retry:
    else result = pthread_mutex_lock(Lock);
 #endif
 
-   if ((result IS ETIMEDOUT) OR (result IS EBUSY)) return ERR_TimeOut;
+   if ((result IS ETIMEDOUT) or (result IS EBUSY)) return ERR_TimeOut;
    else if (result IS EOWNERDEAD) { // The previous mutex holder crashed while holding it.
       log.warning("Resetting the state of a crashed mutex.");
       #if !defined(__ANDROID__) && !defined(__APPLE__)
@@ -279,7 +279,7 @@ ERROR public_cond_wait(THREADLOCK *Lock, CONDLOCK *Cond, LONG Timeout)
 
       LONG result = pthread_cond_timedwait(Cond, Lock, &timestamp);
       if (result) log.warning("Error: %s", strerror(errno));
-      if ((result IS ETIMEDOUT) OR (result IS EAGAIN)) return ERR_TimeOut;
+      if ((result IS ETIMEDOUT) or (result IS EAGAIN)) return ERR_TimeOut;
       else if (result) return ERR_Failed;
    }
    else pthread_cond_wait(Cond, Lock);
@@ -343,7 +343,7 @@ ERROR page_memory(PublicAddress *Block, APTR *Address)
       // Find an empty array entry
 
       LONG index;
-      for (index=0; (index < glTotalPages) AND (glMemoryPages[index].MemoryID); index++);
+      for (index=0; (index < glTotalPages) and (glMemoryPages[index].MemoryID); index++);
 
       if (index >= glTotalPages) {
          log.msg("Increasing the size of the memory page table from %d to %d entries.", glTotalPages, glTotalPages + PAGE_TABLE_CHUNK);
@@ -411,7 +411,7 @@ ERROR page_memory(PublicAddress *Block, APTR *Address)
             if (!addr) addr = mmap(0, Block->Size, PROT_READ|PROT_WRITE|PROT_EXEC, MAP_SHARED, glMemoryFD, glSharedControl->MemoryOffset + Block->Offset);
          #endif
 
-         if ((addr != (APTR)-1) AND (addr != NULL)) {
+         if ((addr != (APTR)-1) and (addr != NULL)) {
             glMemoryPages[index].MemoryID    = Block->MemoryID;
             glMemoryPages[index].Size        = Block->Size;
             glMemoryPages[index].Address     = addr;
@@ -440,19 +440,19 @@ ERROR unpage_memory(APTR Address)
    ThreadLock lock(TL_MEMORY_PAGES, 4000);
    if (lock.granted()) {
       LONG index;
-      for (index=0; (index < glTotalPages) AND (glMemoryPages[index].Address != Address); index++);
+      for (index=0; (index < glTotalPages) and (glMemoryPages[index].Address != Address); index++);
 
       if (index < glTotalPages) {
          glMemoryPages[index].AccessCount--;
          if (!glMemoryPages[index].AccessCount) {
-            if ((glMemoryPages[index].Flags & MPF_LOCAL) AND (!glAlwaysUnpage)) {
+            if ((glMemoryPages[index].Flags & MPF_LOCAL) and (!glAlwaysUnpage)) {
                // Do nothing to unmap locally allocated memory blocks (this provides speed increases if the page is
                // mapped again later).  We will be relying on FreeResourceID() to do the final detach for local pages.
             }
             else {
                #ifdef STATIC_MEMORY_POOL
                   APTR pool = ResolveAddress(glSharedControl, glSharedControl->MemoryOffset);
-                  if ((Address >= pool) AND (Address < (char *)pool + glSharedControl->PoolSize)) {
+                  if ((Address >= pool) and (Address < (char *)pool + glSharedControl->PoolSize)) {
                      ClearMemory(glMemoryPages + index, sizeof(MemoryPage));
                      return ERR_Okay;
                   }
@@ -491,19 +491,19 @@ ERROR unpage_memory_id(MEMORYID MemoryID)
    ThreadLock lock(TL_MEMORY_PAGES, 4000);
    if (lock.granted()) {
       LONG index;
-      for (index=0; (index < glTotalPages) AND (glMemoryPages[index].MemoryID != MemoryID); index++);
+      for (index=0; (index < glTotalPages) and (glMemoryPages[index].MemoryID != MemoryID); index++);
 
       if (index < glTotalPages) {
          glMemoryPages[index].AccessCount--;
          if (!glMemoryPages[index].AccessCount) {
-            if ((glMemoryPages[index].Flags & MPF_LOCAL) AND (!glAlwaysUnpage)) {
+            if ((glMemoryPages[index].Flags & MPF_LOCAL) and (!glAlwaysUnpage)) {
                // Do nothing to unmap locally allocated memory blocks (this provides speed increases if the page is
                // mapped again later).  We will be relying on FreeResourceID() to do the final detach for local pages.
             }
             else {
                #ifdef STATIC_MEMORY_POOL
                   APTR pool = ResolveAddress(glSharedControl, glSharedControl->MemoryOffset);
-                  if ((glMemoryPages[index].Address >= pool) AND (glMemoryPages[index].Address < (char *)pool + glSharedControl->PoolSize)) {
+                  if ((glMemoryPages[index].Address >= pool) and (glMemoryPages[index].Address < (char *)pool + glSharedControl->PoolSize)) {
                      ClearMemory(glMemoryPages + index, sizeof(MemoryPage));
                      return ERR_Okay;
                   }
@@ -576,7 +576,7 @@ ERROR init_sleep(LONG OtherProcessID, LONG OtherThreadID, LONG ResourceID, LONG 
          }
 
          if (empty != -1) i = empty;     // Thread entry does not exist, use an empty slot.
-         else i = glSharedControl->WLIndex++; // Thread entry does not exist, add an entry to the end of the array.
+         else i = __sync_fetch_and_add(&glSharedControl->WLIndex, 1); // Thread entry does not exist, add an entry to the end of the array.
          glWLIndex = i;
          locks[i].ThreadID  = our_thread;
          locks[i].ProcessID = glProcessID;
@@ -626,7 +626,7 @@ void wake_sleepers(LONG ResourceID, LONG ResourceType)
       #endif
 
       for (i=0; i < glSharedControl->WLIndex; i++) {
-         if ((locks[i].WaitingForResourceID IS ResourceID) AND (locks[i].WaitingForResourceType IS ResourceType)) {
+         if ((locks[i].WaitingForResourceID IS ResourceID) and (locks[i].WaitingForResourceType IS ResourceType)) {
             locks[i].WaitingForResourceID   = 0;
             locks[i].WaitingForResourceType = 0;
             locks[i].WaitingForProcessID    = 0;
@@ -769,10 +769,10 @@ ERROR clear_waitlock(WORD Index)
 // resources only.  Internally, use critical sections for synchronisation between threads.
 
 #ifdef _WIN32
-static volatile WORD glThreadLockIndex = 1;  // Shared between all threads.
+static WORD glThreadLockIndex = 1;           // Shared between all threads.
 static BYTE glTLInit = FALSE;
 static WINHANDLE glThreadLocks[MAX_THREADS]; // Shared between all threads, used for resource tracking allocated wake locks.
-static THREADVAR WINHANDLE glThreadLock = 0; // Local to the thread.
+static THREADVAR WINHANDLE tlThreadLock = 0; // Local to the thread.
 
 // Returns the thread-lock semaphore for the active thread.
 
@@ -780,7 +780,7 @@ WINHANDLE get_threadlock(void)
 {
    parasol::Log log(__FUNCTION__);
 
-   if (glThreadLock) return glThreadLock; // Thread-local, no problem...
+   if (tlThreadLock) return tlThreadLock; // Thread-local, no problem...
 
    if (!glTLInit) {
       glTLInit = TRUE;
@@ -795,7 +795,7 @@ WINHANDLE get_threadlock(void)
          WINHANDLE lock;
          if (!alloc_public_waitlock(&lock, NULL)) {
             glThreadLocks[index] = lock; // For resource tracking.
-            glThreadLock = lock;
+            tlThreadLock = lock;
             log.trace("Allocated thread-lock #%d for thread #%d", index, get_thread_id());
             return lock;
          }
@@ -818,14 +818,14 @@ void free_threadlocks(void)
 
 void free_threadlock(void)
 {
-   if (glThreadLock) {
+   if (tlThreadLock) {
       for (LONG i=glThreadLockIndex-1; i >= 0; i--) {
-         if (glThreadLocks[i] IS glThreadLock) {
+         if (glThreadLocks[i] IS tlThreadLock) {
             glThreadLocks[i] = 0;
          }
       }
 
-      winCloseHandle(glThreadLock);
+      winCloseHandle(tlThreadLock);
    }
 }
 #endif
@@ -871,7 +871,7 @@ ERROR AccessMemory(MEMORYID MemoryID, LONG Flags, LONG MilliSeconds, APTR *Resul
    parasol::Log log(__FUNCTION__);
    LONG i, entry;
 
-   if ((!MemoryID) OR (!Result)) return log.warning(ERR_NullArgs);
+   if ((!MemoryID) or (!Result)) return log.warning(ERR_NullArgs);
 
    if (!glProcessID) return log.warning(ERR_SystemCorrupt);
 
@@ -915,7 +915,7 @@ ERROR AccessMemory(MEMORYID MemoryID, LONG Flags, LONG MilliSeconds, APTR *Resul
          // If this function has been called from AccessObject() then the MEM_OBJECT flag will be set, which requires
          // us to fail if the memory block does not form an object header.
 
-         if ((Flags & MEM_OBJECT) AND (!(addr->Flags & MEM_OBJECT))) {
+         if ((Flags & MEM_OBJECT) and (!(addr->Flags & MEM_OBJECT))) {
             return log.warning(ERR_ObjectCorrupt);
          }
 
@@ -924,7 +924,7 @@ ERROR AccessMemory(MEMORYID MemoryID, LONG Flags, LONG MilliSeconds, APTR *Resul
          if (addr->Flags & MEM_NO_BLOCKING) { // Non-blocking access must be recorded for all memory blocks
             if (!glTaskEntry) return log.warning(ERR_NotInitialised);
 
-            for (i=0; (glTaskEntry->NoBlockLocks[i].MemoryID) AND (glTaskEntry->NoBlockLocks[i].MemoryID != MemoryID); i++);
+            for (i=0; (glTaskEntry->NoBlockLocks[i].MemoryID) and (glTaskEntry->NoBlockLocks[i].MemoryID != MemoryID); i++);
             if (i >= MAX_NB_LOCKS) return log.warning(ERR_ArrayFull);
 
             APTR ptr;
@@ -932,7 +932,7 @@ ERROR AccessMemory(MEMORYID MemoryID, LONG Flags, LONG MilliSeconds, APTR *Resul
                glTaskEntry->NoBlockLocks[i].MemoryID = MemoryID;
                glTaskEntry->NoBlockLocks[i].AccessCount++;
 
-               addr->AccessCount++; // This prevents deallocation during usage.
+               __sync_fetch_and_add(&addr->AccessCount, 1); // This prevents deallocation during usage.
                addr->AccessTime = (PreciseTime() / 1000LL);
                *Result = ptr;
                return ERR_Okay;
@@ -945,7 +945,7 @@ ERROR AccessMemory(MEMORYID MemoryID, LONG Flags, LONG MilliSeconds, APTR *Resul
 
          LONG attempt = 0;
          LONG our_thread = get_thread_id();
-         while (((addr->ThreadLockID) AND (addr->ThreadLockID != our_thread))) { // Keep looping until address is not locked
+         while (((addr->ThreadLockID) and (addr->ThreadLockID != our_thread))) { // Keep looping until address is not locked
             attempt++;
 
             if (nosleeping) {
@@ -1032,8 +1032,8 @@ ERROR AccessMemory(MEMORYID MemoryID, LONG Flags, LONG MilliSeconds, APTR *Resul
          if (!page_memory(glSharedBlocks + entry, &ptr)) {
             addr->ProcessLockID = glProcessID;
             addr->ThreadLockID  = get_thread_id();
-            addr->AccessCount++;
-            addr->AccessTime = (PreciseTime()/1000LL);
+            __sync_fetch_and_add(&addr->AccessCount, 1);
+            addr->AccessTime = (PreciseTime() / 1000LL);
             if (addr->AccessCount IS 1) {
                // Record the object and the action responsible for this first lock (subsequent locks are not recorded for debugging)
                addr->ContextID = tlContext->Object->UniqueID;
@@ -1060,10 +1060,10 @@ ERROR AccessMemory(MEMORYID MemoryID, LONG Flags, LONG MilliSeconds, APTR *Resul
             // This loop looks odd, but will prevent sleeping if we already have a lock on the memory.
             // cond_wait() will be met with a global wake-up, not necessarily on the desired block, hence the need for while().
 
-            LARGE end_time = (PreciseTime()/1000LL) + MilliSeconds;
+            LARGE end_time = (PreciseTime() / 1000LL) + MilliSeconds;
             ERROR error = ERR_TimeOut;
-            while ((glPrivateMemory[i].AccessCount > 0) AND (glPrivateMemory[i].ThreadLockID != thread_id)) {
-               LONG timeout = end_time - (PreciseTime()/1000LL);
+            while ((glPrivateMemory[i].AccessCount > 0) and (glPrivateMemory[i].ThreadLockID != thread_id)) {
+               LONG timeout = end_time - (PreciseTime() / 1000LL);
                if (timeout <= 0) {
                   return log.warning(ERR_TimeOut);
                }
@@ -1076,7 +1076,7 @@ ERROR AccessMemory(MEMORYID MemoryID, LONG Flags, LONG MilliSeconds, APTR *Resul
             }
 
             glPrivateMemory[i].ThreadLockID = thread_id;
-            glPrivateMemory[i].AccessCount++;
+            __sync_fetch_and_add(&glPrivateMemory[i].AccessCount, 1);
             tlPrivateLockCount++;
 
             *Result = glPrivateMemory[i].Address;
@@ -1134,7 +1134,7 @@ ERROR AccessObject(OBJECTID ObjectID, LONG MilliSeconds, OBJECTPTR *Result)
    OBJECTPTR obj;
    ERROR error;
 
-   if ((!Result) OR (!ObjectID)) return log.warning(ERR_NullArgs);
+   if ((!Result) or (!ObjectID)) return log.warning(ERR_NullArgs);
 
    *Result = NULL;
 
@@ -1166,7 +1166,7 @@ ERROR AccessObject(OBJECTID ObjectID, LONG MilliSeconds, OBJECTPTR *Result)
 
       // This check prevents anyone from gaining access while ReleaseObject() is busy
 
-      if ((obj->Flags & NF_UNLOCK_FREE) AND (!obj->Locked)) {
+      if ((obj->Flags & NF_UNLOCK_FREE) and (!obj->Locked)) {
          ReleaseMemory(obj);
          return ERR_MarkedForDeletion;
       }
@@ -1209,7 +1209,7 @@ ERROR AccessObject(OBJECTID ObjectID, LONG MilliSeconds, OBJECTPTR *Result)
       }
       else error = ERR_Okay;
 
-      if ((error IS ERR_Okay) OR (error IS ERR_NoAction)) {
+      if ((error IS ERR_Okay) or (error IS ERR_NoAction)) {
          obj->Locked = 1; // Set the lock and return the object address
          *Result = obj;
 
@@ -1306,7 +1306,7 @@ ERROR AccessPrivateObject(OBJECTPTR Object, LONG Timeout)
 
    LARGE end_time, current_time;
    if (Timeout < 0) end_time = 0x0fffffffffffffffLL; // Do not alter this value.
-   else end_time = (PreciseTime()/1000LL) + Timeout;
+   else end_time = (PreciseTime() / 1000LL) + Timeout;
 
    INC_SLEEP(Object); // Increment the sleep queue first so that ReleasePrivateObject() will know that another thread is expecting a wake-up.
 
@@ -1318,7 +1318,7 @@ ERROR AccessPrivateObject(OBJECTPTR Object, LONG Timeout)
       ERROR error = ERR_TimeOut;
       WORD wl;
       if (!init_sleep(glProcessID, Object->ThreadID, Object->UniqueID, RT_OBJECT, &wl)) { // Indicate that our thread is sleeping.
-         while ((current_time = (PreciseTime()/1000LL)) < end_time) {
+         while ((current_time = (PreciseTime() / 1000LL)) < end_time) {
             LONG tmout = (LONG)(end_time - current_time);
             if (tmout < 0) tmout = 0;
 
@@ -1629,7 +1629,7 @@ MEMORYID ReleaseMemory(APTR Address)
       if (entry != -1) {
          PublicAddress *addr = &glSharedBlocks[entry];
 
-         if ((addr->ThreadLockID) AND (addr->ThreadLockID != get_thread_id())) {
+         if ((addr->ThreadLockID) and (addr->ThreadLockID != get_thread_id())) {
             log.warning("Illegal attempt to release block #%d.  You are process %d:%d, block is locked by process %d:%d.", addr->MemoryID, glProcessID, get_thread_id(), addr->ProcessLockID, addr->ThreadLockID);
             return 0;
          }
@@ -1648,7 +1648,7 @@ MEMORYID ReleaseMemory(APTR Address)
 
             // If the memory block was open for non-blocking access we need to drop the count in our local memory resource list.
 
-            if ((addr->Flags & MEM_NO_BLOCKING) AND (glTaskEntry)) {
+            if ((addr->Flags & MEM_NO_BLOCKING) and (glTaskEntry)) {
                for (LONG j=0; glTaskEntry->NoBlockLocks[j].MemoryID; j++) {
                   if (glTaskEntry->NoBlockLocks[j].MemoryID IS id) {
                      glTaskEntry->NoBlockLocks[j].AccessCount--;
@@ -1660,7 +1660,7 @@ MEMORYID ReleaseMemory(APTR Address)
                }
             }
 
-            LONG access_count = --addr->AccessCount;
+            LONG access_count = __sync_sub_and_fetch(&addr->AccessCount, 1);
 
             if (access_count <= 0) {
                addr->ProcessLockID = 0;
@@ -1697,7 +1697,7 @@ MEMORYID ReleaseMemory(APTR Address)
 
             #ifdef __unix__
                // Conditional broadcast has to be done while the PL_PUBLICMEM lock is active.
-               if ((wake) AND (lock.granted())) {
+               if ((wake) and (lock.granted())) {
                   wake_sleepers(id, RT_MEMORY); // Clear deadlock indicators
                   pthread_cond_broadcast(&glSharedControl->PublicLocks[PL_PUBLICMEM].Cond);
                }
@@ -1738,7 +1738,7 @@ MEMORYID ReleaseMemory(APTR Address)
 
       WORD access;
       if (glPrivateMemory[pos].AccessCount > 0) { // Sometimes ReleaseMemory() is called on private addresses that aren't actually locked.  This is OK - we simply don't do anything in that case.
-         access = --glPrivateMemory[pos].AccessCount;
+         access = __sync_sub_and_fetch(&glPrivateMemory[pos].AccessCount, 1);
          tlPrivateLockCount--;
       }
       else access = -1;
@@ -1818,7 +1818,7 @@ ERROR ReleaseMemoryID(MEMORYID MemoryID)
 
       PublicAddress *addr = &glSharedBlocks[entry];
 
-      if ((addr->ThreadLockID) AND (addr->ThreadLockID != get_thread_id())) {
+      if ((addr->ThreadLockID) and (addr->ThreadLockID != get_thread_id())) {
          log.warning("Illegal attempt to release block #%d.  You are process %d:%d, block is locked by process %d:%d", addr->MemoryID, glProcessID, get_thread_id(), addr->ProcessLockID, addr->ThreadLockID);
          if (permit) UNLOCK_PUBLIC_MEMORY();
          return ERR_Failed;
@@ -1834,7 +1834,7 @@ ERROR ReleaseMemoryID(MEMORYID MemoryID)
 
          // If the memory block was open for non-blocking access we need to drop the count in our local memory resource list.
 
-         if ((addr->Flags & MEM_NO_BLOCKING) AND (glTaskEntry)) {
+         if ((addr->Flags & MEM_NO_BLOCKING) and (glTaskEntry)) {
             for (LONG j=0; glTaskEntry->NoBlockLocks[j].MemoryID; j++) {
                if (glTaskEntry->NoBlockLocks[j].MemoryID IS MemoryID) {
                   glTaskEntry->NoBlockLocks[j].AccessCount--;
@@ -1846,7 +1846,7 @@ ERROR ReleaseMemoryID(MEMORYID MemoryID)
             }
          }
 
-         addr->AccessCount--;
+         __sync_fetch_and_sub(&addr->AccessCount, 1);
 
          BYTE wake = FALSE;
 
@@ -1868,7 +1868,7 @@ ERROR ReleaseMemoryID(MEMORYID MemoryID)
                wake = TRUE;
 
                #ifdef DBG_LOCKS
-                  if ((addr->MemoryID IS -10171) OR (addr->MemoryID IS -10162)) log.msg("Will wake processes sleeping on memory block #%d.", addr->MemoryID);
+                  if ((addr->MemoryID IS -10171) or (addr->MemoryID IS -10162)) log.msg("Will wake processes sleeping on memory block #%d.", addr->MemoryID);
                #endif
             }
 
@@ -1885,7 +1885,7 @@ ERROR ReleaseMemoryID(MEMORYID MemoryID)
 
          #ifdef __unix__
             // Conditional broadcast has to be done while the PL_PUBLICMEM lock is active.
-            if ((wake) AND (permit)) {
+            if ((wake) and (permit)) {
                wake_sleepers(MemoryID, RT_MEMORY); // Clear deadlock indicators
                pthread_cond_broadcast(&glSharedControl->PublicLocks[PL_PUBLICMEM].Cond);
             }
@@ -1918,7 +1918,7 @@ ERROR ReleaseMemoryID(MEMORYID MemoryID)
 
          WORD access;
          if (glPrivateMemory[pos].AccessCount > 0) { // Sometimes ReleaseMemory() is called on private addresses that aren't actually locked.  This is OK - we simply don't do anything in that case.
-            access = --glPrivateMemory[pos].AccessCount;
+            access = __sync_sub_and_fetch(&glPrivateMemory[pos].AccessCount, 1);
             tlPrivateLockCount--;
          }
          else access = -1;
@@ -2092,7 +2092,7 @@ void ReleasePrivateObject(OBJECTPTR Object)
             // barrier (which is common between AccessPrivateObject() and ReleasePrivateObject()
             WaitLock *locks = (WaitLock *)ResolveAddress(glSharedControl, glSharedControl->WLOffset);
             for (WORD i=0; i < glSharedControl->WLIndex; i++) {
-               if ((locks[i].WaitingForResourceID IS Object->UniqueID) AND (locks[i].WaitingForResourceType IS RT_OBJECT)) {
+               if ((locks[i].WaitingForResourceID IS Object->UniqueID) and (locks[i].WaitingForResourceType IS RT_OBJECT)) {
                   locks[i].Flags |= WLF_REMOVED;
                }
             }
@@ -2102,7 +2102,7 @@ void ReleasePrivateObject(OBJECTPTR Object)
          // to ensure that once an object has been marked for deletion, references to the object pointer
          // are removed so that no thread will attempt to use it during deallocation.
 
-         if ((Object->Flags & NF_UNLOCK_FREE) AND (!(Object->Flags & NF_FREE))) {
+         if ((Object->Flags & NF_UNLOCK_FREE) and (!(Object->Flags & NF_FREE))) {
             set_object_flags(Object, Object->Flags & (~NF_UNLOCK_FREE));
             acFree(Object);
 
@@ -2114,7 +2114,7 @@ void ReleasePrivateObject(OBJECTPTR Object)
       }
       else exit(0);
    }
-   else if ((Object->Flags & NF_UNLOCK_FREE) AND (!(Object->Flags & NF_FREE))) {
+   else if ((Object->Flags & NF_UNLOCK_FREE) and (!(Object->Flags & NF_FREE))) {
       set_object_flags(Object, Object->Flags & (~NF_UNLOCK_FREE));
       acFree(Object);
    }
@@ -2173,7 +2173,7 @@ retry:
                do {
                   struct timespec ts = { .tv_sec = 0, .tv_nsec = 1000000 }; // Equates to 1000 checks per second
                   nanosleep(&ts, &ts);
-               } while ((pthread_mutex_trylock(&glSharedControl->PublicLocks[Index].Mutex) IS EBUSY) AND (PreciseTime() < end));
+               } while ((pthread_mutex_trylock(&glSharedControl->PublicLocks[Index].Mutex) IS EBUSY) and (PreciseTime() < end));
             #else
                struct timespec timestamp;
                clock_gettime(CLOCK_REALTIME, &timestamp); // Slow!
@@ -2195,7 +2195,7 @@ retry:
       else result = pthread_mutex_lock(&glSharedControl->PublicLocks[Index].Mutex);
    #endif
 
-   if ((result IS ETIMEDOUT) OR (result IS EBUSY)) {
+   if ((result IS ETIMEDOUT) or (result IS EBUSY)) {
       log.warning("Timeout locking mutex %d with timeout %d, locked by process %d.", Index, Timeout, glSharedControl->PublicLocks[Index].PID);
       return ERR_TimeOut;
    }

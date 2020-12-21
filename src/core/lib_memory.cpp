@@ -39,7 +39,7 @@ static ERROR add_mem_entry(void);
 static volatile BYTE glPrivateCompressed = FALSE;
 static volatile WORD glPrivateCompression = 500;
 
-static void compress_public_memory(struct SharedControl *);
+static void compress_public_memory(SharedControl *);
 static void compress_private_memory(void);
 #ifdef RANDOMISE_MEM
 static void randomise_memory(UBYTE *, ULONG Size);
@@ -55,13 +55,13 @@ extern LONG glMemoryFD;
 
 // Platform specific function for marking a public memory block as locked.
 #ifdef _WIN32
-INLINE void set_publicmem_lock(struct PublicAddress *Address)
+INLINE void set_publicmem_lock(PublicAddress *Address)
 {
    Address->ProcessLockID  = glProcessID;
    Address->ThreadLockID   = get_thread_id();
 }
 #else
-INLINE void set_publicmem_lock(struct PublicAddress *Address)
+INLINE void set_publicmem_lock(PublicAddress *Address)
 {
    Address->ProcessLockID = glProcessID;
    Address->ThreadLockID  = get_thread_id();
@@ -75,7 +75,7 @@ INLINE void set_publicmem_lock(struct PublicAddress *Address)
 #ifdef RANDOMISE_MEM
 static void randomise_memory(UBYTE *Address, ULONG Size)
 {
-   if ((Size > RANDOMISE_MEM) OR (Size < 8)) return;
+   if ((Size > RANDOMISE_MEM) or (Size < 8)) return;
 
    ULONG number = 0xdeadbeef;
    ULONG i;
@@ -149,7 +149,7 @@ ERROR AllocMemory(LONG Size, LONG Flags, APTR *Address, MEMORYID *MemoryID)
       WINHANDLE handle;
    #endif
 
-   if ((Size <= 0) OR ((!Address) AND (!MemoryID))) {
+   if ((Size <= 0) or ((!Address) and (!MemoryID))) {
       log.warning("Bad args - Size %d, Address %p, MemoryID %p", Size, Address, MemoryID);
       return ERR_Args;
    }
@@ -189,7 +189,7 @@ ERROR AllocMemory(LONG Size, LONG Flags, APTR *Address, MEMORYID *MemoryID)
 
       // Check that there is room for more public memory allocations
 
-      if ((glSharedControl->NextBlock < 0) OR (glSharedControl->NextBlock >= glSharedControl->MaxBlocks)) {
+      if ((glSharedControl->NextBlock < 0) or (glSharedControl->NextBlock >= glSharedControl->MaxBlocks)) {
          compress_public_memory(glSharedControl);
          if (glSharedControl->NextBlock >= glSharedControl->MaxBlocks) {
             log.warning("The maximum number of public memory blocks (%d) has been exhausted.", glSharedControl->MaxBlocks);
@@ -247,20 +247,20 @@ retry:
                if (glSharedBlocks[i].MemoryID) {
                   if (glSharedBlocks[i].Offset IS -1) continue;
                   if ((offset + Size) < glSharedBlocks[i].Offset) { // We have found some space for our block
-                     if ((i > 0) AND (!glSharedBlocks[i-1].MemoryID)) {
+                     if ((i > 0) and (!glSharedBlocks[i-1].MemoryID)) {
                         // The block(s) just behind the point of insertion are empty - let's make use of this
-                        while ((i > 0) AND (!glSharedBlocks[i-1].MemoryID)) i--;
+                        while ((i > 0) and (!glSharedBlocks[i-1].MemoryID)) i--;
                      }
                      else {
                         // Make space in the array for our block entry
                         LONG end;
-                        for (end=i; (glSharedBlocks[end].MemoryID) AND (end < glSharedControl->NextBlock); end++);
-                        if ((end IS glSharedControl->NextBlock) AND (glSharedControl->NextBlock IS glSharedControl->MaxBlocks)) {
+                        for (end=i; (glSharedBlocks[end].MemoryID) and (end < glSharedControl->NextBlock); end++);
+                        if ((end IS glSharedControl->NextBlock) and (glSharedControl->NextBlock IS glSharedControl->MaxBlocks)) {
                            UNLOCK_PUBLIC_MEMORY();
                            return ERR_ArrayFull;
                         }
-                        CopyMemory(glSharedBlocks + i, glSharedBlocks + i + 1, sizeof(struct PublicAddress) * (end - i));
-                        if (end IS glSharedControl->NextBlock) glSharedControl->NextBlock++;
+                        CopyMemory(glSharedBlocks + i, glSharedBlocks + i + 1, sizeof(PublicAddress) * (end - i));
+                        if (end IS glSharedControl->NextBlock) __sync_fetch_and_add(&glSharedControl->NextBlock, 1);
                      }
                      blk = i;
                      break;
@@ -357,10 +357,10 @@ retry:
          for (LONG i=0; i < glSharedControl->NextBlock; i++) {
             if (glSharedBlocks[i].MemoryID) {
                if ((current_offset + page_size) < glSharedBlocks[i].Offset) {
-                  if ((i > 0) AND (!glSharedBlocks[i-1].MemoryID)) {
-                     while ((i > 0) AND (!glSharedBlocks[i-1].MemoryID)) i--;
+                  if ((i > 0) and (!glSharedBlocks[i-1].MemoryID)) {
+                     while ((i > 0) and (!glSharedBlocks[i-1].MemoryID)) i--;
                   }
-                  else CopyMemory(glSharedBlocks + i, glSharedBlocks + i + 1, sizeof(struct PublicAddress) * (glSharedControl->NextBlock - i));
+                  else CopyMemory(glSharedBlocks + i, glSharedBlocks + i + 1, sizeof(PublicAddress) * (glSharedControl->NextBlock - i));
 
                   offset = current_offset;
                   blk = i;
@@ -386,7 +386,7 @@ retry:
 
       // Record the memory allocation
 
-      ClearMemory(glSharedBlocks + blk, sizeof(struct PublicAddress));
+      ClearMemory(glSharedBlocks + blk, sizeof(PublicAddress));
 
       glSharedBlocks[blk].MemoryID = memid;
       glSharedBlocks[blk].Size     = Size;
@@ -403,7 +403,7 @@ retry:
       // maintaining that object, rather than having it track back to our own task.
 
       if (Flags & (MEM_UNTRACKED|MEM_HIDDEN));
-      else if ((tlContext->Object->Stats) AND (tlContext->Object->TaskID)) {
+      else if ((tlContext->Object->Stats) and (tlContext->Object->TaskID)) {
          glSharedBlocks[blk].TaskID = tlContext->Object->TaskID;
       }
       else glSharedBlocks[blk].TaskID = glCurrentTaskID;
@@ -412,7 +412,7 @@ retry:
 
       if (Address) {
          if (page_memory(glSharedBlocks + blk, Address) != ERR_Okay) {
-            ClearMemory(glSharedBlocks + blk, sizeof(struct PublicAddress));
+            ClearMemory(glSharedBlocks + blk, sizeof(PublicAddress));
             UNLOCK_PUBLIC_MEMORY();
             log.warning("Paging the newly allocated block of size %d failed.", Size);
             return ERR_LockFailed;
@@ -426,7 +426,7 @@ retry:
             }
             else {
                log.warning("Out of memory locks.");
-               ClearMemory(glSharedBlocks + blk, sizeof(struct PublicAddress));
+               ClearMemory(glSharedBlocks + blk, sizeof(PublicAddress));
                unpage_memory(*Address);
                UNLOCK_PUBLIC_MEMORY();
                return ERR_ArrayFull;
@@ -457,8 +457,8 @@ retry:
 
       *MemoryID = glSharedBlocks[blk].MemoryID;
 
-      glSharedControl->BlocksUsed++;
-      if (blk IS glSharedControl->NextBlock) glSharedControl->NextBlock++;
+      __sync_fetch_and_add(&glSharedControl->BlocksUsed, 1);
+      if (blk IS glSharedControl->NextBlock) __sync_fetch_and_add(&glSharedControl->NextBlock, 1);
 
       UNLOCK_PUBLIC_MEMORY();
 
@@ -469,7 +469,7 @@ retry:
    else {
       //LONG aligned_size = ALIGN32(Size);
       LONG full_size = Size + MEMHEADER;
-      if (Flags & MEM_MANAGED) full_size += sizeof(struct ResourceManager *);
+      if (Flags & MEM_MANAGED) full_size += sizeof(ResourceManager *);
 
       APTR start_mem;
       if (!(Flags & MEM_NO_CLEAR)) start_mem = calloc(1, full_size);
@@ -481,7 +481,7 @@ retry:
       }
 
       APTR data_start = (char *)start_mem + sizeof(LONG) + sizeof(LONG); // Skip MEMH and unique ID.
-      if (Flags & MEM_MANAGED) data_start = (char *)data_start + sizeof(struct ResourceManager *); // Skip managed resource reference.
+      if (Flags & MEM_MANAGED) data_start = (char *)data_start + sizeof(ResourceManager *); // Skip managed resource reference.
 
       ThreadLock lock(TL_PRIVATE_MEM, 4000);
       if (lock.granted()) { // For keeping threads synchronised, it is essential that this lock is made early on.
@@ -491,8 +491,8 @@ retry:
 
          APTR header = start_mem;
          if (Flags & MEM_MANAGED) {
-            ((struct ResourceManager **)header)[0] = NULL;
-            header = (char *)header + sizeof(struct ResourceManager *);
+            ((ResourceManager **)header)[0] = NULL;
+            header = (char *)header + sizeof(ResourceManager *);
          }
 
          ((LONG *)header)[0]  = unique_id;
@@ -524,7 +524,7 @@ retry:
 
          // Gain exclusive access if both the address pointer and memory ID have been specified.
 
-         if ((MemoryID) AND (Address)) {
+         if ((MemoryID) and (Address)) {
             if (Flags & MEM_NO_LOCK) *Address = data_start;
             else if (AccessMemory(unique_id, MEM_READ_WRITE, 2000, Address) != ERR_Okay) {
                log.warning("Memory block %d stolen during allocation!", *MemoryID);
@@ -642,7 +642,7 @@ ERROR CloneMemory(APTR Address, LONG Flags, APTR *NewAddress, MEMORYID *MemoryID
 
    if (glShowPrivate) log.branch("Memory: %p, Flags: $%.8x", Address, Flags);
 
-   if ((!Address) OR ((!NewAddress) AND (!MemoryID))) {
+   if ((!Address) or ((!NewAddress) and (!MemoryID))) {
       return log.warning(ERR_NullArgs);
    }
 
@@ -720,7 +720,7 @@ ERROR FreeResource(const void *Address)
             glPrivateMemory[pos].Flags, glPrivateMemory[pos].ObjectID);
       }
 
-      if ((glPrivateMemory[pos].ObjectID) AND (tlContext->Object->UniqueID) AND (glPrivateMemory[pos].ObjectID != tlContext->Object->UniqueID)) {
+      if ((glPrivateMemory[pos].ObjectID) and (tlContext->Object->UniqueID) and (glPrivateMemory[pos].ObjectID != tlContext->Object->UniqueID)) {
          log.warning("Attempt to free address %p (size %d), which is owned by #%d.", Address, glPrivateMemory[pos].Size, glPrivateMemory[pos].ObjectID);
       }
 
@@ -735,10 +735,10 @@ ERROR FreeResource(const void *Address)
       // If the block has a resource manager, call its Free() implementation.
 
       if (glPrivateMemory[pos].Flags & MEM_MANAGED) {
-         start_mem = (char *)start_mem - sizeof(struct ResourceManager *);
+         start_mem = (char *)start_mem - sizeof(ResourceManager *);
 
-         struct ResourceManager *rm = ((struct ResourceManager **)start_mem)[0];
-         if ((rm) AND (rm->Free)) {
+         ResourceManager *rm = ((ResourceManager **)start_mem)[0];
+         if ((rm) and (rm->Free)) {
             rm->Free((APTR)Address);
             // Reacquire the current block position - it can move if glPrivateMemory was compressed.
             if ((pos = find_private_mem_id(id, Address)) IS -1) {
@@ -766,7 +766,7 @@ ERROR FreeResource(const void *Address)
       glPrivateBlockCount--;
       glPrivateCompressed = FALSE;
 
-      if (--glPrivateCompression <= 0) compress_private_memory();
+      if (__sync_sub_and_fetch(&glPrivateCompression, 1) <= 0) compress_private_memory();
 
       randomise_memory((APTR)Address, size);
 
@@ -810,7 +810,7 @@ ERROR FreeResourceID(MEMORYID MemoryID)
             if (glShowPublic) log.pmsg("FreeResourceID(#%d, Index %d, Count: %d)", MemoryID, entry, glSharedBlocks[entry].AccessCount);
 
             if (glSharedBlocks[entry].AccessCount > 0) {
-               //if ((glSharedBlocks[entry].Flags & MEM_NO_BLOCKING) AND (glCurrentTaskID) AND
+               //if ((glSharedBlocks[entry].Flags & MEM_NO_BLOCKING) and (glCurrentTaskID) and
                //    (glSharedBlocks[entry].TaskID IS glCurrentTaskID)) {
                   // Non-blocking memory blocks fall through to the deallocation process regardless of the access count (assuming the block belongs to the task attempting the deallocation).
                //}
@@ -823,7 +823,7 @@ ERROR FreeResourceID(MEMORYID MemoryID)
                //}
             }
 
-            glSharedControl->BlocksUsed--;
+            __sync_fetch_and_sub(&glSharedControl->BlocksUsed, 1);
 
             #ifdef _WIN32
                APTR pool = ResolveAddress(glSharedControl, glSharedControl->MemoryOffset);
@@ -837,8 +837,8 @@ ERROR FreeResourceID(MEMORYID MemoryID)
                   for (LONG i=0; i < glTotalPages; i++) {
                      if (glMemoryPages[i].MemoryID IS MemoryID) {
                         #ifdef STATIC_MEMORY_POOL
-                           if ((glMemoryPages[i].Address >= pool) AND (glMemoryPages[i].Address < (char *)pool + glSharedControl->PoolSize)) {
-                              ClearMemory(glMemoryPages + i, sizeof(struct MemoryPage));
+                           if ((glMemoryPages[i].Address >= pool) and (glMemoryPages[i].Address < (char *)pool + glSharedControl->PoolSize)) {
+                              ClearMemory(glMemoryPages + i, sizeof(MemoryPage));
                               break;
                            }
                         #endif
@@ -849,7 +849,7 @@ ERROR FreeResourceID(MEMORYID MemoryID)
                            log.warning("winUnmapViewOfFile(%p) failed: %s", glMemoryPages[i].Address, buffer);
                         }
 
-                        ClearMemory(glMemoryPages + i, sizeof(struct MemoryPage));
+                        ClearMemory(glMemoryPages + i, sizeof(MemoryPage));
                         break;
                      }
                   }
@@ -871,7 +871,7 @@ ERROR FreeResourceID(MEMORYID MemoryID)
                   for (LONG i=0; i < glTotalPages; i++) {
                      if (glMemoryPages[i].MemoryID IS MemoryID) {
                         shmdt(glMemoryPages[i].Address);
-                        ClearMemory(glMemoryPages + i, sizeof(struct MemoryPage));
+                        ClearMemory(glMemoryPages + i, sizeof(MemoryPage));
                         break;
                      }
                   }
@@ -884,7 +884,7 @@ ERROR FreeResourceID(MEMORYID MemoryID)
                // Do nothing for mmap'ed memory since it uses the offset method
             #endif
 
-            ClearMemory(glSharedBlocks + entry, sizeof(struct PublicAddress));
+            ClearMemory(glSharedBlocks + entry, sizeof(PublicAddress));
             return ERR_Okay;
          }
       }
@@ -925,7 +925,7 @@ ERROR FreeResourceID(MEMORYID MemoryID)
                glPrivateMemory[i].ThreadLockID = 0;
                #endif
 
-               if (--glPrivateCompression <= 0) compress_private_memory();
+               if (__sync_sub_and_fetch(&glPrivateCompression, 1) <= 0) compress_private_memory();
             }
 
             return error;
@@ -1011,7 +1011,7 @@ ERROR MemoryIDInfo(MEMORYID MemoryID, struct MemInfo *MemInfo, LONG Size)
    parasol::Log log(__FUNCTION__);
    LONG i, entry;
 
-   if ((!MemInfo) OR (!MemoryID)) return log.warning(ERR_NullArgs);
+   if ((!MemInfo) or (!MemoryID)) return log.warning(ERR_NullArgs);
    if ((size_t)Size < sizeof(struct MemInfo)) return log.warning(ERR_Args);
 
    ClearMemory(MemInfo, Size);
@@ -1027,7 +1027,7 @@ ERROR MemoryIDInfo(MEMORYID MemoryID, struct MemInfo *MemInfo, LONG Size)
             MemInfo->Flags       = glSharedBlocks[entry].Flags;
             MemInfo->MemoryID    = MemoryID;
             MemInfo->TaskID      = glSharedBlocks[entry].TaskID;
-            MemInfo->Handle = glSharedBlocks[entry].Offset;
+            MemInfo->Handle      = glSharedBlocks[entry].Offset;
             return ERR_Okay;
          }
          else return ERR_MemoryDoesNotExist;
@@ -1092,7 +1092,7 @@ ERROR MemoryPtrInfo(APTR Memory, struct MemInfo *MemInfo, LONG Size)
    parasol::Log log(__FUNCTION__);
    LONG i;
 
-   if ((!MemInfo) OR (!Memory)) return log.warning(ERR_NullArgs);
+   if ((!MemInfo) or (!Memory)) return log.warning(ERR_NullArgs);
    if ((size_t)Size < sizeof(struct MemInfo)) return log.warning(ERR_Args);
 
    ClearMemory(MemInfo, Size);
@@ -1105,7 +1105,7 @@ ERROR MemoryPtrInfo(APTR Memory, struct MemInfo *MemInfo, LONG Size)
 
    #ifdef STATIC_MEMORY_POOL
       APTR pool = ResolveAddress(glSharedControl, glSharedControl->MemoryOffset);
-      if ((Memory >= pool) AND (Memory < (char *)pool + glSharedControl->PoolSize)) {
+      if ((Memory >= pool) and (Memory < (char *)pool + glSharedControl->PoolSize)) {
          publicmem = TRUE;
       }
    #else
@@ -1218,12 +1218,12 @@ ERROR ReallocMemory(APTR Address, LONG NewSize, APTR *Memory, MEMORYID *MemoryID
 
    if (Memory) *Memory = Address; // If we fail, the result must be the same memory block
 
-   if ((!Address) OR (NewSize <= 0)) {
+   if ((!Address) or (NewSize <= 0)) {
       log.function("Address: %p, NewSize: %d, &Memory: %p, &MemoryID: %p", Address, NewSize, Memory, MemoryID);
       return log.warning(ERR_Args);
    }
 
-   if ((!Memory) AND (!MemoryID)) {
+   if ((!Memory) and (!MemoryID)) {
       log.function("Address: %p, NewSize: %d, &Memory: %p, &MemoryID: %p", Address, NewSize, Memory, MemoryID);
       return log.warning(ERR_NullArgs);
    }
@@ -1237,9 +1237,7 @@ ERROR ReallocMemory(APTR Address, LONG NewSize, APTR *Memory, MEMORYID *MemoryID
 
    if (meminfo.Size IS NewSize) return ERR_Okay;
 
-   if ((glShowPrivate) OR (glShowPublic)) {
-      LogF("~ReallocMemory()","Address: %p, NewSize: %d", Address, NewSize);
-   }
+   if ((glShowPrivate) or (glShowPublic)) log.branch("Address: %p, NewSize: %d", Address, NewSize);
 
    // Allocate the new memory block and copy the data across
 
@@ -1261,31 +1259,27 @@ ERROR ReallocMemory(APTR Address, LONG NewSize, APTR *Memory, MEMORYID *MemoryID
       }
       else FreeResource(Address);
 
-      if ((glShowPrivate) OR (glShowPublic)) LogReturn();
       return ERR_Okay;
    }
-   else {
-      if ((glShowPrivate) OR (glShowPublic)) LogReturn();
-      return log.error(ERR_AllocMemory);
-   }
+   else return log.error(ERR_AllocMemory);
 }
 
 //****************************************************************************
 // Compresses the public memory table, keeping it in the correct record order.
 
-static void compress_public_memory(struct SharedControl *Control)
+static void compress_public_memory(SharedControl *Control)
 {
    LONG i;
 
    // Find the first empty index.
-   for (i=0; (i < Control->NextBlock) AND (glSharedBlocks[i].MemoryID); i++);
+   for (i=0; (i < Control->NextBlock) and (glSharedBlocks[i].MemoryID); i++);
 
    if (i >= Control->NextBlock) return;
 
    for (LONG j=i+1; j < Control->NextBlock; j++) {
       if (glSharedBlocks[j].MemoryID) { // Move the record at position j to position i
          glSharedBlocks[i] = glSharedBlocks[j];
-         ClearMemory(glSharedBlocks + j, sizeof(struct PublicAddress));
+         ClearMemory(glSharedBlocks + j, sizeof(PublicAddress));
          i++;
       }
    }
@@ -1307,7 +1301,7 @@ static void compress_private_memory(void)
    // Find the first empty index.
 
    LONG i, j;
-   for (i=0; (i < glNextPrivateAddress) AND (glPrivateMemory[i].Address); i++);
+   for (i=0; (i < glNextPrivateAddress) and (glPrivateMemory[i].Address); i++);
    if (i >= glNextPrivateAddress) return;
 
    for (j=i+1; j < glNextPrivateAddress; j++) {
@@ -1337,7 +1331,7 @@ static void compress_private_memory(void)
 ** -2 : The address is within the public memory pool range, but not registered as a memory block.
 */
 
-LONG find_public_address(struct SharedControl *Control, APTR Address)
+LONG find_public_address(SharedControl *Control, APTR Address)
 {
    // Check if the address is in the shared memory pool (in which case it will not be found in the page list).
 
@@ -1345,7 +1339,7 @@ LONG find_public_address(struct SharedControl *Control, APTR Address)
 
 #ifdef STATIC_MEMORY_POOL
    APTR pool = ResolveAddress(glSharedControl, glSharedControl->MemoryOffset);
-   if ((Address >= pool) AND (Address < (char *)pool + glSharedControl->PoolSize)) {
+   if ((Address >= pool) and (Address < (char *)pool + glSharedControl->PoolSize)) {
       for (LONG block=0; block < Control->NextBlock; block++) {
          if (Address IS ResolveAddress(glSharedControl, glSharedControl->MemoryOffset + glSharedBlocks[block].Offset)) {
             return block;
@@ -1409,14 +1403,14 @@ LONG find_private_mem_id(MEMORYID MemoryID, const void *CheckAddress)
    LONG ceiling = glNextPrivateAddress;
    LONG i       = ceiling>>1;
    for (LONG j=0; j < MAX_ITERATIONS; j++) {
-      while ((!glPrivateMemory[i].MemoryID) AND (i > 0)) i--;
+      while ((!glPrivateMemory[i].MemoryID) and (i > 0)) i--;
       if (MemoryID < glPrivateMemory[i].MemoryID)      ceiling = i;
       else if (MemoryID > glPrivateMemory[i].MemoryID) floor = i+1;
       else goto found;
       i = floor + ((ceiling - floor)>>1);
   }
 
-   while ((!glPrivateMemory[i].MemoryID) AND (i > 0)) i--;
+   while ((!glPrivateMemory[i].MemoryID) and (i > 0)) i--;
    if (MemoryID > glPrivateMemory[i].MemoryID) {
       while (i < ceiling) {
          if (glPrivateMemory[i].MemoryID IS MemoryID) goto found;
@@ -1449,7 +1443,7 @@ LONG find_private_mem_id(MEMORYID MemoryID, const void *CheckAddress)
 
 found:
    #ifdef DEBUG
-   if ((CheckAddress) AND (glPrivateMemory[i].Address != CheckAddress)) {
+   if ((CheckAddress) and (glPrivateMemory[i].Address != CheckAddress)) {
       // If the address does not match then the memory ID that we were given was corrupt.
 
       LogF("@FindMemory","Private memory block #%d is registered as address %p, but cross-check mismatches as %p", MemoryID, glPrivateMemory[i].Address, CheckAddress);
@@ -1472,7 +1466,7 @@ found:
 // Internal function to set the manager for an allocated resource.  Note: At this stage managed resources are not to
 // be exposed in the published API.
 
-void set_memory_manager(APTR Address, struct ResourceManager *Manager)
+void set_memory_manager(APTR Address, ResourceManager *Manager)
 {
    ResourceManager **address_mgr = (ResourceManager **)((char *)Address - sizeof(LONG) - sizeof(LONG) - sizeof(ResourceManager *));
    address_mgr[0] = Manager;
@@ -1504,9 +1498,9 @@ static ERROR add_mem_entry(void)
       LogF("7add_mem_entry","Memory array at near capacity (%d blocks) - allocating more space.", glMemRegSize);
 
       PrivateAddress *newmem;
-      if ((newmem = (PrivateAddress *)malloc(sizeof(struct PrivateAddress) * (glMemRegSize + blocksize)))) {
-         CopyMemory(glPrivateMemory, newmem, glMemRegSize * sizeof(struct PrivateAddress));
-         ClearMemory(newmem + glMemRegSize, blocksize * sizeof(struct PrivateAddress));
+      if ((newmem = (PrivateAddress *)malloc(sizeof(PrivateAddress) * (glMemRegSize + blocksize)))) {
+         CopyMemory(glPrivateMemory, newmem, glMemRegSize * sizeof(PrivateAddress));
+         ClearMemory(newmem + glMemRegSize, blocksize * sizeof(PrivateAddress));
          free(glPrivateMemory);
          glPrivateMemory = newmem;
          glMemRegSize += blocksize;
@@ -1519,7 +1513,7 @@ static ERROR add_mem_entry(void)
 
    // "Pull-back" the NextPrivateEntry position if there are null entries present at the tail-end of the array.
 
-   while ((glNextPrivateAddress > 0) AND (glPrivateMemory[glNextPrivateAddress-1].Address IS NULL)) {
+   while ((glNextPrivateAddress > 0) and (glPrivateMemory[glNextPrivateAddress-1].Address IS NULL)) {
       glNextPrivateAddress--;
    }
 
@@ -1529,7 +1523,7 @@ static ERROR add_mem_entry(void)
 //****************************************************************************
 // Finds public memory blocks via ID.  For thread safety, this function should be called within a lock_private_memory() zone.
 
-ERROR find_public_mem_id(struct SharedControl *Control, MEMORYID MemoryID, LONG *EntryPos)
+ERROR find_public_mem_id(SharedControl *Control, MEMORYID MemoryID, LONG *EntryPos)
 {
    if (EntryPos) *EntryPos = 0;
 
@@ -1552,7 +1546,7 @@ APTR resolve_public_address(PublicAddress *Block)
    // Check if the address is in the shared memory pool
    char *pool    = (char *)ResolveAddress(glSharedControl, glSharedControl->MemoryOffset);
    char *address = (char *)ResolveAddress(glSharedControl, glSharedControl->MemoryOffset + Block->Offset);
-   if ((address >= pool) AND (address < pool + glSharedControl->PoolSize)) {
+   if ((address >= pool) and (address < pool + glSharedControl->PoolSize)) {
       return address;
    }
 #endif

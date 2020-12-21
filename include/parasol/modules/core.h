@@ -3381,7 +3381,7 @@ struct PrivateAddress {
    APTR     Address;
    MEMORYID MemoryID;   // Unique identifier
    OBJECTID ObjectID;   // Owner of the block
-   ULONG     Size;      // 4GB max
+   ULONG    Size;       // 4GB max
    volatile LONG ThreadLockID;
    WORD     Flags;
    volatile WORD AccessCount; // Total number of locks
