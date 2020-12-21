@@ -3,18 +3,14 @@
 -MODULE-
 Core: The core library provides system calls and controls for the Parasol system.
 
-The Parasol Core is a function library that provides the features typically found in a system kernel, but with an
-abstraction layer that allows it to work on multiple platforms.  It also features an extensive object oriented
-programming interface.
+The Parasol Core is a system library that provides a universal API that works on multiple platforms.  It follows an
+object oriented design with granular resource tracking to minimise resource usage and memory leaks.
 
-The portability of the core has been safe-guarded by keeping the functions as generalised as possible for potential host
-environments.  It is vital that when writing application code for a target platform, the temptation to use the host's
-functions are avoided.  Making direct calls to the host platform will lower the level of compatibility with other
-platforms that are supported by Parasol.
+The portability of the core has been safe-guarded by keeping the functions as generalised as possible.  When writing
+code for a target platform it will be possible for the application to be completely sandboxed if the host's system
+calls are avoided.
 
-For summarised information about how the system works, please refer to the introductory manuals which cover all aspects
-of the design and object orientation in the system.  All of the information provided in this manual is technical and
-intended for reference.
+This documentation is intended for technical reference and is not suitable as an introductory guide to the framework.
 
 -END-
 
@@ -1281,7 +1277,7 @@ static ERROR init_shared_control(void)
    glSharedControl->MessageIDCount   = 1;
    glSharedControl->ClassIDCount     = 1;
    glSharedControl->GlobalIDCount    = 1;
-   glSharedControl->ThreadIDCount    = 0;
+   glSharedControl->ThreadIDCount    = 1;
 
    LONG offset = sizeof(SharedControl);
 
@@ -1302,9 +1298,8 @@ static ERROR init_shared_control(void)
    // Allocate public locks (for sharing between processes)
 
    #ifdef __unix__
-      UBYTE i;
       KMSG("Initialising %d global locks\n", PL_END-1);
-      for (i=1; i < PL_END; i++) {
+      for (UBYTE i=1; i < PL_END; i++) {
          if (alloc_public_lock(i, ALF_RECURSIVE)) { CloseCore(); return ERR_Failed; };
       }
    #endif
@@ -1378,9 +1373,8 @@ void PrintDiagnosis(LONG ProcessID, LONG Signal)
 
    if (!shTasks) return;
 
-   WORD j, index;
    TaskList *task = NULL;
-   for (j=0; j < MAX_TASKS; j++) {
+   for (WORD j=0; j < MAX_TASKS; j++) {
       if (shTasks[j].ProcessID IS ProcessID) {
          task = &shTasks[j];
          break;
@@ -1441,7 +1435,7 @@ void PrintDiagnosis(LONG ProcessID, LONG Signal)
 
          PublicAddress *memblocks = ResolveAddress(glSharedControl, glSharedControl->BlocksOffset);
 
-         for (index=0; index < glSharedControl->MaxBlocks; index++) {
+         for (LONG index=0; index < glSharedControl->MaxBlocks; index++) {
             if (!memblocks[index].MemoryID) continue;
 
             if (memblocks[index].ProcessLockID IS ProcessID) {
@@ -1466,7 +1460,7 @@ void PrintDiagnosis(LONG ProcessID, LONG Signal)
          // Print semaphore locking information
 
          SemaphoreEntry *semlist = ResolveAddress(glSharedControl, glSharedControl->SemaphoreOffset);
-         for (index=1; index < MAX_SEMAPHORES; index++) {
+         for (LONG index=1; index < MAX_SEMAPHORES; index++) {
             for (j=0; j < ARRAYSIZE(semlist[index].Processes); j++) {
                if (semlist[index].Processes[j].ProcessID IS ProcessID) {
                   LOGE("  Semaphore[%.4d]:  Access: %d,  Blocking: %d", index, semlist[index].Processes[j].AccessCount, semlist[index].Processes[j].BlockCount);
@@ -1499,8 +1493,7 @@ void PrintDiagnosis(LONG ProcessID, LONG Signal)
    if ((glFullOS) AND (Signal != SIGINT)) {
       snprintf(filename, sizeof(filename), "/tmp/%d-exception.txt", ProcessID);
       if (!(fd = fopen(filename, "w+"))) {
-         // Failure, use stderr
-         fd = stderr;
+         fd = stderr; // Failure, use stderr
       }
    }
    else fd = stderr;
@@ -1576,10 +1569,9 @@ void PrintDiagnosis(LONG ProcessID, LONG Signal)
       if (!LOCK_PUBLIC_MEMORY(4000)) {
          // Print memory locking information
 
-         PublicAddress *memblocks = (PublicAddress *)ResolveAddress(glSharedControl, glSharedControl->BlocksOffset);
+         auto memblocks = (PublicAddress *)ResolveAddress(glSharedControl, glSharedControl->BlocksOffset);
 
-         LONG index;
-         for (index=0; index < glSharedControl->MaxBlocks; index++) {
+         for (LONG index=0; index < glSharedControl->MaxBlocks; index++) {
             if (!memblocks[index].MemoryID) continue;
 
             if (memblocks[index].ProcessLockID IS ProcessID) {
@@ -1602,7 +1594,7 @@ void PrintDiagnosis(LONG ProcessID, LONG Signal)
       if (!LOCK_SEMAPHORES(4000)) {
          // Print semaphore locking information
 
-         SemaphoreEntry *semlist = (SemaphoreEntry *)ResolveAddress(glSharedControl, glSharedControl->SemaphoreOffset);
+         auto semlist = (SemaphoreEntry *)ResolveAddress(glSharedControl, glSharedControl->SemaphoreOffset);
 
          for (LONG index=1; index < MAX_SEMAPHORES; index++) {
             if (semlist[index].InstanceID IS glInstanceID) {
@@ -1755,16 +1747,14 @@ static void child_handler(LONG SignalNumber, siginfo_t *Info, APTR Context)
 {
 #if 0
    parasol:Log log(__FUNCTION__);
-   rkTask *task;
-   LONG childprocess, status, result, i;
 
-   childprocess = Info->si_pid;
+   LONG childprocess = Info->si_pid;
 
    // Get the return code
 
-   status = 0;
+   LONG status = 0;
    waitpid(Info->si_pid, &status, WNOHANG);
-   result = WEXITSTATUS(status);
+   LONG result = WEXITSTATUS(status);
 
    log.warning("Process #%d exited, return-code %d.", childprocess, result);
 
@@ -1772,9 +1762,10 @@ static void child_handler(LONG SignalNumber, siginfo_t *Info, APTR Context)
    //
    // !!! TODO: The slow methodology of this loop needs attention !!!
 
-   for (i=0; i < glNextPrivateAddress; i++) {
+   for (LONG i=0; i < glNextPrivateAddress; i++) {
       if (!(glPrivateMemory[i].Flags & MEM_OBJECT)) continue;
 
+      rkTask *task;
       if ((task = glPrivateMemory[i].Address)) {
          if ((task->Head.ClassID IS ID_TASK) AND (task->ProcessID IS childprocess)) {
             task->ReturnCode    = result;
@@ -1878,7 +1869,7 @@ static ERROR load_modules(void)
    //
    //   ULONG Hash
    //   LONG  Size
-   //   UBYTE Path[]
+   //   char  Path[]
 
    OBJECTPTR file;
    ERROR error;
@@ -1888,10 +1879,7 @@ static ERROR load_modules(void)
       }
       else return log.warning(ERR_AccessMemory);
    }
-   else if (!CreateObject(ID_FILE, 0, &file,
-         FID_Path|TSTR,   glModuleBinPath,
-         FID_Flags|TLONG, FL_READ,
-         TAGEND)) {
+   else if (!CreateObject(ID_FILE, 0, &file, FID_Path|TSTR, glModuleBinPath, FID_Flags|TLONG, FL_READ, TAGEND)) {
       LONG size;
       if (!(error = GetLong(file, FID_Size, &size))) {
          if (!(error = AllocMemory(size, MEM_NO_CLEAR|MEM_PUBLIC|MEM_UNTRACKED|MEM_NO_BLOCK, (APTR *)&glModules, &glSharedControl->ModulesMID))) {
@@ -1918,10 +1906,10 @@ static ERROR load_modules(void)
       while ((!ScanDir(dir)) AND (pos < (sizeof(modules)-256))) {
          FileInfo *folder = dir->Info;
          if (folder->Flags & RDF_FILE) {
-            ModuleItem *item = (ModuleItem *)(modules + pos);
+            auto item = (ModuleItem *)(modules + pos);
 
             #ifdef __ANDROID__
-               UBYTE modname[60];
+               char modname[60];
                CSTRING foldername = folder->Name;
 
                // Android modules are in the format "libcategory_modname.so"
