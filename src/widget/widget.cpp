@@ -387,7 +387,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    }
 
    if (ResolvePath("iconsource:", 0, &glIconPath) != ERR_Okay) { // The client can set iconsource: to redefine the icon origins
-      glIconPath = StrClone("system:icons/");
+      glIconPath = StrClone("styles:icons/");
    }
 
    // Icons are stored in compressed archives, accessible via "archive:icons/<category>/<icon>.svg"
