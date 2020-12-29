@@ -162,7 +162,7 @@ class Log { // C++ wrapper for Parasol's log functionality
       void traceBranch(CSTRING Message = "", ...) __attribute__((format(printf, 2, 3))) {
          va_list arg;
          va_start(arg, Message);
-         VLogF(VLF_DEBUG|VLF_BRANCH, header, Message, arg);
+         VLogF(VLF_TRACE|VLF_BRANCH, header, Message, arg);
          va_end(arg);
          branches++;
       }

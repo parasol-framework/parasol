@@ -194,7 +194,7 @@ if (!error) {
         <param type="LONG *" name="Result">The amount of bytes decompressed will be returned in this parameter.</param>
       </input>
       <description>
-<p>This method is used to decompress data that has been packed using the <method>CompressBuffer</method> method.  You need to provide a pointer to the compressed information and an output buffer large enough to accept the decompressed information.  If the output buffer is not large enough to contain the data, the method will write out as much information as it can and then return with an error code of ERR_BufferOverflow.</p>
+<p>This method is used to decompress data that has been packed using the <method>CompressBuffer</method> method.  A pointer to the compressed data and an output buffer large enough to contain the decompressed data are required.  If the output buffer is not large enough to contain the data, the method will write out as much information as it can and then return with an error code of ERR_BufferOverflow.</p>
       </description>
       <result>
         <error code="BufferOverflow">The output buffer is not large enough to hold the decompressed information.</error>
@@ -479,7 +479,7 @@ if (!error) {
       <access read="R" write="W">Read/Write</access>
       <type lookup="PERMIT">INT</type>
       <description>
-<p>By default, permissions of files added to an archive are derived from their source location.  This behaviour can be over-ridden by setting the Permissions field.  Valid permission flags are outlined in the <class name="File">File</class> class.</p>
+<p>By default the permissions of files added to an archive are derived from their source location.  This behaviour can be over-ridden by setting the Permissions field.  Valid permission flags are outlined in the <class name="File">File</class> class.</p>
 <types lookup="PERMIT"/>
       </description>
     </field>
@@ -925,7 +925,6 @@ if (!error) {
     </constants>
 
     <constants lookup="LDF" comment="Flags for LoadFile()">
-      <const name="IGNORE_STATUS">The timestamp and size of the file will not be checked, which will result in the cached version of the file being returned regardless of any recent file changes.</const>
       <const name="CHECK_EXISTS">Limits the routine to checking the file cache for the existence of the file.  If found, the relevant cache entry is returned. The open count is not incremented by this action (it is therefore unnecessary to follow-up with a call to UnloadFile()).  If no up-to-date cache entry is available, ERR_Search is returned.</const>
     </constants>
 

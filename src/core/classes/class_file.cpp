@@ -618,12 +618,11 @@ static ERROR FILE_Init(objFile *Self, APTR Void)
 
    if ((!Self->Permissions) or (Self->Permissions & PERMIT_INHERIT)) {
       FileInfo info;
-      char namebuf[MAX_FILENAME];
 
       // If the file already exists, pull the permissions from it.  Otherwise use a default set of permissions (if
       // possible, inherit permissions from the file's folder).
 
-      if ((Self->Flags & FL_NEW) and (get_file_info(Self->Path, &info, sizeof(info), namebuf, sizeof(namebuf)) IS ERR_Okay)) {
+      if ((Self->Flags & FL_NEW) and (!get_file_info(Self->Path, &info, sizeof(info)))) {
          log.msg("Using permissions of the original file.");
          Self->Permissions |= info.Permissions;
       }
@@ -985,14 +984,18 @@ Reads data from a file into the given buffer.  Increases the value in the #Posit
 bytes read from the file data.  The FL_READ bit in the #Flags field must have been set on file initialisation,
 or the call will fail.
 
-It is possible for this call to report success even in the event that no data has been read from the file.  This is
-a typical outcome when reading from streamed file sources.
+It is normal behaviour for this call to report success in the event that no data has been read from the file, e.g.
+if the end of the file has been reached.  The Result parameter will be returned as zero in such cases.  Check the
+current #Position against the #Size to confirm that the end has been reached.
 
 -ERRORS-
 Okay: The file information was read into the buffer.
 Args
 NullArgs
+NotInitialised
+OutOfRange: Invalid Length parameter.
 FileReadFlag: The FL_READ flag was not specified on initialisation.
+ExpectedFolder: The file object refers to a folder.
 Failed: The file object refers to a folder, or the object is corrupt.
 -END-
 
@@ -2043,9 +2046,8 @@ static ERROR GET_Icon(objFile *Self, CSTRING *Value)
    }
 
    FileInfo info;
-   char fileinfo[MAX_FILENAME];
    BYTE link = FALSE;
-   if (!get_file_info(Self->Path, &info, sizeof(info), fileinfo, sizeof(fileinfo))) {
+   if (!get_file_info(Self->Path, &info, sizeof(info))) {
       if (info.Flags & RDF_LINK) link = TRUE;
 
       if (info.Flags & RDF_VIRTUAL) { // Virtual drives can specify custom icons, even for folders
@@ -2269,7 +2271,6 @@ static ERROR SET_Path(objFile *Self, CSTRING Value)
    }
 
    if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
-   if (Self->prvResolvedPath) { FreeResource(Self->prvResolvedPath); Self->prvResolvedPath = NULL; }
 
    LONG i, j, len;
    if ((Value) and (*Value)) {
@@ -2287,56 +2288,57 @@ static ERROR SET_Path(objFile *Self, CSTRING Value)
             Self->Path[0] = ':';
             Self->Path[1] = 0;
             Self->prvType |= STAT_FOLDER;
-            return ERR_Okay;
-         }
-
-         // Copy the path across and skip any trailing colons at the start.  We also eliminate any double slashes,
-         // e.g. "drive1:documents//tutorials/"
-
-         for (j=0; Value[j] IS ':'; j++);
-         if (!StrCompare("string:", Value, 7, 0)) {
-            i = StrCopy(Value, Self->Path, COPY_ALL);
          }
          else {
-            i = 0;
-            while ((Value[j]) and (Value[j] != '|')) {
-               if ((Value[j] IS '\\') and (Value[j+1] IS '\\')) {
-                  #ifdef _WIN32
-                     // Double slash is okay for UNC paths
-                     if (!j) Self->Path[i++] = Value[j++];
-                     else j++;
-                  #else
-                     j++;
-                  #endif
-               }
-               else if ((Value[j] IS '/') and (Value[j+1] IS '/')) {
-                  #ifdef _WIN32
-                     // Double slash is okay for UNC paths
-                     if (!j) Self->Path[i++] = Value[j++];
-                     else j++;
-                  #else
-                     j++;
-                  #endif
-               }
-               else Self->Path[i++] = Value[j++];
+            // Copy the path across and skip any trailing colons at the start.  We also eliminate any double slashes,
+            // e.g. "drive1:documents//tutorials/"
+
+            for (j=0; Value[j] IS ':'; j++);
+            if (!StrCompare("string:", Value, 7, 0)) {
+               i = StrCopy(Value, Self->Path, COPY_ALL);
             }
-            Self->Path[i] = 0;
-         }
+            else {
+               i = 0;
+               while ((Value[j]) and (Value[j] != '|')) {
+                  if ((Value[j] IS '\\') and (Value[j+1] IS '\\')) {
+                     #ifdef _WIN32
+                        // Double slash is okay for UNC paths
+                        if (!j) Self->Path[i++] = Value[j++];
+                        else j++;
+                     #else
+                        j++;
+                     #endif
+                  }
+                  else if ((Value[j] IS '/') and (Value[j+1] IS '/')) {
+                     #ifdef _WIN32
+                        // Double slash is okay for UNC paths
+                        if (!j) Self->Path[i++] = Value[j++];
+                        else j++;
+                     #else
+                        j++;
+                     #endif
+                  }
+                  else Self->Path[i++] = Value[j++];
+               }
+               Self->Path[i] = 0;
+            }
 
-         // Check if the path is a folder/volume or a file
+            // Check if the path is a folder/volume or a file
 
-         if ((Self->Path[i-1] IS ':') or (Self->Path[i-1] IS '/') or (Self->Path[i-1] IS '\\')) {
-            Self->prvType |= STAT_FOLDER;
-         }
-         else if (Self->Flags & FL_FOLDER) {
-            Self->Path[i++] = '/';
-            Self->Path[i] = 0;
-            Self->prvType |= STAT_FOLDER;
+            if ((Self->Path[i-1] IS ':') or (Self->Path[i-1] IS '/') or (Self->Path[i-1] IS '\\')) {
+               Self->prvType |= STAT_FOLDER;
+            }
+            else if (Self->Flags & FL_FOLDER) {
+               Self->Path[i++] = '/';
+               Self->Path[i] = 0;
+               Self->prvType |= STAT_FOLDER;
+            }
          }
       }
       else return log.warning(ERR_AllocMemory);
    }
 
+   if (Self->prvResolvedPath) { FreeResource(Self->prvResolvedPath); Self->prvResolvedPath = NULL; }
    return ERR_Okay;
 }
 

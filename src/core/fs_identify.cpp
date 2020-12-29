@@ -20,7 +20,7 @@ the given file.
 -INPUT-
 cstr Path:     The location of the object data.
 cstr Mode:     Common modes are "Open", "View", "Edit" or "Print".  The default mode is "Open".
-int(IDF) Flags: Set to IDF_HOST if you want to query the host platform's file associations only.  IDF_IGNORE_HOST queries the internal file assocations only.
+int(IDF) Flags: Use IDF_HOST to query the host platform's file associations only.  IDF_IGNORE_HOST queries the internal file assocations only.
 &cid Class:    Must refer to a CLASSID variable that will store the resulting class ID.
 &cid SubClass: Optional argument that can refer to a variable that will store the resulting sub-class ID (if the result is a base-class, this variable will receive a value of zero).
 !str Command:  The command associated with the datatype will be returned here.  Set to NULL if this is not required.  The resulting string must be destroyed once no longer required.
@@ -44,7 +44,7 @@ ERROR IdentifyFile(CSTRING Path, CSTRING Mode, LONG Flags, CLASSID *ClassID, CLA
 
    if ((!Path) or (!ClassID)) return log.warning(ERR_NullArgs);
 
-   log.branch("File: %s, Mode: %s, Command: %s", Path, Mode, Command ? "Yes" : "No");
+   log.branch("File: %s, Mode: %s, Command: %s, Flags: $%.8x", Path, Mode, Command ? "Yes" : "No", Flags);
 
    // Determine the class type by examining the Path file name.  If the file extension does not tell us the class
    // that supports the data, we then load the first 256 bytes from the file and then compare file headers.
@@ -303,20 +303,17 @@ class_identified:
    // The associations.cfg file will help us load files that do not have class associations later in this subroutine.
 
    if ((*ClassID != ID_TASK) and (!StrMatch("Open", Mode))) {
-      // Testing the X file bit is only reliable in the commercial version of Parasol, as other Linux systems often
+      // Testing the X file bit is only reliable with a native installation, as other Linux systems often
       // mount FAT partitions with +X on everything.
 
       const SystemState *state = GetSystemState();
       FileInfo info;
       if (!StrMatch("Native", state->Platform)) {
          log.trace("Checking for +x permissions on file %s", Path);
-         char filename[MAX_FILENAME];
-         if (!get_file_info(Path, &info, sizeof(info), filename, sizeof(filename))) {
-            if (info.Flags & RDF_FILE) {
-               if (info.Permissions & PERMIT_ALL_EXEC) {
-                  log.trace("Path carries +x permissions.");
-                  *ClassID = ID_TASK;
-               }
+         if (!fs_getinfo(Path, &info, sizeof(info))) {
+            if ((info.Flags & RDF_FILE) and (info.Permissions & PERMIT_ALL_EXEC)) {
+               log.trace("Path carries +x permissions.");
+               *ClassID = ID_TASK;
             }
          }
       }
@@ -327,13 +324,10 @@ class_identified:
                 (!StrCompare("/opt/", resolve, 5, 0)) or
                 (!StrCompare("/bin/", resolve, 5, 0))) {
                log.trace("Checking for +x permissions on file %s", resolve);
-               char filename[MAX_FILENAME];
-               if (!get_file_info(resolve, &info, sizeof(info), filename, sizeof(filename))) {
-                  if (info.Flags & RDF_FILE) {
-                     if (info.Permissions & PERMIT_ALL_EXEC) {
-                        log.trace("Path carries +x permissions");
-                        *ClassID = ID_TASK;
-                     }
+               if (!fs_getinfo(resolve, &info, sizeof(info))) {
+                  if ((info.Flags & RDF_FILE) and (info.Permissions & PERMIT_ALL_EXEC)) {
+                     log.trace("Path carries +x permissions");
+                     *ClassID = ID_TASK;
                   }
                }
             }

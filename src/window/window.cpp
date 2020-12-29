@@ -126,14 +126,6 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    if (LoadModule("surface", MODVERSION_SURFACE, &modSurface, &SurfaceBase) != ERR_Okay) return ERR_InitModule;
    if (LoadModule("display", MODVERSION_DISPLAY, &modDisplay, &DisplayBase) != ERR_Okay) return ERR_InitModule;
 
-   OBJECTPTR object;
-   OBJECTID object_id;
-   if (!NewNamedObject(ID_ICONSERVER, NF_NO_TRACK|NF_PUBLIC|NF_UNIQUE, &object, &object_id, "SystemIcons")) {
-      if (acInit(object) != ERR_Okay) acFree(object);
-      acActivate(object);
-      ReleaseObject(object);
-   }
-
    glDisplayType = gfxGetDisplayType();
 
    return add_window_class();

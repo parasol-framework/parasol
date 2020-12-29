@@ -41,3 +41,5 @@ extern char glWindowFace[64];
 extern char glWidgetFace[64];
 extern char glLabelFace[64];
 extern LONG glMargin;
+
+extern "C" ERROR widgetCreateIcon(CSTRING Path, CSTRING Class, CSTRING Filter, LONG Size, struct rkBitmap ** Bitmap);

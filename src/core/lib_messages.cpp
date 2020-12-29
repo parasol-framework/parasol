@@ -1159,7 +1159,7 @@ ERROR WaitForObjects(LONG Flags, LONG TimeOut, ObjectSignal *ObjectSignals)
       glWFOList.clear();
    }
 
-   if (error) log.warning(error);
+   if (error > ERR_ExceptionThreshold) log.warning(error);
    return error;
 }
 

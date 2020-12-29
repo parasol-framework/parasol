@@ -24,9 +24,9 @@ are: Initialise child objects to the button for execution on activation; Listen 
 *****************************************************************************/
 
 #define PRV_BUTTON
+#define PRV_WIDGET_MODULE
 #include <parasol/modules/display.h>
 #include <parasol/modules/document.h>
-#include <parasol/modules/iconserver.h>
 #include <parasol/modules/picture.h>
 #include <parasol/modules/surface.h>
 #include <parasol/modules/widget.h>

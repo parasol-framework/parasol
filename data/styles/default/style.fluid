@@ -126,7 +126,7 @@ local function createIcon(IconName, Viewport, ViewportSettings)
    glCounter = glCounter + 1
    icon.viewport = Viewport.new('VectorViewport', ViewportSettings)
    icon.gradient = defineGradient(Viewport.scene, icon.gradientName, glThemeColour.first, glThemeColour.last, 0, 0, 0, 1)
-   obj.new('svg', { target=icon.viewport, path='system:icons/Default/' .. IconName .. '.svg' })
+   obj.new('svg', { target=icon.viewport, path='icons:' .. IconName .. '.svg' })
    applyFill(icon.viewport, 'url(#' .. icon.gradientName .. ')')
    scaleGradient(icon.viewport, icon.gradient) -- Scale the gradient to the loaded icon
    return icon
@@ -971,7 +971,7 @@ glStyles = {
             Bitmap.mtDrawRectangle(0, 0, Surface.width, Surface.height, colA, 0)
             Bitmap.mtDrawRectangle(1, 1, Surface.width-2, Surface.height-2, colB, BAF_BLEND)
          end)
-         local svgUp = button.region.new('svgimage', { path='system:icons/Default/arrows/up.svg', x='25%', xoffset='25%', y='25%', yoffset='25%' })
+         local svgUp = button.region.new('svgimage', { path='icons:arrows/up.svg', x='25%', xoffset='25%', y='25%', yoffset='25%' })
          Scrollbar.scroll.mtAddScrollButton(button.region, 1)
 
          -- Lower button
@@ -988,7 +988,7 @@ glStyles = {
             Bitmap.mtDrawRectangle(0, 0, Surface.width, Surface.height, colA, 0)
             Bitmap.mtDrawRectangle(1, 1, Surface.width-2, Surface.height-2, colB, BAF_BLEND)
          end)
-         local svgDown = button.region.new('svgimage', { path='system:icons/Default/arrows/down.svg', x='25%', xoffset='25%', y='25%', yoffset='25%' })
+         local svgDown = button.region.new('svgimage', { path='icons:arrows/down.svg', x='25%', xoffset='25%', y='25%', yoffset='25%' })
          Scrollbar.scroll.mtAddScrollButton(button.region, 2)
       end
    },
@@ -1048,7 +1048,7 @@ glStyles = {
             Bitmap.mtDrawRectangle(0, 0, Surface.width, Surface.height, colA, BAD_BLEND)
             Bitmap.mtDrawRectangle(1, 1, Surface.width-2, Surface.height-2, colB, BAF_BLEND)
          end)
-         local svgUp = button.region.new('svgimage', { path='system:icons/Default/arrows/left.svg', x='25%', xoffset='25%', y='25%', yoffset='25%' })
+         local svgUp = button.region.new('svgimage', { path='icons:arrows/left.svg', x='25%', xoffset='25%', y='25%', yoffset='25%' })
          Scrollbar.scroll.mtAddScrollButton(button.region, 3)
 
          -- Lower button
@@ -1065,7 +1065,7 @@ glStyles = {
             Bitmap.mtDrawRectangle(0, 0, Surface.width, Surface.height, colA, BAF_BLEND)
             Bitmap.mtDrawRectangle(1, 1, Surface.width-2, Surface.height-2, colB, BAF_BLEND)
          end)
-         local svgDown = button.region.new('svgimage', { path='system:icons/Default/arrows/right.svg', x='25%', xoffset='25%', y='25%', yoffset='25%' })
+         local svgDown = button.region.new('svgimage', { path='icons:arrows/right.svg', x='25%', xoffset='25%', y='25%', yoffset='25%' })
          Scrollbar.scroll.mtAddScrollButton(button.region, 4)
       end
    },

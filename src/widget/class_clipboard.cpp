@@ -26,6 +26,7 @@ number of clips that can be stored in the history cache.
 *****************************************************************************/
 
 #define PRV_CLIPBOARD
+#define PRV_WIDGET_MODULE
 #include <parasol/modules/widget.h>
 
 #ifdef _WIN32

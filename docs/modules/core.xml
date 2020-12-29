@@ -1400,7 +1400,7 @@ GetFields(screen,
     <input>
       <param type="CSTRING" name="Path">The location of the object data.</param>
       <param type="CSTRING" name="Mode">Common modes are "Open", "View", "Edit" or "Print".  The default mode is "Open".</param>
-      <param type="LONG" name="Flags" lookup="IDF">Set to IDF_HOST if you want to query the host platform's file associations only.  IDF_IGNORE_HOST queries the internal file assocations only.</param>
+      <param type="LONG" name="Flags" lookup="IDF">Use IDF_HOST to query the host platform's file associations only.  IDF_IGNORE_HOST queries the internal file assocations only.</param>
       <param type="CLASSID *" name="Class">Must refer to a CLASSID variable that will store the resulting class ID.</param>
       <param type="CLASSID *" name="SubClass">Optional argument that can refer to a variable that will store the resulting sub-class ID (if the result is a base-class, this variable will receive a value of zero).</param>
       <param type="STRING *" name="Command">The command associated with the datatype will be returned here.  Set to NULL if this is not required.  The resulting string must be destroyed once no longer required.</param>
@@ -1537,9 +1537,9 @@ end
       <param type="struct CacheFile **" name="Cache">A pointer to a CacheFile structure is returned here if successful.</param>
     </input>
     <description>
-<p>The LoadFile() function provides the convenience of a simplified data loading mechanism, combined with a caching feature to speed up future file loading calls.</p>
-<p>This function first checks that the requested file has not already been cached by an earlier call to LoadFile().  If the file is cached but the source has been written since that occasion, the routine considers it a cache miss and will proceed on to the file loading routine.  If the file is cached, the <struct>CacheFile</struct> structure is returned immediately.</p>
-<p>If the file is not cached, it is loaded into a readable memory buffer which is referenced by the Data field of the Cache structure.  A hidden null byte is appended at the end of the buffer to assist the processing of text files. Other pieces of information about the file can be derived from the <struct>CacheFile</struct> meta data.</p>
+<p>The LoadFile() function loads complete files into memory and caches the content for use by other areas of the system or application.</p>
+<p>This function will first determine if the requested file has already been cached.  If this is true then the <struct>CacheFile</struct> structure is returned immediately.  Note that if the file was previously cached but then modified, this will be treated as a cache miss and the file will be loaded into a new buffer.</p>
+<p>File content will be loaded into a readable memory buffer that is referenced by the Data field of the <struct>CacheFile</struct> structure.  A hidden null byte is appended at the end of the buffer to assist the processing of text files. Other pieces of information about the file can be derived from the <struct>CacheFile</struct> meta data.</p>
 <p>Calls to LoadFile() must be matched with a call to <function module="Core">UnloadFile</function> to decrement the cache counter. When the counter returns to zero, the file can be unloaded from the cache during the next resource collection phase.</p>
     </description>
     <result type="ERROR">
@@ -2080,8 +2080,8 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
     </input>
     <description>
 <p>This function will convert a file path to its resolved form, according to the host system.  For example, a Linux system might resolve <code>drive1:documents/readme.txt</code> to <code>/documents/readme.txt</code>.  A Windows system might resolve the path to <code>c:\documents\readme.txt</code>.</p>
-<p>The resulting path is guaranteed to be absolute, meaning the use of sequences such as '..', '//' and './' will be eliminated.</p>
-<p>If the path can be resolved to more than one file, the ResolvePath() method will attempt to guess the correct path by checking the validity of each possible location.  For instance, if resolving a path of "user:document.txt" and the "user:" volume refers to both "system:users/joebloggs/" and "system:users/default/", the routine will check both directories for the existence of the "document.txt" file to determine the correct location.  While helpful, this can cause problems if the intent is to create a new file.  To circumvent this feature, use the RSF_NO_FILE_CHECK setting in the Flags parameter.</p>
+<p>The resulting path is guaranteed to be absolute, meaning the use of sequences such as <code>..</code>, <code>//</code> and <code>./</code> will be eliminated.</p>
+<p>If the path can be resolved to more than one file, the ResolvePath() method will attempt to guess the correct path by checking the validity of each possible location.  For instance, if resolving a path of <code>user:document.txt</code> and the <code>user:</code> volume refers to both <code>system:users/joebloggs/</code> and <code>system:users/default/</code>, the routine will check both directories for the existence of the <code>document.txt</code> file to determine the correct location.  While helpful, this can cause problems if the intent is to create a new file.  To circumvent this feature, use the RSF_NO_FILE_CHECK setting in the Flags parameter.</p>
 <p>When checking for the location of a file, ResolvePath() will only accept an exact file name match.  If the path must be treated as an approximation (i.e. file extensions can be ignored) then use the RSF_APPROXIMATE flag to tell the function to ignore extensions for the purpose of file name matching.</p>
 <p>To resolve the location of executable programs on Unix systems, use the RSF_PATH flag.  This uses the PATH environment variable to resolve the file name specified in the Path parameter.</p>
 <p>The resolved path will be returned in the Result parameter as an allocated memory block.  It must be removed once it is no longer required with FreeResource().</p>
@@ -2346,7 +2346,7 @@ FreeResource(memory);
       <param type="CSTRING" name="Document">The path to the document file that will be associated with the Path.</param>
     </input>
     <description>
-<p>Use SetDocView() to link document templates with file paths.  Document templates are returned as tags when <function module="Core">GetFileInfo</function> is used on paths that match those passed to this function.  Document templates are used by the FileView feature to switch to document mode whenever a matching location is on display.</p>
+<p>Use SetDocView() to link document templates with file paths.  Document templates are used by the FileView feature to switch to document mode whenever a matching location is on display.</p>
     </description>
     <result type="ERROR">
       <error code="NullArgs">Function call missing argument value(s)</error>
@@ -3576,7 +3576,7 @@ SetField(Object, FID_Statement|TSTR, "string");
       <param type="struct CacheFile *" name="Cache">A pointer to a CacheFile structure returned from LoadFile().</param>
     </input>
     <description>
-<p>This function unloads cached files from the system by decrementing the cache counters until they reach zero.</p>
+<p>This function unloads cached files that have been previously loaded with the <function module="Core">LoadFile</function> function.</p>
     </description>
   </function>
 
@@ -4369,7 +4369,6 @@ end
     </constants>
 
     <constants lookup="LDF" comment="Flags for LoadFile()">
-      <const name="IGNORE_STATUS">The timestamp and size of the file will not be checked, which will result in the cached version of the file being returned regardless of any recent file changes.</const>
       <const name="CHECK_EXISTS">Limits the routine to checking the file cache for the existence of the file.  If found, the relevant cache entry is returned. The open count is not incremented by this action (it is therefore unnecessary to follow-up with a call to UnloadFile()).  If no up-to-date cache entry is available, ERR_Search is returned.</const>
     </constants>
 

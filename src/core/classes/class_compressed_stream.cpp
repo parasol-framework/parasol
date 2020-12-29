@@ -9,7 +9,7 @@ Please refer to it for further information on licensing.
 -CLASS-
 CompressedStream: Acts as a proxy for decompressing and compressing data streams between objects.
 
-Use the CompressedStream class to compress and decompress data on the fly, without the need for a temporary storage
+Use the CompressedStream class to compress and decompress data on the fly without the need for a temporary storage
 area.  The default compression algorithm is DEFLATE with gzip header data.  It is compatible with common command-line
 tools such as gzip.
 
@@ -144,17 +144,7 @@ static ERROR CSTREAM_Read(objCompressedStream *Self, struct acRead *Args)
       result = inflate(&Self->Stream, Z_SYNC_FLUSH);
 
       if ((result) and (result != Z_STREAM_END)) {
-         if (Self->Stream.msg) log.warning("%s", Self->Stream.msg);
-         else log.warning("Zip error: %d", result);
-
-         switch(result) {
-            case Z_STREAM_ERROR:  error = ERR_Decompression; break;
-            case Z_DATA_ERROR:    error = ERR_InvalidData; break;
-            case Z_MEM_ERROR:     error = ERR_Memory; break;
-            case Z_BUF_ERROR:     error = ERR_BufferOverflow; break;
-            case Z_VERSION_ERROR: error = ERR_WrongVersion; break;
-            default:              error = ERR_Decompression;
-         }
+         error = convert_zip_error(&Self->Stream, result);
          break;
       }
 

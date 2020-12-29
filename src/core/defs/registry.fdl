@@ -8,7 +8,6 @@ header({ path="system/registry", copyright="Paul Manias 1996-2020" }, function()
     "BITMAP",
     "DISPLAY",
     "REGION",
-    "ICONSERVER",
     "PCX",
     "FILE",
     "MP3",

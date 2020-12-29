@@ -2438,7 +2438,7 @@ static ERROR load_icon(objView *Self, CSTRING IconFile, objBitmap **Icon, ULONG 
       SURFACEINFO *info;
       if (drwGetSurfaceInfo(Self->Layout->SurfaceID, &info) != ERR_Okay) info->BitsPerPixel = 32;
 
-      if (!iconCreateIcon(IconFile, "View", Self->IconTheme, Self->IconFilter, Self->IconSize, Icon)) {
+      if (!widgetCreateIcon(IconFile, "View", Self->IconFilter, Self->IconSize, Icon)) {
          log.msg("Caching new icon: '%s', Object: #%d", IconFile, Icon[0]->Head.UniqueID);
          SetOwner(Icon[0], modWidget);
 

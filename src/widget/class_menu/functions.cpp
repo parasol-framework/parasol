@@ -767,7 +767,7 @@ static ERROR load_icon(objMenu *Self, CSTRING Path, objBitmap **Bitmap)
       if (buffer[i] IS '(') buffer[i] = 0;
    }
 
-   ERROR error = iconCreateIcon(buffer, "Menu", NULL, Self->IconFilter, 16, Bitmap);
+   ERROR error = widgetCreateIcon(buffer, "Menu", Self->IconFilter, 16, Bitmap);
    return error;
 }
 

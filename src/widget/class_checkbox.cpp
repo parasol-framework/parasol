@@ -20,6 +20,7 @@ with a callback function.
 *****************************************************************************/
 
 #define PRV_CHECKBOX
+#define PRV_WIDGET_MODULE
 #include <parasol/modules/document.h>
 #include <parasol/modules/surface.h>
 #include <parasol/modules/widget.h>

@@ -132,6 +132,28 @@ void FreeFromLL(CompressedFile *a, CompressedFile *b, CompressedFile **c)
 
 //****************************************************************************
 
+ERROR convert_zip_error(struct z_stream_s *Stream, LONG Result)
+{
+   parasol::Log log;
+
+   ERROR error;
+   switch(Result) {
+      case Z_STREAM_ERROR:  error = ERR_Failed;
+      case Z_DATA_ERROR:    error = ERR_InvalidData;
+      case Z_MEM_ERROR:     error = ERR_Memory;
+      case Z_BUF_ERROR:     error = ERR_BufferOverflow;
+      case Z_VERSION_ERROR: error = ERR_WrongVersion;
+      default:              error = ERR_Failed;
+   }
+
+   if (Stream->msg) log.warning("%s", Stream->msg);
+   else log.warning("Zip error %d: %s", Result, GetErrorMsg(error));
+
+   return error;
+}
+
+//****************************************************************************
+
 static ERROR COMPRESSION_ActionNotify(objCompression *Self, struct acActionNotify *Args)
 {
    if (!Args) return ERR_NullArgs;
@@ -625,17 +647,7 @@ static ERROR COMPRESSION_DecompressStream(objCompression *Self, struct cmpDecomp
       result = inflate(&Self->Stream, Z_SYNC_FLUSH);
 
       if ((result) and (result != Z_STREAM_END)) {
-         if (Self->Stream.msg) log.warning("%s", Self->Stream.msg);
-         else log.warning("Zip error: %d", result);
-
-         switch(result) {
-            case Z_STREAM_ERROR:  error = ERR_Failed; break;
-            case Z_DATA_ERROR:    error = ERR_InvalidData; break;
-            case Z_MEM_ERROR:     error = ERR_Memory; break;
-            case Z_BUF_ERROR:     error = ERR_BufferOverflow; break;
-            case Z_VERSION_ERROR: error = ERR_WrongVersion; break;
-            default:              error = ERR_Failed;
-         }
+         error = convert_zip_error(&Self->Stream, result);
          break;
       }
 
@@ -880,10 +892,10 @@ static ERROR COMPRESSION_CompressFile(objCompression *Self, struct cmpCompressFi
 -METHOD-
 DecompressBuffer: Decompresses data originating from the CompressBuffer method.
 
-This method is used to decompress data that has been packed using the #CompressBuffer() method.  You need
-to provide a pointer to the compressed information and an output buffer large enough to accept the decompressed
-information.  If the output buffer is not large enough to contain the data, the method will write out as much
-information as it can and then return with an error code of ERR_BufferOverflow.
+This method is used to decompress data that has been packed using the #CompressBuffer() method.  A pointer to the
+compressed data and an output buffer large enough to contain the decompressed data are required.  If the output buffer
+is not large enough to contain the data, the method will write out as much information as it can and then return with
+an error code of ERR_BufferOverflow.
 
 -INPUT-
 buf(ptr) Input: Pointer to the compressed data.
@@ -1151,7 +1163,7 @@ static ERROR COMPRESSION_DecompressFile(objCompression *Self, struct cmpDecompre
                   err = inflate(&Self->prvZip, Z_SYNC_FLUSH);
 
                   if ((err != ERR_Okay) and (err != Z_STREAM_END)) {
-                     if (Self->prvZip.msg) log.error("%s", Self->prvZip.msg);
+                     if (Self->prvZip.msg) log.warning("%s", Self->prvZip.msg);
                      error = ERR_Failed;
                      goto exit;
                   }
@@ -1257,7 +1269,7 @@ static ERROR COMPRESSION_DecompressFile(objCompression *Self, struct cmpDecompre
                      err = inflate(&Self->prvZip, Z_SYNC_FLUSH);
 
                      if ((err != ERR_Okay) and (err != Z_STREAM_END)) {
-                        if (Self->prvZip.msg) log.error("%s", Self->prvZip.msg);
+                        if (Self->prvZip.msg) log.warning("%s", Self->prvZip.msg);
                         error = ERR_Failed;
                         goto exit;
                      }
@@ -1482,7 +1494,7 @@ static ERROR COMPRESSION_DecompressObject(objCompression *Self, struct cmpDecomp
                   err = inflate(&Self->prvZip, Z_SYNC_FLUSH);
 
                   if ((err != ERR_Okay) and (err != Z_STREAM_END)) {
-                     if (Self->prvZip.msg) log.error("%s", Self->prvZip.msg);
+                     if (Self->prvZip.msg) log.warning("%s", Self->prvZip.msg);
                      error = ERR_Decompression;
                      goto exit;
                   }

@@ -1977,7 +1977,7 @@ ERROR MGR_Init(OBJECTPTR Object, APTR Void)
          else return ERR_Okay;
 
          if (sli IS -1) {
-            // Initialise a list of all known sub-classes for querying in sequence.
+            // Initialise a list of all sub-classes already in memory for querying in sequence.
             sli = 0;
             LONG i = 0;
             rkMetaClass **ptr;
@@ -2003,7 +2003,7 @@ ERROR MGR_Init(OBJECTPTR Object, APTR Void)
    Object->Class = baseclass;  // Put back the original to retain integrity
    Object->SubID = Object->Class->SubClassID;
 
-   // If the base class and its immediate sub-classes failed, check the object for a Path field and check the data
+   // If the base class and its loaded sub-classes failed, check the object for a Path field and check the data
    // against sub-classes that are not currently in memory.
    //
    // This is the only way we can support the automatic loading of sub-classes without causing undue load on CPU and

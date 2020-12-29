@@ -21,6 +21,7 @@ Set the #Feedback field in order to receive this notification and respond with y
 *****************************************************************************/
 
 #define PRV_INPUT
+#define PRV_WIDGET_MODULE
 #include <parasol/modules/document.h>
 #include <parasol/modules/widget.h>
 #include <parasol/modules/xml.h>

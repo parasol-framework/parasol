@@ -200,7 +200,7 @@ static ERROR SET_Password(objCompression *Self, CSTRING Value)
 -FIELD-
 Permissions: Default permissions for decompressed files are defined here.
 
-By default, permissions of files added to an archive are derived from their source location.  This behaviour can be
+By default the permissions of files added to an archive are derived from their source location.  This behaviour can be
 over-ridden by setting the Permissions field.  Valid permission flags are outlined in the @File class.
 
 -FIELD-

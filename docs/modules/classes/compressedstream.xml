@@ -15,7 +15,7 @@
     <include>modules/compressedstream.h</include>
     <copyright>Paul Manias 1996-2020</copyright>
     <description>
-<p>Use the CompressedStream class to compress and decompress data on the fly, without the need for a temporary storage area.  The default compression algorithm is DEFLATE with gzip header data.  It is compatible with common command-line tools such as gzip.</p>
+<p>Use the CompressedStream class to compress and decompress data on the fly without the need for a temporary storage area.  The default compression algorithm is DEFLATE with gzip header data.  It is compatible with common command-line tools such as gzip.</p>
 <p>To decompress data, set the <field>Input</field> field with a source object that supports the Read action, such as a File. Repeatedly reading from the CompressedStream will automatically handle the decompression process for you.  If the decompressed size of the incoming data is defined in the source header, it will be reflected in the <field>Size</field> field.</p>
 <p>To compress data, set the <field>Output</field> field with a source object that supports the <action>Write</action> action, such as a <class name="File">File</class>. Repeatedly writing to the CompressedStream with raw data will automatically handle the compression process for you. Once all of the data has been written, call the <action>Write</action> action with a Buffer of NULL and Length -1 to signal an end to the streaming process.</p></description>
     <source>
@@ -479,7 +479,6 @@
     </constants>
 
     <constants lookup="LDF" comment="Flags for LoadFile()">
-      <const name="IGNORE_STATUS">The timestamp and size of the file will not be checked, which will result in the cached version of the file being returned regardless of any recent file changes.</const>
       <const name="CHECK_EXISTS">Limits the routine to checking the file cache for the existence of the file.  If found, the relevant cache entry is returned. The open count is not incremented by this action (it is therefore unnecessary to follow-up with a call to UnloadFile()).  If no up-to-date cache entry is available, ERR_Search is returned.</const>
     </constants>
 

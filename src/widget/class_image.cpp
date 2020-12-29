@@ -29,10 +29,10 @@ automatically unloaded when their reference count reaches zero.
 //#define DEBUG
 
 #define PRV_IMAGE
+#define PRV_WIDGET_MODULE
 #include <parasol/main.h>
 #include <parasol/modules/picture.h>
 #include <parasol/modules/display.h>
-#include <parasol/modules/iconserver.h>
 #include <parasol/modules/surface.h>
 #include <parasol/modules/widget.h>
 #include "defs.h"
@@ -61,7 +61,7 @@ static void resize_surface(objImage *Self)
    if (!(srcbitmap = Self->RawBitmap)) srcbitmap = Self->Bitmap;
    if (!srcbitmap) return;
 
-   if ((Self->Layout->BitsPerPixel) AND (Self->Layout->BitsPerPixel != srcbitmap->BitsPerPixel)) {
+   if ((Self->Layout->BitsPerPixel) and (Self->Layout->BitsPerPixel != srcbitmap->BitsPerPixel)) {
       resample_image(Self, 0, Self->Layout->BoundWidth, Self->Layout->BoundHeight, Self->Layout->BitsPerPixel);
    }
    else resample_image(Self, 0, Self->Layout->BoundWidth, Self->Layout->BoundHeight, srcbitmap->BitsPerPixel);
@@ -132,7 +132,7 @@ static ERROR IMAGE_Init(objImage *Self, APTR Void)
    SetFunctionPtr(Self->Layout, FID_ResizeCallback, (APTR)&resize_surface);
    if (acInit(Self->Layout) != ERR_Okay) return ERR_Init;
 
-   if ((!Self->Path) AND (!(Self->Flags & IMF_NO_FAIL))) return log.warning(ERR_MissingPath);
+   if ((!Self->Path) and (!(Self->Flags & IMF_NO_FAIL))) return log.warning(ERR_MissingPath);
 
    if (!Self->Path) {
       if (!(Self->Flags & IMF_NO_FAIL)) return log.warning(ERR_GetField);
@@ -141,7 +141,7 @@ static ERROR IMAGE_Init(objImage *Self, APTR Void)
    ERROR error = load_picture(Self);
 
    if (!error) {
-      if ((Self->Picture) AND (Self->Picture->FrameRate > 0)) {
+      if ((Self->Picture) and (Self->Picture->FrameRate > 0)) {
          log.msg("Picture frame rate: %dfps", Self->Picture->FrameRate);
          Self->FrameRate = Self->Picture->FrameRate;
 
@@ -164,7 +164,7 @@ static ERROR IMAGE_Move(objImage *Self, struct acMove *Args)
 {
    if (!Args) return ERR_NullArgs;
    if (Self->Flags & IMF_STICKY) return ERR_Okay;
-   if ((!Args->XChange) AND (!Args->YChange)) return ERR_Okay;
+   if ((!Args->XChange) and (!Args->YChange)) return ERR_Okay;
 
    Self->Layout->X -= Args->XChange;
    Self->Layout->Y -= Args->YChange;
@@ -212,7 +212,7 @@ static ERROR IMAGE_MoveToPoint(objImage *Self, struct acMoveToPoint *Args)
       Self->Layout->Dimensions = (Self->Layout->Dimensions & ~DMF_RELATIVE_Y) | DMF_FIXED_Y;
    }
 
-   if ((oldx != Self->Layout->X) OR (oldy != Self->Layout->Y)) ActionMsg(AC_Draw, Self->Layout->SurfaceID, NULL);
+   if ((oldx != Self->Layout->X) or (oldy != Self->Layout->Y)) ActionMsg(AC_Draw, Self->Layout->SurfaceID, NULL);
 
    return ERR_Okay;
 }
@@ -240,7 +240,7 @@ static ERROR IMAGE_ScrollToPoint(objImage *Self, struct acScrollToPoint *Args)
 {
    if (!Args) return ERR_NullArgs;
 
-   if ((Args->X IS Self->Layout->GraphicX) AND (Args->Y IS Self->Layout->GraphicY)) return ERR_Okay;
+   if ((Args->X IS Self->Layout->GraphicX) and (Args->Y IS Self->Layout->GraphicY)) return ERR_Okay;
 
    objSurface *surface;
    if (!AccessObject(Self->Layout->SurfaceID, 5000, &surface)) {
@@ -315,7 +315,7 @@ which is the maximum that we recommend.
 
 static ERROR SET_FrameRate(objImage *Self, LONG Value)
 {
-   if ((Value > 0) AND (Value <= 1000)) {
+   if ((Value > 0) and (Value <= 1000)) {
       Self->FrameRate = Value;
       return ERR_Okay;
    }
@@ -407,7 +407,7 @@ static ERROR GET_Path(objImage *Self, STRING *Value)
 static ERROR SET_Path(objImage *Self, CSTRING Value)
 {
    if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
-   if ((Value) AND (*Value)) Self->Path = StrClone(Value);
+   if ((Value) and (*Value)) Self->Path = StrClone(Value);
    return ERR_Okay;
 }
 
@@ -499,7 +499,7 @@ static void get_image_size(objBitmap *Bitmap, LONG Flags, LONG Width, LONG Heigh
    *ImageWidth = Bitmap->Width;
    *ImageHeight = Bitmap->Height;
 
-   if ((!Width) AND (!Height)) return;
+   if ((!Width) and (!Height)) return;
 
    if (Flags & IMF_ENLARGE) {
       if (Flags & IMF_11_RATIO) {
@@ -549,10 +549,10 @@ static void get_image_size(objBitmap *Bitmap, LONG Flags, LONG Width, LONG Heigh
 
    if (!(Flags & (IMF_SHRINK|IMF_ENLARGE))) {
       if (Flags & IMF_11_RATIO) {
-         if ((Width) AND (!Height)) {
+         if ((Width) and (!Height)) {
             Height = F2T(((DOUBLE)Width / (DOUBLE)Bitmap->Width) * Bitmap->Height);
          }
-         else if ((Height) AND (!Width)) {
+         else if ((Height) and (!Width)) {
             Width = F2T(((DOUBLE)Height / (DOUBLE)Bitmap->Height) * Bitmap->Width);
          }
       }
@@ -571,8 +571,8 @@ static void draw_image(objImage *Self, objSurface *Surface, objBitmap *Bitmap)
 
    log.trace("Pos: %dx%d, Area: %dx%d,%dx%d", Self->Layout->GraphicX, Self->Layout->GraphicY, Self->Layout->BoundX, Self->Layout->BoundY, Self->Layout->BoundWidth, Self->Layout->BoundHeight);
 
-   if ((Bitmap->Clip.Right <= Self->Layout->BoundX) OR (Bitmap->Clip.Top >= Self->Layout->BoundY+Self->Layout->BoundHeight) OR
-       (Bitmap->Clip.Bottom <= Self->Layout->BoundY) OR (Bitmap->Clip.Left >= Self->Layout->BoundX+Self->Layout->BoundWidth)) return;
+   if ((Bitmap->Clip.Right <= Self->Layout->BoundX) or (Bitmap->Clip.Top >= Self->Layout->BoundY+Self->Layout->BoundHeight) or
+       (Bitmap->Clip.Bottom <= Self->Layout->BoundY) or (Bitmap->Clip.Left >= Self->Layout->BoundX+Self->Layout->BoundWidth)) return;
 
    // Determine whether or not we need to draw this image based on our object's frame settings.
 
@@ -595,7 +595,7 @@ static void draw_image(objImage *Self, objSurface *Surface, objBitmap *Bitmap)
       return;
    }
 
-   if ((picbitmap->BitsPerPixel != Bitmap->BitsPerPixel) AND (!(picbitmap->Flags & BMF_ALPHA_CHANNEL))) {
+   if ((picbitmap->BitsPerPixel != Bitmap->BitsPerPixel) and (!(picbitmap->Flags & BMF_ALPHA_CHANNEL))) {
       // Resample the bitmap to the destination surface due to display depth changes.
 
       if (!CreateObject(ID_BITMAP, NF_INTEGRAL, &newbitmap,
@@ -616,7 +616,7 @@ static void draw_image(objImage *Self, objSurface *Surface, objBitmap *Bitmap)
    // Activate alpha-blending to the destination if the picture supports an alpha channel and our blend flag has been set.
 
    if (picbitmap->Flags & BMF_ALPHA_CHANNEL) {
-      if ((Self->Flags & IMF_NO_BLEND) AND (Surface->Flags & RNF_COMPOSITE)) {
+      if ((Self->Flags & IMF_NO_BLEND) and (Surface->Flags & RNF_COMPOSITE)) {
          // Do nothing if the surface is a composite and noblend is enabled
       }
    }
@@ -674,8 +674,8 @@ static void draw_image(objImage *Self, objSurface *Surface, objBitmap *Bitmap)
 
       if (Self->Background.Alpha > 0) {
          ULONG bkgd = PackPixelRGBA(Bitmap, &Self->Background);
-         if ((picbitmap->Flags & (BMF_ALPHA_CHANNEL|BMF_TRANSPARENT)) OR
-             ((picbitmap->Width < 64) AND (picbitmap->Height < 64))) {
+         if ((picbitmap->Flags & (BMF_ALPHA_CHANNEL|BMF_TRANSPARENT)) or
+             ((picbitmap->Width < 64) and (picbitmap->Height < 64))) {
             gfxDrawRectangle(Bitmap, Self->Layout->BoundX, Self->Layout->BoundY, Self->Layout->BoundWidth,
                Self->Layout->BoundHeight, bkgd, BAF_FILL);
          }
@@ -705,7 +705,7 @@ static void draw_image(objImage *Self, objSurface *Surface, objBitmap *Bitmap)
          }
       }
 
-      if ((Self->Layout->GraphicWidth != picbitmap->Width) OR (Self->Layout->GraphicHeight != picbitmap->Height)) {
+      if ((Self->Layout->GraphicWidth != picbitmap->Width) or (Self->Layout->GraphicHeight != picbitmap->Height)) {
          gfxCopyStretch(picbitmap, Bitmap, CSTF_BILINEAR, 0, 0,
             picbitmap->Width, picbitmap->Height, imagex, imagey, Self->Layout->GraphicWidth, Self->Layout->GraphicHeight);
       }
@@ -732,8 +732,8 @@ static void resample_image(objImage *Self, OBJECTID BufferID, LONG Width, LONG H
       return;
    }
 
-   if ((Self->Picture) AND (Self->Picture->Flags & PCF_SCALABLE)) {
-      if ((Width != Self->Picture->Bitmap->Width) OR (Height != Self->Picture->Bitmap->Height)) {
+   if ((Self->Picture) and (Self->Picture->Flags & PCF_SCALABLE)) {
+      if ((Width != Self->Picture->Bitmap->Width) or (Height != Self->Picture->Bitmap->Height)) {
          acResize(Self->Picture, Width, Height, BitsPerPixel);
          Self->Layout->GraphicWidth  = Self->Picture->Bitmap->Width;
          Self->Layout->GraphicHeight = Self->Picture->Bitmap->Height;
@@ -774,8 +774,8 @@ static void resample_image(objImage *Self, OBJECTID BufferID, LONG Width, LONG H
 
    if (!(bitmap = Self->Bitmap)) bitmap = Self->RawBitmap;
 
-   if ((BitsPerPixel IS bitmap->BitsPerPixel) OR (bitmap->Flags & BMF_ALPHA_CHANNEL)) {
-      if ((new_width IS bitmap->Width) AND (new_height IS bitmap->Height)) return;
+   if ((BitsPerPixel IS bitmap->BitsPerPixel) or (bitmap->Flags & BMF_ALPHA_CHANNEL)) {
+      if ((new_width IS bitmap->Width) and (new_height IS bitmap->Height)) return;
    }
 
    log.branch("Resizing bitmap %dx%d / %dx%d", Width, Height, new_width, new_height);
@@ -798,7 +798,7 @@ static void resample_image(objImage *Self, OBJECTID BufferID, LONG Width, LONG H
       // Resize our bitmap canvas to match new dimensions
 
       if (!acResize(Self->Bitmap, new_width, new_height, srcbitmap->BitsPerPixel)) {
-         if ((srcbitmap->Palette) AND (srcbitmap->BitsPerPixel <= 8)) {
+         if ((srcbitmap->Palette) and (srcbitmap->BitsPerPixel <= 8)) {
             SetPointer(Self->Bitmap, FID_Palette, srcbitmap->Palette);
          }
 
@@ -816,7 +816,7 @@ static void resample_image(objImage *Self, OBJECTID BufferID, LONG Width, LONG H
             if (Self->Bitmap->Flags & BMF_ALPHA_CHANNEL) {
                if (BitsPerPixel <= 16) {
                   ColourFormat format;
-                  if ((BufferID) AND (!AccessObject(BufferID, 1000, &bitmap))) {
+                  if ((BufferID) and (!AccessObject(BufferID, 1000, &bitmap))) {
                      CopyMemory(bitmap->ColourFormat, &format, sizeof(format));
                      ReleaseObject(bitmap);
                   }
@@ -838,7 +838,7 @@ static void resample_image(objImage *Self, OBJECTID BufferID, LONG Width, LONG H
                Self->Bitmap = bitmap;
             }
          }
-         else if ((glSixBit) AND (BitsPerPixel >= 24)) {
+         else if ((glSixBit) and (BitsPerPixel >= 24)) {
             ColourFormat format;
             gfxGetColourFormat(&format, 0, 0x3f, 0x3f, 0x3f, 0);
             gfxResample(Self->Bitmap, &format);
@@ -856,7 +856,7 @@ static void resample_image(objImage *Self, OBJECTID BufferID, LONG Width, LONG H
 
 static ERROR frame_timer(objImage *Self, LARGE Elapsed, LARGE CurrentTime)
 {
-   if ((Self->Picture) AND (Self->Picture->FrameRate)) {
+   if ((Self->Picture) and (Self->Picture->FrameRate)) {
       acRefresh(Self->Picture);
    }
 
@@ -895,8 +895,8 @@ static ERROR load_picture(objImage *Self)
       else return ERR_Okay;
    }
 
-   if (!StrCompare("icons:", Self->Path, 6, 0)) { // Icons are handled via the icon server.
-      if (!(error = iconCreateIcon(Self->Path+6, "Image", Self->IconTheme, Self->IconFilter, Self->Layout->GraphicWidth, &bitmap))) {
+   if (!StrCompare("icons:", Self->Path, 6, 0)) {
+      if (!(error = widgetCreateIcon(Self->Path+6, "Image", Self->IconFilter, Self->Layout->GraphicWidth, &bitmap))) {
          if (!(error = NewObject(ID_PICTURE, 0, &Self->Picture))) {
             SetFields(Self->Picture,
                FID_DisplayWidth|TLONG,  bitmap->Width,
@@ -920,7 +920,7 @@ static ERROR load_picture(objImage *Self)
 
       acFree(bitmap);
 
-      if ((error != ERR_Okay) AND (!(Self->Flags & IMF_NO_FAIL))) {
+      if ((error != ERR_Okay) and (!(Self->Flags & IMF_NO_FAIL))) {
          return error;
       }
 
@@ -956,7 +956,7 @@ static ERROR load_picture(objImage *Self)
       }
       else if (!(Self->Flags & IMF_NO_FAIL)) return log.warning(ERR_NewObject);
 
-      if ((error != ERR_Okay) AND (!(Self->Flags & IMF_NO_FAIL))) {
+      if ((error != ERR_Okay) and (!(Self->Flags & IMF_NO_FAIL))) {
          return error;
       }
 
@@ -973,7 +973,7 @@ static ERROR load_picture(objImage *Self)
          // The picture is scalable (e.g. vector) which makes it easier to resize the image on the fly.
          // NB: SVG's can also be defined with fixed viewport sizes in some cases.
 
-         if ((picture->Bitmap->Width IS picture->DisplayWidth) AND (picture->Bitmap->Height IS picture->DisplayHeight)) {
+         if ((picture->Bitmap->Width IS picture->DisplayWidth) and (picture->Bitmap->Height IS picture->DisplayHeight)) {
             log.msg("Managing the image as a scalable picture.");
 
             if (Self->Flags & (IMF_ENLARGE|IMF_SHRINK)) {
@@ -1033,10 +1033,10 @@ static ERROR load_picture(objImage *Self)
          // We need to keep the original picture
       }
       else if (!(Self->Flags & IMF_FIXED_SIZE)) {
-         if ((Self->Bitmap->Flags & BMF_ALPHA_CHANNEL) OR
-             ((info->BitsPerPixel < 24) AND
-              ((info->BitsPerPixel < Self->Bitmap->BitsPerPixel) OR
-              ((Self->Bitmap->BitsPerPixel <= 8) AND (info->BitsPerPixel > 8))))) {
+         if ((Self->Bitmap->Flags & BMF_ALPHA_CHANNEL) or
+             ((info->BitsPerPixel < 24) and
+              ((info->BitsPerPixel < Self->Bitmap->BitsPerPixel) or
+              ((Self->Bitmap->BitsPerPixel <= 8) and (info->BitsPerPixel > 8))))) {
 
             log.msg("Original image will be retained for dithering.");
 
@@ -1082,7 +1082,7 @@ static ERROR load_picture(objImage *Self)
       if (Self->Layout->GraphicRelHeight) Self->Layout->GraphicHeight = F2T((DOUBLE)Self->Layout->GraphicRelHeight * (DOUBLE)cheight);
       //else if (!Self->Layout->GraphicHeight) Self->Layout->GraphicHeight = picture->Bitmap->Height;
 
-      if ((Self->Layout->GraphicWidth != Self->Bitmap->Width) OR (Self->Layout->GraphicHeight != Self->Bitmap->Height)) {
+      if ((Self->Layout->GraphicWidth != Self->Bitmap->Width) or (Self->Layout->GraphicHeight != Self->Bitmap->Height)) {
          // User has preset the image width and height settings
          if (Self->Flags & (IMF_11_RATIO|IMF_FIT)) {
             get_image_size(picture->Bitmap, IMF_ENLARGE|IMF_SHRINK|(Self->Flags & (IMF_11_RATIO|IMF_FIT)),
@@ -1105,7 +1105,7 @@ static ERROR load_picture(objImage *Self)
       // In fixed size (no stretching) mode, we can filter the source image for better quality and store the bitmap at
       // the fixed size.  All of this saves memory and speed when redrawing.
 
-      if ((Self->Bitmap->Width != Self->Layout->GraphicWidth) OR (Self->Bitmap->Height != Self->Layout->GraphicHeight)) {
+      if ((Self->Bitmap->Width != Self->Layout->GraphicWidth) or (Self->Bitmap->Height != Self->Layout->GraphicHeight)) {
          log.trace("Commencing fixed size stretching.");
          if (!CreateObject(ID_BITMAP, NF_INTEGRAL, &bitmap,
                FID_Width|TLONG,        Self->Layout->GraphicWidth,
@@ -1119,7 +1119,7 @@ static ERROR load_picture(objImage *Self)
             gfxCopyStretch(Self->Bitmap, bitmap, CSTF_BILINEAR|CSTF_FILTER_SOURCE, 0, 0,
               Self->Bitmap->Width, Self->Bitmap->Height, 0, 0, bitmap->Width, bitmap->Height);
 
-            if ((Self->Picture) AND (Self->Picture->FrameRate <= 0)) {
+            if ((Self->Picture) and (Self->Picture->FrameRate <= 0)) {
                acFree(Self->Picture);
                Self->Picture = NULL;
             }
@@ -1130,7 +1130,7 @@ static ERROR load_picture(objImage *Self)
 
    // If the target display uses a different bit depth, use dithering to convert to it.
 
-   if ((Self->Bitmap) AND (Self->Bitmap->BitsPerPixel != info->BitsPerPixel)) {
+   if ((Self->Bitmap) and (Self->Bitmap->BitsPerPixel != info->BitsPerPixel)) {
       log.trace("Image requires depth conversion.");
 
       if (Self->Bitmap->BitsPerPixel IS 8); // 8 bit image sources don't need to be dithered or resampled
@@ -1138,7 +1138,7 @@ static ERROR load_picture(objImage *Self)
          if (info->BitsPerPixel <= 16) {
             ColourFormat format;
             log.trace("Resampling the image.");
-            if ((info->BitmapID) AND (!AccessObject(info->BitmapID, 1000, &bitmap))) {
+            if ((info->BitmapID) and (!AccessObject(info->BitmapID, 1000, &bitmap))) {
                CopyMemory(bitmap->ColourFormat, &format, sizeof(format));
                ReleaseObject(bitmap);
             }
@@ -1165,7 +1165,7 @@ static ERROR load_picture(objImage *Self)
 
             gfxCopyArea(Self->Bitmap, bitmap, (bitmap->Flags & BMF_TRANSPARENT) ? 0 : BAF_DITHER, 0, 0, Self->Bitmap->Width, Self->Bitmap->Height, 0, 0);
 
-            if ((picture) AND (picture->Bitmap IS Self->Bitmap));
+            if ((picture) and (picture->Bitmap IS Self->Bitmap));
             else acFree(Self->Bitmap);
 
             Self->Bitmap = bitmap;
@@ -1173,7 +1173,7 @@ static ERROR load_picture(objImage *Self)
       }
    }
 
-   if ((Self->Bitmap) AND (glSixBit) AND (Self->Bitmap->BitsPerPixel >= 24)) {
+   if ((Self->Bitmap) and (glSixBit) and (Self->Bitmap->BitsPerPixel >= 24)) {
       ColourFormat format;
       log.trace("Resampling to 6 bit graphics.");
       gfxGetColourFormat(&format, 0, 0x3f, 0x3f, 0x3f, 0);
@@ -1193,7 +1193,7 @@ static void calc_pic_size(objImage *Self, LONG SurfaceWidth, LONG SurfaceHeight)
 {
    parasol::Log log(__FUNCTION__);
 
-   if ((Self->Layout->GraphicRelWidth) OR (Self->Layout->GraphicRelHeight)) {
+   if ((Self->Layout->GraphicRelWidth) or (Self->Layout->GraphicRelHeight)) {
       log.warning("Relative image width/height has been set in conjunction with stretch flags (stretching takes precedence).");
       Self->Layout->GraphicRelWidth = 0;
       Self->Layout->GraphicRelHeight = 0;
@@ -1224,7 +1224,7 @@ static void render_script(objImage *Self, STRING Statement)
 
    log.branch();
 
-   if ((!Self->Layout->GraphicWidth) AND (!Self->Layout->GraphicHeight)) Self->Flags |= IMF_STRETCH;
+   if ((!Self->Layout->GraphicWidth) and (!Self->Layout->GraphicHeight)) Self->Flags |= IMF_STRETCH;
 
    if (Self->Flags & (IMF_ENLARGE|IMF_SHRINK)) {
       Self->Layout->GraphicWidth  = Self->Layout->BoundWidth;

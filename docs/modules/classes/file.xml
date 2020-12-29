@@ -67,9 +67,12 @@
       <comment>Reads data from a file.</comment>
       <description>
 <p>Reads data from a file into the given buffer.  Increases the value in the <field>Position</field> field by the amount of bytes read from the file data.  The FL_READ bit in the <field>Flags</field> field must have been set on file initialisation, or the call will fail.</p>
-<p>It is possible for this call to report success even in the event that no data has been read from the file.  This is a typical outcome when reading from streamed file sources.</p>
+<p>It is normal behaviour for this call to report success in the event that no data has been read from the file, e.g. if the end of the file has been reached.  The Result parameter will be returned as zero in such cases.  Check the current <field>Position</field> against the <field>Size</field> to confirm that the end has been reached.</p>
       </description>
       <result>
+        <error code="NotInitialised">The object has not been initialised.</error>
+        <error code="ExpectedFolder">The file object refers to a folder.</error>
+        <error code="OutOfRange">Invalid Length parameter.</error>
         <error code="Args">Invalid arguments passed to function.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
         <error code="Failed">The file object refers to a folder, or the object is corrupt.</error>
@@ -922,7 +925,6 @@
     </constants>
 
     <constants lookup="LDF" comment="Flags for LoadFile()">
-      <const name="IGNORE_STATUS">The timestamp and size of the file will not be checked, which will result in the cached version of the file being returned regardless of any recent file changes.</const>
       <const name="CHECK_EXISTS">Limits the routine to checking the file cache for the existence of the file.  If found, the relevant cache entry is returned. The open count is not incremented by this action (it is therefore unnecessary to follow-up with a call to UnloadFile()).  If no up-to-date cache entry is available, ERR_Search is returned.</const>
     </constants>
 

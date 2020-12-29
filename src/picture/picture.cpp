@@ -117,7 +117,7 @@ static ERROR PIC_Activate(objPicture *Self, APTR Void)
    if (!Self->prvFile) {
       STRING path;
       if (GetString(Self, FID_Path, &path) != ERR_Okay) {
-         return log.error(ERR_GetField);
+         return log.warning(ERR_GetField);
       }
 
       if (CreateObject(ID_FILE, 0, &Self->prvFile,
@@ -159,7 +159,7 @@ static ERROR PIC_Activate(objPicture *Self, APTR Void)
    // If the image contains a palette, load the palette into our Bitmap
 
    if (info_ptr->valid & PNG_INFO_PLTE) {
-      for (LONG i=0; (i < info_ptr->num_palette) AND (i < 256); i++) {
+      for (LONG i=0; (i < info_ptr->num_palette) and (i < 256); i++) {
          bmp->Palette->Col[i].Red   = info_ptr->palette[i].red;
          bmp->Palette->Col[i].Green = info_ptr->palette[i].green;
          bmp->Palette->Col[i].Blue  = info_ptr->palette[i].blue;
@@ -204,8 +204,8 @@ static ERROR PIC_Activate(objPicture *Self, APTR Void)
       // The first colour index in the list is taken as the background, any others are ignored
 
       RGB8 rgb;
-      if ((info_ptr->color_type IS PNG_COLOR_TYPE_PALETTE) OR
-          (info_ptr->color_type IS PNG_COLOR_TYPE_GRAY) OR
+      if ((info_ptr->color_type IS PNG_COLOR_TYPE_PALETTE) or
+          (info_ptr->color_type IS PNG_COLOR_TYPE_GRAY) or
           (info_ptr->color_type IS PNG_COLOR_TYPE_GRAY_ALPHA)) {
          bmp->TransIndex = info_ptr->trans_alpha[0];
          rgb = bmp->Palette->Col[bmp->TransIndex];
@@ -230,7 +230,7 @@ static ERROR PIC_Activate(objPicture *Self, APTR Void)
          bmp->BkgdRGB.Blue  = bmp->Palette->Col[info_ptr->trans_alpha[0]].Blue;
          bmp->BkgdRGB.Alpha = 255;
       }
-      else if ((color_type IS PNG_COLOR_TYPE_GRAY) OR (color_type IS PNG_COLOR_TYPE_GRAY_ALPHA)) {
+      else if ((color_type IS PNG_COLOR_TYPE_GRAY) or (color_type IS PNG_COLOR_TYPE_GRAY_ALPHA)) {
          bmp->BkgdRGB.Red   = prgb->gray;
          bmp->BkgdRGB.Green = prgb->gray;
          bmp->BkgdRGB.Blue  = prgb->gray;
@@ -259,19 +259,19 @@ static ERROR PIC_Activate(objPicture *Self, APTR Void)
    }
 
    if (!bmp->BitsPerPixel) {
-      if ((color_type IS PNG_COLOR_TYPE_GRAY) OR (color_type IS PNG_COLOR_TYPE_PALETTE)) {
+      if ((color_type IS PNG_COLOR_TYPE_GRAY) or (color_type IS PNG_COLOR_TYPE_PALETTE)) {
          bmp->BitsPerPixel = 8;
       }
       else bmp->BitsPerPixel = 24;
    }
 
-   if ((Self->Flags & PCF_NO_PALETTE) AND (bmp->BitsPerPixel <= 8)) {
+   if ((Self->Flags & PCF_NO_PALETTE) and (bmp->BitsPerPixel <= 8)) {
       bmp->BitsPerPixel = 32;
    }
 
-   if ((bmp->BitsPerPixel < 24) AND
-       ((bmp->BitsPerPixel < total_bit_depth) OR
-        ((total_bit_depth <= 8) AND (bmp->BitsPerPixel > 8)))) {
+   if ((bmp->BitsPerPixel < 24) and
+       ((bmp->BitsPerPixel < total_bit_depth) or
+        ((total_bit_depth <= 8) and (bmp->BitsPerPixel > 8)))) {
       objBitmap *tmp_bitmap;
 
       log.msg("Destination Depth %d < Image Depth %d - Dithering.", bmp->BitsPerPixel, total_bit_depth);
@@ -307,7 +307,7 @@ static ERROR PIC_Activate(objPicture *Self, APTR Void)
    }
    else {
 exit:
-      log.error(error);
+      log.warning(error);
    }
 
    png_destroy_read_struct(&read_ptr, &info_ptr, &end_info);
@@ -350,11 +350,8 @@ Query actions to load or find out more information about the image format.
 static ERROR PIC_Init(objPicture *Self, APTR Void)
 {
    parasol::Log log;
-   STRING path;
 
-   GetString(Self, FID_Path, &path);
-
-   if ((!path) OR (Self->Flags & PCF_NEW)) {
+   if ((!Self->prvPath) or (Self->Flags & PCF_NEW)) {
       // If no path has been specified, assume that the picture is being created from scratch (e.g. to save an
       // image to disk).  The programmer is required to specify the dimensions and colours of the Bitmap so that we can
       // initialise it.
@@ -364,7 +361,7 @@ static ERROR PIC_Init(objPicture *Self, APTR Void)
       if (!Self->Bitmap->Width) Self->Bitmap->Width = Self->DisplayWidth;
       if (!Self->Bitmap->Height) Self->Bitmap->Height = Self->DisplayHeight;
 
-      if ((Self->Bitmap->Width) AND (Self->Bitmap->Height)) {
+      if ((Self->Bitmap->Width) and (Self->Bitmap->Height)) {
          if (!acInit(Self->Bitmap)) {
             if (Self->Flags & PCF_FORCE_ALPHA_32) Self->Flags &= ~(PCF_ALPHA|PCF_MASK);
 
@@ -375,9 +372,9 @@ static ERROR PIC_Init(objPicture *Self, APTR Void)
                   Self->Mask->Flags |= PCF_MASK;
                   Self->Mask->BitsPerPixel = 8;
                   if (!acInit(Self->Mask)) Self->Flags |= PCF_MASK;
-                  else return log.error(ERR_Init);
+                  else return log.warning(ERR_Init);
                }
-               else return log.error(ERR_NewObject);
+               else return log.warning(ERR_NewObject);
             }
             else if (Self->Flags & PCF_MASK) {
                if (!NewObject(ID_BITMAP, NF_INTEGRAL, &Self->Mask)) {
@@ -386,45 +383,48 @@ static ERROR PIC_Init(objPicture *Self, APTR Void)
                   Self->Mask->Flags |= PCF_MASK;
                   Self->Mask->BitsPerPixel = 1;
                   if (!acInit(Self->Mask)) Self->Flags |= PCF_MASK;
-                  else return log.error(ERR_Init);
+                  else return log.warning(ERR_Init);
                }
-               else return log.error(ERR_NewObject);
+               else return log.warning(ERR_NewObject);
             }
 
             if (Self->Head.SubID) return ERR_Okay; // Break here to let the sub-class continue initialisation
 
             return ERR_Okay;
          }
-         else return log.error(ERR_Init);
+         else return log.warning(ERR_Init);
       }
-      else return log.error(ERR_InvalidDimension);
+      else return log.warning(ERR_InvalidDimension);
    }
    else {
       if (Self->Head.SubID) return ERR_Okay; // Break here to let the sub-class continue initialisation
 
       // Test the given path to see if it matches our supported file format.
 
-      if (!CreateObject(ID_FILE, 0, &Self->prvFile,
-            FID_Path|TSTR,   path,
-            FID_Flags|TLONG, FL_READ|FL_APPROXIMATE,
-            TAGEND)) {
+      STRING res_path;
+      if (!ResolvePath(Self->prvPath, RSF_APPROXIMATE, &res_path)) {
          LONG result;
 
-         acRead(Self->prvFile, Self->prvHeader, sizeof(Self->prvHeader)-1, &result);
-         Self->prvHeader[result] = 0;
+         FreeResource(Self->prvPath); // Switch to the resolved path in case it was approximated
+         Self->prvPath = res_path;
 
-         char *buffer = Self->prvHeader;
-         if ((buffer[0] IS 0x89) AND (buffer[1] IS 0x50) AND (buffer[2] IS 0x4e) AND (buffer[3] IS 0x47) AND
-             (buffer[4] IS 0x0d) AND (buffer[5] IS 0x0a) AND (buffer[6] IS 0x1a) AND (buffer[7] IS 0x0a)) {
-            if (Self->Flags & PCF_LAZY) return ERR_Okay;
-            return acActivate(Self);
+         if (!ReadFileToBuffer(res_path, Self->prvHeader, sizeof(Self->prvHeader)-1, &result)) {
+            Self->prvHeader[result] = 0;
+
+            char *buffer = Self->prvHeader;
+            if ((buffer[0] IS 0x89) and (buffer[1] IS 0x50) and (buffer[2] IS 0x4e) and (buffer[3] IS 0x47) and
+                (buffer[4] IS 0x0d) and (buffer[5] IS 0x0a) and (buffer[6] IS 0x1a) and (buffer[7] IS 0x0a)) {
+               if (Self->Flags & PCF_LAZY) return ERR_Okay;
+               return acActivate(Self);
+            }
+            else return ERR_NoSupport;
          }
-         else return ERR_NoSupport;
+         else {
+            log.warning("Failed to read '%s'", res_path);
+            return ERR_File;
+         }
       }
-      else {
-         log.error("Failed to open '%s'", path);
-         return ERR_File;
-      }
+      else return log.warning(ERR_FileNotFound);
    }
 
    return ERR_NoSupport;
@@ -441,7 +441,7 @@ static ERROR PIC_NewObject(objPicture *Self, APTR Void)
    if (!NewObject(ID_BITMAP, NF_INTEGRAL, &Self->Bitmap)) {
       return ERR_Okay;
    }
-   else return log.error(ERR_NewObject);
+   else return log.warning(ERR_NewObject);
 }
 
 //****************************************************************************
@@ -468,7 +468,7 @@ static ERROR PIC_Query(objPicture *Self, APTR Void)
    // Open the data file
 
    if (!Self->prvFile) {
-      if (GetString(Self, FID_Path, &path) != ERR_Okay) return log.error(ERR_GetField);
+      if (GetString(Self, FID_Path, &path) != ERR_Okay) return log.warning(ERR_GetField);
 
       if (CreateObject(ID_FILE, 0, &Self->prvFile,
             FID_Path|TSTR,   path,
@@ -503,7 +503,7 @@ static ERROR PIC_Query(objPicture *Self, APTR Void)
    if (color_type & PNG_COLOR_MASK_ALPHA) Self->Flags |= PCF_ALPHA;
 
    if (!Bitmap->BitsPerPixel) {
-      if ((color_type IS PNG_COLOR_TYPE_GRAY) OR (color_type IS PNG_COLOR_TYPE_PALETTE)) {
+      if ((color_type IS PNG_COLOR_TYPE_GRAY) or (color_type IS PNG_COLOR_TYPE_PALETTE)) {
          Bitmap->BitsPerPixel = 8;
          Bitmap->BytesPerPixel = 1;
       }
@@ -568,15 +568,15 @@ static ERROR PIC_SaveImage(objPicture *Self, struct acSaveImage *Args)
 
    // Open the data file
 
-   if ((Args) AND (Args->DestID)) {
+   if ((Args) and (Args->DestID)) {
       if (AccessObject(Args->DestID, 3000, &file) != ERR_Okay) {
-         log.error("Failed to access destination object #%d.", Args->DestID);
+         log.warning("Failed to access destination object #%d.", Args->DestID);
          goto exit;
       }
    }
    else {
       if (GetString(Self, FID_Path, &path) != ERR_Okay) {
-         return log.error(ERR_MissingPath);
+         return log.warning(ERR_MissingPath);
       }
 
       if (CreateObject(ID_FILE, 0, &file,
@@ -590,14 +590,14 @@ static ERROR PIC_SaveImage(objPicture *Self, struct acSaveImage *Args)
    // Allocate PNG structures
 
    if (!(write_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, Self, &png_error_hook, &png_warning_hook))) {
-      log.error("png_create_write_struct() failed.");
+      log.warning("png_create_write_struct() failed.");
       goto exit;
    }
 
    png_set_error_fn(write_ptr, Self, &png_error_hook, &png_warning_hook);
 
    if (!(info_ptr = png_create_info_struct(write_ptr))) {
-      log.error("png_create_info_struct() failed.");
+      log.warning("png_create_info_struct() failed.");
       goto exit;
    }
 
@@ -609,12 +609,12 @@ static ERROR PIC_SaveImage(objPicture *Self, struct acSaveImage *Args)
 
    png_set_write_status_fn(write_ptr, write_row_callback);
    if (glError) {
-      log.error("png_set_write_status_fn() failed.");
+      log.warning("png_set_write_status_fn() failed.");
       goto exit;
    }
 
-   if ((Self->Flags & (PCF_ALPHA|PCF_MASK)) AND (!Self->Mask)) {
-      log.error("Illegal use of the ALPHA/MASK flags without an accompanying mask bitmap.");
+   if ((Self->Flags & (PCF_ALPHA|PCF_MASK)) and (!Self->Mask)) {
+      log.warning("Illegal use of the ALPHA/MASK flags without an accompanying mask bitmap.");
       Self->Flags &= ~(PCF_ALPHA|PCF_MASK);
    }
 
@@ -675,7 +675,7 @@ static ERROR PIC_SaveImage(objPicture *Self, struct acSaveImage *Args)
 
    // Write the image data to the PNG file
 
-   if ((bmp->BitsPerPixel IS 8) OR (bmp->BitsPerPixel IS 24)) {
+   if ((bmp->BitsPerPixel IS 8) or (bmp->BitsPerPixel IS 24)) {
       if (Self->Flags & PCF_ALPHA) {
          UBYTE row[bmp->Width * 4];
          row_pointers = row;
@@ -800,12 +800,12 @@ static ERROR PIC_SaveImage(objPicture *Self, struct acSaveImage *Args)
 exit:
    png_destroy_write_struct(&write_ptr, &info_ptr);
 
-   if ((Args) AND (Args->DestID)) {
+   if ((Args) and (Args->DestID)) {
       if (file) ReleaseObject(file);
    }
    else if (file) acFree(file);
 
-   if (error) return log.error(error);
+   if (error) return log.warning(error);
    else return ERR_Okay;
 }
 
@@ -820,20 +820,20 @@ static ERROR PIC_SaveToObject(objPicture *Self, struct acSaveToObject *Args)
    parasol::Log log;
    ERROR (**routine)(OBJECTPTR, APTR);
 
-   if ((Args->ClassID) AND (Args->ClassID != ID_PICTURE)) {
+   if ((Args->ClassID) and (Args->ClassID != ID_PICTURE)) {
       rkMetaClass *mc = (rkMetaClass *)FindClass(Args->ClassID);
-      if ((GetPointer(mc, FID_ActionTable, &routine) IS ERR_Okay) AND (routine)) {
-         if ((routine[AC_SaveToObject]) AND (routine[AC_SaveToObject] != (APTR)PIC_SaveToObject)) {
+      if ((GetPointer(mc, FID_ActionTable, &routine) IS ERR_Okay) and (routine)) {
+         if ((routine[AC_SaveToObject]) and (routine[AC_SaveToObject] != (APTR)PIC_SaveToObject)) {
             return routine[AC_SaveToObject]((OBJECTPTR)Self, Args);
          }
-         else if ((routine[AC_SaveImage]) AND (routine[AC_SaveImage] != (APTR)PIC_SaveImage)) {
+         else if ((routine[AC_SaveImage]) and (routine[AC_SaveImage] != (APTR)PIC_SaveImage)) {
             struct acSaveImage saveimage;
             saveimage.DestID = Args->DestID;
             return routine[AC_SaveImage]((OBJECTPTR)Self, &saveimage);
          }
-         else return log.error(ERR_NoSupport);
+         else return log.warning(ERR_NoSupport);
       }
-      else return log.error(ERR_GetField);
+      else return log.warning(ERR_GetField);
    }
    else return acSaveImage(Self, Args->DestID, Args->ClassID);
 }
@@ -941,8 +941,8 @@ static ERROR SET_Description(objPicture *Self, CSTRING Value)
 
    if (Self->prvDescription) { FreeResource(Self->prvDescription); Self->prvDescription = NULL; }
 
-   if ((Value) AND (*Value)) {
-      if (!(Self->prvDescription = StrClone(Value))) return log.error(ERR_AllocMemory);
+   if ((Value) and (*Value)) {
+      if (!(Self->prvDescription = StrClone(Value))) return log.warning(ERR_AllocMemory);
    }
    return ERR_Okay;
 }
@@ -973,8 +973,8 @@ static ERROR SET_Disclaimer(objPicture *Self, CSTRING Value)
 
    if (Self->prvDisclaimer) { FreeResource(Self->prvDisclaimer); Self->prvDisclaimer = NULL; }
 
-   if ((Value) AND (*Value)) {
-      if (!(Self->prvDisclaimer = StrClone(Value))) return log.error(ERR_AllocMemory);
+   if ((Value) and (*Value)) {
+      if (!(Self->prvDisclaimer = StrClone(Value))) return log.warning(ERR_AllocMemory);
    }
    return ERR_Okay;
 }
@@ -1047,8 +1047,8 @@ static ERROR SET_Path(objPicture *Self, CSTRING Value)
 
    if (Self->prvPath) { FreeResource(Self->prvPath); Self->prvPath = NULL; }
 
-   if ((Value) AND (*Value)) {
-      if (!(Self->prvPath = StrClone(Value))) return log.error(ERR_AllocMemory);
+   if ((Value) and (*Value)) {
+      if (!(Self->prvPath = StrClone(Value))) return log.warning(ERR_AllocMemory);
    }
    return ERR_Okay;
 }
@@ -1130,7 +1130,7 @@ static void write_row_callback(png_structp write_ptr, png_uint_32 row, int pass)
 void png_read_data(png_structp png, png_bytep data, png_size_t length)
 {
    struct acRead read = { data, (LONG)length };
-   if ((Action(AC_Read, png->io_ptr, &read) != ERR_Okay) OR ((png_size_t)read.Result != length)) {
+   if ((Action(AC_Read, png->io_ptr, &read) != ERR_Okay) or ((png_size_t)read.Result != length)) {
       png_error(png, "File read error");
    }
 }
@@ -1148,7 +1148,7 @@ void png_set_read_fn(png_structp png_ptr, png_voidp io_ptr, png_rw_ptr read_data
 void png_write_data(png_structp png, png_const_bytep data, png_size_t length)
 {
    struct acWrite write = { data, (LONG)length };
-   if ((Action(AC_Write, png->io_ptr, &write) != ERR_Okay) OR ((png_size_t)write.Result != length)) {
+   if ((Action(AC_Write, png->io_ptr, &write) != ERR_Okay) or ((png_size_t)write.Result != length)) {
       png_error(png, "File write error");
    }
 }

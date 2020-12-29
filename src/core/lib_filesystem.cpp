@@ -57,6 +57,8 @@ typedef int HANDLE;
 
 #include <stdarg.h>
 #include <errno.h>
+#include <map>
+#include <mutex>
 
 #ifdef _WIN32
  #include <io.h>
@@ -82,6 +84,55 @@ typedef int HANDLE;
  #define lseek64  lseek
  #define ftruncate64 ftruncate
 #endif
+
+//****************************************************************************
+
+class CacheFileIndex {
+public:
+   std::string path;
+   LARGE timestamp;
+   LARGE size;
+
+   CacheFileIndex(std::string Path, LARGE Timestamp, LARGE Size) {
+      path      = Path;
+      timestamp = Timestamp;
+      size      = Size;
+   }
+
+   bool operator==(const CacheFileIndex &other) const {
+      return (path == other.path && timestamp == other.timestamp && size == other.size);
+   }
+};
+
+namespace std {
+   template <>
+   struct hash<CacheFileIndex>
+   {
+      std::size_t operator()(const CacheFileIndex& k) const {
+         return ((std::hash<std::string>()(k.path)
+            ^ (std::hash<LARGE>()(k.timestamp) << 1)) >> 1)
+            ^ (std::hash<LARGE>()(k.size) << 1);
+      }
+   };
+}
+
+static std::unordered_map<CacheFileIndex, CacheFile *> glCache;
+static std::mutex glCacheLock;
+
+//****************************************************************************
+
+void free_file_cache(void)
+{
+   parasol::Log log(__FUNCTION__);
+
+   log.branch();
+
+   const std::lock_guard<std::mutex> lock(glCacheLock);
+
+   for (auto it=glCache.begin(); it != glCache.end(); it = glCache.erase(it)) {
+      FreeResource(it->second);
+   }
+}
 
 //****************************************************************************
 // Check if a Path refers to a virtual volume, and if so, return the matching virtual_drive definition.
@@ -205,6 +256,7 @@ const virtual_drive * get_fs(CSTRING Path)
 }
 
 //****************************************************************************
+// Assigned to a timer for the purpose of checking up on the expiry of cached files.
 
 ERROR check_cache(OBJECTPTR Subscriber, LARGE Elapsed, LARGE CurrentTime)
 {
@@ -212,22 +264,20 @@ ERROR check_cache(OBJECTPTR Subscriber, LARGE Elapsed, LARGE CurrentTime)
 
    log.branch("Scanning file cache for unused entries...");
 
-   CSTRING key = NULL;
-   CacheFile **ptr;
-   while (!VarIterate(glCache, key, &key, (APTR *)&ptr, NULL)) {
-      CacheFile *cache = ptr[0];
-      if ((CurrentTime - cache->LastUse >= 60LL * 1000000LL) and (cache->Locks <= 0)) {
-         log.msg("Removing expired cache file: %.80s", cache->Path);
-         VarSet(glCache, key, NULL, 0);
-         FreeResource(cache);
+   const std::lock_guard<std::mutex> lock(glCacheLock);
+   for (auto it=glCache.begin(); it != glCache.end(); ) {
+      if ((CurrentTime - it->second->LastUse >= 60LL * 1000000LL) and (it->second->Locks <= 0)) {
+         log.msg("Removing expired cache file: %.80s", it->second->Path);
+         it = glCache.erase(it);
       }
+      else it++;
    }
 
-   if (glCache) return ERR_Okay;
-   else {
+   if (glCache.empty()) {
       glCacheTimer = 0;
       return ERR_Terminate;
    }
+   else return ERR_Okay;
 }
 
 /*****************************************************************************
@@ -349,7 +399,7 @@ ERROR AnalysePath(CSTRING Path, LONG *PathType)
       return error;
    }
    else {
-      log.traceWarning("ResolvePath() indicates that the path does not exist.");
+      log.trace("Path '%s' does not exist.", Path);
       return ERR_DoesNotExist;
    }
 }
@@ -855,47 +905,19 @@ void SetDefaultPermissions(LONG User, LONG Group, LONG Permissions)
    glDefaultPermissions = Permissions;
 }
 
-/*****************************************************************************
+//****************************************************************************
+// Internal function for getting information from files, particularly virtual volumes.  If you know that a path
+// refers directly to the client's filesystem then you can revert to calling fs_getinfo() instead.
 
--FUNCTION-
-GetFileInfo: Private. Returns meta information for a specific file or folder path.
-
-NOTE: Although this function is currently considered deprecated, its virtual function (GetInfo) is still in use
-internally.
-
-The GetFileInfo() function provides the means for obtaining basic information from files and folders.
-A FileInfo structure must be provided that will hold the results following successful analysis of the file.
-
-Path approximation is supported, so the supplied Path does not need to be a precise file reference.
-
--INPUT-
-cstr Path: The path of the file or folder to analyse.
-buf(struct(FileInfo)) Info: Pointer to a FileInfo structure for holding the results.
-structsize InfoSize: The size of the Info structure, in bytes.
-
--ERRORS-
-Okay
-Args
-FileNotFound
--END-
-
-*****************************************************************************/
-
-static THREADVAR char infobuffer[MAX_FILENAME];
-
-ERROR GetFileInfo(CSTRING Path, FileInfo *Info, LONG InfoSize)
+ERROR get_file_info(CSTRING Path, FileInfo *Info, LONG InfoSize)
 {
-   return get_file_info(Path, Info, InfoSize, infobuffer, sizeof(infobuffer));
-}
-
-ERROR get_file_info(CSTRING Path, FileInfo *Info, LONG InfoSize, STRING NameBuffer, LONG BufferSize)
-{
-   parasol::Log log("GetFileInfo");
+   parasol::Log log(__FUNCTION__);
    LONG i, len;
    ERROR error;
 
    if ((!Path) or (!Path[0]) or (!Info) or (InfoSize <= 0)) return log.warning(ERR_Args);
 
+   char NameBuffer[MAX_FILENAME];
    ClearMemory(Info, InfoSize);
    Info->Name = NameBuffer;
 
@@ -908,7 +930,7 @@ ERROR get_file_info(CSTRING Path, FileInfo *Info, LONG InfoSize, STRING NameBuff
 
       Info->Flags = RDF_VOLUME;
 
-      for (i=0; (i < BufferSize-1) and (Path[i]) and (Path[i] != ':'); i++) NameBuffer[i] = Path[i];
+      for (i=0; (i < MAX_FILENAME-1) and (Path[i]) and (Path[i] != ':'); i++) NameBuffer[i] = Path[i];
       LONG pos = i;
       NameBuffer[i] = 0;
 
@@ -1043,15 +1065,15 @@ ERROR TranslateCmdRef(CSTRING String, STRING *Command)
 -FUNCTION-
 LoadFile: Loads files into a local cache for fast file processing.
 
-The LoadFile() function provides the convenience of a simplified data loading mechanism, combined with a caching
-feature to speed up future file loading calls.
+The LoadFile() function loads complete files into memory and caches the content for use by other areas of the system
+or application.
 
-This function first checks that the requested file has not already been cached by an earlier call to LoadFile().  If
-the file is cached but the source has been written since that occasion, the routine considers it a cache miss and will
-proceed on to the file loading routine.  If the file is cached, the &CacheFile structure is returned immediately.
+This function will first determine if the requested file has already been cached.  If this is true then the &CacheFile
+structure is returned immediately.  Note that if the file was previously cached but then modified, this will be treated
+as a cache miss and the file will be loaded into a new buffer.
 
-If the file is not cached, it is loaded into a readable memory buffer which is referenced by the Data field of the
-Cache structure.  A hidden null byte is appended at the end of the buffer to assist the processing of text files.
+File content will be loaded into a readable memory buffer that is referenced by the Data field of the
+&CacheFile structure.  A hidden null byte is appended at the end of the buffer to assist the processing of text files.
 Other pieces of information about the file can be derived from the &CacheFile meta data.
 
 Calls to LoadFile() must be matched with a call to ~UnloadFile() to decrement the cache counter. When the counter
@@ -1077,69 +1099,48 @@ ERROR LoadFile(CSTRING Path, LONG Flags, CacheFile **Cache)
 
    if ((!Path) or (!Cache)) return ERR_NullArgs;
 
-   if (!glCache) {
-      if (!(glCache = VarNew(0, KSF_THREAD_SAFE|KSF_UNTRACKED|KSF_CASE|KSF_AUTO_REMOVE))) {
-         return ERR_AllocMemory;
-      }
-   }
-
    // Check if the file is already cached.  If it is, check that the file hasn't been written since the last time it was cached.
 
    STRING path;
    ERROR error;
-   if ((error = ResolvePath(Path, RSF_APPROXIMATE, &path)) != ERR_Okay) {
-      return error;
-   }
+   if ((error = ResolvePath(Path, RSF_APPROXIMATE, &path)) != ERR_Okay) return error;
 
-   CacheFile **ptr;
-   if (!VarGet(glCache, path, (APTR *)&ptr, NULL)) {
-      FileInfo info;
-      char filename[MAX_FILENAME];
+   const std::lock_guard<std::mutex> lock(glCacheLock);
 
-      log.function("%.80s [Exists]", path);
+   log.branch("%.80s, Flags: $%.8x", path, Flags);
 
-      if (Flags & LDF_IGNORE_STATUS) {
-         *Cache = ptr[0];
-         if (!(Flags & LDF_CHECK_EXISTS)) ptr[0]->Locks++;
-         FreeResource(path);
-         return ERR_Okay;
-      }
-      else if (!get_file_info(path, &info, sizeof(info), filename, sizeof(filename))) {
-         if ((info.Size IS ptr[0]->Size) and (info.TimeStamp IS ptr[0]->TimeStamp)) {
-            *Cache = ptr[0];
-            if (!(Flags & LDF_CHECK_EXISTS)) ptr[0]->Locks++;
-            FreeResource(path);
-            return ERR_Okay;
-         }
-         else log.msg("Failed to match on size (" PF64() " == " PF64() ") or timestamp (" PF64() " == " PF64() ")", info.Size, ptr[0]->Size, info.TimeStamp, ptr[0]->TimeStamp);
-      }
-      else log.msg("Failed to get file info.");
-   }
-
-   // If the user just wanted to check for the existence of the file in the cache, return a search failure here.
-
-   if (Flags & LDF_CHECK_EXISTS) return ERR_Search;
-
-   // Load the file and create a new cache entry
-
-   log.branch("%.80s [Loading]", path);
-
-   CacheFile *cache = NULL;
    OBJECTPTR file = NULL;
-   if (!CreateObject(ID_FILE, 0, (OBJECTPTR *)&file,
-         FID_Path|TSTR,   Path,
-         FID_Flags|TLONG, FL_READ|FL_APPROXIMATE|FL_FILE,
-         TAGEND)) {
-
+   if (!CreateObject(ID_FILE, 0, &file, FID_Path|TSTR, path, FID_Flags|TLONG, FL_READ|FL_FILE, TAGEND)) {
       LARGE timestamp, file_size;
       GetLarge(file, FID_Size, &file_size);
       GetLarge(file, FID_TimeStamp, &timestamp);
+
+      CacheFileIndex index(path, timestamp, file_size);
+
+      if (glCache.contains(index)) {
+         acFree(file);
+         FreeResource(path);
+
+         auto cf = glCache[index];
+         *Cache = cf;
+         if (!(Flags & LDF_CHECK_EXISTS)) cf->Locks++;
+         return ERR_Okay;
+      }
+
+      // If the client just wanted to check for the existence of the file, do not proceed in loading it.
+
+      if (Flags & LDF_CHECK_EXISTS) {
+         acFree(file);
+         FreeResource(path);
+         return ERR_Search;
+      }
 
       LONG pathlen = StrLength(path) + 1;
 
       // An additional byte is allocated below so that a null terminator can be attached to the end of the buffer
       // (assists with text file processing).
 
+      CacheFile *cache;
       if (!AllocMemory(sizeof(CacheFile) + pathlen + file_size + 1, MEM_NO_CLEAR|MEM_UNTRACKED, (APTR *)&cache, NULL)) {
          ClearMemory(cache, sizeof(CacheFile));
          cache->Path = (STRING)(cache + 1);
@@ -1159,29 +1160,28 @@ ERROR LoadFile(CSTRING Path, LONG Flags, CacheFile **Cache)
          else {
             LONG result;
             if ((!acRead(file, cache->Data, file_size, &result)) and (file_size IS result)) {
-               if (VarSet(glCache, cache->Path, &cache, sizeof(APTR))) {
-                  *Cache = cache;
-                  acFree(file);
+               glCache[index] = cache;
+               *Cache = cache;
+               acFree(file);
 
-                  FUNCTION call;
-                  SET_FUNCTION_STDC(call, (APTR)&check_cache);
-                  if (!glCacheTimer) {
-                     parasol::SwitchContext context(CurrentTask());
-                     SubscribeTimer(60, &call, &glCacheTimer);
-                  }
-
-                  return ERR_Okay;
+               FUNCTION call;
+               SET_FUNCTION_STDC(call, (APTR)&check_cache);
+               if (!glCacheTimer) {
+                  parasol::SwitchContext context(CurrentTask());
+                  SubscribeTimer(60, &call, &glCacheTimer);
                }
-               else error = log.warning(ERR_Failed);
+
+               return ERR_Okay;
             }
             else error = ERR_Read;
          }
+
+         FreeResource(cache);
       }
       else error = ERR_AllocMemory;
    }
    else error = ERR_CreateObject;
 
-   if (cache) FreeResource(cache);
    if (file) acFree(file);
    FreeResource(path);
    return error;
@@ -1330,6 +1330,8 @@ ERROR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG *BytesRe
 {
    parasol::Log log(__FUNCTION__);
 
+   log.traceBranch("Path: %s, Buffer Size: %d", Path, BufferSize);
+
 #if defined(__unix__) || defined(_WIN32)
    if ((!Path) or (BufferSize <= 0) or (!Buffer)) return ERR_Args;
 
@@ -1455,7 +1457,7 @@ ERROR test_path(STRING Path, LONG Flags)
    for (j=0; Path[j]; j++) if (Path[j] IS '/') Path[j] = '\\';
 #endif
 
-   for (len=0; Path[len]; len++);
+   len = StrLength(Path);
    if ((Path[len-1] IS '/') or (Path[len-1] IS '\\')) {
       // This code handles testing for folder locations
 
@@ -1605,8 +1607,7 @@ ERROR SaveObjectToFile(OBJECTPTR Object, CSTRING Path, LONG Permissions)
 -FUNCTION-
 SetDocView: Associates document display templates against certain file paths.
 
-Use SetDocView() to link document templates with file paths.  Document templates are returned as tags when
-~GetFileInfo() is used on paths that match those passed to this function.  Document templates are used by the
+Use SetDocView() to link document templates with file paths.  Document templates are used by the
 FileView feature to switch to document mode whenever a matching location is on display.
 
 -INPUT-
@@ -1713,7 +1714,7 @@ CSTRING GetDocView(CSTRING Path)
 -FUNCTION-
 UnloadFile: Unloads files from the file cache.
 
-This function unloads cached files from the system by decrementing the cache counters until they reach zero.
+This function unloads cached files that have been previously loaded with the ~LoadFile() function.
 
 -INPUT-
 resource(CacheFile) Cache: A pointer to a CacheFile structure returned from LoadFile().
@@ -1723,21 +1724,17 @@ resource(CacheFile) Cache: A pointer to a CacheFile structure returned from Load
 
 void UnloadFile(CacheFile *Cache)
 {
-   parasol::Log log(__FUNCTION__);
    if (!Cache) return;
 
-   log.function("%.80s", Cache->Path);
+   parasol::Log log(__FUNCTION__);
 
-   Cache->LastUse = PreciseTime();
-   Cache->Locks--;
-   if (Cache->Locks <= 0) {
-#if 0
-      if (max_mem_exceeded) {
-         VarSet(glCache, Cache->Path, NULL, 0);
-         FreeResource(Cache);
-      }
-#endif
-   }
+   log.function("%.80s, Locks: %d", Cache->Path, Cache->Locks);
+
+   const std::lock_guard<std::mutex> lock(glCacheLock);
+
+   if (Cache->Locks > 0) Cache->Locks--;
+
+   // Cache entries are never removed here because this determination is handled by check_cache().
 }
 
 //****************************************************************************
@@ -1879,9 +1876,7 @@ ERROR findfile(STRING Path)
    APTR handle = NULL;
    if ((handle = winFindFile(Path, &handle, buffer))) {
       while ((len > 0) and (Path[len-1] != ':') and (Path[len-1] != '/') and (Path[len-1] != '\\')) len--;
-      LONG i;
-      for (i=0; buffer[i]; i++) Path[len+i] = buffer[i];
-      Path[len+i] = 0;
+      StrCopy(buffer, Path+len, COPY_ALL);
       winFindClose(handle);
       return ERR_Okay;
    }
@@ -2676,8 +2671,7 @@ LONG get_parent_permissions(CSTRING Path, LONG *UserID, LONG *GroupID)
       folder[i+1] = 0;
 
       FileInfo info;
-      char filename[MAX_FILENAME];
-      if ((i > 0) and (!get_file_info(folder, &info, sizeof(info), filename, sizeof(filename)))) {
+      if ((i > 0) and (!get_file_info(folder, &info, sizeof(info)))) {
          //log.msg("%s [$%.8x]", Path, info.Permissions);
          if (UserID) *UserID = info.UserID;
          if (GroupID) *GroupID = info.GroupID;
@@ -3036,7 +3030,7 @@ ERROR fs_testpath(CSTRING Path, LONG Flags, LONG *Type)
 
 ERROR fs_getinfo(CSTRING Path, struct FileInfo *Info, LONG InfoSize)
 {
-   parasol::Log log("GetFileInfo");
+   parasol::Log log(__FUNCTION__);
 
 #ifdef __unix__
    // In order to tell if a folder is a symbolic link or not, we have to remove any trailing slash...
@@ -3456,35 +3450,34 @@ ERROR load_datatypes(void)
    parasol::Log log(__FUNCTION__);
    FileInfo info;
    static LARGE user_ts = 0, system_ts = 0;
-   UBYTE reload;
-   char filename[MAX_FILENAME];
+   bool reload;
 
    log.traceBranch("");
 
    if (!glDatatypes) {
-      reload = TRUE;
+      reload = true;
 
-      if (!get_file_info("user:config/associations.cfg", &info, sizeof(info), filename, sizeof(filename))) {
+      if (!get_file_info("user:config/associations.cfg", &info, sizeof(info))) {
          user_ts = info.TimeStamp;
       }
 
-      if (!get_file_info("config:software/associations.cfg", &info, sizeof(info), filename, sizeof(filename))) {
+      if (!get_file_info("config:software/associations.cfg", &info, sizeof(info))) {
          system_ts = info.TimeStamp;
       }
    }
    else {
-      reload = FALSE;
-      if (!get_file_info("user:config/associations.cfg", &info, sizeof(info), filename, sizeof(filename))) {
+      reload = false;
+      if (!get_file_info("user:config/associations.cfg", &info, sizeof(info))) {
          if (user_ts != info.TimeStamp) {
             user_ts = info.TimeStamp;
-            reload = TRUE;
+            reload = true;
          }
       }
 
-      if (!get_file_info("config:software/associations.cfg", &info, sizeof(info), filename, sizeof(filename))) {
+      if (!get_file_info("config:software/associations.cfg", &info, sizeof(info))) {
          if (system_ts != info.TimeStamp) {
             system_ts = info.TimeStamp;
-            reload = TRUE;
+            reload = true;
          }
       }
    }

@@ -259,8 +259,7 @@ module({ name="Core", copyright="Paul Manias 1996-2020" }, function()
     "IGNORE_HOST: Ignore the host platform's file assocations.")
 
   flags("LDF", { comment="Flags for LoadFile()" },
-     "CHECK_EXISTS: Limits the routine to checking the file cache for the existence of the file.  If found, the relevant cache entry is returned. The open count is not incremented by this action (it is therefore unnecessary to follow-up with a call to UnloadFile()).  If no up-to-date cache entry is available, ERR_Search is returned.",
-     "IGNORE_STATUS: The timestamp and size of the file will not be checked, which will result in the cached version of the file being returned regardless of any recent file changes.")
+     "CHECK_EXISTS: Limits the routine to checking the file cache for the existence of the file.  If found, the relevant cache entry is returned. The open count is not incremented by this action (it is therefore unnecessary to follow-up with a call to UnloadFile()).  If no up-to-date cache entry is available, ERR_Search is returned.")
 
   enum("FBK", { start=1, comment="Flags for file feedback." },
      "MOVE_FILE: A file is to be, or has been moved.",
@@ -346,7 +345,7 @@ module({ name="Core", copyright="Paul Manias 1996-2020" }, function()
     DisplayInfo    = "-1008: DisplayInfo structure, managed by the Display module"
   })
 
-  const("MAX", { }, { FILENAME = 256 })  -- Maximum length for file names (not including path)
+  const("MAX", { }, { FILENAME = 256 })  -- Maximum length for file names (not necessarily including path)
 
   const("COPY", { comment="Flags for StrCopy()" }, {
      ALL = "0x7fffffff: Copy all characters from the source string."
@@ -1118,7 +1117,7 @@ struct ScriptArg { // For use with scExec
     "SetDocView",
     "GetDocView",
     "DeleteFile",
-    "GetFileInfo",
+    "WaitForObjects",
     "SaveObjectToFile",
     "OpenDir",
     "ScanDir",
@@ -1148,8 +1147,7 @@ struct ScriptArg { // For use with scExec
     "KeyIterate",
     "VarSetSized",
     "VarLock",
-    "VLogF",
-    "WaitForObjects")
+    "VLogF")
 
   c_insert([[
 
@@ -1563,8 +1561,7 @@ struct TaskList {
    OBJECTPTR FileIO;             // File input/output
    STRING *  FileList;           // List of all files held in the compression object
    STRING    Path;               // Location of the compressed data
-   struct CompressionFeedback *FeedbackInfo;
-   struct rkCompression *NextArchive;
+   CompressionFeedback *FeedbackInfo;
    UBYTE     Header[32];         // The first 32 bytes of data from the compressed file (for sub-classes only)
    char      Password[128];      // Password for the compressed object
    FUNCTION  Feedback;           // Set a function here to get de/compression feedack

@@ -56,6 +56,7 @@ system keypresses such as CTRL-C, CTRL-V and CTRL-X.
 //#define DEBUG
 
 #define PRV_TEXT
+#define PRV_WIDGET_MODULE
 #include <parasol/main.h>
 #include <parasol/modules/xml.h>
 #include <parasol/modules/document.h>

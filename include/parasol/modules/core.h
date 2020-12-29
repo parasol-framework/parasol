@@ -996,7 +996,6 @@ struct ClipRectangle {
 // Flags for LoadFile()
 
 #define LDF_CHECK_EXISTS 0x00000001
-#define LDF_IGNORE_STATUS 0x00000002
 
 // Flags for file feedback.
 
@@ -1871,7 +1870,7 @@ struct CoreBase {
    ERROR (*_SetDocView)(CSTRING, CSTRING);
    CSTRING (*_GetDocView)(CSTRING);
    ERROR (*_DeleteFile)(CSTRING, FUNCTION *);
-   ERROR (*_GetFileInfo)(CSTRING, struct FileInfo *, LONG);
+   ERROR (*_WaitForObjects)(LONG, LONG, struct ObjectSignal *);
    ERROR (*_SaveObjectToFile)(APTR, CSTRING, LONG);
    ERROR (*_OpenDir)(CSTRING, LONG, struct DirInfo **);
    ERROR (*_ScanDir)(struct DirInfo *);
@@ -1902,7 +1901,6 @@ struct CoreBase {
    ERROR (*_VarSetSized)(struct KeyStore *, CSTRING, LONG, APTR, LONG *);
    ERROR (*_VarLock)(struct KeyStore *, LONG);
    void (*_VLogF)(int, const char *, const char *, va_list);
-   ERROR (*_WaitForObjects)(LONG, LONG, struct ObjectSignal *);
 };
 
 #ifndef PRV_CORE_MODULE
@@ -2066,7 +2064,7 @@ struct CoreBase {
 #define SetDocView(...) (CoreBase->_SetDocView)(__VA_ARGS__)
 #define GetDocView(...) (CoreBase->_GetDocView)(__VA_ARGS__)
 #define DeleteFile(...) (CoreBase->_DeleteFile)(__VA_ARGS__)
-#define GetFileInfo(a,b) (CoreBase->_GetFileInfo)(a,b,sizeof(*b))
+#define WaitForObjects(...) (CoreBase->_WaitForObjects)(__VA_ARGS__)
 #define SaveObjectToFile(...) (CoreBase->_SaveObjectToFile)(__VA_ARGS__)
 #define OpenDir(...) (CoreBase->_OpenDir)(__VA_ARGS__)
 #define ScanDir(...) (CoreBase->_ScanDir)(__VA_ARGS__)
@@ -2097,7 +2095,6 @@ struct CoreBase {
 #define VarSetSized(...) (CoreBase->_VarSetSized)(__VA_ARGS__)
 #define VarLock(...) (CoreBase->_VarLock)(__VA_ARGS__)
 #define VLogF(...) (CoreBase->_VLogF)(__VA_ARGS__)
-#define WaitForObjects(...) (CoreBase->_WaitForObjects)(__VA_ARGS__)
 #endif
 
 
@@ -2762,8 +2759,7 @@ typedef struct rkCompression {
    OBJECTPTR FileIO;             // File input/output
    STRING *  FileList;           // List of all files held in the compression object
    STRING    Path;               // Location of the compressed data
-   struct CompressionFeedback *FeedbackInfo;
-   struct rkCompression *NextArchive;
+   CompressionFeedback *FeedbackInfo;
    UBYTE     Header[32];         // The first 32 bytes of data from the compressed file (for sub-classes only)
    char      Password[128];      // Password for the compressed object
    FUNCTION  Feedback;           // Set a function here to get de/compression feedack

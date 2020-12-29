@@ -249,7 +249,7 @@ static void check_incoming(objTask *Self)
    if (Self->InFD != -1) {
       fd.fd = Self->InFD;
       fd.events = POLLIN;
-      if ((poll(&fd, 1, 0) > 0) AND (fd.revents & POLLIN)) {
+      if ((poll(&fd, 1, 0) > 0) and (fd.revents & POLLIN)) {
          task_stdout(Self->InFD, Self);
       }
    }
@@ -257,7 +257,7 @@ static void check_incoming(objTask *Self)
    if (Self->ErrFD != -1) {
       fd.fd = Self->ErrFD;
       fd.events = POLLIN;
-      if ((poll(&fd, 1, 0) > 0) AND (fd.revents & POLLIN)) {
+      if ((poll(&fd, 1, 0) > 0) and (fd.revents & POLLIN)) {
          task_stderr(Self->ErrFD, Self);
       }
    }
@@ -469,7 +469,7 @@ static ERROR msg_waitforobjects(APTR Custom, LONG MsgID, LONG MsgType, APTR Mess
 static CSTRING action_id_name(LONG ActionID)
 {
    static char idname[20];
-   if ((ActionID > 0) AND (ActionID < AC_END)) {
+   if ((ActionID > 0) and (ActionID < AC_END)) {
       return ActionTable[ActionID].Name;
    }
    else {
@@ -494,7 +494,7 @@ static ERROR msg_action(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LON
       log.function("Executing action %s on object #%d, Data: %p, Size: %d, Args: %d", action_id_name(action->ActionID), action->ObjectID, Message, MsgSize, action->SendArgs);
    #endif
 
-   if ((action->ObjectID) AND (action->ActionID)) {
+   if ((action->ObjectID) and (action->ActionID)) {
       OBJECTPTR obj;
       ERROR error;
       if (!(error = AccessObject(action->ObjectID, 5000, &obj))) {
@@ -530,7 +530,7 @@ static ERROR msg_action(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LON
                   obj->Flags &= ~NF_MESSAGE;
                   ReleaseObject(obj);
 
-                  if ((action->ReturnResult IS TRUE) AND (action->ReturnMessage)) {
+                  if ((action->ReturnResult IS TRUE) and (action->ReturnMessage)) {
                      SendMessage(action->ReturnMessage, MSGID_ACTION_RESULT, 0, action, MsgSize);
                   }
 
@@ -538,7 +538,7 @@ static ERROR msg_action(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LON
                }
                else {
                   log.warning("Failed to resolve arguments for action %s.", action_id_name(action->ActionID));
-                  if ((action->ReturnResult IS TRUE) AND (action->ReturnMessage)) {
+                  if ((action->ReturnResult IS TRUE) and (action->ReturnMessage)) {
                      action->Error = ERR_Args;
                      SendMessage(action->ReturnMessage, MSGID_ACTION_RESULT, 0, action, MsgSize);
                   }
@@ -548,7 +548,7 @@ static ERROR msg_action(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LON
          }
       }
       else {
-         if ((error != ERR_NoMatchingObject) AND (error != ERR_MarkedForDeletion)) {
+         if ((error != ERR_NoMatchingObject) and (error != ERR_MarkedForDeletion)) {
             if (action->ActionID > 0) log.warning("Could not gain access to object %d to execute action %s.", action->ObjectID, action_id_name(action->ActionID));
             else log.warning("Could not gain access to object %d to execute method %d.", action->ObjectID, action->ActionID);
          }
@@ -561,7 +561,7 @@ static ERROR msg_action(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LON
                // This helpful little subroutine will remove the redundant subscription from the calling object
 
                OBJECTPTR object;
-               if ((notify->ObjectID) AND (!AccessObject(notify->ObjectID, 3000, &object))) {
+               if ((notify->ObjectID) and (!AccessObject(notify->ObjectID, 3000, &object))) {
                   UnsubscribeActionByID(object, 0, action->ObjectID);
                   ReleaseObject(object);
                }
@@ -592,9 +592,9 @@ static ERROR msg_debug(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG
       ThreadLock lock(TL_MEMORY_PAGES, 4000);
       if (lock.granted()) {
          for (LONG i=0; i < glTotalPages; i++) {
-            if ((glMemoryPages[i].Address) OR (glMemoryPages[i].MemoryID)) {
+            if ((glMemoryPages[i].Address) or (glMemoryPages[i].MemoryID)) {
                for (j=0; j < glTotalPages; j++) {
-                  if ((j != i) AND (glMemoryPages[j].Address IS glMemoryPages[i].Address)) break;
+                  if ((j != i) and (glMemoryPages[j].Address IS glMemoryPages[i].Address)) break;
                }
                if (j < glTotalPages) log.error("%.3d:   %p     %8d%10d [DUPLICATE WITH %d]", i, glMemoryPages[i].Address, glMemoryPages[i].MemoryID, glMemoryPages[i].AccessCount, j);
                else log.error("%.3d:   %p     %8d%10d", i, glMemoryPages[i].Address, glMemoryPages[i].MemoryID, glMemoryPages[i].AccessCount);
@@ -650,7 +650,7 @@ static void task_process_end(WINHANDLE FD, objTask *Task)
 
       do {
          size = sizeof(buffer);
-         if ((!winReadStd(Task->Platform, TSTD_OUT, buffer, &size)) AND (size)) {
+         if ((!winReadStd(Task->Platform, TSTD_OUT, buffer, &size)) and (size)) {
             log.msg("Processing %d remaining bytes on stdout.", size);
             output_callback(Task, &Task->OutputCallback, buffer, size);
          }
@@ -659,7 +659,7 @@ static void task_process_end(WINHANDLE FD, objTask *Task)
 
       do {
          size = sizeof(buffer);
-         if ((!winReadStd(Task->Platform, TSTD_ERR, buffer, &size)) AND (size)) {
+         if ((!winReadStd(Task->Platform, TSTD_ERR, buffer, &size)) and (size)) {
             log.msg("Processing %d remaining bytes on stderr.", size);
             output_callback(Task, &Task->ErrorCallback, buffer, size);
          }
@@ -692,7 +692,7 @@ static void task_process_end(WINHANDLE FD, objTask *Task)
 
    // Send a break if we're waiting for this process to end
 
-   if ((Task->Flags & TSF_WAIT) AND (Task->TimeOut > 0)) SendMessage(0, glProcessBreak, 0, NULL, 0);
+   if ((Task->Flags & TSF_WAIT) and (Task->TimeOut > 0)) SendMessage(0, glProcessBreak, 0, NULL, 0);
 }
 #endif
 
@@ -830,25 +830,25 @@ static ERROR TASK_Activate(objTask *Self, APTR Void)
    // Determine the launch folder
 
    launchdir[0] = 0;
-   if ((!GET_LaunchPath(Self, &path)) AND (path)) {
+   if ((!GET_LaunchPath(Self, &path)) and (path)) {
       if (!ResolvePath(path, RSF_APPROXIMATE|RSF_PATH, &path)) {
-         for (i=0; (path[i]) AND ((size_t)i < sizeof(launchdir)-1); i++) launchdir[i] = path[i];
+         for (i=0; (path[i]) and ((size_t)i < sizeof(launchdir)-1); i++) launchdir[i] = path[i];
          launchdir[i] = 0;
          FreeResource(path);
       }
       else {
-         for (i=0; (path[i]) AND ((size_t)i < sizeof(launchdir)-1); i++) launchdir[i] = path[i];
+         for (i=0; (path[i]) and ((size_t)i < sizeof(launchdir)-1); i++) launchdir[i] = path[i];
          launchdir[i] = 0;
       }
    }
    else if (Self->Flags & TSF_RESET_PATH) {
       if (!ResolvePath(Self->Location, RSF_APPROXIMATE|RSF_PATH, &path)) {
-         for (i=0; (path[i]) AND ((size_t)i < sizeof(launchdir)-1); i++) launchdir[i] = path[i];
+         for (i=0; (path[i]) and ((size_t)i < sizeof(launchdir)-1); i++) launchdir[i] = path[i];
          FreeResource(path);
       }
-      else for (i=0; (Self->Location[i]) AND ((size_t)i < sizeof(launchdir)-1); i++) launchdir[i] = Self->Location[i];
+      else for (i=0; (Self->Location[i]) and ((size_t)i < sizeof(launchdir)-1); i++) launchdir[i] = Self->Location[i];
 
-      while ((i > 0) AND (launchdir[i] != '\\')) i--;
+      while ((i > 0) and (launchdir[i] != '\\')) i--;
       launchdir[i] = 0;
    }
 
@@ -857,14 +857,14 @@ static ERROR TASK_Activate(objTask *Self, APTR Void)
    i = 0;
    buffer[i++] = '"';
    if (!ResolvePath(Self->Location, RSF_APPROXIMATE|RSF_PATH, &path)) {
-      for (j=0; (path[j]) AND ((size_t)i < sizeof(buffer)-1); i++,j++) {
+      for (j=0; (path[j]) and ((size_t)i < sizeof(buffer)-1); i++,j++) {
          if (path[j] IS '/') buffer[i] = '\\';
          else buffer[i] = path[j];
       }
       FreeResource(path);
    }
    else {
-      for (j=0; (Self->Location[j]) AND ((size_t)i < sizeof(buffer)-1); i++,j++) {
+      for (j=0; (Self->Location[j]) and ((size_t)i < sizeof(buffer)-1); i++,j++) {
          if (Self->Location[j] IS '/') buffer[i] = '\\';
          else buffer[i] = Self->Location[j];
       }
@@ -891,13 +891,13 @@ static ERROR TASK_Activate(objTask *Self, APTR Void)
             hide_output = TRUE;
             continue;
          }
-         else if ((args[j][0] IS '2') AND (args[j][1] IS '>')) {
+         else if ((args[j][0] IS '2') and (args[j][1] IS '>')) {
             log.msg("StdErr redirected to %s", args[j] + 2);
             ResolvePath(args[j] + 2, RSF_NO_FILE_CHECK, &redirect_stderr);
             hide_output = TRUE;
             continue;
          }
-         else if ((args[j][0] IS '1') AND (args[j][1] IS '>')) {
+         else if ((args[j][0] IS '1') and (args[j][1] IS '>')) {
             log.msg("StdOut redirected to %s", args[j] + 2);
             ResolvePath(args[j] + 2, RSF_NO_FILE_CHECK, &redirect_stdout);
             hide_output = TRUE;
@@ -909,7 +909,7 @@ static ERROR TASK_Activate(objTask *Self, APTR Void)
          // Check if the argument contains spaces - if so, we need to encapsulate it within quotes.  Otherwise, just
          // copy it as normal.
 
-         for (k=0; (args[j][k]) AND (args[j][k] != ' '); k++);
+         for (k=0; (args[j][k]) and (args[j][k] != ' '); k++);
 
          if (args[j][k] IS ' ') {
             buffer[i++] = '"';
@@ -929,7 +929,7 @@ static ERROR TASK_Activate(objTask *Self, APTR Void)
          if (buffer[i] IS '"') {
             // Skip everything inside double quotes
             i++;
-            while ((buffer[i]) AND (buffer[i] != '"')) i++;
+            while ((buffer[i]) and (buffer[i] != '"')) i++;
             if (!buffer[i]) break;
             whitespace = FALSE;
             continue;
@@ -981,7 +981,7 @@ static ERROR TASK_Activate(objTask *Self, APTR Void)
          internal_redirect, &Self->Platform, hide_output, redirect_stdout, redirect_stderr, &Self->ProcessID))) {
 
       error = ERR_Okay;
-      if ((Self->Flags & TSF_WAIT) AND (Self->TimeOut > 0)) {
+      if ((Self->Flags & TSF_WAIT) and (Self->TimeOut > 0)) {
          log.msg("Waiting for process to exit.  TimeOut: %.2f sec", Self->TimeOut);
 
          //if (!glProcessBreak) glProcessBreak = AllocateID(IDTYPE_MESSAGE);
@@ -1014,7 +1014,7 @@ static ERROR TASK_Activate(objTask *Self, APTR Void)
    GET_LaunchPath(Self, &path);
 
    i = 0;
-   if ((Self->Flags & TSF_RESET_PATH) OR (path)) {
+   if ((Self->Flags & TSF_RESET_PATH) or (path)) {
       Self->Flags |= TSF_SHELL;
 
       buffer[i++] = 'c';
@@ -1023,14 +1023,14 @@ static ERROR TASK_Activate(objTask *Self, APTR Void)
 
       if (!path) path = Self->Location;
       if (!ResolvePath(path, RSF_APPROXIMATE|RSF_PATH, &path)) {
-         for (j=0; (path[j]) AND ((size_t)i < sizeof(buffer)-1);) buffer[i++] = path[j++];
+         for (j=0; (path[j]) and ((size_t)i < sizeof(buffer)-1);) buffer[i++] = path[j++];
          FreeResource(path);
       }
       else {
-         for (j=0; (path[j]) AND ((size_t)i < sizeof(buffer)-1);) buffer[i++] = path[j++];
+         for (j=0; (path[j]) and ((size_t)i < sizeof(buffer)-1);) buffer[i++] = path[j++];
       }
 
-      while ((i > 0) AND (buffer[i-1] != '/')) i--;
+      while ((i > 0) and (buffer[i-1] != '/')) i--;
       if (i > 0) {
          buffer[i++] = ';';
          buffer[i++] = ' ';
@@ -1040,12 +1040,12 @@ static ERROR TASK_Activate(objTask *Self, APTR Void)
    // Resolve the location of the executable (may contain an volume) and copy it to the command line buffer.
 
    if (!ResolvePath(Self->Location, RSF_APPROXIMATE|RSF_PATH, &path)) {
-      for (j=0; (path[j]) AND ((size_t)i < sizeof(buffer)-1);) buffer[i++] = path[j++];
+      for (j=0; (path[j]) and ((size_t)i < sizeof(buffer)-1);) buffer[i++] = path[j++];
       buffer[i] = 0;
       FreeResource(path);
    }
    else {
-      for (j=0; (Self->Location[j]) AND ((size_t)i < sizeof(buffer)-1);) buffer[i++] = Self->Location[j++];
+      for (j=0; (Self->Location[j]) and ((size_t)i < sizeof(buffer)-1);) buffer[i++] = Self->Location[j++];
       buffer[i] = 0;
    }
 
@@ -1069,7 +1069,7 @@ static ERROR TASK_Activate(objTask *Self, APTR Void)
          // Check if the argument contains spaces - if so, we need to encapsulate it within quotes.  Otherwise, just
          // copy it as normal.
 
-         for (k=0; (args[j][k]) AND (args[j][k] != ' '); k++);
+         for (k=0; (args[j][k]) and (args[j][k] != ' '); k++);
 
          if (args[j][k] IS ' ') {
             buffer[i++] = '"';
@@ -1129,7 +1129,7 @@ static ERROR TASK_Activate(objTask *Self, APTR Void)
       }
    }
 
-   if ((out_fd IS -1) AND (Self->Flags & TSF_QUIET)) {
+   if ((out_fd IS -1) and (Self->Flags & TSF_QUIET)) {
       log.msg("Output will go to NULL");
       out_fd = open("/dev/null", O_RDONLY);
    }
@@ -1148,7 +1148,7 @@ static ERROR TASK_Activate(objTask *Self, APTR Void)
       }
    }
 
-   if ((out_errfd IS -1) AND (TSF_QUIET)) {
+   if ((out_errfd IS -1) and (TSF_QUIET)) {
       out_errfd = open("/dev/null", O_RDONLY);
    }
 
@@ -1189,7 +1189,7 @@ static ERROR TASK_Activate(objTask *Self, APTR Void)
       // Preallocate a task slot for the newly running task.  This allows us to communicate a few things to the new
       // task, such as who the parent is and where data should be output to.
 
-      for (i=0; (i < MAX_TASKS) AND (shTasks[i].ProcessID); i++);
+      for (i=0; (i < MAX_TASKS) and (shTasks[i].ProcessID); i++);
 
       if (i < MAX_TASKS) {
          shTasks[i].ProcessID    = pid;
@@ -1231,7 +1231,7 @@ static ERROR TASK_Activate(objTask *Self, APTR Void)
          while (!waitpid(pid, &status, WNOHANG)) {
             ProcessMessages(0, 20);
 
-            if ((Self->TimeOut) AND (PreciseTime() >= ticks)) {
+            if ((Self->TimeOut) and (PreciseTime() >= ticks)) {
                error = log.warning(ERR_TimeOut);
                break;
             }
@@ -1324,7 +1324,7 @@ static ERROR TASK_AddArgument(objTask *Self, struct taskAddArgument *Args)
 {
    parasol::Log log;
 
-   if ((!Args) OR (!Args->Argument) OR (!*Args->Argument)) return log.warning(ERR_NullArgs);
+   if ((!Args) or (!Args->Argument) or (!*Args->Argument)) return log.warning(ERR_NullArgs);
 
    if (!Self->ParametersMID) {
       CSTRING array[2];
@@ -1371,11 +1371,11 @@ static ERROR TASK_AddArgument(objTask *Self, struct taskAddArgument *Args)
       CSTRING src = Args->Argument;
       if (*src IS '"') {
          src++;
-         while ((*src) AND (*src != '"')) *str++ = *src++;
+         while ((*src) and (*src != '"')) *str++ = *src++;
       }
       else if (*src IS '\'') {
          src++;
-         while ((*src) AND (*src != '\'')) *str++ = *src++;
+         while ((*src) and (*src != '\'')) *str++ = *src++;
       }
       else while (*src) *str++ = *src++;
       *str = 0;
@@ -1432,7 +1432,7 @@ static ERROR TASK_Expunge(objTask *Self, APTR Void)
       parasol::ScopedSysLock lock(PL_PROCESSES, 4000);
       if (lock.granted()) {
          for (LONG i=0; i < MAX_TASKS; i++) {
-            if ((shTasks[i].TaskID) AND (shTasks[i].TaskID != Self->Head.UniqueID)) {
+            if ((shTasks[i].TaskID) and (shTasks[i].TaskID != Self->Head.UniqueID)) {
                ActionMsg(MT_TaskExpunge, shTasks[i].TaskID, NULL, 0, 0);
             }
          }
@@ -1547,7 +1547,7 @@ static ERROR TASK_GetEnv(objTask *Self, struct taskGetEnv *Args)
 {
    parasol::Log log;
 
-   if ((!Args) OR (!Args->Name)) return log.warning(ERR_NullArgs);
+   if ((!Args) or (!Args->Name)) return log.warning(ERR_NullArgs);
 
 #ifdef _WIN32
 
@@ -1674,7 +1674,7 @@ static ERROR TASK_SetEnv(objTask *Self, struct taskSetEnv *Args)
 {
    parasol::Log log;
 
-   if ((!Args) OR (!Args->Name)) return log.warning(ERR_NullArgs);
+   if ((!Args) or (!Args->Name)) return log.warning(ERR_NullArgs);
 
 #ifdef _WIN32
 
@@ -1772,7 +1772,7 @@ static ERROR TASK_GetVar(objTask *Self, struct acGetVar *Args)
    parasol::Log log;
    LONG j;
 
-   if ((!Args) OR (!Args->Buffer)) return log.warning(ERR_NullArgs);
+   if ((!Args) or (!Args->Buffer)) return log.warning(ERR_NullArgs);
 
    for (LONG i=0; Self->Fields[i]; i++) {
       if (!StrCompare(Args->Field, Self->Fields[i], 0, STR_MATCH_LEN)) {
@@ -1780,7 +1780,7 @@ static ERROR TASK_GetVar(objTask *Self, struct acGetVar *Args)
          for (fieldvalue=Self->Fields[i]; *fieldvalue; fieldvalue++);
          fieldvalue++;
 
-         for (j=0; (fieldvalue[j]) AND (j < Args->Size-1); j++) Args->Buffer[j] = fieldvalue[j];
+         for (j=0; (fieldvalue[j]) and (j < Args->Size-1); j++) Args->Buffer[j] = fieldvalue[j];
          Args->Buffer[j++] = 0;
 
          if (j >= Args->Size) return ERR_BufferOverflow;
@@ -1805,7 +1805,7 @@ static ERROR TASK_Init(objTask *Self, APTR Void)
       // Perform the following if this is the System Task
       Self->ProcessID = 0;
    }
-   else if ((!glCurrentTaskID) OR (glCurrentTaskID IS SystemTaskID)) {
+   else if ((!glCurrentTaskID) or (glCurrentTaskID IS SystemTaskID)) {
       // Perform the following if this is a Task representing the current process
 
       Self->ProcessID = glProcessID;
@@ -1834,7 +1834,7 @@ static ERROR TASK_Init(objTask *Self, APTR Void)
       char buffer[300];
       if (winGetExeDirectory(sizeof(buffer), buffer)) {
          len = StrLength(buffer);
-         while ((len > 1) AND (buffer[len-1] != '/') AND (buffer[len-1] != '\\') AND (buffer[len-1] != ':')) len--;
+         while ((len > 1) and (buffer[len-1] != '/') and (buffer[len-1] != '\\') and (buffer[len-1] != ':')) len--;
          if (!AllocMemory(len+1, MEM_STRING|MEM_NO_CLEAR|Self->Head.MemFlags, (void **)&Self->ProcessPath, &Self->ProcessPathMID)) {
             for (i=0; i < len; i++) Self->ProcessPath[i] = buffer[i];
             Self->ProcessPath[i] = 0;
@@ -1873,7 +1873,7 @@ static ERROR TASK_Init(objTask *Self, APTR Void)
             }
 
             for (len=0; buffer[len]; len++);
-            while ((len > 1) AND (buffer[len-1] != '/') AND (buffer[len-1] != '\\') AND (buffer[len-1] != ':')) len--;
+            while ((len > 1) and (buffer[len-1] != '/') and (buffer[len-1] != '\\') and (buffer[len-1] != ':')) len--;
             if (!AllocMemory(len+1, MEM_STRING|MEM_NO_CLEAR|Self->Head.MemFlags, (void **)&Self->ProcessPath, &Self->ProcessPathMID)) {
                for (i=0; i < len; i++) Self->ProcessPath[i] = buffer[i];
                Self->ProcessPath[i] = 0;
@@ -1938,7 +1938,7 @@ static ERROR TASK_Init(objTask *Self, APTR Void)
       // process, or to a foreign process.
 
       for (i=0; i < MAX_TASKS; i++) {
-         if ((shTasks[i].TaskID) AND (shTasks[i].ProcessID IS Self->ProcessID)) {
+         if ((shTasks[i].TaskID) and (shTasks[i].ProcessID IS Self->ProcessID)) {
             log.msg("Connected process %d to task %d, message port %d.", Self->ProcessID, shTasks[i].TaskID, shTasks[i].MessageID);
             Self->MessageMID = shTasks[i].MessageID;
             break;
@@ -1985,7 +1985,7 @@ static ERROR TASK_Quit(objTask *Self, APTR Void)
 {
    parasol::Log log;
 
-   if ((Self->ProcessID) AND (Self->ProcessID != glProcessID)) {
+   if ((Self->ProcessID) and (Self->ProcessID != glProcessID)) {
       log.msg("Terminating foreign process %d", Self->ProcessID);
 
       #ifdef __unix__
@@ -2030,7 +2030,7 @@ static ERROR TASK_SetVar(objTask *Self, struct acSetVar *Args)
 {
    parasol::Log log;
 
-   if ((!Args) OR (!Args->Field) OR (!Args->Value)) return ERR_NullArgs;
+   if ((!Args) or (!Args->Field) or (!Args->Value)) return ERR_NullArgs;
 
    // Find the insertion point
 
@@ -2138,7 +2138,7 @@ If an argument needs to include whitespace, use double-quotes to encapsulate the
 
 static ERROR SET_Args(objTask *Self, CSTRING Value)
 {
-   if ((!Value) OR (!*Value)) return ERR_Okay;
+   if ((!Value) or (!*Value)) return ERR_Okay;
 
    while (*Value) {
       while (*Value <= 0x20) Value++; // Skip whitespace
@@ -2146,10 +2146,10 @@ static ERROR SET_Args(objTask *Self, CSTRING Value)
       if (*Value) { // Extract the argument
          char buffer[400];
          LONG i;
-         for (i=0; (*Value) AND (*Value > 0x20) AND ((size_t)i < sizeof(buffer)-1);) {
+         for (i=0; (*Value) and (*Value > 0x20) and ((size_t)i < sizeof(buffer)-1);) {
             if (*Value IS '"') {
                Value++;
-               while (((size_t)i < sizeof(buffer)-1) AND (*Value) AND (*Value != '"')) {
+               while (((size_t)i < sizeof(buffer)-1) and (*Value) and (*Value != '"')) {
                   buffer[i++] = *Value++;
                }
                if (*Value IS '"') Value++;
@@ -2326,7 +2326,7 @@ static ERROR SET_Copyright(objTask *Self, CSTRING Value)
    if (Self->Copyright)    { ReleaseMemoryID(Self->CopyrightMID);   Self->Copyright = NULL; }
    if (Self->CopyrightMID) { FreeResourceID(Self->CopyrightMID); Self->CopyrightMID = 0; }
 
-   if ((Value) AND (*Value)) {
+   if ((Value) and (*Value)) {
       LONG len = StrLength(Value);
       if (!AllocMemory(len+1, MEM_STRING|MEM_NO_CLEAR|Self->Head.MemFlags, (void **)&Self->Copyright, &Self->CopyrightMID)) {
          CopyMemory(Value, Self->Copyright, len+1);
@@ -2553,7 +2553,7 @@ static ERROR SET_LaunchPath(objTask *Self, CSTRING Value)
    if (Self->LaunchPath)    { ReleaseMemoryID(Self->LaunchPathMID);   Self->LaunchPath = NULL; }
    if (Self->LaunchPathMID) { FreeResourceID(Self->LaunchPathMID); Self->LaunchPathMID = 0; }
 
-   if ((Value) AND (*Value)) {
+   if ((Value) and (*Value)) {
       LONG i;
       for (i=0; Value[i]; i++);
       if (!AllocMemory(i+1, MEM_STRING|MEM_NO_CLEAR|Self->Head.MemFlags, (void **)&Self->LaunchPath, &Self->LaunchPathMID)) {
@@ -2607,15 +2607,15 @@ static ERROR SET_Location(objTask *Self, CSTRING Value)
    if (Self->Location)    { ReleaseMemoryID(Self->LocationMID);   Self->Location = NULL; }
    if (Self->LocationMID) { FreeResourceID(Self->LocationMID); Self->LocationMID = 0; }
 
-   if ((Value) AND (*Value)) {
+   if ((Value) and (*Value)) {
       LONG i;
       for (i=0; Value[i]; i++);
       if (!AllocMemory(i+1, MEM_STRING|MEM_NO_CLEAR|Self->Head.MemFlags, (void **)&Self->Location, &Self->LocationMID)) {
-         while ((*Value) AND (*Value <= 0x20)) Value++;
+         while ((*Value) and (*Value <= 0x20)) Value++;
          if (*Value IS '"') {
             Value++;
             i = 0;
-            while ((*Value) AND (*Value != '"')) Self->Location[i++] = *Value++;
+            while ((*Value) and (*Value != '"')) Self->Location[i++] = *Value++;
          }
          else for (i=0; *Value; i++) Self->Location[i] = *Value++;
          Self->Location[i] = 0;
@@ -2706,7 +2706,8 @@ The Path specifies the 'working folder' that determines where files are loaded f
 otherwise specified for file access.  Initially the working folder is usually set to the folder of the parent
 process, such as that of a terminal shell.
 
-The working folder can be changed at any time by updating the Path with a new folder location.
+The working folder can be changed at any time by updating the Path with a new folder location.  If changing to the
+new folder fails for any reason, the working folder will remain unchanged and the path value will not be updated.
 
 *****************************************************************************/
 
@@ -2734,48 +2735,62 @@ static ERROR GET_Path(objTask *Self, STRING *Value)
 
 static ERROR SET_Path(objTask *Self, CSTRING Value)
 {
+   STRING new_path = NULL;
+   MEMORYID new_path_mid = 0;
+
    parasol::Log log;
 
-   if (Self->Path)    { ReleaseMemoryID(Self->PathMID); Self->Path = NULL; }
-   if (Self->PathMID) { FreeResourceID(Self->PathMID); Self->PathMID = 0; }
+   log.trace("ChDir: %s", Value);
 
-   log.msg("New Path: %s", Value);
-
-   if ((Value) AND (*Value)) {
-      LONG len, j;
-      for (len=0; Value[len]; len++);
-      while ((len > 1) AND (Value[len-1] != '/') AND (Value[len-1] != '\\') AND (Value[len-1] != ':')) len--;
-      if (!AllocMemory(len+1, MEM_STRING|MEM_NO_CLEAR|Self->Head.MemFlags, (void **)&Self->Path, &Self->PathMID)) {
-         for (j=0; j < len; j++) Self->Path[j] = Value[j];
-         Self->Path[j] = 0;
+   ERROR error = ERR_Okay;
+   if ((Value) and (*Value)) {
+      LONG len = StrLength(Value);
+      while ((len > 1) and (Value[len-1] != '/') and (Value[len-1] != '\\') and (Value[len-1] != ':')) len--;
+      if (!AllocMemory(len+1, MEM_STRING|MEM_NO_CLEAR|Self->Head.MemFlags, (void **)&new_path, &new_path_mid)) {
+         CopyMemory(Value, new_path, len);
+         new_path[len] = 0;
 
 #ifdef __unix__
          STRING path;
-         if (!ResolvePath(Self->Path, RSF_NO_FILE_CHECK, &path)) {
-            int result = chdir(path);
-            if (result) log.warning("Failed to switch current path to: %s", path);
+         if (!ResolvePath(new_path, RSF_NO_FILE_CHECK, &path)) {
+            if (chdir(path)) {
+               error = ERR_InvalidPath;
+               log.msg("Failed to switch current path to: %s", path);
+            }
             FreeResource(path);
-
-            if (result) return ERR_InvalidPath;
          }
-         else log.warning("Failed to resolve path \"%s\"", Self->Path);
+         else error = log.warning(ERR_ResolvePath);
 #elif _WIN32
          STRING path;
-         if (!ResolvePath(Self->Path, RSF_NO_FILE_CHECK|RSF_PATH, &path)) {
-            LONG result = chdir(path);
-            if (result) log.warning("Failed to switch current path to: %s", path);
+         if (!ResolvePath(new_path, RSF_NO_FILE_CHECK|RSF_PATH, &path)) {
+            if (chdir(path)) {
+               error = ERR_InvalidPath;
+               log.msg("Failed to switch current path to: %s", path);
+            }
             FreeResource(path);
-
-            if (result) return ERR_InvalidPath;
          }
-         else return log.warning(ERR_InvalidPath);
+         else error = log.warning(ERR_ResolvePath);
 #else
 #warn Support required for changing the current path.
 #endif
       }
-      else return log.warning(ERR_AllocMemory);
+      else error = log.warning(ERR_AllocMemory);
    }
-   return ERR_Okay;
+   else error = ERR_EmptyString;
+
+   if (!error) {
+      if (Self->Path)    { ReleaseMemoryID(Self->PathMID); Self->Path = NULL; }
+      if (Self->PathMID) { FreeResourceID(Self->PathMID); Self->PathMID = 0; }
+
+      Self->Path = new_path;
+      Self->PathMID = new_path_mid;
+   }
+   else if (new_path_mid) {
+      ReleaseMemoryID(new_path_mid);
+      FreeResourceID(new_path_mid);
+   }
+
+   return error;
 }
 
 /*****************************************************************************
@@ -2875,7 +2890,7 @@ static ERROR GET_ReturnCode(objTask *Self, LONG *Value)
    LONG status = 0;
    LONG result = waitpid(Self->ProcessID, &status, WNOHANG);
 
-   if ((result IS -1) OR (result IS Self->ProcessID)) {
+   if ((result IS -1) or (result IS Self->ProcessID)) {
       // The process has exited.  Find out what error code was returned and pass it as the result.
 
       if (WIFEXITED(status)) {

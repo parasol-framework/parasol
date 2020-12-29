@@ -295,7 +295,7 @@ restart_free:
             glDocView = NULL;
          }
 
-         if (glCache) { FreeResource(glCache); glCache = NULL; }
+         free_file_cache();
 
          if (glInotify != -1) { close(glInotify); glInotify = -1; }
 

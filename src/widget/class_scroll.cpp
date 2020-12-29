@@ -38,6 +38,7 @@ scale or page and view sizes.
 
 //#define DEBUG
 #define PRV_SCROLL
+#define PRV_WIDGET_MODULE
 #define __system__
 #include <parasol/main.h>
 #include <parasol/modules/widget.h>

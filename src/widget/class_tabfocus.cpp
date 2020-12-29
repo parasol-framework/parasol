@@ -22,6 +22,7 @@ set and this will cause it to automatically add itself to the referenced tabfocu
 *****************************************************************************/
 
 #define PRV_TABFOCUS
+#define PRV_WIDGET_MODULE
 #include <parasol/main.h>
 #include <parasol/modules/widget.h>
 #include <parasol/modules/surface.h>

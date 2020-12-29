@@ -24,7 +24,7 @@ endif()
 
 project (Parasol LANGUAGES C CXX)
 
-set (VERSION "2020.10")
+set (VERSION "2020.12")
 cmake_policy (SET CMP0082 NEW) # Process install commands in the order that they appear
 
 option (PARASOL_STATIC   "Build as a static library" OFF)
@@ -377,7 +377,6 @@ add_subdirectory (src/document)
 add_subdirectory (src/fluid)
 add_subdirectory (src/font)
 add_subdirectory (src/http)
-add_subdirectory (src/iconserver)
 add_subdirectory (src/json)
 add_subdirectory (src/network)
 add_subdirectory (src/parc)
@@ -446,6 +445,22 @@ add_dependencies (fluid_cmd build_headers)
 configure_file ("src/config.h.in" "parasol/config.h" NEWLINE_STYLE UNIX)
 
 # ----------------------------------------------------------------------------
+# Icons are installed as a zip file
+
+file(GLOB_RECURSE icon_files "data/icons/*.svg")
+
+add_custom_command (
+   OUTPUT  "${CMAKE_CURRENT_BINARY_DIR}/icons/Default.zip"
+   PRE_BUILD
+   COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/icons"
+   COMMAND ${CMAKE_COMMAND} -E tar "cf" "${CMAKE_CURRENT_BINARY_DIR}/icons/Default.zip" --format=zip -- "."
+   DEPENDS ${icon_files}
+   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}/data/icons/Default"
+   COMMENT "Zipping icons")
+
+add_custom_target (icon_package ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/icons/Default.zip")
+
+# ----------------------------------------------------------------------------
 # Installation steps
 
 if (PARASOL_INSTALL)
@@ -468,7 +483,7 @@ if (WIN32)
    install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/translations/" DESTINATION "config/translations")
    install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/users/" DESTINATION "config/users")
    install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/fonts/" DESTINATION "fonts")
-   install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/icons/" DESTINATION "icons")
+   install (FILES "${CMAKE_BINARY_DIR}/icons/Default.zip" DESTINATION "icons")
    install (DIRECTORY "${PROJECT_SOURCE_DIR}/scripts/" DESTINATION "scripts")
    if (INSTALL_EXAMPLES)
       install (DIRECTORY "${PROJECT_SOURCE_DIR}/examples/" DESTINATION "examples")
@@ -479,7 +494,7 @@ else ()
    install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/translations" DESTINATION "${SHARE_TARGET}/config")
    install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/users" DESTINATION "${SHARE_TARGET}/config")
    install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/fonts" DESTINATION "${SHARE_TARGET}")
-   install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/icons" DESTINATION "${SHARE_TARGET}")
+   install (FILES "${CMAKE_BINARY_DIR}/icons/Default.zip" DESTINATION "${SHARE_TARGET}/icons")
    install (DIRECTORY "${PROJECT_SOURCE_DIR}/scripts" DESTINATION "${SHARE_TARGET}")
    if (INSTALL_EXAMPLES)
       install (DIRECTORY "${PROJECT_SOURCE_DIR}/examples" DESTINATION "${SHARE_TARGET}")

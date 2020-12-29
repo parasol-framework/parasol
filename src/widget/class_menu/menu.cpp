@@ -24,6 +24,7 @@ through the XML data feed.
 
 #define PRV_MENU
 #define PRV_MENUITEM
+#define PRV_WIDGET_MODULE
 
 #include "menu.h"
 
@@ -31,7 +32,6 @@ through the XML data feed.
 #include <parasol/modules/xml.h>
 #include <parasol/system/keymaptable.h>
 #include <parasol/modules/display.h>
-#include <parasol/modules/iconserver.h>
 #include <parasol/modules/surface.h>
 #include <parasol/modules/widget.h>
 #include "../defs.h"

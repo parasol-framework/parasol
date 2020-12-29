@@ -60,7 +60,6 @@ FDEF argsGetField[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR 
 FDEF argsGetFieldArray[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Field", FD_LARGE }, { "Result", FD_PTR|FD_RESULT }, { "Elements", FD_LONG|FD_RESULT }, { 0, 0 } };
 FDEF argsGetFieldVariable[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Field", FD_STR }, { "Buffer", FD_BUFFER|FD_STR }, { "Size", FD_LONG|FD_BUFSIZE }, { 0, 0 } };
 FDEF argsGetFields[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Tags", FD_VARTAGS }, { 0, 0 } };
-FDEF argsGetFileInfo[] = { { "Error", FD_LONG|FD_ERROR }, { "Path", FD_STR }, { "FileInfo:Info", FD_BUFFER|FD_PTR|FD_STRUCT }, { "InfoSize", FD_LONG|FD_BUFSIZE }, { 0, 0 } };
 FDEF argsGetMemAddress[] = { { "Result", FD_PTR }, { "ID", FD_LONG }, { 0, 0 } };
 FDEF argsGetMessage[] = { { "Error", FD_LONG|FD_ERROR }, { "Queue", FD_LONG }, { "Type", FD_LONG }, { "Flags", FD_LONG }, { "Buffer", FD_BUFFER|FD_PTR }, { "Size", FD_LONG|FD_BUFSIZE }, { 0, 0 } };
 FDEF argsGetMsgPort[] = { { "Result", FD_LONG }, { "Object", FD_OBJECTID }, { 0, 0 } };
@@ -358,7 +357,7 @@ const struct Function glFunctions[] = {
    { (APTR)SetDocView, "SetDocView", argsSetDocView },
    { (APTR)GetDocView, "GetDocView", argsGetDocView },
    { (APTR)DeleteFile, "DeleteFile", argsDeleteFile },
-   { (APTR)GetFileInfo, "GetFileInfo", argsGetFileInfo },
+   { (APTR)WaitForObjects, "WaitForObjects", argsWaitForObjects },
    { (APTR)SaveObjectToFile, "SaveObjectToFile", argsSaveObjectToFile },
    { (APTR)OpenDir, "OpenDir", argsOpenDir },
    { (APTR)ScanDir, "ScanDir", argsScanDir },
@@ -389,7 +388,6 @@ const struct Function glFunctions[] = {
    { (APTR)VarSetSized, "VarSetSized", argsVarSetSized },
    { (APTR)VarLock, "VarLock", argsVarLock },
    { (APTR)VLogF, "VLogF", argsVLogF },
-   { (APTR)WaitForObjects, "WaitForObjects", argsWaitForObjects },
    { NULL, NULL, NULL }
 };
 

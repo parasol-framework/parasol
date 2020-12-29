@@ -29,6 +29,7 @@
 #define ERR_NotFound 16
 #define ERR_InitModule 17
 #define ERR_FileNotFound 18
+#define ERR_FileDoesNotExist 18
 #define ERR_WrongVersion 19
 #define ERR_Args 20
 #define ERR_NoData 21

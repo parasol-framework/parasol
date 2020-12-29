@@ -164,7 +164,7 @@ ERROR CopyFile(CSTRING Source, CSTRING Dest, FUNCTION * Callback);
 ERROR SetDocView(CSTRING Path, CSTRING Document);
 CSTRING GetDocView(CSTRING Path);
 ERROR DeleteFile(CSTRING Path, FUNCTION * Callback);
-ERROR GetFileInfo(CSTRING Path, struct FileInfo * Info, LONG InfoSize);
+ERROR WaitForObjects(LONG Flags, LONG TimeOut, struct ObjectSignal * ObjectSignals);
 ERROR SaveObjectToFile(OBJECTPTR Object, CSTRING Path, LONG Permissions);
 ERROR OpenDir(CSTRING Path, LONG Flags, struct DirInfo ** Info);
 ERROR ScanDir(struct DirInfo * Info);
@@ -195,7 +195,6 @@ ERROR KeyIterate(struct KeyStore * Store, ULONG Index, ULONG * Key, APTR * Data,
 ERROR VarSetSized(struct KeyStore * Store, CSTRING Key, LONG Size, APTR * Data, LONG * DataSize);
 ERROR VarLock(struct KeyStore * Store, LONG Timeout);
 void VLogF(LONG Flags, CSTRING Header, CSTRING Message, va_list Args);
-ERROR WaitForObjects(LONG Flags, LONG TimeOut, struct ObjectSignal * ObjectSignals);
 
 #ifdef  __cplusplus
 }

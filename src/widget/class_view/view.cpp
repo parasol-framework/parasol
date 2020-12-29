@@ -38,11 +38,11 @@ field for changes.
 #define SWITCH_SIZE 13
 
 #define PRV_VIEW
+#define PRV_WIDGET_MODULE
 #include <parasol/modules/widget.h>
 #include <parasol/modules/xml.h>
 #include <parasol/modules/font.h>
 #include <parasol/modules/display.h>
-#include <parasol/modules/iconserver.h>
 #include <parasol/modules/surface.h>
 #include <parasol/modules/vector.h>
 

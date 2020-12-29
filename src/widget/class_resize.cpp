@@ -42,6 +42,7 @@ MaxWidth and MaxHeight fields are used to prevent excessive shrinkage or expansi
 *****************************************************************************/
 
 #define PRV_RESIZE
+#define PRV_WIDGET_MODULE
 #include <parasol/modules/display.h>
 #include <parasol/modules/surface.h>
 #include <parasol/modules/widget.h>

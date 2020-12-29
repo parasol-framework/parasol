@@ -1,6 +1,6 @@
 // For a discussion on clipboard formatting, see http://netez.com/2xExplorer/shellFAQ/adv_clip.html
 
-//#define DEBUG
+#undef DEBUG
 
 #ifdef WINDOWS_WINDOWS_H
 #ifdef __cplusplus

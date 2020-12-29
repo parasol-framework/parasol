@@ -419,8 +419,8 @@ gui.dialog.colour = function(Options)
       loadColours()
       createRainbow()
 
-      svgAdd = obj.new('svg', { path='system:icons/Default/items/add.svg', flags='ManualRender' })
-      svgDelete = obj.new('svg', { path='system:icons/Default/items/trash.svg', flags='ManualRender' })
+      svgAdd = obj.new('svg', { path='icons:items/add.svg', flags='ManualRender' })
+      svgDelete = obj.new('svg', { path='icons:items/trash.svg', flags='ManualRender' })
 
       local winWidth  = ((BTNSIZE + BTNGAP) * 8) + 10 + lRainbow.width
       local winHeight = (lFont.lineSpacing + BTNGAP) + ((BTNSIZE + BTNGAP) * 7) + (lFont.lineSpacing * 2) + BTNGAP + ((BTNSIZE + BTNGAP) * 2)

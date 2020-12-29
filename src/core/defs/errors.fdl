@@ -23,7 +23,7 @@ function declareErrors()
     "InvalidData",
     "Search|NotFound",
     "InitModule",
-    "FileNotFound",
+    "FileNotFound|FileDoesNotExist",
     "WrongVersion",
     "Args",
     "NoData",

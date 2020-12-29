@@ -391,7 +391,7 @@ gui.toolbar = function(Target, Options)
             local gname = 'bkgd' .. counter()
             item.svgGroup = lViewport.new('VectorViewport', { x=0, y=0, width=lIconSize, height=lIconSize })
             item.svgGradient = gui.simpleGradient(lScene, gname, { lThemeColour.first, lThemeColour.last }, 0, 0, 0, 1)
-            item.svg = obj.new('svg', { target=item.svgGroup, path='system:icons/Default/' .. Icon .. '.svg' })
+            item.svg = obj.new('svg', { target=item.svgGroup, path='icons:' .. Icon .. '.svg' })
             gui.applyFill(item.svgGroup, 'url(#' .. gname .. ')')
 
             local viewport = item.svgGroup.child

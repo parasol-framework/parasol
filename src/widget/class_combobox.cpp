@@ -31,6 +31,7 @@ To make modifications to the menu after initialisation, read the #Menu field and
 *****************************************************************************/
 
 #define PRV_COMBOBOX
+#define PRV_WIDGET_MODULE
 #include <parasol/modules/widget.h>
 #include <parasol/modules/document.h>
 #include <parasol/modules/display.h>

@@ -641,8 +641,18 @@ static ERROR fast_scan_zip(objCompression *Self)
             STRING str = ((STRING)head) + LIST_LENGTH;
 
             zf->Name = (STRING)(zf+1);
-            CopyMemory(str, zf->Name, scan->namelen);
-            zf->Name[scan->namelen] = 0;
+
+            if ((str[0] IS '.') and (str[1] IS '/')) { // Get rid of any useless './' prefix that sometimes make their way into zip files
+               CopyMemory(str+2, zf->Name, scan->namelen-2);
+               zf->Name[zf->NameLen] = 0;
+               zf->Name[zf->NameLen-1] = 0;
+               zf->Name[zf->NameLen-2] = 0;
+            }
+            else {
+               CopyMemory(str, zf->Name, scan->namelen);
+               zf->Name[zf->NameLen] = 0;
+            }
+
             str += scan->namelen;
             str += scan->extralen;
 
@@ -653,9 +663,7 @@ static ERROR fast_scan_zip(objCompression *Self)
 
             if (zf->Flags & ZIP_LINK);
             else if (zf->OriginalSize == 0) {
-               LONG len;
-               for (len=0; zf->Name[len]; len++);
-               if (zf->Name[len-1] IS '/') zf->IsFolder = TRUE;
+               if (zf->Name[StrLength(zf->Name)-1] IS '/') zf->IsFolder = TRUE;
                //else zf->IsFolder = TRUE;
             }
          }
@@ -790,12 +798,16 @@ static ERROR scan_zip(objCompression *Self)
          }
          else entry->Flags = 0;
 
+         if ((entry->Name[0] IS '.') and (entry->Name[1] IS '/')) {
+            // Get rid of any useless './' prefix that sometimes make their way into zip files
+            CopyMemory(entry->Name + 2, entry->Name, (entry->NameLen - 2) + 1);
+            entry->Name[entry->NameLen-1] = 0;
+            entry->Name[entry->NameLen-2] = 0;
+         }
+
          if (entry->Flags & ZIP_LINK);
          else if (entry->OriginalSize == 0) {
-            LONG len;
-            for (len=0; entry->Name[len]; len++);
-            if (entry->Name[len-1] IS '/') entry->IsFolder = TRUE;
-            //else entry->IsFolder = TRUE;
+            if (entry->Name[StrLength(entry->Name)-1] IS '/') entry->IsFolder = TRUE;
          }
 
          // Chain management

@@ -806,10 +806,6 @@ static ERROR FLUID_Init(objScript *Self, APTR Void)
 
    log.trace("Opening a Lua instance.");
 
-   #ifdef DEBUG
-      Self->Flags |= SCF_DEBUG;
-   #endif
-
    if (!(prv->Lua = luaL_newstate())) {
       log.warning("Failed to open a Lua instance.");
       FreeResource(Self->Head.ChildPrivate);

@@ -13,13 +13,13 @@ This function will convert a file path to its resolved form, according to the ho
 system might resolve `drive1:documents/readme.txt` to `/documents/readme.txt`.  A Windows system might
 resolve the path to `c:\documents\readme.txt`.
 
-The resulting path is guaranteed to be absolute, meaning the use of sequences such as '..', '//' and './' will be
+The resulting path is guaranteed to be absolute, meaning the use of sequences such as `..`, `//` and `./` will be
 eliminated.
 
 If the path can be resolved to more than one file, the ResolvePath() method will attempt to guess the correct path by
-checking the validity of each possible location.  For instance, if resolving a path of "user:document.txt"
-and the "user:" volume refers to both "system:users/joebloggs/" and "system:users/default/", the routine will check
-both directories for the existence of the "document.txt" file to determine the correct location.  While helpful, this
+checking the validity of each possible location.  For instance, if resolving a path of `user:document.txt`
+and the `user:` volume refers to both `system:users/joebloggs/` and `system:users/default/`, the routine will check
+both directories for the existence of the `document.txt` file to determine the correct location.  While helpful, this
 can cause problems if the intent is to create a new file.  To circumvent this feature, use the RSF_NO_FILE_CHECK
 setting in the Flags parameter.
 
@@ -59,14 +59,13 @@ Loop:            The volume refers back to itself.
 static ERROR resolve(objConfig *, STRING, STRING, LONG);
 static ERROR resolve_path_env(CSTRING RelativePath, STRING *Result);
 static THREADVAR UBYTE tlClassLoaded;
-#define SIZE_RESBUFFER 250
 
 ERROR ResolvePath(CSTRING Path, LONG Flags, STRING *Result)
 {
    parasol::Log log(__FUNCTION__);
    LONG i, loop;
-   char src[SIZE_RESBUFFER];
-   char dest[SIZE_RESBUFFER];
+   char src[MAX_FILENAME];
+   char dest[MAX_FILENAME];
 
    log.traceBranch("%s, Flags: $%.8x", Path, Flags);
 
@@ -88,7 +87,7 @@ ERROR ResolvePath(CSTRING Path, LONG Flags, STRING *Result)
 
    // Check if the Path argument contains a volume character.  If it does not, make a clone of the string and return it.
 
-   UBYTE resolved = FALSE;
+   bool resolved = FALSE;
 #ifdef _WIN32
    if ((LCASE(Path[0]) >= 'a') and (LCASE(Path[0]) <= 'z') and (Path[1] IS ':')) {
       resolved = TRUE; // Windows drive letter reference discovered
@@ -156,6 +155,10 @@ ERROR ResolvePath(CSTRING Path, LONG Flags, STRING *Result)
             if (!(Flags & RSF_CHECK_VIRTUAL)) error = ERR_Okay;
 
             if (Result) {
+               if (Flags & RSF_APPROXIMATE) { // Ensure that the resolved path is accurate
+                  if (test_path(dest, RSF_APPROXIMATE)) error = ERR_FileNotFound;
+               }
+
                if (!(*Result = StrClone(dest))) error = ERR_AllocMemory;
             }
 
@@ -307,8 +310,8 @@ static ERROR resolve_object_path(STRING, STRING, STRING, LONG);
 static ERROR resolve(objConfig *Config, STRING Source, STRING Dest, LONG Flags)
 {
    parasol::Log log("ResolvePath");
-   char fullpath[SIZE_RESBUFFER];
-   char buffer[SIZE_RESBUFFER];
+   char fullpath[MAX_FILENAME];
+   char buffer[MAX_FILENAME];
    LONG i, j, k, pos, loop;
    ERROR error;
 
@@ -374,7 +377,7 @@ static ERROR resolve(objConfig *Config, STRING Source, STRING Dest, LONG Flags)
    while (*path) {
       // Copy the resolved volume path to the destination buffer
 
-      for (k=0; (*path) and (*path != '|') and (k < SIZE_RESBUFFER-1);) {
+      for (k=0; (*path) and (*path != '|') and (k < MAX_FILENAME-1);) {
          if (k > 0) {
             if ((*path IS '\\') and (path[1] IS '\\')) path++; // Eliminate dual slashes - with an exception for UNC paths
             else if ((*path IS '/') and (path[1] IS '/')) path++;
@@ -383,13 +386,13 @@ static ERROR resolve(objConfig *Config, STRING Source, STRING Dest, LONG Flags)
          else Dest[k++] = *path++;
       }
 
-      if ((Dest[k-1] != '/') and (Dest[k-1] != '\\') and (k < SIZE_RESBUFFER-1)) Dest[k++] = '/'; // Add a trailing slash if it is missing
+      if ((Dest[k-1] != '/') and (Dest[k-1] != '\\') and (k < MAX_FILENAME-1)) Dest[k++] = '/'; // Add a trailing slash if it is missing
 
       // Copy the rest of the source to the destination buffer
 
       j = pos;
       while ((Source[j] IS '/') or (Source[j] IS '\\')) j++;
-      while ((Source[j]) and (k < SIZE_RESBUFFER-1)) Dest[k++] = Source[j++];
+      while ((Source[j]) and (k < MAX_FILENAME-1)) Dest[k++] = Source[j++];
       Dest[k++] = 0;
 
       // Fully resolve the path to a system folder before testing it (e.g. "scripts:" to "parasol:scripts/" to "c:\parasol\scripts\" will be resolved through this recursion).

@@ -154,7 +154,7 @@ ERROR add_asset_class(void)
          FID_Actions|TPTR,      clActions,
          FID_Methods|TARRAY,    clMethods,
          FID_Fields|TARRAY,     clFields,
-         FID_Path|TSTR,         "modules:filesystem",
+         FID_Path|TSTR,         "modules:core",
          TAGEND) != ERR_Okay) {
       return ERR_CreateObject;
    }

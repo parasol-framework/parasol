@@ -751,7 +751,6 @@ struct ziptail {
 #define MAX_FDS 40
 extern struct FDTable *glFDTable;
 extern WORD glTotalFDs, glLastFD;
-extern struct KeyStore *glCache;
 extern LONG glInotify;
 struct DocView { CSTRING Path; CSTRING Doc; };
 extern struct DocView *glDocView;
@@ -831,6 +830,7 @@ ERROR fs_watch_path(struct rkFile *);
 const struct virtual_drive * get_fs(CSTRING Path);
 void free_storage_class(void);
 
+ERROR convert_zip_error(struct z_stream_s *, LONG);
 ERROR check_cache(OBJECTPTR, LARGE TimeElapsed, LARGE TotalElapsed);
 ERROR get_class_cmd(CSTRING, struct rkConfig *, LONG, CLASSID, STRING *);
 ERROR fs_copy(CSTRING, CSTRING, FUNCTION *, BYTE);
@@ -843,9 +843,10 @@ LONG  convert_fs_permissions(LONG);
 LONG  convert_permissions(LONG);
 void set_memory_manager(APTR, struct ResourceManager *);
 BYTE  strip_folder(STRING) __attribute__ ((unused));
-ERROR get_file_info(CSTRING, struct FileInfo *, LONG, STRING, LONG);
+ERROR get_file_info(CSTRING, struct FileInfo *, LONG);
 ERROR convert_errno(LONG Error, ERROR Default);
 void free_translate_buffer(void);
+void free_file_cache(void);
 
 EXPORT void Expunge(WORD);
 

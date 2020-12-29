@@ -40,6 +40,7 @@ if (BUILD_DEFS)
 
    add_custom_command (OUTPUT
       ${WIDGET_DEFS}
+      "${CMAKE_CURRENT_SOURCE_DIR}/module_def.c"
       "${DOCS}/modules/classes/input.xml"
       "${DOCS}/modules/classes/clipboard.xml"
       "${DOCS}/modules/classes/view.xml"
@@ -56,6 +57,7 @@ if (BUILD_DEFS)
       "${DOCS}/modules/classes/tabfocus.xml"
       PRE_BUILD
       COMMAND ${FLUID_CMD} ${IDL_C_SCRIPT} "--log-warning" "--src=${MOD}.fdl" "--sdk=${PROJECT_SOURCE_DIR}"
+         "--output-defs=module_def.c" "--output-proto=module_def.c" "--files={" "${MOD}.cpp" "}"
       DEPENDS "${MOD}.fdl" ${WIDGET_SOURCES}
       WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
       COMMENT "Producing C definition files for the ${MOD} module"

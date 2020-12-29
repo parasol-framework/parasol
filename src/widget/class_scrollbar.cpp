@@ -34,6 +34,7 @@ surface.
 
 //#define DEBUG
 #define PRV_SCROLLBAR
+#define PRV_WIDGET_MODULE
 #include <parasol/modules/xml.h>
 #include <parasol/modules/surface.h>
 #include <parasol/modules/widget.h>
