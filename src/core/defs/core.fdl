@@ -978,7 +978,6 @@ struct ScriptArg { // For use with scExec
     "LogF",
     "FastFindObject",
     "FindClass",
-    "FindObject",
     "ReleaseObject",
     "FreeResource",
     "FreeResourceID",
@@ -1355,7 +1354,7 @@ INLINE ERROR cfgReadInt(APTR Self, CSTRING Group, CSTRING Key, LONG *Value)
   ]])
 
   methods("MetaClass", "mc", {
-    { id=1, name="FindField" },
+    { id=1, name="FindField" }
   })
 
   class("MetaClass", { src="classes/class_metaclass.cpp" }, [[

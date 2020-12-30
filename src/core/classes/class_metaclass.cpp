@@ -47,7 +47,7 @@ static Field * lookup_id_byclass(rkMetaClass *, ULONG, rkMetaClass **);
 // The MetaClass is the focal point of the OO design model.  Because classes are treated like objects, they must point
 // back to a controlling class definition - this it.  See NewObject() for the management code for this data.
 
-#define TOTAL_METAFIELDS  23
+#define TOTAL_METAFIELDS  25
 #define TOTAL_METAMETHODS 1
 
 static ERROR GET_ActionTable(rkMetaClass *, ActionEntry **, LONG *);
@@ -56,6 +56,8 @@ static ERROR GET_IDL(rkMetaClass *, CSTRING *);
 static ERROR GET_Location(rkMetaClass *, CSTRING *);
 static ERROR GET_Methods(rkMetaClass *Self, const MethodArray **, LONG *);
 static ERROR GET_Module(rkMetaClass *, CSTRING *);
+static ERROR GET_PrivateObjects(rkMetaClass *, OBJECTID **, LONG *);
+static ERROR GET_PublicObjects(rkMetaClass *, OBJECTID **, LONG *);
 static ERROR GET_SubFields(rkMetaClass *, const FieldArray **, LONG *);
 static ERROR GET_TotalMethods(rkMetaClass *, LONG *);
 
@@ -101,17 +103,19 @@ static Field glMetaFieldsPreset[TOTAL_METAFIELDS+1] = {
    { 0, 0, 0,                      writeval_default, "SubClassID",      FID_SubClassID,      sizeof(Head)+16+(sizeof(APTR)*7), 10, FDF_LONG|FDF_UNSIGNED|FDF_RI },
    { 0, 0, 0,                      writeval_default, "BaseClassID",     FID_BaseClassID,     sizeof(Head)+20+(sizeof(APTR)*7), 11, FDF_LONG|FDF_UNSIGNED|FDF_RI },
    { 0, 0, 0,                      writeval_default, "OpenCount",       FID_OpenCount,       sizeof(Head)+24+(sizeof(APTR)*7), 12, FDF_LONG|FDF_R },
-   { 0, (ERROR (*)(APTR, APTR))GET_TotalMethods, 0, writeval_default, "TotalMethods",    FID_TotalMethods,    sizeof(Head)+28+(sizeof(APTR)*7), 13, FDF_LONG|FDF_R },
+   { 0, (ERROR (*)(APTR, APTR))GET_TotalMethods, 0, writeval_default,   "TotalMethods",    FID_TotalMethods,    sizeof(Head)+28+(sizeof(APTR)*7), 13, FDF_LONG|FDF_R },
    { 0, 0, 0,                      writeval_default, "TotalFields",     FID_TotalFields,     sizeof(Head)+32+(sizeof(APTR)*7), 14, FDF_LONG|FDF_R },
    { (MAXINT)&CategoryTable, 0, 0, writeval_default, "Category",        FID_Category,        sizeof(Head)+36+(sizeof(APTR)*7), 15, FDF_LONG|FDF_LOOKUP|FDF_RI },
    // Virtual fields
    { 0, 0, (APTR)SET_Actions,      writeval_default, "Actions",         FID_Actions,         sizeof(Head), 16, FDF_POINTER|FDF_I },
-   { 0, (ERROR (*)(APTR, APTR))GET_ActionTable, 0,  writeval_default, "ActionTable",     FID_ActionTable,     sizeof(Head), 17, FDF_ARRAY|FDF_POINTER|FDF_R },
-   { 0, (ERROR (*)(APTR, APTR))GET_Location, 0,     writeval_default, "Location",        FID_Location,        sizeof(Head), 18, FDF_STRING|FDF_R },
+   { 0, (ERROR (*)(APTR, APTR))GET_ActionTable, 0,  writeval_default,   "ActionTable",     FID_ActionTable,     sizeof(Head), 17, FDF_ARRAY|FDF_POINTER|FDF_R },
+   { 0, (ERROR (*)(APTR, APTR))GET_Location, 0,     writeval_default,   "Location",        FID_Location,        sizeof(Head), 18, FDF_STRING|FDF_R },
    { 0, (ERROR (*)(APTR, APTR))GET_ClassName, (APTR)SET_ClassName, writeval_default, "Name", FID_Name,        sizeof(Head), 19, FDF_STRING|FDF_SYSTEM|FDF_RI },
-   { 0, (ERROR (*)(APTR, APTR))GET_Module, 0,       writeval_default, "Module",          FID_Module,          sizeof(Head), 20, FDF_STRING|FDF_R },
-   { 0, (ERROR (*)(APTR, APTR))GET_IDL, 0,          writeval_default, "IDL",             FID_IDL,             sizeof(Head), 21, FDF_STRING|FDF_R },
-   { (MAXINT)"FieldArray", (ERROR (*)(APTR, APTR))GET_SubFields, 0, writeval_default, "SubFields", FID_SubFields, sizeof(Head), 22, FDF_ARRAY|FD_STRUCT|FDF_SYSTEM|FDF_R },
+   { 0, (ERROR (*)(APTR, APTR))GET_Module, 0,       writeval_default,   "Module",          FID_Module,          sizeof(Head), 20, FDF_STRING|FDF_R },
+   { 0, (ERROR (*)(APTR, APTR))GET_PrivateObjects, 0, writeval_default, "PrivateObjects", FID_PrivateObjects, sizeof(Head), 21, FDF_ARRAY|FDF_LONG|FDF_ALLOC|FDF_R },
+   { 0, (ERROR (*)(APTR, APTR))GET_PublicObjects,  0, writeval_default, "PublicObjects",  FID_PublicObjects,  sizeof(Head), 22, FDF_ARRAY|FDF_LONG|FDF_ALLOC|FDF_R },
+   { 0, (ERROR (*)(APTR, APTR))GET_IDL, 0,          writeval_default,   "IDL",             FID_IDL,             sizeof(Head), 23, FDF_STRING|FDF_R },
+   { (MAXINT)"FieldArray", (ERROR (*)(APTR, APTR))GET_SubFields, 0, writeval_default, "SubFields", FID_SubFields, sizeof(Head), 24, FDF_ARRAY|FD_STRUCT|FDF_SYSTEM|FDF_R },
    { 0, 0, 0, NULL, "", 0, 0, 0,  0 }
 };
 
@@ -138,6 +142,8 @@ static const FieldArray glMetaFields[] = {
    { "Location",        FDF_STRING|FDF_R,             0, NULL, NULL },
    { "Name",            FDF_STRING|FDF_SYSTEM|FDF_RI, 0, (APTR)GET_ClassName, (APTR)SET_ClassName },
    { "Module",          FDF_STRING|FDF_R,             0, (APTR)GET_Module, NULL },
+   { "PrivateObjects",  FDF_ARRAY|FDF_LONG|FDF_ALLOC|FDF_R, 0, (APTR)GET_PrivateObjects, NULL },
+   { "PublicObjects",   FDF_ARRAY|FDF_LONG|FDF_ALLOC|FDF_R, 0, (APTR)GET_PublicObjects, NULL },
    { "IDL",             FDF_STRING|FDF_R,             0, (APTR)GET_IDL, NULL },
    { "SubFields",       FDF_ARRAY|FD_STRUCT|FDF_SYSTEM|FDF_R, (MAXINT)"FieldArray", (APTR)GET_SubFields, NULL },
    END_FIELD
@@ -722,6 +728,105 @@ static ERROR GET_Module(rkMetaClass *Self, CSTRING *Value)
       *Value = "core";
       return ERR_Okay;
    }
+}
+
+/*****************************************************************************
+
+-FIELD-
+PrivateObjects: Returns an allocated list of all private objects that belong to this class.
+
+This field will compile a list of all private objects that belong to the class.  The list is sorted with the oldest
+object appearing first.
+
+The resulting array must be terminated with ~FreeResource() after use.
+
+*****************************************************************************/
+
+static ERROR GET_PrivateObjects(rkMetaClass *Self, OBJECTID **Array, LONG *Elements)
+{
+   parasol::Log log;
+   std::list<OBJECTID> objlist;
+
+   ThreadLock lock(TL_PRIVATE_MEM, 4000);
+   if (lock.granted()) {
+      for (LONG i=0; i < glNextPrivateAddress; i++) {
+         OBJECTPTR object;
+         if ((glPrivateMemory[i].Flags & MEM_OBJECT) and (object = (OBJECTPTR)glPrivateMemory[i].Address)) {
+            if (Self->SubClassID IS object->ClassID) {
+               objlist.push_back(object->UniqueID);
+            }
+         }
+      }
+   }
+   else return log.warning(ERR_LockFailed);
+
+   if (!objlist.size()) {
+      *Array = NULL;
+      *Elements = 0;
+      return ERR_Okay;
+   }
+
+   objlist.sort([](const OBJECTID &a, const OBJECTID &b) { return (a < b); });
+
+   OBJECTID *result;
+   if (!AllocMemory(sizeof(OBJECTID) * objlist.size(), MEM_NO_CLEAR, (APTR *)&result, NULL)) {
+      LONG i = 0;
+      for (const auto & id : objlist) result[i++] = id;
+      *Array = result;
+      *Elements = objlist.size();
+      return ERR_Okay;
+   }
+   else return ERR_AllocMemory;
+}
+
+/*****************************************************************************
+
+-FIELD-
+PublicObjects: Returns an allocated list of all public objects that belong to this class.
+
+This field will compile a list of all public objects that belong to the class.  The list is sorted with the oldest
+object appearing first.
+
+The resulting array must be terminated with ~FreeResource() after use.
+
+*****************************************************************************/
+
+static ERROR GET_PublicObjects(rkMetaClass *Self, OBJECTID **Array, LONG *Elements)
+{
+   parasol::Log log;
+   std::list<OBJECTID> objlist;
+
+   SharedObjectHeader *header;
+   if (!AccessMemory(RPM_SharedObjects, MEM_READ, 2000, (void **)&header)) {
+      auto entry = (SharedObject *)ResolveAddress(header, header->Offset);
+      for (LONG i=0; i < header->NextEntry; i++) {
+         if ((entry[i].ObjectID) and (Self->SubClassID IS entry[i].ClassID)) {
+            if ((!entry[i].InstanceID) or (entry[i].InstanceID IS glInstanceID)) {
+               objlist.push_back(entry[i].ObjectID);
+            }
+         }
+      }
+      ReleaseMemoryID(RPM_SharedObjects);
+   }
+   else return log.warning(ERR_AccessMemory);
+
+   if (!objlist.size()) {
+      *Array = NULL;
+      *Elements = 0;
+      return ERR_Okay;
+   }
+
+   objlist.sort([](const OBJECTID &a, const OBJECTID &b) { return (a < b); });
+
+   OBJECTID *result;
+   if (!AllocMemory(sizeof(OBJECTID) * objlist.size(), MEM_NO_CLEAR, (APTR *)&result, NULL)) {
+      LONG i = 0;
+      for (const auto & id : objlist) result[i++] = id;
+      *Array = result;
+      *Elements = objlist.size();
+      return ERR_Okay;
+   }
+   else return ERR_AllocMemory;
 }
 
 /*****************************************************************************

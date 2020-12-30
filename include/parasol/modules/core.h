@@ -1731,7 +1731,6 @@ struct CoreBase {
    void (*_LogF)(const void *, const char *, ...) __attribute__((format(printf, 2, 3)));
    ERROR (*_FastFindObject)(CSTRING, CLASSID, OBJECTID *, LONG, LONG *);
    struct rkMetaClass * (*_FindClass)(CLASSID);
-   ERROR (*_FindObject)(CSTRING, CLASSID, OBJECTID **, LONG *);
    ERROR (*_ReleaseObject)(APTR);
    ERROR (*_FreeResource)(const void *);
    ERROR (*_FreeResourceID)(MEMORYID);
@@ -1925,7 +1924,6 @@ struct CoreBase {
 #define LogF(...) (CoreBase->_LogF)(__VA_ARGS__)
 #define FastFindObject(...) (CoreBase->_FastFindObject)(__VA_ARGS__)
 #define FindClass(...) (CoreBase->_FindClass)(__VA_ARGS__)
-#define FindObject(...) (CoreBase->_FindObject)(__VA_ARGS__)
 #define ReleaseObject(...) (CoreBase->_ReleaseObject)(__VA_ARGS__)
 #define FreeResource(...) (CoreBase->_FreeResource)(__VA_ARGS__)
 #define FreeResourceID(...) (CoreBase->_FreeResourceID)(__VA_ARGS__)

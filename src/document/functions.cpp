@@ -6000,10 +6000,10 @@ static ERROR convert_xml_args(objDocument *Self, XMLAttrib *Attrib, LONG Total)
                      // On pass 2, which can only be performed if the document is in unrestricted access mode, we will take the
                      // first object on the list (which will be the most recently created one).
 
-                     OBJECTID *list, parent_id;
+                     OBJECTID list[40], parent_id;
                      LONG count, j;
 
-                     if (!FindObject(name, 0, &list, &count)) {
+                     if (!FastFindObject(name, 0, list, ARRAYSIZE(list), &count)) {
                         // Pass 1: Only consider objects that are children of the document
                         for (j=0; (j < count) and (!objectid); j++) {
                            parent_id = list[j];
@@ -6021,8 +6021,6 @@ static ERROR convert_xml_args(objDocument *Self, XMLAttrib *Attrib, LONG Total)
                         if ((!objectid) and (Self->Flags & DCF_UNRESTRICTED)) {
                            objectid = list[0];
                         }
-
-                        FreeResource(list);
                      }
                   }
 
