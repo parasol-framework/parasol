@@ -287,7 +287,8 @@ static DOUBLE sndSetTaskVolume(DOUBLE Volume)
       #endif
 
       if (!glAudioID) {
-         FastFindObject("SystemAudio", ID_AUDIO, &glAudioID, 1, NULL);
+         LONG count = 1;
+         FindObject("SystemAudio", ID_AUDIO, &glAudioID, &count);
       }
 
       if (glAudioID) {

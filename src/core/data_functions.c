@@ -39,9 +39,9 @@ FDEF argsCurrentField[] = { { "Field", FD_PTR|FD_STRUCT }, { 0, 0 } };
 FDEF argsCurrentTask[] = { { "Object", FD_OBJECTPTR }, { 0, 0 } };
 FDEF argsDeleteFile[] = { { "Error", FD_LONG|FD_ERROR }, { "Path", FD_STR }, { "Callback", FD_FUNCTIONPTR }, { 0, 0 } };
 FDEF argsDeleteVolume[] = { { "Error", FD_LONG|FD_ERROR }, { "Name", FD_STR }, { 0, 0 } };
-FDEF argsFastFindObject[] = { { "Error", FD_LONG|FD_ERROR }, { "Name", FD_STR }, { "ClassID", FD_LONG|FD_UNSIGNED }, { "Array", FD_OBJECTID|FD_RESULT }, { "ArraySize", FD_LONG }, { "Count", FD_LONG|FD_RESULT }, { 0, 0 } };
 FDEF argsFindClass[] = { { "Object", FD_OBJECTPTR }, { "ClassID", FD_LONG|FD_UNSIGNED }, { 0, 0 } };
 FDEF argsFindField[] = { { "Field", FD_PTR|FD_STRUCT }, { "Object", FD_OBJECTPTR }, { "FieldID", FD_LONG }, { "Source", FD_OBJECTPTR|FD_RESULT }, { 0, 0 } };
+FDEF argsFindObject[] = { { "Error", FD_LONG|FD_ERROR }, { "Name", FD_STR }, { "ClassID", FD_LONG|FD_UNSIGNED }, { "Array", FD_BUFFER|FD_ARRAY|FD_OBJECTID }, { "Count", FD_LONG|FD_ARRAYSIZE|FD_RESULT }, { 0, 0 } };
 FDEF argsFindPrivateObject[] = { { "Error", FD_LONG|FD_ERROR }, { "Name", FD_STR }, { "Object", FD_OBJECTPTR|FD_RESULT }, { 0, 0 } };
 FDEF argsFreeMutex[] = { { "Void", FD_VOID }, { "Mutex", FD_PTR }, { 0, 0 } };
 FDEF argsFreeResource[] = { { "Error", FD_LONG|FD_ERROR }, { "Address", FD_PTR }, { 0, 0 } };
@@ -215,7 +215,7 @@ const struct Function glFunctions[] = {
    { (APTR)GetFieldArray, "GetFieldArray", argsGetFieldArray },
    { (APTR)AdjustLogLevel, "AdjustLogLevel", argsAdjustLogLevel },
    { (APTR)LogF, "LogF", argsLogF },
-   { (APTR)FastFindObject, "FastFindObject", argsFastFindObject },
+   { (APTR)FindObject, "FindObject", argsFindObject },
    { (APTR)FindClass, "FindClass", argsFindClass },
    { (APTR)ReleaseObject, "ReleaseObject", argsReleaseObject },
    { (APTR)FreeResource, "FreeResource", argsFreeResource },

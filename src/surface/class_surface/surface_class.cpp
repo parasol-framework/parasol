@@ -1022,7 +1022,8 @@ static ERROR SURFACE_Init(objSurface *Self, APTR Void)
 
    if ((!Self->ParentID) and (glDisplayType IS DT_NATIVE)) {
       if (!(Self->Flags & RNF_FULL_SCREEN)) {
-         if (FastFindObject("desktop", ID_SURFACE, &Self->ParentID, 1, NULL) != ERR_Okay) {
+         LONG count = 1;
+         if (FindObject("desktop", ID_SURFACE, &Self->ParentID, &count) != ERR_Okay) {
             SurfaceControl *ctl;
             if ((ctl = drwAccessList(ARF_READ))) {
                auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);

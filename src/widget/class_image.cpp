@@ -1307,7 +1307,8 @@ ERROR init_image(void)
    parasol::Log log;
    objDisplay *display;
    OBJECTID display_id;
-   if (!FastFindObject("SystemDisplay", ID_DISPLAY, &display_id, 1, 0)) {
+   LONG count = 1;
+   if (!FindObject("SystemDisplay", ID_DISPLAY, &display_id, &count)) {
       if (!AccessObject(display_id, 3000, &display)) {
          if (display->Flags & SCR_BIT_6) {
             log.msg("Images will be downsampled to 6-bits per channel.");

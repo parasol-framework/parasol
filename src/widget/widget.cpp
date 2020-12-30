@@ -435,15 +435,16 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    OBJECTID style_id;
    objXML *style;
 
-   if (!FastFindObject("glStyle", ID_XML, &style_id, 1, NULL)) {
+   LONG count = 1;
+   if (!FindObject("glStyle", ID_XML, &style_id, &count)) {
       if (!AccessObject(style_id, 500, &style)) {
          WORD i;
          char buffer[100];
          if (!acGetVar(style, "/interface/@widgetmargin", buffer, sizeof(buffer))) {
             // If the margin is expressed as 'px' then it's fixed.  Otherwise scale it according to the display DPI.
             glMargin = StrToInt(buffer);
-            for (i=0; (buffer[i]) AND (buffer[i] >= '0') AND (buffer[i] <= '9'); i++);
-            if ((buffer[i] IS 'p') AND (buffer[i+1] IS 'x'));
+            for (i=0; (buffer[i]) and (buffer[i] >= '0') and (buffer[i] <= '9'); i++);
+            if ((buffer[i] IS 'p') and (buffer[i+1] IS 'x'));
             else {
                // Scale the value to match DPI.
                glMargin = F2I(gfxScaleToDPI(glMargin));

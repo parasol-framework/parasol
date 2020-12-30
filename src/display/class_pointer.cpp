@@ -696,7 +696,10 @@ static ERROR PTR_Init(objPointer *Self, APTR Void)
          Self->SurfaceID = GetOwnerID(Self->SurfaceID);
       }
 
-      if (!Self->SurfaceID) FastFindObject("SystemSurface", NULL, &Self->SurfaceID, 1, NULL);
+      if (!Self->SurfaceID) {
+         LONG count = 1;
+         FindObject("SystemSurface", NULL, &Self->SurfaceID, &count);
+      }
    }
 
    // Allocate a custom cursor bitmap

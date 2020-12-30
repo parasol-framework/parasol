@@ -26,7 +26,8 @@ void Scintilla::Menu::CreatePopUp()
       return;
    }*/
 
-   FastFindObject((STRING)"SystemSurface", ID_SURFACE, &display_id, 1, NULL);
+   LONG count = 1;
+   FindObject((STRING)"SystemSurface", ID_SURFACE, &display_id, &count);
 
    //id = *reinterpret_cast<MenuID *>(&surface_id);
    if (CreateObject(ID_MENU, 0, &menu,
