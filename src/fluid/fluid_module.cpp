@@ -192,7 +192,7 @@ static int module_call(lua_State *Lua)
          RMSG("Result for arg %d stored at %p", i, end);
 
          if (argtype & FD_BUFFER) {
-            // User is required to supply an argument that will store a buffer result.  This is a different case to the
+            // The client must supply an argument that will store a buffer result.  This is a different case to the
             // storage of type values.
 
             memory *mem;

@@ -123,9 +123,9 @@ ERROR CheckObjectExists(OBJECTID ObjectID, CSTRING Name)
       }
 
       char buffer[MAX_NAME_LEN+1];
-      for (i=0; (Name[i]) AND (i < MAX_NAME_LEN); i++) { // Change the Name string to all-lower case and build a hash
+      for (i=0; (Name[i]) and (i < MAX_NAME_LEN); i++) { // Change the Name string to all-lower case and build a hash
          char c = Name[i];
-         if ((c >= 'A') AND (c <= 'Z')) c = c - 'A' + 'a';
+         if ((c >= 'A') and (c <= 'Z')) c = c - 'A' + 'a';
          buffer[i] = c;
       }
       buffer[i] = 0;
@@ -135,11 +135,11 @@ ERROR CheckObjectExists(OBJECTID ObjectID, CSTRING Name)
          SharedObject *list = (SharedObject *)ResolveAddress(header, header->Offset);
 
          for (LONG i=0; i < header->NextEntry; i++) {
-            if ((list[i].ObjectID) AND ((!list[i].InstanceID) OR (list[i].InstanceID IS glInstanceID))) {
+            if ((list[i].ObjectID) and ((!list[i].InstanceID) or (list[i].InstanceID IS glInstanceID))) {
                for (j=0; list[i].Name[j]; j++) {
                   if (list[i].Name[j] != buffer[j]) break;
                }
-               if ((!list[i].Name[j]) AND (!buffer[j])) {
+               if ((!list[i].Name[j]) and (!buffer[j])) {
                   ReleaseMemoryID(RPM_SharedObjects);
                   return ERR_True;
                }
@@ -226,7 +226,7 @@ Args:
 
 ERROR CopyMemory(const void *Src, APTR Dest, LONG Length)
 {
-   if ((!Src) OR (!Dest)) return ERR_NullArgs;
+   if ((!Src) or (!Dest)) return ERR_NullArgs;
    if (Length < 0) return ERR_Args;
    if (Src IS Dest) return ERR_Okay;
 
@@ -311,12 +311,10 @@ OBJECTPTR CurrentTask(void)
 FastFindObject: Searches for objects by name.
 Category: Objects
 
-The FastFindObject() function is an optimised implementation of the ~FindObject() function.  Use it to search for
-objects in the system by their name and/or class.  Unlike ~FindObject(), which will return an allocated memory block
-that lists all of the objects that were found, FastFindObject() requires a pre-allocated buffer to write the results
-to.  This saves the cost of allocation time, which can be expensive in some situations.
+The FastFindObject() function searches for all objects that match a given name and can filter by class.
+A pre-allocated buffer is required for the output of the results.
 
-The following code example is a typical illustration of this function's use.  It finds the most recent object created
+The following example is a typical illustration of this function's use.  It finds the most recent object created
 with a given name:
 
 <pre>
@@ -324,7 +322,7 @@ OBJECTID id;
 FastFindObject("SystemPointer", ID_POINTER, &id, 1, NULL);
 </pre>
 
-If FastFindObject() cannot find any objects with the name that you are looking for, it will return an error code.
+If FastFindObject() cannot find any matching objects then it will return an error code.
 
 The list is sorted so that the oldest private object is placed at the start of the list, and the most recent public object
 is placed at the end.  Take advantage of this fact to get the oldest or youngest object with the Name that is being
@@ -333,7 +331,7 @@ are pushed towards the beginning of the array.
 
 -INPUT-
 cstr Name:     The name of an object to search for.
-cid ClassID:   Set to a class ID to filter the results down to a specific class type.
+cid ClassID:   Optional.  Set to a class ID to filter the results down to a specific class type.
 &oid Array:    Pointer to the array that will store the results.
 int ArraySize: Indicates the size of Array, measured in elements.  Must be set to a value of 1 or greater.
 &int Count:    This parameter will be updated with the total number of objects stored in Array.  Can be NULL if not required.
@@ -660,61 +658,7 @@ rkMetaClass * FindClass(CLASSID ClassID)
 /*****************************************************************************
 
 -FUNCTION-
-FindObject: Searches for objects by name and class.
-Category: Objects
-
-The FindObject() function is used to search for objects in the system by name and class type.  If the function cannot
-find any object with the name or class that you are looking for, then it will return an error code.  If it does find
-one or more matching objects, then a complete list of them will be returned in an allocated memory block.
-
-The List is sorted so that the oldest object is placed at the start of the list, and the most recent is placed at the
-end.  This will assist you in situations where you may be looking for the oldest or youngest object that has the
-particular name that you have searched for.
-
-The List is terminated with a NULL entry.
-
-The List is returned as an allocated memory block - please use ~FreeResource() to deallocate it.
-
--INPUT-
-cstr Name: The name of the object that you are looking for.
-cid ClassID: Setting this field to a class ID will filter the results down to a specific class type.
-&!ptr(oid) List: On success, a memory block containing a list of ObjectID's will be placed in this variable.
-&int Count: The total number of objects listed in the List array will be stored in this variable.
-
--ERRORS-
-Okay:         One or more objects have been found and are listed.
-Search:       There are no objects in the system with the given name or class type.
-NullArgs:
-Memory:       The function failed to allocate enough memory for the List array.
-AccessMemory: The function failed to gain access to the PublicObjects structure (internal error).
-
-*****************************************************************************/
-
-ERROR FindObject(CSTRING InitialName, CLASSID ClassID, OBJECTID **List, LONG *ObjectCount)
-{
-   parasol::Log log(__FUNCTION__);
-
-   if ((!ObjectCount) OR (!List)) return log.warning(ERR_NullArgs);
-
-   OBJECTID array[500];
-   ERROR error;
-   if (!(error = FastFindObject(InitialName, ClassID, array, ARRAYSIZE(array), ObjectCount))) {
-      OBJECTID *alloc;
-      if (!AllocMemory(sizeof(OBJECTID) * (ObjectCount[0] + 1), MEM_NO_CLEAR, (APTR *)&alloc, NULL)) {
-         CopyMemory(array, alloc, sizeof(OBJECTID) * ObjectCount[0]);
-         alloc[*ObjectCount] = 0; // Terminate the array
-         *List = alloc;
-         return ERR_Okay;
-      }
-      else return log.warning(ERR_AllocMemory);
-   }
-   else return error;
-}
-
-/*****************************************************************************
-
--FUNCTION-
-FindPrivateObject: Searches for objects by name.
+FindPrivateObject: Search for an object by name.
 Category: Objects
 
 The FindPrivateObject() function is provided as a simple implementation of the FastFindObject() function.  This
@@ -743,7 +687,7 @@ ERROR FindPrivateObject(CSTRING InitialName, OBJECTPTR *Object)
 {
    parasol::Log log(__FUNCTION__);
 
-   if ((!InitialName) OR (!Object)) return log.warning(ERR_NullArgs);
+   if ((!InitialName) or (!Object)) return log.warning(ERR_NullArgs);
 
    *Object = NULL;
 
@@ -760,7 +704,7 @@ ERROR FindPrivateObject(CSTRING InitialName, OBJECTPTR *Object)
 
       LONG i;
       for (i=0; InitialName[i]; i++) {
-         if (((InitialName[i] < '0') OR (InitialName[i] > '9')) AND (InitialName[i] != '-')) break;
+         if (((InitialName[i] < '0') or (InitialName[i] > '9')) and (InitialName[i] != '-')) break;
       }
       if (!InitialName[i]) number = TRUE;
    }
@@ -782,7 +726,7 @@ ERROR FindPrivateObject(CSTRING InitialName, OBJECTPTR *Object)
       else return ERR_Search;
    }
    else if (!StrMatch("owner", InitialName)) {
-      if ((tlContext != &glTopContext) AND (tlContext->Object->OwnerID)) {
+      if ((tlContext != &glTopContext) and (tlContext->Object->OwnerID)) {
          ThreadLock lock(TL_PRIVATE_MEM, 4000);
          if (lock.granted()) {
             LONG i;
@@ -797,21 +741,6 @@ ERROR FindPrivateObject(CSTRING InitialName, OBJECTPTR *Object)
       else return ERR_Search;
    }
 
-   // Copy the name to our buffer in lower case
-
-   char name[MAX_NAME_LEN+1];
-   ULONG hash = 5381;
-   {
-      LONG i;
-      for (i=0; (InitialName[i]) AND (i < MAX_NAME_LEN - 1); i++) {
-         char c = InitialName[i];
-         if ((c >= 'A') AND (c <= 'Z')) c = c - 'A' + 'a';
-         name[i] = c;
-         hash = ((hash<<5) + hash) + c;
-      }
-      name[i] = 0;
-   }
-
    ThreadLock lock(TL_OBJECT_LOOKUP, 4000);
    if (lock.granted()) {
       LONG i, list_size;
@@ -821,7 +750,7 @@ ERROR FindPrivateObject(CSTRING InitialName, OBJECTPTR *Object)
          for (i = (list_size / sizeof(OBJECTPTR)) - 1; i >= 0; i--) {
             if (list[i]) {
                *Object = list[i];
-               break;
+               return ERR_Okay;
             }
          }
       }
@@ -848,7 +777,7 @@ mem: A memory ID that refers to the feed list is returned, or NULL if no subscri
 
 MEMORYID GetFeedList(OBJECTPTR Object)
 {
-   if ((Object) AND (Object->Stats)) {
+   if ((Object) and (Object->Stats)) {
       return Object->Stats->MID_FeedList;
    }
    else return 0;
@@ -922,7 +851,7 @@ cstr: A human readable string for the error code is returned.  By default error 
 
 CSTRING GetErrorMsg(ERROR Code)
 {
-   if ((Code < glTotalMessages) AND (Code > 0)) {
+   if ((Code < glTotalMessages) and (Code > 0)) {
       return glMessages[Code];
    }
    else if (!Code) return "Operation successful.";
@@ -1246,7 +1175,7 @@ cstr: A string containing the object name is returned.  If the object has no nam
 
 CSTRING GetName(OBJECTPTR Object)
 {
-   if ((Object) AND (Object->Stats)) return Object->Stats->Name;
+   if ((Object) and (Object->Stats)) return Object->Stats->Name;
    else return "";
 }
 
@@ -1272,7 +1201,7 @@ OBJECTPTR GetObjectPtr(OBJECTID ObjectID)
    ThreadLock lock(TL_PRIVATE_MEM, 4000);
    if (lock.granted()) {
       for (LONG i=0; i < glNextPrivateAddress; i++) {
-         if ((glPrivateMemory[i].Flags & MEM_OBJECT) AND (glPrivateMemory[i].Address)) {
+         if ((glPrivateMemory[i].Flags & MEM_OBJECT) and (glPrivateMemory[i].Address)) {
             if (((OBJECTPTR)glPrivateMemory[i].Address)->UniqueID IS ObjectID) {
                return (OBJECTPTR)glPrivateMemory[i].Address;
             }
@@ -1424,7 +1353,7 @@ LARGE GetResource(LONG Resource)
                   freemem += (LARGE)StrToInt(str+i) * 1024LL;
                }
 
-               while ((i < result) AND (str[i] != '\n')) i++;
+               while ((i < result) and (str[i] != '\n')) i++;
                i++;
             }
          }
@@ -1555,8 +1484,8 @@ ERROR ListChildren(OBJECTID ObjectID, ChildEntry *List, LONG *Count)
 {
    parasol::Log log(__FUNCTION__);
 
-   if ((!ObjectID) OR (!List) OR (!Count)) return log.warning(ERR_NullArgs);
-   if ((*Count < 0) OR (*Count > 3000)) return log.warning(ERR_Args);
+   if ((!ObjectID) or (!List) or (!Count)) return log.warning(ERR_NullArgs);
+   if ((*Count < 0) or (*Count > 3000)) return log.warning(ERR_Args);
 
    ERROR error = ERR_Okay;
    LONG i = 0;
@@ -1568,7 +1497,7 @@ ERROR ListChildren(OBJECTID ObjectID, ChildEntry *List, LONG *Count)
    if (!AccessMemory(RPM_SharedObjects, MEM_READ, 2000, (void **)&header)) {
       SharedObject *list = (SharedObject *)ResolveAddress(header, header->Offset);
       for (LONG j=0; j < header->NextEntry; j++) {
-         if ((list[j].OwnerID IS ObjectID) AND (!(list[j].Flags & NF_INTEGRAL))) {
+         if ((list[j].OwnerID IS ObjectID) and (!(list[j].Flags & NF_INTEGRAL))) {
             List[i].ObjectID = list[j].ObjectID;
             List[i].ClassID  = list[j].ClassID;
             i++;
@@ -1585,7 +1514,7 @@ ERROR ListChildren(OBJECTID ObjectID, ChildEntry *List, LONG *Count)
       ThreadLock lock(TL_PRIVATE_MEM, 4000);
       if (lock.granted()) {
          for (LONG j=0; j < glNextPrivateAddress; j++) {
-            if ((glPrivateMemory[j].Flags & MEM_OBJECT) AND (glPrivateMemory[j].ObjectID IS ObjectID)) {
+            if ((glPrivateMemory[j].Flags & MEM_OBJECT) and (glPrivateMemory[j].ObjectID IS ObjectID)) {
                OBJECTPTR object;
                if ((object = (OBJECTPTR)glPrivateMemory[j].Address)) {
                   if (!(object->Flags & NF_INTEGRAL)) {
@@ -1634,7 +1563,7 @@ ERROR ListTasks(LONG Flags, struct ListTasks **Detail)
       LONG memlocks = 0;
       struct ListTasks *list;
       for (LONG i=0; i < MAX_TASKS; i++) {
-         if ((shTasks[i].ProcessID) AND (shTasks[i].TaskID) AND (shTasks[i].MessageID)) {
+         if ((shTasks[i].ProcessID) and (shTasks[i].TaskID) and (shTasks[i].MessageID)) {
             if (Flags & LTF_CURRENT_PROCESS) {
                if (shTasks[i].TaskID != glCurrentTaskID) continue;
             }
@@ -1650,8 +1579,8 @@ ERROR ListTasks(LONG Flags, struct ListTasks **Detail)
          *Detail = list;
 
          LONG j = 0;
-         for (LONG i=0; (i < MAX_TASKS) AND (j < taskcount); i++) {
-            if ((shTasks[i].ProcessID) AND (shTasks[i].TaskID) AND (shTasks[i].MessageID)) {
+         for (LONG i=0; (i < MAX_TASKS) and (j < taskcount); i++) {
+            if ((shTasks[i].ProcessID) and (shTasks[i].TaskID) and (shTasks[i].MessageID)) {
                if (Flags & LTF_CURRENT_PROCESS) {
                   if (shTasks[i].TaskID != glCurrentTaskID) continue;
                }
@@ -1798,10 +1727,10 @@ ERROR RegisterFD(LONG FD, LONG Flags, void (*Routine)(HOSTHANDLE, APTR), APTR Da
       if (!(Flags & (RFD_READ|RFD_WRITE|RFD_EXCEPT))) Flags |= RFD_READ|RFD_WRITE|RFD_EXCEPT;
 
       for (LONG i=0; i < glTotalFDs; i++) {
-         if ((glFDTable[i].FD IS FD) AND ((glFDTable[i].Flags & (RFD_READ|RFD_WRITE|RFD_EXCEPT)) & Flags)) {
+         if ((glFDTable[i].FD IS FD) and ((glFDTable[i].Flags & (RFD_READ|RFD_WRITE|RFD_EXCEPT)) & Flags)) {
             // If the routine address was specified with the remove option, the routine must match.
 
-            if ((Routine) AND (glFDTable[i].Routine != Routine)) continue;
+            if ((Routine) and (glFDTable[i].Routine != Routine)) continue;
 
             if (i+1 < glTotalFDs) {
                CopyMemory(glFDTable+i+1, glFDTable+i, sizeof(FDTable) * (glTotalFDs-i-1));
@@ -1817,7 +1746,7 @@ ERROR RegisterFD(LONG FD, LONG Flags, void (*Routine)(HOSTHANDLE, APTR), APTR Da
    if (!(Flags & (RFD_READ|RFD_WRITE|RFD_EXCEPT|RFD_REMOVE))) Flags |= RFD_READ;
 
    for (i=0; i < glTotalFDs; i++) {
-      if ((glFDTable[i].FD IS FD) AND (Flags & (glFDTable[i].Flags & (RFD_READ|RFD_WRITE|RFD_EXCEPT)))) break;
+      if ((glFDTable[i].FD IS FD) and (Flags & (glFDTable[i].Flags & (RFD_READ|RFD_WRITE|RFD_EXCEPT)))) break;
    }
 
    if (i >= MAX_FDS) return log.warning(ERR_ArrayFull);
@@ -1900,7 +1829,7 @@ ERROR SetOwner(OBJECTPTR Object, OBJECTPTR Owner)
 {
    parasol::Log log(__FUNCTION__);
 
-   if ((!Object) OR (!Owner)) return log.warning(ERR_NullArgs);
+   if ((!Object) or (!Owner)) return log.warning(ERR_NullArgs);
 
    if (Object->OwnerID IS Owner->UniqueID) return ERR_Okay;
 
@@ -1987,7 +1916,7 @@ ERROR SetOwner(OBJECTPTR Object, OBJECTPTR Owner)
       // If the owner is public and belongs to another task, subscribe to the FreeResources action so
       // that we can receive notification when the owner is destroyed.
 
-      if ((Owner->UniqueID < 0) AND (Owner->TaskID) AND (Owner->TaskID != glCurrentTaskID) AND (Owner->TaskID != SystemTaskID)) {
+      if ((Owner->UniqueID < 0) and (Owner->TaskID) and (Owner->TaskID != glCurrentTaskID) and (Owner->TaskID != SystemTaskID)) {
          log.msg("Owner %d is in task %d, will monitor for termination.", Owner->UniqueID, Owner->TaskID);
          OBJECTPTR context = SetContext(Object);
          SubscribeAction(Owner, AC_OwnerDestroyed);
@@ -2093,24 +2022,24 @@ ERROR SetName(OBJECTPTR Object, CSTRING String)
    SharedObjectHeader *header;
    LONG i, pos;
 
-   if ((!Object) OR (!String)) return log.warning(ERR_NullArgs);
+   if ((!Object) or (!String)) return log.warning(ERR_NullArgs);
 
    ScopedObjectAccess objlock(Object);
 
    // Remove any existing name first.
 
-   if ((Object->Stats->Name[0]) AND (Object->UniqueID > 0)) {
+   if ((Object->Stats->Name[0]) and (Object->UniqueID > 0)) {
       ThreadLock lock(TL_OBJECT_LOOKUP, 4000);
       if (lock.granted()) remove_object_hash(Object);
    }
 
    BYTE illegal = FALSE;
    char c;
-   for (i=0; ((c = String[i])) AND (i < (MAX_NAME_LEN-1)); i++) {
-      if ((c >= 'A') AND (c <= 'Z')) {
+   for (i=0; ((c = String[i])) and (i < (MAX_NAME_LEN-1)); i++) {
+      if ((c >= 'A') and (c <= 'Z')) {
          c = c - 'A' + 'a';
       }
-      else if (((c >= 'a') AND (c <= 'z')) OR ((c >= '0') AND (c <= '9')) OR ((c IS '_'))) {
+      else if (((c >= 'a') and (c <= 'z')) or ((c >= '0') and (c <= '9')) or ((c IS '_'))) {
       }
       else {
          // Anything that is not alphanumeric is not permitted in the object name.
@@ -2150,7 +2079,7 @@ ERROR SetName(OBJECTPTR Object, CSTRING String)
    else if (!AccessMemory(RPM_SharedObjects, MEM_READ_WRITE, 2000, (void **)&header)) {
       if (!find_public_object_entry(header, Object->UniqueID, &pos)) {
          SharedObject *list = (SharedObject *)ResolveAddress(header, header->Offset);
-         for (i=0; (Object->Stats->Name[i]) AND (i < (MAX_NAME_LEN-1)); i++) {
+         for (i=0; (Object->Stats->Name[i]) and (i < (MAX_NAME_LEN-1)); i++) {
             list[pos].Name[i] = Object->Stats->Name[i];
          }
          list[pos].Name[i] = 0;
@@ -2196,8 +2125,8 @@ ERROR SetResourcePath(LONG PathType, CSTRING Path)
       case RP_ROOT_PATH:
          if (Path) {
             WORD i;
-            for (i=0; (Path[i]) AND ((size_t)i < sizeof(glRootPath)-2); i++) glRootPath[i] = Path[i];
-            if ((glRootPath[i-1] != '/') AND (glRootPath[i-1] != '\\')) {
+            for (i=0; (Path[i]) and ((size_t)i < sizeof(glRootPath)-2); i++) glRootPath[i] = Path[i];
+            if ((glRootPath[i-1] != '/') and (glRootPath[i-1] != '\\')) {
                #ifdef _WIN32
                   glRootPath[i++] = '\\';
                #else
@@ -2211,8 +2140,8 @@ ERROR SetResourcePath(LONG PathType, CSTRING Path)
       case RP_SYSTEM_PATH:
          if (Path) {
             WORD i;
-            for (i=0; (Path[i]) AND ((size_t)i < sizeof(glSystemPath)-2); i++) glSystemPath[i] = Path[i];
-            if ((glSystemPath[i-1] != '/') AND (glSystemPath[i-1] != '\\')) {
+            for (i=0; (Path[i]) and ((size_t)i < sizeof(glSystemPath)-2); i++) glSystemPath[i] = Path[i];
+            if ((glSystemPath[i-1] != '/') and (glSystemPath[i-1] != '\\')) {
                #ifdef _WIN32
                   glSystemPath[i++] = '\\';
                #else
@@ -2226,8 +2155,8 @@ ERROR SetResourcePath(LONG PathType, CSTRING Path)
       case RP_MODULE_PATH: // An alternative path to the system modules.  This was introduced for Android, which holds the module binaries in the assets folders.
          if (Path) {
             WORD i;
-            for (i=0; (Path[i]) AND ((size_t)i < sizeof(glModulePath)-2); i++) glModulePath[i] = Path[i];
-            if ((glModulePath[i-1] != '/') AND (glModulePath[i-1] != '\\')) {
+            for (i=0; (Path[i]) and ((size_t)i < sizeof(glModulePath)-2); i++) glModulePath[i] = Path[i];
+            if ((glModulePath[i-1] != '/') and (glModulePath[i-1] != '\\')) {
                #ifdef _WIN32
                   glModulePath[i++] = '\\';
                #else
@@ -2295,7 +2224,7 @@ LARGE SetResource(LONG Resource, LARGE Value)
          break;
 
       case RES_LOG_LEVEL:
-         if ((Value >= 0) AND (Value <= 9)) glLogLevel = Value;
+         if ((Value >= 0) and (Value <= 9)) glLogLevel = Value;
          break;
 
       case RES_LOG_DEPTH: tlDepth = Value; break;
@@ -2371,11 +2300,11 @@ ERROR SetSubscriptionPriority(OBJECTPTR Object, ACTIONID ActionID, OBJECTID Subs
    LONG i, error, memflags;
    APTR context;
 
-   if ((!Object) OR (!ActionID) OR (!SubscriberID)) return ERR_Args;
+   if ((!Object) or (!ActionID) or (!SubscriberID)) return ERR_Args;
 
    if (AccessMemory(Object->Stats->ActionSubscriptions.ID, MEM_READ_WRITE, 2000, (APTR *)&list) IS ERR_Okay) {
-      for (i=0; (i < Object->Stats->SubscriptionSize) AND (list[i].ActionID); i++) {
-         if ((list[i].ActionID IS ActionID) AND (list[i].SubscriberID IS Subscriber->UniqueID)) break;
+      for (i=0; (i < Object->Stats->SubscriptionSize) and (list[i].ActionID); i++) {
+         if ((list[i].ActionID IS ActionID) and (list[i].SubscriberID IS Subscriber->UniqueID)) break;
       }
 
       if (i >= Object->Stats->SubscriptionSize) {
@@ -2387,7 +2316,7 @@ ERROR SetSubscriptionPriority(OBJECTPTR Object, ACTIONID ActionID, OBJECTID Subs
 
          if (error IS ERR_Okay) {
             if (AccessMemory(newlistid, MEM_READ_WRITE, 2000, (APTR *)&newlist) IS ERR_Okay) {
-               for (i=0; (list[i].ActionID) AND (i < Object->Stats->SubscriptionSize); i++) {
+               for (i=0; (list[i].ActionID) and (i < Object->Stats->SubscriptionSize); i++) {
                   newlist[i].ActionID       = list[i].ActionID;
                   newlist[i].SubscriberID   = list[i].SubscriberID;
                   newlist[i].MessagePortMID = list[i].MessagePortMID;
@@ -2564,7 +2493,7 @@ ERROR SubscribeTimer(DOUBLE Interval, FUNCTION *Callback, APTR *Subscription)
 {
    parasol::Log log(__FUNCTION__);
 
-   if ((!Interval) OR (!Callback)) return log.warning(ERR_NullArgs);
+   if ((!Interval) or (!Callback)) return log.warning(ERR_NullArgs);
    if (Interval < 0) return log.warning(ERR_Args);
 
    OBJECTPTR subscriber = tlContext->Object;

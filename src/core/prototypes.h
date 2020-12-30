@@ -25,7 +25,6 @@ LONG AdjustLogLevel(LONG Adjust);
 void LogF(CSTRING Header, CSTRING Message, ...);
 ERROR FastFindObject(CSTRING Name, CLASSID ClassID, OBJECTID * Array, LONG ArraySize, LONG * Count);
 struct rkMetaClass * FindClass(CLASSID ClassID);
-ERROR FindObject(CSTRING Name, CLASSID ClassID, OBJECTID ** List, LONG * Count);
 ERROR ReleaseObject(OBJECTPTR Object);
 ERROR FreeResource(const void * Address);
 ERROR FreeResourceID(MEMORYID ID);
