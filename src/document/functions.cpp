@@ -464,7 +464,8 @@ static BYTE check_tag_conditions(objDocument *Self, XMLTag *Tag)
          break;
       }
       else if (!StrMatch("exists", Tag->Attrib[i].Name)) {
-         if (FastFindObject(Tag->Attrib[i].Value, 0, &object_id, 1, &count) IS ERR_Okay) {
+         count = 1;
+         if (!FindObject(Tag->Attrib[i].Value, 0, &object_id, &count)) {
             if (valid_objectid(Self, object_id)) {
                satisfied = TRUE;
             }
@@ -6000,13 +6001,12 @@ static ERROR convert_xml_args(objDocument *Self, XMLAttrib *Attrib, LONG Total)
                      // On pass 2, which can only be performed if the document is in unrestricted access mode, we will take the
                      // first object on the list (which will be the most recently created one).
 
-                     OBJECTID list[40], parent_id;
-                     LONG count, j;
-
-                     if (!FastFindObject(name, 0, list, ARRAYSIZE(list), &count)) {
+                     OBJECTID list[40];
+                     LONG count = ARRAYSIZE(list);
+                     if (!FindObject(name, 0, list, &count)) {
                         // Pass 1: Only consider objects that are children of the document
-                        for (j=0; (j < count) and (!objectid); j++) {
-                           parent_id = list[j];
+                        for (LONG j=0; (j < count) and (!objectid); j++) {
+                           OBJECTID parent_id = list[j];
                            while (parent_id) {
                               parent_id = GetOwnerID(parent_id);
                               if (parent_id IS Self->Head.UniqueID) {

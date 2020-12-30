@@ -1118,7 +1118,8 @@ static void tag_set(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, 
    if (Tag->TotalAttrib > 1) {
       if (!StrMatch("object", Tag->Attrib[1].Name)) {
          OBJECTID objectid;
-         if (!FastFindObject(Tag->Attrib[1].Value, 0, &objectid, 1, 0)) {
+         LONG count = 1;
+         if (!FindObject(Tag->Attrib[1].Value, 0, &objectid, &count)) {
             if (valid_objectid(Self, objectid) IS TRUE) {
                OBJECTPTR object;
                if (!AccessObject(objectid, 3000, &object)) {
@@ -1447,8 +1448,9 @@ static void tag_object(objDocument *Self, CSTRING pagetarget, CLASSID class_id, 
             }
             else if ((src = XMLATTRIB(scan, "object"))) {
                OBJECTID objectid;
+               LONG count = 1;
 
-               if (!FastFindObject(src, 0, &objectid, 1, 0)) {
+               if (!FindObject(src, 0, &objectid, &count)) {
                   if ((objectid) and (valid_objectid(Self, objectid))) {
                      objXML *objxml;
                      if (!AccessObject(objectid, 3000, &objxml)) {

@@ -1374,7 +1374,8 @@ static ERROR BITMAP_Query(objBitmap *Self, APTR Void)
          Self->BitsPerPixel  = 32;
          Self->BytesPerPixel = 4;
 #if 1
-         if (!FastFindObject("SystemDisplay", ID_DISPLAY, &display_id, 1, NULL)) {
+         LONG count = 1;
+         if (!FindObject("SystemDisplay", ID_DISPLAY, &display_id, &count)) {
             if (!AccessObject(display_id, 3000, &display)) {
                Self->AmtColours    = display->Bitmap->AmtColours;
                Self->BytesPerPixel = display->Bitmap->BytesPerPixel;

@@ -870,7 +870,8 @@ static ERROR DISPLAY_Init(objDisplay *Self, APTR Void)
          }
          else {
             OBJECTID surface_id;
-            if (!FastFindObject("SystemSurface", ID_SURFACE, &surface_id, 1, NULL)) {
+            LONG count = 1;
+            if (!FindObject("SystemSurface", ID_SURFACE, &surface_id, &count)) {
                if (surface_id IS GetOwner(Self)) desktop = TRUE;
             }
          }
@@ -2255,7 +2256,8 @@ static ERROR GET_HDensity(objDisplay *Self, LONG *Value)
    // If the user has overridden the DPI with a preferred value, we have to use it.
 
    OBJECTID style_id;
-   if (!FastFindObject("glStyle", ID_XML, &style_id, 1, NULL)) {
+   LONG count = 1;
+   if (!FindObject("glStyle", ID_XML, &style_id, &count)) {
       objXML *style;
       if (!AccessObject(style_id, 3000, &style)) {
          char strdpi[32];
@@ -2326,7 +2328,8 @@ static ERROR GET_VDensity(objDisplay *Self, LONG *Value)
    // If the user has overridden the DPI with a preferred value, we have to use it.
 
    OBJECTID style_id;
-   if (!FastFindObject("glStyle", ID_XML, &style_id, 1, NULL)) {
+   LONG count = 1;
+   if (!FindObject("glStyle", ID_XML, &style_id, &count)) {
       objXML *style;
       if (!AccessObject(style_id, 3000, &style)) {
          char strdpi[32];

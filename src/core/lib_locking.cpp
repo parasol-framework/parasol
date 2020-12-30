@@ -1110,7 +1110,7 @@ correctly.
 
 If AccessObject() fails, the Result variable will be automatically set to a NULL pointer on return.
 
-Hint: If the name of the target object is known but not the ID, use ~FastFindObject() to resolve it.
+Hint: If the name of the target object is known but not the ID, use ~FindObject() to resolve it.
 
 -INPUT-
 oid Object: The unique ID of the target object.
