@@ -69,8 +69,24 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
+function testFindObject()
+   glSet = { }
+   for i=1,10 do
+      local obj = obj.new('xml', { name='TestFO', flags='NEW' })
+      table.insert(glSet, obj)
+   end
+
+   local objlist = array.new(10, 'long')
+   local err, count = mSys.FindObject('TestFO', 0, objlist)
+   assert(err == ERR_Okay, 'Failed to list created objects: ' .. mSys.GetErrorMsg(err))
+   assert(count == 10, 'Expected 10 objects, listed ' .. count)
+   assert(objlist[1] < objlist[10], 'Expected the oldest object to come first in the sort order.')
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+
    return {
-      tests = { 'testActionList', 'testMetaClassArrays', 'testEnvPath', 'testPreciseTime', 'testRegistry' },
+      tests = { 'testActionList', 'testMetaClassArrays', 'testEnvPath', 'testPreciseTime', 'testRegistry', 'testFindObject' },
       init = function()
       end,
       cleanup = function()

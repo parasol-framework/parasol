@@ -351,7 +351,6 @@ DoesNotExist:
 ERROR FindObject(CSTRING InitialName, CLASSID ClassID, OBJECTID *Array, LONG *Count)
 {
    parasol::Log log(__FUNCTION__);
-   LONG i;
 
    if ((!Array) or (!InitialName) or (!Count)) return ERR_NullArgs;
    if (*Count < 1) return log.warning(ERR_Args);
@@ -426,8 +425,6 @@ ERROR FindObject(CSTRING InitialName, CLASSID ClassID, OBJECTID *Array, LONG *Co
                      objlist.back().messagemid = glTaskMessageMID;
                   }
                }
-
-               i++;
             }
          }
       }
@@ -437,6 +434,7 @@ ERROR FindObject(CSTRING InitialName, CLASSID ClassID, OBJECTID *Array, LONG *Co
    // is given to objects that this process created.  This causes some mild overhead but is vital for ensuring
    // that programs aren't confused when they use identically named objects.
 
+   LONG i;
    char name[MAX_NAME_LEN+1];
    for (i=0; (InitialName[i]) and (i < MAX_NAME_LEN - 1); i++) {
       char c = InitialName[i];
@@ -1931,13 +1929,13 @@ AccessMemory: The function could not gain access to the shared objects table (in
 
 *****************************************************************************/
 
-ERROR SetName(OBJECTPTR Object, CSTRING String)
+ERROR SetName(OBJECTPTR Object, CSTRING NewName)
 {
    parasol::Log log(__FUNCTION__);
    SharedObjectHeader *header;
    LONG i, pos;
 
-   if ((!Object) or (!String)) return log.warning(ERR_NullArgs);
+   if ((!Object) or (!NewName)) return log.warning(ERR_NullArgs);
 
    ScopedObjectAccess objlock(Object);
 
@@ -1948,9 +1946,9 @@ ERROR SetName(OBJECTPTR Object, CSTRING String)
       if (lock.granted()) remove_object_hash(Object);
    }
 
-   BYTE illegal = FALSE;
+   bool illegal = false;
    char c;
-   for (i=0; ((c = String[i])) and (i < (MAX_NAME_LEN-1)); i++) {
+   for (i=0; ((c = NewName[i])) and (i < (MAX_NAME_LEN-1)); i++) {
       if ((c >= 'A') and (c <= 'Z')) {
          c = c - 'A' + 'a';
       }
@@ -1959,10 +1957,10 @@ ERROR SetName(OBJECTPTR Object, CSTRING String)
       else {
          // Anything that is not alphanumeric is not permitted in the object name.
          if (!illegal) {
-            illegal = TRUE;
-            log.warning("Illegal character '%c' in proposed name '%s'", c, String);
-            c = '_';
+            illegal = true;
+            log.warning("Illegal character '%c' in proposed name '%s'", c, NewName);
          }
+         c = '_';
       }
 
       Object->Stats->Name[i] = c;
@@ -1988,6 +1986,7 @@ ERROR SetName(OBJECTPTR Object, CSTRING String)
             }
             else VarSet(glObjectLookup, Object->Stats->Name, &Object, sizeof(OBJECTPTR));
          }
+         else return log.warning(ERR_Lock);
       }
       return ERR_Okay;
    }
