@@ -51,10 +51,10 @@ struct prvFluid {
 
 struct array {
    struct structentry *StructDef; // Set if the array represents a known struct.
-   LONG Total;
-   LONG Type;
-   LONG TypeSize;
-   LONG ArraySize;    // Size of the array in bytes
+   LONG Total;        // Total number of elements
+   LONG Type;         // FD_BYTE, FD_LONG etc...
+   LONG TypeSize;     // Byte-size of the type, e.g. LARGE == 8 bytes
+   LONG ArraySize;    // Size of the array *in bytes*
    UBYTE Allocated:1;
    UBYTE ReadOnly:1;
    union {
@@ -66,10 +66,12 @@ struct array {
       LONG   *ptrLong;
       WORD   *ptrWord;
       UBYTE  *ptrByte;
+      APTR   ptrVoid;
    };
 };
 
 // This structure is created & managed through the 'memory' interface
+// DEPRECATED
 
 struct memory {
    union {
