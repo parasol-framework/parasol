@@ -77,7 +77,7 @@ function testFindObject()
    end
 
    local objlist = array.new(10, 'long')
-   local err, count = mSys.FindObject('TestFO', 0, objlist)
+   local err, count = mSys.FindObject('TestFO', 0, 0, objlist)
    assert(err == ERR_Okay, 'Failed to list created objects: ' .. mSys.GetErrorMsg(err))
    assert(count == 10, 'Expected 10 objects, listed ' .. count)
    assert(objlist[1] < objlist[10], 'Expected the oldest object to come first in the sort order.')

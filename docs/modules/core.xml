@@ -886,10 +886,11 @@ if (!AllocMemory(1000, MEM_DATA, &amp;address, NULL)) {
     <name>FindObject</name>
     <category>Objects</category>
     <comment>Searches for objects by name.</comment>
-    <prototype>ERROR FindObject(CSTRING Name, CLASSID ClassID, OBJECTID * Array, LONG * Count)</prototype>
+    <prototype>ERROR FindObject(CSTRING Name, CLASSID ClassID, LONG Flags, OBJECTID * Array, LONG * Count)</prototype>
     <input>
       <param type="CSTRING" name="Name">The name of an object to search for.</param>
       <param type="CLASSID" name="ClassID">Optional.  Set to a class ID to filter the results down to a specific class type.</param>
+      <param type="LONG" name="Flags" lookup="FOF">Optional flags.</param>
       <param type="OBJECTID *" name="Array">Pointer to the array that will store the results.</param>
       <param type="LONG *" name="Count">Indicates the size of Array, measured in elements.  Must be set to a value of 1 or greater.</param>
     </input>
@@ -3947,6 +3948,11 @@ end
       <const name="DECOMPRESS_OBJECT"/>
     </constants>
 
+    <constants lookup="FOF" comment="Flags that can be passed to FindObject()">
+      <const name="INCLUDE_SHARED">Include public objects when searching.</const>
+      <const name="SMART_NAMES">Parse numeric object names as ID references and support use of the 'Owner' reserved keyword.</const>
+    </constants>
+
     <constants lookup="VLF" comment="VlogF flags">
       <const name="ERROR"/>
       <const name="WARNING"/>
@@ -4289,9 +4295,6 @@ end
       <const name="NO_DEEP_SCAN">Do not perform more than one iteration when resolving the source file path.</const>
     </constants>
 
-    <constants lookup="PMF" comment="Flags for ProcessMessages">
-    </constants>
-
     <constants lookup="MFF" comment="Flags for the File Watch() method.">
       <const name="MOVED">Existing file moved or renamed.</const>
       <const name="UNMOUNT">Host filesystem was unmounted.</const>
@@ -4308,6 +4311,9 @@ end
       <const name="CREATE">New file/link created or renamed in folder.</const>
       <const name="DELETE">Existing file deleted</const>
       <const name="MODIFY">File modified via write or truncation.</const>
+    </constants>
+
+    <constants lookup="PMF" comment="Flags for ProcessMessages">
     </constants>
 
     <constants lookup="LOC" comment="AnalysePath() values">

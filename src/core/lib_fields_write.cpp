@@ -555,7 +555,7 @@ ERROR SetFieldEval(OBJECTPTR Object, CSTRING FieldName, CSTRING Value)
          else {
             OBJECTID array[30];
             LONG count = ARRAYSIZE(array);
-            if (!FindObject(Value, 0, array, &count)) {
+            if (!FindObject(Value, 0, FOF_INCLUDE_SHARED, array, &count)) {
                object_id = array[i-1];
             }
             else {

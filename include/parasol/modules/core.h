@@ -1063,6 +1063,11 @@ struct ClipRectangle {
 #define CF_ZLIB 2
 #define CF_DEFLATE 3
 
+// Flags that can be passed to FindObject()
+
+#define FOF_SMART_NAMES 0x00000001
+#define FOF_INCLUDE_SHARED 0x00000002
+
 // Flags that can be passed to NewObject().  If a flag needs to be stored with the object, it must be specified in the lower word.
 
 #define NF_NO_TRACK 0x00000001
@@ -1729,7 +1734,7 @@ struct CoreBase {
    ERROR (*_GetFieldArray)(APTR, FIELD, APTR, LONG *);
    LONG (*_AdjustLogLevel)(LONG);
    void (*_LogF)(const void *, const char *, ...) __attribute__((format(printf, 2, 3)));
-   ERROR (*_FindObject)(CSTRING, CLASSID, OBJECTID *, LONG *);
+   ERROR (*_FindObject)(CSTRING, CLASSID, LONG, OBJECTID *, LONG *);
    struct rkMetaClass * (*_FindClass)(CLASSID);
    ERROR (*_ReleaseObject)(APTR);
    ERROR (*_FreeResource)(const void *);

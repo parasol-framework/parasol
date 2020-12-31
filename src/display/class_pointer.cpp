@@ -698,7 +698,7 @@ static ERROR PTR_Init(objPointer *Self, APTR Void)
 
       if (!Self->SurfaceID) {
          LONG count = 1;
-         FindObject("SystemSurface", NULL, &Self->SurfaceID, &count);
+         FindObject("SystemSurface", 0, FOF_INCLUDE_SHARED, &Self->SurfaceID, &count);
       }
    }
 

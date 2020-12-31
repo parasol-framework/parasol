@@ -448,7 +448,7 @@ static ERROR SOUND_Init(objSound *Self, APTR Void)
 
    if (!Self->AudioID) {
       LONG count = 1;
-      if (FindObject("SystemAudio", ID_AUDIO, &Self->AudioID, &count) != ERR_Okay) {
+      if (FindObject("SystemAudio", ID_AUDIO, FOF_INCLUDE_SHARED, &Self->AudioID, &count) != ERR_Okay) {
          if (!(error = NewNamedObject(ID_AUDIO, NF_PUBLIC|NF_UNIQUE, &audio, &Self->AudioID, "SystemAudio"))) {
             SetOwner(audio, CurrentTask());
 
@@ -618,7 +618,7 @@ static ERROR SOUND_Init(objSound *Self, APTR Void)
 
    if (!Self->AudioID) {
       LONG count = 1;
-      if (FindObject("SystemAudio", ID_AUDIO, &Self->AudioID, &count) != ERR_Okay) {
+      if (FindObject("SystemAudio", ID_AUDIO, FOF_INCLUDE_SHARED, &Self->AudioID, &count) != ERR_Okay) {
          if (!(error = NewNamedObject(ID_AUDIO, NF_PUBLIC|NF_UNIQUE, &audio, &Self->AudioID, "SystemAudio"))) {
             SetOwner(audio, CurrentTask());
 

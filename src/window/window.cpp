@@ -512,7 +512,7 @@ static ERROR WINDOW_Init(objWindow *Self, APTR Void)
 
    OBJECTID style_id;
    LONG count = 1;
-   if (!FindObject("glStyle", ID_XML, &style_id, &count)) {
+   if (!FindObject("glStyle", ID_XML, FOF_INCLUDE_SHARED, &style_id, &count)) {
       objXML *style;
       if (!AccessObject(style_id, 3000, &style)) {
          char strdpi[32];
@@ -991,7 +991,7 @@ static ERROR WINDOW_NewObject(objWindow *Self, APTR Void)
 {
    if ((!glDefaultDisplay) or (CheckObjectExists(glDefaultDisplay, NULL) != ERR_Okay)) {
       LONG count = 1;
-      FindObject("Desktop", ID_SURFACE, &glDefaultDisplay, &count);
+      FindObject("Desktop", ID_SURFACE, FOF_INCLUDE_SHARED, &glDefaultDisplay, &count);
    }
 
    ERROR error;
