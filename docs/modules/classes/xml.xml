@@ -16,10 +16,10 @@
     <include>modules/xml.h</include>
     <copyright>Paul Manias © 2001-2020</copyright>
     <description>
-<p>The XML class provides the necessary functionality to create and maintain XML data files.  It is capable of interpreting and validating XML files with or without correct structure and can perform various data manipulations while doing so. The XML class is also designed to minimise the amount of resources used in storing XML information and exhibits excellent performance in its processing.</p>
-<p>Data can be loaded into an XML object either by specifying a file <field>Path</field> or by giving it an XML <field>Statement</field>.  If you have multiple XML statements to process, you can reset the Path or Statement fields after initialisation and the XML object will rebuild itself.  This saves you from having to allocate multiple XML objects for batch processing.</p>
-<p>Once an XML object has interpreted a statement, you can read the information by scanning the array stored in the <field>Tags</field> field.  This array contains an XMLTag structure for each tag found in the original XML statement.  For more information on how to scan this information, refer to the <field>Tags</field> field.</p>
-<p>Please note that all tag address pointers that are listed in the <field>Tags</field> field are volatile.  Any write operation to an XML object's tree structure will result in changes to the tag address list.</p></description>
+<p>The XML class provides the necessary functionality to create and maintain XML data files.  It is capable of interpreting and validating XML files with or without correct structure and can perform various data manipulations while doing so.</p>
+<p>Data can be loaded into an XML object either by specifying a file <field>Path</field> or by giving it an XML <field>Statement</field>.  If multiple XML statements need to be processed then reset the Path or Statement field after initialisation and the XML object will rebuild itself.  This saves on allocating multiple XML objects for batch processing.</p>
+<p>Successfully processed data can be read back by scanning the array referenced in the <field>Tags</field> field.  The array contains an XMLTag structure for each tag parsed from the original XML statement.  For more information on how to scan this information, refer to the <field>Tags</field> field.</p>
+<p>Please note that all tag address pointers that are listed in the <field>Tags</field> field are volatile.  Any write operation to an XML object's tree structure will invalidate the pointers.</p></description>
     <source>
       <file>xml.cpp</file>
     </source>
@@ -35,7 +35,7 @@
       <name>GetVar</name>
       <comment>Retrieves data from an xml object.</comment>
       <description>
-<p>The XML class supports variable fields for the execution of XPath queries.  Documentation of the XPath standard is out of the scope for this document, however the following examples illustrate the majority of uses for this query language and a number of special instructions that we support:</p>
+<p>The XML class uses variable fields for the execution of XPath queries.  Documentation of the XPath standard is out of the scope for this document, however the following examples illustrate the majority of uses for this query language and a number of special instructions that we support:</p>
 <types type="Path">
 <type name="/menu/submenu">Return the content of the submenu tag whose parent is the first window.</type>
 <type name="xpath:/menu[2]/window">Return the content of the submenu tag whose parent is the 3rd window.</type>
@@ -48,9 +48,9 @@
 <type name="contentexists:/menu">Return '1' if if the immediate child tags of the XPath contain text (white space is ignored).</type>
 <type name="//window">Return content of the first window discovered at any branch of the XML tree (double-slash enables flat scanning of the XML tree).</type>
 </types>
-<p>The 'xpath', 'xml' and '/' prefixes are all identical in identifying the start of an xpath.  The 'content' prefix is used to specifically extract the content of the tag that matches the xpath.  Square brackets and round brackets may be used interchangeably for lookups and filtering clauses.</p>
-<p>Direct tag lookups are also supported through variable fields (this is not normally possible using XPath).  You can retrieve an attribute or the content of any tag so long as you know its index number, using this field name format: <code>Tag(Name, Index, Attrib)</code>.</p>
-<p>The Name indicates the name of the tag that you will be matching to.  If omitted, all tags are included in the lookup. The Index is used to match to the nth tag name that you are comparing against if a Name is specified, otherwise the Index is a direct lookup into the <field>Tags</field> array.  If an Attrib name is specified, then the value for that attribute will be returned.  If the Attrib name is omitted, the content of the matching tag will be returned.</p>
+<p>The <code>xpath</code>, <code>xml</code> and <code>/</code> prefixes are all identical in identifying the start of an xpath.  The <code>content</code> prefix is used to specifically extract the content of the tag that matches the xpath.  Square brackets and round brackets may be used interchangeably for lookups and filtering clauses.</p>
+<p>Direct tag lookups are also supported through variable fields (this is not normally possible using XPath).  You can retrieve an attribute or the content of any tag if you know its index number, using this format: <code>Tag(Name, Index, Attrib)</code>.</p>
+<p>The <code>Name</code> indicates the name of the tag that you will be matching to.  If omitted, all tags are included in the lookup. The <code>Index</code> is used to match to the nth tag name that you are comparing against if a Name is specified, otherwise the Index is a direct lookup into the <field>Tags</field> array.  If an <code>Attrib</code> name is specified, then the value for that attribute will be returned.  If the Attrib name is omitted, the content of the matching tag will be returned.</p>
       </description>
     </action>
 
@@ -108,7 +108,7 @@
       </input>
       <description>
 <p>The Filter method is used to reduce the amount of data in an XML tree, filtering out all data exclusive to the targeted tag and its children.  This is useful for speeding up XPath queries where interest is limited to only one area of the XML tree, or for reducing the memory footprint of large trees.</p>
-<p>It is not possible to retrieve data once it has been filtered out by this method.</p>
+<p>Data that has been filtered out by this method is permanently removed.</p>
       </description>
       <result>
         <error code="NullArgs">Function call missing argument value(s)</error>
@@ -127,7 +127,7 @@
         <param type="LONG *" name="Result">The index of the first matching tag is returned in this parameter (not valid if a Callback is defined).</param>
       </input>
       <description>
-<p>This method will return the first tag that matches the search string specified in XPath.  Optionally, if the XPath uses wild cards or would match multiple tags, a Callback function may be passed that will be called for each matching tag that  is discovered.  The synopsis for the callback function is <code>ERROR Function(*XML, XMLTag *Tag, STRING Attrib)</code>.</p>
+<p>This method will return the first tag that matches the search string specified in XPath.  Optionally, if the XPath uses wildcards or would match multiple tags, a Callback function may be passed that will be called for each matching tag that  is discovered.  The prototype for the callback function is <code>ERROR Function(*XML, XMLTag *Tag, STRING Attrib)</code>.</p>
 <p>The callback routine can terminate the search early by returning ERR_Terminate.  All other error codes are ignored.</p>
 <p>The <field>RootIndex</field> value has no effect on this method.  Use <method>FindTagFromIndex</method> to make restricted searches.</p>
       </description>
@@ -151,7 +151,7 @@
       </input>
       <description>
 <p>This method will return the first tag that matches the search string specified in XPath.  The search begins at the tag indicated by the Start value.  This should be set to zero if searching from the top of the XML tree.</p>
-<p>Optionally, if the XPath uses wild-cards or would match multiple tags, a Callback function may be passed that will be called for each matching tag that is discovered.  The synopsis for the callback function in C is <code>ERROR Function(*XML, XMLTag *Tag, STRING Attrib)</code>.</p>
+<p>Optionally, if the XPath uses wildcards or would match multiple tags, a Callback function may be passed that will be called for each matching tag that is discovered.  The C prototype for the callback function is <code>ERROR Function(*XML, XMLTag *Tag, CSTRING Attrib)</code>.</p>
 <p>For Fluid: <code>function Callback(XML {ID}, TagIndex {Long}, Attrib {String})</code>.</p>
 <p>The callback routine can terminate the search early by returning ERR_Terminate.  All other error codes are ignored.</p>
       </description>
@@ -321,7 +321,7 @@
         <param type="LONG" name="Where" lookup="XMI">Use XMI_PREV or XMI_NEXT to insert behind or ahead of the target tag.  Use XMI_CHILD for a child insert.</param>
       </input>
       <description>
-<p>This method is used to move XML tags within the XML tree structure.  This routine is designed to support the movement of a single tag, or a group of tags from one index to another using one function call.  You are required to supply the index of the tag that will be moved, and the index of the target tag.  All child tags of the source will be included in the move.</p>
+<p>This method is used to move XML tags within the XML tree structure.  It supports the movement of single and groups of tags from one index to another.  The client must supply the index of the tag that will be moved and the index of the target tag.  All child tags of the source will be included in the move.</p>
 <p>An insertion point relative to the target index must be specified in the Where parameter.  The source tag can be inserted as a child of the destination by using a Where of XMI_CHILD.  To insert behind or after the target, use XMI_PREV or XMI_NEXT.</p>
       </description>
       <result>

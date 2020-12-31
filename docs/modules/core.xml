@@ -897,10 +897,11 @@ if (!AllocMemory(1000, MEM_DATA, &amp;address, NULL)) {
 <p>The FindObject() function searches for all objects that match a given name and can filter by class. A pre-allocated buffer is required for the output of the results.</p>
 <p>The following example is a typical illustration of this function's use.  It finds the most recent object created with a given name:</p>
 <pre>OBJECTID id;
-FindObject("SystemPointer", ID_POINTER, &amp;id, 1, NULL);
+LONG count = 1;
+FindObject("SystemPointer", ID_POINTER, &amp;id, &amp;count);
 </pre>
 <p>If FindObject() cannot find any matching objects then it will return an error code.</p>
-<p>The list is sorted so that the oldest private object is placed at the start of the list, and the most recent public object is placed at the end.  Take advantage of this fact to get the oldest or youngest object with the Name that is being searched for.  Preference is also given to objects that have been created by the calling process, thus foreign objects are pushed towards the beginning of the array.</p>
+<p>The list is sorted so that the oldest private object is placed at the start of the list, and the most recent public object is placed at the end.  Take advantage of this fact to get the oldest or youngest object with the Name that is being searched for.  Preference is also given to objects that have been created by the calling process, thus foreign objects are pushed towards the end of the array.</p>
     </description>
     <result type="ERROR">
       <error code="LockFailed">Failed to lock a required resource.</error>

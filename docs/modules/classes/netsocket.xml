@@ -26,8 +26,8 @@ initially fill the internal write buffer, thereafter it will be called whenever 
 <p>It is possible to write to a NetSocket object before the connection to a server is established.  Doing so will buffer the data in the socket until the connection with the server has been initiated, at which point the data will be immediately sent.</p>
 <header>Server-Client Connections</header>
 <p>To accept incoming client connections, create a NetSocket object with the SERVER flag set and define the <field>Port</field> value on which to listen for new clients.  If multiple connections from a single client IP address are allowed, you should also set the MULTICONNECT flag.</p>
-<p>When a new connection is detected, the <field>Feedback</field> function will be called as <code>Feedback(*NetSocket, *ClientSocket, OBJECTPTR Context, LONG Operation)</code></p>
-<p>The NetSocket parameter refers to the original NetSocket object, <class name="ClientSocket">ClientSocket</class> applies if a client connection is involved, the Context refers to the object that set the <field>Feedback</field> field and the Operation value will be set to NTC_CONNECTED.  If a client disconnects, the <field>Feedback</field> function will be called in the same manner but with an Operation value of NTC_DISCONNECTED.</p>
+<p>When a new connection is detected, the <field>Feedback</field> function will be called as <code>Feedback(*NetSocket, *ClientSocket, LONG State)</code></p>
+<p>The NetSocket parameter refers to the original NetSocket object, <class name="ClientSocket">ClientSocket</class> applies if a client connection is involved and the State value will be set to NTC_CONNECTED.  If a client disconnects, the <field>Feedback</field> function will be called in the same manner but with a State value of NTC_DISCONNECTED.</p>
 <p>Information on all active connections can be read from the <field>Clients</field> field.  This contains a linked list of IP addresses and their connections to the server port.</p>
 <p>To send data to a client, write it to the target <class name="ClientSocket">ClientSocket</class>.</p>
 <p>All data that is received from client sockets will be passed to the <field>Incoming</field> feedback routine with a reference to a <class name="ClientSocket">ClientSocket</class>.</p></description>
@@ -257,8 +257,8 @@ initially fill the internal write buffer, thereafter it will be called whenever 
       <type>FUNCTION</type>
       <description>
 <p>Refer to a custom function in this field and it will be called whenever the <field>State</field> of the socket (such as connection or disconnection) changes.</p>
-<p>The function must be in the format <code>Function(*NetSocket, *ClientSocket, OBJECTPTR Context, LONG State)</code></p>
-<p>The NetSocket parameter will refer to the NetSocket object to which the Feedback function is subscribed.  The Context refers to the object that set the Feedback field and the State reflects the new value in the <field>State</field> field.</p>
+<p>The function must be in the format <code>Function(*NetSocket, *ClientSocket, LONG State)</code></p>
+<p>The NetSocket parameter will refer to the NetSocket object to which the Feedback function is subscribed.  The reflects the new value in the <field>State</field> field.</p>
       </description>
     </field>
 
