@@ -580,7 +580,7 @@ static ERROR MENU_Init(objMenu *Self, APTR Void)
       find_target = TRUE;
       if (gfxGetDisplayType() != DT_NATIVE) {
          LONG count = 1;
-         if (FindObject("desktop", ID_SURFACE, &desktop_id, &count) != ERR_Okay) {
+         if (FindObject("desktop", ID_SURFACE, FOF_INCLUDE_SHARED, &desktop_id, &count) != ERR_Okay) {
             find_target = FALSE;
          }
       }

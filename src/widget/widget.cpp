@@ -436,7 +436,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    objXML *style;
 
    LONG count = 1;
-   if (!FindObject("glStyle", ID_XML, &style_id, &count)) {
+   if (!FindObject("glStyle", ID_XML, FOF_INCLUDE_SHARED, &style_id, &count)) {
       if (!AccessObject(style_id, 500, &style)) {
          WORD i;
          char buffer[100];

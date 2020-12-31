@@ -62,7 +62,7 @@ static LONG if_satisfied(objMenu *Self, XMLTag *Tag)
       if (*buffer) {
          LONG count = 1;
          OBJECTID object_id;
-         if (!FindObject(buffer, 0, &object_id, &count)) {
+         if (!FindObject(buffer, 0, FOF_INCLUDE_SHARED|FOF_SMART_NAMES, &object_id, &count)) {
             tlSatisfied = TRUE;
          }
       }

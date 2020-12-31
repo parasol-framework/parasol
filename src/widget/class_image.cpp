@@ -1308,7 +1308,7 @@ ERROR init_image(void)
    objDisplay *display;
    OBJECTID display_id;
    LONG count = 1;
-   if (!FindObject("SystemDisplay", ID_DISPLAY, &display_id, &count)) {
+   if (!FindObject("SystemDisplay", ID_DISPLAY, FOF_INCLUDE_SHARED, &display_id, &count)) {
       if (!AccessObject(display_id, 3000, &display)) {
          if (display->Flags & SCR_BIT_6) {
             log.msg("Images will be downsampled to 6-bits per channel.");

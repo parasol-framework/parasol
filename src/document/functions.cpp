@@ -465,7 +465,7 @@ static BYTE check_tag_conditions(objDocument *Self, XMLTag *Tag)
       }
       else if (!StrMatch("exists", Tag->Attrib[i].Name)) {
          count = 1;
-         if (!FindObject(Tag->Attrib[i].Value, 0, &object_id, &count)) {
+         if (!FindObject(Tag->Attrib[i].Value, 0, FOF_INCLUDE_SHARED|FOF_SMART_NAMES, &object_id, &count)) {
             if (valid_objectid(Self, object_id)) {
                satisfied = TRUE;
             }
@@ -6003,7 +6003,7 @@ static ERROR convert_xml_args(objDocument *Self, XMLAttrib *Attrib, LONG Total)
 
                      OBJECTID list[40];
                      LONG count = ARRAYSIZE(list);
-                     if (!FindObject(name, 0, list, &count)) {
+                     if (!FindObject(name, 0, FOF_SMART_NAMES, list, &count)) {
                         // Pass 1: Only consider objects that are children of the document
                         for (LONG j=0; (j < count) and (!objectid); j++) {
                            OBJECTID parent_id = list[j];

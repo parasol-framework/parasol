@@ -375,7 +375,7 @@ ERROR NewLockedObject(LARGE ClassID, LONG Flags, OBJECTPTR *Object, OBJECTID *Ob
          if (Flags & NF_UNIQUE) {
             OBJECTID search_id;
             LONG count = 1;
-            if ((!FindObject(Name, class_id, &search_id, &count)) and (search_id)) {
+            if ((!FindObject(Name, class_id, FOF_INCLUDE_SHARED|FOF_SMART_NAMES, &search_id, &count)) and (search_id)) {
                *ObjectID = search_id;
                ReleaseMemoryID(RPM_SharedObjects);
                return ERR_ObjectExists; // Return ERR_ObjectExists so that the caller knows that the failure was not caused by an object creation error.

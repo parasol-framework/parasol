@@ -198,7 +198,7 @@ static void handle_button_release(XEvent *xevent)
 
    if (!glPointerID) {
       LONG count = 1;
-      if (FindObject("SystemPointer", NULL, &glPointerID, &count) != ERR_Okay) return;
+      if (FindObject("SystemPointer", 0, FOF_INCLUDE_SHARED, &glPointerID, &count) != ERR_Okay) return;
    }
 
    struct dcDeviceInput input;

@@ -136,6 +136,11 @@
       <const name="DECOMPRESS_OBJECT"/>
     </constants>
 
+    <constants lookup="FOF" comment="Flags that can be passed to FindObject()">
+      <const name="INCLUDE_SHARED">Include public objects when searching.</const>
+      <const name="SMART_NAMES">Parse numeric object names as ID references and support use of the 'Owner' reserved keyword.</const>
+    </constants>
+
     <constants lookup="VLF" comment="VlogF flags">
       <const name="ERROR"/>
       <const name="WARNING"/>
@@ -478,9 +483,6 @@
       <const name="NO_DEEP_SCAN">Do not perform more than one iteration when resolving the source file path.</const>
     </constants>
 
-    <constants lookup="PMF" comment="Flags for ProcessMessages">
-    </constants>
-
     <constants lookup="MFF" comment="Flags for the File Watch() method.">
       <const name="MOVED">Existing file moved or renamed.</const>
       <const name="UNMOUNT">Host filesystem was unmounted.</const>
@@ -497,6 +499,9 @@
       <const name="CREATE">New file/link created or renamed in folder.</const>
       <const name="DELETE">Existing file deleted</const>
       <const name="MODIFY">File modified via write or truncation.</const>
+    </constants>
+
+    <constants lookup="PMF" comment="Flags for ProcessMessages">
     </constants>
 
     <constants lookup="LOC" comment="AnalysePath() values">

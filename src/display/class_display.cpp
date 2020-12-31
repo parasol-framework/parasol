@@ -871,7 +871,7 @@ static ERROR DISPLAY_Init(objDisplay *Self, APTR Void)
          else {
             OBJECTID surface_id;
             LONG count = 1;
-            if (!FindObject("SystemSurface", ID_SURFACE, &surface_id, &count)) {
+            if (!FindObject("SystemSurface", ID_SURFACE, FOF_INCLUDE_SHARED, &surface_id, &count)) {
                if (surface_id IS GetOwner(Self)) desktop = TRUE;
             }
          }
@@ -2257,7 +2257,7 @@ static ERROR GET_HDensity(objDisplay *Self, LONG *Value)
 
    OBJECTID style_id;
    LONG count = 1;
-   if (!FindObject("glStyle", ID_XML, &style_id, &count)) {
+   if (!FindObject("glStyle", ID_XML, 0, &style_id, &count)) {
       objXML *style;
       if (!AccessObject(style_id, 3000, &style)) {
          char strdpi[32];
@@ -2329,7 +2329,7 @@ static ERROR GET_VDensity(objDisplay *Self, LONG *Value)
 
    OBJECTID style_id;
    LONG count = 1;
-   if (!FindObject("glStyle", ID_XML, &style_id, &count)) {
+   if (!FindObject("glStyle", ID_XML, 0, &style_id, &count)) {
       objXML *style;
       if (!AccessObject(style_id, 3000, &style)) {
          char strdpi[32];

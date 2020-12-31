@@ -1763,7 +1763,7 @@ ERROR StrEvaluate(STRING Buffer, LONG BufferLength, LONG Flags, OBJECTID OwnerID
                   else if (!StrMatch(name, "task")) objectid = glCurrentTask->Head.UniqueID;
                   else {
                      LONG count = 1;
-                     FindObject(name, 0, &objectid, &count);
+                     FindObject(name, 0, FOF_INCLUDE_SHARED|FOF_SMART_NAMES, &objectid, &count);
                   }
                }
 

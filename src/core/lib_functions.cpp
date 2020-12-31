@@ -333,6 +333,7 @@ are pushed towards the end of the array.
 -INPUT-
 cstr Name:     The name of an object to search for.
 cid ClassID:   Optional.  Set to a class ID to filter the results down to a specific class type.
+int(FOF) Flags: Optional flags.
 buf(array(oid)) Array:    Pointer to the array that will store the results.
 &arraysize Count: Indicates the size of Array, measured in elements.  Must be set to a value of 1 or greater.
 
@@ -348,7 +349,7 @@ DoesNotExist:
 
 *****************************************************************************/
 
-ERROR FindObject(CSTRING InitialName, CLASSID ClassID, OBJECTID *Array, LONG *Count)
+ERROR FindObject(CSTRING InitialName, CLASSID ClassID, LONG Flags, OBJECTID *Array, LONG *Count)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -356,46 +357,48 @@ ERROR FindObject(CSTRING InitialName, CLASSID ClassID, OBJECTID *Array, LONG *Co
    if (*Count < 1) return log.warning(ERR_Args);
    if (!InitialName[0]) return log.warning(ERR_EmptyString);
 
-   // If an integer based name (defined by #num) is passed, we translate it to an ObjectID rather than searching for
-   // an object of name "#1234".
+   if (Flags & FOF_SMART_NAMES) {
+      // If an integer based name (defined by #num) is passed, we translate it to an ObjectID rather than searching for
+      // an object of name "#1234".
 
-   BYTE number = FALSE;
-   if (InitialName[0] IS '#') number = TRUE;
-   else {
-      // If the name consists entirely of numbers, it must be considered an object ID (we can make this check because
-      // it is illegal for a name to consist entirely of digits).
+      BYTE number = FALSE;
+      if (InitialName[0] IS '#') number = TRUE;
+      else {
+         // If the name consists entirely of numbers, it must be considered an object ID (we can make this check because
+         // it is illegal for a name to consist entirely of digits).
 
-      LONG i = (InitialName[0] IS '-') ? 1 : 0;
-      for (; InitialName[i]; i++) {
-         if (InitialName[i] < '0') break;
-         if (InitialName[i] > '9') break;
+         LONG i = (InitialName[0] IS '-') ? 1 : 0;
+         for (; InitialName[i]; i++) {
+            if (InitialName[i] < '0') break;
+            if (InitialName[i] > '9') break;
+         }
+         if (!InitialName[i]) number = TRUE;
       }
-      if (!InitialName[i]) number = TRUE;
-   }
 
-   if (number) {
-      OBJECTID objectid;
-      if ((objectid = (OBJECTID)StrToInt(InitialName))) {
-         if (!CheckObjectExists(objectid, NULL)) {
-            *Array = objectid;
-            *Count = 1;
-            return ERR_Okay;
+      if (number) {
+         OBJECTID objectid;
+         if ((objectid = (OBJECTID)StrToInt(InitialName))) {
+            if (!CheckObjectExists(objectid, NULL)) {
+               *Array = objectid;
+               *Count = 1;
+               return ERR_Okay;
+            }
+            else return ERR_Search;
          }
          else return ERR_Search;
       }
-      else return ERR_Search;
-   }
 
-   if (!StrMatch("owner", InitialName)) {
-      if ((tlContext != &glTopContext) and (tlContext->Object->OwnerID)) {
-         if (!CheckObjectExists(tlContext->Object->OwnerID, NULL)) {
-            *Array = tlContext->Object->OwnerID;
-            *Count = 1;
-            return ERR_Okay;
+      if (!StrMatch("owner", InitialName)) {
+         if ((tlContext != &glTopContext) and (tlContext->Object->OwnerID)) {
+            if (!CheckObjectExists(tlContext->Object->OwnerID, NULL)) {
+               *Array = tlContext->Object->OwnerID;
+               *Count = 1;
+               return ERR_Okay;
+            }
+            else return ERR_DoesNotExist;
          }
          else return ERR_DoesNotExist;
       }
-      else return ERR_DoesNotExist;
    }
 
    class sortobj {
@@ -430,60 +433,67 @@ ERROR FindObject(CSTRING InitialName, CLASSID ClassID, OBJECTID *Array, LONG *Co
       }
    }
 
-   // Public object search.  When looking for publicly named objects we need to keep them arranged so that preference
-   // is given to objects that this process created.  This causes some mild overhead but is vital for ensuring
-   // that programs aren't confused when they use identically named objects.
+   if ((Flags & FOF_INCLUDE_SHARED) and (objlist.size() < (size_t)Count[0])) {
+      // Public object search.  When looking for publicly named objects we need to keep them arranged so that preference
+      // is given to objects that this process created.  This causes some mild overhead but is vital for ensuring
+      // that programs aren't confused when they use identically named objects.
 
-   LONG i;
-   char name[MAX_NAME_LEN+1];
-   for (i=0; (InitialName[i]) and (i < MAX_NAME_LEN - 1); i++) {
-      char c = InitialName[i];
-      if ((c >= 'A') and (c <= 'Z')) name[i] = c - 'A' + 'a';
-      else name[i] = c;
-   }
-   name[i] = 0;
+      LONG i;
+      char name[MAX_NAME_LEN+1];
+      for (i=0; (InitialName[i]) and (i < MAX_NAME_LEN - 1); i++) {
+         char c = InitialName[i];
+         if ((c >= 'A') and (c <= 'Z')) name[i] = c - 'A' + 'a';
+         else name[i] = c;
+      }
+      name[i] = 0;
 
-   SharedObjectHeader *header;
-   if (!AccessMemory(RPM_SharedObjects, MEM_READ, 2000, (void **)&header)) {
-      auto entry = (SharedObject *)ResolveAddress(header, header->Offset);
-      for (LONG i=0; i < header->NextEntry; i++) {
-         if (!entry[i].ObjectID) continue;
-         if ((!entry[i].InstanceID) or (entry[i].InstanceID IS glInstanceID)) {
-            if ((ClassID) and (ClassID != entry[i].ClassID));
-            else if (entry[i].Name[0] IS name[0]) {
-               if (!StrCompare(entry[i].Name, name, 0, STR_CASE|STR_MATCH_LEN)) {
-                  if (objlist.size() < (size_t)Count[0]) {
-                     objlist.emplace_back(entry[i].ObjectID, entry[i].MessageMID);
-                  }
-                  else if (objlist.back().id > entry[i].ObjectID) {
-                     // The discovered object has a more recent ID than the last entry in the list, so replace it
-                     // (assuming that it won't replace something that was created from our own task space).
+      SharedObjectHeader *header;
+      if (!AccessMemory(RPM_SharedObjects, MEM_READ, 2000, (void **)&header)) {
+         auto entry = (SharedObject *)ResolveAddress(header, header->Offset);
+         for (LONG i=0; i < header->NextEntry; i++) {
+            if (!entry[i].ObjectID) continue;
+            if ((!entry[i].InstanceID) or (entry[i].InstanceID IS glInstanceID)) {
+               if ((ClassID) and (ClassID != entry[i].ClassID));
+               else if (entry[i].Name[0] IS name[0]) {
+                  if (!StrCompare(entry[i].Name, name, 0, STR_CASE|STR_MATCH_LEN)) {
+                     if (objlist.size() < (size_t)Count[0]) {
+                        objlist.emplace_back(entry[i].ObjectID, entry[i].MessageMID);
+                     }
+                     else if (objlist.back().id > entry[i].ObjectID) {
+                        // The discovered object has a more recent ID than the last entry in the list, so replace it
+                        // (assuming that it won't replace something that was created from our own task space).
 
-                     if ((objlist.back().messagemid IS glTaskMessageMID) and (entry[i].MessageMID != glTaskMessageMID)) continue;
-                     objlist.back().id = entry[i].ObjectID;
-                     objlist.back().messagemid = entry[i].MessageMID;
+                        if ((objlist.back().messagemid IS glTaskMessageMID) and (entry[i].MessageMID != glTaskMessageMID)) continue;
+                        objlist.back().id = entry[i].ObjectID;
+                        objlist.back().messagemid = entry[i].MessageMID;
+                     }
                   }
                }
             }
          }
+
+         ReleaseMemoryID(RPM_SharedObjects);
       }
+      else return log.warning(ERR_AccessMemory);
+   }
 
-      ReleaseMemoryID(RPM_SharedObjects);
-
-      if (objlist.size() > 0) {
+   if (objlist.size() > 0) {
+      if (objlist.size() IS 1) {
+         Array[0] = objlist.front().id;
+      }
+      else {
          objlist.sort([](const sortobj &a, const sortobj &b) {
             return ((a.id < b.id) or ((a.messagemid IS glTaskMessageMID) and (b.messagemid != glTaskMessageMID)));
          });
 
          LONG i = 0;
          for (const auto & obj : objlist) Array[i++] = obj.id;
-
-         *Count = objlist.size();
-         return ERR_Okay;
       }
-      else return ERR_Search;
+
+      *Count = objlist.size();
+      return ERR_Okay;
    }
-   else return log.warning(ERR_AccessMemory);
+   else return ERR_Search;
 }
 
 /*****************************************************************************

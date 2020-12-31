@@ -487,7 +487,7 @@ static int object_find(lua_State *Lua)
       if (!FindPrivateObject(object_name, &obj)) {
          return object_find_private(Lua, obj);
       }
-      else if (!FindObject(object_name, class_id, &object_id, &count)) {
+      else if (!FindObject(object_name, class_id, FOF_INCLUDE_SHARED|FOF_SMART_NAMES, &object_id, &count)) {
          return object_find_public(Lua, object_id);
       }
       else log.debug("Unable to find object '%s'", object_name);
