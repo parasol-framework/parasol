@@ -144,7 +144,8 @@ static ERROR process_args(void)
          }
          else if (!StrMatch(args[i], "--target")) {
             if (args[i+1]) {
-               if (FastFindObject(args[i+1], 0, &glTargetID, 1, NULL) != ERR_Okay) {
+               LONG count = 1;
+               if (FindObject(args[i+1], 0, FOF_INCLUDE_SHARED|FOF_SMART_NAMES, &glTargetID, &count) != ERR_Okay) {
                   print("Warning - could not find target object \"%s\".", args[i+1]);
                }
                else LogMsg("Using target %d", glTargetID);

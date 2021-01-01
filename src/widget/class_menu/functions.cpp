@@ -60,9 +60,9 @@ static LONG if_satisfied(objMenu *Self, XMLTag *Tag)
    if (!StrMatch("exists", Tag->Attrib[index].Name)) {
       translate_value(Self, Tag->Attrib[index].Value, buffer, sizeof(buffer));
       if (*buffer) {
-         LONG count;
+         LONG count = 1;
          OBJECTID object_id;
-         if (!FastFindObject(buffer, 0, &object_id, 1, &count)) {
+         if (!FindObject(buffer, 0, FOF_INCLUDE_SHARED|FOF_SMART_NAMES, &object_id, &count)) {
             tlSatisfied = TRUE;
          }
       }

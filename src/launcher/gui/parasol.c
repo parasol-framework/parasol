@@ -133,7 +133,8 @@ extern "C" void program(void)
          }
          else if (!StrMatch(Args[i], "--target")) {
             if (Args[i+1]) {
-               if (FastFindObject(Args[i+1], 0, &TargetID, 1, NULL) != ERR_Okay) {
+               LONG count = 1;
+               if (FindObject(Args[i+1], 0, FOF_INCLUDE_SHARED|FOF_SMART_NAMES, &TargetID, &count) != ERR_Okay) {
                   print("Warning - could not find target object \"%s\".", Args[i+1]);
                }
                else LogMsg("Using target %d", TargetID);

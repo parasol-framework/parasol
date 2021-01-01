@@ -192,10 +192,13 @@ static void handle_button_press(XEvent *xevent)
 
 static void handle_button_release(XEvent *xevent)
 {
-   FMSG("~handle_button_release()","Button: %d", xevent->xbutton.button);
+   parasol::Log log(__FUNCTION__);
+
+   log.traceBranch("Button: %d", xevent->xbutton.button);
 
    if (!glPointerID) {
-      if (FastFindObject("SystemPointer", NULL, &glPointerID, 1, NULL) != ERR_Okay) return;
+      LONG count = 1;
+      if (FindObject("SystemPointer", 0, FOF_INCLUDE_SHARED, &glPointerID, &count) != ERR_Okay) return;
    }
 
    struct dcDeviceInput input;
@@ -233,8 +236,6 @@ static void handle_button_release(XEvent *xevent)
    XFlush(XDisplay);
 
    XSetInputFocus(XDisplay, xevent->xany.window, RevertToNone, CurrentTime);
-
-   LOGRETURN();
 }
 
 //****************************************************************************
