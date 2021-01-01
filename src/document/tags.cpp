@@ -1238,8 +1238,7 @@ static void tag_xml_content(objDocument *Self, objXML *XML, XMLTag *Tag, WORD Fl
    if (!xmlGetString(XML, Tag->Index, XMF_INCLUDE_SIBLINGS, &xmlstr)) {
       if (Flags & PXF_TRANSLATE) {
          LAYOUT("tag_xml:","Translating...");
-         if ((!MemoryPtrInfo(xmlstr, &meminfo)) AND
-             (meminfo.Size > size)) {
+         if ((!MemoryPtrInfo(xmlstr, &meminfo)) and (meminfo.Size > size)) {
             acDataXML(target, xmlstr);
          }
          else {

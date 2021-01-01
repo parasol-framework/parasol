@@ -308,6 +308,88 @@ OBJECTPTR CurrentTask(void)
 /*****************************************************************************
 
 -FUNCTION-
+FindClass: Returns all class objects for a given class ID.
+Category: Objects
+
+This function is used to find a specific class by ID.  If a matching class is not already loaded, the class database
+is checked to determine if the class is installed on the system.  If a match is discovered, the corresponding module
+will be loaded into memory and the class will be returned.  In the event of failure or if there is no matching class
+registered, NULL is returned.
+
+If the ID of the class is not known, please call ~ResolveClassName() and then pass the resulting ID to this
+function.
+
+-INPUT-
+cid ClassID: A class ID such as one retrieved from ~ResolveClassName().
+
+-RESULT-
+obj(MetaClass): Returns a pointer to the MetaClass structure that has been found as a result of the search, or NULL if no matching class was found.
+
+*****************************************************************************/
+
+rkMetaClass * FindClass(CLASSID ClassID)
+{
+   parasol::Log log(__FUNCTION__);
+
+   if (ClassID IS ID_METACLASS) { // Return the internal pointer to the MetaClass.
+      return &glMetaClass;
+   }
+   else if (!ClassID) {
+      return NULL;
+   }
+   else {
+      // A simple KeyGet() works for base-classes and sub-classes because the hash map is indexed by class name.
+
+      rkMetaClass **ptr;
+      if (!KeyGet(glClassMap, ClassID, (APTR *)&ptr, NULL)) {
+         return ptr[0];
+      }
+
+      // If we are shutting down, do not go any further as we do not want to load new modules during the shutdown process.
+
+      if (glProgramStage IS STAGE_SHUTDOWN) return NULL;
+
+      // Since the class is not in the system, we need to try and find a master in the references.  If we find one, we can
+      // initialise the module and then find the new Class.
+      //
+      // Note: Children of the class are not automatically loaded into memory if they are unavailable at the time.  Doing so
+      // would result in lost CPU and memory resources due to loading code that may not be needed.
+
+      ClassItem *item;
+      CSTRING path = NULL;
+      if ((item = find_class(ClassID))) {
+         if (item->PathOffset) path = (CSTRING)item + item->PathOffset;
+      }
+
+      if (!path) {
+         ModuleItem *mod;
+         if ((mod = find_module(ClassID))) path = (STRING)(mod + 1);
+      }
+
+      rkMetaClass *mc = NULL;
+      if (path) {
+         // Load the module from the associated location and then find the class that it contains.  If the module fails,
+         // we keep on looking for other installed modules that may handle the class.
+
+         log.branch("Attempting to load module \"%s\" for class $%.8x.", path, ClassID);
+
+         OBJECTPTR module;
+         if (!CreateObject(ID_MODULE, NF_UNTRACKED, &module, FID_Name|TSTR, path, TAGEND)) {
+            if (!KeyGet(glClassMap, ClassID, (APTR *)&ptr, NULL)) mc = ptr[0];
+            acFree(module);  // Free the module object - the code and any classes it created will continue to remain in memory.
+         }
+      }
+
+      if (mc) log.msg("Found class \"%s\"", mc->ClassName);
+      else log.warning("Could not find class $%.8x in memory or in class references.", ClassID);
+
+      return mc;
+   }
+}
+
+/*****************************************************************************
+
+-FUNCTION-
 FindObject: Searches for objects by name.
 Category: Objects
 
@@ -499,99 +581,16 @@ ERROR FindObject(CSTRING InitialName, CLASSID ClassID, LONG Flags, OBJECTID *Arr
 /*****************************************************************************
 
 -FUNCTION-
-FindClass: Returns all class objects for a given class ID.
-Category: Objects
-
-This function is used to find a specific class by ID.  If a matching class is not already loaded, the class database
-is checked to determine if the class is installed on the system.  If a match is discovered, the corresponding module
-will be loaded into memory and the class will be returned.  In the event of failure or if there is no matching class
-registered, NULL is returned.
-
-If the ID of the class is not known, please call ~ResolveClassName() and then pass the resulting ID to this
-function.
-
--INPUT-
-cid ClassID: A class ID such as one retrieved from ~ResolveClassName().
-
--RESULT-
-obj(MetaClass): Returns a pointer to the MetaClass structure that has been found as a result of the search, or NULL if no matching class was found.
-
-*****************************************************************************/
-
-rkMetaClass * FindClass(CLASSID ClassID)
-{
-   parasol::Log log(__FUNCTION__);
-
-   if (ClassID IS ID_METACLASS) { // Return the internal pointer to the MetaClass.
-      return &glMetaClass;
-   }
-   else if (!ClassID) {
-      return NULL;
-   }
-   else {
-      // A simple KeyGet() works for base-classes and sub-classes because the hash map is indexed by class name.
-
-      rkMetaClass **ptr;
-      if (!KeyGet(glClassMap, ClassID, (APTR *)&ptr, NULL)) {
-         return ptr[0];
-      }
-
-      // If we are shutting down, do not go any further as we do not want to load new modules during the shutdown process.
-
-      if (glProgramStage IS STAGE_SHUTDOWN) return NULL;
-
-      // Since the class is not in the system, we need to try and find a master in the references.  If we find one, we can
-      // initialise the module and then find the new Class.
-      //
-      // Note: Children of the class are not automatically loaded into memory if they are unavailable at the time.  Doing so
-      // would result in lost CPU and memory resources due to loading code that may not be needed.
-
-      ClassItem *item;
-      CSTRING path = NULL;
-      if ((item = find_class(ClassID))) {
-         if (item->PathOffset) path = (CSTRING)item + item->PathOffset;
-      }
-
-      if (!path) {
-         ModuleItem *mod;
-         if ((mod = find_module(ClassID))) path = (STRING)(mod + 1);
-      }
-
-      rkMetaClass *mc = NULL;
-      if (path) {
-         // Load the module from the associated location and then find the class that it contains.  If the module fails,
-         // we keep on looking for other installed modules that may handle the class.
-
-         log.branch("Attempting to load module \"%s\" for class $%.8x.", path, ClassID);
-
-         OBJECTPTR module;
-         if (!CreateObject(ID_MODULE, NF_UNTRACKED, &module, FID_Name|TSTR, path, TAGEND)) {
-            if (!KeyGet(glClassMap, ClassID, (APTR *)&ptr, NULL)) mc = ptr[0];
-            acFree(module);  // Free the module object - the code and any classes it created will continue to remain in memory.
-         }
-      }
-
-      if (mc) log.msg("Found class \"%s\"", mc->ClassName);
-      else log.warning("Could not find class $%.8x in memory or in class references.", ClassID);
-
-      return mc;
-   }
-}
-
-/*****************************************************************************
-
--FUNCTION-
 FindPrivateObject: Search for an object by name.
 Category: Objects
 
-The FindPrivateObject() function is provided as a simple implementation of the ~FindObject() function.  This
-implementation is specifically limited to finding private objects by name only.  It is capable of returning only
-one object address in its search results.  Unlike ~FindObject(), this function returns directly accessible
-object addresses that may be used immediately after a successful search.
+The FindPrivateObject() function is a simple implementation of ~FindObject().  It differs in being limited
+to finding private objects without class filtering, and can only return one result as a pointer.
+Care may need to be taken if using this function to access objects that are shared between threads.
 
-If multiple objects with the same name exists, the most recently created object will be returned by this function.
+The most recently created object is returned by this function if there are objects sharing the same name.
 
-If you require more advanced functionality for object searches, please use the ~FindObject() function.
+For more advanced functionality in object searches please use the ~FindObject() function.
 
 -INPUT-
 cstr Name:   The name of the object to find.
