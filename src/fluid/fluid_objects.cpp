@@ -413,7 +413,7 @@ ERROR push_object_id(lua_State *Lua, OBJECTID ObjectID)
 ** The fluid object itself can be found by using the name "self".
 */
 
-static int object_find_private(lua_State *Lua, OBJECTPTR obj)
+static int object_find_ptr(lua_State *Lua, OBJECTPTR obj)
 {
    // Private objects discovered by obj.find() have to be treated as an external reference at all times
    // (access must controlled by access_object() and release_object() calls).
@@ -435,7 +435,7 @@ static int object_find_private(lua_State *Lua, OBJECTPTR obj)
    return 1;
 }
 
-static int object_find_public(lua_State *Lua, OBJECTID object_id)
+static int object_find_id(lua_State *Lua, OBJECTID object_id)
 {
    struct object *object = (struct object *)lua_newuserdata(Lua, sizeof(struct object));
    ClearMemory(object, sizeof(struct object));
@@ -474,21 +474,21 @@ static int object_find(lua_State *Lua)
       log.trace("obj.find(%s, $%.8x)", object_name, class_id);
 
       if ((!StrMatch("self", object_name)) AND (!class_id)) {
-         return object_find_private(Lua, (OBJECTPTR)Lua->Script);
+         return object_find_ptr(Lua, (OBJECTPTR)Lua->Script);
       }
       else if (!StrMatch("owner", object_name)) {
          if ((obj = GetObjectPtr(Lua->Script->Head.OwnerID))) {
-            return object_find_private(Lua, obj);
+            return object_find_ptr(Lua, obj);
          }
          else return 0;
       }
 
       LONG count = 1;
       if (!FindPrivateObject(object_name, &obj)) {
-         return object_find_private(Lua, obj);
+         return object_find_ptr(Lua, obj);
       }
       else if (!FindObject(object_name, class_id, FOF_INCLUDE_SHARED|FOF_SMART_NAMES, &object_id, &count)) {
-         return object_find_public(Lua, object_id);
+         return object_find_id(Lua, object_id);
       }
       else log.debug("Unable to find object '%s'", object_name);
    }
@@ -496,12 +496,12 @@ static int object_find(lua_State *Lua)
       log.trace("obj.find(#%d)", object_id);
 
       if (CheckObjectIDExists(object_id) != ERR_Okay) return 0;
-      else if (object_id < 0) return object_find_public(Lua, object_id);
+      else if (object_id < 0) return object_find_id(Lua, object_id);
       else {
          char buffer[32] = "#";
          IntToStr(object_id, buffer+1, sizeof(buffer)-1);
          if (!FindPrivateObject(buffer, &obj)) {
-            return object_find_private(Lua, obj);
+            return object_find_ptr(Lua, obj);
          }
       }
    }
