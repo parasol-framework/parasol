@@ -554,7 +554,8 @@ ERROR SetFieldEval(OBJECTPTR Object, CSTRING FieldName, CSTRING Value)
          else if ((!*Value) or ((Value[0] IS '0') and (!Value[1]))) object_id = 0;
          else {
             OBJECTID array[30];
-            if (!FastFindObject(Value, 0, array, ARRAYSIZE(array), &i)) {
+            LONG count = ARRAYSIZE(array);
+            if (!FindObject(Value, 0, FOF_INCLUDE_SHARED, array, &count)) {
                object_id = array[i-1];
             }
             else {

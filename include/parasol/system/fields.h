@@ -123,7 +123,7 @@
 #define FID_XML 0x0b88bfd6LL
 #define FID_Record 0x1926f824LL
 #define FID_ItemCount 0x2b35f6fdLL
-#define FID_RSSCount 0x58ecf986LL
+#define FID_PrivateObjects 0xb08c94aaLL
 #define FID_Output 0x13525d76LL
 #define FID_RestartLimit 0x3e8d2aa9LL
 #define FID_ReturnCode 0x45981da0LL
@@ -417,8 +417,7 @@
 #define FID_ZAngle 0x2b8dc086LL
 #define FID_ZCoord 0x2bb2a0b6LL
 #define FID_ZSpeed 0x2cd488f0LL
-#define FID_MorphShape 0x4de2409cLL
-#define FID_MorphSpeed 0x4de6b33cLL
+#define FID_PublicObjects 0xb90c95aeLL
 #define FID_Option1 0x71f0504fLL
 #define FID_Option2 0x71f05050LL
 #define FID_Option3 0x71f05051LL
@@ -455,7 +454,6 @@
 #define FID_Filter 0xfd7675abLL
 #define FID_CloseFeedback 0xd2489000LL
 #define FID_MaxAmplitude 0x099a1150LL
-#define FID_Lights 0x0b727a70LL
 #define FID_MinAmplitude 0x0c16100eLL
 #define FID_Decay 0x0f49a6ebLL
 #define FID_Waves 0x109f984bLL

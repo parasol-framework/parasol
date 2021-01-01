@@ -847,38 +847,6 @@ if (!AllocMemory(1000, MEM_DATA, &amp;address, NULL)) {
   </function>
 
   <function>
-    <name>FastFindObject</name>
-    <category>Objects</category>
-    <comment>Searches for objects by name.</comment>
-    <prototype>ERROR FastFindObject(CSTRING Name, CLASSID ClassID, OBJECTID * Array, LONG ArraySize, LONG * Count)</prototype>
-    <input>
-      <param type="CSTRING" name="Name">The name of an object to search for.</param>
-      <param type="CLASSID" name="ClassID">Set to a class ID to filter the results down to a specific class type.</param>
-      <param type="OBJECTID *" name="Array">Pointer to the array that will store the results.</param>
-      <param type="LONG" name="ArraySize">Indicates the size of Array, measured in elements.  Must be set to a value of 1 or greater.</param>
-      <param type="LONG *" name="Count">This parameter will be updated with the total number of objects stored in Array.  Can be NULL if not required.</param>
-    </input>
-    <description>
-<p>The FastFindObject() function is an optimised implementation of the <function module="Core">FindObject</function> function.  Use it to search for objects in the system by their name and/or class.  Unlike <function module="Core">FindObject</function>, which will return an allocated memory block that lists all of the objects that were found, FastFindObject() requires a pre-allocated buffer to write the results to.  This saves the cost of allocation time, which can be expensive in some situations.</p>
-<p>The following code example is a typical illustration of this function's use.  It finds the most recent object created with a given name:</p>
-<pre>OBJECTID id;
-FastFindObject("SystemPointer", ID_POINTER, &amp;id, 1, NULL);
-</pre>
-<p>If FastFindObject() cannot find any objects with the name that you are looking for, it will return an error code.</p>
-<p>The list is sorted so that the oldest private object is placed at the start of the list, and the most recent public object is placed at the end.  Take advantage of this fact to get the oldest or youngest object with the Name that is being searched for.  Preference is also given to objects that have been created by the calling process, thus foreign objects are pushed towards the beginning of the array.</p>
-    </description>
-    <result type="ERROR">
-      <error code="LockFailed">Failed to lock a required resource.</error>
-      <error code="DoesNotExist">Resource does not exist.</error>
-      <error code="Args">Invalid arguments passed to function.</error>
-      <error code="EmptyString">A required string value contains no characters.</error>
-      <error code="Search">A search routine in this function failed.</error>
-      <error code="AccessMemory">Access to a shared memory block was denied.</error>
-      <error code="Okay">Operation successful.</error>
-    </result>
-  </function>
-
-  <function>
     <name>FindClass</name>
     <category>Objects</category>
     <comment>Returns all class objects for a given class ID.</comment>
@@ -917,25 +885,32 @@ FastFindObject("SystemPointer", ID_POINTER, &amp;id, 1, NULL);
   <function>
     <name>FindObject</name>
     <category>Objects</category>
-    <comment>Searches for objects by name and class.</comment>
-    <prototype>ERROR FindObject(CSTRING Name, CLASSID ClassID, OBJECTID ** List, LONG * Count)</prototype>
+    <comment>Searches for objects by name.</comment>
+    <prototype>ERROR FindObject(CSTRING Name, CLASSID ClassID, LONG Flags, OBJECTID * Array, LONG * Count)</prototype>
     <input>
-      <param type="CSTRING" name="Name">The name of the object that you are looking for.</param>
-      <param type="CLASSID" name="ClassID">Setting this field to a class ID will filter the results down to a specific class type.</param>
-      <param type="OBJECTID **" name="List">On success, a memory block containing a list of ObjectID's will be placed in this variable.</param>
-      <param type="LONG *" name="Count">The total number of objects listed in the List array will be stored in this variable.</param>
+      <param type="CSTRING" name="Name">The name of an object to search for.</param>
+      <param type="CLASSID" name="ClassID">Optional.  Set to a class ID to filter the results down to a specific class type.</param>
+      <param type="LONG" name="Flags" lookup="FOF">Optional flags.</param>
+      <param type="OBJECTID *" name="Array">Pointer to the array that will store the results.</param>
+      <param type="LONG *" name="Count">Indicates the size of Array, measured in elements.  Must be set to a value of 1 or greater.</param>
     </input>
     <description>
-<p>The FindObject() function is used to search for objects in the system by name and class type.  If the function cannot find any object with the name or class that you are looking for, then it will return an error code.  If it does find one or more matching objects, then a complete list of them will be returned in an allocated memory block.</p>
-<p>The List is sorted so that the oldest object is placed at the start of the list, and the most recent is placed at the end.  This will assist you in situations where you may be looking for the oldest or youngest object that has the particular name that you have searched for.</p>
-<p>The List is terminated with a NULL entry.</p>
-<p>The List is returned as an allocated memory block - please use <function module="Core">FreeResource</function> to deallocate it.</p>
+<p>The FindObject() function searches for all objects that match a given name and can filter by class. A pre-allocated buffer is required for the output of the results.</p>
+<p>The following example is a typical illustration of this function's use.  It finds the most recent object created with a given name:</p>
+<pre>OBJECTID id;
+LONG count = 1;
+FindObject("SystemPointer", ID_POINTER, &amp;id, &amp;count);
+</pre>
+<p>If FindObject() cannot find any matching objects then it will return an error code.</p>
+<p>The list is sorted so that the oldest private object is placed at the start of the list, and the most recent public object is placed at the end.  Take advantage of this fact to get the oldest or youngest object with the Name that is being searched for.  Preference is also given to objects that have been created by the calling process, thus foreign objects are pushed towards the end of the array.</p>
     </description>
     <result type="ERROR">
-      <error code="AccessMemory">Access to a shared memory block was denied.</error>
-      <error code="NullArgs">Function call missing argument value(s)</error>
+      <error code="LockFailed">Failed to lock a required resource.</error>
+      <error code="DoesNotExist">Resource does not exist.</error>
+      <error code="Args">Invalid arguments passed to function.</error>
+      <error code="EmptyString">A required string value contains no characters.</error>
       <error code="Search">A search routine in this function failed.</error>
-      <error code="Memory">General memory error.</error>
+      <error code="AccessMemory">Access to a shared memory block was denied.</error>
       <error code="Okay">Operation successful.</error>
     </result>
   </function>
@@ -943,16 +918,16 @@ FastFindObject("SystemPointer", ID_POINTER, &amp;id, 1, NULL);
   <function>
     <name>FindPrivateObject</name>
     <category>Objects</category>
-    <comment>Searches for objects by name.</comment>
+    <comment>Search for an object by name.</comment>
     <prototype>ERROR FindPrivateObject(CSTRING Name, OBJECTPTR * Object)</prototype>
     <input>
       <param type="CSTRING" name="Name">The name of the object to find.</param>
       <param type="OBJECTPTR *" name="Object">A pointer to the discovered object will be returned in this parameter.</param>
     </input>
     <description>
-<p>The FindPrivateObject() function is provided as a simple implementation of the FastFindObject() function.  This implementation is specifically limited to finding private objects by name only.  It is capable of returning only one object address in its search results.  Unlike FastFindObject(), this function returns directly accessible object addresses that may be used immediately after a successful search.</p>
+<p>The FindPrivateObject() function is provided as a simple implementation of the <function module="Core">FindObject</function> function.  This implementation is specifically limited to finding private objects by name only.  It is capable of returning only one object address in its search results.  Unlike <function module="Core">FindObject</function>, this function returns directly accessible object addresses that may be used immediately after a successful search.</p>
 <p>If multiple objects with the same name exists, the most recently created object will be returned by this function.</p>
-<p>If you require more advanced functionality for object searches, please use the FastFindObject() function.</p>
+<p>If you require more advanced functionality for object searches, please use the <function module="Core">FindObject</function> function.</p>
     </description>
     <result type="ERROR">
       <error code="LockFailed">Failed to lock a required resource.</error>
@@ -1512,7 +1487,7 @@ end
     <input>
       <param type="OBJECTID" name="Object">The ID of the object that you wish to examine.</param>
       <param type="struct ChildEntry *" name="List">Must refer to an array of ChildEntry structures.</param>
-      <param type="LONG *" name="Count">The integer that this argument refers to must be set with a value that indicates the size of the supplied list array.  Before returning, this argument will be updated with the total number of entries listed in the array.</param>
+      <param type="LONG *" name="Count">Set to the maximum number of elements in ChildEntry.  Before returning, this parameter will be updated with the total number of entries listed in the array.</param>
     </input>
     <description>
 <p>The ListChildren() function returns a list of an object's children in a single function call.</p>
@@ -3973,6 +3948,11 @@ end
       <const name="DECOMPRESS_OBJECT"/>
     </constants>
 
+    <constants lookup="FOF" comment="Flags that can be passed to FindObject()">
+      <const name="INCLUDE_SHARED">Include public objects when searching.</const>
+      <const name="SMART_NAMES">Parse numeric object names as ID references and support use of the 'Owner' reserved keyword.</const>
+    </constants>
+
     <constants lookup="VLF" comment="VlogF flags">
       <const name="ERROR"/>
       <const name="WARNING"/>
@@ -4315,9 +4295,6 @@ end
       <const name="NO_DEEP_SCAN">Do not perform more than one iteration when resolving the source file path.</const>
     </constants>
 
-    <constants lookup="PMF" comment="Flags for ProcessMessages">
-    </constants>
-
     <constants lookup="MFF" comment="Flags for the File Watch() method.">
       <const name="MOVED">Existing file moved or renamed.</const>
       <const name="UNMOUNT">Host filesystem was unmounted.</const>
@@ -4334,6 +4311,9 @@ end
       <const name="CREATE">New file/link created or renamed in folder.</const>
       <const name="DELETE">Existing file deleted</const>
       <const name="MODIFY">File modified via write or truncation.</const>
+    </constants>
+
+    <constants lookup="PMF" comment="Flags for ProcessMessages">
     </constants>
 
     <constants lookup="LOC" comment="AnalysePath() values">

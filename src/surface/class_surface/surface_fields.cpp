@@ -69,7 +69,8 @@ static ERROR SET_Cursor(objSurface *Self, LONG Value)
    if (Self->Head.Flags & NF_INITIALISED) {
       UpdateSurfaceField(Self, Cursor);
       OBJECTID pointer_id;
-      if (!FastFindObject("SystemPointer", ID_POINTER, &pointer_id, 1, NULL)) {
+      LONG count = 1;
+      if (!FindObject("SystemPointer", ID_POINTER, FOF_INCLUDE_SHARED, &pointer_id, &count)) {
          acRefreshID(pointer_id);
       }
    }

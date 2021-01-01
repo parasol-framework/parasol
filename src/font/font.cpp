@@ -171,7 +171,8 @@ static DOUBLE global_point_size(void)
    if (!glPointSet) {
       parasol::Log log(__FUNCTION__);
       OBJECTID style_id;
-      if (!FastFindObject("glStyle", ID_XML, &style_id, 1, NULL)) {
+      LONG count = 1;
+      if (!FindObject("glStyle", ID_XML, 0, &style_id, &count)) {
          parasol::ScopedObjectLock<objXML> style(style_id, 3000);
          if (style.granted()) {
             char fontsize[20];

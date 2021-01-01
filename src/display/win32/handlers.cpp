@@ -45,7 +45,8 @@ void MsgKeyRelease(LONG Flags, LONG Value)
 void MsgMovement(OBJECTID SurfaceID, LONG AbsX, LONG AbsY, LONG WinX, LONG WinY)
 {
    if (!glPointerID) {
-      if (FastFindObject("SystemPointer", NULL, &glPointerID, 1, NULL) != ERR_Okay) return;
+      LONG count = 1;
+      if (FindObject("SystemPointer", 0, FOF_INCLUDE_SHARED, &glPointerID, &count) != ERR_Okay) return;
    }
 
    ERROR error;
@@ -83,7 +84,8 @@ void MsgMovement(OBJECTID SurfaceID, LONG AbsX, LONG AbsY, LONG WinX, LONG WinY)
 void MsgWheelMovement(OBJECTID SurfaceID, FLOAT Wheel)
 {
    if (!glPointerID) {
-      if (FastFindObject("SystemPointer", NULL, &glPointerID, 1, NULL) != ERR_Okay) return;
+      LONG count = 1;
+      if (FindObject("SystemPointer", 0, FOF_INCLUDE_SHARED, &glPointerID, &count) != ERR_Okay) return;
    }
 
    struct dcDeviceInput joy;

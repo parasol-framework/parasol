@@ -511,7 +511,8 @@ static ERROR WINDOW_Init(objWindow *Self, APTR Void)
    // match to the target device.
 
    OBJECTID style_id;
-   if (!FastFindObject("glStyle", ID_XML, &style_id, 1, NULL)) {
+   LONG count = 1;
+   if (!FindObject("glStyle", ID_XML, FOF_INCLUDE_SHARED, &style_id, &count)) {
       objXML *style;
       if (!AccessObject(style_id, 3000, &style)) {
          char strdpi[32];
@@ -989,7 +990,8 @@ static ERROR WINDOW_NewChild(objWindow *Self, struct acNewChild *Args)
 static ERROR WINDOW_NewObject(objWindow *Self, APTR Void)
 {
    if ((!glDefaultDisplay) or (CheckObjectExists(glDefaultDisplay, NULL) != ERR_Okay)) {
-      FastFindObject("Desktop", ID_SURFACE, &glDefaultDisplay, 1, NULL);
+      LONG count = 1;
+      FindObject("Desktop", ID_SURFACE, FOF_INCLUDE_SHARED, &glDefaultDisplay, &count);
    }
 
    ERROR error;

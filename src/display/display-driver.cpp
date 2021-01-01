@@ -1504,14 +1504,16 @@ static objPointer * gfxAccessPointer(void)
    pointer = NULL;
 
    if (!glPointerID) {
-      if (FastFindObject("SystemPointer", ID_POINTER, &glPointerID, 1, NULL) IS ERR_Okay) {
+      LONG count = 1;
+      if (!FindObject("SystemPointer", ID_POINTER, FOF_INCLUDE_SHARED, &glPointerID, &count)) {
          AccessObject(glPointerID, 2000, &pointer);
       }
       return pointer;
    }
 
    if (AccessObject(glPointerID, 2000, &pointer) IS ERR_NoMatchingObject) {
-      if (FastFindObject("SystemPointer", ID_POINTER, &glPointerID, 1, NULL) IS ERR_Okay) {
+      LONG count = 1;
+      if (!FindObject("SystemPointer", ID_POINTER, FOF_INCLUDE_SHARED, &glPointerID, &count)) {
          AccessObject(glPointerID, 2000, &pointer);
       }
    }
@@ -6070,7 +6072,8 @@ static ERROR init_egl(void)
    glDisplayInfo->DisplayID = 0xffffffff; // Force refresh of display info cache.
 
    if (!glPointerID) {
-      FastFindObject("SystemPointer", NULL, &glPointerID, 1, NULL);
+      LONG count = 1;
+      FindObject("SystemPointer", 0, FOF_INCLUDE_SHARED, &glPointerID, &count);
    }
 
    if (glPointerID) {

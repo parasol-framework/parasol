@@ -447,7 +447,8 @@ static ERROR SOUND_Init(objSound *Self, APTR Void)
    // Find the local audio object.  If none is available, create a new audio object to ease the developer's pain.
 
    if (!Self->AudioID) {
-      if (FastFindObject("SystemAudio", ID_AUDIO, &Self->AudioID, 1, NULL) != ERR_Okay) {
+      LONG count = 1;
+      if (FindObject("SystemAudio", ID_AUDIO, FOF_INCLUDE_SHARED, &Self->AudioID, &count) != ERR_Okay) {
          if (!(error = NewNamedObject(ID_AUDIO, NF_PUBLIC|NF_UNIQUE, &audio, &Self->AudioID, "SystemAudio"))) {
             SetOwner(audio, CurrentTask());
 
@@ -616,7 +617,8 @@ static ERROR SOUND_Init(objSound *Self, APTR Void)
    ERROR error;
 
    if (!Self->AudioID) {
-      if (FastFindObject("SystemAudio", ID_AUDIO, &Self->AudioID, 1, NULL) != ERR_Okay) {
+      LONG count = 1;
+      if (FindObject("SystemAudio", ID_AUDIO, FOF_INCLUDE_SHARED, &Self->AudioID, &count) != ERR_Okay) {
          if (!(error = NewNamedObject(ID_AUDIO, NF_PUBLIC|NF_UNIQUE, &audio, &Self->AudioID, "SystemAudio"))) {
             SetOwner(audio, CurrentTask());
 

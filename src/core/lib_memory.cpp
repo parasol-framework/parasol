@@ -1143,22 +1143,12 @@ ERROR MemoryPtrInfo(APTR Memory, struct MemInfo *MemInfo, LONG Size)
       else return log.warning(ERR_SystemLocked);
    }
 
-   // Search private memory areas.  The speed critical routine is fast, but at the cost of a potential crash if the supplied memory address is invalid.
+   // Search private memory areas.  This is a bit slow, but if the memory pointer is guaranteed to have
+   // come from AllocMemory() then the optimal solution for the client is to pull the ID from
+   // (LONG *)Memory)[-2] first and call MemoryIDInfo() instead.
 
    ThreadLock memlock(TL_PRIVATE_MEM, 4000);
    if (memlock.granted()) {
-      #ifdef __speed__
-         if ((i = find_private_mem_id(((LONG *)Memory)[-2], Memory)) != -1) {
-            MemInfo->Start       = Memory;
-            MemInfo->ObjectID    = glPrivateMemory[i].ObjectID;
-            MemInfo->Size        = glPrivateMemory[i].Size;
-            MemInfo->AccessCount = glPrivateMemory[i].AccessCount;
-            MemInfo->Flags       = glPrivateMemory[i].Flags;
-            MemInfo->MemoryID    = glPrivateMemory[i].MemoryID;
-            MemInfo->TaskID      = glCurrentTaskID;
-            return ERR_Okay;
-         }
-      #else
          for (LONG i=0; i < glNextPrivateAddress; i++) {
             if (Memory IS glPrivateMemory[i].Address) {
                MemInfo->Start       = Memory;
@@ -1171,7 +1161,6 @@ ERROR MemoryPtrInfo(APTR Memory, struct MemInfo *MemInfo, LONG Size)
                return ERR_Okay;
             }
          }
-      #endif
    }
 
    log.warning("Private memory address %p is not valid.", Memory);

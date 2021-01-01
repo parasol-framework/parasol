@@ -53,8 +53,8 @@ http.acActivate()
 </pre>
 <p>Note that the target object needs to support the datatype that you specify, or it will ignore the incoming data.  The default datatype is RAW (binary format), but the most commonly supported datatype is TEXT.</p>
 <p>The third method is to use function callbacks.  Refer to the <field>Incoming</field> field for further information on receiving data through callbacks.</p>
-<header>Progress Reports</header>
-<p>To receive progress reports when uploading or downloading data from a server, subscribe to the <field>Index</field> field, which indicates the current read/write position within the overall data stream (indicated by the <field>ContentLength</field>). Alternatively, use a timer and read the <field>Index</field> periodically.</p>
+<header>Progress Monitoring</header>
+<p>Progress of a data transfer can be monitored through the <field>Index</field> field.  If the callback features are not being used for a data transfer, consider using a timer to read from the <field>Index</field> periodically.</p>
 <header>SSL Support (HTTPS)</header>
 <p>Secure sockets are supported and can be enabled by setting the <field>Port</field> to 443 prior to connection, or by using https:// in URI strings.  Methods of communication remain unchanged when using SSL, as encrypted communication is handled transparently.</p></description>
     <source>
@@ -139,7 +139,7 @@ http.acActivate()
       <type>BIGINT</type>
       <description>
 <p>HTTP servers will return a ContentLength value in their response headers when retrieving information.  This value is defined here once the response header is processed.  The ContentLength may be set to -1 if the content is being streamed from the server.</p>
-<p>When posting data to a server, set the ContentLength to the amount of data that you intend to send to the server.  If streaming data of unknown length, set the ContentLength to -1.</p>
+<p>Note that if posting data to a server with an <field>InputFile</field> or <field>InputObject</field> as the source, the <field>Size</field> field will have priority and override any existing value in ContentLength.  In all other cases the ContentLength can be set directly and a setting of -1 can be used for streaming.</p>
       </description>
     </field>
 
@@ -289,7 +289,7 @@ http.acActivate()
       <access read="G" write="S">Get/Set</access>
       <type>FUNCTION</type>
       <description>
-<p>Outgoing data can be managed manually by providing the HTTP object with an outgoing callback routine.  The format for the callback routine is <code>ERROR Function(*HTTP, APTR Buffer, LONG BufferSize, LONG *Result)</code></p>
+<p>Outgoing data can be managed manually by providing the HTTP object with an outgoing callback routine.  The C prototype for the callback routine is <code>ERROR Function(*HTTP, APTR Buffer, LONG BufferSize, LONG *Result)</code>.  For Fluid use <code>function(HTTP, Buffer, BufferSize)</code>.</p>
 <p>Outgoing content is placed in the Buffer address and must not exceed the indicated BufferSize.  The total number of bytes placed in the Buffer must be indicated in the Result parameter before the callback routine returns.</p>
 <p>If an error code of ERR_Terminate is returned by the callback routine, any remaining data will be sent and the transfer will be treated as having completed successfully.  Use ERR_TimeOut if data cannot be returned in a reasonable time frame.  All other error codes apart from ERR_Okay indicate failure.</p>
       </description>
@@ -395,7 +395,7 @@ http.acActivate()
       <access read="R" write="W">Read/Write</access>
       <type>BIGINT</type>
       <description>
-<p>Prior to the execution of a POST command, it is recommended that you set the Size field to explicitly define the length of the data transfer.  If this field is not set, the HTTP object will attempt to determine the byte size of the transfer by reading the size from the source file or object.</p>
+<p>Prior to the execution of a POST command it is recommended that you set the Size field to explicitly define the length of the data transfer.  If this field is not set, the HTTP object will attempt to determine the byte size of the transfer by reading the size from the source file or object.</p>
       </description>
     </field>
 

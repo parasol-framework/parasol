@@ -967,7 +967,7 @@ ERROR AccessMemory(MEMORYID MemoryID, LONG Flags, LONG MilliSeconds, APTR *Resul
 
                //log.warning("Memory block %d is in use by task #%d:%d - will need to wait.", MemoryID, addr->ProcessLockID, addr->ThreadLockID);
 
-               LONG sleep_timeout = endtime - (PreciseTime()/1000LL);
+               LONG sleep_timeout = endtime - (PreciseTime() / 1000LL);
                if (sleep_timeout <= 1) { // NB: Windows doesn't sleep on 1ms, so we timeout if the value is that small.
                   log.warning("Time-out of %dms on block #%d locked by process %d:%d.  Reattempted lock %d times.", MilliSeconds, MemoryID, addr->ProcessLockID, addr->ThreadLockID, attempt);
                   clear_waitlock(wl);
@@ -1270,7 +1270,7 @@ ERROR AccessPrivateObject(OBJECTPTR Object, LONG Timeout)
    LONG our_thread = get_thread_id();
 
    do {
-      // Using an atomic increment, we can achieve a 'quick lock' of the object without having to resort to locks.
+      // Using an atomic increment we can achieve a 'quick lock' of the object without having to resort to locks.
       // This is quite safe so long as the developer is being careful with use of the object between threads (i.e. not
       // destroying the object when other threads could potentially be using it).
 
@@ -1905,7 +1905,7 @@ ERROR ReleaseMemoryID(MEMORYID MemoryID)
          return ERR_Failed;
       }
    }
-   else { // Address was not found in the public memory list - drop through to private list
+   else {
       ThreadLock lock(TL_PRIVATE_MEM, 4000);
       if (lock.granted()) {
          LONG pos;

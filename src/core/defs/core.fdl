@@ -312,6 +312,10 @@ module({ name="Core", copyright="Paul Manias 1996-2020" }, function()
     "ZLIB: The 'zlib' format",
     "DEFLATE: The 'deflate' format")
 
+  flags("FOF", { comment="Flags that can be passed to FindObject()" },
+    "SMART_NAMES: Parse numeric object names as ID references and support use of the 'Owner' reserved keyword.",
+    "INCLUDE_SHARED: Include public objects when searching.")
+
   flags("NF", { comment="Flags that can be passed to NewObject().  If a flag needs to be stored with the object, it must be specified in the lower word." },
     "NO_TRACK|UNTRACKED: An object created with this flag will not be tracked back to the object that created it.  If combined with the NF_PUBLIC flag, the object can also remain in memory when the object's related task is terminated.",
     "PUBLIC: Allocates a public object using shareable resources, allowing it to be accessed directly by any process.  Access is granted via exclusive access locks  - refer to the AccessObject() and ReleaseObject() functions.",
@@ -976,9 +980,8 @@ struct ScriptArg { // For use with scExec
     "GetFieldArray",
     "AdjustLogLevel",
     "LogF",
-    "FastFindObject",
-    "FindClass",
     "FindObject",
+    "FindClass",
     "ReleaseObject",
     "FreeResource",
     "FreeResourceID",
@@ -1355,7 +1358,7 @@ INLINE ERROR cfgReadInt(APTR Self, CSTRING Group, CSTRING Key, LONG *Value)
   ]])
 
   methods("MetaClass", "mc", {
-    { id=1, name="FindField" },
+    { id=1, name="FindField" }
   })
 
   class("MetaClass", { src="classes/class_metaclass.cpp" }, [[
