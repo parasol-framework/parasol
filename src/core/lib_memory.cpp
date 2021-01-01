@@ -500,17 +500,8 @@ retry:
          // with resource tracking, identifying the memory block and freeing it later on.  Hidden blocks are never recorded.
 
          if (!(Flags & MEM_HIDDEN)) {
-            glPrivateMemory.insert(std::pair<MEMORYID, PrivateAddress>(unique_id, {
-               .Address  = data_start,
-               .MemoryID = unique_id,
-               .ObjectID = object_id,
-               .Size     = (ULONG)Size,
-               #ifdef __unix__
-               .ThreadLockID = 0,
-               #endif
-               .Flags    = (WORD)Flags,
-               .AccessCount = 0
-            }));
+            glPrivateMemory.insert(std::pair<MEMORYID, PrivateAddress>(unique_id, PrivateAddress(data_start, unique_id, object_id, (ULONG)Size, (WORD)Flags)));
+            glObjectResources[object_id].insert(unique_id);
          }
 
          // Gain exclusive access if both the address pointer and memory ID have been specified.
@@ -686,7 +677,9 @@ ERROR FreeResource(const void *Address)
       LONG id = ((LONG *)start_mem)[0];
       ULONG head = ((LONG *)start_mem)[1];
 
-      if (!glPrivateMemory.contains(id)) {
+      auto it = glPrivateMemory.find(id);
+
+      if (it IS glPrivateMemory.end()) {
          if (head IS CODE_MEMH) log.warning("Second attempt at freeing address %p detected.", Address);
          else log.warning("Address %p is not a known private memory block.", Address);
          #ifdef DEBUG
@@ -695,25 +688,25 @@ ERROR FreeResource(const void *Address)
          return ERR_Memory;
       }
 
-      auto mem = &glPrivateMemory[id];
+      auto &mem = it->second;
 
       if (glShowPrivate) {
-         log.pmsg("FreeResource(%p, Size: %d, $%.8x, Owner: #%d)", Address, mem->Size, mem->Flags, mem->ObjectID);
+         log.pmsg("FreeResource(%p, Size: %d, $%.8x, Owner: #%d)", Address, mem.Size, mem.Flags, mem.OwnerID);
       }
 
-      if ((mem->ObjectID) and (tlContext->Object->UniqueID) and (mem->ObjectID != tlContext->Object->UniqueID)) {
-         log.warning("Attempt to free address %p (size %d), which is owned by #%d.", Address, mem->Size, mem->ObjectID);
+      if ((mem.OwnerID) and (tlContext->Object->UniqueID) and (mem.OwnerID != tlContext->Object->UniqueID)) {
+         log.warning("Attempt to free address %p (size %d).", Address, mem.Size);
       }
 
-      if (mem->AccessCount > 0) {
-         log.trace("Address %p of object #%d marked for deletion (open count %d).", Address, mem->ObjectID, mem->AccessCount);
-         mem->Flags |= MEM_DELETE;
+      if (mem.AccessCount > 0) {
+         log.trace("Address %p owned by #%d marked for deletion (open count %d).", Address, mem.OwnerID, mem.AccessCount);
+         mem.Flags |= MEM_DELETE;
          return ERR_Okay;
       }
 
       // If the block has a resource manager, call its Free() implementation.
 
-      if (mem->Flags & MEM_MANAGED) {
+      if (mem.Flags & MEM_MANAGED) {
          start_mem = (char *)start_mem - sizeof(ResourceManager *);
 
          auto rm = ((ResourceManager **)start_mem)[0];
@@ -721,18 +714,20 @@ ERROR FreeResource(const void *Address)
          else log.warning("Resource manager not defined for block #%d.", id);
       }
 
-      auto size = mem->Size;
+      auto size = mem.Size;
       BYTE *end = ((BYTE *)Address) + size;
 
       if (head != CODE_MEMH) log.warning("Bad header on address %p, size %d.", Address, size);
       if (((LONG *)end)[0] != CODE_MEMT) log.warning("Bad tail on address %p, size %d.", Address, size);
 
-      mem->Address  = 0;
-      mem->MemoryID = 0;
-      mem->ObjectID = 0;
-      mem->Flags    = 0;
+      if (glObjectResources.contains(mem.OwnerID)) glObjectResources[mem.OwnerID].erase(id);
+
+      mem.Address  = 0;
+      mem.MemoryID = 0;
+      mem.OwnerID  = 0;
+      mem.Flags    = 0;
       #ifdef __unix__
-      mem->ThreadLockID = 0;
+      mem.ThreadLockID = 0;
       #endif
 
       randomise_memory((APTR)Address, size);
@@ -870,35 +865,40 @@ ERROR FreeResourceID(MEMORYID MemoryID)
 
       ThreadLock lock(TL_PRIVATE_MEM, 4000);
       if (lock.granted()) {
+         auto it = glPrivateMemory.find(MemoryID);
          if (glPrivateMemory.contains(MemoryID)) {
-            auto mem = &glPrivateMemory[MemoryID];
+            auto &mem = it->second;
             ERROR error = ERR_Okay;
-            if (mem->AccessCount > 0) {
-               log.msg("Private memory ID #%d marked for deletion (open count %d).", MemoryID, mem->AccessCount);
-               mem->Flags |= MEM_DELETE;
+            if (mem.AccessCount > 0) {
+               log.msg("Private memory ID #%d marked for deletion (open count %d).", MemoryID, mem.AccessCount);
+               mem.Flags |= MEM_DELETE;
             }
             else {
-               BYTE *mem_end = ((BYTE *)mem->Address) + mem->Size;
+               BYTE *mem_end = ((BYTE *)mem.Address) + mem.Size;
 
-               if (((LONG *)mem->Address)[-1] != CODE_MEMH) {
-                  log.warning("Bad header on block #%d, address %p, size %d.", MemoryID, mem->Address, mem->Size);
+               if (((LONG *)mem.Address)[-1] != CODE_MEMH) {
+                  log.warning("Bad header on block #%d, address %p, size %d.", MemoryID, mem.Address, mem.Size);
                   error = ERR_InvalidData;
                }
 
                if (((LONG *)mem_end)[0] != CODE_MEMT) {
-                  log.warning("Bad tail on block #%d, address %p, size %d.", MemoryID, mem->Address, mem->Size);
+                  log.warning("Bad tail on block #%d, address %p, size %d.", MemoryID, mem.Address, mem.Size);
                   error = ERR_InvalidData;
                }
 
-               randomise_memory(mem->Address, mem->Size);
-               freemem(((LONG *)mem->Address)-2);
+               randomise_memory(mem.Address, mem.Size);
+               freemem(((LONG *)mem.Address)-2);
 
-               mem->Address  = 0;
-               mem->MemoryID = 0;
-               mem->ObjectID = 0;
-               mem->Flags    = 0;
+               if (glObjectResources.contains(mem.OwnerID)) {
+                  glObjectResources[mem.OwnerID].erase(MemoryID);
+               }
+
+               mem.Address  = 0;
+               mem.MemoryID = 0;
+               mem.OwnerID  = 0;
+               mem.Flags    = 0;
                #ifdef __unix__
-               mem->ThreadLockID = 0;
+               mem.ThreadLockID = 0;
                #endif
 
                if (glProgramStage != STAGE_SHUTDOWN) {
@@ -942,8 +942,9 @@ APTR GetMemAddress(MEMORYID MemoryID)
    if (MemoryID > 0) {
       ThreadLock lock(TL_PRIVATE_MEM, 4000);
       if (lock.granted()) {
-         if (glPrivateMemory.contains(MemoryID)) {
-            return glPrivateMemory[MemoryID].Address;
+         auto mem = glPrivateMemory.find(MemoryID);
+         if (mem != glPrivateMemory.end()) {
+            return mem->second.Address;
          }
       }
    }
@@ -1014,14 +1015,14 @@ ERROR MemoryIDInfo(MEMORYID MemoryID, struct MemInfo *MemInfo, LONG Size)
    else { // Search private memory blocks
       ThreadLock lock(TL_PRIVATE_MEM, 4000);
       if (lock.granted()) {
-         if (glPrivateMemory.contains(MemoryID)) {
-            auto mem = &glPrivateMemory[MemoryID];
-            MemInfo->Start       = mem->Address;
-            MemInfo->ObjectID    = mem->ObjectID;
-            MemInfo->Size        = mem->Size;
-            MemInfo->AccessCount = mem->AccessCount;
-            MemInfo->Flags       = mem->Flags|MEM_PUBLIC;
-            MemInfo->MemoryID    = mem->MemoryID;
+         auto mem = glPrivateMemory.find(MemoryID);
+         if (mem != glPrivateMemory.end()) {
+            MemInfo->Start       = mem->second.Address;
+            MemInfo->ObjectID    = mem->second.OwnerID;
+            MemInfo->Size        = mem->second.Size;
+            MemInfo->AccessCount = mem->second.AccessCount;
+            MemInfo->Flags       = mem->second.Flags | MEM_PUBLIC;
+            MemInfo->MemoryID    = mem->second.MemoryID;
             MemInfo->TaskID      = glCurrentTaskID;
             MemInfo->Handle      = 0;
             return ERR_Okay;
@@ -1126,7 +1127,7 @@ ERROR MemoryPtrInfo(APTR Memory, struct MemInfo *MemInfo, LONG Size)
       for (const auto & [ id, mem ] : glPrivateMemory) {
          if (Memory IS mem.Address) {
             MemInfo->Start       = Memory;
-            MemInfo->ObjectID    = mem.ObjectID;
+            MemInfo->ObjectID    = mem.OwnerID;
             MemInfo->Size        = mem.Size;
             MemInfo->AccessCount = mem.AccessCount;
             MemInfo->Flags       = mem.Flags;

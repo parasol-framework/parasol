@@ -535,7 +535,7 @@ EXPORT void Expunge(WORD Force)
 
             BYTE classinuse = FALSE;
             for (const auto & [ id, mem ] : glPrivateMemory) {
-               if ((mem.Flags & MEM_OBJECT) and (mem.ObjectID IS mod_master->Head.UniqueID)) {
+               if ((mem.Flags & MEM_OBJECT) and (mem.OwnerID IS mod_master->Head.UniqueID)) {
                   auto mc = (rkMetaClass *)mem.Address;
                   if ((mc) and (mc->Head.ClassID IS ID_METACLASS) and (mc->OpenCount > 0)) {
                      log.msg("Module %s manages a class that is in use - Class: %s, Count: %d.", mod_master->Name, mc->ClassName, mc->OpenCount);
@@ -596,7 +596,7 @@ EXPORT void Expunge(WORD Force)
                // out if the module code is in use.
 
                for (const auto & [ id, mem ] : glPrivateMemory) {
-                  if ((mem.Flags & MEM_OBJECT) and (mem.ObjectID IS mod_master->Head.UniqueID)) {
+                  if ((mem.Flags & MEM_OBJECT) and (mem.OwnerID IS mod_master->Head.UniqueID)) {
                      auto mc = (rkMetaClass *)mem.Address;
                      if ((mc) and (mc->Head.ClassID IS ID_METACLASS) and (mc->OpenCount > 0)) {
                         log.warning("Warning: The %s module holds a class with existing objects (Class: %s, Objects: %d)", mod_master->Name, mc->ClassName, mc->OpenCount);
@@ -762,12 +762,12 @@ static void free_private_memory(void)
          if (!glCrashStatus) {
             if (mem.Flags & MEM_OBJECT) {
                OBJECTPTR object = (OBJECTPTR)mem.Address;
-               log.warning("Unfreed private object #%d, Size %d, Class: $%.8x, Container: #%d.", mem.MemoryID, mem.Size, object->ClassID, mem.ObjectID);
+               log.warning("Unfreed private object #%d, Size %d, Class: $%.8x, Container: #%d.", mem.MemoryID, mem.Size, object->ClassID, mem.OwnerID);
                if (object->Flags & NF_PUBLIC) {
                   remove_shared_object(mem.MemoryID);
                }
             }
-            else log.warning("Unfreed private memory #%d/%p, Size %d, Container: #%d.", mem.MemoryID, mem.Address, mem.Size, mem.ObjectID);
+            else log.warning("Unfreed private memory #%d/%p, Size %d, Container: #%d.", mem.MemoryID, mem.Address, mem.Size, mem.OwnerID);
          }
          mem.AccessCount = 0;
          FreeResource(mem.Address);

@@ -165,10 +165,10 @@ ERROR CheckObjectExists(OBJECTID ObjectID, CSTRING Name)
       ThreadLock lock(TL_PRIVATE_MEM, 4000);
       if (lock.granted()) {
          LONG result = ERR_False;
-         if (glPrivateMemory.contains(ObjectID)) {
-            auto mem = &glPrivateMemory[ObjectID];
-            if (mem->Address) {
-               if (((OBJECTPTR)mem->Address)->Flags & NF_UNLOCK_FREE);
+         auto mem = glPrivateMemory.find(ObjectID);
+         if (mem != glPrivateMemory.end()) {
+            if (mem->second.Object) {
+               if (mem->second.Object->Flags & NF_UNLOCK_FREE);
                else result = ERR_True;
             }
          }
@@ -638,10 +638,10 @@ ERROR FindPrivateObject(CSTRING InitialName, OBJECTPTR *Object)
       if ((objectid = (OBJECTID)StrToInt(InitialName))) {
          ThreadLock lock(TL_PRIVATE_MEM, 4000);
          if (lock.granted()) {
-            if (glPrivateMemory.contains(objectid)) {
-               auto mem = &glPrivateMemory[objectid];
-               if (mem->Address) {
-                  *Object = (OBJECTPTR)mem->Address;
+            auto mem = glPrivateMemory.find(objectid);
+            if (mem != glPrivateMemory.end()) {
+               if (mem->second.Object) {
+                  *Object = mem->second.Object;
                   return ERR_Okay;
                }
             }
@@ -654,8 +654,9 @@ ERROR FindPrivateObject(CSTRING InitialName, OBJECTPTR *Object)
       if ((tlContext != &glTopContext) and (tlContext->Object->OwnerID)) {
          ThreadLock lock(TL_PRIVATE_MEM, 4000);
          if (lock.granted()) {
-            if (glPrivateMemory.contains(tlContext->Object->OwnerID)) {
-               if ((*Object = (OBJECTPTR)glPrivateMemory[tlContext->Object->OwnerID].Address)) {
+            auto mem = glPrivateMemory.find(tlContext->Object->OwnerID);
+            if (mem != glPrivateMemory.end()) {
+               if ((*Object = mem->second.Object)) {
                   return ERR_Okay;
                }
             }
@@ -1173,9 +1174,9 @@ OBJECTID GetOwnerID(OBJECTID ObjectID)
    else {
       ThreadLock lock(TL_PRIVATE_MEM, 4000);
       if (lock.granted()) {
-         if (glPrivateMemory.contains(ObjectID)) {
-            auto mem = &glPrivateMemory[ObjectID];
-            if (mem->Address) return ((OBJECTPTR)mem->Address)->OwnerID;
+         auto mem = glPrivateMemory.find(ObjectID);
+         if (mem != glPrivateMemory.end()) {
+            if (mem->second.Object) return mem->second.Object->OwnerID;
          }
       }
    }
@@ -1419,7 +1420,7 @@ ERROR ListChildren(OBJECTID ObjectID, ChildEntry *List, LONG *Count)
 
    SharedObjectHeader *header;
    if (!AccessMemory(RPM_SharedObjects, MEM_READ, 2000, (void **)&header)) {
-      SharedObject *list = (SharedObject *)ResolveAddress(header, header->Offset);
+      auto list = (SharedObject *)ResolveAddress(header, header->Offset);
       for (LONG j=0; j < header->NextEntry; j++) {
          if ((list[j].OwnerID IS ObjectID) and (!(list[j].Flags & NF_INTEGRAL))) {
             List[i].ObjectID = list[j].ObjectID;
@@ -1438,7 +1439,7 @@ ERROR ListChildren(OBJECTID ObjectID, ChildEntry *List, LONG *Count)
       ThreadLock lock(TL_PRIVATE_MEM, 4000);
       if (lock.granted()) {
          for (const auto & [id, mem ] : glPrivateMemory) {
-            if ((mem.Flags & MEM_OBJECT) and (mem.ObjectID IS ObjectID)) {
+            if ((mem.Flags & MEM_OBJECT) and (mem.OwnerID IS ObjectID)) {
                OBJECTPTR object;
                if ((object = (OBJECTPTR)mem.Address)) {
                   if (!(object->Flags & NF_INTEGRAL)) {
@@ -1790,9 +1791,9 @@ ERROR SetOwner(OBJECTPTR Object, OBJECTPTR Owner)
 
    // Make the change
 
-   //if (Object->OwnerID) FMSG("SetOwner:","Changing the owner for object %d from %d to %d.", Object->UniqueID, Object->OwnerID, Owner->UniqueID);
+   //if (Object->OwnerID) log.trace("SetOwner:","Changing the owner for object %d from %d to %d.", Object->UniqueID, Object->OwnerID, Owner->UniqueID);
 
-   if (Object->Flags & NF_FOREIGN_OWNER) {
+   if (Object->Flags & NF_FOREIGN_OWNER) { // Remove subscription to AC_OwnerDestroyed
       OBJECTPTR obj;
       if (!AccessObject(Object->OwnerID, 3000, &obj)) {
          OBJECTPTR context = SetContext(Object);
@@ -1829,8 +1830,9 @@ ERROR SetOwner(OBJECTPTR Object, OBJECTPTR Owner)
       { // Track the object's memory header to the new owner
          ThreadLock lock(TL_PRIVATE_MEM, 4000);
          if (lock.granted()) {
-            if (glPrivateMemory.contains(Object->UniqueID)) {
-               glPrivateMemory[Object->UniqueID].ObjectID = Owner->UniqueID;
+            auto mem = glPrivateMemory.find(Object->UniqueID);
+            if (mem != glPrivateMemory.end()) {
+               mem->second.OwnerID = Owner->UniqueID;
             }
             else log.warning("Failed to find private object %p / #%d.", Object, Object->UniqueID);
          }

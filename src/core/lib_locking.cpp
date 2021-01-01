@@ -1055,32 +1055,32 @@ ERROR AccessMemory(MEMORYID MemoryID, LONG Flags, LONG MilliSeconds, APTR *Resul
    else {
       ThreadLock lock(TL_PRIVATE_MEM, 4000);
       if (lock.granted()) {
-         if (glPrivateMemory.contains(MemoryID)) {
-            auto mem = &glPrivateMemory[MemoryID];
+         auto mem = glPrivateMemory.find(MemoryID);
+         if (mem != glPrivateMemory.end()) {
             LONG thread_id = get_thread_id();
             // This loop looks odd, but will prevent sleeping if we already have a lock on the memory.
             // cond_wait() will be met with a global wake-up, not necessarily on the desired block, hence the need for while().
 
             LARGE end_time = (PreciseTime() / 1000LL) + MilliSeconds;
             ERROR error = ERR_TimeOut;
-            while ((mem->AccessCount > 0) and (mem->ThreadLockID != thread_id)) {
+            while ((mem->second.AccessCount > 0) and (mem->second.ThreadLockID != thread_id)) {
                LONG timeout = end_time - (PreciseTime() / 1000LL);
                if (timeout <= 0) {
                   return log.warning(ERR_TimeOut);
                }
                else {
-                  //log.msg("Sleep on memory #%d, Access %d, Threads %d/%d", MemoryID, mem->AccessCount, (LONG)mem->ThreadLockID, thread_id);
+                  //log.msg("Sleep on memory #%d, Access %d, Threads %d/%d", MemoryID, mem->second.AccessCount, (LONG)mem->second.ThreadLockID, thread_id);
                   if ((error = cond_wait(TL_PRIVATE_MEM, CN_PRIVATE_MEM, timeout))) {
                      return log.warning(error);
                   }
                }
             }
 
-            mem->ThreadLockID = thread_id;
-            __sync_fetch_and_add(&mem->AccessCount, 1);
+            mem->second.ThreadLockID = thread_id;
+            __sync_fetch_and_add(&mem->second.AccessCount, 1);
             tlPrivateLockCount++;
 
-            *Result = mem->Address;
+            *Result = mem->second.Address;
             return ERR_Okay;
          }
          else log.traceWarning("Cannot find private memory ID #%d", MemoryID); // This is not uncommon, so trace only
@@ -1142,9 +1142,10 @@ ERROR AccessObject(OBJECTID ObjectID, LONG MilliSeconds, OBJECTPTR *Result)
    if (MilliSeconds <= 0) log.warning("Object: %d, MilliSeconds: %d - This is bad practice.", ObjectID, MilliSeconds);
 
    if (ObjectID > 0) {
-      if (glPrivateMemory.contains(ObjectID)) {
-         if (!(error = AccessPrivateObject((OBJECTPTR)glPrivateMemory[ObjectID].Address, MilliSeconds))) {
-            *Result = (OBJECTPTR)glPrivateMemory[ObjectID].Address;
+      auto mem = glPrivateMemory.find(ObjectID);
+      if (mem != glPrivateMemory.end()) {
+         if (!(error = AccessPrivateObject((OBJECTPTR)mem->second.Address, MilliSeconds))) {
+            *Result = (OBJECTPTR)mem->second.Address;
             return ERR_Okay;
          }
          else return error;
@@ -1726,19 +1727,20 @@ MEMORYID ReleaseMemory(APTR Address)
 
    ThreadLock lock(TL_PRIVATE_MEM, 4000);
    if (lock.granted()) {
-      if (glPrivateMemory.contains(((LONG *)Address)[-2])) {
+      auto mem = glPrivateMemory.find(((LONG *)Address)[-2]);
+
+      if (mem IS glPrivateMemory.end()) {
          if (tlContext->Object->Class) log.warning("Unable to find a record for memory address %p, ID %d [Context %d, Class %s].", Address, ((LONG *)Address)[-2], tlContext->Object->UniqueID, ((rkMetaClass *)tlContext->Object->Class)->ClassName);
          else log.warning("Unable to find a record for memory address %p.", Address);
          if (glLogLevel > 1) PrintDiagnosis(glProcessID, 0);
          return 0;
       }
 
-      auto mem = &glPrivateMemory[((LONG *)Address)[-2]];
-      id = mem->MemoryID;
+      id = mem->second.MemoryID;
 
       WORD access;
-      if (mem->AccessCount > 0) { // Sometimes ReleaseMemory() is called on private addresses that aren't actually locked.  This is OK - we simply don't do anything in that case.
-         access = __sync_sub_and_fetch(&mem->AccessCount, 1);
+      if (mem->second.AccessCount > 0) { // Sometimes ReleaseMemory() is called on private addresses that aren't actually locked.  This is OK - we simply don't do anything in that case.
+         access = __sync_sub_and_fetch(&mem->second.AccessCount, 1);
          tlPrivateLockCount--;
       }
       else access = -1;
@@ -1749,17 +1751,17 @@ MEMORYID ReleaseMemory(APTR Address)
 
       if (!access) {
          #ifdef __unix__
-            mem->ThreadLockID = 0; // This is more for peace of mind (it's the access count that matters)
+            mem->second.ThreadLockID = 0; // This is more for peace of mind (it's the access count that matters)
          #endif
 
-         if (mem->Flags & MEM_DELETE) {
+         if (mem->second.Flags & MEM_DELETE) {
             log.trace("Deleting marked private memory block #%d (MEM_DELETE)", id);
-            FreeResource(mem->Address); // NB: The block entry will no longer be valid from this point onward
+            FreeResource(mem->second.Address); // NB: The block entry will no longer be valid from this point onward
             cond_wake_all(CN_PRIVATE_MEM); // Wake up any threads sleeping on this memory block.
             return id;
          }
-         else if (mem->Flags & MEM_EXCLUSIVE) {
-            mem->Flags &= ~MEM_EXCLUSIVE;
+         else if (mem->second.Flags & MEM_EXCLUSIVE) {
+            mem->second.Flags &= ~MEM_EXCLUSIVE;
          }
 
          cond_wake_all(CN_PRIVATE_MEM); // Wake up any threads sleeping on this memory block.
@@ -1908,18 +1910,18 @@ ERROR ReleaseMemoryID(MEMORYID MemoryID)
    else {
       ThreadLock lock(TL_PRIVATE_MEM, 4000);
       if (lock.granted()) {
-         if (!glPrivateMemory.contains(MemoryID)) {
+         auto mem = glPrivateMemory.find(MemoryID);
+
+         if (mem IS glPrivateMemory.end()) {
             if (tlContext->Object->Class) log.warning("Unable to find a record for memory address #%d [Context %d, Class %s].", MemoryID, tlContext->Object->UniqueID, ((rkMetaClass *)tlContext->Object->Class)->ClassName);
             else log.warning("Unable to find a record for memory #%d.", MemoryID);
             if (glLogLevel > 1) PrintDiagnosis(glProcessID, 0);
             return ERR_Search;
          }
 
-         auto mem = &glPrivateMemory[MemoryID];
-
          WORD access;
-         if (mem->AccessCount > 0) { // Sometimes ReleaseMemory() is called on private addresses that aren't actually locked.  This is OK - we simply don't do anything in that case.
-            access = __sync_sub_and_fetch(&mem->AccessCount, 1);
+         if (mem->second.AccessCount > 0) { // Sometimes ReleaseMemory() is called on private addresses that aren't actually locked.  This is OK - we simply don't do anything in that case.
+            access = __sync_sub_and_fetch(&mem->second.AccessCount, 1);
             tlPrivateLockCount--;
          }
          else access = -1;
@@ -1930,17 +1932,17 @@ ERROR ReleaseMemoryID(MEMORYID MemoryID)
 
          if (!access) {
             #ifdef __unix__
-               mem->ThreadLockID = 0; // This is more for peace of mind (it's the access count that matters)
+               mem->second.ThreadLockID = 0; // This is more for peace of mind (it's the access count that matters)
             #endif
 
-            if (mem->Flags & MEM_DELETE) {
+            if (mem->second.Flags & MEM_DELETE) {
                log.trace("Deleting marked private memory block #%d (MEM_DELETE)", MemoryID);
-               FreeResource(mem->Address);
+               FreeResource(mem->second.Address);
                cond_wake_all(CN_PRIVATE_MEM); // Wake up any threads sleeping on this memory block.
                return ERR_Okay;
             }
-            else if (mem->Flags & MEM_EXCLUSIVE) {
-               mem->Flags &= ~MEM_EXCLUSIVE;
+            else if (mem->second.Flags & MEM_EXCLUSIVE) {
+               mem->second.Flags &= ~MEM_EXCLUSIVE;
             }
 
             cond_wake_all(CN_PRIVATE_MEM); // Wake up any threads sleeping on this memory block.

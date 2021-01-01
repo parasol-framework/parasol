@@ -5,6 +5,8 @@
 #include <parasol/config.h>
 #endif
 
+#include <set>
+
 #define PRV_CORE
 #define PRV_CORE_MODULE
 #define PRV_THREAD
@@ -126,6 +128,25 @@ struct ActionTable;
 struct FileFeedback;
 struct ResourceManager;
 struct MsgHandler;
+
+// Private memory management structures.
+
+class PrivateAddress {
+public:
+   union {
+      APTR      Address;
+      OBJECTPTR Object;
+   };
+   MEMORYID MemoryID;   // Unique identifier
+   OBJECTID OwnerID;    // The object that allocated this block.
+   ULONG    Size;       // 4GB max
+   volatile LONG ThreadLockID = 0;
+   WORD     Flags;
+   volatile WORD AccessCount = 0; // Total number of locks
+
+   PrivateAddress(APTR aAddress, MEMORYID aMemoryID, OBJECTID aOwnerID, ULONG aSize, WORD aFlags) :
+      Address(aAddress), MemoryID(aMemoryID), OwnerID(aOwnerID), Size(aSize), Flags(aFlags) { };
+};
 
 struct rkWatchPath {
    LARGE      Custom;    // User's custom data pointer or value
@@ -455,6 +476,7 @@ extern const struct ActionTable ActionTable[];  // Read only
 extern const struct Function    glFunctions[];  // Read only
 extern struct CoreTimer *glTimers;              // Locked with TL_TIMER
 extern std::unordered_map<MEMORYID, PrivateAddress> glPrivateMemory;  // Locked with TL_PRIVATE_MEM: Note that best performance for looking up ID's is achieved as a sorted array.
+extern std::unordered_map<OBJECTID, std::set<MEMORYID>> glObjectResources; // Locked with TL_OBJECT_RESOURCES
 extern struct MemoryPage   *glMemoryPages;      // Locked with TL_MEMORY_PAGES
 extern struct KeyStore *glObjectLookup;         // Locked with TL_OBJECT_LOOKUP
 extern struct ClassHeader  *glClassDB;          // Read-only.  Class database.

@@ -125,7 +125,7 @@ static void free_private_children(OBJECTPTR Object)
    if (lock.granted()) {
 restart:
       for (const auto & [ id, mem ] : glPrivateMemory) {
-         if ((mem.ObjectID IS Object->UniqueID) and (mem.Address)) {
+         if ((mem.OwnerID IS Object->UniqueID) and (mem.Address)) {
             if (mem.Flags & MEM_DELETE) continue; // Ignore blocks already marked for deletion
 
             if (!(mem.Flags & MEM_OBJECT)) {
