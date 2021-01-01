@@ -35,12 +35,7 @@ Name: Memory
 
 using namespace parasol;
 
-static ERROR add_mem_entry(void);
-static volatile BYTE glPrivateCompressed = FALSE;
-static volatile WORD glPrivateCompression = 500;
-
 static void compress_public_memory(SharedControl *);
-static void compress_private_memory(void);
 #ifdef RANDOMISE_MEM
 static void randomise_memory(UBYTE *, ULONG Size);
 #else
@@ -177,8 +172,6 @@ ERROR AllocMemory(LONG Size, LONG Flags, APTR *Address, MEMORYID *MemoryID)
    }
    else if (tlContext != &glTopContext) object_id = tlContext->Object->UniqueID;
    else object_id = SystemTaskID;
-
-   if (!glPrivateMemory) return log.warning(ERR_NotInitialised);
 
    // Allocate the memory block according to whether it is public or private.
 
@@ -507,19 +500,17 @@ retry:
          // with resource tracking, identifying the memory block and freeing it later on.  Hidden blocks are never recorded.
 
          if (!(Flags & MEM_HIDDEN)) {
-            if (!add_mem_entry()) {
-               glPrivateMemory[glNextPrivateAddress].Address     = data_start;
-               glPrivateMemory[glNextPrivateAddress].MemoryID    = unique_id;
-               glPrivateMemory[glNextPrivateAddress].Flags       = Flags;
-               glPrivateMemory[glNextPrivateAddress].Size        = Size;
-               glPrivateMemory[glNextPrivateAddress].ObjectID    = object_id;
-               glPrivateMemory[glNextPrivateAddress].AccessCount = 0;
+            glPrivateMemory.insert(std::pair<MEMORYID, PrivateAddress>(unique_id, {
+               .Address  = data_start,
+               .MemoryID = unique_id,
+               .ObjectID = object_id,
+               .Size     = (ULONG)Size,
                #ifdef __unix__
-               glPrivateMemory[glNextPrivateAddress].ThreadLockID = 0;
+               .ThreadLockID = 0,
                #endif
-
-               glNextPrivateAddress++;
-            }
+               .Flags    = (WORD)Flags,
+               .AccessCount = 0
+            }));
          }
 
          // Gain exclusive access if both the address pointer and memory ID have been specified.
@@ -536,8 +527,6 @@ retry:
             if (Address)  *Address  = data_start;
             if (MemoryID) *MemoryID = unique_id;
          }
-
-         glPrivateBlockCount++;
 
          if (glShowPrivate) log.pmsg("AllocMemory(%p/#%d, %d, $%.8x, Owner: #%d)", data_start, unique_id, Size, Flags, object_id);
          return ERR_Okay;
@@ -587,12 +576,9 @@ ERROR CheckMemoryExists(MEMORYID MemoryID)
       return ERR_False;
    }
    else {
-      if (!glPrivateMemory) return log.warning(ERR_SystemCorrupt);
-
       ThreadLock lock(TL_PRIVATE_MEM, 4000);
       if (lock.granted()) {
-         LONG i;
-         if ((i = find_private_mem_id(MemoryID, NULL)) != -1) return ERR_True;
+         if (glPrivateMemory.contains(MemoryID)) return ERR_True;
       }
    }
 
@@ -690,11 +676,6 @@ ERROR FreeResource(const void *Address)
 
    if (!Address) return log.warning(ERR_NullArgs);
 
-   if (!glPrivateMemory) { // This part is required for very early initialisation or expunging of the Core.
-      freemem(((LONG *)Address)-2);
-      return ERR_Okay;
-   }
-
    APTR start_mem = (char *)Address - sizeof(LONG) - sizeof(LONG);
 
    ThreadLock lock(TL_PRIVATE_MEM, 4000);
@@ -705,8 +686,7 @@ ERROR FreeResource(const void *Address)
       LONG id = ((LONG *)start_mem)[0];
       ULONG head = ((LONG *)start_mem)[1];
 
-      LONG pos;
-      if ((pos = find_private_mem_id(id, Address)) IS -1) {
+      if (!glPrivateMemory.contains(id)) {
          if (head IS CODE_MEMH) log.warning("Second attempt at freeing address %p detected.", Address);
          else log.warning("Address %p is not a known private memory block.", Address);
          #ifdef DEBUG
@@ -715,62 +695,57 @@ ERROR FreeResource(const void *Address)
          return ERR_Memory;
       }
 
+      auto mem = &glPrivateMemory[id];
+
       if (glShowPrivate) {
-         log.pmsg("FreeResource(%p, Size: %d, $%.8x, Owner: #%d)", Address, glPrivateMemory[pos].Size,
-            glPrivateMemory[pos].Flags, glPrivateMemory[pos].ObjectID);
+         log.pmsg("FreeResource(%p, Size: %d, $%.8x, Owner: #%d)", Address, mem->Size, mem->Flags, mem->ObjectID);
       }
 
-      if ((glPrivateMemory[pos].ObjectID) and (tlContext->Object->UniqueID) and (glPrivateMemory[pos].ObjectID != tlContext->Object->UniqueID)) {
-         log.warning("Attempt to free address %p (size %d), which is owned by #%d.", Address, glPrivateMemory[pos].Size, glPrivateMemory[pos].ObjectID);
+      if ((mem->ObjectID) and (tlContext->Object->UniqueID) and (mem->ObjectID != tlContext->Object->UniqueID)) {
+         log.warning("Attempt to free address %p (size %d), which is owned by #%d.", Address, mem->Size, mem->ObjectID);
       }
 
-      if (glPrivateMemory[pos].AccessCount > 0) {
-         log.trace("Address %p of object #%d marked for deletion (open count %d).", Address,
-            glPrivateMemory[pos].ObjectID, glPrivateMemory[pos].AccessCount);
-
-         glPrivateMemory[pos].Flags |= MEM_DELETE;
+      if (mem->AccessCount > 0) {
+         log.trace("Address %p of object #%d marked for deletion (open count %d).", Address, mem->ObjectID, mem->AccessCount);
+         mem->Flags |= MEM_DELETE;
          return ERR_Okay;
       }
 
       // If the block has a resource manager, call its Free() implementation.
 
-      if (glPrivateMemory[pos].Flags & MEM_MANAGED) {
+      if (mem->Flags & MEM_MANAGED) {
          start_mem = (char *)start_mem - sizeof(ResourceManager *);
 
-         ResourceManager *rm = ((ResourceManager **)start_mem)[0];
-         if ((rm) and (rm->Free)) {
-            rm->Free((APTR)Address);
-            // Reacquire the current block position - it can move if glPrivateMemory was compressed.
-            if ((pos = find_private_mem_id(id, Address)) IS -1) {
-               return log.warning(ERR_SystemCorrupt);
-            }
-         }
+         auto rm = ((ResourceManager **)start_mem)[0];
+         if ((rm) and (rm->Free)) rm->Free((APTR)Address);
          else log.warning("Resource manager not defined for block #%d.", id);
       }
 
-      LONG size = glPrivateMemory[pos].Size;
-      BYTE *end  = ((BYTE *)Address) + size;
+      auto size = mem->Size;
+      BYTE *end = ((BYTE *)Address) + size;
 
       if (head != CODE_MEMH) log.warning("Bad header on address %p, size %d.", Address, size);
       if (((LONG *)end)[0] != CODE_MEMT) log.warning("Bad tail on address %p, size %d.", Address, size);
 
-      // Remove all references to this memory block
-
-      glPrivateMemory[pos].Address  = 0;
-      glPrivateMemory[pos].MemoryID = 0;
-      glPrivateMemory[pos].ObjectID = 0;
+      mem->Address  = 0;
+      mem->MemoryID = 0;
+      mem->ObjectID = 0;
+      mem->Flags    = 0;
       #ifdef __unix__
-      glPrivateMemory[pos].ThreadLockID = 0;
+      mem->ThreadLockID = 0;
       #endif
-
-      glPrivateBlockCount--;
-      glPrivateCompressed = FALSE;
-
-      if (__sync_sub_and_fetch(&glPrivateCompression, 1) <= 0) compress_private_memory();
 
       randomise_memory((APTR)Address, size);
 
       freemem(start_mem);
+
+      // NB: To keep the shutdown process optimal, we guarantee the stability of glPrivateMemory
+      // by not erasing records during that phase (just clearing the values).
+
+      if (glProgramStage != STAGE_SHUTDOWN) {
+         glPrivateMemory.erase(id);
+      }
+
       return ERR_Okay;
    }
    else return ERR_LockFailed;
@@ -895,37 +870,40 @@ ERROR FreeResourceID(MEMORYID MemoryID)
 
       ThreadLock lock(TL_PRIVATE_MEM, 4000);
       if (lock.granted()) {
-         LONG i;
-         if ((i = find_private_mem_id(MemoryID, NULL)) != -1) {
+         if (glPrivateMemory.contains(MemoryID)) {
+            auto mem = &glPrivateMemory[MemoryID];
             ERROR error = ERR_Okay;
-            if (glPrivateMemory[i].AccessCount > 0) {
-               log.msg("Private memory ID #%d marked for deletion (open count %d).", MemoryID, glPrivateMemory[i].AccessCount);
-               glPrivateMemory[i].Flags |= MEM_DELETE;
+            if (mem->AccessCount > 0) {
+               log.msg("Private memory ID #%d marked for deletion (open count %d).", MemoryID, mem->AccessCount);
+               mem->Flags |= MEM_DELETE;
             }
             else {
-               BYTE *mem_end = ((BYTE *)glPrivateMemory[i].Address) + glPrivateMemory[i].Size;
+               BYTE *mem_end = ((BYTE *)mem->Address) + mem->Size;
 
-               if (((LONG *)glPrivateMemory[i].Address)[-1] != CODE_MEMH) {
-                  log.warning("Bad header on block #%d, address %p, size %d.", MemoryID, glPrivateMemory[i].Address, glPrivateMemory[i].Size);
+               if (((LONG *)mem->Address)[-1] != CODE_MEMH) {
+                  log.warning("Bad header on block #%d, address %p, size %d.", MemoryID, mem->Address, mem->Size);
                   error = ERR_InvalidData;
                }
 
                if (((LONG *)mem_end)[0] != CODE_MEMT) {
-                  log.warning("Bad tail on block #%d, address %p, size %d.", MemoryID, glPrivateMemory[i].Address, glPrivateMemory[i].Size);
+                  log.warning("Bad tail on block #%d, address %p, size %d.", MemoryID, mem->Address, mem->Size);
                   error = ERR_InvalidData;
                }
 
-               randomise_memory(glPrivateMemory[i].Address, glPrivateMemory[i].Size);
-               freemem(((LONG *)glPrivateMemory[i].Address)-2);
+               randomise_memory(mem->Address, mem->Size);
+               freemem(((LONG *)mem->Address)-2);
 
-               glPrivateMemory[i].Address  = 0;
-               glPrivateMemory[i].MemoryID = 0;
-               glPrivateMemory[i].ObjectID = 0;
+               mem->Address  = 0;
+               mem->MemoryID = 0;
+               mem->ObjectID = 0;
+               mem->Flags    = 0;
                #ifdef __unix__
-               glPrivateMemory[i].ThreadLockID = 0;
+               mem->ThreadLockID = 0;
                #endif
 
-               if (__sync_sub_and_fetch(&glPrivateCompression, 1) <= 0) compress_private_memory();
+               if (glProgramStage != STAGE_SHUTDOWN) {
+                  glPrivateMemory.erase(MemoryID);
+               }
             }
 
             return error;
@@ -964,9 +942,8 @@ APTR GetMemAddress(MEMORYID MemoryID)
    if (MemoryID > 0) {
       ThreadLock lock(TL_PRIVATE_MEM, 4000);
       if (lock.granted()) {
-         LONG i;
-         if ((i = find_private_mem_id(MemoryID, NULL)) != -1) {
-            return glPrivateMemory[i].Address;
+         if (glPrivateMemory.contains(MemoryID)) {
+            return glPrivateMemory[MemoryID].Address;
          }
       }
    }
@@ -1009,7 +986,7 @@ SystemCorrupt: Internal memory tables are corrupt.
 ERROR MemoryIDInfo(MEMORYID MemoryID, struct MemInfo *MemInfo, LONG Size)
 {
    parasol::Log log(__FUNCTION__);
-   LONG i, entry;
+   LONG entry;
 
    if ((!MemInfo) or (!MemoryID)) return log.warning(ERR_NullArgs);
    if ((size_t)Size < sizeof(struct MemInfo)) return log.warning(ERR_Args);
@@ -1035,17 +1012,16 @@ ERROR MemoryIDInfo(MEMORYID MemoryID, struct MemInfo *MemInfo, LONG Size)
       else return log.warning(ERR_SystemLocked);
    }
    else { // Search private memory blocks
-      if (!glPrivateMemory) return log.warning(ERR_SystemCorrupt);
-
       ThreadLock lock(TL_PRIVATE_MEM, 4000);
       if (lock.granted()) {
-         if ((i = find_private_mem_id(MemoryID, NULL)) != -1) {
-            MemInfo->Start       = glPrivateMemory[i].Address;
-            MemInfo->ObjectID    = glPrivateMemory[i].ObjectID;
-            MemInfo->Size        = glPrivateMemory[i].Size;
-            MemInfo->AccessCount = glPrivateMemory[i].AccessCount;
-            MemInfo->Flags       = glPrivateMemory[i].Flags|MEM_PUBLIC;
-            MemInfo->MemoryID    = glPrivateMemory[i].MemoryID;
+         if (glPrivateMemory.contains(MemoryID)) {
+            auto mem = &glPrivateMemory[MemoryID];
+            MemInfo->Start       = mem->Address;
+            MemInfo->ObjectID    = mem->ObjectID;
+            MemInfo->Size        = mem->Size;
+            MemInfo->AccessCount = mem->AccessCount;
+            MemInfo->Flags       = mem->Flags|MEM_PUBLIC;
+            MemInfo->MemoryID    = mem->MemoryID;
             MemInfo->TaskID      = glCurrentTaskID;
             MemInfo->Handle      = 0;
             return ERR_Okay;
@@ -1097,8 +1073,6 @@ ERROR MemoryPtrInfo(APTR Memory, struct MemInfo *MemInfo, LONG Size)
 
    ClearMemory(MemInfo, Size);
 
-   if (!glPrivateMemory) return log.warning(ERR_SystemCorrupt);
-
    // Determine whether or not the address is public
 
    BYTE publicmem = FALSE;
@@ -1149,18 +1123,18 @@ ERROR MemoryPtrInfo(APTR Memory, struct MemInfo *MemInfo, LONG Size)
 
    ThreadLock memlock(TL_PRIVATE_MEM, 4000);
    if (memlock.granted()) {
-         for (LONG i=0; i < glNextPrivateAddress; i++) {
-            if (Memory IS glPrivateMemory[i].Address) {
-               MemInfo->Start       = Memory;
-               MemInfo->ObjectID    = glPrivateMemory[i].ObjectID;
-               MemInfo->Size        = glPrivateMemory[i].Size;
-               MemInfo->AccessCount = glPrivateMemory[i].AccessCount;
-               MemInfo->Flags       = glPrivateMemory[i].Flags;
-               MemInfo->MemoryID    = glPrivateMemory[i].MemoryID;
-               MemInfo->TaskID      = glCurrentTaskID;
-               return ERR_Okay;
-            }
+      for (const auto & [ id, mem ] : glPrivateMemory) {
+         if (Memory IS mem.Address) {
+            MemInfo->Start       = Memory;
+            MemInfo->ObjectID    = mem.ObjectID;
+            MemInfo->Size        = mem.Size;
+            MemInfo->AccessCount = mem.AccessCount;
+            MemInfo->Flags       = mem.Flags;
+            MemInfo->MemoryID    = mem.MemoryID;
+            MemInfo->TaskID      = glCurrentTaskID;
+            return ERR_Okay;
          }
+      }
    }
 
    log.warning("Private memory address %p is not valid.", Memory);
@@ -1276,38 +1250,6 @@ static void compress_public_memory(SharedControl *Control)
    Control->NextBlock = i;
 }
 
-//****************************************************************************
-// Acquire a lock on TL_PRIVATE_MEM before calling this function.
-
-static void compress_private_memory(void)
-{
-   parasol::Log log(__FUNCTION__);
-
-   log.msg("Starting memory block compression...");
-
-   if (glPrivateCompressed) return; // Do nothing if there are no memory holes
-
-   // Find the first empty index.
-
-   LONG i, j;
-   for (i=0; (i < glNextPrivateAddress) and (glPrivateMemory[i].Address); i++);
-   if (i >= glNextPrivateAddress) return;
-
-   for (j=i+1; j < glNextPrivateAddress; j++) {
-      if (glPrivateMemory[j].Address) {
-         glPrivateMemory[i] = glPrivateMemory[j];  // Move the record at position j to position i
-         glPrivateMemory[j].Address  = NULL;  // Kill the moved record at its previous position
-         glPrivateMemory[j].MemoryID = 0;
-         i++;
-      }
-   }
-
-   log.msg("Private memory array compressed from %d entries to %d entries.", glNextPrivateAddress, i);
-   glNextPrivateAddress = i;
-   glPrivateCompression = 500;
-   glPrivateCompressed = TRUE;
-}
-
 /*****************************************************************************
 ** This function works on the principle that the glSharedBlocks memory array is sorted by the address offset.  This
 ** function is known to be utilised by ReleaseMemory() and MemoryPtrInfo().
@@ -1380,78 +1322,6 @@ LONG find_public_address(SharedControl *Control, APTR Address)
 }
 
 //****************************************************************************
-// Finds private memory blocks via ID.  Ensure that this function is called with a TL_PRIVATE_MEM lock.
-
-LONG find_private_mem_id(MEMORYID MemoryID, const void *CheckAddress)
-{
-   if (!glPrivateMemory) return -1;
-
-   const LONG MAX_ITERATIONS = 8;
-
-   LONG floor   = 0;
-   LONG ceiling = glNextPrivateAddress;
-   LONG i       = ceiling>>1;
-   for (LONG j=0; j < MAX_ITERATIONS; j++) {
-      while ((!glPrivateMemory[i].MemoryID) and (i > 0)) i--;
-      if (MemoryID < glPrivateMemory[i].MemoryID)      ceiling = i;
-      else if (MemoryID > glPrivateMemory[i].MemoryID) floor = i+1;
-      else goto found;
-      i = floor + ((ceiling - floor)>>1);
-  }
-
-   while ((!glPrivateMemory[i].MemoryID) and (i > 0)) i--;
-   if (MemoryID > glPrivateMemory[i].MemoryID) {
-      while (i < ceiling) {
-         if (glPrivateMemory[i].MemoryID IS MemoryID) goto found;
-         i++;
-      }
-   }
-   else {
-      while (i >= 0) {
-         if (glPrivateMemory[i].MemoryID IS MemoryID) goto found;
-         i--;
-      }
-   }
-
-   // If the memory ID was not found and a check address was supplied, there is a chance that the supplied
-   // memory ID is invalid (memory ID's are stored a couple of bytes early, in the header of the memory block).
-   // The only way to be sure is to check the memory list to find a matching address.
-
-   #ifdef DEBUG
-   if (CheckAddress) {
-      for (LONG i=0; i < glNextPrivateAddress; i++) {
-         if (glPrivateMemory[i].Address IS CheckAddress) {
-            LogF("@FindMemory","Requested private memory block #%d is not registered, but the check address %p is valid (block header corruption?).  Ceiling: %d", MemoryID, CheckAddress, glNextPrivateAddress);
-            break;
-         }
-      }
-   }
-   #endif
-
-   return -1;
-
-found:
-   #ifdef DEBUG
-   if ((CheckAddress) and (glPrivateMemory[i].Address != CheckAddress)) {
-      // If the address does not match then the memory ID that we were given was corrupt.
-
-      LogF("@FindMemory","Private memory block #%d is registered as address %p, but cross-check mismatches as %p", MemoryID, glPrivateMemory[i].Address, CheckAddress);
-
-      for (LONG i=0; i < glNextPrivateAddress; i++) {
-         if (glPrivateMemory[i].Address IS CheckAddress) {
-            LogF("@FindMemory","A registration for check address %p was found with a block ID of #%d, size %d.", CheckAddress, glPrivateMemory[i].MemoryID, glPrivateMemory[i].Size);
-            break;
-         }
-      }
-
-      return -1;
-   }
-   #endif
-
-   return i;
-}
-
-//****************************************************************************
 // Internal function to set the manager for an allocated resource.  Note: At this stage managed resources are not to
 // be exposed in the published API.
 
@@ -1459,54 +1329,6 @@ void set_memory_manager(APTR Address, ResourceManager *Manager)
 {
    ResourceManager **address_mgr = (ResourceManager **)((char *)Address - sizeof(LONG) - sizeof(LONG) - sizeof(ResourceManager *));
    address_mgr[0] = Manager;
-}
-
-/*****************************************************************************
-** To be used by AllocMemory() only.  Must be used within a TL_PRIVATE_MEM lock.  The original order of the table is
-** maintained at all times and this function guarantees that the glPrivateMemory table is sorted by MemoryID - as long
-** as MemoryID's are allocated using an incremented counter by AllocMemory().
-*/
-
-static ERROR add_mem_entry(void)
-{
-   if (!glPrivateMemory) return ERR_Okay;
-
-   // If the table is at its limit, compact it first by eliminating entries that no longer contain any data.
-
-   if (glNextPrivateAddress >= glMemRegSize) compress_private_memory();
-
-   LONG blocksize;
-   if (glMemRegSize < 3000) blocksize = 1000;
-   else if (glMemRegSize < 5000) blocksize = 2000;
-   else if (glMemRegSize < 10000) blocksize = 4000;
-   else blocksize = 8000;
-
-   if (glNextPrivateAddress >= glMemRegSize - 500) {
-      // Table is at capacity.  Allocate more space for new entries
-
-      LogF("7add_mem_entry","Memory array at near capacity (%d blocks) - allocating more space.", glMemRegSize);
-
-      PrivateAddress *newmem;
-      if ((newmem = (PrivateAddress *)malloc(sizeof(PrivateAddress) * (glMemRegSize + blocksize)))) {
-         CopyMemory(glPrivateMemory, newmem, glMemRegSize * sizeof(PrivateAddress));
-         ClearMemory(newmem + glMemRegSize, blocksize * sizeof(PrivateAddress));
-         free(glPrivateMemory);
-         glPrivateMemory = newmem;
-         glMemRegSize += blocksize;
-      }
-      else {
-         LogF("@add_mem_entry","Failed to increase available memory space.");
-         return ERR_Memory;
-      }
-   }
-
-   // "Pull-back" the NextPrivateEntry position if there are null entries present at the tail-end of the array.
-
-   while ((glNextPrivateAddress > 0) and (glPrivateMemory[glNextPrivateAddress-1].Address IS NULL)) {
-      glNextPrivateAddress--;
-   }
-
-   return ERR_Okay;
 }
 
 //****************************************************************************

@@ -749,9 +749,9 @@ static ERROR GET_PrivateObjects(rkMetaClass *Self, OBJECTID **Array, LONG *Eleme
 
    ThreadLock lock(TL_PRIVATE_MEM, 4000);
    if (lock.granted()) {
-      for (LONG i=0; i < glNextPrivateAddress; i++) {
+      for (const auto & [ id, mem ] : glPrivateMemory) {
          OBJECTPTR object;
-         if ((glPrivateMemory[i].Flags & MEM_OBJECT) and (object = (OBJECTPTR)glPrivateMemory[i].Address)) {
+         if ((mem.Flags & MEM_OBJECT) and (object = (OBJECTPTR)mem.Address)) {
             if (Self->SubClassID IS object->ClassID) {
                objlist.push_back(object->UniqueID);
             }

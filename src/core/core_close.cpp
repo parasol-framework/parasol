@@ -241,12 +241,14 @@ restart_free:
          parasol::Log log("Shutdown");
          log.branch("Freeing objects owned by foreign processes.");
 
-         for (LONG i=glNextPrivateAddress-1; i >= 0; i--) {
-            if ((glPrivateMemory[i].Flags & MEM_OBJECT)) {
+         for (const auto & [id, mem ] : glPrivateMemory) {
+            if (mem.Flags & MEM_OBJECT) {
                OBJECTPTR header;
-               if ((header = (OBJECTPTR)glPrivateMemory[i].Address)) {
+               if ((header = (OBJECTPTR)mem.Address)) {
                   if ((header->Stats) and (header->Flags & NF_FOREIGN_OWNER)) {
                      acFree(header);
+                     // Don't be concerned about the stability of glPrivateMemory.  FreeResource() takes measures
+                     // to avoid destabilising it during shutdown.
                   }
                }
             }
@@ -255,30 +257,15 @@ restart_free:
 
       // Remove locks on any private objects that have not been unlocked yet
 
-      for (LONG i=glNextPrivateAddress-1; i >= 0; i--) {
-         if ((glPrivateMemory[i].Flags & MEM_OBJECT) and (glPrivateMemory[i].AccessCount > 0)) {
+      for (const auto & [ id, mem ] : glPrivateMemory) {
+         if ((mem.Flags & MEM_OBJECT) and (mem.AccessCount > 0)) {
             OBJECTPTR header;
-            if ((header = (OBJECTPTR)glPrivateMemory[i].Address)) {
-               log.warning("Removing locks on object #%d, Owner: %d, Locks: %d", header->UniqueID, header->OwnerID, glPrivateMemory[i].AccessCount);
-               for (count=glPrivateMemory[i].AccessCount; count > 0; count--) ReleaseObject(header);
+            if ((header = (OBJECTPTR)mem.Address)) {
+               log.warning("Removing locks on object #%d, Owner: %d, Locks: %d", header->UniqueID, header->OwnerID, mem.AccessCount);
+               for (count=mem.AccessCount; count > 0; count--) ReleaseObject(header);
             }
          }
       }
-
-      // Free private objects that are not marked as untracked
-     /*
-      for (i=glNextPrivateAddress-1; i >= 0; i--) {
-         if (glPrivateMemory[i].Flags & MEM_OBJECT) {
-            header = glPrivateMemory[i].Address;
-            if (header->TaskID IS glCurrentTaskID) {
-               log.warning("Freeing private object #%d, Owner: %d, Locks: %d", header->UniqueID, header->OwnerID, glPrivateMemory[i].AccessCount);
-               Action(AC_Free, header, NULL);
-            }
-         }
-      }
-     */
-
-      // Expunge
 
       Expunge(FALSE);
 
@@ -547,9 +534,9 @@ EXPORT void Expunge(WORD Force)
             // if the module code is in use.
 
             BYTE classinuse = FALSE;
-            for (LONG i=0; i < glNextPrivateAddress; i++) {
-               if ((glPrivateMemory[i].Flags & MEM_OBJECT) and (glPrivateMemory[i].ObjectID IS mod_master->Head.UniqueID)) {
-                  auto mc = (rkMetaClass *)glPrivateMemory[i].Address;
+            for (const auto & [ id, mem ] : glPrivateMemory) {
+               if ((mem.Flags & MEM_OBJECT) and (mem.ObjectID IS mod_master->Head.UniqueID)) {
+                  auto mc = (rkMetaClass *)mem.Address;
                   if ((mc) and (mc->Head.ClassID IS ID_METACLASS) and (mc->OpenCount > 0)) {
                      log.msg("Module %s manages a class that is in use - Class: %s, Count: %d.", mod_master->Name, mc->ClassName, mc->OpenCount);
                      classinuse = TRUE;
@@ -608,9 +595,9 @@ EXPORT void Expunge(WORD Force)
                // Search for classes that have been created by this module and check their open count values to figure
                // out if the module code is in use.
 
-               for (LONG i=0; i < glNextPrivateAddress; i++) {
-                  if ((glPrivateMemory[i].Flags & MEM_OBJECT) and (glPrivateMemory[i].ObjectID IS mod_master->Head.UniqueID)) {
-                     auto mc = (rkMetaClass *)glPrivateMemory[i].Address;
+               for (const auto & [ id, mem ] : glPrivateMemory) {
+                  if ((mem.Flags & MEM_OBJECT) and (mem.ObjectID IS mod_master->Head.UniqueID)) {
+                     auto mc = (rkMetaClass *)mem.Address;
                      if ((mc) and (mc->Head.ClassID IS ID_METACLASS) and (mc->OpenCount > 0)) {
                         log.warning("Warning: The %s module holds a class with existing objects (Class: %s, Objects: %d)", mod_master->Name, mc->ClassName, mc->OpenCount);
                      }
@@ -753,46 +740,41 @@ static void free_private_memory(void)
 {
    parasol::Log log("Shutdown");
 
-   if (!glPrivateMemory) return;
-
    log.branch("Freeing private memory allocations...");
 
    // Free strings first
 
    LONG count = 0;
-   for (LONG i=glNextPrivateAddress-1; i >= 0; i--) {
-      if ((glPrivateMemory[i].Address) and (glPrivateMemory[i].Flags & MEM_STRING)) {
-         if (!glCrashStatus) log.warning("Unfreed private string \"%.80s\" (%p).", (CSTRING)glPrivateMemory[i].Address, glPrivateMemory[i].Address);
-         glPrivateMemory[i].AccessCount = 0;
-         FreeResource(glPrivateMemory[i].Address);
-         glPrivateMemory[i].Address = NULL;
+   for (auto & [ id, mem ] : glPrivateMemory) {
+      if ((mem.Address) and (mem.Flags & MEM_STRING)) {
+         if (!glCrashStatus) log.warning("Unfreed private string \"%.80s\" (%p).", (CSTRING)mem.Address, mem.Address);
+         mem.AccessCount = 0;
+         FreeResource(mem.Address);
+         mem.Address = NULL;
          count++;
       }
    }
 
    // Free all other memory blocks
 
-   for (LONG i=glNextPrivateAddress-1; i >= 0; i--) {
-      if (glPrivateMemory[i].Address) {
+   for (auto & [ id, mem ] : glPrivateMemory) {
+      if (mem.Address) {
          if (!glCrashStatus) {
-            if (glPrivateMemory[i].Flags & MEM_OBJECT) {
-               OBJECTPTR object = (OBJECTPTR)glPrivateMemory[i].Address;
-               log.warning("Unfreed private object #%d, Size %d, Class: $%.8x, Container: #%d.", glPrivateMemory[i].MemoryID, glPrivateMemory[i].Size, object->ClassID, glPrivateMemory[i].ObjectID);
+            if (mem.Flags & MEM_OBJECT) {
+               OBJECTPTR object = (OBJECTPTR)mem.Address;
+               log.warning("Unfreed private object #%d, Size %d, Class: $%.8x, Container: #%d.", mem.MemoryID, mem.Size, object->ClassID, mem.ObjectID);
                if (object->Flags & NF_PUBLIC) {
-                  remove_shared_object(glPrivateMemory[i].MemoryID);
+                  remove_shared_object(mem.MemoryID);
                }
             }
-            else log.warning("Unfreed private memory #%d/%p, Size %d, Container: #%d.", glPrivateMemory[i].MemoryID, glPrivateMemory[i].Address, glPrivateMemory[i].Size, glPrivateMemory[i].ObjectID);
+            else log.warning("Unfreed private memory #%d/%p, Size %d, Container: #%d.", mem.MemoryID, mem.Address, mem.Size, mem.ObjectID);
          }
-         glPrivateMemory[i].AccessCount = 0;
-         FreeResource(glPrivateMemory[i].Address);
-         glPrivateMemory[i].Address = NULL;
+         mem.AccessCount = 0;
+         FreeResource(mem.Address);
+         mem.Address = NULL;
          count++;
       }
    }
-
-   free(glPrivateMemory);
-   glPrivateMemory = NULL;
 
    if ((glCrashStatus) and (count > 0)) log.msg("%d private memory blocks were freed.", count);
 }
@@ -916,10 +898,10 @@ static void remove_private_locks(void)
 {
    parasol::Log log("Shutdown");
 
-   for (LONG i=0; i < glNextPrivateAddress; i++) {
-      if ((glPrivateMemory[i].Address) and (glPrivateMemory[i].AccessCount > 0)) {
-         if (!glCrashStatus) log.msg("Removing %d locks on private memory block #%d, size %d, index %d.", glPrivateMemory[i].AccessCount, glPrivateMemory[i].MemoryID, glPrivateMemory[i].Size, i);
-         glPrivateMemory[i].AccessCount = 0;
+   for (auto & [ id, mem ] : glPrivateMemory) {
+      if ((mem.Address) and (mem.AccessCount > 0)) {
+         if (!glCrashStatus) log.msg("Removing %d locks on private memory block #%d, size %d.", mem.AccessCount, mem.MemoryID, mem.Size);
+         mem.AccessCount = 0;
       }
    }
 }

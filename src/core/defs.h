@@ -454,9 +454,7 @@ extern struct SemaphoreEntry *shSemaphores;     // Locked with PL_SEMAPHORES
 extern const struct ActionTable ActionTable[];  // Read only
 extern const struct Function    glFunctions[];  // Read only
 extern struct CoreTimer *glTimers;              // Locked with TL_TIMER
-extern struct PrivateAddress *glPrivateMemory;  // Locked with TL_PRIVATE_MEM: Note that best performance for looking up ID's is achieved as a sorted array, so don't change this to a KeyStore.
-extern LONG glNextPrivateAddress;               // Locked with TL_PRIVATE_MEM
-extern LONG glPrivateBlockCount;                // Locked with TL_PRIVATE_MEM
+extern std::unordered_map<MEMORYID, PrivateAddress> glPrivateMemory;  // Locked with TL_PRIVATE_MEM: Note that best performance for looking up ID's is achieved as a sorted array.
 extern struct MemoryPage   *glMemoryPages;      // Locked with TL_MEMORY_PAGES
 extern struct KeyStore *glObjectLookup;         // Locked with TL_OBJECT_LOOKUP
 extern struct ClassHeader  *glClassDB;          // Read-only.  Class database.
@@ -865,7 +863,6 @@ ERROR  delete_tree(STRING, LONG, FUNCTION *, struct FileFeedback *);
 struct ClassItem * find_class(CLASSID);
 struct ModuleItem * find_module(ULONG);
 LONG   find_public_address(struct SharedControl *, APTR);
-LONG   find_private_mem_id(MEMORYID, const void *);
 ERROR  find_private_object_entry(OBJECTID, LONG *);
 ERROR  find_public_object_entry(struct SharedObjectHeader *, OBJECTID, LONG *);
 ERROR  find_public_mem_id(struct SharedControl *, MEMORYID, LONG *);

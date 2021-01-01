@@ -61,9 +61,10 @@ BYTE glScanClasses = FALSE;
 LONG glDebugMemory = FALSE;
 struct CoreBase *LocalCoreBase = NULL;
 
+std::unordered_map<MEMORYID, PrivateAddress> glPrivateMemory;
+
 struct PublicAddress  *glSharedBlocks  = 0;
 struct ModuleMaster   *glModuleList    = 0;
-struct PrivateAddress *glPrivateMemory = 0;
 struct SharedAccess   *SharedAccess    = 0;
 struct SharedControl  *glSharedControl = 0;
 struct TaskList       *shTasks         = 0;
@@ -91,8 +92,6 @@ TIMER glCacheTimer = 0;
 LONG glMemoryFD = -1;
 LONG glKeyState = 0;
 LONG glTaskMessageMID = 0;
-LONG glPrivateBlockCount = 0;
-LONG glNextPrivateAddress = 0;
 LONG glValidateProcessID = 0;
 LONG glProcessID  = 0;
 LONG glInstanceID = 0;
