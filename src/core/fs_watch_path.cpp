@@ -287,6 +287,7 @@ void path_monitor(HOSTHANDLE Handle, objFile *File)
                   };
                   if (scCallback(script, File->prvWatch->Routine.Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Failed;
                }
+               else error = ERR_Terminate;
             }
             else error = ERR_Terminate;
          }

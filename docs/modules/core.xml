@@ -925,9 +925,9 @@ FindObject("SystemPointer", ID_POINTER, &amp;id, &amp;count);
       <param type="OBJECTPTR *" name="Object">A pointer to the discovered object will be returned in this parameter.</param>
     </input>
     <description>
-<p>The FindPrivateObject() function is provided as a simple implementation of the <function module="Core">FindObject</function> function.  This implementation is specifically limited to finding private objects by name only.  It is capable of returning only one object address in its search results.  Unlike <function module="Core">FindObject</function>, this function returns directly accessible object addresses that may be used immediately after a successful search.</p>
-<p>If multiple objects with the same name exists, the most recently created object will be returned by this function.</p>
-<p>If you require more advanced functionality for object searches, please use the <function module="Core">FindObject</function> function.</p>
+<p>The FindPrivateObject() function is a simple implementation of <function module="Core">FindObject</function>.  It differs in being limited to finding private objects without class filtering, and can only return one result as a pointer. Care may need to be taken if using this function to access objects that are shared between threads.</p>
+<p>The most recently created object is returned by this function if there are objects sharing the same name.</p>
+<p>For more advanced functionality in object searches please use the <function module="Core">FindObject</function> function.</p>
     </description>
     <result type="ERROR">
       <error code="LockFailed">Failed to lock a required resource.</error>

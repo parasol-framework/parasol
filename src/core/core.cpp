@@ -781,16 +781,6 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
 #endif
    log.msg("Public Offsets: %d, %d, %d", glSharedControl->BlocksOffset, glSharedControl->SemaphoreOffset, glSharedControl->TaskOffset);
 
-   // Private memory block handling
-
-   glMemRegSize = 1000;
-   log.msg("Allocating an initial private memory register of %d entries.", glMemRegSize);
-   if (!(glPrivateMemory = (PrivateAddress *)malloc(sizeof(PrivateAddress) * glMemRegSize))) {
-      if (Info->Flags & OPF_ERROR) Info->Error = ERR_AllocMemory;
-      CloseCore();
-      return NULL;
-   }
-
    // Allocate the page management table for public memory blocks.
 
    glTotalPages = PAGE_TABLE_CHUNK;
@@ -1762,12 +1752,12 @@ static void child_handler(LONG SignalNumber, siginfo_t *Info, APTR Context)
    //
    // !!! TODO: The slow methodology of this loop needs attention !!!
 
-   for (LONG i=0; i < glNextPrivateAddress; i++) {
-      if (!(glPrivateMemory[i].Flags & MEM_OBJECT)) continue;
+   for (const auto & mem : glPrivateMemory) {
+      if (!(mem.Flags & MEM_OBJECT)) continue;
 
       rkTask *task;
-      if ((task = glPrivateMemory[i].Address)) {
-         if ((task->Head.ClassID IS ID_TASK) AND (task->ProcessID IS childprocess)) {
+      if ((task = mem.Address)) {
+         if ((task->Head.ClassID IS ID_TASK) and (task->ProcessID IS childprocess)) {
             task->ReturnCode    = result;
             task->ReturnCodeSet = TRUE;
             break;

@@ -2069,18 +2069,6 @@ struct SemaphoreEntry {   // The index of each semaphore in the array indicates 
    //LONG     FIFO[10];       // List of processes currently queued for access
 };
 
-// Private memory management structures.
-
-struct PrivateAddress {
-   APTR     Address;
-   MEMORYID MemoryID;   // Unique identifier
-   OBJECTID ObjectID;   // Owner of the block
-   ULONG    Size;       // 4GB max
-   volatile LONG ThreadLockID;
-   WORD     Flags;
-   volatile WORD AccessCount; // Total number of locks
-};
-
 // Message structure and internal ID's for standard Task-to-Task messages.
 
 struct ActionMessage {
