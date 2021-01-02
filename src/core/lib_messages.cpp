@@ -1345,10 +1345,11 @@ ERROR sleep_task(LONG Timeout)
    }
    else if (tlPrivateLockCount != 0) {
       char buffer[120];
-      WORD pos = 0;
-      for (LONG i=0; (i < glNextPrivateAddress) and ((size_t)pos < sizeof(buffer)-1); i++) {
-         if (glPrivateMemory[i].AccessCount > 0) {
-            pos += snprintf(buffer+pos, sizeof(buffer)-pos, "%d.%d ", glPrivateMemory[i].MemoryID, glPrivateMemory[i].AccessCount);
+      size_t pos = 0;
+      for (const auto & [ id, mem ] : glPrivateMemory) {
+         if (mem.AccessCount > 0) {
+            pos += snprintf(buffer+pos, sizeof(buffer)-pos, "%d.%d ", mem.MemoryID, mem.AccessCount);
+            if (pos >= sizeof(buffer)-1) break;
          }
       }
 
@@ -1515,10 +1516,11 @@ ERROR sleep_task(LONG Timeout, BYTE SystemOnly)
    }
    else if (tlPrivateLockCount != 0) {
       char buffer[120];
-      WORD pos = 0;
-      for (LONG i=0; (i < glNextPrivateAddress) and ((size_t)pos < sizeof(buffer)-1); i++) {
-         if (glPrivateMemory[i].AccessCount > 0) {
-            pos += snprintf(buffer+pos, sizeof(buffer)-pos, "#%d +%d ", glPrivateMemory[i].MemoryID, glPrivateMemory[i].AccessCount);
+      size_t pos = 0;
+      for (const auto & [ id, mem ] : glPrivateMemory) {
+         if (mem.AccessCount > 0) {
+            pos += snprintf(buffer+pos, sizeof(buffer)-pos, "#%d +%d ", mem.MemoryID, mem.AccessCount);
+            if (pos >= sizeof(buffer)-1) break;
          }
       }
 
