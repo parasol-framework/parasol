@@ -435,6 +435,7 @@ static ERROR generate_structdef(objScript *Self, CSTRING StructName, CSTRING Seq
 }
 
 //****************************************************************************
+// Parse a struct definition and permanently store it in the Structs keystore.
 
 ERROR make_struct(lua_State *Lua, CSTRING StructName, CSTRING Sequence)
 {

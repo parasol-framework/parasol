@@ -1815,6 +1815,7 @@ ERROR SetOwner(OBJECTPTR Object, OBJECTPTR Owner)
          }
          ReleaseMemoryID(RPM_SharedObjects);
       }
+      else return log.warning(ERR_AccessMemory);
 
       // Track the object's memory header to the new owner
 
@@ -1825,6 +1826,7 @@ ERROR SetOwner(OBJECTPTR Object, OBJECTPTR Owner)
             glSharedBlocks[i].ObjectID = Owner->UniqueID;
          }
       }
+      else return log.warning(ERR_Lock);
    }
    else {
       { // Track the object's memory header to the new owner
@@ -1836,6 +1838,7 @@ ERROR SetOwner(OBJECTPTR Object, OBJECTPTR Owner)
             }
             else log.warning("Failed to find private object %p / #%d.", Object, Object->UniqueID);
          }
+         else return log.warning(ERR_Lock);
       }
 
       // If the owner is public and belongs to another task, subscribe to the FreeResources action so
@@ -1843,9 +1846,8 @@ ERROR SetOwner(OBJECTPTR Object, OBJECTPTR Owner)
 
       if ((Owner->UniqueID < 0) and (Owner->TaskID) and (Owner->TaskID != glCurrentTaskID) and (Owner->TaskID != SystemTaskID)) {
          log.msg("Owner %d is in task %d, will monitor for termination.", Owner->UniqueID, Owner->TaskID);
-         OBJECTPTR context = SetContext(Object);
+         parasol::SwitchContext ctx(Object);
          SubscribeAction(Owner, AC_OwnerDestroyed);
-         SetContext(context);
          Object->Flags |= NF_FOREIGN_OWNER;
       }
    }
