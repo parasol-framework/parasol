@@ -62,7 +62,8 @@ LONG glDebugMemory = FALSE;
 struct CoreBase *LocalCoreBase = NULL;
 
 std::unordered_map<MEMORYID, PrivateAddress> glPrivateMemory;
-std::unordered_map<OBJECTID, std::set<MEMORYID>> glObjectResources;
+std::unordered_map<OBJECTID, std::set<OBJECTID, std::greater<OBJECTID>>> glObjectChildren;
+std::unordered_map<OBJECTID, std::set<MEMORYID, std::greater<MEMORYID>>> glObjectMemory;
 
 struct PublicAddress  *glSharedBlocks  = 0;
 struct ModuleMaster   *glModuleList    = 0;

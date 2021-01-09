@@ -69,10 +69,10 @@ CSTRING action_name(OBJECTPTR Object, LONG ActionID)
 
 struct thread_data {
    OBJECTPTR Object;
-   ACTIONID ActionID;
-   LONG Key;
-   FUNCTION Callback;
-   BYTE Parameters;
+   ACTIONID  ActionID;
+   LONG      Key;
+   FUNCTION  Callback;
+   BYTE      Parameters;
 };
 
 static ERROR thread_action(rkThread *Thread)
@@ -123,41 +123,60 @@ static void free_private_children(OBJECTPTR Object)
 
    ThreadLock lock(TL_PRIVATE_MEM, 4000);
    if (lock.granted()) {
-restart:
-      for (const auto & [ id, mem ] : glPrivateMemory) {
-         if ((mem.OwnerID IS Object->UniqueID) and (mem.Address)) {
-            if (mem.Flags & MEM_DELETE) continue; // Ignore blocks already marked for deletion
+      {
+         const auto children = glObjectChildren[Object->UniqueID]; // Take an immutable copy of the resource list
 
-            if (!(mem.Flags & MEM_OBJECT)) {
-               if (glLogLevel >= 3) {
-                  if (mem.Flags & MEM_STRING) {
-                     log.warning("Unfreed string \"%.40s\"", (CSTRING)mem.Address);
-                  }
-                  else if (mem.Flags & MEM_MANAGED) {
-                     auto res = (ResourceManager **)((char *)mem.Address - sizeof(LONG) - sizeof(LONG) - sizeof(ResourceManager *));
-                     if (res[0]) {
-                        log.warning("Unfreed %s resource at %p.", res[0]->Name, mem.Address);
-                     }
-                     else log.warning("Unfreed resource at %p.", mem.Address);
-                  }
-                  else log.warning("Unfreed memory block %p, Size %d", mem.Address, mem.Size);
-               }
+         for (const auto id : children) {
+            auto it = glPrivateMemory.find(id);
+            if (it IS glPrivateMemory.end()) continue;
+            auto &mem = it->second;
 
-               if (FreeResource(mem.Address) != ERR_Okay) log.warning("Error freeing tracked address %p", mem.Address);
-               goto restart;
+            if ((mem.Flags & MEM_DELETE) or (!mem.Object)) continue;
+
+            if (mem.Object->OwnerID != Object->UniqueID) {
+               log.warning("Failed sanity test: Child object #%d has owner ID of #%d that does not match #%d.", mem.Object->UniqueID, mem.Object->OwnerID, Object->UniqueID);
+               continue;
             }
-            else {
-               OBJECTPTR child = (OBJECTPTR)mem.Address;
-               if (!(child->Flags & NF_UNLOCK_FREE)) {
-                  if (child->Flags & NF_INTEGRAL) {
-                     log.warning("Found unfreed child object #%d (class %s) belonging to %s object #%d.", child->UniqueID, ResolveClassID(child->ClassID), Object->Class->ClassName, Object->UniqueID);
-                  }
-                  acFree(child);
-                  goto restart;
+
+            if (!(mem.Object->Flags & NF_UNLOCK_FREE)) {
+               if (mem.Object->Flags & NF_INTEGRAL) {
+                  log.warning("Found unfreed child object #%d (class %s) belonging to %s object #%d.", mem.Object->UniqueID, ResolveClassID(mem.Object->ClassID), Object->Class->ClassName, Object->UniqueID);
                }
+               acFree(mem.Object);
             }
          }
       }
+
+      {
+         const auto list = glObjectMemory[Object->UniqueID]; // Take an immutable copy of the resource list
+
+         for (const auto id : list) {
+            auto it = glPrivateMemory.find(id);
+            if (it IS glPrivateMemory.end()) continue;
+            auto &mem = it->second;
+
+            if ((mem.Flags & MEM_DELETE) or (!mem.Address)) continue;
+
+            if (glLogLevel >= 3) {
+               if (mem.Flags & MEM_STRING) {
+                  log.warning("Unfreed string \"%.40s\"", (CSTRING)mem.Address);
+               }
+               else if (mem.Flags & MEM_MANAGED) {
+                  auto res = (ResourceManager **)((char *)mem.Address - sizeof(LONG) - sizeof(LONG) - sizeof(ResourceManager *));
+                  if (res[0]) {
+                     log.warning("Unfreed %s resource at %p.", res[0]->Name, mem.Address);
+                  }
+                  else log.warning("Unfreed resource at %p.", mem.Address);
+               }
+               else log.warning("Unfreed memory block %p, Size %d", mem.Address, mem.Size);
+            }
+
+            if (FreeResource(mem.Address) != ERR_Okay) log.warning("Error freeing tracked address %p", mem.Address);
+         }
+      }
+
+      glObjectChildren.erase(Object->UniqueID);
+      glObjectMemory.erase(Object->UniqueID);
    }
 }
 

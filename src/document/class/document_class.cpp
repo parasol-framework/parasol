@@ -140,7 +140,7 @@ static ERROR DOCUMENT_Activate(objDocument *Self, APTR Void)
 
    ChildEntry list[16];
    LONG count = ARRAYSIZE(list);
-   if (!ListChildren(Self->Head.UniqueID, list, &count)) {
+   if (!ListChildren(Self->Head.UniqueID, TRUE, list, &count)) {
       for (LONG i=0; i < count; i++) acActivateID(list[i].ObjectID);
    }
 
@@ -903,7 +903,7 @@ static ERROR DOCUMENT_Init(objDocument *Self, APTR Void)
       if ((!Self->VScroll) or (!Self->HScroll)) {
          ChildEntry list[16];
          LONG count = ARRAYSIZE(list);
-         if (!ListChildren(Self->SurfaceID, list, &count)) {
+         if (!ListChildren(Self->SurfaceID, TRUE, list, &count)) {
             for (--count; count >= 0; count--) {
                if ((list[count].ObjectID > 0) and (list[count].ClassID IS (CLASSID)ID_SCROLLBAR)) {
                   objScrollbar *scrollbar;

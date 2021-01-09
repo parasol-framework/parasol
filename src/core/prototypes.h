@@ -34,7 +34,7 @@ ERROR GetField(OBJECTPTR Object, FIELD Field, APTR Result);
 ERROR GetFieldVariable(OBJECTPTR Object, CSTRING Field, STRING Buffer, LONG Size);
 ERROR GetFields(OBJECTPTR Object, ...);
 CSTRING GetName(OBJECTPTR Object);
-ERROR ListChildren(OBJECTID Object, struct ChildEntry * List, LONG * Count);
+ERROR ListChildren(OBJECTID Object, LONG IncludeShared, struct ChildEntry * List, LONG * Count);
 ERROR StrBase64Decode(struct rkBase64Decode * State, CSTRING Input, LONG InputSize, APTR Output, LONG * Written);
 ERROR RegisterFD(HOSTHANDLE FD, LONG Flags, void (*Routine)(HOSTHANDLE, APTR) , APTR Data);
 ERROR ManageAction(LONG Action, APTR Routine);

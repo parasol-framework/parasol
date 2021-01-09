@@ -120,7 +120,7 @@ static ERROR CHECKBOX_Activate(objCheckBox *Self, APTR Void)
 
          ChildEntry list[16];
          LONG count = ARRAYSIZE(list);
-         if (!ListChildren(Self->Head.UniqueID, list, &count)) {
+         if (!ListChildren(Self->Head.UniqueID, FALSE, list, &count)) {
             for (WORD i=0; i < count; i++) DelayMsg(AC_Activate, list[i].ObjectID, NULL);
          }
       }

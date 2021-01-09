@@ -457,7 +457,7 @@ static ERROR SCROLL_Activate(objScroll *Self, APTR Void)
 {
    ChildEntry list[16];
    LONG count = ARRAYSIZE(list);
-   if (!ListChildren(GetUniqueID(Self), list, &count)) {
+   if (!ListChildren(GetUniqueID(Self), FALSE, list, &count)) {
       WORD i;
       if (Self->Flags & SCF_MESSAGE) {
          for (i=0; i < count; i++) DelayMsg(AC_Activate, list[i].ObjectID, NULL);

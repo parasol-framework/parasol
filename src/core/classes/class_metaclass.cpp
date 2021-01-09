@@ -870,8 +870,8 @@ they are identical then it is a base class, otherwise it is a sub-class.
 
 static ERROR GET_SubFields(rkMetaClass *Self, const FieldArray **Fields, LONG *Elements)
 {
-   LONG i;
    if (Self->SubFields) {
+      LONG i;
       for (i=0; Self->SubFields[i].Name; i++);
       *Fields = Self->SubFields;
       *Elements = i;
