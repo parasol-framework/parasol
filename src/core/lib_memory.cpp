@@ -501,7 +501,10 @@ retry:
 
          if (!(Flags & MEM_HIDDEN)) {
             glPrivateMemory.insert(std::pair<MEMORYID, PrivateAddress>(unique_id, PrivateAddress(data_start, unique_id, object_id, (ULONG)Size, (WORD)Flags)));
-            glObjectResources[object_id].insert(unique_id);
+            if (Flags & MEM_OBJECT) {
+               if (object_id) glObjectChildren[object_id].insert(unique_id);
+            }
+            else glObjectMemory[object_id].insert(unique_id);
          }
 
          // Gain exclusive access if both the address pointer and memory ID have been specified.
@@ -704,7 +707,7 @@ ERROR FreeResource(const void *Address)
          return ERR_Okay;
       }
 
-      // If the block has a resource manager, call its Free() implementation.
+      // If the block has a resource manager then call its Free() implementation.
 
       if (mem.Flags & MEM_MANAGED) {
          start_mem = (char *)start_mem - sizeof(ResourceManager *);
@@ -720,7 +723,10 @@ ERROR FreeResource(const void *Address)
       if (head != CODE_MEMH) log.warning("Bad header on address %p, size %d.", Address, size);
       if (((LONG *)end)[0] != CODE_MEMT) log.warning("Bad tail on address %p, size %d.", Address, size);
 
-      if (glObjectResources.contains(mem.OwnerID)) glObjectResources[mem.OwnerID].erase(id);
+      if (mem.Flags & MEM_OBJECT) {
+         if (glObjectChildren.contains(mem.OwnerID)) glObjectChildren[mem.OwnerID].erase(id);
+      }
+      else if (glObjectMemory.contains(mem.OwnerID)) glObjectMemory[mem.OwnerID].erase(id);
 
       mem.Address  = 0;
       mem.MemoryID = 0;
@@ -734,8 +740,7 @@ ERROR FreeResource(const void *Address)
 
       freemem(start_mem);
 
-      // NB: To keep the shutdown process optimal, we guarantee the stability of glPrivateMemory
-      // by not erasing records during that phase (just clearing the values).
+      // NB: Guarantee the stability of glPrivateMemory by not erasing records during shutdown (just clear the values).
 
       if (glProgramStage != STAGE_SHUTDOWN) {
          glPrivateMemory.erase(id);
@@ -751,10 +756,10 @@ ERROR FreeResource(const void *Address)
 -FUNCTION-
 FreeResourceID: Frees public memory blocks allocated from AllocMemory().
 
-When a public memory block is no longer required, it can be freed from the system with this function.  The action of
+When a public memory block is no longer required it can be freed from the system with this function.  The action of
 freeing the block will not necessarily take place immediately - if another task is using the block for example,
-deletion cannot occur for safety reasons.  In a case such as this, the block will be marked for deletion and will be
-freed once all tasks have stopped using it.
+deletion cannot occur for safety reasons.  In this case the block will be marked for deletion and removed once all
+tasks have released it.
 
 -INPUT-
 mem ID: The unique ID of the memory block.
@@ -889,9 +894,10 @@ ERROR FreeResourceID(MEMORYID MemoryID)
                randomise_memory(mem.Address, mem.Size);
                freemem(((LONG *)mem.Address)-2);
 
-               if (glObjectResources.contains(mem.OwnerID)) {
-                  glObjectResources[mem.OwnerID].erase(MemoryID);
+               if (mem.Flags & MEM_OBJECT) {
+                  if (glObjectChildren.contains(mem.OwnerID)) glObjectChildren[mem.OwnerID].erase(MemoryID);
                }
+               else if (glObjectMemory.contains(mem.OwnerID)) glObjectMemory[mem.OwnerID].erase(MemoryID);
 
                mem.Address  = 0;
                mem.MemoryID = 0;
@@ -922,7 +928,7 @@ ERROR FreeResourceID(MEMORYID MemoryID)
 GetMemAddress: Returns the address of private memory blocks identified by ID.
 
 The GetMemAddress() function provides a fast method for obtaining the address of private memory blocks when only the
-memory ID is known.  It may also be used to check the validity of private memory blocks, as it will return NULL if
+memory ID is known.  It may also be used to check the validity of private memory blocks as it will return NULL if
 the memory block no longer exists.
 
 This function does not work on public memory blocks (identified as negative integers).  Use ~AccessMemory()
@@ -1038,7 +1044,7 @@ ERROR MemoryIDInfo(MEMORYID MemoryID, struct MemInfo *MemInfo, LONG Size)
 -FUNCTION-
 MemoryPtrInfo: Returns information on memory addresses.
 
-This function can be used to get special details on the attributes of a memory block.  It will return information on
+This function can be used to get details on the attributes of a memory block.  It will return information on
 the start address, parent object, memory ID, size and flags of the memory address that you are querying.  The
 following code segment illustrates correct use of this function:
 
@@ -1049,8 +1055,11 @@ if (!MemoryPtrInfo(ptr, &info)) {
 }
 </pre>
 
-If the call to MemoryPtrInfo() fails, the MemInfo structure's fields will be driven to NULL and an error code will be
+If the call to MemoryPtrInfo() fails then the MemInfo structure's fields will be driven to NULL and an error code will be
 returned.
+
+Please note that referencing by a pointer requires a slow reverse-lookup to be employed in this function's search
+routine.  We recommend that calls to this function are avoided unless circumstances absolutely require it.
 
 -INPUT-
 ptr Address:  Pointer to a valid memory area.

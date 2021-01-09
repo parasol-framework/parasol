@@ -132,7 +132,7 @@ ERROR CheckObjectExists(OBJECTID ObjectID, CSTRING Name)
 
       SharedObjectHeader *header;
       if (!AccessMemory(RPM_SharedObjects, MEM_READ, 2000, (void **)&header)) {
-         SharedObject *list = (SharedObject *)ResolveAddress(header, header->Offset);
+         auto list = (SharedObject *)ResolveAddress(header, header->Offset);
 
          for (LONG i=0; i < header->NextEntry; i++) {
             if ((list[i].ObjectID) and ((!list[i].InstanceID) or (list[i].InstanceID IS glInstanceID))) {
@@ -395,8 +395,8 @@ rkMetaClass * FindClass(CLASSID ClassID)
 FindObject: Searches for objects by name.
 Category: Objects
 
-The FindObject() function searches for all objects that match a given name and can filter by class.
-A pre-allocated buffer is required for the output of the results.
+The FindObject() function searches for all objects that match a given name and can filter by class.  A pre-allocated
+buffer is required for the output of the results.
 
 The following example is a typical illustration of this function's use.  It finds the most recent object created
 with a given name:
@@ -404,7 +404,7 @@ with a given name:
 <pre>
 OBJECTID id;
 LONG count = 1;
-FindObject("SystemPointer", ID_POINTER, &id, &count);
+FindObject("SystemPointer", ID_POINTER, 0, &id, &count);
 </pre>
 
 If FindObject() cannot find any matching objects then it will return an error code.
@@ -739,7 +739,7 @@ CLASSID GetClassID(OBJECTID ObjectID)
       SharedObjectHeader *header;
       LONG id;
       if (!AccessMemory(RPM_SharedObjects, MEM_READ, 2000, (void **)&header)) {
-         SharedObject *shared_obj = (SharedObject *)ResolveAddress(header, header->Offset);
+         auto shared_obj = (SharedObject *)ResolveAddress(header, header->Offset);
          LONG pos;
          if (!find_public_object_entry(header, ObjectID, &pos)) id = shared_obj[pos].ClassID;
          else {
@@ -1068,7 +1068,7 @@ LONG GetMsgPort(OBJECTID ObjectID)
    else if (!AccessMemory(RPM_SharedObjects, MEM_READ, 2000, (void **)&header)) {
       LONG pos;
       if (!find_public_object_entry(header, ObjectID, &pos)) {
-         SharedObject *list = (SharedObject *)ResolveAddress(header, header->Offset);
+         auto list = (SharedObject *)ResolveAddress(header, header->Offset);
          LONG msgport = list[pos].MessageMID;
          ReleaseMemoryID(RPM_SharedObjects);
          return msgport ? msgport : glTaskMessageMID;
@@ -1125,10 +1125,11 @@ OBJECTPTR GetObjectPtr(OBJECTID ObjectID)
 {
    ThreadLock lock(TL_PRIVATE_MEM, 4000);
    if (lock.granted()) {
-      for (const auto & [id, mem ] : glPrivateMemory) {
-         if ((mem.Flags & MEM_OBJECT) and (mem.Address)) {
-            if (((OBJECTPTR)mem.Address)->UniqueID IS ObjectID) {
-               return (OBJECTPTR)mem.Address;
+      auto mem = glPrivateMemory.find(ObjectID);
+      if (mem != glPrivateMemory.end()) {
+         if ((mem->second.Flags & MEM_OBJECT) and (mem->second.Object)) {
+            if (mem->second.Object->UniqueID IS ObjectID) {
+               return mem->second.Object;
             }
          }
       }
@@ -1390,11 +1391,11 @@ argument must point to a LONG value that indicates the size of the array that yo
 ListChildren() function will update the Count variable so that it reflects the total number of children that were
 written to the array.
 
-Objects that are specially marked with the CHILD flag are not returned in the resulting list; such objects are
-considered to be private extensions of the targeted parent.
+Objects marked with the INTEGRAL flag are not returned as they are private members of the targeted object.
 
 -INPUT-
 oid Object: The ID of the object that you wish to examine.
+int IncludeShared: If TRUE, shared objects will be included in the list at a penalty to performance.
 buf(array(resource(ChildEntry))) List: Must refer to an array of ChildEntry structures.
 &arraysize Count:  Set to the maximum number of elements in ChildEntry.  Before returning, this parameter will be updated with the total number of entries listed in the array.
 
@@ -1405,50 +1406,47 @@ NullArgs
 
 *****************************************************************************/
 
-ERROR ListChildren(OBJECTID ObjectID, ChildEntry *List, LONG *Count)
+ERROR ListChildren(OBJECTID ObjectID, LONG IncludeShared, ChildEntry *List, LONG *Count)
 {
    parasol::Log log(__FUNCTION__);
 
    if ((!ObjectID) or (!List) or (!Count)) return log.warning(ERR_NullArgs);
    if ((*Count < 0) or (*Count > 3000)) return log.warning(ERR_Args);
 
+   log.trace("#%d, List: %p, Array Size: %d", ObjectID, List, *Count);
+
    ERROR error = ERR_Okay;
    LONG i = 0;
 
-   // Build the list of public objects
-   // TODO: Optimisation.  Most objects also won't have public children, making this redundant.
-
-   SharedObjectHeader *header;
-   if (!AccessMemory(RPM_SharedObjects, MEM_READ, 2000, (void **)&header)) {
-      auto list = (SharedObject *)ResolveAddress(header, header->Offset);
-      for (LONG j=0; j < header->NextEntry; j++) {
-         if ((list[j].OwnerID IS ObjectID) and (!(list[j].Flags & NF_INTEGRAL))) {
-            List[i].ObjectID = list[j].ObjectID;
-            List[i].ClassID  = list[j].ClassID;
-            i++;
-            if (i >= *Count) break;
+   if (IncludeShared) {
+      SharedObjectHeader *header;
+      if (!AccessMemory(RPM_SharedObjects, MEM_READ, 2000, (void **)&header)) {
+         auto list = (SharedObject *)ResolveAddress(header, header->Offset);
+         for (LONG j=0; j < header->NextEntry; j++) {
+            if ((list[j].OwnerID IS ObjectID) and (!(list[j].Flags & NF_INTEGRAL))) {
+               List[i].ObjectID = list[j].ObjectID;
+               List[i].ClassID  = list[j].ClassID;
+               if (++i >= *Count) break;
+            }
          }
+         ReleaseMemoryID(RPM_SharedObjects);
       }
-      ReleaseMemoryID(RPM_SharedObjects);
    }
 
    // Build the list of private objects
-   // TODO: Optimisation; all private addresses are being scanned.
 
    if (i < *Count) {
       ThreadLock lock(TL_PRIVATE_MEM, 4000);
       if (lock.granted()) {
-         for (const auto & [id, mem ] : glPrivateMemory) {
-            if ((mem.Flags & MEM_OBJECT) and (mem.OwnerID IS ObjectID)) {
-               OBJECTPTR object;
-               if ((object = (OBJECTPTR)mem.Address)) {
-                  if (!(object->Flags & NF_INTEGRAL)) {
-                     List[i].ObjectID = object->UniqueID;
-                     List[i].ClassID  = object->ClassID;
-                     i++;
-                     if (i >= *Count) break;
-                  }
-               }
+         for (const auto id : glObjectChildren[ObjectID]) {
+            auto mem = glPrivateMemory.find(id);
+            if (mem IS glPrivateMemory.end()) continue;
+
+            OBJECTPTR child;
+            if (((child = mem->second.Object)) and (!(child->Flags & NF_INTEGRAL))) {
+               List[i].ObjectID = child->UniqueID;
+               List[i].ClassID  = child->ClassID;
+               if (++i >= *Count) break;
             }
          }
       }
@@ -1768,7 +1766,9 @@ ERROR SetOwner(OBJECTPTR Object, OBJECTPTR Owner)
       return ERR_Args;
    }
 
-   // Send a child alert to the owner.  If the owner sends back an error, then we return immediately.
+   //log.msg("Object: %d, New Owner: %d, Current Owner: %d", Object->UniqueID, Owner->UniqueID, Object->OwnerID);
+
+   // Send a new child alert to the owner.  If the owner returns an error then we return immediately.
 
    ScopedObjectAccess objlock(Object);
 
@@ -1796,24 +1796,29 @@ ERROR SetOwner(OBJECTPTR Object, OBJECTPTR Owner)
    if (Object->Flags & NF_FOREIGN_OWNER) { // Remove subscription to AC_OwnerDestroyed
       OBJECTPTR obj;
       if (!AccessObject(Object->OwnerID, 3000, &obj)) {
-         OBJECTPTR context = SetContext(Object);
+         auto context = SetContext(Object);
          UnsubscribeAction(obj, AC_OwnerDestroyed);
          SetContext(context);
          ReleaseObject(obj);
       }
    }
 
-   Object->OwnerID = Owner->UniqueID;
-
-   if (Object->UniqueID < 0) {
-      SharedObjectHeader *header;
-      if (!AccessMemory(RPM_SharedObjects, MEM_READ, 2000, (void **)&header)) {
+   if (Object->UniqueID < 0) { // Public object
+      ScopedAccessMemory<SharedObjectHeader> header(RPM_SharedObjects, MEM_READ, 2000);
+      if (header.granted()) {
          LONG pos;
-         if (!find_public_object_entry(header, Object->UniqueID, &pos)) {
-            SharedObject *list = (SharedObject *)ResolveAddress(header, header->Offset);
+         if (!find_public_object_entry(header.ptr, Object->UniqueID, &pos)) {
+            auto list = (SharedObject *)ResolveAddress(header.ptr, header.ptr->Offset);
+
+            if (Object->OwnerID) { // Remove reference from the now previous owner
+               auto it = glObjectChildren.find(Object->OwnerID);
+               if (it != glObjectChildren.end()) it->second.erase(Object->UniqueID);
+            }
+
+            Object->OwnerID = Owner->UniqueID;
             list[pos].OwnerID = Owner->UniqueID;
          }
-         ReleaseMemoryID(RPM_SharedObjects);
+         else return log.warning(ERR_Search);
       }
       else return log.warning(ERR_AccessMemory);
 
@@ -1825,6 +1830,7 @@ ERROR SetOwner(OBJECTPTR Object, OBJECTPTR Owner)
          if ((i = find_public_address(glSharedControl, Object)) != -1) {
             glSharedBlocks[i].ObjectID = Owner->UniqueID;
          }
+         else return log.warning(ERR_Search);
       }
       else return log.warning(ERR_Lock);
    }
@@ -1833,16 +1839,24 @@ ERROR SetOwner(OBJECTPTR Object, OBJECTPTR Owner)
          ThreadLock lock(TL_PRIVATE_MEM, 4000);
          if (lock.granted()) {
             auto mem = glPrivateMemory.find(Object->UniqueID);
-            if (mem != glPrivateMemory.end()) {
-               mem->second.OwnerID = Owner->UniqueID;
-            }
-            else log.warning("Failed to find private object %p / #%d.", Object, Object->UniqueID);
+            if (mem IS glPrivateMemory.end()) return log.warning(ERR_SystemCorrupt);
+            mem->second.OwnerID = Owner->UniqueID;
+
+            // Remove reference from the now previous owner
+            if (Object->OwnerID) glObjectChildren[Object->OwnerID].erase(Object->UniqueID);
+
+            Object->OwnerID = Owner->UniqueID;
+
+            glObjectChildren[Owner->UniqueID].insert(Object->UniqueID);
          }
          else return log.warning(ERR_Lock);
       }
 
       // If the owner is public and belongs to another task, subscribe to the FreeResources action so
       // that we can receive notification when the owner is destroyed.
+      //
+      // TODO: Would it be better if public object termination was broadcast via events and processes could
+      // check their own glObjectChildren for any references?
 
       if ((Owner->UniqueID < 0) and (Owner->TaskID) and (Owner->TaskID != glCurrentTaskID) and (Owner->TaskID != SystemTaskID)) {
          log.msg("Owner %d is in task %d, will monitor for termination.", Owner->UniqueID, Owner->TaskID);
@@ -2006,7 +2020,7 @@ ERROR SetName(OBJECTPTR Object, CSTRING NewName)
    }
    else if (!AccessMemory(RPM_SharedObjects, MEM_READ_WRITE, 2000, (void **)&header)) {
       if (!find_public_object_entry(header, Object->UniqueID, &pos)) {
-         SharedObject *list = (SharedObject *)ResolveAddress(header, header->Offset);
+         auto list = (SharedObject *)ResolveAddress(header, header->Offset);
          for (i=0; (Object->Stats->Name[i]) and (i < (MAX_NAME_LEN-1)); i++) {
             list[pos].Name[i] = Object->Stats->Name[i];
          }
@@ -2732,7 +2746,7 @@ void set_object_flags(OBJECTPTR Object, LONG Flags)
    if (Object->UniqueID < 0) {
       SharedObjectHeader *header;
       if (!AccessMemory(RPM_SharedObjects, MEM_READ, 2000, (void **)&header)) {
-         SharedObject *pubobj = (SharedObject *)ResolveAddress(header, header->Offset);
+         auto pubobj = (SharedObject *)ResolveAddress(header, header->Offset);
          LONG index;
          if (!find_public_object_entry(header, Object->UniqueID, &index)) {
             pubobj[index].Flags = Flags;

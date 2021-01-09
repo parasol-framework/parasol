@@ -209,7 +209,7 @@ static ERROR SCROLLBAR_Init(objScrollbar *Self, APTR Void)
       log.trace("Looking for an intersecting scrollbar in surface %d...", Self->SurfaceID);
       ChildEntry list[16];
       LONG count = ARRAYSIZE(list);
-      if (!ListChildren(Self->SurfaceID, list, &count)) {
+      if (!ListChildren(Self->SurfaceID, FALSE, list, &count)) {
          for (LONG i=0; i < count; i++) {
             if ((list[i].ClassID IS ID_SCROLLBAR) and (list[i].ObjectID != Self->Head.UniqueID)) {
                if (!AccessObject(list[i].ObjectID, 5000, &intersect)) {

@@ -1745,7 +1745,7 @@ struct CoreBase {
    ERROR (*_GetFieldVariable)(APTR, CSTRING, STRING, LONG);
    ERROR (*_GetFields)(APTR, ...);
    CSTRING (*_GetName)(APTR);
-   ERROR (*_ListChildren)(OBJECTID, struct ChildEntry *, LONG *);
+   ERROR (*_ListChildren)(OBJECTID, LONG, struct ChildEntry *, LONG *);
    ERROR (*_StrBase64Decode)(struct rkBase64Decode *, CSTRING, LONG, APTR, LONG *);
    ERROR (*_RegisterFD)(HOSTHANDLE, LONG, void (*Routine)(HOSTHANDLE, APTR), APTR);
    ERROR (*_ManageAction)(LONG, APTR);

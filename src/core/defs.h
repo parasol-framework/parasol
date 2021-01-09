@@ -6,6 +6,7 @@
 #endif
 
 #include <set>
+#include <functional>
 
 #define PRV_CORE
 #define PRV_CORE_MODULE
@@ -476,7 +477,8 @@ extern const struct ActionTable ActionTable[];  // Read only
 extern const struct Function    glFunctions[];  // Read only
 extern struct CoreTimer *glTimers;              // Locked with TL_TIMER
 extern std::unordered_map<MEMORYID, PrivateAddress> glPrivateMemory;  // Locked with TL_PRIVATE_MEM: Note that best performance for looking up ID's is achieved as a sorted array.
-extern std::unordered_map<OBJECTID, std::set<MEMORYID>> glObjectResources; // Locked with TL_PRIVATE_MEM
+extern std::unordered_map<OBJECTID, std::set<MEMORYID, std::greater<MEMORYID>>> glObjectMemory; // Locked with TL_PRIVATE_MEM.  Sorted with most recent object first
+extern std::unordered_map<OBJECTID, std::set<OBJECTID, std::greater<OBJECTID>>> glObjectChildren; // Locked with TL_PRIVATE_MEM.  Sorted with most recent object first
 extern struct MemoryPage   *glMemoryPages;      // Locked with TL_MEMORY_PAGES
 extern struct KeyStore *glObjectLookup;         // Locked with TL_OBJECT_LOOKUP
 extern struct ClassHeader  *glClassDB;          // Read-only.  Class database.
