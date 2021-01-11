@@ -101,6 +101,10 @@ function testObjectSearches()
    local err, count = mSys.ListChildren(parent.id, false, children)
    assert(err == ERR_Okay, 'Failed in call to ListChildren(): ' .. mSys.GetErrorMsg(err))
    assert(count == 10, 'Parent object listed ' .. count .. ' objects.')
+
+   for i=1,10 do
+      assert(children[i].objectID == objects[11-i].id, 'Child ' .. children[i].objectID .. ' != ' .. objects[11-i].id)
+   end
 end
 
 -----------------------------------------------------------------------------------------------------------------------

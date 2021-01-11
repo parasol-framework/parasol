@@ -151,7 +151,7 @@ void make_array(lua_State *Lua, LONG FieldType, CSTRING StructName, APTR *List, 
       a->ArraySize   = array_size;
       a->StructDef   = sdef;
       a->TypeSize    = type_size;
-      a->AlignedSize = ALIGN64(array_size);
+      a->AlignedSize = ALIGN64(type_size);
       a->ReadOnly    = (FieldType & FD_READ) ? TRUE : FALSE;
 
       if ((Cache) and (List) and (Total > 0)) {
