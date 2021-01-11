@@ -30,7 +30,7 @@ end
 function testCompressFolder()
    local cmp = obj.new('compression', { path='temp:cmp_test_scripts.zip', flags='!NEW' } )
 
-   err = cmp.mtCompressFile('parasol:scripts/dev/', 'scripts')
+   err = cmp.mtCompressFile('system:scripts/dev/', 'scripts')
    if (err != ERR_Okay) then error('CompressFile() failed: ' .. mSys.GetErrorMsg(err)) end
 
    cmp = null
@@ -79,13 +79,13 @@ end
 
 function testArchiveVolume()
    local cmp = obj.new('compression', { path='temp:cmp_test_scripts.zip', archiveName='test' } )
-   local file = obj.new('file', { path='parasol:scripts/dev/flute.fluid' } )
+   local file = obj.new('file', { path='system:scripts/dev/flute.fluid' } )
    local file_size = file.size
 
    local cmpbuffer = string.rep(nil, file_size)
    local cmpsrc = string.rep(nil, file_size)
 
-   local err = mSys.ReadFileToBuffer('parasol:scripts/dev/flute.fluid', cmpsrc)
+   local err = mSys.ReadFileToBuffer('system:scripts/dev/flute.fluid', cmpsrc)
    assert(err == ERR_Okay, 'Failed to read original source file for comparison: ' .. mSys.GetErrorMsg(err))
 
    -- Big buffer test
