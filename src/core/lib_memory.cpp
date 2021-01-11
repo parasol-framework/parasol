@@ -137,7 +137,7 @@ ResourceExists: This error is returned if MEM_RESERVED was used and the memory b
 ERROR AllocMemory(LONG Size, LONG Flags, APTR *Address, MEMORYID *MemoryID)
 {
    parasol::Log log(__FUNCTION__);
-   LONG reserved_id, offset;
+   LONG offset;
    LONG i, memid;
    OBJECTID object_id;
    #ifdef _WIN32
@@ -149,6 +149,7 @@ ERROR AllocMemory(LONG Size, LONG Flags, APTR *Address, MEMORYID *MemoryID)
       return ERR_Args;
    }
 
+   LONG reserved_id;
    if (MemoryID) {
       reserved_id = *MemoryID;
       *MemoryID = 0;
@@ -343,7 +344,6 @@ retry:
       blk = glSharedControl->NextBlock;
 
       if ((offset + Size) > glSharedControl->PoolSize) {
-
          // Check the memory pool for available space so that we can avoid expanding the size of the pool.
 
          LONG current_offset = 0;
@@ -392,14 +392,17 @@ retry:
       #endif
 
       // Record the task that the memory block should be tracked to.  The current context plays an important part in
-      // this, because if the object is shared, then we want the allocation to track back to the task responsible for
-      // maintaining that object, rather than having it track back to our own task.
+      // this, because if the object is shared then we want the allocation to track back to the task responsible for
+      // maintaining that object rather than having it track back to our own task.
 
       if (Flags & (MEM_UNTRACKED|MEM_HIDDEN));
-      else if ((tlContext->Object->Stats) and (tlContext->Object->TaskID)) {
-         glSharedBlocks[blk].TaskID = tlContext->Object->TaskID;
+      else {
+         tlContext->Object->Flags |= NF_HAS_SHARED_RESOURCES;
+         if ((tlContext->Object->Stats) and (tlContext->Object->TaskID)) {
+            glSharedBlocks[blk].TaskID = tlContext->Object->TaskID;
+         }
+         else glSharedBlocks[blk].TaskID = glCurrentTaskID;
       }
-      else glSharedBlocks[blk].TaskID = glCurrentTaskID;
 
       // Gain exclusive access if an address pointer has been requested
 
@@ -1274,6 +1277,8 @@ static void compress_public_memory(SharedControl *Control)
 
 LONG find_public_address(SharedControl *Control, APTR Address)
 {
+   parasol::Log log;
+
    // Check if the address is in the shared memory pool (in which case it will not be found in the page list).
 
    // This section is ineffective if the public memory pool is not used for this host system (the PoolSize will be zero).
@@ -1289,7 +1294,7 @@ LONG find_public_address(SharedControl *Control, APTR Address)
 
       // The address is within the public memory pool range, but not paged as a memory block.
 
-      //LogF("@find_public_address","%p address lies in the memory pool area, but is not registered as a block.", Address);
+      //log.warning("%p address lies in the memory pool area, but is not registered as a block.", Address);
       return -1;
    }
 #endif
@@ -1301,7 +1306,7 @@ LONG find_public_address(SharedControl *Control, APTR Address)
       for (LONG i=0; i < glTotalPages; i++) {
          if (glMemoryPages[i].Address IS Address) {
             if (!glMemoryPages[i].MemoryID) {
-               LogF("@find_public_address","Address %p is missing its reference to its memory ID.", Address);
+               log.warning("Address %p is missing its reference to its memory ID.", Address);
                break; // Drop through for error
             }
 
@@ -1311,14 +1316,14 @@ LONG find_public_address(SharedControl *Control, APTR Address)
                }
             }
 
-            LogF("@find_public_address","Address %p, block #%d is paged but is not in the public memory table.", glMemoryPages[i].Address, glMemoryPages[i].MemoryID);
+            log.warning("Address %p, block #%d is paged but is not in the public memory table.", glMemoryPages[i].Address, glMemoryPages[i].MemoryID);
 
             #ifdef DEBUG
                // Sanity check - are there multiple maps for this address?
 
                i++;
                while (i < glTotalPages) {
-                  if (glMemoryPages[i].Address IS Address) LogF("@find_public_address","Multiple maps found: Address %p, block #%d.", Address, glMemoryPages[i].MemoryID);
+                  if (glMemoryPages[i].Address IS Address) log.warning("Multiple maps found: Address %p, block #%d.", Address, glMemoryPages[i].MemoryID);
                   i++;
                }
             #endif
@@ -1348,12 +1353,27 @@ ERROR find_public_mem_id(SharedControl *Control, MEMORYID MemoryID, LONG *EntryP
 {
    if (EntryPos) *EntryPos = 0;
 
+#if 0
+   // Binary search disabled because glSortedBlocks is not implemented yet.
+   LONG floor = 0;
+   LONG ceiling = Control->NextBlock;
+   while (floor < ceiling) {
+      LONG i = (floor + ceiling)>>1;
+      if (MemoryID < glSortedBlocks[i].MemoryID) floor = i + 1;
+      else if (MemoryID > glSortedBlocks[i].MemoryID) ceiling = i;
+      else {
+         if (EntryPos) *EntryPos = glSortedBlocks[i].Index;
+         return ERR_Okay;
+      }
+   }
+#else
    for (LONG block=0; block < Control->NextBlock; block++) {
       if (MemoryID IS glSharedBlocks[block].MemoryID) {
          if (EntryPos) *EntryPos = block;
          return ERR_Okay;
       }
    }
+#endif
 
    return ERR_MemoryDoesNotExist;
 }

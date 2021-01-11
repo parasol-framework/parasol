@@ -1073,6 +1073,7 @@ struct ClipRectangle {
 #define NF_NO_TRACK 0x00000001
 #define NF_UNTRACKED 0x00000001
 #define NF_PUBLIC 0x00000002
+#define NF_SHARED 0x00000002
 #define NF_FOREIGN_OWNER 0x00000004
 #define NF_INITIALISED 0x00000008
 #define NF_INTEGRAL 0x00000010
@@ -1085,6 +1086,7 @@ struct ClipRectangle {
 #define NF_RECLASSED 0x00000800
 #define NF_MESSAGE 0x00001000
 #define NF_SIGNALLED 0x00002000
+#define NF_HAS_SHARED_RESOURCES 0x00004000
 #define NF_PRIVATE 0x00000000
 #define NF_NAME 0x80000000
 #define NF_UNIQUE 0x40000000
@@ -1560,7 +1562,7 @@ struct ThreadActionMessage {
 };
 
 typedef struct MemInfo {
-   APTR     Start;       // The starting address of the memory block (does not apply to public blocks).
+   APTR     Start;       // The starting address of the memory block (does not apply to shared blocks).
    OBJECTID ObjectID;    // The object that owns the memory block.
    LONG     Size;        // The size of the memory block.
    WORD     AccessCount; // Total number of active locks on this block.
@@ -3350,6 +3352,11 @@ struct PublicAddress {
    #endif
 };
 
+struct SortedAddress {
+   MEMORYID MemoryID;
+   LONG Index;
+};
+
 // Semaphore management structure.
 
 #define MAX_SEMAPHORES  40  // Maximum number of semaphores that can be allocated in the system
@@ -3405,7 +3412,7 @@ enum { // For SysLock()
 
 struct SharedControl {
    LONG PoolSize;                   // Amount of allocated page space (starts at zero and expands)
-   volatile LONG BlocksUsed;        // Total amount of public memory blocks currently allocated
+   volatile LONG BlocksUsed;        // Total amount of shared memory blocks currently allocated
    LONG MaxBlocks;                  // Maximum amount of available blocks
    volatile LONG NextBlock;         // Next empty position in the blocks table
    volatile LONG IDCounter;         // ID counter
@@ -3420,9 +3427,10 @@ struct SharedControl {
    volatile WORD WLIndex;           // Current insertion point for the wait-lock array.
    LONG MagicKey;                   // This magic key is set to the semaphore key (used only as an indicator for initialisation)
    LONG BlocksOffset;               // Array of available shared memory pages
+   LONG SortedBlocksOffset;         // Array of shared memory blocks sorted by MemoryID
    LONG SemaphoreOffset;            // Offset to the semaphore control array
    LONG TaskOffset;                 // Offset to the task control array
-   LONG MemoryOffset;               // Offset to the public memory allocations
+   LONG MemoryOffset;               // Offset to the shared memory allocations
    LONG WLOffset;                   // Offset to the wait-lock array
    LONG GlobalInstance;             // If glSharedControl belongs to a global instance, this is the PID of the creator.
    LONG SurfaceSemaphore;
@@ -3443,7 +3451,7 @@ struct SharedControl {
          WORD Count;             // Resource tracking: Count of all locks (nesting)
       } PublicLocks[PL_END];
    #elif _WIN32
-      // In windows, the public memory controls are controlled by mutexes that have local handles.
+      // In windows, the shared memory controls are controlled by mutexes that have local handles.
    #endif
 };
 

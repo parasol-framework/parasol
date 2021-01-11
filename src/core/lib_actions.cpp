@@ -186,6 +186,8 @@ static void free_public_children(OBJECTPTR Object)
 {
    parasol::Log log;
 
+   if (!(Object->Flags & NF_HAS_SHARED_RESOURCES)) return;
+
    ScopedSysLock lock(PL_PUBLICMEM, 5000);
    if (lock.granted()) {
       for (LONG i=glSharedControl->NextBlock-1; i >= 0; i--) {

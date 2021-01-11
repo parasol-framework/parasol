@@ -697,9 +697,7 @@ static void free_shared_objects(void)
 
 static ERROR free_shared_object(LONG ObjectID, OBJECTID OwnerID)
 {
-   LONG i;
-
-   for (i=glSharedControl->NextBlock-1; i >= 0; i--) {
+   for (LONG i=glSharedControl->NextBlock-1; i >= 0; i--) {
       if (glSharedBlocks[i].MemoryID IS OwnerID) { // Owner found
          if ((glSharedBlocks[i].TaskID IS glCurrentTaskID) and (glSharedBlocks[i].Flags & MEM_OBJECT)) { // Does the owner belong to our process?
             OBJECTPTR header;
