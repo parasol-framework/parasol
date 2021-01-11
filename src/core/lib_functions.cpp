@@ -123,7 +123,7 @@ ERROR CheckObjectExists(OBJECTID ObjectID, CSTRING Name)
       }
 
       char buffer[MAX_NAME_LEN+1];
-      for (i=0; (Name[i]) and (i < MAX_NAME_LEN); i++) { // Change the Name string to all-lower case and build a hash
+      for (i=0; (Name[i]) and (i < MAX_NAME_LEN); i++) { // Change the Name string to all-lower case
          char c = Name[i];
          if ((c >= 'A') and (c <= 'Z')) c = c - 'A' + 'a';
          buffer[i] = c;

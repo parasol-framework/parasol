@@ -66,6 +66,7 @@ std::unordered_map<OBJECTID, std::set<OBJECTID, std::greater<OBJECTID>>> glObjec
 std::unordered_map<OBJECTID, std::set<MEMORYID, std::greater<MEMORYID>>> glObjectMemory;
 
 struct PublicAddress  *glSharedBlocks  = 0;
+struct SortedAddress  *glSortedBlocks  = 0;
 struct ModuleMaster   *glModuleList    = 0;
 struct SharedAccess   *SharedAccess    = 0;
 struct SharedControl  *glSharedControl = 0;
