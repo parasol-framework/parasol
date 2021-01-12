@@ -194,7 +194,7 @@ module({ name="Core", copyright="Paul Manias 1996-2020" }, function()
     "SCAN_MODULES",
     "GLOBAL_INSTANCE",
     "OPTIONS",
-    "SHOW_PUBLIC_MEM") -- Show public memory allocations only (ignore private).
+    "SHOW_PUBLIC_MEM") -- Show shared memory allocations only (ignore private).
 
   enum("TOI", { },
     "LOCAL_CACHE",        -- For Android.  Defines the path of the local cache for assignment to localcache:
@@ -314,11 +314,11 @@ module({ name="Core", copyright="Paul Manias 1996-2020" }, function()
 
   flags("FOF", { comment="Flags that can be passed to FindObject()" },
     "SMART_NAMES: Parse numeric object names as ID references and support use of the 'Owner' reserved keyword.",
-    "INCLUDE_SHARED: Include public objects when searching.")
+    "INCLUDE_SHARED: Include shared objects when searching.")
 
   flags("NF", { comment="Flags that can be passed to NewObject().  If a flag needs to be stored with the object, it must be specified in the lower word." },
     "NO_TRACK|UNTRACKED: An object created with this flag will not be tracked back to the object that created it.  If combined with the NF_PUBLIC flag, the object can also remain in memory when the object's related task is terminated.",
-    "PUBLIC: Allocates a public object using shareable resources, allowing it to be accessed directly by any process.  Access is granted via exclusive access locks  - refer to the AccessObject() and ReleaseObject() functions.",
+    "PUBLIC|SHARED: Allocates a shared object using shareable resources, allowing it to be accessed directly by any process.  Access is granted via exclusive access locks  - refer to the AccessObject() and ReleaseObject() functions.",
     "FOREIGN_OWNER: Read-only indicator for when an object's parent is in a foreign process.",
     "INITIALISED: Read-only indicator if the object has been initialised.",
     "INTEGRAL: Integral objects can only be allocated by classes that need to adopt the functionality of said object.  Integral objects do not appear in the object tree, effectively making them hidden from view.",
@@ -331,7 +331,8 @@ module({ name="Core", copyright="Paul Manias 1996-2020" }, function()
     "RECLASSED: The object switched from the base-class to a sub-class during initialisation.",
     "MESSAGE: Action has been called against the object through the message system (managed by ProcessMessages()).",
     "SIGNALLED: The object has been signalled and is awaiting processing.",
-    { UNIQUE = "0x40000000: Use to allocate an object that has a guaranteed unique name.  This will prevent code from shadowing any object that exists with the same name, which can be imperative when creating public objects.  If it is discovered that an identically named object exists, NewObject() will return ERR_ObjectExists.  This flag works in conjunction with the Name argument.",
+    "HAS_SHARED_RESOURCES: Private. The object owns a shared object or memory resource.",
+    { UNIQUE = "0x40000000: Use to allocate an object that has a guaranteed unique name.  This will prevent code from shadowing any object that exists with the same name, which can be imperative when creating shared objects.  If it is discovered that an identically named object exists, NewObject() will return ERR_ObjectExists.  This flag works in conjunction with the Name argument.",
       NAME   = "0x80000000: Use the Name parameter to name the created object.  This flag is not required if using NF_UNIQUE.",
       PRIVATE = 0
     }
@@ -457,9 +458,9 @@ module({ name="Core", copyright="Paul Manias 1996-2020" }, function()
 
   flags("CLF", { comment="Flags for the MetaClass." },
     "SHARED_ONLY|SHARED_OBJECTS: Forces all objects of this class to be shared.",
-    "PRIVATE_ONLY: Do not allow public-memory instances of the class (private-shared objects will still be possible).",
+    "PRIVATE_ONLY: Do not allow shared-memory instances of the class (private-shared objects will still be possible).",
     "PROMOTE_INTEGRAL: Promote class support for any integral object defined in the class definition structure.",
-    "PUBLIC_OBJECTS: Forces all class objects to be allocated in public memory.",
+    "PUBLIC_OBJECTS: Forces all class objects to be allocated in shared memory.",
     "XML_CONTENT: Script processing should treat any object content as XML.",
     "NO_OWNERSHIP: Objects created will not be tracked to the creating process, nor any parent object (SetOwner() will not work either).")
 
@@ -811,7 +812,7 @@ module({ name="Core", copyright="Paul Manias 1996-2020" }, function()
   ]])
 
   struct("MemInfo", { type="meminfo" }, [[
-    ptr  Start         # The starting address of the memory block (does not apply to public blocks).
+    ptr  Start         # The starting address of the memory block (does not apply to shared blocks).
     oid  ObjectID      # The object that owns the memory block.
     int  Size          # The size of the memory block.
     short AccessCount  # Total number of active locks on this block.
@@ -2045,6 +2046,11 @@ struct PublicAddress {
    #endif
 };
 
+struct SortedAddress {
+   MEMORYID MemoryID;
+   LONG Index;
+};
+
 // Semaphore management structure.
 
 #define MAX_SEMAPHORES  40  // Maximum number of semaphores that can be allocated in the system
@@ -2100,7 +2106,7 @@ enum { // For SysLock()
 
 struct SharedControl {
    LONG PoolSize;                   // Amount of allocated page space (starts at zero and expands)
-   volatile LONG BlocksUsed;        // Total amount of public memory blocks currently allocated
+   volatile LONG BlocksUsed;        // Total amount of shared memory blocks currently allocated
    LONG MaxBlocks;                  // Maximum amount of available blocks
    volatile LONG NextBlock;         // Next empty position in the blocks table
    volatile LONG IDCounter;         // ID counter
@@ -2115,9 +2121,10 @@ struct SharedControl {
    volatile WORD WLIndex;           // Current insertion point for the wait-lock array.
    LONG MagicKey;                   // This magic key is set to the semaphore key (used only as an indicator for initialisation)
    LONG BlocksOffset;               // Array of available shared memory pages
+   LONG SortedBlocksOffset;         // Array of shared memory blocks sorted by MemoryID
    LONG SemaphoreOffset;            // Offset to the semaphore control array
    LONG TaskOffset;                 // Offset to the task control array
-   LONG MemoryOffset;               // Offset to the public memory allocations
+   LONG MemoryOffset;               // Offset to the shared memory allocations
    LONG WLOffset;                   // Offset to the wait-lock array
    LONG GlobalInstance;             // If glSharedControl belongs to a global instance, this is the PID of the creator.
    LONG SurfaceSemaphore;
@@ -2138,7 +2145,7 @@ struct SharedControl {
          WORD Count;             // Resource tracking: Count of all locks (nesting)
       } PublicLocks[PL_END];
    #elif _WIN32
-      // In windows, the public memory controls are controlled by mutexes that have local handles.
+      // In windows, the shared memory controls are controlled by mutexes that have local handles.
    #endif
 };
 

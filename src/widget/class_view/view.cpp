@@ -354,7 +354,7 @@ static ERROR VIEW_Activate(objView *Self, APTR Void)
    parasol::Log log;
    ChildEntry list[20];
    LONG count = ARRAYSIZE(list);
-   if (!ListChildren(Self->Head.UniqueID, list, &count)) {
+   if (!ListChildren(Self->Head.UniqueID, FALSE, list, &count)) {
       log.branch("%d children to activate.", count);
 
       for (LONG i=0; i < count; i++) {
@@ -1047,7 +1047,7 @@ static ERROR VIEW_Init(objView *Self, APTR Void)
       ChildEntry list[16];
       LONG count = ARRAYSIZE(list);
 
-      if (!ListChildren(Self->Layout->SurfaceID, list, &count)) {
+      if (!ListChildren(Self->Layout->SurfaceID, FALSE, list, &count)) {
          for (--count; count >= 0; count--) {
             if (list[count].ClassID IS ID_SCROLLBAR) {
                objScrollbar *bar;

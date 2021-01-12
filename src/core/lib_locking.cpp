@@ -885,7 +885,7 @@ ERROR AccessMemory(MEMORYID MemoryID, LONG Flags, LONG MilliSeconds, APTR *Resul
 
    *Result = NULL;
    if (MemoryID < 0) {
-      LARGE start_time = (PreciseTime()/1000LL);
+      LARGE start_time = PreciseTime() / 1000LL;
       LARGE endtime = start_time + MilliSeconds;
 
       if (tlPreventSleep) {
@@ -919,7 +919,7 @@ ERROR AccessMemory(MEMORYID MemoryID, LONG Flags, LONG MilliSeconds, APTR *Resul
             return log.warning(ERR_ObjectCorrupt);
          }
 
-         // If NOBLOCKING is set against the memory block, everyone has free access to the memory block.
+         // If NO_BLOCKING is set against the memory block, everyone has free access to the memory block.
 
          if (addr->Flags & MEM_NO_BLOCKING) { // Non-blocking access must be recorded for all memory blocks
             if (!glTaskEntry) return log.warning(ERR_NotInitialised);
@@ -932,8 +932,8 @@ ERROR AccessMemory(MEMORYID MemoryID, LONG Flags, LONG MilliSeconds, APTR *Resul
                glTaskEntry->NoBlockLocks[i].MemoryID = MemoryID;
                glTaskEntry->NoBlockLocks[i].AccessCount++;
 
-               __sync_fetch_and_add(&addr->AccessCount, 1); // This prevents deallocation during usage.
-               addr->AccessTime = (PreciseTime() / 1000LL);
+               __sync_fetch_and_add(&addr->AccessCount, 1); // Prevents deallocation during usage.
+               addr->AccessTime = PreciseTime() / 1000LL;
                *Result = ptr;
                return ERR_Okay;
             }

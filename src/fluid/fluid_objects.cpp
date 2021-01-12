@@ -568,7 +568,7 @@ static int object_children(lua_State *Lua)
    LONG id[512];
    LONG count = ARRAYSIZE(list);
 
-   if (!ListChildren(object->ObjectID, list, &count)) {
+   if (!ListChildren(object->ObjectID, TRUE, list, &count)) {
       LONG index = 0;
       for (LONG i=0; i < count; i++) {
          if (class_id) {
