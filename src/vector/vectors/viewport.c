@@ -27,7 +27,7 @@ static ERROR VIEW_Clear(objVectorViewport *Self, APTR Void)
    ChildEntry list[512];
    LONG count = ARRAYSIZE(list);
    do {
-      if (!ListChildren(Self->Head.UniqueID, list, &count)) {
+      if (!ListChildren(Self->Head.UniqueID, FALSE, list, &count)) {
          for (WORD i=0; i < count; i++) acFreeID(list[i].ObjectID);
       }
    } while (count IS ARRAYSIZE(list));

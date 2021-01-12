@@ -895,11 +895,11 @@ if (!AllocMemory(1000, MEM_DATA, &amp;address, NULL)) {
       <param type="LONG *" name="Count">Indicates the size of Array, measured in elements.  Must be set to a value of 1 or greater.</param>
     </input>
     <description>
-<p>The FindObject() function searches for all objects that match a given name and can filter by class. A pre-allocated buffer is required for the output of the results.</p>
+<p>The FindObject() function searches for all objects that match a given name and can filter by class.  A pre-allocated buffer is required for the output of the results.</p>
 <p>The following example is a typical illustration of this function's use.  It finds the most recent object created with a given name:</p>
 <pre>OBJECTID id;
 LONG count = 1;
-FindObject("SystemPointer", ID_POINTER, &amp;id, &amp;count);
+FindObject("SystemPointer", ID_POINTER, 0, &amp;id, &amp;count);
 </pre>
 <p>If FindObject() cannot find any matching objects then it will return an error code.</p>
 <p>The list is sorted so that the oldest private object is placed at the start of the list, and the most recent public object is placed at the end.  Take advantage of this fact to get the oldest or youngest object with the Name that is being searched for.  Preference is also given to objects that have been created by the calling process, thus foreign objects are pushed towards the end of the array.</p>
@@ -979,7 +979,7 @@ FindObject("SystemPointer", ID_POINTER, &amp;id, &amp;count);
       <param type="MEMORYID" name="ID">The unique ID of the memory block.</param>
     </input>
     <description>
-<p>When a public memory block is no longer required, it can be freed from the system with this function.  The action of freeing the block will not necessarily take place immediately - if another task is using the block for example, deletion cannot occur for safety reasons.  In a case such as this, the block will be marked for deletion and will be freed once all tasks have stopped using it.</p>
+<p>When a public memory block is no longer required it can be freed from the system with this function.  The action of freeing the block will not necessarily take place immediately - if another task is using the block for example, deletion cannot occur for safety reasons.  In this case the block will be marked for deletion and removed once all tasks have released it.</p>
     </description>
     <result type="ERROR">
       <error code="NullArgs">Function call missing argument value(s)</error>
@@ -1236,7 +1236,7 @@ GetFields(screen,
       <param type="MEMORYID" name="ID">Reference to a private memory ID.</param>
     </input>
     <description>
-<p>The GetMemAddress() function provides a fast method for obtaining the address of private memory blocks when only the memory ID is known.  It may also be used to check the validity of private memory blocks, as it will return NULL if the memory block no longer exists.</p>
+<p>The GetMemAddress() function provides a fast method for obtaining the address of private memory blocks when only the memory ID is known.  It may also be used to check the validity of private memory blocks as it will return NULL if the memory block no longer exists.</p>
 <p>This function does not work on public memory blocks (identified as negative integers).  Use <function module="Core">AccessMemory</function> for resolving public memory addresses.</p>
     </description>
     <result type="APTR">Returns the address of the memory ID, or NULL if the ID does not refer to a private memory block.</result>
@@ -1483,16 +1483,17 @@ end
     <name>ListChildren</name>
     <category>Objects</category>
     <comment>Returns a list of all children belonging to an object.</comment>
-    <prototype>ERROR ListChildren(OBJECTID Object, struct ChildEntry * List, LONG * Count)</prototype>
+    <prototype>ERROR ListChildren(OBJECTID Object, LONG IncludeShared, struct ChildEntry * List, LONG * Count)</prototype>
     <input>
       <param type="OBJECTID" name="Object">The ID of the object that you wish to examine.</param>
+      <param type="LONG" name="IncludeShared">If TRUE, shared objects will be included in the list at a penalty to performance.</param>
       <param type="struct ChildEntry *" name="List">Must refer to an array of ChildEntry structures.</param>
       <param type="LONG *" name="Count">Set to the maximum number of elements in ChildEntry.  Before returning, this parameter will be updated with the total number of entries listed in the array.</param>
     </input>
     <description>
 <p>The ListChildren() function returns a list of an object's children in a single function call.</p>
 <p>The client must provide an empty array of ChildEntry structures for the function to write its results.  The Count argument must point to a LONG value that indicates the size of the array that you have supplied.  Before returning, the ListChildren() function will update the Count variable so that it reflects the total number of children that were written to the array.</p>
-<p>Objects that are specially marked with the CHILD flag are not returned in the resulting list; such objects are considered to be private extensions of the targeted parent.</p>
+<p>Objects marked with the INTEGRAL flag are not returned as they are private members of the targeted object.</p>
     </description>
     <result type="ERROR">
       <error code="NullArgs">Function call missing argument value(s)</error>
@@ -1654,13 +1655,14 @@ if (!MemoryIDInfo(memid, &amp;info)) {
       <param type="LONG" name="Size">Size of the MemInfo structure.</param>
     </input>
     <description>
-<p>This function can be used to get special details on the attributes of a memory block.  It will return information on the start address, parent object, memory ID, size and flags of the memory address that you are querying.  The following code segment illustrates correct use of this function:</p>
+<p>This function can be used to get details on the attributes of a memory block.  It will return information on the start address, parent object, memory ID, size and flags of the memory address that you are querying.  The following code segment illustrates correct use of this function:</p>
 <pre>struct MemInfo info;
 if (!MemoryPtrInfo(ptr, &amp;info)) {
    LogMsg("Address %p is %d bytes large.", info.Start, info.Size);
 }
 </pre>
-<p>If the call to MemoryPtrInfo() fails, the MemInfo structure's fields will be driven to NULL and an error code will be returned.</p>
+<p>If the call to MemoryPtrInfo() fails then the MemInfo structure's fields will be driven to NULL and an error code will be returned.</p>
+<p>Please note that referencing by a pointer requires a slow reverse-lookup to be employed in this function's search routine.  We recommend that calls to this function are avoided unless circumstances absolutely require it.</p>
     </description>
     <result type="ERROR">
       <error code="NullArgs">Function call missing argument value(s)</error>
@@ -3949,7 +3951,7 @@ end
     </constants>
 
     <constants lookup="FOF" comment="Flags that can be passed to FindObject()">
-      <const name="INCLUDE_SHARED">Include public objects when searching.</const>
+      <const name="INCLUDE_SHARED">Include shared objects when searching.</const>
       <const name="SMART_NAMES">Parse numeric object names as ID references and support use of the 'Owner' reserved keyword.</const>
     </constants>
 
@@ -4114,11 +4116,11 @@ end
     <constants lookup="CLF" comment="Flags for the MetaClass.">
       <const name="XML_CONTENT">Script processing should treat any object content as XML.</const>
       <const name="SHARED_ONLY">Forces all objects of this class to be shared.</const>
-      <const name="PUBLIC_OBJECTS">Forces all class objects to be allocated in public memory.</const>
+      <const name="PUBLIC_OBJECTS">Forces all class objects to be allocated in shared memory.</const>
       <const name="SHARED_OBJECTS">Forces all objects of this class to be shared.</const>
       <const name="PROMOTE_INTEGRAL">Promote class support for any integral object defined in the class definition structure.</const>
       <const name="NO_OWNERSHIP">Objects created will not be tracked to the creating process, nor any parent object (SetOwner() will not work either).</const>
-      <const name="PRIVATE_ONLY">Do not allow public-memory instances of the class (private-shared objects will still be possible).</const>
+      <const name="PRIVATE_ONLY">Do not allow shared-memory instances of the class (private-shared objects will still be possible).</const>
     </constants>
 
     <constants lookup="RP" comment="Path types for SetResourcePath()">
@@ -4216,16 +4218,17 @@ end
     </constants>
 
     <constants lookup="NF" comment="Flags that can be passed to NewObject().  If a flag needs to be stored with the object, it must be specified in the lower word.">
-      <const name="PRIVATE"/>
       <const name="NAME">Use the Name parameter to name the created object.  This flag is not required if using NF_UNIQUE.</const>
       <const name="INTEGRAL">Integral objects can only be allocated by classes that need to adopt the functionality of said object.  Integral objects do not appear in the object tree, effectively making them hidden from view.</const>
       <const name="UNTRACKED">An object created with this flag will not be tracked back to the object that created it.  If combined with the NF_PUBLIC flag, the object can also remain in memory when the object's related task is terminated.</const>
       <const name="NO_TRACK">An object created with this flag will not be tracked back to the object that created it.  If combined with the NF_PUBLIC flag, the object can also remain in memory when the object's related task is terminated.</const>
+      <const name="UNIQUE">Use to allocate an object that has a guaranteed unique name.  This will prevent code from shadowing any object that exists with the same name, which can be imperative when creating shared objects.  If it is discovered that an identically named object exists, NewObject() will return ERR_ObjectExists.  This flag works in conjunction with the Name argument.</const>
       <const name="TIMER_SUB">Indicates that the object is subscribed to a timer Zinterval.</const>
-      <const name="PUBLIC">Allocates a public object using shareable resources, allowing it to be accessed directly by any process.  Access is granted via exclusive access locks  - refer to the AccessObject() and ReleaseObject() functions.</const>
+      <const name="PUBLIC">Allocates a shared object using shareable resources, allowing it to be accessed directly by any process.  Access is granted via exclusive access locks  - refer to the AccessObject() and ReleaseObject() functions.</const>
       <const name="RECLASSED">The object switched from the base-class to a sub-class during initialisation.</const>
+      <const name="SHARED">Allocates a shared object using shareable resources, allowing it to be accessed directly by any process.  Access is granted via exclusive access locks  - refer to the AccessObject() and ReleaseObject() functions.</const>
       <const name="INITIALISED">Read-only indicator if the object has been initialised.</const>
-      <const name="UNIQUE">Use to allocate an object that has a guaranteed unique name.  This will prevent code from shadowing any object that exists with the same name, which can be imperative when creating public objects.  If it is discovered that an identically named object exists, NewObject() will return ERR_ObjectExists.  This flag works in conjunction with the Name argument.</const>
+      <const name="PRIVATE"/>
       <const name="SIGNALLED">The object has been signalled and is awaiting processing.</const>
       <const name="UNLOCK_FREE">Read-only indicator for when the object is marked for deletion.</const>
       <const name="MESSAGE">Action has been called against the object through the message system (managed by ProcessMessages()).</const>
@@ -4488,7 +4491,7 @@ end
     </struct>
 
     <struct name="MemInfo" typeName="MEMINFO">
-      <field name="Start" type="APTR">The starting address of the memory block (does not apply to public blocks).</field>
+      <field name="Start" type="APTR">The starting address of the memory block (does not apply to shared blocks).</field>
       <field name="ObjectID" type="OBJECTID">The object that owns the memory block.</field>
       <field name="Size" type="LONG">The size of the memory block.</field>
       <field name="AccessCount" type="WORD">Total number of active locks on this block.</field>

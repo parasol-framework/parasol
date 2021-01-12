@@ -40,7 +40,7 @@ ERROR validate_process(LONG ProcessID)
 
    if (glValidating) return ERR_Okay;
    if (glValidateProcessID IS ProcessID) glValidateProcessID = 0;
-   if ((ProcessID IS glProcessID) OR (!ProcessID)) return ERR_Okay;
+   if ((ProcessID IS glProcessID) or (!ProcessID)) return ERR_Okay;
 
    // Determine whether or not the process is alive
 
@@ -48,7 +48,7 @@ ERROR validate_process(LONG ProcessID)
       // On Windows we don't check if the process is alive because validation can often occur during the final shutdown
       // phase of the other process.
    #elif __unix__
-      if ((kill(ProcessID, 0) IS -1) AND (errno IS ESRCH));
+      if ((kill(ProcessID, 0) IS -1) and (errno IS ESRCH));
       else return ERR_Okay;
    #else
       log.error("This platform does not support validate_process()");
@@ -140,7 +140,7 @@ public|untracked and private memory flags as necessary.  Example:
 /***
 NOTE: THIS ROUTINE REQUIRES BETTER SUPPORT FOR MESSAGING AC_ACTIONNOTIFY ACTIONS, AS THE ACTIONNOTIFY STRUCTURE
 CONTAINS AN ACTION STRUCTURE POINTER.  THIS SITUATION COULD BE SOLVED BY INTRODUCING AN 'FD_ACTION' FLAG FOR THE
-ACTIONNOTIFY ARGS ARRAY IN DATA.C, WHICH WE COULD DETECT AND DEAL WITH IN THIS ROUTINE.
+ACTIONNOTIFY ARGS ARRAY IN DATA.C, WHICH WE COULD DETECT and DEAL WITH IN THIS ROUTINE.
 ***/
 
 ERROR copy_args(const struct FunctionField *Args, LONG ArgsSize, BYTE *ArgsBuffer, BYTE *Buffer, LONG BufferSize,
@@ -153,7 +153,7 @@ ERROR copy_args(const struct FunctionField *Args, LONG ArgsSize, BYTE *ArgsBuffe
    ERROR error;
    STRING str;
 
-   if ((!Args) OR (!ArgsBuffer) OR (!Buffer)) return log.warning(ERR_NullArgs);
+   if ((!Args) or (!ArgsBuffer) or (!Buffer)) return log.warning(ERR_NullArgs);
 
    *WaitResult = FALSE;
 
@@ -177,7 +177,7 @@ ERROR copy_args(const struct FunctionField *Args, LONG ArgsSize, BYTE *ArgsBuffe
       if (Args[i].Type & FD_STR) { // Copy the string and make sure that there is enough space for it to fit inside the buffer.
          j = offset;
          if ((str = ((STRING *)(ArgsBuffer + pos))[0])) {
-            for (len=0; (str[len]) AND (offset < BufferSize); len++) {
+            for (len=0; (str[len]) and (offset < BufferSize); len++) {
                Buffer[offset++] = str[len];
             }
             if (offset < BufferSize) {
@@ -303,7 +303,7 @@ ERROR local_copy_args(const struct FunctionField *Args, LONG ArgsSize, BYTE *Arg
    ERROR error;
    STRING str;
 
-   if ((!Args) OR (!ArgsBuffer) OR (!Buffer)) return log.warning(ERR_NullArgs);
+   if ((!Args) or (!ArgsBuffer) or (!Buffer)) return log.warning(ERR_NullArgs);
 
    for (LONG i=0; (i < ArgsSize); i++) { // Copy the arguments to the buffer
       if (i >= BufferSize) return log.warning(ERR_BufferOverflow);
@@ -325,7 +325,7 @@ ERROR local_copy_args(const struct FunctionField *Args, LONG ArgsSize, BYTE *Arg
       if (Args[i].Type & FD_STR) { // Copy the string and make sure that there is enough space for it to fit inside the buffer.
          j = offset;
          if ((str = ((STRING *)(ArgsBuffer + pos))[0])) {
-            for (len=0; (str[len]) AND (offset < BufferSize); len++) Buffer[offset++] = str[len];
+            for (len=0; (str[len]) and (offset < BufferSize); len++) Buffer[offset++] = str[len];
             if (offset < BufferSize) {
                Buffer[offset++] = 0;
                ((STRING *)(Buffer + pos))[0] = str;
@@ -432,9 +432,9 @@ void local_free_args(APTR Parameters, const struct FunctionField *Args)
 {
    LONG pos = 0;
    for (LONG i=0; Args[i].Name; i++) {
-      if ((Args[i].Type & FD_PTR) AND (Args[i+1].Type & FD_PTRSIZE)) {
+      if ((Args[i].Type & FD_PTR) and (Args[i+1].Type & FD_PTRSIZE)) {
          LONG size = ((LONG *)((BYTE *)Parameters + pos + sizeof(APTR)))[0];
-         if ((Args[i].Type & FD_RESULT) OR (size > MSG_MAXARGSIZE)) {
+         if ((Args[i].Type & FD_RESULT) or (size > MSG_MAXARGSIZE)) {
             APTR pointer;
             if ((pointer = ((APTR *)((BYTE *)Parameters + pos))[0])) {
                ((APTR *)((BYTE *)Parameters + pos))[0] = 0;
@@ -467,9 +467,9 @@ ERROR resolve_args(APTR Parameters, const struct FunctionField *Args)
          }
          pos += sizeof(STRING);
       }
-      else if ((Args[i].Type & FD_PTR) AND (Args[i+1].Type & FD_PTRSIZE)) {
+      else if ((Args[i].Type & FD_PTR) and (Args[i+1].Type & FD_PTRSIZE)) {
          LONG size = ((LONG *)(Buffer + pos + sizeof(APTR)))[0];
-         if ((Args[i].Type & FD_RESULT) OR (size > MSG_MAXARGSIZE)) {
+         if ((Args[i].Type & FD_RESULT) or (size > MSG_MAXARGSIZE)) {
             // Gain exclusive access to the public memory block that was allocated for this argument, and store the pointer to it.
             // The memory block will need to be released by the routine that called our function.
 
@@ -520,9 +520,9 @@ ERROR free_ptr_args(APTR Parameters, const struct FunctionField *Args, WORD Rele
    BYTE *Buffer = (BYTE *)Parameters;
    LONG pos = 0;
    for (LONG i=0; Args[i].Name; i++) {
-      if ((Args[i].Type & FD_PTR) AND (Args[i+1].Type & FD_PTRSIZE)) {
+      if ((Args[i].Type & FD_PTR) and (Args[i+1].Type & FD_PTRSIZE)) {
          LONG size = ((LONG *)(Buffer + pos + sizeof(APTR)))[0];
-         if ((Args[i].Type & FD_RESULT) OR (size > MSG_MAXARGSIZE)) {
+         if ((Args[i].Type & FD_RESULT) or (size > MSG_MAXARGSIZE)) {
             APTR ptr;
             if ((ptr = ((APTR *)(Buffer + pos))[0])) {
                ((APTR *)(Buffer + pos))[0] = 0;
@@ -546,7 +546,7 @@ void fix_core_table(struct CoreBase *CoreBase, FLOAT Version)
    version = (LONG)Version;
    revision = ((DOUBLE)Version - (DOUBLE)version + 0.000001) * 10.0;
 /*
-   if ((version < 5) OR ((version IS 5) AND (revision < 4))) {
+   if ((version < 5) or ((version IS 5) and (revision < 4))) {
       CoreBase->_SubscribeTimer = (APTR)SubscribeTimer_P54;
    }
 */
@@ -560,22 +560,21 @@ ERROR critical_janitor(OBJECTID SubscriberID, LONG Elapsed, LONG TotalElapsed)
 {
 #ifdef __unix__
    parasol::Log log(__FUNCTION__);
-   LARGE time;
-   LONG diff, limit, murder, i, task;
+   LONG diff, limit;
 
    log.traceBranch("");
 
    // Check if any process has locked out any *system critical* memory blocks for an unacceptable amount of time.  System critical blocks are in the
    // range of -1000 to -2000.  Processes that lock these memory blocks excessively are subject to being killed.
 
-   for (task=0; task < MAX_TASKS; task++) {
-      murder = 0;
+   for (LONG task=0; task < MAX_TASKS; task++) {
+      LONG murder = 0;
 
       if (!LOCK_PUBLIC_MEMORY(5000)) {
-         time = (PreciseTime()/1000LL);
-         for (i=glSharedControl->NextBlock-1; i >= 0; i--) {
-            if ((glSharedBlocks[i].AccessCount > 0) AND (glSharedBlocks[i].ProcessLockID) AND
-                (glSharedBlocks[i].MemoryID <= -1000) AND (glSharedBlocks[i].MemoryID > -2000)) {
+         LARGE time = (PreciseTime() / 1000LL);
+         for (LONG i=glSharedControl->NextBlock-1; i >= 0; i--) {
+            if ((glSharedBlocks[i].AccessCount > 0) and (glSharedBlocks[i].ProcessLockID) and
+                (glSharedBlocks[i].MemoryID <= -1000) and (glSharedBlocks[i].MemoryID > -2000)) {
 
                if (glSharedBlocks[i].AccessTime) diff = time - glSharedBlocks[i].AccessTime;
                else diff = 0;
@@ -625,16 +624,16 @@ ERROR process_janitor(OBJECTID SubscriberID, LONG Elapsed, LONG TotalElapsed)
 {
 #ifdef __unix__
    parasol::Log log(__FUNCTION__);
-   TaskList *task;
-   LONG childprocess, status;
 
    // Call waitpid() to check for zombie processes first.  This covers all processes within our own context, so our child processes, children of those children etc.
 
    // However, it can be 'blocked' from certain processes, e.g. those started from ZTerm.  Such processes are discovered in the second search routine.
 
+   LONG childprocess, status;
    while ((childprocess = waitpid(-1, &status, WNOHANG)) > 0) {
       log.warning("Zombie process #%d discovered.", childprocess);
 
+      TaskList *task;
       if ((task = find_process(childprocess))) {
          task->ReturnCode = WEXITSTATUS(status);
          task->Returned = TRUE;
@@ -648,7 +647,7 @@ ERROR process_janitor(OBJECTID SubscriberID, LONG Elapsed, LONG TotalElapsed)
 
       for (LONG i=0; i < MAX_TASKS; i++) {
          if (shTasks[i].ProcessID) {
-            if ((kill(shTasks[i].ProcessID, 0) IS -1) AND (errno IS ESRCH)) {
+            if ((kill(shTasks[i].ProcessID, 0) IS -1) and (errno IS ESRCH)) {
                validate_process(shTasks[i].ProcessID);
             }
          }
@@ -657,7 +656,7 @@ ERROR process_janitor(OBJECTID SubscriberID, LONG Elapsed, LONG TotalElapsed)
 
 #elif _WIN32
    for (LONG i=0; i < MAX_TASKS; i++) {
-      if ((shTasks[i].ProcessID) AND (shTasks[i].ProcessID != glProcessID)) {
+      if ((shTasks[i].ProcessID) and (shTasks[i].ProcessID != glProcessID)) {
          if (!winCheckProcessExists(shTasks[i].ProcessID)) {
             validate_process(shTasks[i].ProcessID);
          }

@@ -183,23 +183,14 @@ EXPORT void CloseCore(void)
       // cleaner exit.
 
       if (glCurrentTask) {
-restart_free:
-         {
-            ChildEntry list[64];
-            LONG count = ARRAYSIZE(list);
+         const auto children = glObjectChildren[glCurrentTask->Head.UniqueID]; // Take an immutable copy of the resource list
 
-            {
-               parasol::Log log("Shutdown");
-               log.branch("Freeing %d objects allocated to this task.", count);
-               if (!ListChildren(glCurrentTask->Head.UniqueID, list, &count)) {
-                  for (LONG c=0; c < count; c++) {
-                     ActionMsg(AC_Free, list[c].ObjectID, NULL, 0, 0);
-                  }
-               }
-            }
+         if (children.size() > 0) {
+            log.branch("Freeing %d objects allocated to task #%d.", (LONG)children.size(), glCurrentTask->Head.UniqueID);
 
-            if (count IS ARRAYSIZE(list)) goto restart_free;
+            for (const auto id : children) ActionMsg(AC_Free, id, NULL, 0, 0);
          }
+         else log.msg("There are no child objects belonging to task #%d.", glCurrentTask->Head.UniqueID);
       }
 
       // Make our first attempt at expunging all modules.  Notice that we terminate all public objects that are owned
@@ -211,13 +202,13 @@ restart_free:
       Expunge(FALSE);
 
       if (glCacheTimer) {
-         TIMER id = glCacheTimer;
+         auto id = glCacheTimer;
          glCacheTimer = 0;
          UpdateTimer(id, 0);
       }
 
       if (glProcessJanitor) {
-         TIMER id = glProcessJanitor;
+         auto id = glProcessJanitor;
          glProcessJanitor = 0;
          UpdateTimer(id, 0);
       }
@@ -243,10 +234,10 @@ restart_free:
 
          for (const auto & [id, mem ] : glPrivateMemory) {
             if (mem.Flags & MEM_OBJECT) {
-               OBJECTPTR header;
-               if ((header = (OBJECTPTR)mem.Address)) {
-                  if ((header->Stats) and (header->Flags & NF_FOREIGN_OWNER)) {
-                     acFree(header);
+               auto obj = mem.Object;
+               if (obj) {
+                  if ((obj->Stats) and (obj->Flags & NF_FOREIGN_OWNER)) {
+                     acFree(obj);
                      // Don't be concerned about the stability of glPrivateMemory.  FreeResource() takes measures
                      // to avoid destabilising it during shutdown.
                   }
@@ -259,10 +250,10 @@ restart_free:
 
       for (const auto & [ id, mem ] : glPrivateMemory) {
          if ((mem.Flags & MEM_OBJECT) and (mem.AccessCount > 0)) {
-            OBJECTPTR header;
-            if ((header = (OBJECTPTR)mem.Address)) {
-               log.warning("Removing locks on object #%d, Owner: %d, Locks: %d", header->UniqueID, header->OwnerID, mem.AccessCount);
-               for (count=mem.AccessCount; count > 0; count--) ReleaseObject(header);
+            auto obj = mem.Object;
+            if (obj) {
+               log.warning("Removing locks on object #%d, Owner: %d, Locks: %d", obj->UniqueID, obj->OwnerID, mem.AccessCount);
+               for (count=mem.AccessCount; count > 0; count--) ReleaseObject(obj);
             }
          }
       }
@@ -527,32 +518,32 @@ EXPORT void Expunge(WORD Force)
       log.msg("Stage 1 pass #%d", Pass++);
 
       while (mod_master) {
-         ModuleMaster *next = mod_master->Next;
+         auto next = mod_master->Next;
 
          if (mod_master->OpenCount <= 0) {
             // Search for classes that have been created by this module and check their open count values to figure out
             // if the module code is in use.
 
-            BYTE classinuse = FALSE;
-            for (const auto & [ id, mem ] : glPrivateMemory) {
-               if ((mem.Flags & MEM_OBJECT) and (mem.OwnerID IS mod_master->Head.UniqueID)) {
-                  auto mc = (rkMetaClass *)mem.Address;
-                  if ((mc) and (mc->Head.ClassID IS ID_METACLASS) and (mc->OpenCount > 0)) {
-                     log.msg("Module %s manages a class that is in use - Class: %s, Count: %d.", mod_master->Name, mc->ClassName, mc->OpenCount);
-                     classinuse = TRUE;
-                     break;
-                  }
+            bool class_in_use = false;
+            for (const auto & id : glObjectChildren[mod_master->Head.UniqueID]) {
+               auto mem = glPrivateMemory.find(id);
+               if (mem IS glPrivateMemory.end()) continue;
+
+               auto mc = (rkMetaClass *)mem->second.Address;
+               if ((mc) and (mc->Head.ClassID IS ID_METACLASS) and (mc->OpenCount > 0)) {
+                  log.msg("Module %s manages a class that is in use - Class: %s, Count: %d.", mod_master->Name, mc->ClassName, mc->OpenCount);
+                  class_in_use = true;
                }
             }
 
-            if (!classinuse) {
+            if (!class_in_use) {
                if (mod_master->Expunge) {
                   parasol::Log log(__FUNCTION__);
                   log.branch("Sending expunge request to the %s module, routine %p, master #%d.", mod_master->Name, mod_master->Expunge, mod_master->Head.UniqueID);
-                  if (mod_master->Expunge() IS ERR_Okay) {
+                  if (!mod_master->Expunge()) {
                      ccount++;
-                     if (acFree(&mod_master->Head) != ERR_Okay) {
-                        log.warning("ModuleMaster is corrupt");
+                     if (acFree(&mod_master->Head)) {
+                        log.warning("ModuleMaster data is corrupt");
                         mod_count = ccount; // Break the loop because the chain links are broken.
                         break;
                      }
@@ -561,8 +552,8 @@ EXPORT void Expunge(WORD Force)
                }
                else {
                   ccount++;
-                  if (acFree(&mod_master->Head) != ERR_Okay) {
-                     log.warning("ModuleMaster is corrupt");
+                  if (acFree(&mod_master->Head)) {
+                     log.warning("ModuleMaster data is corrupt");
                      mod_count = ccount; // Break the loop because the chain links are broken.
                      break;
                   }
@@ -595,12 +586,13 @@ EXPORT void Expunge(WORD Force)
                // Search for classes that have been created by this module and check their open count values to figure
                // out if the module code is in use.
 
-               for (const auto & [ id, mem ] : glPrivateMemory) {
-                  if ((mem.Flags & MEM_OBJECT) and (mem.OwnerID IS mod_master->Head.UniqueID)) {
-                     auto mc = (rkMetaClass *)mem.Address;
-                     if ((mc) and (mc->Head.ClassID IS ID_METACLASS) and (mc->OpenCount > 0)) {
-                        log.warning("Warning: The %s module holds a class with existing objects (Class: %s, Objects: %d)", mod_master->Name, mc->ClassName, mc->OpenCount);
-                     }
+               for (const auto & id : glObjectChildren[mod_master->Head.UniqueID]) {
+                  auto mem = glPrivateMemory.find(id);
+                  if (mem IS glPrivateMemory.end()) continue;
+
+                  auto mc = (rkMetaClass *)mem->second.Address;
+                  if ((mc) and (mc->Head.ClassID IS ID_METACLASS) and (mc->OpenCount > 0)) {
+                     log.warning("Warning: The %s module holds a class with existing objects (Class: %s, Objects: %d)", mod_master->Name, mc->ClassName, mc->OpenCount);
                   }
                }
             }
@@ -705,9 +697,7 @@ static void free_shared_objects(void)
 
 static ERROR free_shared_object(LONG ObjectID, OBJECTID OwnerID)
 {
-   LONG i;
-
-   for (i=glSharedControl->NextBlock-1; i >= 0; i--) {
+   for (LONG i=glSharedControl->NextBlock-1; i >= 0; i--) {
       if (glSharedBlocks[i].MemoryID IS OwnerID) { // Owner found
          if ((glSharedBlocks[i].TaskID IS glCurrentTaskID) and (glSharedBlocks[i].Flags & MEM_OBJECT)) { // Does the owner belong to our process?
             OBJECTPTR header;
@@ -761,11 +751,9 @@ static void free_private_memory(void)
       if (mem.Address) {
          if (!glCrashStatus) {
             if (mem.Flags & MEM_OBJECT) {
-               OBJECTPTR object = (OBJECTPTR)mem.Address;
-               log.warning("Unfreed private object #%d, Size %d, Class: $%.8x, Container: #%d.", mem.MemoryID, mem.Size, object->ClassID, mem.OwnerID);
-               if (object->Flags & NF_PUBLIC) {
-                  remove_shared_object(mem.MemoryID);
-               }
+               log.warning("Unfreed private object #%d, Size %d, Class: $%.8x, Container: #%d.", mem.MemoryID, mem.Size, mem.Object->ClassID, mem.OwnerID);
+
+               if (mem.Object->Flags & NF_PUBLIC) remove_shared_object(mem.MemoryID);
             }
             else log.warning("Unfreed private memory #%d/%p, Size %d, Container: #%d.", mem.MemoryID, mem.Address, mem.Size, mem.OwnerID);
          }

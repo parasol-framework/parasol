@@ -6,6 +6,7 @@
 #endif
 
 #include <set>
+#include <functional>
 
 #define PRV_CORE
 #define PRV_CORE_MODULE
@@ -265,10 +266,10 @@ extern struct virtual_drive glVirtual[20];
 #define PAGE_TABLE_CHUNK     32
 #define MEMHEADER            12    // 8 bytes at start for MEMH and MemoryID, 4 at end for MEMT
 
-// **NOTE** A massive shared memory pool between all processes is very bad - it is a big security flaw.
+// Turning off USE_SHM means that the shared memory pool is available to all processes by default.
 
 #ifdef __ANDROID__
-  #undef USE_SHM
+  #undef USE_SHM // Should be using ashmem
   #define SHMKEY 0x0009f830 // Keep the key value low as we will be incrementing it
 
   #ifdef USE_SHM
@@ -469,6 +470,7 @@ extern LARGE glTimeLog;
 extern char glAlphaNumeric[256];
 extern struct ModuleMaster  *glModuleList;    // Locked with TL_GENERIC.  Maintained as a linked-list; hashmap unsuitable.
 extern struct PublicAddress *glSharedBlocks;  // Locked with PL_PUBLICMEM
+extern struct SortedAddress *glSortedBlocks;
 extern struct SharedControl *glSharedControl; // Locked with PL_FORBID
 extern struct TaskList      *shTasks, *glTaskEntry; // Locked with PL_PROCESSES
 extern struct SemaphoreEntry *shSemaphores;     // Locked with PL_SEMAPHORES
@@ -476,7 +478,8 @@ extern const struct ActionTable ActionTable[];  // Read only
 extern const struct Function    glFunctions[];  // Read only
 extern struct CoreTimer *glTimers;              // Locked with TL_TIMER
 extern std::unordered_map<MEMORYID, PrivateAddress> glPrivateMemory;  // Locked with TL_PRIVATE_MEM: Note that best performance for looking up ID's is achieved as a sorted array.
-extern std::unordered_map<OBJECTID, std::set<MEMORYID>> glObjectResources; // Locked with TL_PRIVATE_MEM
+extern std::unordered_map<OBJECTID, std::set<MEMORYID, std::greater<MEMORYID>>> glObjectMemory; // Locked with TL_PRIVATE_MEM.  Sorted with the most recent private memory first
+extern std::unordered_map<OBJECTID, std::set<OBJECTID, std::greater<OBJECTID>>> glObjectChildren; // Locked with TL_PRIVATE_MEM.  Sorted with most recent object first
 extern struct MemoryPage   *glMemoryPages;      // Locked with TL_MEMORY_PAGES
 extern struct KeyStore *glObjectLookup;         // Locked with TL_OBJECT_LOOKUP
 extern struct ClassHeader  *glClassDB;          // Read-only.  Class database.

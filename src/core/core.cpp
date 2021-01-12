@@ -142,8 +142,8 @@ static void print_class_list(void)
    LONG *offsets = CL_OFFSETS(glClassDB);
    for (WORD i=0; i < glClassDB->Total; i++) {
       ClassItem *item = (ClassItem *)(((BYTE *)glClassDB) + offsets[i]);
-      for (WORD j=0; (item->Name[j]) AND (pos < sizeof(buffer)-2); j++) buffer[pos++] = item->Name[j];
-      if ((i < glClassDB->Total-1) AND (pos < sizeof(buffer)-1)) buffer[pos++] = ' ';
+      for (WORD j=0; (item->Name[j]) and (pos < sizeof(buffer)-2); j++) buffer[pos++] = item->Name[j];
+      if ((i < glClassDB->Total-1) and (pos < sizeof(buffer)-1)) buffer[pos++] = ' ';
    }
    buffer[pos] = 0;
    log.trace("Total: %d, %s", glClassDB->Total, buffer);
@@ -317,7 +317,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
          LONG len;
          if (winGetExeDirectory(sizeof(glRootPath), glRootPath)) {
             len = StrLength(glRootPath);
-            while ((len > 1) AND (glRootPath[len-1] != '/') AND (glRootPath[len-1] != '\\') AND (glRootPath[len-1] != ':')) len--;
+            while ((len > 1) and (glRootPath[len-1] != '/') and (glRootPath[len-1] != '\\') and (glRootPath[len-1] != ':')) len--;
             glRootPath[len] = 0;
          }
          else if ((!winGetCurrentDirectory(sizeof(glRootPath), glRootPath))) {
@@ -370,7 +370,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
 
    // Android sets an important JNI pointer on initialisation.
 
-   if ((Info->Flags & OPF_OPTIONS) AND (Info->Options)) {
+   if ((Info->Flags & OPF_OPTIONS) and (Info->Options)) {
       for (LONG i=0; Info->Options[i].Tag != TAGEND; i++) {
          switch (Info->Options[i].Tag) {
             case TOI_ANDROID_ENV: {
@@ -384,7 +384,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
    // Check if the privileged flag has been set, which means "don't drop administration privileges if my binary is known to be suid".
 
 #if defined(__unix__) && !defined(__ANDROID__)
-   if ((Info->Flags & OPF_PRIVILEGED) AND (geteuid() != getuid())) {
+   if ((Info->Flags & OPF_PRIVILEGED) and (geteuid() != getuid())) {
       glPrivileged = TRUE;
    }
 #endif
@@ -447,9 +447,9 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
       if (glLogLevel > 2) {
          char cmdline[160];
          size_t pos = 0;
-         for (LONG i=0; (i < Info->ArgCount) AND (pos < sizeof(cmdline)-1); i++) {
+         for (LONG i=0; (i < Info->ArgCount) and (pos < sizeof(cmdline)-1); i++) {
             if (i > 0) cmdline[pos++] = ' ';
-            for (LONG j=0; (Info->Args[i][j]) AND (pos < sizeof(cmdline)-1); j++) {
+            for (LONG j=0; (Info->Args[i][j]) and (pos < sizeof(cmdline)-1); j++) {
                cmdline[pos++] = Info->Args[i][j];
             }
          }
@@ -601,6 +601,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
    // Determine shared addresses
 
    glSharedBlocks = (PublicAddress *)ResolveAddress(glSharedControl, glSharedControl->BlocksOffset);
+   glSortedBlocks = (SortedAddress *)ResolveAddress(glSharedControl, glSharedControl->SortedBlocksOffset);
    shSemaphores   = (SemaphoreEntry *)ResolveAddress(glSharedControl, glSharedControl->SemaphoreOffset);
    shTasks        = (TaskList *)ResolveAddress(glSharedControl, glSharedControl->TaskOffset);
 
@@ -675,14 +676,14 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
       }
 
       if (i IS MAX_TASKS) {
-         for (i=0; (i < MAX_TASKS) AND (shTasks[i].ProcessID); i++); // Find an empty slot
+         for (i=0; (i < MAX_TASKS) and (shTasks[i].ProcessID); i++); // Find an empty slot
 
          // If all slots are in use, check if there are any dead slots (pre-allocated slots that haven't been assigned
          // to a process due to execution errors or whatever).
 
          if (i IS MAX_TASKS) {
             for (i=0; i < MAX_TASKS; i++) {
-               if ((shTasks[i].ProcessID)) { // AND ((PreciseTime()/1000LL) - shTasks[i].CreationTime > 1000)) {
+               if ((shTasks[i].ProcessID)) { // and ((PreciseTime()/1000LL) - shTasks[i].CreationTime > 1000)) {
                   if ((!shTasks[i].TaskID))  {
                      ClearMemory(shTasks + i, sizeof(shTasks[0]));
                      break;
@@ -702,7 +703,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
                            break;
                         }
                      #else
-                        if ((kill(shTasks[i].ProcessID, 0) IS -1) AND (errno IS ESRCH)) {
+                        if ((kill(shTasks[i].ProcessID, 0) IS -1) and (errno IS ESRCH)) {
                            ClearMemory(shTasks + i, sizeof(shTasks[0]));
                            break;
                         }
@@ -779,7 +780,6 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
 #ifdef __unix__
    log.msg("UID: %d (%d), EUID: %d (%d); GID: %d (%d), EGID: %d (%d)", getuid(), glUID, geteuid(), glEUID, getgid(), glGID, getegid(), glEGID);
 #endif
-   log.msg("Public Offsets: %d, %d, %d", glSharedControl->BlocksOffset, glSharedControl->SemaphoreOffset, glSharedControl->TaskOffset);
 
    // Allocate the page management table for public memory blocks.
 
@@ -1009,7 +1009,9 @@ EXPORT void CleanSystem(LONG Flags)
 
 #define MAGICKEY 0x58392712
 
-static LONG glMemorySize = sizeof(SharedControl) + (sizeof(PublicAddress) * MAX_BLOCKS) +
+static LONG glMemorySize = sizeof(SharedControl) +
+                           (sizeof(PublicAddress) * MAX_BLOCKS) +
+                           (sizeof(SortedAddress) * MAX_BLOCKS) +
                            (sizeof(SemaphoreEntry) * MAX_SEMAPHORES) +
                            (sizeof(WaitLock) * MAX_WAITLOCKS) +
                            (sizeof(TaskList) * MAX_TASKS);
@@ -1167,16 +1169,16 @@ static ERROR open_shared_control(BYTE GlobalInstance)
       // Initialise/Reset the memory if we created it, OR it can be determined that a crash has occurred on previous
       // execution and all shared memory allocations need to be destroyed.
 
-      if ((init) OR (glSharedControl->MagicKey != MAGICKEY)) {
+      if ((init) or (glSharedControl->MagicKey != MAGICKEY)) {
          KMSG("Initialisation of glSharedControl is required.\n");
          init_shared_control();
       }
       else if (glSharedControl->GlobalInstance) {
          KMSG("Checking existing glSharedControl is valid (instance PID %d).\n", glSharedControl->GlobalInstance);
 
-         UBYTE cleanup = FALSE;
+         bool cleanup = false;
 
-         if ((kill(glSharedControl->GlobalInstance, 0) IS -1) AND (errno IS ESRCH)) cleanup = TRUE;
+         if ((kill(glSharedControl->GlobalInstance, 0) IS -1) and (errno IS ESRCH)) cleanup = true;
 
          if (cleanup) {
             // The global instance no longer exists - this indicates that a crash occurred and the IPC's weren't
@@ -1273,6 +1275,9 @@ static ERROR init_shared_control(void)
 
    glSharedControl->BlocksOffset = offset;
    offset += sizeof(PublicAddress) * glSharedControl->MaxBlocks;
+
+   glSharedControl->SortedBlocksOffset = offset;
+   offset += sizeof(SortedAddress) * glSharedControl->MaxBlocks;
 
    glSharedControl->SemaphoreOffset = offset;
    offset += sizeof(SemaphoreEntry) * MAX_SEMAPHORES;
@@ -1378,14 +1383,14 @@ void PrintDiagnosis(LONG ProcessID, LONG Signal)
 
    if (glCodeIndex != CP_PRINT_CONTEXT) {
       if (Signal) {
-         if ((Signal > 0) AND (Signal < ARRAYSIZE(signals))) {
+         if ((Signal > 0) and (Signal < ARRAYSIZE(signals))) {
             LOGE("  Signal ID:      %s", signals[Signal]);
          }
          else LOGE("  Signal ID:      %d", Signal);
       }
       glCodeIndex = CP_PRINT_CONTEXT;
 
-      if ((ProcessID IS glProcessID) AND (tlContext != &glTopContext)) {
+      if ((ProcessID IS glProcessID) and (tlContext != &glTopContext)) {
          LONG class_id;
          STRING classname;
          if ((class_id = tlContext->Object->ClassID)) {
@@ -1423,7 +1428,7 @@ void PrintDiagnosis(LONG ProcessID, LONG Signal)
       if (!LOCK_PUBLIC_MEMORY(4000)) {
          // Print memory locking information
 
-         PublicAddress *memblocks = ResolveAddress(glSharedControl, glSharedControl->BlocksOffset);
+         auto memblocks = (PublicAddress *)ResolveAddress(glSharedControl, glSharedControl->BlocksOffset);
 
          for (LONG index=0; index < glSharedControl->MaxBlocks; index++) {
             if (!memblocks[index].MemoryID) continue;
@@ -1480,7 +1485,7 @@ void PrintDiagnosis(LONG ProcessID, LONG Signal)
 #ifdef _WIN32
    fd = stderr;
 #else
-   if ((glFullOS) AND (Signal != SIGINT)) {
+   if ((glFullOS) and (Signal != SIGINT)) {
       snprintf(filename, sizeof(filename), "/tmp/%d-exception.txt", ProcessID);
       if (!(fd = fopen(filename, "w+"))) {
          fd = stderr; // Failure, use stderr
@@ -1508,14 +1513,14 @@ void PrintDiagnosis(LONG ProcessID, LONG Signal)
       else fprintf(fd, "  Process ID:     %d (Self)\n", task->ProcessID);
       fprintf(fd, "  Message Queue:  %d\n", task->MessageID);
       if (Signal) {
-         if ((Signal > 0) AND (Signal < ARRAYSIZE(signals))) {
+         if ((Signal > 0) and (Signal < ARRAYSIZE(signals))) {
             fprintf(fd, "  Signal ID:      %s\n", signals[Signal]);
          }
          else fprintf(fd, "  Signal ID:      %d\n", Signal);
       }
       glCodeIndex = CP_PRINT_CONTEXT;
 
-      if ((ProcessID IS glProcessID) AND (tlContext->Object)) {
+      if ((ProcessID IS glProcessID) and (tlContext->Object)) {
          LONG class_id;
          CSTRING classname;
          if (tlContext != &glTopContext) {
@@ -1672,7 +1677,7 @@ static void CrashHandler(LONG SignalNumber, siginfo_t *Info, APTR Context)
    parasol::Log log("Core");
 
    if (glCrashStatus > 1) {
-      if ((glCodeIndex) AND (glCodeIndex IS glLastCodeIndex)) {
+      if ((glCodeIndex) and (glCodeIndex IS glLastCodeIndex)) {
          fprintf(stderr, "Unable to recover - exiting immediately.\n");
          exit(255);
       }
@@ -1685,7 +1690,7 @@ static void CrashHandler(LONG SignalNumber, siginfo_t *Info, APTR Context)
    // Analyse the type of signal that has occurred and respond appropriately
 
    if (glCrashStatus IS 0) {
-      if (((SignalNumber IS SIGQUIT) OR (SignalNumber IS SIGHUP)))  {
+      if (((SignalNumber IS SIGQUIT) or (SignalNumber IS SIGHUP)))  {
          log.msg("Termination request - SIGQUIT or SIGHUP.");
          SendMessage(glTaskMessageMID, MSGID_QUIT, 0, NULL, 0);
          glCrashStatus = 1;
@@ -1695,13 +1700,13 @@ static void CrashHandler(LONG SignalNumber, siginfo_t *Info, APTR Context)
       if (glLogLevel >= 5) {
          log.msg("Process terminated.\n");
       }
-      else if ((SignalNumber > 0) AND (SignalNumber < ARRAYSIZE(signals))) {
+      else if ((SignalNumber > 0) and (SignalNumber < ARRAYSIZE(signals))) {
          fprintf(stderr, "\nProcess terminated, signal %s.\n\n", signals[SignalNumber]);
       }
       else fprintf(stderr, "\nProcess terminated, signal %d.\n\n", SignalNumber);
 
-      if ((SignalNumber IS SIGILL) OR (SignalNumber IS SIGFPE) OR
-          (SignalNumber IS SIGSEGV) OR (SignalNumber IS SIGBUS)) {
+      if ((SignalNumber IS SIGILL) or (SignalNumber IS SIGFPE) OR
+          (SignalNumber IS SIGSEGV) or (SignalNumber IS SIGBUS)) {
          glPageFault = Info->si_addr;
       }
       else glPageFault = 0;
@@ -1800,7 +1805,7 @@ static LONG CrashHandler(LONG Code, APTR Address, LONG Continuable, LONG *Info)
    if (!glProcessID) return 1;
 
    if (glCrashStatus > 1) {
-      if ((glCodeIndex) AND (glCodeIndex IS glLastCodeIndex)) {
+      if ((glCodeIndex) and (glCodeIndex IS glLastCodeIndex)) {
          fprintf(stderr, "Unable to recover - exiting immediately.\n");
          fflush(NULL);
          return 1;
@@ -1816,7 +1821,7 @@ static LONG CrashHandler(LONG Code, APTR Address, LONG Continuable, LONG *Info)
          else fprintf(stderr, "\n\nCRASH!");
 
          fprintf(stderr, "\n%s (%s), at address: %p\n", ExceptionTable[Code], (Continuable) ? "Continuable" : "Fatal", Address);
-         if ((Code IS EXP_ACCESS_VIOLATION) AND (Info)) {
+         if ((Code IS EXP_ACCESS_VIOLATION) and (Info)) {
             CSTRING type;
             if (Info[0] IS 1) type = "write";
             else if (Info[0] IS 0) type = "read";
@@ -1893,7 +1898,7 @@ static ERROR load_modules(void)
 
    DirInfo *dir;
    if (!OpenDir("modules:", RDF_QUALIFY, &dir)) {
-      while ((!ScanDir(dir)) AND (pos < (sizeof(modules)-256))) {
+      while ((!ScanDir(dir)) and (pos < (sizeof(modules)-256))) {
          FileInfo *folder = dir->Info;
          if (folder->Flags & RDF_FILE) {
             auto item = (ModuleItem *)(modules + pos);
@@ -1904,7 +1909,7 @@ static ERROR load_modules(void)
 
                // Android modules are in the format "libcategory_modname.so"
 
-               if ((foldername[0] IS 'l') AND (foldername[1] IS 'i') AND (foldername[2] IS 'b')) {
+               if ((foldername[0] IS 'l') and (foldername[1] IS 'i') and (foldername[2] IS 'b')) {
                   foldername += 3;
 
                   // Skip category if one is specified, since we just want the module's short name.
@@ -1916,21 +1921,21 @@ static ERROR load_modules(void)
                      }
                   }
 
-                  for (i=0; foldername[i] AND (foldername[i] != '.') AND (i < sizeof(modname)); i++) modname[i] = foldername[i];
+                  for (i=0; foldername[i] and (foldername[i] != '.') and (i < sizeof(modname)); i++) modname[i] = foldername[i];
                   modname[i] = 0;
 
                   item->Hash = StrHash(modname, FALSE);
 
                   pos += sizeof(ModuleItem);
                   pos += StrCopy("modules:", modules+pos, sizeof(modules)-pos-1);
-                  for (i=0; folder->Name[i] AND (folder->Name[i] != '.') AND (pos < sizeof(modules)-1); i++) modules[pos++] = folder->Name[i]; // Copy everything up to the extension.
+                  for (i=0; folder->Name[i] and (folder->Name[i] != '.') and (pos < sizeof(modules)-1); i++) modules[pos++] = folder->Name[i]; // Copy everything up to the extension.
                   modules[pos++] = 0; // Include the null byte.
                }
                else continue;  // Anything not starting with 'lib' is ignored.
             #else
                char modname[60];
 
-               for (i=0; folder->Name[i] AND (folder->Name[i] != '.') AND (i < (LONG)sizeof(modname)); i++) modname[i] = folder->Name[i];
+               for (i=0; folder->Name[i] and (folder->Name[i] != '.') and (i < (LONG)sizeof(modname)); i++) modname[i] = folder->Name[i];
                modname[i] = 0;
 
                item->Hash = StrHash(modname, FALSE);
@@ -1949,7 +1954,7 @@ static ERROR load_modules(void)
       FreeResource(dir);
    }
 
-   if ((total > 0) AND (!(error = AllocMemory(sizeof(ModuleHeader) + (total * sizeof(LONG)) + pos, MEM_NO_CLEAR|MEM_PUBLIC|MEM_UNTRACKED|MEM_NO_BLOCK, (APTR *)&glModules, &glSharedControl->ModulesMID)))) {
+   if ((total > 0) and (!(error = AllocMemory(sizeof(ModuleHeader) + (total * sizeof(LONG)) + pos, MEM_NO_CLEAR|MEM_PUBLIC|MEM_UNTRACKED|MEM_NO_BLOCK, (APTR *)&glModules, &glSharedControl->ModulesMID)))) {
       glModules->Total = total;
 
       // Generate the offsets
@@ -1970,7 +1975,7 @@ static ERROR load_modules(void)
       for (; h > 0; h /= 3) {
          for (LONG i=h; i < total; i++) {
             LONG temp = offsets[i];
-            for (j=i; (j >= h) AND (((ModuleItem *)((char *)glModules + offsets[j-h]))->Hash > ((ModuleItem *)((char *)glModules + temp))->Hash); j -= h) {
+            for (j=i; (j >= h) and (((ModuleItem *)((char *)glModules + offsets[j-h]))->Hash > ((ModuleItem *)((char *)glModules + temp))->Hash); j -= h) {
                offsets[j] = offsets[j - h];
             }
             offsets[j] = temp;
@@ -2175,7 +2180,7 @@ static ERROR init_filesystem(void)
       // Some platforms need to have special volumes added - these are provided in the OpenInfo structure passed to
       // the Core.
 
-      if ((glOpenInfo->Flags & OPF_OPTIONS) AND (glOpenInfo->Options)) {
+      if ((glOpenInfo->Flags & OPF_OPTIONS) and (glOpenInfo->Options)) {
          for (i=0; glOpenInfo->Options[i].Tag != TAGEND; i++) {
             switch (glOpenInfo->Options[i].Tag) {
                case TOI_LOCAL_CACHE: {
@@ -2191,7 +2196,7 @@ static ERROR init_filesystem(void)
       }
 
       if (!glUserHomeFolder) {
-         if ((cfgReadValue(glVolumes, "User", "Name", &glUserHomeFolder) != ERR_Okay) OR (!glUserHomeFolder)) glUserHomeFolder = "parasol";
+         if ((cfgReadValue(glVolumes, "User", "Name", &glUserHomeFolder) != ERR_Okay) or (!glUserHomeFolder)) glUserHomeFolder = "parasol";
       }
 
       if (!StrMatch("default", glUserHomeFolder)) {
@@ -2204,13 +2209,13 @@ static ERROR init_filesystem(void)
       else {
          #ifdef __unix__
             STRING homedir, logname;
-            if ((homedir = getenv("HOME")) AND (homedir[0]) AND (StrMatch("/", homedir) != ERR_Okay)) {
+            if ((homedir = getenv("HOME")) and (homedir[0]) and (StrMatch("/", homedir) != ERR_Okay)) {
                log.msg("Home folder is \"%s\".", homedir);
-               for (i=0; (homedir[i]) AND (i < (LONG)sizeof(buffer)-1); i++) buffer[i] = homedir[i];
-               while ((i > 0) AND (buffer[i-1] IS '/')) i--;
+               for (i=0; (homedir[i]) and (i < (LONG)sizeof(buffer)-1); i++) buffer[i] = homedir[i];
+               while ((i > 0) and (buffer[i-1] IS '/')) i--;
                i += StrFormat(buffer+i, sizeof(buffer)-i, "/.%s%d/", glUserHomeFolder, F2T(VER_CORE));
             }
-            else if ((logname = getenv("LOGNAME")) AND (logname[0])) {
+            else if ((logname = getenv("LOGNAME")) and (logname[0])) {
                log.msg("Login name for home folder is \"%s\".", logname);
                i = StrFormat(buffer, sizeof(buffer), "config:users/%s/", logname);
                buffer[i] = 0;
@@ -2229,7 +2234,7 @@ static ERROR init_filesystem(void)
             }
             else {
                i = StrCopy("config:users/", buffer, 0);
-               if ((winGetUserName(buffer+i, sizeof(buffer)-i) AND (buffer[i]))) {
+               if ((winGetUserName(buffer+i, sizeof(buffer)-i) and (buffer[i]))) {
                   while (buffer[i]) i++;
                   buffer[i++] = '/';
                   buffer[i] = 0;
@@ -2245,7 +2250,7 @@ static ERROR init_filesystem(void)
 
          if (StrMatch("config:users/default/", buffer) != ERR_Okay) {
             LONG location_type = 0;
-            if ((AnalysePath(buffer, &location_type) != ERR_Okay) OR (location_type != LOC_DIRECTORY)) {
+            if ((AnalysePath(buffer, &location_type) != ERR_Okay) or (location_type != LOC_DIRECTORY)) {
                buffer[i-1] = 0;
                SetDefaultPermissions(-1, -1, PERMIT_READ|PERMIT_WRITE);
                   CopyFile("config:users/default/", buffer, NULL);
@@ -2365,17 +2370,17 @@ static ERROR init_filesystem(void)
                         // Extract mount point
 
                         i = 0;
-                        while ((*str) AND (*str > 0x20)) {
+                        while ((*str) and (*str > 0x20)) {
                            if (i < (LONG)sizeof(devpath)-1) devpath[i++] = *str;
                            str++;
                         }
                         devpath[i] = 0;
 
-                        while ((*str) AND (*str <= 0x20)) str++;
-                        for (i=0; (*str) AND (*str > 0x20) AND (i < (LONG)sizeof(mount)-1); i++) mount[i] = *str++;
+                        while ((*str) and (*str <= 0x20)) str++;
+                        for (i=0; (*str) and (*str > 0x20) and (i < (LONG)sizeof(mount)-1); i++) mount[i] = *str++;
                         mount[i] = 0;
 
-                        if ((mount[0] IS '/') AND (!mount[1]));
+                        if ((mount[0] IS '/') and (!mount[1]));
                         else {
                            IntToStr(driveno++, drivename+5, 3);
                            SetVolume(AST_NAME, drivename, AST_DEVICE_PATH, devpath, AST_PATH, mount, AST_ICON, "devices/storage", AST_DEVICE, "hd", TAGEND);
@@ -2383,8 +2388,8 @@ static ERROR init_filesystem(void)
                      }
 
                      // Next line
-                     while ((*str) AND (*str != '\n')) str++;
-                     while ((*str) AND (*str <= 0x20)) str++;
+                     while ((*str) and (*str != '\n')) str++;
+                     while ((*str) and (*str <= 0x20)) str++;
                   }
                   FreeResource(buffer);
                }

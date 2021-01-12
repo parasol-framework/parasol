@@ -2157,12 +2157,12 @@ ERROR SET_Data(objBitmap *Self, UBYTE *Data)
 -FIELD-
 DataFlags: Defines the memory flags to use in allocating a bitmap's data area.
 
-This field determines what type of memory will be allocated for the #Data field during the initialisation process.
+This field determines the type of memory that will be allocated for the #Data field during the initialisation process.
 This field accepts the MEM_DATA, MEM_VIDEO and MEM_TEXTURE memory flags.
 
-Please note that video based bitmaps are faster than data bitmaps, but they are considered to consist of
-read-only memory.  Under normal circumstances, it is not possible to use the pixel reading functions, or read from the
-bitmap #Data field directly with these bitmap types.  To circumvent this problem, please use the #Lock() action
+Please note that video based bitmaps may be faster than data bitmaps for certain applications, but the content is typically
+read-only.  Under normal circumstances it is not possible to use the pixel reading functions, or read from the
+bitmap #Data field directly with these bitmap types.  To circumvent this problem please use the #Lock() action
 to enable read access when you require it.
 
 -FIELD-
