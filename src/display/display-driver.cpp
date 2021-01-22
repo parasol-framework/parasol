@@ -955,8 +955,6 @@ static ERROR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, LONG InfoSi
 static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
    parasol::Log log(__FUNCTION__);
-   DOUBLE fAlpha;
-   WORD iValue, iAlpha;
    LONG i;
    ERROR error;
    #ifdef __xwindows__
@@ -1194,10 +1192,10 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    memoryid = RPM_AlphaBlend;
    if (!(error = AllocMemory(256 * 256, MEM_UNTRACKED|MEM_PUBLIC|MEM_RESERVED|MEM_NO_BLOCKING, &glAlphaLookup, &memoryid))) {
-      i = 0;
-      for (iAlpha=0; iAlpha < 256; iAlpha++) {
-         fAlpha = (DOUBLE)iAlpha * (1.0 / 255.0);
-         for (iValue=0; iValue < 256; iValue++) {
+      LONG i = 0;
+      for (WORD iAlpha=0; iAlpha < 256; iAlpha++) {
+         DOUBLE fAlpha = (DOUBLE)iAlpha * (1.0 / 255.0);
+         for (WORD iValue=0; iValue < 256; iValue++) {
             glAlphaLookup[i++] = clipByte(F2I((DOUBLE)iValue * fAlpha));
          }
       }
@@ -1691,13 +1689,13 @@ static ERROR gfxGetInputMsg(struct dcInputReady *Input, LONG Flags, struct Input
 
       // Scan the message list until we either get a match or we run out of messages.
 
-
-      msgfound = FALSE;
+      LONG i;
+      bool msgfound = false;
       while (in->NextIndex < glInput->IndexCounter) {
          i = in->NextIndex & INPUT_MASK;
          if ((list[subindex].Mask & glInput->Msgs[i].Mask) IS glInput->Msgs[i].Mask) {
             if ((!list[subindex].SurfaceID) or (list[subindex].SurfaceID IS glInput->Msgs[i].RecipientID)) {
-               msgfound = TRUE;
+               msgfound = true;
                break;
             }
          }
@@ -1713,8 +1711,8 @@ static ERROR gfxGetInputMsg(struct dcInputReady *Input, LONG Flags, struct Input
       }
 
       if (in->NextIndex >= list[subindex].LastIndex) {
-         // This is the last message in the queue for this subscriber.  Set the NextIndex
-         // to IndexCounter and the next call to gfxGetInputMsg() will return ERR_Finished.
+         // This is the last message in the queue for this subscriber.  Set the NextIndex to IndexCounter and the
+         // next call to gfxGetInputMsg() will return ERR_Finished.
 
          in->NextIndex = glInput->IndexCounter;
       }
@@ -5757,13 +5755,12 @@ they are received in relation to surfaces and devices.  An input mask can also b
 messages are received.  If no filters are applied, then all user input messages can be received.
 
 The input system is limited to managing messages that are related to the display (such as track pads, mouse pointers,
-graphics tablets and touch screens). Keyboard devices are not included in the input management system as they are
-specially supported by the <module>Keyboard</> module.
+graphics tablets and touch screens). Keyboard devices are not included.
 
 To reduce the number of messages being passed through the system, input messages are placed on a global queue that
-is accessible to all tasks.  When a new message appears that matches a client's filtering criteria, an InputReady data
+is accessible to all processes.  When a new message appears that matches a client's filtering criteria, an InputReady data
 feed message will be sent to it.  The ~Core.GetInputMsg() function can then be used to process the available
-messages in the queue.  The following code segment illustrates an example of this, and would be used in the DataFeed
+messages in the queue.  The following code segment illustrates an example of this and would be used in the DataFeed
 action:
 
 <pre>
@@ -5784,7 +5781,7 @@ if (Args->DataType IS DATA_INPUT_READY) {
 Further information on the processing of input messages is available in the documentation for the ~Core.GetInputMsg()
 function.
 
-You are required to remove the subscription with ~Core.UnsubscribeInput() once it is no longer required.
+The client is required to remove the subscription with ~Core.UnsubscribeInput() once it is no longer required.
 
 -INPUT-
 oid Surface: If set, only the input messages that match the given surface ID will be received.

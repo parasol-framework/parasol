@@ -243,7 +243,7 @@ void make_any_table(lua_State *, LONG Type, CSTRING, LONG Elements, CPTR ) __att
 void make_array(lua_State *Lua, LONG FieldType, CSTRING StructName, APTR *List, LONG Total, BYTE Cache);
 void make_table(lua_State *, LONG Type, LONG Elements, CPTR ) __attribute__((unused));
 int make_struct(lua_State *, CSTRING, CSTRING) __attribute__((unused));
-ERROR named_struct_to_table(lua_State *, CSTRING, APTR);
+ERROR named_struct_to_table(lua_State *, CSTRING, CPTR);
 void make_struct_ptr_table(lua_State *, CSTRING, LONG, CPTR *);
 void make_struct_serial_table(lua_State *, CSTRING, LONG, CPTR);
 void process_error(objScript *Self, CSTRING Procedure);

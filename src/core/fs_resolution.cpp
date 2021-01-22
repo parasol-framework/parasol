@@ -312,7 +312,7 @@ static ERROR resolve(objConfig *Config, STRING Source, STRING Dest, LONG Flags)
    parasol::Log log("ResolvePath");
    char fullpath[MAX_FILENAME];
    char buffer[MAX_FILENAME];
-   LONG i, j, k, pos, loop;
+   LONG j, k, pos, loop;
    ERROR error;
 
    struct virtual_drive *vdrive;
@@ -357,7 +357,7 @@ static ERROR resolve(objConfig *Config, STRING Source, STRING Dest, LONG Flags)
    // Check if the EXT: reference is used.  If so, respond by loading the module or class that handles the volume.
    // The loaded code should replace the volume with the correct information for discovery on the next resolution phase.
 
-   if (!StrCompare("EXT:", path, 3, STR_MATCH_CASE)) {
+   if (!StrCompare("EXT:", path, 4, STR_MATCH_CASE)) {
       StrCopy(Source, Dest, MAX_FILENAME); // Return an exact duplicate of the original source string
 
       if (get_virtual(Source)) return ERR_VirtualVolume;
@@ -369,9 +369,8 @@ static ERROR resolve(objConfig *Config, STRING Source, STRING Dest, LONG Flags)
       // An external reference can refer to a module (preferred) or a class name.
 
       OBJECTPTR mod;
-      APTR mod_base;
-      if (!CreateObject(ID_MODULE, NF_INTEGRAL, &mod, FID_Name|TSTR, path + 3, TAGEND)) acFree(mod);
-      else FindClass(ResolveClassName(path + 3));
+      if (!CreateObject(ID_MODULE, NF_INTEGRAL, &mod, FID_Name|TSTR, path + 4, TAGEND)) acFree(mod);
+      else FindClass(ResolveClassName(path + 4));
 
       tlClassLoaded = true; // This setting will prevent recursion
       return ERR_VirtualVolume;

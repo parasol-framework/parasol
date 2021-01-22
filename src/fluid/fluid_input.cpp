@@ -256,7 +256,7 @@ static int input_request_item(lua_State *Lua)
 //
 // This functionality is a wrapper for the gfxSubscribeInput() function.  Due to the fact that individual subscriptions
 // cannot be tracked as a resource, we have to subscribe to all surfaces and manipulate the event mask universally.
-// This situation could be improved if gfxSubscribeInput() uniquely tracked subscriptions, e.g. with a unique ID
+// This situation could be improved if gfxSubscribeInput() tracked subscriptions accurately, e.g. with a unique ID
 // and gfxUnsubscribeInput() used that ID for releasing each subscription.
 
 static int input_subscribe(lua_State *Lua)

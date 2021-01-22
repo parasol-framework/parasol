@@ -43,8 +43,7 @@ static ERROR DOCUMENT_ActionNotify(objDocument *Self, struct acActionNotify *Arg
       Self->HasFocus = TRUE;
 
       if (!Self->prvKeyEvent) {
-         FUNCTION callback;
-         SET_FUNCTION_STDC(callback, (APTR)&key_event);
+         auto callback = make_function_stdc(key_event);
          SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, &callback, Self, &Self->prvKeyEvent);
       }
 
