@@ -22,7 +22,7 @@ Please refer to it for further information on licensing.
 #define MAX_CURSOR_HEIGHT  32
 #define DRAG_XOFFSET       10
 #define DRAG_YOFFSET       12
-#define MAX_INPUTMSG       2048             // Must be a value to the power of two
+#define MAX_INPUTMSG       2048            // Must be a value to the power of two
 #define INPUT_MASK        (MAX_INPUTMSG-1) // All bits will be set if MAX_INPUTMSG is a power of two
 
 #define BF_DATA     0x01
@@ -31,6 +31,8 @@ Please refer to it for further information on licensing.
 #define SURFACE_READ      (0x0001)   // Read access
 #define SURFACE_WRITE     (0x0002)   // Write access
 #define SURFACE_READWRITE (SURFACE_READ|SURFACE_WRITE)
+
+#include <unordered_set>
 
 #ifdef __linux__
 #include <dlfcn.h>
@@ -978,6 +980,10 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    glSharedControl = (SharedControl *)GetResourcePtr(RES_SHARED_CONTROL);
 
+   // Register a fake FD as input_event_loop() so that we can process input events on every ProcessMessages() cycle.
+
+   RegisterFD((HOSTHANDLE)-2, RFD_ALWAYS_CALL, input_event_loop, NULL);
+
    #ifdef _GLES_
       pthread_mutexattr_t attr;
       pthread_mutexattr_init(&attr);
@@ -1089,11 +1095,12 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
       else XRandRBase = NULL;
 
       // Get the X11 file descriptor (for incoming events) and tell the Core to listen to it when the task is sleeping.
+      // The FD is currently marked as a dummy because processes aren't being woken from select() if the X11 FD already
+      // contains input events.  Dummy FD routines are always called manually prior to select().
 
       glXFD = XConnectionNumber(XDisplay);
       fcntl(glXFD, F_SETFD, 1); // FD does not duplicate across exec()
-      SetResource(RES_X11_FD, glXFD);
-      RegisterFD(glXFD, RFD_READ, X11ManagerLoop, NULL);
+      RegisterFD(glXFD, RFD_READ|RFD_ALWAYS_CALL, X11ManagerLoop, NULL);
 
       // This function checks for DGA and also maps the video memory for us
 
@@ -1228,6 +1235,8 @@ static ERROR CMDExpunge(void)
    if (glAlphaLookup) { ReleaseMemory(glAlphaLookup); glAlphaLookup = NULL; }
    if (glDither)      { FreeResource(glDither); glDither = NULL; }
 
+   DeregisterFD((HOSTHANDLE)-2); // Disable input_event_loop()
+
 #ifdef __xwindows__
 
    WORD i;
@@ -1239,7 +1248,6 @@ static ERROR CMDExpunge(void)
       if (modXRR) { acFree(modXRR); modXRR = NULL; }
 
       if (glXFD != -1) { DeregisterFD(glXFD); glXFD = -1; }
-      SetResource(RES_X11_FD, -1);
 
       XSetErrorHandler(NULL);
       XSetIOErrorHandler(NULL);
@@ -1335,7 +1343,7 @@ the source item.  It is recommended that the graphic be 32x32 pixels in size and
 Surface will be hidden on completion of the drag and drop operation.
 
 If the call to StartCursorDrag() is successful, the mouse cursor will operate in drag and drop mode.  The UserMovement
-and UserClickRelease actions normally reported from the SystemPointer will now include the JD_DRAGITEM flag in the
+and UserClickRelease actions normally reported from the SystemPointer will now include the `JD_DRAGITEM` flag in the
 ButtonFlags parameter.  When the user releases the primary mouse button, the drag and drop operation will stop and the
 DragDrop action will be passed to the surface immediately underneath the mouse cursor.  Objects that are monitoring for
 the DragDrop action on that surface can then contact the Source object with a DataFeed DragDropRequest.  The
@@ -1417,7 +1425,7 @@ The GetDisplayInfo() function returns information about a display, which include
 depth.  If the system is running on a hosted display (e.g. Windows or X11) then GetDisplayInfo() can also be used to
 retrieve information about the default monitor by using a Display of zero.
 
-The resulting DISPLAYINFO structure values remain good until the next call to this function, at which point they will
+The resulting `DISPLAYINFO` structure values remain good until the next call to this function, at which point they will
 be overwritten.
 
 -INPUT-
@@ -1486,7 +1494,7 @@ static LONG gfxGetDisplayType(void)
 AccessPointer: Returns a lock on the default pointer object.
 
 Use AccessPointer() to grab a lock on the default pointer object that is active in the system.  This is typically the
-first object created from the Pointer class with a name of "SystemPointer".
+first object created from the Pointer class with a name of `SystemPointer`.
 
 Call ~Core.ReleaseObject() to free the lock once it is no longer required.
 
@@ -5057,9 +5065,9 @@ static void gfxDrawPixel(objBitmap *Bitmap, LONG X, LONG Y, ULONG Colour)
 DrawRectangle: Draws rectangles, both filled and unfilled.
 
 This function draws both filled and unfilled rectangles.  The rectangle is drawn to the target bitmap at position
-(X, Y) with dimensions determined by the specified Width and Height.  If the Flags parameter defines BAF_FILL then
+(X, Y) with dimensions determined by the specified Width and Height.  If the Flags parameter defines `BAF_FILL` then
 the rectangle will be filled, otherwise only the outline will be drawn.  The colour of the rectangle is determined by
-the pixel value in the Colour argument.  Blending is not enabled unless the BAF_BLEND flag is defined and an alpha
+the pixel value in the Colour argument.  Blending is not enabled unless the `BAF_BLEND` flag is defined and an alpha
 value is present in the Colour.
 
 -INPUT-
@@ -5501,7 +5509,7 @@ regions - for instance, if you set regions 0, 1, 2 and 3, then skip 4 and set 5,
 If you have specified multiple clip regions and want to lower the count or reset the list, set the number of the last
 region that you want in your list and set the Terminate argument to TRUE to kill the regions specified beyond it.
 
-The ClipLeft, ClipTop, ClipRight and ClipBottom fields in the target Bitmap will be updated to reflect the overall
+The `ClipLeft`, `ClipTop`, `ClipRight` and `ClipBottom` fields in the target Bitmap will be updated to reflect the overall
 area that is covered by the clipping regions that have been set.
 
 -INPUT-
@@ -5814,7 +5822,7 @@ static ERROR gfxSubscribeInput(OBJECTID SurfaceID, LONG Mask, OBJECTID DeviceID)
       glSharedControl->InputSize = CHUNK_INPUT;
    }
 
-   // Add the subscription to the list.  Note that granted access to InputMID acts as a lock for variables like InputTotal.
+   // Add the process to the subscription list.  Note that access to InputMID acts as a lock for variables like InputTotal.
 
    InputSubscription *list, *newlist;
    if (!AccessMemory(glSharedControl->InputMID, MEM_READ_WRITE, 2000, &list)) {
@@ -5824,7 +5832,7 @@ static ERROR gfxSubscribeInput(OBJECTID SurfaceID, LONG Mask, OBJECTID DeviceID)
          log.msg("Input array needs to be expanded from %d entries.", glSharedControl->InputSize);
 
          MEMORYID newlistid;
-         if (AllocMemory(sizeof(InputSubscription) * (glSharedControl->InputSize+CHUNK_INPUT), MEM_PUBLIC|MEM_UNTRACKED, (APTR *)&newlist, &newlistid)) {
+         if (AllocMemory(sizeof(InputSubscription) * (glSharedControl->InputSize + CHUNK_INPUT), MEM_PUBLIC|MEM_UNTRACKED, (APTR *)&newlist, &newlistid)) {
             ReleaseMemory(list);
             return ERR_AllocMemory;
          }
@@ -5860,7 +5868,7 @@ static ERROR gfxSubscribeInput(OBJECTID SurfaceID, LONG Mask, OBJECTID DeviceID)
 -FUNCTION-
 GetInputTypeName: Returns the string name for an input type.
 
-This function converts JET integer constants to their string equivalent.  Refer to ~Core.SubscribeInput() for a
+This function converts JET integer constants to their string equivalent.  Refer to ~SubscribeInput() for a
 list of JET constants.
 
 -INPUT-
@@ -5882,7 +5890,7 @@ static CSTRING gfxGetInputTypeName(LONG Type)
 -FUNCTION-
 UnsubscribeInput: Removes an input subscription.
 
-This function removes an input subscription that has been configured using ~Core.SubscribeInput().  If a Surface
+This function removes an input subscription that has been configured using ~SubscribeInput().  If a Surface
 filter was specified in the original subscription, this can also be defined so that any other active subscriptions
 acquired by the Subscriber are unaffected.
 
