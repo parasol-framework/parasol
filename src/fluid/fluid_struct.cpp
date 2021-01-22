@@ -73,7 +73,7 @@ static void set_ptr_ref(struct references *Ref, CPTR Address, LONG Resource)
 //
 // NOTE: In the event of an error code being returned, no value is pushed to the stack.
 
-ERROR named_struct_to_table(lua_State *Lua, CSTRING StructName, APTR Address)
+ERROR named_struct_to_table(lua_State *Lua, CSTRING StructName, CPTR Address)
 {
    auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
    structentry *def;

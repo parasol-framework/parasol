@@ -709,8 +709,9 @@
     </constants>
 
     <constants lookup="RFD" comment="Flags for RegisterFD()">
-      <const name="WRITE">Activate the callback if there is room to write to the FD's buffer.</const>
       <const name="REMOVE">Stop monitoring this file descriptor.</const>
+      <const name="ALWAYS_CALL">Always call this FD's handler prior to the process going to sleep.</const>
+      <const name="WRITE">Activate the callback if there is room to write to the FD's buffer.</const>
       <const name="SOCKET">Identifies the file descriptor as a socket (Linux systems only).</const>
       <const name="READ">Activate the callback if there is data available to read.</const>
       <const name="EXCEPT">Activate the callback if error conditions are pending.</const>
@@ -1034,12 +1035,9 @@
       <field name="Modified" type="struct DateTime">The date/time of the last file modification.</field>
     </struct>
 
-    <struct name="FieldArray" comment="Used to construct class blueprints for the MetaClass.">
-      <field name="Name" type="CSTRING">The name of the field, e.g. "Width"</field>
-      <field name="Flags" type="ULONG">Special flags that describe the field</field>
-      <field name="Arg" type="MAXINT">Can be a pointer or an integer value</field>
-      <field name="GetField" type="APTR">void GetField(*Object, APTR Result);</field>
-      <field name="SetField" type="APTR">ERROR SetField(*Object, APTR Value);</field>
+    <struct name="ChildEntry" comment="Structure for ListChildren() function">
+      <field name="ObjectID" type="OBJECTID">Object ID</field>
+      <field name="ClassID" type="CLASSID">The class ID of the referenced object.</field>
     </struct>
 
     <struct name="ObjectSignal" comment="Required in calls to WaitForObjects().">
@@ -1055,18 +1053,6 @@
     <struct name="MemoryLocks" comment="A supplement structure for ListTasks.">
       <field name="MemoryID" type="MEMORYID">Reference to a memory ID.</field>
       <field name="Locks" type="WORD">The total number of locks on the memory block.</field>
-    </struct>
-
-    <struct name="Field" comment="Used to describe the public fields of a class.">
-      <field name="Arg" type="MAXINT">An option to complement the field type.  Can be a pointer or an integer value</field>
-      <field name="GetValue" type="FUNCTION *" prototype="ERROR (*GetValue)(APTR, APTR)">A virtual function that will retrieve the value for this field.</field>
-      <field name="SetValue" type="APTR">A virtual function that will set the value for this field.</field>
-      <field name="WriteValue" type="FUNCTION *" prototype="ERROR (*WriteValue)(OBJECTPTR, struct Field *, LONG, const void *, LONG)">An internal function for writing to this field.</field>
-      <field name="Name" type="CSTRING">The English name for the field, e.g. "Width"</field>
-      <field name="FieldID" type="ULONG">Provides a fast way of finding fields, e.g. FID_WIDTH</field>
-      <field name="Offset" type="UWORD">Field offset within the object</field>
-      <field name="Index" type="UWORD">Field array index</field>
-      <field name="Flags" type="ULONG">Special flags that describe the field</field>
     </struct>
 
     <struct name="MemInfo" typeName="MEMINFO">
@@ -1094,6 +1080,18 @@
       <field name="TotalMemoryLocks" type="LONG">Total number of held memory locks</field>
       <field name="ModalID" type="OBJECTID">Refers to any surface that currently holds a modal lock.</field>
       <field name="MemoryLocks" type="struct MemoryLocks *">An array of memory locks currently held by the process.</field>
+    </struct>
+
+    <struct name="Field" comment="Used to describe the public fields of a class.">
+      <field name="Arg" type="MAXINT">An option to complement the field type.  Can be a pointer or an integer value</field>
+      <field name="GetValue" type="FUNCTION *" prototype="ERROR (*GetValue)(APTR, APTR)">A virtual function that will retrieve the value for this field.</field>
+      <field name="SetValue" type="APTR">A virtual function that will set the value for this field.</field>
+      <field name="WriteValue" type="FUNCTION *" prototype="ERROR (*WriteValue)(OBJECTPTR, struct Field *, LONG, const void *, LONG)">An internal function for writing to this field.</field>
+      <field name="Name" type="CSTRING">The English name for the field, e.g. "Width"</field>
+      <field name="FieldID" type="ULONG">Provides a fast way of finding fields, e.g. FID_WIDTH</field>
+      <field name="Offset" type="UWORD">Field offset within the object</field>
+      <field name="Index" type="UWORD">Field array index</field>
+      <field name="Flags" type="ULONG">Special flags that describe the field</field>
     </struct>
 
     <struct name="DirInfo" comment="Used by OpenDir() only">
@@ -1150,11 +1148,6 @@
       <field name="Reserved" type="char" size="32">Reserved in case of future expansion</field>
     </struct>
 
-    <struct name="ChildEntry" comment="Structure for ListChildren() function">
-      <field name="ObjectID" type="OBJECTID">Object ID</field>
-      <field name="ClassID" type="CLASSID">The class ID of the referenced object.</field>
-    </struct>
-
     <struct name="KeyStore" comment="Key-pair storage created by VarNew()">
       <field name="Mutex" type="APTR">Internal mutex for managing thread-safety.</field>
       <field name="Data" type="struct KeyPair * *">Key-pairs are stored here.</field>
@@ -1178,6 +1171,14 @@
       <field name="Minute" type="LONG">Minute 0 to 59</field>
       <field name="Second" type="LONG">Second 0 to 59</field>
       <field name="TimeZone" type="LONG">TimeZone -13 to +13</field>
+    </struct>
+
+    <struct name="FieldArray" comment="Used to construct class blueprints for the MetaClass.">
+      <field name="Name" type="CSTRING">The name of the field, e.g. "Width"</field>
+      <field name="Flags" type="ULONG">Special flags that describe the field</field>
+      <field name="Arg" type="MAXINT">Can be a pointer or an integer value</field>
+      <field name="GetField" type="APTR">void GetField(*Object, APTR Result);</field>
+      <field name="SetField" type="APTR">ERROR SetField(*Object, APTR Value);</field>
     </struct>
 
     <struct name="ActionTable" comment="Structure for ActionList">

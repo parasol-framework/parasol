@@ -6,7 +6,7 @@
 
    local win  = obj.new("window", { title="Example Menubar", insideWidth=600, insideHeight=260 })
 
-// This callback is activated whenever a menu is activated by the user.
+-- This callback is activated whenever a menu is activated by the user.
 
 function menuCallback(ID, Name)
    print('Callback: ' .. ID .. ', ' .. Name)
@@ -15,12 +15,13 @@ end
 function itemClicked(Menu, Item)
 end
 
-// This is a universal callback for any menu item that is activated by the user.
+-- This is a universal callback for any menu item that is activated by the user.
 
 function popupClicked(Menu, Item)
    print(Item.item)
 end
 
+function createMenubar()
    local menubar = gui.menubar(win.surface, {
       createItems = function(Bar)
          Bar.addItem(1, 'File', 'devices/harddisk', menuCallback, {
@@ -47,7 +48,11 @@ end
          Bar.addItem(6, 'Help', 'items/help', menuCallback, {})
       end
    })
+end
 
+-- Right clicking the mouse will bring up a popup menu
+
+function createPopupMenu()
    local popupMenu = gui.menu({
       x = 30,
       y = 50,
@@ -74,9 +79,12 @@ end
          end
       end
    end)
+end
 
+   createMenubar()
+   createPopupMenu()
 
    win.acShow()
 
-   processing.sleep() // Will sleep until the window close widget sends MSGID_QUIT
+   processing.sleep() -- Will sleep until the window close widget sends MSGID_QUIT
 

@@ -1052,7 +1052,9 @@ LONG winWaitForObjects(LONG Total, HANDLE *Handles, LONG Time, BYTE WinMsgs)
 {
    if (Time IS -1) Time = INFINITE;
 
-   LONG result = MsgWaitForMultipleObjects(Total, Handles, FALSE, Time, (WinMsgs) ? QS_ALLINPUT : 0);
+   int input_flags = WinMsgs ? (QS_INPUT|QS_POSTMESSAGE|QS_TIMER|QS_PAINT|QS_HOTKEY|QS_SENDMESSAGE) : 0;
+
+   LONG result = MsgWaitForMultipleObjects(Total, Handles, FALSE, INFINITE, input_flags);
 
    if (result IS WAIT_TIMEOUT) return -1;
    else if ((result >= WAIT_ABANDONED_0) AND (result < WAIT_ABANDONED_0+Total)) {
@@ -1068,10 +1070,8 @@ LONG winWaitForObjects(LONG Total, HANDLE *Handles, LONG Time, BYTE WinMsgs)
    else {
       DWORD error = GetLastError();
       if (error IS ERROR_INVALID_HANDLE) {
-         LONG i;
-
          Handles[0] = 0; // Find out which handle is to blame
-         for (i=0; i < Total; i++) {
+         for (LONG i=0; i < Total; i++) {
             if (MsgWaitForMultipleObjects(1, Handles+i, FALSE, 1, (WinMsgs) ? QS_ALLINPUT : 0) IS result) {
                if (GetLastError() IS ERROR_INVALID_HANDLE) {
                   Handles[0] = Handles[i];

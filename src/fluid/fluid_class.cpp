@@ -537,10 +537,10 @@ static ERROR FLUID_DataFeed(objScript *Self, struct acDataFeed *Args)
 
       InputMsg *input;
       while (!gfxGetInputMsg((struct dcInputReady *)Args->Buffer, 0, &input)) {
-         UBYTE processed = FALSE;
+         bool processed = false;
          for (auto list = prv->InputList; list; list=list->Next) {
             if (((list->SurfaceID IS input->RecipientID) or (!list->SurfaceID)) and (list->Mode IS FIM_DEVICE)) {
-               processed = TRUE;
+               processed = true;
                // Execute the callback associated with this input subscription.
 
                LONG branch = GetResource(RES_LOG_DEPTH); // Required as thrown errors cause the debugger to lose its branch position
