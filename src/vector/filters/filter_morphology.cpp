@@ -221,9 +221,7 @@ static void dilate(effect *Effect)
    delete [] output;
 }
 
-/*****************************************************************************
-** Internal: apply_morph()
-*/
+//****************************************************************************
 
 static void apply_morph(objVectorFilter *Self, effect *Effect)
 {

@@ -557,6 +557,8 @@ static ERROR create_menu(objMenu *Self)
       Self->MenuSurfaceID = 0;
    }
 
+   if (Self->InputHandle) { gfxUnsubscribeInput(Self->InputHandle); Self->InputHandle = 0; }
+
    calc_menu_size(Self);
 
    ERROR error;
@@ -598,7 +600,8 @@ static ERROR create_menu(objMenu *Self)
 
          SubscribeActionTags(surface, AC_Show, AC_Hide, AC_LostFocus, TAGEND);
 
-         gfxSubscribeInput(surface->Head.UniqueID, JTYPE_MOVEMENT|JTYPE_BUTTON, 0);
+         auto callback = make_function_stdc(consume_input_events);
+         gfxSubscribeInput(&callback, surface->Head.UniqueID, JTYPE_MOVEMENT|JTYPE_BUTTON, 0, &Self->InputHandle);
 
          // Calculate the correct coordinates for our menu.  This may mean retrieving the absolute coordinates of the
          // relative surface and using them to offset the menu coordinates.

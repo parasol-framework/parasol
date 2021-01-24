@@ -37,9 +37,8 @@ static ERROR gfxCompress(struct rkBitmap * Bitmap, LONG Level);
 static ERROR gfxDecompress(struct rkBitmap * Bitmap, LONG RetainData);
 static ERROR gfxFlood(struct rkBitmap * Bitmap, LONG X, LONG Y, ULONG Colour);
 static void gfxDrawEllipse(struct rkBitmap * Bitmap, LONG X, LONG Y, LONG Width, LONG Height, ULONG Colour, LONG Fill);
-static ERROR gfxSubscribeInput(OBJECTID Surface, LONG Mask, OBJECTID Device);
-static ERROR gfxUnsubscribeInput(OBJECTID Surface);
-static ERROR gfxGetInputMsg(struct dcInputReady * Input, LONG Flags, struct InputMsg ** Msg);
+static ERROR gfxSubscribeInput(FUNCTION * Callback, OBJECTID SurfaceFilter, LONG Mask, OBJECTID DeviceFilter, LONG * Handle);
+static ERROR gfxUnsubscribeInput(LONG Handle);
 static CSTRING gfxGetInputTypeName(LONG Type);
 static DOUBLE gfxScaleToDPI(DOUBLE Value);
 
@@ -68,7 +67,6 @@ FDEF argsGetCursorInfo[] = { { "Error", FD_LONG|FD_ERROR }, { "CursorInfo:Info",
 FDEF argsGetCursorPos[] = { { "Error", FD_LONG|FD_ERROR }, { "X", FD_LONG|FD_RESULT }, { "Y", FD_LONG|FD_RESULT }, { 0, 0 } };
 FDEF argsGetDisplayInfo[] = { { "Error", FD_LONG|FD_ERROR }, { "Display", FD_OBJECTID }, { "DisplayInfo:Info", FD_PTR|FD_STRUCT|FD_RESULT }, { 0, 0 } };
 FDEF argsGetDisplayType[] = { { "Result", FD_LONG }, { 0, 0 } };
-FDEF argsGetInputMsg[] = { { "Error", FD_LONG|FD_ERROR }, { "dcInputReady:Input", FD_PTR|FD_STRUCT }, { "Flags", FD_LONG }, { "InputMsg:Msg", FD_PTR|FD_STRUCT|FD_RESULT }, { 0, 0 } };
 FDEF argsGetInputTypeName[] = { { "Result", FD_STR }, { "Type", FD_LONG }, { 0, 0 } };
 FDEF argsGetRelativeCursorPos[] = { { "Error", FD_LONG|FD_ERROR }, { "Surface", FD_OBJECTID }, { "X", FD_LONG|FD_RESULT }, { "Y", FD_LONG|FD_RESULT }, { 0, 0 } };
 FDEF argsLockCursor[] = { { "Error", FD_LONG|FD_ERROR }, { "Surface", FD_OBJECTID }, { 0, 0 } };
@@ -84,10 +82,10 @@ FDEF argsSetCursorPos[] = { { "Error", FD_LONG|FD_ERROR }, { "X", FD_LONG }, { "
 FDEF argsSetCustomCursor[] = { { "Error", FD_LONG|FD_ERROR }, { "Surface", FD_OBJECTID }, { "Flags", FD_LONG }, { "Bitmap", FD_OBJECTPTR }, { "HotX", FD_LONG }, { "HotY", FD_LONG }, { "Owner", FD_OBJECTID }, { 0, 0 } };
 FDEF argsSetHostOption[] = { { "Error", FD_LONG|FD_ERROR }, { "Option", FD_LONG }, { "Value", FD_LARGE }, { 0, 0 } };
 FDEF argsStartCursorDrag[] = { { "Error", FD_LONG|FD_ERROR }, { "Source", FD_OBJECTID }, { "Item", FD_LONG }, { "Datatypes", FD_STR }, { "Surface", FD_OBJECTID }, { 0, 0 } };
-FDEF argsSubscribeInput[] = { { "Error", FD_LONG|FD_ERROR }, { "Surface", FD_OBJECTID }, { "Mask", FD_LONG }, { "Device", FD_OBJECTID }, { 0, 0 } };
+FDEF argsSubscribeInput[] = { { "Error", FD_LONG|FD_ERROR }, { "Callback", FD_FUNCTIONPTR }, { "SurfaceFilter", FD_OBJECTID }, { "Mask", FD_LONG }, { "DeviceFilter", FD_OBJECTID }, { "Handle", FD_LONG|FD_RESULT }, { 0, 0 } };
 FDEF argsSync[] = { { "Void", FD_VOID }, { "Bitmap", FD_OBJECTPTR }, { 0, 0 } };
 FDEF argsUnlockCursor[] = { { "Error", FD_LONG|FD_ERROR }, { "Surface", FD_OBJECTID }, { 0, 0 } };
-FDEF argsUnsubscribeInput[] = { { "Error", FD_LONG|FD_ERROR }, { "Surface", FD_OBJECTID }, { 0, 0 } };
+FDEF argsUnsubscribeInput[] = { { "Error", FD_LONG|FD_ERROR }, { "Handle", FD_LONG }, { 0, 0 } };
 
 const struct Function glFunctions[] = {
    { (APTR)gfxGetDisplayInfo, "GetDisplayInfo", argsGetDisplayInfo },
@@ -125,7 +123,6 @@ const struct Function glFunctions[] = {
    { (APTR)gfxDrawEllipse, "DrawEllipse", argsDrawEllipse },
    { (APTR)gfxSubscribeInput, "SubscribeInput", argsSubscribeInput },
    { (APTR)gfxUnsubscribeInput, "UnsubscribeInput", argsUnsubscribeInput },
-   { (APTR)gfxGetInputMsg, "GetInputMsg", argsGetInputMsg },
    { (APTR)gfxGetInputTypeName, "GetInputTypeName", argsGetInputTypeName },
    { (APTR)gfxScaleToDPI, "ScaleToDPI", argsScaleToDPI },
    { NULL, NULL, NULL }

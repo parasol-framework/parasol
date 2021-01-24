@@ -101,7 +101,6 @@ LONG glInstanceID = 0;
 LONG glMemRegSize = 0;
 LONG glActionCount = AC_END;
 LONG glEUID = -1, glEGID = -1, glGID = -1, glUID = -1;
-LONG glX11FD = -1;
 struct rkConfig *glVolumes = NULL; // Volume management object
 struct rkConfig *glDatatypes = NULL;
 struct FDTable *glFDTable = NULL;

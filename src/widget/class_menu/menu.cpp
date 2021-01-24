@@ -45,6 +45,7 @@ struct Translation { LONG Code; CSTRING Name; };
 static ERROR add_xml_item(objMenu *, objXML *, XMLTag *);
 static ERROR calc_menu_size(objMenu *);
 static void calc_scrollbar(objMenu *);
+static ERROR consume_input_events(const InputEvent *, LONG);
 static ERROR create_menu(objMenu *);
 static ERROR create_menu_file(objMenu *, objMenu *, objMenuItem *);
 static void draw_default_bkgd(objMenu *, objSurface *, objBitmap *);
@@ -170,6 +171,7 @@ Clears: Clears the content of the menu list.
 static ERROR MENU_Clear(objMenu *Self, APTR Void)
 {
    parasol::Log log;
+
    log.branch();
 
    while (Self->Items) acFree(Self->Items);
@@ -179,11 +181,12 @@ static ERROR MENU_Clear(objMenu *Self, APTR Void)
    Self->CurrentMenu   = NULL;
    Self->Selection     = NULL;
 
+   if (Self->InputHandle) { gfxUnsubscribeInput(Self->InputHandle); Self->InputHandle = 0; }
+
    if (Self->MenuSurfaceID) {
       OBJECTPTR object;
       if (!AccessObject(Self->MenuSurfaceID, 4000, &object)) {
          UnsubscribeAction(object, 0);
-         gfxUnsubscribeInput(Self->MenuSurfaceID);
          acFree(object);
          ReleaseObject(object);
       }
@@ -238,105 +241,6 @@ static ERROR MENU_DataFeed(objMenu *Self, struct acDataFeed *Args)
       }
       else return log.warning(ERR_CreateObject);
    }
-   else if (Args->DataType IS DATA_INPUT_READY) {
-      InputMsg *input;
-
-      while (!gfxGetInputMsg((struct dcInputReady *)Args->Buffer, 0, &input)) {
-         if (input->Flags & JTYPE_MOVEMENT) {
-            if (Self->MotionTimer) { UpdateTimer(Self->MotionTimer, 0); Self->MotionTimer = 0; }
-            if (Self->ItemMotionTimer) { UpdateTimer(Self->ItemMotionTimer, 0); Self->ItemMotionTimer = 0; }
-
-            if (input->RecipientID IS Self->MonitorID) {
-               // Mouse movement over the monitored area for mouse clicks / hovering
-               FUNCTION callback;
-               SET_FUNCTION_STDC(callback, (APTR)&motion_timer);
-               SubscribeTimer(Self->HoverDelay, &callback, &Self->MotionTimer);
-            }
-            else if (input->RecipientID IS Self->MenuSurfaceID) {
-               // Mouse movement over the menu itself
-
-               UBYTE highlight_found = FALSE;
-
-               if (input->OverID IS Self->MenuSurfaceID) {
-                  LONG y = Self->TopMargin + Self->YPosition;
-                  for (auto item=Self->Items; item; item=item->Next) {
-                     if (!(item->Flags & MIF_BREAK)) {
-                        if ((input->Y >= y) and (input->Y < y + item->Height)) {
-                           if (Self->HighlightItem != item) {
-                              highlight_item(Self, item);
-                           }
-                           highlight_found = TRUE;
-                           break;
-                        }
-                     }
-
-                     y += item->Height;
-                  }
-               }
-
-               // Remove existing menu highlighting if the cursor is no longer positioned over a highlight-able item.
-
-               if ((!highlight_found) and (Self->HighlightItem)) {
-                  highlight_item(Self, NULL);
-               }
-
-               if (highlight_found) {
-                  FUNCTION callback;
-                  SET_FUNCTION_STDC(callback, (APTR)&item_motion_timer);
-                  SubscribeTimer(Self->AutoExpand, &callback, &Self->ItemMotionTimer);
-               }
-            }
-         }
-         else if (input->Type IS JET_LEFT_SURFACE) {
-            if (Self->MotionTimer) { UpdateTimer(Self->MotionTimer, 0); Self->MotionTimer = 0; }
-            if (Self->ItemMotionTimer) { UpdateTimer(Self->ItemMotionTimer, 0); Self->ItemMotionTimer = 0; }
-         }
-         else if (input->Flags & JTYPE_BUTTON) {
-            if (input->Value > 0) {
-               if (input->RecipientID IS Self->MonitorID) {
-                  // The monitored surface has received a mouse click (this is normally used for popup menus or clickable zones that show the menu).
-
-                  parasol::Log log;
-                  log.traceBranch("Menu clicked (monitored area)");
-
-                  if ((input->Type IS JET_LMB) or (input->Type IS JET_RMB)) {
-                     SURFACEINFO *info;
-                     if ((Self->MenuSurfaceID) and (((!drwGetSurfaceInfo(Self->MenuSurfaceID, &info))) and (info->Flags & RNF_VISIBLE))) {
-                        log.trace("Menu is visible.");
-                        if (Self->HoverDelay > 0) { // Do nothing (menu stays visible)
-                           log.trace("Menu staying active as hoverdelay > 0");
-                        }
-                        else acHide(Self);
-                     }
-                     else acShow(Self);
-                  }
-               }
-               else if ((input->RecipientID IS Self->MenuSurfaceID) and (input->Type IS JET_LMB)) {
-                  // The menu surface has been clicked
-
-                  parasol::Log log;
-                  log.traceBranch("Menu clicked (menu surface)");
-
-                  LONG y = Self->TopMargin + Self->YPosition;
-                  for (auto item=Self->Items; item; item=item->Next) {
-                     if (!(item->Flags & MIF_BREAK)) {
-                        if ((input->Y >= y) and (input->Y < y + item->Height)) {
-                           acActivate(item);
-                           break;
-                        }
-                     }
-
-                     y += item->Height;
-                  }
-               }
-               else { // A surface outside of the menu's area has been clicked
-                  log.trace("Clicked away from menu - hiding.");
-                  acHide(Self);
-               }
-            }
-         }
-      }
-   }
 
    return ERR_Okay;
 }
@@ -381,7 +285,8 @@ static ERROR MENU_Free(objMenu *Self, APTR Void)
       Self->MenuSurfaceID = 0;
    }
 
-   gfxUnsubscribeInput(0);
+   if (Self->InputHandle) { gfxUnsubscribeInput(Self->InputHandle); Self->InputHandle = 0; }
+   if (Self->MonitorHandle) { gfxUnsubscribeInput(Self->MonitorHandle); Self->MonitorHandle = 0; }
 
    return ERR_Okay;
 }
@@ -570,7 +475,10 @@ static ERROR MENU_Init(objMenu *Self, APTR Void)
 
    // Mouse click monitoring
 
-   if (Self->MonitorID) gfxSubscribeInput(Self->MonitorID, JTYPE_MOVEMENT|JTYPE_BUTTON|JTYPE_FEEDBACK, 0);
+   if (Self->MonitorID) {
+      auto callback = make_function_stdc(consume_input_events);
+      gfxSubscribeInput(&callback, Self->MonitorID, JTYPE_MOVEMENT|JTYPE_BUTTON|JTYPE_FEEDBACK, 0, &Self->MonitorHandle);
+   }
 
    // If no target was given, set the target to the top-most surface object
 
@@ -1550,6 +1458,111 @@ static ERROR SET_Width(objMenu *Self, LONG Value)
    if (Self->Head.Flags & NF_INITIALISED) {
       if (Self->MenuSurfaceID) acResizeID(Self->MenuSurfaceID, Self->FixedWidth, 0, 0);
    }
+   return ERR_Okay;
+}
+
+//****************************************************************************
+
+static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
+{
+   parasol::Log log(__FUNCTION__);
+
+   auto Self = (objMenu *)CurrentContext();
+
+   for (auto event=Events; event; event=event->Next) {
+      if (event->Flags & JTYPE_MOVEMENT) {
+         if (Self->MotionTimer) { UpdateTimer(Self->MotionTimer, 0); Self->MotionTimer = 0; }
+         if (Self->ItemMotionTimer) { UpdateTimer(Self->ItemMotionTimer, 0); Self->ItemMotionTimer = 0; }
+
+         if (event->RecipientID IS Self->MonitorID) {
+            // Mouse movement over the monitored area for mouse clicks / hovering
+            auto callback = make_function_stdc(motion_timer);
+            SubscribeTimer(Self->HoverDelay, &callback, &Self->MotionTimer);
+         }
+         else if (event->RecipientID IS Self->MenuSurfaceID) {
+            // Mouse movement over the menu itself
+
+            UBYTE highlight_found = FALSE;
+
+            if (event->OverID IS Self->MenuSurfaceID) {
+               LONG y = Self->TopMargin + Self->YPosition;
+               for (auto item=Self->Items; item; item=item->Next) {
+                  if (!(item->Flags & MIF_BREAK)) {
+                     if ((event->Y >= y) and (event->Y < y + item->Height)) {
+                        if (Self->HighlightItem != item) {
+                           highlight_item(Self, item);
+                        }
+                        highlight_found = TRUE;
+                        break;
+                     }
+                  }
+
+                  y += item->Height;
+               }
+            }
+
+            // Remove existing menu highlighting if the cursor is no longer positioned over a highlight-able item.
+
+            if ((!highlight_found) and (Self->HighlightItem)) {
+               highlight_item(Self, NULL);
+            }
+
+            if (highlight_found) {
+               auto callback = make_function_stdc(item_motion_timer);
+               SubscribeTimer(Self->AutoExpand, &callback, &Self->ItemMotionTimer);
+            }
+         }
+      }
+      else if (event->Type IS JET_LEFT_SURFACE) {
+         if (Self->MotionTimer) { UpdateTimer(Self->MotionTimer, 0); Self->MotionTimer = 0; }
+         if (Self->ItemMotionTimer) { UpdateTimer(Self->ItemMotionTimer, 0); Self->ItemMotionTimer = 0; }
+      }
+      else if (event->Flags & JTYPE_BUTTON) {
+         if (event->Value > 0) {
+            if (event->RecipientID IS Self->MonitorID) {
+               // The monitored surface has received a mouse click (this is normally used for popup menus or clickable zones that show the menu).
+
+               parasol::Log log(__FUNCTION__);;
+               log.traceBranch("Menu clicked (monitored area)");
+
+               if ((event->Type IS JET_LMB) or (event->Type IS JET_RMB)) {
+                  SURFACEINFO *info;
+                  if ((Self->MenuSurfaceID) and (((!drwGetSurfaceInfo(Self->MenuSurfaceID, &info))) and (info->Flags & RNF_VISIBLE))) {
+                     log.trace("Menu is visible.");
+                     if (Self->HoverDelay > 0) { // Do nothing (menu stays visible)
+                        log.trace("Menu staying active as hoverdelay > 0");
+                     }
+                     else acHide(Self);
+                  }
+                  else acShow(Self);
+               }
+            }
+            else if ((event->RecipientID IS Self->MenuSurfaceID) and (event->Type IS JET_LMB)) {
+               // The menu surface has been clicked
+
+               parasol::Log log(__FUNCTION__);;
+               log.traceBranch("Menu clicked (menu surface)");
+
+               LONG y = Self->TopMargin + Self->YPosition;
+               for (auto item=Self->Items; item; item=item->Next) {
+                  if (!(item->Flags & MIF_BREAK)) {
+                     if ((event->Y >= y) and (event->Y < y + item->Height)) {
+                        acActivate(item);
+                        break;
+                     }
+                  }
+
+                  y += item->Height;
+               }
+            }
+            else { // A surface outside of the menu's area has been clicked
+               log.trace("Clicked away from menu - hiding.");
+               acHide(Self);
+            }
+         }
+      }
+   }
+
    return ERR_Okay;
 }
 

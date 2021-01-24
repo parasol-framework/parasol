@@ -2161,7 +2161,7 @@ static ERROR init_filesystem(void)
       // Configure some standard volumes.
 
       #ifdef __ANDROID__
-         SetVolume(AST_NAME, "assets", AST_PATH, "CLASS:FileAssets", AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, TAGEND);
+         SetVolume(AST_NAME, "assets", AST_PATH, "EXT:FileAssets", AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, TAGEND);
          SetVolume(AST_NAME, "templates", AST_PATH, "assets:templates/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "filetypes/empty",  TAGEND);
          SetVolume(AST_NAME, "config", AST_PATH, "localcache:config/|assets:config/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "filetypes/empty",  TAGEND);
       #else
@@ -2173,9 +2173,10 @@ static ERROR init_filesystem(void)
          else SetVolume(AST_NAME, "bin", AST_PATH, "parasol:", AST_FLAGS, VOLUME_HIDDEN, TAGEND);
       #endif
 
-      SetVolume(AST_NAME, "temp", AST_PATH, "user:temp/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "items/trash",  TAGEND);
+      SetVolume(AST_NAME, "temp", AST_PATH, "user:temp/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "items/trash", TAGEND);
       SetVolume(AST_NAME, "fonts", AST_PATH, "system:fonts/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "items/charset",  TAGEND);
       SetVolume(AST_NAME, "styles", AST_PATH, "system:styles/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "tools/image_gallery",  TAGEND);
+      SetVolume(AST_NAME, "icons", AST_PATH, "EXT:widget", AST_FLAGS, VOLUME_HIDDEN, TAGEND);
 
       // Some platforms need to have special volumes added - these are provided in the OpenInfo structure passed to
       // the Core.

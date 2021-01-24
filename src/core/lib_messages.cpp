@@ -33,7 +33,7 @@ Name: Messages
 
 #include "defs.h"
 
-static void wake_task(LONG Index, CSTRING);
+static ERROR wake_task(LONG Index, CSTRING);
 #ifdef _WIN32
 static ERROR sleep_task(LONG, BYTE);
 #else
@@ -694,7 +694,7 @@ timer_cycle:
       #ifdef _WIN32
          if (tlMainThread) {
             tlMessageBreak = TRUE;  // Break if the host OS sends us a native message
-            sleep_task(wait/1000LL, FALSE); // Event if wait is zero, we still need to clear FD's and call FD hooks
+            sleep_task(wait / 1000LL, FALSE); // Event if wait is zero, we still need to clear FD's and call FD hooks
             tlMessageBreak = FALSE;
 
             if (wait) {
@@ -1211,12 +1211,9 @@ ERROR send_thread_msg(LONG Handle, LONG Type, APTR Data, LONG Size)
    return error;
 }
 
-/*****************************************************************************
-** Internal: write_nonblock()
-**
-** Simplifies the process of writing to an FD that is set to non-blocking mode (typically a socket or pipe).  An
-** end-time is required so that a timeout will be signalled if the reader isn't keeping the buffer clear.
-*/
+//****************************************************************************
+// Simplifies the process of writing to an FD that is set to non-blocking mode (typically a socket or pipe).  An
+// end-time is required so that a timeout will be signalled if the reader isn't keeping the buffer clear.
 
 #ifdef __unix__
 ERROR write_nonblock(LONG Handle, APTR Data, LONG Size, LARGE EndTime)
@@ -1327,6 +1324,41 @@ ERROR UpdateMessage(APTR Queue, LONG MessageID, LONG Type, APTR Buffer, LONG Buf
 }
 
 /*****************************************************************************
+
+-FUNCTION-
+WakeProcess: Wake a sleeping process to check for queued activities.  For internal use only.
+
+Intended for internal use only.  Forcibly waking a process is necessary for the processing of activities that do not
+follow typical IPC methodologies.
+
+-INPUT-
+int ProcessID: Reference to a process identifier for the host platform.
+
+-ERRORS-
+Okay
+NullArgs
+Search: The referenced process was not found.
+
+-END-
+
+*****************************************************************************/
+
+ERROR WakeProcess(LONG ProcessID)
+{
+   parasol::Log log(__FUNCTION__);
+
+   if (!ProcessID) return log.warning(ERR_NullArgs);
+
+   for (LONG i=0; i < MAX_TASKS; i++) {
+      if (shTasks[i].ProcessID IS ProcessID) {
+         return wake_task(i, __func__);
+      }
+   }
+
+   return log.warning(ERR_Search);
+}
+
+/*****************************************************************************
 ** Function: sleep_task() - Unix version
 */
 
@@ -1340,7 +1372,7 @@ ERROR sleep_task(LONG Timeout)
       return ERR_Failed;
    }
    else if (tlPublicLockCount > 0) {
-      log.warning("You cannot sleep while still holding %d global locks!", tlPublicLockCount);
+      log.warning("Cannot sleep while holding %d global locks.", tlPublicLockCount);
       return ERR_Okay;
    }
    else if (tlPrivateLockCount != 0) {
@@ -1373,11 +1405,7 @@ ERROR sleep_task(LONG Timeout)
          //log.trace("Listening to %d, Read: %d, Write: %d, Routine: %p, Flags: $%.2x", glFDTable[i].FD, (glFDTable[i].Flags & RFD_READ) ? 1 : 0, (glFDTable[i].Flags & RFD_WRITE) ? 1 : 0, glFDTable[i].Routine, glFDTable[i].Flags);
          if (glFDTable[i].FD > maxfd) maxfd = glFDTable[i].FD;
 
-         if (glFDTable[i].FD IS glX11FD) {
-            // This sub-routine is required for managing X11's FD, which doesn't seem to wake our task if we call select() while there is data sitting
-            // in the FD (you can test this by running Exodus for X11).  Therefore we process the FD before going to sleep.  This is a bit of a stop gap
-            // measure until we figure out what is wrong with the FD (assuming there is some other way to fix it).
-
+         if (glFDTable[i].Flags & RFD_ALWAYS_CALL) {
             if (glFDTable[i].Routine) glFDTable[i].Routine(glFDTable[i].FD, glFDTable[i].Data);
          }
          else if (glFDTable[i].Flags & RFD_RECALL) {
@@ -1397,7 +1425,7 @@ ERROR sleep_task(LONG Timeout)
                glFDTable[i].Routine(glFDTable[i].FD, glFDTable[i].Data);
 
                if (glFDTable[i].Flags & RFD_RECALL) {
-                  // If the RECALL flag was reapplied by the subscriber, we need to employ a reduced timeout so that the subscriber doesn't get 'stuck'.
+                  // If the RECALL flag was re-applied by the subscriber, we need to employ a reduced timeout so that the subscriber doesn't get 'stuck'.
 
                   if (Timeout > 10) Timeout = 10;
                }
@@ -1475,11 +1503,10 @@ ERROR sleep_task(LONG Timeout)
    else if (result IS -1) {
       if (errno IS EINTR); // Interrupt caught during sleep
       else if (errno IS EBADF) {
-         struct stat info;
-
          // At least one of the file descriptors is invalid - it is most likely that the file descriptor was closed and the
          // code responsible did not de-register the descriptor.
 
+         struct stat info;
          for (LONG i=0; i < glTotalFDs; i++) {
             if (fstat(glFDTable[i].FD, &info) < 0) {
                if (errno IS EBADF) {
@@ -1536,10 +1563,10 @@ ERROR sleep_task(LONG Timeout, BYTE SystemOnly)
       Timeout = -1; // A value of -1 means to wait indefinitely
       time_end = 0x7fffffffffffffffLL;
    }
-   else time_end = (PreciseTime()/1000LL) + Timeout;
+   else time_end = (PreciseTime() / 1000LL) + Timeout;
 
    while (1) {
-      // About this process: it will wait until either:
+      // This subroutine will wait until either:
       //   Something is received on a registered WINHANDLE
       //   The thread-lock is released by another task (see wake_task).
       //   A window message is received (if tlMessageBreak is TRUE)
@@ -1560,9 +1587,12 @@ ERROR sleep_task(LONG Timeout, BYTE SystemOnly)
          for (LONG i=0; i < glTotalFDs; i++) {
             if (glFDTable[i].Flags & RFD_SOCKET) continue; // Ignore network socket FDs (triggered as normal windows messages)
 
-            log.trace("Listening to %d, Read: %d, Write: %d, Routine: %p, Flags: $%.2x", (LONG)(MAXINT)glFDTable[i].FD, (glFDTable[i].Flags & RFD_READ) ? 1 : 0, (glFDTable[i].Flags & RFD_WRITE) ? 1 : 0, glFDTable[i].Routine, glFDTable[i].Flags);
+            //log.trace("Listening to %d, Read: %d, Write: %d, Routine: %p, Flags: $%.2x", (LONG)(MAXINT)glFDTable[i].FD, (glFDTable[i].Flags & RFD_READ) ? 1 : 0, (glFDTable[i].Flags & RFD_WRITE) ? 1 : 0, glFDTable[i].Routine, glFDTable[i].Flags);
 
-            if (glFDTable[i].Flags & (RFD_READ|RFD_WRITE|RFD_EXCEPT)) {
+            if (glFDTable[i].Flags & RFD_ALWAYS_CALL) {
+               if (glFDTable[i].Routine) glFDTable[i].Routine(glFDTable[i].FD, glFDTable[i].Data);
+            }
+            else if (glFDTable[i].Flags & (RFD_READ|RFD_WRITE|RFD_EXCEPT)) {
                lookup[total] = i;
                handles[total++] = glFDTable[i].FD;
             }
@@ -1574,9 +1604,9 @@ ERROR sleep_task(LONG Timeout, BYTE SystemOnly)
          }
       }
 
-      if (Timeout > 0) log.trace("Sleeping on %d handles for up to %dms.  MsgBreak: %d", total, Timeout, tlMessageBreak);
+      //if (Timeout > 0) log.trace("Sleeping on %d handles for up to %dms.  MsgBreak: %d", total, Timeout, tlMessageBreak);
 
-      LONG sleeptime = time_end - (PreciseTime()/1000LL);
+      LONG sleeptime = time_end - (PreciseTime() / 1000LL);
       if (sleeptime < 0) sleeptime = 0;
 
       i = winWaitForObjects(total, handles, sleeptime, tlMessageBreak);
@@ -1597,7 +1627,7 @@ ERROR sleep_task(LONG Timeout, BYTE SystemOnly)
          }
       }
       else if ((i > 1) and (i < total)) {
-         log.trace("WaitForObjects() Handle: %d (%d) of %d, Timeout: %d, Break: %d", i, lookup[i], total, Timeout, tlMessageBreak);
+         //log.trace("WaitForObjects() Handle: %d (%d) of %d, Timeout: %d, Break: %d", i, lookup[i], total, Timeout, tlMessageBreak);
 
          // Process only the handle routine that was signalled: NOTE: This is potentially an issue if the handle is early on in the list and is being frequently
          // signalled - it will mean that the other handles aren't going to get signalled until the earlier one stops being signalled.
@@ -1629,7 +1659,7 @@ ERROR sleep_task(LONG Timeout, BYTE SystemOnly)
          break; // Message in windows message queue that needs to be processed, so break
       }
 
-      LARGE systime = (PreciseTime()/1000LL);
+      LARGE systime = (PreciseTime() / 1000LL);
       if (systime < time_end) Timeout = time_end - systime;
       else break;
    }
@@ -1639,13 +1669,12 @@ ERROR sleep_task(LONG Timeout, BYTE SystemOnly)
 
 #endif // _WIN32
 
-/*****************************************************************************
-** This function complements sleep_task().  It is useful for waking the main thread of a process when it is waiting for
-** new messages to come in.
-**
-** It's not a good idea to call wake_task() while locks are active because the Core might choose to instantly switch
-** to the foreign task when we wake it up.  Having a lock would then increase the likelihood of delays and time-outs.
-*/
+//****************************************************************************
+// This function complements sleep_task().  It is useful for waking the main thread of a process when it is waiting for
+// new messages to come in.
+//
+// It's not a good idea to call wake_task() while locks are active because the Core might choose to instantly switch
+// to the foreign task when we wake it up.  Having a lock would then increase the likelihood of delays and time-outs.
 
 #ifdef __unix__ // TLS data for the wake_task() socket.
 static pthread_key_t keySocket;
@@ -1655,15 +1684,15 @@ static void thread_socket_free(void *Socket) { close(PTR_TO_HOST(Socket)); }
 static void thread_socket_init(void) { pthread_key_create(&keySocket, thread_socket_free); }
 #endif
 
-void wake_task(LONG TaskIndex, CSTRING Caller)
+ERROR wake_task(LONG TaskIndex, CSTRING Caller)
 {
    parasol::Log log(__FUNCTION__);
 
-   if (TaskIndex < 0) return;
-   if (!shTasks[TaskIndex].ProcessID) return;
+   if (TaskIndex < 0) return ERR_Args;
+   if (!shTasks[TaskIndex].ProcessID) return ERR_Args;
 
    if (tlPublicLockCount > 0) {
-      if (glProgramStage != STAGE_SHUTDOWN) log.warning("[Process %d] Warning: Do not call me when holding %d global locks.  (Caller: %s) - Try function trace.", glProcessID, tlPublicLockCount, Caller);
+      if (glProgramStage != STAGE_SHUTDOWN) log.warning("[Process %d] Illegal call from %s() while holding %d global locks.", glProcessID, Caller, tlPublicLockCount);
    }
 
 #ifdef __unix__
@@ -1691,7 +1720,7 @@ void wake_task(LONG TaskIndex, CSTRING Caller)
       }
       else {
          log.warning("Failed to create a new socket communication point.");
-         return;
+         return ERR_SystemCall;
       }
    }
 
@@ -1711,4 +1740,6 @@ void wake_task(LONG TaskIndex, CSTRING Caller)
    wake_waitlock(shTasks[TaskIndex].Lock, shTasks[TaskIndex].ProcessID, 1);
 
 #endif
+
+   return ERR_Okay;
 }

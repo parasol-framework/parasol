@@ -53,11 +53,11 @@ static BYTE get_over_object(objPointer *);
 static void process_ptr_button(objPointer *, struct dcDeviceInput *);
 static void process_ptr_movement(objPointer *, struct dcDeviceInput *);
 static void process_ptr_wheel(objPointer *, struct dcDeviceInput *);
-static void send_inputmsg(InputMsg *input, InputSubscription *List);
+static void send_inputmsg(InputEvent *input, InputSubscription *List);
 
 //****************************************************************************
 
-INLINE void call_userinput(CSTRING Debug, InputMsg *input, LONG Flags, OBJECTID RecipientID, OBJECTID OverID,
+INLINE void call_userinput(CSTRING Debug, InputEvent *input, LONG Flags, OBJECTID RecipientID, OBJECTID OverID,
    LONG AbsX, LONG AbsY, LONG OverX, LONG OverY)
 {
    InputSubscription *list;
@@ -79,48 +79,52 @@ INLINE void call_userinput(CSTRING Debug, InputMsg *input, LONG Flags, OBJECTID 
 }
 
 //****************************************************************************
+// Adds an input event to the glInput event list, then scans through the list of subscribers and alerts any processes
+// that match the filter.
 
-static void send_inputmsg(InputMsg *input, InputSubscription *List)
+static void send_inputmsg(InputEvent *Event, InputSubscription *List)
 {
    parasol::Log log(__FUNCTION__);
-   struct acDataFeed dc_inputready;
-   struct dcDisplayInputReady inputready;
 
    // Store the message in the input message queue
 
-   inputready.NextIndex   = glInput->IndexCounter++;
-   dc_inputready.ObjectID = glPointerID;
-   dc_inputready.DataType = DATA_INPUT_READY;
-   dc_inputready.Buffer   = &inputready;
-   dc_inputready.Size     = sizeof(inputready);
+   CopyMemory(Event, glInputEvents->Msgs + (glInputEvents->IndexCounter & INPUT_MASK), sizeof(*Event));
+   glInputEvents->IndexCounter++;
 
-   LONG msgindex = inputready.NextIndex & INPUT_MASK;
-   CopyMemory(input, glInput->Msgs + msgindex, sizeof(InputMsg));
+   // Alert processes that a new input event is ready.  This is a two part process as processes
+   // can have multiple subscriptions and we only want to wake them once.
 
+   std::unordered_set<LONG> wake_processes;
+
+   auto task = (objTask *)CurrentTask();
    for (LONG i=0; i < glSharedControl->InputTotal; i++) {
-      if ((!List[i].SurfaceID) or (List[i].SurfaceID IS input->RecipientID)) {
-         if ((List[i].Mask & input->Mask) != input->Mask) continue;
+      if ((List[i].SurfaceFilter) and (List[i].SurfaceFilter != Event->RecipientID)) continue;
+      if (!(List[i].InputMask & Event->Mask)) continue;
 
-         //log.trace("Object #%d, Surface #%d vs #%d, Mask: $%.8x vs $%.8x, MsgSent %d, Port %d", List[i].SubscriberID, List[i].SurfaceID, input->RecipientID, List[i].Mask, input->Mask, List[i].MsgSent, List[i].MsgPort);
+      //log.msg("Process %d, Surface #%d, Mask: $%.8x & $%.8x, Last Alerted @ " PF64(), List[i].ProcessID, Event->RecipientID, Event->Mask, List[i].InputMask, List[i].LastAlerted);
 
-         // Send an input ready message if the subscriber is known to be up to date with its messages.
+      // NB: When process ID's match we will instead process input events at the start of the next sleep cycle.
 
-         List[i].LastIndex = glInput->IndexCounter;
+      if (List[i].ProcessID != task->ProcessID) {
+         if (List[i].LastAlerted < glInputEvents->IndexCounter) {
+            wake_processes.insert(List[i].ProcessID);
+         }
+      }
 
-         if (List[i].MsgSent IS FALSE) {
-            inputready.SubIndex = i;
-            ERROR error = ActionMsgPort(AC_DataFeed, List[i].SubscriberID, &dc_inputready, List[i].MsgPort, -1);
-            List[i].MsgSent = TRUE;
+      List[i].LastAlerted = glInputEvents->IndexCounter;
+   }
 
-            if (error IS ERR_NoMatchingObject) { // Remove the subscriber if its message port no longer exists
-               log.warning("Subscriber #%d invalid, removing from input subscription array.", List[i].SubscriberID);
+   for (const auto & pid : wake_processes) {
+      if (WakeProcess(pid) IS ERR_Search) {
+         log.warning("Process #%d deceased, removing from input subscription array.", pid);
 
+         for (LONG i=glSharedControl->InputTotal-1; i >= 0; i--) {
+            if (pid IS List[i].ProcessID) {
                if (i+1 < glSharedControl->InputTotal) {
                   CopyMemory(List+i+1, List+i, sizeof(InputSubscription) * (glSharedControl->InputTotal - i - 1));
                }
                else ClearMemory(List+i, sizeof(List[i]));
 
-               i--; // Offset the subsequent i++ of the for loop
                __sync_fetch_and_sub(&glSharedControl->InputTotal, 1);
             }
          }
@@ -219,7 +223,7 @@ static ERROR PTR_DataFeed(objPointer *Self, struct acDataFeed *Args)
 static void process_ptr_button(objPointer *Self, struct dcDeviceInput *Input)
 {
    parasol::Log log(__FUNCTION__);
-   InputMsg userinput;
+   InputEvent userinput;
    OBJECTID modal_id, target;
    LONG absx, absy, buttonflag, bi;
 
@@ -378,10 +382,9 @@ static void process_ptr_button(objPointer *Self, struct dcDeviceInput *Input)
 static void process_ptr_wheel(objPointer *Self, struct dcDeviceInput *Input)
 {
    InputSubscription *subs;
-   LONG i;
 
    if ((glSharedControl->InputMID) and (!AccessMemory(glSharedControl->InputMID, MEM_READ, 1000, &subs))) {
-      InputMsg msg;
+      InputEvent msg;
       msg.Type        = JET_WHEEL;
       msg.Flags       = JTYPE_ANALOG|JTYPE_EXT_MOVEMENT | Input->Flags;
       msg.Mask        = JTYPE_EXT_MOVEMENT;
@@ -403,17 +406,18 @@ static void process_ptr_wheel(objPointer *Self, struct dcDeviceInput *Input)
    DOUBLE scrollrate = 0;
    DOUBLE wheel = Input->Value;
    if (wheel > 0) {
-      for (i=1; i <= wheel; i++) scrollrate += Self->WheelSpeed * i;
+      for (LONG i=1; i <= wheel; i++) scrollrate += Self->WheelSpeed * i;
    }
    else {
       wheel = -wheel;
-      for (i=1; i <= wheel; i++) scrollrate -= Self->WheelSpeed * i;
+      for (LONG i=1; i <= wheel; i++) scrollrate -= Self->WheelSpeed * i;
    }
 
-   struct acScroll scroll;
-   scroll.XChange = 0;
-   scroll.YChange = scrollrate / 100; //(wheel * Self->WheelSpeed) / 100;
-   scroll.ZChange = 0;
+   struct acScroll scroll = {
+      .XChange = 0,
+      .YChange = scrollrate / 100, //(wheel * Self->WheelSpeed) / 100
+      .ZChange = 0
+   };
    ActionMsg(AC_Scroll, Self->OverObjectID, &scroll);
 }
 
@@ -422,7 +426,7 @@ static void process_ptr_wheel(objPointer *Self, struct dcDeviceInput *Input)
 static void process_ptr_movement(objPointer *Self, struct dcDeviceInput *Input)
 {
    parasol::Log log(__FUNCTION__);
-   InputMsg userinput;
+   InputEvent userinput;
    LONG absx, absy;
 
    ClearMemory(&userinput, sizeof(userinput));
@@ -1376,23 +1380,25 @@ static BYTE get_over_object(objPointer *Self)
          changed = TRUE;
 
          if ((glSharedControl->InputMID) and (!AccessMemory(glSharedControl->InputMID, MEM_READ, 500, &subs))) {
-            InputMsg input;
-            input.Type       = JET_LEFT_SURFACE;
-            input.Flags      = JTYPE_FEEDBACK;
-            input.Mask       = JTYPE_FEEDBACK;
-            input.Value      = Self->OverObjectID;
-            input.Timestamp  = PreciseTime();
-            input.DeviceID   = Self->Head.UniqueID;
-            input.RecipientID = Self->OverObjectID; // Recipient is the surface we are leaving
-            input.OverID     = li_objectid; // New surface (entering)
-            input.AbsX       = Self->X;
-            input.AbsY       = Self->Y;
-            input.X          = Self->X - li_left;
-            input.Y          = Self->Y - li_top;
+            InputEvent input = {
+               .Next        = NULL,
+               .Value       = (DOUBLE)Self->OverObjectID,
+               .Timestamp   = PreciseTime(),
+               .RecipientID = Self->OverObjectID, // Recipient is the surface we are leaving
+               .OverID      = li_objectid, // New surface (entering)
+               .AbsX        = Self->X,
+               .AbsY        = Self->Y,
+               .X           = Self->X - li_left,
+               .Y           = Self->Y - li_top,
+               .DeviceID    = Self->Head.UniqueID,
+               .Type        = JET_LEFT_SURFACE,
+               .Flags       = JTYPE_FEEDBACK,
+               .Mask        = JTYPE_FEEDBACK
+            };
             send_inputmsg(&input, subs);
 
-            input.Type       = JET_ENTERED_SURFACE;
-            input.Value      = li_objectid;
+            input.Type        = JET_ENTERED_SURFACE;
+            input.Value       = li_objectid;
             input.RecipientID = li_objectid; // Recipient is the surface we are entering
             send_inputmsg(&input, subs);
 
@@ -1429,8 +1435,7 @@ static WORD examine_chain(objPointer *Self, WORD Index, SurfaceControl *Ctl, WOR
    OBJECTID objectid = list[Index].SurfaceID;
    LONG x = Self->X;
    LONG y = Self->Y;
-   LONG i;
-   for (i=ListEnd-1; i >= 0; i--) {
+   for (auto i=ListEnd-1; i >= 0; i--) {
       if ((list[i].ParentID IS objectid) and (list[i].Flags & RNF_VISIBLE)) {
          if ((x >= list[i].Left) and (x < list[i].Right) and (y >= list[i].Top) and (y < list[i].Bottom)) {
             for (ListEnd=i+1; list[ListEnd].Level > list[i].Level; ListEnd++); // Recalculate the ListEnd (optimisation)
@@ -1453,16 +1458,15 @@ static ERROR repeat_timer(objPointer *Self, LARGE Elapsed, LARGE Unused)
 
    // The subscription is automatically removed if no buttons are held down
 
-   BYTE unsub;
+   bool unsub;
    InputSubscription *subs;
    if (!AccessMemory(glSharedControl->InputMID, MEM_READ, 500, &subs)) {
-      unsub = TRUE;
-      LONG i;
-      for (i=0; i < ARRAYSIZE(Self->Buttons); i++) {
+      unsub = true;
+      for (LONG i=0; i < ARRAYSIZE(Self->Buttons); i++) {
          if (Self->Buttons[i].LastClicked) {
             LARGE time = PreciseTime();
             if (Self->Buttons[i].LastClickTime + 300000LL <= time) {
-               InputMsg input;
+               InputEvent input;
                ClearMemory(&input, sizeof(input));
 
                LONG absx, absy;
@@ -1493,7 +1497,7 @@ static ERROR repeat_timer(objPointer *Self, LARGE Elapsed, LARGE Unused)
                send_inputmsg(&input, subs);
             }
 
-            unsub = FALSE;
+            unsub = false;
          }
       }
       ReleaseMemory(subs);

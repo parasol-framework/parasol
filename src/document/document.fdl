@@ -219,6 +219,7 @@ typedef struct escFont escFont;
    OBJECTID PageID;          // Page surface - this holds the graphics content
    LONG   MinPageWidth;      // Internal value for managing the page width, speeds up layout processing
    FLOAT  PageWidth;         // Width of the widest section of the document page.  Can be pre-defined for a fixed width.
+   LONG   InputHandle;
    LONG   MaxClips;
    LONG   TotalClips;
    LONG   TotalLinks;       // Current total of assigned links

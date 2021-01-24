@@ -53,6 +53,7 @@ static ERROR SET_YOffset(objSurface *, Variable *);
 #define MOVE_VERTICAL   0x0001
 #define MOVE_HORIZONTAL 0x0002
 
+static ERROR consume_input_events(const InputEvent *, LONG);
 static void draw_region(objSurface *, objSurface *, objBitmap *);
 static ERROR scroll_timer(objSurface *, LARGE, LARGE);
 
@@ -373,135 +374,6 @@ static ERROR SURFACE_AddCallback(objSurface *Self, struct drwAddCallback *Args)
    }
 
    if (Args->Callback->Type IS CALL_SCRIPT) SubscribeAction(Args->Callback->Script.Script, AC_Free);
-
-   return ERR_Okay;
-}
-
-//****************************************************************************
-
-static ERROR SURFACE_DataFeed(objSurface *Self, struct acDataFeed *Args)
-{
-   parasol::Log log;
-
-   if (!Args) return ERR_NullArgs;
-
-   if (Args->DataType IS DATA_INPUT_READY) {
-      InputMsg *input, *scan;
-      static LONG glAnchorX = 0, glAnchorY = 0; // Because anchoring is process-exclusive, we can store the coordinates as global variables
-
-      while (!gfxGetInputMsg((struct dcInputReady *)Args->Buffer, 0, &input)) {
-         // Process movement messages first, because there is a consolidation loop at the start.
-
-         if (input->Flags & (JTYPE_ANCHORED|JTYPE_MOVEMENT)) {
-            SurfaceControl *ctl;
-            ERROR inputerror;
-            LONG xchange, ychange, dragindex;
-
-            // Dragging support
-
-            if (Self->DragStatus) { // Consolidate movement changes
-               if (Self->DragStatus IS DRAG_ANCHOR) {
-                  xchange = input->X;
-                  ychange = input->Y;
-                  while (!(inputerror = gfxGetInputMsg((struct dcInputReady *)Args->Buffer, 0, &scan))) {
-                     if (scan->Flags & JTYPE_ANCHORED) {
-                        input = scan;
-                        xchange += input->X;
-                        ychange += input->Y;
-                     }
-                     else break;
-                  }
-               }
-               else {
-                  while (!(inputerror = gfxGetInputMsg((struct dcInputReady *)Args->Buffer, 0, &scan))) {
-                     if (scan->Flags & JTYPE_MOVEMENT) input = scan;
-                     else break;
-                  }
-
-                  LONG absx = input->AbsX - glAnchorX;
-                  LONG absy = input->AbsY - glAnchorY;
-
-                  xchange = 0;
-                  ychange = 0;
-                  if ((ctl = drwAccessList(ARF_READ))) {
-                     auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
-                     if ((dragindex = find_surface_index(ctl, Self->Head.UniqueID)) != -1) {
-                        xchange = absx - list[dragindex].Left;
-                        ychange = absy - list[dragindex].Top;
-                     }
-                     drwReleaseList(ARF_READ);
-                  }
-               }
-
-               // Move the dragging surface to the new location
-
-               if ((Self->DragID) and (Self->DragID != Self->Head.UniqueID)) {
-                  acMoveID(Self->DragID, xchange, ychange, 0);
-               }
-               else {
-                  LONG sticky = Self->Flags & RNF_STICKY;
-                  Self->Flags &= ~RNF_STICKY; // Turn off the sticky flag, as it prevents movement
-
-                  acMove(Self, xchange, ychange, 0);
-
-                  if (sticky) {
-                     Self->Flags |= RNF_STICKY;
-                     UpdateSurfaceField(Self, Flags); // (Required to put back the sticky flag)
-                  }
-               }
-
-               // The new pointer position is based on the position of the surface that's being dragged.
-
-               if (Self->DragStatus IS DRAG_ANCHOR) {
-                  if ((ctl = drwAccessList(ARF_READ))) {
-                     auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
-                     if ((dragindex = find_surface_index(ctl, Self->Head.UniqueID)) != -1) {
-                        LONG absx = list[dragindex].Left + glAnchorX;
-                        LONG absy = list[dragindex].Top + glAnchorY;
-                        drwReleaseList(ARF_READ);
-
-                        gfxSetCursorPos(absx, absy);
-                     }
-                     else drwReleaseList(ARF_READ);
-                  }
-               }
-
-               if (inputerror) break; // No further input messages to process
-               else input = scan;
-            }
-         }
-
-         // Note that this code has to 'drop through' due to the movement consolidation loop earlier in this subroutine.
-
-         if (input->Type IS JET_LMB) {
-            if (input->Value > 0) {
-               if (Self->Flags & RNF_DISABLED) continue;
-
-               // Anchor the pointer position if dragging is enabled
-
-               if (Self->DragID) {
-                  log.trace("Dragging object %d", Self->DragID);
-
-                  // Tell the pointer to anchor itself to our surface.  If the left mouse button is released, the
-                  // anchor will be released by the pointer automatically.
-
-                  glAnchorX  = input->X;
-                  glAnchorY  = input->Y;
-                  if (!gfxLockCursor(Self->Head.UniqueID)) {
-                     Self->DragStatus = DRAG_ANCHOR;
-                  }
-                  else Self->DragStatus = DRAG_NORMAL;
-               }
-            }
-            else { // Click released
-               if (Self->DragStatus) {
-                  gfxUnlockCursor(Self->Head.UniqueID);
-                  Self->DragStatus = DRAG_NONE;
-               }
-            }
-         }
-      }
-   }
 
    return ERR_Okay;
 }
@@ -941,7 +813,7 @@ static ERROR SURFACE_Free(objSurface *Self, APTR Void)
       }
    }
 
-   gfxUnsubscribeInput(0);
+   if (Self->InputHandle) gfxUnsubscribeInput(Self->InputHandle);
 
    return ERR_Okay;
 }
@@ -2568,6 +2440,121 @@ static void draw_region(objSurface *Self, objSurface *Parent, objBitmap *Bitmap)
    Bitmap->Clip    = clip;
    Bitmap->XOffset = xoffset;
    Bitmap->YOffset = yoffset;
+}
+
+//****************************************************************************
+
+static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
+{
+   parasol::Log log(__FUNCTION__);
+
+   auto Self = (objSurface *)CurrentContext();
+
+   static LONG glAnchorX = 0, glAnchorY = 0; // Anchoring is process-exclusive, so we can store the coordinates as global variables
+
+   for (auto event=Events; event; event=event->Next) {
+      // Process events that support consolidation first.
+
+      if (event->Flags & (JTYPE_ANCHORED|JTYPE_MOVEMENT)) {
+         SurfaceControl *ctl;
+         LONG xchange, ychange, dragindex;
+
+         // Dragging support
+
+         if (Self->DragStatus) { // Consolidate movement changes
+            if (Self->DragStatus IS DRAG_ANCHOR) {
+               xchange = event->X;
+               ychange = event->Y;
+               while ((event->Next) and (event->Next->Flags & JTYPE_ANCHORED)) {
+                  event = event->Next;
+                  xchange += event->X;
+                  ychange += event->Y;
+               }
+            }
+            else {
+               while ((event->Next) and (event->Next->Flags & JTYPE_MOVEMENT)) {
+                  event = event->Next;
+               }
+
+               LONG absx = event->AbsX - glAnchorX;
+               LONG absy = event->AbsY - glAnchorY;
+
+               xchange = 0;
+               ychange = 0;
+               if ((ctl = drwAccessList(ARF_READ))) {
+                  auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
+                  if ((dragindex = find_surface_index(ctl, Self->Head.UniqueID)) != -1) {
+                     xchange = absx - list[dragindex].Left;
+                     ychange = absy - list[dragindex].Top;
+                  }
+                  drwReleaseList(ARF_READ);
+               }
+            }
+
+            // Move the dragging surface to the new location
+
+            if ((Self->DragID) and (Self->DragID != Self->Head.UniqueID)) {
+               acMoveID(Self->DragID, xchange, ychange, 0);
+            }
+            else {
+               LONG sticky = Self->Flags & RNF_STICKY;
+               Self->Flags &= ~RNF_STICKY; // Turn off the sticky flag, as it prevents movement
+
+               acMove(Self, xchange, ychange, 0);
+
+               if (sticky) {
+                  Self->Flags |= RNF_STICKY;
+                  UpdateSurfaceField(Self, Flags); // (Required to put back the sticky flag)
+               }
+            }
+
+            // The new pointer position is based on the position of the surface that's being dragged.
+
+            if (Self->DragStatus IS DRAG_ANCHOR) {
+               if ((ctl = drwAccessList(ARF_READ))) {
+                  auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
+                  if ((dragindex = find_surface_index(ctl, Self->Head.UniqueID)) != -1) {
+                     LONG absx = list[dragindex].Left + glAnchorX;
+                     LONG absy = list[dragindex].Top + glAnchorY;
+                     drwReleaseList(ARF_READ);
+
+                     gfxSetCursorPos(absx, absy);
+                  }
+                  else drwReleaseList(ARF_READ);
+               }
+            }
+         }
+      }
+      else if ((event->Type IS JET_LMB) and (!(event->Flags & JTYPE_REPEATED))) {
+         if (event->Value > 0) {
+            if (Self->Flags & RNF_DISABLED) continue;
+
+            // Anchor the pointer position if dragging is enabled
+
+            if ((Self->DragID) and (Self->DragStatus IS DRAG_NONE)) {
+               log.trace("Dragging object %d; Anchored to %dx%d", Self->DragID, event->X, event->Y);
+
+               // Ask the pointer to anchor itself to our surface.  If the left mouse button is released, the
+               // anchor will be released by the pointer automatically.
+
+               glAnchorX  = event->X;
+               glAnchorY  = event->Y;
+               if (!gfxLockCursor(Self->Head.UniqueID)) {
+                  Self->DragStatus = DRAG_ANCHOR;
+               }
+               else Self->DragStatus = DRAG_NORMAL;
+            }
+         }
+         else { // Click released
+            if (Self->DragStatus) {
+               gfxUnlockCursor(Self->Head.UniqueID);
+               Self->DragStatus = DRAG_NONE;
+            }
+         }
+      }
+   }
+
+   return ERR_Okay;
 }
 
 /*****************************************************************************
