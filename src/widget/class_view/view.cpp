@@ -131,6 +131,7 @@ static ERROR  calc_vscroll(objView *);
 static void   check_selected_items(objView *, XMLTag *);
 static void   check_pointer_cursor(objView *, LONG, LONG);
 static BYTE   check_item_visible(objView *, XMLTag *);
+static ERROR  consume_input_events(const InputMsg *, LONG);
 static ERROR  create_view_class(void);
 static BYTE   deselect_item(objView *);
 static void   drag_items(objView *);
@@ -149,19 +150,19 @@ static ERROR  load_icon(objView *, CSTRING, objBitmap **, ULONG *);
 static BYTE   open_branch_callback(objView *, XMLTag *);
 static LONG   prepare_xml(objView *, XMLTag *, CSTRING, LONG);
 static void   process_style(objView *, objXML *, XMLTag *);
-static ERROR  report_cellclick(objView *, LONG TagIndex, LONG Column, LONG Input, LONG X, LONG Y);
-static void   report_selection(objView *, LONG Type, LONG TagIndex);
+static ERROR  report_cellclick(objView *, LONG, LONG, LONG, LONG, LONG);
+static void   report_selection(objView *, LONG, LONG);
 static BYTE   select_item(objView *, XMLTag *, LONG, BYTE, BYTE);
 static ERROR  sort_items(objView *);
 static ERROR  unload_icon(objView *, ULONG *);
-static void   vwUserClick(objView *, InputMsg *);
-static void   vwUserClickRelease(objView *, InputMsg *);
-static void   vwUserMovement(objView *, InputMsg *);
+static void   vwUserClick(objView *, const InputMsg *);
+static void   vwUserClickRelease(objView *, const InputMsg *);
+static void   vwUserMovement(objView *, const InputMsg *);
 
-static ERROR VIEW_SortColumnIndex(objView *, struct viewSortColumnIndex *Args);
-static ERROR SET_HScroll(objView *, OBJECTPTR Value);
-static ERROR SET_VScroll(objView *, OBJECTPTR Value);
-static ERROR SET_SelectionIndex(objView *, LONG Value);
+static ERROR VIEW_SortColumnIndex(objView *, struct viewSortColumnIndex *);
+static ERROR SET_HScroll(objView *, OBJECTPTR);
+static ERROR SET_VScroll(objView *, OBJECTPTR);
+static ERROR SET_SelectionIndex(objView *, LONG);
 
 //****************************************************************************
 
@@ -644,34 +645,6 @@ static ERROR VIEW_DataFeed(objView *Self, struct acDataFeed *Args)
       }
       else return ERR_NoSupport;
    }
-   else if (Args->DataType IS DATA_INPUT_READY) {
-      InputMsg *input, *scan;
-
-      while (!gfxGetInputMsg((struct dcInputReady *)Args->Buffer, 0, &input)) {
-         ERROR inputerror;
-         if (input->Flags & JTYPE_MOVEMENT) {
-            while (!(inputerror = gfxGetInputMsg((struct dcInputReady *)Args->Buffer, 0, &scan))) {
-               if (scan->Flags & JTYPE_MOVEMENT) input = scan;
-               else break;
-            }
-
-            vwUserMovement(Self, input);
-
-            if (inputerror) break;
-            else input = scan;
-
-            // Note that this code has to 'drop through' due to the movement consolidation loop earlier in this subroutine.
-         }
-
-         if (input->Flags & JTYPE_BUTTON) {
-            if (input->Value > 0) vwUserClick(Self, input);
-            else vwUserClickRelease(Self, input);
-         }
-         else log.trace("Unrecognised input message type $%.8x", input->Flags);
-      }
-
-      return ERR_Okay;
-   }
    else return ERR_NoSupport; // Unrecognised datatype not considered fatal
 }
 
@@ -849,8 +822,7 @@ static ERROR VIEW_Free(objView *Self, APTR Void)
    if (Self->DragSurface)    { acFreeID(Self->DragSurface); Self->DragSurface = 0; }
    if (Self->HScrollbar)     { acFree(Self->HScrollbar); Self->HScrollbar = NULL; }
    if (Self->VScrollbar)     { acFree(Self->VScrollbar); Self->VScrollbar = NULL; }
-
-   gfxUnsubscribeInput(0);
+   if (Self->InputHandle)    { gfxUnsubscribeInput(Self->InputHandle); Self->InputHandle = 0; }
 
    return ERR_Okay;
 }
@@ -1035,7 +1007,8 @@ static ERROR VIEW_Init(objView *Self, APTR Void)
          AC_Enable,
          TAGEND);
 
-      gfxSubscribeInput(Self->Layout->SurfaceID, JTYPE_MOVEMENT|JTYPE_BUTTON, 0);
+      auto callback = make_function_stdc(consume_input_events);
+      gfxSubscribeInput(&callback, Self->Layout->SurfaceID, JTYPE_MOVEMENT|JTYPE_BUTTON, 0, &Self->InputHandle);
 
       ReleaseObject(surface);
    }
@@ -2384,6 +2357,31 @@ static ERROR VIEW_RevealItem(objView *Self, struct viewRevealItem *Args)
       return ERR_Okay;
    }
    else return log.warning(ERR_InvalidReference);
+}
+
+//****************************************************************************
+
+static ERROR consume_input_events(const InputMsg *Events, LONG Handle)
+{
+   parasol::Log log(__FUNCTION__);
+
+   auto Self = (objView *)CurrentContext();
+
+   for (auto event=Events; event; event=event->Next) {
+      if (event->Flags & JTYPE_MOVEMENT) {
+         // Consume all movement events by skipping to the most recent one
+         while ((event->Next) and (event->Next->Flags & JTYPE_MOVEMENT)) event = event->Next;
+
+         vwUserMovement(Self, event);
+      }
+      else if (event->Flags & JTYPE_BUTTON) {
+         if (event->Value > 0) vwUserClick(Self, event);
+         else vwUserClickRelease(Self, event);
+      }
+      else log.trace("Unrecognised input event type $%.8x", event->Flags);
+   }
+
+   return ERR_Okay;
 }
 
 //****************************************************************************

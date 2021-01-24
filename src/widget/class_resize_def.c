@@ -69,7 +69,6 @@ static const struct FieldDef clResizeBorder[] = {
 };
 
 static const struct ActionArray clResizeActions[] = {
-   { AC_DataFeed, (APTR)RESIZE_DataFeed },
    { AC_Free, (APTR)RESIZE_Free },
    { AC_Init, (APTR)RESIZE_Init },
    { AC_NewObject, (APTR)RESIZE_NewObject },

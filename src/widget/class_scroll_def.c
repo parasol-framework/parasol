@@ -33,7 +33,6 @@ static const struct MethodArray clScrollMethods[] = {
 static const struct ActionArray clScrollActions[] = {
    { AC_ActionNotify, (APTR)SCROLL_ActionNotify },
    { AC_Activate, (APTR)SCROLL_Activate },
-   { AC_DataFeed, (APTR)SCROLL_DataFeed },
    { AC_Free, (APTR)SCROLL_Free },
    { AC_Hide, (APTR)SCROLL_Hide },
    { AC_Init, (APTR)SCROLL_Init },

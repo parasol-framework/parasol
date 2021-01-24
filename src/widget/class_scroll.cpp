@@ -50,6 +50,7 @@ scale or page and view sizes.
 
 static OBJECTPTR clScroll = NULL;
 
+static ERROR consume_input_events(const InputMsg *, LONG);
 static ERROR process_click(objScroll *, OBJECTID, LONG, LONG);
 static void update_scroll(objScroll *, LONG, LONG, DOUBLE, LONG);
 static void send_feedback(objScroll *, DOUBLE, DOUBLE, DOUBLE);
@@ -92,7 +93,7 @@ static void set_position(objScroll *Self, DOUBLE Position)
 
    // Inform the object if it wants a field update
 
-   if ((Self->Field[0]) AND (Self->ObjectID)) {
+   if ((Self->Field[0]) and (Self->ObjectID)) {
       OBJECTPTR object;
       if (!AccessObject(Self->ObjectID, 5000, &object)) {
          char buffer[32];
@@ -226,7 +227,7 @@ static ERROR SCROLL_ActionNotify(objScroll *Self, struct acActionNotify *Notify)
          else Self->BarSize = resize->Width - (Self->StartMargin + Self->EndMargin);
       }
 
-      if ((Notify->ObjectID IS Self->ViewID) OR ((Notify->ObjectID IS Self->ScrollbarID) AND (!Self->ViewID))) {
+      if ((Notify->ObjectID IS Self->ViewID) or ((Notify->ObjectID IS Self->ScrollbarID) and (!Self->ViewID))) {
          LONG viewlength, viewsize;
 
          // The size of the view has changed
@@ -247,7 +248,7 @@ static ERROR SCROLL_ActionNotify(objScroll *Self, struct acActionNotify *Notify)
 
             DOUBLE pos = Self->Position;
 
-            if ((Self->PageSize <= (viewsize - Self->ObscuredView)) AND (Self->Position > 0) AND (!(Self->Flags & SCF_SLIDER))) {
+            if ((Self->PageSize <= (viewsize - Self->ObscuredView)) and (Self->Position > 0) and (!(Self->Flags & SCF_SLIDER))) {
                // If the page is smaller than the view area, reset the object to position zero.
 
                if (Self->Flags & SCF_RELATIVE) {
@@ -275,7 +276,7 @@ static ERROR SCROLL_ActionNotify(objScroll *Self, struct acActionNotify *Notify)
       }
    }
    else if (Notify->ActionID IS AC_Free) {
-      if ((Self->Feedback.Type IS CALL_SCRIPT) AND (Self->Feedback.Script.Script->UniqueID IS Notify->ObjectID)) {
+      if ((Self->Feedback.Type IS CALL_SCRIPT) and (Self->Feedback.Script.Script->UniqueID IS Notify->ObjectID)) {
          Self->Feedback.Type = CALL_NONE;
       }
    }
@@ -494,7 +495,7 @@ static ERROR process_click(objScroll *Self, OBJECTID NotifyID, LONG X, LONG Y)
       if (Self->Flags & SCF_HORIZONTAL) {
          move.XChange = slider->Width;
 
-         if ((Y >= slider->Y) AND (Y <= slider->Y + slider->Height)) {
+         if ((Y >= slider->Y) and (Y <= slider->Y + slider->Height)) {
             if (X < slider->X) { // Slide left
                if (X >= Self->StartMargin) {
                   move.XChange = -move.XChange;
@@ -509,14 +510,14 @@ static ERROR process_click(objScroll *Self, OBJECTID NotifyID, LONG X, LONG Y)
          }
       }
       else if (Self->Flags & SCF_VERTICAL) {
-         if ((X >= slider->X) AND (X <= slider->X + slider->Width)) {
+         if ((X >= slider->X) and (X <= slider->X + slider->Width)) {
             DOUBLE pos = -1;
 
             BYTE dir = DIR_NONE;
-            if ((Y >= Self->StartMargin) AND (Y < slider->Y)) {
+            if ((Y >= Self->StartMargin) and (Y < slider->Y)) {
                dir = DIR_NEGATIVE;
             }
-            else if ((Y > slider->Y + slider->Height) AND (Y <= (Self->StartMargin + Self->BarSize))) {
+            else if ((Y > slider->Y + slider->Height) and (Y <= (Self->StartMargin + Self->BarSize))) {
                dir = DIR_POSITIVE;
             }
 
@@ -664,7 +665,7 @@ static ERROR SCROLL_AddScrollButton(objScroll *Self, struct scAddScrollButton *A
 {
    parasol::Log log;
 
-   if ((!Args) OR (!Args->SurfaceID) OR (!Args->Direction)) return log.warning(ERR_NullArgs);
+   if ((!Args) or (!Args->SurfaceID) or (!Args->Direction)) return log.warning(ERR_NullArgs);
 
    log.branch("%d", Args->SurfaceID);
 
@@ -676,9 +677,13 @@ static ERROR SCROLL_AddScrollButton(objScroll *Self, struct scAddScrollButton *A
 
    if (i >= ARRAYSIZE(Self->Buttons)) return log.warning(ERR_ArrayFull);
 
-   if (!gfxSubscribeInput(Args->SurfaceID, JTYPE_BUTTON|JTYPE_REPEATED, 0)) {
-      if (Self->Buttons[i].ButtonID) gfxUnsubscribeInput(Self->Buttons[i].ButtonID);
+   if (Self->Buttons[i].InputHandle) {
+      gfxUnsubscribeInput(Self->Buttons[i].InputHandle);
+      Self->Buttons[i].InputHandle = 0;
+   }
 
+   auto callback = make_function_stdc(consume_input_events);
+   if (!gfxSubscribeInput(&callback, Args->SurfaceID, JTYPE_BUTTON|JTYPE_REPEATED, 0, &Self->Buttons[i].InputHandle)) {
       Self->Buttons[i].ButtonID = Args->SurfaceID;
 
       if (Args->Direction IS 3) Self->Buttons[i].Direction = SD_NEGATIVE; // Backwards compatible with SD_LEFT
@@ -692,62 +697,45 @@ static ERROR SCROLL_AddScrollButton(objScroll *Self, struct scAddScrollButton *A
 
 //****************************************************************************
 
-static ERROR SCROLL_DataFeed(objScroll *Self, struct acDataFeed *Args)
-{
-   if (!Args) return ERR_NullArgs;
-
-   if (Args->DataType IS DATA_INPUT_READY) {
-      InputMsg *input;
-
-      while (!gfxGetInputMsg((struct dcInputReady *)Args->Buffer, 0, &input)) {
-         if (input->Flags & JTYPE_BUTTON) {
-            if (input->Value > 0) {
-               process_click(Self, input->RecipientID, input->X, input->Y);
-            }
-         }
-      }
-   }
-
-   return ERR_Okay;
-}
-
-//****************************************************************************
-
 static ERROR SCROLL_Free(objScroll *Self, APTR Void)
 {
    OBJECTPTR object;
 
-   if ((Self->SliderID) AND (!AccessObject(Self->SliderID, 5000, &object))) {
+   if ((Self->SliderID) and (!AccessObject(Self->SliderID, 5000, &object))) {
       UnsubscribeAction(object, 0);
       ReleaseObject(object);
    }
 
-   if ((Self->ScrollbarID) AND (!AccessObject(Self->ScrollbarID, 5000, &object))) {
+   if ((Self->ScrollbarID) and (!AccessObject(Self->ScrollbarID, 5000, &object))) {
       UnsubscribeAction(object, 0);
       ReleaseObject(object);
    }
 
-   if ((Self->ViewID) AND (!AccessObject(Self->ViewID, 5000, &object))) {
+   if ((Self->ViewID) and (!AccessObject(Self->ViewID, 5000, &object))) {
       UnsubscribeAction(object, 0);
       ReleaseObject(object);
    }
 
-   if ((Self->MonitorID) AND (!AccessObject(Self->MonitorID, 5000, &object))) {
+   if ((Self->MonitorID) and (!AccessObject(Self->MonitorID, 5000, &object))) {
       UnsubscribeAction(object, 0);
       ReleaseObject(object);
    }
 
-   if ((Self->ObjectID) AND (!AccessObject(Self->ObjectID, 5000, &object))) {
+   if ((Self->ObjectID) and (!AccessObject(Self->ObjectID, 5000, &object))) {
       UnsubscribeAction(object, 0);
       ReleaseObject(object);
    }
 
-   if ((Self->IntersectSurface) AND (!AccessObject(Self->IntersectSurface, 5000, &object))) {
+   if ((Self->IntersectSurface) and (!AccessObject(Self->IntersectSurface, 5000, &object))) {
       UnsubscribeAction(object, 0);
       ReleaseObject(object);
    }
 
-   gfxUnsubscribeInput(0);
+   if (Self->InputHandle) { gfxUnsubscribeInput(Self->InputHandle); Self->InputHandle = 0; }
+
+   for (LONG i=0; i < ARRAYSIZE(Self->Buttons); i++) {
+      if (Self->Buttons[i].InputHandle) gfxUnsubscribeInput(Self->Buttons[i].InputHandle);
+   }
 
    return ERR_Okay;
 }
@@ -788,7 +776,7 @@ static ERROR SCROLL_Init(objScroll *Self, APTR Void)
 
    if (!Self->SliderID) { // Find the surface object that we are associated with
       OBJECTID owner_id = GetOwner(Self);
-      while ((owner_id) AND (GetClassID(owner_id) != ID_SURFACE)) {
+      while ((owner_id) and (GetClassID(owner_id) != ID_SURFACE)) {
          owner_id = GetOwnerID(owner_id);
       }
       if (!owner_id) return log.warning(ERR_UnsupportedOwner);
@@ -827,7 +815,8 @@ static ERROR SCROLL_Init(objScroll *Self, APTR Void)
 
       OBJECTPTR bar;
       if (!AccessObject(Self->ScrollbarID, 5000, &bar)) {
-         gfxSubscribeInput(Self->ScrollbarID, JTYPE_BUTTON|JTYPE_REPEATED, 0);
+         auto callback = make_function_stdc(consume_input_events);
+         gfxSubscribeInput(&callback, Self->ScrollbarID, JTYPE_BUTTON|JTYPE_REPEATED, 0, &Self->InputHandle);
 
          // In the case of intersecting scrollbars, it may be better that the size of the view is actually determined
          // from the length of the scrollbar.
@@ -888,7 +877,7 @@ static ERROR SCROLL_Init(objScroll *Self, APTR Void)
 
    //if (Self->MonitorID IS Self->ObjectID) Self->MonitorID = 0;
 
-   if ((Self->MonitorID) AND (Self->MonitorID != Self->ObjectID)) {
+   if ((Self->MonitorID) and (Self->MonitorID != Self->ObjectID)) {
       OBJECTPTR object;
       if (!AccessObject(Self->MonitorID, 5000, &object)) {
          SubscribeActionTags(object, AC_Scroll, TAGEND);
@@ -899,7 +888,7 @@ static ERROR SCROLL_Init(objScroll *Self, APTR Void)
 
    // If an intersecting scrollbar has been specified, subscribe to its surface's Hide and Show actions.
 
-   if ((Self->IntersectID) AND (Self->IntersectSurface)) {
+   if ((Self->IntersectID) and (Self->IntersectSurface)) {
       objScroll *intersect;
       if (!AccessObject(Self->IntersectID, 5000, &intersect)) {
          if (!AccessObject(Self->IntersectSurface, 5000, &surface)) {
@@ -949,7 +938,7 @@ static ERROR SCROLL_Init(objScroll *Self, APTR Void)
 
    // If both the PageSize and ViewSize values have been specified, set up the scrolling area to reflect the settings.
 
-   if ((Self->PageSize) AND (Self->ViewSize)) {
+   if ((Self->PageSize) and (Self->ViewSize)) {
       log.msg("Preset PageSize %d, ViewSize %d and Position %.2f", Self->PageSize, Self->ViewSize, Self->Position);
 
       update_scroll(Self, -1, -1, Self->Position, Self->Unit);
@@ -992,10 +981,10 @@ static ERROR SCROLL_Show(objScroll *Self, APTR Args)
       if (!drwGetSurfaceFlags(Self->ScrollbarID, &flags)) {
          if (Self->Flags & SCF_AUTO_HIDE) {
             log.trace("Checking autohide, pagesize: %d/%d, offset: %d, Slider: %d, Bar: %d", Self->PageSize, Self->ViewSize, Self->Offset, Self->SliderSize, Self->BarSize);
-            if ((Self->PageSize <= 1) OR (Self->ViewSize < 1)) {
+            if ((Self->PageSize <= 1) or (Self->ViewSize < 1)) {
                if (flags & RNF_VISIBLE) acHideID(Self->ScrollbarID);
             }
-            else if ((Self->Offset IS 0) AND ((Self->PageSize <= (Self->ViewSize - Self->ObscuredView)) OR (Self->SliderSize >= Self->BarSize))) {
+            else if ((Self->Offset IS 0) and ((Self->PageSize <= (Self->ViewSize - Self->ObscuredView)) or (Self->SliderSize >= Self->BarSize))) {
                if (flags & RNF_VISIBLE) acHideID(Self->ScrollbarID);
             }
             else if (!(flags & RNF_VISIBLE)) acShowID(Self->ScrollbarID);
@@ -1052,7 +1041,7 @@ static void update_scroll(objScroll *Self, LONG PageSize, LONG ViewSize, DOUBLE 
 
    log.traceBranch("Pos: %.2f, Page: %d, View: %d (Req: %d), Obscured: %d, Unit: %d, %s [Start]", Self->Position, Self->PageSize, Self->ViewSize, ViewSize, Self->ObscuredView, Self->Unit, (Self->Flags & SCF_HORIZONTAL) ? "Horizontal" : "Vertical");
 
-   if ((Self->PageSize < 0) OR (Self->ViewSize <= 0)) {
+   if ((Self->PageSize < 0) or (Self->ViewSize <= 0)) {
       log.warning("Illegal pagesize (%d) and/or viewsize (%d)", Self->PageSize, Self->ViewSize);
       return;
    }
@@ -1140,7 +1129,7 @@ static void update_scroll(objScroll *Self, LONG PageSize, LONG ViewSize, DOUBLE 
 
    // If an object field is linked to us, we must always ensure that it is told of the current position.
 
-   if ((Self->Field[0]) AND (Self->ObjectID)) {
+   if ((Self->Field[0]) and (Self->ObjectID)) {
       OBJECTPTR object;
       if (!AccessObject(Self->ObjectID, 5000, &object)) {
          char buffer[32];
@@ -1496,6 +1485,21 @@ static void send_feedback(objScroll *Self, DOUBLE X, DOUBLE Y, DOUBLE Z)
          scCallback(script, Self->Feedback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
       }
    }
+}
+
+//****************************************************************************
+
+static ERROR consume_input_events(const InputMsg *Events, LONG Handle)
+{
+   auto Self = (objScroll *)CurrentContext();
+
+   for (auto event=Events; event; event=event->Next) {
+      if ((event->Flags & JTYPE_BUTTON) and (event->Value > 0)) {
+         process_click(Self, event->RecipientID, event->X, event->Y);
+      }
+   }
+
+   return ERR_Okay;
 }
 
 //****************************************************************************

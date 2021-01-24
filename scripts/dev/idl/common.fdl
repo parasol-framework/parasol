@@ -185,7 +185,7 @@ enum("DATA", { start=1, comment="Data codes" }, -- NB: Duplicated in display/win
 flags("JTYPE", { bits=16, comment="JTYPE flags are used to categorise input types." },
     "SECONDARY: Indicates to the receiver of this message that it is not the primary/original recipient",
     "ANCHORED: Cursor has been anchored with LockCursor()",
-    "DRAGGED: set if sufficient movement occurred between the original click and its point of release (usually requires a 3 or more pixel difference).",
+    "DRAGGED: Set if sufficient movement occurred between the original click and its point of release (usually requires a 3 or more pixel difference).",
     "FEEDBACK: Device feedback - e.g. vibration, tilt",
     "DIGITAL: D-Pad or digital joystick source (restricted to +/- 1)",
     "ANALOG: Analog movement (ranging from -1.0 to 1.0)",
@@ -303,11 +303,8 @@ flags("FD", { comment="Field descriptors." },
   { PTR_DOUBLERESULT = "DOUBLE|PTR|RESULT: Use for pointer-based value results only." }
 )
 
-  struct("dcInputReady", { comment="This is a dummy structure covered by the Display module", restrict="c" }, [[
-    char Pad
-  ]])
-
   struct("InputMsg", { }, [[
+    cstruct(*InputMsg) Next # Next event in the chain
     double Value      # The value associated with the Type
     large Timestamp   # PreciseTime() of the recorded input
     oid RecipientID   # Surface that the input message is being conveyed to

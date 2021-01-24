@@ -390,23 +390,20 @@
 #define FD_PTR_LARGERESULT 0x0c000100
 #define FD_PTR_DOUBLERESULT 0x88000100
 
-struct dcInputReady {
-   BYTE Pad;
-};
-
 struct InputMsg {
-   DOUBLE   Value;          // The value associated with the Type
-   LARGE    Timestamp;      // PreciseTime() of the recorded input
-   OBJECTID RecipientID;    // Surface that the input message is being conveyed to
-   OBJECTID OverID;         // Surface that is directly under the mouse pointer at the time of the event
-   LONG     AbsX;           // Absolute horizontal position of mouse cursor
-   LONG     AbsY;           // Absolute vertical position of mouse cursor
-   LONG     X;              // Horizontal position relative to the surface that the pointer is over - unless a mouse button is held or pointer is anchored - then the coordinates are relative to the click-held surface
-   LONG     Y;              // Vertical position relative to the surface that the pointer is over - unless a mouse button is held or pointer is anchored - then the coordinates are relative to the click-held surface
-   OBJECTID DeviceID;       // The hardware device that this event originated from
-   UWORD    Type;           // JET constant
-   UWORD    Flags;          // Broad descriptors for the given Type (see JTYPE flags).  Automatically set by the system when sent to the pointer object
-   UWORD    Mask;           // Mask to use for checking against subscribers
+   const struct InputMsg * Next;    // Next event in the chain
+   DOUBLE   Value;                  // The value associated with the Type
+   LARGE    Timestamp;              // PreciseTime() of the recorded input
+   OBJECTID RecipientID;            // Surface that the input message is being conveyed to
+   OBJECTID OverID;                 // Surface that is directly under the mouse pointer at the time of the event
+   LONG     AbsX;                   // Absolute horizontal position of mouse cursor
+   LONG     AbsY;                   // Absolute vertical position of mouse cursor
+   LONG     X;                      // Horizontal position relative to the surface that the pointer is over - unless a mouse button is held or pointer is anchored - then the coordinates are relative to the click-held surface
+   LONG     Y;                      // Vertical position relative to the surface that the pointer is over - unless a mouse button is held or pointer is anchored - then the coordinates are relative to the click-held surface
+   OBJECTID DeviceID;               // The hardware device that this event originated from
+   UWORD    Type;                   // JET constant
+   UWORD    Flags;                  // Broad descriptors for the given Type (see JTYPE flags).  Automatically set by the system when sent to the pointer object
+   UWORD    Mask;                   // Mask to use for checking against subscribers
 };
 
 struct dcRequest {
@@ -3425,6 +3422,7 @@ struct SharedControl {
    volatile LONG ThreadIDCount;
    volatile LONG InputTotal;        // Total number of subscribers in InputMID
    volatile LONG ValidateProcess;
+   volatile LONG InputIDCounter;    // Counter for input event subscriptions
    WORD SystemState;
    volatile WORD WLIndex;           // Current insertion point for the wait-lock array.
    LONG MagicKey;                   // This magic key is set to the semaphore key (used only as an indicator for initialisation)
@@ -3459,10 +3457,10 @@ struct SharedControl {
 
 // Class database.
 
-#define CL_ITEMS(c)        (struct ClassItem *)( (BYTE *)(c) + sizeof(struct ClassHeader) + ((c)->Total<<2) )
+#define CL_ITEMS(c)        (ClassItem *)( (BYTE *)(c) + sizeof(ClassHeader) + ((c)->Total<<2) )
 #define CL_OFFSETS(c)      ((LONG *)((c) + 1))
 #define CL_SIZE_OFFSETS(c) (sizeof(LONG) * (c)->Total)
-#define CL_ITEM(c,i)       ((struct ClassItem *)((BYTE *)(c) + offsets[(i)]))
+#define CL_ITEM(c,i)       ((ClassItem *)((BYTE *)(c) + offsets[(i)]))
 
 struct ClassHeader {
    LONG Total;          // Total number of registered classes

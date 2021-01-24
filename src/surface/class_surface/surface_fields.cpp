@@ -102,14 +102,15 @@ To turn off dragging, simply write back to the field with a 0 value.
 static ERROR SET_Drag(objSurface *Self, OBJECTID Value)
 {
    if (Value) {
-      if (!gfxSubscribeInput(Self->Head.UniqueID, JTYPE_MOVEMENT|JTYPE_BUTTON, 0)) {
+      auto callback = make_function_stdc(consume_input_events);
+      if (!gfxSubscribeInput(&callback, Self->Head.UniqueID, JTYPE_MOVEMENT|JTYPE_BUTTON, 0, &Self->InputHandle)) {
          Self->DragID = Value;
          return ERR_Okay;
       }
       else return ERR_Failed;
    }
    else {
-      if (Self->DragID) gfxUnsubscribeInput(Self->Head.UniqueID);
+      if (Self->InputHandle) { gfxUnsubscribeInput(Self->InputHandle); Self->InputHandle = 0; }
       Self->DragID = 0;
       return ERR_Okay;
    }

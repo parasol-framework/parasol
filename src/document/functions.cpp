@@ -48,9 +48,7 @@ static STRING printable(CSTRING String, LONG Length) __attribute__ ((unused));
 
 static STRING printable(CSTRING String, LONG Length)
 {
-   LONG i, j;
-   i = 0;
-   j = 0;
+   LONG i = 0, j = 0;
    while ((String[i]) and (i < Length) and (j < ARRAYSIZE(glPrintable)-1)) {
       if (String[i] IS CTRL_CODE) {
          glPrintable[j++] = '%';
@@ -72,9 +70,7 @@ static STRING printable2(CSTRING String, LONG Length) __attribute__ ((unused));
 
 static STRING printable2(CSTRING String, LONG Length)
 {
-   LONG i, j;
-   i = 0;
-   j = 0;
+   LONG i = 0, j = 0;
    while ((String[i]) and (i < Length) and (j < ARRAYSIZE(glPrintable2)-1)) {
       if (String[i] IS CTRL_CODE) {
          glPrintable2[j++] = '%';
@@ -313,12 +309,10 @@ static void print_sorted_lines(objDocument *Self)
 
 static void print_tabfocus(objDocument *Self)
 {
-   LONG i;
-
    if (Self->TabIndex) {
       fprintf(stderr, "\nTAB FOCUSLIST\n-------------\n");
 
-      for (i=0; i < Self->TabIndex; i++) {
+      for (LONG i=0; i < Self->TabIndex; i++) {
          fprintf(stderr, "%d: Type: %d, Ref: %d, XRef: %d\n", i, Self->Tabs[i].Type, Self->Tabs[i].Ref, Self->Tabs[i].XRef);
       }
    }
@@ -408,9 +402,7 @@ INLINE BYTE sortseg_compare(objDocument *Self, SortSegment *Left, SortSegment *R
 
 INLINE LONG uri_char(CSTRING *Source, STRING Dest, LONG Size)
 {
-   CSTRING src;
-
-   src = Source[0];
+   CSTRING src = Source[0];
    if ((src[0] IS '%') and (src[1] >= '0') and (src[1] <= '9') and (src[2] >= '0') and (src[2] <= '9')) {
       Dest[0] = ((src[1] - '0') * 10) | (src[2] - '0');
       src += 3;
@@ -425,11 +417,43 @@ INLINE LONG uri_char(CSTRING *Source, STRING Dest, LONG Size)
    else return 0;
 }
 
-/*****************************************************************************
-** Internal: safe_file_path()
-**
-** Checks if the file path is safe, i.e. does not refer to an absolute file location.
-*/
+//****************************************************************************
+
+static ERROR consume_input_events(const InputMsg *Events, LONG Handle)
+{
+   auto Self = (objDocument *)CurrentContext();
+
+   for (auto input=Events; input; input=input->Next) {
+      if (input->Flags & JTYPE_MOVEMENT) {
+         for (auto scan=input->Next; (scan) and (scan->Flags & JTYPE_MOVEMENT); scan=scan->Next) {
+            input = scan;
+         }
+
+         if (input->OverID IS Self->PageID) Self->MouseOver = TRUE;
+         else Self->MouseOver = FALSE;
+
+         check_mouse_pos(Self, input->X, input->Y);
+
+         // Note that this code has to 'drop through' due to the movement consolidation loop earlier in this subroutine.
+      }
+
+      if (input->Type IS JET_LMB) {
+         if (input->Value > 0) {
+            Self->LMB = TRUE;
+            check_mouse_click(Self, input->X, input->Y);
+         }
+         else {
+            Self->LMB = FALSE;
+            check_mouse_release(Self, input->X, input->Y);
+         }
+      }
+   }
+
+   return ERR_Okay;
+}
+
+//****************************************************************************
+// Checks if the file path is safe, i.e. does not refer to an absolute file location.
 
 static LONG safe_file_path(objDocument *Self, CSTRING Path)
 {
@@ -442,29 +466,24 @@ static LONG safe_file_path(objDocument *Self, CSTRING Path)
    return FALSE;
 }
 
-/*****************************************************************************
-** Internal: check_tag_conditions()
-**
-** Used by if, elseif, while statements to check the satisfaction of conditions.
-*/
+//****************************************************************************
+// Used by if, elseif, while statements to check the satisfaction of conditions.
 
 static BYTE check_tag_conditions(objDocument *Self, XMLTag *Tag)
 {
    parasol::Log log("eval");
-   BYTE satisfied, reverse;
-   LONG count, i;
-   OBJECTID object_id;
 
-   satisfied = FALSE;
-   reverse = FALSE;
-   for (i=0; i < Tag->TotalAttrib; i++) {
+   BYTE satisfied = FALSE;
+   BYTE reverse = FALSE;
+   for (LONG i=0; i < Tag->TotalAttrib; i++) {
       if (!StrMatch("statement", Tag->Attrib[i].Name)) {
          satisfied = StrEvalConditional(Tag->Attrib[i].Value);
          log.trace("Statement: %s", Tag->Attrib[i].Value);
          break;
       }
       else if (!StrMatch("exists", Tag->Attrib[i].Name)) {
-         count = 1;
+         OBJECTID object_id;
+         LONG count = 1;
          if (!FindObject(Tag->Attrib[i].Value, 0, FOF_INCLUDE_SHARED|FOF_SMART_NAMES, &object_id, &count)) {
             if (valid_objectid(Self, object_id)) {
                satisfied = TRUE;
@@ -511,8 +530,6 @@ static BYTE check_tag_conditions(objDocument *Self, XMLTag *Tag)
 }
 
 /*****************************************************************************
-** Internal: insert_xml()
-**
 ** Processes an XML tag and passes it to parse_tag().
 **
 ** IXF_HOLDSTYLE:  If set, the font style will not be cleared.
@@ -631,13 +648,10 @@ static ERROR insert_xml(objDocument *Self, objXML *XML, XMLTag *Tag, LONG Index,
    return ERR_Okay;
 }
 
-/*****************************************************************************
-** parse_tag: This function parses each tag in the document's XML tree.
-**
-** Supported Flags:
-**   IPF_NOCONTENT:
-**   IPF_STRIPFEEDS:
-*/
+//****************************************************************************
+// Supported Flags:
+//   IPF_NOCONTENT:
+//   IPF_STRIPFEEDS:
 
 #define SAVE_ARGS(tag) \
    b_revert = Self->BufferIndex; \
@@ -986,15 +1000,12 @@ static void style_check(objDocument *Self, LONG *Index)
    }
 }
 
-/*****************************************************************************
-** Internal: insert_text()
-**
-** Inserts plain UTF8 text into the document stream.  Insertion can be at any byte index, indicated by the Index
-** parameter.  The Index value will be increased by the number of bytes to insert, indicated by Length.  The Document's
-** StreamLen will have increased by Length on this function's return.
-**
-** Preformat must be set to TRUE if all consecutive whitespace characters in Text are to be inserted.
-*/
+//****************************************************************************
+// Inserts plain UTF8 text into the document stream.  Insertion can be at any byte index, indicated by the Index
+// parameter.  The Index value will be increased by the number of bytes to insert, indicated by Length.  The Document's
+// StreamLen will have increased by Length on this function's return.
+//
+// Preformat must be set to TRUE if all consecutive whitespace characters in Text are to be inserted.
 
 static ERROR insert_text(objDocument *Self, LONG *Index, CSTRING Text, LONG Length, BYTE Preformat)
 {
@@ -1103,12 +1114,10 @@ static ERROR insert_text(objDocument *Self, LONG *Index, CSTRING Text, LONG Leng
    return ERR_Okay;
 }
 
-/*****************************************************************************
-** Internal: insert_escape()
-** Short:    Inserts an escape sequence into the text stream.
-**
-** ESC,Code,Length[2],...Data...,Length[2],ESC
-*/
+//****************************************************************************
+// Inserts an escape sequence into the text stream.
+//
+// ESC,Code,Length[2],...Data...,Length[2],ESC
 
 static ERROR insert_escape(objDocument *Self, LONG *Index, WORD EscapeCode, APTR Data, LONG Length)
 {
@@ -1190,11 +1199,8 @@ static ERROR insert_escape(objDocument *Self, LONG *Index, WORD EscapeCode, APTR
    return ERR_Okay;
 }
 
-/*****************************************************************************
-** Internal: end_line()
-**
-** This function is called only when a paragraph or explicit line-break (\n) is encountered.
-*/
+//****************************************************************************
+// This function is called only when a paragraph or explicit line-break (\n) is encountered.
 
 static void end_line(objDocument *Self, layout *l, LONG NewLine, LONG Index, DOUBLE Spacing, LONG RestartIndex, CSTRING Caller)
 {
@@ -1281,18 +1287,15 @@ static void end_line(objDocument *Self, layout *l, LONG NewLine, LONG Index, DOU
    LAYOUT_LOGRETURN();
 }
 
-/*****************************************************************************
-** Internal: check_wordwrap()
-**
-** Word-wrapping is checked whenever whitespace is encountered or certain escape codes are found in the text stream,
-** e.g. paragraphs and objects will mark an end to the current word.
-**
-** Wrapping is always checked even if there is no 'active word' because we need to be able to wrap empty lines (e.g.
-** solo <br/> tags).
-**
-** Index - The current index value.
-** ObjectIndex - The index that indicates the start of the word.
-*/
+//****************************************************************************
+// Word-wrapping is checked whenever whitespace is encountered or certain escape codes are found in the text stream,
+// e.g. paragraphs and objects will mark an end to the current word.
+//
+// Wrapping is always checked even if there is no 'active word' because we need to be able to wrap empty lines (e.g.
+// solo <br/> tags).
+//
+// Index - The current index value.
+// ObjectIndex - The index that indicates the start of the word.
 
 static UBYTE check_wordwrap(CSTRING Type, objDocument *Self, LONG Index, layout *l, LONG X, LONG *Width,
    LONG ObjectIndex, LONG *GraphicX, LONG *GraphicY, LONG GraphicWidth, LONG GraphicHeight)
@@ -1472,17 +1475,16 @@ static void check_clips(objDocument *Self, LONG Index, layout *l,
    WRAP_LOGRETURN();
 }
 
-/*****************************************************************************
-** Calculate the position, pixel length and height of each line for the entire page.  This function does not recurse,
-** but it reiterates if the size of the page section is expanded.  It is also called for individual table cells
-** which are treated as miniature pages.
-**
-** Offset:   The byte offset within the document stream to start layout processing.
-** X/Y:      Section coordinates, starts at 0,0 for the main page, subsequent sections (table cells) can be at any location, measured as absolute to the top left corner of the page.
-** Width:    Minimum width of the page/section.  Can be increased if insufficient space is available.  Includes the left and right margins in the resulting calculation.
-** Height:   Minimum height of the page/section.  Will be increased to match the number of lines in the layout.
-** Margins:  Margins within the page area.  These are inclusive to the resulting page width/height.  If in a cell, margins reflect cell padding values.
-*/
+//****************************************************************************
+// Calculate the position, pixel length and height of each line for the entire page.  This function does not recurse,
+// but it reiterates if the size of the page section is expanded.  It is also called for individual table cells
+// which are treated as miniature pages.
+//
+// Offset:   The byte offset within the document stream to start layout processing.
+// X/Y:      Section coordinates, starts at 0,0 for the main page, subsequent sections (table cells) can be at any location, measured as absolute to the top left corner of the page.
+// Width:    Minimum width of the page/section.  Can be increased if insufficient space is available.  Includes the left and right margins in the resulting calculation.
+// Height:   Minimum height of the page/section.  Will be increased to match the number of lines in the layout.
+// Margins:  Margins within the page area.  These are inclusive to the resulting page width/height.  If in a cell, margins reflect cell padding values.
 
 typedef struct {
    layout Layout;
@@ -2372,9 +2374,8 @@ wrap_object:
                                  extclip_right = layout->RightMargin;
                               }
                               else if ((align & ALIGN_RIGHT) and (layout->Dimensions & DMF_WIDTH)) {
-                                 /* Note that it is possible the BoundX may end up behind the cursor, or the cell's left margin.
-                                 ** A check for this is made later, so don't worry about it here.
-                                 */
+                                 // Note that it is possible the BoundX may end up behind the cursor, or the cell's left margin.
+                                 // A check for this is made later, so don't worry about it here.
 
                                  LONG new_x = ((AbsX + *Width) - l.right_margin) - (layout->BoundWidth + layout->RightMargin);
                                  if (new_x > layout->BoundX) layout->BoundX = new_x;
@@ -2518,12 +2519,11 @@ wrap_object:
 
                   if (*Width >= WIDTH_LIMIT);
                   else if ((cell.Left < left_check) or (layoutflags & LAYOUT_IGNORE_CURSOR)) {
-                     /* The object is < left-hand side of the page/cell, this means
-                     ** that we may have to force a page/cell width increase.
-                     **
-                     ** Note: Objects with IGNORECURSOR are always checked here, because they aren't subject
-                     ** to wrapping due to the X/Y being fixed.  Such objects are limited to width increases only.
-                     */
+                     // The object is < left-hand side of the page/cell, this means
+                     // that we may have to force a page/cell width increase.
+                     //
+                     // Note: Objects with IGNORECURSOR are always checked here, because they aren't subject
+                     // to wrapping due to the X/Y being fixed.  Such objects are limited to width increases only.
 
                      LONG cmp_width;
 
@@ -3425,11 +3425,10 @@ exit:
    return i;
 }
 
-/*****************************************************************************
-** Calculate the page height, which is either going to be the coordinate of
-** the bottom-most line, or one of the clipping regions if one of them
-** extends further than the bottom-most line.
-*/
+//****************************************************************************
+// Calculate the page height, which is either going to be the coordinate of
+// the bottom-most line, or one of the clipping regions if one of them
+// extends further than the bottom-most line.
 
 static LONG calc_page_height(objDocument *Self, LONG FirstClip, LONG Y, LONG BottomMargin)
 {
@@ -3467,12 +3466,9 @@ static LONG calc_page_height(objDocument *Self, LONG FirstClip, LONG Y, LONG Bot
    return page_height;
 }
 
-/*****************************************************************************
-** Internal: free_links()
-**
-** Terminates all links and frees the memory.  Another method to clear the links
-** is to set the TotalLinks to zero, which retains the link cache allocation.
-*/
+//****************************************************************************
+// Terminates all links and frees the memory.  Another method to clear the links
+// is to set the TotalLinks to zero, which retains the link cache allocation.
 
 static void free_links(objDocument *Self)
 {
@@ -3485,10 +3481,8 @@ static void free_links(objDocument *Self)
    Self->TotalLinks = 0;
 }
 
-/*****************************************************************************
-** Internal: add_link()
-** Short:    Record a clickable link, cell, or other form of clickable area.
-*/
+//****************************************************************************
+// Record a clickable link, cell, or other form of clickable area.
 
 static void add_link(objDocument *Self, UBYTE EscapeCode, APTR Escape, LONG X, LONG Y, LONG Width, LONG Height, CSTRING Caller)
 {
@@ -4347,9 +4341,7 @@ static ERROR keypress(objDocument *Self, LONG Flags, LONG Value, LONG Unicode)
    return ERR_Okay;
 }
 
-/*****************************************************************************
-** Internal: load_doc()
-*/
+//****************************************************************************
 
 static ERROR load_doc(objDocument *Self, CSTRING Path, BYTE Unload, BYTE UnloadFlags)
 {
@@ -4401,10 +4393,9 @@ static ERROR load_doc(objDocument *Self, CSTRING Path, BYTE Unload, BYTE UnloadF
    else return log.warning(ERR_FileNotFound);
 }
 
-/*****************************************************************************
-** This function lays out the document so that it is ready to be drawn.  It calculates the position, pixel length and
-** height of each line and rearranges any objects that are present in the document.
-*/
+//****************************************************************************
+// This function lays out the document so that it is ready to be drawn.  It calculates the position, pixel length and
+// height of each line and rearranges any objects that are present in the document.
 
 static void layout_doc(objDocument *Self)
 {
@@ -4624,13 +4615,12 @@ restart:
    LAYOUT_LOGRETURN();
 }
 
-/*****************************************************************************
-** Converts XML into RIPPLE bytecode, then displays the page that is referenced by the PageName field by calling
-** layout_doc().  If the PageName is unspecified, we use the first <page> that has no name, otherwise the first page
-** irrespective of the name.
-**
-** This function does not clear existing data, so you can use it to append new content to existing document content.
-*/
+//****************************************************************************
+// Converts XML into RIPPLE bytecode, then displays the page that is referenced by the PageName field by calling
+// layout_doc().  If the PageName is unspecified, we use the first <page> that has no name, otherwise the first page
+// irrespective of the name.
+//
+// This function does not clear existing data, so you can use it to append new content to existing document content.
 
 static ERROR process_page(objDocument *Self, objXML *xml)
 {
@@ -4913,15 +4903,14 @@ static docresource * add_resource_ptr(objDocument *Self, APTR Address, LONG Type
    else return NULL;
 }
 
-/*****************************************************************************
-** This function removes all allocations that were made in displaying the current page, and resets a number of
-** variables that they are at the default settings for the next page.
-**
-** Set Terminate to TRUE only if the document object is being destroyed.
-**
-** The PageName is not freed because the desired page must not be dropped during refresh of manually loaded XML for
-** example.
-*/
+//****************************************************************************
+// This function removes all allocations that were made in displaying the current page, and resets a number of
+// variables that they are at the default settings for the next page.
+//
+// Set Terminate to TRUE only if the document object is being destroyed.
+//
+// The PageName is not freed because the desired page must not be dropped during refresh of manually loaded XML for
+// example.
 
 static ERROR unload_doc(objDocument *Self, BYTE Flags)
 {
@@ -5156,9 +5145,8 @@ static ERROR unload_doc(objDocument *Self, BYTE Flags)
    return ERR_Okay;
 }
 
-/*****************************************************************************
-** If the layout needs to be recalculated, set the UpdateLayout field before calling this function.
-*/
+//****************************************************************************
+// If the layout needs to be recalculated, set the UpdateLayout field before calling this function.
 
 static void redraw(objDocument *Self, BYTE Focus)
 {
@@ -7690,6 +7678,7 @@ static void exec_link(objDocument *Self, LONG Index)
 
          ERROR result = report_event(Self, DEF_LINK_ACTIVATED, &params, "deLinkActivated:Parameters");
          FreeResource(params.Parameters);
+         params.Parameters = NULL;
          if (result IS ERR_Skip) goto end;
       }
    }
@@ -7858,15 +7847,12 @@ end:
    Self->Processing--;
 }
 
-/*****************************************************************************
-** Internal: set_object_style()
-**
-** If an object supports the LayoutStyle field, this function configures the DocStyle structure and then sets the
-** LayoutStyle field for that object.
-**
-** Information about the current font can be pulled from the Font object referenced in the Font field.  Supplementary
-** information like the font colour is provided separately.
-*/
+//****************************************************************************
+// If an object supports the LayoutStyle field, this function configures the DocStyle structure and then sets the
+// LayoutStyle field for that object.
+//
+// Information about the current font can be pulled from the Font object referenced in the Font field.  Supplementary
+// information like the font colour is provided separately.
 
 static void set_object_style(objDocument *Self, OBJECTPTR Object)
 {

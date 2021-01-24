@@ -120,6 +120,7 @@ typedef struct rkScintilla {
    LONG   LongestLine;         // Longest line in the document
    LONG   LongestWidth;        // Pixel width of the longest line
    LONG   TabWidth;
+   LONG   InputHandle;
    TIMER  TimerID;
    LARGE  ReportEventFlags;    // For delayed event reporting.
    UWORD  KeyAlt:1;

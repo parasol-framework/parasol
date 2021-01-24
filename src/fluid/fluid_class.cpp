@@ -530,47 +530,6 @@ static ERROR FLUID_DataFeed(objScript *Self, struct acDataFeed *Args)
    else if (Args->DataType IS DATA_XML) {
       SetString(Self, FID_String, (CSTRING)Args->Buffer);
    }
-   else if (Args->DataType IS DATA_INPUT_READY) {
-      auto prv = (prvFluid *)Self->Head.ChildPrivate;
-
-      log.traceBranch("Incoming input for surface #%d", Args->ObjectID);
-
-      InputMsg *input;
-      while (!gfxGetInputMsg((struct dcInputReady *)Args->Buffer, 0, &input)) {
-         bool processed = false;
-         for (auto list = prv->InputList; list; list=list->Next) {
-            if (((list->SurfaceID IS input->RecipientID) or (!list->SurfaceID)) and (list->Mode IS FIM_DEVICE)) {
-               processed = true;
-               // Execute the callback associated with this input subscription.
-
-               LONG branch = GetResource(RES_LOG_DEPTH); // Required as thrown errors cause the debugger to lose its branch position
-
-                  lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, list->Callback); // +1 Reference to callback
-                  lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, list->InputObject); // +1 Input object
-                  named_struct_to_table(prv->Lua, "InputMsg", input); // +1 Input message
-
-                  if (lua_pcall(prv->Lua, 2, 0, 0)) {
-                     process_error(Self, "Input DataFeed Callback");
-                  }
-
-               SetResource(RES_LOG_DEPTH, branch);
-            }
-         }
-
-         if (!processed) {
-            log.warning("Dangling input feed subscription on surface #%d", input->RecipientID);
-            if (gfxUnsubscribeInput(input->RecipientID) IS ERR_NotFound) {
-               gfxUnsubscribeInput(0);
-            }
-         }
-      }
-
-      {
-         parasol::Log log;
-         log.traceBranch("Collecting garbage.");
-         lua_gc(prv->Lua, LUA_GCCOLLECT, 0); // Run the garbage collector
-      }
-   }
    else if (Args->DataType IS DATA_RECEIPT) {
       auto prv = (prvFluid *)Self->Head.ChildPrivate;
       struct datarequest *prev;

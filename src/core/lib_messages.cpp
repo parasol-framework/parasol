@@ -1211,12 +1211,9 @@ ERROR send_thread_msg(LONG Handle, LONG Type, APTR Data, LONG Size)
    return error;
 }
 
-/*****************************************************************************
-** Internal: write_nonblock()
-**
-** Simplifies the process of writing to an FD that is set to non-blocking mode (typically a socket or pipe).  An
-** end-time is required so that a timeout will be signalled if the reader isn't keeping the buffer clear.
-*/
+//****************************************************************************
+// Simplifies the process of writing to an FD that is set to non-blocking mode (typically a socket or pipe).  An
+// end-time is required so that a timeout will be signalled if the reader isn't keeping the buffer clear.
 
 #ifdef __unix__
 ERROR write_nonblock(LONG Handle, APTR Data, LONG Size, LARGE EndTime)
@@ -1506,11 +1503,10 @@ ERROR sleep_task(LONG Timeout)
    else if (result IS -1) {
       if (errno IS EINTR); // Interrupt caught during sleep
       else if (errno IS EBADF) {
-         struct stat info;
-
          // At least one of the file descriptors is invalid - it is most likely that the file descriptor was closed and the
          // code responsible did not de-register the descriptor.
 
+         struct stat info;
          for (LONG i=0; i < glTotalFDs; i++) {
             if (fstat(glFDTable[i].FD, &info) < 0) {
                if (errno IS EBADF) {
@@ -1591,7 +1587,7 @@ ERROR sleep_task(LONG Timeout, BYTE SystemOnly)
          for (LONG i=0; i < glTotalFDs; i++) {
             if (glFDTable[i].Flags & RFD_SOCKET) continue; // Ignore network socket FDs (triggered as normal windows messages)
 
-            log.trace("Listening to %d, Read: %d, Write: %d, Routine: %p, Flags: $%.2x", (LONG)(MAXINT)glFDTable[i].FD, (glFDTable[i].Flags & RFD_READ) ? 1 : 0, (glFDTable[i].Flags & RFD_WRITE) ? 1 : 0, glFDTable[i].Routine, glFDTable[i].Flags);
+            //log.trace("Listening to %d, Read: %d, Write: %d, Routine: %p, Flags: $%.2x", (LONG)(MAXINT)glFDTable[i].FD, (glFDTable[i].Flags & RFD_READ) ? 1 : 0, (glFDTable[i].Flags & RFD_WRITE) ? 1 : 0, glFDTable[i].Routine, glFDTable[i].Flags);
 
             if (glFDTable[i].Flags & RFD_ALWAYS_CALL) {
                if (glFDTable[i].Routine) glFDTable[i].Routine(glFDTable[i].FD, glFDTable[i].Data);
@@ -1608,7 +1604,7 @@ ERROR sleep_task(LONG Timeout, BYTE SystemOnly)
          }
       }
 
-      if (Timeout > 0) log.trace("Sleeping on %d handles for up to %dms.  MsgBreak: %d", total, Timeout, tlMessageBreak);
+      //if (Timeout > 0) log.trace("Sleeping on %d handles for up to %dms.  MsgBreak: %d", total, Timeout, tlMessageBreak);
 
       LONG sleeptime = time_end - (PreciseTime() / 1000LL);
       if (sleeptime < 0) sleeptime = 0;
@@ -1631,7 +1627,7 @@ ERROR sleep_task(LONG Timeout, BYTE SystemOnly)
          }
       }
       else if ((i > 1) and (i < total)) {
-         log.trace("WaitForObjects() Handle: %d (%d) of %d, Timeout: %d, Break: %d", i, lookup[i], total, Timeout, tlMessageBreak);
+         //log.trace("WaitForObjects() Handle: %d (%d) of %d, Timeout: %d, Break: %d", i, lookup[i], total, Timeout, tlMessageBreak);
 
          // Process only the handle routine that was signalled: NOTE: This is potentially an issue if the handle is early on in the list and is being frequently
          // signalled - it will mean that the other handles aren't going to get signalled until the earlier one stops being signalled.
@@ -1673,13 +1669,12 @@ ERROR sleep_task(LONG Timeout, BYTE SystemOnly)
 
 #endif // _WIN32
 
-/*****************************************************************************
-** This function complements sleep_task().  It is useful for waking the main thread of a process when it is waiting for
-** new messages to come in.
-**
-** It's not a good idea to call wake_task() while locks are active because the Core might choose to instantly switch
-** to the foreign task when we wake it up.  Having a lock would then increase the likelihood of delays and time-outs.
-*/
+//****************************************************************************
+// This function complements sleep_task().  It is useful for waking the main thread of a process when it is waiting for
+// new messages to come in.
+//
+// It's not a good idea to call wake_task() while locks are active because the Core might choose to instantly switch
+// to the foreign task when we wake it up.  Having a lock would then increase the likelihood of delays and time-outs.
 
 #ifdef __unix__ // TLS data for the wake_task() socket.
 static pthread_key_t keySocket;

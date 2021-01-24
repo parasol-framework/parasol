@@ -5,7 +5,7 @@ set (MOD "display")
 idl_def ("display.fdl" NAME ${MOD}_idl OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/idl.h")
 
 idl_c ("display.fdl" NAME ${MOD}_defs OUTPUT "${INCLUDE_OUTPUT}/modules/${MOD}.h"
-   FILES "display-driver.cpp"
+   FILES "display-driver.cpp" "input_events.cpp"
    ARGS "--output-defs=module_def.c" "--output-proto=module_def.c" "--prototypes=static")
 
 link_directories("/usr/X11R6/lib" "/usr/lib")

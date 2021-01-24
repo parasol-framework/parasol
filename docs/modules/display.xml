@@ -659,18 +659,19 @@ if ((pointer = gfxAccessPointer())) {
   <function>
     <name>SubscribeInput</name>
     <comment>Subscribe to incoming input messages for any active surface object.</comment>
-    <prototype>ERROR gfxSubscribeInput(FUNCTION * Callback, OBJECTID SurfaceFilter, LONG Mask, OBJECTID Device)</prototype>
+    <prototype>ERROR gfxSubscribeInput(FUNCTION * Callback, OBJECTID SurfaceFilter, LONG Mask, OBJECTID DeviceFilter, LONG * Handle)</prototype>
     <input>
       <param type="FUNCTION *" name="Callback">Reference to a callback function that will receive input messages.</param>
       <param type="OBJECTID" name="SurfaceFilter">Optional.  Only the input messages that match the given surface ID will be received.</param>
       <param type="LONG" name="Mask" lookup="JTYPE">Combine JTYPE flags to define the input messages required by the client.  Set to 0xffffffff if all messages are desirable.</param>
-      <param type="OBJECTID" name="Device">Optional.  Only the input messages that match the given device ID will be received.  NOTE - Support not yet implemented, set to zero.</param>
+      <param type="OBJECTID" name="DeviceFilter">Optional.  Only the input messages that match the given device ID will be received.  NOTE - Support not yet implemented, set to zero.</param>
+      <param type="LONG *" name="Handle">A handle for the subscription is returned here.</param>
     </input>
     <description>
 <p>The SubscribeInput() function provides a systematic way of receiving input events as they occur.  Coverage is limited to device events that are relevant to the display (e.g. track pads, mouse pointers, graphics tablets and touch screens). Keyboard devices are not included.  The client is required to remove the subscription with <function module="Display">UnsubscribeInput</function> once it is no longer required.</p>
 <p>Input events can be filtered so that they are received in relation to surfaces and devices.  An input mask can also be applied so that only certain types of events are received.  If no filters are applied then all input events can be received.</p>
 <p>A callback is required for receiving the input events.  The following C/C++ code illustrates a method for processing events in the callback:</p>
-<pre>ERROR consume_input_events(struct InputMsg *Events, LONG TotalEvents)
+<pre>ERROR consume_input_events(struct InputMsg *Events, LONG Handle)
 {
    for (auto event=Events; event; event=event-&gt;Next) {
       if ((event-&gt;Flags &amp; JTYPE_BUTTON) and (event-&gt;Value &gt; 0)) {
@@ -740,9 +741,9 @@ if ((pointer = gfxAccessPointer())) {
   <function>
     <name>UnsubscribeInput</name>
     <comment>Removes an input subscription.</comment>
-    <prototype>ERROR gfxUnsubscribeInput(OBJECTID Surface)</prototype>
+    <prototype>ERROR gfxUnsubscribeInput(LONG Handle)</prototype>
     <input>
-      <param type="OBJECTID" name="Surface">The surface to target for unsubscription.  If zero, all subscriptions are removed for the active object.</param>
+      <param type="LONG" name="Handle">Reference to a handle returned by SubscribeInput().</param>
     </input>
     <description>
 <p>This function removes an input subscription that has been configured using <function module="Display">SubscribeInput</function>.  If a Surface filter was specified in the original subscription, this can also be defined so that any other active subscriptions acquired by the Subscriber are unaffected.</p>
