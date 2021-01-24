@@ -43,7 +43,7 @@ static const FieldDef clAlign[] = {
 
 static OBJECTPTR clButton = NULL;
 
-static ERROR consume_input_events(const InputMsg *, LONG);
+static ERROR consume_input_events(const InputEvent *, LONG);
 static void key_event(objButton *, evKey *, LONG);
 
 //****************************************************************************
@@ -834,7 +834,7 @@ static ERROR SET_YOffset(objButton *Self, Variable *Value)
 
 //****************************************************************************
 
-static ERROR consume_input_events(const InputMsg *Events, LONG Handle)
+static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
 {
    auto Self = (objButton *)CurrentContext();
 

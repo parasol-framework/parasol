@@ -64,7 +64,7 @@ FDEF argsGetCursorInfo[] = { { "Error", FD_ERROR }, { "CursorInfo:Info", FD_PTR|
 FDEF argsGetCursorPos[] = { { "Error", FD_ERROR }, { "X", FD_LONG|FD_RESULT }, { "Y", FD_LONG|FD_RESULT }, { 0, 0 } };
 FDEF argsGetDisplayInfo[] = { { "Error", FD_ERROR }, { "Display", FD_OBJECTID }, { "DisplayInfo:Info", FD_PTR|FD_STRUCT }, { "Size", FD_LONG|FD_BUFSIZE }, { 0, 0 } };
 FDEF argsGetDisplayType[] = { { "Result", FD_LONG }, { 0, 0 } };
-FDEF argsGetInputMsg[] = { { "Error", FD_ERROR }, { "dcInputReady:Input", FD_PTR|FD_STRUCT }, { "Flags", FD_LONG }, { "InputMsg:Msg", FD_PTR|FD_STRUCT|FD_RESULT }, { 0, 0 } };
+FDEF argsGetInputEvent[] = { { "Error", FD_ERROR }, { "dcInputReady:Input", FD_PTR|FD_STRUCT }, { "Flags", FD_LONG }, { "InputEvent:Msg", FD_PTR|FD_STRUCT|FD_RESULT }, { 0, 0 } };
 FDEF argsGetInputTypeName[] = { { "Result", FD_STR }, { "Type", FD_LONG }, { 0, 0 } };
 FDEF argsGetRelativeCursorPos[] = { { "Error", FD_ERROR }, { "Surface", FD_OBJECTID }, { "X", FD_LONG|FD_RESULT }, { "Y", FD_LONG|FD_RESULT }, { 0, 0 } };
 FDEF argsLockCursor[] = { { "Error", FD_ERROR }, { "Surface", FD_OBJECTID }, { 0, 0 } };
@@ -121,7 +121,7 @@ Function JumpTable[] = {
    { scrUnsupported, "DrawEllipse", argsDrawEllipse },
    { scrUnsupported, "SubscribeInput", argsSubscribeInput },
    { scrUnsupported, "UnsubscribeInput", argsUnsubscribeInput },
-   { scrUnsupported, "GetInputMsg", argsGetInputMsg },
+   { scrUnsupported, "GetInputEvent", argsGetInputEvent },
    { scrUnsupported, "GetInputTypeName", argsGetInputTypeName },
    { scrUnsupported, "ScaleToDPI", argsScaleToDPI },
    { NULL, NULL, NULL }

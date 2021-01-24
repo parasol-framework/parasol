@@ -1,9 +1,9 @@
 /*****************************************************************************
 
-The input interface provides support for processing input messages.  The InputMsg structure is passed for each incoming
+The input interface provides support for processing input messages.  The InputEvent structure is passed for each incoming
 message that is detected.
 
-   local in = input.subscribe(JTYPE_MOVEMENT, SurfaceID, 0, function(SurfaceID, Message)
+   local in = input.subscribe(JTYPE_MOVEMENT, SurfaceID, 0, function(SurfaceID, Event)
 
    end)
 
@@ -48,7 +48,7 @@ static void key_event(struct finput *, evKey *, LONG);
 
 //****************************************************************************
 
-static ERROR consume_input_events(const InputMsg *Events, LONG Handle)
+static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -71,7 +71,7 @@ static ERROR consume_input_events(const InputMsg *Events, LONG Handle)
       while (Events) {
          lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, list->Callback); // +1 Reference to callback
          lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, list->InputValue); // +1 Optional input value registered by the Fluid client
-         named_struct_to_table(prv->Lua, "InputMsg", Events); // +1 Input message
+         named_struct_to_table(prv->Lua, "InputEvent", Events); // +1 Input message
 
          if (lua_pcall(prv->Lua, 2, 0, 0)) {
             process_error(Self, "Input DataFeed Callback");

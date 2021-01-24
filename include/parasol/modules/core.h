@@ -282,7 +282,7 @@
 #define JTYPE_REPEATED 0x0400
 #define JTYPE_DRAG_ITEM 0x0800
 
-// JET constants are documented in GetInputMsg()
+// JET constants are documented in GetInputEvent()
 
 #define JET_DIGITAL_X 1
 #define JET_DIGITAL_Y 2
@@ -390,20 +390,20 @@
 #define FD_PTR_LARGERESULT 0x0c000100
 #define FD_PTR_DOUBLERESULT 0x88000100
 
-struct InputMsg {
-   const struct InputMsg * Next;    // Next event in the chain
-   DOUBLE   Value;                  // The value associated with the Type
-   LARGE    Timestamp;              // PreciseTime() of the recorded input
-   OBJECTID RecipientID;            // Surface that the input message is being conveyed to
-   OBJECTID OverID;                 // Surface that is directly under the mouse pointer at the time of the event
-   LONG     AbsX;                   // Absolute horizontal position of mouse cursor
-   LONG     AbsY;                   // Absolute vertical position of mouse cursor
-   LONG     X;                      // Horizontal position relative to the surface that the pointer is over - unless a mouse button is held or pointer is anchored - then the coordinates are relative to the click-held surface
-   LONG     Y;                      // Vertical position relative to the surface that the pointer is over - unless a mouse button is held or pointer is anchored - then the coordinates are relative to the click-held surface
-   OBJECTID DeviceID;               // The hardware device that this event originated from
-   UWORD    Type;                   // JET constant
-   UWORD    Flags;                  // Broad descriptors for the given Type (see JTYPE flags).  Automatically set by the system when sent to the pointer object
-   UWORD    Mask;                   // Mask to use for checking against subscribers
+struct InputEvent {
+   const struct InputEvent * Next;    // Next event in the chain
+   DOUBLE   Value;                    // The value associated with the Type
+   LARGE    Timestamp;                // PreciseTime() of the recorded input
+   OBJECTID RecipientID;              // Surface that the input message is being conveyed to
+   OBJECTID OverID;                   // Surface that is directly under the mouse pointer at the time of the event
+   LONG     AbsX;                     // Absolute horizontal position of mouse cursor
+   LONG     AbsY;                     // Absolute vertical position of mouse cursor
+   LONG     X;                        // Horizontal position relative to the surface that the pointer is over - unless a mouse button is held or pointer is anchored - then the coordinates are relative to the click-held surface
+   LONG     Y;                        // Vertical position relative to the surface that the pointer is over - unless a mouse button is held or pointer is anchored - then the coordinates are relative to the click-held surface
+   OBJECTID DeviceID;                 // The hardware device that this event originated from
+   UWORD    Type;                     // JET constant
+   UWORD    Flags;                    // Broad descriptors for the given Type (see JTYPE flags).  Automatically set by the system when sent to the pointer object
+   UWORD    Mask;                     // Mask to use for checking against subscribers
 };
 
 struct dcRequest {
@@ -1093,12 +1093,12 @@ struct ClipRectangle {
 
 #define RPM_Audio -1001
 #define RPM_DisplayInfo -1008
+#define RPM_InputEvents -1007
 #define RPM_XWindowLookup -1005
-#define RPM_SharedObjects -1000
 #define RPM_Clipboard -1002
 #define RPM_AlphaBlend -1004
 #define RPM_FocusList -1006
-#define RPM_InputMsgs -1007
+#define RPM_SharedObjects -1000
 #define RPM_X11 -1003
 
 #define MAX_FILENAME 256

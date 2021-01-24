@@ -131,7 +131,7 @@ static ERROR  calc_vscroll(objView *);
 static void   check_selected_items(objView *, XMLTag *);
 static void   check_pointer_cursor(objView *, LONG, LONG);
 static BYTE   check_item_visible(objView *, XMLTag *);
-static ERROR  consume_input_events(const InputMsg *, LONG);
+static ERROR  consume_input_events(const InputEvent *, LONG);
 static ERROR  create_view_class(void);
 static BYTE   deselect_item(objView *);
 static void   drag_items(objView *);
@@ -155,9 +155,9 @@ static void   report_selection(objView *, LONG, LONG);
 static BYTE   select_item(objView *, XMLTag *, LONG, BYTE, BYTE);
 static ERROR  sort_items(objView *);
 static ERROR  unload_icon(objView *, ULONG *);
-static void   vwUserClick(objView *, const InputMsg *);
-static void   vwUserClickRelease(objView *, const InputMsg *);
-static void   vwUserMovement(objView *, const InputMsg *);
+static void   vwUserClick(objView *, const InputEvent *);
+static void   vwUserClickRelease(objView *, const InputEvent *);
+static void   vwUserMovement(objView *, const InputEvent *);
 
 static ERROR VIEW_SortColumnIndex(objView *, struct viewSortColumnIndex *);
 static ERROR SET_HScroll(objView *, OBJECTPTR);
@@ -2361,7 +2361,7 @@ static ERROR VIEW_RevealItem(objView *Self, struct viewRevealItem *Args)
 
 //****************************************************************************
 
-static ERROR consume_input_events(const InputMsg *Events, LONG Handle)
+static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
 {
    parasol::Log log(__FUNCTION__);
 

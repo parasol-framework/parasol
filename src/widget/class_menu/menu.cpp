@@ -45,7 +45,7 @@ struct Translation { LONG Code; CSTRING Name; };
 static ERROR add_xml_item(objMenu *, objXML *, XMLTag *);
 static ERROR calc_menu_size(objMenu *);
 static void calc_scrollbar(objMenu *);
-static ERROR consume_input_events(const InputMsg *, LONG);
+static ERROR consume_input_events(const InputEvent *, LONG);
 static ERROR create_menu(objMenu *);
 static ERROR create_menu_file(objMenu *, objMenu *, objMenuItem *);
 static void draw_default_bkgd(objMenu *, objSurface *, objBitmap *);
@@ -171,6 +171,7 @@ Clears: Clears the content of the menu list.
 static ERROR MENU_Clear(objMenu *Self, APTR Void)
 {
    parasol::Log log;
+
    log.branch();
 
    while (Self->Items) acFree(Self->Items);
@@ -180,11 +181,12 @@ static ERROR MENU_Clear(objMenu *Self, APTR Void)
    Self->CurrentMenu   = NULL;
    Self->Selection     = NULL;
 
+   if (Self->InputHandle) { gfxUnsubscribeInput(Self->InputHandle); Self->InputHandle = 0; }
+
    if (Self->MenuSurfaceID) {
       OBJECTPTR object;
       if (!AccessObject(Self->MenuSurfaceID, 4000, &object)) {
          UnsubscribeAction(object, 0);
-         if (Self->InputHandle) { gfxUnsubscribeInput(Self->InputHandle); Self->InputHandle = 0; }
          acFree(object);
          ReleaseObject(object);
       }
@@ -281,10 +283,9 @@ static ERROR MENU_Free(objMenu *Self, APTR Void)
          acFree(ms.obj);
       }
       Self->MenuSurfaceID = 0;
-
-      if (Self->InputHandle) { gfxUnsubscribeInput(Self->InputHandle); Self->InputHandle = 0; }
    }
 
+   if (Self->InputHandle) { gfxUnsubscribeInput(Self->InputHandle); Self->InputHandle = 0; }
    if (Self->MonitorHandle) { gfxUnsubscribeInput(Self->MonitorHandle); Self->MonitorHandle = 0; }
 
    return ERR_Okay;
@@ -1462,7 +1463,7 @@ static ERROR SET_Width(objMenu *Self, LONG Value)
 
 //****************************************************************************
 
-static ERROR consume_input_events(const InputMsg *Events, LONG Handle)
+static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
 {
    parasol::Log log(__FUNCTION__);
 

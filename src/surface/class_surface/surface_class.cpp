@@ -53,7 +53,7 @@ static ERROR SET_YOffset(objSurface *, Variable *);
 #define MOVE_VERTICAL   0x0001
 #define MOVE_HORIZONTAL 0x0002
 
-static ERROR consume_input_events(const InputMsg *, LONG);
+static ERROR consume_input_events(const InputEvent *, LONG);
 static void draw_region(objSurface *, objSurface *, objBitmap *);
 static ERROR scroll_timer(objSurface *, LARGE, LARGE);
 
@@ -2444,7 +2444,7 @@ static void draw_region(objSurface *Self, objSurface *Parent, objBitmap *Bitmap)
 
 //****************************************************************************
 
-static ERROR consume_input_events(const InputMsg *Events, LONG Handle)
+static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
 {
    parasol::Log log(__FUNCTION__);
 

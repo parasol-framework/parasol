@@ -196,7 +196,7 @@ flags("JTYPE", { bits=16, comment="JTYPE flags are used to categorise input type
     "REPEATED: Input is a repeated entry (i.e. user is holding down a button and a repetition timer is being triggered)",
     "DRAG_ITEM: This special flag is set by the input system if the pointer is click-dragging an object at the time of the event.")
 
-enum("JET", { start=1, comment="JET constants are documented in GetInputMsg()" },
+enum("JET", { start=1, comment="JET constants are documented in GetInputEvent()" },
     "DIGITAL_X: Horizontal digital movement from a relative location.  Value is +/- n, where n is the number of units moved horizontally.  Mouse movement will normally exceed a value of 1, whereas gamepad movement is limited to a value of +/- 1 except in the case of successive presses.",
     "DIGITAL_Y: Vertical digital movement from a relative location.",
     "BUTTON_1|LMB: Left mouse button, XBox A button, PS square button.  Value is pressure sensitive, ranging between 0 - 1.0 (0 is released, 1.0 is fully depressed).",
@@ -303,8 +303,8 @@ flags("FD", { comment="Field descriptors." },
   { PTR_DOUBLERESULT = "DOUBLE|PTR|RESULT: Use for pointer-based value results only." }
 )
 
-  struct("InputMsg", { }, [[
-    cstruct(*InputMsg) Next # Next event in the chain
+  struct("InputEvent", { }, [[
+    cstruct(*InputEvent) Next # Next event in the chain
     double Value      # The value associated with the Type
     large Timestamp   # PreciseTime() of the recorded input
     oid RecipientID   # Surface that the input message is being conveyed to

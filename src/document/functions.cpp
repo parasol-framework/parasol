@@ -419,7 +419,7 @@ INLINE LONG uri_char(CSTRING *Source, STRING Dest, LONG Size)
 
 //****************************************************************************
 
-static ERROR consume_input_events(const InputMsg *Events, LONG Handle)
+static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
 {
    auto Self = (objDocument *)CurrentContext();
 

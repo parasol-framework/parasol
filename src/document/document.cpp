@@ -575,7 +575,7 @@ static void   calc_scroll(objDocument *);
 static void   check_mouse_click(objDocument *, LONG X, LONG Y);
 static void   check_mouse_pos(objDocument *, LONG, LONG);
 static void   check_mouse_release(objDocument *, LONG X, LONG Y);
-static ERROR  consume_input_events(const InputMsg *, LONG);
+static ERROR  consume_input_events(const InputEvent *, LONG);
 static ERROR  convert_xml_args(objDocument *, XMLAttrib *, LONG);
 static LONG   create_font(CSTRING, CSTRING, LONG);
 static void   deactivate_edit(objDocument *, BYTE);

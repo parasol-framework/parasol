@@ -849,11 +849,11 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    // Allocate the input message cyclic array
 
-   memoryid = RPM_InputMsgs;
+   memoryid = RPM_InputEvents;
    error = AllocMemory(sizeof(glInputEvents[0]), MEM_UNTRACKED|MEM_PUBLIC|MEM_RESERVED|MEM_NO_BLOCKING, &glInputEvents, &memoryid);
    if (error IS ERR_ResourceExists) {
       if (!glInputEvents) {
-         if (AccessMemory(RPM_InputMsgs, MEM_READ_WRITE|MEM_NO_BLOCKING, 1000, &glInputEvents) != ERR_Okay) {
+         if (AccessMemory(RPM_InputEvents, MEM_READ_WRITE|MEM_NO_BLOCKING, 1000, &glInputEvents) != ERR_Okay) {
             return log.warning(ERR_AccessMemory);
          }
       }

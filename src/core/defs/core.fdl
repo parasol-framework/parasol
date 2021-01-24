@@ -347,7 +347,7 @@ module({ name="Core", copyright="Paul Manias 1996-2020" }, function()
     AlphaBlend     = "-1004: Alpha blending lookup table (Bitmap module).",
     XWindowLookup  = "-1005: X Window to Surface lookup table (Display/Surface modules).",
     FocusList      = "-1006: The Surface class uses this to store the focus hierarchy.",
-    InputMsgs      = "-1007: Input message cyclic array.",
+    InputEvents    = "-1007: Input message cyclic array.",
     DisplayInfo    = "-1008: DisplayInfo structure, managed by the Display module"
   })
 

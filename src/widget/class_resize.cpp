@@ -55,7 +55,7 @@ static OBJECTPTR clResize = NULL;
 
 static ERROR SET_BorderSize(objResize *, LONG);
 
-static ERROR consume_input_events(const InputMsg *, LONG);
+static ERROR consume_input_events(const InputEvent *, LONG);
 static LONG within_area(objResize *, LONG, LONG);
 
 //****************************************************************************
@@ -297,7 +297,7 @@ default the Resize object's container will receive the messages.
 
 *****************************************************************************/
 
-static ERROR consume_input_events(const InputMsg *Events, LONG Handle)
+static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
 {
    auto Self = (objResize *)CurrentContext();
 

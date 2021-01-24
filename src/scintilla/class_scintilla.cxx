@@ -211,7 +211,7 @@ static ERROR SET_Wordwrap(objScintilla *, LONG);
 
 //****************************************************************************
 
-static ERROR consume_input_events(const InputMsg *, LONG);
+static ERROR consume_input_events(const InputEvent *, LONG);
 static void create_styled_fonts(objScintilla *);
 static ERROR create_scintilla(void);
 static void draw_scintilla(objScintilla *, objSurface *, rkBitmap *);
@@ -2487,7 +2487,7 @@ static void key_event(objScintilla *Self, evKey *Event, LONG Size)
 
 //*****************************************************************************
 
-static ERROR consume_input_events(const InputMsg *Events, LONG TotalEvents)
+static ERROR consume_input_events(const InputEvent *Events, LONG TotalEvents)
 {
    auto Self = (objScintilla *)CurrentContext();
 

@@ -106,7 +106,7 @@ struct resolution {
 
 static struct {
    ULONG  IndexCounter;   // Counter for message ID's
-   InputMsg Msgs[MAX_INPUTMSG];
+   InputEvent Msgs[MAX_INPUTMSG];
 } *glInputEvents = NULL;
 
 static resolution * get_resolutions(objDisplay *);
