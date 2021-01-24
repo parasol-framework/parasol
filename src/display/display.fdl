@@ -511,7 +511,6 @@ INLINE ULONG bmpGetColourRGB(APTR Bitmap, struct RGB8 *RGB) {
     "DrawEllipse",
     "SubscribeInput",
     "UnsubscribeInput",
-    "GetInputMsg",
     "GetInputTypeName",
     "ScaleToDPI")
 

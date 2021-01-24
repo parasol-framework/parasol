@@ -31,6 +31,8 @@
    LONG  YPosition;             /* Menu page position */ \
    LONG  PageWidth, PageHeight; /* Width/Height of menu page */ \
    LONG  Width, Height;         /* Calculated menu width/height */ \
+   LONG  InputHandle; \
+   LONG  MonitorHandle; \
    UBYTE prvFade;\
    UBYTE prvReverseX:1;         /* If TRUE, menus go from right to left instead of left to right */ \
    UBYTE ShowCheckmarks:1;\

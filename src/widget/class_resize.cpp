@@ -55,6 +55,7 @@ static OBJECTPTR clResize = NULL;
 
 static ERROR SET_BorderSize(objResize *, LONG);
 
+static ERROR consume_input_events(const InputEvent *, LONG);
 static LONG within_area(objResize *, LONG, LONG);
 
 //****************************************************************************
@@ -156,299 +157,6 @@ static LONG within_area(objResize *Self, LONG AreaX, LONG AreaY)
 
 //****************************************************************************
 
-static ERROR RESIZE_DataFeed(objResize *Self, struct acDataFeed *Args)
-{
-   if (!Args) return ERR_NullArgs;
-
-   // The display will send us DATA_INPUT_READY messages when our target surface has input messages in its log.  We
-   // consume these messages using GetInputMsg().
-
-   if (Args->DataType IS DATA_INPUT_READY) {
-      InputMsg *input, *scan;
-      ERROR inputerror;
-
-      while (!gfxGetInputMsg((struct dcInputReady *)Args->Buffer, 0, &input)) {
-         if (Self->State IS CLICK_HELD) {
-            if (input->Flags & (JTYPE_ANCHORED|JTYPE_MOVEMENT)) {
-               struct acRedimension redim;
-               objSurface *object;
-               ERROR error;
-               LONG over_x, over_y;
-
-               if (input->Flags & JTYPE_ANCHORED) {
-                  // Note: Anchoring is typically not available in hosted environments, so this feature goes unused.
-
-                  // Consume all anchor events up to the latest one.  This is important as X and Y movement can often
-                  // be split into two separate messages (JET_ABS_X and JET_ABS_Y).
-
-                  over_x = input->X; // NB: Misnomer - over_x/y will actually reflect the change in position and not a coordinate.
-                  over_y = input->Y;
-                  while (!(inputerror = gfxGetInputMsg((struct dcInputReady *)Args->Buffer, 0, &scan))) {
-                     if (scan->Flags & JTYPE_ANCHORED) {
-                        input = scan;
-                        if (input->Type IS JET_ABS_X) over_x += input->X;
-                        else if (input->Type IS JET_ABS_Y) over_y += input->Y;
-                     }
-                     else break;
-                  }
-               }
-               else {
-                  // Consume all movement events up to the latest one (just skip to the most recent message)
-                  while (!(inputerror = gfxGetInputMsg((struct dcInputReady *)Args->Buffer, 0, &scan))) {
-                     if (scan->Flags & JTYPE_MOVEMENT) input = scan;
-                     else break;
-                  }
-
-                  over_x = input->AbsX - Self->OriginalAbsX; // NB: Using input->X won't work because X is relative to the window surface (which matters when resizing from the left side)
-                  over_y = input->AbsY - Self->OriginalAbsY;
-               }
-
-               if (!(error = AccessObject(Self->ObjectID, 4000, &object))) {
-                  // Send the Redimension message to the target object
-
-                  LONG maxwidth  = object->MaxWidth  + object->LeftMargin + object->RightMargin;
-                  LONG maxheight = object->MaxHeight + object->TopMargin + object->BottomMargin;
-                  LONG minwidth  = object->MinWidth  + object->LeftMargin + object->RightMargin;
-                  LONG minheight = object->MinHeight + object->TopMargin + object->BottomMargin;
-
-                  if (Self->Direction & MOVE_RIGHT) {
-                     // Resizing the right edge of the surface (width is adjusted)
-
-                     redim.X = Self->OriginalX;
-                     if (Self->prvAnchored) redim.Width = object->Width + over_x;
-                     else redim.Width = over_x + (Self->OriginalWidth - Self->prvAnchorX);
-
-                     // Restrict the width to the size of the parent's width
-
-                     LONG px, pwidth;
-                     if (!drwGetVisibleArea(object->ParentID, &px, NULL, NULL, NULL, &pwidth, NULL)) {
-                        if (object->X + redim.Width >= px + pwidth) redim.Width = px + pwidth - object->X;
-                     }
-                  }
-                  else if (Self->Direction & MOVE_LEFT) {
-                     // Movement comes from the left edge of the surface
-
-                     //if (absx >= Self->OriginalX + Self->OriginalWidth) continue;
-
-                     if (Self->prvAnchored) {
-                        redim.X = object->X + over_x;
-                        redim.Width  = object->Width - over_x;
-                     }
-                     else {
-                        redim.X  = Self->OriginalX + over_x;
-                        redim.Width = Self->OriginalWidth - over_x;
-                     }
-
-                     // Restrict the left edge to the parent's visible left edge
-
-                     LONG px;
-                     if (!drwGetVisibleArea(object->ParentID, &px, NULL, NULL, NULL, NULL, NULL)) {
-                        if (redim.X < px) {
-                           redim.Width -= px - redim.X;
-                           redim.X = px;
-                        }
-                     }
-
-                     // Check minwidth/maxwidth settings due to 'reverse resizing'
-
-                     if (redim.Width > maxwidth) {
-                        redim.X = Self->OriginalX + Self->OriginalWidth - maxwidth;
-                        redim.Width = maxwidth;
-                     }
-                     else if (redim.Width < minwidth) {
-                        redim.X = Self->OriginalX + Self->OriginalWidth - minwidth;
-                        redim.Width  = minwidth;
-                     }
-                  }
-                  else {
-                     redim.X = Self->OriginalX;
-                     redim.Width  = 0;
-                  }
-
-                  if (Self->Direction & MOVE_DOWN) {
-                     redim.Y = Self->OriginalY;
-                     if (Self->prvAnchored) redim.Height = object->Height + over_y;
-                     else redim.Height = input->AbsY - Self->OriginalAbsY;
-
-                     // Restrict the height to the size of the parent's height
-
-                     LONG py, pheight;
-                     if (!drwGetVisibleArea(object->ParentID, NULL, &py, NULL, NULL, NULL, &pheight)) {
-                        if (object->Y + redim.Height >= py + pheight) redim.Height = py + pheight - object->Y;
-                     }
-                  }
-                  else if (Self->Direction & MOVE_UP) {
-                     if (Self->prvAnchored) {
-                        redim.Y = object->Y + over_y;
-                        redim.Height = object->Height - over_y;
-                     }
-                     else {
-                        redim.Y = Self->OriginalY + over_y;
-                        redim.Height = Self->OriginalHeight - over_y;
-                     }
-
-                     // Restrict the top edge to the parent's visible top edge
-
-                     LONG py;
-                     if (!drwGetVisibleArea(object->ParentID, NULL, &py, NULL, NULL, NULL, NULL)) {
-                        if (redim.Y < py) {
-                           redim.Height  -= py - redim.Y;
-                           redim.Y = py;
-                        }
-                     }
-
-                     // Check minheight/maxheight settings due to 'reverse resizing'
-
-                     if (redim.Height > maxheight) {
-                        redim.Y = Self->OriginalY + Self->OriginalHeight - maxheight;
-                        redim.Height = maxheight;
-                     }
-                     else if (redim.Height < minheight) {
-                        redim.Y = Self->OriginalY + Self->OriginalHeight - minheight;
-                        redim.Height = minheight;
-                     }
-                  }
-                  else {
-                     redim.Y = Self->OriginalY;
-                     redim.Height = 0;
-                  }
-
-                  if (redim.Width < 0)  redim.Width  = 0;
-                  if (redim.Height < 0) redim.Height = 0;
-                  redim.Z = 0;
-                  redim.Depth  = 0;
-
-                  Action(AC_Redimension, object, &redim);
-                  //DelayMsg(AC_Redimension, object->UniqueID, &redim); //<- Only works if anchoring is disabled.
-
-                  // If we have anchored the pointer, we need to tell the pointer to move or else it will stay locked
-                  // at its current position.
-
-                  redim.Width  = object->Width;
-                  redim.Height = object->Height;
-                  ReleaseObject(object);
-
-                  if (Self->prvAnchored) {
-                     LONG absx, absy;
-
-                     if (!drwGetSurfaceCoords(Self->Layout->SurfaceID, NULL, NULL, &absx, &absy, NULL, NULL)) {
-                        if (Self->Direction & MOVE_RIGHT) {
-                           absx = ((absx + redim.Width) - (Self->OriginalWidth - Self->prvAnchorX));
-                        }
-                        else absx = (absx + Self->prvAnchorX);
-
-                        if (Self->Direction & MOVE_DOWN) {
-                           absy = ((absy + redim.Height) - (Self->OriginalHeight - Self->prvAnchorY));
-                        }
-                        else absy = (absy + Self->prvAnchorY);
-
-                        gfxSetCursorPos(absx, absy);
-                     }
-                  }
-               }
-               else if (error IS ERR_NoMatchingObject) {
-                  Self->ObjectID = 0;
-                  acFree(Self); // Commit suicide
-               }
-
-               if (inputerror) break;
-               else input = scan;
-            }
-         }
-
-         // Note that this code has to 'drop through' due to the movement consolidation loop earlier in this subroutine.
-
-         if (input->Flags & JTYPE_MOVEMENT) {
-            while (!(inputerror = gfxGetInputMsg((struct dcInputReady *)Args->Buffer, 0, &scan))) {
-               if (scan->Flags & JTYPE_MOVEMENT) {
-                  input = scan;
-               }
-               else break;
-            }
-
-            // If the user is moving the mouse pointer over the resizing area and the mouse button is not currently
-            // held, check if we can change the pointer image to something else.  This provides effective visual
-            // notification to the user.
-
-            if (input->OverID IS Self->Layout->SurfaceID) {
-               LONG cursor;
-
-               LONG x = input->X;
-               LONG y = input->Y;
-               gfxGetRelativeCursorPos(Self->Layout->SurfaceID, &x, &y);
-
-               if (within_area(Self, x, y)) {
-                  cursor = get_cursor_type(Self);  // Determine what cursor we should be using
-                  if (cursor != Self->CursorSet) { // If the cursor is to change, use gfxSetCursor() to do it
-                     if (!gfxSetCursor(0, CRF_BUFFER|CRF_NO_BUTTONS, cursor, 0, Self->Head.UniqueID)) {
-                        Self->CursorSet = cursor;
-                     }
-                  }
-               }
-               else if (Self->CursorSet) {
-                  gfxRestoreCursor(PTR_DEFAULT, Self->Head.UniqueID);
-                  Self->CursorSet = 0;
-               }
-            }
-            else if (Self->CursorSet) {
-               gfxRestoreCursor(PTR_DEFAULT, Self->Head.UniqueID);
-               Self->CursorSet = 0;
-            }
-
-            if (inputerror) break;
-            else input = scan;
-         }
-
-         // Note that this code has to 'drop through' due to the movement consolidation loop earlier in this subroutine.
-
-         if (input->Type IS Self->Button) {
-            if (input->Value > 0) {
-               // Check the region to make sure that the button click has fallen in the correct place.
-
-               if (within_area(Self, input->X, input->Y)) {
-                  if (!drwGetSurfaceCoords(Self->ObjectID, &Self->OriginalX, &Self->OriginalY, &Self->OriginalAbsX, &Self->OriginalAbsY, &Self->OriginalWidth, &Self->OriginalHeight)) {
-                     // Attempt to anchor the pointer (failure is likely on hosted displays)
-
-                     if (!gfxLockCursor(Self->Layout->SurfaceID)) {
-                        Self->prvAnchored = TRUE;
-                     }
-
-                     Self->prvAnchorX  = input->X; // Remember the original pointer position irrespective of whether or not we got the anchor.
-                     Self->prvAnchorY  = input->Y;
-
-                     Self->State = CLICK_HELD;
-                  }
-               }
-            }
-            else if (Self->State IS CLICK_HELD) {
-               if (Self->prvAnchored) {
-                  Self->prvAnchored = FALSE;
-                  gfxUnlockCursor(Self->Layout->SurfaceID);
-               }
-
-               LONG x, y;
-               if ((!gfxGetRelativeCursorPos(Self->Layout->SurfaceID, &x, &y)) AND (within_area(Self, x, y))) {
-               }
-               else {
-                  // Release the pointer image
-
-                  if (Self->CursorSet) {
-                     gfxRestoreCursor(PTR_DEFAULT, Self->Head.UniqueID);
-                     Self->CursorSet = 0;
-                  }
-               }
-
-               Self->State = CLICK_RELEASED;
-            }
-         }
-      }
-   }
-
-   return ERR_Okay;
-}
-
-//****************************************************************************
-
 static ERROR RESIZE_Free(objResize *Self, APTR Void)
 {
    if (Self->Layout) { acFree(Self->Layout); Self->Layout = NULL; }
@@ -463,7 +171,7 @@ static ERROR RESIZE_Free(objResize *Self, APTR Void)
       Self->CursorSet = 0;
    }
 
-   gfxUnsubscribeInput(0);
+   if (Self->InputHandle) { gfxUnsubscribeInput(Self->InputHandle); Self->InputHandle = 0; }
 
    return ERR_Okay;
 }
@@ -496,9 +204,8 @@ static ERROR RESIZE_Init(objResize *Self, APTR Void)
       ReleaseObject(surface);
    }
 
-   // Subscribing to display input will allow us to receive DATA_INPUT_READY messages in DataFeed().
-
-   gfxSubscribeInput(Self->Layout->SurfaceID, JTYPE_MOVEMENT|JTYPE_BUTTON, 0);
+   auto callback = make_function_stdc(consume_input_events);
+   gfxSubscribeInput(&callback, Self->Layout->SurfaceID, JTYPE_MOVEMENT|JTYPE_BUTTON, 0, &Self->InputHandle);
 
    // If no object was specified for resizing, default to the container
 
@@ -590,6 +297,274 @@ default the Resize object's container will receive the messages.
 
 *****************************************************************************/
 
+static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
+{
+   auto Self = (objResize *)CurrentContext();
+
+   for (auto input=Events; input; input=input->Next) {
+      if (Self->State IS CLICK_HELD) {
+         if (input->Flags & (JTYPE_ANCHORED|JTYPE_MOVEMENT)) {
+            struct acRedimension redim;
+            objSurface *object;
+            ERROR error;
+            LONG over_x, over_y;
+
+            if (input->Flags & JTYPE_ANCHORED) {
+               // Note: Anchoring is typically not available in hosted environments, so this feature goes unused.
+
+               // Consume all anchor events up to the latest one.  This is important as X and Y movement can often
+               // be split into two separate messages (JET_ABS_X and JET_ABS_Y).
+
+               over_x = input->X; // NB: Misnomer - over_x/y will actually reflect the change in position and not a coordinate.
+               over_y = input->Y;
+               for (auto scan=input->Next; (scan) and (scan->Flags & JTYPE_ANCHORED); scan=scan->Next) {
+                  input = scan;
+                  if (input->Type IS JET_ABS_X) over_x += input->X;
+                  else if (input->Type IS JET_ABS_Y) over_y += input->Y;
+               }
+            }
+            else {
+               // Consume all movement events by skipping to the most recent one
+               for (auto scan=input->Next; (scan) and (scan->Flags & JTYPE_MOVEMENT); scan=scan->Next) {
+                  input = scan;
+               }
+
+               over_x = input->AbsX - Self->OriginalAbsX; // NB: Using input->X won't work because X is relative to the window surface (which matters when resizing from the left side)
+               over_y = input->AbsY - Self->OriginalAbsY;
+            }
+
+            if (!(error = AccessObject(Self->ObjectID, 4000, &object))) {
+               // Send the Redimension message to the target object
+
+               LONG maxwidth  = object->MaxWidth  + object->LeftMargin + object->RightMargin;
+               LONG maxheight = object->MaxHeight + object->TopMargin + object->BottomMargin;
+               LONG minwidth  = object->MinWidth  + object->LeftMargin + object->RightMargin;
+               LONG minheight = object->MinHeight + object->TopMargin + object->BottomMargin;
+
+               if (Self->Direction & MOVE_RIGHT) {
+                  // Resizing the right edge of the surface (width is adjusted)
+
+                  redim.X = Self->OriginalX;
+                  if (Self->prvAnchored) redim.Width = object->Width + over_x;
+                  else redim.Width = over_x + (Self->OriginalWidth - Self->prvAnchorX);
+
+                  // Restrict the width to the size of the parent's width
+
+                  LONG px, pwidth;
+                  if (!drwGetVisibleArea(object->ParentID, &px, NULL, NULL, NULL, &pwidth, NULL)) {
+                     if (object->X + redim.Width >= px + pwidth) redim.Width = px + pwidth - object->X;
+                  }
+               }
+               else if (Self->Direction & MOVE_LEFT) {
+                  // Movement comes from the left edge of the surface
+
+                  //if (absx >= Self->OriginalX + Self->OriginalWidth) continue;
+
+                  if (Self->prvAnchored) {
+                     redim.X = object->X + over_x;
+                     redim.Width  = object->Width - over_x;
+                  }
+                  else {
+                     redim.X  = Self->OriginalX + over_x;
+                     redim.Width = Self->OriginalWidth - over_x;
+                  }
+
+                  // Restrict the left edge to the parent's visible left edge
+
+                  LONG px;
+                  if (!drwGetVisibleArea(object->ParentID, &px, NULL, NULL, NULL, NULL, NULL)) {
+                     if (redim.X < px) {
+                        redim.Width -= px - redim.X;
+                        redim.X = px;
+                     }
+                  }
+
+                  // Check minwidth/maxwidth settings due to 'reverse resizing'
+
+                  if (redim.Width > maxwidth) {
+                     redim.X = Self->OriginalX + Self->OriginalWidth - maxwidth;
+                     redim.Width = maxwidth;
+                  }
+                  else if (redim.Width < minwidth) {
+                     redim.X = Self->OriginalX + Self->OriginalWidth - minwidth;
+                     redim.Width  = minwidth;
+                  }
+               }
+               else {
+                  redim.X = Self->OriginalX;
+                  redim.Width  = 0;
+               }
+
+               if (Self->Direction & MOVE_DOWN) {
+                  redim.Y = Self->OriginalY;
+                  if (Self->prvAnchored) redim.Height = object->Height + over_y;
+                  else redim.Height = input->AbsY - Self->OriginalAbsY;
+
+                  // Restrict the height to the size of the parent's height
+
+                  LONG py, pheight;
+                  if (!drwGetVisibleArea(object->ParentID, NULL, &py, NULL, NULL, NULL, &pheight)) {
+                     if (object->Y + redim.Height >= py + pheight) redim.Height = py + pheight - object->Y;
+                  }
+               }
+               else if (Self->Direction & MOVE_UP) {
+                  if (Self->prvAnchored) {
+                     redim.Y = object->Y + over_y;
+                     redim.Height = object->Height - over_y;
+                  }
+                  else {
+                     redim.Y = Self->OriginalY + over_y;
+                     redim.Height = Self->OriginalHeight - over_y;
+                  }
+
+                  // Restrict the top edge to the parent's visible top edge
+
+                  LONG py;
+                  if (!drwGetVisibleArea(object->ParentID, NULL, &py, NULL, NULL, NULL, NULL)) {
+                     if (redim.Y < py) {
+                        redim.Height  -= py - redim.Y;
+                        redim.Y = py;
+                     }
+                  }
+
+                  // Check minheight/maxheight settings due to 'reverse resizing'
+
+                  if (redim.Height > maxheight) {
+                     redim.Y = Self->OriginalY + Self->OriginalHeight - maxheight;
+                     redim.Height = maxheight;
+                  }
+                  else if (redim.Height < minheight) {
+                     redim.Y = Self->OriginalY + Self->OriginalHeight - minheight;
+                     redim.Height = minheight;
+                  }
+               }
+               else {
+                  redim.Y = Self->OriginalY;
+                  redim.Height = 0;
+               }
+
+               if (redim.Width < 0)  redim.Width  = 0;
+               if (redim.Height < 0) redim.Height = 0;
+               redim.Z = 0;
+               redim.Depth  = 0;
+
+               Action(AC_Redimension, object, &redim);
+               //DelayMsg(AC_Redimension, object->UniqueID, &redim); //<- Only works if anchoring is disabled.
+
+               // If we have anchored the pointer, we need to tell the pointer to move or else it will stay locked
+               // at its current position.
+
+               redim.Width  = object->Width;
+               redim.Height = object->Height;
+               ReleaseObject(object);
+
+               if (Self->prvAnchored) {
+                  LONG absx, absy;
+
+                  if (!drwGetSurfaceCoords(Self->Layout->SurfaceID, NULL, NULL, &absx, &absy, NULL, NULL)) {
+                     if (Self->Direction & MOVE_RIGHT) {
+                        absx = ((absx + redim.Width) - (Self->OriginalWidth - Self->prvAnchorX));
+                     }
+                     else absx = (absx + Self->prvAnchorX);
+
+                     if (Self->Direction & MOVE_DOWN) {
+                        absy = ((absy + redim.Height) - (Self->OriginalHeight - Self->prvAnchorY));
+                     }
+                     else absy = (absy + Self->prvAnchorY);
+
+                     gfxSetCursorPos(absx, absy);
+                  }
+               }
+            }
+            else if (error IS ERR_NoMatchingObject) {
+               Self->ObjectID = 0;
+               acFree(Self); // Commit suicide
+            }
+         }
+      }
+
+      // Note that this code has to 'drop through' due to the movement consolidation loop earlier in this subroutine.
+
+      if (input->Flags & JTYPE_MOVEMENT) {
+         for (auto scan=input->Next; (scan) and (scan->Flags & JTYPE_MOVEMENT); scan=scan->Next) {
+            input = scan;
+         }
+
+         // If the user is moving the mouse pointer over the resizing area and the mouse button is not currently
+         // held, check if we can change the pointer image to something else.  This provides effective visual
+         // notification to the user.
+
+         if (input->OverID IS Self->Layout->SurfaceID) {
+            LONG cursor;
+
+            LONG x = input->X;
+            LONG y = input->Y;
+            gfxGetRelativeCursorPos(Self->Layout->SurfaceID, &x, &y);
+
+            if (within_area(Self, x, y)) {
+               cursor = get_cursor_type(Self);  // Determine what cursor we should be using
+               if (cursor != Self->CursorSet) { // If the cursor is to change, use gfxSetCursor() to do it
+                  if (!gfxSetCursor(0, CRF_BUFFER|CRF_NO_BUTTONS, cursor, 0, Self->Head.UniqueID)) {
+                     Self->CursorSet = cursor;
+                  }
+               }
+            }
+            else if (Self->CursorSet) {
+               gfxRestoreCursor(PTR_DEFAULT, Self->Head.UniqueID);
+               Self->CursorSet = 0;
+            }
+         }
+         else if (Self->CursorSet) {
+            gfxRestoreCursor(PTR_DEFAULT, Self->Head.UniqueID);
+            Self->CursorSet = 0;
+         }
+      }
+
+      // Note that this code has to 'drop through' due to the movement consolidation loop earlier in this subroutine.
+
+      if (input->Type IS Self->Button) {
+         if (input->Value > 0) {
+            // Check the region to make sure that the button click has fallen in the correct place.
+
+            if (within_area(Self, input->X, input->Y)) {
+               if (!drwGetSurfaceCoords(Self->ObjectID, &Self->OriginalX, &Self->OriginalY, &Self->OriginalAbsX, &Self->OriginalAbsY, &Self->OriginalWidth, &Self->OriginalHeight)) {
+                  // Attempt to anchor the pointer (failure is likely on hosted displays)
+
+                  if (!gfxLockCursor(Self->Layout->SurfaceID)) {
+                     Self->prvAnchored = TRUE;
+                  }
+
+                  Self->prvAnchorX  = input->X; // Remember the original pointer position irrespective of whether or not we got the anchor.
+                  Self->prvAnchorY  = input->Y;
+
+                  Self->State = CLICK_HELD;
+               }
+            }
+         }
+         else if (Self->State IS CLICK_HELD) {
+            if (Self->prvAnchored) {
+               Self->prvAnchored = FALSE;
+               gfxUnlockCursor(Self->Layout->SurfaceID);
+            }
+
+            LONG x, y;
+            if ((!gfxGetRelativeCursorPos(Self->Layout->SurfaceID, &x, &y)) AND (within_area(Self, x, y))) {
+            }
+            else { // Release the pointer image
+               if (Self->CursorSet) {
+                  gfxRestoreCursor(PTR_DEFAULT, Self->Head.UniqueID);
+                  Self->CursorSet = 0;
+               }
+            }
+
+            Self->State = CLICK_RELEASED;
+         }
+      }
+   }
+
+   return ERR_Okay;
+}
+
 //****************************************************************************
 
 #include "class_resize_def.c"
@@ -649,5 +624,5 @@ ERROR init_resize(void)
 
 void free_resize(void)
 {
-   if (clResize) { acFree(clResize); clResize   = NULL; }
+   if (clResize) { acFree(clResize); clResize = NULL; }
 }

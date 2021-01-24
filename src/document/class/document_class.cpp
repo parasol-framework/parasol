@@ -43,8 +43,7 @@ static ERROR DOCUMENT_ActionNotify(objDocument *Self, struct acActionNotify *Arg
       Self->HasFocus = TRUE;
 
       if (!Self->prvKeyEvent) {
-         FUNCTION callback;
-         SET_FUNCTION_STDC(callback, (APTR)&key_event);
+         auto callback = make_function_stdc(key_event);
          SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, &callback, Self, &Self->prvKeyEvent);
       }
 
@@ -474,41 +473,6 @@ static ERROR DOCUMENT_DataFeed(objDocument *Self, struct acDataFeed *Args)
 
       return ERR_Okay;
    }
-   else if (Args->DataType IS DATA_INPUT_READY) {
-      InputMsg *input, *scan;
-      ERROR inputerror;
-
-      while (!gfxGetInputMsg((struct dcInputReady *)Args->Buffer, 0, &input)) {
-         if (input->Flags & JTYPE_MOVEMENT) {
-            while (!(inputerror = gfxGetInputMsg((struct dcInputReady *)Args->Buffer, 0, &scan))) {
-               if (scan->Flags & JTYPE_MOVEMENT) input = scan;
-               else break;
-            }
-
-            if (input->OverID IS Self->PageID) Self->MouseOver = TRUE;
-            else Self->MouseOver = FALSE;
-
-            check_mouse_pos(Self, input->X, input->Y);
-
-            if (inputerror) break;
-            else input = scan;
-
-            // Note that this code has to 'drop through' due to the movement consolidation loop earlier in this subroutine.
-         }
-
-         if (input->Type IS JET_LMB) {
-            if (input->Value > 0) {
-               Self->LMB = TRUE;
-               check_mouse_click(Self, input->X, input->Y);
-            }
-            else {
-               Self->LMB = FALSE;
-               check_mouse_release(Self, input->X, input->Y);
-            }
-         }
-      }
-      return ERR_Okay;
-   }
    else {
       log.msg("Datatype %d not supported.", Args->DataType);
       return ERR_Mismatch;
@@ -758,8 +722,7 @@ static ERROR DOCUMENT_Free(objDocument *Self, APTR Void)
    if (Self->Temp)        { FreeResource(Self->Temp); Self->Temp = NULL; }
    if (Self->WorkingPath) { FreeResource(Self->WorkingPath); Self->WorkingPath = NULL; }
    if (Self->Templates)   { acFree(Self->Templates); Self->Templates = NULL; }
-
-   gfxUnsubscribeInput(0);
+   if (Self->InputHandle) { gfxUnsubscribeInput(Self->InputHandle); Self->InputHandle = 0; };
 
    return ERR_Okay;
 }
@@ -883,7 +846,8 @@ static ERROR DOCUMENT_Init(objDocument *Self, APTR Void)
          TAGEND);
       if (!acInit(surface)) {
          drwAddCallback(surface, (APTR)&draw_document);
-         gfxSubscribeInput(Self->PageID, JTYPE_MOVEMENT|JTYPE_BUTTON, 0);
+         auto callback = make_function_stdc(consume_input_events);
+         gfxSubscribeInput(&callback, Self->PageID, JTYPE_MOVEMENT|JTYPE_BUTTON, 0, &Self->InputHandle);
          error = ERR_Okay;
       }
       else { acFree(surface); error = ERR_Init; Self->PageID = 0; }

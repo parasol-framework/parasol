@@ -1,7 +1,7 @@
 
 //****************************************************************************
 
-static void vwUserClick(objView *Self, InputMsg *Input)
+static void vwUserClick(objView *Self, const InputEvent *Input)
 {
    parasol::Log log(__FUNCTION__);
    view_col *col;
@@ -217,7 +217,7 @@ static void vwUserClick(objView *Self, InputMsg *Input)
 
 //*****************************************************************************
 
-static void vwUserClickRelease(objView *Self, InputMsg *Input)
+static void vwUserClickRelease(objView *Self, const InputEvent *Input)
 {
    Self->ClickIndex = -1;
    if (Input->Type IS JET_LMB) {
@@ -252,7 +252,7 @@ static void vwUserClickRelease(objView *Self, InputMsg *Input)
 
 //*****************************************************************************
 
-static void vwUserMovement(objView *Self, InputMsg *Input)
+static void vwUserMovement(objView *Self, const InputEvent *Input)
 {
    parasol::Log log(__FUNCTION__);
    XMLTag *tag;

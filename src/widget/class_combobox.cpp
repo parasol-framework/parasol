@@ -129,10 +129,9 @@ static ERROR COMBOBOX_Focus(objComboBox *Self, APTR Void)
 
 static ERROR COMBOBOX_Free(objComboBox *Self, APTR Void)
 {
-   if (Self->TextInput) { acFree(Self->TextInput); Self->TextInput = NULL; }
-   if (Self->Menu)      { acFree(Self->Menu); Self->Menu = NULL; }
-   if (Self->RegionID)  { acFreeID(Self->RegionID); Self->RegionID = 0; }
-   gfxUnsubscribeInput(0);
+   if (Self->TextInput)   { acFree(Self->TextInput); Self->TextInput = NULL; }
+   if (Self->Menu)        { acFree(Self->Menu); Self->Menu = NULL; }
+   if (Self->RegionID)    { acFreeID(Self->RegionID); Self->RegionID = 0; }
    return ERR_Okay;
 }
 

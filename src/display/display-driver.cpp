@@ -6,113 +6,7 @@ Please refer to it for further information on licensing.
 
 *****************************************************************************/
 
-//#define DEBUG
-#define PRIVATE_DISPLAY
-#define PRV_DISPLAY_MODULE
-#define PRV_BITMAP
-#define PRV_DISPLAY
-#define PRV_POINTER
-
-#define USE_XIMAGE TRUE
-
-#define DEFAULT_WHEELSPEED 500
-#define TIME_DBLCLICK      40
-#define REPEAT_BUTTONS     TRUE
-#define MAX_CURSOR_WIDTH   32
-#define MAX_CURSOR_HEIGHT  32
-#define DRAG_XOFFSET       10
-#define DRAG_YOFFSET       12
-#define MAX_INPUTMSG       2048             // Must be a value to the power of two
-#define INPUT_MASK        (MAX_INPUTMSG-1) // All bits will be set if MAX_INPUTMSG is a power of two
-
-#define BF_DATA     0x01
-#define BF_WINVIDEO 0x02
-
-#define SURFACE_READ      (0x0001)   // Read access
-#define SURFACE_WRITE     (0x0002)   // Write access
-#define SURFACE_READWRITE (SURFACE_READ|SURFACE_WRITE)
-
-#ifdef __linux__
-#include <dlfcn.h>
-#include <stdlib.h>
-#include <signal.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/utsname.h>
-#include <sys/wait.h>
-#include <sys/mman.h>
-#include <errno.h>
-#endif
-
-#ifdef __xwindows__
- #include <X11/Xlib.h>
- #include <X11/Xos.h>
- #include <X11/keysym.h>
- #include <X11/XKBlib.h>
- #include <X11/keysymdef.h>
- #include <X11/Xproto.h>
- #include <X11/extensions/Xrandr.h> // Requires libxrandr-dev
- #include <X11/extensions/Xxf86dga.h> // Requires libxxf86dga-dev
- #include <X11/extensions/XShm.h>
- #include <X11/cursorfont.h>
- #include <stdlib.h>
- #include <X11/Xlib.h>
- #include <X11/Xos.h>
- #include <X11/Xutil.h>
- #include <sys/shm.h>
- #include <stdio.h>
-#endif
-
-#ifdef _GLES_
-#define GL_GLEXT_PROTOTYPES 1
-#include <EGL/egl.h>
-#include <EGL/eglext.h>
-#include <EGL/eglplatform.h>
-#include <GLES/gl.h>
-#include <GLES/glext.h>
-#endif
-
-#ifdef __ANDROID__
-#include <android/native_window.h>
-#include <android/native_window_jni.h>
-#include <android/configuration.h>
-#endif
-
-#include <math.h>
-
-#define __system__
-#include <parasol/modules/display.h>
-#include <parasol/modules/window.h>
-#include <parasol/modules/xml.h>
-#include <parasol/modules/surface.h>
-
-#include "display.h"
-#include "idl.h"
-
-#ifdef __ANDROID__
-#include <parasol/modules/android.h>
-#endif
-
-#ifdef __xwindows__
- #include <parasol/modules/xrandr.h>
-#endif
-
-#undef NULL
-#define NULL 0
-
-struct resolution {
-   WORD width;
-   WORD height;
-   WORD bpp;
-};
-
-static resolution * get_resolutions(objDisplay *);
-static ERROR create_bitmap_class(void);
-static ERROR dither(objBitmap *, objBitmap *, ColourFormat *, LONG, LONG, LONG, LONG, LONG, LONG);
-
-static SharedControl *glSharedControl = NULL;
-static LONG glSixBitDisplay = FALSE;
+#include "defs.h"
 
 static ERROR GET_HDensity(objDisplay *Self, LONG *Value);
 static ERROR GET_VDensity(objDisplay *Self, LONG *Value);
@@ -218,34 +112,6 @@ static APTR glDGAVideo = NULL;
 #endif
 
 #ifdef _WIN32
-
-#define DLLCALL // __declspec(dllimport)
-#define WINAPI  __stdcall
-
-extern BYTE glTrayIcon, glTaskBar, glStickToFront;
-
-extern "C" {
-DLLCALL LONG WINAPI SetPixelV(APTR, LONG, LONG, LONG);
-DLLCALL LONG WINAPI SetPixel(APTR, LONG, LONG, LONG);
-DLLCALL LONG WINAPI GetPixel(APTR, LONG, LONG);
-
-LONG winBlit(APTR, LONG, LONG, LONG, LONG, APTR, LONG, LONG);
-void winGetError(LONG, STRING, LONG);
-APTR winCreateCompatibleDC(void);
-APTR winCreateBitmap(LONG, LONG, LONG);
-void winDeleteDC(APTR);
-void winDeleteObject(void *);
-void winDrawEllipse(APTR, LONG, LONG, LONG, LONG, LONG, UBYTE *);
-void winDrawLine(APTR, LONG, LONG, LONG, LONG, UBYTE *);
-void winDrawRectangle(APTR, LONG, LONG, LONG, LONG, UBYTE, UBYTE, UBYTE);
-void winGetPixel(APTR, LONG, LONG, UBYTE *);
-LONG winGetPixelFormat(LONG *, LONG *, LONG *, LONG *);
-APTR winSelectObject(APTR, APTR);
-APTR winSetClipping(APTR, LONG, LONG, LONG, LONG);
-void winSetDIBitsToDevice(APTR, LONG, LONG, LONG, LONG, LONG, LONG, LONG, LONG, LONG, APTR, LONG, LONG, LONG);
-}
-
-#include "win32/windows.h"
 
 HINSTANCE glInstance = 0;
 
@@ -391,21 +257,6 @@ static struct SurfaceBase *SurfaceBase;
 static ColourFormat glColourFormat;
 static BYTE glHeadless = FALSE;
 
-static struct {
-   //LARGE TotalMsgs;     // Total number of messages that have been recorded
-   LARGE  IndexCounter;   // Counter for message ID's
-   InputMsg Msgs[MAX_INPUTMSG];
-} *glInput = NULL;
-
-struct InputSubscription {
-   OBJECTID SubscriberID;
-   OBJECTID SurfaceID;
-   MEMORYID MsgPort;
-   LONG     Mask;
-   LARGE    LastIndex; // Index of the most recently sent message
-   LONG     MsgSent:1;
-};
-
 #ifdef _GLES_ // OpenGL specific data
 enum { EGL_STOPPED=0, EGL_REQUIRES_INIT, EGL_INITIALISED, EGL_TERMINATED };
 static UBYTE glEGLState = 0;
@@ -428,27 +279,6 @@ static OBJECTID glPointerID = 0;
 static DISPLAYINFO *glDisplayInfo;
 static APTR glDither = NULL;
 static LONG glDitherSize = 0;
-
-#define BLEND_MAX_THRESHOLD 255
-#define BLEND_MIN_THRESHOLD 1
-
-#ifndef PI
-#define PI (3.141592653589793238462643383279f)
-#endif
-
-static ERROR create_pointer_class(void);
-static ERROR create_display_class(void);
-static ERROR GetSurfaceAbs(OBJECTID, LONG *, LONG *, LONG *, LONG *);
-static ULONG ConvertRGBToPackedPixel(objBitmap *, RGB8 *) __attribute__ ((unused));
-static ERROR LockSurface(objBitmap *, WORD);
-static ERROR UnlockSurface(objBitmap *);
-
-#ifdef _GLES_ // OpenGL related prototypes
-static GLenum alloc_texture(LONG Width, LONG Height, GLuint *TextureID);
-static void refresh_display_from_egl(objDisplay *Self);
-static ERROR init_egl(void);
-static void free_egl(void);
-#endif
 
 //****************************************************************************
 // Alpha blending data.
@@ -955,9 +785,6 @@ static ERROR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, LONG InfoSi
 static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
    parasol::Log log(__FUNCTION__);
-   DOUBLE fAlpha;
-   WORD iValue, iAlpha;
-   LONG i;
    ERROR error;
    #ifdef __xwindows__
       XGCValues gcv;
@@ -979,6 +806,10 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    // NB: The display module cannot load the Surface module during initialisation due to recursive dependency.
 
    glSharedControl = (SharedControl *)GetResourcePtr(RES_SHARED_CONTROL);
+
+   // Register a fake FD as input_event_loop() so that we can process input events on every ProcessMessages() cycle.
+
+   RegisterFD((HOSTHANDLE)-2, RFD_ALWAYS_CALL, input_event_loop, NULL);
 
    #ifdef _GLES_
       pthread_mutexattr_t attr;
@@ -1018,11 +849,11 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    // Allocate the input message cyclic array
 
-   memoryid = RPM_InputMsgs;
-   error = AllocMemory(sizeof(glInput[0]), MEM_UNTRACKED|MEM_PUBLIC|MEM_RESERVED|MEM_NO_BLOCKING, &glInput, &memoryid);
+   memoryid = RPM_InputEvents;
+   error = AllocMemory(sizeof(glInputEvents[0]), MEM_UNTRACKED|MEM_PUBLIC|MEM_RESERVED|MEM_NO_BLOCKING, &glInputEvents, &memoryid);
    if (error IS ERR_ResourceExists) {
-      if (!glInput) {
-         if (AccessMemory(RPM_InputMsgs, MEM_READ_WRITE|MEM_NO_BLOCKING, 1000, &glInput) != ERR_Okay) {
+      if (!glInputEvents) {
+         if (AccessMemory(RPM_InputEvents, MEM_READ_WRITE|MEM_NO_BLOCKING, 1000, &glInputEvents) != ERR_Okay) {
             return log.warning(ERR_AccessMemory);
          }
       }
@@ -1091,11 +922,12 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
       else XRandRBase = NULL;
 
       // Get the X11 file descriptor (for incoming events) and tell the Core to listen to it when the task is sleeping.
+      // The FD is currently marked as a dummy because processes aren't being woken from select() if the X11 FD already
+      // contains input events.  Dummy FD routines are always called manually prior to select().
 
       glXFD = XConnectionNumber(XDisplay);
       fcntl(glXFD, F_SETFD, 1); // FD does not duplicate across exec()
-      SetResource(RES_X11_FD, glXFD);
-      RegisterFD(glXFD, RFD_READ, X11ManagerLoop, NULL);
+      RegisterFD(glXFD, RFD_READ|RFD_ALWAYS_CALL, X11ManagerLoop, NULL);
 
       // This function checks for DGA and also maps the video memory for us
 
@@ -1142,7 +974,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
       log.trace("Loading X11 cursor graphics.");
 
-      for (i=0; i < ARRAYSIZE(XCursors); i++) {
+      for (LONG i=0; i < ARRAYSIZE(XCursors); i++) {
          if (XCursors[i].CursorID IS PTR_INVISIBLE) XCursors[i].XCursor = create_blank_cursor();
          else XCursors[i].XCursor = XCreateFontCursor(XDisplay, XCursors[i].XCursorID);
       }
@@ -1194,10 +1026,10 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    memoryid = RPM_AlphaBlend;
    if (!(error = AllocMemory(256 * 256, MEM_UNTRACKED|MEM_PUBLIC|MEM_RESERVED|MEM_NO_BLOCKING, &glAlphaLookup, &memoryid))) {
-      i = 0;
-      for (iAlpha=0; iAlpha < 256; iAlpha++) {
-         fAlpha = (DOUBLE)iAlpha * (1.0 / 255.0);
-         for (iValue=0; iValue < 256; iValue++) {
+      LONG i = 0;
+      for (WORD iAlpha=0; iAlpha < 256; iAlpha++) {
+         DOUBLE fAlpha = (DOUBLE)iAlpha * (1.0 / 255.0);
+         for (WORD iValue=0; iValue < 256; iValue++) {
             glAlphaLookup[i++] = clipByte(F2I((DOUBLE)iValue * fAlpha));
          }
       }
@@ -1226,9 +1058,17 @@ static ERROR CMDOpen(OBJECTPTR Module)
 
 static ERROR CMDExpunge(void)
 {
+   parasol::Log log(__FUNCTION__);
+
    if (glCompress)    { acFree(glCompress); glCompress = NULL; }
    if (glAlphaLookup) { ReleaseMemory(glAlphaLookup); glAlphaLookup = NULL; }
    if (glDither)      { FreeResource(glDither); glDither = NULL; }
+
+   DeregisterFD((HOSTHANDLE)-2); // Disable input_event_loop()
+
+   for (const auto & [ handle, sub ] : glInputCallbacks) { // Check that all input subscriptions were terminated
+      log.warning("Found unfreed input subscription %d with filter #%d, mask $%.4x", handle, sub.SurfaceFilter, sub.InputMask);
+   }
 
 #ifdef __xwindows__
 
@@ -1241,7 +1081,6 @@ static ERROR CMDExpunge(void)
       if (modXRR) { acFree(modXRR); modXRR = NULL; }
 
       if (glXFD != -1) { DeregisterFD(glXFD); glXFD = -1; }
-      SetResource(RES_X11_FD, -1);
 
       XSetErrorHandler(NULL);
       XSetIOErrorHandler(NULL);
@@ -1297,7 +1136,7 @@ static ERROR CMDExpunge(void)
 
 #endif
 
-   if (glInput)       { ReleaseMemory(glInput); glInput = NULL; }
+   if (glInputEvents) { ReleaseMemory(glInputEvents); glInputEvents = NULL; }
    if (glDisplayInfo) { ReleaseMemory(glDisplayInfo); glDisplayInfo = NULL; }
    if (clPointer)     { acFree(clPointer);   clPointer   = NULL; }
    if (clDisplay)     { acFree(clDisplay);   clDisplay   = NULL; }
@@ -1337,7 +1176,7 @@ the source item.  It is recommended that the graphic be 32x32 pixels in size and
 Surface will be hidden on completion of the drag and drop operation.
 
 If the call to StartCursorDrag() is successful, the mouse cursor will operate in drag and drop mode.  The UserMovement
-and UserClickRelease actions normally reported from the SystemPointer will now include the JD_DRAGITEM flag in the
+and UserClickRelease actions normally reported from the SystemPointer will now include the `JD_DRAGITEM` flag in the
 ButtonFlags parameter.  When the user releases the primary mouse button, the drag and drop operation will stop and the
 DragDrop action will be passed to the surface immediately underneath the mouse cursor.  Objects that are monitoring for
 the DragDrop action on that surface can then contact the Source object with a DataFeed DragDropRequest.  The
@@ -1419,7 +1258,7 @@ The GetDisplayInfo() function returns information about a display, which include
 depth.  If the system is running on a hosted display (e.g. Windows or X11) then GetDisplayInfo() can also be used to
 retrieve information about the default monitor by using a Display of zero.
 
-The resulting DISPLAYINFO structure values remain good until the next call to this function, at which point they will
+The resulting `DISPLAYINFO` structure values remain good until the next call to this function, at which point they will
 be overwritten.
 
 -INPUT-
@@ -1488,7 +1327,7 @@ static LONG gfxGetDisplayType(void)
 AccessPointer: Returns a lock on the default pointer object.
 
 Use AccessPointer() to grab a lock on the default pointer object that is active in the system.  This is typically the
-first object created from the Pointer class with a name of "SystemPointer".
+first object created from the Pointer class with a name of `SystemPointer`.
 
 Call ~Core.ReleaseObject() to free the lock once it is no longer required.
 
@@ -1598,134 +1437,6 @@ ERROR gfxGetCursorPos(LONG *X, LONG *Y)
       log.warning("Failed to grab the mouse pointer.");
       return ERR_Failed;
    }
-}
-
-/*****************************************************************************
-
--FUNCTION-
-GetInputMsg: Read the next message delivered from the user input message queue.
-
-This function reads messages from the input message queue.  It is designed to be used in conjunction with the
-~Core.SubscribeInput() function and is called when InputReady messages are received through the subscriber's data
-feed.  This function should be called using a loop to parse all the messages waiting on the input queue (refer to
-the ~Core.SubscribeInput() function for an example).
-
-All receivable messages are held in an InputMsg structure that is returned in the Msg parameter.  The structure format
-is as follows:
-
-<fields>
-<fld type="UWORD" name="Type">This value is set to a JET constant that describes the input event.</>
-<fld type="UWORD" name="Flags">Flags provide a broad description of the event type and can also provide more specific information relevant to the event (see JTYPE flags).</>
-<fld type="DOUBLE" name="Value">The value associated with the Type</>
-<fld type="OBJECTID" name="RecipientID">The surface that the input message is being conveyed to.</>
-<fld type="OBJECTID" name="OverID">The surface that was directly under the mouse pointer at the time of the event.</>
-<fld type="LONG" name="AbsX">Absolute horizontal coordinate of the mouse pointer (relative to the top left of the display).</>
-<fld type="LONG" name="AbsY">Absolute vertical coordinate of the mouse pointer (relative to the top left of the display).</>
-<fld type="LONG" name="OverX">Horizontal pointer coordinate, usually relative to the surface that the pointer is positioned over.  If a mouse button is held or the pointer is anchored, the coordinates are relative to the Recipient surface.</>
-<fld type="LONG" name="OverY">Vertical pointer coordinate.</>
-<fld type="LARGE" name="Timestamp">Millisecond counter at which the input was recorded, or as close to it as possible.</>
-<fld type="OBJECTID" name="DeviceID">Reference to the hardware device that this event originated from.  There is no guarantee that the DeviceID is a reference to a publicly accessible object.</>
-</>
-
-JET constants are as follows, taking special note of ENTERED_SURFACE and LEFT_SURFACE, which are not driven by device input:
-
-<types lookup="JET"/>
-
-The JTYPE flags that can be set in the Flags field are as follows.  Note that these flags serve as input masks for the
-~Core.SubscribeInput() function, so to receive a message of the given type the appropriate JTYPE flag must have
-been set in the original subscription call.
-
-<types lookup="JTYPE"/>
-
--INPUT-
-struct(*dcInputReady) Input: Points to an input ready message as received through the DC_INPUTREADY data channel.
-int(JTYPE) Flags: Input mask flags.
-&struct(*InputMsg) Msg: Pointer to a InputMsg structural reference that will store the result.  GetInputMsg() will not modify the existing value stored in this parameter in the event of an error.
-
--ERRORS-
-Okay: A message has been retrieved from the queue.
-NullArgs:
-OutOfRange:
-AccessMemory: Failed to access the queue data.
-Finished: There are no input messages left to read from the queue.
-
-*****************************************************************************/
-
-static ERROR gfxGetInputMsg(struct dcInputReady *Input, LONG Flags, struct InputMsg **Msg)
-{
-   parasol::Log log(__FUNCTION__);
-   InputSubscription *list;
-   LONG i, subindex;
-   BYTE msgfound;
-
-   if ((!Input) or (!Msg)) return ERR_NullArgs;
-/*
-   if (Flags & IMF_CONSOLIDATE) {
-      ERROR error;
-      error = gfxGetInputMsg(Input, 0, Msg);
-      if (Msg[0].Flags &
-      return(
-   }
-*/
-
-   if (!glSharedControl->InputMID) return ERR_Finished;
-
-   auto in = (struct dcDisplayInputReady *)Input;
-   subindex = in->SubIndex;
-   if ((subindex < 0) or (subindex >= glSharedControl->InputTotal)) return log.warning(ERR_OutOfRange);
-
-   if (!AccessMemory(glSharedControl->InputMID, MEM_READ, 2000, &list)) {
-      list[subindex].MsgSent = FALSE;
-
-      if (in->NextIndex >= glInput->IndexCounter) {
-         ReleaseMemory(list);
-         return ERR_Finished;
-      }
-
-      //log.traceBranch("ID: " PF64() "/" PF64() ", Subscriber: %d", in->NextIndex, glInput->IndexCounter, list[subindex].SubscriberID);
-
-      if (in->NextIndex < glInput->IndexCounter - MAX_INPUTMSG) {
-         log.msg("Input messages have wrapped (subscriber %d unresponsive).", list[subindex].SubscriberID);
-         in->NextIndex = glInput->IndexCounter - MAX_INPUTMSG + 1;
-      }
-
-      // Scan the message list until we either get a match or we run out of messages.
-
-
-      msgfound = FALSE;
-      while (in->NextIndex < glInput->IndexCounter) {
-         i = in->NextIndex & INPUT_MASK;
-         if ((list[subindex].Mask & glInput->Msgs[i].Mask) IS glInput->Msgs[i].Mask) {
-            if ((!list[subindex].SurfaceID) or (list[subindex].SurfaceID IS glInput->Msgs[i].RecipientID)) {
-               msgfound = TRUE;
-               break;
-            }
-         }
-
-         in->NextIndex++;
-      }
-
-      if (!msgfound) {
-         // Subscriber is up to date with its messages
-         in->NextIndex = glInput->IndexCounter;
-         ReleaseMemory(list);
-         return ERR_Finished;
-      }
-
-      if (in->NextIndex >= list[subindex].LastIndex) {
-         // This is the last message in the queue for this subscriber.  Set the NextIndex
-         // to IndexCounter and the next call to gfxGetInputMsg() will return ERR_Finished.
-
-         in->NextIndex = glInput->IndexCounter;
-      }
-      else if (in->NextIndex < glInput->IndexCounter) in->NextIndex++;
-
-      *Msg = glInput->Msgs + i;
-
-      ReleaseMemory(list);
-      return ERR_Okay;
-   }
-   else return log.warning(ERR_AccessMemory);
 }
 
 /******************************************************************************
@@ -5059,9 +4770,9 @@ static void gfxDrawPixel(objBitmap *Bitmap, LONG X, LONG Y, ULONG Colour)
 DrawRectangle: Draws rectangles, both filled and unfilled.
 
 This function draws both filled and unfilled rectangles.  The rectangle is drawn to the target bitmap at position
-(X, Y) with dimensions determined by the specified Width and Height.  If the Flags parameter defines BAF_FILL then
+(X, Y) with dimensions determined by the specified Width and Height.  If the Flags parameter defines `BAF_FILL` then
 the rectangle will be filled, otherwise only the outline will be drawn.  The colour of the rectangle is determined by
-the pixel value in the Colour argument.  Blending is not enabled unless the BAF_BLEND flag is defined and an alpha
+the pixel value in the Colour argument.  Blending is not enabled unless the `BAF_BLEND` flag is defined and an alpha
 value is present in the Colour.
 
 -INPUT-
@@ -5503,7 +5214,7 @@ regions - for instance, if you set regions 0, 1, 2 and 3, then skip 4 and set 5,
 If you have specified multiple clip regions and want to lower the count or reset the list, set the number of the last
 region that you want in your list and set the Terminate argument to TRUE to kill the regions specified beyond it.
 
-The ClipLeft, ClipTop, ClipRight and ClipBottom fields in the target Bitmap will be updated to reflect the overall
+The `ClipLeft`, `ClipTop`, `ClipRight` and `ClipBottom` fields in the target Bitmap will be updated to reflect the overall
 area that is covered by the clipping regions that have been set.
 
 -INPUT-
@@ -5550,10 +5261,9 @@ static void gfxSync(objBitmap *Bitmap)
 
 }
 
-/*****************************************************************************
-** NOTE: Please ensure that the Width and Height are already clipped to meet the restrictions of BOTH the source and
-** destination bitmaps.
-*/
+//****************************************************************************
+// NOTE: Please ensure that the Width and Height are already clipped to meet the restrictions of BOTH the source and
+// destination bitmaps.
 
 #define DITHER_ERROR(c)                  /* Dither one colour component */ \
    dif = (buf1[x].c>>3) - (brgb.c<<3);   /* An eighth of the error */ \
@@ -5745,201 +5455,6 @@ static ERROR dither(objBitmap *Bitmap, objBitmap *Dest, ColourFormat *Format, LO
    }
 
    return ERR_Okay;
-}
-
-/******************************************************************************
-
--FUNCTION-
-SubscribeInput: Subscribe to incoming input messages for any active surface object.
-
-The SubscribeInput() function provides a method for receiving input messages.  Input messages can be filtered so that
-they are received in relation to surfaces and devices.  An input mask can also be applied so that only certain types of
-messages are received.  If no filters are applied, then all user input messages can be received.
-
-The input system is limited to managing messages that are related to the display (such as track pads, mouse pointers,
-graphics tablets and touch screens). Keyboard devices are not included in the input management system as they are
-specially supported by the <module>Keyboard</> module.
-
-To reduce the number of messages being passed through the system, input messages are placed on a global queue that
-is accessible to all tasks.  When a new message appears that matches a client's filtering criteria, an InputReady data
-feed message will be sent to it.  The ~Core.GetInputMsg() function can then be used to process the available
-messages in the queue.  The following code segment illustrates an example of this, and would be used in the DataFeed
-action:
-
-<pre>
-if (Args->DataType IS DATA_INPUT_READY) {
-   struct InputMsg *input;
-
-   while (!scrGetInputMsg(Args->Buffer, 0, &input)) {
-      if (input->Flags & JTYPE_MOVEMENT) {
-
-      }
-      else if (input->Type IS JET_LMB) {
-
-      }
-   }
-}
-</pre>
-
-Further information on the processing of input messages is available in the documentation for the ~Core.GetInputMsg()
-function.
-
-You are required to remove the subscription with ~Core.UnsubscribeInput() once it is no longer required.
-
--INPUT-
-oid Surface: If set, only the input messages that match the given surface ID will be received.
-int(JTYPE) Mask: Combine JTYPE flags to define the input messages that you wish to received.  Set to 0xffffffff if all messages are desirable.
-oid Device: If set, only the input messages that match the given device ID will be received.  NOTE - Support not yet implemented, set to zero.
-
--ERRORS-
-Okay:
-NullArgs:
-
-******************************************************************************/
-
-static ERROR gfxSubscribeInput(OBJECTID SurfaceID, LONG Mask, OBJECTID DeviceID)
-{
-   parasol::Log log(__FUNCTION__);
-
-   #define CHUNK_INPUT 20
-
-   auto sub = CurrentContext();
-
-   log.traceBranch("Subscriber: #%d, Surface: #%d, MsgPort: " PF64() ", Mask: $%.8x, InputMID: %d", sub->UniqueID, SurfaceID, GetResource(RES_MESSAGE_QUEUE), Mask, glSharedControl->InputMID);
-
-   // Allocate the subscription array if it does not exist.  NB: The memory is untracked and will be removed by the
-   // last task that cleans up the memory resource pool.
-
-   if (!glSharedControl->InputMID) {
-      if (AllocMemory(sizeof(InputSubscription) * CHUNK_INPUT, MEM_PUBLIC|MEM_UNTRACKED, NULL, &glSharedControl->InputMID)) {
-         return log.warning(ERR_AllocMemory);
-      }
-      glSharedControl->InputSize = CHUNK_INPUT;
-   }
-
-   // Add the subscription to the list.  Note that granted access to InputMID acts as a lock for variables like InputTotal.
-
-   InputSubscription *list, *newlist;
-   if (!AccessMemory(glSharedControl->InputMID, MEM_READ_WRITE, 2000, &list)) {
-      // If there is no space left in the subscription array, expand it
-
-      if (glSharedControl->InputTotal >= glSharedControl->InputSize) {
-         log.msg("Input array needs to be expanded from %d entries.", glSharedControl->InputSize);
-
-         MEMORYID newlistid;
-         if (AllocMemory(sizeof(InputSubscription) * (glSharedControl->InputSize+CHUNK_INPUT), MEM_PUBLIC|MEM_UNTRACKED, (APTR *)&newlist, &newlistid)) {
-            ReleaseMemory(list);
-            return ERR_AllocMemory;
-         }
-
-         CopyMemory(list, newlist, sizeof(InputSubscription) * glSharedControl->InputSize);
-
-         ReleaseMemory(list);
-
-         FreeResourceID(glSharedControl->InputMID);
-         glSharedControl->InputMID = newlistid;
-         glSharedControl->InputSize += CHUNK_INPUT;
-         list = newlist;
-      }
-
-      LONG i = glSharedControl->InputTotal;
-
-      list[i].SurfaceID    = SurfaceID;
-      list[i].SubscriberID = sub->UniqueID;
-      list[i].MsgPort      = GetResource(RES_MESSAGE_QUEUE);
-      if (!Mask) list[i].Mask = 0xffffffff;
-      else list[i].Mask = Mask;
-
-      __sync_fetch_and_add(&glSharedControl->InputTotal, 1);
-
-      ReleaseMemory(list);
-      return ERR_Okay;
-   }
-   else return log.warning(ERR_AccessMemory);
-}
-
-/******************************************************************************
-
--FUNCTION-
-GetInputTypeName: Returns the string name for an input type.
-
-This function converts JET integer constants to their string equivalent.  Refer to ~Core.SubscribeInput() for a
-list of JET constants.
-
--INPUT-
-int(JET) Type: JET type integer.
-
--RESULT-
-cstr: A string describing the input type is returned or NULL if the Type is invalid.
-
-******************************************************************************/
-
-static CSTRING gfxGetInputTypeName(LONG Type)
-{
-   if ((Type < 1) or (Type >= JET_END)) return NULL;
-   return glInputNames[Type];
-}
-
-/******************************************************************************
-
--FUNCTION-
-UnsubscribeInput: Removes an input subscription.
-
-This function removes an input subscription that has been configured using ~Core.SubscribeInput().  If a Surface
-filter was specified in the original subscription, this can also be defined so that any other active subscriptions
-acquired by the Subscriber are unaffected.
-
--INPUT-
-oid Surface: The surface to target for unsubscription.  If zero, all subscriptions are removed for the active object.
-
--ERRORS-
-Okay
-NullArgs
-NotFound
--END-
-
-******************************************************************************/
-
-static ERROR gfxUnsubscribeInput(OBJECTID SurfaceID)
-{
-   parasol::Log log(__FUNCTION__);
-
-   OBJECTPTR sub = CurrentContext();
-
-   log.traceBranch("Subscriber: %d, Surface: %d", sub->UniqueID, SurfaceID);
-
-   if (!glSharedControl->InputMID) return ERR_NotFound;
-
-   InputSubscription *list;
-   if (!AccessMemory(glSharedControl->InputMID, MEM_READ_WRITE, 2000, &list)) {
-      bool removed = FALSE;
-      for (LONG i=0; i < glSharedControl->InputTotal; i++) {
-         if ((list[i].SubscriberID IS sub->UniqueID) and ((!SurfaceID) or (SurfaceID IS list[i].SurfaceID))) {
-            removed = TRUE;
-            if (i+1 < glSharedControl->InputTotal) {
-               // Compact the list
-               CopyMemory(list+i+1, list+i, sizeof(InputSubscription) * (glSharedControl->InputTotal - i - 1));
-            }
-            else ClearMemory(list+i, sizeof(list[i]));
-            i--; // Offset the subsequent i++ of the for loop
-            __sync_fetch_and_sub(&glSharedControl->InputTotal, 1);
-         }
-      }
-
-      if (!glSharedControl->InputTotal) {
-         log.trace("Freeing subscriber memory (last subscription removed)");
-         ReleaseMemory(list);
-         FreeResourceID(glSharedControl->InputMID);
-         glSharedControl->InputMID   = 0;
-         glSharedControl->InputSize  = 0;
-         glSharedControl->InputTotal = 0;
-      }
-      else ReleaseMemory(list);
-
-      if (!removed) return ERR_NotFound;
-      else return ERR_Okay;
-   }
-   else return log.warning(ERR_AccessMemory);
 }
 
 /******************************************************************************
@@ -6160,6 +5675,7 @@ static void free_egl(void)
 
 //****************************************************************************
 
+#include "input_events.cpp"
 #include "class_pointer.cpp"
 #include "class_display.cpp"
 #include "class_bitmap.cpp"

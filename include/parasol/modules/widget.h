@@ -267,6 +267,7 @@ typedef struct rkScrollbar {
 struct ScrollButton {
    OBJECTID ButtonID;
    BYTE     Direction;
+   LONG     InputHandle;
 };
 
 // Scroll class definition
@@ -301,6 +302,7 @@ typedef struct rkScroll {
    LONG     ObscuredView;
    LONG     SurfaceWidth, SurfaceHeight;
    LONG     Offset;
+   LONG     InputHandle;
    char     Field[32];
    UBYTE    RecursionBlock;
    BYTE     PostIntersect;     // Set to TRUE if the Intersect field was set post-initialisation (we are not expected to adjust our scrollbar size)
@@ -372,6 +374,7 @@ typedef struct rkText {
    LONG   YPosition;         // Vertical scrolling offset
    LONG   CursorChar;
    LONG   CursorSavePos;
+   LONG   InputHandle;
    TIMER  CursorTimer;
    WORD   TotalFrames;
    WORD   ClickHeld;
@@ -536,6 +539,7 @@ typedef struct rkButton {
    STRING Onclick;          // Available in Document mode only, references the function to be called when clicked
    UBYTE  Active;           // For recursion management.
    LONG   ClickX, ClickY;   // X/Y coordinate most recently clicked
+   LONG   InputHandle;
   
 #endif
 } objButton;
@@ -558,6 +562,7 @@ typedef struct rkResize {
    LONG  OriginalX, OriginalY;
    LONG  OriginalAbsX, OriginalAbsY;
    LONG  prvAnchorX, prvAnchorY;
+   LONG  InputHandle;
    WORD  CursorSet;
    WORD  State;
    BYTE  prvAnchored;
@@ -836,6 +841,7 @@ typedef struct rkView {
    APTR     prvKeyEvent;
    OBJECTID DragSurface;
    OBJECTID GroupSurfaceID;
+   LONG   InputHandle;
    LONG   NSIndex;           // Node string index
    LONG   NSSize;            // Size of the NodeStrings buffer
    LONG   XPos, YPos;        // Scrolling offset

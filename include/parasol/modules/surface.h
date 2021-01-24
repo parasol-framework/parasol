@@ -241,6 +241,7 @@ typedef struct rkSurface {
    LONG     ScrollToX, ScrollToY;
    LONG     ScrollFromX, ScrollFromY;
    LONG     ListIndex;            // Last known list index
+   LONG     InputHandle;          // Input handler for dragging of surfaces
    TIMER    ScrollTimer;
    MEMORYID DataMID;              // Bitmap memory reference
    MEMORYID PrecopyMID;           // Precopy region information

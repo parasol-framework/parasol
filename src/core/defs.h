@@ -503,7 +503,6 @@ extern LONG glPageSize; // Read only
 extern LONG glBufferSize;
 extern TIMER glCacheTimer;
 extern STRING glBuffer;
-extern LONG glX11FD;
 extern APTR glJNIEnv;
 extern struct ObjectContext glTopContext; // Read-only, not a threading concern.
 extern OBJECTPTR modIconv;

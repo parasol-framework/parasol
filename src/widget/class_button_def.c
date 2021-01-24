@@ -18,7 +18,6 @@ static const struct FieldDef clButtonHoverState[] = {
 static const struct ActionArray clButtonActions[] = {
    { AC_ActionNotify, (APTR)BUTTON_ActionNotify },
    { AC_Activate, (APTR)BUTTON_Activate },
-   { AC_DataFeed, (APTR)BUTTON_DataFeed },
    { AC_Disable, (APTR)BUTTON_Disable },
    { AC_Enable, (APTR)BUTTON_Enable },
    { AC_Focus, (APTR)BUTTON_Focus },

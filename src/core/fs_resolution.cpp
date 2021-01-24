@@ -58,7 +58,7 @@ Loop:            The volume refers back to itself.
 
 static ERROR resolve(objConfig *, STRING, STRING, LONG);
 static ERROR resolve_path_env(CSTRING RelativePath, STRING *Result);
-static THREADVAR UBYTE tlClassLoaded;
+static THREADVAR bool tlClassLoaded;
 
 ERROR ResolvePath(CSTRING Path, LONG Flags, STRING *Result)
 {
@@ -73,7 +73,7 @@ ERROR ResolvePath(CSTRING Path, LONG Flags, STRING *Result)
 
    if (Result) *Result = NULL;
 
-   tlClassLoaded = FALSE;
+   tlClassLoaded = false;
 
    if (Path[0] IS '~') {
       Flags |= RSF_APPROXIMATE;
@@ -312,7 +312,7 @@ static ERROR resolve(objConfig *Config, STRING Source, STRING Dest, LONG Flags)
    parasol::Log log("ResolvePath");
    char fullpath[MAX_FILENAME];
    char buffer[MAX_FILENAME];
-   LONG i, j, k, pos, loop;
+   LONG j, k, pos, loop;
    ERROR error;
 
    struct virtual_drive *vdrive;
@@ -354,23 +354,25 @@ static ERROR resolve(objConfig *Config, STRING Source, STRING Dest, LONG Flags)
 
    STRING path = fullpath;
 
-   // Check if the CLASS: reference is used.  If so, respond by loading the class that handles the volume.  The class'
-   // module should then create a public object and set the volume's path with the format ":ObjectName".  We'll then
-   // discover it on our next recursive attempt.
+   // Check if the EXT: reference is used.  If so, respond by loading the module or class that handles the volume.
+   // The loaded code should replace the volume with the correct information for discovery on the next resolution phase.
 
-   if (!StrCompare("CLASS:", path, 6, STR_MATCH_CASE)) {
-      for (i=0; Source[i]; i++) Dest[i] = Source[i];  // Return an exact duplicate of the original source string
-      Dest[i] = 0;
+   if (!StrCompare("EXT:", path, 4, STR_MATCH_CASE)) {
+      StrCopy(Source, Dest, MAX_FILENAME); // Return an exact duplicate of the original source string
 
       if (get_virtual(Source)) return ERR_VirtualVolume;
 
-      if (tlClassLoaded) { // Already attempted to load this class on a previous occasion - we must fail
+      if (tlClassLoaded) { // Already attempted to load the module on a previous occasion - we must fail
          return ERR_Failed;
       }
 
-      FindClass(ResolveClassName(path + 6));
-      log.trace("Found virtual volume from class %s", path + 6);
-      tlClassLoaded = TRUE; // This setting will prevent recursion
+      // An external reference can refer to a module (preferred) or a class name.
+
+      OBJECTPTR mod;
+      if (!CreateObject(ID_MODULE, NF_INTEGRAL, &mod, FID_Name|TSTR, path + 4, TAGEND)) acFree(mod);
+      else FindClass(ResolveClassName(path + 4));
+
+      tlClassLoaded = true; // This setting will prevent recursion
       return ERR_VirtualVolume;
    }
 

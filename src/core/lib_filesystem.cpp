@@ -3197,7 +3197,7 @@ restart:
                if (!match) continue;
 
                if (!keys.contains("Path")) {
-                  if (!keys["Path"].compare(0, 6, "CLASS:")) Info->DeviceFlags |= DEVICE_SOFTWARE; // Virtual device
+                  if (!keys["Path"].compare(0, 6, "EXT:")) Info->DeviceFlags |= DEVICE_SOFTWARE; // Virtual device
                }
 
                if (!keys.contains("Device")) {

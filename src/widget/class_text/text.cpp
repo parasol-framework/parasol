@@ -98,6 +98,7 @@ static ERROR calc_hscroll(objText *);
 static ERROR calc_vscroll(objText *);
 static LONG  calc_width(objText *, CSTRING, LONG);
 static LONG  column_coord(objText *, LONG, LONG);
+static ERROR consume_input_events(const InputEvent *, LONG);
 static ERROR cursor_timer(objText *, LARGE, LARGE);
 static void  DeleteSelectedArea(objText *);
 static void  draw_lines(objText *, LONG, LONG);
@@ -676,225 +677,6 @@ static ERROR TEXT_DataFeed(objText *Self, struct acDataFeed *Args)
 
       if (!itemcount) add_xml(Self, Self->XML->Tags[0], FALSE, -1);
    }
-   else if (Args->DataType IS DATA_INPUT_READY) {
-      InputMsg *input;
-
-      while (!gfxGetInputMsg((struct dcInputReady *)Args->Buffer, 0, &input)) {
-         if (input->Type IS JET_LMB) {
-            if (input->Value > 0) {
-               struct acDraw draw;
-               STRING str;
-               LONG rowcount, i, clickrow, clickcol;
-               UBYTE outofbounds;
-
-               if (!(Self->Flags & (TXF_EDIT|TXF_SINGLE_SELECT|TXF_MULTI_SELECT))) continue;
-
-               parasol::Log log;
-               log.branch();
-
-               Self->CursorFlash = 0;
-               outofbounds = FALSE;
-               clickrow = 0;
-               clickcol = 0;
-
-               // Determine the row that was clicked
-
-               if (Self->AmtLines > 0) {
-                  clickrow = (input->Y - (Self->Layout->Document ? 0 : Self->Layout->TopMargin) - Self->YPosition) / Self->Font->LineSpacing;
-                  if (clickrow >= Self->AmtLines) {
-                     clickrow = Self->AmtLines - 1;
-                     outofbounds = TRUE;
-                  }
-               }
-
-               // Determine the column that was clicked
-
-               if (clickrow < Self->AmtLines) {
-                  if (Self->Array[clickrow].String) {
-                     if (Self->Flags & TXF_SECRET) {
-                        char buffer[Self->Array[clickrow].Length+1];
-                        for (i=0; i < Self->Array[clickrow].Length; i++) buffer[i] = '*';
-                        buffer[i+1] = 0;
-
-                        fntConvertCoords(Self->Font, buffer, input->X - Self->Layout->BoundX - (Self->Layout->Document ? 0 : Self->Layout->LeftMargin) - Self->XPosition, 0,
-                           0, 0, &clickcol, 0, 0);
-                     }
-                     else {
-                        fntConvertCoords(Self->Font, Self->Array[clickrow].String,
-                           input->X - Self->Layout->BoundX - (Self->Layout->Document ? 0 : Self->Layout->LeftMargin) - Self->XPosition, 0,
-                           0, 0, &clickcol, 0, 0);
-                     }
-                  }
-               }
-
-               // If there is an old area selection, clear it
-
-               if (Self->Flags & TXF_AREA_SELECTED) {
-                  Self->Flags &= ~TXF_AREA_SELECTED;
-
-                  draw.X = Self->Layout->BoundX;
-                  draw.Width  = Self->Layout->BoundWidth;
-                  if (Self->CursorRow < Self->SelectRow) {
-                     draw.Y = row_coord(Self, Self->CursorRow);
-                     rowcount = Self->SelectRow - Self->CursorRow + 1;
-                  }
-                  else {
-                     draw.Y = row_coord(Self, Self->SelectRow);
-                     rowcount = Self->CursorRow - Self->SelectRow + 1;
-                  }
-                  draw.Height = rowcount * Self->Font->LineSpacing;
-
-                  Self->NoCursor++;
-                  ActionMsg(AC_Draw, Self->Layout->SurfaceID, &draw);
-                  Self->NoCursor--;
-               }
-               else if (Self->Flags & TXF_EDIT) {
-                  Remove_cursor(Self);
-               }
-
-               Self->SelectRow    = clickrow;
-               Self->SelectColumn = clickcol;
-               Self->ClickHeld    = TRUE;
-
-               // Return if we are NOT in edit mode and the position of the click was out of bounds
-
-               if ((outofbounds) and (!(Self->Flags & TXF_EDIT))) continue;
-
-               // Return if the row and column values will remain unchanged
-
-               if (((clickcol IS Self->CursorColumn) and (clickrow IS Self->CursorRow)) or
-                   (Self->AmtLines < 1)) {
-                  if (!(input->Flags & JTYPE_DBL_CLICK)) {
-                     redraw_cursor(Self, TRUE);
-                     continue;
-                  }
-               }
-
-               Self->CursorRow    = clickrow;
-               Self->CursorColumn = clickcol;
-
-               // For double-clicks, highlight the word next to the cursor
-
-               if ((input->Flags & JTYPE_DBL_CLICK) and (!(Self->Flags & TXF_SECRET))) {
-                  // Scan back to find the start of the word
-
-                  str = Self->Array[Self->CursorRow].String;
-                  for (i=Self->CursorColumn; i > 0; i--) {
-                     if (str[i-1] <= 47) break;
-                     if ((str[i-1] >= 58) and (str[i-1] <= 64)) break;
-                     if ((str[i-1] >= 91) and (str[i-1] <= 96)) break;
-                     if ((str[i-1] >= 123) and (str[i-1] <= 127)) break;
-                  }
-
-                  Self->SelectColumn = i;
-
-                  // Scan forward to find the end of the word
-
-                  for (i=Self->CursorColumn; i < Self->Array[Self->CursorRow].Length; i++) {
-                     if (str[i] <= 47) break;
-                     if ((str[i] >= 58) and (str[i] <= 64)) break;
-                     if ((str[i] >= 91) and (str[i] <= 96)) break;
-                     if ((str[i] >= 123) and (str[i] <= 127)) break;
-                  }
-
-                  Self->CursorColumn = i;
-
-                  Self->SelectRow = Self->CursorRow;
-
-                  if (Self->SelectColumn != Self->CursorColumn) {
-                     Self->Flags |= TXF_AREA_SELECTED;
-                     redraw_line(Self, Self->CursorRow);
-                  }
-                  else redraw_cursor(Self, TRUE);
-               }
-               else redraw_cursor(Self, TRUE);
-
-               view_cursor(Self);
-            }
-            else {
-               if (!(Self->Flags & (TXF_EDIT|TXF_SINGLE_SELECT|TXF_MULTI_SELECT))) continue;
-
-               Self->ClickHeld = FALSE;
-               if ((Self->SelectRow != Self->CursorRow) or (Self->SelectColumn != Self->CursorColumn)) {
-                  Self->Flags |= TXF_AREA_SELECTED;
-               }
-            }
-         }
-         else if (input->Flags & JTYPE_MOVEMENT) {
-            LONG oldrow, oldcolumn, x;
-
-            // Determine the current movement state (exit, enter, inside)
-
-            if (Self->Flags & TXF_EDIT) {
-               bool inside = TRUE;
-               if (input->OverID IS Self->Layout->SurfaceID) {
-                  if ((input->X < Self->Layout->BoundX) or (input->Y < Self->Layout->BoundY) or
-                      (input->X >= Self->Layout->BoundX + Self->Layout->BoundWidth) or (input->Y >= Self->Layout->BoundY + Self->Layout->BoundHeight)) {
-                     inside = FALSE;
-                  }
-               }
-               else inside = FALSE;
-
-               if (inside) {
-                  if (Self->State IS STATE_ENTERED) Self->State = STATE_INSIDE;
-                  else if (Self->State != STATE_INSIDE) {
-                     Self->State = STATE_ENTERED;
-
-                     gfxSetCursor(0, CRF_BUFFER, PTR_TEXT, 0, Self->Head.UniqueID);
-                     Self->PointerLocked = TRUE;
-                  }
-               }
-               else {
-                  if (Self->State != STATE_EXITED) {
-                     Self->State = STATE_EXITED;
-                     gfxRestoreCursor(PTR_DEFAULT, Self->Head.UniqueID);
-                     Self->PointerLocked = FALSE;
-                  }
-               }
-            }
-
-            if (Self->ClickHeld IS FALSE) continue;
-
-            if (Self->AmtLines < 1) continue;
-
-            if (!(Self->Flags & (TXF_EDIT|TXF_SINGLE_SELECT|TXF_MULTI_SELECT))) continue;
-
-            if (Self->Flags & TXF_SECRET) continue;
-
-            oldrow = Self->CursorRow;
-            oldcolumn = Self->CursorColumn;
-
-            // Calculate the cursor row
-
-            Self->CursorRow = (input->Y - (Self->Layout->Document ? 0 : Self->Layout->TopMargin) - Self->YPosition) / Self->Font->LineSpacing;
-
-            if (Self->CursorRow < 0) Self->CursorRow = 0;
-            if (Self->CursorRow >= Self->AmtLines) Self->CursorRow = Self->AmtLines - 1;
-
-            // Calculate the cursor column
-
-            Self->CursorColumn = 0;
-            if (Self->Array[Self->CursorRow].String) {
-               x = input->X - Self->Layout->BoundX - (Self->Layout->Document ? 0 : Self->Layout->LeftMargin) - Self->XPosition;
-               fntConvertCoords(Self->Font, Self->Array[Self->CursorRow].String, x, 0,
-                  0, 0, &Self->CursorColumn, 0, 0);
-            }
-
-            if ((Self->CursorRow != oldrow) or (Self->CursorColumn != oldcolumn)) {
-               // Set the AREASELECTED flag if an area has been highlighted by the user
-
-               if ((Self->SelectRow != Self->CursorRow) or (Self->SelectColumn != Self->CursorColumn)) {
-                  Self->Flags |= TXF_AREA_SELECTED;
-               }
-
-               if (Self->CursorRow < oldrow) draw_lines(Self, Self->CursorRow, oldrow - Self->CursorRow + 1);
-               else draw_lines(Self, oldrow, Self->CursorRow - oldrow + 1);
-            }
-
-            view_cursor(Self);
-         }
-      }
-   }
    else {
       log.msg("Datatype %d not supported.", Args->DataType);
       return ERR_Mismatch;
@@ -1056,8 +838,7 @@ static ERROR TEXT_Free(objText *Self, APTR Void)
    if (Self->History)      { FreeResource(Self->History); Self->History = NULL; }
    if (Self->XML)          { acFree(Self->XML);  Self->XML = NULL; }
    if (Self->Font)         { acFree(Self->Font); Self->Font = NULL; }
-
-   gfxUnsubscribeInput(0);
+   if (Self->InputHandle)  { gfxUnsubscribeInput(Self->InputHandle); Self->InputHandle = 0; }
 
    return ERR_Okay;
 }
@@ -1144,7 +925,8 @@ static ERROR TEXT_Init(objText *Self, APTR Void)
    else return log.warning(ERR_AccessObject);
 
    if (Self->Flags & (TXF_EDIT|TXF_SINGLE_SELECT|TXF_MULTI_SELECT)) {
-      gfxSubscribeInput(Self->Layout->SurfaceID, JTYPE_MOVEMENT|JTYPE_BUTTON, 0);
+      auto callback = make_function_stdc(consume_input_events);
+      gfxSubscribeInput(&callback, Self->Layout->SurfaceID, JTYPE_MOVEMENT|JTYPE_BUTTON, 0, &Self->InputHandle);
    }
 
    // Initialise the Font
@@ -1488,6 +1270,231 @@ static ERROR cursor_timer(objText *Self, LARGE Elapsed, LARGE CurrentTime)
 
       if (Self->LineLimit IS 1) view_cursor(Self);
       if (one != two) redraw_cursor(Self, TRUE);
+   }
+
+   return ERR_Okay;
+}
+
+//****************************************************************************
+
+static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
+{
+   auto Self = (objText *)CurrentContext();
+
+   for (auto event=Events; event; event=event->Next) {
+      if (event->Type IS JET_LMB) {
+         if (event->Value > 0) {
+            struct acDraw draw;
+            STRING str;
+            LONG rowcount, i, clickrow, clickcol;
+            UBYTE outofbounds;
+
+            if (!(Self->Flags & (TXF_EDIT|TXF_SINGLE_SELECT|TXF_MULTI_SELECT))) continue;
+
+            parasol::Log log;
+            log.branch();
+
+            Self->CursorFlash = 0;
+            outofbounds = FALSE;
+            clickrow = 0;
+            clickcol = 0;
+
+            // Determine the row that was clicked
+
+            if (Self->AmtLines > 0) {
+               clickrow = (event->Y - (Self->Layout->Document ? 0 : Self->Layout->TopMargin) - Self->YPosition) / Self->Font->LineSpacing;
+               if (clickrow >= Self->AmtLines) {
+                  clickrow = Self->AmtLines - 1;
+                  outofbounds = TRUE;
+               }
+            }
+
+            // Determine the column that was clicked
+
+            if (clickrow < Self->AmtLines) {
+               if (Self->Array[clickrow].String) {
+                  if (Self->Flags & TXF_SECRET) {
+                     char buffer[Self->Array[clickrow].Length+1];
+                     for (i=0; i < Self->Array[clickrow].Length; i++) buffer[i] = '*';
+                     buffer[i+1] = 0;
+
+                     fntConvertCoords(Self->Font, buffer, event->X - Self->Layout->BoundX - (Self->Layout->Document ? 0 : Self->Layout->LeftMargin) - Self->XPosition, 0,
+                        0, 0, &clickcol, 0, 0);
+                  }
+                  else {
+                     fntConvertCoords(Self->Font, Self->Array[clickrow].String,
+                        event->X - Self->Layout->BoundX - (Self->Layout->Document ? 0 : Self->Layout->LeftMargin) - Self->XPosition, 0,
+                        0, 0, &clickcol, 0, 0);
+                  }
+               }
+            }
+
+            // If there is an old area selection, clear it
+
+            if (Self->Flags & TXF_AREA_SELECTED) {
+               Self->Flags &= ~TXF_AREA_SELECTED;
+
+               draw.X = Self->Layout->BoundX;
+               draw.Width  = Self->Layout->BoundWidth;
+               if (Self->CursorRow < Self->SelectRow) {
+                  draw.Y = row_coord(Self, Self->CursorRow);
+                  rowcount = Self->SelectRow - Self->CursorRow + 1;
+               }
+               else {
+                  draw.Y = row_coord(Self, Self->SelectRow);
+                  rowcount = Self->CursorRow - Self->SelectRow + 1;
+               }
+               draw.Height = rowcount * Self->Font->LineSpacing;
+
+               Self->NoCursor++;
+               ActionMsg(AC_Draw, Self->Layout->SurfaceID, &draw);
+               Self->NoCursor--;
+            }
+            else if (Self->Flags & TXF_EDIT) {
+               Remove_cursor(Self);
+            }
+
+            Self->SelectRow    = clickrow;
+            Self->SelectColumn = clickcol;
+            Self->ClickHeld    = TRUE;
+
+            // Return if we are NOT in edit mode and the position of the click was out of bounds
+
+            if ((outofbounds) and (!(Self->Flags & TXF_EDIT))) continue;
+
+            // Return if the row and column values will remain unchanged
+
+            if (((clickcol IS Self->CursorColumn) and (clickrow IS Self->CursorRow)) or
+                (Self->AmtLines < 1)) {
+               if (!(event->Flags & JTYPE_DBL_CLICK)) {
+                  redraw_cursor(Self, TRUE);
+                  continue;
+               }
+            }
+
+            Self->CursorRow    = clickrow;
+            Self->CursorColumn = clickcol;
+
+            // For double-clicks, highlight the word next to the cursor
+
+            if ((event->Flags & JTYPE_DBL_CLICK) and (!(Self->Flags & TXF_SECRET))) {
+               // Scan back to find the start of the word
+
+               str = Self->Array[Self->CursorRow].String;
+               for (i=Self->CursorColumn; i > 0; i--) {
+                  if (str[i-1] <= 47) break;
+                  if ((str[i-1] >= 58) and (str[i-1] <= 64)) break;
+                  if ((str[i-1] >= 91) and (str[i-1] <= 96)) break;
+                  if ((str[i-1] >= 123) and (str[i-1] <= 127)) break;
+               }
+
+               Self->SelectColumn = i;
+
+               // Scan forward to find the end of the word
+
+               for (i=Self->CursorColumn; i < Self->Array[Self->CursorRow].Length; i++) {
+                  if (str[i] <= 47) break;
+                  if ((str[i] >= 58) and (str[i] <= 64)) break;
+                  if ((str[i] >= 91) and (str[i] <= 96)) break;
+                  if ((str[i] >= 123) and (str[i] <= 127)) break;
+               }
+
+               Self->CursorColumn = i;
+
+               Self->SelectRow = Self->CursorRow;
+
+               if (Self->SelectColumn != Self->CursorColumn) {
+                  Self->Flags |= TXF_AREA_SELECTED;
+                  redraw_line(Self, Self->CursorRow);
+               }
+               else redraw_cursor(Self, TRUE);
+            }
+            else redraw_cursor(Self, TRUE);
+
+            view_cursor(Self);
+         }
+         else {
+            if (!(Self->Flags & (TXF_EDIT|TXF_SINGLE_SELECT|TXF_MULTI_SELECT))) continue;
+
+            Self->ClickHeld = FALSE;
+            if ((Self->SelectRow != Self->CursorRow) or (Self->SelectColumn != Self->CursorColumn)) {
+               Self->Flags |= TXF_AREA_SELECTED;
+            }
+         }
+      }
+      else if (event->Flags & JTYPE_MOVEMENT) {
+         LONG oldrow, oldcolumn, x;
+
+         // Determine the current movement state (exit, enter, inside)
+
+         if (Self->Flags & TXF_EDIT) {
+            bool inside = TRUE;
+            if (event->OverID IS Self->Layout->SurfaceID) {
+               if ((event->X < Self->Layout->BoundX) or (event->Y < Self->Layout->BoundY) or
+                   (event->X >= Self->Layout->BoundX + Self->Layout->BoundWidth) or (event->Y >= Self->Layout->BoundY + Self->Layout->BoundHeight)) {
+                  inside = FALSE;
+               }
+            }
+            else inside = FALSE;
+
+            if (inside) {
+               if (Self->State IS STATE_ENTERED) Self->State = STATE_INSIDE;
+               else if (Self->State != STATE_INSIDE) {
+                  Self->State = STATE_ENTERED;
+
+                  gfxSetCursor(0, CRF_BUFFER, PTR_TEXT, 0, Self->Head.UniqueID);
+                  Self->PointerLocked = TRUE;
+               }
+            }
+            else {
+               if (Self->State != STATE_EXITED) {
+                  Self->State = STATE_EXITED;
+                  gfxRestoreCursor(PTR_DEFAULT, Self->Head.UniqueID);
+                  Self->PointerLocked = FALSE;
+               }
+            }
+         }
+
+         if (Self->ClickHeld IS FALSE) continue;
+
+         if (Self->AmtLines < 1) continue;
+
+         if (!(Self->Flags & (TXF_EDIT|TXF_SINGLE_SELECT|TXF_MULTI_SELECT))) continue;
+
+         if (Self->Flags & TXF_SECRET) continue;
+
+         oldrow = Self->CursorRow;
+         oldcolumn = Self->CursorColumn;
+
+         // Calculate the cursor row
+
+         Self->CursorRow = (event->Y - (Self->Layout->Document ? 0 : Self->Layout->TopMargin) - Self->YPosition) / Self->Font->LineSpacing;
+
+         if (Self->CursorRow < 0) Self->CursorRow = 0;
+         if (Self->CursorRow >= Self->AmtLines) Self->CursorRow = Self->AmtLines - 1;
+
+         // Calculate the cursor column
+
+         Self->CursorColumn = 0;
+         if (Self->Array[Self->CursorRow].String) {
+            x = event->X - Self->Layout->BoundX - (Self->Layout->Document ? 0 : Self->Layout->LeftMargin) - Self->XPosition;
+            fntConvertCoords(Self->Font, Self->Array[Self->CursorRow].String, x, 0,
+               0, 0, &Self->CursorColumn, 0, 0);
+         }
+
+         if ((Self->CursorRow != oldrow) or (Self->CursorColumn != oldcolumn)) {
+            // Set the AREASELECTED flag if an area has been highlighted by the user
+
+            if ((Self->SelectRow != Self->CursorRow) or (Self->SelectColumn != Self->CursorColumn)) {
+               Self->Flags |= TXF_AREA_SELECTED;
+            }
+
+            if (Self->CursorRow < oldrow) draw_lines(Self, Self->CursorRow, oldrow - Self->CursorRow + 1);
+            else draw_lines(Self, oldrow, Self->CursorRow - oldrow + 1);
+         }
+
+         view_cursor(Self);
+      }
    }
 
    return ERR_Okay;

@@ -148,10 +148,12 @@ gui.menu = function(Options)
             lIconSize = vText.font.maxHeight
 
             if item['icon'] then
-               local svgGroup = lViewport.new('VectorViewport', { x=8, y=y, width=lIconSize, height=lIconSize })
-               local svg = obj.new('svg', { target=svgGroup, path='icons:' .. item['icon'] .. '.svg' })
-               applyFill(svgGroup, 'rgb(80,80,120,255)')
-               mi.svgIcon = svgGroup
+               catch(function()
+                  local svgGroup = lViewport.new('VectorViewport', { x=8, y=y, width=lIconSize, height=lIconSize })
+                  local svg = obj.new('svg', { target=svgGroup, path='icons:' .. item['icon'] .. '.svg' })
+                  applyFill(svgGroup, 'rgb(80,80,120,255)')
+                  mi.svgIcon = svgGroup
+               end)
             end
 
             if item['key'] then

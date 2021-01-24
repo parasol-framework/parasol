@@ -560,13 +560,13 @@ static const CSTRING strCodes[] = {
 
 struct layout; // Pre-def
 
-static ERROR  activate_edit(objDocument *, LONG CellIndex, LONG CursorIndex);
-static ERROR  add_clip(objDocument *, SurfaceClip *, LONG, CSTRING Name, BYTE);
+static ERROR  activate_edit(objDocument *, LONG, LONG);
+static ERROR  add_clip(objDocument *, SurfaceClip *, LONG, CSTRING, BYTE);
 static ERROR  add_document_class(void);
 static LONG   add_drawsegment(objDocument *, LONG, LONG Stop, layout *, LONG, LONG, LONG, CSTRING);
-static void   add_link(objDocument *, UBYTE EscapeCode, APTR, LONG, LONG, LONG, LONG, CSTRING);
+static void   add_link(objDocument *, UBYTE, APTR, LONG, LONG, LONG, LONG, CSTRING);
 static docresource * add_resource_id(objDocument *, LONG, LONG);
-static docresource * add_resource_ptr(objDocument *, APTR Address, LONG Type);
+static docresource * add_resource_ptr(objDocument *, APTR, LONG);
 static LONG   add_tabfocus(objDocument *, UBYTE, LONG);
 static void   add_template(objDocument *, objXML *, XMLTag *);
 static void   advance_tabfocus(objDocument *, BYTE);
@@ -575,6 +575,7 @@ static void   calc_scroll(objDocument *);
 static void   check_mouse_click(objDocument *, LONG X, LONG Y);
 static void   check_mouse_pos(objDocument *, LONG, LONG);
 static void   check_mouse_release(objDocument *, LONG X, LONG Y);
+static ERROR  consume_input_events(const InputEvent *, LONG);
 static ERROR  convert_xml_args(objDocument *, XMLAttrib *, LONG);
 static LONG   create_font(CSTRING, CSTRING, LONG);
 static void   deactivate_edit(objDocument *, BYTE);
@@ -582,11 +583,11 @@ static void   deselect_text(objDocument *);
 static void   draw_background(objDocument *, objSurface *, objBitmap *);
 static void   draw_document(objDocument *, objSurface *, objBitmap *);
 static void   draw_border(objDocument *, objSurface *, objBitmap *);
-static void   exec_link(objDocument *, LONG Index);
-static ERROR  extract_script(objDocument *, CSTRING Link, OBJECTPTR *Script, CSTRING *Function, CSTRING *);
+static void   exec_link(objDocument *, LONG);
+static ERROR  extract_script(objDocument *, CSTRING, OBJECTPTR *, CSTRING *, CSTRING *);
 static void   error_dialog(CSTRING, CSTRING, ERROR);
-static LONG   find_segment(objDocument *, LONG Index, LONG);
-static LONG   find_tabfocus(objDocument *, UBYTE Type, LONG Reference);
+static LONG   find_segment(objDocument *, LONG, LONG);
+static LONG   find_tabfocus(objDocument *, UBYTE, LONG);
 static void   fix_command(STRING, STRING *);
 static ERROR  flash_cursor(objDocument *, LARGE, LARGE);
 static void   free_links(objDocument *);
@@ -615,17 +616,17 @@ static void print_sorted_lines(objDocument *) __attribute__ ((unused));
 static ERROR  process_page(objDocument *, objXML *);
 static void   process_parameters(objDocument *, CSTRING);
 static void   redraw(objDocument *, BYTE);
-static ERROR  report_event(objDocument *, LARGE Event, APTR EventData, CSTRING StructName);
+static ERROR  report_event(objDocument *, LARGE, APTR, CSTRING);
 static void   reset_cursor(objDocument *);
-static ERROR  resolve_fontx_by_index(objDocument *, LONG Index, LONG *CharX);
-static ERROR  resolve_font_pos(objDocument *, LONG Segment, LONG X, LONG *, LONG *BytePos);
-static LONG   safe_file_path(objDocument *, CSTRING Path);
+static ERROR  resolve_fontx_by_index(objDocument *, LONG, LONG *);
+static ERROR  resolve_font_pos(objDocument *, LONG, LONG X, LONG *, LONG *);
+static LONG   safe_file_path(objDocument *, CSTRING);
 static ERROR  safe_translate(STRING, LONG, LONG);
 static void   set_focus(objDocument *, LONG, CSTRING);
 static void   set_object_style(objDocument *, OBJECTPTR);
 static void   show_bookmark(objDocument *, CSTRING);
-static void   style_check(objDocument *, LONG *Index);
-static void   tag_object(objDocument *, CSTRING, CLASSID, XMLTag *, objXML *, XMLTag *, XMLTag *, LONG *Index, LONG Flags, UBYTE *, UBYTE *, LONG *);
+static void   style_check(objDocument *, LONG *);
+static void   tag_object(objDocument *, CSTRING, CLASSID, XMLTag *, objXML *, XMLTag *, XMLTag *, LONG *, LONG, UBYTE *, UBYTE *, LONG *);
 static void   tag_xml_content(objDocument *, objXML *, XMLTag *, WORD);
 static ERROR  unload_doc(objDocument *, BYTE);
 static BYTE   valid_object(objDocument *, OBJECTPTR);
@@ -667,7 +668,7 @@ T * escape_data(UBYTE *Stream, LONG Index) {
 
 #define remove_cursor(a)           draw_cursor((a),FALSE)
 // Calculate the length of an escape sequence
-#define ESC_ELEMENTID(a)        (((LONG *)(a))[1])
+#define ESC_ELEMENTID(a)           (((LONG *)(a))[1])
 #define ESCAPE_CODE(stream, index) ((stream)[(index)+1]) // Escape codes are only 1 byte long
 #define ESCAPE_LEN(a)              ((((a)[2])<<8) | ((a)[3]))
 // Move to the next character - handles UTF8 only, no escape sequence handling

@@ -521,8 +521,6 @@ void make_struct_serial_table(lua_State *Lua, CSTRING StructName, LONG Elements,
    structentry *def;
 
    if (!KeyGet(prv->Structs, STRUCTHASH(StructName), &def, NULL)) {
-      references *ref;
-
       // 64-bit compilers don't always align structures to 64-bit, and it's difficult to compute alignment with
       // certainty.  It is essential that structures that are intended to be serialised into arrays are manually
       // padded to 64-bit so that the potential for mishap is eliminated.
@@ -538,6 +536,7 @@ void make_struct_serial_table(lua_State *Lua, CSTRING StructName, LONG Elements,
          log.msg("%s, Elements: %d, Values: %p, StructSize: %d, Aligned: %c", StructName, Elements, Data, def_size, aligned);
       }
 
+      references *ref;
       if ((ref = alloc_references())) {
          for (LONG i=0; i < Elements; i++) {
             lua_pushinteger(Lua, i+1);

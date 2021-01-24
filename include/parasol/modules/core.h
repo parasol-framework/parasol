@@ -282,7 +282,7 @@
 #define JTYPE_REPEATED 0x0400
 #define JTYPE_DRAG_ITEM 0x0800
 
-// JET constants are documented in GetInputMsg()
+// JET constants are documented in GetInputEvent()
 
 #define JET_DIGITAL_X 1
 #define JET_DIGITAL_Y 2
@@ -390,23 +390,20 @@
 #define FD_PTR_LARGERESULT 0x0c000100
 #define FD_PTR_DOUBLERESULT 0x88000100
 
-struct dcInputReady {
-   BYTE Pad;
-};
-
-struct InputMsg {
-   DOUBLE   Value;          // The value associated with the Type
-   LARGE    Timestamp;      // PreciseTime() of the recorded input
-   OBJECTID RecipientID;    // Surface that the input message is being conveyed to
-   OBJECTID OverID;         // Surface that is directly under the mouse pointer at the time of the event
-   LONG     AbsX;           // Absolute horizontal position of mouse cursor
-   LONG     AbsY;           // Absolute vertical position of mouse cursor
-   LONG     X;              // Horizontal position relative to the surface that the pointer is over - unless a mouse button is held or pointer is anchored - then the coordinates are relative to the click-held surface
-   LONG     Y;              // Vertical position relative to the surface that the pointer is over - unless a mouse button is held or pointer is anchored - then the coordinates are relative to the click-held surface
-   OBJECTID DeviceID;       // The hardware device that this event originated from
-   UWORD    Type;           // JET constant
-   UWORD    Flags;          // Broad descriptors for the given Type (see JTYPE flags).  Automatically set by the system when sent to the pointer object
-   UWORD    Mask;           // Mask to use for checking against subscribers
+struct InputEvent {
+   const struct InputEvent * Next;    // Next event in the chain
+   DOUBLE   Value;                    // The value associated with the Type
+   LARGE    Timestamp;                // PreciseTime() of the recorded input
+   OBJECTID RecipientID;              // Surface that the input message is being conveyed to
+   OBJECTID OverID;                   // Surface that is directly under the mouse pointer at the time of the event
+   LONG     AbsX;                     // Absolute horizontal position of mouse cursor
+   LONG     AbsY;                     // Absolute vertical position of mouse cursor
+   LONG     X;                        // Horizontal position relative to the surface that the pointer is over - unless a mouse button is held or pointer is anchored - then the coordinates are relative to the click-held surface
+   LONG     Y;                        // Vertical position relative to the surface that the pointer is over - unless a mouse button is held or pointer is anchored - then the coordinates are relative to the click-held surface
+   OBJECTID DeviceID;                 // The hardware device that this event originated from
+   UWORD    Type;                     // JET constant
+   UWORD    Flags;                    // Broad descriptors for the given Type (see JTYPE flags).  Automatically set by the system when sent to the pointer object
+   UWORD    Mask;                     // Mask to use for checking against subscribers
 };
 
 struct dcRequest {
@@ -694,6 +691,7 @@ struct ClipRectangle {
 #define RFD_ALLOW_RECURSION 0x0020
 #define RFD_SOCKET 0x0040
 #define RFD_RECALL 0x0080
+#define RFD_ALWAYS_CALL 0x0100
 
 // Flags for StrBuildArray()
 
@@ -1095,12 +1093,12 @@ struct ClipRectangle {
 
 #define RPM_Audio -1001
 #define RPM_DisplayInfo -1008
+#define RPM_InputEvents -1007
 #define RPM_XWindowLookup -1005
-#define RPM_SharedObjects -1000
 #define RPM_Clipboard -1002
 #define RPM_AlphaBlend -1004
 #define RPM_FocusList -1006
-#define RPM_InputMsgs -1007
+#define RPM_SharedObjects -1000
 #define RPM_X11 -1003
 
 #define MAX_FILENAME 256
@@ -1174,7 +1172,7 @@ struct ClipRectangle {
 #define RES_GLOBAL_INSTANCE 3
 #define RES_SHARED_CONTROL 4
 #define RES_USER_ID 5
-#define RES_X11_FD 6
+#define RES_DISPLAY_DRIVER 6
 #define RES_PRIVILEGED_USER 7
 #define RES_PRIVILEGED 8
 #define RES_RANDOM_SEED 9
@@ -1200,7 +1198,6 @@ struct ClipRectangle {
 #define RES_FREE_SWAP 29
 #define RES_KEY_STATE 30
 #define RES_CORE_IDL 31
-#define RES_DISPLAY_DRIVER 32
 
 // Path types for SetResourcePath()
 
@@ -1907,6 +1904,7 @@ struct CoreBase {
    ERROR (*_VarSetSized)(struct KeyStore *, CSTRING, LONG, APTR, LONG *);
    ERROR (*_VarLock)(struct KeyStore *, LONG);
    void (*_VLogF)(int, const char *, const char *, va_list);
+   ERROR (*_WakeProcess)(LONG);
 };
 
 #ifndef PRV_CORE_MODULE
@@ -2100,6 +2098,7 @@ struct CoreBase {
 #define VarSetSized(...) (CoreBase->_VarSetSized)(__VA_ARGS__)
 #define VarLock(...) (CoreBase->_VarLock)(__VA_ARGS__)
 #define VLogF(...) (CoreBase->_VLogF)(__VA_ARGS__)
+#define WakeProcess(...) (CoreBase->_WakeProcess)(__VA_ARGS__)
 #endif
 
 
@@ -2117,7 +2116,7 @@ struct CoreBase {
 #define Action(a,b,c) (CoreBase->_Action(a,b,c))
 
 #define ActionMsgPort(a,b,c,d,e)  (CoreBase->_ActionMsg(a,b,c,d,e))
-#define DeregisterFD(a)           (CoreBase->_RegisterFD((a), RFD_REMOVE|RFD_READ|RFD_WRITE|RFD_EXCEPT, 0, 0))
+#define DeregisterFD(a)           (CoreBase->_RegisterFD((a), RFD_REMOVE|RFD_READ|RFD_WRITE|RFD_EXCEPT|RFD_ALWAYS_CALL, 0, 0))
 #define DelayAction(a,b,c)        (CoreBase->_ActionMsg(a,b,c,0,(CLASSID)-1))
 #define DelayMsg(a,b,c)           (CoreBase->_ActionMsg(a,b,c,0,(CLASSID)-1))
 #define DeleteMsg(a,b)            (CoreBase->_UpdateMessage(a,b,(APTR)-1,0,0))
@@ -3423,6 +3422,7 @@ struct SharedControl {
    volatile LONG ThreadIDCount;
    volatile LONG InputTotal;        // Total number of subscribers in InputMID
    volatile LONG ValidateProcess;
+   volatile LONG InputIDCounter;    // Counter for input event subscriptions
    WORD SystemState;
    volatile WORD WLIndex;           // Current insertion point for the wait-lock array.
    LONG MagicKey;                   // This magic key is set to the semaphore key (used only as an indicator for initialisation)
@@ -3457,10 +3457,10 @@ struct SharedControl {
 
 // Class database.
 
-#define CL_ITEMS(c)        (struct ClassItem *)( (BYTE *)(c) + sizeof(struct ClassHeader) + ((c)->Total<<2) )
+#define CL_ITEMS(c)        (ClassItem *)( (BYTE *)(c) + sizeof(ClassHeader) + ((c)->Total<<2) )
 #define CL_OFFSETS(c)      ((LONG *)((c) + 1))
 #define CL_SIZE_OFFSETS(c) (sizeof(LONG) * (c)->Total)
-#define CL_ITEM(c,i)       ((struct ClassItem *)((BYTE *)(c) + offsets[(i)]))
+#define CL_ITEM(c,i)       ((ClassItem *)((BYTE *)(c) + offsets[(i)]))
 
 struct ClassHeader {
    LONG Total;          // Total number of registered classes

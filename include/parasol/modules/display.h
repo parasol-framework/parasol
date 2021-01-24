@@ -651,9 +651,8 @@ struct DisplayBase {
    ERROR (*_Decompress)(struct rkBitmap *, LONG);
    ERROR (*_Flood)(struct rkBitmap *, LONG, LONG, ULONG);
    void (*_DrawEllipse)(struct rkBitmap *, LONG, LONG, LONG, LONG, ULONG, LONG);
-   ERROR (*_SubscribeInput)(OBJECTID, LONG, OBJECTID);
-   ERROR (*_UnsubscribeInput)(OBJECTID);
-   ERROR (*_GetInputMsg)(struct dcInputReady *, LONG, struct InputMsg **);
+   ERROR (*_SubscribeInput)(FUNCTION *, OBJECTID, LONG, OBJECTID, LONG *);
+   ERROR (*_UnsubscribeInput)(LONG);
    CSTRING (*_GetInputTypeName)(LONG);
    DOUBLE (*_ScaleToDPI)(DOUBLE);
 };
@@ -694,7 +693,6 @@ struct DisplayBase {
 #define gfxDrawEllipse(...) (DisplayBase->_DrawEllipse)(__VA_ARGS__)
 #define gfxSubscribeInput(...) (DisplayBase->_SubscribeInput)(__VA_ARGS__)
 #define gfxUnsubscribeInput(...) (DisplayBase->_UnsubscribeInput)(__VA_ARGS__)
-#define gfxGetInputMsg(...) (DisplayBase->_GetInputMsg)(__VA_ARGS__)
 #define gfxGetInputTypeName(...) (DisplayBase->_GetInputTypeName)(__VA_ARGS__)
 #define gfxScaleToDPI(...) (DisplayBase->_ScaleToDPI)(__VA_ARGS__)
 #endif

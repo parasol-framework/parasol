@@ -185,7 +185,7 @@ enum("DATA", { start=1, comment="Data codes" }, -- NB: Duplicated in display/win
 flags("JTYPE", { bits=16, comment="JTYPE flags are used to categorise input types." },
     "SECONDARY: Indicates to the receiver of this message that it is not the primary/original recipient",
     "ANCHORED: Cursor has been anchored with LockCursor()",
-    "DRAGGED: set if sufficient movement occurred between the original click and its point of release (usually requires a 3 or more pixel difference).",
+    "DRAGGED: Set if sufficient movement occurred between the original click and its point of release (usually requires a 3 or more pixel difference).",
     "FEEDBACK: Device feedback - e.g. vibration, tilt",
     "DIGITAL: D-Pad or digital joystick source (restricted to +/- 1)",
     "ANALOG: Analog movement (ranging from -1.0 to 1.0)",
@@ -196,7 +196,7 @@ flags("JTYPE", { bits=16, comment="JTYPE flags are used to categorise input type
     "REPEATED: Input is a repeated entry (i.e. user is holding down a button and a repetition timer is being triggered)",
     "DRAG_ITEM: This special flag is set by the input system if the pointer is click-dragging an object at the time of the event.")
 
-enum("JET", { start=1, comment="JET constants are documented in GetInputMsg()" },
+enum("JET", { start=1, comment="JET constants are documented in GetInputEvent()" },
     "DIGITAL_X: Horizontal digital movement from a relative location.  Value is +/- n, where n is the number of units moved horizontally.  Mouse movement will normally exceed a value of 1, whereas gamepad movement is limited to a value of +/- 1 except in the case of successive presses.",
     "DIGITAL_Y: Vertical digital movement from a relative location.",
     "BUTTON_1|LMB: Left mouse button, XBox A button, PS square button.  Value is pressure sensitive, ranging between 0 - 1.0 (0 is released, 1.0 is fully depressed).",
@@ -303,11 +303,8 @@ flags("FD", { comment="Field descriptors." },
   { PTR_DOUBLERESULT = "DOUBLE|PTR|RESULT: Use for pointer-based value results only." }
 )
 
-  struct("dcInputReady", { comment="This is a dummy structure covered by the Display module", restrict="c" }, [[
-    char Pad
-  ]])
-
-  struct("InputMsg", { }, [[
+  struct("InputEvent", { }, [[
+    cstruct(*InputEvent) Next # Next event in the chain
     double Value      # The value associated with the Type
     large Timestamp   # PreciseTime() of the recorded input
     oid RecipientID   # Surface that the input message is being conveyed to

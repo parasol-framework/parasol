@@ -1631,7 +1631,8 @@ ERROR RegisterFD(LONG FD, LONG Flags, void (*Routine)(HOSTHANDLE, APTR), APTR Da
 #endif
 {
    parasol::Log log(__FUNCTION__);
-   UBYTE i;
+
+   // Note that FD's < -1 are permitted for the registering of functions marked with RFD_ALWAYS_CALL
 
 #ifdef _WIN32
    if (FD IS (HOSTHANDLE)-1) return log.warning(ERR_Args);
@@ -1647,10 +1648,10 @@ ERROR RegisterFD(LONG FD, LONG Flags, void (*Routine)(HOSTHANDLE, APTR), APTR Da
    }
 
    if (Flags & RFD_REMOVE) {
-      if (!(Flags & (RFD_READ|RFD_WRITE|RFD_EXCEPT))) Flags |= RFD_READ|RFD_WRITE|RFD_EXCEPT;
+      if (!(Flags & (RFD_READ|RFD_WRITE|RFD_EXCEPT|RFD_ALWAYS_CALL))) Flags |= RFD_READ|RFD_WRITE|RFD_EXCEPT|RFD_ALWAYS_CALL;
 
-      for (LONG i=0; i < glTotalFDs; i++) {
-         if ((glFDTable[i].FD IS FD) and ((glFDTable[i].Flags & (RFD_READ|RFD_WRITE|RFD_EXCEPT)) & Flags)) {
+      for (LONG i=glTotalFDs; i >= 0; i--) {
+         if ((glFDTable[i].FD IS FD) and ((glFDTable[i].Flags & (RFD_READ|RFD_WRITE|RFD_EXCEPT|RFD_ALWAYS_CALL)) & Flags)) {
             // If the routine address was specified with the remove option, the routine must match.
 
             if ((Routine) and (glFDTable[i].Routine != Routine)) continue;
@@ -1660,16 +1661,16 @@ ERROR RegisterFD(LONG FD, LONG Flags, void (*Routine)(HOSTHANDLE, APTR), APTR Da
             }
 
             glTotalFDs--;
-            i = -1; // Repeat loop to catch multiple FD registrations
          }
       }
       return ERR_Okay;
    }
 
-   if (!(Flags & (RFD_READ|RFD_WRITE|RFD_EXCEPT|RFD_REMOVE))) Flags |= RFD_READ;
+   if (!(Flags & (RFD_READ|RFD_WRITE|RFD_EXCEPT|RFD_REMOVE|RFD_ALWAYS_CALL))) Flags |= RFD_READ;
 
+   LONG i;
    for (i=0; i < glTotalFDs; i++) {
-      if ((glFDTable[i].FD IS FD) and (Flags & (glFDTable[i].Flags & (RFD_READ|RFD_WRITE|RFD_EXCEPT)))) break;
+      if ((glFDTable[i].FD IS FD) and (Flags & (glFDTable[i].Flags & (RFD_READ|RFD_WRITE|RFD_EXCEPT|RFD_ALWAYS_CALL)))) break;
    }
 
    if (i >= MAX_FDS) return log.warning(ERR_ArrayFull);
@@ -1679,7 +1680,7 @@ ERROR RegisterFD(LONG FD, LONG Flags, void (*Routine)(HOSTHANDLE, APTR), APTR Da
 #ifdef _WIN32
    // Nothing to do for Win32
 #else
-   if (!Routine) fcntl(FD, F_SETFL, fcntl(FD, F_GETFL) | O_NONBLOCK); // Ensure that the FD is non-blocking
+   if ((!Routine) and (FD > 0)) fcntl(FD, F_SETFL, fcntl(FD, F_GETFL) | O_NONBLOCK); // Ensure that the FD is non-blocking
 #endif
 
    glFDTable[i].FD      = FD;
@@ -2182,10 +2183,6 @@ LARGE SetResource(LONG Resource, LARGE Value)
          break;
 
       case RES_JNI_ENV: glJNIEnv = L64PTR(Value); break;
-
-#ifdef __unix__
-      case RES_X11_FD: glX11FD = Value; break;
-#endif
 
       case RES_PRIVILEGED_USER:
 #ifdef __unix__
