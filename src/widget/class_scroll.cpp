@@ -50,7 +50,7 @@ scale or page and view sizes.
 
 static OBJECTPTR clScroll = NULL;
 
-static ERROR consume_input_events(const InputMsg *, LONG);
+static ERROR consume_input_events(const InputEvent *, LONG);
 static ERROR process_click(objScroll *, OBJECTID, LONG, LONG);
 static void update_scroll(objScroll *, LONG, LONG, DOUBLE, LONG);
 static void send_feedback(objScroll *, DOUBLE, DOUBLE, DOUBLE);
@@ -1489,7 +1489,7 @@ static void send_feedback(objScroll *Self, DOUBLE X, DOUBLE Y, DOUBLE Z)
 
 //****************************************************************************
 
-static ERROR consume_input_events(const InputMsg *Events, LONG Handle)
+static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
 {
    auto Self = (objScroll *)CurrentContext();
 

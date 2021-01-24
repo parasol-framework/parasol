@@ -53,11 +53,11 @@ static BYTE get_over_object(objPointer *);
 static void process_ptr_button(objPointer *, struct dcDeviceInput *);
 static void process_ptr_movement(objPointer *, struct dcDeviceInput *);
 static void process_ptr_wheel(objPointer *, struct dcDeviceInput *);
-static void send_inputmsg(InputMsg *input, InputSubscription *List);
+static void send_inputmsg(InputEvent *input, InputSubscription *List);
 
 //****************************************************************************
 
-INLINE void call_userinput(CSTRING Debug, InputMsg *input, LONG Flags, OBJECTID RecipientID, OBJECTID OverID,
+INLINE void call_userinput(CSTRING Debug, InputEvent *input, LONG Flags, OBJECTID RecipientID, OBJECTID OverID,
    LONG AbsX, LONG AbsY, LONG OverX, LONG OverY)
 {
    InputSubscription *list;
@@ -82,7 +82,7 @@ INLINE void call_userinput(CSTRING Debug, InputMsg *input, LONG Flags, OBJECTID 
 // Adds an input event to the glInput event list, then scans through the list of subscribers and alerts any processes
 // that match the filter.
 
-static void send_inputmsg(InputMsg *Event, InputSubscription *List)
+static void send_inputmsg(InputEvent *Event, InputSubscription *List)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -223,7 +223,7 @@ static ERROR PTR_DataFeed(objPointer *Self, struct acDataFeed *Args)
 static void process_ptr_button(objPointer *Self, struct dcDeviceInput *Input)
 {
    parasol::Log log(__FUNCTION__);
-   InputMsg userinput;
+   InputEvent userinput;
    OBJECTID modal_id, target;
    LONG absx, absy, buttonflag, bi;
 
@@ -384,7 +384,7 @@ static void process_ptr_wheel(objPointer *Self, struct dcDeviceInput *Input)
    InputSubscription *subs;
 
    if ((glSharedControl->InputMID) and (!AccessMemory(glSharedControl->InputMID, MEM_READ, 1000, &subs))) {
-      InputMsg msg;
+      InputEvent msg;
       msg.Type        = JET_WHEEL;
       msg.Flags       = JTYPE_ANALOG|JTYPE_EXT_MOVEMENT | Input->Flags;
       msg.Mask        = JTYPE_EXT_MOVEMENT;
@@ -426,7 +426,7 @@ static void process_ptr_wheel(objPointer *Self, struct dcDeviceInput *Input)
 static void process_ptr_movement(objPointer *Self, struct dcDeviceInput *Input)
 {
    parasol::Log log(__FUNCTION__);
-   InputMsg userinput;
+   InputEvent userinput;
    LONG absx, absy;
 
    ClearMemory(&userinput, sizeof(userinput));
@@ -1380,7 +1380,7 @@ static BYTE get_over_object(objPointer *Self)
          changed = TRUE;
 
          if ((glSharedControl->InputMID) and (!AccessMemory(glSharedControl->InputMID, MEM_READ, 500, &subs))) {
-            InputMsg input = {
+            InputEvent input = {
                .Next        = NULL,
                .Value       = (DOUBLE)Self->OverObjectID,
                .Timestamp   = PreciseTime(),
@@ -1466,7 +1466,7 @@ static ERROR repeat_timer(objPointer *Self, LARGE Elapsed, LARGE Unused)
          if (Self->Buttons[i].LastClicked) {
             LARGE time = PreciseTime();
             if (Self->Buttons[i].LastClickTime + 300000LL <= time) {
-               InputMsg input;
+               InputEvent input;
                ClearMemory(&input, sizeof(input));
 
                LONG absx, absy;

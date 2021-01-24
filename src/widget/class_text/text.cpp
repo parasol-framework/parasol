@@ -98,7 +98,7 @@ static ERROR calc_hscroll(objText *);
 static ERROR calc_vscroll(objText *);
 static LONG  calc_width(objText *, CSTRING, LONG);
 static LONG  column_coord(objText *, LONG, LONG);
-static ERROR consume_input_events(const InputMsg *, LONG);
+static ERROR consume_input_events(const InputEvent *, LONG);
 static ERROR cursor_timer(objText *, LARGE, LARGE);
 static void  DeleteSelectedArea(objText *);
 static void  draw_lines(objText *, LONG, LONG);
@@ -1277,7 +1277,7 @@ static ERROR cursor_timer(objText *Self, LARGE Elapsed, LARGE CurrentTime)
 
 //****************************************************************************
 
-static ERROR consume_input_events(const InputMsg *Events, LONG Handle)
+static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
 {
    auto Self = (objText *)CurrentContext();
 

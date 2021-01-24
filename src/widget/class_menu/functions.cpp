@@ -557,6 +557,8 @@ static ERROR create_menu(objMenu *Self)
       Self->MenuSurfaceID = 0;
    }
 
+   if (Self->InputHandle) { gfxUnsubscribeInput(Self->InputHandle); Self->InputHandle = 0; }
+
    calc_menu_size(Self);
 
    ERROR error;

@@ -1063,11 +1063,6 @@
       <field name="Second" type="WORD">Second of the original file's datestamp.</field>
     </struct>
 
-    <struct name="FunctionField" comment="Used by ActionTable and Function structures to declare lists of parameters.">
-      <field name="Name" type="CSTRING">Name of the field</field>
-      <field name="Type" type="ULONG">Type of the field</field>
-    </struct>
-
     <struct name="RGB8" comment="8-bit RGB colour value." typeName="RGB8">
       <field name="Red" type="UBYTE">Red component value</field>
       <field name="Green" type="UBYTE">Green component value</field>
@@ -1082,6 +1077,11 @@
       <field name="Dest" type="STRING">Destination file/path if moving or copying</field>
       <field name="FeedbackID" type="LONG" lookup="FDB">Set to one of the FDB integers</field>
       <field name="Reserved" type="char" size="32">Reserved in case of future expansion</field>
+    </struct>
+
+    <struct name="FunctionField" comment="Used by ActionTable and Function structures to declare lists of parameters.">
+      <field name="Name" type="CSTRING">Name of the field</field>
+      <field name="Type" type="ULONG">Type of the field</field>
     </struct>
 
     <struct name="KeyStore" comment="Key-pair storage created by VarNew()">
