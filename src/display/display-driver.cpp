@@ -974,7 +974,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
       log.trace("Loading X11 cursor graphics.");
 
-      for (i=0; i < ARRAYSIZE(XCursors); i++) {
+      for (LONG i=0; i < ARRAYSIZE(XCursors); i++) {
          if (XCursors[i].CursorID IS PTR_INVISIBLE) XCursors[i].XCursor = create_blank_cursor();
          else XCursors[i].XCursor = XCreateFontCursor(XDisplay, XCursors[i].XCursorID);
       }
