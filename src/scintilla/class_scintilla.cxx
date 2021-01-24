@@ -211,6 +211,7 @@ static ERROR SET_Wordwrap(objScintilla *, LONG);
 
 //****************************************************************************
 
+static ERROR consume_input_events(const InputMsg *, LONG);
 static void create_styled_fonts(objScintilla *);
 static ERROR create_scintilla(void);
 static void draw_scintilla(objScintilla *, objSurface *, rkBitmap *);
@@ -301,8 +302,7 @@ static ERROR SCINTILLA_ActionNotify(objScintilla *Self, struct acActionNotify *A
    }
    else if (Args->ActionID IS AC_Focus) {
       if (!Self->prvKeyEvent) {
-         FUNCTION callback;
-         SET_FUNCTION_STDC(callback, (APTR)&key_event);
+         auto callback = make_function_stdc(key_event);
          SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, &callback, Self, &Self->prvKeyEvent);
       }
 
@@ -435,23 +435,6 @@ static ERROR SCINTILLA_DataFeed(objScintilla *Self, struct acDataFeed *Args)
 
       SCICALL(SCI_APPENDTEXT, StrLength(str), str);
    }
-   else if (Args->DataType IS DATA_INPUT_READY) {
-      InputMsg *input;
-
-      while (!gfxGetInputMsg((struct dcInputReady *)Args->Buffer, 0, &input)) {
-         if (Self->Flags & SCF_DISABLED) continue;
-
-         if (input->Flags & JTYPE_BUTTON) {
-            if (input->Value > 0) {
-               Self->API->panMousePress(input->Type, input->X, input->Y);
-            }
-            else Self->API->panMouseRelease(input->Type, input->X, input->Y);
-         }
-         else if (input->Flags & JTYPE_MOVEMENT) {
-            Self->API->panMouseMove(input->X, input->Y);
-         }
-      }
-   }
    else if (Args->Datatype IS DATA_RECEIPT) {
       LONG i, count;
       objXML *xml;
@@ -461,7 +444,7 @@ static ERROR SCINTILLA_DataFeed(objScintilla *Self, struct acDataFeed *Args)
       log.msg("Received item receipt from object %d.", Args->ObjectID);
 
       if (!CreateObject(ID_XML, NF_INTEGRAL, &xml,
-            FID_Statement|TSTRING, Args->Buffer,
+            FID_Statement|TSTR, Args->Buffer,
             TAGEND)) {
 
          count = 0;
@@ -667,7 +650,7 @@ static ERROR SCINTILLA_Free(objScintilla *Self, APTR)
    if (Self->ItalicFont)   { acFree(Self->ItalicFont); Self->ItalicFont = NULL; }
    if (Self->BIFont)       { acFree(Self->BIFont);     Self->BIFont = NULL; }
 
-   gfxUnsubscribeInput(0);
+   gfxUnsubscribeInput(Self->InputHandle);
 
    return ERR_Okay;
 }
@@ -840,8 +823,7 @@ static ERROR SCINTILLA_Init(objScintilla *Self, APTR)
          TAGEND);
 
       if (surface->Flags & RNF_HAS_FOCUS) {
-         FUNCTION callback;
-         SET_FUNCTION_STDC(callback, (APTR)&key_event);
+         auto callback = make_function_stdc(key_event);
          SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, &callback, Self, &Self->prvKeyEvent);
       }
 
@@ -849,7 +831,10 @@ static ERROR SCINTILLA_Init(objScintilla *Self, APTR)
    }
    else return log.warning(ERR_AccessObject);
 
-   gfxSubscribeInput(Self->SurfaceID, JTYPE_MOVEMENT|JTYPE_BUTTON, 0);
+   {
+      auto callback = make_function_stdc(consume_input_events);
+      gfxSubscribeInput(&callback, Self->SurfaceID, JTYPE_MOVEMENT|JTYPE_BUTTON, 0, &Self->InputHandle);
+   }
 
    // Generate scrollbars if they haven't been provided
 
@@ -857,10 +842,10 @@ static ERROR SCINTILLA_Init(objScintilla *Self, APTR)
 
    if (!Self->VScrollID) {
       if (!CreateObject(ID_SCROLLBAR, 0, &Self->VScrollbar,
-            FID_Name|TSTRING,      "page_vscroll",
-            FID_Surface|TLONG,     (Self->ScrollTargetID) ? Self->ScrollTargetID : Self->SurfaceID,
-            FID_Direction|TSTRING, "VERTICAL",
-            FID_Monitor|TLONG,     Self->SurfaceID,
+            FID_Name|TSTR,      "page_vscroll",
+            FID_Surface|TLONG,  (Self->ScrollTargetID) ? Self->ScrollTargetID : Self->SurfaceID,
+            FID_Direction|TSTR, "VERTICAL",
+            FID_Monitor|TLONG,  Self->SurfaceID,
             TAGEND)) {
          SET_VScroll(Self, Self->VScrollbar->Head.UniqueID);
       }
@@ -868,11 +853,11 @@ static ERROR SCINTILLA_Init(objScintilla *Self, APTR)
 
    if (!Self->HScrollID) {
       if (!CreateObject(ID_SCROLLBAR, 0, &Self->HScrollbar,
-            FID_Name|TSTRING,      "page_hscroll",
-            FID_Surface|TLONG,     (Self->ScrollTargetID) ? Self->ScrollTargetID : Self->SurfaceID,
-            FID_Direction|TSTRING, "HORIZONTAL",
-            FID_Monitor|TLONG,     Self->SurfaceID,
-            FID_Intersect|TLONG,   Self->VScrollID,
+            FID_Name|TSTR,       "page_hscroll",
+            FID_Surface|TLONG,   (Self->ScrollTargetID) ? Self->ScrollTargetID : Self->SurfaceID,
+            FID_Direction|TSTR,  "HORIZONTAL",
+            FID_Monitor|TLONG,   Self->SurfaceID,
+            FID_Intersect|TLONG, Self->VScrollID,
             TAGEND)) {
          SET_HScroll(Self, Self->HScrollbar->Head.UniqueID);
       }
@@ -902,9 +887,10 @@ static ERROR SCINTILLA_Init(objScintilla *Self, APTR)
    }
    else calc_longest_line(Self);
 
-   FUNCTION callback;
-   SET_FUNCTION_STDC(callback, (APTR)&idle_timer);
-   SubscribeTimer(0.03, &callback, &Self->TimerID);
+   {
+      auto callback = make_function_stdc(idle_timer);
+      SubscribeTimer(0.03, &callback, &Self->TimerID);
+   }
 
    if (Self->Visible IS -1) Self->Visible = TRUE;
 
@@ -2497,6 +2483,29 @@ static void key_event(objScintilla *Self, evKey *Event, LONG Size)
       else if ((Event->Code IS K_L_ALT) or (Event->Code IS K_R_ALT)) Self->KeyAlt = FALSE;
       else if ((Event->Code IS K_L_CONTROL) or (Event->Code IS K_R_CONTROL)) Self->KeyCtrl = FALSE;
    }
+}
+
+//*****************************************************************************
+
+static ERROR consume_input_events(const InputMsg *Events, LONG TotalEvents)
+{
+   auto Self = (objScintilla *)CurrentContext();
+
+   for (auto event=Events; event; event=event->Next) {
+      if (Self->Flags & SCF_DISABLED) continue;
+
+      if (event->Flags & JTYPE_BUTTON) {
+         if (event->Value > 0) {
+            Self->API->panMousePress(event->Type, event->X, event->Y);
+         }
+         else Self->API->panMouseRelease(event->Type, event->X, event->Y);
+      }
+      else if (event->Flags & JTYPE_MOVEMENT) {
+         Self->API->panMouseMove(event->X, event->Y);
+      }
+   }
+
+   return ERR_Okay;
 }
 
 //*****************************************************************************

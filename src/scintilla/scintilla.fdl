@@ -114,6 +114,7 @@ module({ name="Scintilla", copyright="Paul Manias © 2005-2020", version=1.0 }, 
    LONG   LongestLine;         // Longest line in the document
    LONG   LongestWidth;        // Pixel width of the longest line
    LONG   TabWidth;
+   LONG   InputHandle;
    TIMER  TimerID;
    LARGE  ReportEventFlags;    // For delayed event reporting.
    UWORD  KeyAlt:1;

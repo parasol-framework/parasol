@@ -43,6 +43,7 @@ static const FieldDef clAlign[] = {
 
 static OBJECTPTR clButton = NULL;
 
+static ERROR consume_input_events(const InputMsg *, LONG);
 static void key_event(objButton *, evKey *, LONG);
 
 //****************************************************************************
@@ -124,71 +125,6 @@ static ERROR BUTTON_Activate(objButton *Self, APTR Void)
    return ERR_Okay;
 }
 
-//****************************************************************************
-
-static ERROR BUTTON_DataFeed(objButton *Self, struct acDataFeed *Args)
-{
-   if (!Args) return ERR_NullArgs;
-
-   if (Args->DataType IS DATA_INPUT_READY) {
-      InputMsg *input;
-      objSurface *surface;
-
-      while (!gfxGetInputMsg((struct dcInputReady *)Args->Buffer, 0, &input)) {
-         if (input->Type IS JET_ENTERED_SURFACE) {
-            Self->HoverState = BHS_INSIDE;
-
-            if (!(Self->Flags & BTF_DISABLED)) {
-               if (!AccessObject(Self->RegionID, 2000, &surface)) {
-                  if (!(surface->Flags & RNF_DISABLED)) {
-                     DelayMsg(AC_Draw, Self->RegionID, NULL);
-                  }
-                  ReleaseObject(surface);
-               }
-            }
-         }
-         else if (input->Type IS JET_LEFT_SURFACE) {
-            Self->HoverState = BHS_OUTSIDE;
-
-            if (!AccessObject(Self->RegionID, 2000, &surface)) {
-               if (!(surface->Flags & RNF_DISABLED)) {
-                  DelayMsg(AC_Draw, Self->RegionID, NULL);
-               }
-               ReleaseObject(surface);
-            }
-         }
-         else if (input->Type IS JET_LMB) {
-            if (input->Value > 0) {
-               if (Self->Flags & BTF_DISABLED) continue;
-
-               if (input->Flags & JTYPE_REPEATED) {
-                  if (Self->Flags & BTF_PULSE) acActivate(Self);
-               }
-               else {
-                  Self->Clicked = TRUE;
-                  Self->ClickX  = input->X;
-                  Self->ClickY  = input->Y;
-                  DelayMsg(AC_Draw, Self->RegionID, NULL);
-               }
-            }
-            else if (Self->Clicked) {
-               Self->Clicked = FALSE;
-               LONG clickx = input->X - Self->ClickX;
-               LONG clicky = input->Y - Self->ClickY;
-               if (clickx < 0) clickx = -clickx;
-               if (clicky < 0) clicky = -clicky;
-
-               acDrawID(Self->RegionID);
-
-               if (((clickx < 4) and (clicky < 4)) OR (Self->Flags & BTF_PULSE)) acActivate(Self);
-            }
-         }
-      }
-   }
-
-   return ERR_Okay;
-}
-
 /*****************************************************************************
 -ACTION-
 Disable: Turns the button off.
@@ -235,7 +171,7 @@ static ERROR BUTTON_Free(objButton *Self, APTR Void)
    if (Self->prvKeyEvent) { UnsubscribeEvent(Self->prvKeyEvent); Self->prvKeyEvent = NULL; }
    if (Self->Icon)        { FreeResource(Self->Icon); Self->Icon = NULL; }
    if (Self->RegionID)    { acFreeID(Self->RegionID); Self->RegionID = 0; }
-   gfxUnsubscribeInput(0); // Unsubscribe our object from all surfaces
+   if (Self->InputHandle) { gfxUnsubscribeInput(Self->InputHandle); Self->InputHandle = 0; }
    return ERR_Okay;
 }
 
@@ -291,7 +227,8 @@ static ERROR BUTTON_Init(objButton *Self, APTR Void)
          return ERR_Init;
       }
 
-      gfxSubscribeInput(Self->RegionID, JTYPE_FEEDBACK|JTYPE_BUTTON|JTYPE_REPEATED, 0);
+      auto callback = make_function_stdc(consume_input_events);
+      gfxSubscribeInput(&callback, Self->RegionID, JTYPE_FEEDBACK|JTYPE_BUTTON|JTYPE_REPEATED, 0, &Self->InputHandle);
 
       ReleaseObject(region);
    }
@@ -720,7 +657,7 @@ static ERROR GET_Width(objButton *Self, Variable *Value)
 
 static ERROR SET_Width(objButton *Self, Variable *Value)
 {
-   if (((Value->Type & FD_DOUBLE) and (!Value->Double)) OR ((Value->Type & FD_LARGE) and (!Value->Large))) {
+   if (((Value->Type & FD_DOUBLE) and (!Value->Double)) or ((Value->Type & FD_LARGE) and (!Value->Large))) {
       return ERR_Okay;
    }
 
@@ -897,11 +834,72 @@ static ERROR SET_YOffset(objButton *Self, Variable *Value)
 
 //****************************************************************************
 
+static ERROR consume_input_events(const InputMsg *Events, LONG Handle)
+{
+   auto Self = (objButton *)CurrentContext();
+
+   for (auto event=Events; event; event=event->Next) {
+      if (event->Type IS JET_ENTERED_SURFACE) {
+         Self->HoverState = BHS_INSIDE;
+
+         if (!(Self->Flags & BTF_DISABLED)) {
+            objSurface *surface;
+            if (!AccessObject(Self->RegionID, 2000, &surface)) {
+               if (!(surface->Flags & RNF_DISABLED)) {
+                  DelayMsg(AC_Draw, Self->RegionID, NULL);
+               }
+               ReleaseObject(surface);
+            }
+         }
+      }
+      else if (event->Type IS JET_LEFT_SURFACE) {
+         objSurface *surface;
+         Self->HoverState = BHS_OUTSIDE;
+         if (!AccessObject(Self->RegionID, 2000, &surface)) {
+            if (!(surface->Flags & RNF_DISABLED)) {
+               DelayMsg(AC_Draw, Self->RegionID, NULL);
+            }
+            ReleaseObject(surface);
+         }
+      }
+      else if (event->Type IS JET_LMB) {
+         if (event->Value > 0) {
+            if (Self->Flags & BTF_DISABLED) continue;
+
+            if (event->Flags & JTYPE_REPEATED) {
+               if (Self->Flags & BTF_PULSE) acActivate(Self);
+            }
+            else {
+               Self->Clicked = TRUE;
+               Self->ClickX  = event->X;
+               Self->ClickY  = event->Y;
+               DelayMsg(AC_Draw, Self->RegionID, NULL);
+            }
+         }
+         else if (Self->Clicked) {
+            Self->Clicked = FALSE;
+            LONG clickx = event->X - Self->ClickX;
+            LONG clicky = event->Y - Self->ClickY;
+            if (clickx < 0) clickx = -clickx;
+            if (clicky < 0) clicky = -clicky;
+
+            acDrawID(Self->RegionID);
+
+            if (((clickx < 4) and (clicky < 4)) or (Self->Flags & BTF_PULSE)) acActivate(Self);
+         }
+      }
+   }
+
+   return ERR_Okay;
+}
+
+//****************************************************************************
+
 static void key_event(objButton *Self, evKey *Event, LONG Size)
 {
    if (!(Event->Qualifiers & KQ_PRESSED)) return;
 
-   if ((Event->Code IS K_ENTER) OR (Event->Code IS K_NP_ENTER) OR (Event->Code IS K_SPACE)) {
+   if ((Event->Code IS K_ENTER) or (Event->Code IS K_NP_ENTER) or (Event->Code IS K_SPACE)) {
       parasol::Log log;
       log.branch("Enter or Space key detected.");
       acActivate(Self);

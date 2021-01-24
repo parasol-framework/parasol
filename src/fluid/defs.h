@@ -165,8 +165,9 @@ struct finput {
    struct finput *Next;
    APTR KeyEvent;
    OBJECTID SurfaceID;
+   LONG InputHandle;
    LONG Callback;
-   LONG InputObject;
+   LONG InputValue;
    LONG Mask;
    BYTE Mode;
 };

@@ -47,6 +47,47 @@ static void focus_event(lua_State *, evFocus *, LONG);
 static void key_event(struct finput *, evKey *, LONG);
 
 //****************************************************************************
+
+static ERROR consume_input_events(const InputMsg *Events, LONG Handle)
+{
+   parasol::Log log(__FUNCTION__);
+
+   auto Self = (objScript *)CurrentContext();
+   auto prv = (prvFluid *)Self->Head.ChildPrivate;
+
+   auto list = prv->InputList;
+   for (; (list) and (list->InputHandle != Handle); list=list->Next);
+
+   if (!list) {
+      log.warning("Dangling input feed subscription %d", Handle);
+      gfxUnsubscribeInput(Handle);
+      return ERR_NotFound;
+   }
+
+   LONG branch = GetResource(RES_LOG_DEPTH); // Required as thrown errors cause the debugger to lose its branch position
+
+      // For simplicity, a call to the handler is made for each individual input event.
+
+      while (Events) {
+         lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, list->Callback); // +1 Reference to callback
+         lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, list->InputValue); // +1 Optional input value registered by the Fluid client
+         named_struct_to_table(prv->Lua, "InputMsg", Events); // +1 Input message
+
+         if (lua_pcall(prv->Lua, 2, 0, 0)) {
+            process_error(Self, "Input DataFeed Callback");
+         }
+
+         Events = Events->Next;
+      }
+
+   SetResource(RES_LOG_DEPTH, branch);
+
+   log.traceBranch("Collecting garbage.");
+   lua_gc(prv->Lua, LUA_GCCOLLECT, 0);
+   return ERR_Okay;
+}
+
+//****************************************************************************
 // Any Read accesses to the object will pass through here.
 
 static int input_index(lua_State *Lua)
@@ -100,8 +141,7 @@ static int input_keyboard(lua_State *Lua)
    BYTE sub_keyevent = FALSE;
    if (object_id) {
       if (!prv->FocusEventHandle) { // Monitor the focus state of the target surface with a global function.
-         FUNCTION callback;
-         SET_FUNCTION_STDC(callback, (APTR)&focus_event);
+         auto callback = make_function_stdc(focus_event);
          SubscribeEvent(EVID_GUI_SURFACE_FOCUS, &callback, Lua, &prv->FocusEventHandle);
       }
 
@@ -124,14 +164,14 @@ static int input_keyboard(lua_State *Lua)
 
       APTR event = NULL;
       if (sub_keyevent) {
-         FUNCTION callback;
-         SET_FUNCTION_STDC(callback, (APTR)&key_event);
+         auto callback = make_function_stdc(key_event);
          SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, &callback, input, &event);
       }
 
-      input->Script    = Lua->Script;
-      input->SurfaceID = object_id;
-      input->KeyEvent  = event;
+      input->InputHandle = 0;
+      input->Script      = Lua->Script;
+      input->SurfaceID   = object_id;
+      input->KeyEvent    = event;
       if (function_type IS LUA_TFUNCTION) {
          lua_pushvalue(Lua, 2);
          input->Callback = luaL_ref(Lua, LUA_REGISTRYINDEX);
@@ -142,7 +182,7 @@ static int input_keyboard(lua_State *Lua)
       }
 
       lua_pushvalue(Lua, lua_gettop(Lua)); // Take a copy of the Fluid.input object
-      input->InputObject = luaL_ref(Lua, LUA_REGISTRYINDEX);
+      input->InputValue = luaL_ref(Lua, LUA_REGISTRYINDEX);
       input->Mode = FIM_KEYBOARD;
       input->Next = prv->InputList;
       prv->InputList = input;
@@ -252,12 +292,9 @@ static int input_request_item(lua_State *Lua)
 }
 
 //****************************************************************************
-// Usage: input = input.subscribe(MaskFlags (JTYPE), SurfaceID (Optional), DeviceID (Optional), Function)
+// Usage: input = input.subscribe(MaskFlags (JTYPE), SurfaceFilter (Optional), DeviceFilter (Optional), Function)
 //
-// This functionality is a wrapper for the gfxSubscribeInput() function.  Due to the fact that individual subscriptions
-// cannot be tracked as a resource, we have to subscribe to all surfaces and manipulate the event mask universally.
-// This situation could be improved if gfxSubscribeInput() tracked subscriptions accurately, e.g. with a unique ID
-// and gfxUnsubscribeInput() used that ID for releasing each subscription.
+// This functionality is a wrapper for the gfxSubscribeInput() function.
 
 static int input_subscribe(lua_State *Lua)
 {
@@ -289,11 +326,6 @@ static int input_subscribe(lua_State *Lua)
       }
    }
 
-   LONG existing_mask = 0;
-   for (auto input=prv->InputList; input; input=input->Next) {
-      existing_mask |= input->Mask;
-   }
-
    log.msg("Surface: %d, Mask: $%.8x, Device: %d", object_id, mask, device_id);
 
    struct finput *input;
@@ -313,17 +345,16 @@ static int input_subscribe(lua_State *Lua)
       }
 
       lua_pushvalue(Lua, lua_gettop(Lua)); // Take a copy of the Fluid.input object
-      input->InputObject = luaL_ref(Lua, LUA_REGISTRYINDEX);
+      input->InputValue = luaL_ref(Lua, LUA_REGISTRYINDEX);
       input->KeyEvent    = NULL;
+      input->InputHandle = 0;
       input->Mask        = mask;
       input->Mode        = FIM_DEVICE;
       input->Next        = prv->InputList;
       prv->InputList = input;
 
-      if ((~existing_mask) & mask) {
-         if (existing_mask) gfxUnsubscribeInput(0);
-         if ((error = gfxSubscribeInput(0, existing_mask | mask, device_id))) goto failed;
-      }
+      auto callback = make_function_stdc(consume_input_events);
+      if ((error = gfxSubscribeInput(&callback, input->SurfaceID, mask, device_id, &input->InputHandle))) goto failed;
 
       return 1;
    }
@@ -334,7 +365,7 @@ failed:
 }
 
 //****************************************************************************
-// Usage: error = input.unsubscribe(SurfaceID)
+// Usage: error = input.unsubscribe()
 
 static int input_unsubscribe(lua_State *Lua)
 {
@@ -347,9 +378,10 @@ static int input_unsubscribe(lua_State *Lua)
    parasol::Log log("input.unsubscribe");
    log.traceBranch("");
 
-   if (input->InputObject) { luaL_unref(Lua, LUA_REGISTRYINDEX, input->InputObject); input->InputObject = 0; }
+   if (input->InputValue)  { luaL_unref(Lua, LUA_REGISTRYINDEX, input->InputValue); input->InputValue = 0; }
    if (input->Callback)    { luaL_unref(Lua, LUA_REGISTRYINDEX, input->Callback); input->Callback = 0; }
    if (input->KeyEvent)    { UnsubscribeEvent(input->KeyEvent); input->KeyEvent = NULL; }
+   if (input->InputHandle) { gfxUnsubscribeInput(input->InputHandle); input->InputHandle = 0; }
 
    input->Script = NULL;
    input->Mode   = 0;
@@ -367,15 +399,11 @@ static int input_destruct(lua_State *Lua)
    if (input) {
       log.traceBranch("Surface: %d, CallbackRef: %d, KeyEvent: %p", input->SurfaceID, input->Callback, input->KeyEvent);
 
-      if (input->SurfaceID) {
-         // NB: If a keyboard subscription was created, the Display module may not be present/necessary.
-         if (modDisplay) gfxUnsubscribeInput(input->SurfaceID);
-         input->SurfaceID = 0;
-      }
-
-      if (input->InputObject) { luaL_unref(Lua, LUA_REGISTRYINDEX, input->InputObject); input->InputObject = 0; }
-      if (input->Callback) { luaL_unref(Lua, LUA_REGISTRYINDEX, input->Callback); input->Callback = 0; }
-      if (input->KeyEvent) { UnsubscribeEvent(input->KeyEvent); input->KeyEvent = NULL; }
+      if (input->SurfaceID)   input->SurfaceID = 0;
+      if (input->InputHandle) { gfxUnsubscribeInput(input->InputHandle); input->InputHandle = 0; }
+      if (input->InputValue)  { luaL_unref(Lua, LUA_REGISTRYINDEX, input->InputValue); input->InputValue = 0; }
+      if (input->Callback)    { luaL_unref(Lua, LUA_REGISTRYINDEX, input->Callback); input->Callback = 0; }
+      if (input->KeyEvent)    { UnsubscribeEvent(input->KeyEvent); input->KeyEvent = NULL; }
 
       if (Lua->Script) { // Remove from the chain.
          auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
@@ -415,7 +443,7 @@ static void key_event(struct finput *Input, evKey *Event, LONG Size)
    LONG depth = GetResource(RES_LOG_DEPTH); // Required because thrown errors cause the debugger to lose its step position
    LONG top = lua_gettop(prv->Lua);
    lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, Input->Callback); // Get the function reference in Lua and place it on the stack
-   lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, Input->InputObject); // Arg: Input Object
+   lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, Input->InputValue); // Arg: Input value registered by the client
    lua_pushinteger(prv->Lua, Input->SurfaceID);  // Arg: Surface (if applicable)
    lua_pushinteger(prv->Lua, Event->Qualifiers); // Arg: Key Flags
    lua_pushinteger(prv->Lua, Event->Code);       // Arg: Key Value
@@ -454,8 +482,7 @@ static void focus_event(lua_State *Lua, evFocus *Event, LONG Size)
 
       for (LONG i=0; i < Event->TotalWithFocus; i++) {
          if (input->SurfaceID IS Event->FocusList[i]) {
-            FUNCTION callback;
-            SET_FUNCTION_STDC(callback, (APTR)&key_event);
+            auto callback = make_function_stdc(key_event);
             log.trace("Focus notification received for key events on surface #%d.", input->SurfaceID);
             SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, &callback, input, &input->KeyEvent);
             break;
