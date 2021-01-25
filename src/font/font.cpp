@@ -11,7 +11,7 @@ www.freetype.org.
 ******************************************************************************
 
 -MODULE-
-Font: Provides font management functionality and hosts the Font and FontServer classes.
+Font: Provides font management functionality and hosts the Font class.
 
 -END-
 
@@ -315,7 +315,8 @@ static ERROR CMDExpunge(void)
    if (clFont)     { acFree(clFont);     clFont = NULL; }
    if (modDisplay) { acFree(modDisplay); modDisplay = NULL; }
 
-   // NB: Cached font files are not removed during expunge, because the task's shutdown procedure will have automatically destroy any cached fonts our CMDExpunge() routine is called.
+   // NB: Cached font files are not removed during expunge because the shutdown procedure will have automatically
+   // destroy any cached fonts our CMDExpunge() routine is called.
 
    if (glBitmapCache) {
       auto scan = glBitmapCache;

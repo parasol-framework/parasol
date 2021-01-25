@@ -66,7 +66,7 @@ typedef struct rkEvent {
 </pre>
 
 This document does not describe the available system events.  For more information about them, please refer to the
-System Events Reference Manual in the API documentation.
+System Events Reference manual.
 
 -INPUT-
 ptr Event: Pointer to an event structure.
@@ -263,7 +263,7 @@ ERROR msg_event(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSiz
 
    rkEvent *eventmsg = (rkEvent *)Message;
 
-   log.branch("Event $%.8x%8x has been received.", (LONG)((eventmsg->EventID>>32)& 0xffffffff),
+   log.msg(VLF_EXTAPI|VLF_BRANCH, "Event $%.8x%8x has been received.", (LONG)((eventmsg->EventID>>32)& 0xffffffff),
       (LONG)(eventmsg->EventID & 0xffffffff));
 
    struct eventsub *event;

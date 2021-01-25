@@ -238,7 +238,6 @@ static int input_request_item(lua_State *Lua)
          else if (!StrMatch("receipt", dt))      datatype = DATA_RECEIPT;
          else if (!StrMatch("file", dt))         datatype = DATA_FILE;
          else if (!StrMatch("content", dt))      datatype = DATA_CONTENT;
-         else if (!StrMatch("input_ready", dt))  datatype = DATA_INPUT_READY;
          else {
             luaL_argerror(Lua, 3, "Unrecognised datatype");
             return 0;

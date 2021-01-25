@@ -2527,13 +2527,11 @@ static void free_glyph(objFont *Font)
          Font->Cache->LastGlyph = Font->Glyph->Prev;
       }
 
-      if (Font->Glyph IS Font->Cache->Glyphs) {
-         // Start of the chain
+      if (Font->Glyph IS Font->Cache->Glyphs) { // Start of the chain
          Font->Cache->Glyphs = Font->Glyph->Next;
          if (Font->Cache->Glyphs) Font->Cache->Glyphs->Prev = NULL;
       }
-      else {
-         // Middle-to-end of the chain
+      else { // Middle-to-end of the chain
          if (Font->Glyph->Next) Font->Glyph->Next->Prev = Font->Glyph->Prev;
          Font->Glyph->Prev->Next = Font->Glyph->Next;
       }

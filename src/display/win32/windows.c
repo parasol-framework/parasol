@@ -77,8 +77,7 @@ enum { // From core.h
    DATA_REQUEST,   // Make a request for item data
    DATA_RECEIPT,   // Receipt for item data, in response to an earlier request
    DATA_FILE,      // File location (the data will reflect the complete file path)
-   DATA_CONTENT,   // Document content (between XML tags) - sent by document objects only
-   DATA_INPUT_READY // Device input that has been transformed into user input
+   DATA_CONTENT    // Document content (between XML tags) - sent by document objects only
 };
 
 typedef struct rkDropTarget {
