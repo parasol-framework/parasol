@@ -179,11 +179,11 @@
 <p>For convenience, the face string can also be extended with extra parameters so that you can define point size and style information at the same time when writing this field.  Extra parameters are delimited with the colon character and must follow a set order defined as <code>face:pointsize:style:colour</code>.</p>
 <p>Here are some examples:</p>
 <pre>Open Sans:12:Bold Italic:#ff0000
-Courier:10
+Courier:10.6
 Charter:120%::255,128,255
 </pre>
-<p>To load a font file that is not installed by default, replace the face parameter with the SRC command, followed by the font location: <code>SRC:exodus:data/images/shine:14:Italic</code></p>
-<p>Multiple font faces can be specified in CSV format, e.g. "Sans Serif,Open Sans", which allows the closest matching font to be selected if the first face is unavailable or unable to match the requested point size.  This feature can be very useful for pairing bitmap fonts with a scalable equivalent.</p>
+<p>To load a font file that is not installed by default, replace the face parameter with the SRC command, followed by the font location: <code>SRC:volumename:data/images/shine:14:Italic</code></p>
+<p>Multiple font faces can be specified in CSV format, e.g. <code>Sans Serif,Open Sans</code>, which allows the closest matching font to be selected if the first face is unavailable or unable to match the requested point size.  This feature can be very useful for pairing bitmap fonts with a scalable equivalent.</p>
       </description>
     </field>
 

@@ -543,22 +543,22 @@ gui.toolbar = function(Target, Options)
       self.surface.acDraw()
    end
 
-   local function inputFeedback(Surface, Msg) // Internal input handler
-      if (Msg.type == JET_ENTERED_SURFACE) then
+   local function inputFeedback(Surface, Event) // Internal input handler
+      if (Event.type == JET_ENTERED_SURFACE) then
 
-      elseif (Msg.type == JET_LEFT_SURFACE) then
+      elseif (Event.type == JET_LEFT_SURFACE) then
          resetTipTimer()
          if (lCurrentItem) then
             hoverUpdate(nil)
          end
-      elseif (bit.band(Msg.flags, JTYPE_MOVEMENT) != 0) then
+      elseif (bit.band(Event.flags, JTYPE_MOVEMENT) != 0) then
          resetTipTimer()
 
          if (lClicked) then return end
 
          local item
-         if self.surface and Msg.overID == self.surface.id then // Determine what item we are positioned over
-            item = getCursorItem(Msg.x, Msg.y)
+         if self.surface and Event.overID == self.surface.id then // Determine what item we are positioned over
+            item = getCursorItem(Event.x, Event.y)
          end
 
          if item and item.tip then // Tool-tip management
@@ -572,8 +572,8 @@ gui.toolbar = function(Target, Options)
 
          hoverUpdate(item)
 
-      elseif bit.band(Msg.flags, JTYPE_BUTTON) != 0 then
-         if Msg.value > 0 then
+      elseif bit.band(Event.flags, JTYPE_BUTTON) != 0 then
+         if Event.value > 0 then
             if lDisabled then return end
 
             resetTipTimer()
@@ -581,21 +581,21 @@ gui.toolbar = function(Target, Options)
             if lCurrentItem then
                if lCurrentItem.disabled then return end
 
-               if Msg.type == JET_BUTTON_1 then
+               if Event.type == JET_BUTTON_1 then
                   lClicked = lCurrentItem
-                  lClickX  = Msg.x
-                  lClickY  = Msg.y
+                  lClickX  = Event.x
+                  lClickY  = Event.y
                   hoverUpdate(lCurrentItem, true)
                end
             end
-         elseif Msg.type == JET_BUTTON_1 then
+         elseif Event.type == JET_BUTTON_1 then
             if lClicked then
                lClicked = nil
 
                hoverUpdate(lCurrentItem, true)
 
-               local delta_x = Msg.x - lClickX
-               local delta_y = Msg.y - lClickY
+               local delta_x = Event.x - lClickX
+               local delta_y = Event.y - lClickY
                if (delta_x < 0) then delta_x = -delta_x end
                if (delta_y < 0) then delta_y = -delta_y end
 

@@ -720,7 +720,7 @@ module({ name="Core", copyright="Paul Manias 1996-2020" }, function()
   ]])
 
   struct("Variable", { }, [[
-    int    Type     # Field definition flags
+    uint   Type     # Field definition flags
     int    Unused   # Unused 32-bit value for 64-bit alignment
     large  Large    # The value as a 64-bit integer.
     double Double   # The value as a 64-bit float-point number.

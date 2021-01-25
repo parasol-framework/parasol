@@ -793,6 +793,7 @@ static ERROR SET_YOffset(objInput *Self, Variable *Value)
 static void text_validation(objText *Text)
 {
    parasol::Log log(__FUNCTION__);
+
    auto Self = (objInput *)CurrentContext();
 
    if (Self->prvActive) {
@@ -849,6 +850,7 @@ static void text_validation(objText *Text)
 static void text_activated(objText *Text)
 {
    parasol::Log log(__FUNCTION__);
+
    auto Self = (objInput *)CurrentContext();
 
    if (Self->prvActive) {
