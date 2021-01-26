@@ -1054,7 +1054,7 @@ LONG winWaitForObjects(LONG Total, HANDLE *Handles, LONG Time, BYTE WinMsgs)
 
    int input_flags = WinMsgs ? (QS_INPUT|QS_POSTMESSAGE|QS_TIMER|QS_PAINT|QS_HOTKEY|QS_SENDMESSAGE) : 0;
 
-   LONG result = MsgWaitForMultipleObjects(Total, Handles, FALSE, INFINITE, input_flags);
+   LONG result = MsgWaitForMultipleObjects(Total, Handles, FALSE, Time, input_flags);
 
    if (result IS WAIT_TIMEOUT) return -1;
    else if ((result >= WAIT_ABANDONED_0) AND (result < WAIT_ABANDONED_0+Total)) {
