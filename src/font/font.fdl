@@ -40,14 +40,14 @@ module({ name="Font", copyright="Paul Manias © 1998-2020", version=1.0 }, funct
   })
 
   class("Font", { version=1, src="class_font.cpp", output="class_font_def.c" }, [[
-   double Angle        # Rotation angle to use when drawing the font.
-   double Point        # The Point/Height of the font (arbitrary size, non-exact)
-   double StrokeSize   # For scalable fonts only.  Indicates the strength of the stroked outline if Outline.Alpha > 0
-   obj(Bitmap) Bitmap  # Pointer to destination Bitmap
-   str String          # String for drawing etc
-   str Path            # The location of the font file as derived from the name of the face.  Field may be set directly if the font source is unregistered
-   str Style           # The font style (Regular, Bold, Italic, Condensed, Light etc)
-   str Face            # The face of the font
+   double Angle           # Rotation angle to use when drawing the font.
+   double Point           # The Point/Height of the font (arbitrary size, non-exact)
+   double StrokeSize      # For scalable fonts only.  Indicates the strength of the stroked outline if Outline.Alpha > 0
+   obj(Bitmap) Bitmap     # Pointer to destination Bitmap
+   str   String           # String for drawing etc
+   str   Path             # The location of the font file as derived from the name of the face.  Field may be set directly if the font source is unregistered
+   str   Style            # The font style (Regular, Bold, Italic, Condensed, Light etc)
+   str   Face             # The face of the font
    fptr(error obj(Font) ptr(int) ptr(int)) WrapCallback # Callback on encountering wordwrap
    ptr   EscapeCallback   # Callback on encountering an escape character
    ptr   UserData         # User relevant data
@@ -79,8 +79,7 @@ module({ name="Font", copyright="Paul Manias © 1998-2020", version=1.0 }, funct
   [[
    WORD *prvTabs;                // Array of tab stops
    UBYTE *prvData;
-   struct font_cache *Cache;     // Truetype cache
-   struct glyph_cache *Glyph;    // Truetype glyph cache
+   class font_cache *Cache;     // Reference to the Truetype font that is in use
    struct FontCharacter *prvChar;
    struct BitmapCache *BmpCache;
    struct font_glyph prvTempGlyph;
@@ -89,11 +88,6 @@ module({ name="Font", copyright="Paul Manias © 1998-2020", version=1.0 }, funct
    WORD prvSpaceWidth;          // Pixel width of word breaks
    WORD prvBitmapHeight;
    WORD prvLineCountCR;
-   #ifdef FT_FREETYPE_H
-      FT_Face FTFace;
-   #else
-      LONG FTFace;
-   #endif
    char prvEscape[2];
    char prvFace[32];
    char prvBuffer[80];

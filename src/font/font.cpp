@@ -22,6 +22,7 @@ Font: Provides font management functionality and hosts the Font class.
 //#define DEBUG
 
 #include <ft2build.h>
+#include <freetype/ftsizes.h>
 #include FT_FREETYPE_H
 #include FT_STROKER_H
 
@@ -36,8 +37,11 @@ Font: Provides font management functionality and hosts the Font class.
 #include <math.h>
 #include <wchar.h>
 #include <parasol/strings.hpp>
+#include <mutex>
 
-static KeyStore *glCache = NULL;
+static KeyStore *glCache = NULL; // Key = Path to the font; Value = struct font_cache
+static std::recursive_mutex glCacheMutex; // Protects access to glCache for multi-threading support
+typedef const std::lock_guard<std::recursive_mutex> CACHE_LOCK;
 
 /*****************************************************************************
 ** This table determines what ASCII characters are treated as white-space for word-wrapping purposes.  You'll need to
@@ -65,8 +69,6 @@ static const UBYTE glWrapBreaks[256] = {
 
 //****************************************************************************
 
-#define FIXED_DPI 96 // FreeType measurements are based on this DPI.
-
 OBJECTPTR modFont = NULL;
 struct CoreBase *CoreBase;
 static struct DisplayBase *DisplayBase;
@@ -79,8 +81,8 @@ static LONG glDisplayHDPI = FIXED_DPI;
 static ERROR add_font_class(void);
 static LONG getutf8(CSTRING, ULONG *);
 static LONG get_kerning(FT_Face, LONG Glyph, LONG PrevGlyph);
-static font_glyph * get_glyph(objFont *, ULONG, UBYTE);
-static void free_glyph(objFont *);
+static font_glyph * get_glyph(objFont *, ULONG, bool);
+static void unload_glyph_cache(objFont *);
 static void scan_truetype_folder(objConfig *);
 static void scan_fixed_folder(objConfig *);
 static ERROR analyse_bmp_font(STRING, winfnt_header_fields *, STRING *, UBYTE *, UBYTE);
@@ -164,7 +166,7 @@ static LONG getutf8(CSTRING Value, ULONG *Unicode)
 // in the interface style values.
 
 static DOUBLE glDefaultPoint = 10;
-static BYTE glPointSet = FALSE;
+static bool glPointSet = false;
 
 static DOUBLE global_point_size(void)
 {
@@ -176,7 +178,7 @@ static DOUBLE global_point_size(void)
          parasol::ScopedObjectLock<objXML> style(style_id, 3000);
          if (style.granted()) {
             char fontsize[20];
-            glPointSet = TRUE;
+            glPointSet = true;
             if (!acGetVar(style.obj, "/interface/@fontsize", fontsize, sizeof(fontsize))) {
                glDefaultPoint = StrToFloat(fontsize);
                if (glDefaultPoint < 6) glDefaultPoint = 6;
@@ -267,8 +269,6 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    if (LoadModule("display", MODVERSION_DISPLAY, &modDisplay, &DisplayBase) != ERR_Okay) return ERR_InitModule;
 
    if (!(glCache = VarNew(0, KSF_THREAD_SAFE))) return ERR_AllocMemory;
-
-   // Initialise the FreeType library
 
    if (FT_Init_FreeType(&glFTLibrary)) {
       log.warning("Failed to initialise the FreeType font library.");
@@ -361,12 +361,12 @@ static LONG fntCharWidth(objFont *Font, ULONG Char, ULONG KChar, LONG *Kerning)
    if (Font->FixedWidth > 0) return Font->FixedWidth;
    else if (Font->Flags & FTF_SCALABLE) {
       font_glyph *cache;
-      if ((cache = get_glyph(Font, Char, FALSE))) {
+      if ((cache = get_glyph(Font, Char, false))) {
          if ((Font->Flags & FTF_KERNING) and (KChar) and (Kerning)) {
-            LONG kglyph = FT_Get_Char_Index(Font->FTFace, KChar);
-            *Kerning = get_kerning(Font->FTFace, cache->GlyphIndex, kglyph);
+            LONG kglyph = FT_Get_Char_Index(Font->Cache->Face, KChar);
+            *Kerning = get_kerning(Font->Cache->Face, cache->GlyphIndex, kglyph);
          }
-         return cache->Char.AdvanceX + Font->GlyphSpacing;
+         return cache->AdvanceX + Font->GlyphSpacing;
       }
       else {
          parasol::Log log(__FUNCTION__);
@@ -563,9 +563,9 @@ static void fntStringSize(objFont *Font, CSTRING String, LONG Chars, LONG Wrap, 
             if (unicode IS ' ') {
                charwidth += Font->prvChar[' '].Advance + Font->GlyphSpacing;
             }
-            else if ((cache = get_glyph(Font, unicode, FALSE))) {
-               charwidth = cache->Char.AdvanceX + Font->GlyphSpacing;
-               if (Font->Flags & FTF_KERNING) charwidth += get_kerning(Font->FTFace, cache->GlyphIndex, prevglyph); // Kerning adjustment
+            else if ((cache = get_glyph(Font, unicode, false))) {
+               charwidth = cache->AdvanceX + Font->GlyphSpacing;
+               if (Font->Flags & FTF_KERNING) charwidth += get_kerning(Font->Cache->Face, cache->GlyphIndex, prevglyph); // Kerning adjustment
                prevglyph = cache->GlyphIndex;
             }
          }
@@ -699,9 +699,9 @@ static LONG fntStringWidth(objFont *Font, CSTRING String, LONG Chars)
             else if (unicode IS ' ') {
                len += Font->prvChar[' '].Advance + Font->GlyphSpacing;
             }
-            else if ((cache = get_glyph(Font, unicode, FALSE))) {
-               len += cache->Char.AdvanceX + Font->GlyphSpacing;
-               if (Font->Flags & FTF_KERNING) len += get_kerning(Font->FTFace, cache->GlyphIndex, prevglyph);
+            else if ((cache = get_glyph(Font, unicode, false))) {
+               len += cache->AdvanceX + Font->GlyphSpacing;
+               if (Font->Flags & FTF_KERNING) len += get_kerning(Font->Cache->Face, cache->GlyphIndex, prevglyph);
                prevglyph = cache->GlyphIndex;
             }
          }
@@ -808,9 +808,9 @@ static ERROR fntConvertCoords(objFont *Font, CSTRING String, LONG X, LONG Y, LON
             else if ((!(Font->Flags & FTF_KERNING)) and (unicode < 256) and (Font->prvChar[unicode].Advance)) {
                width = Font->prvChar[unicode].Advance + Font->GlyphSpacing;
             }
-            else if ((cache = get_glyph(Font, unicode, FALSE))) {
-               width = cache->Char.AdvanceX + Font->GlyphSpacing;
-               if (Font->Flags & FTF_KERNING) xpos += get_kerning(Font->FTFace, cache->GlyphIndex, prevglyph);
+            else if ((cache = get_glyph(Font, unicode, false))) {
+               width = cache->AdvanceX + Font->GlyphSpacing;
+               if (Font->Flags & FTF_KERNING) xpos += get_kerning(Font->Cache->Face, cache->GlyphIndex, prevglyph);
                prevglyph = cache->GlyphIndex;
             }
          }
@@ -869,7 +869,7 @@ static DOUBLE fntSetDefaultSize(DOUBLE Size)
 
    previous = glDefaultPoint;
    glDefaultPoint = Size;
-   glPointSet = TRUE;
+   glPointSet = true;
    return previous;
 }
 
