@@ -100,6 +100,8 @@ static ERROR FONT_Free(objFont *Self, APTR Void)
 {
    parasol::Log log;
 
+   CACHE_LOCK lock(glCacheMutex);
+
    // Manage the bitmapped font cache
 
    if (Self->BmpCache) {
@@ -124,24 +126,22 @@ static ERROR FONT_Free(objFont *Self, APTR Void)
 
    // Manage the vector font cache
 
-   if (Self->Cache) { // Manage the glyph cache first
-      log.trace("Managing the font cache.");
-
-      free_glyph(Self);
+   if (Self->Cache) {
+      unload_glyph_cache(Self);
 
       if (!(--Self->Cache->Usage)) {
-         log.trace("Font face usage reduced to zero.");
+         log.trace("Font face usage reduced to %d.", Self->Cache->Usage);
 
          if (Self->Cache->Face) FT_Done_Face(Self->Cache->Face);
 
-         CSTRING path = Self->Cache->Path;
+         CSTRING path = Self->Cache->Path.c_str();
          VarSet(glCache, path, NULL, 0);
-         if (path) FreeResource(path);
+
          Self->Cache = NULL;
       }
    }
 
-   if (Self->prvTempGlyph.Char.Outline) { FreeResource(Self->prvTempGlyph.Char.Outline); Self->prvTempGlyph.Char.Outline = NULL; }
+   if (Self->prvTempGlyph.Outline) { FreeResource(Self->prvTempGlyph.Outline); Self->prvTempGlyph.Outline = NULL; }
    if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
    if (Self->prvTabs) { FreeResource(Self->prvTabs); Self->prvTabs = NULL; }
 
@@ -151,8 +151,6 @@ static ERROR FONT_Free(objFont *Self, APTR Void)
       }
       Self->String = NULL;
    }
-
-   //if (Self->prvChar) { FreeResource(Self->prvChar); Self->prvChar = NULL; }
 
    return ERR_Okay;
 }
@@ -193,6 +191,8 @@ static ERROR FONT_Init(objFont *Self, APTR Void)
    else if (!StrMatch("Italic", Self->prvStyle)) style = FTF_ITALIC;
    else if (!StrMatch("Bold Italic", Self->prvStyle)) style = FTF_BOLD|FTF_ITALIC;
    else style = 0;
+
+   CACHE_LOCK lock(glCacheMutex);
 
    BitmapCache *cache = check_bitmap_cache(Self, style);
 
@@ -388,7 +388,7 @@ static ERROR FONT_Init(objFont *Self, APTR Void)
    else {
       if ((error = cache_truetype_font(Self, Self->Path))) return error;
 
-      if (FT_HAS_KERNING(Self->FTFace)) Self->Flags |= FTF_KERNING;
+      if (FT_HAS_KERNING(Self->Cache->Face)) Self->Flags |= FTF_KERNING;
       if (!(Self->Flags & FTF_QUICK_ALIAS)) Self->Flags |= FTF_ANTIALIAS;
       Self->Flags |= FTF_SCALABLE;
    }
@@ -561,14 +561,14 @@ Here are some examples:
 
 <pre>
 Open Sans:12:Bold Italic:#ff0000
-Courier:10
+Courier:10.6
 Charter:120%::255,128,255
 </pre>
 
 To load a font file that is not installed by default, replace the face parameter with the SRC command, followed by the
-font location: `SRC:exodus:data/images/shine:14:Italic`
+font location: `SRC:volumename:data/images/shine:14:Italic`
 
-Multiple font faces can be specified in CSV format, e.g. "Sans Serif,Open Sans", which allows the closest matching font to
+Multiple font faces can be specified in CSV format, e.g. `Sans Serif,Open Sans`, which allows the closest matching font to
 be selected if the first face is unavailable or unable to match the requested point size.  This feature can be very
 useful for pairing bitmap fonts with a scalable equivalent.
 
@@ -581,17 +581,17 @@ static ERROR SET_Face(objFont *Self, CSTRING Value)
    if ((Value) and (Value[0])) {
       if (!StrCompare("SRC:", Value, 4, 0)) {
          for (i=4; Value[i]; i++);
-         char location[i-4];
+         char path[i-4];
          LONG coloncount = 0;
          for (i=4,k=0; Value[i]; i++) {
             if (Value[i] IS ':') {
                coloncount++;
                if (coloncount > 1) break;
             }
-            location[k++] = Value[i];
+            path[k++] = Value[i];
          }
-         location[k] = 0;
-         Self->Path = StrClone(location);
+         path[k] = 0;
+         Self->Path = StrClone(path);
          Self->prvFace[0] = 0;
       }
       else {
@@ -604,10 +604,12 @@ static ERROR SET_Face(objFont *Self, CSTRING Value)
       // Extract the point size
 
       i++;
-      Variable var;
-      var.Type = FD_DOUBLE;
-      var.Double = StrToInt(Value+i);
+      Variable var = { .Type = FD_DOUBLE, .Double = StrToFloat(Value+i) };
       while ((Value[i] >= '0') and (Value[i] <= '9')) i++;
+      if (Value[i] IS '.') {
+         Value++;
+         while ((Value[i] >= '0') and (Value[i] <= '9')) i++;
+      }
       if (Value[i] IS '%') { var.Type |= FD_PERCENTAGE; i++; }
       SET_Point(Self, &var);
 
@@ -662,7 +664,7 @@ a font that has been loaded by the FreeType library (FT_Face).
 
 static ERROR GET_FreeTypeFace(objFont *Self, APTR *Handle)
 {
-   *Handle = Self->FTFace;
+   *Handle = Self->Cache->Face;
    return ERR_Okay;
 }
 
@@ -882,6 +884,7 @@ static ERROR SET_Point(objFont *Self, Variable *Value)
 
    if (Self->Head.Flags & NF_INITIALISED) {
       if (Self->Cache) {
+         unload_glyph_cache(Self); // Remove any existing glyph reference
          Self->Point = value;
          cache_truetype_font(Self, NULL);
       }
@@ -1284,6 +1287,7 @@ static ERROR create_outline(BitmapCache *Cache)
 }
 
 //****************************************************************************
+// Assumes a cache lock is held on being called.
 
 static BitmapCache * check_bitmap_cache(objFont *Self, LONG Style)
 {
@@ -1308,6 +1312,7 @@ static BitmapCache * check_bitmap_cache(objFont *Self, LONG Style)
 }
 
 //****************************************************************************
+// Assumes a cache lock is held on being called.
 
 static BitmapCache * cache_bitmap_font(objFont *Self, OBJECTPTR file, LONG offset, winfnt_header_fields *face)
 {
@@ -1410,10 +1415,10 @@ static void draw_vector_outline(objFont *Self, objBitmap *Bitmap, font_glyph *sr
    UBYTE  *data;
    WORD   dx, dy, ex, ey, sx, sy, xinc;
 
-   if (((data = src->Char.Outline)) and (Colour->Alpha > 0)) {
-      sx = dxcoord + src->Char.OutlineLeft;
+   if (((data = src->Outline)) and (Colour->Alpha > 0)) {
+      sx = dxcoord + src->OutlineLeft;
       //if (Self->Angle) sx += dxcoord;
-      ex = sx + src->Char.OutlineWidth;
+      ex = sx + src->OutlineWidth;
 
       if (ex > Bitmap->Clip.Right) ex = Bitmap->Clip.Right;
 
@@ -1422,15 +1427,15 @@ static void draw_vector_outline(objFont *Self, objBitmap *Bitmap, font_glyph *sr
          sx = Bitmap->Clip.Left;
       }
 
-      sy = dycoord - src->Char.OutlineTop + Self->Height;
+      sy = dycoord - src->OutlineTop + Self->Height;
 
       //if (Self->Angle) sy += dycoord;
-      ey = sy + src->Char.OutlineHeight;
+      ey = sy + src->OutlineHeight;
 
       if (ey > Bitmap->Clip.Bottom) ey = Bitmap->Clip.Bottom;
 
       if (sy < Bitmap->Clip.Top) {
-         data += src->Char.OutlineWidth * (Bitmap->Clip.Top - sy);
+         data += src->OutlineWidth * (Bitmap->Clip.Top - sy);
          sy = Bitmap->Clip.Top;
       }
 
@@ -1439,7 +1444,7 @@ static void draw_vector_outline(objFont *Self, objBitmap *Bitmap, font_glyph *sr
       ex += Bitmap->XOffset;
       ey += Bitmap->YOffset;
 
-      xinc = src->Char.OutlineWidth - (ex - sx);
+      xinc = src->OutlineWidth - (ex - sx);
 
       if (Self->Flags & FTF_QUICK_ALIAS) {
          for (dy=sy; dy < ey; dy++) {
@@ -1534,6 +1539,8 @@ static ERROR draw_vector_font(objFont *Self)
       else dxcoord = Self->X + Self->AlignWidth - linewidth;
    }
 
+   CACHE_LOCK lock(glCacheMutex);
+
    // Grab the bitmap for direct pixel access
 
    if (acLock(Bitmap) != ERR_Okay) return log.warning(ERR_Lock);
@@ -1544,9 +1551,7 @@ static ERROR draw_vector_font(objFont *Self)
    ULONG ucolour = bmpGetColourRGB(Bitmap, &Self->Underline);
 
    while (*str) {
-      if (*str IS '\n') {
-         // Reset the font to a new line
-
+      if (*str IS '\n') { // Reset the font to a new line
          if (Self->Underline.Alpha > 0) {
             gfxDrawRectangle(Bitmap, startx, dycoord + Self->Height + 1, dxcoord-startx, (Self->Flags & FTF_HEAVY_LINE) ? 2 : 1, ucolour, TRUE);
          }
@@ -1600,7 +1605,7 @@ static ERROR draw_vector_font(objFont *Self)
          }
          else charlen = getutf8(str, &unicode);
 
-         if (Self->Angle) FT_Set_Transform(Self->FTFace, &matrix, &vector);
+         if (Self->Angle) FT_Set_Transform(Self->Cache->Face, &matrix, &vector);
 
          // Customised escape code handling
 
@@ -1656,8 +1661,8 @@ static ERROR draw_vector_font(objFont *Self)
          if (unicode IS ' ') {
             glyph = prevglyph;
             if (Self->Angle) {
-               vector.x += (Self->FTFace->glyph->advance.x + Self->GlyphSpacing)<<FT_DOWNSIZE;
-               vector.y += (Self->FTFace->glyph->advance.y + Self->GlyphSpacing)<<FT_DOWNSIZE;
+               vector.x += (Self->Cache->Face->glyph->advance.x + Self->GlyphSpacing)<<FT_DOWNSIZE;
+               vector.y += (Self->Cache->Face->glyph->advance.y + Self->GlyphSpacing)<<FT_DOWNSIZE;
             }
             else {
                if (Self->FixedWidth > 0) dxcoord += Self->FixedWidth + Self->GlyphSpacing;
@@ -1666,7 +1671,7 @@ static ERROR draw_vector_font(objFont *Self)
          }
          else {
             font_glyph *src;
-            if (!(src = get_glyph(Self, unicode, TRUE))) {
+            if (!(src = get_glyph(Self, unicode, true))) {
                log.msg("Failed to acquire glyph for character %d '%lc'", unicode, (wint_t)unicode);
                break;
             }
@@ -1674,34 +1679,34 @@ static ERROR draw_vector_font(objFont *Self)
 
             if (Self->Flags & FTF_KERNING) {
                LONG kx, ky;
-               get_kerning_xy(Self->FTFace, glyph, prevglyph, &kx, &ky);
+               get_kerning_xy(Self->Cache->Face, glyph, prevglyph, &kx, &ky);
                dxcoord += kx;
                dycoord += ky;
             }
 
             draw_vector_outline(Self, Bitmap, src, dxcoord, dycoord, &Self->Outline);
 
-            LONG sx = dxcoord + src->Char.Left;
+            LONG sx = dxcoord + src->Left;
             //if (Self->Angle) sx += dxcoord;
-            LONG ex = sx + src->Char.Width;
+            LONG ex = sx + src->Width;
 
             if (ex > Bitmap->Clip.Right) ex = Bitmap->Clip.Right;
 
-            UBYTE *data = src->Char.Data;
+            UBYTE *data = src->Data;
             if (sx < Bitmap->Clip.Left) {
                data += Bitmap->Clip.Left - sx;
                sx = Bitmap->Clip.Left;
             }
 
-            LONG sy = dycoord - src->Char.Top + Self->Height;
+            LONG sy = dycoord - src->Top + Self->Height;
 
             //if (Self->Angle) sy += dycoord;
-            LONG ey = sy + src->Char.Height;
+            LONG ey = sy + src->Height;
 
             if (ey > Bitmap->Clip.Bottom) ey = Bitmap->Clip.Bottom;
 
             if (sy < Bitmap->Clip.Top) {
-               data += src->Char.Width * (Bitmap->Clip.Top - sy);
+               data += src->Width * (Bitmap->Clip.Top - sy);
                sy = Bitmap->Clip.Top;
             }
 
@@ -1710,7 +1715,7 @@ static ERROR draw_vector_font(objFont *Self)
             ex += Bitmap->XOffset;
             ey += Bitmap->YOffset;
 
-            LONG xinc = src->Char.Width - (ex - sx);
+            LONG xinc = src->Width - (ex - sx);
 
             if (Self->Flags & FTF_QUICK_ALIAS) {
                for (dy=sy; dy < ey; dy++) {
@@ -1751,14 +1756,14 @@ static ERROR draw_vector_font(objFont *Self)
             }
 
             if (Self->Angle) {
-               vector.x += (src->Char.AdvanceX + Self->GlyphSpacing)<<FT_DOWNSIZE;
-               vector.y += (src->Char.AdvanceY + Self->GlyphSpacing)<<FT_DOWNSIZE;
+               vector.x += (src->AdvanceX + Self->GlyphSpacing)<<FT_DOWNSIZE;
+               vector.y += (src->AdvanceY + Self->GlyphSpacing)<<FT_DOWNSIZE;
                //dxcoord = vector.x>>FT_DOWNSIZE;
                //dycoord = vector.y>>FT_DOWNSIZE;
             }
             else {
                if (Self->FixedWidth > 0) dxcoord += Self->FixedWidth + Self->GlyphSpacing;
-               else dxcoord += src->Char.AdvanceX + Self->GlyphSpacing;
+               else dxcoord += src->AdvanceX + Self->GlyphSpacing;
             }
          }
 
@@ -1780,20 +1785,18 @@ static ERROR draw_vector_font(objFont *Self)
 
 //****************************************************************************
 // All resources that are allocated in this routine must be untracked.
+// Assumes a cache lock is held on being called.
 
 static ERROR cache_truetype_font(objFont *Self, CSTRING Path)
 {
    parasol::Log log(__FUNCTION__);
-   font_cache *cache;
-   LONG j;
+   font_cache *fc;
    FT_Open_Args openargs;
    ERROR error;
 
    if (Path) { // Check the cache.
-      if (VarGet(glCache, Path, &cache, NULL) != ERR_Okay) {
+      if (VarGet(glCache, Path, &fc, NULL) != ERR_Okay) {
          log.msg("Creating new cache for font '%s'", Path);
-
-         // Attempt to load a truetype font file
 
          FT_Face face;
          openargs.flags    = FT_OPEN_PATHNAME;
@@ -1804,36 +1807,21 @@ static ERROR cache_truetype_font(objFont *Self, CSTRING Path)
             return ERR_Failed;
          }
 
-         if (!FT_IS_SCALABLE(face)) {
-            // Only scalable fonts are supported by this routine
+         if (!FT_IS_SCALABLE(face)) { // Only scalable fonts are supported by this routine
             FT_Done_Face(face);
             return log.warning(ERR_InvalidData);
          }
 
-         font_cache record;
-         ClearMemory(&record, sizeof(record));
-
-         LONG len = StrLength(Path) + 1;
-         if (!AllocMemory(len, MEM_STRING|MEM_NO_CLEAR|MEM_UNTRACKED, &record.Path, NULL)) {
-            CopyMemory(Path, record.Path, len);
-         }
-         else {
-            FT_Done_Face(face);
-            return ERR_AllocMemory;
-         }
-
-         record.Face = face;
-
-         cache = (font_cache *)VarSet(glCache, Path, &record, sizeof(record));
+         char buffer[sizeof(font_cache)];
+         fc = (font_cache *)VarSet(glCache, Path, buffer, sizeof(font_cache));
+         new ((APTR)fc) font_cache(std::string(Path), face);
       }
 
-      Self->FTFace = cache->Face;
-      Self->Cache  = cache;
-      Self->Cache->Usage++;
+      Self->Cache = fc;
    }
    else { // If no path is provided, the font is already cached and requires a new point size.
       log.trace("Recalculating size of currently loaded font.");
-      cache = Self->Cache;
+      fc = Self->Cache;
    }
 
    if ((Self->Height) and (!Self->Point)) {
@@ -1845,63 +1833,13 @@ static ERROR cache_truetype_font(objFont *Self, CSTRING Path)
    // Note that the point size is relative to the DPI of the target display
 
    if (Self->Point <= 0) Self->Point = global_point_size();
-   cache->CurrentSize = F2T(Self->Point);
 
-   FT_Set_Char_Size(Self->FTFace, 0, cache->CurrentSize<<FT_DOWNSIZE, FIXED_DPI, FIXED_DPI); // Note that Self->Point is pre-scaled, so we use FIXED_DPI here.
-   Self->Height = F2T((DOUBLE)cache->CurrentSize * (DOUBLE)Self->HDPI / (DOUBLE)glDisplayHDPI); // Convert point size to pixel size
+   Self->Height = F2T(Self->Point * (DOUBLE)Self->HDPI / (DOUBLE)glDisplayHDPI); // Convert point size to pixel size
 
-   // Check if our required point size is cached
+   fc->Glyphs.try_emplace(Self->Point, fc->Face, Self->Point, Self->prvDefaultChar);
 
-   log.trace("Checking for the existence of glyph cache for size %.2f (%d).", Self->Point, cache->CurrentSize);
-
-   glyph_cache *glyph;
-   for (glyph=cache->Glyphs; glyph; glyph=glyph->Next) {
-       if (glyph->FontSize IS cache->CurrentSize) break;
-   }
-
-   if (!glyph) {
-      log.trace("Creating new glyph cache for size %d", cache->CurrentSize);
-
-      if (AllocMemory(sizeof(glyph_cache), MEM_DATA|MEM_UNTRACKED, &glyph, NULL)) return ERR_AllocMemory;
-
-      if (!cache->Glyphs) cache->Glyphs = glyph;
-      else {
-         if (cache->LastGlyph) cache->LastGlyph->Next = glyph;
-         glyph->Prev = cache->LastGlyph;
-      }
-      cache->LastGlyph = glyph;
-
-      glyph->FontSize = cache->CurrentSize;
-
-      // Pre-calculate the width of each character in the range of 0x20 - 0xff
-
-      if (!FT_Load_Glyph(Self->FTFace, FT_Get_Char_Index(Self->FTFace, Self->prvDefaultChar), FT_LOAD_DEFAULT)) {
-         // Note: DefaultChar is UBYTE, so is always < 256
-         glyph->Chars[(LONG)Self->prvDefaultChar].Width = Self->FTFace->glyph->advance.x>>FT_DOWNSIZE;
-         glyph->Chars[(LONG)Self->prvDefaultChar].Advance = Self->FTFace->glyph->advance.x>>FT_DOWNSIZE;
-      }
-
-      for (LONG i=' '; i < ARRAYSIZE(glyph->Chars); i++) {
-         if ((j = FT_Get_Char_Index(Self->FTFace, i)) and (!FT_Load_Glyph(Self->FTFace, j, FT_LOAD_DEFAULT))) {
-            glyph->Chars[i].Width = Self->FTFace->glyph->advance.x>>FT_DOWNSIZE;
-            glyph->Chars[i].Advance = Self->FTFace->glyph->advance.x>>FT_DOWNSIZE;
-         }
-         else {
-            glyph->Chars[i].Width   = glyph->Chars[(LONG)Self->prvDefaultChar].Width;
-            glyph->Chars[i].Advance = glyph->Chars[(LONG)Self->prvDefaultChar].Advance;
-         }
-      }
-   }
-   else {
-      log.trace("A cache entry exists for font size %.2f.", Self->Point);
-      if (glyph IS Self->Glyph) return ERR_Okay; // The new glyph is unchanged from the current glyph
-   }
-
-   if (Self->Glyph) free_glyph(Self);
-
-   glyph->Usage++;
-   Self->Glyph = glyph;
-   Self->TotalChars = Self->FTFace->num_glyphs;
+   auto &glyph = fc->Glyphs.at(Self->Point);
+   Self->TotalChars = fc->Face->num_glyphs;
 
    // Determine the line distance of the font, which describes the amount of distance between each font line that is printed.
 
@@ -1915,17 +1853,17 @@ static ERROR cache_truetype_font(objFont *Self, CSTRING Path)
    Self->MaxHeight   += Self->Leading; // Increase the max-height by the leading amount
    Self->LineSpacing += Self->Leading; // Increase the line-spacing by the leading amount
    Self->Ascent = Self->Height + Self->Leading;
-   Self->prvChar = glyph->Chars;
+   Self->prvChar = glyph.Chars;
 
    if (Self->FixedWidth > 0) Self->prvSpaceWidth = Self->FixedWidth;
-   else {
-      if (!FT_Load_Glyph(Self->FTFace, FT_Get_Char_Index(Self->FTFace, FT_Get_Char_Index(Self->FTFace, CHAR_SPACE)), FT_LOAD_DEFAULT)) {
-         Self->prvSpaceWidth = (Self->FTFace->glyph->advance.x>>FT_DOWNSIZE);
-         if (Self->prvSpaceWidth < 3) Self->prvSpaceWidth = Self->Height>>1;
-      }
-      else Self->prvSpaceWidth = Self->Height>>1;
+   else if (!FT_Load_Glyph(fc->Face, FT_Get_Char_Index(fc->Face, FT_Get_Char_Index(fc->Face, CHAR_SPACE)), FT_LOAD_DEFAULT)) {
+      Self->prvSpaceWidth = (fc->Face->glyph->advance.x>>FT_DOWNSIZE);
+      if (Self->prvSpaceWidth < 3) Self->prvSpaceWidth = Self->Height>>1;
    }
+   else Self->prvSpaceWidth = Self->Height>>1;
 
+   fc->Usage++;
+   glyph.Usage++;
    return ERR_Okay;
 }
 
@@ -1941,7 +1879,7 @@ static ERROR generate_vector_outline(objFont *Self, font_glyph *Glyph)
    FT_Vector origin = {0, 0};
    if (!FT_Stroker_New(glFTLibrary, &stroker)) {
       FT_Stroker_Set(stroker, F2T(32.0 * Self->StrokeSize), FT_STROKER_LINECAP_ROUND, FT_STROKER_LINEJOIN_ROUND, 0);
-      if (!FT_Get_Glyph(Self->FTFace->glyph, &glyph)) {
+      if (!FT_Get_Glyph(Self->Cache->Face->glyph, &glyph)) {
          if (glyph->format != FT_GLYPH_FORMAT_BITMAP) {
             if (!FT_Glyph_Stroke(&glyph, stroker, TRUE)) {
                if ((Self->Flags & (FTF_ANTIALIAS|FTF_QUICK_ALIAS)) or (Self->Colour.Alpha < 255)) rendermode =  FT_RENDER_MODE_NORMAL;
@@ -1952,14 +1890,14 @@ static ERROR generate_vector_outline(objFont *Self, font_glyph *Glyph)
 
                   if (bmp->bitmap.pixel_mode IS FT_PIXEL_MODE_GRAY) {
                      LONG size = bmp->bitmap.pitch * bmp->bitmap.rows;
-                     if (!AllocMemory(size, MEM_NO_CLEAR|MEM_UNTRACKED, &Glyph->Char.Outline, NULL)) {
-                        CopyMemory(bmp->bitmap.buffer, Glyph->Char.Outline, size);
-                        Glyph->Char.OutlineTop       = bmp->top;
-                        Glyph->Char.OutlineLeft      = bmp->left;
-                        Glyph->Char.OutlineWidth     = bmp->bitmap.width;
-                        Glyph->Char.OutlineHeight    = bmp->bitmap.rows;
-                        if (!Glyph->Char.AdvanceX) Glyph->Char.AdvanceX  = Self->FTFace->glyph->advance.x>>FT_DOWNSIZE;
-                        if (!Glyph->Char.AdvanceY) Glyph->Char.AdvanceY  = Self->FTFace->glyph->advance.y>>FT_DOWNSIZE;
+                     if (!AllocMemory(size, MEM_NO_CLEAR|MEM_UNTRACKED, &Glyph->Outline, NULL)) {
+                        CopyMemory(bmp->bitmap.buffer, Glyph->Outline, size);
+                        Glyph->OutlineTop       = bmp->top;
+                        Glyph->OutlineLeft      = bmp->left;
+                        Glyph->OutlineWidth     = bmp->bitmap.width;
+                        Glyph->OutlineHeight    = bmp->bitmap.rows;
+                        if (!Glyph->AdvanceX) Glyph->AdvanceX  = Self->Cache->Face->glyph->advance.x>>FT_DOWNSIZE;
+                        if (!Glyph->AdvanceY) Glyph->AdvanceY  = Self->Cache->Face->glyph->advance.y>>FT_DOWNSIZE;
                      }
                   }
                }
@@ -1982,73 +1920,63 @@ static ERROR generate_vector_outline(objFont *Self, font_glyph *Glyph)
 
 static const UBYTE bias[26] = { 9,3,6,6,9,6,3,6,9,1,1,6,6,9,9,3,1,9,9,9,6,3,3,1,3,1 };
 
-static font_glyph * get_glyph(objFont *Self, ULONG Unicode, UBYTE GetBitmap)
+static font_glyph * get_glyph(objFont *Self, ULONG Unicode, bool GetBitmap)
 {
    parasol::Log log(__FUNCTION__);
-   glyph_cache *cache = Self->Glyph;
 
-   LONG size = F2T(Self->Point);
-   if (size != Self->Cache->CurrentSize) {
-      FT_Set_Char_Size(Self->FTFace, 0, size<<FT_DOWNSIZE, FIXED_DPI, FIXED_DPI);
-      Self->Cache->CurrentSize = size;
-   }
+   glyph_cache &cache = Self->Cache->Glyphs.at(Self->Point);
+   auto &face = Self->Cache->Face;
 
-   if (!cache->Glyphs) {
-      if (!(cache->Glyphs = VarNew(0, KSF_UNTRACKED))) return NULL;
-   }
+   if (face->size != cache.Size) FT_Activate_Size(cache.Size);
 
    LONG glyph_index;
    FT_Render_Mode rendermode;
    if ((Self->Flags & (FTF_ANTIALIAS|FTF_QUICK_ALIAS)) or (Self->Colour.Alpha < 255)) rendermode = FT_RENDER_MODE_NORMAL;
    else rendermode = FT_RENDER_MODE_MONO;
 
-   if (!Self->Angle) {
-      // Check if the Unicode value has a cache entry
+   if ((!Self->Angle) and (cache.Glyphs.contains(Unicode))) {
+      font_glyph *glyph = &cache.Glyphs[Unicode];
+      if ((GetBitmap) and ((!glyph->Data) and (!glyph->Outline))) {
+         // Render the font because the character bitmap has not been created yet.
 
-      font_glyph *glyph;
-      if (!KeyGet(cache->Glyphs, Unicode, &glyph, NULL)) {
-         if ((GetBitmap) and ((!glyph->Char.Data) and (!glyph->Char.Outline))) {
-            // Render the font because the character bitmap has not been created yet.
+         if (FT_Load_Glyph(face, glyph->GlyphIndex, FT_LOAD_DEFAULT)) return NULL;
 
-            if (FT_Load_Glyph(Self->FTFace, glyph->GlyphIndex, FT_LOAD_DEFAULT)) return NULL;
+         if (Self->Outline.Alpha > 0) {
+            generate_vector_outline(Self, glyph);
+         }
 
-            if (Self->Outline.Alpha > 0) {
-               generate_vector_outline(Self, glyph);
-            }
-
-            if (!FT_Render_Glyph(Self->FTFace->glyph, rendermode)) {
-               if (Self->FTFace->glyph->bitmap.pixel_mode IS FT_PIXEL_MODE_GRAY) {
-                  LONG size = Self->FTFace->glyph->bitmap.pitch * Self->FTFace->glyph->bitmap.rows;
-                  if (!AllocMemory(size, MEM_NO_CLEAR|MEM_UNTRACKED, &glyph->Char.Data, NULL)) {
-                     CopyMemory(Self->FTFace->glyph->bitmap.buffer, glyph->Char.Data, size);
-                     glyph->Char.Top    = Self->FTFace->glyph->bitmap_top;
-                     glyph->Char.Left   = Self->FTFace->glyph->bitmap_left;
-                     glyph->Char.Width  = Self->FTFace->glyph->bitmap.width;
-                     glyph->Char.Height = Self->FTFace->glyph->bitmap.rows;
-                     glyph->Count++;
-                     return glyph;
-                  }
+         if (!FT_Render_Glyph(face->glyph, rendermode)) {
+            if (face->glyph->bitmap.pixel_mode IS FT_PIXEL_MODE_GRAY) {
+               LONG size = face->glyph->bitmap.pitch * face->glyph->bitmap.rows;
+               if (!AllocMemory(size, MEM_NO_CLEAR|MEM_UNTRACKED, &glyph->Data, NULL)) {
+                  CopyMemory(face->glyph->bitmap.buffer, glyph->Data, size);
+                  glyph->Top    = face->glyph->bitmap_top;
+                  glyph->Left   = face->glyph->bitmap_left;
+                  glyph->Width  = face->glyph->bitmap.width;
+                  glyph->Height = face->glyph->bitmap.rows;
+                  glyph->Count++;
+                  return glyph;
                }
             }
          }
-         else return glyph;
       }
+      else return glyph;
    }
 
-   if (!(glyph_index = FT_Get_Char_Index(Self->FTFace, Unicode))) {
-      if (!(glyph_index = FT_Get_Char_Index(Self->FTFace, Self->prvDefaultChar))) {
+   if (!(glyph_index = FT_Get_Char_Index(face, Unicode))) {
+      if (!(glyph_index = FT_Get_Char_Index(face, Self->prvDefaultChar))) {
          glyph_index = 1; // Take the first glyph as the default
       }
    }
 
    FT_Error fterr;
-   if ((fterr = FT_Load_Glyph(Self->FTFace, glyph_index, FT_LOAD_DEFAULT))) {
+   if ((fterr = FT_Load_Glyph(face, glyph_index, FT_LOAD_DEFAULT))) {
       log.warning("Failed to load glyph %d '%lc', FT error: %s", glyph_index, (wint_t)Unicode, get_ft_error(fterr));
       return NULL;
    }
 
-   if ((!Self->Angle) and (cache->Glyphs->Total < 256)) { // Cache this glyph
-      log.traceBranch("Creating new cache entry for unicode value %d, advance %d, get-bitmap %d", Unicode, (LONG)Self->FTFace->glyph->advance.x>>FT_DOWNSIZE, GetBitmap);
+   if ((!Self->Angle) and (cache.Glyphs.size() < MAX_GLYPHS)) { // Cache this glyph if possible
+      log.traceBranch("Creating new cache entry for unicode value %d, advance %d, get-bitmap %d", Unicode, (LONG)face->glyph->advance.x>>FT_DOWNSIZE, GetBitmap);
 
       font_glyph glyph;
       ClearMemory(&glyph, sizeof(glyph));
@@ -2056,80 +1984,70 @@ static font_glyph * get_glyph(objFont *Self, ULONG Unicode, UBYTE GetBitmap)
       if (GetBitmap) {
          if (Self->Outline.Alpha > 0) generate_vector_outline(Self, &glyph);
 
-         if (FT_Render_Glyph(Self->FTFace->glyph, rendermode)) return NULL;
-         if (Self->FTFace->glyph->bitmap.pixel_mode != FT_PIXEL_MODE_GRAY) return NULL;
+         if (FT_Render_Glyph(face->glyph, rendermode)) return NULL;
+         if (face->glyph->bitmap.pixel_mode != FT_PIXEL_MODE_GRAY) return NULL;
 
-         if ((!Self->FTFace->glyph->bitmap.pitch) or (!Self->FTFace->glyph->bitmap.rows)) {
-            log.warning("Invalid glyph dimensions of %dx%d", Self->FTFace->glyph->bitmap.pitch, Self->FTFace->glyph->bitmap.rows);
+         if ((!face->glyph->bitmap.pitch) or (!face->glyph->bitmap.rows)) {
+            log.warning("Invalid glyph dimensions of %dx%d", face->glyph->bitmap.pitch, face->glyph->bitmap.rows);
             return NULL;
          }
       }
 
-      glyph.Char.Top       = Self->FTFace->glyph->bitmap_top;
-      glyph.Char.Left      = Self->FTFace->glyph->bitmap_left;
-      glyph.Char.Width     = Self->FTFace->glyph->bitmap.width;
-      glyph.Char.Height    = Self->FTFace->glyph->bitmap.rows;
-      glyph.Char.AdvanceX  = Self->FTFace->glyph->advance.x>>FT_DOWNSIZE;
-      glyph.Char.AdvanceY  = Self->FTFace->glyph->advance.y>>FT_DOWNSIZE;
-      glyph.Unicode        = Unicode;
-      glyph.GlyphIndex     = glyph_index;
+      glyph.Top        = face->glyph->bitmap_top;
+      glyph.Left       = face->glyph->bitmap_left;
+      glyph.Width      = face->glyph->bitmap.width;
+      glyph.Height     = face->glyph->bitmap.rows;
+      glyph.AdvanceX   = face->glyph->advance.x>>FT_DOWNSIZE;
+      glyph.AdvanceY   = face->glyph->advance.y>>FT_DOWNSIZE;
+      glyph.GlyphIndex = glyph_index;
 
       if ((Unicode >= 'a') and (Unicode <= 'z')) glyph.Count = bias[Unicode-'a'];
       else if ((Unicode >= 'A') and (Unicode <= 'Z')) glyph.Count = bias[Unicode-'A'];
       else glyph.Count = 1;
 
-      if (!KeySet(cache->Glyphs, Unicode, &glyph, sizeof(glyph))) {
-         font_glyph *key_glyph;
-         KeyGet(cache->Glyphs, Unicode, &key_glyph, NULL);
-         if (!GetBitmap) { // Don't return a copy of the bitmap
-            return key_glyph;
-         }
+      cache.Glyphs.emplace(Unicode, glyph);
+      font_glyph *key_glyph = &cache.Glyphs[Unicode];
+      if (!GetBitmap) return key_glyph;
 
-         LONG size = Self->FTFace->glyph->bitmap.pitch * Self->FTFace->glyph->bitmap.rows;
-         if (!AllocMemory(size, MEM_NO_CLEAR|MEM_UNTRACKED, &key_glyph->Char.Data, NULL)) {
-            CopyMemory(Self->FTFace->glyph->bitmap.buffer, key_glyph->Char.Data, size);
-            return key_glyph;
-         }
-         else {
-            log.warning("Failed to allocate glyph buffer of %d bytes.", size);
-            return NULL;
-         }
+      LONG size = face->glyph->bitmap.pitch * face->glyph->bitmap.rows;
+      if (!AllocMemory(size, MEM_NO_CLEAR|MEM_UNTRACKED, &key_glyph->Data, NULL)) {
+         CopyMemory(face->glyph->bitmap.buffer, key_glyph->Data, size);
+         return key_glyph;
       }
       else {
-         log.warning("Failed to KeySet() glyph character %d.", Unicode);
+         log.warning("Failed to allocate glyph buffer of %d bytes.", size);
          return NULL;
       }
    }
    else {
       // Cache is full.  Return a temporary glyph with graphics data if requested.
 
-      if (Self->prvTempGlyph.Char.Outline) {
-         FreeResource(Self->prvTempGlyph.Char.Outline);
-         Self->prvTempGlyph.Char.Outline = NULL;
+      if (Self->prvTempGlyph.Outline) {
+         FreeResource(Self->prvTempGlyph.Outline);
+         Self->prvTempGlyph.Outline = NULL;
       }
 
       if (GetBitmap) {
-         if (FT_Render_Glyph(Self->FTFace->glyph, rendermode)) return NULL;
-         if (Self->FTFace->glyph->bitmap.pixel_mode != FT_PIXEL_MODE_GRAY) return NULL;
+         if (FT_Render_Glyph(face->glyph, rendermode)) return NULL;
+         if (face->glyph->bitmap.pixel_mode != FT_PIXEL_MODE_GRAY) return NULL;
 
          generate_vector_outline(Self, &Self->prvTempGlyph);
 
-         Self->prvTempGlyph.Char.Data      = Self->FTFace->glyph->bitmap.buffer;
-         Self->prvTempGlyph.Char.Outline   = NULL;
-         Self->prvTempGlyph.Char.Top       = Self->FTFace->glyph->bitmap_top;
-         Self->prvTempGlyph.Char.Left      = Self->FTFace->glyph->bitmap_left;
-         Self->prvTempGlyph.Char.Width     = Self->FTFace->glyph->bitmap.width;
-         Self->prvTempGlyph.Char.Height    = Self->FTFace->glyph->bitmap.rows;
+         Self->prvTempGlyph.Data      = face->glyph->bitmap.buffer;
+         Self->prvTempGlyph.Outline   = NULL;
+         Self->prvTempGlyph.Top       = face->glyph->bitmap_top;
+         Self->prvTempGlyph.Left      = face->glyph->bitmap_left;
+         Self->prvTempGlyph.Width     = face->glyph->bitmap.width;
+         Self->prvTempGlyph.Height    = face->glyph->bitmap.rows;
       }
       else {
-         Self->prvTempGlyph.Char.Data      = NULL;
-         Self->prvTempGlyph.Char.Outline   = NULL;
+         Self->prvTempGlyph.Data      = NULL;
+         Self->prvTempGlyph.Outline   = NULL;
       }
 
-      Self->prvTempGlyph.Char.AdvanceX  = Self->FTFace->glyph->advance.x>>FT_DOWNSIZE;
-      Self->prvTempGlyph.Char.AdvanceY  = Self->FTFace->glyph->advance.y>>FT_DOWNSIZE;
-      Self->prvTempGlyph.Unicode        = Unicode;
-      Self->prvTempGlyph.GlyphIndex     = glyph_index;
+      Self->prvTempGlyph.AdvanceX   = face->glyph->advance.x>>FT_DOWNSIZE;
+      Self->prvTempGlyph.AdvanceY   = face->glyph->advance.y>>FT_DOWNSIZE;
+      Self->prvTempGlyph.GlyphIndex = glyph_index;
       return &Self->prvTempGlyph;
    }
 }
@@ -2500,46 +2418,19 @@ static ERROR draw_bitmap_font(objFont *Self)
 
 //****************************************************************************
 
-static void free_glyph(objFont *Font)
+static void unload_glyph_cache(objFont *Font)
 {
-   if (!Font->Glyph) return;
-
    parasol::Log log(__FUNCTION__);
-   if (!(--Font->Glyph->Usage)) {
-      log.trace("Glyph cache usage reduced to zero.");
 
-      if (Font->Glyph->Glyphs) {
-         ULONG key = 0;
-         font_glyph *glyph;
-         while (!KeyIterate(Font->Glyph->Glyphs, key, &key, &glyph, NULL)) {
-            if (glyph->Char.Data) FreeResource(glyph->Char.Data);
-            if (glyph->Char.Outline) FreeResource(glyph->Char.Outline);
-         }
-         FreeResource(Font->Glyph->Glyphs);
-         Font->Glyph->Glyphs = NULL;
+   CACHE_LOCK lock(glCacheMutex);
+
+   if ((Font->Cache) and (Font->Cache->Glyphs.contains(Font->Point))) {
+      auto &glyphs = Font->Cache->Glyphs.at(Font->Point);
+      glyphs.Usage--;
+      if (!glyphs.Usage) {
+         Font->Cache->Glyphs.erase(Font->Point);
       }
-
-      // Patch the chain
-
-      log.trace("Patching the chain...");
-
-      if (Font->Glyph IS Font->Cache->LastGlyph) {
-         Font->Cache->LastGlyph = Font->Glyph->Prev;
-      }
-
-      if (Font->Glyph IS Font->Cache->Glyphs) { // Start of the chain
-         Font->Cache->Glyphs = Font->Glyph->Next;
-         if (Font->Cache->Glyphs) Font->Cache->Glyphs->Prev = NULL;
-      }
-      else { // Middle-to-end of the chain
-         if (Font->Glyph->Next) Font->Glyph->Next->Prev = Font->Glyph->Prev;
-         Font->Glyph->Prev->Next = Font->Glyph->Next;
-      }
-
-      FreeResource(Font->Glyph);
-      Font->Glyph = NULL;
    }
-   else log.trace("Glyph cache usage reduced to %d", Font->Glyph->Usage);
 }
 
 //****************************************************************************

@@ -694,7 +694,7 @@ timer_cycle:
       #ifdef _WIN32
          if (tlMainThread) {
             tlMessageBreak = TRUE;  // Break if the host OS sends us a native message
-            sleep_task(wait / 1000LL, FALSE); // Event if wait is zero, we still need to clear FD's and call FD hooks
+            sleep_task(wait / 1000LL, FALSE); // Even if wait is zero, we still need to clear FD's and call FD hooks
             tlMessageBreak = FALSE;
 
             if (wait) {
