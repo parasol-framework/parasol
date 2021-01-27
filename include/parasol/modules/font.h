@@ -93,8 +93,7 @@ typedef struct rkFont {
 #ifdef PRV_FONT
    WORD *prvTabs;                // Array of tab stops
    UBYTE *prvData;
-   struct font_cache *Cache;     // Truetype cache
-   struct glyph_cache *Glyph;    // Truetype glyph cache
+   class font_cache *Cache;     // Reference to the Truetype font that is in use
    struct FontCharacter *prvChar;
    struct BitmapCache *BmpCache;
    struct font_glyph prvTempGlyph;
@@ -103,11 +102,6 @@ typedef struct rkFont {
    WORD prvSpaceWidth;          // Pixel width of word breaks
    WORD prvBitmapHeight;
    WORD prvLineCountCR;
-   #ifdef FT_FREETYPE_H
-      FT_Face FTFace;
-   #else
-      LONG FTFace;
-   #endif
    char prvEscape[2];
    char prvFace[32];
    char prvBuffer[80];

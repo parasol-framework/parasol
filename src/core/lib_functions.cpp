@@ -2662,18 +2662,18 @@ int MicroSeconds: The number of microseconds to wait for.  Please note that a mi
 
 void WaitTime(LONG Seconds, LONG MicroSeconds)
 {
-   BYTE processmsg;
+   bool processmsg;
 
    if (!tlMainThread) {
-      processmsg = FALSE; // Child threads never process messages.
+      processmsg = false; // Child threads never process messages.
       if (Seconds < 0) Seconds = -Seconds;
       if (MicroSeconds < 0) MicroSeconds = -MicroSeconds;
     }
    else {
       // If the Seconds or MicroSeconds arguments are negative, turn off the ProcessMessages() support.
-      processmsg = TRUE;
-      if (Seconds < 0) { Seconds = -Seconds; processmsg = FALSE; }
-      if (MicroSeconds < 0) { MicroSeconds = -MicroSeconds; processmsg = FALSE; }
+      processmsg = true;
+      if (Seconds < 0) { Seconds = -Seconds; processmsg = false; }
+      if (MicroSeconds < 0) { MicroSeconds = -MicroSeconds; processmsg = false; }
    }
 
    while (MicroSeconds >= 1000000) {
@@ -2683,10 +2683,10 @@ void WaitTime(LONG Seconds, LONG MicroSeconds)
 
    if (processmsg) {
       LARGE current = PreciseTime() / 1000LL;
-      LARGE end = current + (Seconds * 1000) + (MicroSeconds/1000);
+      LARGE end = current + (Seconds * 1000) + (MicroSeconds / 1000);
       do {
          if (ProcessMessages(0, end - current) IS ERR_Terminate) break;
-         current = (PreciseTime()/1000LL);
+         current = (PreciseTime() / 1000LL);
       } while (current < end);
    }
    else {
@@ -2696,7 +2696,7 @@ void WaitTime(LONG Seconds, LONG MicroSeconds)
          nano.tv_nsec = MicroSeconds * 100;
          while (nanosleep(&nano, &nano) == -1) continue;
       #elif _WIN32
-         winSleep((Seconds * 1000) + (MicroSeconds/1000));
+         winSleep((Seconds * 1000) + (MicroSeconds / 1000));
       #else
          #warn Platform needs support for WaitTime()
       #endif

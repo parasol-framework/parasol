@@ -491,7 +491,7 @@ if (!AllocMemory(1000, MEM_DATA, &amp;address, NULL)) {
    // Data follows
 } rkEvent;
 </pre>
-<p>This document does not describe the available system events.  For more information about them, please refer to the System Events Reference Manual in the API documentation.</p>
+<p>This document does not describe the available system events.  For more information about them, please refer to the System Events Reference manual.</p>
     </description>
     <result type="ERROR">
       <error code="NullArgs">Function call missing argument value(s)</error>
