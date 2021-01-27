@@ -100,6 +100,7 @@ typedef struct rkVectorText {
    DOUBLE *txDX, *txDY; // A series of spacing adjustments that apply on a per-character level.
    DOUBLE *txRotate;  // A series of angles that will rotate each individual character.
    struct rkFont *txFont;
+   FT_Size FreetypeSize;
    CSTRING txString;
    CSTRING txFamily;
    LONG  txTotalRotate, txTotalDX, txTotalDY;

@@ -138,6 +138,8 @@ FT_Error (*EFT_Set_Char_Size)(FT_Face, FT_F26Dot6 char_width, FT_F26Dot6 char_he
 FT_Error (*EFT_Get_Kerning)(FT_Face, FT_UInt left_glyph, FT_UInt right_glyph, FT_UInt kern_mode, FT_Vector *akerning);
 FT_Error (*EFT_Get_Char_Index)(FT_Face, FT_ULong charcode);
 FT_Error (*EFT_Load_Glyph)(FT_Face, FT_UInt glyph_index, FT_Int32  load_flags);
+FT_Error (*EFT_Activate_Size)(FT_Size);
+FT_Error (*EFT_New_Size)(FT_Face, FT_Size *);
 
 #include "utility.cpp"
 
@@ -153,6 +155,8 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    if (modResolveSymbol(modFont, "FT_Get_Kerning", (APTR *)&EFT_Get_Kerning)) return ERR_ResolveSymbol;
    if (modResolveSymbol(modFont, "FT_Get_Char_Index", (APTR *)&EFT_Get_Char_Index)) return ERR_ResolveSymbol;
    if (modResolveSymbol(modFont, "FT_Load_Glyph", (APTR *)&EFT_Load_Glyph)) return ERR_ResolveSymbol;
+   if (modResolveSymbol(modFont, "FT_New_Size", (APTR *)&EFT_New_Size)) return ERR_ResolveSymbol;
+   if (modResolveSymbol(modFont, "FT_Activate_Size", (APTR *)&EFT_Activate_Size)) return ERR_ResolveSymbol;
 
    FID_FreetypeFace = StrHash("FreetypeFace", FALSE);
 

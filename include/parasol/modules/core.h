@@ -1467,7 +1467,7 @@ struct SystemState {
 };
 
 struct Variable {
-   LONG   Type;      // Field definition flags
+   ULONG  Type;      // Field definition flags
    LONG   Unused;    // Unused 32-bit value for 64-bit alignment
    LARGE  Large;     // The value as a 64-bit integer.
    DOUBLE Double;    // The value as a 64-bit float-point number.

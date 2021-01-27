@@ -310,6 +310,13 @@ static void generate_text(objVectorText *Vector)
    }
    scale_char.scale(1.0 / upscale); // Downscale the generated character to the correct size.
 
+   if (!Vector->FreetypeSize) EFT_New_Size(ftface, &Vector->FreetypeSize);
+   if (Vector->FreetypeSize != ftface->size) EFT_Activate_Size(Vector->FreetypeSize);
+
+   if (ftface->size->metrics.height != dbl_to_int26p6(point_size)) {
+      EFT_Set_Char_Size(ftface, 0, dbl_to_int26p6(point_size), FIXED_DPI, FIXED_DPI);
+   }
+
    while (*str) {
       if (*str IS '\n') str++;
       else if (*str IS '\t') str++;
@@ -328,8 +335,6 @@ static void generate_text(objVectorText *Vector)
          if (Vector->Transition) { // Apply any special transitions early.
             apply_transition(Vector->Transition, DOUBLE(char_index) / DOUBLE(str_length), transform);
          }
-
-         EFT_Set_Char_Size(ftface, 0, dbl_to_int26p6(point_size), FIXED_DPI, FIXED_DPI); // Note that the font will be upscaled if necessary.
 
          LONG glyph = EFT_Get_Char_Index(ftface, unicode);
 
