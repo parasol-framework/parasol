@@ -668,10 +668,11 @@ if ((pointer = gfxAccessPointer())) {
       <param type="LONG *" name="Handle">A handle for the subscription is returned here.</param>
     </input>
     <description>
-<p>The SubscribeInput() function provides a systematic way of receiving input events as they occur.  Coverage is limited to device events that are relevant to the display (e.g. track pads, mouse pointers, graphics tablets and touch screens). Keyboard devices are not included.  The client is required to remove the subscription with <function module="Display">UnsubscribeInput</function> once it is no longer required.</p>
-<p>Input events can be filtered so that they are received in relation to surfaces and devices.  An input mask can also be applied so that only certain types of events are received.  If no filters are applied then all input events can be received.</p>
+<p>The SubscribeInput() function provides a systematic way of receiving input events as they occur.  Coverage is limited to device events that are linked to the display (i.e. events from track pads, mouse pointers, graphics tablets and touch screens).  Keyboard devices are not included.</p>
+<p>The client is required to remove the subscription with <function module="Display">UnsubscribeInput</function> once tracking is no longer required.</p>
+<p>Input events can be filtered so that they are received in relation to surfaces and devices.  An input mask can also be applied so that only certain types of events are received.</p>
 <p>A callback is required for receiving the input events.  The following C/C++ code illustrates a method for processing events in the callback:</p>
-<pre>ERROR consume_input_events(struct InputMsg *Events, LONG Handle)
+<pre>ERROR consume_input_events(const struct InputEvent *Events, LONG Handle)
 {
    for (auto event=Events; event; event=event-&gt;Next) {
       if ((event-&gt;Flags &amp; JTYPE_BUTTON) and (event-&gt;Value &gt; 0)) {
@@ -682,9 +683,9 @@ if ((pointer = gfxAccessPointer())) {
    return ERR_Okay;
 }
 </pre>
-<p>All processable events are referenced in the InputMsg structure in the Events parameter.  The structure format is as follows:</p>
+<p>All processable events are referenced in the InputEvent structure in the Events parameter.  The structure format is as follows:</p>
 <fields>
-<fld type="*InputMsg" name="Next">The next input event in the list.</fld>
+<fld type="*InputEvent" name="Next">The next input event in the list.</fld>
 <fld type="UWORD" name="Type">This value is set to a JET constant that describes the input event.</fld>
 <fld type="UWORD" name="Flags">Flags provide a broad description of the event type and can also provide more specific information relevant to the event (see JTYPE flags).</fld>
 <fld type="DOUBLE" name="Value">The value associated with the Type</fld>
@@ -697,9 +698,9 @@ if ((pointer = gfxAccessPointer())) {
 <fld type="LARGE" name="Timestamp">Millisecond counter at which the input was recorded, or as close to it as possible.</fld>
 <fld type="OBJECTID" name="DeviceID">Reference to the hardware device that this event originated from.  There is no guarantee that the DeviceID is a reference to a publicly accessible object.</fld>
 </fields>
-<p>JET constants are as follows, taking special note of <code>ENTERED_SURFACE</code> and <code>LEFT_SURFACE</code> which are software generated and not a device event:</p>
+<p>JET constants are as follows and take note of <code>ENTERED_SURFACE</code> and <code>LEFT_SURFACE</code> which are software generated and not a device event:</p>
 <types lookup="JET"/>
-<p>The JTYPE flags that can be set in the Flags field are as follows.  Note that these flags also serve as input masks for the SubscribeInput() function, so to receive a message of the given type the appropriate JTYPE flag must have been set in the original subscription call.</p>
+<p>The JTYPE values for the Flags field are as follows.  Note that these flags also serve as input masks for the SubscribeInput() function, so to receive a message of the given type the appropriate JTYPE flag must have been set in the original subscription call.</p>
 <types lookup="JTYPE"/>
     </description>
     <result type="ERROR">
@@ -746,7 +747,7 @@ if ((pointer = gfxAccessPointer())) {
       <param type="LONG" name="Handle">Reference to a handle returned by SubscribeInput().</param>
     </input>
     <description>
-<p>This function removes an input subscription that has been configured using <function module="Display">SubscribeInput</function>.  If a Surface filter was specified in the original subscription, this can also be defined so that any other active subscriptions acquired by the Subscriber are unaffected.</p>
+<p>This function removes an input subscription that has been created with <function module="Display">SubscribeInput</function>.</p>
     </description>
     <result type="ERROR">
       <error code="NullArgs">Function call missing argument value(s)</error>

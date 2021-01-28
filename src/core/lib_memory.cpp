@@ -701,7 +701,7 @@ ERROR FreeResource(const void *Address)
       }
 
       if ((mem.OwnerID) and (tlContext->Object->UniqueID) and (mem.OwnerID != tlContext->Object->UniqueID)) {
-         log.warning("Attempt to free address %p (size %d).", Address, mem.Size);
+         log.warning("Attempt to free address %p (size %d) owned by #%d.", Address, mem.Size, mem.OwnerID);
       }
 
       if (mem.AccessCount > 0) {
