@@ -477,7 +477,13 @@ timer_cycle:
             bool relock = false;
             if (timer->Routine.Type IS CALL_STDC) { // C/C++ callback
                OBJECTPTR subscriber;
-               if (!AccessObject(timer->SubscriberID, 50, &subscriber)) {
+               if (!timer->SubscriberID) { // Internal subscriptions like process_janitor() don't have a subscriber
+                  auto routine = (ERROR (*)(OBJECTPTR, LARGE, LARGE))timer->Routine.StdC.Routine;
+                  thread_unlock(TL_TIMER);
+                  relock = true;
+                  error = routine(NULL, elapsed, current_time);
+               }
+               else if (!AccessObject(timer->SubscriberID, 50, &subscriber)) {
                   parasol::SwitchContext context(subscriber);
 
                   auto routine = (ERROR (*)(OBJECTPTR, LARGE, LARGE))timer->Routine.StdC.Routine;
