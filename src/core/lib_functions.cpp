@@ -2436,12 +2436,10 @@ ERROR SubscribeTimer(DOUBLE Interval, FUNCTION *Callback, APTR *Subscription)
    if (Interval < 0) return log.warning(ERR_Args);
 
    OBJECTPTR subscriber = tlContext->Object;
-   if (subscriber->Flags & (NF_FREE|NF_FREE_MARK)) return ERR_BadState;
+   if (subscriber->Flags & (NF_FREE|NF_FREE_MARK)) return log.warning(ERR_BadState);
 
-   if (glLogLevel >= 7) {
-      if (Callback->Type IS CALL_SCRIPT) log.branch("Interval: %.3fs", Interval);
-      else log.branch("Callback: %p, Interval: %.3fs", Callback->StdC.Routine, Interval);
-   }
+   if (Callback->Type IS CALL_SCRIPT) log.msg(VLF_BRANCH|VLF_FUNCTION|VLF_DEBUG, "Interval: %.3fs", Interval);
+   else log.msg(VLF_BRANCH|VLF_FUNCTION|VLF_DEBUG, "Callback: %p, Interval: %.3fs", Callback->StdC.Routine, Interval);
 
    ThreadLock lock(TL_TIMER, 200);
    if (lock.granted()) {
@@ -2473,7 +2471,7 @@ ERROR SubscribeTimer(DOUBLE Interval, FUNCTION *Callback, APTR *Subscription)
 
       return ERR_Okay;
    }
-   else return ERR_SystemLocked;
+   else return log.warning(ERR_SystemLocked);
 }
 
 /*****************************************************************************
