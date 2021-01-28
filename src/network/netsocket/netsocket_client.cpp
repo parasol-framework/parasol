@@ -15,6 +15,8 @@ static void client_connect(SOCKET_HANDLE Void, APTR Data)
    socklen_t optlen = sizeof(result);
    getsockopt(Self->SocketHandle, SOL_SOCKET, SO_ERROR, &result, &optlen);
 
+   parasol::SwitchContext context(Self);
+
    // Remove the write callback
 
    RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD_WRITE|RFD_REMOVE, &client_connect, NULL);
@@ -70,6 +72,8 @@ static void client_server_incoming(SOCKET_HANDLE FD, rkNetSocket *Data)
 {
    parasol::Log log(__FUNCTION__);
    objNetSocket *Self = Data;
+
+   parasol::SwitchContext context(Self);
 
    if (Self->Terminating) {
       log.trace("[NetSocket:%d] Socket terminating...", Self->Head.UniqueID);
@@ -184,6 +188,8 @@ static void client_server_outgoing(SOCKET_HANDLE Void, rkNetSocket *Data)
       log.trace("Recursion detected.");
       return;
    }
+
+   parasol::SwitchContext context(Self);
 
    log.traceBranch("");
 
