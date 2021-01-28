@@ -79,7 +79,7 @@ struct ClassHeader    *glClassDB       = 0;
 struct ModuleHeader   *glModules       = 0;
 struct OpenInfo       *glOpenInfo      = 0;
 struct MsgHandler     *glMsgHandlers   = 0, *glLastMsgHandler = 0;
-struct CoreTimer *glTimers = 0;
+std::list<CoreTimer> glTimers;
 OBJECTID glClassFileID = 0;
 APTR glJNIEnv = 0;
 UWORD glFunctionID = 3333;

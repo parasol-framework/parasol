@@ -1872,17 +1872,12 @@ ERROR MGR_Free(OBJECTPTR Object, APTR Void)
    if (Object->Flags & NF_TIMER_SUB) {
       ThreadLock lock(TL_TIMER, 200);
       if (lock.granted()) {
-         CoreTimer *timer, *next;
-         for (timer=glTimers; timer; timer=next) {
-            next = timer->Next;
-            if (timer->SubscriberID IS Object->UniqueID) {
+         for (auto it=glTimers.begin(); it != glTimers.end(); ) {
+            if (it->SubscriberID IS Object->UniqueID) {
                log.warning("%s object #%d has an unfreed timer subscription.", mc->ClassName, Object->UniqueID);
-
-               if (timer->Next) timer->Next->Prev = timer->Prev;
-               if (timer->Prev) timer->Prev->Next = timer->Next;
-               if (glTimers IS timer) glTimers = timer->Next;
-               free(timer);
+               it = glTimers.erase(it);
             }
+            else it++;
          }
       }
    }
@@ -1896,9 +1891,7 @@ ERROR MGR_Free(OBJECTPTR Object, APTR Void)
 
    if ((glObjectLookup) and (Object->Stats->Name[0])) { // Remove the object from the name lookup list
       ThreadLock lock(TL_OBJECT_LOOKUP, 4000);
-      if (lock.granted()) {
-         remove_object_hash(Object);
-      }
+      if (lock.granted()) remove_object_hash(Object);
    }
 
    if (Object->UniqueID < 0) {
