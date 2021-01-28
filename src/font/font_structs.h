@@ -1,6 +1,7 @@
 
 #include <unordered_set>
 #include <map>
+#include <mutex>
 
 #define CHAR_TAB     (0x09)
 #define CHAR_ENTER   (10)
@@ -13,9 +14,27 @@
 #define PI 3.1415926535897932384626433832795
 #endif
 
+typedef const std::lock_guard<std::recursive_mutex> CACHE_LOCK;
+static std::recursive_mutex glCacheMutex; // Protects access to glCache for multi-threading support
+static KeyStore *glCache = NULL; // Key = Path to the font; Value = struct font_cache
+
 INLINE FT_F26Dot6 DBL_TO_FT(DOUBLE Value)
 {
   return F2T(Value * 64.0);
+}
+
+template <typename T> LONG ReadWordLE(T File)
+{
+   WORD result = 0;
+   flReadLE2(File, &result);
+   return result;
+}
+
+template <typename T> LONG ReadLongLE(T File)
+{
+   LONG result = 0;
+   flReadLE4(File, &result);
+   return result;
 }
 
 struct FontCharacter {
@@ -24,86 +43,6 @@ struct FontCharacter {
    UWORD Offset;
    UWORD OutlineOffset;
 };
-
-/******************************************************************************
-** Win32 font structures
-*/
-
-struct winFontList {
-   LONG Offset, Size, Point;
-};
-
-struct winmz_header_fields {
-   UWORD magic;
-   UBYTE data[29 * 2];
-   ULONG lfanew;
-};
-
-struct winne_header_fields {
-   UWORD magic;
-   UBYTE data[34];
-   UWORD resource_tab_offset;
-   UWORD rname_tab_offset;
-};
-
-struct winfnt_header_fields {
-   UWORD version;
-   ULONG file_size;
-   char copyright[60];
-   UWORD file_type;
-   UWORD nominal_point_size;     // Point size
-   UWORD vertical_resolution;
-   UWORD horizontal_resolution;
-   UWORD ascent;                 // The amount of pixels above the base-line
-   UWORD internal_leading;       // top leading pixels
-   UWORD external_leading;       // gutter
-   BYTE  italic;                 // TRUE if font is italic
-   BYTE  underline;              // TRUE if font is underlined
-   BYTE  strike_out;             // TRUE if font is striked-out
-   UWORD weight;                 // Indicates font boldness
-   BYTE  charset;
-   UWORD pixel_width;
-   UWORD pixel_height;
-   BYTE  pitch_and_family;
-   UWORD avg_width;
-   UWORD max_width;
-   UBYTE first_char;
-   UBYTE last_char;
-   UBYTE default_char;
-   UBYTE break_char;
-   UWORD bytes_per_row;
-   ULONG device_offset;
-   ULONG face_name_offset;
-   ULONG bits_pointer;
-   ULONG bits_offset;
-   BYTE  reserved;
-   ULONG flags;
-   UWORD A_space;
-   UWORD B_space;
-   UWORD C_space;
-   UWORD color_table_offset;
-   BYTE  reservedend[4];
-} __attribute__((packed));
-
-#define ID_WINMZ  0x5A4D
-#define ID_WINNE  0x454E
-
-/******************************************************************************
-** Structure definition for cached bitmap fonts.
-*/
-
-struct BitmapCache {
-   struct BitmapCache *Next;
-   UBYTE *Data;
-   UBYTE *Outline;
-   struct winfnt_header_fields Header;
-   struct FontCharacter Chars[256];
-   BYTE Location[200];
-   WORD OpenCount;
-   LONG StyleFlags;
-};
-
-static struct BitmapCache *glBitmapCache = NULL;
 
 //****************************************************************************
 // Truetype rendered font cache
