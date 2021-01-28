@@ -1650,7 +1650,7 @@ ERROR RegisterFD(LONG FD, LONG Flags, void (*Routine)(HOSTHANDLE, APTR), APTR Da
    if (Flags & RFD_REMOVE) {
       if (!(Flags & (RFD_READ|RFD_WRITE|RFD_EXCEPT|RFD_ALWAYS_CALL))) Flags |= RFD_READ|RFD_WRITE|RFD_EXCEPT|RFD_ALWAYS_CALL;
 
-      for (LONG i=glTotalFDs; i >= 0; i--) {
+      for (LONG i=glTotalFDs-1; i >= 0; i--) {
          if ((glFDTable[i].FD IS FD) and ((glFDTable[i].Flags & (RFD_READ|RFD_WRITE|RFD_EXCEPT|RFD_ALWAYS_CALL)) & Flags)) {
             // If the routine address was specified with the remove option, the routine must match.
 
