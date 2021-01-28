@@ -459,9 +459,9 @@ timer_cycle:
       if ((glTaskState IS TSTATE_STOPPING) and (!(Flags & PMF_SYSTEM_NO_BREAK)));
       else if (!thread_lock(TL_TIMER, 200)) {
          LARGE current_time = PreciseTime();
-         for (CoreTimer *timer=glTimers; timer; timer=timer->Next) {
-            if (current_time < timer->NextCall) continue;
-            if (timer->Cycle IS glTimerCycle) continue;
+         for (auto timer=glTimers.begin(); timer != glTimers.end(); ) {
+            if (current_time < timer->NextCall) { timer++; continue; }
+            if (timer->Cycle IS glTimerCycle) { timer++; continue; }
 
             LARGE elapsed = current_time - timer->LastCall;
 
@@ -510,7 +510,14 @@ timer_cycle:
 
             timer->Locked = false;
 
-            if (error IS ERR_Terminate) UpdateTimer(timer, 0);
+            if (error IS ERR_Terminate) {
+               if (timer->Routine.Type IS CALL_SCRIPT) {
+                  scDerefProcedure(timer->Routine.Script.Script, &timer->Routine);
+               }
+
+               timer = glTimers.erase(timer);
+            }
+            else timer++;
 
             if (relock) goto timer_cycle;
          } // for
@@ -679,8 +686,8 @@ timer_cycle:
          {
             ThreadLock lock(TL_TIMER, 200);
             if (lock.granted()) {
-               for (CoreTimer *timer = glTimers; timer; timer=timer->Next) {
-                  if (timer->NextCall < sleep_time) sleep_time = timer->NextCall;
+               for (const auto &timer : glTimers) {
+                  if (timer.NextCall < sleep_time) sleep_time = timer.NextCall;
                }
             }
          }
