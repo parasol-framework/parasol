@@ -386,7 +386,7 @@ struct CoreTimer {
    OBJECTID  SubscriberID;   // The object that is subscribed
    FUNCTION  Routine;        // Routine to call if not using AC_Timer - ERROR Routine(OBJECTID, LONG, LONG);
    UBYTE     Cycle;
-   UBYTE     Locked;
+   bool      Locked;
 };
 
 /*****************************************************************************

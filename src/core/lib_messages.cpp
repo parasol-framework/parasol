@@ -472,9 +472,9 @@ timer_cycle:
 
             //log.trace("Subscriber: %d, Interval: %d, Time: " PF64(), timer->SubscriberID, timer->Interval, current_time);
 
-            timer->Locked = TRUE; // Prevents termination of the structure irrespective of having a TL_TIMER lock.
+            timer->Locked = true; // Prevents termination of the structure irrespective of having a TL_TIMER lock.
 
-            UBYTE relock = FALSE;
+            bool relock = false;
             if (timer->Routine.Type IS CALL_STDC) { // C/C++ callback
                OBJECTPTR subscriber;
                if (!AccessObject(timer->SubscriberID, 50, &subscriber)) {
@@ -482,7 +482,7 @@ timer_cycle:
 
                   auto routine = (ERROR (*)(OBJECTPTR, LARGE, LARGE))timer->Routine.StdC.Routine;
                   thread_unlock(TL_TIMER);
-                  relock = TRUE;
+                  relock = true;
 
                   error = routine(subscriber, elapsed, current_time);
 
@@ -500,7 +500,7 @@ timer_cycle:
                   };
 
                   thread_unlock(TL_TIMER);
-                  relock = TRUE;
+                  relock = true;
 
                   if (scCallback(script, timer->Routine.Script.ProcedureID, scargs, ARRAYSIZE(scargs), &error)) error = ERR_Terminate;
                }
@@ -508,7 +508,7 @@ timer_cycle:
             }
             else error = ERR_Terminate;
 
-            timer->Locked = FALSE;
+            timer->Locked = false;
 
             if (error IS ERR_Terminate) UpdateTimer(timer, 0);
 
