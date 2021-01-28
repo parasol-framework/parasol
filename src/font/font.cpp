@@ -37,11 +37,8 @@ Font: Provides font management functionality and hosts the Font class.
 #include <math.h>
 #include <wchar.h>
 #include <parasol/strings.hpp>
-#include <mutex>
 
-static KeyStore *glCache = NULL; // Key = Path to the font; Value = struct font_cache
-static std::recursive_mutex glCacheMutex; // Protects access to glCache for multi-threading support
-typedef const std::lock_guard<std::recursive_mutex> CACHE_LOCK;
+#include "font_bitmap.cpp"
 
 /*****************************************************************************
 ** This table determines what ASCII characters are treated as white-space for word-wrapping purposes.  You'll need to
@@ -89,24 +86,6 @@ static ERROR analyse_bmp_font(STRING, winfnt_header_fields *, STRING *, UBYTE *,
 static ERROR  fntRefreshFonts(void);
 
 #include "font_def.c"
-
-//****************************************************************************
-
-INLINE LONG ReadWordLE(OBJECTPTR File)
-{
-   WORD result = 0;
-   flReadLE2(File, &result);
-   return result;
-}
-
-//****************************************************************************
-
-INLINE LONG ReadLongLE(OBJECTPTR File)
-{
-   LONG result = 0;
-   flReadLE4(File, &result);
-   return result;
-}
 
 //****************************************************************************
 // Return the first unicode value from a given string address.
@@ -306,29 +285,16 @@ static ERROR CMDOpen(OBJECTPTR Module)
 
 static ERROR CMDExpunge(void)
 {
+   if (glCacheTimer) { UpdateTimer(glCacheTimer, 0); glCacheTimer = NULL; }
+
    if (glFTLibrary) { FT_Done_FreeType(glFTLibrary); glFTLibrary = NULL; }
    if (glConfig)    { acFree(glConfig); glConfig = NULL; }
    if (glCache)     { FreeResource(glCache); glCache = NULL; }
 
-   // Free allocated class and modules
-
    if (clFont)     { acFree(clFont);     clFont = NULL; }
    if (modDisplay) { acFree(modDisplay); modDisplay = NULL; }
 
-   // NB: Cached font files are not removed during expunge because the shutdown procedure will have automatically
-   // destroy any cached fonts our CMDExpunge() routine is called.
-
-   if (glBitmapCache) {
-      auto scan = glBitmapCache;
-      while (scan) {
-         auto next = scan->Next;
-         if (scan->Data) FreeResource(scan->Data);
-         if (scan->Outline) FreeResource(scan->Outline);
-         FreeResource(scan);
-         scan = next;
-      }
-      glBitmapCache = NULL;
-   }
+   glBitmapCache.clear();
 
    return ERR_Okay;
 }
@@ -1552,7 +1518,7 @@ static ERROR analyse_bmp_font(STRING Path, winfnt_header_fields *Header, STRING 
             acSeekStart(file.obj, font_offset);
 
             {
-               winFontList fonts[font_count];
+               winFont fonts[font_count];
 
                // Get the offset and size of each font entry
 
