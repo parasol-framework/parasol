@@ -1896,9 +1896,7 @@ ERROR MGR_Free(OBJECTPTR Object, APTR Void)
 
    if ((glObjectLookup) and (Object->Stats->Name[0])) { // Remove the object from the name lookup list
       ThreadLock lock(TL_OBJECT_LOOKUP, 4000);
-      if (lock.granted()) {
-         remove_object_hash(Object);
-      }
+      if (lock.granted()) remove_object_hash(Object);
    }
 
    if (Object->UniqueID < 0) {

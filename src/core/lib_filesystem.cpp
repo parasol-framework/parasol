@@ -1164,10 +1164,9 @@ ERROR LoadFile(CSTRING Path, LONG Flags, CacheFile **Cache)
                *Cache = cache;
                acFree(file);
 
-               FUNCTION call;
-               SET_FUNCTION_STDC(call, (APTR)&check_cache);
                if (!glCacheTimer) {
                   parasol::SwitchContext context(CurrentTask());
+                  auto call = make_function_stdc(check_cache);
                   SubscribeTimer(60, &call, &glCacheTimer);
                }
 

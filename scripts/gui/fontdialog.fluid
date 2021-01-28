@@ -288,6 +288,7 @@ Cras metus mi, ultricies nec blandit condimentum, congue dapibus libero. Nulla e
                end
             end
             lFont = nil // A new font object will be needed.
+            collectgarbage()
             rgnExample.acDraw()
          end
       })
@@ -312,6 +313,7 @@ Cras metus mi, ultricies nec blandit condimentum, congue dapibus libero. Nulla e
             local selection = View.selection
             if (selection) then self.style = selection end
             lFont = nil // A new font object will be needed.
+            collectgarbage()
             rgnExample.acDraw()
          end
       })

@@ -3350,7 +3350,7 @@ SetField(Object, FID_Statement|TSTR, "string");
     <input>
       <param type="DOUBLE" name="Interval">The total number of seconds to wait between timer calls.</param>
       <param type="FUNCTION *" name="Callback">A callback function is required that will be called on each time cycle.</param>
-      <param type="APTR *" name="Subscription">The subscription will be assigned an identifier that is returned in this parameter.</param>
+      <param type="APTR *" name="Subscription">Optional.  The subscription will be assigned an identifier that is returned in this parameter.</param>
     </input>
     <description>
 <p>This function creates a new timer subscription that will be called at regular intervals for the calling object.</p>

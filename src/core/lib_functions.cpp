@@ -2416,7 +2416,7 @@ other timer subscriptions that are waiting to be processed.
 -INPUT-
 double Interval:   The total number of seconds to wait between timer calls.
 ptr(func) Callback: A callback function is required that will be called on each time cycle.
-&ptr Subscription: The subscription will be assigned an identifier that is returned in this parameter.
+&ptr Subscription: Optional.  The subscription will be assigned an identifier that is returned in this parameter.
 
 -ERRORS-
 Okay:
