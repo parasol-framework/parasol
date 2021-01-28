@@ -49,13 +49,10 @@ Please note that if special effects and transforms are desired then use the @Vec
 
 *****************************************************************************/
 
-static ERROR convert_graphic(objFont *, BitmapCache *, LONG, UBYTE **);
-static ERROR create_outline(BitmapCache *);
 static BitmapCache * check_bitmap_cache(objFont *, LONG);
-static BitmapCache * cache_bitmap_font(objFont *, OBJECTPTR, LONG, winfnt_header_fields *);
 static ERROR cache_truetype_font(objFont *, CSTRING);
-static ERROR SET_Point(objFont *Self, Variable *);
-static ERROR SET_Style(objFont *Self, CSTRING );
+static ERROR SET_Point(objFont *, Variable *);
+static ERROR SET_Style(objFont *, CSTRING );
 
 const char * get_ft_error(FT_Error err)
 {
@@ -102,26 +99,16 @@ static ERROR FONT_Free(objFont *Self, APTR Void)
 
    CACHE_LOCK lock(glCacheMutex);
 
-   // Manage the bitmapped font cache
-
    if (Self->BmpCache) {
-      BitmapCache *cache;
-      BitmapCache *prev = NULL;
-      for (cache=glBitmapCache; cache; cache=cache->Next) {
-         if (cache IS Self->BmpCache) {
-            cache->OpenCount--;
-            if (cache->OpenCount <= 0) {
-               if (prev) prev->Next = cache->Next;
-               else glBitmapCache = cache->Next;
-               if (cache->Data)    FreeResource(cache->Data);
-               if (cache->Outline) FreeResource(cache->Outline);
-               FreeResource(cache);
-            }
-            break;
+      // Reduce the usage count.  Use a timed delay on freeing the font in case it is used again.
+      Self->BmpCache->OpenCount--;
+      if (!Self->BmpCache->OpenCount) {
+         if (!glCacheTimer) {
+            parasol::SwitchContext ctx(modFont);
+            auto callback = make_function_stdc(bitmap_cache_cleaner);
+            SubscribeTimer(60.0, &callback, &glCacheTimer);
          }
-         prev = cache;
       }
-      if (!cache) log.traceWarning("Unable to find bitmap cache pointer %p", Self->BmpCache);
    }
 
    // Manage the vector font cache
@@ -161,7 +148,6 @@ static ERROR FONT_Init(objFont *Self, APTR Void)
 {
    parasol::Log log;
    LONG diff, style;
-   UBYTE *data;
    ERROR error;
 
    if ((!Self->prvFace[0]) and (!Self->Path)) {
@@ -174,10 +160,10 @@ static ERROR FONT_Init(objFont *Self, APTR Void)
    // Search the SystemFonts object to gather initial information about this face
 
    if (!Self->Path) {
-      CSTRING location;
-      if (!fntSelectFont(Self->prvFace, Self->prvStyle, Self->Point, Self->Flags & (FTF_PREFER_SCALED|FTF_PREFER_FIXED|FTF_ALLOW_SCALE), &location)) {
-         SetString(Self, FID_Path, location);
-         FreeResource(location);
+      CSTRING path;
+      if (!fntSelectFont(Self->prvFace, Self->prvStyle, Self->Point, Self->Flags & (FTF_PREFER_SCALED|FTF_PREFER_FIXED|FTF_ALLOW_SCALE), &path)) {
+         SetString(Self, FID_Path, path);
+         FreeResource(path);
       }
       else {
          log.warning("Font \"%s\" (point %.2f, style %s) is not recognised.", Self->prvFace, Self->Point, Self->prvStyle);
@@ -197,25 +183,21 @@ static ERROR FONT_Init(objFont *Self, APTR Void)
    BitmapCache *cache = check_bitmap_cache(Self, style);
 
    OBJECTPTR file;
-   if (cache) {
-      // The font exists in the cache
-   }
+   if (cache); // The font exists in the cache
    else if (!CreateObject(ID_FILE, NF_INTEGRAL, &file,
          FID_Path|TSTR,   Self->Path,
          FID_Flags|TLONG, FL_READ|FL_APPROXIMATE,
          TAGEND)) {
 
-      winmz_header_fields mz_header;
-      winne_header_fields ne_header;
-      winfnt_header_fields header, face;
-
       // Check if the file is a Windows Bitmap Font
 
+      winmz_header_fields mz_header;
       acRead(file, &mz_header, sizeof(mz_header), NULL);
 
       if (mz_header.magic IS ID_WINMZ) {
          acSeek(file, mz_header.lfanew, SEEK_START);
 
+         winne_header_fields ne_header;
          if ((!acRead(file, &ne_header, sizeof(ne_header), NULL)) and (ne_header.magic IS ID_WINNE)) {
             ULONG res_offset = mz_header.lfanew + ne_header.resource_tab_offset;
             acSeek(file, res_offset, SEEK_START);
@@ -252,7 +234,7 @@ static ERROR FONT_Init(objFont *Self, APTR Void)
 
             // Scan the list of available fonts to find the closest point size for our font
 
-            winFontList fonts[font_count];
+            winFont fonts[font_count];
 
             for (LONG i=0; i < font_count; i++) {
                fonts[i].Offset = ReadWordLE(file)<<size_shift;
@@ -261,11 +243,12 @@ static ERROR FONT_Init(objFont *Self, APTR Void)
             }
 
             LONG abs = 0x7fff;
-            LONG offset = 0;
-
+            LONG wfi = 0;
+            winfnt_header_fields face;
             for (LONG i=0; i < font_count; i++) {
                acSeek(file, (DOUBLE)fonts[i].Offset, SEEK_START);
 
+               winfnt_header_fields header;
                if (!acRead(file, &header, sizeof(header), NULL)) {
                   if ((header.version != 0x200) and (header.version != 0x300)) {
                      log.warning("Font \"%s\" is written in unsupported version %d.", Self->prvFace, header.version);
@@ -284,9 +267,9 @@ static ERROR FONT_Init(objFont *Self, APTR Void)
                   if ((diff = Self->Point - header.nominal_point_size) < 0) diff = -diff;
 
                   if (diff < abs) {
-                     face   = header;
-                     abs    = diff;
-                     offset = fonts[i].Offset;
+                     face = header;
+                     abs  = diff;
+                     wfi  = i;
                   }
                }
                else {
@@ -295,16 +278,20 @@ static ERROR FONT_Init(objFont *Self, APTR Void)
                }
             }
 
-            // Scan the bitmap cache again to ensure that the discovered font is not already loaded.  This is important
-            // if the cached font wasn't originally found due to slight differences in point size.
+            // Check the bitmap cache again to ensure that the discovered font is not already loaded.  This is important
+            // if the cached font wasn't originally found due to variation in point size.
 
             Self->Point = face.nominal_point_size;
             cache = check_bitmap_cache(Self, style);
             if (!cache) { // Load the font into the cache
-               cache = cache_bitmap_font(Self, file, offset, &face);
-               if (!cache) {
+               auto it = glBitmapCache.emplace(glBitmapCache.end(), face, Self->prvStyle, Self->Path, file, fonts[wfi]);
+
+               if (!it->Result) cache = &(*it);
+               else {
+                  ERROR error = it->Result;
                   acFree(file);
-                  return ERR_Failed;
+                  glBitmapCache.erase(it);
+                  return error;
                }
             }
 
@@ -313,10 +300,10 @@ static ERROR FONT_Init(objFont *Self, APTR Void)
 
       acFree(file);
    }
-   else return log.warning(ERR_Read);
+   else return log.warning(ERR_OpenFile);
 
    if (cache) {
-      Self->prvData     = cache->Data;
+      Self->prvData     = cache->mData;
       Self->Ascent      = cache->Header.ascent;
       Self->Point       = cache->Header.nominal_point_size;
       Self->Height      = cache->Header.ascent - cache->Header.internal_leading + cache->Header.external_leading;
@@ -340,43 +327,6 @@ static ERROR FONT_Init(objFont *Self, APTR Void)
       else Self->prvSpaceWidth = cache->Chars[cache->Header.first_char + cache->Header.break_char].Advance;
 
       log.trace("Cache Count: %d, Style: %s", cache->OpenCount, Self->prvStyle);
-
-      if (!cache->OpenCount) {
-         // Modify the font characters to bold and/or italic text if requested and the font file is in the regular style.
-
-         if ((!StrMatch("Bold", Self->prvStyle)) and (cache->Header.weight < 600)) {
-            if (convert_graphic(Self, cache, FTF_BOLD, &data) != ERR_Okay) return ERR_Failed;
-            cache->StyleFlags |= FTF_BOLD;
-
-            FreeResource(cache->Data);
-            cache->Data = data;
-            Self->prvData = data;
-         }
-         else if ((!StrMatch("Italic", Self->prvStyle)) and (!cache->Header.italic)) {
-            if (convert_graphic(Self, cache, FTF_ITALIC, &data) != ERR_Okay) return ERR_Failed;
-            cache->StyleFlags |= FTF_ITALIC;
-
-            FreeResource(cache->Data);
-            cache->Data = data;
-            Self->prvData = data;
-         }
-         else if ((!StrMatch("Bold Italic", Self->prvStyle)) and
-                  (!cache->Header.italic) and (cache->Header.weight < 600)) {
-            if (convert_graphic(Self, cache, FTF_BOLD|FTF_ITALIC, &data) != ERR_Okay) return ERR_Failed;
-            cache->StyleFlags |= FTF_BOLD|FTF_ITALIC;
-
-            FreeResource(cache->Data);
-            cache->Data = data;
-            Self->prvData = data;
-         }
-      }
-
-      // Note: There is some odd bug that prevents outlines from being created 'as needed' (refer to the beginning of
-      // create_bitmap_font()).  At the moment we can only create accurate outlines during initialisation.
-
-#if 0
-      if (!cache->Outline) create_outline(cache); // Temporary kludge
-#endif
 
       Self->prvChar = cache->Chars;
       Self->Flags |= cache->StyleFlags;
@@ -1134,279 +1084,6 @@ static ERROR GET_YOffset(objFont *Self, LONG *Value)
 }
 
 //****************************************************************************
-// Converts regular bitmap fonts into bold / italic bitmap fonts.
-
-static ERROR convert_graphic(objFont *Self, BitmapCache *Cache, LONG Flags, UBYTE **Data)
-{
-   parasol::Log log(__FUNCTION__);
-   UBYTE *buffer;
-   LONG y, dx, sx;
-
-   *Data = NULL;
-   UBYTE *fontdata = Cache->Data;
-
-   if (Flags & FTF_BOLD) {
-      log.msg("Converting font graphic to bold.");
-
-      LONG size = 0;
-      for (LONG i=0; i < 256; i++) {
-         if (Cache->Chars[i].Width) size += Cache->Header.pixel_height * ((Cache->Chars[i].Width+8)>>3);
-      }
-
-      if (!AllocMemory(size, MEM_UNTRACKED, &buffer, NULL)) {
-         LONG pos = 0;
-         for (LONG i=0; i < 256; i++) {
-            if (Cache->Chars[i].Width) {
-               UBYTE *gfx = fontdata + Cache->Chars[i].Offset;
-               Cache->Chars[i].Offset = pos;
-
-               // Copy character graphic to the buffer and embolden it
-
-               LONG oldwidth = (Cache->Chars[i].Width+7)>>3;
-               LONG newwidth = (Cache->Chars[i].Width+8)>>3;
-               for (LONG y=0; y < Cache->Header.pixel_height; y++) {
-                  for (LONG xb=0; xb < oldwidth; xb++) {
-                     buffer[pos+xb] |= gfx[xb]|(gfx[xb]>>1);
-                     if ((xb < newwidth) and (gfx[xb] & 0x01)) buffer[pos+xb+1] |= 0x80;
-                  }
-
-                  pos += newwidth;
-                  gfx += oldwidth;
-               }
-
-               Cache->Chars[i].Width++;
-               Cache->Chars[i].Advance++;
-            }
-         }
-
-         *Data = buffer;
-         fontdata = buffer;
-      }
-      else return ERR_AllocMemory;
-   }
-
-   if (Flags & FTF_ITALIC) {
-      log.msg("Converting font graphic to italic.");
-
-      LONG size = 0;
-      LONG extra = Cache->Header.pixel_height>>2;
-
-      for (LONG i=0; i < 256; i++) {
-         if (Cache->Chars[i].Width) size += Cache->Header.pixel_height * ((Cache->Chars[i].Width+7+extra)>>3);
-      }
-
-      if (!AllocMemory(size, MEM_UNTRACKED, &buffer, NULL)) {
-         LONG pos = 0;
-         for (LONG i=0; i < 256; i++) {
-            if (Cache->Chars[i].Width) {
-               UBYTE *gfx = fontdata + Cache->Chars[i].Offset;
-               Cache->Chars[i].Offset = pos;
-
-               LONG oldwidth = (Cache->Chars[i].Width+7)>>3;
-               LONG newwidth = (Cache->Chars[i].Width+7+extra)>>3;
-               LONG italic = Cache->Header.pixel_height;
-               UBYTE *dest = buffer + pos;
-               for (y=0; y < Cache->Header.pixel_height; y++) {
-                  dx = italic>>2;
-                  for (sx=0; sx < Cache->Chars[i].Width; sx++) {
-                     if (gfx[sx>>3] & (0x80>>(sx & 0x07))) {
-                        dest[dx>>3] |= (0x80>>(dx & 0x07));
-                     }
-                     dx++;
-                  }
-
-                  pos  += newwidth;
-                  dest += newwidth;
-                  gfx  += oldwidth;
-                  italic--;
-               }
-
-               Cache->Chars[i].Width += extra;
-            }
-         }
-
-         if (*Data) FreeResource(*Data);
-         *Data = buffer;
-      }
-      else return ERR_AllocMemory;
-   }
-
-   return ERR_Okay;
-}
-
-//****************************************************************************
-
-static ERROR create_outline(BitmapCache *Cache)
-{
-   parasol::Log log(__FUNCTION__);
-   UBYTE *buffer;
-
-   LONG size = 0;
-   for (WORD i=0; i < 256; i++) {
-      if (Cache->Chars[i].Width) size += (Cache->Header.pixel_height+2) * ((Cache->Chars[i].Width+9)>>3);
-   }
-
-   log.msg("Generating font outline (%d bytes).", size);
-
-   if (AllocMemory(size, MEM_UNTRACKED, &buffer, NULL) != ERR_Okay) return ERR_AllocMemory;
-
-   LONG pos = 0;
-   for (WORD i=0; i < 256; i++) {
-      if (Cache->Chars[i].Width) {
-         UBYTE *gfx = Cache->Data + Cache->Chars[i].Offset;
-         Cache->Chars[i].OutlineOffset = pos;
-
-         LONG oldwidth = (Cache->Chars[i].Width+7)>>3;
-         LONG newwidth = (Cache->Chars[i].Width+9)>>3;
-
-         UBYTE *dest = buffer + pos;
-
-         dest += newwidth; // Start ahead of line 0
-         for (LONG sy=0; sy < Cache->Header.pixel_height; sy++) {
-            LONG dx = 1;
-            for (LONG sx=0; sx < Cache->Chars[i].Width; sx++) {
-               if (gfx[sx>>3] & (0x80>>(sx & 0x07))) {
-                  if ((sx >= Cache->Chars[i].Width-1) or (!(gfx[(sx+1)>>3] & (0x80>>((sx+1) & 0x07))))) dest[(dx+1)>>3] |= (0x80>>((dx+1) & 0x07));
-                  if ((sx IS 0) or (!(gfx[(sx-1)>>3] & (0x80>>((sx-1) & 0x07))))) dest[(dx-1)>>3] |= (0x80>>((dx-1) & 0x07));
-                  if ((sy < 1) or (!(gfx[(sx>>3)-oldwidth] & (0x80>>(sx & 0x07))))) dest[(dx>>3)-newwidth] |= (0x80>>(dx & 0x07));
-                  if ((sy >= Cache->Header.pixel_height-1) or (!(gfx[(sx>>3)+oldwidth] & (0x80>>(sx & 0x07))))) dest[(dx>>3)+newwidth] |= (0x80>>(dx & 0x07));
-               }
-               dx++;
-            }
-
-            pos  += newwidth;
-            dest += newwidth;
-            gfx  += oldwidth;
-         }
-         pos += newwidth * 2;
-      }
-   }
-
-   Cache->Outline = buffer;
-   return ERR_Okay;
-}
-
-//****************************************************************************
-// Assumes a cache lock is held on being called.
-
-static BitmapCache * check_bitmap_cache(objFont *Self, LONG Style)
-{
-   parasol::Log log(__FUNCTION__);
-
-   for (auto cache=glBitmapCache; cache; cache=cache->Next) {
-      if (!cache->Data) continue;
-
-      if (!StrMatch(cache->Location, Self->Path)) {
-         if (cache->StyleFlags IS Style) {
-            if (Self->Point IS cache->Header.nominal_point_size) {
-               log.trace("Exists in cache (count %d) %s : %s", cache->OpenCount, cache->Location, Self->prvStyle);
-               return cache;
-            }
-            else log.trace("Failed point check %.2f / %d", Self->Point, cache->Header.nominal_point_size);
-         }
-         else log.trace("Failed style check $%.8x != $%.8x", Style, cache->StyleFlags);
-      }
-   }
-
-   return NULL;
-}
-
-//****************************************************************************
-// Assumes a cache lock is held on being called.
-
-static BitmapCache * cache_bitmap_font(objFont *Self, OBJECTPTR file, LONG offset, winfnt_header_fields *face)
-{
-   parasol::Log log(__FUNCTION__);
-
-   log.msg("Loading font into cache %s : %d : %s", Self->Path, face->nominal_point_size, Self->prvStyle);
-
-   BitmapCache *cache;
-   if (AllocPrivateMemory(sizeof(BitmapCache), MEM_UNTRACKED, &cache)) return NULL;
-
-   CopyMemory(face, &cache->Header, sizeof(winfnt_header_fields));
-
-   // Record the style of the cached font
-
-   if (!StrMatch("Bold", Self->prvStyle)) cache->StyleFlags = FTF_BOLD;
-   else if (!StrMatch("Italic", Self->prvStyle)) cache->StyleFlags = FTF_ITALIC;
-   else if (!StrMatch("Bold Italic", Self->prvStyle)) cache->StyleFlags = FTF_BOLD|FTF_ITALIC;
-   else cache->StyleFlags = 0;
-
-   StrCopy(Self->Path, cache->Location, sizeof(cache->Location));
-
-   // Read character information from the font file
-
-   acSeek(file, offset + 118, SEEK_START);
-
-   if (face->version IS 0x300) {
-      LONG j = face->first_char;
-      for (LONG i=0; i < face->last_char - face->first_char + 1; i++) {
-         cache->Chars[j].Width   = ReadWordLE(file);
-         cache->Chars[j].Advance = cache->Chars[j].Width;
-         cache->Chars[j].Offset  = ReadLongLE(file) - face->bits_offset; // Long
-         j++;
-      }
-   }
-   else {
-      LONG j = face->first_char;
-      for (LONG i=0; i < face->last_char - face->first_char + 1; i++) {
-         cache->Chars[j].Width   = ReadWordLE(file);
-         cache->Chars[j].Advance = cache->Chars[j].Width;
-         cache->Chars[j].Offset  = ReadWordLE(file) - face->bits_offset; // Word
-         j++;
-      }
-   }
-
-   // Extract graphical data from the font file
-
-   LONG size = face->file_size - face->bits_offset;
-
-   if (!AllocMemory(size, MEM_UNTRACKED, &cache->Data, NULL)) {
-      LONG result;
-      acSeek(file, offset + face->bits_offset, SEEK_START);
-
-      if ((!acRead(file, cache->Data, size, &result)) and (result IS size)) {
-         // Convert the graphics format for wide characters from column-first format to row-first format.
-
-         for (WORD i=0; i < 256; i++) {
-            if (!cache->Chars[i].Width) continue;
-
-            LONG sz = ((cache->Chars[i].Width+7)>>3) * face->pixel_height;
-            if (cache->Chars[i].Width > 8) {
-               UBYTE buffer[sz];
-               ClearMemory(buffer, sz);
-
-               UBYTE *gfx = cache->Data + cache->Chars[i].Offset;
-               LONG bytewidth = (cache->Chars[i].Width + 7)>>3;
-               LONG pos = 0;
-               for (LONG k=0; k < face->pixel_height; k++) {
-                  for (LONG j=0; j < bytewidth; j++) {
-                     buffer[pos++] = gfx[k + (j * face->pixel_height)];
-                  }
-               }
-
-               CopyMemory(buffer, gfx, pos);
-            }
-         }
-
-         if (!glBitmapCache) glBitmapCache = cache;
-         else {
-            BitmapCache *scan;
-            for (scan=glBitmapCache; scan->Next; scan=scan->Next);
-            scan->Next = cache;
-         }
-
-         return cache;
-      }
-      else {
-         log.warning("Failed to read %d bytes (got %d).", size, result);
-         return NULL;
-      }
-   }
-   else return NULL;
-}
-
-//****************************************************************************
 // For use by draw_vector_font() only.
 
 static void draw_vector_outline(objFont *Self, objBitmap *Bitmap, font_glyph *src, LONG dxcoord, LONG dycoord, const RGB8 *Colour)
@@ -2107,9 +1784,7 @@ static ERROR draw_bitmap_font(objFont *Self)
    ULONG ucolour = bmpGetColourRGB(bitmap, &Self->Underline);
 
    if (Self->Outline.Alpha > 0) {
-      if (!Self->BmpCache->Outline) {
-         create_outline(Self->BmpCache);
-      }
+      Self->BmpCache->get_outline();
       ocolour = bmpGetColourRGB(bitmap, &Self->Outline);
    }
    else ocolour = 0;
@@ -2228,65 +1903,68 @@ static ERROR draw_bitmap_font(objFont *Self)
 
          // Outline support
 
-         if ((Self->Outline.Alpha > 0) and (Self->BmpCache->Outline)) {
-            data = Self->BmpCache->Outline + Self->prvChar[unicode].OutlineOffset;
-            bytewidth = (Self->prvChar[unicode].Width + 9)>>3;
+         if (Self->Outline.Alpha > 0) {
+            auto outline = Self->BmpCache->get_outline();
+            if (outline) {
+               auto data = outline + Self->prvChar[unicode].OutlineOffset;
+               bytewidth = (Self->prvChar[unicode].Width + 9)>>3;
 
-            sx = dxcoord - 1;
-            ex = sx + Self->prvChar[unicode].Width + 2;
+               sx = dxcoord - 1;
+               ex = sx + Self->prvChar[unicode].Width + 2;
 
-            if (ex > bitmap->Clip.Right) ex = bitmap->Clip.Right;
+               if (ex > bitmap->Clip.Right) ex = bitmap->Clip.Right;
 
-            xinc = 0;
-            if (sx < bitmap->Clip.Left) {
-               xinc = bitmap->Clip.Left - sx;
-               sx = bitmap->Clip.Left;
-            }
-
-            sy = dycoord - 1;
-
-            ey = sy + Self->prvBitmapHeight + 2;
-            if (ey > bitmap->Clip.Bottom) ey = bitmap->Clip.Bottom;
-
-            if (sy < bitmap->Clip.Top) {
-               data += bytewidth * (bitmap->Clip.Top - sy);
-               sy = bitmap->Clip.Top;
-            }
-
-            sx += bitmap->XOffset;
-            sy += bitmap->YOffset;
-            dx += bitmap->XOffset;
-            dy += bitmap->YOffset;
-            ex += bitmap->XOffset;
-            ey += bitmap->YOffset;
-
-            if (Self->Outline.Alpha < 255) {
-               alpha = 255 - Self->Outline.Alpha;
-               for (dy=sy; dy < ey; dy++) {
-                  xpos = xinc;
-                  for (dx=sx; dx < ex; dx++) {
-                     if (data[xpos>>3] & (0x80>>(xpos & 0x7))) {
-                        bitmap->ReadUCRPixel(bitmap, dx, dy, &rgb);
-                        rgb.Red   = Self->Outline.Red   + (((rgb.Red   - Self->Outline.Red) * alpha)>>8);
-                        rgb.Green = Self->Outline.Green + (((rgb.Green - Self->Outline.Green) * alpha)>>8);
-                        rgb.Blue  = Self->Outline.Blue  + (((rgb.Blue  - Self->Outline.Blue) * alpha)>>8);
-                        bitmap->DrawUCRPixel(bitmap, dx, dy, &rgb);
-                     }
-                     xpos++;
-                  }
-                  data += bytewidth;
+               xinc = 0;
+               if (sx < bitmap->Clip.Left) {
+                  xinc = bitmap->Clip.Left - sx;
+                  sx = bitmap->Clip.Left;
                }
-            }
-            else {
-               for (dy=sy; dy < ey; dy++) {
-                  xpos = xinc;
-                  for (dx=sx; dx < ex; dx++) {
-                     if (data[xpos>>3] & (0x80>>(xpos & 0x7))) {
-                        bitmap->DrawUCPixel(bitmap, dx, dy, ocolour);
+
+               sy = dycoord - 1;
+
+               ey = sy + Self->prvBitmapHeight + 2;
+               if (ey > bitmap->Clip.Bottom) ey = bitmap->Clip.Bottom;
+
+               if (sy < bitmap->Clip.Top) {
+                  data += bytewidth * (bitmap->Clip.Top - sy);
+                  sy = bitmap->Clip.Top;
+               }
+
+               sx += bitmap->XOffset;
+               sy += bitmap->YOffset;
+               dx += bitmap->XOffset;
+               dy += bitmap->YOffset;
+               ex += bitmap->XOffset;
+               ey += bitmap->YOffset;
+
+               if (Self->Outline.Alpha < 255) {
+                  alpha = 255 - Self->Outline.Alpha;
+                  for (dy=sy; dy < ey; dy++) {
+                     xpos = xinc;
+                     for (dx=sx; dx < ex; dx++) {
+                        if (data[xpos>>3] & (0x80>>(xpos & 0x7))) {
+                           bitmap->ReadUCRPixel(bitmap, dx, dy, &rgb);
+                           rgb.Red   = Self->Outline.Red   + (((rgb.Red   - Self->Outline.Red) * alpha)>>8);
+                           rgb.Green = Self->Outline.Green + (((rgb.Green - Self->Outline.Green) * alpha)>>8);
+                           rgb.Blue  = Self->Outline.Blue  + (((rgb.Blue  - Self->Outline.Blue) * alpha)>>8);
+                           bitmap->DrawUCRPixel(bitmap, dx, dy, &rgb);
+                        }
+                        xpos++;
                      }
-                     xpos++;
+                     data += bytewidth;
                   }
-                  data += bytewidth;
+               }
+               else {
+                  for (dy=sy; dy < ey; dy++) {
+                     xpos = xinc;
+                     for (dx=sx; dx < ex; dx++) {
+                        if (data[xpos>>3] & (0x80>>(xpos & 0x7))) {
+                           bitmap->DrawUCPixel(bitmap, dx, dy, ocolour);
+                        }
+                        xpos++;
+                     }
+                     data += bytewidth;
+                  }
                }
             }
          }

@@ -2416,7 +2416,7 @@ other timer subscriptions that are waiting to be processed.
 -INPUT-
 double Interval:   The total number of seconds to wait between timer calls.
 ptr(func) Callback: A callback function is required that will be called on each time cycle.
-&ptr Subscription: The subscription will be assigned an identifier that is returned in this parameter.
+&ptr Subscription: Optional.  The subscription will be assigned an identifier that is returned in this parameter.
 
 -ERRORS-
 Okay:
@@ -2436,12 +2436,10 @@ ERROR SubscribeTimer(DOUBLE Interval, FUNCTION *Callback, APTR *Subscription)
    if (Interval < 0) return log.warning(ERR_Args);
 
    OBJECTPTR subscriber = tlContext->Object;
-   if (subscriber->Flags & (NF_FREE|NF_FREE_MARK)) return ERR_BadState;
+   if (subscriber->Flags & (NF_FREE|NF_FREE_MARK)) return log.warning(ERR_BadState);
 
-   if (glLogLevel >= 7) {
-      if (Callback->Type IS CALL_SCRIPT) log.branch("Interval: %.3fs", Interval);
-      else log.branch("Callback: %p, Interval: %.3fs", Callback->StdC.Routine, Interval);
-   }
+   if (Callback->Type IS CALL_SCRIPT) log.msg(VLF_BRANCH|VLF_FUNCTION|VLF_DEBUG, "Interval: %.3fs", Interval);
+   else log.msg(VLF_BRANCH|VLF_FUNCTION|VLF_DEBUG, "Callback: %p, Interval: %.3fs", Callback->StdC.Routine, Interval);
 
    ThreadLock lock(TL_TIMER, 200);
    if (lock.granted()) {
@@ -2451,37 +2449,29 @@ ERROR SubscribeTimer(DOUBLE Interval, FUNCTION *Callback, APTR *Subscription)
          // interruptions that occur per second.
       }
 
-      CoreTimer *timer;
-      if ((timer = (CoreTimer *)malloc(sizeof(CoreTimer)))) {
-         LARGE subscribed    = PreciseTime();
-         timer->SubscriberID = subscriber->UniqueID;
-         timer->Interval     = usInterval;
-         timer->LastCall     = subscribed;
-         timer->NextCall     = subscribed + usInterval;
-         timer->Routine      = *Callback;
-         timer->Locked       = FALSE;
-         timer->Cycle        = glTimerCycle - 1;
+      auto it = glTimers.emplace(glTimers.end());
+      LARGE subscribed = PreciseTime();
+      it->SubscriberID = subscriber->UniqueID;
+      it->Interval     = usInterval;
+      it->LastCall     = subscribed;
+      it->NextCall     = subscribed + usInterval;
+      it->Routine      = *Callback;
+      it->Locked       = false;
+      it->Cycle        = glTimerCycle - 1;
 
-         if (subscriber->UniqueID > 0) timer->Subscriber = subscriber;
-         else timer->Subscriber = NULL;
+      if (subscriber->UniqueID > 0) it->Subscriber = subscriber;
+      else it->Subscriber = NULL;
 
-         // For resource tracking purposes it is important for us to keep a record of the subscription so that
-         // we don't treat the object address as valid when it's been removed from the system.
+      // For resource tracking purposes it is important for us to keep a record of the subscription so that
+      // we don't treat the object address as valid when it's been removed from the system.
 
-         subscriber->Flags |= NF_TIMER_SUB;
+      subscriber->Flags |= NF_TIMER_SUB;
 
-         if (Subscription) *Subscription = timer;
+      if (Subscription) *Subscription = &*it;
 
-         timer->Prev = NULL;
-         timer->Next = glTimers;
-         if (glTimers) glTimers->Prev = timer;
-         glTimers = timer;
-
-         return ERR_Okay;
-      }
-      else return ERR_AllocMemory;
+      return ERR_Okay;
    }
-   else return ERR_SystemLocked;
+   else return log.warning(ERR_SystemLocked);
 }
 
 /*****************************************************************************
@@ -2599,11 +2589,11 @@ ERROR UpdateTimer(APTR Subscription, DOUBLE Interval)
 
    if (!Subscription) return log.warning(ERR_NullArgs);
 
-   if (glLogLevel >= 7) log.function("Subscription: %p, Interval: %.4f", Subscription, Interval);
+   log.msg(VLF_EXTAPI|VLF_BRANCH|VLF_FUNCTION, "Subscription: %p, Interval: %.4f", Subscription, Interval);
 
    ThreadLock lock(TL_TIMER, 200);
    if (lock.granted()) {
-      CoreTimer *timer = (CoreTimer *)Subscription;
+      auto timer = (CoreTimer *)Subscription;
       if (Interval < 0) {
          // Special mode: Preserve existing timer settings for the subscriber (ticker values are not reset etc)
          LARGE usInterval = -((LARGE)(Interval * 1000000.0));
@@ -2624,16 +2614,19 @@ ERROR UpdateTimer(APTR Subscription, DOUBLE Interval)
             return log.warning(ERR_AlreadyLocked);
          }
 
-         if (timer->Next) timer->Next->Prev = timer->Prev;
-         if (timer->Prev) timer->Prev->Next = timer->Next;
-         if (glTimers IS timer) glTimers = timer->Next;
          lock.release();
 
          if (timer->Routine.Type IS CALL_SCRIPT) {
             scDerefProcedure(timer->Routine.Script.Script, &timer->Routine);
          }
 
-         free(timer);
+         for (auto it=glTimers.begin(); it != glTimers.end(); it++) {
+            if (timer IS &(*it)) {
+               glTimers.erase(it);
+               break;
+            }
+         }
+
          return ERR_Okay;
       }
    }

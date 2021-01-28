@@ -376,17 +376,16 @@ struct SharedObject {
 ** This structure is used for internally timed broadcasting.
 */
 
-struct CoreTimer {
+class CoreTimer {
+public:
    LARGE     NextCall;       // Cycle when PreciseTime() reaches this value (us)
    LARGE     LastCall;       // PreciseTime() recorded at the last call (us)
    LARGE     Interval;       // The amount of microseconds to wait at each interval
-   struct CoreTimer *Next;
-   struct CoreTimer *Prev;
    OBJECTPTR Subscriber;     // The object that is subscribed (pointer, if private)
    OBJECTID  SubscriberID;   // The object that is subscribed
    FUNCTION  Routine;        // Routine to call if not using AC_Timer - ERROR Routine(OBJECTID, LONG, LONG);
    UBYTE     Cycle;
-   UBYTE     Locked;
+   bool      Locked;
 };
 
 /*****************************************************************************
@@ -476,7 +475,7 @@ extern struct TaskList      *shTasks, *glTaskEntry; // Locked with PL_PROCESSES
 extern struct SemaphoreEntry *shSemaphores;     // Locked with PL_SEMAPHORES
 extern const struct ActionTable ActionTable[];  // Read only
 extern const struct Function    glFunctions[];  // Read only
-extern struct CoreTimer *glTimers;              // Locked with TL_TIMER
+extern std::list<CoreTimer> glTimers;          // Locked with TL_TIMER
 extern std::unordered_map<MEMORYID, PrivateAddress> glPrivateMemory;  // Locked with TL_PRIVATE_MEM: Note that best performance for looking up ID's is achieved as a sorted array.
 extern std::unordered_map<OBJECTID, std::set<MEMORYID, std::greater<MEMORYID>>> glObjectMemory; // Locked with TL_PRIVATE_MEM.  Sorted with the most recent private memory first
 extern std::unordered_map<OBJECTID, std::set<OBJECTID, std::greater<OBJECTID>>> glObjectChildren; // Locked with TL_PRIVATE_MEM.  Sorted with most recent object first

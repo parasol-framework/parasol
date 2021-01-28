@@ -459,9 +459,9 @@ timer_cycle:
       if ((glTaskState IS TSTATE_STOPPING) and (!(Flags & PMF_SYSTEM_NO_BREAK)));
       else if (!thread_lock(TL_TIMER, 200)) {
          LARGE current_time = PreciseTime();
-         for (CoreTimer *timer=glTimers; timer; timer=timer->Next) {
-            if (current_time < timer->NextCall) continue;
-            if (timer->Cycle IS glTimerCycle) continue;
+         for (auto timer=glTimers.begin(); timer != glTimers.end(); ) {
+            if (current_time < timer->NextCall) { timer++; continue; }
+            if (timer->Cycle IS glTimerCycle) { timer++; continue; }
 
             LARGE elapsed = current_time - timer->LastCall;
 
@@ -472,17 +472,23 @@ timer_cycle:
 
             //log.trace("Subscriber: %d, Interval: %d, Time: " PF64(), timer->SubscriberID, timer->Interval, current_time);
 
-            timer->Locked = TRUE; // Prevents termination of the structure irrespective of having a TL_TIMER lock.
+            timer->Locked = true; // Prevents termination of the structure irrespective of having a TL_TIMER lock.
 
-            UBYTE relock = FALSE;
+            bool relock = false;
             if (timer->Routine.Type IS CALL_STDC) { // C/C++ callback
                OBJECTPTR subscriber;
-               if (!AccessObject(timer->SubscriberID, 50, &subscriber)) {
+               if (!timer->SubscriberID) { // Internal subscriptions like process_janitor() don't have a subscriber
+                  auto routine = (ERROR (*)(OBJECTPTR, LARGE, LARGE))timer->Routine.StdC.Routine;
+                  thread_unlock(TL_TIMER);
+                  relock = true;
+                  error = routine(NULL, elapsed, current_time);
+               }
+               else if (!AccessObject(timer->SubscriberID, 50, &subscriber)) {
                   parasol::SwitchContext context(subscriber);
 
                   auto routine = (ERROR (*)(OBJECTPTR, LARGE, LARGE))timer->Routine.StdC.Routine;
                   thread_unlock(TL_TIMER);
-                  relock = TRUE;
+                  relock = true;
 
                   error = routine(subscriber, elapsed, current_time);
 
@@ -500,7 +506,7 @@ timer_cycle:
                   };
 
                   thread_unlock(TL_TIMER);
-                  relock = TRUE;
+                  relock = true;
 
                   if (scCallback(script, timer->Routine.Script.ProcedureID, scargs, ARRAYSIZE(scargs), &error)) error = ERR_Terminate;
                }
@@ -508,9 +514,16 @@ timer_cycle:
             }
             else error = ERR_Terminate;
 
-            timer->Locked = FALSE;
+            timer->Locked = false;
 
-            if (error IS ERR_Terminate) UpdateTimer(timer, 0);
+            if (error IS ERR_Terminate) {
+               if (timer->Routine.Type IS CALL_SCRIPT) {
+                  scDerefProcedure(timer->Routine.Script.Script, &timer->Routine);
+               }
+
+               timer = glTimers.erase(timer);
+            }
+            else timer++;
 
             if (relock) goto timer_cycle;
          } // for
@@ -679,8 +692,8 @@ timer_cycle:
          {
             ThreadLock lock(TL_TIMER, 200);
             if (lock.granted()) {
-               for (CoreTimer *timer = glTimers; timer; timer=timer->Next) {
-                  if (timer->NextCall < sleep_time) sleep_time = timer->NextCall;
+               for (const auto &timer : glTimers) {
+                  if (timer.NextCall < sleep_time) sleep_time = timer.NextCall;
                }
             }
          }
