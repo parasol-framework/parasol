@@ -120,6 +120,7 @@ static std::unordered_map<CacheFileIndex, CacheFile *> glCache;
 static std::mutex glCacheLock;
 
 //****************************************************************************
+// Called during shutdown
 
 void free_file_cache(void)
 {
@@ -268,6 +269,7 @@ ERROR check_cache(OBJECTPTR Subscriber, LARGE Elapsed, LARGE CurrentTime)
    for (auto it=glCache.begin(); it != glCache.end(); ) {
       if ((CurrentTime - it->second->LastUse >= 60LL * 1000000LL) and (it->second->Locks <= 0)) {
          log.msg("Removing expired cache file: %.80s", it->second->Path);
+         FreeResource(it->second);
          it = glCache.erase(it);
       }
       else it++;
