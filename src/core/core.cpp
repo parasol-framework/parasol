@@ -27,6 +27,7 @@ This documentation is intended for technical reference and is not suitable as an
 #include <stdlib.h>
 #include <errno.h>
 #include <unistd.h>
+#include <forward_list>
 
 #ifdef _WIN32
 #include <time.h>
@@ -110,7 +111,7 @@ extern "C" EXPORT struct CoreBase * OpenCore(OpenInfo *);
 static ERROR open_shared_control(BYTE);
 static ERROR init_shared_control(void);
 static ERROR load_modules(void);
-static ERROR init_filesystem(void);
+static ERROR init_filesystem(std::forward_list<CSTRING> &);
 
 #ifdef _WIN32
 static WINHANDLE glSharedControlID = 0; // Shared memory ID.
@@ -396,52 +397,61 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
    //   initialisation.  Useful for relaunching the system from a new disk location with new glSemaphore stuff - module
    //   references etc.
 
+   std::forward_list<CSTRING> volumes;
+
    CSTRING newargs[Info->ArgCount];
    LONG na = 0;
    solo = FALSE;
    if (Info->Flags & OPF_ARGS) {
       for (i=1; i < Info->ArgCount; i++) {
-         if (!StrMatch(Info->Args[i], "--log-memory")) {
+         auto arg = Info->Args[i];
+         if ((arg[0] != '-') or (arg[1] != '-')) { newargs[na++] = arg; continue; }
+         arg += 2; // Skip '--' as this prepends all Core arguments
+
+         if (!StrMatch(arg, "log-memory")) {
             glShowPrivate = TRUE;
             glShowPublic  = TRUE;
             glDebugMemory = TRUE;
          }
-         else if (!StrMatch(Info->Args[i], "--log-shared-memory")) {
+         else if (!StrMatch(arg, "log-shared-memory")) {
             glShowPublic = TRUE;
          }
-         else if (!StrMatch(Info->Args[i], "--instance")) {
+         else if (!StrMatch(arg, "instance")) {
             if (i < Info->ArgCount-1) {
                glInstanceID = StrToInt(Info->Args[i+1]);
                i++;
             }
          }
-         else if (!StrCompare(Info->Args[i], "--gfx-driver=", 13, 0)) {
-            StrCopy(Info->Args[i]+13, glDisplayDriver, sizeof(glDisplayDriver));
+         else if (!StrCompare(arg, "gfx-driver=", 11, 0)) {
+            StrCopy(arg+11, glDisplayDriver, sizeof(glDisplayDriver));
          }
-         else if (!StrMatch(Info->Args[i], "--global"))      Info->Flags |= OPF_GLOBAL_INSTANCE;
-         else if (!StrMatch(Info->Args[i], "--solo"))        solo = TRUE;
-         else if (!StrMatch(Info->Args[i], "--sync"))        glSync = TRUE;
-         else if (!StrMatch(Info->Args[i], "--log-none"))    glLogLevel = 0;
-         else if (!StrMatch(Info->Args[i], "--log-error"))   glLogLevel = 1;
-         else if (!StrMatch(Info->Args[i], "--log-warn"))    glLogLevel = 2;
-         else if (!StrMatch(Info->Args[i], "--log-warning")) glLogLevel = 2;
-         else if (!StrMatch(Info->Args[i], "--log-info"))    glLogLevel = 4; // Levels 3/4 are for applications (no internal detail)
-         else if (!StrMatch(Info->Args[i], "--log-api"))     glLogLevel = 5; // Default level for API messages
-         else if (!StrMatch(Info->Args[i], "--log-extapi"))  glLogLevel = 6;
-         else if (!StrMatch(Info->Args[i], "--log-debug"))   glLogLevel = 7;
-         else if (!StrMatch(Info->Args[i], "--log-trace"))   glLogLevel = 9;
-         else if (!StrMatch(Info->Args[i], "--log-all"))     glLogLevel = 9; // 9 is the absolute maximum
-         else if (!StrMatch(Info->Args[i], "--time"))        glTimeLog = PreciseTime();
+         else if ((!StrMatch(arg, "set-volume")) and (i+1 < Info->ArgCount)) { // --set-volume scripts=my:location/
+            volumes.emplace_front(Info->Args[++i]);
+         }
+         else if (!StrMatch(arg, "global"))      Info->Flags |= OPF_GLOBAL_INSTANCE;
+         else if (!StrMatch(arg, "solo"))        solo = TRUE;
+         else if (!StrMatch(arg, "sync"))        glSync = TRUE;
+         else if (!StrMatch(arg, "log-none"))    glLogLevel = 0;
+         else if (!StrMatch(arg, "log-error"))   glLogLevel = 1;
+         else if (!StrMatch(arg, "log-warn"))    glLogLevel = 2;
+         else if (!StrMatch(arg, "log-warning")) glLogLevel = 2;
+         else if (!StrMatch(arg, "log-info"))    glLogLevel = 4; // Levels 3/4 are for applications (no internal detail)
+         else if (!StrMatch(arg, "log-api"))     glLogLevel = 5; // Default level for API messages
+         else if (!StrMatch(arg, "log-extapi"))  glLogLevel = 6;
+         else if (!StrMatch(arg, "log-debug"))   glLogLevel = 7;
+         else if (!StrMatch(arg, "log-trace"))   glLogLevel = 9;
+         else if (!StrMatch(arg, "log-all"))     glLogLevel = 9; // 9 is the absolute maximum
+         else if (!StrMatch(arg, "time"))        glTimeLog = PreciseTime();
          #if defined(__unix__) && !defined(__ANDROID__)
-         else if (!StrMatch(Info->Args[i], "--holdpriority")) hold_priority = TRUE;
+         else if (!StrMatch(arg, "holdpriority")) hold_priority = TRUE;
          #endif
          // Define the user: volume.  If the user folder does not exist then we create it so that the volume can be made.
          //
          // Note: In the volumes config file, 'user' is a special section that can define a name for the user folder other
          // than 'ParasolXX'.  This is useful for customised distributions.  If the folder is named as 'default' then no
          // user-specific folder is assigned.
-         else if (!StrCompare("--home=", Info->Args[i], 7, 0)) glUserHomeFolder = Info->Args[i] + 7;
-         else newargs[na++] = Info->Args[i];
+         else if (!StrCompare("home=", arg, 7, 0)) glUserHomeFolder = arg + 7;
+         else newargs[na++] = arg;
       }
 
       if (glLogLevel > 2) {
@@ -883,7 +893,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
       #endif
    }
 
-   if (init_filesystem()) {
+   if (init_filesystem(volumes)) {
       KERR("Failed to initialise the filesystem.");
       CloseCore();
       return NULL;
@@ -2067,7 +2077,7 @@ static void win32_enum_folders(CSTRING Volume, CSTRING Label, CSTRING Path, CSTR
 
 //****************************************************************************
 
-static ERROR init_filesystem(void)
+static ERROR init_filesystem(std::forward_list<CSTRING> &Volumes)
 {
    parasol::Log log("Core");
    LONG i;
@@ -2165,7 +2175,7 @@ static ERROR init_filesystem(void)
          SetVolume(AST_NAME, "templates", AST_PATH, "assets:templates/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "filetypes/empty",  TAGEND);
          SetVolume(AST_NAME, "config", AST_PATH, "localcache:config/|assets:config/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "filetypes/empty",  TAGEND);
       #else
-         SetVolume(AST_NAME, "templates", AST_PATH, "system:scripts/templates/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "filetypes/empty",  TAGEND);
+         SetVolume(AST_NAME, "templates", AST_PATH, "scripts:templates/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "filetypes/empty",  TAGEND);
          SetVolume(AST_NAME, "config", AST_PATH, "system:config/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "filetypes/empty",  TAGEND);
          if (!AnalysePath("parasol:bin/", NULL)) { // Bin is the location of the fluid and parasol binaries
             SetVolume(AST_NAME, "bin", AST_PATH, "parasol:bin/", AST_FLAGS, VOLUME_HIDDEN, TAGEND);
@@ -2175,6 +2185,7 @@ static ERROR init_filesystem(void)
 
       SetVolume(AST_NAME, "temp", AST_PATH, "user:temp/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "items/trash", TAGEND);
       SetVolume(AST_NAME, "fonts", AST_PATH, "system:fonts/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "items/charset",  TAGEND);
+      SetVolume(AST_NAME, "scripts", AST_PATH, "system:scripts/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "filetypes/source",  TAGEND);
       SetVolume(AST_NAME, "styles", AST_PATH, "system:styles/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "tools/image_gallery",  TAGEND);
       SetVolume(AST_NAME, "icons", AST_PATH, "EXT:widget", AST_FLAGS, VOLUME_HIDDEN, TAGEND);
 
@@ -2442,6 +2453,18 @@ static ERROR init_filesystem(void)
    // Create the 'archive' volume (non-essential)
 
    create_archive_volume();
+
+   for (CSTRING vol : Volumes) {
+      char name[120], path[MAX_FILENAME];
+      LONG n, p, v;
+      for (n=0, v=0; vol[v] and (vol[v] != '=') and (n < sizeof(name)-1); v++) name[n++] = vol[v];
+      name[n] = 0;
+      if (vol[v++] IS '=') {
+         for (p=0; vol[v] and (p < sizeof(path)-1); v++) path[p++] = vol[v];
+         path[p] = 0;
+         SetVolume(AST_NAME, name, AST_PATH, path, AST_FLAGS, VOLUME_PRIORITY, TAGEND);
+      }
+   }
 
    return ERR_Okay;
 }

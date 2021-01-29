@@ -520,7 +520,7 @@ int fcmd_include(lua_State *Lua)
 /*****************************************************************************
 ** Usage: require "Module"
 **
-** Loads a Fluid language file from system:scripts/ and executes it.  Differs from loadFile() in that registration
+** Loads a Fluid language file from scripts: and executes it.  Differs from loadFile() in that registration
 ** prevents multiple executions and the folder restriction improves security.
 */
 
@@ -559,7 +559,7 @@ int fcmd_require(lua_State *Lua)
       if (loaded) return 0;
 
       char path[96];
-      StrFormat(path, sizeof(path), "system:scripts/%s.fluid", module);
+      StrFormat(path, sizeof(path), "scripts:%s.fluid", module);
 
       objFile *file;
       if (!(error = CreateObject(ID_FILE, 0, &file, FID_Path|TSTR, path, FID_Flags|TLONG, FL_READ, TAGEND))) {

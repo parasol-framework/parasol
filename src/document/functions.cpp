@@ -5200,7 +5200,7 @@ static void error_dialog(CSTRING Title, CSTRING Message, ERROR Error)
       SetFields(dialog,
          FID_Name|TSTR,    "scDialog",
          FID_Owner|TLONG,  CurrentTaskID(),
-         FID_Path|TSTR,    "system:scripts/gui/dialog.fluid",
+         FID_Path|TSTR,    "scripts:gui/dialog.fluid",
          TAGEND);
 
       acSetVar(dialog, "modal", "1");
