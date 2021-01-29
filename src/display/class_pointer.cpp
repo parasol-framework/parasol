@@ -1311,28 +1311,35 @@ static ERROR PTR_SET_Y(objPointer *Self, LONG Value)
 
 static void set_pointer_defaults(objPointer *Self)
 {
+   DOUBLE speed         = glDefaultSpeed;
+   DOUBLE acceleration  = glDefaultAcceleration;
+   DOUBLE maxspeed      = 100;
+   DOUBLE wheelspeed    = DEFAULT_WHEELSPEED;
+   DOUBLE doubleclick   = 0.36;
+   CSTRING buttonorder   = "123456789ABCDEF";
+
    OBJECTPTR config;
-   DOUBLE speed, acceleration, doubleclick, maxspeed, wheelspeed;
-   CSTRING buttonorder;
-
    if (!CreateObject(ID_CONFIG, 0, &config, FID_Path|TSTR, "user:config/pointer.cfg", TAGEND)) {
-      if (cfgReadFloat(config, "POINTER", "Speed", &speed) != ERR_Okay)               speed         = glDefaultSpeed;
-      if (cfgReadFloat(config, "POINTER", "Acceleration", &acceleration) != ERR_Okay) acceleration  = glDefaultAcceleration;
-      if (cfgReadFloat(config, "POINTER", "MaxSpeed", &maxspeed) != ERR_Okay)         maxspeed      = 100;
-      if (cfgReadFloat(config, "POINTER", "WheelSpeed", &wheelspeed) != ERR_Okay)     wheelspeed    = DEFAULT_WHEELSPEED;
-      if (cfgReadFloat(config, "POINTER", "DoubleClick", &doubleclick) != ERR_Okay)   doubleclick   = 0.36;
-      if (cfgReadValue(config, "POINTER", "ButtonOrder", &buttonorder) != ERR_Okay)   buttonorder   = "123456789ABCDEF";
-
-      SetFields(Self, FID_Speed|TDOUBLE,        speed,
-                      FID_Acceleration|TDOUBLE, acceleration,
-                      FID_MaxSpeed|TDOUBLE,     maxspeed,
-                      FID_WheelSpeed|TFLOAT,    wheelspeed,
-                      FID_DoubleClick|TDOUBLE,  doubleclick,
-                      FID_ButtonOrder|TSTRING,  buttonorder,
-                      TAGEND);
-
+      DOUBLE dbl;
+      CSTRING str;
+      if (!cfgReadFloat(config, "POINTER", "Speed", &dbl)) speed = dbl;
+      if (!cfgReadFloat(config, "POINTER", "Acceleration", &dbl)) acceleration = dbl;
+      if (!cfgReadFloat(config, "POINTER", "MaxSpeed", &dbl)) maxspeed = dbl;
+      if (!cfgReadFloat(config, "POINTER", "WheelSpeed", &dbl)) wheelspeed = dbl;
+      if (!cfgReadFloat(config, "POINTER", "DoubleClick", &dbl)) doubleclick = dbl;
+      if (!cfgReadValue(config, "POINTER", "ButtonOrder", &str)) buttonorder = str;
       acFree(config);
    }
+
+   if (doubleclick < 0.2) doubleclick = 0.2;
+
+   SetFields(Self, FID_Speed|TDOUBLE,        speed,
+                   FID_Acceleration|TDOUBLE, acceleration,
+                   FID_MaxSpeed|TDOUBLE,     maxspeed,
+                   FID_WheelSpeed|TFLOAT,    wheelspeed,
+                   FID_DoubleClick|TDOUBLE,  doubleclick,
+                   FID_ButtonOrder|TSTRING,  buttonorder,
+                   TAGEND);
 }
 
 //****************************************************************************
