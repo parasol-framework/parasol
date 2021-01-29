@@ -31,10 +31,6 @@ Valid options to use when creating the dialog are as follows:
    example:    Overrides the example text normally printed in the dialog.
    colour:     Change the default font colour to something other than black.
 
-TODO: Underline checkbox
-      Colour selection
-      Combobox to filter on Proportional; Fixed; Proportional and Fixed
-
 --]]
 
    require 'common'
