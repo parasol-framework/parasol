@@ -507,6 +507,42 @@ typedef struct rkVectorFilter {
 #endif
 } objVectorFilter;
 
+// VectorText class definition
+
+#define VER_VECTORTEXT (1.000000)
+
+// VectorWave class definition
+
+#define VER_VECTORWAVE (1.000000)
+
+// VectorRectangle class definition
+
+#define VER_VECTORRECTANGLE (1.000000)
+
+// VectorPolygon class definition
+
+#define VER_VECTORPOLYGON (1.000000)
+
+// VectorShape class definition
+
+#define VER_VECTORSHAPE (1.000000)
+
+// VectorSpiral class definition
+
+#define VER_VECTORSPIRAL (1.000000)
+
+// VectorEllipse class definition
+
+#define VER_VECTORELLIPSE (1.000000)
+
+// VectorClip class definition
+
+#define VER_VECTORCLIP (1.000000)
+
+// VectorViewport class definition
+
+#define VER_VECTORVIEWPORT (1.000000)
+
 #define SHAPE_PUBLIC \
    struct rkVector *Child; \
    struct rkVectorScene *Scene; \

@@ -3,91 +3,126 @@
 
 <book>
   <info>
-    <name>VectorImage</name>
+    <name>VectorViewport</name>
     <type>class</type>
     <module>Vector</module>
-    <comment>Provides support for the filling and stroking of vectors with bitmap images.</comment>
+    <comment>Provides support for viewport definitions within a vector tree.</comment>
     <version>1</version>
-    <id>885aab1b</id>
-    <idstring>ID_VECTORIMAGE</idstring>
+    <id>15da8fb8</id>
+    <idstring>ID_VECTORVIEWPORT</idstring>
     <category>Graphics</category>
-    <include>modules/vectorimage.h</include>
+    <include>modules/vectorviewport.h</include>
     <copyright>Paul Manias © 2010-2020</copyright>
     <description>
-<p>The VectorImage class is used by Vector painting algorithms to fill and stroke vectors with bitmap images.  This is achieved by initialising a VectorImage object with the desired settings and then registering it with a <class name="VectorScene">VectorScene</class> via the <class name="VectorScene" index="AddDef()">VectorScene:AddDef()</class> method.</p>
-<p>Any vector within the target scene will be able to utilise the image for filling or stroking by referencing its name through the <class name="Vector" index="Fill">Vector:Fill</class> and <class name="Vector" index="Stroke">Vector:Stroke</class> fields.  For instance 'url(#logo)'.</p>
-<p>It is strongly recommended that the VectorImage is owned by the <class name="VectorScene">VectorScene</class> that is handling the definition.  This will ensure that the VectorImage is de-allocated when the scene is destroyed.</p></description>
+<p>This class is used to declare a viewport within a vector definition.  A master viewport is required as the first object in a <class name="VectorScene">VectorScene</class> and it must contain all vector graphics content.</p>
+<p>The size of the viewport is initially set to (0,0,100%,100%) so as to be all inclusive.  Setting the X, Y, Width and Height fields will determine the position and clipping of the displayed content (the 'target area').  The ViewX, ViewY, ViewWidth and ViewHeight fields declare the viewbox (the 'source area') that will be sampled for the target.</p>
+<p>To configure the scaling method that is applied to the viewport content, set the <field>AspectRatio</field> field.</p></description>
     <source>
-      <file path="defs/">image.cpp</file>
+      <file path="vectors/">viewport.c</file>
     </source>
   </info>
 
   <fields>
     <field>
-      <name>Bitmap</name>
-      <comment>Reference to a source bitmap for the rendering algorithm.</comment>
-      <access read="R" write="S">Read/Set</access>
-      <type class="Bitmap">*Bitmap</type>
+      <name>AspectRatio</name>
+      <comment>Flags that affect the aspect ratio of vectors within the viewport.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type lookup="ARF">INT</type>
       <description>
-<p>This field must be set prior to initialisation.  It will refer to a source bitmap that will be used by the rendering algorithm.</p>
+<p>Defining an aspect ratio allows finer control over the position and scale of the viewport's content within its target area.</p>
+<types lookup="ARF"/>
       </description>
     </field>
 
     <field>
       <name>Dimensions</name>
       <comment>Dimension flags define whether individual dimension fields contain fixed or relative values.</comment>
-      <access read="R" write="W">Read/Write</access>
+      <access read="G" write="S">Get/Set</access>
       <type lookup="DMF">INT</type>
       <description>
-<p>Of the Dimension flags that are available, only FIXED_X, FIXED_Y, RELATIVE_X and RELATIVE_Y are applicable.</p>
+<p>The supported dimension flags are currently limited to: FIXED_X, FIXED_Y, FIXED_WIDTH, FIXED_HEIGHT, RELATIVE_X, RELATIVE_Y, RELATIVE_WIDTH, RELATIVE_HEIGHT.</p>
 <types lookup="DMF"/>
       </description>
     </field>
 
     <field>
-      <name>Picture</name>
-      <comment>Refers to a <class name="Picture">Picture</class> from which the source <field>Bitmap</field> is acquired.</comment>
-      <access read="R" write="S">Read/Set</access>
-      <type class="Picture">*Picture</type>
+      <name>Height</name>
+      <comment>The height of the viewport's target area.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
       <description>
-<p>If an image bitmap is sourced from a <class name="Picture">Picture</class> then this field may be used to refer to the <class name="Picture">Picture</class> object.  The picture will not be used directly by the VectorImage, as only the bitmap is of interest.</p>
+<p>The height of the viewport's target area is defined here as a fixed or relative value.  The default value is 100% for full coverage.</p>
       </description>
     </field>
 
     <field>
-      <name>SpreadMethod</name>
-      <comment>Defines the drawing mode.</comment>
-      <access read="R" write="W">Read/Write</access>
-      <type lookup="VSPREAD">INT</type>
+      <name>ViewHeight</name>
+      <comment>The height of the viewport's source area.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
       <description>
-<p>The SpreadMethod defines the way in which the image is drawn within the target area.  The default setting is PAD.</p>
-<types lookup="VSPREAD"/>
+<p>The area defined by (<field>ViewX</field>,<field>ViewY</field>) and (<field>ViewWidth</field>,<field>ViewHeight</field>) declare the source area covered by the viewport.  The rendered graphics in the source area will be repositioned and scaled to the area defined by (X,Y) and (Width,Height).</p>
       </description>
     </field>
 
     <field>
-      <name>Units</name>
-      <comment>Declares the coordinate system to use for the <field>X</field> and <field>Y</field> values.</comment>
-      <access read="R" write="W">Read/Write</access>
-      <type lookup="VUNIT">INT</type>
+      <name>ViewWidth</name>
+      <comment>The width of the viewport's source area.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
       <description>
-<p>This field declares the coordinate system that is used for values in the <field>X</field> and <field>Y</field> fields.  The default is BOUNDING_BOX.</p>
-<types lookup="VUNIT"/>
+<p>The area defined by (<field>ViewX</field>,<field>ViewY</field>) and (<field>ViewWidth</field>,<field>ViewHeight</field>) declare the source area covered by the viewport.  The rendered graphics in the source area will be repositioned and scaled to the area defined by (X,Y) and (Width,Height).</p>
+      </description>
+    </field>
+
+    <field>
+      <name>ViewX</name>
+      <comment>The horizontal position of the viewport's source area.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The area defined by (<field>ViewX</field>,<field>ViewY</field>) and (<field>ViewWidth</field>,<field>ViewHeight</field>) declare the source area covered by the viewport.  The rendered graphics in the source area will be repositioned and scaled to the area defined by (X,Y) and (Width,Height).</p>
+      </description>
+    </field>
+
+    <field>
+      <name>ViewY</name>
+      <comment>The vertical position of the viewport's source area.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The area defined by (<field>ViewX</field>,<field>ViewY</field>) and (<field>ViewWidth</field>,<field>ViewHeight</field>) declare the source area covered by the viewport.  The rendered graphics in the source area will be repositioned and scaled to the area defined by (X,Y) and (Width,Height).</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Width</name>
+      <comment>The width of the viewport's target area.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The width of the viewport's target area is defined here as a fixed or relative value.  The default value is 100% for full coverage.</p>
       </description>
     </field>
 
     <field>
       <name>X</name>
-      <comment>Apply a horizontal offset to the image, the origin of which is determined by the <field>Units</field> value.</comment>
-      <access read="R" write="W">Read/Write</access>
+      <comment>Positions the viewport on the x-axis.</comment>
+      <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
+      <description>
+<p>The display position targeted by the viewport is declared in the (X,Y) fields.</p>
+      </description>
     </field>
 
     <field>
       <name>Y</name>
-      <comment>Apply a vertical offset to the image, the origin of which is determined by the <field>Units</field> value.</comment>
-      <access read="R" write="W">Read/Write</access>
+      <comment>Positions the viewport on the y-axis.</comment>
+      <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
+      <description>
+<p>The display position targeted by the viewport is declared in the (X,Y) fields.</p>
+      </description>
     </field>
 
   </fields>

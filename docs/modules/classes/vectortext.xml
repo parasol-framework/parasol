@@ -3,91 +3,185 @@
 
 <book>
   <info>
-    <name>VectorImage</name>
+    <name>VectorText</name>
     <type>class</type>
     <module>Vector</module>
-    <comment>Provides support for the filling and stroking of vectors with bitmap images.</comment>
+    <comment>Extends the Vector class with support for generating text.</comment>
     <version>1</version>
-    <id>885aab1b</id>
-    <idstring>ID_VECTORIMAGE</idstring>
+    <id>51bb151d</id>
+    <idstring>ID_VECTORTEXT</idstring>
     <category>Graphics</category>
-    <include>modules/vectorimage.h</include>
+    <include>modules/vectortext.h</include>
     <copyright>Paul Manias © 2010-2020</copyright>
     <description>
-<p>The VectorImage class is used by Vector painting algorithms to fill and stroke vectors with bitmap images.  This is achieved by initialising a VectorImage object with the desired settings and then registering it with a <class name="VectorScene">VectorScene</class> via the <class name="VectorScene" index="AddDef()">VectorScene:AddDef()</class> method.</p>
-<p>Any vector within the target scene will be able to utilise the image for filling or stroking by referencing its name through the <class name="Vector" index="Fill">Vector:Fill</class> and <class name="Vector" index="Stroke">Vector:Stroke</class> fields.  For instance 'url(#logo)'.</p>
-<p>It is strongly recommended that the VectorImage is owned by the <class name="VectorScene">VectorScene</class> that is handling the definition.  This will ensure that the VectorImage is de-allocated when the scene is destroyed.</p></description>
+<p>To create text along a path, set the #Morph field with a reference to any <class name="Vector">Vector</class> object that generates a path.  The following extract illustrates the SVG equivalent of this feature:</p>
+<pre>&lt;defs&gt;
+  &lt;path id="myTextPath2" d="M75,20 l100,0 l100,30 q0,100 150,100"/&gt;
+&lt;/defs&gt;
+
+&lt;text x="10" y="100" stroke="#000000"&gt;
+  &lt;textPath xlink:href="#myTextPath2"/&gt;
+&lt;/text&gt;
+</pre></description>
     <source>
-      <file path="defs/">image.cpp</file>
+      <file path="vectors/">text.c</file>
     </source>
   </info>
 
   <fields>
     <field>
-      <name>Bitmap</name>
-      <comment>Reference to a source bitmap for the rendering algorithm.</comment>
-      <access read="R" write="S">Read/Set</access>
-      <type class="Bitmap">*Bitmap</type>
+      <name>Align</name>
+      <comment>Defines the alignment of the text string.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>INT</type>
       <description>
-<p>This field must be set prior to initialisation.  It will refer to a source bitmap that will be used by the rendering algorithm.</p>
+<p>This field specifies the horizontal alignment of the text string.  The standard alignment flags are supported in the form of ALIGN_LEFT, ALIGN_HORIZONTAL and ALIGN_RIGHT.</p>
+<p>In addition, the SVG equivalent values of 'start', 'middle' and 'end' are supported and map directly to the formerly mentioned align flags.</p>
       </description>
     </field>
 
     <field>
-      <name>Dimensions</name>
-      <comment>Dimension flags define whether individual dimension fields contain fixed or relative values.</comment>
-      <access read="R" write="W">Read/Write</access>
-      <type lookup="DMF">INT</type>
+      <name>DX</name>
+      <comment>Adjusts horizontal spacing on a per-character basis.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE []</type>
       <description>
-<p>Of the Dimension flags that are available, only FIXED_X, FIXED_Y, RELATIVE_X and RELATIVE_Y are applicable.</p>
-<types lookup="DMF"/>
+<p>If a single value is provided, it represents the new relative X coordinate for the current text position for rendering the glyphs corresponding to the first character within this element or any of its descendants.  The current text position is shifted along the x-axis of the current user coordinate system by the provided value before the first character's glyphs are rendered.</p>
+<p>If a series of values is provided, then the values represent incremental shifts along the x-axis for the current text position before rendering the glyphs corresponding to the first n characters within this element or any of its descendants. Thus, before the glyphs are rendered corresponding to each character, the current text position resulting from drawing the glyphs for the previous character within the current ‘text’ element is shifted along the X axis of the current user coordinate system by length.</p>
+<p>If more characters exist than values, then for each of these extra characters: (a) if an ancestor Text object specifies a relative X coordinate for the given character via a <field>DX</field> field, then the current text position is shifted along the x-axis of the current user coordinate system by that amount (nearest ancestor has precedence), else (b) no extra shift along the x-axis occurs.</p>
       </description>
     </field>
 
     <field>
-      <name>Picture</name>
-      <comment>Refers to a <class name="Picture">Picture</class> from which the source <field>Bitmap</field> is acquired.</comment>
-      <access read="R" write="S">Read/Set</access>
-      <type class="Picture">*Picture</type>
+      <name>DY</name>
+      <comment>Adjusts vertical spacing on a per-character basis.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE []</type>
       <description>
-<p>If an image bitmap is sourced from a <class name="Picture">Picture</class> then this field may be used to refer to the <class name="Picture">Picture</class> object.  The picture will not be used directly by the VectorImage, as only the bitmap is of interest.</p>
+<p>This field follows the same rules described in <field>DX</field>.</p>
       </description>
     </field>
 
     <field>
-      <name>SpreadMethod</name>
-      <comment>Defines the drawing mode.</comment>
-      <access read="R" write="W">Read/Write</access>
-      <type lookup="VSPREAD">INT</type>
+      <name>Face</name>
+      <comment>Defines the font face/family to use in rendering the text string.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>STRING</type>
       <description>
-<p>The SpreadMethod defines the way in which the image is drawn within the target area.  The default setting is PAD.</p>
-<types lookup="VSPREAD"/>
+<p>The face/family of the desired font for rendering the text is specified here.  It is possible to list multiple fonts in CSV format in case the first-choice font is unavailable.  For instance, 'Arial,Open Sans' would load the Open Sans font if Arial was unavailable.</p>
+<p>If none of the listed fonts are available, the default system font will be used.</p>
+<p>Please note that referencing bitmap fonts is unsupported and they will be ignored by the font loader.</p>
       </description>
     </field>
 
     <field>
-      <name>Units</name>
-      <comment>Declares the coordinate system to use for the <field>X</field> and <field>Y</field> values.</comment>
-      <access read="R" write="W">Read/Write</access>
-      <type lookup="VUNIT">INT</type>
+      <name>Flags</name>
+      <access read="G" write="S">Get/Set</access>
+      <type>INT</type>
+    </field>
+
+    <field>
+      <name>Font</name>
+      <comment>The primary Font object that is used to source glyphs for the text string.</comment>
+      <access read="G">Get</access>
+      <type>OBJECTPTR</type>
       <description>
-<p>This field declares the coordinate system that is used for values in the <field>X</field> and <field>Y</field> fields.  The default is BOUNDING_BOX.</p>
-<types lookup="VUNIT"/>
+<p>Returns the Font object that is used for drawing the text.  The object may be queried but must remain unmodified. Any programmed modification that works in the present code base may fail in future releases.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>FontSize</name>
+      <comment>Defines the vertical size of the font.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>STRING</type>
+      <description>
+<p>The FontSize refers to the height of the font from baseline to baseline.  Without an identifier, the height value corresponds to the current user coordinate system (pixels by default).  If you intend to set the font's point size, please ensure that 'pt' is appended to the number.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>LetterSpacing</name>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+    </field>
+
+    <field>
+      <name>Rotate</name>
+      <comment>Applies vertical spacing on a per-character basis.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE []</type>
+      <description>
+<p>Applies supplemental rotation about the current text position for all of the glyphs in the text string.</p>
+<p>If multiple values are provided, then the first number represents the supplemental rotation for the glyphs corresponding to the first character within this element or any of its descendants, the second number represents the supplemental rotation for the glyphs that correspond to the second character, and so on.</p>
+<p>If more numbers are provided than there are characters, then the extra numbers will be ignored.</p>
+<p>If more characters are provided than numbers, then for each of these extra characters the rotation value specified by the last number must be used.</p>
+<p>If the attribute is not specified and if an ancestor 'text' or 'tspan' element specifies a supplemental rotation for a given character via a 'rotate' attribute, then the given supplemental rotation is applied to the given character (nearest ancestor has precedence). If there are more characters than numbers specified in the ancestor's 'rotate' attribute, then for each of these extra characters the rotation value specified by the last number must be used.</p>
+<p>This supplemental rotation has no impact on the rules by which current text position is modified as glyphs get rendered and is supplemental to any rotation due to text on a path and to 'glyph-orientation-horizontal' or 'glyph-orientation-vertical'.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Spacing</name>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+    </field>
+
+    <field>
+      <name>StartOffset</name>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+    </field>
+
+    <field>
+      <name>String</name>
+      <comment>The string to use for drawing the glyphs is defined here.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>STRING</type>
+      <description>
+<p>The string for drawing the glyphs is defined here in UTF-8 format.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>TextLength</name>
+      <comment>Reflects the expected length of the text after all computations have been taken into account.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The purpose of this attribute is to allow exact alignment of the text graphic in the computed result.  If the #Width that is initially computed does not match this value, then the text will be scaled to match the TextLength.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Weight</name>
+      <comment>Defines the level of boldness in the text.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>INT</type>
+      <description>
+<p>The weight value determines the level of boldness in the text.  A default value of 400 will render the text in its normal state.  Lower values between 100 to 300 render the text in a light format, while high values in the range of 400 - 900 result in boldness.</p>
       </description>
     </field>
 
     <field>
       <name>X</name>
-      <comment>Apply a horizontal offset to the image, the origin of which is determined by the <field>Units</field> value.</comment>
-      <access read="R" write="W">Read/Write</access>
+      <comment>The x coordinate of the text.</comment>
+      <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
+      <description>
+<p>The x-axis coordinate of the text is specified here as a fixed value.  Relative coordinates are not supported.</p>
+      </description>
     </field>
 
     <field>
       <name>Y</name>
-      <comment>Apply a vertical offset to the image, the origin of which is determined by the <field>Units</field> value.</comment>
-      <access read="R" write="W">Read/Write</access>
+      <comment>The base-line y coordinate of the text.</comment>
+      <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
+      <description>
+<p>The Y-axis coordinate of the text is specified here as a fixed value.  Relative coordinates are not supported.</p>
+<p>Unlike other vector shapes, the Y coordinate positions the text from its base line rather than the top of the shape.</p>
+      </description>
     </field>
 
   </fields>
