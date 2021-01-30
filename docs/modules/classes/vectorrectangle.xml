@@ -16,7 +16,7 @@
     <description>
 <p>VectorRectangle extends the <class name="Vector">Vector</class> class with the ability to generate rectangular paths.</p></description>
     <source>
-      <file path="vectors/">rectangle.c</file>
+      <file path="vectors/">rectangle.cpp</file>
     </source>
   </info>
 

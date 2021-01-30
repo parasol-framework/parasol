@@ -16,7 +16,7 @@
     <description>
 <p>The VectorEllipse class provides the necessary functionality for elliptical path generation.</p></description>
     <source>
-      <file path="vectors/">ellipse.c</file>
+      <file path="vectors/">ellipse.cpp</file>
     </source>
   </info>
 
