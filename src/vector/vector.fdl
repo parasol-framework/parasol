@@ -373,6 +373,24 @@ module({ name="Vector", copyright="Paul Manias © 2010-2020", version=1.0 }, fun
    UBYTE BankIndex;
   ]])
 
+  class('VectorText', { src='vectors/text.c' })
+
+  class('VectorWave', { src='vectors/wave.cpp' })
+
+  class('VectorRectangle', { src='vectors/rectangle.c' })
+
+  class('VectorPolygon', { src='vectors/polygon.c' })
+
+  class('VectorShape', { src='vectors/supershape.cpp' })
+
+  class('VectorSpiral', { src='vectors/spiral.cpp' })
+
+  class('VectorEllipse', { src='vectors/ellipse.c' })
+
+  class('VectorClip', { src='vectors/clip.c' })
+
+  class('VectorViewport', { src='vectors/viewport.c' })
+
   c_insert([[
 #define SHAPE_PUBLIC \
    struct rkVector *Child; \

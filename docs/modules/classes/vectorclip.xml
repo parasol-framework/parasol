@@ -3,91 +3,44 @@
 
 <book>
   <info>
-    <name>VectorImage</name>
+    <name>VectorClip</name>
     <type>class</type>
     <module>Vector</module>
-    <comment>Provides support for the filling and stroking of vectors with bitmap images.</comment>
+    <comment>Clips are used to define complex clipping regions for vectors.</comment>
     <version>1</version>
-    <id>885aab1b</id>
-    <idstring>ID_VECTORIMAGE</idstring>
+    <id>51b1de80</id>
+    <idstring>ID_VECTORCLIP</idstring>
     <category>Graphics</category>
-    <include>modules/vectorimage.h</include>
+    <include>modules/vectorclip.h</include>
     <copyright>Paul Manias © 2010-2020</copyright>
     <description>
-<p>The VectorImage class is used by Vector painting algorithms to fill and stroke vectors with bitmap images.  This is achieved by initialising a VectorImage object with the desired settings and then registering it with a <class name="VectorScene">VectorScene</class> via the <class name="VectorScene" index="AddDef()">VectorScene:AddDef()</class> method.</p>
-<p>Any vector within the target scene will be able to utilise the image for filling or stroking by referencing its name through the <class name="Vector" index="Fill">Vector:Fill</class> and <class name="Vector" index="Stroke">Vector:Stroke</class> fields.  For instance 'url(#logo)'.</p>
-<p>It is strongly recommended that the VectorImage is owned by the <class name="VectorScene">VectorScene</class> that is handling the definition.  This will ensure that the VectorImage is de-allocated when the scene is destroyed.</p></description>
+<p>The VectorClip defines a clipping path that can be used by other vectors as a mask.  The clipping path is defined by creating Vector shapes that are initialised to the VectorClip as child objects.</p>
+<p>Any Vector that defines a shape can utilise a VectorClip by referencing it through the Vector's Mask field.</p>
+<p>VectorClip objects must always be owned by their relevant <class name="VectorScene">VectorScene</class> or <class name="VectorViewport">VectorViewport</class>.  It is valid for a VectorClip to be shared by multiple vector objects within the same scene.</p></description>
     <source>
-      <file path="defs/">image.cpp</file>
+      <file path="vectors/">clip.c</file>
     </source>
   </info>
 
   <fields>
     <field>
-      <name>Bitmap</name>
-      <comment>Reference to a source bitmap for the rendering algorithm.</comment>
-      <access read="R" write="S">Read/Set</access>
-      <type class="Bitmap">*Bitmap</type>
+      <name>Transform</name>
+      <comment>Applies a transform to the paths in the clipping mask.</comment>
+      <access write="S">Set</access>
+      <type>STRING</type>
       <description>
-<p>This field must be set prior to initialisation.  It will refer to a source bitmap that will be used by the rendering algorithm.</p>
-      </description>
-    </field>
-
-    <field>
-      <name>Dimensions</name>
-      <comment>Dimension flags define whether individual dimension fields contain fixed or relative values.</comment>
-      <access read="R" write="W">Read/Write</access>
-      <type lookup="DMF">INT</type>
-      <description>
-<p>Of the Dimension flags that are available, only FIXED_X, FIXED_Y, RELATIVE_X and RELATIVE_Y are applicable.</p>
-<types lookup="DMF"/>
-      </description>
-    </field>
-
-    <field>
-      <name>Picture</name>
-      <comment>Refers to a <class name="Picture">Picture</class> from which the source <field>Bitmap</field> is acquired.</comment>
-      <access read="R" write="S">Read/Set</access>
-      <type class="Picture">*Picture</type>
-      <description>
-<p>If an image bitmap is sourced from a <class name="Picture">Picture</class> then this field may be used to refer to the <class name="Picture">Picture</class> object.  The picture will not be used directly by the VectorImage, as only the bitmap is of interest.</p>
-      </description>
-    </field>
-
-    <field>
-      <name>SpreadMethod</name>
-      <comment>Defines the drawing mode.</comment>
-      <access read="R" write="W">Read/Write</access>
-      <type lookup="VSPREAD">INT</type>
-      <description>
-<p>The SpreadMethod defines the way in which the image is drawn within the target area.  The default setting is PAD.</p>
-<types lookup="VSPREAD"/>
+<p>A transform can be applied to the paths in the clipping mask by setting this field with an SVG compliant transform string.</p>
       </description>
     </field>
 
     <field>
       <name>Units</name>
-      <comment>Declares the coordinate system to use for the <field>X</field> and <field>Y</field> values.</comment>
-      <access read="R" write="W">Read/Write</access>
-      <type lookup="VUNIT">INT</type>
+      <comment>Defines the coordinate system for fields X, Y, Width and Height.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>INT</type>
       <description>
-<p>This field declares the coordinate system that is used for values in the <field>X</field> and <field>Y</field> fields.  The default is BOUNDING_BOX.</p>
-<types lookup="VUNIT"/>
+<p>The default coordinate system for clip-paths is BOUNDING_BOX, which positions the clipping region against the vector that references it.  The alternative is USERSPACE, which positions the path relative to the current viewport.</p>
       </description>
-    </field>
-
-    <field>
-      <name>X</name>
-      <comment>Apply a horizontal offset to the image, the origin of which is determined by the <field>Units</field> value.</comment>
-      <access read="R" write="W">Read/Write</access>
-      <type>DOUBLE</type>
-    </field>
-
-    <field>
-      <name>Y</name>
-      <comment>Apply a vertical offset to the image, the origin of which is determined by the <field>Units</field> value.</comment>
-      <access read="R" write="W">Read/Write</access>
-      <type>DOUBLE</type>
     </field>
 
   </fields>

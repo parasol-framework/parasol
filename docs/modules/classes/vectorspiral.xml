@@ -3,91 +3,112 @@
 
 <book>
   <info>
-    <name>VectorImage</name>
+    <name>VectorSpiral</name>
     <type>class</type>
     <module>Vector</module>
-    <comment>Provides support for the filling and stroking of vectors with bitmap images.</comment>
+    <comment>Extends the Vector class with support for spiral path generation.</comment>
     <version>1</version>
-    <id>885aab1b</id>
-    <idstring>ID_VECTORIMAGE</idstring>
+    <id>ab3e8003</id>
+    <idstring>ID_VECTORSPIRAL</idstring>
     <category>Graphics</category>
-    <include>modules/vectorimage.h</include>
+    <include>modules/vectorspiral.h</include>
     <copyright>Paul Manias © 2010-2020</copyright>
     <description>
-<p>The VectorImage class is used by Vector painting algorithms to fill and stroke vectors with bitmap images.  This is achieved by initialising a VectorImage object with the desired settings and then registering it with a <class name="VectorScene">VectorScene</class> via the <class name="VectorScene" index="AddDef()">VectorScene:AddDef()</class> method.</p>
-<p>Any vector within the target scene will be able to utilise the image for filling or stroking by referencing its name through the <class name="Vector" index="Fill">Vector:Fill</class> and <class name="Vector" index="Stroke">Vector:Stroke</class> fields.  For instance 'url(#logo)'.</p>
-<p>It is strongly recommended that the VectorImage is owned by the <class name="VectorScene">VectorScene</class> that is handling the definition.  This will ensure that the VectorImage is de-allocated when the scene is destroyed.</p></description>
+<p>The VectorSpiral class provides the necessary functionality for generating spiral paths that extend from a central point.</p></description>
     <source>
-      <file path="defs/">image.cpp</file>
+      <file path="vectors/">spiral.cpp</file>
     </source>
   </info>
 
   <fields>
     <field>
-      <name>Bitmap</name>
-      <comment>Reference to a source bitmap for the rendering algorithm.</comment>
-      <access read="R" write="S">Read/Set</access>
-      <type class="Bitmap">*Bitmap</type>
-      <description>
-<p>This field must be set prior to initialisation.  It will refer to a source bitmap that will be used by the rendering algorithm.</p>
-      </description>
-    </field>
-
-    <field>
-      <name>Dimensions</name>
-      <comment>Dimension flags define whether individual dimension fields contain fixed or relative values.</comment>
-      <access read="R" write="W">Read/Write</access>
-      <type lookup="DMF">INT</type>
-      <description>
-<p>Of the Dimension flags that are available, only FIXED_X, FIXED_Y, RELATIVE_X and RELATIVE_Y are applicable.</p>
-<types lookup="DMF"/>
-      </description>
-    </field>
-
-    <field>
-      <name>Picture</name>
-      <comment>Refers to a <class name="Picture">Picture</class> from which the source <field>Bitmap</field> is acquired.</comment>
-      <access read="R" write="S">Read/Set</access>
-      <type class="Picture">*Picture</type>
-      <description>
-<p>If an image bitmap is sourced from a <class name="Picture">Picture</class> then this field may be used to refer to the <class name="Picture">Picture</class> object.  The picture will not be used directly by the VectorImage, as only the bitmap is of interest.</p>
-      </description>
-    </field>
-
-    <field>
-      <name>SpreadMethod</name>
-      <comment>Defines the drawing mode.</comment>
-      <access read="R" write="W">Read/Write</access>
-      <type lookup="VSPREAD">INT</type>
-      <description>
-<p>The SpreadMethod defines the way in which the image is drawn within the target area.  The default setting is PAD.</p>
-<types lookup="VSPREAD"/>
-      </description>
-    </field>
-
-    <field>
-      <name>Units</name>
-      <comment>Declares the coordinate system to use for the <field>X</field> and <field>Y</field> values.</comment>
-      <access read="R" write="W">Read/Write</access>
-      <type lookup="VUNIT">INT</type>
-      <description>
-<p>This field declares the coordinate system that is used for values in the <field>X</field> and <field>Y</field> fields.  The default is BOUNDING_BOX.</p>
-<types lookup="VUNIT"/>
-      </description>
-    </field>
-
-    <field>
-      <name>X</name>
-      <comment>Apply a horizontal offset to the image, the origin of which is determined by the <field>Units</field> value.</comment>
-      <access read="R" write="W">Read/Write</access>
+      <name>CenterX</name>
+      <comment>The horizontal center of the spiral.  Expressed as a fixed or relative coordinate.</comment>
+      <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
+      <description>
+<p>The horizontal center of the spiral is defined here as either a fixed or relative value.</p>
+      </description>
     </field>
 
     <field>
-      <name>Y</name>
-      <comment>Apply a vertical offset to the image, the origin of which is determined by the <field>Units</field> value.</comment>
-      <access read="R" write="W">Read/Write</access>
+      <name>CenterY</name>
+      <comment>The vertical center of the spiral.  Expressed as a fixed or relative coordinate.</comment>
+      <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
+      <description>
+<p>The vertical center of the spiral is defined here as either a fixed or relative value.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Height</name>
+      <comment>The height (vertical diameter) of the spiral.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The height of the spiral is expressed as '<field>Radius</field> * 2.0'.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Offset</name>
+      <comment>Offset the generation of the path by a given value.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The generation of a spiral's path can be offset by specifying a positive value in the Offset field.  By default the Offset is set to zero.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>PathLength</name>
+      <comment>Calibrates the user agent's distance-along-a-path calculations with that of the author.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>INT</type>
+      <description>
+<p>The author's computation of the total length of the path, in user units. This value is used to calibrate the user agent's own distance-along-a-path calculations with that of the author. The user agent will scale all distance-along-a-path computations by the ratio of PathLength to the user agent's own computed value for total path length.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Radius</name>
+      <comment>The radius of the spiral.  Expressed as a fixed or relative coordinate.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The radius of the spiral is defined here as either a fixed or relative value.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Scale</name>
+      <comment>The scale of the spiral, expressed as a multiplier.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The spiral path can be scaled by setting this field.  The points on the spiral will be scaled by being multiplied by the scale factor.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Step</name>
+      <comment>Determines the distance between each vertex in the spiral's path.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The Step value alters the distance between each vertex in the spiral path during its generation.  The default value is 0.1.  Using larger values will create a spiral with more visible corners due to the overall reduction in vertices.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Width</name>
+      <comment>The width (horizontal diameter) of the spiral.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The width of the spiral is expressed as '<field>Radius</field> * 2.0'.</p>
+      </description>
     </field>
 
   </fields>
@@ -262,13 +283,6 @@
       <field name="X3" type="DOUBLE">The X3 coordinate for curve-to or smooth-curve-to</field>
       <field name="Y3" type="DOUBLE">The Y3 coordinate for curve-to or smooth-curve-to</field>
       <field name="Angle" type="DOUBLE">Arc angle</field>
-    </struct>
-
-    <struct name="VectorPoint" comment="Structure for the VectorPolygon PointsArray field.">
-      <field name="X" type="DOUBLE">The X coordinate of this point.</field>
-      <field name="Y" type="DOUBLE">The Y coordinate of this point.</field>
-      <field name="XRelative" type="UBYTE">TRUE if the X value is relative to its viewport (between 0 and 1.0).</field>
-      <field name="YRelative" type="UBYTE">TRUE if the Y value is relative to its viewport (between 0 and 1.0).</field>
     </struct>
 
   </structs>
