@@ -3,91 +3,145 @@
 
 <book>
   <info>
-    <name>VectorImage</name>
+    <name>VectorWave</name>
     <type>class</type>
     <module>Vector</module>
-    <comment>Provides support for the filling and stroking of vectors with bitmap images.</comment>
+    <comment>Extends the Vector class with support for sine wave based paths.</comment>
     <version>1</version>
-    <id>885aab1b</id>
-    <idstring>ID_VECTORIMAGE</idstring>
+    <id>51bca8eb</id>
+    <idstring>ID_VECTORWAVE</idstring>
     <category>Graphics</category>
-    <include>modules/vectorimage.h</include>
+    <include>modules/vectorwave.h</include>
     <copyright>Paul Manias © 2010-2020</copyright>
     <description>
-<p>The VectorImage class is used by Vector painting algorithms to fill and stroke vectors with bitmap images.  This is achieved by initialising a VectorImage object with the desired settings and then registering it with a <class name="VectorScene">VectorScene</class> via the <class name="VectorScene" index="AddDef()">VectorScene:AddDef()</class> method.</p>
-<p>Any vector within the target scene will be able to utilise the image for filling or stroking by referencing its name through the <class name="Vector" index="Fill">Vector:Fill</class> and <class name="Vector" index="Stroke">Vector:Stroke</class> fields.  For instance 'url(#logo)'.</p>
-<p>It is strongly recommended that the VectorImage is owned by the <class name="VectorScene">VectorScene</class> that is handling the definition.  This will ensure that the VectorImage is de-allocated when the scene is destroyed.</p></description>
+<p>The VectorWave class provides functionality for generating paths based on sine waves.  This feature is not part of the SVG standard and therefore should not be used in cases where SVG compliance is a strict requirement.</p>
+<p>The sine wave will be generated within a rectangular region at (<field>X</field>,<field>Y</field>) with size (<field>Width</field>,<field>Height</field>).  The horizontal center-line within the rectangle will dictate the orientation of the sine wave, and the path vertices are generated on a left-to-right basis.</p>
+<p>Waves can be used in Parasol's SVG implementation by using the &lt;parasol:wave/&gt; element.</p></description>
     <source>
-      <file path="defs/">image.cpp</file>
+      <file path="vectors/">wave.cpp</file>
     </source>
   </info>
 
   <fields>
     <field>
-      <name>Bitmap</name>
-      <comment>Reference to a source bitmap for the rendering algorithm.</comment>
-      <access read="R" write="S">Read/Set</access>
-      <type class="Bitmap">*Bitmap</type>
+      <name>Amplitude</name>
+      <comment>Adjusts the generated wave amplitude.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
       <description>
-<p>This field must be set prior to initialisation.  It will refer to a source bitmap that will be used by the rendering algorithm.</p>
+<p>The Amplitude is expressed as a multiplier that adjusts the wave amplitude (i.e. height).  A value of 1.0 is the default.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Close</name>
+      <comment>Closes the generated wave path at either the top or bottom.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>INT</type>
+      <description>
+<p>Setting the Close field to TOP or BOTTOM will close the generated wave's path so that it is suitable for being filled.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Decay</name>
+      <comment>Declares a rate of decay to apply to the wave amplitude.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The amplitude of a sine wave can be decayed between its start and end points by setting the Decay field.  Using a decay gives the wave an appearance of being funnelled into a cone-like shape.  If the value is negative, the start and end points for the decay will be reversed.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Degree</name>
+      <comment>Declares the initial angle (in degrees) to use when generating the wave.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The degree value defines the initial angle that is used when computing the sine wave.  The default is zero.</p>
+<p>Visually, changing the degree will affect the 'offset' of the generated wave.  Gradually incrementing the value will give the wave an appearance of moving from right to left.</p>
       </description>
     </field>
 
     <field>
       <name>Dimensions</name>
       <comment>Dimension flags define whether individual dimension fields contain fixed or relative values.</comment>
-      <access read="R" write="W">Read/Write</access>
-      <type lookup="DMF">INT</type>
+      <access read="G" write="S">Get/Set</access>
+      <type>INT</type>
       <description>
-<p>Of the Dimension flags that are available, only FIXED_X, FIXED_Y, RELATIVE_X and RELATIVE_Y are applicable.</p>
-<types lookup="DMF"/>
+<p>The following dimension flags are supported:</p>
+<types lookup="DMF">
+<type name="FIXED_HEIGHT">The <field>Height</field> value is a fixed coordinate.</type>
+<type name="FIXED_WIDTH">The <field>Width</field> value is a fixed coordinate.</type>
+<type name="FIXED_X">The <field>X</field> value is a fixed coordinate.</type>
+<type name="FIXED_Y">The <field>Y</field> value is a fixed coordinate.</type>
+<type name="RELATIVE_HEIGHT">The <field>Height</field> value is a relative coordinate.</type>
+<type name="RELATIVE_WIDTH">The <field>Width</field> value is a relative coordinate.</type>
+<type name="RELATIVE_X">The <field>X</field> value is a relative coordinate.</type>
+<type name="RELATIVE_Y">The <field>Y</field> value is a relative coordinate.</type>
+</types>
       </description>
     </field>
 
     <field>
-      <name>Picture</name>
-      <comment>Refers to a <class name="Picture">Picture</class> from which the source <field>Bitmap</field> is acquired.</comment>
-      <access read="R" write="S">Read/Set</access>
-      <type class="Picture">*Picture</type>
+      <name>Frequency</name>
+      <comment>Defines the wave frequency (the distance between each wave).</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
       <description>
-<p>If an image bitmap is sourced from a <class name="Picture">Picture</class> then this field may be used to refer to the <class name="Picture">Picture</class> object.  The picture will not be used directly by the VectorImage, as only the bitmap is of interest.</p>
+<p>The frequency determines the distance between each individual wave that is generated.  The default value for the frequency is 1.0.  Shortening the frequency to a value closer to 0 will bring the waves closer together.</p>
       </description>
     </field>
 
     <field>
-      <name>SpreadMethod</name>
-      <comment>Defines the drawing mode.</comment>
-      <access read="R" write="W">Read/Write</access>
-      <type lookup="VSPREAD">INT</type>
+      <name>Height</name>
+      <comment>The height of the area containing the wave.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
       <description>
-<p>The SpreadMethod defines the way in which the image is drawn within the target area.  The default setting is PAD.</p>
-<types lookup="VSPREAD"/>
+<p>The height of the area containing the wave is defined here as a fixed or relative value.</p>
       </description>
     </field>
 
     <field>
-      <name>Units</name>
-      <comment>Declares the coordinate system to use for the <field>X</field> and <field>Y</field> values.</comment>
-      <access read="R" write="W">Read/Write</access>
-      <type lookup="VUNIT">INT</type>
+      <name>Thickness</name>
+      <comment>Expands the height of the wave to the specified value to produce a closed path.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
       <description>
-<p>This field declares the coordinate system that is used for values in the <field>X</field> and <field>Y</field> fields.  The default is BOUNDING_BOX.</p>
-<types lookup="VUNIT"/>
+<p>Specifying a thickness value will create a wave that forms a filled shape, rather than the default of a stroked path. The thickness (height) of the wave is determined by the provided value.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Width</name>
+      <comment>The width of the area containing the wave.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The width of the area containing the wave is defined here as a fixed or relative value.</p>
       </description>
     </field>
 
     <field>
       <name>X</name>
-      <comment>Apply a horizontal offset to the image, the origin of which is determined by the <field>Units</field> value.</comment>
-      <access read="R" write="W">Read/Write</access>
+      <comment>The x coordinate of the wave.  Can be expressed as a fixed or relative coordinate.</comment>
+      <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
+      <description>
+<p>The x coordinate of the wave is defined here as either a fixed or relative value.</p>
+      </description>
     </field>
 
     <field>
       <name>Y</name>
-      <comment>Apply a vertical offset to the image, the origin of which is determined by the <field>Units</field> value.</comment>
-      <access read="R" write="W">Read/Write</access>
+      <comment>The y coordinate of the wave.  Can be expressed as a fixed or relative coordinate.</comment>
+      <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
+      <description>
+<p>The y coordinate of the wave is defined here as either a fixed or relative value.</p>
+      </description>
     </field>
 
   </fields>
@@ -262,13 +316,6 @@
       <field name="X3" type="DOUBLE">The X3 coordinate for curve-to or smooth-curve-to</field>
       <field name="Y3" type="DOUBLE">The Y3 coordinate for curve-to or smooth-curve-to</field>
       <field name="Angle" type="DOUBLE">Arc angle</field>
-    </struct>
-
-    <struct name="VectorPoint" comment="Structure for the VectorPolygon PointsArray field.">
-      <field name="X" type="DOUBLE">The X coordinate of this point.</field>
-      <field name="Y" type="DOUBLE">The Y coordinate of this point.</field>
-      <field name="XRelative" type="UBYTE">TRUE if the X value is relative to its viewport (between 0 and 1.0).</field>
-      <field name="YRelative" type="UBYTE">TRUE if the Y value is relative to its viewport (between 0 and 1.0).</field>
     </struct>
 
   </structs>
