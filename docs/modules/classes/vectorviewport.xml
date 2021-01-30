@@ -18,7 +18,7 @@
 <p>The size of the viewport is initially set to (0,0,100%,100%) so as to be all inclusive.  Setting the X, Y, Width and Height fields will determine the position and clipping of the displayed content (the 'target area').  The ViewX, ViewY, ViewWidth and ViewHeight fields declare the viewbox (the 'source area') that will be sampled for the target.</p>
 <p>To configure the scaling method that is applied to the viewport content, set the <field>AspectRatio</field> field.</p></description>
     <source>
-      <file path="vectors/">viewport.c</file>
+      <file path="vectors/">viewport.cpp</file>
     </source>
   </info>
 

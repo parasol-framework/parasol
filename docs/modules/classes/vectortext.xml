@@ -24,7 +24,7 @@
 &lt;/text&gt;
 </pre></description>
     <source>
-      <file path="vectors/">text.c</file>
+      <file path="vectors/">text.cpp</file>
     </source>
   </info>
 

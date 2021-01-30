@@ -250,7 +250,7 @@ module({ name="Vector", copyright="Paul Manias © 2010-2020", version=1.0 }, fun
     { id=34, name="SetCommandList" }
   })
 
-  class("VectorPath", { src="vectors/path.c", output="vectors/path_def.c" })
+  class("VectorPath", { src="vectors/path.cpp", output="vectors/path_def.c" })
 
   // Use SET_VECTOR_COLOUR() to configure the RGB values in VectorColour
 
@@ -373,23 +373,23 @@ module({ name="Vector", copyright="Paul Manias © 2010-2020", version=1.0 }, fun
    UBYTE BankIndex;
   ]])
 
-  class('VectorText', { src='vectors/text.c' })
+  class('VectorText', { src='vectors/text.cpp' })
 
   class('VectorWave', { src='vectors/wave.cpp' })
 
-  class('VectorRectangle', { src='vectors/rectangle.c' })
+  class('VectorRectangle', { src='vectors/rectangle.cpp' })
 
-  class('VectorPolygon', { src='vectors/polygon.c' })
+  class('VectorPolygon', { src='vectors/polygon.cpp' })
 
   class('VectorShape', { src='vectors/supershape.cpp' })
 
   class('VectorSpiral', { src='vectors/spiral.cpp' })
 
-  class('VectorEllipse', { src='vectors/ellipse.c' })
+  class('VectorEllipse', { src='vectors/ellipse.cpp' })
 
-  class('VectorClip', { src='vectors/clip.c' })
+  class('VectorClip', { src='vectors/clip.cpp' })
 
-  class('VectorViewport', { src='vectors/viewport.c' })
+  class('VectorViewport', { src='vectors/viewport.cpp' })
 
   c_insert([[
 #define SHAPE_PUBLIC \

@@ -18,7 +18,7 @@
 <p>* Closed-point polygons consisting of at least 3 points. * Open polygons consisting of at least 3 points (a 'polyline' in SVG). * Single lines consisting of two points only (a 'line' in SVG).</p>
 <p>To create a polyline, set the <field>Closed</field> field to FALSE (defaults to TRUE).  To create a line, set the Closed field to FALSE and set only two points (<field>X1</field>,<field>Y1</field>) and (<field>X2</field>,<field>Y2</field>)</p></description>
     <source>
-      <file path="vectors/">polygon.c</file>
+      <file path="vectors/">polygon.cpp</file>
     </source>
   </info>
 
