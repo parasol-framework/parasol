@@ -520,8 +520,8 @@ int fcmd_include(lua_State *Lua)
 /*****************************************************************************
 ** Usage: require "Module"
 **
-** Loads a Fluid language file from scripts: and executes it.  Differs from loadFile() in that registration
-** prevents multiple executions and the folder restriction improves security.
+** Loads a Fluid language file from "scripts:" and executes it.  Differs from loadFile() in that registration
+** prevents multiple executions, and the volume restriction improves security.
 */
 
 int fcmd_require(lua_State *Lua)
@@ -550,39 +550,33 @@ int fcmd_require(lua_State *Lua)
 
       // Check if the module is already loaded.
 
-      char req[40] = "require.";
-      StrCopy(module, req+8, sizeof(req)-8);
+      auto req = std::string("require.") + module;
 
-      lua_getfield(prv->Lua, LUA_REGISTRYINDEX, req);
+      lua_getfield(prv->Lua, LUA_REGISTRYINDEX, req.c_str());
       BYTE loaded = lua_toboolean(prv->Lua, -1);
       lua_pop(prv->Lua, 1);
       if (loaded) return 0;
 
-      char path[96];
-      StrFormat(path, sizeof(path), "scripts:%s.fluid", module);
+      auto path = std::string("scripts:") + module + ".fluid";
 
       objFile *file;
-      if (!(error = CreateObject(ID_FILE, 0, &file, FID_Path|TSTR, path, FID_Flags|TLONG, FL_READ, TAGEND))) {
-         APTR buffer;
-         if (!AllocMemory(SIZE_READ, MEM_NO_CLEAR, &buffer, NULL)) {
-            struct code_reader_handle handle = { file, buffer };
-            if (!lua_load(Lua, &code_reader, &handle, module)) {
-               prv->RequireCounter++; // Used by getExecutionState()
-               if (!lua_pcall(Lua, 0, 0, 0)) { // Success, mark the module as loaded.
-                  lua_pushboolean(prv->Lua, 1);
-                  lua_setfield(prv->Lua, LUA_REGISTRYINDEX, req);
-               }
-               else error_msg = lua_tostring(Lua, -1);
-               prv->RequireCounter--;
+      if (!(error = CreateObject(ID_FILE, 0, &file, FID_Path|TSTR, path.c_str(), FID_Flags|TLONG, FL_READ, TAGEND))) {
+         std::unique_ptr<char[]> buffer(new char[SIZE_READ]);
+         struct code_reader_handle handle = { file, buffer.get() };
+         if (!lua_load(Lua, &code_reader, &handle, module)) {
+            prv->RequireCounter++; // Used by getExecutionState()
+            if (!lua_pcall(Lua, 0, 0, 0)) { // Success, mark the module as loaded.
+               lua_pushboolean(prv->Lua, 1);
+               lua_setfield(prv->Lua, LUA_REGISTRYINDEX, req.c_str());
             }
             else error_msg = lua_tostring(Lua, -1);
-            FreeResource(buffer);
+            prv->RequireCounter--;
          }
-         else error = ERR_AllocMemory;
+         else error_msg = lua_tostring(Lua, -1);
          acFree(file);
       }
       else {
-         luaL_error(Lua, "Failed to open file '%s', may not exist.", path);
+         luaL_error(Lua, "Failed to open file '%s', may not exist.", path.c_str());
          return 0;
       }
    }
