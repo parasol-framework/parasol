@@ -273,6 +273,7 @@ module({ name="Vector", copyright="Paul Manias © 2010-2020", version=1.0 }, fun
    obj(Vector) Viewport   # Reference to the VectorViewport that contains the VectorScene.
    obj(Bitmap) Bitmap     # Target bitmap.
    struct(*KeyStore) Defs # Stores references to gradients, images, patterns etc
+   oid Surface            # Target surface for automated rendering
    int(VPF) Flags         # Optional flags.
    int PageWidth          # Fixed page width - vector viewport width will be stretched to fit this if resizing is enabled.
    int PageHeight         # Fixed page height - vector viewport height will be stretched to fit this if resizing is enabled.

@@ -1055,10 +1055,10 @@ FindObject("SystemPointer", ID_POINTER, 0, &amp;id, &amp;count);
       <param type="OBJECTID" name="Object">The object to be examined.</param>
     </input>
     <description>
-<p>This function can be used on any valid object ID to retrieve the ID of its class.  This is the quickest way to retrieve the class of an object without having to gain exclusive access to the object first.</p>
-<p>Please note that if you already have access to an object through an address pointer, the quickest way to learn of its class is to read the ClassID field in the object header.</p>
+<p>Call this function with any valid object ID to learn the identifier for its base class.  This is the quickest way to retrieve the class of an object without having to gain exclusive access to the object first.</p>
+<p>Note that if the object's pointer is already known, the quickest way to learn of its class is to read the ClassID field in the object header.</p>
     </description>
-    <result type="CLASSID">Returns the class ID of the object or NULL if failure.</result>
+    <result type="CLASSID">Returns the base class ID of the object or NULL if failure.</result>
   </function>
 
   <function>

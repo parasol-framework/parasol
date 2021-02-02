@@ -71,7 +71,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The area defined by (<field>ViewX</field>,<field>ViewY</field>) and (<field>ViewWidth</field>,<field>ViewHeight</field>) declare the source area covered by the viewport.  The rendered graphics in the source area will be repositioned and scaled to the area defined by (X,Y) and (Width,Height).</p>
+<p>The area defined by (<field>ViewX</field>,<field>ViewY</field>) and (<field>ViewWidth</field>,<field>ViewHeight</field>) declare the source area covered by the viewport.  The rendered graphics in the source area will be repositioned and scaled to the area defined by (<field>X</field>,<field>Y</field>) and (<field>Width</field>,<field>Height</field>).</p>
       </description>
     </field>
 
@@ -81,7 +81,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The area defined by (<field>ViewX</field>,<field>ViewY</field>) and (<field>ViewWidth</field>,<field>ViewHeight</field>) declare the source area covered by the viewport.  The rendered graphics in the source area will be repositioned and scaled to the area defined by (X,Y) and (Width,Height).</p>
+<p>The area defined by (<field>ViewX</field>,<field>ViewY</field>) and (<field>ViewWidth</field>,<field>ViewHeight</field>) declare the source area covered by the viewport.  The rendered graphics in the source area will be repositioned and scaled to the area defined by (<field>X</field>,<field>Y</field>) and (<field>Width</field>,<field>Height</field>).</p>
       </description>
     </field>
 
@@ -91,7 +91,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The area defined by (<field>ViewX</field>,<field>ViewY</field>) and (<field>ViewWidth</field>,<field>ViewHeight</field>) declare the source area covered by the viewport.  The rendered graphics in the source area will be repositioned and scaled to the area defined by (X,Y) and (Width,Height).</p>
+<p>The area defined by (<field>ViewX</field>,<field>ViewY</field>) and (<field>ViewWidth</field>,<field>ViewHeight</field>) declare the source area covered by the viewport.  The rendered graphics in the source area will be repositioned and scaled to the area defined by (<field>X</field>,<field>Y</field>) and (<field>Width</field>,<field>Height</field>).</p>
       </description>
     </field>
 

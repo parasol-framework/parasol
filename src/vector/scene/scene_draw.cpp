@@ -856,6 +856,7 @@ private:
             log.trace("Non-Vector discovered in the vector tree.");
             continue;
          }
+         else if (!shape->Scene) continue;
 
          if (shape->Dirty) {
             gen_vector_path(shape);

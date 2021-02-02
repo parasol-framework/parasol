@@ -714,17 +714,17 @@ MEMORYID GetFeedList(OBJECTPTR Object)
 GetClassID: Returns the class ID of an object.
 Category: Objects
 
-This function can be used on any valid object ID to retrieve the ID of its class.  This is the quickest way to
+Call this function with any valid object ID to learn the identifier for its base class.  This is the quickest way to
 retrieve the class of an object without having to gain exclusive access to the object first.
 
-Please note that if you already have access to an object through an address pointer, the quickest way to learn of its
-class is to read the ClassID field in the object header.
+Note that if the object's pointer is already known, the quickest way to learn of its class is to read the ClassID
+field in the object header.
 
 -INPUT-
 oid Object: The object to be examined.
 
 -RESULT-
-cid: Returns the class ID of the object or NULL if failure.
+cid: Returns the base class ID of the object or NULL if failure.
 
 *****************************************************************************/
 

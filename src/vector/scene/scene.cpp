@@ -23,6 +23,7 @@ Vector definitions can be saved and loaded from permanent storage by using the @
 *****************************************************************************/
 
 static ERROR VECTORSCENE_Reset(objVectorScene *, APTR);
+static void render_to_surface(objVectorScene *, objSurface *, objBitmap *);
 
 /*****************************************************************************
 
@@ -182,7 +183,7 @@ static ERROR VECTORSCENE_FindDef(objVectorScene *Self, struct scFindDef *Args)
       char newname[80];
       UWORD i;
       name += 5;
-      for (i=0; (name[i] != ')') AND (name[i]) AND (i < sizeof(newname)-1); i++) newname[i] = name[i];
+      for (i=0; (name[i] != ')') and (name[i]) and (i < sizeof(newname)-1); i++) newname[i] = name[i];
       newname[i] = 0;
 
       VectorDef *vd;
@@ -216,6 +217,19 @@ static ERROR VECTORSCENE_Free(objVectorScene *Self, APTR Args)
 
 static ERROR VECTORSCENE_Init(objVectorScene *Self, APTR Void)
 {
+   // Setting the SurfaceID is optional and enables auto-rendering to the display.  The
+   // alternative for the client is to set the Bitmap field and manage rendering manually.
+
+   if (Self->SurfaceID) {
+      OBJECTPTR surface;
+      if ((Self->SurfaceID) and (!AccessObject(Self->SurfaceID, 5000, &surface))) {
+         auto callback = make_function_stdc(render_to_surface);
+         struct drwAddCallback args = { &callback };
+         Action(MT_DrwAddCallback, surface, &args);
+         ReleaseObject(surface);
+      }
+   }
+
    return ERR_Okay;
 }
 
@@ -439,9 +453,24 @@ comparatively average result and execution speed.  The most advanced method is B
 level of quality at the cost of very poor execution speed.
 
 -FIELD-
+Surface: May refer to a Surface object for enabling automatic rendering.
+
+Setting the Surface field will enable automatic rendering to a display surface.
+
+*****************************************************************************/
+
+static ERROR SET_Surface(objVectorScene *Self, OBJECTID Value)
+{
+   Self->SurfaceID = Value;
+   return ERR_Okay;
+}
+
+/****************************************************************************
+
+-FIELD-
 Viewport: References the first object in the scene, which must be a VectorViewport object.
 
-The first object in the vector scene is referenced here.  It must belong to the VectorViewport class, because it will
+The first object in the vector scene is referenced here.  It must belong to the @VectorViewport class, because it will
 be used to define the size and location of the area rendered by the scene.
 
 The Viewport field must not be set by the client.  The VectorViewport object will configure its ownership to
@@ -451,6 +480,19 @@ VectorViewport object is initialised.
 
 *****************************************************************************/
 
+static void render_to_surface(objVectorScene *Self, objSurface *Surface, objBitmap *Bitmap)
+{
+   Self->Bitmap = Bitmap;
+
+   if ((Self->PageWidth != Surface->Width) or (Self->PageHeight != Surface->Height)) {
+      Self->PageWidth = Surface->Width;
+      Self->PageHeight = Surface->Height;
+      if (Self->Viewport) mark_dirty(Self->Viewport, RC_BASE_PATH|RC_TRANSFORM); // Base-paths need to be recomputed if they use relative coordinates.
+   }
+
+   acDraw(Self);
+}
+
 #include "scene_def.c"
 
 static const FieldArray clSceneFields[] = {
@@ -459,6 +501,7 @@ static const FieldArray clSceneFields[] = {
    { "Viewport",     FDF_OBJECT|FD_R,            ID_VECTORVIEWPORT, NULL, NULL },
    { "Bitmap",       FDF_OBJECT|FDF_RW,          ID_BITMAP, NULL, (APTR)SET_Bitmap },
    { "Defs",         FDF_STRUCT|FDF_PTR|FDF_SYSTEM|FDF_R, (MAXINT)"KeyStore", NULL, NULL },
+   { "Surface",      FDF_OBJECTID|FDF_RW,        ID_SURFACE, NULL, (APTR)SET_Surface },
    { "Flags",        FDF_LONGFLAGS|FDF_RW,       (MAXINT)&clVectorSceneFlags, NULL, NULL },
    { "PageWidth",    FDF_LONG|FDF_RW,            0, NULL, (APTR)SET_PageWidth },
    { "PageHeight",   FDF_LONG|FDF_RW,            0, NULL, (APTR)SET_PageHeight },

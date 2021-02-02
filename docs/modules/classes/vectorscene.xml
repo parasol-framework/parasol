@@ -6,7 +6,7 @@
     <name>VectorScene</name>
     <type>class</type>
     <module>Vector</module>
-    <comment>This is a base class for supporting vector graphics objects and functionality.</comment>
+    <comment>Manages the scene graph for a collection of vectors.</comment>
     <version>1</version>
     <id>890a3646</id>
     <idstring>ID_VECTORSCENE</idstring>
@@ -16,7 +16,6 @@
     <description>
 <p>The VectorScene class acts as a container and control point for the management of vector definitions.  Its primary duty is to draw the scene to a target Bitmap provided by the client.</p>
 <p>Vector scenes are created by initialising multiple Vector objects such as <class name="VectorPath">VectorPath</class> and <class name="VectorViewport">VectorViewport</class> and positioning them within a vector tree.  The VectorScene must lie at the root.</p>
-<p>To simplify the creation of complex vector graphics and maximise compatibility, we have designed the vector management code to use data structures that provide a very close match to SVG.  For this reason we do not provide exhaustive documentation on the properties that can be applied to each vector type.  Instead, please refer to the SVG reference manuals from the W3C.  In cases where we are missing support for an SVG feature, we most likely intend to support that feature unless otherwise documented.</p>
 <p>To draw a scene, the client must set the target <field>Bitmap</field> and call the <action>Draw</action> action.</p>
 <p>Vector definitions can be saved and loaded from permanent storage by using the <class name="SVG">SVG</class> class.</p></description>
     <source>
@@ -161,7 +160,7 @@
       <access read="G">Get</access>
       <type>BIGINT</type>
       <description>
-<p>RenderTime returns the rendering time of the last scene that was drawn, measured in microseconds.  This value can also be used to compute the frame-per-second rate as '1000000 / RenderTime'.</p>
+<p>RenderTime returns the rendering time of the last scene that was drawn, measured in microseconds.  This value can also be used to compute frames-per-second with <code>1000000 / RenderTime</code>.</p>
 <p>The RENDER_TIME flag should also be set before fetching this value, as it is required to enable the timing feature.  If RENDER_TIME is not set, it will be set automatically so that subsequent calls succeed correctly.</p>
       </description>
     </field>
@@ -178,12 +177,22 @@
     </field>
 
     <field>
+      <name>Surface</name>
+      <comment>May refer to a Surface object for enabling automatic rendering.</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type>OBJECTID</type>
+      <description>
+<p>Setting the Surface field will enable automatic rendering to a display surface.</p>
+      </description>
+    </field>
+
+    <field>
       <name>Viewport</name>
       <comment>References the first object in the scene, which must be a VectorViewport object.</comment>
       <access read="R">Read</access>
       <type class="Vector">*Vector</type>
       <description>
-<p>The first object in the vector scene is referenced here.  It must belong to the VectorViewport class, because it will be used to define the size and location of the area rendered by the scene.</p>
+<p>The first object in the vector scene is referenced here.  It must belong to the <class name="VectorViewport">VectorViewport</class> class, because it will be used to define the size and location of the area rendered by the scene.</p>
 <p>The Viewport field must not be set by the client.  The VectorViewport object will configure its ownership to the VectorScene prior to initialisation.  The Viewport field value will then be set automatically when the VectorViewport object is initialised.</p>
       </description>
     </field>

@@ -344,15 +344,16 @@ typedef struct rkVectorColour {
 
 typedef struct rkVectorScene {
    OBJECT_HEADER
-   LARGE  RenderTime;             // Microseconds elapsed during the last rendering operation.
-   DOUBLE Gamma;                  // Not currently implemented.
+   LARGE    RenderTime;           // Microseconds elapsed during the last rendering operation.
+   DOUBLE   Gamma;                // Not currently implemented.
    struct rkVector * Viewport;    // Reference to the VectorViewport that contains the VectorScene.
    struct rkBitmap * Bitmap;      // Target bitmap.
    struct KeyStore * Defs;        // Stores references to gradients, images, patterns etc
-   LONG   Flags;                  // Optional flags.
-   LONG   PageWidth;              // Fixed page width - vector viewport width will be stretched to fit this if resizing is enabled.
-   LONG   PageHeight;             // Fixed page height - vector viewport height will be stretched to fit this if resizing is enabled.
-   LONG   SampleMethod;           // VSM: Method to use for resampling images and patterns.
+   OBJECTID SurfaceID;            // Target surface for automated rendering
+   LONG     Flags;                // Optional flags.
+   LONG     PageWidth;            // Fixed page width - vector viewport width will be stretched to fit this if resizing is enabled.
+   LONG     PageHeight;           // Fixed page height - vector viewport height will be stretched to fit this if resizing is enabled.
+   LONG     SampleMethod;         // VSM: Method to use for resampling images and patterns.
 
 #ifdef PRV_VECTORSCENE
    class VMAdaptor *Adaptor;

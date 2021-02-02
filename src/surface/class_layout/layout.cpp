@@ -67,7 +67,7 @@ static ERROR init_surface(objLayout *Self, OBJECTID SurfaceID)
    parasol::Log log(__FUNCTION__);
    objSurface *surface;
 
-   if ((Self->SurfaceID) AND (SurfaceID != Self->SurfaceID)) {
+   if ((Self->SurfaceID) and (SurfaceID != Self->SurfaceID)) {
       log.warning("Attempt to change surface from #%d to #%d - switching surfaces is not allowed.", Self->SurfaceID, SurfaceID);
       return ERR_Failed;
    }
@@ -83,12 +83,12 @@ static ERROR init_surface(objLayout *Self, OBJECTID SurfaceID)
          Self->PageID = surface->ParentID;
          Self->Document = GetObjectPtr(GetOwnerID(Self->PageID));
 
-         if ((!Self->Document) OR (Self->Document->ClassID != ID_DOCUMENT)) {
+         if ((!Self->Document) or (Self->Document->ClassID != ID_DOCUMENT)) {
             log.warning("Expected a Document object to control this surface.");
             return ERR_Failed;
          }
 
-         if ((Self->PageID) AND (!AccessObject(Self->PageID, 3000, &view))) {
+         if ((Self->PageID) and (!AccessObject(Self->PageID, 3000, &view))) {
             SubscribeActionTags(view, AC_Redimension, TAGEND);
 
             Self->ParentSurface.X = view->X;
@@ -110,7 +110,7 @@ static ERROR init_surface(objLayout *Self, OBJECTID SurfaceID)
 
       }
 
-      if ((!Self->Document) AND (Self->DrawCallback.Type)) {
+      if ((!Self->Document) and (Self->DrawCallback.Type)) {
          struct drwAddCallback args = { &Self->DrawCallback };
          Action(MT_DrwAddCallback, surface, &args);
       }
@@ -126,7 +126,7 @@ static ERROR init_surface(objLayout *Self, OBJECTID SurfaceID)
 static ERROR LAYOUT_ActionNotify(objLayout *Self, struct acActionNotify *Args)
 {
    if (Args->ActionID IS AC_Free) {
-      if ((Self->ResizeCallback.Type IS CALL_SCRIPT) AND (Self->ResizeCallback.Script.Script->UniqueID IS Args->ObjectID)) {
+      if ((Self->ResizeCallback.Type IS CALL_SCRIPT) and (Self->ResizeCallback.Script.Script->UniqueID IS Args->ObjectID)) {
          Self->ResizeCallback.Type = CALL_NONE;
       }
    }
@@ -138,7 +138,7 @@ static ERROR LAYOUT_ActionNotify(objLayout *Self, struct acActionNotify *Args)
 
       if (resize->Depth) Self->BitsPerPixel = resize->Depth;
 
-      if ((resize->Width IS Self->ParentSurface.Width) AND (resize->Height IS Self->ParentSurface.Height)) return ERR_Okay;
+      if ((resize->Width IS Self->ParentSurface.Width) and (resize->Height IS Self->ParentSurface.Height)) return ERR_Okay;
 
       Self->ParentSurface.X = resize->X;
       Self->ParentSurface.Y = resize->Y;
@@ -205,7 +205,7 @@ static ERROR LAYOUT_Free(objLayout *Self, APTR Void)
       }
    }
 
-   if ((Self->PageID) AND (Self->PageID != Self->SurfaceID)) {
+   if ((Self->PageID) and (Self->PageID != Self->SurfaceID)) {
       if (!AccessObject(Self->PageID, 5000, &surface)) {
          UnsubscribeAction(surface, 0);
          ReleaseObject(surface);
@@ -247,7 +247,7 @@ static ERROR LAYOUT_Init(objLayout *Self, APTR Void)
 
    if (!Self->SurfaceID) {
       OBJECTID owner_id = GetOwner(Self);
-      while ((owner_id) AND (GetClassID(owner_id) != ID_SURFACE)) {
+      while ((owner_id) and (GetClassID(owner_id) != ID_SURFACE)) {
          owner_id = GetOwnerID(owner_id);
       }
 
@@ -260,11 +260,11 @@ static ERROR LAYOUT_Init(objLayout *Self, APTR Void)
    else init_surface(Self, Self->SurfaceID);
 
    if ((Self->Dimensions & 0xffff)) {
-      if ((Self->Dimensions & DMF_X) AND (Self->Dimensions & (DMF_FIXED_WIDTH|DMF_RELATIVE_WIDTH|DMF_FIXED_X_OFFSET|DMF_RELATIVE_X_OFFSET))) {
+      if ((Self->Dimensions & DMF_X) and (Self->Dimensions & (DMF_FIXED_WIDTH|DMF_RELATIVE_WIDTH|DMF_FIXED_X_OFFSET|DMF_RELATIVE_X_OFFSET))) {
          Self->PresetX = TRUE;
          Self->PresetWidth = TRUE;
       }
-      else if ((Self->Dimensions & DMF_X_OFFSET) AND (Self->Dimensions & (DMF_FIXED_WIDTH|DMF_RELATIVE_WIDTH|DMF_FIXED_X|DMF_RELATIVE_X))) {
+      else if ((Self->Dimensions & DMF_X_OFFSET) and (Self->Dimensions & (DMF_FIXED_WIDTH|DMF_RELATIVE_WIDTH|DMF_FIXED_X|DMF_RELATIVE_X))) {
          Self->PresetX = TRUE;
          Self->PresetWidth = TRUE;
       }
@@ -272,11 +272,11 @@ static ERROR LAYOUT_Init(objLayout *Self, APTR Void)
          Self->PresetWidth = TRUE;
       }
 
-      if ((Self->Dimensions & DMF_Y) AND (Self->Dimensions & (DMF_FIXED_HEIGHT|DMF_RELATIVE_HEIGHT|DMF_FIXED_Y_OFFSET|DMF_RELATIVE_Y_OFFSET))) {
+      if ((Self->Dimensions & DMF_Y) and (Self->Dimensions & (DMF_FIXED_HEIGHT|DMF_RELATIVE_HEIGHT|DMF_FIXED_Y_OFFSET|DMF_RELATIVE_Y_OFFSET))) {
          Self->PresetY = TRUE;
          Self->PresetHeight = TRUE;
       }
-      else if ((Self->Dimensions & DMF_Y_OFFSET) AND (Self->Dimensions & (DMF_FIXED_HEIGHT|DMF_RELATIVE_HEIGHT|DMF_FIXED_Y|DMF_RELATIVE_Y))) {
+      else if ((Self->Dimensions & DMF_Y_OFFSET) and (Self->Dimensions & (DMF_FIXED_HEIGHT|DMF_RELATIVE_HEIGHT|DMF_FIXED_Y|DMF_RELATIVE_Y))) {
          Self->PresetY = TRUE;
          Self->PresetHeight = TRUE;
       }
@@ -307,7 +307,7 @@ static ERROR LAYOUT_Init(objLayout *Self, APTR Void)
       SET_Layout_YOffset(Self, &var);
    }
 
-   if ((Self->PresetX) AND (Self->PresetY)) {
+   if ((Self->PresetX) and (Self->PresetY)) {
       // If the user has set fixed values on *both* axis, he can enable fixed placement mode, which means that the
       // cursor is completely ignored and the existing Bound* fields will be used without alteration.
       //
@@ -318,7 +318,7 @@ static ERROR LAYOUT_Init(objLayout *Self, APTR Void)
    }
 
    if (Self->Layout & LAYOUT_BACKGROUND) Self->Layout &= ~LAYOUT_EMBEDDED;
-   else if ((Self->PresetX) AND (Self->PresetY)) Self->Layout &= ~LAYOUT_EMBEDDED;
+   else if ((Self->PresetX) and (Self->PresetY)) Self->Layout &= ~LAYOUT_EMBEDDED;
    else if (Self->Align) Self->Layout &= ~LAYOUT_EMBEDDED;
    else Self->Layout |= LAYOUT_EMBEDDED;
 
@@ -328,8 +328,8 @@ static ERROR LAYOUT_Init(objLayout *Self, APTR Void)
    GET_Layout_Width(Self, &var); Self->BoundWidth = var.Large;
    GET_Layout_Height(Self, &var); Self->BoundHeight = var.Large;
 
-   if ((!Self->Document) AND (Self->DrawCallback.Type)) {
-      if ((Self->SurfaceID) AND (!AccessObject(Self->SurfaceID, 5000, &surface))) {
+   if ((!Self->Document) and (Self->DrawCallback.Type)) {
+      if ((Self->SurfaceID) and (!AccessObject(Self->SurfaceID, 5000, &surface))) {
          struct drwAddCallback args = { &Self->DrawCallback };
          Action(MT_DrwAddCallback, surface, &args);
          ReleaseObject(surface);
@@ -373,7 +373,7 @@ static ERROR LAYOUT_MoveToFront(objLayout *Self, APTR Void)
    if (Self->Document) return ERR_NoSupport;
 
    if (Self->DrawCallback.Type) {
-      if ((Self->SurfaceID) AND (!AccessObject(Self->SurfaceID, 3000, &surface))) {
+      if ((Self->SurfaceID) and (!AccessObject(Self->SurfaceID, 3000, &surface))) {
          struct drwAddCallback args = { &Self->DrawCallback };
          Action(MT_DrwAddCallback, surface, &args);
          ReleaseObject(surface);
@@ -945,7 +945,7 @@ static ERROR GET_Layout_Height(objLayout *Self, Variable *Value)
    else if (Self->Dimensions & DMF_RELATIVE_HEIGHT) {
       value = (DOUBLE)Self->Height * (DOUBLE)Self->ParentSurface.Height * 0.01;
    }
-   else if ((Self->Dimensions & DMF_Y) AND
+   else if ((Self->Dimensions & DMF_Y) and
             (Self->Dimensions & DMF_Y_OFFSET)) {
       if (Self->Dimensions & DMF_FIXED_Y) ycoord = Self->Y;
       else ycoord = (DOUBLE)Self->ParentSurface.Height * (DOUBLE)Self->Y * 0.01;
@@ -986,7 +986,7 @@ static ERROR SET_Layout_Height(objLayout *Self, Variable *Value)
    if (Value->Type & FD_PERCENTAGE) Self->Dimensions = (Self->Dimensions & ~DMF_FIXED_HEIGHT) | DMF_RELATIVE_HEIGHT;
    else Self->Dimensions = (Self->Dimensions & ~DMF_RELATIVE_HEIGHT) | DMF_FIXED_HEIGHT;
 
-   if ((Self->Dimensions & (DMF_RELATIVE_Y|DMF_FIXED_Y)) AND (Self->Dimensions & (DMF_RELATIVE_Y_OFFSET|DMF_RELATIVE_Y))) Self->Dimensions &= ~(DMF_RELATIVE_Y_OFFSET|DMF_FIXED_Y_OFFSET);
+   if ((Self->Dimensions & (DMF_RELATIVE_Y|DMF_FIXED_Y)) and (Self->Dimensions & (DMF_RELATIVE_Y_OFFSET|DMF_RELATIVE_Y))) Self->Dimensions &= ~(DMF_RELATIVE_Y_OFFSET|DMF_FIXED_Y_OFFSET);
 
    if (Self->Head.Flags & NF_INITIALISED) {
       Variable var;
@@ -1629,7 +1629,7 @@ static ERROR GET_Layout_Width(objLayout *Self, Variable *Value)
    else if (Self->Dimensions & DMF_RELATIVE_WIDTH) {
       value = (DOUBLE)Self->Width * (DOUBLE)Self->ParentSurface.Width * 0.01;
    }
-   else if ((Self->Dimensions & DMF_X) AND (Self->Dimensions & DMF_X_OFFSET)) {
+   else if ((Self->Dimensions & DMF_X) and (Self->Dimensions & DMF_X_OFFSET)) {
       if (Self->Dimensions & DMF_FIXED_X) xcoord = Self->X;
       else xcoord = (DOUBLE)Self->ParentSurface.Width * (DOUBLE)Self->X * 0.01;
 
@@ -1673,7 +1673,7 @@ static ERROR SET_Layout_Width(objLayout *Self, Variable *Value)
    if (Value->Type & FD_PERCENTAGE) Self->Dimensions = (Self->Dimensions & ~DMF_FIXED_WIDTH) | DMF_RELATIVE_WIDTH;
    else Self->Dimensions = (Self->Dimensions & ~DMF_RELATIVE_WIDTH) | DMF_FIXED_WIDTH;
 
-   if ((Self->Dimensions & (DMF_RELATIVE_X|DMF_FIXED_X)) AND (Self->Dimensions & (DMF_RELATIVE_X_OFFSET|DMF_RELATIVE_X))) Self->Dimensions &= ~(DMF_RELATIVE_X_OFFSET|DMF_FIXED_X_OFFSET);
+   if ((Self->Dimensions & (DMF_RELATIVE_X|DMF_FIXED_X)) and (Self->Dimensions & (DMF_RELATIVE_X_OFFSET|DMF_RELATIVE_X))) Self->Dimensions &= ~(DMF_RELATIVE_X_OFFSET|DMF_FIXED_X_OFFSET);
 
    if (Self->Head.Flags & NF_INITIALISED) {
       Variable var;
@@ -1710,7 +1710,7 @@ static ERROR GET_Layout_X(objLayout *Self, Variable *Value)
    else if (Self->Dimensions & DMF_RELATIVE_X) {
       value = (DOUBLE)Self->X * (DOUBLE)Self->ParentSurface.Width * 0.01;
    }
-   else if ((Self->Dimensions & DMF_WIDTH) AND
+   else if ((Self->Dimensions & DMF_WIDTH) and
             (Self->Dimensions & DMF_X_OFFSET)) {
       if (Self->Dimensions & DMF_FIXED_WIDTH) width = Self->Width;
       else width = (DOUBLE)Self->ParentSurface.Width * (DOUBLE)Self->Width * 0.01;
@@ -1781,7 +1781,7 @@ static ERROR GET_Layout_XOffset(objLayout *Self, Variable *Value)
    else if (Self->Dimensions & DMF_RELATIVE_X_OFFSET) {
       value = (DOUBLE)Self->XOffset * (DOUBLE)Self->ParentSurface.Width * 0.01;
    }
-   else if ((Self->Dimensions & DMF_X) AND
+   else if ((Self->Dimensions & DMF_X) and
             (Self->Dimensions & DMF_WIDTH)) {
 
       if (Self->Dimensions & DMF_FIXED_WIDTH) width = Self->Width;
@@ -1847,7 +1847,7 @@ static ERROR GET_Layout_Y(objLayout *Self, Variable *Value)
    else if (Self->Dimensions & DMF_RELATIVE_Y) {
       value = (DOUBLE)Self->Y * (DOUBLE)Self->ParentSurface.Height * 0.01;
    }
-   else if ((Self->Dimensions & DMF_HEIGHT) AND
+   else if ((Self->Dimensions & DMF_HEIGHT) and
             (Self->Dimensions & DMF_Y_OFFSET)) {
       if (Self->Dimensions & DMF_FIXED_HEIGHT) height = Self->Height;
       else height = (DOUBLE)Self->ParentSurface.Height * (DOUBLE)Self->Height * 0.01;
@@ -1918,7 +1918,7 @@ static ERROR GET_Layout_YOffset(objLayout *Self, Variable *Value)
    else if (Self->Dimensions & DMF_RELATIVE_Y_OFFSET) {
       value = (DOUBLE)Self->YOffset * (DOUBLE)Self->ParentSurface.Height * 0.01;
    }
-   else if ((Self->Dimensions & DMF_Y) AND (Self->Dimensions & DMF_HEIGHT)) {
+   else if ((Self->Dimensions & DMF_Y) and (Self->Dimensions & DMF_HEIGHT)) {
       if (Self->Dimensions & DMF_FIXED_HEIGHT) height = Self->Height;
       else height = (DOUBLE)Self->ParentSurface.Height * (DOUBLE)Self->Height * 0.01;
 

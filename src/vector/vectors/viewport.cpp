@@ -267,7 +267,7 @@ static ERROR VIEW_SET_ViewHeight(objVectorViewport *Self, DOUBLE Value)
 ViewX: The horizontal position of the viewport's source area.
 
 The area defined by (#ViewX,#ViewY) and (#ViewWidth,#ViewHeight) declare the source area covered by the viewport.  The
-rendered graphics in the source area will be repositioned and scaled to the area defined by (X,Y) and (Width,Height).
+rendered graphics in the source area will be repositioned and scaled to the area defined by (#X,#Y) and (#Width,#Height).
 
 *****************************************************************************/
 
@@ -289,7 +289,7 @@ static ERROR VIEW_SET_ViewX(objVectorViewport *Self, DOUBLE Value)
 ViewWidth: The width of the viewport's source area.
 
 The area defined by (#ViewX,#ViewY) and (#ViewWidth,#ViewHeight) declare the source area covered by the viewport.  The
-rendered graphics in the source area will be repositioned and scaled to the area defined by (X,Y) and (Width,Height).
+rendered graphics in the source area will be repositioned and scaled to the area defined by (#X,#Y) and (#Width,#Height).
 
 *****************************************************************************/
 
@@ -314,7 +314,7 @@ static ERROR VIEW_SET_ViewWidth(objVectorViewport *Self, DOUBLE Value)
 ViewY: The vertical position of the viewport's source area.
 
 The area defined by (#ViewX,#ViewY) and (#ViewWidth,#ViewHeight) declare the source area covered by the viewport.  The
-rendered graphics in the source area will be repositioned and scaled to the area defined by (X,Y) and (Width,Height).
+rendered graphics in the source area will be repositioned and scaled to the area defined by (#X,#Y) and (#Width,#Height).
 
 *****************************************************************************/
 
