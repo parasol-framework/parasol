@@ -69,6 +69,10 @@ static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
       // For simplicity, a call to the handler is made for each individual input event.
 
       while (Events) {
+         if (Events->Flags & JTYPE_MOVEMENT) {
+            while ((Events->Next) and (Events->Next->Flags & JTYPE_MOVEMENT)) Events = Events->Next;
+         }
+
          lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, list->Callback); // +1 Reference to callback
          lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, list->InputValue); // +1 Optional input value registered by the Fluid client
          named_struct_to_table(prv->Lua, "InputEvent", Events); // +1 Input message

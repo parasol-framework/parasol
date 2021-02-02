@@ -418,8 +418,8 @@
 #define FID_ZCoord 0x2bb2a0b6LL
 #define FID_ZSpeed 0x2cd488f0LL
 #define FID_PublicObjects 0xb90c95aeLL
-#define FID_Option1 0x71f0504fLL
-#define FID_Option2 0x71f05050LL
+#define FID_Viewport 0xe8f01225LL
+#define FID_ParentViewport 0x679f3aafLL
 #define FID_Option3 0x71f05051LL
 #define FID_Option4 0x71f05052LL
 #define FID_Address 0x1f2653ebLL

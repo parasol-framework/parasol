@@ -584,8 +584,8 @@ typedef struct rkInput {
    LONG     InputWidth;          // Width of the input area
 
 #ifdef PRV_INPUT
-   char    prvLabel[48];
-   char    prvPostLabel[48];
+   char     prvLabel[48];
+   char     prvPostLabel[48];
    ULONG    prvLastStringHash;
    FUNCTION prvFeedback;
    UBYTE    prvActive:1;

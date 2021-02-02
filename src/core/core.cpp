@@ -2456,7 +2456,7 @@ static ERROR init_filesystem(std::forward_list<CSTRING> &Volumes)
 
    for (CSTRING vol : Volumes) {
       char name[120], path[MAX_FILENAME];
-      LONG n, p, v;
+      size_t n, p, v;
       for (n=0, v=0; vol[v] and (vol[v] != '=') and (n < sizeof(name)-1); v++) name[n++] = vol[v];
       name[n] = 0;
       if (vol[v++] IS '=') {

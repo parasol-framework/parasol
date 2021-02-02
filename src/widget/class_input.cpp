@@ -7,7 +7,7 @@ Please refer to it for further information on licensing.
 ******************************************************************************
 
 -CLASS-
-Input: The Input class manages the display and interactivity of user input boxes.
+Input: Manages the display and interactivity of user input boxes.
 
 The Input class simplifies the creation and management of input boxes as part of the user interface.  New input areas
 can be created by specifying as little as the graphical dimensions for the box area.  The Input class allows for the

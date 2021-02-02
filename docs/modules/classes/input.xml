@@ -6,7 +6,7 @@
     <name>Input</name>
     <type>class</type>
     <module>Widget</module>
-    <comment>The Input class manages the display and interactivity of user input boxes.</comment>
+    <comment>Manages the display and interactivity of user input boxes.</comment>
     <version>1</version>
     <id>0fa94ab5</id>
     <idstring>ID_INPUT</idstring>

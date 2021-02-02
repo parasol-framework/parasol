@@ -7,15 +7,22 @@ Please refer to it for further information on licensing.
 ******************************************************************************
 
 -CLASS-
-Vector: This is a base class for supporting vector graphics objects and functionality.
+Vector: An abstract class for supporting vector graphics objects and functionality.
 
 Vector is an abstract class that is used as a blueprint for other vector classes that provide specific functionality
 for a vector scene.  At this time the classes are @VectorClip, @VectorEllipse, @VectorGroup, @VectorPath,
-@VectorPolygon, @VectorRectangle, @VectorText and @VectorViewport.
+@VectorPolygon, @VectorRectangle, @VectorSpiral, @VectorText, @VectorViewport and @VectorWave.
 
 The majority of sub-classes support all of the functionality provided by Vector.  The general exception is that
 graphics functions will not be supported by non-graphical classes, for instance @VectorGroup and @VectorViewport do not
 produce a vector path and therefore cannot be rendered.
+
+To simplify the creation of complex vector graphics and maximise compatibility, we have designed the vector management
+code to use data structures that closely match SVG definitions.  For this reason we do not provide exhaustive
+documentation on the properties that can be applied to each vector type.  Instead, please refer to the SVG reference
+manuals from the W3C.  In cases where we are missing support for an SVG feature, we most likely intend to support that
+feature unless otherwise documented.
+
 -END-
 
 *****************************************************************************/
@@ -151,6 +158,9 @@ If the VBF_INCLUSIVE flag is used, the result will include an analysis of all pa
 target vector.
 
 If the VBF_NO_TRANSFORM flag is used, the transformation step is not applied to the vector's path.
+
+It is recommended that this method is not called until at least one rendering pass has been made, as some vector
+dimensions may not be computed before then.
 
 -INPUT-
 int(VBF) Flags: Optional flags.

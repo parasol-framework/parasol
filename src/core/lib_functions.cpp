@@ -737,7 +737,7 @@ CLASSID GetClassID(OBJECTID ObjectID)
    OBJECTPTR object;
    if (ObjectID < 0) {
       SharedObjectHeader *header;
-      LONG id;
+      CLASSID id;
       if (!AccessMemory(RPM_SharedObjects, MEM_READ, 2000, (void **)&header)) {
          auto shared_obj = (SharedObject *)ResolveAddress(header, header->Offset);
          LONG pos;

@@ -223,7 +223,7 @@ end
 -- Convert an RGB table to a SVG colour string
 
 gui.rgbToSVG = function(Value)
-   return string.format('rgb(%d,%d,%d,%d)', Value.r, Value.g, Value.b, Value.a)
+   return string.format('rgb(%d,%d,%d,%d)', Value.r, Value.g, Value.b, nz(Value.a,255))
 end
 
 ------------------------------------------------------------------------------

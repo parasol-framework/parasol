@@ -275,8 +275,7 @@ ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    // Add a message handler to the system for responding to interface messages
 
-   FUNCTION call;
-   SET_FUNCTION_STDC(call, (APTR)&msg_handler);
+   auto call = make_function_stdc(msg_handler);
    if (AddMsgHandler(NULL, MSGID_EXPOSE, &call, &glExposeHandler) != ERR_Okay) {
       return log.warning(ERR_Failed);
    }
@@ -399,10 +398,10 @@ static ERROR CMDOpen(OBJECTPTR Module)
 ERROR CMDExpunge(void)
 {
    if (glRefreshPointerTimer) { UpdateTimer(glRefreshPointerTimer, 0); glRefreshPointerTimer = 0; }
-   if (glStyle)         { acFree(glStyle); glStyle = NULL; }
-   if (glAppStyle)      { acFree(glAppStyle); glAppStyle = NULL; }
-   if (glDesktopStyleScript) { acFree(glDesktopStyleScript); glDesktopStyleScript = NULL; }
-   if (glDefaultStyleScript) { acFree(glDefaultStyleScript); glDefaultStyleScript = NULL; }
+   if (glStyle)               { acFree(glStyle); glStyle = NULL; }
+   if (glAppStyle)            { acFree(glAppStyle); glAppStyle = NULL; }
+   if (glDesktopStyleScript)  { acFree(glDesktopStyleScript); glDesktopStyleScript = NULL; }
+   if (glDefaultStyleScript)  { acFree(glDefaultStyleScript); glDefaultStyleScript = NULL; }
    if (glExposeHandler) { FreeResource(glExposeHandler); glExposeHandler = NULL; }
    if (glComposite)     { acFree(glComposite); glComposite = NULL; }
    if (modDisplay)      { acFree(modDisplay); modDisplay = NULL; }
@@ -499,10 +498,9 @@ static ERROR drwCopySurface(OBJECTID SurfaceID, objBitmap *Bitmap, LONG Flags,
 
    SurfaceControl *ctl;
    if ((ctl = drwAccessList(ARF_READ))) {
-      WORD i;
       BITMAPSURFACE surface;
-      SurfaceList *list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
-      for (i=0; i < ctl->Total; i++) {
+      auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
+      for (WORD i=0; i < ctl->Total; i++) {
          if (list[i].SurfaceID IS SurfaceID) {
             if (X < 0) { XDest -= X; Width  += X; X = 0; }
             if (Y < 0) { YDest -= Y; Height += Y; Y = 0; }
@@ -534,9 +532,9 @@ static ERROR drwCopySurface(OBJECTID SurfaceID, objBitmap *Bitmap, LONG Flags,
                   src->Clip.Right  = list_i.Width;
                   src->Clip.Bottom = list_i.Height;
 
-                  BYTE composite;
-                  if (list_i.Flags & RNF_COMPOSITE) composite = TRUE;
-                  else composite = FALSE;
+                  bool composite;
+                  if (list_i.Flags & RNF_COMPOSITE) composite = true;
+                  else composite = false;
 
                   if (composite) {
                      gfxCopyArea(src, Bitmap, BAF_BLEND|((Flags & BDF_DITHER) ? BAF_DITHER : 0), X, Y, Width, Height, XDest, YDest);
@@ -556,9 +554,9 @@ static ERROR drwCopySurface(OBJECTID SurfaceID, objBitmap *Bitmap, LONG Flags,
                surface.BitsPerPixel  = list_root.BitsPerPixel;
                surface.BytesPerPixel = list_root.BytesPerPixel;
 
-               BYTE composite;
-               if (list_i.Flags & RNF_COMPOSITE) composite = TRUE;
-               else composite = FALSE;
+               bool composite;
+               if (list_i.Flags & RNF_COMPOSITE) composite = true;
+               else composite = false;
 
                if (composite) gfxCopySurface(&surface, Bitmap, CSRF_DEFAULT_FORMAT|CSRF_OFFSET|CSRF_ALPHA, X, Y, Width, Height, XDest, YDest);
                else gfxCopySurface(&surface, Bitmap, CSRF_DEFAULT_FORMAT|CSRF_OFFSET, X, Y, Width, Height, XDest, YDest);
@@ -709,7 +707,7 @@ static ERROR _expose_surface(OBJECTID SurfaceID, SurfaceList *list, WORD index, 
       WORD cursor;
       for (cursor=index+1; (cursor < Total) and (!(list[cursor].Flags & RNF_CURSOR)); cursor++);
       if (cursor < Total) {
-         if ((list[cursor].SurfaceID) and (list[cursor].Bottom < abs.Bottom) and (list[cursor].Bottom > abs.Top) AND
+         if ((list[cursor].SurfaceID) and (list[cursor].Bottom < abs.Bottom) and (list[cursor].Bottom > abs.Top) and
              (list[cursor].Right > abs.Left) and (list[cursor].Left < abs.Right)) {
             parasol::Log log("expose_surface");
             log.traceBranch("Splitting cursor.");
@@ -846,7 +844,7 @@ static ERROR _expose_surface(OBJECTID SurfaceID, SurfaceList *list, WORD index, 
          if (list[i].Flags & (RNF_VOLATILE|RNF_COMPOSITE|RNF_CURSOR)) {
             if (list[i].SurfaceID IS SurfaceID) continue;
 
-            if ((list[i].Right > abs.Left) and (list[i].Bottom > abs.Top) AND
+            if ((list[i].Right > abs.Left) and (list[i].Bottom > abs.Top) and
                 (list[i].Left < abs.Right) and (list[i].Top < abs.Bottom)) {
 
                if ((list[i].TaskID != CurrentTaskID()) and (!(list[i].Flags & RNF_COMPOSITE))) {
@@ -874,7 +872,7 @@ static ERROR _expose_surface(OBJECTID SurfaceID, SurfaceList *list, WORD index, 
 
       LONG i = Total - 1;
       if ((list[i].Flags & RNF_CURSOR) and (list[i].SurfaceID != SurfaceID)) {
-         if ((list[i].Right > abs.Left) and (list[i].Bottom > abs.Top) AND
+         if ((list[i].Right > abs.Left) and (list[i].Bottom > abs.Top) and
              (list[i].Left < abs.Right) and (list[i].Top < abs.Bottom)) {
 
             parasol::Log log(__FUNCTION__);
@@ -992,7 +990,7 @@ static void expose_buffer(SurfaceList *list, WORD Total, WORD Index, WORD ScanIn
    // is at the root level (no ParentID).
 
    LONG sx, sy;
-   if ((list[Index].Flags & RNF_COMPOSITE) AND
+   if ((list[Index].Flags & RNF_COMPOSITE) and
        ((list[Index].ParentID) or (list[Index].Flags & RNF_CURSOR))) {
       struct ClipRectangle clip;
       if (glComposite) {
@@ -1234,15 +1232,16 @@ static ERROR drwGetVisibleArea(OBJECTID SurfaceID, LONG *X, LONG *Y, LONG *AbsX,
          return ERR_Search;
       }
 
-      struct ClipRectangle clip;
-      clip.Left   = list[i].Left;
-      clip.Top    = list[i].Top;
-      clip.Right  = list[i].Right;
-      clip.Bottom = list[i].Bottom;
+      struct ClipRectangle clip = {
+         .Left   = list[i].Left,
+         .Right  = list[i].Right,
+         .Bottom = list[i].Bottom,
+         .Top    = list[i].Top
+      };
       restrict_region_to_parents(list, i, &clip, FALSE);
 
-      if (X) *X = clip.Left - list[i].Left;
-      if (Y) *Y = clip.Top - list[i].Top;
+      if (X)      *X      = clip.Left - list[i].Left;
+      if (Y)      *Y      = clip.Top - list[i].Top;
       if (Width)  *Width  = clip.Right - clip.Left;
       if (Height) *Height = clip.Bottom - clip.Top;
       if (AbsX)   *AbsX   = clip.Left;
@@ -1800,8 +1799,7 @@ static ERROR _redraw_surface(OBJECTID SurfaceID, SurfaceList *list, WORD index, 
    if (!(Flags & IRF_IGNORE_CHILDREN)) {
       log.trace("Redrawing intersecting child surfaces.");
       WORD level = list[index].Level;
-      WORD i;
-      for (i=index+1; i < Total; i++) {
+      for (WORD i=index+1; i < Total; i++) {
          if (list[i].Level <= level) break; // End of list - exit this loop
 
          if (Flags & IRF_IGNORE_NV_CHILDREN) {
@@ -1816,7 +1814,7 @@ static ERROR _redraw_surface(OBJECTID SurfaceID, SurfaceList *list, WORD index, 
             continue; // Skip regions and non-visible children
          }
 
-         if ((list[i].Right > Left) and (list[i].Bottom > Top) AND
+         if ((list[i].Right > Left) and (list[i].Bottom > Top) and
              (list[i].Left < Right) and (list[i].Top < Bottom)) {
             recursive++;
             _redraw_surface(list[i].SurfaceID, list, i, Total, Left, Top, Right, Bottom, Flags|IRF_IGNORE_CHILDREN);
@@ -1982,7 +1980,7 @@ static void _redraw_surface_do(objSurface *Self, SurfaceList *list, WORD Total, 
 
             if (regions[j].Dimensions & DMF_FIXED_WIDTH) width = regions[j].Width;
             else if (regions[j].Dimensions & DMF_RELATIVE_WIDTH) width = Self->Width * regions[j].Width / 100;
-            else if ((regions[j].Dimensions & DMF_X_OFFSET) AND
+            else if ((regions[j].Dimensions & DMF_X_OFFSET) and
                      (regions[j].Dimensions & DMF_X)) {
                width = Self->Width - x - xoffset;
             }
@@ -1992,7 +1990,7 @@ static void _redraw_surface_do(objSurface *Self, SurfaceList *list, WORD Total, 
 
             if (regions[j].Dimensions & DMF_FIXED_HEIGHT) height = regions[j].Height;
             else if (regions[j].Dimensions & DMF_RELATIVE_HEIGHT) height = Self->Height * regions[j].Height / 100;
-            else if ((regions[j].Dimensions & DMF_Y_OFFSET) AND
+            else if ((regions[j].Dimensions & DMF_Y_OFFSET) and
                      (regions[j].Dimensions & DMF_Y)) {
                height = Self->Height - y - yoffset;
             }
@@ -2008,7 +2006,7 @@ static void _redraw_surface_do(objSurface *Self, SurfaceList *list, WORD Total, 
 
             // Y coordinate check
 
-            if ((regions[j].Dimensions & DMF_Y_OFFSET) AND
+            if ((regions[j].Dimensions & DMF_Y_OFFSET) and
                 (regions[j].Dimensions & DMF_HEIGHT)) {
                y = Self->Height - yoffset - height;
             }
@@ -2375,7 +2373,7 @@ target Object and executes the procedure with the Surface as the graphics target
 
 -INPUT-
 obj Object:  The object that requires styling.
-oid Surface: The surface that will receive the style graphics.
+oid Target: The surface or vector that will receive the style graphics.
 cstr StyleName: Optional.  Reference to a style that is alternative to the default.
 cstr StyleType: Optional.  Name of the type of style decoration to be applied.  Use in conjunction with StyleName.
 
@@ -2387,13 +2385,13 @@ NothingDone: No style information is defined for the object's class.
 
 *****************************************************************************/
 
-static ERROR drwApplyStyleGraphics(OBJECTPTR Object, OBJECTID SurfaceID, CSTRING StyleName, CSTRING StyleType)
+static ERROR drwApplyStyleGraphics(OBJECTPTR Object, OBJECTID TargetID, CSTRING StyleName, CSTRING StyleType)
 {
    parasol::Log log(__FUNCTION__);
 
-   if ((!Object) or (!SurfaceID)) return log.warning(ERR_NullArgs);
+   if ((!Object) or (!TargetID)) return log.warning(ERR_NullArgs);
 
-   log.branch("Object: %d, Surface: %d, Style: %s, StyleType: %s", Object->UniqueID, SurfaceID, StyleName, StyleType);
+   log.branch("Object: %d, Target: %d, Style: %s, StyleType: %s", Object->UniqueID, TargetID, StyleName, StyleType);
 
    ERROR error;
    if ((error = load_styles())) return error;
@@ -2404,7 +2402,7 @@ static ERROR drwApplyStyleGraphics(OBJECTPTR Object, OBJECTID SurfaceID, CSTRING
    if (glAppStyle) {
       if (!xmlFindTag(xml, xpath, NULL, NULL)) {
          SetString(script, FID_Procedure, xpath);
-         SetLong(script, FID_Target, SurfaceID);
+         SetLong(script, FID_Target, TargetID);
          if (!acActivate(script)) return ERR_Okay;
       }
    }
@@ -2415,7 +2413,7 @@ static ERROR drwApplyStyleGraphics(OBJECTPTR Object, OBJECTID SurfaceID, CSTRING
       const ScriptArg args[] = {
          { "Class",     FDF_STRING,   { .Address = StyleName ? (APTR)StyleName : (APTR)Object->Class->ClassName } },
          { "Object",    FDF_OBJECT,   { .Address = Object } },
-         { "Surface",   FDF_OBJECTID, { .Long = SurfaceID } },
+         { "Target",    FDF_OBJECTID, { .Long = TargetID } },
          { "StyleType", FDF_STRING,   { .Address = (APTR)StyleType } }
       };
 
@@ -2436,7 +2434,7 @@ static ERROR drwApplyStyleGraphics(OBJECTPTR Object, OBJECTID SurfaceID, CSTRING
       const ScriptArg args[] = {
          { "Class",   FDF_STRING,   { .Address = StyleName ? (APTR)StyleName : (APTR)Object->Class->ClassName } },
          { "Object",  FDF_OBJECT,   { .Address = Object } },
-         { "Surface", FDF_OBJECTID, { .Long = SurfaceID } },
+         { "Target",  FDF_OBJECTID, { .Long = TargetID } },
          { "StyleType", FDF_STRING, { .Address = (APTR)StyleType } }
       };
 
@@ -2548,15 +2546,15 @@ static ERROR apply_style(OBJECTPTR Object, OBJECTPTR Script, CSTRING StyleName)
 
 static ERROR load_styles(void)
 {
-   static BYTE desktop_attempted = FALSE;
-   static BYTE default_attempted = FALSE;
+   static bool desktop_attempted = false;
+   static bool default_attempted = false;
 
    if ((!glDefaultStyleScript) and (!default_attempted)) {
       parasol::Log log(__FUNCTION__);
       log.branch("Loading default style information.");
       parasol::SwitchContext context(modSurface);
 
-      default_attempted = TRUE;
+      default_attempted = true;
 
       // The app can set a style path that we have to honour if present.  This is typically used for emulating other
       // system styles, like mobile.
@@ -2575,7 +2573,7 @@ static ERROR load_styles(void)
    if ((!glDesktopStyleScript) and (!desktop_attempted)) {
       parasol::Log log(__FUNCTION__);
 
-      desktop_attempted = TRUE;
+      desktop_attempted = true;
       if (!AnalysePath("environment:config/style.xml", NULL)) {
          log.branch("Loading desktop style information.");
 

@@ -7,19 +7,13 @@ Please refer to it for further information on licensing.
 ******************************************************************************
 
 -CLASS-
-VectorScene: This is a base class for supporting vector graphics objects and functionality.
+VectorScene: Manages the scene graph for a collection of vectors.
 
 The VectorScene class acts as a container and control point for the management of vector definitions.  Its primary
 duty is to draw the scene to a target Bitmap provided by the client.
 
 Vector scenes are created by initialising multiple Vector objects such as @VectorPath and
 @VectorViewport and positioning them within a vector tree.  The VectorScene must lie at the root.
-
-To simplify the creation of complex vector graphics and maximise compatibility, we have designed the vector management
-code to use data structures that provide a very close match to SVG.  For this reason we do not provide exhaustive
-documentation on the properties that can be applied to each vector type.  Instead, please refer to the SVG reference
-manuals from the W3C.  In cases where we are missing support for an SVG feature, we most likely intend to support that
-feature unless otherwise documented.
 
 To draw a scene, the client must set the target #Bitmap and call the #Draw() action.
 
@@ -419,7 +413,7 @@ static ERROR SET_PageWidth(objVectorScene *Self, LONG Value)
 RenderTime: Returns the rendering time of the last scene.
 
 RenderTime returns the rendering time of the last scene that was drawn, measured in microseconds.  This value can also
-be used to compute the frame-per-second rate as '1000000 / RenderTime'.
+be used to compute frames-per-second with `1000000 / RenderTime`.
 
 The RENDER_TIME flag should also be set before fetching this value, as it is required to enable the timing feature.  If
 RENDER_TIME is not set, it will be set automatically so that subsequent calls succeed correctly.
