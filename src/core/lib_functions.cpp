@@ -1232,8 +1232,6 @@ LARGE GetResource(LONG Resource)
       case RES_SHARED_CONTROL:  return (MAXINT)glSharedControl;
       case RES_GLOBAL_INSTANCE: return glSharedControl->GlobalInstance;
       case RES_PRIVILEGED:      return glPrivileged;
-      case RES_PARENT_CONTEXT:  if (tlContext->Stack) return (MAXINT)tlContext->Stack->Object;
-                                else return 0;
       case RES_KEY_STATE:       return glKeyState;
       case RES_LOG_LEVEL:       return glLogLevel;
       case RES_SHARED_BLOCKS:   return (MAXINT)glSharedBlocks;
@@ -1248,6 +1246,14 @@ LARGE GetResource(LONG Resource)
       case RES_THREAD_ID:       return (MAXINT)get_thread_id();
       case RES_CORE_IDL:        return (MAXINT)glIDL;
       case RES_DISPLAY_DRIVER:  if (glDisplayDriver[0]) return (MAXINT)glDisplayDriver; else return 0;
+
+      case RES_PARENT_CONTEXT: {
+         // Return the first parent context that differs to the current context.  This avoids any confusion
+         // arising from the the current object making calls to itself.
+         auto parent = tlContext->Stack;
+         while ((parent) and (parent->Object IS tlContext->Object)) parent = parent->Stack;
+         return parent ? (MAXINT)parent->Object : 0;
+      }
 
 #ifdef __linux__
       // NB: This value is not cached.  Although unlikely, it is feasible that the total amount of physical RAM could
