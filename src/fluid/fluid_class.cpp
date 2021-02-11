@@ -97,6 +97,7 @@ static void free_all(objScript *Self)
 
    clear_subscriptions(Self);
 
+   if (prv->StateMap) { delete prv->StateMap; prv->StateMap = NULL; }
    if (prv->Structs) { FreeResource(prv->Structs); prv->Structs = NULL; }
    if (prv->Includes) { FreeResource(prv->Includes); prv->Includes = NULL; }
    if (prv->FocusEventHandle) { UnsubscribeEvent(prv->FocusEventHandle); prv->FocusEventHandle = NULL; }

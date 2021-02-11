@@ -236,6 +236,48 @@ static int object_new(lua_State *Lua)
 }
 
 //****************************************************************************
+// Usage: state = some_object.state()
+//
+// Returns a table that can be used to store information that is specific to the object.  The state is linked to the
+// object ID to ensure that the state values are still accessible if referenced elsewhere in the script.
+
+static int object_state(lua_State *Lua)
+{
+   struct object *object;
+   if (!(object = (struct object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj"))) {
+      luaL_argerror(Lua, 1, "Expected object.");
+      return 0;
+   }
+
+   auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
+
+   if (!prv->StateMap) {
+      prv->StateMap = new (std::nothrow) std::unordered_map<OBJECTID, LONG>();
+      if (!prv->StateMap) {
+         luaL_error(Lua, "Memory allocation failure.");
+         return 0;
+      }
+   }
+
+   // Note: At this time no cleanup is performed on the StateMap.  Ideally this would be done with a hook into garbage
+   // collection cycles.
+
+   parasol::Log log(__FUNCTION__);
+   auto it = prv->StateMap->find(object->ObjectID);
+   if (it != prv->StateMap->end()) {
+      lua_rawgeti(Lua, LUA_REGISTRYINDEX, it->second);
+      return 1;
+   }
+   else {
+      lua_createtable(Lua, 0, 0); // Create a new table on the stack.
+      auto state_ref = luaL_ref(Lua, LUA_REGISTRYINDEX);
+      (*prv->StateMap)[object->ObjectID] = state_ref;
+      lua_rawgeti(Lua, LUA_REGISTRYINDEX, state_ref);
+      return 1;
+   }
+}
+
+//****************************************************************************
 // Syntactic sugar for creating new objects against a parent, e.g. window.new("button", { ... }).  Behaviour is
 // mostly identical to obj.new() but the object is detached.
 
@@ -951,6 +993,7 @@ static int object_index(lua_State *Lua)
                case HASH_DETACH:      SET_CONTEXT(Lua, (APTR)object_detach); return 1;
                case HASH_GET:         SET_CONTEXT(Lua, (APTR)object_get); return 1;
                case HASH_NEW:         SET_CONTEXT(Lua, (APTR)object_newchild); return 1;
+               case HASH_STATE:       SET_CONTEXT(Lua, (APTR)object_state); return 1;
                case HASH_VAR:
                case HASH_GETVAR:      SET_CONTEXT(Lua, (APTR)object_getvar); return 1;
                case HASH_SET:         SET_CONTEXT(Lua, (APTR)object_set); return 1;

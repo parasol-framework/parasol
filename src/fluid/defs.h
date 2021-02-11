@@ -38,6 +38,7 @@ struct prvFluid {
    KeyStore *Structs;
    KeyStore *Includes;               // Stores the status of loaded include files.
    APTR   FocusEventHandle;
+   std::unordered_map<OBJECTID, LONG> *StateMap;
    DateTime CacheDate;
    ERROR  CaughtError;               // Set to -1 to enable catching of ERROR results.
    LONG   CachePermissions;
