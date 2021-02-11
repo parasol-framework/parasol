@@ -1903,7 +1903,7 @@ The VISIBLE flag in the #Flags field will be set if the Show operation is succes
 
 ERROR DISPLAY_Show(objDisplay *Self, APTR Void)
 {
-   parasol::Log log(__FUNCTION__);
+   parasol::Log log;
 
    log.branch();
 

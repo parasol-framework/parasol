@@ -172,8 +172,7 @@ struct references * alloc_references(void)
 
 void free_references(lua_State *Lua, struct references *Ref)
 {
-   LONG i;
-   for (i=0; i < Ref->Index; i++) {
+   for (LONG i=0; i < Ref->Index; i++) {
       luaL_unref(Lua, LUA_REGISTRYINDEX, Ref->List[i].Ref);
    }
    FreeResource(Ref);

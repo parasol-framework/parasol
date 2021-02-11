@@ -78,5 +78,6 @@
 #define HASH_TIMEOUT 0xe1fe87cc
 #define HASH_SIGNALS 0x949c6ab6
 #define HASH_LOCK 0x7c9a2dce
+#define HASH_STATE 0x10614a06
 
 #endif

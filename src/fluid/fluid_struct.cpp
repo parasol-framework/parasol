@@ -77,6 +77,7 @@ ERROR named_struct_to_table(lua_State *Lua, CSTRING StructName, CPTR Address)
 {
    auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
    structentry *def;
+
    if (!KeyGet(prv->Structs, STRUCTHASH(StructName), &def, NULL)) {
       return struct_to_table(Lua, NULL, def, Address);
    }

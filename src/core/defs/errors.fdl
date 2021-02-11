@@ -10,7 +10,7 @@ function declareErrors()
     "Cancelled",        // Operation cancelled.
     "NothingDone",      // Operation did not perform any activity (non-fatal).
     "Continue",         // Please continue processing
-    "Skip",             // Skip this operation (this is not an error in the normal sense)
+    "Skip",             // Skip this operation (do not raise an error)
     "Retry",            // Retry the operation (could not succeed at this time)
     "DirEmpty",
     // Anything above this point is considered non-fatal for exception reporting purposes.
@@ -186,6 +186,7 @@ function declareErrors()
     "CreateResource",          // Failed to create a new resource.
     "NotPossible",             // It is not possible to perform the requested operation.
     "ResolveSymbol",           // Failed to resolve a linked library symbol
+    "Function",                // A function call failed
     "END") // NB: Any new error messages need to be added to data_errors.c manually.
 
   const("ERF", { comment="Special error flags" }, {

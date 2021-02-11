@@ -414,8 +414,7 @@ int fcmd_subscribe_event(lua_State *Lua)
       return 1;
    }
    else if (!(error = AllocMemory(sizeof(struct eventsub), MEM_DATA, &es, NULL))) {
-      FUNCTION call;
-      SET_FUNCTION_STDC(call, (APTR)receive_event);
+      auto call = make_function_stdc(receive_event);
       if (!(error = SubscribeEvent(event_id, &call, es, &es->EventHandle))) {
          auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
          lua_settop(Lua, 2);

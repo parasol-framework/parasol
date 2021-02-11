@@ -275,8 +275,8 @@ module({ name="Vector", copyright="Paul Manias © 2010-2020", version=1.0 }, fun
    struct(*KeyStore) Defs # Stores references to gradients, images, patterns etc
    oid Surface            # Target surface for automated rendering
    int(VPF) Flags         # Optional flags.
-   int PageWidth          # Fixed page width - vector viewport width will be stretched to fit this if resizing is enabled.
-   int PageHeight         # Fixed page height - vector viewport height will be stretched to fit this if resizing is enabled.
+   int PageWidth          # Fixed page width - vector viewport width will be sized to fit this if resizing is enabled.
+   int PageHeight         # Fixed page height - vector viewport height will be sized to fit this if resizing is enabled.
    int(VSM) SampleMethod  # VSM: Method to use for resampling images and patterns.
   ]],
   [[
@@ -286,19 +286,19 @@ module({ name="Vector", copyright="Paul Manias © 2010-2020", version=1.0 }, fun
   ]])
 
   class("VectorImage", { src="defs/image.cpp" }, [[
-    double X
-    double Y
+    double X             # Starting horizontal coordinate
+    double Y             # Starting vertical coordinate
     obj(Picture) Picture
     obj(Bitmap) Bitmap
-    int(VUNIT) Units  # VUNIT constant, defines the coordinate system for (X,Y)
+    int(VUNIT) Units     # VUNIT constant, defines the coordinate system for (X,Y)
     int(DMF) Dimensions
     int(VSPREAD) SpreadMethod
   ]])
 
   class("VectorPattern", { src="defs/pattern.cpp" }, [[
-    double X
-    double Y
-    double Opacity
+    double X                      # Starting horizontal coordinate
+    double Y                      # Starting vertical coordinate
+    double Opacity                # Level of opacity from 0 - 1.0
     obj(VectorScene) Scene        # Internal scene
     obj(VectorViewport) Viewport  # Internal viewport
     obj(VectorPattern) Inherit    # Reference to another pattern from which to inherit attributes
@@ -322,11 +322,11 @@ module({ name="Vector", copyright="Paul Manias © 2010-2020", version=1.0 }, fun
     double FX                    # Focal X coordinate for radial gradient shapes.
     double FY                    # Focal Y coordinate for radial gradient shapes.
     double Radius                # The size of a radial gradient radius.
-    obj(VectorGradient) Inherit  # Reference to another gradient from which to inherit attributes
+    obj(VectorGradient) Inherit  # Reference to another gradient from which to inherit attributes.
     int(VSPREAD) SpreadMethod    # Defines the spread method to use for gradient fills.
     int(VUNIT) Units             # Defines the coordinate system for (x1,y1),(x2,y2)
     int(VGT) Type
-    int(VGF) Flags               # Optional flags
+    int(VGF) Flags               # Optional flags.
     int TotalStops               # The total number of records in the Stops array.
   ]],
   [[

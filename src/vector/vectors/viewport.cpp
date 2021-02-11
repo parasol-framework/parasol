@@ -123,10 +123,13 @@ Resize: Resize a viewport to a fixed size.
 static ERROR VIEW_Resize(objVectorViewport *Self, struct acResize *Args)
 {
    if (!Args) return ERR_NullArgs;
+
    Self->vpDimensions = (Self->vpDimensions | DMF_FIXED_WIDTH) & (~DMF_RELATIVE_WIDTH);
    Self->vpTargetWidth = Args->Width;
+
    Self->vpDimensions = (Self->vpDimensions | DMF_FIXED_HEIGHT) & (~DMF_RELATIVE_HEIGHT);
    Self->vpTargetHeight = Args->Height;
+
    if (Self->vpTargetWidth < 1) Self->vpTargetWidth = 1;
    if (Self->vpTargetHeight < 1) Self->vpTargetHeight = 1;
    mark_dirty((objVector *)Self, RC_FINAL_PATH|RC_TRANSFORM);
@@ -207,9 +210,9 @@ static ERROR VIEW_GET_Height(objVectorViewport *Self, Variable *Value)
       else if (Self->ParentView) val = Self->vpTargetHeight * Self->ParentView->vpFixedHeight;
       else { val = Self->vpTargetHeight * Self->Scene->PageHeight;  }
    }
-   else {
-      if (Self->ParentView) val = Self->ParentView->vpFixedHeight;
-      else val = Self->Scene->PageHeight;
+   else { // If no height set by the client, the full height is inherited from the parent
+      if (Self->ParentView) return GetVariable(Self->ParentView, FID_Height, Value);
+      else GetDouble(Self->Scene, FID_PageHeight, &val);
    }
 
    if (Value->Type & FD_DOUBLE) Value->Double = val;
@@ -355,9 +358,9 @@ static ERROR VIEW_GET_Width(objVectorViewport *Self, Variable *Value)
       else if (Self->ParentView) val = Self->vpTargetWidth * Self->ParentView->vpFixedWidth;
       else val = Self->vpTargetWidth * Self->Scene->PageWidth;
    }
-   else {
-      if (Self->ParentView) val = Self->ParentView->vpFixedWidth;
-      else val = Self->Scene->PageWidth;
+   else { // If no width set by the client, the full width is inherited from the parent
+      if (Self->ParentView) return GetVariable(Self->ParentView, FID_Width, Value);
+      else GetDouble(Self->Scene, FID_PageWidth, &val);
    }
 
    if (Value->Type & FD_DOUBLE) Value->Double = val;

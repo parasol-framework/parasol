@@ -351,8 +351,8 @@ typedef struct rkVectorScene {
    struct KeyStore * Defs;        // Stores references to gradients, images, patterns etc
    OBJECTID SurfaceID;            // Target surface for automated rendering
    LONG     Flags;                // Optional flags.
-   LONG     PageWidth;            // Fixed page width - vector viewport width will be stretched to fit this if resizing is enabled.
-   LONG     PageHeight;           // Fixed page height - vector viewport height will be stretched to fit this if resizing is enabled.
+   LONG     PageWidth;            // Fixed page width - vector viewport width will be sized to fit this if resizing is enabled.
+   LONG     PageHeight;           // Fixed page height - vector viewport height will be sized to fit this if resizing is enabled.
    LONG     SampleMethod;         // VSM: Method to use for resampling images and patterns.
 
 #ifdef PRV_VECTORSCENE
@@ -399,8 +399,8 @@ INLINE ERROR scFindDef(APTR Ob, CSTRING Name, OBJECTPTR * Def) {
 
 typedef struct rkVectorImage {
    OBJECT_HEADER
-   DOUBLE X;
-   DOUBLE Y;
+   DOUBLE X;                      // Starting horizontal coordinate
+   DOUBLE Y;                      // Starting vertical coordinate
    struct rkPicture * Picture;
    struct rkBitmap * Bitmap;
    LONG   Units;                  // VUNIT constant, defines the coordinate system for (X,Y)
@@ -414,9 +414,9 @@ typedef struct rkVectorImage {
 
 typedef struct rkVectorPattern {
    OBJECT_HEADER
-   DOUBLE X;
-   DOUBLE Y;
-   DOUBLE Opacity;
+   DOUBLE X;                              // Starting horizontal coordinate
+   DOUBLE Y;                              // Starting vertical coordinate
+   DOUBLE Opacity;                        // Level of opacity from 0 - 1.0
    struct rkVectorScene * Scene;          // Internal scene
    struct rkVectorViewport * Viewport;    // Internal viewport
    struct rkVectorPattern * Inherit;      // Reference to another pattern from which to inherit attributes
@@ -447,11 +447,11 @@ typedef struct rkVectorGradient {
    DOUBLE FX;                            // Focal X coordinate for radial gradient shapes.
    DOUBLE FY;                            // Focal Y coordinate for radial gradient shapes.
    DOUBLE Radius;                        // The size of a radial gradient radius.
-   struct rkVectorGradient * Inherit;    // Reference to another gradient from which to inherit attributes
+   struct rkVectorGradient * Inherit;    // Reference to another gradient from which to inherit attributes.
    LONG   SpreadMethod;                  // Defines the spread method to use for gradient fills.
    LONG   Units;                         // Defines the coordinate system for (x1,y1),(x2,y2)
    LONG   Type;
-   LONG   Flags;                         // Optional flags
+   LONG   Flags;                         // Optional flags.
    LONG   TotalStops;                    // The total number of records in the Stops array.
 
 #ifdef PRV_VECTORGRADIENT

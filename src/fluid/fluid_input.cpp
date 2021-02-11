@@ -354,6 +354,7 @@ static int input_subscribe(lua_State *Lua)
       input->Mask        = mask;
       input->Mode        = FIM_DEVICE;
       input->Next        = prv->InputList;
+
       prv->InputList = input;
 
       auto callback = make_function_stdc(consume_input_events);
