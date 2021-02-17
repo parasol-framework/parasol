@@ -14,7 +14,7 @@ void MsgKeyPress(LONG Flags, LONG Value, LONG Printable)
 {
    if (!Value) return;
 
-   if ((Printable < 0x20) OR (Printable IS 127)) Flags |= KQ_NOT_PRINTABLE;
+   if ((Printable < 0x20) or (Printable IS 127)) Flags |= KQ_NOT_PRINTABLE;
 
    evKey key = {
       .EventID    = EVID_IO_KEYBOARD_KEYPRESS,
@@ -187,7 +187,7 @@ void MsgResizedWindow(OBJECTID SurfaceID, LONG WinX, LONG WinY, LONG WinWidth, L
    parasol::Log log("ResizedWindow");
    //log.branch("#%d, Window: %dx%d,%dx%d, Client: %dx%d,%dx%d", SurfaceID, WinX, WinY, WinWidth, WinHeight, ClientX, ClientY, ClientWidth, ClientHeight);
 
-   if ((!SurfaceID) OR (WinWidth < 1) OR (WinHeight < 1)) return;
+   if ((!SurfaceID) or (WinWidth < 1) or (WinHeight < 1)) return;
 
    objSurface *surface;
    if (!AccessObject(SurfaceID, 3000, &surface)) {
@@ -225,7 +225,7 @@ void MsgSetFocus(OBJECTID SurfaceID)
    parasol::Log log;
    objSurface *surface;
    if (!AccessObject(SurfaceID, 3000, &surface)) {
-      if ((!(surface->Flags & RNF_HAS_FOCUS)) AND (surface->Flags & RNF_VISIBLE)) {
+      if ((!(surface->Flags & RNF_HAS_FOCUS)) and (surface->Flags & RNF_VISIBLE)) {
          log.msg("WM_SETFOCUS: Sending focus to surface #%d.", SurfaceID);
          DelayMsg(AC_Focus, SurfaceID, 0);
       }
@@ -239,13 +239,12 @@ void MsgSetFocus(OBJECTID SurfaceID)
 
 void CheckWindowSize(OBJECTID SurfaceID, LONG *Width, LONG *Height)
 {
-   OBJECTPTR surface;
-   LONG minwidth, minheight, maxwidth, maxheight;
-   LONG left, right, top, bottom;
+   if ((!SurfaceID) or (!Width) or (!Height)) return;
 
-   if ((!SurfaceID) OR (!Width) OR (!Height)) return;
-
+   objSurface *surface;
    if (!AccessObject(SurfaceID, 3000, &surface)) {
+      LONG minwidth, minheight, maxwidth, maxheight;
+      LONG left, right, top, bottom;
       if (!GetFields(surface, FID_MinWidth|TLONG,     &minwidth,
                               FID_MinHeight|TLONG,    &minheight,
                               FID_MaxWidth|TLONG,     &maxwidth,
@@ -259,6 +258,17 @@ void CheckWindowSize(OBJECTID SurfaceID, LONG *Width, LONG *Height)
          if (*Height < minheight + top + bottom) *Height = minheight + top + bottom;
          if (*Width > maxwidth + left + right)   *Width  = maxwidth + left + right;
          if (*Height > maxheight + top + bottom) *Height = maxheight + top + bottom;
+
+         if (surface->Flags & RNF_ASPECT_RATIO) {
+            if (minwidth > minheight) {
+               DOUBLE scale = (DOUBLE)minheight / (DOUBLE)minwidth;
+               *Height = *Width * scale;
+            }
+            else {
+               DOUBLE scale = (DOUBLE)minwidth / (DOUBLE)minheight;
+               *Width = *Height * scale;
+            }
+         }
       }
       ReleaseObject(surface);
    }
@@ -268,7 +278,7 @@ void CheckWindowSize(OBJECTID SurfaceID, LONG *Width, LONG *Height)
 
 extern "C" void RepaintWindow(OBJECTID SurfaceID, LONG X, LONG Y, LONG Width, LONG Height)
 {
-   if ((Width) AND (Height)) {
+   if ((Width) and (Height)) {
       struct drwExpose expose = { X, Y, Width, Height, EXF_CHILDREN };
       ActionMsg(MT_DrwExpose, SurfaceID, &expose);
    }

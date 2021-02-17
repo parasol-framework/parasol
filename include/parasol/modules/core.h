@@ -320,7 +320,9 @@
 #define JET_ABS_X 31
 #define JET_ABS_Y 32
 #define JET_ENTERED_SURFACE 33
+#define JET_ENTERED 33
 #define JET_LEFT_SURFACE 34
+#define JET_LEFT 34
 #define JET_PRESSURE 35
 #define JET_DEVICE_TILT_X 36
 #define JET_DEVICE_TILT_Y 37

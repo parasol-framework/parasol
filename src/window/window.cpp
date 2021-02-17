@@ -1121,6 +1121,32 @@ static ERROR WINDOW_Show(objWindow *Self, APTR Void)
 /*****************************************************************************
 
 -FIELD-
+AspectRatio: Always enforce the window's aspect ratio, as based on the MinWidth and MinHeight values.
+
+Set this field to TRUE to force the window to honour the aspect ratio as defined by the MinWidth and MinHeight values
+of the Surface.  When the user attempts to resize the window, the aspect ratio will be maintained.
+
+The capabilities of this feature are limited to user activity on the desktop.  Writing the Width and Height
+values of the window programatically will not be impacted.
+
+*****************************************************************************/
+
+static ERROR GET_AspectRatio(objWindow *Self, LONG *Value)
+{
+   if (Self->Surface->Flags & RNF_ASPECT_RATIO) *Value = TRUE;
+   else *Value = FALSE;
+   return ERR_Okay;
+}
+
+static ERROR SET_AspectRatio(objWindow *Self, LONG Value)
+{
+   if (Value) return SetLong(Self->Surface, FID_Flags, Self->Surface->Flags | RNF_ASPECT_RATIO);
+   else return SetLong(Self->Surface, FID_Flags, Self->Surface->Flags & ~RNF_ASPECT_RATIO);
+}
+
+/*****************************************************************************
+
+-FIELD-
 Canvas: Allocates a surface canvas inside the window when read.
 
 To automatically allocate a surface inside a window after it has been initialised, read the Canvas field.  A basic
@@ -2079,9 +2105,10 @@ static const FieldArray clWindowFields[] = {
    { "ClientTop",        FDF_LONG|FDF_RI,      0, NULL, NULL },
    { "ClientBottom",     FDF_LONG|FDF_RI,      0, NULL, NULL },
    // Virtual fields
-   { "CloseFeedback", FDF_FUNCTIONPTR|FDF_RW, 0, (APTR)GET_CloseFeedback, (APTR)SET_CloseFeedback },
-   { "MinimiseCallback", FDF_FUNCTIONPTR|FDF_I, 0, NULL, (APTR)SET_MinimiseCallback },
-   { "MaximiseCallback", FDF_FUNCTIONPTR|FDF_I, 0, NULL, (APTR)SET_MaximiseCallback },
+   { "AspectRatio",      FDF_LONG|FDF_RW,        0, (APTR)GET_AspectRatio, (APTR)SET_AspectRatio },
+   { "CloseFeedback",    FDF_FUNCTIONPTR|FDF_RW, 0, (APTR)GET_CloseFeedback, (APTR)SET_CloseFeedback },
+   { "MinimiseCallback", FDF_FUNCTIONPTR|FDF_I,  0, NULL, (APTR)SET_MinimiseCallback },
+   { "MaximiseCallback", FDF_FUNCTIONPTR|FDF_I,  0, NULL, (APTR)SET_MaximiseCallback },
    { "Icon",          FDF_STRING|FDF_RW, 0, (APTR)GET_Icon,         (APTR)SET_Icon },
    { "Menu",          FDF_STRING|FDF_RW, 0, (APTR)GET_Menu,         (APTR)SET_Menu },
    { "InsideWidth",   FDF_LONG|FDF_RW,   0, (APTR)GET_InsideWidth,  (APTR)SET_InsideWidth },

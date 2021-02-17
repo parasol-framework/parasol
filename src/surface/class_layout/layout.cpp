@@ -308,7 +308,7 @@ static ERROR LAYOUT_Init(objLayout *Self, APTR Void)
    }
 
    if ((Self->PresetX) and (Self->PresetY)) {
-      // If the user has set fixed values on *both* axis, he can enable fixed placement mode, which means that the
+      // If the client has set fixed values on *both* axis then it can enable fixed placement mode, which means that the
       // cursor is completely ignored and the existing Bound* fields will be used without alteration.
       //
       // This also means that the left, right, top and bottom margins are all ignored.  Text will still be wrapped
@@ -1703,7 +1703,6 @@ fixed.  Negative values are permitted.
 
 static ERROR GET_Layout_X(objLayout *Self, Variable *Value)
 {
-   parasol::Log log;
    DOUBLE width, value;
 
    if (Self->Dimensions & DMF_FIXED_X) value = Self->X;
@@ -1723,7 +1722,10 @@ static ERROR GET_Layout_X(objLayout *Self, Variable *Value)
 
    if (Value->Type & FD_DOUBLE) Value->Double = value;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(value);
-   else return log.warning(ERR_FieldTypeMismatch);
+   else {
+      parasol::Log log;
+      return log.warning(ERR_FieldTypeMismatch);
+   }
 
    return ERR_Okay;
 }
@@ -2010,47 +2012,47 @@ static const FieldArray clLayoutFields[] = {
    { "BoundY",       FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)GET_Layout_BoundY,       (APTR)SET_Layout_BoundY },
    { "BoundYOffset", FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)GET_Layout_BoundYOffset, (APTR)SET_Layout_BoundYOffset },
 #endif
-   { "AbsX",          FDF_LONG|FDF_RW,      0, (APTR)GET_Layout_AbsX,            (APTR)SET_Layout_AbsX },
-   { "AbsY",          FDF_LONG|FDF_RW,      0, (APTR)GET_Layout_AbsY,            (APTR)SET_Layout_AbsY },
-   { "Align",         FDF_LONGFLAGS|FDF_RW, (MAXINT)&clSurfaceAlign,             (APTR)GET_Layout_Align, (APTR)SET_Layout_Align },
-   { "Bottom",        FDF_LONG|FDF_R,       0, (APTR)GET_Layout_Bottom,          NULL },
-   { "BottomLimit",   FDF_LONG|FDF_RW,      0, (APTR)GET_Layout_BottomLimit,     (APTR)SET_Layout_BottomLimit },
-   { "BottomMargin",  FDF_LONG|FDF_RW,      0, (APTR)GET_Layout_BottomMargin,    (APTR)SET_Layout_BottomMargin },
+   { "AbsX",          FDF_LONG|FDF_RW,        0, (APTR)GET_Layout_AbsX,            (APTR)SET_Layout_AbsX },
+   { "AbsY",          FDF_LONG|FDF_RW,        0, (APTR)GET_Layout_AbsY,            (APTR)SET_Layout_AbsY },
+   { "Align",         FDF_LONGFLAGS|FDF_RW,   (MAXINT)&clSurfaceAlign,             (APTR)GET_Layout_Align, (APTR)SET_Layout_Align },
+   { "Bottom",        FDF_LONG|FDF_R,         0, (APTR)GET_Layout_Bottom,          NULL },
+   { "BottomLimit",   FDF_LONG|FDF_RW,        0, (APTR)GET_Layout_BottomLimit,     (APTR)SET_Layout_BottomLimit },
+   { "BottomMargin",  FDF_LONG|FDF_RW,        0, (APTR)GET_Layout_BottomMargin,    (APTR)SET_Layout_BottomMargin },
    { "Cursor",        FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clSurfaceCursor,      (APTR)GET_Layout_Cursor,     (APTR)SET_Layout_Cursor },
-   { "Dimensions",    FDF_LONGFLAGS|FDF_RW, (MAXINT)&clSurfaceDimensions,        (APTR)GET_Layout_Dimensions, (APTR)SET_Layout_Dimensions },
-   { "DisableDrawing",FDF_LONG|FDF_RW,      0, (APTR)GET_Layout_DisableDrawing,  (APTR)SET_Layout_DisableDrawing },
+   { "Dimensions",    FDF_LONGFLAGS|FDF_RW,   (MAXINT)&clSurfaceDimensions,        (APTR)GET_Layout_Dimensions, (APTR)SET_Layout_Dimensions },
+   { "DisableDrawing",FDF_LONG|FDF_RW,        0, (APTR)GET_Layout_DisableDrawing,  (APTR)SET_Layout_DisableDrawing },
    { "DrawCallback",  FDF_FUNCTIONPTR|FDF_RI, 0, (APTR)GET_Layout_DrawCallback,  (APTR)SET_Layout_DrawCallback },
-   { "EastGap",       FDF_LONG|FDF_RW,      0, (APTR)GET_Layout_RightMargin,     (APTR)SET_Layout_RightMargin },
-   { "Layout",        FDF_LONGFLAGS|FDF_RW, (MAXINT)&clLayoutFlags,              (APTR)GET_Layout_Layout,  (APTR)SET_Layout_Layout },
-   { "Gap",           FDF_LONG|FDF_RW,      0, (APTR)GET_Layout_Gap,             (APTR)SET_Layout_Gap },
+   { "EastGap",       FDF_LONG|FDF_RW,        0, (APTR)GET_Layout_RightMargin,     (APTR)SET_Layout_RightMargin },
+   { "Layout",        FDF_LONGFLAGS|FDF_RW,   (MAXINT)&clLayoutFlags,              (APTR)GET_Layout_Layout,  (APTR)SET_Layout_Layout },
+   { "Gap",           FDF_LONG|FDF_RW,        0, (APTR)GET_Layout_Gap,             (APTR)SET_Layout_Gap },
    { "GraphicX",      FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0,          (APTR)GET_Layout_GraphicX, (APTR)SET_Layout_GraphicX },
    { "GraphicY",      FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0,          (APTR)GET_Layout_GraphicY, (APTR)SET_Layout_GraphicY },
    { "GraphicWidth",  FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0,          (APTR)GET_Layout_GraphicWidth, (APTR)SET_Layout_GraphicWidth },
    { "GraphicHeight", FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0,          (APTR)GET_Layout_GraphicHeight, (APTR)SET_Layout_GraphicHeight },
-   { "Hide",          FDF_LONG|FDF_RI,      0, (APTR)GET_Layout_Hide,            (APTR)SET_Layout_Hide },
-   { "InsideHeight",  FDF_LONG|FDF_RW,      0, (APTR)GET_Layout_InsideHeight,    (APTR)SET_Layout_InsideHeight },
-   { "InsideWidth",   FDF_LONG|FDF_RW,      0, (APTR)GET_Layout_InsideWidth,     (APTR)SET_Layout_InsideWidth },
-   { "LeftLimit",     FDF_LONG|FDF_RW,      0, (APTR)GET_Layout_LeftLimit,      (APTR)SET_Layout_LeftLimit },
-   { "LeftMargin",    FDF_LONG|FDF_RW,      0, (APTR)GET_Layout_LeftMargin,     (APTR)SET_Layout_LeftMargin },
-   { "MaxHeight",     FDF_LONG|FDF_RW,      0, (APTR)GET_Layout_MaxHeight,      (APTR)SET_Layout_MaxHeight },
-   { "MaxWidth",      FDF_LONG|FDF_RW,      0, (APTR)GET_Layout_MaxWidth,       (APTR)SET_Layout_MaxWidth },
-   { "MinHeight",     FDF_LONG|FDF_RW,      0, (APTR)GET_Layout_MinHeight,      (APTR)SET_Layout_MinHeight },
-   { "MinWidth",      FDF_LONG|FDF_RW,      0, (APTR)GET_Layout_MinWidth,       (APTR)SET_Layout_MinWidth },
-   { "NorthGap",      FDF_LONG|FDF_RW,      0, (APTR)GET_Layout_TopMargin,      (APTR)SET_Layout_TopMargin },
-   { "ResizeCallback",FDF_FUNCTIONPTR|FDF_RI,   0, (APTR)GET_Layout_ResizeCallback, (APTR)SET_Layout_ResizeCallback },
-   { "Right",         FDF_LONG|FDF_R,       0, (APTR)GET_Layout_Right,          NULL },
-   { "RightLimit",    FDF_LONG|FDF_RW,      0, (APTR)GET_Layout_RightLimit,     (APTR)SET_Layout_RightLimit },
-   { "RightMargin",   FDF_LONG|FDF_RW,      0, (APTR)GET_Layout_RightMargin,    (APTR)SET_Layout_RightMargin },
-   { "SouthGap",      FDF_LONG|FDF_RW,      0, (APTR)GET_Layout_BottomMargin,   (APTR)SET_Layout_BottomMargin },
-   { "Surface",       FDF_OBJECTID|FDF_RI,  0, (APTR)GET_Layout_Surface,        (APTR)SET_Layout_Surface },
-   { "TopMargin",     FDF_LONG|FDF_RW,      0, (APTR)GET_Layout_TopMargin,      (APTR)SET_Layout_TopMargin },
-   { "TopLimit",      FDF_LONG|FDF_RW,      0, (APTR)GET_Layout_TopLimit,       (APTR)SET_Layout_TopLimit },
-   { "Visible",       FDF_LONG|FDF_RW,      0, (APTR)GET_Layout_Visible,        (APTR)SET_Layout_Visible },
-   { "VisibleHeight", FDF_LONG|FDF_R,       0, (APTR)GET_Layout_VisibleHeight,  NULL },
-   { "VisibleWidth",  FDF_LONG|FDF_R,       0, (APTR)GET_Layout_VisibleWidth,   NULL },
-   { "VisibleX",      FDF_LONG|FDF_R,       0, (APTR)GET_Layout_VisibleX,       NULL },
-   { "VisibleY",      FDF_LONG|FDF_R,       0, (APTR)GET_Layout_VisibleY,       NULL },
-   { "WestGap",       FDF_LONG|FDF_RW,      0, (APTR)GET_Layout_LeftMargin,     (APTR)SET_Layout_LeftMargin },
+   { "Hide",          FDF_LONG|FDF_RI,        0, (APTR)GET_Layout_Hide,            (APTR)SET_Layout_Hide },
+   { "InsideHeight",  FDF_LONG|FDF_RW,        0, (APTR)GET_Layout_InsideHeight,    (APTR)SET_Layout_InsideHeight },
+   { "InsideWidth",   FDF_LONG|FDF_RW,        0, (APTR)GET_Layout_InsideWidth,     (APTR)SET_Layout_InsideWidth },
+   { "LeftLimit",     FDF_LONG|FDF_RW,        0, (APTR)GET_Layout_LeftLimit,      (APTR)SET_Layout_LeftLimit },
+   { "LeftMargin",    FDF_LONG|FDF_RW,        0, (APTR)GET_Layout_LeftMargin,     (APTR)SET_Layout_LeftMargin },
+   { "MaxHeight",     FDF_LONG|FDF_RW,        0, (APTR)GET_Layout_MaxHeight,      (APTR)SET_Layout_MaxHeight },
+   { "MaxWidth",      FDF_LONG|FDF_RW,        0, (APTR)GET_Layout_MaxWidth,       (APTR)SET_Layout_MaxWidth },
+   { "MinHeight",     FDF_LONG|FDF_RW,        0, (APTR)GET_Layout_MinHeight,      (APTR)SET_Layout_MinHeight },
+   { "MinWidth",      FDF_LONG|FDF_RW,        0, (APTR)GET_Layout_MinWidth,       (APTR)SET_Layout_MinWidth },
+   { "NorthGap",      FDF_LONG|FDF_RW,        0, (APTR)GET_Layout_TopMargin,      (APTR)SET_Layout_TopMargin },
+   { "ResizeCallback",FDF_FUNCTIONPTR|FDF_RI, 0, (APTR)GET_Layout_ResizeCallback, (APTR)SET_Layout_ResizeCallback },
+   { "Right",         FDF_LONG|FDF_R,         0, (APTR)GET_Layout_Right,          NULL },
+   { "RightLimit",    FDF_LONG|FDF_RW,        0, (APTR)GET_Layout_RightLimit,     (APTR)SET_Layout_RightLimit },
+   { "RightMargin",   FDF_LONG|FDF_RW,        0, (APTR)GET_Layout_RightMargin,    (APTR)SET_Layout_RightMargin },
+   { "SouthGap",      FDF_LONG|FDF_RW,        0, (APTR)GET_Layout_BottomMargin,   (APTR)SET_Layout_BottomMargin },
+   { "Surface",       FDF_OBJECTID|FDF_RI,    0, (APTR)GET_Layout_Surface,        (APTR)SET_Layout_Surface },
+   { "TopMargin",     FDF_LONG|FDF_RW,        0, (APTR)GET_Layout_TopMargin,      (APTR)SET_Layout_TopMargin },
+   { "TopLimit",      FDF_LONG|FDF_RW,        0, (APTR)GET_Layout_TopLimit,       (APTR)SET_Layout_TopLimit },
+   { "Visible",       FDF_LONG|FDF_RW,        0, (APTR)GET_Layout_Visible,        (APTR)SET_Layout_Visible },
+   { "VisibleHeight", FDF_LONG|FDF_R,         0, (APTR)GET_Layout_VisibleHeight,  NULL },
+   { "VisibleWidth",  FDF_LONG|FDF_R,         0, (APTR)GET_Layout_VisibleWidth,   NULL },
+   { "VisibleX",      FDF_LONG|FDF_R,         0, (APTR)GET_Layout_VisibleX,       NULL },
+   { "VisibleY",      FDF_LONG|FDF_R,         0, (APTR)GET_Layout_VisibleY,       NULL },
+   { "WestGap",       FDF_LONG|FDF_RW,        0, (APTR)GET_Layout_LeftMargin,     (APTR)SET_Layout_LeftMargin },
    { "Width",         FD_VARIABLE|FDF_LONG|FDF_PERCENTAGE|FDF_RW, 0, (APTR)GET_Layout_Width,   (APTR)SET_Layout_Width },
    { "Height",        FD_VARIABLE|FDF_LONG|FDF_PERCENTAGE|FDF_RW, 0, (APTR)GET_Layout_Height,  (APTR)SET_Layout_Height },
    { "X",             FD_VARIABLE|FDF_LONG|FDF_PERCENTAGE|FDF_RW, 0, (APTR)GET_Layout_X,       (APTR)SET_Layout_X },

@@ -901,6 +901,12 @@ static LRESULT CALLBACK WindowProcedure(HWND window, UINT msgcode, WPARAM wParam
          return 0;
       }
 
+      case WM_WINDOWPOSCHANGING: {
+         LPWINDOWPOS winpos = (LPWINDOWPOS)lParam;
+         winpos->flags |= SWP_NOCOPYBITS|SWP_NOREDRAW;
+         return 0;
+      }
+
       case WM_SIZING: {
          // This procedure is called when the user is resizing a window by its anchor points.
 
