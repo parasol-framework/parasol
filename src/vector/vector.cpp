@@ -13,7 +13,8 @@ Please refer to it for further information on licensing.
 #define PRV_VECTORFILTER
 #define PRV_VECTORPATH
 #define PRV_VECTOR_MODULE
-#define DBG_TRANSFORM(args...) //MSG(args)
+
+#define DBG_TRANSFORM(args...) //log.trace(args)
 
 #include "agg_alpha_mask_u8.h"
 #include "agg_basics.h"
@@ -50,6 +51,11 @@ Please refer to it for further information on licensing.
 #include "agg_trans_affine.h"
 //#include "agg_vcgen_markers_term.h"
 
+#include <array>
+#include <memory>
+#include <unordered_set>
+#include <unordered_map>
+
 #include <parasol/main.h>
 #include <parasol/modules/xml.h>
 #include "vector.h"
@@ -66,9 +72,6 @@ Please refer to it for further information on licensing.
 
 #include <ft2build.h>
 #include <freetype/freetype.h>
-
-#include <array>
-#include <memory>
 
 #include "vectors/vector.h"
 #include "idl.h"

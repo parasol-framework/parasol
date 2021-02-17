@@ -184,9 +184,9 @@ module({ name="Vector", copyright="Paul Manias © 2010-2020", version=1.0 }, fun
     "Y_MIN: Align to the top",
     "Y_MID: Align to the vertical center",
     "Y_MAX: Align to the bottom",
-    "MEET: Aspect ratio is preserved. The entire viewbox is visible within the viewport.  The viewbox is scaled up as much as possible.",
-    "SLICE: Aspect ratio is preserved. The entire viewport is covered by the viewbox.  The viewbox is scaled down as much as possible.",
-    "NONE: Scale the viewbox to match the size of the viewport.")
+    "MEET: Aspect ratio is preserved. The entire viewbox will be visible in the viewport.  The viewbox is scaled up as much as possible.",
+    "SLICE: Aspect ratio is preserved. The viewbox can extend beyond the viewport's edges on one axis.  The viewbox is scaled up as much as possible.",
+    "NONE: Scale the viewbox to match the size of the viewport.  Aspect ratio is not preserved.")
 
   flags("VBF", { comment="For vecGetBoundary()" },
      "INCLUSIVE: The result will be inclusive of all paths that belong to children of the queried vector.",

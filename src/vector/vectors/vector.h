@@ -22,7 +22,7 @@ typedef struct rkVectorViewport {
    SHAPE_PUBLIC
    SHAPE_PRIVATE
    DOUBLE vpViewX, vpViewY, vpViewWidth, vpViewHeight;     // Viewbox values determine the area of the SVG content that is being sourced.  These values are always fixed pixel units.
-   DOUBLE vpTargetX, vpTargetY, vpTargetWidth, vpTargetHeight; // Target X,Y,Width,Height
+   DOUBLE vpTargetX, vpTargetY, vpTargetXO, vpTargetYO, vpTargetWidth, vpTargetHeight; // Target dimensions
    DOUBLE vpXScale, vpYScale;                              // Scaling factors for View -to-> Target
    DOUBLE vpFixedRelX, vpFixedRelY, vpFixedWidth, vpFixedHeight; // Fixed pixel position values, relative to parent viewport
    DOUBLE vpBX1, vpBY1, vpBX2, vpBY2; // Bounding box coordinates relative to (0,0), used for clipping

@@ -99,7 +99,7 @@ static ERROR VECTOR_ClearTransforms(objVector *Self, APTR Void)
 {
    parasol::Log log;
 
-   log.traceBranch("");
+   log.traceBranch();
 
    if (Self->Transforms) {
       VectorTransform *next;
@@ -155,7 +155,7 @@ transformations and position information that applies to the vector will be take
 boundary.
 
 If the VBF_INCLUSIVE flag is used, the result will include an analysis of all paths that belong to children of the
-target vector.
+target vector, including transforms.
 
 If the VBF_NO_TRANSFORM flag is used, the transformation step is not applied to the vector's path.
 
@@ -1186,8 +1186,8 @@ corners.  Visually, the impact of this setting is only noticeable when a path fo
 over itself - usually due to the placement of bezier control points.
 
 The available settings are MITER, ROUND, BEVEL, JAG and INHERIT.  The default of MITER is recommended as it is the
-fastest, but ROUND produces the best results in ensuring that the stroked path is filled correctly.  The best approach
-is to leave this field at the default setting and switch to ROUND if issues are noted near the corners of the path.
+fastest, but ROUND produces the best results in ensuring that the stroked path is filled correctly.  The most optimal
+approach is to use the default setting and switch to ROUND if issues are noted near the corners of the path.
 
 *****************************************************************************/
 

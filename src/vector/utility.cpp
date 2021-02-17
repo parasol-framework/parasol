@@ -74,7 +74,7 @@ static FIELD FID_FreetypeFace;
 template <class T> static void mark_dirty(T *Vector, UBYTE Flags)
 {
    Vector->Dirty |= Flags;
-   for (objVector *scan=(objVector *)Vector->Child; scan; scan=(objVector *)scan->Next) {
+   for (auto scan=(objVector *)Vector->Child; scan; scan=(objVector *)scan->Next) {
       if ((scan->Dirty & Flags) == Flags) continue;
       mark_dirty(scan, Flags);
    }
@@ -294,7 +294,7 @@ template <class T> static VectorTransform * add_transform(T *Self, LONG Type)
 
 static DOUBLE read_unit(CSTRING Value, UBYTE *Percent)
 {
-   BYTE isnumber = TRUE;
+   bool isnumber = true;
 
    *Percent = 0;
 
@@ -311,7 +311,7 @@ static DOUBLE read_unit(CSTRING Value, UBYTE *Percent)
          if ((*str >= '0') and (*str <= '9')) {
             while ((*str >= '0') and (*str <= '9')) str++;
          }
-         else isnumber = FALSE;
+         else isnumber = false;
       }
 
       DOUBLE multiplier = 1.0;

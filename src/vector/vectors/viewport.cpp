@@ -6,9 +6,9 @@ VectorViewport: Provides support for viewport definitions within a vector tree.
 This class is used to declare a viewport within a vector definition.  A master viewport is required as the first object
 in a @VectorScene and it must contain all vector graphics content.
 
-The size of the viewport is initially set to (0,0,100%,100%) so as to be all inclusive.  Setting the X, Y, Width and
-Height fields will determine the position and clipping of the displayed content (the 'target area').  The ViewX, ViewY,
-ViewWidth and ViewHeight fields declare the viewbox (the 'source area') that will be sampled for the target.
+The size of the viewport is initially set to (0,0,100%,100%) so as to be all inclusive.  Setting the #X, #Y, #Width and
+#Height fields will determine the position and clipping of the displayed content (the 'target area').  The #ViewX, #ViewY,
+#ViewWidth and #ViewHeight fields declare the viewbox ('source area') that will be sampled for the target.
 
 To configure the scaling method that is applied to the viewport content, set the #AspectRatio field.
 
@@ -47,7 +47,18 @@ static ERROR VIEW_Free(objVectorViewport *Self, APTR Void)
 
 static ERROR VIEW_Init(objVectorViewport *Self, APTR Void)
 {
-   // Please refer to gen_vector_path() for the initialisation of vpFixedX/Y/Width/Height
+   // Please refer to gen_vector_path() for the initialisation of vpFixedX/Y/Width/Height, which has
+   // its own section for dealing with viewports.
+
+   if (!(Self->vpDimensions & (DMF_FIXED_X|DMF_RELATIVE_X|DMF_FIXED_X_OFFSET|DMF_RELATIVE_X_OFFSET))) {
+      Self->vpTargetX = 0;
+      Self->vpDimensions |= DMF_FIXED_X;
+   }
+
+   if (!(Self->vpDimensions & (DMF_FIXED_Y|DMF_RELATIVE_Y|DMF_FIXED_Y_OFFSET|DMF_RELATIVE_Y_OFFSET))) {
+      Self->vpTargetY = 0;
+      Self->vpDimensions |= DMF_FIXED_Y;
+   }
 
    return ERR_Okay;
 }
@@ -66,6 +77,7 @@ static ERROR VIEW_Move(objVectorViewport *Self, struct acMove *Args)
    if (!GetFields(Self, FID_X|TDOUBLE, &x, FID_Y|TDOUBLE, &y, TAGEND)) {
       Self->vpDimensions = (Self->vpDimensions | DMF_FIXED_X) & (~DMF_RELATIVE_X);
       Self->vpTargetX += x;
+
       Self->vpDimensions = (Self->vpDimensions | DMF_FIXED_Y) & (~DMF_RELATIVE_Y);
       Self->vpTargetY += y;
 
@@ -103,9 +115,6 @@ static ERROR VIEW_MoveToPoint(objVectorViewport *Self, struct acMoveToPoint *Arg
 
 static ERROR VIEW_NewObject(objVectorViewport *Self, APTR Void)
 {
-   Self->vpTargetX = 0;
-   Self->vpTargetY = 0;
-   Self->vpDimensions = DMF_FIXED_X|DMF_FIXED_Y;
    Self->vpAspectRatio = ARF_MEET|ARF_X_MID|ARF_Y_MID;
 
    // NB: vpTargetWidth and vpTargetHeight are not set to a default because we need to know if the client has
@@ -391,16 +400,39 @@ static ERROR VIEW_SET_Width(objVectorViewport *Self, Variable *Value)
 -FIELD-
 X: Positions the viewport on the x-axis.
 
-The display position targeted by the viewport is declared in the (X,Y) fields.
+The display position targeted by the viewport is declared by the (X,Y) field values.  Coordinates can be expressed as
+fixed or relative pixel units.
+
+If an offset from the edge of the parent is desired, the #XOffset field must be defined.  If a X and XOffset value are defined
+together, the width of the viewport is computed on-the-fly and will change in response to the parent's width.
 
 *****************************************************************************/
 
 static ERROR VIEW_GET_X(objVectorViewport *Self, Variable *Value)
 {
-   DOUBLE val = Self->vpTargetX;
-   if (Value->Type & FD_PERCENTAGE) val = val * 100.0;
-   if (Value->Type & FD_DOUBLE) Value->Double = val;
-   else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
+   DOUBLE width, value;
+
+   if (Self->vpDimensions & DMF_FIXED_X) value = Self->vpTargetX;
+   else if (Self->vpDimensions & DMF_RELATIVE_X) {
+      value = (DOUBLE)Self->vpTargetX * (DOUBLE)Self->ParentView->vpFixedWidth * 0.01;
+   }
+   else if ((Self->vpDimensions & DMF_WIDTH) and (Self->vpDimensions & DMF_X_OFFSET)) {
+      if (Self->vpDimensions & DMF_FIXED_WIDTH) width = Self->vpTargetWidth;
+      else width = (DOUBLE)Self->ParentView->vpFixedWidth * (DOUBLE)Self->vpTargetWidth * 0.01;
+      if (Self->vpDimensions & DMF_FIXED_X_OFFSET) value = Self->ParentView->vpFixedWidth - width - Self->vpTargetXO;
+      else value = (DOUBLE)Self->ParentView->vpFixedWidth - (DOUBLE)width - ((DOUBLE)Self->ParentView->vpFixedWidth * (DOUBLE)Self->vpTargetXO * 0.01);
+   }
+   else value = 0;
+
+   if (Value->Type & FD_PERCENTAGE) value = ((DOUBLE)value * 100.0) / (DOUBLE)Self->ParentView->vpFixedWidth;
+
+   if (Value->Type & FD_DOUBLE) Value->Double = value;
+   else if (Value->Type & FD_LARGE) Value->Large = F2T(value);
+   else {
+      parasol::Log log;
+      return log.warning(ERR_FieldTypeMismatch);
+   }
+
    return ERR_Okay;
 }
 
@@ -425,18 +457,102 @@ static ERROR VIEW_SET_X(objVectorViewport *Self, Variable *Value)
 
 /*****************************************************************************
 -FIELD-
+XOffset: Positions the viewport on the x-axis.
+
+The display position targeted by the viewport is declared by the (X,Y) field values.  Coordinates can be expressed as
+fixed or relative pixel units.
+
+If an offset from the edge of the parent is desired, the #XOffset field must be defined.  If a X and XOffset value are defined
+together, the width of the viewport is computed on-the-fly and will change in response to the parent's width.
+
+*****************************************************************************/
+
+static ERROR VIEW_GET_XOffset(objVectorViewport *Self, Variable *Value)
+{
+   DOUBLE width;
+   DOUBLE value = 0;
+   if (Self->vpDimensions & DMF_FIXED_X_OFFSET) value = Self->vpTargetXO;
+   else if (Self->vpDimensions & DMF_RELATIVE_X_OFFSET) {
+      value = (DOUBLE)Self->vpTargetXO * (DOUBLE)Self->ParentView->vpFixedWidth * 0.01;
+   }
+   else if ((Self->vpDimensions & DMF_X) and (Self->vpDimensions & DMF_WIDTH)) {
+      if (Self->vpDimensions & DMF_FIXED_WIDTH) width = Self->vpTargetWidth;
+      else width = (DOUBLE)Self->ParentView->vpFixedWidth * (DOUBLE)Self->vpTargetWidth * 0.01;
+
+      if (Self->vpDimensions & DMF_FIXED_X) value = Self->ParentView->vpFixedWidth - (Self->vpTargetX + width);
+      else value = (DOUBLE)Self->ParentView->vpFixedWidth - (((DOUBLE)Self->vpTargetX * (DOUBLE)Self->ParentView->vpFixedWidth * 0.01) + (DOUBLE)width);
+   }
+   else value = 0;
+
+   if (Value->Type & FD_PERCENTAGE) value = ((DOUBLE)value * 100.0) / (DOUBLE)Self->ParentView->vpFixedWidth;
+
+   if (Value->Type & FD_DOUBLE) Value->Double = value;
+   else if (Value->Type & FD_LARGE) Value->Large = F2T(value);
+   else {
+      parasol::Log log;
+      return log.warning(ERR_FieldTypeMismatch);
+   }
+
+   return ERR_Okay;
+}
+
+static ERROR VIEW_SET_XOffset(objVectorViewport *Self, Variable *Value)
+{
+   DOUBLE val;
+   if (Value->Type & FD_DOUBLE) val = Value->Double;
+   else if (Value->Type & FD_LARGE) val = Value->Large;
+   else return ERR_FieldTypeMismatch;
+
+   if (Value->Type & FD_PERCENTAGE) {
+      Self->vpDimensions = (Self->vpDimensions | DMF_RELATIVE_X_OFFSET) & (~DMF_FIXED_X_OFFSET);
+      Self->vpTargetXO = val * 0.01;
+   }
+   else {
+      Self->vpDimensions = (Self->vpDimensions | DMF_FIXED_X_OFFSET) & (~DMF_RELATIVE_X_OFFSET);
+      Self->vpTargetXO = val;
+   }
+   mark_dirty((objVector *)Self, RC_ALL);
+   return ERR_Okay;
+}
+
+/*****************************************************************************
+-FIELD-
 Y: Positions the viewport on the y-axis.
 
-The display position targeted by the viewport is declared in the (X,Y) fields.
+The display position targeted by the viewport is declared by the (X,Y) field values.  Coordinates can be expressed as
+fixed or relative pixel units.
+
+If an offset from the edge of the parent is desired, the #YOffset must be defined.  If a Y and YOffset value are defined
+together, the height of the viewport is computed on-the-fly and will change in response to the parent's height.
+
 -END-
 *****************************************************************************/
 
 static ERROR VIEW_GET_Y(objVectorViewport *Self, Variable *Value)
 {
-   DOUBLE val = Self->vpTargetY;
-   if (Value->Type & FD_PERCENTAGE) val = val * 100.0;
-   if (Value->Type & FD_DOUBLE) Value->Double = val;
-   else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
+   DOUBLE value, height;
+
+   if (Self->vpDimensions & DMF_FIXED_Y) value = Self->vpTargetY;
+   else if (Self->vpDimensions & DMF_RELATIVE_Y) {
+      value = (DOUBLE)Self->vpTargetY * (DOUBLE)Self->ParentView->vpFixedHeight * 0.01;
+   }
+   else if ((Self->vpDimensions & DMF_HEIGHT) and (Self->vpDimensions & DMF_Y_OFFSET)) {
+      if (Self->vpDimensions & DMF_FIXED_HEIGHT) height = Self->vpTargetHeight;
+      else height = (DOUBLE)Self->ParentView->vpFixedHeight * (DOUBLE)Self->vpTargetHeight * 0.01;
+
+      if (Self->vpDimensions & DMF_FIXED_Y_OFFSET) value = Self->ParentView->vpFixedHeight - height - Self->vpTargetYO;
+      else value = (DOUBLE)Self->ParentView->vpFixedHeight - height - ((DOUBLE)Self->ParentView->vpFixedHeight * (DOUBLE)Self->vpTargetYO * 0.01);
+   }
+   else value = 0;
+
+   if (Value->Type & FD_PERCENTAGE) value = (value * 100.0) / (DOUBLE)Self->ParentView->vpFixedHeight;
+   if (Value->Type & FD_DOUBLE) Value->Double = value;
+   else if (Value->Type & FD_LARGE) Value->Large = F2T(value);
+   else {
+      parasol::Log log;
+      return log.warning(ERR_FieldTypeMismatch);
+   }
+
    return ERR_Okay;
 }
 
@@ -459,6 +575,66 @@ static ERROR VIEW_SET_Y(objVectorViewport *Self, Variable *Value)
    return ERR_Okay;
 }
 
+/*****************************************************************************
+-FIELD-
+YOffset: Positions the viewport on the y-axis.
+
+The display position targeted by the viewport is declared by the (X,Y) field values.  Coordinates can be expressed as
+fixed or relative pixel units.
+
+If an offset from the edge of the parent is desired, the #YOffset must be defined.  If a Y and YOffset value are defined
+together, the height of the viewport is computed on-the-fly and will change in response to the parent's height.
+
+*****************************************************************************/
+
+static ERROR VIEW_GET_YOffset(objVectorViewport *Self, Variable *Value)
+{
+   DOUBLE height;
+   DOUBLE value = 0;
+   if (Self->vpDimensions & DMF_FIXED_Y_OFFSET) value = Self->vpTargetYO;
+   else if (Self->vpDimensions & DMF_RELATIVE_Y_OFFSET) {
+      value = (DOUBLE)Self->vpTargetYO * (DOUBLE)Self->ParentView->vpFixedHeight * 0.01;
+   }
+   else if ((Self->vpDimensions & DMF_Y) and (Self->vpDimensions & DMF_HEIGHT)) {
+      if (Self->vpDimensions & DMF_FIXED_HEIGHT) height = Self->vpTargetHeight;
+      else height = (DOUBLE)Self->ParentView->vpFixedHeight * (DOUBLE)Self->vpTargetHeight * 0.01;
+
+      if (Self->vpDimensions & DMF_FIXED_Y) value = Self->ParentView->vpFixedHeight - (Self->vpTargetY + height);
+      else value = (DOUBLE)Self->ParentView->vpFixedHeight - (((DOUBLE)Self->vpTargetY * (DOUBLE)Self->ParentView->vpFixedHeight * 0.01) + (DOUBLE)height);
+   }
+   else value = 0;
+
+   if (Value->Type & FD_PERCENTAGE) value = ((DOUBLE)value * 100.0) / (DOUBLE)Self->ParentView->vpFixedHeight;
+
+   if (Value->Type & FD_DOUBLE) Value->Double = value;
+   else if (Value->Type & FD_LARGE) Value->Large = F2T(value);
+   else {
+      parasol::Log log;
+      return log.warning(ERR_FieldTypeMismatch);
+   }
+
+   return ERR_Okay;
+}
+
+static ERROR VIEW_SET_YOffset(objVectorViewport *Self, Variable *Value)
+{
+   DOUBLE val;
+   if (Value->Type & FD_DOUBLE) val = Value->Double;
+   else if (Value->Type & FD_LARGE) val = Value->Large;
+   else return ERR_FieldTypeMismatch;
+
+   if (Value->Type & FD_PERCENTAGE) {
+      Self->vpDimensions = (Self->vpDimensions | DMF_RELATIVE_Y_OFFSET) & (~DMF_FIXED_Y_OFFSET);
+      Self->vpTargetYO = val * 0.01;
+   }
+   else {
+      Self->vpDimensions = (Self->vpDimensions | DMF_FIXED_Y_OFFSET) & (~DMF_RELATIVE_Y_OFFSET);
+      Self->vpTargetYO = val;
+   }
+   mark_dirty((objVector *)Self, RC_ALL);
+   return ERR_Okay;
+}
+
 //****************************************************************************
 
 static const FieldDef clViewDimensions[] = {
@@ -474,10 +650,12 @@ static const FieldDef clViewDimensions[] = {
 };
 
 static const FieldArray clViewFields[] = {
-   { "X",           FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)VIEW_GET_X,      (APTR)VIEW_SET_X },
-   { "Y",           FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)VIEW_GET_Y,      (APTR)VIEW_SET_Y },
-   { "Width",       FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)VIEW_GET_Width,  (APTR)VIEW_SET_Width },
-   { "Height",      FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)VIEW_GET_Height, (APTR)VIEW_SET_Height },
+   { "X",           FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)VIEW_GET_X,       (APTR)VIEW_SET_X },
+   { "Y",           FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)VIEW_GET_Y,       (APTR)VIEW_SET_Y },
+   { "XOffset",     FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)VIEW_GET_XOffset, (APTR)VIEW_SET_XOffset },
+   { "YOffset",     FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)VIEW_GET_YOffset, (APTR)VIEW_SET_YOffset },
+   { "Width",       FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)VIEW_GET_Width,   (APTR)VIEW_SET_Width },
+   { "Height",      FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)VIEW_GET_Height,  (APTR)VIEW_SET_Height },
    { "ViewX",       FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, 0, (APTR)VIEW_GET_ViewX,      (APTR)VIEW_SET_ViewX },
    { "ViewY",       FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, 0, (APTR)VIEW_GET_ViewY,      (APTR)VIEW_SET_ViewY },
    { "ViewWidth",   FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, 0, (APTR)VIEW_GET_ViewWidth,  (APTR)VIEW_SET_ViewWidth },

@@ -387,7 +387,7 @@ Gamma: Private. Not currently implemented.
 -FIELD-
 PageHeight: The height of the page that contains the vector.
 
-This value defines the pixel height of the page that contains the vector definition.  If the RESIZE #Flags
+This value defines the pixel height of the page that contains the vector scene graph.  If the RESIZE #Flags
 option is used then the viewport will be scaled to fit within the page.
 
 ****************************************************************************/
@@ -395,8 +395,10 @@ option is used then the viewport will be scaled to fit within the page.
 static ERROR SET_PageHeight(objVectorScene *Self, LONG Value)
 {
    if (Value IS Self->PageHeight) return ERR_Okay;
+
    if (Value < 1) Self->PageHeight = 1;
    else Self->PageHeight = Value;
+
    if (Self->Viewport) mark_dirty(Self->Viewport, RC_BASE_PATH|RC_TRANSFORM); // Base-paths need to be recomputed if they use relative coordinates.
    return ERR_Okay;
 }
@@ -406,7 +408,7 @@ static ERROR SET_PageHeight(objVectorScene *Self, LONG Value)
 -FIELD-
 PageWidth: The width of the page that contains the vector.
 
-This value defines the pixel width of the page that contains the vector definition.  If the RESIZE #Flags
+This value defines the pixel width of the page that contains the vector scene graph.  If the RESIZE #Flags
 option is used then the viewport will be scaled to fit within the page.
 
 ****************************************************************************/
@@ -417,6 +419,7 @@ static ERROR SET_PageWidth(objVectorScene *Self, LONG Value)
 
    if (Value < 1) Self->PageWidth = 1;
    else Self->PageWidth = Value;
+
    if (Self->Viewport) mark_dirty(Self->Viewport, RC_BASE_PATH|RC_TRANSFORM);
    return ERR_Okay;
 }
