@@ -2,7 +2,7 @@
 #define MODULES_VECTOR 1
 
 // Name:      vector.h
-// Copyright: Paul Manias © 2010-2020
+// Copyright: Paul Manias © 2010-2021
 // Generator: idl-c
 
 #ifndef MAIN_H
@@ -19,6 +19,11 @@
 
 #define ARC_LARGE 0x00000001
 #define ARC_SWEEP 0x00000002
+
+// Optional flags and indicators for the Vector class.
+
+#define VF_DISABLED 0x00000001
+#define VF_HAS_FOCUS 0x00000002
 
 #define VUNIT_UNDEFINED 0
 #define VUNIT_BOUNDING_BOX 1
@@ -358,6 +363,7 @@ typedef struct rkVectorScene {
 #ifdef PRV_VECTORSCENE
    class VMAdaptor *Adaptor;
    agg::rendering_buffer *Buffer;
+   std::unordered_map<OBJECTID, struct acRedimension> *PendingResizeMsgs;
    UBYTE  AdaptorType;
   
 #endif
@@ -584,6 +590,7 @@ typedef struct rkVector {
    LONG      ActiveTransforms;             // Indicates the transforms that are currently applied to a vector.
    LONG      DashTotal;                    // The total number of values in the DashArray.
    LONG      Visibility;                   // Controls the visibility of a vector and its children.
+   LONG      Flags;                        // Optional flags.
 
 #ifdef PRV_VECTOR
  SHAPE_PRIVATE 
@@ -604,6 +611,7 @@ typedef struct rkVector {
 #define MT_VecPointInPath -10
 #define MT_VecClearTransforms -11
 #define MT_VecGetTransform -12
+#define MT_VecInputSubscription -13
 
 struct vecPush { LONG Position;  };
 struct vecTracePath { FUNCTION * Callback;  };
@@ -616,6 +624,7 @@ struct vecScale { DOUBLE X; DOUBLE Y;  };
 struct vecSkew { DOUBLE X; DOUBLE Y;  };
 struct vecPointInPath { DOUBLE X; DOUBLE Y;  };
 struct vecGetTransform { LONG Type; struct VectorTransform * Transform;  };
+struct vecInputSubscription { LONG Mask; FUNCTION * Callback;  };
 
 INLINE ERROR vecPush(APTR Ob, LONG Position) {
    struct vecPush args = { Position };
@@ -679,6 +688,11 @@ INLINE ERROR vecGetTransform(APTR Ob, LONG Type, struct VectorTransform ** Trans
    ERROR error = Action(MT_VecGetTransform, (OBJECTPTR)Ob, &args);
    if (Transform) *Transform = args.Transform;
    return(error);
+}
+
+INLINE ERROR vecInputSubscription(APTR Ob, LONG Mask, FUNCTION * Callback) {
+   struct vecInputSubscription args = { Mask, Callback };
+   return(Action(MT_VecInputSubscription, (OBJECTPTR)Ob, &args));
 }
 
 

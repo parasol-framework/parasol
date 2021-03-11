@@ -1,6 +1,6 @@
 --$FLUID:Include
 
-module({ name="Vector", copyright="Paul Manias © 2010-2020", version=1.0 }, function()
+module({ name="Vector", copyright="Paul Manias © 2010-2021", version=1.0 }, function()
   c_include("<parasol/modules/display.h>")
 
   restrict(function()
@@ -10,6 +10,11 @@ module({ name="Vector", copyright="Paul Manias © 2010-2020", version=1.0 }, fun
   flags("ARC", { comment="Options for drawing arcs." },
     "LARGE",
     "SWEEP")
+
+  flags("VF", { comment="Optional flags and indicators for the Vector class." },
+     "DISABLED: The vector is disabled and user input should be ignored.",
+     "HAS_FOCUS: The vector holds the user's input focus."
+     )
 
   enum("VUNIT", { start=0 },
     "UNDEFINED",
@@ -282,6 +287,7 @@ module({ name="Vector", copyright="Paul Manias © 2010-2020", version=1.0 }, fun
   [[
    class VMAdaptor *Adaptor;
    agg::rendering_buffer *Buffer;
+   std::unordered_map<OBJECTID, struct acRedimension> *PendingResizeMsgs;
    UBYTE  AdaptorType;
   ]])
 
@@ -424,7 +430,8 @@ module({ name="Vector", copyright="Paul Manias © 2010-2020", version=1.0 }, fun
     { id=9,  name="Skew" },
     { id=10, name="PointInPath" },
     { id=11, name="ClearTransforms" },
-    { id=12, name="GetTransform" }
+    { id=12, name="GetTransform" },
+    { id=13, name="InputSubscription" }
   })
 
   class("Vector", { src="vectors/vector.cpp", output="vectors/vector_def.c", version=1 }, [[
@@ -444,6 +451,7 @@ module({ name="Vector", copyright="Paul Manias © 2010-2020", version=1.0 }, fun
     int ActiveTransforms    # Indicates the transforms that are currently applied to a vector.
     int DashTotal           # The total number of values in the DashArray.
     int(VIS) Visibility     # Controls the visibility of a vector and its children.
+    int(VF) Flags           # Optional flags.
   ]],
   [[ SHAPE_PRIVATE ]])
 

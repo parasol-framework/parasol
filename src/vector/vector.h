@@ -1,4 +1,12 @@
 
+class InputSubscription {
+public:
+   FUNCTION Callback;
+   LONG Mask;
+
+   InputSubscription(FUNCTION pCallback, LONG pMask) : Callback(pCallback), Mask(pMask) { }
+};
+
 #define SHAPE_PRIVATE \
    DOUBLE FinalX, FinalY; \
    DOUBLE FillGradientAlpha, StrokeGradientAlpha; \
@@ -21,6 +29,9 @@
    CSTRING FilterString, StrokeString, FillString; \
    struct DRGB StrokeColour, FillColour; \
    DOUBLE *DashArray; \
+   std::vector<InputSubscription> *InputSubscriptions; \
+   LONG   InputHandle; \
+   LONG   InputMask; \
    LONG   NumericID; \
    LONG   PathLength; \
    UBYTE  MorphFlags; \
@@ -28,6 +39,7 @@
    UBYTE  ClipRule; \
    UBYTE  Dirty; \
    UBYTE  EnableBkgd:1; \
+   UBYTE  UserHovering:1; \
    agg::line_join_e  LineJoin; \
    agg::line_cap_e   LineCap; \
    agg::inner_join_e InnerJoin; \

@@ -12,7 +12,7 @@
     <idstring>ID_VECTOR</idstring>
     <category>Graphics</category>
     <include>modules/vector.h</include>
-    <copyright>Paul Manias © 2010-2020</copyright>
+    <copyright>Paul Manias © 2010-2021</copyright>
     <description>
 <p>Vector is an abstract class that is used as a blueprint for other vector classes that provide specific functionality for a vector scene.  At this time the classes are <class name="VectorClip">VectorClip</class>, <class name="VectorEllipse">VectorEllipse</class>, <class name="VectorGroup">VectorGroup</class>, <class name="VectorPath">VectorPath</class>, <class name="VectorPolygon">VectorPolygon</class>, <class name="VectorRectangle">VectorRectangle</class>, <class name="VectorSpiral">VectorSpiral</class>, <class name="VectorText">VectorText</class>, <class name="VectorViewport">VectorViewport</class> and <class name="VectorWave">VectorWave</class>.</p>
 <p>The majority of sub-classes support all of the functionality provided by Vector.  The general exception is that graphics functions will not be supported by non-graphical classes, for instance <class name="VectorGroup">VectorGroup</class> and <class name="VectorViewport">VectorViewport</class> do not produce a vector path and therefore cannot be rendered.</p>
@@ -24,8 +24,33 @@
 
   <actions>
     <action>
+      <name>Disable</name>
+      <comment>Disabling a vector can be used to trigger style changes and prevent user input.</comment>
+    </action>
+
+    <action>
+      <name>Draw</name>
+      <comment>Draws the surface associated with the vector.</comment>
+    </action>
+
+    <action>
+      <name>Enable</name>
+      <comment>Reverses the effects of disabling the vector.</comment>
+    </action>
+
+    <action>
+      <name>Hide</name>
+      <comment>Changes the vector's visibility setting to hidden.</comment>
+    </action>
+
+    <action>
       <name>Reset</name>
       <comment>Clears all transform settings from the vector.</comment>
+    </action>
+
+    <action>
+      <name>Show</name>
+      <comment>Changes the vector's visibility setting to visible.</comment>
     </action>
 
   </actions>
@@ -78,7 +103,7 @@
       </input>
       <description>
 <p>This function will return the boundary of a vector's path in terms of its top-left position, width and height.  All transformations and position information that applies to the vector will be taken into account when computing the boundary.</p>
-<p>If the VBF_INCLUSIVE flag is used, the result will include an analysis of all paths that belong to children of the target vector.</p>
+<p>If the VBF_INCLUSIVE flag is used, the result will include an analysis of all paths that belong to children of the target vector, including transforms.</p>
 <p>If the VBF_NO_TRANSFORM flag is used, the transformation step is not applied to the vector's path.</p>
 <p>It is recommended that this method is not called until at least one rendering pass has been made, as some vector dimensions may not be computed before then.</p>
       </description>
@@ -106,6 +131,29 @@
         <error code="NullArgs">Function call missing argument value(s)</error>
         <error code="Search">The requested transform type is not applied.</error>
         <error code="NoData">No transformations are applied to the vector.</error>
+        <error code="Okay">Operation successful.</error>
+      </result>
+    </method>
+
+    <method>
+      <name>InputSubscription</name>
+      <comment>Create a subscription for input events that relate to the vector.</comment>
+      <prototype>ERROR vecInputSubscription(OBJECTPTR Object, LONG Mask, FUNCTION * Callback)</prototype>
+      <input>
+        <param type="LONG" name="Mask">Combine JTYPE flags to define the input messages required by the client.  Set to 0xffffffff if all messages are desirable.</param>
+        <param type="FUNCTION *" name="Callback">Reference to a callback function that will receive input messages.</param>
+      </input>
+      <description>
+<p>The InputSubscripion method is provided as an extension to gfxSubscribeInput(), whereby the user's input events will be filtered down to those that occur within the vector's graphics area only.  The original events are transferred as-is, although the ENTERED_SURFACE and LEFT_SURFACE events are modified so that they trigger during passage through the vector boundaries.</p>
+<p>This method can only work if the vector's <class name="VectorScene">VectorScene</class> has been linked to a Surface.</p>
+<p>To remove an existing subscription, call this function again with the same Callback and an empty Mask. Alternatively have the function return ERR_Terminate.</p>
+<p>Please refer to gfxSubscribeInput() for further information on event management and message handling.</p>
+      </description>
+      <result>
+        <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
+        <error code="FieldNotSet">The VectorScene has no reference to a Surface.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
+        <error code="Function">A call to gfxSubscribeInput() failed.</error>
         <error code="Okay">Operation successful.</error>
       </result>
     </method>
@@ -384,6 +432,16 @@
     </field>
 
     <field>
+      <name>Flags</name>
+      <comment>Optional flags.</comment>
+      <access read="R" write="I">Read/Init</access>
+      <type lookup="VF">INT</type>
+      <description>
+<types lookup="VF"/>
+      </description>
+    </field>
+
+    <field>
       <name>ID</name>
       <comment>String identifier for a vector.</comment>
       <access read="G" write="S">Get/Set</access>
@@ -400,7 +458,7 @@
       <type lookup="VIJ">INT</type>
       <description>
 <p>The InnerJoin value is used to make very technical adjustments to the way that paths are stroked when they form corners.  Visually, the impact of this setting is only noticeable when a path forms an awkward corner that crosses over itself - usually due to the placement of bezier control points.</p>
-<p>The available settings are MITER, ROUND, BEVEL, JAG and INHERIT.  The default of MITER is recommended as it is the fastest, but ROUND produces the best results in ensuring that the stroked path is filled correctly.  The best approach is to leave this field at the default setting and switch to ROUND if issues are noted near the corners of the path.</p>
+<p>The available settings are MITER, ROUND, BEVEL, JAG and INHERIT.  The default of MITER is recommended as it is the fastest, but ROUND produces the best results in ensuring that the stroked path is filled correctly.  The most optimal approach is to use the default setting and switch to ROUND if issues are noted near the corners of the path.</p>
 <types lookup="VIJ"/>
       </description>
     </field>
@@ -654,12 +712,6 @@ Z: Close Path
       <const name="NO_TRANSFORM">The transformation step will not be applied to the vector's path.</const>
     </constants>
 
-    <constants lookup="VPF" comment="Optional flags for the VectorScene object.">
-      <const name="RENDER_TIME">Compute the drawing frame-rate for the RenderTime field.</const>
-      <const name="BITMAP_SIZED">Automatically adjust the PageWidth and PageHeight to match the target Bitmap width and height.</const>
-      <const name="RESIZE">The vector will be stretched to fit the PageWidth and PageHeight values, if defined by the client.</const>
-    </constants>
-
     <constants lookup="VSM">
       <const name="AUTO">The default option is chosen by the system.  This will typically be bilinear, but slow machines may switch to nearest neighbour and high speed machines could use more advanced methods.</const>
       <const name="NEIGHBOUR">Nearest neighbour is the fastest sampler at the cost of poor quality.</const>
@@ -677,6 +729,17 @@ Z: Close Path
       <const name="SINC8">15 times slower than bilinear, the final result is of excellent quality but may be marginally over-sharpened.</const>
       <const name="LANCZOS8"/>
       <const name="BLACKMAN8">15 times slower than bilinear, the final result is of excellent quality and sharpness is well balanced.</const>
+    </constants>
+
+    <constants lookup="VF" comment="Optional flags and indicators for the Vector class.">
+      <const name="DISABLED">The vector is disabled and user input should be ignored.</const>
+      <const name="HAS_FOCUS">The vector holds the user's input focus.</const>
+    </constants>
+
+    <constants lookup="VPF" comment="Optional flags for the VectorScene object.">
+      <const name="RENDER_TIME">Compute the drawing frame-rate for the RenderTime field.</const>
+      <const name="BITMAP_SIZED">Automatically adjust the PageWidth and PageHeight to match the target Bitmap width and height.</const>
+      <const name="RESIZE">The vector will be stretched to fit the PageWidth and PageHeight values, if defined by the client.</const>
     </constants>
 
     <constants lookup="VGF" comment="Gradient flags">
@@ -708,15 +771,15 @@ Z: Close Path
     </constants>
 
     <constants lookup="ARF" comment="Aspect ratios">
-      <const name="NONE">Scale the viewbox to match the size of the viewport.</const>
+      <const name="NONE">Scale the viewbox to match the size of the viewport.  Aspect ratio is not preserved.</const>
       <const name="Y_MIN">Align to the top</const>
       <const name="Y_MAX">Align to the bottom</const>
       <const name="X_MID">Align to the horizontal center</const>
       <const name="X_MIN">Align to the left</const>
       <const name="X_MAX">Align to the right</const>
-      <const name="SLICE">Aspect ratio is preserved. The entire viewport is covered by the viewbox.  The viewbox is scaled down as much as possible.</const>
+      <const name="SLICE">Aspect ratio is preserved. The viewbox can extend beyond the viewport's edges on one axis.  The viewbox is scaled up as much as possible.</const>
       <const name="Y_MID">Align to the vertical center</const>
-      <const name="MEET">Aspect ratio is preserved. The entire viewbox is visible within the viewport.  The viewbox is scaled up as much as possible.</const>
+      <const name="MEET">Aspect ratio is preserved. The entire viewbox will be visible in the viewport.  The viewbox is scaled up as much as possible.</const>
     </constants>
 
     <constants lookup="VUNIT">

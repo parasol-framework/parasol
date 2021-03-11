@@ -39,6 +39,7 @@ static const struct MethodArray clVectorSceneMethods[] = {
 };
 
 static const struct ActionArray clVectorSceneActions[] = {
+   { AC_ActionNotify, (APTR)VECTORSCENE_ActionNotify },
    { AC_Draw, (APTR)VECTORSCENE_Draw },
    { AC_Free, (APTR)VECTORSCENE_Free },
    { AC_Init, (APTR)VECTORSCENE_Init },

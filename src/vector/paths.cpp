@@ -2,7 +2,8 @@
 #include "agg_trans_single_path.h"
 
 //****************************************************************************
-// (Re)Generates the path for a vector.
+// (Re)Generates the path for a vector.  Switches off most of the Dirty flag markers.
+// For Viewports, the vpFixed* field values will all be set.
 
 static void gen_vector_path(objVector *Vector)
 {
@@ -12,7 +13,7 @@ static void gen_vector_path(objVector *Vector)
 
    parasol::SwitchContext context(Vector);
 
-   log.traceBranch("%s: %d, Dirty: $%.2x, ParentView: %p", Vector->Head.Class->ClassName, Vector->Head.UniqueID, Vector->Dirty, Vector->ParentView);
+   log.traceBranch("%s: #%d, Dirty: $%.2x, ParentView: #%d", Vector->Head.Class->ClassName, Vector->Head.UniqueID, Vector->Dirty, Vector->ParentView ? Vector->ParentView->Head.UniqueID : 0);
 
    if (!Vector->ParentView) { // Find the nearest parent viewport if we don't have it already
       auto scan = get_parent(Vector);
@@ -38,8 +39,12 @@ static void gen_vector_path(objVector *Vector)
       // vpFixedX/Y are the fixed coordinate position of the viewport relative to root position (0,0)
 
       if (Vector->ParentView) {
-         parent_width = Vector->ParentView->vpFixedWidth;
-         parent_height = Vector->ParentView->vpFixedHeight;
+         if (Vector->ParentView->vpViewWidth) parent_width = Vector->ParentView->vpViewWidth;
+         else parent_width = Vector->ParentView->vpFixedWidth;
+
+         if (Vector->ParentView->vpViewHeight) parent_height = Vector->ParentView->vpViewHeight;
+         else parent_height = Vector->ParentView->vpFixedHeight;
+
          parent_id = Vector->ParentView->Head.UniqueID;
 
          // The user's values for destination (x,y) need to be taken into account. <svg x="" y=""/>
@@ -51,9 +56,9 @@ static void gen_vector_path(objVector *Vector)
          else view->vpFixedRelY = view->vpTargetY;
       }
       else {
-         parent_width = Vector->Scene->PageWidth;
+         parent_width  = Vector->Scene->PageWidth;
          parent_height = Vector->Scene->PageHeight;
-         parent_id = Vector->Scene->Head.UniqueID;
+         parent_id     = Vector->Scene->Head.UniqueID;
          // SVG requirement: top level viewport always located at (0,0)
          view->vpFixedRelX = 0;
          view->vpFixedRelY = 0;
@@ -66,6 +71,32 @@ static void gen_vector_path(objVector *Vector)
       if (view->vpDimensions & DMF_RELATIVE_HEIGHT) view->vpFixedHeight = parent_height * view->vpTargetHeight;
       else if (view->vpDimensions & DMF_FIXED_HEIGHT) view->vpFixedHeight = view->vpTargetHeight;
       else view->vpFixedHeight = parent_height;
+
+      if (view->vpDimensions & DMF_RELATIVE_X_OFFSET) {
+         if (view->vpDimensions & (DMF_FIXED_X|DMF_RELATIVE_X)) {
+            view->vpFixedWidth = parent_width - (parent_width * view->vpTargetXO) - view->vpFixedRelX;
+         }
+         else view->vpFixedRelX = parent_width - view->vpFixedWidth - (parent_width * view->vpTargetXO);
+      }
+      else if (view->vpDimensions & DMF_FIXED_X_OFFSET) {
+         if (view->vpDimensions & (DMF_FIXED_X|DMF_RELATIVE_X)) {
+            view->vpFixedWidth = parent_width - view->vpTargetXO - view->vpFixedRelX;
+         }
+         else view->vpFixedRelX = parent_width - view->vpFixedWidth - view->vpTargetXO;
+      }
+
+      if (view->vpDimensions & DMF_RELATIVE_Y_OFFSET) {
+         if (view->vpDimensions & (DMF_FIXED_Y|DMF_RELATIVE_Y)) {
+            view->vpFixedHeight = parent_height - (parent_height * view->vpTargetYO) - view->vpFixedRelY;
+         }
+         else view->vpFixedRelY = parent_height - view->vpFixedHeight - (parent_height * view->vpTargetYO);
+      }
+      else if (view->vpDimensions & DMF_FIXED_Y_OFFSET) {
+         if (view->vpDimensions & (DMF_FIXED_Y|DMF_RELATIVE_Y)) {
+            view->vpFixedHeight = parent_height - view->vpTargetYO - view->vpFixedRelY;
+         }
+         else view->vpFixedRelY = parent_height - view->vpFixedHeight - view->vpTargetYO;
+      }
 
       // Contained vectors are normally scaled to the area defined by the viewport.
 
@@ -139,6 +170,11 @@ static void gen_vector_path(objVector *Vector)
       log.trace("Clipping boundary for #%d is %.2f %.2f %.2f %.2f (transforms: %d)", Vector->Head.UniqueID, view->vpBX1, view->vpBY1, view->vpBX2, view->vpBY2, applied_transforms);
 
       Vector->Dirty &= ~(RC_TRANSFORM | RC_FINAL_PATH | RC_BASE_PATH);
+
+      Vector->Scene->PendingResizeMsgs->insert({ Vector->Head.UniqueID, {
+          view->vpFixedRelX, view->vpFixedRelY, 0,
+          view->vpFixedWidth, view->vpFixedHeight, 0 }
+      });
    }
    else if (Vector->Head.ClassID IS ID_VECTOR) {
       if ((Vector->Dirty & RC_TRANSFORM) AND (Vector->Head.SubID != ID_VECTORTEXT)) {
@@ -147,11 +183,11 @@ static void gen_vector_path(objVector *Vector)
          // account.
 
          switch (Vector->Head.SubID) {
-            case ID_VECTORELLIPSE:   get_ellipse_xy((struct rkVectorEllipse *)Vector); break;
-            case ID_VECTORRECTANGLE: get_rectangle_xy((struct rkVectorRectangle *)Vector); break;
-            case ID_VECTORSPIRAL:    get_spiral_xy((struct rkVectorSpiral *)Vector); break;
-            case ID_VECTORSHAPE:     get_super_xy((struct rkVectorShape *)Vector); break;
-            case ID_VECTORWAVE:      get_wave_xy((struct rkVectorWave *)Vector); break;
+            case ID_VECTORELLIPSE:   get_ellipse_xy((rkVectorEllipse *)Vector); break;
+            case ID_VECTORRECTANGLE: get_rectangle_xy((rkVectorRectangle *)Vector); break;
+            case ID_VECTORSPIRAL:    get_spiral_xy((rkVectorSpiral *)Vector); break;
+            case ID_VECTORSHAPE:     get_super_xy((rkVectorShape *)Vector); break;
+            case ID_VECTORWAVE:      get_wave_xy((rkVectorWave *)Vector); break;
          }
 
          if (!Vector->Transform) Vector->Transform = new (std::nothrow) agg::trans_affine;
@@ -312,7 +348,6 @@ static void gen_vector_path(objVector *Vector)
       Vector->Dirty &= ~RC_FINAL_PATH;
    }
    else log.warning("Target vector is not a shape.");
-
 }
 
 //****************************************************************************

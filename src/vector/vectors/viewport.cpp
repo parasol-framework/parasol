@@ -3,7 +3,7 @@
 -CLASS-
 VectorViewport: Provides support for viewport definitions within a vector tree.
 
-This class is used to declare a viewport within a vector definition.  A master viewport is required as the first object
+This class is used to declare a viewport within a vector scene graph.  A master viewport is required as the first object
 in a @VectorScene and it must contain all vector graphics content.
 
 The size of the viewport is initially set to (0,0,100%,100%) so as to be all inclusive.  Setting the #X, #Y, #Width and
@@ -142,6 +142,48 @@ static ERROR VIEW_Resize(objVectorViewport *Self, struct acResize *Args)
    if (Self->vpTargetWidth < 1) Self->vpTargetWidth = 1;
    if (Self->vpTargetHeight < 1) Self->vpTargetHeight = 1;
    mark_dirty((objVector *)Self, RC_FINAL_PATH|RC_TRANSFORM);
+   return ERR_Okay;
+}
+
+/*****************************************************************************
+
+-FIELD-
+AbsX: The horizontal position of the viewport, relative to (0,0).
+
+This field will return the left-most boundary of the viewport, relative to point (0,0) of the scene
+graph.  Transforms are taken into consideration when calculating this value.
+
+*****************************************************************************/
+
+static ERROR VIEW_GET_AbsX(objVectorViewport *Self, LONG *Value)
+{
+   if (Self->Dirty) {
+      gen_vector_path((objVector *)Self);
+      Self->Dirty = 0;
+   }
+
+   *Value = Self->vpBX1;
+   return ERR_Okay;
+}
+
+/*****************************************************************************
+
+-FIELD-
+AbsY: The vertical position of the viewport, relative to (0,0).
+
+This field will return the top-most boundary of the viewport, relative to point (0,0) of the scene
+graph.  Transforms are taken into consideration when calculating this value.
+
+*****************************************************************************/
+
+static ERROR VIEW_GET_AbsY(objVectorViewport *Self, LONG *Value)
+{
+   if (Self->Dirty) {
+      gen_vector_path((objVector *)Self);
+      Self->Dirty = 0;
+   }
+
+   *Value = Self->vpBY1;
    return ERR_Okay;
 }
 
@@ -650,6 +692,8 @@ static const FieldDef clViewDimensions[] = {
 };
 
 static const FieldArray clViewFields[] = {
+   { "AbsX",        FDF_VIRTUAL|FDF_LONG|FDF_R, 0, (APTR)VIEW_GET_AbsX, NULL },
+   { "AbsY",        FDF_VIRTUAL|FDF_LONG|FDF_R, 0, (APTR)VIEW_GET_AbsY, NULL },
    { "X",           FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)VIEW_GET_X,       (APTR)VIEW_SET_X },
    { "Y",           FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)VIEW_GET_Y,       (APTR)VIEW_SET_Y },
    { "XOffset",     FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)VIEW_GET_XOffset, (APTR)VIEW_SET_XOffset },

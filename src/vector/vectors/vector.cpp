@@ -27,6 +27,8 @@ feature unless otherwise documented.
 
 *****************************************************************************/
 
+static ERROR consume_input_events(const InputEvent *, LONG);
+
 static ERROR VECTOR_Reset(objVector *, APTR);
 
 static ERROR VECTOR_ActionNotify(objVector *Self, struct acActionNotify *Args)
@@ -113,6 +115,51 @@ static ERROR VECTOR_ClearTransforms(objVector *Self, APTR Void)
    return ERR_Okay;
 }
 
+/*****************************************************************************
+-ACTION-
+Disable: Disabling a vector can be used to trigger style changes and prevent user input.
+-END-
+*****************************************************************************/
+
+static ERROR VECTOR_Disable(objVector *Self, APTR Void)
+{
+   // It is up to the client to subscribe to the Disable action if any activity needs to take place.
+   return ERR_Okay;
+}
+/*****************************************************************************
+-ACTION-
+Draw: Draws the surface associated with the vector.
+-End-
+*****************************************************************************/
+
+static ERROR VECTOR_Draw(objVector *Self, struct acDraw *Args)
+{
+   parasol::Log log;
+   if ((Self->Scene) and (Self->Scene->SurfaceID)) {
+      struct acDraw area;
+      if (Args) {
+         area = *Args;
+      }
+      else {
+         area = { .X = 0, .Y = 0, .Width = 0, .Height = 0 };
+      }
+      return ActionMsg(AC_Draw, Self->Scene->SurfaceID, &area);
+   }
+   else return log.warning(ERR_FieldNotSet);
+}
+
+/*****************************************************************************
+-ACTION-
+Enable: Reverses the effects of disabling the vector.
+-END-
+*****************************************************************************/
+
+static ERROR VECTOR_Enable(objVector *Self, APTR Void)
+{
+  // It is up to the client to subscribe to the Enable action if any activity needs to take place.
+  return ERR_Okay;
+}
+
 //****************************************************************************
 
 static ERROR VECTOR_Free(objVector *Self, APTR Args)
@@ -137,10 +184,13 @@ static ERROR VECTOR_Free(objVector *Self, APTR Args)
    }
    if (Self->Child) Self->Child->Parent = NULL;
 
-   delete Self->Transform;       Self->Transform = NULL;
-   delete Self->BasePath;        Self->BasePath = NULL;
-   delete Self->StrokeRaster;    Self->StrokeRaster = NULL;
-   delete Self->FillRaster;      Self->FillRaster = NULL;
+   if (Self->InputHandle) { gfxUnsubscribeInput(Self->InputHandle); Self->InputHandle = 0; }
+
+   delete Self->Transform;    Self->Transform = NULL;
+   delete Self->BasePath;     Self->BasePath = NULL;
+   delete Self->StrokeRaster; Self->StrokeRaster = NULL;
+   delete Self->FillRaster;   Self->FillRaster = NULL;
+   delete Self->InputSubscriptions; Self->InputSubscriptions = NULL;
 
    return ERR_Okay;
 }
@@ -186,41 +236,40 @@ static ERROR VECTOR_GetBoundary(objVector *Self, struct vecGetBoundary *Args)
 
    if (!Self->Scene) return log.warning(ERR_NotInitialised);
 
-   if (Args->Flags & VBF_INCLUSIVE) {
-      std::array<DOUBLE, 4> bounds = { 1000000, 1000000, -1000000, -1000000 };
-      calc_full_boundary(Self, bounds);
-
-      Args->X = bounds[0];
-      Args->Y = bounds[1];
-      Args->Width  = bounds[2] - bounds[0];
-      Args->Height = bounds[3] - bounds[1];
-      return ERR_Okay;
-   }
-   else if (Self->GeneratePath) { // Path generation must be supported by the vector.
+   if (Self->GeneratePath) { // Path generation must be supported by the vector.
       if ((!Self->BasePath) or (Self->Dirty)) {
          gen_vector_path(Self);
          Self->Dirty = 0;
       }
 
       if (Self->BasePath) {
+         std::array<DOUBLE, 4> bounds = { DBL_MAX, DBL_MAX, -1000000, -1000000 };
          DOUBLE bx1, by1, bx2, by2;
 
          if (Args->Flags & VBF_NO_TRANSFORM) {
             bounding_rect_single(*Self->BasePath, 0, &bx1, &by1, &bx2, &by2);
-            bx1 += Self->FinalX;
-            bx2 += Self->FinalX;
-            by1 += Self->FinalY;
-            by2 += Self->FinalY;
+            bounds[0] = bx1 + Self->FinalX;
+            bounds[1] = by1 + Self->FinalY;
+            bounds[2] = bx2 + Self->FinalX;
+            bounds[3] = by2 + Self->FinalY;
          }
          else {
             agg::conv_transform<agg::path_storage, agg::trans_affine> path(*Self->BasePath, *Self->Transform);
             bounding_rect_single(path, 0, &bx1, &by1, &bx2, &by2);
+            bounds[0] = bx1;
+            bounds[1] = by1;
+            bounds[2] = bx2;
+            bounds[3] = by2;
          }
 
-         Args->X = bx1;
-         Args->Y = by1;
-         Args->Width  = bx2 - bx1;
-         Args->Height = by2 - by1;
+         if (Args->Flags & VBF_INCLUSIVE) {
+            calc_full_boundary(Self->Child, bounds);
+         }
+
+         Args->X      = bounds[0];
+         Args->Y      = bounds[1];
+         Args->Width  = bounds[2] - bounds[0];
+         Args->Height = bounds[3] - bounds[1];
          return ERR_Okay;
       }
       else return ERR_NoData;
@@ -272,6 +321,18 @@ static ERROR VECTOR_GetTransform(objVector *Self, struct vecGetTransform *Args)
    }
 
    return ERR_Search;
+}
+
+/*****************************************************************************
+-ACTION-
+Hide: Changes the vector's visibility setting to hidden.
+-END-
+*****************************************************************************/
+
+static ERROR VECTOR_Hide(objVector *Self, APTR Void)
+{
+   Self->Visibility = VIS_HIDDEN;
+   return ERR_Okay;
 }
 
 //****************************************************************************
@@ -338,6 +399,85 @@ static ERROR VECTOR_Init(objVector *Self, APTR Void)
    }
 
    return ERR_Okay;
+}
+
+/*****************************************************************************
+
+-METHOD-
+InputSubscription: Create a subscription for input events that relate to the vector.
+
+The InputSubscripion method is provided as an extension to gfxSubscribeInput(), whereby the user's input events
+will be filtered down to those that occur within the vector's graphics area only.  The original events are
+transferred as-is, although the ENTERED_SURFACE and LEFT_SURFACE events are modified so that they trigger during
+passage through the vector boundaries.
+
+It is a pre-requisite that the associated @VectorScene has been linked to a @Surface.
+
+To remove an existing subscription, call this function again with the same Callback and an empty Mask.
+Alternatively have the function return ERR_Terminate.
+
+Please refer to gfxSubscribeInput() for further information on event management and message handling.
+
+-INPUT-
+int(JTYPE) Mask: Combine JTYPE flags to define the input messages required by the client.  Set to 0xffffffff if all messages are desirable.
+ptr(func) Callback: Reference to a callback function that will receive input messages.
+
+-ERRORS-
+Okay:
+NullArgs:
+FieldNotSet: The VectorScene has no reference to a Surface.
+AllocMemory:
+Function: A call to gfxSubscribeInput() failed.
+
+*****************************************************************************/
+
+static ERROR VECTOR_InputSubscription(objVector *Self, struct vecInputSubscription *Args)
+{
+   parasol::Log log;
+
+   if ((!Args) or (!Args->Callback)) return log.warning(ERR_NullArgs);
+
+   if (!Self->Scene->SurfaceID) return log.warning(ERR_FieldNotSet);
+
+   if (Args->Mask) {
+      if (!Self->InputSubscriptions) {
+         Self->InputSubscriptions = new (std::nothrow) std::vector<InputSubscription>;
+         if (!Self->InputSubscriptions) return log.warning(ERR_AllocMemory);
+      }
+
+      LONG mask = Args->Mask;
+      if (mask & JTYPE_FEEDBACK) mask |= JTYPE_MOVEMENT;
+
+      if ((Self->InputMask & mask) != mask) {
+         if (Self->InputHandle) { gfxUnsubscribeInput(Self->InputHandle); Self->InputHandle = 0; }
+
+         auto callback = make_function_stdc(consume_input_events);
+         if (!gfxSubscribeInput(&callback, Self->Scene->SurfaceID, Self->InputMask | mask, 0, &Self->InputHandle)) {
+            Self->InputMask |= mask;
+            Self->InputSubscriptions->emplace_back(*Args->Callback, mask);
+            return ERR_Okay;
+         }
+         else return ERR_Function;
+      }
+      else return ERR_Okay;
+   }
+   else { // Remove existing subscription
+      for (auto it=Self->InputSubscriptions->begin(); it != Self->InputSubscriptions->end(); it++) {
+         if (*Args->Callback IS it->Callback) {
+            Self->InputSubscriptions->erase(it);
+            break;
+         }
+      }
+
+      if (Self->InputSubscriptions->empty()) {
+         if (Self->InputHandle) {
+            gfxUnsubscribeInput(Self->InputHandle);
+            Self->InputHandle = 0;
+         }
+      }
+
+      return ERR_Okay;
+   }
 }
 
 //****************************************************************************
@@ -592,6 +732,100 @@ static ERROR VECTOR_Rotate(objVector *Self, struct vecRotate *Args)
 /*****************************************************************************
 
 -METHOD-
+Scale: Scale the size of the vector by (x,y)
+
+This method will add a scale transformation to the vector's transform commands.  Values of less than 1.0 will shrink
+the path along the target axis, while values greater than 1.0 will enlarge it.
+
+The scale factors are applied to every path point, and scaling is relative to position (0,0).  If the width and height
+of the vector shape needs to be transformed without affecting its top-left position, the client must translate the
+vector to (0,0) around its center point.  The vector should then be scaled and transformed back to its original
+top-left coordinate.
+
+The scale transform can also be formed to flip the vector path if negative values are used.  For instance, a value of
+-1.0 on the x axis would result in a 1:1 flip across the horizontal.
+
+-INPUT-
+double X: The scale factor on the x-axis.
+double Y: The scale factor on the y-axis.
+
+-ERRORS-
+Okay
+NullArgs
+AllocMemory
+-END-
+
+*****************************************************************************/
+
+static ERROR VECTOR_Scale(objVector *Self, struct vecScale *Args)
+{
+   if (!Args) return ERR_NullArgs;
+
+   VectorTransform *t;
+   if ((t = add_transform(Self, VTF_SKEW, FALSE))) {
+      t->X = Args->X;
+      t->Y = Args->Y;
+      return ERR_Okay;
+   }
+   else return ERR_AllocMemory;
+}
+
+/*****************************************************************************
+-ACTION-
+Show: Changes the vector's visibility setting to visible.
+-END-
+*****************************************************************************/
+
+static ERROR VECTOR_Show(objVector *Self, APTR Void)
+{
+   Self->Visibility = VIS_VISIBLE;
+   return ERR_Okay;
+}
+
+/*****************************************************************************
+
+-METHOD-
+Skew: Skews the vector along the horizontal and/or vertical axis.
+
+The Skew method applies a skew transformation to the horizontal and/or vertical axis of the vector and its children.
+Valid X and Y values are in the range of -90 < Angle < 90.
+
+-INPUT-
+double X: The angle to skew along the horizontal.
+double Y: The angle to skew along the vertical.
+
+-ERRORS-
+Okay:
+NullArgs:
+OutOfRange: At least one of the angles is out of the allowable range.
+-END-
+
+*****************************************************************************/
+
+static ERROR VECTOR_Skew(objVector *Self, struct vecSkew *Args)
+{
+   parasol::Log log;
+
+   if ((!Args) or ((!Args->X) and (!Args->Y))) return log.warning(ERR_NullArgs);
+
+   VectorTransform *transform;
+   if ((transform = add_transform(Self, VTF_SKEW, FALSE))) {
+      if ((Args->X > -90) and (Args->X < 90)) {
+         transform->X = Args->X;
+      }
+      else return log.warning(ERR_OutOfRange);
+
+      if ((Args->Y > -90) and (Args->Y < 90)) transform->Y = Args->Y;
+      else return log.warning(ERR_OutOfRange);
+
+      return ERR_Okay;
+   }
+   else return ERR_AllocMemory;
+}
+
+/*****************************************************************************
+
+-METHOD-
 TracePath: Returns the coordinates for a vector path, using callbacks.
 
 Any vector that generates a path can be traced by calling this method.  Tracing allows the caller to follow the path for
@@ -783,88 +1017,6 @@ static ERROR VECTOR_Translate(objVector *Self, struct vecTranslate *Args)
    if ((transform = add_transform(Self, VTF_TRANSLATE, FALSE))) {
       transform->X = Args->X;
       transform->Y = Args->Y;
-      return ERR_Okay;
-   }
-   else return ERR_AllocMemory;
-}
-
-/*****************************************************************************
-
--METHOD-
-Skew: Skews the vector along the horizontal and/or vertical axis.
-
-The Skew method applies a skew transformation to the horizontal and/or vertical axis of the vector and its children.
-Valid X and Y values are in the range of -90 < Angle < 90.
-
--INPUT-
-double X: The angle to skew along the horizontal.
-double Y: The angle to skew along the vertical.
-
--ERRORS-
-Okay:
-NullArgs:
-OutOfRange: At least one of the angles is out of the allowable range.
--END-
-
-*****************************************************************************/
-
-static ERROR VECTOR_Skew(objVector *Self, struct vecSkew *Args)
-{
-   parasol::Log log;
-
-   if ((!Args) or ((!Args->X) and (!Args->Y))) return log.warning(ERR_NullArgs);
-
-   VectorTransform *transform;
-   if ((transform = add_transform(Self, VTF_SKEW, FALSE))) {
-      if ((Args->X > -90) and (Args->X < 90)) {
-         transform->X = Args->X;
-      }
-      else return log.warning(ERR_OutOfRange);
-
-      if ((Args->Y > -90) and (Args->Y < 90)) transform->Y = Args->Y;
-      else return log.warning(ERR_OutOfRange);
-
-      return ERR_Okay;
-   }
-   else return ERR_AllocMemory;
-}
-
-/*****************************************************************************
-
--METHOD-
-Scale: Scale the size of the vector by (x,y)
-
-This method will add a scale transformation to the vector's transform commands.  Values of less than 1.0 will shrink
-the path along the target axis, while values greater than 1.0 will enlarge it.
-
-The scale factors are applied to every path point, and scaling is relative to position (0,0).  If the width and height
-of the vector shape needs to be transformed without affecting its top-left position, the client must translate the
-vector to (0,0) around its center point.  The vector should then be scaled and transformed back to its original
-top-left coordinate.
-
-The scale transform can also be formed to flip the vector path if negative values are used.  For instance, a value of
--1.0 on the x axis would result in a 1:1 flip across the horizontal.
-
--INPUT-
-double X: The scale factor on the x-axis.
-double Y: The scale factor on the y-axis.
-
--ERRORS-
-Okay
-NullArgs
-AllocMemory
--END-
-
-*****************************************************************************/
-
-static ERROR VECTOR_Scale(objVector *Self, struct vecScale *Args)
-{
-   if (!Args) return ERR_NullArgs;
-
-   VectorTransform *t;
-   if ((t = add_transform(Self, VTF_SKEW, FALSE))) {
-      t->X = Args->X;
-      t->Y = Args->Y;
       return ERR_Okay;
    }
    else return ERR_AllocMemory;
@@ -1858,6 +2010,117 @@ Visibility: Controls the visibility of a vector and its children.
 
 *****************************************************************************/
 
+static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
+{
+   parasol::Log log(__FUNCTION__);
+   auto Self = (objVector *)CurrentContext();
+
+   LONG total_events = 0;
+   for (auto ev=Events; ev; ev=ev->Next) total_events++;
+
+   InputEvent filtered_events[total_events+2]; // +2 in case of JET_ENTERED/JET_LEFT
+
+   // Retrieve the full vector bounds, accounting for all transforms and children.
+
+   std::array<DOUBLE, 4> bounds = { DBL_MAX, DBL_MAX, DBL_MIN, DBL_MIN };
+   calc_full_boundary(Self->Child, bounds);
+
+   // Filter for events that occur within the vector's bounds
+
+   LONG e = 0;
+   for (auto input=Events; input; input=input->Next) {
+      if ((input->Type IS JET_LEFT_SURFACE) or (input->Type IS JET_ENTERED_SURFACE)) continue;
+
+      if ((input->X >= bounds[0]) and (input->Y >= bounds[1]) and
+          (input->X < bounds[2]) and (input->Y < bounds[3])) {
+         if (!Self->UserHovering) { // Inject JET_ENTERED_SURFACE if this is the first activity
+            filtered_events[e++] = {
+               .Next        = NULL,
+               .Value       = input->OverID,
+               .Timestamp   = input->Timestamp,
+               .RecipientID = input->RecipientID,
+               .OverID      = input->OverID,
+               .AbsX        = input->AbsX,
+               .AbsY        = input->AbsY,
+               .X           = input->X,
+               .Y           = input->Y,
+               .DeviceID    = input->DeviceID,
+               .Type        = JET_ENTERED_SURFACE,
+               .Flags       = JTYPE_FEEDBACK,
+               .Mask        = JTYPE_FEEDBACK
+            };
+            Self->UserHovering = TRUE;
+         }
+
+         filtered_events[e] = *input;
+         e++;
+      }
+      else if (Self->UserHovering) {
+         filtered_events[e++] = { // Inject JET_LEFT_SURFACE if this is the last activity
+            .Next        = NULL,
+            .Value       = input->OverID,
+            .Timestamp   = input->Timestamp,
+            .RecipientID = input->RecipientID,
+            .OverID      = input->OverID,
+            .AbsX        = input->AbsX,
+            .AbsY        = input->AbsY,
+            .X           = input->X,
+            .Y           = input->Y,
+            .DeviceID    = input->DeviceID,
+            .Type        = JET_LEFT_SURFACE,
+            .Flags       = JTYPE_FEEDBACK,
+            .Mask        = JTYPE_FEEDBACK
+         };
+         Self->UserHovering = FALSE;
+      }
+   }
+
+   if (!e) return ERR_Okay;
+
+   for (auto const &sub : Self->InputSubscriptions[0]) {
+      // Patch the Next fields to construct a custom chain of events based on this subscripton's mask filter.
+
+      InputEvent *first = NULL, *last = NULL;
+      LONG i;
+      for (i=0; i < e; i++) {
+         if (filtered_events[i].Mask & sub.Mask) {
+            if (!first) first = &filtered_events[i];
+            if (last) last->Next = &filtered_events[i];
+            last = &filtered_events[i];
+         }
+      }
+
+      if (first) {
+         last->Next = NULL;
+
+         if (sub.Callback.Type IS CALL_STDC) {
+            parasol::SwitchContext ctx(sub.Callback.StdC.Context);
+            auto callback = (ERROR (*)(objVector *, InputEvent *))sub.Callback.StdC.Routine;
+            callback(Self, first);
+         }
+         else if (sub.Callback.Type IS CALL_SCRIPT) {
+            // In this implementation the script function will receive all the events chained via the Next field
+            ScriptArg args[] = {
+               { "Vector",            FDF_OBJECT, { .Address = Self } },
+               { "InputEvent:Events", FDF_STRUCT, { .Address = first } }
+            };
+            ERROR result;
+            scCallback(sub.Callback.Script.Script, sub.Callback.Script.ProcedureID, args, ARRAYSIZE(args), &result);
+         }
+      }
+   }
+
+   return ERR_Okay;
+}
+
+//****************************************************************************
+
+static const FieldDef clFlags[] = {
+   { "Disabled", VF_DISABLED },
+   { "HasFocus", VF_HAS_FOCUS },
+   { NULL, 0 }
+};
+
 static const FieldDef clTransformFlags[] = {
    { "Matrix",    VTF_MATRIX },
    { "Translate", VTF_TRANSLATE },
@@ -1922,42 +2185,43 @@ static const FieldDef clVisibility[] = {
 };
 
 static const FieldArray clVectorFields[] = {
-   { "Child",            FDF_OBJECT|FD_R,       ID_VECTOR, NULL, NULL },
-   { "Scene",            FDF_OBJECT|FD_R,       ID_VECTORSCENE, NULL, NULL },
-   { "Next",             FDF_OBJECT|FD_RW,      ID_VECTOR, NULL, (APTR)VECTOR_SET_Next },
-   { "Prev",             FDF_OBJECT|FD_RW,      ID_VECTOR, NULL, (APTR)VECTOR_SET_Prev },
-   { "Parent",           FDF_OBJECT|FD_R,       0, NULL, NULL },
+   { "Child",            FDF_OBJECT|FD_R,              ID_VECTOR, NULL, NULL },
+   { "Scene",            FDF_OBJECT|FD_R,              ID_VECTORSCENE, NULL, NULL },
+   { "Next",             FDF_OBJECT|FD_RW,             ID_VECTOR, NULL, (APTR)VECTOR_SET_Next },
+   { "Prev",             FDF_OBJECT|FD_RW,             ID_VECTOR, NULL, (APTR)VECTOR_SET_Prev },
+   { "Parent",           FDF_OBJECT|FD_R,              0, NULL, NULL },
    { "Transforms",       FDF_POINTER|FDF_STRUCT|FDF_R, (MAXINT)"VectorTransform", NULL, NULL },
-   { "StrokeWidth",      FDF_DOUBLE|FD_RW,      0, NULL, (APTR)VECTOR_SET_StrokeWidth },
-   { "StrokeOpacity",    FDF_DOUBLE|FDF_RW,     0, (APTR)VECTOR_GET_StrokeOpacity, (APTR)VECTOR_SET_StrokeOpacity },
-   { "FillOpacity",      FDF_DOUBLE|FDF_RW,     0, (APTR)VECTOR_GET_FillOpacity, (APTR)VECTOR_SET_FillOpacity },
-   { "Opacity",          FDF_DOUBLE|FD_RW,      0, NULL, (APTR)VECTOR_SET_Opacity },
-   { "MiterLimit",       FDF_DOUBLE|FD_RW,      0, NULL, (APTR)VECTOR_SET_MiterLimit },
-   { "InnerMiterLimit",  FDF_DOUBLE|FD_RW,      0, NULL, NULL },
-   { "DashOffset",       FDF_DOUBLE|FD_RW,      0, NULL, NULL },
-   { "ActiveTransforms", FDF_LONGFLAGS|FD_R,    (MAXINT)&clTransformFlags, NULL, NULL },
-   { "DashTotal",        FDF_LONG|FDF_R,        0, NULL, NULL },
-   { "Visibility",       FDF_LONG|FDF_LOOKUP|FDF_RW,  (MAXINT)&clVisibility, NULL, NULL },
+   { "StrokeWidth",      FDF_DOUBLE|FD_RW,             0, NULL, (APTR)VECTOR_SET_StrokeWidth },
+   { "StrokeOpacity",    FDF_DOUBLE|FDF_RW,            0, (APTR)VECTOR_GET_StrokeOpacity, (APTR)VECTOR_SET_StrokeOpacity },
+   { "FillOpacity",      FDF_DOUBLE|FDF_RW,            0, (APTR)VECTOR_GET_FillOpacity, (APTR)VECTOR_SET_FillOpacity },
+   { "Opacity",          FDF_DOUBLE|FD_RW,             0, NULL, (APTR)VECTOR_SET_Opacity },
+   { "MiterLimit",       FDF_DOUBLE|FD_RW,             0, NULL, (APTR)VECTOR_SET_MiterLimit },
+   { "InnerMiterLimit",  FDF_DOUBLE|FD_RW,             0, NULL, NULL },
+   { "DashOffset",       FDF_DOUBLE|FD_RW,             0, NULL, NULL },
+   { "ActiveTransforms", FDF_LONGFLAGS|FD_R,           (MAXINT)&clTransformFlags, NULL, NULL },
+   { "DashTotal",        FDF_LONG|FDF_R,               0, NULL, NULL },
+   { "Visibility",       FDF_LONG|FDF_LOOKUP|FDF_RW,   (MAXINT)&clVisibility, NULL, NULL },
+   { "Flags",            FDF_LONG|FDF_RI,              (MAXINT)&clFlags, NULL, NULL },
    // Virtual fields
-   { "ClipRule",      FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clFillRule, (APTR)VECTOR_GET_ClipRule, (APTR)VECTOR_SET_ClipRule },
-   { "DashArray",     FDF_VIRTUAL|FDF_ARRAY|FDF_DOUBLE|FD_RW, 0, (APTR)VECTOR_GET_DashArray, (APTR)VECTOR_SET_DashArray },
-   { "Mask",          FDF_VIRTUAL|FDF_OBJECT|FDF_RW,          0, (APTR)VECTOR_GET_Mask, (APTR)VECTOR_SET_Mask },
-   { "Morph",         FDF_VIRTUAL|FDF_OBJECT|FDF_RW,          0, (APTR)VECTOR_GET_Morph, (APTR)VECTOR_SET_Morph },
-   { "MorphFlags",    FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clMorphFlags, (APTR)VECTOR_GET_MorphFlags, (APTR)VECTOR_SET_MorphFlags },
-   { "NumericID",     FDF_VIRTUAL|FDF_LONG|FDF_RW,            0, (APTR)VECTOR_GET_NumericID, (APTR)VECTOR_SET_NumericID },
-   { "ID",            FDF_VIRTUAL|FDF_STRING|FDF_RW,          0, (APTR)VECTOR_GET_ID, (APTR)VECTOR_SET_ID },
-   { "Sequence",      FDF_VIRTUAL|FDF_STRING|FDF_ALLOC|FDF_R, 0, (APTR)VECTOR_GET_Sequence, NULL },
-   { "Stroke",        FDF_VIRTUAL|FDF_STRING|FDF_RW,          0, (APTR)VECTOR_GET_Stroke, (APTR)VECTOR_SET_Stroke },
-   { "StrokeColour",  FDF_VIRTUAL|FD_FLOAT|FDF_ARRAY|FD_RW,   0, (APTR)VECTOR_GET_StrokeColour, (APTR)VECTOR_SET_StrokeColour },
-   { "Transition",    FDF_VIRTUAL|FDF_OBJECT|FDF_RW,          0, (APTR)VECTOR_GET_Transition, (APTR)VECTOR_SET_Transition },
-   { "EnableBkgd",    FDF_VIRTUAL|FDF_LONG|FDF_RW,            0, (APTR)VECTOR_GET_EnableBkgd, (APTR)VECTOR_SET_EnableBkgd },
-   { "Fill",          FDF_VIRTUAL|FDF_STRING|FDF_RW,          0, (APTR)VECTOR_GET_Fill, (APTR)VECTOR_SET_Fill },
-   { "FillColour",    FDF_VIRTUAL|FD_FLOAT|FDF_ARRAY|FDF_RW,  0, (APTR)VECTOR_GET_FillColour, (APTR)VECTOR_SET_FillColour },
-   { "FillRule",      FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clFillRule, (APTR)VECTOR_GET_FillRule, (APTR)VECTOR_SET_FillRule },
-   { "Filter",        FDF_VIRTUAL|FDF_STRING|FDF_RW,          0, (APTR)VECTOR_GET_Filter, (APTR)VECTOR_SET_Filter },
-   { "LineJoin",      FDF_VIRTUAL|FD_LONG|FD_LOOKUP|FDF_RW,   (MAXINT)&clLineJoin,  (APTR)VECTOR_GET_LineJoin, (APTR)VECTOR_SET_LineJoin },
-   { "LineCap",       FDF_VIRTUAL|FD_LONG|FD_LOOKUP|FDF_RW,   (MAXINT)&clLineCap,   (APTR)VECTOR_GET_LineCap, (APTR)VECTOR_SET_LineCap },
-   { "InnerJoin",     FDF_VIRTUAL|FD_LONG|FD_LOOKUP|FDF_RW,   (MAXINT)&clInnerJoin, (APTR)VECTOR_GET_InnerJoin, (APTR)VECTOR_SET_InnerJoin },
+   { "ClipRule",     FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clFillRule, (APTR)VECTOR_GET_ClipRule, (APTR)VECTOR_SET_ClipRule },
+   { "DashArray",    FDF_VIRTUAL|FDF_ARRAY|FDF_DOUBLE|FD_RW, 0, (APTR)VECTOR_GET_DashArray, (APTR)VECTOR_SET_DashArray },
+   { "Mask",         FDF_VIRTUAL|FDF_OBJECT|FDF_RW,          0, (APTR)VECTOR_GET_Mask, (APTR)VECTOR_SET_Mask },
+   { "Morph",        FDF_VIRTUAL|FDF_OBJECT|FDF_RW,          0, (APTR)VECTOR_GET_Morph, (APTR)VECTOR_SET_Morph },
+   { "MorphFlags",   FDF_VIRTUAL|FDF_LONGFLAGS|FDF_RW,       (MAXINT)&clMorphFlags, (APTR)VECTOR_GET_MorphFlags, (APTR)VECTOR_SET_MorphFlags },
+   { "NumericID",    FDF_VIRTUAL|FDF_LONG|FDF_RW,            0, (APTR)VECTOR_GET_NumericID, (APTR)VECTOR_SET_NumericID },
+   { "ID",           FDF_VIRTUAL|FDF_STRING|FDF_RW,          0, (APTR)VECTOR_GET_ID, (APTR)VECTOR_SET_ID },
+   { "Sequence",     FDF_VIRTUAL|FDF_STRING|FDF_ALLOC|FDF_R, 0, (APTR)VECTOR_GET_Sequence, NULL },
+   { "Stroke",       FDF_VIRTUAL|FDF_STRING|FDF_RW,          0, (APTR)VECTOR_GET_Stroke, (APTR)VECTOR_SET_Stroke },
+   { "StrokeColour", FDF_VIRTUAL|FD_FLOAT|FDF_ARRAY|FD_RW,   0, (APTR)VECTOR_GET_StrokeColour, (APTR)VECTOR_SET_StrokeColour },
+   { "Transition",   FDF_VIRTUAL|FDF_OBJECT|FDF_RW,          0, (APTR)VECTOR_GET_Transition, (APTR)VECTOR_SET_Transition },
+   { "EnableBkgd",   FDF_VIRTUAL|FDF_LONG|FDF_RW,            0, (APTR)VECTOR_GET_EnableBkgd, (APTR)VECTOR_SET_EnableBkgd },
+   { "Fill",         FDF_VIRTUAL|FDF_STRING|FDF_RW,          0, (APTR)VECTOR_GET_Fill, (APTR)VECTOR_SET_Fill },
+   { "FillColour",   FDF_VIRTUAL|FD_FLOAT|FDF_ARRAY|FDF_RW,  0, (APTR)VECTOR_GET_FillColour, (APTR)VECTOR_SET_FillColour },
+   { "FillRule",     FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clFillRule, (APTR)VECTOR_GET_FillRule, (APTR)VECTOR_SET_FillRule },
+   { "Filter",       FDF_VIRTUAL|FDF_STRING|FDF_RW,          0, (APTR)VECTOR_GET_Filter, (APTR)VECTOR_SET_Filter },
+   { "LineJoin",     FDF_VIRTUAL|FD_LONG|FD_LOOKUP|FDF_RW,   (MAXINT)&clLineJoin,  (APTR)VECTOR_GET_LineJoin, (APTR)VECTOR_SET_LineJoin },
+   { "LineCap",      FDF_VIRTUAL|FD_LONG|FD_LOOKUP|FDF_RW,   (MAXINT)&clLineCap,   (APTR)VECTOR_GET_LineCap, (APTR)VECTOR_SET_LineCap },
+   { "InnerJoin",    FDF_VIRTUAL|FD_LONG|FD_LOOKUP|FDF_RW,   (MAXINT)&clInnerJoin, (APTR)VECTOR_GET_InnerJoin, (APTR)VECTOR_SET_InnerJoin },
    END_FIELD
 };
 

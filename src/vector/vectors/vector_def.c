@@ -8,6 +8,12 @@ static const struct FieldDef clVectorVisibility[] = {
    { NULL, 0 }
 };
 
+static const struct FieldDef clVectorFlags[] = {
+   { "Disabled", 0x00000001 },
+   { "HasFocus", 0x00000002 },
+   { NULL, 0 }
+};
+
 FDEF maPush[] = { { "Position", FD_LONG }, { 0, 0 } };
 FDEF maTracePath[] = { { "Callback", FD_FUNCTIONPTR }, { 0, 0 } };
 FDEF maGetBoundary[] = { { "Flags", FD_LONG }, { "X", FD_DOUBLE|FD_RESULT }, { "Y", FD_DOUBLE|FD_RESULT }, { "Width", FD_DOUBLE|FD_RESULT }, { "Height", FD_DOUBLE|FD_RESULT }, { 0, 0 } };
@@ -19,6 +25,7 @@ FDEF maScale[] = { { "X", FD_DOUBLE }, { "Y", FD_DOUBLE }, { 0, 0 } };
 FDEF maSkew[] = { { "X", FD_DOUBLE }, { "Y", FD_DOUBLE }, { 0, 0 } };
 FDEF maPointInPath[] = { { "X", FD_DOUBLE }, { "Y", FD_DOUBLE }, { 0, 0 } };
 FDEF maGetTransform[] = { { "Type", FD_LONG }, { "VectorTransform:Transform", FD_PTR|FD_STRUCT|FD_RESULT }, { 0, 0 } };
+FDEF maInputSubscription[] = { { "Mask", FD_LONG }, { "Callback", FD_FUNCTIONPTR }, { 0, 0 } };
 
 static const struct MethodArray clVectorMethods[] = {
    { -1, (APTR)VECTOR_Push, "Push", maPush, sizeof(struct vecPush) },
@@ -33,16 +40,22 @@ static const struct MethodArray clVectorMethods[] = {
    { -10, (APTR)VECTOR_PointInPath, "PointInPath", maPointInPath, sizeof(struct vecPointInPath) },
    { -11, (APTR)VECTOR_ClearTransforms, "ClearTransforms", 0, 0 },
    { -12, (APTR)VECTOR_GetTransform, "GetTransform", maGetTransform, sizeof(struct vecGetTransform) },
+   { -13, (APTR)VECTOR_InputSubscription, "InputSubscription", maInputSubscription, sizeof(struct vecInputSubscription) },
    { 0, 0, 0, 0, 0 }
 };
 
 static const struct ActionArray clVectorActions[] = {
    { AC_ActionNotify, (APTR)VECTOR_ActionNotify },
+   { AC_Disable, (APTR)VECTOR_Disable },
+   { AC_Draw, (APTR)VECTOR_Draw },
+   { AC_Enable, (APTR)VECTOR_Enable },
    { AC_Free, (APTR)VECTOR_Free },
+   { AC_Hide, (APTR)VECTOR_Hide },
    { AC_Init, (APTR)VECTOR_Init },
    { AC_NewObject, (APTR)VECTOR_NewObject },
    { AC_NewOwner, (APTR)VECTOR_NewOwner },
    { AC_Reset, (APTR)VECTOR_Reset },
+   { AC_Show, (APTR)VECTOR_Show },
    { 0, 0 }
 };
 

@@ -10,12 +10,15 @@ Please refer to it for further information on licensing.
 VectorScene: Manages the scene graph for a collection of vectors.
 
 The VectorScene class acts as a container and control point for the management of vector definitions.  Its primary
-duty is to draw the scene to a target Bitmap provided by the client.
+duty is to draw the scene to a target @Bitmap or @Surface provided by the client.
 
 Vector scenes are created by initialising multiple Vector objects such as @VectorPath and
 @VectorViewport and positioning them within a vector tree.  The VectorScene must lie at the root.
 
-To draw a scene, the client must set the target #Bitmap and call the #Draw() action.
+The default mode of operation is for scenes to be manually drawn, for which the client must set the target #Bitmap
+and call the #Draw() action as required.  Automated drawing can be enabled by setting the target #Surface prior
+to initialisation.  In automated mode the #PageWidth and #PageHeight will reflect the dimensions of the target surface
+at all times.
 
 Vector definitions can be saved and loaded from permanent storage by using the @SVG class.
 -END-
@@ -24,6 +27,48 @@ Vector definitions can be saved and loaded from permanent storage by using the @
 
 static ERROR VECTORSCENE_Reset(objVectorScene *, APTR);
 static void render_to_surface(objVectorScene *, objSurface *, objBitmap *);
+
+//****************************************************************************
+
+static void process_resize_msgs(objVectorScene *Self)
+{
+   if (Self->PendingResizeMsgs->size() > 0) {
+      for (auto it=Self->PendingResizeMsgs->begin(); it != Self->PendingResizeMsgs->end(); it++) {
+         objVectorViewport *viewport;
+         if (!AccessObject(it->first, 1000, &viewport)) {
+            NotifySubscribers(viewport, AC_Redimension, &it->second, 0, ERR_Okay);
+            ReleaseObject(viewport);
+         }
+      }
+
+      Self->PendingResizeMsgs->clear();
+   }
+}
+
+//****************************************************************************
+
+static ERROR VECTORSCENE_ActionNotify(objVectorScene *Self, struct acActionNotify *Args)
+{
+   if (Args->ActionID IS AC_Free) {
+      if (Self->SurfaceID IS Args->ObjectID) {
+         Self->SurfaceID = 0;
+      }
+   }
+   else if (Args->ActionID IS AC_Redimension) {
+      auto resize = (struct acRedimension *)Args->Args;
+
+      if (Self->Flags & VPF_RESIZE) {
+         Self->PageWidth = resize->Width;
+         Self->PageHeight = resize->Height;
+
+         if (Self->Viewport) mark_dirty(Self->Viewport, RC_BASE_PATH|RC_TRANSFORM); // Base-paths need to be recomputed if they use relative coordinates.
+
+         ActionMsg(AC_Draw, Self->SurfaceID, NULL);
+      }
+   }
+
+   return ERR_Okay;
+}
 
 /*****************************************************************************
 
@@ -119,6 +164,10 @@ static ERROR VECTORSCENE_Draw(objVectorScene *Self, struct acDraw *Args)
 
    if (!(bmp = Self->Bitmap)) return log.warning(ERR_FieldNotSet);
 
+   // Any pending resize messages for viewports must be processed prior to drawing.
+
+   process_resize_msgs(Self);
+
    // Allocate the adaptor, or if the existing adaptor doesn't match the Bitmap pixel type, reallocate it.
 
    VMAdaptor *adaptor;
@@ -207,9 +256,10 @@ static ERROR VECTORSCENE_FindDef(objVectorScene *Self, struct scFindDef *Args)
 static ERROR VECTORSCENE_Free(objVectorScene *Self, APTR Args)
 {
    if (Self->Viewport) Self->Viewport->Parent = NULL;
-   if (Self->Adaptor) { delete Self->Adaptor; Self->Adaptor = NULL; }
-   if (Self->Buffer) { delete Self->Buffer; Self->Buffer = NULL; }
-   if (Self->Defs) { FreeResource(Self->Defs); Self->Defs = NULL; }
+   if (Self->Adaptor)  { delete Self->Adaptor; Self->Adaptor = NULL; }
+   if (Self->Buffer)   { delete Self->Buffer; Self->Buffer = NULL; }
+   if (Self->Defs)     { FreeResource(Self->Defs); Self->Defs = NULL; }
+   if (Self->PendingResizeMsgs) { delete Self->PendingResizeMsgs; Self->PendingResizeMsgs = NULL; }
    return ERR_Okay;
 }
 
@@ -219,6 +269,9 @@ static ERROR VECTORSCENE_Init(objVectorScene *Self, APTR Void)
 {
    // Setting the SurfaceID is optional and enables auto-rendering to the display.  The
    // alternative for the client is to set the Bitmap field and manage rendering manually.
+   //
+   // As long as PageWidth and PageHeight aren't set prior to initialisation, the scene will
+   // match the width and height of the surface at all times when in this mode.
 
    if (Self->SurfaceID) {
       OBJECTPTR surface;
@@ -226,6 +279,15 @@ static ERROR VECTORSCENE_Init(objVectorScene *Self, APTR Void)
          auto callback = make_function_stdc(render_to_surface);
          struct drwAddCallback args = { &callback };
          Action(MT_DrwAddCallback, surface, &args);
+
+         if ((!Self->PageWidth) or (!Self->PageHeight)) {
+            Self->Flags |= VPF_RESIZE;
+            GetLong(surface, FID_Width, &Self->PageWidth);
+            GetLong(surface, FID_Height, &Self->PageHeight);
+         }
+
+         SubscribeActionTags(surface, AC_Redimension, AC_Free, TAGEND);
+
          ReleaseObject(surface);
       }
    }
@@ -238,6 +300,9 @@ static ERROR VECTORSCENE_Init(objVectorScene *Self, APTR Void)
 static ERROR VECTORSCENE_NewObject(objVectorScene *Self, APTR Void)
 {
    Self->SampleMethod = VSM_BILINEAR;
+   Self->PendingResizeMsgs = new (std::nothrow) std::unordered_map<OBJECTID, struct acRedimension>;
+   if (!Self->PendingResizeMsgs) return ERR_Memory;
+
    // Please refer to the Reset action for setting variable defaults
    return VECTORSCENE_Reset(Self, NULL);
 }
@@ -487,9 +552,7 @@ static void render_to_surface(objVectorScene *Self, objSurface *Surface, objBitm
 {
    Self->Bitmap = Bitmap;
 
-   if ((Self->PageWidth != Surface->Width) or (Self->PageHeight != Surface->Height)) {
-      Self->PageWidth = Surface->Width;
-      Self->PageHeight = Surface->Height;
+   if ((!Self->PageWidth) or (!Self->PageHeight)) {
       if (Self->Viewport) mark_dirty(Self->Viewport, RC_BASE_PATH|RC_TRANSFORM); // Base-paths need to be recomputed if they use relative coordinates.
    }
 
