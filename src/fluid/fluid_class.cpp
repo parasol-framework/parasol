@@ -226,6 +226,9 @@ static ERROR stack_args(lua_State *Lua, OBJECTID ObjectID, const FunctionField *
 
 //****************************************************************************
 // Action notifications arrive when the user has used object.subscribe() in the Fluid script.
+//
+// function(ObjectID, Args, Reference)
+
 
 static ERROR FLUID_ActionNotify(objScript *Self, struct acActionNotify *Args)
 {

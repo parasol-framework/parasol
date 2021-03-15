@@ -1087,7 +1087,7 @@ ERROR SendMessage(MEMORYID MessageMID, LONG Type, LONG Flags, APTR Data, LONG Si
 -FUNCTION-
 WaitForObjects: Process incoming messages while waiting on objects to complete their activities.
 
-The WaitForObjects() function acts as a front-end to ~ProcessMessages(), providing an additional feature of being
+The WaitForObjects() function acts as a front-end to ~ProcessMessages(), with the extension of being
 able to wait for a series of objects that must signal an end to their activities.  An object can be signalled via
 the Signal() action.  Termination of a monitored object is also treated as a signal.  The function will return once
 ALL of the objects are signalled or a time-out occurs.

@@ -1,4 +1,4 @@
--- LUnit tests not covered by other test files.
+-- Core tests not covered by other test files.
 
 -----------------------------------------------------------------------------------------------------------------------
 -- Print a list of all actions returned by ActionList()
