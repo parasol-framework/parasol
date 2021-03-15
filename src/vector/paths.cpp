@@ -29,7 +29,6 @@ static void gen_vector_path(objVector *Vector)
 
    if (Vector->Head.SubID IS ID_VECTORVIEWPORT) {
       auto view = (objVectorViewport *)Vector;
-      agg::path_storage path;
 
       DOUBLE parent_width, parent_height;
       OBJECTID parent_id;
@@ -137,17 +136,23 @@ static void gen_vector_path(objVector *Vector)
       WORD applied_transforms = 0;
       apply_parent_transforms(Vector, Vector, transform, &applied_transforms);
 
+      if (!Vector->BasePath) {
+         Vector->BasePath = new (std::nothrow) agg::path_storage;
+         if (!Vector->BasePath) return;
+      }
+      else Vector->BasePath->free_all();
+
       DOUBLE x = view->vpFixedRelX;
       DOUBLE y = view->vpFixedRelY;
-      path.move_to(x, y); // Top left
-      path.line_to(x+view->vpFixedWidth, y); // Top right
-      path.line_to(x+view->vpFixedWidth, y+view->vpFixedHeight); // Bottom right
-      path.line_to(x, y+view->vpFixedHeight); // Bottom left
-      path.close_polygon();
+      Vector->BasePath->move_to(x, y); // Top left
+      Vector->BasePath->line_to(x+view->vpFixedWidth, y); // Top right
+      Vector->BasePath->line_to(x+view->vpFixedWidth, y+view->vpFixedHeight); // Bottom right
+      Vector->BasePath->line_to(x, y+view->vpFixedHeight); // Bottom left
+      Vector->BasePath->close_polygon();
 
-      path.transform(transform);
+      Vector->BasePath->transform(transform);
 
-      bounding_rect_single(path, 0, &view->vpBX1, &view->vpBY1, &view->vpBX2, &view->vpBY2);
+      bounding_rect_single(*Vector->BasePath, 0, &view->vpBX1, &view->vpBY1, &view->vpBX2, &view->vpBY2);
 
       // If the viewport is transformed, a clipping mask will need to be generated based on its path.  The path is
       // pre-transformed and drawn in order to speed things up.
@@ -161,7 +166,7 @@ static void gen_vector_path(objVector *Vector)
          }
          if (view->vpClipMask) {
             delete view->vpClipMask->ClipPath;
-            view->vpClipMask->ClipPath = new (std::nothrow) agg::path_storage(path);
+            view->vpClipMask->ClipPath = new (std::nothrow) agg::path_storage(*Vector->BasePath);
             acDraw(view->vpClipMask);
          }
       }
