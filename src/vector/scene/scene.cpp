@@ -26,7 +26,6 @@ Vector definitions can be saved and loaded from permanent storage by using the @
 *****************************************************************************/
 
 static ERROR VECTORSCENE_Reset(objVectorScene *, APTR);
-static void render_to_surface(objVectorScene *, objSurface *, objBitmap *);
 
 //****************************************************************************
 
@@ -193,6 +192,11 @@ static ERROR VECTORSCENE_Draw(objVectorScene *Self, struct acDraw *Args)
       if ((Self->RenderTime = PreciseTime() - time) < 1) Self->RenderTime = 1;
    }
    else adaptor->draw(bmp);
+
+// For debugging purposes, draw a boundary around the target area.
+//   static RGB8 highlightA = { .Red = 255, .Green = 0, .Blue = 0, .Alpha = 255 };
+//   ULONG highlight = PackPixelRGBA(bmp, &highlightA);
+//   gfxDrawRectangle(bmp, bmp->Clip.Left, bmp->Clip.Top, bmp->Clip.Right-bmp->Clip.Left, bmp->Clip.Bottom-bmp->Clip.Top, highlight, 0);
 
    return ERR_Okay;
 }
@@ -567,7 +571,7 @@ static const FieldArray clSceneFields[] = {
    { "Viewport",     FDF_OBJECT|FD_R,            ID_VECTORVIEWPORT, NULL, NULL },
    { "Bitmap",       FDF_OBJECT|FDF_RW,          ID_BITMAP, NULL, (APTR)SET_Bitmap },
    { "Defs",         FDF_STRUCT|FDF_PTR|FDF_SYSTEM|FDF_R, (MAXINT)"KeyStore", NULL, NULL },
-   { "Surface",      FDF_OBJECTID|FDF_RW,        ID_SURFACE, NULL, (APTR)SET_Surface },
+   { "Surface",      FDF_OBJECTID|FDF_RI,        ID_SURFACE, NULL, (APTR)SET_Surface },
    { "Flags",        FDF_LONGFLAGS|FDF_RW,       (MAXINT)&clVectorSceneFlags, NULL, NULL },
    { "PageWidth",    FDF_LONG|FDF_RW,            0, NULL, (APTR)SET_PageWidth },
    { "PageHeight",   FDF_LONG|FDF_RW,            0, NULL, (APTR)SET_PageHeight },

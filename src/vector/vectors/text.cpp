@@ -528,7 +528,7 @@ form of ALIGN_LEFT, ALIGN_HORIZONTAL and ALIGN_RIGHT.
 
 In addition, the SVG equivalent values of 'start', 'middle' and 'end' are supported and map directly to the formerly
 mentioned align flags.
-
+-END-
 *****************************************************************************/
 
 static ERROR TEXT_GET_Align(objVectorText *Self, LONG *Value)
@@ -774,7 +774,7 @@ static ERROR TEXT_SET_StartOffset(objVectorText *Self, DOUBLE Value)
 X: The x coordinate of the text.
 
 The x-axis coordinate of the text is specified here as a fixed value.  Relative coordinates are not supported.
-
+-END-
 *****************************************************************************/
 
 static ERROR TEXT_GET_X(objVectorText *Self, Variable *Value)
@@ -802,7 +802,7 @@ Y: The base-line y coordinate of the text.
 The Y-axis coordinate of the text is specified here as a fixed value.  Relative coordinates are not supported.
 
 Unlike other vector shapes, the Y coordinate positions the text from its base line rather than the top of the shape.
-
+-END-
 *****************************************************************************/
 
 static ERROR TEXT_GET_Y(objVectorText *Self, Variable *Value)
@@ -846,7 +846,7 @@ attribute, then for each of these extra characters the rotation value specified 
 This supplemental rotation has no impact on the rules by which current text position is modified as glyphs get rendered
 and is supplemental to any rotation due to text on a path and to 'glyph-orientation-horizontal' or
 'glyph-orientation-vertical'.
-
+-END-
 *****************************************************************************/
 
 static ERROR TEXT_GET_Rotate(objVectorText *Self, DOUBLE **Values, LONG *Elements)
@@ -874,7 +874,7 @@ static ERROR TEXT_SET_Rotate(objVectorText *Self, DOUBLE *Values, LONG Elements)
 String: The string to use for drawing the glyphs is defined here.
 
 The string for drawing the glyphs is defined here in UTF-8 format.
-
+-END-
 *****************************************************************************/
 
 static ERROR TEXT_GET_String(objVectorText *Self, CSTRING *Value)

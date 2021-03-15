@@ -133,6 +133,7 @@ static GRADIENT_TABLE * get_fill_gradient_table(objVector &, DOUBLE);
 static GRADIENT_TABLE * get_stroke_gradient_table(objVector &);
 static CSTRING read_numseq(CSTRING Value, ...);
 static ERROR read_path(PathCommand **, LONG *, CSTRING);
+static void render_to_surface(objVectorScene *, objSurface *, objBitmap *);
 static void apply_transition(objVectorTransition *, DOUBLE, agg::trans_affine &);
 static void apply_transition_xy(objVectorTransition *, DOUBLE, DOUBLE *X, DOUBLE *Y);
 

@@ -129,23 +129,34 @@ static ERROR VECTOR_Disable(objVector *Self, APTR Void)
 /*****************************************************************************
 -ACTION-
 Draw: Draws the surface associated with the vector.
--End-
+
+Using the Draw action on a specific vector will redraw its area within the @Surface associated with the @VectorScene.  This is
+the most optimal method of drawing if it can be assured that changes within the scene are limited to the target vector's boundary.
+
+Support for restricting the drawing area is not provided and we recommend that no parameters are passed when calling this action.
+
+-END-
 *****************************************************************************/
 
 static ERROR VECTOR_Draw(objVector *Self, struct acDraw *Args)
 {
-   parasol::Log log;
    if ((Self->Scene) and (Self->Scene->SurfaceID)) {
-      struct acDraw area;
-      if (Args) {
-         area = *Args;
+      if ((!Self->BasePath) or (Self->Dirty)) {
+         gen_vector_path(Self);
+         Self->Dirty = 0;
       }
-      else {
-         area = { .X = 0, .Y = 0, .Width = 0, .Height = 0 };
-      }
+
+      if (!Self->BasePath) return ERR_NoData;
+
+      DOUBLE bx1, by1, bx2, by2;
+      bounding_rect_single(*Self->BasePath, 0, &bx1, &by1, &bx2, &by2); // Retrieve bounding box, post-transformations.
+      struct acDraw area = { .X = F2T(bx1), .Y = F2T(by1), .Width = F2T(bx2 - bx1), .Height = F2T(by2 - by1) };
       return ActionMsg(AC_Draw, Self->Scene->SurfaceID, &area);
    }
-   else return log.warning(ERR_FieldNotSet);
+   else {
+      parasol::Log log;
+      return log.warning(ERR_FieldNotSet);
+   }
 }
 
 /*****************************************************************************
@@ -2081,8 +2092,7 @@ static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
       // Patch the Next fields to construct a custom chain of events based on this subscripton's mask filter.
 
       InputEvent *first = NULL, *last = NULL;
-      LONG i;
-      for (i=0; i < e; i++) {
+      for (LONG i=0; i < e; i++) {
          if (filtered_events[i].Mask & sub.Mask) {
             if (!first) first = &filtered_events[i];
             if (last) last->Next = &filtered_events[i];
