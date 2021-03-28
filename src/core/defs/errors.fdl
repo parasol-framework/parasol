@@ -187,6 +187,7 @@ function declareErrors()
     "NotPossible",             // It is not possible to perform the requested operation.
     "ResolveSymbol",           // Failed to resolve a linked library symbol
     "Function",                // A function call failed
+    "AlreadyDefined",          // Attempted to change a value that cannot be redefined.
     "END") // NB: Any new error messages need to be added to data_errors.c manually.
 
   const("ERF", { comment="Special error flags" }, {

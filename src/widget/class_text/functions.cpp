@@ -80,16 +80,16 @@ static ERROR add_line(objText *Self, CSTRING String, LONG Line, LONG Length, LON
 
    // Get the length of the text
 
-   if ((String) AND (*String)) {
+   if ((String) and (*String)) {
       if (Length >= 0) len = Length;
-      else for (len=0; (String[len]) AND (String[len] != '\n') AND (String[len] != '\r'); len++);
+      else for (len=0; (String[len]) and (String[len] != '\n') and (String[len] != '\r'); len++);
    }
    else len = 0;
 
    // Stop the string from exceeding the acceptable character limit
 
    if (len >= Self->CharLimit) {
-      for (unicodelen=0, i=0; (i < len) AND (unicodelen < Self->CharLimit); unicodelen++) {
+      for (unicodelen=0, i=0; (i < len) and (unicodelen < Self->CharLimit); unicodelen++) {
          for (++i; (String[i] & 0xc0) IS 0x80; i++);
       }
       len = i;
@@ -127,7 +127,7 @@ static ERROR add_line(objText *Self, CSTRING String, LONG Line, LONG Length, LON
          Self->Array[line].PixelLength = calc_width(Self, String, len);
       }
       else if (!AllocMemory(len + 1, MEM_STRING|MEM_NO_CLEAR, &str, NULL)) {
-         for (i=0; (i < len) AND (String[i]); i++) str[i] = String[i];
+         for (i=0; (i < len) and (String[i]); i++) str[i] = String[i];
          str[i] = 0;
          Self->Array[line].String      = str;
          Self->Array[line].Length      = len;
@@ -187,10 +187,10 @@ static ERROR add_xml(objText *Self, XMLTag *XMLList, WORD Flags, LONG Line)
          // Shrink the string in areas where white-space is doubled-up
 
          for (j=0; j < len; j++) {
-            if ((str[j] IS '.') AND (str[j+1] IS 0x20) AND (str[j+2] IS 0x20)) {
+            if ((str[j] IS '.') and (str[j+1] IS 0x20) and (str[j+2] IS 0x20)) {
                j += 2;  // The end of sentences are allowed double-spaces
             }
-            else if ((str[j] IS 0x20) AND (str[j+1] IS 0x20)) {
+            else if ((str[j] IS 0x20) and (str[j+1] IS 0x20)) {
                for (i=j; str[i] IS 0x20; i++);
                StrCopy(str+i, str+j, COPY_ALL);
             }
@@ -266,18 +266,18 @@ static void draw_text(objText *Self, objSurface *Surface, objBitmap *Bitmap)
    LONG amtlines;
    WORD valign;
 
-   if ((Self->Layout->Visible IS FALSE) OR (Self->Tag)) return;
+   if ((Self->Layout->Visible IS FALSE) or (Self->Tag)) return;
 
    if (!(font = Self->Font)) return;
 
    // Frame testing
 
-   if ((Self->Frame) AND (Surface->Frame != Self->Frame)) return;
+   if ((Self->Frame) and (Surface->Frame != Self->Frame)) return;
 
    // In EDIT mode, there must always be at least 1 line so that we can print the cursor
 
    amtlines = Self->AmtLines;
-   if ((amtlines < 1) AND (Self->Flags & TXF_EDIT)) amtlines = 1;
+   if ((amtlines < 1) and (Self->Flags & TXF_EDIT)) amtlines = 1;
 
    valign = (font->LineSpacing - font->MaxHeight)>>1; // VAlign is used to keep strings vertically centered within each line
 
@@ -290,7 +290,7 @@ static void draw_text(objText *Self, objSurface *Surface, objBitmap *Bitmap)
    font->Y += Self->YPosition + valign;
    font->Bitmap = Bitmap;
 
-   if ((Self->Flags & TXF_WORDWRAP) OR (font->Flags & FTF_CHAR_CLIP)) {
+   if ((Self->Flags & TXF_WORDWRAP) or (font->Flags & FTF_CHAR_CLIP)) {
       font->WrapEdge = Self->Layout->BoundX + Self->Layout->BoundWidth - (Self->Layout->Document ? 0 : Self->Layout->RightMargin);
    }
    else font->WrapEdge = 0;
@@ -302,7 +302,7 @@ static void draw_text(objText *Self, objSurface *Surface, objBitmap *Bitmap)
    if (Self->Layout->Align & (ALIGN_VERTICAL|ALIGN_BOTTOM)) {
       // If in wordwrap mode, calculate the height of all the text lines so that we can get a correct alignment
 
-      if ((Self->Flags & TXF_WORDWRAP) AND (Self->AmtLines > 0)) {
+      if ((Self->Flags & TXF_WORDWRAP) and (Self->AmtLines > 0)) {
          LONG wrapheight;
          textheight = 0;
          for (row=0; row < Self->AmtLines; row++) {
@@ -345,7 +345,7 @@ static void draw_text(objText *Self, objSurface *Surface, objBitmap *Bitmap)
    endcolumn    = -1;
 
    if (Self->Flags & TXF_AREA_SELECTED) {
-      if ((Self->SelectRow != Self->CursorRow) OR (Self->SelectColumn != Self->CursorColumn)) {
+      if ((Self->SelectRow != Self->CursorRow) or (Self->SelectColumn != Self->CursorColumn)) {
          GetSelectedArea(Self, &selectrow, &selectcolumn, &endrow, &endcolumn);
       }
    }
@@ -363,7 +363,7 @@ static void draw_text(objText *Self, objSurface *Surface, objBitmap *Bitmap)
 
    sx = Self->Layout->BoundX + (Self->Layout->Document ? 0 : Self->Layout->LeftMargin);
 
-   for (; (row < amtlines) AND (font->Y - valign - font->Leading < Bitmap->Clip.Bottom); row++) {
+   for (; (row < amtlines) and (font->Y - valign - font->Leading < Bitmap->Clip.Bottom); row++) {
       // Do style management if there are tags listed against this line
 
       currentfont = Self->Font;
@@ -403,7 +403,7 @@ static void draw_text(objText *Self, objSurface *Surface, objBitmap *Bitmap)
       if (Self->Flags & TXF_SECRET) {
          // Highlighting is not allowed in secret mode
       }
-      else if ((row >= selectrow) AND (row <= endrow)) {
+      else if ((row >= selectrow) and (row <= endrow)) {
          width = Self->Layout->BoundWidth;
          if (row IS selectrow) {
             // First row
@@ -428,7 +428,7 @@ static void draw_text(objText *Self, objSurface *Surface, objBitmap *Bitmap)
          else {
             // End row
             x = currentfont->X;
-            if ((Self->Array[row].Length > 0) AND (endcolumn > 0)) {
+            if ((Self->Array[row].Length > 0) and (endcolumn > 0)) {
                x = sx + Self->XPosition;
                width = fntStringWidth(currentfont, Self->Array[row].String, endcolumn) - x + sx + Self->XPosition;
             }
@@ -441,8 +441,8 @@ static void draw_text(objText *Self, objSurface *Surface, objBitmap *Bitmap)
 
       // Draw the cursor if the object is in edit mode
 
-      if ((row IS Self->CursorRow) AND (Surface->Flags & RNF_HAS_FOCUS) AND ((Self->CursorFlash % CURSOR_RATE) < (CURSOR_RATE>>1)) AND
-          (Self->Flags & TXF_EDIT) AND (!Self->NoCursor)) {
+      if ((row IS Self->CursorRow) and (Surface->Flags & RNF_HAS_FOCUS) and ((Self->CursorFlash % CURSOR_RATE) < (CURSOR_RATE>>1)) AND
+          (Self->Flags & TXF_EDIT) and (!Self->NoCursor)) {
 
          x = Self->Layout->BoundX + (Self->Layout->Document ? 0 : Self->Layout->LeftMargin) + Self->XPosition;
 
@@ -467,7 +467,7 @@ static void draw_text(objText *Self, objSurface *Surface, objBitmap *Bitmap)
 
       // Draw the font now
 
-      if ((Self->Array[row].Length < 1) OR (!Self->Array[row].String)) {
+      if ((Self->Array[row].Length < 1) or (!Self->Array[row].String)) {
          currentfont->EndX = currentfont->X;
          currentfont->EndY = currentfont->Y;
          font->Y += currentfont->LineSpacing;
@@ -525,7 +525,7 @@ static void xml_extract_content(XMLTag *XMLTag, char *Buffer, LONG *Index, WORD 
          LONG i;
          for (i=0; content[i]; i++) {
             // Skip whitespace
-            if (content[i] <= 0x20) while ((content[i+1]) AND (content[i+1] <= 0x20)) i++;
+            if (content[i] <= 0x20) while ((content[i+1]) and (content[i+1] <= 0x20)) i++;
             Buffer[pos++] = content[i];
          }
       }
@@ -572,7 +572,7 @@ static ERROR calc_vscroll(objText *Self)
    if (!Self->VScrollID) return ERR_Okay;
    if (Self->NoUpdate) return ERR_Okay;
 
-   if ((Self->Flags & TXF_WORDWRAP) AND (Self->AmtLines > 0) AND (Self->Layout->ParentSurface.Width > 0)) {
+   if ((Self->Flags & TXF_WORDWRAP) and (Self->AmtLines > 0) and (Self->Layout->ParentSurface.Width > 0)) {
       pagewidth = Self->Layout->BoundWidth;
 
       lines = 0;
@@ -718,7 +718,7 @@ static void draw_lines(objText *Self, LONG Row, LONG Total)
 
    if (Total < 1) return;
 
-   if ((Self->Flags & TXF_WORDWRAP) AND (Row < Self->AmtLines)) {
+   if ((Self->Flags & TXF_WORDWRAP) and (Row < Self->AmtLines)) {
       if (Row IS Self->AmtLines-1) {
          // Draw only the last word-wrapped line for speed
          if (Self->Array[Row].PixelLength > 0) {
@@ -742,7 +742,7 @@ static void redraw_line(objText *Self, LONG Line)
    if (Line < 0) return;
 
    LONG lines;
-   if ((Self->Flags & TXF_WORDWRAP) AND (Line < Self->AmtLines)) {
+   if ((Self->Flags & TXF_WORDWRAP) and (Line < Self->AmtLines)) {
       if (Self->Array[Line].PixelLength > 0) {
          lines = (Self->Array[Line].PixelLength + Self->Layout->BoundWidth - 1) / Self->Layout->BoundWidth;
          if (lines < 1) lines = 1;
@@ -798,7 +798,7 @@ static void key_event(objText *Self, evKey *Event, LONG Size)
 
    Self->CursorFlash = 0; // Reset the flashing cursor to make it visible
 
-   if ((!(Self->Flags & TXF_NO_SYS_KEYS)) AND (Event->Qualifiers & KQ_CTRL)) {
+   if ((!(Self->Flags & TXF_NO_SYS_KEYS)) and (Event->Qualifiers & KQ_CTRL)) {
       switch(Event->Code) {
          case K_C: // Copy
             acClipboard(Self, CLIPMODE_COPY);
@@ -829,7 +829,7 @@ static void key_event(objText *Self, evKey *Event, LONG Size)
       }
    }
 
-   if (!(Event->Qualifiers & KQ_NOT_PRINTABLE)) { // AND (!(Flags & KQ_INSTRUCTIONKEYS))
+   if (!(Event->Qualifiers & KQ_NOT_PRINTABLE)) { // and (!(Flags & KQ_INSTRUCTIONKEYS))
       // Printable character handling
 
       if (!(Self->Flags & TXF_EDIT)) {
@@ -1021,7 +1021,7 @@ static void key_event(objText *Self, evKey *Event, LONG Size)
          }
       }
       else {
-         if ((Self->LineLimit) AND (Self->AmtLines >= Self->LineLimit)) break;
+         if ((Self->LineLimit) and (Self->AmtLines >= Self->LineLimit)) break;
 
          if (Self->Flags & TXF_AREA_SELECTED) DeleteSelectedArea(Self);
 
@@ -1086,7 +1086,7 @@ static void key_event(objText *Self, evKey *Event, LONG Size)
       }
       else {
          if (Self->LineLimit IS 1) break;
-         else if ((Self->Flags & TXF_TAB_KEY) OR (Event->Qualifiers & KQ_SHIFT)) {
+         else if ((Self->Flags & TXF_TAB_KEY) or (Event->Qualifiers & KQ_SHIFT)) {
             if (Self->Flags & TXF_AREA_SELECTED) DeleteSelectedArea(Self);
             insert_char(Self, '\t', Self->CursorColumn);
          }
@@ -1131,8 +1131,8 @@ static void key_event(objText *Self, evKey *Event, LONG Size)
             }
          }
       }
-      else if (((Event->Code IS K_UP) AND (Self->CursorRow > 0)) OR
-               ((Event->Code IS K_DOWN) AND (Self->CursorRow < Self->AmtLines-1))) {
+      else if (((Event->Code IS K_UP) and (Self->CursorRow > 0)) OR
+               ((Event->Code IS K_DOWN) and (Self->CursorRow < Self->AmtLines-1))) {
          WORD endcolumn, col, colchar;
 
          // Determine the current true position of the current cursor column, in UTF-8, with respect to tabs.  Then determine the cursor
@@ -1147,7 +1147,7 @@ static void key_event(objText *Self, evKey *Event, LONG Size)
          colchar = 0;
          col = 0;
          i = 0;
-         while ((i < Self->Array[Self->CursorRow].Length) AND (colchar < endcolumn)) {
+         while ((i < Self->Array[Self->CursorRow].Length) and (colchar < endcolumn)) {
             if (Self->Array[Self->CursorRow].String[i] IS '\t') {
                col += ROUNDUP(col, Self->Font->TabSize);
             }
@@ -1172,7 +1172,7 @@ static void key_event(objText *Self, evKey *Event, LONG Size)
          if (Event->Code IS K_UP) Self->CursorRow--;
          else Self->CursorRow++;
 
-         for (Self->CursorColumn=0, i=0; (col > 0) AND (i < Self->Array[Self->CursorRow].Length);) {
+         for (Self->CursorColumn=0, i=0; (col > 0) and (i < Self->Array[Self->CursorRow].Length);) {
             if (Self->Array[Self->CursorRow].String[i] IS '\t') {
                col -= ROUNDUP(Self->CursorColumn, Self->Font->TabSize);
                Self->CursorColumn++;
@@ -1257,19 +1257,19 @@ static void insert_char(objText *Self, LONG Unicode, LONG Column)
    LONG i, j, k, charlen, offset, unicodelen;
    char buffer[6];
 
-   if ((!Self) OR (!Unicode)) return;
+   if ((!Self) or (!Unicode)) return;
 
    // If FORCECAPS is used, convert lower case letters to upper case
 
    if (Self->Flags & TXF_FORCE_CAPS) {
-      if ((Unicode >= 'a') AND (Unicode <= 'z')) Unicode = Unicode - 'a' + 'A';
+      if ((Unicode >= 'a') and (Unicode <= 'z')) Unicode = Unicode - 'a' + 'A';
    }
 
    // Convert the character into a UTF-8 sequence
 
    charlen = UTF8WriteValue(Unicode, buffer, 6);
 
-   if ((!Self->Array[Self->CursorRow].String) OR (Self->Array[Self->CursorRow].Length < 1)) {
+   if ((!Self->Array[Self->CursorRow].String) or (Self->Array[Self->CursorRow].Length < 1)) {
       if (Self->CharLimit < 1) return;
 
       if (Self->Array[Self->CursorRow].String) FreeResource(Self->Array[Self->CursorRow].String);
@@ -1301,7 +1301,7 @@ static void insert_char(objText *Self, LONG Unicode, LONG Column)
 
          // If overwrite mode is set, skip over the character bytes at the current cursor position.
 
-         if ((Self->Flags & TXF_OVERWRITE) AND (i < Self->Array[Self->CursorRow].Length)) {
+         if ((Self->Flags & TXF_OVERWRITE) and (i < Self->Array[Self->CursorRow].Length)) {
             charlen--;
             for (++i; (Self->Array[Self->CursorRow].String[i] & 0xc0) IS 0x80; i++) charlen--;
          }
@@ -1368,7 +1368,7 @@ static ERROR load_file(objText *Self, CSTRING Location)
             return ERR_Read;
          }
       }
-      else if ((!GetLarge(file, FID_Size, &size)) AND (size > 0)) {
+      else if ((!GetLarge(file, FID_Size, &size)) and (size > 0)) {
          STRING line;
          if (!AllocMemory(size+1, MEM_STRING|MEM_NO_CLEAR, &line, NULL)) {
             LONG result;
@@ -1416,20 +1416,20 @@ static ERROR replace_line(objText *Self, CSTRING String, LONG Line, LONG ByteLen
    STRING str;
    LONG i, unicodelen;
 
-   if ((Line < 0) OR (Line >= Self->AmtLines)) return ERR_Args;
+   if ((Line < 0) or (Line >= Self->AmtLines)) return ERR_Args;
 
    // Calculate the length of the text if necessary
 
    LONG len = 0;
-   if ((String) AND (*String)) {
+   if ((String) and (*String)) {
       if (ByteLength >= 0) len = ByteLength;
-      else for (len=0; (String[len]) AND (String[len] != '\n') AND (String[len] != '\r'); len++);
+      else for (len=0; (String[len]) and (String[len] != '\n') and (String[len] != '\r'); len++);
    }
 
    // Stop the string from exceeding the acceptable character limit
 
    if (len >= Self->CharLimit) {
-      for (unicodelen=0, i=0; (i < len) AND (unicodelen < Self->CharLimit); unicodelen++) {
+      for (unicodelen=0, i=0; (i < len) and (unicodelen < Self->CharLimit); unicodelen++) {
          for (++i; (String[i] & 0xc0) IS 0x80; i++);
       }
       len = i;
@@ -1445,7 +1445,7 @@ static ERROR replace_line(objText *Self, CSTRING String, LONG Line, LONG ByteLen
    else if (len <= Self->Array[Line].Length) {
       // If the new string is smaller than the available space, copy the new string straight over the old one.
 
-      for (i=0; (i < len) AND (String[i]); i++) {
+      for (i=0; (i < len) and (String[i]); i++) {
          Self->Array[Line].String[i] = String[i];
       }
       Self->Array[Line].String[i]   = 0;
@@ -1454,7 +1454,7 @@ static ERROR replace_line(objText *Self, CSTRING String, LONG Line, LONG ByteLen
    }
    else if (!AllocMemory(len+1, MEM_STRING|MEM_NO_CLEAR, &str, NULL)) {
       if (Self->Array[Line].String) FreeResource(Self->Array[Line].String);
-      for (i=0; (i < len) AND (String[i]); i++) str[i] = String[i];
+      for (i=0; (i < len) and (String[i]); i++) str[i] = String[i];
       str[i] = 0;
       Self->Array[Line].String = str;
       Self->Array[Line].Length = i;
@@ -1580,7 +1580,7 @@ static void validate_cursorpos(objText *Self, LONG Redraw)
 {
    LONG column;
 
-   if ((!Self->Array[Self->CursorRow].String) OR (Self->Array[Self->CursorRow].Length < 1)) {
+   if ((!Self->Array[Self->CursorRow].String) or (Self->Array[Self->CursorRow].Length < 1)) {
       column = 0;
    }
    else {
@@ -1609,7 +1609,7 @@ static LONG view_cursor(objText *Self)
 
    if (!(Self->Flags & (TXF_EDIT|TXF_SINGLE_SELECT|TXF_MULTI_SELECT|TXF_AREA_SELECTED))) return FALSE;
 
-   if ((Self->Layout->ParentSurface.Height < 1) OR (Self->Layout->ParentSurface.Width < 1)) return FALSE;
+   if ((Self->Layout->ParentSurface.Height < 1) or (Self->Layout->ParentSurface.Width < 1)) return FALSE;
 
    scroll = FALSE;
    xpos = Self->XPosition;
@@ -1653,7 +1653,7 @@ static LONG view_cursor(objText *Self)
 
    // Do the scroll action
 
-   if ((scrollx) OR (scrolly)) {
+   if ((scrollx) or (scrolly)) {
       ActionTags(AC_ScrollToPoint, Self, (DOUBLE)((-xpos) - scrollx), (DOUBLE)((-ypos) - scrolly), 0.0, STP_X|STP_Y);
 
       if (!Self->NoUpdate) {
@@ -1677,7 +1677,7 @@ static LONG view_selection(objText *Self)
    LONG ycoord, height, xcoord, width, scrolly, scrollx, selectx, selecty, xpos, ypos;
    BYTE scroll;
 
-   if ((Self->Layout->ParentSurface.Height < 1) OR (Self->Layout->ParentSurface.Width < 1)) return FALSE;
+   if ((Self->Layout->ParentSurface.Height < 1) or (Self->Layout->ParentSurface.Width < 1)) return FALSE;
 
    scroll = FALSE;
    xpos = Self->XPosition;
@@ -1757,10 +1757,10 @@ static LONG view_selection(objText *Self)
 
    // Do the scroll action
 
-   if ((selectx) AND (!scrollx)) scrollx = selectx;
-   if ((selecty) AND (!scrolly)) scrolly = selecty;
+   if ((selectx) and (!scrollx)) scrollx = selectx;
+   if ((selecty) and (!scrolly)) scrolly = selecty;
 
-   if ((scrollx) OR (scrolly)) {
+   if ((scrollx) or (scrolly)) {
       acScrollToPoint(Self, (DOUBLE)((-xpos) - scrollx), (DOUBLE)((-ypos) - scrolly), 0.0, STP_X|STP_Y);
 
       if (!Self->NoUpdate) {

@@ -417,7 +417,7 @@ static ERROR VECTOR_Init(objVector *Self, APTR Void)
 -METHOD-
 InputSubscription: Create a subscription for input events that relate to the vector.
 
-The InputSubscripion method is provided as an extension to gfxSubscribeInput(), whereby the user's input events
+The InputSubscription method is provided as an extension to gfxSubscribeInput(), whereby the user's input events
 will be filtered down to those that occur within the vector's graphics area only.  The original events are
 transferred as-is, although the ENTERED_SURFACE and LEFT_SURFACE events are modified so that they trigger during
 passage through the vector boundaries.

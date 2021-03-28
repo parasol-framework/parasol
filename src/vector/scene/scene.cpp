@@ -336,8 +336,8 @@ Reset: Clears all registered definitions and resets field values.  Child vectors
 static ERROR VECTORSCENE_Reset(objVectorScene *Self, APTR Void)
 {
    if (Self->Adaptor) { delete Self->Adaptor; Self->Adaptor = NULL; }
-   if (Self->Buffer) { delete Self->Buffer; Self->Buffer = NULL; }
-   if (Self->Defs) { FreeResource(Self->Defs); Self->Defs = NULL; }
+   if (Self->Buffer)  { delete Self->Buffer; Self->Buffer = NULL; }
+   if (Self->Defs)    { FreeResource(Self->Defs); Self->Defs = NULL; }
 
    if (!(Self->Head.Flags & NF_FREE)) { // Reset all variables
       Self->Gamma = 1.0;

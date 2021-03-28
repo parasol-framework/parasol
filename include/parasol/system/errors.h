@@ -206,7 +206,8 @@
 #define ERR_NotPossible 179
 #define ERR_ResolveSymbol 180
 #define ERR_Function 181
-#define ERR_END 182
+#define ERR_AlreadyDefined 182
+#define ERR_END 183
 
 // Special error flags
 

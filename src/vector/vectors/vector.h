@@ -42,7 +42,7 @@ typedef struct rkVectorPoly {
    struct VectorPoint *Points;
    LONG TotalPoints;
    DOUBLE X1,Y1,X2,Y2; // Read-only, reflects the polygon boundary.
-   UBYTE Closed:1; // Polygons are closed (TRUE) and Polylines are open (FALSE)
+   bool Closed:1;      // Polygons are closed (TRUE) and Polylines are open (FALSE)
 } objVectorPoly;
 
 //****************************************************************************
@@ -108,9 +108,9 @@ typedef struct rkVectorText {
    LONG  txAlignFlags;
    LONG  txFlags; // VTF flags
    UBYTE txRelativeFontSize;
-   UBYTE txXRelative:1;
-   UBYTE txYRelative:1;
-// UBYTE txSpacingAndGlyphs:1;
+   bool txXRelative:1;
+   bool txYRelative:1;
+// bool txSpacingAndGlyphs:1;
 } objVectorText;
 
 //****************************************************************************
@@ -141,7 +141,7 @@ typedef struct rkVectorTransition {
 
 #ifdef PRV_VECTOR
    struct TransitionStop Stops[MAX_TRANSITION_STOPS];
-   UBYTE Dirty:1;
+   bool Dirty:1;
 #endif
 } objVectorTransition;
 

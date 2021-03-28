@@ -128,8 +128,8 @@ static void drawBitmap(LONG SampleMethod, agg::renderer_base<agg::pixfmt_rkl> &R
    imgSource.attach(SrcBitmap->Data, SrcBitmap->Width, SrcBitmap->Height, SrcBitmap->LineWidth);
    agg::pixfmt_rkl pixels(*SrcBitmap);
 
-   if ((Transform) AND // Interpolate only if the transform specifies a scale, shear or rotate operation.
-       ((Transform->sx != 1.0) OR (Transform->sy != 1.0) OR (Transform->shx != 0.0) OR (Transform->shy != 0.0))) {
+   if ((Transform) and // Interpolate only if the transform specifies a scale, shear or rotate operation.
+       ((Transform->sx != 1.0) or (Transform->sy != 1.0) or (Transform->shx != 0.0) or (Transform->shy != 0.0))) {
       agg::span_interpolator_linear<> interpolator(*Transform);
       agg::image_filter_lut filter;
       set_filter(filter, SampleMethod);  // Set the interpolation filter to use.
@@ -847,9 +847,8 @@ private:
 
    void draw_vectors(objVector *CurrentVector, VectorState &ParentState)
    {
-      parasol::Log log;
-
       for (auto shape=CurrentVector; shape; shape=(objVector *)shape->Next) {
+         parasol::Log log(__FUNCTION__);
          VectorState state = VectorState(ParentState);
 
          if (shape->Head.ClassID != ID_VECTOR) {
@@ -866,11 +865,11 @@ private:
          // Visibility management.
 
          {
-            BYTE visible = TRUE;
+            bool visible = true;
             if (shape->Visibility IS VIS_INHERIT) {
-               if (ParentState.mVisible != VIS_VISIBLE) visible = FALSE;
+               if (ParentState.mVisible != VIS_VISIBLE) visible = false;
             }
-            else if (shape->Visibility != VIS_VISIBLE) visible = FALSE;
+            else if (shape->Visibility != VIS_VISIBLE) visible = false;
 
             if (!visible) {
                log.trace("%s: #%d, Not Visible", get_name(shape), shape->Head.UniqueID);
@@ -880,7 +879,6 @@ private:
 
          objVectorFilter *filter;
          if ((filter = shape->Filter)) {
-            parasol::Log log;
             #ifdef DBG_DRAW
                log.traceBranch("Processing filter.");
             #endif
@@ -895,7 +893,7 @@ private:
          }
 
          #ifdef DBG_DRAW
-            FMSG("~draw_vectors()","%s: #%d, Transforms: %p", get_name(shape), shape->Head.UniqueID, shape->Transforms);
+            log.traceBranch("%s: #%d, Transforms: %p", get_name(shape), shape->Head.UniqueID, shape->Transforms);
          #endif
 
          if (shape->LineJoin != agg::inherit_join)   state.mLineJoin  = shape->LineJoin;
@@ -924,8 +922,6 @@ private:
 
          if (shape->Head.SubID IS ID_VECTORVIEWPORT) {
             if (shape->Child) {
-               parasol::Log log;
-
                auto view = (objVectorViewport *)shape;
 
                LONG xmin = mRenderBase.xmin(), ymin = mRenderBase.ymin(), xmax = mRenderBase.xmax(), ymax = mRenderBase.ymax();
@@ -965,7 +961,7 @@ private:
             }
          }
          else {
-            // Clip masks are redrawn every cycle and for each vector due to the fact that their look is dependent on the
+            // Clip masks are redrawn every cycle and for each vector, due to the fact that their look is dependent on the
             // vector to which they are applied (e.g. transforms that are active for the target vector will also affect the
             // clip path).
 
@@ -976,7 +972,6 @@ private:
             }
 
             if (shape->GeneratePath) { // A vector that generates a path can be drawn
-               parasol::Log log;
                #ifdef DBG_DRAW
                   log.traceBranch("%s: #%d, Mask: %p", get_name(shape), shape->Head.UniqueID, shape->ClipMask);
                #endif
@@ -1029,7 +1024,7 @@ private:
                         draw_gradient(shape, shape->BasePath, shape->FinalX, shape->FinalY, view_width, view_height,
                            *shape->FillGradient, table, mRenderBase, *shape->FillRaster, 0);
                      }
-                     else LogErrorMsg("Failed to generate filled gradient for vector #%d", shape->Head.UniqueID);
+                     else log.warning("Failed to generate filled gradient for vector #%d", shape->Head.UniqueID);
                   }
 
                   if (shape->FillPattern) {
@@ -1051,7 +1046,7 @@ private:
                         draw_gradient(shape, shape->BasePath, shape->FinalX, shape->FinalY, view_width, view_height,
                            *shape->StrokeGradient, table, mRenderBase, *shape->StrokeRaster, shape->StrokeWidth);
                      }
-                     else LogErrorMsg("Failed to generate stroked gradient for vector #%d", shape->Head.UniqueID);
+                     else log.warning("Failed to generate stroked gradient for vector #%d", shape->Head.UniqueID);
                   }
                   else if (shape->StrokePattern) {
                      draw_pattern(shape, shape->BasePath, shape->Scene->SampleMethod, shape->FinalX, shape->FinalY,
@@ -1098,10 +1093,6 @@ private:
             drawBitmap(shape->Scene->SampleMethod, mRenderBase, raster, bmpBkgd, VSPREAD_CLIP, 1.0, NULL, 0, 0);
             acFree(bmpBkgd);
          }
-
-         #ifdef DBG_DRAW
-            LOGRETURN();
-         #endif
       }
    }
 };
