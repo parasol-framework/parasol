@@ -1074,7 +1074,8 @@ private:
 
                state.mClipMask = saved_mask;
             }
-            else if (shape->Child) {
+
+            if (shape->Child) {
                objVectorClip *saved_mask = state.mClipMask;
                if (shape->ClipMask) state.mClipMask = shape->ClipMask;
 
