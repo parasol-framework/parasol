@@ -140,6 +140,10 @@ gui.dialog.file = function(Options)
 
       lWindow.surface.colour = '#55555F'
 
+      self.scene = obj.new('VectorScene', { surface = lWindow.surface })
+
+      self.viewport = self.scene.new('VectorViewport', { })
+
       glTabFocus = lWindow.new('tabfocus', { })
 
       local toolbox = gui.box({ target=lWindow.surface, x=0, y=0, xOffset=0, height=1, colour='#aa1f1c' })
@@ -207,7 +211,7 @@ gui.dialog.file = function(Options)
 
       toolbox.setHeight(lToolbar.surface.height)
 
-      lPathBox = lWindow.new('input', {
+      lPathBox = self.viewport.new('input', {
          x         = 0,
          y         = lToolbar.surface.height,
          xOffset   = 0,
@@ -217,13 +221,11 @@ gui.dialog.file = function(Options)
          end
       })
 
-      lPathBox.acShow()
-
       -- Okay and cancel buttons
 
       local footer = lWindow.bottomMargin
 
-      lCancelButton = lWindow.new('button', {
+      lCancelButton = self.viewport.new('button', {
          text    = nz(lOptions.cancelText, 'Cancel'),
          xOffset = glWidgetGap,
          yOffset = footer,
@@ -236,16 +238,13 @@ gui.dialog.file = function(Options)
          end
       })
 
-      lOkayButton = lWindow.new('button', {
+      lOkayButton = self.viewport.new('button', {
          text       = nz(lOptions.okText, 'Okay'),
-         xOffset    = lWindow.insidewidth - lCancelButton.x + glWidgetGap,
+         xOffset    = lCancelButton.width + (glWidgetGap * 2),
          yOffset    = footer,
          icon       = 'items/checkmark',
          feedback   = processFeedback
       })
-
-      lCancelButton.acShow()
-      lOkayButton.acShow()
 
       footer = footer + lOkayButton.height + glWidgetGap
 
@@ -272,7 +271,7 @@ gui.dialog.file = function(Options)
             end
          end
 
-         lFilter = lWindow.new('combobox', {
+         lFilter = self.viewport.new('combobox', {
             label   = 'Filter:',
             x       = lWindow.leftMargin,
             xOffset = lWindow.rightMargin,
@@ -298,7 +297,7 @@ gui.dialog.file = function(Options)
 
       local label_width = 0
       if lFilter then label_width = lFilter.labelWidth end
-      lFileBox = lWindow.new('input', {
+      lFileBox = self.viewport.new('input', {
          labelWidth = label_width,
          label   = 'File:',
          x       = lWindow.leftMargin,

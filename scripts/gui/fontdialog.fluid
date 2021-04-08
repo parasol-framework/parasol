@@ -69,7 +69,7 @@ Cras metus mi, ultricies nec blandit condimentum, congue dapibus libero. Nulla e
    local lWindow, lFont, lFonts, vwSize, vwStyle, vwFace, lTab, rgnExample
 
    local lSizes = { 6, 8, 10, 12, 14, 18, 24, 30, 36, 42, 50, 70, 90, 100, 120 }
-   local lWidgetGap = 3
+   local WIDGET_GAP = 3
 
    local function sendFeedback(Accepted)
       local colour = self.colour.r .. ',' .. self.colour.g .. ',' .. self.colour.b .. ',' .. self.colour.a
@@ -225,20 +225,24 @@ Cras metus mi, ultricies nec blandit condimentum, congue dapibus libero. Nulla e
 
       lTab = lWindow.new('tabfocus', { })
 
+      self.scene = obj.new('VectorScene', { surface = lWindow.surface })
+
+      self.viewport = self.scene.new('VectorViewport', { })
+
       // Okay and cancel buttons
 
       local footer = lWindow.bottomMargin
 
-      lCancelButton = lWindow.new('button', {
+      lCancelButton = self.viewport.new('button', {
          text    = nz(lOptions.cancelText, 'Cancel'),
-         xOffset = lWidgetGap,
+         xOffset = WIDGET_GAP,
          yOffset = footer,
          icon    = 'items/cancel'
       })
 
-      lOkayButton = lWindow.new('button', {
+      lOkayButton = self.viewport.new('button', {
          text    = nz(lOptions.okText, 'OK'),
-         xOffset = lWindow.insidewidth - lCancelButton.x + lWidgetGap,
+         xOffset = lCancelButton.width + (WIDGET_GAP * 2),
          yOffset = footer,
          icon    = 'items/checkmark'
       })
@@ -246,7 +250,7 @@ Cras metus mi, ultricies nec blandit condimentum, congue dapibus libero. Nulla e
       lOkayButton.subscribe('activate', function() sendFeedback(true) end)
       lCancelButton.subscribe('activate', function() sendFeedback(false) end)
 
-      footer = footer + lOkayButton.height + lWidgetGap
+      footer = footer + lOkayButton.height + WIDGET_GAP
 
       // Font demonstration area
 
@@ -263,7 +267,7 @@ Cras metus mi, ultricies nec blandit condimentum, congue dapibus libero. Nulla e
       // Font size selection
 
       local rgnSize = lWindow.new('surface', {
-         x       = rgnExample.x - lWidgetGap - 60,
+         x       = rgnExample.x - WIDGET_GAP - 60,
          yOffset = footer,
          height  = 140,
          width   = 60
@@ -297,7 +301,7 @@ Cras metus mi, ultricies nec blandit condimentum, congue dapibus libero. Nulla e
          x       = lWindow.leftMargin,
          yOffset = footer,
          height  = 140,
-         width   = rgnSize.x - lWidgetGap - lWindow.leftMargin
+         width   = rgnSize.x - WIDGET_GAP - lWindow.leftMargin
       })
       rgnStyle.acShow()
 
@@ -314,14 +318,14 @@ Cras metus mi, ultricies nec blandit condimentum, congue dapibus libero. Nulla e
          end
       })
 
-      footer = footer + rgnStyle.height + (lWidgetGap*2)
+      footer = footer + rgnStyle.height + (WIDGET_GAP * 2)
 
       // Available font faces
 
       local rgnFace = lWindow.new('surface', {
          x = lWindow.leftMargin,
          y = lWindow.topMargin,
-         width = rgnExample.x - lWidgetGap - lWindow.leftMargin,
+         width = rgnExample.x - WIDGET_GAP - lWindow.leftMargin,
          yOffset = footer
       })
       rgnFace.acShow()
