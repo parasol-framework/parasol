@@ -354,6 +354,51 @@ static ERROR VECTOR_Hide(objVector *Self, APTR Void)
 }
 
 //****************************************************************************
+// Determine the parent object, based on the owner.
+
+void set_parent(objVector *Self, OBJECTID OwnerID)
+{
+   // Objects that don't belong to the Vector class will be ignored (i.e. they won't appear in the tree).
+
+   CLASSID class_id = GetClassID(OwnerID);
+   if ((class_id != ID_VECTORSCENE) and (class_id != ID_VECTOR)) return;
+
+   Self->Parent = (OBJECTPTR)GetObjectPtr(OwnerID);
+
+   // Ensure that the sibling fields are valid, if not then clear them.
+
+   if ((Self->Prev) and (Self->Prev->Parent != Self->Parent)) Self->Prev = NULL;
+   if ((Self->Next) and (Self->Next->Parent != Self->Parent)) Self->Next = NULL;
+
+   if (Self->Parent->ClassID IS ID_VECTOR) {
+      if ((!Self->Prev) and (!Self->Next)) {
+         if (((objVector *)Self->Parent)->Child) { // Insert at the end
+            auto end = ((objVector *)Self->Parent)->Child;
+            while (end->Next) end = end->Next;
+            end->Next = Self;
+            Self->Prev = end;
+         }
+         else ((objVector *)Self->Parent)->Child = Self;
+      }
+
+      Self->Scene = ((objVector *)Self->Parent)->Scene;
+   }
+   else if (Self->Parent->ClassID IS ID_VECTORSCENE) {
+      if ((!Self->Prev) and (!Self->Next)) {
+         if (((objVectorScene *)Self->Parent)->Viewport) { // Insert at the end
+            auto end = ((objVectorScene *)Self->Parent)->Viewport;
+            while (end->Next) end = end->Next;
+            end->Next = Self;
+            Self->Prev = end;
+         }
+         else ((objVectorScene *)Self->Parent)->Viewport = Self;
+      }
+
+      Self->Scene = (objVectorScene *)Self->Parent;
+   }
+}
+
+//****************************************************************************
 
 static ERROR VECTOR_Init(objVector *Self, APTR Void)
 {
@@ -363,6 +408,8 @@ static ERROR VECTOR_Init(objVector *Self, APTR Void)
       log.warning("Vector cannot be instantiated directly (use a sub-class).");
       return ERR_Failed;
    }
+
+   if (!Self->Parent) set_parent(Self, Self->Head.OwnerID);
 
    log.trace("Parent: #%d, Siblings: #%d #%d, Vector: %p", Self->Parent ? Self->Parent->UniqueID : 0,
       Self->Prev ? Self->Prev->Head.UniqueID : 0, Self->Next ? Self->Next->Head.UniqueID : 0, Self);
@@ -559,48 +606,13 @@ static ERROR VECTOR_NewOwner(objVector *Self, struct acNewOwner *Args)
    parasol::Log log;
 
    if (!Self->Head.SubID) return ERR_Okay;
-   if (Self->Scene) { // Modifying the owner after the root vector has been established is not permitted.
-      return log.warning(ERR_UnsupportedOwner);
-   }
 
-   // Objects that don't belong to the Vector class will be ignored (i.e. they won't appear in the tree).
+   // Modifying the owner after the root vector has been established is not permitted.
+   // The client should instead create a new object under the target and transfer the field values.
 
-   CLASSID class_id = GetClassID(Args->NewOwnerID);
-   if ((class_id != ID_VECTORSCENE) and (class_id != ID_VECTOR)) return ERR_Okay;
+   if (Self->Head.Flags & NF_INITIALISED) return log.warning(ERR_AlreadyDefined);
 
-   Self->Parent = (OBJECTPTR)GetObjectPtr(Args->NewOwnerID);
-
-   // Ensure that the sibling fields are valid, if not then clear them.
-
-   if ((Self->Prev) and (Self->Prev->Parent != Self->Parent)) Self->Prev = NULL;
-   if ((Self->Next) and (Self->Next->Parent != Self->Parent)) Self->Next = NULL;
-
-   if (Self->Parent->ClassID IS ID_VECTOR) {
-      if ((!Self->Prev) and (!Self->Next)) {
-         if (((objVector *)Self->Parent)->Child) { // Insert at the end
-            auto end = ((objVector *)Self->Parent)->Child;
-            while (end->Next) end = end->Next;
-            end->Next = Self;
-            Self->Prev = end;
-         }
-         else ((objVector *)Self->Parent)->Child = Self;
-      }
-
-      Self->Scene = ((objVector *)Self->Parent)->Scene;
-   }
-   else if (Self->Parent->ClassID IS ID_VECTORSCENE) {
-      if ((!Self->Prev) and (!Self->Next)) {
-         if (((objVectorScene *)Self->Parent)->Viewport) { // Insert at the end
-            auto end = ((objVectorScene *)Self->Parent)->Viewport;
-            while (end->Next) end = end->Next;
-            end->Next = Self;
-            Self->Prev = end;
-         }
-         else ((objVectorScene *)Self->Parent)->Viewport = Self;
-      }
-
-      Self->Scene = (objVectorScene *)Self->Parent;
-   }
+   set_parent(Self, Args->NewOwnerID);
 
    return ERR_Okay;
 }
