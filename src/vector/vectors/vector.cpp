@@ -148,8 +148,25 @@ static ERROR VECTOR_Draw(objVector *Self, struct acDraw *Args)
 
       if (!Self->BasePath) return ERR_NoData;
 
+      // Retrieve bounding box, post-transformations.
+      // TODO: Needs to account for client defined brush stroke widths and stroke scaling.
+
       DOUBLE bx1, by1, bx2, by2;
-      bounding_rect_single(*Self->BasePath, 0, &bx1, &by1, &bx2, &by2); // Retrieve bounding box, post-transformations.
+      bounding_rect_single(*Self->BasePath, 0, &bx1, &by1, &bx2, &by2);
+
+      if (Self->Head.SubID IS ID_VECTORTEXT) {
+         bx1 += Self->FinalX;
+         by1 += Self->FinalY;
+         bx2 += Self->FinalX;
+         by2 += Self->FinalY;
+      }
+
+      const LONG STROKE_WIDTH = 2;
+      bx1 -= STROKE_WIDTH;
+      by1 -= STROKE_WIDTH;
+      bx2 += STROKE_WIDTH;
+      by2 += STROKE_WIDTH;
+
       struct acDraw area = { .X = F2T(bx1), .Y = F2T(by1), .Width = F2T(bx2 - bx1), .Height = F2T(by2 - by1) };
       return ActionMsg(AC_Draw, Self->Scene->SurfaceID, &area);
    }
