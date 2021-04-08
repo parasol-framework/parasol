@@ -205,7 +205,7 @@ static void calc_alignment(CSTRING Caller, LONG AspectRatio,
 static void calc_full_boundary(objVector *Vector, std::array<DOUBLE, 4> &Bounds)
 {
    for (; Vector; Vector=(objVector *)Vector->Next) {
-      if ((!Vector->BasePath) and (Vector->Dirty)) {
+      if (Vector->Dirty) {
          gen_vector_path(Vector);
          Vector->Dirty = 0;
       }
