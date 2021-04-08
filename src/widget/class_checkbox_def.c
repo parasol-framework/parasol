@@ -20,7 +20,6 @@ static const struct FieldDef clCheckBoxAlign[] = {
 
 static const struct ActionArray clCheckBoxActions[] = {
    { AC_ActionNotify, (APTR)CHECKBOX_ActionNotify },
-   { AC_Activate, (APTR)CHECKBOX_Activate },
    { AC_Disable, (APTR)CHECKBOX_Disable },
    { AC_Enable, (APTR)CHECKBOX_Enable },
    { AC_Focus, (APTR)CHECKBOX_Focus },

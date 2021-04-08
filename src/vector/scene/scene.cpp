@@ -27,22 +27,10 @@ Vector definitions can be saved and loaded from permanent storage by using the @
 
 static ERROR VECTORSCENE_Reset(objVectorScene *, APTR);
 
-//****************************************************************************
+static void scene_key_event(objVectorScene *, evKey *, LONG);
+static void process_resize_msgs(objVectorScene *);
 
-static void process_resize_msgs(objVectorScene *Self)
-{
-   if (Self->PendingResizeMsgs->size() > 0) {
-      for (auto it=Self->PendingResizeMsgs->begin(); it != Self->PendingResizeMsgs->end(); it++) {
-         objVectorViewport *viewport;
-         if (!AccessObject(it->first, 1000, &viewport)) {
-            NotifySubscribers(viewport, AC_Redimension, &it->second, 0, ERR_Okay);
-            ReleaseObject(viewport);
-         }
-      }
-
-      Self->PendingResizeMsgs->clear();
-   }
-}
+static std::vector<OBJECTID> glFocusList; // The first reference is the most foreground object with the focus
 
 //****************************************************************************
 
@@ -63,6 +51,18 @@ static ERROR VECTORSCENE_ActionNotify(objVectorScene *Self, struct acActionNotif
          if (Self->Viewport) mark_dirty(Self->Viewport, RC_BASE_PATH|RC_TRANSFORM); // Base-paths need to be recomputed if they use relative coordinates.
 
          ActionMsg(AC_Draw, Self->SurfaceID, NULL);
+      }
+   }
+   else if (Args->ActionID IS AC_LostFocus) {
+      if (Self->KeyHandle) {
+         UnsubscribeEvent(Self->KeyHandle);
+         Self->KeyHandle = NULL;
+      }
+   }
+   else if (Args->ActionID IS AC_Focus) {
+      if (!Self->KeyHandle) {
+         auto callback = make_function_stdc(scene_key_event);
+         SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, &callback, Self, &Self->KeyHandle);
       }
    }
 
@@ -263,7 +263,18 @@ static ERROR VECTORSCENE_Free(objVectorScene *Self, APTR Args)
    if (Self->Adaptor)  { delete Self->Adaptor; Self->Adaptor = NULL; }
    if (Self->Buffer)   { delete Self->Buffer; Self->Buffer = NULL; }
    if (Self->Defs)     { FreeResource(Self->Defs); Self->Defs = NULL; }
-   if (Self->PendingResizeMsgs) { delete Self->PendingResizeMsgs; Self->PendingResizeMsgs = NULL; }
+   if (Self->PendingResizeMsgs)     { delete Self->PendingResizeMsgs; Self->PendingResizeMsgs = NULL; }
+   if (Self->InputSubscriptions)    { delete Self->InputSubscriptions; Self->InputSubscriptions = NULL; }
+   if (Self->KeyboardSubscriptions) { delete Self->KeyboardSubscriptions; Self->KeyboardSubscriptions = NULL; }
+   if (Self->InputHandle)           { gfxUnsubscribeInput(Self->InputHandle); Self->InputHandle = 0; }
+
+   if (Self->SurfaceID) {
+      OBJECTPTR surface;
+      if (!AccessObject(Self->SurfaceID, 5000, &surface)) {
+         UnsubscribeAction(surface, 0);
+         ReleaseObject(surface);
+      }
+   }
    return ERR_Okay;
 }
 
@@ -290,9 +301,19 @@ static ERROR VECTORSCENE_Init(objVectorScene *Self, APTR Void)
             GetLong(surface, FID_Height, &Self->PageHeight);
          }
 
-         SubscribeActionTags(surface, AC_Redimension, AC_Free, TAGEND);
+         SubscribeActionTags(surface, AC_Redimension, AC_Free, AC_Focus, AC_LostFocus, TAGEND);
+
+         if (surface->Flags & RNF_HAS_FOCUS) {
+            auto callback = make_function_stdc(scene_key_event);
+            SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, &callback, Self, &Self->KeyHandle);
+         }
 
          ReleaseObject(surface);
+      }
+
+      auto callback = make_function_stdc(scene_input_events);
+      if (gfxSubscribeInput(&callback, Self->SurfaceID, JTYPE_MOVEMENT|JTYPE_FEEDBACK|JTYPE_BUTTON|JTYPE_REPEATED, 0, &Self->InputHandle)) {
+         return ERR_Function;
       }
    }
 
@@ -304,8 +325,15 @@ static ERROR VECTORSCENE_Init(objVectorScene *Self, APTR Void)
 static ERROR VECTORSCENE_NewObject(objVectorScene *Self, APTR Void)
 {
    Self->SampleMethod = VSM_BILINEAR;
+
    Self->PendingResizeMsgs = new (std::nothrow) std::unordered_map<OBJECTID, struct acRedimension>;
    if (!Self->PendingResizeMsgs) return ERR_Memory;
+
+   Self->InputSubscriptions = new (std::nothrow) std::unordered_map<objVector *, LONG>;
+   if (!Self->InputSubscriptions) return ERR_Memory;
+
+   Self->KeyboardSubscriptions = new (std::nothrow) std::unordered_set<objVector *>;
+   if (!Self->KeyboardSubscriptions) return ERR_Memory;
 
    // Please refer to the Reset action for setting variable defaults
    return VECTORSCENE_Reset(Self, NULL);
@@ -527,7 +555,8 @@ level of quality at the cost of very poor execution speed.
 -FIELD-
 Surface: May refer to a Surface object for enabling automatic rendering.
 
-Setting the Surface field will enable automatic rendering to a display surface.
+Setting the Surface field will enable automatic rendering to a display surface.  The use of features such as input event handling
+and user focus management will also require an associated surface as a pre-requisite.
 
 *****************************************************************************/
 

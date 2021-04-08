@@ -75,12 +75,13 @@ struct WidgetBase {
 
 // Flags for the Input class.
 
-#define INF_HIDE 0x00000001
-#define INF_DISABLED 0x00000002
-#define INF_COMMANDLINE 0x00000004
-#define INF_SELECT_TEXT 0x00000008
-#define INF_SECRET 0x00000010
-#define INF_ENTER_TAB 0x00000020
+#define INF_DISABLED 0x00000001
+#define INF_COMMANDLINE 0x00000002
+#define INF_SELECT_TEXT 0x00000004
+#define INF_SECRET 0x00000008
+#define INF_FIXED_LABEL_WIDTH 0x00000010
+#define INF_FIXED_INPUT_WIDTH 0x00000020
+#define INF_ENTER_TAB 0x00000040
 
 // Flags for the TabFocus class.
 
@@ -136,22 +137,6 @@ struct WidgetBase {
 #define ACF_DOUBLE_CLICK 0x00000004
 #define ACF_MOVEMENT 0x00000008
 #define ACF_SENSITIVE 0x0000000a
-
-// Image flags
-
-#define IMF_ENLARGE 0x00000001
-#define IMF_SHRINK 0x00000002
-#define IMF_NO_BLEND 0x00000004
-#define IMF_STICKY 0x00000008
-#define IMF_NO_FAIL 0x00000010
-#define IMF_11_RATIO 0x00000020
-#define IMF_FIT 0x00000040
-#define IMF_FIXED_SIZE 0x00000080
-#define IMF_NO_DRAW 0x00000100
-#define IMF_SCALABLE 0x00000200
-#define IMF_FIXED 0x00000080
-#define IMF_SOLID_BLEND 0x00000004
-#define IMF_STRETCH 0x00000003
 
 // Flags for the Menu class.
 
@@ -211,34 +196,232 @@ struct WidgetBase {
 #define SO_HORIZONTAL 1
 #define SO_VERTICAL 2
 
-// Image class definition
+// Button class definition
 
-#define VER_IMAGE (1.000000)
+#define VER_BUTTON (1.000000)
 
-typedef struct rkImage {
+typedef struct rkButton {
    OBJECT_HEADER
-   struct rkLayout * Layout;
-   STRING Hint;                 // Display this hint during user hover.
-   LONG   Frame;
-   LONG   Flags;                // Optional flags.
-   struct RGB8 Mask;
-   struct RGB8 Background;      // Background colour to use behind the image.
-   LONG   FrameRate;            // The maximum frame-rate for displaying animated images.
+   STRING Hint;                         // Applies a hint to a button, which can be displayed as a tool-tip.
+   STRING Icon;                         // Name of an icon to display in the button.
+   struct rkVector * Viewport;          // Viewport region created by the button object
+   struct rkVector * ParentViewport;    // The parent container for the Viewport
+   LONG   Flags;                        // Special options
+   LONG   Clicked;                      // TRUE if the button has been clicked and reverts to FALSE when the user releases the button.
+   LONG   HoverState;                   // User hover state indicator
 
-#ifdef PRV_IMAGE
-   objPicture *Picture;
-   objBitmap  *Bitmap;      // Image bitmap.  May originate from the picture, may not
-   objBitmap  *RawBitmap;   // Original bitmap image, compressed
-   STRING RenderString;
-   STRING Path;
-   struct SurfaceCoords Surface;
-   TIMER  FrameTimer;
-   WORD   Opacity;
-   char   IconFilter[24];
-   char   IconTheme[24];
+#ifdef PRV_BUTTON
+   FUNCTION prvFeedback;
+   FUNCTION prvStyleTrigger;
+   char String[40];            // String to display inside the button
+   struct rkDocument *Document;
+   APTR   prvKeyEvent;      // For subscribing to keyboard events
+   STRING Onclick;          // Available in Document mode only, references the function to be called when clicked
+   UBYTE  Active;           // For recursion management.
   
 #endif
-} objImage;
+} objButton;
+
+// CheckBox class definition
+
+#define VER_CHECKBOX (1.000000)
+
+typedef struct rkCheckBox {
+   OBJECT_HEADER
+   struct rkVector * Viewport;          // Viewport region created by the checkbox object
+   struct rkVector * ParentViewport;    // The parent container for the Viewport
+   LONG Flags;                          // Special options
+   LONG LabelWidth;                     // The fixed pixel width allocated for drawing the label string.
+   LONG Status;                         // Either TRUE or FALSE
+   LONG Align;                          // Alignment flags
+
+#ifdef PRV_CHECKBOX
+   FUNCTION prvFeedback;
+   FUNCTION prvStyleTrigger;
+   APTR   prvKeyEvent;
+   BYTE   Active;
+   char   Label[48];       // Label to display alongside the checkbox
+  
+#endif
+} objCheckBox;
+
+// ComboBox class definition
+
+#define VER_COMBOBOX (1.000000)
+
+typedef struct rkComboBox {
+   OBJECT_HEADER
+   struct rkText * TextInput;           // Text control object - for the combobox area
+   struct rkMenu * Menu;                // Menu control object
+   struct rkVector * Viewport;          // Viewport region created by the input object
+   struct rkVector * ParentViewport;    // The parent container for the Viewport
+   LONG Flags;                          // Special options
+   LONG LabelWidth;                     // Width of the combobox label area
+
+#ifdef PRV_COMBOBOX
+   FUNCTION prvStyleTrigger;
+   UBYTE Active:1;
+   char  Label[48];
+   FUNCTION Feedback;
+  
+#endif
+} objComboBox;
+
+// Input class definition
+
+#define VER_INPUT (1.000000)
+
+typedef struct rkInput {
+   OBJECT_HEADER
+   struct rkText * TextInput;           // Text control object - for the input area
+   struct rkVector * Viewport;          // Viewport region created by the input object
+   struct rkVector * ParentViewport;    // The parent container for the Viewport
+   LONG Flags;                          // Special options
+   LONG LabelWidth;                     // Width of the input box label area
+   LONG InputWidth;                     // Width of the input area
+
+#ifdef PRV_INPUT
+   char     prvLabel[48];
+   char     prvPostLabel[48];
+   char     prvInputMask[64];
+   ULONG    prvLastStringHash;
+   FUNCTION prvFeedback;
+   FUNCTION prvStyleTrigger;
+   UBYTE    prvActive:1;
+   UBYTE    prvStringReset:1;
+  
+#endif
+} objInput;
+
+// Menu class definition
+
+#define VER_MENU (1.000000)
+
+typedef struct rkMenu {
+   OBJECT_HEADER
+   DOUBLE   HoverDelay;          // Optional hover feature for the Monitor field.
+   DOUBLE   AutoExpand;          // Auto-expand delay, measured in seconds.
+   DOUBLE   FadeDelay;           // The length of time allocated to special effects like fading.  Value in seconds
+   struct rkMenuItem * Items;    // Items listed in the menu
+   struct rkFont * Font;         // The font being used in the menu
+   STRING   Style;               // Name of a menu graphics style to apply.
+   OBJECTID TargetID;            // Target for the surface (e.g. desktop)
+   OBJECTID ParentID;            // Parent menu if this is a child of a master menu
+   OBJECTID RelativeID;          // Relative surface that should be used for coordinate origins
+   OBJECTID KeyMonitorID;        // Surface to monitor for key presses
+   OBJECTID MenuSurfaceID;       // Surface for this menu
+   OBJECTID MonitorID;           // Surface to monitor for mouse clicks
+   LONG     Flags;               // Optional flags
+   LONG     VSpacing;            // Amount of spacing between each menu item
+   LONG     BreakHeight;         // The amount of height to give to menu-break graphics
+   LONG     FixedWidth;          // Predetermined fixed-width, often used for things like combo-boxes
+   LONG     LeftMargin;          // Left hand margin inside the menu
+   LONG     RightMargin;         // Right hand margin inside the menu
+   LONG     TopMargin;           // Top margin inside the menu
+   LONG     BottomMargin;        // Bottom margin inside the menu
+   LONG     HighlightLM;         // Highlight rectangle left margin
+   LONG     HighlightRM;         // Highlight rectangle right margin
+   LONG     ItemHeight;          // Minimum allowable height for text based menu items
+   LONG     ImageSize;           // Size of the image column.  Icons will be generated to fit this size
+   LONG     LineLimit;           // Maximum number of displayed lines before the scrollbar kicks in
+   LONG     BorderSize;          // Size of the border at the menu edges
+   LONG     SelectionIndex;      // The index of the most recent item to be executed.  If zero, no item has been executed.
+   struct RGB8 FontColour;
+   struct RGB8 FontHighlight;
+   struct RGB8 Highlight;
+   struct RGB8 HighlightBorder;
+   LONG     ImageGap;            // Gap between the image column and text
+   LONG     KeyGap;              // Gap between the text and key columns
+   LONG     ExtensionGap;        // Gap between the extension column and the text or key column
+   LONG     TextWidth;           // Width of the widest text string
+   LONG     KeyWidth;            // Width of the widest key string
+
+#ifdef PRV_MENU
+ PRV_MENU_FIELDS 
+#endif
+} objMenu;
+
+// Menu methods
+
+#define MT_MnSwitch -1
+#define MT_MnSelectItem -2
+#define MT_MnGetItem -3
+
+struct mnSwitch { LONG TimeLapse;  };
+struct mnSelectItem { LONG ID; LONG State;  };
+struct mnGetItem { LONG ID; struct rkMenuItem * Item;  };
+
+INLINE ERROR mnSwitch(APTR Ob, LONG TimeLapse) {
+   struct mnSwitch args = { TimeLapse };
+   return(Action(MT_MnSwitch, (OBJECTPTR)Ob, &args));
+}
+
+INLINE ERROR mnSelectItem(APTR Ob, LONG ID, LONG State) {
+   struct mnSelectItem args = { ID, State };
+   return(Action(MT_MnSelectItem, (OBJECTPTR)Ob, &args));
+}
+
+INLINE ERROR mnGetItem(APTR Ob, LONG ID, struct rkMenuItem ** Item) {
+   struct mnGetItem args = { ID, 0 };
+   ERROR error = Action(MT_MnGetItem, (OBJECTPTR)Ob, &args);
+   if (Item) *Item = args.Item;
+   return(error);
+}
+
+
+// MenuItem class definition
+
+#define VER_MENUITEM (1.000000)
+
+typedef struct rkMenuItem {
+   OBJECT_HEADER
+   struct rkMenuItem * Prev;    // Previous menu item in chain
+   struct rkMenuItem * Next;    // Next menu item in chain
+   struct rkBitmap * Bitmap;    // Icon to display in the menu item
+   struct rkMenu * SubMenu;     // If the item refers to a sub-menu, it will be pointed to here
+   STRING Path;                 // Location of a menu definition file if this item is a menu extension
+   STRING Name;                 // Internal name of the menu item (user specific, helpful for searching purposes and unique identification)
+   STRING Text;                 // Text to print in the menu item
+   LONG   Flags;                // Optional flags
+   LONG   Key;                  // Key value for this item
+   LONG   Qualifiers;           // Qualifier key(s) for this item
+   LONG   Index;                // Item index.  Follows the order of the items as they are listed in the menu
+   LONG   Group;                // Grouping, relevant for checkmarking menu items
+   LONG   ID;                   // User-defined unique identifier ('id' attribute)
+   LONG   Height;               // Height of the item
+   struct RGB8 Colour;          // Font colour
+   struct RGB8 Background;      // Background colour
+
+#ifdef PRV_MENUITEM
+ PRV_MENUITEM_FIELDS 
+#endif
+} objMenuItem;
+
+// Resize class definition
+
+#define VER_RESIZE (1.000000)
+
+typedef struct rkResize {
+   OBJECT_HEADER
+   struct rkLayout * Layout;    // Layout manager
+   OBJECTID ObjectID;           // Object that is to be resized
+   LONG     Button;             // Determines what button is used for resizing
+   LONG     Direction;          // Direction flags (horizontal/vertical)
+   LONG     Border;             // Border flags can be used to monitor up to 8 separate areas at once
+   LONG     BorderSize;         // Determines the size of the border edge
+
+#ifdef PRV_RESIZE
+   LONG  OriginalWidth, OriginalHeight;
+   LONG  OriginalX, OriginalY;
+   LONG  OriginalAbsX, OriginalAbsY;
+   LONG  prvAnchorX, prvAnchorY;
+   LONG  InputHandle;
+   WORD  CursorSet;
+   WORD  State;
+   BYTE  prvAnchored;
+  
+#endif
+} objResize;
 
 // Scrollbar class definition
 
@@ -328,6 +511,62 @@ INLINE ERROR scUpdateScroll(APTR Ob, LONG PageSize, LONG ViewSize, LONG Position
 INLINE ERROR scAddScrollButton(APTR Ob, OBJECTID SurfaceID, LONG Direction) {
    struct scAddScrollButton args = { SurfaceID, Direction };
    return(Action(MT_ScAddScrollButton, (OBJECTPTR)Ob, &args));
+}
+
+
+// TabFocus class definition
+
+#define VER_TABFOCUS (1.000000)
+
+typedef struct rkTabFocus {
+   OBJECT_HEADER
+   OBJECTID SurfaceID;  // The surface to monitor for the primary focus when managing the tab key
+   LONG     Total;      // Total number of objects on the tab list
+   LONG     Flags;      // Optional flags
+
+#ifdef PRV_TABFOCUS
+   struct {
+      OBJECTID ObjectID;
+      OBJECTID SurfaceID;
+   } TabList[50];         // List of objects to be managed by the tab key
+   APTR prvKeyEvent;
+   WORD Index;            // Current focus index
+   OBJECTID CurrentFocus;
+   BYTE Reverse:1;
+  
+#endif
+} objTabFocus;
+
+// TabFocus methods
+
+#define MT_TabAddObject -1
+#define MT_TabInsertObject -2
+#define MT_TabRemoveObject -3
+#define MT_TabSetObject -4
+
+struct tabAddObject { OBJECTID ObjectID;  };
+struct tabInsertObject { LONG Index; OBJECTID ObjectID;  };
+struct tabRemoveObject { OBJECTID ObjectID;  };
+struct tabSetObject { LONG Index; OBJECTID ObjectID;  };
+
+INLINE ERROR tabAddObject(APTR Ob, OBJECTID ObjectID) {
+   struct tabAddObject args = { ObjectID };
+   return(Action(MT_TabAddObject, (OBJECTPTR)Ob, &args));
+}
+
+INLINE ERROR tabInsertObject(APTR Ob, LONG Index, OBJECTID ObjectID) {
+   struct tabInsertObject args = { Index, ObjectID };
+   return(Action(MT_TabInsertObject, (OBJECTPTR)Ob, &args));
+}
+
+INLINE ERROR tabRemoveObject(APTR Ob, OBJECTID ObjectID) {
+   struct tabRemoveObject args = { ObjectID };
+   return(Action(MT_TabRemoveObject, (OBJECTPTR)Ob, &args));
+}
+
+INLINE ERROR tabSetObject(APTR Ob, LONG Index, OBJECTID ObjectID) {
+   struct tabSetObject args = { Index, ObjectID };
+   return(Action(MT_TabSetObject, (OBJECTPTR)Ob, &args));
 }
 
 
@@ -439,286 +678,6 @@ INLINE ERROR txtSetFont(APTR Ob, CSTRING Face) {
 }
 
 
-// TabFocus class definition
-
-#define VER_TABFOCUS (1.000000)
-
-typedef struct rkTabFocus {
-   OBJECT_HEADER
-   OBJECTID SurfaceID;  // The surface to monitor for the primary focus when managing the tab key
-   LONG     Total;      // Total number of objects on the tab list
-   LONG     Flags;      // Optional flags
-
-#ifdef PRV_TABFOCUS
-   struct {
-      OBJECTID ObjectID;
-      OBJECTID SurfaceID;
-   } TabList[50];         // List of objects to be managed by the tab key
-   APTR prvKeyEvent;
-   WORD Index;            // Current focus index
-   OBJECTID CurrentFocus;
-   BYTE Reverse:1;
-  
-#endif
-} objTabFocus;
-
-// TabFocus methods
-
-#define MT_TabAddObject -1
-#define MT_TabInsertObject -2
-#define MT_TabRemoveObject -3
-#define MT_TabSetObject -4
-
-struct tabAddObject { OBJECTID ObjectID;  };
-struct tabInsertObject { LONG Index; OBJECTID ObjectID;  };
-struct tabRemoveObject { OBJECTID ObjectID;  };
-struct tabSetObject { LONG Index; OBJECTID ObjectID;  };
-
-INLINE ERROR tabAddObject(APTR Ob, OBJECTID ObjectID) {
-   struct tabAddObject args = { ObjectID };
-   return(Action(MT_TabAddObject, (OBJECTPTR)Ob, &args));
-}
-
-INLINE ERROR tabInsertObject(APTR Ob, LONG Index, OBJECTID ObjectID) {
-   struct tabInsertObject args = { Index, ObjectID };
-   return(Action(MT_TabInsertObject, (OBJECTPTR)Ob, &args));
-}
-
-INLINE ERROR tabRemoveObject(APTR Ob, OBJECTID ObjectID) {
-   struct tabRemoveObject args = { ObjectID };
-   return(Action(MT_TabRemoveObject, (OBJECTPTR)Ob, &args));
-}
-
-INLINE ERROR tabSetObject(APTR Ob, LONG Index, OBJECTID ObjectID) {
-   struct tabSetObject args = { Index, ObjectID };
-   return(Action(MT_TabSetObject, (OBJECTPTR)Ob, &args));
-}
-
-
-// CheckBox class definition
-
-#define VER_CHECKBOX (1.000000)
-
-typedef struct rkCheckBox {
-   OBJECT_HEADER
-   OBJECTID RegionID;  // Surface region created by the checkbox object
-   OBJECTID SurfaceID; // The surface target for the checkbox widget
-   LONG     Flags;     // Special options
-   LONG     LabelWidth; // The fixed pixel width allocated for drawing the label string.
-   LONG     Value;     // Either TRUE or FALSE
-   LONG     Align;     // Alignment flags
-
-#ifdef PRV_CHECKBOX
-   FUNCTION Feedback;
-   APTR   prvKeyEvent;
-   BYTE   Active;
-   char   Label[48];       // Label to display alongside the checkbox
-  
-#endif
-} objCheckBox;
-
-// Button class definition
-
-#define VER_BUTTON (1.000000)
-
-typedef struct rkButton {
-   OBJECT_HEADER
-   STRING   Hint;      // Applies a hint to a button, which can be displayed as a tool-tip.
-   STRING   Icon;      // Name of an icon to display in the button.
-   OBJECTID RegionID;  // Surface region created by the button object
-   OBJECTID SurfaceID; // The surface target for the button graphic
-   LONG     Flags;     // Special options
-   LONG     Clicked;   // TRUE if the button has been clicked and reverts to FALSE when the user releases the button.
-   LONG     HoverState; // User hover state indicator
-
-#ifdef PRV_BUTTON
-   FUNCTION Feedback;
-   char String[40];            // String to display inside the button
-   struct rkDocument *Document;
-   APTR   prvKeyEvent;      // For subscribing to keyboard events
-   STRING Onclick;          // Available in Document mode only, references the function to be called when clicked
-   UBYTE  Active;           // For recursion management.
-   LONG   ClickX, ClickY;   // X/Y coordinate most recently clicked
-   LONG   InputHandle;
-  
-#endif
-} objButton;
-
-// Resize class definition
-
-#define VER_RESIZE (1.000000)
-
-typedef struct rkResize {
-   OBJECT_HEADER
-   struct rkLayout * Layout;    // Layout manager
-   OBJECTID ObjectID;           // Object that is to be resized
-   LONG     Button;             // Determines what button is used for resizing
-   LONG     Direction;          // Direction flags (horizontal/vertical)
-   LONG     Border;             // Border flags can be used to monitor up to 8 separate areas at once
-   LONG     BorderSize;         // Determines the size of the border edge
-
-#ifdef PRV_RESIZE
-   LONG  OriginalWidth, OriginalHeight;
-   LONG  OriginalX, OriginalY;
-   LONG  OriginalAbsX, OriginalAbsY;
-   LONG  prvAnchorX, prvAnchorY;
-   LONG  InputHandle;
-   WORD  CursorSet;
-   WORD  State;
-   BYTE  prvAnchored;
-  
-#endif
-} objResize;
-
-// Input class definition
-
-#define VER_INPUT (1.000000)
-
-typedef struct rkInput {
-   OBJECT_HEADER
-   struct rkText * TextInput;    // Text control object - for the input area
-   OBJECTID RegionID;            // Surface region created by the input object
-   OBJECTID SurfaceID;           // The surface target for the input graphic
-   LONG     Flags;               // Special options
-   LONG     LabelWidth;          // Width of the input box label area
-   LONG     InputWidth;          // Width of the input area
-
-#ifdef PRV_INPUT
-   char     prvLabel[48];
-   char     prvPostLabel[48];
-   ULONG    prvLastStringHash;
-   FUNCTION prvFeedback;
-   UBYTE    prvActive:1;
-   UBYTE    prvStringReset:1;
-  
-#endif
-} objInput;
-
-// ComboBox class definition
-
-#define VER_COMBOBOX (1.000000)
-
-typedef struct rkComboBox {
-   OBJECT_HEADER
-   struct rkText * TextInput;    // Text control object - for the combobox area
-   struct rkMenu * Menu;         // Menu control object
-   OBJECTID RegionID;            // Surface region created by the combobox object
-   OBJECTID SurfaceID;           // The surface target for the combobox graphic
-   LONG     Flags;               // Special options
-   LONG     LabelWidth;          // Width of the combobox label area
-
-#ifdef PRV_COMBOBOX
-   UBYTE Active:1;
-   char  Label[48];
-   FUNCTION Feedback;
-  
-#endif
-} objComboBox;
-
-// Menu class definition
-
-#define VER_MENU (1.000000)
-
-typedef struct rkMenu {
-   OBJECT_HEADER
-   DOUBLE   HoverDelay;          // Optional hover feature for the Monitor field.
-   DOUBLE   AutoExpand;          // Auto-expand delay, measured in seconds.
-   DOUBLE   FadeDelay;           // The length of time allocated to special effects like fading.  Value in seconds
-   struct rkMenuItem * Items;    // Items listed in the menu
-   struct rkFont * Font;         // The font being used in the menu
-   STRING   Style;               // Name of a menu graphics style to apply.
-   OBJECTID TargetID;            // Target for the surface (e.g. desktop)
-   OBJECTID ParentID;            // Parent menu if this is a child of a master menu
-   OBJECTID RelativeID;          // Relative surface that should be used for coordinate origins
-   OBJECTID KeyMonitorID;        // Surface to monitor for key presses
-   OBJECTID MenuSurfaceID;       // Surface for this menu
-   OBJECTID MonitorID;           // Surface to monitor for mouse clicks
-   LONG     Flags;               // Optional flags
-   LONG     VSpacing;            // Amount of spacing between each menu item
-   LONG     BreakHeight;         // The amount of height to give to menu-break graphics
-   LONG     FixedWidth;          // Predetermined fixed-width, often used for things like combo-boxes
-   LONG     LeftMargin;          // Left hand margin inside the menu
-   LONG     RightMargin;         // Right hand margin inside the menu
-   LONG     TopMargin;           // Top margin inside the menu
-   LONG     BottomMargin;        // Bottom margin inside the menu
-   LONG     HighlightLM;         // Highlight rectangle left margin
-   LONG     HighlightRM;         // Highlight rectangle right margin
-   LONG     ItemHeight;          // Minimum allowable height for text based menu items
-   LONG     ImageSize;           // Size of the image column.  Icons will be generated to fit this size
-   LONG     LineLimit;           // Maximum number of displayed lines before the scrollbar kicks in
-   LONG     BorderSize;          // Size of the border at the menu edges
-   LONG     SelectionIndex;      // The index of the most recent item to be executed.  If zero, no item has been executed.
-   struct RGB8 FontColour;
-   struct RGB8 FontHighlight;
-   struct RGB8 Highlight;
-   struct RGB8 HighlightBorder;
-   LONG     ImageGap;            // Gap between the image column and text
-   LONG     KeyGap;              // Gap between the text and key columns
-   LONG     ExtensionGap;        // Gap between the extension column and the text or key column
-   LONG     TextWidth;           // Width of the widest text string
-   LONG     KeyWidth;            // Width of the widest key string
-
-#ifdef PRV_MENU
- PRV_MENU_FIELDS 
-#endif
-} objMenu;
-
-// Menu methods
-
-#define MT_MnSwitch -1
-#define MT_MnSelectItem -2
-#define MT_MnGetItem -3
-
-struct mnSwitch { LONG TimeLapse;  };
-struct mnSelectItem { LONG ID; LONG State;  };
-struct mnGetItem { LONG ID; struct rkMenuItem * Item;  };
-
-INLINE ERROR mnSwitch(APTR Ob, LONG TimeLapse) {
-   struct mnSwitch args = { TimeLapse };
-   return(Action(MT_MnSwitch, (OBJECTPTR)Ob, &args));
-}
-
-INLINE ERROR mnSelectItem(APTR Ob, LONG ID, LONG State) {
-   struct mnSelectItem args = { ID, State };
-   return(Action(MT_MnSelectItem, (OBJECTPTR)Ob, &args));
-}
-
-INLINE ERROR mnGetItem(APTR Ob, LONG ID, struct rkMenuItem ** Item) {
-   struct mnGetItem args = { ID, 0 };
-   ERROR error = Action(MT_MnGetItem, (OBJECTPTR)Ob, &args);
-   if (Item) *Item = args.Item;
-   return(error);
-}
-
-
-// MenuItem class definition
-
-#define VER_MENUITEM (1.000000)
-
-typedef struct rkMenuItem {
-   OBJECT_HEADER
-   struct rkMenuItem * Prev;    // Previous menu item in chain
-   struct rkMenuItem * Next;    // Next menu item in chain
-   struct rkBitmap * Bitmap;    // Icon to display in the menu item
-   struct rkMenu * SubMenu;     // If the item refers to a sub-menu, it will be pointed to here
-   STRING Path;                 // Location of a menu definition file if this item is a menu extension
-   STRING Name;                 // Internal name of the menu item (user specific, helpful for searching purposes and unique identification)
-   STRING Text;                 // Text to print in the menu item
-   LONG   Flags;                // Optional flags
-   LONG   Key;                  // Key value for this item
-   LONG   Qualifiers;           // Qualifier key(s) for this item
-   LONG   Index;                // Item index.  Follows the order of the items as they are listed in the menu
-   LONG   Group;                // Grouping, relevant for checkmarking menu items
-   LONG   ID;                   // User-defined unique identifier ('id' attribute)
-   LONG   Height;               // Height of the item
-   struct RGB8 Colour;          // Font colour
-   struct RGB8 Background;      // Background colour
-
-#ifdef PRV_MENUITEM
- PRV_MENUITEM_FIELDS 
-#endif
-} objMenuItem;
-
 // View flags.
 
 #define VWF_MULTI_SELECT 0x00000001
@@ -827,7 +786,7 @@ typedef struct rkView {
    objFont   *GroupFont;         // Font allocated for group headers
    struct view_col *Columns;       // Column information
    struct view_col *ColumnResize;  // Set if a column is being resized
-   objScrollbar *VScrollbar, *HScrollbar;
+   struct rkScrollbar *VScrollbar, *HScrollbar;
    objVectorGradient *Shadow;
    FUNCTION ExpandCallback;
    FUNCTION SelectCallback;

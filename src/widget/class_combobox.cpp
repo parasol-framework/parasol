@@ -33,10 +33,8 @@ To make modifications to the menu after initialisation, read the #Menu field and
 #define PRV_COMBOBOX
 #define PRV_WIDGET_MODULE
 #include <parasol/modules/widget.h>
-#include <parasol/modules/document.h>
 #include <parasol/modules/display.h>
 #include <parasol/modules/font.h>
-#include <parasol/modules/surface.h>
 #include "defs.h"
 
 static OBJECTPTR clCombobox = NULL;
@@ -46,26 +44,27 @@ static void text_activated(objText *);
 
 //****************************************************************************
 
+static void style_trigger(objComboBox *Self, LONG Style)
+{
+   if (Self->prvStyleTrigger.Type IS CALL_SCRIPT) {
+      OBJECTPTR script;
+      if ((script = Self->prvStyleTrigger.Script.Script)) {
+         const ScriptArg args[] = {
+            { "ComboBox", FD_OBJECTPTR, { .Address = Self } },
+            { "Style", FD_LONG,         { .Long = Style } }
+         };
+         scCallback(script, Self->prvStyleTrigger.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
+      }
+   }
+}
+
+//****************************************************************************
+
 static ERROR COMBOBOX_ActionNotify(objComboBox *Self, struct acActionNotify *Args)
 {
    if (Args->Error != ERR_Okay) return ERR_Okay;
 
-   if (Args->ActionID IS AC_Redimension) {
-      auto redimension = (struct acRedimension *)Args->Args;
-      SetLong(Self->Menu, FID_Width, F2T(redimension->Width) - Self->LabelWidth);
-   }
-   else if (Args->ActionID IS AC_Disable) {
-      Self->Flags |= CMF_DISABLED;
-      DelayMsg(AC_Draw, Self->RegionID, NULL);
-   }
-   else if (Args->ActionID IS AC_Enable) {
-      Self->Flags &= ~CMF_DISABLED;
-      DelayMsg(AC_Draw, Self->RegionID, NULL);
-   }
-   else if (Args->ActionID IS AC_LostFocus) {
-      acHide(Self->Menu);
-   }
-   else if (Args->ActionID IS AC_Free) {
+   if (Args->ActionID IS AC_Free) {
       if ((Self->Feedback.Type IS CALL_SCRIPT) and (Self->Feedback.Script.Script->UniqueID IS Args->ObjectID)) {
          Self->Feedback.Type = CALL_NONE;
       }
@@ -94,10 +93,8 @@ Disable: Turns the combobox off.
 
 static ERROR COMBOBOX_Disable(objComboBox *Self, APTR Void)
 {
-   // See the ActionNotify routine to see what happens when the surface is disabled.
-   parasol::Log log;
-   log.branch();
-   return acDisableID(Self->RegionID);
+   Self->Flags |= CMF_DISABLED;
+   return ERR_Okay;
 }
 
 /*****************************************************************************
@@ -108,10 +105,8 @@ Enable: Turns the combobox back on if it has previously been disabled.
 
 static ERROR COMBOBOX_Enable(objComboBox *Self, APTR Void)
 {
-   // See the ActionNotify routine to see what happens when the surface is enabled.
-   parasol::Log log;
-   log.branch();
-   return acEnableID(Self->RegionID);
+   Self->Flags &= ~CMF_DISABLED;
+   return ERR_Okay;
 }
 
 /*****************************************************************************
@@ -122,16 +117,16 @@ Focus: Sets the focus on the combobox.
 
 static ERROR COMBOBOX_Focus(objComboBox *Self, APTR Void)
 {
-   return acFocusID(Self->RegionID);
+   return acFocus(Self->Viewport);
 }
 
 //****************************************************************************
 
 static ERROR COMBOBOX_Free(objComboBox *Self, APTR Void)
 {
-   if (Self->TextInput)   { acFree(Self->TextInput); Self->TextInput = NULL; }
-   if (Self->Menu)        { acFree(Self->Menu); Self->Menu = NULL; }
-   if (Self->RegionID)    { acFreeID(Self->RegionID); Self->RegionID = 0; }
+   if (Self->TextInput) { acFree(Self->TextInput); Self->TextInput = NULL; }
+   if (Self->Menu)      { acFree(Self->Menu); Self->Menu = NULL; }
+   if (Self->Viewport)  { acFree(Self->Viewport); Self->Viewport = NULL; }
    return ERR_Okay;
 }
 
@@ -143,52 +138,39 @@ Hide: Removes the combobox from the display.
 
 static ERROR COMBOBOX_Hide(objComboBox *Self, APTR Void)
 {
-   return acHideID(Self->RegionID);
+   Self->Flags |= CMF_HIDE;
+   return acHide(Self->Viewport);
 }
 
 //****************************************************************************
 
 static ERROR COMBOBOX_Init(objComboBox *Self, APTR Void)
 {
-   parasol::Log log;
-
-   if (!Self->SurfaceID) { // Find our parent surface
-      OBJECTID owner_id = GetOwner(Self);
-      while ((owner_id) and (GetClassID(owner_id) != ID_SURFACE)) {
-         owner_id = GetOwnerID(owner_id);
+   if (!Self->ParentViewport) { // Find our parent viewport
+      OBJECTID owner_id;
+      for (owner_id=GetOwner(Self); (owner_id); owner_id=GetOwnerID(owner_id)) {
+          if (GetClassID(owner_id) IS ID_VECTOR) {
+             Self->ParentViewport = (objVector *)GetObjectPtr(owner_id);
+             if ((Self->ParentViewport->Head.SubID != ID_VECTORVIEWPORT) and
+                 (Self->ParentViewport->Head.SubID != ID_VECTORSCENE)) return ERR_UnsupportedOwner;
+             else break;
+          }
       }
-      if (owner_id) Self->SurfaceID = owner_id;
-      else return log.warning(ERR_UnsupportedOwner);
+      if (!owner_id) return ERR_UnsupportedOwner;
    }
 
-   objSurface *region;
-   if (!AccessObject(Self->RegionID, 5000, &region)) { // Initialise the combobox region
-      SetFields(region, FID_Parent|TLONG, Self->SurfaceID,
-                        FID_Region|TLONG, TRUE,
-                        TAGEND);
+   Self->Viewport->Parent = &Self->ParentViewport->Head;
 
-      region->Flags |= RNF_GRAB_FOCUS;
+   if (Self->Flags & CMF_HIDE) Self->Viewport->Visibility = VIS_HIDDEN;
 
-      // NB: The styling code will initialise the region.
-      if (drwApplyStyleGraphics(Self, Self->RegionID, NULL, NULL)) {
-         ReleaseObject(region);
+   if (!acInit(Self->Viewport)) {
+      if (drwApplyStyleGraphics(Self, Self->Viewport->Head.UniqueID, NULL, NULL)) {
          return ERR_Failed; // Graphics styling is required.
       }
 
-      SubscribeActionTags(region,
-         AC_Disable,
-         AC_Enable,
-         AC_LostFocus,
-         AC_Redimension,
-         TAGEND);
-      ReleaseObject(region);
+      //Self->Viewport->Flags |= VF_GRAB_FOCUS;
    }
-   else return log.warning(ERR_AccessObject);
-
-   if (!(Self->Flags & CMF_HIDE)) acShow(Self);
-
-   SetFunctionPtr(Self->TextInput, FID_ValidateInput, (APTR)&text_validation);
-   SetFunctionPtr(Self->TextInput, FID_Activated, (APTR)&text_activated);
+   else return ERR_Init;
 
    return ERR_Okay;
 }
@@ -201,7 +183,7 @@ MoveToBack: Moves the combobox behind its siblings.
 
 static ERROR COMBOBOX_MoveToBack(objComboBox *Self, APTR Void)
 {
-   return acMoveToBackID(Self->RegionID);
+   return acMoveToBack(Self->Viewport);
 }
 
 /*****************************************************************************
@@ -212,27 +194,18 @@ MoveToFront: Moves the combobox in front of its siblings.
 
 static ERROR COMBOBOX_MoveToFront(objComboBox *Self, APTR Void)
 {
-   return acMoveToFrontID(Self->RegionID);
+   return acMoveToFront(Self->Viewport);
 }
 
 //****************************************************************************
 
 static ERROR COMBOBOX_NewObject(objComboBox *Self, APTR Void)
 {
-   if (!NewLockedObject(ID_SURFACE, NF_INTEGRAL, NULL, &Self->RegionID)) {
-      if (!NewObject(ID_TEXT, NF_INTEGRAL, &Self->TextInput)) {
+   if (!NewObject(ID_VECTORVIEWPORT, NF_INTEGRAL, &Self->Viewport)) {
+      if (!NewObject(ID_VECTORTEXT, NF_INTEGRAL, &Self->TextInput)) {
+         SetOwner(Self->TextInput, Self->Viewport);
          if (!NewObject(ID_MENU, NF_INTEGRAL, &Self->Menu)) {
-
-            SetLong(Self->TextInput, FID_Surface, Self->RegionID);
-            SetString(Self->TextInput->Font, FID_Face, glWidgetFace);
-            Self->TextInput->LineLimit = 1;
-            Self->TextInput->Layout->LeftMargin   = 3;
-            Self->TextInput->Layout->RightMargin  = 3;
-            Self->TextInput->Layout->TopMargin    = 2;
-            Self->TextInput->Layout->BottomMargin = 2;
-
-            SetLong(Self->TextInput, FID_Align, ALIGN_VERTICAL);
-
+            SetString(Self->TextInput, FID_Face, glWidgetFace);
             drwApplyStyleValues(Self, NULL);
             return ERR_Okay;
          }
@@ -251,7 +224,7 @@ Redimension: Changes the size and position of the combobox.
 
 static ERROR COMBOBOX_Redimension(objComboBox *Self, struct acRedimension *Args)
 {
-   return ActionMsg(AC_Redimension, Self->RegionID, Args);
+   return Action(AC_Redimension, Self->Viewport, Args);
 }
 
 /*****************************************************************************
@@ -262,7 +235,7 @@ Resize: Alters the size of the combobox.
 
 static ERROR COMBOBOX_Resize(objComboBox *Self, struct acResize *Args)
 {
-   return ActionMsg(AC_Resize, Self->RegionID, Args);
+   return Action(AC_Resize, Self->Viewport, Args);
 }
 
 /*****************************************************************************
@@ -284,7 +257,7 @@ Show: Puts the combobox on display.
 
 static ERROR COMBOBOX_Show(objComboBox *Self, APTR Void)
 {
-   return acShowID(Self->RegionID);
+   return acShow(Self->Viewport);
 }
 
 /*****************************************************************************
@@ -299,13 +272,8 @@ alignment feature takes precedence over values in coordinate fields such as #X a
 
 static ERROR SET_Align(objComboBox *Self, LONG Value)
 {
-   objSurface *surface;
-   if (!AccessObject(Self->RegionID, 4000, &surface)) {
-      surface->Align = Value;
-      ReleaseObject(surface);
-      return ERR_Okay;
-   }
-   else return ERR_AccessObject;
+   //Self->Viewport->Align = Value;
+   return ERR_Okay;
 }
 
 /*****************************************************************************
@@ -317,14 +285,12 @@ Bottom: The bottom coordinate of the combobox (Y + Height).
 
 static ERROR GET_Bottom(objComboBox *Self, LONG *Value)
 {
-   OBJECTPTR surface;
-
-   if (!AccessObject(Self->RegionID, 4000, &surface)) {
-      GetLong(surface, FID_Bottom, Value);
-      ReleaseObject(surface);
+   DOUBLE y, height;
+   if (!GetFields(Self->Viewport, FID_Y|TDOUBLE, &y, FID_Height|TDOUBLE, &height, TAGEND)) {
+      *Value = F2T(y + height);
       return ERR_Okay;
    }
-   else return ERR_AccessObject;
+   else return ERR_GetField;
 }
 
 /*****************************************************************************
@@ -397,33 +363,14 @@ height, use the FD_PERCENT flag when setting the field.
 
 static ERROR GET_Height(objComboBox *Self, Variable *Value)
 {
-   OBJECTPTR surface;
-   if (!AccessObject(Self->RegionID, 4000, &surface)) {
-      DOUBLE value;
-      GetDouble(surface, FID_Height, &value);
-      ReleaseObject(surface);
-
-      if (Value->Type & FD_DOUBLE) Value->Double = value;
-      else if (Value->Type & FD_LARGE) Value->Large = value;
-      return ERR_Okay;
-   }
-   else return ERR_AccessObject;
+   if (Value->Type & FD_DOUBLE) return GetDouble(Self->Viewport, FID_Height, &Value->Double);
+   else if (Value->Type & FD_LARGE) return GetLarge(Self->Viewport, FID_Height, &Value->Large);
+   else return ERR_FieldTypeMismatch;
 }
 
 static ERROR SET_Height(objComboBox *Self, Variable *Value)
 {
-   if (((Value->Type & FD_DOUBLE) and (!Value->Double)) or
-       ((Value->Type & FD_LARGE) and (!Value->Large))) {
-      return ERR_Okay;
-   }
-
-   OBJECTPTR surface;
-   if (!AccessObject(Self->RegionID, 4000, &surface)) {
-      SetVariable(surface, FID_Height, Value);
-      ReleaseObject(surface);
-      return ERR_Okay;
-   }
-   else return ERR_AccessObject;
+   return SetVariable(Self->Viewport, FID_Height, Value);
 }
 
 /*****************************************************************************
@@ -457,50 +404,6 @@ LabelWidth: A set-width for the label area of the combobox may be defined here.
 If you set a label for the combobox, the width of the label area is automatically calculated according to the width of
 the label string.  You may override this behaviour by setting a value in the LabelWidth field.
 
-*****************************************************************************/
-
-// Internal field for supporting dynamic style changes when an object is used in a document.
-
-static ERROR SET_LayoutStyle(objComboBox *Self, DOCSTYLE *Value)
-{
-   if (!Value) return ERR_Okay;
-
-   //if (Self->Head.Flags & NF_INITIALISED) docApplyFontStyle(Value->Document, Value, Self->Font);
-   //else docApplyFontStyle(Value->Document, Value, Self->Font);
-
-   return ERR_Okay;
-}
-
-/*****************************************************************************
-
--FIELD-
-Region: The surface that represents the combobox is referenced through this field.
-
-The surface area that represents the combobox display can be accessed through this field.  For further information,
-refer to the Surface class.  Note that interfacing with the surface directly can have adverse effects on the combobox
-control system.  Where possible, all communication should be limited to the combobox object itself.
-
-*****************************************************************************/
-
-static ERROR SET_Region(objComboBox *Self, LONG Value)
-{
-   // NOTE: For backwards compatibility with the Surface class, the region can be set to a value of TRUE to define the
-   // combobox as a simple surface region.
-
-   if ((Value IS FALSE) or (Value IS TRUE)) {
-      OBJECTPTR surface;
-      if (!AccessObject(Self->RegionID, 4000, &surface)) {
-         SetLong(surface, FID_Region, Value);
-         ReleaseObject(surface);
-         return ERR_Okay;
-      }
-      else return ERR_AccessObject;
-   }
-   else return ERR_InvalidValue;
-}
-
-/*****************************************************************************
-
 -FIELD-
 Menu: Provides direct access to the drop-down menu.
 
@@ -514,13 +417,12 @@ Right: The right-most coordinate of the combobox (X + Width).
 
 static ERROR GET_Right(objComboBox *Self, LONG *Value)
 {
-   OBJECTPTR surface;
-   if (!AccessObject(Self->RegionID, 4000, &surface)) {
-      GetLong(surface, FID_Right, Value);
-      ReleaseObject(surface);
+   DOUBLE x, width;
+   if (!GetFields(Self->Viewport, FID_X|TDOUBLE, &x, FID_Width|TDOUBLE, &width, TAGEND)) {
+      *Value = F2T(x + width);
       return ERR_Okay;
    }
-   else return ERR_AccessObject;
+   else return ERR_GetField;
 }
 
 /*****************************************************************************
@@ -559,10 +461,10 @@ static ERROR GET_SelectedID(objComboBox *Self, LONG *Value)
 /*****************************************************************************
 
 -FIELD-
-String: The string that is to be printed inside the combobox is declared here.
+String: The text that is to be printed inside the combobox.
 
-The string that you would like to be displayed in the combobox is specified in this field.  The string must be in UTF-8
-format and may not contain line feeds.  You can read this field at any time to determine what the user has entered in
+The text string to display in the combobox is declared in this field.  The string must be in UTF-8
+format and may not contain line feeds.  This field can be read field at any time to determine what the user has entered in
 the combobox.
 
 If the string is changed after initialisation, the combobox will be redrawn to show the updated text.  No feedback
@@ -589,7 +491,10 @@ static ERROR SET_String(objComboBox *Self, CSTRING Value)
       if (!StrMatch(original, Value)) return ERR_Okay;
    }
 
-   if (!SetString(Self->TextInput, FID_String, Value)) return ERR_Okay;
+   if (!SetString(Self->TextInput, FID_String, Value)) {
+      if (Self->Head.Flags & NF_INITIALISED) style_trigger(Self, STYLE_CONTENT);
+      return ERR_Okay;
+   }
    else return ERR_Failed;
 }
 
@@ -602,6 +507,26 @@ The surface that will contain the combobox graphic is set here.  If this field i
 combobox will attempt to scan for the correct surface by analysing its parents until it finds a suitable candidate.
 
 -FIELD-
+StyleTrigger: Requires a callback for reporting changes that can affect graphics styling.
+
+This field is reserved for use by the style code that is managing the widget graphics.
+
+*****************************************************************************/
+
+static ERROR SET_StyleTrigger(objComboBox *Self, FUNCTION *Value)
+{
+   if (Value) {
+      if (Self->prvStyleTrigger.Type IS CALL_SCRIPT) UnsubscribeAction(Self->prvStyleTrigger.Script.Script, AC_Free);
+      Self->prvStyleTrigger = *Value;
+      if (Self->prvStyleTrigger.Type IS CALL_SCRIPT) SubscribeAction(Self->prvStyleTrigger.Script.Script, AC_Free);
+   }
+   else Self->prvStyleTrigger.Type = CALL_NONE;
+   return ERR_Okay;
+}
+
+/*****************************************************************************
+
+-FIELD-
 TabFocus: Set this field to a TabFocus object to register the combobox in a tab-list.
 
 The TabFocus field provides a convenient way of adding the combobox to a @TabFocus object, so that it can be
@@ -610,17 +535,13 @@ tab-list for the application window.
 
 *****************************************************************************/
 
-static ERROR SET_TabFocus(objComboBox *Self, OBJECTID Value)
+static ERROR SET_TabFocus(objComboBox *Self, OBJECTPTR Value)
 {
-   OBJECTPTR tabfocus;
-   if (!AccessObject(Value, 5000, &tabfocus)) {
-      if (tabfocus->ClassID IS ID_TABFOCUS) {
-         tabAddObject(tabfocus, Self->Head.UniqueID);
-      }
-      ReleaseObject(tabfocus);
-      return ERR_Okay;
+   if ((Value) and (Value->ClassID IS ID_TABFOCUS)) {
+      tabAddObject(Value, Self->Viewport->Head.UniqueID);
    }
-   else return ERR_AccessObject;
+
+   return ERR_Okay;
 }
 
 /*****************************************************************************
@@ -645,32 +566,14 @@ use the FD_PERCENT flag when setting the field.
 
 static ERROR GET_Width(objComboBox *Self, Variable *Value)
 {
-   OBJECTPTR surface;
-   if (!AccessObject(Self->RegionID, 4000, &surface)) {
-      DOUBLE value;
-      GetDouble(surface, FID_Width, &value);
-      ReleaseObject(surface);
-
-      if (Value->Type & FD_DOUBLE) Value->Double = value;
-      else if (Value->Type & FD_LARGE) Value->Large = value;
-      return ERR_Okay;
-   }
-   else return ERR_AccessObject;
+   if (Value->Type & FD_DOUBLE) return GetDouble(Self->Viewport, FID_Width, &Value->Double);
+   else if (Value->Type & FD_LARGE) return GetLarge(Self->Viewport, FID_Width, &Value->Large);
+   else return ERR_FieldTypeMismatch;
 }
 
 static ERROR SET_Width(objComboBox *Self, Variable *Value)
 {
-   if (((Value->Type & FD_DOUBLE) and (!Value->Double)) or ((Value->Type & FD_LARGE) and (!Value->Large))) {
-      return ERR_Okay;
-   }
-
-   OBJECTPTR surface;
-   if (!AccessObject(Self->RegionID, 4000, &surface)) {
-      SetVariable(surface, FID_Width, Value);
-      ReleaseObject(surface);
-      return ERR_Okay;
-   }
-   else return ERR_AccessObject;
+   return SetVariable(Self->Viewport, FID_Width, Value);
 }
 
 /*****************************************************************************
@@ -686,28 +589,14 @@ fixed.  Negative values are permitted.
 
 static ERROR GET_X(objComboBox *Self, Variable *Value)
 {
-   OBJECTPTR surface;
-   if (!AccessObject(Self->RegionID, 4000, &surface)) {
-      DOUBLE value;
-      GetDouble(surface, FID_X, &value);
-      ReleaseObject(surface);
-
-      if (Value->Type & FD_DOUBLE) Value->Double = value;
-      else if (Value->Type & FD_LARGE) Value->Large = value;
-      return ERR_Okay;
-   }
-   else return ERR_AccessObject;
+   if (Value->Type & FD_DOUBLE) return GetDouble(Self->Viewport, FID_X, &Value->Double);
+   else if (Value->Type & FD_LARGE) return GetLarge(Self->Viewport, FID_X, &Value->Large);
+   else return ERR_FieldTypeMismatch;
 }
 
 static ERROR SET_X(objComboBox *Self, Variable *Value)
 {
-   OBJECTPTR surface;
-   if (!AccessObject(Self->RegionID, 4000, &surface)) {
-      SetVariable(surface, FID_X, Value);
-      ReleaseObject(surface);
-      return ERR_Okay;
-   }
-   else return ERR_AccessObject;
+   return SetVariable(Self->Viewport, FID_X, Value);
 }
 
 /*****************************************************************************
@@ -729,28 +618,14 @@ coordinate calculated from the formula `X = ContainerWidth - ComboBoxWidth - XOf
 
 static ERROR GET_XOffset(objComboBox *Self, Variable *Value)
 {
-   OBJECTPTR surface;
-   if (!AccessObject(Self->RegionID, 4000, &surface)) {
-      DOUBLE value;
-      GetDouble(surface, FID_XOffset, &value);
-      ReleaseObject(surface);
-
-      if (Value->Type & FD_DOUBLE) Value->Double = value;
-      else if (Value->Type & FD_LARGE) Value->Large = value;
-      return ERR_Okay;
-   }
-   else return ERR_AccessObject;
+   if (Value->Type & FD_DOUBLE) return GetDouble(Self->Viewport, FID_XOffset, &Value->Double);
+   else if (Value->Type & FD_LARGE) return GetLarge(Self->Viewport, FID_XOffset, &Value->Large);
+   else return ERR_FieldTypeMismatch;
 }
 
 static ERROR SET_XOffset(objComboBox *Self, Variable *Value)
 {
-   OBJECTPTR surface;
-   if (!AccessObject(Self->RegionID, 4000, &surface)) {
-      SetVariable(surface, FID_XOffset, Value);
-      ReleaseObject(surface);
-      return ERR_Okay;
-   }
-   else return ERR_AccessObject;
+   return SetVariable(Self->Viewport, FID_XOffset, Value);
 }
 
 /*****************************************************************************
@@ -766,29 +641,14 @@ fixed.  Negative values are permitted.
 
 static ERROR GET_Y(objComboBox *Self, Variable *Value)
 {
-   OBJECTPTR surface;
-   if (!AccessObject(Self->RegionID, 4000, &surface)) {
-      DOUBLE value;
-      GetDouble(surface, FID_Y, &value);
-      ReleaseObject(surface);
-
-      if (Value->Type & FD_DOUBLE) Value->Double = value;
-      else if (Value->Type & FD_LARGE) Value->Large = value;
-      return ERR_Okay;
-   }
-   else return ERR_AccessObject;
-
+   if (Value->Type & FD_DOUBLE) return GetDouble(Self->Viewport, FID_Y, &Value->Double);
+   else if (Value->Type & FD_LARGE) return GetLarge(Self->Viewport, FID_Y, &Value->Large);
+   else return ERR_FieldTypeMismatch;
 }
 
 static ERROR SET_Y(objComboBox *Self, Variable *Value)
 {
-   OBJECTPTR surface;
-   if (!AccessObject(Self->RegionID, 4000, &surface)) {
-      SetVariable(surface, FID_Y, Value);
-      ReleaseObject(surface);
-      return ERR_Okay;
-   }
-   else return ERR_AccessObject;
+   return SetVariable(Self->Viewport, FID_Y, Value);
 }
 
 /*****************************************************************************
@@ -811,28 +671,14 @@ coordinate calculated from the formula `Y = ContainerHeight - ComboBoxHeight - Y
 
 static ERROR GET_YOffset(objComboBox *Self, Variable *Value)
 {
-   OBJECTPTR surface;
-   if (!AccessObject(Self->RegionID, 4000, &surface)) {
-      DOUBLE value;
-      GetDouble(surface, FID_YOffset, &value);
-      ReleaseObject(surface);
-
-      if (Value->Type & FD_DOUBLE) Value->Double = value;
-      else if (Value->Type & FD_LARGE) Value->Large = value;
-      return ERR_Okay;
-   }
-   else return ERR_AccessObject;
+   if (Value->Type & FD_DOUBLE) return GetDouble(Self->Viewport, FID_YOffset, &Value->Double);
+   else if (Value->Type & FD_LARGE) return GetLarge(Self->Viewport, FID_YOffset, &Value->Large);
+   else return ERR_FieldTypeMismatch;
 }
 
 static ERROR SET_YOffset(objComboBox *Self, Variable *Value)
 {
-   OBJECTPTR surface;
-   if (!AccessObject(Self->RegionID, 4000, &surface)) {
-      SetVariable(surface, FID_YOffset, Value);
-      ReleaseObject(surface);
-      return ERR_Okay;
-   }
-   else return ERR_AccessObject;
+   return SetVariable(Self->Viewport, FID_YOffset, Value);
 }
 
 //**********************************************************************
@@ -902,24 +748,23 @@ static const FieldDef Align[] = {
 };
 
 static const FieldArray clFields[] = {
-   { "TextInput",    FDF_INTEGRAL|FDF_R,   0, NULL, NULL },
-   { "Menu",         FDF_INTEGRAL|FDF_R,   0, NULL, NULL },
-   { "LayoutSurface",FDF_VIRTUAL|FDF_OBJECTID|FDF_SYSTEM|FDF_R, ID_SURFACE, NULL, NULL }, // VIRTUAL: This is a synonym for the Region field
-   { "Region",       FDF_OBJECTID|FDF_RW,  ID_SURFACE, NULL, (APTR)SET_Region },
-   { "Surface",      FDF_OBJECTID|FDF_RW,  ID_SURFACE, NULL, NULL },
-   { "Flags",        FDF_LONGFLAGS|FDF_RW, (MAXINT)&clComboBoxFlags, NULL, NULL },
-   { "LabelWidth",   FDF_LONG|FDF_RI,      0, NULL, NULL },
+   { "TextInput",      FDF_INTEGRAL|FDF_R,   0, NULL, NULL },
+   { "Menu",           FDF_INTEGRAL|FDF_R,   0, NULL, NULL },
+   { "Viewport",       FDF_OBJECT|FDF_R,     ID_VECTORVIEWPORT, NULL, NULL },
+   { "ParentViewport", FDF_OBJECT|FDF_RI,    ID_VECTORVIEWPORT, NULL, NULL },
+   { "Flags",          FDF_LONGFLAGS|FDF_RW, (MAXINT)&clComboBoxFlags, NULL, NULL },
+   { "LabelWidth",     FDF_LONG|FDF_RI,      0, NULL, NULL },
    // Virtual fields
    { "Align",         FDF_VIRTUAL|FDF_LONGFLAGS|FDF_I, (MAXINT)&Align,  NULL, (APTR)SET_Align },
    { "Bottom",        FDF_VIRTUAL|FDF_LONG|FDF_R,      0, (APTR)GET_Bottom, NULL },
    { "Disable",       FDF_VIRTUAL|FDF_LONG|FDF_RW,     0, (APTR)GET_Disable, (APTR)SET_Disable },
    { "Feedback",      FDF_VIRTUAL|FDF_FUNCTIONPTR|FDF_RW, 0, (APTR)GET_Feedback, (APTR)SET_Feedback },
    { "Label",         FDF_VIRTUAL|FDF_STRING|FDF_RW,   0, (APTR)GET_Label, (APTR)SET_Label },
-   { "LayoutStyle",   FDF_VIRTUAL|FDF_POINTER|FDF_SYSTEM|FDF_W, 0, NULL, (APTR)SET_LayoutStyle },
    { "Right",         FDF_VIRTUAL|FDF_LONG|FDF_R,      0, (APTR)GET_Right, NULL },
    { "SelectedID",    FDF_VIRTUAL|FDF_LONG|FDF_R,      0, (APTR)GET_SelectedID, NULL },
    { "String",        FDF_VIRTUAL|FDF_STRING|FDF_RW,   0, (APTR)GET_String, (APTR)SET_String },
-   { "TabFocus",      FDF_VIRTUAL|FDF_OBJECTID|FDF_I,  ID_TABFOCUS, NULL, (APTR)SET_TabFocus },
+   { "StyleTrigger",  FDF_VIRTUAL|FDF_FUNCTIONPTR|FDF_W,  0, NULL, (APTR)SET_StyleTrigger },
+   { "TabFocus",      FDF_VIRTUAL|FDF_OBJECT|FDF_I,  ID_TABFOCUS, NULL, (APTR)SET_TabFocus },
    { "Text",          FDF_SYNONYM|FDF_VIRTUAL|FDF_STRING|FDF_RW, 0, (APTR)GET_String, (APTR)SET_String },
    // Variable Fields
    { "Height",  FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)GET_Height,  (APTR)SET_Height },

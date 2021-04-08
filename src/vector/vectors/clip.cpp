@@ -49,7 +49,9 @@ static ERROR CLIP_Draw(objVectorClip *Self, struct acDraw *Args)
       bounding_rect_single(*Self->ClipPath, 0, &bounds[0], &bounds[1], &bounds[2], &bounds[3]);
    }
 
-   if (Self->Child) calc_full_boundary((objVector *)Self->Child, bounds);
+   if (Self->Child) {
+      calc_full_boundary((objVector *)Self->Child, bounds);
+   }
 
    if (bounds[0] >= 1000000) return ERR_Okay; // Return if there are no valid paths.
 
@@ -65,7 +67,7 @@ static ERROR CLIP_Draw(objVectorClip *Self, struct acDraw *Args)
    else if (!height) height = 1;
 
    if ((width > 4096) or (height > 4096)) {
-      LogErrorMsg("Mask size of %dx%d pixels exceeds imposed limits.", width, height);
+      log.warning("Mask size of %dx%d pixels exceeds imposed limits.", width, height);
       if (width > 4096)  width = 4096;
       if (height > 4096) height = 4096;
    }
@@ -180,8 +182,8 @@ static ERROR CLIP_SET_Transform(objVectorClip *Self, CSTRING Value)
 
    // Clear any existing transforms.
 
-   VectorTransform *scan, *next;
-   for (scan=Self->Transforms; scan; scan=next) {
+   VectorTransform *next;
+   for (auto scan=Self->Transforms; scan; scan=next) {
       next = scan->Next;
       FreeResource(scan);
    }

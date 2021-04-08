@@ -67,9 +67,10 @@ static const FieldDef clAspectRatio[] = {
    { NULL, 0 }
 };
 
-//****************************************************************************
-
 static FIELD FID_FreetypeFace;
+
+//****************************************************************************
+// Mark a vector and all its children as needing some form of recomputation.
 
 template <class T> static void mark_dirty(T *Vector, UBYTE Flags)
 {

@@ -26,55 +26,37 @@ are: Initialise child objects to the button for execution on activation; Listen 
 #define PRV_BUTTON
 #define PRV_WIDGET_MODULE
 #include <parasol/modules/display.h>
-#include <parasol/modules/document.h>
-#include <parasol/modules/picture.h>
 #include <parasol/modules/surface.h>
 #include <parasol/modules/widget.h>
+#include <parasol/modules/vector.h>
 
 #include "defs.h"
 
-static const FieldDef clAlign[] = {
-   { "Right",    ALIGN_RIGHT    }, { "Left",       ALIGN_LEFT    },
-   { "Bottom",   ALIGN_BOTTOM   }, { "Top",        ALIGN_TOP     },
-   { "Center",   ALIGN_CENTER   }, { "Middle",     ALIGN_MIDDLE  },
-   { "Vertical", ALIGN_VERTICAL }, { "Horizontal", ALIGN_HORIZONTAL },
-   { NULL, 0 }
-};
-
 static OBJECTPTR clButton = NULL;
 
-static ERROR consume_input_events(const InputEvent *, LONG);
-static void key_event(objButton *, evKey *, LONG);
+//****************************************************************************
+
+static void style_trigger(objButton *Self, LONG Style)
+{
+   if (Self->prvStyleTrigger.Type IS CALL_SCRIPT) {
+      OBJECTPTR script;
+      if ((script = Self->prvStyleTrigger.Script.Script)) {
+         const ScriptArg args[] = {
+            { "Button", FD_OBJECTPTR, { .Address = Self } },
+            { "Style", FD_LONG,       { .Long = Style } }
+         };
+         scCallback(script, Self->prvStyleTrigger.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
+      }
+   }
+}
 
 //****************************************************************************
 
 static ERROR BUTTON_ActionNotify(objButton *Self, struct acActionNotify *Args)
 {
-   if (Args->ActionID IS AC_Focus) {
-      if (!Self->prvKeyEvent) {
-         FUNCTION callback;
-         SET_FUNCTION_STDC(callback, (APTR)&key_event);
-         SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, &callback, Self, &Self->prvKeyEvent);
-      }
-
-      DelayMsg(AC_Draw, Self->RegionID, NULL);
-   }
-   else if (Args->ActionID IS AC_LostFocus) {
-      if (Self->prvKeyEvent) { UnsubscribeEvent(Self->prvKeyEvent); Self->prvKeyEvent = NULL; }
-
-      DelayMsg(AC_Draw, Self->RegionID, NULL);
-   }
-   else if (Args->ActionID IS AC_Disable) {
-      Self->Flags |= BTF_DISABLED;
-      DelayMsg(AC_Draw, Self->RegionID, NULL);
-   }
-   else if (Args->ActionID IS AC_Enable) {
-      Self->Flags &= ~BTF_DISABLED;
-      DelayMsg(AC_Draw, Self->RegionID, NULL);
-   }
-   else if (Args->ActionID IS AC_Free) {
-      if ((Self->Feedback.Type IS CALL_SCRIPT) and (Self->Feedback.Script.Script->UniqueID IS Args->ObjectID)) {
-         Self->Feedback.Type = CALL_NONE;
+   if (Args->ActionID IS AC_Free) {
+      if ((Self->prvFeedback.Type IS CALL_SCRIPT) and (Self->prvFeedback.Script.Script->UniqueID IS Args->ObjectID)) {
+         Self->prvFeedback.Type = CALL_NONE;
       }
    }
    else return ERR_NoSupport;
@@ -100,25 +82,17 @@ static ERROR BUTTON_Activate(objButton *Self, APTR Void)
 
    Self->Active = TRUE;
 
-   if (Self->Feedback.Type IS CALL_STDC) {
-      auto routine = (void (*)(objButton *))Self->Feedback.StdC.Routine;
-
-      if (Self->Feedback.StdC.Context) {
-         parasol::SwitchContext context(Self->Feedback.StdC.Context);
-         routine(Self);
-      }
-      else routine(Self);
+   if (Self->prvFeedback.Type IS CALL_STDC) {
+      parasol::SwitchContext context(Self->prvFeedback.StdC.Context);
+      auto routine = (void (*)(objButton *))Self->prvFeedback.StdC.Routine;
+      routine(Self);
    }
-   else if (Self->Feedback.Type IS CALL_SCRIPT) {
+   else if (Self->prvFeedback.Type IS CALL_SCRIPT) {
       OBJECTPTR script;
-      if ((script = Self->Feedback.Script.Script)) {
+      if ((script = Self->prvFeedback.Script.Script)) {
          const ScriptArg args[] = { { "Button", FD_OBJECTPTR, { .Address = Self } } };
-         scCallback(script, Self->Feedback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
+         scCallback(script, Self->prvFeedback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
       }
-   }
-
-   if ((Self->Onclick) and (Self->Document)) {
-      docCallFunction(Self->Document, Self->Onclick, NULL, 0);
    }
 
    Self->Active = FALSE;
@@ -133,9 +107,7 @@ Disable: Turns the button off.
 
 static ERROR BUTTON_Disable(objButton *Self, APTR Void)
 {
-   // See the ActionNotify routine to see what happens when the surface is disabled.
-
-   acDisableID(Self->RegionID);
+   Self->Flags |= BTF_DISABLED;
    return ERR_Okay;
 }
 
@@ -147,9 +119,7 @@ Enable: Turns the button on if it has been disabled.
 
 static ERROR BUTTON_Enable(objButton *Self, APTR Void)
 {
-   // See the ActionNotify routine to see what happens when the surface is enabled.
-
-   acEnableID(Self->RegionID);
+   Self->Flags &= ~BTF_DISABLED;
    return ERR_Okay;
 }
 
@@ -161,17 +131,15 @@ Focus: Sets the focus on the button and activates keyboard monitoring.
 
 static ERROR BUTTON_Focus(objButton *Self, APTR Void)
 {
-   return acFocusID(Self->RegionID);
+   return acFocus(Self->Viewport);
 }
 
 //****************************************************************************
 
 static ERROR BUTTON_Free(objButton *Self, APTR Void)
 {
-   if (Self->prvKeyEvent) { UnsubscribeEvent(Self->prvKeyEvent); Self->prvKeyEvent = NULL; }
-   if (Self->Icon)        { FreeResource(Self->Icon); Self->Icon = NULL; }
-   if (Self->RegionID)    { acFreeID(Self->RegionID); Self->RegionID = 0; }
-   if (Self->InputHandle) { gfxUnsubscribeInput(Self->InputHandle); Self->InputHandle = 0; }
+   if (Self->Icon)     { FreeResource(Self->Icon); Self->Icon = NULL; }
+   if (Self->Viewport) { acFree(Self->Viewport); Self->Viewport = NULL; }
    return ERR_Okay;
 }
 
@@ -183,60 +151,43 @@ Hide: Removes the button from the display.
 
 static ERROR BUTTON_Hide(objButton *Self, APTR Void)
 {
-   return acHideID(Self->RegionID);
+   Self->Flags |= BTF_HIDE;
+   return acHide(Self->Viewport);
 }
 
 //****************************************************************************
 
 static ERROR BUTTON_Init(objButton *Self, APTR Void)
 {
-   if (!Self->SurfaceID) { // Find our parent surface
-      OBJECTID owner_id = GetOwner(Self);
-      while ((owner_id) and (GetClassID(owner_id) != ID_SURFACE)) {
-         owner_id = GetOwnerID(owner_id);
+   if (!Self->ParentViewport) { // Find our parent viewport
+      OBJECTID owner_id;
+      for (owner_id=GetOwner(Self); (owner_id); owner_id=GetOwnerID(owner_id)) {
+          if (GetClassID(owner_id) IS ID_VECTOR) {
+             Self->ParentViewport = (objVector *)GetObjectPtr(owner_id);
+             if ((Self->ParentViewport->Head.SubID != ID_VECTORVIEWPORT) and
+                 (Self->ParentViewport->Head.SubID != ID_VECTORSCENE)) return ERR_UnsupportedOwner;
+             else break;
+          }
       }
-      if (owner_id) Self->SurfaceID = owner_id;
-      else return ERR_UnsupportedOwner;
+      if (!owner_id) return ERR_UnsupportedOwner;
    }
 
-   if (drwApplyStyleGraphics(Self, Self->RegionID, NULL, NULL)) {
-      return ERR_Failed; // Graphics styling is required.
-   }
+   Self->Viewport->Parent = &Self->ParentViewport->Head;
 
-   objSurface *region;
-   if (!AccessObject(Self->RegionID, 5000, &region)) {
-      region->Flags |= RNF_GRAB_FOCUS;
+   if (Self->Flags & BTF_HIDE) Self->Viewport->Visibility = VIS_HIDDEN;
 
-      //if (Self->Flags & BTF_NO_FOCUS)
-      region->Flags |= RNF_IGNORE_FOCUS;
-
-      SetFields(region, FID_Parent|TLONG, Self->SurfaceID,
-                        FID_Region|TLONG, TRUE,
-                        TAGEND);
-
-      if (!acInit(region)) {
-         SubscribeActionTags(region,
-            AC_Disable,
-            AC_Enable,
-            AC_Focus,
-            AC_LostFocus,
-            TAGEND);
+   if (!acInit(Self->Viewport)) {
+      if (drwApplyStyleGraphics(Self, Self->Viewport->Head.UniqueID, NULL, NULL)) {
+         return ERR_Failed; // Graphics styling is required.
       }
-      else {
-         ReleaseObject(region);
-         return ERR_Init;
-      }
-
-      auto callback = make_function_stdc(consume_input_events);
-      gfxSubscribeInput(&callback, Self->RegionID, JTYPE_FEEDBACK|JTYPE_BUTTON|JTYPE_REPEATED, 0, &Self->InputHandle);
-
-      ReleaseObject(region);
+/*
+   Self->Viewport->Flags |= VF_GRAB_FOCUS;
+   //if (Self->Flags & BTF_NO_FOCUS)
+   Self->Viewport->Flags |= VF_IGNORE_FOCUS;
+*/
+      return ERR_Okay;
    }
-   else return ERR_AccessObject;
-
-   if (!(Self->Flags & BTF_HIDE)) acShowID(Self->RegionID);
-
-   return ERR_Okay;
+   else return ERR_Init;
 }
 
 /*****************************************************************************
@@ -247,18 +198,7 @@ Move: Move the button to a new position.
 
 static ERROR BUTTON_Move(objButton *Self, struct acMove *Args)
 {
-   return ActionMsg(AC_Move, Self->RegionID, Args);
-}
-
-/*****************************************************************************
--ACTION-
-MoveToPoint: Move the button to a new position.
--END-
-*****************************************************************************/
-
-static ERROR BUTTON_MoveToPoint(objButton *Self, struct acMoveToPoint *Args)
-{
-   return ActionMsg(AC_MoveToPoint, Self->RegionID, Args);
+   return Action(AC_Move, Self->Viewport, Args);
 }
 
 /*****************************************************************************
@@ -269,7 +209,7 @@ MoveToBack: Moves the button to the back of the display area.
 
 static ERROR BUTTON_MoveToBack(objButton *Self, APTR Void)
 {
-   return acMoveToBackID(Self->RegionID);
+   return acMoveToBack(Self->Viewport);
 }
 
 /*****************************************************************************
@@ -280,14 +220,25 @@ MoveToFront: Moves the button to the front of the display area.
 
 static ERROR BUTTON_MoveToFront(objButton *Self, APTR Void)
 {
-   return acMoveToFrontID(Self->RegionID);
+   return acMoveToFront(Self->Viewport);
+}
+
+/*****************************************************************************
+-ACTION-
+MoveToPoint: Move the button to a new position.
+-END-
+*****************************************************************************/
+
+static ERROR BUTTON_MoveToPoint(objButton *Self, struct acMoveToPoint *Args)
+{
+   return Action(AC_MoveToPoint, Self->Viewport, Args);
 }
 
 //****************************************************************************
 
 static ERROR BUTTON_NewObject(objButton *Self, APTR Void)
 {
-   if (!NewLockedObject(ID_SURFACE, NF_INTEGRAL|Self->Head.Flags, NULL, &Self->RegionID)) {
+   if (!NewObject(ID_VECTORVIEWPORT, NF_INTEGRAL, &Self->Viewport)) {
       drwApplyStyleValues(Self, NULL);
       return ERR_Okay;
    }
@@ -302,7 +253,7 @@ Redimension: Changes the size and position of the button.
 
 static ERROR BUTTON_Redimension(objButton *Self, struct acRedimension *Args)
 {
-   return ActionMsg(AC_Redimension, Self->RegionID, Args);
+   return Action(AC_Redimension, Self->Viewport, Args);
 }
 
 /*****************************************************************************
@@ -313,7 +264,7 @@ Resize: Alters the size of the button.
 
 static ERROR BUTTON_Resize(objButton *Self, struct acResize *Args)
 {
-   return ActionMsg(AC_Resize, Self->RegionID, Args);
+   return Action(AC_Resize, Self->Viewport, Args);
 }
 
 /*****************************************************************************
@@ -324,28 +275,7 @@ Show: Puts the button on display.
 
 static ERROR BUTTON_Show(objButton *Self, APTR Void)
 {
-   acShowID(Self->RegionID);
-   return ERR_Okay;
-}
-
-/*****************************************************************************
-
--FIELD-
-Align: Manages the alignment of a button surface within its container.
-
-This field is a proxy for the @Surface.Align field and will align the button within its container.
-
-*****************************************************************************/
-
-static ERROR SET_Align(objButton *Self, LONG Value)
-{
-   objSurface *surface;
-   if (!AccessObject(Self->RegionID, 4000, &surface)) {
-      surface->Align = Value;
-      ReleaseObject(surface);
-      return ERR_Okay;
-   }
-   else return ERR_AccessObject;
+   return acShow(Self->Viewport);
 }
 
 /*****************************************************************************
@@ -357,13 +287,12 @@ Bottom: The bottom coordinate of the button (Y + Height).
 
 static ERROR GET_Bottom(objButton *Self, LONG *Value)
 {
-   OBJECTPTR surface;
-   if (!AccessObject(Self->RegionID, 4000, &surface)) {
-      GetLong(surface, FID_Bottom, Value);
-      ReleaseObject(surface);
+   DOUBLE y, height;
+   if (!GetFields(Self->Viewport, FID_Y|TDOUBLE, &y, FID_Height|TDOUBLE, &height, TAGEND)) {
+      *Value = F2T(y + height);
       return ERR_Okay;
    }
-   else return ERR_AccessObject;
+   else return ERR_GetField;
 }
 
 /*****************************************************************************
@@ -403,8 +332,8 @@ function prototype is `routine(*Button)`
 
 static ERROR GET_Feedback(objButton *Self, FUNCTION **Value)
 {
-   if (Self->Feedback.Type != CALL_NONE) {
-      *Value = &Self->Feedback;
+   if (Self->prvFeedback.Type != CALL_NONE) {
+      *Value = &Self->prvFeedback;
       return ERR_Okay;
    }
    else return ERR_FieldNotSet;
@@ -413,11 +342,11 @@ static ERROR GET_Feedback(objButton *Self, FUNCTION **Value)
 static ERROR SET_Feedback(objButton *Self, FUNCTION *Value)
 {
    if (Value) {
-      if (Self->Feedback.Type IS CALL_SCRIPT) UnsubscribeAction(Self->Feedback.Script.Script, AC_Free);
-      Self->Feedback = *Value;
-      if (Self->Feedback.Type IS CALL_SCRIPT) SubscribeAction(Self->Feedback.Script.Script, AC_Free);
+      if (Self->prvFeedback.Type IS CALL_SCRIPT) UnsubscribeAction(Self->prvFeedback.Script.Script, AC_Free);
+      Self->prvFeedback = *Value;
+      if (Self->prvFeedback.Type IS CALL_SCRIPT) SubscribeAction(Self->prvFeedback.Script.Script, AC_Free);
    }
-   else Self->Feedback.Type = CALL_NONE;
+   else Self->prvFeedback.Type = CALL_NONE;
    return ERR_Okay;
 }
 
@@ -436,33 +365,14 @@ height, use the FD_PERCENT flag when setting the field.
 
 static ERROR GET_Height(objButton *Self, Variable *Value)
 {
-   OBJECTPTR surface;
-   if (!AccessObject(Self->RegionID, 4000, &surface)) {
-      DOUBLE value;
-      GetDouble(surface, FID_Height, &value);
-      ReleaseObject(surface);
-
-      if (Value->Type & FD_DOUBLE) Value->Double = value;
-      else if (Value->Type & FD_LARGE) Value->Large = value;
-      return ERR_Okay;
-   }
-   else return ERR_AccessObject;
+   if (Value->Type & FD_DOUBLE) return GetDouble(Self->Viewport, FID_Height, &Value->Double);
+   else if (Value->Type & FD_LARGE) return GetLarge(Self->Viewport, FID_Height, &Value->Large);
+   else return ERR_FieldTypeMismatch;
 }
 
 static ERROR SET_Height(objButton *Self, Variable *Value)
 {
-   if (((Value->Type & FD_DOUBLE) and (!Value->Double)) OR
-       ((Value->Type & FD_LARGE) and (!Value->Large))) {
-      return ERR_Okay;
-   }
-
-   OBJECTPTR surface;
-   if (!AccessObject(Self->RegionID, 4000, &surface)) {
-      SetVariable(surface, FID_Height, Value);
-      ReleaseObject(surface);
-      return ERR_Okay;
-   }
-   else return ERR_AccessObject;
+   return SetVariable(Self->Viewport, FID_Height, Value);
 }
 
 /*****************************************************************************
@@ -503,56 +413,7 @@ static ERROR SET_Icon(objButton *Self, CSTRING Value)
    return ERR_Okay;
 }
 
-//****************************************************************************
-// Internal field for supporting dynamic style changes when a GUI object is used in a Document.
-
-static ERROR SET_LayoutStyle(objButton *Self, DOCSTYLE *Value)
-{
-   if (!Value) return ERR_Okay;
-
-   //if (Self->Head.Flags & NF_INITIALISED) {
-   //   docApplyFontStyle(Value->Document, Value, Self->Font);
-   //}
-   //else docApplyFontStyle(Value->Document, Value, Self->Font);
-
-   Self->Document = Value->Document;
-
-   return ERR_Okay;
-}
-
 /*****************************************************************************
-
--FIELD-
-Onclick: Available if a button is declared in a document.  References the function to call when clicked.
-
-This field can only be used if the button has been created within a @Document.  It must reference the name of
-a function that will be called when the button is clicked.
-
-A function from a specific script can be referenced by using the name format 'script.function'.
-
-*****************************************************************************/
-
-static ERROR GET_Onclick(objButton *Self, STRING *Value)
-{
-   *Value = Self->Onclick;
-   return ERR_Okay;
-}
-
-static ERROR SET_Onclick(objButton *Self, CSTRING Value)
-{
-   if (Self->Onclick) { FreeResource(Self->Onclick); Self->Onclick = NULL; }
-   if (Value) Self->Onclick = StrClone(Value);
-   return ERR_Okay;
-}
-
-/*****************************************************************************
-
--FIELD-
-Region: The surface that represents the button graphic.
-
-The surface area that represents the button display can be accessed through this field.  For further information, refer
-to the @Surface class.  Note that interfacing with the surface directly can have adverse effects on the button
-control system.  Where possible, all communication should be limited to the button object itself.
 
 -FIELD-
 Right: The right coordinate of the button (X + Width).
@@ -561,13 +422,12 @@ Right: The right coordinate of the button (X + Width).
 
 static ERROR GET_Right(objButton *Self, LONG *Value)
 {
-   OBJECTPTR surface;
-   if (!AccessObject(Self->RegionID, 4000, &surface)) {
-      GetLong(surface, FID_Right, Value);
-      ReleaseObject(surface);
+   DOUBLE x, width;
+   if (!GetFields(Self->Viewport, FID_X|TDOUBLE, &x, FID_Width|TDOUBLE, &width, TAGEND)) {
+      *Value = F2T(x + width);
       return ERR_Okay;
    }
-   else return ERR_AccessObject;
+   else return ERR_GetField;
 }
 
 /*****************************************************************************
@@ -597,9 +457,7 @@ static ERROR SET_String(objButton *Self, CSTRING Value)
    if (Value) StrCopy(StrTranslateText(Value), Self->String, sizeof(Self->String));
    else Self->String[0] = 0;
 
-   // Send a redraw message
-
-   if (Self->Head.Flags & NF_INITIALISED) DelayMsg(AC_Draw, Self->RegionID, NULL);
+   if (Self->Head.Flags & NF_INITIALISED) style_trigger(Self, STYLE_CONTENT);
 
    return ERR_Okay;
 }
@@ -607,24 +465,38 @@ static ERROR SET_String(objButton *Self, CSTRING Value)
 /*****************************************************************************
 
 -FIELD-
-Surface: The surface that will contain the button visual.
+StyleTrigger: Requires a callback for reporting changes that can affect graphics styling.
 
-The surface that will contain the button visual is defined here.  If this field is not set prior to initialisation, the
-button will attempt to scan for the correct surface by analysing its parents until it finds a suitable candidate.
+This field is reserved for use by the style code that is managing the widget graphics.
+
+*****************************************************************************/
+
+static ERROR SET_StyleTrigger(objButton *Self, FUNCTION *Value)
+{
+   if (Value) {
+      if (Self->prvStyleTrigger.Type IS CALL_SCRIPT) UnsubscribeAction(Self->prvStyleTrigger.Script.Script, AC_Free);
+      Self->prvStyleTrigger = *Value;
+      if (Self->prvStyleTrigger.Type IS CALL_SCRIPT) SubscribeAction(Self->prvStyleTrigger.Script.Script, AC_Free);
+   }
+   else Self->prvStyleTrigger.Type = CALL_NONE;
+   return ERR_Okay;
+}
+
+/*****************************************************************************
 
 -FIELD-
 TabFocus: Set this field to a TabFocus object to register the button in a tab-list.
 
-The TabFocus field provides a convenient way of adding the button to a @TabFocus object, so that it can
-receive the user focus via the tab key.  Simply set this field to the ID of the TabFocus object that is managing the
-tab-list for the application window.
+The TabFocus field provides a convenient way of linking the button to a @TabFocus object, allowing it to
+receive the user focus via the tab key.  Do so by setting this field to the ID of the TabFocus object that is
+representing the application's window.
 
 *****************************************************************************/
 
 static ERROR SET_TabFocus(objButton *Self, OBJECTPTR Value)
 {
    if ((Value) and (Value->ClassID IS ID_TABFOCUS)) {
-      tabAddObject(Value, Self->RegionID);
+      tabAddObject(Value, Self->Viewport->Head.UniqueID);
    }
 
    return ERR_Okay;
@@ -642,32 +514,14 @@ use the FD_PERCENT flag when setting the field.
 
 static ERROR GET_Width(objButton *Self, Variable *Value)
 {
-   OBJECTPTR surface;
-   if (!AccessObject(Self->RegionID, 4000, &surface)) {
-      DOUBLE value;
-      GetDouble(surface, FID_Width, &value);
-      ReleaseObject(surface);
-
-      if (Value->Type & FD_DOUBLE) Value->Double = value;
-      else if (Value->Type & FD_LARGE) Value->Large = value;
-      return ERR_Okay;
-   }
-   else return ERR_AccessObject;
+   if (Value->Type & FD_DOUBLE) return GetDouble(Self->Viewport, FID_Width, &Value->Double);
+   else if (Value->Type & FD_LARGE) return GetLarge(Self->Viewport, FID_Width, &Value->Large);
+   else return ERR_FieldTypeMismatch;
 }
 
 static ERROR SET_Width(objButton *Self, Variable *Value)
 {
-   if (((Value->Type & FD_DOUBLE) and (!Value->Double)) or ((Value->Type & FD_LARGE) and (!Value->Large))) {
-      return ERR_Okay;
-   }
-
-   OBJECTPTR surface;
-   if (!AccessObject(Self->RegionID, 4000, &surface)) {
-      SetVariable(surface, FID_Width, Value);
-      ReleaseObject(surface);
-      return ERR_Okay;
-   }
-   else return ERR_AccessObject;
+   return SetVariable(Self->Viewport, FID_Width, Value);
 }
 
 /*****************************************************************************
@@ -683,28 +537,14 @@ as fixed.  Negative values are permitted.
 
 static ERROR GET_X(objButton *Self, Variable *Value)
 {
-   OBJECTPTR surface;
-   if (!AccessObject(Self->RegionID, 4000, &surface)) {
-      DOUBLE value;
-      GetDouble(surface, FID_X, &value);
-      ReleaseObject(surface);
-
-      if (Value->Type & FD_DOUBLE) Value->Double = value;
-      else if (Value->Type & FD_LARGE) Value->Large = value;
-      return ERR_Okay;
-   }
-   else return ERR_AccessObject;
+   if (Value->Type & FD_DOUBLE) return GetDouble(Self->Viewport, FID_X, &Value->Double);
+   else if (Value->Type & FD_LARGE) return GetLarge(Self->Viewport, FID_X, &Value->Large);
+   else return ERR_FieldTypeMismatch;
 }
 
 static ERROR SET_X(objButton *Self, Variable *Value)
 {
-   OBJECTPTR surface;
-   if (!AccessObject(Self->RegionID, 4000, &surface)) {
-      SetVariable(surface, FID_X, Value);
-      ReleaseObject(surface);
-      return ERR_Okay;
-   }
-   else return ERR_AccessObject;
+   return SetVariable(Self->Viewport, FID_X, Value);
 }
 
 /*****************************************************************************
@@ -726,28 +566,14 @@ coordinate calculated from the formula `X = ContainerWidth - ButtonWidth - XOffs
 
 static ERROR GET_XOffset(objButton *Self, Variable *Value)
 {
-   OBJECTPTR surface;
-   if (!AccessObject(Self->RegionID, 4000, &surface)) {
-      DOUBLE value;
-      GetDouble(surface, FID_XOffset, &value);
-      ReleaseObject(surface);
-
-      if (Value->Type & FD_DOUBLE) Value->Double = value;
-      else if (Value->Type & FD_LARGE) Value->Large = value;
-      return ERR_Okay;
-   }
-   else return ERR_AccessObject;
+   if (Value->Type & FD_DOUBLE) return GetDouble(Self->Viewport, FID_XOffset, &Value->Double);
+   else if (Value->Type & FD_LARGE) return GetLarge(Self->Viewport, FID_XOffset, &Value->Large);
+   else return ERR_FieldTypeMismatch;
 }
 
 static ERROR SET_XOffset(objButton *Self, Variable *Value)
 {
-   OBJECTPTR surface;
-   if (!AccessObject(Self->RegionID, 4000, &surface)) {
-      SetVariable(surface, FID_XOffset, Value);
-      ReleaseObject(surface);
-      return ERR_Okay;
-   }
-   else return ERR_AccessObject;
+   return SetVariable(Self->Viewport, FID_XOffset, Value);
 }
 
 /*****************************************************************************
@@ -763,29 +589,14 @@ as fixed.  Negative values are permitted.
 
 static ERROR GET_Y(objButton *Self, Variable *Value)
 {
-   OBJECTPTR surface;
-   if (!AccessObject(Self->RegionID, 4000, &surface)) {
-      DOUBLE value;
-      GetDouble(surface, FID_Y, &value);
-      ReleaseObject(surface);
-
-      if (Value->Type & FD_DOUBLE) Value->Double = value;
-      else if (Value->Type & FD_LARGE) Value->Large = value;
-      return ERR_Okay;
-   }
-   else return ERR_AccessObject;
-
+   if (Value->Type & FD_DOUBLE) return GetDouble(Self->Viewport, FID_Y, &Value->Double);
+   else if (Value->Type & FD_LARGE) return GetLarge(Self->Viewport, FID_Y, &Value->Large);
+   else return ERR_FieldTypeMismatch;
 }
 
 static ERROR SET_Y(objButton *Self, Variable *Value)
 {
-   OBJECTPTR surface;
-   if (!AccessObject(Self->RegionID, 4000, &surface)) {
-      SetVariable(surface, FID_Y, Value);
-      ReleaseObject(surface);
-      return ERR_Okay;
-   }
-   else return ERR_AccessObject;
+   return SetVariable(Self->Viewport, FID_Y, Value);
 }
 
 /*****************************************************************************
@@ -808,102 +619,14 @@ coordinate calculated from the formula `Y = ContainerHeight - ButtonHeight - YOf
 
 static ERROR GET_YOffset(objButton *Self, Variable *Value)
 {
-   OBJECTPTR surface;
-   if (!AccessObject(Self->RegionID, 4000, &surface)) {
-      DOUBLE value;
-      GetDouble(surface, FID_YOffset, &value);
-      ReleaseObject(surface);
-
-      if (Value->Type & FD_DOUBLE) Value->Double = value;
-      else if (Value->Type & FD_LARGE) Value->Large = value;
-      return ERR_Okay;
-   }
-   else return ERR_AccessObject;
+   if (Value->Type & FD_DOUBLE) return GetDouble(Self->Viewport, FID_YOffset, &Value->Double);
+   else if (Value->Type & FD_LARGE) return GetLarge(Self->Viewport, FID_YOffset, &Value->Large);
+   else return ERR_FieldTypeMismatch;
 }
 
 static ERROR SET_YOffset(objButton *Self, Variable *Value)
 {
-   OBJECTPTR surface;
-   if (!AccessObject(Self->RegionID, 4000, &surface)) {
-      SetVariable(surface, FID_YOffset, Value);
-      ReleaseObject(surface);
-      return ERR_Okay;
-   }
-   else return ERR_AccessObject;
-}
-
-//****************************************************************************
-
-static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
-{
-   auto Self = (objButton *)CurrentContext();
-
-   for (auto event=Events; event; event=event->Next) {
-      if (event->Type IS JET_ENTERED_SURFACE) {
-         Self->HoverState = BHS_INSIDE;
-
-         if (!(Self->Flags & BTF_DISABLED)) {
-            objSurface *surface;
-            if (!AccessObject(Self->RegionID, 2000, &surface)) {
-               if (!(surface->Flags & RNF_DISABLED)) {
-                  DelayMsg(AC_Draw, Self->RegionID, NULL);
-               }
-               ReleaseObject(surface);
-            }
-         }
-      }
-      else if (event->Type IS JET_LEFT_SURFACE) {
-         objSurface *surface;
-         Self->HoverState = BHS_OUTSIDE;
-         if (!AccessObject(Self->RegionID, 2000, &surface)) {
-            if (!(surface->Flags & RNF_DISABLED)) {
-               DelayMsg(AC_Draw, Self->RegionID, NULL);
-            }
-            ReleaseObject(surface);
-         }
-      }
-      else if (event->Type IS JET_LMB) {
-         if (event->Value > 0) {
-            if (Self->Flags & BTF_DISABLED) continue;
-
-            if (event->Flags & JTYPE_REPEATED) {
-               if (Self->Flags & BTF_PULSE) acActivate(Self);
-            }
-            else {
-               Self->Clicked = TRUE;
-               Self->ClickX  = event->X;
-               Self->ClickY  = event->Y;
-               DelayMsg(AC_Draw, Self->RegionID, NULL);
-            }
-         }
-         else if (Self->Clicked) {
-            Self->Clicked = FALSE;
-            LONG clickx = event->X - Self->ClickX;
-            LONG clicky = event->Y - Self->ClickY;
-            if (clickx < 0) clickx = -clickx;
-            if (clicky < 0) clicky = -clicky;
-
-            acDrawID(Self->RegionID);
-
-            if (((clickx < 4) and (clicky < 4)) or (Self->Flags & BTF_PULSE)) acActivate(Self);
-         }
-      }
-   }
-
-   return ERR_Okay;
-}
-
-//****************************************************************************
-
-static void key_event(objButton *Self, evKey *Event, LONG Size)
-{
-   if (!(Event->Qualifiers & KQ_PRESSED)) return;
-
-   if ((Event->Code IS K_ENTER) or (Event->Code IS K_NP_ENTER) or (Event->Code IS K_SPACE)) {
-      parasol::Log log;
-      log.branch("Enter or Space key detected.");
-      acActivate(Self);
-   }
+   return SetVariable(Self->Viewport, FID_YOffset, Value);
 }
 
 //****************************************************************************
@@ -911,24 +634,21 @@ static void key_event(objButton *Self, evKey *Event, LONG Size)
 #include "class_button_def.c"
 
 static const FieldArray clFields[] = {
-   { "Hint",         FDF_STRING|FDF_RW,    0, NULL, (APTR)SET_Hint },
-   { "Icon",         FDF_STRING|FDF_RW,    0, NULL, (APTR)SET_Icon },
-   { "LayoutSurface",FDF_VIRTUAL|FDF_OBJECTID|FDF_SYSTEM|FDF_R, ID_SURFACE, NULL, NULL }, // VIRTUAL: This is a synonym for the Region field
-   { "Region",       FDF_OBJECTID|FDF_R,   ID_SURFACE, NULL, NULL },
-   { "Surface",      FDF_OBJECTID|FDF_RW,  ID_SURFACE, NULL, NULL },
-   { "Flags",        FDF_LONGFLAGS|FDF_RW, (MAXINT)&clButtonFlags, NULL, NULL },
-   { "Clicked",      FDF_LONG|FDF_R,       0, NULL, NULL },
-   { "HoverState",   FDF_LONG|FDF_LOOKUP|FDF_R, (MAXINT)&clButtonHoverState, NULL, NULL },
+   { "Hint",           FDF_STRING|FDF_RW,    0, NULL, (APTR)SET_Hint },
+   { "Icon",           FDF_STRING|FDF_RW,    0, NULL, (APTR)SET_Icon },
+   { "Viewport",       FDF_OBJECT|FDF_R,     ID_VECTORVIEWPORT, NULL, NULL },
+   { "ParentViewport", FDF_OBJECT|FDF_RI,    ID_VECTORVIEWPORT, NULL, NULL },
+   { "Flags",          FDF_LONGFLAGS|FDF_RW, (MAXINT)&clButtonFlags, NULL, NULL },
+   { "Clicked",        FDF_LONG|FDF_RW,      0, NULL, NULL },
+   { "HoverState",     FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clButtonHoverState, NULL, NULL },
    // Virtual fields
-   { "Align",        FDF_VIRTUAL|FDF_LONGFLAGS|FDF_I, (MAXINT)&clAlign, NULL, (APTR)SET_Align },
    { "Bottom",       FDF_VIRTUAL|FDF_LONG|FDF_R,      0, (APTR)GET_Bottom, NULL },
    { "Disabled",     FDF_VIRTUAL|FDF_LONG|FDF_RW,     0, (APTR)GET_Disabled, (APTR)SET_Disabled },
    { "Feedback",     FDF_VIRTUAL|FDF_FUNCTIONPTR|FDF_RW, 0, (APTR)GET_Feedback, (APTR)SET_Feedback },
-   { "LayoutStyle",  FDF_VIRTUAL|FDF_POINTER|FDF_SYSTEM|FDF_W, 0, NULL, (APTR)SET_LayoutStyle },
-   { "Onclick",      FDF_VIRTUAL|FDF_STRING|FDF_RW,   0, (APTR)GET_Onclick, (APTR)SET_Onclick },
    { "Right",        FDF_VIRTUAL|FDF_LONG|FDF_R,      0, (APTR)GET_Right, NULL },
    { "String",       FDF_VIRTUAL|FDF_STRING|FDF_RW,   0, (APTR)GET_String, (APTR)SET_String },
-   { "TabFocus",     FDF_VIRTUAL|FDF_OBJECT|FDF_W,    ID_TABFOCUS, NULL, (APTR)SET_TabFocus },
+   { "StyleTrigger", FDF_VIRTUAL|FDF_FUNCTIONPTR|FDF_W,  0, NULL, (APTR)SET_StyleTrigger },
+   { "TabFocus",     FDF_VIRTUAL|FDF_OBJECT|FDF_I,    ID_TABFOCUS, NULL, (APTR)SET_TabFocus },
    { "Text",         FDF_SYNONYM|FDF_VIRTUAL|FDF_STRING|FDF_RW, 0, (APTR)GET_String, (APTR)SET_String },
    // Variable Fields
    { "Height",       FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)GET_Height,  (APTR)SET_Height },

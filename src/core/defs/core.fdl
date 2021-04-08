@@ -95,6 +95,9 @@ module({ name="Core", copyright="Paul Manias 1996-2020" }, function()
     "MOVETOPOINT",  "SCROLLTOPOINT", "CUSTOM",       "SORT",     "SAVESETTINGS", "SELECTAREA",   "SIGNAL",
     "UNDO")
 
+  enum("STYLE", { start=1, comment="Internal style notifications" },
+     "ENABLED", "DISABLED", "FOCUS", "LOST_FOCUS", "RESIZE", "CONTENT")
+
   flags("MHF", { comment="Internal options for requesting function tables from modules." },
     "NULL",
     "STRUCTURE|DEFAULT: Use structures to group exported functions (Linux, C/C++ standard)",

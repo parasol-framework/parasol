@@ -3,8 +3,13 @@ class InputSubscription {
 public:
    FUNCTION Callback;
    LONG Mask;
-
    InputSubscription(FUNCTION pCallback, LONG pMask) : Callback(pCallback), Mask(pMask) { }
+};
+
+class KeyboardSubscription {
+public:
+   FUNCTION Callback;
+   KeyboardSubscription(FUNCTION pCallback) : Callback(pCallback) { }
 };
 
 #define SHAPE_PRIVATE \
@@ -30,7 +35,7 @@ public:
    struct DRGB StrokeColour, FillColour; \
    DOUBLE *DashArray; \
    std::vector<InputSubscription> *InputSubscriptions; \
-   LONG   InputHandle; \
+   std::vector<KeyboardSubscription> *KeyboardSubscriptions; \
    LONG   InputMask; \
    LONG   NumericID; \
    LONG   PathLength; \

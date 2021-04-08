@@ -782,6 +782,15 @@ struct ClipRectangle {
 #define AHASH_SIGNAL 0x1bc6ade3
 #define AHASH_UNDO 0x7c9f191b
 
+// Internal style notifications
+
+#define STYLE_ENABLED 1
+#define STYLE_DISABLED 2
+#define STYLE_FOCUS 3
+#define STYLE_LOST_FOCUS 4
+#define STYLE_RESIZE 5
+#define STYLE_CONTENT 6
+
 // Internal options for requesting function tables from modules.
 
 #define MHF_NULL 0x00000001

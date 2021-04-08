@@ -27,7 +27,7 @@ feature unless otherwise documented.
 
 *****************************************************************************/
 
-static ERROR consume_input_events(const InputEvent *, LONG);
+static ERROR vector_input_events(objVector *, const InputEvent *);
 
 static ERROR VECTOR_Reset(objVector *, APTR);
 
@@ -195,13 +195,20 @@ static ERROR VECTOR_Free(objVector *Self, APTR Args)
    }
    if (Self->Child) Self->Child->Parent = NULL;
 
-   if (Self->InputHandle) { gfxUnsubscribeInput(Self->InputHandle); Self->InputHandle = 0; }
+   if ((Self->Scene) and (Self->Scene->InputSubscriptions)) {
+      Self->Scene->InputSubscriptions->erase(Self);
+   }
+
+   if ((Self->Scene) and (Self->Scene->KeyboardSubscriptions)) {
+      Self->Scene->KeyboardSubscriptions->erase(Self);
+   }
 
    delete Self->Transform;    Self->Transform = NULL;
    delete Self->BasePath;     Self->BasePath = NULL;
    delete Self->StrokeRaster; Self->StrokeRaster = NULL;
    delete Self->FillRaster;   Self->FillRaster = NULL;
    delete Self->InputSubscriptions; Self->InputSubscriptions = NULL;
+   delete Self->KeyboardSubscriptions; Self->KeyboardSubscriptions = NULL;
 
    return ERR_Okay;
 }
@@ -459,36 +466,70 @@ static ERROR VECTOR_InputSubscription(objVector *Self, struct vecInputSubscripti
       LONG mask = Args->Mask;
       if (mask & JTYPE_FEEDBACK) mask |= JTYPE_MOVEMENT;
 
-      if ((Self->InputMask & mask) != mask) {
-         if (Self->InputHandle) { gfxUnsubscribeInput(Self->InputHandle); Self->InputHandle = 0; }
-
-         auto callback = make_function_stdc(consume_input_events);
-         if (!gfxSubscribeInput(&callback, Self->Scene->SurfaceID, Self->InputMask | mask, 0, &Self->InputHandle)) {
-            Self->InputMask |= mask;
-            Self->InputSubscriptions->emplace_back(*Args->Callback, mask);
-            return ERR_Okay;
-         }
-         else return ERR_Function;
-      }
-      else return ERR_Okay;
+      Self->InputMask |= mask;
+      Self->Scene->InputSubscriptions[0][Self] = Self->InputMask;
+      Self->InputSubscriptions->emplace_back(*Args->Callback, mask);
+      return ERR_Okay;
    }
-   else { // Remove existing subscription
-      for (auto it=Self->InputSubscriptions->begin(); it != Self->InputSubscriptions->end(); it++) {
-         if (*Args->Callback IS it->Callback) {
-            Self->InputSubscriptions->erase(it);
-            break;
-         }
+   else { // Remove existing subscriptions for this callback
+      for (auto it=Self->InputSubscriptions->begin(); it != Self->InputSubscriptions->end(); ) {
+         if (*Args->Callback IS it->Callback) it = Self->InputSubscriptions->erase(it);
+         else it++;
       }
 
       if (Self->InputSubscriptions->empty()) {
-         if (Self->InputHandle) {
-            gfxUnsubscribeInput(Self->InputHandle);
-            Self->InputHandle = 0;
-         }
+         Self->Scene->InputSubscriptions->erase(Self);
       }
 
       return ERR_Okay;
    }
+}
+
+/*****************************************************************************
+
+-METHOD-
+KeyboardSubscription: Create a subscription for input events that relate to the vector.
+
+The KeyboardSubscription method is provided to simplify the handling of keyboard messages for the client.  It is a
+pre-requisite that the associated @VectorScene has been linked to a @Surface.
+
+A callback is required and this will receive input messages as they arrive from the user.  The prototype for the
+callback is as follows, whereby Flags are keyboard qualifiers `KQ` and the Value will be a `K` constant.
+
+```
+ERROR callback(*Viewport, LONG Flags, LONG Value);
+```
+
+To remove the subscription the function can return ERR_Terminate.
+
+-INPUT-
+ptr(func) Callback: Reference to a callback function that will receive input messages.
+
+-ERRORS-
+Okay:
+NullArgs:
+FieldNotSet: The VectorScene has no reference to a Surface.
+AllocMemory:
+Function: A call to gfxSubscribeInput() failed.
+
+*****************************************************************************/
+
+static ERROR VECTOR_KeyboardSubscription(objVector *Self, struct vecKeyboardSubscription *Args)
+{
+   parasol::Log log;
+
+   if ((!Args) or (!Args->Callback)) return log.warning(ERR_NullArgs);
+
+   if (!Self->Scene->SurfaceID) return log.warning(ERR_FieldNotSet);
+
+   if (!Self->KeyboardSubscriptions) {
+      Self->KeyboardSubscriptions = new (std::nothrow) std::vector<KeyboardSubscription>;
+      if (!Self->KeyboardSubscriptions) return log.warning(ERR_AllocMemory);
+   }
+
+   Self->Scene->KeyboardSubscriptions[0].emplace(Self);
+   Self->KeyboardSubscriptions->emplace_back(*Args->Callback);
+   return ERR_Okay;
 }
 
 //****************************************************************************
@@ -2021,10 +2062,9 @@ Visibility: Controls the visibility of a vector and its children.
 
 *****************************************************************************/
 
-static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
+static ERROR vector_input_events(objVector *Self, const InputEvent *Events)
 {
    parasol::Log log(__FUNCTION__);
-   auto Self = (objVector *)CurrentContext();
 
    LONG total_events = 0;
    for (auto ev=Events; ev; ev=ev->Next) total_events++;
@@ -2088,9 +2128,10 @@ static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
 
    if (!e) return ERR_Okay;
 
-   for (auto const &sub : Self->InputSubscriptions[0]) {
+   for (auto it=Self->InputSubscriptions->begin(); it != Self->InputSubscriptions->end(); ) {
       // Patch the Next fields to construct a custom chain of events based on this subscripton's mask filter.
 
+      auto &sub = *it;
       InputEvent *first = NULL, *last = NULL;
       for (LONG i=0; i < e; i++) {
          if (filtered_events[i].Mask & sub.Mask) {
@@ -2103,10 +2144,11 @@ static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
       if (first) {
          last->Next = NULL;
 
+         ERROR result;
          if (sub.Callback.Type IS CALL_STDC) {
             parasol::SwitchContext ctx(sub.Callback.StdC.Context);
             auto callback = (ERROR (*)(objVector *, InputEvent *))sub.Callback.StdC.Routine;
-            callback(Self, first);
+            result = callback(Self, first);
          }
          else if (sub.Callback.Type IS CALL_SCRIPT) {
             // In this implementation the script function will receive all the events chained via the Next field
@@ -2114,10 +2156,43 @@ static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
                { "Vector",            FDF_OBJECT, { .Address = Self } },
                { "InputEvent:Events", FDF_STRUCT, { .Address = first } }
             };
-            ERROR result;
             scCallback(sub.Callback.Script.Script, sub.Callback.Script.ProcedureID, args, ARRAYSIZE(args), &result);
          }
+
+         if (result IS ERR_Terminate) it = Self->InputSubscriptions->erase(it);
+         else it++;
       }
+      else it++;
+   }
+
+   return ERR_Okay;
+}
+
+//****************************************************************************
+
+static ERROR vector_keyboard_events(objVector *Self, const evKey *Event)
+{
+   for (auto it=Self->KeyboardSubscriptions->begin(); it != Self->KeyboardSubscriptions->end(); ) {
+      ERROR result;
+      auto &sub = *it;
+      if (sub.Callback.Type IS CALL_STDC) {
+         parasol::SwitchContext ctx(sub.Callback.StdC.Context);
+         auto callback = (ERROR (*)(objVector *, LONG, LONG, LONG))sub.Callback.StdC.Routine;
+         result = callback(Self, Event->Qualifiers, Event->Code, Event->Unicode);
+      }
+      else if (sub.Callback.Type IS CALL_SCRIPT) {
+         // In this implementation the script function will receive all the events chained via the Next field
+         ScriptArg args[] = {
+            { "Vector",     FDF_OBJECT, { .Address = Self } },
+            { "Qualifiers", FDF_LONG,   { .Long = Event->Qualifiers } },
+            { "Code",       FDF_LONG,   { .Long = Event->Code } },
+            { "Unicode",    FDF_LONG,   { .Long = Event->Unicode } }
+         };
+         scCallback(sub.Callback.Script.Script, sub.Callback.Script.ProcedureID, args, ARRAYSIZE(args), &result);
+      }
+
+      if (result IS ERR_Terminate) Self->KeyboardSubscriptions->erase(it);
+      else it++;
    }
 
    return ERR_Okay;

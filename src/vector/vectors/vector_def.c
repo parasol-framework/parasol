@@ -26,6 +26,7 @@ FDEF maSkew[] = { { "X", FD_DOUBLE }, { "Y", FD_DOUBLE }, { 0, 0 } };
 FDEF maPointInPath[] = { { "X", FD_DOUBLE }, { "Y", FD_DOUBLE }, { 0, 0 } };
 FDEF maGetTransform[] = { { "Type", FD_LONG }, { "VectorTransform:Transform", FD_PTR|FD_STRUCT|FD_RESULT }, { 0, 0 } };
 FDEF maInputSubscription[] = { { "Mask", FD_LONG }, { "Callback", FD_FUNCTIONPTR }, { 0, 0 } };
+FDEF maKeyboardSubscription[] = { { "Callback", FD_FUNCTIONPTR }, { 0, 0 } };
 
 static const struct MethodArray clVectorMethods[] = {
    { -1, (APTR)VECTOR_Push, "Push", maPush, sizeof(struct vecPush) },
@@ -41,6 +42,7 @@ static const struct MethodArray clVectorMethods[] = {
    { -11, (APTR)VECTOR_ClearTransforms, "ClearTransforms", 0, 0 },
    { -12, (APTR)VECTOR_GetTransform, "GetTransform", maGetTransform, sizeof(struct vecGetTransform) },
    { -13, (APTR)VECTOR_InputSubscription, "InputSubscription", maInputSubscription, sizeof(struct vecInputSubscription) },
+   { -14, (APTR)VECTOR_KeyboardSubscription, "KeyboardSubscription", maKeyboardSubscription, sizeof(struct vecKeyboardSubscription) },
    { 0, 0, 0, 0, 0 }
 };
 

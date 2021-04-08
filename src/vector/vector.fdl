@@ -94,7 +94,11 @@ module({ name="Vector", copyright="Paul Manias © 2010-2021", version=1.0 }, fun
     "UNDERLINE: Enable underlining of the text.",
     "OVERLINE: Enable overlining of the text.",
     "LINE_THROUGH: Enable a strike-through line in the text.",
-    "BLINK: Enable animated blinking (not enabled - exists as SVG dummy option).")
+    "BLINK: Enable animated blinking (not supported - exists as SVG dummy option).",
+    "EDITABLE|EDIT: Allow user editing of the text if the nearest viewport has the focus.",
+    "AREA_SELECTED: Automatically set if a region of text has been selected.",
+    "NO_SYS_KEYS: Disables support for system-keys that enable common key combinations such as Ctrl-C, Ctrl-X etc.",
+    "OVERWRITE: Turns on overwrite mode (if off, insert mode is enabled).")
 
   flags("VTF", { bits=16, comment="Types of vector transforms." },
     "MATRIX: Apply a 2x3 matrix transformation to the vector.",
@@ -287,8 +291,12 @@ module({ name="Vector", copyright="Paul Manias © 2010-2021", version=1.0 }, fun
   [[
    class VMAdaptor *Adaptor;
    agg::rendering_buffer *Buffer;
+   APTR KeyHandle;
    std::unordered_map<OBJECTID, struct acRedimension> *PendingResizeMsgs;
+   std::unordered_map<struct rkVector *, LONG> *InputSubscriptions;
+   std::unordered_set<struct rkVector *> *KeyboardSubscriptions;
    UBYTE  AdaptorType;
+   LONG InputHandle;
   ]])
 
   class("VectorImage", { src="defs/image.cpp" }, [[
@@ -380,7 +388,13 @@ module({ name="Vector", copyright="Paul Manias © 2010-2021", version=1.0 }, fun
    UBYTE BankIndex;
   ]])
 
-  class('VectorText', { src='vectors/text.cpp' })
+  // VectorText method ID's start high enough to give a cushion from inherited Vector methods.
+
+  methods("VectorText", "VT", {
+    { id=30, name="DeleteLine" }
+  })
+
+  class('VectorText', { src='vectors/text.cpp', output="vectors/text_def.cpp"  })
 
   class('VectorWave', { src='vectors/wave.cpp' })
 
@@ -431,7 +445,8 @@ module({ name="Vector", copyright="Paul Manias © 2010-2021", version=1.0 }, fun
     { id=10, name="PointInPath" },
     { id=11, name="ClearTransforms" },
     { id=12, name="GetTransform" },
-    { id=13, name="InputSubscription" }
+    { id=13, name="InputSubscription" },
+    { id=14, name="KeyboardSubscription" }
   })
 
   class("Vector", { src="vectors/vector.cpp", output="vectors/vector_def.c", version=1 }, [[

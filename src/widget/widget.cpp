@@ -466,7 +466,6 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    if (init_tabfocus() != ERR_Okay) return ERR_AddClass;
    if (init_input() != ERR_Okay) return ERR_AddClass;
    if (init_scroll() != ERR_Okay) return ERR_AddClass;
-   if (init_image() != ERR_Okay) return ERR_AddClass;
    if (init_text() != ERR_Okay) return ERR_AddClass;
    if (init_menu() != ERR_Okay) return ERR_AddClass;
    if (init_menuitem() != ERR_Okay) return ERR_AddClass;
@@ -491,7 +490,6 @@ static ERROR CMDExpunge(void)
    free_tabfocus();
    free_input();
    free_scroll();
-   free_image();
    free_text();
    free_menu();
    free_menuitem();

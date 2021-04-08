@@ -10,8 +10,8 @@ A demonstration of standard widgets
    require 'gui/filedialog'
 
    local win  = obj.new('window', { title='Widget Examples', insideWidth=600, insideHeight=400 })
-
-   local y = win.topMargin
+   local scene = win.surface.new('VectorScene', { flags=VPF_RESIZE, surface=win.surface })
+   local viewport = scene.new('VectorViewport', { aspectRatio = ARF_MEET })
 
 function itemCallback(ID, Name)
    print('Callback: ' .. ID .. ', ' .. Name)
@@ -33,7 +33,7 @@ function popupClicked(Menu, Item)
    print(Item.item)
 end
 
-   menubar = gui.menubar(win.surface, {
+   local menubar = gui.menubar(win.surface, {
       createItems = function(Bar)
          Bar.addItem(1, 'File', 'devices/harddisk', menuCallback, {
             { item='New File', icon='items/file_new', qualifier='CTRL', key='N', feedback=itemClicked },
@@ -60,7 +60,7 @@ end
       end
    })
 
-   y = menubar.surface.height
+   local y = menubar.surface.height
 
    lToolbar = gui.toolbar(win.surface, {
       xOffset = 0,
@@ -112,18 +112,24 @@ end
          end
       end
    end)
+--[[
+   local text = viewport.new('vectortext', {
+      x=win.leftMargin, y=y, string='Text Widget', face='Open Sans', fontSize=20, fill='rgb(0,0,0)', textflags='!editable'
+   })
+   text.y = y + text.font.height
+   y = y + text.font.height + 8
 
-   local text = win.new('text', { x=win.leftMargin, y=y, string='Text Widget', face='Open Sans:20' })
-   y = y + text.textHeight + 8
-
-   local msgButton = win.new('button', { text='Message Box', x=win.leftMargin, y=y, icon='items/question',
+   text.mtTranslate(50, 0)
+   text.mtRotate(25, 0, 0)
+--]]
+   local msgButton = viewport.new('button', { text='Message Box', x=win.leftMargin, y=y, icon='items/question',
       feedback = function()
          gui.dialog.message({
-            modal = true,
-            image = 'icons:items/warning',
-            title = 'Hamlet has a question',
-            message = 'To be or not to be?',
-            userInput = 'That is the question',
+            modal         = true,
+            image         = 'icons:items/warning',
+            title         = 'Hamlet has a question',
+            message       = 'To be or not to be?',
+            userInput     = 'That is the question',
             checkboxLabel = '\'Tis nobler to suffer',
             options = {
                { id=1, text='To be', icon='items/checkmark' },
@@ -146,10 +152,10 @@ end
       end
    })
 
-   local colourButton = win.new('button', { text='Select Colour', x=msgButton.right + 4, y=y, icon='tools/palette',
+   local colourButton = viewport.new('button', { text='Select Colour', x=msgButton.right + 4, y=y, icon='tools/palette',
       feedback = function()
          gui.dialog.colour({
-            modal = true,
+            modal  = true,
             colour = '255,0,0',
             feedback = function(Colour)
                if (not Colour) then
@@ -163,7 +169,7 @@ end
       end
    })
 
-   local fontButton = win.new('button', { text='Select Font', x=colourButton.right + 4, y=y, icon='items/font',
+   local fontButton = viewport.new('button', { text='Select Font', x=colourButton.right + 4, y=y, icon='items/font',
       feedback = function()
          gui.dialog.font({
             okText     = 'Select Font',
@@ -181,14 +187,14 @@ end
       end
    })
 
-   local fileButton = win.new('button', { text='Select File', x=fontButton.right + 4, y=y, icon='folders/folder',
+   local fileButton = viewport.new('button', { text='Select File', x=fontButton.right + 4, y=y, icon='folders/folder',
       feedback = function()
          gui.dialog.file({
-            filterList = 'All Files;*;MP3 Audio Files;*.mp3;Text Files;*.txt',
-            okText     = 'Select File',
-            cancelText = 'Exit',
-            modal      = true,
-            warnExists = true,
+            filterList  = 'All Files;*;MP3 Audio Files;*.mp3;Text Files;*.txt',
+            okText      = 'Select File',
+            cancelText  = 'Exit',
+            modal       = true,
+            warnExists  = true,
             multiSelect = true,
             feedback = function(Dialog, Path, Files)
                if (Files == nil) then
@@ -206,13 +212,13 @@ end
 
    y = y + msgButton.height + 8
 
-   local checkbox = win.new('checkbox', { label='Checkbox', x=win.leftMargin, y=y })
+   local checkbox = viewport.new('checkbox', { label='Check Box', x=win.leftMargin, y=y })
    y = y + checkbox.height + 8
 
-   local combobox = win.new('combobox', { label='Combobox', x=win.leftMargin, y=y, string='Your text here' })
+   local combobox = viewport.new('combobox', { label='Combo Box', x=win.leftMargin, y=y, string='Your text here please just try it' })
    y = y + combobox.height + 8
 
-   local input = win.new('input', { label='Inputbox', x=win.leftMargin, y=y, labelWidth=combobox.labelWidth, string='Your text here' })
+   local input = viewport.new('input', { label='Input Box', x=win.leftMargin, y=y, labelWidth=combobox.labelWidth, string='Your text here' })
    y = y + input.height + 8
 
    win.acShow()

@@ -12,7 +12,6 @@ set (WIDGET_SOURCES # Full paths are required for add_custom_command() dependenc
    "${CMAKE_CURRENT_SOURCE_DIR}/class_tabfocus.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/class_input.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/class_scroll.cpp"
-   "${CMAKE_CURRENT_SOURCE_DIR}/class_image.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/class_text/text.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/class_menu/menu.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/class_view/view.cpp"
@@ -23,7 +22,6 @@ set (WIDGET_DEFS # Full paths are required for add_custom_command() dependencies
    "${CMAKE_CURRENT_SOURCE_DIR}/class_checkbox_def.c"
    "${CMAKE_CURRENT_SOURCE_DIR}/class_clipboard_def.c"
    "${CMAKE_CURRENT_SOURCE_DIR}/class_combobox_def.c"
-   "${CMAKE_CURRENT_SOURCE_DIR}/class_image_def.c"
    "${CMAKE_CURRENT_SOURCE_DIR}/class_input_def.c"
    "${CMAKE_CURRENT_SOURCE_DIR}/class_resize_def.c"
    "${CMAKE_CURRENT_SOURCE_DIR}/class_scroll_def.c"
@@ -53,7 +51,6 @@ if (BUILD_DEFS)
       "${DOCS}/modules/classes/checkbox.xml"
       "${DOCS}/modules/classes/text.xml"
       "${DOCS}/modules/classes/scrollbar.xml"
-      "${DOCS}/modules/classes/image.xml"
       "${DOCS}/modules/classes/tabfocus.xml"
       PRE_BUILD
       COMMAND ${FLUID_CMD} ${IDL_C_SCRIPT} "--log-warning" "--src=${MOD}.fdl" "--sdk=${PROJECT_SOURCE_DIR}"

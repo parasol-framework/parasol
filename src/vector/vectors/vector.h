@@ -84,11 +84,103 @@ enum { // Filter effects
 
 //****************************************************************************
 
+class TextCursor {
+private:
+   LONG  mColumn, mRow; // The column is the character position after taking UTF8 sequences into account.
+
+public:
+   APTR  timer;
+   objVectorPoly *vector;
+   LONG  flash;
+   LONG  savePos;
+   LONG  endColumn, endRow; // For area selections
+   LONG  selectColumn, selectRow;
+
+   TextCursor() :
+      mColumn(0), mRow(0),
+      timer(NULL), vector(NULL), flash(0), savePos(0),
+      endColumn(0), endRow(0),
+      selectColumn(0), selectRow(0) { }
+
+   ~TextCursor() {
+      if (vector) { acFree(vector); vector = NULL; }
+      if (timer) { UpdateTimer(timer, 0); timer = 0; }
+   }
+
+   LONG column() { return mColumn; }
+   LONG row() { return mRow; }
+
+   void resetFlash() { flash = 0; }
+
+   void selectedArea(struct rkVectorText *Self, LONG *Row, LONG *Column, LONG *EndRow, LONG *EndColumn) {
+      if (selectRow < mRow) {
+         *Row       = selectRow;
+         *EndRow    = mRow;
+         *Column    = selectColumn;
+         *EndColumn = mColumn;
+      }
+      else if (selectRow IS mRow) {
+         *Row       = selectRow;
+         *EndRow    = mRow;
+         if (selectColumn < mColumn) {
+            *Column    = selectColumn;
+            *EndColumn = mColumn;
+         }
+         else {
+            *Column    = mColumn;
+            *EndColumn = selectColumn;
+         }
+      }
+      else {
+         *Row       = mRow;
+         *EndRow    = selectRow;
+         *Column    = mColumn;
+         *EndColumn = selectColumn;
+      }
+   }
+
+   void move(struct rkVectorText *, LONG, LONG, bool ValidateWidth = false);
+   void resetVector(struct rkVectorText *);
+   void validatePosition(struct rkVectorText *);
+};
+
+class CharPos {
+public:
+   DOUBLE x1, y1, x2, y2;
+   CharPos(DOUBLE X1, DOUBLE Y1, DOUBLE X2, DOUBLE Y2) : x1(X1), y1(Y1), x2(X2), y2(Y2) { }
+};
+
+class TextLine : public std::string {
+public:
+   std::vector<CharPos> chars;
+
+   LONG charLength(ULONG Offset = 0) { // Total number of bytes used by the char at Offset
+      return UTF8CharLength(c_str() + Offset);
+   }
+
+   LONG utf8CharOffset(ULONG Char) { // Convert a character index to its byte offset
+      return UTF8CharOffset(c_str(), Char);
+   }
+
+   LONG utf8Length() { // Total number of unicode characters in the string
+      return UTF8Length(c_str());
+   }
+
+   LONG lastChar() { // Return a direct offset to the start of the last character.
+      return length() - UTF8PrevLength(c_str(), length());
+   }
+
+   LONG prevChar(ULONG Offset) { // Return the direct offset to a previous character.
+      return Offset - UTF8PrevLength(c_str(), Offset);
+   }
+};
+
 typedef struct rkVectorText {
    OBJECT_HEADER
    SHAPE_PUBLIC
 
    SHAPE_PRIVATE
+   FUNCTION txValidateInput;
    DOUBLE txX, txY;
    DOUBLE txTextLength;
    DOUBLE txFontSize;  // Font size measured in pixels.  Multiply by 3/4 to convert to point size.
@@ -101,8 +193,13 @@ typedef struct rkVectorText {
    DOUBLE *txRotate;  // A series of angles that will rotate each individual character.
    struct rkFont *txFont;
    FT_Size FreetypeSize;
-   CSTRING txString;
+   std::vector<TextLine> txLines;
+   TextCursor txCursor;
    CSTRING txFamily;
+   APTR    txKeyEvent;
+   OBJECTID txFocusID;
+   LONG  txTotalLines;
+   LONG  txLineLimit, txCharLimit;
    LONG  txTotalRotate, txTotalDX, txTotalDY;
    LONG  txWeight; // 100 - 300 (Light), 400 (Normal), 700 (Bold), 900 (Boldest)
    LONG  txAlignFlags;

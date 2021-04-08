@@ -128,6 +128,11 @@
 #define VTXF_OVERLINE 0x00000002
 #define VTXF_LINE_THROUGH 0x00000004
 #define VTXF_BLINK 0x00000008
+#define VTXF_EDITABLE 0x00000010
+#define VTXF_EDIT 0x00000010
+#define VTXF_AREA_SELECTED 0x00000020
+#define VTXF_NO_SYS_KEYS 0x00000040
+#define VTXF_OVERWRITE 0x00000080
 
 // Types of vector transforms.
 
@@ -363,8 +368,12 @@ typedef struct rkVectorScene {
 #ifdef PRV_VECTORSCENE
    class VMAdaptor *Adaptor;
    agg::rendering_buffer *Buffer;
+   APTR KeyHandle;
    std::unordered_map<OBJECTID, struct acRedimension> *PendingResizeMsgs;
+   std::unordered_map<struct rkVector *, LONG> *InputSubscriptions;
+   std::unordered_set<struct rkVector *> *KeyboardSubscriptions;
    UBYTE  AdaptorType;
+   LONG InputHandle;
   
 #endif
 } objVectorScene;
@@ -518,6 +527,18 @@ typedef struct rkVectorFilter {
 
 #define VER_VECTORTEXT (1.000000)
 
+// VectorText methods
+
+#define MT_VTDeleteLine -30
+
+struct vtDeleteLine { LONG Line;  };
+
+INLINE ERROR vtDeleteLine(APTR Ob, LONG Line) {
+   struct vtDeleteLine args = { Line };
+   return(Action(MT_VTDeleteLine, (OBJECTPTR)Ob, &args));
+}
+
+
 // VectorWave class definition
 
 #define VER_VECTORWAVE (1.000000)
@@ -612,6 +633,7 @@ typedef struct rkVector {
 #define MT_VecClearTransforms -11
 #define MT_VecGetTransform -12
 #define MT_VecInputSubscription -13
+#define MT_VecKeyboardSubscription -14
 
 struct vecPush { LONG Position;  };
 struct vecTracePath { FUNCTION * Callback;  };
@@ -625,6 +647,7 @@ struct vecSkew { DOUBLE X; DOUBLE Y;  };
 struct vecPointInPath { DOUBLE X; DOUBLE Y;  };
 struct vecGetTransform { LONG Type; struct VectorTransform * Transform;  };
 struct vecInputSubscription { LONG Mask; FUNCTION * Callback;  };
+struct vecKeyboardSubscription { FUNCTION * Callback;  };
 
 INLINE ERROR vecPush(APTR Ob, LONG Position) {
    struct vecPush args = { Position };
@@ -693,6 +716,11 @@ INLINE ERROR vecGetTransform(APTR Ob, LONG Type, struct VectorTransform ** Trans
 INLINE ERROR vecInputSubscription(APTR Ob, LONG Mask, FUNCTION * Callback) {
    struct vecInputSubscription args = { Mask, Callback };
    return(Action(MT_VecInputSubscription, (OBJECTPTR)Ob, &args));
+}
+
+INLINE ERROR vecKeyboardSubscription(APTR Ob, FUNCTION * Callback) {
+   struct vecKeyboardSubscription args = { Callback };
+   return(Action(MT_VecKeyboardSubscription, (OBJECTPTR)Ob, &args));
 }
 
 
