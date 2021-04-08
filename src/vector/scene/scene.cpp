@@ -592,6 +592,178 @@ static void render_to_surface(objVectorScene *Self, objSurface *Surface, objBitm
    acDraw(Self);
 }
 
+//****************************************************************************
+// Apply focus to a vector and all other vectors within that tree branch (not necessarily just the viewports).
+// Also sends LostFocus notifications to vectors that previously had the focus.
+
+void apply_focus(objVectorScene *Scene, objVector *Vector)
+{
+   if ((!glFocusList.empty()) and (Vector->Head.UniqueID IS glFocusList.front())) return;
+
+   std::vector<OBJECTID> focus_gained; // The first reference is the most foreground object
+
+   for (auto scan=Vector; scan; scan=(objVector *)scan->Parent) {
+      if (scan->Head.ClassID IS ID_VECTOR) {
+         focus_gained.emplace_back(scan->Head.UniqueID);
+      }
+      else break;
+   }
+
+   // Report focus events to vector subscribers.
+
+   for (auto const id : focus_gained) {
+      bool has_focus = false;
+      for (auto check_id : glFocusList) {
+         if (check_id IS id) { has_focus = true; break; }
+      }
+
+      if (!has_focus) {
+         OBJECTPTR vec;
+         if (!AccessObject(id, 5000, &vec)) {
+            NotifySubscribers(vec, AC_Focus, 0, 0, ERR_Okay);
+            ReleaseObject(vec);
+         }
+      }
+   }
+
+   // Process lost focus events
+
+   for (auto const id : glFocusList) { // Starting from the foreground...
+      bool in_list = false;
+      for (auto check_id : focus_gained) {
+         if (check_id IS id) { in_list = true; break; }
+      }
+
+      if (!in_list) {
+         OBJECTPTR vec;
+         if (!AccessObject(id, 5000, &vec)) {
+            NotifySubscribers(vec, AC_LostFocus, 0, 0, ERR_Okay);
+            ReleaseObject(vec);
+         }
+      }
+      else break;
+   }
+
+   glFocusList = focus_gained;
+}
+
+//****************************************************************************
+// Build a list of all child viewports that have a bounding box intersecting with (X,Y).  Transforms
+// are taken into account through use of BX1,BY1,BX2,BY2.  The list is sorted starting from the background to the
+// foreground.
+
+void get_viewport_at_xy_scan(objVector *Vector, std::vector<std::vector<objVectorViewport *>> &Collection, LONG X, LONG Y, LONG Branch)
+{
+   if ((size_t)Branch >= Collection.size()) Collection.resize(Branch+1);
+
+   for (auto scan=Vector; scan; scan=scan->Next) {
+      if (scan->Head.SubID IS ID_VECTORVIEWPORT) {
+         auto vp = (objVectorViewport *)scan;
+
+         if (vp->Dirty) {
+            gen_vector_path((objVector *)vp);
+            vp->Dirty = 0;
+         }
+
+         if ((X >= vp->vpBX1) and (Y >= vp->vpBY1) and (X < vp->vpBX2) and (Y < vp->vpBY2)) {
+            Collection[Branch].emplace_back(vp);
+         }
+      }
+
+      if (scan->Child) get_viewport_at_xy_scan(scan->Child, Collection, X, Y, Branch + 1);
+   }
+}
+
+//****************************************************************************
+
+objVectorViewport * get_viewport_at_xy(objVectorScene *Scene, LONG X, LONG Y)
+{
+   std::vector<std::vector<objVectorViewport *>> viewports;
+   get_viewport_at_xy_scan((objVector *)Scene->Viewport, viewports, X, Y, 0);
+
+   // From front to back, determine the first path that the (X,Y) point resides in.
+
+   for (auto branch = viewports.rbegin(); branch != viewports.rend(); branch++) {
+      for (auto const vp : *branch) {
+         // The viewport will generate a clip mask if complex transforms are applicable (other than scaling).
+         // We can take advantage of this rather than generate our own path.
+
+         if ((vp->vpClipMask) and (vp->vpClipMask->ClipPath)) {
+            agg::rasterizer_scanline_aa<> raster;
+            raster.add_path(vp->vpClipMask->ClipPath[0]);
+            if (raster.hit_test(X, Y)) return vp;
+         }
+         else return vp; // If no complex transforms are present, the hit-test is passed
+      }
+   }
+
+   // No child viewports were hit, revert to main
+
+   return (objVectorViewport *)Scene->Viewport;
+}
+
+//****************************************************************************
+
+static void process_resize_msgs(objVectorScene *Self)
+{
+   if (Self->PendingResizeMsgs->size() > 0) {
+      for (auto it=Self->PendingResizeMsgs->begin(); it != Self->PendingResizeMsgs->end(); it++) {
+         objVectorViewport *viewport;
+         if (!AccessObject(it->first, 1000, &viewport)) {
+            NotifySubscribers(viewport, AC_Redimension, &it->second, 0, ERR_Okay);
+            ReleaseObject(viewport);
+         }
+      }
+
+      Self->PendingResizeMsgs->clear();
+   }
+}
+
+//****************************************************************************
+// Distribute input events to any vectors that have subscribed and have the focus
+
+static void scene_key_event(objVectorScene *Self, evKey *Event, LONG Size)
+{
+   for (auto const vector : Self->KeyboardSubscriptions[0]) {
+      for (auto it=glFocusList.begin(); it != glFocusList.end(); it++) {
+         if (*it IS vector->Head.UniqueID) {
+            vector_keyboard_events(vector, Event);
+            break;
+         }
+      }
+   }
+}
+
+//****************************************************************************
+// Input events within the scene are distributed within the scene graph.
+
+static ERROR scene_input_events(const InputEvent *Events, LONG Handle)
+{
+   auto Self = (objVectorScene *)CurrentContext();
+
+   LONG received_events = 0;
+   for (auto input=Events; input; input=input->Next) {
+      received_events |= input->Mask;
+
+      // Focus management - clicking with the LMB can result in a change of focus.
+
+      if ((input->Mask & JTYPE_BUTTON) and (input->Type IS JET_LMB) and (input->Value IS 1)) {
+         auto vp = get_viewport_at_xy(Self, input->X, input->Y);
+         apply_focus(Self, (objVector *)vp);
+      }
+   }
+
+   // Distribute input events to any vectors that have subscribed
+
+   for (auto const [ vector, mask ] : Self->InputSubscriptions[0]) {
+      if (mask & received_events) {
+         vector_input_events(vector, Events);
+      }
+   }
+
+   return ERR_Okay;
+}
+
 #include "scene_def.c"
 
 static const FieldArray clSceneFields[] = {
