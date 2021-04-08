@@ -188,10 +188,11 @@
 
     <constants lookup="INF" comment="Flags for the Input class.">
       <const name="SECRET">Used for secret user entry (passwords).</const>
+      <const name="ENTER_TAB">Press enter results in a virtual tab-keypress being sent.</const>
       <const name="SELECT_TEXT">Select all text when the input box is shown for the first time.</const>
       <const name="DISABLED">Disable on creation.</const>
-      <const name="HIDE">Hide on creation, or input is currently hidden.</const>
-      <const name="ENTER_TAB">Press enter results in a virtual tab-keypress being sent.</const>
+      <const name="FIXED_INPUT_WIDTH">Indicates that the InputWidth field was defined by the client.</const>
+      <const name="FIXED_LABEL_WIDTH">Indicates that the LabelWidth field was defined by the client.</const>
       <const name="COMMANDLINE">Function as a command-line.  Typically used when the input box needs to remain persistent and is linked to an output system, such as a shell.</const>
     </constants>
 
@@ -207,20 +208,9 @@
       <const name="HIDE">Hide on creation, or object is currently hidden.</const>
     </constants>
 
-    <constants lookup="IMF" comment="Image flags">
-      <const name="NO_DRAW">Stops automatic drawing of the target surface if the image is being animated or a special effect is active.</const>
-      <const name="FIXED">Synonym for FIXED_SIZE</const>
-      <const name="ENLARGE">If the dimensions of the original picture are smaller than the destination surface, the image will be stretched to fit.  Enlargement is dynamic, so if the surface changes in size then the size of the picture will be recalculated to fit.</const>
-      <const name="NO_FAIL">If the source image file does not exist or an error occurs during loading, the image object will still pass the initialisation process successfully.  When the image object is drawn, it will clear the target surface to the colour specified in the Background field.</const>
-      <const name="SHRINK">If the dimensions of the original picture are larger than the destination surface, the image will be stretched to fit.  Shrinking is dynamic, so if the surface changes in size then the size of the picture will be recalculated to fit.</const>
-      <const name="SOLID_BLEND">Synonym for NO_BLEND</const>
-      <const name="FIT">This flag applies to image resizing.  When set, the calculated width and height will be limited so that the image cannot be stretched beyond the edges of the target surface.  This flag is commonly set in conjunction with the 11RATIO flag.</const>
-      <const name="NO_BLEND">Turns off alpha-blending if the target surface has the COMPOSITE flag set and the source image has an alpha channel.</const>
-      <const name="FIXED_SIZE">Image data will normally be stored at its original size and resized on the fly when the STRETCH flag is used.  Setting the FIXED_SIZE flag will pre-scale the image and permanently store it at that size.</const>
-      <const name="STRETCH">This flag conveniently combines the ENLARGE and SHRINK flags to ensure that the image always covers the dimensions of the destination surface.</const>
-      <const name="SCALABLE">The image source is scalable (e.g. vector graphic).</const>
-      <const name="STICKY">All calls to Move and MoveToPoint are ignored if this flag is set.</const>
-      <const name="11_RATIO">When resizing the image, the calculated width and height will always be in correct proportion relative to the source image's original width and height.</const>
+    <constants lookup="SO" comment="Direction options">
+      <const name="HORIZONTAL"/>
+      <const name="VERTICAL"/>
     </constants>
 
     <constants lookup="CMF" comment="ComboBox flags.">
@@ -269,7 +259,7 @@
       <const name="VARIABLE">This flag forces a text object to recalculate any variable references in its string data whenever a redraw occurs.  Such references are indicated through square brackets, e.g. [desktop.width].  Refer to the StrEvaluate() function in the Strings module for more information.</const>
       <const name="STR_TRANSLATE">Translate strings to the user's native language.</const>
       <const name="HISTORY">Enables historical browsing when the up/down cursor keys are used.  The number of historical lines stored can be set in the HistorySize field.</const>
-      <const name="NO_SYS_KEYS">This flag is set by default to enable system key support.  System-keys provide support for common key combinations such as Ctrl-C, Ctrl-X etc.</const>
+      <const name="NO_SYS_KEYS">Disables system-keys that provide support for common key combinations such as Ctrl-C, Ctrl-X etc.</const>
       <const name="BACKGROUND">Enables a colour background behind the text.</const>
       <const name="TAB_ENTRY">Pressing the tab key is treated the same as pressing enter.</const>
       <const name="COMMANDLINE">Synonym for AUTO_CLEAR | EDIT | HISTORY</const>
@@ -287,18 +277,6 @@
       <const name="X"/>
       <const name="Y"/>
       <const name="Z"/>
-    </constants>
-
-    <constants lookup="VGF" comment="Graphics options (normally defined by the template)">
-      <const name="OUTLINE_TITLE">Draw black outline around title text.</const>
-      <const name="NO_BORDER">Do not draw a border around column headers when in table mode.</const>
-      <const name="DRAW_TABLE">Draw the view as a table (the basic format is the same, graphics are different).</const>
-      <const name="GROUP_SHADOW">Draw a shadow underneath the group graphics headers.</const>
-      <const name="STRIPES">Draw stripes in group titles.</const>
-      <const name="HAIRLINES">Draw a hairline between each column.</const>
-      <const name="BRANCHES">Draw grey tree branches.</const>
-      <const name="ALT_GROUP">Alternate the group header graphics.</const>
-      <const name="LINE_BREAKS">Draw a line break between each view item.</const>
     </constants>
 
     <constants lookup="TF" comment="Flags for the TabFocus class.">
@@ -329,6 +307,18 @@
       <const name="HOST">This indicator is automatically set when a clipboard was created due to incoming content from the host system.</const>
     </constants>
 
+    <constants lookup="VGF" comment="Graphics options (normally defined by the template)">
+      <const name="OUTLINE_TITLE">Draw black outline around title text.</const>
+      <const name="NO_BORDER">Do not draw a border around column headers when in table mode.</const>
+      <const name="DRAW_TABLE">Draw the view as a table (the basic format is the same, graphics are different).</const>
+      <const name="GROUP_SHADOW">Draw a shadow underneath the group graphics headers.</const>
+      <const name="STRIPES">Draw stripes in group titles.</const>
+      <const name="HAIRLINES">Draw a hairline between each column.</const>
+      <const name="BRANCHES">Draw grey tree branches.</const>
+      <const name="ALT_GROUP">Alternate the group header graphics.</const>
+      <const name="LINE_BREAKS">Draw a line break between each view item.</const>
+    </constants>
+
     <constants lookup="VIEW" comment="List options">
       <const name="LIST">Standard list view with small icons, arranged from top to bottom.</const>
       <const name="ICON">Similar to list-view but with large icons, arranged from left to right.</const>
@@ -338,11 +328,6 @@
       <const name="GROUP_TREE">Similar to tree view, but root level nodes are drawn as a headline.</const>
       <const name="DOCUMENT">Document mode allows view data to be passed to a document object for display.  You are required to provide a document object that is pre-loaded with a template capable of processing input from the view object.  Refer to the Document field for more information.</const>
       <const name="COLUMN_TREE">This mode combines the column and tree modes.  The view displays the layout and style of normal column mode, but the first column is used to display and manage a tree hierarchy.  The tree can be expanded and collapsed just as in the standard tree mode.</const>
-    </constants>
-
-    <constants lookup="SO" comment="Direction options">
-      <const name="HORIZONTAL"/>
-      <const name="VERTICAL"/>
     </constants>
 
     <constants lookup="CEF">

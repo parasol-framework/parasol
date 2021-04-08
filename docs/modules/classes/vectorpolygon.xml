@@ -70,7 +70,7 @@
       <access read="G">Get</access>
       <type>INT</type>
       <description>
-<p>TotalPoints is a read-only field value that reflects the total number of coordinates that have been set in the <field>Points</field> array.</p>
+<p>TotalPoints is a read-only field value that reflects the total number of coordinates that have been set in the <field>Points</field> array.  The minimum value is 2.</p>
       </description>
     </field>
 

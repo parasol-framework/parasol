@@ -182,7 +182,7 @@
       <access read="R" write="S">Read/Set</access>
       <type>OBJECTID</type>
       <description>
-<p>Setting the Surface field will enable automatic rendering to a display surface.</p>
+<p>Setting the Surface field will enable automatic rendering to a display surface.  The use of features such as input event handling and user focus management will also require an associated surface as a pre-requisite.</p>
       </description>
     </field>
 

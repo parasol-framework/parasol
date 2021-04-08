@@ -28,6 +28,28 @@
     </source>
   </info>
 
+  <actions>
+  </actions>
+
+  <methods>
+    <method>
+      <name>DeleteLine</name>
+      <comment>Deletes any line number.</comment>
+      <prototype>ERROR vtDeleteLine(OBJECTPTR Object, LONG Line)</prototype>
+      <input>
+        <param type="LONG" name="Line">The line number that you want to delete.  If negative, the last line will be deleted.</param>
+      </input>
+      <description>
+<p>This method deletes lines from a text object.  You only need to specify the line number to have it deleted.  If the line number does not exist, then the call will fail.  The text graphic will be updated as a result of calling this method.</p>
+      </description>
+      <result>
+        <error code="Args">The Line value was out of the valid range.</error>
+        <error code="Okay">The line was deleted.</error>
+      </result>
+    </method>
+
+  </methods>
+
   <fields>
     <field>
       <name>Align</name>
@@ -38,6 +60,31 @@
 <p>This field specifies the horizontal alignment of the text string.  The standard alignment flags are supported in the form of ALIGN_LEFT, ALIGN_HORIZONTAL and ALIGN_RIGHT.</p>
 <p>In addition, the SVG equivalent values of 'start', 'middle' and 'end' are supported and map directly to the formerly mentioned align flags.</p>
       </description>
+    </field>
+
+    <field>
+      <name>CharLimit</name>
+      <comment>Limits the total characters allowed in the string.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>INT</type>
+      <description>
+<p>Set the CharLimit field to limit the number of characters that can appear in the string.  The minimum possible value is 0 for no characters.</p>
+<p>Note that it is valid for the <field>String</field> length to exceed the limit - it is only the display of the string characters that will be affected by the CharLimit value.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>CursorColumn</name>
+      <comment>The current column position of the cursor.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>INT</type>
+    </field>
+
+    <field>
+      <name>CursorRow</name>
+      <comment>The current line position of the cursor.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>INT</type>
     </field>
 
     <field>
@@ -75,9 +122,13 @@
     </field>
 
     <field>
-      <name>Flags</name>
+      <name>Focus</name>
+      <comment>Refers to the object that will be monitored for user focussing.</comment>
       <access read="G" write="S">Get/Set</access>
-      <type>INT</type>
+      <type>OBJECTID</type>
+      <description>
+<p>By default, a VectorText object with editing enabled will become active (i.e. capable of receiving keyboard input) when its nearest viewport receives the focus.  Setting the Focus field allows monitoring to be redirected to an alternative viewport.</p>
+      </description>
     </field>
 
     <field>
@@ -107,6 +158,16 @@
     </field>
 
     <field>
+      <name>LineLimit</name>
+      <comment>Restricts the total number of lines allowed in a text object.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>INT</type>
+      <description>
+<p>Set the LineLimit field to restrict the maximum number of lines permitted in a text object.  It is common to set this field to a value of 1 for input boxes that have a limited amount of space available.</p>
+      </description>
+    </field>
+
+    <field>
       <name>Rotate</name>
       <comment>Applies vertical spacing on a per-character basis.</comment>
       <access read="G" write="S">Get/Set</access>
@@ -118,6 +179,28 @@
 <p>If more characters are provided than numbers, then for each of these extra characters the rotation value specified by the last number must be used.</p>
 <p>If the attribute is not specified and if an ancestor 'text' or 'tspan' element specifies a supplemental rotation for a given character via a 'rotate' attribute, then the given supplemental rotation is applied to the given character (nearest ancestor has precedence). If there are more characters than numbers specified in the ancestor's 'rotate' attribute, then for each of these extra characters the rotation value specified by the last number must be used.</p>
 <p>This supplemental rotation has no impact on the rules by which current text position is modified as glyphs get rendered and is supplemental to any rotation due to text on a path and to 'glyph-orientation-horizontal' or 'glyph-orientation-vertical'.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>SelectColumn</name>
+      <comment>Indicates the column position of a selection's beginning.</comment>
+      <access read="G">Get</access>
+      <type>INT</type>
+      <description>
+<p>If the user has selected an area of text, the starting column of that area will be indicated by this field.  If an area has not been selected, the value of the SelectColumn field is undefined.</p>
+<p>To check whether or not an area has been selected, test the AREASELECTED bit in the #Flags field.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>SelectRow</name>
+      <comment>Indicates the line position of a selection's beginning.</comment>
+      <access read="G">Get</access>
+      <type>INT</type>
+      <description>
+<p>If the user has selected an area of text, the starting row of that area will be indicated by this field.  If an area has not been selected, the value of the SelectRow field is undefined.</p>
+<p>To check whether or not an area has been selected, test the AREASELECTED bit in the #Flags field.</p>
       </description>
     </field>
 
@@ -140,7 +223,14 @@
       <type>STRING</type>
       <description>
 <p>The string for drawing the glyphs is defined here in UTF-8 format.</p>
+<p>When retrieving a string that contains return codes, only the first line of text is returned.</p>
       </description>
+    </field>
+
+    <field>
+      <name>TextFlags</name>
+      <access read="G" write="S">Get/Set</access>
+      <type>INT</type>
     </field>
 
     <field>
@@ -151,6 +241,13 @@
       <description>
 <p>The purpose of this attribute is to allow exact alignment of the text graphic in the computed result.  If the #Width that is initially computed does not match this value, then the text will be scaled to match the TextLength.</p>
       </description>
+    </field>
+
+    <field>
+      <name>TotalLines</name>
+      <comment>The total number of lines stored in the object.</comment>
+      <access read="G">Get</access>
+      <type>INT</type>
     </field>
 
     <field>

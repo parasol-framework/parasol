@@ -206,10 +206,11 @@
 
     <constants lookup="INF" comment="Flags for the Input class.">
       <const name="SECRET">Used for secret user entry (passwords).</const>
+      <const name="ENTER_TAB">Press enter results in a virtual tab-keypress being sent.</const>
       <const name="SELECT_TEXT">Select all text when the input box is shown for the first time.</const>
       <const name="DISABLED">Disable on creation.</const>
-      <const name="HIDE">Hide on creation, or input is currently hidden.</const>
-      <const name="ENTER_TAB">Press enter results in a virtual tab-keypress being sent.</const>
+      <const name="FIXED_INPUT_WIDTH">Indicates that the InputWidth field was defined by the client.</const>
+      <const name="FIXED_LABEL_WIDTH">Indicates that the LabelWidth field was defined by the client.</const>
       <const name="COMMANDLINE">Function as a command-line.  Typically used when the input box needs to remain persistent and is linked to an output system, such as a shell.</const>
     </constants>
 

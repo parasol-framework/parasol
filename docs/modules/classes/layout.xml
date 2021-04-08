@@ -710,6 +710,7 @@
       <const name="POST_COMPOSITE">Do not copy background information into the surface buffer - composite on the fly instead</const>
       <const name="INIT_ONLY">Synonym for HOST | TRANSPARENT | FAST_RESIZE | DISABLED | PRECOPY | VIDEO | FIXED_BUFFER | PERVASIVE_COPY | FIXED_DEPTH | FULL_SCREEN | IGNORE_FOCUS</const>
       <const name="FAST_RESIZE">Do not redraw when a surface is shrunk on either dimension.  If a dimension is expanded, only redraw the exposed portion.</const>
+      <const name="ASPECT_RATIO">When resizing, enforce the aspect ratio as defined by MinWidth and MinHeight.</const>
       <const name="NO_PRECOMPOSITE">Do not copy background information into the surface buffer - composite on the fly instead</const>
       <const name="READ_ONLY">Synonym for HAS_FOCUS | REGION | CURSOR | AFTER_COPY</const>
       <const name="GRAB_FOCUS">Helps application windows manage the user's focus within the window</const>
@@ -724,18 +725,18 @@
       <const name="TRANSPARENT">Enables transparency, which means that the internal graphics routines will ignore this surface during redraws.  It is typically used when creating containers that will host other surfaces.</const>
       <const name="FIXED_BUFFER">Passes the NEVER_SHRINK option to the surface bitmap</const>
       <const name="IGNORE_FOCUS">Focus is diverted directly to the parent</const>
-      <const name="DISABLED">This flag is set if the Disable action has been called on a surface object.  Calling the Enable action will turn off the flag setting.</const>
+      <const name="WRITE_ONLY">Set this flag if you would like the surface object's data to be managed in video memory only.  While this can give some speed advantages, be warned that video based surfaces are limited to write-only operations.</const>
       <const name="VISIBLE">If a surface object is visible to the user, the VISIBLE flag will be set.  If the flag is not set, the surface object is hidden.</const>
       <const name="NO_FOCUS">Prevents any kind of focussing on this object; no circumvention is possible</const>
-      <const name="WRITE_ONLY">Set this flag if you would like the surface object's data to be managed in video memory only.  While this can give some speed advantages, be warned that video based surfaces are limited to write-only operations.</const>
-      <const name="STICK_TO_BACK">Enable if the surface object must stick to the back of its container.</const>
+      <const name="FIXED_DEPTH">The target buffer always remains at the same depth</const>
+      <const name="COMPOSITE">Do not copy background information into the surface buffer - composite on the fly instead</const>
       <const name="HAS_FOCUS">Read-only.  If set, this flag indicates that the surface object currently has the focus.</const>
-      <const name="TOTAL_REDRAW">Perform a total redraw of the entire surface when drawing - no partial draws</const>
+      <const name="STICK_TO_BACK">Enable if the surface object must stick to the back of its container.</const>
+      <const name="DISABLED">This flag is set if the Disable action has been called on a surface object.  Calling the Enable action will turn off the flag setting.</const>
       <const name="AFTER_COPY">Read-only.  Indicates that after-copy mode has been enabled.</const>
       <const name="SCROLL_CONTENT">If set, the surface object will send Move and MoveToPoint messages if the Scroll and ScrollToPoint actions are ever called on the object.</const>
-      <const name="FIXED_DEPTH">The target buffer always remains at the same depth</const>
       <const name="VOLATILE">Synonym for PRECOPY | AFTER_COPY | CURSOR</const>
-      <const name="COMPOSITE">Do not copy background information into the surface buffer - composite on the fly instead</const>
+      <const name="TOTAL_REDRAW">Perform a total redraw of the entire surface when drawing - no partial draws</const>
       <const name="REGION">Read/Init only.  This flag is set if the Region option has been used.</const>
       <const name="STICK_TO_FRONT">Enable if the surface object must stick to the front of its container.</const>
     </constants>
