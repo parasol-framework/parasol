@@ -228,8 +228,8 @@ module({ name="Vector", copyright="Paul Manias © 2010-2021", version=1.0 }, fun
     uchar  LargeArc     # Equivalent to the large-arc-flag in SVG, it ensures that the arc follows the longest drawing path when TRUE.
     uchar  Sweep        # Equivalent to the sweep-flag in SVG, it inverts the default behaviour in generating arc paths.
     int    Pad          # Private
-    double X            # The targeted X coordinate for the command
-    double Y            # The targeted Y coordinate for the command
+    double X            # The targeted X coordinate (absolute or relative) for the command
+    double Y            # The targeted Y coordinate (absolute or relative) for the command
     double AbsX         # Private
     double AbsY         # Private
     double X2           # The X2 coordinate for curve commands, or RX for arcs

@@ -166,8 +166,8 @@ static ERROR read_path(PathCommand **Path, LONG *Count, CSTRING Value)
    LONG guess = 0;
    for (LONG i=0; Value[i]; i++) {
       if (Value[i] IS 'z') guess++;
-      else if ((Value[i] >= '0') AND (Value[i] <= '9')) {
-         while ((Value[i] >= '0') AND (Value[i] <= '9')) i++;
+      else if ((Value[i] >= '0') and (Value[i] <= '9')) {
+         while ((Value[i] >= '0') and (Value[i] <= '9')) i++;
          guess++;
          i--;
       }
@@ -182,9 +182,9 @@ static ERROR read_path(PathCommand **Path, LONG *Count, CSTRING Value)
    LONG total = 0;
    UBYTE cmd = 0;
    while (*Value) {
-      if ((*Value >= 'a') AND (*Value <= 'z')) cmd = *Value++;
-      else if ((*Value >= 'A') AND (*Value <= 'Z')) cmd = *Value++;
-      else if (((*Value >= '0') AND (*Value <= '9')) OR (*Value IS '-') OR (*Value IS '+')); // Use the previous command
+      if ((*Value >= 'a') and (*Value <= 'z')) cmd = *Value++;
+      else if ((*Value >= 'A') and (*Value <= 'Z')) cmd = *Value++;
+      else if (((*Value >= '0') and (*Value <= '9')) or (*Value IS '-') or (*Value IS '+')); // Use the previous command
       else { Value++; continue; }
 
       switch (cmd) {
@@ -376,11 +376,11 @@ static ERROR VECTORPATH_AddCommand(objVectorPath *Self, struct vpAddCommand *Arg
 {
    parasol::Log log;
 
-   if ((!Args) OR (!Args->Commands)) return log.warning(ERR_NullArgs);
+   if ((!Args) or (!Args->Commands)) return log.warning(ERR_NullArgs);
 
    LONG total_cmds = Args->Size / sizeof(PathCommand);
 
-   if ((total_cmds <= 0) OR (total_cmds > 1000000)) return log.warning(ERR_Args);
+   if ((total_cmds <= 0) or (total_cmds > 1000000)) return log.warning(ERR_Args);
 
    if (Self->TotalCommands + total_cmds > Self->Capacity) {
       PathCommand *new_list;
@@ -428,7 +428,7 @@ static ERROR VECTORPATH_GetCommand(objVectorPath *Self, struct vpGetCommand *Arg
    parasol::Log log;
 
    if (!Args) return log.warning(ERR_NullArgs);
-   if ((Args->Index < 0) OR (Args->Index >= Self->TotalCommands)) return log.warning(ERR_OutOfRange);
+   if ((Args->Index < 0) or (Args->Index >= Self->TotalCommands)) return log.warning(ERR_OutOfRange);
 
    Args->Command = &Self->Commands[Args->Index];
    return ERR_Okay;
@@ -459,7 +459,7 @@ static ERROR VECTORPATH_RemoveCommand(objVectorPath *Self, struct vpRemoveComman
    parasol::Log log;
 
    if (!Args) return ERR_NullArgs;
-   if ((Args->Index < 0) OR (Args->Index > Self->TotalCommands-1)) return log.warning(ERR_OutOfRange);
+   if ((Args->Index < 0) or (Args->Index > Self->TotalCommands-1)) return log.warning(ERR_OutOfRange);
    if (Self->TotalCommands < 1) return ERR_NothingDone;
 
    LONG total = Args->Total;
@@ -499,8 +499,8 @@ static ERROR VECTORPATH_SetCommand(objVectorPath *Self, struct vpSetCommand *Arg
 {
    parasol::Log log;
 
-   if ((!Args) OR (!Args->Command)) return ERR_NullArgs;
-   if ((Args->Index < 0) OR (Args->Index > Self->Capacity-1)) return log.warning(ERR_OutOfRange);
+   if ((!Args) or (!Args->Command)) return ERR_NullArgs;
+   if ((Args->Index < 0) or (Args->Index > Self->Capacity-1)) return log.warning(ERR_OutOfRange);
 
    LONG total_cmds = Args->Size / sizeof(PathCommand);
    if (Args->Index + total_cmds >= Self->Capacity) return log.warning(ERR_BufferOverflow);
@@ -517,8 +517,8 @@ static ERROR VECTORPATH_SetCommand(objVectorPath *Self, struct vpSetCommand *Arg
 -METHOD-
 SetCommandList: The fastest available mechanism for setting a series of path instructions.
 
-Use SetCommandList to copy a series of path commands to a VectorPath object, overwriting any existing instructions
-in the process.
+Use SetCommandList to copy a series of path commands to a VectorPath object.  All existing commands
+will be cleared as a result of this process.
 
 -INPUT-
 buf(ptr) Commands: An array of path command structures.
@@ -536,12 +536,12 @@ static ERROR VECTORPATH_SetCommandList(objVectorPath *Self, struct vpSetCommandL
 {
    parasol::Log log;
 
-   if ((!Args) OR (!Args->Size)) return log.warning(ERR_NullArgs);
+   if ((!Args) or (!Args->Size)) return log.warning(ERR_NullArgs);
 
    if (!(Self->Head.Flags & NF_INITIALISED)) return log.warning(ERR_NotInitialised);
 
    LONG total_cmds = Args->Size / sizeof(PathCommand);
-   if ((total_cmds < 0) OR (total_cmds > 1000000)) return log.warning(ERR_Args);
+   if ((total_cmds < 0) or (total_cmds > 1000000)) return log.warning(ERR_Args);
 
    if (total_cmds > Self->Capacity) {
       PathCommand *new_list;
@@ -713,7 +713,7 @@ static ERROR VECTORPATH_GET_TotalCommands(objVectorPath *Self, LONG *Value)
 static ERROR VECTORPATH_SET_TotalCommands(objVectorPath *Self, LONG Value)
 {
    parasol::Log log;
-   if ((Value < 0) OR (Value > Self->Capacity)) return log.warning(ERR_OutOfRange);
+   if ((Value < 0) or (Value > Self->Capacity)) return log.warning(ERR_OutOfRange);
    Self->TotalCommands = Value;
    return ERR_Okay;
 }

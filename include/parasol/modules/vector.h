@@ -269,8 +269,8 @@ struct PathCommand {
    UBYTE  LargeArc;   // Equivalent to the large-arc-flag in SVG, it ensures that the arc follows the longest drawing path when TRUE.
    UBYTE  Sweep;      // Equivalent to the sweep-flag in SVG, it inverts the default behaviour in generating arc paths.
    LONG   Pad;        // Private
-   DOUBLE X;          // The targeted X coordinate for the command
-   DOUBLE Y;          // The targeted Y coordinate for the command
+   DOUBLE X;          // The targeted X coordinate (absolute or relative) for the command
+   DOUBLE Y;          // The targeted Y coordinate (absolute or relative) for the command
    DOUBLE AbsX;       // Private
    DOUBLE AbsY;       // Private
    DOUBLE X2;         // The X2 coordinate for curve commands, or RX for arcs

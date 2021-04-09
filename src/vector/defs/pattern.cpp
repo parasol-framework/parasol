@@ -365,7 +365,7 @@ static const FieldArray clPatternFields[] = {
    { "X",            FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)PATTERN_GET_X, (APTR)PATTERN_SET_X },
    { "Y",            FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)PATTERN_GET_Y, (APTR)PATTERN_SET_Y },
    { "Opacity",      FDF_DOUBLE|FDF_RW,          0, NULL, (APTR)PATTERN_SET_Opacity },
-   { "Scene",        FDF_INTEGRAL|FDF_R,            0, NULL, NULL },
+   { "Scene",        FDF_INTEGRAL|FDF_R,         0, NULL, NULL },
    { "Viewport",     FDF_OBJECT|FDF_R,           0, NULL, NULL },
    { "Inherit",      FDF_OBJECT|FDF_RW,          0, NULL, (APTR)PATTERN_SET_Inherit },
    { "SpreadMethod", FDF_LONG|FDF_RW,            (MAXINT)&clPatternSpread, NULL, NULL },

@@ -39,9 +39,6 @@ To make modifications to the menu after initialisation, read the #Menu field and
 
 static OBJECTPTR clCombobox = NULL;
 
-static void text_validation(objText *);
-static void text_activated(objText *);
-
 //****************************************************************************
 
 static void style_trigger(objComboBox *Self, LONG Style)
@@ -681,60 +678,6 @@ static ERROR SET_YOffset(objComboBox *Self, Variable *Value)
    return SetVariable(Self->Viewport, FID_YOffset, Value);
 }
 
-//**********************************************************************
-// This callback is triggered when the user moves focus away from the text widget.
-
-static void text_validation(objText *Text)
-{
-   auto Self = (objInput *)CurrentContext();
-
-   if (Self->Flags & CMF_LIMIT_TO_LIST) {
-
-   }
-}
-
-//**********************************************************************
-// This callback is triggered when the user hits the enter key, or its equivalent.
-
-static void text_activated(objText *Text)
-{
-   parasol::Log log(__FUNCTION__);
-   auto Self = (objComboBox *)CurrentContext();
-
-   if (Self->Active) {
-      log.warning("Warning - recursion detected");
-      return;
-   }
-
-   log.branch();
-
-   Self->Active = TRUE;
-
-   STRING value;
-   GetString(Self->TextInput, FID_String, &value);
-
-   if (Self->Feedback.Type IS CALL_STDC) {
-      auto routine = (void (*)(objComboBox *, CSTRING))Self->Feedback.StdC.Routine;
-      if (Self->Feedback.StdC.Context) {
-         parasol::SwitchContext context(Self->Feedback.StdC.Context);
-         routine(Self, value);
-      }
-      else routine(Self, value);
-   }
-   else if (Self->Feedback.Type IS CALL_SCRIPT) {
-      OBJECTPTR script;
-      if ((script = Self->Feedback.Script.Script)) {
-         const ScriptArg args[] = {
-            { "ComboBox", FD_OBJECTPTR, { .Address = Self } },
-            { "Value",    FD_STRING, { .Address = value } }
-         };
-         scCallback(script, Self->Feedback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
-      }
-   }
-
-   Self->Active = FALSE;
-}
-
 //****************************************************************************
 
 #include "class_combobox_def.c"
@@ -755,16 +698,16 @@ static const FieldArray clFields[] = {
    { "Flags",          FDF_LONGFLAGS|FDF_RW, (MAXINT)&clComboBoxFlags, NULL, NULL },
    { "LabelWidth",     FDF_LONG|FDF_RI,      0, NULL, NULL },
    // Virtual fields
-   { "Align",         FDF_VIRTUAL|FDF_LONGFLAGS|FDF_I, (MAXINT)&Align,  NULL, (APTR)SET_Align },
-   { "Bottom",        FDF_VIRTUAL|FDF_LONG|FDF_R,      0, (APTR)GET_Bottom, NULL },
-   { "Disable",       FDF_VIRTUAL|FDF_LONG|FDF_RW,     0, (APTR)GET_Disable, (APTR)SET_Disable },
+   { "Align",         FDF_VIRTUAL|FDF_LONGFLAGS|FDF_I,    (MAXINT)&Align,  NULL, (APTR)SET_Align },
+   { "Bottom",        FDF_VIRTUAL|FDF_LONG|FDF_R,         0, (APTR)GET_Bottom, NULL },
+   { "Disable",       FDF_VIRTUAL|FDF_LONG|FDF_RW,        0, (APTR)GET_Disable, (APTR)SET_Disable },
    { "Feedback",      FDF_VIRTUAL|FDF_FUNCTIONPTR|FDF_RW, 0, (APTR)GET_Feedback, (APTR)SET_Feedback },
-   { "Label",         FDF_VIRTUAL|FDF_STRING|FDF_RW,   0, (APTR)GET_Label, (APTR)SET_Label },
-   { "Right",         FDF_VIRTUAL|FDF_LONG|FDF_R,      0, (APTR)GET_Right, NULL },
-   { "SelectedID",    FDF_VIRTUAL|FDF_LONG|FDF_R,      0, (APTR)GET_SelectedID, NULL },
-   { "String",        FDF_VIRTUAL|FDF_STRING|FDF_RW,   0, (APTR)GET_String, (APTR)SET_String },
+   { "Label",         FDF_VIRTUAL|FDF_STRING|FDF_RW,      0, (APTR)GET_Label, (APTR)SET_Label },
+   { "Right",         FDF_VIRTUAL|FDF_LONG|FDF_R,         0, (APTR)GET_Right, NULL },
+   { "SelectedID",    FDF_VIRTUAL|FDF_LONG|FDF_R,         0, (APTR)GET_SelectedID, NULL },
+   { "String",        FDF_VIRTUAL|FDF_STRING|FDF_RW,      0, (APTR)GET_String, (APTR)SET_String },
    { "StyleTrigger",  FDF_VIRTUAL|FDF_FUNCTIONPTR|FDF_W,  0, NULL, (APTR)SET_StyleTrigger },
-   { "TabFocus",      FDF_VIRTUAL|FDF_OBJECT|FDF_I,  ID_TABFOCUS, NULL, (APTR)SET_TabFocus },
+   { "TabFocus",      FDF_VIRTUAL|FDF_OBJECT|FDF_I,       ID_TABFOCUS, NULL, (APTR)SET_TabFocus },
    { "Text",          FDF_SYNONYM|FDF_VIRTUAL|FDF_STRING|FDF_RW, 0, (APTR)GET_String, (APTR)SET_String },
    // Variable Fields
    { "Height",  FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)GET_Height,  (APTR)SET_Height },

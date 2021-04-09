@@ -42,7 +42,7 @@ Valid options to use when creating the dialog are as follows:
 gui.dialog.font = function(Options)
    local mFont = mod.load('font')
 
-   local self = { // Public variables
+   local self = { -- Public variables
       windowID = nil,
       face = 'Open Sans',
       size = 12,
@@ -84,7 +84,7 @@ Cras metus mi, ultricies nec blandit condimentum, congue dapibus libero. Nulla e
    end
 
    local function drawExample(Surface, Bitmap)
-      // Background
+      -- Background
 
       local err, bkgd = Bitmap.mtGetColour(255, 255, 255, 255)
       local err, border = Bitmap.mtGetColour(128, 128, 128, 255)
@@ -112,7 +112,7 @@ Cras metus mi, ultricies nec blandit condimentum, congue dapibus libero. Nulla e
       end
 
       if (lFont) then
-         // Text guidelines
+         -- Text guidelines
 
          local err, guide = Bitmap.mtGetColour(240, 240, 255, 255)
          local lines = Surface.height / lFont.height
@@ -122,7 +122,7 @@ Cras metus mi, ultricies nec blandit condimentum, congue dapibus libero. Nulla e
             y = y + lFont.lineSpacing
          end
 
-         // Example text
+         -- Example text
 
          lFont.bitmap = Bitmap
          lFont.wrapEdge = Surface.width - lFont.x
@@ -136,7 +136,7 @@ Cras metus mi, ultricies nec blandit condimentum, congue dapibus libero. Nulla e
       Bitmap.ClipBottom = clip.bottom
    end
 
-   // Retrieve the system list of known installed fonts and convert it to a Lua table.
+   -- Retrieve the system list of known installed fonts and convert it to a Lua table.
 
    local function getFonts()
       local err, list = mFont.GetList()
@@ -171,7 +171,7 @@ Cras metus mi, ultricies nec blandit condimentum, congue dapibus libero. Nulla e
       vwSize.acRefresh()
    end
 
-   // Refresh the style list for the selected face
+   -- Refresh the style list for the selected face
 
    local function showStyles(Face)
       vwStyle.xml.acClear()
@@ -188,10 +188,10 @@ Cras metus mi, ultricies nec blandit condimentum, congue dapibus libero. Nulla e
    catch(function()
       getFonts()
 
-      // Disassemble any compact font face definition.
+      -- Disassemble any compact font face definition.
 
       if (lOptions.face) then
-         local s = string.split(face, ':') // FaceName, Size, Style, Colour
+         local s = string.split(face, ':') -- FaceName, Size, Style, Colour
          if (s[1]) then lOptions.face = s[1] end
          if (s[2]) then lOptions.size = s[2] end
          if (s[3]) then lOptions.style = s[3] end
@@ -229,7 +229,7 @@ Cras metus mi, ultricies nec blandit condimentum, congue dapibus libero. Nulla e
 
       self.viewport = self.scene.new('VectorViewport', { })
 
-      // Okay and cancel buttons
+      -- Okay and cancel buttons
 
       local footer = lWindow.bottomMargin
 
@@ -252,7 +252,7 @@ Cras metus mi, ultricies nec blandit condimentum, congue dapibus libero. Nulla e
 
       footer = footer + lOkayButton.height + WIDGET_GAP
 
-      // Font demonstration area
+      -- Font demonstration area
 
       rgnExample = lWindow.new('surface', {
          x       = 200,
@@ -264,7 +264,7 @@ Cras metus mi, ultricies nec blandit condimentum, congue dapibus libero. Nulla e
 
       rgnExample.mtAddCallback(drawExample)
 
-      // Font size selection
+      -- Font size selection
 
       local rgnSize = lWindow.new('surface', {
          x       = rgnExample.x - WIDGET_GAP - 60,
@@ -295,7 +295,7 @@ Cras metus mi, ultricies nec blandit condimentum, congue dapibus libero. Nulla e
 
       showFontSizes(lSizes)
 
-      // Font style selection
+      -- Font style selection
 
       local rgnStyle = lWindow.new('surface', {
          x       = lWindow.leftMargin,
@@ -320,7 +320,7 @@ Cras metus mi, ultricies nec blandit condimentum, congue dapibus libero. Nulla e
 
       footer = footer + rgnStyle.height + (WIDGET_GAP * 2)
 
-      // Available font faces
+      -- Available font faces
 
       local rgnFace = lWindow.new('surface', {
          x = lWindow.leftMargin,
@@ -343,7 +343,7 @@ Cras metus mi, ultricies nec blandit condimentum, congue dapibus libero. Nulla e
 
             showStyles(face)
 
-            // Highlight the correct style, trying to keep the current setting if possible.
+            -- Highlight the correct style, trying to keep the current setting if possible.
 
             catch(function()
                vwStyle.selection = self.style
@@ -398,7 +398,7 @@ Cras metus mi, ultricies nec blandit condimentum, congue dapibus libero. Nulla e
       lTab.mtAddObject(lOkayButton)
       lTab.mtAddObject(lCancelButton)
 
-      // Preselect list items based on the preferences supplied by the client.
+      -- Preselect list items based on the preferences supplied by the client.
 
       vwFace.selection = nz(lOptions.face, 'Open Sans')
       vwStyle.selection = nz(lOptions.style, 'Regular')
@@ -426,7 +426,7 @@ Cras metus mi, ultricies nec blandit condimentum, congue dapibus libero. Nulla e
    return self
 end
 
-   // This sub-routine is provided for languages other than Fluid to utilise the module.
+   -- This sub-routine is provided for languages other than Fluid to utilise the module.
 
    do
       local state = getExecutionState()
