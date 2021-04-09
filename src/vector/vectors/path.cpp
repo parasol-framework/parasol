@@ -9,28 +9,24 @@ VectorPath provides support for parsing SVG styled path strings.
 
 *****************************************************************************/
 
-#define CAPACITY_CUSHION 40
-
 //****************************************************************************
 
 static void generate_path(objVectorPath *Vector)
 {
-   if (!Vector->Commands) return;
-
-   convert_to_aggpath(Vector->Commands, Vector->TotalCommands, Vector->BasePath);
+   // TODO: We may be able to drop our internal PathCommand type in favour of agg:path_storage (and
+   // extend it if necessary).
+   convert_to_aggpath(Vector->Commands, Vector->BasePath);
 }
 
 //****************************************************************************
 
-static void convert_to_aggpath(PathCommand *Paths, LONG TotalCommands, agg::path_storage *BasePath)
+static void convert_to_aggpath(std::vector<PathCommand> &Paths, agg::path_storage *BasePath)
 {
-   if (!Paths) return;
-
    PathCommand dummy = { 0, 0, 0, 0, 0, 0 };
    PathCommand &lp = dummy;
 
    auto bp = BasePath;
-   for (LONG i=0; i < TotalCommands; i++) {
+   for (size_t i=0; i < Paths.size(); i++) {
       auto path = Paths[i];
 
       switch (path.Type) {
@@ -154,32 +150,14 @@ static void convert_to_aggpath(PathCommand *Paths, LONG TotalCommands, agg::path
 }
 
 //****************************************************************************
+// Read a string-based series of vector commands and add them to Path.
 
-static ERROR read_path(PathCommand **Path, LONG *Count, CSTRING Value)
+static ERROR read_path(std::vector<PathCommand> &Path, CSTRING Value)
 {
    parasol::Log log(__FUNCTION__);
-   PathCommand *path;
 
-   // Get a rough estimate on how many array entries there will be (this sub-routine will over-estimate and then
-   // we'll reduce the array size at the end).
+   PathCommand path;
 
-   LONG guess = 0;
-   for (LONG i=0; Value[i]; i++) {
-      if (Value[i] IS 'z') guess++;
-      else if ((Value[i] >= '0') and (Value[i] <= '9')) {
-         while ((Value[i] >= '0') and (Value[i] <= '9')) i++;
-         guess++;
-         i--;
-      }
-   }
-
-   //log.traceBranch("%d path points detected.", guess);
-
-   if (AllocMemory(sizeof(PathCommand) * guess, MEM_DATA, &path, NULL)) return ERR_AllocMemory;
-
-   if (Count) *Count = 0;
-   if (Path)  *Path = NULL;
-   LONG total = 0;
    UBYTE cmd = 0;
    while (*Value) {
       if ((*Value >= 'a') and (*Value <= 'z')) cmd = *Value++;
@@ -187,77 +165,79 @@ static ERROR read_path(PathCommand **Path, LONG *Count, CSTRING Value)
       else if (((*Value >= '0') and (*Value <= '9')) or (*Value IS '-') or (*Value IS '+')); // Use the previous command
       else { Value++; continue; }
 
+      ClearMemory(&path, sizeof(path));
+
       switch (cmd) {
          case 'M': case 'm': // MoveTo
-            Value = read_numseq(Value, &path[total].X, &path[total].Y, TAGEND);
+            Value = read_numseq(Value, &path.X, &path.Y, TAGEND);
             if (cmd IS 'M') {
-               path[total].Type = PE_Move;
+               path.Type = PE_Move;
                cmd = 'L'; // This is because the SVG standard requires that sequential coordinate pairs will be interpreted as line-to commands.
             }
             else {
-               path[total].Type = PE_MoveRel;
+               path.Type = PE_MoveRel;
                cmd = 'l';
             }
-            path[total].Curved = FALSE;
+            path.Curved = FALSE;
             break;
 
          case 'L': case 'l': // LineTo
-            Value = read_numseq(Value, &path[total].X, &path[total].Y, TAGEND);
-            if (cmd IS 'L') path[total].Type = PE_Line;
-            else path[total].Type = PE_LineRel;
-            path[total].Curved = FALSE;
+            Value = read_numseq(Value, &path.X, &path.Y, TAGEND);
+            if (cmd IS 'L') path.Type = PE_Line;
+            else path.Type = PE_LineRel;
+            path.Curved = FALSE;
             break;
 
          case 'V': case 'v': // Vertical LineTo
-            Value = read_numseq(Value, &path[total].Y, TAGEND);
-            if (cmd IS 'V') path[total].Type = PE_VLine;
-            else path[total].Type = PE_VLineRel;
-            path[total].Curved = FALSE;
+            Value = read_numseq(Value, &path.Y, TAGEND);
+            if (cmd IS 'V') path.Type = PE_VLine;
+            else path.Type = PE_VLineRel;
+            path.Curved = FALSE;
             break;
 
          case 'H': case 'h': // Horizontal LineTo
-            Value = read_numseq(Value, &path[total].X, TAGEND);
-            if (cmd IS 'H') path[total].Type = PE_HLine;
-            else path[total].Type = PE_LineRel;
-            path[total].Curved = FALSE;
+            Value = read_numseq(Value, &path.X, TAGEND);
+            if (cmd IS 'H') path.Type = PE_HLine;
+            else path.Type = PE_LineRel;
+            path.Curved = FALSE;
             break;
 
          case 'Q': case 'q': // Quadratic Curve To
-            Value = read_numseq(Value, &path[total].X2, &path[total].Y2, &path[total].X, &path[total].Y, TAGEND);
-            if (cmd IS 'Q') path[total].Type = PE_QuadCurve;
-            else path[total].Type = PE_QuadCurveRel;
-            path[total].Curved = TRUE;
+            Value = read_numseq(Value, &path.X2, &path.Y2, &path.X, &path.Y, TAGEND);
+            if (cmd IS 'Q') path.Type = PE_QuadCurve;
+            else path.Type = PE_QuadCurveRel;
+            path.Curved = TRUE;
             break;
 
          case 'T': case 't': // Quadratic Smooth Curve To
-            Value = read_numseq(Value, &path[total].X2, &path[total].Y2, &path[total].X, &path[total].Y, TAGEND);
-            if (cmd IS 'T') path[total].Type = PE_QuadSmooth;
-            else path[total].Type = PE_QuadSmoothRel;
-             path[total].Curved = TRUE;
+            Value = read_numseq(Value, &path.X2, &path.Y2, &path.X, &path.Y, TAGEND);
+            if (cmd IS 'T') path.Type = PE_QuadSmooth;
+            else path.Type = PE_QuadSmoothRel;
+            path.Curved = TRUE;
            break;
 
          case 'C': case 'c': // Curve To
-            Value = read_numseq(Value, &path[total].X2, &path[total].Y2, &path[total].X3, &path[total].Y3, &path[total].X, &path[total].Y, TAGEND);
-            if (cmd IS 'C') path[total].Type = PE_Curve;
-            else path[total].Type = PE_CurveRel;
-            path[total].Curved = TRUE;
+            Value = read_numseq(Value, &path.X2, &path.Y2, &path.X3, &path.Y3, &path.X, &path.Y, TAGEND);
+            if (cmd IS 'C') path.Type = PE_Curve;
+            else path.Type = PE_CurveRel;
+            path.Curved = TRUE;
             break;
 
          case 'S': case 's': // Smooth Curve To
-            Value = read_numseq(Value, &path[total].X2, &path[total].Y2, &path[total].X, &path[total].Y, TAGEND);
-            if (cmd IS 'S') path[total].Type = PE_Smooth;
-            else path[total].Type = PE_SmoothRel;
-            path[total].Curved = TRUE;
+            Value = read_numseq(Value, &path.X2, &path.Y2, &path.X, &path.Y, TAGEND);
+            if (cmd IS 'S') path.Type = PE_Smooth;
+            else path.Type = PE_SmoothRel;
+            path.Curved = TRUE;
             break;
 
          case 'A': case 'a': { // Arc
             DOUBLE largearc, sweep;
-            Value = read_numseq(Value, &path[total].X2, &path[total].Y2, &path[total].Angle, &largearc, &sweep, &path[total].X, &path[total].Y, TAGEND);
-            path[total].LargeArc = F2T(largearc);
-            path[total].Sweep = F2T(sweep);
-            if (cmd IS 'A') path[total].Type = PE_Arc;
-            else path[total].Type = PE_ArcRel;
-            path[total].Curved = TRUE;
+            Value = read_numseq(Value, &path.X2, &path.Y2, &path.Angle, &largearc, &sweep, &path.X, &path.Y, TAGEND);
+            path.LargeArc = F2T(largearc);
+            path.Sweep = F2T(sweep);
+            if (cmd IS 'A') path.Type = PE_Arc;
+            else path.Type = PE_ArcRel;
+            path.Curved = TRUE;
             break;
          }
 
@@ -270,42 +250,28 @@ static ERROR read_path(PathCommand **Path, LONG *Count, CSTRING Value)
          // current point is set to the initial point of the current subpath.
 
          case 'Z': case 'z': { // Close Path
-            path[total].Type = PE_ClosePath;
-            path[total].Curved = FALSE;
+            path.Type = PE_ClosePath;
+            path.Curved = FALSE;
             break;
          }
 
          default: {
             log.warning("Invalid path command '%c'", *Value);
-            FreeResource(path);
             return ERR_Failed;
          }
       }
-      if (++total >= guess) break;
+
+      Path.push_back(path);
    }
 
-   //MSG("Processed %d actual path commands.", total);
-   if (total >= 2) {
-      if (total < guess-4) {
-         // If our best guess was off by at least 4 entries, reduce the array size.
-         ReallocMemory(path, sizeof(PathCommand) * total, &path, NULL);
-      }
-
-      if (Path) *Path = path;
-      if (Count) *Count = total;
-      return ERR_Okay;
-   }
-   else {
-      FreeResource(path);
-      return ERR_Failed;
-   }
+   return (Path.size() >= 2) ? ERR_Okay : ERR_Failed;
 }
 
 //****************************************************************************
 
 static ERROR VECTORPATH_Clear(objVectorPath *Self, APTR Void)
 {
-   Self->TotalCommands = 0;
+   Self->Commands.clear();
    if (Self->CustomPath) { delete Self->CustomPath; Self->CustomPath = NULL; }
    reset_path(Self);
    return ERR_Okay;
@@ -324,7 +290,7 @@ static ERROR VECTORPATH_Flush(objVectorPath *Self, APTR Void)
 
 static ERROR VECTORPATH_Free(objVectorPath *Self, APTR Void)
 {
-   if (Self->Commands) { FreeResource(Self->Commands); Self->Commands = NULL; }
+   Self->Commands.~vector();
    if (Self->CustomPath) { delete Self->CustomPath; Self->CustomPath = NULL; }
    return ERR_Okay;
 }
@@ -333,10 +299,6 @@ static ERROR VECTORPATH_Free(objVectorPath *Self, APTR Void)
 
 static ERROR VECTORPATH_Init(objVectorPath *Self, APTR Void)
 {
-   parasol::Log log;
-
-   if (Self->Capacity < 1) return log.warning(ERR_OutOfRange);
-
    return ERR_Okay;
 }
 
@@ -344,18 +306,15 @@ static ERROR VECTORPATH_Init(objVectorPath *Self, APTR Void)
 
 static ERROR VECTORPATH_NewObject(objVectorPath *Self, APTR Void)
 {
-   if (!AllocMemory(sizeof(PathCommand) * CAPACITY_CUSHION, MEM_DATA, &Self->Commands, NULL)) {
-      Self->Capacity = CAPACITY_CUSHION;
-      Self->GeneratePath = (void (*)(rkVector *))&generate_path;
-      return ERR_Okay;
-   }
-   else return ERR_AllocMemory;
+   new(&Self->Commands) std::vector<PathCommand>;
+   Self->GeneratePath = (void (*)(rkVector *))&generate_path;
+   return ERR_Okay;
 }
 
 /*****************************************************************************
 
 -METHOD-
-AddCommand: Add a command to the end of the path sequence.
+AddCommand: Add one or more commands to the end of the path sequence.
 
 This method will add a series of commands to the end of a Vector's existing path sequence.  The commands must be
 provided as a sequential array.  No checks will be performed to confirm the validity of the sequence.
@@ -382,23 +341,10 @@ static ERROR VECTORPATH_AddCommand(objVectorPath *Self, struct vpAddCommand *Arg
 
    if ((total_cmds <= 0) or (total_cmds > 1000000)) return log.warning(ERR_Args);
 
-   if (Self->TotalCommands + total_cmds > Self->Capacity) {
-      PathCommand *new_list;
-      LONG new_capacity = Self->Capacity + total_cmds + CAPACITY_CUSHION;
-      if (AllocMemory(sizeof(PathCommand) * new_capacity, MEM_DATA|MEM_NO_CLEAR, &new_list, NULL)) {
-         return ERR_AllocMemory;
-      }
-
-      CopyMemory(Self->Commands, new_list, Self->TotalCommands * sizeof(PathCommand));
-
-      if (Self->Commands) FreeResource(Self->Commands);
-
-      Self->Commands = new_list;
-      Self->Capacity = new_capacity;
+   PathCommand *list = Args->Commands;
+   for (LONG i=0; i < total_cmds; i++) {
+      Self->Commands.push_back(list[i]);
    }
-
-   CopyMemory(Args->Commands, Self->Commands + Self->TotalCommands, total_cmds * sizeof(PathCommand));
-   Self->TotalCommands += total_cmds;
 
    VECTORPATH_Flush(Self, NULL);
    return ERR_Okay;
@@ -428,7 +374,7 @@ static ERROR VECTORPATH_GetCommand(objVectorPath *Self, struct vpGetCommand *Arg
    parasol::Log log;
 
    if (!Args) return log.warning(ERR_NullArgs);
-   if ((Args->Index < 0) or (Args->Index >= Self->TotalCommands)) return log.warning(ERR_OutOfRange);
+   if ((Args->Index < 0) or ((size_t)Args->Index >= Self->Commands.size())) return log.warning(ERR_OutOfRange);
 
    Args->Command = &Self->Commands[Args->Index];
    return ERR_Okay;
@@ -459,16 +405,12 @@ static ERROR VECTORPATH_RemoveCommand(objVectorPath *Self, struct vpRemoveComman
    parasol::Log log;
 
    if (!Args) return ERR_NullArgs;
-   if ((Args->Index < 0) or (Args->Index > Self->TotalCommands-1)) return log.warning(ERR_OutOfRange);
-   if (Self->TotalCommands < 1) return ERR_NothingDone;
+   if ((Args->Index < 0) or ((size_t)Args->Index > Self->Commands.size()-1)) return log.warning(ERR_OutOfRange);
+   if (Self->Commands.empty()) return ERR_NothingDone;
 
-   LONG total = Args->Total;
-   if (Args->Index + total > Self->TotalCommands) {
-      total = Self->TotalCommands - Args->Index;
-   }
-
-   CopyMemory(Self->Commands + Args->Index + total, Self->Commands + Args->Index, total * sizeof(PathCommand));
-   Self->TotalCommands -= total;
+   auto first = Self->Commands.begin() + Args->Index;
+   auto last = first + Args->Total;
+   Self->Commands.erase(first, last);
 
    VECTORPATH_Flush(Self, NULL);
    return ERR_Okay;
@@ -479,8 +421,7 @@ static ERROR VECTORPATH_RemoveCommand(objVectorPath *Self, struct vpRemoveComman
 -METHOD-
 SetCommand: Copies one or more commands into an existing path.
 
-Use SetCommand to copy one or more commands into an existing path.  This method cannot be used to expand the path
-beyond its #Capacity.
+Use SetCommand to copy one or more commands into an existing path.
 
 -INPUT-
 int Index: The index of the command that is to be set.
@@ -500,13 +441,15 @@ static ERROR VECTORPATH_SetCommand(objVectorPath *Self, struct vpSetCommand *Arg
    parasol::Log log;
 
    if ((!Args) or (!Args->Command)) return ERR_NullArgs;
-   if ((Args->Index < 0) or (Args->Index > Self->Capacity-1)) return log.warning(ERR_OutOfRange);
+   if (Args->Index < 0) return log.warning(ERR_OutOfRange);
 
    LONG total_cmds = Args->Size / sizeof(PathCommand);
-   if (Args->Index + total_cmds >= Self->Capacity) return log.warning(ERR_BufferOverflow);
-   if (Args->Index + total_cmds > Self->TotalCommands) Self->TotalCommands = Args->Index + total_cmds;
+   if ((size_t)Args->Index + total_cmds > Self->Commands.size()) Self->Commands.resize(Args->Index + total_cmds);
 
-   CopyMemory(Args->Command, Self->Commands + Args->Index, Args->Size);
+   PathCommand *list = Args->Command;
+   for (LONG i=0; i < total_cmds; i++) {
+      CopyMemory(&list[i], &Self->Commands[Args->Index + i], sizeof(PathCommand));
+   }
 
    VECTORPATH_Flush(Self, NULL);
    return ERR_Okay;
@@ -520,6 +463,8 @@ SetCommandList: The fastest available mechanism for setting a series of path ins
 Use SetCommandList to copy a series of path commands to a VectorPath object.  All existing commands
 will be cleared as a result of this process.
 
+NOTE: This method is not compatible with Fluid calls.
+
 -INPUT-
 buf(ptr) Commands: An array of path command structures.
 bufsize Size: The byte size of the Commands buffer.
@@ -527,8 +472,8 @@ bufsize Size: The byte size of the Commands buffer.
 -RESULT-
 Okay
 NullArgs
+NotInitialised
 Args
-AllocMemory
 
 *****************************************************************************/
 
@@ -543,67 +488,15 @@ static ERROR VECTORPATH_SetCommandList(objVectorPath *Self, struct vpSetCommandL
    LONG total_cmds = Args->Size / sizeof(PathCommand);
    if ((total_cmds < 0) or (total_cmds > 1000000)) return log.warning(ERR_Args);
 
-   if (total_cmds > Self->Capacity) {
-      PathCommand *new_list;
-      LONG new_capacity = total_cmds + CAPACITY_CUSHION;
-      if (AllocMemory(sizeof(PathCommand) * new_capacity, MEM_DATA|MEM_NO_CLEAR, &new_list, NULL)) {
-         return ERR_AllocMemory;
-      }
+   Self->Commands.clear();
 
-      if (Self->Commands) FreeResource(Self->Commands);
-
-      Self->Commands = new_list;
-      Self->Capacity = new_capacity;
+   auto list = (PathCommand *)Args->Commands;
+   for (LONG i=0; i < total_cmds; i++) {
+      Self->Commands.push_back(list[i]);
    }
-
-   CopyMemory(Args->Commands, Self->Commands, total_cmds * sizeof(PathCommand));
-   Self->TotalCommands = total_cmds;
 
    VECTORPATH_Flush(Self, NULL);
    return ERR_Okay;
-}
-
-/*****************************************************************************
--FIELD-
-Capacity: The maximum number of commands that can be supported before the internal buffer requires reallocation.
-
-The maximum number of commands that can be supported before the internal buffer requires reallocation.
-
-*****************************************************************************/
-
-static ERROR VECTORPATH_GET_Capacity(objVectorPath *Self, LONG *Value)
-{
-   *Value = Self->Capacity;
-   return ERR_Okay;
-}
-
-static ERROR VECTORPATH_SET_Capacity(objVectorPath *Self, LONG Value)
-{
-   parasol::Log log;
-
-   if (Value < 1) return log.warning(ERR_InvalidValue);
-
-   if (Value > Self->Capacity) {
-      LONG new_capacity = Value + CAPACITY_CUSHION;
-      if (Self->TotalCommands > 0) { // Preserve existing commands?
-         if (!ReallocMemory(Self->Commands, sizeof(PathCommand) * new_capacity, &Self->Commands, NULL)) {
-            Self->Capacity = new_capacity;
-            return ERR_Okay;
-         }
-         else return ERR_AllocMemory;
-      }
-      else {
-         PathCommand *new_list;
-         if (!AllocMemory(sizeof(PathCommand) * new_capacity, MEM_DATA|MEM_NO_CLEAR, &new_list, NULL)) {
-            if (Self->Commands) FreeResource(Self->Commands);
-            Self->Commands = new_list;
-            Self->Capacity = new_capacity;
-            return ERR_Okay;
-         }
-         else return ERR_AllocMemory;
-      }
-   }
-   else return ERR_NothingDone;
 }
 
 /*****************************************************************************
@@ -617,8 +510,8 @@ directly.  After making changes to the path, call #Flush() to register the chang
 
 static ERROR VECTORPATH_GET_Commands(objVectorPath *Self, PathCommand **Value, LONG *Elements)
 {
-   *Value = Self->Commands;
-   *Elements = Self->TotalCommands;
+   *Value = Self->Commands.data();
+   *Elements = Self->Commands.size();
    return ERR_Okay;
 }
 
@@ -681,16 +574,11 @@ To terminate a path without joining it to the first coordinate, omit the 'Z' fro
 
 static ERROR VECTORPATH_SET_Sequence(objVectorPath *Self, CSTRING Value)
 {
-   if (Self->Commands) {
-      FreeResource(Self->Commands);
-      Self->Commands = NULL;
-      Self->TotalCommands = 0;
-   }
-
+   Self->Commands.clear();
    if (Self->CustomPath) { delete Self->CustomPath; Self->CustomPath = NULL; }
 
    ERROR error = ERR_Okay;
-   if (Value) error = read_path(&Self->Commands, &Self->TotalCommands, Value);
+   if (Value) error = read_path(Self->Commands, Value);
    reset_path(Self);
    return error;
 }
@@ -700,21 +588,21 @@ static ERROR VECTORPATH_SET_Sequence(objVectorPath *Self, CSTRING Value)
 TotalCommands: The total number of points defined in the path sequence.
 
 The total number of points defined in the path #Sequence is reflected in this field.  Modifying the total directly is
-permitted if the #Commands array is large enough to cover the new value.
+permitted, although this should be used for shrinking the list because expansion will create uninitialised command entries.
 -END-
 *****************************************************************************/
 
 static ERROR VECTORPATH_GET_TotalCommands(objVectorPath *Self, LONG *Value)
 {
-   *Value = Self->TotalCommands;
+   *Value = Self->Commands.size();
    return ERR_Okay;
 }
 
 static ERROR VECTORPATH_SET_TotalCommands(objVectorPath *Self, LONG Value)
 {
    parasol::Log log;
-   if ((Value < 0) or (Value > Self->Capacity)) return log.warning(ERR_OutOfRange);
-   Self->TotalCommands = Value;
+   if (Value < 0) return log.warning(ERR_OutOfRange);
+   Self->Commands.resize(Value);
    return ERR_Okay;
 }
 
@@ -724,7 +612,6 @@ static const FieldArray clPathFields[] = {
    { "Sequence",      FDF_VIRTUAL|FDF_STRING|FDF_RW, 0, (APTR)VECTOR_GET_Sequence, (APTR)VECTORPATH_SET_Sequence },
    { "TotalCommands", FDF_VIRTUAL|FDF_LONG|FDF_RW,   0, (APTR)VECTORPATH_GET_TotalCommands, (APTR)VECTORPATH_SET_TotalCommands },
    { "PathLength",    FDF_VIRTUAL|FDF_LONG|FDF_RW,   0, (APTR)VECTORPATH_GET_PathLength, (APTR)VECTORPATH_SET_PathLength },
-   { "Capacity",      FDF_VIRTUAL|FDF_LONG|FDF_RW,   0, (APTR)VECTORPATH_GET_Capacity, (APTR)VECTORPATH_SET_Capacity },
    { "Commands",      FDF_VIRTUAL|FDF_ARRAY|FDF_STRUCT|FDF_R, (MAXINT)"PathCommand", (APTR)VECTORPATH_GET_Commands, NULL },
    END_FIELD
 };

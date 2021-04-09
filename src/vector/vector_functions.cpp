@@ -436,22 +436,22 @@ static ERROR vecGeneratePath(CSTRING Sequence, APTR *Path)
    if (!Path) return ERR_NullArgs;
 
    ERROR error;
-   PathCommand *paths;
-   LONG total;
 
    if (!Sequence) {
       SimpleVector *vector = new_simplevector();
       if (vector) *Path = vector;
       else error = ERR_AllocMemory;
    }
-   else if (!(error = read_path(&paths, &total, Sequence))) {
-      SimpleVector *vector = new_simplevector();
-      if (vector) {
-         convert_to_aggpath(paths, total, &vector->mPath);
-         *Path = vector;
+   else {
+      std::vector<PathCommand> paths;
+      if (!(error = read_path(paths, Sequence))) {
+         SimpleVector *vector = new_simplevector();
+         if (vector) {
+            convert_to_aggpath(paths, &vector->mPath);
+            *Path = vector;
+         }
+         else error = ERR_AllocMemory;
       }
-      else error = ERR_AllocMemory;
-      FreeResource(paths);
    }
 
    return error;

@@ -36,7 +36,7 @@
   <methods>
     <method>
       <name>AddCommand</name>
-      <comment>Add a command to the end of the path sequence.</comment>
+      <comment>Add one or more commands to the end of the path sequence.</comment>
       <prototype>ERROR vpAddCommand(OBJECTPTR Object, struct PathCommand * Commands, LONG Size)</prototype>
       <input>
         <param type="struct PathCommand *" name="Commands">Array of commands to add to the path.</param>
@@ -84,7 +84,7 @@
         <param type="LONG" name="Size">The size of the Command buffer, in bytes.</param>
       </input>
       <description>
-<p>Use SetCommand to copy one or more commands into an existing path.  This method cannot be used to expand the path beyond its <field>Capacity</field>.</p>
+<p>Use SetCommand to copy one or more commands into an existing path.</p>
       </description>
     </method>
 
@@ -98,22 +98,13 @@
       </input>
       <description>
 <p>Use SetCommandList to copy a series of path commands to a VectorPath object.  All existing commands will be cleared as a result of this process.</p>
+<p>NOTE: This method is not compatible with Fluid calls.</p>
       </description>
     </method>
 
   </methods>
 
   <fields>
-    <field>
-      <name>Capacity</name>
-      <comment>The maximum number of commands that can be supported before the internal buffer requires reallocation.</comment>
-      <access read="G" write="S">Get/Set</access>
-      <type>INT</type>
-      <description>
-<p>The maximum number of commands that can be supported before the internal buffer requires reallocation.</p>
-      </description>
-    </field>
-
     <field>
       <name>Commands</name>
       <comment>Direct pointer to the PathCommand array.</comment>
@@ -164,7 +155,7 @@ Z: Close Path
       <access read="G" write="S">Get/Set</access>
       <type>INT</type>
       <description>
-<p>The total number of points defined in the path <field>Sequence</field> is reflected in this field.  Modifying the total directly is permitted if the <field>Commands</field> array is large enough to cover the new value.</p>
+<p>The total number of points defined in the path <field>Sequence</field> is reflected in this field.  Modifying the total directly is permitted, although this should be used for shrinking the list because expansion will create uninitialised command entries.</p>
       </description>
     </field>
 

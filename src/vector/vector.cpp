@@ -129,12 +129,12 @@ static void apply_parent_transforms(objVector *, objVector *, agg::trans_affine 
 static void apply_transforms(VectorTransform *, DOUBLE, DOUBLE, agg::trans_affine &, WORD *);
 static void apply_transition(objVectorTransition *, DOUBLE, agg::trans_affine &);
 static void apply_transition_xy(objVectorTransition *, DOUBLE, DOUBLE *X, DOUBLE *Y);
-static void convert_to_aggpath(PathCommand *Paths, LONG TotalPoints, agg::path_storage *BasePath);
+static void convert_to_aggpath(std::vector<PathCommand> &Paths, agg::path_storage *BasePath);
 static void gen_vector_path(objVector *);
 static GRADIENT_TABLE * get_fill_gradient_table(objVector &, DOUBLE);
 static GRADIENT_TABLE * get_stroke_gradient_table(objVector &);
 static CSTRING read_numseq(CSTRING Value, ...);
-static ERROR read_path(PathCommand **, LONG *, CSTRING);
+static ERROR read_path(std::vector<PathCommand> &, CSTRING);
 static void render_to_surface(objVectorScene *, objSurface *, objBitmap *);
 static ERROR scene_input_events(const InputEvent *, LONG);
 static ERROR vector_input_events(objVector *, const InputEvent *);

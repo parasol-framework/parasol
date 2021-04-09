@@ -52,10 +52,8 @@ typedef struct rkVectorPath {
    SHAPE_PUBLIC
    SHAPE_PRIVATE
 
-   struct PathCommand *Commands;
+   std::vector<PathCommand> Commands;
    agg::path_storage *CustomPath;
-   LONG TotalCommands;
-   LONG Capacity;
 } objVectorPath;
 
 //****************************************************************************
