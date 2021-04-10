@@ -16,18 +16,18 @@ static void generate_rectangle(objVectorRectangle *Vector)
    DOUBLE width = Vector->rWidth, height = Vector->rHeight;
 
    if (Vector->rDimensions & DMF_RELATIVE_WIDTH) {
-      if (Vector->ParentView->vpDimensions & DMF_WIDTH) width *= Vector->ParentView->vpFixedWidth;
-      else if (Vector->ParentView->vpViewWidth > 0) width *= Vector->ParentView->vpViewWidth;
-      else width *= Vector->Scene->PageWidth;
+      DOUBLE parent_width;
+      GetDouble(Vector->ParentView, FID_Width, &parent_width);
+      width *= parent_width;
    }
 
    if (Vector->rDimensions & DMF_RELATIVE_HEIGHT) {
-      if (Vector->ParentView->vpDimensions & DMF_HEIGHT) height *= Vector->ParentView->vpFixedHeight;
-      else if (Vector->ParentView->vpViewHeight > 0) height *= Vector->ParentView->vpViewHeight;
-      else height *= Vector->Scene->PageHeight;
+      DOUBLE parent_height;
+      GetDouble(Vector->ParentView, FID_Height, &parent_height);
+      height *= parent_height;
    }
 
-   if ((Vector->rRoundX) OR (Vector->rRoundY)) {
+   if ((Vector->rRoundX) or (Vector->rRoundY)) {
       agg::rounded_rect aggrect(0, 0, width, height, Vector->rRoundX);
       if (Vector->rRoundX != Vector->rRoundY) aggrect.radius(Vector->rRoundX, Vector->rRoundY);
       aggrect.normalize_radius(); // Required because???
@@ -219,7 +219,7 @@ static ERROR RECTANGLE_GET_RoundX(objVectorRectangle *Self, DOUBLE *Value)
 
 static ERROR RECTANGLE_SET_RoundX(objVectorRectangle *Self, DOUBLE Value)
 {
-   if ((Value < 0) OR (Value > 1000)) return ERR_OutOfRange;
+   if ((Value < 0) or (Value > 1000)) return ERR_OutOfRange;
    Self->rRoundX = Value;
    reset_path(Self);
    return ERR_Okay;
@@ -243,7 +243,7 @@ static ERROR RECTANGLE_GET_RoundY(objVectorRectangle *Self, DOUBLE *Value)
 
 static ERROR RECTANGLE_SET_RoundY(objVectorRectangle *Self, DOUBLE Value)
 {
-   if ((Value < 0) OR (Value > 1000)) return ERR_OutOfRange;
+   if ((Value < 0) or (Value > 1000)) return ERR_OutOfRange;
    Self->rRoundY = Value;
    reset_path(Self);
    return ERR_Okay;
