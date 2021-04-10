@@ -259,7 +259,31 @@ static ERROR VIEW_GET_Height(objVectorViewport *Self, Variable *Value)
    else if (Self->vpDimensions & DMF_RELATIVE_HEIGHT) { // Working with a relative dimension
       if (Value->Type & FD_PERCENTAGE) val = Self->vpTargetHeight;
       else if (Self->ParentView) val = Self->vpTargetHeight * Self->ParentView->vpFixedHeight;
-      else { val = Self->vpTargetHeight * Self->Scene->PageHeight;  }
+      else val = Self->vpTargetHeight * Self->Scene->PageHeight;
+   }
+   else if (Self->vpDimensions & DMF_FIXED_Y_OFFSET) {
+      DOUBLE y, parent_height;
+      if (Self->vpDimensions & DMF_RELATIVE_Y) {
+         y = (DOUBLE)Self->vpTargetY * (DOUBLE)Self->ParentView->vpFixedHeight * 0.01;
+      }
+      else y = Self->vpTargetY;
+
+      if (Self->ParentView) GetDouble(Self->ParentView, FID_Height, &parent_height);
+      else parent_height = Self->Scene->PageHeight;
+
+      val = parent_height - Self->vpTargetYO - y;
+   }
+   else if (Self->vpDimensions & DMF_RELATIVE_Y_OFFSET) {
+      DOUBLE y, parent_height;
+      if (Self->vpDimensions & DMF_RELATIVE_Y) {
+         y = (DOUBLE)Self->vpTargetY * (DOUBLE)Self->ParentView->vpFixedHeight * 0.01;
+      }
+      else y = Self->vpTargetY;
+
+      if (Self->ParentView) GetDouble(Self->ParentView, FID_Height, &parent_height);
+      else parent_height = Self->Scene->PageHeight;
+
+      val = parent_height - (Self->vpTargetYO * parent_height * 0.01) - y;
    }
    else { // If no height set by the client, the full height is inherited from the parent
       if (Self->ParentView) return GetVariable(Self->ParentView, FID_Height, Value);
@@ -408,6 +432,30 @@ static ERROR VIEW_GET_Width(objVectorViewport *Self, Variable *Value)
       if (Value->Type & FD_PERCENTAGE) val = Self->vpTargetWidth;
       else if (Self->ParentView) val = Self->vpTargetWidth * Self->ParentView->vpFixedWidth;
       else val = Self->vpTargetWidth * Self->Scene->PageWidth;
+   }
+   else if (Self->vpDimensions & DMF_FIXED_X_OFFSET) {
+      DOUBLE x, parent_width;
+      if (Self->vpDimensions & DMF_RELATIVE_X) {
+         x = (DOUBLE)Self->vpTargetX * (DOUBLE)Self->ParentView->vpFixedWidth * 0.01;
+      }
+      else x = Self->vpTargetX;
+
+      if (Self->ParentView) GetDouble(Self->ParentView, FID_Width, &parent_width);
+      else parent_width = Self->Scene->PageWidth;
+
+      val = parent_width - Self->vpTargetXO - x;
+   }
+   else if (Self->vpDimensions & DMF_RELATIVE_X_OFFSET) {
+      DOUBLE x, parent_width;
+      if (Self->vpDimensions & DMF_RELATIVE_X) {
+         x = (DOUBLE)Self->vpTargetX * (DOUBLE)Self->ParentView->vpFixedWidth * 0.01;
+      }
+      else x = Self->vpTargetX;
+
+      if (Self->ParentView) GetDouble(Self->ParentView, FID_Width, &parent_width);
+      else parent_width = Self->Scene->PageWidth;
+
+      val = parent_width - (Self->vpTargetXO * parent_width * 0.01) - x;
    }
    else { // If no width set by the client, the full width is inherited from the parent
       if (Self->ParentView) return GetVariable(Self->ParentView, FID_Width, Value);
