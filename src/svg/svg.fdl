@@ -1,6 +1,6 @@
 --$FLUID:Include
 
-module({ name="SVG", copyright="Paul Manias © 2010-2020", version=1.0 }, function()
+module({ name="SVG", copyright="Paul Manias © 2010-2021", version=1.0 }, function()
   flags("SVF", { comment="SVG flags." },
     "AUTOSCALE: In auto-resize mode, vector dimensions are scaled to the width and height of the vector page.  PageWidth and PageHeight must be set in Vector for this.",
     "ALPHA: Generate an alpha channel in the rendered image.")
@@ -28,10 +28,5 @@ module({ name="SVG", copyright="Paul Manias © 2010-2020", version=1.0 }, functi
    TIMER AnimationTimer;
    UBYTE Animated:1;
    UBYTE PreserveWS:1; // Preserve white-space
-  ]])
-
-  class("SVGImage", { src="class_svgimage.cpp", output="class_svgimage_def.c" }, [[
-    obj(SVG) SVG       # The SVG rendering object.
-    obj(Layout) Layout # Layout control
   ]])
 end)

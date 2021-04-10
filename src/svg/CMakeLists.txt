@@ -4,7 +4,7 @@ set (MOD svg)
 
 idl_c ("${MOD}.fdl" NAME ${MOD}_defs
    OUTPUT "${INCLUDE_OUTPUT}/modules/${MOD}.h"
-   ARGS "--files={" "class_rsvg.cpp" "class_svg.cpp" "class_svgimage.cpp" "}")
+   ARGS "--files={" "class_rsvg.cpp" "class_svg.cpp" "}")
 
 idl_def ("${MOD}.fdl" NAME ${MOD}_idl
    OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/${MOD}_def.c")

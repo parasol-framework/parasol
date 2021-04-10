@@ -2,7 +2,7 @@
 #define MODULES_SVG 1
 
 // Name:      svg.h
-// Copyright: Paul Manias © 2010-2020
+// Copyright: Paul Manias © 2010-2021
 // Generator: idl-c
 
 #ifndef MAIN_H
@@ -55,15 +55,5 @@ INLINE ERROR svgRender(APTR Ob, struct rkBitmap * Bitmap, LONG X, LONG Y, LONG W
    return(Action(MT_SvgRender, (OBJECTPTR)Ob, &args));
 }
 
-
-// SVGImage class definition
-
-#define VER_SVGIMAGE (1.000000)
-
-typedef struct rkSVGImage {
-   OBJECT_HEADER
-   struct rkSVG * SVG;          // The SVG rendering object.
-   struct rkLayout * Layout;    // Layout control
-} objSVGImage;
 
 #endif

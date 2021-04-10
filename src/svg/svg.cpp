@@ -24,7 +24,7 @@ MODULE_COREBASE;
 static struct DisplayBase *DisplayBase;
 static struct SurfaceBase *SurfaceBase;
 static struct VectorBase *VectorBase;
-static OBJECTPTR clSVG = NULL, clSVGImage = NULL, clRSVG = NULL, modDisplay = NULL, modSurface = NULL, modVector = NULL;
+static OBJECTPTR clSVG = NULL, clRSVG = NULL, modDisplay = NULL, modSurface = NULL, modVector = NULL;
 
 struct prvSVG {
    OBJECTPTR SVG;
@@ -58,7 +58,6 @@ typedef struct svgState {
 //****************************************************************************
 
 static ERROR init_svg(void);
-static ERROR init_svgimage(void);
 static ERROR init_rsvg(void);
 static ERROR animation_timer(objSVG *, LARGE, LARGE);
 static void  convert_styles(objXML *);
@@ -98,7 +97,6 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    if (LoadModule("vector", MODVERSION_VECTOR, &modVector, &VectorBase) != ERR_Okay) return ERR_InitModule;
 
    if (init_svg()) return ERR_AddClass;
-   if (init_svgimage()) return ERR_AddClass;
    if (init_rsvg()) return ERR_AddClass;
    return ERR_Okay;
 }
@@ -110,7 +108,6 @@ ERROR CMDExpunge(void)
    if (modVector)  { acFree(modVector);  modVector = NULL; }
 
    if (clSVG)      { acFree(clSVG);      clSVG = NULL; }
-   if (clSVGImage) { acFree(clSVGImage); clSVGImage = NULL; }
    if (clRSVG)     { acFree(clRSVG);     clRSVG = NULL; }
    return ERR_Okay;
 }
@@ -118,7 +115,6 @@ ERROR CMDExpunge(void)
 //****************************************************************************
 
 #include "class_svg.cpp"
-#include "class_svgimage.cpp"
 #include "class_rsvg.cpp"
 
 //****************************************************************************

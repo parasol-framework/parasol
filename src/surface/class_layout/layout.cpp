@@ -3,20 +3,12 @@
 -CLASS-
 Layout: Manages the layout of objects that support graphics.
 
-The Layout class is provided as an extension for a generic, standardised system of graphics management for all objects.
-It extends the features of other existing classes only - i.e. it is not provided for high level, independent use.
-
-The Layout class supports a large number of features and it is not expected that a class will make use of all them.
-Certain fields and features exist for exotic and rare occasions only.  As a developer, do not not feel pressured to
-support all of the extensions provided by the Layout class.
+The Layout class provides a generic, standardised system of graphics management for all objects.
+It should be used to extend the features of other classes only and is not for use in client programs.
 
 -END-
 
-Each task is allocated one layout object.  The layout object acts as a layout management interface for all objects that
-want to use the Parasol Surface GUI.
-
-Other Layout classes can be used as a drop-in replacement for this default class
-- e.g. the DocLayout class.
+NOTE: This class is likely to become deprecated once the remaining widgets that use it are rewritten.
 
 *****************************************************************************/
 
@@ -133,7 +125,7 @@ static ERROR LAYOUT_ActionNotify(objLayout *Self, struct acActionNotify *Args)
    else if (Args->ActionID IS AC_Redimension) {
       auto resize = (struct acRedimension *)Args->Args;
 
-      // PLEASE NOTE: If the layout is part of a document, then the page surface is monitored as that
+      // PLEASE NOTE: If the layout is part of a document then the page surface is monitored as that
       // contains the true width/height of the page as opposed to the containing surface.
 
       if (resize->Depth) Self->BitsPerPixel = resize->Depth;
