@@ -614,7 +614,8 @@ a font that has been loaded by the FreeType library (FT_Face).
 
 static ERROR GET_FreeTypeFace(objFont *Self, APTR *Handle)
 {
-   *Handle = Self->Cache->Face;
+   if (Self->Cache) *Handle = Self->Cache->Face;
+   else *Handle = NULL;
    return ERR_Okay;
 }
 
