@@ -126,6 +126,7 @@ static ERROR VECTOR_Disable(objVector *Self, APTR Void)
    // It is up to the client to subscribe to the Disable action if any activity needs to take place.
    return ERR_Okay;
 }
+
 /*****************************************************************************
 -ACTION-
 Draw: Draws the surface associated with the vector.

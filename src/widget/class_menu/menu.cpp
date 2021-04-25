@@ -1340,7 +1340,7 @@ Parent: If this is a sub-menu, this field refers to the parent.
 This field will refer to the parent menu if the object was generated as a sub-menu.
 
 -FIELD-
-Relative: The primary surface to which the menu relates.
+Relative: The primary surface or viewport to which the menu relates.
 
 The Relative field should refer to a foreign surface to which the menu relates.  It is normally used to refer to an
 application window so that the menu can be correctly offset at all times, as well as ensuring that the user focus
