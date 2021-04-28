@@ -167,7 +167,7 @@ class Log { // C++ wrapper for Parasol's log functionality
          branches++;
       }
       #else
-      void traceBranch(CSTRING Message, ...) __attribute__((format(printf, 2, 3))) { }
+      void traceBranch(CSTRING Message = "", ...) __attribute__((format(printf, 2, 3))) { }
       #endif
 
       void debranch() {
