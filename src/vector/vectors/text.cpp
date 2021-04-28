@@ -18,6 +18,9 @@ following extract illustrates the SVG equivalent of this feature:
 
 -END-
 
+TODO: decompose_ft_outline() should cache the generated paths
+      ShapeInside and ShapeSubtract require implementation
+
 *****************************************************************************/
 
 /*
@@ -535,6 +538,30 @@ static ERROR TEXT_SET_FontSize(objVectorText *Self, CSTRING Value)
 
 /*****************************************************************************
 -FIELD-
+InlineSize: Enables word-wrapping at a fixed area size.
+
+The inline-size property allows one to set the wrapping area to a rectangular shape. The computed value of the
+property sets the width of the rectangle for horizontal text and the height of the rectangle for vertical text.
+The other dimension (height for horizontal text, width for vertical text) is of infinite length. A value of zero
+(the default) disables the creation of a wrapping area.
+-END-
+*****************************************************************************/
+
+static ERROR TEXT_GET_InlineSize(objVectorText *Self, DOUBLE *Value)
+{
+   *Value = Self->txInlineSize;
+   return ERR_Okay;
+}
+
+static ERROR TEXT_SET_InlineSize(objVectorText *Self, DOUBLE Value)
+{
+   Self->txInlineSize = Value;
+   reset_path((objVector *)Self);
+   return ERR_Okay;
+}
+
+/*****************************************************************************
+-FIELD-
 LineLimit: Restricts the total number of lines allowed in a text object.
 
 Set the LineLimit field to restrict the maximum number of lines permitted in a text object.  It is common to set this
@@ -729,6 +756,52 @@ static ERROR TEXT_SET_Rotate(objVectorText *Self, DOUBLE *Values, LONG Elements)
 
 /*****************************************************************************
 -FIELD-
+ShapeInside: Reference a vector shape to define a content area that enables word-wrapping.
+
+This property enables word-wrapping in which the text will conform to the path of a @Vector shape.  Internally this is
+achieved by rendering the vector path as a mask and then fitting the text within the mask without crossing its
+boundaries.
+
+This feature is computationally expensive and the use of #InlineSize is preferred if the text can be wrapped to
+a rectangular area.
+-END-
+*****************************************************************************/
+
+static ERROR TEXT_GET_ShapeInside(objVectorText *Self, OBJECTID *Value)
+{
+   *Value = Self->txShapeInsideID;
+   return ERR_Okay;
+}
+
+static ERROR TEXT_SET_ShapeInside(objVectorText *Self, OBJECTID Value)
+{
+   Self->txShapeInsideID = Value;
+   return ERR_Okay;
+}
+
+/*****************************************************************************
+-FIELD-
+ShapeSubtract: Excludes a portion of the content area from the wrapping area.
+
+This property can be used in conjunction with #ShapeInside to further restrict the content area that is available
+for word-wrapping.  It has no effect if #ShapeInside is undefined.
+-END-
+*****************************************************************************/
+
+static ERROR TEXT_GET_ShapeSubtract(objVectorText *Self, OBJECTID *Value)
+{
+   *Value = Self->txShapeSubtractID;
+   return ERR_Okay;
+}
+
+static ERROR TEXT_SET_ShapeSubtract(objVectorText *Self, OBJECTID Value)
+{
+   Self->txShapeSubtractID = Value;
+   return ERR_Okay;
+}
+
+/*****************************************************************************
+-FIELD-
 String: The string to use for drawing the glyphs is defined here.
 
 The string for drawing the glyphs is defined here in UTF-8 format.
@@ -890,14 +963,14 @@ static void generate_text(objVectorText *Vector)
       }
    }
 
-   // The scale_char transform is applied to each character to ensure that it is scaled to the path correctly.
-
-   // Upscaling is used to get the Freetype engine to generate accurate vertices and advance coordinates.
-   // There is a limit to the upscale value.  100 seems to be reasonable; anything 1000+ results in issues.
+   // Upscaling is used to get the Freetype engine to generate accurate vertices and advance coordinates, which is
+   // important if the characters are being transformed.  There is a limit to the upscale value.  100 seems to be
+   // reasonable; anything 1000+ results in issues.
 
    DOUBLE upscale = 1;
    if ((Vector->Transition) or (morph)) upscale = 100;
 
+   // The scale_char transform is applied to each character to ensure that it is scaled to the path correctly.
    // The '3/4' conversion makes sense if you refer to read_unit() and understand that a point is 3/4 of a pixel.
 
    agg::trans_affine scale_char;
@@ -924,40 +997,40 @@ static void generate_text(objVectorText *Vector)
    LONG current_row = 0;
    DOUBLE dist = 0; // Distance to next vertex
    DOUBLE angle = 0;
-   DOUBLE dx = 0, dy = 0; // Text coordinate tracking from (0,0), not transformed
-   for (auto &line : Vector->txLines) {
-      LONG current_col = 0;
-      line.chars.clear();
-      for (auto str=line.c_str(); *str; ) {
-         if (*str IS '\t') { str++; continue; }
 
-         LONG charlen;
-         LONG unicode = UTF8ReadValue(str, &charlen);
-         str += charlen;
+   if (morph) {
+      for (auto &line : Vector->txLines) {
+         LONG current_col = 0;
+         line.chars.clear();
+         for (auto str=line.c_str(); *str; ) {
+            if (*str IS '\t') { str++; continue; }
 
-         if (!unicode) continue;
-         char_index++;
+            LONG charlen;
+            LONG unicode = UTF8ReadValue(str, &charlen);
+            str += charlen;
 
-         agg::trans_affine transform(scale_char); // The initial transform scales the char to the path.
+            if (!unicode) continue;
+            char_index++;
 
-         if (Vector->Transition) { // Apply any special transitions early.
-            apply_transition(Vector->Transition, DOUBLE(char_index) / DOUBLE(str_length), transform);
-         }
+            agg::trans_affine transform(scale_char); // The initial transform scales the char to the path.
 
-         LONG glyph = EFT_Get_Char_Index(ftface, unicode);
+            if (Vector->Transition) { // Apply any special transitions early.
+               apply_transition(Vector->Transition, DOUBLE(char_index) / DOUBLE(str_length), transform);
+            }
 
-         if (!EFT_Load_Glyph(ftface, glyph, FT_LOAD_LINEAR_DESIGN)) {
-            char_path.free_all();
-            if (!decompose_ft_outline(ftface->glyph->outline, true, char_path)) {
-               DOUBLE kx, ky;
-               get_kerning_xy(ftface, glyph, prevglyph, &kx, &ky);
+            LONG glyph = EFT_Get_Char_Index(ftface, unicode);
 
-               DOUBLE char_width = int26p6_to_dbl(ftface->glyph->advance.x) + kx;
+            if (!EFT_Load_Glyph(ftface, glyph, FT_LOAD_LINEAR_DESIGN)) {
+               char_path.free_all();
+               if (!decompose_ft_outline(ftface->glyph->outline, true, char_path)) {
+                  DOUBLE kx, ky;
+                  get_kerning_xy(ftface, glyph, prevglyph, &kx, &ky);
 
-               char_width = char_width * ABS(transform.sx);
-               //char_width = char_width * transform.scale();
+                  DOUBLE char_width = int26p6_to_dbl(ftface->glyph->advance.x) + kx;
 
-               if (morph) {
+                  char_width = char_width * ABS(transform.sx);
+                  //char_width = char_width * transform.scale();
+
                   // Compute end_vx,end_vy (the last vertex to use for angle computation) and store the distance from start_x,start_y to end_vx,end_vy in dist.
                   if (char_width > dist) {
                      while (cmd != agg::path_cmd_stop) {
@@ -1006,13 +1079,67 @@ static void generate_text(objVectorText *Vector)
                      agg::conv_transform<agg::path_storage, agg::trans_affine> trans_char(char_path, transform);
                      Vector->BasePath->concat_path(trans_char);
                   }
+
+                  //dx += char_width;
+                  //dy += int26p6_to_dbl(ftface->glyph->advance.y) + ky;
                }
-               else {
+               else log.trace("Failed to get outline of character.");
+            }
+            prevglyph = glyph;
+            current_col++;
+         }
+
+         current_row++;
+      }
+      Vector->txWidth = start_x;
+   }
+   else {
+      DOUBLE dx = 0, dy = 0; // Text coordinate tracking from (0,0), not transformed
+      for (auto &line : Vector->txLines) {
+         LONG current_col = 0;
+         line.chars.clear();
+         for (auto str=line.c_str(); *str; ) {
+            if (*str IS '\t') { str++; continue; }
+
+            LONG charlen;
+            LONG unicode = UTF8ReadValue(str, &charlen);
+            str += charlen;
+
+            if (!unicode) continue;
+            char_index++;
+
+            agg::trans_affine transform(scale_char); // The initial transform scales the char to the path.
+
+            if (Vector->Transition) { // Apply any special transitions early.
+               apply_transition(Vector->Transition, DOUBLE(char_index) / DOUBLE(str_length), transform);
+            }
+
+            LONG glyph = EFT_Get_Char_Index(ftface, unicode);
+
+            if (!EFT_Load_Glyph(ftface, glyph, FT_LOAD_LINEAR_DESIGN)) {
+               char_path.free_all();
+               if (!decompose_ft_outline(ftface->glyph->outline, true, char_path)) {
+                  DOUBLE kx, ky;
+                  get_kerning_xy(ftface, glyph, prevglyph, &kx, &ky);
+
+                  DOUBLE char_width = int26p6_to_dbl(ftface->glyph->advance.x) + kx;
+
+                  char_width = char_width * ABS(transform.sx);
+                  //char_width = char_width * transform.scale();
+
+                  if ((Vector->txInlineSize) and (dx > 0) and (dx + char_width >= Vector->txInlineSize)) {
+                     dx = 0;
+                     dy += Vector->txFont->LineSpacing;
+                  }
+
                   transform.translate(dx, dy);
                   agg::conv_transform<agg::path_storage, agg::trans_affine> trans_char(char_path, transform);
                   Vector->BasePath->concat_path(trans_char);
 
                   if (Vector->txCursor.vector) {
+                     // Calculate the cursor line that would be displayed at this character position and save it to the
+                     // line's chars array.
+
                      agg::path_storage cursor_path;
                      cursor_path.move_to(0, 0 + (point_size * 0.1));
                      cursor_path.line_to(0, -(point_size * path_scale) - (point_size * 0.2));
@@ -1023,11 +1150,7 @@ static void generate_text(objVectorText *Vector)
                      trans_cursor.vertex(&cx2, &cy2);
                      line.chars.emplace_back(cx1, cy1, cx2, cy2);
 
-                     //if (Vector->txFlags & VTXF_EDITABLE) {
-                     //   log.warning("DX/Y: %.2fx%.2f; CX/Y: %.2fx%.2f, Char: %.2f", dx, dy, cx1, cy1, char_width);
-                     //}
-
-                     if (!*str) {
+                     if (!*str) { // Last character reached, add a final cursor entry past the character position.
                         transform.translate(char_width, 0);
 
                         agg::path_storage cursor_path;
@@ -1041,21 +1164,21 @@ static void generate_text(objVectorText *Vector)
                         line.chars.emplace_back(cx1, cy1, cx2, cy2);
                      }
                   }
-               }
 
-               dx += char_width;
-               dy += int26p6_to_dbl(ftface->glyph->advance.y) + ky;
+                  dx += char_width;
+                  dy += int26p6_to_dbl(ftface->glyph->advance.y) + ky;
+               }
+               else log.trace("Failed to get outline of character.");
             }
-            else log.trace("Failed to get outline of character.");
+            prevglyph = glyph;
+            current_col++;
          }
-         prevglyph = glyph;
-         current_col++;
+
+         current_row++;
       }
 
-      current_row++;
+      Vector->txWidth = dx;
    }
-
-   Vector->txWidth = dx;
 
    if (Vector->txCursor.vector) {
       Vector->txCursor.resetVector(Vector);
@@ -1265,15 +1388,17 @@ static void reset_font(objVectorText *Vector)
       // use of the Font object is really as a place-holder to take advantage of the Parasol font cache.
 
       if (Vector->txFamily) {
-         CSTRING location;
          char family[120];
          UWORD i = StrCopy(Vector->txFamily, family, sizeof(family));
          StrCopy(",Open Sans", family+i, sizeof(family)-i);
+
          CSTRING weight = "Regular";
          if (Vector->txWeight >= 700) weight = "Extra Bold";
          else if (Vector->txWeight >= 500) weight = "Bold";
          else if (Vector->txWeight <= 200) weight = "Extra Light";
          else if (Vector->txWeight <= 300) weight = "Light";
+
+         CSTRING location;
          if (!fntSelectFont(family, weight, Vector->txFontSize, FTF_PREFER_SCALED, &location)) {
             SetString(font, FID_Path, location);
             FreeResource(location);
@@ -1719,8 +1844,11 @@ static const FieldArray clTextFields[] = {
    { "FontSize",      FDF_VIRTUAL|FDF_ALLOC|FDF_STRING|FDF_RW, 0, (APTR)TEXT_GET_FontSize, (APTR)TEXT_SET_FontSize },
    { "DX",            FDF_VIRTUAL|FDF_ARRAY|FDF_DOUBLE|FDF_RW, 0, (APTR)TEXT_GET_DX, (APTR)TEXT_SET_DX },
    { "DY",            FDF_VIRTUAL|FDF_ARRAY|FDF_DOUBLE|FDF_RW, 0, (APTR)TEXT_GET_DY, (APTR)TEXT_SET_DY },
+   { "InlineSize",    FDF_VIRTUAL|FDF_DOUBLE|FDF_RW,           0, (APTR)TEXT_GET_InlineSize, (APTR)TEXT_SET_InlineSize },
    { "LetterSpacing", FDF_VIRTUAL|FDF_DOUBLE|FDF_RW,           0, (APTR)TEXT_GET_LetterSpacing, (APTR)TEXT_SET_LetterSpacing },
    { "Rotate",        FDF_VIRTUAL|FDF_ARRAY|FDF_DOUBLE|FDF_RW, 0, (APTR)TEXT_GET_Rotate, (APTR)TEXT_SET_Rotate },
+   { "ShapeInside",   FDF_VIRTUAL|FDF_OBJECTID|FDF_RW,         ID_VECTOR, (APTR)TEXT_GET_ShapeInside, (APTR)TEXT_SET_ShapeInside },
+   { "ShapeSubtract", FDF_VIRTUAL|FDF_OBJECTID|FDF_RW,         ID_VECTOR, (APTR)TEXT_GET_ShapeSubtract, (APTR)TEXT_SET_ShapeSubtract },
    { "TextLength",    FDF_VIRTUAL|FDF_DOUBLE|FDF_RW,           0, (APTR)TEXT_GET_TextLength, (APTR)TEXT_SET_TextLength },
    { "TextFlags",     FDF_VIRTUAL|FDF_LONGFLAGS|FDF_RW,        (MAXINT)&clTextFlags, (APTR)TEXT_GET_Flags, (APTR)TEXT_SET_Flags },
    { "StartOffset",   FDF_VIRTUAL|FDF_DOUBLE|FDF_RW,           0, (APTR)TEXT_GET_StartOffset, (APTR)TEXT_SET_StartOffset },

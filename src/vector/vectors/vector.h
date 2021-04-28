@@ -179,6 +179,7 @@ typedef struct rkVectorText {
 
    SHAPE_PRIVATE
    FUNCTION txValidateInput;
+   DOUBLE txInlineSize; // Enables word-wrapping
    DOUBLE txX, txY;
    DOUBLE txTextLength;
    DOUBLE txFontSize;  // Font size measured in pixels.  Multiply by 3/4 to convert to point size.
@@ -196,6 +197,8 @@ typedef struct rkVectorText {
    CSTRING txFamily;
    APTR    txKeyEvent;
    OBJECTID txFocusID;
+   OBJECTID txShapeInsideID;   // Enable word-wrapping within this shape
+   OBJECTID txShapeSubtractID; // Subtract this shape from the path defined by shape-inside
    LONG  txTotalLines;
    LONG  txLineLimit, txCharLimit;
    LONG  txTotalRotate, txTotalDX, txTotalDY;
