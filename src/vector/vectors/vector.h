@@ -150,6 +150,11 @@ public:
 
 class TextLine : public std::string {
 public:
+   TextLine() : std::string { } { }
+   TextLine(const char *Value) : std::string{ Value } { }
+   TextLine(const char *Value, int Total) : std::string{ Value, Total } { }
+   TextLine(std::string Value) : std::string{ Value } { }
+
    std::vector<CharPos> chars;
 
    LONG charLength(ULONG Offset = 0) { // Total number of bytes used by the char at Offset
