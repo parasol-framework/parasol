@@ -39,6 +39,8 @@ where large glyphs were oriented around sharp corners.  The process would look s
 #include "agg_gsv_text.h"
 #include "agg_path_length.h"
 
+#define DEFAULT_WEIGHT 400
+
 static void add_line(objVectorText *, std::string, LONG Offset, LONG Length, LONG Line = -1);
 static ERROR cursor_timer(objVectorText *, LARGE, LARGE);
 static ERROR decompose_ft_outline(const FT_Outline &, bool, agg::path_storage &);
@@ -221,9 +223,10 @@ static ERROR VECTORTEXT_NewObject(objVectorText *Self, APTR Void)
    new(&Self->txLines) std::vector<TextLine>;
    new(&Self->txCursor) TextCursor;
 
+   StrCopy("Regular", Self->txFontStyle, sizeof(Self->txFontStyle));
    Self->GeneratePath = (void (*)(rkVector *))&generate_text;
    Self->StrokeWidth  = 0.0;
-   Self->txWeight     = 400;
+   Self->txWeight     = DEFAULT_WEIGHT;
    Self->txFontSize   = 10 * 4.0 / 3.0;
    Self->txCharLimit  = 0x7fffffff;
    Self->txFamily     = StrClone("Open Sans");
@@ -534,6 +537,29 @@ static ERROR TEXT_SET_FontSize(objVectorText *Self, CSTRING Value)
       return ERR_Okay;
    }
    else return ERR_OutOfRange;
+}
+
+/*****************************************************************************
+-FIELD-
+FontStyle: Determines font styling.
+
+Unique styles for a font can be selected through the FontStyle field.  Conventional font styles are `Bold`,
+`Bold Italic`, `Italic` and `Regular` (the default).  TrueType fonts can use any style name that the designer
+chooses, such as `Narrow` or `Wide`, so use ~Font.GetList() for a definitive list of available style names.
+
+*****************************************************************************/
+
+static ERROR TEXT_GET_FontStyle(objVectorText *Self, CSTRING *Value)
+{
+   *Value = Self->txFontStyle;
+   return ERR_Okay;
+}
+
+static ERROR TEXT_SET_FontStyle(objVectorText *Self, CSTRING Value)
+{
+   if ((!Value) or (!Value[0])) StrCopy("Regular", Self->txFontStyle, sizeof(Self->txFontStyle));
+   else StrCopy(Value, Self->txFontStyle, sizeof(Self->txFontStyle));
+   return ERR_Okay;
 }
 
 /*****************************************************************************
@@ -882,6 +908,8 @@ Weight: Defines the level of boldness in the text.
 The weight value determines the level of boldness in the text.  A default value of 400 will render the text in its
 normal state.  Lower values between 100 to 300 render the text in a light format, while high values in the range of
 400 - 900 result in boldness.
+
+Please note that setting the Weight will give it priority over the @FontStyle value.
 -END-
 *****************************************************************************/
 
@@ -1379,7 +1407,7 @@ static void reset_font(objVectorText *Vector)
    if (!(Vector->Head.Flags & NF_INITIALISED)) return;
 
    parasol::Log log(__FUNCTION__);
-   log.branch();
+   log.branch("Style: %s, Weight: %d", Vector->txFontStyle, Vector->txWeight);
    parasol::SwitchContext context(Vector);
 
    objFont *font;
@@ -1388,18 +1416,26 @@ static void reset_font(objVectorText *Vector)
       // use of the Font object is really as a place-holder to take advantage of the Parasol font cache.
 
       if (Vector->txFamily) {
-         char family[120];
-         UWORD i = StrCopy(Vector->txFamily, family, sizeof(family));
-         StrCopy(",Open Sans", family+i, sizeof(family)-i);
+         std::string family(Vector->txFamily);
+         family.append(",Open Sans");
 
-         CSTRING weight = "Regular";
-         if (Vector->txWeight >= 700) weight = "Extra Bold";
-         else if (Vector->txWeight >= 500) weight = "Bold";
-         else if (Vector->txWeight <= 200) weight = "Extra Light";
-         else if (Vector->txWeight <= 300) weight = "Light";
+         std::string style(Vector->txFontStyle);
+
+         if (Vector->txWeight != DEFAULT_WEIGHT) {
+            style = "Regular";
+            if (Vector->txWeight >= 700) style = "Extra Bold";
+            else if (Vector->txWeight >= 500) style = "Bold";
+            else if (Vector->txWeight <= 200) style = "Extra Light";
+            else if (Vector->txWeight <= 300) style = "Light";
+
+            if (!StrMatch("Italic", Vector->txFontStyle)) {
+               if (style IS "Regular") style = "Italic";
+               else style.append(" Italic");
+            }
+         }
 
          CSTRING location;
-         if (!fntSelectFont(family, weight, Vector->txFontSize, FTF_PREFER_SCALED, &location)) {
+         if (!fntSelectFont(family.c_str(), style.c_str(), Vector->txFontSize, FTF_PREFER_SCALED, &location)) {
             SetString(font, FID_Path, location);
             FreeResource(location);
          }
@@ -1842,6 +1878,7 @@ static const FieldArray clTextFields[] = {
    { "Align",         FDF_VIRTUAL|FDF_LONGFLAGS|FDF_RW,        (MAXINT)&clTextAlign, (APTR)TEXT_GET_Align, (APTR)TEXT_SET_Align },
    { "Face",          FDF_VIRTUAL|FDF_STRING|FDF_RW,           0, (APTR)TEXT_GET_Face, (APTR)TEXT_SET_Face },
    { "FontSize",      FDF_VIRTUAL|FDF_ALLOC|FDF_STRING|FDF_RW, 0, (APTR)TEXT_GET_FontSize, (APTR)TEXT_SET_FontSize },
+   { "FontStyle",     FDF_VIRTUAL|FDF_STRING|FDF_RI,           0, (APTR)TEXT_GET_FontStyle, (APTR)TEXT_SET_FontStyle },
    { "DX",            FDF_VIRTUAL|FDF_ARRAY|FDF_DOUBLE|FDF_RW, 0, (APTR)TEXT_GET_DX, (APTR)TEXT_SET_DX },
    { "DY",            FDF_VIRTUAL|FDF_ARRAY|FDF_DOUBLE|FDF_RW, 0, (APTR)TEXT_GET_DY, (APTR)TEXT_SET_DY },
    { "InlineSize",    FDF_VIRTUAL|FDF_DOUBLE|FDF_RW,           0, (APTR)TEXT_GET_InlineSize, (APTR)TEXT_SET_InlineSize },

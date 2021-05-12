@@ -362,7 +362,7 @@ This function returns a linked list of all available system fonts.
 -ERRORS-
 Okay
 NullArgs
-AccessObject: The SystemFonts object could not be accessed.
+AccessObject: Font configuration information could not be accessed.
 
 *****************************************************************************/
 
@@ -861,7 +861,6 @@ cstr Files: A list of the font files that are to be installed must be specified 
 
 -ERRORS-
 Okay: The font information was successfully installed.
-ExclusiveDenied: Access to the SystemFonts object was denied.
 NullArgs:
 NoSupport: One of the font files is in an unsupported file format.
 
@@ -1218,7 +1217,7 @@ when the InstallFont() and RemoveFont() methods are used correctly, however it c
 manually deleted or added to the system.
 
 Refreshing fonts can take an extensive amount of time as each font file needs to be completely analysed for information.
-Once the analysis is complete, the "SystemFonts" object will be updated and the "fonts.cfg" file will reflect current
+Once the analysis is complete, the `cfgSystemFonts` object will be updated and the `fonts:fonts.cfg` file will reflect current
 font settings.
 
 -ERRORS-

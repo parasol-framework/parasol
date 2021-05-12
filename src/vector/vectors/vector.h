@@ -210,6 +210,7 @@ typedef struct rkVectorText {
    LONG  txWeight; // 100 - 300 (Light), 400 (Normal), 700 (Bold), 900 (Boldest)
    LONG  txAlignFlags;
    LONG  txFlags; // VTF flags
+   char  txFontStyle[20];
    UBYTE txRelativeFontSize;
    bool txXRelative:1;
    bool txYRelative:1;

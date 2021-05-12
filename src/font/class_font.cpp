@@ -157,8 +157,6 @@ static ERROR FONT_Init(objFont *Self, APTR Void)
 
    if (!Self->Point) Self->Point = global_point_size();
 
-   // Search the SystemFonts object to gather initial information about this face
-
    if (!Self->Path) {
       CSTRING path;
       if (!fntSelectFont(Self->prvFace, Self->prvStyle, Self->Point, Self->Flags & (FTF_PREFER_SCALED|FTF_PREFER_FIXED|FTF_ALLOW_SCALE), &path)) {
@@ -796,7 +794,7 @@ exact number of dots will depend on the printer device and final DPI).
 The Point field also supports proportional sizing based on the default value set by the system or user.  For instance
 if a Point value of 150% is specified and the default font size is 10, the final point size for the font will be 15.
 This feature is very important in order to support multiple devices at varying DPI's - i.e. mobile devices.  You can
-change the global point size for your application by calling SetDefaultSize() in the Font module.
+change the global point size for your application by calling ~Font.SetDefaultSize() in the Font module.
 
 When setting the point size of a bitmap font, the system will try and find the closest matching value for the requested
 point size.  For instance, if you request a fixed font at point 11 and the closest size is point 8, the system will
@@ -914,9 +912,9 @@ face will be used on initialisation.
 Bitmap fonts are a special case if a bold or italic style is selected.  In this situation the system can automatically
 convert the font to that style even if the correct graphics set does not exist.
 
-Typical font styles are "Bold", "Bold Italic", "Italic" and "Regular" (the default).  TrueType fonts can consist of any
-style that the designer chooses, such as "Narrow" or "Wide", so check the SystemFonts object if you need to analyse
-available styles.
+Conventional font styles are `Bold`, `Bold Italic`, `Italic` and `Regular` (the default).  TrueType fonts can consist
+of any style that the designer chooses, such as `Narrow` or `Wide`, so use ~Font.GetList() to retrieve available style
+names.
 
 *****************************************************************************/
 
@@ -1024,7 +1022,7 @@ static ERROR GET_Width(objFont *Self, LONG *Value)
 WrapCallback: The routine defined here will be called when the wordwrap boundary is encountered.
 
 Customisation of a font's word-wrap behaviour can be achieved by defining a word-wrap callback routine.  If
-word-wrapping has been enabled via the WORDWRAP flag, the WrapCallback routine will be called when the word-wrap
+word-wrapping has been enabled via the `WORDWRAP` flag, the WrapCallback routine will be called when the word-wrap
 boundary is encountered.  The routine defined in the WrapCallback field must follow this synopsis:
 `ERROR WrapCallback(*Font, STRING String, LONG *X, LONG *Y)`.
 
