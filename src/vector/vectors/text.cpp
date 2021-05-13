@@ -242,7 +242,7 @@ static ERROR VECTORTEXT_NewObject(objVectorText *Self, APTR Void)
 Align: Defines the alignment of the text string.
 
 This field specifies the horizontal alignment of the text string.  The standard alignment flags are supported in the
-form of ALIGN_LEFT, ALIGN_HORIZONTAL and ALIGN_RIGHT.
+form of `ALIGN_LEFT`, `ALIGN_HORIZONTAL` and `ALIGN_RIGHT`.
 
 In addition, the SVG equivalent values of 'start', 'middle' and 'end' are supported and map directly to the formerly
 mentioned align flags.
@@ -265,11 +265,12 @@ static ERROR TEXT_SET_Align(objVectorText *Self, LONG Value)
 -FIELD-
 CharLimit: Limits the total characters allowed in the string.
 
-Set the CharLimit field to limit the number of characters that can appear in the string.  The
-minimum possible value is 0 for no characters.
+Set the CharLimit field to limit the number of characters that can appear in the string.  The minimum possible value
+is 0 for no characters.  If the object is in edit mode then the user will be unable to extend the string beyond the
+limit.
 
-Note that it is valid for the #String length to exceed the limit - it is only
-the display of the string characters that will be affected by the CharLimit value.
+Note that it is valid for the #String length to exceed the limit if set manually.  Only the display of the string
+characters will be affected by the CharLimit value.
 -END-
 *****************************************************************************/
 
@@ -406,7 +407,7 @@ static ERROR TEXT_SET_DY(objVectorText *Self, DOUBLE *Values, LONG Elements)
 Face: Defines the font face/family to use in rendering the text string.
 
 The face/family of the desired font for rendering the text is specified here.  It is possible to list multiple fonts
-in CSV format in case the first-choice font is unavailable.  For instance, 'Arial,Open Sans' would load the Open Sans
+in CSV format in case the first-choice font is unavailable.  For instance, `Arial,Open Sans` would load the Open Sans
 font if Arial was unavailable.
 
 If none of the listed fonts are available, the default system font will be used.
@@ -452,7 +453,7 @@ static ERROR TEXT_SET_Flags(objVectorText *Self, LONG Value)
 -FIELD-
 Focus: Refers to the object that will be monitored for user focussing.
 
-By default, a VectorText object with editing enabled will become active (i.e. capable of receiving keyboard input)
+By default, a VectorText object with editing enabled will become active (capable of receiving keyboard input)
 when its nearest viewport receives the focus.  Setting the Focus field allows monitoring to be redirected to an
 alternative viewport.
 -END-
@@ -474,8 +475,8 @@ static ERROR TEXT_SET_Focus(objVectorText *Self, OBJECTID Value)
 -FIELD-
 Font: The primary Font object that is used to source glyphs for the text string.
 
-Returns the Font object that is used for drawing the text.  The object may be queried but must remain unmodified.
-Any programmed modification that works in the present code base may fail in future releases.
+Returns the @Font object that is used for drawing the text.  The object may be queried but must remain unmodified.
+Any modification by the client that happens to work in the present code release may fail in future releases.
 -END-
 *****************************************************************************/
 
@@ -518,6 +519,9 @@ FontSize: Defines the vertical size of the font.
 The FontSize refers to the height of the font from baseline to baseline.  Without an identifier, the height value
 corresponds to the current user coordinate system (pixels by default).  If you intend to set the font's point size,
 please ensure that 'pt' is appended to the number.
+
+If retrieving the font size, the string must be freed by the client when no longer in use.
+
 -END-
 *****************************************************************************/
 
@@ -614,7 +618,7 @@ SelectColumn: Indicates the column position of a selection's beginning.
 If the user has selected an area of text, the starting column of that area will be indicated by this field.  If an area
 has not been selected, the value of the SelectColumn field is undefined.
 
-To check whether or not an area has been selected, test the AREASELECTED bit in the #Flags field.
+To check whether or not an area has been selected, test the `AREA_SELECTED` bit in the #Flags field.
 -END-
 *****************************************************************************/
 
@@ -631,7 +635,7 @@ SelectRow: Indicates the line position of a selection's beginning.
 If the user has selected an area of text, the starting row of that area will be indicated by this field.  If an area
 has not been selected, the value of the SelectRow field is undefined.
 
-To check whether or not an area has been selected, test the AREASELECTED bit in the #Flags field.
+To check whether or not an area has been selected, test the `AREA_SELECTED` bit in the #Flags field.
 -END-
 *****************************************************************************/
 

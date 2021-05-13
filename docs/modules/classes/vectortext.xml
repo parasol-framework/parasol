@@ -57,7 +57,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>INT</type>
       <description>
-<p>This field specifies the horizontal alignment of the text string.  The standard alignment flags are supported in the form of ALIGN_LEFT, ALIGN_HORIZONTAL and ALIGN_RIGHT.</p>
+<p>This field specifies the horizontal alignment of the text string.  The standard alignment flags are supported in the form of <code>ALIGN_LEFT</code>, <code>ALIGN_HORIZONTAL</code> and <code>ALIGN_RIGHT</code>.</p>
 <p>In addition, the SVG equivalent values of 'start', 'middle' and 'end' are supported and map directly to the formerly mentioned align flags.</p>
       </description>
     </field>
@@ -68,8 +68,8 @@
       <access read="G" write="S">Get/Set</access>
       <type>INT</type>
       <description>
-<p>Set the CharLimit field to limit the number of characters that can appear in the string.  The minimum possible value is 0 for no characters.</p>
-<p>Note that it is valid for the <field>String</field> length to exceed the limit - it is only the display of the string characters that will be affected by the CharLimit value.</p>
+<p>Set the CharLimit field to limit the number of characters that can appear in the string.  The minimum possible value is 0 for no characters.  If the object is in edit mode then the user will be unable to extend the string beyond the limit.</p>
+<p>Note that it is valid for the <field>String</field> length to exceed the limit if set manually.  Only the display of the string characters will be affected by the CharLimit value.</p>
       </description>
     </field>
 
@@ -115,7 +115,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>STRING</type>
       <description>
-<p>The face/family of the desired font for rendering the text is specified here.  It is possible to list multiple fonts in CSV format in case the first-choice font is unavailable.  For instance, 'Arial,Open Sans' would load the Open Sans font if Arial was unavailable.</p>
+<p>The face/family of the desired font for rendering the text is specified here.  It is possible to list multiple fonts in CSV format in case the first-choice font is unavailable.  For instance, <code>Arial,Open Sans</code> would load the Open Sans font if Arial was unavailable.</p>
 <p>If none of the listed fonts are available, the default system font will be used.</p>
 <p>Please note that referencing bitmap fonts is unsupported and they will be ignored by the font loader.</p>
       </description>
@@ -127,7 +127,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>OBJECTID</type>
       <description>
-<p>By default, a VectorText object with editing enabled will become active (i.e. capable of receiving keyboard input) when its nearest viewport receives the focus.  Setting the Focus field allows monitoring to be redirected to an alternative viewport.</p>
+<p>By default, a VectorText object with editing enabled will become active (capable of receiving keyboard input) when its nearest viewport receives the focus.  Setting the Focus field allows monitoring to be redirected to an alternative viewport.</p>
       </description>
     </field>
 
@@ -137,7 +137,7 @@
       <access read="G">Get</access>
       <type>OBJECTPTR</type>
       <description>
-<p>Returns the Font object that is used for drawing the text.  The object may be queried but must remain unmodified. Any programmed modification that works in the present code base may fail in future releases.</p>
+<p>Returns the <class name="Font">Font</class> object that is used for drawing the text.  The object may be queried but must remain unmodified. Any modification by the client that happens to work in the present code release may fail in future releases.</p>
       </description>
     </field>
 
@@ -148,6 +148,27 @@
       <type>STRING</type>
       <description>
 <p>The FontSize refers to the height of the font from baseline to baseline.  Without an identifier, the height value corresponds to the current user coordinate system (pixels by default).  If you intend to set the font's point size, please ensure that 'pt' is appended to the number.</p>
+<p>If retrieving the font size, the string must be freed by the client when no longer in use.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>FontStyle</name>
+      <comment>Determines font styling.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>STRING</type>
+      <description>
+<p>Unique styles for a font can be selected through the FontStyle field.  Conventional font styles are <code>Bold</code>, <code>Bold Italic</code>, <code>Italic</code> and <code>Regular</code> (the default).  TrueType fonts can use any style name that the designer chooses, such as <code>Narrow</code> or <code>Wide</code>, so use <function module="Font">GetList</function> for a definitive list of available style names.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>InlineSize</name>
+      <comment>Enables word-wrapping at a fixed area size.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The inline-size property allows one to set the wrapping area to a rectangular shape. The computed value of the property sets the width of the rectangle for horizontal text and the height of the rectangle for vertical text. The other dimension (height for horizontal text, width for vertical text) is of infinite length. A value of zero (the default) disables the creation of a wrapping area.</p>
       </description>
     </field>
 
@@ -189,7 +210,7 @@
       <type>INT</type>
       <description>
 <p>If the user has selected an area of text, the starting column of that area will be indicated by this field.  If an area has not been selected, the value of the SelectColumn field is undefined.</p>
-<p>To check whether or not an area has been selected, test the AREASELECTED bit in the #Flags field.</p>
+<p>To check whether or not an area has been selected, test the <code>AREA_SELECTED</code> bit in the #Flags field.</p>
       </description>
     </field>
 
@@ -200,7 +221,28 @@
       <type>INT</type>
       <description>
 <p>If the user has selected an area of text, the starting row of that area will be indicated by this field.  If an area has not been selected, the value of the SelectRow field is undefined.</p>
-<p>To check whether or not an area has been selected, test the AREASELECTED bit in the #Flags field.</p>
+<p>To check whether or not an area has been selected, test the <code>AREA_SELECTED</code> bit in the #Flags field.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>ShapeInside</name>
+      <comment>Reference a vector shape to define a content area that enables word-wrapping.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>OBJECTID</type>
+      <description>
+<p>This property enables word-wrapping in which the text will conform to the path of a <class name="Vector">Vector</class> shape.  Internally this is achieved by rendering the vector path as a mask and then fitting the text within the mask without crossing its boundaries.</p>
+<p>This feature is computationally expensive and the use of <field>InlineSize</field> is preferred if the text can be wrapped to a rectangular area.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>ShapeSubtract</name>
+      <comment>Excludes a portion of the content area from the wrapping area.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>OBJECTID</type>
+      <description>
+<p>This property can be used in conjunction with <field>ShapeInside</field> to further restrict the content area that is available for word-wrapping.  It has no effect if <field>ShapeInside</field> is undefined.</p>
       </description>
     </field>
 
@@ -257,6 +299,7 @@
       <type>INT</type>
       <description>
 <p>The weight value determines the level of boldness in the text.  A default value of 400 will render the text in its normal state.  Lower values between 100 to 300 render the text in a light format, while high values in the range of 400 - 900 result in boldness.</p>
+<p>Please note that setting the Weight will give it priority over the @FontStyle value.</p>
       </description>
     </field>
 
