@@ -71,6 +71,7 @@
 #define FID_Total 0x1070f309LL
 #define FID_Base 0x7c947880LL
 #define FID_Config 0xf6e46c7bLL
+#define FID_CurrentState 0x46b57569LL
 #define FID_State 0x10614a06LL
 #define FID_Host 0x7c97fe63LL
 #define FID_X 0x0002b61dLL
