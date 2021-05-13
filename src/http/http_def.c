@@ -111,7 +111,7 @@ static const struct FieldDef clHTTPDatatype[] = {
    { NULL, 0 }
 };
 
-static const struct FieldDef clHTTPState[] = {
+static const struct FieldDef clHTTPCurrentState[] = {
    { "ReadingHeader", 0x00000000 },
    { "Authenticating", 0x00000001 },
    { "Authenticated", 0x00000002 },

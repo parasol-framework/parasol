@@ -37,7 +37,7 @@ function testGet()
    err = proc.sleep()
    assert(err == ERR_Okay, 'Processing failed: ' .. mSys.GetErrorMsg(err))
    if (http.error != ERR_Okay) then error('HTTP object returned error: ' .. mSys.GetErrorMsg(http.error)) end
-   if (http.state != HGS_COMPLETED) then error('Expected HTTP state of COMPLETED not reached, got ' .. http.state) end
+   if (http.currentState != HGS_COMPLETED) then error('Expected HTTP state of COMPLETED not reached, got ' .. http.currentState) end
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -75,7 +75,7 @@ function testPostString()
    err = proc.sleep()
    assert(err == ERR_Okay, 'Processing failed: ' .. mSys.GetErrorMsg(err))
    if (http.error != ERR_Okay) then error('HTTP object returned error: ' .. mSys.GetErrorMsg(http.error)) end
-   if (http.state != HGS_COMPLETED) then error('Expected HTTP state of COMPLETED not reached, got ' .. http.state) end
+   if (http.currentState != HGS_COMPLETED) then error('Expected HTTP state of COMPLETED not reached, got ' .. http.currentState) end
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -107,7 +107,7 @@ function testPostStringFile()
    err = proc.sleep()
    assert(err == ERR_Okay, 'Processing failed: ' .. mSys.GetErrorMsg(err))
    if (http.error != ERR_Okay) then error('HTTP object returned error: ' .. mSys.GetErrorMsg(http.error)) end
-   if (http.state != HGS_COMPLETED) then error('Expected HTTP state of COMPLETED not reached, got ' .. http.state) end
+   if (http.currentState != HGS_COMPLETED) then error('Expected HTTP state of COMPLETED not reached, got ' .. http.currentState) end
 end
 
 -----------------------------------------------------------------------------------------------------------------------

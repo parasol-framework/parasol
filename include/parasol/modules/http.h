@@ -145,7 +145,7 @@ typedef struct rkHTTP {
    LONG     Status;          // Status code recieved in the HTML response header
    ERROR    Error;           // Result of the operation
    LONG     Datatype;        // Datatype to use when sending HTTP data to a target object
-   LONG     State;           // Current state of the http get operation
+   LONG     CurrentState;    // Current state of the http get operation
    STRING   ProxyServer;     // If using a proxy server, this is the name or IP address of the server
    LONG     ProxyPort;       // The port of the proxy server
    LONG     BufferSize;      // Preferred buffer size for things like outgoing operations (sending data)
