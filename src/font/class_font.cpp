@@ -14,7 +14,7 @@ as bold, italic and underlined text, along with extra features such as adjustabl
 outlining. Fixed-point bitmap fonts are supported through the Windows .fon file format and TrueType font files are
 supported for scaled font rendering.
 
-Fonts must be stored in the "fonts:" directory in order to be recognised and either in the "fixed" or "truetype"
+Fonts must be stored in the `fonts:` directory in order to be recognised and either in the "fixed" or "truetype"
 sub-directories as appropriate.  The process of font installation and file management is managed by functions supplied
 in the Font module.
 
@@ -381,14 +381,14 @@ in comparison to setting the X and Y fields directly.
 -FIELD-
 AlignHeight: The height to use when aligning the font string.
 
-If the VERTICAL or TOP alignment options are used in the #Align field, the AlignHeight should be set so
+If the `VERTICAL` or `TOP` alignment options are used in the #Align field, the AlignHeight should be set so
 that the alignment of the font string can be correctly calculated.  If the AlignHeight is not defined, the target
 #Bitmap's height will be used when computing alignment.
 
 -FIELD-
 AlignWidth: The width to use when aligning the font string.
 
-If the HORIZONTAL or RIGHT alignment options are used in the #Align field, the AlignWidth should be set so
+If the `HORIZONTAL` or `RIGHT` alignment options are used in the #Align field, the AlignWidth should be set so
 that the alignment of the font string can be correctly calculated.  If the AlignWidth is not defined, the target
 #Bitmap's width will be used when computing alignment.
 

@@ -43,7 +43,7 @@ static int module_load(lua_State *Lua)
    // Check if there is an include file with the same name as this module.
 
    ERROR error = load_include(Lua->Script, modname);
-   if ((error != ERR_Okay) AND (error != ERR_FileNotFound)) {
+   if ((error != ERR_Okay) and (error != ERR_FileNotFound)) {
       log.debranch();
       luaL_error(Lua, "Failed to load include file for the %s module.", modname);
       return 0;
@@ -180,7 +180,7 @@ static int module_call(lua_State *Lua)
    LONG in = 0;
 
    LONG j = 0;
-   for (i=1; (args[i].Name) AND ((size_t)j < sizeof(buffer)-8); i++) {
+   for (i=1; (args[i].Name) and ((size_t)j < sizeof(buffer)-8); i++) {
       LONG argtype = args[i].Type;
 
       //log.trace("%s() Arg: %s, Offset: %d, Type: $%.8x (received %s)", mod->Functions[index].Name, args[i].Name, j, argtype, lua_typename(Lua, lua_type(Lua, i)));
@@ -265,7 +265,7 @@ static int module_call(lua_State *Lua)
          }
          else {
             LONG fixed_args = i-1;
-            while ((i <= nargs) AND ((size_t)j < sizeof(buffer)-20)) {
+            while ((i <= nargs) and ((size_t)j < sizeof(buffer)-20)) {
                if (lua_type(Lua, i) IS LUA_TNUMBER) { // Tags have to be expressed as numbers.
                   LARGE tag = lua_tonumber(Lua, i++);
                   if (tag IS TAGEND) break;
@@ -374,7 +374,7 @@ static int module_call(lua_State *Lua)
             SET_FUNCTION_SCRIPT(func, &Self->Head, luaL_ref(Lua, LUA_REGISTRYINDEX));
             ((FUNCTION **)(buffer + j))[0] = &func;
          }
-         else if ((type IS LUA_TNIL) OR (type IS LUA_TNONE)) {
+         else if ((type IS LUA_TNIL) or (type IS LUA_TNONE)) {
             ((FUNCTION **)(buffer + j))[0] = NULL;
          }
          else {
@@ -389,13 +389,13 @@ static int module_call(lua_State *Lua)
       else if (argtype & FD_STR) {
          type = lua_type(Lua, i);
 
-         if ((type IS LUA_TSTRING) OR (type IS LUA_TNUMBER) OR (type IS LUA_TBOOLEAN)) {
+         if ((type IS LUA_TSTRING) or (type IS LUA_TNUMBER) or (type IS LUA_TBOOLEAN)) {
             ((CSTRING *)(buffer + j))[0] = lua_tostring(Lua, i);
          }
          else if (type <= 0) {
             ((CSTRING *)(buffer + j))[0] = NULL;
          }
-         else if ((type IS LUA_TUSERDATA) OR (type IS LUA_TLIGHTUSERDATA)) {
+         else if ((type IS LUA_TUSERDATA) or (type IS LUA_TLIGHTUSERDATA)) {
             luaL_error(Lua, "Arg #%d (%s) requires a string and not untyped pointer.", i, args[i].Name, lua_typename(Lua, lua_type(Lua, i)), lua_tostring(Lua, i));
             return 0;
          }
@@ -680,7 +680,7 @@ static int module_call(lua_State *Lua)
             ffi_call(&cif, (void (*)())function, &rc, arg_values);
             lua_pushinteger(Lua, (LONG)rc);
 
-            if ((prv->Catch) AND (restype & FD_ERROR) AND (rc >= ERR_ExceptionThreshold)) {
+            if ((prv->Catch) and (restype & FD_ERROR) and (rc >= ERR_ExceptionThreshold)) {
                prv->CaughtError = rc;
                luaL_error(prv->Lua, GetErrorMsg(rc));
             }
@@ -768,7 +768,7 @@ static LONG process_results(prvFluid *prv, APTR resultsidx, const FunctionField 
             if (var) {
                RMSG("Result-Arg: %s, Value: %.20s (String)", argname, ((STRING *)var)[0]);
                lua_pushstring(prv->Lua, ((STRING *)var)[0]);
-               if ((argtype & FD_ALLOC) AND (((STRING *)var)[0])) FreeResource(((STRING *)var)[0]);
+               if ((argtype & FD_ALLOC) and (((STRING *)var)[0])) FreeResource(((STRING *)var)[0]);
             }
             else lua_pushnil(prv->Lua);
             result++;
@@ -887,12 +887,13 @@ static LONG process_results(prvFluid *prv, APTR resultsidx, const FunctionField 
    return result;
 }
 
-/*****************************************************************************
-** Register the module interface.
-*/
+//****************************************************************************
+// Register the module interface.
 
 void register_module_class(lua_State *Lua)
 {
+   parasol::Log log;
+
    static const struct luaL_reg modlib_functions[] = {
       { "new",  module_load },
       { "load", module_load },
@@ -906,7 +907,7 @@ void register_module_class(lua_State *Lua)
       { NULL, NULL }
    };
 
-   MSG("Registering module interface.");
+   log.trace("Registering module interface.");
 
    luaL_newmetatable(Lua, "Fluid.mod");
    lua_pushstring(Lua, "__index");

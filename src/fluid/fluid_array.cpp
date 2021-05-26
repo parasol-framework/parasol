@@ -581,6 +581,8 @@ static int array_len(lua_State *Lua)
 
 void register_array_class(lua_State *Lua)
 {
+   parasol::Log log;
+
    static const struct luaL_reg functions[] = {
       { "new",  array_new },
       { NULL, NULL }
@@ -594,7 +596,7 @@ void register_array_class(lua_State *Lua)
       { NULL, NULL }
    };
 
-   MSG("Registering array interface.");
+   log.trace("Registering array interface.");
 
    luaL_newmetatable(Lua, "Fluid.array");
    lua_pushstring(Lua, "__index");

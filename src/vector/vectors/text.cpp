@@ -980,7 +980,7 @@ static void generate_text(objVectorText *Vector)
       }
    }
 
-   // Compute the string length in characters
+   // Compute the string length in characters if a transition is being applied
 
    LONG str_length = 0;
    for (auto const &line : Vector->txLines) {
@@ -1023,7 +1023,7 @@ static void generate_text(objVectorText *Vector)
 
    agg::path_storage char_path;
    agg::path_storage cursor_path;
-   LONG prevglyph = 0;
+   LONG prev_glyph = 0;
    LONG cmd = -1;
    LONG char_index = 0;
    LONG current_row = 0;
@@ -1056,7 +1056,7 @@ static void generate_text(objVectorText *Vector)
                char_path.free_all();
                if (!decompose_ft_outline(ftface->glyph->outline, true, char_path)) {
                   DOUBLE kx, ky;
-                  get_kerning_xy(ftface, glyph, prevglyph, &kx, &ky);
+                  get_kerning_xy(ftface, glyph, prev_glyph, &kx, &ky);
 
                   DOUBLE char_width = int26p6_to_dbl(ftface->glyph->advance.x) + kx;
 
@@ -1117,7 +1117,7 @@ static void generate_text(objVectorText *Vector)
                }
                else log.trace("Failed to get outline of character.");
             }
-            prevglyph = glyph;
+            prev_glyph = glyph;
             current_col++;
          }
 
@@ -1152,7 +1152,7 @@ static void generate_text(objVectorText *Vector)
                char_path.free_all();
                if (!decompose_ft_outline(ftface->glyph->outline, true, char_path)) {
                   DOUBLE kx, ky;
-                  get_kerning_xy(ftface, glyph, prevglyph, &kx, &ky);
+                  get_kerning_xy(ftface, glyph, prev_glyph, &kx, &ky);
 
                   DOUBLE char_width = int26p6_to_dbl(ftface->glyph->advance.x) + kx;
 
@@ -1202,7 +1202,8 @@ static void generate_text(objVectorText *Vector)
                }
                else log.trace("Failed to get outline of character.");
             }
-            prevglyph = glyph;
+
+            prev_glyph = glyph;
             current_col++;
          }
 

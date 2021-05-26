@@ -357,7 +357,9 @@ static const luaL_reg threadlib_methods[] = {
 
 void register_thread_class(lua_State *Lua)
 {
-   MSG("Registering thread interface.");
+   parasol::Log log;
+
+   log.trace("Registering thread interface.");
 
    luaL_newmetatable(Lua, "Fluid.thread");
    lua_pushstring(Lua, "__index");
