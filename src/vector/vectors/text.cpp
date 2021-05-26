@@ -982,15 +982,16 @@ static void generate_text(objVectorText *Vector)
 
    // Compute the string length in characters if a transition is being applied
 
-   LONG str_length = 0;
-   for (auto const &line : Vector->txLines) {
-      for (CSTRING lstr=line.c_str(); *lstr; ) {
-         if (*lstr IS '\t') lstr++;
-         else {
-            LONG char_len = UTF8CharLength(lstr);
-            if (!char_len) continue;
+   LONG total_chars = 0;
+   if (Vector->Transition) {
+      for (auto const &line : Vector->txLines) {
+         for (auto lstr=line.c_str(); *lstr; ) {
+            LONG char_len;
+            LONG unicode = UTF8ReadValue(lstr, &char_len);
             lstr += char_len;
-            str_length++;
+            if (unicode <= 0x20) continue;
+            else if (!unicode) break;
+            total_chars++;
          }
       }
    }
@@ -1029,25 +1030,32 @@ static void generate_text(objVectorText *Vector)
    LONG current_row = 0;
    DOUBLE dist = 0; // Distance to next vertex
    DOUBLE angle = 0;
+   #define WS_NO_WORD  0
+   #define WS_NEW_WORD 1
+   #define WS_IN_WORD  2
 
    if (morph) {
       for (auto &line : Vector->txLines) {
          LONG current_col = 0;
          line.chars.clear();
+         bool wrap_state = WS_NO_WORD;
          for (auto str=line.c_str(); *str; ) {
-            if (*str IS '\t') { str++; continue; }
+            LONG char_len;
+            LONG unicode = UTF8ReadValue(str, &char_len);
+            str += char_len;
 
-            LONG charlen;
-            LONG unicode = UTF8ReadValue(str, &charlen);
-            str += charlen;
+            if (unicode <= 0x20) wrap_state = WS_NO_WORD;
+            else if (wrap_state IS WS_NEW_WORD) wrap_state = WS_IN_WORD;
+            else wrap_state = WS_NEW_WORD;
 
-            if (!unicode) continue;
-            char_index++;
+            if (!unicode) break;
+
+            char_index++; // Character index only increases if a glyph is being drawn
 
             agg::trans_affine transform(scale_char); // The initial transform scales the char to the path.
 
             if (Vector->Transition) { // Apply any special transitions early.
-               apply_transition(Vector->Transition, DOUBLE(char_index) / DOUBLE(str_length), transform);
+               apply_transition(Vector->Transition, DOUBLE(char_index) / DOUBLE(total_chars), transform);
             }
 
             LONG glyph = EFT_Get_Char_Index(ftface, unicode);
@@ -1130,21 +1138,44 @@ static void generate_text(objVectorText *Vector)
       for (auto &line : Vector->txLines) {
          LONG current_col = 0;
          line.chars.clear();
+         LONG wrap_state = WS_NO_WORD;
          for (auto str=line.c_str(); *str; ) {
-            if (*str IS '\t') { str++; continue; }
+            LONG char_len;
+            LONG unicode = UTF8ReadValue(str, &char_len);
 
-            LONG charlen;
-            LONG unicode = UTF8ReadValue(str, &charlen);
-            str += charlen;
+            if (unicode <= 0x20) { wrap_state = WS_NO_WORD; prev_glyph = 0; }
+            else if (wrap_state IS WS_NEW_WORD) wrap_state = WS_IN_WORD;
+            else if (wrap_state IS WS_NO_WORD)  wrap_state = WS_NEW_WORD;
 
-            if (!unicode) continue;
-            char_index++;
+            if (!unicode) break;
+
+            char_index++; // Character index only increases if a glyph is being drawn
 
             agg::trans_affine transform(scale_char); // The initial transform scales the char to the path.
 
             if (Vector->Transition) { // Apply any special transitions early.
-               apply_transition(Vector->Transition, DOUBLE(char_index) / DOUBLE(str_length), transform);
+               apply_transition(Vector->Transition, DOUBLE(char_index) / DOUBLE(total_chars), transform);
             }
+
+            // Determine if this is a new word that would wrap if drawn.
+            // TODO: Wrapping information should be cached for speeding up subsequent redraws.
+
+            if ((wrap_state IS WS_NEW_WORD) and (Vector->txInlineSize)) {
+               LONG word_length = 0;
+               for (LONG c=0; (str[c]) and (str[c] > 0x20); ) {
+                  for (++c; ((str[c] & 0xc0) IS 0x80); c++);
+                  word_length++;
+               }
+
+               LONG word_width = fntStringWidth(Vector->txFont, str, word_length);
+
+               if ((dx + word_width) * ABS(transform.sx) >= Vector->txInlineSize) {
+                  dx = 0;
+                  dy += Vector->txFont->LineSpacing;
+               }
+            }
+
+            str += char_len;
 
             LONG glyph = EFT_Get_Char_Index(ftface, unicode);
 
@@ -1158,11 +1189,6 @@ static void generate_text(objVectorText *Vector)
 
                   char_width = char_width * ABS(transform.sx);
                   //char_width = char_width * transform.scale();
-
-                  if ((Vector->txInlineSize) and (dx > 0) and (dx + char_width >= Vector->txInlineSize)) {
-                     dx = 0;
-                     dy += Vector->txFont->LineSpacing;
-                  }
 
                   transform.translate(dx, dy);
                   agg::conv_transform<agg::path_storage, agg::trans_affine> trans_char(char_path, transform);
@@ -1207,6 +1233,8 @@ static void generate_text(objVectorText *Vector)
             current_col++;
          }
 
+         dx = 0;
+         dy += Vector->txFont->LineSpacing;
          current_row++;
       }
 
