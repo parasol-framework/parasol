@@ -61,12 +61,12 @@ Suspendisse sed diam ut sem euismod accumsan commodo vehicula sapien. Nullam nis
 Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas non nisi vehicula, aliquam turpis in, mattis lectus. Donec magna metus, tempor fringilla metus ac, ultricies efficitur ante. Quisque at semper elit. Ut in purus in est venenatis interdum. Curabitur a dui mauris. Suspendisse potenti. Suspendisse tempus dictum ipsum, id condimentum nulla fermentum sed. Etiam mattis ligula lacus, a tempor felis sodales fermentum. Donec in risus vulputate, tempor neque vel, volutpat mauris. Integer placerat a nunc a aliquet. Phasellus quis porta leo. Etiam et arcu ex. Nunc dictum at ipsum eu dapibus.
 
 Cras metus mi, ultricies nec blandit condimentum, congue dapibus libero. Nulla eget ornare ante, ac efficitur turpis. Proin venenatis eget sapien vitae volutpat. In interdum id ante in aliquet. Quisque convallis lacus in gravida fringilla. Nam porta pellentesque turpis, ut efficitur neque suscipit vel. Morbi vitae consequat nisl. Donec turpis lorem, dapibus eget scelerisque quis, porttitor bibendum leo.
-   ]]
+]]
 
    local lShortText = 'The Quick Brown Fox Jumped Over The Lazy Dog'
 
    local lOptions = Options
-   local lWindow, lFont, lFonts, vwSize, vwStyle, vwFace, lTab, rgnExample
+   local lWindow, lFonts, vwSize, vwStyle, vwFace, lTab
 
    local lSizes = { 6, 8, 10, 12, 14, 18, 24, 30, 36, 42, 50, 70, 90, 100, 120 }
    local WIDGET_GAP = 3
@@ -83,57 +83,62 @@ Cras metus mi, ultricies nec blandit condimentum, congue dapibus libero. Nulla e
       return true
    end
 
-   local function drawExample(Surface, Bitmap)
-      -- Background
+   local function refreshGuidelines()
+      local seq = ''
+      local gap = self.font.height
+      local spacing = self.font.lineSpacing
+      local pageWidth = self.exampleVP.width
 
-      local err, bkgd = Bitmap.mtGetColour(255, 255, 255, 255)
-      local err, border = Bitmap.mtGetColour(128, 128, 128, 255)
-      Bitmap.mtDrawRectangle(0, 0, Surface.width, Surface.height, bkgd, BAF_FILL)
-      Bitmap.mtDrawRectangle(0, 0, Surface.width, Surface.height, border, 0)
+      local x1 = gap
+      local x2 = pageWidth - gap
+      for y = gap + self.font.height, self.exampleVP.height, spacing do
+         seq = seq .. string.format('M%f,%f L%f,%f ', x1, y, x2, y)
+      end
+      self.guidelines.sequence = seq
 
-      local clip = { left=Bitmap.ClipLeft, right=Bitmap.ClipRight, top=Bitmap.ClipTop, bottom=Bitmap.ClipBottom }
+      if self.exampleText then
+         self.exampleText.inlineSize = x2 - x1
+      end
+   end
 
-      if (Bitmap.ClipLeft   < 1) then Bitmap.ClipLeft = 1 end
-      if (Bitmap.ClipTop    < 1) then Bitmap.ClipTop = 1 end
-      if (Bitmap.ClipRight  > Surface.Width - 1) then Bitmap.ClipRight = Surface.width - 1 end
-      if (Bitmap.ClipBottom > Surface.Height - 1) then Bitmap.ClipBottom = Surface.height - 1 end
-
-      if (not lFont) and (self.face) then
-         lFont = obj.new('font', {
-            x           = 12,
-            y           = 10,
-            align       = 'top',
-            alignHeight = Surface.height,
-            face        = nz(self.face, 'Open Sans'),
-            point       = nz(self.size, 12),
-            style       = nz(self.style, 'Regular'),
-            string      = nz(lOptions.example, lLongText)
-         })
+   local function refreshExample()
+      if not self.guidelines then
+         self.guidelines = self.exampleVP.new('VectorPath', { strokeWidth = 0.5, stroke = 'rgb(0,0,180,64)' })
       end
 
-      if (lFont) then
-         -- Text guidelines
+      local pageWidth = self.exampleVP.width
+      local newStyle = self.face .. '+' .. self.size .. '+' .. self.style
+      if newStyle == self.currentStyle then return end
+      self.currentStyle = newStyle
 
-         local err, guide = Bitmap.mtGetColour(240, 240, 255, 255)
-         local lines = Surface.height / lFont.height
-         local y = lFont.y + lFont.height
-         while (y < Surface.height) do
-            Bitmap.mtDrawRectangle(1, y, Surface.width-2, 1, guide, BAF_FILL)
-            y = y + lFont.lineSpacing
-         end
+      self.font = obj.new('font', {
+         face   = self.face,
+         point  = self.size,
+         style  = self.style,
+         string = nz(lOptions.example, lLongText)
+      })
 
-         -- Example text
+      local gap = self.font.height
 
-         lFont.bitmap = Bitmap
-         lFont.wrapEdge = Surface.width - lFont.x
-         lFont.alignHeight = Surface.height
-         lFont.acDraw()
+      refreshGuidelines()
+
+      if self.exampleText then
+         self.exampleText.acFree()
       end
 
-      Bitmap.ClipLeft   = clip.left
-      Bitmap.ClipRight  = clip.right
-      Bitmap.ClipTop    = clip.top
-      Bitmap.ClipBottom = clip.bottom
+      self.exampleText = self.exampleVP.new('VectorText', {
+         x          = gap,
+         y          = gap + self.font.height,
+         fill       = 'rgb(0,0,0)',
+         inlineSize = pageWidth - (gap * 2),
+         face       = self.face,
+         fontSize   = self.size .. 'pt',
+         fontStyle  = self.font.style,
+         string     = lLongText
+      })
+
+      collectgarbage()
+      lWindow.surface.acDraw()
    end
 
    -- Retrieve the system list of known installed fonts and convert it to a Lua table.
@@ -254,20 +259,31 @@ Cras metus mi, ultricies nec blandit condimentum, congue dapibus libero. Nulla e
 
       -- Font demonstration area
 
-      rgnExample = lWindow.new('surface', {
+      self.exampleVP = self.viewport.new('VectorViewport', {
          x       = 200,
          y       = lWindow.topMargin,
          xOffset = lWindow.rightMargin,
          yOffset = footer
       })
-      rgnExample.acShow()
 
-      rgnExample.mtAddCallback(drawExample)
+      self.pageBkgd = self.exampleVP.new('VectorRectangle', {
+         fill   = 'rgb(255,255,255)',
+         stroke = 'rgb(0,0,0,64)',
+         strokeWidth = 1.5,
+         roundX = 8,
+         roundY = 8,
+         x      = 1,
+         y      = 1,
+         width  = self.exampleVP.width - 2,
+         height = self.exampleVP.height - 2
+      })
+
+      refreshExample()
 
       -- Font size selection
 
       local rgnSize = lWindow.new('surface', {
-         x       = rgnExample.x - WIDGET_GAP - 60,
+         x       = self.exampleVP.x - WIDGET_GAP - 60,
          yOffset = footer,
          height  = 140,
          width   = 60
@@ -287,9 +303,8 @@ Cras metus mi, ultricies nec blandit condimentum, congue dapibus libero. Nulla e
                   self.size = 400
                end
             end
-            lFont = nil // A new font object will be needed.
             collectgarbage()
-            rgnExample.acDraw()
+            refreshExample()
          end
       })
 
@@ -312,9 +327,8 @@ Cras metus mi, ultricies nec blandit condimentum, congue dapibus libero. Nulla e
          selectCallback = function(View, Flags, Tag)
             local selection = View.selection
             if (selection) then self.style = selection end
-            lFont = nil // A new font object will be needed.
             collectgarbage()
-            rgnExample.acDraw()
+            refreshExample()
          end
       })
 
@@ -325,7 +339,7 @@ Cras metus mi, ultricies nec blandit condimentum, congue dapibus libero. Nulla e
       local rgnFace = lWindow.new('surface', {
          x = lWindow.leftMargin,
          y = lWindow.topMargin,
-         width = rgnExample.x - WIDGET_GAP - lWindow.leftMargin,
+         width = self.exampleVP.x - WIDGET_GAP - lWindow.leftMargin,
          yOffset = footer
       })
       rgnFace.acShow()
@@ -376,10 +390,15 @@ Cras metus mi, ultricies nec blandit condimentum, congue dapibus libero. Nulla e
 
             vwSize.selection = closestSize
 
-            lFont = nil // A new font object will be needed.
-            rgnExample.acDraw()
+            refreshExample()
          end
       })
+
+      lWindow.surface.subscribe('redimension', function(Window, Args, State)
+         State.pageBkgd.width   = State.exampleVP.width - 2
+         State.pageBkgd.height  = State.exampleVP.height - 2
+         refreshGuidelines()
+      end, self)
 
       local xml = ''
       for _, font in ipairs(lFontsSorted) do
