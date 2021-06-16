@@ -19,7 +19,9 @@ static int object_call(lua_State *Lua)
    ERROR error = ERR_Okay;
    LONG results = 0;
    BYTE release = FALSE;
+   CSTRING action_name = NULL;
    if (action_id >= 0) {
+      action_name = glActions[action_id].Name;
       if ((glActions[action_id].Args) and (glActions[action_id].Size)) {
          BYTE argbuffer[glActions[action_id].Size+8]; // +8 for overflow protection in build_args()
 
@@ -81,6 +83,7 @@ static int object_call(lua_State *Lua)
    }
    else { // Method
       auto methods = (MethodArray *)lua_touserdata(Lua, lua_upvalueindex(3));
+      action_name = methods->Name;
 
       if ((methods->Args) and (methods->Size)) {
          BYTE argbuffer[methods->Size+8]; // +8 for overflow protection in build_args()
@@ -133,8 +136,12 @@ static int object_call(lua_State *Lua)
 
    auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
    if ((error >= ERR_ExceptionThreshold) and (prv->Catch)) {
+      char msg[180];
+      CSTRING error_msg = GetErrorMsg(error);
       prv->CaughtError = error;
-      luaL_error(prv->Lua, GetErrorMsg(error));
+      if (!action_name) action_name = "Unnamed";
+      StrFormat(msg, sizeof(msg), "%s.%s() failed: %s", object->Class->ClassName, action_name, error_msg);
+      luaL_error(prv->Lua, msg);
    }
 
    return results;
