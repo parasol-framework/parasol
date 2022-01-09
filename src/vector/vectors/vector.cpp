@@ -123,7 +123,8 @@ Disable: Disabling a vector can be used to trigger style changes and prevent use
 
 static ERROR VECTOR_Disable(objVector *Self, APTR Void)
 {
-   // It is up to the client to subscribe to the Disable action if any activity needs to take place.
+   // It is up to the client to monitor the Disable action if any reaction is required.
+   Self->Flags |= VF_DISABLED;
    return ERR_Okay;
 }
 
@@ -186,6 +187,7 @@ Enable: Reverses the effects of disabling the vector.
 static ERROR VECTOR_Enable(objVector *Self, APTR Void)
 {
   // It is up to the client to subscribe to the Enable action if any activity needs to take place.
+  Self->Flags &= ~VF_DISABLED;
   return ERR_Okay;
 }
 
@@ -491,7 +493,7 @@ InputSubscription: Create a subscription for input events that relate to the vec
 
 The InputSubscription method is provided as an extension to gfxSubscribeInput(), whereby the user's input events
 will be filtered down to those that occur within the vector's graphics area only.  The original events are
-transferred as-is, although the ENTERED_SURFACE and LEFT_SURFACE events are modified so that they trigger during
+transferred as-is, although the `ENTERED_SURFACE` and `LEFT_SURFACE` events are modified so that they trigger during
 passage through the vector boundaries.
 
 It is a pre-requisite that the associated @VectorScene has been linked to a @Surface.
@@ -2092,6 +2094,15 @@ Visibility: Controls the visibility of a vector and its children.
 
 *****************************************************************************/
 
+//****************************************************************************
+// Receiver for input events.  Managed by VectorScene.  The client makes subscriptions through the
+// InputSubscription() method.
+//
+// NOTE: For the time being this routine does not perform advanced hit tests to confirm if the (x,y) position of the
+// cursor is within paths.  Ideally we want the client to choose if the additional cost of hit testing is worth it
+// or not.  The fast way to do hit testing would be to generate a 1-bit mask of the shape in gen_vector_path() as this
+// would be cached and take advantage of the dirty marker.
+
 static ERROR vector_input_events(objVector *Self, const InputEvent *Events)
 {
    parasol::Log log(__FUNCTION__);
@@ -2101,10 +2112,31 @@ static ERROR vector_input_events(objVector *Self, const InputEvent *Events)
 
    InputEvent filtered_events[total_events+2]; // +2 in case of JET_ENTERED/JET_LEFT
 
-   // Retrieve the full vector bounds, accounting for all transforms and children.
-
    std::array<DOUBLE, 4> bounds = { DBL_MAX, DBL_MAX, DBL_MIN, DBL_MIN };
-   calc_full_boundary(Self->Child, bounds);
+
+   if (Self->Dirty) {
+      gen_vector_path(Self);
+      Self->Dirty = 0;
+   }
+
+   if (Self->Head.SubID IS ID_VECTORVIEWPORT) { // For Viewports, the bounds are pre-computed and transformed for us.
+      auto view = (objVectorViewport *)Self;
+      bounds = { view->vpBX1, view->vpBY1, view->vpBX2, view->vpBY2 };
+
+      if (view->vpClipMask) { // Viewports pre-generate clip masks and we can take advantage of this for hit testing
+
+      }
+   }
+   else {
+      if (Self->ClipMask) {
+         agg::conv_transform<agg::path_storage, agg::trans_affine> path(*Self->ClipMask->ClipPath, *Self->Transform);
+         bounding_rect_single(path, 0, &bounds[0], &bounds[1], &bounds[2], &bounds[3]);
+      }
+      else if (Self->BasePath) {
+         agg::conv_transform<agg::path_storage, agg::trans_affine> path(*Self->BasePath, *Self->Transform);
+         bounding_rect_single(path, 0, &bounds[0], &bounds[1], &bounds[2], &bounds[3]);
+      }
+   }
 
    // Filter for events that occur within the vector's bounds
 
@@ -2114,7 +2146,10 @@ static ERROR vector_input_events(objVector *Self, const InputEvent *Events)
 
       if ((input->X >= bounds[0]) and (input->Y >= bounds[1]) and
           (input->X < bounds[2]) and (input->Y < bounds[3])) {
-         if (!Self->UserHovering) { // Inject JET_ENTERED_SURFACE if this is the first activity
+
+         // Inject JET_ENTERED_SURFACE if this is the first activity
+
+         if (!Self->UserHovering) {
             filtered_events[e++] = {
                .Next        = NULL,
                .Value       = input->OverID,
@@ -2123,8 +2158,8 @@ static ERROR vector_input_events(objVector *Self, const InputEvent *Events)
                .OverID      = input->OverID,
                .AbsX        = input->AbsX,
                .AbsY        = input->AbsY,
-               .X           = input->X,
-               .Y           = input->Y,
+               .X           = input->X - bounds[0],
+               .Y           = input->Y - bounds[1],
                .DeviceID    = input->DeviceID,
                .Type        = JET_ENTERED_SURFACE,
                .Flags       = JTYPE_FEEDBACK,
@@ -2134,6 +2169,8 @@ static ERROR vector_input_events(objVector *Self, const InputEvent *Events)
          }
 
          filtered_events[e] = *input;
+         filtered_events[e].X = input->X - bounds[0]; // Coords to be relative to the vector, not the surface
+         filtered_events[e].Y = input->Y - bounds[1];
          e++;
       }
       else if (Self->UserHovering) {
@@ -2145,8 +2182,8 @@ static ERROR vector_input_events(objVector *Self, const InputEvent *Events)
             .OverID      = input->OverID,
             .AbsX        = input->AbsX,
             .AbsY        = input->AbsY,
-            .X           = input->X,
-            .Y           = input->Y,
+            .X           = input->X - bounds[0],
+            .Y           = input->Y - bounds[1],
             .DeviceID    = input->DeviceID,
             .Type        = JET_LEFT_SURFACE,
             .Flags       = JTYPE_FEEDBACK,
@@ -2199,6 +2236,7 @@ static ERROR vector_input_events(objVector *Self, const InputEvent *Events)
 }
 
 //****************************************************************************
+// Receiver for keyboard events
 
 static ERROR vector_keyboard_events(objVector *Self, const evKey *Event)
 {

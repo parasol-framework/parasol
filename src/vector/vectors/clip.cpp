@@ -34,7 +34,12 @@ static void draw_clips(objVectorClip *Self, objVector *Branch,
    }
 }
 
-//****************************************************************************
+/*****************************************************************************
+-ACTION-
+Name:  Draw
+Short: Renders the vector clipping shape(s) to an internal buffer.
+-END-
+*****************************************************************************/
 
 static ERROR CLIP_Draw(objVectorClip *Self, struct acDraw *Args)
 {

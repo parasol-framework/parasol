@@ -3,7 +3,7 @@
 
 //****************************************************************************
 // (Re)Generates the path for a vector.  Switches off most of the Dirty flag markers.
-// For Viewports, the vpFixed* field values will all be set.
+// For Viewports, the vpFixed* and boundary field values will all be set.
 
 static void gen_vector_path(objVector *Vector)
 {

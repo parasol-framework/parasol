@@ -14,6 +14,8 @@ To configure the scaling method that is applied to the viewport content, set the
 
 -END-
 
+NOTE: Refer to gen_vector_path() for the code that manages viewport dimensions in a live state.
+
 *****************************************************************************/
 
 /*****************************************************************************

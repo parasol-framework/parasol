@@ -159,11 +159,11 @@ static ERROR VECTORTEXT_Free(objVectorText *Self, APTR Void)
    Self->txLines.~vector();
    Self->txCursor.~TextCursor();
 
-   if (Self->txFamily)      { FreeResource(Self->txFamily); Self->txFamily = NULL; }
-   if (Self->txFont)        { acFree(Self->txFont); Self->txFont = NULL; }
-   if (Self->txDX)          { FreeResource(Self->txDX); Self->txDX = NULL; }
-   if (Self->txDY)          { FreeResource(Self->txDY); Self->txDY = NULL; }
-   if (Self->txKeyEvent)    { UnsubscribeEvent(Self->txKeyEvent); Self->txKeyEvent = NULL; }
+   if (Self->txFamily)   { FreeResource(Self->txFamily); Self->txFamily = NULL; }
+   if (Self->txFont)     { acFree(Self->txFont); Self->txFont = NULL; }
+   if (Self->txDX)       { FreeResource(Self->txDX); Self->txDX = NULL; }
+   if (Self->txDY)       { FreeResource(Self->txDY); Self->txDY = NULL; }
+   if (Self->txKeyEvent) { UnsubscribeEvent(Self->txKeyEvent); Self->txKeyEvent = NULL; }
 
    if (Self->txFocusID) {
       OBJECTPTR focus;

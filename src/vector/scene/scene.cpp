@@ -9,8 +9,8 @@ Please refer to it for further information on licensing.
 -CLASS-
 VectorScene: Manages the scene graph for a collection of vectors.
 
-The VectorScene class acts as a container and control point for the management of vector definitions.  Its primary
-duty is to draw the scene to a target @Bitmap or @Surface provided by the client.
+The VectorScene class acts as a container and control point for the management of vector definitions.  Its main
+purpose is to draw the scene to a target @Bitmap or @Surface provided by the client.
 
 Vector scenes are created by initialising multiple Vector objects such as @VectorPath and
 @VectorViewport and positioning them within a vector tree.  The VectorScene must lie at the root.
@@ -742,13 +742,13 @@ static ERROR scene_input_events(const InputEvent *Events, LONG Handle)
    auto Self = (objVectorScene *)CurrentContext();
 
    LONG received_events = 0;
-   for (auto input=Events; input; input=input->Next) {
-      received_events |= input->Mask;
+   for (auto e=Events; e; e=e->Next) {
+      received_events |= e->Mask;
 
       // Focus management - clicking with the LMB can result in a change of focus.
 
-      if ((input->Mask & JTYPE_BUTTON) and (input->Type IS JET_LMB) and (input->Value IS 1)) {
-         auto vp = get_viewport_at_xy(Self, input->X, input->Y);
+      if ((e->Mask & JTYPE_BUTTON) and (e->Type IS JET_LMB) and (e->Value IS 1)) {
+         auto vp = get_viewport_at_xy(Self, e->X, e->Y);
          apply_focus(Self, (objVector *)vp);
       }
    }
