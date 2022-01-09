@@ -37,6 +37,16 @@ static void gen_vector_path(objVector *Vector)
       // vpBX1/BY1/BX2/BY2 are fixed coordinate bounding box values from root position (0,0) and define the clip region imposed on all children of the viewport.
       // vpFixedX/Y are the fixed coordinate position of the viewport relative to root position (0,0)
 
+      if (!(view->vpDimensions & (DMF_FIXED_X|DMF_RELATIVE_X|DMF_FIXED_X_OFFSET|DMF_RELATIVE_X_OFFSET))) {
+         view->vpTargetX = 0;
+         view->vpDimensions |= DMF_FIXED_X;
+      }
+
+      if (!(view->vpDimensions & (DMF_FIXED_Y|DMF_RELATIVE_Y|DMF_FIXED_Y_OFFSET|DMF_RELATIVE_Y_OFFSET))) {
+         view->vpTargetY = 0;
+         view->vpDimensions |= DMF_FIXED_Y;
+      }
+
       if (Vector->ParentView) {
          if (Vector->ParentView->vpViewWidth) parent_width = Vector->ParentView->vpViewWidth;
          else parent_width = Vector->ParentView->vpFixedWidth;

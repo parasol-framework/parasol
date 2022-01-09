@@ -52,16 +52,6 @@ static ERROR VIEW_Init(objVectorViewport *Self, APTR Void)
    // Please refer to gen_vector_path() for the initialisation of vpFixedX/Y/Width/Height, which has
    // its own section for dealing with viewports.
 
-   if (!(Self->vpDimensions & (DMF_FIXED_X|DMF_RELATIVE_X|DMF_FIXED_X_OFFSET|DMF_RELATIVE_X_OFFSET))) {
-      Self->vpTargetX = 0;
-      Self->vpDimensions |= DMF_FIXED_X;
-   }
-
-   if (!(Self->vpDimensions & (DMF_FIXED_Y|DMF_RELATIVE_Y|DMF_FIXED_Y_OFFSET|DMF_RELATIVE_Y_OFFSET))) {
-      Self->vpTargetY = 0;
-      Self->vpDimensions |= DMF_FIXED_Y;
-   }
-
    return ERR_Okay;
 }
 
