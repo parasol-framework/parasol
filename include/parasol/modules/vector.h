@@ -421,6 +421,7 @@ typedef struct rkVectorImage {
    LONG   Units;                  // VUNIT constant, defines the coordinate system for (X,Y)
    LONG   Dimensions;
    LONG   SpreadMethod;
+   LONG   AspectRatio;            // Defines how the referenced image should fit in the boundary of its target shape.
 } objVectorImage;
 
 // VectorPattern class definition

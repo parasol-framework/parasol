@@ -68,7 +68,7 @@ http.acActivate()
       <comment>Executes an HTTP method.</comment>
       <description>
 <p>This action starts an HTTP operation against a target server.  Based on the desired <field>Method</field>, an HTTP request will be sent to the target server and the action will immediately return whilst the HTTP object will wait for a response from the server.  If the server fails to respond within the time period indicated by the <field>ConnectTimeout</field>, the HTTP object will be deactivated (for further details, refer to the <action>Deactivate</action> action).</p>
-<p>Successful interpretation of the HTTP request at the server will result in a response being received, followed by file data (if applicable). The HTTP response code will be stored in the <field>Status</field> field.  The HTTP object will automatically parse the response data and store the received values in the HTTP object as variable fields.  It is possible to be alerted to the complete receipt of a response by listening to the <field>State</field> field, or waiting for the Deactivate action to kick in.</p>
+<p>Successful interpretation of the HTTP request at the server will result in a response being received, followed by file data (if applicable). The HTTP response code will be stored in the <field>Status</field> field.  The HTTP object will automatically parse the response data and store the received values in the HTTP object as variable fields.  It is possible to be alerted to the complete receipt of a response by listening to the #State field, or waiting for the Deactivate action to kick in.</p>
 <p>Following a response, incoming data can be managed in a number of ways. It may be streamed to an object referenced by the <field>OutputObject</field> field through data feeds.  It can be written to the target object if the <field>ObjectMode</field> is set to READ_WRITE.  Finally it can be received through C style callbacks if the <field>Incoming</field> field is set.</p>
 <p>On completion of an HTTP request, the <action>Deactivate</action> action is called, regardless of the level of success.</p>
       </description>
@@ -156,7 +156,7 @@ http.acActivate()
     <field>
       <name>CurrentState</name>
       <comment>Indicates the current state of an HTTP object during its interaction with an HTTP server.</comment>
-      <access>-/-</access>
+      <access read="R" write="S">Read/Set</access>
       <type lookup="HGS">INT</type>
       <description>
 <p>The CurrentState is a readable field that tracks the current state of the client in its relationship with the target HTTP server.  The default state is <code>READING_HEADER</code>.  Changes to the state can be monitored through the <field>StateChanged</field> field.</p>
@@ -412,18 +412,12 @@ http.acActivate()
     </field>
 
     <field>
-      <name>State</name>
-      <access read="R" write="S">Read/Set</access>
-      <type>INT</type>
-    </field>
-
-    <field>
       <name>StateChanged</name>
       <comment>A callback routine can be defined here for monitoring changes to the HTTP state.</comment>
       <access read="G" write="S">Get/Set</access>
       <type>FUNCTION</type>
       <description>
-<p>Define a callback routine in StateChanged in order to receive notifications of any change to the <field>State</field> of an HTTP object.  The format for the routine is <code>ERROR Function(*HTTP, LONG State)</code>.</p>
+<p>Define a callback routine in StateChanged in order to receive notifications of any change to the #State of an HTTP object.  The format for the routine is <code>ERROR Function(*HTTP, LONG State)</code>.</p>
 <p>If an error code of ERR_Terminate is returned by the callback routine, the currently executing HTTP request will be cancelled.</p>
       </description>
     </field>

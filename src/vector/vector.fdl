@@ -29,7 +29,7 @@ module({ name="Vector", copyright="Paul Manias © 2010-2021", version=1.0 }, fun
     "REPEAT: Tile the graphic repeatedly.",
     "REFLECT_X: Tile the graphic, reflecting the image alternately on the X axis only.",
     "REFLECT_Y: Tile the graphic, reflecting the image alternately on the Y axis only.",
-    "CLIP: Do not scale the graphic in any way and clip it if it extends past imposed boundaries.",
+    "CLIP: Do not scale the graphic.  Clip it if it extends past imposed boundaries.",
     "END: Private")
 
   enum("PE", { start=1 }, "Move", "MoveRel", "Line", "LineRel", "HLine", "HLineRel", "VLine", "VLineRel",
@@ -307,6 +307,7 @@ module({ name="Vector", copyright="Paul Manias © 2010-2021", version=1.0 }, fun
     int(VUNIT) Units     # VUNIT constant, defines the coordinate system for (X,Y)
     int(DMF) Dimensions
     int(VSPREAD) SpreadMethod
+    int(ARF) AspectRatio # Defines how the referenced image should fit in the boundary of its target shape.
   ]])
 
   class("VectorPattern", { src="defs/pattern.cpp" }, [[
