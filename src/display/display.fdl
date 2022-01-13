@@ -78,7 +78,7 @@ module({ name="Display", copyright="Paul Manias 2003-2020", version=1.0, status=
     "INVERSE_ALPHA: Indicates reverse alpha blending, higher values are transparent.",
     "QUERIED: Automatically set after a Query on the bitmap.",
     "CLEAR: Clear graphics on initialisation and when resizing.",
-    "USER: User flag allows tagging of bitmaps for special meaning; not used internally.",
+    "USER: This user flag can be used to tag bitmaps with special meaning.  Not used internally.",
     "ACCELERATED_2D: 2D video acceleration is available.",
     "ACCELERATED_3D: 3D video acceleration is available.",
     "ALPHA_CHANNEL: For 32-bit images, indicates that an alpha channel is present.",

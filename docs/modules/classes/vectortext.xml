@@ -22,7 +22,8 @@
 &lt;text x="10" y="100" stroke="#000000"&gt;
   &lt;textPath xlink:href="#myTextPath2"/&gt;
 &lt;/text&gt;
-</pre></description>
+</pre>
+<p>Support for bitmap fonts is included.  This feature is implemented by drawing bitmap characters to an internal texture and then rendering this to the display as a rectangular path.  It is recommended that this feature is only used for fast 1:1 rendering without transforms.  The user will otherwise be better served through the use of a scalable font.</p></description>
     <source>
       <file path="vectors/">text.cpp</file>
     </source>
@@ -456,7 +457,7 @@
       <const name="REPEAT">Tile the graphic repeatedly.</const>
       <const name="REFLECT_X">Tile the graphic, reflecting the image alternately on the X axis only.</const>
       <const name="REFLECT_Y">Tile the graphic, reflecting the image alternately on the Y axis only.</const>
-      <const name="CLIP">Do not scale the graphic in any way and clip it if it extends past imposed boundaries.</const>
+      <const name="CLIP">Do not scale the graphic.  Clip it if it extends past imposed boundaries.</const>
     </constants>
 
     <constants lookup="VFR" comment="Vector fill rules for the FillRule field in the Vector class.">

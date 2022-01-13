@@ -719,7 +719,7 @@
       <const name="ACCELERATED_2D">2D video acceleration is available.</const>
       <const name="CLEAR">Clear graphics on initialisation and when resizing.</const>
       <const name="COMPRESSED">The bitmap data is compressed.</const>
-      <const name="USER">User flag allows tagging of bitmaps for special meaning; not used internally.</const>
+      <const name="USER">This user flag can be used to tag bitmaps with special meaning.  Not used internally.</const>
       <const name="NEVER_SHRINK">Ignore resize requests that would shrink the size of the bitmap.</const>
       <const name="BLANK_PALETTE">Forces a blank/black palette on initialisation.</const>
       <const name="INVERSE_ALPHA">Indicates reverse alpha blending, higher values are transparent.</const>

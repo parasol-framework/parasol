@@ -258,7 +258,7 @@
       <const name="REPEAT">Tile the graphic repeatedly.</const>
       <const name="REFLECT_X">Tile the graphic, reflecting the image alternately on the X axis only.</const>
       <const name="REFLECT_Y">Tile the graphic, reflecting the image alternately on the Y axis only.</const>
-      <const name="CLIP">Do not scale the graphic in any way and clip it if it extends past imposed boundaries.</const>
+      <const name="CLIP">Do not scale the graphic.  Clip it if it extends past imposed boundaries.</const>
     </constants>
 
     <constants lookup="VFR" comment="Vector fill rules for the FillRule field in the Vector class.">

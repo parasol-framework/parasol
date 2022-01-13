@@ -196,7 +196,7 @@ static ERROR VECTORTEXT_Init(objVectorText *Self, APTR Void)
          ReleaseObject(focus);
       }
 
-      // The cursor will inherit transforms from the VectorText as long as it is a direct child.
+      // The editing cursor will inherit transforms from the VectorText as long as it is a direct child.
 
       if (!CreateObject(ID_VECTORPOLYGON, 0, &Self->txCursor.vector,
             FID_X1|TLONG,     0,

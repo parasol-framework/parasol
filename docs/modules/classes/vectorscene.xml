@@ -14,7 +14,7 @@
     <include>modules/vectorscene.h</include>
     <copyright>Paul Manias © 2010-2021</copyright>
     <description>
-<p>The VectorScene class acts as a container and control point for the management of vector definitions.  Its primary duty is to draw the scene to a target <class name="Bitmap">Bitmap</class> or <class name="Surface">Surface</class> provided by the client.</p>
+<p>The VectorScene class acts as a container and control point for the management of vector definitions.  Its main purpose is to draw the scene to a target <class name="Bitmap">Bitmap</class> or <class name="Surface">Surface</class> provided by the client.</p>
 <p>Vector scenes are created by initialising multiple Vector objects such as <class name="VectorPath">VectorPath</class> and <class name="VectorViewport">VectorViewport</class> and positioning them within a vector tree.  The VectorScene must lie at the root.</p>
 <p>The default mode of operation is for scenes to be manually drawn, for which the client must set the target <field>Bitmap</field> and call the <action>Draw</action> action as required.  Automated drawing can be enabled by setting the target <field>Surface</field> prior to initialisation.  In automated mode the <field>PageWidth</field> and <field>PageHeight</field> will reflect the dimensions of the target surface at all times.</p>
 <p>Vector definitions can be saved and loaded from permanent storage by using the <class name="SVG">SVG</class> class.</p></description>
@@ -329,7 +329,7 @@
       <const name="REPEAT">Tile the graphic repeatedly.</const>
       <const name="REFLECT_X">Tile the graphic, reflecting the image alternately on the X axis only.</const>
       <const name="REFLECT_Y">Tile the graphic, reflecting the image alternately on the Y axis only.</const>
-      <const name="CLIP">Do not scale the graphic in any way and clip it if it extends past imposed boundaries.</const>
+      <const name="CLIP">Do not scale the graphic.  Clip it if it extends past imposed boundaries.</const>
     </constants>
 
     <constants lookup="VFR" comment="Vector fill rules for the FillRule field in the Vector class.">

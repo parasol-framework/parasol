@@ -698,7 +698,7 @@ void draw_gradient(objVector *Vector, agg::path_storage *mPath, DOUBLE X, DOUBLE
          else gtrans *= agg::trans_affine_scaling(Gradient.Radius * 0.01);
       }
 
-      agg::gradient_diamond  gradient_func;
+      agg::gradient_diamond gradient_func;
       typedef agg::span_gradient<agg::rgba8, interpolator_type, agg::gradient_diamond, color_array_type> span_gradient_type;
       typedef agg::renderer_scanline_aa<RENDERER_BASE_TYPE, span_allocator_type, span_gradient_type> renderer_gradient_type;
       span_gradient_type  span_gradient(span_interpolator, gradient_func, *Table, 0, length);
@@ -761,7 +761,7 @@ void draw_gradient(objVector *Vector, agg::path_storage *mPath, DOUBLE X, DOUBLE
          else gtrans *= agg::trans_affine_scaling(Gradient.Radius * 0.01);
       }
 
-      agg::gradient_conic  gradient_func;
+      agg::gradient_conic gradient_func;
       typedef agg::span_gradient<agg::rgba8, interpolator_type, agg::gradient_conic, color_array_type> span_gradient_type;
       typedef agg::renderer_scanline_aa<RENDERER_BASE_TYPE, span_allocator_type, span_gradient_type> renderer_gradient_type;
       span_gradient_type  span_gradient(span_interpolator, gradient_func, *Table, 0, length);
@@ -778,7 +778,7 @@ void draw_gradient(objVector *Vector, agg::path_storage *mPath, DOUBLE X, DOUBLE
       agg::render_scanlines(Raster, scanline, solidrender_gradient);
    }
    else if (Gradient.Type IS VGT_CONTOUR) {
-      agg::gradient_contour  gradient_func;
+      agg::gradient_contour gradient_func;
 
       if (Gradient.X1 < 0) Gradient.X1 = 0;
       if (Gradient.X2 > 512) Gradient.X2 = 512;

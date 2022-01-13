@@ -382,7 +382,7 @@ static ERROR fntGetList(FontList **Result)
    size_t size = 0;
    ConfigGroups *groups;
    if (!GetPointer(glConfig, FID_Data, &groups)) {
-      for (auto& [group, keys] : groups[0]) {
+      for (auto & [group, keys] : groups[0]) {
          size += sizeof(FontList) + keys["Name"].size() + 1 + keys["Styles"].size() + 1 + keys["Points"].size() + 1;
       }
 
@@ -391,7 +391,7 @@ static ERROR fntGetList(FontList **Result)
          STRING buffer = (STRING)(list + groups->size());
          *Result = list;
 
-         for (auto& [group, keys] : groups[0]) {
+         for (auto & [group, keys] : groups[0]) {
             last_list = list;
             list->Next = list + 1;
 
@@ -449,7 +449,7 @@ encountered.
 -INPUT-
 obj(Font) Font: An initialised font object.
 cstr String: The string to be analysed.
-int(FSS) Chars:  The number of characters (not bytes, so consider UTF-8 formatting) to be used in calculating the string length.  FSS constants can also be used here.
+int(FSS) Chars:  The number of characters (not bytes, so consider UTF-8 serialisation) to be used in calculating the string length.  FSS constants can also be used here.
 int Wrap:   The pixel position at which word wrapping occurs.  If zero or less, wordwrap is disabled.
 &int Width: The width of the longest line will be returned in this parameter.
 &int Rows:  The number of calculated rows will be returned in this parameter.
@@ -618,7 +618,7 @@ Word wrapping will not be taken into account, even if it has been enabled in the
 -INPUT-
 obj(Font) Font: An initialised font object.
 cstr String: The string to be calculated.
-int Chars: The number of characters (not bytes, so consider UTF-8 formatting) to be used in calculating the string length, or -1 if you want the entire string to be used.
+int Chars: The number of characters (not bytes, so consider UTF-8 serialisation) to be used in calculating the string length, or -1 to use the entire string.
 
 -RESULT-
 int: The pixel width of the string is returned - this will be zero if there was an error or the string is empty.
@@ -689,7 +689,7 @@ static LONG fntStringWidth(objFont *Font, CSTRING String, LONG Chars)
 ConvertCoords: Converts pixel coordinates into equivalent column and row positions in font strings.
 
 This function is used to convert pixel coordinates within a font String into the equivalent Row and Column character
-positions.  If the coordinate values that you supply are in excess of the String dimensions, the Column and Row results
+positions.  If the coordinate values that are supplied are in excess of the String dimensions, the Column and Row results
 will be automatically restricted to their maximum value.  For instance, if the Y argument is set to 280 and the
 String consists of 15 rows amounting to 150 pixels in height, the Row value will be returned as 15.
 
@@ -697,9 +697,9 @@ Negative coordinate values are not permitted.
 
 -INPUT-
 obj(Font) Font: An initialised font object.
-cstr String: Must point to the string that you will be inspecting, or NULL if you want to inspect the string currently in the font's String field.
-int X:       The horizontal coordinate that you want to translate into a column position.
-int Y:       The vertical coordinate that you want to translate into a row position.
+cstr String: Either point to a string for inspection or set to NULL to inspect the string currently in the font's String field.
+int X:       The horizontal coordinate to translate into a column position.
+int Y:       The vertical coordinate to translate into a row position.
 &int Column: This result parameter will be updated to reflect the calculated character position, with consideration to the UTF-8 standard.  May be NULL if not required.
 &int Row:    This result parameter will be updated to reflect the calculated row position.  May be NULL if not required.
 &int ByteColumn: This result parameter will be updated to reflect the absolute column byte position within the given row.  May be NULL if not required.
@@ -815,10 +815,10 @@ This function is used to set the default font size for the application.  This wi
 proportional sizes (e.g. a point size of 150% and a default point of 10 would result in a 15 point font).  Also, Font
 objects with no preset size will be set to the default size.
 
-Please note that the default size is defined by the global style value on the xpath "/interface/@fontsize".  This can
-also be overridden by the user's style preference.  For this reason, we recommend against your application using
-SetDefaultSize() unless your interface design makes it a necessity (e.g. the user may have poor eyesight, so
-restricting the font size may have usability implications).
+Please note that the default size is defined by the global style value on the xpath `/interface/@fontsize`.  This can
+also be overridden by the user's style preference.  We recommend against an application calling SetDefaultSize() unless
+the interface design makes it a necessity (for instance if the user has poor eyesight, restricting the font size may
+have usability implications).
 
 -INPUT-
 double Size: The new default point size.
@@ -918,7 +918,7 @@ static ERROR fntInstallFont(CSTRING Files)
 RemoveFont: Removes an installed font from the system.
 
 RemoveFont() will remove any font that is installed in the system.  Once a font has been removed, the data is
-permanently destroyed and it cannot be recovered.  To remove a font, you are required to specify its family name only.
+permanently destroyed and it cannot be recovered.  To remove a font, specify its family name only.
 All associated styles for that font will be deleted.
 
 This function may fail if attempting to remove a font that is currently in use.
@@ -949,7 +949,7 @@ static ERROR fntRemoveFont(CSTRING Name)
 
    ConfigGroups *groups;
    if (!GetPointer(glConfig, FID_Data, &groups)) {
-      for (auto& [group, keys] : *groups) {
+      for (auto & [group, keys] : *groups) {
          if (StrMatch(Name, keys["Name"].c_str())) continue;
 
          ERROR error = ERR_Okay;
@@ -1055,7 +1055,7 @@ static ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, LONG Flags, 
    std::vector<std::string> names;
    parasol::split(std::string(Name), std::back_inserter(names));
 
-   for (auto& name : names) {
+   for (auto &name : names) {
       if (!name.compare("*")) {
          // Use of the '*' wildcard indicates that the default scalable font can be used.  This feature is usually
          // combined with a fixed font, e.g. "Sans Serif,*"
@@ -1066,12 +1066,12 @@ static ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, LONG Flags, 
       parasol::ltrim(name, "'\"");
       parasol::rtrim(name, "'\"");
 
-      for (auto& [group, keys] : groups[0]) {
+      for (auto & [group, keys] : groups[0]) {
          if (!StrCompare(name.c_str(), keys["Name"].c_str(), 0, STR_WILDCARD)) {
             // Determine if this is a fixed and/or scalable font.  Note that if the font supports
             // both fixed and scalable, fixed_group and scale_group will point to the same font.
 
-            for (auto& [k, v] : keys) {
+            for (auto & [k, v] : keys) {
                if ((!fixed_group) and (!k.compare(0, 6, "Fixed:"))) {
                   fixed_group_name = group;
                   fixed_group = &keys;
@@ -1109,7 +1109,7 @@ static ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, LONG Flags, 
             }
          }
 
-         for (auto& [group, keys] : *groups) {
+         for (auto & [group, keys] : *groups) {
             if ((keys.contains("Name")) and (!keys["Name"].compare(default_font))) {
                scale_group_name = group;
                scale_group = &keys;
@@ -1119,7 +1119,7 @@ static ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, LONG Flags, 
       }
 
       if (!fixed_group) { // Sans Serif is a good default for a fixed font.
-         for (auto& [group, keys] : *groups) {
+         for (auto & [group, keys] : *groups) {
             if ((keys.contains("Name")) and (!keys["Name"].compare("Sans Serif"))) {
                fixed_group_name = group;
                fixed_group = &keys;
@@ -1139,7 +1139,7 @@ static ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, LONG Flags, 
       std::vector<std::string> points;
       parasol::split(fixed_group[0]["Points"], std::back_inserter(points));
 
-      for (auto& point : points) {
+      for (auto &point : points) {
          auto diff = StrToInt(point.c_str()) - Point;
          if ((diff >= -1) and (diff <= 1)) { acceptable = true; break; }
       }
@@ -1255,9 +1255,9 @@ static ERROR fntRefreshFonts(void)
 
    ConfigGroups *groups;
    if (!GetPointer(glConfig, FID_Data, &groups)) {
-      for (auto& [group, keys] : *groups) {
+      for (auto & [group, keys] : *groups) {
          std::list <std::string> styles;
-         for (auto& [k, v] : keys) {
+         for (auto & [k, v] : keys) {
             if (!k.compare(0, 6, "Fixed:")) styles.push_front(k.substr(6, std::string::npos));
             else if (!k.compare(0, 6, "Scale:")) styles.push_front(k.substr(6, std::string::npos));
          }
