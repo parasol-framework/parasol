@@ -1,5 +1,32 @@
 
 //****************************************************************************
+
+static LONG parse_aspect_ratio(CSTRING Value)
+{
+   LONG flags = 0;
+
+   while ((*Value) AND (*Value <= 0x20)) Value++;
+
+   if (!StrMatch("none", Value)) flags = ARF_NONE;
+   else {
+      if (!StrCompare("xMin", Value, 4, 0)) { flags |= ARF_X_MIN; Value += 4; }
+      else if (!StrCompare("xMid", Value, 4, 0)) { flags |= ARF_X_MID; Value += 4; }
+      else if (!StrCompare("xMax", Value, 4, 0)) { flags |= ARF_X_MAX; Value += 4; }
+
+      if (!StrCompare("yMin", Value, 4, 0)) { flags |= ARF_Y_MIN; Value += 4; }
+      else if (!StrCompare("yMid", Value, 4, 0)) { flags |= ARF_Y_MID; Value += 4; }
+      else if (!StrCompare("yMax", Value, 4, 0)) { flags |= ARF_Y_MAX; Value += 4; }
+
+      while ((*Value) AND (*Value <= 0x20)) Value++;
+
+      if (!StrCompare("meet", Value, 4, 0)) { flags |= ARF_MEET; }
+      else if (!StrCompare("slice", Value, 5, 0)) { flags |= ARF_SLICE; }
+   }
+
+   return flags;
+}
+
+//****************************************************************************
 // Apply the current state values to a vector.
 
 static void apply_state(svgState *State, OBJECTPTR Vector)
@@ -609,7 +636,7 @@ static void def_image(objSVG *Self, XMLTag *Tag)
 static ERROR xtag_image(objSVG *Self, objXML *XML, svgState *State, XMLTag *Tag, OBJECTPTR Parent, OBJECTPTR *Vector)
 {
    parasol::Log log(__FUNCTION__);
-   STRING ratio = NULL;
+   LONG ratio = 0;
    BYTE width_set = FALSE;
    BYTE height_set = FALSE;
    svgState state = *State;
@@ -620,8 +647,7 @@ static ERROR xtag_image(objSVG *Self, objXML *XML, svgState *State, XMLTag *Tag,
          load_pic(Self, Tag->Attrib[a].Value, &pic);
       }
       else if (!StrMatch("preserveAspectRatio", Tag->Attrib[a].Name)) {
-         // none, defer, xMinYMin, xMidyMin, xMaxYMin, xMinYMid, xMidYMid, xMaxYMid, xMinYMax, xMidYMax, xMaxYMax
-         ratio = Tag->Attrib[a].Value;
+         ratio = parse_aspect_ratio(Tag->Attrib[a].Value);
       }
       else if (!StrMatch("width", Tag->Attrib[a].Name)) {
          width_set = TRUE;
@@ -639,6 +665,7 @@ static ERROR xtag_image(objSVG *Self, objXML *XML, svgState *State, XMLTag *Tag,
             FID_Picture|TPTR,       pic,
             FID_SpreadMethod|TLONG, VSPREAD_PAD,
             FID_Units|TLONG,        VUNIT_BOUNDING_BOX,
+            FID_AspectRatio|TLONG,  ratio,
             TAGEND)) {
 
          char id[32] = "img";
@@ -811,13 +838,7 @@ static void xtag_morph(objSVG *Self, objXML *XML, XMLTag *Tag, OBJECTPTR Parent)
             break;
 
          case SVF_ALIGN:
-            if (!StrCompare("xMin", val, 4, 0)) { flags |= VMF_X_MIN; val += 4; }
-            else if (!StrCompare("xMid", val, 4, 0)) { flags |= VMF_X_MID; val += 4; }
-            else if (!StrCompare("xMax", val, 4, 0)) { flags |= VMF_X_MAX; val += 4; }
-            while ((*val) AND (*val <= 0x20)) val++;
-            if (!StrCompare("yMin", val, 4, 0)) { flags |= VMF_Y_MIN; val += 4; }
-            else if (!StrCompare("yMid", val, 4, 0)) { flags |= VMF_Y_MID; val += 4; }
-            else if (!StrCompare("yMax", val, 4, 0)) { flags |= VMF_Y_MAX; val += 4; }
+            flags |= parse_aspect_ratio(val);
             break;
       }
    }
@@ -1103,27 +1124,10 @@ static void xtag_svg(objSVG *Self, objXML *XML, svgState *State, XMLTag *Tag, OB
          case SVF_Y: set_double(viewport, FID_Y, val); break;
          case SVF_WIDTH: set_double(viewport, FID_Width, val); break;
          case SVF_HEIGHT: set_double(viewport, FID_Height, val); break;
-         case SVF_PRESERVEASPECTRATIO: {
-            LONG flags = 0;
-            while ((*val) AND (*val <= 0x20)) val++;
-            if (!StrMatch("none", val)) flags = ARF_NONE;
-            else {
-               if (!StrCompare("xMin", val, 4, 0)) { flags |= ARF_X_MIN; val += 4; }
-               else if (!StrCompare("xMid", val, 4, 0)) { flags |= ARF_X_MID; val += 4; }
-               else if (!StrCompare("xMax", val, 4, 0)) { flags |= ARF_X_MAX; val += 4; }
 
-               if (!StrCompare("yMin", val, 4, 0)) { flags |= ARF_Y_MIN; val += 4; }
-               else if (!StrCompare("yMid", val, 4, 0)) { flags |= ARF_Y_MID; val += 4; }
-               else if (!StrCompare("yMax", val, 4, 0)) { flags |= ARF_Y_MAX; val += 4; }
-
-               while ((*val) AND (*val <= 0x20)) val++;
-
-               if (!StrCompare("meet", val, 4, 0)) { flags |= ARF_MEET; }
-               else if (!StrCompare("slice", val, 5, 0)) { flags |= ARF_SLICE; }
-            }
-            SetLong(viewport, FID_AspectRatio, flags);
+         case SVF_PRESERVEASPECTRATIO:
+            SetLong(viewport, FID_AspectRatio, parse_aspect_ratio(val));
             break;
-         }
 
          case SVF_ID:
             SetString(viewport, FID_ID, val);
