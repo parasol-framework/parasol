@@ -20,19 +20,19 @@ static ERROR IMAGE_Init(objVectorImage *Self, APTR Void)
 {
    parasol::Log log;
 
-   if ((Self->SpreadMethod <= 0) OR (Self->SpreadMethod >= VSPREAD_END)) {
+   if ((Self->SpreadMethod <= 0) or (Self->SpreadMethod >= VSPREAD_END)) {
       log.traceWarning("Invalid SpreadMethod value of %d", Self->SpreadMethod);
       return log.warning(ERR_OutOfRange);
    }
 
-   if ((Self->Units != VUNIT_BOUNDING_BOX) AND (Self->Units != VUNIT_USERSPACE)) {
+   if ((Self->Units != VUNIT_BOUNDING_BOX) and (Self->Units != VUNIT_USERSPACE)) {
       log.traceWarning("Invalid Units value of %d", Self->Units);
       return log.warning(ERR_OutOfRange);
    }
 
    if (!Self->Bitmap) return log.warning(ERR_FieldNotSet);
 
-   if ((Self->Bitmap->BitsPerPixel != 24) AND (Self->Bitmap->BitsPerPixel != 32)) {
+   if ((Self->Bitmap->BitsPerPixel != 24) and (Self->Bitmap->BitsPerPixel != 32)) {
       return log.warning(ERR_NoSupport);
    }
 

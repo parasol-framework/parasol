@@ -279,7 +279,7 @@ static void gen_vector_path(objVector *Vector)
       // aligned, for which the width and height of the base-path must be known.
 
       if ((Vector->Dirty & RC_TRANSFORM) AND (Vector->Head.SubID IS ID_VECTORTEXT)) {
-         get_text_xy((rkVectorText *)Vector);
+         get_text_xy((rkVectorText *)Vector); // Sets FinalX/Y
 
          if (!Vector->Transform) Vector->Transform = new (std::nothrow) agg::trans_affine;
          else Vector->Transform->reset();
