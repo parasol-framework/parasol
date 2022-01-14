@@ -16,6 +16,10 @@ following extract illustrates the SVG equivalent of this feature:
 &lt;/text&gt;
 </pre>
 
+Support for bitmap fonts is included.  This feature is implemented by drawing bitmap characters to an internal @VectorImage
+and then rendering that to the viewport as a rectangular path.  It is recommended that this feature is only used for
+fast 1:1 rendering without transforms.  The user is otherwise better served through the use of scalable fonts.
+
 -END-
 
 TODO: decompose_ft_outline() should cache the generated paths
@@ -47,8 +51,11 @@ static ERROR decompose_ft_outline(const FT_Outline &, bool, agg::path_storage &)
 static void delete_selection(objVectorText *);
 static void insert_char(objVectorText *, LONG, LONG);
 static void generate_text(objVectorText *);
+static void generate_text_bitmap(objVectorText *);
 static void key_event(objVectorText *, evKey *, LONG);
 static void reset_font(objVectorText *);
+
+enum { WS_NO_WORD=0, WS_NEW_WORD, WS_IN_WORD };
 
 INLINE DOUBLE int26p6_to_dbl(LONG p)
 {
@@ -159,11 +166,13 @@ static ERROR VECTORTEXT_Free(objVectorText *Self, APTR Void)
    Self->txLines.~vector();
    Self->txCursor.~TextCursor();
 
-   if (Self->txFamily)   { FreeResource(Self->txFamily); Self->txFamily = NULL; }
-   if (Self->txFont)     { acFree(Self->txFont); Self->txFont = NULL; }
-   if (Self->txDX)       { FreeResource(Self->txDX); Self->txDX = NULL; }
-   if (Self->txDY)       { FreeResource(Self->txDY); Self->txDY = NULL; }
-   if (Self->txKeyEvent) { UnsubscribeEvent(Self->txKeyEvent); Self->txKeyEvent = NULL; }
+   if (Self->txBitmapImage) { acFree(Self->txBitmapImage); Self->txBitmapImage = NULL; }
+   if (Self->txAlphaBitmap) { acFree(Self->txAlphaBitmap); Self->txAlphaBitmap = NULL; }
+   if (Self->txFamily)      { FreeResource(Self->txFamily); Self->txFamily = NULL; }
+   if (Self->txFont)        { acFree(Self->txFont); Self->txFont = NULL; }
+   if (Self->txDX)          { FreeResource(Self->txDX); Self->txDX = NULL; }
+   if (Self->txDY)          { FreeResource(Self->txDY); Self->txDY = NULL; }
+   if (Self->txKeyEvent)    { UnsubscribeEvent(Self->txKeyEvent); Self->txKeyEvent = NULL; }
 
    if (Self->txFocusID) {
       OBJECTPTR focus;
@@ -949,6 +958,11 @@ static void generate_text(objVectorText *Vector)
    auto &lines = Vector->txLines;
    if (!lines.size()) return;
 
+   if (!(Vector->txFont->Flags & FTF_SCALABLE)) {
+      generate_text_bitmap(Vector);
+      return;
+   }
+
    FT_Face ftface;
    if ((GetPointer(Vector->txFont, FID_FreetypeFace, &ftface)) or (!ftface)) return;
 
@@ -1030,15 +1044,13 @@ static void generate_text(objVectorText *Vector)
    LONG current_row = 0;
    DOUBLE dist = 0; // Distance to next vertex
    DOUBLE angle = 0;
-   #define WS_NO_WORD  0
-   #define WS_NEW_WORD 1
-   #define WS_IN_WORD  2
+   DOUBLE longest_line_width = 0;
 
    if (morph) {
       for (auto &line : Vector->txLines) {
          LONG current_col = 0;
          line.chars.clear();
-         bool wrap_state = WS_NO_WORD;
+         auto wrap_state = WS_NO_WORD;
          for (auto str=line.c_str(); *str; ) {
             LONG char_len;
             LONG unicode = UTF8ReadValue(str, &char_len);
@@ -1138,7 +1150,7 @@ static void generate_text(objVectorText *Vector)
       for (auto &line : Vector->txLines) {
          LONG current_col = 0;
          line.chars.clear();
-         LONG wrap_state = WS_NO_WORD;
+         auto wrap_state = WS_NO_WORD;
          for (auto str=line.c_str(); *str; ) {
             LONG char_len;
             LONG unicode = UTF8ReadValue(str, &char_len);
@@ -1199,7 +1211,7 @@ static void generate_text(objVectorText *Vector)
                      // line's chars array.
 
                      agg::path_storage cursor_path;
-                     cursor_path.move_to(0, 0 + (point_size * 0.1));
+                     cursor_path.move_to(0, point_size * 0.1);
                      cursor_path.line_to(0, -(point_size * path_scale) - (point_size * 0.2));
                      agg::conv_transform<agg::path_storage, agg::trans_affine> trans_cursor(cursor_path, transform);
 
@@ -1233,16 +1245,159 @@ static void generate_text(objVectorText *Vector)
             current_col++;
          }
 
+         if (dx > longest_line_width) longest_line_width = dx;
          dx = 0;
          dy += Vector->txFont->LineSpacing;
          current_row++;
       }
 
-      Vector->txWidth = dx;
+      Vector->txWidth = longest_line_width;
    }
 
    if (Vector->txCursor.vector) {
       Vector->txCursor.resetVector(Vector);
+   }
+}
+
+//****************************************************************************
+// Bitmap fonts are drawn as a rectangular block referencing a VectorImage texture that contains the rendered font.
+
+static void generate_text_bitmap(objVectorText *Vector)
+{
+   parasol::Log log(__FUNCTION__);
+
+   if (!Vector->txFont) {
+      reset_font(Vector);
+      if (!Vector->txFont) return;
+   }
+
+   auto &lines = Vector->txLines;
+   if (!lines.size()) return;
+
+   LONG dx = 0, dy = Vector->txFont->Leading;
+   LONG longest_line_width = 0;
+
+   if ((!Vector->txInlineSize) and (!(Vector->txCursor.vector))) { // Fast calculation if no wrapping or active cursor
+      for (auto &line : Vector->txLines) {
+         line.chars.clear();
+         for (auto str=line.c_str(); *str; ) {
+            LONG line_width = fntStringWidth(Vector->txFont, str, 0);
+            if (line_width > longest_line_width) longest_line_width = line_width;
+         }
+         dy += Vector->txFont->LineSpacing;
+      }
+   }
+   else {
+      agg::path_storage cursor_path;
+      LONG prev_glyph = 0;
+
+      for (auto &line : Vector->txLines) {
+         line.chars.clear();
+         auto wrap_state = WS_NO_WORD;
+         for (auto str=line.c_str(); *str; ) {
+            LONG char_len;
+            auto unicode = UTF8ReadValue(str, &char_len);
+
+            LONG kerning;
+            auto char_width = fntCharWidth(Vector->txFont, unicode, prev_glyph, &kerning);
+
+            if (unicode <= 0x20) { wrap_state = WS_NO_WORD; prev_glyph = 0; }
+            else if (wrap_state IS WS_NEW_WORD) wrap_state = WS_IN_WORD;
+            else if (wrap_state IS WS_NO_WORD)  wrap_state = WS_NEW_WORD;
+
+            if (!unicode) break;
+
+            // Determine if this is a new word that would wrap if drawn.
+            // TODO: Wrapping information should be cached for speeding up subsequent redraws.
+
+            if ((wrap_state IS WS_NEW_WORD) and (Vector->txInlineSize)) {
+               LONG word_length = 0;
+               for (LONG c=0; (str[c]) and (str[c] > 0x20); ) {
+                  for (++c; ((str[c] & 0xc0) IS 0x80); c++);
+                  word_length++;
+               }
+
+               LONG word_width = fntStringWidth(Vector->txFont, str, word_length);
+
+               if (dx + word_width >= Vector->txInlineSize) {
+                  if (dx > longest_line_width) longest_line_width = dx;
+                  dx = 0;
+                  dy += Vector->txFont->LineSpacing;
+               }
+            }
+
+            str += char_len;
+
+            if (Vector->txCursor.vector) {
+               line.chars.emplace_back(dx, dx, dy + 1, dy - ((DOUBLE)Vector->txFont->Height * 1.2));
+               if (!*str) { // Last character reached, add a final cursor entry past the character position.
+                  line.chars.emplace_back(dx + kerning + char_width, dy, dx + kerning + char_width, dy - ((DOUBLE)Vector->txFont->Height * 1.2));
+               }
+            }
+
+            dx += kerning + char_width;
+            prev_glyph = unicode;
+         }
+
+         if (dx > longest_line_width) longest_line_width = dx;
+         dx = 0;
+         dy += Vector->txFont->LineSpacing;
+      }
+   }
+
+   if (dy < Vector->txFont->LineSpacing) dy = Vector->txFont->LineSpacing; // Enforce min. height
+
+   Vector->BasePath->move_to(0, 0);
+   Vector->BasePath->line_to(longest_line_width, 0);
+   Vector->BasePath->line_to(longest_line_width, dy);
+   Vector->BasePath->line_to(0, dy);
+   Vector->BasePath->close_polygon();
+
+   Vector->txWidth = longest_line_width;
+
+   if (Vector->txCursor.vector) {
+      Vector->txCursor.resetVector(Vector);
+   }
+
+   if (!Vector->txBitmapImage) {
+      if (CreateObject(ID_BITMAP, NF_INTEGRAL, &Vector->txAlphaBitmap,
+            FID_Width|TLONG,        longest_line_width,
+            FID_Height|TLONG,       dy,
+            FID_BitsPerPixel|TLONG, 32,
+            FID_Flags|TLONG,        BMF_ALPHA_CHANNEL,
+            TAGEND) != ERR_Okay) return;
+
+      if (CreateObject(ID_VECTORIMAGE, NF_INTEGRAL, &Vector->txBitmapImage,
+            FID_Bitmap|TPTR,        Vector->txAlphaBitmap,
+            FID_SpreadMethod|TLONG, VSPREAD_CLIP,
+            FID_Units|TLONG,        VUNIT_BOUNDING_BOX,
+            FID_AspectRatio|TLONG,  ARF_NONE,
+            TAGEND) != ERR_Okay) return;
+   }
+   else acResize(Vector->txAlphaBitmap, longest_line_width, dy, 0);
+
+   Vector->FillImage = Vector->txBitmapImage;
+   Vector->DisableFillColour = true;
+
+   Vector->txFont->Bitmap = Vector->txAlphaBitmap;
+
+   gfxDrawRectangle(Vector->txAlphaBitmap, 0, 0, Vector->txAlphaBitmap->Width, Vector->txAlphaBitmap->Height, 0x000000ff, BAF_FILL);
+
+   if (Vector->txInlineSize) Vector->txFont->WrapEdge = Vector->txInlineSize;
+
+   LONG y = Vector->txFont->Leading;
+   for (auto &line : Vector->txLines) {
+      auto str = line.c_str();
+      if (!str[0]) y += Vector->txFont->LineSpacing;
+      else {
+         SetString(Vector->txFont, FID_String, str);
+         Vector->txFont->X = 0;
+         Vector->txFont->Y = y;
+         acDraw(Vector->txFont);
+
+         if (Vector->txInlineSize) y = Vector->txFont->EndY + Vector->txFont->LineSpacing;
+         else y += Vector->txFont->LineSpacing;
+      }
    }
 }
 
@@ -1426,6 +1581,11 @@ static void get_text_xy(objVectorText *Vector)
 
    if (Vector->txAlignFlags & ALIGN_RIGHT) x -= Vector->txWidth;
    else if (Vector->txAlignFlags & ALIGN_HORIZONTAL) x -= Vector->txWidth * 0.5;
+
+   if (!(Vector->txFont->Flags & FTF_SCALABLE)) {
+      // Bitmap fonts need an adjustment because the Y coordinate corresponds to the base-line.
+      y -= Vector->txFont->Height + Vector->txFont->Leading;
+   }
 
    Vector->FinalX = x;
    Vector->FinalY = y;

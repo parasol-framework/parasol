@@ -196,6 +196,8 @@ typedef struct rkVectorText {
    DOUBLE *txDX, *txDY; // A series of spacing adjustments that apply on a per-character level.
    DOUBLE *txRotate;  // A series of angles that will rotate each individual character.
    struct rkFont *txFont;
+   objBitmap *txAlphaBitmap; // Host for the bitmap font texture
+   struct rkVectorImage *txBitmapImage;
    FT_Size FreetypeSize;
    std::vector<TextLine> txLines;
    TextCursor txCursor;
