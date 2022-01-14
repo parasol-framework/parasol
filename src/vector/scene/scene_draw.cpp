@@ -420,6 +420,7 @@ static void draw_image(objVector *Vector, agg::path_storage &Path, LONG SampleMe
          transform.scale(width / Image.Bitmap->Width, height / Image.Bitmap->Height);
          applied |= VTF_SCALE;
       }
+      else applied |= VTF_TRANSLATE; // Translation required to ensure that the image is moved to the (x,y) position
    }
 
    if (Vector) {
