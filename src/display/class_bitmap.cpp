@@ -1572,7 +1572,10 @@ static ERROR BITMAP_Resize(objBitmap *Self, struct acResize *Args)
    UBYTE *data;
    if (Self->Flags & BMF_NO_DATA);
    else if ((Self->Data) and (Self->prvAFlags & BF_DATA)) {
-      if (!AllocMemory(size, MEM_NO_BLOCKING|MEM_NO_POOL|Self->Head.MemFlags|Self->DataFlags|MEM_NO_CLEAR, &data, &datamid)) {
+      if ((size <= Self->Size) and (size / Self->Size > 0.5)) { // Do nothing when shrinking unless able to save considerable resources
+         size = Self->Size;
+      }
+      else if (!AllocMemory(size, MEM_NO_BLOCKING|MEM_NO_POOL|Self->Head.MemFlags|Self->DataFlags|MEM_NO_CLEAR, &data, &datamid)) {
          if (Self->DataMID) {
             ReleaseMemoryID(Self->DataMID);
             FreeResourceID(Self->DataMID);
