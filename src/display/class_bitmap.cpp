@@ -1483,12 +1483,16 @@ static ERROR BITMAP_ReleaseObject(objBitmap *Self, APTR Void)
 -ACTION-
 Resize: Resizes a bitmap object's dimensions.
 
-Resizing a bitmap allows you to change its dimensions in width and height, as well as depth.  The image data will be
-retained during the resize, although cropping will occur if any of the dimensions are reduced.  Reducing the depth of
-the bitmap will degrade the bitmap's quality.
+Resizing a bitmap will change its width, height and optionally bit depth.  Existing image data is not retained after
+this process.
 
-Bitmap resizing can be time consuming due to the retention of the image data.  Processing time can be significantly
-reduced by setting the VOLATILE flag in the bitmap #Flags field.
+The image data is cleared with #BkgdRGB if the CLEAR flag is defined in #Flags.
+
+-ERRORS-
+Okay
+NullArgs
+AllocMemory
+FieldNotSet
 -END-
 *****************************************************************************/
 
