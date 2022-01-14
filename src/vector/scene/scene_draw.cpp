@@ -1003,7 +1003,7 @@ private:
                   if (shape->FillRule IS VFR_NON_ZERO) shape->FillRaster->filling_rule(agg::fill_non_zero);
                   else if (shape->FillRule IS VFR_EVEN_ODD) shape->FillRaster->filling_rule(agg::fill_even_odd);
 
-                  if (shape->FillColour.Alpha > 0) { // Solid colour
+                  if ((shape->FillColour.Alpha > 0) and (!shape->DisableFillColour)) { // Solid colour
                      mSolidRender.color(agg::rgba(shape->FillColour.Red, shape->FillColour.Green, shape->FillColour.Blue, shape->FillColour.Alpha * shape->FillOpacity * state.mOpacity));
 
                      if (state.mClipMask) {
