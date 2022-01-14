@@ -1895,176 +1895,193 @@ static ERROR draw_bitmap_font(objFont *Self)
          str += charlen;
 
          if ((unicode > 0x20) and (draw_line)) {
+            if (Self->Outline.Alpha > 0) { // Outline support
+               auto outline = Self->BmpCache->get_outline();
+               if (outline) {
+                  auto data = outline + Self->prvChar[unicode].OutlineOffset;
+                  bytewidth = (Self->prvChar[unicode].Width + 9)>>3;
 
-         // Outline support
+                  sx = dxcoord - 1;
+                  ex = sx + Self->prvChar[unicode].Width + 2;
 
-         if (Self->Outline.Alpha > 0) {
-            auto outline = Self->BmpCache->get_outline();
-            if (outline) {
-               auto data = outline + Self->prvChar[unicode].OutlineOffset;
-               bytewidth = (Self->prvChar[unicode].Width + 9)>>3;
+                  if (ex > bitmap->Clip.Right) ex = bitmap->Clip.Right;
 
-               sx = dxcoord - 1;
-               ex = sx + Self->prvChar[unicode].Width + 2;
+                  xinc = 0;
+                  if (sx < bitmap->Clip.Left) {
+                     xinc = bitmap->Clip.Left - sx;
+                     sx = bitmap->Clip.Left;
+                  }
 
-               if (ex > bitmap->Clip.Right) ex = bitmap->Clip.Right;
+                  sy = dycoord - 1;
 
-               xinc = 0;
-               if (sx < bitmap->Clip.Left) {
-                  xinc = bitmap->Clip.Left - sx;
-                  sx = bitmap->Clip.Left;
-               }
+                  ey = sy + Self->prvBitmapHeight + 2;
+                  if (ey > bitmap->Clip.Bottom) ey = bitmap->Clip.Bottom;
 
-               sy = dycoord - 1;
+                  if (sy < bitmap->Clip.Top) {
+                     data += bytewidth * (bitmap->Clip.Top - sy);
+                     sy = bitmap->Clip.Top;
+                  }
 
-               ey = sy + Self->prvBitmapHeight + 2;
-               if (ey > bitmap->Clip.Bottom) ey = bitmap->Clip.Bottom;
+                  sx += bitmap->XOffset;
+                  sy += bitmap->YOffset;
+                  dx += bitmap->XOffset;
+                  dy += bitmap->YOffset;
+                  ex += bitmap->XOffset;
+                  ey += bitmap->YOffset;
 
-               if (sy < bitmap->Clip.Top) {
-                  data += bytewidth * (bitmap->Clip.Top - sy);
-                  sy = bitmap->Clip.Top;
-               }
-
-               sx += bitmap->XOffset;
-               sy += bitmap->YOffset;
-               dx += bitmap->XOffset;
-               dy += bitmap->YOffset;
-               ex += bitmap->XOffset;
-               ey += bitmap->YOffset;
-
-               if (Self->Outline.Alpha < 255) {
-                  alpha = 255 - Self->Outline.Alpha;
-                  for (dy=sy; dy < ey; dy++) {
-                     xpos = xinc;
-                     for (dx=sx; dx < ex; dx++) {
-                        if (data[xpos>>3] & (0x80>>(xpos & 0x7))) {
-                           bitmap->ReadUCRPixel(bitmap, dx, dy, &rgb);
-                           rgb.Red   = Self->Outline.Red   + (((rgb.Red   - Self->Outline.Red) * alpha)>>8);
-                           rgb.Green = Self->Outline.Green + (((rgb.Green - Self->Outline.Green) * alpha)>>8);
-                           rgb.Blue  = Self->Outline.Blue  + (((rgb.Blue  - Self->Outline.Blue) * alpha)>>8);
-                           bitmap->DrawUCRPixel(bitmap, dx, dy, &rgb);
+                  if (Self->Outline.Alpha < 255) {
+                     alpha = 255 - Self->Outline.Alpha;
+                     for (dy=sy; dy < ey; dy++) {
+                        xpos = xinc;
+                        for (dx=sx; dx < ex; dx++) {
+                           if (data[xpos>>3] & (0x80>>(xpos & 0x7))) {
+                              bitmap->ReadUCRPixel(bitmap, dx, dy, &rgb);
+                              rgb.Red   = Self->Outline.Red   + (((rgb.Red   - Self->Outline.Red) * alpha)>>8);
+                              rgb.Green = Self->Outline.Green + (((rgb.Green - Self->Outline.Green) * alpha)>>8);
+                              rgb.Blue  = Self->Outline.Blue  + (((rgb.Blue  - Self->Outline.Blue) * alpha)>>8);
+                              bitmap->DrawUCRPixel(bitmap, dx, dy, &rgb);
+                           }
+                           xpos++;
                         }
-                        xpos++;
+                        data += bytewidth;
                      }
+                  }
+                  else {
+                     for (dy=sy; dy < ey; dy++) {
+                        xpos = xinc;
+                        for (dx=sx; dx < ex; dx++) {
+                           if (data[xpos>>3] & (0x80>>(xpos & 0x7))) {
+                              bitmap->DrawUCPixel(bitmap, dx, dy, ocolour);
+                           }
+                           xpos++;
+                        }
+                        data += bytewidth;
+                     }
+                  }
+               }
+            }
+
+            data = Self->prvData + Self->prvChar[unicode].Offset;
+            bytewidth = (Self->prvChar[unicode].Width + 7)>>3;
+
+            // Horizontal coordinates
+
+            sx = dxcoord;
+
+            ex = sx + Self->prvChar[unicode].Width;
+            if (ex > bitmap->Clip.Right) ex = bitmap->Clip.Right;
+
+            xinc = 0;
+            if (sx < bitmap->Clip.Left) {
+               xinc = bitmap->Clip.Left - sx;
+               sx = bitmap->Clip.Left;
+            }
+
+            // Vertical coordinates
+
+            sy = dycoord;
+
+            ey = sy + Self->prvBitmapHeight;
+            if (ey > bitmap->Clip.Bottom) ey = bitmap->Clip.Bottom;
+
+            if (sy < bitmap->Clip.Top) {
+               data += bytewidth * (bitmap->Clip.Top - sy);
+               sy = bitmap->Clip.Top;
+            }
+
+            sx += bitmap->XOffset; // Add offsets only after clipping adjustments
+            sy += bitmap->YOffset;
+            dx += bitmap->XOffset;
+            dy += bitmap->YOffset;
+            ex += bitmap->XOffset;
+            ey += bitmap->YOffset;
+
+            if (Self->Colour.Alpha < 255) {
+               alpha = 255 - Self->Colour.Alpha;
+               for (dy=sy; dy < ey; dy++) {
+                  xpos = xinc;
+                  for (dx=sx; dx < ex; dx++) {
+                     if (data[xpos>>3] & (0x80>>(xpos & 0x7))) {
+                        bitmap->ReadUCRPixel(bitmap, dx, dy, &rgb);
+                        rgb.Red   = Self->Colour.Red   + (((rgb.Red   - Self->Colour.Red) * alpha)>>8);
+                        rgb.Green = Self->Colour.Green + (((rgb.Green - Self->Colour.Green) * alpha)>>8);
+                        rgb.Blue  = Self->Colour.Blue  + (((rgb.Blue  - Self->Colour.Blue) * alpha)>>8);
+                        bitmap->DrawUCRPixel(bitmap, dx, dy, &rgb);
+                     }
+                     xpos++;
+                  }
+                  data += bytewidth;
+               }
+            }
+            else {
+               if (bitmap->BytesPerPixel IS 4) {
+                  auto dest = (ULONG *)(bitmap->Data + (sx<<2) + (sy * bitmap->LineWidth));
+                  for (dy=sy; dy < ey; dy++) {
+                     xpos = xinc & 0x07;
+                     xdata = data + (xinc>>3);
+                     for (dx=0; dx < ex-sx; dx++) {
+                        if (*xdata & table[xpos++]) dest[dx] = colour;
+                        if (xpos > 7) {
+                           xpos = 0;
+                           xdata++;
+                        }
+                     }
+                     dest = (ULONG *)(((UBYTE *)dest) + bitmap->LineWidth);
+                     data += bytewidth;
+                  }
+               }
+               else if (bitmap->BytesPerPixel IS 2) {
+                  auto dest = (UWORD *)(bitmap->Data + (sx<<1) + (sy * bitmap->LineWidth));
+                  for (dy=sy; dy < ey; dy++) {
+                     xpos = xinc & 0x07;
+                     xdata = data + (xinc>>3);
+                     for (dx=0; dx < ex-sx; dx++) {
+                        if (*xdata & table[xpos++]) dest[dx] = colour;
+                        if (xpos > 7) {
+                           xpos = 0;
+                           xdata++;
+                        }
+                     }
+                     dest = (UWORD *)(((UBYTE *)dest) + bitmap->LineWidth);
+                     data += bytewidth;
+                  }
+               }
+               else if (bitmap->BitsPerPixel IS 8) {
+                  if (bitmap->Flags & BMF_MASK) {
+                     if (bitmap->Flags & BMF_INVERSE_ALPHA) colour = 0;
+                     else colour = 255;
+                  }
+
+                  auto dest = (UBYTE *)(bitmap->Data + sx + (sy * bitmap->LineWidth));
+                  for (dy=sy; dy < ey; dy++) {
+                     xpos = xinc & 0x07;
+                     xdata = data + (xinc>>3);
+                     for (dx=0; dx < ex-sx; dx++) {
+                        if (*xdata & table[xpos++]) dest[dx] = (UBYTE)colour;
+                        if (xpos > 7) {
+                           xpos = 0;
+                           xdata++;
+                        }
+                     }
+                     dest = (UBYTE *)(((UBYTE *)dest) + bitmap->LineWidth);
                      data += bytewidth;
                   }
                }
                else {
                   for (dy=sy; dy < ey; dy++) {
-                     xpos = xinc;
+                     xpos = xinc & 0x07;
+                     xdata = data + (xinc>>3);
                      for (dx=sx; dx < ex; dx++) {
-                        if (data[xpos>>3] & (0x80>>(xpos & 0x7))) {
-                           bitmap->DrawUCPixel(bitmap, dx, dy, ocolour);
+                        if (*xdata & table[xpos++]) bitmap->DrawUCPixel(bitmap, dx, dy, colour);
+                        if (xpos > 7) {
+                           xpos = 0;
+                           xdata++;
                         }
-                        xpos++;
                      }
                      data += bytewidth;
                   }
                }
             }
-         }
-
-         data = Self->prvData + Self->prvChar[unicode].Offset;
-         bytewidth = (Self->prvChar[unicode].Width + 7)>>3;
-
-         // Horizontal coordinates
-
-         sx = dxcoord;
-
-         ex = sx + Self->prvChar[unicode].Width;
-         if (ex > bitmap->Clip.Right) ex = bitmap->Clip.Right;
-
-         xinc = 0;
-         if (sx < bitmap->Clip.Left) {
-            xinc = bitmap->Clip.Left - sx;
-            sx = bitmap->Clip.Left;
-         }
-
-         // Vertical coordinates
-
-         sy = dycoord;
-
-         ey = sy + Self->prvBitmapHeight;
-         if (ey > bitmap->Clip.Bottom) ey = bitmap->Clip.Bottom;
-
-         if (sy < bitmap->Clip.Top) {
-            data += bytewidth * (bitmap->Clip.Top - sy);
-            sy = bitmap->Clip.Top;
-         }
-
-         sx += bitmap->XOffset; // Add offsets only after clipping adjustments
-         sy += bitmap->YOffset;
-         dx += bitmap->XOffset;
-         dy += bitmap->YOffset;
-         ex += bitmap->XOffset;
-         ey += bitmap->YOffset;
-
-         if (Self->Colour.Alpha < 255) {
-            alpha = 255 - Self->Colour.Alpha;
-            for (dy=sy; dy < ey; dy++) {
-               xpos = xinc;
-               for (dx=sx; dx < ex; dx++) {
-                  if (data[xpos>>3] & (0x80>>(xpos & 0x7))) {
-                     bitmap->ReadUCRPixel(bitmap, dx, dy, &rgb);
-                     rgb.Red   = Self->Colour.Red   + (((rgb.Red   - Self->Colour.Red) * alpha)>>8);
-                     rgb.Green = Self->Colour.Green + (((rgb.Green - Self->Colour.Green) * alpha)>>8);
-                     rgb.Blue  = Self->Colour.Blue  + (((rgb.Blue  - Self->Colour.Blue) * alpha)>>8);
-                     bitmap->DrawUCRPixel(bitmap, dx, dy, &rgb);
-                  }
-                  xpos++;
-               }
-               data += bytewidth;
-            }
-         }
-         else {
-            if (bitmap->BytesPerPixel IS 4) {
-               auto dest = (ULONG *)(bitmap->Data + (sx<<2) + (sy * bitmap->LineWidth));
-               for (dy=sy; dy < ey; dy++) {
-                  xpos = xinc & 0x07;
-                  xdata = data + (xinc>>3);
-                  for (dx=0; dx < ex-sx; dx++) {
-                     if (*xdata & table[xpos++]) dest[dx] = colour;
-                     if (xpos > 7) {
-                        xpos = 0;
-                        xdata++;
-                     }
-                  }
-                  dest = (ULONG *)(((UBYTE *)dest) + bitmap->LineWidth);
-                  data += bytewidth;
-               }
-            }
-            else if (bitmap->BytesPerPixel IS 2) {
-               auto dest = (UWORD *)(bitmap->Data + (sx<<1) + (sy * bitmap->LineWidth));
-               for (dy=sy; dy < ey; dy++) {
-                  xpos = xinc & 0x07;
-                  xdata = data + (xinc>>3);
-                  for (dx=0; dx < ex-sx; dx++) {
-                     if (*xdata & table[xpos++]) dest[dx] = colour;
-                     if (xpos > 7) {
-                        xpos = 0;
-                        xdata++;
-                     }
-                  }
-                  dest = (UWORD *)(((UBYTE *)dest) + bitmap->LineWidth);
-                  data += bytewidth;
-               }
-            }
-            else {
-               for (dy=sy; dy < ey; dy++) {
-                  xpos = xinc & 0x07;
-                  xdata = data + (xinc>>3);
-                  for (dx=sx; dx < ex; dx++) {
-                     if (*xdata & table[xpos++]) bitmap->DrawUCPixel(bitmap, dx, dy, colour);
-                     if (xpos > 7) {
-                        xpos = 0;
-                        xdata++;
-                     }
-                  }
-                  data += bytewidth;
-               }
-            }
-         }
-
          }
 
          dxcoord += charwidth + Self->GlyphSpacing;
