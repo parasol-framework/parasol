@@ -1504,10 +1504,6 @@ static ERROR BITMAP_Resize(objBitmap *Self, struct acResize *Args)
 
    if (!Args) return log.warning(ERR_NullArgs);
 
-   // Calculate new Bitmap values
-
-   LONG origwidth  = Self->Width;
-   LONG origheight = Self->Height;
    LONG origbpp    = Self->BitsPerPixel;
 
    if (Args->Width > 0) width = (LONG)Args->Width;
@@ -1671,8 +1667,7 @@ setfields:
    CalculatePixelRoutines(Self);
 
    if (Self->Flags & BMF_CLEAR) {
-      if (Self->Width > origwidth) gfxDrawRectangle(Self, origwidth, 0, Self->Width - origwidth, origheight, bmpGetColourRGB(Self, &Self->BkgdRGB), BAF_FILL);
-      if (Self->Height > origheight) gfxDrawRectangle(Self, 0, origheight, Self->Width, Self->Height - origheight, bmpGetColourRGB(Self, &Self->BkgdRGB), BAF_FILL);
+      gfxDrawRectangle(Self, 0, 0, Self->Width, Self->Height, bmpGetColourRGB(Self, &Self->BkgdRGB), BAF_FILL);
    }
 
 #ifdef __xwindows__
