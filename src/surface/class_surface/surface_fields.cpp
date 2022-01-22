@@ -95,7 +95,7 @@ For instance, if you create a window with a title-bar at the top, you would set 
 point to the object ID of the window. If necessary, you can set the Drag field to point back to your surface object
 (this can be useful for creating icons and other small widgets).
 
-To turn off dragging, simply write back to the field with a 0 value.
+To turn off dragging, set the field to zero.
 
 *****************************************************************************/
 

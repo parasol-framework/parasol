@@ -608,9 +608,10 @@ int fcmd_get_execution_state(lua_State *Lua)
 }
 
 /*****************************************************************************
-** Usage: loadFile("Path")
+** Usage: results = loadFile("Path")
 **
-** Loads a Fluid language file from any location and executes it.
+** Loads a Fluid language file from any location and executes it.  Any return values from the script will be returned
+** as-is.  Any error that occurs will be thrown with a descriptive string.
 */
 
 int fcmd_loadfile(lua_State *Lua)

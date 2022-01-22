@@ -555,7 +555,7 @@ static int object_find(lua_State *Lua)
 //****************************************************************************
 // Usage: metaclass = obj.class(object)
 //
-// Returns the meta class information for an object.
+// Returns the MetaClass for an object, representing it as an inspectable object.
 
 static int object_class(lua_State *Lua)
 {

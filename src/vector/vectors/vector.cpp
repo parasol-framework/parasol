@@ -20,8 +20,8 @@ produce a vector path and therefore cannot be rendered.
 To simplify the creation of complex vector graphics and maximise compatibility, we have designed the vector management
 code to use data structures that closely match SVG definitions.  For this reason we do not provide exhaustive
 documentation on the properties that can be applied to each vector type.  Instead, please refer to the SVG reference
-manuals from the W3C.  In cases where we are missing support for an SVG feature, we most likely intend to support that
-feature unless otherwise documented.
+manuals from the W3C.  In cases where we are missing support for an SVG feature, assume that future support is intended
+unless otherwise documented.
 
 -END-
 

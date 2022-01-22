@@ -162,12 +162,12 @@ static ERROR BUTTON_Init(objButton *Self, APTR Void)
    if (!Self->ParentViewport) { // Find our parent viewport
       OBJECTID owner_id;
       for (owner_id=GetOwner(Self); (owner_id); owner_id=GetOwnerID(owner_id)) {
-          if (GetClassID(owner_id) IS ID_VECTOR) {
-             Self->ParentViewport = (objVector *)GetObjectPtr(owner_id);
-             if ((Self->ParentViewport->Head.SubID != ID_VECTORVIEWPORT) and
-                 (Self->ParentViewport->Head.SubID != ID_VECTORSCENE)) return ERR_UnsupportedOwner;
-             else break;
-          }
+         if (GetClassID(owner_id) IS ID_VECTOR) {
+            Self->ParentViewport = (objVector *)GetObjectPtr(owner_id);
+            if ((Self->ParentViewport->Head.SubID != ID_VECTORVIEWPORT) and
+                (Self->ParentViewport->Head.SubID != ID_VECTORSCENE)) return ERR_UnsupportedOwner;
+            else break;
+         }
       }
       if (!owner_id) return ERR_UnsupportedOwner;
    }

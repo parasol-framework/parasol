@@ -2328,10 +2328,6 @@ file.  This function can be called at any time, allowing the style to be changed
 
 A desktop can set its preferred style by storing style information at `environment:config/style.xml`.
 
-To prevent security breaches, users can only set a style preference if the ability to make a choice is exposed by the
-desktop.  This is because style files can embed script functions that are executed within each application process
-space.
-
 -INPUT-
 obj Object: The object that will receive the default values.
 cstr Name:  Optional.  Reference to an alternative style to be applied.

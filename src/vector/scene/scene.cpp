@@ -88,6 +88,9 @@ obj Def: Reference to the definition object.
 -ERRORS-
 Okay
 NullArgs
+ResourceExists: The given name is already in use as a definition.
+InvalidObject: The definition is not an accepted object class.
+UnsupportedOwner: The definition is not owned by the scene.
 
 *****************************************************************************/
 
@@ -131,7 +134,7 @@ static ERROR VECTORSCENE_AddDef(objVectorScene *Self, struct scAddDef *Args)
    }
    else if (!VarGet(Self->Defs, Args->Name, &data, NULL)) { // Check that the definition name is unique.
       log.warning("The vector definition name '%s' is already in use.", Args->Name);
-      return ERR_InvalidValue;
+      return ERR_ResourceExists;
    }
 
    VectorDef vd;
