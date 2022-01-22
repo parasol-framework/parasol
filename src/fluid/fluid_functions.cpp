@@ -189,7 +189,11 @@ int fcmd_catch(lua_State *Lua)
                   lua_settable(Lua, -3);
 
                   lua_pushstring(Lua, "message");
-                  lua_pushvalue(Lua, -4); // This is the error exception string returned by pcall()
+                  if (lua_type(Lua, -4) IS LUA_TSTRING) {
+                     lua_pushvalue(Lua, -4); // This is the error exception string returned by pcall()
+                  }
+                  else if (prv->CaughtError) lua_pushstring(Lua, GetErrorMsg(prv->CaughtError));
+                  else lua_pushstring(Lua, "<No message>");
                   lua_settable(Lua, -3);
 
                   lua_pushstring(Lua, "line");
