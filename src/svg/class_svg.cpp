@@ -15,6 +15,11 @@ elements.  Unfortunately we do not support all SVG capabilities at this time, bu
 /*****************************************************************************
 -ACTION-
 Activate: Initiates playback of SVG animations.
+
+SVG documents that use animation features will remain static until they are activated with this action.  The animation
+code will be processed in the background at the pre-defined #FrameRate.  The client may hook into the animation cycle
+by setting the #FrameCallback with a suitable function.
+
 -END-
 *****************************************************************************/
 
@@ -348,8 +353,11 @@ container's frame number.
 -FIELD-
 FrameCallback: Optional callback that is triggered whenever a new frame is prepared.
 
-A callback can be referenced in this field that will trigger on the preparation of each animation frame if the SVG
-object is being animated.  This feature is typically used to render the SVG document to a target @Bitmap.
+Referencing a function in this field will allow the client to receive a callback after the preparation of each
+animation frame (if the SVG object is being animated).  This feature is commonly used to render the SVG document to a
+target @Bitmap.
+
+Note that if the SVG document does not make use of any animation features then the function will never be called.
 
 The function prototype is `void Function(*SVG)`.
 

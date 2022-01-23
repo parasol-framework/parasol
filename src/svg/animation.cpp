@@ -3,6 +3,8 @@
 
 static ERROR animation_timer(objSVG *SVG, LARGE TimeElapsed, LARGE CurrentTime)
 {
+   if (!SVG->Animations) return ERR_Okay;
+
    for (auto anim=SVG->Animations; anim; anim=anim->Next) {
       if (anim->ValueCount < 2) continue; // Skip animation if no From and To list is specified.
       if (anim->EndTime) continue;
@@ -23,7 +25,7 @@ restart:
 
          if (frame >= 1.0) { // Check if the sequence has ended.
             anim->RepeatIndex++;
-            if ((anim->RepeatCount < 0) OR (anim->RepeatIndex <= anim->RepeatCount)) {
+            if ((anim->RepeatCount < 0) or (anim->RepeatIndex <= anim->RepeatCount)) {
                anim->StartTime = 0;
                goto restart;
             }
@@ -34,7 +36,7 @@ restart:
          }
 
          // RepeatDuration prevents the animation from running past a fixed number of seconds since it started.
-         if ((anim->RepeatDuration > 0) AND ((DOUBLE)(current_time - anim->StartTime) / 1000.0 > anim->RepeatDuration)) {
+         if ((anim->RepeatDuration > 0) and ((DOUBLE)(current_time - anim->StartTime) / 1000.0 > anim->RepeatDuration)) {
             anim->EndTime = current_time; // End the animation.
             frame = 1.0;
          }
