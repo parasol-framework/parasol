@@ -33,7 +33,7 @@ Valid options to use when creating the icon are as follows:
 gui.icon = function(Options)
    local mFont = mod.load('font')
 
-   local self = { // Public variables
+   local self = { -- Public variables
       surface  = nil,
       image    = nil,
       feedback = Options.feedback
@@ -71,7 +71,7 @@ gui.icon = function(Options)
             self.surface.acMoveToBack()
 
             if ((math.abs(Msg.absX - lClick.x) > 2) or (math.abs(Msg.absY - lClick.y) > 2)) then
-               // Do nothing - mouse moved/dragged when icon was clicked
+               -- Do nothing - mouse moved/dragged when icon was clicked
             elseif (self.feedback) then
                if (bit.band(Msg.flags, JTYPE_DBL_CLICK) != 0) then
                   self.feedback(self, { name='dblclick' })
@@ -106,7 +106,7 @@ gui.icon = function(Options)
       font.acInit()
       lLineHeight = font.maxHeight
 
-      // Extract each word's pixel width
+      -- Extract each word's pixel width
 
       local widest_word = 0
       for _, word in ipairs(lText) do
@@ -115,7 +115,7 @@ gui.icon = function(Options)
          table.insert(lWords, { word=word, width=width })
       end
 
-      // If necessary, expand the width of the icon to fit the longest word.
+      -- If necessary, expand the width of the icon to fit the longest word.
 
       lIconWidth = lIconSize
       if (widest_word + (MARGIN*2) > lIconWidth) then
@@ -135,7 +135,7 @@ gui.icon = function(Options)
             else
                lLinesConcat = lLinesConcat .. current_line .. '\n'
                table.insert(lLines, current_line)
-               current_line = word.word // Push the word to the next line
+               current_line = word.word -- Push the word to the next line
             end
          end
       end
@@ -173,7 +173,7 @@ gui.icon = function(Options)
       if (lFadeDelay > 0) then
          if ((CurrentTime - lFadeTime) >= lFadeDelay * 1000000) then
             lFadeDelay = 0
-            mSys.UpdateTimer(lTimerID, 0.02) // Resubscribe to the timer to clear the TotalElapsed counter
+            mSys.UpdateTimer(lTimerID, 0.02) -- Resubscribe to the timer to clear the TotalElapsed counter
             lFadeTime = nil
          end
       else
@@ -190,10 +190,10 @@ gui.icon = function(Options)
 
    local function initVectorScene()
       lScene    = obj.new('VectorScene', { })
-      lViewport = lScene.new('VectorViewport', { }) // Main viewport for vector graphics.
+      lViewport = lScene.new('VectorViewport', { }) -- Main viewport for vector graphics.
 
-      // Create a dark rounded box in the background of the text, this will make it easier to distinguish the text
-      // against a busy background or one of a similar colour.
+      -- Create a dark rounded box in the background of the text, this will make it easier to distinguish the text
+      -- against a busy background or one of a similar colour.
 
       local box_height = self.surface.height - (lIconSize + MARGIN) - 0.5
       local y = lIconSize + MARGIN
@@ -226,7 +226,7 @@ gui.icon = function(Options)
       end
    end
 
-   // Main entry point
+   -- Main entry point
 
    catch(function()
       if nz(Options.text) then
@@ -244,7 +244,7 @@ gui.icon = function(Options)
       self.surface = obj.new('surface')
       self.surface.width  = lIconSize
       self.surface.parent = Options.target
-      self.surface.drag   = self.surface // Drag self
+      self.surface.drag   = self.surface -- Drag self
       self.surface.cursor = 'hand'
       self.surface.flags  = '!Precopy|Sticky|StickToBack'
       self.surface.x      = nz(Options.x, 0)
