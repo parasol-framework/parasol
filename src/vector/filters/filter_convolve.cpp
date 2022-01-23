@@ -57,7 +57,7 @@ public:
       }
    }
 
-   void apply(objVectorFilter *Self, struct effect *Filter)
+   void apply(objVectorFilter *Self, VectorEffect *Filter)
    {
       objBitmap *bmp = Filter->Bitmap;
       if (bmp->BytesPerPixel != 4) return;
@@ -95,7 +95,7 @@ public:
       delete [] output;
    }
 
-   void processClipped(struct effect *Filter, UBYTE *output, LONG Left, LONG Top, LONG Right, LONG Bottom)
+   void processClipped(VectorEffect *Filter, UBYTE *output, LONG Left, LONG Top, LONG Right, LONG Bottom)
    {
       objBitmap *bmp = Filter->Bitmap;
 
@@ -146,7 +146,7 @@ public:
 
    // This algorithm is unclipped and performs no edge detection, so is unsafe to use near the edge of the bitmap.
 
-   void processFast(struct effect *Filter, UBYTE *output, LONG Left, LONG Top, LONG Right, LONG Bottom)
+   void processFast(VectorEffect *Filter, UBYTE *output, LONG Left, LONG Top, LONG Right, LONG Bottom)
    {
       objBitmap *bmp = Filter->Bitmap;
 
@@ -196,11 +196,9 @@ public:
    }
 };
 
-/*****************************************************************************
-** Internal: apply_convolve()
-*/
+//****************************************************************************
 
-static void apply_convolve(objVectorFilter *Self, struct effect *Filter)
+static void apply_convolve(objVectorFilter *Self, VectorEffect *Filter)
 {
    if (!Filter->Convolve.Matrix) return;
    Filter->Convolve.Matrix->apply(Self, Filter);
@@ -209,9 +207,10 @@ static void apply_convolve(objVectorFilter *Self, struct effect *Filter)
 //****************************************************************************
 // Create a new convolve matrix filter.
 
-static ERROR create_convolve(objVectorFilter *Self, struct XMLTag *Tag)
+static ERROR create_convolve(objVectorFilter *Self, XMLTag *Tag)
 {
-   struct effect *effect;
+   parasol::Log log(__FUNCTION__);
+   VectorEffect *effect;
    if (!(effect = add_effect(Self, FE_CONVOLVEMATRIX))) return ERR_AllocMemory;
 
    effect->Convolve.Matrix = new (std::nothrow) ConvolveMatrix;
@@ -276,13 +275,13 @@ static ERROR create_convolve(objVectorFilter *Self, struct XMLTag *Tag)
    }
 
    if (matrix.FilterWidth * matrix.FilterHeight > MAX_DIM * MAX_DIM) {
-      LogErrorMsg("Size of matrix exceeds internally imposed limits.");
+      log.warning("Size of matrix exceeds internally imposed limits.");
       remove_effect(Self, effect);
       return ERR_BufferOverflow;
    }
 
    if (m != matrix.FilterWidth * matrix.FilterHeight) {
-      LogErrorMsg("Matrix value count of %d does not match the matrix size (%d,%d)", m, matrix.FilterWidth, matrix.FilterHeight);
+      log.warning("Matrix value count of %d does not match the matrix size (%d,%d)", m, matrix.FilterWidth, matrix.FilterHeight);
       remove_effect(Self, effect);
       return ERR_Failed;
    }
@@ -305,6 +304,6 @@ static ERROR create_convolve(objVectorFilter *Self, struct XMLTag *Tag)
       matrix.Divisor = divisor;
    }
 
-   LogMsg("Convolve Size: (%d,%d), Divisor: %.2f, Bias: %.2f", matrix.FilterWidth, matrix.FilterHeight, matrix.Divisor, matrix.Bias);
+   log.msg("Convolve Size: (%d,%d), Divisor: %.2f, Bias: %.2f", matrix.FilterWidth, matrix.FilterHeight, matrix.Divisor, matrix.Bias);
    return ERR_Okay;
 }

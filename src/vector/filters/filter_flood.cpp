@@ -2,9 +2,9 @@
 //****************************************************************************
 // Create a new flood effect.
 
-static ERROR create_flood(objVectorFilter *Self, struct XMLTag *Tag)
+static ERROR create_flood(objVectorFilter *Self, XMLTag *Tag)
 {
-   struct effect *effect;
+   VectorEffect *effect;
 
    if (!(effect = add_effect(Self, FE_FLOOD))) return ERR_AllocMemory;
 
@@ -76,7 +76,7 @@ static ERROR create_flood(objVectorFilter *Self, struct XMLTag *Tag)
 ** This is the stack flood algorithm originally implemented in AGG.
 */
 
-static void apply_flood(objVectorFilter *Self, struct effect *Effect)
+static void apply_flood(objVectorFilter *Self, VectorEffect *Effect)
 {
    objBitmap *bmp = Effect->Bitmap;
    if (bmp->BytesPerPixel != 4) return;

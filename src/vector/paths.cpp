@@ -379,7 +379,7 @@ static void apply_parent_transforms(objVector *Self, objVector *Start, agg::tran
       if (scan->Head.SubID IS ID_VECTORVIEWPORT) {
          auto view = (objVectorViewport *)scan;
 
-         log.trace("Parent view #%d x/y: %.2f %.2f", scan->Head.UniqueID, view->vpFixedRelX, view->vpFixedRelY);
+         DBG_TRANSFORM("Parent view #%d x/y: %.2f %.2f", scan->Head.UniqueID, view->vpFixedRelX, view->vpFixedRelY);
 
          if (Self IS scan) {
             // Do not apply align values.  Alignment applies to content of the viewport, not the viewport itself.

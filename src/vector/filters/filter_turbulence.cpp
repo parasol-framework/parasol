@@ -35,7 +35,7 @@ inline LONG random(LONG lSeed)
 
 //****************************************************************************
 
-static DOUBLE noise2(struct effect *Effect, UBYTE Channel, DOUBLE vx, DOUBLE vy)
+static DOUBLE noise2(VectorEffect *Effect, UBYTE Channel, DOUBLE vx, DOUBLE vy)
 {
    LONG bx0, bx1, by0, by1, b00, b10, b01, b11;
    DOUBLE rx0, rx1, ry0, ry1, *q, sx, sy, a, b, t, u, v;
@@ -84,7 +84,7 @@ static DOUBLE noise2(struct effect *Effect, UBYTE Channel, DOUBLE vx, DOUBLE vy)
 
 //****************************************************************************
 
-static DOUBLE turbulence(struct effect *Effect, UBYTE Channel, LONG x, LONG y)
+static DOUBLE turbulence(VectorEffect *Effect, UBYTE Channel, LONG x, LONG y)
 {
    DOUBLE sum = 0;
    DOUBLE vx = x * Effect->Turbulence.FX;
@@ -105,7 +105,7 @@ static DOUBLE turbulence(struct effect *Effect, UBYTE Channel, LONG x, LONG y)
 
 //****************************************************************************
 
-static DOUBLE turbulence_stitch(struct effect *Effect, UBYTE Channel, LONG x, LONG y)
+static DOUBLE turbulence_stitch(VectorEffect *Effect, UBYTE Channel, LONG x, LONG y)
 {
    // When stitching tiled turbulence, the frequencies must be adjusted so that the tile borders will be continuous.
 
@@ -143,7 +143,7 @@ static DOUBLE turbulence_stitch(struct effect *Effect, UBYTE Channel, LONG x, LO
 ** Internal: apply_turbulence()
 */
 
-static void apply_turbulence(objVectorFilter *Self, struct effect *Effect)
+static void apply_turbulence(objVectorFilter *Self, VectorEffect *Effect)
 {
    objBitmap *bmp = Effect->Bitmap;
    if (bmp->BytesPerPixel != 4) return;
@@ -199,9 +199,9 @@ static void apply_turbulence(objVectorFilter *Self, struct effect *Effect)
 //****************************************************************************
 // Create a new turbulence matrix filter.
 
-static ERROR create_turbulence(objVectorFilter *Self, struct XMLTag *Tag)
+static ERROR create_turbulence(objVectorFilter *Self, XMLTag *Tag)
 {
-   struct effect *effect;
+   VectorEffect *effect;
    if (!(effect = add_effect(Self, FE_TURBULENCE))) return ERR_AllocMemory;
 
    effect->Turbulence.Octaves = 1;
@@ -304,5 +304,4 @@ static ERROR create_turbulence(objVectorFilter *Self, struct XMLTag *Tag)
       remove_effect(Self, effect);
       return ERR_AllocMemory;
    }
-
 }

@@ -6,7 +6,7 @@ enum {
 };
 
 template <class DrawOp>
-void doComposite(struct effect *Effect, objBitmap *SrcBitmap, UBYTE *Dest, UBYTE *Src, LONG Width, LONG Height)
+void doComposite(VectorEffect *Effect, objBitmap *SrcBitmap, UBYTE *Dest, UBYTE *Src, LONG Width, LONG Height)
 {
    const UBYTE A = Effect->Bitmap->ColourFormat->AlphaPos>>3;
    const UBYTE R = Effect->Bitmap->ColourFormat->RedPos>>3;
@@ -30,14 +30,14 @@ void doComposite(struct effect *Effect, objBitmap *SrcBitmap, UBYTE *Dest, UBYTE
 ** Internal: apply_composite()
 */
 
-static void apply_composite(objVectorFilter *Self, struct effect *Effect)
+static void apply_composite(objVectorFilter *Self, VectorEffect *Effect)
 {
    objBitmap *bmp = Effect->Bitmap;
    if (bmp->BytesPerPixel != 4) return;
 
    objBitmap *srcbmp;
 
-   if (!get_bitmap(Self, &srcbmp, Effect->Composite.Source, Effect->Composite.Input)) {
+   if (!get_bitmap(Self, &srcbmp, Effect->Composite.Source, Effect->Input)) {
       UBYTE *dest = bmp->Data    + (bmp->Clip.Left * bmp->BytesPerPixel)       + (bmp->Clip.Top * bmp->LineWidth);
       UBYTE *src  = srcbmp->Data + (srcbmp->Clip.Left * srcbmp->BytesPerPixel) + (srcbmp->Clip.Top * srcbmp->LineWidth);
 
@@ -199,9 +199,9 @@ static void apply_composite(objVectorFilter *Self, struct effect *Effect)
 //****************************************************************************
 // Create a new composite filter.
 
-static ERROR create_composite(objVectorFilter *Self, struct XMLTag *Tag)
+static ERROR create_composite(objVectorFilter *Self, XMLTag *Tag)
 {
-   struct effect *effect;
+   VectorEffect *effect;
 
    if (!(effect = add_effect(Self, FE_COMPOSITE))) return ERR_AllocMemory;
    effect->Composite.Operator = OP_OVER;
@@ -221,11 +221,11 @@ static ERROR create_composite(objVectorFilter *Self, struct XMLTag *Tag)
                case SVF_FILLPAINT:       effect->Composite.Source = VSF_FILL; break;
                case SVF_STROKEPAINT:     effect->Composite.Source = VSF_STROKE; break;
                default:  {
-                  struct effect *e;
+                  VectorEffect *e;
                   if ((e = find_effect(Self, val))) {
                      if (e != effect) {
                         effect->Composite.Source = VSF_REFERENCE;
-                        effect->Composite.Input = e;
+                        effect->Input = e;
                      }
                   }
                   break;
@@ -243,7 +243,7 @@ static ERROR create_composite(objVectorFilter *Self, struct XMLTag *Tag)
                case SVF_FILLPAINT:       effect->Source = VSF_FILL; break;
                case SVF_STROKEPAINT:     effect->Source = VSF_STROKE; break;
                default:  {
-                  struct effect *e;
+                  VectorEffect *e;
                   if ((e = find_effect(Self, val))) {
                      if (e != effect) {
                         effect->Source = VSF_REFERENCE;

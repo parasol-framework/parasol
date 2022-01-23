@@ -5,7 +5,7 @@
 static ERROR create_image(objVectorFilter *Self, XMLTag *Tag)
 {
    parasol::Log log(__FUNCTION__);
-   effect *effect;
+   VectorEffect *effect;
 
    if (!(effect = add_effect(Self, FE_IMAGE))) return ERR_AllocMemory;
 
@@ -151,11 +151,9 @@ static ERROR create_image(objVectorFilter *Self, XMLTag *Tag)
    }
 }
 
-/*****************************************************************************
-** Internal: apply_image()
-*/
+//****************************************************************************
 
-static void apply_image(objVectorFilter *Self, effect *Effect)
+static void apply_image(objVectorFilter *Self, VectorEffect *Effect)
 {
    objBitmap *bmp = Effect->Bitmap;
    if (bmp->BytesPerPixel != 4) return;

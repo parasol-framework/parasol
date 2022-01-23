@@ -133,7 +133,7 @@ static ERROR VECTORSCENE_AddDef(objVectorScene *Self, struct scAddDef *Args)
       }
    }
    else if (!VarGet(Self->Defs, Args->Name, &data, NULL)) { // Check that the definition name is unique.
-      log.warning("The vector definition name '%s' is already in use.", Args->Name);
+      log.msg("The vector definition name '%s' is already in use.", Args->Name);
       return ERR_ResourceExists;
    }
 

@@ -333,7 +333,7 @@ public:
 ** Internal: apply_cmatrix()
 */
 
-static void apply_cmatrix(objVectorFilter *Self, struct effect *Effect)
+static void apply_cmatrix(objVectorFilter *Self, VectorEffect *Effect)
 {
    objBitmap *bmp = Effect->Bitmap;
    if (bmp->BytesPerPixel != 4) return;
@@ -386,9 +386,9 @@ static void apply_cmatrix(objVectorFilter *Self, struct effect *Effect)
 //****************************************************************************
 // Create a new colour matrix effect.
 
-static ERROR create_cmatrix(objVectorFilter *Self, struct XMLTag *Tag)
+static ERROR create_cmatrix(objVectorFilter *Self, XMLTag *Tag)
 {
-   struct effect *effect;
+   VectorEffect *effect;
    if (!(effect = add_effect(Self, FE_COLOURMATRIX))) return ERR_AllocMemory;
 
    MATRIX m = IDENTITY;

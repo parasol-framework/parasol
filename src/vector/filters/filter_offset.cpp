@@ -3,9 +3,9 @@
 // Create a new offset effect.  Typical usage involves specifying the input and a result that a subsequent filter can
 // use for applying an effect.
 
-static ERROR create_offset(objVectorFilter *Self, struct XMLTag *Tag)
+static ERROR create_offset(objVectorFilter *Self, XMLTag *Tag)
 {
-   struct effect *filter;
+   VectorEffect *filter;
 
    if (!(filter = add_effect(Self, FE_OFFSET))) return ERR_AllocMemory;
 

@@ -51,15 +51,14 @@ public:
    agg::inner_join_e InnerJoin; \
    struct RGB8 rgbStroke, rgbFill;
 
-struct effect {
-   struct effect *Prev;  // Previous effect in the chain
-   struct effect *Next;  // Next effect in the chain
-   struct effect *Input; // Reference to an additional input effect
+class VectorEffect {
+public:
    ULONG ID;         // Case sensitive hash identifier for the filter, if anything needs to reference it.
    UBYTE Type;       // Filter effect - FE_OFFSET, etc
    UBYTE Source;     // VSF_REFERENCE, VSF_GRAPHIC...
    UBYTE UsageCount; // Total number of other effects utilising this effect to build a pipeline
    struct rkBitmap *Bitmap;
+   VectorEffect *Input; // The effect uses another effect as an input.
    LONG XOffset, YOffset; // In SVG only feOffset can use offsets, however in our framework any effect may define an offset when copying from a source.
    LONG DestX, DestY;
    union {
@@ -89,7 +88,6 @@ struct effect {
       } Image;
       struct {
          DOUBLE K1, K2, K3, K4;
-         struct effect *Input;
          UBYTE Operator;
          UBYTE Source;
       } Composite;
@@ -111,6 +109,9 @@ struct effect {
          UBYTE Type;
       } Morph;
    };
+
+   VectorEffect(LONG pType);
+   ~VectorEffect();
 };
 
 typedef agg::pod_auto_array<agg::rgba8, 256> GRADIENT_TABLE;

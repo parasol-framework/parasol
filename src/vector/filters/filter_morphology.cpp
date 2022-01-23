@@ -11,7 +11,7 @@ enum {
 
 //****************************************************************************
 
-static void erode(effect *Effect)
+static void erode(VectorEffect *Effect)
 {
    objBitmap *bmp = Effect->Bitmap;
    if (bmp->BytesPerPixel != 4) return;
@@ -117,7 +117,7 @@ static void erode(effect *Effect)
 
 //****************************************************************************
 
-static void dilate(effect *Effect)
+static void dilate(VectorEffect *Effect)
 {
    objBitmap *bmp = Effect->Bitmap;
    if (bmp->BytesPerPixel != 4) return;
@@ -223,7 +223,7 @@ static void dilate(effect *Effect)
 
 //****************************************************************************
 
-static void apply_morph(objVectorFilter *Self, effect *Effect)
+static void apply_morph(objVectorFilter *Self, VectorEffect *Effect)
 {
    if (Effect->Morph.Type IS OP_ERODE) erode(Effect);
    else dilate(Effect);
@@ -234,7 +234,7 @@ static void apply_morph(objVectorFilter *Self, effect *Effect)
 
 static ERROR create_morph(objVectorFilter *Self, XMLTag *Tag)
 {
-   effect *effect;
+   VectorEffect *effect;
    if (!(effect = add_effect(Self, FE_MORPHOLOGY))) return ERR_AllocMemory;
 
    effect->Morph.RX = 0; // SVG default is 0

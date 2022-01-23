@@ -2,10 +2,11 @@
 //****************************************************************************
 // Defines the way in which results will be merged.
 
-static ERROR create_merge(objVectorFilter *Self, struct XMLTag *Tag)
+static ERROR create_merge(objVectorFilter *Self, XMLTag *Tag)
 {
-   struct effect * list[50];
-   struct effect *filter;
+   parasol::Log log(__FUNCTION__);
+   VectorEffect * list[50];
+   VectorEffect * filter;
 
    if (!(filter = add_effect(Self, FE_OFFSET))) return ERR_AllocMemory;
 
@@ -13,13 +14,12 @@ static ERROR create_merge(objVectorFilter *Self, struct XMLTag *Tag)
 
    // Count the total number of merge nodes.
 
-   struct XMLTag *child;
    LONG count = 0;
-   for (child=Tag->Child; child; child=child->Next) {
+   for (auto child=Tag->Child; child; child=child->Next) {
       if (!StrMatch("feMergeNode", child->Attrib->Name)) {
          for (LONG a=1; a < child->TotalAttrib; a++) {
             if (!StrMatch("in", child->Attrib[a].Name)) {
-               struct effect *ie = NULL;
+               VectorEffect *ie = NULL;
                switch (StrHash(child->Attrib[a].Value, FALSE)) {
                   case SVF_SOURCEGRAPHIC:   ie = &Self->SrcGraphic; break;
                   case SVF_SOURCEALPHA:     ie = &Self->SrcGraphic; break;
@@ -29,20 +29,20 @@ static ERROR create_merge(objVectorFilter *Self, struct XMLTag *Tag)
                   //case SVF_STROKEPAINT:     ie = VSF_STROKE; break;
                   default:  {
                      ie = find_effect(Self, child->Attrib[a].Value);
-                     if (!ie) LogErrorMsg("Unable to parse 'in' value '%s'", child->Attrib[a].Value);
+                     if (!ie) log.warning("Unable to parse 'in' value '%s'", child->Attrib[a].Value);
                      break;
                   }
                }
 
                if (ie) list[count++] = ie;
             }
-            else LogErrorMsg("Invalid feMergeNode attribute '%s'", child->Attrib[a].Name);
+            else log.warning("Invalid feMergeNode attribute '%s'", child->Attrib[a].Name);
          }
       }
-      else LogErrorMsg("Invalid merge node '%s'", child->Attrib->Name);
+      else log.warning("Invalid merge node '%s'", child->Attrib->Name);
    }
 
-   FMSG("create_merge","Detected %d merge nodes.", count);
+   log.traceBranch("Detected %d merge nodes.", count);
 
    if (count > 0) {
       if (count > ARRAYSIZE(list)) count = ARRAYSIZE(list);

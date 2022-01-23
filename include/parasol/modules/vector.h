@@ -503,9 +503,8 @@ typedef struct rkVectorFilter {
 
 #ifdef PRV_VECTORFILTER
    LARGE DrawStamp; // Timestamp at which this filter was last rendered
-   struct effect *Effects;
-   struct effect *LastEffect;
-   struct effect **Merge;
+   std::vector<VectorEffect> *Effects;
+   VectorEffect **Merge;
    objBitmap *SrcBitmap; // A temporary alpha enabled drawing of the vector that is targeted by the filter.
    objBitmap *BkgdBitmap;
    objBitmap *MergeBitmap;
@@ -515,8 +514,8 @@ typedef struct rkVectorFilter {
       UBYTE *Data;
       LONG DataSize;
    } Bank[10];
-   struct effect SrcGraphic;
-   struct effect BkgdGraphic;
+   VectorEffect SrcGraphic;
+   VectorEffect BkgdGraphic;
    LONG BoundX, BoundY, BoundWidth, BoundHeight;  // Calculated pixel boundary for the entire filter and its effects.
    LONG ViewX, ViewY, ViewWidth, ViewHeight; // Boundary of the target area (for user space coordinate mode)
    UBYTE BankIndex;
