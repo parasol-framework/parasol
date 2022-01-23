@@ -248,9 +248,8 @@ static effect * add_effect(objVectorFilter *Filter, UBYTE Type)
    effect *effect;
 
    log.trace("Type: %d", Type);
-   if (!AllocMemory(sizeof(effect), MEM_DATA, &effect, NULL)) {
+   if (!AllocMemory(sizeof(struct effect), MEM_DATA, &effect, NULL)) {
       effect->Prev = Filter->LastEffect;
-      effect->Next = NULL;
       effect->Type = Type;
       effect->Source = VSF_GRAPHIC; // Default is SourceGraphic
 
