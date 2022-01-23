@@ -724,7 +724,10 @@ ERROR FreeResource(const void *Address)
       BYTE *end = ((BYTE *)Address) + size;
 
       if (head != CODE_MEMH) log.warning("Bad header on address %p, size %d.", Address, size);
-      if (((LONG *)end)[0] != CODE_MEMT) log.warning("Bad tail on address %p, size %d.", Address, size);
+      if (((LONG *)end)[0] != CODE_MEMT) {
+         log.warning("Bad tail on address %p, size %d.", Address, size);
+         DEBUG_BREAK
+      }
 
       if (mem.Flags & MEM_OBJECT) {
          if (glObjectChildren.contains(mem.OwnerID)) glObjectChildren[mem.OwnerID].erase(id);

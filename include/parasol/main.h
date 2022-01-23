@@ -111,6 +111,15 @@ extern "C" {
   #define PF64() "%lld"
 #endif
 
+// Use DEBUG_BREAK in critical areas where you would want to break in gdb.  This feature will only be compiled
+// in to debug builds.
+
+#ifdef DEBUG
+ #define DEBUG_BREAK asm("int $3");
+#else
+ #define DEBUG_BREAK
+#endif
+
 /*****************************************************************************
 ** Endian management routines.
 */
