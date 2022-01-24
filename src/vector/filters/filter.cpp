@@ -359,9 +359,6 @@ Clear: Clears all filter instructions from the object.
 
 static ERROR VECTORFILTER_Clear(objVectorFilter *Self, APTR Void)
 {
-   parasol::Log log(__FUNCTION__);
-   log.trace("Clearing all effects.");
-
    Self->Effects->clear();
 
    if (Self->Merge) { FreeResource(Self->Merge); Self->Merge = NULL; }
@@ -417,22 +414,21 @@ static ERROR VECTORFILTER_DataFeed(objVectorFilter *Self, struct acDataFeed *Arg
             for (auto tag = Self->EffectXML->Tags[0]; tag; tag=tag->Next) {
                log.trace("Processing filter element '%s'", tag->Attrib->Name);
                switch(StrHash(tag->Attrib->Name, FALSE)) {
-                  case SVF_FEBLUR: create_blur(Self, tag); break;
-                  case SVF_FEGAUSSIANBLUR: create_blur(Self, tag); break;
-                  case SVF_FEOFFSET: create_offset(Self, tag); break;
-                  case SVF_FEMERGE: create_merge(Self, tag); break;
-                  case SVF_FECOLORMATRIX:
-                  case SVF_FECOLOURMATRIX: create_cmatrix(Self, tag); break;
+                  case SVF_FEBLUR:           create_blur(Self, tag); break;
+                  case SVF_FEGAUSSIANBLUR:   create_blur(Self, tag); break;
+                  case SVF_FEOFFSET:         create_offset(Self, tag); break;
+                  case SVF_FEMERGE:          create_merge(Self, tag); break;
+                  case SVF_FECOLORMATRIX:    // American spelling
+                  case SVF_FECOLOURMATRIX:   create_cmatrix(Self, tag); break;
                   case SVF_FECONVOLVEMATRIX: create_convolve(Self, tag); break;
-                  case SVF_FEBLEND: // Blend and composite share the same code.
-                  case SVF_FECOMPOSITE: create_composite(Self, tag); break;
-                  case SVF_FEFLOOD: create_flood(Self, tag); break;
-                  case SVF_FETURBULENCE: create_turbulence(Self, tag); break;
-                  case SVF_FEMORPHOLOGY: create_morph(Self, tag); break;
-                  case SVF_FEIMAGE: create_image(Self, tag); break;
+                  case SVF_FEBLEND:          // Blend and composite share the same code.
+                  case SVF_FECOMPOSITE:      create_composite(Self, tag); break;
+                  case SVF_FEFLOOD:          create_flood(Self, tag); break;
+                  case SVF_FETURBULENCE:     create_turbulence(Self, tag); break;
+                  case SVF_FEMORPHOLOGY:     create_morph(Self, tag); break;
+                  case SVF_FEIMAGE:          create_image(Self, tag); break;
                   case SVF_FEDISPLACEMENTMAP:
                   case SVF_FETILE:
-
                   case SVF_FECOMPONENTTRANSFER:
                   case SVF_FEDIFFUSELIGHTING:
                   case SVF_FESPECULARLIGHTING:
@@ -775,13 +771,13 @@ static ERROR VECTORFILTER_NewObject(objVectorFilter *Self, APTR Void)
          Self->Scene->PageHeight = 1;
          Self->Units          = VUNIT_BOUNDING_BOX;
          Self->PrimitiveUnits = VUNIT_UNDEFINED;
-         Self->Opacity = 1.0;
-         Self->X       = -0.1;
-         Self->Y       = -0.1;
-         Self->Width   = 1.2;
-         Self->Height  = 1.2;
-         Self->ColourSpace = CS_SRGB; // Our preferred colour-space is sRGB for speed.  Note that the SVG class will change this to linear by default.
-         Self->Dimensions = DMF_RELATIVE_X|DMF_RELATIVE_Y|DMF_RELATIVE_WIDTH|DMF_RELATIVE_HEIGHT;
+         Self->Opacity        = 1.0;
+         Self->X              = -0.1;
+         Self->Y              = -0.1;
+         Self->Width          = 1.2;
+         Self->Height         = 1.2;
+         Self->ColourSpace    = CS_SRGB; // Our preferred colour-space is sRGB for speed.  Note that the SVG class will change this to linear by default.
+         Self->Dimensions     = DMF_RELATIVE_X|DMF_RELATIVE_Y|DMF_RELATIVE_WIDTH|DMF_RELATIVE_HEIGHT;
          return ERR_Okay;
       }
       else return ERR_NewObject;

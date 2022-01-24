@@ -85,7 +85,7 @@ static ERROR create_blur(objVectorFilter *Self, XMLTag *Tag)
 
 static void apply_blur(objVectorFilter *Self, VectorEffect *Effect)
 {
-   objBitmap *bmp = Effect->Bitmap;
+   auto bmp = Effect->Bitmap;
    if (bmp->BytesPerPixel != 4) return;
 
    ULONG rx = Effect->Blur.RX * 2;

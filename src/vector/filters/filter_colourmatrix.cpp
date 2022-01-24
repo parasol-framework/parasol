@@ -329,13 +329,11 @@ public:
    }
 };
 
-/*****************************************************************************
-** Internal: apply_cmatrix()
-*/
+//****************************************************************************
 
 static void apply_cmatrix(objVectorFilter *Self, VectorEffect *Effect)
 {
-   objBitmap *bmp = Effect->Bitmap;
+   auto bmp = Effect->Bitmap;
    if (bmp->BytesPerPixel != 4) return;
    if (!Effect->Colour.Matrix) return;
 

@@ -32,7 +32,7 @@ void doComposite(VectorEffect *Effect, objBitmap *SrcBitmap, UBYTE *Dest, UBYTE 
 
 static void apply_composite(objVectorFilter *Self, VectorEffect *Effect)
 {
-   objBitmap *bmp = Effect->Bitmap;
+   auto bmp = Effect->Bitmap;
    if (bmp->BytesPerPixel != 4) return;
 
    objBitmap *srcbmp;
