@@ -1537,7 +1537,7 @@ end
     </input>
     <description>
 <p>This function will lock a mutex allocated by <function module="Core">AllocMutex</function>.  If the mutex is already locked by another thread, the caller will sleep until the mutex is released or a time-out occurs.  If multiple threads are waiting on the mutex, the order of acquisition is dependent on the rules of the host platform.  It is recommended that the client makes no assumption as to the queue order and that the next thread to acquire the mutex will be randomly selected.</p>
-<p>If the mutex was acquired with the ALF_RECURSIVE flag, then multiple calls to this function within the same thread will nest.  It will be necessary to call UnlockMutex() for every lock that has been acquired.</p>
+<p>If the mutex was acquired with the <code>ALF_RECURSIVE</code> flag, then multiple calls to this function within the same thread will nest.  It will be necessary to call UnlockMutex() for every lock that has been acquired.</p>
 <p>Please note that in Microsoft Windows, mutexes are implemented as critical sections and the time-out is not supported in the normal manner.  If the MilliSeconds parameter is set to zero, the mutex will be tested immediately and the return is immediate.  For any other value, the thread will sleep until the mutex is available and the requested timeout will not be honoured.</p>
     </description>
     <result type="ERROR">
@@ -1558,7 +1558,7 @@ end
     </input>
     <description>
 <p>This function will lock a shared mutex allocated by <function module="Core">AllocSharedMutex</function>.  If the mutex is already locked by another thread or process, the caller will sleep until the mutex is released or a time-out occurs.  If multiple threads are waiting on the mutex, the order of acquisition is dependent on the rules of the host platform.  It is recommended that the client makes no assumption as to the queue order and that the next thread to acquire the mutex will be randomly selected.</p>
-<p>If the mutex was acquired with the ALF_RECURSIVE flag, then multiple calls to this function within the same thread will nest.  It will be necessary to call <function module="Core">UnlockSharedMutex</function> for every lock that has been acquired.</p>
+<p>If the mutex was acquired with the <code>ALF_RECURSIVE</code> flag, then multiple calls to this function within the same thread will nest.  It will be necessary to call <function module="Core">UnlockSharedMutex</function> for every lock that has been acquired.</p>
     </description>
     <result type="ERROR">
       <error code="NullArgs">Function call missing argument value(s)</error>

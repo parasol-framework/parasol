@@ -55,6 +55,28 @@
     </field>
 
     <field>
+      <name>BottomLimit</name>
+      <comment>Prevents a viewport from moving into an area at the bottom side of its parent.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>INT</type>
+      <description>
+<p>A viewport can be prevented from moving into the bottom area of its parent by setting a bottom limit.  The value is expressed in fixed pixel units.</p>
+<p>Limits only apply to movement from a call to the Move() action.  The limit is ignored if a coordinate field is set directly.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>BottomMargin</name>
+      <comment>Defines the top margin of a viewport.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>INT</type>
+      <description>
+<p>Viewport margins hint at the desired amount of whitespace at the edges of the viewport.  Margin values do not have an internal use, but become useful when honoured by code that computes the layout of a user interface.</p>
+<p>By default, all margins are set to zero when a new viewport object is created.</p>
+      </description>
+    </field>
+
+    <field>
       <name>Dimensions</name>
       <comment>Dimension flags define whether individual dimension fields contain fixed or relative values.</comment>
       <access read="G" write="S">Get/Set</access>
@@ -66,12 +88,90 @@
     </field>
 
     <field>
+      <name>Drag</name>
+      <comment>This object-based field is used to control the dragging of viewports around the display.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>OBJECTPTR</type>
+      <description>
+<p>Click-dragging of viewports is enabled by utilising the Drag field.</p>
+<p>To use, set this field with reference to a Viewport that is to be dragged when the user starts a click-drag operation. For instance, if you create a window with a title-bar at the top, you would set the Drag field of the title-bar to point to the window's viewport.  If necessary, the Drag field can point back to your viewport object (this can be useful for creating icons and other small widgets).</p>
+<p>Set the field to zero to turn off dragging.</p>
+      </description>
+    </field>
+
+    <field>
       <name>Height</name>
       <comment>The height of the viewport's target area.</comment>
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
 <p>The height of the viewport's target area is defined here as a fixed or relative value.  The default value is 100% for full coverage.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>LeftLimit</name>
+      <comment>Prevents a viewport from moving into an area at the left side of its parent.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>INT</type>
+      <description>
+<p>A viewport can be prevented from moving into the left area of its parent by setting a left limit.  The value is expressed in fixed pixel units.</p>
+<p>Limits only apply to movement from a call to the Move() action.  The limit is ignored if a coordinate field is set directly.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>LeftMargin</name>
+      <comment>Defines the top margin of a viewport.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>INT</type>
+      <description>
+<p>Viewport margins hint at the desired amount of whitespace at the edges of the viewport.  Margin values do not have an internal use, but become useful when honoured by code that computes the layout of a user interface.</p>
+<p>By default, all margins are set to zero when a new viewport object is created.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>RightLimit</name>
+      <comment>Prevents a viewport from moving into an area at the right side of its parent.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>INT</type>
+      <description>
+<p>A viewport can be prevented from moving into the right area of its parent by setting a right limit.  The value is expressed in fixed pixel units.</p>
+<p>Limits only apply to movement from a call to the Move() action.  The limit is ignored if a coordinate field is set directly.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>RightMargin</name>
+      <comment>Defines the right margin of a viewport.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>INT</type>
+      <description>
+<p>Viewport margins hint at the desired amount of whitespace at the edges of the viewport.  Margin values do not have an internal use, but become useful when honoured by code that computes the layout of a user interface.</p>
+<p>By default, all margins are set to zero when a new viewport object is created.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>TopLimit</name>
+      <comment>Prevents a viewport from moving into an area at the top side of its parent.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>INT</type>
+      <description>
+<p>A viewport can be prevented from moving into the top area of its parent by setting a top limit.  The value is expressed in fixed pixel units.</p>
+<p>Limits only apply to movement from a call to the Move() action.  The limit is ignored if a coordinate field is set directly.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>TopMargin</name>
+      <comment>Defines the top margin of a viewport.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>INT</type>
+      <description>
+<p>Viewport margins hint at the desired amount of whitespace at the edges of the viewport.  Margin values do not have an internal use, but become useful when honoured by code that computes the layout of a user interface.</p>
+<p>By default, all margins are set to zero when a new viewport object is created.</p>
       </description>
     </field>
 
@@ -174,6 +274,10 @@
     <constants lookup="ARC" comment="Options for drawing arcs.">
       <const name="LARGE"/>
       <const name="SWEEP"/>
+    </constants>
+
+    <constants lookup="FM" comment="Mask for controlling feedback events that are received.">
+      <const name="PATH_CHANGED">The vector path has been modified or affected by a transform.</const>
     </constants>
 
     <constants lookup="CS" comment="Colour space options.">

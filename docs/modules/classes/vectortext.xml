@@ -23,7 +23,7 @@
   &lt;textPath xlink:href="#myTextPath2"/&gt;
 &lt;/text&gt;
 </pre>
-<p>Support for bitmap fonts is included.  This feature is implemented by drawing bitmap characters to an internal texture and then rendering this to the display as a rectangular path.  It is recommended that this feature is only used for fast 1:1 rendering without transforms.  The user will otherwise be better served through the use of a scalable font.</p></description>
+<p>Support for bitmap fonts is included.  This feature is implemented by drawing bitmap characters to an internal <class name="VectorImage">VectorImage</class> and then rendering that to the viewport as a rectangular path.  It is recommended that this feature is only used for fast 1:1 rendering without transforms.  The user is otherwise better served through the use of scalable fonts.</p></description>
     <source>
       <file path="vectors/">text.cpp</file>
     </source>
@@ -330,6 +330,10 @@
     <constants lookup="ARC" comment="Options for drawing arcs.">
       <const name="LARGE"/>
       <const name="SWEEP"/>
+    </constants>
+
+    <constants lookup="FM" comment="Mask for controlling feedback events that are received.">
+      <const name="PATH_CHANGED">The vector path has been modified or affected by a transform.</const>
     </constants>
 
     <constants lookup="CS" comment="Colour space options.">

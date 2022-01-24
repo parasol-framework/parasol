@@ -16,7 +16,7 @@
     <description>
 <p>Vector is an abstract class that is used as a blueprint for other vector classes that provide specific functionality for a vector scene.  At this time the classes are <class name="VectorClip">VectorClip</class>, <class name="VectorEllipse">VectorEllipse</class>, <class name="VectorGroup">VectorGroup</class>, <class name="VectorPath">VectorPath</class>, <class name="VectorPolygon">VectorPolygon</class>, <class name="VectorRectangle">VectorRectangle</class>, <class name="VectorSpiral">VectorSpiral</class>, <class name="VectorText">VectorText</class>, <class name="VectorViewport">VectorViewport</class> and <class name="VectorWave">VectorWave</class>.</p>
 <p>The majority of sub-classes support all of the functionality provided by Vector.  The general exception is that graphics functions will not be supported by non-graphical classes, for instance <class name="VectorGroup">VectorGroup</class> and <class name="VectorViewport">VectorViewport</class> do not produce a vector path and therefore cannot be rendered.</p>
-<p>To simplify the creation of complex vector graphics and maximise compatibility, we have designed the vector management code to use data structures that closely match SVG definitions.  For this reason we do not provide exhaustive documentation on the properties that can be applied to each vector type.  Instead, please refer to the SVG reference manuals from the W3C.  In cases where we are missing support for an SVG feature, we most likely intend to support that feature unless otherwise documented.</p></description>
+<p>To simplify the creation of complex vector graphics and maximise compatibility, we have designed the vector management code to use data structures that closely match SVG definitions.  For this reason we do not provide exhaustive documentation on the properties that can be applied to each vector type.  Instead, please refer to the SVG reference manuals from the W3C.  In cases where we are missing support for an SVG feature, assume that future support is intended unless otherwise documented.</p></description>
     <source>
       <file path="vectors/">vector.cpp</file>
     </source>
@@ -95,6 +95,18 @@
     </method>
 
     <method>
+      <name>Debug</name>
+      <comment>Internal functionality for debugging.</comment>
+      <prototype>ERROR vecDebug(OBJECTPTR Object)</prototype>
+      <description>
+<p>This internal method prints comprehensive debugging information to the log.</p>
+      </description>
+      <result>
+        <error code="Okay">Operation successful.</error>
+      </result>
+    </method>
+
+    <method>
       <name>GetBoundary</name>
       <comment>Returns the graphical boundary of a vector.</comment>
       <prototype>ERROR vecGetBoundary(OBJECTPTR Object, LONG Flags, DOUBLE * X, DOUBLE * Y, DOUBLE * Width, DOUBLE * Height)</prototype>
@@ -152,6 +164,9 @@
 <p>It is a pre-requisite that the associated <class name="VectorScene">VectorScene</class> has been linked to a <class name="Surface">Surface</class>.</p>
 <p>To remove an existing subscription, call this function again with the same Callback and an empty Mask. Alternatively have the function return ERR_Terminate.</p>
 <p>Please refer to gfxSubscribeInput() for further information on event management and message handling.</p>
+<p>The synopsis for the Callback is:</p>
+<p>
+<code/><code> ERROR callback(*Vector, *InputEvent) </code><code/></p>
       </description>
       <result>
         <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
@@ -403,6 +418,26 @@
       <description>
 <p>The EnableBkgd option must be set to true if a section of the vector tree uses filters that have 'BackgroundImage' or 'BackgroundAlpha' as a source.  If it is not set, then filters using BackgroundImage and BackgroundAlpha references will not produce the expected behaviour.</p>
 <p>The EnableBkgd option can be enabled on Vector sub-classes <class name="VectorGroup">VectorGroup</class>, <class name="VectorPattern">VectorPattern</class> and <class name="VectorViewport">VectorViewport</class>.  All other sub-classes will ignore the option if used.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Feedback</name>
+      <comment>Receiver for events originating from the vector.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>FUNCTION</type>
+      <description>
+<p>Set the Feedback field with a callback function to receive events from the vector.  Events are chosen in conjunction with the <field>FeedbackMask</field> field value. The function prototype is <code>routine(*Vector, LONG Event)</code> where Event matches a FeedbackMask value.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>FeedbackMask</name>
+      <comment>Mask for choosing feedback events</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type lookup="FM">INT</type>
+      <description>
+<types lookup="FM"/>
       </description>
     </field>
 
@@ -718,6 +753,10 @@ Z: Close Path
     <constants lookup="ARC" comment="Options for drawing arcs.">
       <const name="LARGE"/>
       <const name="SWEEP"/>
+    </constants>
+
+    <constants lookup="FM" comment="Mask for controlling feedback events that are received.">
+      <const name="PATH_CHANGED">The vector path has been modified or affected by a transform.</const>
     </constants>
 
     <constants lookup="CS" comment="Colour space options.">

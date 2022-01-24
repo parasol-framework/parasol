@@ -129,6 +129,10 @@
       <const name="SWEEP"/>
     </constants>
 
+    <constants lookup="FM" comment="Mask for controlling feedback events that are received.">
+      <const name="PATH_CHANGED">The vector path has been modified or affected by a transform.</const>
+    </constants>
+
     <constants lookup="CS" comment="Colour space options.">
       <const name="SRGB">The default colour-space is sRGB, recommended for its speed.</const>
       <const name="LINEAR_RGB">Linear RGB is the default colour space for SVG and produces the best results.</const>
