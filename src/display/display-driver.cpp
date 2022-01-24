@@ -2535,12 +2535,14 @@ static UBYTE validate_clip(CSTRING Header, CSTRING Name, objBitmap *Bitmap)
 {
    parasol::Log log(Header);
 
-#ifdef DEBUG // Force crash if clipping is wrong (use gdb)
-   if ((Bitmap->XOffset + Bitmap->Clip.Right) > Bitmap->Width) ((UBYTE *)0)[0] = 0;
-   if ((Bitmap->YOffset + Bitmap->Clip.Bottom) > Bitmap->Height) ((UBYTE *)0)[0] = 0;
-   if ((Bitmap->XOffset + Bitmap->Clip.Left) < 0) ((UBYTE *)0)[0] = 0;
-   if (Bitmap->Clip.Left >= Bitmap->Clip.Right) ((UBYTE *)0)[0] = 0;
-   if (Bitmap->Clip.Top >= Bitmap->Clip.Bottom) ((UBYTE *)0)[0] = 0;
+#ifdef DEBUG // Force break if clipping is wrong (use gdb)
+   if (((Bitmap->XOffset + Bitmap->Clip.Right) > Bitmap->Width) or
+       ((Bitmap->YOffset + Bitmap->Clip.Bottom) > Bitmap->Height) or
+       ((Bitmap->XOffset + Bitmap->Clip.Left) < 0) or
+       (Bitmap->Clip.Left >= Bitmap->Clip.Right) or
+       (Bitmap->Clip.Top >= Bitmap->Clip.Bottom)) {
+      DEBUG_BREAK
+   }
 #else
    if ((Bitmap->XOffset + Bitmap->Clip.Right) > Bitmap->Width) {
       log.warning("#%d %s: Invalid right-clip of %d (offset %d), limited to width of %d.", Bitmap->Head.UniqueID, Name, Bitmap->Clip.Right, Bitmap->XOffset, Bitmap->Width);
