@@ -14,6 +14,11 @@ static const struct FieldDef clVectorFlags[] = {
    { NULL, 0 }
 };
 
+static const struct FieldDef clVectorFeedbackMask[] = {
+   { "PathChanged", 0x00000001 },
+   { NULL, 0 }
+};
+
 FDEF maPush[] = { { "Position", FD_LONG }, { 0, 0 } };
 FDEF maTracePath[] = { { "Callback", FD_FUNCTIONPTR }, { 0, 0 } };
 FDEF maGetBoundary[] = { { "Flags", FD_LONG }, { "X", FD_DOUBLE|FD_RESULT }, { "Y", FD_DOUBLE|FD_RESULT }, { "Width", FD_DOUBLE|FD_RESULT }, { "Height", FD_DOUBLE|FD_RESULT }, { 0, 0 } };
@@ -43,6 +48,7 @@ static const struct MethodArray clVectorMethods[] = {
    { -12, (APTR)VECTOR_GetTransform, "GetTransform", maGetTransform, sizeof(struct vecGetTransform) },
    { -13, (APTR)VECTOR_InputSubscription, "InputSubscription", maInputSubscription, sizeof(struct vecInputSubscription) },
    { -14, (APTR)VECTOR_KeyboardSubscription, "KeyboardSubscription", maKeyboardSubscription, sizeof(struct vecKeyboardSubscription) },
+   { -15, (APTR)VECTOR_Debug, "Debug", 0, 0 },
    { 0, 0, 0, 0, 0 }
 };
 

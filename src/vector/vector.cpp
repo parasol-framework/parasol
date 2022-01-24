@@ -139,6 +139,7 @@ static void render_to_surface(objVectorScene *, objSurface *, objBitmap *);
 static ERROR scene_input_events(const InputEvent *, LONG);
 static ERROR vector_input_events(objVector *, const InputEvent *);
 static ERROR vector_keyboard_events(objVector *, const evKey *);
+static void send_feedback(objVector *, LONG);
 
 FT_Error (*EFT_Set_Pixel_Sizes)(FT_Face, FT_UInt pixel_width, FT_UInt pixel_height );
 FT_Error (*EFT_Set_Char_Size)(FT_Face, FT_F26Dot6 char_width, FT_F26Dot6 char_height, FT_UInt horz_resolution, FT_UInt vert_resolution );

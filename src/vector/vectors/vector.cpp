@@ -31,12 +31,35 @@ static ERROR vector_input_events(objVector *, const InputEvent *);
 
 static ERROR VECTOR_Reset(objVector *, APTR);
 
+//****************************************************************************
+
+static void debug_tree(objVector *Vector)
+{
+   parasol::Log log(__FUNCTION__);
+
+   for (auto v=Vector; v; v=(objVector *)v->Next) {
+      if (v->Child) {
+         parasol::Log blog(__FUNCTION__);
+         blog.branch("Vector #%d %s %s", v->Head.UniqueID, v->Head.Class->ClassName, GetName(v) ? GetName(v) : "");
+         debug_tree(v->Child);
+      }
+      else {
+         log.msg("Vector #%d %s %s", v->Head.UniqueID, v->Head.Class->ClassName, GetName(v) ? GetName(v) : "");
+      }
+   }
+}
+
+//****************************************************************************
+
 static ERROR VECTOR_ActionNotify(objVector *Self, struct acActionNotify *Args)
 {
    if (Args->ActionID IS AC_Free) {
       if ((Self->ClipMask) and (Args->ObjectID IS Self->ClipMask->Head.UniqueID)) Self->ClipMask = NULL;
       else if ((Self->Morph) and (Args->ObjectID IS Self->Morph->Head.UniqueID)) Self->Morph = NULL;
       else if ((Self->Transition) and (Args->ObjectID IS Self->Transition->Head.UniqueID)) Self->Transition = NULL;
+      else if ((Self->Feedback.Type IS CALL_SCRIPT) and (Self->Feedback.Script.Script->UniqueID IS Args->ObjectID)) {
+         Self->Feedback.Type = CALL_NONE;
+      }
    }
    else return ERR_NoSupport;
 
@@ -111,6 +134,27 @@ static ERROR VECTOR_ClearTransforms(objVector *Self, APTR Void)
       }
       Self->Transforms = NULL;
    }
+
+   return ERR_Okay;
+}
+
+/*****************************************************************************
+
+-METHOD-
+Debug: Internal functionality for debugging.
+
+This internal method prints comprehensive debugging information to the log.
+
+-ERRORS-
+Okay:
+
+*****************************************************************************/
+
+static ERROR VECTOR_Debug(objVector *Self, APTR Void)
+{
+   parasol::Log log;
+
+   debug_tree(Self);
 
    return ERR_Okay;
 }
@@ -502,6 +546,12 @@ To remove an existing subscription, call this function again with the same Callb
 Alternatively have the function return ERR_Terminate.
 
 Please refer to gfxSubscribeInput() for further information on event management and message handling.
+
+The synopsis for the Callback is:
+
+```
+ERROR callback(*Vector, *InputEvent)
+```
 
 -INPUT-
 int(JTYPE) Mask: Combine JTYPE flags to define the input messages required by the client.  Set to 0xffffffff if all messages are desirable.
@@ -1211,6 +1261,37 @@ static ERROR VECTOR_SET_EnableBkgd(objVector *Self, LONG Value)
 {
    if (Value) Self->EnableBkgd = TRUE;
    else Self->EnableBkgd = FALSE;
+   return ERR_Okay;
+}
+
+/*****************************************************************************
+
+-FIELD-
+Feedback: Receiver for events originating from the vector.
+
+Set the Feedback field with a callback function to receive events from the vector.  Events are chosen in conjunction
+with the #FeedbackMask field value. The function prototype is `routine(*Vector, LONG Event)` where Event matches a
+FeedbackMask value.
+
+*****************************************************************************/
+
+static ERROR VECTOR_GET_Feedback(objVector *Self, FUNCTION **Value)
+{
+   if (Self->Feedback.Type != CALL_NONE) {
+      *Value = &Self->Feedback;
+      return ERR_Okay;
+   }
+   else return ERR_FieldNotSet;
+}
+
+static ERROR VECTOR_SET_Feedback(objVector *Self, FUNCTION *Value)
+{
+   if (Value) {
+      if (Self->Feedback.Type IS CALL_SCRIPT) UnsubscribeAction(Self->Feedback.Script.Script, AC_Free);
+      Self->Feedback = *Value;
+      if (Self->Feedback.Type IS CALL_SCRIPT) SubscribeAction(Self->Feedback.Script.Script, AC_Free);
+   }
+   else Self->Feedback.Type = CALL_NONE;
    return ERR_Okay;
 }
 
@@ -2095,6 +2176,37 @@ Visibility: Controls the visibility of a vector and its children.
 *****************************************************************************/
 
 //****************************************************************************
+// For sending events to the client
+
+static void send_feedback(objVector *Vector, LONG Event)
+{
+   if (!(Vector->Head.Flags & NF_INITIALISED)) return;
+   if (!Vector->Feedback.Type) return;
+
+   if (Event & Vector->FeedbackMask) {
+      Vector->FeedbackMask &= ~Event; // Turned off to prevent recursion
+
+      if (Vector->Feedback.Type IS CALL_STDC) {
+         parasol::SwitchContext context(Vector->Feedback.StdC.Context);
+         auto routine = (void (*)(objVector *, LONG))Vector->Feedback.StdC.Routine;
+         routine(Vector, Event);
+      }
+      else if (Vector->Feedback.Type IS CALL_SCRIPT) {
+         OBJECTPTR script;
+         if ((script = Vector->Feedback.Script.Script)) {
+            const ScriptArg args[] = {
+               { "Vector", FD_OBJECTPTR, { .Address = Vector } },
+               { "Event", FD_LONG, { .Long = Event } }
+            };
+            scCallback(script, Vector->Feedback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
+         }
+      }
+
+      Vector->FeedbackMask |= Event;
+   }
+}
+
+//****************************************************************************
 // Receiver for input events.  Managed by VectorScene.  The client makes subscriptions through the
 // InputSubscription() method.
 //
@@ -2337,6 +2449,11 @@ static const FieldDef clVisibility[] = {
    { NULL, 0 }
 };
 
+static const FieldDef clFeedbackMask[] = {
+   { "PathChanged", FM_PATH_CHANGED },
+   { NULL, 0 }
+};
+
 static const FieldArray clVectorFields[] = {
    { "Child",            FDF_OBJECT|FD_R,              ID_VECTOR, NULL, NULL },
    { "Scene",            FDF_OBJECT|FD_R,              ID_VECTORSCENE, NULL, NULL },
@@ -2354,10 +2471,12 @@ static const FieldArray clVectorFields[] = {
    { "ActiveTransforms", FDF_LONGFLAGS|FD_R,           (MAXINT)&clTransformFlags, NULL, NULL },
    { "DashTotal",        FDF_LONG|FDF_R,               0, NULL, NULL },
    { "Visibility",       FDF_LONG|FDF_LOOKUP|FDF_RW,   (MAXINT)&clVisibility, NULL, NULL },
-   { "Flags",            FDF_LONG|FDF_RI,              (MAXINT)&clFlags, NULL, NULL },
+   { "Flags",            FDF_LONGFLAGS|FDF_RI,         (MAXINT)&clFlags, NULL, NULL },
+   { "FeedbackMask",     FDF_LONGFLAGS|FDF_RW,         (MAXINT)&clFeedbackMask, NULL, NULL },
    // Virtual fields
    { "ClipRule",     FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clFillRule, (APTR)VECTOR_GET_ClipRule, (APTR)VECTOR_SET_ClipRule },
    { "DashArray",    FDF_VIRTUAL|FDF_ARRAY|FDF_DOUBLE|FD_RW, 0, (APTR)VECTOR_GET_DashArray, (APTR)VECTOR_SET_DashArray },
+   { "Feedback",     FDF_VIRTUAL|FDF_FUNCTIONPTR|FDF_RW,     0, (APTR)VECTOR_GET_Feedback, (APTR)VECTOR_SET_Feedback },
    { "Mask",         FDF_VIRTUAL|FDF_OBJECT|FDF_RW,          0, (APTR)VECTOR_GET_Mask, (APTR)VECTOR_SET_Mask },
    { "Morph",        FDF_VIRTUAL|FDF_OBJECT|FDF_RW,          0, (APTR)VECTOR_GET_Morph, (APTR)VECTOR_SET_Morph },
    { "MorphFlags",   FDF_VIRTUAL|FDF_LONGFLAGS|FDF_RW,       (MAXINT)&clMorphFlags, (APTR)VECTOR_GET_MorphFlags, (APTR)VECTOR_SET_MorphFlags },

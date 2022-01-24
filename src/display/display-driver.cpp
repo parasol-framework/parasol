@@ -2506,12 +2506,12 @@ fastest method available.  Bitmaps may be of a different type (e.g. bit depth), 
 penalties.  The copy process will respect the clipping region defined in both the source and destination bitmap
 objects.
 
-If the TRANSPARENT flag is set in the source object, all colours that match the ColourIndex field will be ignored in
+If the `TRANSPARENT` flag is set in the source object, all colours that match the ColourIndex field will be ignored in
 the copy operation.
 
-To enable dithering, pass BAF_DITHER in the Flags argument.  The drawing algorithm will use dithering if the source
-needs to be down-sampled to the target bitmap's bit depth.  To enable alpha blending, set BAF_BLEND (the source bitmap
-will also need to have the BMF_ALPHA_CHANNEL flag set to indicate that an alpha channel is available).
+To enable dithering, pass `BAF_DITHER` in the Flags argument.  The drawing algorithm will use dithering if the source
+needs to be down-sampled to the target bitmap's bit depth.  To enable alpha blending, set `BAF_BLEND` (the source bitmap
+will also need to have the `BMF_ALPHA_CHANNEL` flag set to indicate that an alpha channel is available).
 
 -INPUT-
 obj(Bitmap) Bitmap: The source bitmap.

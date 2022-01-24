@@ -30,7 +30,7 @@ If you require complex drawing functionality that is not available in the Bitmap
 provided by the Vector module.
 
 To save the image of a bitmap, you can either copy its image to a @Picture object, or you can use the SaveImage
-action to save the data in PCX format.  Raw data can also be processed through a bitmap by using the Read and Write
+action to save the data in PNG format.  Raw data can also be processed through a bitmap by using the Read and Write
 actions.
 -END-
 

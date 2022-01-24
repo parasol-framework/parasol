@@ -363,6 +363,8 @@ static void gen_vector_path(objVector *Vector)
       Vector->Dirty &= ~RC_FINAL_PATH;
    }
    else log.warning("Target vector is not a shape.");
+
+   send_feedback(Vector, FM_PATH_CHANGED);
 }
 
 //****************************************************************************

@@ -242,6 +242,10 @@
 #define VBF_INCLUSIVE 0x00000001
 #define VBF_NO_TRANSFORM 0x00000002
 
+// Mask for controlling feedback events that are received.
+
+#define FM_PATH_CHANGED 0x00000001
+
 struct VectorDef {
    OBJECTPTR Object;    // Reference to the definition object.
 };
@@ -587,8 +591,10 @@ INLINE ERROR vtDeleteLine(APTR Ob, LONG Line) {
    DOUBLE DashOffset; \
    LONG   ActiveTransforms; \
    LONG   DashTotal; \
-   LONG   Visibility;
-  
+   LONG   Visibility; \
+   LONG   Flags; \
+   LONG   FeedbackMask;
+
 // Vector class definition
 
 #define VER_VECTOR (1.000000)
@@ -612,9 +618,10 @@ typedef struct rkVector {
    LONG      DashTotal;                    // The total number of values in the DashArray.
    LONG      Visibility;                   // Controls the visibility of a vector and its children.
    LONG      Flags;                        // Optional flags.
+   LONG      FeedbackMask;                 // Mask for choosing feedback events
 
 #ifdef PRV_VECTOR
- SHAPE_PRIVATE 
+ SHAPE_PRIVATE
 #endif
 } objVector;
 
@@ -634,6 +641,7 @@ typedef struct rkVector {
 #define MT_VecGetTransform -12
 #define MT_VecInputSubscription -13
 #define MT_VecKeyboardSubscription -14
+#define MT_VecDebug -15
 
 struct vecPush { LONG Position;  };
 struct vecTracePath { FUNCTION * Callback;  };
@@ -722,6 +730,8 @@ INLINE ERROR vecKeyboardSubscription(APTR Ob, FUNCTION * Callback) {
    struct vecKeyboardSubscription args = { Callback };
    return(Action(MT_VecKeyboardSubscription, (OBJECTPTR)Ob, &args));
 }
+
+#define vecDebug(obj) Action(MT_VecDebug,(obj),0)
 
 
 struct VectorBase {

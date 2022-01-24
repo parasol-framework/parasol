@@ -16,6 +16,7 @@ public:
    DOUBLE FinalX, FinalY; \
    DOUBLE FillGradientAlpha, StrokeGradientAlpha; \
    DOUBLE BX1, BY1, BX2, BY2; \
+   FUNCTION Feedback; \
    objVectorFilter *Filter; \
    struct rkVectorViewport *ParentView; \
    STRING ID; \
@@ -57,6 +58,7 @@ public:
    UBYTE Type;       // Filter effect - FE_OFFSET, etc
    UBYTE Source;     // VSF_REFERENCE, VSF_GRAPHIC...
    UBYTE UsageCount; // Total number of other effects utilising this effect to build a pipeline
+   UBYTE Pad;
    struct rkBitmap *Bitmap;
    VectorEffect *Input; // The effect uses another effect as an input.
    LONG XOffset, YOffset; // In SVG only feOffset can use offsets, however in our framework any effect may define an offset when copying from a source.
