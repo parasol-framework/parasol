@@ -5,7 +5,6 @@ template<class T> struct stack_blur_tables
   static UBYTE  const g_stack_blur8_shr[255];
 };
 
-//------------------------------------------------------------------------
 template<class T>
 UWORD const stack_blur_tables<T>::g_stack_blur8_mul[255] =
 {
@@ -27,7 +26,6 @@ UWORD const stack_blur_tables<T>::g_stack_blur8_mul[255] =
   289,287,285,282,280,278,275,273,271,269,267,265,263,261,259
 };
 
-//------------------------------------------------------------------------
 template<class T>
 UBYTE const stack_blur_tables<T>::g_stack_blur8_shr[255] =
 {
@@ -55,11 +53,11 @@ UBYTE const stack_blur_tables<T>::g_stack_blur8_shr[255] =
 
 static ERROR create_blur(objVectorFilter *Self, XMLTag *Tag)
 {
-   VectorEffect *effect;
+   auto effect_it = Self->Effects->emplace(Self->Effects->end(), FE_BLUR);
+   auto &effect = *effect_it;
 
-   if (!(effect = add_effect(Self, FE_BLUR))) return ERR_AllocMemory;
-   effect->Blur.RX = 0; // SVG default values are zero
-   effect->Blur.RY = 0;
+   effect.Blur.RX = 0; // SVG default values are zero
+   effect.Blur.RY = 0;
 
    for (LONG a=1; a < Tag->TotalAttrib; a++) {
       CSTRING val = Tag->Attrib[a].Value;
@@ -68,13 +66,14 @@ static ERROR create_blur(objVectorFilter *Self, XMLTag *Tag)
       ULONG hash = StrHash(Tag->Attrib[a].Name, FALSE);
       switch(hash) {
          case SVF_STDDEVIATION: {
-            effect->Blur.RY = -1;
-            read_numseq(val, &effect->Blur.RX, &effect->Blur.RY, TAGEND);
-            if (effect->Blur.RX < 0) effect->Blur.RX = 0;
-            if (effect->Blur.RY < 0) effect->Blur.RY = effect->Blur.RX;
+            effect.Blur.RY = -1;
+            read_numseq(val, &effect.Blur.RX, &effect.Blur.RY, TAGEND);
+            if (effect.Blur.RX < 0) effect.Blur.RX = 0;
+            if (effect.Blur.RY < 0) effect.Blur.RY = effect.Blur.RX;
             break;
          }
-         default: fe_default(Self, effect, hash, val); break;
+
+         default: fe_default(Self, &effect, hash, val); break;
       }
    }
    return ERR_Okay;

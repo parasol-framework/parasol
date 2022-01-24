@@ -374,7 +374,7 @@ typedef struct rkVectorScene {
    std::unordered_set<struct rkVector *> *KeyboardSubscriptions;
    UBYTE  AdaptorType;
    LONG InputHandle;
-  
+
 #endif
 } objVectorScene;
 
@@ -444,7 +444,7 @@ typedef struct rkVectorPattern {
 #ifdef PRV_VECTORPATTERN
    struct VectorTransform *Transforms;
    objBitmap *Bitmap;
-  
+
 #endif
 } objVectorPattern;
 
@@ -477,7 +477,7 @@ typedef struct rkVectorGradient {
    STRING ID;
    LONG NumericID;
    WORD ChangeCounter;
-  
+
 #endif
 } objVectorGradient;
 
@@ -504,7 +504,7 @@ typedef struct rkVectorFilter {
 #ifdef PRV_VECTORFILTER
    LARGE DrawStamp; // Timestamp at which this filter was last rendered
    std::vector<VectorEffect> *Effects;
-   VectorEffect **Merge;
+   std::vector<VectorEffect *> *Merge;
    objBitmap *SrcBitmap; // A temporary alpha enabled drawing of the vector that is targeted by the filter.
    objBitmap *BkgdBitmap;
    objBitmap *MergeBitmap;
@@ -519,7 +519,7 @@ typedef struct rkVectorFilter {
    LONG BoundX, BoundY, BoundWidth, BoundHeight;  // Calculated pixel boundary for the entire filter and its effects.
    LONG ViewX, ViewY, ViewWidth, ViewHeight; // Boundary of the target area (for user space coordinate mode)
    UBYTE BankIndex;
-  
+
 #endif
 } objVectorFilter;
 
@@ -775,7 +775,7 @@ INLINE void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
    Colour->Blue  = Blue;
    Colour->Alpha = Alpha;
 }
-  
+
 #define SVF_ANIMATETRANSFORM 0x6349c940
 #define SVF_ANIMATEMOTION 0x8a27c6ba
 #define SVF_CIRCLE 0xf679fe97

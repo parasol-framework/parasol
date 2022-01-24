@@ -97,12 +97,12 @@ public:
          LONG Octaves;
          LONG Seed;
          LONG TileWidth, TileHeight;
-         UBYTE Type;
-         UBYTE Stitch:1;
          LONG StitchWidth;
          LONG StitchHeight;
          LONG WrapX;
          LONG WrapY;
+         UBYTE Type;
+         UBYTE Stitch:1;
       } Turbulence;
       struct {
          LONG RX, RY;

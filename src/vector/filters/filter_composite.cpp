@@ -26,9 +26,7 @@ void doComposite(VectorEffect *Effect, objBitmap *SrcBitmap, UBYTE *Dest, UBYTE 
    }
 }
 
-/*****************************************************************************
-** Internal: apply_composite()
-*/
+//****************************************************************************
 
 static void apply_composite(objVectorFilter *Self, VectorEffect *Effect)
 {
@@ -201,10 +199,12 @@ static void apply_composite(objVectorFilter *Self, VectorEffect *Effect)
 
 static ERROR create_composite(objVectorFilter *Self, XMLTag *Tag)
 {
-   VectorEffect *effect;
+   parasol::Log log(__FUNCTION__);
 
-   if (!(effect = add_effect(Self, FE_COMPOSITE))) return ERR_AllocMemory;
-   effect->Composite.Operator = OP_OVER;
+   auto effect_it = Self->Effects->emplace(Self->Effects->end(), FE_COMPOSITE);
+   auto &effect = *effect_it;
+
+   effect.Composite.Operator = OP_OVER;
 
    for (LONG a=1; a < Tag->TotalAttrib; a++) {
       CSTRING val = Tag->Attrib[a].Value;
@@ -214,18 +214,18 @@ static ERROR create_composite(objVectorFilter *Self, XMLTag *Tag)
       switch(hash) {
          case SVF_IN: {
             switch (StrHash(val, FALSE)) {
-               case SVF_SOURCEGRAPHIC:   effect->Composite.Source = VSF_GRAPHIC; break;
-               case SVF_SOURCEALPHA:     effect->Composite.Source = VSF_ALPHA; break;
-               case SVF_BACKGROUNDIMAGE: effect->Composite.Source = VSF_BKGD; break;
-               case SVF_BACKGROUNDALPHA: effect->Composite.Source = VSF_BKGD_ALPHA; break;
-               case SVF_FILLPAINT:       effect->Composite.Source = VSF_FILL; break;
-               case SVF_STROKEPAINT:     effect->Composite.Source = VSF_STROKE; break;
+               case SVF_SOURCEGRAPHIC:   effect.Composite.Source = VSF_GRAPHIC; break;
+               case SVF_SOURCEALPHA:     effect.Composite.Source = VSF_ALPHA; break;
+               case SVF_BACKGROUNDIMAGE: effect.Composite.Source = VSF_BKGD; break;
+               case SVF_BACKGROUNDALPHA: effect.Composite.Source = VSF_BKGD_ALPHA; break;
+               case SVF_FILLPAINT:       effect.Composite.Source = VSF_FILL; break;
+               case SVF_STROKEPAINT:     effect.Composite.Source = VSF_STROKE; break;
                default:  {
                   VectorEffect *e;
                   if ((e = find_effect(Self, val))) {
-                     if (e != effect) {
-                        effect->Composite.Source = VSF_REFERENCE;
-                        effect->Input = e;
+                     if (e != &effect) {
+                        effect.Composite.Source = VSF_REFERENCE;
+                        effect.Input = e;
                      }
                   }
                   break;
@@ -236,18 +236,18 @@ static ERROR create_composite(objVectorFilter *Self, XMLTag *Tag)
 
          case SVF_IN2: { // 'In2' is usually the BackgroundImage that 'in' will be copied over.
             switch (StrHash(val, FALSE)) {
-               case SVF_SOURCEGRAPHIC:   effect->Source = VSF_GRAPHIC; break;
-               case SVF_SOURCEALPHA:     effect->Source = VSF_ALPHA; break;
-               case SVF_BACKGROUNDIMAGE: effect->Source = VSF_BKGD; break;
-               case SVF_BACKGROUNDALPHA: effect->Source = VSF_BKGD_ALPHA; break;
-               case SVF_FILLPAINT:       effect->Source = VSF_FILL; break;
-               case SVF_STROKEPAINT:     effect->Source = VSF_STROKE; break;
+               case SVF_SOURCEGRAPHIC:   effect.Source = VSF_GRAPHIC; break;
+               case SVF_SOURCEALPHA:     effect.Source = VSF_ALPHA; break;
+               case SVF_BACKGROUNDIMAGE: effect.Source = VSF_BKGD; break;
+               case SVF_BACKGROUNDALPHA: effect.Source = VSF_BKGD_ALPHA; break;
+               case SVF_FILLPAINT:       effect.Source = VSF_FILL; break;
+               case SVF_STROKEPAINT:     effect.Source = VSF_STROKE; break;
                default:  {
                   VectorEffect *e;
                   if ((e = find_effect(Self, val))) {
-                     if (e != effect) {
-                        effect->Source = VSF_REFERENCE;
-                        effect->Input = e;
+                     if (e != &effect) {
+                        effect.Source = VSF_REFERENCE;
+                        effect.Input = e;
                      }
                   }
                   break;
@@ -260,49 +260,49 @@ static ERROR create_composite(objVectorFilter *Self, XMLTag *Tag)
          case SVF_OPERATOR: {
             switch (StrHash(val, FALSE)) {
                // SVG Operator types
-               case SVF_OVER: effect->Composite.Operator = OP_OVER; break;
-               case SVF_IN:   effect->Composite.Operator = OP_IN; break;
-               case SVF_OUT:  effect->Composite.Operator = OP_OUT; break;
-               case SVF_ATOP: effect->Composite.Operator = OP_ATOP; break;
-               case SVF_XOR:  effect->Composite.Operator = OP_XOR; break;
-               case SVF_ARITHMETIC: effect->Composite.Operator = OP_ARITHMETIC; break;
+               case SVF_OVER: effect.Composite.Operator = OP_OVER; break;
+               case SVF_IN:   effect.Composite.Operator = OP_IN; break;
+               case SVF_OUT:  effect.Composite.Operator = OP_OUT; break;
+               case SVF_ATOP: effect.Composite.Operator = OP_ATOP; break;
+               case SVF_XOR:  effect.Composite.Operator = OP_XOR; break;
+               case SVF_ARITHMETIC: effect.Composite.Operator = OP_ARITHMETIC; break;
                // SVG Mode types
-               case SVF_NORMAL:   effect->Composite.Operator = OP_NORMAL; break;
-               case SVF_SCREEN:   effect->Composite.Operator = OP_SCREEN; break;
-               case SVF_MULTIPLY: effect->Composite.Operator = OP_MULTIPLY; break;
-               case SVF_LIGHTEN:  effect->Composite.Operator = OP_LIGHTEN; break;
-               case SVF_DARKEN:   effect->Composite.Operator = OP_DARKEN; break;
+               case SVF_NORMAL:   effect.Composite.Operator = OP_NORMAL; break;
+               case SVF_SCREEN:   effect.Composite.Operator = OP_SCREEN; break;
+               case SVF_MULTIPLY: effect.Composite.Operator = OP_MULTIPLY; break;
+               case SVF_LIGHTEN:  effect.Composite.Operator = OP_LIGHTEN; break;
+               case SVF_DARKEN:   effect.Composite.Operator = OP_DARKEN; break;
                // Parasol modes
-               case SVF_INVERTRGB:  effect->Composite.Operator = OP_INVERTRGB; break;
-               case SVF_INVERT:     effect->Composite.Operator = OP_INVERT; break;
-               case SVF_CONTRAST:   effect->Composite.Operator = OP_CONTRAST; break;
-               case SVF_DODGE:      effect->Composite.Operator = OP_DODGE; break;
-               case SVF_BURN:       effect->Composite.Operator = OP_BURN; break;
-               case SVF_HARDLIGHT:  effect->Composite.Operator = OP_HARDLIGHT; break;
-               case SVF_SOFTLIGHT:  effect->Composite.Operator = OP_SOFTLIGHT; break;
-               case SVF_DIFFERENCE: effect->Composite.Operator = OP_DIFFERENCE; break;
-               case SVF_EXCLUSION:  effect->Composite.Operator = OP_EXCLUSION; break;
-               case SVF_PLUS:       effect->Composite.Operator = OP_PLUS; break;
-               case SVF_MINUS:      effect->Composite.Operator = OP_MINUS; break;
-               case SVF_OVERLAY:    effect->Composite.Operator = OP_OVERLAY; break;
+               case SVF_INVERTRGB:  effect.Composite.Operator = OP_INVERTRGB; break;
+               case SVF_INVERT:     effect.Composite.Operator = OP_INVERT; break;
+               case SVF_CONTRAST:   effect.Composite.Operator = OP_CONTRAST; break;
+               case SVF_DODGE:      effect.Composite.Operator = OP_DODGE; break;
+               case SVF_BURN:       effect.Composite.Operator = OP_BURN; break;
+               case SVF_HARDLIGHT:  effect.Composite.Operator = OP_HARDLIGHT; break;
+               case SVF_SOFTLIGHT:  effect.Composite.Operator = OP_SOFTLIGHT; break;
+               case SVF_DIFFERENCE: effect.Composite.Operator = OP_DIFFERENCE; break;
+               case SVF_EXCLUSION:  effect.Composite.Operator = OP_EXCLUSION; break;
+               case SVF_PLUS:       effect.Composite.Operator = OP_PLUS; break;
+               case SVF_MINUS:      effect.Composite.Operator = OP_MINUS; break;
+               case SVF_OVERLAY:    effect.Composite.Operator = OP_OVERLAY; break;
                default:
-                  LogErrorMsg("Composite operator '%s' not recognised.", val);
-                  remove_effect(Self, effect);
+                  log.warning("Composite operator '%s' not recognised.", val);
+                  Self->Effects->erase(effect_it);
                   return ERR_InvalidValue;
             }
             break;
          }
 
-         case SVF_K1: read_numseq(val, &effect->Composite.K1, TAGEND); break;
-         case SVF_K2: read_numseq(val, &effect->Composite.K2, TAGEND); break;
-         case SVF_K3: read_numseq(val, &effect->Composite.K3, TAGEND); break;
-         case SVF_K4: read_numseq(val, &effect->Composite.K4, TAGEND); break;
-         default: fe_default(Self, effect, hash, val); break;
+         case SVF_K1: read_numseq(val, &effect.Composite.K1, TAGEND); break;
+         case SVF_K2: read_numseq(val, &effect.Composite.K2, TAGEND); break;
+         case SVF_K3: read_numseq(val, &effect.Composite.K3, TAGEND); break;
+         case SVF_K4: read_numseq(val, &effect.Composite.K4, TAGEND); break;
+         default: fe_default(Self, &effect, hash, val); break;
       }
    }
 
-   if (!effect->Composite.Source) {
-      LogErrorMsg("Composite element requires 'in2' attribute.");
+   if (!effect.Composite.Source) {
+      log.warning("Composite element requires 'in2' attribute.");
       return ERR_FieldNotSet;
    }
 

@@ -13,7 +13,7 @@ enum {
 
 static void erode(VectorEffect *Effect)
 {
-   objBitmap *bmp = Effect->Bitmap;
+   auto bmp = Effect->Bitmap;
    if (bmp->BytesPerPixel != 4) return;
 
    const LONG canvasWidth = bmp->Clip.Right - bmp->Clip.Left;
@@ -119,7 +119,7 @@ static void erode(VectorEffect *Effect)
 
 static void dilate(VectorEffect *Effect)
 {
-   objBitmap *bmp = Effect->Bitmap;
+   auto bmp = Effect->Bitmap;
    if (bmp->BytesPerPixel != 4) return;
 
    const LONG canvasWidth = bmp->Clip.Right - bmp->Clip.Left;
@@ -234,11 +234,13 @@ static void apply_morph(objVectorFilter *Self, VectorEffect *Effect)
 
 static ERROR create_morph(objVectorFilter *Self, XMLTag *Tag)
 {
-   VectorEffect *effect;
-   if (!(effect = add_effect(Self, FE_MORPHOLOGY))) return ERR_AllocMemory;
+   parasol::Log log(__FUNCTION__);
 
-   effect->Morph.RX = 0; // SVG default is 0
-   effect->Morph.RY = 0;
+   auto effect_it = Self->Effects->emplace(Self->Effects->end(), FE_MORPHOLOGY);
+   auto &effect = *effect_it;
+
+   effect.Morph.RX = 0; // SVG default is 0
+   effect.Morph.RY = 0;
 
    for (LONG a=1; a < Tag->TotalAttrib; a++) {
       CSTRING val = Tag->Attrib[a].Value;
@@ -249,21 +251,21 @@ static ERROR create_morph(objVectorFilter *Self, XMLTag *Tag)
          case SVF_RADIUS: {
             DOUBLE x = -1, y = -1;
             read_numseq(val, &x, &y, TAGEND);
-            if (x >= 0) effect->Morph.RX = x;
-            else effect->Morph.RX = 0;
+            if (x >= 0) effect.Morph.RX = x;
+            else effect.Morph.RX = 0;
 
-            if (y >= 0) effect->Morph.RY = y;
-            else effect->Morph.RY = x;
+            if (y >= 0) effect.Morph.RY = y;
+            else effect.Morph.RY = x;
             break;
          }
 
          case SVF_OPERATOR:
-            if (!StrMatch("erode", val)) effect->Morph.Type = OP_ERODE;
-            else if (!StrMatch("dilate", val)) effect->Morph.Type = OP_DILATE;
-            else LogErrorMsg("Unrecognised morphology operator '%s'", val);
+            if (!StrMatch("erode", val)) effect.Morph.Type = OP_ERODE;
+            else if (!StrMatch("dilate", val)) effect.Morph.Type = OP_DILATE;
+            else log.warning("Unrecognised morphology operator '%s'", val);
             break;
 
-         default: fe_default(Self, effect, hash, val); break;
+         default: fe_default(Self, &effect, hash, val); break;
       }
    }
    return ERR_Okay;

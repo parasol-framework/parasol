@@ -210,16 +210,17 @@ static void apply_convolve(objVectorFilter *Self, VectorEffect *Filter)
 static ERROR create_convolve(objVectorFilter *Self, XMLTag *Tag)
 {
    parasol::Log log(__FUNCTION__);
-   VectorEffect *effect;
-   if (!(effect = add_effect(Self, FE_CONVOLVEMATRIX))) return ERR_AllocMemory;
 
-   effect->Convolve.Matrix = new (std::nothrow) ConvolveMatrix;
-   if (!effect->Convolve.Matrix) {
-      remove_effect(Self, effect);
+   auto effect_it = Self->Effects->emplace(Self->Effects->end(), FE_CONVOLVEMATRIX);
+   auto &effect = *effect_it;
+
+   effect.Convolve.Matrix = new (std::nothrow) ConvolveMatrix;
+   if (!effect.Convolve.Matrix) {
+      Self->Effects->erase(effect_it);
       return ERR_AllocMemory;
    }
 
-   ConvolveMatrix &matrix = *effect->Convolve.Matrix;
+   ConvolveMatrix &matrix = *effect.Convolve.Matrix;
 
    ULONG m = 0;
 
@@ -270,19 +271,19 @@ static ERROR create_convolve(objVectorFilter *Self, XMLTag *Tag)
          // The modifications will apply to R,G,B only when preserveAlpha is true.
          case SVF_PRESERVEALPHA: if ((!StrMatch("true", val)) OR (!StrMatch("1", val))) matrix.PreserveAlpha = true;  break;
 
-         default: fe_default(Self, effect, hash, val); break;
+         default: fe_default(Self, &effect, hash, val); break;
       }
    }
 
    if (matrix.FilterWidth * matrix.FilterHeight > MAX_DIM * MAX_DIM) {
       log.warning("Size of matrix exceeds internally imposed limits.");
-      remove_effect(Self, effect);
+      Self->Effects->erase(effect_it);
       return ERR_BufferOverflow;
    }
 
    if (m != matrix.FilterWidth * matrix.FilterHeight) {
       log.warning("Matrix value count of %d does not match the matrix size (%d,%d)", m, matrix.FilterWidth, matrix.FilterHeight);
-      remove_effect(Self, effect);
+      Self->Effects->erase(effect_it);
       return ERR_Failed;
    }
 

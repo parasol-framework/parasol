@@ -5,14 +5,15 @@
 static ERROR create_image(objVectorFilter *Self, XMLTag *Tag)
 {
    parasol::Log log(__FUNCTION__);
-   VectorEffect *effect;
 
-   if (!(effect = add_effect(Self, FE_IMAGE))) return ERR_AllocMemory;
+   auto effect_it = Self->Effects->emplace(Self->Effects->end(), FE_IMAGE);
+   auto &effect = *effect_it;
 
    // SVG defaults
-   effect->Image.Dimensions = 0;
-   effect->Image.AspectRatio = ARF_X_MID|ARF_Y_MID|ARF_MEET;
-   effect->Image.ResampleMethod = VSM_BILINEAR;
+   effect.Image.Dimensions = 0;
+   effect.Image.AspectRatio = ARF_X_MID|ARF_Y_MID|ARF_MEET;
+   effect.Image.ResampleMethod = VSM_BILINEAR;
+   effect.Image.Picture = NULL;
 
    UBYTE image_required = FALSE;
    CSTRING path = NULL;
@@ -25,38 +26,38 @@ static ERROR create_image(objVectorFilter *Self, XMLTag *Tag)
       ULONG hash = StrHash(Tag->Attrib[a].Name, FALSE);
       switch(hash) {
          case SVF_X:
-            effect->Image.X = read_unit(val, &percent);
-            if (percent) effect->Image.Dimensions = (effect->Image.Dimensions & (~DMF_FIXED_X)) | DMF_RELATIVE_X;
-            else effect->Image.Dimensions = (effect->Image.Dimensions & (~DMF_RELATIVE_X)) | DMF_FIXED_X;
+            effect.Image.X = read_unit(val, &percent);
+            if (percent) effect.Image.Dimensions = (effect.Image.Dimensions & (~DMF_FIXED_X)) | DMF_RELATIVE_X;
+            else effect.Image.Dimensions = (effect.Image.Dimensions & (~DMF_RELATIVE_X)) | DMF_FIXED_X;
             break;
          case SVF_Y:
-            effect->Image.Y = read_unit(val, &percent);
-            if (percent) effect->Image.Dimensions = (effect->Image.Dimensions & (~DMF_FIXED_Y)) | DMF_RELATIVE_Y;
-            else effect->Image.Dimensions = (effect->Image.Dimensions & (~DMF_RELATIVE_Y)) | DMF_FIXED_Y;
+            effect.Image.Y = read_unit(val, &percent);
+            if (percent) effect.Image.Dimensions = (effect.Image.Dimensions & (~DMF_FIXED_Y)) | DMF_RELATIVE_Y;
+            else effect.Image.Dimensions = (effect.Image.Dimensions & (~DMF_RELATIVE_Y)) | DMF_FIXED_Y;
             break;
          case SVF_WIDTH:
-            effect->Image.Width = read_unit(val, &percent);
-            if (percent) effect->Image.Dimensions = (effect->Image.Dimensions & (~DMF_FIXED_WIDTH)) | DMF_RELATIVE_WIDTH;
-            else effect->Image.Dimensions = (effect->Image.Dimensions & (~DMF_RELATIVE_WIDTH)) | DMF_FIXED_WIDTH;
+            effect.Image.Width = read_unit(val, &percent);
+            if (percent) effect.Image.Dimensions = (effect.Image.Dimensions & (~DMF_FIXED_WIDTH)) | DMF_RELATIVE_WIDTH;
+            else effect.Image.Dimensions = (effect.Image.Dimensions & (~DMF_RELATIVE_WIDTH)) | DMF_FIXED_WIDTH;
             break;
          case SVF_HEIGHT:
-            effect->Image.Height = read_unit(val, &percent);
-            if (percent) effect->Image.Dimensions = (effect->Image.Dimensions & (~DMF_FIXED_HEIGHT)) | DMF_RELATIVE_HEIGHT;
-            else effect->Image.Dimensions = (effect->Image.Dimensions & (~DMF_RELATIVE_HEIGHT)) | DMF_FIXED_HEIGHT;
+            effect.Image.Height = read_unit(val, &percent);
+            if (percent) effect.Image.Dimensions = (effect.Image.Dimensions & (~DMF_FIXED_HEIGHT)) | DMF_RELATIVE_HEIGHT;
+            else effect.Image.Dimensions = (effect.Image.Dimensions & (~DMF_RELATIVE_HEIGHT)) | DMF_FIXED_HEIGHT;
             break;
 
          case SVF_IMAGE_RENDERING: {
-            if (!StrMatch("optimizeSpeed", val)) effect->Image.ResampleMethod = VSM_BILINEAR;
-            else if (!StrMatch("optimizeQuality", val)) effect->Image.ResampleMethod = VSM_LANCZOS3;
+            if (!StrMatch("optimizeSpeed", val)) effect.Image.ResampleMethod = VSM_BILINEAR;
+            else if (!StrMatch("optimizeQuality", val)) effect.Image.ResampleMethod = VSM_LANCZOS3;
             else if (!StrMatch("auto", val));
             else if (!StrMatch("inherit", val));
-            else LogErrorMsg("Unrecognised image-rendering option '%s'", val);
+            else log.warning("Unrecognised image-rendering option '%s'", val);
             break;
          }
 
          case SVF_PRESERVEASPECTRATIO: {
             LONG flags = 0;
-            while ((*val) AND (*val <= 0x20)) val++;
+            while ((*val) and (*val <= 0x20)) val++;
             if (!StrMatch("none", val)) flags = ARF_NONE;
             else {
                if (!StrCompare("xMin", val, 4, 0)) { flags |= ARF_X_MIN; val += 4; }
@@ -67,12 +68,12 @@ static ERROR create_image(objVectorFilter *Self, XMLTag *Tag)
                else if (!StrCompare("yMid", val, 4, 0)) { flags |= ARF_Y_MID; val += 4; }
                else if (!StrCompare("yMax", val, 4, 0)) { flags |= ARF_Y_MAX; val += 4; }
 
-               while ((*val) AND (*val <= 0x20)) val++;
+               while ((*val) and (*val <= 0x20)) val++;
 
                if (!StrCompare("meet", val, 4, 0)) { flags |= ARF_MEET; }
                else if (!StrCompare("slice", val, 5, 0)) { flags |= ARF_SLICE; }
             }
-            effect->Image.AspectRatio = flags;
+            effect.Image.AspectRatio = flags;
             break;
          }
 
@@ -84,24 +85,24 @@ static ERROR create_image(objVectorFilter *Self, XMLTag *Tag)
             if (!StrMatch("true", val)) image_required = TRUE;
             break;
 
-         default: fe_default(Self, effect, hash, val); break;
+         default: fe_default(Self, &effect, hash, val); break;
       }
    }
 
    // The coordinate system is determined according to SVG rules.  The key thing here is that boundingbox and userspace
    // systems are chosen depending on whether or not the user specified an x, y, width and/or height.
 
-   if (Self->PrimitiveUnits != VUNIT_UNDEFINED) effect->Image.Units = Self->PrimitiveUnits;
+   if (Self->PrimitiveUnits != VUNIT_UNDEFINED) effect.Image.Units = Self->PrimitiveUnits;
    else {
-      if (effect->Image.Dimensions) effect->Image.Units = VUNIT_USERSPACE;
-      else effect->Image.Units = VUNIT_BOUNDING_BOX;
+      if (effect.Image.Dimensions) effect.Image.Units = VUNIT_USERSPACE;
+      else effect.Image.Units = VUNIT_BOUNDING_BOX;
    }
 
    if (path) {
       // Check for security risks in the path.
 
-      if ((path[0] IS '/') or ((path[0] IS '.') and (path[1] IS '.') AND (path[2] IS '/'))) {
-         remove_effect(Self, effect);
+      if ((path[0] IS '/') or ((path[0] IS '.') and (path[1] IS '.') and (path[2] IS '/'))) {
+         Self->Effects->erase(effect_it);
          return log.warning(ERR_InvalidValue);
       }
 
@@ -109,12 +110,12 @@ static ERROR create_image(objVectorFilter *Self, XMLTag *Tag)
          if (path[i] IS '/') {
             while (path[i+1] IS '.') i++;
             if (path[i+1] IS '/') {
-               remove_effect(Self, effect);
+               Self->Effects->erase(effect_it);
                return log.warning(ERR_InvalidValue);
             }
          }
          else if (path[i] IS ':') {
-            remove_effect(Self, effect);
+            Self->Effects->erase(effect_it);
             return log.warning(ERR_InvalidValue);
          }
       }
@@ -124,29 +125,29 @@ static ERROR create_image(objVectorFilter *Self, XMLTag *Tag)
          char comp_path[400];
          LONG i = StrCopy(Self->Path, comp_path, sizeof(comp_path));
          StrCopy(path, comp_path + i, sizeof(comp_path)-i);
-         error = CreateObject(ID_PICTURE, NF_INTEGRAL, &effect->Image.Picture,
+         error = CreateObject(ID_PICTURE, NF_INTEGRAL, &effect.Image.Picture,
             FID_Path|TSTR,          comp_path,
             FID_BitsPerPixel|TLONG, 32,
             FID_Flags|TLONG,        PCF_FORCE_ALPHA_32,
             TAGEND);
       }
-      else error = CreateObject(ID_PICTURE, NF_INTEGRAL, &effect->Image.Picture,
+      else error = CreateObject(ID_PICTURE, NF_INTEGRAL, &effect.Image.Picture,
             FID_Path|TSTR,          path,
             FID_BitsPerPixel|TLONG, 32,
             FID_Flags|TLONG,        PCF_FORCE_ALPHA_32,
             TAGEND);
 
-      if ((error) AND (image_required)) {
-         remove_effect(Self, effect);
+      if ((error) and (image_required)) {
+         Self->Effects->erase(effect_it);
          return ERR_CreateObject;
       }
 
-      if ((Self->ColourSpace IS CS_LINEAR_RGB) AND (!error)) rgb2linear(*effect->Image.Picture->Bitmap);
+      if ((Self->ColourSpace IS CS_LINEAR_RGB) and (!error)) rgb2linear(*effect.Image.Picture->Bitmap);
 
       return ERR_Okay;
    }
    else { // If no image path is referenced, the instruction to load an image will be ignored.
-      remove_effect(Self, effect);
+      Self->Effects->erase(effect_it);
       return ERR_Okay;
    }
 }

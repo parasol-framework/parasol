@@ -145,7 +145,7 @@ static DOUBLE turbulence_stitch(VectorEffect *Effect, UBYTE Channel, LONG x, LON
 
 static void apply_turbulence(objVectorFilter *Self, VectorEffect *Effect)
 {
-   objBitmap *bmp = Effect->Bitmap;
+   auto bmp = Effect->Bitmap;
    if (bmp->BytesPerPixel != 4) return;
 
    const UBYTE A = bmp->ColourFormat->AlphaPos>>3;
@@ -201,15 +201,18 @@ static void apply_turbulence(objVectorFilter *Self, VectorEffect *Effect)
 
 static ERROR create_turbulence(objVectorFilter *Self, XMLTag *Tag)
 {
-   VectorEffect *effect;
-   if (!(effect = add_effect(Self, FE_TURBULENCE))) return ERR_AllocMemory;
+   parasol::Log log(__FUNCTION__);
 
-   effect->Turbulence.Octaves = 1;
-   effect->Turbulence.Stitch = FALSE;
-   effect->Turbulence.Seed = RandomNumber(1000000);
-   effect->Turbulence.Type = 0; // Default type is 'turbulence'.  1 == Noise
-   effect->Turbulence.TileWidth = 256;
-   effect->Turbulence.TileHeight = 256;
+   auto effect_it = Self->Effects->emplace(Self->Effects->end(), FE_TURBULENCE);
+   auto &effect = *effect_it;
+
+   effect.Turbulence.Octaves    = 1;
+   effect.Turbulence.Stitch     = FALSE;
+   effect.Turbulence.Seed       = RandomNumber(1000000);
+   effect.Turbulence.Type       = 0; // Default type is 'turbulence'.  1 == Noise
+   effect.Turbulence.TileWidth  = 256;
+   effect.Turbulence.TileHeight = 256;
+   effect.Turbulence.Tables     = NULL;
 
    for (LONG a=1; a < Tag->TotalAttrib; a++) {
       CSTRING val = Tag->Attrib[a].Value;
@@ -220,80 +223,80 @@ static ERROR create_turbulence(objVectorFilter *Self, XMLTag *Tag)
          case SVF_BASEFREQUENCY: {
             DOUBLE x = -1, y = -1;
             read_numseq(val, &x, &y, TAGEND);
-            if (x >= 0) effect->Turbulence.FX = x;
-            else effect->Turbulence.FX = 0;
+            if (x >= 0) effect.Turbulence.FX = x;
+            else effect.Turbulence.FX = 0;
 
-            if (y >= 0) effect->Turbulence.FY = y;
-            else effect->Turbulence.FY = x;
+            if (y >= 0) effect.Turbulence.FY = y;
+            else effect.Turbulence.FY = x;
             break;
          }
 
          case SVF_NUMOCTAVES:
-            effect->Turbulence.Octaves = StrToInt(val);
+            effect.Turbulence.Octaves = StrToInt(val);
             break;
 
          case SVF_SEED:
-            effect->Turbulence.Seed = StrToInt(val);
+            effect.Turbulence.Seed = StrToInt(val);
             break;
 
          case SVF_STITCHTILES:
-            if (!StrMatch("stitch", val)) effect->Turbulence.Stitch = TRUE;
-            else effect->Turbulence.Stitch = FALSE;
+            if (!StrMatch("stitch", val)) effect.Turbulence.Stitch = TRUE;
+            else effect.Turbulence.Stitch = FALSE;
             break;
 
          case SVF_TYPE:
-            if (!StrMatch("fractalNoise", val)) effect->Turbulence.Type = 1;
-            else effect->Turbulence.Type = 0;
+            if (!StrMatch("fractalNoise", val)) effect.Turbulence.Type = 1;
+            else effect.Turbulence.Type = 0;
             break;
 
          default:
-            fe_default(Self, effect, hash, val);
+            fe_default(Self, &effect, hash, val);
             break;
       }
    }
 
-   if (!AllocMemory(sizeof(struct ttable), MEM_DATA|MEM_NO_CLEAR, &effect->Turbulence.Tables, NULL)) {
+   if (!AllocMemory(sizeof(struct ttable), MEM_DATA|MEM_NO_CLEAR, &effect.Turbulence.Tables, NULL)) {
       LONG i, j, k;
-      LONG lSeed = setup_seed(effect->Turbulence.Seed);
+      LONG lSeed = setup_seed(effect.Turbulence.Seed);
       for (k=0; k < 4; k++) {
          for (i=0; i < BSIZE; i++) {
-            effect->Turbulence.Tables->Lattice[i] = i;
-            for (j=0; j < 2; j++) effect->Turbulence.Tables->Gradient[k][i][j] = (DOUBLE)(((lSeed = random(lSeed)) % (BSIZE + BSIZE)) - BSIZE) / BSIZE;
-            DOUBLE s = DOUBLE(sqrt(effect->Turbulence.Tables->Gradient[k][i][0] * effect->Turbulence.Tables->Gradient[k][i][0] + effect->Turbulence.Tables->Gradient[k][i][1] * effect->Turbulence.Tables->Gradient[k][i][1]));
-            effect->Turbulence.Tables->Gradient[k][i][0] /= s;
-            effect->Turbulence.Tables->Gradient[k][i][1] /= s;
+            effect.Turbulence.Tables->Lattice[i] = i;
+            for (j=0; j < 2; j++) effect.Turbulence.Tables->Gradient[k][i][j] = (DOUBLE)(((lSeed = random(lSeed)) % (BSIZE + BSIZE)) - BSIZE) / BSIZE;
+            DOUBLE s = DOUBLE(sqrt(effect.Turbulence.Tables->Gradient[k][i][0] * effect.Turbulence.Tables->Gradient[k][i][0] + effect.Turbulence.Tables->Gradient[k][i][1] * effect.Turbulence.Tables->Gradient[k][i][1]));
+            effect.Turbulence.Tables->Gradient[k][i][0] /= s;
+            effect.Turbulence.Tables->Gradient[k][i][1] /= s;
          }
       }
 
       while (--i) {
-        k = effect->Turbulence.Tables->Lattice[i];
-        effect->Turbulence.Tables->Lattice[i] = effect->Turbulence.Tables->Lattice[j = (lSeed = random(lSeed)) % BSIZE];
-        effect->Turbulence.Tables->Lattice[j] = k;
+        k = effect.Turbulence.Tables->Lattice[i];
+        effect.Turbulence.Tables->Lattice[i] = effect.Turbulence.Tables->Lattice[j = (lSeed = random(lSeed)) % BSIZE];
+        effect.Turbulence.Tables->Lattice[j] = k;
       }
 
       for (i=0; i < BSIZE + 2; i++) {
-         effect->Turbulence.Tables->Lattice[BSIZE + i] = effect->Turbulence.Tables->Lattice[i];
-         for (k = 0; k < 4; k++)
-         for (j = 0; j < 2; j++) effect->Turbulence.Tables->Gradient[k][BSIZE + i][j] = effect->Turbulence.Tables->Gradient[k][i][j];
+         effect.Turbulence.Tables->Lattice[BSIZE + i] = effect.Turbulence.Tables->Lattice[i];
+         for (k=0; k < 4; k++)
+         for (j=0; j < 2; j++) effect.Turbulence.Tables->Gradient[k][BSIZE + i][j] = effect.Turbulence.Tables->Gradient[k][i][j];
       }
 
-      if (effect->Turbulence.Stitch) {
-         if (effect->Turbulence.Stitch) {
-            const DOUBLE fx = effect->Turbulence.FX;
-            const DOUBLE fy = effect->Turbulence.FY;
+      if (effect.Turbulence.Stitch) {
+         if (effect.Turbulence.Stitch) {
+            const DOUBLE fx = effect.Turbulence.FX;
+            const DOUBLE fy = effect.Turbulence.FY;
             // When stitching tiled turbulence, the frequencies must be adjusted so that the tile borders will be continuous.
             if (fx != 0.0) {
-               DOUBLE fLoFreq = DOUBLE(floor(effect->Turbulence.TileWidth * fx)) / effect->Turbulence.TileWidth;
-               DOUBLE fHiFreq = DOUBLE(ceil(effect->Turbulence.TileWidth * fx)) / effect->Turbulence.TileWidth;
-               if (fx / fLoFreq < fHiFreq / fx) effect->Turbulence.FX = fLoFreq;
-               else effect->Turbulence.FX = fHiFreq;
+               DOUBLE fLoFreq = DOUBLE(floor(effect.Turbulence.TileWidth * fx)) / effect.Turbulence.TileWidth;
+               DOUBLE fHiFreq = DOUBLE(ceil(effect.Turbulence.TileWidth * fx)) / effect.Turbulence.TileWidth;
+               if (fx / fLoFreq < fHiFreq / fx) effect.Turbulence.FX = fLoFreq;
+               else effect.Turbulence.FX = fHiFreq;
             }
 
             if (fy != 0.0) {
-               DOUBLE fLoFreq = DOUBLE(floor(effect->Turbulence.TileHeight * fy)) / effect->Turbulence.TileHeight;
-               DOUBLE fHiFreq = DOUBLE(ceil(effect->Turbulence.TileHeight * fy)) / effect->Turbulence.TileHeight;
-               if (fy / fLoFreq < fHiFreq / fy) effect->Turbulence.FY = fLoFreq;
-               else effect->Turbulence.FY = fHiFreq;
+               DOUBLE fLoFreq = DOUBLE(floor(effect.Turbulence.TileHeight * fy)) / effect.Turbulence.TileHeight;
+               DOUBLE fHiFreq = DOUBLE(ceil(effect.Turbulence.TileHeight * fy)) / effect.Turbulence.TileHeight;
+               if (fy / fLoFreq < fHiFreq / fy) effect.Turbulence.FY = fLoFreq;
+               else effect.Turbulence.FY = fHiFreq;
             }
          }
       }
@@ -301,7 +304,7 @@ static ERROR create_turbulence(objVectorFilter *Self, XMLTag *Tag)
       return ERR_Okay;
    }
    else {
-      remove_effect(Self, effect);
+      Self->Effects->erase(effect_it);
       return ERR_AllocMemory;
    }
 }

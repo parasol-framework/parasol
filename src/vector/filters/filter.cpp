@@ -20,7 +20,6 @@ in cached bitmaps.
 
 *****************************************************************************/
 
-static VectorEffect * add_effect(objVectorFilter *, UBYTE Type);
 static void apply_cmatrix(objVectorFilter *, VectorEffect *);
 static void apply_convolve(objVectorFilter *, VectorEffect *);
 static void apply_blur(objVectorFilter *, VectorEffect *);
@@ -38,11 +37,10 @@ static ERROR create_image(objVectorFilter *, XMLTag *);
 static ERROR create_morph(objVectorFilter *, XMLTag *);
 static ERROR create_turbulence(objVectorFilter *, XMLTag *);
 static void demultiply_bitmap(objBitmap *);
-static ERROR fe_default(objVectorFilter *, VectorEffect *, ULONG ID, CSTRING Value);
-static VectorEffect * find_effect(objVectorFilter *, CSTRING Name);
+static ERROR fe_default(objVectorFilter *, VectorEffect *, ULONG, CSTRING);
+static VectorEffect * find_effect(objVectorFilter *, CSTRING);
 static ERROR get_bitmap(objVectorFilter *, objBitmap **, UBYTE, VectorEffect *);
 static void premultiply_bitmap(objBitmap *);
-static void remove_effect(objVectorFilter *, VectorEffect *);
 
 //****************************************************************************
 
@@ -264,31 +262,6 @@ static ERROR get_bitmap(objVectorFilter *Self, objBitmap **BitmapResult, UBYTE S
 }
 
 //****************************************************************************
-// Create a new filter and append it to the filter chain.
-
-static VectorEffect * add_effect(objVectorFilter *Filter, UBYTE Type)
-{
-   parasol::Log log(__FUNCTION__);
-   log.trace("Type: %d", Type);
-   Filter->Effects->emplace_back(Type);
-   return &Filter->Effects->back();
-}
-
-//****************************************************************************
-
-static void remove_effect(objVectorFilter *Self, VectorEffect *Effect)
-{
-   LONG i = 0;
-   for (auto &e : Self->Effects[0]) {
-      if (&e IS Effect) {
-         Self->Effects->erase(Self->Effects->begin() + i);
-         return;
-      }
-      i++;
-   }
-}
-
-//****************************************************************************
 
 static VectorEffect * find_effect(objVectorFilter *Self, CSTRING Name)
 {
@@ -361,7 +334,7 @@ static ERROR VECTORFILTER_Clear(objVectorFilter *Self, APTR Void)
 {
    Self->Effects->clear();
 
-   if (Self->Merge) { FreeResource(Self->Merge); Self->Merge = NULL; }
+   if (Self->Merge) Self->Merge->clear();
 
    for (LONG i=0; i < ARRAYSIZE(Self->Bank); i++) {
       if (Self->Bank[i].Bitmap) { acFree(Self->Bank[i].Bitmap); Self->Bank[i].Bitmap = NULL; }
@@ -692,9 +665,8 @@ static ERROR VECTORFILTER_Draw(objVectorFilter *Self, struct acDraw *Args)
       gfxDrawRectangle(Self->MergeBitmap, 0, 0, Self->MergeBitmap->Width, Self->MergeBitmap->Height, 0x00000000, BAF_FILL);
 
       UWORD bmpCount = 0;
-      for (auto m=0; Self->Merge[m]; m++) {
+      for (auto &e : Self->Merge[0]) {
          objBitmap *bmp;
-         auto e = Self->Merge[m];
          if ((bmp = e->Bitmap)) {
             if (++bmpCount IS 1) {
                gfxCopyArea(e->Bitmap, Self->MergeBitmap, 0, 0, 0, bmp->Width, bmp->Height, e->DestX - Self->BoundX, e->DestY - Self->BoundY);
@@ -734,6 +706,7 @@ static ERROR VECTORFILTER_Free(objVectorFilter *Self, APTR Void)
 {
    VECTORFILTER_Clear(Self, NULL);
 
+   if (Self->Merge)       { delete Self->Merge;        Self->Merge = NULL; }
    if (Self->Effects)     { delete Self->Effects;      Self->Effects = NULL; }
    if (Self->EffectXML)   { acFree(Self->EffectXML);   Self->EffectXML = NULL; }
    if (Self->Scene)       { acFree(Self->Scene);       Self->Scene = NULL; }
