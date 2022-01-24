@@ -728,10 +728,9 @@ void remove_process_waitlocks(void)
    #endif
 }
 
-/*****************************************************************************
-** Clear the wait-lock of the active thread.  This does not remove our thread from the wait-lock array.
-** Returns ERR_DoesNotExist if the resource was removed while waiting.
-*/
+//****************************************************************************
+// Clear the wait-lock of the active thread.  This does not remove our thread from the wait-lock array.
+// Returns ERR_DoesNotExist if the resource was removed while waiting.
 
 ERROR clear_waitlock(WORD Index)
 {
@@ -1056,7 +1055,7 @@ ERROR AccessMemory(MEMORYID MemoryID, LONG Flags, LONG MilliSeconds, APTR *Resul
       ThreadLock lock(TL_PRIVATE_MEM, 4000);
       if (lock.granted()) {
          auto mem = glPrivateMemory.find(MemoryID);
-         if (mem != glPrivateMemory.end()) {
+         if ((mem != glPrivateMemory.end()) and (mem->second.Address)) {
             LONG thread_id = get_thread_id();
             // This loop looks odd, but will prevent sleeping if we already have a lock on the memory.
             // cond_wait() will be met with a global wake-up, not necessarily on the desired block, hence the need for while().
@@ -1143,7 +1142,7 @@ ERROR AccessObject(OBJECTID ObjectID, LONG MilliSeconds, OBJECTPTR *Result)
 
    if (ObjectID > 0) {
       auto mem = glPrivateMemory.find(ObjectID);
-      if (mem != glPrivateMemory.end()) {
+      if ((mem != glPrivateMemory.end()) and (mem->second.Address)) {
          if (!(error = AccessPrivateObject((OBJECTPTR)mem->second.Address, MilliSeconds))) {
             *Result = (OBJECTPTR)mem->second.Address;
             return ERR_Okay;
@@ -1262,7 +1261,10 @@ ERROR AccessPrivateObject(OBJECTPTR Object, LONG Timeout)
 {
    parasol::Log log(__FUNCTION__);
 
-   if (!Object) return log.warning(ERR_NullArgs);
+   if (!Object) {
+      DEBUG_BREAK
+      return log.warning(ERR_NullArgs);
+   }
 
    #ifdef DEBUG
       if (Object->UniqueID < 0) log.error("Thread-based locking of public objects is bad form.  Fix the code.");
@@ -1515,7 +1517,7 @@ caller will sleep until the mutex is released or a time-out occurs.  If multiple
 order of acquisition is dependent on the rules of the host platform.  It is recommended that the client makes no
 assumption as to the queue order and that the next thread to acquire the mutex will be randomly selected.
 
-If the mutex was acquired with the ALF_RECURSIVE flag, then multiple calls to this function within the same thread
+If the mutex was acquired with the `ALF_RECURSIVE` flag, then multiple calls to this function within the same thread
 will nest.  It will be necessary to call UnlockMutex() for every lock that has been acquired.
 
 Please note that in Microsoft Windows, mutexes are implemented as critical sections and the time-out is not supported
@@ -1557,7 +1559,7 @@ waiting on the mutex, the order of acquisition is dependent on the rules of the 
 the client makes no assumption as to the queue order and that the next thread to acquire the mutex will be randomly
 selected.
 
-If the mutex was acquired with the ALF_RECURSIVE flag, then multiple calls to this function within the same thread
+If the mutex was acquired with the `ALF_RECURSIVE` flag, then multiple calls to this function within the same thread
 will nest.  It will be necessary to call ~UnlockSharedMutex() for every lock that has been acquired.
 
 -INPUT-
@@ -1729,7 +1731,7 @@ MEMORYID ReleaseMemory(APTR Address)
    if (lock.granted()) {
       auto mem = glPrivateMemory.find(((LONG *)Address)[-2]);
 
-      if (mem IS glPrivateMemory.end()) {
+      if ((mem IS glPrivateMemory.end()) or (!mem->second.Address)) {
          if (tlContext->Object->Class) log.warning("Unable to find a record for memory address %p, ID %d [Context %d, Class %s].", Address, ((LONG *)Address)[-2], tlContext->Object->UniqueID, ((rkMetaClass *)tlContext->Object->Class)->ClassName);
          else log.warning("Unable to find a record for memory address %p.", Address);
          if (glLogLevel > 1) PrintDiagnosis(glProcessID, 0);
@@ -1912,7 +1914,7 @@ ERROR ReleaseMemoryID(MEMORYID MemoryID)
       if (lock.granted()) {
          auto mem = glPrivateMemory.find(MemoryID);
 
-         if (mem IS glPrivateMemory.end()) {
+         if ((mem IS glPrivateMemory.end()) or (!mem->second.Address)) {
             if (tlContext->Object->Class) log.warning("Unable to find a record for memory address #%d [Context %d, Class %s].", MemoryID, tlContext->Object->UniqueID, ((rkMetaClass *)tlContext->Object->Class)->ClassName);
             else log.warning("Unable to find a record for memory #%d.", MemoryID);
             if (glLogLevel > 1) PrintDiagnosis(glProcessID, 0);

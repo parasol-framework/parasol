@@ -685,7 +685,7 @@ ERROR FreeResource(const void *Address)
 
       auto it = glPrivateMemory.find(id);
 
-      if (it IS glPrivateMemory.end()) {
+      if ((it IS glPrivateMemory.end()) or (!it->second.Address)) {
          if (head IS CODE_MEMH) log.warning("Second attempt at freeing address %p detected.", Address);
          else log.warning("Address %p is not a known private memory block.", Address);
          #ifdef DEBUG
@@ -877,7 +877,7 @@ ERROR FreeResourceID(MEMORYID MemoryID)
       ThreadLock lock(TL_PRIVATE_MEM, 4000);
       if (lock.granted()) {
          auto it = glPrivateMemory.find(MemoryID);
-         if (glPrivateMemory.contains(MemoryID)) {
+         if ((it != glPrivateMemory.end()) and (it->second.Address)) {
             auto &mem = it->second;
             ERROR error = ERR_Okay;
             if (mem.AccessCount > 0) {
@@ -1028,7 +1028,7 @@ ERROR MemoryIDInfo(MEMORYID MemoryID, struct MemInfo *MemInfo, LONG Size)
       ThreadLock lock(TL_PRIVATE_MEM, 4000);
       if (lock.granted()) {
          auto mem = glPrivateMemory.find(MemoryID);
-         if (mem != glPrivateMemory.end()) {
+         if ((mem != glPrivateMemory.end()) and (mem->second.Address)) {
             MemInfo->Start       = mem->second.Address;
             MemInfo->ObjectID    = mem->second.OwnerID;
             MemInfo->Size        = mem->second.Size;

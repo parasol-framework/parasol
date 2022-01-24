@@ -128,7 +128,7 @@ static void free_private_children(OBJECTPTR Object)
 
          for (const auto id : children) {
             auto it = glPrivateMemory.find(id);
-            if (it IS glPrivateMemory.end()) continue;
+            if ((it IS glPrivateMemory.end()) or (!it->second.Address)) continue;
             auto &mem = it->second;
 
             if ((mem.Flags & MEM_DELETE) or (!mem.Object)) continue;
@@ -152,7 +152,7 @@ static void free_private_children(OBJECTPTR Object)
 
          for (const auto id : list) {
             auto it = glPrivateMemory.find(id);
-            if (it IS glPrivateMemory.end()) continue;
+            if ((it IS glPrivateMemory.end()) or (!it->second.Address)) continue;
             auto &mem = it->second;
 
             if ((mem.Flags & MEM_DELETE) or (!mem.Address)) continue;

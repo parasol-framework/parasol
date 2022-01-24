@@ -166,11 +166,9 @@ ERROR CheckObjectExists(OBJECTID ObjectID, CSTRING Name)
       if (lock.granted()) {
          LONG result = ERR_False;
          auto mem = glPrivateMemory.find(ObjectID);
-         if (mem != glPrivateMemory.end()) {
-            if (mem->second.Object) {
-               if (mem->second.Object->Flags & NF_UNLOCK_FREE);
-               else result = ERR_True;
-            }
+         if ((mem != glPrivateMemory.end()) and (mem->second.Object)) {
+            if (mem->second.Object->Flags & NF_UNLOCK_FREE);
+            else result = ERR_True;
          }
          return result;
       }
@@ -639,11 +637,9 @@ ERROR FindPrivateObject(CSTRING InitialName, OBJECTPTR *Object)
          ThreadLock lock(TL_PRIVATE_MEM, 4000);
          if (lock.granted()) {
             auto mem = glPrivateMemory.find(objectid);
-            if (mem != glPrivateMemory.end()) {
-               if (mem->second.Object) {
-                  *Object = mem->second.Object;
-                  return ERR_Okay;
-               }
+            if ((mem != glPrivateMemory.end()) and (mem->second.Object)) {
+               *Object = mem->second.Object;
+               return ERR_Okay;
             }
          }
          else return log.warning(ERR_LockFailed);
