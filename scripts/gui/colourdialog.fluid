@@ -123,7 +123,8 @@ gui.dialog.colour = function(Options)
                roundY = 2
             })
 
-            table.insert(lLinks, { vector=vec, x=x, y=y, width=BTNSIZE, height=BTNSIZE, colour=rgb,
+            table.insert(lLinks, {
+               vector=vec, x=x, y=y, width=BTNSIZE, height=BTNSIZE, colour=rgb,
                routine = function(Link)
                   updateRGB(Link.colour)
                end
@@ -191,7 +192,8 @@ gui.dialog.colour = function(Options)
             obj.new('svg', { target=lAddIcon, path='icons:items/add.svg' })
             gui.applyFill(lAddIcon, 'url(#grdAddIcon)')
 
-            table.insert(lLinks, { vec=lAddIcon, x=x, y=y, width=BTNSIZE, height=BTNSIZE,
+            table.insert(lLinks, {
+               vec=lAddIcon, x=x, y=y, width=BTNSIZE, height=BTNSIZE,
                routine = function(Link)
                   for k, v in pairs(lCustom) do
                      if (v.r == lRGB.r) and (v.g == lRGB.g) and (v.b == lRGB.b) then return end
@@ -281,8 +283,8 @@ gui.dialog.colour = function(Options)
       })
 
       self.vecChosenColour = self.viewport.new('VectorRectangle', {
-         x = dx,
-         y = dy,
+         x      = dx,
+         y      = dy,
          roundX = 4,
          roundY = 4,
          width  = lRainbowBmp.width,

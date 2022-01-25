@@ -189,7 +189,7 @@ static ERROR VECTORSCENE_Draw(objVectorScene *Self, struct acDraw *Args)
    }
    else adaptor = static_cast<VMAdaptor *> (Self->Adaptor);
 
-   if (Self->Flags & VPF_RENDER_TIME) {
+   if (Self->Flags & VPF_RENDER_TIME) { // Client wants to know how long the rendering takes to complete
       LARGE time = PreciseTime();
       adaptor->draw(bmp);
       if ((Self->RenderTime = PreciseTime() - time) < 1) Self->RenderTime = 1;

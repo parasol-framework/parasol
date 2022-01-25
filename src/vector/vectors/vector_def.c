@@ -60,6 +60,8 @@ static const struct ActionArray clVectorActions[] = {
    { AC_Free, (APTR)VECTOR_Free },
    { AC_Hide, (APTR)VECTOR_Hide },
    { AC_Init, (APTR)VECTOR_Init },
+   { AC_MoveToBack, (APTR)VECTOR_MoveToBack },
+   { AC_MoveToFront, (APTR)VECTOR_MoveToFront },
    { AC_NewObject, (APTR)VECTOR_NewObject },
    { AC_NewOwner, (APTR)VECTOR_NewOwner },
    { AC_Reset, (APTR)VECTOR_Reset },

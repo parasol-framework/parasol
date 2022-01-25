@@ -2,7 +2,7 @@
 #define MODULES_SURFACE 1
 
 // Name:      surface.h
-// Copyright: Paul Manias © 2000-2020
+// Copyright: Paul Manias © 2000-2022
 // Generator: idl-c
 
 #ifndef MAIN_H
@@ -430,12 +430,11 @@ struct SurfaceBase {
 
 // Helper function for surface lookups.
 
-INLINE LONG FIND_SURFACE_INDEX(struct SurfaceControl *Ctl, OBJECTID SurfaceID) {
-   struct SurfaceList *list = (struct SurfaceList *)((char *)Ctl + Ctl->ArrayIndex);
-   LONG j;
-   for (j=0; j < Ctl->Total; j++) {
+INLINE LONG FIND_SURFACE_INDEX(SurfaceControl *Ctl, OBJECTID SurfaceID) {
+   auto *list = (SurfaceList *)((char *)Ctl + Ctl->ArrayIndex);
+   for (LONG j=0; j < Ctl->Total; j++) {
       if (list->SurfaceID IS SurfaceID) return j;
-      list = (struct SurfaceList *)((char *)list + Ctl->EntrySize);
+      list = (SurfaceList *)((char *)list + Ctl->EntrySize);
    }
    return -1;
 }
@@ -460,9 +459,7 @@ INLINE ERROR drwSetOpacityID(OBJECTID ObjectID, DOUBLE Value, DOUBLE Adjustment)
 INLINE ERROR drwAddCallback(APTR Surface, APTR Callback) {
    if (Callback) {
       FUNCTION func;
-      func.Type = CALL_STDC;
-      func.StdC.Context = CurrentContext();
-      func.StdC.Routine = Callback;
+      SET_FUNCTION_STDC(func, Callback);
       struct drwAddCallback args = { &func };
       return Action(MT_DrwAddCallback, Surface, &args);
    }
@@ -475,9 +472,7 @@ INLINE ERROR drwAddCallback(APTR Surface, APTR Callback) {
 INLINE ERROR drwRemoveCallback(APTR Surface, APTR Callback) {
    if (Callback) {
       FUNCTION func;
-      func.Type = CALL_STDC;
-      func.StdC.Context = CurrentContext();
-      func.StdC.Routine = Callback;
+      SET_FUNCTION_STDC(func, Callback);
       struct drwRemoveCallback args = { &func };
       return Action(MT_DrwRemoveCallback, Surface, &args);
    }

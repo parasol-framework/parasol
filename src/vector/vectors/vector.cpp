@@ -29,6 +29,7 @@ unless otherwise documented.
 
 static ERROR vector_input_events(objVector *, const InputEvent *);
 
+static ERROR VECTOR_Push(objVector *, struct vecPush *);
 static ERROR VECTOR_Reset(objVector *, APTR);
 
 //****************************************************************************
@@ -286,10 +287,10 @@ This function will return the boundary of a vector's path in terms of its top-le
 transformations and position information that applies to the vector will be taken into account when computing the
 boundary.
 
-If the VBF_INCLUSIVE flag is used, the result will include an analysis of all paths that belong to children of the
+If the `VBF_INCLUSIVE` flag is used, the result will include an analysis of all paths that belong to children of the
 target vector, including transforms.
 
-If the VBF_NO_TRANSFORM flag is used, the transformation step is not applied to the vector's path.
+If the `VBF_NO_TRANSFORM` flag is used, the transformation step is not applied to the vector's path.
 
 It is recommended that this method is not called until at least one rendering pass has been made, as some vector
 dimensions may not be computed before then.
@@ -647,6 +648,30 @@ static ERROR VECTOR_KeyboardSubscription(objVector *Self, struct vecKeyboardSubs
    Self->Scene->KeyboardSubscriptions[0].emplace(Self);
    Self->KeyboardSubscriptions->emplace_back(*Args->Callback);
    return ERR_Okay;
+}
+
+/*****************************************************************************
+-ACTION-
+MoveToBack: Move a vector to the back of its stack.
+-END-
+*****************************************************************************/
+
+static ERROR VECTOR_MoveToBack(objVector *Self, APTR Void)
+{
+   struct vecPush push = { -32768 };
+   return VECTOR_Push(Self, &push);
+}
+
+/*****************************************************************************
+-ACTION-
+MoveToFront: Move a vector to the front of its stack.
+-END-
+*****************************************************************************/
+
+static ERROR VECTOR_MoveToFront(objVector *Self, APTR Void)
+{
+   struct vecPush push = { 32767 };
+   return VECTOR_Push(Self, &push);
 }
 
 //****************************************************************************

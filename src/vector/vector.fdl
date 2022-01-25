@@ -374,7 +374,7 @@ module({ name="Vector", copyright="Paul Manias © 2010-2021", version=1.0 }, fun
   [[
    LARGE DrawStamp; // Timestamp at which this filter was last rendered
    std::vector<VectorEffect> *Effects;
-   VectorEffect **Merge;
+   std::vector<VectorEffect *> *Merge;
    objBitmap *SrcBitmap; // A temporary alpha enabled drawing of the vector that is targeted by the filter.
    objBitmap *BkgdBitmap;
    objBitmap *MergeBitmap;
