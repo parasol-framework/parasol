@@ -47,7 +47,6 @@
 <p>Styles are defined in the order of the application's preference, the desktop preference, and then the default if no preference has been specified or a failure occurred.</p>
 <p>An application can define its preferred style by calling <function module="Surface">SetCurrentStyle</function> with the path of the XML style file.  This function can be called at any time, allowing the style to be changed on the fly.</p>
 <p>A desktop can set its preferred style by storing style information at <code>environment:config/style.xml</code>.</p>
-<p>To prevent security breaches, users can only set a style preference if the ability to make a choice is exposed by the desktop.  This is because style files can embed script functions that are executed within each application process space.</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>

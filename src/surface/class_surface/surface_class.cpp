@@ -463,23 +463,25 @@ static void event_user_login(objSurface *Self, APTR Info, LONG InfoSize)
       if (width < 640) width = 640;
       if (height < 480) height = 480;
 
-      struct drwSetDisplay setdisplay;
-      setdisplay.X       = 0;
-      setdisplay.Y       = 0;
-      setdisplay.Width        = width;
-      setdisplay.Height       = height;
-      setdisplay.InsideWidth  = setdisplay.Width;
-      setdisplay.InsideHeight = setdisplay.Height;
-      setdisplay.BitsPerPixel = depth;
-      setdisplay.RefreshRate  = refreshrate;
-      setdisplay.Flags        = NULL;
+      struct drwSetDisplay setdisplay = {
+         .X            = 0,
+         .Y            = 0,
+         .Width        = width,
+         .Height       = height,
+         .InsideWidth  = setdisplay.Width,
+         .InsideHeight = setdisplay.Height,
+         .BitsPerPixel = depth,
+         .RefreshRate  = refreshrate,
+         .Flags        = 0
+      };
       Action(MT_DrwSetDisplay, Self, &setdisplay);
 
-      struct gfxSetGamma gamma;
-      gamma.Red   = gammared;
-      gamma.Green = gammagreen;
-      gamma.Blue  = gammablue;
-      gamma.Flags = GMF_SAVE;
+      struct gfxSetGamma gamma = {
+         .Red   = gammared,
+         .Green = gammagreen,
+         .Blue  = gammablue,
+         .Flags = GMF_SAVE
+      };
       ActionMsg(MT_GfxSetGamma, Self->DisplayID, &gamma);
 
       acFree(config);
@@ -691,54 +693,6 @@ static ERROR SURFACE_Focus(objSurface *Self, APTR Void)
    }
 }
 
-/*****************************************************************************
-
--METHOD-
-InheritedFocus: Private
-
-Private
-
--INPUT-
-oid FocusID: Private
-int Flags: Private
-
--ERRORS-
-Okay
--END-
-
-*****************************************************************************/
-
-static ERROR SURFACE_InheritedFocus(objSurface *Self, struct drwInheritedFocus *Args)
-{
-   Message *msg;
-
-   if ((msg = GetActionMsg())) {
-      // This is a message - in which case it could have been delayed and thus superseded by a more recent message.
-
-      if (msg->Time < glLastFocusTime) {
-         FOCUSMSG("Ignoring superseded focus message.");
-         return ERR_Okay|ERF_Notified;
-      }
-   }
-
-   glLastFocusTime = PreciseTime();
-
-   if (Self->Flags & RNF_HAS_FOCUS) {
-      FOCUSMSG("This surface already has focus.");
-      return ERR_Okay;
-   }
-   else {
-      FOCUSMSG("Object has received the focus through inheritance.");
-
-      Self->Flags |= RNF_HAS_FOCUS;
-
-      //UpdateSurfaceField(Self, Flags); // Not necessary because SURFACE_Focus sets the surfacelist
-
-      NotifySubscribers(Self, AC_Focus, NULL, NULL, ERR_Okay);
-      return ERR_Okay;
-   }
-}
-
 //****************************************************************************
 
 static ERROR SURFACE_Free(objSurface *Self, APTR Void)
@@ -872,6 +826,54 @@ static ERROR SURFACE_Hide(objSurface *Self, APTR Void)
 
    refresh_pointer(Self);
    return ERR_Okay;
+}
+
+/*****************************************************************************
+
+-METHOD-
+InheritedFocus: Private
+
+Private
+
+-INPUT-
+oid FocusID: Private
+int Flags: Private
+
+-ERRORS-
+Okay
+-END-
+
+*****************************************************************************/
+
+static ERROR SURFACE_InheritedFocus(objSurface *Self, struct drwInheritedFocus *Args)
+{
+   Message *msg;
+
+   if ((msg = GetActionMsg())) {
+      // This is a message - in which case it could have been delayed and thus superseded by a more recent message.
+
+      if (msg->Time < glLastFocusTime) {
+         FOCUSMSG("Ignoring superseded focus message.");
+         return ERR_Okay|ERF_Notified;
+      }
+   }
+
+   glLastFocusTime = PreciseTime();
+
+   if (Self->Flags & RNF_HAS_FOCUS) {
+      FOCUSMSG("This surface already has focus.");
+      return ERR_Okay;
+   }
+   else {
+      FOCUSMSG("Object has received the focus through inheritance.");
+
+      Self->Flags |= RNF_HAS_FOCUS;
+
+      //UpdateSurfaceField(Self, Flags); // Not necessary because SURFACE_Focus sets the surfacelist
+
+      NotifySubscribers(Self, AC_Focus, NULL, NULL, ERR_Okay);
+      return ERR_Okay;
+   }
 }
 
 //****************************************************************************
@@ -2089,8 +2091,8 @@ a surface object will cause it to generate an image of its contents and save the
 child surfaces in the region will also be included in the resulting image data.
 
 The image data will be saved in the data format that is indicated by the setting in the ClassID argument.  Options are
-limited to members of the Picture class, for example ID_JPEG, ID_PCX and ID_PICTURE.  If no ClassID is
-specified, the default file format is used.
+limited to members of the @Picture class, for example `ID_JPEG` and `ID_PICTURE` (PNG).  If no ClassID is specified,
+the user's preferred default file format is used.
 -END-
 
 *****************************************************************************/
@@ -2176,7 +2178,7 @@ static ERROR SURFACE_SaveImage(objSurface *Self, struct acSaveImage *Args)
 -ACTION-
 Scroll: Scrolls surface content to a new position.
 
-Calling the Scroll action on a surface object with the SCROLL_CONTENT flag set will cause it to move its contents in the
+Calling the Scroll action on a surface object with the `SCROLL_CONTENT` flag set will cause it to move its contents in the
 requested direction.  The Surface class uses the Move action to achieve scrolling, so any objects that do not support
 Move will remain at their given position.  Everything else will be shifted by the same amount of units as specified in
 the XChange, YChange and ZChange arguments.
@@ -2184,7 +2186,7 @@ the XChange, YChange and ZChange arguments.
 Some objects may support a 'sticky' field that can be set to TRUE to prevent them from being moved.  This feature is
 present in the Surface class, amongst others.
 
-If the surface object does not have the SCROLL_CONTENT flag set, the call will flow through to any objects that may be
+If the surface object does not have the `SCROLL_CONTENT` flag set, the call will flow through to any objects that may be
 listening for the Scroll action on the surface.
 -END-
 
@@ -2396,8 +2398,8 @@ static void draw_region(objSurface *Self, objSurface *Parent, objBitmap *Bitmap)
 
    if ((Self->Width < 1) or (Self->Height < 1)) return;
 
-   if ((Self->X > Bitmap->Clip.Right) or (Self->Y > Bitmap->Clip.Bottom) OR
-       (Self->X + Self->Width <= Bitmap->Clip.Left) OR
+   if ((Self->X > Bitmap->Clip.Right) or (Self->Y > Bitmap->Clip.Bottom) or
+       (Self->X + Self->Width <= Bitmap->Clip.Left) or
        (Self->Y + Self->Height <= Bitmap->Clip.Top)) {
       return;
    }

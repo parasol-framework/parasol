@@ -637,8 +637,8 @@ static ERROR xtag_image(objSVG *Self, objXML *XML, svgState *State, XMLTag *Tag,
 {
    parasol::Log log(__FUNCTION__);
    LONG ratio = 0;
-   BYTE width_set = FALSE;
-   BYTE height_set = FALSE;
+   bool width_set = false;
+   bool height_set = false;
    svgState state = *State;
    objPicture *pic = NULL;
 
@@ -650,10 +650,10 @@ static ERROR xtag_image(objSVG *Self, objXML *XML, svgState *State, XMLTag *Tag,
          ratio = parse_aspect_ratio(Tag->Attrib[a].Value);
       }
       else if (!StrMatch("width", Tag->Attrib[a].Name)) {
-         width_set = TRUE;
+         width_set = true;
       }
       else if (!StrMatch("height", Tag->Attrib[a].Name)) {
-         height_set = TRUE;
+         height_set = true;
       }
    }
 

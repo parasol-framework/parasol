@@ -99,14 +99,14 @@ static void  invalidate_overlap(objSurface *, SurfaceList *, WORD, LONG, LONG, L
 static void  move_layer(objSurface *, LONG, LONG);
 static void  move_layer_pos(SurfaceControl *, LONG, LONG);
 static LONG  msg_handler(APTR, LONG, LONG, APTR, LONG);
-static void  prepare_background(objSurface *, SurfaceList *, WORD, WORD, objBitmap *, struct ClipRectangle *, BYTE);
+static void  prepare_background(objSurface *, SurfaceList *, WORD, WORD, objBitmap *, ClipRectangle *, BYTE);
 static void  process_surface_callbacks(objSurface *, objBitmap *);
-static void  redraw_nonintersect(OBJECTID, SurfaceList *, WORD, WORD, struct ClipRectangle *, struct ClipRectangle *, LONG, LONG);
+static void  redraw_nonintersect(OBJECTID, SurfaceList *, WORD, WORD, ClipRectangle *, ClipRectangle *, LONG, LONG);
 static void  release_video(objDisplay *);
 static ERROR track_layer(objSurface *);
 static void  untrack_layer(OBJECTID);
 static void  check_bmp_buffer_depth(objSurface *, objBitmap *);
-static BYTE  restrict_region_to_parents(SurfaceList *, LONG, struct ClipRectangle *, BYTE);
+static BYTE  restrict_region_to_parents(SurfaceList *, LONG, ClipRectangle *, BYTE);
 static ERROR load_style_values(void);
 static ERROR _expose_surface(OBJECTID SurfaceID, SurfaceList *list, WORD index, WORD total, LONG X, LONG Y, LONG Width, LONG Height, LONG Flags);
 static ERROR _redraw_surface(OBJECTID SurfaceID, SurfaceList *list, WORD Index, WORD Total, LONG Left, LONG Top, LONG Right, LONG Bottom, LONG Flags);
@@ -245,7 +245,7 @@ static LONG find_parent_list(SurfaceList *list, WORD Total, objSurface *Self)
 
 //**********************************************************************
 
-static inline void ClipRectangle(struct ClipRectangle *rect, struct ClipRectangle *clip)
+static inline void clip_rectangle(ClipRectangle *rect, ClipRectangle *clip)
 {
    if (rect->Left   < clip->Left)   rect->Left   = clip->Left;
    if (rect->Top    < clip->Top)    rect->Top    = clip->Top;
@@ -627,7 +627,7 @@ static ERROR _expose_surface(OBJECTID SurfaceID, SurfaceList *list, WORD index, 
 {
    parasol::Log log("expose_surface");
    objBitmap *bitmap;
-   struct ClipRectangle abs;
+   ClipRectangle abs;
    WORD i, j;
    UBYTE skip;
    OBJECTID parent_id;
@@ -681,7 +681,7 @@ static ERROR _expose_surface(OBJECTID SurfaceID, SurfaceList *list, WORD index, 
 
    for (i=index, parent_id = SurfaceID; ;) {
       if (!(list[i].Flags & RNF_VISIBLE)) return ERR_Okay;
-      ClipRectangle(&abs, (struct ClipRectangle *)&list[i].Left);
+      clip_rectangle(&abs, (ClipRectangle *)&list[i].Left);
       if (!(parent_id = list[i].ParentID)) break;
       i--;
       while (list[i].SurfaceID != parent_id) i--;
@@ -747,7 +747,7 @@ static ERROR _expose_surface(OBJECTID SurfaceID, SurfaceList *list, WORD index, 
       }
       if (skip) continue;
 
-      struct ClipRectangle childexpose = abs;
+      ClipRectangle childexpose = abs;
 
       if (i != index) {
          // Check this child object and its parents to make sure they are visible
@@ -760,7 +760,7 @@ static ERROR _expose_surface(OBJECTID SurfaceID, SurfaceList *list, WORD index, 
                   break;
                }
 
-               ClipRectangle(&childexpose, (struct ClipRectangle *)&list[j].Left);
+               clip_rectangle(&childexpose, (ClipRectangle *)&list[j].Left);
 
                parent_id = list[j].ParentID;
             }
@@ -908,7 +908,7 @@ static void expose_buffer(SurfaceList *list, WORD Total, WORD Index, WORD ScanIn
       }
       else if (list[i].Flags & (RNF_REGION|RNF_CURSOR)); // Skip regions and the cursor
       else {
-         struct ClipRectangle listclip = {
+         ClipRectangle listclip = {
             .Left   = list[i].Left,
             .Right  = list[i].Right,
             .Bottom = list[i].Bottom,
@@ -992,7 +992,7 @@ static void expose_buffer(SurfaceList *list, WORD Total, WORD Index, WORD ScanIn
    LONG sx, sy;
    if ((list[Index].Flags & RNF_COMPOSITE) and
        ((list[Index].ParentID) or (list[Index].Flags & RNF_CURSOR))) {
-      struct ClipRectangle clip;
+      ClipRectangle clip;
       if (glComposite) {
          if (glComposite->BitsPerPixel != list[Index].BitsPerPixel) {
             acFree(glComposite);
@@ -1232,7 +1232,7 @@ static ERROR drwGetVisibleArea(OBJECTID SurfaceID, LONG *X, LONG *Y, LONG *AbsX,
          return ERR_Search;
       }
 
-      struct ClipRectangle clip = {
+      ClipRectangle clip = {
          .Left   = list[i].Left,
          .Right  = list[i].Right,
          .Bottom = list[i].Bottom,
@@ -1523,7 +1523,7 @@ static ERROR drwLockBitmap(OBJECTID SurfaceID, objBitmap **Bitmap, LONG *Info)
       SurfaceList list_zero = list[0];
       OBJECTID bitmap_id = list[i].BitmapID;
 
-      struct ClipRectangle expose = {
+      ClipRectangle expose = {
          .Left   = list_root.Left,
          .Right  = list_root.Right,
          .Bottom = list_root.Bottom,
@@ -1838,7 +1838,7 @@ static void _redraw_surface_do(objSurface *Self, SurfaceList *list, WORD Total, 
 
    if (Index >= Total) log.warning("Index %d > %d", Index, Total);
 
-   struct ClipRectangle abs;
+   ClipRectangle abs;
    abs.Left   = Left;
    abs.Top    = Top;
    abs.Right  = Right;
@@ -3156,7 +3156,7 @@ static void process_surface_callbacks(objSurface *Self, objBitmap *Bitmap)
 ** returned.
 */
 
-static BYTE restrict_region_to_parents(SurfaceList *List, LONG Index, struct ClipRectangle *Clip, BYTE MatchBitmap)
+static BYTE restrict_region_to_parents(SurfaceList *List, LONG Index, ClipRectangle *Clip, BYTE MatchBitmap)
 {
    UBYTE visible = TRUE;
    OBJECTID id = List[Index].SurfaceID;

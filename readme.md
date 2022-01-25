@@ -45,7 +45,7 @@ Linux systems require a few package dependencies to be installed first.  For an 
 sudo apt-get install libasound2-dev libxrandr-dev libxxf86dga-dev
 ```
 
-To create the initial build you must run the following from the SDK's root folder with `BUILD ENVIRONMENT` set to the preferred build system on your platform, or if you don't know then leave the option out to get the default.  For Windows systems the correct build environment is `MinGW Makefiles`.
+To create the initial build you must run the following from the SDK's root folder with `<BUILD ENVIRONMENT>` set to the preferred build system on your platform, or if you don't know then leave the option out to get the default.  For Windows systems the correct build environment is `MinGW Makefiles`.
 
 ```
 cmake -S . -B release -DCMAKE_BUILD_TYPE=Release -G"<BUILD ENVIRONMENT>"
@@ -66,7 +66,7 @@ We recommend that you always build with the `-j 8 -- -O` set of options for best
 
 ### 3.2 Debug Build
 
-Before resorting to a debug build, consider running the application with the `--log-debug` option.  Doing so will print a wealth of information to stdout and this is often enough to resolve common problems quickly.
+Before resorting to a debug build, consider running the application with the `--log-api` option.  Doing so will print a wealth of information to stdout and this is often enough to resolve common problems quickly.
 
 Parasol supports the use of `gdb` as a debugger.  Making a debug build for the first time will require a full build and install with the release options turned off, e.g:
 
@@ -110,7 +110,7 @@ Full documentation for developers is available online from our [main website](ht
 
 ## 6. Source Code Licensing
 
-Excluding third party APIs and marked contributions, the Parasol Framework is the copyright of Paul Manias © 1996 - 2020.  The source code is released under the terms of the LGPL as referenced below, except where otherwise indicated.
+Excluding third party APIs and marked contributions, the Parasol Framework is the copyright of Paul Manias © 1996 - 2022.  The source code is released under the terms of the LGPL as referenced below, except where otherwise indicated.
 
 The Parasol Framework is free software; you can redistribute it and/or modify it under the terms of the GNU Lesser General Public License as published by the Free Software Foundation; either version 2.1 of the License, or (at your option) any later version.
 

@@ -115,7 +115,7 @@ the surface area first).</li>
       <comment>Saves the graphical image of a surface object.</comment>
       <description>
 <p>If you need to store the image (graphical content) of a surface object, use the SaveImage action.  Calling SaveImage on a surface object will cause it to generate an image of its contents and save them to the given destination object.  Any child surfaces in the region will also be included in the resulting image data.</p>
-<p>The image data will be saved in the data format that is indicated by the setting in the ClassID argument.  Options are limited to members of the Picture class, for example ID_JPEG, ID_PCX and ID_PICTURE.  If no ClassID is specified, the default file format is used.</p>
+<p>The image data will be saved in the data format that is indicated by the setting in the ClassID argument.  Options are limited to members of the <class name="Picture">Picture</class> class, for example <code>ID_JPEG</code> and <code>ID_PICTURE</code> (PNG).  If no ClassID is specified, the user's preferred default file format is used.</p>
       </description>
     </action>
 
@@ -438,7 +438,7 @@ the surface area first).</li>
       <description>
 <p>Click-dragging of surfaces is enabled by utilising the Drag field.</p>
 <p>To use, write this field with reference to a Surface that is to be dragged when the user starts a click-drag operation. For instance, if you create a window with a title-bar at the top, you would set the Drag field of the title-bar to point to the object ID of the window. If necessary, you can set the Drag field to point back to your surface object (this can be useful for creating icons and other small widgets).</p>
-<p>To turn off dragging, simply write back to the field with a 0 value.</p>
+<p>To turn off dragging, set the field to zero.</p>
       </description>
     </field>
 
@@ -649,7 +649,7 @@ the surface area first).</li>
       <access read="G" write="S">Get/Set</access>
       <type>INT</type>
       <description>
-<p>Setting the Region field to a value of TRUE allows you to create surface objects that act as basic surface regions. Region based surface objects are identical to normal surface objects in most respects, except they do not participate in the layered drawing process.  This means that they are susceptible to the influence of other graphics within their parent object, because they are treated no differently to <class name="Image">Image</class>, <class name="Text">Text</class> or other graphical class types.</p>
+<p>Setting the Region field to a value of TRUE allows you to create surface objects that act as basic surface regions. Region based surface objects are identical to normal surface objects in most respects, except they do not participate in the layered drawing process.  This means that they are susceptible to the influence of other graphics within their parent object, because they are treated no differently to @Image, <class name="Text">Text</class> or other graphical class types.</p>
 <p>Region based surface areas are most useful when you can sacrifice functionality for speed.  Buttons, menu content and title bars are often implemented as regions because they are small and consist of only a small group of graphical objects.</p>
 <p>Depending on the arrangement of the region and parent object's graphics, drawing around regions can cause flickering. Use of the <field>Buffer</field> option can avoid this problem if it becomes an issue.</p>
       </description>

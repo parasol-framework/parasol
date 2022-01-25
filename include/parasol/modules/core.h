@@ -1671,7 +1671,7 @@ struct DirInfo {
    };
    WORD   prvResolveLen;    // Byte length of ResolvedPath
    #endif
-  
+
 };
 
 struct FileFeedback {
@@ -1705,7 +1705,7 @@ struct ScriptArg { // For use with scExec
       DOUBLE Double;
    };
 };
-  
+
 // StorageDevice class definition
 
 #define VER_STORAGEDEVICE (1.000000)
@@ -1720,7 +1720,7 @@ typedef struct rkStorageDevice {
 #ifdef PRV_STORAGEDEVICE
    STRING prvDeviceID;   // Unique ID for the filesystem, if available
    STRING prvVolume;
-  
+
 #endif
 } objStorageDevice;
 
@@ -2180,7 +2180,7 @@ typedef std::map<std::string, std::string> ConfigKeys;
 typedef std::pair<std::string, ConfigKeys> ConfigGroup;
 typedef std::vector<ConfigGroup> ConfigGroups;
 #endif
-  
+
 // File class definition
 
 #define VER_FILE (1.200000)
@@ -2215,7 +2215,7 @@ typedef struct rkFile {
     LONG   prvType;
     LONG   Handle;         // Native system file handle
     WORD   prvLineLen;
-  
+
 #endif
 } objFile;
 
@@ -2297,7 +2297,7 @@ typedef struct rkConfig {
 #ifdef PRV_CONFIG
    ConfigGroups *Groups;
    ULONG    CRC;   // CRC32, for determining if config data has been altered
-  
+
 #endif
 } objConfig;
 
@@ -2412,7 +2412,7 @@ INLINE ERROR cfgReadInt(APTR Self, CSTRING Group, CSTRING Key, LONG *Value)
    }
    else { *Value = 0; return error; }
 }
-  
+
 // Script class definition
 
 #define VER_SCRIPT (1.000000)
@@ -2442,7 +2442,7 @@ typedef struct rkScript {
    LONG     TotalArgs;            // Total number of ProcArgs
    char     LanguageDir[32];      // Directory to use for language files
    OBJECTID ScriptOwnerID;
-  
+
 #endif
 } objScript;
 
@@ -2515,7 +2515,7 @@ typedef struct rkMetaClass {
     STRING Location;      // Location of the class binary, this field exists purely for caching the location string if the user reads it
     struct ActionEntry ActionTable[AC_END];
     WORD OriginalFieldTotal;
-  
+
 #endif
 } objMetaClass;
 
@@ -2591,7 +2591,7 @@ typedef struct rkTask {
       APTR Platform;
    #endif
    struct ActionEntry Actions[AC_END]; // Action routines to be intercepted by the program
-  
+
 #endif
 } objTask;
 
@@ -2645,7 +2645,7 @@ typedef struct rkThread {
    LONG  Flags;      // Optional flags.
 
 #ifdef PRV_THREAD
- struct prvThread prv; 
+ struct prvThread prv;
 #endif
 } objThread;
 
@@ -2693,7 +2693,7 @@ struct TaskList {
       WORD     AccessCount;
    } NoBlockLocks[MAX_MEMLOCKS+1]; // Allow for a NULL entry at the end of the array
 };
-  
+
 // Module class definition
 
 #define VER_MODULE (1.000000)
@@ -2711,7 +2711,7 @@ typedef struct rkModule {
    char   Name[60];      // Name of the module
    APTR   prvMBMemory;   // Module base memory
    struct KeyStore *Vars;
-  
+
 #endif
 } objModule;
 
@@ -2793,7 +2793,7 @@ typedef struct rkCompression {
    WORD   prvCompressionCount;  // Counter of times that compression has occurred
    UBYTE  Deflating;
    UBYTE  Inflating;
-  
+
 #endif
 } objCompression;
 
@@ -2915,7 +2915,7 @@ typedef struct rkCompressedStream {
    UBYTE Deflating:1;
    z_stream Stream;
    gz_header Header;
-  
+
 #endif
 } objCompressedStream;
 
@@ -2937,7 +2937,7 @@ INLINE BYTE CMP_DATETIME(struct DateTime *one, struct DateTime *two)
    if (one->Second > two->Second) return 1;
    return 0;
 }
-  
+
 
 // Macro based actions.
 
@@ -3676,5 +3676,5 @@ INLINE FUNCTION make_function_script(OBJECTPTR Script, LARGE Procedure) {
 }
 #endif
 
-  
+
 #endif

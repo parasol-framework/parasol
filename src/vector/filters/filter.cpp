@@ -907,8 +907,8 @@ not be modified as it is managed entirely by the filter.
 -FIELD-
 Units: Defines the coordinate system for fields X, Y, Width and Height.
 
-The default coordinate system for gradients is BOUNDING_BOX, which positions the filter around the vector that
-references it.  The alternative is USERSPACE, which positions the filter relative to the current viewport.
+The default coordinate system for gradients is `BOUNDING_BOX`, which positions the filter around the vector that
+references it.  The alternative is `USERSPACE`, which positions the filter relative to the current viewport.
 
 -FIELD-
 Vector: Private. Must refer to a vector that will be processed through the filter.  Refer to draw_vectors().

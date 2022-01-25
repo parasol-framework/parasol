@@ -6,7 +6,7 @@ static void  copy_bkgd(SurfaceList *, WORD, WORD, WORD, WORD, WORD, WORD, WORD, 
 */
 
 static void redraw_nonintersect(OBJECTID SurfaceID, SurfaceList *List, WORD Index, WORD Total,
-   struct ClipRectangle *Region, struct ClipRectangle *RegionB, LONG RedrawFlags, LONG ExposeFlags)
+   ClipRectangle *Region, ClipRectangle *RegionB, LONG RedrawFlags, LONG ExposeFlags)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -127,7 +127,7 @@ ERROR SURFACE_Draw(objSurface *Self, struct acDraw *Args)
          }
          else if ((action->ActionID IS AC_Draw) and (action->ObjectID IS Self->Head.UniqueID)) {
             if (action->SendArgs IS TRUE) {
-               struct acDraw *msgdraw = (struct acDraw *)(action + 1);
+               auto msgdraw = (struct acDraw *)(action + 1);
 
                if (!Args) { // Tell the next message to draw everything.
                   action->SendArgs = FALSE;
@@ -201,7 +201,7 @@ static ERROR SURFACE_Expose(objSurface *Self, struct drwExpose *Args)
 
          if ((action->ActionID IS MT_DrwExpose) and (action->ObjectID IS Self->Head.UniqueID)) {
             if (action->SendArgs) {
-               struct drwExpose *msgexpose = (struct drwExpose *)(action + 1);
+               auto msgexpose = (struct drwExpose *)(action + 1);
 
                if (!Args) {
                   // Invalidate everything
@@ -337,9 +337,7 @@ static ERROR SURFACE_InvalidateRegion(objSurface *Self, struct drwInvalidateRegi
    return ERR_Okay|ERF_Notified;
 }
 
-/*****************************************************************************
-** Function: move_layer()
-*/
+//****************************************************************************
 
 static void move_layer(objSurface *Self, LONG X, LONG Y)
 {
@@ -401,7 +399,7 @@ static void move_layer(objSurface *Self, LONG X, LONG Y)
 
    drwReleaseList(ARF_READ);
 
-   struct ClipRectangle abs, old;
+   ClipRectangle abs, old;
    old.Left   = list[index].Left;
    old.Top    = list[index].Top;
    old.Right  = list[index].Right;
@@ -478,7 +476,7 @@ static void move_layer(objSurface *Self, LONG X, LONG Y)
 
       for (vindex=index+1; list[vindex].Level > list[index].Level; vindex++);
       tlVolatileIndex = vindex;
-      redraw_nonintersect(Self->ParentID, list, parent_index, total, (struct ClipRectangle *)(&list[index].Left), &old,
+      redraw_nonintersect(Self->ParentID, list, parent_index, total, (ClipRectangle *)(&list[index].Left), &old,
          (list[index].BitmapID IS list[parent_index].BitmapID) ? IRF_SINGLE_BITMAP : -1,
          EXF_CHILDREN|EXF_REDRAW_VOLATILE);
       tlVolatileIndex = 0;
@@ -497,7 +495,7 @@ static void move_layer(objSurface *Self, LONG X, LONG Y)
 ** Stage:      Either STAGE_PRECOPY or STAGE_AFTERCOPY.
 */
 
-static void prepare_background(objSurface *Self, SurfaceList *list, WORD Total, WORD Index, objBitmap *DestBitmap, struct ClipRectangle *clip, BYTE Stage)
+static void prepare_background(objSurface *Self, SurfaceList *list, WORD Total, WORD Index, objBitmap *DestBitmap, ClipRectangle *clip, BYTE Stage)
 {
    parasol::Log log("prepare_bkgd");
 
@@ -553,7 +551,7 @@ static void prepare_background(objSurface *Self, SurfaceList *list, WORD Total, 
    for (i=parentindex; i < end; i++) {
       if (list[i].Flags & (RNF_REGION|RNF_TRANSPARENT|RNF_CURSOR)) continue; // Ignore regions
 
-      struct ClipRectangle expose = {
+      ClipRectangle expose = {
          .Left   = clip->Left, // Take a copy of the expose coordinates
          .Right  = clip->Right,
          .Bottom = clip->Bottom,
@@ -605,7 +603,7 @@ static void copy_bkgd(SurfaceList *list, WORD Index, WORD End, WORD Master, WORD
       else if (list[i].Flags & RNF_TRANSPARENT) continue; // Invisibles may contain important regions we have to block
       else if ((Pervasive) and (list[i].Level > list[Index].Level)); // If the copy is pervasive then all children must be ignored (so that we can copy translucent graphics over them)
       else {
-         struct ClipRectangle listclip = {
+         ClipRectangle listclip = {
             .Left   = list[i].Left,
             .Right  = list[i].Right,
             .Bottom = list[i].Bottom,
@@ -639,7 +637,7 @@ static void copy_bkgd(SurfaceList *list, WORD Index, WORD End, WORD Master, WORD
    // Check if the exposed dimensions are outside of our boundary and/or our parent(s) boundaries.  If so then we must
    // restrict the exposed dimensions.
 
-   struct ClipRectangle expose = {
+   ClipRectangle expose = {
       .Left   = Left,
       .Right  = Right,
       .Bottom = Bottom,

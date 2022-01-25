@@ -401,14 +401,13 @@ ERROR SetFieldsID(OBJECTID ObjectID, ...)
 -FUNCTION-
 SetFieldEval: Sets any field using an abstract string value that is evaluated at runtime.
 
-The SetFieldEval() function is used to set field values using JIT value abstraction.  It is both a simple a powerful
-means of setting field values, at a cost of being the least efficient way of doing so.  It should only be used in
-situations where speed is trumped by convenience.  It is commonly used by script languages and other types of batch
-processing routines that do not prioritise speed.
+The SetFieldEval() function is used to set field values using JIT value abstraction.  It simplifies the setting of
+field values at a cost of low efficiency.  It is intended for use by script languages and batch processing routines
+that do not prioritise speed.
 
-This function includes an analysis feature that will convert named flags and lookups to their correct numeric values.
-For example, setting the Flags field of a surface object with `STICKY|MASK` will result in the references being
-converted to the correct hexadecimal value.
+An integrated analysis feature converts named flags and lookups to their correct numeric values.  For example, setting
+the Flags field of a surface object with `Sticky|Mask` will result in the references being converted to the correct
+hexadecimal value.
 
 Setting object typed fields also enables special support for the commands `self`, `owner` and ID values such as
 `#14592`.  In all other cases the Value string is considered to refer to an object's name.  The `self` keyword
@@ -767,13 +766,13 @@ static ERROR writeval_flags(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Dat
             int64 = StrToInt(str);
          }
          else if (Field->Arg) {
-            WORD reverse = FALSE;
+            bool reverse = false;
             WORD op      = OP_OVERWRITE;
             while (*str) {
                if (*str IS '&')      { op = OP_AND;       str++; }
                else if (*str IS '!') { op = OP_OR;        str++; }
                else if (*str IS '^') { op = OP_OVERWRITE; str++; }
-               else if (*str IS '~') { reverse = TRUE;    str++; }
+               else if (*str IS '~') { reverse = true;    str++; }
                else {
                   // Find out how long this particular flag name is
                   for (j=0; (str[j]) and (str[j] != '|'); j++);
@@ -793,7 +792,7 @@ static ERROR writeval_flags(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Dat
                }
             }
 
-            if (reverse IS TRUE) int64 = ~int64;
+            if (reverse) int64 = ~int64;
 
             // Get the current flag values from the field if special ops are requested
 
@@ -813,11 +812,11 @@ static ERROR writeval_flags(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Dat
       if (Field->Flags & FD_LONG) {
          int32 = int64;
          Flags = FD_LONG;
-         Data = &int32;
+         Data  = &int32;
       }
       else if (Field->Flags & FD_LARGE) {
          Flags = FD_LARGE;
-         Data= &int64;
+         Data  = &int64;
       }
       else return ERR_FieldTypeMismatch;
    }
