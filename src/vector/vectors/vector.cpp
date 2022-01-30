@@ -180,7 +180,8 @@ Draw: Draws the surface associated with the vector.
 Using the Draw action on a specific vector will redraw its area within the @Surface associated with the @VectorScene.  This is
 the most optimal method of drawing if it can be assured that changes within the scene are limited to the target vector's boundary.
 
-Support for restricting the drawing area is not provided and we recommend that no parameters are passed when calling this action.
+Support for restricting the drawing area is not provided and we recommend that no parameters are passed when calling
+this action.  Internally, drawing is scheduled for the next frame and is not immediate.
 
 -END-
 *****************************************************************************/

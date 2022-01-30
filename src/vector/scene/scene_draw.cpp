@@ -6,21 +6,25 @@
 class VectorState
 {
 public:
-   UBYTE mVisible;
    agg::line_join_e  mLineJoin;
    agg::line_cap_e   mLineCap;
    agg::inner_join_e mInnerJoin;
    bool mDirty;
    double mOpacity;
+   UBYTE mVisible;
+   UBYTE mOverflowX;
+   UBYTE mOverflowY;
    objVectorClip *mClipMask;
 
    VectorState() :
-      mVisible(VIS_VISIBLE),
       mLineJoin(agg::miter_join),
       mLineCap(agg::butt_cap),
       mInnerJoin(agg::inner_miter),
       mDirty(false),
       mOpacity(1.0),
+      mVisible(VIS_VISIBLE),
+      mOverflowX(VPOF_VISIBLE),
+      mOverflowY(VPOF_VISIBLE),
       mClipMask(NULL) { }
 };
 
@@ -925,13 +929,23 @@ private:
             if (shape->Child) {
                auto view = (objVectorViewport *)shape;
 
-               LONG xmin = mRenderBase.xmin(), ymin = mRenderBase.ymin(), xmax = mRenderBase.xmax(), ymax = mRenderBase.ymax();
+               if (view->vpOverflowX != VPOF_INHERIT) state.mOverflowX = view->vpOverflowX;
+               if (view->vpOverflowY != VPOF_INHERIT) state.mOverflowY = view->vpOverflowY;
 
-               LONG x1 = view->vpBX1, y1 = view->vpBY1, x2 = view->vpBX2-1, y2 = view->vpBY2-1;
-               if (xmin > x1) x1 = xmin;
-               if (ymin > y1) y1 = ymin;
-               if (xmax < x2) x2 = xmax;
-               if (ymax < y2) y2 = ymax;
+               DOUBLE xmin = mRenderBase.xmin(), xmax = mRenderBase.xmax();
+               DOUBLE ymin = mRenderBase.ymin(), ymax = mRenderBase.ymax();
+               DOUBLE x1 = xmin, y1 = ymin, x2 = xmax, y2 = ymax;
+
+               if ((state.mOverflowX IS VPOF_HIDDEN) or (state.mOverflowX IS VPOF_SCROLL)) {
+                  if (view->vpBX1 > xmin) x1 = view->vpBX1;
+                  if (view->vpBX2 < xmax) x2 = view->vpBX2;
+               }
+
+               if ((state.mOverflowY IS VPOF_HIDDEN) or (state.mOverflowY IS VPOF_SCROLL)) {
+                  if (view->vpBY1 > ymin) y1 = view->vpBY1;
+                  if (view->vpBY2 < ymax) y2 = view->vpBY2;
+               }
+
                mRenderBase.clip_box(x1, y1, x2, y2);
 
                #ifdef DBG_DRAW

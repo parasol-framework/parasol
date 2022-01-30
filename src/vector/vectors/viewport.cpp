@@ -10,7 +10,7 @@ The size of the viewport is initially set to (0,0,100%,100%) so as to be all inc
 #Height fields will determine the position and clipping of the displayed content (the 'target area').  The #ViewX, #ViewY,
 #ViewWidth and #ViewHeight fields declare the viewbox ('source area') that will be sampled for the target.
 
-To configure the scaling method that is applied to the viewport content, set the #AspectRatio field.
+To configure the scaling and alignment method that is applied to the viewport content, set the #AspectRatio field.
 
 -END-
 
@@ -108,6 +108,8 @@ static ERROR VIEW_MoveToPoint(objVectorViewport *Self, struct acMoveToPoint *Arg
 static ERROR VIEW_NewObject(objVectorViewport *Self, APTR Void)
 {
    Self->vpAspectRatio = ARF_MEET|ARF_X_MID|ARF_Y_MID;
+   Self->vpOverflowX = VPOF_VISIBLE;
+   Self->vpOverflowY = VPOF_VISIBLE;
 
    // NB: vpTargetWidth and vpTargetHeight are not set to a default because we need to know if the client has
    // intentionally avoided setting the viewport and/or viewbox dimensions (which typically means that the viewport
@@ -304,6 +306,76 @@ static ERROR VIEW_SET_Height(objVectorViewport *Self, Variable *Value)
       Self->vpTargetHeight = val;
    }
    mark_dirty((objVector *)Self, RC_ALL);
+   return ERR_Okay;
+}
+
+/*****************************************************************************
+
+-FIELD-
+Overflow: Clipping options for the viewport's boundary.
+
+Choose an overflow option to enforce or disable clipping of the viewport's content.  The default state is `VISIBLE`.
+Altering the overflow state affects both the X and Y axis.  To set either axis independently, set #OverflowX and
+#OverflowY.
+
+*****************************************************************************/
+
+static ERROR VIEW_GET_Overflow(objVectorViewport *Self, LONG *Value)
+{
+   *Value = Self->vpOverflowX;
+   return ERR_Okay;
+}
+
+static ERROR VIEW_SET_Overflow(objVectorViewport *Self, LONG Value)
+{
+   Self->vpOverflowX = Value;
+   Self->vpOverflowY = Value;
+   return ERR_Okay;
+}
+
+/*****************************************************************************
+
+-FIELD-
+OverflowX: Clipping options for the viewport's boundary on the x axis.
+
+Choose an overflow option to enforce or disable clipping of the viewport's content.  The default state is `VISIBLE`.
+
+This option controls the x axis only.
+
+*****************************************************************************/
+
+static ERROR VIEW_GET_OverflowX(objVectorViewport *Self, LONG *Value)
+{
+   *Value = Self->vpOverflowX;
+   return ERR_Okay;
+}
+
+static ERROR VIEW_SET_OverflowX(objVectorViewport *Self, LONG Value)
+{
+   Self->vpOverflowX = Value;
+   return ERR_Okay;
+}
+
+/*****************************************************************************
+
+-FIELD-
+OverflowY: Clipping options for the viewport's boundary on the y axis.
+
+Choose an overflow option to enforce or disable clipping of the viewport's content.  The default state is `VISIBLE`.
+
+This option controls the y axis only.
+
+*****************************************************************************/
+
+static ERROR VIEW_GET_OverflowY(objVectorViewport *Self, LONG *Value)
+{
+   *Value = Self->vpOverflowY;
+   return ERR_Okay;
+}
+
+static ERROR VIEW_SET_OverflowY(objVectorViewport *Self, LONG Value)
+{
+   Self->vpOverflowY = Value;
    return ERR_Okay;
 }
 
@@ -731,6 +803,14 @@ static const FieldDef clViewDimensions[] = {
    { NULL, 0 }
 };
 
+static const FieldDef clViewOverflow[] = {
+   { "Hidden",  VPOF_HIDDEN },
+   { "Visible", VPOF_VISIBLE },
+   { "Scroll",  VPOF_SCROLL },
+   { "Inherit", VPOF_INHERIT },
+   { NULL, 0 }
+};
+
 static const FieldArray clViewFields[] = {
    { "AbsX",        FDF_VIRTUAL|FDF_LONG|FDF_R, 0, (APTR)VIEW_GET_AbsX, NULL },
    { "AbsY",        FDF_VIRTUAL|FDF_LONG|FDF_R, 0, (APTR)VIEW_GET_AbsY, NULL },
@@ -746,6 +826,9 @@ static const FieldArray clViewFields[] = {
    { "ViewHeight",  FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, 0, (APTR)VIEW_GET_ViewHeight, (APTR)VIEW_SET_ViewHeight },
    { "Dimensions",  FDF_VIRTUAL|FDF_LONGFLAGS|FDF_R,  (MAXINT)&clViewDimensions, (APTR)VIEW_GET_Dimensions, (APTR)VIEW_SET_Dimensions },
    { "AspectRatio", FDF_VIRTUAL|FDF_LONGFLAGS|FDF_RW, (MAXINT)&clAspectRatio,    (APTR)VIEW_GET_AspectRatio, (APTR)VIEW_SET_AspectRatio },
+   { "Overflow",     FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clViewOverflow, (APTR)VIEW_GET_Overflow, (APTR)VIEW_SET_Overflow },
+   { "OverflowX",    FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clViewOverflow, (APTR)VIEW_GET_OverflowX, (APTR)VIEW_SET_OverflowX },
+   { "OverflowY",    FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clViewOverflow, (APTR)VIEW_GET_OverflowY, (APTR)VIEW_SET_OverflowY },
    END_FIELD
 };
 

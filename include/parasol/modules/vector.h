@@ -122,6 +122,13 @@
 #define VTS_ULTRA_EXPANDED 10
 #define VTS_EXTRA_EXPANDED 11
 
+// Viewport overflow options.
+
+#define VPOF_VISIBLE 0
+#define VPOF_HIDDEN 1
+#define VPOF_SCROLL 2
+#define VPOF_INHERIT 3
+
 // VectorText flags.
 
 #define VTXF_UNDERLINE 0x00000001

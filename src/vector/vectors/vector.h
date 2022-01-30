@@ -30,6 +30,7 @@ typedef struct rkVectorViewport {
    struct rkVectorClip *vpClipMask; // Automatically generated if the viewport is rotated or sheared.
    LONG vpDimensions;
    LONG vpAspectRatio;
+   UBYTE vpOverflowX, vpOverflowY;
 } objVectorViewport;
 
 //****************************************************************************
