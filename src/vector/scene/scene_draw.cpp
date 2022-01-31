@@ -23,8 +23,8 @@ public:
       mDirty(false),
       mOpacity(1.0),
       mVisible(VIS_VISIBLE),
-      mOverflowX(VPOF_VISIBLE),
-      mOverflowY(VPOF_VISIBLE),
+      mOverflowX(VOF_VISIBLE),
+      mOverflowY(VOF_VISIBLE),
       mClipMask(NULL) { }
 };
 
@@ -52,17 +52,17 @@ private:
 
 //****************************************************************************
 
-static LONG check_dirty(objVector *Shape) {
+static bool check_dirty(objVector *Shape) {
    while (Shape) {
-      if (Shape->Head.ClassID != ID_VECTOR) return TRUE;
-      if (Shape->Dirty) return TRUE;
+      if (Shape->Head.ClassID != ID_VECTOR) return true;
+      if (Shape->Dirty) return true;
 
       if (Shape->Child) {
-         if (check_dirty(Shape->Child)) return TRUE;
+         if (check_dirty(Shape->Child)) return true;
       }
       Shape = Shape->Next;
    }
-   return FALSE;
+   return false;
 }
 
 //****************************************************************************
@@ -115,10 +115,12 @@ static void set_filter(agg::image_filter_lut &Filter, UBYTE Method)
       case VSM_SINC8:     Filter.calculate(agg::image_filter_sinc(8.0), true); break;
       case VSM_LANCZOS8:  Filter.calculate(agg::image_filter_lanczos(8.0), true); break;
       case VSM_BLACKMAN8: Filter.calculate(agg::image_filter_blackman(8.0), true); break;
-      default:
-         LogErrorMsg("Unrecognised sampling method %d", Method);
+      default: {
+         parasol::Log log;
+         log.warning("Unrecognised sampling method %d", Method);
          Filter.calculate(agg::image_filter_bicubic(), true);
          break;
+      }
    }
 }
 
@@ -346,8 +348,10 @@ class pattern_rgb {
       DOUBLE mHeight;
 };
 
-void draw_texstroke(struct rkVectorImage &Image,
-   agg::renderer_base<agg::pixfmt_rkl> &RenderBase, agg::conv_transform<agg::path_storage, agg::trans_affine> &Path, DOUBLE StrokeWidth)
+void draw_texstroke(const struct rkVectorImage &Image,
+   agg::renderer_base<agg::pixfmt_rkl> &RenderBase,
+   agg::conv_transform<agg::path_storage, agg::trans_affine> &Path,
+   DOUBLE StrokeWidth)
 {
    typedef agg::pattern_filter_bilinear_rgba8 FILTER_TYPE;
    FILTER_TYPE filter;
@@ -866,6 +870,7 @@ private:
             gen_vector_path(shape);
             shape->Dirty = 0;
          }
+         else log.trace("%s: #%d, Dirty: NO, ParentView: #%d", shape->Head.Class->ClassName, shape->Head.UniqueID, shape->ParentView ? shape->ParentView->Head.UniqueID : 0);
 
          // Visibility management.
 
@@ -929,19 +934,19 @@ private:
             if (shape->Child) {
                auto view = (objVectorViewport *)shape;
 
-               if (view->vpOverflowX != VPOF_INHERIT) state.mOverflowX = view->vpOverflowX;
-               if (view->vpOverflowY != VPOF_INHERIT) state.mOverflowY = view->vpOverflowY;
+               if (view->vpOverflowX != VOF_INHERIT) state.mOverflowX = view->vpOverflowX;
+               if (view->vpOverflowY != VOF_INHERIT) state.mOverflowY = view->vpOverflowY;
 
                DOUBLE xmin = mRenderBase.xmin(), xmax = mRenderBase.xmax();
                DOUBLE ymin = mRenderBase.ymin(), ymax = mRenderBase.ymax();
                DOUBLE x1 = xmin, y1 = ymin, x2 = xmax, y2 = ymax;
 
-               if ((state.mOverflowX IS VPOF_HIDDEN) or (state.mOverflowX IS VPOF_SCROLL)) {
+               if ((state.mOverflowX IS VOF_HIDDEN) or (state.mOverflowX IS VOF_SCROLL)) {
                   if (view->vpBX1 > xmin) x1 = view->vpBX1;
                   if (view->vpBX2 < xmax) x2 = view->vpBX2;
                }
 
-               if ((state.mOverflowY IS VPOF_HIDDEN) or (state.mOverflowY IS VPOF_SCROLL)) {
+               if ((state.mOverflowY IS VOF_HIDDEN) or (state.mOverflowY IS VOF_SCROLL)) {
                   if (view->vpBY1 > ymin) y1 = view->vpBY1;
                   if (view->vpBY2 < ymax) y2 = view->vpBY2;
                }

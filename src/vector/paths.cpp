@@ -167,7 +167,8 @@ static void gen_vector_path(objVector *Vector)
       // If the viewport is transformed, a clipping mask will need to be generated based on its path.  The path is
       // pre-transformed and drawn in order to speed things up.
 
-      if (applied_transforms & (VTF_MATRIX|VTF_ROTATE|VTF_SKEW)) {
+      if ((applied_transforms & (VTF_MATRIX|VTF_ROTATE|VTF_SKEW)) and
+          (view->vpOverflowX != VIS_VISIBLE) and (view->vpOverflowY != VIS_VISIBLE)) {
          log.trace("A clip path will be assigned to viewport #%d.", Vector->Head.UniqueID);
          if (!view->vpClipMask) {
             CreateObject(ID_VECTORCLIP, NF_INTEGRAL, &view->vpClipMask,

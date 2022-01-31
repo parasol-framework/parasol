@@ -124,10 +124,10 @@
 
 // Viewport overflow options.
 
-#define VPOF_VISIBLE 0
-#define VPOF_HIDDEN 1
-#define VPOF_SCROLL 2
-#define VPOF_INHERIT 3
+#define VOF_VISIBLE 0
+#define VOF_HIDDEN 1
+#define VOF_SCROLL 2
+#define VOF_INHERIT 3
 
 // VectorText flags.
 

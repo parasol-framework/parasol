@@ -90,7 +90,7 @@ module({ name="Vector", copyright="Paul Manias © 2010-2021", version=1.0 }, fun
     "ULTRA_EXPANDED",
     "EXTRA_EXPANDED")
 
-  enum("VPOF", { comment="Viewport overflow options." },
+  enum("VOF", { comment="Viewport overflow options." },
     "VISIBLE: The content is not clipped to the viewport's boundary.  This is the default.",
     "HIDDEN: All content is clipped to within the viewport's boundary.",
     "SCROLL: All content is clipped to within the viewport's boundary.  A mechanism to scroll the viewport's content may be provided to the user (SVG capability not currently implemented).",

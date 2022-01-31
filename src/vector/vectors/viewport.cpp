@@ -108,8 +108,8 @@ static ERROR VIEW_MoveToPoint(objVectorViewport *Self, struct acMoveToPoint *Arg
 static ERROR VIEW_NewObject(objVectorViewport *Self, APTR Void)
 {
    Self->vpAspectRatio = ARF_MEET|ARF_X_MID|ARF_Y_MID;
-   Self->vpOverflowX = VPOF_VISIBLE;
-   Self->vpOverflowY = VPOF_VISIBLE;
+   Self->vpOverflowX = VOF_VISIBLE;
+   Self->vpOverflowY = VOF_VISIBLE;
 
    // NB: vpTargetWidth and vpTargetHeight are not set to a default because we need to know if the client has
    // intentionally avoided setting the viewport and/or viewbox dimensions (which typically means that the viewport
@@ -804,10 +804,10 @@ static const FieldDef clViewDimensions[] = {
 };
 
 static const FieldDef clViewOverflow[] = {
-   { "Hidden",  VPOF_HIDDEN },
-   { "Visible", VPOF_VISIBLE },
-   { "Scroll",  VPOF_SCROLL },
-   { "Inherit", VPOF_INHERIT },
+   { "Hidden",  VOF_HIDDEN },
+   { "Visible", VOF_VISIBLE },
+   { "Scroll",  VOF_SCROLL },
+   { "Inherit", VOF_INHERIT },
    { NULL, 0 }
 };
 
