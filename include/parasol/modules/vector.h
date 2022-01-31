@@ -230,7 +230,7 @@
 #define RC_FINAL_PATH 0x00000001
 #define RC_BASE_PATH 0x00000002
 #define RC_TRANSFORM 0x00000004
-#define RC_ALL 0x000000ff
+#define RC_ALL 0x00000007
 
 // Aspect ratios
 

@@ -208,13 +208,13 @@ static ERROR WINDOW_ActionNotify(objWindow *Self, struct acActionNotify *Args)
          // If the current focus has GRABFOCUS defined, do not attempt to divert the user focus.
 
          OBJECTID userfocus_id;
-         BYTE grab = TRUE;
+         bool grab = true;
          if ((userfocus_id = drwGetUserFocus())) {
             LONG flags;
             if (!drwGetSurfaceFlags(userfocus_id, &flags)) {
                if (flags & RNF_GRAB_FOCUS) {
                   log.trace("Current focus surface #%d has GRAB flag set.", userfocus_id);
-                  grab = FALSE;
+                  grab = false;
                }
             }
          }
