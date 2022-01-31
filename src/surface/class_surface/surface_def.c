@@ -149,6 +149,7 @@ static const struct MethodArray clSurfaceMethods[] = {
    { -7, (APTR)SURFACE_Minimise, "Minimise", 0, 0 },
    { -8, (APTR)SURFACE_ResetDimensions, "ResetDimensions", maResetDimensions, sizeof(struct drwResetDimensions) },
    { -9, (APTR)SURFACE_RemoveCallback, "RemoveCallback", maRemoveCallback, sizeof(struct drwRemoveCallback) },
+   { -10, (APTR)SURFACE_ScheduleRedraw, "ScheduleRedraw", 0, 0 },
    { 0, 0, 0, 0, 0 }
 };
 

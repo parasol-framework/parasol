@@ -243,6 +243,7 @@ typedef struct rkSurface {
    LONG     ScrollFromX, ScrollFromY;
    LONG     ListIndex;            // Last known list index
    LONG     InputHandle;          // Input handler for dragging of surfaces
+   TIMER    RedrawTimer;          // For ScheduleRedraw()
    TIMER    ScrollTimer;
    MEMORYID DataMID;              // Bitmap memory reference
    MEMORYID PrecopyMID;           // Precopy region information
@@ -255,6 +256,7 @@ typedef struct rkSurface {
    UWORD    FixedX:1;
    UWORD    FixedY:1;
    UWORD    Document:1;
+   UWORD    RedrawScheduled:1;
    BYTE     BitsPerPixel;         // Bitmap bits per pixel
    BYTE     BytesPerPixel;        // Bitmap bytes per pixel
    UBYTE    CallbackCount;
@@ -277,6 +279,7 @@ typedef struct rkSurface {
 #define MT_DrwMinimise -7
 #define MT_DrwResetDimensions -8
 #define MT_DrwRemoveCallback -9
+#define MT_DrwScheduleRedraw -10
 
 struct drwInheritedFocus { OBJECTID FocusID; LONG Flags;  };
 struct drwExpose { LONG X; LONG Y; LONG Width; LONG Height; LONG Flags;  };
@@ -318,6 +321,8 @@ INLINE ERROR drwResetDimensions(APTR Ob, DOUBLE X, DOUBLE Y, DOUBLE XOffset, DOU
    struct drwResetDimensions args = { X, Y, XOffset, YOffset, Width, Height, Dimensions };
    return(Action(MT_DrwResetDimensions, (OBJECTPTR)Ob, &args));
 }
+
+#define drwScheduleRedraw(obj) Action(MT_DrwScheduleRedraw,(obj),0)
 
 
 // Layout class definition

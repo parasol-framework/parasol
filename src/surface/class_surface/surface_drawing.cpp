@@ -93,6 +93,10 @@ ERROR SURFACE_Draw(objSurface *Self, struct acDraw *Args)
       return ERR_Okay|ERF_Notified;
    }
 
+   // Do not perform manual redraws when a redraw is scheduled.
+
+   if (Self->RedrawScheduled) return ERR_Okay|ERF_Notified;
+
    LONG x, y, width, height;
    if (!Args) {
       x = 0;
@@ -284,6 +288,10 @@ static ERROR SURFACE_InvalidateRegion(objSurface *Self, struct drwInvalidateRegi
    if ((!(Self->Flags & RNF_VISIBLE)) or (tlNoDrawing) or (Self->Width < 1) or (Self->Height < 1)) {
       return ERR_Okay|ERF_Notified;
    }
+
+   // Do not perform manual redraws when a redraw is scheduled.
+
+   if (Self->RedrawTimer) return ERR_Okay|ERF_Notified;
 
    // Check if other draw messages are queued for this object - if so, do not do anything until the final message is reached.
 

@@ -56,6 +56,7 @@ static ERROR SET_YOffset(objSurface *, Variable *);
 static ERROR consume_input_events(const InputEvent *, LONG);
 static void draw_region(objSurface *, objSurface *, objBitmap *);
 static ERROR scroll_timer(objSurface *, LARGE, LARGE);
+static ERROR redraw_timer(objSurface *, LARGE, LARGE);
 
 //****************************************************************************
 // Handler for the display being resized.
@@ -698,6 +699,7 @@ static ERROR SURFACE_Focus(objSurface *Self, APTR Void)
 static ERROR SURFACE_Free(objSurface *Self, APTR Void)
 {
    if (Self->ScrollTimer) { UpdateTimer(Self->ScrollTimer, 0); Self->ScrollTimer = 0; }
+   if (Self->RedrawTimer) { UpdateTimer(Self->RedrawTimer, 0); Self->RedrawTimer = 0; }
 
    if (!Self->ParentID) {
       if (Self->TaskRemovedHandle) { UnsubscribeEvent(Self->TaskRemovedHandle); Self->TaskRemovedHandle = NULL; }
@@ -1486,7 +1488,7 @@ static ERROR SURFACE_Move(objSurface *Self, struct acMove *Args)
          }
          else if ((action->ActionID IS AC_Move) and (action->SendArgs IS TRUE) and
                   (action->ObjectID IS Self->Head.UniqueID)) {
-            struct acMove *msgmove = (struct acMove *)(action + 1);
+            auto msgmove = (struct acMove *)(action + 1);
             msgmove->XChange += Args->XChange;
             msgmove->YChange += Args->YChange;
             msgmove->ZChange += Args->ZChange;
@@ -2083,6 +2085,42 @@ static ERROR SURFACE_ResetDimensions(objSurface *Self, struct drwResetDimensions
 
 /*****************************************************************************
 
+-METHOD-
+ScheduleRedraw: Schedules a redraw operation for the next frame.
+
+Use ScheduleRedraw to indicate that a surface needs to be drawn to the display.  The surface and all child surfaces
+will be drawn on the next frame cycle (typically 1/60th of a second).  All manual draw operations for the target
+surface are ignored until the scheduled operation is completed.
+
+Scheduling is ideal in situations where a cluster of redraw events may occur within a tight time period, and it
+would be inefficient to draw those changes to the display individually.
+
+Note that redraw schedules do not 'see each other', meaning if a surface and a child are both scheduled, this will
+trigger two redraw operations when one would suffice.  It is the client's responsibility to target the most
+relevant top-level surface for scheduling.
+
+-ERRORS-
+Okay
+-END-
+
+*****************************************************************************/
+
+static ERROR SURFACE_ScheduleRedraw(objSurface *Self, APTR Void)
+{
+   if ((Self->RedrawScheduled) or (Self->RedrawTimer)) return ERR_Okay;
+
+   FUNCTION callback;
+   SET_FUNCTION_STDC(callback, (APTR)&redraw_timer);
+   // TODO Currently defaults to 60FPS, we should get the correct FPS from the Display object.
+   if (!SubscribeTimer(1.0/60.0, &callback, &Self->RedrawTimer)) {
+      Self->RedrawScheduled = TRUE;
+      return ERR_Okay;
+   }
+   else return ERR_Failed;
+}
+
+/*****************************************************************************
+
 -ACTION-
 SaveImage: Saves the graphical image of a surface object.
 
@@ -2348,6 +2386,20 @@ static ERROR SURFACE_Show(objSurface *Self, APTR Void)
    refresh_pointer(Self);
 
    return ERR_Okay|notified;
+}
+
+//****************************************************************************
+
+static ERROR redraw_timer(objSurface *Self, LARGE Elapsed, LARGE CurrentTime)
+{
+   Self->RedrawScheduled = FALSE; // Done before Draw() because it tests this field.
+
+   Action(AC_Draw, Self, NULL);
+
+   if (Self->RedrawScheduled) return ERR_Okay; // Sanity check in case redrawing was scheduled for the next frame
+
+   Self->RedrawTimer = NULL;
+   return ERR_Terminate;
 }
 
 //****************************************************************************

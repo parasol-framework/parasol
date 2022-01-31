@@ -178,7 +178,8 @@ module({ name="Surface", copyright="Paul Manias © 2000-2022", version=1.0 }, fu
     { id=6, name="AddCallback", inline=false },
     { id=7, name="Minimise" },
     { id=8, name="ResetDimensions" },
-    { id=9, name="RemoveCallback", inline=false }
+    { id=9, name="RemoveCallback", inline=false },
+    { id=10, name="ScheduleRedraw" }
   })
 
   class("Surface", { src={
@@ -245,6 +246,7 @@ module({ name="Surface", copyright="Paul Manias © 2000-2022", version=1.0 }, fu
    LONG     ScrollFromX, ScrollFromY;
    LONG     ListIndex;            // Last known list index
    LONG     InputHandle;          // Input handler for dragging of surfaces
+   TIMER    RedrawTimer;          // For ScheduleRedraw()
    TIMER    ScrollTimer;
    MEMORYID DataMID;              // Bitmap memory reference
    MEMORYID PrecopyMID;           // Precopy region information
@@ -257,6 +259,7 @@ module({ name="Surface", copyright="Paul Manias © 2000-2022", version=1.0 }, fu
    UWORD    FixedX:1;
    UWORD    FixedY:1;
    UWORD    Document:1;
+   UWORD    RedrawScheduled:1;
    BYTE     BitsPerPixel;         // Bitmap bits per pixel
    BYTE     BytesPerPixel;        // Bitmap bytes per pixel
    UBYTE    CallbackCount;
