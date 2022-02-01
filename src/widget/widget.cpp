@@ -7,7 +7,7 @@ Please refer to it for further information on licensing.
 ******************************************************************************
 
 -MODULE-
-Widget: The widget module hosts common widget classes such as the Button, Scrollbar and CheckBox.
+Widget: The widget module hosts common widget classes such as the Button and CheckBox.
 -END-
 
 *****************************************************************************/
@@ -461,15 +461,12 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    if (init_button() != ERR_Okay) return ERR_AddClass;
    if (init_checkbox() != ERR_Okay) return ERR_AddClass;
    if (init_resize() != ERR_Okay) return ERR_AddClass;
-   if (init_scrollbar() != ERR_Okay) return ERR_AddClass;
    if (init_combobox() != ERR_Okay) return ERR_AddClass;
    if (init_tabfocus() != ERR_Okay) return ERR_AddClass;
    if (init_input() != ERR_Okay) return ERR_AddClass;
-   if (init_scroll() != ERR_Okay) return ERR_AddClass;
    if (init_text() != ERR_Okay) return ERR_AddClass;
    if (init_menu() != ERR_Okay) return ERR_AddClass;
    if (init_menuitem() != ERR_Okay) return ERR_AddClass;
-   if (init_view() != ERR_Okay) return ERR_AddClass;
 
    return ERR_Okay;
 }
@@ -485,15 +482,12 @@ static ERROR CMDExpunge(void)
    free_button();
    free_checkbox();
    free_resize();
-   free_scrollbar();
    free_combobox();
    free_tabfocus();
    free_input();
-   free_scroll();
    free_text();
    free_menu();
    free_menuitem();
-   free_view();
    free_clipboard();
 
    if (glIconArchive) { acFree(glIconArchive);    glIconArchive = NULL; }

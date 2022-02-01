@@ -457,38 +457,6 @@ static ERROR calc_menu_size(objMenu *Self)
 
 static void calc_scrollbar(objMenu *Menu)
 {
-   if (!Menu->MenuSurfaceID) return;
-
-   LONG total = 1;
-   for (auto scan=Menu->Items; scan; scan=scan->Next, total++) {
-      if (total >= Menu->LineLimit) {
-         if (!Menu->Scrollbar) {
-            if (!CreateObject(ID_SCROLLBAR, 0, &Menu->Scrollbar,
-                  FID_Owner|TLONG,    Menu->MenuSurfaceID,
-                  FID_Y|TLONG,        0,
-                  FID_XOffset|TLONG,  0,
-                  FID_YOffset|TLONG,  0,
-                  FID_Direction|TSTR, "Vertical",
-                  TAGEND)) {
-               objScroll *vscroll = Menu->Scrollbar->Scroll;
-               SetLong(vscroll, FID_Object, Menu->Head.UniqueID);
-            }
-         }
-
-         struct scUpdateScroll scroll = {
-            .PageSize = Menu->PageHeight,
-            .ViewSize = Menu->Height,
-            .Position = -Menu->YPosition,
-            .Unit     = get_item_height(Menu)
-         };
-         Action(MT_ScUpdateScroll, Menu->Scrollbar->Scroll, &scroll);
-
-         acShow(Menu->Scrollbar);
-         return;
-      }
-   }
-
-   if (Menu->Scrollbar) { acFree(Menu->Scrollbar); Menu->Scrollbar = NULL; }
 }
 
 /*****************************************************************************
