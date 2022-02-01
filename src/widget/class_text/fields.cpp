@@ -170,49 +170,6 @@ in the text object for retrieval by the user.
 The history buffer is enabled with the HISTORY option in the #Flags field.
 
 -FIELD-
-HScroll: If scrolling is required, use this field to refer to a horizontal scroll bar.
-
-To attach a horizontal scrollbar to a text object, set the HScroll field to an object belonging to the @Scroll
-class.  If the Scroll object is configured to provide full scrollbar functionality, the user will be able to scroll the
-text display along the horizontal axis.
-
-*****************************************************************************/
-
-static ERROR SET_HScroll(objText *Self, OBJECTID Value)
-{
-   parasol::Log log;
-
-   OBJECTID objectid = Value;
-
-   if (GetClassID(objectid) IS ID_SCROLLBAR) {
-      OBJECTPTR object;
-      if (!AccessObject(objectid, 3000, &object)) {
-         GetLong(object, FID_Scroll, &objectid);
-         ReleaseObject(object);
-      }
-   }
-
-   if (GetClassID(objectid) IS ID_SCROLL) {
-      OBJECTPTR object;
-      if (!AccessObject(objectid, 3000, &object)) {
-         SetLong(object, FID_Object, Self->Head.UniqueID);
-         Self->HScrollID = objectid;
-         Self->XPosition = 0;
-         if (Self->Head.Flags & NF_INITIALISED) calc_hscroll(Self);
-         ReleaseObject(object);
-         return ERR_Okay;
-      }
-      else return log.warning(ERR_AccessObject);
-   }
-   else {
-      log.warning("Attempt to set the HScroll field with an invalid object.");
-      return ERR_Failed;
-   }
-}
-
-/*****************************************************************************
-
--FIELD-
 LayoutStyle: Private.  Internal field for supporting dynamic style changes when a GUI object is used in a document.
 
 *****************************************************************************/
@@ -344,8 +301,7 @@ String: Text information can be written directly to a text object through this f
 
 To write a string to a text object, set this field.  Updating a text object in this fashion causes it to analyse the
 string information for return codes, which means the string data can be split into lines.  Any data that is in the text
-object when you set this field will be deleted automatically.  The graphics will also be redrawn and any attached
-Scroll objects will be recalculated.
+object when you set this field will be deleted automatically.  The graphics will also be redrawn accordingly.
 
 *****************************************************************************/
 
@@ -412,8 +368,6 @@ static ERROR SET_String(objText *Self, CSTRING String)
    Self->NoUpdate--;
 
    if (Self->Head.Flags & NF_INITIALISED) {
-      calc_hscroll(Self);
-      calc_vscroll(Self);
       Redraw(Self);
    }
 
@@ -610,48 +564,6 @@ static ERROR SET_ValidateInput(objText *Self, FUNCTION *Value)
    }
    else Self->ValidateInput.Type = CALL_NONE;
    return ERR_Okay;
-}
-
-/*****************************************************************************
-
--FIELD-
-VScroll: If scrolling is required, use this field to refer to a vertical scroll bar.
-
-To attach a vertical scrollbar to a text object, set the VScroll field to an object belonging to the @Scroll class.  If
-the Scroll object is configured to provide full scrollbar functionality, the user will be able to scroll the text
-display along the vertical axis.
-
-*****************************************************************************/
-
-static ERROR SET_VScroll(objText *Self, OBJECTID Value)
-{
-   parasol::Log log;
-   OBJECTID objectid = Value;
-
-   if (GetClassID(objectid) IS ID_SCROLLBAR) {
-      OBJECTPTR object;
-      if (!AccessObject(objectid, 3000, &object)) {
-         GetLong(object, FID_Scroll, &objectid);
-         ReleaseObject(object);
-      }
-   }
-
-   if (GetClassID(objectid) IS ID_SCROLL) {
-      OBJECTPTR object;
-      if (!AccessObject(objectid, 3000, &object)) {
-         SetLong(object, FID_Object, Self->Head.UniqueID);
-         Self->VScrollID = objectid;
-         Self->YPosition = 0;
-         if (Self->Head.Flags & NF_INITIALISED) calc_vscroll(Self);
-         ReleaseObject(object);
-         return ERR_Okay;
-      }
-      else return log.warning(ERR_AccessObject);
-   }
-   else {
-      log.warning("Attempt to set the VScroll field with an invalid object.");
-      return ERR_Failed;
-   }
 }
 
 /*****************************************************************************

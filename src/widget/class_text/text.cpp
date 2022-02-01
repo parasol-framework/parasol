@@ -42,10 +42,6 @@ surface.new('text', x=3, y=4,
 })
 </pre>
 
-For long text lists, scrollbars can be attached via the HScroll and VScroll fields.  For hints on how to use a text
-object to build a full featured text editing application, refer to the script file located at
-`programs:apps/textviewer/main.dml`.
-
 By default the Text class supports text highlighting for cut, copy and paste operations.  This support is backed by
 system keypresses such as CTRL-C, CTRL-V and CTRL-X.
 
@@ -94,8 +90,6 @@ enum {
 static void  add_history(objText *, CSTRING);
 static ERROR add_line(objText *, CSTRING, LONG, LONG, LONG);
 static ERROR add_xml(objText *, XMLTag *, WORD, LONG);
-static ERROR calc_hscroll(objText *);
-static ERROR calc_vscroll(objText *);
 static LONG  calc_width(objText *, CSTRING, LONG);
 static LONG  column_coord(objText *, LONG, LONG);
 static ERROR consume_input_events(const InputEvent *, LONG);
@@ -146,7 +140,6 @@ INLINE void set_point(objText *Self, DOUBLE Value)
 static void resize_text(objText *Self)
 {
    if (Self->Flags & TXF_STRETCH) stretch_text(Self);
-   if (Self->Flags & TXF_WORDWRAP) calc_vscroll(Self);
 
    if (Self->RelSize > 0) {
       DOUBLE point = Self->Layout->BoundHeight * Self->RelSize / 100.0;
@@ -303,8 +296,6 @@ static ERROR TEXT_Clear(objText *Self, APTR Void)
 
    if (!Self->NoUpdate) {
       Redraw(Self);
-      calc_hscroll(Self);
-      calc_vscroll(Self);
    }
 
    return ERR_Okay;
@@ -629,9 +620,6 @@ static ERROR TEXT_DataFeed(objText *Self, struct acDataFeed *Args)
       Self->NoUpdate--;
 
       if (!Self->NoUpdate) {
-         calc_hscroll(Self);
-         calc_vscroll(Self);
-
          draw_lines(Self, linestart, Self->AmtLines - linestart);
          view_cursor(Self);
       }
@@ -747,8 +735,6 @@ static ERROR TEXT_DeleteLine(objText *Self, struct txtDeleteLine *Args)
       else draw_lines(Self, Args->Line, Self->AmtLines - Args->Line + 1);
    }
 
-   calc_hscroll(Self);
-   calc_vscroll(Self);
    return ERR_Okay;
 }
 
@@ -994,9 +980,6 @@ static ERROR TEXT_Init(objText *Self, APTR Void)
    if (Self->LineLimit IS 1) {
       if (Self->Array[0].String) Self->CursorColumn = Self->Array[0].Length;
    }
-
-   calc_hscroll(Self);
-   calc_vscroll(Self);
 
    return ERR_Okay;
 }
@@ -1245,8 +1228,6 @@ static ERROR TEXT_SetFont(objText *Self, struct txtSetFont *Args)
       Self->Flags &= ~TXF_AREA_SELECTED;
 
       Redraw(Self);
-      calc_hscroll(Self);
-      calc_vscroll(Self);
       return ERR_Okay;
    }
    else return ERR_CreateObject;
@@ -1509,8 +1490,6 @@ static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
 static const FieldArray clFields[] = {
    { "Layout",          FDF_INTEGRAL|FDF_SYSTEM|FDF_R, 0,   NULL, NULL },
    { "Font",            FDF_INTEGRAL|FDF_R,   ID_FONT,   NULL, NULL },
-   { "VScroll",         FDF_OBJECTID|FDF_RW,  ID_SCROLL, NULL, (APTR)SET_VScroll },
-   { "HScroll",         FDF_OBJECTID|FDF_RW,  ID_SCROLL, NULL, (APTR)SET_HScroll },
    { "TabFocus",        FDF_OBJECTID|FDF_RW,  0,         NULL, NULL },
    { "Focus",           FDF_OBJECTID|FDF_RI,  0,         NULL, NULL },
    { "CursorColumn",    FDF_LONG|FDF_RW,      0,         NULL, (APTR)SET_CursorColumn },
@@ -1538,6 +1517,7 @@ static const FieldArray clFields[] = {
    { "TextX",           FDF_LONG|FDF_RW,    0, (APTR)GET_TextX,      (APTR)SET_TextX },
    { "TextY",           FDF_LONG|FDF_RW,    0, (APTR)GET_TextY,      (APTR)SET_TextY },
    { "ValidateInput",   FDF_FUNCTIONPTR|FDF_RW,  0, (APTR)GET_ValidateInput, (APTR)SET_ValidateInput },
+   { "ParentViewport",  FDF_OBJECT|FDF_RI,  ID_VECTORVIEWPORT, (APTR)GET_ParentViewport, (APTR)SET_ParentViewport },
    { "Height",          FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)GET_Height, (APTR)SET_Height },
    { "Point",           FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)GET_Point,  (APTR)SET_Point },
    { "Width",           FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)GET_Width,  (APTR)SET_Width },

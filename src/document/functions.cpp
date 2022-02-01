@@ -4419,10 +4419,7 @@ static void layout_doc(objDocument *Self)
 restart:
    Self->BreakLoop--;
 
-   if (Self->VScrollVisible) {
-      hscroll_offset = Self->AreaX + Self->AreaWidth - (Self->SurfaceWidth - Self->ScrollWidth);
-   }
-   else hscroll_offset = 0;
+   hscroll_offset = 0;
 
    if (Self->PageWidth <= 0) {
       // If no preferred page width is set, maximise the page width to the available viewing area
@@ -4560,8 +4557,6 @@ restart:
          else Self->Error = ERR_AllocMemory;
       }
    }
-
-   calc_scroll(Self);
 
    Self->UpdateLayout = FALSE;
 
@@ -7490,44 +7485,14 @@ static void process_parameters(objDocument *Self, CSTRING String)
 }
 
 //****************************************************************************
+// Obsoletion of the old scrollbar code means that we should be adjusting page size only and let the scrollbars
+// automatically adjust in the background.
 
 static void calc_scroll(objDocument *Self)
 {
    parasol::Log log(__FUNCTION__);
-   struct scUpdateScroll scroll;
-
-   if ((!Self->VScroll) or (!Self->HScroll)) return;
 
    log.traceBranch("PageHeight: %d/%d, PageWidth: %d/%d, XPos: %d, YPos: %d", Self->PageHeight, Self->AreaHeight, Self->CalcWidth, Self->AreaWidth, Self->XPosition, Self->YPosition);
-
-   // VERTICAL
-
-   scroll.ViewSize = -1;
-   scroll.PageSize = Self->PageHeight;
-   scroll.Position = -Self->YPosition;
-   scroll.Unit     = 10;
-   Action(MT_ScUpdateScroll, Self->VScroll->Scroll, &scroll);
-
-   // UpdateScroll() will have checked the position value to ensure that it is legal and adjusts accordingly, so do a comparison
-   // here in case we need to move our page to a corrected position.
-
-   if (-Self->VScroll->Scroll->Position != Self->YPosition) {
-      Self->YPosition = -Self->VScroll->Scroll->Position;
-      acMoveToPointID(Self->PageID, 0, Self->YPosition, 0, MTF_Y);
-   }
-
-   // HORIZONTAL
-
-   scroll.ViewSize = -1;
-   scroll.PageSize = Self->CalcWidth;
-   scroll.Position = -Self->XPosition;
-   scroll.Unit     = 10;
-   Action(MT_ScUpdateScroll, Self->HScroll->Scroll, &scroll);
-
-   if (-Self->HScroll->Scroll->Position != Self->XPosition) {
-      Self->XPosition = -Self->HScroll->Scroll->Position;
-      acMoveToPointID(Self->PageID, Self->XPosition, 0, 0, MTF_X);
-   }
 }
 
 /*****************************************************************************

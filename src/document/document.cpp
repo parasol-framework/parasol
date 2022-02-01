@@ -571,7 +571,6 @@ static LONG   add_tabfocus(objDocument *, UBYTE, LONG);
 static void   add_template(objDocument *, objXML *, XMLTag *);
 static void   advance_tabfocus(objDocument *, BYTE);
 static LONG   calc_page_height(objDocument *, LONG, LONG, LONG);
-static void   calc_scroll(objDocument *);
 static void   check_mouse_click(objDocument *, LONG X, LONG Y);
 static void   check_mouse_pos(objDocument *, LONG, LONG);
 static void   check_mouse_release(objDocument *, LONG X, LONG Y);

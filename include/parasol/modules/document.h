@@ -181,8 +181,6 @@ typedef struct rkDocument {
    objXML *InsertXML;       // For temporary XML parsing by the InsertXML method
    objXML *Templates;       // All templates for the current document are stored here
    objXML *InjectXML;
-   objScrollbar *HScroll;
-   objScrollbar *VScroll;
    struct KeyStore *Vars;
    struct KeyStore *Params;
    struct escCell *CurrentCell;      // Used to assist drawing, reflects the cell we are currently drawing within (if any)
@@ -294,8 +292,6 @@ typedef struct rkDocument {
    ULONG  MouseOver:1;
    ULONG  PageProcessed:1;
    ULONG  NoWhitespace:1;
-   ULONG  FreeVScroll:1;
-   ULONG  FreeHScroll:1;
    ULONG  HasFocus:1;
    ULONG  CursorSet:1;
    ULONG  LMB:1;

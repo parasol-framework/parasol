@@ -681,9 +681,6 @@ static ERROR DOCUMENT_Free(objDocument *Self, APTR Void)
    if (Self->prvKeyEvent) { UnsubscribeEvent(Self->prvKeyEvent); Self->prvKeyEvent = NULL; }
    if (Self->FlashTimer) { UpdateTimer(Self->FlashTimer, 0); Self->FlashTimer = 0; }
 
-   if ((Self->VScroll) and (Self->FreeVScroll)) { acFree(Self->VScroll); Self->VScroll = NULL; }
-   if ((Self->HScroll) and (Self->FreeHScroll)) { acFree(Self->HScroll); Self->HScroll = NULL; }
-
    if (Self->PageID)    { acFreeID(Self->PageID); Self->PageID = 0; }
    if (Self->ViewID)    { acFreeID(Self->ViewID); Self->ViewID = 0; }
    if (Self->InsertXML) { acFree(Self->InsertXML); Self->InsertXML = NULL; }
@@ -861,67 +858,11 @@ static ERROR DOCUMENT_Init(objDocument *Self, APTR Void)
    acShowID(Self->ViewID);
    acShowID(Self->PageID);
 
-   // Scan for scrollbars
+   // TODO: Launch the scrollbar script with references to our Target, Page and View viewports
 
    if (!(Self->Flags & DCF_NO_SCROLLBARS)) {
-      if ((!Self->VScroll) or (!Self->HScroll)) {
-         ChildEntry list[16];
-         LONG count = ARRAYSIZE(list);
-         if (!ListChildren(Self->SurfaceID, TRUE, list, &count)) {
-            for (--count; count >= 0; count--) {
-               if ((list[count].ObjectID > 0) and (list[count].ClassID IS (CLASSID)ID_SCROLLBAR)) {
-                  objScrollbar *scrollbar;
-                  if ((scrollbar = (objScrollbar *)GetObjectAddress(list[count].ObjectID))) {
-                     LONG direction;
-                     GetLong(scrollbar, FID_Direction, &direction);
 
-                     if ((direction IS SO_HORIZONTAL) and (!Self->HScroll)) {
-                        Self->HScroll = scrollbar;
-                     }
-                     else if ((direction IS SO_VERTICAL) and (!Self->VScroll)) {
-                        Self->VScroll = scrollbar;
-                     }
-                  }
-               }
-            }
-         }
-      }
 
-      if (!Self->VScroll) {
-         if (CreateObject(ID_SCROLLBAR, NF_INTEGRAL, &Self->VScroll,
-               FID_Name|TSTR,      "DocVScrollbar",
-               FID_Surface|TLONG,  Self->SurfaceID,
-               FID_Monitor|TLONG,  Self->PageID,   // Surface to monitor for wheel-scroll requests
-               FID_View|TLONG,     Self->ViewID,
-               FID_Direction|TSTR, "vertical",
-               FID_Object|TLONG,   Self->Head.UniqueID,
-               FID_Opacity|TLONG,  100,
-               TAGEND)) {
-            return ERR_CreateObject;
-         }
-         else Self->FreeVScroll = TRUE;
-      }
-
-      SURFACEINFO *info;
-      if (!drwGetSurfaceInfo(Self->VScroll->RegionID, &info)) {
-         Self->ScrollWidth = info->Width;
-      }
-      else Self->ScrollWidth = 16;
-
-      if (!Self->HScroll) {
-         if (CreateObject(ID_SCROLLBAR, NF_INTEGRAL, &Self->HScroll,
-               FID_Name|TSTR,       "DocHScrollbar",
-               FID_Surface|TLONG,   Self->SurfaceID,
-               FID_Monitor|TLONG,   Self->PageID,
-               FID_Direction|TSTR,  "horizontal",
-               FID_Object|TLONG,    Self->Head.UniqueID,
-               FID_Intersect|TLONG, (Self->VScroll) ? Self->VScroll->Head.UniqueID : 0,
-               FID_Opacity|TLONG,   100,
-               TAGEND)) {
-            return ERR_CreateObject;
-         }
-         else Self->FreeHScroll = TRUE;
-      }
    }
 
    // Flash the cursor via the timer
@@ -956,7 +897,6 @@ static ERROR DOCUMENT_Init(objDocument *Self, APTR Void)
    }
 
    redraw(Self, TRUE);
-   calc_scroll(Self);
    return ERR_Okay;
 }
 
@@ -1532,7 +1472,6 @@ static ERROR DOCUMENT_ScrollToPoint(objDocument *Self, struct acScrollToPoint *A
    //log.msg("%d, %d / %d, %d", (LONG)Args->X, (LONG)Args->Y, Self->XPosition, Self->YPosition);
 
    acMoveToPointID(Self->PageID, Self->XPosition, Self->YPosition, 0, MTF_X|MTF_Y);
-   calc_scroll(Self);
    return ERR_Okay;
 }
 

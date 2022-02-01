@@ -159,12 +159,11 @@ void ScintillaParasol::AddToPopUp(const char *label, int cmD, bool enabled)
 void ScintillaParasol::SetVerticalScrollPos()
 {
    parasol::Log log(__FUNCTION__);
-   struct scUpdateScroll scroll;
 
    log.traceBranch("%d", topLine);
 
    DwellEnd(true); // Cancel any current mouse hover
-
+/*
    if (!scintilla->ScrollLocked) {
       scroll.ViewSize = -1;
       scroll.PageSize = -1;
@@ -173,6 +172,7 @@ void ScintillaParasol::SetVerticalScrollPos()
       if (glBitmap) DelayMsg(MT_ScUpdateScroll, scintilla->VScrollID, &scroll);
       else ActionMsg(MT_ScUpdateScroll, scintilla->VScrollID, &scroll);
    }
+*/
 }
 
 //****************************************************************************
@@ -180,18 +180,18 @@ void ScintillaParasol::SetVerticalScrollPos()
 void ScintillaParasol::SetHorizontalScrollPos()
 {
    parasol::Log log(__FUNCTION__);
-   struct scUpdateScroll scroll;
 
    log.traceBranch("%d", xOffset);
 
    DwellEnd(true); // Cancel any current mouse hover
-
+/*
    scroll.ViewSize = -1;
    scroll.PageSize = -1;
    scroll.Position = xOffset;
    scroll.Unit     = vs.lineHeight;
    if (glBitmap) DelayMsg(MT_ScUpdateScroll, scintilla->HScrollID, &scroll);
    else ActionMsg(MT_ScUpdateScroll, scintilla->HScrollID, &scroll);
+*/
 }
 
 /*****************************************************************************
@@ -202,11 +202,9 @@ void ScintillaParasol::SetHorizontalScrollPos()
 bool ScintillaParasol::ModifyScrollBars(int nMax, int nPage)
 {
    parasol::Log log(__FUNCTION__);
-   struct scUpdateScroll scroll;
-   LONG lines;
 
    if (scintilla->ScrollLocked) return FALSE;
-
+#if 0
    // Note: Sometimes Scintilla will attempt to change the scrollbars in the middle of surface redrawing.  This can
    // cause problems, so message delays are used in those cases.
 
@@ -247,7 +245,7 @@ bool ScintillaParasol::ModifyScrollBars(int nMax, int nPage)
 
    if (glBitmap) DelayMsg(MT_ScUpdateScroll, scintilla->VScrollID, &scroll);
    else ActionMsg(MT_ScUpdateScroll, scintilla->VScrollID, &scroll);
-
+#endif
    return TRUE;
 }
 

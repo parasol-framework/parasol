@@ -84,8 +84,6 @@ typedef struct rkScintilla {
    LARGE    EventFlags;          // SEF flags.  Indicates the events that will be reported.
    struct rkFont * Font;         // Font to use for the text
    CSTRING  Path;                // Source text file
-   OBJECTID VScrollID;           // Reference to a vertical scroll bar
-   OBJECTID HScrollID;           // References to a horizontal scroll bar
    OBJECTID SurfaceID;           // The object that should be rendered to
    LONG     Flags;               // Optional flags
    OBJECTID FocusID;
@@ -98,7 +96,6 @@ typedef struct rkScintilla {
    struct RGB8 BkgdColour;       // Colour for text background
    struct RGB8 CursorColour;     // The colour of the cursor
    struct RGB8 TextColour;       // The colour of foreground text
-   OBJECTID ScrollTargetID;      // Surface for created scrollbars
    LONG     CursorRow;           // Current cursor row
    LONG     CursorCol;           // Current cursor column
    LONG     Lexer;               // Chosen lexer
@@ -113,8 +110,6 @@ typedef struct rkScintilla {
    objFont *ItalicFont;      // Italic version of the current font
    objFont *BIFont;          // Bold-Italic version of the current font
    ScintillaParasol *API;
-   objScrollbar *HScrollbar;
-   objScrollbar *VScrollbar;
    APTR   prvKeyEvent;
    STRING StringBuffer;
    LONG   LongestLine;         // Longest line in the document

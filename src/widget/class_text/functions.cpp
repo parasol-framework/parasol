@@ -141,9 +141,6 @@ static ERROR add_line(objText *Self, CSTRING String, LONG Line, LONG Length, LON
    else ClearMemory(Self->Array + line, sizeof(Self->Array[line]));
 
    if (!Self->NoUpdate) {
-      calc_hscroll(Self);
-      calc_vscroll(Self);
-
       draw_lines(Self, line, Self->AmtLines - line);
    }
 
@@ -239,8 +236,6 @@ static ERROR add_xml(objText *Self, XMLTag *XMLList, WORD Flags, LONG Line)
          else ClearMemory(Self->Array + Line, sizeof(Self->Array[Line]));
 
          if (!Self->NoUpdate) {
-            calc_hscroll(Self);
-            calc_vscroll(Self);
             redraw_line(Self, Line);
          }
 
@@ -542,59 +537,6 @@ static void xml_extract_content(XMLTag *XMLTag, char *Buffer, LONG *Index, WORD 
 
 //****************************************************************************
 
-static ERROR calc_hscroll(objText *Self)
-{
-   struct scUpdateScroll scroll;
-   LONG width;
-
-   if (!Self->HScrollID) return ERR_Okay;
-   if (Self->NoUpdate) return ERR_Okay;
-
-   // If wordwrap is enabled then the horizontal scrollbar is pointless
-
-   if (Self->Flags & TXF_WORDWRAP) return ERR_Okay;
-
-   GET_TextWidth(Self, &width);
-   scroll.ViewSize = -1;
-   scroll.PageSize = width + (Self->Layout->Document ? 0 : (Self->Layout->LeftMargin + Self->Layout->RightMargin));
-   scroll.Position = -Self->XPosition;
-   scroll.Unit     = Self->Font->MaxHeight;
-   return ActionMsg(MT_ScUpdateScroll, Self->HScrollID, &scroll);
-}
-
-//****************************************************************************
-
-static ERROR calc_vscroll(objText *Self)
-{
-   struct scUpdateScroll scroll;
-   LONG lines, row, pagewidth;
-
-   if (!Self->VScrollID) return ERR_Okay;
-   if (Self->NoUpdate) return ERR_Okay;
-
-   if ((Self->Flags & TXF_WORDWRAP) and (Self->AmtLines > 0) and (Self->Layout->ParentSurface.Width > 0)) {
-      pagewidth = Self->Layout->BoundWidth;
-
-      lines = 0;
-      pagewidth = pagewidth - (Self->Layout->Document ? 0 : (Self->Layout->LeftMargin + Self->Layout->RightMargin));
-      for (row=0; row < Self->AmtLines; row++) {
-         if (Self->Array[row].PixelLength > pagewidth) {
-            lines += ((Self->Array[row].PixelLength + pagewidth - 1) / pagewidth);
-         }
-         else lines++;
-      }
-   }
-   else lines = Self->AmtLines;
-
-   scroll.ViewSize = -1;
-   scroll.PageSize = (lines * Self->Font->LineSpacing) + Self->Layout->BoundY + (Self->Layout->Document ? 0 : (Self->Layout->TopMargin + Self->Layout->BottomMargin));
-   scroll.Position = -Self->YPosition;
-   scroll.Unit     = Self->Font->LineSpacing;
-   return ActionMsg(MT_ScUpdateScroll, Self->VScrollID, &scroll);
-}
-
-//****************************************************************************
-
 static LONG calc_width(objText *Self, CSTRING String, LONG Length)
 {
    if (Self->Flags & TXF_SECRET) {
@@ -667,7 +609,6 @@ static void DeleteSelectedArea(objText *Self)
       Self->Array[row].PixelLength = calc_width(Self, str, i);
       move_cursor(Self, row, column);
       redraw_line(Self, row);
-      calc_hscroll(Self);
    }
    else {
       i = column + (Self->Array[endrow].Length - endcolumn) + 1;
@@ -702,8 +643,6 @@ static void DeleteSelectedArea(objText *Self)
          Self->AmtLines = i;
 
          draw_lines(Self, row-1, 30000);
-         calc_hscroll(Self);
-         calc_vscroll(Self);
       }
    }
 }
@@ -912,7 +851,6 @@ static void key_event(objText *Self, evKey *Event, LONG Size)
             Self->Array[Self->CursorRow].Length--;
             Self->Array[Self->CursorRow].PixelLength = calc_width(Self, str, Self->Array[Self->CursorRow].Length);
             redraw_line(Self, Self->CursorRow);
-            calc_hscroll(Self);
          }
       }
       else if (Self->CursorRow > 0) {
@@ -961,7 +899,6 @@ static void key_event(objText *Self, evKey *Event, LONG Size)
             Self->Array[Self->CursorRow].Length -= len;
             Self->Array[Self->CursorRow].PixelLength = calc_width(Self, str, Self->Array[Self->CursorRow].Length);
             redraw_line(Self, Self->CursorRow);
-            calc_hscroll(Self);
          }
       }
       else if (Self->CursorRow < Self->AmtLines - 1) {
@@ -1285,7 +1222,6 @@ static void insert_char(objText *Self, LONG Unicode, LONG Column)
          if (Self->AmtLines <= Self->CursorRow) Self->AmtLines = Self->CursorRow + 1;
 
          redraw_line(Self, Self->CursorRow);
-         calc_hscroll(Self);
       }
    }
    else {
@@ -1333,8 +1269,6 @@ static void insert_char(objText *Self, LONG Unicode, LONG Column)
          Self->Array[Self->CursorRow].PixelLength = calc_width(Self, str, Self->Array[Self->CursorRow].Length);
 
          redraw_line(Self, Self->CursorRow);
-
-         if (view_cursor(Self) IS FALSE) calc_hscroll(Self);
       }
    }
 }
@@ -1391,8 +1325,6 @@ static ERROR load_file(objText *Self, CSTRING Location)
 
       if (Self->Head.Flags & NF_INITIALISED) {
          Redraw(Self);
-         calc_hscroll(Self);
-         calc_vscroll(Self);
       }
 
       if (file) acFree(file);
@@ -1463,7 +1395,6 @@ static ERROR replace_line(objText *Self, CSTRING String, LONG Line, LONG ByteLen
    else return ERR_AllocMemory;
 
    if (!Self->NoUpdate) {
-      calc_hscroll(Self);
       redraw_line(Self, Line);
    }
 
@@ -1655,11 +1586,6 @@ static LONG view_cursor(objText *Self)
 
    if ((scrollx) or (scrolly)) {
       ActionTags(AC_ScrollToPoint, Self, (DOUBLE)((-xpos) - scrollx), (DOUBLE)((-ypos) - scrolly), 0.0, STP_X|STP_Y);
-
-      if (!Self->NoUpdate) {
-         if (scrollx) calc_hscroll(Self);
-         if (scrolly) calc_vscroll(Self);
-      }
       scroll = TRUE;
    }
 
@@ -1762,11 +1688,6 @@ static LONG view_selection(objText *Self)
 
    if ((scrollx) or (scrolly)) {
       acScrollToPoint(Self, (DOUBLE)((-xpos) - scrollx), (DOUBLE)((-ypos) - scrolly), 0.0, STP_X|STP_Y);
-
-      if (!Self->NoUpdate) {
-         if (scrollx) calc_hscroll(Self);
-         if (scrolly) calc_vscroll(Self);
-      }
       scroll = TRUE;
    }
 
