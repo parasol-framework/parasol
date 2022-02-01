@@ -325,7 +325,7 @@ static ERROR SET_Height(objSurface *Self, Variable *Value)
          if (!AccessObject(Self->ParentID, 500, &parent)) {
             Self->HeightPercent = value;
             Self->Dimensions = (Self->Dimensions & ~DMF_FIXED_HEIGHT) | DMF_RELATIVE_HEIGHT;
-            resize_layer(Self, Self->X, Self->Y, 0, parent->Height * value / 100.0, 0, 0, 0, 0, NULL);
+            resize_layer(Self, Self->X, Self->Y, 0, parent->Height * value * 0.01, 0, 0, 0, 0, NULL);
             ReleaseObject(parent);
          }
          else return log.warning(ERR_AccessObject);

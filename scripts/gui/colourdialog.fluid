@@ -202,7 +202,7 @@ gui.dialog.colour = function(Options)
                   if (#lCustom < 7 * 2) then
                      lPaletteChanged = true
                      table.insert(lCustom, lRGB)
-                     lWindow.surface.acDraw()
+                     lWindow.surface.mtScheduleRedraw()
                   else
                      local dlg = obj.new('dialog', {
                         image   = 'icons:items/error(48)',
@@ -226,7 +226,7 @@ gui.dialog.colour = function(Options)
                      if (v.r == lRGB.r) and (v.g == lRGB.g) and (v.b == lRGB.b) then
                         lPaletteChanged = true
                         table.remove(lCustom, k)
-                        lWindow.surface.acDraw()
+                        lWindow.surface.mtScheduleRedraw()
                         break
                      end
                   end
@@ -382,7 +382,7 @@ gui.dialog.colour = function(Options)
          self.vecChosenColour.fill = gui.rgbToSVG(lRGB)
       end
       self.inputRGB.string = nz(lRGB.r,0) .. ',' .. nz(lRGB.g,0) .. ',' .. nz(lRGB.b,0)
-      lWindow.surface.acDraw()
+      lWindow.surface.mtScheduleRedraw()
    end
 
    -- Executed when the user clicks the rainbow palette area.  Some coordinate translation
@@ -419,7 +419,7 @@ gui.dialog.colour = function(Options)
 
       arrangeLayout() -- Will set the picker to the correct location
 
-      lWindow.surface.acDraw(lRainbow.winX + left, lRainbow.winY + top, right - left, bottom - top)
+      lWindow.surface.mtScheduleRedraw()
 
       updateRGB({ r=rgb.red, g=rgb.green, b=rgb.blue })
    end

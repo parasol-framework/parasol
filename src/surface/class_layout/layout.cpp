@@ -808,7 +808,7 @@ static ERROR SET_Layout_GraphicWidth(objLayout *Self, Variable *Value)
          log.warning("A GraphicWidth of %.2f is illegal.", Value->Double);
          return ERR_OutOfRange;
       }
-      if (Value->Type & FD_PERCENTAGE) Self->GraphicRelWidth = Value->Double / 100.0;
+      if (Value->Type & FD_PERCENTAGE) Self->GraphicRelWidth = Value->Double * 0.01;
       else {
          Self->GraphicWidth = F2T(Value->Double);
          Self->GraphicRelWidth = 0;
@@ -819,7 +819,7 @@ static ERROR SET_Layout_GraphicWidth(objLayout *Self, Variable *Value)
          log.warning("A GraphicWidth of " PF64() " is illegal.", Value->Large);
          return ERR_OutOfRange;
       }
-      if (Value->Type & FD_PERCENTAGE) Self->GraphicRelWidth = (DOUBLE)Value->Large / 100.0;
+      if (Value->Type & FD_PERCENTAGE) Self->GraphicRelWidth = (DOUBLE)Value->Large * 0.01;
       else {
          Self->GraphicWidth = Value->Large;
          Self->GraphicRelWidth = 0;
@@ -852,7 +852,7 @@ static ERROR SET_Layout_GraphicX(objLayout *Self, Variable *Value)
 {
    if (Value->Type & FD_DOUBLE) {
       if (Value->Type & FD_PERCENTAGE) {
-         Self->GraphicRelX = Value->Double / 100.0;
+         Self->GraphicRelX = Value->Double * 0.01;
       }
       else {
          Self->GraphicX = F2T(Value->Double);
@@ -861,7 +861,7 @@ static ERROR SET_Layout_GraphicX(objLayout *Self, Variable *Value)
    }
    else if (Value->Type & FD_LARGE) {
       if (Value->Type & FD_PERCENTAGE) {
-         Self->GraphicRelX = (DOUBLE)Value->Large / 100.0;
+         Self->GraphicRelX = (DOUBLE)Value->Large * 0.01;
       }
       else {
          Self->GraphicX = Value->Large;
@@ -897,14 +897,14 @@ static ERROR GET_Layout_GraphicY(objLayout *Self, Variable *Value)
 static ERROR SET_Layout_GraphicY(objLayout *Self, Variable *Value)
 {
    if (Value->Type & FD_DOUBLE) {
-      if (Value->Type & FD_PERCENTAGE) Self->GraphicRelY = Value->Double / 100.0;
+      if (Value->Type & FD_PERCENTAGE) Self->GraphicRelY = Value->Double * 0.01;
       else {
          Self->GraphicY = F2T(Value->Double);
          Self->GraphicRelY = 0;
       }
    }
    else if (Value->Type & FD_LARGE) {
-      if (Value->Type & FD_PERCENTAGE) Self->GraphicRelY = (DOUBLE)Value->Large / 100.0;
+      if (Value->Type & FD_PERCENTAGE) Self->GraphicRelY = (DOUBLE)Value->Large * 0.01;
       else {
          Self->GraphicY = Value->Large;
          Self->GraphicRelY = 0;
@@ -946,7 +946,7 @@ static ERROR GET_Layout_Height(objLayout *Self, Variable *Value)
    }
    else value = 0;
 
-   if (Value->Type & FD_PERCENTAGE) value = ((DOUBLE)value * 100.0) / (DOUBLE)Self->ParentSurface.Height;
+   if (Value->Type & FD_PERCENTAGE) value = (value * 100.0) / (DOUBLE)Self->ParentSurface.Height;
 
    if (Value->Type & FD_DOUBLE) Value->Double = value;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(value);
@@ -1630,7 +1630,7 @@ static ERROR GET_Layout_Width(objLayout *Self, Variable *Value)
    }
    else value = 0;
 
-   if (Value->Type & FD_PERCENTAGE) value = ((DOUBLE)value * 100.0) / (DOUBLE)Self->ParentSurface.Width;
+   if (Value->Type & FD_PERCENTAGE) value = (value * 100.0) / (DOUBLE)Self->ParentSurface.Width;
 
    if (Value->Type & FD_DOUBLE) Value->Double = value;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(value);
@@ -1710,7 +1710,7 @@ static ERROR GET_Layout_X(objLayout *Self, Variable *Value)
    }
    else value = 0;
 
-   if (Value->Type & FD_PERCENTAGE) value = ((DOUBLE)value * 100.0) / (DOUBLE)Self->ParentSurface.Width;
+   if (Value->Type & FD_PERCENTAGE) value = (value * 100.0) / (DOUBLE)Self->ParentSurface.Width;
 
    if (Value->Type & FD_DOUBLE) Value->Double = value;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(value);
@@ -1921,7 +1921,7 @@ static ERROR GET_Layout_YOffset(objLayout *Self, Variable *Value)
    }
    else value = 0;
 
-   if (Value->Type & FD_PERCENTAGE) value = ((DOUBLE)value * 100.0) / (DOUBLE)Self->ParentSurface.Height;
+   if (Value->Type & FD_PERCENTAGE) value = (value * 100.0) / (DOUBLE)Self->ParentSurface.Height;
 
    if (Value->Type & FD_DOUBLE) Value->Double = value;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(value);

@@ -178,32 +178,32 @@ static ERROR SURFACE_ActionNotify(objSurface *Self, struct acActionNotify *Notif
 
       // Convert relative offsets to their fixed equivalent
 
-      if (Self->Dimensions & DMF_RELATIVE_X_OFFSET) Self->XOffset = (parentwidth * Self->XOffsetPercent) / 100.0;
-      if (Self->Dimensions & DMF_RELATIVE_Y_OFFSET) Self->YOffset = (parentheight * Self->YOffsetPercent) / 100.0;
+      if (Self->Dimensions & DMF_RELATIVE_X_OFFSET) Self->XOffset = (parentwidth * Self->XOffsetPercent) * 0.01;
+      if (Self->Dimensions & DMF_RELATIVE_Y_OFFSET) Self->YOffset = (parentheight * Self->YOffsetPercent) * 0.01;
 
       // Calculate absolute width and height values
 
-      if (Self->Dimensions & DMF_RELATIVE_WIDTH)   width = parentwidth * Self->WidthPercent / 100.0;
+      if (Self->Dimensions & DMF_RELATIVE_WIDTH)   width = parentwidth * Self->WidthPercent * 0.01;
       else if (Self->Dimensions & DMF_FIXED_WIDTH) width = Self->Width;
       else if (Self->Dimensions & DMF_X_OFFSET) {
          if (Self->Dimensions & DMF_FIXED_X) {
             width = parentwidth - Self->X - Self->XOffset;
          }
          else if (Self->Dimensions & DMF_RELATIVE_X) {
-            width = parentwidth - (parentwidth * Self->XPercent / 100.0) - Self->XOffset;
+            width = parentwidth - (parentwidth * Self->XPercent * 0.01) - Self->XOffset;
          }
          else width = parentwidth - Self->XOffset;
       }
       else width = Self->Width;
 
-      if (Self->Dimensions & DMF_RELATIVE_HEIGHT)   height = parentheight * Self->HeightPercent / 100.0;
+      if (Self->Dimensions & DMF_RELATIVE_HEIGHT)   height = parentheight * Self->HeightPercent * 0.01;
       else if (Self->Dimensions & DMF_FIXED_HEIGHT) height = Self->Height;
       else if (Self->Dimensions & DMF_Y_OFFSET) {
          if (Self->Dimensions & DMF_FIXED_Y) {
             height = parentheight - Self->Y - Self->YOffset;
          }
          else if (Self->Dimensions & DMF_RELATIVE_Y) {
-            height = parentheight - (parentheight * Self->YPercent / 100.0) - Self->YOffset;
+            height = parentheight - (parentheight * Self->YPercent * 0.01) - Self->YOffset;
          }
          else height = parentheight - Self->YOffset;
       }
@@ -211,11 +211,11 @@ static ERROR SURFACE_ActionNotify(objSurface *Self, struct acActionNotify *Notif
 
       // Calculate new coordinates
 
-      if (Self->Dimensions & DMF_RELATIVE_X) x = (parentwidth * Self->XPercent / 100.0);
+      if (Self->Dimensions & DMF_RELATIVE_X) x = (parentwidth * Self->XPercent * 0.01);
       else if (Self->Dimensions & DMF_X_OFFSET) x = parentwidth - Self->XOffset - width;
       else x = Self->X;
 
-      if (Self->Dimensions & DMF_RELATIVE_Y) y = (parentheight * Self->YPercent / 100.0);
+      if (Self->Dimensions & DMF_RELATIVE_Y) y = (parentheight * Self->YPercent * 0.01);
       else if (Self->Dimensions & DMF_Y_OFFSET) y = parentheight - Self->YOffset - height;
       else y = Self->Y;
 
