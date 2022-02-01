@@ -164,11 +164,11 @@ static ERROR WINDOW_ActionNotify(objWindow *Self, struct acActionNotify *Args)
 
    if (Args->ActionID IS AC_Disable) {
       Self->Flags |= WNF_DISABLED;
-      DelayMsg(AC_Draw, Self->SurfaceID, NULL);
+      ActionMsg(MT_DrwScheduleRedraw, Self->SurfaceID, NULL);
    }
    else if (Args->ActionID IS AC_Enable) {
       Self->Flags &= ~WNF_DISABLED;
-      DelayMsg(AC_Draw, Self->SurfaceID, NULL);
+      ActionMsg(MT_DrwScheduleRedraw, Self->SurfaceID, NULL);
    }
    else if (Args->ActionID IS AC_Free) {
       if (Args->ObjectID IS Self->SurfaceID) {
@@ -638,8 +638,6 @@ static ERROR WINDOW_Init(objWindow *Self, APTR Void)
          SetString(Self->Surface, FID_Colour, colour);
       }
       else SetString(Self->Surface, FID_Colour, "230,230,230");
-
-      if (Self->InsideBorder) drwAddCallback(Self->Surface, (APTR)&draw_border);
    }
 
    if ((Self->ResizeFlags) and (Self->ResizeBorder > 0) and (Self->Surface->ParentID)) {
@@ -2021,9 +2019,8 @@ static void calc_surface_center(objWindow *Self, LONG *X, LONG *Y)
    }
 }
 
-/*****************************************************************************
-** Smart limits are used to prevent the window from moving outside of the visible display area.
-*/
+//****************************************************************************
+// Smart limits are used to prevent the window from moving outside of the visible display area.
 
 static void smart_limits(objWindow *Self)
 {
@@ -2036,39 +2033,6 @@ static void smart_limits(objWindow *Self)
          Self->Surface->RightLimit  = -(Self->Surface->Width * 0.75);
       }
    }
-}
-
-//****************************************************************************
-
-static void draw_border(objWindow *Self, objSurface *Surface, objBitmap *Bitmap)
-{
-   LONG lm = Surface->LeftMargin - 1;
-   LONG tm = Surface->TopMargin - 1;
-   LONG rm = Surface->Width - Surface->RightMargin + 1;
-   LONG bm = Surface->Height - Surface->BottomMargin + 1;
-
-   static RGB8 highlightA = { .Red = 255, .Green = 255, .Blue = 255, .Alpha = 0x70 };
-   static RGB8 highlightB = { .Red = 255, .Green = 255, .Blue = 255, .Alpha = 0xa0 };
-   static RGB8 shadowA    = { .Red = 0, .Green = 0, .Blue = 0, .Alpha = 0x80 };
-   static RGB8 shadowB    = { .Red = 0, .Green = 0, .Blue = 0, .Alpha = 0x40 };
-
-   // Top, Bottom, Left, Right
-   ULONG shadow    = PackPixelRGBA(Bitmap, &shadowA);
-   ULONG highlight = PackPixelRGBA(Bitmap, &highlightA);
-
-   gfxDrawRectangle(Bitmap, lm, tm, rm-lm, 1, shadow, BAF_FILL|BAF_BLEND);
-   gfxDrawRectangle(Bitmap, lm, bm, rm-lm, 1, highlight, BAF_FILL|BAF_BLEND);
-   gfxDrawRectangle(Bitmap, lm, tm, 1, bm-tm, shadow, BAF_FILL|BAF_BLEND);
-   gfxDrawRectangle(Bitmap, rm, tm, 1, bm-tm, highlight, BAF_FILL|BAF_BLEND);
-
-   // Top, Bottom, Left, Right
-   shadow    = PackPixelRGBA(Bitmap, &shadowB);
-   highlight = PackPixelRGBA(Bitmap, &highlightB);
-   lm--; tm--; rm++; bm++;
-   gfxDrawRectangle(Bitmap, lm, tm, rm-lm, 1, shadow, BAF_FILL|BAF_BLEND);
-   gfxDrawRectangle(Bitmap, lm, bm, rm-lm, 1, highlight, BAF_FILL|BAF_BLEND);
-   gfxDrawRectangle(Bitmap, lm, tm, 1, bm-tm, shadow, BAF_FILL|BAF_BLEND);
-   gfxDrawRectangle(Bitmap, rm, tm, 1, bm-tm, highlight, BAF_FILL|BAF_BLEND);
 }
 
 //****************************************************************************
