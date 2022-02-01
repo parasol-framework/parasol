@@ -299,9 +299,10 @@ glStyles = {
             end)
          end
 
-         if bit.band(Viewport.dimensions, DMF_WIDTH) == 0 then
-            if (bit.band(Viewport.dimensions, DMF_X) == 0) or
-               (bit.band(Viewport.dimensions, DMF_X_OFFSET) == 0) then
+         local dimensions = Viewport.dimensions
+         if bit.band(dimensions, DMF_WIDTH) == 0 then
+            if (bit.band(dimensions, DMF_X) == 0) or
+               (bit.band(dimensions, DMF_X_OFFSET) == 0) then
                local w = (X_GAP * 2) + mFont.StringWidth(state.label.font, Button.string, -1)
                if state.icon then w = w + ICON_SIZE + X_GAP end
                Viewport.width = w
@@ -311,14 +312,12 @@ glStyles = {
          Viewport.subscribe('disable', function(Viewport, Args, State)
             State.bkgd.fill = COL_BKGD
             State.label.opacity = 0.25
-            Viewport.delayCall()
             Viewport.acDraw()
          end, state)
 
          Viewport.subscribe('enable', function(Viewport, Args, State)
             State.bkgd.fill = COL_BKGD
             State.label.opacity = 1.0
-            Viewport.delayCall()
             Viewport.acDraw()
          end, state)
 
@@ -331,13 +330,11 @@ glStyles = {
                state.focus.visibility = VIS_HIDDEN
             end
 
-            Viewport.delayCall()
             Viewport.acDraw()
          end, Button)
 
          Viewport.subscribe('lostfocus', function(Viewport, Args, State)
             State.focus.visibility = VIS_HIDDEN
-            Viewport.delayCall()
             Viewport.acDraw()
          end, state)
 
@@ -384,14 +381,12 @@ glStyles = {
 
                      if bit.band(Button.flags, BTF_DISABLED) == 0 then
                         state.bkgd.fill = 'rgb(255,255,255,40)'
-                        Viewport.delayCall()
                         Viewport.acDraw()
                      end
                   elseif Msg.type == JET_LEFT_SURFACE then
                      Button.hoverState = BHS_OUTSIDE
                      if bit.band(Button.flags, BTF_DISABLED) == 0 then
                         state.bkgd.fill = COL_BKGD
-                        Viewport.delayCall()
                         Viewport.acDraw()
                      end
                   elseif Msg.type == JET_LMB then
@@ -405,7 +400,6 @@ glStyles = {
                               Button.clicked = true
                               state.clickX  = Msg.x
                               state.clickY  = Msg.y
-                              Viewport.delayCall()
                               Viewport.acDraw()
                            end
                         end
@@ -416,7 +410,6 @@ glStyles = {
                         if (clickX < 0) then clickX = -clickX end
                         if (clickY < 0) then clickY = -clickY end
 
-                        Viewport.delayCall()
                         Viewport.acDraw()
 
                         if ((clickX < 4) and (clickY < 4)) or bit.band(Button.flags, BTF_PULSE) != 0 then
@@ -541,7 +534,6 @@ glStyles = {
             else
                state.focus.visibility = VIS_HIDDEN
             end
-            Viewport.delayCall()
             Viewport.acDraw()
          end, Check)
 
@@ -549,7 +541,6 @@ glStyles = {
             local state = Viewport.state()
             state.bkgd.stroke = COL_STROKE_NO_FOCUS
             state.focus.visibility = VIS_HIDDEN
-            Viewport.delayCall()
             Viewport.acDraw()
          end, Check)
 
@@ -567,7 +558,6 @@ glStyles = {
                state.label.string = Check.label
                state.label.y = (Viewport.height / 2) + (state.label.font.height / 2)
 
-               Viewport.delayCall()
                Viewport.acDraw()
             elseif StyleChange == STYLE_RESIZE then
                resizeTriggered(Check)
@@ -597,7 +587,6 @@ glStyles = {
                      end
 
                      if bit.band(Check.flags, CBF_DISABLED) == 0 then
-                        Viewport.delayCall()
                         Viewport.acDraw()
                      end
                   elseif (Msg.type == JET_LEFT_SURFACE) then
@@ -605,7 +594,6 @@ glStyles = {
                      state.bkgd.fill = COL_BKGD
 
                      if bit.band(Check.flags, CBF_DISABLED) == 0 then
-                        Viewport.delayCall()
                         Viewport.acDraw()
                      end
                   elseif (Msg.type == JET_LMB) and (Msg.value > 0) then
@@ -781,7 +769,6 @@ glStyles = {
             local state = Combo.viewport.state()
             state.bkgd.fill = COL_BKGD
             if state.label then state.label.opacity = 0.25 end
-            Viewport.delayCall()
             Viewport.acDraw()
          end, Combo)
 
@@ -789,7 +776,6 @@ glStyles = {
             local state = Combo.viewport.state()
             state.bkgd.fill = COL_BKGD
             if state.label then state.label.opacity = 1.0 end
-            Viewport.delayCall()
             Viewport.acDraw()
          end, Combo)
 
@@ -800,7 +786,6 @@ glStyles = {
             else
                state.bkgd.stroke = COL_STROKE_NO_FOCUS
             end
-            Viewport.delayCall()
             Viewport.acDraw()
          end, Combo)
 
@@ -808,7 +793,6 @@ glStyles = {
             local state = Combo.viewport.state()
             state.bkgd.stroke = COL_STROKE_NO_FOCUS
             Combo.menu.acHide()
-            Viewport.delayCall()
             Viewport.acDraw()
          end, Combo)
 
@@ -840,12 +824,10 @@ glStyles = {
                      else
                         state.bkgd.fill = COL_BKGD
                      end
-                     Viewport.delayCall()
                      Viewport.acDraw()
                   elseif Msg.type == JET_LEFT_SURFACE then
                      state.entered = false
                      state.bkgd.fill = COL_BKGD
-                     Viewport.delayCall()
                      Viewport.acDraw()
                   elseif (Msg.type == JET_LMB) and (Msg.value > 0) then
                      if bit.band(Viewport.flags, VF_DISABLED) == 0 and (Msg.x > Combo.labelWidth) then
@@ -1075,13 +1057,11 @@ glStyles = {
                   if Msg.type == JET_ENTERED_SURFACE then
                      state.entered = true
                      if bit.band(Viewport.flags, VF_DISABLED) == 0 then
-                        Viewport.delayCall()
                         Viewport.acDraw()
                      end
                   elseif Msg.type == JET_LEFT_SURFACE then
                      state.entered = false
                      if bit.band(Viewport.flags, VF_DISABLED) == 0 then
-                        Viewport.delayCall()
                         Viewport.acDraw()
                      end
                   end
@@ -1107,162 +1087,8 @@ glStyles = {
    },
    scrollbar = {
       defaultValues = function(Scrollbar)
-         Scrollbar.breadth = 16   -- Slider size
-         Scrollbar.opacity = 100
-      end
-   },
-   vscroll = {
-      bar = function(Scrollbar, Surface)
-         Surface.width = 18
-         Surface.topMargin = Surface.width - 1
-         Surface.bottomMargin = Surface.width - 1
-
-         local lGradient = defineGradient(nil, nil, {r=186,g=188,b=193,a=255}, {r=212,g=211,b=215,a=255}, 0, 0, 0, '100%')
-
-         Surface.mtAddCallback(function(Surface, Bitmap)
-            local err, path = mVec.generateRectangle(0, 0, Surface.width, Surface.height)
-            if (err == ERR_Okay) then
-               mVec.drawPath(Bitmap, path, 0, nil, lGradient)
-               mVec.freePath(path)
-            end
-            local err, colA = Bitmap.mtGetColour(0, 0, 0, 60)
-            local err, colB = Bitmap.mtGetColour(0, 0, 0, 30)
-            Bitmap.mtDrawRectangle(0, 0, 1, Surface.height, colA, bit.bor(BAF_FILL, BAF_BLEND))
-            Bitmap.mtDrawRectangle(Surface.width-1, 0, 1, Surface.height, colB, bit.bor(BAF_FILL, BAF_BLEND))
-         end)
       end,
-      slider = function(Scrollbar, Surface)
-         local lGradient = defineGradient(nil, nil, {r=252,g=251,b=255,a=255}, {r=205,g=206,b=220,a=255}, 0, 0, '100%', 0)
-
-         Surface.mtAddCallback(function(Surface, Bitmap)
-            local err, path = mVec.generateRectangle(0, 0, Surface.width, Surface.height)
-            if (err == ERR_Okay) then
-               mVec.drawPath(Bitmap, path, 0, nil, lGradient)
-               mVec.freePath(path)
-            end
-            local err, colA = Bitmap.mtGetColour(148, 149, 160, 255)
-            local err, colB = Bitmap.mtGetColour(255, 255, 255, 150)
-            Bitmap.mtDrawRectangle(0, 0, Surface.width, Surface.height, colA, 0)
-            Bitmap.mtDrawRectangle(1, 1, Surface.width-2, Surface.height-2, colB, BAF_BLEND)
-
-            local err, lineA = Bitmap.mtGetColour(255, 255, 255, 128)
-            local err, lineB = Bitmap.mtGetColour(0, 0, 0, 50)
-            for i=((Surface.height-16)/2),((Surface.height+16)/2),3 do
-               Bitmap.mtDrawRectangle(5, i, Surface.width - 10, 1, lineA, bit.bor(BAF_BLEND, BAF_FILL))
-               Bitmap.mtDrawRectangle(5, i+1, Surface.width - 10, 1, lineB, bit.bor(BAF_BLEND, BAF_FILL))
-            end
-         end)
-      end,
-      buttons = function(Scrollbar, Surface)
-         local button = Surface.new('button', { x=0, y=0, height=Scrollbar.width, xOffset=0, flags='!nofocus|nobkgd' })
-         local lGradient = defineGradient(nil, nil, {r=255,g=255,b=255,a=255}, {r=202,g=203,b=217,a=255}, 0, 0, 0, '100%')
-         button.region.mtAddCallback(function(Surface, Bitmap)
-            local err, path = mVec.generateRectangle(0, 0, Surface.width, Surface.height)
-            if (err == ERR_Okay) then
-               mVec.drawPath(Bitmap, path, 0, nil, lGradient)
-               mVec.freePath(path)
-            end
-            local err, colA = Bitmap.mtGetColour(148, 149, 160, 160)
-            local err, colB = Bitmap.mtGetColour(255, 255, 255, 150) -- !! gui.colours.widgetHighlight
-            Bitmap.mtDrawRectangle(0, 0, Surface.width, Surface.height, colA, 0)
-            Bitmap.mtDrawRectangle(1, 1, Surface.width-2, Surface.height-2, colB, BAF_BLEND)
-         end)
-         local svgUp = button.region.new('svgimage', { path='icons:arrows/up.svg', x='25%', xoffset='25%', y='25%', yoffset='25%' })
-         Scrollbar.scroll.mtAddScrollButton(button.region, 1)
-
-         -- Lower button
-
-         local button = Surface.new('button', { x=0, yOffset=0, height=Scrollbar.width, xOffset=0, flags='!nofocus|nobkgd' })
-         button.region.mtAddCallback(function(Surface, Bitmap)
-            local err, path = mVec.generateRectangle(1, 1, Surface.width-2, Surface.height-2)
-            if (err == ERR_Okay) then
-               mVec.drawPath(Bitmap, path, 0, nil, lGradient)
-               mVec.freePath(path)
-            end
-            local err, colA = Bitmap.mtGetColour(148, 149, 160, 255)
-            local colB = gui.bitmapColour(Bitmap, 'highlight')
-            Bitmap.mtDrawRectangle(0, 0, Surface.width, Surface.height, colA, 0)
-            Bitmap.mtDrawRectangle(1, 1, Surface.width-2, Surface.height-2, colB, BAF_BLEND)
-         end)
-         local svgDown = button.region.new('svgimage', { path='icons:arrows/down.svg', x='25%', xoffset='25%', y='25%', yoffset='25%' })
-         Scrollbar.scroll.mtAddScrollButton(button.region, 2)
-      end
-   },
-   hscroll = {
-      bar = function(Scrollbar, Surface)
-         Surface.height = 18
-         Surface.leftMargin = Surface.height - 1
-         Surface.rightMargin = Surface.height - 1
-
-         local lGradient = defineGradient(nil, nil, {r=186,g=188,b=193,a=255}, {r=212,g=211,b=215,a=255}, 0, 0, 0, '100%')
-
-         Surface.mtAddCallback(function(Surface, Bitmap)
-            local err, path = mVec.generateRectangle(0, 0, Surface.width, Surface.height)
-            if (err == ERR_Okay) then
-               mVec.drawPath(Bitmap, path, 0, nil, lGradient)
-               mVec.freePath(path)
-            end
-            local err, colA = Bitmap.mtGetColour(0, 0, 0, 60)
-            local err, colB = Bitmap.mtGetColour(0, 0, 0, 30)
-            Bitmap.mtDrawRectangle(0, 0, Surface.width, 1, colA, bit.bor(BAF_FILL, BAF_BLEND))
-            Bitmap.mtDrawRectangle(0, Surface.height-1, 0, Surface.width, 1, colB, bit.bor(BAF_FILL, BAF_BLEND))
-         end)
-      end,
-      slider = function(Scrollbar, Surface)
-         local lGradient = defineGradient(nil, nil, {r=252,g=251,b=255,a=255}, {r=205,g=206,b=220,a=255}, 0, 0, 0, '100%')
-
-         Surface.mtAddCallback(function(Surface, Bitmap)
-            local err, path = mVec.generateRectangle(0, 0, Surface.width, Surface.height)
-            if (err == ERR_Okay) then
-               mVec.drawPath(Bitmap, path, 0, nil, lGradient)
-               mVec.freePath(path)
-            end
-            local err, colA = Bitmap.mtGetColour(148, 149, 160, 160)
-            local err, colB = Bitmap.mtGetColour(255, 255, 255, 150)
-            Bitmap.mtDrawRectangle(0, 0, Surface.width, Surface.height, colA, 0)
-            Bitmap.mtDrawRectangle(1, 1, Surface.width-2, Surface.height-2, colB, BAF_BLEND)
-
-            local err, lineA = Bitmap.mtGetColour(255, 255, 255, 128)
-            local err, lineB = Bitmap.mtGetColour(0, 0, 0, 50)
-            for i=((Surface.width-16)/2), ((Surface.width+16)/2), 3 do
-               Bitmap.mtDrawRectangle(i, 5, 1, Surface.height - 10, lineA, bit.bor(BAF_BLEND, BAF_FILL))
-               Bitmap.mtDrawRectangle(i+1, 5, 1, Surface.height - 10, lineB, bit.bor(BAF_BLEND, BAF_FILL))
-            end
-         end)
-      end,
-      buttons = function(Scrollbar, Surface)
-         local button = Surface.new('button', { y=0, x=0, width=Surface.height, yOffset=0, flags='!nofocus|nobkgd' })
-         local lGradient = defineGradient(nil, nil, {r=255,g=255,b=255,a=255}, {r=202,g=203,b=217,a=255}, 0, 0, 0, '100%')
-         button.region.mtAddCallback(function(Surface, Bitmap)
-            local err, path = mVec.generateRectangle(0, 0, Surface.width, Surface.height)
-            if (err == ERR_Okay) then
-               mVec.drawPath(Bitmap, path, 0, nil, lGradient)
-               mVec.freePath(path)
-            end
-            local err, colA = Bitmap.mtGetColour(148, 149, 160, 160)
-            local colB = gui.bitmapColour(Bitmap, 'highlight')
-            Bitmap.mtDrawRectangle(0, 0, Surface.width, Surface.height, colA, BAD_BLEND)
-            Bitmap.mtDrawRectangle(1, 1, Surface.width-2, Surface.height-2, colB, BAF_BLEND)
-         end)
-         local svgUp = button.region.new('svgimage', { path='icons:arrows/left.svg', x='25%', xoffset='25%', y='25%', yoffset='25%' })
-         Scrollbar.scroll.mtAddScrollButton(button.region, 3)
-
-         -- Lower button
-
-         local button = Surface.new('button', { y=0, xOffset=0, width=Surface.height, yoffset=0, flags='!nofocus|nobkgd' })
-         button.region.mtAddCallback(function(Surface, Bitmap)
-            local err, path = mVec.generateRectangle(1, 1, Surface.width-2, Surface.height-2)
-            if (err == ERR_Okay) then
-               mVec.drawPath(Bitmap, path, 0, nil, lGradient)
-               mVec.freePath(path)
-            end
-            local err, colA = Bitmap.mtGetColour(148, 149, 160, 255)
-            local colB = gui.bitmapColour(Bitmap, 'highlight')
-            Bitmap.mtDrawRectangle(0, 0, Surface.width, Surface.height, colA, BAF_BLEND)
-            Bitmap.mtDrawRectangle(1, 1, Surface.width-2, Surface.height-2, colB, BAF_BLEND)
-         end)
-         local svgDown = button.region.new('svgimage', { path='icons:arrows/right.svg', x='25%', xoffset='25%', y='25%', yoffset='25%' })
-         Scrollbar.scroll.mtAddScrollButton(button.region, 4)
+      decoration = function(Scrollbar, Viewport)
       end
    },
    view = {
