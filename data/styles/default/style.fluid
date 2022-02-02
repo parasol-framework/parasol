@@ -255,8 +255,8 @@ glStyles = {
             fill        = COL_BKGD,
             stroke      = COL_EDGE,
             strokeWidth = STROKE_WIDTH,
-            x           = STROKE_WIDTH / 2,
-            y           = STROKE_WIDTH / 2,
+            x           = STROKE_WIDTH * 0.5,
+            y           = STROKE_WIDTH * 0.5,
             roundX      = STROKE_WIDTH * 2,
             roundY      = STROKE_WIDTH * 2,
             width       = Viewport.width - STROKE_WIDTH,
@@ -265,9 +265,9 @@ glStyles = {
 
          state.focus = Viewport.new('VectorRectangle', {
             stroke      = 'rgb(0,0,0,60)',
-            strokeWidth = STROKE_WIDTH / 2,
-            x           = STROKE_WIDTH / 2,
-            y           = STROKE_WIDTH / 2,
+            strokeWidth = STROKE_WIDTH * 0.5,
+            x           = STROKE_WIDTH * 0.5,
+            y           = STROKE_WIDTH * 0.5,
             roundX      = STROKE_WIDTH * 2,
             roundY      = STROKE_WIDTH * 2,
             dashArray   = '2 2',
@@ -284,13 +284,13 @@ glStyles = {
             string   = Button.string
          })
 
-         state.label.y = (Viewport.height / 2) + (state.label.font.height / 2)
+         state.label.y = (Viewport.height * 0.5) + (state.label.font.height * 0.5)
 
          if (Button.icon) then
             catch(function()
                state.icon = createIcon(Button.icon, Viewport, {
                   x = X_GAP,
-                  y = (Viewport.height - ICON_SIZE) / 2,
+                  y = (Viewport.height - ICON_SIZE) * 0.5,
                   width  = ICON_SIZE,
                   height = ICON_SIZE
                })
@@ -358,7 +358,7 @@ glStyles = {
 
             if StyleChange == STYLE_CONTENT then
                state.label.string = Button.string
-               state.label.y = (Button.viewport.height / 2) + (state.label.font.height / 2)
+               state.label.y = (Button.viewport.height * 0.5) + (state.label.font.height * 0.5)
             elseif StyleChange == STYLE_RESIZE then
                resizeTriggered(Button)
             end
@@ -451,8 +451,8 @@ glStyles = {
             fill        = COL_BKGD,
             stroke      = COL_STROKE_NO_FOCUS,
             strokeWidth = STROKE_WIDTH,
-            x           = STROKE_WIDTH / 2,
-            y           = STROKE_WIDTH / 2,
+            x           = STROKE_WIDTH * 0.5,
+            y           = STROKE_WIDTH * 0.5,
             roundX      = STROKE_WIDTH * 2,
             roundY      = STROKE_WIDTH * 2,
             width       = lBoxSize - STROKE_WIDTH,
@@ -462,8 +462,8 @@ glStyles = {
          state.focus = Viewport.new('VectorRectangle', {
             stroke      = 'rgb(0,0,0,60)',
             strokeWidth = STROKE_WIDTH,
-            x           = STROKE_WIDTH / 2,
-            y           = STROKE_WIDTH / 2,
+            x           = STROKE_WIDTH * 0.5,
+            y           = STROKE_WIDTH * 0.5,
             roundX      = STROKE_WIDTH * 2,
             roundY      = STROKE_WIDTH * 2,
             width       = lBoxSize - STROKE_WIDTH,
@@ -480,7 +480,7 @@ glStyles = {
                string = Check.label
             })
 
-            state.label.y = (Viewport.height / 2) + (state.label.font.height / 2)
+            state.label.y = (Viewport.height * 0.5) + (state.label.font.height * 0.5)
 
             if (Check.labelWidth < 1) then
                Check.labelWidth = mFont.StringWidth(state.label.font, Check.label, -1) + 8
@@ -497,8 +497,8 @@ glStyles = {
          catch(function()
             local size = Viewport.height * 0.7
             state.icon = createIcon('items/checkmark', Viewport, {
-               x = (Viewport.height - size) / 2,
-               y = (Viewport.height - size) / 2,
+               x = (Viewport.height - size) * 0.5,
+               y = (Viewport.height - size) * 0.5,
                width  = size,
                height = size
             })
@@ -556,7 +556,7 @@ glStyles = {
                end
 
                state.label.string = Check.label
-               state.label.y = (Viewport.height / 2) + (state.label.font.height / 2)
+               state.label.y = (Viewport.height * 0.5) + (state.label.font.height * 0.5)
 
                Viewport.acDraw()
             elseif StyleChange == STYLE_RESIZE then
@@ -626,7 +626,7 @@ glStyles = {
          local MIN_MENU_WIDTH = 120
          local MAX_MENU_WIDTH = 300
          local STROKE_WIDTH = 2
-         local STROKE_HALF_WIDTH = STROKE_WIDTH / 2
+         local STROKE_HALF_WIDTH = STROKE_WIDTH * 0.5
 
          local state = Viewport.state()
          state.entered = false
@@ -708,7 +708,7 @@ glStyles = {
             local viewport = Combo.viewport
 
             if state.label then
-               state.label.y = (viewport.height / 2) + (state.label.font.height / 2)
+               state.label.y = (viewport.height * 0.5) + (state.label.font.height * 0.5)
             end
 
             state.bkgd.x = Combo.labelWidth + (STROKE_WIDTH * 0.5)
@@ -716,7 +716,7 @@ glStyles = {
             state.bkgd.width  = viewport.width - Combo.labelWidth - STROKE_WIDTH
             state.bkgd.height = viewport.height - STROKE_WIDTH
 
-            local gap = (viewport.height - iconSize) / 2
+            local gap = (viewport.height - iconSize) * 0.5
             local x = viewport.width - iconSize - gap
             state.icon.viewport.x = x
             state.textMask.width = x - state.textMask.x - (STROKE_WIDTH * 2)
@@ -745,7 +745,7 @@ glStyles = {
          textInput.face = gui.fonts.widget.face
          textInput.fill = 'rgb(' .. gui.fonts.widget.colour .. ')'
          textInput.x    = Combo.labelWidth + (STROKE_WIDTH * 2)
-         textInput.y    = (Viewport.height / 2) + (state.label.font.height / 2)
+         textInput.y    = (Viewport.height * 0.5) + (state.label.font.height * 0.5)
          textInput.mask = state.textClip
 
          if textInput.acInit() != ERR_Okay then return ERR_Init end
@@ -754,7 +754,7 @@ glStyles = {
          -- Place an icon for invoking the drop-down menu
 
          catch(function()
-            local gap = (Viewport.height - iconSize) / 2
+            local gap = (Viewport.height - iconSize) * 0.5
             local x = Viewport.width - iconSize - gap
             state.icon = createIcon('arrows/down', Viewport, {
                x = x, y = gap, width = iconSize, height = iconSize
@@ -863,7 +863,7 @@ glStyles = {
          local BORDER = 1
          local MARGIN = 2
          local STROKE_WIDTH = 2
-         local STROKE_HALF_WIDTH = STROKE_WIDTH / 2
+         local STROKE_HALF_WIDTH = STROKE_WIDTH * 0.5
 
          local state = Viewport.state()
          state.entered = false
@@ -887,7 +887,7 @@ glStyles = {
                Input.labelWidth = mFont.StringWidth(state.label.font, Input.label, -1) + GAP
             end
 
-            state.label.y = (Viewport.height / 2) + (state.label.font.height / 2)
+            state.label.y = (Viewport.height * 0.5) + (state.label.font.height * 0.5)
             state.boxX = Input.labelWidth + STROKE_HALF_WIDTH
          end
 
@@ -921,7 +921,7 @@ glStyles = {
             local boxWidth = Input.inputWidth -- The client can fix the width of the input area
 
             if nz(Input.postLabel) then
-               state.postlabel.y = (viewport.height / 2) + (state.postlabel.font.height / 2)
+               state.postlabel.y = (viewport.height * 0.5) + (state.postlabel.font.height * 0.5)
                state.postlabel_width = mFont.StringWidth(state.postlabel.font, Input.postLabel, -1) + GAP
             else
                state.postlabel_width = 0
@@ -999,7 +999,7 @@ glStyles = {
          textInput.x     = Input.labelWidth + (STROKE_WIDTH * 2)
          textInput.textFlags = flags
          if textInput.acInit() != ERR_Okay then return ERR_Init end
-         textInput.y = (Viewport.height / 2) + (textInput.font.height / 2)
+         textInput.y = (Viewport.height * 0.5) + (textInput.font.height * 0.5)
 
          if bit.band(Input.flags, INF_SELECT_TEXT) != 0 then textInput.mtSelectArea(0, 0, 20000, 20000) end
          if bit.band(Input.flags, INF_DISABLED) != 0 then Input.acDisable() end
