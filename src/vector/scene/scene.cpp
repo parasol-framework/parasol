@@ -48,9 +48,11 @@ static ERROR VECTORSCENE_ActionNotify(objVectorScene *Self, struct acActionNotif
          Self->PageWidth = resize->Width;
          Self->PageHeight = resize->Height;
 
-         if (Self->Viewport) mark_dirty(Self->Viewport, RC_BASE_PATH|RC_TRANSFORM); // Base-paths need to be recomputed if they use relative coordinates.
+         if (Self->Viewport) {
+            mark_dirty(Self->Viewport, RC_BASE_PATH|RC_TRANSFORM); // Base-paths need to be recomputed if they use relative coordinates.
+         }
 
-         ActionMsg(AC_Draw, Self->SurfaceID, NULL);
+         ActionMsg(MT_DrwScheduleRedraw, Self->SurfaceID, NULL);
       }
    }
    else if (Args->ActionID IS AC_LostFocus) {
