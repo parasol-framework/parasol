@@ -341,12 +341,8 @@
 
     <field>
       <name>HScroll</name>
-      <comment>Refers to a scroll object that is managing horizontal scrolling.</comment>
       <access read="R" write="S">Read/Set</access>
       <type>OBJECTID</type>
-      <description>
-<p>This field refers to the scroll object that is managing horizontal scrolling of the document page.  It is possible to set this field with either a <class name="Scroll">Scroll</class> or <class name="ScrollBar">ScrollBar</class> object, although in the latter case the Scroll object will be extracted automatically and referenced in this field.</p>
-      </description>
     </field>
 
     <field>
@@ -429,12 +425,8 @@
 
     <field>
       <name>ScrollTarget</name>
-      <comment>Sets an alternative target surface for scrollbar creation.</comment>
       <access read="R" write="I">Read/Init</access>
       <type>OBJECTID</type>
-      <description>
-<p>During initialisation the Scintilla class will create scrollbars within the target <field>Surface</field>.  If this behaviour is undesirable, an alternative target surface can be defined by setting the ScrollTarget field.</p>
-      </description>
     </field>
 
     <field>
@@ -501,12 +493,8 @@
 
     <field>
       <name>VScroll</name>
-      <comment>Refers to a scroll object that is managing horizontal scrolling.</comment>
       <access read="R" write="S">Read/Set</access>
       <type>OBJECTID</type>
-      <description>
-<p>This field refers to the scroll object that is managing horizontal scrolling of the document page.  It is possible to set this field with either a <class name="Scroll">Scroll</class> or <class name="ScrollBar">ScrollBar</class> object, although in the latter case the Scroll object will be extracted automatically and referenced in this field.</p>
-      </description>
     </field>
 
     <field>

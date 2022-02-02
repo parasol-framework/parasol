@@ -12,7 +12,7 @@
     <idstring>ID_LAYOUT</idstring>
     <category>GUI</category>
     <include>modules/layout.h</include>
-    <copyright>Paul Manias © 2000-2020</copyright>
+    <copyright>Paul Manias © 2000-2022</copyright>
     <description>
 <p>The Layout class provides a generic, standardised system of graphics management for all objects. It should be used to extend the features of other classes only and is not for use in client programs.</p></description>
     <source>

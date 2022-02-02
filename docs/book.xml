@@ -146,14 +146,11 @@
           <chapter title="Layout Class" src="classes/viewclass.rpl?xml=layout.xml"/>
           <chapter title="Menu Class" src="classes/viewclass.rpl?xml=menu.xml"/>
           <chapter title="Resize Class" src="classes/viewclass.rpl?xml=resize.xml"/>
-          <chapter title="Scroll Class" src="classes/viewclass.rpl?xml=scroll.xml"/>
-          <chapter title="Scrollbar Class" src="classes/viewclass.rpl?xml=scrollbar.xml"/>
           <chapter title="Surface Class" src="classes/viewclass.rpl?xml=surface.xml"/>
           <chapter title="SVG Class" src="classes/viewclass.rpl?xml=svg.xml"/>
           <chapter title="TabFocus Class" src="classes/viewclass.rpl?xml=tabfocus.xml"/>
           <chapter title="Table Class" src="classes/viewclass.rpl?xml=table.xml"/>
           <chapter title="Text Class" src="classes/viewclass.rpl?xml=text.xml"/>
-          <chapter title="View Class" src="classes/viewclass.rpl?xml=view.xml"/>
           <chapter title="Window Class" src="classes/viewclass.rpl?xml=window.xml"/>
         </chapter>
 

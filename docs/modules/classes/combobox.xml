@@ -302,20 +302,6 @@
 
   </fields>
   <types>
-    <constants lookup="VWF" comment="View flags.">
-      <const name="WIDTH_RESET">Always reset column widths when the Columns field is set.</const>
-      <const name="NO_SORTING">No user sorting, e.g. in column mode.</const>
-      <const name="SENSITIVE">Sensitive mode will activate child objects when the user single-clicks with the mouse (by default, child activation only occurs with double-clicks).</const>
-      <const name="NO_ICONS">Do not load or show any icons.</const>
-      <const name="NOTIFY_ON_CLEAR">If the view should activate itself when cleared, set this flag. By default, activation normally only occurs when an item is double-clicked or when sensitive mode is enabled.</const>
-      <const name="DRAG_DROP">Enables drag and drop for items in the view. In this mode, multi-select is only possible if the shift or ctrl keys are held while using the mouse.</const>
-      <const name="NO_SELECT">Stop the user from selecting items.</const>
-      <const name="NO_SELECT_JMP">When a new item is selected, the view will jump to that item if it is not completely visible to the user. Setting this flag will turn off this behaviour.</const>
-      <const name="USER_DRAG">Enable drag and drop only if the user prefers it.</const>
-      <const name="AUTO_DESELECT">Deselects a highlighted item when it is activated by mouse click or enter key.</const>
-      <const name="MULTI_SELECT">Allow multiple item selections without having to hold the shift key.</const>
-    </constants>
-
     <constants lookup="MIF" comment="Flags for MenuItems.">
       <const name="SELECTED">The menu item has been selected (checked).</const>
       <const name="EXTENSION">Menu item is an extension.</const>
@@ -351,11 +337,6 @@
       <const name="HIDE">Hide on creation, or object is currently hidden.</const>
     </constants>
 
-    <constants lookup="SO" comment="Direction options">
-      <const name="HORIZONTAL"/>
-      <const name="VERTICAL"/>
-    </constants>
-
     <constants lookup="CMF" comment="ComboBox flags.">
       <const name="AUTO_COMPLETE">When in edit mode, this option helps the user by auto-completing text.</const>
       <const name="EDIT">Enable edit mode, which allows the user to write free-text in the combobox.</const>
@@ -373,11 +354,6 @@
       <const name="AUDIO">An audio clip that is recognised by the Sound class (such as wav's and mp3's).</const>
       <const name="IMAGE">Images that are recognised by the Picture class may be stored as this type (such as jpeg's and png files).</const>
       <const name="OBJECT">An object that has been deserialised into binary form.</const>
-    </constants>
-
-    <constants lookup="SD" comment="Scroll directions.">
-      <const name="NEGATIVE"/>
-      <const name="POSITIVE"/>
     </constants>
 
     <constants lookup="TXF" comment="Flags for the Text class.">
@@ -408,20 +384,6 @@
       <const name="COMMANDLINE">Synonym for AUTO_CLEAR | EDIT | HISTORY</const>
     </constants>
 
-    <constants lookup="SBF" comment="Scrollbar flags.">
-      <const name="CONSTANT">Ensures that the scrollbar is always on display.</const>
-      <const name="RELATIVE">Enables relative scrolling (movement is reported relative to the current slider position rather than in absolute coordinates).</const>
-      <const name="HIDE">Hide on creation, or scrollbar is currently hidden.</const>
-      <const name="SLIDER">If set, the scrollbar behaves as a slider.  In this mode, the size of the draggable slider has a fixed size (by default the slider is proportional).</const>
-      <const name="NO_INTERSECT">Do not attempt to intersect with adjacent scrollbars.</const>
-    </constants>
-
-    <constants lookup="AXIS" comment="Axis options.  This determines the axis that is signalled when the slider is moved (note that it is feasible for a horizontal scrollbar to signal the Y axis, if this is desired by the client)">
-      <const name="X"/>
-      <const name="Y"/>
-      <const name="Z"/>
-    </constants>
-
     <constants lookup="TF" comment="Flags for the TabFocus class.">
       <const name="LOCAL_FOCUS">In this mode, the user's point of focus must match the monitored Surface for the tabfocus to function.</const>
       <const name="CHILD_FOCUS">In this mode, the user's point of focus must match the monitored Surface or one of its immediate children for the tabfocus to function.</const>
@@ -434,43 +396,9 @@
       <const name="INSIDE">The cursor is inside the button's area</const>
     </constants>
 
-    <constants lookup="SLF" comment="Flags for SelectCallback">
-      <const name="ACTIVE">The most recently active tag has changed.</const>
-      <const name="MANUAL">Item was manually selected (by the program, not the user).</const>
-      <const name="SELECTED">A tag has been selected and is now highlighted.</const>
-      <const name="INVERTED">Change is due to an inverted selection.</const>
-      <const name="KEYPRESS">Item was selected by a keypress.</const>
-      <const name="CLICK">Item was clicked - see ClickX and ClickY for coordinates.</const>
-      <const name="MULTIPLE">Multiple items were selected.</const>
-      <const name="MOVED">Change is due to the item being moved.</const>
-    </constants>
-
     <constants lookup="CLF" comment="Clipboard flags">
       <const name="DRAG_DROP">Enables drag and drop mode.  The clipboard content will be private and not share data with the host system in this mode.</const>
       <const name="HOST">This indicator is automatically set when a clipboard was created due to incoming content from the host system.</const>
-    </constants>
-
-    <constants lookup="VGF" comment="Graphics options (normally defined by the template)">
-      <const name="OUTLINE_TITLE">Draw black outline around title text.</const>
-      <const name="NO_BORDER">Do not draw a border around column headers when in table mode.</const>
-      <const name="DRAW_TABLE">Draw the view as a table (the basic format is the same, graphics are different).</const>
-      <const name="GROUP_SHADOW">Draw a shadow underneath the group graphics headers.</const>
-      <const name="STRIPES">Draw stripes in group titles.</const>
-      <const name="HAIRLINES">Draw a hairline between each column.</const>
-      <const name="BRANCHES">Draw grey tree branches.</const>
-      <const name="ALT_GROUP">Alternate the group header graphics.</const>
-      <const name="LINE_BREAKS">Draw a line break between each view item.</const>
-    </constants>
-
-    <constants lookup="VIEW" comment="List options">
-      <const name="LIST">Standard list view with small icons, arranged from top to bottom.</const>
-      <const name="ICON">Similar to list-view but with large icons, arranged from left to right.</const>
-      <const name="TREE">Tree mode can be used if the items are arranged in a hierarchy, where items can be embedded within items.  The tree view provides small buttons that the user can click to expand the tree and view hidden items.</const>
-      <const name="COLUMN">Long list with detail columns.</const>
-      <const name="LONG_LIST">This type is the same as the LIST view but the items will not wrap back to the top of the view when the bottom edge of the surface is encountered.</const>
-      <const name="GROUP_TREE">Similar to tree view, but root level nodes are drawn as a headline.</const>
-      <const name="DOCUMENT">Document mode allows view data to be passed to a document object for display.  You are required to provide a document object that is pre-loaded with a template capable of processing input from the view object.  Refer to the Document field for more information.</const>
-      <const name="COLUMN_TREE">This mode combines the column and tree modes.  The view displays the layout and style of normal column mode, but the first column is used to display and manage a tree hierarchy.  The tree can be expanded and collapsed just as in the standard tree mode.</const>
     </constants>
 
     <constants lookup="CEF">
@@ -494,19 +422,6 @@
       <const name="NO_HIDE">Activate() is prevented from hiding the menu.</const>
       <const name="POPUP">Locks the position of the menu to the mouse pointer.</const>
       <const name="NO_TRANSLATION">Do not translate menu text to the user's native language.</const>
-    </constants>
-
-    <constants lookup="SCF" comment="Scroll flags.">
-      <const name="FIXED">Fixes the scroll slider to a specific size (non-proportional mode of operation).</const>
-      <const name="REVERSE">When reporting the position of the slider, the value will always be reversed - so positive values will be negative and vice versa.  Reporting for relative position changes are also affected.</const>
-      <const name="VERTICAL">The scrollbar is oriented vertically.</const>
-      <const name="RELATIVE">Forces relative scrolling through the Scroll action rather than the default ScrollToPoint.</const>
-      <const name="AUTO_ACTIVATE">The scroll object automatically activates itself whenever the position of the slider is changed.</const>
-      <const name="AUTO_HIDE">Automatically hide the scrollbar when possible.</const>
-      <const name="INVISIBLE">Keep scrollbar invisible.</const>
-      <const name="HORIZONTAL">The scrollbar is oriented horizontally.</const>
-      <const name="SLIDER">Changes the mode of operation so that the slider is non-proportional.  The size of the view is also set to a fixed value and resizing of the parent surface no longer affects the scroll values.</const>
-      <const name="MESSAGE">Use used delay messages for activation of children.</const>
     </constants>
 
   </types>

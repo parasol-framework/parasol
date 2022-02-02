@@ -12,7 +12,7 @@
     <idstring>ID_SURFACE</idstring>
     <category>GUI</category>
     <include>modules/surface.h</include>
-    <copyright>Paul Manias © 2000-2020</copyright>
+    <copyright>Paul Manias © 2000-2022</copyright>
     <description>
 <p>The Surface class is used to manage the positioning, drawing and interaction with layered display interfaces.  It is supplemented by many classes in the GUI category that either draw graphics to or manage user interactivity with the surface objects that you create.</p>
 <p>Graphically, each surface object represents a rectangular area of space on the display.  The biggest surface object, often referred to as the 'Master' represents the screen space, and is as big as the display itself, if not larger. Surface objects can be placed inside the master and are typically known as children.  You can place more surface objects inside of these children, causing a hierarchy to develop that consists of many objects that are all working together on the display.</p>
@@ -123,9 +123,9 @@ the surface area first).</li>
       <name>Scroll</name>
       <comment>Scrolls surface content to a new position.</comment>
       <description>
-<p>Calling the Scroll action on a surface object with the SCROLL_CONTENT flag set will cause it to move its contents in the requested direction.  The Surface class uses the Move action to achieve scrolling, so any objects that do not support Move will remain at their given position.  Everything else will be shifted by the same amount of units as specified in the XChange, YChange and ZChange arguments.</p>
+<p>Calling the Scroll action on a surface object with the <code>SCROLL_CONTENT</code> flag set will cause it to move its contents in the requested direction.  The Surface class uses the Move action to achieve scrolling, so any objects that do not support Move will remain at their given position.  Everything else will be shifted by the same amount of units as specified in the XChange, YChange and ZChange arguments.</p>
 <p>Some objects may support a 'sticky' field that can be set to TRUE to prevent them from being moved.  This feature is present in the Surface class, amongst others.</p>
-<p>If the surface object does not have the SCROLL_CONTENT flag set, the call will flow through to any objects that may be listening for the Scroll action on the surface.</p>
+<p>If the surface object does not have the <code>SCROLL_CONTENT</code> flag set, the call will flow through to any objects that may be listening for the Scroll action on the surface.</p>
       </description>
     </action>
 
@@ -249,6 +249,20 @@ the surface area first).</li>
       <result>
         <error code="NullArgs">Function call missing argument value(s)</error>
         <error code="AccessMemory">Unable to access internal surface list.</error>
+        <error code="Okay">Operation successful.</error>
+      </result>
+    </method>
+
+    <method>
+      <name>ScheduleRedraw</name>
+      <comment>Schedules a redraw operation for the next frame.</comment>
+      <prototype>ERROR drwScheduleRedraw(OBJECTPTR Object)</prototype>
+      <description>
+<p>Use ScheduleRedraw to indicate that a surface needs to be drawn to the display.  The surface and all child surfaces will be drawn within the next frame cycle (typically 1/60th of a second).  All manual draw operations for the target surface are ignored until the scheduled operation is completed.</p>
+<p>Scheduling is ideal in situations where a cluster of redraw events may occur within a tight time period, and it would be inefficient to draw those changes to the display individually.</p>
+<p>Note that redraw schedules do not 'see each other', meaning if a surface and a child are both scheduled, this will trigger two redraw operations when one would suffice.  It is the client's responsibility to schedule the most top-level surface only.</p>
+      </description>
+      <result>
         <error code="Okay">Operation successful.</error>
       </result>
     </method>
