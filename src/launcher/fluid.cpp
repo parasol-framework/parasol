@@ -15,8 +15,8 @@ Please refer to it for further information on licensing.
 
 CSTRING ProgName      = "Fluid";
 CSTRING ProgAuthor    = "Paul Manias";
-CSTRING ProgDate      = "September 2020";
-CSTRING ProgCopyright = "Copyright Paul Manias © 2000-2020";
+CSTRING ProgDate      = "February 2022";
+CSTRING ProgCopyright = "Copyright Paul Manias © 2000-2022";
 LONG  ProgDebug = 0;
 FLOAT ProgCoreVersion = VER_CORE;
 

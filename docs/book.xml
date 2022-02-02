@@ -4,11 +4,11 @@
   <info>
     <title>Parasol Framework</title>
     <author>Paul Manias</author>
-    <published>March 2017</published>
-    <version>March 2017</version>
+    <published>February 2022</published>
+    <version>February 2022</version>
     <keywords>manual, sdk, development, kit, software, api, library, tutorial, help</keywords>
     <description>A complete software development guide for the Parasol Framework.</description>
-    <copyright>Paul Manias © 1996 - 2017</copyright>
+    <copyright>Paul Manias © 1996 - 2022</copyright>
   </info>
 
   <chapterlist>
@@ -174,7 +174,7 @@
           <chapter title="Task Class" src="classes/viewclass.rpl?xml=task.xml"/>
           <chapter title="Time Class" src="classes/viewclass.rpl?xml=time.xml"/>
           <chapter title="Timer Class" src="classes/viewclass.rpl?xml=timer.xml"/>
-          <chapter title="USBDevice Class" src="classes/viewclass.rpl?xml=usbdevice.xml"/>
+          <!--<chapter title="USBDevice Class" src="classes/viewclass.rpl?xml=usbdevice.xml"/>-->
         </chapter>
 
         <chapter title="Tools" src="classes/index.rpl?category=Tool">
@@ -197,7 +197,7 @@
         <!--<chapter title="Smartcard Module" src="modules/viewmodule.rpl?xml=smartcard.xml"/>-->
         <chapter title="Strings Module" src="modules/viewmodule.rpl?xml=strings.xml"/>
         <chapter title="Surface Module" src="modules/viewmodule.rpl?xml=surface.xml"/>
-        <chapter title="USB Module" src="modules/viewmodule.rpl?xml=usb.xml"/>
+        <!--<chapter title="USB Module" src="modules/viewmodule.rpl?xml=usb.xml"/>-->
         <chapter title="Vector Module" src="modules/viewmodule.rpl?xml=vector.xml"/>
       </chapter>
     </chapter>

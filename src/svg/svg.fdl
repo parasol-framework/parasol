@@ -1,6 +1,6 @@
 --$FLUID:Include
 
-module({ name="SVG", copyright="Paul Manias © 2010-2021", version=1.0 }, function()
+module({ name="SVG", copyright="Paul Manias © 2010-2022", version=1.0 }, function()
   flags("SVF", { comment="SVG flags." },
     "AUTOSCALE: In auto-resize mode, vector dimensions are scaled to the width and height of the vector page.  PageWidth and PageHeight must be set in Vector for this.",
     "ALPHA: Generate an alpha channel in the rendered image.")

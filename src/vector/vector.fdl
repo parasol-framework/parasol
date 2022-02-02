@@ -1,6 +1,6 @@
 --$FLUID:Include
 
-module({ name="Vector", copyright="Paul Manias © 2010-2021", version=1.0 }, function()
+module({ name="Vector", copyright="Paul Manias © 2010-2022", version=1.0 }, function()
   c_include("<parasol/modules/display.h>")
 
   restrict(function()

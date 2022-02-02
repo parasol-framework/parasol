@@ -4,7 +4,7 @@
 // itself, generated from StrHash().  Values are 64-bit as the upper 32 bits contain special flags when used with
 // tag-based functions.
 
-header({ path="system/fields", copyright="Paul Manias © 1996-2020" }, function()
+header({ path="system/fields", copyright="Paul Manias © 1996-2022" }, function()
   hash("FID", "0x%sLL",
     "Category",
     "FileName",

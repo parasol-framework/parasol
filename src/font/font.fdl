@@ -1,6 +1,6 @@
 --$FLUID:Include
 
-module({ name="Font", copyright="Paul Manias © 1998-2020", version=1.0 }, function()
+module({ name="Font", copyright="Paul Manias © 1998-2022", version=1.0 }, function()
   restrict(function()
     loadFile(glPath .. 'common-graphics.fdl')
   end)

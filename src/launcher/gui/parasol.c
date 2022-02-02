@@ -18,8 +18,8 @@ Please refer to it for further information on licensing.
 
 CSTRING ProgName      = "Parasol";
 CSTRING ProgAuthor    = "Paul Manias";
-CSTRING ProgDate      = "March 2017";
-CSTRING ProgCopyright = "Paul Manias © 2000-2017";
+CSTRING ProgDate      = "February 2022";
+CSTRING ProgCopyright = "Paul Manias © 2000-2022";
 LONG   ProgDebug = 0;
 FLOAT  ProgCoreVersion = VER_CORE;
 
