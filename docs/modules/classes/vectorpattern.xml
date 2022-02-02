@@ -12,7 +12,7 @@
     <idstring>ID_VECTORPATTERN</idstring>
     <category>Graphics</category>
     <include>modules/vectorpattern.h</include>
-    <copyright>Paul Manias © 2010-2021</copyright>
+    <copyright>Paul Manias © 2010-2022</copyright>
     <description>
 <p>The VectorPattern class is used by Vector painting algorithms to fill and stroke vectors with pre-rendered patterns. This is achieved by initialising a VectorPattern object with the desired settings and then registering it with a <class name="VectorScene">VectorScene</class> via the <method class="VectorScene">AddDef</method> method.</p>
 <p>Any vector within the target scene will be able to utilise the pattern for filling or stroking by referencing its name through the <class name="Vector" index="Fill">Vector:Fill</class> and <class name="Vector" index="Stroke">Vector:Stroke</class> fields.  For instance 'url(#dots)'.</p>

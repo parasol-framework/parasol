@@ -12,7 +12,7 @@
     <idstring>ID_VECTORVIEWPORT</idstring>
     <category>Graphics</category>
     <include>modules/vectorviewport.h</include>
-    <copyright>Paul Manias © 2010-2021</copyright>
+    <copyright>Paul Manias © 2010-2022</copyright>
     <description>
 <p>This class is used to declare a viewport within a vector scene graph.  A master viewport is required as the first object in a <class name="VectorScene">VectorScene</class> and it must contain all vector graphics content.</p>
 <p>The size of the viewport is initially set to (0,0,100%,100%) so as to be all inclusive.  Setting the <field>X</field>, <field>Y</field>, <field>Width</field> and <field>Height</field> fields will determine the position and clipping of the displayed content (the 'target area').  The <field>ViewX</field>, <field>ViewY</field>, <field>ViewWidth</field> and <field>ViewHeight</field> fields declare the viewbox ('source area') that will be sampled for the target.</p>
@@ -82,7 +82,6 @@
       <access read="G" write="S">Get/Set</access>
       <type lookup="DMF">INT</type>
       <description>
-<p>The supported dimension flags are currently limited to: FIXED_X, FIXED_Y, FIXED_WIDTH, FIXED_HEIGHT, RELATIVE_X, RELATIVE_Y, RELATIVE_WIDTH, RELATIVE_HEIGHT.</p>
 <types lookup="DMF"/>
       </description>
     </field>

@@ -14,7 +14,7 @@
     <idstring>ID_SOUND</idstring>
     <category>Audio</category>
     <include>modules/sound.h</include>
-    <copyright>Paul Manias © 2002-2020</copyright>
+    <copyright>Paul Manias © 2002-2022</copyright>
     <description>
 <p>The Sound class provides a simple interface for any program to load and play audio sample files. By default all loading and saving of sound data is in WAVE format.  Other audio formats can be supported through Sound class extensions, if available.</p>
 <p>Smart, transparent streaming is enabled by default.  If an attempt is made to play an audio file that is considerably large (relative to system resources), it will be streamed from the source location.  You can alter or force streaming behaviour through the <field>Stream</field> field.</p>

@@ -12,7 +12,7 @@
     <idstring>ID_SCINTILLA</idstring>
     <category>Tool</category>
     <include>modules/scintilla.h</include>
-    <copyright>Paul Manias © 2005-2020</copyright>
+    <copyright>Paul Manias © 2005-2022</copyright>
     <description>
 <p>The Scintilla class provides advanced text editing capabilities that are suitable for modifying text files of any kind, as well as simple user input features for text input boxes.  The code is based on the Scintilla project at http://scintilla.org and it may be useful to study the official Scintilla documentation for further insight into its capabilities.</p></description>
     <source>
@@ -340,12 +340,6 @@
     </field>
 
     <field>
-      <name>HScroll</name>
-      <access read="R" write="S">Read/Set</access>
-      <type>OBJECTID</type>
-    </field>
-
-    <field>
       <name>LeftMargin</name>
       <comment>The amount of white-space at the left side of the page.</comment>
       <access read="R" write="S">Read/Set</access>
@@ -424,12 +418,6 @@
     </field>
 
     <field>
-      <name>ScrollTarget</name>
-      <access read="R" write="I">Read/Init</access>
-      <type>OBJECTID</type>
-    </field>
-
-    <field>
       <name>SelectBkgd</name>
       <comment>Defines the background colour of selected text.  Supports alpha blending.</comment>
       <access read="R" write="S">Read/Set</access>
@@ -489,12 +477,6 @@
       <comment>Defines the default colour of foreground text.  Supports alpha blending.</comment>
       <access read="R" write="S">Read/Set</access>
       <type>RGB8</type>
-    </field>
-
-    <field>
-      <name>VScroll</name>
-      <access read="R" write="S">Read/Set</access>
-      <type>OBJECTID</type>
     </field>
 
     <field>

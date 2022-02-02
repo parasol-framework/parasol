@@ -12,7 +12,7 @@
     <idstring>ID_VECTORSHAPE</idstring>
     <category>Graphics</category>
     <include>modules/vectorshape.h</include>
-    <copyright>Paul Manias © 2010-2021</copyright>
+    <copyright>Paul Manias © 2010-2022</copyright>
     <description>
 <p>The VectorShape class extends the Vector class with support for generating paths with the Superformula algorithm by Johan Gielis.  This feature is not part of the SVG standard and therefore should not be used in cases where SVG compliance is a strict requirement.</p>
 <p>The Superformula is documented in detail at Wikipedia: http://en.wikipedia.org/wiki/Superformula</p></description>

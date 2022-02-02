@@ -2,7 +2,7 @@
 #define MODULES_HTTP 1
 
 // Name:      http.h
-// Copyright: Paul Manias © 2005-2020
+// Copyright: Paul Manias © 2005-2022
 // Generator: idl-c
 
 #ifndef MAIN_H

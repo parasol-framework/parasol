@@ -14,10 +14,10 @@
     <idstring>ID_FONT</idstring>
     <category>Graphics</category>
     <include>modules/font.h</include>
-    <copyright>Paul Manias © 1998-2020</copyright>
+    <copyright>Paul Manias © 1998-2022</copyright>
     <description>
 <p>The Font class is provided for the purpose of rendering strings to Bitmap graphics. It supports standard effects such as bold, italic and underlined text, along with extra features such as adjustable spacing, word alignment and outlining. Fixed-point bitmap fonts are supported through the Windows .fon file format and TrueType font files are supported for scaled font rendering.</p>
-<p>Fonts must be stored in the "fonts:" directory in order to be recognised and either in the "fixed" or "truetype" sub-directories as appropriate.  The process of font installation and file management is managed by functions supplied in the Font module.</p>
+<p>Fonts must be stored in the <code>fonts:</code> directory in order to be recognised and either in the "fixed" or "truetype" sub-directories as appropriate.  The process of font installation and file management is managed by functions supplied in the Font module.</p>
 <p>The Font class includes full support for the unicode character set through its support for UTF-8.  This gives you the added benefit of being able to support international character sets with ease, but you must be careful not to use character codes above #127 without being sure that they follow UTF-8 guidelines.  Find out more about UTF-8 at this <a href="http://www.cl.cam.ac.uk/~mgk25/unicode.html">web page</a>.</p>
 <p>Initialisation of a new font object can be as simple as declaring its <field>Point</field> size and <field>Face</field> name.  Font objects can be difficult to alter post-initialisation, so all style and graphical selections must be defined on creation.  For example, it is not possible to change styling from regular to bold format dynamically.  To support multiple styles of the same font, you need to create a font object for every style that you need to support.  Basic settings such as colour, the font string and text positioning are not affected by these limitations.</p>
 <p>To draw a font string to a Bitmap object, start by setting the <field>Bitmap</field> and <field>String</field> fields.  The <field>X</field> and <field>Y</field> fields determine string positioning and you can also use the <field>Align</field> field to position a string to the right or center of the surface area.</p>
@@ -40,7 +40,7 @@
       <name>Draw</name>
       <comment>Draws a font to a Bitmap.</comment>
       <description>
-<p>When you are ready to draw a font to a Bitmap, use the Draw action. Drawing will start from the coordinates given in the <field>X</field> and <field>Y</field> fields, using the characters in the font <field>String</field>.  The result of calling Draw will depend on the type of Font and its configuration.</p>
+<p>Draws a font to a target Bitmap, starting at the coordinates of <field>X</field> and <field>Y</field>, using the characters in the font <field>String</field>.</p>
       </description>
       <result>
         <error code="FieldNotSet">The Bitmap and/or String field has not been set.</error>
@@ -68,7 +68,7 @@
       <access read="R" write="W">Read/Write</access>
       <type>INT</type>
       <description>
-<p>If the VERTICAL or TOP alignment options are used in the <field>Align</field> field, the AlignHeight should be set so that the alignment of the font string can be correctly calculated.  If the AlignHeight is not defined, the target <field>Bitmap</field>'s height will be used when computing alignment.</p>
+<p>If the <code>VERTICAL</code> or <code>TOP</code> alignment options are used in the <field>Align</field> field, the AlignHeight should be set so that the alignment of the font string can be correctly calculated.  If the AlignHeight is not defined, the target <field>Bitmap</field>'s height will be used when computing alignment.</p>
       </description>
     </field>
 
@@ -78,7 +78,7 @@
       <access read="R" write="W">Read/Write</access>
       <type>INT</type>
       <description>
-<p>If the HORIZONTAL or RIGHT alignment options are used in the <field>Align</field> field, the AlignWidth should be set so that the alignment of the font string can be correctly calculated.  If the AlignWidth is not defined, the target <field>Bitmap</field>'s width will be used when computing alignment.</p>
+<p>If the <code>HORIZONTAL</code> or <code>RIGHT</code> alignment options are used in the <field>Align</field> field, the AlignWidth should be set so that the alignment of the font string can be correctly calculated.  If the AlignWidth is not defined, the target <field>Bitmap</field>'s width will be used when computing alignment.</p>
       </description>
     </field>
 
@@ -175,8 +175,8 @@
       <access read="R" write="S">Read/Set</access>
       <type>STRING</type>
       <description>
-<p>The name of the face that you wish to use for a font must be specified here.  If this field is not set then the initialisation process will use the user's preferred face.  A list of available faces can be obtained from the Font module's <function module="Font">GetList</function> function.</p>
-<p>For convenience, the face string can also be extended with extra parameters so that you can define point size and style information at the same time when writing this field.  Extra parameters are delimited with the colon character and must follow a set order defined as <code>face:pointsize:style:colour</code>.</p>
+<p>The name of an installed font face must be specified here for initialisation.  If this field is not set then the initialisation process will use the user's preferred face.  A list of available faces can be obtained from the Font module's <function module="Font">GetList</function> function.</p>
+<p>For convenience, the face string can also be extended with extra parameters so that the point size and style are defined at the same time.  Extra parameters are delimited with the colon character and must follow a set order defined as <code>face:pointsize:style:colour</code>.</p>
 <p>Here are some examples:</p>
 <pre>Open Sans:12:Bold Italic:#ff0000
 Courier:10.6
@@ -295,8 +295,8 @@ Charter:120%::255,128,255
       <access read="R" write="W">Read/Write</access>
       <type>INT</type>
       <description>
-<p>This field defines the amount of space between each line that is printed with a font object.  It is set automatically during initialisation to reflect the recommended distance between each line.   You can increase or decrease this value to make finer adjustments to the line spacing.  If negative, the text will be printed in a reverse vertical direction with each new line.</p>
-<p>If you set this field prior to initialisation, the value that you set will be added to the font's normal line-spacing, instead of over-riding it.  For instance, setting the LineSpacing to 2 will result in an extra 2 pixels being added to the font's spacing.</p>
+<p>This field defines the amount of space between each line that is printed with a font object.  It is set automatically during initialisation to reflect the recommended distance between each line.   The client can increase or decrease this value to make finer adjustments to the line spacing.  If negative, the text will be printed in a reverse vertical direction with each new line.</p>
+<p>If set prior to initialisation, the value will be added to the font's normal line-spacing instead of over-riding it. For instance, setting the LineSpacing to 2 will result in an extra 2 pixels being added to the font's spacing.</p>
       </description>
     </field>
 
@@ -316,7 +316,7 @@ Charter:120%::255,128,255
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>This field determines the translucency level of a font graphic.  The default setting is 100%, which means that the font will not be translucent.  Any other value that you set here will alter the impact of a font's graphic over the destination Bitmap.  High values will retain the boldness of the font, while low values can render it close to invisible.</p>
+<p>This field determines the translucency level of a font graphic.  The default setting is 100%, which means that the font will not be translucent.  Any other value set here will alter the impact of a font's graphic over the destination Bitmap.  High values will retain the boldness of the font, while low values can render it close to invisible.</p>
 <p>Please note that the use of translucency will always have an impact on the time it normally takes to draw a font.</p>
       </description>
     </field>
@@ -350,7 +350,7 @@ Charter:120%::255,128,255
       <description>
 <p>The point size of a font defines the size of a font, relative to other point sizes for a particular font face.  For example, Arial point 8 is half the size of Arial point 16.  The point size between font families cannot be compared accurately due to designer discretion when it comes to determining font size.  For accurate point size in terms of pixels, please refer to the Height field.</p>
 <p>The unit of measure for point size is dependent on the target display.  For video displays, the point size translates directly into pixels.  When printing however, point size will translate to a certain number of dots on the page (the exact number of dots will depend on the printer device and final DPI).</p>
-<p>The Point field also supports proportional sizing based on the default value set by the system or user.  For instance if a Point value of 150% is specified and the default font size is 10, the final point size for the font will be 15. This feature is very important in order to support multiple devices at varying DPI's - i.e. mobile devices.  You can change the global point size for your application by calling SetDefaultSize() in the Font module.</p>
+<p>The Point field also supports proportional sizing based on the default value set by the system or user.  For instance if a Point value of 150% is specified and the default font size is 10, the final point size for the font will be 15. This feature is very important in order to support multiple devices at varying DPI's - i.e. mobile devices.  You can change the global point size for your application by calling <function module="Font">SetDefaultSize</function> in the Font module.</p>
 <p>When setting the point size of a bitmap font, the system will try and find the closest matching value for the requested point size.  For instance, if you request a fixed font at point 11 and the closest size is point 8, the system will drop the font to point 8.  This does not impact upon scalable fonts, which can be measured to any point size.</p>
       </description>
     </field>
@@ -386,7 +386,7 @@ Charter:120%::255,128,255
       <description>
 <p>The style of a font can be selected by setting the Style field.  This comes into effect only if the font actually supports the specified style as part of its graphics set.  If the style is unsupported, the regular styling of the face will be used on initialisation.</p>
 <p>Bitmap fonts are a special case if a bold or italic style is selected.  In this situation the system can automatically convert the font to that style even if the correct graphics set does not exist.</p>
-<p>Typical font styles are "Bold", "Bold Italic", "Italic" and "Regular" (the default).  TrueType fonts can consist of any style that the designer chooses, such as "Narrow" or "Wide", so check the SystemFonts object if you need to analyse available styles.</p>
+<p>Conventional font styles are <code>Bold</code>, <code>Bold Italic</code>, <code>Italic</code> and <code>Regular</code> (the default).  TrueType fonts can consist of any style that the designer chooses, such as <code>Narrow</code> or <code>Wide</code>, so use <function module="Font">GetList</function> to retrieve available style names.</p>
       </description>
     </field>
 
@@ -456,7 +456,7 @@ Charter:120%::255,128,255
       <access read="R" write="W">Read/Write</access>
       <type prototype="ERROR (*WrapCallback)(struct rkFont *, LONG *, LONG *)">FUNCTION *</type>
       <description>
-<p>Customisation of a font's word-wrap behaviour can be achieved by defining a word-wrap callback routine.  If word-wrapping has been enabled via the WORDWRAP flag, the WrapCallback routine will be called when the word-wrap boundary is encountered.  The routine defined in the WrapCallback field must follow this synopsis: <code>ERROR WrapCallback(*Font, STRING String, LONG *X, LONG *Y)</code>.</p>
+<p>Customisation of a font's word-wrap behaviour can be achieved by defining a word-wrap callback routine.  If word-wrapping has been enabled via the <code>WORDWRAP</code> flag, the WrapCallback routine will be called when the word-wrap boundary is encountered.  The routine defined in the WrapCallback field must follow this synopsis: <code>ERROR WrapCallback(*Font, STRING String, LONG *X, LONG *Y)</code>.</p>
 <p>The String value reflects the current position within the font string. The X and Y indicate the coordinates at which the wordwrap has occurred.  It is assumed that the routine will update the coordinates to reflect the position at which the font should continue drawing.  If this is undesirable, returning ERR_NothingDone will cause the the font object to automatically update the coordinates for you.  Returning a value of ERR_Terminate will abort the drawing process early.  All other error codes will abort the process and the given error code will be returned as the draw action's result.</p>
 <p>During the callback routine, legal activities against the font object are limited to the following:  Adjusting the outline, underline and base colours; adjusting the translucency level; adjusting the WrapEdge field. Other types of activity may have a negative impact on the font drawing process.</p>
       </description>

@@ -12,7 +12,7 @@
     <idstring>ID_VECTORPOLYGON</idstring>
     <category>Graphics</category>
     <include>modules/vectorpolygon.h</include>
-    <copyright>Paul Manias © 2010-2021</copyright>
+    <copyright>Paul Manias © 2010-2022</copyright>
     <description>
 <p>The VectorPolygon class provides support for three different types of vector:</p>
 <p>* Closed-point polygons consisting of at least 3 points. * Open polygons consisting of at least 3 points (a 'polyline' in SVG). * Single lines consisting of two points only (a 'line' in SVG).</p>

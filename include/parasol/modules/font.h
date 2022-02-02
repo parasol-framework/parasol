@@ -2,7 +2,7 @@
 #define MODULES_FONT 1
 
 // Name:      font.h
-// Copyright: Paul Manias © 1998-2020
+// Copyright: Paul Manias © 1998-2022
 // Generator: idl-c
 
 #ifndef MAIN_H

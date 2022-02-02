@@ -12,7 +12,7 @@
     <idstring>ID_VECTOR</idstring>
     <category>Graphics</category>
     <include>modules/vector.h</include>
-    <copyright>Paul Manias © 2010-2021</copyright>
+    <copyright>Paul Manias © 2010-2022</copyright>
     <description>
 <p>Vector is an abstract class that is used as a blueprint for other vector classes that provide specific functionality for a vector scene.  At this time the classes are <class name="VectorClip">VectorClip</class>, <class name="VectorEllipse">VectorEllipse</class>, <class name="VectorGroup">VectorGroup</class>, <class name="VectorPath">VectorPath</class>, <class name="VectorPolygon">VectorPolygon</class>, <class name="VectorRectangle">VectorRectangle</class>, <class name="VectorSpiral">VectorSpiral</class>, <class name="VectorText">VectorText</class>, <class name="VectorViewport">VectorViewport</class> and <class name="VectorWave">VectorWave</class>.</p>
 <p>The majority of sub-classes support all of the functionality provided by Vector.  The general exception is that graphics functions will not be supported by non-graphical classes, for instance <class name="VectorGroup">VectorGroup</class> and <class name="VectorViewport">VectorViewport</class> do not produce a vector path and therefore cannot be rendered.</p>
@@ -32,8 +32,7 @@
       <name>Draw</name>
       <comment>Draws the surface associated with the vector.</comment>
       <description>
-<p>Using the Draw action on a specific vector will redraw its area within the <class name="Surface">Surface</class> associated with the <class name="VectorScene">VectorScene</class>.  This is the most optimal method of drawing if it can be assured that changes within the scene are limited to the target vector's boundary.</p>
-<p>Support for restricting the drawing area is not provided and we recommend that no parameters are passed when calling this action.  Internally, drawing is scheduled for the next frame and is not immediate.</p>
+<p>Calling the Draw action on a vector will schedule a redraw of the scene graph if it is associated with a <class name="Surface">Surface</class>. Internally, drawing is scheduled for the next frame and is not immediate.</p>
       </description>
     </action>
 
