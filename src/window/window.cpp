@@ -15,60 +15,6 @@ of the Surface class are inherited by the window, thereby allowing the client to
 fields (such as x, y, width and height) through the window object.
 -END-
 
-STYLE INFORMATION
-
-It is typical to define preferred values for the window coordinates and set the resize parameters.  The window
-margins should also be configured so that it is clear how much space around the edges of the window is for custom
-graphics.  Here is an example:
-
-<pre>
-&lt;values&gt;
-  &lt;resize value="left|bottomleft|bottom|bottomright|right"/&gt;
-  &lt;xcoord value="[=[[self.parent].leftmargin]+10]"/&gt;
-  &lt;ycoord value="[=[[self.parent].topmargin]+10]"/&gt;
-  &lt;resizeborder value="4"/&gt;
-  &lt;topmargin value="22"/&gt;
-  &lt;leftmargin value="6"/&gt;
-  &lt;rightmargin value="6"/&gt;
-  &lt;bottommargin value="6"/&gt;
-&lt;/values&gt;
-</pre>
-
-The bulk of the window graphics are defined in the 'graphics' tag.  You are expected to create graphics objects that
-will be initialised directly to the window's surface.  The surface can be referenced via the [@owner] argument and
-the window referenced through the [@window] argument.  Your script should also take note of the InsideBorder field
-and create a window border if the border has a value of 1.  The following example illustrates:
-
-<pre>
-&lt;graphics&gt;
-  &lt;box colour="[glStyle./colours/@colour]" shadow="[glStyle./colours/@shadow]"
-    highlight="[glStyle./colours/@highlight]" raised/&gt;
-
-  &lt;if statement="[[@window].insideborder] = 1"&gt;
-    &lt;box sunken x="[=[owner.leftmargin]-1]" y="[=[owner.topmargin]-1]" xoffset="[=[owner.rightmargin]-1]"
-      yoffset="[=[owner.bottommargin]-1]" highlight="#dfdfdf" shadow="#202020"/&gt;
-
-    &lt;box sunken x="[=[owner.leftmargin]-2]" y="[=[owner.topmargin]-2]"
-      xoffset="[=[owner.rightmargin]-2]" yoffset="[=[owner.bottommargin]-2]"
-      highlight="#ffffff" shadow="#808080"/&gt;
-  &lt;/if&gt;
-&lt;/graphics&gt;
-</pre>
-
-The window title bar is configured in the 'titlebar' tag.  The title bar should allow the user to drag the window
-around the display and provide a series of gadgets that control the window (such as minimise and maximise buttons).
-You should also define an object that will control the window title.  You will need to communicate with the window
-object for the purpose of determining the titlebar configuration, plus you will need to set certain window fields
-for communication purposes.  For examples on how to generate the titlebar, please refer to your style:window.xml file.
-
-Finally, a number of optional tags may be used for window control purposes.  These tags can contain Fluid scripts that
-will be executed when certain actions occur to the window.  The following table describes the available tags:
-
-<types type="Tag">
-<type name="Maximise">Executed when the Maximise method is called on the window.</>
-<type name="Minimise">Executed when the Minimise method is called on the window.</>
-</table>
-
 *****************************************************************************/
 
 #define PRV_WINDOW
@@ -115,7 +61,6 @@ static ERROR add_window_class(void);
 static void calc_surface_center(objWindow *, LONG *, LONG *);
 static ERROR check_overlap(objWindow *, LONG *, LONG *, LONG *, LONG *);
 static void smart_limits(objWindow *);
-static void draw_border(objWindow *, objSurface *, objBitmap *);
 
 //****************************************************************************
 
@@ -360,6 +305,18 @@ static ERROR WINDOW_Disable(objWindow *Self, APTR Void)
    // See the ActionNotify routine to see what happens when the surface is disabled.
 
    acDisable(Self->Surface);
+   return ERR_Okay;
+}
+
+/*****************************************************************************
+-ACTION-
+Draw: Schedules a redraw for the next frame.
+-END-
+*****************************************************************************/
+
+static ERROR WINDOW_Draw(objWindow *Self, APTR Void)
+{
+   Action(MT_DrwScheduleRedraw, Self->Surface, NULL);
    return ERR_Okay;
 }
 

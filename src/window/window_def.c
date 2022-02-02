@@ -45,6 +45,7 @@ static const struct ActionArray clWindowActions[] = {
    { AC_ActionNotify, (APTR)WINDOW_ActionNotify },
    { AC_Activate, (APTR)WINDOW_Activate },
    { AC_Disable, (APTR)WINDOW_Disable },
+   { AC_Draw, (APTR)WINDOW_Draw },
    { AC_Enable, (APTR)WINDOW_Enable },
    { AC_Focus, (APTR)WINDOW_Focus },
    { AC_Free, (APTR)WINDOW_Free },
