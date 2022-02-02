@@ -177,12 +177,12 @@ static ERROR VECTOR_Disable(objVector *Self, APTR Void)
 -ACTION-
 Draw: Draws the surface associated with the vector.
 
-Using the Draw action on a specific vector will redraw its area within the @Surface associated with the @VectorScene.  This is
-the most optimal method of drawing if it can be assured that changes within the scene are limited to the target vector's boundary.
+Calling the Draw action on a vector will schedule a redraw of the scene graph if it is associated with a @Surface.
+Internally, drawing is scheduled for the next frame and is not immediate.
 
-Support for restricting the drawing area is not provided and we recommend that no parameters are passed when calling
-this action.  Internally, drawing is scheduled for the next frame and is not immediate.
-
+-ERROR-
+Okay
+FieldNotSet: The vector's scene graph is not associated with a Surface.
 -END-
 *****************************************************************************/
 
@@ -195,9 +195,9 @@ static ERROR VECTOR_Draw(objVector *Self, struct acDraw *Args)
       }
 
       if (!Self->BasePath) return ERR_NoData;
-
+#if 0
       // Retrieve bounding box, post-transformations.
-      // TODO: Needs to account for client defined brush stroke widths and stroke scaling.
+      // TODO: Would need to account for client defined brush stroke widths and stroke scaling.
 
       DOUBLE bx1, by1, bx2, by2;
       bounding_rect_single(*Self->BasePath, 0, &bx1, &by1, &bx2, &by2);
@@ -215,8 +215,16 @@ static ERROR VECTOR_Draw(objVector *Self, struct acDraw *Args)
       bx2 += STROKE_WIDTH;
       by2 += STROKE_WIDTH;
 
-      struct acDraw area = { .X = F2T(bx1), .Y = F2T(by1), .Width = F2T(bx2 - bx1), .Height = F2T(by2 - by1) };
-      return ActionMsg(AC_Draw, Self->Scene->SurfaceID, &area);
+      struct drwScheduleRedraw area = { .X = F2T(bx1), .Y = F2T(by1), .Width = F2T(bx2 - bx1), .Height = F2T(by2 - by1) };
+#endif
+
+      objSurface *surface;
+      if (!AccessObject(Self->Scene->SurfaceID, 1000, &surface)) {
+         Action(MT_DrwScheduleRedraw, surface, NULL);
+         ReleaseObject(surface);
+         return ERR_Okay;
+      }
+      else return ERR_AccessObject;
    }
    else {
       parasol::Log log;

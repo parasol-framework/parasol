@@ -243,6 +243,8 @@ static ERROR VIEW_GET_Height(objVectorViewport *Self, Variable *Value)
 {
    DOUBLE val;
 
+   if (Self->Dirty) gen_vector_tree((objVector *)Self);
+
    if (Self->vpDimensions & DMF_FIXED_HEIGHT) { // Working with a fixed dimension
       if (Value->Type & FD_PERCENTAGE) {
          if (Self->ParentView) val = Self->vpFixedHeight * Self->ParentView->vpFixedHeight * 0.01;
@@ -485,6 +487,9 @@ full coverage.
 static ERROR VIEW_GET_Width(objVectorViewport *Self, Variable *Value)
 {
    DOUBLE val;
+
+   if (Self->Dirty) gen_vector_tree((objVector *)Self);
+
    if (Self->vpDimensions & DMF_FIXED_WIDTH) { // Working with a fixed dimension
       if (Value->Type & FD_PERCENTAGE) {
          if (Self->ParentView) val = Self->vpFixedWidth * Self->ParentView->vpFixedWidth * 0.01;
@@ -566,6 +571,8 @@ static ERROR VIEW_GET_X(objVectorViewport *Self, Variable *Value)
 {
    DOUBLE width, value;
 
+   if (Self->Dirty) gen_vector_tree((objVector *)Self);
+
    if (Self->vpDimensions & DMF_FIXED_X) value = Self->vpTargetX;
    else if (Self->vpDimensions & DMF_RELATIVE_X) {
       value = (DOUBLE)Self->vpTargetX * (DOUBLE)Self->ParentView->vpFixedWidth * 0.01;
@@ -625,6 +632,9 @@ static ERROR VIEW_GET_XOffset(objVectorViewport *Self, Variable *Value)
 {
    DOUBLE width;
    DOUBLE value = 0;
+
+   if (Self->Dirty) gen_vector_tree((objVector *)Self);
+
    if (Self->vpDimensions & DMF_FIXED_X_OFFSET) value = Self->vpTargetXO;
    else if (Self->vpDimensions & DMF_RELATIVE_X_OFFSET) {
       value = (DOUBLE)Self->vpTargetXO * (DOUBLE)Self->ParentView->vpFixedWidth * 0.01;
@@ -653,6 +663,7 @@ static ERROR VIEW_GET_XOffset(objVectorViewport *Self, Variable *Value)
 static ERROR VIEW_SET_XOffset(objVectorViewport *Self, Variable *Value)
 {
    DOUBLE val;
+
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR_FieldTypeMismatch;
@@ -685,6 +696,8 @@ together, the height of the viewport is computed on-the-fly and will change in r
 static ERROR VIEW_GET_Y(objVectorViewport *Self, Variable *Value)
 {
    DOUBLE value, height;
+
+   if (Self->Dirty) gen_vector_tree((objVector *)Self);
 
    if (Self->vpDimensions & DMF_FIXED_Y) value = Self->vpTargetY;
    else if (Self->vpDimensions & DMF_RELATIVE_Y) {
@@ -745,6 +758,9 @@ static ERROR VIEW_GET_YOffset(objVectorViewport *Self, Variable *Value)
 {
    DOUBLE height;
    DOUBLE value = 0;
+
+   if (Self->Dirty) gen_vector_tree((objVector *)Self);
+
    if (Self->vpDimensions & DMF_FIXED_Y_OFFSET) value = Self->vpTargetYO;
    else if (Self->vpDimensions & DMF_RELATIVE_Y_OFFSET) {
       value = (DOUBLE)Self->vpTargetYO * (DOUBLE)Self->ParentView->vpFixedHeight * 0.01;

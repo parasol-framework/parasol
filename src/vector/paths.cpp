@@ -2,8 +2,52 @@
 #include "agg_trans_single_path.h"
 
 //****************************************************************************
+
+static objVectorViewport * get_parent_view(objVector *Vector)
+{
+   if (Vector->ParentView) return Vector->ParentView;
+   else {
+      auto scan = get_parent(Vector);
+      while (scan) {
+         if (scan->SubID IS ID_VECTORVIEWPORT) {
+            Vector->ParentView = (objVectorViewport *)scan;
+            return Vector->ParentView;
+         }
+         if (scan->ClassID IS ID_VECTORSCENE) break;
+         else if (scan->ClassID IS ID_VECTOR) scan = ((objVector *)scan)->Parent;
+      }
+   }
+   return NULL;
+}
+
+//****************************************************************************
+// This 'safe' version of gen_vector_path() checks that all parent vectors have been refreshed if they are marked
+// as dirty.
+
+static void gen_vector_tree(objVector *Vector)
+{
+   if (Vector->Dirty) {
+      std::vector<objVector *> list;
+      for (auto scan=Vector->Parent; scan; scan=((objVector *)scan)->Parent) {
+         if (scan->ClassID != ID_VECTOR) break;
+         list.push_back((objVector *)scan);
+      }
+
+      std::for_each(list.rbegin(), list.rend(), [](auto v) {
+         gen_vector_path(v);
+      });
+   }
+
+   gen_vector_path(Vector);
+}
+
+//****************************************************************************
 // (Re)Generates the path for a vector.  Switches off most of the Dirty flag markers.
 // For Viewports, the vpFixed* and boundary field values will all be set.
+//
+// NOTE: If parent vectors are marked at the time of calling this function, any relative values will be
+// computed from old information and likely to produce the wrong result.  Use gen_vector_tree() to avoid
+// such problems.
 
 static void gen_vector_path(objVector *Vector)
 {
@@ -15,17 +59,7 @@ static void gen_vector_path(objVector *Vector)
 
    log.traceBranch("%s: #%d, Dirty: $%.2x, ParentView: #%d", Vector->Head.Class->ClassName, Vector->Head.UniqueID, Vector->Dirty, Vector->ParentView ? Vector->ParentView->Head.UniqueID : 0);
 
-   if (!Vector->ParentView) { // Find the nearest parent viewport if we don't have it already
-      auto scan = get_parent(Vector);
-      while (scan) {
-         if (scan->SubID IS ID_VECTORVIEWPORT) {
-            Vector->ParentView = (objVectorViewport *)scan;
-            break;
-         }
-         if (scan->ClassID IS ID_VECTORSCENE) break;
-         else if (scan->ClassID IS ID_VECTOR) scan = ((objVector *)scan)->Parent;
-      }
-   }
+   auto parent_view = get_parent_view(Vector);
 
    if (Vector->Head.SubID IS ID_VECTORVIEWPORT) {
       auto view = (objVectorViewport *)Vector;
@@ -47,14 +81,14 @@ static void gen_vector_path(objVector *Vector)
          view->vpDimensions |= DMF_FIXED_Y;
       }
 
-      if (Vector->ParentView) {
-         if (Vector->ParentView->vpViewWidth) parent_width = Vector->ParentView->vpViewWidth;
-         else parent_width = Vector->ParentView->vpFixedWidth;
+      if (parent_view) {
+         if (parent_view->vpViewWidth) parent_width = parent_view->vpViewWidth;
+         else parent_width = parent_view->vpFixedWidth;
 
-         if (Vector->ParentView->vpViewHeight) parent_height = Vector->ParentView->vpViewHeight;
-         else parent_height = Vector->ParentView->vpFixedHeight;
+         if (parent_view->vpViewHeight) parent_height = parent_view->vpViewHeight;
+         else parent_height = parent_view->vpFixedHeight;
 
-         parent_id = Vector->ParentView->Head.UniqueID;
+         parent_id = parent_view->Head.UniqueID;
 
          // The user's values for destination (x,y) need to be taken into account. <svg x="" y=""/>
 
@@ -114,7 +148,7 @@ static void gen_vector_path(objVector *Vector)
 
       // The client can force the top-level viewport to be resized by using VPF_RESIZE and defining PageWidth/PageHeight
 
-      if ((!Vector->ParentView) and (Vector->Scene->Flags & VPF_RESIZE)) {
+      if ((!parent_view) and (Vector->Scene->Flags & VPF_RESIZE)) {
          log.trace("VPF_RESIZE enabled, using target size (%.2f %.2f)", parent_width, parent_height);
          target_width  = parent_width;
          target_height = parent_height;

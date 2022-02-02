@@ -131,6 +131,7 @@ static void apply_transition(objVectorTransition *, DOUBLE, agg::trans_affine &)
 static void apply_transition_xy(objVectorTransition *, DOUBLE, DOUBLE *X, DOUBLE *Y);
 static void convert_to_aggpath(std::vector<PathCommand> &Paths, agg::path_storage *BasePath);
 static void gen_vector_path(objVector *);
+static void gen_vector_tree(objVector *);
 static GRADIENT_TABLE * get_fill_gradient_table(objVector &, DOUBLE);
 static GRADIENT_TABLE * get_stroke_gradient_table(objVector &);
 static CSTRING read_numseq(CSTRING Value, ...);
