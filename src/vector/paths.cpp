@@ -1,7 +1,7 @@
 
 #include "agg_trans_single_path.h"
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static objVectorViewport * get_parent_view(objVector *Vector)
 {
@@ -20,7 +20,7 @@ static objVectorViewport * get_parent_view(objVector *Vector)
    return NULL;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // This 'safe' version of gen_vector_path() checks that all parent vectors have been refreshed if they are marked
 // as dirty.
 
@@ -41,7 +41,7 @@ static void gen_vector_tree(objVector *Vector)
    gen_vector_path(Vector);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // (Re)Generates the path for a vector.  Switches off most of the Dirty flag markers.
 // For Viewports, the vpFixed* and boundary field values will all be set.
 //
@@ -402,7 +402,7 @@ static void gen_vector_path(objVector *Vector)
    send_feedback(Vector, FM_PATH_CHANGED);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Apply all transforms in the correct SVG order to a target agg::trans_affine object.  The process starts with the
 // vector passed in to the function, and proceeds upwards through the parent nodes.
 
@@ -446,7 +446,7 @@ static void apply_parent_transforms(objVector *Self, objVector *Start, agg::tran
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Applies a vector's transformations to a trans_affine object, using the order in which they are listed.
 
 static void apply_transforms(VectorTransform *t, DOUBLE X, DOUBLE Y, agg::trans_affine &Transform, WORD *Applied = NULL)
@@ -484,7 +484,7 @@ static void apply_transforms(VectorTransform *t, DOUBLE X, DOUBLE Y, agg::trans_
 
          case VTF_ROTATE:
             DBG_TRANSFORM("Rotate: %.2f %.2f %.2f", t->X, t->Y, t->Angle);
-            if ((t->X) or (t->Y)) {
+            if ((t->X) or (t->Y)) { // Rotate around the specified (x,y) coordinate; to do this we need to translate first.
                Transform.translate(-t->X, -t->Y);
                Transform.rotate(t->Angle * DEG2RAD);
                Transform.translate(t->X, t->Y);
@@ -515,13 +515,12 @@ static void apply_transforms(VectorTransform *t, DOUBLE X, DOUBLE Y, agg::trans_
    if (Applied) *Applied |= type;
 }
 
-/*****************************************************************************
-** Creates a new transformation instruction and returns it for setting additional field values.  If Create is FALSE
-** then an existing transform will be returned if there is a matching type available.
-**
-** Every new transform is inserted at the start of the linked-list so that it receives priority.  This reflects SVG's
-** ordering of transformations.
-*/
+//********************************************************************************************************************
+// Creates a new transformation instruction and returns it for setting additional field values.  If Create is FALSE
+// then an existing transform will be returned if there is a matching type available.
+//
+// Every new transform is inserted at the start of the linked-list so that it receives priority.  This reflects SVG's
+// ordering of transformations.
 
 static VectorTransform * add_transform(objVector *Self, LONG Type)
 {

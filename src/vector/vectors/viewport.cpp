@@ -311,6 +311,8 @@ Choose an overflow option to enforce or disable clipping of the viewport's conte
 Altering the overflow state affects both the X and Y axis.  To set either axis independently, set #OverflowX and
 #OverflowY.
 
+If the viewport's #AspectRatio is set to `SLICE` then it will have priority over the overflow setting.
+
 *****************************************************************************/
 
 static ERROR VIEW_GET_Overflow(objVectorViewport *Self, LONG *Value)
@@ -332,6 +334,7 @@ static ERROR VIEW_SET_Overflow(objVectorViewport *Self, LONG Value)
 OverflowX: Clipping options for the viewport's boundary on the x axis.
 
 Choose an overflow option to enforce or disable clipping of the viewport's content.  The default state is `VISIBLE`.
+If the viewport's #AspectRatio is set to `SLICE` then it will have priority over the overflow setting.
 
 This option controls the x axis only.
 
@@ -355,6 +358,7 @@ static ERROR VIEW_SET_OverflowX(objVectorViewport *Self, LONG Value)
 OverflowY: Clipping options for the viewport's boundary on the y axis.
 
 Choose an overflow option to enforce or disable clipping of the viewport's content.  The default state is `VISIBLE`.
+If the viewport's #AspectRatio is set to `SLICE` then it will have priority over the overflow setting.
 
 This option controls the y axis only.
 

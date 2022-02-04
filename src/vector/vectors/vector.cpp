@@ -363,8 +363,8 @@ static ERROR VECTOR_GetBoundary(objVector *Self, struct vecGetBoundary *Args)
 -METHOD-
 GetTransform: Returns the values of applied transformation effects.
 
-This method returns a VECTOR_TRANSFORM structure for any given transform that has been applied to a vector.  It works
-for MATRIX, TRANSLATE, SCALE, ROTATE and SKEW transformations.  The structure of VECTOR_TRANSFORM is described in the
+This method returns a `VECTOR_TRANSFORM` structure for any given transform that has been applied to a vector.  It works
+for `MATRIX`, `TRANSLATE`, `SCALE`, `ROTATE` and `SKEW` transformations.  The structure of `VECTOR_TRANSFORM` is described in the
 #Transforms field.
 
 If the requested transform is not applied to the vector, the method will fail with an ERR_Search return code.

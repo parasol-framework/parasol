@@ -941,12 +941,12 @@ private:
                DOUBLE ymin = mRenderBase.ymin(), ymax = mRenderBase.ymax();
                DOUBLE x1 = xmin, y1 = ymin, x2 = xmax, y2 = ymax;
 
-               if ((state.mOverflowX IS VOF_HIDDEN) or (state.mOverflowX IS VOF_SCROLL)) {
+               if ((state.mOverflowX IS VOF_HIDDEN) or (state.mOverflowX IS VOF_SCROLL) or (view->vpAspectRatio & ARF_SLICE)) {
                   if (view->vpBX1 > xmin) x1 = view->vpBX1;
                   if (view->vpBX2 < xmax) x2 = view->vpBX2;
                }
 
-               if ((state.mOverflowY IS VOF_HIDDEN) or (state.mOverflowY IS VOF_SCROLL)) {
+               if ((state.mOverflowY IS VOF_HIDDEN) or (state.mOverflowY IS VOF_SCROLL) or (view->vpAspectRatio & ARF_SLICE)) {
                   if (view->vpBY1 > ymin) y1 = view->vpBY1;
                   if (view->vpBY2 < ymax) y2 = view->vpBY2;
                }
