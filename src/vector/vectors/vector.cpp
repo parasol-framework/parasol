@@ -189,11 +189,7 @@ FieldNotSet: The vector's scene graph is not associated with a Surface.
 static ERROR VECTOR_Draw(objVector *Self, struct acDraw *Args)
 {
    if ((Self->Scene) and (Self->Scene->SurfaceID)) {
-      if ((!Self->BasePath) or (Self->Dirty)) {
-         gen_vector_path(Self);
-         Self->Dirty = 0;
-      }
-
+      if ((!Self->BasePath) or (Self->Dirty)) gen_vector_tree((objVector *)Self);
       if (!Self->BasePath) return ERR_NoData;
 #if 0
       // Retrieve bounding box, post-transformations.
@@ -329,42 +325,35 @@ static ERROR VECTOR_GetBoundary(objVector *Self, struct vecGetBoundary *Args)
    if (!Self->Scene) return log.warning(ERR_NotInitialised);
 
    if (Self->GeneratePath) { // Path generation must be supported by the vector.
-      if ((!Self->BasePath) or (Self->Dirty)) {
-         gen_vector_path(Self);
-         Self->Dirty = 0;
+      if ((!Self->BasePath) or (Self->Dirty)) gen_vector_tree((objVector *)Self);
+      if (!Self->BasePath) return ERR_NoData;
+
+      std::array<DOUBLE, 4> bounds = { DBL_MAX, DBL_MAX, -1000000, -1000000 };
+      DOUBLE bx1, by1, bx2, by2;
+
+      if (Args->Flags & VBF_NO_TRANSFORM) {
+         bounding_rect_single(*Self->BasePath, 0, &bx1, &by1, &bx2, &by2);
+         bounds[0] = bx1 + Self->FinalX;
+         bounds[1] = by1 + Self->FinalY;
+         bounds[2] = bx2 + Self->FinalX;
+         bounds[3] = by2 + Self->FinalY;
+      }
+      else {
+         agg::conv_transform<agg::path_storage, agg::trans_affine> path(*Self->BasePath, *Self->Transform);
+         bounding_rect_single(path, 0, &bx1, &by1, &bx2, &by2);
+         bounds[0] = bx1;
+         bounds[1] = by1;
+         bounds[2] = bx2;
+         bounds[3] = by2;
       }
 
-      if (Self->BasePath) {
-         std::array<DOUBLE, 4> bounds = { DBL_MAX, DBL_MAX, -1000000, -1000000 };
-         DOUBLE bx1, by1, bx2, by2;
+      if (Args->Flags & VBF_INCLUSIVE) calc_full_boundary(Self->Child, bounds);
 
-         if (Args->Flags & VBF_NO_TRANSFORM) {
-            bounding_rect_single(*Self->BasePath, 0, &bx1, &by1, &bx2, &by2);
-            bounds[0] = bx1 + Self->FinalX;
-            bounds[1] = by1 + Self->FinalY;
-            bounds[2] = bx2 + Self->FinalX;
-            bounds[3] = by2 + Self->FinalY;
-         }
-         else {
-            agg::conv_transform<agg::path_storage, agg::trans_affine> path(*Self->BasePath, *Self->Transform);
-            bounding_rect_single(path, 0, &bx1, &by1, &bx2, &by2);
-            bounds[0] = bx1;
-            bounds[1] = by1;
-            bounds[2] = bx2;
-            bounds[3] = by2;
-         }
-
-         if (Args->Flags & VBF_INCLUSIVE) {
-            calc_full_boundary(Self->Child, bounds);
-         }
-
-         Args->X      = bounds[0];
-         Args->Y      = bounds[1];
-         Args->Width  = bounds[2] - bounds[0];
-         Args->Height = bounds[3] - bounds[1];
-         return ERR_Okay;
-      }
-      else return ERR_NoData;
+      Args->X      = bounds[0];
+      Args->Y      = bounds[1];
+      Args->Width  = bounds[2] - bounds[0];
+      Args->Height = bounds[3] - bounds[1];
+      return ERR_Okay;
    }
    else return ERR_NotPossible;
 }
@@ -750,11 +739,7 @@ static ERROR VECTOR_PointInPath(objVector *Self, struct vecPointInPath *Args)
    if (!Args) return log.warning(ERR_NullArgs);
 
    if (Self->GeneratePath) {
-      if ((!Self->BasePath) or (Self->Dirty)) {
-         gen_vector_path(Self);
-         Self->Dirty = 0;
-      }
-
+      if ((!Self->BasePath) or (Self->Dirty)) gen_vector_tree((objVector *)Self);
       if (!Self->BasePath) return ERR_NoData;
 
       // Quick check to see if (X,Y) is within the path's boundary.
@@ -1020,57 +1005,52 @@ static ERROR VECTOR_TracePath(objVector *Self, struct vecTracePath *Args)
 
    if ((!Args) or (Args->Callback)) return log.warning(ERR_NullArgs);
 
-   if (Self->Dirty) {
-      gen_vector_path(Self);
-      Self->Dirty = 0;
+   if (Self->Dirty) gen_vector_tree((objVector *)Self);
+   if (!Self->BasePath) return ERR_NoData;
+
+   Self->BasePath->rewind(0);
+
+   DOUBLE x, y;
+   LONG cmd = -1;
+
+  if (Args->Callback->Type IS CALL_STDC) {
+      auto routine = ((void (*)(objVector *, LONG, LONG, DOUBLE, DOUBLE))(Args->Callback->StdC.Routine));
+
+      parasol::SwitchContext context(GetParentContext());
+
+      LONG index = 0;
+      do {
+        cmd = Self->BasePath->vertex(&x, &y);
+        if (agg::is_vertex(cmd)) routine(Self, index++, cmd, x, y);
+      } while (cmd != agg::path_cmd_stop);
    }
+   else if (Args->Callback->Type IS CALL_SCRIPT) {
+      ScriptArg args[] = {
+         { "Vector",  FD_OBJECTID },
+         { "Index",   FD_LONG },
+         { "Command", FD_LONG },
+         { "X",       FD_DOUBLE },
+         { "Y",       FD_DOUBLE }
+      };
+      args[0].Long = Self->Head.UniqueID;
 
-   if (Self->BasePath) {
-      Self->BasePath->rewind(0);
-
-      DOUBLE x, y;
-      LONG cmd = -1;
-
-     if (Args->Callback->Type IS CALL_STDC) {
-         auto routine = ((void (*)(objVector *, LONG, LONG, DOUBLE, DOUBLE))(Args->Callback->StdC.Routine));
-
-         parasol::SwitchContext context(GetParentContext());
-
+      OBJECTPTR script;
+      if ((script = Args->Callback->Script.Script)) {
          LONG index = 0;
          do {
            cmd = Self->BasePath->vertex(&x, &y);
-           if (agg::is_vertex(cmd)) routine(Self, index++, cmd, x, y);
+           if (agg::is_vertex(cmd)) {
+              args[1].Long = index++;
+              args[2].Long = cmd;
+              args[3].Double = x;
+              args[4].Double = y;
+              scCallback(script, Args->Callback->Script.ProcedureID, args, ARRAYSIZE(args), NULL);
+           }
          } while (cmd != agg::path_cmd_stop);
       }
-      else if (Args->Callback->Type IS CALL_SCRIPT) {
-         ScriptArg args[] = {
-            { "Vector",  FD_OBJECTID },
-            { "Index",   FD_LONG },
-            { "Command", FD_LONG },
-            { "X",       FD_DOUBLE },
-            { "Y",       FD_DOUBLE }
-         };
-         args[0].Long = Self->Head.UniqueID;
-
-         OBJECTPTR script;
-         if ((script = Args->Callback->Script.Script)) {
-            LONG index = 0;
-            do {
-              cmd = Self->BasePath->vertex(&x, &y);
-              if (agg::is_vertex(cmd)) {
-                 args[1].Long = index++;
-                 args[2].Long = cmd;
-                 args[3].Double = x;
-                 args[4].Double = y;
-                 scCallback(script, Args->Callback->Script.ProcedureID, args, ARRAYSIZE(args), NULL);
-              }
-            } while (cmd != agg::path_cmd_stop);
-         }
-      }
-
-      return ERR_Okay;
    }
-   else return ERR_NoData;
+
+   return ERR_Okay;
 }
 
 /*****************************************************************************
@@ -1280,8 +1260,6 @@ will not produce the expected behaviour.
 The EnableBkgd option can be enabled on Vector sub-classes @VectorGroup, @VectorPattern and @VectorViewport.  All other
 sub-classes will ignore the option if used.
 -END-
-
-SVG expects support for 'a', 'defs', 'glyph', 'g', 'marker', 'mask', 'missing-glyph', 'pattern', 'svg', 'switch' and 'symbol'.
 
 *****************************************************************************/
 
@@ -1958,11 +1936,7 @@ static ERROR VECTOR_GET_Sequence(objVector *Self, STRING *Value)
 
    if (!Self->GeneratePath) return log.warning(ERR_Mismatch); // Path generation must be supported by the vector.
 
-   if ((!Self->BasePath) or (Self->Dirty)) {
-      gen_vector_path(Self);
-      Self->Dirty = 0;
-   }
-
+   if ((!Self->BasePath) or (Self->Dirty)) gen_vector_tree((objVector *)Self);
    if (!Self->BasePath) return ERR_NoData;
 
    char seq[4096] = "";
@@ -2260,10 +2234,7 @@ static ERROR vector_input_events(objVector *Self, const InputEvent *Events)
 
    std::array<DOUBLE, 4> bounds = { DBL_MAX, DBL_MAX, DBL_MIN, DBL_MIN };
 
-   if (Self->Dirty) {
-      gen_vector_path(Self);
-      Self->Dirty = 0;
-   }
+   if (Self->Dirty) gen_vector_tree((objVector *)Self);
 
    if (Self->Head.SubID IS ID_VECTORVIEWPORT) { // For Viewports, the bounds are pre-computed and transformed for us.
       auto view = (objVectorViewport *)Self;

@@ -151,10 +151,7 @@ graph.  Transforms are taken into consideration when calculating this value.
 
 static ERROR VIEW_GET_AbsX(objVectorViewport *Self, LONG *Value)
 {
-   if (Self->Dirty) {
-      gen_vector_path((objVector *)Self);
-      Self->Dirty = 0;
-   }
+   if (Self->Dirty) gen_vector_tree((objVector *)Self);
 
    *Value = Self->vpBX1;
    return ERR_Okay;
@@ -172,10 +169,7 @@ graph.  Transforms are taken into consideration when calculating this value.
 
 static ERROR VIEW_GET_AbsY(objVectorViewport *Self, LONG *Value)
 {
-   if (Self->Dirty) {
-      gen_vector_path((objVector *)Self);
-      Self->Dirty = 0;
-   }
+   if (Self->Dirty) gen_vector_tree((objVector *)Self);
 
    *Value = Self->vpBY1;
    return ERR_Okay;
