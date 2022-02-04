@@ -2385,21 +2385,6 @@ static ERROR vector_keyboard_events(objVector *Self, const evKey *Event)
 
 //****************************************************************************
 
-static const FieldDef clFlags[] = {
-   { "Disabled", VF_DISABLED },
-   { "HasFocus", VF_HAS_FOCUS },
-   { NULL, 0 }
-};
-
-static const FieldDef clTransformFlags[] = {
-   { "Matrix",    VTF_MATRIX },
-   { "Translate", VTF_TRANSLATE },
-   { "Scale",     VTF_SCALE },
-   { "Rotate",    VTF_ROTATE },
-   { "Skew",      VTF_SKEW },
-   { NULL, 0 }
-};
-
 static const FieldDef clMorphFlags[] = {
    { "Stretch",     VMF_STRETCH },
    { "AutoSpacing", VMF_AUTO_SPACING },
@@ -2446,18 +2431,7 @@ static const FieldDef clFillRule[] = {
    { NULL, 0 }
 };
 
-static const FieldDef clVisibility[] = {
-   { "Hidden",   VIS_HIDDEN },
-   { "Visible",  VIS_VISIBLE },
-   { "Collapse", VIS_COLLAPSE },
-   { "Inherit",  VIS_INHERIT },
-   { NULL, 0 }
-};
-
-static const FieldDef clFeedbackMask[] = {
-   { "PathChanged", FM_PATH_CHANGED },
-   { NULL, 0 }
-};
+#include "vector_def.c"
 
 static const FieldArray clVectorFields[] = {
    { "Child",            FDF_OBJECT|FD_R,              ID_VECTOR, NULL, NULL },
@@ -2473,11 +2447,11 @@ static const FieldArray clVectorFields[] = {
    { "MiterLimit",       FDF_DOUBLE|FD_RW,             0, NULL, (APTR)VECTOR_SET_MiterLimit },
    { "InnerMiterLimit",  FDF_DOUBLE|FD_RW,             0, NULL, NULL },
    { "DashOffset",       FDF_DOUBLE|FD_RW,             0, NULL, NULL },
-   { "ActiveTransforms", FDF_LONGFLAGS|FD_R,           (MAXINT)&clTransformFlags, NULL, NULL },
+   { "ActiveTransforms", FDF_LONGFLAGS|FD_R,           (MAXINT)&clVectorActiveTransforms, NULL, NULL },
    { "DashTotal",        FDF_LONG|FDF_R,               0, NULL, NULL },
-   { "Visibility",       FDF_LONG|FDF_LOOKUP|FDF_RW,   (MAXINT)&clVisibility, NULL, NULL },
-   { "Flags",            FDF_LONGFLAGS|FDF_RI,         (MAXINT)&clFlags, NULL, NULL },
-   { "FeedbackMask",     FDF_LONGFLAGS|FDF_RW,         (MAXINT)&clFeedbackMask, NULL, NULL },
+   { "Visibility",       FDF_LONG|FDF_LOOKUP|FDF_RW,   (MAXINT)&clVectorVisibility, NULL, NULL },
+   { "Flags",            FDF_LONGFLAGS|FDF_RI,         (MAXINT)&clVectorFlags, NULL, NULL },
+   { "FeedbackMask",     FDF_LONGFLAGS|FDF_RW,         (MAXINT)&clVectorFeedbackMask, NULL, NULL },
    // Virtual fields
    { "ClipRule",     FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clFillRule, (APTR)VECTOR_GET_ClipRule, (APTR)VECTOR_SET_ClipRule },
    { "DashArray",    FDF_VIRTUAL|FDF_ARRAY|FDF_DOUBLE|FD_RW, 0, (APTR)VECTOR_GET_DashArray, (APTR)VECTOR_SET_DashArray },
@@ -2501,8 +2475,6 @@ static const FieldArray clVectorFields[] = {
    { "InnerJoin",    FDF_VIRTUAL|FD_LONG|FD_LOOKUP|FDF_RW,   (MAXINT)&clInnerJoin, (APTR)VECTOR_GET_InnerJoin, (APTR)VECTOR_SET_InnerJoin },
    END_FIELD
 };
-
-#include "vector_def.c"
 
 static ERROR init_vector(void)
 {

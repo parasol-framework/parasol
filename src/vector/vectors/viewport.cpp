@@ -204,9 +204,6 @@ static ERROR VIEW_SET_AspectRatio(objVectorViewport *Self, LONG Value)
 Dimensions: Dimension flags define whether individual dimension fields contain fixed or relative values.
 Lookup: DMF
 
-The supported dimension flags are currently limited to: FIXED_X, FIXED_Y, FIXED_WIDTH, FIXED_HEIGHT, RELATIVE_X,
-RELATIVE_Y, RELATIVE_WIDTH, RELATIVE_HEIGHT.
-
 <types lookup="DMF"/>
 
 *****************************************************************************/

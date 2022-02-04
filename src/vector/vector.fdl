@@ -475,7 +475,7 @@ module({ name="Vector", copyright="Paul Manias © 2010-2022", version=1.0 }, fun
     double MiterLimit       # Imposes a limit on the ratio of the miter length to the StrokeWidth.
     double InnerMiterLimit  # A special limit to apply when the MITER_ROUND line-join effect is in use.
     double DashOffset       # For the DashArray, applies an initial dash offset.
-    int ActiveTransforms    # Indicates the transforms that are currently applied to a vector.
+    int(VTF) ActiveTransforms # Indicates the transforms that are currently applied to a vector.
     int DashTotal           # The total number of values in the DashArray.
     int(VIS) Visibility     # Controls the visibility of a vector and its children.
     int(VF) Flags           # Optional flags.
