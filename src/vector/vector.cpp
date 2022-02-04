@@ -124,7 +124,7 @@ static void get_super_xy(struct rkVectorShape *);
 static void get_text_xy(struct rkVectorText *);
 static void get_wave_xy(struct rkVectorWave *);
 
-static VectorTransform * add_transform(objVector *, LONG Type, LONG Create);
+static VectorTransform * add_transform(objVector *, LONG Type);
 static void apply_parent_transforms(objVector *, objVector *, agg::trans_affine &, WORD *);
 static void apply_transforms(VectorTransform *, DOUBLE, DOUBLE, agg::trans_affine &, WORD *);
 static void apply_transition(objVectorTransition *, DOUBLE, agg::trans_affine &);

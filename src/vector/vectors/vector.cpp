@@ -96,7 +96,7 @@ static ERROR VECTOR_ApplyMatrix(objVector *Self, struct vecApplyMatrix *Args)
    if (!Args) return ERR_NullArgs;
 
    VectorTransform *transform;
-   if ((transform = add_transform(Self, VTF_MATRIX, FALSE))) {
+   if ((transform = add_transform(Self, VTF_MATRIX))) {
       transform->Matrix[0] = Args->A;
       transform->Matrix[1] = Args->B;
       transform->Matrix[2] = Args->C;
@@ -873,7 +873,7 @@ static ERROR VECTOR_Rotate(objVector *Self, struct vecRotate *Args)
    if (!Args) return ERR_NullArgs;
 
    VectorTransform *t;
-   if ((t = add_transform(Self, VTF_ROTATE, FALSE))) {
+   if ((t = add_transform(Self, VTF_ROTATE))) {
       t->Angle = Args->Angle;
       t->X = Args->CenterX;
       t->Y = Args->CenterY;
@@ -915,7 +915,7 @@ static ERROR VECTOR_Scale(objVector *Self, struct vecScale *Args)
    if (!Args) return ERR_NullArgs;
 
    VectorTransform *t;
-   if ((t = add_transform(Self, VTF_SKEW, FALSE))) {
+   if ((t = add_transform(Self, VTF_SCALE))) {
       t->X = Args->X;
       t->Y = Args->Y;
       return ERR_Okay;
@@ -962,7 +962,7 @@ static ERROR VECTOR_Skew(objVector *Self, struct vecSkew *Args)
    if ((!Args) or ((!Args->X) and (!Args->Y))) return log.warning(ERR_NullArgs);
 
    VectorTransform *transform;
-   if ((transform = add_transform(Self, VTF_SKEW, FALSE))) {
+   if ((transform = add_transform(Self, VTF_SKEW))) {
       if ((Args->X > -90) and (Args->X < 90)) {
          transform->X = Args->X;
       }
@@ -1091,13 +1091,13 @@ static ERROR VECTOR_Transform(objVector *Self, struct vecTransform *Args)
    CSTRING str = Args->Transform;
    while (*str) {
       if (!StrCompare(str, "matrix", 6, 0)) {
-         if ((transform = add_transform(Self, VTF_MATRIX, FALSE))) {
+         if ((transform = add_transform(Self, VTF_MATRIX))) {
             str = read_numseq(str+6, &transform->Matrix[0], &transform->Matrix[1], &transform->Matrix[2], &transform->Matrix[3], &transform->Matrix[4], &transform->Matrix[5], TAGEND);
          }
          else return ERR_AllocMemory;
       }
       else if (!StrCompare(str, "translate", 9, 0)) {
-         if ((transform = add_transform(Self, VTF_TRANSLATE, FALSE))) {
+         if ((transform = add_transform(Self, VTF_TRANSLATE))) {
             DOUBLE x = 0;
             DOUBLE y = 0;
             str = read_numseq(str+9, &x, &y, TAGEND);
@@ -1107,26 +1107,26 @@ static ERROR VECTOR_Transform(objVector *Self, struct vecTransform *Args)
          else return ERR_AllocMemory;
       }
       else if (!StrCompare(str, "rotate", 6, 0)) {
-         if ((transform = add_transform(Self, VTF_ROTATE, FALSE))) {
+         if ((transform = add_transform(Self, VTF_ROTATE))) {
             str = read_numseq(str+6, &transform->Angle, &transform->X, &transform->Y, TAGEND);
          }
          else return ERR_AllocMemory;
       }
       else if (!StrCompare(str, "scale", 5, 0)) {
-         if ((transform = add_transform(Self, VTF_SCALE, FALSE))) {
+         if ((transform = add_transform(Self, VTF_SCALE))) {
             str = read_numseq(str+5, &transform->X, &transform->Y, TAGEND);
          }
          else return ERR_AllocMemory;
       }
       else if (!StrCompare(str, "skewX", 5, 0)) {
-         if ((transform = add_transform(Self, VTF_SKEW, FALSE))) {
+         if ((transform = add_transform(Self, VTF_SKEW))) {
             transform->X = 0;
             str = read_numseq(str+5, &transform->X, TAGEND);
          }
          else return ERR_AllocMemory;
       }
       else if (!StrCompare(str, "skewY", 5, 0)) {
-         if ((transform = add_transform(Self, VTF_SKEW, FALSE))) {
+         if ((transform = add_transform(Self, VTF_SKEW))) {
             transform->Y = 0;
             str = read_numseq(str+5, &transform->Y, TAGEND);
          }
@@ -1162,7 +1162,7 @@ static ERROR VECTOR_Translate(objVector *Self, struct vecTranslate *Args)
    if (!Args) return ERR_NullArgs;
 
    VectorTransform *transform;
-   if ((transform = add_transform(Self, VTF_TRANSLATE, FALSE))) {
+   if ((transform = add_transform(Self, VTF_TRANSLATE))) {
       transform->X = Args->X;
       transform->Y = Args->Y;
       return ERR_Okay;

@@ -523,20 +523,11 @@ static void apply_transforms(VectorTransform *t, DOUBLE X, DOUBLE Y, agg::trans_
 ** ordering of transformations.
 */
 
-static VectorTransform * add_transform(objVector *Self, LONG Type, LONG Create = TRUE)
+static VectorTransform * add_transform(objVector *Self, LONG Type)
 {
    parasol::Log log(__FUNCTION__);
 
-   DBG_TRANSFORM("Type: $%.8x, Create: %d", Type, Create);
-
-   if ((!Create) and (Self->ActiveTransforms & Type)) { // Attempt to use an existing transform with matching type.
-      for (auto transform=Self->Transforms; transform; transform=transform->Next) {
-         if (transform->Type IS Type) {
-            mark_dirty(Self, RC_TRANSFORM); // Transforms affect the final path of the vector.
-            return transform;
-         }
-      }
-   }
+   DBG_TRANSFORM("Type: $%.8x", Type);
 
    VectorTransform *transform;
    if (!AllocMemory(sizeof(VectorTransform), MEM_DATA, &transform, NULL)) {
