@@ -201,8 +201,7 @@ static ERROR create_composite(objVectorFilter *Self, XMLTag *Tag)
 {
    parasol::Log log(__FUNCTION__);
 
-   auto effect_it = Self->Effects->emplace(Self->Effects->end(), FE_COMPOSITE);
-   auto &effect = *effect_it;
+   VectorEffect effect(FE_COMPOSITE);
 
    effect.Composite.Operator = OP_OVER;
 
@@ -287,7 +286,6 @@ static ERROR create_composite(objVectorFilter *Self, XMLTag *Tag)
                case SVF_OVERLAY:    effect.Composite.Operator = OP_OVERLAY; break;
                default:
                   log.warning("Composite operator '%s' not recognised.", val);
-                  Self->Effects->erase(effect_it);
                   return ERR_InvalidValue;
             }
             break;
@@ -306,5 +304,6 @@ static ERROR create_composite(objVectorFilter *Self, XMLTag *Tag)
       return ERR_FieldNotSet;
    }
 
+   Self->Effects->push_back(std::move(effect));
    return ERR_Okay;
 }

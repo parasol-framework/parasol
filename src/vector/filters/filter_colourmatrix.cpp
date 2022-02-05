@@ -388,8 +388,7 @@ static ERROR create_cmatrix(objVectorFilter *Self, XMLTag *Tag)
 {
    parasol::Log log(__FUNCTION__);
 
-   auto effect_it = Self->Effects->emplace(Self->Effects->end(), FE_COLOURMATRIX);
-   auto &effect = *effect_it;
+   VectorEffect effect(FE_COLOURMATRIX);
 
    MATRIX m = IDENTITY;
    for (LONG a=1; a < Tag->TotalAttrib; a++) {
@@ -458,6 +457,6 @@ static ERROR create_cmatrix(objVectorFilter *Self, XMLTag *Tag)
 
    if (!matrix) return ERR_AllocMemory;
    effect.Colour.Matrix = matrix; // Will be deleted in free_effect_resources()
-
+   Self->Effects->push_back(std::move(effect));
    return ERR_Okay;
 }

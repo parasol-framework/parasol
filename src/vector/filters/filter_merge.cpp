@@ -6,13 +6,12 @@ static ERROR create_merge(objVectorFilter *Self, XMLTag *Tag)
 {
    parasol::Log log(__FUNCTION__);
 
-   auto filter_it = Self->Effects->emplace(Self->Effects->end(), FE_OFFSET);
-   auto &filter = *filter_it;
+   VectorEffect effect(FE_OFFSET);
 
    if (!Self->Merge) Self->Merge = new (std::nothrow) std::vector<VectorEffect *>;
    else Self->Merge->clear();
 
-   filter.Source = VSF_IGNORE;
+   effect.Source = VSF_IGNORE;
 
    // Count the total number of merge nodes.
 
@@ -43,5 +42,6 @@ static ERROR create_merge(objVectorFilter *Self, XMLTag *Tag)
 
    log.traceBranch("Detected %d merge nodes.", (LONG)Self->Merge->size());
 
+   Self->Effects->push_back(std::move(effect));
    return ERR_Okay;
 }

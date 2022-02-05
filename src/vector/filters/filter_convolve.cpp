@@ -59,7 +59,7 @@ public:
 
    void apply(objVectorFilter *Self, VectorEffect *Filter)
    {
-      objBitmap *bmp = Filter->Bitmap;
+      auto bmp = Filter->Bitmap;
       if (bmp->BytesPerPixel != 4) return;
 
       const LONG canvasWidth = bmp->Clip.Right - bmp->Clip.Left;
@@ -97,7 +97,7 @@ public:
 
    void processClipped(VectorEffect *Filter, UBYTE *output, LONG Left, LONG Top, LONG Right, LONG Bottom)
    {
-      objBitmap *bmp = Filter->Bitmap;
+      auto bmp = Filter->Bitmap;
 
       const UBYTE A = bmp->ColourFormat->AlphaPos>>3;
       const UBYTE R = bmp->ColourFormat->RedPos>>3;
@@ -148,7 +148,7 @@ public:
 
    void processFast(VectorEffect *Filter, UBYTE *output, LONG Left, LONG Top, LONG Right, LONG Bottom)
    {
-      objBitmap *bmp = Filter->Bitmap;
+      auto bmp = Filter->Bitmap;
 
       const UBYTE A = bmp->ColourFormat->AlphaPos>>3;
       const UBYTE R = bmp->ColourFormat->RedPos>>3;
@@ -211,14 +211,10 @@ static ERROR create_convolve(objVectorFilter *Self, XMLTag *Tag)
 {
    parasol::Log log(__FUNCTION__);
 
-   auto effect_it = Self->Effects->emplace(Self->Effects->end(), FE_CONVOLVEMATRIX);
-   auto &effect = *effect_it;
+   VectorEffect effect(FE_CONVOLVEMATRIX);
 
    effect.Convolve.Matrix = new (std::nothrow) ConvolveMatrix;
-   if (!effect.Convolve.Matrix) {
-      Self->Effects->erase(effect_it);
-      return ERR_AllocMemory;
-   }
+   if (!effect.Convolve.Matrix) return ERR_AllocMemory;
 
    ConvolveMatrix &matrix = *effect.Convolve.Matrix;
 
@@ -269,7 +265,7 @@ static ERROR create_convolve(objVectorFilter *Self, XMLTag *Tag)
             break;
 
          // The modifications will apply to R,G,B only when preserveAlpha is true.
-         case SVF_PRESERVEALPHA: if ((!StrMatch("true", val)) OR (!StrMatch("1", val))) matrix.PreserveAlpha = true;  break;
+         case SVF_PRESERVEALPHA: if ((!StrMatch("true", val)) or (!StrMatch("1", val))) matrix.PreserveAlpha = true;  break;
 
          default: fe_default(Self, &effect, hash, val); break;
       }
@@ -277,13 +273,11 @@ static ERROR create_convolve(objVectorFilter *Self, XMLTag *Tag)
 
    if (matrix.FilterWidth * matrix.FilterHeight > MAX_DIM * MAX_DIM) {
       log.warning("Size of matrix exceeds internally imposed limits.");
-      Self->Effects->erase(effect_it);
       return ERR_BufferOverflow;
    }
 
    if (m != matrix.FilterWidth * matrix.FilterHeight) {
       log.warning("Matrix value count of %d does not match the matrix size (%d,%d)", m, matrix.FilterWidth, matrix.FilterHeight);
-      Self->Effects->erase(effect_it);
       return ERR_Failed;
    }
 
@@ -304,6 +298,8 @@ static ERROR create_convolve(objVectorFilter *Self, XMLTag *Tag)
       if (!divisor) divisor = 1;
       matrix.Divisor = divisor;
    }
+
+   Self->Effects->push_back(std::move(effect));
 
    log.msg("Convolve Size: (%d,%d), Divisor: %.2f, Bias: %.2f", matrix.FilterWidth, matrix.FilterHeight, matrix.Divisor, matrix.Bias);
    return ERR_Okay;

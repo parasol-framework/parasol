@@ -236,8 +236,7 @@ static ERROR create_morph(objVectorFilter *Self, XMLTag *Tag)
 {
    parasol::Log log(__FUNCTION__);
 
-   auto effect_it = Self->Effects->emplace(Self->Effects->end(), FE_MORPHOLOGY);
-   auto &effect = *effect_it;
+   VectorEffect effect(FE_MORPHOLOGY);
 
    effect.Morph.RX = 0; // SVG default is 0
    effect.Morph.RY = 0;
@@ -268,5 +267,7 @@ static ERROR create_morph(objVectorFilter *Self, XMLTag *Tag)
          default: fe_default(Self, &effect, hash, val); break;
       }
    }
+
+   Self->Effects->push_back(std::move(effect));
    return ERR_Okay;
 }

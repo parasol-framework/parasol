@@ -5,18 +5,19 @@
 
 static ERROR create_offset(objVectorFilter *Self, XMLTag *Tag)
 {
-   auto filter_it = Self->Effects->emplace(Self->Effects->end(), FE_OFFSET);
-   auto &filter = *filter_it;
+   VectorEffect effect(FE_OFFSET);
 
    for (LONG a=1; a < Tag->TotalAttrib; a++) {
       CSTRING val = Tag->Attrib[a].Value;
       if (!val) continue;
       ULONG hash = StrHash(Tag->Attrib[a].Name, FALSE);
       switch(hash) {
-         case SVF_DX: filter.XOffset = StrToInt(val); break;
-         case SVF_DY: filter.YOffset = StrToInt(val); break;
-         default: fe_default(Self, &filter, hash, val); break;
+         case SVF_DX: effect.XOffset = StrToInt(val); break;
+         case SVF_DY: effect.YOffset = StrToInt(val); break;
+         default: fe_default(Self, &effect, hash, val); break;
       }
    }
+
+   Self->Effects->push_back(std::move(effect));
    return ERR_Okay;
 }

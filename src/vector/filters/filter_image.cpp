@@ -6,8 +6,7 @@ static ERROR create_image(objVectorFilter *Self, XMLTag *Tag)
 {
    parasol::Log log(__FUNCTION__);
 
-   auto effect_it = Self->Effects->emplace(Self->Effects->end(), FE_IMAGE);
-   auto &effect = *effect_it;
+   VectorEffect effect(FE_IMAGE);
 
    // SVG defaults
    effect.Image.Dimensions = 0;
@@ -102,7 +101,6 @@ static ERROR create_image(objVectorFilter *Self, XMLTag *Tag)
       // Check for security risks in the path.
 
       if ((path[0] IS '/') or ((path[0] IS '.') and (path[1] IS '.') and (path[2] IS '/'))) {
-         Self->Effects->erase(effect_it);
          return log.warning(ERR_InvalidValue);
       }
 
@@ -110,12 +108,10 @@ static ERROR create_image(objVectorFilter *Self, XMLTag *Tag)
          if (path[i] IS '/') {
             while (path[i+1] IS '.') i++;
             if (path[i+1] IS '/') {
-               Self->Effects->erase(effect_it);
                return log.warning(ERR_InvalidValue);
             }
          }
          else if (path[i] IS ':') {
-            Self->Effects->erase(effect_it);
             return log.warning(ERR_InvalidValue);
          }
       }
@@ -137,17 +133,14 @@ static ERROR create_image(objVectorFilter *Self, XMLTag *Tag)
             FID_Flags|TLONG,        PCF_FORCE_ALPHA_32,
             TAGEND);
 
-      if ((error) and (image_required)) {
-         Self->Effects->erase(effect_it);
-         return ERR_CreateObject;
-      }
+      if ((error) and (image_required)) return ERR_CreateObject;
 
       if ((Self->ColourSpace IS CS_LINEAR_RGB) and (!error)) rgb2linear(*effect.Image.Picture->Bitmap);
 
+      Self->Effects->push_back(std::move(effect));
       return ERR_Okay;
    }
-   else { // If no image path is referenced, the instruction to load an image will be ignored.
-      Self->Effects->erase(effect_it);
+   else { // If no image path is referenced, the instruction to load an image can be ignored safely.
       return ERR_Okay;
    }
 }
@@ -156,11 +149,11 @@ static ERROR create_image(objVectorFilter *Self, XMLTag *Tag)
 
 static void apply_image(objVectorFilter *Self, VectorEffect *Effect)
 {
-   objBitmap *bmp = Effect->Bitmap;
+   auto bmp = Effect->Bitmap;
    if (bmp->BytesPerPixel != 4) return;
    if (!Effect->Image.Picture) return;
 
-   objBitmap *pic = Effect->Image.Picture->Bitmap;
+   auto pic = Effect->Image.Picture->Bitmap;
 
    DOUBLE xScale, yScale, x, y;
 

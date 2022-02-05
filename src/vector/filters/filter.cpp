@@ -59,8 +59,10 @@ static void premultiply_bitmap(objBitmap *);
 
 VectorEffect::VectorEffect(LONG pType)
 {
-   Type = pType;
+   Type   = pType;
    Source = VSF_GRAPHIC; // Default is SourceGraphic
+   Bitmap = NULL;
+   Input  = NULL;
 }
 
 VectorEffect::~VectorEffect()
@@ -378,6 +380,7 @@ static ERROR VECTORFILTER_DataFeed(objVectorFilter *Self, struct acDataFeed *Arg
 
    if (!Args) return ERR_NullArgs;
 
+   ERROR error = ERR_Okay;
    if (Args->DataType IS DATA_XML) {
       if (Self->EffectXML) { acFree(Self->EffectXML); Self->EffectXML = NULL; }
 
@@ -387,19 +390,19 @@ static ERROR VECTORFILTER_DataFeed(objVectorFilter *Self, struct acDataFeed *Arg
             for (auto tag = Self->EffectXML->Tags[0]; tag; tag=tag->Next) {
                log.trace("Processing filter element '%s'", tag->Attrib->Name);
                switch(StrHash(tag->Attrib->Name, FALSE)) {
-                  case SVF_FEBLUR:           create_blur(Self, tag); break;
-                  case SVF_FEGAUSSIANBLUR:   create_blur(Self, tag); break;
-                  case SVF_FEOFFSET:         create_offset(Self, tag); break;
-                  case SVF_FEMERGE:          create_merge(Self, tag); break;
+                  case SVF_FEBLUR:           error = create_blur(Self, tag); break;
+                  case SVF_FEGAUSSIANBLUR:   error = create_blur(Self, tag); break;
+                  case SVF_FEOFFSET:         error = create_offset(Self, tag); break;
+                  case SVF_FEMERGE:          error = create_merge(Self, tag); break;
                   case SVF_FECOLORMATRIX:    // American spelling
-                  case SVF_FECOLOURMATRIX:   create_cmatrix(Self, tag); break;
-                  case SVF_FECONVOLVEMATRIX: create_convolve(Self, tag); break;
+                  case SVF_FECOLOURMATRIX:   error = create_cmatrix(Self, tag); break;
+                  case SVF_FECONVOLVEMATRIX: error = create_convolve(Self, tag); break;
                   case SVF_FEBLEND:          // Blend and composite share the same code.
-                  case SVF_FECOMPOSITE:      create_composite(Self, tag); break;
-                  case SVF_FEFLOOD:          create_flood(Self, tag); break;
-                  case SVF_FETURBULENCE:     create_turbulence(Self, tag); break;
-                  case SVF_FEMORPHOLOGY:     create_morph(Self, tag); break;
-                  case SVF_FEIMAGE:          create_image(Self, tag); break;
+                  case SVF_FECOMPOSITE:      error = create_composite(Self, tag); break;
+                  case SVF_FEFLOOD:          error = create_flood(Self, tag); break;
+                  case SVF_FETURBULENCE:     error = create_turbulence(Self, tag); break;
+                  case SVF_FEMORPHOLOGY:     error = create_morph(Self, tag); break;
+                  case SVF_FEIMAGE:          error = create_image(Self, tag); break;
                   case SVF_FEDISPLACEMENTMAP:
                   case SVF_FETILE:
                   case SVF_FECOMPONENTTRANSFER:
@@ -415,15 +418,22 @@ static ERROR VECTORFILTER_DataFeed(objVectorFilter *Self, struct acDataFeed *Arg
                      log.warning("Filter element '%s' not recognised.", tag->Attrib->Name);
                      break;
                }
+
+               if (error) log.warning("Failed to process filter element '%s'", tag->Attrib->Name);
             }
 
             calc_usage(Self);
          }
+         else {
+            acFree(Self->EffectXML);
+            Self->EffectXML = NULL;
+            error = ERR_Init;
+         }
       }
-      else return ERR_CreateObject;
+      else error = ERR_NewObject;
    }
 
-   return ERR_Okay;
+   return error;
 }
 
 //****************************************************************************

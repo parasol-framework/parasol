@@ -203,8 +203,7 @@ static ERROR create_turbulence(objVectorFilter *Self, XMLTag *Tag)
 {
    parasol::Log log(__FUNCTION__);
 
-   auto effect_it = Self->Effects->emplace(Self->Effects->end(), FE_TURBULENCE);
-   auto &effect = *effect_it;
+   VectorEffect effect(FE_TURBULENCE);
 
    effect.Turbulence.Octaves    = 1;
    effect.Turbulence.Stitch     = FALSE;
@@ -301,10 +300,8 @@ static ERROR create_turbulence(objVectorFilter *Self, XMLTag *Tag)
          }
       }
 
+      Self->Effects->push_back(std::move(effect));
       return ERR_Okay;
    }
-   else {
-      Self->Effects->erase(effect_it);
-      return ERR_AllocMemory;
-   }
+   else return ERR_AllocMemory;
 }

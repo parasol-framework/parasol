@@ -112,7 +112,7 @@ public:
       } Morph;
    };
 
-   VectorEffect(LONG pType);
+   VectorEffect(LONG pType); // Defined in filter.cpp
    ~VectorEffect();
 };
 

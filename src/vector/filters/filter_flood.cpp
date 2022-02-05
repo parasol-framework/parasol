@@ -6,8 +6,7 @@ static ERROR create_flood(objVectorFilter *Self, XMLTag *Tag)
 {
    parasol::Log log(__FUNCTION__);
 
-   auto effect_it = Self->Effects->emplace(Self->Effects->end(), FE_FLOOD);
-   auto &effect = *effect_it;
+   VectorEffect effect(FE_FLOOD);
 
    // Dimensions are relative to the VectorFilter's Bound* dimensions.
 
@@ -64,10 +63,10 @@ static ERROR create_flood(objVectorFilter *Self, XMLTag *Tag)
 
    if (!effect.Flood.Colour.Alpha) {
       log.warning("A valid flood-colour is required.");
-      Self->Effects->erase(effect_it);
       return ERR_Failed;
    }
 
+   Self->Effects->push_back(std::move(effect));
    return ERR_Okay;
 }
 
