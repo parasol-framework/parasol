@@ -594,8 +594,8 @@ The type of the gradient to be drawn is specified here.
 -FIELD-
 Units: Defines the coordinate system for fields X1, Y1, X2 and Y2.
 
-The default coordinate system for gradients is BOUNDING_BOX, which positions the gradient around the vector that
-references it.  The alternative is USERSPACE, which positions the gradient relative to the current viewport.
+The default coordinate system for gradients is `BOUNDING_BOX`, which positions the gradient around the vector that
+references it.  The alternative is `USERSPACE`, which positions the gradient relative to the current viewport.
 
 -FIELD-
 X1: Initial X coordinate for the gradient.

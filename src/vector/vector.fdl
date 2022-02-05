@@ -186,24 +186,24 @@ module({ name="Vector", copyright="Paul Manias © 2010-2022", version=1.0 }, fun
     "LANCZOS8",
     "BLACKMAN8: 15 times slower than bilinear, the final result is of excellent quality and sharpness is well balanced.")
 
-  flags("RC", { },
+  flags("RC", { comments="Internal flags for signalling the need to recompute paths." },
     "FINAL_PATH: The final path will need to be recalculated, so as to take transforms and/or relative coordinates into account.",
     "BASE_PATH: The base path (shape of the vector) must be recalculated.",
     "TRANSFORM: The transform matrix must be recalculated.  This includes movement, e.g. changing the CX,CY of an ellipse.",
     { ALL = "FINAL_PATH|BASE_PATH|TRANSFORM" })
 
-  flags("ARF", { comment="Aspect ratios" },
-    "X_MIN: Align to the left",
-    "X_MID: Align to the horizontal center",
-    "X_MAX: Align to the right",
-    "Y_MIN: Align to the top",
-    "Y_MID: Align to the vertical center",
-    "Y_MAX: Align to the bottom",
+  flags("ARF", { comment="Aspect ratios control alignment, scaling and clipping." },
+    "X_MIN: Align to the left.",
+    "X_MID: Align to the horizontal center.",
+    "X_MAX: Align to the right.",
+    "Y_MIN: Align to the top.",
+    "Y_MID: Align to the vertical center.",
+    "Y_MAX: Align to the bottom.",
     "MEET: Aspect ratio is preserved. The entire viewbox will be visible in the viewport.  The viewbox is scaled up as much as possible.",
     "SLICE: Aspect ratio is preserved. The viewbox can extend beyond the viewport's edges on one axis.  The viewbox is scaled up as much as possible.",
     "NONE: Scale the viewbox to match the size of the viewport.  Aspect ratio is not preserved.")
 
-  flags("VBF", { comment="For vecGetBoundary()" },
+  flags("VBF", { comment="Options for vecGetBoundary()." },
      "INCLUSIVE: The result will be inclusive of all paths that belong to children of the queried vector.",
      "NO_TRANSFORM: The transformation step will not be applied to the vector's path.")
 

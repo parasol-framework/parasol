@@ -429,7 +429,7 @@
       <const name="INHERIT">The cap type is inherited from the parent (defaults to butt if unspecified).</const>
     </constants>
 
-    <constants lookup="VBF" comment="For vecGetBoundary()">
+    <constants lookup="VBF" comment="Options for vecGetBoundary().">
       <const name="INCLUSIVE">The result will be inclusive of all paths that belong to children of the queried vector.</const>
       <const name="NO_TRANSFORM">The transformation step will not be applied to the vector's path.</const>
     </constants>
@@ -453,15 +453,15 @@
       <const name="INHERIT">Inherit the join option from the parent.</const>
     </constants>
 
-    <constants lookup="ARF" comment="Aspect ratios">
+    <constants lookup="ARF" comment="Aspect ratios control alignment, scaling and clipping.">
       <const name="NONE">Scale the viewbox to match the size of the viewport.  Aspect ratio is not preserved.</const>
-      <const name="Y_MIN">Align to the top</const>
-      <const name="Y_MAX">Align to the bottom</const>
-      <const name="X_MID">Align to the horizontal center</const>
-      <const name="X_MIN">Align to the left</const>
-      <const name="X_MAX">Align to the right</const>
+      <const name="Y_MIN">Align to the top.</const>
+      <const name="Y_MAX">Align to the bottom.</const>
+      <const name="X_MID">Align to the horizontal center.</const>
+      <const name="X_MIN">Align to the left.</const>
+      <const name="X_MAX">Align to the right.</const>
       <const name="SLICE">Aspect ratio is preserved. The viewbox can extend beyond the viewport's edges on one axis.  The viewbox is scaled up as much as possible.</const>
-      <const name="Y_MID">Align to the vertical center</const>
+      <const name="Y_MID">Align to the vertical center.</const>
       <const name="MEET">Aspect ratio is preserved. The entire viewbox will be visible in the viewport.  The viewbox is scaled up as much as possible.</const>
     </constants>
 

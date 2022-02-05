@@ -232,7 +232,7 @@
 #define RC_TRANSFORM 0x00000004
 #define RC_ALL 0x00000007
 
-// Aspect ratios
+// Aspect ratios control alignment, scaling and clipping.
 
 #define ARF_X_MIN 0x00000001
 #define ARF_X_MID 0x00000002
@@ -244,7 +244,7 @@
 #define ARF_SLICE 0x00000080
 #define ARF_NONE 0x00000100
 
-// For vecGetBoundary()
+// Options for vecGetBoundary().
 
 #define VBF_INCLUSIVE 0x00000001
 #define VBF_NO_TRANSFORM 0x00000002

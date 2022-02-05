@@ -149,7 +149,7 @@
         <param type="struct VectorTransform **" name="Transform">A matching VECTOR_TRANSFORM structure is returned in this parameter, if found.</param>
       </input>
       <description>
-<p>This method returns a VECTOR_TRANSFORM structure for any given transform that has been applied to a vector.  It works for MATRIX, TRANSLATE, SCALE, ROTATE and SKEW transformations.  The structure of VECTOR_TRANSFORM is described in the <field>Transforms</field> field.</p>
+<p>This method returns a <code>VECTOR_TRANSFORM</code> structure for any given transform that has been applied to a vector.  It works for <code>MATRIX</code>, <code>TRANSLATE</code>, <code>SCALE</code>, <code>ROTATE</code> and <code>SKEW</code> transformations.  The structure of <code>VECTOR_TRANSFORM</code> is described in the <field>Transforms</field> field.</p>
 <p>If the requested transform is not applied to the vector, the method will fail with an ERR_Search return code.</p>
       </description>
       <result>
@@ -368,9 +368,10 @@
       <name>ActiveTransforms</name>
       <comment>Indicates the transforms that are currently applied to a vector.</comment>
       <access read="R">Read</access>
-      <type>INT</type>
+      <type lookup="VTF">INT</type>
       <description>
 <p>Each time that a transform is applied to a vector through methods such as <method>Scale</method> and <method>Translate</method>, a flag will be set in ActiveTransforms that indicates the type of transform that was applied.</p>
+<types lookup="VTF"/>
       </description>
     </field>
 
@@ -861,7 +862,7 @@ Z: Close Path
       <const name="INHERIT">The cap type is inherited from the parent (defaults to butt if unspecified).</const>
     </constants>
 
-    <constants lookup="VBF" comment="For vecGetBoundary()">
+    <constants lookup="VBF" comment="Options for vecGetBoundary().">
       <const name="INCLUSIVE">The result will be inclusive of all paths that belong to children of the queried vector.</const>
       <const name="NO_TRANSFORM">The transformation step will not be applied to the vector's path.</const>
     </constants>
@@ -885,15 +886,15 @@ Z: Close Path
       <const name="INHERIT">Inherit the join option from the parent.</const>
     </constants>
 
-    <constants lookup="ARF" comment="Aspect ratios">
+    <constants lookup="ARF" comment="Aspect ratios control alignment, scaling and clipping.">
       <const name="NONE">Scale the viewbox to match the size of the viewport.  Aspect ratio is not preserved.</const>
-      <const name="Y_MIN">Align to the top</const>
-      <const name="Y_MAX">Align to the bottom</const>
-      <const name="X_MID">Align to the horizontal center</const>
-      <const name="X_MIN">Align to the left</const>
-      <const name="X_MAX">Align to the right</const>
+      <const name="Y_MIN">Align to the top.</const>
+      <const name="Y_MAX">Align to the bottom.</const>
+      <const name="X_MID">Align to the horizontal center.</const>
+      <const name="X_MIN">Align to the left.</const>
+      <const name="X_MAX">Align to the right.</const>
       <const name="SLICE">Aspect ratio is preserved. The viewbox can extend beyond the viewport's edges on one axis.  The viewbox is scaled up as much as possible.</const>
-      <const name="Y_MID">Align to the vertical center</const>
+      <const name="Y_MID">Align to the vertical center.</const>
       <const name="MEET">Aspect ratio is preserved. The entire viewbox will be visible in the viewport.  The viewbox is scaled up as much as possible.</const>
     </constants>
 
