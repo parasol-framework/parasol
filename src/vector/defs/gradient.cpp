@@ -86,10 +86,9 @@ GRADIENT_TABLE * get_stroke_gradient_table(objVector &Vector)
    }
 }
 
-/*****************************************************************************
-** Constructor for the GradientColours class.  This expects to be called whenever the Gradient class updates the
-** Stops array.
-*/
+//****************************************************************************
+// Constructor for the GradientColours class.  This expects to be called whenever the Gradient class updates the
+// Stops array.
 
 GradientColours::GradientColours(rkVectorGradient *Gradient, DOUBLE Alpha)
 {
@@ -461,7 +460,7 @@ to define a start and end point for interpolating the gradient colours.
 
 static ERROR VECTORGRADIENT_GET_Stops(objVectorGradient *Self, GradientStop **Value, LONG *Elements)
 {
-   *Value = Self->Stops;
+   *Value    = Self->Stops;
    *Elements = Self->TotalStops;
    return ERR_Okay;
 }

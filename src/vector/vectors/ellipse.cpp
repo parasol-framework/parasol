@@ -37,8 +37,7 @@ static void generate_ellipse(objVectorEllipse *Vector)
       else ry *= Vector->Scene->PageHeight;
    }
 
-   DOUBLE scale = 1.0;
-   if (Vector->Transform) scale = Vector->Transform->scale();
+   DOUBLE scale = Vector->Transform.scale();
 
    ULONG steps;
    if (Vector->Vertices >= 3) steps = Vector->Vertices;

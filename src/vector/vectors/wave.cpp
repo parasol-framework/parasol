@@ -58,7 +58,7 @@ static void generate_wave(objVectorWave *Vector)
    DOUBLE degree = Vector->wDegree;
    const DOUBLE amp = (height * 0.5) * Vector->wAmplitude;
 
-   if (Vector->Transform) scale = 1.0 / Vector->Transform->scale(); // Essential for smooth curves when scale > 1.0
+   scale = 1.0 / Vector->Transform.scale(); // Essential for smooth curves when scale > 1.0
 
    DOUBLE x = 0, y = sin(DEG2RAD * degree) * amp + (height * 0.5);
    if (Vector->Transition) apply_transition_xy(Vector->Transition, 0, &x, &y);

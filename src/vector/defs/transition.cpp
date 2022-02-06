@@ -215,7 +215,7 @@ static ERROR TRANSITION_Init(objVectorTransition *Self, APTR Void)
 
 static ERROR TRANSITION_NewObject(objVectorTransition *Self, APTR Void)
 {
-   Self->Dirty = TRUE;
+   Self->Dirty = true;
    return ERR_Okay;
 }
 
@@ -243,7 +243,7 @@ static ERROR TRANSITION_SET_Stops(objVectorTransition *Self, Transition *Value, 
       DOUBLE last_offset = 0;
       for (auto i=0; i < Elements; i++) {
          if (Value[i].Offset < last_offset) return log.warning(ERR_InvalidValue); // Offsets must be in incrementing order.
-         if ((Value[i].Offset < 0.0) OR (Value[i].Offset > 1.0)) return log.warning(ERR_OutOfRange);
+         if ((Value[i].Offset < 0.0) or (Value[i].Offset > 1.0)) return log.warning(ERR_OutOfRange);
 
          Self->Stops[i].Offset = Value[i].Offset;
          set_stop_transform(Self, &Self->Stops[i], Value[i].Transform);

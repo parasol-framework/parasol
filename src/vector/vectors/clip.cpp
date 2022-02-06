@@ -63,7 +63,7 @@ static ERROR CLIP_Draw(objVectorClip *Self, struct acDraw *Args)
    LONG width = bounds[2] + 1; // Vector->BX2 - Vector->BX1 + 1;
    LONG height = bounds[3] + 1; // Vector->BY2 - Vector->BY1 + 1;
 
-   if ((width <= 0) OR (height <= 0)) FMSG("@","Warning - invalid mask size of %dx%d detected.", width, height);
+   if ((width <= 0) or (height <= 0)) log.warning("Invalid mask size of %dx%d detected.", width, height);
 
    if (width < 0) width = -width;
    else if (!width) width = 1;
@@ -82,7 +82,7 @@ static ERROR CLIP_Draw(objVectorClip *Self, struct acDraw *Args)
    #endif
 
    LONG size = width * height;
-   if ((Self->ClipData) AND (size > Self->ClipSize)) {
+   if ((Self->ClipData) and (size > Self->ClipSize)) {
       FreeResource(Self->ClipData);
       Self->ClipData = NULL;
       Self->ClipSize = 0;
@@ -151,7 +151,7 @@ static ERROR CLIP_Init(objVectorClip *Self, APTR Void)
       return log.warning(ERR_OutOfRange);
    }
 
-   if ((!Self->Parent) OR ((Self->Parent->ClassID != ID_VECTORSCENE) AND (Self->Parent->SubID != ID_VECTORVIEWPORT))) {
+   if ((!Self->Parent) or ((Self->Parent->ClassID != ID_VECTORSCENE) and (Self->Parent->SubID != ID_VECTORVIEWPORT))) {
       log.warning("This VectorClip object must be a child of a Scene or Viewport object.");
       return ERR_Failed;
    }
@@ -163,10 +163,10 @@ static ERROR CLIP_Init(objVectorClip *Self, APTR Void)
 
 static ERROR CLIP_NewObject(objVectorClip *Self, APTR Void)
 {
-   Self->ClipUnits = VUNIT_BOUNDING_BOX;
+   Self->ClipUnits    = VUNIT_BOUNDING_BOX;
+   Self->Visibility   = VIS_HIDDEN; // Because the content of the clip object must be ignored by the core vector drawing routine.
    Self->ClipRenderer = new (std::nothrow) agg::rendering_buffer;
    if (!Self->ClipRenderer) return ERR_AllocMemory;
-   Self->Visibility = VIS_HIDDEN; // Because the content of the clip object must be ignored by the core vector drawing routine.
    return ERR_Okay;
 }
 

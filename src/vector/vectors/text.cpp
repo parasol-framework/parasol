@@ -922,7 +922,7 @@ The weight value determines the level of boldness in the text.  A default value 
 normal state.  Lower values between 100 to 300 render the text in a light format, while high values in the range of
 400 - 900 result in boldness.
 
-Please note that setting the Weight will give it priority over the @FontStyle value.
+Please note that setting the Weight will give it priority over the #FontStyle value.
 -END-
 *****************************************************************************/
 

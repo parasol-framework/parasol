@@ -34,14 +34,14 @@ static void simplevector_free(APTR Address) {
 
 }
 
-static struct ResourceManager glResourceSimpleVector = {
+static ResourceManager glResourceSimpleVector = {
    "SimpleVector",
    &simplevector_free
 };
 
-void set_memory_manager(APTR Address, struct ResourceManager *Manager)
+void set_memory_manager(APTR Address, ResourceManager *Manager)
 {
-   struct ResourceManager **address_mgr = (struct ResourceManager **)((char *)Address - sizeof(LONG) - sizeof(LONG) - sizeof(struct ResourceManager *));
+   ResourceManager **address_mgr = (ResourceManager **)((char *)Address - sizeof(LONG) - sizeof(LONG) - sizeof(ResourceManager *));
    address_mgr[0] = Manager;
 }
 
@@ -301,10 +301,12 @@ AllocMemory
 
 static ERROR vecGenerateEllipse(DOUBLE CX, DOUBLE CY, DOUBLE RX, DOUBLE RY, LONG Vertices, APTR *Path)
 {
-   if (!Path) return ERR_NullArgs;
+   parasol::Log log(__FUNCTION__);
+
+   if (!Path) return log.warning(ERR_NullArgs);
 
    SimpleVector *vector = new_simplevector();
-   if (!vector) return ERR_AllocMemory;
+   if (!vector) return log.warning(ERR_CreateResource);
 
 #if 0
    // Bezier curves can produce a reasonable approximation of an ellipse, but in practice there is
@@ -372,10 +374,12 @@ AllocMemory
 
 static ERROR vecGenerateRectangle(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height, APTR *Path)
 {
-   if (!Path) return ERR_NullArgs;
+   parasol::Log log(__FUNCTION__);
+
+   if (!Path) return log.warning(ERR_NullArgs);
 
    SimpleVector *vector = new_simplevector();
-   if (!vector) return ERR_AllocMemory;
+   if (!vector) return log.warning(ERR_CreateResource);
 
    vector->mPath.move_to(X, Y);
    vector->mPath.line_to(X+Width, Y);
@@ -503,7 +507,7 @@ struct(*DRGB) RGB: A colour will be returned here if specified in the IRI.
 
 *****************************************************************************/
 
-static void vecReadPainter(OBJECTPTR Vector, CSTRING IRI, struct DRGB *RGB, objVectorGradient **Gradient,
+static void vecReadPainter(OBJECTPTR Vector, CSTRING IRI, DRGB *RGB, objVectorGradient **Gradient,
    objVectorImage **Image, objVectorPattern **Pattern)
 {
    parasol::Log log(__FUNCTION__);
@@ -538,7 +542,7 @@ next:
          for (i=0; (IRI[i] != ')') and (IRI[i]) and (i < sizeof(name)-1); i++) name[i] = IRI[i];
          name[i] = 0;
 
-         struct VectorDef *def;
+         VectorDef *def;
          if (!VarGet(scene->Defs, name, &def, NULL)) {
             if (def->Object->ClassID IS ID_VECTORGRADIENT) {
                if (Gradient) *Gradient = (objVectorGradient *)def->Object;
@@ -693,6 +697,7 @@ double Y: The vertical end point for the smooth3 command.
 
 static void vecSmooth3(SimpleVector *Vector, DOUBLE X, DOUBLE Y)
 {
+   if (!Vector) return;
    Vector->mPath.curve3(X, Y);
 }
 
@@ -718,6 +723,7 @@ double Y: The vertical end point for the smooth4 instruction.
 
 static void vecSmooth4(SimpleVector *Vector, DOUBLE CtrlX, DOUBLE CtrlY, DOUBLE X, DOUBLE Y)
 {
+   if (!Vector) return;
    Vector->mPath.curve4(CtrlX, CtrlY, X, Y);
 }
 
@@ -740,6 +746,5 @@ double Y: Translate the path vertically by the given value.
 static void vecTranslatePath(SimpleVector *Vector, DOUBLE X, DOUBLE Y)
 {
    if (!Vector) return;
-
    Vector->mPath.translate_all_paths(X, Y);
 }

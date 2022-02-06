@@ -185,7 +185,7 @@ namespace agg
           return trans_affine(*this).multiply(m);
       }
 
-      // Multiply the matrix by inverse of another one and return the result in a separete matrix.
+      // Multiply the matrix by inverse of another one and return the result in a seperate matrix.
 
       trans_affine operator / (const trans_affine& m) {
           return trans_affine(*this).multiply_inv(m);
@@ -338,10 +338,10 @@ namespace agg
       return *this = t.multiply(*this);
    }
 
+   // Used to calculate scaling coefficients in image resampling.  When there is considerable shear this method gives us much
+   // better estimation than just sx, sy.
+
    inline void trans_affine::scaling_abs(double* x, double* y) const {
-      // Used to calculate scaling coefficients in image resampling.
-      // When there is considerable shear this method gives us much
-      // better estimation than just sx, sy.
       *x = sqrt(sx  * sx  + shx * shx);
       *y = sqrt(shy * shy + sy  * sy);
    }

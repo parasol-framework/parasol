@@ -153,10 +153,7 @@ Okay:
 
 static ERROR VECTOR_Debug(objVector *Self, APTR Void)
 {
-   parasol::Log log;
-
    debug_tree(Self);
-
    return ERR_Okay;
 }
 

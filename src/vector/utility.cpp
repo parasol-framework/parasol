@@ -209,10 +209,7 @@ static void calc_full_boundary(objVector *Vector, std::array<DOUBLE, 4> &Bounds)
    if (!Vector) return;
 
    for (; Vector; Vector=(objVector *)Vector->Next) {
-      if (Vector->Dirty) {
-         gen_vector_path(Vector);
-         Vector->Dirty = 0;
-      }
+      if (Vector->Dirty) gen_vector_path(Vector);
 
       if (Vector->Head.SubID != ID_VECTORVIEWPORT) { // Don't consider viewport sizes when determining content dimensions.
          DOUBLE bx1, by1, bx2, by2;

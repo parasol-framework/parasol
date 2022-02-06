@@ -37,9 +37,7 @@ static void generate_supershape(objVectorShape *Vector)
 {
    DOUBLE scale = Vector->Radius;
    DOUBLE rescale = 0;
-
-   DOUBLE tscale = 1.0;
-   if (Vector->Transform) tscale = Vector->Transform->scale();
+   DOUBLE tscale = Vector->Transform.scale();
 
    DOUBLE vertices = Vector->Vertices;
    if (vertices IS DEFAULT_VERTICES) {

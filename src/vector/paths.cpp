@@ -198,7 +198,7 @@ static void gen_vector_path(objVector *Vector)
 
       bounding_rect_single(*Vector->BasePath, 0, &view->vpBX1, &view->vpBY1, &view->vpBX2, &view->vpBY2);
 
-      // If the viewport is transformed, a clipping mask will need to be generated based on its path.  The path is
+      // If the viewport uses a non-rectangular transform, a clipping mask will need to be generated based on its path.  The path is
       // pre-transformed and drawn in order to speed things up.
 
       if ((applied_transforms & (VTF_MATRIX|VTF_ROTATE|VTF_SKEW)) and
@@ -217,7 +217,7 @@ static void gen_vector_path(objVector *Vector)
       }
       else if (view->vpClipMask) { acFree(view->vpClipMask); view->vpClipMask = NULL; }
 
-      log.trace("Clipping boundary for #%d is %.2f %.2f %.2f %.2f (transforms: %d)", Vector->Head.UniqueID, view->vpBX1, view->vpBY1, view->vpBX2, view->vpBY2, applied_transforms);
+      log.trace("Clipping boundary for #%d is %.2g %.2g %.2g %.2g", Vector->Head.UniqueID, view->vpBX1, view->vpBY1, view->vpBX2, view->vpBY2);
 
       Vector->Dirty &= ~(RC_TRANSFORM | RC_FINAL_PATH | RC_BASE_PATH);
 
@@ -270,10 +270,7 @@ static void gen_vector_path(objVector *Vector)
             else {
                auto morph = (objVector *)Vector->Morph;
 
-               if (morph->Dirty) { // Regenerate the target path if necessary
-                  gen_vector_path((objVector *)morph);
-                  morph->Dirty = 0;
-               }
+               if (morph->Dirty) gen_vector_path((objVector *)morph);
 
                if (morph->BasePath) {
                   DOUBLE bx1, bx2, by1, by2;
