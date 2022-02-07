@@ -43,9 +43,9 @@ static ERROR IMAGE_Init(objVectorImage *Self, APTR Void)
 
 static ERROR IMAGE_NewObject(objVectorImage *Self, APTR Void)
 {
-   Self->Units = VUNIT_BOUNDING_BOX;
+   Self->Units        = VUNIT_BOUNDING_BOX;
    Self->SpreadMethod = VSPREAD_PAD;
-   Self->AspectRatio = ARF_NONE;
+   Self->AspectRatio  = ARF_X_MID|ARF_Y_MID|ARF_MEET; // SVG defaults
    return ERR_Okay;
 }
 

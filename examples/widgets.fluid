@@ -63,10 +63,10 @@ end
    local y = menubar.surface.height
 
    lToolbar = gui.toolbar(win.surface, {
-      xOffset = 0,
-      hoverColour  = '#00000030',
-      iconSize = 22,
-      y = y,
+      xOffset     = 0,
+      y           = y,
+      hoverColour = '#00000030',
+      iconSize    = 22,
       createItems = function(Bar)
          Bar.addGroup(1, 'Navigation', 2)
          Bar.addItem(2, 'Root', 'Root Directory', 'devices/harddisk', itemCallback)
@@ -89,8 +89,8 @@ end
    y = y + lToolbar.surface.height + 8
 
    local popupMenu = gui.menu({
-      x = 30,
-      y = 50,
+      x     = 30,
+      y     = 50,
       popup = true,
       config = {
          { group='Files' },
@@ -215,10 +215,14 @@ end
    local checkbox = viewport.new('checkbox', { label='Check Box', x=win.leftMargin, y=y })
    y = y + checkbox.height + 8
 
-   local combobox = viewport.new('combobox', { label='Combo Box', x=win.leftMargin, y=y, string='Your text here please just try it' })
+   local combobox = viewport.new('combobox', {
+      label='Combo Box', x=win.leftMargin, y=y, string='Your text here please just try it'
+   })
    y = y + combobox.height + 8
 
-   local input = viewport.new('input', { label='Input Box', x=win.leftMargin, y=y, labelWidth=combobox.labelWidth, string='Your text here' })
+   local input = viewport.new('input', {
+      label='Input Box', x=win.leftMargin, y=y, labelWidth=combobox.labelWidth, string='Your text here'
+   })
    y = y + input.height + 8
 
    win.acShow()

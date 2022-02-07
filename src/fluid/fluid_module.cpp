@@ -25,9 +25,8 @@ extern "C" {
 static int module_call(lua_State *);
 static LONG process_results(prvFluid *, APTR, const FunctionField *, LONG);
 
-/*****************************************************************************
-** Usage: module = mod.load("core")
-*/
+//****************************************************************************
+// Usage: module = mod.load("core")
 
 static int module_load(lua_State *Lua)
 {
@@ -68,9 +67,8 @@ static int module_load(lua_State *Lua)
    }
 }
 
-/*****************************************************************************
-** Internal: Object garbage collector.
-*/
+//****************************************************************************
+// Internal: Object garbage collector.
 
 static int module_destruct(lua_State *Lua)
 {
@@ -82,9 +80,8 @@ static int module_destruct(lua_State *Lua)
    return 0;
 }
 
-/*****************************************************************************
-** Internal: Prints the module name
-*/
+//****************************************************************************
+// Internal: Prints the module name
 
 static int module_tostring(lua_State *Lua)
 {
@@ -101,9 +98,8 @@ static int module_tostring(lua_State *Lua)
    return 1;
 }
 
-/*****************************************************************************
-** Any Read accesses to the module object will pass through here.
-*/
+//****************************************************************************
+// Any Read accesses to the module object will pass through here.
 
 static int module_index(lua_State *Lua)
 {
@@ -145,7 +141,10 @@ static int module_call(lua_State *Lua)
    LONG i, type;
 
    auto prv = (prvFluid *)Self->Head.ChildPrivate;
-   if (!prv) return log.warning(ERR_ObjectCorrupt);
+   if (!prv) {
+      log.warning(ERR_ObjectCorrupt);
+      return 0;
+   }
 
    struct module *mod;
    if (!(mod = (struct module *)get_meta(Lua, lua_upvalueindex(1), "Fluid.mod"))) {
@@ -643,6 +642,10 @@ static int module_call(lua_State *Lua)
             APTR structptr = (APTR)rc;
             if (structptr) {
                ERROR error;
+               // A structure marked as a resource will be returned as an accessible struct pointer.  This is typically
+               // needed when a struct's use is beyond informational and can be passed to other functions.
+               //
+               // Otherwise, the default behaviour is to convert the struct's content to a regular Lua table.
                if (restype & FD_RESOURCE) push_struct(Self, structptr, args->Name, (restype & FD_ALLOC) ? TRUE : FALSE, TRUE);
                else if ((error = named_struct_to_table(Lua, args->Name, structptr)) != ERR_Okay) {
                   if (error IS ERR_Search) {
@@ -717,9 +720,8 @@ static int module_call(lua_State *Lua)
    return process_results(prv, buffer, args, result);
 }
 
-/*****************************************************************************
-** This code looks for FD_RESULT arguments in the function's parameter list and converts them into multiple Fluid results.
-*/
+//****************************************************************************
+// This code looks for FD_RESULT arguments in the function's parameter list and converts them into multiple Fluid results.
 
 static LONG process_results(prvFluid *prv, APTR resultsidx, const FunctionField *args, LONG result)
 {

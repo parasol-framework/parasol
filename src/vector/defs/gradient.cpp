@@ -165,16 +165,16 @@ static ERROR VECTORGRADIENT_Init(objVectorGradient *Self, APTR Void)
 
 static ERROR VECTORGRADIENT_NewObject(objVectorGradient *Self, APTR Void)
 {
-   Self->Type  = VGT_LINEAR;
-   Self->Units = VUNIT_BOUNDING_BOX;
    Self->SpreadMethod = VSPREAD_PAD;
+   Self->Type    = VGT_LINEAR;
+   Self->Units   = VUNIT_BOUNDING_BOX;
    // SVG requires that these are all set to 50%
    Self->CenterX = 0.5;
    Self->CenterY = 0.5;
-   Self->Radius = 0.5;
-   Self->X1 = 0;
-   Self->X2 = 100; // For an effective contoured gradient, this needs to default to 100
-   Self->Flags |= VGF_RELATIVE_CX|VGF_RELATIVE_CY|VGF_RELATIVE_RADIUS;
+   Self->Radius  = 0.5;
+   Self->X1      = 0;
+   Self->X2      = 100; // For an effective contoured gradient, this needs to default to 100
+   Self->Flags  |= VGF_RELATIVE_CX|VGF_RELATIVE_CY|VGF_RELATIVE_RADIUS;
    return ERR_Okay;
 }
 
