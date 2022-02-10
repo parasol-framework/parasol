@@ -22,10 +22,12 @@ static objVectorViewport * get_parent_view(objVector *Vector)
 
 //********************************************************************************************************************
 // This 'safe' version of gen_vector_path() checks that all parent vectors have been refreshed if they are marked
-// as dirty.
+// as dirty.  Generation of the paths is top-down.
 
 static void gen_vector_tree(objVector *Vector)
 {
+   if (!(Vector->Head.Flags & NF_INITIALISED)) return;
+
    if (Vector->Dirty) {
       std::vector<objVector *> list;
       for (auto scan=Vector->Parent; scan; scan=((objVector *)scan)->Parent) {
@@ -83,10 +85,15 @@ static void gen_vector_path(objVector *Vector)
 
       if (parent_view) {
          if (parent_view->vpViewWidth) parent_width = parent_view->vpViewWidth;
-         else parent_width = parent_view->vpFixedWidth;
+         else if (!(parent_width = parent_view->vpFixedWidth)) {
+            // NB: It is perfectly legal, even if unlikely, that a viewport has a width/height of zero.
+            log.msg("Unable to determine width of the parent viewport #%d", parent_view->Head.UniqueID);
+         }
 
          if (parent_view->vpViewHeight) parent_height = parent_view->vpViewHeight;
-         else parent_height = parent_view->vpFixedHeight;
+         else if (!(parent_height = parent_view->vpFixedHeight)) {
+            log.msg("Unable to determine height of the parent viewport #%d", parent_view->Head.UniqueID);
+         }
 
          parent_id = parent_view->Head.UniqueID;
 
@@ -162,7 +169,7 @@ static void gen_vector_path(objVector *Vector)
       // AspectRatio choices affect this, e.g. "xMinYMin slice".  Note that alignment specifically impacts
       // the position of paths within the viewport and not the position of the viewport itself.
 
-      calc_alignment("align_viewport",view->vpAspectRatio, target_width, target_height,
+      calc_aspectratio(__FUNCTION__, view->vpAspectRatio, target_width, target_height,
          view->vpViewWidth, view->vpViewHeight, &view->vpAlignX, &view->vpAlignY,
          &view->vpXScale, &view->vpYScale);
 
@@ -216,7 +223,7 @@ static void gen_vector_path(objVector *Vector)
       }
       else if (view->vpClipMask) { acFree(view->vpClipMask); view->vpClipMask = NULL; }
 
-      log.trace("Clipping boundary for #%d is %.2g %.2g %.2g %.2g", Vector->Head.UniqueID, view->vpBX1, view->vpBY1, view->vpBX2, view->vpBY2);
+      log.trace("Clipping boundary for #%d is %.2f %.2f %.2f %.2f", Vector->Head.UniqueID, view->vpBX1, view->vpBY1, view->vpBX2, view->vpBY2);
 
       Vector->Dirty &= ~(RC_TRANSFORM | RC_FINAL_PATH | RC_BASE_PATH);
 
@@ -419,8 +426,13 @@ static void apply_parent_transforms(objVector *Self, objVector *Start, agg::tran
             }
 
             if ((view->vpXScale != 1.0) or (view->vpYScale != 1.0)) {
-               DBG_TRANSFORM("Viewport scales this vector to %.2f %.2f", view->vpXScale, view->vpYScale);
-               AGGTransform.scale(view->vpXScale, view->vpYScale);
+               if (std::isnan(view->vpXScale) or std::isnan(view->vpYScale)) {
+                  log.warning("[%d] Invalid viewport scale values: %f, %f", view->Head.UniqueID, view->vpXScale, view->vpYScale);
+               }
+               else {
+                  DBG_TRANSFORM("Viewport scales this vector to %.2f %.2f", view->vpXScale, view->vpYScale);
+                  AGGTransform.scale(view->vpXScale, view->vpYScale);
+               }
             }
 
             for (auto t=scan->Matrices; t; t=t->Next) {

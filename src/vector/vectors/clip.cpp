@@ -16,21 +16,19 @@ to be shared by multiple vector objects within the same scene.
 *****************************************************************************/
 
 static void draw_clips(objVectorClip *Self, objVector *Branch,
-   agg::rasterizer_scanline_aa<> &rasterizer,
-   agg::renderer_scanline_aa_solid<agg::renderer_base<agg::pixfmt_gray8>> &solid)
+   agg::rasterizer_scanline_aa<> &Rasterizer,
+   agg::renderer_scanline_aa_solid<agg::renderer_base<agg::pixfmt_gray8>> &Solid)
 {
    agg::scanline_p8 sl;
    for (auto scan=Branch; scan; scan=(objVector *)scan->Next) {
-      if (scan->Head.ClassID IS ID_VECTOR) {
-         if (scan->BasePath) {
-            agg::conv_transform<agg::path_storage, agg::trans_affine> final_path(*scan->BasePath, scan->Transform);
-            rasterizer.reset();
-            rasterizer.add_path(final_path);
-            agg::render_scanlines(rasterizer, sl, solid);
-         }
+      if ((scan->Head.ClassID IS ID_VECTOR) and (scan->BasePath)) {
+         agg::conv_transform<agg::path_storage, agg::trans_affine> final_path(*scan->BasePath, scan->Transform);
+         Rasterizer.reset();
+         Rasterizer.add_path(final_path);
+         agg::render_scanlines(Rasterizer, sl, Solid);
       }
 
-      if (scan->Child) draw_clips(Self, (objVector *)scan->Child, rasterizer, solid);
+      if (scan->Child) draw_clips(Self, (objVector *)scan->Child, Rasterizer, Solid);
    }
 }
 
@@ -54,16 +52,17 @@ static ERROR CLIP_Draw(objVectorClip *Self, struct acDraw *Args)
       bounding_rect_single(*Self->ClipPath, 0, &bounds[0], &bounds[1], &bounds[2], &bounds[3]);
    }
 
-   if (Self->Child) {
-      calc_full_boundary((objVector *)Self->Child, bounds);
-   }
+   if (Self->Child) calc_full_boundary((objVector *)Self->Child, bounds);
 
    if (bounds[0] >= 1000000) return ERR_Okay; // Return if there are no valid paths.
 
    LONG width = bounds[2] + 1; // Vector->BX2 - Vector->BX1 + 1;
    LONG height = bounds[3] + 1; // Vector->BY2 - Vector->BY1 + 1;
 
-   if ((width <= 0) or (height <= 0)) log.warning("Invalid mask size of %dx%d detected.", width, height);
+   if ((width <= 0) or (height <= 0)) {
+      log.warning("Invalid mask size of %dx%d detected.", width, height);
+      DEBUG_BREAK
+   }
 
    if (width < 0) width = -width;
    else if (!width) width = 1;
@@ -158,8 +157,8 @@ static ERROR CLIP_Init(objVectorClip *Self, APTR Void)
 
 static ERROR CLIP_NewObject(objVectorClip *Self, APTR Void)
 {
-   Self->ClipUnits    = VUNIT_BOUNDING_BOX;
-   Self->Visibility   = VIS_HIDDEN; // Because the content of the clip object must be ignored by the core vector drawing routine.
+   Self->ClipUnits  = VUNIT_BOUNDING_BOX;
+   Self->Visibility = VIS_HIDDEN; // Because the content of the clip object must be ignored by the core vector drawing routine.
    new (&Self->ClipRenderer) agg::rendering_buffer;
    return ERR_Okay;
 }
@@ -194,8 +193,8 @@ static ERROR CLIP_SET_Transform(objVectorClip *Self, CSTRING Commands)
 -FIELD-
 Units: Defines the coordinate system for fields X, Y, Width and Height.
 
-The default coordinate system for clip-paths is BOUNDING_BOX, which positions the clipping region against the vector
-that references it.  The alternative is USERSPACE, which positions the path relative to the current viewport.
+The default coordinate system for clip-paths is `BOUNDING_BOX`, which positions the clipping region against the vector
+that references it.  The alternative is `USERSPACE`, which positions the path relative to the current viewport.
 -END-
 *****************************************************************************/
 

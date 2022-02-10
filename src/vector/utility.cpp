@@ -151,59 +151,59 @@ INLINE CSTRING get_name(objVector *Vector) {
 
 //****************************************************************************
 // Calculate the target X/Y for a vector path based on an aspect ratio and source/target dimensions.
+// Source* defines size of the source area and Target* defines the size of the projection to the display.
 
-static void calc_alignment(CSTRING Caller, LONG AspectRatio,
+static void calc_aspectratio(CSTRING Caller, LONG AspectRatio,
    DOUBLE TargetWidth, DOUBLE TargetHeight,
    DOUBLE SourceWidth, DOUBLE SourceHeight,
    DOUBLE *X, DOUBLE *Y, DOUBLE *XScale, DOUBLE *YScale)
 {
    parasol::Log log(Caller);
 
-   if (SourceWidth <= 0.000001) SourceWidth = TargetWidth; // Prevent division by zero errors.
+   // Prevent division by zero errors.  Note that the client can legitimately set these values to zero, so we cannot
+   // treat such situations as an error on the client's part.
+
+   if (TargetWidth <= 0.000001) TargetWidth = 0.1;
+   if (TargetHeight <= 0.000001) TargetHeight = 0.1;
+
+   // A Source size of 0 is acceptable and will be treated as equivalent to the target.
+
+   if (SourceWidth <= 0.000001) SourceWidth = TargetWidth;
    if (SourceHeight <= 0.000001) SourceHeight = TargetHeight;
 
-   if (AspectRatio & ARF_MEET) {
+   if (AspectRatio & (ARF_MEET|ARF_SLICE)) {
       DOUBLE xScale = TargetWidth / SourceWidth;
       DOUBLE yScale = TargetHeight / SourceHeight;
 
-      // Choose the smaller of the two scaling factors, so that the scaled graphics meet the edge of the viewport and do not exceed it.
-      if (yScale > xScale) yScale = xScale;
-      else if (xScale > yScale) xScale = yScale;
-      *XScale = xScale;
-      *YScale = yScale;
+      // MEET: Choose the smaller of the two scaling factors, so that the scaled graphics meet the edge of the
+      // viewport and do not exceed it.  SLICE: Choose the larger scale, expanding beyond the boundary on one axis.
 
+      if (AspectRatio & ARF_MEET) {
+         if (yScale > xScale) yScale = xScale;
+         else if (xScale > yScale) xScale = yScale;
+      }
+      else if (AspectRatio & ARF_SLICE) {
+         // Choose the larger of the two scaling factors.
+         if (yScale < xScale) yScale = xScale;
+         else if (xScale < yScale) xScale = yScale;
+      }
+
+      *XScale = xScale;
       if (AspectRatio & ARF_X_MIN) *X = 0;
       else if (AspectRatio & ARF_X_MID) *X = (TargetWidth - (SourceWidth * xScale)) * 0.5;
       else if (AspectRatio & ARF_X_MAX) *X = TargetWidth - (SourceWidth * xScale);
 
-      if (AspectRatio & ARF_Y_MIN) *Y = 0;
-      else if (AspectRatio & ARF_Y_MID) *Y = (TargetHeight - (SourceHeight * yScale)) * 0.5;
-      else if (AspectRatio & ARF_Y_MAX) *Y = TargetHeight - (SourceHeight * yScale);
-   }
-   else if (AspectRatio & ARF_SLICE) {
-      DOUBLE xScale = TargetWidth / SourceWidth;
-      DOUBLE yScale = TargetHeight / SourceHeight;
-
-      // Choose the larger of the two scaling factors.
-      if (yScale < xScale) yScale = xScale;
-      else if (xScale < yScale) xScale = yScale;
-      *XScale = xScale;
       *YScale = yScale;
-
-      if (AspectRatio & ARF_X_MIN) *X = 0;
-      else if (AspectRatio & ARF_X_MID) *X = (TargetWidth - (SourceWidth * xScale)) * 0.5;
-      else if (AspectRatio & ARF_X_MAX) *X = TargetWidth - (SourceWidth * xScale);
-
       if (AspectRatio & ARF_Y_MIN) *Y = 0;
       else if (AspectRatio & ARF_Y_MID) *Y = (TargetHeight - (SourceHeight * yScale)) * 0.5;
       else if (AspectRatio & ARF_Y_MAX) *Y = TargetHeight - (SourceHeight * yScale);
    }
-   else {
+   else { // ARF_NONE
       *X = 0;
-      *Y = 0;
       if ((TargetWidth >= 1.0) and (SourceWidth >= 1.0)) *XScale = TargetWidth / SourceWidth;
       else *XScale = 1.0;
 
+      *Y = 0;
       if ((TargetHeight >= 1.0) and (SourceHeight >= 1.0)) *YScale = TargetHeight / SourceHeight;
       else *YScale = 1.0;
    }

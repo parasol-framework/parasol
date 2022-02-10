@@ -177,7 +177,7 @@ public:
          else if (Dimensions & DMF_FIXED_HEIGHT) parent_height = Filter->ViewHeight;
          else parent_height = Filter->BoundHeight;
 
-         calc_alignment("align_image", AspectRatio, parent_width, parent_height, pic->Width, pic->Height,
+         calc_aspectratio("align_image", AspectRatio, parent_width, parent_height, pic->Width, pic->Height,
             &x, &y, &xScale, &yScale);
 
          x += parent_x;
@@ -206,7 +206,7 @@ public:
          else if (Dimensions & DMF_FIXED_HEIGHT) parent_height = Height;
          else parent_height = Filter->BoundHeight;
 
-         calc_alignment("align_image", AspectRatio, parent_width, parent_height, pic->Width, pic->Height,
+         calc_aspectratio("align_image", AspectRatio, parent_width, parent_height, pic->Width, pic->Height,
             &x, &y, &xScale, &yScale);
 
          x += parent_x;
