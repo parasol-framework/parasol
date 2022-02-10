@@ -16,15 +16,15 @@ static void generate_rectangle(objVectorRectangle *Vector)
    DOUBLE width = Vector->rWidth, height = Vector->rHeight;
 
    if (Vector->rDimensions & DMF_RELATIVE_WIDTH) {
-      DOUBLE parent_width;
-      GetDouble(Vector->ParentView, FID_Width, &parent_width);
-      width *= parent_width;
+      if (Vector->ParentView->vpDimensions & DMF_WIDTH) width *= Vector->ParentView->vpFixedWidth;
+      else if (Vector->ParentView->vpViewWidth > 0) width *= Vector->ParentView->vpViewWidth;
+      else width *= Vector->Scene->PageWidth;
    }
 
    if (Vector->rDimensions & DMF_RELATIVE_HEIGHT) {
-      DOUBLE parent_height;
-      GetDouble(Vector->ParentView, FID_Height, &parent_height);
-      height *= parent_height;
+      if (Vector->ParentView->vpDimensions & DMF_HEIGHT) height *= Vector->ParentView->vpFixedHeight;
+      else if (Vector->ParentView->vpViewHeight > 0) height *= Vector->ParentView->vpViewHeight;
+      else height *= Vector->Scene->PageHeight;
    }
 
    if ((Vector->rRoundX) or (Vector->rRoundY)) {
