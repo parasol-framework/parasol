@@ -8,7 +8,7 @@ typedef struct rkVectorClip {
    SHAPE_PRIVATE
    UBYTE *ClipData;
    agg::path_storage *ClipPath; // Internally generated path
-   agg::rendering_buffer *ClipRenderer;
+   agg::rendering_buffer ClipRenderer;
    struct rkVector *TargetVector;
    LONG ClipUnits;
    LONG ClipSize;
@@ -238,7 +238,7 @@ typedef struct rkVectorRectangle {
 
 struct TransitionStop { // Passed to the Stops field.
    DOUBLE Offset;
-   struct VectorTransform *Transforms;
+   struct VectorMatrix Matrix;
    agg::trans_affine *AGGTransform;
 };
 

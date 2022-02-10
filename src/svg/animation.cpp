@@ -47,6 +47,10 @@ restart:
          if (anim->Transform) { // Animated transform
             objVector *vector;
             if (!AccessObject(anim->TargetVector, 1000, &vector)) {
+               if (!anim->Matrix) {
+                  vecNewMatrix(vector, &anim->Matrix);
+               }
+
                switch(anim->Transform) {
                   case AT_TRANSLATE: break;
                   case AT_SCALE: break;
@@ -64,7 +68,8 @@ restart:
                      DOUBLE new_cx    = from_cx + ((to_cx - from_cx) * ratio);
                      DOUBLE new_cy    = from_cy + ((to_cy - from_cy) * ratio);
 
-                     vecRotate(vector, new_angle, new_cx, new_cy);
+                     vecResetMatrix(anim->Matrix);
+                     vecRotate(anim->Matrix, new_angle, new_cx, new_cy);
                      break;
                   }
                   case AT_SKEW_X: break;

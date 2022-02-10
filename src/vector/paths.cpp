@@ -177,8 +177,7 @@ static void gen_vector_path(objVector *Vector)
 
       agg::trans_affine transform;
 
-      WORD applied_transforms = 0;
-      apply_parent_transforms(Vector, Vector, transform, &applied_transforms);
+      apply_parent_transforms(Vector, Vector, transform);
 
       if (!Vector->BasePath) {
          Vector->BasePath = new (std::nothrow) agg::path_storage;
@@ -201,8 +200,8 @@ static void gen_vector_path(objVector *Vector)
       // If the viewport uses a non-rectangular transform, a clipping mask will need to be generated based on its path.  The path is
       // pre-transformed and drawn in order to speed things up.
 
-      if ((applied_transforms & (VTF_MATRIX|VTF_ROTATE|VTF_SKEW)) and
-          (view->vpOverflowX != VIS_VISIBLE) and (view->vpOverflowY != VIS_VISIBLE)) {
+      if (((transform.shx) or (transform.shy)) and
+          ((view->vpOverflowX != VIS_VISIBLE) or (view->vpOverflowY != VIS_VISIBLE))) {
          log.trace("A clip path will be assigned to viewport #%d.", Vector->Head.UniqueID);
          if (!view->vpClipMask) {
             CreateObject(ID_VECTORCLIP, NF_INTEGRAL, &view->vpClipMask,
@@ -240,10 +239,8 @@ static void gen_vector_path(objVector *Vector)
             case ID_VECTORWAVE:      get_wave_xy((rkVectorWave *)Vector); break;
          }
 
-         if (!Vector->Transform) Vector->Transform = new (std::nothrow) agg::trans_affine;
-         else Vector->Transform->reset();
-
-         if (Vector->Transform) apply_parent_transforms(Vector, Vector, *Vector->Transform, NULL);
+         Vector->Transform.reset();
+         apply_parent_transforms(Vector, Vector, Vector->Transform);
 
          Vector->Dirty = (Vector->Dirty & (~RC_TRANSFORM)) | RC_FINAL_PATH;
       }
@@ -313,16 +310,14 @@ static void gen_vector_path(objVector *Vector)
       if ((Vector->Dirty & RC_TRANSFORM) AND (Vector->Head.SubID IS ID_VECTORTEXT)) {
          get_text_xy((rkVectorText *)Vector); // Sets FinalX/Y
 
-         if (!Vector->Transform) Vector->Transform = new (std::nothrow) agg::trans_affine;
-         else Vector->Transform->reset();
-
-         if (Vector->Transform) apply_parent_transforms(Vector, Vector, *Vector->Transform, NULL);
+         Vector->Transform.reset();
+         apply_parent_transforms(Vector, Vector, Vector->Transform);
 
          Vector->Dirty = (Vector->Dirty & (~RC_TRANSFORM)) | RC_FINAL_PATH;
       }
 
-      if (Vector->Transform) {
-         DOUBLE scale = Vector->Transform->scale();
+      if (Vector->Matrices) {
+         DOUBLE scale = Vector->Transform.scale();
          Vector->BasePath->approximation_scale(scale);
          if (scale > 1.0) Vector->BasePath->angle_tolerance(0.2); // Set in radians.  The less this value is, the more accurate it will be at sharp turns.
          else Vector->BasePath->angle_tolerance(0);
@@ -337,7 +332,7 @@ static void gen_vector_path(objVector *Vector)
          }
          else Vector->FillRaster->reset();
 
-         agg::conv_transform<agg::path_storage, agg::trans_affine> fill_path(*Vector->BasePath, *Vector->Transform);
+         agg::conv_transform<agg::path_storage, agg::trans_affine> fill_path(*Vector->BasePath, Vector->Transform);
          Vector->FillRaster->add_path(fill_path);
       }
       else if (Vector->FillRaster) {
@@ -347,7 +342,7 @@ static void gen_vector_path(objVector *Vector)
 
       if ((Vector->StrokeWidth > 0) and
           ((Vector->StrokePattern) or (Vector->StrokeGradient) or (Vector->StrokeImage) or
-           (Vector->StrokeColour.Alpha * Vector->StrokeOpacity * Vector->Opacity > 0.001))){
+           (Vector->StrokeColour.Alpha * Vector->StrokeOpacity * Vector->Opacity > 0.001))) {
 
          // Configure the curve algorithm so that it generates nicer looking curves when the vector is scaled up.  This
          // is not required if the vector scale is <= 1.0 (the angle_tolerance controls this).
@@ -377,13 +372,13 @@ static void gen_vector_path(objVector *Vector)
 
             configure_stroke((objVector &)*Vector, dashed_stroke);
 
-            agg::conv_transform<agg::conv_stroke<agg::conv_dash<agg::path_storage>>, agg::trans_affine> stroke_path(dashed_stroke, *Vector->Transform);
+            agg::conv_transform<agg::conv_stroke<agg::conv_dash<agg::path_storage>>, agg::trans_affine> stroke_path(dashed_stroke, Vector->Transform);
             Vector->StrokeRaster->add_path(stroke_path);
          }
          else {
             agg::conv_stroke<agg::path_storage> stroked_path(*Vector->BasePath);
             configure_stroke((objVector &)*Vector, stroked_path);
-            agg::conv_transform<agg::conv_stroke<agg::path_storage>, agg::trans_affine> stroke_path(stroked_path, *Vector->Transform);
+            agg::conv_transform<agg::conv_stroke<agg::path_storage>, agg::trans_affine> stroke_path(stroked_path, Vector->Transform);
             Vector->StrokeRaster->add_path(stroke_path);
          }
       }
@@ -403,7 +398,7 @@ static void gen_vector_path(objVector *Vector)
 // Apply all transforms in the correct SVG order to a target agg::trans_affine object.  The process starts with the
 // vector passed in to the function, and proceeds upwards through the parent nodes.
 
-static void apply_parent_transforms(objVector *Self, objVector *Start, agg::trans_affine &transform, WORD *Applied)
+static void apply_parent_transforms(objVector *Self, objVector *Start, agg::trans_affine &AGGTransform)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -420,125 +415,30 @@ static void apply_parent_transforms(objVector *Self, objVector *Start, agg::tran
          }
          else {
             if ((view->vpViewX) or (view->vpViewY)) {
-               transform.translate(-view->vpViewX, -view->vpViewY);
-               if (Applied) *Applied |= VTF_TRANSLATE;
+               AGGTransform.translate(-view->vpViewX, -view->vpViewY);
             }
 
             if ((view->vpXScale != 1.0) or (view->vpYScale != 1.0)) {
                DBG_TRANSFORM("Viewport scales this vector to %.2f %.2f", view->vpXScale, view->vpYScale);
-               transform.scale(view->vpXScale, view->vpYScale);
-               if (Applied) *Applied |= VTF_SCALE;
+               AGGTransform.scale(view->vpXScale, view->vpYScale);
+            }
+
+            for (auto t=scan->Matrices; t; t=t->Next) {
+               AGGTransform.multiply(t->ScaleX, t->ShearY, t->ShearX, t->ScaleY, t->TranslateX, t->TranslateY);
             }
 
             // Children of viewports are affected by the VP's alignment values.
-
-            apply_transforms(scan->Transforms, view->vpFixedRelX + view->vpAlignX,
-               view->vpFixedRelY + view->vpAlignY, transform, Applied);
+            AGGTransform.translate(view->vpFixedRelX + view->vpAlignX, view->vpFixedRelY + view->vpAlignY);
          }
       }
       else {
          log.trace("Parent vector #%d x/y: %.2f %.2f", scan->Head.UniqueID, scan->FinalX, scan->FinalY);
-         apply_transforms(scan->Transforms, scan->FinalX, scan->FinalY, transform, Applied);
+
+         AGGTransform.tx += scan->FinalX;
+         AGGTransform.ty += scan->FinalY;
+         for (auto t=scan->Matrices; t; t=t->Next) {
+            AGGTransform.multiply(t->ScaleX, t->ShearY, t->ShearX, t->ScaleY, t->TranslateX, t->TranslateY);
+         }
       }
    }
-}
-
-//********************************************************************************************************************
-// Applies a vector's transformations to a trans_affine object, using the order in which they are listed.
-
-static void apply_transforms(VectorTransform *t, DOUBLE X, DOUBLE Y, agg::trans_affine &Transform, WORD *Applied = NULL)
-{
-   parasol::Log log(__FUNCTION__);
-
-   if ((X) or (Y)) {
-      DBG_TRANSFORM("Initial translate to vector position %.2f %.2f", X, Y);
-      Transform.translate(X, Y);
-   }
-
-   WORD type = 0;
-
-   while (t) {
-      switch (t->Type) {
-         case VTF_MATRIX:
-            DBG_TRANSFORM("Matrix: %.2f %.2f %.2f %.2f %.2f %.2f", t->Matrix[0], t->Matrix[1], t->Matrix[2], t->Matrix[3], t->Matrix[4], t->Matrix[5]);
-            Transform.multiply(agg::trans_affine(t->Matrix[0], t->Matrix[1], t->Matrix[2], t->Matrix[3], t->Matrix[4], t->Matrix[5]));
-            // Determine the transform type by analysing the matrix numbers.
-            if ((t->Matrix[1] IS 0.0) and (t->Matrix[2] IS 0.0)) {
-               type |= VTF_TRANSLATE;
-               if ((t->Matrix[0] != 1.0) OR (t->Matrix[3] != 1.0)) type |= VTF_SCALE;
-            }
-            else type |= VTF_MATRIX|VTF_ROTATE;
-            break;
-
-         case VTF_SCALE:
-            DBG_TRANSFORM("Scale: %.2f %.2f", t->X, t->Y);
-            if (t->Y == 0.0) {
-               Transform.scale(t->X);
-            }
-            else Transform.scale(t->X, t->Y);
-            type |= VTF_SCALE;
-            break;
-
-         case VTF_ROTATE:
-            DBG_TRANSFORM("Rotate: %.2f %.2f %.2f", t->X, t->Y, t->Angle);
-            if ((t->X) or (t->Y)) { // Rotate around the specified (x,y) coordinate; to do this we need to translate first.
-               Transform.translate(-t->X, -t->Y);
-               Transform.rotate(t->Angle * DEG2RAD);
-               Transform.translate(t->X, t->Y);
-            }
-            else Transform.rotate(t->Angle * DEG2RAD);
-            type |= VTF_ROTATE;
-            break;
-
-         case  VTF_SKEW:
-            DBG_TRANSFORM("Skew: %.2f %.2f", t->X, t->Y);
-            if (t->X) Transform *= agg::trans_affine_skewing(t->X * DEG2RAD, 0.0);
-            if (t->Y) Transform *= agg::trans_affine_skewing(0.0, t->Y * DEG2RAD);
-            type |= VTF_SKEW;
-            break;
-
-         case VTF_TRANSLATE:
-            DBG_TRANSFORM("Translate: %.2f %.2f", t->X, t->Y);
-            Transform.translate(t->X, t->Y);
-            type |= VTF_TRANSLATE;
-            break;
-
-         default: log.warning("Transform instruction $%.8x not recognised.", t->Type);
-      }
-
-      t = t->Next;
-   }
-
-   if (Applied) *Applied |= type;
-}
-
-//********************************************************************************************************************
-// Creates a new transformation instruction and returns it for setting additional field values.  If Create is FALSE
-// then an existing transform will be returned if there is a matching type available.
-//
-// Every new transform is inserted at the start of the linked-list so that it receives priority.  This reflects SVG's
-// ordering of transformations.
-
-static VectorTransform * add_transform(objVector *Self, LONG Type)
-{
-   parasol::Log log(__FUNCTION__);
-
-   DBG_TRANSFORM("Type: $%.8x", Type);
-
-   VectorTransform *transform;
-   if (!AllocMemory(sizeof(VectorTransform), MEM_DATA, &transform, NULL)) {
-      // Insert transform at the start of the list.
-
-      transform->Prev = NULL;
-      transform->Next = Self->Transforms;
-      if (Self->Transforms) Self->Transforms->Prev = transform;
-      Self->Transforms = transform;
-
-      transform->Type = Type;
-      Self->ActiveTransforms |= Type;
-      mark_dirty(Self, RC_TRANSFORM); // Transforms affect the final path of the vector.
-      return transform;
-   }
-
-   return NULL;
 }

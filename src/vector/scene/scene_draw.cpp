@@ -229,17 +229,22 @@ static void draw_pattern(objVector *Vector, agg::path_storage *Path,
       else if (Pattern.Dimensions & DMF_FIXED_Y) dy += Pattern.Y;
    }
 
-   WORD applied = 0;
    agg::trans_affine transform;
-   transform.translate(dx, dy);
-   if (Pattern.Transforms) apply_transforms(Pattern.Transforms, 0, 0, transform, &applied);
-   if (Vector) {
-      apply_transforms(Vector->Transforms, 0, 0, transform, &applied);
-      apply_parent_transforms(Vector, (objVector *)get_parent(Vector), transform, &applied);
+
+   if (Pattern.Matrices) {
+      auto &m = *Pattern.Matrices;
+      transform.load_all(m.ScaleX, m.ShearY, m.ShearX, m.ScaleY, m.TranslateX + dx, m.TranslateY + dy);
    }
+   else transform.translate(dx, dy);
+
+   if (Vector) {
+      compile_transforms(*Vector, transform);
+      apply_parent_transforms(Vector, (objVector *)get_parent(Vector), transform);
+   }
+
    transform.invert(); // Required
 
-   if (applied & (VTF_SKEW|VTF_SCALE|VTF_ROTATE)) {
+   if ((transform.sx != 1.0) or (transform.sy != 1.0) or (transform.shx != 0.0) or (transform.shy != 0.0)) {
       drawBitmap(SampleMethod, RenderBase, Raster, Pattern.Bitmap, Pattern.SpreadMethod, Pattern.Opacity, &transform, 0, 0);
    }
    else drawBitmap(SampleMethod, RenderBase, Raster, Pattern.Bitmap, Pattern.SpreadMethod, Pattern.Opacity, NULL, -dx, -dy);
@@ -398,7 +403,6 @@ static void draw_image(objVector *Vector, agg::path_storage &Path, LONG SampleMe
    DOUBLE dx, dy, bx1, by1, bx2, by2;
    agg::trans_affine transform;
 
-   WORD applied = 0;
    if (Image.Units & VUNIT_USERSPACE) { // Align to the provided x/y coordinate in rkVectorImage.
       if (Image.Dimensions & DMF_RELATIVE_X) dx = ViewWidth * Image.X;
       else dx = Image.X;
@@ -426,18 +430,19 @@ static void draw_image(objVector *Vector, agg::path_storage &Path, LONG SampleMe
 
       if (Image.SpreadMethod IS VSPREAD_PAD) { // In pad mode, stretch the image to fit the boundary
          transform.scale(width / Image.Bitmap->Width, height / Image.Bitmap->Height);
-         applied |= VTF_SCALE;
       }
-      else applied |= VTF_TRANSLATE; // Translation required to ensure that the image is moved to the (x,y) position
    }
 
    if (Vector) {
-      apply_transforms(Vector->Transforms, dx, dy, transform, &applied);
-      apply_parent_transforms(Vector, (objVector *)get_parent(Vector), transform, &applied);
+      transform.tx += dx;
+      transform.ty += dy;
+      compile_transforms(*Vector, transform);
+      apply_parent_transforms(Vector, (objVector *)get_parent(Vector), transform);
    }
+
    transform.invert(); // Required
 
-   if (applied) {
+   if ((transform.sx != 1.0) or (transform.sy != 1.0) or (transform.shx != 0.0) or (transform.shy != 0.0)) {
       drawBitmap(SampleMethod, RenderBase, Raster, Image.Bitmap, Image.SpreadMethod, Alpha, &transform, 0, 0);
    }
    else drawBitmap(SampleMethod, RenderBase, Raster, Image.Bitmap, Image.SpreadMethod, Alpha, NULL, -dx, -dy);
@@ -460,8 +465,8 @@ void draw_gradient(objVector *Vector, agg::path_storage *mPath, DOUBLE X, DOUBLE
    typedef agg::renderer_base<agg::pixfmt_rkl>  RENDERER_BASE_TYPE;
 
    agg::scanline_u8 scanline;
-   agg::trans_affine   gtrans;
-   interpolator_type   span_interpolator(gtrans);
+   agg::trans_affine   transform;
+   interpolator_type   span_interpolator(transform);
    span_allocator_type span_allocator;
 
    DOUBLE bx1, by1, bx2, by2;
@@ -504,16 +509,18 @@ void draw_gradient(objVector *Vector, agg::path_storage *mPath, DOUBLE X, DOUBLE
 
       const DOUBLE dx = ax2 - ax1;
       const DOUBLE dy = ay2 - ay1;
-      gtrans.scale(sqrt((dx * dx) + (dy * dy)) / 256.0);
-      gtrans.rotate(atan2(dy, dx));
+      transform.scale(sqrt((dx * dx) + (dy * dy)) / 256.0);
+      transform.rotate(atan2(dy, dx));
 
-      gtrans.translate(ax1, ay1);
-      if (Gradient.Transforms) apply_transforms(Gradient.Transforms, 0, 0, gtrans, NULL);
+      transform.translate(ax1, ay1);
+      compile_transforms(Gradient, transform);
+
       if (Vector) {
-         apply_transforms(Vector->Transforms, 0, 0, gtrans, NULL);
-         apply_parent_transforms(Vector, (objVector *)get_parent(Vector), gtrans, NULL);
+         compile_transforms(*Vector, transform);
+         apply_parent_transforms(Vector, (objVector *)get_parent(Vector), transform);
       }
-      gtrans.invert();
+
+      transform.invert();
 
       agg::gradient_x gradient_func; // gradient_x is a horizontal gradient with infinite height
       typedef agg::span_gradient<agg::rgba8, interpolator_type, agg::gradient_x, color_array_type> span_gradient_type;
@@ -580,15 +587,15 @@ void draw_gradient(objVector *Vector, agg::path_storage *mPath, DOUBLE X, DOUBLE
                else if (width > height) scale_x *= width / height;
                scale_x *= 100.0 / length; // Adjust the scale according to the gradient length.
                scale_y *= 100.0 / length;
-               gtrans.scale(scale_x, scale_y);
+               transform.scale(scale_x, scale_y);
             }
             else {
-               //gtrans *= agg::trans_affine_scaling(Gradient.Radius * 0.01 / length);
+               //transform *= agg::trans_affine_scaling(Gradient.Radius * 0.01 / length);
             }
          }
 
          if (length < 255) {   // Blending works best if the gradient span is at least 255 colours wide, so adjust it here.
-            gtrans.scale(length / 255.0);
+            transform.scale(length / 255.0);
             length = 255;
          }
 
@@ -598,13 +605,15 @@ void draw_gradient(objVector *Vector, agg::path_storage *mPath, DOUBLE X, DOUBLE
          span_gradient_type  span_gradient(span_interpolator, gradient_func, *Table, 0, length);
          renderer_gradient_type solidrender_gradient(RenderBase, span_allocator, span_gradient);
 
-         gtrans.translate(cx, cy);
-         if (Gradient.Transforms) apply_transforms(Gradient.Transforms, 0, 0, gtrans, NULL);
+         transform.translate(cx, cy);
+         compile_transforms(Gradient, transform);
+
          if (Vector) {
-            apply_transforms(Vector->Transforms, 0, 0, gtrans, NULL);
-            apply_parent_transforms(Vector, (objVector *)get_parent(Vector), gtrans, NULL);
+            compile_transforms(*Vector, transform);
+            apply_parent_transforms(Vector, (objVector *)get_parent(Vector), transform);
          }
-         gtrans.invert();
+
+         transform.invert();
 
          agg::render_scanlines(Raster, scanline, solidrender_gradient);
       }
@@ -622,9 +631,9 @@ void draw_gradient(objVector *Vector, agg::path_storage *mPath, DOUBLE X, DOUBLE
          if (Gradient.Units & VUNIT_USERSPACE) {
             if (Gradient.Flags & VGF_RELATIVE_RADIUS) {
                DOUBLE scale = length * Gradient.Radius;
-               gtrans *= agg::trans_affine_scaling(sqrt((ViewWidth * ViewWidth) + (ViewHeight * ViewHeight)) / scale);
+               transform *= agg::trans_affine_scaling(sqrt((ViewWidth * ViewWidth) + (ViewHeight * ViewHeight)) / scale);
             }
-            else gtrans *= agg::trans_affine_scaling(Gradient.Radius * 0.01);
+            else transform *= agg::trans_affine_scaling(Gradient.Radius * 0.01);
          }
          else { // Bounding box
             if (Gradient.Flags & VGF_RELATIVE_RADIUS) {
@@ -637,9 +646,9 @@ void draw_gradient(objVector *Vector, agg::path_storage *mPath, DOUBLE X, DOUBLE
                else if (width > height) scale_x *= width / height;
                scale_x *= 100.0 / length; // Adjust the scale according to the gradient length.
                scale_y *= 100.0 / length;
-               gtrans.scale(scale_x, scale_y);
+               transform.scale(scale_x, scale_y);
             }
-            else gtrans *= agg::trans_affine_scaling(Gradient.Radius * 0.01);
+            else transform *= agg::trans_affine_scaling(Gradient.Radius * 0.01);
          }
 
          agg::gradient_radial_focus gradient_func(fix_radius, fx - cx, fy - cy);
@@ -649,13 +658,15 @@ void draw_gradient(objVector *Vector, agg::path_storage *mPath, DOUBLE X, DOUBLE
          span_gradient_type  span_gradient(span_interpolator, gradient_func, *Table, 0, fix_radius);
          renderer_gradient_type solidrender_gradient(RenderBase, span_allocator, span_gradient);
 
-         gtrans.translate(cx, cy);
-         if (Gradient.Transforms) apply_transforms(Gradient.Transforms, 0, 0, gtrans, NULL);
+         transform.translate(cx, cy);
+         compile_transforms(Gradient, transform);
+
          if (Vector) {
-            apply_transforms(Vector->Transforms, 0, 0, gtrans, NULL);
-            apply_parent_transforms(Vector, (objVector *)get_parent(Vector), gtrans, NULL);
+            compile_transforms(*Vector, transform);
+            apply_parent_transforms(Vector, (objVector *)get_parent(Vector), transform);
          }
-         gtrans.invert();
+
+         transform.invert();
 
          agg::render_scanlines(Raster, scanline, solidrender_gradient);
       }
@@ -687,9 +698,9 @@ void draw_gradient(objVector *Vector, agg::path_storage *mPath, DOUBLE X, DOUBLE
       if (Gradient.Units & VUNIT_USERSPACE) {
          if (Gradient.Flags & VGF_RELATIVE_RADIUS) {
             DOUBLE scale = length * Gradient.Radius;
-            gtrans *= agg::trans_affine_scaling(sqrt((ViewWidth * ViewWidth) + (ViewHeight * ViewHeight)) / scale);
+            transform *= agg::trans_affine_scaling(sqrt((ViewWidth * ViewWidth) + (ViewHeight * ViewHeight)) / scale);
          }
-         else gtrans *= agg::trans_affine_scaling(Gradient.Radius * 0.01);
+         else transform *= agg::trans_affine_scaling(Gradient.Radius * 0.01);
       }
       else { // Align to vector's bounding box
          if (Gradient.Flags & VGF_RELATIVE_RADIUS) {
@@ -702,9 +713,9 @@ void draw_gradient(objVector *Vector, agg::path_storage *mPath, DOUBLE X, DOUBLE
             else if (width > height) scale_x *= width / height;
             scale_x *= 100.0 / length; // Adjust the scale according to the gradient length.
             scale_y *= 100.0 / length;
-            gtrans.scale(scale_x, scale_y);
+            transform.scale(scale_x, scale_y);
          }
-         else gtrans *= agg::trans_affine_scaling(Gradient.Radius * 0.01);
+         else transform *= agg::trans_affine_scaling(Gradient.Radius * 0.01);
       }
 
       agg::gradient_diamond gradient_func;
@@ -713,13 +724,15 @@ void draw_gradient(objVector *Vector, agg::path_storage *mPath, DOUBLE X, DOUBLE
       span_gradient_type  span_gradient(span_interpolator, gradient_func, *Table, 0, length);
       renderer_gradient_type solidrender_gradient(RenderBase, span_allocator, span_gradient);
 
-      gtrans.translate(cx, cy);
-      if (Gradient.Transforms) apply_transforms(Gradient.Transforms, 0, 0, gtrans, NULL);
+      transform.translate(cx, cy);
+      compile_transforms(Gradient, transform);
+
       if (Vector) {
-         apply_transforms(Vector->Transforms, 0, 0, gtrans, NULL);
-         apply_parent_transforms(Vector, (objVector *)get_parent(Vector), gtrans, NULL);
+         compile_transforms(*Vector, transform);
+         apply_parent_transforms(Vector, (objVector *)get_parent(Vector), transform);
       }
-      gtrans.invert();
+
+      transform.invert();
 
       agg::render_scanlines(Raster, scanline, solidrender_gradient);
    }
@@ -750,9 +763,9 @@ void draw_gradient(objVector *Vector, agg::path_storage *mPath, DOUBLE X, DOUBLE
       if (Gradient.Units & VUNIT_USERSPACE) {
          if (Gradient.Flags & VGF_RELATIVE_RADIUS) {
             DOUBLE scale = length * Gradient.Radius;
-            gtrans *= agg::trans_affine_scaling(sqrt((ViewWidth * ViewWidth) + (ViewHeight * ViewHeight)) / scale);
+            transform *= agg::trans_affine_scaling(sqrt((ViewWidth * ViewWidth) + (ViewHeight * ViewHeight)) / scale);
          }
-         else gtrans *= agg::trans_affine_scaling(Gradient.Radius * 0.01);
+         else transform *= agg::trans_affine_scaling(Gradient.Radius * 0.01);
       }
       else { // Bounding box
          if (Gradient.Flags & VGF_RELATIVE_RADIUS) {
@@ -765,9 +778,9 @@ void draw_gradient(objVector *Vector, agg::path_storage *mPath, DOUBLE X, DOUBLE
             else if (width > height) scale_x *= width / height;
             scale_x *= 100.0 / length; // Adjust the scale according to the gradient length.
             scale_y *= 100.0 / length;
-            gtrans.scale(scale_x, scale_y);
+            transform.scale(scale_x, scale_y);
          }
-         else gtrans *= agg::trans_affine_scaling(Gradient.Radius * 0.01);
+         else transform *= agg::trans_affine_scaling(Gradient.Radius * 0.01);
       }
 
       agg::gradient_conic gradient_func;
@@ -776,13 +789,15 @@ void draw_gradient(objVector *Vector, agg::path_storage *mPath, DOUBLE X, DOUBLE
       span_gradient_type  span_gradient(span_interpolator, gradient_func, *Table, 0, length);
       renderer_gradient_type solidrender_gradient(RenderBase, span_allocator, span_gradient);
 
-      gtrans.translate(cx, cy);
-      if (Gradient.Transforms) apply_transforms(Gradient.Transforms, 0, 0, gtrans, NULL);
+      transform.translate(cx, cy);
+      compile_transforms(Gradient, transform);
+
       if (Vector) {
-         apply_transforms(Vector->Transforms, 0, 0, gtrans, NULL);
-         apply_parent_transforms(Vector, (objVector *)get_parent(Vector), gtrans, NULL);
+         compile_transforms(*Vector, transform);
+         apply_parent_transforms(Vector, (objVector *)get_parent(Vector), transform);
       }
-      gtrans.invert();
+
+      transform.invert();
 
       agg::render_scanlines(Raster, scanline, solidrender_gradient);
    }
@@ -795,16 +810,17 @@ void draw_gradient(objVector *Vector, agg::path_storage *mPath, DOUBLE X, DOUBLE
       gradient_func.frame(0); // This value offsets the gradient, e.g. 10 adds an x,y offset of (10,10)
       gradient_func.d1(Gradient.X1);   // d1 and d2 alter the coverage of the gradient colours
       gradient_func.d2(Gradient.X2);   // Low values for d2 will increase the amount of repetition seen in the gradient.
-
       gradient_func.contour_create(mPath);
 
-      gtrans.translate(X+bx1, Y+by1);
-      if (Gradient.Transforms) apply_transforms(Gradient.Transforms, 0, 0, gtrans, NULL);
+      transform.translate(X + bx1, Y + by1);
+      compile_transforms(Gradient, transform);
+
       if (Vector) {
-         apply_transforms(Vector->Transforms, 0, 0, gtrans, NULL);
-         apply_parent_transforms(Vector, (objVector *)get_parent(Vector), gtrans, NULL);
+         compile_transforms(*Vector, transform);
+         apply_parent_transforms(Vector, (objVector *)get_parent(Vector), transform);
       }
-      gtrans.invert();
+
+      transform.invert();
 
       typedef agg::span_gradient<agg::rgba8, interpolator_type, agg::gradient_contour, color_array_type> span_gradient_type;
       typedef agg::renderer_scanline_aa<RENDERER_BASE_TYPE, span_allocator_type, span_gradient_type> renderer_gradient_type;
@@ -903,7 +919,7 @@ private:
          }
 
          #ifdef DBG_DRAW
-            log.traceBranch("%s: #%d, Transforms: %p", get_name(shape), shape->Head.UniqueID, shape->Transforms);
+            log.traceBranch("%s: #%d, Matrices: %p", get_name(shape), shape->Head.UniqueID, shape->Matrices);
          #endif
 
          if (shape->LineJoin != agg::inherit_join)   state.mLineJoin  = shape->LineJoin;
@@ -958,7 +974,7 @@ private:
                #endif
 
                if ((x2 > x1) and (y2 > y1)) { // Continue only if the clipping region is good.
-                  objVectorClip *saved_mask = state.mClipMask;
+                  auto saved_mask = state.mClipMask;
                   if (view->vpClipMask) state.mClipMask = view->vpClipMask;
 
                   log.trace("ViewBox (%.2f %.2f %.2f %.2f) Scale (%.2f %.2f) Fix (%.2f %.2f %.2f %.2f)",
@@ -966,7 +982,7 @@ private:
                     view->vpXScale, view->vpYScale,
                     view->vpFixedRelX, view->vpFixedRelY, view->vpFixedWidth, view->vpFixedHeight);
 
-                  objVectorViewport *saved_viewport = mView;  // Save current viewport state and switch to the new viewport state
+                  auto saved_viewport = mView;  // Save current viewport state and switch to the new viewport state
                   mView = view;
 
                   draw_vectors((objVector *)view->Child, state);
@@ -1003,7 +1019,7 @@ private:
                   return;
                }
 
-               objVectorClip *saved_mask = state.mClipMask;
+               auto saved_mask = state.mClipMask;
                if (shape->ClipMask) state.mClipMask = shape->ClipMask;
 
                DOUBLE view_width, view_height;
@@ -1027,7 +1043,7 @@ private:
                      mSolidRender.color(agg::rgba(shape->FillColour.Red, shape->FillColour.Green, shape->FillColour.Blue, shape->FillColour.Alpha * shape->FillOpacity * state.mOpacity));
 
                      if (state.mClipMask) {
-                        agg::alpha_mask_gray8 alpha_mask(*state.mClipMask->ClipRenderer);
+                        agg::alpha_mask_gray8 alpha_mask(state.mClipMask->ClipRenderer);
                         agg::scanline_u8_am<agg::alpha_mask_gray8> mScanLineMasked(alpha_mask);
                         agg::render_scanlines(*shape->FillRaster, mScanLineMasked, mSolidRender);
                      }
@@ -1073,10 +1089,10 @@ private:
                         view_width, view_height, *shape->StrokePattern, mRenderBase, *shape->StrokeRaster);
                   }
                   else if (shape->StrokeImage) {
-                     DOUBLE strokewidth = shape->StrokeWidth * shape->Transform->scale();
+                     DOUBLE strokewidth = shape->StrokeWidth * shape->Transform.scale();
                      if (strokewidth < 1) strokewidth = 1;
 
-                     agg::conv_transform<agg::path_storage, agg::trans_affine> stroke_path(*shape->BasePath, *shape->Transform);
+                     agg::conv_transform<agg::path_storage, agg::trans_affine> stroke_path(*shape->BasePath, shape->Transform);
 
                      draw_texstroke(*shape->StrokeImage, mRenderBase, stroke_path, strokewidth);
                   }
@@ -1084,7 +1100,7 @@ private:
                      mSolidRender.color(agg::rgba(shape->StrokeColour.Red, shape->StrokeColour.Green, shape->StrokeColour.Blue, shape->StrokeColour.Alpha * shape->StrokeOpacity * state.mOpacity));
 
                      if (state.mClipMask) {
-                        agg::alpha_mask_gray8 alpha_mask(*state.mClipMask->ClipRenderer);
+                        agg::alpha_mask_gray8 alpha_mask(state.mClipMask->ClipRenderer);
                         agg::scanline_u8_am<agg::alpha_mask_gray8> mScanLineMasked(alpha_mask);
                         agg::render_scanlines(*shape->StrokeRaster, mScanLineMasked, mSolidRender);
                      }
@@ -1096,7 +1112,7 @@ private:
             }
 
             if (shape->Child) {
-               objVectorClip *saved_mask = state.mClipMask;
+               auto saved_mask = state.mClipMask;
                if (shape->ClipMask) state.mClipMask = shape->ClipMask;
 
                draw_vectors((objVector *)shape->Child, state);

@@ -124,12 +124,10 @@ static void get_super_xy(struct rkVectorShape *);
 static void get_text_xy(struct rkVectorText *);
 static void get_wave_xy(struct rkVectorWave *);
 
-static VectorTransform * add_transform(objVector *, LONG Type);
-static void apply_parent_transforms(objVector *, objVector *, agg::trans_affine &, WORD *);
-static void apply_transforms(VectorTransform *, DOUBLE, DOUBLE, agg::trans_affine &, WORD *);
+static void apply_parent_transforms(objVector *, objVector *, agg::trans_affine &);
 static void apply_transition(objVectorTransition *, DOUBLE, agg::trans_affine &);
 static void apply_transition_xy(objVectorTransition *, DOUBLE, DOUBLE *X, DOUBLE *Y);
-static void convert_to_aggpath(std::vector<PathCommand> &Paths, agg::path_storage *BasePath);
+static void convert_to_aggpath(std::vector<PathCommand> &Paths, agg::path_storage *);
 static void gen_vector_path(objVector *);
 static void gen_vector_tree(objVector *);
 static GRADIENT_TABLE * get_fill_gradient_table(objVector &, DOUBLE);

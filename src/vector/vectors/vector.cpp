@@ -30,7 +30,6 @@ unless otherwise documented.
 static ERROR vector_input_events(objVector *, const InputEvent *);
 
 static ERROR VECTOR_Push(objVector *, struct vecPush *);
-static ERROR VECTOR_Reset(objVector *, APTR);
 
 //****************************************************************************
 
@@ -51,6 +50,51 @@ static void debug_tree(objVector *Vector)
 }
 
 //****************************************************************************
+// Determine the parent object, based on the owner.
+
+void set_parent(objVector *Self, OBJECTID OwnerID)
+{
+   // Objects that don't belong to the Vector class will be ignored (i.e. they won't appear in the tree).
+
+   CLASSID class_id = GetClassID(OwnerID);
+   if ((class_id != ID_VECTORSCENE) and (class_id != ID_VECTOR)) return;
+
+   Self->Parent = (OBJECTPTR)GetObjectPtr(OwnerID);
+
+   // Ensure that the sibling fields are valid, if not then clear them.
+
+   if ((Self->Prev) and (Self->Prev->Parent != Self->Parent)) Self->Prev = NULL;
+   if ((Self->Next) and (Self->Next->Parent != Self->Parent)) Self->Next = NULL;
+
+   if (Self->Parent->ClassID IS ID_VECTOR) {
+      if ((!Self->Prev) and (!Self->Next)) {
+         if (((objVector *)Self->Parent)->Child) { // Insert at the end
+            auto end = ((objVector *)Self->Parent)->Child;
+            while (end->Next) end = end->Next;
+            end->Next = Self;
+            Self->Prev = end;
+         }
+         else ((objVector *)Self->Parent)->Child = Self;
+      }
+
+      Self->Scene = ((objVector *)Self->Parent)->Scene;
+   }
+   else if (Self->Parent->ClassID IS ID_VECTORSCENE) {
+      if ((!Self->Prev) and (!Self->Next)) {
+         if (((objVectorScene *)Self->Parent)->Viewport) { // Insert at the end
+            auto end = ((objVectorScene *)Self->Parent)->Viewport;
+            while (end->Next) end = end->Next;
+            end->Next = Self;
+            Self->Prev = end;
+         }
+         else ((objVectorScene *)Self->Parent)->Viewport = Self;
+      }
+
+      Self->Scene = (objVectorScene *)Self->Parent;
+   }
+}
+
+//****************************************************************************
 
 static ERROR VECTOR_ActionNotify(objVector *Self, struct acActionNotify *Args)
 {
@@ -63,78 +107,6 @@ static ERROR VECTOR_ActionNotify(objVector *Self, struct acActionNotify *Args)
       }
    }
    else return ERR_NoSupport;
-
-   return ERR_Okay;
-}
-
-/*****************************************************************************
-
--METHOD-
-ApplyMatrix: Applies a 3x2 transform matrix to the vector.
-
-This method will apply a 3x2 transformation matrix to the vector.  If the matrix is preceded with the application of
-other transforms, the outcome is that the matrix is multiplied with the combination of the former transforms.
-
--INPUT-
-double A: Matrix value at (0,0)
-double B: Matrix value at (1,0)
-double C: Matrix value at (2,0)
-double D: Matrix value at (0,1)
-double E: Matrix value at (1,1)
-double F: Matrix value at (2,1)
-
--ERRORS-
-Okay
-NullArgs
-AllocMemory
--END-
-
-*****************************************************************************/
-
-static ERROR VECTOR_ApplyMatrix(objVector *Self, struct vecApplyMatrix *Args)
-{
-   if (!Args) return ERR_NullArgs;
-
-   VectorTransform *transform;
-   if ((transform = add_transform(Self, VTF_MATRIX))) {
-      transform->Matrix[0] = Args->A;
-      transform->Matrix[1] = Args->B;
-      transform->Matrix[2] = Args->C;
-      transform->Matrix[3] = Args->D;
-      transform->Matrix[4] = Args->E;
-      transform->Matrix[5] = Args->F;
-      return ERR_Okay;
-   }
-   else return ERR_AllocMemory;
-}
-
-/*****************************************************************************
-
--METHOD-
-ClearTransforms: Clear all transform instructions currently associated with the vector.
-
-This method will clear all transform instructions that have been applied to the vector.
-
--ERRORS-
-Okay
--END-
-
-*****************************************************************************/
-
-static ERROR VECTOR_ClearTransforms(objVector *Self, APTR Void)
-{
-   parasol::Log log;
-
-   log.traceBranch();
-
-   if (Self->Transforms) {
-      VectorTransform *next;
-      for (auto scan=Self->Transforms; scan; scan=next) {
-         next = scan->Next;
-         FreeResource(scan);
-      }
-      Self->Transforms = NULL;
-   }
 
    return ERR_Okay;
 }
@@ -251,9 +223,7 @@ static ERROR VECTOR_Free(objVector *Self, APTR Args)
    if (Self->FillGradientTable) { delete Self->FillGradientTable; Self->FillGradientTable = NULL; }
    if (Self->StrokeGradientTable) { delete Self->StrokeGradientTable; Self->StrokeGradientTable = NULL; }
 
-   VECTOR_ClearTransforms(Self, NULL);
-
-   // Patch the nearest vectors that are linked to ours.
+   // Patch the nearest vectors that are linked to this one.
    if (Self->Next) Self->Next->Prev = Self->Prev;
    if (Self->Prev) Self->Prev->Next = Self->Next;
    if ((Self->Parent) and (!Self->Prev)) {
@@ -270,7 +240,14 @@ static ERROR VECTOR_Free(objVector *Self, APTR Args)
       Self->Scene->KeyboardSubscriptions->erase(Self);
    }
 
-   delete Self->Transform;    Self->Transform = NULL;
+   if (Self->Matrices) {
+      VectorMatrix *next;
+      for (auto t=Self->Matrices; t; t=next) {
+         next = t->Next;
+         FreeResource(t);
+      }
+   }
+
    delete Self->BasePath;     Self->BasePath = NULL;
    delete Self->StrokeRaster; Self->StrokeRaster = NULL;
    delete Self->FillRaster;   Self->FillRaster = NULL;
@@ -283,9 +260,50 @@ static ERROR VECTOR_Free(objVector *Self, APTR Args)
 /*****************************************************************************
 
 -METHOD-
+FreeMatrix: Remove an allocated VectorMatrix structure.
+
+Transformations allocated from NewMatrix() can be removed with this method.  If multiple transforms are
+attached to the vector then it should be noted that this will affect downstream transformations.
+
+-INPUT-
+struct(*VectorMatrix) Matrix: Reference to the structure that requires removal.
+
+-ERRORS-
+Okay:
+NullArgs:
+
+*****************************************************************************/
+
+static ERROR VECTOR_FreeMatrix(objVector *Self, struct vecFreeMatrix *Args)
+{
+   if ((!Args) or (!Args->Matrix)) return ERR_NullArgs;
+
+   // Clean up the linked list
+
+   if (Self->Matrices IS Args->Matrix) {
+      Self->Matrices = Args->Matrix->Next;
+   }
+   else {
+      for (auto t = Self->Matrices; t; t=t->Next) {
+         if (t->Next IS Args->Matrix) {
+            t->Next = Args->Matrix->Next;
+            break;
+         }
+      }
+   }
+
+   FreeResource(Args->Matrix);
+
+   mark_dirty(Self, RC_TRANSFORM);
+   return ERR_Okay;
+}
+
+/*****************************************************************************
+
+-METHOD-
 GetBoundary: Returns the graphical boundary of a vector.
 
-This function will return the boundary of a vector's path in terms of its top-left position, width and height.  All
+This method will return the boundary of a vector's path in terms of its top-left position, width and height.  All
 transformations and position information that applies to the vector will be taken into account when computing the
 boundary.
 
@@ -336,7 +354,7 @@ static ERROR VECTOR_GetBoundary(objVector *Self, struct vecGetBoundary *Args)
          bounds[3] = by2 + Self->FinalY;
       }
       else {
-         agg::conv_transform<agg::path_storage, agg::trans_affine> path(*Self->BasePath, *Self->Transform);
+         agg::conv_transform<agg::path_storage, agg::trans_affine> path(*Self->BasePath, Self->Transform);
          bounding_rect_single(path, 0, &bx1, &by1, &bx2, &by2);
          bounds[0] = bx1;
          bounds[1] = by1;
@@ -356,52 +374,6 @@ static ERROR VECTOR_GetBoundary(objVector *Self, struct vecGetBoundary *Args)
 }
 
 /*****************************************************************************
-
--METHOD-
-GetTransform: Returns the values of applied transformation effects.
-
-This method returns a `VECTOR_TRANSFORM` structure for any given transform that has been applied to a vector.  It works
-for `MATRIX`, `TRANSLATE`, `SCALE`, `ROTATE` and `SKEW` transformations.  The structure of `VECTOR_TRANSFORM` is described in the
-#Transforms field.
-
-If the requested transform is not applied to the vector, the method will fail with an ERR_Search return code.
-
--INPUT-
-int Type: Type of transform to retrieve.  If set to zero, the first transformation is returned.
-&struct(*VectorTransform) Transform: A matching VECTOR_TRANSFORM structure is returned in this parameter, if found.
-
--ERRORS-
-Okay:
-NullArgs:
-Search: The requested transform type is not applied.
-NoData: No transformations are applied to the vector.
--END-
-
-*****************************************************************************/
-
-static ERROR VECTOR_GetTransform(objVector *Self, struct vecGetTransform *Args)
-{
-   parasol::Log log;
-
-   if (!Args) return log.warning(ERR_NullArgs);
-
-   if (Args->Type & Self->ActiveTransforms) {
-      for (auto t=Self->Transforms; t; t=t->Next) {
-         if (t->Type IS Args->Type) {
-            Args->Transform = t;
-            return ERR_Okay;
-         }
-      }
-   }
-   else if (!Args->Type) { // If no type specified, return the first transformation.
-      if ((Args->Transform = Self->Transforms)) return ERR_Okay;
-      else return ERR_NoData;
-   }
-
-   return ERR_Search;
-}
-
-/*****************************************************************************
 -ACTION-
 Hide: Changes the vector's visibility setting to hidden.
 -END-
@@ -411,51 +383,6 @@ static ERROR VECTOR_Hide(objVector *Self, APTR Void)
 {
    Self->Visibility = VIS_HIDDEN;
    return ERR_Okay;
-}
-
-//****************************************************************************
-// Determine the parent object, based on the owner.
-
-void set_parent(objVector *Self, OBJECTID OwnerID)
-{
-   // Objects that don't belong to the Vector class will be ignored (i.e. they won't appear in the tree).
-
-   CLASSID class_id = GetClassID(OwnerID);
-   if ((class_id != ID_VECTORSCENE) and (class_id != ID_VECTOR)) return;
-
-   Self->Parent = (OBJECTPTR)GetObjectPtr(OwnerID);
-
-   // Ensure that the sibling fields are valid, if not then clear them.
-
-   if ((Self->Prev) and (Self->Prev->Parent != Self->Parent)) Self->Prev = NULL;
-   if ((Self->Next) and (Self->Next->Parent != Self->Parent)) Self->Next = NULL;
-
-   if (Self->Parent->ClassID IS ID_VECTOR) {
-      if ((!Self->Prev) and (!Self->Next)) {
-         if (((objVector *)Self->Parent)->Child) { // Insert at the end
-            auto end = ((objVector *)Self->Parent)->Child;
-            while (end->Next) end = end->Next;
-            end->Next = Self;
-            Self->Prev = end;
-         }
-         else ((objVector *)Self->Parent)->Child = Self;
-      }
-
-      Self->Scene = ((objVector *)Self->Parent)->Scene;
-   }
-   else if (Self->Parent->ClassID IS ID_VECTORSCENE) {
-      if ((!Self->Prev) and (!Self->Next)) {
-         if (((objVectorScene *)Self->Parent)->Viewport) { // Insert at the end
-            auto end = ((objVectorScene *)Self->Parent)->Viewport;
-            while (end->Next) end = end->Next;
-            end->Next = Self;
-            Self->Prev = end;
-         }
-         else ((objVectorScene *)Self->Parent)->Viewport = Self;
-      }
-
-      Self->Scene = (objVectorScene *)Self->Parent;
-   }
 }
 
 //****************************************************************************
@@ -538,7 +465,7 @@ passage through the vector boundaries.
 
 It is a pre-requisite that the associated @VectorScene has been linked to a @Surface.
 
-To remove an existing subscription, call this function again with the same Callback and an empty Mask.
+To remove an existing subscription, call this method again with the same Callback and an empty Mask.
 Alternatively have the function return ERR_Terminate.
 
 Please refer to gfxSubscribeInput() for further information on event management and message handling.
@@ -613,7 +540,7 @@ callback is as follows, whereby Flags are keyboard qualifiers `KQ` and the Value
 ERROR callback(*Viewport, LONG Flags, LONG Value);
 ```
 
-To remove the subscription the function can return ERR_Terminate.
+To remove the subscription, the function can return ERR_Terminate.
 
 -INPUT-
 ptr(func) Callback: Reference to a callback function that will receive input messages.
@@ -686,6 +613,7 @@ static ERROR VECTOR_NewObject(objVector *Self, APTR Void)
    Self->FillRule      = VFR_NON_ZERO;
    Self->ClipRule      = VFR_NON_ZERO;
    Self->Dirty         = RC_ALL;
+   new (&Self->Transform) agg::trans_affine;
    return ERR_Okay;
 }
 
@@ -705,6 +633,56 @@ static ERROR VECTOR_NewOwner(objVector *Self, struct acNewOwner *Args)
    set_parent(Self, Args->NewOwnerID);
 
    return ERR_Okay;
+}
+
+/*****************************************************************************
+
+-METHOD-
+NewMatrix: Returns a VectorMatrix structure that allows transformations to be applied to the vector.
+
+Call NewMatrix() to allocate a transformation matrix that allows transforms to be applied to a vector.  Manipulating
+the transformation matrix is supported by functions in the Vector module, such as ~Vector.Scale() and
+~Vector.Rotate().
+
+Note that if multiple matrices are allocated by the client, they will be applied to the vector in the
+order of their creation.
+
+The structure will be owned by the Vector object and is automatically terminated when the Vector is destroyed.  If the
+transform is no longer required before then, it can be manually removed with @FreeMatrix().
+
+-INPUT-
+&resource(*VectorMatrix) Transform: A reference to the new transform structure is returned here.
+
+-ERRORS-
+Okay:
+NullArgs:
+
+*****************************************************************************/
+
+static ERROR VECTOR_NewMatrix(objVector *Self, struct vecNewMatrix *Args)
+{
+   if (!Args) return ERR_NullArgs;
+
+   VectorMatrix *transform;
+   if (!AllocMemory(sizeof(VectorMatrix), MEM_DATA|MEM_NO_CLEAR, &transform, NULL)) {
+      // Insert transform at the start of the list.
+
+      transform->Vector = Self;
+      transform->Next   = Self->Matrices;
+      transform->ScaleX = 1.0;
+      transform->ScaleY = 1.0;
+      transform->ShearX = 0;
+      transform->ShearY = 0;
+      transform->TranslateX = 0;
+      transform->TranslateY = 0;
+
+      Self->Matrices = transform;
+      Args->Transform = transform;
+
+      mark_dirty(Self, RC_TRANSFORM);
+      return ERR_Okay;
+   }
+   else return ERR_AllocMemory;
 }
 
 /*****************************************************************************
@@ -741,7 +719,7 @@ static ERROR VECTOR_PointInPath(objVector *Self, struct vecPointInPath *Args)
 
       // Quick check to see if (X,Y) is within the path's boundary.
 
-      agg::conv_transform<agg::path_storage, agg::trans_affine> base_path(*Self->BasePath, *Self->Transform);
+      agg::conv_transform<agg::path_storage, agg::trans_affine> base_path(*Self->BasePath, Self->Transform);
 
       DOUBLE bx1, by1, bx2, by2;
       bounding_rect_single(base_path, 0, &bx1, &by1, &bx2, &by2);
@@ -830,98 +808,6 @@ static ERROR VECTOR_Push(objVector *Self, struct vecPush *Args)
 
 /*****************************************************************************
 -ACTION-
-Reset: Clears all transform settings from the vector.
--END-
-*****************************************************************************/
-
-static ERROR VECTOR_Reset(objVector *Self, APTR Void)
-{
-   Self->ActiveTransforms = 0;
-   return ERR_Okay;
-}
-
-/*****************************************************************************
-
--METHOD-
-Rotate: Applies a rotation transformation to the vector.
-
-This method will apply a rotation transformation to a vector.  The rotation will be computed on a run-time
-basis and does not affect the path stored with the vector.  Any children associated with the vector will also be
-affected by the transformation.
-
-If a rotation already exists for the vector, it will be replaced with the new specifications.
-
-The transformation can be removed at any time by calling the #ClearTransforms() method.
-
--INPUT-
-double Angle: Angle of rotation
-double CenterX: Center of rotation on the horizontal axis.
-double CenterY: Center of rotation on the vertical axis.
-
--ERRORS-
-Okay:
-NullArgs:
-AllocMemory:
-
-****************************************************************************/
-
-static ERROR VECTOR_Rotate(objVector *Self, struct vecRotate *Args)
-{
-   if (!Args) return ERR_NullArgs;
-
-   VectorTransform *t;
-   if ((t = add_transform(Self, VTF_ROTATE))) {
-      t->Angle = Args->Angle;
-      t->X = Args->CenterX;
-      t->Y = Args->CenterY;
-      return ERR_Okay;
-   }
-   else return ERR_AllocMemory;
-}
-
-/*****************************************************************************
-
--METHOD-
-Scale: Scale the size of the vector by (x,y)
-
-This method will add a scale transformation to the vector's transform commands.  Values of less than 1.0 will shrink
-the path along the target axis, while values greater than 1.0 will enlarge it.
-
-The scale factors are applied to every path point, and scaling is relative to position (0,0).  If the width and height
-of the vector shape needs to be transformed without affecting its top-left position, the client must translate the
-vector to (0,0) around its center point.  The vector should then be scaled and transformed back to its original
-top-left coordinate.
-
-The scale transform can also be formed to flip the vector path if negative values are used.  For instance, a value of
--1.0 on the x axis would result in a 1:1 flip across the horizontal.
-
--INPUT-
-double X: The scale factor on the x-axis.
-double Y: The scale factor on the y-axis.
-
--ERRORS-
-Okay
-NullArgs
-AllocMemory
--END-
-
-*****************************************************************************/
-
-static ERROR VECTOR_Scale(objVector *Self, struct vecScale *Args)
-{
-   if (!Args) return ERR_NullArgs;
-
-   VectorTransform *t;
-   if ((t = add_transform(Self, VTF_SCALE))) {
-      t->X = Args->X;
-      t->Y = Args->Y;
-      return ERR_Okay;
-   }
-   else return ERR_AllocMemory;
-}
-
-/*****************************************************************************
--ACTION-
 Show: Changes the vector's visibility setting to visible.
 -END-
 *****************************************************************************/
@@ -930,47 +816,6 @@ static ERROR VECTOR_Show(objVector *Self, APTR Void)
 {
    Self->Visibility = VIS_VISIBLE;
    return ERR_Okay;
-}
-
-/*****************************************************************************
-
--METHOD-
-Skew: Skews the vector along the horizontal and/or vertical axis.
-
-The Skew method applies a skew transformation to the horizontal and/or vertical axis of the vector and its children.
-Valid X and Y values are in the range of -90 < Angle < 90.
-
--INPUT-
-double X: The angle to skew along the horizontal.
-double Y: The angle to skew along the vertical.
-
--ERRORS-
-Okay:
-NullArgs:
-OutOfRange: At least one of the angles is out of the allowable range.
--END-
-
-*****************************************************************************/
-
-static ERROR VECTOR_Skew(objVector *Self, struct vecSkew *Args)
-{
-   parasol::Log log;
-
-   if ((!Args) or ((!Args->X) and (!Args->Y))) return log.warning(ERR_NullArgs);
-
-   VectorTransform *transform;
-   if ((transform = add_transform(Self, VTF_SKEW))) {
-      if ((Args->X > -90) and (Args->X < 90)) {
-         transform->X = Args->X;
-      }
-      else return log.warning(ERR_OutOfRange);
-
-      if ((Args->Y > -90) and (Args->Y < 90)) transform->Y = Args->Y;
-      else return log.warning(ERR_OutOfRange);
-
-      return ERR_Okay;
-   }
-   else return ERR_AllocMemory;
 }
 
 /*****************************************************************************
@@ -1051,129 +896,6 @@ static ERROR VECTOR_TracePath(objVector *Self, struct vecTracePath *Args)
 }
 
 /*****************************************************************************
-
--METHOD-
-Transform: Apply a transformation to a vector.
-
-This method parses a sequence of transformation instructions and applies them to the vector.  The transformation will
-be computed on a run-time basis and does not affect the path stored with the vector.  Any children associated with the
-vector will be affected by the transformation.
-
-The transform string must be written using SVG guidelines for the transform attribute, for example
-`skewX(20) rotate(45 50 50)` would be valid.
-
-Any existing transformation instructions for the vector will be replaced by this operation.
-
-The transformation can be removed at any time by calling the #ClearTransforms() method.
-
--INPUT-
-cstr Transform: The transform to apply, expressed as a string instruction.
-
--ERRORS-
-Okay:
-NullArgs:
-AllocMemory:
--END-
-
-*****************************************************************************/
-
-static ERROR VECTOR_Transform(objVector *Self, struct vecTransform *Args)
-{
-   if ((!Args) or (!Args->Transform)) return ERR_NullArgs;
-
-   VECTOR_ClearTransforms(Self, NULL);
-
-   VectorTransform *transform;
-
-   CSTRING str = Args->Transform;
-   while (*str) {
-      if (!StrCompare(str, "matrix", 6, 0)) {
-         if ((transform = add_transform(Self, VTF_MATRIX))) {
-            str = read_numseq(str+6, &transform->Matrix[0], &transform->Matrix[1], &transform->Matrix[2], &transform->Matrix[3], &transform->Matrix[4], &transform->Matrix[5], TAGEND);
-         }
-         else return ERR_AllocMemory;
-      }
-      else if (!StrCompare(str, "translate", 9, 0)) {
-         if ((transform = add_transform(Self, VTF_TRANSLATE))) {
-            DOUBLE x = 0;
-            DOUBLE y = 0;
-            str = read_numseq(str+9, &x, &y, TAGEND);
-            transform->X += x;
-            transform->Y += y;
-         }
-         else return ERR_AllocMemory;
-      }
-      else if (!StrCompare(str, "rotate", 6, 0)) {
-         if ((transform = add_transform(Self, VTF_ROTATE))) {
-            str = read_numseq(str+6, &transform->Angle, &transform->X, &transform->Y, TAGEND);
-         }
-         else return ERR_AllocMemory;
-      }
-      else if (!StrCompare(str, "scale", 5, 0)) {
-         if ((transform = add_transform(Self, VTF_SCALE))) {
-            str = read_numseq(str+5, &transform->X, &transform->Y, TAGEND);
-         }
-         else return ERR_AllocMemory;
-      }
-      else if (!StrCompare(str, "skewX", 5, 0)) {
-         if ((transform = add_transform(Self, VTF_SKEW))) {
-            transform->X = 0;
-            str = read_numseq(str+5, &transform->X, TAGEND);
-         }
-         else return ERR_AllocMemory;
-      }
-      else if (!StrCompare(str, "skewY", 5, 0)) {
-         if ((transform = add_transform(Self, VTF_SKEW))) {
-            transform->Y = 0;
-            str = read_numseq(str+5, &transform->Y, TAGEND);
-         }
-         else return ERR_AllocMemory;
-      }
-      else str++;
-   }
-
-   return ERR_Okay;
-}
-
-/*****************************************************************************
-
--METHOD-
-Translate: Translates the vector by (X,Y).
-
-This method will apply a translation along (X,Y) to the vector's transform command sequence.
-
--INPUT-
-double X: Translation along the x-axis.
-double Y: Translation along the y-axis.
-
--ERRORS-
-Okay:
-NullArgs:
-AllocMemory:
--END-
-
-*****************************************************************************/
-
-static ERROR VECTOR_Translate(objVector *Self, struct vecTranslate *Args)
-{
-   if (!Args) return ERR_NullArgs;
-
-   VectorTransform *transform;
-   if ((transform = add_transform(Self, VTF_TRANSLATE))) {
-      transform->X = Args->X;
-      transform->Y = Args->Y;
-      return ERR_Okay;
-   }
-   else return ERR_AllocMemory;
-}
-
-/*****************************************************************************
-
--FIELD-
-ActiveTransforms: Indicates the transforms that are currently applied to a vector.
-
-Each time that a transform is applied to a vector through methods such as #Scale() and #Translate(), a
-flag will be set in ActiveTransforms that indicates the type of transform that was applied.
 
 -FIELD-
 Child: The first child vector, or NULL.
@@ -1904,7 +1626,7 @@ on initialisation and a reference to the top-level @VectorScene is recorded in t
 Sequence: Convert the vector's path to the equivalent SVG path string.
 
 The Sequence is a string of points and instructions that define the path.  It is based on the SVG standard for the path
-element 'd' attribute, but also provides some additional features that are present in the vector engine.  Commands are
+element `d` attribute, but also provides some additional features that are present in the vector engine.  Commands are
 case insensitive.
 
 The following commands are supported:
@@ -2125,12 +1847,12 @@ static ERROR VECTOR_SET_StrokeWidth(objVector *Self, DOUBLE Value)
 /*****************************************************************************
 
 -FIELD-
-Transforms: A linked list of transforms that have been applied to the vector.
+Matrices: A linked list of transform matrices that have been applied to the vector.
 
-Any transforms that have been applied to the vector can be read from the Transforms field.  Each transform is
-represented by the VECTOR_TRANSFORM structure, and are linked in the order in which they are applied to the vector.
+All transforms that have been allocated via ~Vector.NewMatrix() can be read from the Matrices field.  Each transform is
+represented by the `VectorMatrix` structure, and are linked in the order in which they are added to the vector.
 
-&VectorTransform
+&VectorMatrix
 
 -FIELD-
 Transition: Reference a VectorTransition object here to apply multiple transforms over the vector's path.
@@ -2243,11 +1965,11 @@ static ERROR vector_input_events(objVector *Self, const InputEvent *Events)
    }
    else {
       if (Self->ClipMask) {
-         agg::conv_transform<agg::path_storage, agg::trans_affine> path(*Self->ClipMask->ClipPath, *Self->Transform);
+         agg::conv_transform<agg::path_storage, agg::trans_affine> path(*Self->ClipMask->ClipPath, Self->Transform);
          bounding_rect_single(path, 0, &bounds[0], &bounds[1], &bounds[2], &bounds[3]);
       }
       else if (Self->BasePath) {
-         agg::conv_transform<agg::path_storage, agg::trans_affine> path(*Self->BasePath, *Self->Transform);
+         agg::conv_transform<agg::path_storage, agg::trans_affine> path(*Self->BasePath, Self->Transform);
          bounding_rect_single(path, 0, &bounds[0], &bounds[1], &bounds[2], &bounds[3]);
       }
    }
@@ -2436,7 +2158,7 @@ static const FieldArray clVectorFields[] = {
    { "Next",             FDF_OBJECT|FD_RW,             ID_VECTOR, NULL, (APTR)VECTOR_SET_Next },
    { "Prev",             FDF_OBJECT|FD_RW,             ID_VECTOR, NULL, (APTR)VECTOR_SET_Prev },
    { "Parent",           FDF_OBJECT|FD_R,              0, NULL, NULL },
-   { "Transforms",       FDF_POINTER|FDF_STRUCT|FDF_R, (MAXINT)"VectorTransform", NULL, NULL },
+   { "Matrices",         FDF_POINTER|FDF_STRUCT|FDF_R, (MAXINT)"VectorMatrix", NULL, NULL },
    { "StrokeWidth",      FDF_DOUBLE|FD_RW,             0, NULL, (APTR)VECTOR_SET_StrokeWidth },
    { "StrokeOpacity",    FDF_DOUBLE|FDF_RW,            0, (APTR)VECTOR_GET_StrokeOpacity, (APTR)VECTOR_SET_StrokeOpacity },
    { "FillOpacity",      FDF_DOUBLE|FDF_RW,            0, (APTR)VECTOR_GET_FillOpacity, (APTR)VECTOR_SET_FillOpacity },
@@ -2444,7 +2166,6 @@ static const FieldArray clVectorFields[] = {
    { "MiterLimit",       FDF_DOUBLE|FD_RW,             0, NULL, (APTR)VECTOR_SET_MiterLimit },
    { "InnerMiterLimit",  FDF_DOUBLE|FD_RW,             0, NULL, NULL },
    { "DashOffset",       FDF_DOUBLE|FD_RW,             0, NULL, NULL },
-   { "ActiveTransforms", FDF_LONGFLAGS|FD_R,           (MAXINT)&clVectorActiveTransforms, NULL, NULL },
    { "DashTotal",        FDF_LONG|FDF_R,               0, NULL, NULL },
    { "Visibility",       FDF_LONG|FDF_LOOKUP|FDF_RW,   (MAXINT)&clVectorVisibility, NULL, NULL },
    { "Flags",            FDF_LONGFLAGS|FDF_RI,         (MAXINT)&clVectorFlags, NULL, NULL },

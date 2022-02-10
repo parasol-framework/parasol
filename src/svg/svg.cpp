@@ -67,7 +67,7 @@ static ERROR process_shape(objSVG *, CLASSID, objXML *, svgState *, XMLTag *, OB
 static ERROR save_svg_scan(objSVG *, objXML *, objVector *, LONG);
 static ERROR save_svg_defs(objSVG *, objXML *, objVectorScene *, LONG);
 static ERROR save_svg_scan_std(objSVG *, objXML *, objVector *, LONG);
-static ERROR save_svg_transform(VectorTransform *, char *, LONG);
+static ERROR save_svg_transform(VectorMatrix *, char *, LONG);
 static ERROR set_property(objSVG *, OBJECTPTR, ULONG Hash, objXML *, XMLTag *, CSTRING);
 static ERROR xtag_animatemotion(objSVG *, objXML *, XMLTag *, OBJECTPTR Parent);
 static ERROR xtag_animatetransform(objSVG *, objXML *, XMLTag *, OBJECTPTR);

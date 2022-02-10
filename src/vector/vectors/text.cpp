@@ -163,7 +163,7 @@ static ERROR VECTORTEXT_DeleteLine(objVectorText *Self, struct vtDeleteLine *Arg
 
 static ERROR VECTORTEXT_Free(objVectorText *Self, APTR Void)
 {
-   Self->txLines.~vector();
+   Self->txLines.~vector<TextLine>();
    Self->txCursor.~TextCursor();
 
    if (Self->txBitmapImage) { acFree(Self->txBitmapImage); Self->txBitmapImage = NULL; }
@@ -229,8 +229,8 @@ static ERROR VECTORTEXT_Init(objVectorText *Self, APTR Void)
 
 static ERROR VECTORTEXT_NewObject(objVectorText *Self, APTR Void)
 {
-   new(&Self->txLines) std::vector<TextLine>;
-   new(&Self->txCursor) TextCursor;
+   new (&Self->txLines) std::vector<TextLine>;
+   new (&Self->txCursor) TextCursor;
 
    StrCopy("Regular", Self->txFontStyle, sizeof(Self->txFontStyle));
    Self->GeneratePath = (void (*)(rkVector *))&generate_text;
@@ -255,7 +255,7 @@ form of `ALIGN_LEFT`, `ALIGN_HORIZONTAL` and `ALIGN_RIGHT`.
 
 In addition, the SVG equivalent values of 'start', 'middle' and 'end' are supported and map directly to the formerly
 mentioned align flags.
--END-
+
 *****************************************************************************/
 
 static ERROR TEXT_GET_Align(objVectorText *Self, LONG *Value)
@@ -280,7 +280,7 @@ limit.
 
 Note that it is valid for the #String length to exceed the limit if set manually.  Only the display of the string
 characters will be affected by the CharLimit value.
--END-
+
 *****************************************************************************/
 
 static ERROR TEXT_GET_CharLimit(objVectorText *Self, LONG *Value)
@@ -300,7 +300,7 @@ static ERROR TEXT_SET_CharLimit(objVectorText *Self, LONG Value)
 /*****************************************************************************
 -FIELD-
 CursorColumn: The current column position of the cursor.
--END-
+
 ****************************************************************************/
 
 static ERROR TEXT_GET_CursorColumn(objVectorText *Self, LONG *Value)
@@ -321,7 +321,7 @@ static ERROR TEXT_SET_CursorColumn(objVectorText *Self, LONG Value)
 /****************************************************************************
 -FIELD-
 CursorRow: The current line position of the cursor.
--END-
+
 ****************************************************************************/
 
 static ERROR TEXT_GET_CursorRow(objVectorText *Self, LONG *Value)
@@ -360,7 +360,7 @@ If more characters exist than values, then for each of these extra characters: (
 specifies a relative X coordinate for the given character via a #DX field, then the current text position
 is shifted along the x-axis of the current user coordinate system by that amount (nearest ancestor has precedence),
 else (b) no extra shift along the x-axis occurs.
--END-
+
 *****************************************************************************/
 
 static ERROR TEXT_GET_DX(objVectorText *Self, DOUBLE **Values, LONG *Elements)
@@ -388,7 +388,7 @@ static ERROR TEXT_SET_DX(objVectorText *Self, DOUBLE *Values, LONG Elements)
 DY: Adjusts vertical spacing on a per-character basis.
 
 This field follows the same rules described in #DX.
--END-
+
 *****************************************************************************/
 
 static ERROR TEXT_GET_DY(objVectorText *Self, DOUBLE **Values, LONG *Elements)
@@ -422,7 +422,7 @@ font if Arial was unavailable.
 If none of the listed fonts are available, the default system font will be used.
 
 Please note that referencing bitmap fonts is unsupported and they will be ignored by the font loader.
--END-
+
 *****************************************************************************/
 
 static ERROR TEXT_GET_Face(objVectorText *Self, CSTRING *Value)
@@ -465,7 +465,7 @@ Focus: Refers to the object that will be monitored for user focussing.
 By default, a VectorText object with editing enabled will become active (capable of receiving keyboard input)
 when its nearest viewport receives the focus.  Setting the Focus field allows monitoring to be redirected to an
 alternative viewport.
--END-
+
 *****************************************************************************/
 
 static ERROR TEXT_GET_Focus(objVectorText *Self, OBJECTID *Value)
@@ -486,7 +486,7 @@ Font: The primary Font object that is used to source glyphs for the text string.
 
 Returns the @Font object that is used for drawing the text.  The object may be queried but must remain unmodified.
 Any modification by the client that happens to work in the present code release may fail in future releases.
--END-
+
 *****************************************************************************/
 
 static ERROR TEXT_GET_Font(objVectorText *Self, OBJECTPTR *Value)
@@ -531,7 +531,6 @@ please ensure that 'pt' is appended to the number.
 
 If retrieving the font size, the string must be freed by the client when no longer in use.
 
--END-
 *****************************************************************************/
 
 static ERROR TEXT_GET_FontSize(objVectorText *Self, CSTRING *Value)
@@ -583,7 +582,7 @@ The inline-size property allows one to set the wrapping area to a rectangular sh
 property sets the width of the rectangle for horizontal text and the height of the rectangle for vertical text.
 The other dimension (height for horizontal text, width for vertical text) is of infinite length. A value of zero
 (the default) disables the creation of a wrapping area.
--END-
+
 *****************************************************************************/
 
 static ERROR TEXT_GET_InlineSize(objVectorText *Self, DOUBLE *Value)
@@ -605,7 +604,7 @@ LineLimit: Restricts the total number of lines allowed in a text object.
 
 Set the LineLimit field to restrict the maximum number of lines permitted in a text object.  It is common to set this
 field to a value of 1 for input boxes that have a limited amount of space available.
--END-
+
 *****************************************************************************/
 
 static ERROR TEXT_GET_LineLimit(objVectorText *Self, LONG *Value)
@@ -628,7 +627,7 @@ If the user has selected an area of text, the starting column of that area will 
 has not been selected, the value of the SelectColumn field is undefined.
 
 To check whether or not an area has been selected, test the `AREA_SELECTED` bit in the #Flags field.
--END-
+
 *****************************************************************************/
 
 static ERROR TEXT_GET_SelectColumn(objVectorText *Self, LONG *Value)
@@ -645,7 +644,7 @@ If the user has selected an area of text, the starting row of that area will be 
 has not been selected, the value of the SelectRow field is undefined.
 
 To check whether or not an area has been selected, test the `AREA_SELECTED` bit in the #Flags field.
--END-
+
 *****************************************************************************/
 
 static ERROR TEXT_GET_SelectRow(objVectorText *Self, LONG *Value)
@@ -698,7 +697,7 @@ static ERROR TEXT_SET_StartOffset(objVectorText *Self, DOUBLE Value)
 X: The x coordinate of the text.
 
 The x-axis coordinate of the text is specified here as a fixed value.  Relative coordinates are not supported.
--END-
+
 *****************************************************************************/
 
 static ERROR TEXT_GET_X(objVectorText *Self, Variable *Value)
@@ -726,7 +725,7 @@ Y: The base-line y coordinate of the text.
 The Y-axis coordinate of the text is specified here as a fixed value.  Relative coordinates are not supported.
 
 Unlike other vector shapes, the Y coordinate positions the text from its base line rather than the top of the shape.
--END-
+
 *****************************************************************************/
 
 static ERROR TEXT_GET_Y(objVectorText *Self, Variable *Value)
@@ -770,7 +769,7 @@ attribute, then for each of these extra characters the rotation value specified 
 This supplemental rotation has no impact on the rules by which current text position is modified as glyphs get rendered
 and is supplemental to any rotation due to text on a path and to 'glyph-orientation-horizontal' or
 'glyph-orientation-vertical'.
--END-
+
 *****************************************************************************/
 
 static ERROR TEXT_GET_Rotate(objVectorText *Self, DOUBLE **Values, LONG *Elements)
@@ -803,7 +802,7 @@ boundaries.
 
 This feature is computationally expensive and the use of #InlineSize is preferred if the text can be wrapped to
 a rectangular area.
--END-
+
 *****************************************************************************/
 
 static ERROR TEXT_GET_ShapeInside(objVectorText *Self, OBJECTID *Value)
@@ -824,7 +823,7 @@ ShapeSubtract: Excludes a portion of the content area from the wrapping area.
 
 This property can be used in conjunction with #ShapeInside to further restrict the content area that is available
 for word-wrapping.  It has no effect if #ShapeInside is undefined.
--END-
+
 *****************************************************************************/
 
 static ERROR TEXT_GET_ShapeSubtract(objVectorText *Self, OBJECTID *Value)
@@ -846,7 +845,7 @@ String: The string to use for drawing the glyphs is defined here.
 The string for drawing the glyphs is defined here in UTF-8 format.
 
 When retrieving a string that contains return codes, only the first line of text is returned.
--END-
+
 *****************************************************************************/
 
 static ERROR TEXT_GET_String(objVectorText *Self, CSTRING *Value)
@@ -884,7 +883,7 @@ TextLength: Reflects the expected length of the text after all computations have
 The purpose of this attribute is to allow exact alignment of the text graphic in the computed result.  If the
 #Width that is initially computed does not match this value, then the text will be scaled to match the
 TextLength.
--END-
+
 *****************************************************************************/
 
 // NB: Internally we can fulfil TextLength requirements simply by checking the width of the text path boundary
@@ -905,7 +904,7 @@ static ERROR TEXT_SET_TextLength(objVectorText *Self, DOUBLE Value)
 /*****************************************************************************
 -FIELD-
 TotalLines: The total number of lines stored in the object.
--END-
+
 *****************************************************************************/
 
 static ERROR TEXT_GET_TotalLines(objVectorText *Self, LONG *Value)

@@ -72,7 +72,8 @@ static FIELD FID_FreetypeFace;
 //****************************************************************************
 // Mark a vector and all its children as needing some form of recomputation.
 
-template <class T> static void mark_dirty(T *Vector, UBYTE Flags)
+template <class T>
+inline static void mark_dirty(T *Vector, const UBYTE Flags)
 {
    Vector->Dirty |= Flags;
    for (auto scan=(objVector *)Vector->Child; scan; scan=(objVector *)scan->Next) {
@@ -85,7 +86,8 @@ template <class T> static void mark_dirty(T *Vector, UBYTE Flags)
 // Call reset_path() when the shape of the vector requires recalculation.  If the position of the shape has changed,
 // you probably want to mark_dirty() with the RC_TRANSFORM option instead.
 
-template <class T> static void reset_path(T *Vector)
+template <class T>
+inline static void reset_path(T *Vector)
 {
    Vector->Dirty |= RC_BASE_PATH;
    mark_dirty(Vector, RC_FINAL_PATH);
@@ -95,9 +97,20 @@ template <class T> static void reset_path(T *Vector)
 // Call reset_final_path() when the base path is still valid and the vector is affected by a transform or coordinate
 // translation.
 
-template <class T> static void reset_final_path(T *Vector)
+template <class T>
+inline static void reset_final_path(T *Vector)
 {
    mark_dirty(Vector, RC_FINAL_PATH);
+}
+
+//****************************************************************************
+
+template <class T>
+inline static void compile_transforms(const T &Vector, agg::trans_affine &AGGTransform)
+{
+   for (auto t=Vector.Matrices; t; t=t->Next) {
+      AGGTransform.multiply(t->ScaleX, t->ShearY, t->ShearX, t->ScaleY, t->TranslateX, t->TranslateY);
+   }
 }
 
 //****************************************************************************
@@ -215,11 +228,11 @@ static void calc_full_boundary(objVector *Vector, std::array<DOUBLE, 4> &Bounds)
          DOUBLE bx1, by1, bx2, by2;
 
          if (Vector->ClipMask) {
-            agg::conv_transform<agg::path_storage, agg::trans_affine> path(*Vector->ClipMask->ClipPath, *Vector->Transform);
+            agg::conv_transform<agg::path_storage, agg::trans_affine> path(*Vector->ClipMask->ClipPath, Vector->Transform);
             bounding_rect_single(path, 0, &bx1, &by1, &bx2, &by2);
          }
          else if (Vector->BasePath) {
-            agg::conv_transform<agg::path_storage, agg::trans_affine> path(*Vector->BasePath, *Vector->Transform);
+            agg::conv_transform<agg::path_storage, agg::trans_affine> path(*Vector->BasePath, Vector->Transform);
             bounding_rect_single(path, 0, &bx1, &by1, &bx2, &by2);
          }
 
@@ -268,7 +281,7 @@ static void debug_branch(CSTRING Header, OBJECTPTR Vector, LONG *Level)
 //****************************************************************************
 // Find the first parent of the targeted vector.  Returns NULL if no valid parent is found.
 
-INLINE OBJECTPTR get_parent(objVector *Vector)
+inline static OBJECTPTR get_parent(objVector *Vector)
 {
    while (Vector) {
       if (Vector->Head.ClassID != ID_VECTOR) break;
@@ -276,23 +289,6 @@ INLINE OBJECTPTR get_parent(objVector *Vector)
       else return Vector->Parent;
    }
 
-   return NULL;
-}
-
-//****************************************************************************
-// Creates a VectorTransform entry and attaches it to the target vector.
-
-template <class T> static VectorTransform * add_transform(T *Self, LONG Type)
-{
-   VectorTransform *transform;
-   if (!AllocMemory(sizeof(VectorTransform), MEM_DATA, &transform, NULL)) {
-      transform->Prev = NULL;
-      transform->Next = Self->Transforms;
-      if (Self->Transforms) Self->Transforms->Prev = transform;
-      Self->Transforms = transform;
-      transform->Type = Type;
-      return transform;
-   }
    return NULL;
 }
 
@@ -387,7 +383,8 @@ static CSTRING read_numseq(CSTRING Value, ...)
 
 //****************************************************************************
 
-template <class T> void configure_stroke(objVector &Vector, T &stroke)
+template <class T>
+void configure_stroke(objVector &Vector, T &stroke)
 {
    stroke.width(Vector.StrokeWidth);
 

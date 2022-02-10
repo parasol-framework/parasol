@@ -24,7 +24,7 @@ public:
    agg::path_storage *BasePath; \
    agg::rasterizer_scanline_aa<> *StrokeRaster; \
    agg::rasterizer_scanline_aa<> *FillRaster; \
-   agg::trans_affine *Transform; \
+   agg::trans_affine Transform; \
    struct rkVectorClip     *ClipMask; \
    struct rkVectorGradient *StrokeGradient, *FillGradient; \
    struct rkVectorImage    *FillImage, *StrokeImage; \
@@ -55,84 +55,52 @@ public:
 class VectorEffect {
 public:
    ULONG ID;         // Case sensitive hash identifier for the filter, if anything needs to reference it.
-   UBYTE Type;       // Filter effect - FE_OFFSET, etc
    UBYTE Source;     // VSF_REFERENCE, VSF_GRAPHIC...
    UBYTE UsageCount; // Total number of other effects utilising this effect to build a pipeline
    UBYTE Pad;
    struct rkBitmap *Bitmap;
-   VectorEffect *Input; // The effect uses another effect as an input.
+   ULONG InputID; // The effect uses another effect as an input (referenced by hash ID).
    LONG XOffset, YOffset; // In SVG only feOffset can use offsets, however in our framework any effect may define an offset when copying from a source.
    LONG DestX, DestY;
-   union {
-      struct {
-         DOUBLE RX, RY;
-      } Blur;
-      struct {
-         UBYTE Mode;
-         class ColourMatrix *Matrix;
-      } Colour;
-      struct {
-         class ConvolveMatrix *Matrix;
-      } Convolve;
-      struct {
-         struct RGB8 Colour;
-         DOUBLE X, Y, Width, Height;
-         DOUBLE Opacity;
-         LONG Dimensions;
-      } Flood;
-      struct {
-         DOUBLE X, Y, Width, Height;
-         struct rkPicture *Picture;
-         LONG Dimensions;
-         LONG AspectRatio;
-         UBYTE ResampleMethod;
-         UBYTE Units; // VUNIT
-      } Image;
-      struct {
-         DOUBLE K1, K2, K3, K4;
-         UBYTE Operator;
-         UBYTE Source;
-      } Composite;
-      struct {
-         DOUBLE FX, FY;
-         struct ttable *Tables;
-         LONG Octaves;
-         LONG Seed;
-         LONG TileWidth, TileHeight;
-         LONG StitchWidth;
-         LONG StitchHeight;
-         LONG WrapX;
-         LONG WrapY;
-         UBYTE Type;
-         UBYTE Stitch:1;
-      } Turbulence;
-      struct {
-         LONG RX, RY;
-         UBYTE Type;
-      } Morph;
-   };
+   ERROR Error;
+   bool Blank;     // True if no graphics are produced by this effect.
 
-   VectorEffect(LONG pType); // Defined in filter.cpp
-   ~VectorEffect();
+   // Defined in filter.cpp
+   VectorEffect();
+   VectorEffect(struct rkVectorFilter *, XMLTag *);
+
+   virtual void apply(struct rkVectorFilter *) = 0; // Required
+   virtual void applyInput(VectorEffect &) { }; // Optional
+   virtual ~VectorEffect() = default;
 };
+
+#define TB_NOISE 1
 
 typedef agg::pod_auto_array<agg::rgba8, 256> GRADIENT_TABLE;
 
-static ERROR vecApplyPath(class SimpleVector *, struct rkVectorPath *);
-static ERROR vecDrawPath(struct rkBitmap *, class SimpleVector *, DOUBLE StrokeWidth, OBJECTPTR StrokeStyle, OBJECTPTR FillStyle);
-static void  vecFreePath(APTR Path);
-static ERROR vecGenerateEllipse(DOUBLE X, DOUBLE Y, DOUBLE RX, DOUBLE RY, LONG Vertices, APTR *Path);
-static ERROR vecGenerateRectangle(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height, APTR *Path);
-static ERROR vecGeneratePath(CSTRING String, APTR *Path);
-static void  vecReadPainter(OBJECTPTR, CSTRING, struct DRGB *, struct rkVectorGradient **, struct rkVectorImage **, struct rkVectorPattern **);
-static void  vecTranslatePath(class SimpleVector *, DOUBLE, DOUBLE);
-static void  vecMoveTo(class SimpleVector *, DOUBLE x, DOUBLE y);
-static void  vecLineTo(class SimpleVector *, DOUBLE x, DOUBLE y);
 static void  vecArcTo(class SimpleVector *, DOUBLE RX, DOUBLE RY, DOUBLE Angle, DOUBLE X, DOUBLE Y, LONG Flags);
-static void  vecCurve3(class SimpleVector *, DOUBLE CtrlX, DOUBLE CtrlY, DOUBLE X, DOUBLE Y);
-static void  vecSmooth3(class SimpleVector *, DOUBLE X, DOUBLE Y);
-static void  vecCurve4(class SimpleVector *, DOUBLE CtrlX1, DOUBLE CtrlY1, DOUBLE CtrlX2, DOUBLE CtrlY2, DOUBLE X, DOUBLE Y);
-static void  vecSmooth4(class SimpleVector *, DOUBLE CtrlX2, DOUBLE CtrlY2, DOUBLE X, DOUBLE Y);
+static ERROR vecApplyPath(class SimpleVector *, struct rkVectorPath *);
 static void  vecClosePath(class SimpleVector *);
-static void  vecRewindPath(class SimpleVector *);
+static void  vecCurve3(class SimpleVector *, DOUBLE CtrlX, DOUBLE CtrlY, DOUBLE X, DOUBLE Y);
+static void  vecCurve4(class SimpleVector *, DOUBLE CtrlX1, DOUBLE CtrlY1, DOUBLE CtrlX2, DOUBLE CtrlY2, DOUBLE X, DOUBLE Y);
+static ERROR vecDrawPath(struct rkBitmap *, class SimpleVector *, DOUBLE StrokeWidth, OBJECTPTR StrokeStyle, OBJECTPTR FillStyle);
+static void  vecFreePath(APTR);
+static ERROR vecGenerateEllipse(DOUBLE, DOUBLE, DOUBLE, DOUBLE, LONG, APTR *);
+static ERROR vecGenerateRectangle(DOUBLE, DOUBLE, DOUBLE, DOUBLE, APTR *);
+static ERROR vecGeneratePath(CSTRING, APTR *);
 static LONG  vecGetVertex(class SimpleVector *, DOUBLE *, DOUBLE *);
+static void  vecLineTo(class SimpleVector *, DOUBLE, DOUBLE);
+static void  vecMoveTo(class SimpleVector *, DOUBLE, DOUBLE);
+static ERROR vecMultiply(struct VectorMatrix *, DOUBLE, DOUBLE, DOUBLE, DOUBLE, DOUBLE, DOUBLE);
+static ERROR vecMultiplyMatrix(struct VectorMatrix *, struct VectorMatrix *);
+static ERROR vecParseTransform(struct VectorMatrix *, CSTRING Commands);
+static void  vecReadPainter(OBJECTPTR, CSTRING, struct DRGB *, struct rkVectorGradient **, struct rkVectorImage **, struct rkVectorPattern **);
+static ERROR vecResetMatrix(struct VectorMatrix *);
+static void  vecRewindPath(class SimpleVector *);
+static ERROR vecRotate(struct VectorMatrix *, DOUBLE, DOUBLE, DOUBLE);
+static ERROR vecScale(struct VectorMatrix *, DOUBLE, DOUBLE);
+static ERROR vecSkew(struct VectorMatrix *, DOUBLE, DOUBLE);
+static void  vecSmooth3(class SimpleVector *, DOUBLE, DOUBLE);
+static void  vecSmooth4(class SimpleVector *, DOUBLE, DOUBLE, DOUBLE, DOUBLE);
+static ERROR vecTranslate(struct VectorMatrix *, DOUBLE, DOUBLE);
+static void  vecTranslatePath(class SimpleVector *, DOUBLE, DOUBLE);

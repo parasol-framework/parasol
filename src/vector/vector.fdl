@@ -106,13 +106,6 @@ module({ name="Vector", copyright="Paul Manias © 2010-2022", version=1.0 }, fun
     "NO_SYS_KEYS: Disables support for system-keys that enable common key combinations such as Ctrl-C, Ctrl-X etc.",
     "OVERWRITE: Turns on overwrite mode (if off, insert mode is enabled).")
 
-  flags("VTF", { bits=16, comment="Types of vector transforms." },
-    "MATRIX: Apply a 2x3 matrix transformation to the vector.",
-    "TRANSLATE: Translate the vector by (X,Y)",
-    "SCALE: Scale the vector by (X,Y)",
-    "ROTATE: Rotate the vector around (CX,CY) by Angle.",
-    "SKEW: Skew the vector by (X,Y)")
-
   flags("VMF", { comment="Morph flags", bits=8 },
     "STRETCH: Applicable when used on VectorText, the stretch option converts glyph outlines into paths, and then all end points and control points will be adjusted to be along the perpendicular vectors from the path, thereby stretching and possibly warping the glyphs.  With this approach, connected glyphs, such as in cursive scripts, will maintain their connections.",
     "AUTO_SPACING: Applicable when used on VectorText, auto-spacing allows the spacing between glyphs to be shrunk or expanded along the target path so that they can produce a better fit.  The default is for the glyphs to conform to their original spacing requirements.",
@@ -248,14 +241,15 @@ module({ name="Vector", copyright="Paul Manias © 2010-2022", version=1.0 }, fun
     double Angle        # Arc angle
   ]])
 
-  struct("VectorTransform", { }, [[
-    struct(*VectorTransform) Next  # The next transform in the list.
-    struct(*VectorTransform) Prev  # The previous transform in the list.
-    double X         # The X value, the meaning of which is defined by the Type
-    double Y         # The Y value, the meaning of which is defined by the Type
-    double Angle     # Requires VTF_ROTATE.  A rotation by Angle degrees about a given point.  If optional parameters X and Y are not specified, the rotate is about the origin of the current user coordinate system.
-    double Matrix[6] # Requires VTF_MATRIX.  A transformation expressed as a matrix of six values.
-    short(VTF) Type  # The VTF indicates the type of transformation: rotate, skew etc
+  struct("VectorMatrix", { comment="Vector transformation matrix." }, [[
+    struct(*VectorMatrix) Next  # The next transform in the list.
+    obj(Vector) Vector          # The vector associated with the transform.
+    double ScaleX               # Matrix value A
+    double ShearY               # Matrix value B
+    double ShearX               # Matrix value C
+    double ScaleY               # Matrix value D
+    double TranslateX           # Matrix value E
+    double TranslateY           # Matrix value F
   ]])
 
   // VectorPath method ID's start high enough to give a cushion from inherited Vector methods.
@@ -332,7 +326,7 @@ module({ name="Vector", copyright="Paul Manias © 2010-2022", version=1.0 }, fun
     int(DMF) Dimensions
   ]],
   [[
-   struct VectorTransform *Transforms;
+   struct VectorMatrix *Matrices;
    objBitmap *Bitmap;
   ]])
 
@@ -355,7 +349,7 @@ module({ name="Vector", copyright="Paul Manias © 2010-2022", version=1.0 }, fun
   ]],
   [[
    struct GradientStop *Stops;  // An array of gradient stop colours.
-   struct VectorTransform *Transforms;
+   struct VectorMatrix *Matrices;
    class GradientColours *Colours;
    STRING ID;
    LONG NumericID;
@@ -379,22 +373,19 @@ module({ name="Vector", copyright="Paul Manias © 2010-2022", version=1.0 }, fun
   ]],
   [[
    LARGE DrawStamp; // Timestamp at which this filter was last rendered
-   std::vector<VectorEffect> *Effects;
-   std::vector<VectorEffect *> *Merge;
+   std::vector<std::unique_ptr<VectorEffect>> Effects;
    objBitmap *SrcBitmap; // A temporary alpha enabled drawing of the vector that is targeted by the filter.
-   objBitmap *BkgdBitmap;
-   objBitmap *MergeBitmap;
+   objBitmap *BkgdBitmap; // Defined by Scene.acDraw()
    STRING Path; // Affix this path to file references (e.g. feImage).
    struct {
       objBitmap *Bitmap;
       UBYTE *Data;
       LONG DataSize;
    } Bank[10];
-   VectorEffect SrcGraphic;
-   VectorEffect BkgdGraphic;
    LONG BoundX, BoundY, BoundWidth, BoundHeight;  // Calculated pixel boundary for the entire filter and its effects.
    LONG ViewX, ViewY, ViewWidth, ViewHeight; // Boundary of the target area (for user space coordinate mode)
    UBYTE BankIndex;
+   bool Rendered;
   ]])
 
   // VectorText method ID's start high enough to give a cushion from inherited Vector methods.
@@ -428,7 +419,7 @@ module({ name="Vector", copyright="Paul Manias © 2010-2022", version=1.0 }, fun
    struct rkVector *Next; \
    struct rkVector *Prev; \
    OBJECTPTR Parent; \
-   struct VectorTransform *Transforms; \
+   struct VectorMatrix *Matrices; \
    DOUBLE StrokeWidth; \
    DOUBLE StrokeOpacity; \
    DOUBLE FillOpacity; \
@@ -436,7 +427,6 @@ module({ name="Vector", copyright="Paul Manias © 2010-2022", version=1.0 }, fun
    DOUBLE MiterLimit; \
    DOUBLE InnerMiterLimit; \
    DOUBLE DashOffset; \
-   LONG   ActiveTransforms; \
    LONG   DashTotal; \
    LONG   Visibility; \
    LONG   Flags; \
@@ -444,21 +434,15 @@ module({ name="Vector", copyright="Paul Manias © 2010-2022", version=1.0 }, fun
   ]])
 
   methods("vector", "Vec", {
-    { id=1,  name="Push" },
-    { id=2,  name="TracePath" },
-    { id=3,  name="GetBoundary" },
-    { id=4,  name="Rotate" },
-    { id=5,  name="Transform" },
-    { id=6,  name="ApplyMatrix" },
-    { id=7,  name="Translate" },
-    { id=8,  name="Scale" },
-    { id=9,  name="Skew" },
-    { id=10, name="PointInPath" },
-    { id=11, name="ClearTransforms" },
-    { id=12, name="GetTransform" },
-    { id=13, name="InputSubscription" },
-    { id=14, name="KeyboardSubscription" },
-    { id=15, name="Debug" }
+    { id=1, name="Push" },
+    { id=2, name="TracePath" },
+    { id=3, name="GetBoundary" },
+    { id=4, name="PointInPath" },
+    { id=5, name="InputSubscription" },
+    { id=6, name="KeyboardSubscription" },
+    { id=7, name="Debug" },
+    { id=8, name="NewMatrix" },
+    { id=9, name="FreeMatrix" }
   })
 
   class("Vector", { src="vectors/vector.cpp", output="vectors/vector_def.c", version=1 }, [[
@@ -467,7 +451,7 @@ module({ name="Vector", copyright="Paul Manias © 2010-2022", version=1.0 }, fun
     obj(Vector) Next        # The next vector in the branch, or NULL.
     obj(Vector) Prev        # The previous vector in the branch, or NULL.
     obj Parent              # The parent vector, or NULL if this is the top-most vector.
-    struct(*VectorTransform) Transforms  # A list of transforms to apply to the vector.
+    struct(*VectorMatrix) Matrices # A list of transform matrices to apply to the vector.
     double StrokeWidth      # The width to use when stroking the path.
     double StrokeOpacity    # Defines the opacity of the path stroke.
     double FillOpacity      # The opacity to use when filling the vector.
@@ -475,7 +459,6 @@ module({ name="Vector", copyright="Paul Manias © 2010-2022", version=1.0 }, fun
     double MiterLimit       # Imposes a limit on the ratio of the miter length to the StrokeWidth.
     double InnerMiterLimit  # A special limit to apply when the MITER_ROUND line-join effect is in use.
     double DashOffset       # For the DashArray, applies an initial dash offset.
-    int(VTF) ActiveTransforms # Indicates the transforms that are currently applied to a vector.
     int DashTotal           # The total number of values in the DashArray.
     int(VIS) Visibility     # Controls the visibility of a vector and its children.
     int(VF) Flags           # Optional flags.
@@ -501,7 +484,15 @@ module({ name="Vector", copyright="Paul Manias © 2010-2022", version=1.0 }, fun
     "ClosePath",
     "RewindPath",
     "GetVertex",
-    "ApplyPath")
+    "ApplyPath",
+    "Rotate",
+    "Translate",
+    "Skew",
+    "Multiply",
+    "MultiplyMatrix",
+    "Scale",
+    "ParseTransform",
+    "ResetMatrix")
 
   c_insert([[
 //****************************************************************************

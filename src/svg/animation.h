@@ -7,6 +7,7 @@ enum {
 
 struct svgAnimation {
    struct svgAnimation *Next;
+   struct VectorMatrix *Matrix; // Exclusive transform matrix for animation.
    OBJECTID TargetVector;
    CSTRING TargetAttribute; // Name of the target attribute affected by the From and To values.
    CSTRING ID;              // Identifier for the animation

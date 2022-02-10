@@ -136,6 +136,12 @@ namespace agg
       // Multiply matrix to another one
       const trans_affine& multiply(const trans_affine& m);
 
+      const trans_affine& multiply(double sx, double shy, double shx, double sy, double tx, double ty) {
+         trans_affine m(sx, shy, shx, sy, tx, ty);
+         multiply(m);
+         return *this;
+      }
+
       // Multiply "m" to "this" and assign the result to "this"
       const trans_affine& premultiply(const trans_affine& m);
 
@@ -164,6 +170,11 @@ namespace agg
       // Load matrix from an array [6] of double
       const trans_affine& load_from(const double* m) {
           sx = *m++; shy = *m++; shx = *m++; sy = *m++; tx = *m++;  ty = *m++;
+          return *this;
+      }
+
+      const trans_affine& load_all(const double a, const double b, const double c, const double d, const double e, const double f) {
+          sx = a; shy = b; shx = c; sy = d; tx = e; ty = f;
           return *this;
       }
 

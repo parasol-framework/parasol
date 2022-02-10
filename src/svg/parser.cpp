@@ -1964,7 +1964,13 @@ static ERROR set_property(objSVG *Self, OBJECTPTR Vector, ULONG Hash, objXML *XM
       case SVF_COLOR:            SetString(Vector, FID_Fill, StrValue); break;
       case SVF_FILL:             SetString(Vector, FID_Fill, StrValue); break;
       case SVF_TRANSFORM: {
-         if (Vector->ClassID IS ID_VECTOR) vecTransform((objVector *)Vector, StrValue);
+         if (Vector->ClassID IS ID_VECTOR) {
+            VectorMatrix *matrix;
+            if (!vecNewMatrix((objVector *)Vector, &matrix)) {
+               vecParseTransform(matrix, StrValue);
+            }
+            else log.warning("Failed to create vector transform matrix.");
+         }
          break;
       }
       case SVF_STROKE_DASHARRAY: SetString(Vector, FID_DashArray, StrValue); break;

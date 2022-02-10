@@ -102,7 +102,7 @@ static ERROR save_svg_defs(objSVG *Self, objXML *XML, objVectorScene *Scene, LON
                   error = set_dimension(XML, new_index, "r", gradient->Radius, gradient->Flags & VGF_RELATIVE_RADIUS);
             }
 
-            VectorTransform *transform;
+            VectorMatrix *transform;
             if ((!error) and (!GetPointer(gradient, FID_Transforms, &transform)) and (transform)) {
                if (!save_svg_transform(transform, buffer, sizeof(buffer))) {
                   error = xmlSetAttrib(XML, new_index, XMS_NEW, "gradientTransform", buffer);
@@ -199,36 +199,19 @@ static ERROR save_svg_defs(objSVG *Self, objXML *XML, objVectorScene *Scene, LON
 
 //*********************************************************************************************************************
 
-static ERROR save_svg_transform(VectorTransform *Transform, char *Buffer, LONG Size)
+static ERROR save_svg_transform(VectorMatrix *Transform, char *Buffer, LONG Size)
 {
-   VectorTransform *t = Transform;
-   LONG pos = 0;
    Buffer[0] = 0;
-   while (t->Next) t = t->Next;
-   while (t) {
-      if (t->Type IS VTF_MATRIX) {
-         pos += StrFormat(Buffer + pos, Size - pos, "matrix(%g %g %g %g %g %g) ", t->Matrix[0], t->Matrix[1], t->Matrix[2], t->Matrix[3], t->Matrix[4], t->Matrix[5]);
-      }
-      else if (t->Type IS VTF_TRANSLATE) {
-         pos += StrFormat(Buffer + pos, Size - pos, "translate(%g %g) ", t->X, t->Y);
-      }
-      else if (t->Type IS VTF_SCALE) {
-         if ((t->X IS t->Y) OR (t->Y IS 0)) pos += StrFormat(Buffer + pos, Size - pos, "scale(%g) ", t->X);
-         else pos += StrFormat(Buffer + pos, Size - pos, "scale(%g %g) ", t->X, t->Y);
-      }
-      else if (t->Type IS VTF_ROTATE) {
-         pos += StrFormat(Buffer + pos, Size - pos, "rotate(%g %g %g) ", t->Angle, t->X, t->Y);
-      }
-      else if (t->Type IS VTF_SKEW) {
-         if (!t->Y) pos += StrFormat(Buffer + pos, Size - pos, "skewX(%g) ", t->X);
-         else if (!t->X) pos += StrFormat(Buffer + pos, Size - pos, "skewY(%g) ", t->Y);
-         else pos += StrFormat(Buffer + pos, Size - pos, "skew(%g %g) ", t->X, t->Y);
-      }
-      else LogF("@","Unrecognised transform command #%d", t->Type);
+   std::vector<VectorMatrix *> list;
 
-      t = t->Prev;
-   }
-   while ((pos > 0) AND (Buffer[pos-1] IS ' ')) pos--;
+   for (auto t=Transform; t; t=t->Next) list.push_back(t);
+
+   LONG pos = 0;
+   std::for_each(list.rbegin(), list.rend(), [&](auto t) {
+      pos += StrFormat(Buffer + pos, Size - pos, "matrix(%f %f %f %f %f %f) ", t->ScaleX, t->ShearY, t->ShearX, t->ScaleY, t->TranslateX, t->TranslateY);
+   });
+
+   while ((pos > 0) and (Buffer[pos-1] IS ' ')) pos--;
    Buffer[pos] = 0;
    return ERR_Okay;
 }
@@ -344,7 +327,7 @@ static ERROR save_svg_scan_std(objSVG *Self, objXML *XML, objVector *Vector, LON
    if ((!error) and (!GetString(Vector, FID_Filter, &str)) and (str))
       error = xmlSetAttrib(XML, Tag, XMS_NEW, "filter", str);
 
-   VectorTransform *transform;
+   VectorMatrix *transform;
    if ((!error) and (!GetPointer(Vector, FID_Transforms, &transform)) and (transform)) {
       if (!(error = save_svg_transform(transform, buffer, sizeof(buffer)))) {
          error = xmlSetAttrib(XML, Tag, XMS_NEW, "transform", buffer);
