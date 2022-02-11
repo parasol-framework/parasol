@@ -16,13 +16,19 @@ static void generate_rectangle(objVectorRectangle *Vector)
    DOUBLE width = Vector->rWidth, height = Vector->rHeight;
 
    if (Vector->rDimensions & DMF_RELATIVE_WIDTH) {
-      if (Vector->ParentView->vpDimensions & DMF_WIDTH) width *= Vector->ParentView->vpFixedWidth;
+      if ((Vector->ParentView->vpDimensions & DMF_WIDTH) or
+          ((Vector->ParentView->vpDimensions & DMF_X) and (Vector->ParentView->vpDimensions & DMF_X_OFFSET))) {
+         width *= Vector->ParentView->vpFixedWidth;
+      }
       else if (Vector->ParentView->vpViewWidth > 0) width *= Vector->ParentView->vpViewWidth;
       else width *= Vector->Scene->PageWidth;
    }
 
    if (Vector->rDimensions & DMF_RELATIVE_HEIGHT) {
-      if (Vector->ParentView->vpDimensions & DMF_HEIGHT) height *= Vector->ParentView->vpFixedHeight;
+      if ((Vector->ParentView->vpDimensions & DMF_HEIGHT) or
+          ((Vector->ParentView->vpDimensions & DMF_Y) and (Vector->ParentView->vpDimensions & DMF_Y_OFFSET))) {
+         height *= Vector->ParentView->vpFixedHeight;
+      }
       else if (Vector->ParentView->vpViewHeight > 0) height *= Vector->ParentView->vpViewHeight;
       else height *= Vector->Scene->PageHeight;
    }
@@ -50,13 +56,19 @@ static void get_rectangle_xy(objVectorRectangle *Vector)
    DOUBLE x = Vector->rX, y = Vector->rY;
 
    if (Vector->rDimensions & DMF_RELATIVE_X) {
-      if (Vector->ParentView->vpDimensions & DMF_WIDTH) x *= Vector->ParentView->vpFixedWidth;
+      if ((Vector->ParentView->vpDimensions & DMF_WIDTH) or
+          ((Vector->ParentView->vpDimensions & DMF_X) and (Vector->ParentView->vpDimensions & DMF_X_OFFSET))) {
+         x *= Vector->ParentView->vpFixedWidth;
+      }
       else if (Vector->ParentView->vpViewWidth > 0) x *= Vector->ParentView->vpViewWidth;
       else x *= Vector->Scene->PageWidth;
    }
 
    if (Vector->rDimensions & DMF_RELATIVE_Y) {
-      if (Vector->ParentView->vpDimensions & DMF_HEIGHT) y *= Vector->ParentView->vpFixedHeight;
+      if ((Vector->ParentView->vpDimensions & DMF_HEIGHT) or
+          ((Vector->ParentView->vpDimensions & DMF_Y) and (Vector->ParentView->vpDimensions & DMF_Y_OFFSET))) {
+         y *= Vector->ParentView->vpFixedHeight;
+      }
       else if (Vector->ParentView->vpViewHeight > 0) y *= Vector->ParentView->vpViewHeight;
       else y *= Vector->Scene->PageHeight;
    }
