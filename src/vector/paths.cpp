@@ -73,12 +73,24 @@ static void gen_vector_path(objVector *Vector)
       // vpBX1/BY1/BX2/BY2 are fixed coordinate bounding box values from root position (0,0) and define the clip region imposed on all children of the viewport.
       // vpFixedX/Y are the fixed coordinate position of the viewport relative to root position (0,0)
 
-      if (!(view->vpDimensions & (DMF_FIXED_X|DMF_RELATIVE_X|DMF_FIXED_X_OFFSET|DMF_RELATIVE_X_OFFSET))) {
+      if (!(view->vpDimensions & (DMF_X|DMF_X_OFFSET))) {
+         // Client failed to set a horizontal position
+         view->vpTargetX = 0;
+         view->vpDimensions |= DMF_FIXED_X;
+      }
+      else if ((view->vpDimensions & DMF_X_OFFSET) and (!(view->vpDimensions & (DMF_X|DMF_WIDTH)))) {
+         // Client set an offset but failed to combine it with a width or position value.
          view->vpTargetX = 0;
          view->vpDimensions |= DMF_FIXED_X;
       }
 
-      if (!(view->vpDimensions & (DMF_FIXED_Y|DMF_RELATIVE_Y|DMF_FIXED_Y_OFFSET|DMF_RELATIVE_Y_OFFSET))) {
+      if (!(view->vpDimensions & (DMF_Y|DMF_Y_OFFSET))) {
+         // Client failed to set a vertical position
+         view->vpTargetY = 0;
+         view->vpDimensions |= DMF_FIXED_Y;
+      }
+      else if ((view->vpDimensions & DMF_Y_OFFSET) and (!(view->vpDimensions & (DMF_Y|DMF_HEIGHT)))) {
+         // Client set an offset but failed to combine it with a height or position value.
          view->vpTargetY = 0;
          view->vpDimensions |= DMF_FIXED_Y;
       }
@@ -123,26 +135,26 @@ static void gen_vector_path(objVector *Vector)
       else view->vpFixedHeight = parent_height;
 
       if (view->vpDimensions & DMF_RELATIVE_X_OFFSET) {
-         if (view->vpDimensions & (DMF_FIXED_X|DMF_RELATIVE_X)) {
+         if (view->vpDimensions & DMF_X) {
             view->vpFixedWidth = parent_width - (parent_width * view->vpTargetXO) - view->vpFixedRelX;
          }
          else view->vpFixedRelX = parent_width - view->vpFixedWidth - (parent_width * view->vpTargetXO);
       }
       else if (view->vpDimensions & DMF_FIXED_X_OFFSET) {
-         if (view->vpDimensions & (DMF_FIXED_X|DMF_RELATIVE_X)) {
+         if (view->vpDimensions & DMF_X) {
             view->vpFixedWidth = parent_width - view->vpTargetXO - view->vpFixedRelX;
          }
          else view->vpFixedRelX = parent_width - view->vpFixedWidth - view->vpTargetXO;
       }
 
       if (view->vpDimensions & DMF_RELATIVE_Y_OFFSET) {
-         if (view->vpDimensions & (DMF_FIXED_Y|DMF_RELATIVE_Y)) {
+         if (view->vpDimensions & DMF_Y) {
             view->vpFixedHeight = parent_height - (parent_height * view->vpTargetYO) - view->vpFixedRelY;
          }
          else view->vpFixedRelY = parent_height - view->vpFixedHeight - (parent_height * view->vpTargetYO);
       }
       else if (view->vpDimensions & DMF_FIXED_Y_OFFSET) {
-         if (view->vpDimensions & (DMF_FIXED_Y|DMF_RELATIVE_Y)) {
+         if (view->vpDimensions & DMF_Y) {
             view->vpFixedHeight = parent_height - view->vpTargetYO - view->vpFixedRelY;
          }
          else view->vpFixedRelY = parent_height - view->vpFixedHeight - view->vpTargetYO;
