@@ -253,7 +253,7 @@ Align: Defines the alignment of the text string.
 This field specifies the horizontal alignment of the text string.  The standard alignment flags are supported in the
 form of `ALIGN_LEFT`, `ALIGN_HORIZONTAL` and `ALIGN_RIGHT`.
 
-In addition, the SVG equivalent values of 'start', 'middle' and 'end' are supported and map directly to the formerly
+In addition, the SVG equivalent values of `start`, `middle` and `end` are supported and map directly to the formerly
 mentioned align flags.
 
 *****************************************************************************/

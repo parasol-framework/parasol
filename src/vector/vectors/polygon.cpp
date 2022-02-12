@@ -22,23 +22,8 @@ TODO: Add a SetPoint(DOUBLE X, DOUBLE Y) method for modifying existing points.
 
 static void generate_polygon(objVectorPoly *Vector)
 {
-   parasol::Log log(__FUNCTION__);
    DOUBLE view_width, view_height;
-
-   if (Vector->ParentView) {
-      if (Vector->ParentView->vpDimensions & DMF_WIDTH) view_width = Vector->ParentView->vpFixedWidth;
-      else if (Vector->ParentView->vpViewWidth > 0) view_width = Vector->ParentView->vpViewWidth;
-      else view_width = Vector->Scene->PageWidth;
-
-      if (Vector->ParentView->vpDimensions & DMF_HEIGHT) view_height = Vector->ParentView->vpFixedHeight;
-      else if (Vector->ParentView->vpViewHeight > 0) view_height = Vector->ParentView->vpViewHeight;
-      else view_height = Vector->Scene->PageHeight;
-   }
-   else if (Vector->Scene) {
-      view_width  = Vector->Scene->PageWidth;
-      view_height = Vector->Scene->PageHeight;
-   }
-   else return;
+   get_parent_size(Vector, view_width, view_height);
 
    if ((Vector->Points) and (Vector->TotalPoints >= 2)) {
       DOUBLE top = DBL_MAX, bottom = DBL_MIN; // This is for caching the polygon boundary.
@@ -71,7 +56,6 @@ static void generate_polygon(objVectorPoly *Vector)
       Vector->X2 = right;
       Vector->Y2 = bottom;
    }
-   else log.trace("Not enough points defined.");
 }
 
 //****************************************************************************
@@ -218,8 +202,8 @@ static ERROR POLYGON_MoveToPoint(objVectorPoly *Self, struct acMoveToPoint *Args
 static ERROR POLYGON_NewObject(objVectorPoly *Self, APTR Void)
 {
    Self->GeneratePath = (void (*)(rkVector *))&generate_polygon;
-   Self->Closed = TRUE;
-   Self->TotalPoints = 2;
+   Self->Closed       = TRUE;
+   Self->TotalPoints  = 2;
    if (AllocMemory(sizeof(VectorPoint) * Self->TotalPoints, MEM_DATA, &Self->Points, NULL)) return ERR_AllocMemory;
    return ERR_Okay;
 }

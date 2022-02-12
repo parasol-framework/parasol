@@ -69,7 +69,48 @@ static const FieldDef clAspectRatio[] = {
 
 static FIELD FID_FreetypeFace;
 
-//****************************************************************************
+//********************************************************************************************************************
+// Retrieve the width/height of a vector's nearest viewport or scene object, taking account of relative dimensions
+// and offsets.
+//
+// These functions expect to be called during path generation via gen_vector_path().  If this is not the case, ensure
+// that Dirty field markers are cleared beforehand.
+
+template <class T> inline static DOUBLE get_parent_width(T *Vector)
+{
+   if (Vector->ParentView) {
+      if ((Vector->ParentView->vpDimensions & DMF_WIDTH) or
+          ((Vector->ParentView->vpDimensions & DMF_X) and (Vector->ParentView->vpDimensions & DMF_X_OFFSET))) {
+         return Vector->ParentView->vpFixedWidth;
+      }
+      else if (Vector->ParentView->vpViewWidth > 0) return Vector->ParentView->vpViewWidth;
+      else return Vector->Scene->PageWidth;
+   }
+   else if (Vector->Scene) return Vector->Scene->PageWidth;
+   else return 0;
+}
+
+template <class T> inline static DOUBLE get_parent_height(T *Vector)
+{
+   if (Vector->ParentView) {
+      if ((Vector->ParentView->vpDimensions & DMF_HEIGHT) or
+          ((Vector->ParentView->vpDimensions & DMF_Y) and (Vector->ParentView->vpDimensions & DMF_Y_OFFSET))) {
+         return Vector->ParentView->vpFixedHeight;
+      }
+      else if (Vector->ParentView->vpViewHeight > 0) return Vector->ParentView->vpViewHeight;
+      else return Vector->Scene->PageHeight;
+   }
+   else if (Vector->Scene) return Vector->Scene->PageHeight;
+   else return 0;
+}
+
+template <class T> inline static void get_parent_size(T *Vector, DOUBLE &Width, DOUBLE &Height)
+{
+   Width = get_parent_width(Vector);
+   Height = get_parent_height(Vector);
+}
+
+//********************************************************************************************************************
 // Mark a vector and all its children as needing some form of recomputation.
 
 template <class T>
@@ -82,7 +123,7 @@ inline static void mark_dirty(T *Vector, const UBYTE Flags)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Call reset_path() when the shape of the vector requires recalculation.  If the position of the shape has changed,
 // you probably want to mark_dirty() with the RC_TRANSFORM option instead.
 
@@ -93,7 +134,7 @@ inline static void reset_path(T *Vector)
    mark_dirty(Vector, RC_FINAL_PATH);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Call reset_final_path() when the base path is still valid and the vector is affected by a transform or coordinate
 // translation.
 
@@ -103,7 +144,7 @@ inline static void reset_final_path(T *Vector)
    mark_dirty(Vector, RC_FINAL_PATH);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 template <class T>
 inline static void compile_transforms(const T &Vector, agg::trans_affine &AGGTransform)
@@ -113,7 +154,7 @@ inline static void compile_transforms(const T &Vector, agg::trans_affine &AGGTra
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static CSTRING get_name(OBJECTPTR) __attribute__ ((unused));
 static CSTRING get_name(OBJECTPTR Vector)
@@ -149,7 +190,7 @@ INLINE CSTRING get_name(objVector *Vector) {
    return get_name(&Vector->Head);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Calculate the target X/Y for a vector path based on an aspect ratio and source/target dimensions.
 // Source* defines size of the source area and Target* defines the size of the projection to the display.
 
@@ -212,7 +253,7 @@ static void calc_aspectratio(CSTRING Caller, LONG AspectRatio,
       AspectRatio, TargetWidth, TargetHeight, SourceWidth, SourceHeight, *X, *Y, *XScale, *YScale);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Calculate the boundaries for a branch of the tree and return the combined maximum bound values.
 // NOTE: This function performs a full traversal, so it's specifically calculating the page size and this
 // may extend beyond the viewport boundary.
@@ -246,7 +287,7 @@ static void calc_full_boundary(objVector *Vector, std::array<DOUBLE, 4> &Bounds)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void debug_branch(CSTRING Header, OBJECTPTR Vector, LONG *Level) __attribute__ ((unused));
 
@@ -278,7 +319,7 @@ static void debug_branch(CSTRING Header, OBJECTPTR Vector, LONG *Level)
    *Level = *Level - 1;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Find the first parent of the targeted vector.  Returns NULL if no valid parent is found.
 
 inline static OBJECTPTR get_parent(objVector *Vector)
@@ -292,7 +333,7 @@ inline static OBJECTPTR get_parent(objVector *Vector)
    return NULL;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Designed for reading unit values such as '50%' and '6px'.  The returned value is scaled to pixels.
 
 static DOUBLE read_unit(CSTRING Value, UBYTE *Percent)
@@ -339,7 +380,7 @@ static DOUBLE read_unit(CSTRING Value, UBYTE *Percent)
    else return 0;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // The parser will break once the string value terminates, or an invalid character is encountered.  Parsed characters
 // include: 0 - 9 , ( ) - + SPACE
 
@@ -381,7 +422,7 @@ static CSTRING read_numseq(CSTRING Value, ...)
    return Value;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 template <class T>
 void configure_stroke(objVector &Vector, T &stroke)

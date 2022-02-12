@@ -142,7 +142,7 @@ static ERROR CLIP_Init(objVectorClip *Self, APTR Void)
 
    if ((Self->ClipUnits <= 0) or (Self->ClipUnits >= VUNIT_END)) {
       log.traceWarning("Invalid Units value of %d", Self->ClipUnits);
-      return log.warning(ERR_OutOfRange);
+      return ERR_OutOfRange;
    }
 
    if ((!Self->Parent) or ((Self->Parent->ClassID != ID_VECTORSCENE) and (Self->Parent->SubID != ID_VECTORVIEWPORT))) {

@@ -37,17 +37,8 @@ static void generate_wave(objVectorWave *Vector)
 {
    DOUBLE width = Vector->wWidth, height = Vector->wHeight;
 
-   if (Vector->wDimensions & DMF_RELATIVE_WIDTH) {
-      if (Vector->ParentView->vpDimensions & (DMF_FIXED_WIDTH|DMF_RELATIVE_WIDTH)) width *= Vector->ParentView->vpFixedWidth;
-      else if (Vector->ParentView->vpViewWidth > 0) width *= Vector->ParentView->vpViewWidth;
-      else width *= Vector->Scene->PageWidth;
-   }
-
-   if (Vector->wDimensions & DMF_RELATIVE_HEIGHT) {
-      if (Vector->ParentView->vpDimensions & (DMF_FIXED_HEIGHT|DMF_RELATIVE_HEIGHT)) height *= Vector->ParentView->vpFixedHeight;
-      else if (Vector->ParentView->vpViewHeight > 0) height *= Vector->ParentView->vpViewHeight;
-      else height *= Vector->Scene->PageHeight;
-   }
+   if (Vector->wDimensions & DMF_RELATIVE_WIDTH) width *= get_parent_width(Vector);
+   if (Vector->wDimensions & DMF_RELATIVE_HEIGHT) height *= get_parent_height(Vector);
 
    DOUBLE decay;
    if (Vector->wDecay IS 0) decay = 0.00000001;
@@ -81,7 +72,7 @@ static void generate_wave(objVectorWave *Vector)
    // Sine wave generator.  This applies scaling so that the correct number of vertices are generated.  Also, the
    // last vertex is interpolated to end exactly at 360, ensuring that the path terminates accurately.
 
-   DOUBLE xscale = width / 360.0;
+   DOUBLE xscale = width * (1.0 / 360.0);
    DOUBLE freq = Vector->wFrequency * scale;
    DOUBLE angle;
    DOUBLE last_x = x, last_y = y;
@@ -89,7 +80,7 @@ static void generate_wave(objVectorWave *Vector)
       for (angle=scale; angle < 360; angle += scale, degree += freq) {
          DOUBLE x = angle * xscale;
          DOUBLE y = (sin(DEG2RAD * degree) * amp) + (height * 0.5);
-         if (Vector->Transition) apply_transition_xy(Vector->Transition, angle / 360.0, &x, &y);
+         if (Vector->Transition) apply_transition_xy(Vector->Transition, angle * (1.0 / 360.0), &x, &y);
          if ((ABS(x - last_x) >= 0.5) or (ABS(y - last_y) >= 0.5)) {
             Vector->BasePath->line_to(x, y);
             last_x = x;
@@ -100,7 +91,7 @@ static void generate_wave(objVectorWave *Vector)
       degree += freq * (360.0 - (angle - scale)) / scale;
       DOUBLE x = width;
       DOUBLE y = (sin(DEG2RAD * degree) * amp) + (height * 0.5);
-      if (Vector->Transition) apply_transition_xy(Vector->Transition, angle / 360.0, &x, &y);
+      if (Vector->Transition) apply_transition_xy(Vector->Transition, angle * (1.0 / 360.0), &x, &y);
       Vector->BasePath->line_to(x, y);
    }
    else if (Vector->wDecay > 0) {
@@ -117,14 +108,14 @@ static void generate_wave(objVectorWave *Vector)
       degree += freq * (360.0 - (angle - scale)) / scale;
       DOUBLE x = width;
       DOUBLE y = (sin(DEG2RAD * degree) * amp) / exp(360.0 / decay) + (height * 0.5);
-      if (Vector->Transition) apply_transition_xy(Vector->Transition, angle / 360.0, &x, &y);
+      if (Vector->Transition) apply_transition_xy(Vector->Transition, angle * (1.0 / 360.0), &x, &y);
       Vector->BasePath->line_to(x, y);
    }
    else if (Vector->wDecay < 0) {
       for (angle=scale; angle < 360; angle += scale, degree += freq) {
          DOUBLE x = angle * xscale;
          DOUBLE y = (sin(DEG2RAD * degree) * amp) / log((DOUBLE)angle / decay) + (height * 0.5);
-         if (Vector->Transition) apply_transition_xy(Vector->Transition, angle / 360.0, &x, &y);
+         if (Vector->Transition) apply_transition_xy(Vector->Transition, angle * (1.0 / 360.0), &x, &y);
          if ((ABS(x - last_x) >= 0.5) or (ABS(y - last_y) >= 0.5)) {
             Vector->BasePath->line_to(x, y);
             last_x = x;
@@ -135,7 +126,7 @@ static void generate_wave(objVectorWave *Vector)
       degree += freq * (360.0 - (angle - scale)) / scale;
       DOUBLE x = width;
       DOUBLE y = (sin(DEG2RAD * degree) * amp) / log(360.0 / decay) + (height * 0.5);
-      if (Vector->Transition) apply_transition_xy(Vector->Transition, angle / 360.0, &x, &y);
+      if (Vector->Transition) apply_transition_xy(Vector->Transition, angle * (1.0 / 360.0), &x, &y);
       Vector->BasePath->line_to(x, y);
    }
 
@@ -159,19 +150,8 @@ static void generate_wave(objVectorWave *Vector)
 static void get_wave_xy(objVectorWave *Vector)
 {
    DOUBLE x = Vector->wX, y = Vector->wY;
-
-   if (Vector->wDimensions & DMF_RELATIVE_X) {
-      if (Vector->ParentView->vpDimensions & (DMF_FIXED_WIDTH|DMF_RELATIVE_WIDTH)) x *= Vector->ParentView->vpFixedWidth;
-      else if (Vector->ParentView->vpViewWidth > 0) x *= Vector->ParentView->vpViewWidth;
-      else x *= Vector->Scene->PageWidth;
-   }
-
-   if (Vector->wDimensions & DMF_RELATIVE_Y) {
-      if (Vector->ParentView->vpDimensions & (DMF_FIXED_HEIGHT|DMF_RELATIVE_HEIGHT)) y *= Vector->ParentView->vpFixedHeight;
-      else if (Vector->ParentView->vpViewHeight > 0) y *= Vector->ParentView->vpViewHeight;
-      else y *= Vector->Scene->PageHeight;
-   }
-
+   if (Vector->wDimensions & DMF_RELATIVE_X) x *= get_parent_width(Vector);
+   if (Vector->wDimensions & DMF_RELATIVE_Y) y *= get_parent_height(Vector);
    Vector->FinalX = x;
    Vector->FinalY = y;
 }
