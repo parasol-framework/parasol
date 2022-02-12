@@ -288,10 +288,14 @@ static void calc_full_boundary(objVector *Vector, std::array<DOUBLE, 4> &Bounds)
 }
 
 //********************************************************************************************************************
+// For debugging next/prev/child pointers in the scene graph
+//
+// LONG level = 0;
+// debug_branch("Debug", &Self->Head, &level);
 
-static void debug_branch(CSTRING Header, OBJECTPTR Vector, LONG *Level) __attribute__ ((unused));
+static void debug_tree_ptrs(CSTRING Header, OBJECTPTR Vector, LONG *Level) __attribute__ ((unused));
 
-static void debug_branch(CSTRING Header, OBJECTPTR Vector, LONG *Level)
+static void debug_tree_ptrs(CSTRING Header, OBJECTPTR Vector, LONG *Level)
 {
    parasol::Log log(Header);
    UBYTE spacing[*Level + 1];
@@ -304,13 +308,13 @@ static void debug_branch(CSTRING Header, OBJECTPTR Vector, LONG *Level)
    while (Vector) {
       if (Vector->ClassID IS ID_VECTORSCENE) {
          log.msg("Scene: %p", Vector);
-         if (((objVectorScene *)Vector)->Viewport) debug_branch(Header, &(((objVectorScene *)Vector)->Viewport->Head), Level);
+         if (((objVectorScene *)Vector)->Viewport) debug_tree_ptrs(Header, &(((objVectorScene *)Vector)->Viewport->Head), Level);
          break;
       }
       else if (Vector->ClassID IS ID_VECTOR) {
          objVector *shape = (objVector *)Vector;
          log.msg("%p<-%p->%p Child %p %s%s", shape->Prev, shape, shape->Next, shape->Child, spacing, get_name(shape));
-         if (shape->Child) debug_branch(Header, &shape->Child->Head, Level);
+         if (shape->Child) debug_tree_ptrs(Header, &shape->Child->Head, Level);
          Vector = &shape->Next->Head;
       }
       else break;
