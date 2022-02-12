@@ -169,11 +169,17 @@
 #define VSF_REFERENCE 7
 #define VSF_IGNORE 8
 
-// VectorWave options
+// Wave options.
 
 #define WVC_NONE 1
 #define WVC_TOP 2
 #define WVC_BOTTOM 3
+
+// Wave style options.
+
+#define WVS_CURVED 1
+#define WVS_ANGLED 2
+#define WVS_SAWTOOTH 3
 
 // Gradient flags
 

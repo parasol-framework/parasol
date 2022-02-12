@@ -29,6 +29,7 @@ typedef struct rkVectorWave {
    DOUBLE wThickness;
    LONG   wDimensions;
    UBYTE  wClose;
+   UBYTE  wStyle;
 } objVectorWave;
 
 //****************************************************************************
@@ -248,6 +249,28 @@ static ERROR WAVE_SET_Amplitude(objVectorWave *Self, DOUBLE Value)
 
 /*****************************************************************************
 -FIELD-
+Close: Closes the generated wave path at either the top or bottom.
+
+Setting the Close field to TOP or BOTTOM will close the generated wave's path so that it is suitable for being
+filled.
+
+*****************************************************************************/
+
+static ERROR WAVE_GET_Close(objVectorWave *Self, LONG *Value)
+{
+   *Value = Self->wClose;
+   return ERR_Okay;
+}
+
+static ERROR WAVE_SET_Close(objVectorWave *Self, LONG Value)
+{
+   Self->wClose = Value;
+   reset_path(Self);
+   return ERR_Okay;
+}
+
+/*****************************************************************************
+-FIELD-
 Decay: Declares a rate of decay to apply to the wave amplitude.
 
 The amplitude of a sine wave can be decayed between its start and end points by setting the Decay field.  Using a decay
@@ -388,6 +411,28 @@ static ERROR WAVE_SET_Height(objVectorWave *Self, Variable *Value)
 
 /*****************************************************************************
 -FIELD-
+Style: Selects an alternative wave style.
+
+NOT YET IMPLEMENTED
+
+By default, waves are generated in the style of a sine wave.  Alternative styles can be selected by setting this field.
+
+*****************************************************************************/
+
+static ERROR WAVE_GET_Style(objVectorWave *Self, LONG *Value)
+{
+   *Value = Self->wStyle;
+   return ERR_Okay;
+}
+
+static ERROR WAVE_SET_Style(objVectorWave *Self, LONG Value)
+{
+   Self->wStyle = Value;
+   return ERR_Okay;
+}
+
+/*****************************************************************************
+-FIELD-
 Thickness: Expands the height of the wave to the specified value to produce a closed path.
 
 Specifying a thickness value will create a wave that forms a filled shape, rather than the default of a stroked path.
@@ -483,7 +528,7 @@ static ERROR WAVE_SET_X(objVectorWave *Self, Variable *Value)
 Y: The y coordinate of the wave.  Can be expressed as a fixed or relative coordinate.
 
 The y coordinate of the wave is defined here as either a fixed or relative value.
-
+-END-
 *****************************************************************************/
 
 static ERROR WAVE_GET_Y(objVectorWave *Self, Variable *Value)
@@ -513,34 +558,19 @@ static ERROR WAVE_SET_Y(objVectorWave *Self, Variable *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
--FIELD-
-Close: Closes the generated wave path at either the top or bottom.
-
-Setting the Close field to TOP or BOTTOM will close the generated wave's path so that it is suitable for being
-filled.
--END-
-*****************************************************************************/
-
-static ERROR WAVE_GET_Close(objVectorWave *Self, LONG *Value)
-{
-   *Value = Self->wClose;
-   return ERR_Okay;
-}
-
-static ERROR WAVE_SET_Close(objVectorWave *Self, LONG Value)
-{
-   Self->wClose = Value;
-   reset_path(Self);
-   return ERR_Okay;
-}
-
 //****************************************************************************
 
 static const FieldDef clWaveClose[] = {
    { "None",   WVC_NONE },
    { "Top",    WVC_TOP },
    { "Bottom", WVC_BOTTOM },
+   { NULL, 0 }
+};
+
+static const FieldDef clWaveStyle[] = {
+   { "Curved",   WVS_CURVED },
+   { "Angled",   WVS_ANGLED },
+   { "Sawtooth", WVS_SAWTOOTH },
    { NULL, 0 }
 };
 
@@ -557,17 +587,18 @@ static const FieldDef clWaveDimensions[] = {
 };
 
 static const FieldArray clWaveFields[] = {
-   { "X",         FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)WAVE_GET_X, (APTR)WAVE_SET_X },
-   { "Y",         FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)WAVE_GET_Y, (APTR)WAVE_SET_Y },
-   { "Width",     FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)WAVE_GET_Width,   (APTR)WAVE_SET_Width },
-   { "Height",    FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)WAVE_GET_Height,  (APTR)WAVE_SET_Height },
-   { "Amplitude", FDF_VIRTUAL|FDF_DOUBLE|FDF_RW,    0, (APTR)WAVE_GET_Amplitude, (APTR)WAVE_SET_Amplitude },
-   { "Frequency", FDF_VIRTUAL|FDF_DOUBLE|FDF_RW,    0, (APTR)WAVE_GET_Frequency, (APTR)WAVE_SET_Frequency },
-   { "Decay",     FDF_VIRTUAL|FDF_DOUBLE|FDF_RW,    0, (APTR)WAVE_GET_Decay, (APTR)WAVE_SET_Decay },
-   { "Degree",    FDF_VIRTUAL|FDF_DOUBLE|FDF_RW,    0, (APTR)WAVE_GET_Degree, (APTR)WAVE_SET_Degree },
-   { "Close",     FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clWaveClose, (APTR)WAVE_GET_Close, (APTR)WAVE_SET_Close },
-   { "Thickness", FDF_VIRTUAL|FDF_DOUBLE|FDF_RW,    0, (APTR)WAVE_GET_Thickness, (APTR)WAVE_SET_Thickness },
+   { "Amplitude",  FDF_VIRTUAL|FDF_DOUBLE|FDF_RW,    0, (APTR)WAVE_GET_Amplitude, (APTR)WAVE_SET_Amplitude },
+   { "Close",      FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clWaveClose, (APTR)WAVE_GET_Close, (APTR)WAVE_SET_Close },
+   { "Decay",      FDF_VIRTUAL|FDF_DOUBLE|FDF_RW,    0, (APTR)WAVE_GET_Decay, (APTR)WAVE_SET_Decay },
+   { "Degree",     FDF_VIRTUAL|FDF_DOUBLE|FDF_RW,    0, (APTR)WAVE_GET_Degree, (APTR)WAVE_SET_Degree },
    { "Dimensions", FDF_VIRTUAL|FDF_LONGFLAGS|FDF_RW, (MAXINT)&clWaveDimensions, (APTR)WAVE_GET_Dimensions, (APTR)WAVE_SET_Dimensions },
+   { "Frequency",  FDF_VIRTUAL|FDF_DOUBLE|FDF_RW,    0, (APTR)WAVE_GET_Frequency, (APTR)WAVE_SET_Frequency },
+   { "Height",     FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)WAVE_GET_Height, (APTR)WAVE_SET_Height },
+   { "Style",      FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clWaveStyle, (APTR)WAVE_GET_Style, (APTR)WAVE_SET_Style },
+   { "Thickness",  FDF_VIRTUAL|FDF_DOUBLE|FDF_RW,    0, (APTR)WAVE_GET_Thickness, (APTR)WAVE_SET_Thickness },
+   { "X",          FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)WAVE_GET_X, (APTR)WAVE_SET_X },
+   { "Y",          FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)WAVE_GET_Y, (APTR)WAVE_SET_Y },
+   { "Width",      FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)WAVE_GET_Width, (APTR)WAVE_SET_Width },
    END_FIELD
 };
 
