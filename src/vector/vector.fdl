@@ -131,10 +131,15 @@ module({ name="Vector", copyright="Paul Manias © 2010-2022", version=1.0 }, fun
     "REFERENCE: This value is an assigned name for the filter primitive in the form of a custom-ident. If supplied, then graphics that result from processing this filter primitive can be referenced by an in attribute on a subsequent filter primitive within the same filter element. If no value is provided, the output will only be available for re-use as the implicit input into the next filter primitive if that filter primitive provides no value for its in attribute.",
     "IGNORE")
 
-  enum("WVC", { start=1, comment="VectorWave options" },
+  enum("WVC", { start=1, comment="Wave options." },
     "NONE: Do not close the path.",
     "TOP: Close the path across the top of its area.",
     "BOTTOM: Close the path across the bottom of its area.")
+
+  enum("WVS", { start=1, comment="Wave style options." },
+    "CURVED: Standard sine-wave curvature, this is the default.",
+    "ANGLED: Chevron style angles at 45 degrees either side of the peak and bottom edge.",
+    "SAWTOOTH: Sawtooth patterns rise at 45 degrees to the peak, then direct 90 degrees to the bottom.")
 
   flags("VGF", { comment="Gradient flags" },
     "RELATIVE_X1: X1 is relative",
