@@ -18,7 +18,7 @@
 <p>To create a new bitmap object, you need to specify its <field>Width</field> and <field>Height</field> at a minimum.  Preferably, you should also know how many colours you want to use and whether the bitmap data should be held in standard memory (for CPU based reading and writing) or video memory (for hardware based drawing).  After creating a bitmap you can use a number of available drawing methods for the purpose of image management.  Please note that these methods are designed to be called under exclusive conditions, and it is not recommended that you call methods on a bitmap using the message system.</p>
 <p>By default, the CPU can only be used to read and write data directly to or from a bitmap when it is held in standard memory (this is the default type).  If the BLIT or VIDEO flags are specified in the <field>DataFlags</field> field then the CPU cannot access this memory, unless you specifically request it.  To do this, use the <action>Lock</action> and <action>Unlock</action> actions to temporarily gain read/write access to a bitmap.</p>
 <p>If you require complex drawing functionality that is not available in the Bitmap class, please use the functionality provided by the Vector module.</p>
-<p>To save the image of a bitmap, you can either copy its image to a <class name="Picture">Picture</class> object, or you can use the SaveImage action to save the data in PCX format.  Raw data can also be processed through a bitmap by using the Read and Write actions.</p></description>
+<p>To save the image of a bitmap, you can either copy its image to a <class name="Picture">Picture</class> object, or you can use the SaveImage action to save the data in PNG format.  Raw data can also be processed through a bitmap by using the Read and Write actions.</p></description>
     <source>
       <file>class_bitmap.cpp</file>
     </source>
@@ -89,9 +89,15 @@
       <name>Resize</name>
       <comment>Resizes a bitmap object's dimensions.</comment>
       <description>
-<p>Resizing a bitmap allows you to change its dimensions in width and height, as well as depth.  The image data will be retained during the resize, although cropping will occur if any of the dimensions are reduced.  Reducing the depth of the bitmap will degrade the bitmap's quality.</p>
-<p>Bitmap resizing can be time consuming due to the retention of the image data.  Processing time can be significantly reduced by setting the VOLATILE flag in the bitmap <field>Flags</field> field.</p>
+<p>Resizing a bitmap will change its width, height and optionally bit depth.  Existing image data is not retained after this process.</p>
+<p>The image data is cleared with <field>BkgdRGB</field> if the CLEAR flag is defined in <field>Flags</field>.</p>
       </description>
+      <result>
+        <error code="NullArgs">Function call missing argument value(s)</error>
+        <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
+        <error code="FieldNotSet">A vital field has not been set in this object.</error>
+        <error code="Okay">Operation successful.</error>
+      </result>
     </action>
 
     <action>

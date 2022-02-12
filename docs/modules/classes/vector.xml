@@ -57,11 +57,6 @@
     </action>
 
     <action>
-      <name>Reset</name>
-      <comment>Clears all transform settings from the vector.</comment>
-    </action>
-
-    <action>
       <name>Show</name>
       <comment>Changes the vector's visibility setting to visible.</comment>
     </action>
@@ -70,40 +65,6 @@
 
   <methods>
     <method>
-      <name>ApplyMatrix</name>
-      <comment>Applies a 3x2 transform matrix to the vector.</comment>
-      <prototype>ERROR vecApplyMatrix(OBJECTPTR Object, DOUBLE A, DOUBLE B, DOUBLE C, DOUBLE D, DOUBLE E, DOUBLE F)</prototype>
-      <input>
-        <param type="DOUBLE" name="A">Matrix value at (0,0)</param>
-        <param type="DOUBLE" name="B">Matrix value at (1,0)</param>
-        <param type="DOUBLE" name="C">Matrix value at (2,0)</param>
-        <param type="DOUBLE" name="D">Matrix value at (0,1)</param>
-        <param type="DOUBLE" name="E">Matrix value at (1,1)</param>
-        <param type="DOUBLE" name="F">Matrix value at (2,1)</param>
-      </input>
-      <description>
-<p>This method will apply a 3x2 transformation matrix to the vector.  If the matrix is preceded with the application of other transforms, the outcome is that the matrix is multiplied with the combination of the former transforms.</p>
-      </description>
-      <result>
-        <error code="NullArgs">Function call missing argument value(s)</error>
-        <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
-        <error code="Okay">Operation successful.</error>
-      </result>
-    </method>
-
-    <method>
-      <name>ClearTransforms</name>
-      <comment>Clear all transform instructions currently associated with the vector.</comment>
-      <prototype>ERROR vecClearTransforms(OBJECTPTR Object)</prototype>
-      <description>
-<p>This method will clear all transform instructions that have been applied to the vector.</p>
-      </description>
-      <result>
-        <error code="Okay">Operation successful.</error>
-      </result>
-    </method>
-
-    <method>
       <name>Debug</name>
       <comment>Internal functionality for debugging.</comment>
       <prototype>ERROR vecDebug(OBJECTPTR Object)</prototype>
@@ -111,6 +72,22 @@
 <p>This internal method prints comprehensive debugging information to the log.</p>
       </description>
       <result>
+        <error code="Okay">Operation successful.</error>
+      </result>
+    </method>
+
+    <method>
+      <name>FreeMatrix</name>
+      <comment>Remove an allocated VectorMatrix structure.</comment>
+      <prototype>ERROR vecFreeMatrix(OBJECTPTR Object, struct VectorMatrix * Matrix)</prototype>
+      <input>
+        <param type="struct VectorMatrix *" name="Matrix">Reference to the structure that requires removal.</param>
+      </input>
+      <description>
+<p>Transformations allocated from NewMatrix() can be removed with this method.  If multiple transforms are attached to the vector then it should be noted that this will affect downstream transformations.</p>
+      </description>
+      <result>
+        <error code="NullArgs">Function call missing argument value(s)</error>
         <error code="Okay">Operation successful.</error>
       </result>
     </method>
@@ -127,7 +104,7 @@
         <param type="DOUBLE *" name="Height">The height of the boundary is returned here.</param>
       </input>
       <description>
-<p>This function will return the boundary of a vector's path in terms of its top-left position, width and height.  All transformations and position information that applies to the vector will be taken into account when computing the boundary.</p>
+<p>This method will return the boundary of a vector's path in terms of its top-left position, width and height.  All transformations and position information that applies to the vector will be taken into account when computing the boundary.</p>
 <p>If the <code>VBF_INCLUSIVE</code> flag is used, the result will include an analysis of all paths that belong to children of the target vector, including transforms.</p>
 <p>If the <code>VBF_NO_TRANSFORM</code> flag is used, the transformation step is not applied to the vector's path.</p>
 <p>It is recommended that this method is not called until at least one rendering pass has been made, as some vector dimensions may not be computed before then.</p>
@@ -136,26 +113,6 @@
         <error code="NullArgs">Function call missing argument value(s)</error>
         <error code="NotPossible">The vector does not support path generation.</error>
         <error code="NoData">The vector does not have a computable path.</error>
-        <error code="Okay">Operation successful.</error>
-      </result>
-    </method>
-
-    <method>
-      <name>GetTransform</name>
-      <comment>Returns the values of applied transformation effects.</comment>
-      <prototype>ERROR vecGetTransform(OBJECTPTR Object, LONG Type, struct VectorTransform ** Transform)</prototype>
-      <input>
-        <param type="LONG" name="Type">Type of transform to retrieve.  If set to zero, the first transformation is returned.</param>
-        <param type="struct VectorTransform **" name="Transform">A matching VECTOR_TRANSFORM structure is returned in this parameter, if found.</param>
-      </input>
-      <description>
-<p>This method returns a <code>VECTOR_TRANSFORM</code> structure for any given transform that has been applied to a vector.  It works for <code>MATRIX</code>, <code>TRANSLATE</code>, <code>SCALE</code>, <code>ROTATE</code> and <code>SKEW</code> transformations.  The structure of <code>VECTOR_TRANSFORM</code> is described in the <field>Transforms</field> field.</p>
-<p>If the requested transform is not applied to the vector, the method will fail with an ERR_Search return code.</p>
-      </description>
-      <result>
-        <error code="NullArgs">Function call missing argument value(s)</error>
-        <error code="Search">The requested transform type is not applied.</error>
-        <error code="NoData">No transformations are applied to the vector.</error>
         <error code="Okay">Operation successful.</error>
       </result>
     </method>
@@ -171,7 +128,7 @@
       <description>
 <p>The InputSubscription method is provided as an extension to gfxSubscribeInput(), whereby the user's input events will be filtered down to those that occur within the vector's graphics area only.  The original events are transferred as-is, although the <code>ENTERED_SURFACE</code> and <code>LEFT_SURFACE</code> events are modified so that they trigger during passage through the vector boundaries.</p>
 <p>It is a pre-requisite that the associated <class name="VectorScene">VectorScene</class> has been linked to a <class name="Surface">Surface</class>.</p>
-<p>To remove an existing subscription, call this function again with the same Callback and an empty Mask. Alternatively have the function return ERR_Terminate.</p>
+<p>To remove an existing subscription, call this method again with the same Callback and an empty Mask. Alternatively have the function return ERR_Terminate.</p>
 <p>Please refer to gfxSubscribeInput() for further information on event management and message handling.</p>
 <p>The synopsis for the Callback is:</p>
 <p>
@@ -198,13 +155,31 @@
 <p>A callback is required and this will receive input messages as they arrive from the user.  The prototype for the callback is as follows, whereby Flags are keyboard qualifiers <code>KQ</code> and the Value will be a <code>K</code> constant.</p>
 <p>
 <code/><code> ERROR callback(*Viewport, LONG Flags, LONG Value); </code><code/></p>
-<p>To remove the subscription the function can return ERR_Terminate.</p>
+<p>To remove the subscription, the function can return ERR_Terminate.</p>
       </description>
       <result>
         <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
         <error code="FieldNotSet">The VectorScene has no reference to a Surface.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
         <error code="Function">A call to gfxSubscribeInput() failed.</error>
+        <error code="Okay">Operation successful.</error>
+      </result>
+    </method>
+
+    <method>
+      <name>NewMatrix</name>
+      <comment>Returns a VectorMatrix structure that allows transformations to be applied to the vector.</comment>
+      <prototype>ERROR vecNewMatrix(OBJECTPTR Object, struct VectorMatrix ** Transform)</prototype>
+      <input>
+        <param type="struct VectorMatrix **" name="Transform">A reference to the new transform structure is returned here.</param>
+      </input>
+      <description>
+<p>Call NewMatrix() to allocate a transformation matrix that allows transforms to be applied to a vector.  Manipulating the transformation matrix is supported by functions in the Vector module, such as <function module="Vector">Scale</function> and <function module="Vector">Rotate</function>.</p>
+<p>Note that if multiple matrices are allocated by the client, they will be applied to the vector in the order of their creation.</p>
+<p>The structure will be owned by the Vector object and is automatically terminated when the Vector is destroyed.  If the transform is no longer required before then, it can be manually removed with @FreeMatrix().</p>
+      </description>
+      <result>
+        <error code="NullArgs">Function call missing argument value(s)</error>
         <error code="Okay">Operation successful.</error>
       </result>
     </method>
@@ -247,65 +222,6 @@
     </method>
 
     <method>
-      <name>Rotate</name>
-      <comment>Applies a rotation transformation to the vector.</comment>
-      <prototype>ERROR vecRotate(OBJECTPTR Object, DOUBLE Angle, DOUBLE CenterX, DOUBLE CenterY)</prototype>
-      <input>
-        <param type="DOUBLE" name="Angle">Angle of rotation</param>
-        <param type="DOUBLE" name="CenterX">Center of rotation on the horizontal axis.</param>
-        <param type="DOUBLE" name="CenterY">Center of rotation on the vertical axis.</param>
-      </input>
-      <description>
-<p>This method will apply a rotation transformation to a vector.  The rotation will be computed on a run-time basis and does not affect the path stored with the vector.  Any children associated with the vector will also be affected by the transformation.</p>
-<p>If a rotation already exists for the vector, it will be replaced with the new specifications.</p>
-<p>The transformation can be removed at any time by calling the <method>ClearTransforms</method> method.</p>
-      </description>
-      <result>
-        <error code="NullArgs">Function call missing argument value(s)</error>
-        <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
-        <error code="Okay">Operation successful.</error>
-      </result>
-    </method>
-
-    <method>
-      <name>Scale</name>
-      <comment>Scale the size of the vector by (x,y)</comment>
-      <prototype>ERROR vecScale(OBJECTPTR Object, DOUBLE X, DOUBLE Y)</prototype>
-      <input>
-        <param type="DOUBLE" name="X">The scale factor on the x-axis.</param>
-        <param type="DOUBLE" name="Y">The scale factor on the y-axis.</param>
-      </input>
-      <description>
-<p>This method will add a scale transformation to the vector's transform commands.  Values of less than 1.0 will shrink the path along the target axis, while values greater than 1.0 will enlarge it.</p>
-<p>The scale factors are applied to every path point, and scaling is relative to position (0,0).  If the width and height of the vector shape needs to be transformed without affecting its top-left position, the client must translate the vector to (0,0) around its center point.  The vector should then be scaled and transformed back to its original top-left coordinate.</p>
-<p>The scale transform can also be formed to flip the vector path if negative values are used.  For instance, a value of -1.0 on the x axis would result in a 1:1 flip across the horizontal.</p>
-      </description>
-      <result>
-        <error code="NullArgs">Function call missing argument value(s)</error>
-        <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
-        <error code="Okay">Operation successful.</error>
-      </result>
-    </method>
-
-    <method>
-      <name>Skew</name>
-      <comment>Skews the vector along the horizontal and/or vertical axis.</comment>
-      <prototype>ERROR vecSkew(OBJECTPTR Object, DOUBLE X, DOUBLE Y)</prototype>
-      <input>
-        <param type="DOUBLE" name="X">The angle to skew along the horizontal.</param>
-        <param type="DOUBLE" name="Y">The angle to skew along the vertical.</param>
-      </input>
-      <description>
-<p>The Skew method applies a skew transformation to the horizontal and/or vertical axis of the vector and its children. Valid X and Y values are in the range of -90 &lt; Angle &lt; 90.</p>
-      </description>
-      <result>
-        <error code="NullArgs">Function call missing argument value(s)</error>
-        <error code="OutOfRange">At least one of the angles is out of the allowable range.</error>
-        <error code="Okay">Operation successful.</error>
-      </result>
-    </method>
-
-    <method>
       <name>TracePath</name>
       <comment>Returns the coordinates for a vector path, using callbacks.</comment>
       <prototype>ERROR vecTracePath(OBJECTPTR Object, FUNCTION * Callback)</prototype>
@@ -323,58 +239,9 @@
       </result>
     </method>
 
-    <method>
-      <name>Transform</name>
-      <comment>Apply a transformation to a vector.</comment>
-      <prototype>ERROR vecTransform(OBJECTPTR Object, CSTRING Transform)</prototype>
-      <input>
-        <param type="CSTRING" name="Transform">The transform to apply, expressed as a string instruction.</param>
-      </input>
-      <description>
-<p>This method parses a sequence of transformation instructions and applies them to the vector.  The transformation will be computed on a run-time basis and does not affect the path stored with the vector.  Any children associated with the vector will be affected by the transformation.</p>
-<p>The transform string must be written using SVG guidelines for the transform attribute, for example <code>skewX(20) rotate(45 50 50)</code> would be valid.</p>
-<p>Any existing transformation instructions for the vector will be replaced by this operation.</p>
-<p>The transformation can be removed at any time by calling the <method>ClearTransforms</method> method.</p>
-      </description>
-      <result>
-        <error code="NullArgs">Function call missing argument value(s)</error>
-        <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
-        <error code="Okay">Operation successful.</error>
-      </result>
-    </method>
-
-    <method>
-      <name>Translate</name>
-      <comment>Translates the vector by (X,Y).</comment>
-      <prototype>ERROR vecTranslate(OBJECTPTR Object, DOUBLE X, DOUBLE Y)</prototype>
-      <input>
-        <param type="DOUBLE" name="X">Translation along the x-axis.</param>
-        <param type="DOUBLE" name="Y">Translation along the y-axis.</param>
-      </input>
-      <description>
-<p>This method will apply a translation along (X,Y) to the vector's transform command sequence.</p>
-      </description>
-      <result>
-        <error code="NullArgs">Function call missing argument value(s)</error>
-        <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
-        <error code="Okay">Operation successful.</error>
-      </result>
-    </method>
-
   </methods>
 
   <fields>
-    <field>
-      <name>ActiveTransforms</name>
-      <comment>Indicates the transforms that are currently applied to a vector.</comment>
-      <access read="R">Read</access>
-      <type lookup="VTF">INT</type>
-      <description>
-<p>Each time that a transform is applied to a vector through methods such as <method>Scale</method> and <method>Translate</method>, a flag will be set in ActiveTransforms that indicates the type of transform that was applied.</p>
-<types lookup="VTF"/>
-      </description>
-    </field>
-
     <field>
       <name>Child</name>
       <comment>The first child vector, or NULL.</comment>
@@ -568,6 +435,17 @@
     </field>
 
     <field>
+      <name>Matrices</name>
+      <comment>A linked list of transform matrices that have been applied to the vector.</comment>
+      <access read="R">Read</access>
+      <type>struct VectorMatrix *</type>
+      <description>
+<p>All transforms that have been allocated via <function module="Vector">NewMatrix</function> can be read from the Matrices field.  Each transform is represented by the <code>VectorMatrix</code> structure, and are linked in the order in which they are added to the vector.</p>
+<struct lookup="VectorMatrix"/>
+      </description>
+    </field>
+
+    <field>
       <name>MiterLimit</name>
       <comment>Imposes a limit on the ratio of the miter length to the StrokeWidth.</comment>
       <access read="R" write="S">Read/Set</access>
@@ -666,7 +544,7 @@
       <access read="G">Get</access>
       <type>STRING</type>
       <description>
-<p>The Sequence is a string of points and instructions that define the path.  It is based on the SVG standard for the path element 'd' attribute, but also provides some additional features that are present in the vector engine.  Commands are case insensitive.</p>
+<p>The Sequence is a string of points and instructions that define the path.  It is based on the SVG standard for the path element <code>d</code> attribute, but also provides some additional features that are present in the vector engine.  Commands are case insensitive.</p>
 <p>The following commands are supported:</p>
 <pre>M: Move To
 L: Line To
@@ -727,17 +605,6 @@ Z: Close Path
     </field>
 
     <field>
-      <name>Transforms</name>
-      <comment>A linked list of transforms that have been applied to the vector.</comment>
-      <access read="R">Read</access>
-      <type>struct VectorTransform *</type>
-      <description>
-<p>Any transforms that have been applied to the vector can be read from the Transforms field.  Each transform is represented by the VECTOR_TRANSFORM structure, and are linked in the order in which they are applied to the vector.</p>
-<struct lookup="VectorTransform"/>
-      </description>
-    </field>
-
-    <field>
       <name>Transition</name>
       <comment>Reference a VectorTransition object here to apply multiple transforms over the vector's path.</comment>
       <access read="G" write="S">Get/Set</access>
@@ -765,6 +632,29 @@ Z: Close Path
       <const name="SWEEP"/>
     </constants>
 
+    <constants lookup="FM" comment="Mask for controlling feedback events that are received.">
+      <const name="PATH_CHANGED">The vector path has been modified or affected by a transform.</const>
+    </constants>
+
+    <constants lookup="CS" comment="Colour space options.">
+      <const name="SRGB">The default colour-space is sRGB, recommended for its speed.</const>
+      <const name="LINEAR_RGB">Linear RGB is the default colour space for SVG and produces the best results.</const>
+      <const name="INHERIT">Inherit the colour space option from the parent vector.</const>
+    </constants>
+
+    <constants lookup="VIJ" comment="Inner join options for angled lines.">
+      <const name="BEVEL">Blunts the edge of the join.</const>
+      <const name="MITER">Forms a sharp point at the join.  Typically not the best looking option.</const>
+      <const name="JAG">A special non-SVG option.</const>
+      <const name="ROUND">Rounds the edge of the join to produce the best looking results.</const>
+      <const name="INHERIT">Inherit the parent's join value.</const>
+    </constants>
+
+    <constants lookup="VBF" comment="Options for vecGetBoundary().">
+      <const name="INCLUSIVE">The result will be inclusive of all paths that belong to children of the queried vector.</const>
+      <const name="NO_TRANSFORM">The transformation step will not be applied to the vector's path.</const>
+    </constants>
+
     <constants lookup="VSM">
       <const name="AUTO">The default option is chosen by the system.  This will typically be bilinear, but slow machines may switch to nearest neighbour and high speed machines could use more advanced methods.</const>
       <const name="NEIGHBOUR">Nearest neighbour is the fastest sampler at the cost of poor quality.</const>
@@ -784,54 +674,15 @@ Z: Close Path
       <const name="BLACKMAN8">15 times slower than bilinear, the final result is of excellent quality and sharpness is well balanced.</const>
     </constants>
 
-    <constants lookup="VSPREAD" comment="Spread method options define the method to use for tiling filled graphics.">
-      <const name="UNDEFINED">Either the default setting will be applied or the setting will be inherited from a parent object.</const>
-      <const name="PAD">Scale the graphic to the object bounds.</const>
-      <const name="REFLECT">Tile the graphic, reflecting the image alternately on the X and Y axis.</const>
-      <const name="REPEAT">Tile the graphic repeatedly.</const>
-      <const name="REFLECT_X">Tile the graphic, reflecting the image alternately on the X axis only.</const>
-      <const name="REFLECT_Y">Tile the graphic, reflecting the image alternately on the Y axis only.</const>
-      <const name="CLIP">Do not scale the graphic.  Clip it if it extends past imposed boundaries.</const>
-    </constants>
-
-    <constants lookup="VUNIT">
-      <const name="UNDEFINED"/>
-      <const name="BOUNDING_BOX">Coordinates are relative to the object's bounding box.</const>
-      <const name="USERSPACE">Coordinates are relative to the current viewport.</const>
-    </constants>
-
-    <constants lookup="VTF" comment="Types of vector transforms.">
-      <const name="SKEW">Skew the vector by (X,Y)</const>
-      <const name="TRANSLATE">Translate the vector by (X,Y)</const>
-      <const name="MATRIX">Apply a 2x3 matrix transformation to the vector.</const>
-      <const name="SCALE">Scale the vector by (X,Y)</const>
-      <const name="ROTATE">Rotate the vector around (CX,CY) by Angle.</const>
-    </constants>
-
-    <constants lookup="VIS" comment="Options for the Vector class' Visibility field.">
-      <const name="HIDDEN">Hide the vector and its children.</const>
-      <const name="VISIBLE">The default.  Ensures that the vector is visible.</const>
-      <const name="COLLAPSE">Hide the vector and its children.  Do not use - provided for SVG compatibility only.</const>
-      <const name="INHERIT">Inherit the visibility state from the parent.</const>
-    </constants>
-
-    <constants lookup="CS" comment="Colour space options.">
-      <const name="SRGB">The default colour-space is sRGB, recommended for its speed.</const>
-      <const name="LINEAR_RGB">Linear RGB is the default colour space for SVG and produces the best results.</const>
-      <const name="INHERIT">Inherit the colour space option from the parent vector.</const>
-    </constants>
-
-    <constants lookup="VIJ" comment="Inner join options for angled lines.">
-      <const name="BEVEL">Blunts the edge of the join.</const>
-      <const name="MITER">Forms a sharp point at the join.  Typically not the best looking option.</const>
-      <const name="JAG">A special non-SVG option.</const>
-      <const name="ROUND">Rounds the edge of the join to produce the best looking results.</const>
-      <const name="INHERIT">Inherit the parent's join value.</const>
-    </constants>
-
     <constants lookup="VF" comment="Optional flags and indicators for the Vector class.">
       <const name="DISABLED">The vector is disabled and user input should be ignored.</const>
       <const name="HAS_FOCUS">The vector holds the user's input focus.</const>
+    </constants>
+
+    <constants lookup="VPF" comment="Optional flags for the VectorScene object.">
+      <const name="RENDER_TIME">Compute the drawing frame-rate for the RenderTime field.</const>
+      <const name="BITMAP_SIZED">Automatically adjust the PageWidth and PageHeight to match the target Bitmap width and height.</const>
+      <const name="RESIZE">The vector will be stretched to fit the PageWidth and PageHeight values, if defined by the client.</const>
     </constants>
 
     <constants lookup="VGF" comment="Gradient flags">
@@ -862,30 +713,6 @@ Z: Close Path
       <const name="INHERIT">The cap type is inherited from the parent (defaults to butt if unspecified).</const>
     </constants>
 
-    <constants lookup="VBF" comment="Options for vecGetBoundary().">
-      <const name="INCLUSIVE">The result will be inclusive of all paths that belong to children of the queried vector.</const>
-      <const name="NO_TRANSFORM">The transformation step will not be applied to the vector's path.</const>
-    </constants>
-
-    <constants lookup="VPF" comment="Optional flags for the VectorScene object.">
-      <const name="RENDER_TIME">Compute the drawing frame-rate for the RenderTime field.</const>
-      <const name="BITMAP_SIZED">Automatically adjust the PageWidth and PageHeight to match the target Bitmap width and height.</const>
-      <const name="RESIZE">The vector will be stretched to fit the PageWidth and PageHeight values, if defined by the client.</const>
-    </constants>
-
-    <constants lookup="FM" comment="Mask for controlling feedback events that are received.">
-      <const name="PATH_CHANGED">The vector path has been modified or affected by a transform.</const>
-    </constants>
-
-    <constants lookup="VLJ" comment="Options for the look of line joins.">
-      <const name="MITER">The default.  The join will form a pointed edge.</const>
-      <const name="MITER_REVERT"/>
-      <const name="ROUND">The join is rounded.</const>
-      <const name="BEVEL">The join is blunted, eliminating overly sharp edges.</const>
-      <const name="MITER_ROUND">Default to MITER, but switch to ROUND if the miter limit is exceeded.</const>
-      <const name="INHERIT">Inherit the join option from the parent.</const>
-    </constants>
-
     <constants lookup="ARF" comment="Aspect ratios control alignment, scaling and clipping.">
       <const name="NONE">Scale the viewbox to match the size of the viewport.  Aspect ratio is not preserved.</const>
       <const name="Y_MIN">Align to the top.</const>
@@ -898,6 +725,19 @@ Z: Close Path
       <const name="MEET">Aspect ratio is preserved. The entire viewbox will be visible in the viewport.  The viewbox is scaled up as much as possible.</const>
     </constants>
 
+    <constants lookup="VUNIT">
+      <const name="UNDEFINED"/>
+      <const name="BOUNDING_BOX">Coordinates are relative to the object's bounding box.</const>
+      <const name="USERSPACE">Coordinates are relative to the current viewport.</const>
+    </constants>
+
+    <constants lookup="VIS" comment="Options for the Vector class' Visibility field.">
+      <const name="HIDDEN">Hide the vector and its children.</const>
+      <const name="VISIBLE">The default.  Ensures that the vector is visible.</const>
+      <const name="COLLAPSE">Hide the vector and its children.  Do not use - provided for SVG compatibility only.</const>
+      <const name="INHERIT">Inherit the visibility state from the parent.</const>
+    </constants>
+
     <constants lookup="VGT" comment="VectorGradient options.">
       <const name="LINEAR">A linear gradient is drawn from (X1,Y1) to (X2,Y2).</const>
       <const name="RADIAL">A radial gradient is drawn from CenterX,CenterY to Radius.  An optional focal point can be expressed with FX and FY.</const>
@@ -906,24 +746,33 @@ Z: Close Path
       <const name="CONTOUR">Contoured gradients follow the contours of the vector path in which they are rendered.</const>
     </constants>
 
+    <constants lookup="VSPREAD" comment="Spread method options define the method to use for tiling filled graphics.">
+      <const name="UNDEFINED">Either the default setting will be applied or the setting will be inherited from a parent object.</const>
+      <const name="PAD">Scale the graphic to the object bounds.</const>
+      <const name="REFLECT">Tile the graphic, reflecting the image alternately on the X and Y axis.</const>
+      <const name="REPEAT">Tile the graphic repeatedly.</const>
+      <const name="REFLECT_X">Tile the graphic, reflecting the image alternately on the X axis only.</const>
+      <const name="REFLECT_Y">Tile the graphic, reflecting the image alternately on the Y axis only.</const>
+      <const name="CLIP">Do not scale the graphic.  Clip it if it extends past imposed boundaries.</const>
+    </constants>
+
     <constants lookup="VFR" comment="Vector fill rules for the FillRule field in the Vector class.">
       <const name="NON_ZERO">This is the default.  This rule determines the 'insideness' of a point on the canvas by drawing a ray from that point to infinity in any direction and then examining the places where a segment of the shape crosses the ray. Starting with a count of zero, add one each time a path segment crosses the ray from left to right and subtract one each time a path segment crosses the ray from right to left. After counting the crossings, if the result is zero then the point is outside the path. Otherwise, it is inside.</const>
       <const name="EVEN_ODD">This rule determines the 'insideness' of a point on the canvas by drawing a ray from that point to infinity in any direction and counting the number of path segments from the given shape that the ray crosses. If this number is odd, the point is inside; if even, the point is outside.</const>
       <const name="INHERIT">The rule is inherited from the parent vector(s).</const>
     </constants>
 
+    <constants lookup="VLJ" comment="Options for the look of line joins.">
+      <const name="MITER">The default.  The join will form a pointed edge.</const>
+      <const name="MITER_REVERT"/>
+      <const name="ROUND">The join is rounded.</const>
+      <const name="BEVEL">The join is blunted, eliminating overly sharp edges.</const>
+      <const name="MITER_ROUND">Default to MITER, but switch to ROUND if the miter limit is exceeded.</const>
+      <const name="INHERIT">Inherit the join option from the parent.</const>
+    </constants>
+
   </types>
   <structs>
-    <struct name="VectorTransform">
-      <field name="Next" type="struct VectorTransform *">The next transform in the list.</field>
-      <field name="Prev" type="struct VectorTransform *">The previous transform in the list.</field>
-      <field name="X" type="DOUBLE">The X value, the meaning of which is defined by the Type</field>
-      <field name="Y" type="DOUBLE">The Y value, the meaning of which is defined by the Type</field>
-      <field name="Angle" type="DOUBLE">Requires VTF_ROTATE.  A rotation by Angle degrees about a given point.  If optional parameters X and Y are not specified, the rotate is about the origin of the current user coordinate system.</field>
-      <field name="Matrix[6]" type="DOUBLE">Requires VTF_MATRIX.  A transformation expressed as a matrix of six values.</field>
-      <field name="Type" type="WORD" lookup="VTF">The VTF indicates the type of transformation: rotate, skew etc</field>
-    </struct>
-
     <struct name="PathCommand" comment="Base structure for path commands.">
       <field name="Type" type="UBYTE">The command type (PE value)</field>
       <field name="Curved" type="UBYTE">Private</field>
@@ -939,6 +788,17 @@ Z: Close Path
       <field name="X3" type="DOUBLE">The X3 coordinate for curve-to or smooth-curve-to</field>
       <field name="Y3" type="DOUBLE">The Y3 coordinate for curve-to or smooth-curve-to</field>
       <field name="Angle" type="DOUBLE">Arc angle</field>
+    </struct>
+
+    <struct name="VectorMatrix" comment="Vector transformation matrix.">
+      <field name="Next" type="struct VectorMatrix *">The next transform in the list.</field>
+      <field name="Vector" type="struct rkVector *">The vector associated with the transform.</field>
+      <field name="ScaleX" type="DOUBLE">Matrix value A</field>
+      <field name="ShearY" type="DOUBLE">Matrix value B</field>
+      <field name="ShearX" type="DOUBLE">Matrix value C</field>
+      <field name="ScaleY" type="DOUBLE">Matrix value D</field>
+      <field name="TranslateX" type="DOUBLE">Matrix value E</field>
+      <field name="TranslateY" type="DOUBLE">Matrix value F</field>
     </struct>
 
   </structs>

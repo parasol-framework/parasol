@@ -66,8 +66,8 @@
     </input>
     <description>
 <p>This function copies rectangular areas from one bitmap to another.  It performs a straight region-copy only, using the fastest method available.  Bitmaps may be of a different type (e.g. bit depth), however this will result in performance penalties.  The copy process will respect the clipping region defined in both the source and destination bitmap objects.</p>
-<p>If the TRANSPARENT flag is set in the source object, all colours that match the ColourIndex field will be ignored in the copy operation.</p>
-<p>To enable dithering, pass BAF_DITHER in the Flags argument.  The drawing algorithm will use dithering if the source needs to be down-sampled to the target bitmap's bit depth.  To enable alpha blending, set BAF_BLEND (the source bitmap will also need to have the BMF_ALPHA_CHANNEL flag set to indicate that an alpha channel is available).</p>
+<p>If the <code>TRANSPARENT</code> flag is set in the source object, all colours that match the ColourIndex field will be ignored in the copy operation.</p>
+<p>To enable dithering, pass <code>BAF_DITHER</code> in the Flags argument.  The drawing algorithm will use dithering if the source needs to be down-sampled to the target bitmap's bit depth.  To enable alpha blending, set <code>BAF_BLEND</code> (the source bitmap will also need to have the <code>BMF_ALPHA_CHANNEL</code> flag set to indicate that an alpha channel is available).</p>
     </description>
     <result type="ERROR">
       <error code="NullArgs">Function call missing argument value(s)</error>

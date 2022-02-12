@@ -258,9 +258,9 @@ the surface area first).</li>
       <comment>Schedules a redraw operation for the next frame.</comment>
       <prototype>ERROR drwScheduleRedraw(OBJECTPTR Object)</prototype>
       <description>
-<p>Use ScheduleRedraw to indicate that a surface needs to be drawn to the display.  The surface and all child surfaces will be drawn within the next frame cycle (typically 1/60th of a second).  All manual draw operations for the target surface are ignored until the scheduled operation is completed.</p>
+<p>Use ScheduleRedraw to indicate that a surface needs to be drawn to the display.  The surface and all child surfaces will be drawn on the next frame cycle (typically 1/60th of a second).  All manual draw operations for the target surface are ignored until the scheduled operation is completed.</p>
 <p>Scheduling is ideal in situations where a cluster of redraw events may occur within a tight time period, and it would be inefficient to draw those changes to the display individually.</p>
-<p>Note that redraw schedules do not 'see each other', meaning if a surface and a child are both scheduled, this will trigger two redraw operations when one would suffice.  It is the client's responsibility to schedule the most top-level surface only.</p>
+<p>Note that redraw schedules do not 'see each other', meaning if a surface and a child are both scheduled, this will trigger two redraw operations when one would suffice.  It is the client's responsibility to target the most relevant top-level surface for scheduling.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
