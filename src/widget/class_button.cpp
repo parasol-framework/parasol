@@ -176,18 +176,15 @@ static ERROR BUTTON_Init(objButton *Self, APTR Void)
 
    if (Self->Flags & BTF_HIDE) Self->Viewport->Visibility = VIS_HIDDEN;
 
-   if (!acInit(Self->Viewport)) {
-      if (drwApplyStyleGraphics(Self, Self->Viewport->Head.UniqueID, NULL, NULL)) {
-         return ERR_Failed; // Graphics styling is required.
-      }
+   if (drwApplyStyleGraphics(Self, Self->Viewport->Head.UniqueID, NULL, NULL)) {
+      return ERR_Failed; // Graphics styling is required.
+   }
 /*
    Self->Viewport->Flags |= VF_GRAB_FOCUS;
    //if (Self->Flags & BTF_NO_FOCUS)
    Self->Viewport->Flags |= VF_IGNORE_FOCUS;
 */
-      return ERR_Okay;
-   }
-   else return ERR_Init;
+   return ERR_Okay;
 }
 
 /*****************************************************************************
