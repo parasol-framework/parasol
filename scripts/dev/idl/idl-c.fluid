@@ -1345,7 +1345,7 @@ glTypes = {
    arraysize  = { fd='FD_LONG|FD_ARRAYSIZE', c_type='LONG' },
    mem        = { fd='FD_LONG',      c_type='MEMORYID' },
    int        = { fd='FD_LONG',      c_type='LONG' },
-   uint       = { fd='FD_LONG',      c_type='ULONG' },
+   uint       = { fd='FD_LONG|FD_UNSIGNED', c_type='ULONG' },
    ptr        = { fd='FD_PTR',       c_type='APTR' },
    cptr       = { fd='FD_PTR',       c_type='const void *' },
    oid        = { fd='FD_OBJECTID',  c_type='OBJECTID' },
