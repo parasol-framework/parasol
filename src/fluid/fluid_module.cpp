@@ -582,6 +582,7 @@ static int module_call(lua_State *Lua)
             }
             else ((LONG *)(buffer + j))[0] = F2I(lua_tonumber(Lua, i));
          }
+         else if (argtype & FD_UNSIGNED) ((ULONG *)(buffer + j))[0] = lua_tonumber(Lua, i);
          else ((LONG *)(buffer + j))[0] = F2I(lua_tonumber(Lua, i));
          arg_values[in] = buffer + j;
          arg_types[in++] = &ffi_type_sint32;
