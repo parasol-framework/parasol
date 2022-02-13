@@ -22,7 +22,7 @@ called under exclusive conditions, and it is not recommended that you call metho
 system.
 
 By default, the CPU can only be used to read and write data directly to or from a bitmap when it is held in standard
-memory (this is the default type).  If the BLIT or VIDEO flags are specified in the #DataFlags field then the
+memory (this is the default type).  If the `BLIT` or `VIDEO` flags are specified in the #DataFlags field then the
 CPU cannot access this memory, unless you specifically request it.  To do this, use the #Lock() and #Unlock() actions
 to temporarily gain read/write access to a bitmap.
 
@@ -281,7 +281,7 @@ Once a bitmap is compressed, its image data is invalid.  Any attempt to access t
 result in a memory access fault.  The image data will remain invalid until the #Decompress() method is
 called to restore the bitmap to its original state.
 
-The BMF_COMPRESSED bit will be set in the #Flags field after a successful call to this function to indicate that the
+The `BMF_COMPRESSED` bit will be set in the #Flags field after a successful call to this function to indicate that the
 bitmap is compressed.
 
 -INPUT-

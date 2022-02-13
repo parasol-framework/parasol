@@ -275,7 +275,7 @@ static ERROR VECTOR_Free(objVector *Self, APTR Args)
 -METHOD-
 FreeMatrix: Remove an allocated VectorMatrix structure.
 
-Transformations allocated from NewMatrix() can be removed with this method.  If multiple transforms are
+Transformations allocated from ~Vector.NewMatrix() can be removed with this method.  If multiple transforms are
 attached to the vector then it should be noted that this will affect downstream transformations.
 
 -INPUT-
@@ -479,7 +479,7 @@ passage through the vector boundaries.
 It is a pre-requisite that the associated @VectorScene has been linked to a @Surface.
 
 To remove an existing subscription, call this method again with the same Callback and an empty Mask.
-Alternatively have the function return ERR_Terminate.
+Alternatively have the function return `ERR_Terminate`.
 
 Please refer to gfxSubscribeInput() for further information on event management and message handling.
 
@@ -553,7 +553,7 @@ callback is as follows, whereby Flags are keyboard qualifiers `KQ` and the Value
 ERROR callback(*Viewport, LONG Flags, LONG Value);
 ```
 
-To remove the subscription, the function can return ERR_Terminate.
+To remove the subscription, the function can return `ERR_Terminate`.
 
 -INPUT-
 ptr(func) Callback: Reference to a callback function that will receive input messages.
@@ -661,7 +661,7 @@ Note that if multiple matrices are allocated by the client, they will be applied
 order of their creation.
 
 The structure will be owned by the Vector object and is automatically terminated when the Vector is destroyed.  If the
-transform is no longer required before then, it can be manually removed with @FreeMatrix().
+transform is no longer required before then, it can be manually removed with ~Vector.FreeMatrix().
 
 -INPUT-
 &resource(*VectorMatrix) Transform: A reference to the new transform structure is returned here.
@@ -843,7 +843,7 @@ function is `ERROR Function(OBJECTPTR Vector, LONG Index, LONG Command, DOUBLE X
 The Vector parameter refers to the vector targeted by the method.  The Index is an incrementing counter that reflects
 the currently plotted point.  The X and Y parameters reflect the coordinate of a point on the path.
 
-If the Callback returns ERR_Terminate, then no further coordinates will be processed.
+If the Callback returns `ERR_Terminate`, then no further coordinates will be processed.
 
 -INPUT-
 ptr(func) Callback: The function to call with each coordinate of the path.
@@ -991,7 +991,6 @@ will not produce the expected behaviour.
 
 The EnableBkgd option can be enabled on Vector sub-classes @VectorGroup, @VectorPattern and @VectorViewport.  All other
 sub-classes will ignore the option if used.
--END-
 
 *****************************************************************************/
 

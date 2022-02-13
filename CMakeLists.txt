@@ -1,7 +1,10 @@
 # Parasol Core Build File
+#
 # Prepare:    cmake -S . -B release -DCMAKE_BUILD_TYPE=Release -G"MinGW Makefiles"
 #             cmake -S . -B debug -DCMAKE_BUILD_TYPE=Debug -G"MinGW Makefiles"
-# Local Opts: -DCMAKE_INSTALL_PREFIX=local -DRUN_ANYWHERE=TRUE
+#
+# Options for local folder: -DCMAKE_INSTALL_PREFIX=local -DRUN_ANYWHERE=TRUE
+#
 # Build:      cmake --build release -j 8 -- -O
 # Install:    sudo cmake --install release
 # Test:       make -C release test ARGS=--verbose
@@ -24,7 +27,7 @@ endif()
 
 project (Parasol LANGUAGES C CXX)
 
-set (VERSION "2020.12")
+set (VERSION "2022.2")
 cmake_policy (SET CMP0082 NEW) # Process install commands in the order that they appear
 
 option (PARASOL_STATIC   "Build as a static library" OFF)

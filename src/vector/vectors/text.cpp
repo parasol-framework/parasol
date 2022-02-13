@@ -1346,6 +1346,8 @@ static void generate_text_bitmap(objVectorText *Vector)
 
    if (dy < Vector->txFont->LineSpacing) dy = Vector->txFont->LineSpacing; // Enforce min. height
 
+   // Standard rectangle to host the text image.
+
    Vector->BasePath->move_to(0, 0);
    Vector->BasePath->line_to(longest_line_width, 0);
    Vector->BasePath->line_to(longest_line_width, dy);
