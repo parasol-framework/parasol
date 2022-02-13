@@ -128,7 +128,7 @@ static void set_filter(agg::image_filter_lut &Filter, UBYTE Method)
 // A generic drawing function for VMImage and VMPattern, this is used to fill vectors with bitmap images.
 
 static void drawBitmap(LONG SampleMethod, agg::renderer_base<agg::pixfmt_rkl> &RenderBase, agg::rasterizer_scanline_aa<> &Raster,
-   objBitmap *SrcBitmap, LONG SpreadMethod, DOUBLE Opacity, agg::trans_affine *Transform, DOUBLE XOffset, DOUBLE YOffset)
+   objBitmap *SrcBitmap, LONG SpreadMethod, DOUBLE Opacity, agg::trans_affine *Transform = NULL, DOUBLE XOffset = 0, DOUBLE YOffset = 0)
 {
    agg::rendering_buffer imgSource;
    imgSource.attach(SrcBitmap->Data, SrcBitmap->Width, SrcBitmap->Height, SrcBitmap->LineWidth);
@@ -244,10 +244,7 @@ static void draw_pattern(objVector *Vector, agg::path_storage *Path,
 
    transform.invert(); // Required
 
-   if ((transform.sx != 1.0) or (transform.sy != 1.0) or (transform.shx != 0.0) or (transform.shy != 0.0)) {
-      drawBitmap(SampleMethod, RenderBase, Raster, Pattern.Bitmap, Pattern.SpreadMethod, Pattern.Opacity, &transform, 0, 0);
-   }
-   else drawBitmap(SampleMethod, RenderBase, Raster, Pattern.Bitmap, Pattern.SpreadMethod, Pattern.Opacity, NULL, -dx, -dy);
+   drawBitmap(SampleMethod, RenderBase, Raster, Pattern.Bitmap, Pattern.SpreadMethod, Pattern.Opacity, &transform);
 }
 
 //****************************************************************************
@@ -353,7 +350,7 @@ class pattern_rgb {
       DOUBLE mHeight;
 };
 
-void draw_texstroke(const struct rkVectorImage &Image,
+void draw_brush(const struct rkVectorImage &Image,
    agg::renderer_base<agg::pixfmt_rkl> &RenderBase,
    agg::conv_transform<agg::path_storage, agg::trans_affine> &Path,
    DOUBLE StrokeWidth)
@@ -442,10 +439,7 @@ static void draw_image(objVector *Vector, agg::path_storage &Path, LONG SampleMe
 
    transform.invert(); // Required
 
-   if ((transform.sx != 1.0) or (transform.sy != 1.0) or (transform.shx != 0.0) or (transform.shy != 0.0)) {
-      drawBitmap(SampleMethod, RenderBase, Raster, Image.Bitmap, Image.SpreadMethod, Alpha, &transform, 0, 0);
-   }
-   else drawBitmap(SampleMethod, RenderBase, Raster, Image.Bitmap, Image.SpreadMethod, Alpha, NULL, -dx, -dy);
+   drawBitmap(SampleMethod, RenderBase, Raster, Image.Bitmap, Image.SpreadMethod, Alpha, &transform);
 }
 
 //*****************************************************************************
@@ -1094,7 +1088,7 @@ private:
 
                      agg::conv_transform<agg::path_storage, agg::trans_affine> stroke_path(*shape->BasePath, shape->Transform);
 
-                     draw_texstroke(*shape->StrokeImage, mRenderBase, stroke_path, strokewidth);
+                     draw_brush(*shape->StrokeImage, mRenderBase, stroke_path, strokewidth);
                   }
                   else {
                      mSolidRender.color(agg::rgba(shape->StrokeColour.Red, shape->StrokeColour.Green, shape->StrokeColour.Blue, shape->StrokeColour.Alpha * shape->StrokeOpacity * state.mOpacity));
@@ -1127,7 +1121,7 @@ private:
 
             mBitmap = bmpSave;
             mFormat.setBitmap(*mBitmap);
-            drawBitmap(shape->Scene->SampleMethod, mRenderBase, raster, bmpBkgd, VSPREAD_CLIP, 1.0, NULL, 0, 0);
+            drawBitmap(shape->Scene->SampleMethod, mRenderBase, raster, bmpBkgd, VSPREAD_CLIP, 1.0);
             acFree(bmpBkgd);
          }
       }
@@ -1194,7 +1188,7 @@ void SimpleVector::DrawPath(objBitmap *Bitmap, DOUBLE StrokeWidth, OBJECTPTR Str
          objVectorImage &image = (objVectorImage &)*StrokeStyle;
          agg::trans_affine transform;
          agg::conv_transform<agg::path_storage, agg::trans_affine> path(mPath, transform);
-         draw_texstroke(image, mRenderer, path, StrokeWidth);
+         draw_brush(image, mRenderer, path, StrokeWidth);
       }
       else if (StrokeStyle->ClassID IS ID_VECTORCOLOUR) {
          agg::renderer_scanline_aa_solid<agg::renderer_base<agg::pixfmt_rkl>> solid(mRenderer);
