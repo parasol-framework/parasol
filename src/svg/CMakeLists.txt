@@ -26,3 +26,5 @@ target_include_directories (${MOD} PRIVATE
    "${CMAKE_CURRENT_SOURCE_DIR}/katana-parser/src")
 
 target_link_libraries (${MOD} PRIVATE "m")
+
+flute_test (svg_output "tests/test-svg.fluid")

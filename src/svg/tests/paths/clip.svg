@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="512pt" height="512pt" viewBox="0 0 512 512" version="1.1" preserveAspectRatio="xMidYMid meet">
+  <defs>
+    <clipPath id="clip1">
+      <path d="M 55 0 C 16 0 0 34 0 67 L 0 151 L 177.3125 151.5 C 199.777344 151.5 219.527344 139.878906 230.882812 122.324219 C 237.753906 111.144531 250.089844 103.6875 264.171875 103.6875 L 488 103.6875 C 488 86.082031 473.730469 71.8125 456.125 71.8125 L 239.054688 71.8125 C 238.792969 35.679688 217.03125 0 177.3125 0 Z M 271.742188 119.625 C 259.699219 119.625 249.175781 126.140625 243.507812 135.84375 L 243.425781 135.765625 C 231.210938 154.871094 210.503906 167.4375 187.007812 167.4375 L 0 168 L 0 464.445312 C 0 487.097656 24.777344 512 48.820312 512 L 461.207031 512 C 482.691406 512 512 484.078125 512 461.671875 L 512 119.625 Z "/>
+    </clipPath>
+  </defs>
+
+  <!-- Test clipping within a group -->
+  <g clip-path="url(#clip1)" clip-rule="nonzero">
+    <rect x="0" y="0" width="512" height="256" style="fill:rgb(0,0,0);stroke:none;"/>
+  </g>
+
+  <!-- Test clipping via attributes -->
+  <rect x="0" y="256" width="512" height="256" style="fill:rgb(255,0,0);stroke:none;" clip-path="url(#clip1)" clip-rule="nonzero"/>
+</svg>

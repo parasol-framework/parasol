@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="ISO-8859-1" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+    "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve"
+  width="640" height="420" viewBox="0 0 640 420" >
+
+  <!-- Matthew Bystedt http://apike.ca 2014 -->
+
+  <defs>
+    <!-- Pattern Definition -->
+    <pattern id="checkerPattern" patternUnits="userSpaceOnUse" x="0" y="0" width="20" height="20" viewBox="0 0 10 10" >
+      <rect fill="white" width="100%" height="100%"/>
+      <line x1="0" y1="0" x2="10" y2="0" stroke="lightblue" fill="none" stroke-dasharray="2,2"/>
+      <line x1="0" y1="0" x2="0" y2="10" stroke="lightblue" fill="none" stroke-dasharray="2,2"/>
+    </pattern>
+
+    <!-- Filter Definition -->
+
+    <filter id="compOver" x="0" y="0" width="280" height="230" filterUnits="userSpaceOnUse">
+      <feImage x="0" y="40" width="150" height="150" xlink:href="bird.png" result="img1"/>
+      <feImage x="30" y="30" width="120" height="120" xlink:href="symbol.png" result="img2"/>
+      <feComposite operator="over" in="img1" in2="img2"/>
+    </filter>
+
+    <filter id="compIn" x="0" y="0" width="250" height="250" filterUnits="userSpaceOnUse">
+       <feImage x="0" y="40" width="150" height="150" xlink:href="bird.png" result="img1"/>
+      <feImage x="30" y="30" width="120" height="120" xlink:href="symbol.png" result="img2"/>
+      <feComposite operator="in" in="img1" in2="img2"/>
+    </filter>
+
+    <filter id="compOut" x="0" y="0" width="250" height="250" filterUnits="userSpaceOnUse">
+      <feImage x="0" y="40" width="150" height="150" xlink:href="bird.png" result="img1"/>
+      <feImage x="30" y="30" width="120" height="120" xlink:href="symbol.png" result="img2"/>
+      <feComposite operator="out" in="img1" in2="img2"/>
+    </filter>
+
+    <filter id="compAtop" x="0" y="0" width="250" height="250" filterUnits="userSpaceOnUse">
+      <feImage x="0" y="40" width="150" height="150" xlink:href="bird.png" result="img1"/>
+      <feImage x="30" y="30" width="120" height="120" xlink:href="symbol.png" result="img2"/>
+      <feComposite operator="atop" in="img1" in2="img2"/>
+    </filter>
+
+    <filter id="compXor" x="0" y="0" width="250" height="250" filterUnits="userSpaceOnUse">
+      <feImage x="0" y="40" width="150" height="150" xlink:href="bird.png" result="img1"/>
+      <feImage x="30" y="30" width="120" height="120" xlink:href="symbol.png" result="img2"/>
+      <feComposite operator="xor" in="img1" in2="img2"/>
+    </filter>
+
+    <filter id="compArith" x="0" y="0" width="250" height="250" filterUnits="userSpaceOnUse">
+      <feImage x="0" y="40" width="150" height="150" xlink:href="bird.png" result="img1"/>
+      <feImage x="30" y="30" width="120" height="120" xlink:href="symbol.png" result="img2"/>
+      <feComposite operator="arithmetic" in="img1" in2="img2" k1="0" k2=".5" k3=".7" k4="0"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect x="0" y="0" width="100%" height="100%" fill="url(#checkerPattern)"/>
+
+  <!-- Composition Examples -->
+  <g transform="translate(40)">
+    <g filter="url(#compOver)" transform="translate(0)"></g>
+    <g filter="url(#compIn)" transform="translate(200)"></g>
+    <g filter="url(#compOut)" transform="translate(400)"></g>
+    <g filter="url(#compAtop)" transform="translate(0, 210)"></g>
+    <g filter="url(#compXor)" transform="translate(200, 210)"></g>
+    <g filter="url(#compArith)" transform="translate(400, 210)"></g>
+  </g>
+
+  <g transform="translate(40)">
+    <text x="0" y="20">operator="over"</text>
+    <text x="200" y="20">operator="in"</text>
+    <text x="400" y="20">operator="out"</text>
+    <text x="0" y="230">operator="atop"</text>
+    <text x="200" y="230">operator="xor"</text>
+    <text x="400" y="230">operator="arithmetic"</text>
+  </g>
+</svg>

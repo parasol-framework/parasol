@@ -1,0 +1,27 @@
+<?xml version="1.0" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+
+<svg width="800px" height="800px" version="1.1" xmlns="http://www.w3.org/2000/svg">
+ <rect width="100%" height="100%" fill="#ffffff"/>
+ <g transform="translate(30,30)">
+    <g transform="skewX(30)">
+      <g fill="none" stroke="red" stroke-width="3" >
+        <line x1="0" y1="0" x2="50" y2="0" fill="none" stroke="red" stroke-width="3"/>
+        <line x1="0" y1="0" x2="0" y2="50" fill="none" stroke="red" stroke-width="3"/>
+      </g>
+      <text x="0" y="0" font-size="20" font-family="Roboto" fill="orange">ABC (skewX)</text>
+    </g>
+  </g>
+
+  <g transform="translate(200,30)">
+    <g transform="skewY(30)">
+      <g fill="none" stroke="red" stroke-width="3" >
+        <line x1="0" y1="0" x2="50" y2="0" fill="none" stroke="red" stroke-width="3"/>
+        <line x1="0" y1="0" x2="0" y2="50" fill="none" stroke="red" stroke-width="3" />
+      </g>
+      <text x="0" y="0" font-size="20" font-family="Roboto" fill="blue" >
+        ABC (skewY)
+      </text>
+    </g>
+  </g>
+</svg>
