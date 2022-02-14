@@ -283,6 +283,48 @@ static ERROR VIEW_SET_Dimensions(objVectorViewport *Self, LONG Value)
 
 /*********************************************************************************************************************
 -FIELD-
+Drag: Enables click-dragging of viewports around the display.
+
+Click-dragging of viewports is enabled by utilising the Drag field.  To use, set this field with reference to a
+VectorViewport that is to be dragged when the user starts a click-drag operation.
+
+For example, a window with a titlebar would have the titlebar's Drag field set to the window's viewport.  If
+necessary, a viewport's Drag field can point back to itself (useful for creating icons and similar draggable widgets).
+
+Set the field to zero to turn off dragging.
+
+It is required that the parent @VectorScene is associated with a @Surface for this feature to work.
+
+*********************************************************************************************************************/
+
+static ERROR VIEW_GET_Drag(objVectorViewport *Self, objVectorViewport **Value)
+{
+   *Value = Self->DragViewport;
+   return ERR_Okay;
+}
+
+static ERROR VIEW_SET_Drag(objVectorViewport *Self, objVectorViewport *Value)
+{
+   auto callback = make_function_stdc(drag_input_events);
+
+   if (Value) {
+      parasol::Log log;
+
+      if (Value->Head.SubID != ID_VECTORVIEWPORT) return log.warning(ERR_WrongClass);
+      if ((!Self->Scene) or (!Self->Scene->SurfaceID)) return log.warning(ERR_FieldNotSet);
+
+      if (vecInputSubscription(Self, JTYPE_MOVEMENT|JTYPE_BUTTON, &callback)) {
+         return ERR_Failed;
+      }
+   }
+   else vecInputSubscription(Self, 0, &callback);
+
+   Self->DragViewport = Value;
+   return ERR_Okay;
+}
+
+/*********************************************************************************************************************
+-FIELD-
 Height: The height of the viewport's target area.
 
 The height of the viewport's target area is defined here as a fixed or relative value.  The default value is 100% for
@@ -903,6 +945,7 @@ static const FieldArray clViewFields[] = {
    { "ViewHeight",  FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, 0, (APTR)VIEW_GET_ViewHeight, (APTR)VIEW_SET_ViewHeight },
    { "Dimensions",  FDF_VIRTUAL|FDF_LONGFLAGS|FDF_R,  (MAXINT)&clViewDimensions, (APTR)VIEW_GET_Dimensions, (APTR)VIEW_SET_Dimensions },
    { "AspectRatio", FDF_VIRTUAL|FDF_LONGFLAGS|FDF_RW, (MAXINT)&clAspectRatio,    (APTR)VIEW_GET_AspectRatio, (APTR)VIEW_SET_AspectRatio },
+   { "Drag",         FDF_VIRTUAL|FDF_OBJECT|FDF_RW,     ID_VECTORVIEWPORT, (APTR)VIEW_GET_Drag, (APTR)VIEW_SET_Drag },
    { "Overflow",     FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clViewOverflow, (APTR)VIEW_GET_Overflow, (APTR)VIEW_SET_Overflow },
    { "OverflowX",    FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clViewOverflow, (APTR)VIEW_GET_OverflowX, (APTR)VIEW_SET_OverflowX },
    { "OverflowY",    FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clViewOverflow, (APTR)VIEW_GET_OverflowY, (APTR)VIEW_SET_OverflowY },
