@@ -1987,11 +1987,14 @@ static ERROR vector_input_events(objVector *Self, const InputEvent *Events)
 
    // Filter for events that occur within the vector's bounds.  Note that if the user holds the
    // mouse button over the vector, a 'button lock' will be held.  This causes all events to be passed
-   // until the button is released.
+   // to it until the button is released.
 
    LONG e = 0;
    for (auto input=Events; input; input=input->Next) {
       if ((input->Type IS JET_LEFT_SURFACE) or (input->Type IS JET_ENTERED_SURFACE)) continue;
+
+      // A vector cannot receive repeated click events unless it holds a button lock.
+      if ((input->Type IS JET_LMB) and (input->Flags & JTYPE_REPEATED) and (!Self->ButtonLock)) continue;
 
       if ((Self->ButtonLock) or
           ((input->X >= bounds[0]) and (input->Y >= bounds[1]) and
@@ -2042,8 +2045,12 @@ static ERROR vector_input_events(objVector *Self, const InputEvent *Events)
          Self->UserHovering = FALSE;
       }
 
-      if (input->Type IS JET_LMB) {
-         if (input->Value IS 1) Self->ButtonLock = true;
+      if ((input->Type IS JET_LMB) and (!(input->Flags & JTYPE_REPEATED))) {
+         if ((input->Value IS 1) and
+             (input->X >= bounds[0]) and (input->Y >= bounds[1]) and
+             (input->X < bounds[2]) and (input->Y < bounds[3])) {
+            Self->ButtonLock = true;
+         }
          else Self->ButtonLock = false;
       }
    }

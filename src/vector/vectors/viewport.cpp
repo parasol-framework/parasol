@@ -24,7 +24,8 @@ NOTE: Refer to gen_vector_path() for the code that manages viewport dimensions i
 *********************************************************************************************************************/
 
 //********************************************************************************************************************
-// Input event handler for the dragging of viewports by the user.
+// Input event handler for the dragging of viewports by the user.  Requires the client to set the Drag field to be
+// active.
 
 static ERROR drag_input_events(objVectorViewport *Viewport, const InputEvent *Events)
 {
