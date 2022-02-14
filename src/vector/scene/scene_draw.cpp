@@ -1050,7 +1050,7 @@ private:
                   }
 
                   if (shape->FillGradient) {
-                     if (GRADIENT_TABLE *table = get_fill_gradient_table(*shape, state.mOpacity * shape->FillOpacity)) {
+                     if (auto table = get_fill_gradient_table(*shape, state.mOpacity * shape->FillOpacity)) {
                         draw_gradient(shape, shape->BasePath, shape->FinalX, shape->FinalY, view_width, view_height,
                            *shape->FillGradient, table, mRenderBase, *shape->FillRaster, 0);
                      }
@@ -1072,7 +1072,7 @@ private:
                   else if (shape->FillRule IS VFR_EVEN_ODD) shape->StrokeRaster->filling_rule(agg::fill_even_odd);
 
                   if (shape->StrokeGradient) {
-                     if (GRADIENT_TABLE *table = get_stroke_gradient_table(*shape)) {
+                     if (auto table = get_stroke_gradient_table(*shape)) {
                         draw_gradient(shape, shape->BasePath, shape->FinalX, shape->FinalY, view_width, view_height,
                            *shape->StrokeGradient, table, mRenderBase, *shape->StrokeRaster, shape->StrokeWidth);
                      }

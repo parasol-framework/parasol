@@ -30,7 +30,7 @@ GRADIENT_TABLE * get_fill_gradient_table(objVector &Vector, DOUBLE Opacity)
    if (!cols) {
       if (Vector.FillGradient->Inherit) cols = Vector.FillGradient->Inherit->Colours;
       if (!cols) {
-         log.warning("No colour table referenced in gradient %p for vector #%d.", Vector.FillGradient, Vector.Head.UniqueID);
+         log.warning("No colour table referenced in fill gradient %p for vector #%d.", Vector.FillGradient, Vector.Head.UniqueID);
          return NULL;
       }
    }
@@ -44,7 +44,10 @@ GRADIENT_TABLE * get_fill_gradient_table(objVector &Vector, DOUBLE Opacity)
 
       delete Vector.FillGradientTable;
       Vector.FillGradientTable = new (std::nothrow) GRADIENT_TABLE();
-      if (!Vector.FillGradientTable) return NULL;
+      if (!Vector.FillGradientTable) {
+         log.warning("Failed to allocate fill gradient table");
+         return NULL;
+      }
       Vector.FillGradientAlpha = Opacity;
 
       for (unsigned i=0; i < Vector.FillGradientTable->size(); i++) {
@@ -58,10 +61,15 @@ GRADIENT_TABLE * get_fill_gradient_table(objVector &Vector, DOUBLE Opacity)
 
 GRADIENT_TABLE * get_stroke_gradient_table(objVector &Vector)
 {
+   parasol::Log log(__FUNCTION__);
+
    GradientColours *cols = Vector.StrokeGradient->Colours;
    if (!cols) {
       if (Vector.StrokeGradient->Inherit) cols = Vector.StrokeGradient->Inherit->Colours;
-      if (!cols) return NULL;
+      if (!cols) {
+         log.warning("No colour table referenced in stroke gradient %p for vector #%d.", Vector.FillGradient, Vector.Head.UniqueID);
+         return NULL;
+      }
    }
 
    if ((Vector.StrokeOpacity IS 1.0) AND (Vector.Opacity IS 1.0)) {
@@ -74,7 +82,10 @@ GRADIENT_TABLE * get_stroke_gradient_table(objVector &Vector)
 
       delete Vector.StrokeGradientTable;
       Vector.StrokeGradientTable = new (std::nothrow) GRADIENT_TABLE();
-      if (!Vector.StrokeGradientTable) return NULL;
+      if (!Vector.StrokeGradientTable) {
+         log.warning("Failed to allocate stroke gradient table");
+         return NULL;
+      }
       Vector.StrokeGradientAlpha = opacity;
 
       for (unsigned i=0; i < Vector.StrokeGradientTable->size(); i++) {

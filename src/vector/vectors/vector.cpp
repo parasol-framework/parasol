@@ -2048,10 +2048,7 @@ static ERROR vector_input_events(objVector *Self, const InputEvent *Events)
       }
    }
 
-   if (!e) {
-      log.msg("All received events were filtered out.");
-      return ERR_Okay;
-   }
+   if (!e) return ERR_Okay;
 
    for (auto it=Self->InputSubscriptions->begin(); it != Self->InputSubscriptions->end(); ) {
       // Patch the Next fields to construct a custom chain of events based on this subscripton's mask filter.
@@ -2068,8 +2065,6 @@ static ERROR vector_input_events(objVector *Self, const InputEvent *Events)
 
       if (first) {
          last->Next = NULL;
-
-         log.msg("Sending event $%.8x", first->Mask);
 
          ERROR result;
          if (sub.Callback.Type IS CALL_STDC) {

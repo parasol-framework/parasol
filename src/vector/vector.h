@@ -47,6 +47,7 @@ public:
    UBYTE  EnableBkgd:1; \
    UBYTE  UserHovering:1; \
    UBYTE  DisableFillColour:1; \
+   UBYTE  ButtonLock:1; \
    agg::line_join_e  LineJoin; \
    agg::line_cap_e   LineCap; \
    agg::inner_join_e InnerJoin; \

@@ -23,7 +23,62 @@ NOTE: Refer to gen_vector_path() for the code that manages viewport dimensions i
 
 *********************************************************************************************************************/
 
-/*****************************************************************************
+//********************************************************************************************************************
+// Input event handler for the dragging of viewports by the user.
+
+static ERROR drag_input_events(objVectorViewport *Viewport, const InputEvent *Events)
+{
+   static DOUBLE glAnchorX = 0, glAnchorY = 0; // Anchoring is process-exclusive, so we can store the coordinates as global variables
+   static DOUBLE glDragOriginX = 0, glDragOriginY = 0;
+
+   objVectorViewport *target;
+   if (Viewport->DragViewport) target = Viewport->DragViewport;
+   else target = Viewport;
+
+   if (target->Dirty) gen_vector_tree((objVector *)target);
+
+   for (auto event=Events; event; event=event->Next) {
+      // Process events that support consolidation first.
+
+      if (event->Flags & (JTYPE_ANCHORED|JTYPE_MOVEMENT)) {
+         if (Viewport->Dragging) {
+            while ((event->Next) and (event->Next->Flags & JTYPE_MOVEMENT)) { // Consolidate movement
+               event = event->Next;
+            }
+
+            target->vpTargetX = (glDragOriginX + (event->AbsX - glAnchorX));
+            target->vpTargetY = (glDragOriginY + (event->AbsY - glAnchorY));
+            mark_dirty((objVector *)target, RC_FINAL_PATH|RC_TRANSFORM);
+
+            acDraw(target);
+         }
+      }
+      else if ((event->Type IS JET_LMB) and (!(event->Flags & JTYPE_REPEATED))) {
+         if (event->Value > 0) {
+            if (Viewport->Visibility != VIS_VISIBLE) continue;
+            Viewport->Dragging = 1;
+            glAnchorX  = event->AbsX;
+            glAnchorY  = event->AbsY;
+
+            GetFields(target,
+               FID_X|TDOUBLE, &glDragOriginX,
+               FID_Y|TDOUBLE, &glDragOriginY,
+               TAGEND);
+
+            // Ensure that the X,Y coordinates are fixed.
+
+            target->vpDimensions = (target->vpDimensions | DMF_FIXED_X | DMF_FIXED_Y) &
+               (~(DMF_RELATIVE_X|DMF_RELATIVE_Y|DMF_RELATIVE_X_OFFSET|DMF_RELATIVE_Y_OFFSET));
+
+         }
+         else Viewport->Dragging = 0; // Released
+      }
+   }
+
+   return ERR_Okay;
+}
+
+/*********************************************************************************************************************
 -ACTION-
 Clear: Free all child objects contained by the viewport.
 -END-
@@ -47,6 +102,12 @@ static ERROR VIEW_Clear(objVectorViewport *Self, APTR Void)
 static ERROR VIEW_Free(objVectorViewport *Self, APTR Void)
 {
    if (Self->vpClipMask) { acFree(Self->vpClipMask); Self->vpClipMask = NULL; }
+
+   if (Self->DragViewport) {
+      auto callback = make_function_stdc(drag_input_events);
+      vecInputSubscription(Self, 0, &callback);
+   }
+
    return ERR_Okay;
 }
 
@@ -62,26 +123,20 @@ static ERROR VIEW_Init(objVectorViewport *Self, APTR Void)
 
 /*********************************************************************************************************************
 -ACTION-
-Move: Move the position of the viewport to a relative position.
--END-
+Move: Move the position of the viewport by delta X, Y.
+
 *********************************************************************************************************************/
 
 static ERROR VIEW_Move(objVectorViewport *Self, struct acMove *Args)
 {
    if (!Args) return ERR_NullArgs;
 
-   DOUBLE x, y;
-   if (!GetFields(Self, FID_X|TDOUBLE, &x, FID_Y|TDOUBLE, &y, TAGEND)) {
-      Self->vpDimensions = (Self->vpDimensions | DMF_FIXED_X) & (~DMF_RELATIVE_X);
-      Self->vpTargetX += x;
+   Self->vpDimensions = (Self->vpDimensions|DMF_FIXED_X|DMF_FIXED_Y) & (~(DMF_RELATIVE_X|DMF_RELATIVE_Y));
+   Self->vpTargetX += Args->XChange;
+   Self->vpTargetY += Args->YChange;
 
-      Self->vpDimensions = (Self->vpDimensions | DMF_FIXED_Y) & (~DMF_RELATIVE_Y);
-      Self->vpTargetY += y;
-
-      mark_dirty((objVector *)Self, RC_FINAL_PATH|RC_TRANSFORM);
-      return ERR_Okay;
-   }
-   else return ERR_GetField;
+   mark_dirty((objVector *)Self, RC_FINAL_PATH|RC_TRANSFORM);
+   return ERR_Okay;
 }
 
 /*********************************************************************************************************************
